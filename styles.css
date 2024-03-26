@@ -1,0 +1,17 @@
+body, html {
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  @font-face {
+    font-family: Londrina; /* Nom de la police */
+    src: url(./Fonts/Londrina_Solid/LondrinaSolid-Light.ttf);
+  }
+  @font-face {
+    font-family: RubikDoodle; /* Nom de la police */
+    src: url(./Fonts/Rubik_Doodle_Shadow/RubikDoodleShadow-Regular.ttf);
+  }
+  @font-face {
+    font-family: RubikMaps; /* Nom de la police */
+    src: url(./Fonts/Rubik_Maps/RubikMaps-Regular.ttf);
+  }

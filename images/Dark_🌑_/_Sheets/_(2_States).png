@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="402" height="278" viewBox="0 0 402 278">
+  <defs>
+    <filter id="Rectangle" x="13.5" y="15.5" width="375" height="251" filterUnits="userSpaceOnUse">
+      <feOffset dy="5" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feFlood flood-opacity="0.2"/>
+      <feComposite operator="in" in2="blur"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+    <filter id="Rectangle-2" x="0" y="0" width="402" height="278" filterUnits="userSpaceOnUse">
+      <feOffset dy="3" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="7" result="blur-2"/>
+      <feFlood flood-opacity="0.122"/>
+      <feComposite operator="in" in2="blur-2"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+    <filter id="Rectangle-3" x="6" y="11" width="390" height="266" filterUnits="userSpaceOnUse">
+      <feOffset dy="8" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="5" result="blur-3"/>
+      <feFlood flood-opacity="0.141"/>
+      <feComposite operator="in" in2="blur-3"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="Dark_Sheets_2_States_" data-name="Dark 🌑 / Sheets/ (2 States)" transform="translate(21 18)">
+    <g id="Dark_Elevation_00dp_9_States_" data-name="Dark 🌑/Elevation/00dp (9 States)">
+      <g id="Shadow">
+        <g transform="matrix(1, 0, 0, 1, -21, -18)" filter="url(#Rectangle)" style="mix-blend-mode: multiply;isolation: isolate">
+          <rect id="Rectangle-4" data-name="Rectangle" width="360" height="236" transform="translate(21 18)" fill="#fff"/>
+        </g>
+        <g transform="matrix(1, 0, 0, 1, -21, -18)" filter="url(#Rectangle-2)" style="mix-blend-mode: multiply;isolation: isolate">
+          <rect id="Rectangle-5" data-name="Rectangle" width="360" height="236" transform="translate(21 18)" fill="#fff"/>
+        </g>
+        <g transform="matrix(1, 0, 0, 1, -21, -18)" filter="url(#Rectangle-3)" style="mix-blend-mode: multiply;isolation: isolate">
+          <rect id="Rectangle-6" data-name="Rectangle" width="360" height="236" transform="translate(21 18)" fill="#fff"/>
+        </g>
+      </g>
+      <rect id="Rectangle-7" data-name="Rectangle" width="360" height="236" fill="#121212"/>
+      <rect id="On_Surface" data-name="On Surface" width="360" height="236" fill="rgba(255,255,255,0.12)"/>
+    </g>
+  </g>
+</svg>
