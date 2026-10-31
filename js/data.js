@@ -73,7 +73,7 @@ window.PROJECTS = [
     year: 2024,
     status: "Sorti",
     tags: ["Arcade", "3D"],
-    short: "TODO : une phrase pour présenter Cubelite.",
+    short: "", // TODO : une phrase pour présenter Cubelite
     url: "https://akarisumd.itch.io/cubelite", // TODO : vérifie l'URL
     cover: "",
     palette: ["#9cc56b", "#3f6b3a", "#1f3a2b"],
@@ -86,7 +86,7 @@ window.PROJECTS = [
     year: 2024,
     status: "Game jam",
     tags: ["Action", "Game jam"],
-    short: "TODO : une phrase pour présenter Crazy Granny.",
+    short: "", // TODO : une phrase pour présenter Crazy Granny
     url: "https://akarisumd.itch.io/crazy-granny", // TODO : vérifie l'URL
     cover: "",
     palette: ["#e6a4b4", "#c8553d", "#4a2233"],
