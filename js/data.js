@@ -18,6 +18,14 @@ window.SITE = {
   // avec le message déjà rempli, adressé à l'email ci-dessus.
   formEndpoint: "",
 
+  // Classements (Supabase) — voir leaderboard/README.md
+  // url : « Project URL » ; key : clé PUBLIQUE (publishable / anon).
+  // Ne mets JAMAIS la clé secrète (service_role) ici : ce fichier est public.
+  supabase: {
+    url: "",
+    key: "",
+  },
+
   // Réseaux : laisse "" pour masquer un lien.
   links: {
     itch: "https://maximedelarose.itch.io",
@@ -49,6 +57,7 @@ window.SITE = {
              (bouton « Jouer ici »). Format :
              "https://itch.io/embed-upload/XXXXXXX?color=1f3a2b"
    size    : [largeur, hauteur] du jeu web (optionnel, défaut 960×600)
+   leaderboard : true → affiche le classement du jeu (même id que lb_games)
    icon    : cat, cube, dog, fish, eye, wand, drop, box, plug, gun, paw,
              bolt, mask, star
    ------------------------------------------------------------------------- */
@@ -100,6 +109,7 @@ window.PROJECTS = [
     with: "AugProduction",
     short: "Jeu de réflexion dans lequel vous devez associer des chats identiques pour augmenter votre score.",
     url: "https://maximedelarose.itch.io/chaaat",
+    leaderboard: true,  // affiche le classement « chaaat » (si Supabase est configuré)
     embed: "https://itch.io/embed-upload/9042806?color=1f3a2b",
     size: [960, 720],
     cover: "assets/covers/chaaat.png",

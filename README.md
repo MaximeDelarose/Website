@@ -18,6 +18,7 @@ Presque tout se règle dans **`js/data.js`** :
 - **Projets** : ajoute un objet dans `PROJECTS` (`type: "game"` ou `"plugin"`). Sans `cover`, une jaquette pixel est générée automatiquement.
 - **Jeux web jouables sur le site** : ajoute `embed: "https://itch.io/embed-upload/XXXXXXX?color=1f3a2b"` au projet (le numéro se trouve dans l'URL `html-classic.itch.zone/html/XXXXXXX/…` de la page du jeu). Le jeu reçoit un bouton « ▶ Jouer ici » qui l'ouvre dans une fenêtre, et un lien direct `bibliotheque.html#jouer=<id>`. `SITE.featured.id` choisit le jeu de la borne de l'accueil.
 - **Formulaire de contact** : les messages partent directement vers `SITE.email` via [FormSubmit](https://formsubmit.co). Au tout premier message, FormSubmit envoie un mail d'activation à cette adresse : il faut cliquer sur le lien une fois. (Ou mets ton propre endpoint Formspree dans `SITE.formEndpoint`.)
+- **Classements en ligne** : `SITE.supabase = { url, key }` (clé publique) et `leaderboard: true` sur un jeu. Mise en place, ajout d'un jeu et package Unity : voir [`leaderboard/README.md`](leaderboard/README.md).
 - **Réseaux** : `SITE.links` (laisse `""` pour masquer un lien).
 
 Le texte de la bio est directement dans `bio.html`.

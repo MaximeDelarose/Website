@@ -1,0 +1,14 @@
+{
+    "name": "AkaBox.Leaderboard",
+    "rootNamespace": "AkaBox.Leaderboard",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

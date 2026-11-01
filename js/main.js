@@ -322,6 +322,13 @@
     $$("[data-featured-text]").forEach(function (el) { el.textContent = game.short || ""; });
     $$("[data-featured-link]").forEach(function (el) { if (game.url) el.href = game.url; else el.hidden = true; });
 
+    var lbEl = $("[data-featured-leaderboard]");
+    if (lbEl && game.leaderboard && window.Leaderboard) {
+      lbEl.setAttribute("data-leaderboard", game.id);
+      lbEl.setAttribute("data-title", "Classement " + game.title);
+      window.Leaderboard.render(lbEl);
+    }
+
     var screen = $(".screen", feat);
     sizeScreen(screen, game);
     var cover = $(".screen-cover canvas", feat);

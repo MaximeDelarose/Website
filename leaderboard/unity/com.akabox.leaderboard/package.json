@@ -1,0 +1,19 @@
+{
+  "name": "com.akabox.leaderboard",
+  "version": "0.1.0",
+  "displayName": "AkaBox Leaderboard",
+  "description": "Classements en ligne génériques (Supabase) : envoyer un score et récupérer le top d'un jeu. Fonctionne en WebGL, desktop et mobile.",
+  "unity": "2020.3",
+  "author": {
+    "name": "Maxime Delarose / AkarisuMD",
+    "url": "https://mdelarose.fr"
+  },
+  "keywords": ["leaderboard", "score", "supabase", "classement"],
+  "samples": [
+    {
+      "displayName": "Exemple simple",
+      "description": "Envoie un score et affiche le top 10 dans la console.",
+      "path": "Samples~/Basic"
+    }
+  ]
+}
