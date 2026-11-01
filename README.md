@@ -8,7 +8,7 @@ Site statique (HTML/CSS/JS, rien à compiler) : il s'héberge tel quel sur GitHu
 |---|---|
 | `index.html` | Accueil : forêt pixel 2.5D animée, jeu jouable à la une, ce que je fais, derniers projets |
 | `bibliotheque.html` | Tous les jeux et plugins Unity, avec filtres et recherche (`#jeux` / `#plugins` dans l'URL pour pré-filtrer) |
-| `jeu.html` | **Écureuil Survivor** : mini jeu maison façon « survivors » (menu, 6 personnages, boutique d'améliorations, 24 succès, 2 boss), jouable au clavier (ZQSD/WASD/flèches), à la souris (clic maintenu) ou au joystick tactile, avec classement en ligne |
+| `jeu.html` | **Écureuil Survivor** : mini jeu maison façon « survivors » (6 écureuils, 4 cartes, 11 armes, 9 fusions, 12 objets, boutique, succès, 2 boss), jouable au clavier (ZQSD/WASD/flèches), à la souris (clic maintenu) ou au joystick tactile, avec classement en ligne |
 | `bio.html` | Biographie |
 | `contact.html` | Formulaire « message direct » + liens |
 | `projet.html?id=<id>` | Fiche d'un projet : jaquette, images, vidéo, description complète, infos, bouton Télécharger (renvoie vers la section téléchargement d'itch.io) |
@@ -23,7 +23,7 @@ Presque tout se règle dans **`js/data.js`** :
 - **Formulaire de contact** : les messages partent directement vers `SITE.email` via [FormSubmit](https://formsubmit.co). Au tout premier message, FormSubmit envoie un mail d'activation à cette adresse : il faut cliquer sur le lien une fois. (Ou mets ton propre endpoint Formspree dans `SITE.formEndpoint`.)
 - **Classements en ligne** : `SITE.supabase = { url, key }` (clé publique) et `leaderboard: true` sur un jeu. Mise en place, ajout d'un jeu et package Unity : voir [`leaderboard/README.md`](leaderboard/README.md).
 - **Écureuil Survivor** (`jeu.html`) :
-  - `js/game-data.js` : tout le contenu modifiable à la main. Sprites en texte, personnages (`CHARACTERS`), armes (`WEAPONS`), bonus de partie (`PASSIVES`), boutique permanente (`SHOP`), succès (`ACHIEVEMENTS`), ennemis et boss (`ENEMIES`), modes de difficulté. Un `unlock: "<id de succès>"` verrouille un personnage, une arme, une amélioration ou un mode jusqu'au succès correspondant.
+  - `js/game-data.js` : tout le contenu modifiable à la main. Sprites en texte, écureuils jouables (`CHARACTERS`), armes (`WEAPONS`, champ `type` = comportement), fusions (`FUSIONS`, champ `from` = les deux ingrédients), objets (`PASSIVES`), butin des objets cassables (`LOOT`), cartes (`MAPS`), boutique permanente (`SHOP`), succès (`ACHIEVEMENTS`), ennemis et boss (`ENEMIES`), modes de difficulté. Un `unlock: "<id de succès>"` verrouille un personnage, une arme, une amélioration ou un mode jusqu'au succès correspondant.
   - `js/game.js` : moteur, menus, sauvegarde (localStorage `es-save-v1`, dans le navigateur du joueur).
   - Après une modification des fichiers JS/CSS, change le `?v=…` dans les balises `<script>`/`<link>` des pages pour forcer les navigateurs à recharger.
   - Pour son classement, exécute une fois dans le SQL Editor de Supabase :
