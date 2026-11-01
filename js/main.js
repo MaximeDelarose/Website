@@ -371,15 +371,24 @@
       fetch(endpoint, { method: "POST", body: data, headers: { Accept: "application/json" } })
         .then(function (r) {
           return r.json().catch(function () { return {}; }).then(function (j) {
-            if (!r.ok || j.success === false || j.success === "false") throw new Error(j.message || r.status);
+            var msg = String(j.message || "");
+            // 1er envoi : FormSubmit demande d'activer le formulaire par mail.
+            if (/activat/i.test(msg)) {
+              say("Formulaire en attente d'activation : le propriétaire du site doit cliquer sur le lien reçu par mail. Réessaie un peu plus tard, ou écris directement à " + SITE.email + ".", "err");
+              return "pending";
+            }
+            if (!r.ok || j.success === false || j.success === "false") throw new Error(msg || "HTTP " + r.status);
+            return "ok";
           });
         })
-        .then(function () {
+        .then(function (res) {
+          if (res !== "ok") return;
           form.reset();
           say("Message envoyé ! Je te réponds vite 🍄", "ok");
         })
-        .catch(function () {
-          say("Oups, l'envoi a échoué. Réessaie, ou écris-moi directement à " + (SITE.email || "mon adresse mail") + ".", "err");
+        .catch(function (err) {
+          if (window.console) console.warn("Formulaire de contact :", err);
+          say("Oups, l'envoi a échoué (" + (err && err.message ? err.message : "réseau") + "). Réessaie, ou écris-moi directement à " + (SITE.email || "mon adresse mail") + ".", "err");
         })
         .then(function () { btn.disabled = false; });
     });
