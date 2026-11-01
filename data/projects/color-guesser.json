@@ -1,0 +1,46 @@
+{
+ "id": "color-guesser",
+ "source": "https://maximedelarose.itch.io/color-guesser",
+ "description": "<p>Project made in 3 hours, I'm trying to put it on the Google Play Store, but it's terrible.</p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/color-guesser/shot-1.webp",
+   "w": 1024,
+   "h": 500
+  },
+  {
+   "src": "assets/projects/color-guesser/shot-2.webp",
+   "w": 573,
+   "h": 1295
+  },
+  {
+   "src": "assets/projects/color-guesser/shot-3.webp",
+   "w": 567,
+   "h": 1290
+  },
+  {
+   "src": "assets/projects/color-guesser/shot-4.webp",
+   "w": 573,
+   "h": 1296
+  }
+ ],
+ "videos": [],
+ "info": {
+  "Status": "Released",
+  "Platforms": "HTML5, Android",
+  "Author": "Maxime Delarose / AkarisuMD",
+  "Genre": "Puzzle",
+  "Made with": "Unity",
+  "Tags": "2D, Casual, Short, Singleplayer"
+ },
+ "uploads": [
+  {
+   "name": "Color Guesser.apk",
+   "size": "19 MB",
+   "platforms": [
+    "Android"
+   ]
+  }
+ ],
+ "download": true
+}

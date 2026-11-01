@@ -1,0 +1,33 @@
+{
+ "id": "cubelite",
+ "source": "https://maximedelarose.itch.io/cubelite",
+ "description": "<h1>Visez et tirez sur tout vos poursuivants.</h1>\n<p> Survivez dans ce jeu qui part dans tous les sens!</p>\n\n<p>Et si Vampire survivor devenez un platformer !</p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/cubelite/shot-1.webp",
+   "w": 1600,
+   "h": 2263
+  }
+ ],
+ "videos": [
+  "hZWpjGgciUU"
+ ],
+ "info": {
+  "Status": "Prototype",
+  "Platforms": "HTML5, Windows",
+  "Authors": "Maxime Delarose / AkarisuMD, Lucas / Reltony",
+  "Genre": "Action, Platformer, Shooter",
+  "Made with": "Unity",
+  "Tags": "2D, etudiant, Minimalist, Prototype, shootem-up, Singleplayer, vampire-survivor"
+ },
+ "uploads": [
+  {
+   "name": "Cubelite.rar",
+   "size": "56 MB",
+   "platforms": [
+    "Windows"
+   ]
+  }
+ ],
+ "download": true
+}

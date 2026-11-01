@@ -10,12 +10,14 @@ Site statique (HTML/CSS/JS, rien à compiler) : il s'héberge tel quel sur GitHu
 | `bibliotheque.html` | Tous les jeux et plugins Unity, avec filtres et recherche (`#jeux` / `#plugins` dans l'URL pour pré-filtrer) |
 | `bio.html` | Biographie |
 | `contact.html` | Formulaire « message direct » + liens |
+| `projet.html?id=<id>` | Fiche d'un projet : jaquette, images, vidéo, description complète, infos, bouton Télécharger (renvoie vers la section téléchargement d'itch.io) |
 
 ## Modifier le contenu
 
 Presque tout se règle dans **`js/data.js`** :
 
 - **Projets** : ajoute un objet dans `PROJECTS` (`type: "game"` ou `"plugin"`). Sans `cover`, une jaquette pixel est générée automatiquement.
+- **Fiches projet** : le contenu détaillé (description, images, infos, fichiers) est dans `data/projects/<id>.json` et `assets/projects/<id>/`. Pour le remettre à jour depuis itch.io : `python3 tools/import_itch.py` (ou `python3 tools/import_itch.py chaaat` pour un seul projet ; nécessite `pip install beautifulsoup4 pillow`). Tu peux aussi éditer le JSON à la main.
 - **Jeux web jouables sur le site** : ajoute `embed: "https://itch.io/embed-upload/XXXXXXX?color=1f3a2b"` au projet (le numéro se trouve dans l'URL `html-classic.itch.zone/html/XXXXXXX/…` de la page du jeu). Le jeu reçoit un bouton « ▶ Jouer ici » qui l'ouvre dans une fenêtre, et un lien direct `bibliotheque.html#jouer=<id>`. `SITE.featured.id` choisit le jeu de la borne de l'accueil.
 - **Formulaire de contact** : les messages partent directement vers `SITE.email` via [FormSubmit](https://formsubmit.co). Au tout premier message, FormSubmit envoie un mail d'activation à cette adresse : il faut cliquer sur le lien une fois. (Ou mets ton propre endpoint Formspree dans `SITE.formEndpoint`.)
 - **Classements en ligne** : `SITE.supabase = { url, key }` (clé publique) et `leaderboard: true` sur un jeu. Mise en place, ajout d'un jeu et package Unity : voir [`leaderboard/README.md`](leaderboard/README.md).

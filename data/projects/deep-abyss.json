@@ -1,0 +1,35 @@
+{
+ "id": "deep-abyss",
+ "source": "https://codabs.itch.io/deep-abyss",
+ "description": "<p>When you stare into the Abyss, the Abyss stares back at you.</p>\n<p>---</p>\n<p>A <strong>First Person Horror</strong> game where you have to <strong>restart the old generator</strong> and <strong>DO NOT MEET THE ENTITY.</strong><br/></p>\n<pre>\n/!\\ The build is very likely to be broken (the player teleports), \nif the problem occurs, test it on unity editor mode by downloading\nthe project on GitHub.</pre>\n<p>---</p>\n<p>CONTROL</p>\n<p>ZQSD - Movement</p>\n<p>Shift/Alt - Sprint</p>\n<p>Right Click - On/Off Light</p>\n<p>---</p>\n<p>CREDIT</p>\n<p>Dev / Level builder: DELAROSE Maxime</p>\n<p><a href=\"https://akarisumd.notion.site/7f2cf5c3275d4e9ca40752f585a94a81?v=c47f3810647e433cb13752ca42d47a37\" rel=\"noopener\" target=\"_blank\">https://akarisumd.notion.site/7f2cf5c3275d4e9ca40752f585a94a81?v=c47f3810647e433...</a><br/></p>\n<p>Dev: DEVILLE Louis<br/></p><p><a href=\"https://devillelouis.notion.site/Deep-Abyss-55229567c7504f12b0ee913cb09e55af\" rel=\"noopener\" target=\"_blank\">https://devillelouis.notion.site/Deep-Abyss-55229567c7504f12b0ee913cb09e55af</a><br/></p>\n<p>Design: DESHOMETS Cédric</p>\n<p>Sound Design: GRAVELINE Thomas</p>\n<p>---</p>\n<p>Github : <a href=\"https://github.com/Codabs/DeepAbyss\" rel=\"noopener\" target=\"_blank\">https://github.com/Codabs/DeepAbyss</a><br/></p>\n<p>Download : <a href=\"https://www.dropbox.com/s/pz3lebni2wq3e31/DeepAbyss.zip?dl=0\" rel=\"noopener\" target=\"_blank\">https://www.dropbox.com/s/pz3lebni2wq3e31/DeepAbyss.zip?dl=0</a></p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/deep-abyss/shot-1.webp",
+   "w": 1353,
+   "h": 759
+  },
+  {
+   "src": "assets/projects/deep-abyss/shot-2.webp",
+   "w": 1357,
+   "h": 766
+  },
+  {
+   "src": "assets/projects/deep-abyss/shot-3.webp",
+   "w": 1350,
+   "h": 758
+  },
+  {
+   "src": "assets/projects/deep-abyss/shot-4.webp",
+   "w": 1356,
+   "h": 766
+  }
+ ],
+ "videos": [],
+ "info": {
+  "Status": "Prototype",
+  "Authors": "CodAbs, Maxime Delarose / AkarisuMD",
+  "Tags": "3D, Horror, Singleplayer, Spooky"
+ },
+ "uploads": [],
+ "download": false
+}

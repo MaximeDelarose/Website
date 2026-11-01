@@ -1,0 +1,25 @@
+{
+ "id": "rhat",
+ "source": "https://augproduction.itch.io/rhat",
+ "description": "<h3><strong>Rhat</strong></h3>\n<p>🎩 <em>When stealing becomes an art... thanks to a magical hat!</em>\n</p>\n<p>In Rhat, step into the shoes of a cunning thief armed with nothing but your magical hat. Use your hat to steal treasures, sneak through traps, and escape without a trace.</p>\n<h4><strong>Welcome to Rhat!</strong></h4>\n<p>In this creative and quirky game, you play as a clever thief who uses their magical hat to outsmart traps and collect precious loot. Navigate through challenge-filled rooms and prove that your hat is your ultimate ally!\n</p>\n<h4><strong>The Concept</strong></h4>\n<ul><li><strong>A multifunctional hat:</strong> Throw your hat to activate mechanisms, retrieve loot, and bypass tricky obstacles.\n</li><li><strong>Clever puzzles:</strong> Explore levels designed to test your problem-solving skills.\n</li><li><strong>Smooth and strategic gameplay:</strong> Rhat offers a puzzle-packed experience focused on creativity and thoughtful solutions.\n</li></ul>\n<h4><strong>About Us</strong></h4>\n<p>We’re a team of two passionate creators:\n👾 A developer/level designer and 🎮 a game designer/ sound designer. This project was born from <strong>Mini Jam #38</strong>, inspired by the themes <em>theft</em> and <em>hat</em>.\n</p>\n<h4><strong>Download the Game</strong></h4>\n<p>Ready to dive into this bold adventure? Download <strong>Rhat</strong> now!\nWe’d love to hear your feedback—don’t hesitate to share your thoughts in the comments. 🎉\n</p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/rhat/shot-1.webp",
+   "w": 623,
+   "h": 723
+  }
+ ],
+ "videos": [],
+ "info": {
+  "Status": "Released",
+  "Authors": "AugProduction, Maxime Delarose / AkarisuMD"
+ },
+ "uploads": [
+  {
+   "name": "RHAT.zip",
+   "size": "36 MB",
+   "platforms": []
+  }
+ ],
+ "download": true
+}

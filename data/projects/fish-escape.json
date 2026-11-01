@@ -1,0 +1,31 @@
+{
+ "id": "fish-escape",
+ "source": "https://maximedelarose.itch.io/fish-escape",
+ "description": "<p>Prototype réalisé pour un PFA de 1er année de Game Design.</p>\n\n<p>Silya Blacher</p>\n<p>Hugo Carpentier</p>\n<p>Anthony Rocamora</p>\n<p>Maxime Delarose</p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/fish-escape/shot-1.gif",
+   "w": 128,
+   "h": 128
+  },
+  {
+   "src": "assets/projects/fish-escape/shot-2.webp",
+   "w": 1600,
+   "h": 900
+  }
+ ],
+ "videos": [],
+ "info": {
+  "Status": "Released",
+  "Author": "Maxime Delarose / AkarisuMD",
+  "Genre": "Action"
+ },
+ "uploads": [
+  {
+   "name": "Fish_Escape_PFA.rar",
+   "size": "24 MB",
+   "platforms": []
+  }
+ ],
+ "download": true
+}

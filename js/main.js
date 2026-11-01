@@ -134,29 +134,31 @@
 
   /* ---------- cartes projet ---------- */
   function byId(id) { return PROJECTS.filter(function (x) { return x.id === id; })[0]; }
+  function projectUrl(p) { return "projet.html?id=" + encodeURIComponent(p.id); }
   function card(p) {
     var typeLabel = p.type === "plugin" ? "Plugin Unity" : "Jeu";
-    var cta = p.type === "plugin" ? "Voir le plugin" : "Voir le jeu";
+    var cta = p.type === "plugin" ? "Voir le plugin" : "Voir la fiche";
     var media = p.cover
       ? '<img src="' + esc(p.cover) + '" alt="" loading="lazy">'
       : '<canvas data-cover="' + esc(p.id) + '" aria-hidden="true"></canvas>';
     var meta = [p.status, p.year].filter(Boolean).join(" · ");
     var tags = (p.tags || []).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("");
+    var page = projectUrl(p);
     var actions;
     if (p.embed) {
       actions = '<div class="card-actions"><button class="btn btn-small" type="button" data-play-id="' + esc(p.id) + '">▶ Jouer ici</button>' +
-        (p.url ? '<a class="text-link" href="' + esc(p.url) + '" target="_blank" rel="noopener">itch.io ↗</a>' : "") + "</div>";
-    } else if (p.url) {
-      actions = '<a class="btn btn-small" href="' + esc(p.url) + '" target="_blank" rel="noopener">' + cta + " ↗</a>";
+        '<a class="text-link" href="' + page + '">Voir la fiche</a></div>';
+    } else if (p.url || p.type === "game") {
+      actions = '<a class="btn btn-small" href="' + page + '">' + cta + " →</a>";
     } else {
-      actions = '<span class="soon">Bientôt disponible</span>';
+      actions = '<div class="card-actions"><span class="soon">Bientôt disponible</span><a class="text-link" href="' + page + '">Voir la fiche</a></div>';
     }
     return '<article class="card" data-type="' + esc(p.type) + '">' +
       '<div class="card-media">' + media +
       '<span class="badge badge-' + esc(p.type) + '">' + typeLabel + "</span>" +
       (p.embed ? '<span class="badge badge-play">Jouable ici</span>' : "") + "</div>" +
       '<div class="card-body">' +
-      '<h3 class="card-title">' + esc(p.title) + "</h3>" +
+      '<h3 class="card-title"><a href="' + page + '">' + esc(p.title) + "</a></h3>" +
       (meta ? '<p class="card-meta">' + esc(meta) + "</p>" : "") +
       (p.with ? '<p class="card-meta">avec ' + esc(p.with) + "</p>" : "") +
       (p.role ? '<p class="card-meta card-role">Mon rôle : ' + esc(p.role) + "</p>" : "") +
@@ -313,6 +315,167 @@
   }
   window.addEventListener("hashchange", playFromHash);
   playFromHash();
+
+  /* ---------- fiche projet (projet.html?id=…) ---------- */
+  var pageEl = $("[data-project-page]");
+  if (pageEl) {
+    var pid = new URLSearchParams(location.search).get("id") || "";
+    var proj = byId(pid);
+    var STATUS = { "Released": "Sorti", "In development": "En développement", "Prototype": "Prototype", "On hold": "En pause", "Canceled": "Abandonné" };
+    var INFO_KEYS = [
+      ["Status", "Statut"], ["Platforms", "Plateformes"], ["Authors", "Auteurs"], ["Author", "Auteur"],
+      ["Genre", "Genre"], ["Made with", "Fait avec"], ["Tags", "Tags"], ["Average session", "Durée d'une partie"],
+      ["Languages", "Langues"], ["Inputs", "Contrôles"], ["Accessibility", "Accessibilité"], ["Multiplayer", "Multijoueur"],
+      ["Release date", "Sortie"], ["Published", "Publié"], ["Updated", "Mis à jour"],
+    ];
+    var SESSION = { "A few seconds": "Quelques secondes", "A few minutes": "Quelques minutes", "About a half-hour": "Environ 30 minutes",
+      "About an hour": "Environ une heure", "A few hours": "Quelques heures", "Days or more": "Plusieurs jours" };
+
+    var hide = function (sel) { var e = $(sel); if (e) e.hidden = true; };
+    if (!proj) {
+      hide("[data-project-loading]");
+      $("[data-project-missing]").hidden = false;
+      document.title = "Projet introuvable · AkarisuMD";
+    } else {
+      document.title = proj.title + " · AkarisuMD";
+      var metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute("content", proj.short || proj.title);
+
+      var renderProject = function (d) {
+        d = d || {};
+        hide("[data-project-loading]");
+        $("[data-project]").hidden = false;
+
+        // en-tête
+        var coverBox = $("[data-project-cover]");
+        coverBox.innerHTML = proj.cover
+          ? '<img src="' + esc(proj.cover) + '" alt="Jaquette de ' + esc(proj.title) + '">'
+          : '<canvas data-cover="' + esc(proj.id) + '" aria-hidden="true"></canvas>';
+        paintCovers(coverBox);
+        $("[data-project-kicker]").textContent = [proj.type === "plugin" ? "Plugin Unity" : "Jeu", proj.status, proj.year].filter(Boolean).join(" · ");
+        $("[data-project-title]").textContent = proj.title;
+        $("[data-project-short]").textContent = proj.short || "";
+        if (proj.with) { var w = $("[data-project-with]"); w.textContent = "Avec " + proj.with; w.hidden = false; }
+        if (proj.role) { var r = $("[data-project-role]"); r.textContent = "Mon rôle : " + proj.role; r.hidden = false; }
+        $("[data-project-tags]").innerHTML = (proj.tags || []).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("");
+
+        var dl = d.download && d.source ? d.source.replace(/#.*$/, "") + "#download" : "";
+        var acts = "";
+        if (proj.embed) acts += '<button class="btn" type="button" data-play-id="' + esc(proj.id) + '">▶ Jouer ici</button>';
+        if (dl) acts += '<a class="btn' + (proj.embed ? " btn-alt" : "") + '" href="' + esc(dl) + '" target="_blank" rel="noopener">⬇ Télécharger</a>';
+        if (proj.url) acts += '<a class="btn btn-ghost" href="' + esc(proj.url) + '" target="_blank" rel="noopener">Page itch.io ↗</a>';
+        if (!acts) acts = '<span class="soon">Bientôt disponible</span>';
+        $("[data-project-actions]").innerHTML = acts;
+
+        // galerie
+        var shots = d.screenshots || [];
+        if (shots.length) {
+          $("[data-project-gallery]").hidden = false;
+          $("[data-gallery]").innerHTML = shots.map(function (s, i) {
+            return '<button class="shot" type="button" data-shot="' + i + '" aria-label="Agrandir l\'image ' + (i + 1) + '">' +
+              '<img src="' + esc(s.src) + '" alt="" loading="lazy" width="' + esc(s.w) + '" height="' + esc(s.h) + '"></button>';
+          }).join("");
+          setupLightbox(shots);
+        }
+
+        // vidéos (+ celles trouvées dans la description)
+        var vids = (d.videos || []).slice();
+        var descHtml = d.description || "<p>" + esc(proj.short || "") + "</p>";
+        var descEl = $("[data-project-desc]");
+        descEl.innerHTML = descHtml;
+        if (vids.length) {
+          $("[data-project-videos]").hidden = false;
+          $("[data-videos]").innerHTML = vids.map(function (v) { return '<div class="video" data-yt="' + esc(v) + '"></div>'; }).join("");
+        }
+        $$(".video[data-yt]", pageEl).forEach(setupVideo);
+
+        // téléchargement
+        if (dl) {
+          $("[data-project-download]").hidden = false;
+          $("[data-project-files]").innerHTML = (d.uploads || []).map(function (u) {
+            return '<li><span class="file-name">' + esc(u.name) + '</span><span class="file-meta">' +
+              esc([u.size].concat(u.platforms || []).filter(Boolean).join(" · ")) + "</span></li>";
+          }).join("");
+          $("[data-project-download-btn]").innerHTML = '<a class="btn" href="' + esc(dl) + '" target="_blank" rel="noopener">⬇ Télécharger sur itch.io</a>';
+        }
+
+        // infos
+        var info = d.info || {};
+        var rows = "";
+        INFO_KEYS.forEach(function (k) {
+          var v = info[k[0]];
+          if (!v) return;
+          if (k[0] === "Status") v = STATUS[v] || v;
+          if (k[0] === "Average session") v = SESSION[v] || v;
+          rows += "<dt>" + esc(k[1]) + "</dt><dd>" + esc(v) + "</dd>";
+        });
+        if (rows) { $("[data-project-info]").innerHTML = rows; $("[data-project-info-block]").hidden = false; }
+
+        // classement
+        var lb = $("[data-project-leaderboard]");
+        if (lb && proj.leaderboard && window.Leaderboard) {
+          lb.setAttribute("data-leaderboard", proj.id);
+          lb.setAttribute("data-title", "Classement");
+          window.Leaderboard.render(lb);
+        }
+
+        // projets précédent / suivant
+        var idx = PROJECTS.indexOf(proj);
+        var prev = PROJECTS[(idx - 1 + PROJECTS.length) % PROJECTS.length];
+        var next = PROJECTS[(idx + 1) % PROJECTS.length];
+        $("[data-project-nav]").innerHTML =
+          '<a class="nav-prev" href="' + projectUrl(prev) + '"><span>← Précédent</span><strong>' + esc(prev.title) + "</strong></a>" +
+          '<a class="nav-next" href="' + projectUrl(next) + '"><span>Suivant →</span><strong>' + esc(next.title) + "</strong></a>";
+      };
+
+      // Fiche détaillée (description, images…) seulement pour les projets publiés.
+      (proj.url ? fetch("data/projects/" + encodeURIComponent(proj.id) + ".json") : Promise.resolve({ ok: false }))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; })
+        .then(renderProject);
+    }
+  }
+
+  // Vidéo YouTube : vignette, la vidéo ne se charge qu'au clic (plus léger, pas de pistage avant).
+  function setupVideo(el) {
+    var id = el.getAttribute("data-yt");
+    if (!/^[\w-]{6,20}$/.test(id)) { el.remove(); return; }
+    el.innerHTML = '<button type="button" class="video-play" aria-label="Lire la vidéo">' +
+      '<img src="https://i.ytimg.com/vi/' + id + '/hqdefault.jpg" alt="" loading="lazy"><span aria-hidden="true">▶</span></button>';
+    el.querySelector("button").addEventListener("click", function () {
+      el.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1" title="Vidéo YouTube" ' +
+        'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+    });
+  }
+
+  // Visionneuse d'images
+  function setupLightbox(shots) {
+    var box = $("[data-lightbox]");
+    if (!box) return;
+    var img = $("[data-lightbox-img]", box), count = $("[data-lightbox-count]", box), cur = 0;
+    function show(i) {
+      cur = (i + shots.length) % shots.length;
+      img.src = shots[cur].src;
+      count.textContent = shots.length > 1 ? (cur + 1) + " / " + shots.length : "";
+    }
+    $("[data-gallery]").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-shot]");
+      if (!b) return;
+      show(Number(b.getAttribute("data-shot")));
+      if (box.showModal) box.showModal(); else box.setAttribute("open", "");
+    });
+    $("[data-lightbox-close]", box).addEventListener("click", function () { box.close(); });
+    $("[data-lightbox-prev]", box).addEventListener("click", function () { show(cur - 1); });
+    $("[data-lightbox-next]", box).addEventListener("click", function () { show(cur + 1); });
+    box.addEventListener("click", function (e) { if (e.target === box) box.close(); });
+    box.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowLeft") show(cur - 1);
+      if (e.key === "ArrowRight") show(cur + 1);
+    });
+    var single = shots.length < 2;
+    $("[data-lightbox-prev]", box).hidden = single;
+    $("[data-lightbox-next]", box).hidden = single;
+  }
 
   /* ---------- jeu à la une (borne de l'accueil) ---------- */
   var feat = $("[data-featured]");

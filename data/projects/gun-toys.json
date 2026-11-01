@@ -1,0 +1,32 @@
+{
+ "id": "gun-toys",
+ "source": "https://le-thom.itch.io/gun-toys",
+ "description": "<h5>Bienvenue dans un monde de jouets colorés et explosifs ! Tu souhaites prouver que tu es LE meilleur jouet de la chambre ?! Viens vite détruire les autres peluches !</h5>\n<p><img alt=\"\" height=\"60\" loading=\"lazy\" src=\"assets/projects/gun-toys/desc-1.webp\" width=\"1200\"/><br/></p>\n<h2>Téléchargement</h2>\n<p>N'hésites pas a télécharger le jeu en suivant les indications en bas de page !<em><br/>Après ta partie, tu peux partager ton score et voir le classement mondial sur [guntrain.fr] et a nous faire des retours sur notre page Itch.io !</em></p>\n<p><img alt=\"\" height=\"60\" loading=\"lazy\" src=\"assets/projects/gun-toys/desc-2.webp\" width=\"1200\"/><br/></p>\n<h2><em>Classement en ligne</em></h2>\n<p><em>Tu peux voir le classement des meilleurs joueurs en ligne sur notre Site Web a tout moment !<br/>N'hésites pas a partager ton score sur les réseaux !</em></p>\n<p><img alt=\"\" height=\"60\" loading=\"lazy\" src=\"assets/projects/gun-toys/desc-3.webp\" width=\"1200\"/><br/></p>\n<h2>Notre Equipe :</h2>\n<h4>Programmeurs</h4>\n<p>* <strong>DEVILLE Louis</strong> [<a href=\"https://www.linkedin.com/in/louis-deville-79858723a/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>]<br/>* <strong>DELAROSE Maxime</strong> [<a href=\"https://www.linkedin.com/in/maxime-delarose-359880186/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>] [<a href=\"https://akarisumd.itch.io\" rel=\"noopener\" target=\"_blank\">ItchIo</a>]<br/>* <strong>GRAVELINE Thomas</strong> [<a href=\"https://www.linkedin.com/in/thomas-graveline/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>] [<a href=\"https://lethom.fr\" rel=\"noopener\" target=\"_blank\">Site Web</a>]</p>\n<h4>Game Designers</h4>\n<p>* <strong>CARRASCO Hugo</strong> [<a href=\"https://www.linkedin.com/in/hugo-carrasco-b6b8192a5/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>]<br/><strong>* DEVILLE Louis</strong> [<a href=\"https://www.linkedin.com/in/louis-deville-79858723a/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>]<br/>* <strong>DELAROSE Maxime</strong> [<a href=\"https://www.linkedin.com/in/maxime-delarose-359880186/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>] [<a href=\"https://akarisumd.itch.io/\" rel=\"noopener\" target=\"_blank\">ItchIo</a>]</p>\n<h4>Artistes</h4>\n<p>* <strong>BARLET Lucas</strong> [<a href=\"https://www.linkedin.com/in/lucas-barlet/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>] [<a href=\"https://www.artstation.com/reltony\" rel=\"noopener\" target=\"_blank\">ArtStation</a>]<br/>* <strong>COUDERC Morgane</strong> [<a href=\"https://www.linkedin.com/in/morgane-couderc-3109591b6/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>]<br/>* <strong>CONDE Loane</strong> [<a href=\"https://www.linkedin.com/in/loane-conde-188557274/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>]<br/>* <strong>ROQUIS Paul</strong> [<a href=\"https://www.linkedin.com/in/roquis-paul-49841320a/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>]<br/></p>\n<h4>Communication</h4>\n<p>* <strong>SALVADOR Noa</strong> [<a href=\"https://www.linkedin.com/in/noa-salvador/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>]<br/>* <strong>RABHI Alexis</strong> [<a href=\"https://www.linkedin.com/in/alexis-rabhi-9026a9220/\" rel=\"noopener\" target=\"_blank\">LinkedIn</a>]</p>",
+ "screenshots": [],
+ "videos": [
+  "gL4z1ACDLsg"
+ ],
+ "info": {
+  "Status": "In development",
+  "Platforms": "Windows",
+  "Authors": "LeThom, Hugo Carrasco, Maxime Delarose / AkarisuMD, Lucas / Reltony, CodAbs, Flamby",
+  "Genre": "Shooter",
+  "Made with": "Unreal Engine, Blender, Maya, Adobe Photoshop",
+  "Tags": "fast-fps, FPS, Roguelike, toys",
+  "Average session": "About a half-hour",
+  "Languages": "English, French",
+  "Inputs": "Keyboard, Xbox controller, Gamepad (any)",
+  "Accessibility": "Subtitles, Configurable controls",
+  "Links": "Homepage"
+ },
+ "uploads": [
+  {
+   "name": "guntoy-win64-final.zip",
+   "size": "527 MB",
+   "platforms": [
+    "Windows"
+   ]
+  }
+ ],
+ "download": true
+}

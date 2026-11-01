@@ -1,0 +1,22 @@
+{
+ "id": "chaaat",
+ "source": "https://maximedelarose.itch.io/chaaat",
+ "description": "<p>Chaaat est un jeu de puzzle qui met les joueurs au défi de combiner des chats pour marquer des points tout en testant leur réflexion. Dans ce jeu, les joueurs devront faire preuve de stratégie pour obtenir le meilleur score possible en combinant des chats de la même couleur.</p>\n<p>Projet réalisé en 12h.</p>",
+ "screenshots": [],
+ "videos": [],
+ "info": {
+  "Status": "Prototype",
+  "Platforms": "HTML5",
+  "Authors": "Maxime Delarose / AkarisuMD, AugProduction",
+  "Genre": "Puzzle",
+  "Made with": "Unity"
+ },
+ "uploads": [
+  {
+   "name": "Chaaat_v1.0.0.zip",
+   "size": "36 MB",
+   "platforms": []
+  }
+ ],
+ "download": true
+}

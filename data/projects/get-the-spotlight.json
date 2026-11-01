@@ -1,0 +1,45 @@
+{
+ "id": "get-the-spotlight",
+ "source": "https://codabs.itch.io/get-the-spotlight",
+ "description": "<p><strong><img alt=\"\" height=\"61\" loading=\"lazy\" src=\"assets/projects/get-the-spotlight/desc-1.webp\" width=\"867\"/></strong><br/></p>\n<p>Race against other \"player\".</p>\n<p>Move, Jump &amp; Glide.<br/></p>\n<p>Beware of the <strong>Darkness</strong>, that <strong>Slow</strong> you down.</p>\n<p>Use your Environement to go faster and <strong>Win this Race !<br/></strong></p>\n<p><img alt=\"\" height=\"61\" loading=\"lazy\" src=\"assets/projects/get-the-spotlight/desc-2.webp\" width=\"867\"/></p>\n<p><strong>Warning:<br/></strong></p>\n<p>By a lack of time (and will), the game is not totally complete.<br/></p>\n<p><strong>But It's Playable.</strong><br/></p>\n<p><strong><img alt=\"\" height=\"61\" loading=\"lazy\" src=\"assets/projects/get-the-spotlight/desc-3.webp\" width=\"867\"/></strong><br/></p>\n<p><strong>Control:</strong></p>\n<p><strong>Movement</strong> - WASD<br/></p>\n<p><strong>Jump</strong> - Space<br/></p>\n<p><strong>Glide</strong> - Space while in the air</p>\n<p><img alt=\"\" height=\"61\" loading=\"lazy\" src=\"assets/projects/get-the-spotlight/desc-4.webp\" width=\"867\"/><br/></p>\n<p><strong>Credit:<br/></strong></p>\n<p>FMOD for Sound<br/></p>\n<p>DANI MACCARI for the body of the player (that we didn't have time to change)<br/></p>\n<p>*** for Prototype UI (that we also didn't have time to change)<br/></p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/get-the-spotlight/shot-1.webp",
+   "w": 1600,
+   "h": 900
+  },
+  {
+   "src": "assets/projects/get-the-spotlight/shot-2.webp",
+   "w": 1600,
+   "h": 900
+  },
+  {
+   "src": "assets/projects/get-the-spotlight/shot-3.webp",
+   "w": 1600,
+   "h": 900
+  },
+  {
+   "src": "assets/projects/get-the-spotlight/shot-4.webp",
+   "w": 1600,
+   "h": 900
+  }
+ ],
+ "videos": [],
+ "info": {
+  "Status": "Prototype",
+  "Platforms": "Windows",
+  "Author": "CodAbs",
+  "Genre": "Platformer, Racing",
+  "Tags": "Multiplayer, Singleplayer"
+ },
+ "uploads": [
+  {
+   "name": "GetTheSpotLight.zip",
+   "size": "67 MB",
+   "platforms": [
+    "Windows"
+   ]
+  }
+ ],
+ "download": true
+}

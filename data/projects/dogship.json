@@ -1,0 +1,51 @@
+{
+ "id": "dogship",
+ "source": "https://maximedelarose.itch.io/dogship",
+ "description": "<p>Dev : <a href=\"https://tomtour.itch.io/\" rel=\"noopener\" target=\"_blank\">TomTour</a><br/>Art / Dev : <a href=\"https://maximedelarose.itch.io/\" rel=\"noopener\" target=\"_blank\">Maxime</a><br/><br/>Dans l’immensité noire où les étoiles scintillent comme des miettes oubliées par l’univers, <strong>DogShip</strong> vous propulse aux commandes d’un chasseur spatial prêt à mordre le vide. Ici, chaque mission est un saut dans l’inconnu. Les obstacles surgissent sans prévenir, les débris filent à toute allure, et l’espace lui-même semble vouloir vous avaler.\n </p>\n<p>Heureusement, vous n’êtes pas seul.\n </p>\n<p>« Capitaine, concentrez-vous. Un pilote distrait finit en croquette cosmique. »<br/> La voix grave et posée de votre commandant résonne dans le cockpit. Oui, votre supérieur hiérarchique est un chien. Un berger galactique bardé de médailles, stratège au flair infaillible, qui ponctue vos exploits d’un sobre « Bon tir, humain. Je vous accorde deux caresses protocolaires. »\n </p>\n<p>DogShip est un roguelite shooter en réalité virtuelle où chaque tentative est unique. Les configurations changent, les dangers évoluent, et la moindre erreur se paie comptant. Détruisez les obstacles avant qu’ils ne réduisent votre vaisseau en poussière d’étoile. Esquivez, visez, survivez.\n </p>\n<p>Entre deux missions, investissez vos crédits dans des améliorations. Projectiles plus rapides, tirs plus puissants, effets spéciaux dévastateurs. Transformez votre vaisseau en prédateur orbital. Le commandant approuve les améliorations efficaces. Il désapprouve les explosions inutiles. En théorie.\n </p>\n<p>« Rappelez-vous, pilote. Dans l’espace, personne ne vous entend aboyer. Alors tirez juste. »\n </p>\n<p>Enfilez votre casque VR, saisissez les commandes et prouvez que vous méritez votre place dans la meute interstellaire. 🐾🚀\n</p>\n\n<p>/!\\ Projet d'étude /!\\</p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/dogship/shot-1.webp",
+   "w": 1102,
+   "h": 792
+  },
+  {
+   "src": "assets/projects/dogship/shot-2.webp",
+   "w": 1088,
+   "h": 756
+  },
+  {
+   "src": "assets/projects/dogship/shot-3.webp",
+   "w": 1081,
+   "h": 768
+  },
+  {
+   "src": "assets/projects/dogship/shot-4.webp",
+   "w": 1087,
+   "h": 697
+  },
+  {
+   "src": "assets/projects/dogship/shot-5.webp",
+   "w": 1389,
+   "h": 884
+  }
+ ],
+ "videos": [],
+ "info": {
+  "Status": "Prototype",
+  "Platforms": "Android",
+  "Authors": "Maxime Delarose / AkarisuMD, Tom T",
+  "Genre": "Shooter, Action",
+  "Tags": "3D, Low-poly, Pixel Art, Roguelite, Virtual Reality (VR)",
+  "Content": "No generative AI was used"
+ },
+ "uploads": [
+  {
+   "name": "DogShip.apk",
+   "size": "82 MB",
+   "platforms": [
+    "Android"
+   ]
+  }
+ ],
+ "download": true
+}

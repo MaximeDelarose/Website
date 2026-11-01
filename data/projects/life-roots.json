@@ -1,0 +1,35 @@
+{
+ "id": "life-roots",
+ "source": "https://lucasbarlet.itch.io/life-roots",
+ "description": "<p>Clicker game where you make the last trees on earth grow in order to create life.</p>\n<p><strong>Tap</strong> the roots to <strong>extend</strong> them,<strong> collect</strong> ressources to <strong>upgrade</strong> the stats of the roots and  trees.\n</p>\n<p>The <strong>art direction</strong> aims to create a <strong>fantasy, colored and chill ambiance.</strong>\n</p>\n<p><strong>This game was made during the Global Gam Jam 2023, by Team Madeleine composed of :</strong>\n<br/><strong><br/></strong></p>\n<p><strong>BARLET</strong> Lucas : Producer / Technical Artist\n</p>\n<p><strong>BUISSON</strong> Théau : Environment Artist\n</p>\n<p><strong>BORY </strong>Kévin : Environment Artist\n</p>\n<p><strong>DESHAYES</strong> Jérémy : UI Designer / Environment Artist\n</p>\n<p><strong>DEVILLE</strong> Louis : UI Developper / System Developper\n</p>\n<p><strong>DELAROSE </strong>Maxime : System Developper / Game Designer\n</p>\n<p><strong>FOREL</strong> Mathieu : System Developper / Game Designer\n</p>\n<p><strong>ROUDADOUX</strong> Maxence : Game Designer / Sound Designer\n</p>\n<p>\n<strong>Huge thanks to E-ArtSup who hosted during the jam.</strong>\n</p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/life-roots/shot-1.webp",
+   "w": 415,
+   "h": 851
+  },
+  {
+   "src": "assets/projects/life-roots/shot-2.webp",
+   "w": 413,
+   "h": 855
+  }
+ ],
+ "videos": [],
+ "info": {
+  "Status": "Prototype",
+  "Platforms": "HTML5, Android",
+  "Author": "Lucas / Reltony",
+  "Made with": "Unity",
+  "Tags": "Clicker, Fantasy, mobile, roots"
+ },
+ "uploads": [
+  {
+   "name": "LifeRoot.apk",
+   "size": "39 MB",
+   "platforms": [
+    "Android"
+   ]
+  }
+ ],
+ "download": true
+}

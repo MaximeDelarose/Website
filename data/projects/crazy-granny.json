@@ -1,0 +1,36 @@
+{
+ "id": "crazy-granny",
+ "source": "https://maximedelarose.itch.io/crazy-granny",
+ "description": "<p><img alt=\"\" height=\"675\" loading=\"lazy\" src=\"assets/projects/crazy-granny/desc-1.webp\" width=\"1200\"/><br/></p>\n\n<p>Thème : Fais-moi rire </p>\n\n<p><img alt=\"\" height=\"100\" loading=\"lazy\" src=\"assets/projects/crazy-granny/desc-2.webp\" width=\"100\"/><br/></p>\n<p>Incarnez une Mamie démoniaque qui, à coup de déambulateur, chasse des clowns déjantés dans un 1VS4 Online. </p>\n<p>Muni d'un chat de proximité afin d'optimiser votre immersion à la dead by daylight, ansi qu'une vue top down isométrique dans une petite ville moderne en 3D lowpoly à la Tunic, il est accompagné de charadesigns 2D dans un style cartoon inspiré de Scott pèlerin / Skull girl et witch punk !</p>\n\n<p>Vous êtes <strong>Clown</strong> ? Essayez de remplir la jauge de rire de la mamie avec du spam de touches !  </p>\n<p>Vous êtes <strong>Mamie</strong> ? Faites de votre mieux pour chasser ces vilains délinquants de votre quartier !</p>\n\n<p><img alt=\"\" height=\"1672\" loading=\"lazy\" src=\"assets/projects/crazy-granny/desc-3.webp\" width=\"1168\"/></p>\n\n<p><img alt=\"\" height=\"100\" loading=\"lazy\" src=\"assets/projects/crazy-granny/desc-4.webp\" width=\"100\"/><br/></p>\n<p><strong>ÉQUIPE</strong></p>\n\n<ul><li><a href=\"https://akarisumd.notion.site/PortFolio-of-Delarose-Maxime-8ba9e05701c643cfb87cf00d2dba14eb?pvs=4\" rel=\"noopener\" target=\"_blank\">Maxime Delarose</a> , Développeur -  <a href=\"https://akarisumd.itch.io/\" rel=\"noopener\" target=\"_blank\"></a><a href=\"https://akarisumd.itch.io/\" rel=\"noopener\" target=\"_blank\">https://akarisumd.itch.io/</a></li><li>Louis Geffroy, Game Designer -  <a href=\"https://sp4rxs.itch.io/\" rel=\"noopener\" target=\"_blank\"></a><a href=\"https://sp4rxs.itch.io/\" rel=\"noopener\" target=\"_blank\">https://sp4rxs.itch.io/</a></li><li>Mako, artiste UI -  <a href=\"https://github.com/MaylisMako\" rel=\"noopener\" target=\"_blank\"></a><a href=\"https://github.com/MaylisMako\" rel=\"noopener\" target=\"_blank\">https://github.com/MaylisMako</a></li><li>Reltony, artiste technique -<a href=\"https://reltony.itch.io/\" rel=\"noopener\" target=\"_blank\">https://reltony.itch.io/</a></li><li>Julia/Kat, artiste 2D -  <a href=\"https://juliabffn.itch.io/\" rel=\"noopener\" target=\"_blank\"></a><a href=\"https://juliabffn.itch.io/\" rel=\"noopener\" target=\"_blank\">https://juliabffn.itch.io/</a></li><li>Nëlle, artiste 2D -  <a href=\"https://nellegameart.itch.io/\" rel=\"noopener\" target=\"_blank\"></a><a href=\"https://nellegameart.itch.io/\" rel=\"noopener\" target=\"_blank\">https://nellegameart.itch.io/</a></li><li>Ares, artiste 2D -  <a href=\"https://areshimeros.itch.io/\" rel=\"noopener\" target=\"_blank\"></a><a href=\"https://areshimeros.itch.io/\" rel=\"noopener\" target=\"_blank\">https://areshimeros.itch.io/</a></li><li>Angie, artiste 2D</li><li>Azarol, artiste 3D</li></ul>\n\n<p><img alt=\"\" height=\"720\" loading=\"lazy\" src=\"assets/projects/crazy-granny/desc-5.webp\" width=\"1200\"/><br/></p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/crazy-granny/shot-1.gif",
+   "w": 254,
+   "h": 560
+  },
+  {
+   "src": "assets/projects/crazy-granny/shot-2.gif",
+   "w": 560,
+   "h": 560
+  },
+  {
+   "src": "assets/projects/crazy-granny/shot-3.gif",
+   "w": 560,
+   "h": 560
+  }
+ ],
+ "videos": [],
+ "info": {
+  "Status": "Released",
+  "Authors": "Maxime Delarose / AkarisuMD, Areshimeros, julia.bffn, NelleGameArt, Mako_Lerequin, sp4rxs, Lucas / Reltony",
+  "Tags": "Comedy, online, PvP, Top-Down"
+ },
+ "uploads": [
+  {
+   "name": "DeadByGranny.zip",
+   "size": "61 MB",
+   "platforms": []
+  }
+ ],
+ "download": true
+}

@@ -1,0 +1,73 @@
+{
+ "id": "lets-hunt",
+ "source": "https://hucarix.itch.io/lets-hunt",
+ "description": "<h4>Incarnez un soldat et partez chasser avec votre équipe une créature mystique invisible incarnée par un streamer !<img alt=\"\" height=\"134\" loading=\"lazy\" src=\"assets/projects/lets-hunt/desc-1.webp\" width=\"1200\"/></h4>\n<h4>Comptez sur le tchat pour vous aider, il observera les déplacements de la créature depuis le live et vous fournira des informations stratégiques et du matériel pour vous aider dans cette traque !</h4>\n<h4>Le streamer incarne la Créature.<br/>4 personnes incarnent les soldats.<br/>Le tchat donne des informations et du matériel aux soldats.</h4>\n<h4>Réussirez-vous à coopérer pour capturer la créature ?</h4>\n\n<p><img alt=\"\" height=\"89\" loading=\"lazy\" src=\"assets/projects/lets-hunt/desc-2.webp\" width=\"1200\"/></p>\n<h3>/!\\ Bug</h3>\n<p>MAJEUR: Les soldats peuvent apparaître avec la mauvaise caméra. Exemple: Le soldat rouge a la caméra du soldat vert. (N'arrive qu'une fois sur 1000)</p>\n<p>Si tous les joueurs sont morts, l'écran de fin ne s'affiche pas, il faut relancer manuellement le jeu. (ou attendre le décompte de la partie)</p>\n<p>Le son n'est pas activé par défaut</p>\n\n<h3>FR</h3>\n<h3>Comment jouer ?</h3>\n<p><strong>Attention:</strong> Les viewers incarnant les soldats doivent installer le Jeu. </p>\n<p><strong>STREAMER : </strong><br/><br/>En tant que streamer, vous incarnez une créature invisible dans l'obscurité, mais qui craint la lumière et armée de multiple habilitées.</p>\n<p><br/><strong>VICTOIRE / DEFAITE :</strong> <br/><br/>Victoire : <br/>- Vaincre de l'équipe de chasseurs au sol.<br/>- Survivre jusqu'à l'aube (plusieurs cadavres sont disséminés sur la Map, si vous les dévorez, vous réduisez le temps que l'aube mettra à se lever).</p>\n<p>Défaite : <br/>- Périr au combat face aux militaires</p>\n<p><br/><strong>CONTROLES / HABILITES :</strong>  <br/><br/>-Déplacement (Monstre) = Clic Gauche<br/>-Déplacement (Camera) = Z.  Q.  S.  D.<br/>-Dévorer les cadavres = Clic Gauche (dessus)<br/>- Morsure = Shift. (Rapide et meurtrière.)<br/>- Pluie de Météores = E. (Lente, mais très dissuasive et destructrice.)<br/>- Dash = Espace.  (Vous permettant de fuir le combat ou rattraper un fuyard.)<br/>- Blackout = R. (Éteint toutes les lumières (artificiel) vous permettant de fuir plus facilement ou de finir un adversaire.)<br/><br/><strong>JOUEUR : </strong></p>\n<p>En tant que joueur, vous êtes présent dans la partie et vous incarnez un militaire  évoluant avec son unité à la recherche d'une créature aillant réduite un camp militaire et ses occupent en miettes, devez demander des largages d'équipement, soin et autre, pour pouvoir partir chasser la créature.</p>\n<p><br/><strong>VICTOIRE / DEFAITE :</strong> <br/></p>\n<p>Victoire : <br/>- Vaincre la Créature</p>\n<p>Défaite : <br/>- L'aube se lève<br/>- Périr au combat face à la créature</p>\n<p><br/><strong>CONTROLES / HABILITES :</strong> <br/></p>\n<p>- Déplacement = Z.  Q.  S.  D.<br/>- Interaction/Ramasser = F.<br/>- Attaque (Légère) = Clic Gauche<br/>- Attaque (Lourde) = Clic Droit<br/>- Bâton Lumineux = (Numéro Correspondant) &amp; Clic Droit<br/>- Trousse de soin = (Numéro Correspondant) &amp; Clic Droit<br/>- Dash = Shift (déplacement, selon la direction de la sourie)<br/>- Déplacement Lumière = Déplacement Sourie</p>\n<p><br/><br/><strong>VIEWER (tchat) : </strong></p>\n<p>En tant que viewer (tchat), vous incarnez l'unité aérienne supposée aider les militaires au sol (Viewer (joueur)) grâce à un chat textuel relié à l'équipe au sol ainsi que des drop de colis d'équipement, de soin et autres.<br/><br/>Ecrire \"!\" devant votre message  pour le transmettre à l'équipe au sol.<br/>\"!Dynamo\" pour recharger les lumières des chasseurs.<br/><br/><strong>CODE RADIO : </strong></p>\n<p>-!vote1 = Faire Hurler la créature pour révéler sa position à l'équipe au sol<br/>-!vote2 = Largage d'équipements (Bâton lumineux &amp; Boost Dégâts)<br/>-!vote3 = Largage de soutien (Trousse de soin &amp; Dash)<br/>-!vote4 = Hélicoptère (Revel le monstre en temps réel sur temps donnée)<br/>-!vote5 = Réanimation Global (Réanime toute personne au sol)</p>\n\n<p>Projet de fin de deuxième année E-ArtSup Lyon<br/><br/><strong>Message Préfait pour votre Bot Twitch : </strong></p>\n<p> ** La lampe des militaires est éteinte ?</p>\n<p>  N'hésitez pas à écrire \"!dynamo\" dans le tchat pour recharger leur batterie.</p>\n<p> ** Les militaires sont mal équipés.<br/>   Lorsqu'ils le demandent, \"!Vote(x)\" peut les aider à vaincre la créature.</p>\n<p>  ** Si un militaire se trouve dans une situation difficile ou si vous avez repéré le déplacement de votre streamer préféré.    Transmettez votre message au militaire en utilisant \"!(votre_message)\".</p>\n\n<p><strong>Guide d'installation du jeu : </strong></p>\n<p>- Télécharger \"Let's Hunt.rar\"<br/>- Extraire les fichiers vers le répertoire souhaité <br/>- Ouvrir le dossier \"Let's Hunt\"<br/>- Lancer \"Let's Hunt.exe\"<br/>* Attention à ne surtout pas déplacer de fichiers *</p>\n\n<p><img alt=\"\" height=\"89\" loading=\"lazy\" src=\"assets/projects/lets-hunt/desc-3.webp\" width=\"1200\"/><br/></p>\n\n<p><img alt=\"\" height=\"82\" loading=\"lazy\" src=\"assets/projects/lets-hunt/desc-4.webp\" width=\"1200\"/><br/></p>\n\n<p><strong>Crédits : </strong></p>\n<p><a href=\"https://reltony.itch.io/\" rel=\"noopener\" target=\"_blank\">Lucas Barlet (Technical &amp; Game Artist, 2D Rigging, 2D Animation, UI Artist, VFX Artist)</a><br/><a href=\"https://nellegameart.itch.io/\" rel=\"noopener\" target=\"_blank\">Anaëlle Falzon (Producer GA, Game Artist, UI Artist, VFX Artist)</a><br/><a href=\"https://theauryste.itch.io/\" rel=\"noopener\" target=\"_blank\">Théau Buisson (Game Artist)</a><br/></p>\n<p><a href=\"https://codabs.itch.io/\" rel=\"noopener\" target=\"_blank\">Louis Deville (Project Leader, Developer)</a><br/><a href=\"https://akarisumd.itch.io/\" rel=\"noopener\" target=\"_blank\">Maxime Delarose (Developer, Level Builder)</a><br/><a href=\"https://sp4rxs.itch.io/\" rel=\"noopener\" target=\"_blank\">Louis Geffroy (Producer &amp; Game Designer)</a><br/><a href=\"https://hucarix.itch.io/\" rel=\"noopener\" target=\"_blank\">Hugo Carpentier (Game Designer, Sound Designer)</a><br/><img alt=\"\" height=\"134\" loading=\"lazy\" src=\"assets/projects/lets-hunt/desc-5.webp\" width=\"1200\"/>Wiki : <a href=\"https://coda.io/@hugo-carpentier/lets-hunt\" rel=\"noopener\" target=\"_blank\"></a><a href=\"https://urlz.fr/mhDm\" rel=\"noopener\" target=\"_blank\">https://urlz.fr/mhDm</a><br/></p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/lets-hunt/shot-1.webp",
+   "w": 1600,
+   "h": 900
+  },
+  {
+   "src": "assets/projects/lets-hunt/shot-2.webp",
+   "w": 1345,
+   "h": 740
+  },
+  {
+   "src": "assets/projects/lets-hunt/shot-3.webp",
+   "w": 1362,
+   "h": 763
+  },
+  {
+   "src": "assets/projects/lets-hunt/shot-4.webp",
+   "w": 1363,
+   "h": 748
+  },
+  {
+   "src": "assets/projects/lets-hunt/shot-5.webp",
+   "w": 1414,
+   "h": 2000
+  }
+ ],
+ "videos": [],
+ "info": {
+  "Status": "Released",
+  "Authors": "Hucarix, sp4rxs, NelleGameArt, Maxime Delarose / AkarisuMD, Lucas / Reltony, CodAbs, TheauRyste",
+  "Genre": "Action",
+  "Tags": "2D, Multiplayer, Unity",
+  "Average session": "A few seconds"
+ },
+ "uploads": [
+  {
+   "name": "One Page Let'sHunt",
+   "size": "2.1 MB",
+   "platforms": []
+  },
+  {
+   "name": "Game Concept Let's Hunt",
+   "size": "27 MB",
+   "platforms": []
+  },
+  {
+   "name": "Let's Hunt.rar",
+   "size": "398 MB",
+   "platforms": []
+  },
+  {
+   "name": "Tutoriel Viewer",
+   "size": "",
+   "platforms": []
+  },
+  {
+   "name": "Tutoriel Streamer",
+   "size": "",
+   "platforms": []
+  },
+  {
+   "name": "Tutoriel Soldat",
+   "size": "",
+   "platforms": []
+  }
+ ],
+ "download": true
+}

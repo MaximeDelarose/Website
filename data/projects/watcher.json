@@ -1,0 +1,44 @@
+{
+ "id": "watcher",
+ "source": "https://maximedelarose.itch.io/watcher-vertical-slice",
+ "description": "<p>Watcher est un jeu de réflexion et d’action en point and click avec une caméra en vue du dessus qui prend place à notre époque dans un appartement du Queens à New York. Le jeu fait vivre au joueur une aventure narrative dans laquelle il devra mener une enquête et résoudre le mystère qui entoure l’appartement lugubre qu’il a infiltré. En effet, le joueur incarnera Sean, un jeune homme qui pensait cambrioler un appartement sans spécialité mais se retrouve bloqué dans une boucle temporelle, pour s’en sortir il devra mener l’enquête sur ce qui se trame autour de lui.</p>\n\n<p>Réalisé par les \"Fantastics 7\".</p>\n<p>1er année de GameDesign.</p>\n\n<p>Morgane Couderc, Silya Blacher, Maxime Delarose, Lucas Barlet, Maxence Roudadoux, Nicolas Beyan, Hugo Carrasco.</p>",
+ "screenshots": [
+  {
+   "src": "assets/projects/watcher/shot-1.webp",
+   "w": 1600,
+   "h": 900
+  },
+  {
+   "src": "assets/projects/watcher/shot-2.webp",
+   "w": 1600,
+   "h": 900
+  }
+ ],
+ "videos": [
+  "iZ5wxCiTqUs"
+ ],
+ "info": {
+  "Status": "Prototype",
+  "Platforms": "Windows",
+  "Rating": "Rated 5.0 out of 5 stars (1 total ratings )",
+  "Authors": "Maxime Delarose / AkarisuMD, Lucas / Reltony, Audmaxr",
+  "Genre": "Puzzle"
+ },
+ "uploads": [
+  {
+   "name": "Watcher.zip",
+   "size": "74 MB",
+   "platforms": [
+    "Windows"
+   ]
+  },
+  {
+   "name": "Watcher.rar",
+   "size": "61 MB",
+   "platforms": [
+    "Windows"
+   ]
+  }
+ ],
+ "download": true
+}

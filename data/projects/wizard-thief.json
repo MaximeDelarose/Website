@@ -1,0 +1,24 @@
+{
+ "id": "wizard-thief",
+ "source": "https://maximedelarose.itch.io/wizard-escape",
+ "description": "<p>VR project made for school.</p>\n<p>We don't know if the build downloadable will work since we can't test, take the unity  project on github if needed.</p>\n\n<p>Github : <a href=\"https://github.com/AkarisuMD/VR\" rel=\"noopener\" target=\"_blank\">https://github.com/AkarisuMD/VR</a></p>\n\n<p>Made by :</p>\n<p>Louis Deville <em>: <a href=\"https://devillelouis.notion.site/59731681ab33438e8c49963f1c92d524?v=da5f2a15c25c492a8e3a9fc782cca091\" rel=\"noopener\" target=\"_blank\">https://devillelouis.notion.site/59731681ab33438e8c49963f1c92d524?v=da5f2a15c25c...</a> </em></p>\n<p>Maxime Delarose <em>: <a href=\"https://akarisumd.notion.site/PortFolio-of-Delarose-Maxime-8ba9e05701c643cfb87cf00d2dba14eb\" rel=\"noopener\" target=\"_blank\">https://akarisumd.notion.site/PortFolio-of-Delarose-Maxime-8ba9e05701c643cfb87cf...</a></em></p>\n<p>Maxence Roudadoux</p>\n<p>Cedric Deschomets</p>",
+ "screenshots": [],
+ "videos": [],
+ "info": {
+  "Status": "Released",
+  "Platforms": "Android",
+  "Authors": "Maxime Delarose / AkarisuMD, CodAbs, Audmaxr",
+  "Genre": "Puzzle",
+  "Tags": "Virtual Reality (VR)"
+ },
+ "uploads": [
+  {
+   "name": "WIzardEscape.apk",
+   "size": "166 MB",
+   "platforms": [
+    "Android"
+   ]
+  }
+ ],
+ "download": true
+}

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Projet · AkarisuMD</title>
+  <meta name="description" content="Fiche projet : jeu ou plugin Unity de Maxime Delarose (AkarisuMD).">
+  <meta property="og:title" content="Projet · AkarisuMD">
+  <meta property="og:description" content="Fiche projet : jeu ou plugin Unity de Maxime Delarose (AkarisuMD).">
+  <meta name="theme-color" content="#3f6b3a">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="library">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="page-banner">
+    <canvas class="pixel-scene" data-seed="58" data-compact="true" aria-hidden="true"></canvas>
+  </section>
+
+  <main id="main" class="section project-page" data-project-page>
+    <div class="wrap">
+      <p class="crumbs"><a href="bibliotheque.html">← Bibliothèque</a></p>
+
+      <div class="project-loading" data-project-loading><p class="lead">Chargement de la fiche…</p></div>
+
+      <div class="project-missing" data-project-missing hidden>
+        <div class="panel empty">
+          <img src="assets/squirrel.png" alt="" width="60" height="57">
+          <h1>Projet introuvable</h1>
+          <p>Ce projet n'existe pas, ou s'est caché dans un terrier.</p>
+          <a class="btn" href="bibliotheque.html">Retour à la bibliothèque</a>
+        </div>
+      </div>
+
+      <article data-project hidden>
+        <header class="project-head">
+          <div class="project-cover panel" data-project-cover></div>
+          <div class="project-intro">
+            <p class="kicker" data-project-kicker></p>
+            <h1 data-project-title></h1>
+            <p class="lead" data-project-short></p>
+            <p class="project-credit" data-project-with hidden></p>
+            <p class="project-credit card-role" data-project-role hidden></p>
+            <ul class="tags" data-project-tags></ul>
+            <div class="btn-row" data-project-actions></div>
+          </div>
+        </header>
+
+        <section class="project-gallery" data-project-gallery hidden>
+          <h2 class="section-title">Images</h2>
+          <div class="gallery" data-gallery></div>
+        </section>
+
+        <section class="project-videos" data-project-videos hidden>
+          <h2 class="section-title">Vidéo</h2>
+          <div class="videos" data-videos></div>
+        </section>
+
+        <div class="project-body">
+          <section class="panel project-desc">
+            <h2 class="section-title">Description</h2>
+            <div class="rich" data-project-desc></div>
+          </section>
+
+          <aside class="project-side">
+            <section class="panel side-block" data-project-download hidden>
+              <h2 class="section-title">Télécharger</h2>
+              <ul class="files" data-project-files></ul>
+              <div data-project-download-btn></div>
+              <p class="side-note">Le téléchargement se fait sur itch.io.</p>
+            </section>
+            <div data-leaderboard="" data-limit="10" data-project-leaderboard hidden></div>
+            <section class="panel side-block" data-project-info-block hidden>
+              <h2 class="section-title">Infos</h2>
+              <dl class="info" data-project-info></dl>
+            </section>
+          </aside>
+        </div>
+
+        <nav class="project-nav" data-project-nav aria-label="Autres projets"></nav>
+      </article>
+    </div>
+  </main>
+
+  <dialog class="lightbox" data-lightbox aria-label="Image agrandie">
+    <button class="icon-btn lb-close" type="button" data-lightbox-close aria-label="Fermer">✕</button>
+    <button class="icon-btn lb-prev" type="button" data-lightbox-prev aria-label="Image précédente">‹</button>
+    <img alt="" data-lightbox-img>
+    <button class="icon-btn lb-next" type="button" data-lightbox-next aria-label="Image suivante">›</button>
+    <p class="lb-count" data-lightbox-count></p>
+  </dialog>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/leaderboard.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/scene.js"></script>
+</body>
+</html>
