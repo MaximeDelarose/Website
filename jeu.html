@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20261101b">
 </head>
 <body data-page="game">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -68,64 +68,21 @@
           <div class="hud-row">
             <span class="hud-pill">⏱ <b data-time>00:00</b></span>
             <span class="hud-pill">💀 <b data-kills>0</b></span>
+            <span class="hud-pill"><img class="gold-ic" data-run-gold-ic alt="glands d'or"> <b data-run-gold>0</b></span>
             <span class="hud-build" data-build></span>
             <button class="hud-btn" type="button" data-mute aria-label="Couper le son">🔊</button>
             <button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button>
             <button class="hud-btn hud-exit" type="button" data-exit-max aria-label="Quitter le plein écran">✕</button>
           </div>
-          <div class="hud-boss" data-boss hidden><span>Grand Sanglier</span><div><i></i></div></div>
+          <div class="hud-boss" data-boss hidden><span data-boss-name>Boss</span><div><i></i></div></div>
         </div>
         <p class="game-banner" data-banner hidden></p>
+        <div class="game-toasts" data-toasts aria-live="polite"></div>
 
-        <div class="game-overlay" data-screen="start">
-          <div class="panel game-card">
-            <span class="kicker">La forêt contre-attaque</span>
-            <h2>Écureuil Survivor</h2>
-            <p>Les bestioles de la forêt en veulent à tes noisettes. Tiens le plus longtemps possible&nbsp;: tes attaques partent toutes seules, toi tu cours, tu ramasses les noisettes et tu choisis tes pouvoirs.</p>
-            <ul class="game-controls">
-              <li class="ctrl-desk"><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flèches</li>
-              <li class="ctrl-desk">🖱️ clic maintenu : l'écureuil suit la souris</li>
-              <li class="ctrl-touch">📱 pose le doigt n'importe où : joystick</li>
-            </ul>
-            <button class="btn" type="button" data-start>▶ Jouer</button>
-            <p class="game-small" data-start-best></p>
-          </div>
-        </div>
-
-        <div class="game-overlay" data-screen="levelup" hidden>
-          <div class="panel game-card game-card-wide">
-            <span class="kicker">Niveau supérieur !</span>
-            <h2>Choisis un pouvoir</h2>
-            <div class="choices" data-choices></div>
-          </div>
-        </div>
-
-        <div class="game-overlay" data-screen="pause" hidden>
-          <div class="panel game-card">
-            <h2>Pause</h2>
-            <p>L'écureuil reprend son souffle.</p>
-            <div class="btn-row" style="justify-content:center">
-              <button class="btn" type="button" data-resume>▶ Reprendre</button>
-              <button class="btn btn-ghost" type="button" data-restart>↻ Recommencer</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="game-overlay" data-screen="over" hidden>
-          <div class="panel game-card">
-            <span class="kicker">Les bestioles ont gagné…</span>
-            <h2>Fin de partie</h2>
-            <ul class="over-stats" data-over-stats></ul>
-            <p class="game-small" data-over-best></p>
-            <form class="submit-score" data-submit hidden>
-              <label for="es-name">Ton pseudo pour le classement</label>
-              <div class="submit-row">
-                <input id="es-name" type="text" maxlength="20" autocomplete="nickname" placeholder="Pseudo">
-                <button class="btn btn-alt btn-small" type="submit">Envoyer</button>
-              </div>
-              <p class="game-small" data-submit-msg aria-live="polite"></p>
-            </form>
-            <button class="btn" type="button" data-restart>↻ Rejouer</button>
+        <div class="game-overlay" data-overlay>
+          <div class="panel game-card" data-card>
+            <p>Chargement du jeu…</p>
+            <noscript><p>Ce jeu a besoin de JavaScript.</p></noscript>
           </div>
         </div>
       </div>
@@ -136,9 +93,10 @@
           <ul>
             <li><strong>Survis</strong> : les ennemis arrivent de partout, de plus en plus nombreux et costauds.</li>
             <li><strong>Ramasse les noisettes</strong> qu'ils lâchent pour gagner de l'expérience.</li>
-            <li><strong>À chaque niveau</strong>, choisis une nouvelle arme ou améliore-en une (4 armes et 4 bonus max, niveau 5 max).</li>
-            <li>Toutes les minutes, une <strong>nuée</strong> t'encercle. Toutes les 3 minutes, le <strong>Grand Sanglier</strong> charge : bats-le pour son coffre.</li>
-            <li>Les <strong>baies</strong> rouges soignent. <kbd>Échap</kbd> ou <kbd>P</kbd> pour la pause.</li>
+            <li><strong>À chaque niveau</strong>, choisis une nouvelle arme ou un bonus (4 armes et 4 bonus max, niveau 5 max).</li>
+            <li>Toutes les minutes, une <strong>nuée</strong> t'encercle. Toutes les 3 minutes, un <strong>boss</strong> (Grand Sanglier, Hibou Ancien) : bats-le pour son coffre.</li>
+            <li>Gagne des <strong>glands d'or</strong> pour acheter des <strong>améliorations permanentes</strong>, et remplis les <strong>succès</strong> pour débloquer 5 autres personnages, des armes et le mode Difficile. Ta progression est sauvegardée dans ton navigateur.</li>
+            <li>Les <strong>baies</strong> soignent, l'<strong>aimant</strong> attire toutes les noisettes. <kbd>Échap</kbd> ou <kbd>P</kbd> pour la pause.</li>
             <li><strong>Score</strong> = 10 points par seconde de survie + 1 par ennemi.</li>
           </ul>
         </div>
@@ -162,9 +120,10 @@
     </div>
   </footer>
 
-  <script src="js/data.js"></script>
-  <script src="js/leaderboard.js"></script>
-  <script src="js/main.js"></script>
-  <script src="js/game.js"></script>
+  <script src="js/data.js?v=20261101b"></script>
+  <script src="js/leaderboard.js?v=20261101b"></script>
+  <script src="js/main.js?v=20261101b"></script>
+  <script src="js/game-data.js?v=20261101b"></script>
+  <script src="js/game.js?v=20261101b"></script>
 </body>
 </html>
