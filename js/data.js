@@ -22,8 +22,8 @@ window.SITE = {
   // url : « Project URL » ; key : clé PUBLIQUE (publishable / anon).
   // Ne mets JAMAIS la clé secrète (service_role) ici : ce fichier est public.
   supabase: {
-    url: "",
-    key: "",
+    url: "https://euxlmipqzmvnzzyalyfn.supabase.co",
+    key: "sb_publishable_yryevkEb0hvSSZTdTQN0xA_R1NjJsfd",
   },
 
   // Réseaux : laisse "" pour masquer un lien.
