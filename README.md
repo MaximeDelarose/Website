@@ -8,6 +8,7 @@ Site statique (HTML/CSS/JS, rien à compiler) : il s'héberge tel quel sur GitHu
 |---|---|
 | `index.html` | Accueil : forêt pixel 2.5D animée, jeu jouable à la une, ce que je fais, derniers projets |
 | `bibliotheque.html` | Tous les jeux et plugins Unity, avec filtres et recherche (`#jeux` / `#plugins` dans l'URL pour pré-filtrer) |
+| `jeu.html` | **Écureuil Survivor** : mini jeu maison façon « survivors » (code dans `js/game.js`), jouable au clavier (ZQSD/WASD/flèches), à la souris (clic maintenu) ou au joystick tactile, avec classement en ligne |
 | `bio.html` | Biographie |
 | `contact.html` | Formulaire « message direct » + liens |
 | `projet.html?id=<id>` | Fiche d'un projet : jaquette, images, vidéo, description complète, infos, bouton Télécharger (renvoie vers la section téléchargement d'itch.io) |
@@ -21,6 +22,8 @@ Presque tout se règle dans **`js/data.js`** :
 - **Jeux web jouables sur le site** : ajoute `embed: "https://itch.io/embed-upload/XXXXXXX?color=1f3a2b"` au projet (le numéro se trouve dans l'URL `html-classic.itch.zone/html/XXXXXXX/…` de la page du jeu). Le jeu reçoit un bouton « ▶ Jouer ici » qui l'ouvre dans une fenêtre, et un lien direct `bibliotheque.html#jouer=<id>`. `SITE.featured.id` choisit le jeu de la borne de l'accueil.
 - **Formulaire de contact** : les messages partent directement vers `SITE.email` via [FormSubmit](https://formsubmit.co). Au tout premier message, FormSubmit envoie un mail d'activation à cette adresse : il faut cliquer sur le lien une fois. (Ou mets ton propre endpoint Formspree dans `SITE.formEndpoint`.)
 - **Classements en ligne** : `SITE.supabase = { url, key }` (clé publique) et `leaderboard: true` sur un jeu. Mise en place, ajout d'un jeu et package Unity : voir [`leaderboard/README.md`](leaderboard/README.md).
+- **Écureuil Survivor** : tout est dans `js/game.js` (sprites en texte en haut du fichier, armes dans `WEAPONS`, bonus dans `PASSIVES`, ennemis dans `ENEMIES`). Pour son classement, exécute une fois dans le SQL Editor de Supabase :
+  `insert into public.lb_games (id, name, higher_is_better, min_score, max_score) values ('ecureuil-survivor', 'Écureuil Survivor', true, 0, 2000000) on conflict (id) do nothing;`
 - **Réseaux** : `SITE.links` (laisse `""` pour masquer un lien).
 
 Le texte de la bio est directement dans `bio.html`.
