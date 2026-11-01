@@ -337,7 +337,7 @@ canvas { image-rendering: pixelated; }
 }
 .card:hover { transform: translateY(-4px); }
 @media (prefers-reduced-motion: reduce) { .card, .card:hover { transition: none; transform: none; } }
-.card-media { position: relative; aspect-ratio: 16 / 10; background: var(--panel-2); border-bottom: 4px solid var(--line); overflow: hidden; }
+.card-media { position: relative; aspect-ratio: 315 / 250; background: var(--panel-2); border-bottom: 4px solid var(--line); overflow: hidden; }
 .card-media canvas, .card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .badge {
   position: absolute; top: 10px; left: 10px;
@@ -461,7 +461,7 @@ canvas { image-rendering: pixelated; }
 .player {
   --ratio: 1.6;
   border: 0; padding: 0; background: transparent; color: inherit;
-  width: min(1100px, calc(100vw - 32px), calc((100vh - 170px) * var(--ratio)));
+  width: min(1100px, calc(100vw - 32px), calc((100vh - 200px) * var(--ratio)));
   max-width: none; max-height: none; overflow: visible;
 }
 .player::backdrop { background: rgba(10, 20, 14, .82); }
@@ -477,3 +477,7 @@ canvas { image-rendering: pixelated; }
 .text-link { font-weight: 700; font-size: .95rem; }
 .card-role { color: var(--moss); font-weight: 700; }
 :root[data-theme="dark"] .card-role { color: var(--leaf); }
+
+/* jaquettes réelles : rendu lissé (ce sont des illustrations) */
+.card-media img, .screen-img { image-rendering: auto; }
+.screen-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.75); }

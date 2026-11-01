@@ -277,12 +277,20 @@
     if (p.url) { link.href = p.url; link.hidden = false; } else link.hidden = true;
     var scr = $("[data-player-screen]", dialog);
     var size = p.size || [960, 600];
-    scr.style.aspectRatio = size[0] + " / " + size[1];
+    sizeScreen(scr, p);
     dialog.style.setProperty("--ratio", size[0] / size[1]);
     scr.innerHTML = "";
     scr.appendChild(makeFrame(p));
     if (dialog.showModal) dialog.showModal(); else dialog.setAttribute("open", "");
     history.replaceState(null, "", "#jouer=" + p.id);
+  }
+  // Taille de l'écran : proportions du jeu + la barre itch.io (≈24 px) en bas.
+  var ITCH_BAR = 24;
+  function sizeScreen(el, p) {
+    var s = p.size || [960, 600];
+    el.style.aspectRatio = "auto";
+    el.style.height = "0";
+    el.style.paddingBottom = "calc(" + (s[1] / s[0] * 100).toFixed(3) + "% + " + (p.embed ? ITCH_BAR : 0) + "px)";
   }
   function makeFrame(p) {
     var iframe = document.createElement("iframe");
@@ -315,10 +323,13 @@
     $$("[data-featured-link]").forEach(function (el) { if (game.url) el.href = game.url; else el.hidden = true; });
 
     var screen = $(".screen", feat);
-    var fsize = game.size || [960, 600];
-    screen.style.aspectRatio = fsize[0] + " / " + fsize[1];
+    sizeScreen(screen, game);
     var cover = $(".screen-cover canvas", feat);
-    if (cover && game.id) drawCover(cover, game);
+    if (cover && game.cover) {
+      var img = document.createElement("img");
+      img.src = game.cover; img.alt = ""; img.className = "screen-img";
+      cover.replaceWith(img);
+    } else if (cover && game.id) drawCover(cover, game);
 
     var play = $("[data-play]", feat);
     var note = $("[data-featured-note]", feat);
