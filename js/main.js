@@ -83,6 +83,12 @@
     granny: ["...ww...", "..wwww..", ".wwwwww.", ".xxxxxx.", "xeexxeex", ".xxxxxx.", ".xxeexx.", "..xxxx.."],
     plug: ["..e..e..", "..e..e..", ".xxxxxx.", ".xwxxxx.", ".xxxxxx.", "..xxxx..", "...xx...", "...ee..."],
     star: ["...x...", "...x...", "xxxwxxx", ".xxwxx.", "..xxx..", ".xx.xx.", "x.....x"],
+    dog: ["e.......e.", "ex.....xe.", "exxxxxxxe.", ".xexxxex..", ".xxxxxxx..", ".xxxeexx..", "..xxxxx...", "...xwx...."],
+    fish: ["....xx.....", "..xxxxxx.x.", ".xwxxxxxxx.", "xxexxxxxxx.", ".xxxxxxxxx.", "..xxxxxx.x.", "....xx....."],
+    eye: ["...xxxxx...", ".xx.....xx.", "x...eee...x", "x..eewe...x", "x...eee...x", ".xx.....xx.", "...xxxxx..."],
+    wand: ["....x....", "...xwx...", "...xxx...", "..xxxxx..", "..xxwxx..", ".xxxxxxx.", "xxxxxxxxx", "...e.e..."],
+    drop: ["...x...", "..xxx..", ".xxwxx.", ".xwxxx.", "xxxxxxx", "xxxxxxx", ".xxxxx.", "..xxx.."],
+    box: ["..xxxxxx..", ".xwwwwwwx.", "xwwwwwwwwx", "xxxxeexxxx", "xxxxeexxxx", "xxxxxxxxxx", "xxxxxxxxxx", "eeeeeeeeee"],
   };
   function hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
   function drawCover(canvas, p) {
@@ -129,16 +135,20 @@
     var media = p.cover
       ? '<img src="' + esc(p.cover) + '" alt="" loading="lazy">'
       : '<canvas data-cover="' + esc(p.id) + '" aria-hidden="true"></canvas>';
+    var meta = [p.status, p.year].filter(Boolean).join(" · ");
     var tags = (p.tags || []).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("");
     return '<article class="card" data-type="' + esc(p.type) + '">' +
       '<div class="card-media">' + media +
       '<span class="badge badge-' + esc(p.type) + '">' + typeLabel + "</span></div>" +
       '<div class="card-body">' +
       '<h3 class="card-title">' + esc(p.title) + "</h3>" +
-      '<p class="card-meta">' + esc(p.status || "") + (p.year ? " · " + esc(p.year) : "") + "</p>" +
+      (meta ? '<p class="card-meta">' + esc(meta) + "</p>" : "") +
+      (p.with ? '<p class="card-meta">avec ' + esc(p.with) + "</p>" : "") +
       '<p class="card-text">' + esc(p.short || "") + "</p>" +
       '<ul class="tags">' + tags + "</ul>" +
-      (p.url ? '<a class="btn btn-small" href="' + esc(p.url) + '" target="_blank" rel="noopener">' + cta + " ↗</a>" : "") +
+      (p.url
+        ? '<a class="btn btn-small" href="' + esc(p.url) + '" target="_blank" rel="noopener">' + cta + " ↗</a>"
+        : '<span class="soon">Bientôt disponible</span>') +
       "</div></article>";
   }
   function paintCovers(scope) {

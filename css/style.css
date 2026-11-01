@@ -100,8 +100,8 @@ body {
 }
 
 h1, h2, h3, .pixel {
-  font-family: "Pixelify Sans", "Nunito", monospace;
-  font-weight: 700;
+  font-family: "Nunito", system-ui, sans-serif;
+  font-weight: 800;
   line-height: 1.15;
   margin: 0 0 .5em;
   letter-spacing: .01em;
@@ -127,7 +127,7 @@ canvas { image-rendering: pixelated; }
 .section-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; margin-bottom: 32px; }
 .section-head h2 { margin: 0; }
 .kicker {
-  display: inline-block; font-family: "Pixelify Sans", monospace; font-size: .95rem;
+  display: inline-block; font-family: "Nunito", system-ui, sans-serif; font-size: .95rem;
   color: var(--orange-dk); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 8px;
 }
 :root[data-theme="dark"] .kicker { color: var(--orange-2); }
@@ -151,7 +151,7 @@ canvas { image-rendering: pixelated; }
 .btn {
   --b: var(--btn); --bd: var(--btn-depth);
   display: inline-flex; align-items: center; gap: .5em;
-  font-family: "Pixelify Sans", monospace; font-weight: 700; font-size: 1.05rem;
+  font-family: "Nunito", system-ui, sans-serif; font-weight: 700; font-size: 1.05rem;
   color: var(--btn-ink); background: var(--b);
   border: 0; cursor: pointer; text-decoration: none;
   padding: 12px 22px;
@@ -192,13 +192,13 @@ canvas { image-rendering: pixelated; }
 .header-inner { display: flex; align-items: center; gap: 16px; min-height: 68px; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: auto; }
 .brand img { width: 40px; height: 38px; }
-.brand-name { font-family: "Londrina", "Pixelify Sans", sans-serif; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; line-height: 1; }
+.brand-name { font-family: "Londrina", "Nunito", sans-serif; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; line-height: 1; }
 .brand-name span { color: var(--orange); }
 
 #site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; }
 #site-nav a {
   display: block; padding: 8px 12px; text-decoration: none;
-  font-family: "Pixelify Sans", monospace; font-size: 1.05rem;
+  font-family: "Nunito", system-ui, sans-serif; font-size: 1.05rem;
   border-radius: 0;
 }
 #site-nav a:hover { background: var(--panel-2); }
@@ -245,13 +245,13 @@ canvas { image-rendering: pixelated; }
 }
 .hero-card { pointer-events: auto; max-width: 560px; padding: 28px 28px 20px; }
 .hero-card h1 { margin-bottom: .2em; }
-.hero-card .hello { font-family: "Pixelify Sans", monospace; color: var(--moss); font-size: 1.1rem; margin-bottom: .4em; }
+.hero-card .hello { font-family: "Nunito", system-ui, sans-serif; color: var(--moss); font-size: 1.1rem; margin-bottom: .4em; }
 :root[data-theme="dark"] .hero-card .hello { color: var(--leaf); }
-.wordmark { font-family: "Londrina", "Pixelify Sans", sans-serif; font-weight: 900; font-size: clamp(2.6rem, 7vw, 4.4rem); line-height: .95; letter-spacing: .01em; }
+.wordmark { font-family: "Londrina", "Nunito", sans-serif; font-weight: 900; font-size: clamp(2.6rem, 7vw, 4.4rem); line-height: .95; letter-spacing: .01em; }
 .wordmark span { color: var(--orange); }
 .hero-hint {
   position: absolute; right: 16px; bottom: 14px; margin: 0;
-  font-family: "Pixelify Sans", monospace; font-size: .85rem; color: #fdf3de;
+  font-family: "Nunito", system-ui, sans-serif; font-size: .85rem; color: #fdf3de;
   background: rgba(20, 30, 22, .55); padding: 4px 10px; pointer-events: none;
 }
 @media (max-width: 640px) {
@@ -341,7 +341,7 @@ canvas { image-rendering: pixelated; }
 .card-media canvas, .card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .badge {
   position: absolute; top: 10px; left: 10px;
-  font-family: "Pixelify Sans", monospace; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em;
+  font-family: "Nunito", system-ui, sans-serif; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em;
   padding: 3px 8px; background: var(--panel); color: var(--ink); box-shadow: 0 0 0 3px var(--line);
 }
 .badge-plugin { background: #7fd1c7; color: #11302d; }
@@ -352,12 +352,16 @@ canvas { image-rendering: pixelated; }
 .tags { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .tags li { font-size: .82rem; padding: 2px 8px; background: var(--panel-2); color: var(--ink-soft); }
 .card .btn { align-self: flex-start; }
+.soon {
+  align-self: flex-start; font-weight: 800; font-size: .9rem; padding: 6px 12px;
+  color: var(--ink-soft); border: 3px dashed var(--depth); margin: 4px 0 8px;
+}
 
 /* ---------- bibliothèque ---------- */
 .library-tools { display: grid; gap: 16px; margin-bottom: 36px; }
 .filter-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .chip {
-  font: inherit; font-family: "Pixelify Sans", monospace; font-size: 1rem; cursor: pointer;
+  font: inherit; font-family: "Nunito", system-ui, sans-serif; font-size: 1rem; cursor: pointer;
   padding: 6px 14px; background: var(--panel); color: var(--ink); border: 0;
   box-shadow: 0 0 0 3px var(--line), 0 6px 0 0 var(--depth);
   margin: 3px 3px 8px;
@@ -373,7 +377,7 @@ canvas { image-rendering: pixelated; }
   border: 0; box-shadow: 0 0 0 3px var(--line), inset 0 4px 0 rgba(0,0,0,.08);
   margin: 3px;
 }
-.count { font-family: "Pixelify Sans", monospace; color: var(--ink-soft); }
+.count { font-family: "Nunito", system-ui, sans-serif; color: var(--ink-soft); }
 .empty { grid-column: 1 / -1; text-align: center; padding: 40px 16px; }
 .empty img { margin: 0 auto 12px; display: block; }
 
@@ -389,14 +393,14 @@ canvas { image-rendering: pixelated; }
 .facts li { display: flex; gap: 12px; align-items: baseline; }
 .facts li::before { content: ""; width: 10px; height: 10px; background: var(--orange); flex: none; transform: translateY(-1px); box-shadow: 3px 3px 0 var(--orange-dk); }
 .tools { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0 0 24px; }
-.tools li { font-family: "Pixelify Sans", monospace; padding: 4px 12px; background: var(--panel); box-shadow: 0 0 0 3px var(--line), 0 6px 0 var(--depth); margin: 3px 3px 8px; }
+.tools li { font-family: "Nunito", system-ui, sans-serif; padding: 4px 12px; background: var(--panel); box-shadow: 0 0 0 3px var(--line), 0 6px 0 var(--depth); margin: 3px 3px 8px; }
 
 /* ---------- contact ---------- */
 .contact { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 40px; align-items: start; }
 @media (max-width: 860px) { .contact { grid-template-columns: 1fr; } }
 .form { padding: 28px 26px 20px; }
 .field { display: grid; gap: 6px; margin-bottom: 18px; }
-.field label { font-family: "Pixelify Sans", monospace; font-size: 1.05rem; }
+.field label { font-family: "Nunito", system-ui, sans-serif; font-size: 1.05rem; }
 .field input, .field textarea, .field select {
   font: inherit; color: var(--ink); background: var(--bg);
   border: 0; padding: 12px 14px; width: 100%;
@@ -416,7 +420,7 @@ canvas { image-rendering: pixelated; }
 .links { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 10px; }
 .link-chip {
   display: inline-flex; align-items: center; gap: 10px; text-decoration: none;
-  font-family: "Pixelify Sans", monospace; font-size: 1.05rem; padding: 6px 4px;
+  font-family: "Nunito", system-ui, sans-serif; font-size: 1.05rem; padding: 6px 4px;
   word-break: break-all;
 }
 .link-chip:hover { color: var(--orange-dk); }
