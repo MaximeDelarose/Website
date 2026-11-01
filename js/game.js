@@ -14,6 +14,7 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
+  var VERSION = "v3";
   var TAU = Math.PI * 2;
 
   /* =====================================================================
@@ -97,22 +98,30 @@
   function spriteUrl(name) { return urlCache[name] || (urlCache[name] = SPR[name][0].c.toDataURL()); }
   function goldIc() { return '<img class="gold-ic" src="' + spriteUrl("gold") + '" alt="glands d\'or">'; }
 
-  /* ---------- chiffres pixel 3x5 ---------- */
-  var DIG = { "0": "111101101101111", "1": "010110010010111", "2": "111001111100111", "3": "111001111001111", "4": "101101111001001", "5": "111100111001111", "6": "111100111101111", "7": "111001001001001", "8": "111101111101111", "9": "111101111001111" };
-  function drawNum(str, x, y, color) {
-    str = String(str);
-    x = Math.round(x - (str.length * 4 - 1) / 2); y = Math.round(y);
+  /* ---------- police pixel 3x5 ---------- */
+  var FONT = { "0": "111101101101111", "1": "010110010010111", "2": "111001111100111", "3": "111001111001111", "4": "101101111001001", "5": "111100111001111", "6": "111100111101111", "7": "111001001001001", "8": "111101111101111", "9": "111101111001111",
+    A: "010101111101101", B: "110101110101110", C: "011100100100011", D: "110101101101110", E: "111100110100111", F: "111100110100100", G: "011100101101011", H: "101101111101101", I: "111010010010111", J: "001001001101010", K: "101101110101101", L: "100100100100111", M: "101111111101101",
+    N: "110101101101101", O: "010101101101010", P: "110101110100100", Q: "010101101110011", R: "110101110101101", S: "011100010001110", T: "111010010010010", U: "101101101101111", V: "101101101101010", W: "101101111111101", X: "101101010101101", Y: "101101010010010", Z: "111001010100111",
+    ":": "000010000010000", "/": "001001010100100", ".": "000000000000010", "-": "000000111000000", "+": "000010111010000", "!": "010010010000010", "%": "101001010100101", "'": "010010000000000", " ": "000000000000000" };
+  function textWidth(str, sc) { return (String(str).length * 4 - 1) * (sc || 1); }
+  // align : "c" (centre), "l" (gauche), "r" (droite)
+  function drawText(str, x, y, color, align, sc) {
+    str = String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    sc = sc || 1;
+    var w = textWidth(str, sc);
+    x = Math.round(align === "l" ? x : align === "r" ? x - w : x - w / 2); y = Math.round(y);
     for (var pass = 0; pass < 2; pass++) {
       ctx.fillStyle = pass ? color : OUT;
       for (var i = 0; i < str.length; i++) {
-        var b = DIG[str[i]]; if (!b) continue;
+        var b = FONT[str[i]]; if (!b) continue;
         for (var j = 0; j < 15; j++) if (b[j] === "1") {
-          var px = x + i * 4 + (j % 3), py = y + ((j / 3) | 0);
-          if (pass) ctx.fillRect(px, py, 1, 1); else ctx.fillRect(px - 1, py - 1, 3, 3);
+          var px = x + (i * 4 + (j % 3)) * sc, py = y + ((j / 3) | 0) * sc;
+          if (pass) ctx.fillRect(px, py, sc, sc); else ctx.fillRect(px - 1, py - 1, sc + 2, sc + 2);
         }
       }
     }
   }
+  function drawNum(str, x, y, color) { drawText(str, x, y, color, "c", 1); }
 
   /* =====================================================================
      Son
@@ -152,6 +161,7 @@
      ===================================================================== */
   var W = 320, H = 200;
   var state = "menu";     // menu | play | levelup | pause | over | error
+  var curBoss = null;
   var p = null, r = null, CH, DIFF, enemies, projs, hostile, lobs, gems, fx, texts, grid;
   var spawnAcc, nextSwarm, nextBoss, bossCount, shake, leafRot, orbAngle, sporeTick, uid, achTick, pending, xp, xpNext;
 
@@ -559,7 +569,7 @@
         icon = '<img src="' + spriteUrl(D.WEAPONS[c.id].icon) + '" alt="">'; name = D.WEAPONS[c.id].name;
         lvl = c.lvl === 1 ? "Nouvelle arme" : "Niv. " + c.lvl; desc = D.WEAPONS[c.id].desc[c.lvl - 1];
       } else if (c.type === "p") {
-        icon = '<span class="emoji">' + D.PASSIVES[c.id].icon + "</span>"; name = D.PASSIVES[c.id].name;
+        icon = '<img src="' + spriteUrl(D.PASSIVES[c.id].sprite) + '" alt="">'; name = D.PASSIVES[c.id].name;
         lvl = c.lvl === 1 ? "Nouveau bonus" : "Niv. " + c.lvl; desc = D.PASSIVES[c.id].desc;
       } else if (c.type === "heal") {
         icon = '<span class="emoji">🍓</span>'; name = "Panier de baies"; desc = "Soigne 40 PV.";
@@ -594,12 +604,7 @@
     else { state = "play"; hideCard(); last = performance.now(); }
   }
   function addGold(n) { r.gold += n * p.goldMul; }
-  function renderBuild() {
-    var html = "";
-    Object.keys(p.weapons).forEach(function (k) { html += '<span title="' + esc(D.WEAPONS[k].name) + '"><img src="' + spriteUrl(D.WEAPONS[k].icon) + '" alt="">' + p.weapons[k] + "</span>"; });
-    Object.keys(p.passives).forEach(function (k) { html += '<span title="' + esc(D.PASSIVES[k].name) + '"><i>' + D.PASSIVES[k].icon + "</i>" + p.passives[k] + "</span>"; });
-    $("[data-build]").innerHTML = html;
-  }
+  function renderBuild() {}
 
   /* =====================================================================
      Succès
@@ -739,11 +744,7 @@
       if (l.t >= l.dur) { explode(l); lobs.splice(i, 1); }
     }
     enemies = enemies.filter(function (en) { return !en.dead; });
-    if (boss && !boss.dead) {
-      $("[data-boss]").hidden = false;
-      $("[data-boss-name]").textContent = boss.d.name;
-      $("[data-boss] i").style.width = Math.max(0, boss.hp / boss.maxHp * 100) + "%";
-    } else $("[data-boss]").hidden = true;
+    curBoss = boss && !boss.dead ? boss : null;
 
     // ramassage
     for (i = gems.length - 1; i >= 0; i--) {
@@ -932,6 +933,7 @@
 
     var dusk = Math.min(0.28, r.time / 1500);
     if (dusk > 0.01) { ctx.fillStyle = "rgba(20,15,50," + dusk + ")"; ctx.fillRect(0, 0, W, H); }
+    drawHud();
 
     if (joy.active) {
       ctx.fillStyle = "rgba(253,243,222,.18)"; ctx.strokeStyle = "rgba(253,243,222,.6)"; ctx.lineWidth = 1;
@@ -967,6 +969,60 @@
     }
   }
 
+  /* ---------- HUD dessiné dans le jeu ---------- */
+  function box(x, y, w, h, fill, line) {
+    ctx.fillStyle = line || OUT; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = fill; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+  }
+  function icon(name, cx, cy) { if (SPR[name]) blit(SPR[name][0], cx, cy); }
+  function drawSlots(x, y, list, max, sprOf) {
+    var S2 = 12;
+    for (var i = 0; i < max; i++) {
+      var bx = x + i * (S2 + 1);
+      var it = list[i];
+      box(bx, y, S2, S2, it ? "#1f3a2b" : "rgba(31,58,43,.45)", it ? OUT : "rgba(43,23,9,.6)");
+      if (it) {
+        icon(sprOf(it[0]), bx + S2 / 2, y + S2 / 2);
+        if (it[1] >= 5) { ctx.fillStyle = "#f6d36b"; ctx.fillRect(bx + 1, y + S2 - 2, S2 - 2, 1); }
+        drawText(String(it[1]), bx + S2 - 1, y + S2 - 4, it[1] >= 5 ? "#f6d36b" : "#fdf3de", "c");
+      } else {
+        ctx.fillStyle = "rgba(253,243,222,.35)"; ctx.fillRect(bx + 5, y + 5, 2, 2);
+      }
+    }
+  }
+  function drawHud() {
+    // barre d'expérience + niveau
+    var bw = W - 4, ratio = Math.max(0, Math.min(1, xp / xpNext));
+    box(2, 2, bw, 9, "#3a2618");
+    ctx.fillStyle = "#e0a82a"; ctx.fillRect(3, 3, Math.round((bw - 2) * ratio), 7);
+    ctx.fillStyle = "#ffe27a"; ctx.fillRect(3, 3, Math.round((bw - 2) * ratio), 2);
+    drawText("NIV " + r.level, W / 2, 4, "#fdf3de", "c");
+    // chrono
+    drawText(fmtTime(r.time), W / 2, 15, "#fdf3de", "c", 2);
+    // ennemis tués et or
+    var k = String(r.kills), g = String(Math.floor(r.gold));
+    var line = 7 + textWidth(k) + 8 + 7 + textWidth(g), lx = Math.round(W / 2 - line / 2), ly = 30;
+    icon("skull", lx + 3, ly + 2); drawText(k, lx + 7, ly, "#fdf3de", "l");
+    var gx = lx + 7 + textWidth(k) + 8;
+    icon("gold", gx + 3, ly + 2); drawText(g, gx + 7, ly, "#ffe27a", "l");
+    // cases d'armes et de bonus (libres / prises)
+    var wl2 = Object.keys(p.weapons).map(function (id) { return [id, p.weapons[id]]; });
+    var pl2 = Object.keys(p.passives).map(function (id) { return [id, p.passives[id]]; });
+    drawSlots(2, 14, wl2, 4, function (id) { return D.WEAPONS[id].icon; });
+    drawSlots(2, 27, pl2, 4, function (id) { return D.PASSIVES[id].sprite; });
+    // PV (coin gauche, sous les cases)
+    var hpw = 51, hpr = Math.max(0, p.hp / p.maxHp);
+    box(2, 40, hpw, 6, "#3a2618");
+    ctx.fillStyle = hpr > 0.3 ? "#9cc56b" : "#c8553d"; ctx.fillRect(3, 41, Math.round((hpw - 2) * hpr), 4);
+    // boss
+    if (curBoss) {
+      var bb = Math.min(140, W - 24), bx = Math.round(W / 2 - bb / 2), by = H - 12;
+      drawText(curBoss.d.name, W / 2, by - 8, "#f6d36b", "c");
+      box(bx, by, bb, 7, "#3a2618");
+      ctx.fillStyle = "#c8553d"; ctx.fillRect(bx + 1, by + 1, Math.round((bb - 2) * Math.max(0, curBoss.hp / curBoss.maxHp)), 5);
+    }
+  }
+
   // fond des menus : le perso choisi court, des bestioles passent
   var parade = [];
   function drawIdle(now) {
@@ -986,19 +1042,8 @@
   /* =====================================================================
      HUD
      ===================================================================== */
-  var hud = { time: $("[data-time]"), kills: $("[data-kills]"), lvl: $("[data-lvl]"), xp: $("[data-xp]"), gold: $("[data-run-gold]") };
-  var lastHud = "";
   function fmtTime(s) { s = Math.floor(s); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
-  function updateHud() {
-    var key = Math.floor(r.time) + "|" + r.kills + "|" + r.level + "|" + Math.round(xp / xpNext * 100) + "|" + Math.floor(r.gold);
-    if (key === lastHud) return;
-    lastHud = key;
-    hud.time.textContent = fmtTime(r.time);
-    hud.kills.textContent = r.kills;
-    hud.lvl.textContent = "Niv. " + r.level;
-    hud.xp.style.width = Math.min(100, xp / xpNext * 100) + "%";
-    hud.gold.textContent = Math.floor(r.gold);
-  }
+  function updateHud() {}
   function score() { return Math.round((Math.floor(r.time) * 10 + r.kills + r.bonus) * DIFF.score); }
   function runGold() { return Math.floor((r.kills * 0.1 + r.time / 6 + r.bosses * 30 + r.level) * p.goldMul + r.gold); }
 
@@ -1035,7 +1080,8 @@
         '<button class="btn btn-alt" type="button" data-action="go" data-arg="succes">🏆 Succès <small>' + nAch + "/" + D.ACHIEVEMENTS.length + "</small></button>" +
         '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Comment jouer</button>' +
         '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="options">⚙️ Options</button></div></div>' +
-        (S.stats.runs ? '<p class="game-small">Record : ' + S.stats.bestScore.toLocaleString("fr-FR") + " pts · " + fmtTime(S.stats.bestTime) + " de survie · " + S.stats.runs + " partie" + (S.stats.runs > 1 ? "s" : "") + "</p>" : "");
+        (S.stats.runs ? '<p class="game-small">Record : ' + S.stats.bestScore.toLocaleString("fr-FR") + " pts · " + fmtTime(S.stats.bestTime) + " de survie · " + S.stats.runs + " partie" + (S.stats.runs > 1 ? "s" : "") + "</p>" : "") +
+        '<p class="game-version">' + VERSION + "</p>";
     },
     chars: function () {
       var html = '<div class="screen-head">' + back() + "<h2>Personnage</h2>" + goldBadge() + '</div><div class="char-grid">';
@@ -1172,10 +1218,10 @@
      ===================================================================== */
   var last = 0;
   function start() {
-    reset(); lastHud = "";
+    reset();
     S.stats.played[CH.id] = true; save();
     state = "play"; hideCard(); renderBuild();
-    $("[data-boss]").hidden = true;
+    curBoss = null;
     $("[data-toasts]").innerHTML = "";
     last = performance.now();
     canvas.focus({ preventScroll: true });
@@ -1190,7 +1236,7 @@
     state = "pause"; clearInput();
     var html = '<h2>Pause</h2><div class="pause-grid"><div><h3>Équipement</h3><ul class="build-list">';
     Object.keys(p.weapons).forEach(function (k) { html += '<li><img src="' + spriteUrl(D.WEAPONS[k].icon) + '" alt="">' + esc(D.WEAPONS[k].name) + " <b>niv. " + p.weapons[k] + "</b></li>"; });
-    Object.keys(p.passives).forEach(function (k) { html += "<li><i>" + D.PASSIVES[k].icon + "</i>" + esc(D.PASSIVES[k].name) + " <b>niv. " + p.passives[k] + "</b></li>"; });
+    Object.keys(p.passives).forEach(function (k) { html += '<li><img src="' + spriteUrl(D.PASSIVES[k].sprite) + '" alt="">' + esc(D.PASSIVES[k].name) + " <b>niv. " + p.passives[k] + "</b></li>"; });
     html += '</ul></div><div><h3>Statistiques</h3><ul class="stat-list">' +
       "<li>PV <b>" + Math.ceil(p.hp) + " / " + p.maxHp + "</b></li>" +
       "<li>Dégâts <b>" + Math.round(p.might * 100) + " %</b></li>" +
@@ -1208,7 +1254,7 @@
 
   function gameOver(quit) {
     state = "over"; SND.over();
-    $("[data-boss]").hidden = true;
+    curBoss = null;
     r.ended = true;
     var sc = score(), gold = runGold();
     S.stats.kills += r.kills; r.committed = true;
@@ -1281,7 +1327,6 @@
   function muteLabel() { muteBtn.textContent = S.opts.sound ? "🔊" : "🔇"; muteBtn.setAttribute("aria-label", S.opts.sound ? "Couper le son" : "Activer le son"); }
   muteLabel();
   muteBtn.addEventListener("click", function () { S.opts.sound = !S.opts.sound; save(); muteLabel(); });
-  $("[data-run-gold-ic]").src = spriteUrl("gold");
 
   var fsBtn = document.querySelector("[data-game-fullscreen]");
   if (fsBtn) fsBtn.addEventListener("click", function () {
@@ -1302,6 +1347,7 @@
     canvas.width = W; canvas.height = H;
     canvas.style.width = (W * scale / dpr) + "px";
     canvas.style.height = (H * scale / dpr) + "px";
+    stage.style.setProperty("--px-game", (scale / dpr) + "px");
     ctx.imageSmoothingEnabled = false;
   }
   if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
@@ -1314,6 +1360,19 @@
     time: function (t) { if (r) { r.time = t; nextSwarm = Math.ceil(t / 60) * 60; nextBoss = Math.max(180, Math.ceil(t / 180) * 180); } },
     state: function () { return { state: state, screen: screen, enemies: enemies && enemies.length, level: r && r.level, hp: p && p.hp, xp: xp, xpNext: xpNext, gems: gems && gems.length, kills: r && r.kills, magnet: p && p.magnet, xpMul: p && p.xpMul, px: p && p.x, g0: gems && gems[0] }; },
   };
+
+  // si le navigateur a gardé un vieux style.css, on le recharge
+  (function () {
+    try {
+      if (getComputedStyle(overlay).position !== "absolute") {
+        var l = document.createElement("link");
+        l.rel = "stylesheet"; l.href = "css/style.css?fresh=" + Date.now();
+        document.head.appendChild(l);
+      }
+    } catch (e) {}
+  })();
+  window.addEventListener("error", function (e) { if (state !== "error" && state !== "menu") showError(e.error || e.message); });
+  window.addEventListener("unhandledrejection", function () {});
 
   checkAchievements(null);
   go("menu");

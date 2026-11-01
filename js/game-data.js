@@ -139,6 +139,13 @@ window.ES_DATA = (function () {
     feather: { pal: { w: "#fdf3de", f: "#8fb8d8", k: "#4a6f8a" }, frames: [["....wk", "...wfk", "..wfk.", ".wfk..", "wk....", "k....."], ["k.....", "wk....", ".wfk..", "..wfk.", "...wfk", "....wk"]] },
     firefly: { pal: { w: "#e6f6fa", k: "#2b1709", y: "#f6ef7a", Y: "#fffbd0" }, frames: [["w.w..", ".wkk.", "..kyy", "...yY"]] },
     tail: { pal: { t: "#f2b05e", d: "#b85e2a" }, frames: [["..tt..", ".tttt.", "ttdttt", "ttd.tt", ".td.t.", "..d..."]] },
+    skull: { pal: { w: "#fdf3de", k: "#2b1709" }, frames: [[".www.", "wkwkw", "wwwww", ".w.w."]] },
+    paw: { pal: { p: "#f29a85", P: "#c8553d" }, frames: [[".p.p.", "p...p", ".PPP.", "PPPPP", ".PPP."]] },
+    claw: { pal: { w: "#fdf3de", g: "#b9ae96" }, frames: [["w..w..w", ".w..w..w", ".w..w..w", "..g..g..g"]] },
+    bolt: { pal: { y: "#f6d36b", Y: "#fff6c0" }, frames: [["...yy", "..yY.", ".yyyy", "..Yy.", ".yy..", "yy..."]] },
+    log: { pal: { b: "#6b4430", c: "#d39a52", C: "#a06a3e" }, frames: [[".bbb.", "bcccb", "bcCcb", "bcccb", ".bbb."]] },
+    drop: { pal: { w: "#7fd1c7", W: "#e6f6fa" }, frames: [["..w..", ".www.", "wwwww", "wWwww", ".www."]] },
+    book: { pal: { r: "#c8553d", w: "#fdf3de", k: "#6b4430" }, frames: [["rrrr.", "rwwwr", "rwkwr", "rwwwr", "rrrr."]] },
   };
 
   /* ---------- personnages ---------- */
@@ -193,14 +200,14 @@ window.ES_DATA = (function () {
 
   /* ---------- bonus de partie (niveaux 1 à 5) ---------- */
   var PASSIVES = {
-    pattes: { name: "Pattes agiles", icon: "🐾", desc: "+10 % de vitesse de course." },
-    appetit: { name: "Gros appétit", icon: "🍄", desc: "+20 PV max (et soigne 20 PV)." },
-    joues: { name: "Grosses joues", icon: "🌰", desc: "+40 % de distance de ramassage." },
-    griffes: { name: "Griffes aiguisées", icon: "🗡️", desc: "+10 % de dégâts." },
-    vivacite: { name: "Vivacité", icon: "⚡", desc: "-8 % de temps de recharge." },
-    ecorce: { name: "Armure d'écorce", icon: "🪵", desc: "-1 dégât reçu par coup." },
-    seve: { name: "Sève", icon: "💧", desc: "Régénère 0,4 PV par seconde." },
-    savoir: { name: "Vieux grimoire", icon: "📖", desc: "+12 % d'expérience." },
+    pattes: { name: "Pattes agiles", icon: "🐾", sprite: "paw", desc: "+10 % de vitesse de course." },
+    appetit: { name: "Gros appétit", icon: "🍄", sprite: "mushroom", desc: "+20 PV max (et soigne 20 PV)." },
+    joues: { name: "Grosses joues", icon: "🌰", sprite: "nut", desc: "+40 % de distance de ramassage." },
+    griffes: { name: "Griffes aiguisées", icon: "🗡️", sprite: "claw", desc: "+10 % de dégâts." },
+    vivacite: { name: "Vivacité", icon: "⚡", sprite: "bolt", desc: "-8 % de temps de recharge." },
+    ecorce: { name: "Armure d'écorce", icon: "🪵", sprite: "log", desc: "-1 dégât reçu par coup." },
+    seve: { name: "Sève", icon: "💧", sprite: "drop", desc: "Régénère 0,4 PV par seconde." },
+    savoir: { name: "Vieux grimoire", icon: "📖", sprite: "book", desc: "+12 % d'expérience." },
   };
 
   /* ---------- boutique (améliorations permanentes) ---------- */
