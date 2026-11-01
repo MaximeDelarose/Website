@@ -260,7 +260,7 @@
         '<button class="icon-btn player-close" type="button" data-player-close aria-label="Fermer le jeu">' +
         '<svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="2" y="2" width="2" height="2"/><rect x="4" y="4" width="2" height="2"/><rect x="6" y="6" width="2" height="2"/><rect x="8" y="8" width="2" height="2"/><rect x="8" y="2" width="2" height="2"/><rect x="6" y="4" width="2" height="2"/><rect x="4" y="6" width="2" height="2"/><rect x="2" y="8" width="2" height="2"/></g></svg></button></div>' +
         '<div class="screen" data-player-screen></div>' +
-        '<div class="cabinet-bottom"><a class="btn btn-ghost btn-small" data-player-link target="_blank" rel="noopener">Page itch.io ↗</a>' +
+        '<div class="cabinet-bottom"><a class="cabinet-help" data-player-link target="_blank" rel="noopener">Ça ne s\'affiche pas ? Jouer sur itch.io ↗</a>' +
         '<button class="btn btn-ghost btn-small" type="button" data-player-fs>⛶ Plein écran</button></div>' +
         "</div>";
       document.body.appendChild(dialog);
@@ -340,6 +340,8 @@
     play.addEventListener("click", function () {
       if (!game.embed) { if (game.url) window.open(game.url, "_blank", "noopener"); return; }
       var iframe = makeFrame(game);
+      var help = $("[data-featured-help]", feat);
+      if (help && game.url) { help.href = game.url; help.hidden = false; }
       screen.innerHTML = "";
       screen.appendChild(iframe);
       screen.classList.add("playing");
