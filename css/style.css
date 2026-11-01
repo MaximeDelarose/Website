@@ -599,3 +599,123 @@ canvas { image-rendering: pixelated; }
 .lb-count { position: fixed; bottom: 12px; left: 0; right: 0; text-align: center; color: #fdf3de; font-weight: 700; margin: 0; }
 @media (max-width: 640px) { .lightbox img { max-width: calc(100vw - 24px); } .lb-prev, .lb-next { top: auto; bottom: 12px; transform: none; } }
 @media (max-width: 560px) { .gallery { grid-template-columns: 1fr 1fr; gap: 10px; } .shot { margin: 3px 3px 8px; } }
+
+/* ---------- mini jeu : Écureuil Survivor ---------- */
+.game-section { padding-top: clamp(24px, 4vw, 48px); }
+.game-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; }
+.game-head h1 { margin: 0; }
+.game-head .btn { white-space: nowrap; }
+@media (hover: none) and (pointer: coarse) { .ctrl-desk { display: none; } }
+.game-stage {
+  position: relative; overflow: hidden;
+  height: min(72vh, 640px); min-height: 380px;
+  background: #1f3a2b;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--line), 0 var(--px) 0 0 var(--line),
+    calc(var(--px) * -1) 0 0 0 var(--line), var(--px) 0 0 0 var(--line),
+    0 calc(var(--px) * 3) 0 0 var(--depth);
+  margin: var(--px) var(--px) calc(var(--px) * 4);
+}
+.game-stage:fullscreen, .game-stage.is-max { height: 100%; min-height: 0; margin: 0; box-shadow: none; }
+.game-stage.is-max { position: fixed; inset: 0; z-index: 200; height: 100dvh; }
+.game-canvas { position: absolute; left: 0; top: 0; display: block; outline: none; cursor: crosshair; }
+
+
+.game-hud { position: absolute; inset: 0 0 auto; padding: 8px 10px; pointer-events: none; color: #fdf3de; font-weight: 800; text-shadow: 0 2px 0 #2b1709; }
+.game-hud[hidden] { display: none; }
+.game-stage:fullscreen .game-hud .hud-exit, .game-stage.is-max .game-hud .hud-exit { display: grid; }
+.hud-xp { position: relative; height: 16px; background: #2b1709; border: 2px solid #2b1709; margin-bottom: 6px; }
+.hud-xp i { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(#f6d36b, #e0a82a); transition: width .15s; }
+.hud-xp span { position: absolute; inset: 0; display: grid; place-items: center; font-size: .8rem; line-height: 1; }
+.hud-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hud-pill { background: rgba(43, 23, 9, .7); padding: 2px 8px; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.hud-build { display: flex; flex-wrap: wrap; gap: 4px; margin-right: auto; }
+.hud-build span { display: inline-flex; align-items: center; gap: 2px; background: rgba(43, 23, 9, .55); padding: 1px 5px 1px 3px; font-size: .75rem; }
+.hud-build img { width: 18px; height: 18px; object-fit: contain; }
+.hud-build i { font-style: normal; font-size: .85rem; }
+.hud-btn {
+  pointer-events: auto; width: 34px; height: 34px; display: grid; place-items: center; font-size: 1rem;
+  background: rgba(43, 23, 9, .7); color: #fdf3de; border: 2px solid #2b1709; cursor: pointer;
+}
+.hud-btn:hover { background: rgba(43, 23, 9, .9); }
+.game-hud .hud-exit { display: none; }
+.hud-boss { margin: 8px auto 0; max-width: 360px; text-align: center; font-size: .85rem; }
+.hud-boss[hidden] { display: none; }
+.hud-boss div { height: 10px; background: #2b1709; border: 2px solid #2b1709; }
+.hud-boss i { display: block; height: 100%; width: 100%; background: #c8553d; transition: width .1s; }
+
+.game-banner {
+  position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%); margin: 0;
+  font-family: "Londrina", "Nunito", sans-serif; font-size: clamp(1.6rem, 4vw, 2.6rem); color: #f6d36b;
+  text-shadow: 0 3px 0 #2b1709, 3px 0 0 #2b1709, -3px 0 0 #2b1709, 0 -3px 0 #2b1709;
+  pointer-events: none; white-space: nowrap;
+}
+.game-banner[hidden] { display: none; }
+.game-banner.show { animation: banner-pop 2.6s steps(12) forwards; }
+@keyframes banner-pop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.8); } 10%, 80% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; } }
+
+.game-overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(20, 30, 20, .45); overflow-y: auto; }
+.game-overlay[hidden] { display: none; }
+.game-card { width: min(460px, 100%); padding: 22px 22px 18px; text-align: center; }
+.game-card-wide { width: min(720px, 100%); }
+.game-card h2 { margin-bottom: .4em; }
+.game-card p { color: var(--ink-soft); }
+.game-small { font-size: .9rem; color: var(--ink-soft); margin: 8px 0 0; }
+.game-controls { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 6px; font-size: .95rem; }
+kbd {
+  display: inline-block; min-width: 1.6em; padding: 0 5px; margin: 0 1px;
+  font: 800 .85rem/1.6 "Nunito", sans-serif; text-align: center;
+  background: var(--panel-2); border: 2px solid var(--line); box-shadow: 0 2px 0 var(--line);
+}
+
+.choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+.choice {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  padding: 14px 10px 12px; background: var(--panel-2); color: var(--ink); cursor: pointer;
+  border: var(--px) solid var(--line); box-shadow: 0 var(--px) 0 var(--depth); font: inherit;
+  transition: transform .08s steps(2);
+}
+.choice:hover, .choice:focus-visible { transform: translateY(-3px); background: var(--panel); border-color: var(--orange-dk); }
+.choice-key { position: absolute; top: 4px; left: 8px; font-weight: 900; font-size: .8rem; color: var(--ink-soft); }
+.choice-icon { width: 56px; height: 56px; display: grid; place-items: center; background: #1f3a2b; border: 3px solid var(--line); }
+.choice-icon img { width: 44px; height: 44px; object-fit: contain; }
+.choice-icon .emoji { font-size: 1.8rem; }
+.choice-text { display: grid; gap: 2px; font-size: .92rem; line-height: 1.3; }
+.choice-text strong { font-size: 1.02rem; }
+.choice-text em { font-style: normal; font-weight: 800; color: var(--orange-dk); font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+:root[data-theme="dark"] .choice-text em { color: var(--orange-2); }
+.choice-text span { color: var(--ink-soft); }
+
+.over-stats { list-style: none; padding: 0; margin: 8px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.over-stats li { background: var(--panel-2); padding: 6px; display: grid; }
+.over-stats span { font-size: .8rem; color: var(--ink-soft); }
+.over-stats strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.over-stats .total { grid-column: 1 / -1; background: var(--orange); color: var(--btn-ink); }
+.over-stats .total span { color: inherit; }
+.submit-score { margin: 12px 0; text-align: left; }
+.submit-score[hidden] { display: none; }
+.submit-score label { font-weight: 700; font-size: .9rem; }
+.submit-row { display: flex; gap: 8px; align-items: center; }
+.submit-row input { flex: 1; min-width: 0; font: inherit; padding: 8px 10px; background: var(--panel); color: var(--ink); border: 3px solid var(--line); }
+
+.game-info { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; margin-top: 24px; align-items: start; }
+.game-help, .game-lb { padding: 20px 22px; }
+.game-help ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.game-lb .leaderboard { margin: 0; padding: 0; background: none; box-shadow: none; }
+
+@media (max-width: 760px) {
+  .game-stage { height: calc(100svh - 110px); min-height: 360px; margin-inline: 0; }
+  .game-head { flex-wrap: nowrap; align-items: center; margin-bottom: 10px; }
+  .game-head h1 { font-size: 1.6rem; }
+  .game-head .btn { font-size: .85rem; padding: 6px 10px; }
+  .game-head .kicker { display: none; }
+  .game-info { grid-template-columns: 1fr; }
+  .choices { grid-template-columns: 1fr; gap: 8px; }
+  .choice { flex-direction: row; text-align: left; padding: 10px 12px; }
+  .choice-key { display: none; }
+  .choice-icon { width: 46px; height: 46px; flex: none; }
+  .choice-icon img { width: 36px; height: 36px; }
+  .game-card { padding: 16px 14px 12px; }
+  .game-controls { font-size: .88rem; }
+}

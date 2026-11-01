@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Écureuil Survivor · AkarisuMD</title>
+  <meta name="description" content="Écureuil Survivor : survis aux vagues de bestioles de la forêt. Un mini jeu pixel art jouable sur ordinateur et mobile.">
+  <meta property="og:title" content="Écureuil Survivor · AkarisuMD">
+  <meta property="og:description" content="Écureuil Survivor : survis aux vagues de bestioles de la forêt. Un mini jeu pixel art jouable sur ordinateur et mobile.">
+  <meta name="theme-color" content="#3f6b3a">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="game">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
+          <li><a href="jeu.html" data-page="game">Jouer</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="section game-section">
+    <div class="wrap">
+      <div class="game-head">
+        <div>
+          <span class="kicker">Mini jeu maison</span>
+          <h1>Écureuil Survivor</h1>
+        </div>
+        <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
+      </div>
+
+      <div class="game-stage" data-game>
+        <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Écureuil Survivor"></canvas>
+
+        <div class="game-hud" data-hud hidden>
+          <div class="hud-xp"><i data-xp></i><span data-lvl>Niv. 1</span></div>
+          <div class="hud-row">
+            <span class="hud-pill">⏱ <b data-time>00:00</b></span>
+            <span class="hud-pill">💀 <b data-kills>0</b></span>
+            <span class="hud-build" data-build></span>
+            <button class="hud-btn" type="button" data-mute aria-label="Couper le son">🔊</button>
+            <button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button>
+            <button class="hud-btn hud-exit" type="button" data-exit-max aria-label="Quitter le plein écran">✕</button>
+          </div>
+          <div class="hud-boss" data-boss hidden><span>Grand Sanglier</span><div><i></i></div></div>
+        </div>
+        <p class="game-banner" data-banner hidden></p>
+
+        <div class="game-overlay" data-screen="start">
+          <div class="panel game-card">
+            <span class="kicker">La forêt contre-attaque</span>
+            <h2>Écureuil Survivor</h2>
+            <p>Les bestioles de la forêt en veulent à tes noisettes. Tiens le plus longtemps possible&nbsp;: tes attaques partent toutes seules, toi tu cours, tu ramasses les noisettes et tu choisis tes pouvoirs.</p>
+            <ul class="game-controls">
+              <li class="ctrl-desk"><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / flèches</li>
+              <li class="ctrl-desk">🖱️ clic maintenu : l'écureuil suit la souris</li>
+              <li class="ctrl-touch">📱 pose le doigt n'importe où : joystick</li>
+            </ul>
+            <button class="btn" type="button" data-start>▶ Jouer</button>
+            <p class="game-small" data-start-best></p>
+          </div>
+        </div>
+
+        <div class="game-overlay" data-screen="levelup" hidden>
+          <div class="panel game-card game-card-wide">
+            <span class="kicker">Niveau supérieur !</span>
+            <h2>Choisis un pouvoir</h2>
+            <div class="choices" data-choices></div>
+          </div>
+        </div>
+
+        <div class="game-overlay" data-screen="pause" hidden>
+          <div class="panel game-card">
+            <h2>Pause</h2>
+            <p>L'écureuil reprend son souffle.</p>
+            <div class="btn-row" style="justify-content:center">
+              <button class="btn" type="button" data-resume>▶ Reprendre</button>
+              <button class="btn btn-ghost" type="button" data-restart>↻ Recommencer</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="game-overlay" data-screen="over" hidden>
+          <div class="panel game-card">
+            <span class="kicker">Les bestioles ont gagné…</span>
+            <h2>Fin de partie</h2>
+            <ul class="over-stats" data-over-stats></ul>
+            <p class="game-small" data-over-best></p>
+            <form class="submit-score" data-submit hidden>
+              <label for="es-name">Ton pseudo pour le classement</label>
+              <div class="submit-row">
+                <input id="es-name" type="text" maxlength="20" autocomplete="nickname" placeholder="Pseudo">
+                <button class="btn btn-alt btn-small" type="submit">Envoyer</button>
+              </div>
+              <p class="game-small" data-submit-msg aria-live="polite"></p>
+            </form>
+            <button class="btn" type="button" data-restart>↻ Rejouer</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="game-info">
+        <div class="panel game-help">
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li><strong>Survis</strong> : les ennemis arrivent de partout, de plus en plus nombreux et costauds.</li>
+            <li><strong>Ramasse les noisettes</strong> qu'ils lâchent pour gagner de l'expérience.</li>
+            <li><strong>À chaque niveau</strong>, choisis une nouvelle arme ou améliore-en une (4 armes et 4 bonus max, niveau 5 max).</li>
+            <li>Toutes les minutes, une <strong>nuée</strong> t'encercle. Toutes les 3 minutes, le <strong>Grand Sanglier</strong> charge : bats-le pour son coffre.</li>
+            <li>Les <strong>baies</strong> rouges soignent. <kbd>Échap</kbd> ou <kbd>P</kbd> pour la pause.</li>
+            <li><strong>Score</strong> = 10 points par seconde de survie + 1 par ennemi.</li>
+          </ul>
+        </div>
+        <div class="panel game-lb">
+          <div data-leaderboard="ecureuil-survivor" data-limit="10" data-title="Meilleurs écureuils"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/leaderboard.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
