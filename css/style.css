@@ -837,3 +837,53 @@ pre.err { white-space: pre-wrap; word-break: break-word; text-align: left; font-
 .game-toasts { top: calc(var(--px-game, 3px) * 50); }
 .game-version { margin: 6px 0 0; font-size: .75rem; color: var(--ink-soft); opacity: .7; }
 .build-list img { width: 18px; height: 18px; object-fit: contain; }
+
+/* --- Écureuil Survivor v4 : écran « Nouvelle partie », fusions --- */
+.game-stage .game-hud { top: auto; bottom: 8px; right: 8px; }
+.game-card-play, .game-card-codex { width: min(760px, 100%); padding-bottom: 0; }
+.pick-title { font-size: 1rem; text-align: left; margin: 12px 0 6px; }
+.tile-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tile {
+  position: relative; width: 64px; height: 64px; padding: 0; display: grid; place-items: center; cursor: pointer;
+  background: #1f3a2b; border: 3px solid var(--line); box-shadow: 0 3px 0 var(--depth);
+}
+.tile img { width: 44px; height: auto; image-rendering: pixelated; }
+.tile.is-locked img { filter: brightness(0) opacity(.5); }
+.tile i { position: absolute; right: 2px; top: 0; font-style: normal; font-size: .9rem; }
+.tile.is-inspected { outline: 3px dashed var(--focus); outline-offset: 2px; }
+.tile.is-selected { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange), 0 3px 0 var(--depth); }
+.tile-map { width: 92px; height: auto; padding: 4px 4px 2px; gap: 2px; background: var(--panel-2); }
+.tile-map small { font-size: .72rem; font-weight: 800; line-height: 1.1; color: var(--ink); text-align: center; }
+.map-swatch { display: grid; place-items: center; width: 100%; height: 40px; border: 2px solid var(--line); }
+.map-swatch img { width: 28px; height: auto; image-rendering: pixelated; }
+.map-swatch.big { width: 72px; height: 56px; flex: none; }
+.tile-map.is-locked .map-swatch { filter: grayscale(1) brightness(.6); }
+.pick-info { display: flex; gap: 12px; align-items: flex-start; text-align: left; margin-top: 10px; padding: 10px 12px; background: var(--panel-2); border: 3px solid var(--line); }
+.pick-big { width: 72px; height: auto; flex: none; image-rendering: pixelated; background: #1f3a2b; border: 3px solid var(--line); padding: 6px; }
+.pick-info strong { font-size: 1.1rem; }
+.pick-info small { color: var(--ink-soft); }
+.pick-info p { margin: 4px 0 0; font-size: .88rem; line-height: 1.35; color: var(--ink-soft) !important; }
+.pick-weapon { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--ink) !important; }
+.pick-weapon img { width: 18px; height: 18px; object-fit: contain; image-rendering: pixelated; }
+.pick-tags { font-weight: 700; }
+.pick-lock { color: var(--orange-dk) !important; font-weight: 700; }
+:root[data-theme="dark"] .pick-lock { color: var(--orange-2) !important; }
+.pick-info .btn { margin-top: 6px; }
+.play-bar { position: sticky; bottom: 0; margin: 12px -22px 0; padding: 10px 12px 12px; background: var(--panel); border-top: 3px solid var(--line); display: flex; justify-content: center; z-index: 2; }
+.play-bar .btn { width: min(420px, 100%); justify-content: center; font-size: 1.1rem; }
+.choice.is-fusion { border-color: #c99a00; background: linear-gradient(var(--panel-2), #f6d36b33); }
+.choice.is-fusion em { color: #a8741a !important; }
+.choice-icon img { width: 44px; height: 44px; object-fit: contain; image-rendering: pixelated; }
+.build-list li.is-fusion { outline: 2px solid #c99a00; }
+.pause-grid h3 + .build-list { margin-bottom: 10px; }
+.fusion-recipe { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 3px; font-weight: 700; color: var(--ink) !important; }
+.fusion-recipe img, .fusion-row .shop-ic img { width: 18px; height: 18px; object-fit: contain; image-rendering: pixelated; }
+.fusion-row .shop-ic img { width: 28px; height: 28px; }
+@media (max-width: 760px) {
+  .play-bar { margin: 12px -14px 0; }
+  .tile { width: 54px; height: 54px; }
+  .tile img { width: 38px; }
+  .tile-map { width: calc(50% - 4px); }
+  .pick-big { width: 56px; }
+}
+.game-card-play .play-bar { bottom: -16px; padding-bottom: 26px; }
