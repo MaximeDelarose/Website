@@ -29,17 +29,9 @@ window.SITE = {
     discord: "",
   },
 
-  // Le jeu jouable sur la page d'accueil.
-  // embed : ouvre la page du jeu sur itch.io, clic droit sur la zone de jeu
-  // → « Inspecter », et récupère le numéro dans
-  // https://html-classic.itch.zone/html/XXXXXXX/index.html
-  // puis mets : "https://itch.io/embed-upload/XXXXXXX?color=1f3a2b"
-  featured: {
-    id: "chaaat",
-    embed: "",            // TODO : colle l'URL d'embed ici
-    width: 960,
-    height: 600,
-  },
+  // Le jeu mis en avant dans la borne de la page d'accueil (son id).
+  // Pour qu'il soit jouable, renseigne son champ « embed » plus bas.
+  featured: { id: "chaaat" },
 };
 
 /* -------------------------------------------------------------------------
@@ -52,21 +44,43 @@ window.SITE = {
    cover   : chemin d'une image (ex "assets/covers/chaaat.png").
              Si vide, une jaquette pixel est générée automatiquement.
    palette : 3 couleurs pour la jaquette générée (optionnel)
-   icon    : cat, cube, dog, fish, eye, wand, drop, box, plug, star
+   role    : ton rôle sur le projet (optionnel)
+   embed   : URL d'intégration itch.io → le jeu devient jouable sur le site
+             (bouton « Jouer ici »). Format :
+             "https://itch.io/embed-upload/XXXXXXX?color=1f3a2b"
+   size    : [largeur, hauteur] du jeu web (optionnel, défaut 960×600)
+   icon    : cat, cube, dog, fish, eye, wand, drop, box, plug, gun, paw,
+             bolt, mask, star
    ------------------------------------------------------------------------- */
 window.PROJECTS = [
   {
-    id: "chaaat",
+    id: "gun-toys",
     type: "game",
-    title: "Chaaat",
-    status: "Prototype",
-    tags: ["Puzzle", "Web"],
-    with: "AugProduction",
-    short: "Un puzzle où tu associes des chats identiques pour faire grimper ton score. Prototype réalisé en 12 heures.",
-    url: "https://maximedelarose.itch.io/chaaat",
+    title: "Gun&Toys",
+    status: "En développement",
+    tags: ["FPS", "Roguelike", "Windows"],
+    with: "LeThom, Hugo Carrasco, Lucas / Reltony, CodAbs, Flamby",
+    role: "Programmeur, game designer",
+    short: "Un FPS roguelike nerveux dans un univers de jouets.",
+    url: "https://le-thom.itch.io/gun-toys",
     cover: "",
-    palette: ["#f2b05e", "#e8873a", "#5a2e1a"],
-    icon: "cat",
+    palette: ["#ffd36b", "#e5533d", "#2b2a5c"],
+    icon: "gun",
+  },
+  {
+    id: "lets-hunt",
+    type: "game",
+    title: "Let's Hunt",
+    year: 2023,
+    status: "Sorti",
+    tags: ["Multijoueur", "Stream", "Windows"],
+    with: "Hucarix, sp4rxs, NelleGameArt, Lucas / Reltony, CodAbs, TheauRyste",
+    role: "Développeur, level builder",
+    short: "Le streamer incarne une créature mystique, quatre joueurs sont les soldats qui la traquent, et le chat les aide avec des infos et de l'équipement.",
+    url: "https://hucarix.itch.io/lets-hunt",
+    cover: "",
+    palette: ["#b9d38a", "#557a3a", "#1d2b16"],
+    icon: "paw",
   },
   {
     id: "dogship",
@@ -82,15 +96,30 @@ window.PROJECTS = [
     icon: "dog",
   },
   {
+    id: "chaaat",
+    type: "game",
+    title: "Chaaat",
+    status: "Prototype",
+    tags: ["Puzzle", "Web"],
+    with: "AugProduction",
+    short: "Un puzzle où tu associes des chats identiques pour faire grimper ton score. Prototype réalisé en 12 heures.",
+    url: "https://maximedelarose.itch.io/chaaat",
+    embed: "",          // TODO : URL d'intégration itch.io
+    cover: "",
+    palette: ["#f2b05e", "#e8873a", "#5a2e1a"],
+    icon: "cat",
+  },
+  {
     id: "cubelite",
     type: "game",
     title: "Cubelite",
     year: 2022,
     status: "Prototype",
-    tags: ["Plateforme", "Shooter", "Web", "Windows"],
+    tags: ["2D", "Plateforme", "Shooter", "Web", "Windows"],
     with: "Lucas / Reltony",
-    short: "Et si Vampire Survivors devenait un jeu de plateforme ?",
+    short: "Et si Vampire Survivors devenait un jeu de plateforme en 2D ?",
     url: "https://maximedelarose.itch.io/cubelite",
+    embed: "",          // TODO : URL d'intégration itch.io
     cover: "",
     palette: ["#9cc56b", "#3f6b3a", "#1f3a2b"],
     icon: "cube",
@@ -107,6 +136,33 @@ window.PROJECTS = [
     cover: "",
     palette: ["#c9a6e0", "#6b4a8a", "#2a1d3d"],
     icon: "wand",
+  },
+  {
+    id: "deep-abyss",
+    type: "game",
+    title: "Deep Abyss",
+    status: "Prototype",
+    tags: ["Horreur", "Windows"],
+    with: "CodAbs",
+    role: "Développeur, level builder",
+    short: "Un prototype d'horreur : relance le générateur sans te faire attraper par l'entité.",
+    url: "https://codabs.itch.io/deep-abyss",
+    cover: "",
+    palette: ["#5f8a8a", "#24484f", "#0b1a1f"],
+    icon: "bolt",
+  },
+  {
+    id: "opera-house",
+    type: "game",
+    title: "Five Nights At Opera House",
+    status: "Projet d'école",
+    tags: ["Horreur", "3D", "Unreal"],
+    with: "CodAbs",
+    short: "Une simulation d'horreur en 3D réalisée sous Unreal en projet d'école.",
+    url: "https://codabs.itch.io/opera-house",
+    cover: "",
+    palette: ["#e0a3a3", "#8a2f3b", "#2a0f17"],
+    icon: "mask",
   },
   {
     id: "watcher",
@@ -129,6 +185,7 @@ window.PROJECTS = [
     tags: ["Puzzle", "Casual", "Web", "Android"],
     short: "Un petit jeu de couleurs casual, réalisé en 3 heures.",
     url: "https://maximedelarose.itch.io/color-guesser",
+    embed: "",          // TODO : URL d'intégration itch.io
     cover: "",
     palette: ["#f2a3b3", "#7fc6d9", "#2f3e5c"],
     icon: "drop",

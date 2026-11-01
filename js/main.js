@@ -88,6 +88,10 @@
     eye: ["...xxxxx...", ".xx.....xx.", "x...eee...x", "x..eewe...x", "x...eee...x", ".xx.....xx.", "...xxxxx..."],
     wand: ["....x....", "...xwx...", "...xxx...", "..xxxxx..", "..xxwxx..", ".xxxxxxx.", "xxxxxxxxx", "...e.e..."],
     drop: ["...x...", "..xxx..", ".xxwxx.", ".xwxxx.", "xxxxxxx", "xxxxxxx", ".xxxxx.", "..xxx.."],
+    gun: ["...........", "xxxxxxxxxw.", "xxxxxxxxxxx", "xxxxeexx...", "xxx..ex....", "xxx........", "xx........."],
+    paw: ["..x...x..", ".xxx.xxx.", "..x...x..", "x.......x", "xx.xxx.xx", "..xxxxx..", ".xxxxxxx.", ".xxx.xxx."],
+    bolt: ["...xxx.", "..xxx..", ".xxx...", "xxxxxxx", "...xxx.", "..xxx..", ".xxx...", ".xx....", ".x....."],
+    mask: [".xxxxxxx.", "xxxxxxxxx", "xeexxxeex", "xxxxxxxxx", "xxxxxxxxx", "xxeeeeexx", ".xxeeexx.", "..xxxxx.."],
     box: ["..xxxxxx..", ".xwwwwwwx.", "xwwwwwwwwx", "xxxxeexxxx", "xxxxeexxxx", "xxxxxxxxxx", "xxxxxxxxxx", "eeeeeeeeee"],
   };
   function hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
@@ -129,6 +133,7 @@
   }
 
   /* ---------- cartes projet ---------- */
+  function byId(id) { return PROJECTS.filter(function (x) { return x.id === id; })[0]; }
   function card(p) {
     var typeLabel = p.type === "plugin" ? "Plugin Unity" : "Jeu";
     var cta = p.type === "plugin" ? "Voir le plugin" : "Voir le jeu";
@@ -137,23 +142,32 @@
       : '<canvas data-cover="' + esc(p.id) + '" aria-hidden="true"></canvas>';
     var meta = [p.status, p.year].filter(Boolean).join(" · ");
     var tags = (p.tags || []).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("");
+    var actions;
+    if (p.embed) {
+      actions = '<div class="card-actions"><button class="btn btn-small" type="button" data-play-id="' + esc(p.id) + '">▶ Jouer ici</button>' +
+        (p.url ? '<a class="text-link" href="' + esc(p.url) + '" target="_blank" rel="noopener">itch.io ↗</a>' : "") + "</div>";
+    } else if (p.url) {
+      actions = '<a class="btn btn-small" href="' + esc(p.url) + '" target="_blank" rel="noopener">' + cta + " ↗</a>";
+    } else {
+      actions = '<span class="soon">Bientôt disponible</span>';
+    }
     return '<article class="card" data-type="' + esc(p.type) + '">' +
       '<div class="card-media">' + media +
-      '<span class="badge badge-' + esc(p.type) + '">' + typeLabel + "</span></div>" +
+      '<span class="badge badge-' + esc(p.type) + '">' + typeLabel + "</span>" +
+      (p.embed ? '<span class="badge badge-play">Jouable ici</span>' : "") + "</div>" +
       '<div class="card-body">' +
       '<h3 class="card-title">' + esc(p.title) + "</h3>" +
       (meta ? '<p class="card-meta">' + esc(meta) + "</p>" : "") +
       (p.with ? '<p class="card-meta">avec ' + esc(p.with) + "</p>" : "") +
+      (p.role ? '<p class="card-meta card-role">Mon rôle : ' + esc(p.role) + "</p>" : "") +
       '<p class="card-text">' + esc(p.short || "") + "</p>" +
       '<ul class="tags">' + tags + "</ul>" +
-      (p.url
-        ? '<a class="btn btn-small" href="' + esc(p.url) + '" target="_blank" rel="noopener">' + cta + " ↗</a>"
-        : '<span class="soon">Bientôt disponible</span>') +
+      actions +
       "</div></article>";
   }
   function paintCovers(scope) {
     $$("canvas[data-cover]", scope).forEach(function (c) {
-      var p = PROJECTS.filter(function (x) { return x.id === c.dataset.cover; })[0];
+      var p = byId(c.dataset.cover);
       if (p) drawCover(c, p);
     });
   }
@@ -181,12 +195,19 @@
     var hash = (location.hash || "").replace("#", "");
     if (hash === "jeux") state.type = "game";
     if (hash === "plugins") state.type = "plugin";
+    if (hash === "jouer") state.type = "play";
 
+    function matchType(p, t) {
+      if (t === "all") return true;
+      if (t === "play") return !!p.embed;
+      return p.type === t;
+    }
     function renderFilters() {
       var types = [["all", "Tout"], ["game", "Jeux"], ["plugin", "Plugins Unity"]];
+      if (PROJECTS.some(function (p) { return p.embed; })) types.splice(1, 0, ["play", "▶ Jouable ici"]);
       var html = '<div class="filter-row" role="group" aria-label="Type">';
       types.forEach(function (t) {
-        var count = t[0] === "all" ? PROJECTS.length : PROJECTS.filter(function (p) { return p.type === t[0]; }).length;
+        var count = PROJECTS.filter(function (p) { return matchType(p, t[0]); }).length;
         html += '<button class="chip" data-type="' + t[0] + '" aria-pressed="' + (state.type === t[0]) + '">' + t[1] + ' <span class="chip-n">' + count + "</span></button>";
       });
       html += '</div><div class="filter-row tags-row" role="group" aria-label="Étiquettes">';
@@ -199,7 +220,7 @@
     function render() {
       var q = state.q.toLowerCase();
       var list = PROJECTS.filter(function (p) {
-        if (state.type !== "all" && p.type !== state.type) return false;
+        if (!matchType(p, state.type)) return false;
         if (state.tag && (p.tags || []).indexOf(state.tag) < 0) return false;
         if (q && (p.title + " " + p.short + " " + (p.tags || []).join(" ")).toLowerCase().indexOf(q) < 0) return false;
         return true;
@@ -226,43 +247,95 @@
     renderFilters(); render();
   }
 
-  /* ---------- jeu à la une ---------- */
+  /* ---------- lecteur de jeu (fenêtre) ---------- */
+  var dialog = null;
+  function openPlayer(p) {
+    if (!p || !p.embed) return;
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.className = "player";
+      dialog.innerHTML =
+        '<div class="cabinet">' +
+        '<div class="cabinet-top"><p class="pixel" data-player-title></p>' +
+        '<button class="icon-btn player-close" type="button" data-player-close aria-label="Fermer le jeu">' +
+        '<svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="2" y="2" width="2" height="2"/><rect x="4" y="4" width="2" height="2"/><rect x="6" y="6" width="2" height="2"/><rect x="8" y="8" width="2" height="2"/><rect x="8" y="2" width="2" height="2"/><rect x="6" y="4" width="2" height="2"/><rect x="4" y="6" width="2" height="2"/><rect x="2" y="8" width="2" height="2"/></g></svg></button></div>' +
+        '<div class="screen" data-player-screen></div>' +
+        '<div class="cabinet-bottom"><a class="btn btn-ghost btn-small" data-player-link target="_blank" rel="noopener">Page itch.io ↗</a>' +
+        '<button class="btn btn-ghost btn-small" type="button" data-player-fs>⛶ Plein écran</button></div>' +
+        "</div>";
+      document.body.appendChild(dialog);
+      $("[data-player-close]", dialog).addEventListener("click", function () { dialog.close(); });
+      dialog.addEventListener("click", function (e) { if (e.target === dialog) dialog.close(); });
+      dialog.addEventListener("close", function () {
+        $("[data-player-screen]", dialog).innerHTML = "";   // coupe le jeu et le son
+        if (location.hash.indexOf("#jouer=") === 0) history.replaceState(null, "", location.pathname + location.search);
+      });
+      $("[data-player-fs]", dialog).addEventListener("click", function () { fullscreen($("[data-player-screen]", dialog)); });
+    }
+    $("[data-player-title]", dialog).textContent = p.title;
+    var link = $("[data-player-link]", dialog);
+    if (p.url) { link.href = p.url; link.hidden = false; } else link.hidden = true;
+    var scr = $("[data-player-screen]", dialog);
+    var size = p.size || [960, 600];
+    scr.style.aspectRatio = size[0] + " / " + size[1];
+    dialog.style.setProperty("--ratio", size[0] / size[1]);
+    scr.innerHTML = "";
+    scr.appendChild(makeFrame(p));
+    if (dialog.showModal) dialog.showModal(); else dialog.setAttribute("open", "");
+    history.replaceState(null, "", "#jouer=" + p.id);
+  }
+  function makeFrame(p) {
+    var iframe = document.createElement("iframe");
+    iframe.src = p.embed;
+    iframe.title = p.title || "Jeu";
+    iframe.allow = "autoplay; fullscreen; gamepad; xr-spatial-tracking";
+    iframe.setAttribute("allowfullscreen", "");
+    return iframe;
+  }
+  function fullscreen(el) {
+    (el.requestFullscreen || el.webkitRequestFullscreen || function () {}).call(el);
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-play-id]");
+    if (b) openPlayer(byId(b.dataset.playId));
+  });
+  function playFromHash() {
+    var jm = /^#jouer=(.+)$/.exec(location.hash);
+    if (jm && !(dialog && dialog.open)) openPlayer(byId(decodeURIComponent(jm[1])));
+  }
+  window.addEventListener("hashchange", playFromHash);
+  playFromHash();
+
+  /* ---------- jeu à la une (borne de l'accueil) ---------- */
   var feat = $("[data-featured]");
   if (feat) {
-    var f = SITE.featured || {};
-    var game = PROJECTS.filter(function (p) { return p.id === f.id; })[0] || {};
+    var game = byId((SITE.featured || {}).id) || {};
     $$("[data-featured-title]").forEach(function (el) { el.textContent = game.title || "Mon jeu"; });
     $$("[data-featured-text]").forEach(function (el) { el.textContent = game.short || ""; });
     $$("[data-featured-link]").forEach(function (el) { if (game.url) el.href = game.url; else el.hidden = true; });
 
     var screen = $(".screen", feat);
-    if (f.width && f.height) screen.style.aspectRatio = f.width + " / " + f.height;
+    var fsize = game.size || [960, 600];
+    screen.style.aspectRatio = fsize[0] + " / " + fsize[1];
     var cover = $(".screen-cover canvas", feat);
     if (cover && game.id) drawCover(cover, game);
 
     var play = $("[data-play]", feat);
     var note = $("[data-featured-note]", feat);
-    if (!f.embed) {
+    if (!game.embed) {
       play.textContent = game.url ? "Jouer sur itch.io ↗" : "Bientôt jouable ici";
       if (note) note.hidden = false;
     }
     play.addEventListener("click", function () {
-      if (!f.embed) { if (game.url) window.open(game.url, "_blank", "noopener"); return; }
-      var iframe = document.createElement("iframe");
-      iframe.src = f.embed;
-      iframe.title = game.title || "Jeu";
-      iframe.allow = "autoplay; fullscreen; gamepad; xr-spatial-tracking";
-      iframe.setAttribute("allowfullscreen", "");
+      if (!game.embed) { if (game.url) window.open(game.url, "_blank", "noopener"); return; }
+      var iframe = makeFrame(game);
       screen.innerHTML = "";
       screen.appendChild(iframe);
       screen.classList.add("playing");
       iframe.focus();
     });
     var fs = $("[data-fullscreen]", feat);
-    if (fs) fs.addEventListener("click", function () {
-      var el = screen;
-      (el.requestFullscreen || el.webkitRequestFullscreen || function () {}).call(el);
-    });
+    if (fs) fs.addEventListener("click", function () { fullscreen(screen); });
   }
 
   /* ---------- formulaire de contact ---------- */
@@ -270,30 +343,34 @@
   if (form) {
     var status = $("[data-form-status]", form);
     function say(msg, kind) { status.textContent = msg; status.dataset.kind = kind || ""; }
+    // Envoi direct : endpoint perso (Formspree…) sinon FormSubmit vers l'email du site.
+    var endpoint = SITE.formEndpoint || (SITE.email ? "https://formsubmit.co/ajax/" + SITE.email : "");
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      if (form.website && form.website.value) return; // anti-spam (champ caché)
+      if (form._honey && form._honey.value) return; // anti-spam (champ caché)
       if (!form.checkValidity()) { form.reportValidity(); return; }
       var data = new FormData(form);
-      if (SITE.formEndpoint) {
-        var btn = $("button[type=submit]", form);
-        btn.disabled = true; say("Envoi en cours…");
-        fetch(SITE.formEndpoint, { method: "POST", body: data, headers: { Accept: "application/json" } })
-          .then(function (r) {
-            if (!r.ok) throw new Error(r.status);
-            form.reset();
-            say("Message envoyé ! Je te réponds vite 🍄", "ok");
-          })
-          .catch(function () { say("Oups, l'envoi a échoué. Réessaie, ou écris-moi directement par mail.", "err"); })
-          .then(function () { btn.disabled = false; });
-      } else if (SITE.email) {
-        var subject = "[" + data.get("topic") + "] " + data.get("name");
-        var body = data.get("message") + "\n\n— " + data.get("name") + " (" + data.get("email") + ")";
-        location.href = "mailto:" + SITE.email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
-        say("Ton logiciel de mail va s'ouvrir avec le message prêt.", "ok");
-      } else {
-        say("Le formulaire n'est pas encore branché. Passe par un des liens à côté en attendant !", "err");
-      }
+      if (!endpoint) { say("Le formulaire n'est pas encore branché. Passe par un des liens à côté en attendant !", "err"); return; }
+      data.append("_subject", "[mdelarose.fr] " + data.get("topic") + " — " + data.get("name"));
+      data.append("_replyto", data.get("email"));
+      data.append("_template", "table");
+      data.append("_captcha", "false");
+      var btn = $("button[type=submit]", form);
+      btn.disabled = true; say("Envoi en cours…");
+      fetch(endpoint, { method: "POST", body: data, headers: { Accept: "application/json" } })
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) {
+            if (!r.ok || j.success === false || j.success === "false") throw new Error(j.message || r.status);
+          });
+        })
+        .then(function () {
+          form.reset();
+          say("Message envoyé ! Je te réponds vite 🍄", "ok");
+        })
+        .catch(function () {
+          say("Oups, l'envoi a échoué. Réessaie, ou écris-moi directement à " + (SITE.email || "mon adresse mail") + ".", "err");
+        })
+        .then(function () { btn.disabled = false; });
     });
   }
 })();

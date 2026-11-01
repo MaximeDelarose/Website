@@ -16,8 +16,8 @@ Site statique (HTML/CSS/JS, rien à compiler) : il s'héberge tel quel sur GitHu
 Presque tout se règle dans **`js/data.js`** :
 
 - **Projets** : ajoute un objet dans `PROJECTS` (`type: "game"` ou `"plugin"`). Sans `cover`, une jaquette pixel est générée automatiquement.
-- **Jeu jouable sur l'accueil** : `SITE.featured.embed` = `https://itch.io/embed-upload/XXXXXXX?color=1f3a2b` (le numéro se trouve dans l'URL `html-classic.itch.zone/html/XXXXXXX/…` de la page du jeu).
-- **Formulaire de contact** : crée un formulaire gratuit sur [Formspree](https://formspree.io) et colle l'URL dans `SITE.formEndpoint`. Sinon, renseigne `SITE.email` et le bouton ouvrira le logiciel mail du visiteur.
+- **Jeux web jouables sur le site** : ajoute `embed: "https://itch.io/embed-upload/XXXXXXX?color=1f3a2b"` au projet (le numéro se trouve dans l'URL `html-classic.itch.zone/html/XXXXXXX/…` de la page du jeu). Le jeu reçoit un bouton « ▶ Jouer ici » qui l'ouvre dans une fenêtre, et un lien direct `bibliotheque.html#jouer=<id>`. `SITE.featured.id` choisit le jeu de la borne de l'accueil.
+- **Formulaire de contact** : les messages partent directement vers `SITE.email` via [FormSubmit](https://formsubmit.co). Au tout premier message, FormSubmit envoie un mail d'activation à cette adresse : il faut cliquer sur le lien une fois. (Ou mets ton propre endpoint Formspree dans `SITE.formEndpoint`.)
 - **Réseaux** : `SITE.links` (laisse `""` pour masquer un lien).
 
 Le texte de la bio est directement dans `bio.html`.
