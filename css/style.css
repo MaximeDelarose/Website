@@ -827,3 +827,13 @@ pre.err { white-space: pre-wrap; word-break: break-word; text-align: left; font-
   .choices:has(> :nth-child(4)) { grid-template-columns: 1fr; }
   .screen-head h2 { font-size: 1.4rem; }
 }
+
+/* --- Écureuil Survivor v3 : le HUD est dessiné dans le canvas, il ne reste que les boutons --- */
+.game-stage .game-hud {
+  position: absolute; inset: auto; right: 6px; top: calc(var(--px-game, 3px) * 14);
+  display: flex; gap: 6px; padding: 0; text-shadow: none;
+}
+.game-stage .game-hud[hidden] { display: none; }
+.game-toasts { top: calc(var(--px-game, 3px) * 50); }
+.game-version { margin: 6px 0 0; font-size: .75rem; color: var(--ink-soft); opacity: .7; }
+.build-list img { width: 18px; height: 18px; object-fit: contain; }
