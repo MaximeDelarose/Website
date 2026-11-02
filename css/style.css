@@ -1249,3 +1249,37 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
   .chest-rays { animation: none; }
   .game-card-chest.cshake, .chest-box.shake1 img, .chest-box.shake2 img { animation: none; }
 }
+
+/* Coffre en multijoueur : bandeau en haut, le jeu continue */
+.chest-mini { position: absolute; z-index: 6; top: 9%; left: 0; right: 0; margin: 0 auto; width: min(420px, 94%); pointer-events: none; overflow: hidden;
+  background: radial-gradient(circle at 18% 50%, #3a2618, rgba(20, 13, 8, .9) 70%); color: #fdf3de; box-shadow: 0 0 0 2px #000, 0 4px 0 rgba(0, 0, 0, .35); animation: cmin .35s cubic-bezier(.3, 1.6, .5, 1); }
+.chest-mini.out { animation: cmout .25s ease-in forwards; }
+@keyframes cmin { from { transform: translateY(-30px) scale(.8); opacity: 0; } }
+@keyframes cmout { to { transform: translateY(-24px); opacity: 0; } }
+.chest-mini.cshake { animation: cshake .38s; }
+.chest-mini .chest-stage { height: 78px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding: 16px 10px 4px; cursor: default; }
+.chest-mini .chest-stage::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--tc); pointer-events: none; transition: border-color .3s; }
+.chest-mini .chest-rays { left: 38px; top: 46px; width: 220px; height: 220px; margin: -110px 0 0 -110px; }
+.chest-mini .chest-flash { inset: 0; }
+.chest-mini .chest-title { position: absolute; top: 2px; left: 0; right: 0; min-height: 0; font-size: .78rem; text-align: center; }
+.chest-mini .chest-box, .chest-mini .chest-box.open { flex: none; width: 56px; height: 48px; margin: 0; }
+.chest-mini .chest-box img { width: 50px; }
+.chest-mini .chest-box.open img { width: 46px; }
+.chest-mini .chest-parts { left: 38px; top: 46px; }
+.chest-mini .chest-parts i { width: 3px; height: 3px; }
+.chest-mini .chest-items { flex: 1; margin: 0; min-height: 0; gap: 4px; justify-content: center; }
+.chest-mini .chest-items .cslot { width: 40px; margin-top: 0 !important; }
+.chest-mini .cslot-box { width: 36px; height: 36px; border-width: 2px; }
+.chest-mini .cslot img { width: 24px; height: 24px; }
+.chest-mini .cslot b { display: none; }
+.chest-mini .cslot em { font-size: .58rem; line-height: 1.1; margin-top: 2px; white-space: nowrap; }
+.chest-mini .chest-gold { flex: none; margin: 0; font-size: .85rem; }
+.chest-mini .chest-gold img { width: 12px; }
+@media (max-width: 460px) {
+  .chest-mini .chest-items .cslot { width: 34px; }
+  .chest-mini .cslot-box { width: 30px; height: 30px; }
+  .chest-mini .cslot img { width: 20px; height: 20px; }
+  .chest-mini .cslot em { font-size: .5rem; }
+}
+.chest-mini .cslot em { max-width: 48px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 460px) { .chest-mini { top: 13%; } }
