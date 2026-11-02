@@ -1448,3 +1448,8 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 @media (prefers-reduced-motion: reduce) {
   .rd-cfx-rays, .rd-cfx-chest, .rd-cfx-card, .rd-cfx-p, .rd-cfx::after { animation: none !important; }
 }
+
+/* Survivor : quêtes */
+.ach.quest { border-left: 4px solid var(--rc, #e8e0d0); }
+.ach.quest .q-item { color: var(--rc); filter: brightness(.75); }
+.ach.quest:not(.is-done) .ach-ic { filter: grayscale(1); opacity: .7; }
