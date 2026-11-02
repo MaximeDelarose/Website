@@ -14,14 +14,14 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
-  var VERSION = "v4";
+  var VERSION = "v5";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
 
   // armes de base + fusions dans un seul catalogue
   var ALLW = {};
   Object.keys(D.WEAPONS).forEach(function (k) { ALLW[k] = D.WEAPONS[k]; });
-  Object.keys(D.FUSIONS).forEach(function (k) { ALLW[k] = D.FUSIONS[k]; ALLW[k].fusion = true; });
+  Object.keys(D.FUSIONS).forEach(function (k) { ALLW[k] = D.FUSIONS[k]; ALLW[k].fusion = true; ALLW[k].legend = D.FUSIONS[k].tier === 2; });
 
   /* =====================================================================
      Sauvegarde
@@ -167,7 +167,7 @@
   var W = 320, H = 200;
   var state = "menu";     // menu | play | levelup | pause | over | error
   var curBoss = null;
-  var p = null, r = null, CH, DIFF, MAP, enemies, projs, hostile, lobs, gems, fx, texts, grid;
+  var p = null, r = null, CH, DIFF, MAP, enemies, projs, hostile, lobs, gems, fx, texts, grid, warns;
   var spawnAcc, nextSwarm, nextBoss, bossCount, shake, uid, achTick, pending, xp, xpNext, propTimer;
 
   function need(L) { return 5 + (L - 1) * 3 + Math.max(0, L - 15) * 4 + Math.max(0, L - 30) * 8; }
@@ -199,9 +199,10 @@
     p.weapons[CH.weapon] = 1;
     calc(); p.hp = p.maxHp;
     r = { time: 0, kills: 0, level: 1, bosses: 0, berries: 0, gold: 0, lastHit: 0, maxedWeapon: false, nWeapons: 1, nPassives: 0,
-          fusions: 0, props: 0, freeze: 0, flash: 0, hard: S.diff !== "normal", ended: false, committed: false, newAch: [], bonus: 0,
+          fusions: 0, legend: 0, consumed: {}, biome: -1, props: 0, freeze: 0, flash: 0, hard: S.diff !== "normal", ended: false, committed: false, newAch: [], bonus: 0,
           revives: S.shop.renaissance || 0, rerolls: S.shop.relance || 0, char: CH.id, map: MAP.id };
-    enemies = []; projs = []; hostile = []; lobs = []; gems = []; fx = []; texts = [];
+    enemies = []; projs = []; hostile = []; lobs = []; gems = []; fx = []; texts = []; warns = [];
+    biomeCache = new Map();
     xp = 0; xpNext = need(1); pending = 0;
     spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
@@ -292,6 +293,7 @@
     grid = new Map();
     for (var i = 0; i < enemies.length; i++) {
       var e = enemies[i];
+      if (e.under) continue;
       var k = cellKey(Math.floor(e.x / CELL), Math.floor(e.y / CELL));
       var a = grid.get(k); if (!a) grid.set(k, a = []); a.push(e);
     }
@@ -306,6 +308,27 @@
   }
 
   /* =====================================================================
+     Biomes : régions de Voronoï (cellules de ~26 tuiles) avec bords irréguliers
+     ===================================================================== */
+  var biomeCache = new Map(), BC = 26;
+  function biomeAtTile(tx, ty, m) {
+    m = m || MAP;
+    var key = tx * 100003 + ty;
+    if (m === MAP && biomeCache.has(key)) return biomeCache.get(key);
+    var jx = tx + ((hash(tx, ty * 3) % 5) - 2) * 0.45, jy = ty + ((hash(tx * 7, ty) % 5) - 2) * 0.45;
+    var cx = Math.floor(jx / BC), cy = Math.floor(jy / BC), best = 1e18, bi = 0, n = m.biomes.length;
+    for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) {
+      var gx = cx + dx, gy = cy + dy, h = hash(gx * 31 + 7, gy * 17 + 3);
+      var px = (gx + (h % 1000) / 1000) * BC, py = (gy + ((h >>> 10) % 1000) / 1000) * BC;
+      var d = (px - jx) * (px - jx) + (py - jy) * (py - jy);
+      if (d < best) { best = d; bi = (gx === 0 && gy === 0) ? 0 : (h >>> 20) % n; }
+    }
+    if (m === MAP) { if (biomeCache.size > 40000) biomeCache.clear(); biomeCache.set(key, bi); }
+    return bi;
+  }
+  function biomeAt(x, y) { return MAP.biomes[biomeAtTile(Math.floor(x / 16), Math.floor(y / 16))]; }
+
+  /* =====================================================================
      Apparitions : ennemis et objets destructibles
      ===================================================================== */
   function hpMul() { return (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1); }
@@ -316,30 +339,36 @@
     return e;
   }
   function spawn(type, ang, dist) {
-    var d = D.ENEMIES[type];
     if (ang === undefined) ang = Math.random() * TAU;
     if (dist === undefined) dist = Math.hypot(W, H) / 2 + 6 + Math.random() * 14;
+    var x = p.x + Math.cos(ang) * dist, y = p.y + Math.sin(ang) * dist;
+    if (!type) type = pickType(biomeAt(x, y));
+    var d = D.ENEMIES[type];
     var hp = d.hp * (d.boss ? (1 + bossCount * 0.9) * (1 + r.time / 200) * DIFF.hp * (MAP.hp || 1) : hpMul());
-    return makeEnemy(type, d, p.x + Math.cos(ang) * dist, p.y + Math.sin(ang) * dist, hp);
+    var e = makeEnemy(type, d, x, y, hp);
+    if (d.ai === "mole") { e.under = true; e.cd = 1; }
+    if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
+    return e;
   }
   var PROP_D = { prop: true, r: 6, spd: 0, dmg: 0, xp: 0, color: "#a06a3e" };
   function spawnProp(dist) {
     var a = Math.random() * TAU;
-    var d = Object.assign({}, PROP_D, { sprite: MAP.prop });
-    var e = makeEnemy("prop", d, p.x + Math.cos(a) * dist, p.y + Math.sin(a) * dist, 14 * (1 + r.time / 200));
+    var x = p.x + Math.cos(a) * dist, y = p.y + Math.sin(a) * dist;
+    var d = Object.assign({}, PROP_D, { sprite: biomeAt(x, y).prop || "stump" });
+    var e = makeEnemy("prop", d, x, y, 14 * (1 + r.time / 200));
     e.anim = 0;
     return e;
   }
-  function pickType() {
-    var pool = [], total = 0;
-    MAP.enemies.forEach(function (it) {
+  function pickType(biome) {
+    var pool = [], total = 0, list = (biome || MAP.biomes[0]).enemies;
+    list.forEach(function (it) {
       if (r.time < it[1]) return;
       var w = it[2] * (1 + Math.min(1.5, (r.time - it[1]) / 120));
       pool.push([it[0], w]); total += w;
     });
     var x = Math.random() * total;
     for (var i = 0; i < pool.length; i++) { x -= pool[i][1]; if (x <= 0) return pool[i][0]; }
-    return MAP.enemies[0][0];
+    return list[0][0];
   }
   function banner(text) {
     var b = $("[data-banner]");
@@ -350,7 +379,7 @@
   function director(dt) {
     var rate = Math.min(14, 1.7 + r.time / 30) * DIFF.spawn;
     spawnAcc += rate * dt;
-    while (spawnAcc >= 1) { spawnAcc--; if (enemies.length < 290) spawn(pickType()); }
+    while (spawnAcc >= 1) { spawnAcc--; if (enemies.length < 290) spawn(); }
     if (r.time >= nextSwarm) {
       nextSwarm += 60;
       var n = 18 + Math.floor(r.time / 60) * 6;
@@ -401,6 +430,7 @@
       return;
     }
     r.kills++;
+    if (e.d.ai === "bomber") { e.byPlayer = true; explodeEnemy(e.x, e.y, e.d.blastR, 30); }
     if (e.d.boss) {
       r.bosses++; S.stats.bosses++;
       drop("chest", e.x, e.y);
@@ -437,6 +467,72 @@
     if (S.opts.shake) shake = 0.25;
     SND.hurt(); burst(p.x, p.y, "#c8553d", 5);
   }
+  function warn(x, y, rad, dur, dmg, owner, follow) {
+    warns.push({ x: x, y: y, r: rad, t: 0, dur: dur, dmg: dmg, owner: owner || null, follow: !!follow });
+  }
+  function hostileShot(x, y, ang, spd, dmg) {
+    hostile.push({ x: x, y: y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 4, dmg: dmg });
+  }
+  function explodeEnemy(x, y, rad, dmg) {
+    fx.push({ kind: "ring", x: x, y: y, r: rad, life: 0.3, max: 0.3, red: true });
+    burst(x, y, "#c8553d", 10);
+    near(x, y, rad + 12, function (en) {
+      if (en.d.boss || Math.hypot(en.x - x, en.y - y) > rad + en.d.r) return;
+      hurt(en, dmg, (en.x - x) * 3, (en.y - y) * 3);
+    });
+    SND.boom();
+  }
+  function enemyAI(e, d, dx, dy, dt) {
+    var ai = e.d.ai, ang = Math.atan2(dy, dx);
+    if (ai === "bomber") {
+      if (e.fuse > 0) {
+        e.fuse -= dt; e.flash = Math.sin(e.fuse * 40) > 0 ? 0.05 : 0;
+        if (e.fuse <= 0) { e.dead = true; e.exploded = true; burst(e.x, e.y, "#c8553d", 12); SND.boom(); }
+        return 0;
+      }
+      if (d < 22 && r.freeze <= 0) { e.fuse = 0.8; warn(e.x, e.y, e.d.blastR, 0.8, e.d.blast, e, true); return 0; }
+    } else if (ai === "spitter") {
+      e.cd -= dt;
+      if (e.cd <= 0 && d < 150 && r.freeze <= 0) { e.cd = 2.4; hostileShot(e.x, e.y - 2, ang, 75, e.d.shot); SND.whip(); }
+      if (d < 60) return -0.8;
+      if (d < 95) return 0.15;
+    } else if (ai === "spiker") {
+      e.cd -= dt;
+      if (e.cd <= 0 && d < 110 && r.freeze <= 0) {
+        e.cd = 4; var off = Math.random();
+        for (var k = 0; k < 8; k++) hostileShot(e.x, e.y, off + k / 8 * TAU, 55, e.d.shot);
+        SND.whip();
+      }
+    } else if (ai === "mole") {
+      if (e.under) {
+        e.cd -= dt;
+        if (d < 26 && e.cd <= 0 && !e.digging) { e.digging = 0.9; warn(e.x, e.y, e.d.blastR, 0.9, e.d.blast, e); }
+        if (e.digging) {
+          e.digging -= dt;
+          if (e.digging <= 0) { e.digging = 0; e.under = false; e.upT = 2.2; burst(e.x, e.y, "#8a5a3b", 10); }
+          return 0;
+        }
+        return 1;
+      }
+      e.upT -= dt;
+      if (e.upT <= 0) { e.under = true; e.cd = 1.5; }
+      return 0;
+    }
+    return 1;
+  }
+  function updateWarns(dt) {
+    for (var i = warns.length - 1; i >= 0; i--) {
+      var w = warns[i];
+      if (w.follow && w.owner && !w.owner.dead) { w.x = w.owner.x; w.y = w.owner.y; }
+      w.t += dt;
+      if (w.owner && w.owner.dead && w.owner.byPlayer) { warns.splice(i, 1); continue; }
+      if (w.t >= w.dur) {
+        warns.splice(i, 1);
+        fx.push({ kind: "ring", x: w.x, y: w.y, r: w.r, life: 0.25, max: 0.25, red: true });
+        if (Math.hypot(p.x - w.x, (p.y - w.y) * 1.25) <= w.r + 3) damagePlayer(w.dmg);
+      }
+    }
+  }
   function inView(e, m) { return Math.abs(e.x - p.x) < W / 2 + (m || 0) && Math.abs(e.y - p.y) < H / 2 + (m || 0); }
   function nuke() {
     r.flash = 0.35; if (S.opts.shake) shake = 0.4; SND.boom();
@@ -453,7 +549,7 @@
   function nearest(n, range, from) {
     var best = [], r2 = range * range, ox = from ? from.x : p.x, oy = from ? from.y : p.y;
     for (var i = 0; i < enemies.length; i++) {
-      var e = enemies[i]; if (e.dead || e.d.prop) continue;
+      var e = enemies[i]; if (e.dead || e.d.prop || e.under) continue;
       var d = (e.x - ox) * (e.x - ox) + (e.y - oy) * (e.y - oy);
       if (d > r2) continue;
       if (best.length < n) { best.push([d, e]); best.sort(function (a, b) { return a[0] - b[0]; }); }
@@ -514,7 +610,7 @@
         if (!tg || i >= t.length) a += (i - (count - 1) / 2) * 0.25;
         a += (Math.random() - 0.5) * (w.spread || 0);
         projs.push({ kind: "bullet", x: p.x, y: p.y - 2, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, dmg: V(w, "dmg", l), pierce: V(w, "pierce", l),
-                     sprite: w.sprite, life: range / spd * 1.4, hit: [], r: 4 });
+                     sprite: w.sprite, life: range / spd * 1.4, hit: [], r: 4, explode: w.explodeR ? V(w, "explodeR", l) * p.area : 0 });
       }
       if (w.spread) SND.shot();
     },
@@ -554,6 +650,13 @@
           if (w.heal && !e.d.prop) p.hp = Math.min(p.maxHp, p.hp + w.heal);
         });
       }
+      if (w.shootCd && timer(id + "#leaf", w.shootCd, dt)) {
+        for (var q = 0; q < n; q++) {
+          var qa = p.st[id] + q / n * TAU, qx = p.x + Math.cos(qa) * R, qy = p.y + Math.sin(qa) * R * 0.8;
+          projs.push({ kind: "bullet", x: qx, y: qy, vx: Math.cos(qa) * 90, vy: Math.sin(qa) * 90, dmg: V(w, "leafDmg", l), pierce: 2,
+                       sprite: "autumnleaf", anim: true, homing: true, life: 1.6, hit: [], r: 4 });
+        }
+      }
     },
     radial: function (id, w, l, dt) {
       if (!timer(id, V(w, "cd", l), dt)) return;
@@ -589,6 +692,12 @@
         }
         if (tick) hurt(e, dmg, 0, 0);
       });
+      if (w.spinCd && timer(id + "#spin", w.spinCd, dt)) {
+        var sd = V(w, "spinDmg", l);
+        fx.push({ kind: "spin", r: R, life: 0.3, max: 0.3 });
+        near(p.x, p.y, R + 10, function (e) { if (Math.hypot(e.x - p.x, e.y - p.y) <= R + e.d.r) hurt(e, sd, 0, 0); });
+        SND.whip();
+      }
     },
     boomerang: function (id, w, l, dt) {
       if (!timer(id, V(w, "cd", l), dt)) return;
@@ -605,6 +714,27 @@
       var starts = nearest(12, 150), bolts = V(w, "bolts", l) + p.amount;
       for (var b = 0; b < bolts && starts.length; b++) zapChain(starts.splice((Math.random() * starts.length) | 0, 1)[0], V(w, "chain", l), V(w, "dmg", l));
       SND.zap();
+    },
+    storm: function (id, w, l, dt) {
+      if (!timer(id, V(w, "cd", l), dt)) return;
+      var vis = enemies.filter(function (e) { return !e.dead && !e.d.prop && !e.under && inView(e, -4); });
+      var n = V(w, "strikes", l) + p.amount;
+      for (var i = 0; i < n && vis.length; i++) {
+        var t = vis.splice((Math.random() * vis.length) | 0, 1)[0];
+        zapChain(t, V(w, "chain", l), V(w, "dmg", l), { x: t.x + (Math.random() * 20 - 10), y: t.y - 90 });
+      }
+      if (S.opts.shake) shake = Math.max(shake, 0.08);
+      SND.zap();
+    },
+    meteor: function (id, w, l, dt) {
+      if (!timer(id, V(w, "cd", l), dt)) return;
+      var vis = enemies.filter(function (e) { return !e.dead && !e.d.prop && !e.under && inView(e, -4); });
+      var n = V(w, "n", l) + p.amount;
+      for (var k = 0; k < n; k++) {
+        var t = vis.length ? vis[(Math.random() * vis.length) | 0] : null;
+        var tx = t ? t.x : p.x + (Math.random() - 0.5) * W * 0.8, ty = t ? t.y : p.y + (Math.random() - 0.5) * H * 0.8;
+        lobs.push({ sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.6 + k * 0.07, dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area, frag: w.frag || 0, sprite: "meteore", sky: true });
+      }
     },
     rocket: function (id, w, l, dt) {
       if (!timer(id, V(w, "cd", l), dt)) return;
@@ -633,7 +763,7 @@
     Object.keys(D.FUSIONS).forEach(function (id) {
       var f = D.FUSIONS[id], a = f.from[0], b = f.from[1];
       if (p.weapons[id] || (p.weapons[a] || 0) < MAX_LVL) return;
-      var bOk = D.WEAPONS[b] ? (p.weapons[b] || 0) >= MAX_LVL : (p.passives[b] || 0) >= MAX_LVL;
+      var bOk = ALLW[b] ? (p.weapons[b] || 0) >= MAX_LVL : (p.passives[b] || 0) >= MAX_LVL;
       if (bOk) out.push(id);
     });
     return out;
@@ -645,8 +775,7 @@
     var nW = Object.keys(p.weapons).length, nP = Object.keys(p.passives).length;
     Object.keys(p.weapons).forEach(function (k) { if (p.weapons[k] < MAX_LVL) pool.push({ type: "w", id: k, lvl: p.weapons[k] + 1, weight: 3 }); });
     if (nW < MAX_W) Object.keys(D.WEAPONS).forEach(function (k) {
-      if (p.weapons[k] || !weaponAvailable(k)) return;
-      if (Object.keys(D.FUSIONS).some(function (f) { return p.weapons[f] && D.FUSIONS[f].from.indexOf(k) >= 0; })) return;
+      if (p.weapons[k] || !weaponAvailable(k) || r.consumed[k]) return;
       pool.push({ type: "w", id: k, lvl: 1, weight: 2 });
     });
     Object.keys(D.PASSIVES).forEach(function (k) {
@@ -665,15 +794,44 @@
     var f = D.FUSIONS[id], a = f.from[0], b = f.from[1], neww = {};
     Object.keys(p.weapons).forEach(function (k) {
       if (k === a) neww[id] = 1;
-      else if (k === b && D.WEAPONS[b]) return;
+      else if (k === b && ALLW[b]) return;
       else neww[k] = p.weapons[k];
     });
     p.weapons = neww;
+    r.consumed[a] = true; if (ALLW[b]) r.consumed[b] = true;
     delete p.timers[a]; delete p.timers[b];
-    r.fusions++;
+    r.fusions++; if (f.tier === 2) r.legend++;
     burst(p.x, p.y, "#f6d36b", 24);
-    banner("Fusion : " + f.name + " !");
+    banner((f.tier === 2 ? "Légendaire : " : "Fusion : ") + f.name + " !");
     SND.fusion();
+  }
+  function iconOf(k) { return ALLW[k] ? ALLW[k].icon : (D.PASSIVES[k] ? D.PASSIVES[k].sprite : "nut"); }
+  function owns(k) { return ALLW[k] ? !!p.weapons[k] : !!p.passives[k]; }
+  function lvlOf(k) { return ALLW[k] ? (p.weapons[k] || 0) : (p.passives[k] || 0); }
+  function img(name, cls) { return '<img' + (cls ? ' class="' + cls + '"' : "") + ' src="' + spriteUrl(name) + '" alt="">'; }
+  // fusions dont « k » est un ingrédient
+  function synergies(k) {
+    var out = [];
+    Object.keys(D.FUSIONS).forEach(function (id) {
+      var f = D.FUSIONS[id], i = f.from.indexOf(k);
+      if (i < 0 || p.weapons[id] || r.consumed[id]) return;
+      out.push({ id: id, partner: f.from[1 - i] });
+    });
+    return out;
+  }
+  function synHtml(k) {
+    var list = synergies(k);
+    if (!list.length) return "";
+    return '<span class="syn">' + list.slice(0, 2).map(function (s) {
+      var have = owns(s.partner), f = D.FUSIONS[s.id];
+      return '<span class="syn-row' + (have ? " have" : "") + '">🔗 ' + img(iconOf(s.partner)) + esc(ingredientName(s.partner)) +
+        (have ? " (niv. " + lvlOf(s.partner) + "/5)" : "") + " → " + img(f.icon) + "<b>" + esc(f.name) + "</b></span>";
+    }).join("") + "</span>";
+  }
+  function recipeHtml(id) {
+    var f = D.FUSIONS[id], a = f.from[0], b = f.from[1], bw = !!ALLW[b];
+    return '<span class="recipe">' + img(iconOf(a)) + " + " + img(iconOf(b)) + " → " + img(f.icon) + "</span>" +
+      '<span class="replace">Remplace <b>' + esc(ingredientName(a)) + "</b>" + (bw ? " et <b>" + esc(ingredientName(b)) + "</b> (libère une case)" : " · <b>" + esc(ingredientName(b)) + "</b> reste") + "</span>";
   }
   var currentChoices = [];
   function openLevelUp() {
@@ -682,27 +840,29 @@
     currentChoices = choices(3 + (p.luck > 1.3 && Math.random() < 0.3 ? 1 : 0));
     var html = '<span class="kicker">Niveau ' + r.level + " !</span><h2>Choisis un pouvoir</h2><div class=\"choices\">";
     currentChoices.forEach(function (c, i) {
-      var icon, name, lvl = "", desc, cls = "choice";
+      var icon, name, lvl = "", desc, cls = "choice", extra = "";
       if (c.type === "f") {
         var f = D.FUSIONS[c.id];
-        icon = '<img src="' + spriteUrl(f.icon) + '" alt="">'; name = f.name; lvl = "Fusion !"; cls += " is-fusion";
-        desc = ingredientName(f.from[0]) + " + " + ingredientName(f.from[1]) + " : " + f.desc[0];
+        icon = img(f.icon); name = f.name; lvl = f.tier === 2 ? "Fusion légendaire !" : "Fusion !"; cls += f.tier === 2 ? " is-fusion is-legend" : " is-fusion";
+        desc = f.desc[0]; extra = recipeHtml(c.id) + synHtml(c.id);
       } else if (c.type === "w") {
         var w = ALLW[c.id];
-        icon = '<img src="' + spriteUrl(w.icon) + '" alt="">'; name = w.name;
+        icon = img(w.icon); name = w.name;
         lvl = c.lvl === 1 ? "Nouvelle arme" : "Niv. " + c.lvl; desc = w.desc[c.lvl - 1];
-        if (w.fusion) cls += " is-fusion";
+        if (w.fusion) cls += w.legend ? " is-fusion is-legend" : " is-fusion";
+        extra = synHtml(c.id);
       } else if (c.type === "p") {
-        icon = '<img src="' + spriteUrl(D.PASSIVES[c.id].sprite) + '" alt="">'; name = D.PASSIVES[c.id].name;
+        icon = img(D.PASSIVES[c.id].sprite); name = D.PASSIVES[c.id].name;
         lvl = c.lvl === 1 ? "Nouvel objet" : "Niv. " + c.lvl; desc = D.PASSIVES[c.id].desc;
+        extra = synHtml(c.id);
       } else if (c.type === "heal") {
-        icon = '<img src="' + spriteUrl("berry") + '" alt="">'; name = "Panier de baies"; desc = "Soigne 40 PV.";
+        icon = img("berry"); name = "Panier de baies"; desc = "Soigne 40 PV.";
       } else {
-        icon = '<img src="' + spriteUrl("goldbag") + '" alt="">'; name = "Bourse de glands"; desc = "+15 glands d'or.";
+        icon = img("goldbag"); name = "Bourse de glands"; desc = "+15 glands d'or.";
       }
       html += '<button type="button" class="' + cls + '" data-choice="' + i + '"><span class="choice-key">' + (i + 1) + "</span>" +
         '<span class="choice-icon">' + icon + "</span>" +
-        '<span class="choice-text"><strong>' + esc(name) + "</strong>" + (lvl ? "<em>" + lvl + "</em>" : "") + "<span>" + esc(desc) + "</span></span></button>";
+        '<span class="choice-text"><strong>' + esc(name) + "</strong>" + (lvl ? "<em>" + lvl + "</em>" : "") + "<span>" + esc(desc) + "</span>" + extra + "</span></button>";
     });
     html += '</div><div class="btn-row center">';
     if (r.rerolls > 0) html += '<button class="btn btn-alt btn-small" type="button" data-action="reroll">🎲 Relancer (' + r.rerolls + ")</button>";
@@ -790,6 +950,9 @@
     if (p.shieldCd && !p.shield) { p.shieldT -= dt; if (p.shieldT <= 0) p.shield = true; }
     r.freeze = Math.max(0, r.freeze - dt); r.flash = Math.max(0, r.flash - dt);
 
+    var bi = biomeAtTile(Math.floor(p.x / 16), Math.floor(p.y / 16));
+    if (bi !== r.biome) { if (r.biome >= 0) banner(MAP.biomes[bi].name); r.biome = bi; }
+
     director(dt);
     buildGrid();
     weapons(dt);
@@ -804,10 +967,11 @@
       if (r.freeze > 0) sp *= e.d.boss ? 0.5 : 0;
       e.slowT -= dt; e.anim += dt * (e.type === "wasp" || e.type === "moth" ? 14 : 5) * (r.freeze > 0 && !e.d.boss ? 0 : 1);
       var mx = dx / d, my = dy / d;
+      if (e.d.ai) { var f = enemyAI(e, d, dx, dy, dt); if (e.dead) continue; sp *= Math.abs(f); if (f < 0) { mx = -mx; my = -my; } else if (f > 0 && f < 1) { var t2 = mx; mx = -my; my = t2; } }
       if (e.d.move === "wobble") { var s = Math.sin(r.time * (e.type === "wasp" ? 6 : 3) + e.phase) * 0.7; var px = -my * s, py = mx * s; mx += px; my += py; }
       else if (e.d.move === "hop") sp *= 0.25 + 1.6 * Math.max(0, Math.sin(r.time * 6 + e.phase));
       if (e.type === "boar") {
-        if (e.charge > 0) { e.charge -= dt; mx = e.cx; my = e.cy; sp = 135 * (r.freeze > 0 ? 0.5 : 1); }
+        if (e.charge > 0) { e.charge -= dt; mx = e.cx; my = e.cy; sp = 135 * (r.freeze > 0 ? 0.5 : 1); if (e.charge <= 0) warn(e.x, e.y, 34, 0.5, 18, e); }
         else if (e.windup > 0) { e.windup -= dt; sp = 0; e.flash = Math.sin(e.windup * 40) > 0 ? 0.05 : 0; if (e.windup <= 0) { e.charge = 0.9; e.cx = dx / d; e.cy = dy / d; SND.boom(); } }
         else { e.cd -= dt; if (e.cd <= 0 && d < 170) { e.windup = 0.6; e.cd = 3.5; } }
       } else if (e.type === "owl") {
@@ -816,7 +980,7 @@
         if (e.cd <= 0) {
           e.cd = 3.2;
           var n = 10 + bossCount * 2, off = Math.random();
-          for (var k = 0; k < n; k++) { var a = off + k / n * TAU; hostile.push({ x: e.x, y: e.y, vx: Math.cos(a) * 55, vy: Math.sin(a) * 55, life: 4, dmg: 12 }); }
+          for (var k = 0; k < n; k++) hostileShot(e.x, e.y, off + k / n * TAU, 55, 12);
           SND.whip();
         }
       }
@@ -824,7 +988,7 @@
       e.x += mx * sp * dt + e.kx * dt; e.y += my * sp * dt + e.ky * dt;
       var damp = Math.pow(0.0005, dt); e.kx *= damp; e.ky *= damp;
       if (Math.abs(mx) > 0.1) e.face = mx > 0 ? 1 : -1;
-      if (Math.abs(dx) < e.d.r + 5 && Math.abs(dy) < e.d.r + 5) damagePlayer(e.d.dmg);
+      if (!e.under && Math.abs(dx) < e.d.r + 5 && Math.abs(dy) < e.d.r + 5) damagePlayer(e.d.dmg);
       if (d > 420 && !e.d.boss) { var ra = Math.atan2(dy, dx) + (Math.random() - 0.5), R = Math.hypot(W, H) / 2 + 10; e.x = p.x + Math.cos(ra) * R; e.y = p.y + Math.sin(ra) * R; }
     }
     // séparation légère (les objets et les boss ne bougent pas)
@@ -839,6 +1003,7 @@
         }
       }
     });
+    updateWarns(dt);
     for (i = hostile.length - 1; i >= 0; i--) {
       var hq = hostile[i];
       hq.x += hq.vx * dt; hq.y += hq.vy * dt; hq.life -= dt;
@@ -849,7 +1014,7 @@
       if (r.revives > 0) {
         r.revives--; p.hp = p.maxHp * 0.5; p.inv = 2;
         near(p.x, p.y, 70, function (en) { if (en.d.prop) return; var ax = en.x - p.x, ay = en.y - p.y, ad = Math.hypot(ax, ay) || 1; en.kx += ax / ad * 260; en.ky += ay / ad * 260; });
-        hostile = [];
+        hostile = []; warns = [];
         burst(p.x, p.y, "#f29a85", 24); banner("Renaissance !"); SND.level();
       } else { gameOver(); return; }
     }
@@ -928,6 +1093,7 @@
       if (Math.abs(en.x - q.x) > en.d.r + q.r || Math.abs(en.y - q.y) > en.d.r + q.r) return;
       q.hit.push(en.id); q.pierce--;
       hurt(en, q.dmg, q.vx * 0.5, q.vy * 0.5);
+      if (q.explode) { explode(q.x, q.y, q.explode, q.dmg * 0.6, 0); q.pierce = 0; }
       if (q.pierce <= 0) return false;
     });
   }
@@ -977,14 +1143,40 @@
     h = Math.imul(h ^ (h >>> 13), 1274126177);
     return (h ^ (h >>> 16)) >>> 0;
   }
-  function drawGround(cx, cy, G) {
+  function drawDecor(kind, G, sx, sy, ox, oy, h) {
+    if (kind === "bush") {
+      ctx.fillStyle = G.bush; ctx.fillRect(sx + ox - 2, sy + oy + 1, 9, 4); ctx.fillRect(sx + ox - 1, sy + oy - 1, 7, 3);
+      ctx.fillStyle = G.bushHi; ctx.fillRect(sx + ox, sy + oy - 1, 3, 1); ctx.fillRect(sx + ox + 3, sy + oy + 1, 2, 1);
+    } else if (kind === "bigshroom") {
+      ctx.fillStyle = (h >>> 5) % 2 ? "#c8553d" : "#9a7fd1"; ctx.fillRect(sx + ox - 1, sy + oy, 7, 2); ctx.fillRect(sx + ox, sy + oy - 1, 5, 1);
+      ctx.fillStyle = "#fdf3de"; ctx.fillRect(sx + ox + 1, sy + oy, 1, 1); ctx.fillRect(sx + ox + 4, sy + oy + 1, 1, 1);
+      ctx.fillStyle = "#f3e1c0"; ctx.fillRect(sx + ox + 2, sy + oy + 2, 2, 3);
+    } else if (kind === "water" || kind === "pond") {
+      var big = kind === "pond" ? 2 : 1;
+      ctx.fillStyle = G.water; ctx.fillRect(sx + ox - 2 * big, sy + oy + 1, 10 * big, 4 + big); ctx.fillRect(sx + ox, sy + oy, 6 * big, 6 + big);
+      ctx.fillStyle = G.waterHi; ctx.fillRect(sx + ox + 1, sy + oy + 1, 3, 1);
+    } else if (kind === "reeds") {
+      ctx.fillStyle = G.reed; ctx.fillRect(sx + ox, sy + oy - 3, 1, 7); ctx.fillRect(sx + ox + 2, sy + oy - 5, 1, 9); ctx.fillRect(sx + ox + 4, sy + oy - 2, 1, 6);
+      ctx.fillStyle = G.reedHi; ctx.fillRect(sx + ox + 2, sy + oy - 6, 1, 2); ctx.fillRect(sx + ox, sy + oy - 4, 1, 2);
+    } else if (kind === "rock") {
+      ctx.fillStyle = OUT; ctx.fillRect(sx + ox - 1, sy + oy + 3, 8, 1);
+      ctx.fillStyle = G.rock; ctx.fillRect(sx + ox - 1, sy + oy, 8, 3); ctx.fillRect(sx + ox, sy + oy - 1, 6, 1);
+      ctx.fillStyle = G.rockHi; ctx.fillRect(sx + ox, sy + oy - 1, 3, 1);
+    }
+  }
+  function drawGround(cx, cy, M) {
     var T = 16;
-    ctx.fillStyle = G.base; ctx.fillRect(0, 0, W, H);
     var tx0 = Math.floor(cx / T) - 1, ty0 = Math.floor(cy / T) - 1, tx1 = tx0 + Math.ceil(W / T) + 2, ty1 = ty0 + Math.ceil(H / T) + 2;
     for (var ty = ty0; ty <= ty1; ty++) for (var tx = tx0; tx <= tx1; tx++) {
+      var B = M.biomes[biomeAtTile(tx, ty, M)], G = B.ground;
       var sx = Math.round(tx * T - cx), sy = Math.round(ty * T - cy);
-      if (hash(tx >> 2, ty >> 2) % 3 === 0) { ctx.fillStyle = G.patch; ctx.fillRect(sx, sy, T, T); }
+      ctx.fillStyle = hash(tx >> 2, ty >> 2) % 3 === 0 ? G.patch : G.base; ctx.fillRect(sx, sy, T, T);
+    }
+    for (ty = ty0; ty <= ty1; ty++) for (tx = tx0; tx <= tx1; tx++) {
+      B = M.biomes[biomeAtTile(tx, ty, M)]; G = B.ground;
+      sx = Math.round(tx * T - cx); sy = Math.round(ty * T - cy);
       var h = hash(tx, ty), k = h % 23, ox = (h >>> 8) % 12, oy = (h >>> 12) % 12;
+      if (B.decor && (k === 12 || k === 13 || (B.decor === "pond" && k >= 9 && k <= 11))) { drawDecor(B.decor, G, sx, sy, ox, oy, h); continue; }
       if (k < 5) {
         ctx.fillStyle = G.tuft; ctx.fillRect(sx + ox, sy + oy, 1, 2); ctx.fillRect(sx + ox + 2, sy + oy - 1, 1, 3); ctx.fillRect(sx + ox + 4, sy + oy, 1, 2);
         ctx.fillStyle = G.hi; ctx.fillRect(sx + ox + 2, sy + oy - 1, 1, 1);
@@ -998,9 +1190,6 @@
       } else if (k === 8 && (h >>> 20) % 3 === 0) {
         ctx.fillStyle = G.shroom; ctx.fillRect(sx + ox, sy + oy, 3, 1); ctx.fillRect(sx + ox - 1, sy + oy + 1, 5, 1);
         ctx.fillStyle = "#f3e1c0"; ctx.fillRect(sx + ox + 1, sy + oy + 2, 1, 2);
-      } else if (G.water && (k === 12 || k === 13)) {
-        ctx.fillStyle = G.water; ctx.fillRect(sx + ox - 2, sy + oy + 1, 10, 4); ctx.fillRect(sx + ox, sy + oy, 6, 6);
-        ctx.fillStyle = G.waterHi; ctx.fillRect(sx + ox + 1, sy + oy + 1, 3, 1);
       } else if (k < 12) {
         ctx.fillStyle = G.hi; ctx.fillRect(sx + ox, sy + oy, 1, 1);
       }
@@ -1026,6 +1215,7 @@
     spore: { fill: "rgba(122,90,190,.13)", dot: "spore" },
     force: { fill: "rgba(127,209,199,.12)", ring: "rgba(127,209,199,.75)" },
     mist: { fill: "rgba(150,120,210,.16)", ring: "rgba(127,209,199,.5)", dot: "spore" },
+    hurricane: { fill: "rgba(160,200,230,.14)", ring: "rgba(230,255,248,.7)", dot: "leaf" },
   };
   function drawAuras() {
     Object.keys(p.weapons).forEach(function (id) {
@@ -1059,7 +1249,7 @@
   function draw() {
     var sx = shake > 0 ? (Math.random() * 4 - 2) : 0, sy = shake > 0 ? (Math.random() * 4 - 2) : 0;
     var cx = Math.round(p.x - W / 2 + sx), cy = Math.round(p.y - H / 2 + sy);
-    drawGround(cx, cy, MAP.ground);
+    drawGround(cx, cy, MAP);
     ctx.save();
     ctx.translate(-cx, -cy);
 
@@ -1071,6 +1261,15 @@
       blit(s, g.x, g.y + (big ? bob * 1.5 : 0));
     });
     drawAuras();
+    warns.forEach(function (w) {
+      var k = Math.min(1, w.t / w.dur), blink = Math.sin(r.time * 30) > 0 ? 0.08 : 0;
+      ctx.fillStyle = "rgba(208,40,26," + (0.12 + blink) + ")";
+      ctx.beginPath(); ctx.ellipse(w.x, w.y, w.r, w.r * 0.8, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = "rgba(208,40,26,.35)";
+      ctx.beginPath(); ctx.ellipse(w.x, w.y, w.r * k, w.r * 0.8 * k, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = "#ff5a3a"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(w.x, w.y, w.r, w.r * 0.8, 0, 0, TAU); ctx.stroke();
+    });
 
     enemies.sort(function (a, b) { return a.y - b.y; });
     var drewPlayer = false;
@@ -1078,6 +1277,7 @@
       var e = enemies[i];
       if (!drewPlayer && e.y > p.y) { drawHero(CH.sprite, p.x, p.y, p.face, p.moving, p.anim, p.inv); drewPlayer = true; }
       if (e.x < cx - 30 || e.x > cx + W + 30 || e.y < cy - 30 || e.y > cy + H + 30) continue;
+      if (e.under) { blit(SPR.mound[((r.time * 8) | 0) % 2], e.x, e.y + 2); continue; }
       var spr = e.spr[(e.anim | 0) % e.spr.length];
       if (!e.spr.flying) shadow(e.x, e.y + spr.h / 2 - 2, spr.w * 0.7);
       else shadow(e.x, e.y + spr.h / 2 + 3, spr.w * 0.5);
@@ -1102,9 +1302,17 @@
       var s = SPR[q.sprite] || SPR.acorn;
       blit(s[(q.anim || q.kind === "boomerang") ? flick % s.length : 0], q.x, q.y, q.vx < 0);
     });
-    hostile.forEach(function (q) { blit(SPR.feather[flick], q.x, q.y); });
+    hostile.forEach(function (q) {
+      ctx.fillStyle = "rgba(255,60,30,.35)"; ctx.fillRect(Math.round(q.x) - 4, Math.round(q.y) - 4, 8, 8);
+      ctx.fillStyle = "rgba(255,60,30,.25)"; ctx.fillRect(Math.round(q.x - q.vx * 0.06) - 2, Math.round(q.y - q.vy * 0.06) - 2, 4, 4);
+      blit(SPR.hshot[0], q.x, q.y);
+    });
     lobs.forEach(function (l) {
-      var k = l.t / l.dur, x = l.sx + (l.tx - l.sx) * k, y = l.sy + (l.ty - l.sy) * k - Math.sin(k * Math.PI) * (l.small ? 8 : 30);
+      var k = l.t / l.dur, x = l.sx + (l.tx - l.sx) * k, y = l.sy + (l.ty - l.sy) * k - (l.sky ? (1 - k) * 110 : Math.sin(k * Math.PI) * (l.small ? 8 : 30));
+      if (l.sky) {
+        ctx.strokeStyle = "rgba(255,120,40,.5)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(l.tx, l.ty, l.rad * k, l.rad * 0.8 * k, 0, 0, TAU); ctx.stroke();
+        fx.push({ kind: "dot", x: x + Math.random() * 4 - 2, y: y - 4, vx: 0, vy: -10, life: 0.2, color: "#f6b468" });
+      }
       if (l.small) { ctx.fillStyle = "#f6b468"; ctx.fillRect(Math.round(x), Math.round(y), 2, 2); return; }
       shadow(l.sx + (l.tx - l.sx) * k, l.sy + (l.ty - l.sy) * k + 3, 5);
       blit(SPR[l.sprite || "pinecone"][0], x, y);
@@ -1141,7 +1349,7 @@
     if (f.kind === "dot") { ctx.fillStyle = f.color; ctx.fillRect(Math.round(f.x), Math.round(f.y), 2, 2); }
     else if (f.kind === "ring") {
       var k = 1 - f.life / f.max;
-      ctx.strokeStyle = "rgba(242,176,94," + (1 - k) + ")"; ctx.lineWidth = 2;
+      ctx.strokeStyle = f.red ? "rgba(255,70,40," + (1 - k) + ")" : "rgba(242,176,94," + (1 - k) + ")"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * (0.4 + k * 0.6), f.r * (0.4 + k * 0.6) * 0.8, 0, 0, TAU); ctx.stroke();
       ctx.fillStyle = "rgba(255,226,122," + (0.35 * (1 - k)) + ")"; ctx.fill();
     } else if (f.kind === "swipe") {
@@ -1177,11 +1385,12 @@
     ctx.fillStyle = fill; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
   }
   function icon(name, cx, cy) { if (SPR[name]) blit(SPR[name][0], cx, cy); }
-  function drawSlots(x, y, list, max, sprOf, isFusion) {
+  function drawSlots(x, y, list, max, sprOf, isFusion, ready) {
     var S2 = 12;
     for (var i = 0; i < max; i++) {
       var bx = x + i * (S2 + 1), it = list[i];
       var gold = it && isFusion && isFusion(it[0]);
+      if (it && ready[it[0]] && Math.sin(r.time * 10) > 0) { ctx.fillStyle = "#f6d36b"; ctx.fillRect(bx - 1, y - 1, S2 + 2, S2 + 2); }
       box(bx, y, S2, S2, it ? (gold ? "#4a3a10" : "#1f3a2b") : "rgba(31,58,43,.45)", it ? (gold ? "#f6d36b" : OUT) : "rgba(43,23,9,.6)");
       if (it) {
         icon(sprOf(it[0]), bx + S2 / 2, y + S2 / 2);
@@ -1201,8 +1410,11 @@
     // cases d'armes (haut) et d'objets (bas), 6 chacune
     var wl2 = Object.keys(p.weapons).map(function (id) { return [id, p.weapons[id]]; });
     var pl2 = Object.keys(p.passives).map(function (id) { return [id, p.passives[id]]; });
-    drawSlots(2, 14, wl2, MAX_W, function (id) { return ALLW[id].icon; }, function (id) { return ALLW[id].fusion; });
-    drawSlots(2, 27, pl2, MAX_P, function (id) { return D.PASSIVES[id].sprite; });
+    var ready = {};
+    readyFusions().forEach(function (id) { D.FUSIONS[id].from.forEach(function (k) { ready[k] = true; }); });
+    drawSlots(2, 14, wl2, MAX_W, function (id) { return ALLW[id].icon; }, function (id) { return ALLW[id].fusion; }, ready);
+    drawSlots(2, 27, pl2, MAX_P, function (id) { return D.PASSIVES[id].sprite; }, null, ready);
+    if (Object.keys(ready).length && Math.sin(r.time * 6) > -0.3) drawText("FUSION PRETE", 2 + MAX_W * 13 + 3, 30, "#f6d36b", "l");
     // PV
     var hpw = MAX_W * 13 - 1, hpr = Math.max(0, p.hp / p.maxHp);
     box(2, 40, hpw, 6, "#3a2618");
@@ -1225,9 +1437,9 @@
   var parade = [];
   function drawIdle(now) {
     var t = now / 1000, m = mapById(S.map);
-    drawGround(Math.round(t * 18), Math.round(Math.sin(t * 0.2) * 20), m.ground);
+    drawGround(Math.round(t * 18), Math.round(Math.sin(t * 0.2) * 20), m);
     if (parade.length < 6 && Math.random() < 0.01) {
-      var types = m.enemies.map(function (e) { return e[0]; });
+      var types = m.biomes[(Math.random() * m.biomes.length) | 0].enemies.map(function (e) { return e[0]; });
       var ty = D.ENEMIES[types[(Math.random() * types.length) | 0]];
       parade.push({ spr: SPR[ty.sprite], x: W + 20, y: H * (0.15 + Math.random() * 0.75), v: 8 + Math.random() * 12, a: Math.random() * 2 });
     }
@@ -1264,10 +1476,15 @@
   function hideCard() { overlay.hidden = true; $("[data-hud]").hidden = false; }
   function goldBadge() { return '<p class="gold-badge">' + goldIc() + " <b>" + S.gold.toLocaleString("fr-FR") + "</b></p>"; }
   function back() { return '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button>'; }
+  function iconOfAny(k) { return ALLW[k] ? ALLW[k].icon : (D.PASSIVES[k] ? D.PASSIVES[k].sprite : "nut"); }
   function shopCost(it, lvl) { return Math.round(it.cost * (1 + lvl) * (1 + lvl * 0.25)); }
   function lockText(ach) { var a = achById(ach); return a ? "Succès « " + a.name + " » : " + a.desc : "Verrouillé"; }
 
   var inspect = { char: null, map: null };
+  function swatch(m, cls) {
+    return '<span class="map-swatch ' + (cls || "") + '">' + m.biomes.map(function (b) { return '<i style="background:' + b.ground.base + '"></i>'; }).join("") +
+      '<img src="' + spriteUrl(m.biomes[0].prop) + '" alt=""></span>';
+  }
   function charInfo(c) {
     var ok = charAvailable(c), m = c.mods || {}, tags = [];
     if (m.hp) tags.push((m.hp > 0 ? "+" : "") + m.hp + " PV");
@@ -1291,8 +1508,9 @@
   }
   function mapInfo(m) {
     var ok = has(m.unlock);
-    return '<div class="pick-info"><span class="map-swatch big" style="background:' + m.ground.base + '"><img src="' + spriteUrl(m.prop) + '" alt=""></span><div>' +
+    return '<div class="pick-info">' + swatch(m, "big") + "<div>" +
       "<strong>" + esc(m.name) + "</strong><p>" + esc(m.desc) + "</p>" +
+      '<p class="pick-tags">Biomes : ' + esc(m.biomes.map(function (b) { return b.name; }).join(", ")) + "</p>" +
       '<p class="pick-tags">Ennemis ×' + fr(m.hp) + " PV · glands d'or ×" + fr(m.gold) + "</p>" +
       (ok ? "" : '<p class="pick-lock">🔒 ' + esc(lockText(m.unlock)) + "</p>") + "</div></div>";
   }
@@ -1326,7 +1544,7 @@
       D.MAPS.forEach(function (m) {
         var ok = has(m.unlock);
         html += '<button type="button" class="tile tile-map' + (S.map === m.id ? " is-selected" : "") + (ok ? "" : " is-locked") + (im.id === m.id ? " is-inspected" : "") +
-          '" data-action="tmap" data-arg="' + m.id + '" aria-label="' + esc(m.name) + '"><span class="map-swatch" style="background:' + m.ground.base + '"><img src="' + spriteUrl(m.prop) + '" alt=""></span><small>' + esc(m.name) + "</small>" + (ok ? "" : "<i>🔒</i>") + "</button>";
+          '" data-action="tmap" data-arg="' + m.id + '" aria-label="' + esc(m.name) + '">' + swatch(m) + "<small>" + esc(m.name) + "</small>" + (ok ? "" : '<i class="lock">🔒</i>') + "</button>";
       });
       html += "</div>" + mapInfo(im);
       html += '<div class="diff-row"><span>Difficulté :</span>';
@@ -1365,12 +1583,12 @@
       return html + "</div>";
     },
     codex: function () {
-      var html = '<div class="screen-head">' + back() + '<h2>Fusions</h2></div><p class="game-small">Monte les deux ingrédients au niveau 5 : la fusion apparaît alors dans tes choix (ou sort d\'un coffre). Deux armes fusionnées libèrent une case.</p><div class="shop-list">';
+      var html = '<div class="screen-head">' + back() + '<h2>Fusions</h2></div><p class="game-small">Monte les deux ingrédients au niveau 5 : la fusion apparaît alors dans tes choix (ou sort d\'un coffre). Deux armes fusionnées libèrent une case. Les fusions <b>légendaires</b> se font à partir de fusions au niveau 5.</p><div class="shop-list">';
       Object.keys(D.FUSIONS).forEach(function (id) {
-        var f = D.FUSIONS[id], a = f.from[0], b = f.from[1], ib = D.WEAPONS[b] ? D.WEAPONS[b].icon : D.PASSIVES[b].sprite;
-        html += '<div class="shop-item fusion-row"><span class="shop-ic"><img src="' + spriteUrl(f.icon) + '" alt=""></span>' +
-          '<div class="shop-text"><strong>' + esc(f.name) + "</strong><span>" + esc(f.desc[0]) + "</span>" +
-          '<span class="fusion-recipe"><img src="' + spriteUrl(ALLW[a].icon) + '" alt=""> ' + esc(ingredientName(a)) + ' + <img src="' + spriteUrl(ib) + '" alt=""> ' + esc(ingredientName(b)) + "</span></div></div>";
+        var f = D.FUSIONS[id], a = f.from[0], b = f.from[1], ib = iconOfAny(b);
+        html += '<div class="shop-item fusion-row' + (f.tier === 2 ? " is-legend" : "") + '"><span class="shop-ic"><img src="' + spriteUrl(f.icon) + '" alt=""></span>' +
+          '<div class="shop-text"><strong>' + esc(f.name) + (f.tier === 2 ? ' <em class="legend-tag">Légendaire</em>' : "") + "</strong><span>" + esc(f.desc[0]) + "</span>" +
+          '<span class="fusion-recipe"><img src="' + spriteUrl(iconOfAny(a)) + '" alt=""> ' + esc(ingredientName(a)) + ' + <img src="' + spriteUrl(ib) + '" alt=""> ' + esc(ingredientName(b)) + "</span></div></div>";
       });
       return html + "</div>";
     },
@@ -1468,9 +1686,9 @@
     if (state !== "play") return;
     state = "pause"; clearInput();
     var html = '<h2>Pause</h2><div class="pause-grid"><div><h3>Armes (' + Object.keys(p.weapons).length + "/" + MAX_W + ')</h3><ul class="build-list">';
-    Object.keys(p.weapons).forEach(function (k) { html += '<li class="' + (ALLW[k].fusion ? "is-fusion" : "") + '"><img src="' + spriteUrl(ALLW[k].icon) + '" alt="">' + esc(ALLW[k].name) + " <b>niv. " + p.weapons[k] + "</b></li>"; });
+    Object.keys(p.weapons).forEach(function (k) { html += '<li class="' + (ALLW[k].fusion ? "is-fusion" : "") + '"><img src="' + spriteUrl(ALLW[k].icon) + '" alt="">' + esc(ALLW[k].name) + " <b>niv. " + p.weapons[k] + "</b>" + synHtml(k) + "</li>"; });
     html += '</ul><h3>Objets (' + Object.keys(p.passives).length + "/" + MAX_P + ')</h3><ul class="build-list">';
-    Object.keys(p.passives).forEach(function (k) { html += '<li><img src="' + spriteUrl(D.PASSIVES[k].sprite) + '" alt="">' + esc(D.PASSIVES[k].name) + " <b>niv. " + p.passives[k] + "</b></li>"; });
+    Object.keys(p.passives).forEach(function (k) { html += '<li><img src="' + spriteUrl(D.PASSIVES[k].sprite) + '" alt="">' + esc(D.PASSIVES[k].name) + " <b>niv. " + p.passives[k] + "</b>" + synHtml(k) + "</li>"; });
     html += '</ul></div><div><h3>Statistiques</h3><ul class="stat-list">' +
       "<li>PV <b>" + Math.ceil(p.hp) + " / " + p.maxHp + "</b></li>" +
       "<li>Dégâts <b>" + Math.round(p.might * 100) + " %</b></li>" +
@@ -1607,6 +1825,8 @@
     give: function (id, lvl) { if (!p) return; if (ALLW[id]) p.weapons[id] = lvl || 5; else if (D.PASSIVES[id]) p.passives[id] = lvl || 5; calc(); refreshCounts(); },
     drop: function (kind) { if (p) drop(kind, p.x + 20, p.y); },
     level: function () { if (p) { pending++; } },
+    warns: function () { return warns && warns.length; },
+    spawn: function (t) { if (p) spawn(t, Math.random() * TAU, 60); },
     state: function () { return { state: state, screen: screen, level: r && r.level, hp: p && p.hp, kills: r && r.kills, weapons: p && p.weapons, passives: p && p.passives, enemies: enemies && enemies.length }; },
   };
 
