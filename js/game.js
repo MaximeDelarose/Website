@@ -16,7 +16,7 @@
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
   var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.16.0";
+  var VERSION = "0.17.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -207,23 +207,23 @@
 
   function calc(pl) {
     var p = pl || actingPlayer();
-    var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives, tr = p.tree || {}, pg = p.pshop || {}, rl = p.relics || {};
+    var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives, tr = p.tree || {}, pg = p.pshop || {}, rl = p.relics || {}, it = p.items || {};
     var oldMax = p.maxHp || 0;
-    p.maxHp = Math.max(20, 100 + (p.bonusHp || 0) + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0) + (rl.coeur ? 30 : 0));
-    p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0) + (rl.plume ? 0.12 : 0));
-    p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + 0.08 * (pg.racines || 0) + (rl.croc ? 0.15 : 0);
-    p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0) + (tr.s3 || 0);
+    p.maxHp = Math.max(20, 100 + (p.bonusHp || 0) + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0) + (rl.coeur ? 30 : 0)) * (1 + 0.25 * (it.coeurchene || 0));
+    p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0) + (rl.plume ? 0.12 : 0) + 0.08 * (it.plume || 0));
+    p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + 0.08 * (pg.racines || 0) + (rl.croc ? 0.15 : 0) + 0.15 * (it.horloge || 0);
+    p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0) + (tr.s3 || 0) + 2 * (it.ecaille || 0);
     p.magnet = 30 * (1 + (m.magnet || 0) + 0.15 * (sh.aimant || 0) + 0.4 * (ps.joues || 0) + 0.1 * (tr.f1 || 0) + (rl.aimant ? 0.6 : 0));
-    p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0) - (rl.sablier ? 0.1 : 0));
-    p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + 0.1 * (pg.seve || 0);
-    p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0) + (rl.mousse ? 0.8 : 0);
+    p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0) - (rl.sablier ? 0.1 : 0) - 0.06 * (it.sablier || 0) - 0.2 * (it.horloge || 0));
+    p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + 0.1 * (pg.seve || 0) + 0.5 * (it.couronne || 0);
+    p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0) + (rl.mousse ? 0.8 : 0) + (it.coeurchene || 0);
     p.luck = 1 + 0.15 * (sh.chance || 0) + 0.2 * (ps.trefle || 0) + (rl.trefle ? 0.3 : 0);
     p.area = 1 + (m.area || 0) + 0.05 * (sh.zone || 0) + 0.1 * (ps.loupe || 0) + 0.06 * (tr.a3 || 0) + (rl.loupe ? 0.2 : 0);
     p.amount = (m.amount || 0) + Math.ceil((ps.poches || 0) / 2) + (tr.a4 || 0) + (rl.poche ? 1 : 0);
     p.shieldCd = ps.mousse ? 16 - 2 * ps.mousse : 0;
-    p.crit = 0.08 * (tr.a5 || 0) + (rl.oeil ? 0.1 : 0); p.rage = !!tr.a6; p.dodge = 0.04 * (tr.s5 || 0); p.taken = tr.s6 ? 0.85 : 1;
+    p.crit = 0.08 * (tr.a5 || 0) + (rl.oeil ? 0.1 : 0) + 0.07 * (it.griffes || 0) + 0.1 * (it.corne || 0); p.rage = !!tr.a6; p.dodge = 0.04 * (tr.s5 || 0); p.taken = tr.s6 ? 0.85 : 1;
     p.goldX = tr.f6 ? 2 : 1; p.extraChoice = tr.f4 ? 1 : 0;
-    p.goldMul = (1 + 0.1 * (sh.avarice || 0)) * (1 + 0.08 * (tr.f2 || 0)) * (1 + 0.12 * (pg.tresor || 0)) * DIFF.gold * (MAP.gold || 1);
+    p.goldMul = (1 + 0.1 * (sh.avarice || 0)) * (1 + 0.08 * (tr.f2 || 0)) * (1 + 0.12 * (pg.tresor || 0)) * DIFF.gold * (MAP.gold || 1) * (1 + 0.5 * (it.couronne || 0));
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.hp = Math.min(p.hp, p.maxHp);
   }
@@ -524,7 +524,8 @@
   function hurt(e, dmg, kx, ky) {
     if (e.dead) return;
     var crit = p.crit && Math.random() < p.crit;
-    dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? 2 : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
+    dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? (itn(p, "corne") ? 3 : 2) : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
+    if (p.items) dmg = itemDmg(e, dmg);
     if (e.aff || e.shellT > 0) dmg = affixDamage(e, dmg);
     dmg = Math.max(1, Math.round(dmg));
     e.hp -= dmg; e.flash = 0.1;
@@ -534,7 +535,8 @@
     }
     if (S.opts.numbers && texts.length < 60) texts.push({ x: e.x + (Math.random() * 6 - 3), y: e.y - e.d.r - 6, n: dmg, life: 0.6 });
     if (Net.dmgN < 30) { Net.dmgN++; netEv(["d", Math.round(e.x), Math.round(e.y - e.d.r - 6), dmg]); }
-    if (e.hp <= 0) kill(e);
+    if (p.items) onHitProcs(e);
+    if (e.hp <= 0 && !e.dead) kill(e);
   }
   function drop(kind, x, y, v) { gems.push({ x: x, y: y, kind: kind, v: v || 0 }); }
   function kill(e) {
@@ -542,10 +544,13 @@
     burst(e.x, e.y, e.d.color, e.d.boss ? 30 : 6);
     if (e.d.prop) {
       r.props++; SND.crack();
-      drop(rollLoot(), e.x, e.y);
+      if (Math.random() < 0.03) dropItem(e.x, e.y, 0); else drop(rollLoot(), e.x, e.y);
       return;
     }
     r.kills++; r.roundKills++;
+    onKillProcs(e);
+    if (e.d.boss) dropItem(e.x + 10, e.y, Math.random() < 0.25 ? 2 : 1);
+    else if (e.aff && Math.random() < 0.3) dropItem(e.x, e.y + 4, 0);
     if (e.type === "puffball") addZone(e.x, e.y, 24, 3.5, "spore", 4);
     if (e.aff) {
       if (hasA(e, "explosif")) warn(e.x, e.y, 32, 0.7, 16);
@@ -587,6 +592,8 @@
       return;
     }
     if (p.dodge && Math.random() < p.dodge) { p.inv = 0.3; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
+    p.calmT = 0;
+    if (p.oshield > 0) { var ab = Math.min(p.oshield, dmg); p.oshield -= ab; dmg -= ab; p.inv = 0.3; burst(p.x, p.y, "#9cc56b", 4); if (dmg <= 0) return; }
     p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)); p.inv = 0.6;
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = 0.25; SND.hurt(); }
     burst(p.x, p.y, "#c8553d", 5);
@@ -845,6 +852,96 @@
     if (zones.length && zoneAt(pl.x, pl.y + 3, "web")) m *= 0.5;
     for (var i = 0; i < enemies.length; i++) { var e = enemies[i]; if (e.aff && !e.dead && hasA(e, "glacial") && Math.abs(e.x - pl.x) < 46 && Math.hypot(e.x - pl.x, (e.y - pl.y) * 1.25) < 46) { m *= 0.65; break; } }
     return m;
+  }
+  /* =====================================================================
+     Objets à effets (façon roguelite) : déclencheurs au coup, à la mort, au dégât
+     ===================================================================== */
+  var ITM = {}, procLock = false;
+  D.ITEMS.forEach(function (it, i) { ITM[it.id] = it; it.idx = i; });
+  function itn(pl, id) { return (pl.items && pl.items[id]) || 0; }
+  function rollItem(minR, luck) {
+    var L = luck || 1, pool = [], tot = 0;
+    D.RARITIES.forEach(function (ra, i) { if (i < (minR || 0)) return; var w = ra.weight * (i ? L : 1); pool.push([i, w]); tot += w; });
+    var x = Math.random() * tot, ri = pool[pool.length - 1][0];
+    for (var k = 0; k < pool.length; k++) { x -= pool[k][1]; if (x <= 0) { ri = pool[k][0]; break; } }
+    var list = D.ITEMS.filter(function (it) { return it.r === ri; });
+    return list[(Math.random() * list.length) | 0];
+  }
+  function dropItem(x, y, minR) { var it = rollItem(minR, p ? p.luck : 1); drop("item", x, y, it.idx); }
+  function giveItem(pl, id) {
+    var it = ITM[id]; if (!it) return;
+    pl.items = pl.items || {}; pl.items[id] = (pl.items[id] || 0) + 1;
+    if (id === "phenix") pl.revives = (pl.revives || 0) + 1;
+    calc(pl);
+    if (pl === me) itemToast(it, pl.items[id]);
+    netEv(["it", pl.id, id]);
+  }
+  function itemToast(it, n) {
+    var ra = D.RARITIES[it.r], box = $("[data-toasts]");
+    if (it.r >= 2) SND.fusion(); else SND.level();
+    if (!box) return;
+    var el = document.createElement("div");
+    el.className = "game-toast item-toast r" + it.r; el.style.setProperty("--rc", ra.color);
+    el.innerHTML = "<strong>" + it.icon + " " + esc(it.name) + (n > 1 ? " ×" + n : "") + "</strong><span><em>" + ra.name + "</em> · " + esc(it.desc) + "</span>";
+    box.appendChild(el);
+    setTimeout(function () { el.classList.add("out"); }, 3200);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3800);
+  }
+  // multiplicateurs de dégâts (attaquant « p »)
+  function itemDmg(e, dmg) {
+    var n = itn(p, "fourche"); if (n && e.hp >= e.maxHp * 0.9) dmg *= 1 + 0.5 * n;
+    if (p.rageMul) dmg *= 1 + p.rageMul;
+    return dmg;
+  }
+  function onHitProcs(e) {
+    if (procLock || !p.items || e.d.prop) return;
+    procLock = true;
+    var n;
+    if ((n = itn(p, "bonheur")) && Math.random() < 0.06) { addGold(n); if (S.opts.numbers && texts.length < 60) texts.push({ x: e.x, y: e.y - 10, n: "+" + n, life: 0.6 }); }
+    if ((n = itn(p, "gluant")) && Math.random() < 0.1) { e.slowT = Math.max(e.slowT, 2); e.slow = Math.max(e.slow || 0, e.d.boss ? 0.3 : 0.6); }
+    if ((n = itn(p, "givre")) && Math.random() < Math.min(0.3, 0.06 * n)) { e.slowT = Math.max(e.slowT, 1.5); e.slow = e.d.boss ? 0.5 : 1; burst(e.x, e.y, "#a8e0ff", 5); }
+    if ((n = itn(p, "tique")) && Math.random() < 0.2) p.hp = Math.min(p.maxHp, p.hp + n);
+    if (!e.dead && (n = itn(p, "pile")) && Math.random() < 0.1) zapChain(e, 3, 25 * n, { x: e.x, y: e.y - 10 });
+    if ((n = itn(p, "missile")) && Math.random() < 0.1) {
+      var a = Math.atan2(e.y - p.y, e.x - p.x);
+      projs.push({ owner: p, kind: "bullet", x: p.x, y: p.y - 4, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, dmg: 30 * n, pierce: 1, sprite: "pinecone", life: 2.2, hit: [], r: 4, homing: true });
+    }
+    if ((n = itn(p, "meteore")) && Math.random() < 0.04) lobs.push({ owner: p, sx: e.x, sy: e.y, tx: e.x, ty: e.y, t: 0, dur: 0.6, dmg: 150 * n, rad: 30 * p.area, frag: 0, sprite: "meteore", sky: true });
+    procLock = false;
+  }
+  function onKillProcs(e) {
+    if (!p || !p.items || e.d.prop) return;
+    var n;
+    if ((n = itn(p, "baies"))) p.hp = Math.min(p.maxHp, p.hp + n);
+    if ((n = itn(p, "lune")) && Math.random() < 0.04 * n) drop("berry", e.x, e.y);
+    if ((n = itn(p, "follet")) && !procLock) { procLock = true; explode(e.x, e.y, 22 * p.area, 20 * n); procLock = false; }
+  }
+  // chaque image, pour chaque joueur (hôte) : totem, rage, bouclier
+  function itemTick(pl, dt) {
+    if (!pl.items) return;
+    var n;
+    if ((n = itn(pl, "rage"))) { var c = 0; near(pl.x, pl.y, 60, function (e) { if (!e.d.prop && c < 8) c++; }); pl.rageMul = Math.min(0.32 * n, 0.04 * n * c); }
+    if ((n = itn(pl, "totem"))) {
+      pl.totemT = (pl.totemT === undefined ? 3 : pl.totemT) - dt;
+      if (pl.totemT <= 0) { pl.totemT = 3; var t = nearest(4, 140, pl); if (t.length) { var tg = t[(Math.random() * t.length) | 0]; zapChain(tg, 1, 45 * n, { x: tg.x, y: tg.y - 70 }); SND.zap(); } }
+    }
+    if ((n = itn(pl, "pomme"))) { pl.calmT = (pl.calmT || 0) + dt; if (pl.calmT >= 4 && !(pl.oshield > 0)) { pl.oshield = pl.maxHp * 0.1 * n; burst(pl.x, pl.y, "#9cc56b", 6); } }
+  }
+  function drawItemsHud(y0) {
+    var it = me.items; if (!it) return;
+    var x = 2, per = Math.max(6, Math.floor((W * 0.55) / 11)), cnt = 0;
+    ctx.font = "7px sans-serif"; ctx.textBaseline = "top";
+    Object.keys(it).forEach(function (id) {
+      var d = ITM[id]; if (!d) return;
+      if (cnt && cnt % per === 0) { x = 2; y0 += 11; }
+      cnt++;
+      ctx.fillStyle = "rgba(20,14,10,.55)"; ctx.fillRect(x, y0, 10, 10);
+      ctx.fillStyle = D.RARITIES[d.r].color; ctx.fillRect(x, y0 + 9, 10, 1);
+      ctx.fillText(d.icon, x + 1, y0 + 1);
+      if (it[id] > 1) drawText(String(it[id]), x + 10, y0 + 6, "#fdf3de", "r");
+      x += 11;
+    });
+    ctx.textBaseline = "alphabetic";
   }
   function updateWarns(dt) {
     for (var i = warns.length - 1; i >= 0; i--) {
@@ -1284,6 +1381,9 @@
   function moveMe(dt) {
     var v = (me.down || me.choosing || netMenuOpen) ? { x: 0, y: 0 } : inputVector();
     var slw = slowMul(me);
+    if (me.lastHp !== undefined && me.hp < me.lastHp - 0.5 && itn(me, "cape")) me.capeT = 2;
+    me.lastHp = me.hp;
+    if (me.capeT > 0) { me.capeT -= dt; slw *= 1 + 0.35 * itn(me, "cape"); }
     if (isDungeon()) { var spd = me.speed * slw * (me.wet === "water" ? 0.6 : me.wet === "poison" ? 0.8 : 1); dungeonMove(me, me.x + v.x * spd * dt, me.y + v.y * spd * dt); dungeonFeet(me, dt); markVisited(); }
     else { me.x += v.x * me.speed * slw * dt; me.y += v.y * me.speed * slw * dt; }
     clampArena(me, 8);
@@ -1319,7 +1419,7 @@
 
     if (isArena()) arenaDirector(dt); else if (isDungeon()) { dungeonTick(dt); if (state !== "play") return; } else director(dt);
     buildGrid();
-    players.forEach(function (pl) { if (pl.down) return; p = pl; if (isDungeon() && !inCombat(pl)) return; weapons(dt); });
+    players.forEach(function (pl) { if (pl.down) return; p = pl; if (isDungeon() && !inCombat(pl)) return; itemTick(pl, dt); weapons(dt); });
     p = me;
 
     var zones = players.length > 1 ? players.filter(function (pl) { return pl.choosing && !pl.down; }) : [];
@@ -1796,7 +1896,7 @@
     rm.state = "cleared"; r.dg.active = -1; r.dg.clearedTotal++;
     var c = { x: rm.cx, y: rm.cy };
     for (var i = 0; i < 3 + r.dg.floor; i++) drop("gold", c.x + Math.random() * 40 - 20, c.y + Math.random() * 30 - 15, 1);
-    if (rm.type === "elite") { drop("chest", c.x - 10, c.y, 1); drop("relic", c.x + 12, c.y); bannerAll("Salle d'élite vaincue !"); }
+    if (rm.type === "elite") { drop("chest", c.x - 10, c.y, 1); drop("relic", c.x + 12, c.y); dropItem(c.x, c.y + 14, 1); bannerAll("Salle d'élite vaincue !"); }
     else if (rm.type === "guard") { drop("relic", c.x, c.y + 20); r.dg.stairs = { x: c.x, y: rm.core.y + 30 }; bannerAll("L'escalier s'ouvre !"); }
     else if (rm.type === "boss") { r.dg.winT = 2.5; bannerAll("Le donjon est vaincu !"); }
     else bannerAll("Salle nettoyée");
@@ -1833,7 +1933,7 @@
         if (!rm) continue;
         if (rm.type === "treasure") {
           rm.state = "cleared"; dg.clearedTotal++;
-          drop("chest", rm.cx, rm.cy, 1); for (var k = 0; k < 6; k++) drop("gold", rm.cx + Math.random() * 50 - 25, rm.cy + Math.random() * 30 - 15, 2);
+          drop("chest", rm.cx, rm.cy, 1); dropItem(rm.cx - 16, rm.cy + 8, 0); for (var k = 0; k < 6; k++) drop("gold", rm.cx + Math.random() * 50 - 25, rm.cy + Math.random() * 30 - 15, 2);
           if (Math.random() < 0.5) drop("relic", rm.cx + 16, rm.cy + 10);
           bannerAll("Salle au trésor !"); SND.level();
         } else activateRoom(rm, pl);
@@ -2183,6 +2283,7 @@
       case "freeze": r.freeze = 5; bannerAll("Givre !"); SND.zap(); break;
       case "bomb": nuke(); bannerAll("Gland explosif !"); break;
       case "relic": giveRelic(pl); break;
+      case "item": giveItem(pl, D.ITEMS[g.v].id); break;
       case "chest":
         addGold(15); burst(pl.x, pl.y, "#f2c230", 16);
         netEv(["ch", g.v || 0]);
@@ -2340,6 +2441,7 @@
     } else {
       drawHero(pl.sprite, pl.x, pl.y, pl.face, pl.moving, pl.anim, pl.inv);
       if (pl.shield) { ctx.strokeStyle = "rgba(156,197,107,.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(pl.x, pl.y, 10, 9, 0, 0, TAU); ctx.stroke(); }
+      if (pl.oshield > 0) { ctx.strokeStyle = "rgba(220,240,160," + (0.5 + 0.3 * Math.sin(r.time * 6)) + ")"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(pl.x, pl.y, 12, 11, 0, 0, TAU); ctx.stroke(); }
       if (pl.choosing) {
         ctx.fillStyle = "rgba(230,246,250,.18)"; ctx.strokeStyle = "rgba(230,246,250,.8)"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.ellipse(pl.x, pl.y - 2, 13, 12, 0, 0, TAU); ctx.fill(); ctx.stroke();
@@ -2423,6 +2525,13 @@
 
     var bob = Math.sin(r.time * 4);
     gems.forEach(function (g) {
+      if (g.kind === "item") {
+        var di = D.ITEMS[g.v] || D.ITEMS[0], rc = D.RARITIES[di.r].color, gx = Math.round(g.x), gy = Math.round(g.y + bob * 1.5);
+        ctx.globalAlpha = 0.25 + 0.1 * Math.sin(r.time * 4); ctx.fillStyle = rc; ctx.fillRect(gx - 2, gy - 40, 4, 40); ctx.globalAlpha = 0.5; ctx.fillRect(gx - 1, gy - 40, 2, 40); ctx.globalAlpha = 1;
+        ctx.fillStyle = "rgba(20,14,10,.75)"; ctx.fillRect(gx - 6, gy - 6, 12, 12); ctx.strokeStyle = rc; ctx.lineWidth = 1; ctx.strokeRect(gx - 5.5, gy - 5.5, 11, 11);
+        ctx.font = "8px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center"; ctx.fillText(di.icon, gx, gy + 1); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        return;
+      }
       var s = g.kind === "xp" ? (g.v >= 3 ? SPR.bignut[0] : SPR.nut[0]) : (SPR[g.kind === "relic" ? "relic" : g.kind] || SPR.nut)[0];
       var big = g.kind !== "xp" && g.kind !== "gold";
       if (big) { ctx.fillStyle = "rgba(255,240,180,.25)"; ctx.fillRect(Math.round(g.x - 5), Math.round(g.y - 5 + bob), 10, 10); }
@@ -2654,7 +2763,7 @@
     hostile.forEach(function (q) { hole(q.x, q.y, 16, 0.9); });
     zones.forEach(function (z) { if (z.kind === "fire") hole(z.x, z.y, z.r + 14, 0.7); });
     warns.forEach(function (w) { hole(w.x, w.y, w.r + 8, 0.6); });
-    gems.forEach(function (g) { if (g.kind !== "xp" && g.kind !== "gold") hole(g.x, g.y, 22, 0.8); });
+    gems.forEach(function (g) { if (g.kind !== "xp" && g.kind !== "gold") hole(g.x, g.y, g.kind === "item" ? 34 : 22, 0.85); });
     enemies.forEach(function (e) { if (e.d.elite && !e.dead) hole(e.x, e.y, 26, 0.6); });
     ctx.drawImage(lightC, 0, 0);
     // halo chaud des torches
@@ -2787,8 +2896,8 @@
     box(2, 40, hpw, 6, "#3a2618");
     ctx.fillStyle = hpr > 0.3 ? "#9cc56b" : "#c8553d"; ctx.fillRect(3, 41, Math.round((hpw - 2) * hpr), 4);
     // coéquipiers (sous les cases)
+    var yy = 50;
     if (players.length > 1) {
-      var yy = 50;
       players.forEach(function (pl) {
         if (pl === me) return;
         drawText(String(pl.name).slice(0, 8), 2, yy, pl.down ? "#ff5a3a" : mateColor(pl), "l");
@@ -2802,14 +2911,16 @@
       drawText(fmtTime(r.time), W - 4, 15, "#fdf3de", "r", 2);
       drawText("ETAGE " + r.dg.floor + "/" + DG.floors, W - 4, 45, "#f6d36b", "r");
       drawMinimap(W - 4, 54);
-      var rk = Object.keys(me.relics || {});
-      rk.forEach(function (id, i) { var rl = D.RELICS.filter(function (x) { return x.id === id; })[0]; if (rl) { ctx.font = "8px sans-serif"; ctx.fillText(rl.icon, 2 + i * 10, 56); } });
     } else if (isArena()) {
       var left = Math.max(0, r.roundLen - r.roundT);
       drawText(fmtTime(Math.ceil(left)), W - 4, 15, left < 5 && r.phase === "fight" ? "#ff5a3a" : "#fdf3de", "r", 2);
       drawText("MANCHE " + r.round + "/" + A.rounds, W - 4, 45, "#f6d36b", "r");
       if (r.mod && r.phase === "fight") drawText(r.mod.name, W - 4, 53, "#ff8a6a", "r");
     } else drawText(fmtTime(r.time), W - 4, 15, "#fdf3de", "r", 2);
+    // reliques et objets sous les cases
+    var rk = Object.keys(me.relics || {});
+    rk.forEach(function (id, i) { var rl = D.RELICS.filter(function (x) { return x.id === id; })[0]; if (rl) { ctx.font = "8px sans-serif"; ctx.fillText(rl.icon, 2 + i * 10, yy + 6); } });
+    drawItemsHud(yy - 1 + (rk.length ? 10 : 0));
     var k = String(r.kills), g = String(Math.floor(r.gold));
     drawText(k, W - 4, 29, "#fdf3de", "r"); icon("skull", W - 4 - textWidth(k) - 5, 31);
     drawText(g, W - 4, 37, "#ffe27a", "r"); icon("gold", W - 4 - textWidth(g) - 5, 39);
@@ -3571,7 +3682,7 @@
     for (i = 0; i < gems.length && g.length < 220 * 3; i++) {
       var gm = gems[i];
       if (!nearAnyPlayer(gm, 300)) continue;
-      g.push(gm.kind === "xp" && gm.v >= 3 ? 9 : GEMI[gm.kind], R1(gm.x), R1(gm.y));
+      g.push(gm.kind === "item" ? 100 + gm.v : gm.kind === "xp" && gm.v >= 3 ? 9 : GEMI[gm.kind], R1(gm.x), R1(gm.y));
     }
     var h = [];
     hostile.forEach(function (q) { h.push(R1(q.x), R1(q.y), R1(q.vx), R1(q.vy)); });
@@ -3581,7 +3692,7 @@
       var orb = {};
       Object.keys(o.weapons).forEach(function (k) { if (ALLW[k] && ALLW[k].type === "orbit") orb[k] = Math.round((o.st[k] || 0) * 100) / 100; });
       return [o.id, R1(o.x), R1(o.y), o.face, o.moving ? 1 : 0, Math.ceil(o.hp), R1(o.maxHp), o.down ? 1 : 0, o.choosing ? 1 : 0, o.inv > 0 ? 1 : 0,
-              o.name, o.sprite, o.weapons, orb, Math.round(o.area * 100), o.amount, o.shield ? 1 : 0, Math.round(o.reviveT * 10)];
+              o.name, o.sprite, o.weapons, orb, Math.round(o.area * 100), o.amount, o.shield ? 1 : 0, Math.round(o.reviveT * 10), o.oshield > 0 ? 1 : 0];
     });
     return { r: [Math.round(r.time * 10), r.kills, r.level, Math.round(Math.min(1, xp / xpNext) * 1000), Math.floor(r.gold), r.bosses, Math.round(r.freeze * 10), Math.round(r.flash * 100), r.round, Math.round(r.roundT * 10)],
              dg: isDungeon() ? [r.dg.floor, r.dg.active, r.dg.rooms.filter(function (x) { return x.state === "cleared"; }).map(function (x) { return x.idx; }), r.dg.stairs ? [Math.round(r.dg.stairs.x), Math.round(r.dg.stairs.y)] : 0, r.dg.clearedTotal] : 0,
@@ -3609,9 +3720,9 @@
       seen[a[0]] = true;
       var o = playerById(a[0]);
       if (!o) { o = { id: a[0], char: D.CHARACTERS[0], weapons: {}, passives: {}, st: {}, timers: {}, consumed: {}, anim: 0, remote: true, x: a[1], y: a[2] }; players.push(o); }
-      if (o === me) { me.hp = a[5]; me.down = !!a[7]; me.reviveT = a[17] / 10; me.shield = !!a[16]; if (a[9] && me.inv <= 0) me.inv = 0.4; return; }
+      if (o === me) { me.hp = a[5]; me.down = !!a[7]; me.reviveT = a[17] / 10; me.shield = !!a[16]; me.oshield = a[18] ? 1 : 0; if (a[9] && me.inv <= 0) me.inv = 0.4; return; }
       o.px = o.x; o.py = o.y; o.nx = a[1]; o.ny = a[2]; o.face = a[3]; o.moving = !!a[4]; o.hp = a[5]; o.maxHp = a[6]; o.down = !!a[7]; o.choosing = !!a[8];
-      o.inv = a[9] ? 0.3 : 0; o.name = a[10]; o.sprite = a[11]; o.weapons = a[12] || {}; o.area = a[14] / 100; o.amount = a[15]; o.shield = !!a[16]; o.reviveT = a[17] / 10;
+      o.inv = a[9] ? 0.3 : 0; o.name = a[10]; o.sprite = a[11]; o.weapons = a[12] || {}; o.area = a[14] / 100; o.amount = a[15]; o.shield = !!a[16]; o.reviveT = a[17] / 10; o.oshield = a[18] ? 1 : 0;
       Object.keys(a[13] || {}).forEach(function (k) { o.st[k] = a[13][k]; });
     });
     players = players.filter(function (o) { return o === me || seen[o.id]; });
@@ -3631,6 +3742,7 @@
     else if (t === "sp") { var o2 = playerById(ev[1]); if (o2) fx.push({ kind: "spin", r: ev[2], life: 0.25, max: 0.25, pl: o2 }); }
     else if (t === "bn") banner(ev[1]);
     else if (t === "ch") { if (!me.down) grantChest(ev[1] || 0); }
+    else if (t === "it") { var pi2 = playerById(ev[1]); if (pi2) { pi2.items = pi2.items || {}; pi2.items[ev[2]] = (pi2.items[ev[2]] || 0) + 1; if (pi2 === me) { calc(me); itemToast(ITM[ev[2]], me.items[ev[2]]); } } }
     else if (t === "rl") { var po = playerById(ev[1]); if (po) { po.relics = po.relics || {}; po.relics[ev[2]] = true; if (po === me) { calc(me); var rd = D.RELICS.filter(function (x) { return x.id === ev[2]; })[0]; if (rd) banner("Relique : " + rd.name + " (" + rd.desc + ")"); } } }
   }
   var PROPS_SPR = ["stump", "basket", "leafpile", "lantern"];
@@ -3680,7 +3792,7 @@
       var lb = cur.s.lb; lobs = [];
       for (i = 0; i < lb.length; i += 9) lobs.push({ sx: lb[i], sy: lb[i + 1], tx: lb[i + 2], ty: lb[i + 3], t: Math.min(lb[i + 5], lb[i + 4] + age * 100) / 100, dur: lb[i + 5] / 100, sprite: SPRN[lb[i + 6]], sky: !!(lb[i + 7] & 1), small: !!(lb[i + 7] & 2), rad: lb[i + 8] });
       var g = cur.s.g; gems = [];
-      for (i = 0; i < g.length; i += 3) gems.push(g[i] === 9 ? { kind: "xp", v: 3, x: g[i + 1], y: g[i + 2] } : { kind: GEMK[g[i]], v: 1, x: g[i + 1], y: g[i + 2] });
+      for (i = 0; i < g.length; i += 3) gems.push(g[i] >= 100 ? { kind: "item", v: g[i] - 100, x: g[i + 1], y: g[i + 2] } : g[i] === 9 ? { kind: "xp", v: 3, x: g[i + 1], y: g[i + 2] } : { kind: GEMK[g[i]], v: 1, x: g[i + 1], y: g[i + 2] });
       var h = cur.s.h; hostile = [];
       for (i = 0; i < h.length; i += 4) hostile.push({ x: h[i] + h[i + 2] * age, y: h[i + 1] + h[i + 3] * age, vx: h[i + 2], vy: h[i + 3] });
       var w = cur.s.w; warns = [];
@@ -3954,6 +4066,10 @@
     elite: function (type, n, ids) { var e = spawn(type || "beetle", Math.random() * TAU, 50 + Math.random() * 40); e.aff = null; if (ids && !ids.length) return null; if (ids) { e.aff = ids.slice(); e.d = Object.assign({}, e.d, { elite: true }); } else giveAffixes(e, n || 1); if (isDungeon()) { e.room = undefined; e.wander = true; e.awake = true; } return e.aff; },
     boss: function (type) { enemies.forEach(function (o) { if (o.d.boss) o.dead = true; }); var e = spawn(type, 0, 80); if (isDungeon()) { e.wander = true; e.awake = true; } return e.d.name; },
     sheet: function (names) { var c = document.createElement("canvas"); c.width = 1000; c.height = 260; var g = c.getContext("2d"); g.imageSmoothingEnabled = false; g.fillStyle = "#5a7a4a"; g.fillRect(0, 0, 1000, 260); var x = 10; names.forEach(function (n) { SPR[n].forEach(function (f, i) { g.drawImage(f.c, x, 10 + i * 120, f.w * 5, f.h * 5); }); x += SPR[n][0].w * 5 + 12; }); document.body.prepend(c); c.style.cssText = "position:fixed;left:0;top:0;z-index:9999;width:1000px;image-rendering:pixelated"; },
+    item: function (id, n) { for (var i = 0; i < (n || 1); i++) giveItem(me, id); return me.items; },
+    dropForMates: function (id) { players.forEach(function (pl) { if (pl.remote) drop("item", pl.x + 4, pl.y, ITM[id || "plume"].idx); }); },
+    items: function () { return me.items || {}; },
+    dropItems: function () { D.ITEMS.forEach(function (it, i) { drop("item", me.x - 60 + (i % 8) * 16, me.y - 40 + ((i / 8) | 0) * 16, i); }); },
     goStairs: function () { if (r && r.dg && r.dg.stairs) { me.x = r.dg.stairs.x; me.y = r.dg.stairs.y; return true; } return false; },
     killRoom: function () { enemies.forEach(function (e) { if (!e.d.prop && e.room !== undefined) { e.hp = 0; kill(e); } }); },
     endRound: function () { if (r && isArena() && r.phase === "fight") r.roundT = r.roundLen; },

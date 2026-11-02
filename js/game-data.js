@@ -687,6 +687,42 @@ window.ES_DATA = (function () {
   };
 
   /* =====================================================================
+     Objets à effets (ramassés au sol, empilables), avec raretés
+     ===================================================================== */
+  var RARITIES = [
+    { id: "commun", name: "Commun", color: "#e8e0d0", weight: 70 },
+    { id: "peu", name: "Peu commun", color: "#7ac850", weight: 24 },
+    { id: "rare", name: "Rare", color: "#4aa3df", weight: 8 },
+    { id: "legende", name: "Légendaire", color: "#ff5a3a", weight: 2 },
+  ];
+  var ITEMS = [
+    { id: "bonheur",  r: 0, icon: "🌰", name: "Gland porte-bonheur", desc: "6 % de chance par coup de gagner 1 gland d'or (+1 par exemplaire)." },
+    { id: "griffes",  r: 0, icon: "🗡️", name: "Griffes aiguisées", desc: "+7 % de coups critiques." },
+    { id: "plume",    r: 0, icon: "🪶", name: "Plume de vent", desc: "+8 % de vitesse." },
+    { id: "baies",    r: 0, icon: "🍇", name: "Baies séchées", desc: "Chaque ennemi tué rend 1 PV." },
+    { id: "fourche",  r: 0, icon: "🪵", name: "Bâton fourchu", desc: "+50 % de dégâts aux ennemis presque intacts." },
+    { id: "ecaille",  r: 0, icon: "🐢", name: "Écaille de tortue", desc: "Encaisse 2 dégâts de moins par coup." },
+    { id: "sablier",  r: 0, icon: "⏳", name: "Sablier ébréché", desc: "-6 % de recharge des armes." },
+    { id: "gluant",   r: 0, icon: "🍄", name: "Champignon gluant", desc: "10 % de chance par coup de ralentir fortement l'ennemi." },
+    { id: "pile",     r: 1, icon: "⚡", name: "Noisette électrique", desc: "10 % de chance par coup : un éclair touche 3 ennemis (25 dégâts)." },
+    { id: "follet",   r: 1, icon: "🔥", name: "Feu follet", desc: "Les ennemis tués explosent (20 dégâts autour)." },
+    { id: "tique",    r: 1, icon: "🩸", name: "Tique gourmande", desc: "20 % de chance par coup de rendre 1 PV." },
+    { id: "pomme",    r: 1, icon: "🌲", name: "Pomme de pin bouclier", desc: "4 s sans être touché : bouclier de 10 % des PV max." },
+    { id: "givre",    r: 1, icon: "❄️", name: "Dague de givre", desc: "6 % de chance par coup de geler l'ennemi 1,5 s." },
+    { id: "missile",  r: 1, icon: "🚀", name: "Pomme de pin guidée", desc: "10 % de chance par coup de tirer une pomme de pin chercheuse (30 dégâts)." },
+    { id: "cape",     r: 1, icon: "🧣", name: "Cape d'ombre", desc: "Quand tu es touché : +35 % de vitesse pendant 2 s." },
+    { id: "coeurchene", r: 2, icon: "🌳", name: "Cœur de chêne", desc: "+25 % de PV max et +1 PV/s." },
+    { id: "corne",    r: 2, icon: "🦌", name: "Bois de cerf", desc: "+10 % de critiques, et les critiques font ×3." },
+    { id: "lune",     r: 2, icon: "🌙", name: "Collier lunaire", desc: "Les ennemis tués ont 4 % de chance de laisser des baies." },
+    { id: "totem",    r: 2, icon: "🌩️", name: "Totem d'orage", desc: "Toutes les 3 s, la foudre frappe un ennemi proche (45 dégâts)." },
+    { id: "rage",     r: 2, icon: "💢", name: "Rage du chêne", desc: "+4 % de dégâts par ennemi proche (max +32 %)." },
+    { id: "phenix",   r: 3, icon: "🌅", name: "Plume de phénix", desc: "Une renaissance de plus." },
+    { id: "couronne", r: 3, icon: "👑", name: "Couronne de glands", desc: "+50 % d'or et d'XP." },
+    { id: "meteore",  r: 3, icon: "☄️", name: "Cœur de météore", desc: "4 % de chance par coup de faire tomber un météore (150 dégâts)." },
+    { id: "horloge",  r: 3, icon: "🕰️", name: "Horloge de la forêt", desc: "-20 % de recharge et +15 % de dégâts." },
+  ];
+
+  /* =====================================================================
      Pouvoirs d'élite : s'appliquent à n'importe quel ennemi, boss compris
      ===================================================================== */
   var AFFIXES = [
@@ -706,6 +742,6 @@ window.ES_DATA = (function () {
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();

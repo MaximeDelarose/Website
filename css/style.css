@@ -1330,3 +1330,9 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
   .account-btn { height: 40px; padding: 0 10px 0 8px; gap: 6px; }
   .account-label { font-size: .85rem; }
 }
+
+/* Survivor : objets à rareté (toast) */
+.game-toast.item-toast { border-left: 4px solid var(--rc, #e8e0d0); }
+.game-toast.item-toast strong { color: var(--rc, inherit); }
+.game-toast.item-toast em { font-style: normal; font-weight: 800; color: var(--rc, inherit); }
+.game-toast.item-toast.r3 { box-shadow: 0 0 0 2px #000, 0 0 18px var(--rc); }
