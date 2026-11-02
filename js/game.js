@@ -13,9 +13,10 @@
   var ctx = canvas.getContext("2d");
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
-  var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene";
+  var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
+  var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.12.1";
+  var VERSION = "0.13.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -206,21 +207,21 @@
 
   function calc(pl) {
     var p = pl || actingPlayer();
-    var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives, tr = p.tree || {}, pg = p.pshop || {};
+    var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives, tr = p.tree || {}, pg = p.pshop || {}, rl = p.relics || {};
     var oldMax = p.maxHp || 0;
-    p.maxHp = Math.max(20, 100 + (p.bonusHp || 0) + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0));
-    p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0));
-    p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + 0.08 * (pg.racines || 0);
+    p.maxHp = Math.max(20, 100 + (p.bonusHp || 0) + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0) + (rl.coeur ? 30 : 0));
+    p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0) + (rl.plume ? 0.12 : 0));
+    p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + 0.08 * (pg.racines || 0) + (rl.croc ? 0.15 : 0);
     p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0) + (tr.s3 || 0);
-    p.magnet = 30 * (1 + (m.magnet || 0) + 0.15 * (sh.aimant || 0) + 0.4 * (ps.joues || 0) + 0.1 * (tr.f1 || 0));
-    p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0));
+    p.magnet = 30 * (1 + (m.magnet || 0) + 0.15 * (sh.aimant || 0) + 0.4 * (ps.joues || 0) + 0.1 * (tr.f1 || 0) + (rl.aimant ? 0.6 : 0));
+    p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0) - (rl.sablier ? 0.1 : 0));
     p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + 0.1 * (pg.seve || 0);
-    p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0);
-    p.luck = 1 + 0.15 * (sh.chance || 0) + 0.2 * (ps.trefle || 0);
-    p.area = 1 + (m.area || 0) + 0.05 * (sh.zone || 0) + 0.1 * (ps.loupe || 0) + 0.06 * (tr.a3 || 0);
-    p.amount = (m.amount || 0) + Math.ceil((ps.poches || 0) / 2) + (tr.a4 || 0);
+    p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0) + (rl.mousse ? 0.8 : 0);
+    p.luck = 1 + 0.15 * (sh.chance || 0) + 0.2 * (ps.trefle || 0) + (rl.trefle ? 0.3 : 0);
+    p.area = 1 + (m.area || 0) + 0.05 * (sh.zone || 0) + 0.1 * (ps.loupe || 0) + 0.06 * (tr.a3 || 0) + (rl.loupe ? 0.2 : 0);
+    p.amount = (m.amount || 0) + Math.ceil((ps.poches || 0) / 2) + (tr.a4 || 0) + (rl.poche ? 1 : 0);
     p.shieldCd = ps.mousse ? 16 - 2 * ps.mousse : 0;
-    p.crit = 0.08 * (tr.a5 || 0); p.rage = !!tr.a6; p.dodge = 0.04 * (tr.s5 || 0); p.taken = tr.s6 ? 0.85 : 1;
+    p.crit = 0.08 * (tr.a5 || 0) + (rl.oeil ? 0.1 : 0); p.rage = !!tr.a6; p.dodge = 0.04 * (tr.s5 || 0); p.taken = tr.s6 ? 0.85 : 1;
     p.goldX = tr.f6 ? 2 : 1; p.extraChoice = tr.f4 ? 1 : 0;
     p.goldMul = (1 + 0.1 * (sh.avarice || 0)) * (1 + 0.08 * (tr.f2 || 0)) * (1 + 0.12 * (pg.tresor || 0)) * DIFF.gold * (MAP.gold || 1);
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
@@ -229,7 +230,7 @@
 
   function actingPlayer() { return p || me; }
   function myId() { return Net.on ? Net.id : "solo"; }
-  function reset(roster, mapId, diffId, mode) {
+  function reset(roster, mapId, diffId, mode, seed) {
     DIFF = D.DIFFICULTIES[diffId || S.diff] || D.DIFFICULTIES.normal; MAP = mapById(mapId || S.map);
     roster = roster || [{ id: "solo", name: S.name || "Toi", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige, pshop: S.pshop }];
     var n = roster.length;
@@ -250,13 +251,15 @@
           fusions: 0, legend: 0, biome: -1, props: 0, freeze: 0, flash: 0, hard: (diffId || S.diff) !== "normal", ended: false, committed: false, newAch: [], bonus: 0,
           char: CH.id, map: MAP.id, coop: n > 1, mode: mode || "survie",
           round: 1, roundT: 0, roundLen: A.roundTime(1), roundKills: 0, phase: "fight", mod: null, won: false, ready: {} };
-    players.forEach(function (pl) { pl.coins = 0; pl.bonusHp = 0; });
+    players.forEach(function (pl) { pl.coins = 0; pl.bonusHp = 0; pl.relics = {}; });
+    if (r.mode === "dungeon") { r.seed = seed || ((Math.random() * 1e9) | 0); buildFloor(1); }
     enemies = []; projs = []; hostile = []; lobs = []; gems = []; fx = []; texts = []; warns = [];
     biomeCache = new Map();
     xp = 0; xpNext = need(1); pending = me.tree.f5 ? 1 : 0; picking = false; netMenuOpen = false;
     spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
-    if (!Net.on || Net.role === "host") for (var i = 0; i < 4; i++) spawnProp(90 + Math.random() * 120);
+    if ((!Net.on || Net.role === "host") && r.mode !== "dungeon") for (var i = 0; i < 4; i++) spawnProp(90 + Math.random() * 120);
+    if (r.mode === "dungeon") { nextSwarm = 1e9; nextBoss = 1e9; spawnAcc = 0; if (!Net.on || Net.role === "host") populateFloor(); }
     if (r.mode === "arena") { nextSwarm = 1e9; nextBoss = 1e9; spawnAcc = 2; }
   }
   function alive() { return players.filter(function (pl) { return !pl.down; }); }
@@ -423,13 +426,13 @@
   }
   function spawnAt(type, x, y) {
     var d = D.ENEMIES[type];
-    var hp = d.hp * (d.boss ? (1 + bossCount * 0.9) * (1 + r.time / 200) * DIFF.hp * (MAP.hp || 1) : hpMul());
+    var hp = d.hp * (d.boss && !isDungeon() ? (1 + bossCount * 0.9) * (1 + r.time / 200) * DIFF.hp * (MAP.hp || 1) : hpMul());
     var e = makeEnemy(type, d, x, y, hp);
     if (d.ai === "mole") { e.under = true; e.cd = 1; }
     if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
     return e;
   }
-  function hpMul() { return (isArena() ? 1 + 0.07 * (r.round - 1) : 1) * (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
+  function hpMul() { if (isDungeon()) return (1 + 0.9 * (r.dg.floor - 1)) * (1 + r.time / 400) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); return (isArena() ? 1 + 0.07 * (r.round - 1) : 1) * (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
   function makeEnemy(type, d, x, y, hp) {
     var e = { id: ++uid, type: type, d: d, spr: SPR[d.sprite], x: x, y: y, hp: hp, maxHp: hp, kx: 0, ky: 0, flash: 0, slowT: 0, slow: 0,
               anim: Math.random() * 2, phase: Math.random() * 6, face: 1, charge: 0, windup: 0, cd: 3, spd: (d.spd || 0) * DIFF.spd, cool: null };
@@ -1069,7 +1072,8 @@
      ===================================================================== */
   function moveMe(dt) {
     var v = (me.down || me.choosing || netMenuOpen) ? { x: 0, y: 0 } : inputVector();
-    me.x += v.x * me.speed * dt; me.y += v.y * me.speed * dt;
+    if (isDungeon()) { dungeonMove(me, me.x + v.x * me.speed * dt, me.y + v.y * me.speed * dt); markVisited(); }
+    else { me.x += v.x * me.speed * dt; me.y += v.y * me.speed * dt; }
     clampArena(me, 8);
     me.moving = Math.abs(v.x) + Math.abs(v.y) > 0.05;
     if (v.x > 0.1) me.face = 1; else if (v.x < -0.1) me.face = -1;
@@ -1099,9 +1103,9 @@
     r.freeze = Math.max(0, r.freeze - dt); r.flash = Math.max(0, r.flash - dt);
 
     var bi = biomeAtTile(Math.floor(me.x / 16), Math.floor(me.y / 16));
-    if (bi !== r.biome) { if (r.biome >= 0) banner(MAP.biomes[bi].name); r.biome = bi; }
+    if (bi !== r.biome && !isDungeon()) { if (r.biome >= 0) banner(MAP.biomes[bi].name); r.biome = bi; }
 
-    if (isArena()) arenaDirector(dt); else director(dt);
+    if (isArena()) arenaDirector(dt); else if (isDungeon()) { dungeonTick(dt); if (state !== "play") return; } else director(dt);
     buildGrid();
     players.forEach(function (pl) { if (pl.down) return; p = pl; weapons(dt); });
     p = me;
@@ -1149,11 +1153,12 @@
       }
       if (Math.abs(mx) > 0.1) e.face = mx > 0 ? 1 : -1;
       if (isArena()) clampArena(e, e.d.r);
+      if (isDungeon() && e.room !== undefined) { var rr = r.dg.rooms[e.room].rect; e.x = Math.max(rr.x + e.d.r + 4, Math.min(rr.x + rr.w - e.d.r - 4, e.x)); e.y = Math.max(rr.y + e.d.r + 4, Math.min(rr.y + rr.h - e.d.r - 4, e.y)); }
       if (!e.under) for (var j = 0; j < players.length; j++) {
         var pl = players[j];
-        if (Math.abs(pl.x - e.x) < e.d.r + 5 && Math.abs(pl.y - e.y) < e.d.r + 5) damagePlayer(e.d.dmg, pl);
+        if (Math.abs(pl.x - e.x) < e.d.r + 5 && Math.abs(pl.y - e.y) < e.d.r + 5) damagePlayer(e.d.dmg * (e.dmgMul || 1), pl);
       }
-      if (d > 420 && !e.d.boss && !isArena()) { var ra = Math.atan2(dy, dx) + (Math.random() - 0.5), R = Math.hypot(W, H) / 2 + 10; e.x = tg.x + Math.cos(ra) * R; e.y = tg.y + Math.sin(ra) * R; }
+      if (d > 420 && !e.d.boss && !isArena() && !isDungeon()) { var ra = Math.atan2(dy, dx) + (Math.random() - 0.5), R = Math.hypot(W, H) / 2 + 10; e.x = tg.x + Math.cos(ra) * R; e.y = tg.y + Math.sin(ra) * R; }
     }
     // séparation légère (les objets et les boss ne bougent pas)
     grid.forEach(function (cell) {
@@ -1238,6 +1243,192 @@
     if (pending > 0 && !picking && !me.down && state === "play" && !isArena()) openLevelUp();
     if (Net.on) netHostTick(dt);
   }
+  /* =====================================================================
+     Donjon : génération procédurale (graine partagée en coop), salles,
+     portes, vagues, élites, gardiens, reliques, escalier
+     ===================================================================== */
+  function isDungeon() { return r && r.mode === "dungeon"; }
+  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function genFloor(seed, floor) {
+    var rnd = mulberry(seed * 31 + floor * 977 + 7), n = DG.rooms(floor);
+    var cells = {}, rooms = [], dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]], links = {};
+    function add(gx, gy) { cells[gx + "," + gy] = rooms.length; rooms.push({ idx: rooms.length, gx: gx, gy: gy, links: [], state: "new", type: "combat" }); return rooms[rooms.length - 1]; }
+    function link(a, b) { var k = Math.min(a.idx, b.idx) + "-" + Math.max(a.idx, b.idx); if (links[k]) return; links[k] = [a.idx, b.idx]; a.links.push(b.idx); b.links.push(a.idx); }
+    add(0, 0);
+    for (var guard = 0; rooms.length < n && guard < 800; guard++) {
+      var a = rooms[(rnd() * rooms.length) | 0], dd = dirs[(rnd() * 4) | 0], gx = a.gx + dd[0], gy = a.gy + dd[1];
+      if (cells[gx + "," + gy] !== undefined) continue;
+      link(a, add(gx, gy));
+    }
+    rooms.forEach(function (a) { dirs.forEach(function (dd) { var j = cells[(a.gx + dd[0]) + "," + (a.gy + dd[1])]; if (j !== undefined && rnd() < DG.extraLinks) link(a, rooms[j]); }); });
+    // distances depuis le départ
+    var dist = rooms.map(function () { return -1; }), q = [0]; dist[0] = 0;
+    while (q.length) { var c = q.shift(); rooms[c].links.forEach(function (j) { if (dist[j] < 0) { dist[j] = dist[c] + 1; q.push(j); } }); }
+    var far = 0; rooms.forEach(function (rm, i) { rm.dist = dist[i]; if (dist[i] > dist[far]) far = i; });
+    rooms[0].type = "start"; rooms[0].state = "cleared";
+    rooms[far].type = floor >= DG.floors ? "boss" : "guard";
+    var pool = rooms.filter(function (rm) { return rm.type === "combat" && rm.dist >= 1; });
+    pool.sort(function () { return rnd() - 0.5; });
+    var leaves = pool.filter(function (rm) { return rm.links.length === 1; });
+    for (var t = 0; t < DG.treasures && (leaves.length || pool.length); t++) { var tr = (leaves.length ? leaves : pool).shift(); tr.type = "treasure"; pool = pool.filter(function (x) { return x !== tr; }); leaves = leaves.filter(function (x) { return x !== tr; }); }
+    pool.filter(function (rm) { return rm.dist >= 2; }).slice(0, DG.elites(floor)).forEach(function (rm) { rm.type = "elite"; });
+    // géométrie
+    rooms.forEach(function (rm) {
+      var big = rm.type === "boss" || rm.type === "guard";
+      var w = big ? 300 : 200 + ((rnd() * 90) | 0), h = big ? 220 : 150 + ((rnd() * 70) | 0);
+      var cx = rm.gx * DG.cellW, cy = rm.gy * DG.cellH;
+      rm.rect = { x: cx - w / 2, y: cy - h / 2, w: w, h: h }; rm.cx = cx; rm.cy = cy;
+    });
+    var corridors = Object.keys(links).map(function (k) {
+      var A = rooms[links[k][0]], B = rooms[links[k][1]], c;
+      if (A.gy === B.gy) {
+        var L = A.gx < B.gx ? A : B, Rr = A.gx < B.gx ? B : A, x1 = L.rect.x + L.rect.w - 4, x2 = Rr.rect.x + 4;
+        c = { x: x1, y: A.cy - 18, w: x2 - x1, h: 36, a: L.idx, b: Rr.idx, horiz: true };
+      } else {
+        var T = A.gy < B.gy ? A : B, Bt = A.gy < B.gy ? B : A, y1 = T.rect.y + T.rect.h - 4, y2 = Bt.rect.y + 4;
+        c = { x: A.cx - 18, y: y1, w: 36, h: y2 - y1, a: T.idx, b: Bt.idx, horiz: false };
+      }
+      return c;
+    });
+    return { seed: seed, floor: floor, rooms: rooms, corridors: corridors };
+  }
+  function buildFloor(n) {
+    var g = genFloor(r.seed, n);
+    var keepCleared = r.dg ? r.dg.clearedTotal : 0;
+    r.dg = { floor: n, rooms: g.rooms, corridors: g.corridors, active: -1, stairs: null, visited: {}, clearedTotal: keepCleared, winT: 0 };
+    var st = g.rooms[0];
+    players.forEach(function (pl, i) { pl.x = pl.tx = st.cx + (i - (players.length - 1) / 2) * 18; pl.y = pl.ty = st.cy; });
+    markVisited();
+  }
+  function inRect(x, y, rc, m) { m = m || 0; return x >= rc.x + m && x <= rc.x + rc.w - m && y >= rc.y + m && y <= rc.y + rc.h - m; }
+  function roomAt(x, y, m) { var rs = r.dg.rooms; for (var i = 0; i < rs.length; i++) if (inRect(x, y, rs[i].rect, m)) return rs[i]; return null; }
+  function walkable(x, y) {
+    var dg = r.dg, m = 7;
+    if (dg.active >= 0) return inRect(x, y, dg.rooms[dg.active].rect, m);
+    for (var i = 0; i < dg.rooms.length; i++) if (inRect(x, y, dg.rooms[i].rect, m)) return true;
+    for (i = 0; i < dg.corridors.length; i++) { var c = dg.corridors[i]; if (inRect(x, y, { x: c.x, y: c.y, w: c.w, h: c.h }, c.horiz ? 0 : 7) && inRect(x, y, { x: c.x - 1, y: c.y - 1, w: c.w + 2, h: c.h + 2 }, c.horiz ? 7 : 0)) return true; }
+    return false;
+  }
+  function dungeonMove(o, nx, ny) {
+    if (r.dg.active >= 0 && !walkable(o.x, o.y)) { var rc = r.dg.rooms[r.dg.active].rect; o.x = Math.max(rc.x + 14, Math.min(rc.x + rc.w - 14, o.x)); o.y = Math.max(rc.y + 14, Math.min(rc.y + rc.h - 14, o.y)); return; }
+    if (walkable(nx, ny)) { o.x = nx; o.y = ny; return; }
+    if (walkable(nx, o.y)) { o.x = nx; return; }
+    if (walkable(o.x, ny)) { o.y = ny; }
+  }
+  function markVisited() {
+    var rm = roomAt(me.x, me.y, 0);
+    if (rm && !r.dg.visited[rm.idx]) { r.dg.visited[rm.idx] = true; }
+  }
+  function roomLabel(rm) { return { elite: "Salle d'élite !", guard: "Le gardien de l'étage !", boss: "Le boss du donjon !" }[rm.type] || ""; }
+  function dgPool() { return DG.pools[Math.min(DG.pools.length - 1, r.dg.floor - 1)]; }
+  function freeSpot(rm, minD) {
+    var rc = rm.rect, x, y;
+    for (var t = 0; t < 14; t++) {
+      x = rc.x + 22 + Math.random() * (rc.w - 44); y = rc.y + 22 + Math.random() * (rc.h - 44);
+      if (players.every(function (pl) { return Math.hypot(pl.x - x, pl.y - y) > minD; })) break;
+    }
+    return { x: x, y: y };
+  }
+  function spawnInRoom(type, rm, kind) {
+    var pt = freeSpot(rm, 70), e = spawnAt(type, pt.x, pt.y);
+    e.room = rm.idx;
+    if (kind === "elite") { e.d = Object.assign({}, e.d, { elite: true }); e.hp *= DG.eliteHp; e.maxHp = e.hp; e.dmgMul = DG.eliteDmg; e.spd *= 1.1; }
+    if (kind === "guard") { e.d = Object.assign({}, e.d, { boss: true, elite: true, name: "Gardien : " + ({ toad: "Crapaud-roi", badger: "Vieux Blaireau", hedgehog: "Hérisson de fer" }[type] || type), r: e.d.r + 3 }); e.hp *= DG.guardHp; e.maxHp = e.hp; e.dmgMul = 1.6; }
+    if (kind === "boss") { e.hp *= 1.6; e.maxHp = e.hp; }
+    // petite fumée d'apparition
+    burst(pt.x, pt.y, "#8a7a6a", 6);
+    return e;
+  }
+  function spawnWave(rm) {
+    var w = rm.waves.shift(); if (!w) return;
+    w.forEach(function (it) { spawnInRoom(it[0], rm, it[1]); });
+  }
+  function activateRoom(rm, trigger) {
+    var pool = dgPool(), wv = DG.waves(r.dg.floor), pick = function () { return pool[(Math.random() * pool.length) | 0]; };
+    var normal = function (n) { var a = []; for (var i = 0; i < n; i++) a.push([pick(), ""]); return a; };
+    rm.state = "active"; r.dg.active = rm.idx;
+    if (rm.type === "combat") rm.waves = [normal(wv[0]), normal(wv[1])];
+    else if (rm.type === "elite") { var el = []; for (var i = 0; i < 1 + (r.dg.floor >= 2 ? 1 : 0); i++) el.push([pick(), "elite"]); rm.waves = [el.concat(normal(3)), normal(wv[1])]; }
+    else if (rm.type === "guard") rm.waves = [[[DG.guards[(r.dg.floor - 1) % DG.guards.length], "guard"]].concat(normal(3)), normal(4)];
+    else if (rm.type === "boss") rm.waves = [[[MAP.bosses[0], "boss"]].concat(normal(4)), [[MAP.bosses[1] || MAP.bosses[0], "boss"]].concat(normal(5))];
+    // toute l'équipe rejoint la salle avant la fermeture des portes
+    players.forEach(function (pl) {
+      if (inRect(pl.x, pl.y, rm.rect, 10)) return;
+      var tx = Math.max(rm.rect.x + 16, Math.min(rm.rect.x + rm.rect.w - 16, trigger.x + (Math.random() * 20 - 10)));
+      var ty = Math.max(rm.rect.y + 16, Math.min(rm.rect.y + rm.rect.h - 16, trigger.y + (Math.random() * 20 - 10)));
+      pl.x = pl.tx = tx; pl.y = pl.ty = ty;
+      if (pl.remote) netSend("tp", { id: pl.id, x: Math.round(tx), y: Math.round(ty) });
+    });
+    spawnWave(rm);
+    var lb = roomLabel(rm); bannerAll(lb || "Les portes se ferment !");
+    SND.boom();
+  }
+  function clearRoom(rm) {
+    rm.state = "cleared"; r.dg.active = -1; r.dg.clearedTotal++;
+    var c = { x: rm.cx, y: rm.cy };
+    for (var i = 0; i < 3 + r.dg.floor; i++) drop("gold", c.x + Math.random() * 40 - 20, c.y + Math.random() * 30 - 15, 1);
+    if (rm.type === "elite") { drop("chest", c.x - 10, c.y); drop("relic", c.x + 12, c.y); bannerAll("Salle d'élite vaincue !"); }
+    else if (rm.type === "guard") { drop("relic", c.x, c.y + 20); r.dg.stairs = { x: c.x, y: rm.rect.y + 26 }; bannerAll("L'escalier s'ouvre !"); }
+    else if (rm.type === "boss") { r.dg.winT = 2.5; bannerAll("Le donjon est vaincu !"); }
+    else bannerAll("Salle nettoyée");
+    SND.level();
+  }
+  function populateFloor() {
+    r.dg.rooms.forEach(function (rm) {
+      if (rm.type === "start") return;
+      var n = rm.type === "treasure" ? 2 : 1 + ((Math.random() * 2) | 0);
+      for (var i = 0; i < n; i++) {
+        var pt = freeSpot(rm, 0), d = Object.assign({}, PROP_D, { sprite: ["stump", "basket", "lantern"][(Math.random() * 3) | 0] });
+        makeEnemy("prop", d, pt.x, pt.y, 14 * (1 + r.dg.floor * 0.5));
+      }
+    });
+  }
+  function dungeonTick(dt) {
+    var dg = r.dg;
+    if (dg.winT > 0) { dg.winT -= dt; if (dg.winT <= 0) { r.won = true; gameOver(false, "Victoire : le donjon est vaincu ! 🗝️"); } return; }
+    if (dg.active < 0) {
+      // entrée dans une salle
+      for (var i = 0; i < players.length; i++) {
+        var pl = players[i]; if (pl.down) continue;
+        var rm = roomAt(pl.x, pl.y, 26);
+        if (!rm || rm.state !== "new") continue;
+        if (rm.type === "treasure") {
+          rm.state = "cleared"; dg.clearedTotal++;
+          drop("chest", rm.cx, rm.cy); for (var k = 0; k < 6; k++) drop("gold", rm.cx + Math.random() * 50 - 25, rm.cy + Math.random() * 30 - 15, 2);
+          if (Math.random() < 0.5) drop("relic", rm.cx + 16, rm.cy + 10);
+          bannerAll("Salle au trésor !"); SND.level();
+        } else activateRoom(rm, pl);
+        break;
+      }
+    } else {
+      var arm = dg.rooms[dg.active], left = 0;
+      for (var j = 0; j < enemies.length; j++) { var e = enemies[j]; if (!e.dead && !e.d.prop && e.room === arm.idx) left++; }
+      if (left <= 2 && arm.waves && arm.waves.length) spawnWave(arm);
+      else if (left === 0 && (!arm.waves || !arm.waves.length)) clearRoom(arm);
+    }
+    // escalier
+    if (dg.stairs && players.some(function (pl) { return !pl.down && Math.hypot(pl.x - dg.stairs.x, pl.y - dg.stairs.y) < 14; })) nextFloor();
+  }
+  function nextFloor() {
+    var n = r.dg.floor + 1;
+    enemies = []; projs = []; hostile = []; lobs = []; warns = []; gems = []; curBoss = null;
+    buildFloor(n);
+    players.forEach(function (pl) { if (pl.down) { pl.down = false; pl.reviveT = 0; } pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * DG.healOnStairs); });
+    populateFloor();
+    bannerAll("Étage " + n + " / " + DG.floors);
+    netSend("floor", { n: n });
+    SND.fusion();
+  }
+  function giveRelic(pl) {
+    var own = pl.relics || {}, left = D.RELICS.filter(function (x) { return !own[x.id]; });
+    if (!left.length) { addGold(20); return; }
+    var rl = left[(Math.random() * left.length) | 0];
+    pl.relics[rl.id] = true; calc(pl);
+    if (pl === me) banner("Relique : " + rl.name + " (" + rl.desc + ")");
+    netEv(["rl", pl.id, rl.id]);
+    SND.fusion();
+  }
+
   /* ---------- Arène : fin de manche, entracte, manche suivante ---------- */
   function roundModFor(n) {
     if (n % A.eliteEvery !== 0) return null;
@@ -1397,6 +1588,7 @@
       case "goldbag": addGold(8 + Math.floor(r.time / 30)); SND.gold(); break;
       case "freeze": r.freeze = 5; bannerAll("Givre !"); SND.zap(); break;
       case "bomb": nuke(); bannerAll("Gland explosif !"); break;
+      case "relic": giveRelic(pl); break;
       case "chest":
         addGold(15); burst(pl.x, pl.y, "#f2c230", 16);
         netEv(["ch"]);
@@ -1629,14 +1821,15 @@
     if (isArena() && W / 2 - 24 > A.w) cam.x = 0;
     if (isArena() && H / 2 - 40 > A.h) cam.y = 0;
     var cx = Math.round(cam.x - W / 2 + sx), cy = Math.round(cam.y - H / 2 + sy);
-    drawGround(cx, cy, MAP);
+    if (isDungeon()) { ctx.fillStyle = "#120d0a"; ctx.fillRect(0, 0, W, H); } else drawGround(cx, cy, MAP);
     ctx.save();
     ctx.translate(-cx, -cy);
     if (isArena()) drawArena(cx, cy);
+    if (isDungeon()) drawDungeon(cx, cy);
 
     var bob = Math.sin(r.time * 4);
     gems.forEach(function (g) {
-      var s = g.kind === "xp" ? (g.v >= 3 ? SPR.bignut[0] : SPR.nut[0]) : (SPR[g.kind] || SPR.nut)[0];
+      var s = g.kind === "xp" ? (g.v >= 3 ? SPR.bignut[0] : SPR.nut[0]) : (SPR[g.kind === "relic" ? "relic" : g.kind] || SPR.nut)[0];
       var big = g.kind !== "xp" && g.kind !== "gold";
       if (big) { ctx.fillStyle = "rgba(255,240,180,.25)"; ctx.fillRect(Math.round(g.x - 5), Math.round(g.y - 5 + bob), 10, 10); }
       blit(s, g.x, g.y + (big ? bob * 1.5 : 0));
@@ -1662,6 +1855,7 @@
       var spr = e.spr[(e.anim | 0) % e.spr.length];
       if (!e.spr.flying) shadow(e.x, e.y + spr.h / 2 - 2, spr.w * 0.7);
       else shadow(e.x, e.y + spr.h / 2 + 3, spr.w * 0.5);
+      if (e.d.elite && !e.d.prop) { ctx.strokeStyle = "rgba(246,211,107," + (0.55 + 0.35 * Math.sin(r.time * 6 + e.id)) + ")"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(Math.round(e.x), Math.round(e.y), Math.max(spr.w, spr.h) / 2 + 3 + Math.sin(r.time * 6 + e.id), 0, TAU); ctx.stroke(); }
       blit(spr, e.x, e.y, !e.d.prop && e.face < 0, e.flash > 0);
       if (e.slowT > 0 && !e.d.boss && !e.d.prop) { ctx.fillStyle = "rgba(160,130,230,.7)"; ctx.fillRect(Math.round(e.x - 1), Math.round(e.y - spr.h / 2 - 2), 2, 2); }
     }
@@ -1713,6 +1907,79 @@
       ctx.fillStyle = "rgba(232,135,58,.85)";
       ctx.beginPath(); ctx.arc(joy.x, joy.y, 9, 0, TAU); ctx.fill();
     }
+  }
+  function rectVisible(rc, cx, cy) { return rc.x < cx + W + 20 && rc.x + rc.w > cx - 20 && rc.y < cy + H + 20 && rc.y + rc.h > cy - 20; }
+  var DG_TINT = { elite: "rgba(150,90,220,.10)", guard: "rgba(220,60,40,.10)", boss: "rgba(220,40,30,.16)", treasure: "rgba(246,211,107,.12)" };
+  function drawDungeon(cx, cy) {
+    var dg = r.dg; if (!dg) return;
+    var all = dg.rooms.map(function (rm) { return rm.rect; }).concat(dg.corridors);
+    // murs (bordure épaisse), puis sols par-dessus : les couloirs percent les murs
+    ctx.fillStyle = "#2a1d14";
+    all.forEach(function (rc) { if (rectVisible(rc, cx, cy)) ctx.fillRect(Math.round(rc.x - 7), Math.round(rc.y - 7), Math.round(rc.w + 14), Math.round(rc.h + 14)); });
+    ctx.fillStyle = "#5a4330";
+    all.forEach(function (rc) { if (rectVisible(rc, cx, cy)) ctx.fillRect(Math.round(rc.x - 7), Math.round(rc.y - 7), Math.round(rc.w + 14), 3); });
+    all.forEach(function (rc) {
+      if (!rectVisible(rc, cx, cy)) return;
+      ctx.fillStyle = "#4a3a2c"; ctx.fillRect(Math.round(rc.x), Math.round(rc.y), Math.round(rc.w), Math.round(rc.h));
+      // dalles et cailloux
+      var x0 = Math.max(rc.x, cx - 16), x1 = Math.min(rc.x + rc.w, cx + W + 16), y0 = Math.max(rc.y, cy - 16), y1 = Math.min(rc.y + rc.h, cy + H + 16);
+      ctx.fillStyle = "#43342a";
+      for (var gx = Math.ceil(x0 / 20) * 20; gx < x1; gx += 20) ctx.fillRect(gx, Math.round(y0), 1, Math.round(y1 - y0));
+      for (var gy = Math.ceil(y0 / 20) * 20; gy < y1; gy += 20) ctx.fillRect(Math.round(x0), gy, Math.round(x1 - x0), 1);
+      for (gx = Math.ceil(x0 / 20) * 20; gx < x1; gx += 20) for (gy = Math.ceil(y0 / 20) * 20; gy < y1; gy += 20) {
+        var h = hash(gx, gy); if (h % 7) continue;
+        ctx.fillStyle = h % 2 ? "#6b5440" : "#3a2c22"; ctx.fillRect(gx + 4 + h % 9, gy + 4 + (h >>> 4) % 9, 2 + h % 2, 2);
+      }
+    });
+    dg.rooms.forEach(function (rm) {
+      if (!rectVisible(rm.rect, cx, cy)) return;
+      if (DG_TINT[rm.type]) { ctx.fillStyle = DG_TINT[rm.type]; ctx.fillRect(rm.rect.x, rm.rect.y, rm.rect.w, rm.rect.h); }
+      // racines le long des murs
+      ctx.fillStyle = "#6b4430";
+      for (var i = 0; i < rm.rect.w; i += 26) { var hh = hash(rm.idx, i); ctx.fillRect(Math.round(rm.rect.x + i + hh % 10), Math.round(rm.rect.y), 2, 4 + hh % 6); }
+    });
+    // portes verrouillées de la salle active
+    if (dg.active >= 0) {
+      var ar = dg.rooms[dg.active];
+      dg.corridors.forEach(function (c) {
+        if (c.a !== ar.idx && c.b !== ar.idx) return;
+        var bx, by, bw, bh;
+        if (c.horiz) { bw = 8; bh = c.h; by = c.y; bx = (ar.rect.x + ar.rect.w / 2 < c.x + c.w / 2) ? ar.rect.x + ar.rect.w - 4 : ar.rect.x - 4; }
+        else { bh = 8; bw = c.w; bx = c.x; by = (ar.rect.y + ar.rect.h / 2 < c.y + c.h / 2) ? ar.rect.y + ar.rect.h - 4 : ar.rect.y - 4; }
+        ctx.fillStyle = "#2b1709"; ctx.fillRect(Math.round(bx), Math.round(by), Math.round(bw), Math.round(bh));
+        ctx.fillStyle = "#8a5a3b";
+        if (c.horiz) for (var y = by + 2; y < by + bh; y += 6) ctx.fillRect(Math.round(bx + 1), Math.round(y), 6, 3);
+        else for (var x = bx + 2; x < bx + bw; x += 6) ctx.fillRect(Math.round(x), Math.round(by + 1), 3, 6);
+      });
+    }
+    // escalier
+    if (dg.stairs) {
+      var sx = Math.round(dg.stairs.x), sy = Math.round(dg.stairs.y);
+      ctx.fillStyle = "#0a0705"; ctx.fillRect(sx - 12, sy - 9, 24, 18);
+      ctx.fillStyle = "#8a5a3b"; for (var k = 0; k < 4; k++) ctx.fillRect(sx - 10 + k * 2, sy - 7 + k * 4, 20 - k * 4, 2);
+      ctx.strokeStyle = "rgba(246,211,107," + (0.5 + 0.5 * Math.sin(r.time * 5)) + ")"; ctx.lineWidth = 1; ctx.strokeRect(sx - 13.5, sy - 10.5, 27, 21);
+    }
+  }
+  function drawMinimap(x0, y0) {
+    var dg = r.dg; if (!dg) return;
+    var minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9;
+    dg.rooms.forEach(function (rm) { minx = Math.min(minx, rm.gx); maxx = Math.max(maxx, rm.gx); miny = Math.min(miny, rm.gy); maxy = Math.max(maxy, rm.gy); });
+    var cw = 8, chh = 6, cur = roomAt(me.x, me.y, 0);
+    var known = {};
+    dg.rooms.forEach(function (rm) { if (dg.visited[rm.idx]) { known[rm.idx] = 1; rm.links.forEach(function (j) { known[j] = known[j] || 2; }); } });
+    var w = (maxx - minx + 1) * cw + 2, hgt = (maxy - miny + 1) * chh + 2, ox = x0 - w;
+    ctx.fillStyle = "rgba(20,14,10,.7)"; ctx.fillRect(ox - 2, y0 - 2, w + 4, hgt + 4);
+    dg.rooms.forEach(function (rm) {
+      if (!known[rm.idx]) return;
+      var x = ox + 1 + (rm.gx - minx) * cw, y = y0 + 1 + (rm.gy - miny) * chh;
+      var col = known[rm.idx] === 2 ? "#4a3a30" : rm.state === "cleared" ? "#8a7a68" : "#c9b08a";
+      if (rm.type === "boss" || rm.type === "guard") col = known[rm.idx] === 2 ? "#7a2a20" : "#d0281a";
+      else if (rm.type === "elite" && known[rm.idx] === 1) col = "#9a6ad8";
+      else if (rm.type === "treasure" && known[rm.idx] === 1) col = "#e0a82a";
+      ctx.fillStyle = col; ctx.fillRect(x, y, cw - 2, chh - 2);
+      if (cur && cur.idx === rm.idx && Math.sin(r.time * 8) > -0.3) { ctx.fillStyle = "#fdf3de"; ctx.fillRect(x + 2, y + 1, cw - 6, chh - 4); }
+    });
+    if (dg.stairs) { var st = roomAt(dg.stairs.x, dg.stairs.y, 0); if (st) { ctx.fillStyle = "#f6d36b"; ctx.fillRect(ox + 1 + (st.gx - minx) * cw + 2, y0 + 1 + (st.gy - miny) * chh + 1, 2, 2); } }
   }
   function drawArena(cx, cy) {
     var x0 = -A.w, y0 = -A.h, w = A.w * 2, h = A.h * 2;
@@ -1824,7 +2091,13 @@
       });
     }
     // chrono, ennemis, or (à droite)
-    if (isArena()) {
+    if (isDungeon()) {
+      drawText(fmtTime(r.time), W - 4, 15, "#fdf3de", "r", 2);
+      drawText("ETAGE " + r.dg.floor + "/" + DG.floors, W - 4, 45, "#f6d36b", "r");
+      drawMinimap(W - 4, 54);
+      var rk = Object.keys(me.relics || {});
+      rk.forEach(function (id, i) { var rl = D.RELICS.filter(function (x) { return x.id === id; })[0]; if (rl) { ctx.font = "8px sans-serif"; ctx.fillText(rl.icon, 2 + i * 10, 56); } });
+    } else if (isArena()) {
       var left = Math.max(0, r.roundLen - r.roundT);
       drawText(fmtTime(Math.ceil(left)), W - 4, 15, left < 5 && r.phase === "fight" ? "#ff5a3a" : "#fdf3de", "r", 2);
       drawText("MANCHE " + r.round + "/" + A.rounds, W - 4, 45, "#f6d36b", "r");
@@ -1864,6 +2137,7 @@
      ===================================================================== */
   function fmtTime(s) { s = Math.floor(s); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
   function score() {
+    if (isDungeon()) return Math.round(((r.dg.floor - 1) * 3000 + r.dg.clearedTotal * 250 + r.kills + (r.won ? 10000 : 0)) * DIFF.score);
     if (isArena()) return Math.round(((r.won ? A.rounds : r.round - 1) * 1000 + r.kills + (r.won ? 5000 : 0)) * DIFF.score);
     return Math.round((Math.floor(r.time) * 10 + r.kills + r.bonus) * DIFF.score);
   }
@@ -1967,8 +2241,11 @@
     var mo = S.mode || "survie";
     return '<div class="diff-row mode-row"><span>Mode :</span>' +
       '<button type="button" class="chip' + (mo === "survie" ? " is-on" : "") + '" data-action="' + action + '" data-arg="survie">🌲 Survie</button>' +
-      '<button type="button" class="chip' + (mo === "arena" ? " is-on" : "") + '" data-action="' + action + '" data-arg="arena">🏟️ Arène</button></div>' +
-      '<p class="game-small mode-desc">' + (mo === "arena"
+      '<button type="button" class="chip' + (mo === "arena" ? " is-on" : "") + '" data-action="' + action + '" data-arg="arena">🏟️ Arène</button>' +
+      '<button type="button" class="chip' + (mo === "dungeon" ? " is-on" : "") + '" data-action="' + action + '" data-arg="dungeon">🗝️ Donjon</button></div>' +
+      '<p class="game-small mode-desc">' + (mo === "dungeon"
+        ? DG.floors + " étages générés au hasard : salles à nettoyer, élites, trésors, reliques, un gardien par étage et un boss final."
+        : mo === "arena"
         ? "Arène fermée, " + A.rounds + " manches. Boutique entre les manches, manche d'élite toutes les " + A.eliteEvery + ", boss toutes les " + A.bossEvery + "."
         : "Monde ouvert sans fin : survis le plus longtemps possible.") + "</p>";
   }
@@ -2094,7 +2371,7 @@
         html += '</div><div class="play-bar"><button class="btn" type="button" data-action="start"' + (ok ? "" : " disabled") + ">▶ Lancer la partie (" + Math.max(1, Math.min(MAX_PLAYERS, Net.roster.length)) + " joueur" + (Net.roster.length > 1 ? "s" : "") + ")</button></div>";
       } else {
         var m = hp ? mapById(hp.map) : null;
-        html += '<p class="game-small">' + (hp ? "Mode : <b>" + (hp.mode === "arena" ? "Arène" : "Survie") + "</b> · " : "") + (m ? "Carte : <b>" + esc(m.name) + "</b> · " + esc((D.DIFFICULTIES[hp.diff] || {}).name || "") + " (choisies par l'hôte)" : "") + "</p>" +
+        html += '<p class="game-small">' + (hp ? "Mode : <b>" + ({ arena: "Arène", dungeon: "Donjon" }[hp.mode] || "Survie") + "</b> · " : "") + (m ? "Carte : <b>" + esc(m.name) + "</b> · " + esc((D.DIFFICULTIES[hp.diff] || {}).name || "") + " (choisies par l'hôte)" : "") + "</p>" +
           '<div class="play-bar"><span class="waiting">' + (hp ? "En attente du lancement par " + esc(hp.name) + "…" : "En attente de l'hôte…") + "</span></div>";
       }
       return html;
@@ -2202,8 +2479,8 @@
     tchar: function (id) { inspect.char = id; if (charAvailable(charById(id))) S.char = id; save(); SND.click(); go("play"); },
     tmap: function (id) { inspect.map = id; if (has(mapById(id).unlock)) S.map = id; save(); SND.click(); go("play"); },
     diff: function (k) { S.diff = k; save(); SND.click(); go("play"); },
-    mode: function (k) { S.mode = k === "arena" ? "arena" : "survie"; save(); SND.click(); go("play"); },
-    lmode: function (k) { if (Net.role !== "host") return; S.mode = k === "arena" ? "arena" : "survie"; save(); trackMe(); SND.click(); go("lobby"); },
+    mode: function (k) { S.mode = ["arena", "dungeon"].indexOf(k) >= 0 ? k : "survie"; save(); SND.click(); go("play"); },
+    lmode: function (k) { if (Net.role !== "host") return; S.mode = ["arena", "dungeon"].indexOf(k) >= 0 ? k : "survie"; save(); trackMe(); SND.click(); go("lobby"); },
     buychar: function (id) {
       var c = charById(id);
       if (S.gold < c.price || charAvailable(c)) return;
@@ -2312,7 +2589,7 @@
   SPRN.forEach(function (k, i) { SPRI[k] = i; });
   var ETYPES = Object.keys(D.ENEMIES), ETI = {};
   ETYPES.forEach(function (k, i) { ETI[k] = i; });
-  var GEMK = ["xp", "gold", "berry", "chest", "magnet", "xpjar", "goldbag", "freeze", "bomb"], GEMI = {};
+  var GEMK = ["xp", "gold", "berry", "chest", "magnet", "xpjar", "goldbag", "freeze", "bomb", "xp3", "relic"], GEMI = {};
   GEMK.forEach(function (k, i) { GEMI[k] = i; });
   var CODE_CH = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   function rates() {
@@ -2447,7 +2724,7 @@
     Net.on = true; Net.role = asHost ? "host" : "guest"; Net.code = code; Net.status = "connexion"; Net.err = ""; Net.started = false; Net.roster = [];
     var ch = cl.channel("es-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: Net.id } } });
     ch.on("presence", { event: "sync" }, onPresence);
-    ["start", "s", "in", "pick", "end", "round", "next", "rdy"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
+    ["start", "s", "in", "pick", "end", "round", "next", "rdy", "tp", "floor"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
     ch.on("broadcast", { event: "sig" }, function (msg) { try { onSignal(msg.payload); } catch (err) { try { console.warn(err); } catch (e) {} } });
     ch.subscribe(function (status) {
       Net.status = status;
@@ -2524,22 +2801,30 @@
       return;
     }
     if (ev === "rdy" && Net.role === "host" && r && r.phase === "shop") { markReady(d.id); return; }
+    if (ev === "tp" && Net.role === "guest" && r && d.id === me.id) { me.x = d.x; me.y = d.y; sendInput(); return; }
+    if (ev === "floor" && Net.role === "guest" && isDungeon() && d.n !== r.dg.floor) { guestFloor(d.n); return; }
     if (ev === "end" && Net.role === "guest" && state !== "over") {
       if (d.won) r.won = true;
       if (d.r) { r.time = d.r[0]; r.kills = d.r[1]; r.level = d.r[2]; r.bosses = d.r[3]; r.gold = d.r[4]; }
       gameOver(!!d.q, d.q ? "L'hôte a mis fin à la partie." : "");
     }
   }
+  function guestFloor(n) {
+    buildFloor(n);
+    enemies = []; projs = []; gems = []; Net.cur = Net.prev = null;
+    banner("Étage " + n + " / " + DG.floors);
+    sendInput();
+  }
   function hostStart() {
     if (Net.role !== "host") return;
-    var info = { map: S.map, diff: S.diff, mode: S.mode || "survie", roster: Net.roster.slice(0, MAX_PLAYERS).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0, pshop: g.pu || {} }; }) };
+    var info = { map: S.map, diff: S.diff, mode: S.mode || "survie", seed: (Math.random() * 1e9) | 0, roster: Net.roster.slice(0, MAX_PLAYERS).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0, pshop: g.pu || {} }; }) };
     if (!info.roster.some(function (x) { return x.id === Net.id; })) info.roster.unshift({ id: Net.id, name: S.name || "Hôte", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige, pshop: S.pshop });
     netSend("start", info);
     startOnline(info);
   }
   function startOnline(info) {
     Net.started = true; Net.ev = []; Net.acc = 0; Net.inAcc = 0; Net.cur = Net.prev = null;
-    reset(info.roster, info.map, info.diff, info.mode);
+    reset(info.roster, info.map, info.diff, info.mode, info.seed);
     Net.lastLevel = 1;
     S.stats.played[me.char.id] = true; S.stats.maps[MAP.id] = true; save();
     trackMe();
@@ -2562,7 +2847,7 @@
     for (i = 0; i < enemies.length; i++) {
       en = enemies[i]; if (en.dead) continue;
       e.push(en.id, en.d.prop ? ETYPES.length + SPRI[en.d.sprite] : ETI[en.type], R1(en.x), R1(en.y),
-        (en.face < 0 ? 1 : 0) | (en.flash > 0 ? 2 : 0) | (en.under ? 4 : 0) | (en.slowT > 0 ? 8 : 0));
+        (en.face < 0 ? 1 : 0) | (en.flash > 0 ? 2 : 0) | (en.under ? 4 : 0) | (en.slowT > 0 ? 8 : 0) | (en.d.elite ? 16 : 0));
     }
     var pr = [];
     for (i = 0; i < projs.length && pr.length < 160 * 6; i++) {
@@ -2590,6 +2875,7 @@
               o.name, o.sprite, o.weapons, orb, Math.round(o.area * 100), o.amount, o.shield ? 1 : 0, Math.round(o.reviveT * 10)];
     });
     return { r: [Math.round(r.time * 10), r.kills, r.level, Math.round(Math.min(1, xp / xpNext) * 1000), Math.floor(r.gold), r.bosses, Math.round(r.freeze * 10), Math.round(r.flash * 100), r.round, Math.round(r.roundT * 10)],
+             dg: isDungeon() ? [r.dg.floor, r.dg.active, r.dg.rooms.filter(function (x) { return x.state === "cleared"; }).map(function (x) { return x.idx; }), r.dg.stairs ? [Math.round(r.dg.stairs.x), Math.round(r.dg.stairs.y)] : 0, r.dg.clearedTotal] : 0,
              e: e, pr: pr, lb: lb, g: g, h: h, w: w, pl: pl, b: curBoss ? [curBoss.d.name, Math.round(curBoss.hp / curBoss.maxHp * 1000)] : 0, ev: Net.ev };
   }
   // ---------- invité : réception et lissage ----------
@@ -2598,6 +2884,12 @@
     Net.prev = Net.cur; Net.cur = { s: d, at: performance.now() };
     var rr = d.r;
     r.time = rr[0] / 10; r.kills = rr[1]; r.gold = rr[4]; r.bosses = rr[5]; r.freeze = rr[6] / 10; r.flash = rr[7] / 100;
+    if (isDungeon() && d.dg) {
+      if (d.dg[0] !== r.dg.floor) guestFloor(d.dg[0]);
+      r.dg.active = d.dg[1]; r.dg.clearedTotal = d.dg[4] || 0;
+      d.dg[2].forEach(function (i) { if (r.dg.rooms[i]) r.dg.rooms[i].state = "cleared"; });
+      r.dg.stairs = d.dg[3] ? { x: d.dg[3][0], y: d.dg[3][1] } : null;
+    }
     if (isArena() && rr[8]) { r.round = rr[8]; r.roundT = rr[9] / 10; r.roundLen = A.roundTime(r.round); }
     xp = rr[3]; xpNext = 1000;
     if (rr[2] > r.level) { pending += rr[2] - r.level; r.level = rr[2]; }
@@ -2627,6 +2919,7 @@
     else if (t === "sp") { var o2 = playerById(ev[1]); if (o2) fx.push({ kind: "spin", r: ev[2], life: 0.25, max: 0.25, pl: o2 }); }
     else if (t === "bn") banner(ev[1]);
     else if (t === "ch") { if (!me.down) grantChest(); }
+    else if (t === "rl") { var po = playerById(ev[1]); if (po) { po.relics = po.relics || {}; po.relics[ev[2]] = true; if (po === me) { calc(me); var rd = D.RELICS.filter(function (x) { return x.id === ev[2]; })[0]; if (rd) banner("Relique : " + rd.name + " (" + rd.desc + ")"); } } }
   }
   var PROPS_SPR = ["stump", "basket", "leafpile", "lantern"];
   function sendInput() {
@@ -2642,7 +2935,7 @@
     me.anim += dt * (me.moving || SPR[me.sprite].flying ? 8 : 0);
     me.inv -= dt;
     var bi = biomeAtTile(Math.floor(me.x / 16), Math.floor(me.y / 16));
-    if (bi !== r.biome) { if (r.biome >= 0) banner(MAP.biomes[bi].name); r.biome = bi; }
+    if (bi !== r.biome && !isDungeon()) { if (r.biome >= 0) banner(MAP.biomes[bi].name); r.biome = bi; }
     Net.inAcc += dt;
     if (Net.inAcc >= 1 / rates().inp) sendInput();
     var cur = Net.cur, prev = Net.prev;
@@ -2655,6 +2948,7 @@
         var id = E[i], ti = E[i + 1], x = E[i + 2], y = E[i + 3], fl = E[i + 4];
         if (P && pm[id] !== undefined) { var j = pm[id]; x = P[j + 2] + (x - P[j + 2]) * k; y = P[j + 3] + (y - P[j + 3]) * k; }
         var d = ti < ETYPES.length ? D.ENEMIES[ETYPES[ti]] : { prop: true, r: 6, sprite: SPRN[ti - ETYPES.length] };
+        if (fl & 16) d = Object.assign({}, d, { elite: true });
         var anim = (Net.anims[id] = (Net.anims[id] || Math.random() * 2) + dt * 5);
         list.push({ id: id, x: x, y: y, d: d, spr: SPR[d.sprite] || SPR.stump, anim: anim, face: fl & 1 ? -1 : 1, flash: fl & 2 ? 1 : 0, under: !!(fl & 4), slowT: fl & 8 ? 1 : 0, type: ti < ETYPES.length ? ETYPES[ti] : "prop" });
       }
@@ -2775,7 +3069,7 @@
     }).join("") + "</ul></div>" : "";
     var lbOk = window.Leaderboard && Leaderboard.configured() && !r.coop;
     var html = '<span class="kicker">' + esc(reason || (quit ? "Partie abandonnée" : "Les bestioles ont gagné…")) + "</span><h2>Fin de partie" + (r.coop ? " (coop)" : "") + "</h2>" +
-      '<ul class="over-stats"><li><span>' + (isArena() ? "Manche" : "Survie") + "</span><strong>" + (isArena() ? (r.won ? A.rounds : r.round) + " / " + A.rounds : fmtTime(r.time)) + "</strong></li><li><span>Ennemis</span><strong>" + r.kills + "</strong></li><li><span>Niveau</span><strong>" + r.level + "</strong></li>" +
+      '<ul class="over-stats"><li><span>' + (isDungeon() ? "Étage" : isArena() ? "Manche" : "Survie") + "</span><strong>" + (isDungeon() ? r.dg.floor + " / " + DG.floors : isArena() ? (r.won ? A.rounds : r.round) + " / " + A.rounds : fmtTime(r.time)) + "</strong></li><li><span>Ennemis</span><strong>" + r.kills + "</strong></li><li><span>Niveau</span><strong>" + r.level + "</strong></li>" +
       '<li class="total"><span>Score' + (DIFF.score > 1 ? " (×" + fr(DIFF.score) + ")" : "") + "</span><strong>" + sc.toLocaleString("fr-FR") + "</strong></li>" +
       '<li class="gold"><span>Glands d\'or gagnés</span><strong>+' + gold + " " + goldIc() + "</strong></li></ul>" +
       '<p class="rank-line">+' + rankGain + " XP de rang · <b>Rang " + S.rank + "</b>" + (ranksUp ? ' <span class="rank-up">Rang supérieur ! +' + ranksUp + " point" + (ranksUp > 1 ? "s" : "") + " de compétence</span>" : "") + "</p>" +
@@ -2796,9 +3090,9 @@
       if (name.length < 2) { msg.textContent = "Choisis un pseudo d'au moins 2 caractères."; return; }
       S.name = name; save();
       btn.disabled = true; msg.textContent = "Envoi…";
-      Leaderboard.submit(isArena() ? GAME_ID_ARENA : GAME_ID, name, sc, { time: Math.floor(r.time), kills: r.kills, level: r.level, char: r.char, map: r.map, diff: S.diff }).then(function (res) {
+      Leaderboard.submit(isDungeon() ? GAME_ID_DUNGEON : isArena() ? GAME_ID_ARENA : GAME_ID, name, sc, { time: Math.floor(r.time), kills: r.kills, level: r.level, char: r.char, map: r.map, diff: S.diff }).then(function (res) {
         msg.textContent = res && res.rank ? "Envoyé ! Tu es " + res.rank + (res.rank === 1 ? "er" : "e") + " au classement." : "Envoyé !";
-        document.querySelectorAll('[data-leaderboard="' + (isArena() ? GAME_ID_ARENA : GAME_ID) + '"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
+        document.querySelectorAll('[data-leaderboard="' + (isDungeon() ? GAME_ID_DUNGEON : isArena() ? GAME_ID_ARENA : GAME_ID) + '"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
       }).catch(function (err) { msg.textContent = Leaderboard.message(err); btn.disabled = false; });
     });
   }
@@ -2912,6 +3206,10 @@
     drop: function (kind) { if (p) drop(kind, p.x + 20, p.y); },
     level: function () { if (p) { pending++; } },
     warns: function () { return warns && warns.length; },
+    dungeon: function () { return r && r.dg ? { floor: r.dg.floor, active: r.dg.active, rooms: r.dg.rooms.map(function (x) { return x.type[0] + (x.state === "cleared" ? "*" : ""); }).join(""), stairs: !!r.dg.stairs, cleared: r.dg.clearedTotal } : null; },
+    goRoom: function (type) { if (!r || !r.dg) return; var rm = r.dg.rooms.filter(function (x) { return x.type === type && x.state !== "cleared"; })[0]; if (rm) { me.x = rm.cx; me.y = rm.cy; } return !!rm; },
+    goStairs: function () { if (r && r.dg && r.dg.stairs) { me.x = r.dg.stairs.x; me.y = r.dg.stairs.y; return true; } return false; },
+    killRoom: function () { enemies.forEach(function (e) { if (!e.d.prop && e.room !== undefined) { e.hp = 0; kill(e); } }); },
     endRound: function () { if (r && isArena() && r.phase === "fight") r.roundT = r.roundLen; },
     choose: function (i, on) { if (players[i]) players[i].choosing = on !== false; },
     place: function (i, x, y) { if (players[i]) { players[i].x = players[i].tx = x; players[i].y = players[i].ty = y; } },
@@ -2922,7 +3220,7 @@
     links: function () { var o = {}; Object.keys(Net.peers).forEach(function (k) { o[k] = Net.peers[k].open ? "open" : (Net.peers[k].failed ? "failed" : "pending"); }); return o; },
     net: function () { return { direct: allDirect(), on: Net.on, role: Net.role, code: Net.code, status: Net.status, roster: Net.roster.length, started: Net.started, players: players.length, snap: !!Net.cur }; },
     spawn: function (t) { if (p) spawn(t, Math.random() * TAU, 60); },
-    state: function () { return { state: state, screen: screen, level: r && r.level, hp: p && p.hp, kills: r && r.kills, weapons: p && p.weapons, passives: p && p.passives, enemies: enemies && enemies.length }; },
+    state: function () { return { state: state, screen: screen, level: r && r.level, hp: p && p.hp, kills: r && r.kills, weapons: p && p.weapons, passives: p && p.passives, enemies: enemies && enemies.length, x: me && me.x, y: me && me.y }; },
   };
 
   checkAchievements(null);
