@@ -66,12 +66,13 @@
   function coopMapById(id) { return (D.COOP_MAPS || []).filter(function (m) { return m.id === id; })[0] || (D.COOP_MAPS || [])[0]; }
   var SOLO_LEN = 396; // longueur de référence pour la vitesse en coop
   function mapLayout(m, coop) {
-    var Y0 = coop ? 80 : 18, cells = [[], []], deco = [], bumps = [];
+    var Y0 = coop ? 80 : 18, cells = [[], []], deco = [], bumps = [], twins = [];
     m.rows.forEach(function (row, r) {
       for (var c = 0; c < row.length; c++) {
         var ch = row[c], x = c * CELL, y = Y0 + r * CELL;
         if (ch === "#" || ch === "1") cells[0].push({ x: x, y: y });
         else if (ch === "2") cells[1].push({ x: x, y: y });
+        else if (ch === "3") { twins.push([cells[0].length, cells[1].length]); cells[0].push({ x: x, y: y, shared: true }); cells[1].push({ x: x, y: y, shared: true }); }
         else if (ch === "T" || ch === "~" || ch === "O") deco.push({ x: x, y: y, k: ch });
         else if (ch === "B") bumps.push({ x: x + CELL / 2, y: y + CELL / 2, at: {} });
       }
@@ -80,7 +81,8 @@
     bumps.forEach(function (bm) { paths.forEach(function (pth, ln) { var d = distAt(pth, bm.x, bm.y); if (d !== undefined) bm.at[ln] = d; }); });
     var gridH = m.rows.length * CELL, mods = m.mods || {};
     var avg = paths.reduce(function (a, pth) { return a + pth.len; }, 0) / paths.length;
-    var lay = { w: 7 * CELL, paths: paths, len: paths[0].len, map: m.id, mods: mods, deco: deco, bumps: bumps, ground: m.ground, gridY: Y0, gridH: gridH };
+    var roads = (m.roads || []).map(function (r) { return { x: r[0] * CELL, y: Y0 + r[1] * CELL, w: r[2] * CELL, h: r[3] * CELL }; });
+    var lay = { w: 7 * CELL, paths: paths, len: paths[0].len, map: m.id, mods: mods, deco: deco, bumps: bumps, roads: roads, twins: twins, ground: m.ground, gridY: Y0, gridH: gridH };
     if (coop) {
       var cy1 = Y0 + gridH + 8;
       lay.boards = [mkBoard(26, Y0, 18, cells[0]), mkBoard(26, Y0, cy1, cells[1])];
@@ -114,6 +116,14 @@
     return { name: info.name || "Écureuil", id: info.id || "solo", deck: deck, cls: info.cls || {}, slots: new Array(info.nslot || NSLOT).fill(null),
              sp: C.startSp, sumN: 0, pu: [0, 0, 0, 0, 0], kills: 0, dmg: 0, bot: !!info.bot, botT: 1, maxPip: 1 };
   }
+  // cases partagées (« 3 ») : la même case existe dans les deux plateaux ; occupée par l'un = bloquée pour l'autre
+  function linkTwins(w) {
+    (w.lay.twins || []).forEach(function (tw) {
+      var a = w.boards[0], b = w.boards[1]; if (!a || !b) return;
+      (a.twins = a.twins || {})[tw[0]] = [b, tw[1]];
+      (b.twins = b.twins || {})[tw[1]] = [a, tw[0]];
+    });
+  }
   function createWorld(opt) {
     var n = opt.boards.length, lay = layout(n, opt.map);
     var w = {
@@ -123,6 +133,7 @@
       enemies: [], emap: {}, projs: [], mines: [], nextId: 1, ev: [], fx: [], bossAlive: 0, bosses: 0, kills: 0,
       hpMul: n > 1 ? C.coopHp : 1, view: !!opt.view,
     };
+    linkTwins(w);
     return w;
   }
 
@@ -131,7 +142,8 @@
   function puOf(b, type) { var i = b.deck.indexOf(type); return i < 0 ? 0 : b.pu[i]; }
   function summonCost(b) { return C.summonBase + C.summonStep * b.sumN; }
   function puCost(b, i) { return b.pu[i] >= C.puCosts.length ? Infinity : C.puCosts[b.pu[i]]; }
-  function freeSlots(b) { var out = []; for (var i = 0; i < b.slots.length; i++) if (!b.slots[i]) out.push(i); return out; }
+  function twinTaken(b, i) { var t = b.twins && b.twins[i]; return !!(t && t[0].slots[t[1]]); }
+  function freeSlots(b) { var out = []; for (var i = 0; i < b.slots.length; i++) if (!b.slots[i] && !twinTaken(b, i)) out.push(i); return out; }
   function newSq(b, type, pips) {
     var sq = { t: type, p: pips, cd: Math.random() * 0.5, stun: 0, bob: 0, born: 0.25 };
     if (T[type].grow) sq.grow = T[type].grow - T[type].growPu * puOf(b, type);
@@ -624,7 +636,7 @@
   }
 
   root.RD_CORE = {
-    CELL: CELL, COLS: COLS, ROWS: ROWS, NSLOT: NSLOT, BW: BW, BH: BH, EKEYS: EKEYS, TIDX: TIDX, mapById: mapById, coopMapById: coopMapById,
+    CELL: CELL, COLS: COLS, ROWS: ROWS, NSLOT: NSLOT, BW: BW, BH: BH, EKEYS: EKEYS, TIDX: TIDX, mapById: mapById, coopMapById: coopMapById, twinTaken: twinTaken,
     layout: layout, posAt: posAt, epos: epos, rangeOf: rangeOf, slotCenter: slotCenter, createWorld: createWorld, step: step, stepView: stepView,
     summon: summon, merge: merge, canMerge: canMerge, powerUp: powerUp, act: act, botStep: botStep,
     summonCost: summonCost, puCost: puCost, freeSlots: freeSlots, isBossWave: isBossWave, waveHp: waveHp,

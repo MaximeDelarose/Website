@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.9.0";
+  var VERSION = "0.9.1";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -352,6 +352,7 @@
     trace(); ctx.strokeStyle = "#6b4430"; ctx.lineWidth = 17; ctx.stroke();
     trace(); ctx.strokeStyle = "#b07a4f"; ctx.lineWidth = 13; ctx.stroke();
     trace(); ctx.strokeStyle = "#c99a6a"; ctx.lineWidth = 3; ctx.setLineDash([2, 5]); ctx.stroke(); ctx.setLineDash([]);
+    drawRoads(lay);
     // terriers de départ et réserve de noisettes au bout
     var seen = {};
     lay.paths.forEach(function (pth) {
@@ -428,6 +429,19 @@
       if (hitT > 0) glow(x, y - 6, 18, "#ff9a7a", hitT * 0.7);
     });
   }
+  // couleurs des joueurs en coop : en haut bleu, en bas orange ; cases partagées dorées
+  var PCOL = [{ dk: "#1f3a5a", bg: "#3a6a8a", hi: "#5a8aaa", name: "bleu" }, { dk: "#6a3a1a", bg: "#a8642a", hi: "#c88a4a", name: "orange" }];
+  var SHARED_COL = { dk: "#6a5010", bg: "#b08a2a", hi: "#e0b84a" };
+  function playerCol(w, bi) { return w.boards.length > 1 ? PCOL[bi] : null; }
+  function drawRoads(lay) {
+    (lay.roads || []).forEach(function (r) {
+      rect(r.x, r.y - 2, r.w, r.h + 4, "#4a3524");
+      rect(r.x, r.y, r.w, r.h, "#8a6a4a");
+      rect(r.x, r.y + 2, r.w, r.h - 4, "#a07c56");
+      for (var x = r.x + 4; x < r.x + r.w; x += 14) rect(x, r.y + r.h / 2 - 1, 7, 2, "#e8d8b0");
+      rect(r.x, r.y, r.w, 1, "#c99a6a"); rect(r.x, r.y + r.h - 1, r.w, 1, "#5a4030");
+    });
+  }
   function drawTree(x, y) {
     ctx.fillStyle = "rgba(20,12,6,.3)"; ctx.beginPath(); ctx.ellipse(x + 13, y + 22, 10, 3.5, 0, 0, 6.3); ctx.fill();
     rect(x + 11, y + 15, 4, 8, "#5a3a22"); rect(x + 12, y + 15, 1, 8, "#7a5232");
@@ -444,8 +458,15 @@
     var o = p.world.lay.boards[bi], mine = p.mine.indexOf(bi) >= 0;
     var drag = dragOn(p, bi), sel = G.sel && G.sel.panel === p && G.sel.bi === bi ? G.sel.slot : -1;
     var from = drag ? drag.slot : sel, fl = flipped(p, bi);
-    // emplacements : petites plates-formes de terre (placées librement selon la carte)
-    o.cells.forEach(function (c) { rect(c.x, c.y + 1, 26, 26, "rgba(20,12,6,.35)"); rect(c.x, c.y, 26, 26, "#2b1709"); rect(c.x + 1, c.y + 1, 24, 24, "#4a3524"); rect(c.x + 2, c.y + 2, 22, 22, "#5a4230"); rect(c.x + 2, c.y + 2, 22, 1, "#6b5038"); });
+    // emplacements : petites plates-formes (en coop : couleur du joueur, dorées si partagées)
+    var pc = playerCol(p.world, bi);
+    o.cells.forEach(function (c, ci) {
+      if (c.shared && bi > 0) return; // case partagée : dessinée une seule fois
+      var col = c.shared ? SHARED_COL : pc;
+      rect(c.x, c.y + 1, 26, 26, "rgba(20,12,6,.35)"); rect(c.x, c.y, 26, 26, "#2b1709");
+      rect(c.x + 1, c.y + 1, 24, 24, col ? col.dk : "#4a3524"); rect(c.x + 2, c.y + 2, 22, 22, col ? col.bg : "#5a4230"); rect(c.x + 2, c.y + 2, 22, 1, col ? col.hi : "#6b5038");
+      if (c.shared) { rect(c.x + 10, c.y + 10, 6, 6, "rgba(255,240,180,.25)"); }
+    });
     for (var i = 0; i < o.cells.length; i++) {
       var x = o.cells[i].x, y = o.cells[i].y;
       var sq = b.slots[i];
@@ -468,6 +489,8 @@
           glow(cx, cy, 16, T[sq.t].color, 0.35 * fx);
         }
       } else tile(sq, x + 1, y + 1, G.t);
+      // coop : liseré de la couleur du propriétaire (damier, cases partagées)
+      if (pc) { ctx.strokeStyle = pc.hi; ctx.lineWidth = 2; ctx.strokeRect(x + 0.5, y + 0.5, 25, 25); rect(x + 1, y + 23, 24, 2, pc.bg); }
       if (from >= 0 && from !== i && K.canMerge(b, from, i)) {
         var a = 0.5 + 0.5 * Math.sin(G.t * 10);
         ctx.strokeStyle = "rgba(246,211,107," + (0.5 + a * 0.5) + ")"; ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, 24, 24);
@@ -479,6 +502,8 @@
       if (p.world.boards.length > 1) { var cc0 = ctrlCenter(o); text(b.name.slice(0, 16), cc0.x, cc0.y, "#c9b8a0", "center", 7); }
       return;
     }
+    // cadre de la couleur du joueur autour de ses commandes (coop)
+    if (pc) { var cc1 = ctrlCenter(o); rect(cc1.x - K.BW / 2 - 4, cc1.y - 31, K.BW + 8, 62, pc.dk); rect(cc1.x - K.BW / 2 - 2, cc1.y - 29, K.BW + 4, 58, pc.bg); }
     // commandes (à l'envers pour le joueur d'en face)
     if (fl) { var cc = ctrlCenter(o); ctx.save(); ctx.translate(cc.x, cc.y); ctx.rotate(Math.PI); ctx.translate(-cc.x, -cc.y); }
     var sr = sumRect(o), cost = K.summonCost(b), full = !K.freeSlots(b).length, can = !full && b.sp >= cost && mine && !p.world.over;
@@ -582,11 +607,12 @@
       lay.deco.forEach(function (d) { if (d.k === "T") drawTree(d.x, d.y); else if (d.k === "O") drawPortal(d.x, d.y, 1); else drawPuddle(d.x, d.y); });
       ctx.lineCap = "square";
       [["#6b4430", 17], ["#b07a4f", 13]].forEach(function (st) { tracePaths(lay); ctx.strokeStyle = st[0]; ctx.lineWidth = st[1]; ctx.stroke(); });
+      drawRoads(lay);
       lay.paths.forEach(function (pth) { var q = pth.pts[0]; rect(q[0] - 6, q[1] - 4, 12, 8, "#120a04"); });
       var e = lay.paths[0].pts[lay.paths[0].pts.length - 1]; drawSpr(SPR.stump[0], e[0] - 6, e[1] - 5);
       lay.boards.forEach(function (bd, bi) {
-        var tint = coop ? (bi ? "#5a4a8a" : "#3a6a8a") : "#5a4230";
-        bd.cells.forEach(function (q) { rect(q.x, q.y, 26, 26, "#2b1709"); rect(q.x + 1, q.y + 1, 24, 24, "#4a3524"); rect(q.x + 2, q.y + 2, 22, 22, tint); });
+        var tint = coop ? PCOL[bi].bg : "#5a4230";
+        bd.cells.forEach(function (q) { rect(q.x, q.y, 26, 26, "#2b1709"); rect(q.x + 1, q.y + 1, 24, 24, "#4a3524"); rect(q.x + 2, q.y + 2, 22, 22, q.shared ? SHARED_COL.bg : tint); });
       });
       var keepG = G; G = { t: 0, bumpT: {} }; try { drawBumpers({ world: { lay: lay, map: id } }); } finally { G = keepG; }
     } finally { ctx = keep; }
@@ -594,7 +620,12 @@
   }
   function curMap() { return K.mapById(S.map); }
   function isCoopMap(id) { return D.COOP_MAPS.some(function (m) { return m.id === id; }); }
-  function mapCells(id) { var c = isCoopMap(id); var l = K.layout(c ? 2 : 1, id); return c ? "2 × " + l.boards[0].cells.length : l.boards[0].cells.length; }
+  function mapCells(id) {
+    var c = isCoopMap(id), l = K.layout(c ? 2 : 1, id);
+    if (!c) return l.boards[0].cells.length;
+    var sh = (l.twins || []).length;
+    return "2 × " + (l.boards[0].cells.length - sh) + (sh ? " + " + sh + " partagées" : "");
+  }
   // la même image en HTML (menus, deck, coffres)
   var faceCache = {};
   function faceUrl(k) {
@@ -1065,7 +1096,15 @@
       if (p.flip) { x = p.world.lay.w - x; y = p.world.lay.h - y; }
       for (var j = 0; j < p.mine.length; j++) {
         var bi = p.mine[j], o = p.world.lay.boards[bi];
-        for (var ci = 0; ci < o.cells.length; ci++) { var cc0 = o.cells[ci]; if (x >= cc0.x && x < cc0.x + K.CELL && y >= cc0.y && y < cc0.y + K.CELL) return { p: p, bi: bi, slot: ci }; }
+        for (var ci = 0; ci < o.cells.length; ci++) {
+          var cc0 = o.cells[ci];
+          if (x >= cc0.x && x < cc0.x + K.CELL && y >= cc0.y && y < cc0.y + K.CELL) {
+            // case partagée occupée par l'autre joueur : c'est son écureuil qu'on touche (s'il est à nous aussi)
+            var tw = p.world.boards[bi].twins && p.world.boards[bi].twins[ci];
+            if (tw && !p.world.boards[bi].slots[ci] && tw[0].slots[tw[1]]) { var obi = p.world.boards.indexOf(tw[0]); if (p.mine.indexOf(obi) >= 0) return { p: p, bi: obi, slot: tw[1] }; }
+            return { p: p, bi: bi, slot: ci };
+          }
+        }
         var cx = x, cy = y;
         if (flipped(p, bi)) { var cc = ctrlCenter(o); cx = 2 * cc.x - x; cy = 2 * cc.y - y; }
         if (inR(cx, cy, sumRect(o))) return { p: p, bi: bi, btn: "sum" };
