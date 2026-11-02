@@ -143,6 +143,8 @@ window.ES_DATA = (function () {
     gold: { pal: { c: "#a8741a", n: "#e0a82a", N: "#ffe27a" }, frames: [[".nnn.", "nNNNn", ".ccc.", ".ccc.", "..c.."]] },
     berry: { pal: { r: "#c8553d", R: "#f29a85", g: "#5b8a4a" }, frames: [["..g..", ".rgr.", "rRrrr", "rrrrr", ".rrr."]] },
     chest: { pal: { b: "#6b4430", B: "#a06a3e", k: "#3a2618", y: "#f2c230" }, frames: [["..bbbbbb..", ".bBBBBBBb.", "bBBBBBBBBb", "kkkkyykkkk", "bBBByyBBBb", "bBBBBBBBBb", "bbbbbbbbbb"]] },
+    relic: { pal: { k: "#4a2a6a", p: "#9a6ad8", P: "#d6b8ff", y: "#f6d36b" }, frames: [["...yy...", "..y..y..", "..kppk..", ".kpPPpk.", "kpPPPPpk", ".kpPPpk.", "..kppk..", "...kk..."]] },
+    chestopen: { pal: { b: "#6b4430", B: "#a06a3e", k: "#3a2618", y: "#f2c230", Y: "#fff3b0" }, frames: [[".bbbbbbbb.", "bBBBBBBBBb", "kkkkkkkkkk", "..........", "kYYYYYYYYk", "byYYYYYYyb", "bBBByyBBBb", "bBBBBBBBBb", "bbbbbbbbbb"]] },
     magnet: { pal: { r: "#c8553d", w: "#fdf3de" }, frames: [["rr..rr", "rr..rr", "rr..rr", "rrrrrr", ".rrrr.", "ww..ww"]] },
     xpjar: { pal: { b: "#5fa3c9", B: "#a8e0f5", k: "#6b4430" }, frames: [[".kk.", "bbbb", "bBBb", "bBBb", "bbbb"]] },
     bomb: { pal: { k: "#3a3a4a", K: "#7a7a9a", y: "#f6d36b", b: "#8a5a3b" }, frames: [["....y", "...b.", ".kkk.", "kKkkk", "kkkkk", ".kkk."]] },
@@ -422,6 +424,10 @@ window.ES_DATA = (function () {
     income: function (n, kills) { return 14 + n * 2 + Math.floor(kills * 0.4); },
     interestPer: 5, interestMax: 5, // +1 noisette par tranche de 5 gardées, 5 max
     rerollBase: 3,
+    maxPicks: 2,                   // choix de pouvoir max par fin de manche
+    extraLevelCoins: 6,            // noisettes données par niveau au-delà du plafond
+    // XP nécessaire pour passer du niveau L à L+1 en Arène (plus lent qu'en Survie)
+    need: function (L) { return 12 + (L - 1) * 7 + Math.max(0, L - 12) * 6; },
     prices: { newWeapon: 18, upgrade: 10, perLevel: 5, item: 13, fusion: 55, heal: 8, maxhp: 12 },
     priceGrowth: 0.08,             // +8 % de prix par manche
     mods: [
@@ -432,6 +438,43 @@ window.ES_DATA = (function () {
       { id: "verre", name: "Peau de verre", desc: "+50 % de dégâts reçus", taken: 1.5 },
     ],
   };
+
+  /* =====================================================================
+     Mode Donjon : étages générés procéduralement, salles, élites, gardiens
+     ===================================================================== */
+  var DUNGEON = {
+    floors: 3,
+    rooms: function (floor) { return 7 + floor * 2; },            // salles par étage
+    cellW: 380, cellH: 300,                                         // espacement de la grille des salles
+    elites: function (floor) { return floor >= 2 ? 2 : 1; },        // salles d'élite par étage
+    treasures: 1,
+    extraLinks: 0.18,                                               // chance d'ajouter des boucles
+    waves: function (floor) { return [4 + floor * 2, 3 + floor * 2]; },
+    eliteHp: 3.5, eliteDmg: 1.5,
+    guardHp: 14,                                                    // PV du gardien (× PV de base)
+    pools: [
+      ["slug", "beetle", "spider", "bombshroom", "wasp"],
+      ["beetle", "spider", "frog", "mole", "hedgehog", "crow", "bombshroom"],
+      ["frog", "mole", "hedgehog", "crow", "badger", "toad", "fox", "moth"],
+    ],
+    guards: ["toad", "badger", "hedgehog"],
+    healOnStairs: 0.35,
+    // XP par niveau : ~1 niveau par salle au début, niveau ~5 fin d'étage 1, ~10 fin d'étage 2, ~15 au boss
+    need: function (L) { return 18 + (L - 1) * 11; },
+  };
+  // Reliques : butin rare des salles d'élite et des gardiens (bonus pour la partie)
+  var RELICS = [
+    { id: "croc", name: "Croc de loup", icon: "🦷", desc: "+15 % de dégâts" },
+    { id: "plume", name: "Plume de geai", icon: "🪶", desc: "+12 % de vitesse" },
+    { id: "coeur", name: "Cœur de chêne", icon: "❤️", desc: "+30 PV max" },
+    { id: "oeil", name: "Œil de chouette", icon: "👁️", desc: "+10 % de coups critiques" },
+    { id: "trefle", name: "Gland porte-bonheur", icon: "🍀", desc: "+30 % de chance de butin" },
+    { id: "mousse", name: "Mousse éternelle", icon: "💧", desc: "+0,8 PV par seconde" },
+    { id: "sablier", name: "Sablier de sève", icon: "⏳", desc: "-10 % de recharge" },
+    { id: "poche", name: "Poche sans fond", icon: "👝", desc: "+1 projectile" },
+    { id: "loupe", name: "Loupe du sage", icon: "🔍", desc: "+20 % de zone d'effet" },
+    { id: "aimant", name: "Aimant de noisetier", icon: "🧲", desc: "+60 % de ramassage" },
+  ];
 
   /* =====================================================================
      Boutique (améliorations permanentes)
@@ -553,6 +596,8 @@ window.ES_DATA = (function () {
     { id: "arbre", name: "Arbre fleuri", desc: "Dépense 10 points de compétence.", gold: 100, check: function (r, s) { return s.spent >= 10; } },
     { id: "arene_10", name: "Gladiateur", desc: "Atteins la manche 10 en Arène.", gold: 150, check: function (r) { return r.mode === "arena" && r.round >= 10; } },
     { id: "arene_win", name: "Champion de l'arène", desc: "Gagne les 20 manches de l'Arène.", gold: 500, check: function (r) { return r.mode === "arena" && r.won; } },
+    { id: "donjon_2", name: "Spéléologue", desc: "Atteins le 2e étage du Donjon.", gold: 150, check: function (r) { return r.mode === "dungeon" && r.dg && r.dg.floor >= 2; } },
+    { id: "donjon_win", name: "Pourfendeur de donjon", desc: "Bats le boss final du Donjon.", gold: 500, check: function (r) { return r.mode === "dungeon" && r.won; } },
     { id: "prevoyant", name: "Prévoyant", desc: "Achète 10 améliorations dans la boutique.", gold: 50, check: function (r, s) { return s.bought >= 10; } },
     { id: "coeur_chene", name: "Cœur de chêne", desc: "Survis 5 minutes en mode Difficile.", gold: 300, check: function (r) { return r.hard && r.time >= 300; } },
   ];
@@ -585,6 +630,6 @@ window.ES_DATA = (function () {
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();

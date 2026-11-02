@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "1.1.0";              // version affichée dans le menu (tag git : merger-v<VERSION>)
+  var VERSION = "1.3.2";              // version affichée dans le menu (tag git : merger-v<VERSION>)
   var GAME_ID = "merger";
   var stage = document.querySelector("[data-merger]");
   if (!stage) return;
@@ -52,6 +52,9 @@
   var BOWL = 330;                     // rayon de l'arrondi du fond
   var BX = JW / 2, BY = JH - BOWL;    // centre de l'arrondi
   var G = 1500, DAMP = 0.995, ITER = 6;
+  var MAXV = 6;                      // vitesse max par sous-pas (sécurité anti-éjection)
+  var BREATH = 0.035;                 // amplitude de la respiration (le rayon physique gonfle de ±3,5 %)
+  var BOUNCE = 0.12;                  // rebond (0 = mou comme un sac, 1 = balle magique) entre écureuils et contre le bac
 
   function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -79,9 +82,10 @@
     pair = newPair(); next = newPair(); aimX = JW / 2; cooldown = 0;
   }
 
+  var ballId = 0;
   function newBall(type, x, y) {
-    return { type: type, x: x, y: y, px: x, py: y, r: R, born: 1, dead: false, age: 0,
-      blink: Math.random() * 4, sq: 0, lastV: 0, pal: false, flip: Math.random() < 0.5 ? -1 : 1, breath: Math.random() * 6.28, rate: 1.6 + Math.random() * 0.8 };
+    return { id: ++ballId, type: type, x: x, y: y, px: x, py: y, r: R, born: 1, dead: false, age: 0,
+      blink: Math.random() * 4, pal: false, settled: false, bw: 0, flip: Math.random() < 0.5 ? -1 : 1, breath: Math.random() * 6.28, rate: 1.6 + Math.random() * 0.8 };
   }
 
   function clampAim(x) { return Math.max(R * 2, Math.min(JW - R * 2, x)); }
@@ -106,7 +110,7 @@
   function bounce(a, nx, ny, vx, vy) {
     // retire la vitesse qui rentre dans la paroi (petit rebond + frottement)
     var vn = vx * nx + vy * ny;
-    if (vn > 0) { vx -= vn * 1.25 * nx; vy -= vn * 1.25 * ny; vx *= 0.97; vy *= 0.97; }
+    if (vn > 0) { var e = vn > 0.35 ? 1 + BOUNCE : 1; vx -= vn * e * nx; vy -= vn * e * ny; vx *= 0.97; vy *= 0.97; }
     a.px = a.x - vx; a.py = a.y - vy;
   }
 
@@ -114,7 +118,12 @@
     var i, j, a, b, n = balls.length;
     for (i = 0; i < n; i++) {
       a = balls[i];
+      // la respiration change vraiment la taille physique : il pousse ses voisins
+      // bw = 0 tant qu'il n'est pas posé (pas de respiration au spawn), puis monte doucement jusqu'à 1
+      a.r = R * (1 + BREATH * a.bw * Math.sin(clock * a.rate + a.breath));
       var vx = (a.x - a.px) * DAMP, vy = (a.y - a.py) * DAMP;
+      var sp = vx * vx + vy * vy;
+      if (sp > MAXV * MAXV) { sp = MAXV / Math.sqrt(sp); vx *= sp; vy *= sp; }   // sécurité : jamais d'éjection
       a.px = a.x; a.py = a.y;
       a.x += vx; a.y += vy + G * dt * dt;
       a.age += dt;
@@ -127,6 +136,17 @@
           var dx = b.x - a.x, dy = b.y - a.y, rr = a.r + b.r, d2 = dx * dx + dy * dy;
           if (d2 >= rr * rr || d2 === 0) continue;
           var d = Math.sqrt(d2), o = (rr - d) / d * 0.5;
+          if (k === 0) {
+            // rebond : si les deux se rapprochent assez vite, on renvoie une partie de la vitesse
+            // (en Verlet, la vitesse c'est x - px : on décale px pour la changer)
+            var nx = dx / d, ny = dy / d;
+            var vn = ((b.x - b.px) - (a.x - a.px)) * nx + ((b.y - b.py) - (a.y - a.py)) * ny;
+            if (vn < -0.35) {
+              var imp = -(1 + BOUNCE) * vn * 0.5;
+              a.px += imp * nx; a.py += imp * ny;
+              b.px -= imp * nx; b.py -= imp * ny;
+            }
+          }
           a.x -= dx * o; a.y -= dy * o;
           b.x += dx * o; b.y += dy * o;
         }
@@ -151,7 +171,7 @@
   /* ---------- groupes de 3 ---------- */
   function findGroups() {
     var n = balls.length, seen = new Array(n), groups = [], i, j;
-    var touch = (R * 2 + 3) * (R * 2 + 3);
+    var touch = (R * 2 * (1 + BREATH) + 3) * (R * 2 * (1 + BREATH) + 3);
     for (i = 0; i < n; i++) {
       if (seen[i] || balls[i].age < 0.08) continue;
       var stack = [i], grp = [];
@@ -223,11 +243,9 @@
     balls.forEach(function (b) {
       if (b.born > 0) b.born = Math.max(0, b.born - dt * 5);
       b.blink -= dt; if (b.blink < -0.15) b.blink = 2 + Math.random() * 4;
-      // petit écrasement quand il atterrit
-      var v = b.y - b.py;
-      if (b.lastV > 2.5 && v < 0.8) b.sq = Math.min(1, b.lastV / 6);
-      b.lastV = v;
-      if (b.sq > 0) b.sq = Math.max(0, b.sq - dt * 5);
+      // il ne commence à respirer qu'une fois posé (sinon la paire se repousse à l'apparition)
+      if (!b.settled && b.age > 0.3 && Math.abs(b.y - b.py) < 0.4) b.settled = true;
+      if (b.settled && b.bw < 1) b.bw = Math.min(1, b.bw + dt * 1.2);
     });
   }
 
@@ -286,7 +304,8 @@
   function lookIndex(lx, ly) { return lx || ly ? (Math.round(Math.atan2(ly, lx) / (Math.PI / 4)) + 8) % 8 : -1; }
 
   // dessine un écureuil depuis le cache. r = rayon (unités courantes), px = pixels par unité,
-  // o = { k (échelle respiration/apparition), alpha, flip, blink, mood, lx, ly, sq, wag }
+  // o = { k (échelle respiration/apparition), alpha, flip, blink, mood, lx, ly, sq, wag,
+  // }
   function blit(x, y, type, r, px, o) {
     o = o || {};
     var f = o.flip || 1, pr = Math.max(4, Math.round(r * px)), u = r / pr;
@@ -297,6 +316,7 @@
     if (o.alpha != null) ctx.globalAlpha = o.alpha;
     ctx.translate(x, y);
     if (sq) { ctx.translate(0, r * 0.14 * sq); ctx.scale(1 + 0.14 * sq, 1 - 0.14 * sq); }
+    // mou : aplati le long de l'axe où on l'écrase (et gonflé sur les côtés), puis effet gelée
     ctx.scale(k * u, k * u);
     // la queue remue autour de sa base
     ctx.save();
@@ -519,7 +539,7 @@
   }
 
   // respiration : chaque écureuil gonfle et dégonfle doucement, à son rythme
-  function breathe(b) { return 1 + 0.045 * Math.sin(clock * b.rate + b.breath); }
+  function breathe(b) { return b.r / R; }   // le dessin suit le rayon physique
 
   function render(now) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -560,7 +580,7 @@
       // il suit la paire du regard, remue la queue, sourit près d'un copain, panique près de la ligne
       var dx = ax - b.x, dy = DROP_Y - b.y, dl = Math.sqrt(dx * dx + dy * dy) || 1;
       var mood = b.y - b.r < TOP + 24 && b.age > 0.8 ? "worried" : b.pal ? "happy" : "";
-      blit(b.x, b.y, b.type, R, PX, { k: sc, blink: b.blink, flip: b.flip, lx: dx / dl, ly: dy / dl, mood: mood, sq: b.sq,
+      blit(b.x, b.y, b.type, R, PX, { k: sc, blink: b.blink, flip: b.flip, lx: dx / dl, ly: dy / dl, mood: mood,
         wag: Math.sin(clock * b.rate * (mood ? 3 : 1.4) + b.breath) });
     });
 
@@ -830,8 +850,9 @@
   window.MERGER_DEBUG = {
     version: VERSION,
     state: function () { return { state: state, score: score, balls: balls.length, diff: diff, cleared: cleared, pair: pair && pair.slice() }; },
-    add: function (type, x) { balls.push(newBall(type, x == null ? JW / 2 : x, DROP_Y)); },
+    add: function (type, x, y) { balls.push(newBall(type, x == null ? JW / 2 : x, y == null ? DROP_Y : y)); },
     swap: swap,
+    balls: function () { return balls.map(function (b) { return { id: b.id, x: b.x, y: b.y, r: b.r, v: Math.hypot(b.x - b.px, b.y - b.py), floor: b.y }; }); },
     geo: function () { return { ox: OX, oy: OY, s: S, ax: clampAim(aimX), dropY: DROP_Y, sprites: sprites.size }; },
     draw: function (g, x, y, type, r, o) { drawSquirrel(g, x, y, type, r, o); },
     over: function () { gameOver(); },

@@ -159,7 +159,8 @@ values
   ('demo',   'Démo (tests)', true, 0, 1000000),
   ('chaaat', 'Chaaat',       true, 0, 10000000),
   ('ecureuil-survivor', 'Écureuil Survivor', true, 0, 2000000),
-  ('ecureuil-arene', 'Écureuil Survivor : Arène', true, 0, 200000)
+  ('ecureuil-arene', 'Écureuil Survivor : Arène', true, 0, 200000),
+  ('ecureuil-donjon', 'Écureuil Survivor : Donjon', true, 0, 500000)
 on conflict (id) do nothing;
 
 -- Pour un jeu chronométré (plus petit temps = mieux), par exemple :

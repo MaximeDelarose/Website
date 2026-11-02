@@ -1161,9 +1161,9 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .rd-copies { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; font-weight: 800; font-size: .88rem; }
 .rd-copies .rd-bar { height: 16px; }
 .rd-copies .rd-bar em { font-size: .75rem; }
-.rd-chests { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; }
+.rd-chest-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; }
 .rd-chest { display: grid; justify-items: center; gap: 6px; padding: 12px 8px; background: var(--panel-2); border: 3px solid var(--line); box-shadow: inset 0 -6px 0 var(--cc); }
-.rd-chest img { width: 64px; image-rendering: pixelated; }
+.rd-chest > img { width: 64px; image-rendering: pixelated; }
 .rd-chest span { font-size: .82rem; color: var(--ink-soft); }
 .rd-open-chest { display: grid; place-items: center; height: 90px; }
 .rd-open-chest img { width: 84px; image-rendering: pixelated; animation: rd-shake .6s steps(6) forwards; }
@@ -1180,3 +1180,106 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .rd-tile .rd-die { min-width: 0; }
 .rd-tile { min-width: 0; }
 .rd-bar.is-void { visibility: hidden; }
+
+/* ---------- Écureuil Survivor : ouverture de coffre ---------- */
+.game-card.game-card-chest { width: min(560px, 100%); background: radial-gradient(circle at 50% 38%, #3a2618, #140d08 72%); color: #fdf3de; overflow: hidden; padding: 14px 14px 16px; }
+.game-card-chest.cshake { animation: cshake .38s; }
+@keyframes cshake { 15% { transform: translate(-7px, 3px); } 35% { transform: translate(6px, -4px); } 55% { transform: translate(-4px, 2px); } 75% { transform: translate(3px, -1px); } }
+.chest-stage { --tc: #4aa3df; --tg: 74, 163, 223; position: relative; height: 340px; display: flex; flex-direction: column; align-items: center; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.chest-stage.t1 { --tc: #b07cf0; --tg: 176, 124, 240; }
+.chest-stage.t2 { --tc: #f6c445; --tg: 246, 196, 69; }
+.chest-rays { position: absolute; left: 50%; top: 128px; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%; pointer-events: none;
+  background: repeating-conic-gradient(rgba(var(--tg), .34) 0deg 9deg, transparent 9deg 20deg);
+  -webkit-mask: radial-gradient(circle, #000 12%, transparent 62%); mask: radial-gradient(circle, #000 12%, transparent 62%);
+  opacity: 0; scale: .3; transition: opacity .4s, scale .7s cubic-bezier(.3, 1.5, .5, 1); animation: crays 8s linear infinite; }
+.rays-on .chest-rays { opacity: .7; scale: .65; }
+.chest-stage.open .chest-rays { opacity: 1; scale: 1.1; animation-duration: 5s; }
+@keyframes crays { to { rotate: 360deg; } }
+.chest-flash { position: absolute; inset: -40px; background: #fff; opacity: 0; pointer-events: none; z-index: 5; }
+.chest-stage.flash .chest-flash { animation: cflash .5s ease-out; }
+@keyframes cflash { 0% { opacity: .9; } 100% { opacity: 0; } }
+.chest-title { position: relative; z-index: 3; min-height: 1.6em; font-size: 1.55rem; font-weight: 900; letter-spacing: .04em; color: var(--tc); text-shadow: 0 3px 0 #000, 0 0 14px rgba(var(--tg), .9); animation: cq 1s ease-in-out infinite; transition: color .3s; }
+.chest-title.show { animation: ctitle .55s cubic-bezier(.2, 1.8, .4, 1); }
+@keyframes cq { 50% { opacity: .45; transform: scale(.94); } }
+@keyframes ctitle { 0% { transform: scale(2.2); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.chest-box { position: relative; z-index: 2; margin-top: 10px; height: 108px; display: flex; align-items: flex-end; justify-content: center; transition: margin .4s, height .4s; }
+.chest-box img { width: 132px; image-rendering: pixelated; filter: drop-shadow(0 0 6px rgba(var(--tg), .95)) drop-shadow(0 0 20px rgba(var(--tg), .6)); transition: filter .3s, width .4s; }
+.chest-box.drop img { animation: cdrop .55s cubic-bezier(.3, 1.6, .5, 1); }
+.chest-box.shake1 img { animation: cshk1 .2s infinite; }
+.chest-box.shake2 img { animation: cshk2 .09s infinite; filter: drop-shadow(0 0 10px rgba(var(--tg), 1)) drop-shadow(0 0 32px rgba(var(--tg), .8)) brightness(1.15); }
+.chest-box.open { height: 84px; margin-top: 4px; }
+.chest-box.open img { width: 104px; animation: copen .55s cubic-bezier(.2, 1.8, .4, 1); }
+@keyframes cdrop { 0% { transform: translateY(-170px) scale(.6); opacity: 0; } 60% { transform: translateY(0) scale(1.18, .78); opacity: 1; } 100% { transform: none; } }
+@keyframes cshk1 { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg) translateX(-2px); } 75% { transform: rotate(4deg) translateX(2px); } }
+@keyframes cshk2 { 0%, 100% { transform: scale(1.06); } 25% { transform: rotate(-9deg) translate(-4px, -3px) scale(1.1); } 75% { transform: rotate(9deg) translate(4px, -1px) scale(1.1); } }
+@keyframes copen { 0% { transform: scale(1.35, .65); } 50% { transform: scale(.9, 1.25) translateY(-12px); } 100% { transform: none; } }
+.chest-parts { position: absolute; left: 50%; top: 120px; width: 0; height: 0; z-index: 4; pointer-events: none; }
+.chest-parts i { position: absolute; left: 0; top: 0; width: var(--s); height: var(--s); background: var(--c); box-shadow: 0 0 6px var(--c); opacity: 0; animation: cpart 1s ease-out forwards; }
+@keyframes cpart { 0% { transform: translate(0, 0); opacity: 1; } 60% { opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 60px)) rotate(var(--r)); opacity: 0; } }
+.chest-items { position: relative; z-index: 3; display: flex; gap: 8px; justify-content: center; margin-top: 12px; min-height: 104px; }
+.chest-items.n5 .cslot:nth-child(1), .chest-items.n5 .cslot:nth-child(5) { margin-top: 16px; }
+.chest-items.n5 .cslot:nth-child(2), .chest-items.n5 .cslot:nth-child(4) { margin-top: 6px; }
+.chest-items.n3 .cslot:nth-child(1), .chest-items.n3 .cslot:nth-child(3) { margin-top: 10px; }
+.cslot { width: 74px; display: flex; flex-direction: column; align-items: center; text-align: center; opacity: 0; transform: translateY(24px) scale(.5); transition: opacity .25s, transform .35s cubic-bezier(.3, 1.6, .5, 1); }
+.cslot.spin, .cslot.landed { opacity: 1; transform: none; }
+.cslot-box { width: 58px; height: 58px; display: grid; place-items: center; background: #24180f; border: 3px solid var(--tc); box-shadow: 0 0 0 2px #000, 0 0 14px rgba(var(--tg), .55); }
+.cslot img { width: 40px; height: 40px; image-rendering: pixelated; }
+.cslot.spin img { animation: cspin .1s infinite; filter: brightness(1.25); }
+@keyframes cspin { 0% { transform: translateY(-6px); opacity: .5; } 50% { transform: none; opacity: 1; } 100% { transform: translateY(6px); opacity: .5; } }
+.cslot.landed .cslot-box { animation: cland .5s cubic-bezier(.2, 1.8, .4, 1); }
+.cslot.fx .cslot-box { border-color: #f6d36b; animation: cland .5s cubic-bezier(.2, 1.8, .4, 1), cfx .7s ease-in-out .5s infinite alternate; }
+@keyframes cland { 0% { transform: scale(1.6); box-shadow: 0 0 0 2px #000, 0 0 44px rgba(var(--tg), 1); background: #fff; } 100% { transform: none; } }
+@keyframes cfx { to { box-shadow: 0 0 0 2px #000, 0 0 26px #f6d36b; } }
+.cslot b { margin-top: 6px; font-size: .74rem; line-height: 1.1; color: #fdf3de; min-height: 1.1em; }
+.cslot em { font-style: normal; font-size: .68rem; font-weight: 800; color: var(--tc); }
+.chest-gold { margin-top: auto; position: relative; z-index: 3; font-weight: 900; font-size: 1.15rem; color: #f6d36b; text-shadow: 0 2px 0 #000; font-variant-numeric: tabular-nums; }
+.chest-gold img { width: 16px; vertical-align: -2px; image-rendering: pixelated; }
+.chest-gold.bump { animation: cbump .25s; }
+@keyframes cbump { 50% { transform: scale(1.35); } }
+.game-card-chest .btn-row { margin-top: 10px; }
+@media (max-width: 460px) {
+  .chest-stage { height: 320px; }
+  .chest-items { gap: 4px; }
+  .cslot { width: 60px; }
+  .cslot-box { width: 50px; height: 50px; }
+  .cslot img { width: 34px; height: 34px; }
+  .cslot b { font-size: .66rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chest-rays { animation: none; }
+  .game-card-chest.cshake, .chest-box.shake1 img, .chest-box.shake2 img { animation: none; }
+}
+
+/* Coffre en multijoueur : bandeau en haut, le jeu continue */
+.chest-mini { position: absolute; z-index: 6; top: 9%; left: 0; right: 0; margin: 0 auto; width: min(420px, 94%); pointer-events: none; overflow: hidden;
+  background: radial-gradient(circle at 18% 50%, #3a2618, rgba(20, 13, 8, .9) 70%); color: #fdf3de; box-shadow: 0 0 0 2px #000, 0 4px 0 rgba(0, 0, 0, .35); animation: cmin .35s cubic-bezier(.3, 1.6, .5, 1); }
+.chest-mini.out { animation: cmout .25s ease-in forwards; }
+@keyframes cmin { from { transform: translateY(-30px) scale(.8); opacity: 0; } }
+@keyframes cmout { to { transform: translateY(-24px); opacity: 0; } }
+.chest-mini.cshake { animation: cshake .38s; }
+.chest-mini .chest-stage { height: 78px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding: 16px 10px 4px; cursor: default; }
+.chest-mini .chest-stage::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--tc); pointer-events: none; transition: border-color .3s; }
+.chest-mini .chest-rays { left: 38px; top: 46px; width: 220px; height: 220px; margin: -110px 0 0 -110px; }
+.chest-mini .chest-flash { inset: 0; }
+.chest-mini .chest-title { position: absolute; top: 2px; left: 0; right: 0; min-height: 0; font-size: .78rem; text-align: center; }
+.chest-mini .chest-box, .chest-mini .chest-box.open { flex: none; width: 56px; height: 48px; margin: 0; }
+.chest-mini .chest-box img { width: 50px; }
+.chest-mini .chest-box.open img { width: 46px; }
+.chest-mini .chest-parts { left: 38px; top: 46px; }
+.chest-mini .chest-parts i { width: 3px; height: 3px; }
+.chest-mini .chest-items { flex: 1; margin: 0; min-height: 0; gap: 4px; justify-content: center; }
+.chest-mini .chest-items .cslot { width: 40px; margin-top: 0 !important; }
+.chest-mini .cslot-box { width: 36px; height: 36px; border-width: 2px; }
+.chest-mini .cslot img { width: 24px; height: 24px; }
+.chest-mini .cslot b { display: none; }
+.chest-mini .cslot em { font-size: .58rem; line-height: 1.1; margin-top: 2px; white-space: nowrap; }
+.chest-mini .chest-gold { flex: none; margin: 0; font-size: .85rem; }
+.chest-mini .chest-gold img { width: 12px; }
+@media (max-width: 460px) {
+  .chest-mini .chest-items .cslot { width: 34px; }
+  .chest-mini .cslot-box { width: 30px; height: 30px; }
+  .chest-mini .cslot img { width: 20px; height: 20px; }
+  .chest-mini .cslot em { font-size: .5rem; }
+}
+.chest-mini .cslot em { max-width: 48px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 460px) { .chest-mini { top: 13%; } }
