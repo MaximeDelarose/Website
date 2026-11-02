@@ -445,7 +445,8 @@ window.ES_DATA = (function () {
   var DUNGEON = {
     floors: 3,
     rooms: function (floor) { return 7 + floor * 2; },            // salles par étage
-    cellW: 380, cellH: 300,                                         // espacement de la grille des salles
+    cellW: 470, cellH: 370,
+    corridorMobs: 0.55,                                         // espacement de la grille des salles
     elites: function (floor) { return floor >= 2 ? 2 : 1; },        // salles d'élite par étage
     treasures: 1,
     extraLinks: 0.18,                                               // chance d'ajouter des boucles
