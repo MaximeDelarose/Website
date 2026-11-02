@@ -145,6 +145,49 @@ window.ES_DATA = (function () {
     chest: { pal: { b: "#6b4430", B: "#a06a3e", k: "#3a2618", y: "#f2c230" }, frames: [["..bbbbbb..", ".bBBBBBBb.", "bBBBBBBBBb", "kkkkyykkkk", "bBBByyBBBb", "bBBBBBBBBb", "bbbbbbbbbb"]] },
     relic: { pal: { k: "#4a2a6a", p: "#9a6ad8", P: "#d6b8ff", y: "#f6d36b" }, frames: [["...yy...", "..y..y..", "..kppk..", ".kpPPpk.", "kpPPPPpk", ".kpPPpk.", "..kppk..", "...kk..."]] },
     chestopen: { pal: { b: "#6b4430", B: "#a06a3e", k: "#3a2618", y: "#f2c230", Y: "#fff3b0" }, frames: [[".bbbbbbbb.", "bBBBBBBBBb", "kkkkkkkkkk", "..........", "kYYYYYYYYk", "byYYYYYYyb", "bBBByyBBBb", "bBBBBBBBBb", "bbbbbbbbbb"]] },
+    // ---- nouveaux ennemis
+    salamander: { pal: { r: "#d8572a", R: "#f29a3d", k: "#2b1709", y: "#f6d36b" }, frames: [
+      ["...........rr.", "....rrrrr.rrkr", "..rrRyRRyRrrrr", "rrrRRRRRRRrrr.", "r..rrrrrrrr...", "...r.r...r.r..", "..k..k...k..k."],
+      ["...........rr.", "....rrrrr.rrkr", "..rrRyRRyRrrrr", "rrrRRRRRRRrrr.", ".r.rrrrrrrr...", "....r.r.r.r...", "...k.k.k.k...."]] },
+    weaver: { pal: { p: "#3a2a4a", P: "#6a4a8a", w: "#e8e0f0", r: "#d0281a" }, frames: [
+      ["..p......p..", "...p....p...", "p..pPPPPp..p", ".ppPrPPrPpp.", "..pPPPPPPp..", "ppPPwwwwPPpp", "..pPPPPPPp..", ".p..pppp..p."],
+      [".p........p.", "..p......p..", "...pPPPPp...", "pppPrPPrPppp", "..pPPPPPPp..", ".pPPwwwwPPp.", "p.pPPPPPPp.p", "....pppp...."]] },
+    luciole: { flying: true, pal: { k: "#2b1709", y: "#f6e06b", Y: "#fff8c0", w: "#d8e8ff" }, frames: [
+      [".w....w.", "ww.kk.ww", ".wkkkkw.", "..kyyk..", "..yYYy..", "...yy..."],
+      ["........", "...kk...", "wwkkkkww", ".wkyykw.", "..yYYy..", "...yy..."]] },
+    puffball: { pal: { b: "#c9b88a", B: "#e8dcb4", g: "#7a8a4a", k: "#3a2a1a" }, frames: [
+      ["...BBBB...", "..BBbBBB..", ".BBbBBbBB.", ".BbBBBBbB.", "BBBBkBkBBB", ".BBBBBBBB.", "..gggggg..", ".g.g..g.g."],
+      ["..BBBBBB..", ".BBbBBBBB.", "BBbBBBbBBB", "BbBBBBBBbB", "BBBBkBkBBB", ".BBBBBBBB.", "..gggggg..", ".g.g..g.g."]] },
+    turtle: { pal: { g: "#4a7a3a", G: "#6a9a4a", s: "#7a5a3a", S: "#a07a4a", k: "#1b1226" }, frames: [
+      ["....SSSSS.....", "..SSsSSSsSS...", ".SsSSsSsSSsS..", ".SSSSSSSSSSSgg", "gssssssssssgkG", ".gg.gg..gg.gg."],
+      ["....SSSSS.....", "..SSsSSSsSS...", ".SsSSsSsSSsS..", ".SSSSSSSSSSSgg", "gssssssssssgkG", "..gg.gg.gg.gg."]] },
+    turtleshell: { pal: { s: "#7a5a3a", S: "#a07a4a", w: "#fdf3de" }, frames: [
+      ["....SSSSS.....", "..SSsSSSsSS...", ".SsSSsSsSSsS..", ".SSSSwSSSSSS..", ".ssssssssssss.", ".............."]] },
+    snake: { pal: { g: "#5a8a3a", G: "#8aba5a", k: "#1b1226", r: "#d0281a" }, frames: [
+      ["..........GG..", "..gg.....gGkG.", ".gGGg...gGGGr.", "gG..Gg.gG.....", "g....gGg......", ".............."],
+      ["..........GG..", ".........gGkG.", "..gg....gGGGr.", ".gGGg..gG.....", "gG..GgGg......", "g............."]] },
+    bat: { flying: true, pal: { b: "#3a2a3a", B: "#5a4a5a", r: "#d0281a", w: "#fdf3de" }, frames: [
+      ["b..........b", "bb..b..b..bb", "bBb.bbbb.bBb", ".bBbBrrBbBb.", "..bbbbbbbb..", "....w..w...."],
+      ["............", "....b..b....", "..b.bbbb.b..", ".bBbBrrBbBb.", "bBBbbbbbbBBb", "b...w..w...b"]] },
+    rat: { pal: { g: "#7a7068", G: "#a09890", p: "#e8a0a0", k: "#1b1226" }, frames: [
+      ["......gg..", "..gggggGkg", "pgGGGGGggp", ".g.g..g.g."],
+      ["......gg..", "..gggggGkg", "pgGGGGGggp", "..g.gg.g.."]] },
+    // ---- nouveaux boss
+    queen: { flying: true, pal: { y: "#f2c230", Y: "#f6e06b", k: "#2b1709", w: "#e8f0ff", W: "#b8d0e8", r: "#d0281a", c: "#f6d36b" }, frames: [
+      [".....c.c.c......", ".....ccccc......", ".ww..kyyyk...ww.", "wWWw.yrkry..wWWw", "wWWWwkyyykwwWWWw", ".wWWWkkyykkWWWw.", "..wwyyyyyyyyww..", "....kkkkkkkk....", "....yyyyyyyy....", "....kkkkkkkk....", ".....yyyyyy.....", "......kkkk......", ".......kk.......", "........k......."],
+      [".....c.c.c......", ".....ccccc......", ".....kyyyk......", "..ww.yrkry.ww...", ".wWWwkyyykwWWw..", "wWWWWkkyykkWWWWw", "wWWwyyyyyyyywWWw", ".ww.kkkkkkkk.ww.", "....yyyyyyyy....", "....kkkkkkkk....", ".....yyyyyy.....", "......kkkk......", ".......kk.......", "........k......."]] },
+    stag: { pal: { b: "#7a4a2a", B: "#a06a3e", a: "#e8d8b0", A: "#c9b88a", k: "#2b1709", w: "#fdf3de" }, frames: [
+      ["..a..a.....a..a..", "..aa.a.....a.aa..", "...aaa.....aaa...", "....aA.....Aa....", ".....aa...aa.....", "......bbbbb......", ".....bBkBkBb.....", ".....bBBBBBb.....", "......bBwBb......", ".......bbbbbbbbb.", "......bbBBBBBBBbb", "......bBBBBBBBBbb", "......bbbbbbbbbb.", "......b.b....b.b.", "......k.k....k.k."],
+      ["..a..a.....a..a..", "..aa.a.....a.aa..", "...aaa.....aaa...", "....aA.....Aa....", ".....aa...aa.....", "......bbbbb......", ".....bBkBkBb.....", ".....bBBBBBb.....", "......bBwBb......", ".......bbbbbbbbb.", "......bbBBBBBBBbb", "......bBBBBBBBBbb", "......bbbbbbbbbb.", ".......b.b..b.b..", ".......k.k..k.k.."]] },
+    mushking: { pal: { r: "#c8553d", R: "#e8735a", w: "#fdf3de", s: "#e8dcb4", S: "#c9b88a", k: "#2b1709", y: "#f6d36b" }, frames: [
+      ["......y.y.y.......", "......yyyyy.......", "....rrrrrrrrrr....", "..rrRRwRRRRwRRrr..", ".rRRwwRRRRRRwwRRr.", "rRRRRRRRwwRRRRRRRr", "rrrrrrrrrrrrrrrrrr", ".....ssssssss.....", ".....skssssks.....", ".....ssssssss.....", ".....sskkkkss.....", "....SssssssssS....", "...SS.ssssss.SS...", ".....ss....ss.....", ".....kk....kk....."],
+      ["......y.y.y.......", "......yyyyy.......", "....rrrrrrrrrr....", "..rrRRwRRRRwRRrr..", ".rRRwwRRRRRRwwRRr.", "rRRRRRRRwwRRRRRRRr", "rrrrrrrrrrrrrrrrrr", ".....ssssssss.....", ".....skssssks.....", ".....ssssssss.....", ".....ssskkkss.....", "...SSssssssssSS...", ".....SssssssS.....", "......ss..ss......", "......kk..kk......"]] },
+    golem: { pal: { s: "#5a4a3a", S: "#7a6a52", m: "#4a7a3a", M: "#7aaa4a", e: "#f6e06b", k: "#1e1612", r: "#6b4430" }, frames: [
+      [".......mMm..mm.......", "......ssssssssss.....", ".....sSSSSSSSSSss....", "....sSSeSSSSeSSSs....", "....sSSSSkkSSSSSs....", ".mm.sSSSSSSSSSSSs.mm.", "sSSssssSSSSSSSssssSSs", "sSSSs.sSSmmSSSs.sSSSs", "sSSSs.sSSMMSSSs.sSSSs", ".sSs..sSSSSSSSs..sSs.", ".rr...sSSSSSSSs...rr.", ".r....ssssssssss...r.", "......sSSs..sSSs.....", "......sSSs..sSSs.....", ".....rssss..ssssr....", "....r..............r."],
+      [".......mMm..mm.......", "......ssssssssss.....", ".....sSSSSSSSSSss....", "....sSSeSSSSeSSSs....", "....sSSSSkkSSSSSs....", "....sSSSSSSSSSSSs....", ".mmsssssSSSSSSsssmm..", "sSSSs.sSSmmSSSs.sSSSs", "sSSSs.sSSMMSSSs.sSSSs", "sSSSs.sSSSSSSSs.sSSSs", ".sSs..sSSSSSSSs..sSs.", ".rr...ssssssssss..rr.", "......sSSs..sSSs.....", ".....sSSs....sSSs....", "....rssss....ssssr...", "...r..............r.."]] },
+    bigmole: { pal: { m: "#4a3a4a", M: "#6a5a6a", k: "#1b1226", p: "#f29a85", c: "#f3e1c0", w: "#fdf3de" }, frames: [
+      ["......mmmmmm......", "....mmMMMMMMmm....", "...mMMMMMMMMMMm...", "..mMMwkMMMMwkMMm..", "..mMMkkMMMMkkMMm..", ".mMMMMMppppMMMMMm.", ".mMMMMMppppMMMMMm.", "ccmMMMMMMMMMMMMmcc", "cccmMMMMMMMMMMmccc", ".cc.mmmmmmmmmm.cc."],
+      ["......mmmmmm......", "....mmMMMMMMmm....", "...mMMMMMMMMMMm...", "..mMMwkMMMMwkMMm..", "..mMMkkMMMMkkMMm..", ".mMMMMMppppMMMMMm.", "cmMMMMMppppMMMMMmc", "ccmMMMMMMMMMMMMmcc", ".ccmMMMMMMMMMMmcc.", "..c.mmmmmmmmmm.c.."]] },
     magnet: { pal: { r: "#c8553d", w: "#fdf3de" }, frames: [["rr..rr", "rr..rr", "rr..rr", "rrrrrr", ".rrrr.", "ww..ww"]] },
     xpjar: { pal: { b: "#5fa3c9", B: "#a8e0f5", k: "#6b4430" }, frames: [[".kk.", "bbbb", "bBBb", "bBBb", "bbbb"]] },
     bomb: { pal: { k: "#3a3a4a", K: "#7a7a9a", y: "#f6d36b", b: "#8a5a3b" }, frames: [["....y", "...b.", ".kkk.", "kKkkk", "kkkkk", ".kkk."]] },
@@ -361,55 +404,55 @@ window.ES_DATA = (function () {
   var G_PRAIRIE = { base: "#7fa95a", patch: "#76a052", tuft: "#5b8a4a", hi: "#a6cf74", flowers: ["#fdf3de", "#f2b05e", "#c8553d", "#f6d36b"], pebble: "#b9ae96", pebbleDk: "#8a806c", shroom: "#c8553d" };
   var MAPS = [
     { id: "clairiere", name: "Clairière", desc: "Prairie, sous-bois et champignonnière. Parfait pour débuter.", hp: 1, gold: 1,
-      swarm: ["slug", "wasp", "spider", "beetle"], bosses: ["boar", "owl"],
+      swarm: ["slug", "wasp", "spider", "beetle"], bosses: ["boar", "queen", "owl"],
       biomes: [
         { name: "Prairie", prop: "stump", ground: G_PRAIRIE,
-          enemies: [["slug", 0, 4], ["beetle", 40, 4], ["wasp", 75, 3], ["bombshroom", 120, 2], ["fox", 300, 2]] },
+          enemies: [["slug", 0, 4], ["beetle", 40, 4], ["wasp", 75, 3], ["bombshroom", 120, 2], ["snake", 160, 2], ["fox", 300, 2]] },
         { name: "Sous-bois", prop: "stump", decor: "bush",
           ground: { base: "#5f8a48", patch: "#567f41", tuft: "#3f6b3a", hi: "#86b56c", flowers: ["#fdf3de", "#f6d36b", "#9cc56b", "#e2d6ff"], pebble: "#9a8f7a", pebbleDk: "#6f6655", shroom: "#c8553d", bush: "#3a5f34", bushHi: "#5b8a4a" },
-          enemies: [["spider", 0, 4], ["beetle", 30, 3], ["crow", 60, 3], ["frog", 90, 3], ["toad", 220, 2]] },
+          enemies: [["spider", 0, 4], ["beetle", 30, 3], ["crow", 60, 3], ["frog", 90, 3], ["weaver", 140, 2], ["toad", 220, 2]] },
         { name: "Champignonnière", prop: "lantern", decor: "bigshroom",
           ground: { base: "#7d7290", patch: "#73688a", tuft: "#5a4f6e", hi: "#a597b8", flowers: ["#f29ad8", "#e2d6ff", "#f6d36b", "#c8553d"], pebble: "#9a90a8", pebbleDk: "#6a6078", shroom: "#c8553d" },
-          enemies: [["bombshroom", 0, 4], ["moth", 0, 3], ["slug", 0, 2], ["toad", 150, 2]] },
+          enemies: [["bombshroom", 0, 4], ["moth", 0, 3], ["slug", 0, 2], ["puffball", 60, 3], ["toad", 150, 2]] },
       ] },
     { id: "marais", name: "Marais brumeux", desc: "Tourbière, étang et roselière. Ennemis plus coriaces.", hp: 1.15, gold: 1.25, unlock: "survie_3",
-      swarm: ["moth", "slug", "frog", "toad"], bosses: ["owl", "boar"],
+      swarm: ["moth", "slug", "frog", "toad"], bosses: ["mushking", "owl", "boar"],
       biomes: [
         { name: "Tourbière", prop: "basket", decor: "water",
           ground: { base: "#57735a", patch: "#4f6a52", tuft: "#33503a", hi: "#86a46a", flowers: ["#c9e3a0", "#e6f6fa", "#9ad0c4", "#f6d36b"], pebble: "#6f7a62", pebbleDk: "#4f5a48", shroom: "#9ad0c4", water: "#3d6b6e", waterHi: "#6fa8a8" },
-          enemies: [["slug", 0, 4], ["moth", 25, 4], ["toad", 70, 3], ["hedgehog", 160, 3], ["badger", 300, 2]] },
+          enemies: [["slug", 0, 4], ["moth", 25, 4], ["toad", 70, 3], ["hedgehog", 160, 3], ["turtle", 120, 2], ["badger", 300, 2]] },
         { name: "Étang", prop: "basket", decor: "pond",
           ground: { base: "#4a6f6a", patch: "#436661", tuft: "#2f5050", hi: "#7fa8a0", flowers: ["#e6f6fa", "#f29ad8", "#f6d36b", "#e6f6fa"], pebble: "#6f8a84", pebbleDk: "#4a6460", shroom: "#e6f6fa", water: "#2f5f70", waterHi: "#7fc0d0" },
-          enemies: [["frog", 0, 4], ["moth", 0, 2], ["toad", 40, 3], ["crow", 200, 2]] },
+          enemies: [["frog", 0, 4], ["moth", 0, 2], ["snake", 60, 3], ["toad", 40, 3], ["crow", 200, 2]] },
         { name: "Roselière", prop: "basket", decor: "reeds",
           ground: { base: "#8a9a5a", patch: "#808f52", tuft: "#6b7a3a", hi: "#b8c87a", flowers: ["#f6d36b", "#fdf3de", "#c8553d", "#f2b05e"], pebble: "#a09a7a", pebbleDk: "#7a7458", shroom: "#c8553d", reed: "#6b5a30", reedHi: "#c9b070" },
-          enemies: [["moth", 0, 3], ["hedgehog", 50, 3], ["spider", 80, 3], ["mole", 140, 2]] },
+          enemies: [["moth", 0, 3], ["hedgehog", 50, 3], ["spider", 80, 3], ["firefly", 100, 2], ["mole", 140, 2]] },
       ] },
     { id: "automne", name: "Bois d'automne", desc: "Bois roux, clairière dorée et terriers.", hp: 1.3, gold: 1.5, unlock: "boss_1",
-      swarm: ["bunny", "fox", "wasp", "mole"], bosses: ["boar", "owl"],
+      swarm: ["bunny", "fox", "wasp", "mole"], bosses: ["stag", "bigmole", "boar"],
       biomes: [
         { name: "Bois roux", prop: "leafpile", decor: "bush",
           ground: { base: "#b8833f", patch: "#ad7a3a", tuft: "#8a5a2b", hi: "#e8b25e", flowers: ["#c8553d", "#e8873a", "#f6d36b", "#8a5a3b"], pebble: "#9a8f7a", pebbleDk: "#6f6655", shroom: "#c8553d", bush: "#a0461f", bushHi: "#e8873a" },
-          enemies: [["bunny", 0, 4], ["fox", 35, 4], ["hedgehog", 80, 3], ["wasp", 110, 3]] },
+          enemies: [["bunny", 0, 4], ["fox", 35, 4], ["hedgehog", 80, 3], ["wasp", 110, 3], ["salamander", 150, 2]] },
         { name: "Clairière dorée", prop: "leafpile",
           ground: { base: "#c9a24a", patch: "#bf9944", tuft: "#9a7a30", hi: "#f2d48a", flowers: ["#fdf3de", "#c8553d", "#f2b05e", "#fdf3de"], pebble: "#b0a080", pebbleDk: "#857858", shroom: "#c8553d" },
           enemies: [["bunny", 0, 4], ["wasp", 30, 3], ["bombshroom", 90, 2], ["crow", 180, 2]] },
         { name: "Terriers", prop: "stump", decor: "rock",
           ground: { base: "#8a6440", patch: "#7d5a3a", tuft: "#5a4030", hi: "#b08a60", flowers: ["#d39a52", "#f2b05e", "#8a5a3b", "#c8553d"], pebble: "#a09080", pebbleDk: "#6f6355", shroom: "#c8553d", rock: "#7a7068", rockHi: "#a89e94" },
-          enemies: [["mole", 0, 4], ["fox", 0, 2], ["badger", 60, 3], ["hedgehog", 120, 2]] },
+          enemies: [["mole", 0, 4], ["rat", 20, 3], ["fox", 0, 2], ["badger", 60, 3], ["hedgehog", 120, 2]] },
       ] },
     { id: "nuit", name: "Nuit des lucioles", desc: "Forêt noire, clairière lunaire et souches mortes. Rapporte deux fois plus.", hp: 1.5, gold: 2, unlock: "survie_10", night: true,
-      swarm: ["moth", "crow", "bombshroom", "fox"], bosses: ["owl", "boar"],
+      swarm: ["moth", "crow", "bombshroom", "fox"], bosses: ["owl", "mushking", "stag"],
       biomes: [
         { name: "Forêt noire", prop: "lantern", decor: "bush",
           ground: { base: "#264634", patch: "#22402f", tuft: "#1b3326", hi: "#3f6b3a", flowers: ["#7fd1c7", "#c9b3ff", "#f2d48a", "#7fd1c7"], pebble: "#4b5a52", pebbleDk: "#33403a", shroom: "#7fd1c7", bush: "#16291e", bushHi: "#2f4f3a" },
-          enemies: [["moth", 0, 4], ["spider", 25, 4], ["crow", 60, 3], ["fox", 100, 3]] },
+          enemies: [["moth", 0, 4], ["spider", 25, 4], ["crow", 60, 3], ["bat", 40, 4], ["fox", 100, 3]] },
         { name: "Clairière lunaire", prop: "lantern",
           ground: { base: "#2f4458", patch: "#2a3e50", tuft: "#22323f", hi: "#5f7a94", flowers: ["#e6f6fa", "#c9b3ff", "#7fd1c7", "#f2d48a"], pebble: "#5a6a7a", pebbleDk: "#3a4858", shroom: "#7fd1c7" },
-          enemies: [["moth", 0, 3], ["frog", 40, 3], ["bombshroom", 80, 3], ["badger", 150, 2]] },
+          enemies: [["moth", 0, 3], ["frog", 40, 3], ["bombshroom", 80, 3], ["firefly", 60, 3], ["badger", 150, 2]] },
         { name: "Souches mortes", prop: "stump", decor: "rock",
           ground: { base: "#3a3236", patch: "#332c30", tuft: "#28222a", hi: "#5a4f58", flowers: ["#c9b3ff", "#7fd1c7", "#f29ad8", "#c9b3ff"], pebble: "#5a5058", pebbleDk: "#3a3238", shroom: "#7fd1c7", rock: "#4a4248", rockHi: "#6a6068" },
-          enemies: [["crow", 0, 3], ["bombshroom", 30, 3], ["mole", 60, 3], ["toad", 200, 2]] },
+          enemies: [["crow", 0, 3], ["bombshroom", 30, 3], ["mole", 60, 3], ["weaver", 90, 3], ["toad", 200, 2]] },
       ] },
   ];
 
@@ -454,11 +497,13 @@ window.ES_DATA = (function () {
     eliteHp: 3.5, eliteDmg: 1.5,
     guardHp: 14,                                                    // PV du gardien (× PV de base)
     pools: [
-      ["slug", "beetle", "spider", "bombshroom", "wasp"],
-      ["beetle", "spider", "frog", "mole", "hedgehog", "crow", "bombshroom"],
-      ["frog", "mole", "hedgehog", "crow", "badger", "toad", "fox", "moth"],
+      ["slug", "beetle", "spider", "bombshroom", "rat", "rat", "bat", "puffball"],
+      ["beetle", "spider", "frog", "mole", "hedgehog", "weaver", "snake", "salamander", "bat", "turtle"],
+      ["frog", "mole", "hedgehog", "crow", "badger", "toad", "salamander", "weaver", "firefly", "turtle", "snake"],
     ],
-    guards: ["toad", "badger", "hedgehog"],
+    guards: ["bigmole", "queen", "stag"],     // mini-boss de fin d'étage
+    finalBoss: "golem",
+    affixes: function (floor) { return floor >= 2 ? 2 : 1; },
     healOnStairs: 0.35,
     // XP par niveau : ~1 niveau par salle au début, niveau ~5 fin d'étage 1, ~10 fin d'étage 2, ~15 au boss
     need: function (L) { return 18 + (L - 1) * 11; },
@@ -624,13 +669,43 @@ window.ES_DATA = (function () {
     mole:     { sprite: "mole",     hp: 30,  spd: 52, dmg: 8,  r: 6,  xp: 3, color: "#6a5a6a", ai: "mole", blast: 14, blastR: 22 },
     boar:     { sprite: "boar",     hp: 900, spd: 22, dmg: 25, r: 12, xp: 40, boss: true, name: "Grand Sanglier", color: "#8f6243" },
     owl:      { sprite: "owl",      hp: 1400, spd: 30, dmg: 22, r: 10, xp: 60, boss: true, name: "Hibou Ancien", color: "#a597b8" },
+    // nouveaux comportements
+    salamander: { sprite: "salamander", hp: 34, spd: 30, dmg: 9, r: 6, xp: 3, color: "#d8572a", ai: "dasher" },
+    weaver:   { sprite: "weaver",   hp: 28,  spd: 26, dmg: 7,  r: 6,  xp: 3, color: "#6a4a8a", ai: "webber" },
+    firefly:  { sprite: "luciole",  hp: 6,   spd: 58, dmg: 4,  r: 4,  xp: 1, color: "#f6e06b", move: "wobble", ai: "bomber", blast: 9, blastR: 15, fuse: 0.35 },
+    puffball: { sprite: "puffball", hp: 30,  spd: 14, dmg: 6,  r: 6,  xp: 3, color: "#c9b88a", ai: "sporer" },
+    turtle:   { sprite: "turtle",   hp: 80,  spd: 14, dmg: 12, r: 7,  xp: 5, color: "#6a9a4a", ai: "shell" },
+    snake:    { sprite: "snake",    hp: 26,  spd: 36, dmg: 9,  r: 5,  xp: 2, color: "#8aba5a", move: "zigzag", ai: "lunger" },
+    bat:      { sprite: "bat",      hp: 14,  spd: 44, dmg: 6,  r: 5,  xp: 2, color: "#5a4a5a", ai: "swoop" },
+    rat:      { sprite: "rat",      hp: 7,   spd: 54, dmg: 4,  r: 4,  xp: 1, color: "#a09890" },
+    // nouveaux boss et mini-boss
+    queen:    { sprite: "queen",    hp: 1000, spd: 34, dmg: 18, r: 10, xp: 45, boss: true, bossAi: "queen", name: "Reine des guêpes", color: "#f2c230" },
+    stag:     { sprite: "stag",     hp: 1300, spd: 26, dmg: 24, r: 11, xp: 55, boss: true, bossAi: "stag", name: "Grand Cerf", color: "#a06a3e" },
+    mushking: { sprite: "mushking", hp: 1500, spd: 16, dmg: 20, r: 11, xp: 60, boss: true, bossAi: "mushking", name: "Roi Champignon", color: "#c8553d" },
+    bigmole:  { sprite: "bigmole",  hp: 900,  spd: 30, dmg: 20, r: 10, xp: 40, boss: true, bossAi: "bigmole", name: "Taupe géante", color: "#6a5a6a" },
+    golem:    { sprite: "golem",    hp: 2600, spd: 15, dmg: 28, r: 13, xp: 120, boss: true, bossAi: "golem", name: "Golem de racines", color: "#7a6a52" },
   };
+
+  /* =====================================================================
+     Pouvoirs d'élite : s'appliquent à n'importe quel ennemi, boss compris
+     ===================================================================== */
+  var AFFIXES = [
+    { id: "ardent",     name: "Ardent",     color: "#ff7a2a", desc: "laisse des flammes" },
+    { id: "glacial",    name: "Glacial",    color: "#8fd8ff", desc: "ralentit autour de lui" },
+    { id: "rapide",     name: "Rapide",     color: "#f6f6a0", desc: "très rapide" },
+    { id: "blinde",     name: "Blindé",     color: "#c0c8d0", desc: "encaisse la moitié des dégâts" },
+    { id: "vampire",    name: "Vampire",    color: "#e0283a", desc: "se soigne en frappant" },
+    { id: "explosif",   name: "Explosif",   color: "#ff4a2a", desc: "explose à sa mort" },
+    { id: "invocateur", name: "Invocateur", color: "#b07cf0", desc: "appelle des renforts" },
+    { id: "electrique", name: "Électrique", color: "#6ad8ff", desc: "décharges autour de lui" },
+    { id: "epineux",    name: "Épineux",    color: "#9cd04a", desc: "renvoie des épines quand on le frappe" },
+  ];
 
   var DIFFICULTIES = {
     normal: { name: "Normal", hp: 1, spd: 1, spawn: 1, gold: 1, score: 1 },
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
