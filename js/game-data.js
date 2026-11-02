@@ -144,6 +144,7 @@ window.ES_DATA = (function () {
     berry: { pal: { r: "#c8553d", R: "#f29a85", g: "#5b8a4a" }, frames: [["..g..", ".rgr.", "rRrrr", "rrrrr", ".rrr."]] },
     chest: { pal: { b: "#6b4430", B: "#a06a3e", k: "#3a2618", y: "#f2c230" }, frames: [["..bbbbbb..", ".bBBBBBBb.", "bBBBBBBBBb", "kkkkyykkkk", "bBBByyBBBb", "bBBBBBBBBb", "bbbbbbbbbb"]] },
     relic: { pal: { k: "#4a2a6a", p: "#9a6ad8", P: "#d6b8ff", y: "#f6d36b" }, frames: [["...yy...", "..y..y..", "..kppk..", ".kpPPpk.", "kpPPPPpk", ".kpPPpk.", "..kppk..", "...kk..."]] },
+    chestopen: { pal: { b: "#6b4430", B: "#a06a3e", k: "#3a2618", y: "#f2c230", Y: "#fff3b0" }, frames: [[".bbbbbbbb.", "bBBBBBBBBb", "kkkkkkkkkk", "..........", "kYYYYYYYYk", "byYYYYYYyb", "bBBByyBBBb", "bBBBBBBBBb", "bbbbbbbbbb"]] },
     magnet: { pal: { r: "#c8553d", w: "#fdf3de" }, frames: [["rr..rr", "rr..rr", "rr..rr", "rrrrrr", ".rrrr.", "ww..ww"]] },
     xpjar: { pal: { b: "#5fa3c9", B: "#a8e0f5", k: "#6b4430" }, frames: [[".kk.", "bbbb", "bBBb", "bBBb", "bbbb"]] },
     bomb: { pal: { k: "#3a3a4a", K: "#7a7a9a", y: "#f6d36b", b: "#8a5a3b" }, frames: [["....y", "...b.", ".kkk.", "kKkkk", "kkkkk", ".kkk."]] },
