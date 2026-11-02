@@ -16,7 +16,7 @@
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
   var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.17.0";
+  var VERSION = "0.18.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -216,14 +216,14 @@
     p.magnet = 30 * (1 + (m.magnet || 0) + 0.15 * (sh.aimant || 0) + 0.4 * (ps.joues || 0) + 0.1 * (tr.f1 || 0) + (rl.aimant ? 0.6 : 0));
     p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0) - (rl.sablier ? 0.1 : 0) - 0.06 * (it.sablier || 0) - 0.2 * (it.horloge || 0));
     p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + 0.1 * (pg.seve || 0) + 0.5 * (it.couronne || 0);
-    p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0) + (rl.mousse ? 0.8 : 0) + (it.coeurchene || 0);
+    p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0) + (rl.mousse ? 0.8 : 0) + (it.coeurchene || 0) + (m.regen || 0);
     p.luck = 1 + 0.15 * (sh.chance || 0) + 0.2 * (ps.trefle || 0) + (rl.trefle ? 0.3 : 0);
     p.area = 1 + (m.area || 0) + 0.05 * (sh.zone || 0) + 0.1 * (ps.loupe || 0) + 0.06 * (tr.a3 || 0) + (rl.loupe ? 0.2 : 0);
     p.amount = (m.amount || 0) + Math.ceil((ps.poches || 0) / 2) + (tr.a4 || 0) + (rl.poche ? 1 : 0);
     p.shieldCd = ps.mousse ? 16 - 2 * ps.mousse : 0;
-    p.crit = 0.08 * (tr.a5 || 0) + (rl.oeil ? 0.1 : 0) + 0.07 * (it.griffes || 0) + 0.1 * (it.corne || 0); p.rage = !!tr.a6; p.dodge = 0.04 * (tr.s5 || 0); p.taken = tr.s6 ? 0.85 : 1;
+    p.crit = 0.08 * (tr.a5 || 0) + 0.05 * (ps.crocs || 0) + (rl.oeil ? 0.1 : 0) + 0.07 * (it.griffes || 0) + 0.1 * (it.corne || 0); p.rage = !!tr.a6; p.dodge = 0.04 * (tr.s5 || 0) + 0.04 * (ps.queuetouffue || 0) + (m.dodge || 0); p.taken = tr.s6 ? 0.85 : 1;
     p.goldX = tr.f6 ? 2 : 1; p.extraChoice = tr.f4 ? 1 : 0;
-    p.goldMul = (1 + 0.1 * (sh.avarice || 0)) * (1 + 0.08 * (tr.f2 || 0)) * (1 + 0.12 * (pg.tresor || 0)) * DIFF.gold * (MAP.gold || 1) * (1 + 0.5 * (it.couronne || 0));
+    p.goldMul = (1 + 0.1 * (sh.avarice || 0)) * (1 + 0.08 * (tr.f2 || 0)) * (1 + 0.12 * (pg.tresor || 0)) * DIFF.gold * (MAP.gold || 1) * (1 + 0.5 * (it.couronne || 0)) * (1 + 0.1 * (ps.sacglands || 0));
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.hp = Math.min(p.hp, p.maxHp);
   }
@@ -232,6 +232,7 @@
   function myId() { return Net.on ? Net.id : "solo"; }
   function reset(roster, mapId, diffId, mode, seed) {
     DIFF = D.DIFFICULTIES[diffId || S.diff] || D.DIFFICULTIES.normal; MAP = mapById(mapId || S.map);
+    giantCache = {}; giantSeed = 0; for (var gi = 0; gi < MAP.id.length; gi++) giantSeed = (giantSeed * 31 + MAP.id.charCodeAt(gi)) % 9973;
     roster = roster || [{ id: "solo", name: S.name || "Toi", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige, pshop: S.pshop }];
     var n = roster.length;
     players = roster.map(function (it, i) {
@@ -687,13 +688,23 @@
   /* =====================================================================
      Zones au sol (feu, toile, spores), pouvoirs d'élite, patterns des boss
      ===================================================================== */
-  var zones = [], ZONE_K = ["fire", "web", "spore"];
+  var zones = [], ZONE_K = ["fire", "web", "spore", "thorn"];
   function addZone(x, y, rad, dur, kind, dmg) { if (zones.length < 90) zones.push({ x: x, y: y, r: rad, t: 0, dur: dur, kind: kind, dmg: dmg || 0 }); }
   function zoneAt(x, y, kind) { for (var i = 0; i < zones.length; i++) { var z = zones[i]; if (z.kind === kind && Math.hypot(x - z.x, (y - z.y) * 1.25) < z.r) return z; } return null; }
   function updateZones(dt) {
     for (var i = zones.length - 1; i >= 0; i--) {
       var z = zones[i]; z.t += dt;
       if (z.t >= z.dur) { zones.splice(i, 1); continue; }
+      if (z.kind === "thorn") {
+        if (!z.owner) continue;
+        z.tick = (z.tick || 0) - dt;
+        if (z.tick <= 0) {
+          z.tick = 0.4; var keep = p; p = z.owner;
+          near(z.x, z.y, z.r + 10, function (e) { if (e.d.prop || e.under || Math.hypot(e.x - z.x, (e.y - z.y) * 1.25) > z.r + e.d.r) return; hurt(e, z.dmg, 0, 0); e.slowT = Math.max(e.slowT, 0.6); e.slow = Math.max(e.slow || 0, e.d.boss ? 0.25 : 0.55); });
+          p = keep;
+        }
+        continue;
+      }
       if (z.kind === "web" || !z.dmg) continue;
       for (var j = 0; j < players.length; j++) {
         var pl = players[j];
@@ -836,6 +847,11 @@
       if (z.kind === "fire") {
         ctx.fillStyle = "rgba(255,110,30," + (0.25 * k + 0.1) + ")"; ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.fill();
         for (var i = 0; i < 3; i++) { var h = hash(x + i, y + ((r.time * 12) | 0)); ctx.fillStyle = i ? "#ffb040" : "#ff6a20"; ctx.fillRect(x - z.r / 2 + h % Math.max(1, z.r | 0), y - 2 - (h >>> 3) % 4, 2, 2 + (h >>> 5) % 3); }
+      } else if (z.kind === "thorn") {
+        var gk = Math.min(1, z.t * 6);
+        ctx.fillStyle = "rgba(60,90,40," + (0.35 * k) + ")"; ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.fill();
+        for (var tn = 0; tn < 7; tn++) { var th = hash(x + tn * 7, y), tx = x - z.r * 0.7 + th % Math.max(1, Math.round(z.r * 1.4)), ty2 = y - z.r * 0.4 + (th >>> 4) % Math.max(1, Math.round(z.r * 0.8)), hh = Math.round((4 + (th >>> 8) % 5) * gk);
+          ctx.fillStyle = "#3a5a2a"; ctx.fillRect(tx, ty2 - hh, 2, hh); ctx.fillStyle = "#8aba5a"; ctx.fillRect(tx, ty2 - hh, 1, 1); ctx.fillStyle = "#d0281a"; if (tn % 3 === 0) ctx.fillRect(tx + 1, ty2 - hh + 1, 1, 1); }
       } else if (z.kind === "web") {
         ctx.strokeStyle = "rgba(235,230,245," + (0.5 * k + 0.2) + ")"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.ellipse(x, y, z.r * 0.55, z.r * 0.45, 0, 0, TAU); ctx.stroke();
@@ -943,6 +959,94 @@
     });
     ctx.textBaseline = "alphabetic";
   }
+  /* =====================================================================
+     Grands décors des cartes : arbres, champignons géants, rochers (collision)
+     ===================================================================== */
+  var GC = 120, giantCache = {}, giantSeed = 0;
+  function giantAt(cx, cy) {
+    var key = cx + "," + cy;
+    if (giantCache[key] !== undefined) return giantCache[key];
+    var h = hash(cx * 7 + 13 + giantSeed, cy * 11 - giantSeed) >>> 0, g = null;
+    var x = cx * GC + 20 + (h % 80), y = cy * GC + 20 + ((h >>> 8) % 80);
+    if (Math.abs(x) > 80 || Math.abs(y) > 70) {
+      var b = MAP.biomes[biomeAtTile(Math.floor(x / 16), Math.floor(y / 16))];
+      if (b && b.giant && ((h >>> 16) % 1000) / 1000 < b.giantD) g = { x: x, y: y, k: b.giant, r: b.giant === "rock" ? 11 : b.giant === "shroom" ? 7 : 6, v: (h >>> 4) % 3, gr: b.ground };
+    }
+    giantCache[key] = g;
+    return g;
+  }
+  function useGiants() { return !isArena() && !isDungeon() && MAP && MAP.biomes; }
+  function pushOutGiants(o, rad) {
+    if (!useGiants()) return;
+    var cx = Math.floor(o.x / GC), cy = Math.floor(o.y / GC);
+    for (var i = -1; i <= 1; i++) for (var j = -1; j <= 1; j++) {
+      var g = giantAt(cx + i, cy + j); if (!g) continue;
+      var dx = o.x - g.x, dy = (o.y - g.y) * 1.4, d = Math.hypot(dx, dy), lim = g.r + rad;
+      if (d < lim) { if (d < 0.01) { dx = 1; d = 1; } o.x = g.x + dx / d * lim; o.y = g.y + dy / d * lim / 1.4; }
+    }
+  }
+  function visibleGiants(cx0, cy0) {
+    var out = [];
+    for (var cx = Math.floor((cx0 - 60) / GC); cx <= Math.floor((cx0 + W + 60) / GC); cx++)
+      for (var cy = Math.floor((cy0 - 40) / GC); cy <= Math.floor((cy0 + H + 90) / GC); cy++) { var g = giantAt(cx, cy); if (g) out.push(g); }
+    return out;
+  }
+  function drawGiantBases(list) {
+    list.forEach(function (g) {
+      var x = Math.round(g.x), y = Math.round(g.y), gr = g.gr || {};
+      ctx.fillStyle = "rgba(10,20,10,.2)";
+      ctx.beginPath(); ctx.ellipse(x + 2, y + 2, g.k === "rock" ? 15 : g.k === "shroom" ? 18 : 26, g.k === "rock" ? 6 : 7, 0, 0, TAU); ctx.fill();
+      if (g.k === "tree") {
+        ctx.fillStyle = "#4a2e1e"; ctx.fillRect(x - 5, y - 22, 10, 24);
+        ctx.fillStyle = "#6b4430"; ctx.fillRect(x - 4, y - 22, 6, 24);
+        ctx.fillStyle = "#8a5a3b"; ctx.fillRect(x - 3, y - 20, 1, 18);
+        ctx.fillStyle = "#4a2e1e"; ctx.fillRect(x - 8, y, 4, 2); ctx.fillRect(x + 4, y, 4, 2); ctx.fillRect(x - 1, y - 12, 2, 3);
+      } else if (g.k === "shroom") {
+        ctx.fillStyle = "#c9b88a"; ctx.fillRect(x - 5, y - 18, 10, 20);
+        ctx.fillStyle = "#e8dcb4"; ctx.fillRect(x - 4, y - 18, 6, 20);
+        ctx.fillStyle = "#c9b88a"; ctx.fillRect(x - 6, y, 12, 2);
+      } else {
+        var c1 = gr.rock || "#7a7068", c2 = gr.rockHi || "#a89e94";
+        ctx.fillStyle = "#3a3430"; ctx.beginPath(); ctx.ellipse(x, y - 4, 14, 10, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = c1; ctx.beginPath(); ctx.ellipse(x, y - 5, 13, 9, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = c2; ctx.fillRect(x - 7, y - 11, 6, 2); ctx.fillRect(x - 9, y - 9, 3, 3);
+        ctx.fillStyle = "#3a3430"; ctx.fillRect(x + 2, y - 6, 1, 4); ctx.fillRect(x + 3, y - 3, 3, 1);
+        if (g.v === 0) { ctx.fillStyle = "#5f8a44"; ctx.fillRect(x - 4, y - 13, 5, 2); }
+      }
+    });
+  }
+  function drawGiantTops(list) {
+    list.forEach(function (g) {
+      if (g.k === "rock") return;
+      var x = Math.round(g.x), y = Math.round(g.y), gr = g.gr || {};
+      var under = players.some(function (pl) { return Math.abs(pl.x - x) < 26 && pl.y < y + 2 && pl.y > y - (g.k === "tree" ? 56 : 34); });
+      ctx.globalAlpha = under ? 0.45 : 1;
+      if (g.k === "tree") {
+        var dk = gr.bush || gr.tuft || "#3f6b3a", md = gr.bushHi || gr.patch || "#5b8a4a", hi = gr.hi || "#86b56c", R = 22 + g.v * 3, ty = y - 34;
+        ctx.fillStyle = dk;
+        [[0, 0, R], [-R * 0.7, 6, R * 0.6], [R * 0.7, 5, R * 0.62], [0, -R * 0.55, R * 0.65]].forEach(function (c) { ctx.beginPath(); ctx.arc(x + c[0], ty + c[1], c[2], 0, TAU); ctx.fill(); });
+        ctx.fillStyle = md;
+        [[-3, -3, R * 0.75], [-R * 0.55, 2, R * 0.45], [R * 0.5, 0, R * 0.45]].forEach(function (c) { ctx.beginPath(); ctx.arc(x + c[0], ty + c[1], c[2], 0, TAU); ctx.fill(); });
+        ctx.fillStyle = hi;
+        for (var i = 0; i < 14; i++) { var h = hash(x + i * 3, y - i); ctx.fillRect(x - R * 0.7 + h % Math.round(R * 1.2), ty - R * 0.7 + (h >>> 5) % Math.round(R * 0.9), 2, 2); }
+        ctx.fillStyle = dk; for (i = 0; i < 10; i++) { var h2 = hash(y + i * 5, x); ctx.fillRect(x - R + h2 % Math.round(R * 2), ty + (h2 >>> 6) % Math.round(R * 0.9), 1, 2); }
+      } else {
+        var cap = gr.shroom || "#c8553d", glow = MAP.night;
+        if (glow) { ctx.fillStyle = "rgba(127,209,199,.18)"; ctx.beginPath(); ctx.ellipse(x, y - 20, 34, 22, 0, 0, TAU); ctx.fill(); }
+        ctx.fillStyle = "#2b1709"; ctx.beginPath(); ctx.ellipse(x, y - 21, 23, 13, 0, Math.PI, 0); ctx.fill(); ctx.fillRect(x - 23, y - 22, 46, 4);
+        ctx.fillStyle = cap; ctx.beginPath(); ctx.ellipse(x, y - 21, 22, 12, 0, Math.PI, 0); ctx.fill(); ctx.fillRect(x - 22, y - 22, 44, 3);
+        ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(x - 22, y - 20, 44, 2);
+        ctx.fillStyle = "#fdf3de"; [[-12, -27, 4], [2, -31, 5], [12, -25, 3], [-4, -24, 2]].forEach(function (s) { ctx.fillRect(x + s[0], y + s[1], s[2], s[2] - 1); });
+      }
+      ctx.globalAlpha = 1;
+    });
+  }
+  function fireNova(R, dmg) {
+    near(p.x, p.y, R + 14, function (e) { if (e.d.prop && R < 30) return; var dx = e.x - p.x, dy = e.y - p.y; if (Math.hypot(dx, dy) <= R + e.d.r) hurt(e, dmg, dx * 2, dy * 2); });
+    fx.push({ kind: "ring", x: p.x, y: p.y, r: R, life: 0.32, max: 0.32, col: "168,122,232" });
+    netEv(["nv", Math.round(p.x), Math.round(p.y), Math.round(R)]);
+    SND.zap();
+  }
   function updateWarns(dt) {
     for (var i = warns.length - 1; i >= 0; i--) {
       var w = warns[i];
@@ -1025,6 +1129,22 @@
   }
 
   var BEHAVIOR = {
+    nova: function (id, w, l, dt) {
+      if (!timer(id, V(w, "cd", l), dt)) return;
+      var R = V(w, "R", l) * p.area, dm = V(w, "dmg", l);
+      fireNova(R, dm);
+      if (V(w, "twice", l)) fireNova(R * 0.55, dm);
+    },
+    thorns: function (id, w, l, dt) {
+      if (!timer(id, V(w, "cd", l), dt)) return;
+      var t = nearest(8, 150), n = V(w, "n", l) + Math.floor(p.amount / 2);
+      for (var k = 0; k < n; k++) {
+        var tg = t.length ? t[(Math.random() * t.length) | 0] : null;
+        var x = tg ? tg.x : p.x + (Math.random() - 0.5) * 80, y = tg ? tg.y : p.y + (Math.random() - 0.5) * 60;
+        zones.push({ x: x, y: y, r: V(w, "rad", l) * p.area, t: 0, dur: V(w, "dur", l), kind: "thorn", dmg: V(w, "dmg", l), owner: p });
+      }
+      SND.crack();
+    },
     shooter: function (id, w, l, dt) {
       if (!timer(id, V(w, "cd", l), dt)) return;
       var count = V(w, "count", l) + p.amount, range = w.range || 140, spd = w.spd || 150;
@@ -1035,7 +1155,7 @@
         if (!tg || i >= t.length) a += (i - (count - 1) / 2) * 0.25;
         a += (Math.random() - 0.5) * (w.spread || 0);
         projs.push({ owner: p, kind: "bullet", x: p.x, y: p.y - 2, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, dmg: V(w, "dmg", l), pierce: V(w, "pierce", l),
-                     sprite: w.sprite, life: range / spd * 1.4, hit: [], r: 4, explode: w.explodeR ? V(w, "explodeR", l) * p.area : 0 });
+                     sprite: w.sprite, anim: w.anim, life: range / spd * 1.4, hit: [], r: 4, explode: w.explodeR ? V(w, "explodeR", l) * p.area : 0 });
       }
       if (w.spread) SND.shot();
     },
@@ -1385,7 +1505,7 @@
     me.lastHp = me.hp;
     if (me.capeT > 0) { me.capeT -= dt; slw *= 1 + 0.35 * itn(me, "cape"); }
     if (isDungeon()) { var spd = me.speed * slw * (me.wet === "water" ? 0.6 : me.wet === "poison" ? 0.8 : 1); dungeonMove(me, me.x + v.x * spd * dt, me.y + v.y * spd * dt); dungeonFeet(me, dt); markVisited(); }
-    else { me.x += v.x * me.speed * slw * dt; me.y += v.y * me.speed * slw * dt; }
+    else { me.x += v.x * me.speed * slw * dt; me.y += v.y * me.speed * slw * dt; pushOutGiants(me, 5); }
     clampArena(me, 8);
     me.moving = Math.abs(v.x) + Math.abs(v.y) > 0.05;
     if (v.x > 0.1) me.face = 1; else if (v.x < -0.1) me.face = -1;
@@ -1473,6 +1593,7 @@
       if (Math.abs(mx) > 0.1) e.face = mx > 0 ? 1 : -1;
       if (isArena()) clampArena(e, e.d.r);
       if (isDungeon()) enemyConstrain(e, ox, oy);
+      else if (!FLYERS[e.type] && !e.under) pushOutGiants(e, e.d.r - 1);
       if (!e.under) for (var j = 0; j < players.length; j++) {
         var pl = players[j];
         if (Math.abs(pl.x - e.x) < e.d.r + 5 && Math.abs(pl.y - e.y) < e.d.r + 5) {
@@ -2522,6 +2643,8 @@
     ctx.translate(-cx, -cy);
     if (isArena()) drawArena(cx, cy);
     if (isDungeon()) drawDungeon(cx, cy);
+    var giants = useGiants() ? visibleGiants(cx, cy) : null;
+    if (giants) drawGiantBases(giants);
 
     var bob = Math.sin(r.time * 4);
     gems.forEach(function (g) {
@@ -2594,6 +2717,7 @@
       shadow(l.sx + (l.tx - l.sx) * k, l.sy + (l.ty - l.sy) * k + 3, 5);
       blit(SPR[l.sprite || "pinecone"][0], x, y);
     });
+    if (giants) drawGiantTops(giants);
     fx.forEach(drawFx);
     texts.forEach(function (t) { ctx.globalAlpha = Math.min(1, t.life * 3); drawText(t.n, t.x, t.y, "#fdf3de", "c"); });
     ctx.globalAlpha = 1;
@@ -2825,9 +2949,9 @@
     if (f.kind === "dot") { ctx.fillStyle = f.color; ctx.fillRect(Math.round(f.x), Math.round(f.y), 2, 2); }
     else if (f.kind === "ring") {
       var k = 1 - f.life / f.max;
-      ctx.strokeStyle = f.red ? "rgba(255,70,40," + (1 - k) + ")" : "rgba(242,176,94," + (1 - k) + ")"; ctx.lineWidth = 2;
+      ctx.strokeStyle = f.col ? "rgba(" + f.col + "," + (1 - k) + ")" : f.red ? "rgba(255,70,40," + (1 - k) + ")" : "rgba(242,176,94," + (1 - k) + ")"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * (0.4 + k * 0.6), f.r * (0.4 + k * 0.6) * 0.8, 0, 0, TAU); ctx.stroke();
-      ctx.fillStyle = "rgba(255,226,122," + (0.35 * (1 - k)) + ")"; ctx.fill();
+      ctx.fillStyle = f.col ? "rgba(" + f.col + "," + (0.25 * (1 - k)) + ")" : "rgba(255,226,122," + (0.35 * (1 - k)) + ")"; ctx.fill();
     } else if (f.kind === "swipe") {
       // arc tracé du haut vers le bas en passant par le côté frappé (droite ou gauche)
       var t = 1 - f.life / f.max, st = -Math.PI / 2, sweep = Math.PI * Math.min(1, t * 2.5);
@@ -3075,13 +3199,15 @@
     var ok = charAvailable(c), m = c.mods || {}, tags = [];
     if (m.hp) tags.push((m.hp > 0 ? "+" : "") + m.hp + " PV");
     if (m.speed) tags.push((m.speed > 0 ? "+" : "") + Math.round(m.speed * 100) + " % vitesse");
-    if (m.might) tags.push("+" + Math.round(m.might * 100) + " % dégâts");
+    if (m.might) tags.push((m.might > 0 ? "+" : "") + Math.round(m.might * 100) + " % dégâts");
     if (m.armor) tags.push("+" + m.armor + " armure");
     if (m.magnet) tags.push("+" + Math.round(m.magnet * 100) + " % ramassage");
     if (m.cd) tags.push("-" + Math.round(m.cd * 100) + " % recharge");
     if (m.xp) tags.push("+" + Math.round(m.xp * 100) + " % expérience");
     if (m.area) tags.push("+" + Math.round(m.area * 100) + " % zone");
     if (m.amount) tags.push("+" + m.amount + " projectile");
+    if (m.dodge) tags.push("+" + Math.round(m.dodge * 100) + " % esquive");
+    if (m.regen) tags.push("+" + String(m.regen).replace(".", ",") + " PV/s");
     var w = D.WEAPONS[c.weapon];
     return '<div class="pick-info"><img class="pick-big" src="' + spriteUrl(c.sprite) + '" alt=""><div>' +
       "<strong>" + esc(c.name) + "</strong> <small>" + esc(c.title) + "</small>" +
@@ -3734,6 +3860,7 @@
   }
   function playEvent(ev) {
     var t = ev[0];
+    if (t === "nv") { fx.push({ kind: "ring", x: ev[1], y: ev[2], r: ev[3], life: 0.32, max: 0.32, col: "168,122,232" }); return; }
     if (t === "x") { fx.push({ kind: "ring", x: ev[1], y: ev[2], r: ev[3], life: 0.25, max: 0.25, red: !!ev[4] }); SND.boom(); }
     else if (t === "bo") { fx.push({ kind: "bolt", pts: ev[1], life: 0.16, max: 0.16 }); SND.zap(); }
     else if (t === "d") { if (S.opts.numbers && texts.length < 60) texts.push({ x: ev[1], y: ev[2], n: ev[3], life: 0.6 }); }
@@ -4070,6 +4197,8 @@
     dropForMates: function (id) { players.forEach(function (pl) { if (pl.remote) drop("item", pl.x + 4, pl.y, ITM[id || "plume"].idx); }); },
     items: function () { return me.items || {}; },
     dropItems: function () { D.ITEMS.forEach(function (it, i) { drop("item", me.x - 60 + (i % 8) * 16, me.y - 40 + ((i / 8) | 0) * 16, i); }); },
+    giants: function () { var out = []; for (var i = -3; i <= 3; i++) for (var j = -3; j <= 3; j++) { var g = giantAt(i, j); if (g) out.push([g.k, Math.round(g.x), Math.round(g.y)]); } return { n: out.length, use: useGiants(), list: out.slice(0, 5), seed: giantSeed }; },
+    tp: function (x, y) { me.x = x; me.y = y; },
     goStairs: function () { if (r && r.dg && r.dg.stairs) { me.x = r.dg.stairs.x; me.y = r.dg.stairs.y; return true; } return false; },
     killRoom: function () { enemies.forEach(function (e) { if (!e.d.prop && e.room !== undefined) { e.hp = 0; kill(e); } }); },
     endRound: function () { if (r && isArena() && r.phase === "fight") r.roundT = r.roundLen; },
