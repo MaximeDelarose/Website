@@ -16,7 +16,7 @@
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
   var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.24.0";
+  var VERSION = "0.25.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -3470,7 +3470,7 @@
     return '<div class="rank-badge"><span>Rang <b>' + S.rank + "</b>" + (S.prestige ? ' <span class="stars">' + stars(S.prestige) + "</span>" : "") + '</span><span class="rank-bar"><i style="width:' + k + '%"></i></span><small>' + S.rankXp + " / " + need + " XP</small></div>";
   }
   function goldBadge() { return '<p class="gold-badge">' + goldIc() + " <b>" + S.gold.toLocaleString("fr-FR") + "</b></p>"; }
-  function back() { return '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button>'; }
+  function back() { return '<button class="btn btn-ghost btn-small btn-back" type="button" data-action="go" data-arg="menu" aria-label="Retour">←<span class="bk-tx"> Retour</span></button>'; }
   function iconOfAny(k) { return ALLW[k] ? ALLW[k].icon : (D.PASSIVES[k] ? D.PASSIVES[k].sprite : "nut"); }
   function shopCost(it, lvl) { return Math.round(it.cost * (1 + lvl) * (1 + lvl * 0.25)); }
   function lockText(ach) { var a = achById(ach); return a ? "Succès « " + a.name + " » : " + a.desc : "Verrouillé"; }
@@ -3582,6 +3582,32 @@
         '<button class="btn btn-small" type="button" data-action="buychar" data-arg="' + c.id + '"' + (S.gold < c.price ? " disabled" : "") + ">Acheter " + c.price + " " + goldIc() + "</button>") +
       "</div></div>";
   }
+  // fiche du perso sélectionné (écran « Nouvelle partie »)
+  function npChar(c) {
+    var ok = charAvailable(c), m = c.mods || {}, tags = [], w = D.WEAPONS[c.weapon];
+    function t(v, txt) { tags.push('<span class="np-tag ' + (v > 0 ? "up" : "down") + '">' + txt + "</span>"); }
+    if (m.hp) t(m.hp, (m.hp > 0 ? "+" : "") + m.hp + " PV");
+    if (m.speed) t(m.speed, (m.speed > 0 ? "+" : "") + Math.round(m.speed * 100) + " % vitesse");
+    if (m.might) t(m.might, (m.might > 0 ? "+" : "") + Math.round(m.might * 100) + " % dégâts");
+    if (m.armor) t(m.armor, "+" + m.armor + " armure");
+    if (m.magnet) t(m.magnet, "+" + Math.round(m.magnet * 100) + " % ramassage");
+    if (m.cd) t(m.cd, "-" + Math.round(m.cd * 100) + " % recharge");
+    if (m.xp) t(m.xp, "+" + Math.round(m.xp * 100) + " % XP");
+    if (m.area) t(m.area, "+" + Math.round(m.area * 100) + " % zone");
+    if (m.amount) t(m.amount, "+" + m.amount + " projectile");
+    if (m.dodge) t(m.dodge, "+" + Math.round(m.dodge * 100) + " % esquive");
+    if (m.regen) t(m.regen, "+" + String(m.regen).replace(".", ",") + " PV/s");
+    if (c.twin) t(-1, "2 corps · 60 % dégâts");
+    return '<div class="np-card"><img class="np-big" src="' + spriteUrl(c.sprite) + '" alt=""><div class="np-body">' +
+      '<div class="np-name"><strong>' + esc(c.name) + "</strong> <small>" + esc(c.title) + "</small></div>" +
+      '<div class="np-weapon"><img src="' + spriteUrl(w.icon) + '" alt="">' + esc(w.name) + "</div>" +
+      '<div class="np-tags">' + (tags.length ? tags.join("") : '<span class="np-tag">Équilibré</span>') + "</div>" +
+      '<p class="np-desc">' + esc(c.desc) + "</p>" +
+      (ok ? "" : !questOk(c) ? '<p class="np-lock">🗝️ Quête : ' + esc(questById(c.quest).desc) + "</p>" :
+        '<p class="np-lock">🔒 ' + esc(lockText(c.unlock)) + "</p>" +
+        '<button class="btn btn-small" type="button" data-action="buychar" data-arg="' + c.id + '"' + (S.gold < c.price ? " disabled" : "") + ">Acheter " + c.price + " " + goldIc() + "</button>") +
+      "</div></div>";
+  }
   function mapInfo(m) {
     var ok = has(m.unlock);
     return '<div class="pick-info">' + swatch(m, "big") + "<div>" +
@@ -3624,30 +3650,46 @@
         "</div>";
     },
     play: function () {
-      var ic = charById(inspect.char || S.char), im = mapById(inspect.map || S.map);
-      var html = '<div class="screen-head">' + back() + "<h2>Nouvelle partie</h2>" + goldBadge() + "</div>";
-      html += '<h3 class="pick-title">Écureuil</h3><div class="tile-row">';
+      var ic = charById(inspect.char || S.char), im = mapById(inspect.map || S.map), mo = S.mode || "survie";
+      var MODES = [
+        ["survie", "🌲", "Survie", "Monde ouvert sans fin : survis le plus longtemps possible."],
+        ["arena", "🏟️", "Arène", "Arène fermée, " + A.rounds + " manches, boutique entre les manches."],
+        ["dungeon", "🗝️", "Donjon", DG.floors + " étages de salles à nettoyer, gardiens et boss final."],
+      ];
+      var html = '<div class="screen-head">' + back() + "<h2>Nouvelle partie</h2>" + goldBadge() + "</div><div class=\"np\">";
+      // 1. mode
+      html += '<section class="np-sec"><h3><span class="np-n">1</span>Mode</h3><div class="np-seg">';
+      MODES.forEach(function (m) {
+        html += '<button type="button" class="np-opt' + (mo === m[0] ? " is-on" : "") + '" data-action="mode" data-arg="' + m[0] + '"><span class="np-oi">' + m[1] + "</span>" + m[2] + "</button>";
+      });
+      html += '</div><p class="np-hint">' + esc(MODES.filter(function (m) { return m[0] === mo; })[0][3]) + "</p></section>";
+      // 2. écureuil
+      html += '<section class="np-sec"><h3><span class="np-n">2</span>Écureuil <small>' + D.CHARACTERS.filter(charAvailable).length + " / " + D.CHARACTERS.length + "</small></h3><div class=\"np-chars\">";
       D.CHARACTERS.forEach(function (c) {
         var ok = charAvailable(c);
-        html += '<button type="button" class="tile' + (S.char === c.id ? " is-selected" : "") + (ok ? "" : " is-locked") + (ic.id === c.id ? " is-inspected" : "") +
+        html += '<button type="button" class="np-char' + (S.char === c.id ? " is-selected" : "") + (ok ? "" : " is-locked") + (ic.id === c.id ? " is-inspected" : "") +
           '" data-action="tchar" data-arg="' + c.id + '" aria-label="' + esc(c.name) + '"><img src="' + spriteUrl(c.sprite) + '" alt="">' + (ok ? "" : "<i>🔒</i>") + "</button>";
       });
-      html += "</div>" + charInfo(ic);
-      html += '<h3 class="pick-title">Carte</h3><div class="tile-row">';
+      html += "</div>" + npChar(ic) + "</section>";
+      // 3. carte
+      html += '<section class="np-sec"><h3><span class="np-n">3</span>Carte</h3><div class="np-maps">';
       D.MAPS.forEach(function (m) {
-        var ok = has(m.unlock);
-        html += '<button type="button" class="tile tile-map' + (S.map === m.id ? " is-selected" : "") + (ok ? "" : " is-locked") + (im.id === m.id ? " is-inspected" : "") +
-          '" data-action="tmap" data-arg="' + m.id + '" aria-label="' + esc(m.name) + '">' + swatch(m) + "<small>" + esc(m.name) + "</small>" + (ok ? "" : '<i class="lock">🔒</i>') + "</button>";
+        var ok = has(m.unlock), bands = m.biomes.map(function (b, k) { var a = Math.round(k / m.biomes.length * 100), z = Math.round((k + 1) / m.biomes.length * 100); return b.ground.base + " " + a + "% " + z + "%"; }).join(",");
+        html += '<button type="button" class="np-map' + (S.map === m.id ? " is-selected" : "") + (ok ? "" : " is-locked") + (im.id === m.id ? " is-inspected" : "") + '" data-action="tmap" data-arg="' + m.id + '">' +
+          '<span class="np-mapart" style="background:linear-gradient(90deg,' + bands + ')"><img src="' + spriteUrl(m.biomes[0].prop) + '" alt="">' + (ok ? "" : "<i>🔒</i>") + "</span>" +
+          '<span class="np-mapname">' + esc(m.name) + "</span>" +
+          '<span class="np-mapmeta">' + (m.hp > 1 ? "PV ×" + fr(m.hp) + " · " : "") + "or ×" + fr(m.gold) + "</span></button>";
       });
-      html += "</div>" + mapInfo(im);
-      html += modeRow("mode");
-      html += '<div class="diff-row"><span>Difficulté :</span>';
+      html += '</div><p class="np-hint"><b>' + esc(im.name) + "</b> · " + esc(im.desc) + (has(im.unlock) ? "" : ' <span class="np-lock">🔒 ' + esc(lockText(im.unlock)) + "</span>") + "</p></section>";
+      // 4. difficulté
+      html += '<section class="np-sec"><h3><span class="np-n">4</span>Difficulté</h3><div class="np-seg">';
       Object.keys(D.DIFFICULTIES).forEach(function (k) {
         var df = D.DIFFICULTIES[k], ok = has(df.unlock);
-        html += '<button type="button" class="chip' + (S.diff === k ? " is-on" : "") + '" ' + (ok ? 'data-action="diff" data-arg="' + k + '"' : 'disabled title="' + esc(lockText(df.unlock)) + '"') + ">" +
-          (ok ? "" : "🔒 ") + esc(df.name) + (df.gold > 1 ? " · or ×" + fr(df.gold) : "") + "</button>";
+        html += '<button type="button" class="np-opt' + (S.diff === k ? " is-on" : "") + '" ' + (ok ? 'data-action="diff" data-arg="' + k + '"' : 'disabled title="' + esc(lockText(df.unlock)) + '"') + ">" +
+          (ok ? "" : "🔒 ") + esc(df.name) + "<small>or ×" + fr(df.gold) + "</small>" + "</button>";
       });
-      html += '</div><div class="play-bar"><button class="btn" type="button" data-action="start" data-autofocus>▶ Lancer : ' + esc(charById(S.char).name) + " · " + esc(mapById(S.map).name) + "</button></div>";
+      html += "</div></section></div>";
+      html += '<div class="play-bar"><button class="btn np-go" type="button" data-action="start" data-autofocus><span>▶ Lancer</span><small>' + esc(charById(S.char).name) + " · " + esc(mapById(S.map).name) + " · " + MODES.filter(function (m) { return m[0] === mo; })[0][2] + "</small></button></div>";
       return html;
     },
     coop: function () {
