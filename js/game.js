@@ -14,7 +14,7 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
-  var VERSION = "0.9.1";
+  var VERSION = "0.9.2";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -62,7 +62,10 @@
   function freePoints() { return totalPoints() - spentPoints(); }
   function skillOpen(k) { return (!k.prestige || S.prestige >= k.prestige) && (k.req || []).every(function (id) { return (S.tree[id] || 0) > 0; }); }
   function shopMaxed() { return D.SHOP.filter(function (it) { return (S.shop[it.id] || 0) >= it.max; }).length; }
-  function prestigeReady() { return shopMaxed() === D.SHOP.length && S.gold >= D.PRESTIGE.cost; }
+  // compétences exigées : toutes, sauf celles réservées à un prestige pas encore atteint
+  function treeNeeded() { return D.SKILLS.filter(function (k) { return !k.prestige || S.prestige >= k.prestige; }); }
+  function treeMaxed() { return treeNeeded().filter(function (k) { return (S.tree[k.id] || 0) >= k.max; }).length; }
+  function prestigeReady() { return shopMaxed() === D.SHOP.length && treeMaxed() === treeNeeded().length && S.gold >= D.PRESTIGE.cost; }
   function stars(n) { return n > 0 ? (n > 5 ? "★×" + n : new Array(n + 1).join("★")) : ""; }
   function has(ach) { return !ach || !!S.ach[ach]; }
   function charById(id) { return D.CHARACTERS.filter(function (c) { return c.id === id; })[0] || D.CHARACTERS[0]; }
@@ -1831,6 +1834,12 @@
         '<h3 class="pick-title">Conditions</h3>' +
         '<div class="prestige-progress' + (okShop ? " is-ok" : "") + '"><span>' + (okShop ? "✅" : "⬜") + " Toutes les améliorations au maximum</span>" +
           '<span class="rank-bar"><i style="width:' + ks + '%"></i></span><small>' + sm + " / " + D.SHOP.length + " améliorations au max" + (okShop ? "" : ' · <button class="link-btn" type="button" data-action="go" data-arg="shop">aller à la boutique</button>') + "</small></div>" +
+        (function () {
+          var tn = treeNeeded().length, tm = treeMaxed(), ok = tm === tn;
+          return '<div class="prestige-progress' + (ok ? " is-ok" : "") + '"><span>' + (ok ? "✅" : "⬜") + " Arbre de compétences au maximum</span>" +
+            '<span class="rank-bar"><i style="width:' + Math.round(tm / tn * 100) + '%"></i></span><small>' + tm + " / " + tn + " compétences au max" +
+            (ok ? "" : ' · <button class="link-btn" type="button" data-action="go" data-arg="tree">aller à l\'arbre</button>') + "</small></div>";
+        })() +
         '<div class="prestige-progress' + (okGold ? " is-ok" : "") + '"><span>' + (okGold ? "✅" : "⬜") + " " + P.cost.toLocaleString("fr-FR") + " glands d\'or (consommés)</span>" +
           '<span class="rank-bar"><i style="width:' + kg + '%"></i></span><small>' + S.gold.toLocaleString("fr-FR") + " / " + P.cost.toLocaleString("fr-FR") + "</small></div>" +
         '<div class="prestige-rules"><p><b>Tout repart à zéro :</b> glands d\'or, améliorations, rang, arbre de compétences, succès, écureuils et cartes débloqués, statistiques.</p>' +

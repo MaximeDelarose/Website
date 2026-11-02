@@ -462,8 +462,9 @@ window.ES_DATA = (function () {
   ];
 
   /* =====================================================================
-     Prestige : possible quand TOUTES les améliorations de la boutique sont au
-     maximum et qu'on a « cost » glands d'or. Remet TOUT à zéro (or, boutique,
+     Prestige : possible quand TOUTES les améliorations de la boutique ET toutes
+     les compétences de l'arbre (sauf celles d'un prestige pas encore atteint)
+     sont au maximum, et qu'on a « cost » glands d'or. Remet TOUT à zéro (or, boutique,
      rang, arbre, succès, écureuils, cartes, statistiques) sauf le niveau de
      prestige, les records, le pseudo et les options.
      ===================================================================== */
