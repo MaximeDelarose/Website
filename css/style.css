@@ -1455,3 +1455,57 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .ach.quest:not(.is-done) .ach-ic { filter: grayscale(1); opacity: .7; }
 .quest-toast img { width: 14px; vertical-align: -2px; image-rendering: pixelated; }
 .ach.quest .ach-ic img { width: 24px; image-rendering: pixelated; }
+
+/* ---------- Écureuil Survivor : écran d'accueil ---------- */
+.game-card-menu { width: min(560px, 100%); padding: 18px 18px 12px; }
+.mm { display: grid; gap: 14px; text-align: left; }
+.mm-head { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.mm-head img { width: 56px; height: auto; image-rendering: pixelated; flex: none; }
+.mm-head h2 { margin: 0; line-height: 1.05; }
+.mm-head .kicker { display: block; margin: 0 0 2px; }
+.mm-stats { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--panel-2); box-shadow: 0 0 0 2px var(--line); }
+.mm-gold { display: inline-flex; align-items: center; gap: 6px; font-weight: 900; white-space: nowrap; }
+.mm-gold .gold-ic { width: 18px; height: 18px; }
+.mm-rank { flex: 1; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: .9rem; min-width: 0; }
+.mm-rank small { color: var(--ink-soft); font-size: .75rem; white-space: nowrap; }
+.mm-rank .rank-bar { min-width: 40px; }
+.mm-main { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px; }
+.mm-main .btn { margin: 4px 4px 8px; justify-content: center; }
+.mm-play { flex-direction: column; gap: 0; padding: 10px 14px; font-size: 1.3rem; font-weight: 900; }
+.mm-play small { font-size: .72rem; font-weight: 700; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mm-coop { flex-direction: column; gap: 0; font-size: 1.1rem; font-weight: 900; padding: 10px 12px; text-align: center; }
+.mm-coop small { font-size: .72rem; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+.mm-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.mm-tile { position: relative; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 10px; text-align: left;
+  font: inherit; color: var(--ink); background: var(--panel-2); border: 0; cursor: pointer;
+  box-shadow: 0 0 0 2px var(--line), 0 4px 0 2px var(--line); margin-bottom: 4px; transition: transform .06s steps(1), filter .15s; }
+.mm-tile:hover { filter: brightness(1.06); }
+.mm-tile:active { transform: translateY(3px); box-shadow: 0 0 0 2px var(--line), 0 1px 0 2px var(--line); }
+.mm-tile:focus-visible { outline: 3px solid var(--orange, #e8873a); outline-offset: 3px; }
+.mm-ic { flex: none; width: 34px; height: 34px; display: grid; place-items: center; font-size: 1.35rem; background: var(--panel); box-shadow: 0 0 0 2px var(--line); }
+.mm-lb { display: grid; min-width: 0; line-height: 1.15; }
+.mm-lb b { font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mm-lb small { font-size: .74rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mm-tile .pill { position: absolute; top: -6px; right: -4px; }
+.mm-tile.is-hot .mm-ic { background: var(--berry); }
+.mm-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px 12px; flex-wrap: wrap; font-size: .78rem; color: var(--ink-soft); border-top: 2px dashed color-mix(in srgb, var(--ink-soft) 40%, transparent); padding-top: 8px; }
+.mm-link { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+@media (min-width: 620px) { .mm-grid { grid-template-columns: repeat(4, 1fr); } .mm-tile { flex-direction: column; text-align: center; gap: 6px; padding: 10px 6px; } .mm-lb small { white-space: normal; } }
+@media (max-width: 420px) {
+  .game-card-menu { padding: 14px 12px 10px; }
+  .mm { gap: 10px; }
+  .mm-head { gap: 8px; }
+  .mm-head img { width: 42px; }
+  .mm-head h2 { font-size: 1.35rem; white-space: nowrap; }
+  .mm-head .kicker { font-size: .62rem; letter-spacing: .08em; white-space: nowrap; }
+  .mm-stats { padding: 6px 10px; gap: 8px; }
+  .mm-rank small { display: none; }
+  .mm-main { grid-template-columns: 1.5fr 1fr; gap: 6px; }
+  .mm-play { font-size: 1.15rem; padding: 8px 10px; }
+  .mm-coop { font-size: 1rem; padding: 8px 8px; }
+  .mm-grid { gap: 7px; }
+  .mm-tile { gap: 8px; padding: 6px 8px; min-height: 46px; }
+  .mm-ic { width: 28px; height: 28px; font-size: 1.05rem; }
+  .mm-lb b { font-size: .84rem; }
+  .mm-lb small { font-size: .68rem; }
+}
