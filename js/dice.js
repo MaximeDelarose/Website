@@ -28,7 +28,14 @@
     var raw = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
     if (raw && typeof raw === "object") Object.keys(raw).forEach(function (k) { if (k in S) S[k] = raw[k]; });
   } catch (e) {}
-  function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+  // S = état affiché. Invité : S est la sauvegarde du navigateur (LOCAL).
+  // Connecté : la progression vient du serveur, seules les préférences restent dans le navigateur.
+  var LOCAL = S;
+  var Cloud = { on: false, loading: false, busy: false, msg: "", err: "" };
+  function save() {
+    if (Cloud.on) { LOCAL.mute = S.mute; LOCAL.botLvl = S.botLvl; LOCAL.sel = S.sel; LOCAL.name = S.name; }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(LOCAL)); } catch (e) {}
+  }
   // ancienne sauvegarde : on garde tout ce qui était débloqué ou déjà joué
   if (!S.have) {
     S.have = {};
@@ -43,6 +50,47 @@
   S.deck = (S.deck || []).filter(function (k, i, a) { return T[k] && owned(k) && a.indexOf(k) === i; }).slice(0, 5);
   if (!S.deck.length) S.deck = D.START_DECK.slice();
   if (!T[S.sel]) S.sel = "noisette";
+
+  /* ---------- compte du site (js/auth.js) : progression sur le serveur ---------- */
+  var PROG = ["gold", "keys", "chests", "have", "cards", "cls", "deck", "best", "wins", "games", "ach"];
+  function applyServer(p) {
+    if (!p) return;
+    PROG.forEach(function (k) { if (p[k] !== undefined && p[k] !== null) S[k] = p[k]; });
+    if (!Array.isArray(S.deck)) S.deck = [];
+    S.best = S.best || { solo: 0, coop: 0 };
+  }
+  function refreshScreen() {
+    if (state === "menu" && ["menu", "deck", "chests", "succes", "online"].indexOf(screen) >= 0) show(screen, true);
+  }
+  function cloudStart(st) {
+    if (!st || !st.user) { if (Cloud.on) { Cloud.on = false; S = LOCAL; refreshScreen(); } return; }
+    if (Cloud.on || Cloud.loading) return;
+    Cloud.loading = true; Cloud.err = ""; refreshScreen();
+    window.SiteAuth.rpc("rd_load").then(function (p) {
+      if (p.imported) return p;
+      // première connexion : on reprend une seule fois la progression du navigateur (le serveur la plafonne)
+      var hasLocal = (LOCAL.games || 0) > 0 || (LOCAL.gold || 0) > 0 || (LOCAL.chests || 0) > 0;
+      return window.SiteAuth.rpc("rd_import", { p: hasLocal ? { gold: LOCAL.gold, have: LOCAL.have, cls: LOCAL.cls, cards: LOCAL.cards, best: LOCAL.best } : {} })
+        .then(function (q) { if (hasLocal) Cloud.msg = "Ta progression de ce navigateur a été reprise sur ton compte (avec des plafonds anti-triche)."; return q; });
+    }).then(function (p) {
+      S = Object.assign({}, LOCAL);
+      applyServer(p);
+      if (st.profile && st.profile.pseudo) S.name = st.profile.pseudo;
+      Cloud.on = true; Cloud.loading = false; refreshScreen();
+    }).catch(function (err) { Cloud.loading = false; Cloud.err = window.SiteAuth.message(err); refreshScreen(); });
+  }
+  function pushDeck() {
+    if (!Cloud.on) return;
+    clearTimeout(pushDeck.t);
+    pushDeck.t = setTimeout(function () {
+      window.SiteAuth.rpc("rd_set_deck", { p_deck: S.deck.slice() }).then(function (p) {
+        if (p && p.deck && p.deck.join() !== S.deck.join()) { S.deck = p.deck; refreshScreen(); }
+      }).catch(function () {});
+    }, 400);
+  }
+  // refus du serveur : on recharge la vraie progression (l'affichage local a pu être modifié)
+  function resync() { if (Cloud.on) window.SiteAuth.rpc("rd_load").then(function (p) { applyServer(p); refreshScreen(); }).catch(function () {}); }
+  var RUN_MODE = { solo: "solo", bot: "bot", "local-coop": "local-coop", "local-vs": "local-vs", "net-coop": "coop", "net-vs": "versus" };
   function myCls() { var o = {}; D.ORDER.forEach(function (k) { o[k] = clsLv(k); }); return o; }
 
   /* =====================================================================
@@ -145,7 +193,8 @@
     state = "play"; paused = false; speed = 1;
     hideOverlay(); hud.hidden = false; syncHud();
     layoutScene();
-    S.games++; save();
+    if (Cloud.on) G.runP = window.SiteAuth.rpc("rd_start_run", { p_mode: RUN_MODE[G.kind] || "solo" }).catch(function () { return null; });
+    else { S.games++; save(); }
   }
   function soloGame() {
     var w = K.createWorld({ mode: "solo", seed: (Math.random() * 1e9) | 0, boards: [{ name: S.name || "Toi", deck: S.deck, cls: myCls() }] });
@@ -616,6 +665,27 @@
       if (me.over && !G.sentDead) { G.sentDead = true; netSend("dead", { w: me.wave }); finish({ mode: "versus", wave: me.wave, kills: me.kills, bosses: me.bosses, maxPip: maxPip(me), win: false, online: true }); }
     }
   }
+  // connecté : c'est le serveur qui vérifie le résultat et calcule les gains
+  function finishCloud(res) {
+    res.newAch = []; res.pending = true; res.gold = 0;
+    var before = res.mode === "coop" ? S.best.coop || 0 : S.best.solo || 0, runP = G.runP || Promise.resolve(null);
+    showOver(res);
+    runP.then(function (id) {
+      if (!id) throw new Error("no_run");
+      return window.SiteAuth.rpc("rd_end_run", { p_run: id, p_wave: res.wave, p_kills: res.kills, p_bosses: res.bosses, p_maxpip: res.maxPip || 1, p_win: !!res.win });
+    }).then(function (r) {
+      applyServer(r.profile);
+      res.pending = false; res.gold = r.gold + (r.achGold || 0); res.key = r.key; res.saved = true;
+      res.newAch = (r.newAch || []).map(achById).filter(Boolean);
+      if ((res.mode === "solo" || res.mode === "coop") && !res.local && r.wave > before) res.record = true;
+      if (state === "over" && screen === "over") showOver(res);
+    }).catch(function (err) {
+      res.pending = false;
+      res.cloudErr = err && err.message === "no_run" ? "Gains non enregistrés : la partie n'a pas pu être ouverte sur le serveur." : "Gains non enregistrés : " + window.SiteAuth.message(err);
+      if (state === "over" && screen === "over") showOver(res);
+    });
+  }
+  function achById(id) { return D.ACHIEVEMENTS.filter(function (a) { return a.id === id; })[0]; }
   function maxPip(w) { var m = 0; w.boards.forEach(function (b) { m = Math.max(m, b.maxPip || 1); }); return m; }
   function resultOf(w) { return { wave: w.wave, kills: w.kills, bosses: w.bosses }; }
 
@@ -624,6 +694,7 @@
     G.ended = true; state = "over"; hud.hidden = true;
     var win = res.win;
     if (res.local) SND.win(); else if (win) SND.win(); else SND.over();
+    if (Cloud.on) { finishCloud(res); return; }
     // récompenses (glands d'or) : on ne gagne qu'en jouant, rien ne s'achète
     var gold = Math.round(res.wave * 4 + res.kills / 12 + res.bosses * 10);
     if (res.mode === "versus" && !res.local) gold = Math.round(gold * 0.6 + (win ? (res.bot ? 25 : 50) : 5));
@@ -850,6 +921,17 @@
     setTimeout(function () { if (bestR === "legendaire") SND.win(); else if (bestR === "epique") SND.merge(5); else SND.pu(); }, 600);
   }
 
+  function acctHtml() {
+    var h;
+    if (!window.SiteAuth) return "";
+    if (Cloud.on) h = '<p class="game-small rd-acct">☁ Connecté' + (S.name ? " : <b>" + esc(S.name) + "</b>" : "") + ' · progression sauvegardée sur <a href="compte.html">ton compte</a>.</p>';
+    else if (Cloud.loading) h = '<p class="game-small rd-acct">☁ Chargement de ton compte…</p>';
+    else h = '<p class="game-small rd-acct">Invité : ta progression reste dans ce navigateur. <button class="rd-link" type="button" data-action="login">Se connecter avec Google</button> pour la protéger, la retrouver partout et jouer en ligne.</p>';
+    if (Cloud.msg) { h += '<p class="game-small">' + esc(Cloud.msg) + "</p>"; Cloud.msg = ""; }
+    if (Cloud.err) h += '<p class="net-err">' + esc(Cloud.err) + "</p>";
+    return h;
+  }
+
   var SCREENS = {
     menu: function () {
       var deckOk = S.deck.length === 5;
@@ -866,7 +948,8 @@
         '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="deck">🃏 Deck & écureuils' + (D.ORDER.some(canLevel) ? " ⬆" : "") + '</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="chests">🎁 Coffres' + (S.keys >= D.KEYS_FOR_FREE ? " ✨" : "") + '</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="succes">🏆 Succès</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Règles</button></div>' +
         "</div>" +
         '<p class="game-small">Aucun achat : tout se débloque en jouant. Versus gagnés : ' + S.wins + ".</p>" +
-        (DEBUG ? '<p class="game-small">🧪 Mode test : <button class="btn btn-ghost btn-small" type="button" data-action="testgold">+5 000 glands d\'or</button></p>' : "");
+        acctHtml() +
+        (DEBUG && !Cloud.on ? '<p class="game-small">🧪 Mode test : <button class="btn btn-ghost btn-small" type="button" data-action="testgold">+5 000 glands d\'or</button></p>' : "");
     },
     deck: function () {
       var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Deck</h2>' +
@@ -902,11 +985,13 @@
         '<p class="game-small">Chaque partie terminée donne une clé ; ' + D.KEYS_FOR_FREE + " clés ouvrent un coffre en bois gratuit. Les coffres se paient seulement en glands d'or gagnés en jouant.</p>" +
         '<div class="rd-chest-list">';
       D.CHESTS.forEach(function (c, i) {
-        var isFree = i === 0 && free, ok = isFree || S.gold >= c.price;
+        var isFree = i === 0 && free, ok = !Cloud.busy && (isFree || S.gold >= c.price);
         html += '<div class="rd-chest" style="--cc:' + c.color + '"><img src="' + sprUrl("chest") + '" alt=""><strong>' + esc(c.name) + "</strong>" +
           "<span>" + c.cards + " écureuils" + (c.minRarity ? " · au moins 1 " + D.RARITY[c.minRarity].name.toLowerCase() : "") + "</span>" +
           '<button class="btn btn-small' + (isFree ? " btn-alt" : "") + '" type="button" data-action="open" data-arg="' + i + '"' + (ok ? "" : " disabled") + ">" + (isFree ? "Gratuit 🗝" : "Ouvrir " + goldIc() + " " + c.price) + "</button></div>";
       });
+      if (Cloud.busy) html += '</div><p class="game-small">☁ Ouverture du coffre par le serveur…</p><div>';
+      if (Cloud.err) html += '</div><p class="net-err">' + esc(Cloud.err) + "</p><div>";
       html += '</div><p class="game-small">Chances par écureuil : ' + Object.keys(D.RARITY).map(function (r) { return '<b style="color:' + D.RARITY[r].color + '">' + D.RARITY[r].name + "</b> " + D.RARITY[r].weight + " %"; }).join(" · ") + " (coffres en fer et doré : rares et mieux plus fréquents).</p>";
       return html;
     },
@@ -939,6 +1024,10 @@
         '<button class="btn btn-ghost" type="button" data-action="quit">Abandonner</button></div>';
     },
     online: function () {
+      if (!Cloud.on) return '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>En ligne</h2><span></span></div>' +
+        '<p>Le jeu en ligne demande un compte : chacun y joue avec la progression enregistrée sur le serveur, pas avec une sauvegarde modifiable.</p>' +
+        (Cloud.loading ? '<p class="game-small">☁ Chargement de ton compte…</p>' : '<div class="menu-buttons"><button class="btn" type="button" data-action="login">Se connecter avec Google</button></div>') +
+        '<p class="game-small">Le compte ne garde que ton identifiant, ton email (pour la connexion) et ta progression. <a href="confidentialite.html">Confidentialité</a>.</p>';
       return '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>En ligne</h2><span></span></div>' +
         '<p class="game-small">Joue à 2 avec un ami : crée un salon et donne-lui le code.</p>' +
         (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
@@ -982,7 +1071,10 @@
     overHtml = "<h2>" + esc(title) + "</h2>" +
       (res.why ? '<p class="game-small">' + esc(res.why) + "</p>" : "") +
       '<ul class="over-stats"><li><span>Vague</span><strong>' + res.wave + (res.record ? " 🏅" : "") + "</strong></li><li><span>Bestioles</span><strong>" + res.kills + "</strong></li><li><span>Boss</span><strong>" + res.bosses + "</strong></li>" +
-      '<li class="total"><span>Glands d\'or gagnés</span><strong>' + goldIc() + " +" + res.gold + "</strong></li></ul>" +
+      '<li class="total"><span>Glands d\'or gagnés</span><strong>' + goldIc() + (res.pending ? " …" : " +" + res.gold) + "</strong></li></ul>" +
+      (res.pending ? '<p class="game-small">☁ Vérification du résultat par le serveur…</p>' : "") +
+      (res.saved ? '<p class="game-small">☁ Gains enregistrés sur ton compte.</p>' : "") +
+      (res.cloudErr ? '<p class="net-err">' + esc(res.cloudErr) + "</p>" : "") +
       (res.key ? '<p class="game-small">🗝 +1 clé (' + Math.min(S.keys, D.KEYS_FOR_FREE) + "/" + D.KEYS_FOR_FREE + " pour un coffre gratuit)</p>" : "") +
       (res.newAch.length ? '<p class="game-small">🏆 ' + res.newAch.map(function (a) { return esc(a.name) + " (+" + a.gold + ")"; }).join(", ") + "</p>" : "") +
       (lbOk ? '<form class="submit-score" data-submit><label for="rd-name">Ton pseudo pour le classement (score ' + score + ')</label><div class="submit-row">' +
@@ -1020,35 +1112,52 @@
       if (!owned(k)) return;
       var i = S.deck.indexOf(k);
       if (i >= 0) S.deck.splice(i, 1); else if (S.deck.length < 5) S.deck.push(k);
-      swapK = null; save(); SND.click(); show("deck", true);
+      swapK = null; save(); pushDeck(); SND.click(); show("deck", true);
     },
     pick: function (k) {
       S.sel = k;
       if (swapK) swapK = null;
-      if (owned(k) && S.deck.indexOf(k) < 0 && S.deck.length < 5) { S.deck.push(k); SND.summon(); } else SND.click();
+      if (owned(k) && S.deck.indexOf(k) < 0 && S.deck.length < 5) { S.deck.push(k); SND.summon(); pushDeck(); } else SND.click();
       save(); show("deck", true);
     },
     dslot: function (a) {
       var i = +a, k = S.deck[i];
-      if (swapK) { if (k) S.deck[i] = swapK; else if (S.deck.indexOf(swapK) < 0) S.deck.push(swapK); swapK = null; save(); SND.summon(); show("deck", true); return; }
-      if (k) { S.deck.splice(i, 1); S.sel = k; save(); SND.click(); show("deck", true); }
+      if (swapK) { if (k) S.deck[i] = swapK; else if (S.deck.indexOf(swapK) < 0) S.deck.push(swapK); swapK = null; save(); pushDeck(); SND.summon(); show("deck", true); return; }
+      if (k) { S.deck.splice(i, 1); S.sel = k; save(); pushDeck(); SND.click(); show("deck", true); }
     },
     swap: function (k) { swapK = k; SND.click(); show("deck", true); },
     noswap: function () { swapK = null; show("deck", true); },
     lvup: function (k) {
-      if (!canLevel(k)) return;
+      if (!canLevel(k) || Cloud.busy) return;
+      if (Cloud.on) {
+        Cloud.busy = true;
+        window.SiteAuth.rpc("rd_level_up", { p_type: k }).then(function (p) { applyServer(p); SND.merge(4); })
+          .catch(function (err) { Cloud.err = window.SiteAuth.message(err); resync(); })
+          .then(function () { Cloud.busy = false; show("deck", true); Cloud.err = ""; });
+        return;
+      }
       S.gold -= lvCost(k); S.cards[k] -= copiesNeed(k); S.cls[k] = clsLv(k) + 1;
       save(); SND.merge(4); show("deck", true);
     },
     open: function (a) {
-      var c = D.CHESTS[+a]; if (!c) return;
+      var c = D.CHESTS[+a]; if (!c || Cloud.busy) return;
+      if (Cloud.on) {
+        Cloud.busy = true; show("chests", true);
+        window.SiteAuth.rpc("rd_open_chest", { p_chest: c.id }).then(function (r) {
+          applyServer(r.profile); Cloud.busy = false;
+          var order = (r.order || []).slice().sort(function (x, y) { return RORD.indexOf(T[x].rarity) - RORD.indexOf(T[y].rarity); });
+          openedScreen(c, { got: r.got, order: order });
+        }).catch(function (err) { Cloud.busy = false; Cloud.err = window.SiteAuth.message(err); show("chests", true); Cloud.err = ""; resync(); });
+        return;
+      }
       if (+a === 0 && S.keys >= D.KEYS_FOR_FREE) S.keys -= D.KEYS_FOR_FREE;
       else if (S.gold >= c.price) S.gold -= c.price;
       else return;
       openedScreen(c, openChest(c));
     },
     resume: function () { togglePause(); },
-    testgold: function () { if (!DEBUG) return; S.gold += 5000; save(); SND.pu(); show("menu"); },
+    login: function () { if (window.SiteAuth) window.SiteAuth.signIn().catch(function (err) { Cloud.err = window.SiteAuth.message(err); refreshScreen(); }); },
+    testgold: function () { if (!DEBUG || Cloud.on) return; S.gold += 5000; save(); SND.pu(); show("menu"); },
     quit: function () {
       paused = false;
       if (G) { var w = G.panels[0].world; finish({ mode: G.mode, wave: w.wave, kills: w.kills, bosses: w.bosses, maxPip: maxPip(w), win: false, why: "Partie abandonnée.", local: G.kind === "local-vs" ? "Personne ne" : null, bot: G.kind === "bot" }); }
@@ -1082,6 +1191,7 @@
     var inp = card.querySelector("[data-name]"), name = (inp ? inp.value : S.name || "").trim();
     if (name.length < 2) { Net.err = "Choisis un pseudo d'au moins 2 caractères."; show("online"); return false; }
     S.name = name.slice(0, 16); save();
+    if (Cloud.on && window.SiteAuth.profile && window.SiteAuth.profile.pseudo !== S.name) window.SiteAuth.setPseudo(S.name).catch(function () {});
     return true;
   }
 
@@ -1245,9 +1355,10 @@
   }
 
   // outil de test : dice.html?debug expose l'état dans la console
-  if (/[?&]debug\b/.test(location.search)) window.RD_DEBUG = { get G() { return G; }, view: view, S: S, setSpeed: function (v) { speed = v; } };
+  if (/[?&]debug\b/.test(location.search)) window.RD_DEBUG = { get G() { return G; }, view: view, get S() { return S; }, get Cloud() { return Cloud; }, setSpeed: function (v) { speed = v; } };
 
   /* ---------- démarrage ---------- */
+  if (window.SiteAuth) { window.SiteAuth.ready.then(cloudStart); window.SiteAuth.on(cloudStart); }
   var m = /salon=([A-Za-z]{4})/.exec(location.hash);
   if (m) { Net.pendingCode = m[1].toUpperCase(); show("online"); } else show("menu");
   hud.hidden = true;

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Confidentialité · AkarisuMD</title>
+  <meta name="description" content="Ce que le site AkarisuMD garde (ou pas) sur toi : pas de publicité, pas de traceur, compte facultatif.">
+  <meta property="og:title" content="Confidentialité · AkarisuMD">
+  <meta property="og:description" content="Ce que le site AkarisuMD garde (ou pas) sur toi : pas de publicité, pas de traceur, compte facultatif.">
+  <meta name="theme-color" content="#3f6b3a">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261103h">
+</head>
+<body data-page="privacy">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
+          <li><a href="jeu.html" data-page="game">Survivor</a></li>
+          <li><a href="merger.html" data-page="merger">Merger</a></li>
+          <li><a href="dice.html" data-page="dice">Dice</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="page-banner">
+    <canvas class="pixel-scene" data-seed="52" data-compact="true" aria-hidden="true"></canvas>
+    <div class="banner-title"><div class="wrap"><div class="panel"><span class="kicker">Rien ne te suit dans la forêt</span><h1>Confidentialité</h1></div></div></div>
+  </section>
+
+  <main id="main" class="section">
+    <div class="wrap narrow legal">
+      <p class="lead">En bref : pas de publicité, pas de traceur, rien de vendu ni de partagé. Le compte est facultatif et ne sert qu'à garder ta progression dans les jeux, à l'abri de la triche.</p>
+
+      <div class="panel legal-panel">
+        <h2>Sans compte</h2>
+        <p>Tu peux jouer à tout sans te connecter. Dans ce cas, rien ne quitte ton navigateur : ta progression, le thème jour / nuit et le son sont gardés dans le stockage local de ton navigateur (localStorage), pas sur un serveur. Tu peux tout effacer en vidant les données du site dans ton navigateur.</p>
+        <p>Aucun cookie publicitaire, aucun outil de mesure d'audience, aucun traceur.</p>
+
+        <h2>Avec un compte (connexion Google)</h2>
+        <p>Si tu choisis de te connecter, voici exactement ce qui est gardé :</p>
+        <ul>
+          <li><strong>Ton identifiant de compte et ton adresse email</strong>, fournis par Google au moment de la connexion. Ils servent uniquement à te reconnaître quand tu te connectes. L'email n'est jamais affiché, jamais utilisé pour t'écrire, jamais partagé.</li>
+          <li><strong>Le nom et la photo de ton compte Google</strong> sont transmis par Google avec la connexion ; ils ne sont pas utilisés par le site (ton nom public est le pseudo que tu choisis).</li>
+          <li><strong>Ton pseudo</strong>, choisi par toi, visible par les autres joueurs (parties en ligne, classements).</li>
+          <li><strong>Ta progression dans les jeux</strong> (par exemple pour Écureuil Dice : glands d'or, écureuils débloqués, niveaux, deck, records, succès) et un historique technique de tes parties (début, fin, vague atteinte) qui sert à détecter les résultats impossibles.</li>
+        </ul>
+        <p>Je ne demande à Google aucun autre accès que l'identité de base (email et profil). Le site ne voit jamais ton mot de passe Google.</p>
+
+        <h2>Classements</h2>
+        <p>Quand tu envoies un score, il est publié avec le pseudo que tu indiques. Pour limiter le spam, une empreinte (hachage SHA-256) de ton adresse IP est enregistrée avec le score, pour compter les envois ; l'adresse IP elle-même n'est pas gardée, et cette empreinte n'est jamais affichée.</p>
+
+        <h2>Où sont les données ?</h2>
+        <p>Les comptes et la progression sont hébergés par <a href="https://supabase.com" rel="noopener">Supabase</a> (serveurs dans l'Union européenne, en Suède), qui agit comme sous-traitant. La connexion passe par Google. Le jeu en ligne utilise la diffusion en temps réel de Supabase : les messages de partie transitent par leurs serveurs mais ne sont pas enregistrés.</p>
+
+        <h2>Combien de temps ?</h2>
+        <p>Tant que ton compte existe. Tu peux le supprimer à tout moment.</p>
+
+        <h2>Tes droits</h2>
+        <ul>
+          <li><strong>Voir et télécharger</strong> tes données : page <a href="compte.html">Mon compte</a>, bouton « Télécharger mes données ».</li>
+          <li><strong>Supprimer</strong> ton compte et toutes ses données d'un coup : page <a href="compte.html">Mon compte</a>. C'est immédiat et définitif.</li>
+          <li>Pour toute question (ou pour exercer un autre droit prévu par le RGPD), écris-moi via la page <a href="contact.html">Contact</a>. Tu peux aussi saisir la <a href="https://www.cnil.fr" rel="noopener">CNIL</a>.</li>
+        </ul>
+        <p class="footer-small">Responsable : Maxime Delarose (AkarisuMD). Dernière mise à jour : 3 novembre 2026.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261103h"></script>
+  <script src="js/auth.js?v=20261103h"></script>
+  <script src="js/main.js?v=20261103h"></script>
+  <script src="js/scene.js?v=20261103h"></script>
+</body>
+</html>
