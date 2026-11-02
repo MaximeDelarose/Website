@@ -554,3 +554,11 @@ returns jsonb language sql security definer set search_path = '' as $$ select pu
 
 revoke all on function public.rd_open_chests(text, integer) from public, anon;
 grant execute on function public.rd_open_chests(text, integer) to authenticated;
+
+-- 0.10 : 21 nouveaux écureuils (non destructif)
+insert into public.rd_types (id, rarity) values
+('mitraille','commun'),('herisson','commun'),('glandlourd','commun'),('lancepierre','commun'),('resine','commun'),
+('spore','rare'),('tornade','rare'),('banquier','rare'),('picvert','rare'),('stalactite','rare'),('tambour','rare'),
+('damocles','epique'),('farceur','epique'),('sangsue','epique'),('jumeau','epique'),('boomerang','epique'),
+('satellite','legendaire'),('phenix','legendaire'),('trounoir','legendaire'),('chronos','legendaire'),('midas','legendaire')
+on conflict (id) do nothing;
