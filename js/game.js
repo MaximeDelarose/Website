@@ -16,7 +16,7 @@
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
   var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.13.0";
+  var VERSION = "0.14.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -255,6 +255,8 @@
     if (r.mode === "dungeon") { r.seed = seed || ((Math.random() * 1e9) | 0); buildFloor(1); }
     enemies = []; projs = []; hostile = []; lobs = []; gems = []; fx = []; texts = []; warns = [];
     biomeCache = new Map();
+    if (chestOpen) chestOpen.t.forEach(clearTimeout);
+    chestOpen = null; chestQueue = [];
     xp = 0; xpNext = need(1); pending = me.tree.f5 ? 1 : 0; picking = false; netMenuOpen = false;
     spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
@@ -299,6 +301,7 @@
       else if (state === "pause") { resume(); e.preventDefault(); }
       else if (state === "menu" && screen !== "menu" && e.code === "Escape") { go("menu"); e.preventDefault(); }
     }
+    if (screen === "chest" && chestOpen && (e.code === "Space" || e.code === "Enter") && !(document.activeElement && document.activeElement.tagName === "BUTTON")) { e.preventDefault(); ACTIONS.chestok(); }
     if (state === "levelup" || picking) {
       var n = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3 }[e.code];
       if (n !== undefined) { var b = card.querySelectorAll("[data-choice]")[n]; if (b) b.click(); }
@@ -540,7 +543,7 @@
     if (e.d.ai === "bomber") { e.byPlayer = true; explodeEnemy(e.x, e.y, e.d.blastR, 30); }
     if (e.d.boss) {
       r.bosses++; S.stats.bosses++;
-      drop("chest", e.x, e.y);
+      drop("chest", e.x, e.y, 2);
       for (var i = 0; i < 6; i++) drop("gold", e.x + Math.random() * 30 - 15, e.y + Math.random() * 30 - 15, 2);
       for (i = 0; i < 10; i++) drop("xp", e.x + Math.random() * 30 - 15, e.y + Math.random() * 30 - 15, 5);
       return;
@@ -919,8 +922,7 @@
     burst(p.x, p.y, "#f6d36b", 24);
     if (p === me) {
       r.fusions++; if (f.tier === 2) r.legend++;
-      banner((f.tier === 2 ? "Légendaire : " : "Fusion : ") + f.name + " !");
-      SND.fusion();
+      if (!chestSilent) { banner((f.tier === 2 ? "Légendaire : " : "Fusion : ") + f.name + " !"); SND.fusion(); }
     }
   }
   function iconOf(k) { return ALLW[k] ? ALLW[k].icon : (D.PASSIVES[k] ? D.PASSIVES[k].sprite : "nut"); }
@@ -1240,6 +1242,7 @@
     tickFx(dt);
     achTick -= dt;
     if (achTick <= 0) { achTick = 1; checkAchievements(r); }
+    chestCheck();
     if (pending > 0 && !picking && !me.down && state === "play" && !isArena()) openLevelUp();
     if (Net.on) netHostTick(dt);
   }
@@ -1367,7 +1370,7 @@
     rm.state = "cleared"; r.dg.active = -1; r.dg.clearedTotal++;
     var c = { x: rm.cx, y: rm.cy };
     for (var i = 0; i < 3 + r.dg.floor; i++) drop("gold", c.x + Math.random() * 40 - 20, c.y + Math.random() * 30 - 15, 1);
-    if (rm.type === "elite") { drop("chest", c.x - 10, c.y); drop("relic", c.x + 12, c.y); bannerAll("Salle d'élite vaincue !"); }
+    if (rm.type === "elite") { drop("chest", c.x - 10, c.y, 1); drop("relic", c.x + 12, c.y); bannerAll("Salle d'élite vaincue !"); }
     else if (rm.type === "guard") { drop("relic", c.x, c.y + 20); r.dg.stairs = { x: c.x, y: rm.rect.y + 26 }; bannerAll("L'escalier s'ouvre !"); }
     else if (rm.type === "boss") { r.dg.winT = 2.5; bannerAll("Le donjon est vaincu !"); }
     else bannerAll("Salle nettoyée");
@@ -1394,7 +1397,7 @@
         if (!rm || rm.state !== "new") continue;
         if (rm.type === "treasure") {
           rm.state = "cleared"; dg.clearedTotal++;
-          drop("chest", rm.cx, rm.cy); for (var k = 0; k < 6; k++) drop("gold", rm.cx + Math.random() * 50 - 25, rm.cy + Math.random() * 30 - 15, 2);
+          drop("chest", rm.cx, rm.cy, 1); for (var k = 0; k < 6; k++) drop("gold", rm.cx + Math.random() * 50 - 25, rm.cy + Math.random() * 30 - 15, 2);
           if (Math.random() < 0.5) drop("relic", rm.cx + 16, rm.cy + 10);
           bannerAll("Salle au trésor !"); SND.level();
         } else activateRoom(rm, pl);
@@ -1571,11 +1574,154 @@
     for (i = texts.length - 1; i >= 0; i--) { texts[i].life -= dt; texts[i].y -= 18 * dt; if (texts[i].life <= 0) texts.splice(i, 1); }
     shake = Math.max(0, shake - dt);
   }
-  function grantChest() {
+  /* ---------- Coffres : ouverture animée, la rareté se révèle pendant l'animation ---------- */
+  var CHEST_TIERS = [{ n: 1, name: "Coffre" }, { n: 3, name: "Coffre rare !" }, { n: 5, name: "Coffre légendaire !!" }];
+  var CHEST_ODDS = [[0.20, 0.05], [0.30, 0.10], [0.40, 0.16]]; // [violet, doré] : butin, élite/trésor, boss
+  var CHEST_GOLD = [10, 25, 60];
+  var chestQueue = [], chestOpen = null, chestSilent = false, ROUL = null;
+  function grantChest(src) { chestQueue.push(rollChestTier(src || 0)); }
+  function rollChestTier(src) {
+    var o = CHEST_ODDS[Math.min(2, src)], L = Math.min(2, me.luck || 1), x = Math.random();
+    if (x < o[1] * L) return 2;
+    if (x < (o[0] + o[1]) * L) return 1;
+    return 0;
+  }
+  function chestPick() {
+    var f = readyFusions(); if (f.length) return { type: "f", id: f[0] };
+    var pool = [];
+    Object.keys(p.weapons).forEach(function (k) { if (p.weapons[k] < MAX_LVL) pool.push({ type: "w", id: k, lvl: p.weapons[k] + 1 }); });
+    Object.keys(p.passives).forEach(function (k) { if (p.passives[k] < MAX_LVL) pool.push({ type: "p", id: k, lvl: p.passives[k] + 1 }); });
+    if (pool.length) return pool[(Math.random() * pool.length) | 0];
+    var c = choices(1)[0];
+    return c.type === "heal" ? (Math.random() < 0.5 ? { type: "heal" } : { type: "gold" }) : c;
+  }
+  function rewardInfo(c) {
+    if (c.type === "f") { var f = D.FUSIONS[c.id]; return { icon: f.icon, name: f.name, sub: f.tier === 2 ? "Légendaire !" : "Fusion !", fx: true }; }
+    if (c.type === "w") { var w = ALLW[c.id]; return { icon: w.icon, name: w.name, sub: c.lvl === 1 ? "Nouvelle arme" : "Niv. " + c.lvl }; }
+    if (c.type === "p") { var ps = D.PASSIVES[c.id]; return { icon: ps.sprite, name: ps.name, sub: c.lvl === 1 ? "Nouvel objet" : "Niv. " + c.lvl }; }
+    if (c.type === "heal") return { icon: "berry", name: "Baies", sub: "+40 PV" };
+    return { icon: "goldbag", name: "Bourse", sub: "+15 glands" };
+  }
+  function rouletteIcon() {
+    if (!ROUL) {
+      ROUL = [];
+      Object.keys(ALLW).forEach(function (k) { if (SPR[ALLW[k].icon]) ROUL.push(ALLW[k].icon); });
+      Object.keys(D.PASSIVES).forEach(function (k) { if (SPR[D.PASSIVES[k].sprite]) ROUL.push(D.PASSIVES[k].sprite); });
+    }
+    return ROUL[(Math.random() * ROUL.length) | 0];
+  }
+  function openChest() {
     p = me;
-    var ready = readyFusions();
-    if (ready.length) { applyFusion(ready[0]); calc(me); refreshCounts(); if (Net.on && Net.role === "guest") netSend("pick", { id: me.id, c: { type: "f", id: ready[0] } }); }
-    else pending++;
+    var tier = chestQueue.shift(), T = CHEST_TIERS[tier], items = [], i;
+    if (players.length > 1 || isArena()) { picking = true; me.choosing = true; sendInput(); } else state = "levelup";
+    clearInput();
+    // les gains sont tirés et appliqués tout de suite, l'animation ne fait que les révéler
+    chestSilent = true;
+    for (i = 0; i < T.n; i++) {
+      var c = chestPick(); applyCore(c); refreshCounts(); items.push(c);
+      if (Net.on && Net.role === "guest") netSend("pick", { id: me.id, c: { type: c.type, id: c.id, lvl: c.lvl } });
+    }
+    chestSilent = false;
+    var g0 = r.gold; addGold(CHEST_GOLD[tier]);
+    var slots = "";
+    for (i = 0; i < T.n; i++) slots += '<div class="cslot" data-cslot="' + i + '"><div class="cslot-box"><img alt="" src="' + spriteUrl(rouletteIcon()) + '"></div><b></b><em></em></div>';
+    showCard('<div class="chest-stage t0" data-cstage data-action="chestok">' +
+      '<div class="chest-rays"></div><div class="chest-flash"></div>' +
+      '<div class="chest-title" data-ctitle>? ? ?</div>' +
+      '<div class="chest-box drop" data-cbox><img src="' + spriteUrl("chest") + '" alt=""></div>' +
+      '<div class="chest-parts" data-cparts></div>' +
+      '<div class="chest-items n' + T.n + '">' + slots + "</div>" +
+      '<div class="chest-gold" data-cgold>+0 ' + goldIc() + "</div></div>" +
+      '<div class="btn-row center"><button class="btn btn-ghost btn-small" type="button" data-action="chestok" data-cok>Passer ⏩</button></div>', "chest");
+    var co = chestOpen = { tier: tier, items: items, gold: Math.round(r.gold - g0), shown: 0, t: [], done: false };
+    function at(ms, fn) { co.t.push(setTimeout(function () { if (chestOpen !== co || screen !== "chest") return; fn(); }, ms)); }
+    var st = card.querySelector("[data-cstage]"), box = card.querySelector("[data-cbox]");
+    SND.boom();
+    // 1. le coffre tremble de plus en plus ; il change de couleur s'il est plus rare
+    var shakeEnd = 1300 + tier * 900;
+    at(450, function () { box.classList.remove("drop"); box.classList.add("shake1"); st.classList.add("rays-on"); });
+    for (var k = 0; 450 + k * 95 < shakeEnd; k++) (function (k) { at(450 + k * 95, function () { sfx(100 + k * 8, 0.06, "square", 0.025); }); })(k);
+    if (tier >= 1) at(1300, function () { chestTier(st, 1); });
+    if (tier >= 2) at(2200, function () { chestTier(st, 2); });
+    at(shakeEnd - 380, function () { box.classList.remove("shake1"); box.classList.add("shake2"); });
+    // 2. ouverture
+    at(shakeEnd, function () { chestBurst(co); });
+    // 3. une roulette par objet, la dernière fait durer le suspense
+    var t0 = shakeEnd + 600;
+    items.forEach(function (c, i) {
+      var dur = items.length > 1 && i === items.length - 1 ? 1400 : i === 0 ? 1000 : 560;
+      chestRoll(co, i, t0, dur, at);
+      t0 += dur + 160;
+    });
+    at(t0 + 100, function () { chestFinish(co, true); });
+  }
+  function chestTier(st, n) {
+    st.classList.remove("t0", "t1", "t2", "flash"); st.classList.add("t" + n);
+    void st.offsetWidth; st.classList.add("flash");
+    card.classList.remove("cshake"); void card.offsetWidth; card.classList.add("cshake");
+    sfx(n === 2 ? 330 : 220, 0.45, "sawtooth", 0.05, 4);
+    arp(n === 2 ? [659, 831, 988, 1319] : [523, 659, 784], 70, "triangle", 0.05);
+    var t = card.querySelector("[data-ctitle]"); if (t) t.textContent = n === 2 ? "! ! !" : "! ? !";
+  }
+  function chestBurst(co) {
+    var st = card.querySelector("[data-cstage]"), box = card.querySelector("[data-cbox]"), parts = card.querySelector("[data-cparts]"), t = card.querySelector("[data-ctitle]");
+    if (!st) return;
+    box.classList.remove("shake1", "shake2", "drop"); box.classList.add("open");
+    box.querySelector("img").src = spriteUrl("chestopen");
+    st.classList.add("open"); st.classList.remove("flash"); void st.offsetWidth; st.classList.add("flash");
+    t.textContent = CHEST_TIERS[co.tier].name; t.classList.add("show");
+    card.classList.remove("cshake"); void card.offsetWidth; card.classList.add("cshake");
+    var cols = [["#4aa3df", "#bfe6ff", "#f6d36b"], ["#b07cf0", "#e6d2ff", "#f6d36b"], ["#f6c445", "#fff3b0", "#ff9a3d"]][co.tier], html = "";
+    for (var i = 0; i < 18 + co.tier * 14; i++) {
+      var a = Math.random() * Math.PI * 2, d = 60 + Math.random() * (110 + co.tier * 40);
+      html += '<i style="--dx:' + Math.round(Math.cos(a) * d) + "px;--dy:" + Math.round(Math.sin(a) * d - 40) + "px;--r:" + Math.round(Math.random() * 720) + "deg;--s:" + (3 + ((Math.random() * 4) | 0)) + "px;--c:" + cols[i % 3] + ";animation-delay:" + Math.round(Math.random() * 120) + 'ms"></i>';
+    }
+    parts.innerHTML = html;
+    SND.boom(); arp([523, 659, 784, 1047, 1319].slice(0, 3 + co.tier), 60, "square", 0.045);
+  }
+  function chestRoll(co, i, start, dur, at) {
+    var el = card.querySelector('[data-cslot="' + i + '"]'); if (!el) return;
+    var im = el.querySelector("img");
+    at(start, function () { el.classList.add("spin"); });
+    for (var tt = 0, k = 0; tt < dur; k++, tt += 45 + Math.pow(tt / dur, 2) * 230) (function (k, tt) {
+      at(start + tt, function () { im.src = spriteUrl(rouletteIcon()); sfx(480 + k * 22, 0.03, "square", 0.018); });
+    })(k, tt);
+    at(start + dur, function () { chestLand(co, i, true); });
+  }
+  function chestLand(co, i, loud) {
+    var el = card.querySelector('[data-cslot="' + i + '"]'); if (!el || el.classList.contains("landed")) return;
+    var info = rewardInfo(co.items[i]);
+    el.querySelector("img").src = spriteUrl(info.icon);
+    el.classList.remove("spin"); el.classList.add("landed"); if (info.fx) el.classList.add("fx");
+    el.querySelector("b").textContent = info.name; el.querySelector("em").textContent = info.sub;
+    co.shown++;
+    var g = card.querySelector("[data-cgold]");
+    if (g) { g.innerHTML = "+" + Math.round(co.gold * co.shown / co.items.length) + " " + goldIc(); g.classList.remove("bump"); void g.offsetWidth; g.classList.add("bump"); }
+    if (loud) { if (info.fx) SND.fusion(); else { sfx(880 + co.tier * 220, 0.14, "triangle", 0.05); SND.gold(); } }
+  }
+  function chestFinish(co, natural) {
+    if (co.done) return;
+    co.done = true;
+    if (!natural) {
+      co.t.forEach(clearTimeout); co.t = [];
+      var st = card.querySelector("[data-cstage]");
+      if (st) { st.classList.add("rays-on"); if (!st.classList.contains("open")) { if (co.tier) chestTier(st, co.tier); chestBurst(co); } }
+      co.items.forEach(function (c, i) { chestLand(co, i, false); });
+      if (co.items.some(function (c) { return c.type === "f"; })) SND.fusion();
+    }
+    var ok = card.querySelector("[data-cok]");
+    if (ok) { ok.textContent = "Continuer"; ok.className = "btn"; ok.focus({ preventScroll: true }); }
+  }
+  function closeChest() {
+    var co = chestOpen; if (!co) return;
+    co.t.forEach(clearTimeout); chestOpen = null;
+    if (chestQueue.length && !me.down && state !== "over") { openChest(); return; }
+    if (picking) { picking = false; me.choosing = false; hideCard(); sendInput(); }
+    else { state = "play"; hideCard(); last = performance.now(); }
+  }
+  function chestCheck() {
+    if (chestOpen && screen !== "chest") { chestOpen.t.forEach(clearTimeout); chestOpen = null; }
+    if (chestQueue.length && !chestOpen && !picking && !me.down && state === "play" && !(isArena() && r.phase === "shop")) openChest();
   }
   function collect(g, pl) {
     pl = pl || me;
@@ -1591,8 +1737,8 @@
       case "relic": giveRelic(pl); break;
       case "chest":
         addGold(15); burst(pl.x, pl.y, "#f2c230", 16);
-        netEv(["ch"]);
-        grantChest();
+        netEv(["ch", g.v || 0]);
+        grantChest(g.v || 0);
         break;
     }
   }
@@ -2563,6 +2709,7 @@
     skip: function () { if (state !== "levelup" && !picking) return; apply({ type: "skip" }); },
     resume: function () { resume(); },
     restart: function () { start(); },
+    chestok: function () { if (!chestOpen) return; if (!chestOpen.done) { chestFinish(chestOpen, false); SND.click(); } else closeChest(); },
     quit: function () {
       if (netMenuOpen) { if (window.confirm("Quitter la partie en ligne ? Tu gardes l'or gagné.")) { netMenuOpen = false; gameOver(true); } return; }
       if (state === "pause" && window.confirm("Abandonner la partie ? Tu gardes l'or gagné.")) gameOver(true);
@@ -2918,7 +3065,7 @@
     else if (t === "sw") { var o = playerById(ev[1]); if (o) { fx.push({ kind: "swipe", dir: ev[2], r: ev[3], life: 0.18, max: 0.18, pl: o }); if (o === me) SND.whip(); } }
     else if (t === "sp") { var o2 = playerById(ev[1]); if (o2) fx.push({ kind: "spin", r: ev[2], life: 0.25, max: 0.25, pl: o2 }); }
     else if (t === "bn") banner(ev[1]);
-    else if (t === "ch") { if (!me.down) grantChest(); }
+    else if (t === "ch") { if (!me.down) grantChest(ev[1] || 0); }
     else if (t === "rl") { var po = playerById(ev[1]); if (po) { po.relics = po.relics || {}; po.relics[ev[2]] = true; if (po === me) { calc(me); var rd = D.RELICS.filter(function (x) { return x.id === ev[2]; })[0]; if (rd) banner("Relique : " + rd.name + " (" + rd.desc + ")"); } } }
   }
   var PROPS_SPR = ["stump", "basket", "leafpile", "lantern"];
@@ -2977,6 +3124,7 @@
     tickFx(dt);
     achTick -= dt;
     if (achTick <= 0) { achTick = 1; checkAchievements(r); }
+    chestCheck();
     if (pending > 0 && !picking && !me.down && state === "play" && !isArena()) openLevelUp();
   }
   Net.anims = {};
@@ -3208,6 +3356,7 @@
     warns: function () { return warns && warns.length; },
     dungeon: function () { return r && r.dg ? { floor: r.dg.floor, active: r.dg.active, rooms: r.dg.rooms.map(function (x) { return x.type[0] + (x.state === "cleared" ? "*" : ""); }).join(""), stairs: !!r.dg.stairs, cleared: r.dg.clearedTotal } : null; },
     goRoom: function (type) { if (!r || !r.dg) return; var rm = r.dg.rooms.filter(function (x) { return x.type === type && x.state !== "cleared"; })[0]; if (rm) { me.x = rm.cx; me.y = rm.cy; } return !!rm; },
+    chest: function (t) { chestQueue.push(t || 0); },
     goStairs: function () { if (r && r.dg && r.dg.stairs) { me.x = r.dg.stairs.x; me.y = r.dg.stairs.y; return true; } return false; },
     killRoom: function () { enemies.forEach(function (e) { if (!e.d.prop && e.room !== undefined) { e.hp = 0; kill(e); } }); },
     endRound: function () { if (r && isArena() && r.phase === "fight") r.roundT = r.roundLen; },
