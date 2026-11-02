@@ -853,12 +853,12 @@
       html += '<div class="rd-slots' + (swapK ? " is-swap" : "") + '">';
       for (var i = 0; i < 5; i++) {
         var dk = S.deck[i];
-        html += dk ? '<button class="rd-slot" type="button" data-action="dslot" data-arg="' + i + '" aria-label="' + esc(T[dk].name) + '">' + dieHtml(dk) + "</button>"
+        html += dk ? '<button class="rd-slot" type="button" data-action="dslot" data-arg="' + i + '" aria-label="Enlever ' + esc(T[dk].name) + ' du deck">' + dieHtml(dk) + "</button>"
                    : '<button class="rd-slot is-empty" type="button" data-action="dslot" data-arg="' + i + '" aria-label="Place libre"><span>+</span></button>';
       }
       html += "</div>";
       html += '<p class="game-small rd-hint">' + (swapK ? "Touche le dé du deck à remplacer par <b>" + esc(T[swapK].name) + '</b>. <button class="rd-link" type="button" data-action="noswap">Annuler</button>'
-        : S.deck.length < 5 ? "Touche un écureuil pour l'ajouter au deck (" + S.deck.length + "/5)." : "Touche un écureuil pour voir sa fiche.") + "</p>";
+        : S.deck.length < 5 ? "Touche un écureuil pour l'ajouter au deck (" + S.deck.length + "/5)." : "Touche un dé du deck pour l'enlever, ou un écureuil pour voir sa fiche.") + "</p>";
       // la grille des écureuils
       html += '<div class="rd-pick">';
       D.ORDER.forEach(function (k) {
@@ -1008,7 +1008,7 @@
     dslot: function (a) {
       var i = +a, k = S.deck[i];
       if (swapK) { if (k) S.deck[i] = swapK; else if (S.deck.indexOf(swapK) < 0) S.deck.push(swapK); swapK = null; save(); SND.summon(); show("deck", true); return; }
-      if (k) { S.sel = k; save(); SND.click(); show("deck", true); }
+      if (k) { S.deck.splice(i, 1); S.sel = k; save(); SND.click(); show("deck", true); }
     },
     swap: function (k) { swapK = k; SND.click(); show("deck", true); },
     noswap: function () { swapK = null; show("deck", true); },
