@@ -422,6 +422,10 @@ window.ES_DATA = (function () {
     income: function (n, kills) { return 14 + n * 2 + Math.floor(kills * 0.4); },
     interestPer: 5, interestMax: 5, // +1 noisette par tranche de 5 gardées, 5 max
     rerollBase: 3,
+    maxPicks: 2,                   // choix de pouvoir max par fin de manche
+    extraLevelCoins: 6,            // noisettes données par niveau au-delà du plafond
+    // XP nécessaire pour passer du niveau L à L+1 en Arène (plus lent qu'en Survie)
+    need: function (L) { return 12 + (L - 1) * 7 + Math.max(0, L - 12) * 6; },
     prices: { newWeapon: 18, upgrade: 10, perLevel: 5, item: 13, fusion: 55, heal: 8, maxhp: 12 },
     priceGrowth: 0.08,             // +8 % de prix par manche
     mods: [
