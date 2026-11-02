@@ -1584,3 +1584,7 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .np-mapdesc { padding: 0 8px 8px; font-size: .72rem; line-height: 1.3; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .np-slider .np-mapmeta { padding-bottom: 2px; }
 @media (min-width: 560px) { .np-slider > .np-map { flex-basis: calc(36% - 8px); } }
+/* bandeau « nouvelle version » */
+.update-bar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 9999; display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 14px; max-width: calc(100% - 24px);
+  background: #2b1709; color: #fdf3de; font-size: .9rem; box-shadow: 0 0 0 3px #f6d36b, 0 6px 0 3px rgba(0,0,0,.35); animation: toast-in .25s steps(4); }
+.update-bar .btn { margin: 0; }
