@@ -1908,5 +1908,11 @@ button.tu-next:active { transform: translateY(2px); }
 .mc-stats span { font-size: .72rem; color: var(--ink-soft); line-height: 1.2; }
 @media (max-width: 560px) { .mc-players { grid-template-columns: 1fr; } .mc-stats { grid-template-columns: repeat(2, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .mc-who img, .mc-go, .mc-card.mc-in { animation: none; } }
+
+/* ---------- page Jeux (jeux web regroupés) ---------- */
+.kicker a { color: inherit; text-decoration: none; }
+.kicker a:hover { text-decoration: underline; }
+.card-media a { display: block; height: 100%; }
+.games-intro { margin: 0 0 32px; }
 .room-players .ver-bad { color: var(--berry); font-weight: 800; margin-left: 4px; }
 .net-err .btn { margin-left: 6px; vertical-align: middle; }

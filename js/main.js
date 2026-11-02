@@ -46,8 +46,11 @@
     });
   }
   var page = document.body.dataset.page;
+  // les pages des jeux web sont regroupées sous l'onglet « Jeux »
+  var GAME_PAGES = ["games", "game", "merger", "dice", "defense", "idle"];
+  var navPage = GAME_PAGES.indexOf(page) >= 0 ? "games" : page;
   $$("#site-nav a").forEach(function (a) {
-    if (a.dataset.page === page) a.setAttribute("aria-current", "page");
+    if (a.dataset.page === navPage) a.setAttribute("aria-current", "page");
   });
 
   /* ---------- textes depuis data.js ---------- */
@@ -92,6 +95,9 @@
     paw: ["..x...x..", ".xxx.xxx.", "..x...x..", "x.......x", "xx.xxx.xx", "..xxxxx..", ".xxxxxxx.", ".xxx.xxx."],
     bolt: ["...xxx.", "..xxx..", ".xxx...", "xxxxxxx", "...xxx.", "..xxx..", ".xxx...", ".xx....", ".x....."],
     mask: [".xxxxxxx.", "xxxxxxxxx", "xeexxxeex", "xxxxxxxxx", "xxxxxxxxx", "xxeeeeexx", ".xxeeexx.", "..xxxxx.."],
+    dice: ["xxxxxxxxx", "xwxxxxxwx", "xxxxxxxxx", "xxxxwxxxx", "xxxxxxxxx", "xwxxxxxwx", "xxxxxxxxx", "eeeeeeeee"],
+    acorn: ["....e....", "..eeeee..", ".eeeeeee.", "eeeeeeeee", ".xxxxxxx.", ".xwxxxxx.", "..xxxxx..", "...xxx...", "....x...."],
+    tower: ["x.x.x.x", "xxxxxxx", ".xxxxx.", ".xewex.", ".xxxxx.", ".xxxxx.", ".xxexx.", "xxxexxx"],
     box: ["..xxxxxx..", ".xwwwwwwx.", "xwwwwwwwwx", "xxxxeexxxx", "xxxxeexxxx", "xxxxxxxxxx", "xxxxxxxxxx", "eeeeeeeeee"],
   };
   function hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
@@ -173,6 +179,11 @@
       if (p) drawCover(c, p);
     });
   }
+
+  // Page Jeux : jaquettes des jeux web (palette + icône en attributs)
+  $$("canvas[data-game-cover]").forEach(function (c) {
+    drawCover(c, { id: c.dataset.gameCover, icon: c.dataset.icon, palette: (c.dataset.palette || "").split(",").filter(Boolean) });
+  });
 
   // Accueil : derniers projets
   var latest = $("[data-latest]");
