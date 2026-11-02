@@ -14,7 +14,7 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
-  var VERSION = "0.9.2";
+  var VERSION = "0.9.3";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -1678,6 +1678,72 @@
   function lockText(ach) { var a = achById(ach); return a ? "Succès « " + a.name + " » : " + a.desc : "Verrouillé"; }
 
   var inspect = { char: null, map: null };
+  /* ---------- arbre de compétences en tentacules (SVG) ---------- */
+  var treeSel = "a1";
+  function branchOf(k) { return D.SKILL_BRANCHES.filter(function (b) { return b.id === k.branch; })[0]; }
+  function tPos(k) {
+    var br = branchOf(k), d = k.pos[0], o = k.pos[1], rad = 44 + d * 38;
+    var th = (br.angle + d * 9) * Math.PI / 180 + o * 30 / rad;
+    return { x: Math.cos(th) * rad, y: Math.sin(th) * rad };
+  }
+  function f1(n) { return Math.round(n * 10) / 10; }
+  function tentaclePath(a, b, depth, seed) {
+    var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+    var wig = (seed % 2 ? 1 : -1) * Math.min(18, len * 0.28);
+    var cx = mx - dy / len * wig, cy = my + dx / len * wig;
+    return { d: "M" + f1(a.x) + " " + f1(a.y) + " Q" + f1(cx) + " " + f1(cy) + " " + f1(b.x) + " " + f1(b.y), cx: cx, cy: cy };
+  }
+  function qpt(a, c, b, t) { var u = 1 - t; return { x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y }; }
+  function nodeSvg(k, sel) {
+    var pt = tPos(k), br = branchOf(k), lvl = S.tree[k.id] || 0, open = skillOpen(k), max = lvl >= k.max;
+    var can = open && !max && freePoints() >= k.cost;
+    var cls = "tnode" + (lvl ? " on" : "") + (max ? " max" : "") + (open ? "" : " off") + (can ? " can" : "") + (sel.id === k.id ? " sel" : "");
+    var pips = "";
+    for (var i = 0; i < k.max; i++) {
+      var a = Math.PI / 2 + (i - (k.max - 1) / 2) * 0.42;
+      pips += '<circle class="pip' + (i < lvl ? " on" : "") + '" cx="' + f1(Math.cos(a) * 19) + '" cy="' + f1(Math.sin(a) * 19) + '" r="2.4"/>';
+    }
+    return '<g class="' + cls + '" data-action="tsel" data-arg="' + k.id + '" transform="translate(' + f1(pt.x) + " " + f1(pt.y) + ')" style="--br:' + br.color + '" role="button" aria-label="' + esc(k.name) + '">' +
+      '<circle class="hit" r="20"/><circle class="halo" r="17"/><circle class="disc" r="14"/>' + pips +
+      '<text class="ic" y="5">' + (open ? k.icon : "🔒") + "</text></g>";
+  }
+  function tentacleSvg(sel) {
+    var out = "", root = { x: 0, y: 0 }, seed = 0;
+    D.SKILL_BRANCHES.forEach(function (br, bi) {
+      var g = "", gc = "", gn = "";
+      var list = D.SKILLS.filter(function (k) { return k.branch === br.id; });
+      list.forEach(function (k) {
+        var to = tPos(k), lvl = S.tree[k.id] || 0, open = skillOpen(k);
+        var parents = k.req && k.req.length ? k.req.map(function (id) { return tPos(skillById(id)); }) : [root];
+        parents.forEach(function (from) {
+          seed++;
+          var w = Math.max(2.5, 9 - k.pos[0] * 1.6), q = tentaclePath(from, to, k.pos[0], seed);
+          var st = lvl ? "on" : (open ? "open" : "off");
+          g += '<path class="tent ' + st + '" d="' + q.d + '" stroke-width="' + f1(w) + '"/>';
+          [0.3, 0.55, 0.8].forEach(function (t) {
+            var c = qpt(from, { x: q.cx, y: q.cy }, to, t);
+            gc += '<circle class="cup ' + st + '" cx="' + f1(c.x) + '" cy="' + f1(c.y) + '" r="' + f1(Math.max(1.2, w * 0.28)) + '"/>';
+          });
+        });
+        gn += nodeSvg(k, sel);
+      });
+      var la = (br.angle + 28) * Math.PI / 180, lp = { x: Math.cos(la) * 50, y: Math.sin(la) * 50 };
+      out += '<g class="tentacle" style="--br:' + br.color + ";animation-duration:" + (5 + bi) + "s;animation-delay:-" + (bi * 2) + 's">' + g + gc + gn +
+        '<text class="br-label" x="' + f1(lp.x) + '" y="' + f1(lp.y + 3) + '" style="fill:' + br.color + '">' + esc(br.name.toUpperCase()) + "</text></g>";
+    });
+    var acorn = '<image href="' + spriteUrl("goldacorn") + '" x="-11" y="-12" width="22" height="24" style="image-rendering:pixelated"/>';
+    return '<svg class="tentacles" viewBox="-215 -215 430 430" xmlns="http://www.w3.org/2000/svg">' + out +
+      '<g class="troot"><circle r="20"/>' + acorn + "</g></svg>";
+  }
+  function skillPanel(k) {
+    var br = branchOf(k), lvl = S.tree[k.id] || 0, open = skillOpen(k), max = lvl >= k.max, can = open && !max && freePoints() >= k.cost;
+    var pips = ""; for (var i = 0; i < k.max; i++) pips += '<i class="' + (i < lvl ? "on" : "") + '"></i>';
+    var lock = !open ? (k.prestige && S.prestige < k.prestige ? "Prestige " + k.prestige + " requis" : "Nécessite " + (k.req || []).map(function (id) { return skillById(id).name; }).join(" + ")) : "";
+    return '<div class="skill-panel" style="--br:' + br.color + '"><span class="skill-ic">' + (open ? k.icon : "🔒") + "</span>" +
+      '<div class="skill-text"><small style="color:' + br.color + '">' + esc(br.name) + "</small><strong>" + esc(k.name) + "</strong><span>" + esc(k.desc) + "</span>" +
+      '<span class="pips">' + pips + "</span>" + (lock ? '<span class="skill-lock">' + esc(lock) + "</span>" : "") + "</div>" +
+      (max ? '<span class="shop-max">MAX</span>' : '<button class="btn btn-small" type="button" data-action="learn" data-arg="' + k.id + '"' + (can ? "" : " disabled") + ">Apprendre · " + k.cost + " pt</button>") + "</div>";
+  }
   function swatch(m, cls) {
     return '<span class="map-swatch ' + (cls || "") + '">' + m.biomes.map(function (b) { return '<i style="background:' + b.ground.base + '"></i>'; }).join("") +
       '<img src="' + spriteUrl(m.biomes[0].prop) + '" alt=""></span>';
@@ -1805,23 +1871,11 @@
       return html;
     },
     tree: function () {
-      var html = '<div class="screen-head">' + back() + '<h2>Compétences</h2><p class="gold-badge">🌳 <b>' + freePoints() + "</b> pt" + (freePoints() > 1 ? "s" : "") + "</p></div>" + rankBadge() +
-        '<p class="game-small">1 point par rang gagné, +' + D.PRESTIGE.points + " par prestige. L'arbre est conservé au prestige.</p>";
-      D.SKILL_BRANCHES.forEach(function (br) {
-        html += '<h3 class="branch-title" style="--br:' + br.color + '">' + esc(br.name) + '</h3><div class="skill-grid">';
-        D.SKILLS.filter(function (k) { return k.branch === br.id; }).forEach(function (k) {
-          var lvl = S.tree[k.id] || 0, open = skillOpen(k), max = lvl >= k.max, can = open && !max && freePoints() >= k.cost;
-          var pips = ""; for (var i = 0; i < k.max; i++) pips += '<i class="' + (i < lvl ? "on" : "") + '"></i>';
-          var lock = !open ? (k.prestige && S.prestige < k.prestige ? "Prestige " + k.prestige + " requis" : "Nécessite " + (k.req || []).map(function (id) { return skillById(id).name; }).join(" + ")) : "";
-          html += '<div class="skill' + (open ? "" : " is-locked") + (max ? " is-max" : "") + (lvl ? " is-on" : "") + '" style="--br:' + br.color + '">' +
-            '<span class="skill-ic">' + (open ? k.icon : "🔒") + '</span><div class="skill-text"><strong>' + esc(k.name) + "</strong><span>" + esc(k.desc) + "</span>" +
-            '<span class="pips">' + pips + "</span>" + (lock ? '<span class="skill-lock">' + esc(lock) + "</span>" : "") + "</div>" +
-            (max ? '<span class="shop-max">MAX</span>' : '<button class="btn btn-small" type="button" data-action="learn" data-arg="' + k.id + '"' + (can ? "" : " disabled") + ">" + k.cost + " pt</button>") +
-            "</div>";
-        });
-        html += "</div>";
-      });
-      html += '<p class="game-small"><button class="link-btn" type="button" data-action="respec">Réinitialiser l\'arbre (gratuit)</button></p>';
+      var sel = skillById(treeSel) || D.SKILLS[0];
+      var html = '<div class="screen-head">' + back() + '<h2>Compétences</h2><p class="gold-badge">🌳 <b>' + freePoints() + "</b> pt" + (freePoints() > 1 ? "s" : "") + "</p></div>" + rankBadge();
+      html += '<div class="tentacles-wrap">' + tentacleSvg(sel) + "</div>";
+      html += skillPanel(sel);
+      html += '<p class="game-small">1 point par rang gagné, +' + D.PRESTIGE.points + ' par prestige. <button class="link-btn" type="button" data-action="respec">Réinitialiser l\'arbre (gratuit)</button></p>';
       return html;
     },
     prestige: function () {
@@ -1941,11 +1995,12 @@
       var keepName = S.name; S = defaults(); S.name = keepName; save(); go("menu");
     },
     start: function () { start(); },
+    tsel: function (id) { treeSel = id; SND.click(); go("tree"); },
     learn: function (id) {
       var k = skillById(id); if (!k) return;
       var lvl = S.tree[id] || 0;
       if (lvl >= k.max || !skillOpen(k) || freePoints() < k.cost) return;
-      S.tree[id] = lvl + 1; save(); SND.gold(); checkAchievements(null); go("tree");
+      S.tree[id] = lvl + 1; treeSel = id; save(); SND.gold(); checkAchievements(null); go("tree");
     },
     respec: function () {
       if (!spentPoints() || !window.confirm("Rendre tous tes points de compétence ?")) return;

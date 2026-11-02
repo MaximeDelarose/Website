@@ -994,3 +994,42 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 @media (max-width: 480px) { .menu-row .btn-alt { font-size: .85rem; padding: 8px 10px; } }
 .prestige-progress.is-ok .rank-bar i { background: linear-gradient(90deg, #9cc56b, #5b8a4a); }
 .prestige-progress .link-btn { font-size: inherit; }
+
+/* --- 0.9.3 : arbre de compétences en tentacules --- */
+.tentacles-wrap { margin: 6px auto 0; max-width: 560px; background: radial-gradient(circle at 50% 50%, #2a4a36 0%, #1f3a2b 55%, #16291e 100%); border: 3px solid var(--line); }
+:root[data-theme="dark"] .tentacles-wrap { background: radial-gradient(circle at 50% 50%, #22402f 0%, #13211b 70%); }
+.tentacles { display: block; width: 100%; height: auto; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.tentacle { transform-box: view-box; transform-origin: 0 0; animation: tentacle-sway 6s ease-in-out infinite alternate; }
+.tentacle:nth-child(2) { animation-delay: -2s; }
+.tentacle:nth-child(3) { animation-delay: -4s; }
+@keyframes tentacle-sway { from { transform: rotate(-2.2deg); } to { transform: rotate(2.2deg); } }
+@media (prefers-reduced-motion: reduce) { .tentacle { animation: none; } }
+.tent { fill: none; stroke-linecap: round; }
+.tent.on { stroke: var(--br); filter: drop-shadow(0 0 3px var(--br)); }
+.tent.open { stroke: var(--br); opacity: .45; }
+.tent.off { stroke: #6a6460; opacity: .35; stroke-dasharray: 3 4; }
+.cup { fill: #fdf3de; opacity: .55; }
+.cup.off { opacity: .15; }
+.troot circle { fill: #2b1709; stroke: #e0a82a; stroke-width: 3; }
+.br-label { font: 900 9px "Nunito", sans-serif; text-anchor: middle; letter-spacing: .08em; paint-order: stroke; stroke: #16291e; stroke-width: 3px; }
+.tnode { cursor: pointer; }
+.tnode .halo { fill: none; stroke: transparent; stroke-width: 3; }
+.tnode .disc { fill: #2b1709; stroke: var(--br); stroke-width: 2.5; opacity: .75; }
+.tnode.on .disc { fill: #3a2618; opacity: 1; }
+.tnode.max .disc { stroke: #f6d36b; stroke-width: 3; }
+.tnode.off .disc { stroke: #6a6460; opacity: .7; }
+.tnode.off .ic { opacity: .6; }
+.tnode.can .halo { stroke: var(--br); stroke-dasharray: 3 3; animation: halo-spin 3s linear infinite; transform-box: fill-box; transform-origin: center; }
+.tnode.sel .halo { stroke: #fdf3de; stroke-dasharray: none; animation: none; }
+@keyframes halo-spin { to { transform: rotate(360deg); } }
+.tnode .ic { font-size: 14px; text-anchor: middle; }
+.tnode .pip { fill: #4a3a30; stroke: #2b1709; stroke-width: 1; }
+.tnode .pip.on { fill: #f6d36b; }
+.tnode:hover .disc { opacity: 1; }
+.skill-panel { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px; text-align: left; background: var(--panel-2); border: 3px solid var(--br); }
+.skill-panel .skill-text small { font-weight: 900; text-transform: uppercase; letter-spacing: .08em; font-size: .7rem; }
+.skill-panel .pips i.on { background: var(--br); }
+.skill-panel .btn { margin: 4px 4px 8px; white-space: nowrap; }
+@media (max-width: 480px) { .skill-panel { flex-wrap: wrap; } .skill-panel .btn { width: 100%; justify-content: center; } }
+.tnode .hit { fill: transparent; }
+.tentacle { animation-name: tentacle-sway; }
