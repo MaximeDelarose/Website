@@ -957,3 +957,4 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .game-stage:fullscreen { width: 100vw; height: 100vh; }
 .game-stage.is-full .game-hud { bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); right: calc(env(safe-area-inset-right, 0px) + 8px); }
 .game-stage.is-full .game-overlay { padding: calc(env(safe-area-inset-top, 0px) + 48px) calc(env(safe-area-inset-right, 0px) + 12px) calc(env(safe-area-inset-bottom, 0px) + 12px) calc(env(safe-area-inset-left, 0px) + 12px); }
+.game-stage:has(.game-overlay:not([hidden])) .game-toasts { display: none; }

@@ -14,9 +14,10 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
-  var VERSION = "v7";
+  var VERSION = "v8";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
+  var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
 
   // armes de base + fusions dans un seul catalogue
   var ALLW = {};
@@ -882,7 +883,7 @@
   var currentChoices = [];
   function openLevelUp() {
     p = me;
-    if (players.length > 1) { picking = true; me.choosing = true; } else state = "levelup";
+    if (players.length > 1) { picking = true; me.choosing = true; sendInput(); } else state = "levelup";
     clearInput();
     currentChoices = choices(3 + (p.luck > 1.3 && Math.random() < 0.3 ? 1 : 0));
     var html = '<span class="kicker">Niveau ' + r.level + " !</span><h2>Choisis un pouvoir</h2><div class=\"choices\">";
@@ -942,7 +943,7 @@
   function afterChoice() {
     pending = Math.max(0, pending - 1);
     if (pending > 0) { openLevelUp(); return; }
-    if (picking) { picking = false; me.choosing = false; hideCard(); }
+    if (picking) { picking = false; me.choosing = false; hideCard(); sendInput(); }
     else { state = "play"; hideCard(); last = performance.now(); }
   }
   function addGold(n) { r.gold += n * p.goldMul; }
@@ -1027,6 +1028,7 @@
     players.forEach(function (pl) { if (pl.down) return; p = pl; weapons(dt); });
     p = me;
 
+    var zones = players.length > 1 ? players.filter(function (pl) { return pl.choosing && !pl.down; }) : [];
     var i, e, boss = null;
     for (i = 0; i < enemies.length; i++) {
       e = enemies[i]; if (e.dead) continue;
@@ -1058,6 +1060,15 @@
       if (e.d.boss && !boss) boss = e;
       e.x += mx * sp * dt + e.kx * dt; e.y += my * sp * dt + e.ky * dt;
       var damp = Math.pow(0.0005, dt); e.kx *= damp; e.ky *= damp;
+      // zone sûre : les ennemis restent au bord, sauf s'ils poursuivent un autre joueur qui s'y trouve
+      for (var z = 0; z < zones.length; z++) {
+        var zp = zones[z], zx = e.x - zp.x, zy = e.y - zp.y, zd = Math.hypot(zx, zy) || 0.01, lim = SAFE_R + e.d.r;
+        if (zd >= lim) continue;
+        var chasing = tg !== zp && !tg.choosing && Math.hypot(tg.x - zp.x, tg.y - zp.y) < SAFE_R + 4;
+        if (chasing) continue;
+        e.x = zp.x + zx / zd * lim; e.y = zp.y + zy / zd * lim;
+        if (e.charge > 0) e.charge = 0;
+      }
       if (Math.abs(mx) > 0.1) e.face = mx > 0 ? 1 : -1;
       if (!e.under) for (var j = 0; j < players.length; j++) {
         var pl = players[j];
@@ -1334,6 +1345,13 @@
       if (pl.choosing) {
         ctx.fillStyle = "rgba(230,246,250,.18)"; ctx.strokeStyle = "rgba(230,246,250,.8)"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.ellipse(pl.x, pl.y - 2, 13, 12, 0, 0, TAU); ctx.fill(); ctx.stroke();
+        if (multi) {
+          ctx.fillStyle = "rgba(127,209,199,.10)"; ctx.strokeStyle = "rgba(127,209,199,.85)";
+          ctx.setLineDash([4, 3]); ctx.lineDashOffset = -r.time * 15;
+          ctx.beginPath(); ctx.arc(pl.x, pl.y, SAFE_R, 0, TAU); ctx.fill(); ctx.stroke();
+          ctx.setLineDash([]);
+          drawText("ZONE SURE", pl.x, pl.y - SAFE_R - 7, "#7fd1c7", "c");
+        }
       }
     }
     // barre de vie sous chaque écureuil
@@ -2076,6 +2094,11 @@
     else if (t === "ch") { if (!me.down) grantChest(); }
   }
   var PROPS_SPR = ["stump", "basket", "leafpile", "lantern"];
+  function sendInput() {
+    if (!Net.on || Net.role !== "guest" || !Net.started || !me) return;
+    Net.inAcc = 0;
+    netSend("in", { id: me.id, x: Math.round(me.x), y: Math.round(me.y), f: me.face, m: me.moving ? 1 : 0, c: (me.choosing || netMenuOpen) ? 1 : 0 });
+  }
   function updateGuest(dt) {
     var now = performance.now();
     moveMe(dt);
@@ -2084,10 +2107,7 @@
     var bi = biomeAtTile(Math.floor(me.x / 16), Math.floor(me.y / 16));
     if (bi !== r.biome) { if (r.biome >= 0) banner(MAP.biomes[bi].name); r.biome = bi; }
     Net.inAcc += dt;
-    if (Net.inAcc >= 1 / rates().inp) {
-      Net.inAcc = 0;
-      netSend("in", { id: me.id, x: Math.round(me.x), y: Math.round(me.y), f: me.face, m: me.moving ? 1 : 0, c: (me.choosing || netMenuOpen) ? 1 : 0 });
-    }
+    if (Net.inAcc >= 1 / rates().inp) sendInput();
     var cur = Net.cur, prev = Net.prev;
     if (cur) {
       var period = 1000 / rates().snap, k = Math.max(0, Math.min(1, (now - cur.at) / period)), age = (now - cur.at) / 1000;
@@ -2156,7 +2176,7 @@
     sfx(660, 0.1, "square", 0.04);
   }
   function netMenu() {
-    netMenuOpen = true; clearInput();
+    netMenuOpen = true; me.choosing = true; clearInput(); sendInput();
     showCard('<h2>Partie en ligne</h2><p>Le jeu continue pendant que ce menu est ouvert (tu es protégé par une bulle).</p>' +
       '<p class="game-small">Salon <b>' + esc(Net.code || "") + "</b> · " + players.length + " joueurs</p>" +
       '<div class="btn-row center"><button class="btn" type="button" data-action="resume" data-autofocus>▶ Reprendre</button>' +
@@ -2187,7 +2207,7 @@
     showCard(html, "pause");
   }
   function resume() {
-    if (netMenuOpen) { netMenuOpen = false; hideCard(); return; }
+    if (netMenuOpen) { netMenuOpen = false; me.choosing = picking; hideCard(); sendInput(); return; }
     if (state !== "pause") return; state = "play"; hideCard(); last = performance.now();
   }
 
@@ -2349,6 +2369,10 @@
     drop: function (kind) { if (p) drop(kind, p.x + 20, p.y); },
     level: function () { if (p) { pending++; } },
     warns: function () { return warns && warns.length; },
+    choose: function (i, on) { if (players[i]) players[i].choosing = on !== false; },
+    place: function (i, x, y) { if (players[i]) { players[i].x = players[i].tx = x; players[i].y = players[i].ty = y; } },
+    pl: function (i) { var o = players[i]; return o ? { id: o.id, x: Math.round(o.x), y: Math.round(o.y), choosing: o.choosing, down: o.down, me: o === me } : null; },
+    near: function (i, rad) { var pl = players[i]; return pl ? enemies.filter(function (e) { return !e.dead && !e.d.prop && Math.hypot(e.x - pl.x, e.y - pl.y) < rad; }).length : 0; },
     hurtAll: function (n) { players.forEach(function (pl) { pl.hp -= n || 1000; }); },
     hurtOne: function (i, n) { if (players[i]) players[i].hp -= n || 1000; },
     net: function () { return { on: Net.on, role: Net.role, code: Net.code, status: Net.status, roster: Net.roster.length, started: Net.started, players: players.length, snap: !!Net.cur }; },
