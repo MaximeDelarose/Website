@@ -921,12 +921,23 @@
     setTimeout(function () { if (bestR === "legendaire") SND.win(); else if (bestR === "epique") SND.merge(5); else SND.pu(); }, 600);
   }
 
+  function adminCall(fn, args, ok) {
+    if (!Cloud.on || Cloud.busy) return;
+    Cloud.busy = true;
+    window.SiteAuth.rpc(fn, args).then(function (p) { applyServer(p); Cloud.msg = ok; SND.pu(); })
+      .catch(function (err) { Cloud.err = window.SiteAuth.message(err); })
+      .then(function () { Cloud.busy = false; show("menu", true); Cloud.err = ""; });
+  }
   function acctHtml() {
     var h;
     if (!window.SiteAuth) return "";
     if (Cloud.on) h = '<p class="game-small rd-acct">☁ Connecté' + (S.name ? " : <b>" + esc(S.name) + "</b>" : "") + ' · progression sauvegardée sur <a href="compte.html">ton compte</a>.</p>';
     else if (Cloud.loading) h = '<p class="game-small rd-acct">☁ Chargement de ton compte…</p>';
-    else h = '<p class="game-small rd-acct">Invité : ta progression reste dans ce navigateur. <button class="rd-link" type="button" data-action="login">Se connecter avec Google</button> pour la protéger, la retrouver partout et jouer en ligne.</p>';
+    else h = '<p class="game-small rd-acct">Invité : ta progression reste dans ce navigateur. <button class="rd-link" type="button" data-action="login">Connexion / inscription avec Google</button> pour la protéger, la retrouver partout et jouer en ligne.</p>';
+    if (Cloud.on && window.SiteAuth.profile && window.SiteAuth.profile.admin) h += '<div class="rd-admin"><b>🛠 Admin</b>' +
+      '<button class="btn btn-ghost btn-small" type="button" data-action="admgold" data-arg="5000">+5 000 glands</button>' +
+      '<button class="btn btn-ghost btn-small" type="button" data-action="admgold" data-arg="50000">+50 000</button>' +
+      '<button class="btn btn-ghost btn-small" type="button" data-action="admunlock">Tout débloquer (+20 exemplaires)</button></div>';
     if (Cloud.msg) { h += '<p class="game-small">' + esc(Cloud.msg) + "</p>"; Cloud.msg = ""; }
     if (Cloud.err) h += '<p class="net-err">' + esc(Cloud.err) + "</p>";
     return h;
@@ -1156,6 +1167,8 @@
       openedScreen(c, openChest(c));
     },
     resume: function () { togglePause(); },
+    admgold: function (a) { adminCall("rd_admin_gold", { p_amount: +a }, "+" + a + " glands d'or ajoutés."); },
+    admunlock: function () { adminCall("rd_admin_unlock", { p_copies: 20 }, "Tous les écureuils débloqués, +20 exemplaires chacun."); },
     login: function () { if (window.SiteAuth) window.SiteAuth.signIn().catch(function (err) { Cloud.err = window.SiteAuth.message(err); refreshScreen(); }); },
     testgold: function () { if (!DEBUG || Cloud.on) return; S.gold += 5000; save(); SND.pu(); show("menu"); },
     quit: function () {

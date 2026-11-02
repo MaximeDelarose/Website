@@ -13,16 +13,17 @@
   function render() {
     if (!A.user) {
       box.innerHTML =
-        "<h2>Se connecter</h2>" +
+        "<h2>Connexion / Inscription</h2>" +
+        "<p>Un seul bouton pour les deux : <strong>pas de mot de passe à créer</strong>, ton compte est créé automatiquement la première fois que tu te connectes avec Google.</p>" +
+        '<p><button class="btn account-google" type="button" data-act="login">' + googleIcon() + " Continuer avec Google</button></p>" +
         "<p>Le compte est <strong>facultatif</strong> : tu peux jouer à tout sans lui. Il sert à garder ta progression sur le serveur (à l'abri de la triche), à la retrouver sur tous tes appareils et à jouer en ligne. Un seul compte pour tous les jeux du site.</p>" +
-        '<p><button class="btn" type="button" data-act="login">' + googleIcon() + " Se connecter avec Google</button></p>" +
         (msg ? '<p class="account-msg">' + esc(msg) + "</p>" : "") +
         '<p class="footer-small">Seuls ton identifiant, ton email et ta progression sont gardés : rien de vendu, aucune publicité, aucun traceur. Détails : <a href="confidentialite.html">confidentialité</a>.</p>';
       return;
     }
     var p = A.profile || {}, email = A.user.email || "";
     box.innerHTML =
-      '<div class="account-head"><span class="account-avatar">' + esc((p.pseudo || "?").charAt(0).toUpperCase()) + "</span><div><strong>" + esc(p.pseudo || "Pas encore de pseudo") + "</strong>" +
+      '<div class="account-head"><span class="account-avatar">' + esc((p.pseudo || "?").charAt(0).toUpperCase()) + "</span><div><strong>" + esc(p.pseudo || "Pas encore de pseudo") + (p.admin ? ' <span class="account-admin">ADMIN</span>' : "") + "</strong>" +
       "<small>Connecté" + (((A.user.app_metadata || {}).provider || "google") === "google" ? " avec Google" : "") + (email ? " · " + esc(email) : "") + "</small></div></div>" +
       '<form class="account-form" data-pseudo><label for="acc-pseudo">Pseudo (visible par les autres joueurs)</label><div class="submit-row">' +
       '<input id="acc-pseudo" type="text" maxlength="20" required value="' + esc(p.pseudo || "") + '"><button class="btn btn-alt btn-small" type="submit">Enregistrer</button></div></form>' +

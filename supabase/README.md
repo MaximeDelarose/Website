@@ -21,6 +21,9 @@ fonctions `security definer` qui vérifient tout :
 | `rd_level_up(type)` | exemplaires et glands vérifiés |
 | `rd_start_run(mode)` / `rd_end_run(...)` | une partie est ouverte puis fermée ; la vague est bornée par la durée réelle (au mieux une vague / 7 s), gains calculés par le serveur (500 max), succès attribués par le serveur, 60 parties / heure max |
 
+**Admins** : table `site_admins` (modifiable seulement depuis Supabase). Un admin voit dans Écureuil Dice un panneau « 🛠 Admin » (`rd_admin_gold`, `rd_admin_unlock`) et un badge ADMIN sur Mon compte. Ajouter un admin :
+`insert into public.site_admins (user_id) select id from auth.users where email = 'adresse@gmail.com';`
+
 Limite connue : le résultat d'une partie vient toujours du navigateur (le serveur ne rejoue pas la partie), il est
 seulement borné. En versus en ligne, chaque navigateur simule son propre terrain.
 
