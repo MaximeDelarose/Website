@@ -13,8 +13,9 @@
   var ctx = canvas.getContext("2d");
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
-  var GAME_ID = "ecureuil-survivor";
-  var VERSION = "0.11.0";
+  var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene";
+  var A = D.ARENA;
+  var VERSION = "0.12.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -31,7 +32,7 @@
   function defaults() {
     return { gold: 0, shop: {}, ach: {}, owned: { noisette: true }, rank: 1, rankXp: 0, tree: {}, prestige: 0, ppts: 0, pshop: {}, char: "noisette", map: "clairiere", diff: "normal", name: "",
              opts: { sound: true, shake: true, numbers: true },
-             stats: { kills: 0, goldEarned: 0, goldSince: 0, runs: 0, bestTime: 0, bestScore: 0, bosses: 0, played: {}, maps: {}, bought: 0 } };
+             mode: "survie", stats: { kills: 0, goldEarned: 0, goldSince: 0, runs: 0, bestTime: 0, bestScore: 0, bosses: 0, played: {}, maps: {}, bought: 0 } };
   }
   function load() {
     var s = defaults(), raw = null;
@@ -50,6 +51,7 @@
   }
   var S = load();
   var MAX_PLAYERS = 6;
+  var ACTIONS_LATE = {};
   var Net = { peers: {}, hostId: null, on: false, role: null, id: Math.random().toString(36).slice(2, 10), code: null, client: null, ch: null, status: "",
               roster: [], ev: [], dmgN: 0, acc: 0, inAcc: 0, cur: null, prev: null, lastLevel: 1, started: false, err: "" };
   function netEv(ev) { if (Net.on && Net.role === "host" && Net.started && Net.ev.length < 120) Net.ev.push(ev); }
@@ -206,7 +208,7 @@
     var p = pl || actingPlayer();
     var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives, tr = p.tree || {}, pg = p.pshop || {};
     var oldMax = p.maxHp || 0;
-    p.maxHp = Math.max(20, 100 + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0));
+    p.maxHp = Math.max(20, 100 + (p.bonusHp || 0) + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0));
     p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0));
     p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + 0.08 * (pg.racines || 0);
     p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0) + (tr.s3 || 0);
@@ -227,7 +229,7 @@
 
   function actingPlayer() { return p || me; }
   function myId() { return Net.on ? Net.id : "solo"; }
-  function reset(roster, mapId, diffId) {
+  function reset(roster, mapId, diffId, mode) {
     DIFF = D.DIFFICULTIES[diffId || S.diff] || D.DIFFICULTIES.normal; MAP = mapById(mapId || S.map);
     roster = roster || [{ id: "solo", name: S.name || "Toi", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige, pshop: S.pshop }];
     var n = roster.length;
@@ -246,13 +248,16 @@
     me.remote = false; p = me; CH = me.char;
     r = { time: 0, kills: 0, level: 1, bosses: 0, berries: 0, gold: 0, lastHit: 0, maxedWeapon: false, nWeapons: 1, nPassives: 0,
           fusions: 0, legend: 0, biome: -1, props: 0, freeze: 0, flash: 0, hard: (diffId || S.diff) !== "normal", ended: false, committed: false, newAch: [], bonus: 0,
-          char: CH.id, map: MAP.id, coop: n > 1 };
+          char: CH.id, map: MAP.id, coop: n > 1, mode: mode || "survie",
+          round: 1, roundT: 0, roundLen: A.roundTime(1), roundKills: 0, phase: "fight", mod: null, won: false, ready: {} };
+    players.forEach(function (pl) { pl.coins = 0; pl.bonusHp = 0; });
     enemies = []; projs = []; hostile = []; lobs = []; gems = []; fx = []; texts = []; warns = [];
     biomeCache = new Map();
     xp = 0; xpNext = need(1); pending = me.tree.f5 ? 1 : 0; picking = false; netMenuOpen = false;
     spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
     if (!Net.on || Net.role === "host") for (var i = 0; i < 4; i++) spawnProp(90 + Math.random() * 120);
+    if (r.mode === "arena") { nextSwarm = 1e9; nextBoss = 1e9; spawnAcc = 2; }
   }
   function alive() { return players.filter(function (pl) { return !pl.down; }); }
   function randomAlive() { var a = alive(); return a.length ? a[(Math.random() * a.length) | 0] : me; }
@@ -390,7 +395,41 @@
   /* =====================================================================
      Apparitions : ennemis et objets destructibles
      ===================================================================== */
-  function hpMul() { return (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
+  function isArena() { return r && r.mode === "arena"; }
+  function clampArena(o, pad) {
+    if (!isArena()) return;
+    pad = pad || 6;
+    o.x = Math.max(-A.w + pad, Math.min(A.w - pad, o.x)); o.y = Math.max(-A.h + pad, Math.min(A.h - pad, o.y));
+  }
+  function arenaEdgePoint() {
+    var side = (Math.random() * 4) | 0, t = Math.random() * 2 - 1, m = 10;
+    if (side === 0) return { x: t * (A.w - m), y: -A.h + m };
+    if (side === 1) return { x: t * (A.w - m), y: A.h - m };
+    if (side === 2) return { x: -A.w + m, y: t * (A.h - m) };
+    return { x: A.w - m, y: t * (A.h - m) };
+  }
+  function arenaDirector(dt) {
+    var mod = r.mod || {};
+    var rate = (0.7 + r.round * 0.5) * DIFF.spawn * (mod.rate || 1) * (1 + 0.6 * (players.length - 1));
+    if (r.roundT > r.roundLen - 2) rate = 0;   // la manche se termine : plus de nouvelles apparitions
+    spawnAcc += rate * dt;
+    while (spawnAcc >= 1) {
+      spawnAcc--;
+      if (enemies.length >= 220) continue;
+      var pt = arenaEdgePoint(), b = biomeAt(pt.x, pt.y);
+      var e = spawnAt(pickType(b), pt.x, pt.y);
+      if (e) { e.spd *= (mod.spd || 1); e.hp *= (mod.hp || 1); e.maxHp = e.hp; }
+    }
+  }
+  function spawnAt(type, x, y) {
+    var d = D.ENEMIES[type];
+    var hp = d.hp * (d.boss ? (1 + bossCount * 0.9) * (1 + r.time / 200) * DIFF.hp * (MAP.hp || 1) : hpMul());
+    var e = makeEnemy(type, d, x, y, hp);
+    if (d.ai === "mole") { e.under = true; e.cd = 1; }
+    if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
+    return e;
+  }
+  function hpMul() { return (isArena() ? 1 + 0.07 * (r.round - 1) : 1) * (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
   function makeEnemy(type, d, x, y, hp) {
     var e = { id: ++uid, type: type, d: d, spr: SPR[d.sprite], x: x, y: y, hp: hp, maxHp: hp, kx: 0, ky: 0, flash: 0, slowT: 0, slow: 0,
               anim: Math.random() * 2, phase: Math.random() * 6, face: 1, charge: 0, windup: 0, cd: 3, spd: (d.spd || 0) * DIFF.spd, cool: null };
@@ -414,6 +453,7 @@
   function spawnProp(dist) {
     var a = Math.random() * TAU, o = randomAlive();
     var x = o.x + Math.cos(a) * dist, y = o.y + Math.sin(a) * dist;
+    if (isArena()) { x = (Math.random() * 2 - 1) * (A.w - 30); y = (Math.random() * 2 - 1) * (A.h - 30); }
     var d = Object.assign({}, PROP_D, { sprite: biomeAt(x, y).prop || "stump" });
     var e = makeEnemy("prop", d, x, y, 14 * (1 + r.time / 200));
     e.anim = 0;
@@ -493,7 +533,7 @@
       drop(rollLoot(), e.x, e.y);
       return;
     }
-    r.kills++;
+    r.kills++; r.roundKills++;
     if (e.d.ai === "bomber") { e.byPlayer = true; explodeEnemy(e.x, e.y, e.d.blastR, 30); }
     if (e.d.boss) {
       r.bosses++; S.stats.bosses++;
@@ -530,7 +570,7 @@
       return;
     }
     if (p.dodge && Math.random() < p.dodge) { p.inv = 0.3; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
-    p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1)); p.inv = 0.6;
+    p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)); p.inv = 0.6;
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = 0.25; SND.hurt(); }
     burst(p.x, p.y, "#c8553d", 5);
   }
@@ -911,7 +951,7 @@
   var currentChoices = [];
   function openLevelUp() {
     p = me;
-    if (players.length > 1) { picking = true; me.choosing = true; sendInput(); } else state = "levelup";
+    if (players.length > 1 || isArena()) { picking = true; me.choosing = true; sendInput(); } else state = "levelup";
     clearInput();
     currentChoices = choices(3 + (me.extraChoice || 0) + (p.luck > 1.3 && Math.random() < 0.3 ? 1 : 0));
     var html = '<span class="kicker">Niveau ' + r.level + " !</span><h2>Choisis un pouvoir</h2><div class=\"choices\">";
@@ -956,6 +996,8 @@
     else if (c.type === "w") p.weapons[c.id] = c.lvl;
     else if (c.type === "p") { p.passives[c.id] = c.lvl; if (c.id === "appetit") p.hp += 20; if (c.id === "mousse" && c.lvl === 1) p.shield = true; }
     else if (c.type === "heal") p.hp += 40;
+    else if (c.type === "fullheal") p.hp = p.maxHp;
+    else if (c.type === "maxhp") { p.bonusHp = (p.bonusHp || 0) + 10; calc(p); p.hp += 10; }
     else if (c.type === "skip") addGold(3);
     else if (c.type === "gold") addGold(15);
     calc(p);
@@ -971,6 +1013,7 @@
   function afterChoice() {
     pending = Math.max(0, pending - 1);
     if (pending > 0) { openLevelUp(); return; }
+    if (isArena() && r.phase === "shop") { openShop(); return; }
     if (picking) { picking = false; me.choosing = false; hideCard(); sendInput(); }
     else { state = "play"; hideCard(); last = performance.now(); }
   }
@@ -1027,6 +1070,7 @@
   function moveMe(dt) {
     var v = (me.down || me.choosing || netMenuOpen) ? { x: 0, y: 0 } : inputVector();
     me.x += v.x * me.speed * dt; me.y += v.y * me.speed * dt;
+    clampArena(me, 8);
     me.moving = Math.abs(v.x) + Math.abs(v.y) > 0.05;
     if (v.x > 0.1) me.face = 1; else if (v.x < -0.1) me.face = -1;
   }
@@ -1044,7 +1088,12 @@
     });
   }
   function update(dt) {
+    if (isArena() && r.phase === "shop") { tickFx(dt); return; }
     r.time += dt;
+    if (isArena()) {
+      r.roundT += dt;
+      if (r.roundT >= r.roundLen) { endRound(); return; }
+    }
     moveMe(dt);
     tickPlayers(dt);
     r.freeze = Math.max(0, r.freeze - dt); r.flash = Math.max(0, r.flash - dt);
@@ -1052,7 +1101,7 @@
     var bi = biomeAtTile(Math.floor(me.x / 16), Math.floor(me.y / 16));
     if (bi !== r.biome) { if (r.biome >= 0) banner(MAP.biomes[bi].name); r.biome = bi; }
 
-    director(dt);
+    if (isArena()) arenaDirector(dt); else director(dt);
     buildGrid();
     players.forEach(function (pl) { if (pl.down) return; p = pl; weapons(dt); });
     p = me;
@@ -1099,11 +1148,12 @@
         if (e.charge > 0) e.charge = 0;
       }
       if (Math.abs(mx) > 0.1) e.face = mx > 0 ? 1 : -1;
+      if (isArena()) clampArena(e, e.d.r);
       if (!e.under) for (var j = 0; j < players.length; j++) {
         var pl = players[j];
         if (Math.abs(pl.x - e.x) < e.d.r + 5 && Math.abs(pl.y - e.y) < e.d.r + 5) damagePlayer(e.d.dmg, pl);
       }
-      if (d > 420 && !e.d.boss) { var ra = Math.atan2(dy, dx) + (Math.random() - 0.5), R = Math.hypot(W, H) / 2 + 10; e.x = tg.x + Math.cos(ra) * R; e.y = tg.y + Math.sin(ra) * R; }
+      if (d > 420 && !e.d.boss && !isArena()) { var ra = Math.atan2(dy, dx) + (Math.random() - 0.5), R = Math.hypot(W, H) / 2 + 10; e.x = tg.x + Math.cos(ra) * R; e.y = tg.y + Math.sin(ra) * R; }
     }
     // séparation légère (les objets et les boss ne bougent pas)
     grid.forEach(function (cell) {
@@ -1185,9 +1235,138 @@
     tickFx(dt);
     achTick -= dt;
     if (achTick <= 0) { achTick = 1; checkAchievements(r); }
-    if (pending > 0 && !picking && !me.down && state === "play") openLevelUp();
+    if (pending > 0 && !picking && !me.down && state === "play" && !isArena()) openLevelUp();
     if (Net.on) netHostTick(dt);
   }
+  /* ---------- Arène : fin de manche, entracte, manche suivante ---------- */
+  function roundModFor(n) {
+    if (n % A.eliteEvery !== 0) return null;
+    return A.mods[(n * 7 + 3) % A.mods.length];
+  }
+  function clearField() {
+    enemies = enemies.filter(function (e) { return e.d.prop; });
+    projs = []; hostile = []; lobs = []; warns = []; curBoss = null;
+  }
+  // hôte / solo
+  function endRound() {
+    // les noisettes et l'or au sol sont ramassés, le reste disparaît
+    gems.forEach(function (g) { if (g.kind === "xp") xp += g.v * me.xpMul; else if (g.kind === "gold") addGold(g.v); });
+    gems = [];
+    while (xp >= xpNext) { xp -= xpNext; r.level++; pending++; xpNext = need(r.level); }
+    clearField();
+    players.forEach(function (pl) { pl.down = false; pl.reviveT = 0; pl.hp = pl.maxHp; });
+    var income = Math.round(A.income(r.round, r.roundKills) * ((r.mod && r.mod.income) || 1));
+    r.roundKills = 0;
+    if (r.round >= A.rounds) { r.won = true; bannerAll("Victoire !"); gameOver(false, "Victoire ! Les 20 manches sont gagnées 🏆"); return; }
+    r.phase = "shop"; r.ready = {};
+    netSend("round", { n: r.round, inc: income, lv: r.level });
+    beginIntermission(income);
+  }
+  // commun : chaque joueur choisit ses pouvoirs puis passe à la boutique
+  function beginIntermission(income) {
+    var interest = Math.min(A.interestMax, Math.floor(me.coins / A.interestPer));
+    me.coins += income + interest;
+    r.lastIncome = income; r.lastInterest = interest;
+    r.rerolls = 0; r.offers = null;
+    clearInput();
+    SND.level();
+    if (pending > 0) openLevelUp(); else openShop();
+  }
+  function nextRound() {
+    r.round++; r.roundT = 0; r.roundLen = A.roundTime(r.round); r.mod = roundModFor(r.round); r.phase = "fight"; r.ready = {};
+    picking = false; me.choosing = false; hideCard();
+    spawnAcc = 2;
+    var label = "Manche " + r.round + (r.mod ? " · " + r.mod.name : "");
+    if (r.round % A.bossEvery === 0) {
+      var bt = MAP.bosses[bossCount % MAP.bosses.length];
+      var pt = arenaEdgePoint(); spawnAt(bt, pt.x, pt.y); bossCount++;
+      label += " · " + D.ENEMIES[bt].name + " !";
+    }
+    bannerAll(label);
+    if (Net.on && Net.role === "host") netSend("next", { n: r.round, mod: r.mod ? r.mod.id : "" });
+    last = performance.now();
+  }
+  function markReady(id) {
+    r.ready[id] = true;
+    if (Net.on && Net.role === "host") {
+      var all = players.every(function (pl) { return r.ready[pl.id]; });
+      if (all) nextRound(); else if (screen === "ashop") openShop();
+    }
+  }
+  function shopPrice(o) {
+    var P = A.prices, g = 1 + A.priceGrowth * (r.round - 1), base;
+    if (o.type === "f") base = P.fusion;
+    else if (o.type === "w") base = o.lvl === 1 ? P.newWeapon : P.upgrade + P.perLevel * o.lvl;
+    else if (o.type === "p") base = P.item + P.perLevel * (o.lvl - 1);
+    else if (o.type === "fullheal") base = P.heal;
+    else base = P.maxhp;
+    return Math.round(base * g);
+  }
+  function rollOffers() {
+    p = me;
+    var list = choices(4).filter(function (c) { return c.type === "f" || c.type === "w" || c.type === "p"; });
+    list.push(Math.random() < 0.5 ? { type: "fullheal" } : { type: "maxhp" });
+    list.forEach(function (o) { o.price = shopPrice(o); o.sold = false; });
+    r.offers = list;
+  }
+  function rerollCost() { return A.rerollBase + r.round + r.rerolls * 2; }
+  function openShop() {
+    if (!r.offers) rollOffers();
+    picking = true; me.choosing = true; netMenuOpen = false;
+    var waiting = r.ready[me.id];
+    var html = '<span class="kicker">Fin de la manche ' + r.round + " / " + A.rounds + '</span><h2>Marché du terrier</h2>' +
+      '<p class="coins-line"><b>' + me.coins + ' 🌰</b> <small>+' + (r.lastIncome || 0) + " revenu · +" + (r.lastInterest || 0) + " intérêts (1 par " + A.interestPer + " gardées, " + A.interestMax + " max)</small></p>" +
+      '<div class="choices ashop">';
+    r.offers.forEach(function (o, i) {
+      var icon, name, desc, tag = "", cls = "choice offer";
+      if (o.type === "f") { var f = D.FUSIONS[o.id]; icon = img(f.icon); name = f.name; tag = f.tier === 2 ? "Fusion légendaire" : "Fusion"; desc = f.desc[0]; cls += " is-fusion"; }
+      else if (o.type === "w") { var w = ALLW[o.id]; icon = img(w.icon); name = w.name; tag = o.lvl === 1 ? "Nouvelle arme" : "Niv. " + o.lvl; desc = w.desc[o.lvl - 1]; }
+      else if (o.type === "p") { icon = img(D.PASSIVES[o.id].sprite); name = D.PASSIVES[o.id].name; tag = o.lvl === 1 ? "Nouvel objet" : "Niv. " + o.lvl; desc = D.PASSIVES[o.id].desc; }
+      else if (o.type === "fullheal") { icon = img("berry"); name = "Grand panier de baies"; desc = "Soigne tous tes PV."; tag = "Soin"; }
+      else { icon = img("mushroom"); name = "Champignon fortifiant"; desc = "+10 PV max pour la partie."; tag = "Bonus"; }
+      var can = !o.sold && !waiting && me.coins >= o.price;
+      html += '<button type="button" class="' + cls + (o.sold ? " is-sold" : "") + '" data-action="abuy" data-arg="' + i + '"' + (can ? "" : " disabled") + ">" +
+        '<span class="choice-icon">' + icon + '</span><span class="choice-text"><strong>' + esc(name) + "</strong><em>" + esc(tag) + "</em><span>" + esc(desc) + "</span>" +
+        (o.type === "w" || o.type === "p" ? synHtml(o.id) : "") + "</span>" +
+        '<span class="price">' + (o.sold ? "Acheté" : o.price + " 🌰") + "</span></button>";
+    });
+    html += "</div>";
+    var nextMod = roundModFor(r.round + 1), nextBoss = (r.round + 1) % A.bossEvery === 0;
+    if (nextMod || nextBoss) html += '<p class="next-round">⚠️ Manche ' + (r.round + 1) + " : " + (nextMod ? "<b>" + esc(nextMod.name) + "</b> (" + esc(nextMod.desc) + ")" : "") + (nextMod && nextBoss ? " · " : "") + (nextBoss ? "<b>boss</b>" : "") + "</p>";
+    html += '<div class="btn-row center"><button class="btn btn-alt btn-small" type="button" data-action="areroll"' + (waiting || me.coins < rerollCost() ? " disabled" : "") + ">🎲 Relancer (" + rerollCost() + " 🌰)</button>";
+    if (waiting) {
+      var n = players.filter(function (pl) { return r.ready[pl.id]; }).length;
+      html += '<span class="waiting">En attente des autres… (' + n + "/" + players.length + " prêts)</span>";
+    } else html += '<button class="btn" type="button" data-action="aready" data-autofocus>▶ ' + (players.length > 1 ? "Prêt" : "Manche suivante") + "</button>";
+    html += "</div>";
+    showCard(html, "ashop");
+  }
+  ACTIONS_LATE.abuy = function (i) {
+    var o = r.offers && r.offers[Number(i)];
+    if (!o || o.sold || me.coins < o.price || r.ready[me.id]) return;
+    me.coins -= o.price; o.sold = true;
+    p = me;
+    var c = o.type === "fullheal" ? { type: "fullheal" } : o.type === "maxhp" ? { type: "maxhp" } : { type: o.type, id: o.id, lvl: o.lvl };
+    applyCore(c); refreshCounts();
+    if (Net.on && Net.role === "guest") netSend("pick", { id: me.id, c: c });
+    // les offres restantes qui ne sont plus valables (déjà au niveau, fusion faite) sont marquées vendues
+    r.offers.forEach(function (x) {
+      if (x.sold || !x.id) return;
+      if (x.type === "w" && ((p.weapons[x.id] || 0) >= x.lvl || p.consumed[x.id])) x.sold = true;
+      if (x.type === "p" && (p.passives[x.id] || 0) >= x.lvl) x.sold = true;
+      if (x.type === "f" && p.weapons[x.id]) x.sold = true;
+    });
+    SND.gold(); openShop();
+  };
+  ACTIONS_LATE.areroll = function () {
+    var c = rerollCost(); if (me.coins < c || r.ready[me.id]) return;
+    me.coins -= c; r.rerolls++; rollOffers(); SND.click(); openShop();
+  };
+  ACTIONS_LATE.aready = function () {
+    if (players.length === 1) { nextRound(); return; }
+    if (Net.role === "guest") { r.ready[me.id] = true; netSend("rdy", { id: me.id }); openShop(); return; }
+    markReady(me.id);
+  };
   function tickFx(dt) {
     for (var i = fx.length - 1; i >= 0; i--) {
       var f = fx[i]; f.life -= dt;
@@ -1442,10 +1621,14 @@
   function draw() {
     var sx = shake > 0 ? (Math.random() * 4 - 2) : 0, sy = shake > 0 ? (Math.random() * 4 - 2) : 0;
     var cam = me.down ? (alive()[0] || me) : me;
+    if (isArena()) cam = { x: Math.max(-A.w + W / 2 - 24, Math.min(A.w - W / 2 + 24, cam.x)) || 0, y: Math.max(-A.h + H / 2 - 40, Math.min(A.h - H / 2 + 24, cam.y)) || 0 };
+    if (isArena() && W / 2 - 24 > A.w) cam.x = 0;
+    if (isArena() && H / 2 - 40 > A.h) cam.y = 0;
     var cx = Math.round(cam.x - W / 2 + sx), cy = Math.round(cam.y - H / 2 + sy);
     drawGround(cx, cy, MAP);
     ctx.save();
     ctx.translate(-cx, -cy);
+    if (isArena()) drawArena(cx, cy);
 
     var bob = Math.sin(r.time * 4);
     gems.forEach(function (g) {
@@ -1526,6 +1709,21 @@
       ctx.fillStyle = "rgba(232,135,58,.85)";
       ctx.beginPath(); ctx.arc(joy.x, joy.y, 9, 0, TAU); ctx.fill();
     }
+  }
+  function drawArena(cx, cy) {
+    var x0 = -A.w, y0 = -A.h, w = A.w * 2, h = A.h * 2;
+    // extérieur assombri
+    ctx.fillStyle = "rgba(10,18,12,.62)";
+    ctx.fillRect(cx - 10, cy - 10, W + 20, y0 - cy + 10);
+    ctx.fillRect(cx - 10, y0 + h, W + 20, cy + H + 10 - (y0 + h));
+    ctx.fillRect(cx - 10, y0, x0 - cx + 10, h);
+    ctx.fillRect(x0 + w, y0, cx + W + 10 - (x0 + w), h);
+    // palissade de rondins
+    ctx.fillStyle = "#3a2618"; ctx.fillRect(x0 - 5, y0 - 5, w + 10, 5); ctx.fillRect(x0 - 5, y0 + h, w + 10, 5); ctx.fillRect(x0 - 5, y0, 5, h); ctx.fillRect(x0 + w, y0, 5, h);
+    ctx.fillStyle = "#8a5a3b"; ctx.fillRect(x0 - 4, y0 - 4, w + 8, 2); ctx.fillRect(x0 - 4, y0 + h + 1, w + 8, 2); ctx.fillRect(x0 - 4, y0, 2, h); ctx.fillRect(x0 + w + 1, y0, 2, h);
+    ctx.fillStyle = "#6b4430";
+    for (var px = x0; px <= x0 + w; px += 24) { ctx.fillRect(px - 2, y0 - 9, 4, 9); ctx.fillRect(px - 2, y0 + h, 4, 9); }
+    for (var py = y0; py <= y0 + h; py += 24) { ctx.fillRect(x0 - 9, py - 2, 9, 4); ctx.fillRect(x0 + w, py - 2, 9, 4); }
   }
   function drawFireflies(t) {
     for (var i = 0; i < 14; i++) {
@@ -1622,7 +1820,12 @@
       });
     }
     // chrono, ennemis, or (à droite)
-    drawText(fmtTime(r.time), W - 4, 15, "#fdf3de", "r", 2);
+    if (isArena()) {
+      var left = Math.max(0, r.roundLen - r.roundT);
+      drawText(fmtTime(Math.ceil(left)), W - 4, 15, left < 5 && r.phase === "fight" ? "#ff5a3a" : "#fdf3de", "r", 2);
+      drawText("MANCHE " + r.round + "/" + A.rounds, W - 4, 45, "#f6d36b", "r");
+      if (r.mod && r.phase === "fight") drawText(r.mod.name, W - 4, 53, "#ff8a6a", "r");
+    } else drawText(fmtTime(r.time), W - 4, 15, "#fdf3de", "r", 2);
     var k = String(r.kills), g = String(Math.floor(r.gold));
     drawText(k, W - 4, 29, "#fdf3de", "r"); icon("skull", W - 4 - textWidth(k) - 5, 31);
     drawText(g, W - 4, 37, "#ffe27a", "r"); icon("gold", W - 4 - textWidth(g) - 5, 39);
@@ -1656,7 +1859,10 @@
      Écrans (menus)
      ===================================================================== */
   function fmtTime(s) { s = Math.floor(s); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
-  function score() { return Math.round((Math.floor(r.time) * 10 + r.kills + r.bonus) * DIFF.score); }
+  function score() {
+    if (isArena()) return Math.round(((r.won ? A.rounds : r.round - 1) * 1000 + r.kills + (r.won ? 5000 : 0)) * DIFF.score);
+    return Math.round((Math.floor(r.time) * 10 + r.kills + r.bonus) * DIFF.score);
+  }
   function runGold() { return Math.floor((r.kills * 0.1 + r.time / 6 + r.bosses * 30 + r.level) * p.goldMul + r.gold); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function fr(n) { return String(n).replace(".", ","); }
@@ -1753,6 +1959,15 @@
       '<span class="pips">' + pips + "</span>" + (lock ? '<span class="skill-lock">' + esc(lock) + "</span>" : "") + "</div>" +
       (max ? '<span class="shop-max">MAX</span>' : '<button class="btn btn-small" type="button" data-action="learn" data-arg="' + k.id + '"' + (can ? "" : " disabled") + ">Apprendre · " + k.cost + " pt</button>") + "</div>";
   }
+  function modeRow(action) {
+    var mo = S.mode || "survie";
+    return '<div class="diff-row mode-row"><span>Mode :</span>' +
+      '<button type="button" class="chip' + (mo === "survie" ? " is-on" : "") + '" data-action="' + action + '" data-arg="survie">🌲 Survie</button>' +
+      '<button type="button" class="chip' + (mo === "arena" ? " is-on" : "") + '" data-action="' + action + '" data-arg="arena">🏟️ Arène</button></div>' +
+      '<p class="game-small mode-desc">' + (mo === "arena"
+        ? "Arène fermée, " + A.rounds + " manches. Boutique entre les manches, manche d'élite toutes les " + A.eliteEvery + ", boss toutes les " + A.bossEvery + "."
+        : "Monde ouvert sans fin : survis le plus longtemps possible.") + "</p>";
+  }
   function swatch(m, cls) {
     return '<span class="map-swatch ' + (cls || "") + '">' + m.biomes.map(function (b) { return '<i style="background:' + b.ground.base + '"></i>'; }).join("") +
       '<img src="' + spriteUrl(m.biomes[0].prop) + '" alt=""></span>';
@@ -1823,6 +2038,7 @@
           '" data-action="tmap" data-arg="' + m.id + '" aria-label="' + esc(m.name) + '">' + swatch(m) + "<small>" + esc(m.name) + "</small>" + (ok ? "" : '<i class="lock">🔒</i>') + "</button>";
       });
       html += "</div>" + mapInfo(im);
+      html += modeRow("mode");
       html += '<div class="diff-row"><span>Difficulté :</span>';
       Object.keys(D.DIFFICULTIES).forEach(function (k) {
         var df = D.DIFFICULTIES[k], ok = has(df.unlock);
@@ -1866,7 +2082,7 @@
           if (!has(m.unlock)) return;
           html += '<button type="button" class="tile tile-map' + (S.map === m.id ? " is-selected" : "") + '" data-action="lmap" data-arg="' + m.id + '">' + swatch(m) + "<small>" + esc(m.name) + "</small></button>";
         });
-        html += '</div><div class="diff-row"><span>Difficulté :</span>';
+        html += "</div>" + modeRow("lmode") + '<div class="diff-row"><span>Difficulté :</span>';
         Object.keys(D.DIFFICULTIES).forEach(function (k) {
           var df = D.DIFFICULTIES[k]; if (!has(df.unlock)) return;
           html += '<button type="button" class="chip' + (S.diff === k ? " is-on" : "") + '" data-action="ldiff" data-arg="' + k + '">' + esc(df.name) + "</button>";
@@ -1874,7 +2090,7 @@
         html += '</div><div class="play-bar"><button class="btn" type="button" data-action="start"' + (ok ? "" : " disabled") + ">▶ Lancer la partie (" + Math.max(1, Math.min(MAX_PLAYERS, Net.roster.length)) + " joueur" + (Net.roster.length > 1 ? "s" : "") + ")</button></div>";
       } else {
         var m = hp ? mapById(hp.map) : null;
-        html += '<p class="game-small">' + (m ? "Carte : <b>" + esc(m.name) + "</b> · " + esc((D.DIFFICULTIES[hp.diff] || {}).name || "") + " (choisies par l'hôte)" : "") + "</p>" +
+        html += '<p class="game-small">' + (hp ? "Mode : <b>" + (hp.mode === "arena" ? "Arène" : "Survie") + "</b> · " : "") + (m ? "Carte : <b>" + esc(m.name) + "</b> · " + esc((D.DIFFICULTIES[hp.diff] || {}).name || "") + " (choisies par l'hôte)" : "") + "</p>" +
           '<div class="play-bar"><span class="waiting">' + (hp ? "En attente du lancement par " + esc(hp.name) + "…" : "En attente de l'hôte…") + "</span></div>";
       }
       return html;
@@ -1982,6 +2198,8 @@
     tchar: function (id) { inspect.char = id; if (charAvailable(charById(id))) S.char = id; save(); SND.click(); go("play"); },
     tmap: function (id) { inspect.map = id; if (has(mapById(id).unlock)) S.map = id; save(); SND.click(); go("play"); },
     diff: function (k) { S.diff = k; save(); SND.click(); go("play"); },
+    mode: function (k) { S.mode = k === "arena" ? "arena" : "survie"; save(); SND.click(); go("play"); },
+    lmode: function (k) { if (Net.role !== "host") return; S.mode = k === "arena" ? "arena" : "survie"; save(); trackMe(); SND.click(); go("lobby"); },
     buychar: function (id) {
       var c = charById(id);
       if (S.gold < c.price || charAvailable(c)) return;
@@ -2071,6 +2289,7 @@
     "opt-pause": function () { S.opts.sound = !S.opts.sound; save(); muteLabel(); if (netMenuOpen) { netMenu(); return; } state = "play"; pause(); },
     menu: function () { go("menu"); },
   };
+  Object.keys(ACTIONS_LATE).forEach(function (k) { ACTIONS[k] = ACTIONS_LATE[k]; });
   card.addEventListener("click", function (e) {
     var ch = e.target.closest("[data-choice]");
     if (ch) { if (state === "levelup" || picking) { try { apply(currentChoices[Number(ch.dataset.choice)]); } catch (err) { showError(err); } } return; }
@@ -2224,7 +2443,7 @@
     Net.on = true; Net.role = asHost ? "host" : "guest"; Net.code = code; Net.status = "connexion"; Net.err = ""; Net.started = false; Net.roster = [];
     var ch = cl.channel("es-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: Net.id } } });
     ch.on("presence", { event: "sync" }, onPresence);
-    ["start", "s", "in", "pick", "end"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
+    ["start", "s", "in", "pick", "end", "round", "next", "rdy"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
     ch.on("broadcast", { event: "sig" }, function (msg) { try { onSignal(msg.payload); } catch (err) { try { console.warn(err); } catch (e) {} } });
     ch.subscribe(function (status) {
       Net.status = status;
@@ -2242,7 +2461,7 @@
   }
   function trackMe() {
     if (!Net.ch) return;
-    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), char: S.char, host: Net.role === "host", map: S.map, diff: S.diff,
+    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), char: S.char, host: Net.role === "host", map: S.map, diff: S.diff, mode: S.mode || "survie",
                    prog: { shop: S.shop, tree: S.tree, pr: S.prestige, pu: S.pshop }, ingame: Net.started, ts: Net.joinTs || (Net.joinTs = Date.now()) });
   }
   function onPresence() {
@@ -2286,22 +2505,37 @@
       p = pp; applyCore(d.c); p = me;
       return;
     }
-    if (ev === "s" && Net.role === "guest") { receiveSnap(d); return; }
+    if (ev === "s" && Net.role === "guest") { if (!(isArena() && r.phase === "shop")) receiveSnap(d); return; }
+    if (ev === "round" && Net.role === "guest" && r && state === "play") {
+      r.round = d.n; r.phase = "shop"; r.ready = {}; r.roundKills = 0;
+      if (d.lv > r.level) { pending += d.lv - r.level; r.level = d.lv; }
+      enemies = []; clearField(); gems = []; Net.cur = Net.prev = null;
+      beginIntermission(d.inc);
+      return;
+    }
+    if (ev === "next" && Net.role === "guest" && r && state === "play") {
+      r.round = d.n; r.roundT = 0; r.roundLen = A.roundTime(d.n); r.phase = "fight"; r.ready = {};
+      r.mod = A.mods.filter(function (m) { return m.id === d.mod; })[0] || null;
+      picking = false; me.choosing = false; hideCard(); sendInput();
+      return;
+    }
+    if (ev === "rdy" && Net.role === "host" && r && r.phase === "shop") { markReady(d.id); return; }
     if (ev === "end" && Net.role === "guest" && state !== "over") {
+      if (d.won) r.won = true;
       if (d.r) { r.time = d.r[0]; r.kills = d.r[1]; r.level = d.r[2]; r.bosses = d.r[3]; r.gold = d.r[4]; }
       gameOver(!!d.q, d.q ? "L'hôte a mis fin à la partie." : "");
     }
   }
   function hostStart() {
     if (Net.role !== "host") return;
-    var info = { map: S.map, diff: S.diff, roster: Net.roster.slice(0, MAX_PLAYERS).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0, pshop: g.pu || {} }; }) };
+    var info = { map: S.map, diff: S.diff, mode: S.mode || "survie", roster: Net.roster.slice(0, MAX_PLAYERS).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0, pshop: g.pu || {} }; }) };
     if (!info.roster.some(function (x) { return x.id === Net.id; })) info.roster.unshift({ id: Net.id, name: S.name || "Hôte", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige, pshop: S.pshop });
     netSend("start", info);
     startOnline(info);
   }
   function startOnline(info) {
     Net.started = true; Net.ev = []; Net.acc = 0; Net.inAcc = 0; Net.cur = Net.prev = null;
-    reset(info.roster, info.map, info.diff);
+    reset(info.roster, info.map, info.diff, info.mode);
     Net.lastLevel = 1;
     S.stats.played[me.char.id] = true; S.stats.maps[MAP.id] = true; save();
     trackMe();
@@ -2351,7 +2585,7 @@
       return [o.id, R1(o.x), R1(o.y), o.face, o.moving ? 1 : 0, Math.ceil(o.hp), R1(o.maxHp), o.down ? 1 : 0, o.choosing ? 1 : 0, o.inv > 0 ? 1 : 0,
               o.name, o.sprite, o.weapons, orb, Math.round(o.area * 100), o.amount, o.shield ? 1 : 0, Math.round(o.reviveT * 10)];
     });
-    return { r: [Math.round(r.time * 10), r.kills, r.level, Math.round(Math.min(1, xp / xpNext) * 1000), Math.floor(r.gold), r.bosses, Math.round(r.freeze * 10), Math.round(r.flash * 100)],
+    return { r: [Math.round(r.time * 10), r.kills, r.level, Math.round(Math.min(1, xp / xpNext) * 1000), Math.floor(r.gold), r.bosses, Math.round(r.freeze * 10), Math.round(r.flash * 100), r.round, Math.round(r.roundT * 10)],
              e: e, pr: pr, lb: lb, g: g, h: h, w: w, pl: pl, b: curBoss ? [curBoss.d.name, Math.round(curBoss.hp / curBoss.maxHp * 1000)] : 0, ev: Net.ev };
   }
   // ---------- invité : réception et lissage ----------
@@ -2360,6 +2594,7 @@
     Net.prev = Net.cur; Net.cur = { s: d, at: performance.now() };
     var rr = d.r;
     r.time = rr[0] / 10; r.kills = rr[1]; r.gold = rr[4]; r.bosses = rr[5]; r.freeze = rr[6] / 10; r.flash = rr[7] / 100;
+    if (isArena() && rr[8]) { r.round = rr[8]; r.roundT = rr[9] / 10; r.roundLen = A.roundTime(r.round); }
     xp = rr[3]; xpNext = 1000;
     if (rr[2] > r.level) { pending += rr[2] - r.level; r.level = rr[2]; }
     // joueurs
@@ -2397,6 +2632,8 @@
   }
   function updateGuest(dt) {
     var now = performance.now();
+    if (isArena() && r.phase === "shop") { tickFx(dt); return; }
+    if (isArena()) r.roundT = Math.min(r.roundLen, r.roundT + dt);
     moveMe(dt);
     me.anim += dt * (me.moving || SPR[me.sprite].flying ? 8 : 0);
     me.inv -= dt;
@@ -2442,7 +2679,7 @@
     tickFx(dt);
     achTick -= dt;
     if (achTick <= 0) { achTick = 1; checkAchievements(r); }
-    if (pending > 0 && !picking && !me.down && state === "play") openLevelUp();
+    if (pending > 0 && !picking && !me.down && state === "play" && !isArena()) openLevelUp();
   }
   Net.anims = {};
 
@@ -2453,7 +2690,7 @@
   function start() {
     if (Net.on) { if (Net.role === "host") hostStart(); return; }
     sanitize();
-    reset();
+    reset(null, null, null, S.mode || "survie");
     S.stats.played[CH.id] = true; S.stats.maps[MAP.id] = true; save();
     beginPlay();
   }
@@ -2510,7 +2747,7 @@
   function gameOver(quit, reason) {
     if (state === "over") return;
     var online = Net.on && Net.started;
-    if (online && Net.role === "host") netSend("end", { q: quit ? 1 : 0, r: [r.time, r.kills, r.level, r.bosses, r.gold] });
+    if (online && Net.role === "host") netSend("end", { q: quit ? 1 : 0, won: r.won ? 1 : 0, r: [r.time, r.kills, r.level, r.bosses, r.gold] });
     if (online) { Net.started = false; if (Net.role === "guest" && quit && !reason) netLeave(); else trackMe(); }
     picking = false; netMenuOpen = false;
     state = "over"; SND.over();
@@ -2534,7 +2771,7 @@
     }).join("") + "</ul></div>" : "";
     var lbOk = window.Leaderboard && Leaderboard.configured() && !r.coop;
     var html = '<span class="kicker">' + esc(reason || (quit ? "Partie abandonnée" : "Les bestioles ont gagné…")) + "</span><h2>Fin de partie" + (r.coop ? " (coop)" : "") + "</h2>" +
-      '<ul class="over-stats"><li><span>Survie</span><strong>' + fmtTime(r.time) + "</strong></li><li><span>Ennemis</span><strong>" + r.kills + "</strong></li><li><span>Niveau</span><strong>" + r.level + "</strong></li>" +
+      '<ul class="over-stats"><li><span>' + (isArena() ? "Manche" : "Survie") + "</span><strong>" + (isArena() ? (r.won ? A.rounds : r.round) + " / " + A.rounds : fmtTime(r.time)) + "</strong></li><li><span>Ennemis</span><strong>" + r.kills + "</strong></li><li><span>Niveau</span><strong>" + r.level + "</strong></li>" +
       '<li class="total"><span>Score' + (DIFF.score > 1 ? " (×" + fr(DIFF.score) + ")" : "") + "</span><strong>" + sc.toLocaleString("fr-FR") + "</strong></li>" +
       '<li class="gold"><span>Glands d\'or gagnés</span><strong>+' + gold + " " + goldIc() + "</strong></li></ul>" +
       '<p class="rank-line">+' + rankGain + " XP de rang · <b>Rang " + S.rank + "</b>" + (ranksUp ? ' <span class="rank-up">Rang supérieur ! +' + ranksUp + " point" + (ranksUp > 1 ? "s" : "") + " de compétence</span>" : "") + "</p>" +
@@ -2555,9 +2792,9 @@
       if (name.length < 2) { msg.textContent = "Choisis un pseudo d'au moins 2 caractères."; return; }
       S.name = name; save();
       btn.disabled = true; msg.textContent = "Envoi…";
-      Leaderboard.submit(GAME_ID, name, sc, { time: Math.floor(r.time), kills: r.kills, level: r.level, char: r.char, map: r.map, diff: S.diff }).then(function (res) {
+      Leaderboard.submit(isArena() ? GAME_ID_ARENA : GAME_ID, name, sc, { time: Math.floor(r.time), kills: r.kills, level: r.level, char: r.char, map: r.map, diff: S.diff }).then(function (res) {
         msg.textContent = res && res.rank ? "Envoyé ! Tu es " + res.rank + (res.rank === 1 ? "er" : "e") + " au classement." : "Envoyé !";
-        document.querySelectorAll('[data-leaderboard="' + GAME_ID + '"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
+        document.querySelectorAll('[data-leaderboard="' + (isArena() ? GAME_ID_ARENA : GAME_ID) + '"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
       }).catch(function (err) { msg.textContent = Leaderboard.message(err); btn.disabled = false; });
     });
   }
@@ -2671,6 +2908,7 @@
     drop: function (kind) { if (p) drop(kind, p.x + 20, p.y); },
     level: function () { if (p) { pending++; } },
     warns: function () { return warns && warns.length; },
+    endRound: function () { if (r && isArena() && r.phase === "fight") r.roundT = r.roundLen; },
     choose: function (i, on) { if (players[i]) players[i].choosing = on !== false; },
     place: function (i, x, y) { if (players[i]) { players[i].x = players[i].tx = x; players[i].y = players[i].ty = y; } },
     pl: function (i) { var o = players[i]; return o ? { id: o.id, x: Math.round(o.x), y: Math.round(o.y), choosing: o.choosing, down: o.down, me: o === me } : null; },

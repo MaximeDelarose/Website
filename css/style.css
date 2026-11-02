@@ -1041,3 +1041,23 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .link-tag { font-size: .72rem; font-weight: 800; padding: 1px 6px; border: 2px solid var(--line); background: var(--panel); white-space: nowrap; }
 .link-tag.direct { background: #9cc56b; color: #1f3a2b; }
 .link-tag.relay { background: #f6d36b; color: #2b1709; }
+
+/* --- 0.12 : mode Arène --- */
+.coins-line { margin: 4px 0 8px; font-size: 1.1rem; }
+.coins-line small { display: block; font-size: .78rem; color: var(--ink-soft); }
+.choices.ashop { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.choice.offer { padding-bottom: 8px; }
+.choice.offer .price { font-weight: 900; font-size: .95rem; padding: 2px 10px; background: #f6d36b; color: #2b1709; border: 2px solid var(--line); }
+.choice.offer[disabled] { opacity: .55; cursor: not-allowed; transform: none; }
+.choice.offer.is-sold { opacity: .35; }
+.next-round { margin: 10px 0 0; font-size: .88rem; color: var(--berry) !important; }
+.btn-row .waiting { font-weight: 800; color: var(--ink-soft); }
+.mode-desc { margin: 2px 0 0; }
+.game-lb .leaderboard + .leaderboard { margin-top: 16px; }
+@media (max-width: 760px) {
+  .choices.ashop { grid-template-columns: 1fr; gap: 6px; }
+  .choices.ashop .choice { flex-direction: row; text-align: left; align-items: center; padding: 8px 10px; }
+  .choices.ashop .choice-text { flex: 1; min-width: 0; }
+  .choices.ashop .choice-text > span:not(.syn) { font-size: .8rem; }
+  .choices.ashop .price { flex: none; }
+}
