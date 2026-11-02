@@ -16,7 +16,7 @@
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
   var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.14.0";
+  var VERSION = "0.14.1";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -256,7 +256,7 @@
     enemies = []; projs = []; hostile = []; lobs = []; gems = []; fx = []; texts = []; warns = [];
     biomeCache = new Map();
     if (chestOpen) chestOpen.t.forEach(clearTimeout);
-    chestOpen = null; chestQueue = [];
+    chestOpen = null; chestQueue = []; chestHideMini();
     xp = 0; xpNext = need(1); pending = me.tree.f5 ? 1 : 0; picking = false; netMenuOpen = false;
     spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
@@ -1610,11 +1610,18 @@
     }
     return ROUL[(Math.random() * ROUL.length) | 0];
   }
+  var croot = null, chestMini = null;
+  function chestMiniEl() {
+    if (!chestMini) { chestMini = document.createElement("div"); chestMini.className = "chest-mini"; chestMini.hidden = true; chestMini.setAttribute("aria-hidden", "true"); stage.appendChild(chestMini); }
+    return chestMini;
+  }
+  function chestHideMini() { if (chestMini) { chestMini.hidden = true; chestMini.innerHTML = ""; } }
   function openChest() {
     p = me;
     var tier = chestQueue.shift(), T = CHEST_TIERS[tier], items = [], i;
-    if (players.length > 1 || isArena()) { picking = true; me.choosing = true; sendInput(); } else state = "levelup";
-    clearInput();
+    // en multijoueur : petit bandeau en haut de l'écran, le jeu continue
+    var mini = players.length > 1;
+    if (!mini) { if (isArena()) { picking = true; me.choosing = true; sendInput(); } else state = "levelup"; clearInput(); }
     // les gains sont tirés et appliqués tout de suite, l'animation ne fait que les révéler
     chestSilent = true;
     for (i = 0; i < T.n; i++) {
@@ -1625,17 +1632,19 @@
     var g0 = r.gold; addGold(CHEST_GOLD[tier]);
     var slots = "";
     for (i = 0; i < T.n; i++) slots += '<div class="cslot" data-cslot="' + i + '"><div class="cslot-box"><img alt="" src="' + spriteUrl(rouletteIcon()) + '"></div><b></b><em></em></div>';
-    showCard('<div class="chest-stage t0" data-cstage data-action="chestok">' +
+    var html = '<div class="chest-stage t0" data-cstage data-action="chestok">' +
       '<div class="chest-rays"></div><div class="chest-flash"></div>' +
       '<div class="chest-title" data-ctitle>? ? ?</div>' +
       '<div class="chest-box drop" data-cbox><img src="' + spriteUrl("chest") + '" alt=""></div>' +
       '<div class="chest-parts" data-cparts></div>' +
       '<div class="chest-items n' + T.n + '">' + slots + "</div>" +
       '<div class="chest-gold" data-cgold>+0 ' + goldIc() + "</div></div>" +
-      '<div class="btn-row center"><button class="btn btn-ghost btn-small" type="button" data-action="chestok" data-cok>Passer ⏩</button></div>', "chest");
-    var co = chestOpen = { tier: tier, items: items, gold: Math.round(r.gold - g0), shown: 0, t: [], done: false };
-    function at(ms, fn) { co.t.push(setTimeout(function () { if (chestOpen !== co || screen !== "chest") return; fn(); }, ms)); }
-    var st = card.querySelector("[data-cstage]"), box = card.querySelector("[data-cbox]");
+      (mini ? "" : '<div class="btn-row center"><button class="btn btn-ghost btn-small" type="button" data-action="chestok" data-cok>Passer ⏩</button></div>');
+    if (mini) { croot = chestMiniEl(); croot.innerHTML = html; croot.hidden = false; }
+    else { showCard(html, "chest"); croot = card; }
+    var co = chestOpen = { tier: tier, items: items, gold: Math.round(r.gold - g0), shown: 0, t: [], done: false, mini: mini };
+    function at(ms, fn) { co.t.push(setTimeout(function () { if (chestOpen !== co) return; if (co.mini ? state !== "play" && state !== "levelup" : screen !== "chest") return; fn(); }, ms)); }
+    var st = croot.querySelector("[data-cstage]"), box = croot.querySelector("[data-cbox]");
     SND.boom();
     // 1. le coffre tremble de plus en plus ; il change de couleur s'il est plus rare
     var shakeEnd = 1300 + tier * 900;
@@ -1658,19 +1667,19 @@
   function chestTier(st, n) {
     st.classList.remove("t0", "t1", "t2", "flash"); st.classList.add("t" + n);
     void st.offsetWidth; st.classList.add("flash");
-    card.classList.remove("cshake"); void card.offsetWidth; card.classList.add("cshake");
+    croot.classList.remove("cshake"); void croot.offsetWidth; croot.classList.add("cshake");
     sfx(n === 2 ? 330 : 220, 0.45, "sawtooth", 0.05, 4);
     arp(n === 2 ? [659, 831, 988, 1319] : [523, 659, 784], 70, "triangle", 0.05);
-    var t = card.querySelector("[data-ctitle]"); if (t) t.textContent = n === 2 ? "! ! !" : "! ? !";
+    var t = croot.querySelector("[data-ctitle]"); if (t) t.textContent = n === 2 ? "! ! !" : "! ? !";
   }
   function chestBurst(co) {
-    var st = card.querySelector("[data-cstage]"), box = card.querySelector("[data-cbox]"), parts = card.querySelector("[data-cparts]"), t = card.querySelector("[data-ctitle]");
+    var st = croot.querySelector("[data-cstage]"), box = croot.querySelector("[data-cbox]"), parts = croot.querySelector("[data-cparts]"), t = croot.querySelector("[data-ctitle]");
     if (!st) return;
     box.classList.remove("shake1", "shake2", "drop"); box.classList.add("open");
     box.querySelector("img").src = spriteUrl("chestopen");
     st.classList.add("open"); st.classList.remove("flash"); void st.offsetWidth; st.classList.add("flash");
     t.textContent = CHEST_TIERS[co.tier].name; t.classList.add("show");
-    card.classList.remove("cshake"); void card.offsetWidth; card.classList.add("cshake");
+    croot.classList.remove("cshake"); void croot.offsetWidth; croot.classList.add("cshake");
     var cols = [["#4aa3df", "#bfe6ff", "#f6d36b"], ["#b07cf0", "#e6d2ff", "#f6d36b"], ["#f6c445", "#fff3b0", "#ff9a3d"]][co.tier], html = "";
     for (var i = 0; i < 18 + co.tier * 14; i++) {
       var a = Math.random() * Math.PI * 2, d = 60 + Math.random() * (110 + co.tier * 40);
@@ -1680,7 +1689,7 @@
     SND.boom(); arp([523, 659, 784, 1047, 1319].slice(0, 3 + co.tier), 60, "square", 0.045);
   }
   function chestRoll(co, i, start, dur, at) {
-    var el = card.querySelector('[data-cslot="' + i + '"]'); if (!el) return;
+    var el = croot.querySelector('[data-cslot="' + i + '"]'); if (!el) return;
     var im = el.querySelector("img");
     at(start, function () { el.classList.add("spin"); });
     for (var tt = 0, k = 0; tt < dur; k++, tt += 45 + Math.pow(tt / dur, 2) * 230) (function (k, tt) {
@@ -1689,13 +1698,13 @@
     at(start + dur, function () { chestLand(co, i, true); });
   }
   function chestLand(co, i, loud) {
-    var el = card.querySelector('[data-cslot="' + i + '"]'); if (!el || el.classList.contains("landed")) return;
+    var el = croot.querySelector('[data-cslot="' + i + '"]'); if (!el || el.classList.contains("landed")) return;
     var info = rewardInfo(co.items[i]);
     el.querySelector("img").src = spriteUrl(info.icon);
     el.classList.remove("spin"); el.classList.add("landed"); if (info.fx) el.classList.add("fx");
     el.querySelector("b").textContent = info.name; el.querySelector("em").textContent = info.sub;
     co.shown++;
-    var g = card.querySelector("[data-cgold]");
+    var g = croot.querySelector("[data-cgold]");
     if (g) { g.innerHTML = "+" + Math.round(co.gold * co.shown / co.items.length) + " " + goldIc(); g.classList.remove("bump"); void g.offsetWidth; g.classList.add("bump"); }
     if (loud) { if (info.fx) SND.fusion(); else { sfx(880 + co.tier * 220, 0.14, "triangle", 0.05); SND.gold(); } }
   }
@@ -1704,24 +1713,26 @@
     co.done = true;
     if (!natural) {
       co.t.forEach(clearTimeout); co.t = [];
-      var st = card.querySelector("[data-cstage]");
+      var st = croot.querySelector("[data-cstage]");
       if (st) { st.classList.add("rays-on"); if (!st.classList.contains("open")) { if (co.tier) chestTier(st, co.tier); chestBurst(co); } }
       co.items.forEach(function (c, i) { chestLand(co, i, false); });
       if (co.items.some(function (c) { return c.type === "f"; })) SND.fusion();
     }
-    var ok = card.querySelector("[data-cok]");
+    if (co.mini) { co.t.push(setTimeout(function () { if (chestOpen === co) closeChest(); }, natural ? 1800 : 600)); return; }
+    var ok = croot.querySelector("[data-cok]");
     if (ok) { ok.textContent = "Continuer"; ok.className = "btn"; ok.focus({ preventScroll: true }); }
   }
   function closeChest() {
     var co = chestOpen; if (!co) return;
     co.t.forEach(clearTimeout); chestOpen = null;
+    if (co.mini) { var el = chestMiniEl(); el.classList.add("out"); setTimeout(function () { if (!chestOpen || !chestOpen.mini) { el.hidden = true; el.innerHTML = ""; } el.classList.remove("out"); }, 250); return; }
     if (chestQueue.length && !me.down && state !== "over") { openChest(); return; }
     if (picking) { picking = false; me.choosing = false; hideCard(); sendInput(); }
     else { state = "play"; hideCard(); last = performance.now(); }
   }
   function chestCheck() {
-    if (chestOpen && screen !== "chest") { chestOpen.t.forEach(clearTimeout); chestOpen = null; }
-    if (chestQueue.length && !chestOpen && !picking && !me.down && state === "play" && !(isArena() && r.phase === "shop")) openChest();
+    if (chestOpen && !chestOpen.mini && screen !== "chest") { chestOpen.t.forEach(clearTimeout); chestOpen = null; }
+    if (chestQueue.length && !chestOpen && (players.length > 1 || !picking) && !me.down && state === "play" && !(isArena() && r.phase === "shop")) openChest();
   }
   function collect(g, pl) {
     pl = pl || me;
@@ -3191,6 +3202,8 @@
   }
 
   function gameOver(quit, reason) {
+    if (chestOpen && chestOpen.mini) { chestOpen.t.forEach(clearTimeout); chestOpen = null; }
+    chestHideMini();
     if (state === "over") return;
     var online = Net.on && Net.started;
     if (online && Net.role === "host") netSend("end", { q: quit ? 1 : 0, won: r.won ? 1 : 0, r: [r.time, r.kills, r.level, r.bosses, r.gold] });
