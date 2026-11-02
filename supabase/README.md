@@ -17,7 +17,7 @@ fonctions `security definer` qui vérifient tout :
 | `rd_load()` | progression d'Écureuil Dice (créée au premier appel) |
 | `rd_import(p)` | reprise **unique** de la sauvegarde du navigateur, plafonnée (1 500 glands, niveau 3, 10 exemplaires) |
 | `rd_set_deck(deck)` | deck : seulement des écureuils possédés, sans doublon, 5 max |
-| `rd_open_chest(id)` | prix vérifié, tirage fait par le serveur |
+| `rd_open_chests(id, n)` | 1 ou 10 coffres (10 = prix de 9), prix vérifié, tirage fait par le serveur |
 | `rd_level_up(type)` | exemplaires et glands vérifiés |
 | `rd_start_run(mode)` / `rd_end_run(...)` | une partie est ouverte puis fermée ; la vague est bornée par la durée réelle (au mieux une vague / 7 s), gains calculés par le serveur (500 max), succès attribués par le serveur, 60 parties / heure max |
 

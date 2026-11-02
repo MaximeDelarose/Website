@@ -1448,3 +1448,10 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 @media (prefers-reduced-motion: reduce) {
   .rd-cfx-rays, .rd-cfx-chest, .rd-cfx-card, .rd-cfx-p, .rd-cfx::after { animation: none !important; }
 }
+/* coffres : ×10 et rouvrir */
+.rd-chest .btn { margin: 0 0 4px; }
+.rd-x10 { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.rd-x10 small { font-size: .7rem; font-weight: 800; opacity: .85; }
+.rd-cfx-x { display: inline-block; margin-left: 6px; padding: 0 8px; background: #c8553d; border: 3px solid #2b1709; color: #fff; transform: rotate(-4deg); animation: rd-stamp .35s cubic-bezier(.3, 1.6, .5, 1) .5s both; }
+.rd-again { margin-top: 6px; }
+.rd-gold-left { margin: 4px 0 0; }

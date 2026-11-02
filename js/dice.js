@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.4.0";
+  var VERSION = "0.4.1";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -888,11 +888,16 @@
     return "commun";
   }
   var RORD = ["commun", "rare", "epique", "legendaire"];
-  function openChest(c) {
+  // prix d'un lot : 10 coffres = prix de 9
+  function chestPrice(c, n) { return c.price * (n === 10 ? 9 : 1); }
+  function chestFree(c, n) { return n === 1 && c.id === "bois" && S.keys >= D.KEYS_FOR_FREE; }
+  function canOpen(c, n) { return !Cloud.busy && (chestFree(c, n) || S.gold >= chestPrice(c, n)); }
+  function openChest(c, n) {
     var got = {}, order = [];
-    for (var i = 0; i < c.cards; i++) {
+    n = n || 1;
+    for (var i = 0; i < c.cards * n; i++) {
       var r = rollRarity(c.luck);
-      if (i === 0 && c.minRarity && RORD.indexOf(r) < RORD.indexOf(c.minRarity)) r = c.minRarity;
+      if (i % c.cards === 0 && c.minRarity && RORD.indexOf(r) < RORD.indexOf(c.minRarity)) r = c.minRarity; // garantie : 1 par coffre
       var pool = D.ORDER.filter(function (k) { return T[k].rarity === r; }), k = pool[(Math.random() * pool.length) | 0];
       if (!got[k]) { got[k] = { n: 0, isNew: !owned(k) }; order.push(k); }
       got[k].n++;
@@ -903,7 +908,7 @@
       else S.cards[k] = (S.cards[k] || 0) + g.n;
     });
     order.sort(function (a, b) { return RORD.indexOf(T[a].rarity) - RORD.indexOf(T[b].rarity); });
-    S.chests = (S.chests || 0) + 1;
+    S.chests = (S.chests || 0) + n;
     save();
     return { got: got, order: order };
   }
@@ -932,13 +937,14 @@
     setTimeout(function () { stage.classList.remove(cls); }, 450);
   }
   // resP : Promise<{ got, order }> (tirage local ou serveur) ; la séquence démarre sans attendre le serveur
-  function chestFx(c, resP) {
+  function chestFx(c, resP, n) {
+    n = n || 1;
     var art = chestImgs(c.id), res = null, failed = null, step = 0, idx = -1, taps = 0, done = false, timer = 0;
     var layer = document.createElement("div");
     layer.className = "rd-cfx"; layer.setAttribute("role", "dialog"); layer.setAttribute("aria-label", "Ouverture du " + c.name);
     layer.innerHTML =
       '<div class="rd-cfx-rays"></div>' +
-      '<div class="rd-cfx-title">' + esc(c.name) + "</div>" +
+      '<div class="rd-cfx-title">' + esc(c.name) + (n > 1 ? ' <span class="rd-cfx-x">×' + n + "</span>" : "") + "</div>" +
       '<div class="rd-cfx-chest"><div class="rd-cfx-glow"></div><img class="rd-cfx-base" src="' + art.base + '" alt=""><img class="rd-cfx-lid" src="' + art.lid + '" alt=""></div>' +
       '<div class="rd-cfx-card" hidden></div>' +
       '<div class="rd-cfx-hint">Touche le coffre pour l\'ouvrir</div>' +
@@ -1038,7 +1044,7 @@
       done = true; clearTimeout(timer);
       layer.classList.add("is-out");
       setTimeout(function () { layer.remove(); }, 250);
-      openedScreen(c, res, true);
+      openedScreen(c, res, true, n);
     }
     function abort() {
       done = true; clearTimeout(timer); layer.remove();
@@ -1051,15 +1057,20 @@
     });
   }
 
-  function openedScreen(c, res, fast) {
+  function openedScreen(c, res, fast, n) {
+    n = n || 1;
+    var ci = D.CHESTS.indexOf(c), againFree = chestFree(c, n);
     var best = res.order[res.order.length - 1], bestR = T[best].rarity;
-    openedHtml = '<h2>' + esc(c.name) + "</h2>" +
+    openedHtml = '<h2>' + esc(c.name) + (n > 1 ? " ×" + n : "") + "</h2>" +
       (fast ? "" : '<div class="rd-open-chest" style="--cc:' + c.color + '"><img src="' + sprUrl("chest") + '" alt=""></div>') +
       '<div class="rd-reveal">' + res.order.map(function (k, i) {
         var g = res.got[k];
         return '<div class="rd-card-got r-' + T[k].rarity + '" style="animation-delay:' + (fast ? i * 0.04 : 0.6 + i * 0.18).toFixed(2) + 's">' + dieHtml(k) +
           '<b>' + esc(T[k].name) + "</b><small>×" + g.n + "</small>" + (g.isNew ? '<em class="rd-new">NOUVEAU</em>' : "") + "</div>";
       }).join("") + "</div>" +
+      '<div class="btn-row center rd-again"><button class="btn btn-alt" type="button" data-action="open" data-arg="' + ci + ":" + n + '"' + (canOpen(c, n) ? "" : " disabled") + ">↻ Rouvrir" + (n > 1 ? " ×" + n : "") + " · " + (againFree ? "Gratuit 🗝" : goldIc() + " " + chestPrice(c, n)) + "</button>" +
+      (n === 1 && canOpen(c, 10) ? '<button class="btn btn-small" type="button" data-action="open" data-arg="' + ci + ':10">×10 · ' + goldIc() + " " + chestPrice(c, 10) + "</button>" : "") + "</div>" +
+      '<p class="game-small rd-gold-left">' + goldIc() + " " + S.gold + " glands d'or restants</p>" +
       '<div class="btn-row center"><button class="btn" type="button" data-action="go" data-arg="deck">🃏 Voir le deck</button><button class="btn btn-ghost" type="button" data-action="go" data-arg="chests">🎁 Coffres</button></div>';
     show("opened");
     if (!fast) setTimeout(function () { if (bestR === "legendaire") SND.win(); else if (bestR === "epique") SND.merge(5); else SND.pu(); }, 600);
@@ -1140,10 +1151,11 @@
         '<p class="game-small">Chaque partie terminée donne une clé ; ' + D.KEYS_FOR_FREE + " clés ouvrent un coffre en bois gratuit. Les coffres se paient seulement en glands d'or gagnés en jouant.</p>" +
         '<div class="rd-chest-list">';
       D.CHESTS.forEach(function (c, i) {
-        var isFree = i === 0 && free, ok = !Cloud.busy && (isFree || S.gold >= c.price);
+        var isFree = chestFree(c, 1);
         html += '<div class="rd-chest" style="--cc:' + c.color + '"><img src="' + sprUrl("chest") + '" alt=""><strong>' + esc(c.name) + "</strong>" +
           "<span>" + c.cards + " écureuils" + (c.minRarity ? " · au moins 1 " + D.RARITY[c.minRarity].name.toLowerCase() : "") + "</span>" +
-          '<button class="btn btn-small' + (isFree ? " btn-alt" : "") + '" type="button" data-action="open" data-arg="' + i + '"' + (ok ? "" : " disabled") + ">" + (isFree ? "Gratuit 🗝" : "Ouvrir " + goldIc() + " " + c.price) + "</button></div>";
+          '<button class="btn btn-small' + (isFree ? " btn-alt" : "") + '" type="button" data-action="open" data-arg="' + i + ':1"' + (canOpen(c, 1) ? "" : " disabled") + ">" + (isFree ? "Gratuit 🗝" : "Ouvrir " + goldIc() + " " + c.price) + "</button>" +
+          '<button class="btn btn-small btn-alt rd-x10" type="button" data-action="open" data-arg="' + i + ':10"' + (canOpen(c, 10) ? "" : " disabled") + "><span>×10 · " + goldIc() + " " + chestPrice(c, 10) + '</span><small>1 coffre offert</small></button></div>';
       });
       if (Cloud.busy) html += '</div><p class="game-small">☁ Ouverture du coffre par le serveur…</p><div>';
       if (Cloud.err) html += '</div><p class="net-err">' + esc(Cloud.err) + "</p><div>";
@@ -1295,21 +1307,21 @@
       save(); SND.merge(4); show("deck", true);
     },
     open: function (a) {
-      var c = D.CHESTS[+a]; if (!c || Cloud.busy) return;
+      var parts = String(a).split(":"), c = D.CHESTS[+parts[0]], n = +parts[1] === 10 ? 10 : 1;
+      if (!c || !canOpen(c, n)) return;
       if (Cloud.on) {
         Cloud.busy = true;
         // la séquence commence tout de suite, pendant que le serveur fait le tirage
-        chestFx(c, window.SiteAuth.rpc("rd_open_chest", { p_chest: c.id }).then(function (r) {
+        chestFx(c, window.SiteAuth.rpc("rd_open_chests", { p_chest: c.id, p_n: n }).then(function (r) {
           applyServer(r.profile); Cloud.busy = false;
           var order = (r.order || []).slice().sort(function (x, y) { return RORD.indexOf(T[x].rarity) - RORD.indexOf(T[y].rarity); });
           return { got: r.got, order: order };
-        }, function (err) { Cloud.busy = false; resync(); throw err; }));
+        }, function (err) { Cloud.busy = false; resync(); throw err; }), n);
         return;
       }
-      if (+a === 0 && S.keys >= D.KEYS_FOR_FREE) S.keys -= D.KEYS_FOR_FREE;
-      else if (S.gold >= c.price) S.gold -= c.price;
-      else return;
-      chestFx(c, Promise.resolve(openChest(c)));
+      if (chestFree(c, n)) S.keys -= D.KEYS_FOR_FREE;
+      else S.gold -= chestPrice(c, n);
+      chestFx(c, Promise.resolve(openChest(c, n)), n);
     },
     resume: function () { togglePause(); },
     admgold: function (a) { adminCall("rd_admin_gold", { p_amount: +a }, "+" + a + " glands d'or ajoutés."); },
