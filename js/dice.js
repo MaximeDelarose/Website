@@ -1004,8 +1004,6 @@
       if (swapK) swapK = null;
       if (owned(k) && S.deck.indexOf(k) < 0 && S.deck.length < 5) { S.deck.push(k); SND.summon(); } else SND.click();
       save(); show("deck", true);
-      var det = card.querySelector(".rd-detail");
-      if (det) { var r = det.getBoundingClientRect(), o = overlay.getBoundingClientRect(); if (r.top > o.bottom - 60) det.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
     },
     dslot: function (a) {
       var i = +a, k = S.deck[i];
