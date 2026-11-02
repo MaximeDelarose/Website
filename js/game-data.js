@@ -172,6 +172,25 @@ window.ES_DATA = (function () {
     rocket: { pal: { r: "#c8553d", w: "#e6e6e6", f: "#f6b468" }, frames: [["rr....", "fwwwwr", "rr...."]] },
     rockets: { pal: { r: "#c8553d", w: "#e6e6e6", f: "#f6b468" }, frames: [["rr....", "fwwwwr", "rr....", "..rr....", "..fwwwwr", "..rr...."]] },
     tail: { pal: { t: "#f2b05e", d: "#b85e2a" }, frames: [["..tt..", ".tttt.", "ttdttt", "ttd.tt", ".td.t.", "..d..."]] },
+    /* --- fusions légendaires --- */
+    canon: { pal: { n: "#a8741a", N: "#e0a82a", c: "#ffe27a", y: "#c8553d" }, frames: [[".nnn.", "nNNNn", ".cyc.", ".cyc.", "..y.."]] },
+    ouragan: { pal: { p: "#9a7fd1", c: "#7fd1c7", w: "#e6fff8" }, frames: [[".ppp.", "p..cp", "p.w.p", "pc..p", ".ppp."]] },
+    bosquet: { pal: { g: "#3f6b3a", G: "#9cc56b", b: "#6b4430", r: "#c8553d" }, frames: [["..ggg..", ".gGrGg.", "gGgGgGg", ".gGgGg.", "...b...", "...b..."]] },
+    ciel: { pal: { w: "#c9d6e3", W: "#ffffff", y: "#f6d36b" }, frames: [[".www..", "wWWWw.", "wwwwww", "..yy..", ".yy...", "yy...."]] },
+    meteore: { pal: { r: "#c8553d", o: "#e8873a", y: "#f6d36b" }, frames: [["....r", "...ro", "..roy", ".royy", "royy.", ".yy.."]] },
+    /* --- projectiles ennemis (toujours rouges) --- */
+    hshot: { pal: { r: "#d0281a", R: "#ff8a6a" }, frames: [[".rr.", "rRRr", "rRRr", ".rr."]] },
+    /* --- nouveaux ennemis --- */
+    bombshroom: { pal: { r: "#c8553d", w: "#fdf3de", s: "#f3e1c0", k: "#2b1709", y: "#f6d36b" }, frames: [
+      ["...y....", "...k....", ".rrrrrr.", "rrwrrwrr", "rrrrrrrr", "..skks..", "..ssss..", ".s....s."],
+      ["....y...", "...k....", ".rrrrrr.", "rrwrrwrr", "rrrrrrrr", "..skks..", "..ssss..", "..s..s.."]] },
+    frog: { pal: { G: "#2f7f7a", g: "#7fd1c7", y: "#e6f6fa", k: "#1f2a14", e: "#d0281a" }, frames: [
+      ["..kk..kk..", ".keek.keek", ".gGGGGGGg.", "gGGgGGgGGg", "gGkkkkkkGg", "GGyyyyyyGG", "G.G....G.G"],
+      ["..........", "..kk..kk..", ".keek.keek", ".gGGGGGGg.", "gGGgGGgGGg", "gGkkkkkkGg", "GGyyyyyyGG"]] },
+    mole: { pal: { m: "#4a3a4a", M: "#6a5a6a", k: "#1b1226", p: "#f29a85", c: "#f3e1c0" }, frames: [
+      ["...mmmm...", "..mMMMMm..", ".mMkMMkMm.", ".mMMppMMm.", "cmMMMMMMmc", "cc.mmmm.cc"],
+      ["...mmmm...", "..mMMMMm..", ".mMkMMkMm.", ".mMMppMMm.", ".cMMMMMMc.", ".cc.mm.cc."]] },
+    mound: { pal: { b: "#6b4430", B: "#8a5a3b" }, frames: [["...bb...", ".bBbBbb.", "bBbBbBbB"], ["..bb....", ".bbBbBb.", "BbBbBbBb"]] },
     cyclone: { pal: { t: "#f2b05e", d: "#b85e2a" }, frames: [[".ttt.", "t..dt", "t.d.t", "td..t", ".ttt."]] },
 
     /* --- objets (bonus de partie) --- */
@@ -283,6 +302,23 @@ window.ES_DATA = (function () {
     nuee: { name: "Nuée de lucioles", icon: "swarm", from: ["lucioles", "savoir"], type: "chain",
       desc: ["Une nuée d'éclairs qui illumine tout l'écran.", "+1 éclair.", "+dégâts.", "+2 sauts.", "+1 éclair, plus fréquent."],
       bolts: [4, 5, 5, 5, 6], chain: [6, 6, 6, 8, 9], dmg: [18, 18, 22, 22, 26], cd: [1.1, 1.05, 1.0, 0.95, 0.8] },
+
+    /* --- fusions légendaires (tier 2) : à partir de fusions déjà faites --- */
+    canon: { name: "Canon à glands", icon: "canon", tier: 2, from: ["gatling", "essaim"], type: "shooter", sprite: "goldacorn", explode: 16,
+      desc: ["Une rafale de glands dorés qui explosent à l'impact.", "+dégâts.", "+1 gland.", "Explosions plus larges.", "+1 gland, plus rapide."],
+      count: [3, 3, 4, 4, 5], dmg: [16, 20, 20, 22, 26], pierce: 1, cd: [0.3, 0.3, 0.28, 0.26, 0.22], spd: 220, range: 180, spread: 0.15, explodeR: [16, 16, 16, 22, 24] },
+    ouragan: { name: "Ouragan", icon: "ouragan", tier: 2, from: ["cyclone", "brume"], type: "aura", color: "hurricane",
+      desc: ["Un vortex qui aspire les ennemis et les déchiquette.", "+dégâts.", "Plus grand.", "Aspire plus fort.", "Tempête géante."],
+      R: [60, 60, 68, 70, 80], dmg: [14, 18, 18, 20, 26], tick: 0.3, slow: 0.4, push: [-40, -40, -45, -70, -80], spinCd: 0.8, spinDmg: [30, 36, 36, 40, 50] },
+    bosquet: { name: "Bosquet enchanté", icon: "bosquet", tier: 2, from: ["fees", "tempete"], type: "orbit", sprite: "mushroom", heal: 0.6, shootCd: 1.2,
+      desc: ["Les champignons des fées soignent et lancent des feuilles chercheuses.", "+1 champignon.", "+dégâts.", "Tirent plus souvent.", "+1 champignon, cercle plus grand."],
+      n: [7, 8, 8, 8, 9], R: [40, 40, 40, 42, 48], dmg: [20, 20, 25, 25, 30], spd: [3.2, 3.2, 3.4, 3.4, 3.8], leafDmg: [14, 14, 18, 18, 22] },
+    ciel: { name: "Ciel d'orage", icon: "ciel", tier: 2, from: ["orage", "nuee"], type: "storm",
+      desc: ["La foudre tombe du ciel sur tout l'écran et saute d'ennemi en ennemi.", "+1 éclair.", "+dégâts.", "+2 sauts.", "+2 éclairs, plus fréquent."],
+      strikes: [5, 6, 6, 6, 8], chain: [4, 4, 4, 6, 6], dmg: [30, 30, 38, 38, 46], cd: [1.2, 1.15, 1.1, 1.05, 0.85] },
+    meteores: { name: "Pluie de météores", icon: "meteore", tier: 2, from: ["pinbombe", "loupe"], type: "meteor",
+      desc: ["Des pommes de pin en feu tombent du ciel sur les ennemis.", "+1 météore.", "+dégâts.", "Explosions plus larges.", "+2 météores, plus fréquents."],
+      n: [3, 4, 4, 4, 6], dmg: [60, 60, 75, 75, 90], rad: [32, 32, 32, 40, 44], cd: [1.6, 1.5, 1.45, 1.4, 1.2], frag: 5 },
   };
 
   /* =====================================================================
@@ -320,23 +356,59 @@ window.ES_DATA = (function () {
      Cartes
      enemies : [type, apparaît à (s), poids]
      ===================================================================== */
+  var G_PRAIRIE = { base: "#7fa95a", patch: "#76a052", tuft: "#5b8a4a", hi: "#a6cf74", flowers: ["#fdf3de", "#f2b05e", "#c8553d", "#f6d36b"], pebble: "#b9ae96", pebbleDk: "#8a806c", shroom: "#c8553d" };
   var MAPS = [
-    { id: "clairiere", name: "Clairière", desc: "Une clairière ensoleillée. Parfait pour débuter.", prop: "stump", hp: 1, gold: 1,
-      ground: { base: "#7fa95a", patch: "#76a052", tuft: "#5b8a4a", hi: "#a6cf74", flowers: ["#fdf3de", "#f2b05e", "#c8553d", "#f6d36b"], pebble: "#b9ae96", pebbleDk: "#8a806c", shroom: "#c8553d" },
-      enemies: [["slug", 0, 4], ["beetle", 40, 4], ["wasp", 75, 3], ["spider", 110, 3], ["crow", 150, 3], ["toad", 220, 2], ["fox", 300, 2]],
-      swarm: ["slug", "wasp", "spider", "beetle"], bosses: ["boar", "owl"] },
-    { id: "marais", name: "Marais brumeux", desc: "Flaques, crapauds et papillons de nuit. Ennemis plus coriaces.", prop: "basket", hp: 1.15, gold: 1.25, unlock: "survie_3",
-      ground: { base: "#57735a", patch: "#4f6a52", tuft: "#33503a", hi: "#86a46a", flowers: ["#c9e3a0", "#e6f6fa", "#9ad0c4", "#f6d36b"], pebble: "#6f7a62", pebbleDk: "#4f5a48", shroom: "#9ad0c4", water: "#3d6b6e", waterHi: "#6fa8a8" },
-      enemies: [["slug", 0, 4], ["moth", 25, 4], ["toad", 70, 3], ["spider", 110, 3], ["hedgehog", 160, 3], ["crow", 220, 2], ["badger", 300, 2]],
-      swarm: ["moth", "slug", "spider", "toad"], bosses: ["owl", "boar"] },
-    { id: "automne", name: "Bois d'automne", desc: "Renards, lapins et hérissons sous les feuilles rousses.", prop: "leafpile", hp: 1.3, gold: 1.5, unlock: "boss_1",
-      ground: { base: "#b8833f", patch: "#ad7a3a", tuft: "#8a5a2b", hi: "#e8b25e", flowers: ["#c8553d", "#e8873a", "#f6d36b", "#8a5a3b"], pebble: "#9a8f7a", pebbleDk: "#6f6655", shroom: "#c8553d" },
-      enemies: [["bunny", 0, 4], ["fox", 35, 4], ["hedgehog", 80, 3], ["wasp", 110, 3], ["badger", 170, 2], ["crow", 220, 3]],
-      swarm: ["bunny", "fox", "wasp", "hedgehog"], bosses: ["boar", "owl"] },
-    { id: "nuit", name: "Nuit des lucioles", desc: "La forêt la nuit. Tout est plus dur… et rapporte deux fois plus.", prop: "lantern", hp: 1.5, gold: 2, unlock: "survie_10", night: true,
-      ground: { base: "#264634", patch: "#22402f", tuft: "#1b3326", hi: "#3f6b3a", flowers: ["#7fd1c7", "#c9b3ff", "#f2d48a", "#7fd1c7"], pebble: "#4b5a52", pebbleDk: "#33403a", shroom: "#7fd1c7" },
-      enemies: [["moth", 0, 4], ["spider", 25, 4], ["crow", 60, 3], ["fox", 100, 3], ["badger", 150, 2], ["toad", 200, 2]],
-      swarm: ["moth", "crow", "spider", "fox"], bosses: ["owl", "boar"] },
+    { id: "clairiere", name: "Clairière", desc: "Prairie, sous-bois et champignonnière. Parfait pour débuter.", hp: 1, gold: 1,
+      swarm: ["slug", "wasp", "spider", "beetle"], bosses: ["boar", "owl"],
+      biomes: [
+        { name: "Prairie", prop: "stump", ground: G_PRAIRIE,
+          enemies: [["slug", 0, 4], ["beetle", 40, 4], ["wasp", 75, 3], ["bombshroom", 120, 2], ["fox", 300, 2]] },
+        { name: "Sous-bois", prop: "stump", decor: "bush",
+          ground: { base: "#5f8a48", patch: "#567f41", tuft: "#3f6b3a", hi: "#86b56c", flowers: ["#fdf3de", "#f6d36b", "#9cc56b", "#e2d6ff"], pebble: "#9a8f7a", pebbleDk: "#6f6655", shroom: "#c8553d", bush: "#3a5f34", bushHi: "#5b8a4a" },
+          enemies: [["spider", 0, 4], ["beetle", 30, 3], ["crow", 60, 3], ["frog", 90, 3], ["toad", 220, 2]] },
+        { name: "Champignonnière", prop: "lantern", decor: "bigshroom",
+          ground: { base: "#7d7290", patch: "#73688a", tuft: "#5a4f6e", hi: "#a597b8", flowers: ["#f29ad8", "#e2d6ff", "#f6d36b", "#c8553d"], pebble: "#9a90a8", pebbleDk: "#6a6078", shroom: "#c8553d" },
+          enemies: [["bombshroom", 0, 4], ["moth", 0, 3], ["slug", 0, 2], ["toad", 150, 2]] },
+      ] },
+    { id: "marais", name: "Marais brumeux", desc: "Tourbière, étang et roselière. Ennemis plus coriaces.", hp: 1.15, gold: 1.25, unlock: "survie_3",
+      swarm: ["moth", "slug", "frog", "toad"], bosses: ["owl", "boar"],
+      biomes: [
+        { name: "Tourbière", prop: "basket", decor: "water",
+          ground: { base: "#57735a", patch: "#4f6a52", tuft: "#33503a", hi: "#86a46a", flowers: ["#c9e3a0", "#e6f6fa", "#9ad0c4", "#f6d36b"], pebble: "#6f7a62", pebbleDk: "#4f5a48", shroom: "#9ad0c4", water: "#3d6b6e", waterHi: "#6fa8a8" },
+          enemies: [["slug", 0, 4], ["moth", 25, 4], ["toad", 70, 3], ["hedgehog", 160, 3], ["badger", 300, 2]] },
+        { name: "Étang", prop: "basket", decor: "pond",
+          ground: { base: "#4a6f6a", patch: "#436661", tuft: "#2f5050", hi: "#7fa8a0", flowers: ["#e6f6fa", "#f29ad8", "#f6d36b", "#e6f6fa"], pebble: "#6f8a84", pebbleDk: "#4a6460", shroom: "#e6f6fa", water: "#2f5f70", waterHi: "#7fc0d0" },
+          enemies: [["frog", 0, 4], ["moth", 0, 2], ["toad", 40, 3], ["crow", 200, 2]] },
+        { name: "Roselière", prop: "basket", decor: "reeds",
+          ground: { base: "#8a9a5a", patch: "#808f52", tuft: "#6b7a3a", hi: "#b8c87a", flowers: ["#f6d36b", "#fdf3de", "#c8553d", "#f2b05e"], pebble: "#a09a7a", pebbleDk: "#7a7458", shroom: "#c8553d", reed: "#6b5a30", reedHi: "#c9b070" },
+          enemies: [["moth", 0, 3], ["hedgehog", 50, 3], ["spider", 80, 3], ["mole", 140, 2]] },
+      ] },
+    { id: "automne", name: "Bois d'automne", desc: "Bois roux, clairière dorée et terriers.", hp: 1.3, gold: 1.5, unlock: "boss_1",
+      swarm: ["bunny", "fox", "wasp", "mole"], bosses: ["boar", "owl"],
+      biomes: [
+        { name: "Bois roux", prop: "leafpile", decor: "bush",
+          ground: { base: "#b8833f", patch: "#ad7a3a", tuft: "#8a5a2b", hi: "#e8b25e", flowers: ["#c8553d", "#e8873a", "#f6d36b", "#8a5a3b"], pebble: "#9a8f7a", pebbleDk: "#6f6655", shroom: "#c8553d", bush: "#a0461f", bushHi: "#e8873a" },
+          enemies: [["bunny", 0, 4], ["fox", 35, 4], ["hedgehog", 80, 3], ["wasp", 110, 3]] },
+        { name: "Clairière dorée", prop: "leafpile",
+          ground: { base: "#c9a24a", patch: "#bf9944", tuft: "#9a7a30", hi: "#f2d48a", flowers: ["#fdf3de", "#c8553d", "#f2b05e", "#fdf3de"], pebble: "#b0a080", pebbleDk: "#857858", shroom: "#c8553d" },
+          enemies: [["bunny", 0, 4], ["wasp", 30, 3], ["bombshroom", 90, 2], ["crow", 180, 2]] },
+        { name: "Terriers", prop: "stump", decor: "rock",
+          ground: { base: "#8a6440", patch: "#7d5a3a", tuft: "#5a4030", hi: "#b08a60", flowers: ["#d39a52", "#f2b05e", "#8a5a3b", "#c8553d"], pebble: "#a09080", pebbleDk: "#6f6355", shroom: "#c8553d", rock: "#7a7068", rockHi: "#a89e94" },
+          enemies: [["mole", 0, 4], ["fox", 0, 2], ["badger", 60, 3], ["hedgehog", 120, 2]] },
+      ] },
+    { id: "nuit", name: "Nuit des lucioles", desc: "Forêt noire, clairière lunaire et souches mortes. Rapporte deux fois plus.", hp: 1.5, gold: 2, unlock: "survie_10", night: true,
+      swarm: ["moth", "crow", "bombshroom", "fox"], bosses: ["owl", "boar"],
+      biomes: [
+        { name: "Forêt noire", prop: "lantern", decor: "bush",
+          ground: { base: "#264634", patch: "#22402f", tuft: "#1b3326", hi: "#3f6b3a", flowers: ["#7fd1c7", "#c9b3ff", "#f2d48a", "#7fd1c7"], pebble: "#4b5a52", pebbleDk: "#33403a", shroom: "#7fd1c7", bush: "#16291e", bushHi: "#2f4f3a" },
+          enemies: [["moth", 0, 4], ["spider", 25, 4], ["crow", 60, 3], ["fox", 100, 3]] },
+        { name: "Clairière lunaire", prop: "lantern",
+          ground: { base: "#2f4458", patch: "#2a3e50", tuft: "#22323f", hi: "#5f7a94", flowers: ["#e6f6fa", "#c9b3ff", "#7fd1c7", "#f2d48a"], pebble: "#5a6a7a", pebbleDk: "#3a4858", shroom: "#7fd1c7" },
+          enemies: [["moth", 0, 3], ["frog", 40, 3], ["bombshroom", 80, 3], ["badger", 150, 2]] },
+        { name: "Souches mortes", prop: "stump", decor: "rock",
+          ground: { base: "#3a3236", patch: "#332c30", tuft: "#28222a", hi: "#5a4f58", flowers: ["#c9b3ff", "#7fd1c7", "#f29ad8", "#c9b3ff"], pebble: "#5a5058", pebbleDk: "#3a3238", shroom: "#7fd1c7", rock: "#4a4248", rockHi: "#6a6068" },
+          enemies: [["crow", 0, 3], ["bombshroom", 30, 3], ["mole", 60, 3], ["toad", 200, 2]] },
+      ] },
   ];
 
   /* =====================================================================
@@ -383,6 +455,7 @@ window.ES_DATA = (function () {
     { id: "fusion_1", name: "Alchimiste", desc: "Crée ta première fusion.", gold: 100, check: function (r) { return r.fusions >= 1; } },
     { id: "fusion_3", name: "Grand alchimiste", desc: "Crée 3 fusions en une partie.", gold: 300, check: function (r) { return r.fusions >= 3; } },
     { id: "arsenal", name: "Arsenal complet", desc: "Possède 6 armes et 6 objets en même temps.", gold: 120, check: function (r) { return r.nWeapons >= 6 && r.nPassives >= 6; } },
+    { id: "legende", name: "Légendaire", desc: "Crée une fusion légendaire.", gold: 300, check: function (r) { return r.legend >= 1; } },
     { id: "bricoleur", name: "Casse-tout", desc: "Détruis 25 objets en une partie.", gold: 60, check: function (r) { return r.props >= 25; } },
     { id: "intouchable", name: "Intouchable", desc: "Passe 60 secondes d'affilée sans être touché.", gold: 60, check: function (r) { return r.time - r.lastHit >= 60; } },
     { id: "gourmand", name: "Gourmand", desc: "Mange 5 baies en une partie.", gold: 50, check: function (r) { return r.berries >= 5; } },
@@ -404,10 +477,14 @@ window.ES_DATA = (function () {
     crow:     { sprite: "crow",     hp: 32,  spd: 38, dmg: 10, r: 6,  xp: 3, color: "#4a4a6a" },
     toad:     { sprite: "toad",     hp: 95,  spd: 15, dmg: 14, r: 8,  xp: 6, color: "#9cae4f" },
     fox:      { sprite: "fox",      hp: 22,  spd: 46, dmg: 8,  r: 6,  xp: 2, color: "#e06a2c" },
-    hedgehog: { sprite: "hedgehog", hp: 45,  spd: 20, dmg: 10, r: 6,  xp: 3, color: "#a06a3e" },
+    hedgehog: { sprite: "hedgehog", hp: 45,  spd: 20, dmg: 10, r: 6,  xp: 3, color: "#a06a3e", ai: "spiker", shot: 7 },
     bunny:    { sprite: "bunny",    hp: 14,  spd: 42, dmg: 6,  r: 5,  xp: 1, color: "#d8c2a0", move: "hop" },
     badger:   { sprite: "badger",   hp: 110, spd: 18, dmg: 15, r: 8,  xp: 6, color: "#8d8a86" },
     moth:     { sprite: "moth",     hp: 12,  spd: 32, dmg: 5,  r: 5,  xp: 1, color: "#c9b3ff", move: "wobble" },
+    // attaques spéciales : zones rouges au sol et projectiles rouges
+    bombshroom: { sprite: "bombshroom", hp: 14, spd: 32, dmg: 6, r: 5, xp: 2, color: "#c8553d", ai: "bomber", blast: 18, blastR: 24 },
+    frog:     { sprite: "frog",     hp: 18,  spd: 24, dmg: 6,  r: 5,  xp: 2, color: "#7fd1c7", ai: "spitter", shot: 8 },
+    mole:     { sprite: "mole",     hp: 30,  spd: 52, dmg: 8,  r: 6,  xp: 3, color: "#6a5a6a", ai: "mole", blast: 14, blastR: 22 },
     boar:     { sprite: "boar",     hp: 900, spd: 22, dmg: 25, r: 12, xp: 40, boss: true, name: "Grand Sanglier", color: "#8f6243" },
     owl:      { sprite: "owl",      hp: 1400, spd: 30, dmg: 22, r: 10, xp: 60, boss: true, name: "Hibou Ancien", color: "#a597b8" },
   };
