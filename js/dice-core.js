@@ -35,25 +35,46 @@
     }
     return { pts: pts, segs: segs, len: L };
   }
-  // 1 plateau : le chemin fait le tour (monte à gauche, traverse en haut, descend à droite).
+  // chaque plateau : cells = cases des écureuils (coin haut-gauche, 26 px), nb = cases voisines (pour le Chêne),
+  // x / cy = position des commandes (Invoquer, noisettes, améliorations)
+  function gridCells(x, y) { var out = []; for (var i = 0; i < NSLOT; i++) out.push({ x: x + (i % COLS) * CELL, y: y + Math.floor(i / COLS) * CELL }); return out; }
+  function neighbors(cells) {
+    return cells.map(function (a) {
+      var out = [];
+      cells.forEach(function (b, j) { if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === CELL) out.push(j); });
+      return out;
+    });
+  }
+  function mkBoard(x, y, cy, cells) { return { x: x, y: y, cy: cy, cells: cells, nb: neighbors(cells) }; }
+  // carte de grille (solo / versus) : voir MAPS dans dice-data.js
+  function mapById(id) { return (D.MAPS || []).filter(function (m) { return m.id === id; })[0] || (D.MAPS || [])[0]; }
+  function mapLayout(m) {
+    var Y0 = 18, cells = [], deco = [];
+    m.rows.forEach(function (row, r) {
+      for (var c = 0; c < row.length; c++) {
+        var ch = row[c], x = c * CELL, y = Y0 + r * CELL;
+        if (ch === "#") cells.push({ x: x, y: y });
+        else if (ch === "T" || ch === "~") deco.push({ x: x, y: y, k: ch });
+      }
+    });
+    var paths = m.paths.map(function (wp) { return makePath(wp.map(function (q) { return [q[0] * CELL + CELL / 2, Y0 + q[1] * CELL + CELL / 2]; })); });
+    var cy = Y0 + m.rows.length * CELL + 6;
+    return { w: 7 * CELL, h: cy + 62, paths: paths, len: paths[0].len, spdMul: 1, map: m.id, mods: m.mods || {}, deco: deco, ground: m.ground,
+             boards: [mkBoard(26, Y0, cy, cells)] };
+  }
   // 2 plateaux (coop) : plateaux l'un au-dessus de l'autre ; une moitié des bestioles
   // descend à gauche, l'autre monte, elles se rejoignent au centre puis filent à droite.
   // Chaque plateau a ses commandes (cy) : sous le plateau du bas, au-dessus de celui du haut.
-  var SOLO_LEN = 0;
-  function layout(n) {
+  var SOLO_LEN = 396; // longueur du chemin de référence (vitesse de la coop)
+  function layout(n, mapId) {
+    if (n === 1) return mapLayout(mapById(mapId));
     var left = 10, right = 25 + BW + 15;
-    if (n === 1) {
-      var top = 24, by = 39, bottom = by + BH + 25;
-      var p = makePath([[left, bottom], [left, top], [right, top], [right, bottom]]);
-      return { w: right + 10, h: bottom + 50, paths: [p], len: p.len, spdMul: 1, boards: [{ x: 25, y: by, cy: by + BH + 7 }] };
-    }
     var b0 = 80, mid = b0 + BH + 15, b1 = mid + 15, endX = right + 4;
     var pa = makePath([[left, b0 - 6], [left, mid], [endX, mid]]);
     var pb = makePath([[left, b1 + BH + 6], [left, mid], [endX, mid]]);
-    return { w: right + 10, h: b1 + BH + 8 + 54 + 14, paths: [pa, pb], len: pa.len, spdMul: pa.len / SOLO_LEN, coop: true,
-             boards: [{ x: 25, y: b0, cy: 18 }, { x: 25, y: b1, cy: b1 + BH + 8 }] };
+    return { w: right + 10, h: b1 + BH + 8 + 54 + 14, paths: [pa, pb], len: pa.len, spdMul: pa.len / SOLO_LEN, coop: true, mods: {}, deco: [],
+             boards: [mkBoard(25, b0, 18, gridCells(25, b0)), mkBoard(25, b1, b1 + BH + 8, gridCells(25, b1))] };
   }
-  SOLO_LEN = layout(1).len;
   function posAt(lay, dist, lane) {
     var segs = lay.paths[lane || 0].segs, s = segs[segs.length - 1];
     for (var i = 0; i < segs.length; i++) if (dist < segs[i].at + segs[i].len) { s = segs[i]; break; }
@@ -62,22 +83,23 @@
   }
   function epos(w, e) { return posAt(w.lay, e.dist, e.lane); }
   function near(w, a, b, r) { var p = epos(w, a), q = epos(w, b); return Math.hypot(p.x - q.x, p.y - q.y) <= r; }
-  function rangeOf(type) { var r = T[type].range; return r === undefined ? 100 : r; }
+  function rangeOf(type, w) { var r = T[type].range; r = r === undefined ? 100 : r; return w && w.lay && w.lay.mods.range ? r * w.lay.mods.range : r; }
   function slotCenter(lay, bi, s) {
-    var b = lay.boards[bi];
-    return { x: b.x + (s % COLS) * CELL + CELL / 2, y: b.y + Math.floor(s / COLS) * CELL + CELL / 2 };
+    var c = lay.boards[bi].cells[s] || { x: 0, y: 0 };
+    return { x: c.x + CELL / 2, y: c.y + CELL / 2 };
   }
 
   /* ---------- création ---------- */
   function makeBoard(info) {
     var deck = (info.deck || D.START_DECK).slice(0, 5);
-    return { name: info.name || "Écureuil", id: info.id || "solo", deck: deck, cls: info.cls || {}, slots: new Array(NSLOT).fill(null),
+    return { name: info.name || "Écureuil", id: info.id || "solo", deck: deck, cls: info.cls || {}, slots: new Array(info.nslot || NSLOT).fill(null),
              sp: C.startSp, sumN: 0, pu: [0, 0, 0, 0, 0], kills: 0, dmg: 0, bot: !!info.bot, botT: 1, maxPip: 1 };
   }
   function createWorld(opt) {
-    var n = opt.boards.length;
+    var n = opt.boards.length, lay = layout(n, opt.map);
     var w = {
-      mode: opt.mode || "solo", lay: layout(n), boards: opt.boards.map(makeBoard),
+      mode: opt.mode || "solo", lay: lay, map: lay.map || "coop",
+      boards: opt.boards.map(function (info, i) { return makeBoard(Object.assign({}, info, { nslot: lay.boards[i].cells.length })); }),
       rng: rngOf(opt.seed || 1), t: 0, wave: 0, waveT: 0, nextWave: 3, spawnQ: [], lives: C.lives, over: false,
       enemies: [], emap: {}, projs: [], mines: [], nextId: 1, ev: [], fx: [], bossAlive: 0, bosses: 0, kills: 0,
       hpMul: n > 1 ? C.coopHp : 1, view: !!opt.view,
@@ -90,7 +112,7 @@
   function puOf(b, type) { var i = b.deck.indexOf(type); return i < 0 ? 0 : b.pu[i]; }
   function summonCost(b) { return C.summonBase + C.summonStep * b.sumN; }
   function puCost(b, i) { return b.pu[i] >= C.puCosts.length ? Infinity : C.puCosts[b.pu[i]]; }
-  function freeSlots(b) { var out = []; for (var i = 0; i < NSLOT; i++) if (!b.slots[i]) out.push(i); return out; }
+  function freeSlots(b) { var out = []; for (var i = 0; i < b.slots.length; i++) if (!b.slots[i]) out.push(i); return out; }
   function newSq(b, type, pips) {
     var sq = { t: type, p: pips, cd: Math.random() * 0.5, stun: 0, bob: 0, born: 0.25 };
     if (T[type].grow) sq.grow = T[type].grow - T[type].growPu * puOf(b, type);
@@ -149,7 +171,9 @@
   }
 
   /* ---------- vagues ---------- */
-  function waveHp(w, n) { return C.hpBase * Math.pow(C.hpGrowth, n - 1) * (1 + C.hpLin * (n - 1)) * w.hpMul; }
+  function waveHp(w, n) { return C.hpBase * Math.pow(C.hpGrowth, n - 1) * (1 + C.hpLin * (n - 1)) * w.hpMul * (w.lay.mods.hp || 1); }
+  // vitesse due à la carte (la boue ne ralentit pas les volantes)
+  function mapSpd(w, d) { var m = w.lay.mods; if (!m.spd) return 1; return m.mud && d.fly ? 1 : m.spd; }
   function isBossWave(n) { return n % C.bossEvery === 0; }
   function startWave(w) {
     w.wave++; w.waveT = 0;
@@ -183,7 +207,7 @@
   function spawnEnemy(w, type, dist, hp, lane) {
     var d = D.ENEMIES[type];
     var max = hp || waveHp(w, Math.max(1, w.wave)) * d.hp;
-    var e = { id: w.nextId++, type: type, d: d, hp: max, max: max, dist: dist || 0, lane: lane || 0, spd: d.spd * Math.min(1.45, 1 + 0.012 * w.wave) * w.lay.spdMul,
+    var e = { id: w.nextId++, type: type, d: d, hp: max, max: max, dist: dist || 0, lane: lane || 0, spd: d.spd * mapSpd(w, d) * Math.min(1.45, 1 + 0.012 * w.wave) * w.lay.spdMul,
               slowT: 0, slowF: 0, poison: 0, poisonT: 0, t: Math.random() * 3, power: 3, chargeT: 0, under: false, flash: 0, baby: !!hp };
     if (d.boss) { w.bossAlive++; w.ev.push({ k: "boss", type: type }); }
     w.enemies.push(e); w.emap[e.id] = e;
@@ -233,6 +257,7 @@
     e.dead = true; e.hp = 0;
     w.kills++;
     var gain = e.d.boss ? C.bossSp * (Math.floor(w.wave / C.bossEvery) || 1) : C.killSp + C.killSpWave * w.wave;
+    if (w.lay.mods.sp) gain = Math.round(gain * w.lay.mods.sp);
     if (e.baby) gain = Math.ceil(gain / 2);
     w.boards.forEach(function (b) { b.sp += gain; });
     if (w.boards[bi]) w.boards[bi].kills++;
@@ -313,7 +338,7 @@
   function fire(w, bi, si, sq) {
     var b = w.boards[bi], Tp = T[sq.t], pu = puOf(b, sq.t), dmg = (Tp.dmg + Tp.pu * pu) * classMul(b, sq.t) * (1 + C.pipBonus * (sq.p - 1));
     dmg *= 1 + boardAura(b);
-    var c = slotCenter(w.lay, bi, si), crit = boardCrit(b), rg = rangeOf(sq.t);
+    var c = slotCenter(w.lay, bi, si), crit = boardCrit(b), rg = rangeOf(sq.t, w);
     if (Tp.target === "all") {
       var any = false;
       var spts = [];
@@ -364,14 +389,11 @@
 
     // plateaux
     w.boards.forEach(function (b, bi) {
-      var haste = new Array(NSLOT).fill(0);
+      var haste = new Array(b.slots.length).fill(0), nb = w.lay.boards[bi].nb;
       b.slots.forEach(function (s, i) {
         if (!s || s.t !== "chene" || s.stun > 0) return;
-        var h = (T.chene.haste + T.chene.hastePu * puOf(b, "chene")) * s.p, x = i % COLS;
-        if (x > 0) haste[i - 1] += h;
-        if (x < COLS - 1) haste[i + 1] += h;
-        if (i - COLS >= 0) haste[i - COLS] += h;
-        if (i + COLS < NSLOT) haste[i + COLS] += h;
+        var h = (T.chene.haste + T.chene.hastePu * puOf(b, "chene")) * s.p;
+        nb[i].forEach(function (j) { haste[j] += h; });
       });
       b.slots.forEach(function (s, i) {
         if (!s) return;
@@ -479,7 +501,7 @@
     if (free.length && b.sp >= summonCost(b)) { summon(w, bi); return; }
     // fusions : les caméléons copient le meilleur, puis les plus petits points d'abord
     var pairs = [];
-    for (var a = 0; a < NSLOT; a++) for (var c = 0; c < NSLOT; c++) if (canMerge(b, a, c)) {
+    for (var a = 0; a < b.slots.length; a++) for (var c = 0; c < b.slots.length; c++) if (canMerge(b, a, c)) {
       var A = b.slots[a], B = b.slots[c], score = 10 - A.p;
       if (A.t === "cameleon" && B.t !== "cameleon") score = 20 + B.p;
       if (A.t === "pepite" && w.wave < 12) score -= 3;
@@ -574,7 +596,7 @@
   }
 
   root.RD_CORE = {
-    CELL: CELL, COLS: COLS, ROWS: ROWS, NSLOT: NSLOT, BW: BW, BH: BH, EKEYS: EKEYS, TIDX: TIDX,
+    CELL: CELL, COLS: COLS, ROWS: ROWS, NSLOT: NSLOT, BW: BW, BH: BH, EKEYS: EKEYS, TIDX: TIDX, mapById: mapById,
     layout: layout, posAt: posAt, epos: epos, rangeOf: rangeOf, slotCenter: slotCenter, createWorld: createWorld, step: step, stepView: stepView,
     summon: summon, merge: merge, canMerge: canMerge, powerUp: powerUp, act: act, botStep: botStep,
     summonCost: summonCost, puCost: puCost, freeSlots: freeSlots, isBossWave: isBossWave, waveHp: waveHp,

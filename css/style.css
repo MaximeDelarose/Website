@@ -1673,3 +1673,27 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .rd-role { font-size: .62rem; font-weight: 800; color: var(--ink-soft); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .rd-tile.is-locked .rd-role { opacity: .6; }
 .rd-tile.is-locked .rd-die.rd-face img { filter: brightness(0) opacity(.5); }
+
+/* ---------- Écureuil Dice : cartes ---------- */
+.rd-mapbar {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px 6px 6px; font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+  background: var(--panel-2); border: 0; box-shadow: 0 0 0 2px var(--line), 0 4px 0 2px var(--line); margin-bottom: 4px;
+}
+.rd-mapbar:active { transform: translateY(3px); box-shadow: 0 0 0 2px var(--line), 0 1px 0 2px var(--line); }
+.rd-mapbar img { width: 64px; height: 44px; object-fit: cover; image-rendering: pixelated; box-shadow: 0 0 0 2px var(--line); flex: none; }
+.rd-mapbar-tx { display: grid; min-width: 0; line-height: 1.2; flex: 1; }
+.rd-mapbar-tx small { font-size: .75rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-mapbar-go { font-weight: 900; font-size: .8rem; color: var(--orange-dk); white-space: nowrap; }
+.rd-card.rd-maps { width: min(760px, 100%); }
+.rd-map-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-top: 10px; text-align: left; }
+.rd-map {
+  display: grid; grid-template-rows: auto 1fr; padding: 0; font: inherit; color: var(--ink); text-align: left; cursor: pointer; overflow: hidden;
+  background: var(--panel-2); border: 0; box-shadow: 0 0 0 2px var(--line), 0 4px 0 2px var(--line); margin-bottom: 4px;
+}
+.rd-map.is-on { box-shadow: 0 0 0 4px var(--orange), 0 5px 0 4px var(--line); }
+.rd-map:active { transform: translateY(3px); }
+.rd-map img { width: 100%; aspect-ratio: 182 / 130; object-fit: cover; object-position: top; image-rendering: pixelated; display: block; }
+.rd-map-tx { display: grid; gap: 3px; padding: 8px 10px 10px; line-height: 1.25; }
+.rd-map-tx small { font-size: .8rem; color: var(--ink-soft); }
+.rd-map-tx .rd-map-n { font-weight: 800; color: var(--orange-dk); }
+@media (max-width: 420px) { .rd-map-list { grid-template-columns: 1fr 1fr; gap: 8px; } .rd-map-tx { padding: 6px 7px 8px; } .rd-map-tx small:not(.rd-map-n) { font-size: .72rem; } }

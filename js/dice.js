@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.7.0";
+  var VERSION = "0.8.0";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -20,7 +20,7 @@
      ===================================================================== */
   var SAVE_KEY = "rd-save-v1";
   function defaults() {
-    return { gold: 0, deck: D.START_DECK.slice(), cls: {}, owned: {}, have: null, cards: {}, keys: 0, chests: 0, sel: "noisette",
+    return { map: "clairiere", gold: 0, deck: D.START_DECK.slice(), cls: {}, owned: {}, have: null, cards: {}, keys: 0, chests: 0, sel: "noisette",
              best: { solo: 0, coop: 0 }, wins: 0, games: 0, ach: {}, name: "", mute: false, botLvl: 1 };
   }
   var S = defaults();
@@ -33,7 +33,7 @@
   var LOCAL = S;
   var Cloud = { on: false, loading: false, busy: false, msg: "", err: "" };
   function save() {
-    if (Cloud.on) { LOCAL.mute = S.mute; LOCAL.botLvl = S.botLvl; LOCAL.sel = S.sel; LOCAL.name = S.name; }
+    if (Cloud.on) { LOCAL.mute = S.mute; LOCAL.botLvl = S.botLvl; LOCAL.sel = S.sel; LOCAL.name = S.name; LOCAL.map = S.map; }
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(LOCAL)); } catch (e) {}
   }
   // ancienne sauvegarde : on garde tout ce qui était débloqué ou déjà joué
@@ -50,6 +50,7 @@
   S.deck = (S.deck || []).filter(function (k, i, a) { return T[k] && owned(k) && a.indexOf(k) === i; }).slice(0, 5);
   if (!S.deck.length) S.deck = D.START_DECK.slice();
   if (!T[S.sel]) S.sel = "noisette";
+  if (!D.MAPS.some(function (m) { return m.id === S.map; })) S.map = D.MAPS[0].id;
 
   /* ---------- compte du site (js/auth.js) : progression sur le serveur ---------- */
   var PROG = ["gold", "keys", "chests", "have", "cards", "cls", "deck", "best", "wins", "games", "ach"];
@@ -198,15 +199,15 @@
     else { S.games++; save(); }
   }
   function soloGame() {
-    var w = K.createWorld({ mode: "solo", seed: (Math.random() * 1e9) | 0, boards: [{ name: S.name || "Toi", deck: S.deck, cls: myCls() }] });
+    var w = K.createWorld({ mode: "solo", map: S.map, seed: (Math.random() * 1e9) | 0, boards: [{ name: S.name || "Toi", deck: S.deck, cls: myCls() }] });
     newGame({ mode: "solo", kind: "solo", sims: [w], panels: [{ world: w, mine: [0] }] });
   }
   function botGame() {
     var seed = (Math.random() * 1e9) | 0, lvl = S.botLvl || 1;
     var botDeck = shuffle(D.ORDER.slice()).slice(0, 5), botCls = {};
     D.ORDER.forEach(function (k) { botCls[k] = lvl === 2 ? 4 : 1; });
-    var me = K.createWorld({ mode: "versus", seed: seed, boards: [{ name: S.name || "Toi", deck: S.deck, cls: myCls() }] });
-    var bot = K.createWorld({ mode: "versus", seed: seed, boards: [{ name: lvl === 2 ? "IA coriace" : "IA", deck: botDeck, cls: botCls, bot: true }] });
+    var me = K.createWorld({ mode: "versus", map: S.map, seed: seed, boards: [{ name: S.name || "Toi", deck: S.deck, cls: myCls() }] });
+    var bot = K.createWorld({ mode: "versus", map: S.map, seed: seed, boards: [{ name: lvl === 2 ? "IA coriace" : "IA", deck: botDeck, cls: botCls, bot: true }] });
     newGame({ mode: "versus", kind: "bot", bot: true, botLvl: lvl, sims: [me, bot], panels: [{ world: me, mine: [0] }, { world: bot, mine: [], opp: true, seed: 9 }] });
   }
   function localCoop() {
@@ -217,8 +218,8 @@
   }
   function localVs() {
     var seed = (Math.random() * 1e9) | 0;
-    var a = K.createWorld({ mode: "versus", seed: seed, boards: [{ name: "Joueur 1", deck: S.deck, cls: myCls() }] });
-    var b = K.createWorld({ mode: "versus", seed: seed, boards: [{ name: "Joueur 2", deck: S.deck, cls: myCls() }] });
+    var a = K.createWorld({ mode: "versus", map: S.map, seed: seed, boards: [{ name: "Joueur 1", deck: S.deck, cls: myCls() }] });
+    var b = K.createWorld({ mode: "versus", map: S.map, seed: seed, boards: [{ name: "Joueur 2", deck: S.deck, cls: myCls() }] });
     newGame({ mode: "versus", kind: "local-vs", sims: [a, b], panels: [{ world: a, mine: [0] }, { world: b, mine: [0], seed: 9, flip: true }] });
   }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = (Math.random() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -338,8 +339,8 @@
 
   function drawPanel(p) {
     var w = p.world, lay = w.lay;
-    // herbe
-    rect(0, 0, lay.w, lay.h, "#3f6b3a");
+    // herbe (couleur propre à la carte) + décor
+    rect(0, 0, lay.w, lay.h, lay.ground || "#3f6b3a");
     p.deco.forEach(function (d) {
       if (d[3]) { rect(d[0], d[1], 1, 1, ["", "#f2d48a", "#f29a85", "#e6f6fa"][d[3]]); return; }
       rect(d[0], d[1], 2, 1, d[2]); rect(d[0] + 0.5, d[1] - 1, 1, 1, d[2]);
@@ -355,6 +356,7 @@
     var s1 = lay.paths[0].pts[lay.paths[0].pts.length - 1];
     drawSpr(SPR.stump[0], s1[0] - 6, s1[1] - 4);
     for (var hI = 0; hI < CFG.lives; hI++) if (hI < w.lives) drawSpr(SPR.nut[0], s1[0] - 9 + hI * 6, s1[1] - 9);
+    (lay.deco || []).forEach(function (d) { if (d.k === "T") drawTree(d.x, d.y); else drawPuddle(d.x, d.y); });
     // plateaux
     w.boards.forEach(function (b, bi) { drawBoard(p, b, bi); });
     drawRange(p);
@@ -374,15 +376,26 @@
     drawHud(p);
   }
 
+  function drawTree(x, y) {
+    ctx.fillStyle = "rgba(20,12,6,.3)"; ctx.beginPath(); ctx.ellipse(x + 13, y + 22, 10, 3.5, 0, 0, 6.3); ctx.fill();
+    rect(x + 11, y + 15, 4, 8, "#5a3a22"); rect(x + 12, y + 15, 1, 8, "#7a5232");
+    [[13, 6, 9, "#2f5a2a"], [8, 11, 7, "#2f5a2a"], [18, 11, 7, "#2f5a2a"], [13, 9, 8, "#3f7a36"], [10, 7, 4, "#5b9a4a"]].forEach(function (q) {
+      ctx.fillStyle = q[3]; ctx.beginPath(); ctx.arc(x + q[0], y + q[1], q[2], 0, 6.3); ctx.fill();
+    });
+  }
+  function drawPuddle(x, y) {
+    ctx.fillStyle = "#2a4a52"; ctx.beginPath(); ctx.ellipse(x + 13, y + 14, 10, 6, 0, 0, 6.3); ctx.fill();
+    ctx.fillStyle = "#4a7a82"; ctx.beginPath(); ctx.ellipse(x + 12, y + 13, 8, 4.5, 0, 0, 6.3); ctx.fill();
+    rect(x + 8, y + 11, 4, 1, "#9fd0d8"); rect(x + 16, y + 15, 2, 1, "#9fd0d8");
+  }
   function drawBoard(p, b, bi) {
     var o = p.world.lay.boards[bi], mine = p.mine.indexOf(bi) >= 0;
-    rect(o.x - 3, o.y - 3, K.BW + 6, K.BH + 6, "#2b1709");
-    rect(o.x - 2, o.y - 2, K.BW + 4, K.BH + 4, "#36592f");
     var drag = dragOn(p, bi), sel = G.sel && G.sel.panel === p && G.sel.bi === bi ? G.sel.slot : -1;
     var from = drag ? drag.slot : sel, fl = flipped(p, bi);
-    for (var i = 0; i < K.NSLOT; i++) {
-      var x = o.x + (i % K.COLS) * K.CELL, y = o.y + Math.floor(i / K.COLS) * K.CELL;
-      rect(x + 1, y + 1, 24, 24, "#2f4f2a"); rect(x + 2, y + 2, 22, 22, "#335a2e");
+    // emplacements : petites plates-formes de terre (placées librement selon la carte)
+    o.cells.forEach(function (c) { rect(c.x, c.y + 1, 26, 26, "rgba(20,12,6,.35)"); rect(c.x, c.y, 26, 26, "#2b1709"); rect(c.x + 1, c.y + 1, 24, 24, "#4a3524"); rect(c.x + 2, c.y + 2, 22, 22, "#5a4230"); rect(c.x + 2, c.y + 2, 22, 1, "#6b5038"); });
+    for (var i = 0; i < o.cells.length; i++) {
+      var x = o.cells[i].x, y = o.cells[i].y;
       var sq = b.slots[i];
       if (!sq) continue;
       var lifted = drag && drag.moved && drag.slot === i;
@@ -456,15 +469,14 @@
     if (Tp.target === "none" && sq.t !== "mine") {
       // soutien : on montre les cases voisines concernées
       if (!Tp.haste) return;
-      [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (d) {
-        var cx = it.slot % K.COLS + d[0], cyy = Math.floor(it.slot / K.COLS) + d[1];
-        if (cx < 0 || cx >= K.COLS || cyy < 0 || cyy >= K.ROWS) return;
-        var o = p.world.lay.boards[it.bi];
-        ctx.strokeStyle = "rgba(156,208,106,.9)"; ctx.lineWidth = 1.5; ctx.strokeRect(o.x + cx * K.CELL + 1, o.y + cyy * K.CELL + 1, 24, 24);
+      var ob = p.world.lay.boards[it.bi];
+      ob.nb[it.slot].forEach(function (j) {
+        var c = ob.cells[j];
+        ctx.strokeStyle = "rgba(156,208,106,.9)"; ctx.lineWidth = 1.5; ctx.strokeRect(c.x + 1, c.y + 1, 24, 24);
       });
       return;
     }
-    var r = K.rangeOf(sq.t);
+    var r = K.rangeOf(sq.t, p.world);
     if (!isFinite(r)) return;
     ctx.save(); ctx.beginPath(); ctx.rect(0, 15, p.world.lay.w, p.world.lay.h - 15); ctx.clip();
     ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
@@ -505,6 +517,27 @@
       rect(x + 2, y + 22.5, 20, 1, "#2b1709"); rect(x + 2, y + 22.5, 20 * f, 1, "#9cd06a");
     }
   }
+  // vignette d'une carte : sol, décor, chemin, emplacements
+  var thumbCache = {};
+  function mapThumb(id) {
+    if (thumbCache[id]) return thumbCache[id];
+    var lay = K.layout(1, id), c = document.createElement("canvas"), y0 = 16, h = lay.boards[0].cy - 4 - y0;
+    c.width = lay.w; c.height = h;
+    var keep = ctx; ctx = c.getContext("2d");
+    try {
+      ctx.translate(0, -y0);
+      rect(0, y0, lay.w, h, lay.ground || "#3f6b3a");
+      lay.deco.forEach(function (d) { if (d.k === "T") drawTree(d.x, d.y); else drawPuddle(d.x, d.y); });
+      ctx.lineCap = "square";
+      [["#6b4430", 17], ["#b07a4f", 13]].forEach(function (st) { ctx.beginPath(); lay.paths.forEach(function (pth) { pth.pts.forEach(function (q, i) { if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); }); }); ctx.strokeStyle = st[0]; ctx.lineWidth = st[1]; ctx.stroke(); });
+      lay.paths.forEach(function (pth) { var q = pth.pts[0]; rect(q[0] - 6, q[1] - 4, 12, 8, "#120a04"); });
+      var e = lay.paths[0].pts[lay.paths[0].pts.length - 1]; drawSpr(SPR.stump[0], e[0] - 6, e[1] - 5);
+      lay.boards[0].cells.forEach(function (q) { rect(q.x, q.y, 26, 26, "#2b1709"); rect(q.x + 1, q.y + 1, 24, 24, "#4a3524"); rect(q.x + 2, q.y + 2, 22, 22, "#5a4230"); });
+    } finally { ctx = keep; }
+    return (thumbCache[id] = c.toDataURL());
+  }
+  function curMap() { return K.mapById(S.map); }
+  function mapCells(id) { return K.layout(1, id).boards[0].cells.length; }
   // la même image en HTML (menus, deck, coffres)
   var faceCache = {};
   function faceUrl(k) {
@@ -738,7 +771,7 @@
   }
   var ECOL = {};
   K.EKEYS.forEach(function (k) { var pal = ES.SPRITES[k].pal; ECOL[k] = Object.keys(pal).map(function (c) { return pal[c]; }); });
-  function slotXY(w, bi, s) { var o = w.lay.boards[bi]; return { x: o.x + (s % K.COLS) * K.CELL, y: o.y + Math.floor(s / K.COLS) * K.CELL }; }
+  function slotXY(w, bi, s) { var c = w.lay.boards[bi].cells[s] || { x: 0, y: 0 }; return { x: c.x, y: c.y }; }
   function spBox(p) {
     var bi = p.mine.length ? p.mine[p.mine.length - 1] : -1; if (bi < 0) return null;
     var o = p.world.lay.boards[bi], sr = sumRect(o), nx = sr.x + sr.w + 3;
@@ -968,7 +1001,7 @@
       if (p.flip) { x = p.world.lay.w - x; y = p.world.lay.h - y; }
       for (var j = 0; j < p.mine.length; j++) {
         var bi = p.mine[j], o = p.world.lay.boards[bi];
-        if (x >= o.x && x < o.x + K.BW && y >= o.y && y < o.y + K.BH) return { p: p, bi: bi, slot: Math.floor((x - o.x) / K.CELL) + Math.floor((y - o.y) / K.CELL) * K.COLS };
+        for (var ci = 0; ci < o.cells.length; ci++) { var cc0 = o.cells[ci]; if (x >= cc0.x && x < cc0.x + K.CELL && y >= cc0.y && y < cc0.y + K.CELL) return { p: p, bi: bi, slot: ci }; }
         var cx = x, cy = y;
         if (flipped(p, bi)) { var cc = ctrlCenter(o); cx = 2 * cc.x - x; cy = 2 * cc.y - y; }
         if (inR(cx, cy, sumRect(o))) return { p: p, bi: bi, btn: "sum" };
@@ -1376,8 +1409,11 @@
         '<button type="button" class="rd-deckbar" data-action="go" data-arg="deck" aria-label="Modifier le deck">' +
         '<span class="rd-deckbar-dice">' + [0, 1, 2, 3, 4].map(function (i) { var k = S.deck[i]; return k ? dieHtml(k) : '<span class="rd-die rd-die-empty">+</span>'; }).join("") + "</span>" +
         '<span class="rd-deckbar-tx">' + (deckOk ? "Deck" : "Deck incomplet") + "<small>Modifier</small></span></button>" +
+        '<button type="button" class="rd-mapbar" data-action="go" data-arg="maps" aria-label="Changer de carte"><img src="' + mapThumb(curMap().id) + '" alt="">' +
+        '<span class="rd-mapbar-tx"><b>' + curMap().icon + " " + esc(curMap().name) + "</b><small>" + mapCells(curMap().id) + " emplacements · " + esc(curMap().spec.split(/[.:]/)[0]) + "</small></span>" +
+        '<span class="rd-mapbar-go">Carte ›</span></button>' +
         '<div class="mm-main">' +
-        '<button class="btn mm-play" type="button" data-action="solo"' + dis + "><span>▶ Jouer</span><small>Solo · record vague " + (S.best.solo || 0) + "</small></button>" +
+        '<button class="btn mm-play" type="button" data-action="solo"' + dis + "><span>▶ Jouer</span><small>" + esc(curMap().name) + " · record vague " + (S.best.solo || 0) + "</small></button>" +
         '<button class="btn btn-ghost mm-coop" type="button" data-action="go" data-arg="bot"' + dis + "><span>🤖 Vs l'IA</span><small>" + (S.botLvl === 2 ? "coriace" : "normale") + " · " + S.wins + " victoire" + (S.wins > 1 ? "s" : "") + "</small></button></div>" +
         '<div class="mm-grid">' +
         tile("online", "", "🌐", "En ligne", "Coop · versus", "", false, !deckOk) +
@@ -1394,6 +1430,15 @@
         '<footer class="mm-foot"><span>Aucun achat : tout se gagne en jouant.</span><span><button class="mm-link" type="button" data-action="fs">' + (isFull() ? "✕ Quitter le plein écran" : "⛶ Plein écran") + "</button> · v" + VERSION + "</span></footer>" +
         (DEBUG && !Cloud.on ? '<p class="game-small rd-center">🧪 Mode test : <button class="btn btn-ghost btn-small" type="button" data-action="testgold">+5 000 glands d\'or</button></p>' : "") +
         "</div>";
+    },
+    maps: function () {
+      return head("Cartes") + '<p class="game-small">Chaque carte a son chemin, ses emplacements et ses règles. Elle sert en solo, contre l\'IA et en versus.</p><div class="rd-map-list">' +
+        D.MAPS.map(function (m) {
+          return '<button type="button" class="rd-map' + (S.map === m.id ? " is-on" : "") + '" data-action="mapsel" data-arg="' + m.id + '">' +
+            '<img src="' + mapThumb(m.id) + '" alt="">' +
+            '<span class="rd-map-tx"><b>' + m.icon + " " + esc(m.name) + "</b><small class=\"rd-map-n\">" + mapCells(m.id) + " emplacements" + (m.paths.length > 1 ? " · " + m.paths.length + " terriers" : "") + "</small>" +
+            "<small>" + esc(m.spec) + "</small></span></button>";
+        }).join("") + "</div>";
     },
     bot: function () {
       function opt(lvl, ic, name, desc) {
@@ -1513,6 +1558,7 @@
         ["coop", "versus"].map(function (m) {
           return '<button class="btn btn-small ' + (mode === m ? "" : "btn-ghost") + '" type="button" data-action="lmode" data-arg="' + m + '"' + (host ? "" : " disabled") + ">" + (m === "coop" ? "👥 Coop" : "⚔ Versus") + "</button>";
         }).join("") + "</div>";
+      if (mode === "versus") { var hm = K.mapById(host ? S.map : (hp && hp.map)); html += '<p class="game-small">Carte : <b>' + hm.icon + " " + esc(hm.name) + "</b>" + (host ? ' · <button class="rd-link" type="button" data-action="go" data-arg="maps">changer</button>' : " (choisie par l'hôte)") + "</p>"; }
       if (host) html += '<div class="menu-buttons"><button class="btn" type="button" data-action="start"' + (ok && Net.roster.length >= 2 ? "" : " disabled") + ">▶ Lancer la partie</button></div>";
       else html += '<p class="game-small">L\'hôte lance la partie.</p>';
       return html;
@@ -1564,6 +1610,7 @@
     solo: function () { SND.click(); soloGame(); },
     bot: function () { SND.click(); botGame(); },
     botlvl: function (a) { S.botLvl = +a; save(); SND.click(); show("menu"); },
+    mapsel: function (id) { if (!D.MAPS.some(function (m) { return m.id === id; })) return; S.map = id; save(); SND.click(); if (Net.on) { trackMe(); show("lobby"); } else show("menu"); },
     botgo: function (a) { S.botLvl = +a === 2 ? 2 : 1; save(); SND.click(); botGame(); },
     fs: function () { if (isFull()) exitFull(); else enterFull(); setTimeout(function () { if (state === "menu" && screen === "menu") show("menu", true); }, 300); },
     lcoop: function () { SND.click(); localCoop(); },
@@ -1707,7 +1754,7 @@
   }
   function trackMe() {
     if (!Net.ch) return;
-    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), host: Net.role === "host", mode: Net.mode, deck: S.deck, cls: myCls(), ingame: Net.started, ts: Net.ts });
+    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), host: Net.role === "host", mode: Net.mode, map: S.map, deck: S.deck, cls: myCls(), ingame: Net.started, ts: Net.ts });
   }
   function onPresence() {
     if (!Net.ch) return;
@@ -1734,7 +1781,7 @@
   function hostStart() {
     if (Net.role !== "host" || Net.roster.length < 2) return;
     var roster = Net.roster.slice(0, 2).map(function (x) { return { id: x.id, name: x.name, deck: x.deck, cls: x.cls }; });
-    var info = { mode: Net.mode, seed: (Math.random() * 1e9) | 0, roster: roster };
+    var info = { mode: Net.mode, map: S.map, seed: (Math.random() * 1e9) | 0, roster: roster };
     netSend("start", info);
     startOnline(info);
   }
@@ -1749,8 +1796,8 @@
       var cfg = { mode: "coop", kind: "net-coop", panels: [{ world: w, mine: [meI], view: Net.role !== "host" }], sims: Net.role === "host" ? [w] : [] };
       newGame(cfg);
     } else {
-      var mine = K.createWorld({ mode: "versus", seed: info.seed, boards: [boards[meI]] });
-      var opp = K.createWorld({ mode: "versus", seed: info.seed, boards: [boards[1 - meI]], view: true });
+      var mine = K.createWorld({ mode: "versus", map: info.map, seed: info.seed, boards: [boards[meI]] });
+      var opp = K.createWorld({ mode: "versus", map: info.map, seed: info.seed, boards: [boards[1 - meI]], view: true });
       newGame({ mode: "versus", kind: "net-vs", sims: [mine], panels: [{ world: mine, mine: [0] }, { world: opp, mine: [], view: true, opp: true, seed: 9 }] });
     }
     G.otherId = other.id;

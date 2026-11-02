@@ -216,6 +216,68 @@
     classCosts: [0, 30, 60, 100, 150, 220, 300, 400, 520, 660],
   };
 
+  /* =====================================================================
+     Cartes (solo, contre l'IA, versus). Grille de 7 colonnes, une case = 26 px.
+     rows  : « # » emplacement d'écureuil, « P » chemin, « S » départ, « E » sortie,
+             « T » arbre, « ~ » flaque, « . » herbe (le chemin suit « paths », dans l'ordre)
+     paths : un ou plusieurs tracés [colonne, ligne] ; plusieurs = plusieurs terriers
+     mods  : hp (PV des bestioles), spd (vitesse), mud (la boue ne ralentit pas les volantes),
+             range (portée des écureuils), sp (noisettes par bestiole)
+     ===================================================================== */
+  var MAPS = [
+    { id: "clairiere", name: "Clairière", icon: "🌳", ground: "#3f6b3a",
+      spec: "La carte classique : un chemin en U autour d'un grand plateau.",
+      rows: ["PPPPPPP",
+             "P#####P",
+             "P#####P",
+             "P#####P",
+             "S.....E"],
+      paths: [[[0, 4], [0, 0], [6, 0], [6, 4]]], mods: { hp: 0.85 } },
+    { id: "riviere", name: "Rivière", icon: "🌊", ground: "#3b6b4a",
+      spec: "Le chemin serpente : chaque rangée touche deux berges. Mais les bestioles nagent vite (+15 % de vitesse, +25 % de PV, +10 % de noisettes).",
+      rows: ["SPPPPPP",
+             "######P",
+             "PPPPPPP",
+             "P######",
+             "PPPPPPE"],
+      paths: [[[0, 0], [6, 0], [6, 2], [0, 2], [0, 4], [6, 4]]], mods: { spd: 1.15, hp: 1.25, sp: 1.1 } },
+    { id: "sousbois", name: "Sous-bois", icon: "🌲", ground: "#2f5a32",
+      spec: "Long chemin sinueux entre les arbres, qui gênent la vue : −15 % de portée.",
+      rows: ["S##T##T",
+             "PPPPPP.",
+             "##T##P#",
+             "TPPPPP.",
+             "#P##T##",
+             "TPPPPPE"],
+      paths: [[[0, 0], [0, 1], [5, 1], [5, 3], [1, 3], [1, 5], [6, 5]]], mods: { range: 0.85 } },
+    { id: "terrier", name: "Le Terrier", icon: "🕳️", ground: "#4a5a32",
+      spec: "Spirale jusqu'au cœur du terrier : 17 emplacements, mais les bestioles sont coriaces (+20 % de PV).",
+      rows: ["SPPPPPP",
+             "######P",
+             "PPPPE#P",
+             "P#####P",
+             "P#####P",
+             "PPPPPPP"],
+      paths: [[[0, 0], [6, 0], [6, 5], [0, 5], [0, 2], [4, 2]]], mods: { hp: 1.2 } },
+    { id: "marais", name: "Marais", icon: "🐸", ground: "#3a5a40",
+      spec: "Chemin très court bordé de 20 emplacements, dans la boue : bestioles −50 % de vitesse… sauf les volantes, qui passent au-dessus !",
+      rows: ["~.#S#.~",
+             ".##P##.",
+             "~##P##.",
+             ".##P##~",
+             ".##P##.",
+             "~.#E#.~"],
+      paths: [[[3, 0], [3, 5]]], mods: { spd: 0.5, mud: true, hp: 0.88 } },
+    { id: "carrefour", name: "Deux terriers", icon: "🔀", ground: "#45703a",
+      spec: "Les bestioles sortent de deux terriers et se rejoignent avant la sortie : surveille les deux côtés.",
+      rows: ["SPPP###",
+             "#T#P#T#",
+             "###PPPE",
+             "#T#P#T#",
+             "SPPP###"],
+      paths: [[[0, 0], [3, 0], [3, 2], [6, 2]], [[0, 4], [3, 4], [3, 2], [6, 2]]], mods: { spd: 0.8, hp: 0.9 } },
+  ];
+
   var ACHIEVEMENTS = [
     { id: "v5", name: "Premier boss", desc: "Atteins la vague 6 en solo.", gold: 30, check: function (r) { return r.mode === "solo" && r.wave >= 6; } },
     { id: "v15", name: "Écureuil de garde", desc: "Atteins la vague 15 en solo.", gold: 80, check: function (r) { return r.mode === "solo" && r.wave >= 15; } },
@@ -227,5 +289,5 @@
     { id: "boss5", name: "Chasseur de boss", desc: "Bats 5 boss en une partie.", gold: 120, check: function (r) { return r.bosses >= 5; } },
   ];
 
-  root.RD_DATA = { TYPES: TYPES, ORDER: ORDER, START_DECK: START_DECK, ENEMIES: ENEMIES, BOSSES: BOSSES, CFG: CFG, ACHIEVEMENTS: ACHIEVEMENTS, RARITY: RARITY, COPIES: COPIES, CHESTS: CHESTS, KEYS_FOR_FREE: KEYS_FOR_FREE };
+  root.RD_DATA = { TYPES: TYPES, ORDER: ORDER, START_DECK: START_DECK, ENEMIES: ENEMIES, BOSSES: BOSSES, CFG: CFG, ACHIEVEMENTS: ACHIEVEMENTS, MAPS: MAPS, RARITY: RARITY, COPIES: COPIES, CHESTS: CHESTS, KEYS_FOR_FREE: KEYS_FOR_FREE };
 })(typeof window !== "undefined" ? window : globalThis);
