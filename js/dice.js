@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.5.1";
+  var VERSION = "0.6.0";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -125,11 +125,12 @@
   }
   var SPR = {};
   Object.keys(ES.SPRITES).forEach(function (k) { var d = ES.SPRITES[k]; SPR[k] = d.frames.map(function (f) { return sprite(f, d.pal); }); });
-  var SQ = {}, ICON = {};
+  var SQ = {}, ICON = {}, EMB = {};
   var sqRows = ES.SPRITES.sq_noisette.frames;
   D.ORDER.forEach(function (k) {
     SQ[k] = sqRows.map(function (f) { return sprite(f, T[k].fur); });
     ICON[k] = sprite(T[k].icon.rows, T[k].icon.pal);
+    EMB[k] = sprite(T[k].emblem.rows, T[k].emblem.pal);
   });
   var urlCache = {};
   function sqUrl(k) { return urlCache[k] || (urlCache[k] = SQ[k][0].c.toDataURL()); }
@@ -372,6 +373,7 @@
       rect(pr.x - 2, pr.y - 2, 4, 4, OUT); rect(pr.x - 1.5, pr.y - 1.5, 3, 3, c); rect(pr.x - 1, pr.y - 1.5, 1, 1, "#fff8");
     });
     drawVfx(p);
+    drawSelLabel(p);
     drawHud(p);
   }
 
@@ -418,7 +420,7 @@
     b.deck.forEach(function (k, i) {
       var r = puRect(o, i), c = K.puCost(b, i), ok = mine && isFinite(c) && b.sp >= c && !p.world.over;
       box(r.x, r.y, r.w, r.h, ok ? T[k].color : "#5a4a3a", OUT, ok ? T[k].dark : "#3a2a1a");
-      ctx.drawImage(ICON[k].c, r.x + (r.w - ICON[k].w * 1.4) / 2, r.y + 2, ICON[k].w * 1.4, ICON[k].h * 1.4);
+      ctx.drawImage(EMB[k].c, Math.round(r.x + (r.w - EMB[k].w) / 2), r.y + 2);
       text("NV" + (b.pu[i] + 1), r.x + r.w / 2, r.y + 17.5, "#fdf3de", "center", 5);
       text(isFinite(c) ? fmt(c) : "MAX", r.x + r.w / 2, r.y + 24.5, ok ? "#f6d36b" : "#c9b8a0", "center", 5);
     });
@@ -459,30 +461,59 @@
     ctx.restore();
   }
 
-  function drawTile(sq, x, y, t) {
-    var Tp = T[sq.t];
+  // un dé-écureuil : oreilles, frimousse, gros emblème du rôle au centre, points en bas
+  function drawTile(sq, x, y, t, noPips) {
+    var Tp = T[sq.t], fur = Tp.fur, em = EMB[sq.t];
+    // oreilles (dépassent en haut)
+    [x + 2, x + 17].forEach(function (ex) { rect(ex, y - 2, 5, 4, OUT); rect(ex + 1, y - 1, 3, 3, fur.d); rect(ex + 2, y, 1, 2, fur.t); });
+    // corps du dé
     rect(x, y, 24, 24, OUT);
     rect(x + 1, y + 1, 22, 22, Tp.dark);
     rect(x + 1, y + 1, 22, 20, Tp.color);
-    rect(x + 2, y + 2, 20, 1, "rgba(255,255,255,.25)");
-    var fr = SQ[sq.t][Math.floor(((t || 0) * 2 + x * 0.05)) % 2];
-    ctx.drawImage(fr.c, Math.round(x + 4), Math.round(y + 1));
-    ctx.drawImage(ICON[sq.t].c, Math.round(x + 1), Math.round(y + 1));
-    // points (le « dé ») : en bas, sur une ou deux lignes
-    var n = sq.p, row1 = Math.min(n, 4), row2 = n - row1;
-    function dots(cnt, yy) {
-      var w = cnt * 4 - 1, sx = x + 12 - w / 2;
-      for (var i = 0; i < cnt; i++) { rect(sx + i * 4 - 0.5, yy - 0.5, 4, 4, OUT); rect(sx + i * 4, yy, 3, 3, n >= 7 ? "#f6d36b" : "#fdf3de"); }
+    rect(x + 2, y + 2, 20, 1, "rgba(255,255,255,.3)");
+    // frimousse : deux yeux aux coins
+    rect(x + 3, y + 4, 2, 2, OUT); rect(x + 19, y + 4, 2, 2, OUT);
+    rect(x + 3, y + 4, 1, 1, "#fdf3de"); rect(x + 19, y + 4, 1, 1, "#fdf3de");
+    // emblème du rôle, sur un médaillon sombre pour le contraste
+    var cy = noPips ? y + 12 : y + 10;
+    ctx.fillStyle = "rgba(20,12,6,.28)"; ctx.beginPath(); ctx.arc(x + 12, cy, 7.2, 0, Math.PI * 2); ctx.fill();
+    ctx.drawImage(em.c, Math.round(x + 12 - em.w / 2), Math.round(cy - em.h / 2));
+    // points (le « dé »), sur une ligne en bas
+    if (!noPips && sq.p) {
+      var n = sq.p, w = n * 3 + 1, sx = Math.round(x + 12 - w / 2);
+      rect(sx, y + 17, w, 5, OUT);
+      for (var i = 0; i < n; i++) rect(sx + 1 + i * 3, y + 18, 2, 3, n >= 7 ? "#f6d36b" : "#fdf3de");
     }
-    if (row2) { dots(row2, y + 13); dots(row1, y + 18); } else dots(row1, y + 18);
     if (sq.stun > 0) {
       ctx.fillStyle = "rgba(30,25,40,.55)"; ctx.fillRect(x + 1, y + 1, 22, 22);
       text("ZZ", x + 12, y + 7 + Math.sin((t || 0) * 6), "#c9b3ff", "center", 6);
     }
     if (sq.grow !== undefined && sq.grow > 0) {
       var f = Math.max(0, 1 - sq.grow / (Tp.grow || 16));
-      rect(x + 2, y + 21.5, 20, 1.5, "#2b1709"); rect(x + 2, y + 21.5, 20 * f, 1.5, "#9cd06a");
+      rect(x + 2, y + 22.5, 20, 1, "#2b1709"); rect(x + 2, y + 22.5, 20 * f, 1, "#9cd06a");
     }
+  }
+  // la même image en HTML (menus, deck, coffres)
+  var faceCache = {};
+  function faceUrl(k) {
+    if (faceCache[k]) return faceCache[k];
+    var c = document.createElement("canvas"); c.width = 24; c.height = 26;
+    var keep = ctx; ctx = c.getContext("2d");
+    try { drawTile({ t: k, p: 0, stun: 0 }, 0, 2, 0, true); } finally { ctx = keep; }
+    return (faceCache[k] = c.toDataURL());
+  }
+  // étiquette « nom · rôle » au-dessus de l'écureuil sélectionné
+  function drawSelLabel(p) {
+    if (!G.sel || G.sel.panel !== p || Object.keys(G.drag).length) return;
+    var sq = p.world.boards[G.sel.bi] && p.world.boards[G.sel.bi].slots[G.sel.slot]; if (!sq) return;
+    var Tp = T[sq.t], c = K.slotCenter(p.world.lay, G.sel.bi, G.sel.slot), label = Tp.name + " · " + Tp.role;
+    font(5.5); var w = ctx.measureText(label).width + 8, h = 10;
+    var bx = Math.max(2, Math.min(p.world.lay.w - w - 2, c.x - w / 2)), by = c.y - 13 - h - 2;
+    if (by < 16) by = c.y + 15;
+    if (flipped(p, G.sel.bi)) { ctx.save(); ctx.translate(bx + w / 2, by + h / 2); ctx.rotate(Math.PI); ctx.translate(-(bx + w / 2), -(by + h / 2)); }
+    rect(bx, by, w, h, OUT); rect(bx + 1, by + 1, w - 2, h - 2, Tp.color);
+    text(label, bx + w / 2, by + h / 2 + 0.5, "#fdf3de", "center", 5.5);
+    if (flipped(p, G.sel.bi)) ctx.restore();
   }
 
   function drawEnemy(w, e) {
@@ -846,7 +877,7 @@
   }
   function deckStrip(deck) {
     return '<div class="rd-strip">' + deck.map(function (k) {
-      return '<span class="rd-die" style="--c:' + T[k].color + ';--d:' + T[k].dark + '" title="' + esc(T[k].name) + '"><img src="' + sqUrl(k) + '" alt=""><img class="rd-ic" src="' + iconUrl(k) + '" alt=""></span>';
+      return dieHtml(k);
     }).join("") + "</div>";
   }
   var swapK = null, openedHtml = "", lastTap = { id: "", t: 0 }, hintMsg = "";
@@ -859,7 +890,7 @@
   function flashHint(msg) { hintMsg = msg; }
   function sprUrl(name) { return urlCache["s" + name] || (urlCache["s" + name] = SPR[name][0].c.toDataURL()); }
   function dieHtml(k) {
-    return '<span class="rd-die" style="--c:' + T[k].color + ";--d:" + T[k].dark + '"><img src="' + sqUrl(k) + '" alt=""><img class="rd-ic" src="' + iconUrl(k) + '" alt=""></span>';
+    return '<span class="rd-die rd-face" title="' + esc(T[k].name + " · " + T[k].role) + '"><img src="' + faceUrl(k) + '" alt=""></span>';
   }
   var TARGET = { front: "le plus avancé", strong: "le plus solide", random: "au hasard", all: "toutes les bestioles", none: "aucune (soutien)" };
   function detailHtml(k) {
@@ -1186,7 +1217,7 @@
       D.ORDER.forEach(function (k) {
         var have = owned(k), lv = clsLv(k), need = copiesNeed(k), c = S.cards[k] || 0;
         html += '<button class="rd-tile r-' + T[k].rarity + (S.sel === k ? " is-sel" : "") + (S.deck.indexOf(k) >= 0 ? " in-deck" : "") + (have ? "" : " is-locked") + '" type="button" data-action="pick" data-arg="' + k + '" aria-label="' + esc(have ? T[k].name : "Écureuil inconnu") + '">' +
-          dieHtml(k) + (have ? '<i class="rd-lv">' + lv + "</i>" : '<i class="rd-q">?</i>') +
+          dieHtml(k) + (have ? '<i class="rd-lv">' + lv + "</i>" : '<i class="rd-q">?</i>') + '<span class="rd-role">' + esc(T[k].role) + "</span>" +
           (have ? '<span class="rd-bar' + (canLevel(k) ? " is-ready" : "") + '"><b style="width:' + (isFinite(need) ? Math.min(100, c / need * 100) : 100) + '%"></b><em>' + (isFinite(need) ? c + "/" + need : "MAX") + "</em></span>" : '<span class="rd-bar is-void"></span>') +
           "</button>";
       });

@@ -1662,3 +1662,14 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .rd-slot, .rd-tile, .rd-pick, .rd-slots { touch-action: manipulation; }
 .rd-slot.is-sel { outline: 3px solid var(--ink); outline-offset: 3px; }
 .rd-warn { color: var(--berry); }
+/* dés-écureuils : une seule image (oreilles, frimousse, emblème du rôle) */
+.rd-die.rd-face { background: none !important; border: 0 !important; aspect-ratio: 24 / 26; height: auto; }
+.rd-die.rd-face img { width: 100% !important; height: auto; image-rendering: pixelated; }
+.rd-tile .rd-die.rd-face, .rd-slot .rd-die.rd-face, .rd-deckbar-dice .rd-die.rd-face, .rd-cfx-face .rd-die.rd-face, .rd-card-got .rd-die.rd-face { aspect-ratio: 24 / 26; height: auto; }
+.rd-cfx-face .rd-die.rd-face { width: 92px; }
+.rd-card-got .rd-die.rd-face { width: 56px; }
+.rd-detail-head .rd-die.rd-face { width: 64px; }
+.room-players .rd-die.rd-face { width: 30px; }
+.rd-role { font-size: .62rem; font-weight: 800; color: var(--ink-soft); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.rd-tile.is-locked .rd-role { opacity: .6; }
+.rd-tile.is-locked .rd-die.rd-face img { filter: brightness(0) opacity(.5); }
