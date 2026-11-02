@@ -844,6 +844,19 @@ window.ES_DATA = (function () {
     { id: "carnet", r: 0, solo: true, icon: "📓", name: "Carnet de survie", desc: "SOLO · +0,5 PV/s et +5 % d'XP." },
     { id: "lanterne", r: 1, solo: true, icon: "🏮", name: "Lanterne de l'ermite", desc: "SOLO · -15 % de recharge quand tes PV sont au-dessus de 80 %." },
     { id: "pleinelune", r: 2, solo: true, icon: "🌕", name: "Pleine lune", desc: "SOLO · +25 % de dégâts contre les élites et les boss." },
+    // ---- objets à débloquer par des quêtes (re-verrouillés à chaque prestige)
+    { id: "trefle4", r: 2, quest: "q_coffres", icon: "🍀", name: "Trèfle à quatre feuilles", desc: "+40 % de chance de butin." },
+    { id: "cor", r: 1, quest: "q_elites", icon: "📣", name: "Cor de guerre", desc: "Après avoir tué une élite : +15 % de dégâts pendant 5 s." },
+    { id: "masque", r: 3, quest: "q_pactes", icon: "👺", name: "Masque du démon", desc: "+10 % de dégâts par pacte du diable scellé." },
+    { id: "halo", r: 2, quest: "q_sanctuaires", icon: "🌟", name: "Halo d'or", desc: "+0,5 PV/s par sanctuaire activé dans la partie (max 5)." },
+    { id: "fiole", r: 1, quest: "q_survie8", icon: "🧪", name: "Fiole de rage", desc: "Sous 30 % de PV : les armes rechargent 30 % plus vite." },
+    { id: "trophee", r: 2, quest: "q_folie", icon: "🏆", name: "Trophée de chasse", desc: "+25 % de dégâts contre les boss." },
+    { id: "graine", r: 0, quest: "q_niveau15", icon: "🌱", name: "Graine ancienne", desc: "+10 PV max et +0,2 PV/s." },
+    { id: "boussole", r: 0, quest: "q_palier", icon: "🧭", name: "Boussole", desc: "+10 % de vitesse, les sanctuaires se chargent 30 % plus vite." },
+    { id: "dague_ombre", r: 3, quest: "q_donjon", icon: "🗡️", name: "Dague de l'ombre", desc: "15 % de chance par coup d'infliger ×4 dégâts." },
+    { id: "nid", r: 2, quest: "q_releve", icon: "🪺", name: "Nid douillet", desc: "+1 renaissance, et tu relèves deux fois plus vite." },
+    { id: "plume_solo", r: 1, quest: "q_arene", icon: "🪶", name: "Plume solitaire", desc: "+20 % d'expérience." },
+    { id: "eclat", r: 2, quest: "q_massacre", icon: "💠", name: "Éclat de météore", desc: "+20 % de zone d'effet." },
     // ---- pool des boss (lâchés seulement par les boss)
     { id: "plume_hibou", r: 2, pool: "boss", icon: "🦉", name: "Plume du Hibou ancien", desc: "BOSS · +1 projectile pour toutes les armes." },
     { id: "bois_roi", r: 2, pool: "boss", icon: "🦌", name: "Couronne de bois", desc: "BOSS · +25 PV max et +1 armure." },
@@ -890,6 +903,25 @@ window.ES_DATA = (function () {
   ];
 
   /* =====================================================================
+     Quêtes : débloquent des objets (comme dans les roguelites), à refaire à chaque prestige
+     r = partie en cours (ou finie)
+     ===================================================================== */
+  var QUESTS = [
+    { id: "q_niveau15", desc: "Atteins le niveau 15 dans une partie.", check: function (r) { return r.level >= 15; } },
+    { id: "q_palier", desc: "Atteins le palier de difficulté « Difficile ».", check: function (r) { return (r.tier || 0) >= 3; } },
+    { id: "q_coffres", desc: "Ouvre 3 coffres scellés dans une partie.", check: function (r) { return (r.chestsOpened || 0) >= 3; } },
+    { id: "q_elites", desc: "Tue 15 élites dans une partie.", check: function (r) { return (r.elites || 0) >= 15; } },
+    { id: "q_sanctuaires", desc: "Active 6 sanctuaires dans une partie.", check: function (r) { return (r.shrinesUsed || 0) >= 6; } },
+    { id: "q_survie8", desc: "Survis 8 minutes.", check: function (r) { return r.time >= 480; } },
+    { id: "q_pactes", desc: "Scelle 2 pactes du diable dans une partie.", check: function (r) { return (r.devil || 0) >= 2; } },
+    { id: "q_folie", desc: "Bats un boss pendant la folie (totem de folie activé).", check: function (r) { return (r.madBoss || 0) >= 1; } },
+    { id: "q_massacre", desc: "Tue 1 000 ennemis dans une partie.", check: function (r) { return r.kills >= 1000; } },
+    { id: "q_releve", desc: "Relève 3 fois un coéquipier (ou ton jumeau) dans une partie.", check: function (r) { return (r.revivesDone || 0) >= 3; } },
+    { id: "q_arene", desc: "Atteins la manche 10 de l'Arène en solo.", check: function (r) { return r.mode === "arena" && !r.coop && r.round >= 10; } },
+    { id: "q_donjon", desc: "Bats le boss final du Donjon.", check: function (r) { return r.mode === "dungeon" && r.won; } },
+  ];
+
+  /* =====================================================================
      Pouvoirs d'élite : s'appliquent à n'importe quel ennemi, boss compris
      ===================================================================== */
   var AFFIXES = [
@@ -909,6 +941,6 @@ window.ES_DATA = (function () {
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();

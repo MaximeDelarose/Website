@@ -16,7 +16,7 @@
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
   var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.21.0";
+  var VERSION = "0.22.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -31,7 +31,7 @@
      ===================================================================== */
   var SAVE_KEY = "es-save-v1";
   function defaults() {
-    return { gold: 0, shop: {}, ach: {}, owned: { noisette: true }, rank: 1, rankXp: 0, tree: {}, prestige: 0, ppts: 0, pshop: {}, char: "noisette", map: "clairiere", diff: "normal", name: "",
+    return { gold: 0, shop: {}, ach: {}, quests: {}, owned: { noisette: true }, rank: 1, rankXp: 0, tree: {}, prestige: 0, ppts: 0, pshop: {}, char: "noisette", map: "clairiere", diff: "normal", name: "",
              opts: { sound: true, shake: true, numbers: true },
              mode: "survie", stats: { kills: 0, goldEarned: 0, goldSince: 0, runs: 0, bestTime: 0, bestScore: 0, bosses: 0, played: {}, maps: {}, bought: 0 } };
   }
@@ -209,7 +209,7 @@
     var p = pl || actingPlayer();
     var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives, tr = p.tree || {}, pg = p.pshop || {}, rl = p.relics || {}, it = p.items || {};
     var oldMax = p.maxHp || 0;
-    p.maxHp = Math.max(20, 100 + (p.bonusHp || 0) + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0) + (rl.coeur ? 30 : 0) + 25 * (it.bois_roi || 0) + 50 * (it.coeur_golem || 0)) * (1 + 0.25 * (it.coeurchene || 0)) * Math.pow(0.8, p.devil || 0);
+    p.maxHp = Math.max(20, 100 + (p.bonusHp || 0) + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0) + (rl.coeur ? 30 : 0) + 25 * (it.bois_roi || 0) + 50 * (it.coeur_golem || 0) + 10 * (it.graine || 0)) * (1 + 0.25 * (it.coeurchene || 0)) * Math.pow(0.8, p.devil || 0);
     p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0) + (rl.plume ? 0.12 : 0) + 0.08 * (it.plume || 0) + 0.25 * (it.pacte_ailes || 0) + 0.15 * (it.aureole || 0) - 0.05 * (it.coeur_golem || 0));
     p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + 0.08 * (pg.racines || 0) + (rl.croc ? 0.15 : 0) + 0.15 * (it.horloge || 0) + 0.4 * (it.pacte_force || 0) + 0.2 * (it.aureole || 0);
     p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0) + (tr.s3 || 0) + 2 * (it.ecaille || 0) + (it.bois_roi || 0) + 2 * (it.coeur_golem || 0);
@@ -228,7 +228,13 @@
     if (players && humans() === 1) {
       p.might += 0.12 * (ps.ermite || 0); p.xpMul += 0.08 * (ps.ermite || 0) + 0.05 * (it.carnet || 0); p.regen += 0.5 * (it.carnet || 0);
     }
-    p.lantern = it.lanterne || 0;
+    p.lantern = it.lanterne || 0; p.fiole = it.fiole || 0;
+    p.luck += 0.4 * (it.trefle4 || 0);
+    p.might += 0.1 * (p.devil || 0) * (it.masque || 0);
+    p.regen += Math.min(5, (r && r.shrinesUsed) || 0) * 0.5 * (it.halo || 0) + 0.2 * (it.graine || 0);
+    p.speed *= 1 + 0.1 * (it.boussole || 0);
+    p.xpMul += 0.2 * (it.plume_solo || 0);
+    p.area += 0.2 * (it.eclat || 0);
     if (p.char && p.char.twin) p.might *= p.char.twin.dmg || 0.6;
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.hp = Math.min(p.hp, p.maxHp);
@@ -557,6 +563,9 @@
     if (p.items) dmg = itemDmg(e, dmg);
     if (p.packN && p.passives.meute) dmg *= 1 + 0.08 * p.passives.meute;
     if (p.rallyT > 0) dmg *= 1.4;
+    if (p.corT > 0) dmg *= 1 + 0.15 * itn(p, "cor");
+    if (e.d.boss && itn(p, "trophee")) dmg *= 1 + 0.25 * itn(p, "trophee");
+    if (itn(p, "dague_ombre") && Math.random() < Math.min(0.5, 0.15 * itn(p, "dague_ombre"))) dmg *= 4;
     if ((e.d.boss || e.aff) && itn(p, "pleinelune") && humans() === 1) dmg *= 1 + 0.25 * itn(p, "pleinelune");
     if (e.aff || e.shellT > 0) dmg = affixDamage(e, dmg);
     dmg = Math.max(1, Math.round(dmg));
@@ -586,6 +595,8 @@
     if (e.quest) trialKill(e);
     else if (e.aff && Math.random() < 0.3) dropItem(e.x, e.y + 4, 0);
     if (e.type === "puffball") addZone(e.x, e.y, 24, 3.5, "spore", 4);
+    if (e.d.boss && r.madness) r.madBoss = (r.madBoss || 0) + 1;
+    if (e.aff && !e.d.boss) { r.elites = (r.elites || 0) + 1; if (itn(p, "cor")) p.corT = 5; }
     if (e.aff) {
       if (hasA(e, "explosif")) warn(e.x, e.y, 32, 0.7, 16);
       if (!e.d.boss) { drop("xp", e.x + 4, e.y, e.d.xp * 3); drop("gold", e.x - 4, e.y, 2); }
@@ -916,7 +927,7 @@
     D.RARITIES.forEach(function (ra, i) { if (i < (minR || 0)) return; var w = ra.weight * (i ? L : 1); pool.push([i, w]); tot += w; });
     var x = Math.random() * tot, ri = pool[pool.length - 1][0];
     for (var k = 0; k < pool.length; k++) { x -= pool[k][1]; if (x <= 0) { ri = pool[k][0]; break; } }
-    var list = D.ITEMS.filter(function (it) { return it.r === ri && !it.pool && allowed(it); });
+    var list = D.ITEMS.filter(function (it) { return it.r === ri && !it.pool && allowed(it) && (!it.quest || (S.quests && S.quests[it.quest])); });
     return list[(Math.random() * list.length) | 0];
   }
   function dropItem(x, y, minR) { var it = rollItem(minR, p ? p.luck : 1); drop("item", x, y, it.idx); }
@@ -924,7 +935,7 @@
     var it = ITM[id]; if (!it) return;
     if (pl.owner) pl = pl.owner;
     pl.items = pl.items || {}; pl.items[id] = (pl.items[id] || 0) + 1;
-    if (id === "phenix") pl.revives = (pl.revives || 0) + 1;
+    if (id === "phenix" || id === "nid") pl.revives = (pl.revives || 0) + 1;
     calc(pl); if (pl.owner) calc(pl.owner);
     if (pl === me || pl.owner === me) itemToast(it, pl.items[id]);
     netEv(["it", pl.id, id]);
@@ -1015,6 +1026,7 @@
   }
   function teamTick(pl, dt) {
     if (pl.rallyT > 0) pl.rallyT -= dt;
+    if (pl.corT > 0) pl.corT -= dt;
     if (players.length < 2) { pl.packN = 0; return; }
     var n = 0, heal = 0.3 * ((pl.passives && pl.passives.entraide) || 0);
     players.forEach(function (o) {
@@ -1192,7 +1204,7 @@
     Object.keys(seen).forEach(function (id) {
       var pl = seen[id], s = shrinesNear(pl.x, pl.y, 40).filter(function (q) { return q.id === id; })[0], st = shState(s), def = SHR[s.k];
       if (st.cd > 0) { st.cd -= dt; return; }
-      st.p = Math.min(1, st.p + dt / def.time);
+      st.p = Math.min(1, st.p + dt / def.time * (1 + 0.3 * itn(pl, "boussole")));
       if (st.p >= 1) activateShrine(s, st, pl);
     });
   }
@@ -1201,7 +1213,7 @@
     if (s.k === "coffre") {
       var cost = chestCost();
       if (r.gold < cost) { st.p = 0; st.cd = 2; bannerAll("Il faut " + cost + " glands pour l'ouvrir"); return; }
-      r.gold -= cost; dropItem(s.x, s.y - 14, 0); if (Math.random() < 0.3) dropItem(s.x + 14, s.y - 8, 0);
+      r.gold -= cost; r.chestsOpened = (r.chestsOpened || 0) + 1; dropItem(s.x, s.y - 14, 0); if (Math.random() < 0.3) dropItem(s.x + 14, s.y - 8, 0);
       bannerAll("Coffre ouvert !"); SND.gold();
     } else if (s.k === "defi") {
       var n = 5 + tierN(); r.trials[s.id] = n;
@@ -1228,7 +1240,8 @@
       if (r.devil) bannerAll("La statue se détourne de vous… (un pacte a été scellé)");
       else { drop("item", s.x, s.y - 14, rollItem(0, 1, "sacre").idx); bannerAll("Bénédiction !"); SND.fusion(); }
     }
-    st.used = 1; st.p = 1;
+    st.used = 1; st.p = 1; r.shrinesUsed = (r.shrinesUsed || 0) + 1;
+    players.forEach(function (o) { if (itn(o, "halo")) calc(o); });
     ring(s.x, s.y, 26, false);
   }
   function trialKill(e) {
@@ -1337,7 +1350,7 @@
   }
   function timer(id, cd, dt) {
     p.timers[id] = (p.timers[id] === undefined ? 0.3 : p.timers[id]) - dt;
-    if (p.timers[id] <= 0) { p.timers[id] = cd * p.cdMul * (p.lantern && p.hp > p.maxHp * 0.8 && humans() === 1 ? 0.85 : 1); return true; }
+    if (p.timers[id] <= 0) { p.timers[id] = cd * p.cdMul * (p.lantern && p.hp > p.maxHp * 0.8 && humans() === 1 ? 0.85 : 1) * (p.fiole && p.hp < p.maxHp * 0.3 ? 0.7 : 1); return true; }
     return false;
   }
   function cooled(e, key, delay) {
@@ -1726,7 +1739,29 @@
     return { kills: s.kills + (run && !run.committed ? run.kills : 0), goldEarned: s.goldEarned, played: s.played, maps: s.maps, bought: s.bought,
              rank: S.rank, prestige: S.prestige, spent: spentPoints() };
   }
+  function checkQuests(run) {
+    if (!run || !r) return;
+    S.quests = S.quests || {};
+    D.QUESTS.forEach(function (q) {
+      if (S.quests[q.id]) return;
+      var ok = false; try { ok = q.check(run); } catch (e) {}
+      if (!ok) return;
+      S.quests[q.id] = Date.now(); save();
+      var it = D.ITEMS.filter(function (x) { return x.quest === q.id; })[0];
+      if (it) questToast(it);
+    });
+  }
+  function questToast(it) {
+    var box = $("[data-toasts]"); if (!box) return;
+    var ra = D.RARITIES[it.r], el = document.createElement("div");
+    el.className = "game-toast item-toast r" + it.r; el.style.setProperty("--rc", ra.color);
+    el.innerHTML = "<strong>🔓 Objet débloqué : " + it.icon + " " + esc(it.name) + "</strong><span>Il peut maintenant apparaître en partie. " + esc(it.desc) + "</span>";
+    box.appendChild(el); SND.ach();
+    setTimeout(function () { el.classList.add("out"); }, 4200);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 4800);
+  }
   function checkAchievements(run) {
+    checkQuests(run);
     var t = totals(run), got = [];
     D.ACHIEVEMENTS.forEach(function (a) {
       if (S.ach[a.id]) return;
@@ -1906,9 +1941,9 @@
       var pd = players[i];
       if (pd.down) {
         var rate = 0;
-        players.forEach(function (o) { if (o !== pd && !o.down && Math.hypot(o.x - pd.x, o.y - pd.y) < 22) rate = Math.max(rate, 1 + 0.25 * ((o.passives && o.passives.entraide) || 0) + 0.5 * itn(o, "ralliement")); });
+        players.forEach(function (o) { if (o !== pd && !o.down && Math.hypot(o.x - pd.x, o.y - pd.y) < 22) rate = Math.max(rate, (1 + 0.25 * ((o.passives && o.passives.entraide) || 0) + 0.5 * itn(o, "ralliement")) * (itn(o, "nid") ? 2 : 1)); });
         pd.reviveT = rate ? pd.reviveT + dt * rate : Math.max(0, pd.reviveT - dt * 0.5);
-        if (pd.reviveT >= 3) { pd.down = false; pd.hp = pd.maxHp * 0.4; pd.inv = 2; pd.reviveT = 0; bannerAll(pd.name + " est relevé !"); }
+        if (pd.reviveT >= 3) { r.revivesDone = (r.revivesDone || 0) + 1; pd.down = false; pd.hp = pd.maxHp * 0.4; pd.inv = 2; pd.reviveT = 0; bannerAll(pd.name + " est relevé !"); }
         continue;
       }
       if (pd.hp > 0) continue;
@@ -3549,6 +3584,7 @@
         '<button class="btn" type="button" data-action="go" data-arg="coop">🌐 Coop en ligne</button>' +
         '<button class="btn btn-alt" type="button" data-action="go" data-arg="shop">🛒 Améliorations</button>' +
         '<button class="btn btn-alt" type="button" data-action="go" data-arg="succes">🏆 Succès <small>' + nAch + "/" + D.ACHIEVEMENTS.length + "</small></button>" +
+        '<button class="btn btn-alt" type="button" data-action="go" data-arg="quetes">🗝️ Quêtes <small>' + Object.keys(S.quests || {}).length + "/" + D.QUESTS.length + "</small></button>" +
         '<div class="menu-row"><button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="tree">🌳 Compétences' + (freePoints() > 0 ? ' <span class="pill">' + freePoints() + "</span>" : "") + "</button>" +
         '<button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="prestige">✨ Prestige' + (prestigeReady() ? ' <span class="pill">!</span>' : "") + "</button></div>" +
         '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="codex">📜 Fusions</button>' +
@@ -3679,6 +3715,18 @@
       });
       html += '</div><p class="game-small"><button class="link-btn" type="button" data-action="refund">Rembourser toutes les améliorations</button></p>';
       return html;
+    },
+    quetes: function () {
+      var q = S.quests || {}, n = Object.keys(q).length;
+      var html = '<div class="screen-head">' + back() + '<h2>Quêtes</h2><p class="gold-badge">🗝️ <b>' + n + " / " + D.QUESTS.length + '</b></p></div>' +
+        '<p class="game-small">Chaque quête réussie ajoute un nouvel objet au butin. Elles se re-verrouillent à chaque prestige.</p><div class="ach-list">';
+      D.QUESTS.forEach(function (qq) {
+        var ok = !!q[qq.id], it = D.ITEMS.filter(function (x) { return x.quest === qq.id; })[0], ra = D.RARITIES[it ? it.r : 0];
+        html += '<div class="ach quest' + (ok ? " is-done" : "") + '" style="--rc:' + ra.color + '"><span class="ach-ic">' + (ok ? it.icon : "🔒") + "</span>" +
+          "<div><strong>" + esc(qq.desc) + "</strong><span>" + (it ? "Débloque " + (ok ? "" : "") + "<b class=\"q-item\">" + esc(it.name) + "</b> (" + ra.name.toLowerCase() + ") : " + esc(it.desc) : "") + "</span></div>" +
+          '<span class="ach-gold">' + (ok ? "✓" : "") + "</span></div>";
+      });
+      return html + "</div>";
     },
     succes: function () {
       var n = Object.keys(S.ach).length;
@@ -4524,6 +4572,7 @@
     shrines: function (rad) { return shrinesNear(me.x, me.y, rad || 900).map(function (s) { return [s.id, s.k, Math.round(s.x), Math.round(s.y), r.sh[s.id] ? r.sh[s.id].used : 0]; }); },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: TIERS[tierN()].name, madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
+    quests: function () { return S.quests; },
     goStairs: function () { if (r && r.dg && r.dg.stairs) { me.x = r.dg.stairs.x; me.y = r.dg.stairs.y; return true; } return false; },
     killRoom: function () { enemies.forEach(function (e) { if (!e.d.prop && e.room !== undefined) { e.hp = 0; kill(e); } }); },
     endRound: function () { if (r && isArena() && r.phase === "fight") r.roundT = r.roundLen; },
