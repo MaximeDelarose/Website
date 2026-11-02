@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "0.26.2";
+  var VERSION = "0.26.3";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -4533,6 +4533,26 @@
     });
   }
 
+  // nouvelle version en ligne ? (vérifié au lancement, toutes les 2 min et au retour sur l'onglet)
+  var updShown = false;
+  function checkUpdate() {
+    if (updShown || !window.fetch) return;
+    fetch("js/version.json?t=" + Date.now(), { cache: "no-store" }).then(function (x) { return x.json(); }).then(function (j) {
+      if (!j || !j.v || j.v === VERSION || updShown) return;
+      updShown = true;
+      var bar = document.createElement("div");
+      bar.className = "update-bar";
+      bar.innerHTML = "<span>🐿️ Nouvelle version <b>" + esc(j.v) + "</b> disponible</span><button type=\"button\" class=\"btn btn-small\">Recharger</button>";
+      bar.querySelector("button").addEventListener("click", function () {
+        var u = location.pathname + "?r=" + Date.now() + location.hash;
+        location.replace(u);
+      });
+      document.body.appendChild(bar);
+    }, function () {});
+  }
+  setTimeout(checkUpdate, 3000);
+  setInterval(checkUpdate, 120000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) checkUpdate(); });
   function showError(err) {
     state = "error";
     try { console.error(err); } catch (e) {}
