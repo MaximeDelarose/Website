@@ -278,6 +278,8 @@
     }
     if (Tp.freeze && !e.d.noSlow) e.frozenT = Math.max(e.frozenT || 0, (Tp.freeze + Tp.freezePip * (pr.p - 1)) * (e.d.boss ? 0.5 : 1));
     damage(w, e, dmg, pr.b, { pure: !!Tp.pierce });
+    var hp0 = epos(w, e);
+    w.ev.push({ k: "hit", x: hp0.x, y: hp0.y - 3, t: pr.t, v: Math.round(dmg), crit: crit, big: !!e.d.boss });
     if (!e.dead && Tp.exec && !e.d.boss && e.hp < e.max * (Tp.exec + Tp.execPip * (pr.p - 1))) {
       var xp = epos(w, e); w.ev.push({ k: "exec", x: xp.x, y: xp.y });
       damage(w, e, e.hp + 1, pr.b, { pure: true });
@@ -307,16 +309,18 @@
       if (pts.length > 1) w.ev.push({ k: "bolt", pts: pts.map(function (q) { return [q.x, q.y]; }) });
     }
   }
+  function aim(sq, c, w, e) { var q = epos(w, e); sq.ang = Math.atan2(q.y - c.y, q.x - c.x); sq.fx = 1; }
   function fire(w, bi, si, sq) {
     var b = w.boards[bi], Tp = T[sq.t], pu = puOf(b, sq.t), dmg = (Tp.dmg + Tp.pu * pu) * classMul(b, sq.t) * (1 + C.pipBonus * (sq.p - 1));
     dmg *= 1 + boardAura(b);
     var c = slotCenter(w.lay, bi, si), crit = boardCrit(b), rg = rangeOf(sq.t);
     if (Tp.target === "all") {
       var any = false;
-      w.enemies.slice().forEach(function (e) { if (targetable(e) && inRange(w, e, c, rg)) { any = true; hit(w, { b: bi, t: sq.t, p: sq.p, dmg: dmg * sq.p, crit: crit }, e); } });
+      var spts = [];
+      w.enemies.slice().forEach(function (e) { if (targetable(e) && inRange(w, e, c, rg)) { any = true; var q = epos(w, e); if (spts.length < 24) spts.push([Math.round(q.x), Math.round(q.y)]); hit(w, { b: bi, t: sq.t, p: sq.p, dmg: dmg * sq.p, crit: crit }, e); } });
       if (!any) return false;
-      w.ev.push({ k: "storm", b: bi, s: si });
-      sq.bob = 0.12;
+      w.ev.push({ k: "storm", b: bi, s: si, pts: spts });
+      sq.bob = 0.12; sq.fx = 1; sq.ang = -Math.PI / 2;
       return true;
     }
     if (sq.t === "mine") {
@@ -328,11 +332,13 @@
         var spot = pick(spots), dist = spot[1];
         w.mines.push({ dist: dist, lane: spot[0], dmg: dmg, b: bi, crit: crit, fly: 0.35, x0: c.x, y0: c.y, t: 0 });
       }
-      sq.bob = 0.12;
+      sq.bob = 0.12; sq.fx = 1; sq.ang = -Math.PI / 2;
       return true;
     }
     var first = chooseTarget(w, Tp.target, c, rg);
     if (!first) return false;
+    aim(sq, c, w, first);
+    if (sq.t === "eclair") w.ev.push({ k: "zap", x0: c.x, y0: c.y, id: first.id });
     for (var k = 0; k < sq.p; k++) {
       var tg = k === 0 ? first : (Tp.target === "random" ? chooseTarget(w, "random", c, rg) || first : first);
       var shots = Tp.echo && Math.random() < Tp.echo ? 2 : 1;
@@ -397,7 +403,7 @@
         if (!nt) { w.projs.splice(i, 1); continue; }
         pr.tid = nt.id; e = nt;
       }
-      var p = epos(w, e), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = 300 * dt;
+      var p = epos(w, e), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = (T[pr.t].pspd || 300) * dt;
       if (d <= mv + 2) { w.projs.splice(i, 1); if (!pr.vis) hit(w, pr, e); continue; }
       pr.x += dx / d * mv; pr.y += dy / d * mv;
     }
@@ -543,7 +549,7 @@
     });
     for (var f = 0; f + 3 < s.f.length + 1; f += 4) {
       var c = slotCenter(w.lay, s.f[f], s.f[f + 1]), sq = w.boards[s.f[f]] && w.boards[s.f[f]].slots[s.f[f + 1]];
-      if (sq) sq.bob = 0.12;
+      if (sq) { sq.bob = 0.12; sq.fx = 1; var te = w.emap[s.f[f + 2]]; if (te) { var tq = epos(w, te); sq.ang = Math.atan2(tq.y - c.y, tq.x - c.x); } }
       if (w.projs.length < 300) w.projs.push({ x: c.x, y: c.y, tid: s.f[f + 2], t: D.ORDER[s.f[f + 3]], vis: true, delay: (f / 4 % 7) * 0.05 });
     }
     w.mines = s.m.map(function (d) { return { dist: d >> 1, lane: d & 1, t: 1, fly: 0 }; });
@@ -561,8 +567,8 @@
       if (pr.delay > 0) { pr.delay -= dt; continue; }
       var e = w.emap[pr.tid];
       if (!e) { w.projs.splice(i, 1); continue; }
-      var p = epos(w, e), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = 300 * dt;
-      if (d <= mv + 2) { w.projs.splice(i, 1); continue; }
+      var p = epos(w, e), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = (T[pr.t].pspd || 300) * dt;
+      if (d <= mv + 2) { w.projs.splice(i, 1); w.ev.push({ k: "hit", x: p.x, y: p.y - 3, t: pr.t }); continue; }
       pr.x += dx / d * mv; pr.y += dy / d * mv;
     }
   }
