@@ -14,7 +14,7 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
-  var VERSION = "v5";
+  var VERSION = "v6";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
 
@@ -46,6 +46,10 @@
     return s;
   }
   var S = load();
+  var Net = { on: false, role: null, id: Math.random().toString(36).slice(2, 10), code: null, client: null, ch: null, status: "",
+              roster: [], ev: [], dmgN: 0, acc: 0, inAcc: 0, cur: null, prev: null, lastLevel: 1, started: false, err: "" };
+  function netEv(ev) { if (Net.on && Net.role === "host" && Net.started && Net.ev.length < 120) Net.ev.push(ev); }
+  function netSend(ev, payload) { if (Net.ch) { try { Net.ch.send({ type: "broadcast", event: ev, payload: payload }); } catch (e) {} } }
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
 
   function has(ach) { return !ach || !!S.ach[ach]; }
@@ -167,14 +171,16 @@
   var W = 320, H = 200;
   var state = "menu";     // menu | play | levelup | pause | over | error
   var curBoss = null;
+  var players = [], me = null, picking = false, netMenuOpen = false;
   var p = null, r = null, CH, DIFF, MAP, enemies, projs, hostile, lobs, gems, fx, texts, grid, warns;
   var spawnAcc, nextSwarm, nextBoss, bossCount, shake, uid, achTick, pending, xp, xpNext, propTimer;
 
   function need(L) { return 5 + (L - 1) * 3 + Math.max(0, L - 15) * 4 + Math.max(0, L - 30) * 8; }
   function V(w, k, l) { var v = w[k]; return Array.isArray(v) ? v[Math.min(l, v.length - 1)] : v; }
 
-  function calc() {
-    var m = CH.mods || {}, sh = S.shop, ps = p.passives;
+  function calc(pl) {
+    var p = pl || actingPlayer();
+    var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives;
     var oldMax = p.maxHp || 0;
     p.maxHp = Math.max(20, 100 + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0));
     p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0));
@@ -193,21 +199,48 @@
     p.hp = Math.min(p.hp, p.maxHp);
   }
 
-  function reset() {
-    CH = charById(S.char); DIFF = D.DIFFICULTIES[S.diff] || D.DIFFICULTIES.normal; MAP = mapById(S.map);
-    p = { x: 0, y: 0, hp: 0, face: 1, moving: false, anim: 0, inv: 0, weapons: {}, passives: {}, timers: {}, st: {}, shield: false, shieldT: 0 };
-    p.weapons[CH.weapon] = 1;
-    calc(); p.hp = p.maxHp;
+  function actingPlayer() { return p || me; }
+  function myId() { return Net.on ? Net.id : "solo"; }
+  function reset(roster, mapId, diffId) {
+    DIFF = D.DIFFICULTIES[diffId || S.diff] || D.DIFFICULTIES.normal; MAP = mapById(mapId || S.map);
+    roster = roster || [{ id: "solo", name: S.name || "Toi", char: S.char, shop: S.shop }];
+    var n = roster.length;
+    players = roster.map(function (it, i) {
+      var c = charById(it.char);
+      var pl = { id: it.id, name: it.name || "Écureuil", char: c, sprite: c.sprite, shop: it.shop || {}, x: (i - (n - 1) / 2) * 20, y: 0,
+                 hp: 0, face: 1, moving: false, anim: 0, inv: 0, weapons: {}, passives: {}, timers: {}, st: {}, consumed: {},
+                 shield: false, shieldT: 0, down: false, reviveT: 0, choosing: false, remote: it.id !== myId() };
+      pl.tx = pl.x; pl.ty = pl.y;
+      pl.weapons[c.weapon] = 1;
+      p = pl; calc(pl); pl.hp = pl.maxHp;
+      pl.revives = pl.shop.renaissance || 0; pl.rerolls = pl.shop.relance || 0;
+      return pl;
+    });
+    me = players.filter(function (pl) { return pl.id === myId(); })[0] || players[0];
+    me.remote = false; p = me; CH = me.char;
     r = { time: 0, kills: 0, level: 1, bosses: 0, berries: 0, gold: 0, lastHit: 0, maxedWeapon: false, nWeapons: 1, nPassives: 0,
-          fusions: 0, legend: 0, consumed: {}, biome: -1, props: 0, freeze: 0, flash: 0, hard: S.diff !== "normal", ended: false, committed: false, newAch: [], bonus: 0,
-          revives: S.shop.renaissance || 0, rerolls: S.shop.relance || 0, char: CH.id, map: MAP.id };
+          fusions: 0, legend: 0, biome: -1, props: 0, freeze: 0, flash: 0, hard: (diffId || S.diff) !== "normal", ended: false, committed: false, newAch: [], bonus: 0,
+          char: CH.id, map: MAP.id, coop: n > 1 };
     enemies = []; projs = []; hostile = []; lobs = []; gems = []; fx = []; texts = []; warns = [];
     biomeCache = new Map();
-    xp = 0; xpNext = need(1); pending = 0;
+    xp = 0; xpNext = need(1); pending = 0; picking = false; netMenuOpen = false;
     spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
-    for (var i = 0; i < 4; i++) spawnProp(90 + Math.random() * 120);
+    if (!Net.on || Net.role === "host") for (var i = 0; i < 4; i++) spawnProp(90 + Math.random() * 120);
   }
+  function alive() { return players.filter(function (pl) { return !pl.down; }); }
+  function randomAlive() { var a = alive(); return a.length ? a[(Math.random() * a.length) | 0] : me; }
+  function targetOf(e) {
+    var best = null, bd = 1e18, any = null, ad = 1e18;
+    for (var i = 0; i < players.length; i++) {
+      var pl = players[i]; if (pl.down) continue;
+      var d2 = (pl.x - e.x) * (pl.x - e.x) + (pl.y - e.y) * (pl.y - e.y);
+      if (!pl.choosing && d2 < bd) { bd = d2; best = pl; }
+      if (d2 < ad) { ad = d2; any = pl; }
+    }
+    return best || any || me;
+  }
+  function playerById(id) { return players.filter(function (pl) { return pl.id === id; })[0]; }
 
   /* =====================================================================
      Entrées
@@ -232,14 +265,14 @@
       else if (state === "pause") { resume(); e.preventDefault(); }
       else if (state === "menu" && screen !== "menu" && e.code === "Escape") { go("menu"); e.preventDefault(); }
     }
-    if (state === "levelup") {
+    if (state === "levelup" || picking) {
       var n = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3 }[e.code];
       if (n !== undefined) { var b = card.querySelectorAll("[data-choice]")[n]; if (b) b.click(); }
     }
   });
   window.addEventListener("keyup", function (e) { if (KEYMAP[e.code]) keys[KEYMAP[e.code]] = false; });
-  window.addEventListener("blur", function () { clearInput(); if (state === "play") pause(); });
-  document.addEventListener("visibilitychange", function () { if (document.hidden && state === "play") pause(); });
+  window.addEventListener("blur", function () { clearInput(); if (state === "play" && !Net.on) pause(); });
+  document.addEventListener("visibilitychange", function () { if (document.hidden && state === "play" && !Net.on) pause(); });
 
   canvas.addEventListener("pointerdown", function (e) {
     if (state !== "play") return;
@@ -331,17 +364,18 @@
   /* =====================================================================
      Apparitions : ennemis et objets destructibles
      ===================================================================== */
-  function hpMul() { return (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1); }
+  function hpMul() { return (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
   function makeEnemy(type, d, x, y, hp) {
     var e = { id: ++uid, type: type, d: d, spr: SPR[d.sprite], x: x, y: y, hp: hp, maxHp: hp, kx: 0, ky: 0, flash: 0, slowT: 0, slow: 0,
               anim: Math.random() * 2, phase: Math.random() * 6, face: 1, charge: 0, windup: 0, cd: 3, spd: (d.spd || 0) * DIFF.spd, cool: null };
     enemies.push(e);
     return e;
   }
-  function spawn(type, ang, dist) {
+  function spawn(type, ang, dist, around) {
+    around = around || randomAlive();
     if (ang === undefined) ang = Math.random() * TAU;
     if (dist === undefined) dist = Math.hypot(W, H) / 2 + 6 + Math.random() * 14;
-    var x = p.x + Math.cos(ang) * dist, y = p.y + Math.sin(ang) * dist;
+    var x = around.x + Math.cos(ang) * dist, y = around.y + Math.sin(ang) * dist;
     if (!type) type = pickType(biomeAt(x, y));
     var d = D.ENEMIES[type];
     var hp = d.hp * (d.boss ? (1 + bossCount * 0.9) * (1 + r.time / 200) * DIFF.hp * (MAP.hp || 1) : hpMul());
@@ -352,8 +386,8 @@
   }
   var PROP_D = { prop: true, r: 6, spd: 0, dmg: 0, xp: 0, color: "#a06a3e" };
   function spawnProp(dist) {
-    var a = Math.random() * TAU;
-    var x = p.x + Math.cos(a) * dist, y = p.y + Math.sin(a) * dist;
+    var a = Math.random() * TAU, o = randomAlive();
+    var x = o.x + Math.cos(a) * dist, y = o.y + Math.sin(a) * dist;
     var d = Object.assign({}, PROP_D, { sprite: biomeAt(x, y).prop || "stump" });
     var e = makeEnemy("prop", d, x, y, 14 * (1 + r.time / 200));
     e.anim = 0;
@@ -370,6 +404,7 @@
     for (var i = 0; i < pool.length; i++) { x -= pool[i][1]; if (x <= 0) return pool[i][0]; }
     return list[0][0];
   }
+  function bannerAll(text) { banner(text); netEv(["bn", text]); }
   function banner(text) {
     var b = $("[data-banner]");
     b.textContent = text; b.hidden = false;
@@ -377,7 +412,7 @@
     clearTimeout(banner.t); banner.t = setTimeout(function () { b.hidden = true; }, 2600);
   }
   function director(dt) {
-    var rate = Math.min(14, 1.7 + r.time / 30) * DIFF.spawn;
+    var rate = Math.min(14, 1.7 + r.time / 30) * DIFF.spawn * (1 + 0.6 * (players.length - 1));
     spawnAcc += rate * dt;
     while (spawnAcc >= 1) { spawnAcc--; if (enemies.length < 290) spawn(); }
     if (r.time >= nextSwarm) {
@@ -385,16 +420,16 @@
       var n = 18 + Math.floor(r.time / 60) * 6;
       var idx = r.time < 150 ? 0 : (r.time < 300 ? 1 : (r.time < 480 ? 2 : 3));
       var type = MAP.swarm[Math.min(idx, MAP.swarm.length - 1)];
-      var R = Math.hypot(W, H) / 2 + 8;
-      for (var i = 0; i < n; i++) spawn(type, i / n * TAU, R);
-      banner("Une nuée approche !");
+      var R = Math.hypot(W, H) / 2 + 8, around = randomAlive();
+      for (var i = 0; i < n; i++) spawn(type, i / n * TAU, R, around);
+      bannerAll("Une nuée approche !");
     }
     if (r.time >= nextBoss) {
       nextBoss += 180;
       var bt = MAP.bosses[bossCount % MAP.bosses.length];
       spawn(bt);
       bossCount++;
-      banner(D.ENEMIES[bt].name + " arrive !");
+      bannerAll(D.ENEMIES[bt].name + " arrive !");
       SND.boom();
     }
     propTimer -= dt;
@@ -418,6 +453,7 @@
       e.kx += (kx || 0) * kb; e.ky += (ky || 0) * kb;
     }
     if (S.opts.numbers && texts.length < 60) texts.push({ x: e.x + (Math.random() * 6 - 3), y: e.y - e.d.r - 6, n: dmg, life: 0.6 });
+    if (Net.dmgN < 30) { Net.dmgN++; netEv(["d", Math.round(e.x), Math.round(e.y - e.d.r - 6), dmg]); }
     if (e.hp <= 0) kill(e);
   }
   function drop(kind, x, y, v) { gems.push({ x: x, y: y, kind: kind, v: v || 0 }); }
@@ -451,21 +487,23 @@
     return "goldbag";
   }
   function burst(x, y, color, n) {
+    if (n >= 5) netEv(["k", Math.round(x), Math.round(y), color, n]);
     for (var i = 0; i < n; i++) {
       var a = Math.random() * TAU, s = 20 + Math.random() * 50;
       fx.push({ kind: "dot", x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.3 + Math.random() * 0.3, color: color });
     }
   }
-  function damagePlayer(dmg) {
-    if (p.inv > 0) return;
+  function damagePlayer(dmg, pl) {
+    var p = pl || me;
+    if (p.inv > 0 || p.down || p.choosing) return;
     if (p.shield) {
       p.shield = false; p.shieldT = p.shieldCd; p.inv = 0.5;
       burst(p.x, p.y, "#9cc56b", 10); SND.crack();
       return;
     }
-    p.hp -= Math.max(1, dmg - p.armor); p.inv = 0.6; r.lastHit = r.time;
-    if (S.opts.shake) shake = 0.25;
-    SND.hurt(); burst(p.x, p.y, "#c8553d", 5);
+    p.hp -= Math.max(1, dmg - p.armor); p.inv = 0.6;
+    if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = 0.25; SND.hurt(); }
+    burst(p.x, p.y, "#c8553d", 5);
   }
   function warn(x, y, rad, dur, dmg, owner, follow) {
     warns.push({ x: x, y: y, r: rad, t: 0, dur: dur, dmg: dmg, owner: owner || null, follow: !!follow });
@@ -473,8 +511,12 @@
   function hostileShot(x, y, ang, spd, dmg) {
     hostile.push({ x: x, y: y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 4, dmg: dmg });
   }
+  function ring(x, y, rad, red) {
+    fx.push({ kind: "ring", x: x, y: y, r: rad, life: 0.25, max: 0.25, red: !!red });
+    netEv(["x", Math.round(x), Math.round(y), Math.round(rad), red ? 1 : 0]);
+  }
   function explodeEnemy(x, y, rad, dmg) {
-    fx.push({ kind: "ring", x: x, y: y, r: rad, life: 0.3, max: 0.3, red: true });
+    ring(x, y, rad, true);
     burst(x, y, "#c8553d", 10);
     near(x, y, rad + 12, function (en) {
       if (en.d.boss || Math.hypot(en.x - x, en.y - y) > rad + en.d.r) return;
@@ -528,12 +570,13 @@
       if (w.owner && w.owner.dead && w.owner.byPlayer) { warns.splice(i, 1); continue; }
       if (w.t >= w.dur) {
         warns.splice(i, 1);
-        fx.push({ kind: "ring", x: w.x, y: w.y, r: w.r, life: 0.25, max: 0.25, red: true });
-        if (Math.hypot(p.x - w.x, (p.y - w.y) * 1.25) <= w.r + 3) damagePlayer(w.dmg);
+        ring(w.x, w.y, w.r, true);
+        players.forEach(function (pl) { if (Math.hypot(pl.x - w.x, (pl.y - w.y) * 1.25) <= w.r + 3) damagePlayer(w.dmg, pl); });
       }
     }
   }
   function inView(e, m) { return Math.abs(e.x - p.x) < W / 2 + (m || 0) && Math.abs(e.y - p.y) < H / 2 + (m || 0); }
+  function nearAnyPlayer(e, rad) { return players.some(function (pl) { return Math.abs(e.x - pl.x) < rad && Math.abs(e.y - pl.y) < rad; }); }
   function nuke() {
     r.flash = 0.35; if (S.opts.shake) shake = 0.4; SND.boom();
     enemies.forEach(function (e) {
@@ -568,7 +611,7 @@
     e.cool[key] = r.time + delay; return true;
   }
   function explode(x, y, rad, dmg, frag) {
-    fx.push({ kind: "ring", x: x, y: y, r: rad, life: 0.25, max: 0.25 });
+    ring(x, y, rad, false);
     burst(x, y, "#e8873a", 6);
     near(x, y, rad + 12, function (en) {
       var ddx = en.x - x, ddy = en.y - y;
@@ -576,7 +619,7 @@
     });
     for (var i = 0; i < (frag || 0); i++) {
       var a = i / frag * TAU + Math.random() * 0.5, dd = rad * (0.9 + Math.random() * 0.5);
-      lobs.push({ sx: x, sy: y, tx: x + Math.cos(a) * dd, ty: y + Math.sin(a) * dd * 0.8, t: 0, dur: 0.22, dmg: dmg * 0.35, rad: rad * 0.45, frag: 0, small: true });
+      lobs.push({ sx: x, sy: y, tx: x + Math.cos(a) * dd, ty: y + Math.sin(a) * dd * 0.8, t: 0, dur: 0.22, dmg: dmg * 0.35, rad: rad * 0.45, frag: 0, small: true, owner: p });
     }
     SND.boom();
   }
@@ -588,6 +631,7 @@
       cur = chainNext(cur, hit);
     }
     fx.push({ kind: "bolt", pts: pts, life: 0.16, max: 0.16 });
+    netEv(["bo", pts.map(function (q) { return [Math.round(q[0]), Math.round(q[1])]; })]);
   }
   function chainNext(from, hitIds) {
     var nx = null, nd = 55 * 55;
@@ -609,7 +653,7 @@
         var a = tg ? Math.atan2(tg.y - p.y, tg.x - p.x) : (p.face > 0 ? 0 : Math.PI);
         if (!tg || i >= t.length) a += (i - (count - 1) / 2) * 0.25;
         a += (Math.random() - 0.5) * (w.spread || 0);
-        projs.push({ kind: "bullet", x: p.x, y: p.y - 2, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, dmg: V(w, "dmg", l), pierce: V(w, "pierce", l),
+        projs.push({ owner: p, kind: "bullet", x: p.x, y: p.y - 2, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, dmg: V(w, "dmg", l), pierce: V(w, "pierce", l),
                      sprite: w.sprite, life: range / spd * 1.4, hit: [], r: 4, explode: w.explodeR ? V(w, "explodeR", l) * p.area : 0 });
       }
       if (w.spread) SND.shot();
@@ -618,7 +662,7 @@
       if (!timer(id, V(w, "cd", l), dt)) return;
       var dirs = V(w, "both", l) ? [1, -1] : [p.face], R = V(w, "r", l) * p.area, dmg = V(w, "dmg", l);
       dirs.forEach(function (dir) {
-        fx.push({ kind: "swipe", dir: dir, r: R, life: 0.18, max: 0.18 });
+        fx.push({ kind: "swipe", dir: dir, r: R, life: 0.18, max: 0.18, pl: p }); netEv(["sw", p.id, dir, Math.round(R)]);
         near(p.x + dir * R / 2, p.y, R + 10, function (e) {
           var dx = e.x - p.x, dy = e.y - p.y;
           if (dx * dir < -4 || Math.hypot(dx, dy) > R + e.d.r || Math.abs(dy) > R * 0.8 + e.d.r) return;
@@ -630,7 +674,7 @@
     spin: function (id, w, l, dt) {
       if (!timer(id, V(w, "cd", l), dt)) return;
       var R = V(w, "r", l) * p.area, dmg = V(w, "dmg", l);
-      fx.push({ kind: "spin", r: R, life: 0.25, max: 0.25 });
+      fx.push({ kind: "spin", r: R, life: 0.25, max: 0.25, pl: p }); netEv(["sp", p.id, Math.round(R)]);
       near(p.x, p.y, R + 10, function (e) {
         var dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1;
         if (d > R + e.d.r) return;
@@ -653,7 +697,7 @@
       if (w.shootCd && timer(id + "#leaf", w.shootCd, dt)) {
         for (var q = 0; q < n; q++) {
           var qa = p.st[id] + q / n * TAU, qx = p.x + Math.cos(qa) * R, qy = p.y + Math.sin(qa) * R * 0.8;
-          projs.push({ kind: "bullet", x: qx, y: qy, vx: Math.cos(qa) * 90, vy: Math.sin(qa) * 90, dmg: V(w, "leafDmg", l), pierce: 2,
+          projs.push({ owner: p, kind: "bullet", x: qx, y: qy, vx: Math.cos(qa) * 90, vy: Math.sin(qa) * 90, dmg: V(w, "leafDmg", l), pierce: 2,
                        sprite: "autumnleaf", anim: true, homing: true, life: 1.6, hit: [], r: 4 });
         }
       }
@@ -664,7 +708,7 @@
       p.st[id] = (p.st[id] || 0) + 0.45;
       for (var m = 0; m < n; m++) {
         var la = p.st[id] + m / n * TAU;
-        projs.push({ kind: "bullet", x: p.x, y: p.y, vx: Math.cos(la) * spd, vy: Math.sin(la) * spd, dmg: V(w, "dmg", l), pierce: V(w, "pierce", l),
+        projs.push({ owner: p, kind: "bullet", x: p.x, y: p.y, vx: Math.cos(la) * spd, vy: Math.sin(la) * spd, dmg: V(w, "dmg", l), pierce: V(w, "pierce", l),
                      sprite: w.sprite, anim: true, homing: !!w.homing, life: w.homing ? 2 : 1.1, hit: [], r: 4 });
       }
     },
@@ -674,7 +718,7 @@
       for (var k = 0; k < n; k++) {
         var tgt = cand.length ? cand[(Math.random() * cand.length) | 0] : null;
         var tx = tgt ? tgt.x : p.x + (Math.random() * 120 - 60), ty = tgt ? tgt.y : p.y + (Math.random() * 80 - 40);
-        lobs.push({ sx: p.x, sy: p.y, tx: tx, ty: ty, t: 0, dur: 0.55 + k * 0.08, dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area,
+        lobs.push({ owner: p, sx: p.x, sy: p.y, tx: tx, ty: ty, t: 0, dur: 0.55 + k * 0.08, dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area,
                     frag: V(w, "frag", l) || 0, sprite: w.frag ? "pinebomb" : "pinecone" });
       }
     },
@@ -694,7 +738,7 @@
       });
       if (w.spinCd && timer(id + "#spin", w.spinCd, dt)) {
         var sd = V(w, "spinDmg", l);
-        fx.push({ kind: "spin", r: R, life: 0.3, max: 0.3 });
+        fx.push({ kind: "spin", r: R, life: 0.3, max: 0.3, pl: p }); netEv(["sp", p.id, Math.round(R)]);
         near(p.x, p.y, R + 10, function (e) { if (Math.hypot(e.x - p.x, e.y - p.y) <= R + e.d.r) hurt(e, sd, 0, 0); });
         SND.whip();
       }
@@ -705,7 +749,7 @@
       for (var i = 0; i < n; i++) {
         var fe = ft[i];
         var fa = fe ? Math.atan2(fe.y - p.y, fe.x - p.x) : (p.face > 0 ? 0 : Math.PI) + (i - (n - 1) / 2) * 0.6;
-        projs.push({ kind: "boomerang", x: p.x, y: p.y, vx: Math.cos(fa), vy: Math.sin(fa), dmg: V(w, "dmg", l), pierce: 999, sprite: w.sprite,
+        projs.push({ owner: p, kind: "boomerang", x: p.x, y: p.y, vx: Math.cos(fa), vy: Math.sin(fa), dmg: V(w, "dmg", l), pierce: 999, sprite: w.sprite,
                      life: 4, range: V(w, "range", l) * p.area, dist: 0, back: false, chain: V(w, "chain", l) || 0, zapT: 0 });
       }
     },
@@ -733,7 +777,7 @@
       for (var k = 0; k < n; k++) {
         var t = vis.length ? vis[(Math.random() * vis.length) | 0] : null;
         var tx = t ? t.x : p.x + (Math.random() - 0.5) * W * 0.8, ty = t ? t.y : p.y + (Math.random() - 0.5) * H * 0.8;
-        lobs.push({ sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.6 + k * 0.07, dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area, frag: w.frag || 0, sprite: "meteore", sky: true });
+        lobs.push({ owner: p, sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.6 + k * 0.07, dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area, frag: w.frag || 0, sprite: "meteore", sky: true });
       }
     },
     rocket: function (id, w, l, dt) {
@@ -741,7 +785,7 @@
       var n = V(w, "n", l) + p.amount, t = nearest(n, 200);
       for (var i = 0; i < n; i++) {
         var a = (p.face > 0 ? 0 : Math.PI) + (i - (n - 1) / 2) * 0.5 - Math.PI / 2 * 0.6;
-        projs.push({ kind: "rocket", x: p.x, y: p.y - 3, ang: a, spd: 40, max: w.spd || 120, target: t[i % Math.max(1, t.length)] || null,
+        projs.push({ owner: p, kind: "rocket", x: p.x, y: p.y - 3, ang: a, spd: 40, max: w.spd || 120, target: t[i % Math.max(1, t.length)] || null,
                      dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area, life: 3, pierce: 1 });
       }
       SND.shot();
@@ -775,7 +819,7 @@
     var nW = Object.keys(p.weapons).length, nP = Object.keys(p.passives).length;
     Object.keys(p.weapons).forEach(function (k) { if (p.weapons[k] < MAX_LVL) pool.push({ type: "w", id: k, lvl: p.weapons[k] + 1, weight: 3 }); });
     if (nW < MAX_W) Object.keys(D.WEAPONS).forEach(function (k) {
-      if (p.weapons[k] || !weaponAvailable(k) || r.consumed[k]) return;
+      if (p.weapons[k] || !weaponAvailable(k) || p.consumed[k]) return;
       pool.push({ type: "w", id: k, lvl: 1, weight: 2 });
     });
     Object.keys(D.PASSIVES).forEach(function (k) {
@@ -798,12 +842,14 @@
       else neww[k] = p.weapons[k];
     });
     p.weapons = neww;
-    r.consumed[a] = true; if (ALLW[b]) r.consumed[b] = true;
+    p.consumed[a] = true; if (ALLW[b]) p.consumed[b] = true;
     delete p.timers[a]; delete p.timers[b];
-    r.fusions++; if (f.tier === 2) r.legend++;
     burst(p.x, p.y, "#f6d36b", 24);
-    banner((f.tier === 2 ? "Légendaire : " : "Fusion : ") + f.name + " !");
-    SND.fusion();
+    if (p === me) {
+      r.fusions++; if (f.tier === 2) r.legend++;
+      banner((f.tier === 2 ? "Légendaire : " : "Fusion : ") + f.name + " !");
+      SND.fusion();
+    }
   }
   function iconOf(k) { return ALLW[k] ? ALLW[k].icon : (D.PASSIVES[k] ? D.PASSIVES[k].sprite : "nut"); }
   function owns(k) { return ALLW[k] ? !!p.weapons[k] : !!p.passives[k]; }
@@ -814,7 +860,7 @@
     var out = [];
     Object.keys(D.FUSIONS).forEach(function (id) {
       var f = D.FUSIONS[id], i = f.from.indexOf(k);
-      if (i < 0 || p.weapons[id] || r.consumed[id]) return;
+      if (i < 0 || p.weapons[id] || p.consumed[id]) return;
       out.push({ id: id, partner: f.from[1 - i] });
     });
     return out;
@@ -835,7 +881,8 @@
   }
   var currentChoices = [];
   function openLevelUp() {
-    state = "levelup";
+    p = me;
+    if (players.length > 1) { picking = true; me.choosing = true; } else state = "levelup";
     clearInput();
     currentChoices = choices(3 + (p.luck > 1.3 && Math.random() < 0.3 ? 1 : 0));
     var html = '<span class="kicker">Niveau ' + r.level + " !</span><h2>Choisis un pouvoir</h2><div class=\"choices\">";
@@ -865,7 +912,7 @@
         '<span class="choice-text"><strong>' + esc(name) + "</strong>" + (lvl ? "<em>" + lvl + "</em>" : "") + "<span>" + esc(desc) + "</span>" + extra + "</span></button>";
     });
     html += '</div><div class="btn-row center">';
-    if (r.rerolls > 0) html += '<button class="btn btn-alt btn-small" type="button" data-action="reroll">🎲 Relancer (' + r.rerolls + ")</button>";
+    if (me.rerolls > 0) html += '<button class="btn btn-alt btn-small" type="button" data-action="reroll">🎲 Relancer (' + me.rerolls + ")</button>";
     html += '<button class="btn btn-ghost btn-small" type="button" data-action="skip">Passer (+3 ' + goldIc() + ")</button></div>";
     showCard(html, "levelup");
     SND.level();
@@ -874,19 +921,28 @@
     r.nWeapons = Object.keys(p.weapons).length; r.nPassives = Object.keys(p.passives).length;
     r.maxedWeapon = r.maxedWeapon || Object.keys(p.weapons).some(function (k) { return p.weapons[k] >= MAX_LVL; });
   }
-  function apply(c) {
-    if (state !== "levelup" || !c) return;
+  // applique un choix au joueur actif « p » (moi, ou un invité côté hôte)
+  function applyCore(c) {
     if (c.type === "f") applyFusion(c.id);
     else if (c.type === "w") p.weapons[c.id] = c.lvl;
     else if (c.type === "p") { p.passives[c.id] = c.lvl; if (c.id === "appetit") p.hp += 20; if (c.id === "mousse" && c.lvl === 1) p.shield = true; }
     else if (c.type === "heal") p.hp += 40;
-    else addGold(15);
-    calc(); refreshCounts();
+    else if (c.type === "skip") addGold(3);
+    else if (c.type === "gold") addGold(15);
+    calc(p);
+  }
+  function apply(c) {
+    if ((state !== "levelup" && !picking) || !c) return;
+    p = me;
+    applyCore(c);
+    refreshCounts();
+    if (Net.on && Net.role === "guest") netSend("pick", { id: me.id, c: { type: c.type, id: c.id, lvl: c.lvl } });
     afterChoice();
   }
   function afterChoice() {
     pending = Math.max(0, pending - 1);
-    if (pending > 0) openLevelUp();
+    if (pending > 0) { openLevelUp(); return; }
+    if (picking) { picking = false; me.choosing = false; hideCard(); }
     else { state = "play"; hideCard(); last = performance.now(); }
   }
   function addGold(n) { r.gold += n * p.goldMul; }
@@ -938,31 +994,46 @@
   /* =====================================================================
      Mise à jour
      ===================================================================== */
+  function moveMe(dt) {
+    var v = (me.down || me.choosing || netMenuOpen) ? { x: 0, y: 0 } : inputVector();
+    me.x += v.x * me.speed * dt; me.y += v.y * me.speed * dt;
+    me.moving = Math.abs(v.x) + Math.abs(v.y) > 0.05;
+    if (v.x > 0.1) me.face = 1; else if (v.x < -0.1) me.face = -1;
+  }
+  function tickPlayers(dt) {
+    players.forEach(function (pl) {
+      if (pl.remote) {
+        var k = Math.min(1, dt * 12);
+        pl.x += (pl.tx - pl.x) * k; pl.y += (pl.ty - pl.y) * k;
+      }
+      pl.anim += dt * (pl.moving || SPR[pl.sprite].flying ? 8 : 0);
+      pl.inv -= dt;
+      if (pl.down) return;
+      if (pl.regen) pl.hp = Math.min(pl.maxHp, pl.hp + pl.regen * dt);
+      if (pl.shieldCd && !pl.shield) { pl.shieldT -= dt; if (pl.shieldT <= 0) pl.shield = true; }
+    });
+  }
   function update(dt) {
     r.time += dt;
-    var v = inputVector();
-    p.x += v.x * p.speed * dt; p.y += v.y * p.speed * dt;
-    p.moving = Math.abs(v.x) + Math.abs(v.y) > 0.05;
-    if (v.x > 0.1) p.face = 1; else if (v.x < -0.1) p.face = -1;
-    p.anim += dt * (p.moving || SPR[CH.sprite].flying ? 8 : 0);
-    p.inv -= dt;
-    if (p.regen) p.hp = Math.min(p.maxHp, p.hp + p.regen * dt);
-    if (p.shieldCd && !p.shield) { p.shieldT -= dt; if (p.shieldT <= 0) p.shield = true; }
+    moveMe(dt);
+    tickPlayers(dt);
     r.freeze = Math.max(0, r.freeze - dt); r.flash = Math.max(0, r.flash - dt);
 
-    var bi = biomeAtTile(Math.floor(p.x / 16), Math.floor(p.y / 16));
+    var bi = biomeAtTile(Math.floor(me.x / 16), Math.floor(me.y / 16));
     if (bi !== r.biome) { if (r.biome >= 0) banner(MAP.biomes[bi].name); r.biome = bi; }
 
     director(dt);
     buildGrid();
-    weapons(dt);
+    players.forEach(function (pl) { if (pl.down) return; p = pl; weapons(dt); });
+    p = me;
 
     var i, e, boss = null;
     for (i = 0; i < enemies.length; i++) {
       e = enemies[i]; if (e.dead) continue;
-      var dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
+      var tg = targetOf(e);
+      var dx = tg.x - e.x, dy = tg.y - e.y, d = Math.hypot(dx, dy) || 1;
       e.flash -= dt;
-      if (e.d.prop) { if (d > 480) e.dead = true; continue; }
+      if (e.d.prop) { if (!nearAnyPlayer(e, 480)) e.dead = true; continue; }
       var sp = e.spd * (e.slowT > 0 ? 1 - e.slow : 1);
       if (r.freeze > 0) sp *= e.d.boss ? 0.5 : 0;
       e.slowT -= dt; e.anim += dt * (e.type === "wasp" || e.type === "moth" ? 14 : 5) * (r.freeze > 0 && !e.d.boss ? 0 : 1);
@@ -988,8 +1059,11 @@
       e.x += mx * sp * dt + e.kx * dt; e.y += my * sp * dt + e.ky * dt;
       var damp = Math.pow(0.0005, dt); e.kx *= damp; e.ky *= damp;
       if (Math.abs(mx) > 0.1) e.face = mx > 0 ? 1 : -1;
-      if (!e.under && Math.abs(dx) < e.d.r + 5 && Math.abs(dy) < e.d.r + 5) damagePlayer(e.d.dmg);
-      if (d > 420 && !e.d.boss) { var ra = Math.atan2(dy, dx) + (Math.random() - 0.5), R = Math.hypot(W, H) / 2 + 10; e.x = p.x + Math.cos(ra) * R; e.y = p.y + Math.sin(ra) * R; }
+      if (!e.under) for (var j = 0; j < players.length; j++) {
+        var pl = players[j];
+        if (Math.abs(pl.x - e.x) < e.d.r + 5 && Math.abs(pl.y - e.y) < e.d.r + 5) damagePlayer(e.d.dmg, pl);
+      }
+      if (d > 420 && !e.d.boss) { var ra = Math.atan2(dy, dx) + (Math.random() - 0.5), R = Math.hypot(W, H) / 2 + 10; e.x = tg.x + Math.cos(ra) * R; e.y = tg.y + Math.sin(ra) * R; }
     }
     // séparation légère (les objets et les boss ne bougent pas)
     grid.forEach(function (cell) {
@@ -1007,20 +1081,34 @@
     for (i = hostile.length - 1; i >= 0; i--) {
       var hq = hostile[i];
       hq.x += hq.vx * dt; hq.y += hq.vy * dt; hq.life -= dt;
-      if (Math.abs(hq.x - p.x) < 5 && Math.abs(hq.y - p.y) < 6) { damagePlayer(hq.dmg); hq.life = 0; }
+      for (var h2 = 0; h2 < players.length; h2++) {
+        var hp = players[h2];
+        if (!hp.down && Math.abs(hq.x - hp.x) < 5 && Math.abs(hq.y - hp.y) < 6) { damagePlayer(hq.dmg, hp); hq.life = 0; break; }
+      }
       if (hq.life <= 0) hostile.splice(i, 1);
     }
-    if (p.hp <= 0) {
-      if (r.revives > 0) {
-        r.revives--; p.hp = p.maxHp * 0.5; p.inv = 2;
-        near(p.x, p.y, 70, function (en) { if (en.d.prop) return; var ax = en.x - p.x, ay = en.y - p.y, ad = Math.hypot(ax, ay) || 1; en.kx += ax / ad * 260; en.ky += ay / ad * 260; });
-        hostile = []; warns = [];
-        burst(p.x, p.y, "#f29a85", 24); banner("Renaissance !"); SND.level();
-      } else { gameOver(); return; }
+    // joueurs à terre, renaissance, relève par un coéquipier
+    for (i = 0; i < players.length; i++) {
+      var pd = players[i];
+      if (pd.down) {
+        var helped = players.some(function (o) { return o !== pd && !o.down && Math.hypot(o.x - pd.x, o.y - pd.y) < 22; });
+        pd.reviveT = helped ? pd.reviveT + dt : Math.max(0, pd.reviveT - dt * 0.5);
+        if (pd.reviveT >= 3) { pd.down = false; pd.hp = pd.maxHp * 0.4; pd.inv = 2; pd.reviveT = 0; bannerAll(pd.name + " est relevé !"); }
+        continue;
+      }
+      if (pd.hp > 0) continue;
+      if (pd.revives > 0) {
+        pd.revives--; pd.hp = pd.maxHp * 0.5; pd.inv = 2;
+        near(pd.x, pd.y, 70, function (en) { if (en.d.prop) return; var ax = en.x - pd.x, ay = en.y - pd.y, ad = Math.hypot(ax, ay) || 1; en.kx += ax / ad * 260; en.ky += ay / ad * 260; });
+        burst(pd.x, pd.y, "#f29a85", 24); if (pd === me) { banner("Renaissance !"); SND.level(); }
+      } else if (players.length === 1) { gameOver(); return; }
+      else { pd.down = true; pd.hp = 0; pd.reviveT = 0; bannerAll(pd.name + " est à terre ! Va le relever"); }
     }
+    if (players.length > 1 && !alive().length) { gameOver(); return; }
 
     for (i = projs.length - 1; i >= 0; i--) {
       var q = projs[i];
+      p = q.owner || me;
       if (q.kind === "boomerang") updateBoomerang(q, dt);
       else if (q.kind === "rocket") updateRocket(q, dt);
       else updateBullet(q, dt);
@@ -1028,51 +1116,68 @@
     }
     for (i = lobs.length - 1; i >= 0; i--) {
       var l = lobs[i]; l.t += dt;
-      if (l.t >= l.dur) { lobs.splice(i, 1); explode(l.tx, l.ty, l.rad, l.dmg, l.frag); }
+      if (l.t >= l.dur) { lobs.splice(i, 1); p = l.owner || me; explode(l.tx, l.ty, l.rad, l.dmg, l.frag); }
     }
+    p = me;
     enemies = enemies.filter(function (en) { return !en.dead; });
     curBoss = boss && !boss.dead ? boss : null;
 
-    // ramassage
+    // ramassage : chaque objet va vers le joueur debout le plus proche
     for (i = gems.length - 1; i >= 0; i--) {
-      var g = gems[i], gx = p.x - g.x, gy = p.y - g.y, gd = Math.hypot(gx, gy);
-      if (gd > 0.5 && (g.pull || gd < p.magnet)) {
+      var g = gems[i], best = null, bd = 1e9;
+      for (var g2 = 0; g2 < players.length; g2++) {
+        var gp = players[g2]; if (gp.down) continue;
+        var dd2 = Math.hypot(gp.x - g.x, gp.y - g.y);
+        if (dd2 < bd) { bd = dd2; best = gp; }
+      }
+      if (!best) continue;
+      var gx = best.x - g.x, gy = best.y - g.y, gd = bd;
+      if (gd > 0.5 && (g.pull || gd < best.magnet)) {
         g.pull = (g.pull || 60) + 260 * dt;
         var stp = Math.min(gd, g.pull * dt);
         g.x += gx / gd * stp; g.y += gy / gd * stp;
       }
-      if (gd < 7) { gems.splice(i, 1); collect(g); }
+      if (gd < 7) { gems.splice(i, 1); p = best; collect(g, best); p = me; }
       else if (gd > 600 && (g.kind === "xp" || g.kind === "gold")) gems.splice(i, 1);
     }
     while (xp >= xpNext) { xp -= xpNext; r.level++; pending++; xpNext = need(r.level); }
 
-    for (i = fx.length - 1; i >= 0; i--) {
+    tickFx(dt);
+    achTick -= dt;
+    if (achTick <= 0) { achTick = 1; checkAchievements(r); }
+    if (pending > 0 && !picking && !me.down && state === "play") openLevelUp();
+    if (Net.on) netHostTick(dt);
+  }
+  function tickFx(dt) {
+    for (var i = fx.length - 1; i >= 0; i--) {
       var f = fx[i]; f.life -= dt;
       if (f.kind === "dot") { f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.9; f.vy *= 0.9; }
       if (f.life <= 0) fx.splice(i, 1);
     }
     for (i = texts.length - 1; i >= 0; i--) { texts[i].life -= dt; texts[i].y -= 18 * dt; if (texts[i].life <= 0) texts.splice(i, 1); }
     shake = Math.max(0, shake - dt);
-
-    achTick -= dt;
-    if (achTick <= 0) { achTick = 1; checkAchievements(r); }
-    if (pending > 0) openLevelUp();
   }
-  function collect(g) {
+  function grantChest() {
+    p = me;
+    var ready = readyFusions();
+    if (ready.length) { applyFusion(ready[0]); calc(me); refreshCounts(); if (Net.on && Net.role === "guest") netSend("pick", { id: me.id, c: { type: "f", id: ready[0] } }); }
+    else pending++;
+  }
+  function collect(g, pl) {
+    pl = pl || me;
     switch (g.kind) {
-      case "xp": xp += g.v * p.xpMul; SND.pick(); break;
-      case "gold": addGold(g.v); SND.gold(); break;
-      case "berry": p.hp = Math.min(p.maxHp, p.hp + 25); r.berries++; SND.level(); break;
-      case "magnet": gems.forEach(function (o) { if (o.kind === "xp" || o.kind === "gold") o.pull = 120; }); banner("Aspirateur à noisettes !"); SND.level(); break;
-      case "xpjar": xp += xpNext * 0.75; banner("Pot d'expérience !"); SND.level(); break;
+      case "xp": xp += g.v * pl.xpMul; if (pl === me) SND.pick(); break;
+      case "gold": addGold(g.v); if (pl === me) SND.gold(); break;
+      case "berry": pl.hp = Math.min(pl.maxHp, pl.hp + 25); if (pl === me) { r.berries++; SND.level(); } break;
+      case "magnet": gems.forEach(function (o) { if (o.kind === "xp" || o.kind === "gold") o.pull = 120; }); bannerAll("Aspirateur à noisettes !"); SND.level(); break;
+      case "xpjar": xp += xpNext * 0.75; bannerAll("Pot d'expérience !"); SND.level(); break;
       case "goldbag": addGold(8 + Math.floor(r.time / 30)); SND.gold(); break;
-      case "freeze": r.freeze = 5; banner("Givre !"); SND.zap(); break;
-      case "bomb": nuke(); banner("Gland explosif !"); break;
+      case "freeze": r.freeze = 5; bannerAll("Givre !"); SND.zap(); break;
+      case "bomb": nuke(); bannerAll("Gland explosif !"); break;
       case "chest":
-        addGold(15); burst(p.x, p.y, "#f2c230", 16);
-        var ready = readyFusions();
-        if (ready.length) { applyFusion(ready[0]); calc(); refreshCounts(); }
-        else pending++;
+        addGold(15); burst(pl.x, pl.y, "#f2c230", 16);
+        netEv(["ch"]);
+        grantChest();
         break;
     }
   }
@@ -1211,13 +1316,54 @@
     if (inv > 0 && ((inv * 20) | 0) % 2) return;
     blit(s, x, y - lift - (moving && !fly && frame ? 1 : 0), face < 0);
   }
+  var MATE_COL = ["#f6d36b", "#7fd1c7", "#f29ad8", "#9cc56b"];
+  function mateColor(pl) { return MATE_COL[Math.max(0, players.indexOf(pl)) % MATE_COL.length]; }
+  function drawPlayer(pl) {
+    var multi = players.length > 1;
+    if (pl.down) {
+      shadow(pl.x, pl.y + 6, 10);
+      ctx.globalAlpha = 0.55; blit(SPR[pl.sprite][0], pl.x, pl.y + 2, pl.face < 0, true); ctx.globalAlpha = 1;
+      var k = Math.min(1, pl.reviveT / 3);
+      ctx.strokeStyle = "rgba(255,90,60,.9)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(pl.x, pl.y, 22, 18, 0, 0, TAU); ctx.stroke();
+      if (k > 0) { ctx.strokeStyle = "#9cc56b"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(pl.x, pl.y - 14, 5, -Math.PI / 2, -Math.PI / 2 + k * TAU); ctx.stroke(); }
+      drawText("!", pl.x, pl.y - 18 + Math.sin(r.time * 8), "#ff5a3a", "c");
+    } else {
+      drawHero(pl.sprite, pl.x, pl.y, pl.face, pl.moving, pl.anim, pl.inv);
+      if (pl.shield) { ctx.strokeStyle = "rgba(156,197,107,.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(pl.x, pl.y, 10, 9, 0, 0, TAU); ctx.stroke(); }
+      if (pl.choosing) {
+        ctx.fillStyle = "rgba(230,246,250,.18)"; ctx.strokeStyle = "rgba(230,246,250,.8)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(pl.x, pl.y - 2, 13, 12, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      }
+    }
+    // barre de vie sous chaque écureuil
+    var hb = 16, hr = Math.max(0, pl.hp / (pl.maxHp || 1));
+    ctx.fillStyle = OUT; ctx.fillRect(Math.round(pl.x - hb / 2 - 1), Math.round(pl.y + 9), hb + 2, 4);
+    ctx.fillStyle = "#4a2e1c"; ctx.fillRect(Math.round(pl.x - hb / 2), Math.round(pl.y + 10), hb, 2);
+    ctx.fillStyle = hr > 0.3 ? "#9cc56b" : "#c8553d"; ctx.fillRect(Math.round(pl.x - hb / 2), Math.round(pl.y + 10), Math.round(hb * hr), 2);
+    if (multi && pl !== me) drawText(String(pl.name).slice(0, 10), pl.x, pl.y - 20, mateColor(pl), "c");
+  }
+  // flèches vers les coéquipiers hors de l'écran
+  function drawMates(cx, cy) {
+    players.forEach(function (pl) {
+      if (pl === me) return;
+      var sx = pl.x - cx, sy = pl.y - cy;
+      if (sx > 4 && sx < W - 4 && sy > 50 && sy < H - 4) return;
+      var mx = W / 2, my = H / 2, ang = Math.atan2(sy - my, sx - mx);
+      var ex = Math.max(8, Math.min(W - 8, mx + Math.cos(ang) * W)), ey = Math.max(56, Math.min(H - 8, my + Math.sin(ang) * H));
+      ctx.fillStyle = pl.down ? "#ff5a3a" : mateColor(pl);
+      ctx.save(); ctx.translate(Math.round(ex), Math.round(ey)); ctx.rotate(ang);
+      ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(-4, -4); ctx.lineTo(-4, 4); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = OUT; ctx.lineWidth = 1; ctx.stroke(); ctx.restore();
+    });
+  }
   var AURA = {
     spore: { fill: "rgba(122,90,190,.13)", dot: "spore" },
     force: { fill: "rgba(127,209,199,.12)", ring: "rgba(127,209,199,.75)" },
     mist: { fill: "rgba(150,120,210,.16)", ring: "rgba(127,209,199,.5)", dot: "spore" },
     hurricane: { fill: "rgba(160,200,230,.14)", ring: "rgba(230,255,248,.7)", dot: "leaf" },
   };
-  function drawAuras() {
+  function drawAuras(p) {
     Object.keys(p.weapons).forEach(function (id) {
       var w = ALLW[id]; if (!w || w.type !== "aura") return;
       var st = AURA[w.color] || AURA.spore, R = V(w, "R", p.weapons[id] - 1) * p.area;
@@ -1235,7 +1381,7 @@
       }
     });
   }
-  function drawOrbits() {
+  function drawOrbits(p) {
     Object.keys(p.weapons).forEach(function (id) {
       var w = ALLW[id]; if (!w || w.type !== "orbit") return;
       var l = p.weapons[id] - 1, n = V(w, "n", l) + p.amount, R = V(w, "R", l) * p.area;
@@ -1248,7 +1394,8 @@
 
   function draw() {
     var sx = shake > 0 ? (Math.random() * 4 - 2) : 0, sy = shake > 0 ? (Math.random() * 4 - 2) : 0;
-    var cx = Math.round(p.x - W / 2 + sx), cy = Math.round(p.y - H / 2 + sy);
+    var cam = me.down ? (alive()[0] || me) : me;
+    var cx = Math.round(cam.x - W / 2 + sx), cy = Math.round(cam.y - H / 2 + sy);
     drawGround(cx, cy, MAP);
     ctx.save();
     ctx.translate(-cx, -cy);
@@ -1260,7 +1407,7 @@
       if (big) { ctx.fillStyle = "rgba(255,240,180,.25)"; ctx.fillRect(Math.round(g.x - 5), Math.round(g.y - 5 + bob), 10, 10); }
       blit(s, g.x, g.y + (big ? bob * 1.5 : 0));
     });
-    drawAuras();
+    players.forEach(function (pl) { if (!pl.down) drawAuras(pl); });
     warns.forEach(function (w) {
       var k = Math.min(1, w.t / w.dur), blink = Math.sin(r.time * 30) > 0 ? 0.08 : 0;
       ctx.fillStyle = "rgba(208,40,26," + (0.12 + blink) + ")";
@@ -1272,10 +1419,10 @@
     });
 
     enemies.sort(function (a, b) { return a.y - b.y; });
-    var drewPlayer = false;
+    var plist = players.slice().sort(function (a, b) { return a.y - b.y; }), pi = 0;
     for (var i = 0; i < enemies.length; i++) {
       var e = enemies[i];
-      if (!drewPlayer && e.y > p.y) { drawHero(CH.sprite, p.x, p.y, p.face, p.moving, p.anim, p.inv); drewPlayer = true; }
+      while (pi < plist.length && plist[pi].y <= e.y) drawPlayer(plist[pi++]);
       if (e.x < cx - 30 || e.x > cx + W + 30 || e.y < cy - 30 || e.y > cy + H + 30) continue;
       if (e.under) { blit(SPR.mound[((r.time * 8) | 0) % 2], e.x, e.y + 2); continue; }
       var spr = e.spr[(e.anim | 0) % e.spr.length];
@@ -1284,13 +1431,9 @@
       blit(spr, e.x, e.y, !e.d.prop && e.face < 0, e.flash > 0);
       if (e.slowT > 0 && !e.d.boss && !e.d.prop) { ctx.fillStyle = "rgba(160,130,230,.7)"; ctx.fillRect(Math.round(e.x - 1), Math.round(e.y - spr.h / 2 - 2), 2, 2); }
     }
-    if (!drewPlayer) drawHero(CH.sprite, p.x, p.y, p.face, p.moving, p.anim, p.inv);
-    if (p.shield) {
-      ctx.strokeStyle = "rgba(156,197,107,.8)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, 10, 9, 0, 0, TAU); ctx.stroke();
-    }
+    while (pi < plist.length) drawPlayer(plist[pi++]);
 
-    drawOrbits();
+    players.forEach(function (pl) { if (!pl.down) drawOrbits(pl); });
     var flick = ((r.time * 12) | 0) % 2;
     projs.forEach(function (q) {
       if (q.kind === "rocket") {
@@ -1327,6 +1470,7 @@
     if (MAP.night) drawFireflies(r.time);
     if (r.freeze > 0) { ctx.fillStyle = "rgba(160,215,255," + Math.min(0.22, r.freeze * 0.1) + ")"; ctx.fillRect(0, 0, W, H); }
     if (r.flash > 0) { ctx.fillStyle = "rgba(255,250,230," + r.flash * 2 + ")"; ctx.fillRect(0, 0, W, H); }
+    if (players.length > 1) drawMates(cx, cy);
     drawHud();
 
     if (joy.active) {
@@ -1357,12 +1501,12 @@
       var t = 1 - f.life / f.max, st = -Math.PI / 2, sweep = Math.PI * Math.min(1, t * 2.5);
       var ccw = f.dir < 0;
       ctx.strokeStyle = "rgba(242,176,94," + (1 - t) + ")"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, f.r * 0.85, f.r * 0.7, 0, st, ccw ? st - sweep : st + sweep, ccw); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse((f.pl || me).x, (f.pl || me).y, f.r * 0.85, f.r * 0.7, 0, st, ccw ? st - sweep : st + sweep, ccw); ctx.stroke();
       ctx.strokeStyle = "rgba(253,243,222," + (1 - t) + ")"; ctx.lineWidth = 1; ctx.stroke();
     } else if (f.kind === "spin") {
       var ts = 1 - f.life / f.max;
       ctx.strokeStyle = "rgba(242,176,94," + (1 - ts) + ")"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, f.r * 0.85, f.r * 0.7, 0, ts * TAU, ts * TAU + TAU * 0.8); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse((f.pl || me).x, (f.pl || me).y, f.r * 0.85, f.r * 0.7, 0, ts * TAU, ts * TAU + TAU * 0.8); ctx.stroke();
       ctx.strokeStyle = "rgba(253,243,222," + (1 - ts) + ")"; ctx.lineWidth = 1; ctx.stroke();
     } else if (f.kind === "bolt") {
       var al = Math.max(0, f.life / f.max);
@@ -1416,9 +1560,20 @@
     drawSlots(2, 27, pl2, MAX_P, function (id) { return D.PASSIVES[id].sprite; }, null, ready);
     if (Object.keys(ready).length && Math.sin(r.time * 6) > -0.3) drawText("FUSION PRETE", 2 + MAX_W * 13 + 3, 30, "#f6d36b", "l");
     // PV
-    var hpw = MAX_W * 13 - 1, hpr = Math.max(0, p.hp / p.maxHp);
+    var hpw = MAX_W * 13 - 1, hpr = Math.max(0, me.hp / (me.maxHp || 1));
     box(2, 40, hpw, 6, "#3a2618");
     ctx.fillStyle = hpr > 0.3 ? "#9cc56b" : "#c8553d"; ctx.fillRect(3, 41, Math.round((hpw - 2) * hpr), 4);
+    // coéquipiers (sous les cases)
+    if (players.length > 1) {
+      var yy = 50;
+      players.forEach(function (pl) {
+        if (pl === me) return;
+        drawText(String(pl.name).slice(0, 8), 2, yy, pl.down ? "#ff5a3a" : mateColor(pl), "l");
+        box(36, yy, 30, 5, "#3a2618");
+        ctx.fillStyle = pl.down ? "#ff5a3a" : "#9cc56b"; ctx.fillRect(37, yy + 1, Math.round(28 * Math.max(0, pl.hp / (pl.maxHp || 1))), 3);
+        yy += 8;
+      });
+    }
     // chrono, ennemis, or (à droite)
     drawText(fmtTime(r.time), W - 4, 15, "#fdf3de", "r", 2);
     var k = String(r.kills), g = String(Math.floor(r.gold));
@@ -1522,6 +1677,7 @@
         goldBadge() +
         '<div class="menu-buttons">' +
         '<button class="btn" type="button" data-action="go" data-arg="play" data-autofocus>▶ Jouer</button>' +
+        '<button class="btn" type="button" data-action="go" data-arg="coop">🌐 Coop en ligne</button>' +
         '<button class="btn btn-alt" type="button" data-action="go" data-arg="shop">🛒 Améliorations</button>' +
         '<button class="btn btn-alt" type="button" data-action="go" data-arg="succes">🏆 Succès <small>' + nAch + "/" + D.ACHIEVEMENTS.length + "</small></button>" +
         '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="codex">📜 Fusions</button>' +
@@ -1554,6 +1710,53 @@
           (ok ? "" : "🔒 ") + esc(df.name) + (df.gold > 1 ? " · or ×" + fr(df.gold) : "") + "</button>";
       });
       html += '</div><div class="play-bar"><button class="btn" type="button" data-action="start" data-autofocus>▶ Lancer : ' + esc(charById(S.char).name) + " · " + esc(mapById(S.map).name) + "</button></div>";
+      return html;
+    },
+    coop: function () {
+      return '<div class="screen-head">' + back() + "<h2>Coop en ligne</h2></div>" +
+        '<p class="game-small">2 à 4 écureuils, chacun sur son téléphone ou son ordi. Niveaux partagés, chacun choisit ses pouvoirs. Un joueur à terre se relève si un coéquipier reste à côté de lui 3 secondes.</p>' +
+        (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
+        '<div class="coop-form"><label for="es-coop-name">Ton pseudo</label><input id="es-coop-name" data-coop-name type="text" maxlength="16" autocomplete="nickname" placeholder="Pseudo" value="' + esc(S.name || "") + '">' +
+        '<button class="btn" type="button" data-action="coophost">➕ Créer un salon</button>' +
+        '<div class="coop-join"><input data-coop-code type="text" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="CODE" value="' + esc(Net.pendingCode || "") + '">' +
+        '<button class="btn btn-alt" type="button" data-action="coopjoin">Rejoindre</button></div></div>';
+    },
+    lobby: function () {
+      if (!Net.on) return SCREENS.coop();
+      var host = Net.role === "host", ok = Net.status === "SUBSCRIBED";
+      var hp = Net.roster.filter(function (x) { return x.host; })[0];
+      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="leave">← Quitter</button><h2>Salon</h2>' + goldBadge() + "</div>" +
+        '<div class="room-code"><span>Code du salon</span><b>' + esc(Net.code) + '</b><button class="btn btn-alt btn-small" type="button" data-action="invite">📨 Inviter</button></div>' +
+        (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
+        (!ok ? '<p class="game-small">Connexion au salon… (' + esc(Net.status || "") + ")</p>" : "") +
+        '<ul class="room-players">';
+      Net.roster.slice(0, 4).forEach(function (x) {
+        html += "<li>" + img(charById(x.char).sprite) + "<b>" + esc(x.name || "Écureuil") + "</b>" + (x.host ? " 👑" : "") + (x.id === Net.id ? " <small>(toi)</small>" : "") + "</li>";
+      });
+      if (!Net.roster.length) html += "<li><small>En attente…</small></li>";
+      html += "</ul><h3 class=\"pick-title\">Ton écureuil</h3><div class=\"tile-row\">";
+      D.CHARACTERS.forEach(function (c) {
+        if (!charAvailable(c)) return;
+        html += '<button type="button" class="tile' + (S.char === c.id ? " is-selected" : "") + '" data-action="lchar" data-arg="' + c.id + '" aria-label="' + esc(c.name) + '">' + img(c.sprite) + "</button>";
+      });
+      html += "</div>" + charInfo(charById(S.char));
+      if (host) {
+        html += '<h3 class="pick-title">Carte</h3><div class="tile-row">';
+        D.MAPS.forEach(function (m) {
+          if (!has(m.unlock)) return;
+          html += '<button type="button" class="tile tile-map' + (S.map === m.id ? " is-selected" : "") + '" data-action="lmap" data-arg="' + m.id + '">' + swatch(m) + "<small>" + esc(m.name) + "</small></button>";
+        });
+        html += '</div><div class="diff-row"><span>Difficulté :</span>';
+        Object.keys(D.DIFFICULTIES).forEach(function (k) {
+          var df = D.DIFFICULTIES[k]; if (!has(df.unlock)) return;
+          html += '<button type="button" class="chip' + (S.diff === k ? " is-on" : "") + '" data-action="ldiff" data-arg="' + k + '">' + esc(df.name) + "</button>";
+        });
+        html += '</div><div class="play-bar"><button class="btn" type="button" data-action="start"' + (ok ? "" : " disabled") + ">▶ Lancer la partie (" + Math.max(1, Math.min(4, Net.roster.length)) + " joueur" + (Net.roster.length > 1 ? "s" : "") + ")</button></div>";
+      } else {
+        var m = hp ? mapById(hp.map) : null;
+        html += '<p class="game-small">' + (m ? "Carte : <b>" + esc(m.name) + "</b> · " + esc((D.DIFFICULTIES[hp.diff] || {}).name || "") + " (choisies par l'hôte)" : "") + "</p>" +
+          '<div class="play-bar"><span class="waiting">' + (hp ? "En attente du lancement par " + esc(hp.name) + "…" : "En attente de l'hôte…") + "</span></div>";
+      }
       return html;
     },
     shop: function () {
@@ -1614,6 +1817,11 @@
     },
   };
   function go(name) { state = "menu"; showCard(SCREENS[name](), name); }
+  function readCoopName() {
+    var inp = card.querySelector("[data-coop-name]"), name = (inp ? inp.value : S.name || "").trim();
+    if (name.length < 2) { Net.err = "Choisis un pseudo d'au moins 2 caractères."; go("coop"); return false; }
+    S.name = name.slice(0, 16); save(); return true;
+  }
 
   var ACTIONS = {
     go: function (a) { SND.click(); if (a === "play") { inspect.char = S.char; inspect.map = S.map; } go(a); },
@@ -1646,17 +1854,41 @@
       var keepName = S.name; S = defaults(); S.name = keepName; save(); go("menu");
     },
     start: function () { start(); },
-    reroll: function () { if (state !== "levelup" || r.rerolls <= 0) return; r.rerolls--; openLevelUp(); },
-    skip: function () { if (state !== "levelup") return; addGold(3); afterChoice(); },
+    coophost: function () {
+      if (!readCoopName()) return;
+      var code = ""; for (var i = 0; i < 4; i++) code += CODE_CH[(Math.random() * CODE_CH.length) | 0];
+      Net.joinTs = Date.now(); netJoin(code, true); go("lobby");
+    },
+    coopjoin: function () {
+      if (!readCoopName()) return;
+      var inp = card.querySelector("[data-coop-code]"), code = (inp ? inp.value : "").toUpperCase().replace(/[^A-Z]/g, "");
+      if (code.length !== 4) { Net.err = "Le code fait 4 lettres."; go("coop"); return; }
+      Net.joinTs = Date.now(); netJoin(code, false); go("lobby");
+    },
+    leave: function () { netLeave(); Net.err = ""; go("menu"); },
+    lchar: function (id) { if (!charAvailable(charById(id))) return; S.char = id; save(); trackMe(); SND.click(); go("lobby"); },
+    lmap: function (id) { if (Net.role !== "host") return; S.map = id; save(); trackMe(); SND.click(); go("lobby"); },
+    ldiff: function (k) { if (Net.role !== "host") return; S.diff = k; save(); trackMe(); SND.click(); go("lobby"); },
+    invite: function () {
+      var url = location.origin + location.pathname + "#coop=" + Net.code;
+      var text = "Rejoins ma partie d'Écureuil Survivor ! Code : " + Net.code;
+      if (navigator.share) { navigator.share({ title: "Écureuil Survivor", text: text, url: url }).catch(function () {}); return; }
+      try { navigator.clipboard.writeText(url).then(function () { banner("Lien copié !"); }); } catch (e) { window.prompt("Lien d'invitation :", url); }
+    },
+    reroll: function () { if ((state !== "levelup" && !picking) || me.rerolls <= 0) return; me.rerolls--; openLevelUp(); },
+    skip: function () { if (state !== "levelup" && !picking) return; apply({ type: "skip" }); },
     resume: function () { resume(); },
     restart: function () { start(); },
-    quit: function () { if (state === "pause" && window.confirm("Abandonner la partie ? Tu gardes l'or gagné.")) gameOver(true); },
-    "opt-pause": function () { S.opts.sound = !S.opts.sound; save(); muteLabel(); state = "play"; pause(); },
+    quit: function () {
+      if (netMenuOpen) { if (window.confirm("Quitter la partie en ligne ? Tu gardes l'or gagné.")) { netMenuOpen = false; gameOver(true); } return; }
+      if (state === "pause" && window.confirm("Abandonner la partie ? Tu gardes l'or gagné.")) gameOver(true);
+    },
+    "opt-pause": function () { S.opts.sound = !S.opts.sound; save(); muteLabel(); if (netMenuOpen) { netMenu(); return; } state = "play"; pause(); },
     menu: function () { go("menu"); },
   };
   card.addEventListener("click", function (e) {
     var ch = e.target.closest("[data-choice]");
-    if (ch) { if (state === "levelup") { try { apply(currentChoices[Number(ch.dataset.choice)]); } catch (err) { showError(err); } } return; }
+    if (ch) { if (state === "levelup" || picking) { try { apply(currentChoices[Number(ch.dataset.choice)]); } catch (err) { showError(err); } } return; }
     var b = e.target.closest("[data-action]");
     if (!b || b.disabled) return;
     var fn = ACTIONS[b.dataset.action];
@@ -1664,13 +1896,252 @@
   });
 
   /* =====================================================================
+     Coop en ligne (Supabase Realtime : salon + diffusion)
+     L'hôte simule la partie et diffuse un instantané ~8 fois/s.
+     Les invités bougent leur écureuil en local et envoient leur position ~5 fois/s.
+     ===================================================================== */
+  var SPRN = Object.keys(D.SPRITES), SPRI = {};
+  SPRN.forEach(function (k, i) { SPRI[k] = i; });
+  var ETYPES = Object.keys(D.ENEMIES), ETI = {};
+  ETYPES.forEach(function (k, i) { ETI[k] = i; });
+  var GEMK = ["xp", "gold", "berry", "chest", "magnet", "xpjar", "goldbag", "freeze", "bomb"], GEMI = {};
+  GEMK.forEach(function (k, i) { GEMI[k] = i; });
+  var CODE_CH = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  function rates() { var n = Math.max(2, Net.roster.length); return n >= 4 ? { snap: 6, inp: 4 } : { snap: 8, inp: 5 }; }
+
+  function sbClient() {
+    if (Net.client) return Net.client;
+    var c = (window.SITE || {}).supabase;
+    if (!window.supabase || !window.supabase.createClient || !c) return null;
+    Net.client = window.supabase.createClient(c.url, c.key, { auth: { persistSession: false, autoRefreshToken: false }, realtime: { params: { eventsPerSecond: 40 } } });
+    return Net.client;
+  }
+  function netJoin(code, asHost) {
+    var cl = sbClient();
+    if (!cl) { Net.err = "Coop indisponible (Supabase non chargé)."; go("coop"); return; }
+    netLeave(true);
+    Net.on = true; Net.role = asHost ? "host" : "guest"; Net.code = code; Net.status = "connexion"; Net.err = ""; Net.started = false; Net.roster = [];
+    var ch = cl.channel("es-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: Net.id } } });
+    ch.on("presence", { event: "sync" }, onPresence);
+    ["start", "s", "in", "pick", "end"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload); } catch (err) { showError(err); } }); });
+    ch.subscribe(function (status) {
+      Net.status = status;
+      if (status === "SUBSCRIBED") trackMe();
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") Net.err = "Connexion impossible au salon. Vérifie ta connexion et réessaie.";
+      if (state === "menu" && screen === "lobby") go("lobby");
+    });
+    Net.ch = ch;
+  }
+  function netLeave(silent) {
+    if (Net.ch) { try { Net.ch.untrack(); } catch (e) {} try { Net.client.removeChannel(Net.ch); } catch (e) {} }
+    Net.ch = null; Net.on = false; Net.role = null; Net.started = false; Net.roster = []; Net.cur = Net.prev = null;
+  }
+  function trackMe() {
+    if (!Net.ch) return;
+    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), char: S.char, host: Net.role === "host", map: S.map, diff: S.diff, shop: S.shop, ingame: Net.started, ts: Net.joinTs || (Net.joinTs = Date.now()) });
+  }
+  function onPresence() {
+    if (!Net.ch) return;
+    var st = Net.ch.presenceState(), list = [];
+    Object.keys(st).forEach(function (k) { if (st[k] && st[k][0]) list.push(st[k][0]); });
+    list.sort(function (a, b) { return (b.host ? 1 : 0) - (a.host ? 1 : 0) || a.ts - b.ts; });
+    Net.roster = list;
+    var host = list.filter(function (x) { return x.host; })[0];
+    if (Net.role === "guest") {
+      if (!host && Net.started && state !== "over") { bannerAll("L'hôte a quitté la partie"); gameOver(true, "L'hôte a quitté la partie."); return; }
+      if (host && host.ingame && !Net.started && state === "menu") Net.err = "Une partie est déjà en cours dans ce salon : attends la fin pour la rejoindre.";
+      var idx = list.map(function (x) { return x.id; }).indexOf(Net.id);
+      if (idx >= 4 && !Net.started) { Net.err = "Salon plein (4 joueurs max)."; netLeave(); go("coop"); return; }
+    }
+    if (Net.role === "host" && Net.started && players.length) {
+      var ids = list.map(function (x) { return x.id; });
+      players = players.filter(function (pl) { if (pl === me || ids.indexOf(pl.id) >= 0) return true; bannerAll(pl.name + " est parti"); return false; });
+    }
+    if (state === "menu" && screen === "lobby") go("lobby");
+  }
+  function onNet(ev, d) {
+    if (!d) return;
+    if (ev === "start" && Net.role === "guest") { startOnline(d); return; }
+    if (ev === "in" && Net.role === "host") {
+      var pl = playerById(d.id); if (!pl) return;
+      pl.tx = d.x; pl.ty = d.y; pl.face = d.f; pl.moving = !!d.m; pl.choosing = !!d.c;
+      return;
+    }
+    if (ev === "pick" && Net.role === "host") {
+      var pp = playerById(d.id); if (!pp || !d.c) return;
+      p = pp; applyCore(d.c); p = me;
+      return;
+    }
+    if (ev === "s" && Net.role === "guest") { receiveSnap(d); return; }
+    if (ev === "end" && Net.role === "guest" && state !== "over") {
+      if (d.r) { r.time = d.r[0]; r.kills = d.r[1]; r.level = d.r[2]; r.bosses = d.r[3]; r.gold = d.r[4]; }
+      gameOver(!!d.q, d.q ? "L'hôte a mis fin à la partie." : "");
+    }
+  }
+  function hostStart() {
+    if (Net.role !== "host") return;
+    var info = { map: S.map, diff: S.diff, roster: Net.roster.slice(0, 4).map(function (x) { return { id: x.id, name: x.name, char: x.char, shop: x.shop || {} }; }) };
+    if (!info.roster.some(function (x) { return x.id === Net.id; })) info.roster.unshift({ id: Net.id, name: S.name || "Hôte", char: S.char, shop: S.shop });
+    netSend("start", info);
+    startOnline(info);
+  }
+  function startOnline(info) {
+    Net.started = true; Net.ev = []; Net.acc = 0; Net.inAcc = 0; Net.cur = Net.prev = null;
+    reset(info.roster, info.map, info.diff);
+    Net.lastLevel = 1;
+    S.stats.played[me.char.id] = true; S.stats.maps[MAP.id] = true; save();
+    trackMe();
+    beginPlay();
+  }
+  // ---------- hôte : instantané ----------
+  function netHostTick(dt) {
+    if (Net.role !== "host") return;
+    Net.acc += dt;
+    var rt = rates();
+    if (Net.acc < 1 / rt.snap) return;
+    Net.acc = 0;
+    netSend("s", buildSnap());
+    Net.ev = []; Net.dmgN = 0;
+  }
+  function R1(v) { return Math.round(v); }
+  function buildSnap() {
+    var e = [], i, en;
+    for (i = 0; i < enemies.length; i++) {
+      en = enemies[i]; if (en.dead) continue;
+      e.push(en.id, en.d.prop ? ETYPES.length + SPRI[en.d.sprite] : ETI[en.type], R1(en.x), R1(en.y),
+        (en.face < 0 ? 1 : 0) | (en.flash > 0 ? 2 : 0) | (en.under ? 4 : 0) | (en.slowT > 0 ? 8 : 0));
+    }
+    var pr = [];
+    for (i = 0; i < projs.length && pr.length < 160 * 6; i++) {
+      var q = projs[i];
+      if (!nearAnyPlayer(q, 260)) continue;
+      if (q.kind === "rocket") pr.push(-1, R1(q.x), R1(q.y), R1(Math.cos(q.ang) * q.spd), R1(Math.sin(q.ang) * q.spd), 0);
+      else pr.push(SPRI[q.sprite] || 0, R1(q.x), R1(q.y), R1(q.kind === "boomerang" ? 0 : q.vx), R1(q.kind === "boomerang" ? 0 : q.vy), (q.anim || q.kind === "boomerang") ? 1 : 0);
+    }
+    var lb = [];
+    lobs.forEach(function (l) { lb.push(R1(l.sx), R1(l.sy), R1(l.tx), R1(l.ty), Math.round(l.t * 100), Math.round(l.dur * 100), SPRI[l.sprite || "pinecone"] || 0, (l.sky ? 1 : 0) | (l.small ? 2 : 0), R1(l.rad || 0)); });
+    var g = [];
+    for (i = 0; i < gems.length && g.length < 220 * 3; i++) {
+      var gm = gems[i];
+      if (!nearAnyPlayer(gm, 300)) continue;
+      g.push(gm.kind === "xp" && gm.v >= 3 ? 9 : GEMI[gm.kind], R1(gm.x), R1(gm.y));
+    }
+    var h = [];
+    hostile.forEach(function (q) { h.push(R1(q.x), R1(q.y), R1(q.vx), R1(q.vy)); });
+    var w = [];
+    warns.forEach(function (x) { w.push(R1(x.x), R1(x.y), R1(x.r), Math.round(Math.min(1, x.t / x.dur) * 100)); });
+    var pl = players.map(function (o) {
+      var orb = {};
+      Object.keys(o.weapons).forEach(function (k) { if (ALLW[k] && ALLW[k].type === "orbit") orb[k] = Math.round((o.st[k] || 0) * 100) / 100; });
+      return [o.id, R1(o.x), R1(o.y), o.face, o.moving ? 1 : 0, Math.ceil(o.hp), R1(o.maxHp), o.down ? 1 : 0, o.choosing ? 1 : 0, o.inv > 0 ? 1 : 0,
+              o.name, o.sprite, o.weapons, orb, Math.round(o.area * 100), o.amount, o.shield ? 1 : 0, Math.round(o.reviveT * 10)];
+    });
+    return { r: [Math.round(r.time * 10), r.kills, r.level, Math.round(Math.min(1, xp / xpNext) * 1000), Math.floor(r.gold), r.bosses, Math.round(r.freeze * 10), Math.round(r.flash * 100)],
+             e: e, pr: pr, lb: lb, g: g, h: h, w: w, pl: pl, b: curBoss ? [curBoss.d.name, Math.round(curBoss.hp / curBoss.maxHp * 1000)] : 0, ev: Net.ev };
+  }
+  // ---------- invité : réception et lissage ----------
+  function receiveSnap(d) {
+    if (!Net.started || !r) return;
+    Net.prev = Net.cur; Net.cur = { s: d, at: performance.now() };
+    var rr = d.r;
+    r.time = rr[0] / 10; r.kills = rr[1]; r.gold = rr[4]; r.bosses = rr[5]; r.freeze = rr[6] / 10; r.flash = rr[7] / 100;
+    xp = rr[3]; xpNext = 1000;
+    if (rr[2] > r.level) { pending += rr[2] - r.level; r.level = rr[2]; }
+    // joueurs
+    var seen = {};
+    d.pl.forEach(function (a) {
+      seen[a[0]] = true;
+      var o = playerById(a[0]);
+      if (!o) { o = { id: a[0], char: D.CHARACTERS[0], weapons: {}, passives: {}, st: {}, timers: {}, consumed: {}, anim: 0, remote: true, x: a[1], y: a[2] }; players.push(o); }
+      if (o === me) { me.hp = a[5]; me.down = !!a[7]; me.reviveT = a[17] / 10; me.shield = !!a[16]; if (a[9] && me.inv <= 0) me.inv = 0.4; return; }
+      o.px = o.x; o.py = o.y; o.nx = a[1]; o.ny = a[2]; o.face = a[3]; o.moving = !!a[4]; o.hp = a[5]; o.maxHp = a[6]; o.down = !!a[7]; o.choosing = !!a[8];
+      o.inv = a[9] ? 0.3 : 0; o.name = a[10]; o.sprite = a[11]; o.weapons = a[12] || {}; o.area = a[14] / 100; o.amount = a[15]; o.shield = !!a[16]; o.reviveT = a[17] / 10;
+      Object.keys(a[13] || {}).forEach(function (k) { o.st[k] = a[13][k]; });
+    });
+    players = players.filter(function (o) { return o === me || seen[o.id]; });
+    curBoss = d.b ? { d: { name: d.b[0] }, hp: d.b[1], maxHp: 1000 } : null;
+    // événements
+    (d.ev || []).forEach(playEvent);
+  }
+  function playEvent(ev) {
+    var t = ev[0];
+    if (t === "x") { fx.push({ kind: "ring", x: ev[1], y: ev[2], r: ev[3], life: 0.25, max: 0.25, red: !!ev[4] }); SND.boom(); }
+    else if (t === "bo") { fx.push({ kind: "bolt", pts: ev[1], life: 0.16, max: 0.16 }); SND.zap(); }
+    else if (t === "d") { if (S.opts.numbers && texts.length < 60) texts.push({ x: ev[1], y: ev[2], n: ev[3], life: 0.6 }); }
+    else if (t === "k") { for (var i = 0; i < Math.min(ev[4], 12); i++) { var a = Math.random() * TAU, sp = 20 + Math.random() * 50; fx.push({ kind: "dot", x: ev[1], y: ev[2], vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.3 + Math.random() * 0.3, color: ev[3] }); } }
+    else if (t === "sw") { var o = playerById(ev[1]); if (o) { fx.push({ kind: "swipe", dir: ev[2], r: ev[3], life: 0.18, max: 0.18, pl: o }); if (o === me) SND.whip(); } }
+    else if (t === "sp") { var o2 = playerById(ev[1]); if (o2) fx.push({ kind: "spin", r: ev[2], life: 0.25, max: 0.25, pl: o2 }); }
+    else if (t === "bn") banner(ev[1]);
+    else if (t === "ch") { if (!me.down) grantChest(); }
+  }
+  var PROPS_SPR = ["stump", "basket", "leafpile", "lantern"];
+  function updateGuest(dt) {
+    var now = performance.now();
+    moveMe(dt);
+    me.anim += dt * (me.moving || SPR[me.sprite].flying ? 8 : 0);
+    me.inv -= dt;
+    var bi = biomeAtTile(Math.floor(me.x / 16), Math.floor(me.y / 16));
+    if (bi !== r.biome) { if (r.biome >= 0) banner(MAP.biomes[bi].name); r.biome = bi; }
+    Net.inAcc += dt;
+    if (Net.inAcc >= 1 / rates().inp) {
+      Net.inAcc = 0;
+      netSend("in", { id: me.id, x: Math.round(me.x), y: Math.round(me.y), f: me.face, m: me.moving ? 1 : 0, c: (me.choosing || netMenuOpen) ? 1 : 0 });
+    }
+    var cur = Net.cur, prev = Net.prev;
+    if (cur) {
+      var period = 1000 / rates().snap, k = Math.max(0, Math.min(1, (now - cur.at) / period)), age = (now - cur.at) / 1000;
+      var pm = {};
+      if (prev) for (var i = 0; i < prev.s.e.length; i += 5) pm[prev.s.e[i]] = i;
+      var list = [], E = cur.s.e, P = prev ? prev.s.e : null;
+      for (i = 0; i < E.length; i += 5) {
+        var id = E[i], ti = E[i + 1], x = E[i + 2], y = E[i + 3], fl = E[i + 4];
+        if (P && pm[id] !== undefined) { var j = pm[id]; x = P[j + 2] + (x - P[j + 2]) * k; y = P[j + 3] + (y - P[j + 3]) * k; }
+        var d = ti < ETYPES.length ? D.ENEMIES[ETYPES[ti]] : { prop: true, r: 6, sprite: SPRN[ti - ETYPES.length] };
+        var anim = (Net.anims[id] = (Net.anims[id] || Math.random() * 2) + dt * 5);
+        list.push({ id: id, x: x, y: y, d: d, spr: SPR[d.sprite] || SPR.stump, anim: anim, face: fl & 1 ? -1 : 1, flash: fl & 2 ? 1 : 0, under: !!(fl & 4), slowT: fl & 8 ? 1 : 0, type: ti < ETYPES.length ? ETYPES[ti] : "prop" });
+      }
+      enemies = list;
+      players.forEach(function (o) {
+        if (o === me || o.nx === undefined) return;
+        o.x = o.px + (o.nx - o.px) * k; o.y = o.py + (o.ny - o.py) * k;
+        o.anim += dt * (o.moving || (SPR[o.sprite] && SPR[o.sprite].flying) ? 8 : 0);
+      });
+      var pr = cur.s.pr; projs = [];
+      for (i = 0; i < pr.length; i += 6) {
+        var vx = pr[i + 3], vy = pr[i + 4];
+        if (pr[i] < 0) projs.push({ kind: "rocket", x: pr[i + 1] + vx * age, y: pr[i + 2] + vy * age, ang: Math.atan2(vy, vx) });
+        else projs.push({ kind: "bullet", sprite: SPRN[pr[i]], x: pr[i + 1] + vx * age, y: pr[i + 2] + vy * age, vx: vx, vy: vy, anim: !!pr[i + 5] });
+      }
+      var lb = cur.s.lb; lobs = [];
+      for (i = 0; i < lb.length; i += 9) lobs.push({ sx: lb[i], sy: lb[i + 1], tx: lb[i + 2], ty: lb[i + 3], t: Math.min(lb[i + 5], lb[i + 4] + age * 100) / 100, dur: lb[i + 5] / 100, sprite: SPRN[lb[i + 6]], sky: !!(lb[i + 7] & 1), small: !!(lb[i + 7] & 2), rad: lb[i + 8] });
+      var g = cur.s.g; gems = [];
+      for (i = 0; i < g.length; i += 3) gems.push(g[i] === 9 ? { kind: "xp", v: 3, x: g[i + 1], y: g[i + 2] } : { kind: GEMK[g[i]], v: 1, x: g[i + 1], y: g[i + 2] });
+      var h = cur.s.h; hostile = [];
+      for (i = 0; i < h.length; i += 4) hostile.push({ x: h[i] + h[i + 2] * age, y: h[i + 1] + h[i + 3] * age, vx: h[i + 2], vy: h[i + 3] });
+      var w = cur.s.w; warns = [];
+      for (i = 0; i < w.length; i += 4) warns.push({ x: w[i], y: w[i + 1], r: w[i + 2], t: w[i + 3] / 100, dur: 1 });
+      if (now - cur.at > 4000 && state === "play") { gameOver(true, "Connexion perdue avec l'hôte."); return; }
+    }
+    tickFx(dt);
+    achTick -= dt;
+    if (achTick <= 0) { achTick = 1; checkAchievements(r); }
+    if (pending > 0 && !picking && !me.down && state === "play") openLevelUp();
+  }
+  Net.anims = {};
+
+  /* =====================================================================
      Déroulement d'une partie
      ===================================================================== */
   var last = 0;
   function start() {
+    if (Net.on) { if (Net.role === "host") hostStart(); return; }
     sanitize();
     reset();
     S.stats.played[CH.id] = true; S.stats.maps[MAP.id] = true; save();
+    beginPlay();
+  }
+  function beginPlay() {
+    Net.anims = {};
     state = "play"; hideCard();
     curBoss = null;
     $("[data-toasts]").innerHTML = "";
@@ -1682,8 +2153,17 @@
       window.scrollTo({ top: window.scrollY + rc.top - top - 8, behavior: "smooth" });
     sfx(660, 0.1, "square", 0.04);
   }
+  function netMenu() {
+    netMenuOpen = true; clearInput();
+    showCard('<h2>Partie en ligne</h2><p>Le jeu continue pendant que ce menu est ouvert (tu es protégé par une bulle).</p>' +
+      '<p class="game-small">Salon <b>' + esc(Net.code || "") + "</b> · " + players.length + " joueurs</p>" +
+      '<div class="btn-row center"><button class="btn" type="button" data-action="resume" data-autofocus>▶ Reprendre</button>' +
+      '<button class="btn btn-ghost btn-small" type="button" data-action="opt-pause">' + (S.opts.sound ? "🔊 Son : oui" : "🔇 Son : non") + "</button>" +
+      '<button class="btn btn-ghost btn-small" type="button" data-action="quit">🏳️ Quitter la partie</button></div>', "netmenu");
+  }
   function pause() {
-    if (state !== "play") return;
+    if (state !== "play" || picking) return;
+    if (players.length > 1) { if (netMenuOpen) resume(); else netMenu(); return; }
     state = "pause"; clearInput();
     var html = '<h2>Pause</h2><div class="pause-grid"><div><h3>Armes (' + Object.keys(p.weapons).length + "/" + MAX_W + ')</h3><ul class="build-list">';
     Object.keys(p.weapons).forEach(function (k) { html += '<li class="' + (ALLW[k].fusion ? "is-fusion" : "") + '"><img src="' + spriteUrl(ALLW[k].icon) + '" alt="">' + esc(ALLW[k].name) + " <b>niv. " + p.weapons[k] + "</b>" + synHtml(k) + "</li>"; });
@@ -1697,16 +2177,24 @@
       "<li>Zone <b>" + Math.round(p.area * 100) + " %</b></li>" +
       "<li>Projectiles <b>+" + p.amount + "</b></li>" +
       "<li>Armure <b>" + p.armor + "</b></li>" +
-      "<li>Renaissances <b>" + r.revives + "</b></li></ul></div></div>" +
+      "<li>Renaissances <b>" + me.revives + "</b></li></ul></div></div>" +
       '<div class="btn-row center"><button class="btn" type="button" data-action="resume" data-autofocus>▶ Reprendre</button>' +
       '<button class="btn btn-ghost btn-small" type="button" data-action="opt-pause">' + (S.opts.sound ? "🔊 Son : oui" : "🔇 Son : non") + "</button>" +
       '<button class="btn btn-ghost btn-small" type="button" data-action="restart">↻ Recommencer</button>' +
       '<button class="btn btn-ghost btn-small" type="button" data-action="quit">🏳️ Abandonner</button></div>';
     showCard(html, "pause");
   }
-  function resume() { if (state !== "pause") return; state = "play"; hideCard(); last = performance.now(); }
+  function resume() {
+    if (netMenuOpen) { netMenuOpen = false; hideCard(); return; }
+    if (state !== "pause") return; state = "play"; hideCard(); last = performance.now();
+  }
 
-  function gameOver(quit) {
+  function gameOver(quit, reason) {
+    if (state === "over") return;
+    var online = Net.on && Net.started;
+    if (online && Net.role === "host") netSend("end", { q: quit ? 1 : 0, r: [r.time, r.kills, r.level, r.bosses, r.gold] });
+    if (online) { Net.started = false; if (Net.role === "guest" && quit && !reason) netLeave(); else trackMe(); }
+    picking = false; netMenuOpen = false;
     state = "over"; SND.over();
     curBoss = null;
     r.ended = true;
@@ -1723,8 +2211,8 @@
       var un = unlocksOf(a.id);
       return "<li>🏆 <strong>" + esc(a.name) + "</strong> +" + a.gold + " " + goldIc() + (un.length ? "<span>Débloque " + esc(un.join(", ")) + "</span>" : "") + "</li>";
     }).join("") + "</ul></div>" : "";
-    var lbOk = window.Leaderboard && Leaderboard.configured();
-    var html = '<span class="kicker">' + (quit ? "Partie abandonnée" : "Les bestioles ont gagné…") + "</span><h2>Fin de partie</h2>" +
+    var lbOk = window.Leaderboard && Leaderboard.configured() && !r.coop;
+    var html = '<span class="kicker">' + esc(reason || (quit ? "Partie abandonnée" : "Les bestioles ont gagné…")) + "</span><h2>Fin de partie" + (r.coop ? " (coop)" : "") + "</h2>" +
       '<ul class="over-stats"><li><span>Survie</span><strong>' + fmtTime(r.time) + "</strong></li><li><span>Ennemis</span><strong>" + r.kills + "</strong></li><li><span>Niveau</span><strong>" + r.level + "</strong></li>" +
       '<li class="total"><span>Score' + (DIFF.score > 1 ? " (×" + fr(DIFF.score) + ")" : "") + "</span><strong>" + sc.toLocaleString("fr-FR") + "</strong></li>" +
       '<li class="gold"><span>Glands d\'or gagnés</span><strong>+' + gold + " " + goldIc() + "</strong></li></ul>" +
@@ -1732,8 +2220,10 @@
       (lbOk ? '<form class="submit-score" data-submit><label for="es-name">Ton pseudo pour le classement</label><div class="submit-row">' +
         '<input id="es-name" type="text" maxlength="20" autocomplete="nickname" placeholder="Pseudo" value="' + esc(S.name || "") + '">' +
         '<button class="btn btn-alt btn-small" type="submit">Envoyer</button></div><p class="game-small" data-submit-msg aria-live="polite"></p></form>' : "") +
-      '<div class="btn-row center"><button class="btn" type="button" data-action="restart" data-autofocus>↻ Rejouer</button>' +
-      '<button class="btn btn-ghost" type="button" data-action="menu">Menu</button></div>';
+      (Net.on ? '<div class="btn-row center"><button class="btn" type="button" data-action="go" data-arg="lobby" data-autofocus>↻ Retour au salon</button>' +
+        '<button class="btn btn-ghost" type="button" data-action="leave">Quitter le salon</button></div>'
+      : '<div class="btn-row center"><button class="btn" type="button" data-action="restart" data-autofocus>↻ Rejouer</button>' +
+        '<button class="btn btn-ghost" type="button" data-action="menu">Menu</button></div>');
     showCard(html, "over");
     var form = card.querySelector("[data-submit]");
     if (form) form.addEventListener("submit", function (e) {
@@ -1768,7 +2258,7 @@
     var dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
     if (state === "error") return;
     try {
-      if (state === "play") update(dt);
+      if (state === "play") { if (Net.on && Net.role === "guest") updateGuest(dt); else update(dt); }
       if (state === "menu" || !p) drawIdle(now); else draw();
     } catch (err) { showError(err); }
   }
@@ -1777,6 +2267,13 @@
      Boutons, plein écran, taille
      ===================================================================== */
   $("[data-pause]").addEventListener("click", function () { if (state === "play") pause(); else if (state === "pause") resume(); });
+  // l'hôte continue de simuler même si son onglet passe en arrière-plan
+  var bgLast = 0;
+  setInterval(function () {
+    var now = performance.now(), el = Math.min(1.5, (now - (bgLast || now)) / 1000); bgLast = now;
+    if (!document.hidden || state !== "play" || !Net.on || Net.role !== "host") return;
+    try { for (var t = 0; t < el; t += 0.05) update(0.05); last = performance.now(); } catch (e) {}
+  }, 100);
   var muteBtn = $("[data-mute]");
   function muteLabel() { muteBtn.textContent = S.opts.sound ? "🔊" : "🔇"; muteBtn.setAttribute("aria-label", S.opts.sound ? "Couper le son" : "Activer le son"); }
   muteLabel();
@@ -1826,12 +2323,27 @@
     drop: function (kind) { if (p) drop(kind, p.x + 20, p.y); },
     level: function () { if (p) { pending++; } },
     warns: function () { return warns && warns.length; },
+    hurtAll: function (n) { players.forEach(function (pl) { pl.hp -= n || 1000; }); },
+    hurtOne: function (i, n) { if (players[i]) players[i].hp -= n || 1000; },
+    net: function () { return { on: Net.on, role: Net.role, code: Net.code, status: Net.status, roster: Net.roster.length, started: Net.started, players: players.length, snap: !!Net.cur }; },
     spawn: function (t) { if (p) spawn(t, Math.random() * TAU, 60); },
     state: function () { return { state: state, screen: screen, level: r && r.level, hp: p && p.hp, kills: r && r.kills, weapons: p && p.weapons, passives: p && p.passives, enemies: enemies && enemies.length }; },
   };
 
   checkAchievements(null);
   go("menu");
+  function joinFromHash() {
+    var m = /#coop=([A-Za-z]{4})/.exec(location.hash || "");
+    if (!m || (Net.on && Net.code === m[1].toUpperCase())) return;
+    if (state === "play") return;
+    Net.pendingCode = m[1].toUpperCase();
+    if (S.name && S.name.length >= 2) { Net.joinTs = Date.now(); netJoin(Net.pendingCode, false); go("lobby"); }
+    else { Net.err = "Choisis ton pseudo puis appuie sur Rejoindre."; go("coop"); }
+    var rc = stage.getBoundingClientRect();
+    if (rc.top > window.innerHeight * 0.5) stage.scrollIntoView({ block: "start" });
+  }
+  joinFromHash();
+  window.addEventListener("hashchange", joinFromHash);
   last = performance.now();
   requestAnimationFrame(loop);
 })();
