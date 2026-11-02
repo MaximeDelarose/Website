@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Merger · AkarisuMD</title>
-  <meta name="description" content="Merger : lâche des écureuils dans le bocal et fusionne-les. Un petit jeu de réflexion jouable sur ordinateur et mobile.">
+  <meta name="description" content="Merger : lâche les écureuils deux par deux, 3 de la même couleur qui se touchent disparaissent. Un petit jeu de réflexion jouable sur ordinateur et mobile.">
   <meta property="og:title" content="Merger · AkarisuMD">
-  <meta property="og:description" content="Merger : lâche des écureuils dans le bocal et fusionne-les. Un petit jeu de réflexion jouable sur ordinateur et mobile.">
+  <meta property="og:description" content="Merger : lâche les écureuils deux par deux, 3 de la même couleur qui se touchent disparaissent. Un petit jeu de réflexion jouable sur ordinateur et mobile.">
   <meta name="theme-color" content="#3f6b3a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -71,6 +71,7 @@
         <button class="fs-exit" type="button" data-fs-exit aria-label="Quitter le plein écran">✕</button>
 
         <div class="game-hud" data-hud hidden>
+          <button class="hud-btn hud-swap" type="button" data-swap aria-label="Permuter les deux écureuils">⇄</button>
           <button class="hud-btn" type="button" data-mute aria-label="Couper le son">🔊</button>
           <button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button>
         </div>
@@ -87,11 +88,12 @@
         <div class="panel game-help">
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
-            <li><strong>Vise</strong> avec la souris, les flèches (ou Q/D), ou en glissant le doigt.</li>
-            <li><strong>Lâche</strong> l'écureuil d'un clic, avec <kbd>Espace</kbd>, ou en relevant le doigt.</li>
-            <li>Deux écureuils <strong>de la même couleur</strong> qui se touchent fusionnent en un écureuil plus gros : 9 écureuils, du Bébé au Roi Écureuil.</li>
-            <li>Enchaîne les fusions pour un <strong>combo</strong> (jusqu'à x5). Deux Rois Écureuils ensemble : gros bonus.</li>
-            <li>Si un écureuil reste <strong>au-dessus de la ligne rouge</strong>, la partie est finie. <kbd>P</kbd> ou <kbd>Échap</kbd> pour la pause.</li>
+            <li>Les écureuils tombent <strong>deux par deux</strong>. Vise avec la souris, les flèches (ou Q/D), ou en glissant le doigt.</li>
+            <li><strong>Permute</strong> les deux écureuils avant de les lâcher : clic droit, <kbd>↑</kbd>, ou le bouton ⇄.</li>
+            <li><strong>Lâche</strong> la paire d'un clic, avec <kbd>Espace</kbd>, ou en relevant le doigt.</li>
+            <li>Dès que <strong>3 écureuils de la même couleur</strong> (ou plus) se touchent, ils disparaissent. Enchaîne pour un <strong>combo</strong> (jusqu'à x5).</li>
+            <li><strong>Difficulté</strong> : choisis avant la partie quels écureuils jouent. 6 écureuils sur 12 = difficulté 6/12. Plus il y en a, plus c'est dur, et les points sont multipliés par la difficulté.</li>
+            <li>Si un écureuil reste <strong>au-dessus de la ligne</strong>, la partie est finie. <kbd>P</kbd> ou <kbd>Échap</kbd> pour la pause.</li>
           </ul>
         </div>
         <div class="panel game-lb">
@@ -117,6 +119,6 @@
   <script src="js/data.js?v=20261102q"></script>
   <script src="js/leaderboard.js?v=20261102q"></script>
   <script src="js/main.js?v=20261102q"></script>
-  <script src="js/merger.js?v=20261102b"></script>
+  <script src="js/merger.js?v=20261102c"></script>
 </body>
 </html>

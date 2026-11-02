@@ -1044,3 +1044,13 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .merger-stage .game-canvas { cursor: pointer; }
 .merger-stage .game-overlay { background: rgba(20, 30, 20, .45); }
 .merger-stage.is-full .fs-exit { display: grid; }
+.mg-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 10px 0 6px; }
+.mg-pick { aspect-ratio: 1; padding: 2px; display: grid; place-items: center; cursor: pointer; background: #1f3a2b; border: 3px solid var(--line); box-shadow: 0 3px 0 var(--depth); }
+.mg-pick img { width: 100%; max-width: 52px; height: auto; }
+.mg-pick[aria-pressed="false"] { background: transparent; box-shadow: none; }
+.mg-pick[aria-pressed="false"] img { opacity: .3; filter: grayscale(1); }
+.mg-pick:focus-visible { outline: 3px solid #f6d36b; outline-offset: 2px; }
+.mg-diff { margin: 6px 0; }
+.mg-quick { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.merger-stage .hud-swap { font-size: 1.2rem; }
+@media (max-width: 420px) { .mg-picker { grid-template-columns: repeat(4, 1fr); } }
