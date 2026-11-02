@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261105kd100">
+  <link rel="stylesheet" href="css/style.css?v=20261104mg210">
 </head>
 <body data-page="merger">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -40,12 +40,7 @@
         <ul>
           <li><a href="index.html" data-page="home">Accueil</a></li>
           <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
-          <li><a href="jeu.html" data-page="game">Survivor</a></li>
-          <li><a href="merger.html" data-page="merger">Merger</a></li>
-          <li><a href="dice.html" data-page="dice">Dice</a></li>
-          <li><a href="king-dice.html" data-page="kingdice">King Dice</a></li>
-          <li><a href="defense.html" data-page="defense">Défense</a></li>
-          <li><a href="idle.html" data-page="idle">Chêne</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
           <li><a href="bio.html" data-page="bio">Bio</a></li>
           <li><a href="contact.html" data-page="contact">Contact</a></li>
         </ul>
@@ -64,7 +59,7 @@
     <div class="wrap">
       <div class="game-head">
         <div>
-          <span class="kicker">Mini jeu maison</span>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison</span>
           <h1>Merger</h1>
         </div>
         <div class="mg-modes" role="tablist" aria-label="Mode de jeu">
@@ -109,12 +104,12 @@
         <div class="panel game-help" data-help="coop" hidden>
           <h2 class="section-title">Mode Coop à 2</h2>
           <ul>
-            <li>Deux joueurs sur le <strong>même ordinateur</strong>, un lanceur chacun de chaque côté du terrain. Pas de chrono.</li>
+            <li><strong>Sur ce PC</strong> : à deux sur le même clavier. <strong>En ligne</strong> : l'un crée un salon, l'autre entre le code à 4 lettres (ou ouvre le lien partagé). Pas de chrono.</li>
             <li><strong>Joueur 1</strong> : <kbd>Z</kbd><kbd>S</kbd> (ou <kbd>W</kbd><kbd>S</kbd>) pour viser, <kbd>Q</kbd><kbd>D</kbd> (ou <kbd>A</kbd><kbd>D</kbd>) pour la puissance, <kbd>Espace</kbd> pour tirer, <kbd>E</kbd> pour échanger avec le suivant.</li>
-            <li><strong>Joueur 2</strong> : <kbd>↑</kbd><kbd>↓</kbd> pour viser, <kbd>←</kbd><kbd>→</kbd> pour la puissance (vers le terrain = plus fort), <kbd>Entrée</kbd> pour tirer, <kbd>Maj droite</kbd> pour échanger.</li>
-            <li>Les deux préparent leur tir en même temps, mais on <strong>tire chacun son tour</strong>. La trajectoire en pointillés montre où le personnage va toucher.</li>
-            <li><strong>3 personnages identiques</strong> (ou plus) qui se touchent éclatent. Ce qui tombe peut en former d'autres : <strong>réaction en chaîne</strong>, et le multiplicateur grimpe.</li>
-            <li><strong>Pouvoirs</strong> (rares, offerts par les gros combos) : grenade, arc-en-ciel (joker), éclair (une colonne), bombe à retardement (explose 3 tirs plus tard).</li>
+            <li><strong>Joueur 2</strong> : <kbd>↑</kbd><kbd>↓</kbd> pour viser, <kbd>←</kbd><kbd>→</kbd> pour la puissance (vers le terrain = plus fort), <kbd>Entrée</kbd> pour tirer, <kbd>Maj droite</kbd> pour échanger. En ligne, toutes ces touches pilotent ton lanceur.</li>
+            <li>On tire <strong>chacun son tour</strong>. Les tirs rebondissent un peu ; la trajectoire en pointillés montre où ils touchent.</li>
+            <li><strong>3 personnages identiques</strong> (ou plus) qui se touchent éclatent ; ce qui tombe peut en former d'autres : <strong>réaction en chaîne</strong>. Tous les 4 tirs, une <strong>pluie d'écureuils</strong> tombe du ciel.</li>
+            <li><strong>Boule multicolore</strong> (10 % de chance) : elle prend la couleur qui complète le meilleur groupe. <strong>Grenade</strong> posée dans le terrain : tire dedans, elle explose et rapporte des points. Les gros combos offrent un <strong>éclair</strong> ou une <strong>bombe à retardement</strong>.</li>
             <li>La partie s'arrête quand la pile reste au-dessus de la ligne pointillée. <kbd>Échap</kbd> pour la pause et les réglages.</li>
           </ul>
         </div>
@@ -153,9 +148,10 @@
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/cloudsave.js?v=20261103re4" data-game="merger" data-prefix="merger-best-"></script>
   <script src="js/leaderboard.js?v=20261103re4"></script>
-  <script src="js/main.js?v=20261103re4"></script>
-  <script src="js/merger-art.js?v=20261104mg200"></script>
-  <script src="js/merger.js?v=20261104mg200"></script>
-  <script src="js/merger-coop.js?v=20261104mg200"></script>
+  <script src="js/main.js?v=20261104jx1"></script>
+  <script src="js/vendor/supabase-2.45.4.min.js"></script>
+  <script src="js/merger-art.js?v=20261104mg210"></script>
+  <script src="js/merger.js?v=20261104mg210"></script>
+  <script src="js/merger-coop.js?v=20261104mg210"></script>
 </body>
 </html>
