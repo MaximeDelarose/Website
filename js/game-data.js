@@ -434,31 +434,32 @@ window.ES_DATA = (function () {
      Arbre de compétences (permanent, payé en points de compétence)
      Un point par rang d'écureuil gagné, +2 par niveau de prestige.
      req : compétences qui doivent avoir au moins 1 niveau ; prestige : niveau de prestige requis
+     pos : [distance le long de la tentacule, décalage latéral] pour l'affichage ; angle de branche en degrés
      ===================================================================== */
   var SKILL_BRANCHES = [
-    { id: "attaque", name: "Attaque", color: "#c8553d" },
-    { id: "survie", name: "Survie", color: "#5b8a4a" },
-    { id: "fortune", name: "Fortune", color: "#c99a00" },
+    { id: "attaque", name: "Attaque", color: "#c8553d", angle: -90 },
+    { id: "survie", name: "Survie", color: "#5b8a4a", angle: 150 },
+    { id: "fortune", name: "Fortune", color: "#c99a00", angle: 30 },
   ];
   var SKILLS = [
-    { id: "a1", branch: "attaque", name: "Crocs", icon: "🦷", desc: "+4 % de dégâts par niveau.", max: 3, cost: 1 },
-    { id: "a2", branch: "attaque", name: "Cadence", icon: "⏱️", desc: "-3 % de recharge par niveau.", max: 3, cost: 1, req: ["a1"] },
-    { id: "a3", branch: "attaque", name: "Portée", icon: "📏", desc: "+6 % de zone d'effet par niveau.", max: 3, cost: 1, req: ["a1"] },
-    { id: "a5", branch: "attaque", name: "Coup critique", icon: "💥", desc: "8 % de chances par niveau de doubler les dégâts.", max: 3, cost: 1, req: ["a2"] },
-    { id: "a4", branch: "attaque", name: "Salve", icon: "🎯", desc: "+1 projectile pour toutes les armes.", max: 1, cost: 3, req: ["a2", "a3"] },
-    { id: "a6", branch: "attaque", name: "Rage ancestrale", icon: "🔥", desc: "+25 % de dégâts sous 30 % de PV.", max: 1, cost: 3, req: ["a4"], prestige: 1 },
-    { id: "s1", branch: "survie", name: "Peau dure", icon: "❤️", desc: "+10 PV max par niveau.", max: 3, cost: 1 },
-    { id: "s2", branch: "survie", name: "Régénération", icon: "💧", desc: "+0,15 PV par seconde par niveau.", max: 3, cost: 1, req: ["s1"] },
-    { id: "s3", branch: "survie", name: "Carapace", icon: "🛡️", desc: "+1 armure par niveau.", max: 2, cost: 1, req: ["s1"] },
-    { id: "s5", branch: "survie", name: "Esquive", icon: "💨", desc: "4 % de chances par niveau d'esquiver un coup.", max: 3, cost: 1, req: ["s3"] },
-    { id: "s4", branch: "survie", name: "Second souffle", icon: "💖", desc: "+1 renaissance par partie.", max: 1, cost: 3, req: ["s2", "s3"] },
-    { id: "s6", branch: "survie", name: "Écorce millénaire", icon: "🌳", desc: "-15 % de dégâts reçus.", max: 1, cost: 3, req: ["s4"], prestige: 1 },
-    { id: "f1", branch: "fortune", name: "Flair", icon: "🧲", desc: "+10 % de ramassage par niveau.", max: 3, cost: 1 },
-    { id: "f2", branch: "fortune", name: "Avidité", icon: "💰", desc: "+8 % de glands d'or par niveau.", max: 3, cost: 1, req: ["f1"] },
-    { id: "f3", branch: "fortune", name: "Érudit", icon: "📖", desc: "+6 % d'expérience par niveau.", max: 3, cost: 1, req: ["f1"] },
-    { id: "f5", branch: "fortune", name: "Coffre de départ", icon: "🎁", desc: "Commence chaque partie avec un pouvoir au choix.", max: 1, cost: 2, req: ["f3"] },
-    { id: "f4", branch: "fortune", name: "Choix multiple", icon: "🃏", desc: "4 pouvoirs proposés à chaque niveau au lieu de 3.", max: 1, cost: 3, req: ["f2", "f3"] },
-    { id: "f6", branch: "fortune", name: "Mains d'or", icon: "✋", desc: "Les glands d'or ramassés comptent double.", max: 1, cost: 3, req: ["f4"], prestige: 1 },
+    { id: "a1", pos: [1, 0], branch: "attaque", name: "Crocs", icon: "🦷", desc: "+4 % de dégâts par niveau.", max: 3, cost: 1 },
+    { id: "a2", pos: [2, -1], branch: "attaque", name: "Cadence", icon: "⏱️", desc: "-3 % de recharge par niveau.", max: 3, cost: 1, req: ["a1"] },
+    { id: "a3", pos: [2, 1], branch: "attaque", name: "Portée", icon: "📏", desc: "+6 % de zone d'effet par niveau.", max: 3, cost: 1, req: ["a1"] },
+    { id: "a5", pos: [3, -1.7], branch: "attaque", name: "Coup critique", icon: "💥", desc: "8 % de chances par niveau de doubler les dégâts.", max: 3, cost: 1, req: ["a2"] },
+    { id: "a4", pos: [3, 0.2], branch: "attaque", name: "Salve", icon: "🎯", desc: "+1 projectile pour toutes les armes.", max: 1, cost: 3, req: ["a2", "a3"] },
+    { id: "a6", pos: [4, 0], branch: "attaque", name: "Rage ancestrale", icon: "🔥", desc: "+25 % de dégâts sous 30 % de PV.", max: 1, cost: 3, req: ["a4"], prestige: 1 },
+    { id: "s1", pos: [1, 0], branch: "survie", name: "Peau dure", icon: "❤️", desc: "+10 PV max par niveau.", max: 3, cost: 1 },
+    { id: "s2", pos: [2, -1], branch: "survie", name: "Régénération", icon: "💧", desc: "+0,15 PV par seconde par niveau.", max: 3, cost: 1, req: ["s1"] },
+    { id: "s3", pos: [2, 1], branch: "survie", name: "Carapace", icon: "🛡️", desc: "+1 armure par niveau.", max: 2, cost: 1, req: ["s1"] },
+    { id: "s5", pos: [3, 1.7], branch: "survie", name: "Esquive", icon: "💨", desc: "4 % de chances par niveau d'esquiver un coup.", max: 3, cost: 1, req: ["s3"] },
+    { id: "s4", pos: [3, -0.2], branch: "survie", name: "Second souffle", icon: "💖", desc: "+1 renaissance par partie.", max: 1, cost: 3, req: ["s2", "s3"] },
+    { id: "s6", pos: [4, 0], branch: "survie", name: "Écorce millénaire", icon: "🌳", desc: "-15 % de dégâts reçus.", max: 1, cost: 3, req: ["s4"], prestige: 1 },
+    { id: "f1", pos: [1, 0], branch: "fortune", name: "Flair", icon: "🧲", desc: "+10 % de ramassage par niveau.", max: 3, cost: 1 },
+    { id: "f2", pos: [2, -1], branch: "fortune", name: "Avidité", icon: "💰", desc: "+8 % de glands d'or par niveau.", max: 3, cost: 1, req: ["f1"] },
+    { id: "f3", pos: [2, 1], branch: "fortune", name: "Érudit", icon: "📖", desc: "+6 % d'expérience par niveau.", max: 3, cost: 1, req: ["f1"] },
+    { id: "f5", pos: [3, 1.7], branch: "fortune", name: "Coffre de départ", icon: "🎁", desc: "Commence chaque partie avec un pouvoir au choix.", max: 1, cost: 2, req: ["f3"] },
+    { id: "f4", pos: [3, -0.2], branch: "fortune", name: "Choix multiple", icon: "🃏", desc: "4 pouvoirs proposés à chaque niveau au lieu de 3.", max: 1, cost: 3, req: ["f2", "f3"] },
+    { id: "f6", pos: [4, 0], branch: "fortune", name: "Mains d'or", icon: "✋", desc: "Les glands d'or ramassés comptent double.", max: 1, cost: 3, req: ["f4"], prestige: 1 },
   ];
 
   /* =====================================================================
