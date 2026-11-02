@@ -1039,8 +1039,8 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .prestige-gain small { display: block; color: var(--ink-soft); }
 .pshop-item .btn { min-width: 84px; justify-content: center; }
 
-/* ---------- mini jeu : Chaaat (version web) ---------- */
-.chaaat-stage { background: #3a2858; height: min(80vh, 720px); min-height: 460px; }
-.chaaat-stage .game-canvas { cursor: pointer; }
-.chaaat-stage .game-overlay { background: rgba(30, 18, 50, .5); }
-.chaaat-stage.is-full .fs-exit { display: grid; }
+/* ---------- mini jeu : Merger ---------- */
+.merger-stage { background: #1f3a2b; height: min(80vh, 720px); min-height: 460px; }
+.merger-stage .game-canvas { cursor: pointer; }
+.merger-stage .game-overlay { background: rgba(20, 30, 20, .45); }
+.merger-stage.is-full .fs-exit { display: grid; }
