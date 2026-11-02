@@ -1588,3 +1588,5 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .update-bar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 9999; display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 14px; max-width: calc(100% - 24px);
   background: #2b1709; color: #fdf3de; font-size: .9rem; box-shadow: 0 0 0 3px #f6d36b, 0 6px 0 3px rgba(0,0,0,.35); animation: toast-in .25s steps(4); }
 .update-bar .btn { margin: 0; }
+.room-players .ver-bad { color: var(--berry); font-weight: 800; margin-left: 4px; }
+.net-err .btn { margin-left: 6px; vertical-align: middle; }
