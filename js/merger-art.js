@@ -334,7 +334,7 @@
   /* ---------- les power-ups ----------
      kind : "grenade" | "rainbow" | "lightning" | "bomb" ; o = { t (temps, pour animer), count (bombe) } */
   var POWERS = {
-    grenade:   { name: "Grenade",            desc: "Explose en touchant : souffle tout autour." },
+    grenade:   { name: "Grenade",            desc: "Posée dans le terrain : tire dedans, elle explose et rapporte des points." },
     rainbow:   { name: "Arc-en-ciel",        desc: "Joker : prend la couleur qui complète le meilleur groupe." },
     lightning: { name: "Éclair",             desc: "Foudroie toute la colonne qu'il touche." },
     bomb:      { name: "Bombe à retardement", desc: "Se pose, puis explose après 3 tirs." },
@@ -367,7 +367,11 @@
       // étincelle
       var sp = 0.6 + 0.4 * Math.sin(t * 30);
       g.fillStyle = "rgba(255,210,90," + sp + ")"; g.beginPath(); g.arc(-r * 0.05, -r * 1.3, r * 0.12 * (0.8 + sp * 0.4), 0, TAU); g.fill();
-      face("#1d2e14");
+      if (o.scared) {   // un projectile arrive : yeux ronds et bouche en O
+        g.fillStyle = "#fff"; [-1, 1].forEach(function (s3) { g.beginPath(); g.arc(s3 * r * 0.28, -r * 0.06, r * 0.15, 0, TAU); g.fill(); g.strokeStyle = "#1d2e14"; g.lineWidth = Math.max(1, lw * 0.6); g.stroke(); });
+        g.fillStyle = "#1d2e14"; [-1, 1].forEach(function (s3) { g.beginPath(); g.arc(s3 * r * 0.28, -r * 0.04, r * 0.06, 0, TAU); g.fill(); });
+        g.beginPath(); g.ellipse(0, r * 0.3, r * 0.1, r * 0.14, 0, 0, TAU); g.fill();
+      } else face("#1d2e14");
     } else if (kind === "rainbow") {
       var cols = ["#ff6b6b", "#ffb347", "#ffe66d", "#7bd389", "#6bb7ff", "#b38cff"];
       g.save(); g.rotate(t * 1.5);

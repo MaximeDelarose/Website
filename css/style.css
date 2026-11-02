@@ -1916,3 +1916,38 @@ button.tu-next:active { transform: translateY(2px); }
 .games-intro { margin: 0 0 32px; }
 .room-players .ver-bad { color: var(--berry); font-weight: 800; margin-left: 4px; }
 .net-err .btn { margin-left: 6px; vertical-align: middle; }
+/* Merger Coop 2.1 : choix du mode, salon en ligne, pouvoirs */
+.mc-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+.mc-mode {
+  display: grid; gap: 4px; padding: 14px 12px; text-align: center; cursor: pointer; font: inherit; color: var(--ink);
+  background: var(--panel-2); border: 3px solid var(--line); box-shadow: 0 4px 0 var(--depth);
+  transition: transform .15s cubic-bezier(.2, 1.6, .4, 1), box-shadow .15s;
+}
+.mc-mode b { font-size: 1.15rem; }
+.mc-mode span { font-size: .85rem; color: var(--ink-soft); }
+button.mc-mode:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 7px 0 var(--depth); }
+button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--depth); }
+.mc-mode:first-child { background: #fbd9b8; }
+.mc-mode-net { background: #c8eef2; }
+[data-theme="dark"] .mc-mode:first-child { background: #4a3322; }
+[data-theme="dark"] .mc-mode-net { background: #1f4a50; }
+.mc-join { cursor: default; }
+.mc-join span { display: flex; gap: 6px; justify-content: center; align-items: center; }
+.mc-join input, .mc-name input { font: inherit; font-weight: 800; padding: 6px 10px; border: 3px solid var(--line); background: var(--panel); color: var(--ink); }
+.mc-join input { width: 6.5em; text-align: center; letter-spacing: .2em; text-transform: uppercase; }
+.mc-name { display: flex; gap: 8px; align-items: center; justify-content: center; }
+.mc-name label { font-weight: 800; }
+.mc-code { font-size: 2.6rem; font-weight: 900; letter-spacing: .25em; margin: 0 0 4px; color: #2b9fb0 !important; }
+.mc-roster { list-style: none; padding: 0; margin: 10px auto; display: grid; gap: 6px; max-width: 360px; text-align: left; }
+.mc-roster li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 3px dashed var(--depth); color: var(--ink-soft); }
+.mc-roster li.on { border-style: solid; border-color: var(--line); color: var(--ink); font-weight: 800; background: var(--panel-2); }
+.mc-roster small { font-weight: 600; }
+.mc-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.mc-dot1 { background: #f08a3c; } .mc-dot2 { background: #3fb6c6; }
+.mc-err { color: var(--berry) !important; font-weight: 800; }
+.mc-powers { display: grid; gap: 4px; margin: 8px 0; text-align: left; font-size: .88rem; }
+.mc-powers span { display: flex; align-items: center; gap: 6px; }
+.mc-powers img { width: 30px; height: 30px; flex: none; }
+.mc-powers b { white-space: nowrap; }
+.mc-go[disabled] { opacity: .5; animation: none; cursor: not-allowed; }
+@media (max-width: 560px) { .mc-modes { grid-template-columns: 1fr; } .mc-powers b { white-space: normal; } }
