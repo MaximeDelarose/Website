@@ -1575,3 +1575,12 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 }
 .np-card .np-lock { margin: 0; font-size: .82rem; line-height: 1.35; }
 @media (max-width: 420px) { .btn-back .bk-tx { display: none; } .btn-back { padding: 6px 12px !important; } }
+/* carrousel horizontal (cartes / types de donjon) */
+.np-slider { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 6px 12px; margin: 0 -6px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.np-slider > .np-map { flex: 0 0 66%; scroll-snap-align: center; }
+.np-slider .np-mapart { height: 64px; }
+.np-slider .np-mapart img { width: 34px; }
+.np-slider .np-mapart img.np-boss { width: 44px; }
+.np-mapdesc { padding: 0 8px 8px; font-size: .72rem; line-height: 1.3; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.np-slider .np-mapmeta { padding-bottom: 2px; }
+@media (min-width: 560px) { .np-slider > .np-map { flex-basis: calc(36% - 8px); } }

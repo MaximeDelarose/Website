@@ -631,6 +631,45 @@ window.ES_DATA = (function () {
     need: function (L) { return 18 + (L - 1) * 11; },
   };
   // Reliques : butin rare des salles d'élite et des gardiens (bonus pour la partie)
+  // Types de donjon (remplacent les cartes en mode Donjon) : ambiance des étages, ennemis, mini-boss, boss final, dangers
+  var DUNGEONS = [
+    { id: "terriers", name: "Terriers oubliés", icon: "golem", desc: "Galeries de terre, grottes moussues et racines. Le donjon classique.",
+      hp: 1, gold: 1, final: "golem", finalHp: 1.3, guards: ["bigmole", "queen", "stag"], poison: 0, pits: 1,
+      themes: [
+        { name: "Terriers", floor: "#4a3a2c", grid: "#43342a", wall: "#2a1d14", top: "#5a4330", dark: 0.5, accent: "#6b5440" },
+        { name: "Grottes moussues", floor: "#34402f", grid: "#2c3727", wall: "#1b2218", top: "#4c5a3c", dark: 0.6, accent: "#55704a" },
+        { name: "Racines profondes", floor: "#3d2a2e", grid: "#35242a", wall: "#1e1215", top: "#5a3038", dark: 0.7, accent: "#6a3a44" }],
+      pools: [["slug", "beetle", "spider", "bombshroom", "rat", "rat", "bat", "puffball"],
+              ["beetle", "spider", "frog", "mole", "hedgehog", "weaver", "snake", "salamander", "bat", "turtle"],
+              ["frog", "mole", "hedgehog", "crow", "badger", "toad", "salamander", "weaver", "firefly", "turtle", "snake"]] },
+    { id: "ruche", name: "Ruche abandonnée", icon: "queen", desc: "Alvéoles de cire et couloirs bourdonnants. Insectes partout, la Reine au fond.", unlock: "donjon_2",
+      hp: 1.15, gold: 1.3, final: "queen", finalHp: 2.6, guards: ["queen", "bigmole", "queen"], poison: 0.05, pits: 0.6,
+      themes: [
+        { name: "Alvéoles", floor: "#8a6a2a", grid: "#7a5c22", wall: "#3a2a10", top: "#b8902e", dark: 0.45, accent: "#d8b040" },
+        { name: "Couvain", floor: "#7a5226", grid: "#6a461f", wall: "#2e1e0c", top: "#a87830", dark: 0.55, accent: "#e0a83a" },
+        { name: "Chambre royale", floor: "#6a3a1e", grid: "#5a3018", wall: "#2a140a", top: "#9a5a26", dark: 0.65, accent: "#f2c230" }],
+      pools: [["wasp", "wasp", "beetle", "spider", "moth", "firefly"],
+              ["wasp", "weaver", "spider", "moth", "firefly", "beetle", "bat"],
+              ["wasp", "weaver", "firefly", "moth", "crow", "salamander", "spider"]] },
+    { id: "crypte", name: "Crypte fongique", icon: "mushking", desc: "Champignons géants, spores et flaques toxiques. Beaucoup de poison.", unlock: "donjon_win",
+      hp: 1.3, gold: 1.6, final: "mushking", finalHp: 2.2, guards: ["mushking", "bigmole", "mushking"], poison: 0.35, pits: 0.8,
+      themes: [
+        { name: "Mycélium", floor: "#3e3550", grid: "#352d46", wall: "#1a1424", top: "#5a4a72", dark: 0.55, accent: "#8a6ac8" },
+        { name: "Spores bleues", floor: "#2a3e4a", grid: "#233540", wall: "#10181e", top: "#3a5a6a", dark: 0.65, accent: "#7fd1c7" },
+        { name: "Cœur pourri", floor: "#2e3a24", grid: "#26311e", wall: "#12180c", top: "#4a5a30", dark: 0.75, accent: "#9ad04a" }],
+      pools: [["slug", "puffball", "bombshroom", "moth", "frog"],
+              ["puffball", "bombshroom", "toad", "frog", "weaver", "slug", "moth"],
+              ["puffball", "bombshroom", "toad", "badger", "weaver", "turtle", "firefly"]] },
+    { id: "taniere", name: "Tanière des bêtes", icon: "stag", desc: "Ruines envahies où rôdent renards, blaireaux et hérissons. Le Grand Cerf règne.", unlock: "boss_1",
+      hp: 1.2, gold: 1.4, final: "stag", finalHp: 2.3, guards: ["boar", "bigmole", "stag"], poison: 0, pits: 1.3,
+      themes: [
+        { name: "Sous-bois en ruine", floor: "#4a4a34", grid: "#40402c", wall: "#22221a", top: "#62623e", dark: 0.5, accent: "#7a8a4a" },
+        { name: "Halls effondrés", floor: "#4a3e36", grid: "#40352e", wall: "#221c18", top: "#6a5a4a", dark: 0.6, accent: "#a08060" },
+        { name: "Trône du cerf", floor: "#3a2e24", grid: "#32281f", wall: "#1a140e", top: "#5a4630", dark: 0.7, accent: "#c09a5a" }],
+      pools: [["rat", "fox", "bunny", "beetle", "hedgehog"],
+              ["fox", "badger", "hedgehog", "crow", "snake", "rat"],
+              ["badger", "fox", "hedgehog", "crow", "turtle", "salamander", "snake"]] },
+  ];
   var RELICS = [
     { id: "croc", name: "Croc de loup", icon: "🦷", desc: "+15 % de dégâts" },
     { id: "plume", name: "Plume de geai", icon: "🪶", desc: "+12 % de vitesse" },
@@ -955,6 +994,6 @@ window.ES_DATA = (function () {
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
