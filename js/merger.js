@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "1.3.0";              // version affichée dans le menu (tag git : merger-v<VERSION>)
+  var VERSION = "1.3.1";              // version affichée dans le menu (tag git : merger-v<VERSION>)
   var GAME_ID = "merger";
   var stage = document.querySelector("[data-merger]");
   if (!stage) return;
@@ -85,7 +85,7 @@
   var ballId = 0;
   function newBall(type, x, y) {
     return { id: ++ballId, type: type, x: x, y: y, px: x, py: y, r: R, born: 1, dead: false, age: 0,
-      blink: Math.random() * 4, pal: false, flip: Math.random() < 0.5 ? -1 : 1, breath: Math.random() * 6.28, rate: 1.6 + Math.random() * 0.8 };
+      blink: Math.random() * 4, pal: false, settled: false, bw: 0, flip: Math.random() < 0.5 ? -1 : 1, breath: Math.random() * 6.28, rate: 1.6 + Math.random() * 0.8 };
   }
 
   function clampAim(x) { return Math.max(R * 2, Math.min(JW - R * 2, x)); }
@@ -119,7 +119,8 @@
     for (i = 0; i < n; i++) {
       a = balls[i];
       // la respiration change vraiment la taille physique : il pousse ses voisins
-      a.r = R * (1 + BREATH * Math.sin(clock * a.rate + a.breath));
+      // bw = 0 tant qu'il n'est pas posé (pas de respiration au spawn), puis monte doucement jusqu'à 1
+      a.r = R * (1 + BREATH * a.bw * Math.sin(clock * a.rate + a.breath));
       var vx = (a.x - a.px) * DAMP, vy = (a.y - a.py) * DAMP;
       var sp = vx * vx + vy * vy;
       if (sp > MAXV * MAXV) { sp = MAXV / Math.sqrt(sp); vx *= sp; vy *= sp; }   // sécurité : jamais d'éjection
@@ -242,6 +243,9 @@
     balls.forEach(function (b) {
       if (b.born > 0) b.born = Math.max(0, b.born - dt * 5);
       b.blink -= dt; if (b.blink < -0.15) b.blink = 2 + Math.random() * 4;
+      // il ne commence à respirer qu'une fois posé (sinon la paire se repousse à l'apparition)
+      if (!b.settled && b.age > 0.3 && Math.abs(b.y - b.py) < 0.4) b.settled = true;
+      if (b.settled && b.bw < 1) b.bw = Math.min(1, b.bw + dt * 1.2);
     });
   }
 
