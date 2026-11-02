@@ -16,7 +16,7 @@
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
   var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.23.1";
+  var VERSION = "0.24.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -3593,23 +3593,35 @@
 
   var SCREENS = {
     menu: function () {
-      var nAch = Object.keys(S.ach).length;
-      return '<div class="menu-title"><img src="' + spriteUrl(charById(S.char).sprite) + '" alt=""><div><span class="kicker">La forêt contre-attaque</span><h2>Écureuil Survivor</h2></div></div>' +
-        goldBadge() + rankBadge() +
-        '<div class="menu-buttons">' +
-        '<button class="btn" type="button" data-action="go" data-arg="play" data-autofocus>▶ Jouer</button>' +
-        '<button class="btn" type="button" data-action="go" data-arg="coop">🌐 Coop en ligne</button>' +
-        '<button class="btn btn-alt" type="button" data-action="go" data-arg="shop">🛒 Améliorations</button>' +
-        '<button class="btn btn-alt" type="button" data-action="go" data-arg="succes">🏆 Succès <small>' + nAch + "/" + D.ACHIEVEMENTS.length + "</small></button>" +
-        '<button class="btn btn-alt" type="button" data-action="go" data-arg="quetes">🗝️ Quêtes <small>' + Object.keys(S.quests || {}).length + "/" + D.QUESTS.length + "</small></button>" +
-        '<div class="menu-row"><button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="tree">🌳 Compétences' + (freePoints() > 0 ? ' <span class="pill">' + freePoints() + "</span>" : "") + "</button>" +
-        '<button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="prestige">✨ Prestige' + (prestigeReady() ? ' <span class="pill">!</span>' : "") + "</button></div>" +
-        '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="codex">📜 Fusions</button>' +
-        '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Aide</button>' +
-        '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="options">⚙️ Options</button></div>' +
-        '<button class="btn btn-ghost btn-small" type="button" data-action="fullscreen">' + (isFull() ? "✕ Quitter le plein écran" : "⛶ Plein écran") + "</button></div>" +
-        (S.stats.runs ? '<p class="game-small">Record : ' + S.stats.bestScore.toLocaleString("fr-FR") + " pts · " + fmtTime(S.stats.bestTime) + " de survie · " + S.stats.runs + " partie" + (S.stats.runs > 1 ? "s" : "") + "</p>" : "") +
-        '<p class="game-version">' + VERSION + "</p>";
+      var nAch = Object.keys(S.ach).length, nQ = Object.keys(S.quests || {}).length, fp = freePoints();
+      var need = D.rankNeed(S.rank), k = Math.min(100, Math.round(S.rankXp / need * 100));
+      var mode = { arena: "Arène", dungeon: "Donjon" }[S.mode] || "Survie";
+      function tile(arg, ic, label, sub, badge, hot) {
+        return '<button type="button" class="mm-tile' + (hot ? " is-hot" : "") + '" data-action="go" data-arg="' + arg + '">' +
+          '<span class="mm-ic">' + ic + "</span><span class=\"mm-lb\"><b>" + label + "</b>" + (sub ? "<small>" + sub + "</small>" : "") + "</span>" +
+          (badge ? '<span class="pill">' + badge + "</span>" : "") + "</button>";
+      }
+      return '<div class="mm">' +
+        '<header class="mm-head"><img src="' + spriteUrl(charById(S.char).sprite) + '" alt=""><div><span class="kicker">La forêt contre-attaque</span><h2>Écureuil Survivor</h2></div></header>' +
+        '<div class="mm-stats"><span class="mm-gold">' + goldIc() + " <b>" + S.gold.toLocaleString("fr-FR") + "</b></span>" +
+        '<span class="mm-rank"><span>Rang <b>' + S.rank + "</b>" + (S.prestige ? ' <span class="stars">' + stars(S.prestige) + "</span>" : "") + '</span><span class="rank-bar"><i style="width:' + k + '%"></i></span><small>' + S.rankXp + "/" + need + "</small></span></div>" +
+        '<div class="mm-main">' +
+        '<button class="btn mm-play" type="button" data-action="go" data-arg="play" data-autofocus><span>▶ Jouer</span><small>' + esc(charById(S.char).name) + " · " + esc(mapById(S.map).name) + " · " + mode + "</small></button>" +
+        '<button class="btn btn-ghost mm-coop" type="button" data-action="go" data-arg="coop"><span>🌐 Coop</span><small>en ligne · 2 à 6</small></button></div>' +
+        '<div class="mm-grid">' +
+        tile("shop", "🛒", "Boutique", "Améliorations") +
+        tile("tree", "🌳", "Compétences", fp > 0 ? fp + " point" + (fp > 1 ? "s" : "") + " à dépenser" : "Arbre", fp > 0 ? fp : "", fp > 0) +
+        tile("succes", "🏆", "Succès", nAch + " / " + D.ACHIEVEMENTS.length) +
+        tile("quetes", "🗝️", "Quêtes", nQ + " / " + D.QUESTS.length) +
+        tile("prestige", "✨", "Prestige", S.prestige ? "Niveau " + S.prestige : "Tout recommencer", prestigeReady() ? "!" : "", prestigeReady()) +
+        tile("codex", "📜", "Fusions", Object.keys(D.FUSIONS).length + " recettes") +
+        tile("help", "❓", "Aide", "Comment jouer") +
+        tile("options", "⚙️", "Options", "Son, effets") +
+        "</div>" +
+        '<footer class="mm-foot">' +
+        (S.stats.runs ? "<span>🏁 " + S.stats.bestScore.toLocaleString("fr-FR") + " pts · " + fmtTime(S.stats.bestTime) + " · " + S.stats.runs + " partie" + (S.stats.runs > 1 ? "s" : "") + "</span>" : "<span>Prêt pour ta première partie ?</span>") +
+        '<span class="mm-foot-r"><button class="mm-link" type="button" data-action="fullscreen">' + (isFull() ? "✕ Quitter le plein écran" : "⛶ Plein écran") + "</button> · v" + VERSION + "</span></footer>" +
+        "</div>";
     },
     play: function () {
       var ic = charById(inspect.char || S.char), im = mapById(inspect.map || S.map);
