@@ -1509,3 +1509,69 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
   .mm-lb b { font-size: .84rem; }
   .mm-lb small { font-size: .68rem; }
 }
+
+/* ---------- Écureuil Survivor : écran « Nouvelle partie » ---------- */
+.game-card-play { width: min(620px, 100%); }
+.np { display: grid; gap: 16px; text-align: left; }
+.np-sec h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 1.05rem; }
+.np-sec h3 small { margin-left: auto; font-size: .78rem; font-weight: 700; color: var(--ink-soft); }
+.np-n { display: inline-grid; place-items: center; width: 22px; height: 22px; font-size: .8rem; font-weight: 900; background: var(--orange); color: var(--btn-ink); box-shadow: 0 0 0 2px var(--line); }
+.np-hint { margin: 8px 0 0; font-size: .82rem; line-height: 1.35; color: var(--ink-soft); }
+.np-hint b { color: var(--ink); }
+.np-lock { color: var(--orange-dk); font-weight: 800; }
+:root[data-theme="dark"] .np-lock { color: var(--orange-2); }
+.np-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+.np-opt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 48px; padding: 6px 4px; font: inherit; font-weight: 800; font-size: .92rem; color: var(--ink); background: var(--panel-2); border: 0; cursor: pointer;
+  box-shadow: 0 0 0 2px var(--line), 0 4px 0 2px var(--line); margin-bottom: 4px; }
+.np-opt small { font-size: .7rem; font-weight: 700; color: var(--ink-soft); }
+.np-oi { font-size: 1.2rem; line-height: 1; }
+.np-opt.is-on { background: var(--orange); color: var(--btn-ink); transform: translateY(3px); box-shadow: 0 0 0 2px var(--line), 0 1px 0 2px var(--line); }
+.np-opt.is-on small { color: var(--btn-ink); opacity: .75; }
+.np-opt[disabled] { opacity: .55; cursor: not-allowed; }
+.np-chars { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px; }
+.np-char { position: relative; aspect-ratio: 1; display: grid; place-items: center; padding: 0; cursor: pointer; background: #1f3a2b; border: 0; box-shadow: 0 0 0 2px var(--line); }
+.np-char img { width: 70%; height: auto; image-rendering: pixelated; }
+.np-char.is-locked img { filter: brightness(0) opacity(.45); }
+.np-char i { position: absolute; right: 1px; top: -1px; font-style: normal; font-size: .75rem; }
+.np-char.is-selected { box-shadow: 0 0 0 2px var(--line), 0 0 0 5px var(--orange); }
+.np-char.is-inspected:not(.is-selected) { outline: 2px dashed var(--focus); outline-offset: 3px; }
+.np-card { display: flex; gap: 12px; margin-top: 10px; padding: 10px; background: var(--panel-2); box-shadow: 0 0 0 2px var(--line); }
+.np-big { width: 64px; height: 64px; flex: none; padding: 6px; object-fit: contain; image-rendering: pixelated; background: #1f3a2b; box-shadow: 0 0 0 2px var(--line); }
+.np-body { display: grid; gap: 5px; min-width: 0; }
+.np-name strong { font-size: 1.05rem; }
+.np-name small { color: var(--ink-soft); font-size: .8rem; }
+.np-weapon { display: flex; align-items: center; gap: 6px; font-size: .85rem; font-weight: 800; }
+.np-weapon img { width: 16px; height: 16px; object-fit: contain; image-rendering: pixelated; }
+.np-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.np-tag { font-size: .72rem; font-weight: 800; padding: 1px 6px; background: var(--panel); box-shadow: 0 0 0 1px var(--line); color: var(--ink); }
+.np-tag.up { color: #3a7a2a; }
+.np-tag.down { color: #b0402a; }
+:root[data-theme="dark"] .np-tag.up { color: #9cd06a; }
+:root[data-theme="dark"] .np-tag.down { color: #ff9a7a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .np-tag.up { color: #9cd06a; } :root:not([data-theme="light"]) .np-tag.down { color: #ff9a7a; } :root:not([data-theme="light"]) .np-lock { color: var(--orange-2); } }
+.np-desc { margin: 0; font-size: .8rem; line-height: 1.35; color: var(--ink-soft); }
+.np-card .btn { justify-self: start; margin-top: 2px; }
+.np-maps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.np-map { display: grid; gap: 0; padding: 0; text-align: left; font: inherit; color: var(--ink); background: var(--panel-2); border: 0; cursor: pointer; box-shadow: 0 0 0 2px var(--line), 0 4px 0 2px var(--line); margin-bottom: 4px; overflow: hidden; }
+.np-mapart { position: relative; display: grid; place-items: center; height: 42px; border-bottom: 2px solid var(--line); }
+.np-mapart img { width: 26px; height: auto; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0,0,0,.35)); }
+.np-mapart i { position: absolute; right: 4px; top: 2px; font-style: normal; font-size: .8rem; }
+.np-mapname { padding: 5px 8px 0; font-weight: 900; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-mapmeta { padding: 0 8px 6px; font-size: .7rem; font-weight: 700; color: var(--ink-soft); }
+.np-map.is-locked .np-mapart { filter: grayscale(1) brightness(.6); }
+.np-map.is-locked .np-mapname { opacity: .6; }
+.np-map.is-selected { box-shadow: 0 0 0 2px var(--line), 0 0 0 5px var(--orange), 0 7px 0 5px var(--orange-dk); }
+.np-map.is-inspected:not(.is-selected) { outline: 2px dashed var(--focus); outline-offset: 4px; }
+.np-go { flex-direction: column; gap: 0; }
+.np-go small { font-size: .74rem; font-weight: 700; opacity: .8; }
+@media (min-width: 560px) { .np-maps { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 380px) { .np-opt { font-size: .82rem; } .np-big { width: 52px; height: 52px; } }
+.game-card-play .screen-head h2 { white-space: nowrap; }
+@media (max-width: 480px) {
+  .game-card-play .screen-head { flex-wrap: nowrap; }
+  .game-card-play .screen-head h2 { font-size: 1.2rem; }
+  .game-card-play .screen-head .btn-small { padding: 6px 10px; font-size: .85rem; }
+  .game-card-play .gold-badge { padding: 3px 8px; font-size: .9rem; }
+}
+.np-card .np-lock { margin: 0; font-size: .82rem; line-height: 1.35; }
+@media (max-width: 420px) { .btn-back .bk-tx { display: none; } .btn-back { padding: 6px 12px !important; } }
