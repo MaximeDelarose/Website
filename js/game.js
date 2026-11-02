@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "0.26.0";
+  var VERSION = "0.26.1";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -2068,20 +2068,22 @@
           len = Math.min(RI(40, 80), maxW - cw / 2); wd = RI(60, Math.max(64, Math.min(110, ch - 10)));
           if (len < 24) return;
           var ay = align === "c" ? ccy - wd / 2 : align === "s" ? core.y : core.y + core.h - wd;
-          ar = { x: side === 0 ? core.x + core.w - 2 : core.x - len + 2, y: ay, w: len, h: wd };
+          // le bras mord largement dans le cœur : pas de bande infranchissable à la jonction
+          ar = { x: side === 0 ? core.x + core.w - 24 : core.x - len, y: ay, w: len + 24, h: wd };
         } else {
           len = Math.min(RI(36, 70), maxH - ch / 2); wd = RI(60, Math.max(64, Math.min(120, cw - 10)));
           if (len < 24) return;
           var ax = align === "c" ? ccx - wd / 2 : align === "s" ? core.x : core.x + core.w - wd;
-          ar = { x: ax, y: side === 2 ? core.y + core.h - 2 : core.y - len + 2, w: wd, h: len };
+          ar = { x: ax, y: side === 2 ? core.y + core.h - 24 : core.y - len, w: wd, h: len + 24 };
         }
         parts.push(ar);
+        armAnchors.push({ x: ar.x + ar.w / 2, y: ar.y + ar.h / 2, h: horiz });
       }
-      var s1 = (rnd() * 4) | 0;
+      var s1 = (rnd() * 4) | 0, armAnchors = [];
       if (shape === "L") arm(s1, rnd() < 0.5 ? "s" : "e");
       else if (shape === "T") arm(s1, "c");
       else if (shape === "plus") { arm(s1, "c"); arm(s1 ^ 1, "c"); }
-      rm.core = core; rm.parts = parts; rm.cx = ccx; rm.cy = ccy; rm.shape = shape;
+      rm.core = core; rm.parts = parts; rm.cx = ccx; rm.cy = ccy; rm.shape = shape; rm.armAnchors = armAnchors;
       var bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
       parts.forEach(function (pp) { bx0 = Math.min(bx0, pp.x); by0 = Math.min(by0, pp.y); bx1 = Math.max(bx1, pp.x + pp.w); by1 = Math.max(by1, pp.y + pp.h); });
       rm.rect = { x: bx0, y: by0, w: bx1 - bx0, h: by1 - by0 };
@@ -2128,8 +2130,9 @@
       if (!inParts(rm, x - pad, y - pad, 0) || !inParts(rm, x + w + pad, y + h + pad, 0) || !inParts(rm, x + w + pad, y - pad, 0) || !inParts(rm, x - pad, y + h + pad, 0)) return false;
       if (Math.abs(x + w / 2 - rm.cx) < w / 2 + 44 && Math.abs(y + h / 2 - rm.cy) < h / 2 + 40) return false;
       if (Math.abs(x + w / 2 - rm.cx) < w / 2 + 20 && Math.abs(y + h / 2 - (rm.core.y + 30)) < h / 2 + 22) return false;
-      for (var i = 0; i < rm.anchors.length; i++) {
-        var an = rm.anchors[i];
+      var anc = rm.anchors.concat(rm.armAnchors || []);
+      for (var i = 0; i < anc.length; i++) {
+        var an = anc[i];
         // garde libre le chemin entre chaque porte et le centre
         var lx0 = Math.min(an.x, rm.cx) - 24, lx1 = Math.max(an.x, rm.cx) + 24, ly0 = Math.min(an.y, rm.cy) - 24, ly1 = Math.max(an.y, rm.cy) + 24;
         var horizA = an.h;
@@ -2142,9 +2145,9 @@
       for (i = 0; i < all.length; i++) { var o = all[i]; if (x < o.x + o.w + 14 && x + w > o.x - 14 && y < o.y + o.h + 14 && y + h > o.y - 14) return false; }
       return true;
     }
-    function spotIn(rm, w, h, pad, tries) {
+    function spotIn(rm, w, h, pad, tries, coreOnly) {
       for (var t = 0; t < (tries || 20); t++) {
-        var pp = rm.parts[(rnd() * rm.parts.length) | 0];
+        var pp = coreOnly ? rm.core : rm.parts[(rnd() * rm.parts.length) | 0];
         var x = R(pp.x + 8, pp.x + pp.w - w - 8), y = R(pp.y + 8, pp.y + pp.h - h - 8);
         if (clearOf(rm, x, y, w, h, pad)) return { x: Math.round(x), y: Math.round(y) };
       }
@@ -2153,7 +2156,7 @@
     rooms.forEach(function (rm) {
       var calm = rm.type === "start" || rm.type === "treasure", arena = rm.type === "boss";
       // piliers
-      if (!calm && rnd() < 0.55) for (var i = RI(1, rm.type === "guard" ? 2 : 4); i > 0; i--) { var pz = RI(14, 20), sp0 = spotIn(rm, pz, pz, 10); if (sp0) rm.pillars.push({ x: sp0.x, y: sp0.y, w: pz, h: pz, room: rm.idx }); }
+      if (!calm && rnd() < 0.55) for (var i = RI(1, rm.type === "guard" ? 2 : 4); i > 0; i--) { var pz = RI(14, 20), sp0 = spotIn(rm, pz, pz, 10, 20, true); if (sp0) rm.pillars.push({ x: sp0.x, y: sp0.y, w: pz, h: pz, room: rm.idx }); }
       // trous
       if (!calm && !arena && rnd() < (0.6 + floor * 0.1) * (DGT.pits === undefined ? 1 : DGT.pits)) for (i = RI(1, 1 + floor); i > 0; i--) { var pw = RI(22, 42), ph = RI(18, 32), sp1 = spotIn(rm, pw, ph, 6); if (sp1) rm.pits.push({ x: sp1.x, y: sp1.y, w: pw, h: ph, room: rm.idx }); }
       // pièges à pointes
@@ -4656,6 +4659,19 @@
       else { var my = sg.y + 18; pts = [[ea.x, A.cy], [ea.x, ea.y], [ea.x, my], [eb.x, my], [eb.x, eb.y], [eb.x, B.cy], [B.cx, B.cy]]; }
       if (c.b === 0) pts = pts.reverse().slice(1).concat([[B.cx, B.cy]]).map(function (q, i, arr) { return q; });
       return c.b === 0 ? [[A.cx, eb.y]].concat(pts) : pts;
+    },
+    armTest: function () {
+      var bad = 0, tot = 0, save = r.dg.active; r.dg.active = -1;
+      r.dg.rooms.forEach(function (rm) {
+        rm.parts.forEach(function (pp, i) {
+          if (!i) return; tot++;
+          var tx = pp.x + pp.w / 2, ty = pp.y + pp.h / 2, horiz = pp.y >= rm.core.y - 1 && pp.y + pp.h <= rm.core.y + rm.core.h + 1 && (pp.x < rm.core.x || pp.x + pp.w > rm.core.x + rm.core.w);
+          var o = { x: rm.cx, y: rm.cy }, pts = horiz ? [[rm.cx, ty], [tx, ty]] : [[tx, rm.cy], [tx, ty]];
+          pts.forEach(function (pt) { for (var k = 0; k < 3000; k++) { var dx = pt[0] - o.x, dy = pt[1] - o.y, d = Math.hypot(dx, dy); if (d < 1) break; dungeonMove(o, o.x + dx / d * Math.min(1.5, d), o.y + dy / d * Math.min(1.5, d)); } });
+          if (Math.hypot(o.x - tx, o.y - ty) > 20) { bad++; (window.__arm = window.__arm || []).push({ at: [Math.round(o.x), Math.round(o.y)], to: [Math.round(tx), Math.round(ty)], c: [rm.cx, rm.cy], core: rm.core, arm: pp, horiz: horiz, pil: inPillar(o.x, o.y, 8), tgtOk: walkable(tx, ty), shape: rm.shape }); }
+        });
+      });
+      r.dg.active = save; return bad + "/" + tot;
     },
     regen: function (seed) { r.seed = seed; buildFloor(1); },
     vacuum: function () { gems.forEach(function (o) { if (o.kind === "xp") { o.x = me.x; o.y = me.y; } }); return { xp: xp, next: xpNext, level: r.level }; },
