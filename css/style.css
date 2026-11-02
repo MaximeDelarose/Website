@@ -992,3 +992,5 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .game-card-tree, .game-card-prestige { width: min(760px, 100%); }
 .menu-row .btn { white-space: nowrap; }
 @media (max-width: 480px) { .menu-row .btn-alt { font-size: .85rem; padding: 8px 10px; } }
+.prestige-progress.is-ok .rank-bar i { background: linear-gradient(90deg, #9cc56b, #5b8a4a); }
+.prestige-progress .link-btn { font-size: inherit; }
