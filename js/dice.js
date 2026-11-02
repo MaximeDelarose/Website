@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.10.0";
+  var VERSION = "0.10.1";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -752,7 +752,7 @@
         if (!sq || !T[sq.t].orbit) return;
         var c = K.slotCenter(w.lay, bi, si);
         ctx.save(); ctx.strokeStyle = "rgba(191,208,255,.18)"; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
-        ctx.beginPath(); ctx.arc(c.x, c.y, 42, 0, 6.3); ctx.stroke(); ctx.restore();
+        ctx.beginPath(); ctx.arc(c.x, c.y, 26, 0, 6.3); ctx.stroke(); ctx.restore();
         var sp = 2.2 + 0.55 * (sq.p - 1);
         for (var k = 0; k < sq.p; k++) {
           for (var j = 3; j >= 1; j--) {

@@ -397,7 +397,7 @@
   }
   // Satellite : vitesse et position des orbes
   function orbSpd(p) { return 2.2 + 0.55 * (p - 1); }
-  function orbPos(c, sq, k) { var a = (sq.oa || 0) + k * 6.2832 / sq.p; return { x: c.x + Math.cos(a) * 42, y: c.y + Math.sin(a) * 42 }; }
+  function orbPos(c, sq, k) { var a = (sq.oa || 0) + k * 6.2832 / sq.p; return { x: c.x + Math.cos(a) * 26, y: c.y + Math.sin(a) * 26 }; }
   function orbits(w, b, bi, si, sq, dt) {
     sq.oa = (sq.oa || 0) + dt * orbSpd(sq.p);
     var cdm = sq.ocd || (sq.ocd = {});
@@ -409,7 +409,7 @@
       var o = orbPos(c, sq, k);
       for (var i = 0; i < w.enemies.length; i++) {
         var e = w.enemies[i]; if (!targetable(e) || cdm[e.id]) continue;
-        var q = epos(w, e); if (Math.hypot(q.x - o.x, q.y - 3 - o.y) > 14) continue;
+        var q = epos(w, e); if (Math.hypot(q.x - o.x, q.y - 3 - o.y) > 12) continue;
         cdm[e.id] = 0.3; any = true;
         hit(w, { b: bi, t: sq.t, p: sq.p, dmg: dmg, crit: crit, src: sq }, e);
       }

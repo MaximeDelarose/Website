@@ -225,7 +225,7 @@
     satellite: { name: "Satellite", role: "Orbites", rarity: "legendaire", color: "#2a3a6a", dark: "#101a3a",
       fur: {"t": "#bfd0ff", "d": "#101a3a", "o": "#5a7ac8", "c": "#e8f0ff", "k": "#ffe46b", "n": "#101a3a"},
       emblem: { pal: {"a": "#5a7ac8", "b": "#ffe46b", "c": "#bfd0ff"}, rows: ["b.......b", "...aaa...", "..aaaaa..", ".aacaaaa.", ".aaaaaaa.", ".aaaaaaa.", "..aaaaa..", "...aaa...", "b.......b"] },
-      dmg: 60, pu: 24, every: 1, range: 56, target: "orbit", orbit: true,
+      dmg: 60, pu: 24, every: 1, range: 38, target: "orbit", orbit: true,
       desc: "1 orbe lente autour de lui à 1 point… jusqu'à 7 orbes rapides à 7 points. Tout ce qu'elles touchent prend des dégâts." },
     phenix: { name: "Phénix", role: "Explosions", rarity: "legendaire", color: "#e8542a", dark: "#7a1a0a",
       fur: {"t": "#f6d36b", "d": "#7a1a0a", "o": "#e8542a", "c": "#fff3b0", "k": "#2b1709", "n": "#7a1a0a"},
