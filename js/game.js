@@ -15,7 +15,7 @@
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene";
   var A = D.ARENA;
-  var VERSION = "0.12.0";
+  var VERSION = "0.12.1";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -201,7 +201,7 @@
   var p = null, r = null, CH, DIFF, MAP, enemies, projs, hostile, lobs, gems, fx, texts, grid, warns;
   var spawnAcc, nextSwarm, nextBoss, bossCount, shake, uid, achTick, pending, xp, xpNext, propTimer;
 
-  function need(L) { return 5 + (L - 1) * 3 + Math.max(0, L - 15) * 4 + Math.max(0, L - 30) * 8; }
+  function need(L) { if (r && r.mode === "arena") return D.ARENA.need(L); return 5 + (L - 1) * 3 + Math.max(0, L - 15) * 4 + Math.max(0, L - 30) * 8; }
   function V(w, k, l) { var v = w[k]; return Array.isArray(v) ? v[Math.min(l, v.length - 1)] : v; }
 
   function calc(pl) {
@@ -1265,8 +1265,11 @@
   // commun : chaque joueur choisit ses pouvoirs puis passe à la boutique
   function beginIntermission(income) {
     var interest = Math.min(A.interestMax, Math.floor(me.coins / A.interestPer));
-    me.coins += income + interest;
-    r.lastIncome = income; r.lastInterest = interest;
+    // au plus « maxPicks » choix de pouvoir ; les niveaux en trop deviennent des noisettes
+    var extra = Math.max(0, pending - A.maxPicks);
+    pending -= extra;
+    me.coins += income + interest + extra * A.extraLevelCoins;
+    r.lastIncome = income; r.lastInterest = interest; r.lastExtra = extra;
     r.rerolls = 0; r.offers = null;
     clearInput();
     SND.level();
@@ -1315,7 +1318,8 @@
     picking = true; me.choosing = true; netMenuOpen = false;
     var waiting = r.ready[me.id];
     var html = '<span class="kicker">Fin de la manche ' + r.round + " / " + A.rounds + '</span><h2>Marché du terrier</h2>' +
-      '<p class="coins-line"><b>' + me.coins + ' 🌰</b> <small>+' + (r.lastIncome || 0) + " revenu · +" + (r.lastInterest || 0) + " intérêts (1 par " + A.interestPer + " gardées, " + A.interestMax + " max)</small></p>" +
+      '<p class="coins-line"><b>' + me.coins + ' 🌰</b> <small>+' + (r.lastIncome || 0) + " revenu · +" + (r.lastInterest || 0) + " intérêts (1 par " + A.interestPer + " gardées, " + A.interestMax + " max)" +
+        (r.lastExtra ? " · +" + r.lastExtra * A.extraLevelCoins + " pour " + r.lastExtra + " niveau" + (r.lastExtra > 1 ? "x" : "") + " en trop" : "") + "</small></p>" +
       '<div class="choices ashop">';
     r.offers.forEach(function (o, i) {
       var icon, name, desc, tag = "", cls = "choice offer";
