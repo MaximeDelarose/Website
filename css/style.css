@@ -1161,9 +1161,9 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .rd-copies { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; font-weight: 800; font-size: .88rem; }
 .rd-copies .rd-bar { height: 16px; }
 .rd-copies .rd-bar em { font-size: .75rem; }
-.rd-chests { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; }
+.rd-chest-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; }
 .rd-chest { display: grid; justify-items: center; gap: 6px; padding: 12px 8px; background: var(--panel-2); border: 3px solid var(--line); box-shadow: inset 0 -6px 0 var(--cc); }
-.rd-chest img { width: 64px; image-rendering: pixelated; }
+.rd-chest > img { width: 64px; image-rendering: pixelated; }
 .rd-chest span { font-size: .82rem; color: var(--ink-soft); }
 .rd-open-chest { display: grid; place-items: center; height: 90px; }
 .rd-open-chest img { width: 84px; image-rendering: pixelated; animation: rd-shake .6s steps(6) forwards; }
