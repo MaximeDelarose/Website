@@ -14,7 +14,7 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
-  var VERSION = "0.9.0";
+  var VERSION = "0.9.1";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -61,6 +61,8 @@
   function totalPoints() { return (S.rank - 1) + S.prestige * D.PRESTIGE.points; }
   function freePoints() { return totalPoints() - spentPoints(); }
   function skillOpen(k) { return (!k.prestige || S.prestige >= k.prestige) && (k.req || []).every(function (id) { return (S.tree[id] || 0) > 0; }); }
+  function shopMaxed() { return D.SHOP.filter(function (it) { return (S.shop[it.id] || 0) >= it.max; }).length; }
+  function prestigeReady() { return shopMaxed() === D.SHOP.length && S.gold >= D.PRESTIGE.cost; }
   function stars(n) { return n > 0 ? (n > 5 ? "★×" + n : new Array(n + 1).join("★")) : ""; }
   function has(ach) { return !ach || !!S.ach[ach]; }
   function charById(id) { return D.CHARACTERS.filter(function (c) { return c.id === id; })[0] || D.CHARACTERS[0]; }
@@ -1718,7 +1720,7 @@
         '<button class="btn btn-alt" type="button" data-action="go" data-arg="shop">🛒 Améliorations</button>' +
         '<button class="btn btn-alt" type="button" data-action="go" data-arg="succes">🏆 Succès <small>' + nAch + "/" + D.ACHIEVEMENTS.length + "</small></button>" +
         '<div class="menu-row"><button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="tree">🌳 Compétences' + (freePoints() > 0 ? ' <span class="pill">' + freePoints() + "</span>" : "") + "</button>" +
-        '<button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="prestige">✨ Prestige' + (S.stats.goldSince >= D.PRESTIGE.need ? ' <span class="pill">!</span>' : "") + "</button></div>" +
+        '<button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="prestige">✨ Prestige' + (prestigeReady() ? ' <span class="pill">!</span>' : "") + "</button></div>" +
         '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="codex">📜 Fusions</button>' +
         '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Aide</button>' +
         '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="options">⚙️ Options</button></div>' +
@@ -1820,14 +1822,20 @@
       return html;
     },
     prestige: function () {
-      var P = D.PRESTIGE, since = S.stats.goldSince || 0, ok = since >= P.need, k = Math.min(100, Math.round(since / P.need * 100)), n = S.prestige;
+      var P = D.PRESTIGE, n = S.prestige, sm = shopMaxed(), okShop = sm === D.SHOP.length, okGold = S.gold >= P.cost;
+      var kg = Math.min(100, Math.round(S.gold / P.cost * 100)), ks = Math.round(sm / D.SHOP.length * 100);
       return '<div class="screen-head">' + back() + "<h2>Prestige</h2>" + goldBadge() + "</div>" +
         '<div class="prestige-head"><span class="stars big">' + (n ? stars(n) : "☆") + "</span><b>Prestige " + n + "</b></div>" +
         '<ul class="stat-list prestige-bonus"><li>Glands d\'or <b>+' + Math.round(P.gold * n * 100) + " %</b></li><li>Dégâts <b>+" + Math.round(P.might * n * 100) + " %</b></li><li>Expérience <b>+" + Math.round(P.xp * n * 100) + " %</b></li><li>Points de compétence offerts <b>" + P.points * n + "</b></li></ul>" +
         '<p class="game-small">Prochain prestige : <b>+' + Math.round(P.gold * 100) + " % d'or, +" + Math.round(P.might * 100) + " % de dégâts, +" + Math.round(P.xp * 100) + " % d'XP et +" + P.points + " points de compétence</b>, pour toujours. Débloque aussi des compétences spéciales.</p>" +
-        '<div class="prestige-progress"><span>Glands d\'or gagnés depuis le dernier prestige</span><span class="rank-bar"><i style="width:' + k + '%"></i></span><small>' + since.toLocaleString("fr-FR") + " / " + P.need.toLocaleString("fr-FR") + "</small></div>" +
-        '<div class="prestige-rules"><p><b>Remis à zéro :</b> tes glands d\'or et les améliorations de la boutique.</p><p><b>Conservé :</b> rang, arbre de compétences, écureuils, cartes, succès et records.</p></div>' +
-        '<div class="btn-row center"><button class="btn" type="button" data-action="doprestige"' + (ok ? "" : " disabled") + ">✨ Faire un prestige</button></div>";
+        '<h3 class="pick-title">Conditions</h3>' +
+        '<div class="prestige-progress' + (okShop ? " is-ok" : "") + '"><span>' + (okShop ? "✅" : "⬜") + " Toutes les améliorations au maximum</span>" +
+          '<span class="rank-bar"><i style="width:' + ks + '%"></i></span><small>' + sm + " / " + D.SHOP.length + " améliorations au max" + (okShop ? "" : ' · <button class="link-btn" type="button" data-action="go" data-arg="shop">aller à la boutique</button>') + "</small></div>" +
+        '<div class="prestige-progress' + (okGold ? " is-ok" : "") + '"><span>' + (okGold ? "✅" : "⬜") + " " + P.cost.toLocaleString("fr-FR") + " glands d\'or (consommés)</span>" +
+          '<span class="rank-bar"><i style="width:' + kg + '%"></i></span><small>' + S.gold.toLocaleString("fr-FR") + " / " + P.cost.toLocaleString("fr-FR") + "</small></div>" +
+        '<div class="prestige-rules"><p><b>Tout repart à zéro :</b> glands d\'or, améliorations, rang, arbre de compétences, succès, écureuils et cartes débloqués, statistiques.</p>' +
+        "<p><b>Conservé :</b> ton niveau de prestige et ses bonus, tes records, ton pseudo et tes options.</p></div>" +
+        '<div class="btn-row center"><button class="btn" type="button" data-action="doprestige"' + (prestigeReady() ? "" : " disabled") + ">✨ Faire un prestige</button></div>";
     },
     shop: function () {
       var html = '<div class="screen-head">' + back() + "<h2>Améliorations</h2>" + goldBadge() + '</div><p class="game-small">Bonus permanents, valables pour toutes tes parties.</p><div class="shop-list">';
@@ -1935,10 +1943,15 @@
       S.tree = {}; save(); go("tree");
     },
     doprestige: function () {
-      if ((S.stats.goldSince || 0) < D.PRESTIGE.need) return;
-      if (!window.confirm("Faire un prestige ? Tes glands d'or et tes améliorations de boutique repartent à zéro, en échange de bonus permanents.")) return;
-      S.prestige++; S.gold = 0; S.shop = {}; S.stats.goldSince = 0; save();
-      SND.fusion(); checkAchievements(null); go("prestige");
+      if (!prestigeReady()) return;
+      if (!window.confirm("Faire un prestige ? TOUT repart à zéro (or, améliorations, rang, compétences, succès, écureuils, cartes) sauf ton niveau de prestige, tes records et tes options.")) return;
+      if (!window.confirm("Vraiment sûr ? C'est irréversible.")) return;
+      var keep = { name: S.name, opts: S.opts, prestige: S.prestige + 1, runs: S.stats.runs, bestTime: S.stats.bestTime, bestScore: S.stats.bestScore };
+      S = defaults();
+      S.name = keep.name; S.opts = keep.opts; S.prestige = keep.prestige;
+      S.stats.runs = keep.runs; S.stats.bestTime = keep.bestTime; S.stats.bestScore = keep.bestScore;
+      sanitize(); save();
+      SND.fusion(); checkAchievements(null); muteLabel(); go("prestige");
     },
     coophost: function () {
       if (!readCoopName()) return;

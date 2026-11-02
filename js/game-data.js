@@ -462,10 +462,13 @@ window.ES_DATA = (function () {
   ];
 
   /* =====================================================================
-     Prestige : remet à zéro les glands d'or et la boutique, garde le reste.
+     Prestige : possible quand TOUTES les améliorations de la boutique sont au
+     maximum et qu'on a « cost » glands d'or. Remet TOUT à zéro (or, boutique,
+     rang, arbre, succès, écureuils, cartes, statistiques) sauf le niveau de
+     prestige, les records, le pseudo et les options.
      ===================================================================== */
   var PRESTIGE = {
-    need: 2500,          // glands d'or à gagner depuis le dernier prestige
+    cost: 15000,         // glands d'or nécessaires (consommés)
     gold: 0.10,          // +10 % de glands d'or par niveau
     might: 0.05,         // +5 % de dégâts par niveau
     xp: 0.05,            // +5 % d'expérience par niveau
