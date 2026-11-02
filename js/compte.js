@@ -8,7 +8,8 @@
   if (!box || !window.SiteAuth) return;
   var A = window.SiteAuth;
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
-  var msg = "", game = null;
+  var msg = "", game = null, saves = [];
+  var GAMES = { "ecureuil-survivor": ["Écureuil Survivor", "jeu.html"], "grand-chene": ["Le Grand Chêne", "idle.html"], merger: ["Merger", "merger.html"] };
 
   function render() {
     if (!A.user) {
@@ -39,18 +40,25 @@
   }
   function gamesHtml() {
     if (game === null) return '<p class="footer-small">Chargement…</p>';
-    if (!game) return '<p class="footer-small">Pas encore de progression enregistrée. Lance <a href="dice.html">Écureuil Dice</a> connecté pour commencer.</p>';
-    var have = 0; Object.keys(game.have || {}).forEach(function () { have++; });
-    return '<ul class="account-games"><li><a href="dice.html"><strong>Écureuil Dice</strong></a><span>' + game.gold + " glands d'or · " + game.games + " parties · record solo : vague " + game.best_solo + " · " + game.chests + " coffres ouverts</span></li></ul>" +
-      '<p class="footer-small">Les autres jeux du site garderont aussi leur progression sur ce compte au fur et à mesure de leurs mises à jour.</p>';
+    var items = [];
+    if (game) items.push('<li><a href="dice.html"><strong>Écureuil Dice</strong></a><span>' + game.gold + " glands d'or · " + game.games + " parties · record solo : vague " + game.best_solo + " · " + game.chests + " coffres ouverts</span></li>");
+    saves.forEach(function (sv) {
+      var g = GAMES[sv.game_id] || [sv.game_id, "#"];
+      items.push('<li><a href="' + g[1] + '"><strong>' + esc(g[0]) + "</strong></a><span>Sauvegarde en ligne · " + new Date(sv.saved_at).toLocaleString("fr-FR") + "</span></li>");
+    });
+    if (!items.length) return '<p class="footer-small">Pas encore de progression enregistrée. Joue connecté à un jeu du site pour commencer.</p>';
+    return '<ul class="account-games">' + items.join("") + "</ul>" +
+      '<p class="footer-small">Chaque jeu se synchronise tout seul quand tu y joues connecté. Le serveur refuse les progressions impossibles (triche).</p>';
   }
   function googleIcon() {
     return '<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" style="vertical-align:-3px"><path fill="#4285F4" d="M17.6 9.2c0-.6-.1-1.2-.2-1.7H9v3.3h4.8a4.1 4.1 0 0 1-1.8 2.7v2.2h2.9c1.7-1.6 2.7-3.9 2.7-6.5z"/><path fill="#34A853" d="M9 18c2.4 0 4.5-.8 6-2.2l-2.9-2.2c-.8.5-1.8.9-3.1.9-2.4 0-4.4-1.6-5.1-3.7H.9v2.3A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.9 10.8a5.4 5.4 0 0 1 0-3.5V5H.9a9 9 0 0 0 0 8.1l3-2.3z"/><path fill="#EA4335" d="M9 3.6c1.3 0 2.5.5 3.5 1.4l2.6-2.6A9 9 0 0 0 .9 5l3 2.3C4.6 5.2 6.6 3.6 9 3.6z"/></svg>';
   }
   function loadGame() {
     if (!A.user) { game = null; render(); return; }
-    A.client().then(function (c) { return c.from("rd_profiles").select("*").maybeSingle(); }).then(function (res) {
-      game = res && res.data ? res.data : false; render();
+    A.client().then(function (c) {
+      return Promise.all([c.from("rd_profiles").select("*").maybeSingle(), c.from("game_saves").select("game_id, saved_at, rev").order("game_id")]);
+    }).then(function (res) {
+      game = res[0] && res[0].data ? res[0].data : false; saves = (res[1] && res[1].data) || []; render();
     }).catch(function () { game = false; render(); });
   }
   box.addEventListener("click", function (e) {
@@ -74,9 +82,9 @@
   });
   function exportData() {
     A.client().then(function (c) {
-      return Promise.all([c.from("profiles").select("*").maybeSingle(), c.from("rd_profiles").select("*").maybeSingle()]);
+      return Promise.all([c.from("profiles").select("*").maybeSingle(), c.from("rd_profiles").select("*").maybeSingle(), c.from("game_saves").select("*")]);
     }).then(function (r) {
-      var data = { compte: { id: A.user.id, email: A.user.email, fournisseur: "google", cree_le: A.user.created_at }, profil: r[0].data, ecureuil_dice: r[1].data, exporte_le: new Date().toISOString() };
+      var data = { compte: { id: A.user.id, email: A.user.email, fournisseur: "google", cree_le: A.user.created_at }, profil: r[0].data, ecureuil_dice: r[1].data, sauvegardes_des_jeux: r[2].data, exporte_le: new Date().toISOString() };
       var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "mes-donnees-akarisumd.json";
       document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);

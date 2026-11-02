@@ -52,6 +52,7 @@ Presque tout se règle dans **`js/data.js`** :
   - `js/idle.js` : moteur, rendu du chêne (canvas pixel), interface, succès (`ACH`), sauvegarde (localStorage `idle-chene-v1`, toutes les 15 s) et progression hors ligne. Version : `VERSION` en haut du fichier. `idle.html?debug` expose `IDLE_DEBUG` dans la console (ex. `IDLE_DEBUG.skip(3600)` pour avancer d'une heure).
   - `css/idle.css` : la mise en page du jeu (sur mobile, l'arbre reste collé en haut de l'écran).
 - **Compte unique du site** (`js/auth.js`, chargé sur toutes les pages) : connexion Google via Supabase Auth, bouton dans l'en-tête, liens « Mon compte · Confidentialité » dans le pied de page. La bibliothèque Supabase n'est chargée que si quelqu'un est connecté ou clique sur « Se connecter ». Côté jeux : `SiteAuth.rpc("fonction", {...})`. Base de données, anti-triche et réglages Google : voir [`supabase/README.md`](supabase/README.md).
+  - **Survivor, Le Grand Chêne, Merger** : `js/cloudsave.js` (chargé avant le jeu) synchronise leur sauvegarde avec le compte ; le serveur refuse les sauvegardes impossibles. Rien à changer dans le code des jeux.
   - **Écureuil Dice** : connecté, la progression (glands, coffres, niveaux, deck) est sur le serveur et chaque action passe par une fonction qui vérifie tout (coffres tirés côté serveur, gains de fin de partie bornés par la durée réelle). En invité, la progression reste dans le navigateur ; le jeu en ligne demande un compte.
 - **Réseaux** : `SITE.links` (laisse `""` pour masquer un lien).
 

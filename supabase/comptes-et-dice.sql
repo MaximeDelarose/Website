@@ -379,3 +379,131 @@ do $$ declare f text; begin
     execute format('grant execute on function public.%s to authenticated', f);
   end loop;
 end $$;
+
+-- =========================================================================
+-- Sauvegardes en ligne des autres jeux (js/cloudsave.js)
+-- =========================================================================
+create table public.game_saves (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  game_id text not null check (game_id in ('ecureuil-survivor', 'grand-chene', 'merger')),
+  data jsonb not null,
+  rev int not null default 1,
+  saved_at timestamptz not null default now(),
+  primary key (user_id, game_id)
+);
+alter table public.game_saves enable row level security;
+create policy game_saves_read_self on public.game_saves for select to authenticated using (user_id = (select auth.uid()));
+revoke all on public.game_saves from anon, authenticated;
+grant select on public.game_saves to authenticated;
+
+create table public.game_save_rejects (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  game_id text not null, reason text not null, at timestamptz not null default now()
+);
+create index game_save_rejects_user on public.game_save_rejects (user_id, at desc);
+alter table public.game_save_rejects enable row level security;
+revoke all on public.game_save_rejects from anon, authenticated;
+
+create or replace function public.gs_num(j jsonb, path text[])
+returns numeric language sql immutable set search_path = '' as $$
+  select case when jsonb_typeof(j #> path) = 'number' then (j #>> path)::numeric
+              when jsonb_typeof(j #> path) = 'string' and (j #>> path) ~ '^-?[0-9]+(\.[0-9]+)?$' then (j #>> path)::numeric
+              else 0 end;
+$$;
+
+create or replace function public.gs_guard(p_game text, o jsonb, n jsonb, secs numeric)
+returns text language plpgsql stable set search_path = '' as $$
+declare dE numeric; k text; v numeric;
+begin
+  if p_game = 'ecureuil-survivor' then
+    if public.gs_num(n, '{gold}') < 0 or public.gs_num(n, '{ppts}') < 0 then return 'negative'; end if;
+    if o is null then
+      if public.gs_num(n, '{gold}') > 50000 or public.gs_num(n, '{ppts}') > 10000 or public.gs_num(n, '{prestige}') > 10
+         or public.gs_num(n, '{rank}') > 80 then return 'import_too_big'; end if;
+      return null;
+    end if;
+    dE := public.gs_num(n, '{stats,goldEarned}') - public.gs_num(o, '{stats,goldEarned}');
+    if dE < 0 then return 'gold_earned_decreased'; end if;
+    if dE > 50 * secs + 5000 then return 'gold_too_fast'; end if;
+    if public.gs_num(n, '{gold}') > public.gs_num(n, '{stats,goldEarned}') + 20000 then return 'gold_not_earned'; end if;
+    if public.gs_num(n, '{rank}') - public.gs_num(o, '{rank}') > 3 + secs / 30 then return 'rank_too_fast'; end if;
+    if public.gs_num(n, '{prestige}') < public.gs_num(o, '{prestige}') then return 'prestige_decreased'; end if;
+    if public.gs_num(n, '{prestige}') - public.gs_num(o, '{prestige}') > 1 + floor(secs / 600) then return 'prestige_too_fast'; end if;
+    if public.gs_num(n, '{ppts}') > public.gs_num(o, '{ppts}')
+       and (public.gs_num(n, '{prestige}') = public.gs_num(o, '{prestige}')
+            or public.gs_num(n, '{ppts}') - public.gs_num(o, '{ppts}') > 5000 * (public.gs_num(n, '{prestige}') - public.gs_num(o, '{prestige}'))) then
+      return 'ppts_without_prestige';
+    end if;
+    return null;
+  elsif p_game = 'grand-chene' then
+    if public.gs_num(n, '{last}') > extract(epoch from now()) * 1000 + 120000 then return 'clock_in_future'; end if;
+    if public.gs_num(n, '{acorns}') < 0 or public.gs_num(n, '{seeds}') < 0 or public.gs_num(n, '{essence}') < 0 then return 'negative'; end if;
+    if public.gs_num(n, '{acorns}') > public.gs_num(n, '{lifeTotal}') * 1.0001 + 1 then return 'acorns_not_earned'; end if;
+    if o is null then return null; end if;
+    if public.gs_num(n, '{last}') - public.gs_num(o, '{last}') > (secs + 300) * 1000 then return 'clock_skip'; end if;
+    foreach k in array array['lifeTotal', 'seedsLife', 'essenceTotal', 'petalsLife', 'foodLife', 'seasons', 'replants', 'cropsHarvested', 'flowersHarvested'] loop
+      if public.gs_num(n, array[k]) < public.gs_num(o, array[k]) * 0.9999 - 1 then return 'lifetime_decreased:' || k; end if;
+    end loop;
+    if public.gs_num(n, '{seasons}') - public.gs_num(o, '{seasons}') > 1 + floor(secs / 60) then return 'seasons_too_fast'; end if;
+    return null;
+  elsif p_game = 'merger' then
+    for k in select jsonb_object_keys(n) loop
+      if k !~ '^merger-best-' then continue; end if;
+      v := public.gs_num(n, array[k]);
+      if v < 0 or v > 100000000 then return 'score_out_of_range'; end if;
+    end loop;
+    return null;
+  end if;
+  return 'unknown_game';
+end $$;
+
+create or replace function public.gs_load(p_game text)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare uid uuid := auth.uid(); r public.game_saves;
+begin
+  if uid is null then raise exception 'not_logged_in'; end if;
+  perform public.acct_me();
+  select * into r from public.game_saves where user_id = uid and game_id = p_game;
+  if not found then return null; end if;
+  return jsonb_build_object('data', r.data, 'rev', r.rev, 'saved_at', r.saved_at);
+end $$;
+
+create or replace function public.gs_save(p_game text, p_data jsonb, p_rev int)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare uid uuid := auth.uid(); r public.game_saves; secs numeric; reason text;
+begin
+  if uid is null then raise exception 'not_logged_in'; end if;
+  if p_game not in ('ecureuil-survivor', 'grand-chene', 'merger') then raise exception 'unknown_game'; end if;
+  if p_data is null or jsonb_typeof(p_data) <> 'object' or octet_length(p_data::text) > 400000 then raise exception 'invalid_save'; end if;
+  perform public.acct_me();
+  select * into r from public.game_saves where user_id = uid and game_id = p_game for update;
+  if found then
+    if coalesce(p_rev, -1) <> r.rev then return jsonb_build_object('ok', false, 'reason', 'conflict', 'data', r.data, 'rev', r.rev); end if;
+    secs := extract(epoch from now() - r.saved_at);
+    if secs < 3 then return jsonb_build_object('ok', false, 'reason', 'too_fast', 'rev', r.rev); end if;
+    reason := case when public.is_admin() then null else public.gs_guard(p_game, r.data, p_data, secs) end;
+    if reason is not null then
+      insert into public.game_save_rejects (user_id, game_id, reason) values (uid, p_game, reason);
+      return jsonb_build_object('ok', false, 'reason', reason, 'data', r.data, 'rev', r.rev);
+    end if;
+    update public.game_saves set data = p_data, rev = r.rev + 1, saved_at = now() where user_id = uid and game_id = p_game returning * into r;
+  else
+    reason := case when public.is_admin() then null else public.gs_guard(p_game, null, p_data, 0) end;
+    if reason is not null then
+      insert into public.game_save_rejects (user_id, game_id, reason) values (uid, p_game, reason);
+      return jsonb_build_object('ok', false, 'reason', reason, 'data', null, 'rev', 0);
+    end if;
+    insert into public.game_saves (user_id, game_id, data) values (uid, p_game, p_data) returning * into r;
+  end if;
+  return jsonb_build_object('ok', true, 'rev', r.rev);
+end $$;
+
+revoke all on function public.gs_num(jsonb, text[]) from public, anon, authenticated;
+revoke all on function public.gs_guard(text, jsonb, jsonb, numeric) from public, anon, authenticated;
+do $$ declare f text; begin
+  foreach f in array array['gs_load(text)', 'gs_save(text,jsonb,integer)'] loop
+    execute format('revoke all on function public.%s from public, anon', f);
+    execute format('grant execute on function public.%s to authenticated', f);
+  end loop;
+end $$;

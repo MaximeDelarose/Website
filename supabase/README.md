@@ -27,6 +27,21 @@ fonctions `security definer` qui vérifient tout :
 Limite connue : le résultat d'une partie vient toujours du navigateur (le serveur ne rejoue pas la partie), il est
 seulement borné. En versus en ligne, chaque navigateur simule son propre terrain.
 
+## Sauvegardes des autres jeux (Survivor, Chêne, Merger)
+
+`js/cloudsave.js` synchronise la sauvegarde localStorage existante de chaque jeu avec le compte, **sans toucher au code du jeu** :
+il suffit de le charger avant le script du jeu (`data-game` + `data-key` ou `data-prefix`). Table `game_saves`, fonctions
+`gs_load` / `gs_save`. À l'écriture, `gs_guard` refuse les sauvegardes impossibles (sauf pour les admins) :
+
+- **ecureuil-survivor** : glands gagnés (`stats.goldEarned`) au plus 50 / s + 5 000, glands possédés ≤ glands gagnés + 20 000,
+  rang au plus +3 (+1 / 30 s), points de prestige seulement avec un prestige, reprise d'une sauvegarde plafonnée.
+- **grand-chene** : pas de sauvegarde « dans le futur » ni de saut dans le temps, compteurs à vie qui ne reculent pas,
+  glands ≤ total récolté, saisons au plus +1 par minute.
+- **merger** : records dans des bornes.
+
+Refus enregistrés dans `game_save_rejects` (jeu, raison, date) ; le joueur revient à sa dernière sauvegarde valide.
+Pour un nouveau jeu : ajouter son id dans le `check` de `game_saves` et dans `gs_save`, écrire sa branche de `gs_guard`.
+
 ## Connexion Google
 
 Supabase → Authentication → Providers → Google (ID client + code secret de la console Google Cloud),

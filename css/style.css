@@ -1336,3 +1336,10 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .game-toast.item-toast strong { color: var(--rc, inherit); }
 .game-toast.item-toast em { font-style: normal; font-weight: 800; color: var(--rc, inherit); }
 .game-toast.item-toast.r3 { box-shadow: 0 0 0 2px #000, 0 0 18px var(--rc); }
+/* message de la sauvegarde en ligne (js/cloudsave.js) */
+.cs-toast {
+  position: fixed; left: 50%; bottom: 18px; z-index: 400; transform: translateX(-50%); max-width: min(560px, calc(100vw - 32px));
+  padding: 10px 14px; background: #2b1709; color: #fdf3de; font-weight: 700; font-size: .95rem; line-height: 1.35;
+  box-shadow: 0 0 0 3px #f6d36b; transition: opacity .6s;
+}
+.cs-toast.out { opacity: 0; }
