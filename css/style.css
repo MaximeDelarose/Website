@@ -1041,3 +1041,43 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .link-tag { font-size: .72rem; font-weight: 800; padding: 1px 6px; border: 2px solid var(--line); background: var(--panel); white-space: nowrap; }
 .link-tag.direct { background: #9cc56b; color: #1f3a2b; }
 .link-tag.relay { background: #f6d36b; color: #2b1709; }
+
+/* --- Écureuil Dice --- */
+.rd-hud { display: flex; justify-content: flex-end; gap: 6px; inset: 0 0 auto auto; }
+.hud-btn[hidden] { display: none; }
+.rd-card { width: min(520px, 100%); }
+.rd-card.rd-online, .rd-card.rd-lobby, .rd-card.rd-help, .rd-card.rd-succes { width: min(620px, 100%); }
+.rd-card.rd-deck { width: min(820px, 100%); }
+.rd-strip { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+.rd-die {
+  position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px; flex: none;
+  background: linear-gradient(var(--c) 85%, var(--d) 85%); border: 3px solid #2b1709;
+}
+.rd-die img { width: 32px; height: auto; image-rendering: pixelated; }
+.rd-die .rd-ic { position: absolute; left: 1px; top: 1px; width: 12px; }
+.rd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; text-align: left; margin-top: 8px; }
+.rd-type { padding: 10px; background: var(--panel-2); border: var(--px) solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.rd-type.is-selected { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange); }
+.rd-type.is-locked .rd-die img:not(.rd-ic) { filter: brightness(0) opacity(.5); }
+.rd-type-head { display: flex; align-items: center; gap: 10px; }
+.rd-type-head div { display: grid; line-height: 1.2; }
+.rd-type-head small { color: var(--ink-soft); }
+.rd-desc { margin: 0; font-size: .86rem; line-height: 1.35; color: var(--ink-soft) !important; flex: 1; }
+.rd-type-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rd-type-btns .btn { margin: 0 0 4px; }
+.rd-max { font-weight: 800; font-size: .85rem; color: var(--moss-2); }
+.rd-bot-lvl .btn.is-on { --b: var(--orange); color: var(--btn-ink); }
+.rd-field { display: grid; gap: 4px; text-align: left; font-weight: 700; font-size: .9rem; margin: 10px 0; }
+.rd-field input { font: inherit; font-weight: 800; padding: 10px 12px; background: var(--panel); color: var(--ink); border: 3px solid var(--line); }
+.rd-rules, .rd-ach { text-align: left; margin: 0; padding-left: 1.2em; display: grid; gap: 6px; font-size: .95rem; }
+.rd-ach { list-style: none; padding: 0; }
+.rd-ach li { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 8px 10px; background: var(--panel-2); border: 3px solid var(--line); }
+.rd-ach li span { grid-column: 1; font-size: .86rem; color: var(--ink-soft); }
+.rd-ach li em { grid-row: 1 / 3; grid-column: 2; align-self: center; font-style: normal; font-weight: 800; }
+.rd-ach li.is-done { border-color: var(--moss-2); }
+.room-players .rd-strip { justify-content: flex-start; margin: 4px 0; }
+.room-players .rd-die { width: 30px; height: 30px; border-width: 2px; }
+.room-players .rd-die img { width: 22px; }
+.room-players .rd-die .rd-ic { width: 9px; }
+.rd-over, .rd-pause { width: min(520px, 100%); }
+.game-stage .game-hud.rd-hud { top: 4px; bottom: auto; right: 6px; }

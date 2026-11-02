@@ -1,0 +1,1060 @@
+/* =========================================================================
+   Écureuil Dice — interface : rendu, commandes, menus, sauvegarde, en ligne
+   Données : js/dice-data.js · moteur : js/dice-core.js
+   Sprites des ennemis : js/game-data.js (Écureuil Survivor)
+   ========================================================================= */
+(function () {
+  "use strict";
+  var VERSION = "0.1.0";
+  var GAME_ID = "ecureuil-dice";
+  var stage = document.querySelector("[data-dice]");
+  if (!stage || !window.RD_DATA || !window.RD_CORE || !window.ES_DATA) return;
+  var D = window.RD_DATA, K = window.RD_CORE, ES = window.ES_DATA, T = D.TYPES, CFG = D.CFG;
+  var $ = function (s) { return stage.querySelector(s); };
+  var canvas = $("canvas"), ctx = canvas.getContext("2d");
+  var overlay = $("[data-overlay]"), card = $("[data-card]"), hud = $("[data-hud]");
+
+  /* =====================================================================
+     Sauvegarde (localStorage, dans le navigateur du joueur)
+     ===================================================================== */
+  var SAVE_KEY = "rd-save-v1";
+  function defaults() {
+    return { gold: 0, deck: D.START_DECK.slice(), cls: {}, owned: {}, best: { solo: 0, coop: 0 }, wins: 0, games: 0, ach: {}, name: "", mute: false, botLvl: 1 };
+  }
+  var S = defaults();
+  try {
+    var raw = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
+    if (raw && typeof raw === "object") Object.keys(raw).forEach(function (k) { if (k in S) S[k] = raw[k]; });
+  } catch (e) {}
+  function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+  function owned(k) { return !T[k].cost || !!S.owned[k]; }
+  function clsLv(k) { return S.cls[k] || 1; }
+  S.deck = (S.deck || []).filter(function (k, i, a) { return T[k] && owned(k) && a.indexOf(k) === i; }).slice(0, 5);
+  D.START_DECK.forEach(function (k) { if (S.deck.length < 5 && S.deck.indexOf(k) < 0) S.deck.push(k); });
+  function myCls() { var o = {}; D.ORDER.forEach(function (k) { o[k] = clsLv(k); }); return o; }
+
+  /* =====================================================================
+     Sprites (même format que le Survivor : contour sombre automatique)
+     ===================================================================== */
+  var OUT = "#2b1709";
+  function sprite(rows, pal) {
+    var h = rows.length, w = 0, x, y;
+    rows.forEach(function (row) { w = Math.max(w, row.length); });
+    var W = w + 2, H = h + 2, filled = new Uint8Array(W * H);
+    var c = document.createElement("canvas"); c.width = W; c.height = H;
+    var g = c.getContext("2d");
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      var ch = rows[y][x];
+      if (ch && pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x + 1, y + 1, 1, 1); filled[(y + 1) * W + x + 1] = 1; }
+    }
+    g.fillStyle = OUT;
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      if (filled[y * W + x]) continue;
+      if ((x > 0 && filled[y * W + x - 1]) || (x < W - 1 && filled[y * W + x + 1]) ||
+          (y > 0 && filled[(y - 1) * W + x]) || (y < H - 1 && filled[(y + 1) * W + x])) g.fillRect(x, y, 1, 1);
+    }
+    function variant(flip, white) {
+      var v = document.createElement("canvas"); v.width = W; v.height = H;
+      var vg = v.getContext("2d");
+      if (flip) { vg.translate(W, 0); vg.scale(-1, 1); }
+      vg.drawImage(c, 0, 0);
+      if (white) { vg.setTransform(1, 0, 0, 1, 0, 0); vg.globalCompositeOperation = "source-in"; vg.fillStyle = "#fff"; vg.fillRect(0, 0, W, H); }
+      return v;
+    }
+    return { c: c, f: variant(true), wc: variant(false, true), w: W, h: H };
+  }
+  var SPR = {};
+  Object.keys(ES.SPRITES).forEach(function (k) { var d = ES.SPRITES[k]; SPR[k] = d.frames.map(function (f) { return sprite(f, d.pal); }); });
+  var SQ = {}, ICON = {};
+  var sqRows = ES.SPRITES.sq_noisette.frames;
+  D.ORDER.forEach(function (k) {
+    SQ[k] = sqRows.map(function (f) { return sprite(f, T[k].fur); });
+    ICON[k] = sprite(T[k].icon.rows, T[k].icon.pal);
+  });
+  var urlCache = {};
+  function sqUrl(k) { return urlCache[k] || (urlCache[k] = SQ[k][0].c.toDataURL()); }
+  function iconUrl(k) { return urlCache["i" + k] || (urlCache["i" + k] = ICON[k].c.toDataURL()); }
+  function goldUrl() { return urlCache.gold || (urlCache.gold = SPR.gold[0].c.toDataURL()); }
+  function goldIc() { return '<img class="gold-ic" src="' + goldUrl() + '" alt="glands d\'or">'; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function fmt(n) {
+    n = Math.max(0, Math.round(n));
+    if (n < 1000) return String(n);
+    if (n < 1e6) return (n / 1000).toFixed(n < 1e4 ? 1 : 0).replace(".0", "") + "k";
+    return (n / 1e6).toFixed(n < 1e7 ? 1 : 0).replace(".0", "") + "M";
+  }
+
+  /* =====================================================================
+     Sons (synthèse, aucun fichier)
+     ===================================================================== */
+  var actx = null, sndLast = {};
+  function sfx(freq, dur, type, vol, slide) {
+    if (S.mute) return;
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === "suspended") actx.resume();
+      var o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+      o.type = type || "square"; o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * slide), t + dur);
+      g.gain.setValueAtTime(vol || 0.04, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  function arp(notes, step, type, vol) { notes.forEach(function (f, i) { setTimeout(function () { sfx(f, 0.12, type || "square", vol || 0.04); }, i * step); }); }
+  function thr(key, ms, fn) { var n = performance.now(); if (n - (sndLast[key] || 0) < ms) return; sndLast[key] = n; fn(); }
+  var SND = {
+    summon: function () { sfx(520, 0.08, "square", 0.035, 1.6); },
+    merge: function (p) { arp([392 + p * 40, 523 + p * 50, 659 + p * 60], 50, "triangle", 0.05); },
+    pu: function () { arp([523, 784, 1047], 60, "square", 0.035); },
+    kill: function () { thr("kill", 60, function () { sfx(300 + Math.random() * 200, 0.06, "square", 0.02, 0.5); }); },
+    boom: function () { thr("boom", 90, function () { sfx(110, 0.22, "triangle", 0.07, 0.4); }); },
+    zap: function () { thr("zap", 80, function () { sfx(1300, 0.06, "sawtooth", 0.02, 0.4); }); },
+    leak: function () { sfx(160, 0.3, "sawtooth", 0.07, 0.5); },
+    wave: function () { arp([440, 554, 659], 80, "triangle", 0.04); },
+    boss: function () { arp([220, 196, 175, 147], 140, "sawtooth", 0.05); },
+    win: function () { arp([523, 659, 784, 1047, 1319], 90, "triangle", 0.06); },
+    over: function () { arp([392, 330, 262, 196], 160, "triangle", 0.06); },
+    click: function () { sfx(660, 0.05, "square", 0.03); },
+    no: function () { sfx(180, 0.08, "square", 0.03); },
+  };
+
+  /* =====================================================================
+     État de la partie
+     ===================================================================== */
+  var state = "menu", screen = "menu", paused = false, speed = 1;
+  // G.worlds : mondes simulés ici (sim) ou reçus (view) ; G.panels : ce qu'on dessine
+  var G = null;
+  var view = { scale: 1, ox: 0, oy: 0, W: 0, H: 0 };
+
+  function newGame(cfg) {
+    // cfg : { mode, kind: "solo"|"bot"|"local-coop"|"local-vs"|"net-coop"|"net-vs", worlds:[...], panels:[...] }
+    G = cfg; G.t = 0; G.vfx = []; G.ended = false; G.drag = {}; G.sel = null; G.netAcc = 0; G.outEv = [];
+    G.panels.forEach(function (p) { p.deco = deco(p.world.lay, p.seed || 3); });
+    state = "play"; paused = false; speed = 1;
+    hideOverlay(); hud.hidden = false; syncHud();
+    layoutScene();
+    S.games++; save();
+  }
+  function soloGame() {
+    var w = K.createWorld({ mode: "solo", seed: (Math.random() * 1e9) | 0, boards: [{ name: S.name || "Toi", deck: S.deck, cls: myCls() }] });
+    newGame({ mode: "solo", kind: "solo", sims: [w], panels: [{ world: w, mine: [0] }] });
+  }
+  function botGame() {
+    var seed = (Math.random() * 1e9) | 0, lvl = S.botLvl || 1;
+    var botDeck = shuffle(D.ORDER.slice()).slice(0, 5), botCls = {};
+    D.ORDER.forEach(function (k) { botCls[k] = lvl === 2 ? 4 : 1; });
+    var me = K.createWorld({ mode: "versus", seed: seed, boards: [{ name: S.name || "Toi", deck: S.deck, cls: myCls() }] });
+    var bot = K.createWorld({ mode: "versus", seed: seed, boards: [{ name: lvl === 2 ? "IA coriace" : "IA", deck: botDeck, cls: botCls, bot: true }] });
+    newGame({ mode: "versus", kind: "bot", bot: true, botLvl: lvl, sims: [me, bot], panels: [{ world: me, mine: [0] }, { world: bot, mine: [], opp: true, seed: 9 }] });
+  }
+  function localCoop() {
+    var vertical = stage.clientWidth < stage.clientHeight * 1.2;
+    var w = K.createWorld({ mode: "coop", seed: (Math.random() * 1e9) | 0, vertical: vertical,
+      boards: [{ name: "Joueur 1", deck: S.deck, cls: myCls() }, { name: "Joueur 2", deck: S.deck, cls: myCls() }] });
+    newGame({ mode: "coop", kind: "local-coop", sims: [w], panels: [{ world: w, mine: [0, 1] }] });
+  }
+  function localVs() {
+    var seed = (Math.random() * 1e9) | 0;
+    var a = K.createWorld({ mode: "versus", seed: seed, boards: [{ name: "Joueur 1", deck: S.deck, cls: myCls() }] });
+    var b = K.createWorld({ mode: "versus", seed: seed, boards: [{ name: "Joueur 2", deck: S.deck, cls: myCls() }] });
+    newGame({ mode: "versus", kind: "local-vs", sims: [a, b], panels: [{ world: a, mine: [0] }, { world: b, mine: [0], seed: 9 }] });
+  }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = (Math.random() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+  /* ---------- disposition à l'écran ---------- */
+  var HUD_H = 34;
+  function layoutScene() {
+    if (!G) return;
+    var cw = stage.clientWidth, ch = stage.clientHeight, P = G.panels;
+    var pad = 4, gap = 10;
+    if (P.length === 1) {
+      P[0].ox = 0; P[0].oy = 0; view.W = P[0].world.lay.w; view.H = P[0].world.lay.h;
+    } else {
+      var a = P[0].world.lay, b = P[1].world.lay;
+      var sH = Math.min(cw / (a.w + b.w + gap + pad * 2), (ch - HUD_H) / (Math.max(a.h, b.h) + pad * 2));
+      var sV = Math.min(cw / (Math.max(a.w, b.w) + pad * 2), (ch - HUD_H) / (a.h + b.h + gap + pad * 2));
+      if (sH >= sV) { P[0].ox = 0; P[0].oy = 0; P[1].ox = a.w + gap; P[1].oy = 0; view.W = a.w + b.w + gap; view.H = Math.max(a.h, b.h); }
+      else {
+        // en hauteur : l'adversaire en haut, toi en bas (plus près du pouce)
+        var top = P[0].opp ? 0 : 1, bot = 1 - top;
+        P[top].ox = 0; P[top].oy = 0; P[bot].ox = 0; P[bot].oy = P[top].world.lay.h + gap;
+        view.W = Math.max(a.w, b.w); view.H = a.h + b.h + gap;
+      }
+    }
+    var hudTop = HUD_H;   // place pour les boutons pause / son / vitesse
+    view.scale = Math.min(cw / (view.W + pad * 2), (ch - hudTop) / (view.H + pad * 2));
+    view.ox = (cw - view.W * view.scale) / 2; view.oy = hudTop + (ch - hudTop - view.H * view.scale) / 2;
+  }
+  function resize() {
+    var dpr = window.devicePixelRatio || 1, cw = stage.clientWidth, ch = stage.clientHeight;
+    canvas.width = Math.max(1, Math.round(cw * dpr)); canvas.height = Math.max(1, Math.round(ch * dpr));
+    canvas.style.width = cw + "px"; canvas.style.height = ch + "px";
+    layoutScene();
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage); else window.addEventListener("resize", resize);
+
+  /* =====================================================================
+     Décor
+     ===================================================================== */
+  function deco(lay, seed) {
+    var r = seed * 9301 + 49297, out = [];
+    function rnd() { r = (r * 9301 + 49297) % 233280; return r / 233280; }
+    var cols = ["#4f7d44", "#5b8a4a", "#36592f", "#6e9d5a"];
+    for (var i = 0; i < lay.w * lay.h / 90; i++) out.push([rnd() * lay.w, rnd() * lay.h, cols[(rnd() * cols.length) | 0], rnd() < 0.06 ? ((rnd() * 3) | 0) + 1 : 0]);
+    return out;
+  }
+
+  /* =====================================================================
+     Rendu
+     ===================================================================== */
+  var BTN_SUM = { dx: 0, dy: K.BH + 7, w: 84, h: 20 };
+  function puRect(b, i) { return { x: b.x + i * 26.5, y: b.y + K.BH + 31, w: 24, h: 30 }; }
+  function sumRect(b) { return { x: b.x + BTN_SUM.dx, y: b.y + BTN_SUM.dy, w: BTN_SUM.w, h: BTN_SUM.h }; }
+  function font(sz, w) { ctx.font = (w || 900) + " " + sz + "px Nunito, system-ui, sans-serif"; }
+  function text(str, x, y, color, align, sz, outline) {
+    font(sz || 6); ctx.textAlign = align || "left"; ctx.textBaseline = "middle";
+    if (outline !== false) { ctx.lineWidth = Math.max(1.4, (sz || 6) / 3.2); ctx.strokeStyle = OUT; ctx.lineJoin = "round"; ctx.strokeText(str, x, y); }
+    ctx.fillStyle = color || "#fdf3de"; ctx.fillText(str, x, y);
+  }
+  function rect(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
+  function box(x, y, w, h, fill, edge, depth) {
+    rect(x, y + 1, w, h - 1, depth || OUT);
+    rect(x, y, w, h - 1.5, edge || OUT);
+    rect(x + 1, y + 1, w - 2, h - 3.5, fill);
+  }
+  function heart(x, y, on) {
+    var c = on ? "#c8553d" : "#4a3a2a", hi = on ? "#f29a85" : "#5a4a3a";
+    var m = [".xx.xx.", "xhxxxxx", "xxxxxxx", ".xxxxx.", "..xxx..", "...x..."];
+    m.forEach(function (row, j) { for (var i = 0; i < row.length; i++) if (row[i] !== ".") rect(x + i, y + j, 1, 1, row[i] === "h" ? hi : c); });
+  }
+  function drawSpr(s, x, y, flip, white) { ctx.drawImage(white ? s.wc : (flip ? s.f : s.c), Math.round(x), Math.round(y)); }
+
+  function render() {
+    var dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#1f3a2b"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = false;
+    if (!G) { drawMenuBg(dpr); return; }
+    var s = view.scale * dpr;
+    G.panels.forEach(function (p) {
+      ctx.setTransform(s, 0, 0, s, (view.ox + p.ox * view.scale) * dpr, (view.oy + p.oy * view.scale) * dpr);
+      drawPanel(p);
+    });
+    // écureuil tenu au doigt / à la souris
+    ctx.setTransform(s, 0, 0, s, view.ox * dpr, view.oy * dpr);
+    Object.keys(G.drag).forEach(function (id) {
+      var d = G.drag[id]; if (!d.moved) return;
+      var sq = d.panel.world.boards[d.bi].slots[d.slot]; if (!sq) return;
+      ctx.globalAlpha = 0.9; drawTile(sq, d.x - 12, d.y - 14, 0); ctx.globalAlpha = 1;
+    });
+  }
+  var menuT = 0;
+  function drawMenuBg(dpr) {
+    menuT += 1 / 60;
+    var cw = canvas.width, ch = canvas.height, sc = Math.max(2, Math.round(Math.min(cw, ch) / 180));
+    ctx.setTransform(sc, 0, 0, sc, 0, 0);
+    var W = cw / sc, H = ch / sc;
+    rect(0, 0, W, H, "#3f6b3a");
+    for (var i = 0; i < 40; i++) rect((i * 47) % W, (i * 89) % H, 2, 1, "#4f7d44");
+    rect(0, H * 0.62, W, 12, "#6b4430"); rect(0, H * 0.62 + 2, W, 8, "#b07a4f");
+    var list = ["slug", "beetle", "wasp", "bunny", "fox", "spider", "moth", "toad"];
+    list.forEach(function (k, j) {
+      var x = ((menuT * 18 + j * 34) % (W + 40)) - 20, fr = SPR[k][Math.floor(menuT * 5 + j) % SPR[k].length];
+      drawSpr(fr, x, H * 0.62 + 6 - fr.h);
+    });
+    D.ORDER.slice(0, 7).forEach(function (k, j) {
+      var x = 10 + j * 26, y = H * 0.62 + 18;
+      if (x + 24 > W) return;
+      drawTile({ t: k, p: 1 + (j % 6), bob: 0, stun: 0 }, x, y + Math.round(Math.sin(menuT * 3 + j) * 1), menuT);
+    });
+  }
+
+  function drawPanel(p) {
+    var w = p.world, lay = w.lay;
+    // herbe
+    rect(0, 0, lay.w, lay.h, "#3f6b3a");
+    p.deco.forEach(function (d) {
+      if (d[3]) { rect(d[0], d[1], 1, 1, ["", "#f2d48a", "#f29a85", "#e6f6fa"][d[3]]); return; }
+      rect(d[0], d[1], 2, 1, d[2]); rect(d[0] + 0.5, d[1] - 1, 1, 1, d[2]);
+    });
+    // chemin
+    ctx.lineCap = "square"; ctx.lineJoin = "miter";
+    ctx.beginPath(); lay.pts.forEach(function (q, i) { if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); });
+    ctx.strokeStyle = "#6b4430"; ctx.lineWidth = 17; ctx.stroke();
+    ctx.strokeStyle = "#b07a4f"; ctx.lineWidth = 13; ctx.stroke();
+    ctx.strokeStyle = "#c99a6a"; ctx.lineWidth = 3; ctx.setLineDash([2, 5]); ctx.stroke(); ctx.setLineDash([]);
+    // terrier de départ et réserve de noisettes au bout
+    var s0 = lay.pts[0], s1 = lay.pts[lay.pts.length - 1];
+    rect(s0[0] - 7, s0[1] - 2, 14, 8, "#2b1709"); rect(s0[0] - 5, s0[1], 10, 6, "#120a04");
+    drawSpr(SPR.stump[0], s1[0] - 6, s1[1] - 4);
+    for (var hI = 0; hI < CFG.lives; hI++) if (hI < w.lives) drawSpr(SPR.nut[0], s1[0] - 9 + hI * 6, s1[1] - 9);
+    // plateaux
+    w.boards.forEach(function (b, bi) { drawBoard(p, b, bi); });
+    // pièges
+    w.mines.forEach(function (m) {
+      var q = K.posAt(lay, m.dist), x = q.x, y = q.y;
+      if (m.t < m.fly && m.x0 !== undefined) { var f = m.t / m.fly; x = m.x0 + (q.x - m.x0) * f; y = m.y0 + (q.y - m.y0) * f - Math.sin(f * Math.PI) * 14; }
+      drawSpr(SPR.pinecone[0], x - 3.5, y - 4);
+    });
+    // ennemis (du plus loin au plus proche pour le chevauchement)
+    var list = w.enemies.slice().sort(function (a, b2) { return a.dist - b2.dist; });
+    list.forEach(function (e) { drawEnemy(w, e); });
+    // projectiles
+    w.projs.forEach(function (pr) {
+      if (pr.delay > 0) return;
+      var c = T[pr.t].color;
+      rect(pr.x - 2, pr.y - 2, 4, 4, OUT); rect(pr.x - 1.5, pr.y - 1.5, 3, 3, c); rect(pr.x - 1, pr.y - 1.5, 1, 1, "#fff8");
+    });
+    drawVfx(p);
+    drawHud(p);
+  }
+
+  function drawBoard(p, b, bi) {
+    var o = p.world.lay.boards[bi], mine = p.mine.indexOf(bi) >= 0;
+    rect(o.x - 3, o.y - 3, K.BW + 6, K.BH + 6, "#2b1709");
+    rect(o.x - 2, o.y - 2, K.BW + 4, K.BH + 4, "#36592f");
+    var drag = dragOn(p, bi), sel = G.sel && G.sel.panel === p && G.sel.bi === bi ? G.sel.slot : -1;
+    var from = drag ? drag.slot : sel;
+    for (var i = 0; i < K.NSLOT; i++) {
+      var x = o.x + (i % K.COLS) * K.CELL, y = o.y + Math.floor(i / K.COLS) * K.CELL;
+      rect(x + 1, y + 1, 24, 24, "#2f4f2a"); rect(x + 2, y + 2, 22, 22, "#335a2e");
+      var sq = b.slots[i];
+      if (!sq) continue;
+      var lifted = drag && drag.moved && drag.slot === i;
+      if (lifted) { ctx.globalAlpha = 0.35; drawTile(sq, x + 1, y + 1, G.t); ctx.globalAlpha = 1; continue; }
+      var bob = sq.bob > 0 ? -1 : 0, pop = sq.born > 0 ? sq.born * 3 : 0;
+      drawTile(sq, x + 1, y + 1 + bob - pop, G.t);
+      if (from >= 0 && from !== i && K.canMerge(b, from, i)) {
+        var a = 0.5 + 0.5 * Math.sin(G.t * 10);
+        ctx.strokeStyle = "rgba(246,211,107," + (0.5 + a * 0.5) + ")"; ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, 24, 24);
+      }
+      if (from === i) { ctx.strokeStyle = "#fdf3de"; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.5, y + 0.5, 25, 25); }
+    }
+    // commandes
+    var sr = sumRect(o), cost = K.summonCost(b), full = !K.freeSlots(b).length, can = !full && b.sp >= cost && mine && !p.world.over;
+    box(sr.x, sr.y, sr.w, sr.h, can ? "#e8873a" : "#8a7660", OUT, can ? "#a8541a" : "#5a4a3a");
+    text(full ? "PLATEAU PLEIN" : "INVOQUER", sr.x + sr.w / 2, sr.y + 6.5, "#fdf3de", "center", 6);
+    if (!full) { drawSpr(SPR.nut[0], sr.x + sr.w / 2 - 12, sr.y + 10.5); text(fmt(cost), sr.x + sr.w / 2 - 4, sr.y + 13.5, can ? "#fdf3de" : "#e0d0b0", "left", 6); }
+    // noisettes
+    var nx = sr.x + sr.w + 3;
+    box(nx, sr.y, K.BW - sr.w - 3, sr.h, "#3a2618", OUT, OUT);
+    drawSpr(SPR.nut[0], nx + 3, sr.y + 6.5);
+    text(fmt(b.sp), nx + 11, sr.y + 9.5, "#f6d36b", "left", 7.5);
+    if (!mine) text(b.name.slice(0, 12), o.x + K.BW / 2, o.y + K.BH + 2, "#fdf3de", "center", 4.5);
+    // améliorations
+    b.deck.forEach(function (k, i) {
+      var r = puRect(o, i), c = K.puCost(b, i), ok = mine && isFinite(c) && b.sp >= c && !p.world.over;
+      box(r.x, r.y, r.w, r.h, ok ? T[k].color : "#5a4a3a", OUT, ok ? T[k].dark : "#3a2a1a");
+      ctx.drawImage(ICON[k].c, r.x + (r.w - ICON[k].w * 1.4) / 2, r.y + 2, ICON[k].w * 1.4, ICON[k].h * 1.4);
+      text("NV" + (b.pu[i] + 1), r.x + r.w / 2, r.y + 17.5, "#fdf3de", "center", 5);
+      text(isFinite(c) ? fmt(c) : "MAX", r.x + r.w / 2, r.y + 24.5, ok ? "#f6d36b" : "#c9b8a0", "center", 5);
+    });
+  }
+
+  function drawTile(sq, x, y, t) {
+    var Tp = T[sq.t];
+    rect(x, y, 24, 24, OUT);
+    rect(x + 1, y + 1, 22, 22, Tp.dark);
+    rect(x + 1, y + 1, 22, 20, Tp.color);
+    rect(x + 2, y + 2, 20, 1, "rgba(255,255,255,.25)");
+    var fr = SQ[sq.t][Math.floor(((t || 0) * 2 + x * 0.05)) % 2];
+    ctx.drawImage(fr.c, Math.round(x + 4), Math.round(y + 1));
+    ctx.drawImage(ICON[sq.t].c, Math.round(x + 1), Math.round(y + 1));
+    // points (le « dé ») : en bas, sur une ou deux lignes
+    var n = sq.p, row1 = Math.min(n, 4), row2 = n - row1;
+    function dots(cnt, yy) {
+      var w = cnt * 4 - 1, sx = x + 12 - w / 2;
+      for (var i = 0; i < cnt; i++) { rect(sx + i * 4 - 0.5, yy - 0.5, 4, 4, OUT); rect(sx + i * 4, yy, 3, 3, n >= 7 ? "#f6d36b" : "#fdf3de"); }
+    }
+    if (row2) { dots(row2, y + 13); dots(row1, y + 18); } else dots(row1, y + 18);
+    if (sq.stun > 0) {
+      ctx.fillStyle = "rgba(30,25,40,.55)"; ctx.fillRect(x + 1, y + 1, 22, 22);
+      text("ZZ", x + 12, y + 7 + Math.sin((t || 0) * 6), "#c9b3ff", "center", 6);
+    }
+    if (sq.grow !== undefined && sq.grow > 0) {
+      var f = Math.max(0, 1 - sq.grow / (Tp.grow || 16));
+      rect(x + 2, y + 21.5, 20, 1.5, "#2b1709"); rect(x + 2, y + 21.5, 20 * f, 1.5, "#9cd06a");
+    }
+  }
+
+  function drawEnemy(w, e) {
+    var q = K.posAt(w.lay, e.dist), fr = SPR[e.type][Math.floor(e.t * 5) % SPR[e.type].length];
+    var big = e.d.boss ? 1 : 0, x = q.x - fr.w / 2, y = q.y - fr.h + 4;
+    if (e.d.hop) y -= Math.max(0, Math.sin(e.t * 7)) * 3;
+    if (e.d.fly) y -= 3 + Math.sin(e.t * 4) * 1.5;
+    if (e.under) {
+      rect(q.x - 5, q.y - 1, 10, 4, "#6b4430"); rect(q.x - 3, q.y - 2, 6, 2, "#8a5a3b");
+      return;
+    }
+    if (e.d.boss) {
+      ctx.save(); ctx.translate(q.x, q.y + 4); ctx.scale(1.3, 1.3); ctx.translate(-fr.w / 2, -fr.h);
+      drawSpr(fr, 0, 0, q.dx < 0, e.flash > 0); ctx.restore();
+      y = q.y + 4 - fr.h * 1.3;
+    } else drawSpr(fr, x, y, q.dx < 0, e.flash > 0);
+    if (e.slowT > 0) { rect(q.x - 1, y - 1, 2, 2, "#9fd8ff"); }
+    if (e.poisonT > 0) { rect(q.x + 3, y + Math.sin(e.t * 5) * 1, 2, 2, "#9cd06a"); }
+    if (e.chargeT > 0) { rect(q.x - 8, q.y + 2, 3, 1, "#fdf3de"); rect(q.x - 12, q.y, 3, 1, "#fdf3de"); }
+    // PV
+    var hpTxt = fmt(e.hp), sz = big ? 6 : 4.5;
+    text(hpTxt, q.x, y - (big ? 3 : 2), big ? "#f6d36b" : "#fdf3de", "center", sz);
+    if (big || e.d.big) {
+      var bw = big ? 26 : 14, f = Math.max(0, e.hp / e.max);
+      rect(q.x - bw / 2, q.y + 5, bw, 2, OUT); rect(q.x - bw / 2, q.y + 5, bw * f, 2, "#c8553d");
+    }
+  }
+
+  function drawHud(p) {
+    var w = p.world, lay = w.lay;
+    rect(0, 0, lay.w, 15, "rgba(31,58,43,.85)");
+    var boss = K.isBossWave(w.wave);
+    text(w.wave ? "VAGUE " + w.wave : "PRÉPARE-TOI", 5, 7.5, boss ? "#f29a85" : "#fdf3de", "left", 7);
+    // barre de temps de la vague
+    var bx = 58, bw = lay.w - bx - 34;
+    rect(bx, 5, bw, 5, OUT);
+    var f;
+    if (!w.wave) f = Math.min(1, w.waveT / 3);
+    else if (boss) f = 1 - Math.min(1, w.waveT / CFG.bossTimeout);
+    else f = Math.min(1, w.waveT / CFG.waveLen);
+    rect(bx + 1, 6, (bw - 2) * f, 3, boss ? "#c8553d" : "#f6d36b");
+    if (boss) { var be = w.enemies.filter(function (e) { return e.d.boss; })[0]; text(be ? be.d.name.toUpperCase() : "BOSS", bx + bw / 2, 7.5, "#fdf3de", "center", 4.5); }
+    for (var i = 0; i < CFG.lives; i++) heart(lay.w - 29 + i * 9, 4.5, i < w.lives);
+    if (G.panels.length > 1) {
+      var name = w.boards[0].name, lab = (p.opp ? "⚔ " : "") + name;
+      text(lab.slice(0, 18), lay.w / 2, lay.h - 6, p.opp ? "#f29a85" : "#f6d36b", "center", 5.5);
+    }
+    if (w.over && G.panels.length > 1) {
+      ctx.fillStyle = "rgba(20,12,6,.55)"; ctx.fillRect(0, 0, lay.w, lay.h);
+      text("ÉLIMINÉ", lay.w / 2, lay.h / 2, "#f29a85", "center", 16);
+    }
+  }
+
+  /* ---------- effets visuels ---------- */
+  function pushVfx(p, v) { if (G.vfx.length < 400) { v.p = p; v.t = 0; G.vfx.push(v); } }
+  function drawVfx(p) {
+    G.vfx.forEach(function (v) {
+      if (v.p !== p) return;
+      var f = v.t / v.d;
+      if (v.k === "part") { rect(v.x + v.vx * v.t, v.y + v.vy * v.t + 30 * v.t * v.t, 2, 2, v.c); }
+      else if (v.k === "ring") { ctx.strokeStyle = v.c; ctx.globalAlpha = 1 - f; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(v.x, v.y, v.r * (0.4 + f * 0.6), 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
+      else if (v.k === "bolt") {
+        ctx.strokeStyle = "#f6d36b"; ctx.globalAlpha = 1 - f; ctx.lineWidth = 1.5; ctx.beginPath();
+        v.pts.forEach(function (q, i) { var jx = i ? (Math.random() - 0.5) * 3 : 0; if (i) ctx.lineTo(q[0] + jx, q[1] - 3); else ctx.moveTo(q[0], q[1] - 3); });
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      else if (v.k === "txt") { ctx.globalAlpha = 1 - f * f; text(v.s, v.x, v.y - f * 10, v.c, "center", v.sz || 6); ctx.globalAlpha = 1; }
+      else if (v.k === "flash") { ctx.globalAlpha = (1 - f) * 0.6; rect(v.x, v.y, v.w, v.h, v.c); ctx.globalAlpha = 1; }
+    });
+  }
+  function updVfx(dt) {
+    for (var i = G.vfx.length - 1; i >= 0; i--) { var v = G.vfx[i]; v.t += dt; if (v.t >= v.d) G.vfx.splice(i, 1); }
+  }
+  var ECOL = {};
+  K.EKEYS.forEach(function (k) { var pal = ES.SPRITES[k].pal; ECOL[k] = Object.keys(pal).map(function (c) { return pal[c]; }); });
+  function slotXY(w, bi, s) { var o = w.lay.boards[bi]; return { x: o.x + (s % K.COLS) * K.CELL, y: o.y + Math.floor(s / K.COLS) * K.CELL }; }
+  function handleEvents(p, evs, loud) {
+    var w = p.world;
+    // en versus en ligne, quelques effets partent chez l'adversaire avec l'instantané
+    if (G && G.kind === "net-vs" && p === G.panels[0]) {
+      G.vsEv = G.vsEv || [];
+      evs.forEach(function (e) { if (G.vsEv.length < 30 && (e.k === "kill" || e.k === "boom" || e.k === "bolt")) G.vsEv.push(e); });
+    }
+    evs.forEach(function (e) {
+      if (e.k === "kill") {
+        var cols = ECOL[e.type] || ["#fdf3de"];
+        for (var i = 0; i < (e.boss ? 24 : 6); i++) pushVfx(p, { k: "part", x: e.x, y: e.y - 3, vx: (Math.random() - 0.5) * 60, vy: -Math.random() * 50, c: cols[i % cols.length], d: 0.5 });
+        if (loud) SND.kill();
+      } else if (e.k === "boom") { pushVfx(p, { k: "ring", x: e.x, y: e.y, r: e.r, c: e.c, d: 0.3 }); if (loud) SND.boom(); }
+      else if (e.k === "bolt") { pushVfx(p, { k: "bolt", pts: e.pts, d: 0.18 }); if (loud) SND.zap(); }
+      else if (e.k === "crit") pushVfx(p, { k: "txt", s: fmt(e.v) + "!", x: e.x, y: e.y - 12, c: "#f6d36b", d: 0.6, sz: 6 });
+      else if (e.k === "miss") pushVfx(p, { k: "txt", s: "RATÉ", x: e.x, y: e.y - 10, c: "#c9b3ff", d: 0.5, sz: 4.5 });
+      else if (e.k === "heal") pushVfx(p, { k: "ring", x: e.x, y: e.y, r: 30, c: "#9cd06a", d: 0.4 });
+      else if (e.k === "merge" || e.k === "grow" || e.k === "copy" || e.k === "xf" || e.k === "summon") {
+        var q = slotXY(w, e.b, e.s);
+        pushVfx(p, { k: "flash", x: q.x + 1, y: q.y + 1, w: 24, h: 24, c: e.k === "xf" ? "#c9b3ff" : "#fdf3de", d: 0.3 });
+        if (e.k === "merge" && loud) SND.merge(e.p || 2);
+        if (e.k === "summon" && loud) SND.summon();
+      } else if (e.k === "stun") { var q2 = slotXY(w, e.b, e.s); pushVfx(p, { k: "txt", s: "BAM", x: q2.x + 13, y: q2.y + 6, c: "#f29a85", d: 0.7 }); }
+      else if (e.k === "income") { var o = w.lay.boards[e.b]; pushVfx(p, { k: "txt", s: "+" + e.v, x: o.x + K.BW - 20, y: o.y + K.BH + 12, c: "#f6d36b", d: 1 }); }
+      else if (e.k === "pu" && loud) SND.pu();
+      else if (e.k === "leak") { pushVfx(p, { k: "flash", x: 0, y: 0, w: w.lay.w, h: w.lay.h, c: "#c8553d", d: 0.35 }); if (loud) SND.leak(); }
+      else if (e.k === "wave" && loud) {
+        if (e.boss) { banner("Vague " + e.n + " · Boss !"); SND.boss(); }
+        else { if (e.n > 1 && e.n % 5 === 1) banner("Vague " + e.n); SND.wave(); }
+      }
+      else if (e.k === "charge" && loud) banner("Le Grand Sanglier charge !", 1200);
+      else if (e.k === "hoot" && loud) banner("Le Hibou Ancien hulule…", 1200);
+    });
+  }
+  var bannerEl = $("[data-banner]");
+  function banner(s, ms) {
+    bannerEl.textContent = s; bannerEl.hidden = false;
+    bannerEl.classList.remove("show"); void bannerEl.offsetWidth; bannerEl.classList.add("show");
+    clearTimeout(banner.t); banner.t = setTimeout(function () { bannerEl.hidden = true; }, ms || 2600);
+  }
+
+  /* =====================================================================
+     Boucle
+     ===================================================================== */
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    try {
+      if (G && state === "play" && !paused) tick(dt);
+      else if (G && state === "over") { updVfx(dt); G.panels.forEach(function (p) { if (p.view) K.stepView(p.world, dt); }); }
+      render();
+    } catch (err) { showError(err); }
+    requestAnimationFrame(frame);
+  }
+  function tick(dt) {
+    G.t += dt;
+    var sd = dt * speed, n = Math.ceil(sd / 0.02), h = sd / n;
+    (G.sims || []).forEach(function (w) {
+      if (w.over) return;
+      for (var i = 0; i < n; i++) {
+        w.boards.forEach(function (b, bi) { if (b.bot) K.botStep(w, bi, h, G.botLvl); });
+        K.step(w, h);
+        if (w.over) break;
+      }
+    });
+    G.panels.forEach(function (p) {
+      if (p.view) { K.stepView(p.world, dt); return; }
+      var evs = p.world.ev; p.world.ev = [];
+      handleEvents(p, evs, !p.opp);
+      if (Net.on && G.kind === "net-coop" && Net.role === "host") evs.forEach(function (e) { if (G.outEv.length < 60 && e.k !== "summon" && e.k !== "pu") G.outEv.push(e); });
+    });
+    updVfx(dt);
+    if (Net.on) netTick(dt);
+    checkEnd();
+  }
+
+  /* ---------- fin de partie ---------- */
+  function checkEnd() {
+    if (G.ended) return;
+    var k = G.kind;
+    if (k === "solo" || k === "local-coop" || k === "net-coop") {
+      var w = G.panels[0].world;
+      if (w.over) {
+        if (k === "net-coop" && Net.role === "host") netSend("end", { r: resultOf(w) });
+        finish({ mode: G.mode, wave: w.wave, kills: w.kills, bosses: w.bosses, maxPip: maxPip(w) });
+      }
+      return;
+    }
+    if (k === "bot" || k === "local-vs") {
+      var a = G.sims[0], b = G.sims[1];
+      if (a.over || b.over) {
+        var res = { mode: "versus", wave: a.wave, kills: a.kills, bosses: a.bosses, maxPip: maxPip(a), bot: k === "bot" };
+        if (k === "bot") res.win = !a.over; else res.local = a.over ? "Joueur 2" : "Joueur 1";
+        finish(res);
+      }
+      return;
+    }
+    if (k === "net-vs") {
+      var me = G.sims[0];
+      if (me.over && !G.sentDead) { G.sentDead = true; netSend("dead", { w: me.wave }); finish({ mode: "versus", wave: me.wave, kills: me.kills, bosses: me.bosses, maxPip: maxPip(me), win: false, online: true }); }
+    }
+  }
+  function maxPip(w) { var m = 0; w.boards.forEach(function (b) { m = Math.max(m, b.maxPip || 1); }); return m; }
+  function resultOf(w) { return { wave: w.wave, kills: w.kills, bosses: w.bosses }; }
+
+  function finish(res) {
+    if (G.ended) return;
+    G.ended = true; state = "over"; hud.hidden = true;
+    var win = res.win;
+    if (res.local) SND.win(); else if (win) SND.win(); else SND.over();
+    // récompenses (glands d'or) : on ne gagne qu'en jouant, rien ne s'achète
+    var gold = Math.round(res.wave * 4 + res.kills / 12 + res.bosses * 10);
+    if (res.mode === "versus" && !res.local) gold = Math.round(gold * 0.6 + (win ? (res.bot ? 25 : 50) : 5));
+    if (res.local) gold = Math.round(gold * 0.5);
+    S.gold += gold;
+    if (res.mode === "solo" && res.wave > (S.best.solo || 0)) { S.best.solo = res.wave; res.record = true; }
+    if (res.mode === "coop" && res.wave > (S.best.coop || 0)) { S.best.coop = res.wave; res.record = true; }
+    if (win) S.wins++;
+    res.newAch = [];
+    if (!res.local) D.ACHIEVEMENTS.forEach(function (a) { if (!S.ach[a.id] && a.check(res)) { S.ach[a.id] = 1; S.gold += a.gold; res.newAch.push(a); } });
+    res.gold = gold;
+    save();
+    showOver(res);
+  }
+
+  /* =====================================================================
+     Commandes : souris / doigt (plusieurs doigts en même temps en local)
+     ===================================================================== */
+  function toLogical(e) {
+    var rc = canvas.getBoundingClientRect();
+    return { x: (e.clientX - rc.left - view.ox) / view.scale, y: (e.clientY - rc.top - view.oy) / view.scale };
+  }
+  function inR(x, y, r) { return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h; }
+  function hitAt(lx, ly) {
+    if (!G) return null;
+    for (var pi = 0; pi < G.panels.length; pi++) {
+      var p = G.panels[pi], x = lx - p.ox, y = ly - p.oy;
+      for (var j = 0; j < p.mine.length; j++) {
+        var bi = p.mine[j], o = p.world.lay.boards[bi];
+        if (x >= o.x && x < o.x + K.BW && y >= o.y && y < o.y + K.BH) return { p: p, bi: bi, slot: Math.floor((x - o.x) / K.CELL) + Math.floor((y - o.y) / K.CELL) * K.COLS };
+        if (inR(x, y, sumRect(o))) return { p: p, bi: bi, btn: "sum" };
+        for (var i = 0; i < 5; i++) if (inR(x, y, puRect(o, i))) return { p: p, bi: bi, btn: "pu", i: i };
+      }
+    }
+    return null;
+  }
+  function dragOn(p, bi) {
+    var ids = Object.keys(G.drag);
+    for (var i = 0; i < ids.length; i++) { var d = G.drag[ids[i]]; if (d.panel === p && d.bi === bi) return d; }
+    return null;
+  }
+  function doAct(p, bi, cmd) {
+    if (state !== "play" || paused) return false;
+    if (G.kind === "net-coop" && Net.role === "guest") {
+      netSend("cmd", { a: cmd.a, f: cmd.f, t: cmd.t, i: cmd.i });
+      if (cmd.a === "mg") { var b = p.world.boards[bi]; if (K.canMerge(b, cmd.f, cmd.t)) { b.slots[cmd.t].bob = 0.12; } }
+      SND.click();
+      return true;
+    }
+    var ok = K.act(p.world, bi, cmd);
+    if (!ok) SND.no();
+    return ok;
+  }
+  canvas.addEventListener("pointerdown", function (e) {
+    if (state !== "play" || paused) return;
+    e.preventDefault();
+    try { canvas.setPointerCapture(e.pointerId); } catch (er) {}
+    var L = toLogical(e), h = hitAt(L.x, L.y);
+    if (!h) { G.sel = null; return; }
+    if (h.btn === "sum") { doAct(h.p, h.bi, { a: "sum" }); G.sel = null; return; }
+    if (h.btn === "pu") { doAct(h.p, h.bi, { a: "pu", i: h.i }); return; }
+    var b = h.p.world.boards[h.bi];
+    if (G.sel && G.sel.panel === h.p && G.sel.bi === h.bi && G.sel.slot !== h.slot && K.canMerge(b, G.sel.slot, h.slot)) {
+      doAct(h.p, h.bi, { a: "mg", f: G.sel.slot, t: h.slot }); G.sel = null; return;
+    }
+    if (b.slots[h.slot]) G.drag[e.pointerId] = { panel: h.p, bi: h.bi, slot: h.slot, x: L.x, y: L.y, sx: L.x, sy: L.y, moved: false };
+    else G.sel = null;
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    if (!G) return;
+    var d = G.drag[e.pointerId]; if (!d) return;
+    var L = toLogical(e); d.x = L.x; d.y = L.y;
+    if (Math.hypot(d.x - d.sx, d.y - d.sy) > 4) d.moved = true;
+  });
+  function release(e) {
+    if (!G) return;
+    var d = G.drag[e.pointerId]; if (!d) return;
+    delete G.drag[e.pointerId];
+    if (e.type === "pointercancel") return;
+    if (!d.moved) {
+      // simple toucher : on sélectionne (puis on touche la cible)
+      G.sel = G.sel && G.sel.panel === d.panel && G.sel.bi === d.bi && G.sel.slot === d.slot ? null : { panel: d.panel, bi: d.bi, slot: d.slot };
+      return;
+    }
+    var L = toLogical(e), h = hitAt(L.x, L.y);
+    if (h && h.p === d.panel && h.bi === d.bi && h.slot !== undefined && h.slot !== d.slot) {
+      if (K.canMerge(d.panel.world.boards[d.bi], d.slot, h.slot)) doAct(d.panel, d.bi, { a: "mg", f: d.slot, t: h.slot });
+      else SND.no();
+    }
+    G.sel = null;
+  }
+  canvas.addEventListener("pointerup", release);
+  canvas.addEventListener("pointercancel", release);
+  canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  window.addEventListener("keydown", function (e) {
+    if (e.target && /input|textarea/i.test(e.target.tagName)) return;
+    if (state !== "play" || !G) return;
+    var p = G.panels[0];
+    if (e.code === "Escape" || e.code === "KeyP") { e.preventDefault(); togglePause(); return; }
+    if (paused || !p.mine.length) return;
+    var bi = G.kind === "net-coop" && Net.role === "guest" ? 1 : p.mine[0];
+    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); doAct(p, bi, { a: "sum" }); }
+    var m = /^Digit([1-5])$/.exec(e.code);
+    if (m) doAct(p, bi, { a: "pu", i: +m[1] - 1 });
+  });
+
+  /* =====================================================================
+     HUD HTML (pause, son, vitesse)
+     ===================================================================== */
+  var btnPause = $("[data-pause]"), btnMute = $("[data-mute]"), btnSpeed = $("[data-speed]");
+  function canPause() { return G && !Net.on; }
+  function syncHud() {
+    btnMute.textContent = S.mute ? "🔇" : "🔊";
+    btnPause.hidden = !canPause();
+    btnSpeed.hidden = !canPause();
+    btnSpeed.textContent = "×" + speed;
+  }
+  btnMute.addEventListener("click", function () { S.mute = !S.mute; save(); syncHud(); });
+  btnPause.addEventListener("click", function () { togglePause(); });
+  btnSpeed.addEventListener("click", function () { speed = speed === 1 ? 2 : 1; syncHud(); });
+  function togglePause() {
+    if (!canPause() || state !== "play") return;
+    paused = !paused;
+    if (paused) show("pause"); else hideOverlay();
+  }
+  window.addEventListener("blur", function () { if (state === "play" && canPause() && !paused) togglePause(); });
+
+  /* =====================================================================
+     Menus (HTML par-dessus le canvas)
+     ===================================================================== */
+  function hideOverlay() { overlay.hidden = true; }
+  function show(name) {
+    screen = name; overlay.hidden = false;
+    card.className = "panel game-card rd-card rd-" + name;
+    card.innerHTML = SCREENS[name]();
+    overlay.scrollTop = 0;
+    var first = card.querySelector("[data-focus]") || card.querySelector(".btn");
+    if (first && matchMedia("(hover: hover)").matches) try { first.focus({ preventScroll: true }); } catch (e) {}
+  }
+  function deckStrip(deck) {
+    return '<div class="rd-strip">' + deck.map(function (k) {
+      return '<span class="rd-die" style="--c:' + T[k].color + ';--d:' + T[k].dark + '" title="' + esc(T[k].name) + '"><img src="' + sqUrl(k) + '" alt=""><img class="rd-ic" src="' + iconUrl(k) + '" alt=""></span>';
+    }).join("") + "</div>";
+  }
+  var SCREENS = {
+    menu: function () {
+      var deckOk = S.deck.length === 5;
+      return '<div class="menu-title"><img src="' + sqUrl("noisette") + '" alt=""><div><span class="kicker">Défense de dés · v' + VERSION + '</span><h2>Écureuil Dice</h2></div></div>' +
+        '<p class="gold-badge">' + goldIc() + " " + S.gold + " glands d'or</p>" +
+        deckStrip(S.deck) +
+        (deckOk ? "" : '<p class="net-err">Ton deck doit contenir 5 écureuils.</p>') +
+        '<div class="menu-buttons">' +
+        '<button class="btn" type="button" data-action="solo"' + (deckOk ? "" : " disabled") + ">▶ Solo <small>record : vague " + (S.best.solo || 0) + "</small></button>" +
+        '<button class="btn btn-alt" type="button" data-action="bot"' + (deckOk ? "" : " disabled") + ">🤖 Versus contre l'IA</button>" +
+        '<div class="menu-row rd-bot-lvl"><button class="btn btn-ghost btn-small' + (S.botLvl !== 2 ? " is-on" : "") + '" type="button" data-action="botlvl" data-arg="1">IA normale</button><button class="btn btn-ghost btn-small' + (S.botLvl === 2 ? " is-on" : "") + '" type="button" data-action="botlvl" data-arg="2">IA coriace</button></div>' +
+        '<button class="btn btn-alt" type="button" data-action="online"' + (deckOk ? "" : " disabled") + ">🌐 En ligne : coop / versus</button>" +
+        '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="lcoop"' + (deckOk ? "" : " disabled") + '>👥 Coop à 2 (même écran)</button><button class="btn btn-ghost btn-small" type="button" data-action="lvs"' + (deckOk ? "" : " disabled") + ">⚔ Versus à 2 (même écran)</button></div>" +
+        '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="deck">🃏 Deck & écureuils</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="succes">🏆 Succès</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Règles</button></div>' +
+        "</div>" +
+        '<p class="game-small">Aucun achat : tout se débloque en jouant. Versus gagnés : ' + S.wins + ".</p>";
+    },
+    deck: function () {
+      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Deck & écureuils</h2><p class="gold-badge">' + goldIc() + " " + S.gold + "</p></div>" +
+        '<p class="game-small">Choisis 5 écureuils (' + S.deck.length + '/5). Les niveaux d\'écureuil (+' + Math.round(CFG.classBonus * 100) + " % de dégâts chacun) restent d'une partie à l'autre.</p>" +
+        deckStrip(S.deck) + '<div class="rd-grid">';
+      D.ORDER.forEach(function (k) {
+        var t = T[k], have = owned(k), inDeck = S.deck.indexOf(k) >= 0, lv = clsLv(k), next = CFG.classCosts[lv];
+        html += '<div class="rd-type' + (inDeck ? " is-selected" : "") + (have ? "" : " is-locked") + '">' +
+          '<div class="rd-type-head"><span class="rd-die" style="--c:' + t.color + ";--d:" + t.dark + '"><img src="' + sqUrl(k) + '" alt=""><img class="rd-ic" src="' + iconUrl(k) + '" alt=""></span>' +
+          "<div><strong>" + esc(t.name) + "</strong><small>" + esc(t.role) + (have ? " · niv. " + lv : "") + "</small></div></div>" +
+          '<p class="rd-desc">' + esc(t.desc) + "</p>" + '<div class="rd-type-btns">';
+        if (!have) html += '<button class="btn btn-small" type="button" data-action="unlock" data-arg="' + k + '"' + (S.gold >= t.cost ? "" : " disabled") + ">Débloquer " + goldIc() + " " + t.cost + "</button>";
+        else {
+          html += '<button class="btn btn-small ' + (inDeck ? "btn-ghost" : "btn-alt") + '" type="button" data-action="deck" data-arg="' + k + '"' + (!inDeck && S.deck.length >= 5 ? " disabled" : "") + ">" + (inDeck ? "Retirer" : "Ajouter") + "</button>";
+          if (lv < CFG.classMax) html += '<button class="btn btn-small" type="button" data-action="lvup" data-arg="' + k + '"' + (S.gold >= next ? "" : " disabled") + ">Niv. " + (lv + 1) + " " + goldIc() + " " + next + "</button>";
+          else html += '<span class="rd-max">Niveau max</span>';
+        }
+        html += "</div></div>";
+      });
+      return html + "</div>";
+    },
+    succes: function () {
+      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Succès</h2><span></span></div><ul class="rd-ach">';
+      D.ACHIEVEMENTS.forEach(function (a) {
+        html += '<li class="' + (S.ach[a.id] ? "is-done" : "") + '"><strong>' + (S.ach[a.id] ? "✔ " : "") + esc(a.name) + "</strong><span>" + esc(a.desc) + "</span><em>" + goldIc() + " " + a.gold + "</em></li>";
+      });
+      return html + "</ul>";
+    },
+    help: function () {
+      return '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Règles</h2><span></span></div>' +
+        '<ul class="rd-rules">' +
+        "<li><b>Invoquer</b> pose un écureuil au hasard de ton deck (1 point) sur une case libre. Chaque invocation coûte 10 noisettes de plus.</li>" +
+        "<li><b>Fusionner</b> : glisse un écureuil sur un autre <b>du même type et avec le même nombre de points</b> (ou touche l'un puis l'autre). Tu obtiens un écureuil au hasard de ton deck avec 1 point de plus (7 max).</li>" +
+        "<li>Chaque point = un tir par salve, et chaque point au-delà du premier ajoute +" + Math.round(CFG.pipBonus * 100) + " % de dégâts par tir.</li>" +
+        "<li><b>Améliorer</b> (les 5 boutons du bas) renforce tous les écureuils de ce type pour la partie.</li>" +
+        "<li>Les bestioles suivent le chemin. Si l'une d'elles atteint ta réserve de noisettes, tu perds une vie (deux pour les gros, toutes pour un boss). 3 vies.</li>" +
+        "<li>Une vague sur 5 : un <b>boss</b>. Le Grand Sanglier assomme tes écureuils, le Hibou Ancien les transforme.</li>" +
+        "<li><b>Coop</b> : deux plateaux autour du même chemin, vies partagées, chaque bestiole vaincue rapporte des noisettes aux deux.</li>" +
+        "<li><b>Versus</b> : mêmes vagues pour les deux joueurs, chacun sur son chemin. Le dernier debout gagne.</li>" +
+        "<li>Clavier : <kbd>Espace</kbd> invoque, <kbd>1</kbd>…<kbd>5</kbd> améliorent, <kbd>Échap</kbd> pause.</li>" +
+        "<li>Les <b>glands d'or</b> gagnés en jouant débloquent des écureuils et montent leur niveau. Aucun achat avec de l'argent réel.</li>" +
+        "</ul>";
+    },
+    pause: function () {
+      return "<h2>Pause</h2><div class=\"menu-buttons\"><button class=\"btn\" type=\"button\" data-action=\"resume\">▶ Reprendre</button>" +
+        '<button class="btn btn-ghost" type="button" data-action="quit">Abandonner</button></div>';
+    },
+    online: function () {
+      return '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>En ligne</h2><span></span></div>' +
+        '<p class="game-small">Joue à 2 avec un ami : crée un salon et donne-lui le code.</p>' +
+        (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
+        '<label class="rd-field">Ton pseudo<input data-name data-focus type="text" maxlength="16" autocomplete="nickname" value="' + esc(S.name || "") + '"></label>' +
+        '<div class="menu-buttons"><button class="btn" type="button" data-action="host">Créer un salon</button></div>' +
+        '<div class="coop-join"><input data-code type="text" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="CODE" value="' + esc(Net.pendingCode || "") + '">' +
+        '<button class="btn btn-alt" type="button" data-action="join">Rejoindre</button></div>';
+    },
+    lobby: function () {
+      if (!Net.on) return SCREENS.online();
+      var host = Net.role === "host", ok = Net.status === "SUBSCRIBED", hp = Net.roster.filter(function (x) { return x.host; })[0];
+      var mode = host ? Net.mode : (hp && hp.mode) || "coop";
+      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="leave">← Quitter</button><h2>Salon</h2><span></span></div>' +
+        '<div class="room-code"><span>Code du salon</span><b>' + esc(Net.code) + '</b><button class="btn btn-alt btn-small" type="button" data-action="invite">📨 Inviter</button></div>' +
+        (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
+        (!ok ? '<p class="game-small">Connexion au salon… (' + esc(Net.status || "") + ")</p>" : "") +
+        '<ul class="room-players">';
+      Net.roster.slice(0, 2).forEach(function (x) {
+        html += "<li>" + deckStrip(x.deck || []) + "<b>" + esc(x.name || "Écureuil") + "</b>" + (x.host ? " 👑" : "") + (x.id === Net.id ? " <small>(toi)</small>" : "") + "</li>";
+      });
+      if (Net.roster.length < 2) html += "<li><small>En attente d'un deuxième joueur…</small></li>";
+      html += "</ul>";
+      html += '<p class="game-small">Mode :</p><div class="menu-row">' +
+        ["coop", "versus"].map(function (m) {
+          return '<button class="btn btn-small ' + (mode === m ? "" : "btn-ghost") + '" type="button" data-action="lmode" data-arg="' + m + '"' + (host ? "" : " disabled") + ">" + (m === "coop" ? "👥 Coop" : "⚔ Versus") + "</button>";
+        }).join("") + "</div>";
+      if (host) html += '<div class="menu-buttons"><button class="btn" type="button" data-action="start"' + (ok && Net.roster.length >= 2 ? "" : " disabled") + ">▶ Lancer la partie</button></div>";
+      else html += '<p class="game-small">L\'hôte lance la partie.</p>';
+      return html;
+    },
+    over: function () { return overHtml; },
+  };
+  var overHtml = "";
+  function showOver(res) {
+    var title;
+    if (res.local) title = res.local + " gagne !";
+    else if (res.mode === "versus") title = res.win ? "Victoire !" : "Défaite…";
+    else title = "Fin de la partie";
+    var lbOk = window.Leaderboard && Leaderboard.configured() && res.mode === "solo";
+    var score = res.wave * 100 + Math.min(99, Math.floor(res.kills / 10));
+    overHtml = "<h2>" + esc(title) + "</h2>" +
+      (res.why ? '<p class="game-small">' + esc(res.why) + "</p>" : "") +
+      '<ul class="over-stats"><li><span>Vague</span><strong>' + res.wave + (res.record ? " 🏅" : "") + "</strong></li><li><span>Bestioles</span><strong>" + res.kills + "</strong></li><li><span>Boss</span><strong>" + res.bosses + "</strong></li>" +
+      '<li class="total"><span>Glands d\'or gagnés</span><strong>' + goldIc() + " +" + res.gold + "</strong></li></ul>" +
+      (res.newAch.length ? '<p class="game-small">🏆 ' + res.newAch.map(function (a) { return esc(a.name) + " (+" + a.gold + ")"; }).join(", ") + "</p>" : "") +
+      (lbOk ? '<form class="submit-score" data-submit><label for="rd-name">Ton pseudo pour le classement (score ' + score + ')</label><div class="submit-row">' +
+        '<input id="rd-name" name="player" type="text" maxlength="20" required value="' + esc(S.name || "") + '">' +
+        '<button class="btn btn-alt btn-small" type="submit">Envoyer</button></div><p class="game-small" data-submit-msg aria-live="polite"></p></form>' : "") +
+      '<div class="btn-row center">' + (Net.on ? '<button class="btn" type="button" data-action="tolobby">↩ Retour au salon</button>' : '<button class="btn" type="button" data-action="again">↻ Rejouer</button>') +
+      '<button class="btn btn-ghost" type="button" data-action="tomenu">Menu</button></div>';
+    G.lastKind = G.kind;
+    lastKind = G.kind;
+    show("over");
+    var form = card.querySelector("[data-submit]");
+    if (form) form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var input = form.querySelector("input"), btn = form.querySelector("button"), msg = form.querySelector("[data-submit-msg]");
+      var name = input.value.trim();
+      S.name = name.slice(0, 16); save();
+      btn.disabled = true; msg.textContent = "Envoi…";
+      Leaderboard.submit(GAME_ID, name, score, { wave: res.wave, kills: res.kills, deck: S.deck.join(",") }).then(function (r) {
+        msg.textContent = "Envoyé ! Tu es " + (r && r.rank ? r.rank + "ᵉ" : "dans le classement") + ".";
+        document.querySelectorAll('[data-leaderboard="' + GAME_ID + '"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
+      }).catch(function (err) { msg.textContent = Leaderboard.message(err); btn.disabled = false; });
+    });
+  }
+  var lastKind = "solo";
+  function toMenu() { state = "menu"; G = null; hud.hidden = true; paused = false; show("menu"); }
+  var ACTIONS = {
+    go: function (a) { SND.click(); show(a); },
+    solo: function () { SND.click(); soloGame(); },
+    bot: function () { SND.click(); botGame(); },
+    botlvl: function (a) { S.botLvl = +a; save(); SND.click(); show("menu"); },
+    lcoop: function () { SND.click(); localCoop(); },
+    lvs: function () { SND.click(); localVs(); },
+    online: function () { SND.click(); Net.err = ""; show(Net.on ? "lobby" : "online"); },
+    deck: function (k) {
+      var i = S.deck.indexOf(k);
+      if (i >= 0) S.deck.splice(i, 1); else if (S.deck.length < 5) S.deck.push(k);
+      save(); SND.click(); show("deck");
+    },
+    unlock: function (k) { if (S.gold < T[k].cost || owned(k)) return; S.gold -= T[k].cost; S.owned[k] = true; save(); SND.pu(); show("deck"); },
+    lvup: function (k) { var lv = clsLv(k), c = CFG.classCosts[lv]; if (lv >= CFG.classMax || S.gold < c) return; S.gold -= c; S.cls[k] = lv + 1; save(); SND.pu(); show("deck"); },
+    resume: function () { togglePause(); },
+    quit: function () {
+      paused = false;
+      if (G) { var w = G.panels[0].world; finish({ mode: G.mode, wave: w.wave, kills: w.kills, bosses: w.bosses, maxPip: maxPip(w), win: false, why: "Partie abandonnée.", local: G.kind === "local-vs" ? "Personne ne" : null, bot: G.kind === "bot" }); }
+    },
+    again: function () { SND.click(); ({ solo: soloGame, bot: botGame, "local-coop": localCoop, "local-vs": localVs }[lastKind] || soloGame)(); },
+    tomenu: function () { SND.click(); if (Net.on) netLeave(); toMenu(); },
+    tolobby: function () { SND.click(); state = "menu"; G = null; hud.hidden = true; Net.started = false; trackMe(); show("lobby"); },
+    host: function () { if (!readName()) return; var code = ""; for (var i = 0; i < 4; i++) code += CODE_CH[(Math.random() * CODE_CH.length) | 0]; netJoin(code, true); show("lobby"); },
+    join: function () {
+      if (!readName()) return;
+      var inp = card.querySelector("[data-code]"), code = (inp ? inp.value : "").toUpperCase().replace(/[^A-Z]/g, "");
+      if (code.length !== 4) { Net.err = "Le code fait 4 lettres."; show("online"); return; }
+      netJoin(code, false); show("lobby");
+    },
+    leave: function () { netLeave(); Net.err = ""; show("menu"); },
+    lmode: function (m) { if (Net.role !== "host") return; Net.mode = m; trackMe(); SND.click(); show("lobby"); },
+    start: function () { hostStart(); },
+    invite: function () {
+      var url = location.origin + location.pathname + "#salon=" + Net.code, txt = "Rejoins-moi sur Écureuil Dice ! Code : " + Net.code;
+      if (navigator.share) navigator.share({ title: "Écureuil Dice", text: txt, url: url }).catch(function () {});
+      else if (navigator.clipboard) navigator.clipboard.writeText(txt + " " + url).then(function () { Net.err = "Lien copié !"; show("lobby"); });
+    },
+  };
+  card.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-action]");
+    if (!b || b.disabled) return;
+    var fn = ACTIONS[b.dataset.action];
+    if (fn) fn(b.dataset.arg);
+  });
+  function readName() {
+    var inp = card.querySelector("[data-name]"), name = (inp ? inp.value : S.name || "").trim();
+    if (name.length < 2) { Net.err = "Choisis un pseudo d'au moins 2 caractères."; show("online"); return false; }
+    S.name = name.slice(0, 16); save();
+    return true;
+  }
+
+  /* =====================================================================
+     En ligne : Supabase Realtime (diffusion + présence, aucune table)
+     Coop : l'hôte simule tout, l'invité envoie ses actions.
+     Versus : chacun simule son monde et envoie un instantané ~4×/s.
+     ===================================================================== */
+  var CODE_CH = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  var Net = { on: false, role: null, id: Math.random().toString(36).slice(2, 10), code: null, client: null, ch: null, status: "", roster: [], mode: "coop", err: "", started: false };
+  function netSend(ev, payload) { if (Net.ch) { try { Net.ch.send({ type: "broadcast", event: ev, payload: payload }); } catch (e) {} } }
+  function sbClient() {
+    if (Net.client) return Net.client;
+    var c = (window.SITE || {}).supabase;
+    if (!window.supabase || !window.supabase.createClient || !c) return null;
+    Net.client = window.supabase.createClient(c.url, c.key, { auth: { persistSession: false, autoRefreshToken: false }, realtime: { params: { eventsPerSecond: 30 } } });
+    return Net.client;
+  }
+  function netJoin(code, asHost) {
+    var cl = sbClient();
+    if (!cl) { Net.err = "Le jeu en ligne est indisponible (Supabase non chargé)."; show("online"); return; }
+    netLeave();
+    Net.on = true; Net.role = asHost ? "host" : "guest"; Net.code = code; Net.status = "connexion"; Net.err = ""; Net.started = false; Net.roster = []; Net.ts = Date.now();
+    var ch = cl.channel("rd-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: Net.id } } });
+    ch.on("presence", { event: "sync" }, onPresence);
+    ["start", "s", "cmd", "end", "vs", "dead"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload); } catch (err) { showError(err); } }); });
+    ch.subscribe(function (status) {
+      Net.status = status;
+      if (status === "SUBSCRIBED") trackMe();
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") Net.err = "Connexion impossible au salon. Vérifie ta connexion et réessaie.";
+      if (state === "menu" && screen === "lobby") show("lobby");
+    });
+    Net.ch = ch;
+  }
+  function netLeave() {
+    if (Net.ch) { try { Net.ch.untrack(); } catch (e) {} try { Net.client.removeChannel(Net.ch); } catch (e) {} }
+    Net.ch = null; Net.on = false; Net.role = null; Net.started = false; Net.roster = [];
+  }
+  function trackMe() {
+    if (!Net.ch) return;
+    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), host: Net.role === "host", mode: Net.mode, deck: S.deck, cls: myCls(), ingame: Net.started, ts: Net.ts });
+  }
+  function onPresence() {
+    if (!Net.ch) return;
+    var st = Net.ch.presenceState(), list = [];
+    Object.keys(st).forEach(function (k) { if (st[k] && st[k][0]) list.push(st[k][0]); });
+    list.sort(function (a, b) { return (b.host ? 1 : 0) - (a.host ? 1 : 0) || a.ts - b.ts; });
+    Net.roster = list;
+    var host = list.filter(function (x) { return x.host; })[0];
+    if (Net.role === "guest" && !Net.started) {
+      var idx = list.map(function (x) { return x.id; }).indexOf(Net.id);
+      if (idx >= 2) { Net.err = "Salon plein (2 joueurs max)."; netLeave(); show("online"); return; }
+      if (host && host.ingame) Net.err = "Une partie est déjà en cours dans ce salon.";
+    }
+    if (Net.started && G && state === "play") {
+      var other = G.otherId, still = list.some(function (x) { return x.id === other; });
+      if (!still) {
+        if (G.kind === "net-vs") { var me = G.sims[0]; finish({ mode: "versus", wave: me.wave, kills: me.kills, bosses: me.bosses, maxPip: maxPip(me), win: true, online: true, why: "Ton adversaire a quitté la partie." }); }
+        else if (Net.role === "guest") { var w = G.panels[0].world; finish({ mode: "coop", wave: w.wave, kills: w.kills, bosses: w.bosses, maxPip: maxPip(w), why: "L'hôte a quitté la partie." }); }
+        else banner("Ton coéquipier est parti");
+      }
+    }
+    if (state === "menu" && screen === "lobby") show("lobby");
+  }
+  function hostStart() {
+    if (Net.role !== "host" || Net.roster.length < 2) return;
+    var roster = Net.roster.slice(0, 2).map(function (x) { return { id: x.id, name: x.name, deck: x.deck, cls: x.cls }; });
+    var info = { mode: Net.mode, seed: (Math.random() * 1e9) | 0, roster: roster, vertical: stage.clientWidth < stage.clientHeight * 1.2 };
+    netSend("start", info);
+    startOnline(info);
+  }
+  function startOnline(info) {
+    Net.started = true; Net.acc = 0;
+    var meI = info.roster.map(function (x) { return x.id; }).indexOf(Net.id);
+    if (meI < 0) return;
+    var other = info.roster[1 - meI];
+    var boards = info.roster.map(function (x) { return { id: x.id, name: x.name, deck: x.deck, cls: x.cls }; });
+    if (info.mode === "coop") {
+      var w = K.createWorld({ mode: "coop", seed: info.seed, vertical: info.vertical, boards: boards, view: Net.role !== "host" });
+      var cfg = { mode: "coop", kind: "net-coop", panels: [{ world: w, mine: [meI], view: Net.role !== "host" }], sims: Net.role === "host" ? [w] : [] };
+      newGame(cfg);
+    } else {
+      var mine = K.createWorld({ mode: "versus", seed: info.seed, boards: [boards[meI]] });
+      var opp = K.createWorld({ mode: "versus", seed: info.seed, boards: [boards[1 - meI]], view: true });
+      newGame({ mode: "versus", kind: "net-vs", sims: [mine], panels: [{ world: mine, mine: [0] }, { world: opp, mine: [], view: true, opp: true, seed: 9 }] });
+    }
+    G.otherId = other.id;
+    trackMe();
+  }
+  function netTick(dt) {
+    if (!Net.started || !G) return;
+    Net.acc += dt;
+    if (G.kind === "net-coop" && Net.role === "host") {
+      if (Net.acc < 1 / 8) return;
+      Net.acc = 0;
+      netSend("s", K.snapshot(G.sims[0], G.outEv.splice(0, 60)));
+    } else if (G.kind === "net-vs") {
+      if (Net.acc < 1 / 4) return;
+      Net.acc = 0;
+      var evs = G.vsEv || []; G.vsEv = [];
+      netSend("vs", K.snapshot(G.sims[0], evs));
+    }
+  }
+  function onNet(ev, d) {
+    if (!d) return;
+    if (ev === "start" && Net.role === "guest") { if (G && state === "play") return; startOnline(d); return; }
+    if (!G || !Net.started) return;
+    if (ev === "cmd" && Net.role === "host" && G.kind === "net-coop") { K.act(G.sims[0], 1, d); return; }
+    if (ev === "s" && Net.role === "guest" && G.kind === "net-coop") {
+      var p = G.panels[0];
+      K.applySnap(p.world, d);
+      handleEvents(p, d.v || [], true);
+      return;
+    }
+    if (ev === "end" && Net.role === "guest" && state === "play") {
+      var w = G.panels[0].world, r = d.r || {};
+      finish({ mode: "coop", wave: r.wave || w.wave, kills: r.kills || w.kills, bosses: r.bosses || w.bosses, maxPip: maxPip(w) });
+      return;
+    }
+    if (ev === "vs" && G.kind === "net-vs") {
+      var op = G.panels[1];
+      K.applySnap(op.world, d);
+      handleEvents(op, (d.v || []).filter(function (e) { return e.k === "kill" || e.k === "boom" || e.k === "bolt"; }), false);
+      return;
+    }
+    if (ev === "dead" && G.kind === "net-vs" && state === "play") {
+      var me = G.sims[0];
+      G.panels[1].world.over = true;
+      finish({ mode: "versus", wave: me.wave, kills: me.kills, bosses: me.bosses, maxPip: maxPip(me), win: true, online: true, why: "Ton adversaire est tombé à la vague " + d.w + "." });
+    }
+  }
+
+  /* =====================================================================
+     Plein écran
+     ===================================================================== */
+  function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement) || stage.classList.contains("is-max"); }
+  function syncFull() { var b = document.querySelector("[data-game-fullscreen]"); if (b) b.textContent = isFull() ? "✕ Quitter le plein écran" : "⛶ Plein écran"; resize(); }
+  function enterFull() {
+    var fallback = function () { stage.classList.add("is-max"); syncFull(); };
+    var req = stage.requestFullscreen || stage.webkitRequestFullscreen;
+    if (req) { try { var pr = req.call(stage); if (pr && pr.catch) pr.catch(fallback); } catch (e) { fallback(); } } else fallback();
+  }
+  function exitFull() {
+    stage.classList.remove("is-max");
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
+    else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+    syncFull();
+  }
+  document.addEventListener("fullscreenchange", syncFull);
+  document.addEventListener("webkitfullscreenchange", syncFull);
+  var fsBtn = document.querySelector("[data-game-fullscreen]");
+  if (fsBtn) fsBtn.addEventListener("click", function () { if (isFull()) exitFull(); else enterFull(); });
+  $("[data-exit-max]").addEventListener("click", exitFull);
+  $("[data-fs-exit]").addEventListener("click", exitFull);
+
+  function showError(err) {
+    if (showError.done) return; showError.done = true;
+    if (window.console) console.error(err);
+    overlay.hidden = false;
+    card.innerHTML = "<h2>Oups</h2><p>Le jeu a rencontré une erreur. Recharge la page.</p><p class=\"game-small\">" + esc(err && err.message || err) + "</p>";
+  }
+
+  // outil de test : dice.html?debug expose l'état dans la console
+  if (/[?&]debug\b/.test(location.search)) window.RD_DEBUG = { get G() { return G; }, view: view, S: S, setSpeed: function (v) { speed = v; } };
+
+  /* ---------- démarrage ---------- */
+  var m = /salon=([A-Za-z]{4})/.exec(location.hash);
+  if (m) { Net.pendingCode = m[1].toUpperCase(); show("online"); } else show("menu");
+  hud.hidden = true;
+  resize(); syncHud();
+  requestAnimationFrame(frame);
+})();

@@ -9,6 +9,7 @@ Site statique (HTML/CSS/JS, rien à compiler) : il s'héberge tel quel sur GitHu
 | `index.html` | Accueil : forêt pixel 2.5D animée, jeu jouable à la une, ce que je fais, derniers projets |
 | `bibliotheque.html` | Tous les jeux et plugins Unity, avec filtres et recherche (`#jeux` / `#plugins` dans l'URL pour pré-filtrer) |
 | `jeu.html` | **Écureuil Survivor** : mini jeu maison façon « survivors » (6 écureuils, 4 cartes à 3 biomes, 11 armes, 9 fusions + 5 légendaires, 12 objets, boutique, succès, 2 boss), jouable au clavier (ZQSD/WASD/flèches), à la souris (clic maintenu) ou au joystick tactile, avec classement en ligne |
+| `dice.html` | **Écureuil Dice** : défense « fusion de dés » avec des écureuils (13 types), les ennemis et boss du Survivor ; solo, versus contre l'IA, coop et versus à 2 (en ligne ou même écran), aucun achat |
 | `bio.html` | Biographie |
 | `contact.html` | Formulaire « message direct » + liens |
 | `projet.html?id=<id>` | Fiche d'un projet : jaquette, images, vidéo, description complète, infos, bouton Télécharger (renvoie vers la section téléchargement d'itch.io) |
@@ -30,6 +31,11 @@ Presque tout se règle dans **`js/data.js`** :
   - Après une modification des fichiers JS/CSS, change le `?v=…` dans les balises `<script>`/`<link>` des pages pour forcer les navigateurs à recharger.
   - Pour son classement, exécute une fois dans le SQL Editor de Supabase :
     `insert into public.lb_games (id, name, higher_is_better, min_score, max_score) values ('ecureuil-survivor', 'Écureuil Survivor', true, 0, 2000000) on conflict (id) do nothing;`
+- **Écureuil Dice** (`dice.html`) :
+  - `js/dice-data.js` : écureuils (`TYPES` : dégâts, cadence, effets, prix de déblocage en glands d'or), ennemis (`ENEMIES`, sprites repris de `js/game-data.js`), boss, réglages d'équilibrage (`CFG`), succès.
+  - `js/dice-core.js` : moteur sans DOM (vagues, combat, fusions, IA, instantanés réseau). Testable dans Node : `require("./js/dice-data.js"); require("./js/dice-core.js")` puis `RD_CORE.createWorld(...)` / `RD_CORE.step(...)`.
+  - `js/dice.js` : rendu canvas, commandes (glisser-déposer, multi-touch pour le même écran), menus, sauvegarde (localStorage `rd-save-v1`), en ligne (Supabase Realtime, salon `rd-room-CODE` : en coop l'hôte simule et l'invité envoie ses actions ; en versus chacun simule son monde et envoie un instantané 4×/s). `dice.html?debug` expose `RD_DEBUG` dans la console.
+  - Pour son classement : `insert into public.lb_games (id, name, higher_is_better, min_score, max_score) values ('ecureuil-dice', 'Écureuil Dice', true, 0, 1000000) on conflict (id) do nothing;`
 - **Réseaux** : `SITE.links` (laisse `""` pour masquer un lien).
 
 Le texte de la bio est directement dans `bio.html`.
