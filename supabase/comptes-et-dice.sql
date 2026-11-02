@@ -562,3 +562,8 @@ insert into public.rd_types (id, rarity) values
 ('damocles','epique'),('farceur','epique'),('sangsue','epique'),('jumeau','epique'),('boomerang','epique'),
 ('satellite','legendaire'),('phenix','legendaire'),('trounoir','legendaire'),('chronos','legendaire'),('midas','legendaire')
 on conflict (id) do nothing;
+
+-- 0.12 : dés d'équipe et Soleil (non destructif)
+insert into public.rd_types (id, rarity) values
+('facteur','rare'),('fanfare','rare'),('cadeau','epique'),('renfort','epique'),('soleil','legendaire')
+on conflict (id) do nothing;

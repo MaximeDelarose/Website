@@ -141,6 +141,32 @@
       emblem: { pal: {"a": "#e8873a", "b": "#f6d36b", "c": "#fdf3de"}, rows: ["c........", ".c....aa.", "..c..abba", "...cabcba", "....abbba", "...c.aaa.", "..c......"] },
       dmg: 200, pu: 80, every: 3.2, pspd: 200, range: 155, target: "strong", splash: 1, splashR: 22,
       desc: "Une comète énorme tombe sur la bestiole la plus solide et écrase tout autour." },
+    /* ---------- dés d'équipe et Soleil (0.12) ---------- */
+    facteur: { name: "Facteur", role: "Colis", rarity: "rare", color: "#8a5a3b", dark: "#4a2a10",
+      fur: {"t": "#d39a52", "d": "#4a2a10", "o": "#8a5a3b", "c": "#f3e1c0", "k": "#2b1709", "n": "#4a2a10"},
+      emblem: { pal: {"a": "#fdf3de", "b": "#8a5a3b"}, rows: ["bbbbbbbbb", "bbaaaaabb", "babaaabab", "baababaab", "baaabaaab", "baaaaaaab", "baaaaaaab", "bbbbbbbbb", "........."] },
+      dmg: 8, pu: 3, every: 1.1, range: 100, target: "random", team: "mail", teamEvery: 8, mail: 5, mailPu: 3,
+      desc: "Toutes les 8 s, envoie un colis de noisettes (5 par point) à ton allié en coop. En versus, il en vole autant à l'adversaire. Seul, il t'en garde la moitié." },
+    fanfare: { name: "Fanfare", role: "Encouragement", rarity: "rare", color: "#c86a3a", dark: "#6a2a10",
+      fur: {"t": "#f2b05e", "d": "#6a2a10", "o": "#c86a3a", "c": "#fdf3de", "k": "#2b1709", "n": "#6a2a10"},
+      emblem: { pal: {"a": "#fdf3de"}, rows: ["....aaaa.", "....a..a.", "....a..a.", "....a..a.", "....a..a.", ".aaa.aaa.", "aaaaaaaa.", ".aa..aa..", "........."] },
+      dmg: 0, pu: 0, every: 1, target: "none", team: "cheer", teamEvery: 3, cheer: 0.05,
+      desc: "N'attaque pas. Joue pour ton allié : ses écureuils tirent +5 % plus vite par point (40 % max). En versus, il casse le rythme de l'adversaire (−5 % par point). Seul, moitié moins pour toi." },
+    cadeau: { name: "Cadeau", role: "Fusion partagée", rarity: "epique", color: "#c8453d", dark: "#6a1a10",
+      fur: {"t": "#f29a85", "d": "#6a1a10", "o": "#c8453d", "c": "#fdf3de", "k": "#2b1709", "n": "#6a1a10"},
+      emblem: { pal: {"a": "#c8453d", "b": "#f6d36b"}, rows: ["..b...b..", "...b.b...", "bbbbbbbbb", "aaaabaaaa", "aaaabaaaa", "bbbbbbbbb", "aaaabaaaa", "aaaabaaaa", "aaaabaaaa"] },
+      dmg: 12, pu: 5, every: 1.0, range: 100, target: "front", team: "gift",
+      desc: "Quand tu le fusionnes, un écureuil de ton allié gagne 1 point. En versus, c'est un écureuil adverse qui en perd 1. Seul, c'est un des tiens qui monte." },
+    renfort: { name: "Renfort", role: "Renfort", rarity: "epique", color: "#3a7aa8", dark: "#1a3a5a",
+      fur: {"t": "#bfe0f8", "d": "#1a3a5a", "o": "#5fa3c9", "c": "#f0f8ff", "k": "#2b1709", "n": "#1a3a5a"},
+      emblem: { pal: {"a": "#5fd0ff", "b": "#fdf3de"}, rows: [".aaaaaaa.", "aaaabaaaa", "aaaabaaaa", "abbbbbbba", "aaaabaaaa", "aaaabaaaa", ".aaaaaaa.", "..aaaaa..", "....a...."] },
+      dmg: 10, pu: 4, every: 1.0, range: 100, target: "front", team: "reinf", teamEvery: 15,
+      desc: "Toutes les 15 s, offre un écureuil gratuit à ton allié (à toi si tu joues seul). En versus, il envoie un renard costaud sur le chemin adverse." },
+    soleil: { name: "Soleil", role: "Impair = puissant", rarity: "legendaire", color: "#f6a42a", dark: "#8a4a08",
+      fur: {"t": "#ffe46b", "d": "#8a4a08", "o": "#f6a42a", "c": "#fff8d0", "k": "#2b1709", "n": "#c86a08"},
+      emblem: { pal: {"a": "#f6d36b", "b": "#ff9a2a", "c": "#fff3b0"}, rows: ["a...a...a", ".a.bbb.a.", "..bbbbb..", ".bbbcbbb.", "abbcccbba", ".bbbcbbb.", "..bbbbb..", ".a.bbb.a.", "a...a...a"] },
+      dmg: 22, pu: 9, every: 0.4, range: 110, target: "front", sun: true, everyEven: 1.0, evenMul: 0.5, sunGrow: 2.5, sunMax: 34,
+      desc: "Nombre IMPAIR de Soleils sur ton plateau : il tire très vite et chaque tir explose, de plus en plus gros jusqu'à la taille max. Nombre PAIR : faible, lent, sans explosion." },
     /* ---------- 21 nouveaux écureuils (0.10) ---------- */
     mitraille: { name: "Mitraille", role: "Mitraille", rarity: "commun", color: "#7a6a4a", dark: "#3a3020",
       fur: {"t": "#c9b8a0", "d": "#5a4a30", "o": "#9a8a6a", "c": "#e8dcc0", "k": "#2b1709", "n": "#5a4a30"},
@@ -249,9 +275,9 @@
       desc: "Ses tirs sont en or : une bestiole qu'il achève rapporte +6 noisettes par point." },
   };
   var ORDER = ["noisette", "braise", "givre", "vent", "pepite", "ronce", "mitraille", "herisson", "glandlourd", "lancepierre", "resine",
-    "venin", "eclair", "mine", "croc", "echo", "pie", "spore", "tornade", "banquier", "picvert", "stalactite", "tambour",
-    "bucheron", "lune", "chene", "graine", "blizzard", "damocles", "farceur", "sangsue", "jumeau", "boomerang",
-    "cameleon", "orage", "ancetre", "comete", "satellite", "phenix", "trounoir", "chronos", "midas"];
+    "venin", "eclair", "mine", "croc", "echo", "pie", "spore", "tornade", "banquier", "picvert", "stalactite", "tambour", "facteur", "fanfare",
+    "bucheron", "lune", "chene", "graine", "blizzard", "damocles", "farceur", "sangsue", "jumeau", "boomerang", "cadeau", "renfort",
+    "cameleon", "orage", "ancetre", "comete", "satellite", "phenix", "trounoir", "chronos", "midas", "soleil"];
   var START_DECK = ["noisette", "braise", "givre", "vent", "pepite"];
 
   /* =====================================================================

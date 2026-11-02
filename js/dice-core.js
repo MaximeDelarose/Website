@@ -130,7 +130,7 @@
       mode: opt.mode || "solo", lay: lay, map: lay.map || "coop",
       boards: opt.boards.map(function (info, i) { return makeBoard(Object.assign({}, info, { nslot: lay.boards[i].cells.length })); }),
       rng: rngOf(opt.seed || 1), t: 0, wave: 0, waveT: 0, nextWave: 3, spawnQ: [], lives: C.lives, over: false,
-      enemies: [], emap: {}, projs: [], mines: [], clouds: [], holes: [], chrono: 0, nextId: 1, ev: [], fx: [], bossAlive: 0, bosses: 0, kills: 0,
+      enemies: [], emap: {}, projs: [], mines: [], clouds: [], holes: [], chrono: 0, out: [], nextId: 1, ev: [], fx: [], bossAlive: 0, bosses: 0, kills: 0,
       hpMul: n > 1 ? C.coopHp : 1, view: !!opt.view,
     };
     linkTwins(w);
@@ -148,6 +148,7 @@
     var sq = { t: type, p: pips, cd: Math.random() * 0.5, stun: 0, bob: 0, born: 0.25 };
     if (T[type].grow) sq.grow = T[type].grow - T[type].growPu * puOf(b, type);
     if (T[type].morph) sq.morph = T[type].morph;
+    if (T[type].teamEvery) sq.tt = T[type].teamEvery;
     if (T[type].orbit) sq.oa = Math.random() * 6.283;
     if (pips > b.maxPip) b.maxPip = pips;
     return sq;
@@ -155,6 +156,50 @@
   function randomDeckType(b, not) {
     var list = b.deck.filter(function (k) { return k !== not; });
     return pick(list.length ? list : b.deck);
+  }
+
+  /* ---------- dés d'équipe : aident l'allié en coop, gênent l'adversaire en versus ---------- */
+  // seul : l'effet revient au joueur (souvent réduit) ; coop : à l'autre plateau ; versus : part chez l'adversaire (w.out)
+  function sendTeam(w, bi, si, eff) {
+    if (w.view) return;
+    if (w.mode === "versus") { eff.neg = true; w.out.push(eff); w.ev.push({ k: "teamout", b: bi, s: si, kind: eff.k }); return; }
+    var to = w.boards.length > 1 ? 1 - bi : bi;
+    eff.solo = w.boards.length === 1;
+    w.ev.push({ k: "teamfx", b: bi, s: si, to: to, kind: eff.k });
+    applyTeam(w, to, eff);
+  }
+  function applyTeam(w, bi, eff) {
+    var b = w.boards[bi]; if (!b || w.over) return;
+    var half = eff.solo ? 0.5 : 1, i, cand = [];
+    if (eff.k === "gift") {
+      for (i = 0; i < b.slots.length; i++) { var q = b.slots[i]; if (q && (eff.neg ? q.p >= 2 : q.p < C.maxPips)) cand.push(i); }
+      if (!cand.length) return;
+      var si = pick(cand), sq = b.slots[si];
+      sq.p += eff.neg ? -1 : 1; sq.born = 0.25;
+      if (sq.p > b.maxPip) b.maxPip = sq.p;
+      w.ev.push({ k: "gift", b: bi, s: si, v: eff.neg ? -1 : 1 });
+    } else if (eff.k === "mail") {
+      var v = Math.round(eff.v * half);
+      if (eff.neg) v = -Math.min(v, Math.floor(b.sp));
+      b.sp += v; w.ev.push({ k: "mail", b: bi, v: v });
+    } else if (eff.k === "cheer") {
+      (b.cheer = b.cheer || []).push({ v: eff.v * half * (eff.neg ? -1 : 1), t: 3.5 });
+    } else if (eff.k === "reinf") {
+      if (eff.neg) {
+        var fx = spawnEnemy(w, "fox", 0, waveHp(w, Math.max(1, w.wave)) * 1.6, w.lay.paths.length > 1 ? (w.wave & 1) : 0);
+        fx.sent = true; w.ev.push({ k: "foesent" });
+      } else {
+        var fr = freeSlots(b); if (!fr.length) return;
+        var ts = pick(fr); b.slots[ts] = newSq(b, pick(b.deck), 1);
+        w.ev.push({ k: "reinf", b: bi, s: ts });
+      }
+    }
+  }
+  function teamPulse(w, b, bi, si, s) {
+    var Tp = T[s.t], pu = puOf(b, s.t);
+    if (Tp.team === "mail") sendTeam(w, bi, si, { k: "mail", v: (Tp.mail + Tp.mailPu * pu) * s.p });
+    else if (Tp.team === "cheer") sendTeam(w, bi, si, { k: "cheer", v: Tp.cheer * s.p });
+    else if (Tp.team === "reinf") sendTeam(w, bi, si, { k: "reinf" });
   }
 
   /* ---------- actions des joueurs ---------- */
@@ -186,6 +231,7 @@
     b.slots[a] = null;
     b.slots[c] = newSq(b, pick(b.deck), A.p + 1);
     w.ev.push({ k: "merge", b: bi, s: c, p: A.p + 1 });
+    if (T[A.t].team === "gift") sendTeam(w, bi, c, { k: "gift" });
     // Jumeau : un écureuil bonus apparaît
     if (T[A.t].twin) {
       var fr = freeSlots(b);
@@ -356,6 +402,10 @@
     if (e.dead && Tp.steal && b) { var st = Tp.steal * pr.p; b.sp += st; var sp0 = epos(w, e); w.ev.push({ k: "steal", x: sp0.x, y: sp0.y, v: st }); }
     if (e.dead && Tp.goldKill && b) { var gk = Tp.goldKill * pr.p; b.sp += gk; var gp = epos(w, e); w.ev.push({ k: "steal", x: gp.x, y: gp.y, v: gk, gold: 1 }); }
     if (e.dead && Tp.stack && pr.src && pr.src.t === pr.t) { pr.src.stk = Math.min(Tp.stackMax, (pr.src.stk || 0) + 1); pr.src.fx = 1; }
+    if (pr.boomR) {
+      w.enemies.forEach(function (o) { if (o !== e && targetable(o) && near(w, o, e, pr.boomR)) damage(w, o, dmg * 0.6, pr.b); });
+      var sb = epos(w, e); w.ev.push({ k: "boom", x: sb.x, y: sb.y, r: pr.boomR, c: "#ffb03a", sun: 1 });
+    }
     if (e.dead && Tp.boomKill) {
       var bx = epos(w, e), bd0 = e.max * Tp.boomKill;
       w.enemies.forEach(function (o) { if (o !== e && targetable(o) && near(w, o, e, 24)) damage(w, o, bd0, pr.b); });
@@ -463,12 +513,19 @@
     var first = chooseTarget(w, Tp.target, c, rg);
     if (!first) return false;
     aim(sq, c, w, first);
+    var boomR = 0;
+    if (Tp.sun) {
+      var ns = 0; b.slots.forEach(function (q) { if (q && q.t === sq.t) ns++; });
+      sq.sunOn = ns % 2 === 1;
+      if (sq.sunOn) { boomR = Math.min(Tp.sunMax, 8 + Tp.sunGrow * (sq.heat || 0)); sq.heat = (sq.heat || 0) + 1; sq.nextCd = Tp.every; }
+      else { sq.heat = 0; dmg *= Tp.evenMul; sq.nextCd = Tp.everyEven; }
+    }
     if (sq.t === "eclair") w.ev.push({ k: "zap", x0: c.x, y0: c.y, id: first.id });
     for (var k = 0; k < sq.p; k++) {
       var tg = k === 0 ? first : (Tp.target === "random" ? chooseTarget(w, "random", c, rg) || first : first);
       var shots = (Tp.echo && Math.random() < Tp.echo) || Tp.twice ? 2 : 1;
       for (var z = 0; z < shots; z++) {
-        w.projs.push({ x: c.x, y: c.y, tid: tg.id, t: sq.t, b: bi, p: sq.p, dmg: dmg, crit: crit, delay: k * 0.06 + z * (Tp.twice ? 0.28 : 0.12), src: sq, ret: Tp.twice && z === 1 });
+        w.projs.push({ x: c.x, y: c.y, tid: tg.id, t: sq.t, b: bi, p: sq.p, dmg: dmg, crit: crit, delay: k * 0.06 + z * (Tp.twice ? 0.28 : 0.12), src: sq, ret: Tp.twice && z === 1, boomR: k === 0 && z === 0 ? boomR : 0 });
         if (w.fx.length < 200) w.fx.push(bi, si, tg.id, TIDX[sq.t]);
       }
     }
@@ -489,6 +546,9 @@
 
     // plateaux
     w.boards.forEach(function (b, bi) {
+      var bh = 0;
+      if (b.cheer) { for (var ch = b.cheer.length - 1; ch >= 0; ch--) { bh += b.cheer[ch].v; b.cheer[ch].t -= dt; if (b.cheer[ch].t <= 0) b.cheer.splice(ch, 1); } }
+      b.cheerV = bh = Math.max(-0.4, Math.min(0.4, bh));
       var haste = new Array(b.slots.length).fill(0), boost = new Array(b.slots.length).fill(0), nb = w.lay.boards[bi].nb;
       b.slots.forEach(function (s, i) {
         if (!s || s.stun > 0) return;
@@ -517,10 +577,11 @@
         }
         s.boost = boost[i];
         var Tp = T[s.t];
+        if (Tp.teamEvery) { s.tt -= dt; if (s.tt <= 0) { s.tt += Tp.teamEvery; teamPulse(w, b, bi, i, s); } }
         if (Tp.orbit) { orbits(w, b, bi, i, s, dt * (1 + haste[i])); return; }
         if (Tp.target === "none" && s.t !== "mine" && !Tp.cloud && !Tp.hole) return;
-        s.cd -= dt * (1 + haste[i]);
-        if (s.cd <= 0) { if (fire(w, bi, i, s)) s.cd += Tp.every; else s.cd = 0; }
+        s.cd -= dt * Math.max(0.4, 1 + haste[i] + bh);
+        if (s.cd <= 0) { if (fire(w, bi, i, s)) s.cd += s.nextCd || Tp.every; else s.cd = 0; }
       });
     });
 
@@ -764,6 +825,6 @@
     layout: layout, posAt: posAt, epos: epos, rangeOf: rangeOf, slotCenter: slotCenter, createWorld: createWorld, step: step, stepView: stepView,
     summon: summon, merge: merge, canMerge: canMerge, powerUp: powerUp, act: act, botStep: botStep,
     summonCost: summonCost, puCost: puCost, freeSlots: freeSlots, isBossWave: isBossWave, waveHp: waveHp,
-    snapshot: snapshot, applySnap: applySnap, boardCrit: boardCrit, orbPos: orbPos,
+    snapshot: snapshot, applySnap: applySnap, boardCrit: boardCrit, orbPos: orbPos, applyTeam: applyTeam,
   };
 })(typeof window !== "undefined" ? window : globalThis);

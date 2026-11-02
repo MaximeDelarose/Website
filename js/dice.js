@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.11.0";
+  var VERSION = "0.12.0";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -644,6 +644,12 @@
     var from = drag ? drag.slot : sel, fl = flipped(p, bi);
     // emplacements : petites plates-formes (en coop : couleur du joueur, dorées si partagées)
     var pc = playerCol(p.world, bi); // (les plates-formes sont dans le décor pré-rendu : bakeMap)
+    var nSun = 0; b.slots.forEach(function (q) { if (q && T[q.t].sun) nSun++; });
+    if (nSun % 2) b.slots.forEach(function (q, i) { if (q && T[q.t].sun) { var cs = o.cells[i]; glow(cs.x + 13, cs.y + 13, 22 + Math.sin(G.t * 6) * 3, "#ffb03a", 0.55); } });
+    if (b.cheerV && Math.random() < Math.abs(b.cheerV) * 0.5 && !LOWFX) {
+      var cr = o.cells[(Math.random() * o.cells.length) | 0];
+      pushVfx(p, { k: "txt", s: b.cheerV > 0 ? "♪" : "✕", x: cr.x + 6 + Math.random() * 14, y: cr.y + 8, c: b.cheerV > 0 ? "#f6d36b" : "#a0a0a0", d: 0.8, sz: 5 });
+    }
     for (var i = 0; i < o.cells.length; i++) {
       var x = o.cells[i].x, y = o.cells[i].y;
       var sq = b.slots[i];
@@ -826,6 +832,7 @@
     ctx.fillStyle = "rgba(20,12,6,.28)"; ctx.beginPath(); ctx.arc(x + 12, cy, 7.2, 0, Math.PI * 2); ctx.fill();
     ctx.drawImage(em.c, Math.round(x + 12 - em.w / 2), Math.round(cy - em.h / 2));
     // écureuil du Farceur : petit chapeau à grelots ; Sangsue : gouttes de sa croissance
+    if (Tp.sun) { var lit = sq.sunOn !== false; glow(x + 12, y + 10, 14, lit ? "#ffd34a" : "#806040", lit ? 0.35 : 0); }
     if (sq.jk) { rect(x + 8, y - 4, 8, 3, OUT); rect(x + 9, y - 3, 3, 2, "#c86ad8"); rect(x + 12, y - 3, 3, 2, "#f6d36b"); rect(x + 7, y - 5, 2, 2, "#f6d36b"); rect(x + 15, y - 5, 2, 2, "#c86ad8"); }
     if (sq.stk) { var nd = Math.min(5, Math.ceil(sq.stk / 10)); for (var di = 0; di < nd; di++) rect(x + 21, y + 20 - di * 3, 2, 2, "#ff5a6a"); }
     // points (le « dé »), sur une ligne en bas
@@ -1089,7 +1096,7 @@
       else if (v.k === "smoke") {
         ctx.globalAlpha = (1 - f) * 0.45; ctx.fillStyle = v.c || "#6b5a4a";
         ctx.beginPath(); ctx.arc(v.x + v.vx * t, v.y - 8 * t, v.r * (0.6 + f), 0, 6.3); ctx.fill(); ctx.globalAlpha = 1;
-      } else if (v.k === "bolt") { if (Math.random() < 0.85) lightning(v.pts, "#ffe46b", 1.3, 1 - f * f, 3.2); }
+      } else if (v.k === "bolt") { if (Math.random() < 0.85) lightning(v.pts, v.c || "#ffe46b", 1.3, 1 - f * f, 3.2); }
       else if (v.k === "zap") {
         var e = p.world.emap[v.id], q = e ? K.epos(p.world, e) : v.last;
         if (q) { v.last = q; lightning([[v.x0, v.y0], [q.x, q.y - 3]], "#ffe46b", 1, 1 - f, 2.5); }
@@ -1216,6 +1223,23 @@
         pushVfx(p, { k: "bolt", pts: [[fq.x + 13, fq.y + 13], [tq.x + 13, tq.y + 13]], d: 0.2 });
         pushVfx(p, { k: "txt", s: "+1 !", x: tq.x + 13, y: tq.y + 2, c: "#bfe8d0", d: 0.8, sz: 6 });
       }
+      else if (e.k === "teamfx" || e.k === "teamout") {
+        var tc = { gift: "#ff8a7a", mail: "#f6d36b", cheer: "#ffb06a", reinf: "#5fd0ff" }[e.kind] || "#ffffff", src = K.slotCenter(w.lay, e.b, e.s);
+        pushVfx(p, { k: "pop", x: src.x, y: src.y, r: 18, c: tc, d: 0.3 });
+        sparks(p, src.x, src.y, 8, [tc, "#ffffff"], 70, 0.45, 1.4);
+        if (e.k === "teamout") pushVfx(p, { k: "txt", s: "→ ADVERSAIRE", x: src.x, y: src.y - 14, c: tc, d: 0.9, sz: 4.5 });
+        else if (e.to !== e.b) { var ob2 = w.lay.boards[e.to], dst = ctrlCenter(ob2); pushVfx(p, { k: "bolt", pts: [[src.x, src.y], [dst.x, dst.y - 40]], d: 0.3, c: tc }); }
+      }
+      else if (e.k === "gift") {
+        var gq = slotXY(w, e.b, e.s), up = e.v > 0;
+        pushVfx(p, { k: "flash", x: gq.x + 1, y: gq.y + 1, w: 24, h: 24, c: up ? "#ffd34a" : "#c8453d", d: 0.45, a: 0.85 });
+        sparks(p, gq.x + 13, gq.y + 13, 10, up ? ["#ffd34a", "#ffffff"] : ["#c8453d", "#2b1709"], 70, 0.5, 1.5);
+        pushVfx(p, { k: "txt", s: up ? "+1 ★" : "−1 ★", x: gq.x + 13, y: gq.y + 2, c: up ? "#ffd34a" : "#ff7a6a", d: 0.9, sz: 6.5 });
+        if (!up) shake(2);
+      }
+      else if (e.k === "mail") { var mo = w.lay.boards[e.b]; if (mo) { pushVfx(p, { k: "txt", s: (e.v >= 0 ? "+" : "") + e.v + " 📦", x: mo.x + K.BW - 20, y: mo.cy - 2, c: e.v >= 0 ? "#f6d36b" : "#ff7a6a", d: 1.1, sz: 6 }); G.spPulse = G.spPulse || {}; G.spPulse[e.b] = 1; } }
+      else if (e.k === "reinf") { var rq = slotXY(w, e.b, e.s); pushVfx(p, { k: "flash", x: rq.x + 1, y: rq.y + 1, w: 24, h: 24, c: "#5fd0ff", d: 0.45, a: 0.8 }); sparks(p, rq.x + 13, rq.y + 13, 10, ["#5fd0ff", "#ffffff"], 70, 0.5, 1.5); pushVfx(p, { k: "txt", s: "RENFORT !", x: rq.x + 13, y: rq.y + 2, c: "#5fd0ff", d: 0.9, sz: 5 }); }
+      else if (e.k === "foesent") { if (loud) banner("L'adversaire t'envoie un renard !", 1100); shake(2); }
       else if (e.k === "miss") pushVfx(p, { k: "txt", s: "RATÉ", x: e.x, y: e.y - 10, c: "#c9b3ff", d: 0.5, sz: 4.5 });
       else if (e.k === "heal") { pushVfx(p, { k: "ring", x: e.x, y: e.y, r: 30, c: "#9cd06a", d: 0.45 }); sparks(p, e.x, e.y - 3, 6, "#9cd06a", 30, 0.6, 1.3); }
       else if (e.k === "merge" || e.k === "grow" || e.k === "copy") {
@@ -1306,6 +1330,13 @@
         K.step(w, h);
         if (w.over) break;
       }
+    });
+    // dés d'équipe en versus : leurs effets partent chez l'adversaire
+    (G.sims || []).forEach(function (w, wi) {
+      if (!w.out || !w.out.length) return;
+      var effs = w.out.splice(0);
+      if (G.kind === "net-vs") effs.forEach(function (eff) { netSend("fx", eff); });
+      else if (G.kind === "bot" || G.kind === "local-vs") { var o = G.sims[1 - wi]; if (o) effs.forEach(function (eff) { K.applyTeam(o, 0, eff); }); }
     });
     G.panels.forEach(function (p) {
       if (p.view) { K.stepView(p.world, dt); var ve = p.world.ev; p.world.ev = []; handleEvents(p, ve.filter(function (e) { return e.k === "hit"; }), false); return; }
@@ -1564,6 +1595,8 @@
     if (!t.cloud && !t.hole) stats.push(["Cible", TARGET[t.target] || t.target]);
     if (t.target !== "none" || k === "mine" || t.cloud || t.hole) stats.push(["Portée", isFinite(K.rangeOf(k)) ? (K.rangeOf(k) / K.CELL).toFixed(1).replace(".", ",") + " cases" : "tout le chemin"]);
     else if (t.haste || t.boost) stats.push(["Portée", "les 4 cases voisines"]);
+    if (t.team) stats.push(["Effet d'équipe", { gift: "à chaque fusion", mail: "colis toutes les " + t.teamEvery + " s", cheer: "en continu", reinf: "toutes les " + t.teamEvery + " s" }[t.team] + " · coop : aide l'allié · versus : gêne l'adversaire"]);
+    if (t.sun) stats.push(["Impair / pair", "impair : 1 salve / " + String(t.every).replace(".", ",") + " s + explosions · pair : 1 salve / " + String(t.everyEven).replace(".", ",") + " s, " + Math.round(t.evenMul * 100) + " % des dégâts"]);
     stats.push(["Bonus de niveau", "+" + Math.round((mul - 1) * 100) + " % de dégâts"]);
     html += '<dl class="rd-stats">' + stats.map(function (st) { return "<dt>" + st[0] + "</dt><dd>" + st[1] + "</dd>"; }).join("") + "</dl>";
     if (!have) return html + '<p class="game-small">Trouve-le dans un <button class="rd-link" type="button" data-action="go" data-arg="chests">coffre</button>.</p></div>';
@@ -1894,7 +1927,7 @@
           "</button>";
       });
       html += "</div>";
-      html += detailHtml(S.sel);
+      html += detailHtml(S.sel && T[S.sel] ? S.sel : S.deck[0] || D.ORDER[0]);
       return html;
     },
     chests: function () {
@@ -2257,6 +2290,7 @@
       handleEvents(op, (d.v || []).filter(function (e) { return e.k === "kill" || e.k === "boom" || e.k === "bolt"; }), false);
       return;
     }
+    if (ev === "fx" && G.kind === "net-vs" && G.sims[0] && typeof d.k === "string") { K.applyTeam(G.sims[0], 0, { k: d.k, v: Math.min(Number(d.v) || 0, 400), neg: true }); return; }
     if (ev === "dead" && G.kind === "net-vs" && state === "play") {
       var me = G.sims[0];
       G.panels[1].world.over = true;
