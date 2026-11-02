@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "1.3.1";              // version affichée dans le menu (tag git : merger-v<VERSION>)
+  var VERSION = "1.3.2";              // version affichée dans le menu (tag git : merger-v<VERSION>)
   var GAME_ID = "merger";
   var stage = document.querySelector("[data-merger]");
   if (!stage) return;
@@ -54,7 +54,7 @@
   var G = 1500, DAMP = 0.995, ITER = 6;
   var MAXV = 6;                      // vitesse max par sous-pas (sécurité anti-éjection)
   var BREATH = 0.035;                 // amplitude de la respiration (le rayon physique gonfle de ±3,5 %)
-  var BOUNCE = 0.35;                  // rebond (0 = mou comme un sac, 1 = balle magique) entre écureuils et contre le bac
+  var BOUNCE = 0.12;                  // rebond (0 = mou comme un sac, 1 = balle magique) entre écureuils et contre le bac
 
   function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
