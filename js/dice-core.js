@@ -181,6 +181,11 @@
     b.slots.forEach(function (s) { if (s && s.t === "lune") c += s.p * T.lune.critPip; });
     return Math.min(0.6, c);
   }
+  function boardAura(b) {
+    var a = 0;
+    b.slots.forEach(function (s) { if (s && T[s.t].aura && s.stun <= 0) a += s.p * (T[s.t].aura + T[s.t].auraPu * puOf(b, s.t)); });
+    return a;
+  }
   function targetable(e) { return !e.dead && !e.under && e.dist >= 0; }
   function chooseTarget(w, mode) {
     var best = null, bv = -Infinity, list = w.enemies;
@@ -251,7 +256,13 @@
       if (dps >= e.poison) { e.poison = dps; e.poisonB = pr.b; }
       e.poisonT = 4;
     }
-    damage(w, e, dmg, pr.b);
+    if (Tp.freeze && !e.d.noSlow) e.frozenT = Math.max(e.frozenT || 0, (Tp.freeze + Tp.freezePip * (pr.p - 1)) * (e.d.boss ? 0.5 : 1));
+    damage(w, e, dmg, pr.b, { pure: !!Tp.pierce });
+    if (!e.dead && Tp.exec && !e.d.boss && e.hp < e.max * (Tp.exec + Tp.execPip * (pr.p - 1))) {
+      var xp = posAt(w.lay, e.dist); w.ev.push({ k: "exec", x: xp.x, y: xp.y });
+      damage(w, e, e.hp + 1, pr.b, { pure: true });
+    }
+    if (e.dead && Tp.steal && b) { var st = Tp.steal * pr.p; b.sp += st; var sp0 = posAt(w.lay, e.dist); w.ev.push({ k: "steal", x: sp0.x, y: sp0.y, v: st }); }
     if (crit) { var cp = posAt(w.lay, e.dist); w.ev.push({ k: "crit", x: cp.x, y: cp.y, v: Math.round(dmg) }); }
     if (Tp.splash) {
       w.enemies.forEach(function (o) {
@@ -278,7 +289,16 @@
   }
   function fire(w, bi, si, sq) {
     var b = w.boards[bi], Tp = T[sq.t], pu = puOf(b, sq.t), dmg = (Tp.dmg + Tp.pu * pu) * classMul(b, sq.t) * (1 + C.pipBonus * (sq.p - 1));
+    dmg *= 1 + boardAura(b);
     var c = slotCenter(w.lay, bi, si), crit = boardCrit(b);
+    if (Tp.target === "all") {
+      var any = false;
+      w.enemies.slice().forEach(function (e) { if (targetable(e)) { any = true; hit(w, { b: bi, t: sq.t, p: sq.p, dmg: dmg * sq.p, crit: crit }, e); } });
+      if (!any) return false;
+      w.ev.push({ k: "storm", b: bi, s: si });
+      sq.bob = 0.12;
+      return true;
+    }
     if (sq.t === "mine") {
       if (w.mines.length > 40) return false;
       for (var m = 0; m < sq.p; m++) {
@@ -292,8 +312,11 @@
     if (!first) return false;
     for (var k = 0; k < sq.p; k++) {
       var tg = k === 0 ? first : (Tp.target === "random" ? chooseTarget(w, "random") || first : first);
-      w.projs.push({ x: c.x, y: c.y, tid: tg.id, t: sq.t, b: bi, p: sq.p, dmg: dmg, crit: crit, delay: k * 0.06 });
-      if (w.fx.length < 200) w.fx.push(bi, si, tg.id, TIDX[sq.t]);
+      var shots = Tp.echo && Math.random() < Tp.echo ? 2 : 1;
+      for (var z = 0; z < shots; z++) {
+        w.projs.push({ x: c.x, y: c.y, tid: tg.id, t: sq.t, b: bi, p: sq.p, dmg: dmg, crit: crit, delay: k * 0.06 + z * 0.12 });
+        if (w.fx.length < 200) w.fx.push(bi, si, tg.id, TIDX[sq.t]);
+      }
     }
     sq.bob = 0.12;
     return true;
@@ -386,6 +409,7 @@
         if (en2.dead) continue;
       }
       var sp = en2.spd * (1 - en2.slowF);
+      if (en2.frozenT > 0) { en2.frozenT -= dt; sp = 0; }
       if (dd2.hop) sp *= Math.sin(en2.t * 7) > -0.2 ? 1.6 : 0.1;
       if (dd2.burrow) { var ph = en2.t % 3.6; en2.under = ph > 2.4; if (en2.under) sp *= 1.5; }
       if (dd2.heal) {
@@ -449,7 +473,7 @@
     w.enemies.forEach(function (en) {
       if (en.dead) return;
       e.push(en.id, EIDX[en.type], Math.round(en.dist * 10), Math.ceil(en.hp), Math.ceil(en.max),
-        (en.under ? 1 : 0) | (en.slowT > 0 ? 2 : 0) | (en.poisonT > 0 ? 4 : 0) | (en.chargeT > 0 ? 8 : 0) | (en.flash > 0 ? 16 : 0));
+        (en.under ? 1 : 0) | (en.slowT > 0 || en.frozenT > 0 ? 2 : 0) | (en.poisonT > 0 ? 4 : 0) | (en.chargeT > 0 ? 8 : 0) | (en.flash > 0 ? 16 : 0));
     });
     var b = w.boards.map(function (bd) {
       var s = [], st = 0;

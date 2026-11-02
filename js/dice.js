@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.1.0";
+  var VERSION = "0.2.0";
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
   if (!stage || !window.RD_DATA || !window.RD_CORE || !window.ES_DATA) return;
@@ -19,7 +19,8 @@
      ===================================================================== */
   var SAVE_KEY = "rd-save-v1";
   function defaults() {
-    return { gold: 0, deck: D.START_DECK.slice(), cls: {}, owned: {}, best: { solo: 0, coop: 0 }, wins: 0, games: 0, ach: {}, name: "", mute: false, botLvl: 1 };
+    return { gold: 0, deck: D.START_DECK.slice(), cls: {}, owned: {}, have: null, cards: {}, keys: 0, chests: 0, sel: "noisette",
+             best: { solo: 0, coop: 0 }, wins: 0, games: 0, ach: {}, name: "", mute: false, botLvl: 1 };
   }
   var S = defaults();
   try {
@@ -27,10 +28,20 @@
     if (raw && typeof raw === "object") Object.keys(raw).forEach(function (k) { if (k in S) S[k] = raw[k]; });
   } catch (e) {}
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
-  function owned(k) { return !T[k].cost || !!S.owned[k]; }
+  // ancienne sauvegarde : on garde tout ce qui était débloqué ou déjà joué
+  if (!S.have) {
+    S.have = {};
+    (S.deck || []).concat(Object.keys(S.owned || {}), Object.keys(S.cls || {})).forEach(function (k) { if (T[k]) S.have[k] = true; });
+  }
+  if (!S.cards || typeof S.cards !== "object") S.cards = {};
+  function owned(k) { return T[k].rarity === "commun" || !!S.have[k]; }
   function clsLv(k) { return S.cls[k] || 1; }
+  function copiesNeed(k) { var lv = clsLv(k); return lv >= CFG.classMax ? Infinity : Math.ceil(D.COPIES[lv - 1] * D.RARITY[T[k].rarity].copies); }
+  function lvCost(k) { return CFG.classCosts[clsLv(k)] || 0; }
+  function canLevel(k) { return owned(k) && clsLv(k) < CFG.classMax && (S.cards[k] || 0) >= copiesNeed(k) && S.gold >= lvCost(k); }
   S.deck = (S.deck || []).filter(function (k, i, a) { return T[k] && owned(k) && a.indexOf(k) === i; }).slice(0, 5);
-  D.START_DECK.forEach(function (k) { if (S.deck.length < 5 && S.deck.indexOf(k) < 0) S.deck.push(k); });
+  if (!S.deck.length) S.deck = D.START_DECK.slice();
+  if (!T[S.sel]) S.sel = "noisette";
   function myCls() { var o = {}; D.ORDER.forEach(function (k) { o[k] = clsLv(k); }); return o; }
 
   /* =====================================================================
@@ -392,6 +403,7 @@
       y = q.y + 4 - fr.h * 1.3;
     } else drawSpr(fr, x, y, q.dx < 0, e.flash > 0);
     if (e.slowT > 0) { rect(q.x - 1, y - 1, 2, 2, "#9fd8ff"); }
+    if (e.frozenT > 0) { ctx.globalAlpha = 0.45; rect(q.x - fr.w / 2, y, fr.w, fr.h, "#bfe8ff"); ctx.globalAlpha = 1; }
     if (e.poisonT > 0) { rect(q.x + 3, y + Math.sin(e.t * 5) * 1, 2, 2, "#9cd06a"); }
     if (e.chargeT > 0) { rect(q.x - 8, q.y + 2, 3, 1, "#fdf3de"); rect(q.x - 12, q.y, 3, 1, "#fdf3de"); }
     // PV
@@ -474,6 +486,9 @@
         if (e.k === "merge" && loud) SND.merge(e.p || 2);
         if (e.k === "summon" && loud) SND.summon();
       } else if (e.k === "stun") { var q2 = slotXY(w, e.b, e.s); pushVfx(p, { k: "txt", s: "BAM", x: q2.x + 13, y: q2.y + 6, c: "#f29a85", d: 0.7 }); }
+      else if (e.k === "exec") pushVfx(p, { k: "txt", s: "CROC !", x: e.x, y: e.y - 12, c: "#fdf3de", d: 0.6, sz: 5 });
+      else if (e.k === "steal") pushVfx(p, { k: "txt", s: "+" + e.v, x: e.x, y: e.y - 16, c: "#5fa3c9", d: 0.7, sz: 5 });
+      else if (e.k === "storm") { pushVfx(p, { k: "flash", x: 0, y: 0, w: w.lay.w, h: w.lay.h, c: "#f6d36b", d: 0.18 }); if (loud) SND.zap(); }
       else if (e.k === "income") { var o = w.lay.boards[e.b]; pushVfx(p, { k: "txt", s: "+" + e.v, x: o.x + K.BW - 20, y: o.y + K.BH + 12, c: "#f6d36b", d: 1 }); }
       else if (e.k === "pu" && loud) SND.pu();
       else if (e.k === "leak") { pushVfx(p, { k: "flash", x: 0, y: 0, w: w.lay.w, h: w.lay.h, c: "#c8553d", d: 0.35 }); if (loud) SND.leak(); }
@@ -572,6 +587,7 @@
     res.newAch = [];
     if (!res.local) D.ACHIEVEMENTS.forEach(function (a) { if (!S.ach[a.id] && a.check(res)) { S.ach[a.id] = 1; S.gold += a.gold; res.newAch.push(a); } });
     res.gold = gold;
+    if (!res.local) { S.keys = (S.keys || 0) + 1; res.key = true; }
     save();
     showOver(res);
   }
@@ -692,11 +708,13 @@
      Menus (HTML par-dessus le canvas)
      ===================================================================== */
   function hideOverlay() { overlay.hidden = true; }
-  function show(name) {
+  function show(name, keepScroll) {
+    var y = overlay.scrollTop;
     screen = name; overlay.hidden = false;
     card.className = "panel game-card rd-card rd-" + name;
     card.innerHTML = SCREENS[name]();
-    overlay.scrollTop = 0;
+    overlay.scrollTop = keepScroll ? y : 0;
+    if (keepScroll) return;
     var first = card.querySelector("[data-focus]") || card.querySelector(".btn");
     if (first && matchMedia("(hover: hover)").matches) try { first.focus({ preventScroll: true }); } catch (e) {}
   }
@@ -705,43 +723,136 @@
       return '<span class="rd-die" style="--c:' + T[k].color + ';--d:' + T[k].dark + '" title="' + esc(T[k].name) + '"><img src="' + sqUrl(k) + '" alt=""><img class="rd-ic" src="' + iconUrl(k) + '" alt=""></span>';
     }).join("") + "</div>";
   }
+  var swapK = null, openedHtml = "";
+  function sprUrl(name) { return urlCache["s" + name] || (urlCache["s" + name] = SPR[name][0].c.toDataURL()); }
+  function dieHtml(k) {
+    return '<span class="rd-die" style="--c:' + T[k].color + ";--d:" + T[k].dark + '"><img src="' + sqUrl(k) + '" alt=""><img class="rd-ic" src="' + iconUrl(k) + '" alt=""></span>';
+  }
+  var TARGET = { front: "le plus avancé", strong: "le plus solide", random: "au hasard", all: "toutes les bestioles", none: "aucune (soutien)" };
+  function detailHtml(k) {
+    var t = T[k], have = owned(k), R = D.RARITY[t.rarity], lv = clsLv(k), need = copiesNeed(k), c = S.cards[k] || 0, inDeck = S.deck.indexOf(k) >= 0;
+    var mul = 1 + CFG.classBonus * (lv - 1);
+    var html = '<div class="rd-detail" style="--rc:' + R.color + '">' +
+      '<div class="rd-detail-head">' + dieHtml(k) + "<div><strong>" + esc(t.name) + '</strong><span class="rd-rar">' + R.name + "</span>" +
+      "<small>" + esc(t.role) + (have ? " · niveau " + lv : " · pas encore trouvé") + "</small></div></div>" +
+      '<p class="rd-desc">' + esc(t.desc) + "</p>";
+    var stats = [];
+    if (t.dmg) stats.push(["Dégâts par tir", Math.round(t.dmg * mul) + (t.pu ? " (+" + Math.round(t.pu * mul) + " par amélioration)" : "")]);
+    if (t.target !== "none") stats.push(["Cadence", "1 salve / " + String(t.every).replace(".", ",") + " s"]);
+    stats.push(["Cible", TARGET[t.target] || t.target]);
+    stats.push(["Bonus de niveau", "+" + Math.round((mul - 1) * 100) + " % de dégâts"]);
+    html += '<dl class="rd-stats">' + stats.map(function (st) { return "<dt>" + st[0] + "</dt><dd>" + st[1] + "</dd>"; }).join("") + "</dl>";
+    if (!have) return html + '<p class="game-small">Trouve-le dans un <button class="rd-link" type="button" data-action="go" data-arg="chests">coffre</button>.</p></div>';
+    html += '<div class="rd-copies"><span>Exemplaires</span><span class="rd-bar' + (canLevel(k) ? " is-ready" : "") + '"><b style="width:' + (isFinite(need) ? Math.min(100, c / need * 100) : 100) + '%"></b><em>' + (isFinite(need) ? c + " / " + need : "Niveau max") + "</em></span></div>";
+    html += '<div class="rd-type-btns">';
+    if (inDeck) html += '<button class="btn btn-small btn-ghost" type="button" data-action="deck" data-arg="' + k + '">Retirer du deck</button>';
+    else if (S.deck.length < 5) html += '<button class="btn btn-small btn-alt" type="button" data-action="deck" data-arg="' + k + '">Ajouter au deck</button>';
+    else html += '<button class="btn btn-small btn-alt" type="button" data-action="swap" data-arg="' + k + '">Remplacer un dé du deck</button>';
+    if (isFinite(need)) html += '<button class="btn btn-small" type="button" data-action="lvup" data-arg="' + k + '"' + (canLevel(k) ? "" : " disabled") + ">⬆ Niveau " + (lv + 1) + " · " + goldIc() + " " + lvCost(k) + "</button>";
+    html += "</div>";
+    if (isFinite(need) && c < need) html += '<p class="game-small">Encore ' + (need - c) + " exemplaire" + (need - c > 1 ? "s" : "") + " pour l'améliorer.</p>";
+    return html + "</div>";
+  }
+  function rollRarity(luck) {
+    var tot = 0, keys = Object.keys(D.RARITY), w = keys.map(function (r) { var v = D.RARITY[r].weight * (r === "commun" ? 1 : luck || 1); tot += v; return v; });
+    var x = Math.random() * tot;
+    for (var i = 0; i < keys.length; i++) { x -= w[i]; if (x <= 0) return keys[i]; }
+    return "commun";
+  }
+  var RORD = ["commun", "rare", "epique", "legendaire"];
+  function openChest(c) {
+    var got = {}, order = [];
+    for (var i = 0; i < c.cards; i++) {
+      var r = rollRarity(c.luck);
+      if (i === 0 && c.minRarity && RORD.indexOf(r) < RORD.indexOf(c.minRarity)) r = c.minRarity;
+      var pool = D.ORDER.filter(function (k) { return T[k].rarity === r; }), k = pool[(Math.random() * pool.length) | 0];
+      if (!got[k]) { got[k] = { n: 0, isNew: !owned(k) }; order.push(k); }
+      got[k].n++;
+    }
+    order.forEach(function (k) {
+      var g = got[k];
+      if (g.isNew) { S.have[k] = true; S.cards[k] = (S.cards[k] || 0) + g.n - 1; }
+      else S.cards[k] = (S.cards[k] || 0) + g.n;
+    });
+    order.sort(function (a, b) { return RORD.indexOf(T[a].rarity) - RORD.indexOf(T[b].rarity); });
+    S.chests = (S.chests || 0) + 1;
+    save();
+    return { got: got, order: order };
+  }
+  function openedScreen(c, res) {
+    var best = res.order[res.order.length - 1], bestR = T[best].rarity;
+    openedHtml = '<h2>' + esc(c.name) + "</h2>" +
+      '<div class="rd-open-chest" style="--cc:' + c.color + '"><img src="' + sprUrl("chest") + '" alt=""></div>' +
+      '<div class="rd-reveal">' + res.order.map(function (k, i) {
+        var g = res.got[k];
+        return '<div class="rd-card-got r-' + T[k].rarity + '" style="animation-delay:' + (0.6 + i * 0.18).toFixed(2) + 's">' + dieHtml(k) +
+          '<b>' + esc(T[k].name) + "</b><small>×" + g.n + "</small>" + (g.isNew ? '<em class="rd-new">NOUVEAU</em>' : "") + "</div>";
+      }).join("") + "</div>" +
+      '<div class="btn-row center"><button class="btn" type="button" data-action="go" data-arg="deck">🃏 Voir le deck</button><button class="btn btn-ghost" type="button" data-action="go" data-arg="chests">🎁 Coffres</button></div>';
+    show("opened");
+    setTimeout(function () { if (bestR === "legendaire") SND.win(); else if (bestR === "epique") SND.merge(5); else SND.pu(); }, 600);
+  }
+
   var SCREENS = {
     menu: function () {
       var deckOk = S.deck.length === 5;
       return '<div class="menu-title"><img src="' + sqUrl("noisette") + '" alt=""><div><span class="kicker">Défense de dés · v' + VERSION + '</span><h2>Écureuil Dice</h2></div></div>' +
         '<p class="gold-badge">' + goldIc() + " " + S.gold + " glands d'or</p>" +
         deckStrip(S.deck) +
-        (deckOk ? "" : '<p class="net-err">Ton deck doit contenir 5 écureuils.</p>') +
+        (deckOk ? "" : '<p class="net-err">Ton deck doit contenir 5 écureuils : ouvre « Deck & écureuils ».</p>') +
         '<div class="menu-buttons">' +
         '<button class="btn" type="button" data-action="solo"' + (deckOk ? "" : " disabled") + ">▶ Solo <small>record : vague " + (S.best.solo || 0) + "</small></button>" +
         '<button class="btn btn-alt" type="button" data-action="bot"' + (deckOk ? "" : " disabled") + ">🤖 Versus contre l'IA</button>" +
         '<div class="menu-row rd-bot-lvl"><button class="btn btn-ghost btn-small' + (S.botLvl !== 2 ? " is-on" : "") + '" type="button" data-action="botlvl" data-arg="1">IA normale</button><button class="btn btn-ghost btn-small' + (S.botLvl === 2 ? " is-on" : "") + '" type="button" data-action="botlvl" data-arg="2">IA coriace</button></div>' +
         '<button class="btn btn-alt" type="button" data-action="online"' + (deckOk ? "" : " disabled") + ">🌐 En ligne : coop / versus</button>" +
         '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="lcoop"' + (deckOk ? "" : " disabled") + '>👥 Coop à 2 (même écran)</button><button class="btn btn-ghost btn-small" type="button" data-action="lvs"' + (deckOk ? "" : " disabled") + ">⚔ Versus à 2 (même écran)</button></div>" +
-        '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="deck">🃏 Deck & écureuils</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="succes">🏆 Succès</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Règles</button></div>' +
+        '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="deck">🃏 Deck & écureuils' + (D.ORDER.some(canLevel) ? " ⬆" : "") + '</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="chests">🎁 Coffres' + (S.keys >= D.KEYS_FOR_FREE ? " ✨" : "") + '</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="succes">🏆 Succès</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Règles</button></div>' +
         "</div>" +
         '<p class="game-small">Aucun achat : tout se débloque en jouant. Versus gagnés : ' + S.wins + ".</p>";
     },
     deck: function () {
-      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Deck & écureuils</h2><p class="gold-badge">' + goldIc() + " " + S.gold + "</p></div>" +
-        '<p class="game-small">Choisis 5 écureuils (' + S.deck.length + '/5). Les niveaux d\'écureuil (+' + Math.round(CFG.classBonus * 100) + " % de dégâts chacun) restent d'une partie à l'autre.</p>" +
-        deckStrip(S.deck) + '<div class="rd-grid">';
+      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Deck</h2>' +
+        '<button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="chests">🎁 Coffres' + (S.keys >= D.KEYS_FOR_FREE ? " ✨" : "") + "</button></div>" +
+        '<p class="gold-badge">' + goldIc() + " " + S.gold + "</p>";
+      // les 5 places du deck
+      html += '<div class="rd-slots' + (swapK ? " is-swap" : "") + '">';
+      for (var i = 0; i < 5; i++) {
+        var dk = S.deck[i];
+        html += dk ? '<button class="rd-slot" type="button" data-action="dslot" data-arg="' + i + '" aria-label="' + esc(T[dk].name) + '">' + dieHtml(dk) + "</button>"
+                   : '<button class="rd-slot is-empty" type="button" data-action="dslot" data-arg="' + i + '" aria-label="Place libre"><span>+</span></button>';
+      }
+      html += "</div>";
+      html += '<p class="game-small rd-hint">' + (swapK ? "Touche le dé du deck à remplacer par <b>" + esc(T[swapK].name) + '</b>. <button class="rd-link" type="button" data-action="noswap">Annuler</button>'
+        : S.deck.length < 5 ? "Touche un écureuil pour l'ajouter au deck (" + S.deck.length + "/5)." : "Touche un écureuil pour voir sa fiche.") + "</p>";
+      // la grille des écureuils
+      html += '<div class="rd-pick">';
       D.ORDER.forEach(function (k) {
-        var t = T[k], have = owned(k), inDeck = S.deck.indexOf(k) >= 0, lv = clsLv(k), next = CFG.classCosts[lv];
-        html += '<div class="rd-type' + (inDeck ? " is-selected" : "") + (have ? "" : " is-locked") + '">' +
-          '<div class="rd-type-head"><span class="rd-die" style="--c:' + t.color + ";--d:" + t.dark + '"><img src="' + sqUrl(k) + '" alt=""><img class="rd-ic" src="' + iconUrl(k) + '" alt=""></span>' +
-          "<div><strong>" + esc(t.name) + "</strong><small>" + esc(t.role) + (have ? " · niv. " + lv : "") + "</small></div></div>" +
-          '<p class="rd-desc">' + esc(t.desc) + "</p>" + '<div class="rd-type-btns">';
-        if (!have) html += '<button class="btn btn-small" type="button" data-action="unlock" data-arg="' + k + '"' + (S.gold >= t.cost ? "" : " disabled") + ">Débloquer " + goldIc() + " " + t.cost + "</button>";
-        else {
-          html += '<button class="btn btn-small ' + (inDeck ? "btn-ghost" : "btn-alt") + '" type="button" data-action="deck" data-arg="' + k + '"' + (!inDeck && S.deck.length >= 5 ? " disabled" : "") + ">" + (inDeck ? "Retirer" : "Ajouter") + "</button>";
-          if (lv < CFG.classMax) html += '<button class="btn btn-small" type="button" data-action="lvup" data-arg="' + k + '"' + (S.gold >= next ? "" : " disabled") + ">Niv. " + (lv + 1) + " " + goldIc() + " " + next + "</button>";
-          else html += '<span class="rd-max">Niveau max</span>';
-        }
-        html += "</div></div>";
+        var have = owned(k), lv = clsLv(k), need = copiesNeed(k), c = S.cards[k] || 0;
+        html += '<button class="rd-tile r-' + T[k].rarity + (S.sel === k ? " is-sel" : "") + (S.deck.indexOf(k) >= 0 ? " in-deck" : "") + (have ? "" : " is-locked") + '" type="button" data-action="pick" data-arg="' + k + '" aria-label="' + esc(have ? T[k].name : "Écureuil inconnu") + '">' +
+          dieHtml(k) + (have ? '<i class="rd-lv">' + lv + "</i>" : '<i class="rd-q">?</i>') +
+          (have ? '<span class="rd-bar' + (canLevel(k) ? " is-ready" : "") + '"><b style="width:' + (isFinite(need) ? Math.min(100, c / need * 100) : 100) + '%"></b><em>' + (isFinite(need) ? c + "/" + need : "MAX") + "</em></span>" : '<span class="rd-bar is-void"></span>') +
+          "</button>";
       });
-      return html + "</div>";
+      html += "</div>";
+      html += detailHtml(S.sel);
+      return html;
     },
+    chests: function () {
+      var free = S.keys >= D.KEYS_FOR_FREE;
+      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="deck">← Deck</button><h2>Coffres</h2><span></span></div>' +
+        '<p class="gold-badge">' + goldIc() + " " + S.gold + " · 🗝 " + Math.min(S.keys, D.KEYS_FOR_FREE) + "/" + D.KEYS_FOR_FREE + "</p>" +
+        '<p class="game-small">Chaque partie terminée donne une clé ; ' + D.KEYS_FOR_FREE + " clés ouvrent un coffre en bois gratuit. Les coffres se paient seulement en glands d'or gagnés en jouant.</p>" +
+        '<div class="rd-chests">';
+      D.CHESTS.forEach(function (c, i) {
+        var isFree = i === 0 && free, ok = isFree || S.gold >= c.price;
+        html += '<div class="rd-chest" style="--cc:' + c.color + '"><img src="' + sprUrl("chest") + '" alt=""><strong>' + esc(c.name) + "</strong>" +
+          "<span>" + c.cards + " écureuils" + (c.minRarity ? " · au moins 1 " + D.RARITY[c.minRarity].name.toLowerCase() : "") + "</span>" +
+          '<button class="btn btn-small' + (isFree ? " btn-alt" : "") + '" type="button" data-action="open" data-arg="' + i + '"' + (ok ? "" : " disabled") + ">" + (isFree ? "Gratuit 🗝" : "Ouvrir " + goldIc() + " " + c.price) + "</button></div>";
+      });
+      html += '</div><p class="game-small">Chances par écureuil : ' + Object.keys(D.RARITY).map(function (r) { return '<b style="color:' + D.RARITY[r].color + '">' + D.RARITY[r].name + "</b> " + D.RARITY[r].weight + " %"; }).join(" · ") + " (coffres en fer et doré : rares et mieux plus fréquents).</p>";
+      return html;
+    },
+    opened: function () { return openedHtml; },
     succes: function () {
       var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Succès</h2><span></span></div><ul class="rd-ach">';
       D.ACHIEVEMENTS.forEach(function (a) {
@@ -761,7 +872,7 @@
         "<li><b>Coop</b> : deux plateaux autour du même chemin, vies partagées, chaque bestiole vaincue rapporte des noisettes aux deux.</li>" +
         "<li><b>Versus</b> : mêmes vagues pour les deux joueurs, chacun sur son chemin. Le dernier debout gagne.</li>" +
         "<li>Clavier : <kbd>Espace</kbd> invoque, <kbd>1</kbd>…<kbd>5</kbd> améliorent, <kbd>Échap</kbd> pause.</li>" +
-        "<li>Les <b>glands d'or</b> gagnés en jouant débloquent des écureuils et montent leur niveau. Aucun achat avec de l'argent réel.</li>" +
+        "<li>Les <b>glands d'or</b> gagnés en jouant ouvrent des <b>coffres</b> : chaque coffre donne des écureuils (commun, rare, épique ou légendaire). Avec assez d'exemplaires du même écureuil, tu montes son niveau. Aucun achat avec de l'argent réel.</li>" +
         "</ul>";
     },
     pause: function () {
@@ -813,6 +924,7 @@
       (res.why ? '<p class="game-small">' + esc(res.why) + "</p>" : "") +
       '<ul class="over-stats"><li><span>Vague</span><strong>' + res.wave + (res.record ? " 🏅" : "") + "</strong></li><li><span>Bestioles</span><strong>" + res.kills + "</strong></li><li><span>Boss</span><strong>" + res.bosses + "</strong></li>" +
       '<li class="total"><span>Glands d\'or gagnés</span><strong>' + goldIc() + " +" + res.gold + "</strong></li></ul>" +
+      (res.key ? '<p class="game-small">🗝 +1 clé (' + Math.min(S.keys, D.KEYS_FOR_FREE) + "/" + D.KEYS_FOR_FREE + " pour un coffre gratuit)</p>" : "") +
       (res.newAch.length ? '<p class="game-small">🏆 ' + res.newAch.map(function (a) { return esc(a.name) + " (+" + a.gold + ")"; }).join(", ") + "</p>" : "") +
       (lbOk ? '<form class="submit-score" data-submit><label for="rd-name">Ton pseudo pour le classement (score ' + score + ')</label><div class="submit-row">' +
         '<input id="rd-name" name="player" type="text" maxlength="20" required value="' + esc(S.name || "") + '">' +
@@ -846,12 +958,38 @@
     lvs: function () { SND.click(); localVs(); },
     online: function () { SND.click(); Net.err = ""; show(Net.on ? "lobby" : "online"); },
     deck: function (k) {
+      if (!owned(k)) return;
       var i = S.deck.indexOf(k);
       if (i >= 0) S.deck.splice(i, 1); else if (S.deck.length < 5) S.deck.push(k);
-      save(); SND.click(); show("deck");
+      swapK = null; save(); SND.click(); show("deck", true);
     },
-    unlock: function (k) { if (S.gold < T[k].cost || owned(k)) return; S.gold -= T[k].cost; S.owned[k] = true; save(); SND.pu(); show("deck"); },
-    lvup: function (k) { var lv = clsLv(k), c = CFG.classCosts[lv]; if (lv >= CFG.classMax || S.gold < c) return; S.gold -= c; S.cls[k] = lv + 1; save(); SND.pu(); show("deck"); },
+    pick: function (k) {
+      S.sel = k;
+      if (swapK) swapK = null;
+      if (owned(k) && S.deck.indexOf(k) < 0 && S.deck.length < 5) { S.deck.push(k); SND.summon(); } else SND.click();
+      save(); show("deck", true);
+      var det = card.querySelector(".rd-detail");
+      if (det) { var r = det.getBoundingClientRect(), o = overlay.getBoundingClientRect(); if (r.top > o.bottom - 60) det.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+    },
+    dslot: function (a) {
+      var i = +a, k = S.deck[i];
+      if (swapK) { if (k) S.deck[i] = swapK; else if (S.deck.indexOf(swapK) < 0) S.deck.push(swapK); swapK = null; save(); SND.summon(); show("deck", true); return; }
+      if (k) { S.sel = k; save(); SND.click(); show("deck", true); }
+    },
+    swap: function (k) { swapK = k; SND.click(); show("deck", true); },
+    noswap: function () { swapK = null; show("deck", true); },
+    lvup: function (k) {
+      if (!canLevel(k)) return;
+      S.gold -= lvCost(k); S.cards[k] -= copiesNeed(k); S.cls[k] = clsLv(k) + 1;
+      save(); SND.merge(4); show("deck", true);
+    },
+    open: function (a) {
+      var c = D.CHESTS[+a]; if (!c) return;
+      if (+a === 0 && S.keys >= D.KEYS_FOR_FREE) S.keys -= D.KEYS_FOR_FREE;
+      else if (S.gold >= c.price) S.gold -= c.price;
+      else return;
+      openedScreen(c, openChest(c));
+    },
     resume: function () { togglePause(); },
     quit: function () {
       paused = false;
