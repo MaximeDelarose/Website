@@ -14,7 +14,7 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
-  var VERSION = "0.10.0";
+  var VERSION = "0.11.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -49,7 +49,8 @@
     return s;
   }
   var S = load();
-  var Net = { on: false, role: null, id: Math.random().toString(36).slice(2, 10), code: null, client: null, ch: null, status: "",
+  var MAX_PLAYERS = 6;
+  var Net = { peers: {}, hostId: null, on: false, role: null, id: Math.random().toString(36).slice(2, 10), code: null, client: null, ch: null, status: "",
               roster: [], ev: [], dmgN: 0, acc: 0, inAcc: 0, cur: null, prev: null, lastLevel: 1, started: false, err: "" };
   function netEv(ev) { if (Net.on && Net.role === "host" && Net.started && Net.ev.length < 120) Net.ev.push(ev); }
   function netSend(ev, payload) { if (Net.ch) { try { Net.ch.send({ type: "broadcast", event: ev, payload: payload }); } catch (e) {} } }
@@ -1355,7 +1356,7 @@
     if (inv > 0 && ((inv * 20) | 0) % 2) return;
     blit(s, x, y - lift - (moving && !fly && frame ? 1 : 0), face < 0);
   }
-  var MATE_COL = ["#f6d36b", "#7fd1c7", "#f29ad8", "#9cc56b"];
+  var MATE_COL = ["#f6d36b", "#7fd1c7", "#f29ad8", "#9cc56b", "#f2b05e", "#c9b3ff"];
   function mateColor(pl) { return MATE_COL[Math.max(0, players.indexOf(pl)) % MATE_COL.length]; }
   function drawPlayer(pl) {
     var multi = players.length > 1;
@@ -1833,7 +1834,7 @@
     },
     coop: function () {
       return '<div class="screen-head">' + back() + "<h2>Coop en ligne</h2></div>" +
-        '<p class="game-small">2 à 4 écureuils, chacun sur son téléphone ou son ordi. Niveaux partagés, chacun choisit ses pouvoirs. Un joueur à terre se relève si un coéquipier reste à côté de lui 3 secondes.</p>' +
+        '<p class="game-small">2 à 6 écureuils, chacun sur son téléphone ou son ordi. Niveaux partagés, chacun choisit ses pouvoirs. Un joueur à terre se relève si un coéquipier reste à côté de lui 3 secondes.</p>' +
         (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
         '<div class="coop-form"><label for="es-coop-name">Ton pseudo</label><input id="es-coop-name" data-coop-name type="text" maxlength="16" autocomplete="nickname" placeholder="Pseudo" value="' + esc(S.name || "") + '">' +
         '<button class="btn" type="button" data-action="coophost">➕ Créer un salon</button>' +
@@ -1849,8 +1850,8 @@
         (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
         (!ok ? '<p class="game-small">Connexion au salon… (' + esc(Net.status || "") + ")</p>" : "") +
         '<ul class="room-players">';
-      Net.roster.slice(0, 4).forEach(function (x) {
-        html += "<li>" + img(charById(x.char).sprite) + "<b>" + esc(x.name || "Écureuil") + "</b>" + (x.prog && x.prog.pr ? ' <span class="stars">' + stars(x.prog.pr) + "</span>" : "") + (x.host ? " 👑" : "") + (x.id === Net.id ? " <small>(toi)</small>" : "") + "</li>";
+      Net.roster.slice(0, MAX_PLAYERS).forEach(function (x) {
+        html += "<li>" + img(charById(x.char).sprite) + "<b>" + esc(x.name || "Écureuil") + "</b>" + (x.prog && x.prog.pr ? ' <span class="stars">' + stars(x.prog.pr) + "</span>" : "") + (x.host ? " 👑" : "") + linkBadge(x.id) + (x.id === Net.id ? " <small>(toi)</small>" : "") + "</li>";
       });
       if (!Net.roster.length) html += "<li><small>En attente…</small></li>";
       html += "</ul><h3 class=\"pick-title\">Ton écureuil</h3><div class=\"tile-row\">";
@@ -1870,7 +1871,7 @@
           var df = D.DIFFICULTIES[k]; if (!has(df.unlock)) return;
           html += '<button type="button" class="chip' + (S.diff === k ? " is-on" : "") + '" data-action="ldiff" data-arg="' + k + '">' + esc(df.name) + "</button>";
         });
-        html += '</div><div class="play-bar"><button class="btn" type="button" data-action="start"' + (ok ? "" : " disabled") + ">▶ Lancer la partie (" + Math.max(1, Math.min(4, Net.roster.length)) + " joueur" + (Net.roster.length > 1 ? "s" : "") + ")</button></div>";
+        html += '</div><div class="play-bar"><button class="btn" type="button" data-action="start"' + (ok ? "" : " disabled") + ">▶ Lancer la partie (" + Math.max(1, Math.min(MAX_PLAYERS, Net.roster.length)) + " joueur" + (Net.roster.length > 1 ? "s" : "") + ")</button></div>";
       } else {
         var m = hp ? mapById(hp.map) : null;
         html += '<p class="game-small">' + (m ? "Carte : <b>" + esc(m.name) + "</b> · " + esc((D.DIFFICULTIES[hp.diff] || {}).name || "") + " (choisies par l'hôte)" : "") + "</p>" +
@@ -2091,7 +2092,123 @@
   var GEMK = ["xp", "gold", "berry", "chest", "magnet", "xpjar", "goldbag", "freeze", "bomb"], GEMI = {};
   GEMK.forEach(function (k, i) { GEMI[k] = i; });
   var CODE_CH = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  function rates() { var n = Math.max(2, Net.roster.length); return n >= 4 ? { snap: 6, inp: 4 } : { snap: 8, inp: 5 }; }
+  function rates() {
+    // connexion directe pour tout le monde : plus fluide ; sinon on ménage le quota Supabase
+    if (allDirect()) return { snap: 12, inp: 15 };
+    var n = Math.max(2, Net.roster.length);
+    return n >= 4 ? { snap: 6, inp: 4 } : { snap: 8, inp: 5 };
+  }
+
+  /* ---------- connexion directe entre navigateurs (WebRTC) ----------
+     Supabase sert uniquement à échanger offre / réponse / candidats ICE.
+     Étoile : chaque invité ouvre un canal de données vers l'hôte.
+     État du jeu et positions passent par ce canal (non fiable, non ordonné).
+     Si la connexion directe échoue, on reste sur le relais Supabase. */
+  var RTC_CFG = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun.cloudflare.com:3478"] }] };
+  function p2pOk() { return typeof window.RTCPeerConnection === "function"; }
+  function closePeer(id) {
+    var pr = Net.peers[id]; if (!pr) return;
+    try { if (pr.dc) pr.dc.close(); } catch (e) {}
+    try { pr.pc.close(); } catch (e) {}
+    clearTimeout(pr.timer);
+    delete Net.peers[id];
+  }
+  function hostLinkOpen() { var pr = Net.hostId && Net.peers[Net.hostId]; return !!(pr && pr.open); }
+  function linkOf(id) {
+    if (id === Net.id) return Net.role === "host" ? "host" : (hostLinkOpen() ? "direct" : "relay");
+    if (Net.role === "host") { var pr = Net.peers[id]; return pr && pr.open ? "direct" : (pr && !pr.failed ? "wait" : "relay"); }
+    return "";
+  }
+  function allDirect() {
+    if (!Net.on) return false;
+    if (Net.role === "guest") return hostLinkOpen();
+    var guests = Net.roster.filter(function (x) { return !x.host; });
+    return guests.length > 0 && guests.every(function (x) { var pr = Net.peers[x.id]; return pr && pr.open; });
+  }
+  function newPeer(id) {
+    var pc = new RTCPeerConnection(RTC_CFG), pr = { id: id, pc: pc, dc: null, open: false, failed: false, ice: [] };
+    Net.peers[id] = pr;
+    pc.onicecandidate = function (e) { if (e.candidate) netSend("sig", { from: Net.id, to: id, t: "ice", d: e.candidate.toJSON ? e.candidate.toJSON() : e.candidate }); };
+    pc.onconnectionstatechange = function () {
+      var st = pc.connectionState;
+      if (st === "failed" || st === "closed") { pr.open = false; pr.failed = true; refreshLobby(); }
+    };
+    // pas de connexion directe au bout de 10 s : on reste sur le relais
+    pr.timer = setTimeout(function () { if (!pr.open) { pr.failed = true; try { pc.close(); } catch (e) {} refreshLobby(); } }, 10000);
+    return pr;
+  }
+  function bindChannel(pr, dc) {
+    pr.dc = dc;
+    dc.onopen = function () { pr.open = true; pr.failed = false; clearTimeout(pr.timer); refreshLobby(); };
+    dc.onclose = function () { pr.open = false; refreshLobby(); };
+    dc.onmessage = function (e) {
+      var m; try { m = JSON.parse(e.data); } catch (err) { return; }
+      try { onNet(m.e, m.p, true); } catch (err) { showError(err); }
+    };
+  }
+  function linkBadge(id) {
+    var l = linkOf(id);
+    return l === "direct" ? ' <span class="link-tag direct" title="Connexion directe">⚡ direct</span>' : l === "relay" ? ' <span class="link-tag relay" title="Passe par Supabase">☁️ relais</span>' : l === "wait" ? ' <span class="link-tag">… connexion</span>' : "";
+  }
+  function refreshLobby() { if (state === "menu" && screen === "lobby") go("lobby"); }
+  function p2pConnectToHost() {
+    if (!p2pOk() || Net.role !== "guest" || !Net.hostId || Net.status !== "SUBSCRIBED") return;
+    var old = Net.peers[Net.hostId];
+    if (old && (old.open || !old.failed)) return;
+    if (old && old.failed && old.tries >= 4) return;
+    var tries = old ? (old.tries || 0) + 1 : 1;
+    closePeer(Net.hostId);
+    var pr = newPeer(Net.hostId); pr.tries = tries;
+    bindChannel(pr, pr.pc.createDataChannel("es", { ordered: false, maxRetransmits: 0 }));
+    pr.pc.createOffer().then(function (o) { return pr.pc.setLocalDescription(o); }).then(function () {
+      netSend("sig", { from: Net.id, to: Net.hostId, t: "offer", d: { type: pr.pc.localDescription.type, sdp: pr.pc.localDescription.sdp } });
+    }).catch(function () { pr.failed = true; });
+  }
+  // nouvelle tentative régulière tant que la connexion directe n'est pas établie
+  setInterval(function () { if (Net.on && Net.role === "guest" && !hostLinkOpen()) p2pConnectToHost(); }, 4000);
+  function onSignal(m) {
+    if (!m || m.to !== Net.id || !p2pOk()) return;
+    var pr = Net.peers[m.from];
+    if (m.t === "offer" && Net.role === "host") {
+      closePeer(m.from);
+      pr = newPeer(m.from);
+      pr.pc.ondatachannel = function (e) { bindChannel(pr, e.channel); };
+      pr.pc.setRemoteDescription(m.d).then(function () {
+        pr.ice.forEach(function (c) { pr.pc.addIceCandidate(c).catch(function () {}); }); pr.ice = [];
+        return pr.pc.createAnswer();
+      }).then(function (a) { return pr.pc.setLocalDescription(a); }).then(function () {
+        netSend("sig", { from: Net.id, to: m.from, t: "answer", d: { type: pr.pc.localDescription.type, sdp: pr.pc.localDescription.sdp } });
+      }).catch(function () { pr.failed = true; });
+    } else if (m.t === "answer" && pr) {
+      pr.pc.setRemoteDescription(m.d).then(function () {
+        pr.ice.forEach(function (c) { pr.pc.addIceCandidate(c).catch(function () {}); }); pr.ice = [];
+      }).catch(function () { pr.failed = true; });
+    } else if (m.t === "ice" && pr) {
+      if (pr.pc.remoteDescription) pr.pc.addIceCandidate(m.d).catch(function () {});
+      else pr.ice.push(m.d);
+    }
+  }
+  // envoi rapide : direct si possible, relais Supabase pour ceux qui n'ont pas de lien direct
+  function sendFast(ev, payload) {
+    var msg = null, relay = false;
+    if (Net.role === "host") {
+      Net.roster.forEach(function (x) {
+        if (x.host || x.id === Net.id) return;
+        var pr = Net.peers[x.id];
+        if (pr && pr.open && pr.dc && pr.dc.readyState === "open") {
+          if (pr.dc.bufferedAmount > 256 * 1024) return;   // canal saturé : on saute cet envoi
+          msg = msg || JSON.stringify({ e: ev, p: payload });
+          try { pr.dc.send(msg); } catch (e) { relay = true; }
+        } else relay = true;
+      });
+    } else {
+      var hp = Net.hostId && Net.peers[Net.hostId];
+      if (hp && hp.open && hp.dc && hp.dc.readyState === "open") {
+        try { hp.dc.send(JSON.stringify({ e: ev, p: payload })); } catch (e) { relay = true; }
+      } else relay = true;
+    }
+    if (relay) netSend(ev, payload);
+  }
 
   function sbClient() {
     if (Net.client) return Net.client;
@@ -2107,16 +2224,19 @@
     Net.on = true; Net.role = asHost ? "host" : "guest"; Net.code = code; Net.status = "connexion"; Net.err = ""; Net.started = false; Net.roster = [];
     var ch = cl.channel("es-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: Net.id } } });
     ch.on("presence", { event: "sync" }, onPresence);
-    ["start", "s", "in", "pick", "end"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload); } catch (err) { showError(err); } }); });
+    ["start", "s", "in", "pick", "end"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
+    ch.on("broadcast", { event: "sig" }, function (msg) { try { onSignal(msg.payload); } catch (err) { try { console.warn(err); } catch (e) {} } });
     ch.subscribe(function (status) {
       Net.status = status;
-      if (status === "SUBSCRIBED") trackMe();
+      if (status === "SUBSCRIBED") { trackMe(); if (Net.role === "guest" && Net.hostId) p2pConnectToHost(); }
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") Net.err = "Connexion impossible au salon. Vérifie ta connexion et réessaie.";
       if (state === "menu" && screen === "lobby") go("lobby");
     });
     Net.ch = ch;
   }
   function netLeave(silent) {
+    Object.keys(Net.peers || {}).forEach(closePeer);
+    Net.hostId = null; Net.seen = {};
     if (Net.ch) { try { Net.ch.untrack(); } catch (e) {} try { Net.client.removeChannel(Net.ch); } catch (e) {} }
     Net.ch = null; Net.on = false; Net.role = null; Net.started = false; Net.roster = []; Net.cur = Net.prev = null;
   }
@@ -2136,7 +2256,15 @@
       if (!host && Net.started && state !== "over") { bannerAll("L'hôte a quitté la partie"); gameOver(true, "L'hôte a quitté la partie."); return; }
       if (host && host.ingame && !Net.started && state === "menu") Net.err = "Une partie est déjà en cours dans ce salon : attends la fin pour la rejoindre.";
       var idx = list.map(function (x) { return x.id; }).indexOf(Net.id);
-      if (idx >= 4 && !Net.started) { Net.err = "Salon plein (4 joueurs max)."; netLeave(); go("coop"); return; }
+      if (idx >= MAX_PLAYERS && !Net.started) { Net.err = "Salon plein (" + MAX_PLAYERS + " joueurs max)."; netLeave(); go("coop"); return; }
+      if (host) { Net.hostId = host.id; p2pConnectToHost(); }
+    }
+    if (Net.role === "host") {
+      // on ne ferme que les liens des joueurs qui étaient dans le salon et l'ont quitté
+      var live = list.map(function (x) { return x.id; });
+      Net.seen = Net.seen || {};
+      Object.keys(Net.seen).forEach(function (id) { if (live.indexOf(id) < 0) { closePeer(id); delete Net.seen[id]; } });
+      live.forEach(function (id) { Net.seen[id] = true; });
     }
     if (Net.role === "host" && Net.started && players.length) {
       var ids = list.map(function (x) { return x.id; });
@@ -2144,8 +2272,9 @@
     }
     if (state === "menu" && screen === "lobby") go("lobby");
   }
-  function onNet(ev, d) {
+  function onNet(ev, d, direct) {
     if (!d) return;
+    if (ev === "s" && !direct && Net.role === "guest" && hostLinkOpen()) return;   // déjà reçu en direct
     if (ev === "start" && Net.role === "guest") { startOnline(d); return; }
     if (ev === "in" && Net.role === "host") {
       var pl = playerById(d.id); if (!pl) return;
@@ -2165,7 +2294,7 @@
   }
   function hostStart() {
     if (Net.role !== "host") return;
-    var info = { map: S.map, diff: S.diff, roster: Net.roster.slice(0, 4).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0, pshop: g.pu || {} }; }) };
+    var info = { map: S.map, diff: S.diff, roster: Net.roster.slice(0, MAX_PLAYERS).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0, pshop: g.pu || {} }; }) };
     if (!info.roster.some(function (x) { return x.id === Net.id; })) info.roster.unshift({ id: Net.id, name: S.name || "Hôte", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige, pshop: S.pshop });
     netSend("start", info);
     startOnline(info);
@@ -2185,7 +2314,8 @@
     var rt = rates();
     if (Net.acc < 1 / rt.snap) return;
     Net.acc = 0;
-    netSend("s", buildSnap());
+    var snap = buildSnap(); snap.hz = rt.snap;
+    sendFast("s", snap);
     Net.ev = []; Net.dmgN = 0;
   }
   function R1(v) { return Math.round(v); }
@@ -2263,7 +2393,7 @@
   function sendInput() {
     if (!Net.on || Net.role !== "guest" || !Net.started || !me) return;
     Net.inAcc = 0;
-    netSend("in", { id: me.id, x: Math.round(me.x), y: Math.round(me.y), f: me.face, m: me.moving ? 1 : 0, c: (me.choosing || netMenuOpen) ? 1 : 0 });
+    sendFast("in", { id: me.id, x: Math.round(me.x), y: Math.round(me.y), f: me.face, m: me.moving ? 1 : 0, c: (me.choosing || netMenuOpen) ? 1 : 0 });
   }
   function updateGuest(dt) {
     var now = performance.now();
@@ -2276,7 +2406,7 @@
     if (Net.inAcc >= 1 / rates().inp) sendInput();
     var cur = Net.cur, prev = Net.prev;
     if (cur) {
-      var period = 1000 / rates().snap, k = Math.max(0, Math.min(1, (now - cur.at) / period)), age = (now - cur.at) / 1000;
+      var period = 1000 / (cur.s.hz || rates().snap), k = Math.max(0, Math.min(1, (now - cur.at) / period)), age = (now - cur.at) / 1000;
       var pm = {};
       if (prev) for (var i = 0; i < prev.s.e.length; i += 5) pm[prev.s.e[i]] = i;
       var list = [], E = cur.s.e, P = prev ? prev.s.e : null;
@@ -2547,7 +2677,8 @@
     near: function (i, rad) { var pl = players[i]; return pl ? enemies.filter(function (e) { return !e.dead && !e.d.prop && Math.hypot(e.x - pl.x, e.y - pl.y) < rad; }).length : 0; },
     hurtAll: function (n) { players.forEach(function (pl) { pl.hp -= n || 1000; }); },
     hurtOne: function (i, n) { if (players[i]) players[i].hp -= n || 1000; },
-    net: function () { return { on: Net.on, role: Net.role, code: Net.code, status: Net.status, roster: Net.roster.length, started: Net.started, players: players.length, snap: !!Net.cur }; },
+    links: function () { var o = {}; Object.keys(Net.peers).forEach(function (k) { o[k] = Net.peers[k].open ? "open" : (Net.peers[k].failed ? "failed" : "pending"); }); return o; },
+    net: function () { return { direct: allDirect(), on: Net.on, role: Net.role, code: Net.code, status: Net.status, roster: Net.roster.length, started: Net.started, players: players.length, snap: !!Net.cur }; },
     spawn: function (t) { if (p) spawn(t, Math.random() * TAU, 60); },
     state: function () { return { state: state, screen: screen, level: r && r.level, hp: p && p.hp, kills: r && r.kills, weapons: p && p.weapons, passives: p && p.passives, enemies: enemies && enemies.length }; },
   };
