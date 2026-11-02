@@ -316,3 +316,66 @@ do $$ declare f text; begin
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
   end loop;
 end $$;
+
+-- =========================================================================
+-- Admins du site (modifiable uniquement depuis le tableau de bord / SQL)
+-- Ajouter un admin : insert into public.site_admins (user_id)
+--   select id from auth.users where email = 'adresse@gmail.com';
+-- =========================================================================
+create table public.site_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.site_admins enable row level security;
+revoke all on public.site_admins from anon, authenticated;
+
+create or replace function public.is_admin()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.site_admins where user_id = auth.uid());
+$$;
+
+-- acct_me renvoie aussi « admin »
+create or replace function public.acct_me()
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare uid uuid := auth.uid(); r public.profiles;
+begin
+  if uid is null then raise exception 'not_logged_in'; end if;
+  insert into public.profiles (id) values (uid) on conflict (id) do nothing;
+  select * into r from public.profiles where id = uid;
+  return jsonb_build_object('id', r.id, 'pseudo', r.pseudo, 'created_at', r.created_at, 'admin', public.is_admin());
+end $$;
+
+-- outils admin pour Écureuil Dice (tests)
+create or replace function public.rd_admin_gold(p_amount int)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare r public.rd_profiles := public.rd_row();
+begin
+  if not public.is_admin() then raise exception 'not_admin'; end if;
+  update public.rd_profiles p set gold = greatest(0, p.gold + greatest(-1000000, least(1000000, coalesce(p_amount, 0)))), updated_at = now()
+  where p.user_id = r.user_id returning * into r;
+  return public.rd_json(r);
+end $$;
+
+create or replace function public.rd_admin_unlock(p_copies int)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare r public.rd_profiles := public.rd_row(); v_have jsonb := '{}'; v_cards jsonb; t text; n int := greatest(0, least(1000, coalesce(p_copies, 0)));
+begin
+  if not public.is_admin() then raise exception 'not_admin'; end if;
+  v_cards := r.cards;
+  for t in select id from public.rd_types loop
+    v_have := v_have || jsonb_build_object(t, true);
+    v_cards := jsonb_set(v_cards, array[t], to_jsonb(coalesce((v_cards->>t)::int, 0) + n));
+  end loop;
+  update public.rd_profiles p set have = v_have, cards = v_cards, updated_at = now()
+  where p.user_id = r.user_id returning * into r;
+  return public.rd_json(r);
+end $$;
+
+revoke all on function public.is_admin() from public, anon;
+grant execute on function public.is_admin() to authenticated;
+do $$ declare f text; begin
+  foreach f in array array['rd_admin_gold(integer)', 'rd_admin_unlock(integer)'] loop
+    execute format('revoke all on function public.%s from public, anon', f);
+    execute format('grant execute on function public.%s to authenticated', f);
+  end loop;
+end $$;

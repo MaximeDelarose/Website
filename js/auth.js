@@ -24,6 +24,7 @@
     invalid_pseudo: "Pseudo invalide : 2 à 20 caractères (lettres, chiffres, espace, _ - .).",
     not_enough_gold: "Pas assez de glands d'or.",
     not_enough_copies: "Pas assez d'exemplaires.",
+    not_admin: "Réservé aux admins.",
     rate_limited: "Trop de parties d'un coup, réessaie dans un moment.",
   };
 
@@ -115,16 +116,17 @@
     var btn = inner.querySelector("[data-account-btn]");
     if (!btn) {
       btn = document.createElement("a");
-      btn.className = "icon-btn account-btn"; btn.href = "compte.html"; btn.setAttribute("data-account-btn", "");
+      btn.className = "account-btn"; btn.href = "compte.html"; btn.setAttribute("data-account-btn", "");
       var theme = inner.querySelector("[data-theme-toggle]");
       inner.insertBefore(btn, theme || null);
     }
     var name = A.profile && A.profile.pseudo || (A.user && ((A.user.user_metadata || {}).name || "")) || "";
+    var label = function (t) { var sp = document.createElement("span"); sp.className = "account-label"; sp.textContent = t; return sp.outerHTML; };
     if (A.user) {
-      btn.innerHTML = '<span class="account-initial">' + (name ? name.trim().charAt(0).toUpperCase() : "✓") + "</span>";
+      btn.innerHTML = '<span class="account-initial">' + (name ? name.trim().charAt(0).toUpperCase() : "✓") + "</span>" + label(name ? name.slice(0, 14) : "Mon compte");
       btn.title = "Mon compte" + (name ? " (" + name + ")" : ""); btn.setAttribute("aria-label", btn.title); btn.classList.add("is-on");
     } else {
-      btn.innerHTML = ICON; btn.title = "Se connecter"; btn.setAttribute("aria-label", "Se connecter"); btn.classList.remove("is-on");
+      btn.innerHTML = ICON + label("Connexion"); btn.title = "Connexion / inscription"; btn.setAttribute("aria-label", "Connexion ou inscription"); btn.classList.remove("is-on");
     }
     if (document.body.dataset.page === "account") btn.setAttribute("aria-current", "page");
     // pied de page : liens compte et confidentialité

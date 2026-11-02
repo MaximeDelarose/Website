@@ -1308,3 +1308,25 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .account-danger p { margin: 8px 0; }
 .account-delete { --b: var(--berry); --bd: #7a2a1a; color: #fff; }
 .footer-small a { color: inherit; }
+/* bouton Connexion de l'en-tête (texte + icône) */
+.account-btn {
+  display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px 0 10px; text-decoration: none;
+  font-weight: 800; color: var(--ink); background: var(--panel); white-space: nowrap;
+  box-shadow: 0 -3px 0 0 var(--line), 0 3px 0 0 var(--line), -3px 0 0 0 var(--line), 3px 0 0 0 var(--line), 0 6px 0 0 var(--depth);
+}
+.account-btn svg { width: 20px; height: 20px; shape-rendering: crispEdges; }
+.account-btn:hover { filter: brightness(1.05); }
+.account-btn.is-on { background: var(--orange); color: #2b1709; }
+.account-btn .account-initial { width: 22px; height: 22px; display: grid; place-items: center; background: #2b1709; color: #fdf3de; font-size: .85rem; }
+.account-label { font-size: .95rem; max-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 420px) { .account-btn { padding: 0 10px; } .account-btn.is-on .account-label { display: none; } }
+.account-admin { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: .7rem; font-weight: 900; letter-spacing: .08em; background: #2b1709; color: #f6d36b; vertical-align: 3px; }
+.account-google { font-size: 1.05rem; }
+.rd-admin { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin: 8px 0; padding: 8px; border: 3px dashed var(--line); font-size: .9rem; }
+.rd-admin .btn { margin: 0 0 4px; }
+@media (max-width: 460px) {
+  .header-inner { gap: 8px; }
+  .brand .brand-name { display: none; }
+  .account-btn { height: 40px; padding: 0 10px 0 8px; gap: 6px; }
+  .account-label { font-size: .85rem; }
+}
