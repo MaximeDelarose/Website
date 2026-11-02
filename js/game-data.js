@@ -463,19 +463,33 @@ window.ES_DATA = (function () {
   ];
 
   /* =====================================================================
-     Prestige : possible quand TOUTES les améliorations de la boutique ET toutes
-     les compétences de l'arbre (sauf celles d'un prestige pas encore atteint)
-     sont au maximum, et qu'on a « cost » glands d'or. Remet TOUT à zéro (or, boutique,
-     rang, arbre, succès, écureuils, cartes, statistiques) sauf le niveau de
-     prestige, les records, le pseudo et les options.
+     Prestige
+     Conditions : avoir débloqué une part « req » de la progression (niveaux
+     de boutique + niveaux de l'arbre) et posséder « cost » glands d'or.
+     Les deux augmentent à chaque prestige. Le prestige remet tout à zéro et
+     rapporte des points de prestige (✨) : tout débloqué = fullPoints.
      ===================================================================== */
   var PRESTIGE = {
-    cost: 15000,         // glands d'or nécessaires (consommés)
-    gold: 0.10,          // +10 % de glands d'or par niveau
-    might: 0.05,         // +5 % de dégâts par niveau
-    xp: 0.05,            // +5 % d'expérience par niveau
-    points: 2,           // points de compétence offerts par niveau
+    reqBase: 1 / 3,      // part de la progression requise au 1er prestige
+    reqStep: 0.08,       // +8 points de pourcentage par prestige déjà fait
+    reqMax: 0.9,
+    costBase: 15000,     // glands d'or au 1er prestige (consommés)
+    costGrowth: 1.4,     // ×1,4 à chaque prestige
+    fullPoints: 1500,    // points de prestige si boutique + arbre sont au maximum
+    upCosts: [50, 100, 250, 500, 1000, 2500, 5000, 10000],   // coût des niveaux d'amélioration de prestige
   };
+  // Améliorations de prestige (permanentes, payées en points de prestige). « costs » remplace la grille upCosts.
+  var PRESTIGE_SHOP = [
+    { id: "multi", name: "Multiplicateur", icon: "✨", desc: "+25 % de points de prestige gagnés", max: 8 },
+    { id: "racines", name: "Racines profondes", icon: "🗡️", desc: "+8 % de dégâts", max: 8 },
+    { id: "ecorce", name: "Écorce ancienne", icon: "❤️", desc: "+15 PV max", max: 8 },
+    { id: "tresor", name: "Trésor ancestral", icon: "💰", desc: "+12 % de glands d'or", max: 8 },
+    { id: "seve", name: "Sève ancienne", icon: "📖", desc: "+10 % d'expérience", max: 8 },
+    { id: "rang", name: "Mémoire du rang", icon: "⭐", desc: "+20 % d'XP de rang", max: 6 },
+    { id: "points", name: "Graines de savoir", icon: "🌳", desc: "+2 points de compétence", max: 8 },
+    { id: "heritage", name: "Héritage", icon: "🎁", desc: "Repars de chaque prestige avec +1 000 glands d'or", max: 6 },
+    { id: "memoire", name: "Mémoire du terrier", icon: "🗝️", desc: "Garde tes succès, écureuils et cartes débloqués au prestige", max: 1, costs: [1000] },
+  ];
   // XP de rang nécessaire pour passer du rang n au rang n+1
   function rankNeed(n) { return 100 + (n - 1) * 60; }
 
@@ -547,6 +561,6 @@ window.ES_DATA = (function () {
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
