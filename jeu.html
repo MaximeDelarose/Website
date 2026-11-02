@@ -2,12 +2,18 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Écureuil Survivor · AkarisuMD</title>
   <meta name="description" content="Écureuil Survivor : survis aux vagues de bestioles de la forêt. Un mini jeu pixel art jouable sur ordinateur et mobile.">
   <meta property="og:title" content="Écureuil Survivor · AkarisuMD">
   <meta property="og:description" content="Écureuil Survivor : survis aux vagues de bestioles de la forêt. Un mini jeu pixel art jouable sur ordinateur et mobile.">
   <meta name="theme-color" content="#3f6b3a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Survivor">
+  <link rel="manifest" href="jeu.webmanifest">
+  <link rel="apple-touch-icon" href="assets/squirrel.png">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <script>
     (function () {
@@ -20,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261102c">
+  <link rel="stylesheet" href="css/style.css?v=20261102e">
 </head>
 <body data-page="game">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -35,7 +41,7 @@
         <ul>
           <li><a href="index.html" data-page="home">Accueil</a></li>
           <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
-          <li><a href="jeu.html" data-page="game">Jouer</a></li>
+          <li><a href="jeu.html" data-page="game">Survivor</a></li>
           <li><a href="bio.html" data-page="bio">Bio</a></li>
           <li><a href="contact.html" data-page="contact">Contact</a></li>
         </ul>
@@ -62,6 +68,7 @@
 
       <div class="game-stage" data-game>
         <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Écureuil Survivor"></canvas>
+        <button class="fs-exit" type="button" data-fs-exit aria-label="Quitter le plein écran">✕</button>
 
         <div class="game-hud" data-hud hidden>
           <button class="hud-btn" type="button" data-mute aria-label="Couper le son">🔊</button>
@@ -114,11 +121,11 @@
     </div>
   </footer>
 
-  <script src="js/data.js?v=20261102c"></script>
-  <script src="js/leaderboard.js?v=20261102c"></script>
-  <script src="js/main.js?v=20261102c"></script>
+  <script src="js/data.js?v=20261102e"></script>
+  <script src="js/leaderboard.js?v=20261102e"></script>
+  <script src="js/main.js?v=20261102e"></script>
   <script src="js/vendor/supabase-2.45.4.min.js"></script>
-  <script src="js/game-data.js?v=20261102c"></script>
-  <script src="js/game.js?v=20261102c"></script>
+  <script src="js/game-data.js?v=20261102e"></script>
+  <script src="js/game.js?v=20261102e"></script>
 </body>
 </html>

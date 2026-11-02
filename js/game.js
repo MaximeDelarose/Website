@@ -14,7 +14,7 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
-  var VERSION = "v6";
+  var VERSION = "v7";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
 
@@ -1682,7 +1682,8 @@
         '<button class="btn btn-alt" type="button" data-action="go" data-arg="succes">🏆 Succès <small>' + nAch + "/" + D.ACHIEVEMENTS.length + "</small></button>" +
         '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="codex">📜 Fusions</button>' +
         '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Aide</button>' +
-        '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="options">⚙️ Options</button></div></div>' +
+        '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="options">⚙️ Options</button></div>' +
+        '<button class="btn btn-ghost btn-small" type="button" data-action="fullscreen">' + (isFull() ? "✕ Quitter le plein écran" : "⛶ Plein écran") + "</button></div>" +
         (S.stats.runs ? '<p class="game-small">Record : ' + S.stats.bestScore.toLocaleString("fr-FR") + " pts · " + fmtTime(S.stats.bestTime) + " de survie · " + S.stats.runs + " partie" + (S.stats.runs > 1 ? "s" : "") + "</p>" : "") +
         '<p class="game-version">' + VERSION + "</p>";
     },
@@ -2142,6 +2143,7 @@
   }
   function beginPlay() {
     Net.anims = {};
+    if (isTouch) enterFull();
     state = "play"; hideCard();
     curBoss = null;
     $("[data-toasts]").innerHTML = "";
@@ -2279,16 +2281,40 @@
   muteLabel();
   muteBtn.addEventListener("click", function () { S.opts.sound = !S.opts.sound; save(); muteLabel(); });
 
-  var fsBtn = document.querySelector("[data-game-fullscreen]");
-  if (fsBtn) fsBtn.addEventListener("click", function () {
+  /* ---------- plein écran ----------
+     API Fullscreen quand elle existe (Android, ordi), sinon le jeu occupe tout
+     l'écran en CSS (iPhone). Sur téléphone, on y passe tout seul au lancement. */
+  var isTouch = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+  var standalone = window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches || navigator.standalone;
+  function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement) || stage.classList.contains("is-max"); }
+  function syncFull() {
+    var on = isFull();
+    document.documentElement.classList.toggle("es-max", on);
+    stage.classList.toggle("is-full", on);
+    if (state === "menu" && screen === "menu") go("menu");
+  }
+  function enterFull() {
+    if (isFull() || standalone) return;
     var req = stage.requestFullscreen || stage.webkitRequestFullscreen;
-    if (req && !document.fullscreenElement) {
-      try { var pr = req.call(stage); if (pr && pr.catch) pr.catch(function () { stage.classList.add("is-max"); }); } catch (e) { stage.classList.add("is-max"); }
-    } else stage.classList.toggle("is-max");
-  });
-  $("[data-exit-max]").addEventListener("click", function () {
-    if (document.fullscreenElement) document.exitFullscreen(); stage.classList.remove("is-max");
-  });
+    var fallback = function () { stage.classList.add("is-max"); syncFull(); };
+    if (req) {
+      try { var pr = req.call(stage, { navigationUI: "hide" }); if (pr && pr.catch) pr.catch(fallback); } catch (e) { fallback(); }
+    } else fallback();
+  }
+  function exitFull() {
+    stage.classList.remove("is-max");
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
+    else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+    syncFull();
+  }
+  function toggleFull() { if (isFull()) exitFull(); else enterFull(); }
+  document.addEventListener("fullscreenchange", syncFull);
+  document.addEventListener("webkitfullscreenchange", syncFull);
+  var fsBtn = document.querySelector("[data-game-fullscreen]");
+  if (fsBtn) fsBtn.addEventListener("click", toggleFull);
+  $("[data-exit-max]").addEventListener("click", exitFull);
+  $("[data-fs-exit]").addEventListener("click", exitFull);
+  ACTIONS.fullscreen = function () { toggleFull(); };
 
   function resize() {
     var dpr = window.devicePixelRatio || 1;

@@ -1,0 +1,14 @@
+{
+  "name": "Écureuil Survivor",
+  "short_name": "Survivor",
+  "start_url": "jeu.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#1f3a2b",
+  "theme_color": "#1f3a2b",
+  "icons": [
+    { "src": "assets/squirrel.png", "sizes": "any", "type": "image/png" },
+    { "src": "assets/favicon.png", "sizes": "any", "type": "image/png" }
+  ]
+}
