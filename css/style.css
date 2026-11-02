@@ -926,3 +926,34 @@ pre.err { white-space: pre-wrap; word-break: break-word; text-align: left; font-
 .room-players img { width: 28px; height: auto; image-rendering: pixelated; }
 .play-bar .waiting { font-weight: 800; color: var(--ink-soft); padding: 10px; text-align: center; }
 .game-card-lobby .play-bar { bottom: -16px; padding-bottom: 26px; }
+
+/* --- Écureuil Survivor v7 : plein écran, coop mobile --- */
+.game-overlay > .game-card { min-width: 0; max-width: 100%; }
+.coop-form { width: 100%; }
+.coop-form input { width: 100%; }
+.coop-join input { width: 0; flex: 1 1 auto; }
+.coop-join .btn { flex: none; margin: 4px 4px 8px; }
+.coop-form > .btn { justify-content: center; margin: 4px 4px 8px; }
+@media (max-width: 480px) {
+  .game-card-coop .screen-head h2 { font-size: 1.35rem; }
+  .coop-join { flex-direction: column; align-items: stretch; }
+  .coop-join input { width: 100%; }
+  .coop-join .btn { justify-content: center; }
+  .room-code b { font-size: 1.6rem; }
+}
+
+/* plein écran : API Fullscreen ou repli CSS (iPhone) */
+.fs-exit {
+  display: none; position: absolute; z-index: 6;
+  top: calc(env(safe-area-inset-top, 0px) + 6px); right: calc(env(safe-area-inset-right, 0px) + 6px);
+  width: 36px; height: 36px; place-items: center; font-size: 1rem; font-weight: 900; cursor: pointer;
+  background: rgba(43, 23, 9, .75); color: #fdf3de; border: 2px solid #2b1709;
+}
+.game-stage.is-full .fs-exit { display: grid; }
+.game-stage.is-full .game-hud .hud-exit { display: grid; }
+.game-stage.is-full:has(.game-hud:not([hidden])) .fs-exit { display: none; }
+html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
+.game-stage.is-max { position: fixed; inset: 0; z-index: 300; width: 100vw; height: 100vh; height: 100dvh; min-height: 0; margin: 0; box-shadow: none; }
+.game-stage:fullscreen { width: 100vw; height: 100vh; }
+.game-stage.is-full .game-hud { bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); right: calc(env(safe-area-inset-right, 0px) + 8px); }
+.game-stage.is-full .game-overlay { padding: calc(env(safe-area-inset-top, 0px) + 48px) calc(env(safe-area-inset-right, 0px) + 12px) calc(env(safe-area-inset-bottom, 0px) + 12px) calc(env(safe-area-inset-left, 0px) + 12px); }
