@@ -129,13 +129,52 @@
     coopHp: 1.8,          // PV en coop (2 plateaux)
     killSp: 8, killSpWave: 1.5, // noisettes par ennemi : 8 + 1,5 par vague
     bossSp: 100,
-    waveLen: 20, spawnLen: 15, bossEvery: 5, bossTimeout: 70,
+    waveLen: 20, spawnLen: 15, bossEvery: 5, bossTimeout: 70, runBossEvery: 4,
     // progression permanente (glands d'or, aucune vraie monnaie)
     classMax: 10, classBonus: 0.12,
     classCosts: [0, 30, 60, 100, 150, 220, 300, 400, 520, 660],
   };
 
+  /* =====================================================================
+     Mode Saisons (roguelike) : zone restreinte, vagues fixes, boutique
+     de reliques entre les vagues (payée en pignons, gagnés en jouant)
+     mods : effets cumulables lus par le moteur
+       dmg (+x dégâts), typeDmg {type: +x}, crit, critMul, haste (cadence),
+       summonDisc (réduction invocation), pip2 (chance d'invoquer à 2 points),
+       merge2 (chance de +2 points en fusion), killSp, waveSp, waveGrow,
+       slowAll (bestioles plus lentes), boss (+x contre les boss),
+       hermit (+x par case libre), variety (+x par type différent)
+     ===================================================================== */
+  var RUN = {
+    waves: 16, seasons: ["Printemps", "Été", "Automne", "Hiver"],
+    startCoins: 4, waveCoins: 3, bossCoins: 6, interestPer: 5, interestMax: 4,
+    startOpen: [1, 2, 3, 6, 7, 8],               // cases ouvertes au départ (3 × 2 au centre)
+    openOrder: [11, 12, 13, 5, 9, 0, 4, 10, 14], // ordre d'agrandissement de la zone
+    expandCost: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+    rerollCost: 1, relicSlots: 5, sackSp: 120, sackCost: 3, lifeCost: 8,
+  };
+  var RELICS = [
+    { id: "gland_dore", icon: "🌰", name: "Gland doré", price: 6, desc: "+25 % de dégâts pour tous tes écureuils.", mods: { dmg: 0.25 } },
+    { id: "loupe", icon: "🔍", name: "Loupe de pie", price: 5, desc: "+8 % de chance de coup critique.", mods: { crit: 0.08 } },
+    { id: "marteau", icon: "🔨", name: "Casse-noix", price: 6, desc: "Les coups critiques font ×3,5 au lieu de ×2,5.", mods: { critMul: 1 } },
+    { id: "sablier", icon: "⏳", name: "Sablier de rosée", price: 6, desc: "Tous tes écureuils tirent 15 % plus vite.", mods: { haste: 0.15 } },
+    { id: "sac", icon: "🎒", name: "Besace", price: 5, desc: "Invoquer coûte 25 % moins cher.", mods: { summonDisc: 0.25 } },
+    { id: "trefle", icon: "🍀", name: "Trèfle à quatre feuilles", price: 7, desc: "25 % de chance qu'un écureuil invoqué arrive avec 2 points.", mods: { pip2: 0.25 } },
+    { id: "double", icon: "🪺", name: "Nid douillet", price: 7, desc: "20 % de chance qu'une fusion donne 2 points de plus au lieu d'un.", mods: { merge2: 0.2 } },
+    { id: "chasseur", icon: "🏹", name: "Carquois", price: 4, desc: "+4 noisettes par bestiole vaincue.", mods: { killSp: 4 } },
+    { id: "noisetier", icon: "🌳", name: "Noisetier", price: 4, desc: "+60 noisettes au début de chaque vague.", mods: { waveSp: 60 } },
+    { id: "lune_rousse", icon: "🌕", name: "Lune rousse", price: 8, desc: "Au début de chaque vague, un écureuil au hasard gagne 1 point.", mods: { waveGrow: 1 } },
+    { id: "epouvantail", icon: "🧣", name: "Épouvantail", price: 5, desc: "Toutes les bestioles avancent 12 % moins vite.", mods: { slowAll: 0.12 } },
+    { id: "couronne", icon: "👑", name: "Couronne de lierre", price: 5, desc: "+100 % de dégâts contre les boss.", mods: { boss: 1 } },
+    { id: "ermite", icon: "🍄", name: "Champignon ermite", price: 6, desc: "+12 % de dégâts par case libre dans ta zone.", mods: { hermit: 0.12 } },
+    { id: "mosaique", icon: "🎨", name: "Mosaïque de feuilles", price: 6, desc: "+8 % de dégâts par type d'écureuil différent sur le plateau.", mods: { variety: 0.08 } },
+    // une relique « fan » par type du deck, générée à la volée
+    { id: "fan", icon: "⭐", name: "Fan de", price: 4, desc: "+60 % de dégâts pour les", fan: 0.6 },
+  ];
+
   var ACHIEVEMENTS = [
+    { id: "saison1", name: "Premier printemps", desc: "Termine le Printemps en mode Saisons.", gold: 40, check: function (r) { return r.mode === "run" && r.wave >= 4 && (r.win || r.wave > 4); } },
+    { id: "saison4", name: "Les quatre saisons", desc: "Termine l'Hiver en mode Saisons.", gold: 250, check: function (r) { return r.mode === "run" && r.runWin; } },
     { id: "v5", name: "Premier boss", desc: "Atteins la vague 6 en solo.", gold: 30, check: function (r) { return r.mode === "solo" && r.wave >= 6; } },
     { id: "v15", name: "Écureuil de garde", desc: "Atteins la vague 15 en solo.", gold: 80, check: function (r) { return r.mode === "solo" && r.wave >= 15; } },
     { id: "v25", name: "Gardien du chêne", desc: "Atteins la vague 25 en solo.", gold: 200, check: function (r) { return r.mode === "solo" && r.wave >= 25; } },
@@ -146,5 +185,5 @@
     { id: "boss5", name: "Chasseur de boss", desc: "Bats 5 boss en une partie.", gold: 120, check: function (r) { return r.bosses >= 5; } },
   ];
 
-  root.RD_DATA = { TYPES: TYPES, ORDER: ORDER, START_DECK: START_DECK, ENEMIES: ENEMIES, BOSSES: BOSSES, CFG: CFG, ACHIEVEMENTS: ACHIEVEMENTS };
+  root.RD_DATA = { TYPES: TYPES, ORDER: ORDER, START_DECK: START_DECK, ENEMIES: ENEMIES, BOSSES: BOSSES, CFG: CFG, ACHIEVEMENTS: ACHIEVEMENTS, RUN: RUN, RELICS: RELICS };
 })(typeof window !== "undefined" ? window : globalThis);
