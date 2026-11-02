@@ -10,7 +10,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "0.1.0";
+  var VERSION = "0.2.0";
   var SAVE_KEY = "idle-chene-v1";
   var D = window.IDLE_DATA;
   var root = document.querySelector("[data-idle]");
@@ -730,7 +730,7 @@
   /* =====================================================================
      interface : listes (construites une fois, mises à jour ensuite)
      ===================================================================== */
-  var tabsEl = $("[data-tabs]"), bodyEl = $("[data-body]");
+  var bodyEl = $("[data-body]");
   var tabKeys = {}, tabsDirty = true, panes = {};
   function setText(el, v) { v = v == null ? "" : String(v); if (el._v !== v) { el._v = v; el.textContent = v; } }
   function setHTML(el, v) { v = v == null ? "" : String(v); if (el._h !== v) { el._h = v; el.innerHTML = v; } }
@@ -1003,38 +1003,67 @@
     if (id === "garden") return S.pots.some(function (p) { return p.f && p.g >= p.need; });
     if (id === "farm") return !S.farm.scare && S.fields.some(function (f) { return f.c && f.g >= f.need; });
     if (id === "upg") return UPG.some(function (u) { return upgVisible(u) && u.cost <= S.acorns; });
+    if (id === "forest") return D.LEVELED.some(function (d) { var l = L(d.id); return !maxed(d, l) && lvCost(d, l) <= S.acorns; }) || S.prod.every(function (n) { return n === 0; }) && S.acorns >= D.PRODUCERS[0].cost;
     if (id === "roots") return seedGain() >= Math.max(1, S.seedsSeason);
     if (id === "seasons") return essenceGain() >= 1;
     return false;
   }
+  /* ---------- boutons sur les côtés + panneau ---------- */
+  var SIDES = { left: ["forest", "upg", "roots", "seasons"], right: ["garden", "farm", "ranch", "ach", "opts"] };
+  var btnCols = { left: $("[data-btns=left]"), right: $("[data-btns=right]") };
+  var drawer = $("[data-drawer]"), drawerTitle = $("[data-drawer-title]");
+  var openTab = null;
+  function tabDef(id) { return TABS.filter(function (x) { return x.id === id; })[0]; }
+  function sideOf(id) { return SIDES.left.indexOf(id) >= 0 ? "left" : "right"; }
   function renderTabs() {
     if (tabsDirty) {
       tabsDirty = false;
-      tabsEl.innerHTML = "";
-      TABS.forEach(function (t) {
-        var b = document.createElement("button");
-        b.type = "button"; b.className = "idle-tab"; b.dataset.tab = t.id;
-        b.setAttribute("role", "tab");
-        b.innerHTML = '<span class="ti">' + (S.unl[t.id] ? t.icon : "🔒") + '</span><span class="tn">' + esc(S.unl[t.id] ? t.name : "???") + "</span><i class=\"dot\"></i>";
-        if (!S.unl[t.id]) { b.classList.add("lock"); b.title = t.hint || ""; }
-        tabsEl.appendChild(b);
+      Object.keys(SIDES).forEach(function (side) {
+        var col = btnCols[side];
+        col.innerHTML = "";
+        SIDES[side].forEach(function (id) {
+          var t = tabDef(id), b = document.createElement("button");
+          b.type = "button"; b.className = "idle-sbtn"; b.dataset.tab = id;
+          b.innerHTML = '<span class="si">' + (S.unl[id] ? t.icon : "🔒") + '</span><span class="sl">' + esc(S.unl[id] ? t.name : "???") + '</span><i class="dot"></i>';
+          b.title = S.unl[id] ? t.name : (t.hint || "");
+          b.setAttribute("aria-label", S.unl[id] ? t.name : "Verrouillé : " + (t.hint || ""));
+          if (!S.unl[id]) b.classList.add("lock");
+          col.appendChild(b);
+        });
       });
     }
-    $$(".idle-tab", tabsEl).forEach(function (b) {
-      var on = b.dataset.tab === S.tab;
+    $$(".idle-sbtn").forEach(function (b) {
+      var id = b.dataset.tab, on = id === openTab;
       b.classList.toggle("on", on);
-      b.setAttribute("aria-selected", on ? "true" : "false");
-      b.classList.toggle("alert", !!S.unl[b.dataset.tab] && !on && tabAlert(b.dataset.tab));
+      b.setAttribute("aria-expanded", on ? "true" : "false");
+      b.classList.toggle("alert", !!S.unl[id] && !on && tabAlert(id));
     });
   }
   function renderPane() {
-    if (!S.unl[S.tab]) S.tab = "forest";
-    Object.keys(panes).forEach(function (k) { panes[k].hidden = k !== S.tab; });
-    if (!panes[S.tab]) {
-      var p = document.createElement("div"); p.className = "idle-pane"; p.dataset.pane = S.tab;
-      bodyEl.appendChild(p); panes[S.tab] = p;
+    if (!openTab) return;
+    Object.keys(panes).forEach(function (k) { panes[k].hidden = k !== openTab; });
+    if (!panes[openTab]) {
+      var p = document.createElement("div"); p.className = "idle-pane"; p.dataset.pane = openTab;
+      bodyEl.appendChild(p); panes[openTab] = p;
     }
-    sync(panes[S.tab], PANES[S.tab]());
+    sync(panes[openTab], PANES[openTab]());
+  }
+  function openDrawer(id) {
+    var t = tabDef(id);
+    if (!t) return;
+    if (!S.unl[id]) { toast("🔒 Pas encore", t.hint || ""); return; }
+    if (openTab === id) { closeDrawer(); return; }
+    openTab = id; S.tab = id;
+    drawer.hidden = false;
+    drawer.dataset.side = sideOf(id);
+    setText(drawerTitle, t.icon + " " + t.name);
+    render();
+    bodyEl.scrollTop = 0;
+  }
+  function closeDrawer() {
+    openTab = null;
+    drawer.hidden = true;
+    render();
   }
 
   /* ---------- actions ---------- */
@@ -1122,14 +1151,6 @@
     if (!b || !bodyEl.contains(b) || !b.dataset.act) return;
     act(b.dataset.act);
   });
-  tabsEl.addEventListener("click", function (e) {
-    var b = e.target.closest("[data-tab]");
-    if (!b) return;
-    var t = TABS.filter(function (x) { return x.id === b.dataset.tab; })[0];
-    if (!S.unl[t.id]) { toast("🔒 Pas encore", t.hint || ""); return; }
-    S.tab = t.id;
-    render();
-  });
 
   /* ---------- haut de l'écran ---------- */
   var R_ = {};
@@ -1143,7 +1164,7 @@
     setText(R_.combo, "Combo " + Math.floor(combo) + " · ×" + fmt(mult, true));
     R_.combobar.style.width = (combo / C.comboMax * 100).toFixed(1) + "%";
     R_.combowrap.classList.toggle("hot", combo >= C.comboMax - 0.01 && combo > 0);
-    var mini = [];
+    var mini = [D.SEASONS[S.season].icon + " " + D.SEASONS[S.season].name];
     if (S.unl.roots) mini.push("🌱 " + fmt(S.seeds));
     if (S.essenceTotal) mini.push("🍃 " + fmt(S.essence));
     if (S.unl.garden) mini.push("🌸 " + fmt(S.petals));
@@ -1158,9 +1179,9 @@
   function render() { renderTop(); renderTabs(); renderPane(); }
 
   /* =====================================================================
-     le chêne (canvas pixel)
+     la scène : ciel, grand chêne, jardin, ferme, enclos (canvas pixel)
      ===================================================================== */
-  var treeBox = $("[data-tree]"), cv = $("canvas", treeBox), cx = cv.getContext("2d");
+  var cv = $("[data-scene]"), cx = cv.getContext("2d"), tipEl = $("[data-tip]");
   var VW = 128, VH = 132, GROUND = 118;
   var trunkBuf = document.createElement("canvas"), crownBuf = document.createElement("canvas");
   trunkBuf.width = crownBuf.width = VW; trunkBuf.height = crownBuf.height = VH;
@@ -1183,7 +1204,7 @@
     var stg = stage(), se = season(), key = stg + se;
     if (!treeDirty && key === builtFor) return;
     treeDirty = false; builtFor = key;
-    var P = PAL[se], s = 0.6 + 0.08 * stg;
+    var P = PAL[se], s = 0.78 + 0.044 * stg;
     var t = trunkBuf.getContext("2d"), c = crownBuf.getContext("2d");
     t.clearRect(0, 0, VW, VH); c.clearRect(0, 0, VW, VH);
     var tw = Math.round(7 + 7 * s), th = Math.round(38 * s) + 8, tx = Math.round(VW / 2 - tw / 2), top = GROUND - th;
@@ -1241,104 +1262,419 @@
     for (var j = 0; j < rows.length; j++) for (var i = 0; i < rows[j].length; i++) {
       var ch = rows[j][flip ? rows[j].length - 1 - i : i];
       if (ch === "." || !pal[ch]) continue;
-      c.fillStyle = pal[ch]; c.fillRect(x + i * sc, y + j * sc, sc, sc);
+      var x0 = Math.round(x + i * sc), y0 = Math.round(y + j * sc);
+      c.fillStyle = pal[ch]; c.fillRect(x0, y0, Math.round(x + (i + 1) * sc) - x0, Math.round(y + (j + 1) * sc) - y0);
     }
   }
   var parts = [];
-  var dpr = 1, cw = 0, ch = 0;
+  var dpr = 1, cw = 0, ch = 0, LY = null;
   function resize() {
     dpr = Math.min(2, window.devicePixelRatio || 1);
-    var r = treeBox.getBoundingClientRect();
-    cw = Math.max(1, Math.round(r.width * dpr)); ch = Math.max(1, Math.round(r.height * dpr));
-    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+    var r = cv.getBoundingClientRect();
+    var w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+    if (w !== cw || h !== ch || !LY) { cw = w; ch = h; cv.width = w; cv.height = h; LY = layout(); }
   }
-  function view() {
-    var sc = Math.min(cw / VW, ch / VH);
-    var ox = Math.round((cw - VW * sc) / 2), oy = Math.round(ch - VH * sc);
-    return { sc: sc, ox: ox, oy: oy };
+  /* découpage de la scène : le sol en bas, l'arbre au-dessus, et sur le sol
+     l'enclos, le jardin (à gauche du tronc) et la ferme (à droite) */
+  function layout() {
+    var W = cw, H = ch, por = W < H * 1.05;
+    var gy = Math.round(H * (por ? 0.56 : 0.66));
+    var u = Math.max(2, Math.round(Math.min(W / (por ? 120 : 230), H / 140)));
+    var ts = (gy - H * 0.08) / (GROUND - 14);                // le haut du feuillage arrive vers 8 % de la hauteur
+    ts = Math.min(ts, W * (por ? 1.08 : 0.6) / 96);
+    var tx = Math.round(W / 2), band = H - gy, m = Math.round(10 * dpr), side = por ? m : Math.round(84 * dpr);
+    var half = Math.round(13 * ts);
+    var L = { por: por, W: W, H: H, gy: gy, u: u, ts: ts, tx: tx, m: m };
+    if (!por) {
+      var mid = Math.round(W * 0.345);
+      L.ranch = { x: side, y: gy + band * 0.2, w: mid - side - u * 3, h: band * 0.8 - m };
+      L.garden = { x: mid, y: gy + band * 0.06, w: tx - half - mid, h: band * 0.9 - m };
+      L.farm = { x: tx + half + u * 3, y: gy + band * 0.1, w: W - side - tx - half - u * 3, h: band * 0.9 - m };
+    } else {
+      L.garden = { x: m, y: gy + band * 0.03, w: tx - half - m, h: band * 0.44 };
+      L.farm = { x: tx + half + u, y: gy + band * 0.03, w: W - m - tx - half - u, h: band * 0.44 };
+      L.ranch = { x: m, y: gy + band * 0.5, w: W - 2 * m, h: band * 0.5 - m };
+    }
+    return L;
   }
+  function treeOrigin() { return { x: LY.tx - VW / 2 * LY.ts, y: LY.gy - GROUND * LY.ts, s: LY.ts }; }
   function toCanvas(e) { var r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]; }
+
+  /* ---------- effets ---------- */
   function leaf(x, y, n) {
-    if (parts.length > 220) return;
-    var v = view(), P = PAL[season()];
+    if (parts.length > 220 || !LY) return;
+    var o = treeOrigin(), P = PAL[season()], s = treeGeo ? treeGeo.s : 1;
     for (var i = 0; i < n; i++) {
-      var lx = x != null ? x : v.ox + (VW / 2 + (Math.random() - 0.5) * 70 * (treeGeo ? treeGeo.s : 1)) * v.sc;
-      var ly = y != null ? y : v.oy + (treeGeo ? treeGeo.top - 20 : 50) * v.sc;
-      parts.push({ t: "leaf", x: lx, y: ly, vx: (Math.random() - 0.5) * 120 * dpr, vy: -Math.random() * 120 * dpr, life: 1.6 + Math.random(), age: 0,
-        col: [P.m, P.l, P.d][i % 3], sz: Math.max(2, Math.round(v.sc * 1.5)), ph: Math.random() * 6 });
+      var lx = x != null ? x : LY.tx + (Math.random() - 0.5) * 80 * s * o.s;
+      var ly = y != null ? y : o.y + (treeGeo ? treeGeo.top - 22 : 50) * o.s;
+      parts.push({ t: "leaf", x: lx, y: ly, vx: (Math.random() - 0.5) * 140 * dpr, vy: -Math.random() * 140 * dpr, life: 1.8 + Math.random(), age: 0,
+        col: [P.m, P.l, P.d][i % 3], sz: Math.max(2, Math.round(o.s * 1.4)), ph: Math.random() * 6 });
     }
   }
   function acornPop(x, y) {
-    if (parts.length > 220) return;
-    parts.push({ t: "acorn", x: x, y: y, vx: (Math.random() - 0.5) * 160 * dpr, vy: -(220 + Math.random() * 120) * dpr, life: 0.9, age: 0, sz: Math.max(2, Math.round(view().sc)) });
+    if (parts.length > 220 || !LY) return;
+    parts.push({ t: "acorn", x: x, y: y, vx: (Math.random() - 0.5) * 200 * dpr, vy: -(260 + Math.random() * 140) * dpr, life: 1, age: 0, sz: Math.max(2, Math.round(LY.ts * 0.9)) });
   }
-  function floatText(x, y, txt, crit) {
+  function floatText(x, y, txt, crit, col) {
     var n = 0; for (var i = 0; i < parts.length; i++) if (parts[i].t === "text") n++;
     if (n > 30) return;
-    parts.push({ t: "text", x: x + (Math.random() - 0.5) * 20 * dpr, y: y - 10 * dpr, vx: 0, vy: -70 * dpr, life: crit ? 1.3 : 0.9, age: 0, txt: crit ? txt + " CRIT !" : txt, crit: crit });
+    parts.push({ t: "text", x: x + (Math.random() - 0.5) * 20 * dpr, y: y - 10 * dpr, vx: 0, vy: -80 * dpr, life: crit ? 1.3 : 0.95, age: 0, txt: crit ? txt + " CRIT !" : txt, crit: crit, col: col });
   }
-  var FLOWER_COL = { paquerette: "#fdf3de", tulipe: "#e0544b", tournesol: "#f6c453", rose: "#c8303a", lotus: "#f2a7c8", lune: "#b9c8ff" };
-  function drawPots(v, t) {
-    if (!S.unl.garden) return;
-    var sc = v.sc, n = Math.min(4, C.pots);
-    for (var i = 0; i < n; i++) {
-      var pot = S.pots[i], x = 14 + i * 9, y = GROUND - 5;
-      if (x > treeGeo.tx - 12) break;
-      var X = function (q) { return v.ox + q * sc; }, Y = function (q) { return v.oy + q * sc; };
-      cx.fillStyle = "#4a2e1c"; cx.fillRect(X(x - 1), Y(y - 1), 7 * sc, 6 * sc);
-      cx.fillStyle = "#c8653a"; cx.fillRect(X(x), Y(y), 5 * sc, 4 * sc);
-      cx.fillStyle = "#e08a5a"; cx.fillRect(X(x), Y(y), 5 * sc, sc);
-      if (!pot || !pot.f) continue;
-      var p = pot.g / pot.need, h = 1 + Math.floor(p * 5);
-      cx.fillStyle = "#3f7a2e"; cx.fillRect(X(x + 2), Y(y - h), sc, h * sc);
-      if (p > 0.4) { cx.fillRect(X(x + 1), Y(y - Math.ceil(h / 2)), sc, sc); cx.fillRect(X(x + 3), Y(y - Math.ceil(h / 2) - 1), sc, sc); }
-      if (p >= 1) {
-        var bob = Math.round(Math.sin(t * 3 + i) * 0.5);
-        cx.fillStyle = FLOWER_COL[pot.f] || "#f6a9c8";
-        cx.fillRect(X(x + 1), Y(y - h - 2 + bob), 3 * sc, 3 * sc);
-        cx.fillStyle = "#f6c453"; cx.fillRect(X(x + 2), Y(y - h - 1 + bob), sc, sc);
-      }
+
+  /* ---------- petits dessins ---------- */
+  function R4(x, y, w, h, col) { cx.fillStyle = col; cx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))); }
+  function pdisc(x, y, r, u, col) { // disque « pixel » de rayon r (en pixels d'art de taille u)
+    cx.fillStyle = col;
+    for (var dy = -r; dy <= r; dy++) { var w = Math.floor(Math.sqrt(r * r - dy * dy) + 0.35); cx.fillRect(Math.round(x - w * u), Math.round(y + dy * u), (w * 2 + 1) * u, u); }
+  }
+  function label(x, y, txt, size, col, align) {
+    cx.font = "800 " + Math.round(size * dpr) + "px Nunito, system-ui, sans-serif";
+    cx.textAlign = align || "center"; cx.textBaseline = "middle"; cx.lineJoin = "round";
+    cx.lineWidth = 4 * dpr; cx.strokeStyle = "#2b1709"; cx.strokeText(txt, x, y);
+    cx.fillStyle = col || "#fdf3de"; cx.fillText(txt, x, y);
+    cx.textBaseline = "alphabetic";
+  }
+  function signBoard(x, y, txt, act, tip) { // panneau en bois cliquable
+    cx.font = "800 " + Math.round(13 * dpr) + "px Nunito, system-ui, sans-serif";
+    var w = cx.measureText(txt).width + 16 * dpr, h = 22 * dpr;
+    x = Math.max(w / 2 + 4 * dpr, Math.min(cw - w / 2 - 4 * dpr, x));
+    var X = Math.round(x - w / 2), Y = Math.round(y - h / 2);
+    R4(X + w / 2 - 2 * dpr, Y + h, 4 * dpr, 8 * dpr, "#5c3720");
+    R4(X - 2 * dpr, Y - 2 * dpr, w + 4 * dpr, h + 4 * dpr, "#3a2618");
+    R4(X, Y, w, h, "#b07a4f");
+    R4(X, Y, w, 2 * dpr, "#c9935f");
+    cx.textAlign = "center"; cx.textBaseline = "middle"; cx.fillStyle = "#fdf3de"; cx.fillText(txt, x, y + dpr);
+    cx.textBaseline = "alphabetic";
+    if (act) hit(X, Y, w, h, act, tip);
+  }
+
+  /* ---------- zones cliquables (recalculées à chaque image) ---------- */
+  var hits = [], hover = null, mouse = null;
+  function hit(x, y, w, h, act, tip) { hits.push({ x: x, y: y, w: w, h: h, act: act, tip: tip }); }
+  function hitAt(p) {
+    for (var i = hits.length - 1; i >= 0; i--) { var h = hits[i]; if (p[0] >= h.x && p[0] <= h.x + h.w && p[1] >= h.y && p[1] <= h.y + h.h) return h; }
+    return null;
+  }
+
+  /* ---------- ciel, collines, sol ---------- */
+  var SKY = {
+    printemps: ["#8fcdee", "#e6f3d6"], ete: ["#6fbdec", "#f4ebc4"], automne: ["#e8b67c", "#f6e0bc"], hiver: ["#a9bfcf", "#eef3f6"]
+  };
+  var clouds = [];
+  for (var ci = 0; ci < 4; ci++) clouds.push({ x: Math.random(), y: 0.06 + Math.random() * 0.25, s: 0.6 + Math.random() * 0.8, v: 0.004 + Math.random() * 0.006 });
+  function night() { return document.documentElement.dataset.theme === "dark"; }
+  function drawSky(t, dt) {
+    var se = season(), nt = night(), g = cx.createLinearGradient(0, 0, 0, LY.gy);
+    var c = nt ? ["#0b1626", "#23405e"] : SKY[se];
+    g.addColorStop(0, c[0]); g.addColorStop(1, c[1]);
+    cx.fillStyle = g; cx.fillRect(0, 0, cw, LY.gy + 2);
+    var u = LY.u;
+    if (nt) {
+      var r = rng(11);
+      for (var i = 0; i < 70; i++) { var a = 0.4 + 0.6 * Math.abs(Math.sin(t * (0.5 + r()) + i)); cx.globalAlpha = a; R4(r() * cw, r() * LY.gy * 0.85, u * 0.6, u * 0.6, "#fdf3de"); }
+      cx.globalAlpha = 1;
+      pdisc(cw * 0.86, LY.gy * 0.16, 6, u, "#f2e6b8"); pdisc(cw * 0.86 + 3 * u, LY.gy * 0.16 - 2 * u, 5, u, nt ? "#16283c" : "#fff");
+    } else {
+      cx.globalAlpha = 0.35; pdisc(cw * 0.86, LY.gy * 0.16, 9, u, "#fff6c8"); cx.globalAlpha = 1;
+      pdisc(cw * 0.86, LY.gy * 0.16, 6, u, se === "hiver" ? "#fdf6dc" : "#ffe17a");
+    }
+    // nuages
+    clouds.forEach(function (k) {
+      k.x += k.v * dt; if (k.x > 1.2) k.x = -0.2;
+      var x = k.x * cw, y = k.y * LY.gy, s = Math.max(2, Math.round(u * k.s * 1.2));
+      cx.globalAlpha = nt ? 0.18 : 0.85;
+      pdisc(x, y, 5, s, "#ffffff"); pdisc(x + 6 * s, y + s, 4, s, "#ffffff"); pdisc(x - 6 * s, y + 2 * s, 3, s, "#ffffff");
+      cx.globalAlpha = 1;
+    });
+    // collines au loin
+    var P = PAL[se], hill = nt ? "#16301f" : se === "hiver" ? "#c9d6dc" : se === "automne" ? "#a9874a" : "#7fb36a";
+    var hill2 = nt ? "#1c3a27" : se === "hiver" ? "#dbe5ea" : se === "automne" ? "#bf9d5a" : "#93c47a";
+    cx.fillStyle = hill;
+    for (var x = 0; x < cw; x += u * 2) { var h = (Math.sin(x / cw * 7.1) * 0.5 + 0.5) * LY.gy * 0.12 + LY.gy * 0.05; cx.fillRect(x, LY.gy - h, u * 2, h + 2); }
+    cx.fillStyle = hill2;
+    for (x = 0; x < cw; x += u * 2) { var h2 = (Math.sin(x / cw * 11.3 + 2) * 0.5 + 0.5) * LY.gy * 0.07 + LY.gy * 0.025; cx.fillRect(x, LY.gy - h2, u * 2, h2 + 2); }
+    // sol
+    cx.fillStyle = nt ? shade(P.g1, -0.35) : P.g1; cx.fillRect(0, LY.gy, cw, ch - LY.gy);
+    cx.fillStyle = nt ? shade(P.g2, -0.35) : P.g2; cx.fillRect(0, LY.gy, cw, u * 2);
+    var rr = rng(5), tuft = nt ? shade(P.g1, -0.5) : shade(P.g1, -0.15);
+    for (var i2 = 0; i2 < 90; i2++) { var tx = rr() * cw, ty = LY.gy + u * 3 + rr() * (ch - LY.gy - u * 4); R4(tx, ty, u, u * 2, tuft); R4(tx + u, ty + u, u, u, tuft); }
+  }
+  function shade(hex, k) {
+    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    function f(c) { return Math.max(0, Math.min(255, Math.round(k < 0 ? c * (1 + k) : c + (255 - c) * k))); }
+    return "rgb(" + f(r) + "," + f(g) + "," + f(b) + ")";
+  }
+
+  /* ---------- le grand chêne ---------- */
+  function drawTree(t, dt) {
+    var o = treeOrigin(), s = o.s;
+    shake = Math.max(0, shake - dt * 3);
+    var sx = Math.round(Math.sin(t * 46) * shake * 1.6 * s), sway = Math.round(Math.sin(t * 0.9) * 0.6 * s);
+    cx.fillStyle = "rgba(0,0,0,.18)";
+    cx.fillRect(Math.round(LY.tx - 34 * s), LY.gy, Math.round(68 * s), Math.round(3 * s));
+    cx.drawImage(trunkBuf, Math.round(o.x), Math.round(o.y), Math.round(VW * s), Math.round(VH * s));
+    cx.drawImage(crownBuf, Math.round(o.x + sx + sway), Math.round(o.y + shake * s), Math.round(VW * s), Math.round(VH * s));
+    if (!treeGeo) return;
+    var nSq = Math.min(treeGeo.perches.length, S.prod[0] > 0 ? Math.ceil(Math.sqrt(S.prod[0])) : 0);
+    for (var i = 0; i < nSq; i++) {
+      var pp = treeGeo.perches[i], bob = Math.round(Math.sin(t * 3 + i * 1.7) * 0.6);
+      sprite(cx, SQ, SQC, o.x + sx + sway + (pp[0] - 6) * s, o.y + (pp[1] - 9 + bob) * s, s * 0.8, i % 2 === 1);
+    }
+    if (L("auto") > 0) {
+      peckT = Math.max(0, peckT - dt);
+      var px = treeGeo.tx - 6 + (peckT > 0 ? 1 : 0), py = GROUND - 26;
+      sprite(cx, PECK, PKC, o.x + px * s, o.y + py * s, s, false);
     }
   }
+
+  /* ---------- jardin : pots sur un établi ---------- */
+  var FLOWER_COL = { paquerette: "#fdf3de", tulipe: "#e0544b", tournesol: "#f6c453", rose: "#c8303a", lotus: "#f2a7c8", lune: "#b9c8ff" };
+  function flowerDef(id) { return D.FLOWERS.filter(function (x) { return x.id === id; })[0]; }
+  function drawFlower(id, x, y, u, t) { // (x, y) = haut de la tige
+    var c = FLOWER_COL[id] || "#f6a9c8";
+    if (id === "paquerette") { R4(x - 2 * u, y, 5 * u, u, c); R4(x, y - 2 * u, u, 5 * u, c); R4(x - u, y - u, 3 * u, 3 * u, c); R4(x, y, u, u, "#f6c453"); }
+    else if (id === "tulipe") { R4(x - u, y - 2 * u, 3 * u, 3 * u, c); R4(x - u, y - 3 * u, u, u, c); R4(x + u, y - 3 * u, u, u, c); R4(x, y - u, u, u, "#a8302a"); }
+    else if (id === "tournesol") { pdisc(x + u / 2, y - u, 3, u, c); pdisc(x + u / 2, y - u, 1, u, "#6b4426"); }
+    else if (id === "rose") { R4(x - u, y - 2 * u, 3 * u, 3 * u, c); R4(x, y - 2 * u, u, u, "#8e1f28"); R4(x - u, y, u, u, "#3f7a2e"); }
+    else if (id === "lotus") { R4(x - 2 * u, y - u, 5 * u, 2 * u, c); R4(x - u, y - 2 * u, 3 * u, u, c); R4(x, y - 3 * u, u, u, "#fbd3e4"); }
+    else { cx.globalAlpha = 0.35 + 0.2 * Math.sin(t * 3); pdisc(x + u / 2, y - u, 3, u, "#dfe6ff"); cx.globalAlpha = 1; R4(x - u, y - 2 * u, 3 * u, 3 * u, c); R4(x, y - u, u, u, "#ffffff"); }
+  }
+  function drawGarden(G, t) {
+    if (!S.unl.garden) { signBoard(G.x + G.w / 2, G.y + G.h * 0.45, "🔒 Jardin", "open:garden", "Le jardin se débloque à 300 glands récoltés."); return; }
+    var n = C.pots, rows = n > 4 ? 2 : 1, cols = Math.ceil(n / rows);
+    var slotW = G.w / cols, rowH = (G.h - 26 * dpr) / rows;
+    var u = Math.max(1, Math.min(LY.u, Math.floor(slotW / 11), Math.floor(rowH / 24)));
+    var sel = flowerDef(S.garden.sel) || D.FLOWERS[0];
+    for (var r = 0; r < rows; r++) {
+      var base = Math.round(G.y + rowH * (r + 1) - 3 * u);
+      // établi
+      R4(G.x, base, G.w, 2 * u, "#3a2618"); R4(G.x, base, G.w, u, "#b07a4f");
+      R4(G.x + 2 * u, base + 2 * u, u * 2, 3 * u, "#5c3720"); R4(G.x + G.w - 4 * u, base + 2 * u, u * 2, 3 * u, "#5c3720");
+      for (var c = 0; c < cols; c++) {
+        var i = r * cols + c;
+        if (i >= n) break;
+        var pot = S.pots[i], px = Math.round(G.x + slotW * (c + 0.5) - 4 * u), py = base - 6 * u;
+        // pot en terre cuite
+        R4(px - u, py - u, 10 * u, 2 * u, "#3a2618"); R4(px, py, 8 * u, u, "#e08a5a");
+        R4(px, py + u, 8 * u, 5 * u, "#3a2618"); R4(px + u, py + u, 6 * u, 4 * u, "#c8653a"); R4(px + u, py + u, 2 * u, 4 * u, "#d77a4a");
+        R4(px + u, py - u + Math.round(u / 2), 6 * u, u, "#4a2e1c");
+        var tip, sx = px + 3 * u;
+        if (!pot.f) {
+          tip = "Pot vide : clique pour planter " + sel.icon + " " + sel.name + " (" + fmt(flowerCost(sel)) + " 🌰)";
+          if (hover && hover.act === "pot:" + i) { cx.globalAlpha = 0.6; label(sx + u / 2, py - 5 * u, "+", 18, "#fdf3de"); cx.globalAlpha = 1; }
+        } else {
+          var f = flowerDef(pot.f), p = Math.min(1, pot.g / pot.need), h = Math.max(1, Math.round(2 + p * (f.id === "tournesol" ? 13 : 9)));
+          R4(sx, py - h * u, u, h * u, "#3f7a2e");
+          if (p > 0.3) R4(sx - 2 * u, py - Math.round(h * 0.45) * u, 2 * u, u, "#5b9a3e");
+          if (p > 0.55) R4(sx + u, py - Math.round(h * 0.7) * u, 2 * u, u, "#5b9a3e");
+          if (p >= 1) {
+            drawFlower(f.id, sx, py - h * u - u, u, t);
+            if (Math.sin(t * 5 + i) > 0.6) { R4(sx + 3 * u, py - h * u - 3 * u, u, u, "#fff6c8"); R4(sx - 3 * u, py - h * u, u, u, "#fff6c8"); }
+            tip = f.icon + " " + f.name + " prête ! Clique pour cueillir : " + f.effect;
+          } else {
+            if (p > 0.6) R4(sx, py - h * u - u, u, u * 2, FLOWER_COL[f.id]);
+            if (pot.wc > 5.5) for (var d = 0; d < 3; d++) R4(sx - 2 * u + d * 2 * u, py - h * u - 4 * u + ((t * 30 + d * 5) % 6) * u, u, u, "#6fb8f0");
+            tip = f.icon + " " + f.name + " · " + Math.floor(p * 100) + " % · prête dans " + fmtTime((pot.need - pot.g) / C.gardenSpeed) + ((pot.wat || 0) >= 0.5 ? " · assez arrosée" : pot.wc > 0 ? " · arrosée 💧" : " · clique pour arroser 💧");
+          }
+          // barre de pousse
+          R4(px, py + 6 * u + Math.round(u / 2), 8 * u, Math.max(2, Math.round(u / 2)), "rgba(0,0,0,.35)");
+          R4(px, py + 6 * u + Math.round(u / 2), 8 * u * p, Math.max(2, Math.round(u / 2)), p >= 1 ? "#f6c453" : "#9cc56b");
+        }
+        hit(px - u, py - 17 * u, 10 * u, 24 * u, "pot:" + i, tip);
+      }
+    }
+    signBoard(G.x + G.w / 2, G.y + G.h - 11 * dpr, sel.icon + " " + sel.name + " ▾", "open:garden", "Changer de graine et boutique du jardin");
+  }
+
+  /* ---------- ferme : parcelles et cultures ---------- */
+  function cropAt(id, x, y, u, p, ready, t) { // (x, y) = pied de la plante
+    var g = "#5b9a3e", dg = "#3f7a2e";
+    if (id === "ble") {
+      var h = 1 + Math.round(p * 6), col = ready ? "#e8c25a" : p > 0.7 ? "#b9c45a" : g;
+      R4(x, y - h * u, u, h * u, col); R4(x + 2 * u, y - (h - 1) * u, u, (h - 1) * u, col);
+      if (p > 0.5) { R4(x - Math.round(u / 2), y - (h + 2) * u, u * 2, 2 * u, ready ? "#f6d36b" : "#c9d36a"); R4(x + 2 * u, y - (h + 1) * u, u, 2 * u, ready ? "#f6d36b" : "#c9d36a"); }
+    } else if (id === "carotte") {
+      var hc = 1 + Math.round(p * 3);
+      R4(x, y - hc * u, u, hc * u, g); R4(x - u, y - (hc - 1) * u, u, u, g); R4(x + u, y - (hc - 1) * u, u, u, g); R4(x + 2 * u, y - hc * u, u, hc * u, dg);
+      if (p > 0.6) R4(x, y - Math.round(u / 2), 3 * u, u, ready ? "#e8873a" : "#c97a3a");
+    } else if (id === "mais") {
+      var hm = 1 + Math.round(p * 10);
+      R4(x, y - hm * u, u, hm * u, ready ? "#9fae4a" : g);
+      if (p > 0.3) { R4(x - 2 * u, y - Math.round(hm * 0.5) * u, 2 * u, u, dg); R4(x + u, y - Math.round(hm * 0.7) * u, 2 * u, u, dg); }
+      if (p > 0.75) R4(x + u, y - Math.round(hm * 0.6) * u - u, u * 2, 3 * u, ready ? "#f6d36b" : "#c9d36a");
+      if (ready) R4(x, y - (hm + 1) * u, u, u, "#d9b45a");
+    } else {
+      R4(x - 2 * u, y - u, 6 * u, u, dg); R4(x - u, y - 2 * u, 2 * u, u, g); R4(x + 2 * u, y - 2 * u, 2 * u, u, g);
+      if (p > 0.3) { var rp = Math.max(1, Math.round(p * 2.4)); pdisc(x + u, y - rp * u, rp, u, ready ? "#e8873a" : p > 0.7 ? "#d9a03a" : "#9fb84a"); R4(x + u, y - (2 * rp + 1) * u, u, u, dg); }
+    }
+  }
+  function drawFarm(F, t) {
+    if (!S.unl.farm) { signBoard(F.x + F.w / 2, F.y + F.h * 0.45, "🔒 Ferme", "open:farm", "La ferme se débloque à 20 K glands récoltés."); return; }
+    var n = C.fields, fieldDef = D.FARM_SHOP[0], canBuy = S.farm.field < fieldDef.max, k = n + (canBuy ? 1 : 0);
+    var areaH = F.h - 26 * dpr, cols = Math.max(1, Math.min(k, Math.round(Math.sqrt(k * F.w / Math.max(1, areaH)))));
+    var rows = Math.ceil(k / cols), pw = F.w / cols, ph = areaH / rows;
+    var u = Math.max(1, Math.min(LY.u, Math.floor(pw / 16), Math.floor(ph / 15)));
+    var sel = cropDef(S.farm.sel) || D.CROPS[0];
+    for (var i = 0; i < k; i++) {
+      var c = i % cols, r = Math.floor(i / cols);
+      var x = Math.round(F.x + c * pw + u), y = Math.round(F.y + r * ph + u), w = Math.round(pw - 2 * u), h = Math.round(ph - 2 * u);
+      if (i >= n) { // parcelle à acheter
+        var cost = lvCost(fieldDef, S.farm.field);
+        cx.globalAlpha = 0.55; R4(x, y, w, h, "#3a2618"); R4(x + u, y + u, w - 2 * u, h - 2 * u, PAL[season()].g2); cx.globalAlpha = 1;
+        label(x + w / 2, y + h / 2 - 7 * dpr, "+", 20, "#fdf3de");
+        label(x + w / 2, y + h / 2 + 11 * dpr, fmt(cost) + " 🌰", 11, S.acorns >= cost ? "#d6f0a8" : "#f2b0a0");
+        hit(x, y, w, h, "fshop:field", "Nouvelle parcelle : " + fmt(cost) + " 🌰");
+        continue;
+      }
+      var fl = S.fields[i];
+      R4(x, y, w, h, "#3a2618"); R4(x + u, y + u, w - 2 * u, h - 2 * u, "#7a4a2a");
+      var furrows = Math.max(2, Math.floor((h - 2 * u) / (4 * u)));
+      for (var fr = 0; fr < furrows; fr++) R4(x + u, y + u + Math.round((fr + 0.7) * (h - 2 * u) / furrows), w - 2 * u, u, "#5c3720");
+      var tip;
+      if (!fl.c) {
+        tip = "Parcelle libre : clique pour semer " + sel.icon + " " + sel.name + " (" + fmt(cropCost(sel)) + " 🌰)";
+        if (hover && hover.act === "field:" + i) label(x + w / 2, y + h / 2, "+", 18, "#fdf3de");
+      } else {
+        var cd = cropDef(fl.c), p = Math.min(1, fl.g / fl.need), ready = fl.g >= fl.need;
+        var pc = Math.max(1, Math.floor((w - 2 * u) / (5 * u))), pr = Math.max(1, Math.min(2, furrows));
+        for (var a = 0; a < pc; a++) for (var b = 0; b < pr; b++) {
+          var bx = x + u + Math.round((a + 0.35) * (w - 2 * u) / pc), by = y + u + Math.round((b + 0.85) * (h - 2 * u) / pr);
+          cropAt(cd.id, bx, by + (ready ? Math.round(Math.sin(t * 2 + a + b) * 0.4) : 0), u, p, ready, t);
+        }
+        tip = ready ? cd.icon + " " + cd.name + " mûr ! Clique pour récolter (+" + fmt(cd.food * (1 + 0.25 * S.farm.fert), true) + " 🥫)" : cd.icon + " " + cd.name + " · " + Math.floor(p * 100) + " % · prêt dans " + fmtTime((fl.need - fl.g) / C.farmSpeed);
+        if (ready && Math.sin(t * 4 + i) > 0.7) R4(x + w - 3 * u, y + 2 * u, u, u, "#fff6c8");
+      }
+      hit(x, y, w, h, "field:" + i, tip);
+    }
+    if (S.farm.scare) { // épouvantail
+      var ex = F.x + F.w - 4 * u, ey = F.y - 2 * u, eu = Math.max(1, Math.round(u * 0.8));
+      R4(ex, ey - 10 * eu, eu, 12 * eu, "#5c3720"); R4(ex - 4 * eu, ey - 7 * eu, 9 * eu, eu, "#5c3720");
+      R4(ex - 2 * eu, ey - 13 * eu, 5 * eu, 4 * eu, "#e8c25a"); R4(ex - 3 * eu, ey - 14 * eu, 7 * eu, eu, "#8a5a3b");
+      R4(ex - 2 * eu, ey - 8 * eu, 5 * eu, 5 * eu, "#c8553d");
+    }
+    signBoard(F.x + F.w / 2, F.y + F.h - 11 * dpr, sel.icon + " " + sel.name + " ▾ · 🥫 " + fmt(S.food) + " / " + fmt(C.foodCap), "open:farm", "Changer de semence et matériel de ferme");
+  }
+
+  /* ---------- enclos : bétail qui se promène ---------- */
+  var COW = ["..........h..h", "..........oooo", ".ooooooooooWWo", "oWWBBWWWBWoWeW", "oWBBBWWWWWWWWP", "oWWBWWWWWBBWPP", ".oWWWWWWWBBWo."];
+  var PIG = [".......o.o..", ".ooooooPoPo.", "oPPPPPPPPPPo", "oPPDPPPPPeSS", "oPPPPPPPPPSS", ".oPPPPPPPPo."];
+  var SHEEP = ["..WWWWWW....", ".WWWWWWWWoo.", "WWWWWWWWWFFo", "WWWWWWWWWFeF", "WWWWWWWWWFFF", ".WWWWWWWW.F."];
+  var HEN = ["....rr.", "...WWW.", "W..WeWy", "WWWWWW.", "WWWWWW.", ".WWWW.."];
+  var HIVE = [".ooooo.", "oyyyyyo", "oYYYYYo", "oyyyyyo", "oYYkYYo", "oyyyyyo", "ooooooo"];
+  var LEGS = {
+    vache: [["..oo..oo.oo.oo", "..kk..kk.kk.kk"], ["...oo.oo..oo..", "...kk.kk..kk.."]],
+    cochon: [["..oo.oo.oo..", "..oo.oo.oo.."], ["...oo..oo...", "...oo..oo..."]],
+    mouton: [["..F..F.F..F.", "..F..F.F..F."], [".F..F..F.F..", ".F..F..F.F.."]],
+    poule: [["..y.y..", "..y.y.."], ["...yy..", "...yy.."]]
+  };
+  var ANIM_SPR = { vache: COW, cochon: PIG, mouton: SHEEP, poule: HEN };
+  var ANIM_PAL = {
+    vache: { o: "#3a2618", W: "#f4f1e8", B: "#2b2b3a", P: "#f2a7a0", e: "#1a0f08", h: "#e8dcc0", k: "#3a2618" },
+    cochon: { o: "#a8566a", P: "#f2a7b8", D: "#e08aa0", S: "#e07890", e: "#3a2618" },
+    mouton: { o: "#3a2618", W: "#f6f0e2", F: "#4a4050", e: "#f6f0e2" },
+    poule: { r: "#d8443a", W: "#fbf7ee", e: "#1a0f08", y: "#f6c453" }
+  };
+  var HIVE_PAL = { o: "#4a2e1c", y: "#f0c050", Y: "#c8932a", k: "#2b1709" };
+  var herd = [];
+  function syncHerd() {
+    ["vache", "mouton", "cochon", "poule"].forEach(function (id) {
+      var want = Math.min(S.animals[id] || 0, id === "poule" ? 8 : 5);
+      var have = herd.filter(function (a) { return a.id === id; });
+      while (have.length < want) { var a = { id: id, x: Math.random(), y: Math.random(), tx: Math.random(), ty: Math.random(), dir: Math.random() < 0.5 ? 1 : -1, wait: Math.random() * 3, ph: Math.random() * 6 }; herd.push(a); have.push(a); }
+      while (have.length > want) { var rm = have.pop(); herd.splice(herd.indexOf(rm), 1); }
+    });
+  }
+  function drawRanch(Rz, t, dt) {
+    var u = Math.max(1, Math.min(LY.u, Math.floor(Rz.h / 26), Math.floor(Rz.w / 50)));
+    var hives = S.animals.ruche || 0, hiveW = hives ? Math.min(5, hives) * 9 * u + 2 * u : 0;
+    var hivesAbove = hives > 0 && Rz.w - hiveW < Rz.h * 1.6;
+    if (hivesAbove) hiveW = 0;
+    var fx = Math.round(Rz.x), fy = Math.round(Rz.y), fw = Math.round(Rz.w - hiveW), fh = Math.round(Rz.h - 26 * dpr);
+    // herbe de l'enclos
+    cx.fillStyle = "rgba(0,0,0,.06)"; cx.fillRect(fx, fy, fw, fh);
+    if (!S.unl.ranch) {
+      fence(fx, fy, fw, fh, u);
+      signBoard(fx + fw / 2, fy + fh / 2, "🔒 Bétail", "open:ranch", "Le bétail se débloque quand ta ferme a produit 20 de nourriture.");
+      return;
+    }
+    // mangeoire
+    var tw2 = 12 * u, tx2 = fx + 3 * u, ty2 = fy + 3 * u, fill = C.foodCap ? Math.min(1, S.food / Math.max(1, Math.min(C.foodCap, 200))) : 0;
+    R4(tx2 - u, ty2 - u, tw2 + 2 * u, 5 * u, "#3a2618"); R4(tx2, ty2, tw2, 3 * u, "#8a5a3b");
+    if (fill > 0) R4(tx2 + u, ty2, (tw2 - 2 * u) * fill, u * 1.5, "#e8c25a");
+    // marchandises au sol
+    var goodsN = 0, gcol = { oeuf: "#fbf2dc", laine: "#f4f0e8", truffe: "#4a3020", lait: "#dfe6ee", miel: "#e8a830" }, rr = rng(31);
+    for (var gk in D.GOODS) {
+      var gn = Math.min(6, Math.floor(S.goods[gk] || 0));
+      goodsN += Math.floor(S.goods[gk] || 0);
+      for (var gi = 0; gi < gn; gi++) {
+        var gx = fx + 4 * u + rr() * (fw - 10 * u), gy2 = fy + 7 * u + rr() * (fh - 10 * u);
+        R4(gx - Math.round(u / 2), gy2 - Math.round(u / 2), 3 * u, 3 * u, "rgba(0,0,0,.25)"); R4(gx, gy2 - u, 2 * u, 2 * u + (gk === "oeuf" ? u : 0), gcol[gk]);
+      }
+    }
+    // animaux (triés par profondeur)
+    syncHerd();
+    var speed = { vache: 0.03, mouton: 0.035, cochon: 0.045, poule: 0.09 };
+    herd.forEach(function (a) {
+      if (a.wait > 0) { a.wait -= dt; a.moving = false; }
+      else {
+        var dx = a.tx - a.x, dy = a.ty - a.y, d = Math.sqrt(dx * dx + dy * dy), sp = speed[a.id] * dt;
+        if (d < sp) { a.x = a.tx; a.y = a.ty; a.tx = Math.random(); a.ty = Math.random(); a.wait = 1 + Math.random() * 4; a.moving = false; }
+        else { a.x += dx / d * sp; a.y += dy / d * sp; a.dir = dx >= 0 ? 1 : -1; a.moving = true; }
+      }
+    });
+    herd.slice().sort(function (a, b) { return a.y - b.y; }).forEach(function (a) {
+      var spr = ANIM_SPR[a.id], sw = spr[0].length * u, sh = (spr.length + 2) * u;
+      var ax = Math.round(fx + 2 * u + a.x * (fw - sw - 4 * u)), ay = Math.round(fy + 5 * u + a.y * (fh - sh - 6 * u));
+      var frame = a.moving ? Math.floor(t * 6 + a.ph) % 2 : 0, flip = a.dir < 0;
+      R4(ax + u, ay + sh - u, sw - 2 * u, u, "rgba(0,0,0,.2)");
+      var bob = a.moving && frame ? -u : 0;
+      sprite(cx, spr, ANIM_PAL[a.id], ax, ay + bob, u, flip);
+      sprite(cx, LEGS[a.id][frame], ANIM_PAL[a.id], ax, ay + spr.length * u, u, flip);
+      if (S.fed < 0.5 && Math.sin(t * 3 + a.ph) > 0) label(ax + sw / 2, ay - 4 * u, "!", 14, "#f2b0a0");
+    });
+    fence(fx, fy, fw, fh, u);
+    // ruches et abeilles
+    for (var h = 0; h < Math.min(5, hives); h++) {
+      var hx = hivesAbove ? fx + 2 * u + h * 9 * u : fx + fw + 2 * u + h * 9 * u, hy = hivesAbove ? fy - 10 * u : fy + fh - 9 * u;
+      sprite(cx, HIVE, HIVE_PAL, hx, hy, u, false);
+      for (var bz = 0; bz < 2; bz++) R4(hx + 3 * u + Math.sin(t * 4 + h * 2 + bz * 3) * 5 * u, hy - 3 * u + Math.cos(t * 5 + bz + h) * 3 * u, u, u, "#2b1709");
+    }
+    var counts = ["poule", "mouton", "cochon", "vache", "ruche"].filter(function (id) { return S.animals[id]; }).map(function (id) {
+      return D.ANIMALS.filter(function (x) { return x.id === id; })[0].icon + (S.animals[id] || 0);
+    }).join(" ");
+    var gv = 0; for (gk in D.GOODS) gv += Math.floor(S.goods[gk] || 0) * goodValue(gk);
+    hit(fx, fy, fw + hiveW, fh, goodsN > 0 ? "sell:all" : "open:ranch", goodsN > 0 ? "Clique pour tout vendre : +" + fmt(gv) + " 🌰" : "Le troupeau (nourri à " + Math.round(S.fed * 100) + " %). Clique pour acheter des animaux.");
+    signBoard(fx + (fw + hiveW) / 2, Rz.y + Rz.h - 11 * dpr, (counts || "Enclos vide") + " ▾", "open:ranch", "Acheter des animaux et bâtiments");
+  }
+  function fence(x, y, w, h, u) {
+    var post = "#5c3720", rail = "#b07a4f";
+    R4(x, y, w, u, rail); R4(x, y + 2 * u, w, u, rail);
+    R4(x, y + h - 3 * u, w, u, rail); R4(x, y + h - u, w, u, rail);
+    R4(x, y, u, h, rail); R4(x + w - u, y, u, h, rail);
+    for (var px = x; px <= x + w - u; px += Math.max(6 * u, Math.floor((w - u) / Math.max(1, Math.round(w / (12 * u)))))) {
+      R4(px, y - 2 * u, u * 1.5, 5 * u, post); R4(px, y + h - 4 * u, u * 1.5, 5 * u, post);
+    }
+    R4(x + w - u * 1.5, y - 2 * u, u * 1.5, 5 * u, post); R4(x + w - u * 1.5, y + h - 4 * u, u * 1.5, 5 * u, post);
+  }
+
+  /* ---------- boucle d'affichage ---------- */
   var ACORN = ["oooo", "oddo", "obbo", "obbo", ".oo."], ACC = { o: "#3a2618", d: "#6b4426", b: "#d39445" };
-  var lastT = performance.now(), simAcc = 0;
+  var lastT = performance.now();
   function frame(now) {
     var dt = Math.min(0.25, (now - lastT) / 1000); lastT = now;
-    draw(dt, now / 1000);
+    if (!document.hidden) draw(dt, now / 1000);
     requestAnimationFrame(frame);
   }
   function draw(dt, t) {
     resize();
     buildTree();
-    var v = view(), sc = v.sc, P = PAL[season()];
     cx.imageSmoothingEnabled = false;
-    cx.clearRect(0, 0, cw, ch);
-    // sol
-    var gy = v.oy + GROUND * sc;
-    cx.fillStyle = P.g1; cx.fillRect(0, gy - sc * 2, cw, ch - gy + sc * 2);
-    cx.fillStyle = P.g2; cx.fillRect(0, gy - sc * 2, cw, sc * 2);
-    cx.fillStyle = "rgba(0,0,0,.18)";
-    cx.fillRect(v.ox + (VW / 2 - 30) * sc, gy, 60 * sc, sc * 2);
-    // arbre
-    shake = Math.max(0, shake - dt * 3);
-    var sx = Math.round(Math.sin(t * 46) * shake * 1.6) * sc;
-    var sway = Math.round(Math.sin(t * 0.9) * 0.6) * sc;
-    cx.drawImage(trunkBuf, v.ox, v.oy, VW * sc, VH * sc);
-    cx.drawImage(crownBuf, v.ox + sx + sway, v.oy + Math.round(shake) * sc, VW * sc, VH * sc);
-    // écureuils perchés
-    if (treeGeo) {
-      var nSq = Math.min(treeGeo.perches.length, S.prod[0] > 0 ? Math.ceil(Math.sqrt(S.prod[0])) : 0);
-      for (var i = 0; i < nSq; i++) {
-        var pp = treeGeo.perches[i], bob = Math.round(Math.sin(t * 3 + i * 1.7) * 0.6);
-        sprite(cx, SQ, SQC, v.ox + sx + sway + (pp[0] - 6) * sc, v.oy + (pp[1] - 9 + bob) * sc, sc, i % 2 === 1);
-      }
-      drawPots(v, t);
-      if (L("auto") > 0) {
-        peckT = Math.max(0, peckT - dt);
-        var px = treeGeo.tx - 6 + (peckT > 0 ? 1 : 0), py = GROUND - 26;
-        sprite(cx, PECK, PKC, v.ox + px * sc, v.oy + py * sc, sc, false);
-      }
-    }
+    hits = [];
+    drawSky(t, dt);
+    drawTree(t, dt);
+    drawRanch(LY.ranch, t, dt);
+    drawGarden(LY.garden, t);
+    drawFarm(LY.farm, t);
     // particules
     for (var k = parts.length - 1; k >= 0; k--) {
       var p = parts[k];
@@ -1356,40 +1692,71 @@
       } else {
         p.y += p.vy * dt; p.vy *= 0.96;
         cx.globalAlpha = Math.min(1, a * 2.5);
-        cx.font = "900 " + Math.round((p.crit ? 22 : 16) * dpr) + "px Nunito, system-ui, sans-serif";
+        cx.font = "900 " + Math.round((p.crit ? 24 : 17) * dpr) + "px Nunito, system-ui, sans-serif";
         cx.textAlign = "center"; cx.lineJoin = "round";
         cx.lineWidth = 4 * dpr; cx.strokeStyle = "#2b1709"; cx.strokeText(p.txt, p.x, p.y);
-        cx.fillStyle = p.crit ? "#f6d36b" : "#fdf3de"; cx.fillText(p.txt, p.x, p.y);
+        cx.fillStyle = p.col || (p.crit ? "#f6d36b" : "#fdf3de"); cx.fillText(p.txt, p.x, p.y);
       }
     }
     cx.globalAlpha = 1;
+    // info-bulle (souris)
+    hover = mouse ? hitAt(mouse) : null;
+    cv.style.cursor = hover ? "pointer" : "";
+    if (hover && hover.tip) {
+      tipEl.hidden = false;
+      setText(tipEl, hover.tip);
+      var tx = mouse[0] / dpr + 14, ty = mouse[1] / dpr + 14, sw = cw / dpr;
+      if (tx + 270 > sw) tx = Math.max(4, mouse[0] / dpr - 280);
+      tipEl.style.transform = "translate(" + Math.round(tx) + "px," + Math.round(ty) + "px)";
+    } else tipEl.hidden = true;
     // gland doré
     if (golden) {
       golden.t += dt;
-      var gr = treeBox.getBoundingClientRect();
+      var gr = root.getBoundingClientRect();
       var gxp = (golden.x + Math.sin(golden.t * 1.6 + golden.ph) * 0.05) * gr.width;
-      var gyp = (0.05 + 0.8 * golden.t / golden.life) * gr.height;
+      var gyp = (0.08 + 0.55 * golden.t / golden.life) * gr.height;
       golden.el.style.transform = "translate(" + Math.round(gxp) + "px," + Math.round(gyp) + "px) rotate(" + Math.round(Math.sin(golden.t * 3) * 15) + "deg)";
       if (golden.t >= golden.life) endGolden();
     }
   }
 
-  // clic sur l'arbre (multi-touch : chaque doigt compte)
-  treeBox.addEventListener("pointerdown", function (e) {
+  // clic dans la scène : un objet (pot, parcelle, enclos, panneau) ou sinon le chêne
+  cv.addEventListener("pointerdown", function (e) {
     if (e.button !== undefined && e.button > 0) return;
-    if (e.target.closest(".idle-golden")) return;
     e.preventDefault();
-    var p = toCanvas(e);
+    try { cv.focus({ preventScroll: true }); } catch (err) {}
+    var p = toCanvas(e), h = hitAt(p);
+    if (h) {
+      var before = S.acorns;
+      if (h.act.indexOf("open:") === 0) openDrawer(h.act.slice(5));
+      else act(h.act);
+      if (S.acorns > before) floatText(p[0], p[1], "+" + fmt(S.acorns - before), false, "#d6f0a8");
+      else if (h.act.indexOf("pot:") === 0 && S.opts.fx) leaf(p[0], p[1] - 10 * dpr, 2);
+      return;
+    }
     playerClick(p[0], p[1]);
   });
-  treeBox.addEventListener("contextmenu", function (e) { e.preventDefault(); });
-  treeBox.addEventListener("keydown", function (e) {
+  cv.addEventListener("pointermove", function (e) { if (e.pointerType === "mouse") mouse = toCanvas(e); });
+  cv.addEventListener("pointerleave", function () { mouse = null; });
+  cv.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  cv.addEventListener("keydown", function (e) {
     if (e.key === " " || e.key === "Enter") {
       e.preventDefault();
-      if (e.repeat) return;
-      var v = view();
-      playerClick(v.ox + VW / 2 * v.sc, v.oy + 45 * v.sc);
+      if (e.repeat || !LY) return;
+      var o = treeOrigin();
+      playerClick(LY.tx, o.y + (treeGeo ? treeGeo.top - 20 : 50) * o.s);
     }
+  });
+  Object.keys(btnCols).forEach(function (k) {
+    btnCols[k].addEventListener("click", function (e) { var b = e.target.closest("[data-tab]"); if (b) openDrawer(b.dataset.tab); });
+  });
+  $("[data-drawer-close]").addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && openTab && !document.querySelector(".idle-modal")) closeDrawer(); });
+  var fsBtn = $("[data-fs]");
+  if (fsBtn) fsBtn.addEventListener("click", function () {
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    if (root.requestFullscreen) root.requestFullscreen().catch(function () { root.classList.toggle("is-max"); });
+    else root.classList.toggle("is-max");
   });
 
   /* =====================================================================

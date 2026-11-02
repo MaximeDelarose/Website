@@ -26,34 +26,76 @@
   function pick(arr, rnd) { return arr[Math.floor((rnd || Math.random)() * arr.length)]; }
 
   /* ---------- géométrie ---------- */
-  function makePath(pts) {
+  // un tracé ; "tp" entre deux points = portail (segment de longueur nulle : saut instantané)
+  function makePath(raw) {
+    var pts = [], tpAfter = {};
+    raw.forEach(function (q) { if (q === "tp") tpAfter[pts.length - 1] = true; else pts.push(q); });
     var segs = [], L = 0;
     for (var k = 0; k < pts.length - 1; k++) {
-      var a = pts[k], b = pts[k + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      segs.push({ a: a, b: b, len: len, at: L });
+      var a = pts[k], b = pts[k + 1], tp = !!tpAfter[k], len = tp ? 0 : Math.hypot(b[0] - a[0], b[1] - a[1]);
+      segs.push({ a: a, b: b, len: len, at: L, tp: tp });
       L += len;
     }
     return { pts: pts, segs: segs, len: L };
   }
-  // 1 plateau : le chemin fait le tour (monte à gauche, traverse en haut, descend à droite).
-  // 2 plateaux (coop) : plateaux l'un au-dessus de l'autre ; une moitié des bestioles
-  // descend à gauche, l'autre monte, elles se rejoignent au centre puis filent à droite.
-  // Chaque plateau a ses commandes (cy) : sous le plateau du bas, au-dessus de celui du haut.
-  var SOLO_LEN = 0;
-  function layout(n) {
-    var left = 10, right = 25 + BW + 15;
-    if (n === 1) {
-      var top = 24, by = 39, bottom = by + BH + 25;
-      var p = makePath([[left, bottom], [left, top], [right, top], [right, bottom]]);
-      return { w: right + 10, h: bottom + 50, paths: [p], len: p.len, spdMul: 1, boards: [{ x: 25, y: by, cy: by + BH + 7 }] };
+  // distance le long d'un tracé où il passe par (x, y), ou undefined
+  function distAt(path, x, y) {
+    for (var i = 0; i < path.segs.length; i++) {
+      var sg = path.segs[i]; if (sg.tp) continue;
+      var minx = Math.min(sg.a[0], sg.b[0]) - 1, maxx = Math.max(sg.a[0], sg.b[0]) + 1, miny = Math.min(sg.a[1], sg.b[1]) - 1, maxy = Math.max(sg.a[1], sg.b[1]) + 1;
+      if (x >= minx && x <= maxx && y >= miny && y <= maxy) return sg.at + Math.hypot(x - sg.a[0], y - sg.a[1]);
     }
-    var b0 = 80, mid = b0 + BH + 15, b1 = mid + 15, endX = right + 4;
-    var pa = makePath([[left, b0 - 6], [left, mid], [endX, mid]]);
-    var pb = makePath([[left, b1 + BH + 6], [left, mid], [endX, mid]]);
-    return { w: right + 10, h: b1 + BH + 8 + 54 + 14, paths: [pa, pb], len: pa.len, spdMul: pa.len / SOLO_LEN, coop: true,
-             boards: [{ x: 25, y: b0, cy: 18 }, { x: 25, y: b1, cy: b1 + BH + 8 }] };
+    return undefined;
   }
-  SOLO_LEN = layout(1).len;
+  // chaque plateau : cells = cases des écureuils (coin haut-gauche, 26 px), nb = cases voisines (pour le Chêne),
+  // x / cy = position des commandes (Invoquer, noisettes, améliorations)
+  function gridCells(x, y) { var out = []; for (var i = 0; i < NSLOT; i++) out.push({ x: x + (i % COLS) * CELL, y: y + Math.floor(i / COLS) * CELL }); return out; }
+  function neighbors(cells) {
+    return cells.map(function (a) {
+      var out = [];
+      cells.forEach(function (b, j) { if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === CELL) out.push(j); });
+      return out;
+    });
+  }
+  function mkBoard(x, y, cy, cells) { return { x: x, y: y, cy: cy, cells: cells, nb: neighbors(cells) }; }
+  // cartes de grille : MAPS (1 plateau) et COOP_MAPS (2 plateaux) dans dice-data.js
+  function mapById(id) {
+    var all = (D.MAPS || []).concat(D.COOP_MAPS || []);
+    return all.filter(function (m) { return m.id === id; })[0] || (D.MAPS || [])[0];
+  }
+  function coopMapById(id) { return (D.COOP_MAPS || []).filter(function (m) { return m.id === id; })[0] || (D.COOP_MAPS || [])[0]; }
+  var SOLO_LEN = 396; // longueur de référence pour la vitesse en coop
+  function mapLayout(m, coop) {
+    var Y0 = coop ? 80 : 18, cells = [[], []], deco = [], bumps = [], twins = [];
+    m.rows.forEach(function (row, r) {
+      for (var c = 0; c < row.length; c++) {
+        var ch = row[c], x = c * CELL, y = Y0 + r * CELL;
+        if (ch === "#" || ch === "1") cells[0].push({ x: x, y: y });
+        else if (ch === "2") cells[1].push({ x: x, y: y });
+        else if (ch === "3") { twins.push([cells[0].length, cells[1].length]); cells[0].push({ x: x, y: y, shared: true }); cells[1].push({ x: x, y: y, shared: true }); }
+        else if (ch === "T" || ch === "~" || ch === "O") deco.push({ x: x, y: y, k: ch });
+        else if (ch === "B") bumps.push({ x: x + CELL / 2, y: y + CELL / 2, at: {} });
+      }
+    });
+    var paths = m.paths.map(function (wp) { return makePath(wp.map(function (q) { return q === "tp" ? q : [q[0] * CELL + CELL / 2, Y0 + q[1] * CELL + CELL / 2]; })); });
+    bumps.forEach(function (bm) { paths.forEach(function (pth, ln) { var d = distAt(pth, bm.x, bm.y); if (d !== undefined) bm.at[ln] = d; }); });
+    var gridH = m.rows.length * CELL, mods = m.mods || {};
+    var avg = paths.reduce(function (a, pth) { return a + pth.len; }, 0) / paths.length;
+    var roads = (m.roads || []).map(function (r) { return { x: r[0] * CELL, y: Y0 + r[1] * CELL, w: r[2] * CELL, h: r[3] * CELL }; });
+    var lay = { w: 7 * CELL, paths: paths, len: paths[0].len, map: m.id, mods: mods, deco: deco, bumps: bumps, roads: roads, twins: twins, ground: m.ground, gridY: Y0, gridH: gridH };
+    if (coop) {
+      var cy1 = Y0 + gridH + 8;
+      lay.boards = [mkBoard(26, Y0, 18, cells[0]), mkBoard(26, Y0, cy1, cells[1])];
+      lay.h = cy1 + 54 + 14; lay.coop = true; lay.spdMul = Math.min(1, avg / SOLO_LEN);
+    } else {
+      var cy = Y0 + gridH + 6;
+      lay.boards = [mkBoard(26, Y0, cy, cells[0])];
+      lay.h = cy + 62; lay.spdMul = 1;
+    }
+    return lay;
+  }
+  // 1 plateau : carte solo ; 2 plateaux : carte coop (en haut le joueur 1 des cases « 1 », en bas celui des « 2 »)
+  function layout(n, mapId) { return n === 1 ? mapLayout(mapById(mapId), false) : mapLayout(coopMapById(mapId), true); }
   function posAt(lay, dist, lane) {
     var segs = lay.paths[lane || 0].segs, s = segs[segs.length - 1];
     for (var i = 0; i < segs.length; i++) if (dist < segs[i].at + segs[i].len) { s = segs[i]; break; }
@@ -62,26 +104,36 @@
   }
   function epos(w, e) { return posAt(w.lay, e.dist, e.lane); }
   function near(w, a, b, r) { var p = epos(w, a), q = epos(w, b); return Math.hypot(p.x - q.x, p.y - q.y) <= r; }
-  function rangeOf(type) { var r = T[type].range; return r === undefined ? 100 : r; }
+  function rangeOf(type, w) { var r = T[type].range; r = r === undefined ? 100 : r; return w && w.lay && w.lay.mods.range ? r * w.lay.mods.range : r; }
   function slotCenter(lay, bi, s) {
-    var b = lay.boards[bi];
-    return { x: b.x + (s % COLS) * CELL + CELL / 2, y: b.y + Math.floor(s / COLS) * CELL + CELL / 2 };
+    var c = lay.boards[bi].cells[s] || { x: 0, y: 0 };
+    return { x: c.x + CELL / 2, y: c.y + CELL / 2 };
   }
 
   /* ---------- création ---------- */
   function makeBoard(info) {
     var deck = (info.deck || D.START_DECK).slice(0, 5);
-    return { name: info.name || "Écureuil", id: info.id || "solo", deck: deck, cls: info.cls || {}, slots: new Array(NSLOT).fill(null),
+    return { name: info.name || "Écureuil", id: info.id || "solo", deck: deck, cls: info.cls || {}, slots: new Array(info.nslot || NSLOT).fill(null),
              sp: C.startSp, sumN: 0, pu: [0, 0, 0, 0, 0], kills: 0, dmg: 0, bot: !!info.bot, botT: 1, maxPip: 1 };
   }
+  // cases partagées (« 3 ») : la même case existe dans les deux plateaux ; occupée par l'un = bloquée pour l'autre
+  function linkTwins(w) {
+    (w.lay.twins || []).forEach(function (tw) {
+      var a = w.boards[0], b = w.boards[1]; if (!a || !b) return;
+      (a.twins = a.twins || {})[tw[0]] = [b, tw[1]];
+      (b.twins = b.twins || {})[tw[1]] = [a, tw[0]];
+    });
+  }
   function createWorld(opt) {
-    var n = opt.boards.length;
+    var n = opt.boards.length, lay = layout(n, opt.map);
     var w = {
-      mode: opt.mode || "solo", lay: layout(n), boards: opt.boards.map(makeBoard),
+      mode: opt.mode || "solo", lay: lay, map: lay.map || "coop",
+      boards: opt.boards.map(function (info, i) { return makeBoard(Object.assign({}, info, { nslot: lay.boards[i].cells.length })); }),
       rng: rngOf(opt.seed || 1), t: 0, wave: 0, waveT: 0, nextWave: 3, spawnQ: [], lives: C.lives, over: false,
-      enemies: [], emap: {}, projs: [], mines: [], nextId: 1, ev: [], fx: [], bossAlive: 0, bosses: 0, kills: 0,
+      enemies: [], emap: {}, projs: [], mines: [], clouds: [], holes: [], chrono: 0, out: [], nextId: 1, ev: [], fx: [], bossAlive: 0, bosses: 0, kills: 0,
       hpMul: n > 1 ? C.coopHp : 1, view: !!opt.view,
     };
+    linkTwins(w);
     return w;
   }
 
@@ -90,16 +142,64 @@
   function puOf(b, type) { var i = b.deck.indexOf(type); return i < 0 ? 0 : b.pu[i]; }
   function summonCost(b) { return C.summonBase + C.summonStep * b.sumN; }
   function puCost(b, i) { return b.pu[i] >= C.puCosts.length ? Infinity : C.puCosts[b.pu[i]]; }
-  function freeSlots(b) { var out = []; for (var i = 0; i < NSLOT; i++) if (!b.slots[i]) out.push(i); return out; }
+  function twinTaken(b, i) { var t = b.twins && b.twins[i]; return !!(t && t[0].slots[t[1]]); }
+  function freeSlots(b) { var out = []; for (var i = 0; i < b.slots.length; i++) if (!b.slots[i] && !twinTaken(b, i)) out.push(i); return out; }
   function newSq(b, type, pips) {
     var sq = { t: type, p: pips, cd: Math.random() * 0.5, stun: 0, bob: 0, born: 0.25 };
     if (T[type].grow) sq.grow = T[type].grow - T[type].growPu * puOf(b, type);
+    if (T[type].morph) sq.morph = T[type].morph;
+    if (T[type].teamEvery) sq.tt = T[type].teamEvery;
+    if (T[type].orbit) sq.oa = Math.random() * 6.283;
     if (pips > b.maxPip) b.maxPip = pips;
     return sq;
   }
   function randomDeckType(b, not) {
     var list = b.deck.filter(function (k) { return k !== not; });
     return pick(list.length ? list : b.deck);
+  }
+
+  /* ---------- dés d'équipe : aident l'allié en coop, gênent l'adversaire en versus ---------- */
+  // seul : l'effet revient au joueur (souvent réduit) ; coop : à l'autre plateau ; versus : part chez l'adversaire (w.out)
+  function sendTeam(w, bi, si, eff) {
+    if (w.view) return;
+    if (w.mode === "versus") { eff.neg = true; w.out.push(eff); w.ev.push({ k: "teamout", b: bi, s: si, kind: eff.k }); return; }
+    var to = w.boards.length > 1 ? 1 - bi : bi;
+    eff.solo = w.boards.length === 1;
+    w.ev.push({ k: "teamfx", b: bi, s: si, to: to, kind: eff.k });
+    applyTeam(w, to, eff);
+  }
+  function applyTeam(w, bi, eff) {
+    var b = w.boards[bi]; if (!b || w.over) return;
+    var half = eff.solo ? 0.5 : 1, i, cand = [];
+    if (eff.k === "gift") {
+      for (i = 0; i < b.slots.length; i++) { var q = b.slots[i]; if (q && (eff.neg ? q.p >= 2 : q.p < C.maxPips)) cand.push(i); }
+      if (!cand.length) return;
+      var si = pick(cand), sq = b.slots[si];
+      sq.p += eff.neg ? -1 : 1; sq.born = 0.25;
+      if (sq.p > b.maxPip) b.maxPip = sq.p;
+      w.ev.push({ k: "gift", b: bi, s: si, v: eff.neg ? -1 : 1 });
+    } else if (eff.k === "mail") {
+      var v = Math.round(eff.v * half);
+      if (eff.neg) v = -Math.min(v, Math.floor(b.sp));
+      b.sp += v; w.ev.push({ k: "mail", b: bi, v: v });
+    } else if (eff.k === "cheer") {
+      (b.cheer = b.cheer || []).push({ v: eff.v * half * (eff.neg ? -1 : 1), t: 3.5 });
+    } else if (eff.k === "reinf") {
+      if (eff.neg) {
+        var fx = spawnEnemy(w, "fox", 0, waveHp(w, Math.max(1, w.wave)) * 1.6, w.lay.paths.length > 1 ? (w.wave & 1) : 0);
+        fx.sent = true; w.ev.push({ k: "foesent" });
+      } else {
+        var fr = freeSlots(b); if (!fr.length) return;
+        var ts = pick(fr); b.slots[ts] = newSq(b, pick(b.deck), 1);
+        w.ev.push({ k: "reinf", b: bi, s: ts });
+      }
+    }
+  }
+  function teamPulse(w, b, bi, si, s) {
+    var Tp = T[s.t], pu = puOf(b, s.t);
+    if (Tp.team === "mail") sendTeam(w, bi, si, { k: "mail", v: (Tp.mail + Tp.mailPu * pu) * s.p });
+    else if (Tp.team === "cheer") sendTeam(w, bi, si, { k: "cheer", v: Tp.cheer * s.p });
+    else if (Tp.team === "reinf") sendTeam(w, bi, si, { k: "reinf" });
   }
 
   /* ---------- actions des joueurs ---------- */
@@ -131,6 +231,12 @@
     b.slots[a] = null;
     b.slots[c] = newSq(b, pick(b.deck), A.p + 1);
     w.ev.push({ k: "merge", b: bi, s: c, p: A.p + 1 });
+    if (T[A.t].team === "gift") sendTeam(w, bi, c, { k: "gift" });
+    // Jumeau : un écureuil bonus apparaît
+    if (T[A.t].twin) {
+      var fr = freeSlots(b);
+      if (fr.length && A.p >= 2) { var ts = pick(fr); b.slots[ts] = newSq(b, pick(b.deck), Math.max(1, A.p - 1)); w.ev.push({ k: "twin", b: bi, s: ts, from: c }); }
+    }
     return true;
   }
   function powerUp(w, bi, i) {
@@ -149,7 +255,9 @@
   }
 
   /* ---------- vagues ---------- */
-  function waveHp(w, n) { return C.hpBase * Math.pow(C.hpGrowth, n - 1) * (1 + C.hpLin * (n - 1)) * w.hpMul; }
+  function waveHp(w, n) { return C.hpBase * Math.pow(C.hpGrowth, n - 1) * (1 + C.hpLin * (n - 1)) * w.hpMul * (w.lay.mods.hp || 1); }
+  // vitesse due à la carte (la boue ne ralentit pas les volantes)
+  function mapSpd(w, d) { var m = w.lay.mods; if (!m.spd) return 1; return m.mud && d.fly ? 1 : m.spd; }
   function isBossWave(n) { return n % C.bossEvery === 0; }
   function startWave(w) {
     w.wave++; w.waveT = 0;
@@ -169,6 +277,9 @@
     w.boards.forEach(function (b, bi) {
       var inc = 0;
       b.slots.forEach(function (s) { if (s && T[s.t].income) inc += s.p * (T[s.t].income + T[s.t].incomePu * puOf(b, s.t)); });
+      // Banquier : intérêts sur les noisettes en réserve
+      var sp0 = b.sp;
+      b.slots.forEach(function (s) { if (s && T[s.t].interest) inc += Math.round(Math.min(sp0 * T[s.t].interest * s.p, T[s.t].interestCap * s.p)); });
       if (inc) { b.sp += inc; w.ev.push({ k: "income", b: bi, v: inc }); }
     });
     w.ev.push({ k: "wave", n: n, boss: isBossWave(n) });
@@ -183,7 +294,7 @@
   function spawnEnemy(w, type, dist, hp, lane) {
     var d = D.ENEMIES[type];
     var max = hp || waveHp(w, Math.max(1, w.wave)) * d.hp;
-    var e = { id: w.nextId++, type: type, d: d, hp: max, max: max, dist: dist || 0, lane: lane || 0, spd: d.spd * Math.min(1.45, 1 + 0.012 * w.wave) * w.lay.spdMul,
+    var e = { id: w.nextId++, type: type, d: d, hp: max, max: max, dist: dist || 0, lane: lane || 0, spd: d.spd * mapSpd(w, d) * Math.min(1.45, 1 + 0.012 * w.wave) * w.lay.spdMul,
               slowT: 0, slowF: 0, poison: 0, poisonT: 0, t: Math.random() * 3, power: 3, chargeT: 0, under: false, flash: 0, baby: !!hp };
     if (d.boss) { w.bossAlive++; w.ev.push({ k: "boss", type: type }); }
     w.enemies.push(e); w.emap[e.id] = e;
@@ -225,6 +336,7 @@
     if (e.dead) return;
     opt = opt || {};
     if (!opt.pure && e.d.armor) dmg *= 1 - e.d.armor;
+    if (e.vulnT > 0) dmg *= 1 + e.vuln;
     e.hp -= dmg; e.flash = 0.08;
     if (w.boards[bi]) w.boards[bi].dmg += dmg;
     if (e.hp <= 0) kill(w, e, bi);
@@ -233,6 +345,7 @@
     e.dead = true; e.hp = 0;
     w.kills++;
     var gain = e.d.boss ? C.bossSp * (Math.floor(w.wave / C.bossEvery) || 1) : C.killSp + C.killSpWave * w.wave;
+    if (w.lay.mods.sp) gain = Math.round(gain * w.lay.mods.sp);
     if (e.baby) gain = Math.ceil(gain / 2);
     w.boards.forEach(function (b) { b.sp += gain; });
     if (w.boards[bi]) w.boards[bi].kills++;
@@ -242,13 +355,13 @@
     if (e.d.split) for (var i = 0; i < e.d.split; i++) spawnEnemy(w, "slug", Math.max(0, e.dist - 4 - i * 4), e.max * 0.3, e.lane);
     if (e.d.stunOnDeath) stunRandom(w, 1, e.d.stunOnDeath);
   }
-  function stunRandom(w, n, dur) {
+  function stunRandom(w, n, dur, tag) {
     var all = [];
     w.boards.forEach(function (b, bi) { b.slots.forEach(function (s, si) { if (s && s.stun <= 0) all.push([bi, si]); }); });
     for (var i = 0; i < n && all.length; i++) {
       var k = Math.floor(Math.random() * all.length), it = all.splice(k, 1)[0];
       w.boards[it[0]].slots[it[1]].stun = dur;
-      w.ev.push({ k: "stun", b: it[0], s: it[1] });
+      w.ev.push({ k: "stun", b: it[0], s: it[1], tag: tag });
     }
   }
   function transformRandom(w, n) {
@@ -263,9 +376,11 @@
   function hit(w, pr, e) {
     var b = w.boards[pr.b], Tp = T[pr.t];
     if (e.d.dodge && Math.random() < e.d.dodge) { var mp = epos(w, e); w.ev.push({ k: "miss", x: mp.x, y: mp.y }); return; }
-    var dmg = pr.dmg, crit = Math.random() < pr.crit;
-    if (crit) dmg *= C.critMul;
+    var dmg = pr.dmg, crit = Math.random() < pr.crit + (Tp.critBonus || 0);
+    if (crit) dmg *= Tp.critX || C.critMul;
     if (Tp.bossMul && e.d.boss) dmg *= Tp.bossMul;
+    if (Tp.vsCold && ((e.slowT > 0 && e.slowF > 0) || e.frozenT > 0)) dmg *= Tp.vsCold;
+    if (Tp.vuln) { var vu = Tp.vuln + Tp.vulnPip * (pr.p - 1); if (vu >= (e.vuln || 0) || !(e.vulnT > 0)) e.vuln = vu; e.vulnT = 3; }
     if (Tp.slow && !e.d.noSlow) {
       var f = Math.min(Tp.slowMax, Tp.slow + Tp.slowPip * (pr.p - 1)) * (e.d.boss ? 0.5 : 1);
       if (f >= e.slowF || e.slowT < 0.5) { e.slowF = f; }
@@ -278,12 +393,30 @@
     }
     if (Tp.freeze && !e.d.noSlow) e.frozenT = Math.max(e.frozenT || 0, (Tp.freeze + Tp.freezePip * (pr.p - 1)) * (e.d.boss ? 0.5 : 1));
     damage(w, e, dmg, pr.b, { pure: !!Tp.pierce });
+    var hp0 = epos(w, e);
+    w.ev.push({ k: "hit", x: hp0.x, y: hp0.y - 3, t: pr.t, v: Math.round(dmg), crit: crit, big: !!e.d.boss });
     if (!e.dead && Tp.exec && !e.d.boss && e.hp < e.max * (Tp.exec + Tp.execPip * (pr.p - 1))) {
       var xp = epos(w, e); w.ev.push({ k: "exec", x: xp.x, y: xp.y });
       damage(w, e, e.hp + 1, pr.b, { pure: true });
     }
     if (e.dead && Tp.steal && b) { var st = Tp.steal * pr.p; b.sp += st; var sp0 = epos(w, e); w.ev.push({ k: "steal", x: sp0.x, y: sp0.y, v: st }); }
-    if (crit) { var cp = epos(w, e); w.ev.push({ k: "crit", x: cp.x, y: cp.y, v: Math.round(dmg) }); }
+    if (e.dead && Tp.goldKill && b) { var gk = Tp.goldKill * pr.p; b.sp += gk; var gp = epos(w, e); w.ev.push({ k: "steal", x: gp.x, y: gp.y, v: gk, gold: 1 }); }
+    if (e.dead && Tp.stack && pr.src && pr.src.t === pr.t) { pr.src.stk = Math.min(Tp.stackMax, (pr.src.stk || 0) + 1); pr.src.fx = 1; }
+    if (pr.boomR) {
+      w.enemies.forEach(function (o) { if (o !== e && targetable(o) && near(w, o, e, pr.boomR)) damage(w, o, dmg * 0.6, pr.b); });
+      var sb = epos(w, e); w.ev.push({ k: "boom", x: sb.x, y: sb.y, r: pr.boomR, c: "#ffb03a", sun: 1 });
+    }
+    if (e.dead && Tp.boomKill) {
+      var bx = epos(w, e), bd0 = e.max * Tp.boomKill;
+      w.enemies.forEach(function (o) { if (o !== e && targetable(o) && near(w, o, e, 24)) damage(w, o, bd0, pr.b); });
+      w.ev.push({ k: "boom", x: bx.x, y: bx.y, r: 24, c: "#ff7a2a", fire: 1 });
+    }
+    if (!e.dead && Tp.knock) {
+      var kn = (Tp.knock + Tp.knockPip * (pr.p - 1)) * (e.d.boss ? 0.3 : 1);
+      e.dist = Math.max(0, e.dist - kn);
+      var kp = epos(w, e); w.ev.push({ k: "knock", x: kp.x, y: kp.y, t: pr.t });
+    }
+    if (crit) { var cp = epos(w, e); w.ev.push({ k: Tp.critX ? "damocles" : "crit", x: cp.x, y: cp.y, v: Math.round(dmg) }); }
     if (Tp.splash) {
       w.enemies.forEach(function (o) {
         if (o === e || !targetable(o)) return;
@@ -304,40 +437,95 @@
         d2 *= Tp.chainFall; hitIds[best.id] = 1; pts.push(epos(w, best));
         damage(w, best, d2, pr.b); from = best;
       }
-      if (pts.length > 1) w.ev.push({ k: "bolt", pts: pts.map(function (q) { return [q.x, q.y]; }) });
+      if (pts.length > 1) w.ev.push({ k: Tp.pellets ? "pellets" : "bolt", pts: pts.map(function (q) { return [q.x, q.y]; }) });
     }
   }
+  function pathSpots(w, c, rg) {
+    var spots = [];
+    w.lay.paths.forEach(function (pth, ln) { for (var dd = 4; dd < pth.len - 4; dd += 4) { var q = posAt(w.lay, dd, ln); if (Math.hypot(q.x - c.x, q.y - c.y) <= rg) spots.push([ln, dd]); } });
+    return spots;
+  }
+  // Satellite : vitesse et position des orbes
+  function orbSpd(p) { return 2.2 + 0.55 * (p - 1); }
+  function orbPos(c, sq, k) { var a = (sq.oa || 0) + k * 6.2832 / sq.p; return { x: c.x + Math.cos(a) * 26, y: c.y + Math.sin(a) * 26 }; }
+  function orbits(w, b, bi, si, sq, dt) {
+    sq.oa = (sq.oa || 0) + dt * orbSpd(sq.p);
+    var cdm = sq.ocd || (sq.ocd = {});
+    for (var id in cdm) { cdm[id] -= dt; if (cdm[id] <= 0) delete cdm[id]; }
+    var c = slotCenter(w.lay, bi, si), Tp = T[sq.t], pu = puOf(b, sq.t);
+    var dmg = (Tp.dmg + Tp.pu * pu) * classMul(b, sq.t) * (1 + C.pipBonus * (sq.p - 1)) * (1 + boardAura(b) + (sq.boost || 0));
+    var crit = boardCrit(b), any = false;
+    for (var k = 0; k < sq.p; k++) {
+      var o = orbPos(c, sq, k);
+      for (var i = 0; i < w.enemies.length; i++) {
+        var e = w.enemies[i]; if (!targetable(e) || cdm[e.id]) continue;
+        var q = epos(w, e); if (Math.hypot(q.x - o.x, q.y - 3 - o.y) > 12) continue;
+        cdm[e.id] = 0.3; any = true;
+        hit(w, { b: bi, t: sq.t, p: sq.p, dmg: dmg, crit: crit, src: sq }, e);
+      }
+    }
+    if (any) sq.fx = 1;
+  }
+  function aim(sq, c, w, e) { var q = epos(w, e); sq.ang = Math.atan2(q.y - c.y, q.x - c.x); sq.fx = 1; }
   function fire(w, bi, si, sq) {
     var b = w.boards[bi], Tp = T[sq.t], pu = puOf(b, sq.t), dmg = (Tp.dmg + Tp.pu * pu) * classMul(b, sq.t) * (1 + C.pipBonus * (sq.p - 1));
-    dmg *= 1 + boardAura(b);
-    var c = slotCenter(w.lay, bi, si), crit = boardCrit(b), rg = rangeOf(sq.t);
+    dmg *= 1 + boardAura(b) + (sq.boost || 0);
+    if (sq.stk) dmg *= 1 + sq.stk * Tp.stack;
+    var c = slotCenter(w.lay, bi, si), crit = boardCrit(b), rg = rangeOf(sq.t, w);
     if (Tp.target === "all") {
       var any = false;
-      w.enemies.slice().forEach(function (e) { if (targetable(e) && inRange(w, e, c, rg)) { any = true; hit(w, { b: bi, t: sq.t, p: sq.p, dmg: dmg * sq.p, crit: crit }, e); } });
+      var spts = [];
+      w.enemies.slice().forEach(function (e) { if (targetable(e) && inRange(w, e, c, rg)) { any = true; var q = epos(w, e); if (spts.length < 24) spts.push([Math.round(q.x), Math.round(q.y)]); hit(w, { b: bi, t: sq.t, p: sq.p, dmg: dmg * sq.p, crit: crit }, e); } });
       if (!any) return false;
-      w.ev.push({ k: "storm", b: bi, s: si });
-      sq.bob = 0.12;
+      w.ev.push({ k: "storm", b: bi, s: si, pts: spts, t: sq.t });
+      sq.bob = 0.12; sq.fx = 1; sq.ang = -Math.PI / 2;
       return true;
     }
     if (sq.t === "mine") {
       if (w.mines.length > 40) return false;
-      var spots = [];
-      w.lay.paths.forEach(function (pth, ln) { for (var dd = 4; dd < pth.len - 4; dd += 4) { var q = posAt(w.lay, dd, ln); if (Math.hypot(q.x - c.x, q.y - c.y) <= rg) spots.push([ln, dd]); } });
+      var spots = pathSpots(w, c, rg);
       if (!spots.length) return false;
       for (var m = 0; m < sq.p; m++) {
         var spot = pick(spots), dist = spot[1];
         w.mines.push({ dist: dist, lane: spot[0], dmg: dmg, b: bi, crit: crit, fly: 0.35, x0: c.x, y0: c.y, t: 0 });
       }
-      sq.bob = 0.12;
+      sq.bob = 0.12; sq.fx = 1; sq.ang = -Math.PI / 2;
+      return true;
+    }
+    if (Tp.cloud) {
+      if (w.clouds.length > 30) return false;
+      var cs = pathSpots(w, c, rg);
+      if (!cs.length) return false;
+      for (var cc = 0; cc < sq.p; cc++) { var sp1 = pick(cs), q1 = posAt(w.lay, sp1[1], sp1[0]); w.clouds.push({ x: q1.x, y: q1.y, dist: sp1[1], lane: sp1[0], t: 4, dps: dmg, b: bi, r: 16 }); }
+      w.ev.push({ k: "cloud", b: bi, s: si });
+      sq.bob = 0.12; sq.fx = 1; sq.ang = -Math.PI / 2;
+      return true;
+    }
+    if (Tp.hole) {
+      var ht = chooseTarget(w, "front", c, rg);
+      if (!ht) return false;
+      var hp1 = epos(w, ht);
+      w.holes.push({ x: hp1.x, y: hp1.y, dist: ht.dist, lane: ht.lane || 0, t: 3, dps: dmg * sq.p, b: bi, p: sq.p });
+      w.ev.push({ k: "hole", x: hp1.x, y: hp1.y, b: bi, s: si });
+      aim(sq, c, w, ht);
       return true;
     }
     var first = chooseTarget(w, Tp.target, c, rg);
     if (!first) return false;
+    aim(sq, c, w, first);
+    var boomR = 0;
+    if (Tp.sun) {
+      var ns = 0; b.slots.forEach(function (q) { if (q && q.t === sq.t) ns++; });
+      sq.sunOn = ns % 2 === 1;
+      if (sq.sunOn) { boomR = Math.min(Tp.sunMax, 8 + Tp.sunGrow * (sq.heat || 0)); sq.heat = (sq.heat || 0) + 1; sq.nextCd = Tp.every; }
+      else { sq.heat = 0; dmg *= Tp.evenMul; sq.nextCd = Tp.everyEven; }
+    }
+    if (sq.t === "eclair") w.ev.push({ k: "zap", x0: c.x, y0: c.y, id: first.id });
     for (var k = 0; k < sq.p; k++) {
       var tg = k === 0 ? first : (Tp.target === "random" ? chooseTarget(w, "random", c, rg) || first : first);
-      var shots = Tp.echo && Math.random() < Tp.echo ? 2 : 1;
+      var shots = (Tp.echo && Math.random() < Tp.echo) || Tp.twice ? 2 : 1;
       for (var z = 0; z < shots; z++) {
-        w.projs.push({ x: c.x, y: c.y, tid: tg.id, t: sq.t, b: bi, p: sq.p, dmg: dmg, crit: crit, delay: k * 0.06 + z * 0.12 });
+        w.projs.push({ x: c.x, y: c.y, tid: tg.id, t: sq.t, b: bi, p: sq.p, dmg: dmg, crit: crit, delay: k * 0.06 + z * (Tp.twice ? 0.28 : 0.12), src: sq, ret: Tp.twice && z === 1, boomR: k === 0 && z === 0 ? boomR : 0 });
         if (w.fx.length < 200) w.fx.push(bi, si, tg.id, TIDX[sq.t]);
       }
     }
@@ -358,14 +546,14 @@
 
     // plateaux
     w.boards.forEach(function (b, bi) {
-      var haste = new Array(NSLOT).fill(0);
+      var bh = 0;
+      if (b.cheer) { for (var ch = b.cheer.length - 1; ch >= 0; ch--) { bh += b.cheer[ch].v; b.cheer[ch].t -= dt; if (b.cheer[ch].t <= 0) b.cheer.splice(ch, 1); } }
+      b.cheerV = bh = Math.max(-0.4, Math.min(0.4, bh));
+      var haste = new Array(b.slots.length).fill(0), boost = new Array(b.slots.length).fill(0), nb = w.lay.boards[bi].nb;
       b.slots.forEach(function (s, i) {
-        if (!s || s.t !== "chene" || s.stun > 0) return;
-        var h = (T.chene.haste + T.chene.hastePu * puOf(b, "chene")) * s.p, x = i % COLS;
-        if (x > 0) haste[i - 1] += h;
-        if (x < COLS - 1) haste[i + 1] += h;
-        if (i - COLS >= 0) haste[i - COLS] += h;
-        if (i + COLS < NSLOT) haste[i + COLS] += h;
+        if (!s || s.stun > 0) return;
+        if (s.t === "chene") { var h = (T.chene.haste + T.chene.hastePu * puOf(b, "chene")) * s.p; nb[i].forEach(function (j) { haste[j] += h; }); }
+        if (T[s.t].boost) { var bo = (T[s.t].boost + T[s.t].boostPu * puOf(b, s.t)) * s.p; nb[i].forEach(function (j) { boost[j] += bo; }); }
       });
       b.slots.forEach(function (s, i) {
         if (!s) return;
@@ -379,10 +567,21 @@
             delete s.grow;
           }
         }
+        if (s.morph !== undefined) {
+          s.morph -= dt;
+          if (s.morph <= 0) {
+            var pool = D.ORDER.filter(function (k) { return k !== s.t && k !== "farceur"; });
+            var ns = newSq(b, pick(pool), s.p); ns.morph = T.farceur.morph; ns.jk = 1; ns.born = 0.3;
+            b.slots[i] = ns; w.ev.push({ k: "xf", b: bi, s: i, farce: 1 }); return;
+          }
+        }
+        s.boost = boost[i];
         var Tp = T[s.t];
-        if (Tp.target === "none" && s.t !== "mine") return;
-        s.cd -= dt * (1 + haste[i]);
-        if (s.cd <= 0) { if (fire(w, bi, i, s)) s.cd += Tp.every; else s.cd = 0; }
+        if (Tp.teamEvery) { s.tt -= dt; if (s.tt <= 0) { s.tt += Tp.teamEvery; teamPulse(w, b, bi, i, s); } }
+        if (Tp.orbit) { orbits(w, b, bi, i, s, dt * (1 + haste[i])); return; }
+        if (Tp.target === "none" && s.t !== "mine" && !Tp.cloud && !Tp.hole) return;
+        s.cd -= dt * Math.max(0.4, 1 + haste[i] + bh);
+        if (s.cd <= 0) { if (fire(w, bi, i, s)) s.cd += s.nextCd || Tp.every; else s.cd = 0; }
       });
     });
 
@@ -397,7 +596,7 @@
         if (!nt) { w.projs.splice(i, 1); continue; }
         pr.tid = nt.id; e = nt;
       }
-      var p = epos(w, e), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = 300 * dt;
+      var p = epos(w, e), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = (T[pr.t].pspd || 300) * dt;
       if (d <= mv + 2) { w.projs.splice(i, 1); if (!pr.vis) hit(w, pr, e); continue; }
       pr.x += dx / d * mv; pr.y += dy / d * mv;
     }
@@ -417,6 +616,29 @@
       var mp = mpos; w.ev.push({ k: "boom", x: mp.x, y: mp.y, r: T.mine.mineR, c: "#e8873a" });
     }
 
+    // nuages toxiques (Spore) et trous noirs
+    for (var ci = w.clouds.length - 1; ci >= 0; ci--) {
+      var cl = w.clouds[ci]; cl.t -= dt;
+      if (cl.t <= 0) { w.clouds.splice(ci, 1); continue; }
+      for (var k2 = 0; k2 < w.enemies.length; k2++) { var ce = w.enemies[k2]; if (!targetable(ce)) continue; var cq = epos(w, ce); if (Math.hypot(cq.x - cl.x, cq.y - cl.y) <= cl.r) damage(w, ce, cl.dps * dt, cl.b, { pure: true }); }
+    }
+    for (var hi = w.holes.length - 1; hi >= 0; hi--) {
+      var ho = w.holes[hi]; ho.t -= dt;
+      if (ho.t <= 0) { w.holes.splice(hi, 1); w.ev.push({ k: "holeend", x: ho.x, y: ho.y }); continue; }
+      for (var k3 = 0; k3 < w.enemies.length; k3++) {
+        var he = w.enemies[k3]; if (!targetable(he)) continue;
+        if ((he.lane || 0) !== ho.lane) { var hq = epos(w, he); if (Math.hypot(hq.x - ho.x, hq.y - ho.y) > 26) continue; damage(w, he, ho.dps * dt, ho.b); continue; }
+        var gap = he.dist - ho.dist; if (Math.abs(gap) > 30) continue;
+        var pull = (he.d.boss ? 18 : 55) * dt;
+        he.dist = Math.abs(gap) <= pull ? ho.dist : he.dist - Math.sign(gap) * pull;
+        damage(w, he, ho.dps * dt, ho.b);
+      }
+    }
+    // Chronos : le temps ralentit pour toutes les bestioles
+    var chr = 0;
+    w.boards.forEach(function (b) { b.slots.forEach(function (s) { if (s && T[s.t].chrono && s.stun <= 0) chr += T[s.t].chrono * s.p; }); });
+    w.chrono = Math.min(T.chronos ? T.chronos.chronoMax : 0.35, chr);
+
     // ennemis
     var L = w.lay.len;
     for (var j = w.enemies.length - 1; j >= 0; j--) {
@@ -426,13 +648,14 @@
       en2.t += dt;
       if (en2.flash > 0) en2.flash -= dt;
       if (en2.slowT > 0) { en2.slowT -= dt; if (en2.slowT <= 0) en2.slowF = 0; }
+      if (en2.vulnT > 0) en2.vulnT -= dt;
       if (en2.poisonT > 0) {
         en2.poisonT -= dt;
         damage(w, en2, en2.poison * dt, en2.poisonB, { pure: true });
         if (en2.poisonT <= 0) en2.poison = 0;
         if (en2.dead) continue;
       }
-      var sp = en2.spd * (1 - en2.slowF);
+      var sp = en2.spd * (1 - en2.slowF) * (1 - (dd2.boss ? w.chrono / 2 : w.chrono));
       if (en2.frozenT > 0) { en2.frozenT -= dt; sp = 0; }
       if (dd2.hop) sp *= Math.sin(en2.t * 7) > -0.2 ? 1.6 : 0.1;
       if (dd2.burrow) { var ph = en2.t % 3.6; en2.under = ph > 2.4; if (en2.under) sp *= 1.5; }
@@ -448,11 +671,35 @@
         en2.power -= dt;
         if (en2.chargeT > 0) { en2.chargeT -= dt; sp *= 2.2; }
         if (en2.power <= 0) {
+          var bp = epos(w, en2);
           if (dd2.power === "charge") { en2.power = 6; en2.chargeT = 1.1; stunRandom(w, 2, 3); w.ev.push({ k: "charge" }); }
-          else { en2.power = 7; transformRandom(w, 2); for (var mo = 0; mo < 2; mo++) spawnEnemy(w, "moth", Math.max(0, en2.dist - 6 - mo * 6), en2.max * 0.02, en2.lane); w.ev.push({ k: "hoot" }); }
+          else if (dd2.power === "swarm") {
+            en2.power = 5;
+            for (var wq = 0; wq < 3; wq++) spawnEnemy(w, "wasp", Math.max(0, en2.dist - 4 - wq * 7), en2.max * 0.025, en2.lane);
+            w.ev.push({ k: "swarm", x: bp.x, y: bp.y });
+          } else if (dd2.power === "spores") {
+            en2.power = 6;
+            en2.hp = Math.min(en2.max, en2.hp + en2.max * 0.05);
+            w.enemies.forEach(function (o) { if (o !== en2 && !o.dead && near(w, o, en2, 44)) o.hp = Math.min(o.max, o.hp + o.max * 0.25); });
+            stunRandom(w, 1, 2.5, "spore");
+            w.ev.push({ k: "spores", x: bp.x, y: bp.y });
+          } else if (dd2.power === "roots") {
+            en2.power = 8;
+            stunRandom(w, 3, 2.5, "roots");
+            w.ev.push({ k: "roots", x: bp.x, y: bp.y });
+          } else { en2.power = 7; transformRandom(w, 2); for (var mo = 0; mo < 2; mo++) spawnEnemy(w, "moth", Math.max(0, en2.dist - 6 - mo * 6), en2.max * 0.02, en2.lane); w.ev.push({ k: "hoot" }); }
         }
       }
+      var d0 = en2.dist;
       en2.dist += sp * dt;
+      if (w.lay.bumps && w.lay.bumps.length) w.lay.bumps.forEach(function (bm, bk) {
+        var at = bm.at[en2.lane || 0];
+        if (at === undefined || d0 >= at || en2.dist < at || (en2.bumped && en2.bumped[bk])) return;
+        (en2.bumped = en2.bumped || {})[bk] = 1;
+        en2.dist = Math.max(0, at - (w.lay.mods.bump || 52) * (dd2.boss ? 0.35 : 1));
+        bm.hit = (bm.hit || 0) + 1;
+        w.ev.push({ k: "bump", x: bm.x, y: bm.y, bk: bk });
+      });
       if (en2.dist >= L) {
         en2.dead = true; w.enemies.splice(j, 1); delete w.emap[en2.id];
         if (dd2.boss) w.bossAlive--;
@@ -473,7 +720,7 @@
     if (free.length && b.sp >= summonCost(b)) { summon(w, bi); return; }
     // fusions : les caméléons copient le meilleur, puis les plus petits points d'abord
     var pairs = [];
-    for (var a = 0; a < NSLOT; a++) for (var c = 0; c < NSLOT; c++) if (canMerge(b, a, c)) {
+    for (var a = 0; a < b.slots.length; a++) for (var c = 0; c < b.slots.length; c++) if (canMerge(b, a, c)) {
       var A = b.slots[a], B = b.slots[c], score = 10 - A.p;
       if (A.t === "cameleon" && B.t !== "cameleon") score = 20 + B.p;
       if (A.t === "pepite" && w.wave < 12) score -= 3;
@@ -505,7 +752,9 @@
       return { sp: Math.floor(bd.sp), n: bd.sumN, pu: bd.pu.slice(), s: s, st: st, k: bd.kills, mp: bd.maxPip };
     });
     var snap = { w: w.wave, wt: Math.round(w.waveT * 10), nw: isFinite(w.nextWave) ? w.nextWave : -1, l: w.lives, o: w.over ? 1 : 0, kl: w.kills, bs: w.bosses,
-                 e: e, b: b, f: w.fx.slice(0, 240), m: w.mines.map(function (mn) { return Math.round(mn.dist) * 2 + (mn.lane || 0); }), v: evs || [] };
+                 e: e, b: b, f: w.fx.slice(0, 240), m: w.mines.map(function (mn) { return Math.round(mn.dist) * 2 + (mn.lane || 0); }), v: evs || [],
+                 cl: w.clouds.map(function (q) { return [Math.round(q.x), Math.round(q.y), Math.round(q.t * 10)]; }),
+                 ho: w.holes.map(function (q) { return [Math.round(q.x), Math.round(q.y), Math.round(q.t * 10)]; }), ch: Math.round(w.chrono * 100) };
     w.fx.length = 0;
     return snap;
   }
@@ -543,10 +792,13 @@
     });
     for (var f = 0; f + 3 < s.f.length + 1; f += 4) {
       var c = slotCenter(w.lay, s.f[f], s.f[f + 1]), sq = w.boards[s.f[f]] && w.boards[s.f[f]].slots[s.f[f + 1]];
-      if (sq) sq.bob = 0.12;
+      if (sq) { sq.bob = 0.12; sq.fx = 1; var te = w.emap[s.f[f + 2]]; if (te) { var tq = epos(w, te); sq.ang = Math.atan2(tq.y - c.y, tq.x - c.x); } }
       if (w.projs.length < 300) w.projs.push({ x: c.x, y: c.y, tid: s.f[f + 2], t: D.ORDER[s.f[f + 3]], vis: true, delay: (f / 4 % 7) * 0.05 });
     }
     w.mines = s.m.map(function (d) { return { dist: d >> 1, lane: d & 1, t: 1, fly: 0 }; });
+    w.clouds = (s.cl || []).map(function (q) { return { x: q[0], y: q[1], t: q[2] / 10, r: 14 }; });
+    w.holes = (s.ho || []).map(function (q) { return { x: q[0], y: q[1], t: q[2] / 10 }; });
+    w.chrono = (s.ch || 0) / 100;
   }
   // fait avancer un monde « vue » (rempli par instantanés) entre deux réceptions
   function stepView(w, dt) {
@@ -555,23 +807,24 @@
       if (en.flash > 0) en.flash -= dt;
       if (en.tdist !== undefined) { en.tdist += en.d.spd * w.lay.spdMul * 0.6 * dt; en.dist += (en.tdist - en.dist) * Math.min(1, dt * 10); }
     });
-    w.boards.forEach(function (b) { b.slots.forEach(function (s) { if (s) { if (s.bob > 0) s.bob -= dt; if (s.born > 0) s.born -= dt; } }); });
+    w.boards.forEach(function (b) { b.slots.forEach(function (s) { if (s) { if (s.bob > 0) s.bob -= dt; if (s.born > 0) s.born -= dt; if (T[s.t].orbit) s.oa = (s.oa || 0) + dt * orbSpd(s.p); } }); });
+    w.clouds.forEach(function (q) { q.t -= dt; }); w.holes.forEach(function (q) { q.t -= dt; });
     for (var i = w.projs.length - 1; i >= 0; i--) {
       var pr = w.projs[i];
       if (pr.delay > 0) { pr.delay -= dt; continue; }
       var e = w.emap[pr.tid];
       if (!e) { w.projs.splice(i, 1); continue; }
-      var p = epos(w, e), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = 300 * dt;
-      if (d <= mv + 2) { w.projs.splice(i, 1); continue; }
+      var p = epos(w, e), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = (T[pr.t].pspd || 300) * dt;
+      if (d <= mv + 2) { w.projs.splice(i, 1); w.ev.push({ k: "hit", x: p.x, y: p.y - 3, t: pr.t }); continue; }
       pr.x += dx / d * mv; pr.y += dy / d * mv;
     }
   }
 
   root.RD_CORE = {
-    CELL: CELL, COLS: COLS, ROWS: ROWS, NSLOT: NSLOT, BW: BW, BH: BH, EKEYS: EKEYS, TIDX: TIDX,
+    CELL: CELL, COLS: COLS, ROWS: ROWS, NSLOT: NSLOT, BW: BW, BH: BH, EKEYS: EKEYS, TIDX: TIDX, mapById: mapById, coopMapById: coopMapById, twinTaken: twinTaken,
     layout: layout, posAt: posAt, epos: epos, rangeOf: rangeOf, slotCenter: slotCenter, createWorld: createWorld, step: step, stepView: stepView,
     summon: summon, merge: merge, canMerge: canMerge, powerUp: powerUp, act: act, botStep: botStep,
     summonCost: summonCost, puCost: puCost, freeSlots: freeSlots, isBossWave: isBossWave, waveHp: waveHp,
-    snapshot: snapshot, applySnap: applySnap, boardCrit: boardCrit,
+    snapshot: snapshot, applySnap: applySnap, boardCrit: boardCrit, orbPos: orbPos, applyTeam: applyTeam,
   };
 })(typeof window !== "undefined" ? window : globalThis);

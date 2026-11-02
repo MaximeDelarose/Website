@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Merger · AkarisuMD</title>
-  <meta name="description" content="Merger : lâche les écureuils deux par deux, 3 de la même couleur qui se touchent disparaissent. Un petit jeu de réflexion jouable sur ordinateur et mobile.">
+  <meta name="description" content="Merger : lâche les écureuils deux par deux, 3 de la même couleur qui se touchent disparaissent. Un petit jeu de réflexion en solo ou en coop à 2 sur le même ordinateur.">
   <meta property="og:title" content="Merger · AkarisuMD">
-  <meta property="og:description" content="Merger : lâche les écureuils deux par deux, 3 de la même couleur qui se touchent disparaissent. Un petit jeu de réflexion jouable sur ordinateur et mobile.">
+  <meta property="og:description" content="Merger : lâche les écureuils deux par deux, 3 de la même couleur qui se touchent disparaissent. Un petit jeu de réflexion en solo ou en coop à 2 sur le même ordinateur.">
   <meta name="theme-color" content="#3f6b3a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261103ct5">
+  <link rel="stylesheet" href="css/style.css?v=20261104ct6">
 </head>
 <body data-page="merger">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -43,6 +43,7 @@
           <li><a href="jeu.html" data-page="game">Survivor</a></li>
           <li><a href="merger.html" data-page="merger">Merger</a></li>
           <li><a href="dice.html" data-page="dice">Dice</a></li>
+          <li><a href="defense.html" data-page="defense">Défense</a></li>
           <li><a href="idle.html" data-page="idle">Chêne</a></li>
           <li><a href="bio.html" data-page="bio">Bio</a></li>
           <li><a href="contact.html" data-page="contact">Contact</a></li>
@@ -65,6 +66,10 @@
           <span class="kicker">Mini jeu maison</span>
           <h1>Merger</h1>
         </div>
+        <div class="mg-modes" role="tablist" aria-label="Mode de jeu">
+          <button type="button" role="tab" data-mode="solo" aria-selected="true">🐿️ Solo</button>
+          <button type="button" role="tab" data-mode="coop" aria-selected="false">👥 Coop à 2</button>
+        </div>
         <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
       </div>
 
@@ -86,8 +91,33 @@
         </div>
       </div>
 
+      <div class="game-stage merger-stage mc-stage" data-merger-coop hidden>
+        <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Merger Coop"></canvas>
+        <button class="fs-exit" type="button" data-fs-exit aria-label="Quitter le plein écran">✕</button>
+        <div class="game-hud mc-hud" data-hud hidden>
+          <button class="hud-btn" type="button" data-c-restart aria-label="Recommencer">↻</button>
+          <button class="hud-btn" type="button" data-c-mute aria-label="Couper le son">🔊</button>
+          <button class="hud-btn" type="button" data-c-pause aria-label="Pause et réglages">⏸</button>
+        </div>
+        <div class="game-overlay" data-overlay>
+          <div class="panel game-card mc-card" data-card><p>Chargement…</p></div>
+        </div>
+      </div>
+
       <div class="game-info">
-        <div class="panel game-help">
+        <div class="panel game-help" data-help="coop" hidden>
+          <h2 class="section-title">Mode Coop à 2</h2>
+          <ul>
+            <li>Deux joueurs sur le <strong>même ordinateur</strong>, un lanceur chacun de chaque côté du terrain. Pas de chrono.</li>
+            <li><strong>Joueur 1</strong> : <kbd>Z</kbd><kbd>S</kbd> (ou <kbd>W</kbd><kbd>S</kbd>) pour viser, <kbd>Q</kbd><kbd>D</kbd> (ou <kbd>A</kbd><kbd>D</kbd>) pour la puissance, <kbd>Espace</kbd> pour tirer, <kbd>E</kbd> pour échanger avec le suivant.</li>
+            <li><strong>Joueur 2</strong> : <kbd>↑</kbd><kbd>↓</kbd> pour viser, <kbd>←</kbd><kbd>→</kbd> pour la puissance (vers le terrain = plus fort), <kbd>Entrée</kbd> pour tirer, <kbd>Maj droite</kbd> pour échanger.</li>
+            <li>Les deux préparent leur tir en même temps, mais on <strong>tire chacun son tour</strong>. La trajectoire en pointillés montre où le personnage va toucher.</li>
+            <li><strong>3 personnages identiques</strong> (ou plus) qui se touchent éclatent. Ce qui tombe peut en former d'autres : <strong>réaction en chaîne</strong>, et le multiplicateur grimpe.</li>
+            <li><strong>Pouvoirs</strong> (rares, offerts par les gros combos) : grenade, arc-en-ciel (joker), éclair (une colonne), bombe à retardement (explose 3 tirs plus tard).</li>
+            <li>La partie s'arrête quand la pile reste au-dessus de la ligne pointillée. <kbd>Échap</kbd> pour la pause et les réglages.</li>
+          </ul>
+        </div>
+        <div class="panel game-help" data-help="solo">
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
             <li>Les écureuils tombent <strong>deux par deux</strong>. Vise avec la souris, les flèches (ou Q/D), ou en glissant le doigt.</li>
@@ -118,11 +148,13 @@
     </div>
   </footer>
 
-  <script src="js/data.js?v=20261103ct5"></script>
-  <script src="js/auth.js?v=20261103ct5"></script>
-  <script src="js/cloudsave.js?v=20261103ct5" data-game="merger" data-prefix="merger-best-"></script>
-  <script src="js/leaderboard.js?v=20261103ct5"></script>
-  <script src="js/main.js?v=20261103ct5"></script>
-  <script src="js/merger.js?v=20261103mg132"></script>
+  <script src="js/data.js?v=20261103re4"></script>
+  <script src="js/auth.js?v=20261103re4"></script>
+  <script src="js/cloudsave.js?v=20261103re4" data-game="merger" data-prefix="merger-best-"></script>
+  <script src="js/leaderboard.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261103re4"></script>
+  <script src="js/merger-art.js?v=20261104mg200"></script>
+  <script src="js/merger.js?v=20261104mg200"></script>
+  <script src="js/merger-coop.js?v=20261104mg200"></script>
 </body>
 </html>

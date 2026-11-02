@@ -507,3 +507,63 @@ do $$ declare f text; begin
     execute format('grant execute on function public.%s to authenticated', f);
   end loop;
 end $$;
+
+-- =========================================================================
+-- Coffres par lot : 1 ou 10 (10 coffres = prix de 9), garantie de rareté par coffre
+-- =========================================================================
+create or replace function public.rd_open_chests(p_chest text, p_n int)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare r public.rd_profiles := public.rd_row(); c public.rd_chests; i int; j int; rar text; tot numeric; x numeric; rr record; t text;
+        got jsonb := '{}'; ord text[] := '{}'; minord int; v_have jsonb; v_cards jsonb; free boolean := false; price int;
+begin
+  if p_n not in (1, 10) then raise exception 'invalid_count'; end if;
+  select * into c from public.rd_chests where id = p_chest;
+  if not found then raise exception 'unknown_chest'; end if;
+  price := c.price * (case when p_n = 10 then 9 else 1 end);
+  if p_n = 1 and c.id = 'bois' and r.keys >= 3 then free := true;
+  elsif r.gold < price then raise exception 'not_enough_gold'; end if;
+  select y.ord into minord from public.rd_rarity y where y.id = c.min_rarity;
+  select sum(case when y.id = 'commun' then y.weight else y.weight * c.luck end) into tot from public.rd_rarity y;
+  v_have := r.have; v_cards := r.cards;
+  for j in 1..p_n loop
+    for i in 1..c.cards loop
+      x := random() * tot; rar := 'commun';
+      for rr in select y.id, y.ord, case when y.id = 'commun' then y.weight else y.weight * c.luck end w from public.rd_rarity y order by y.ord loop
+        x := x - rr.w; if x <= 0 then rar := rr.id; exit; end if;
+      end loop;
+      if i = 1 and minord is not null and (select y.ord from public.rd_rarity y where y.id = rar) < minord then rar := c.min_rarity; end if;
+      select tt.id into t from public.rd_types tt where tt.rarity = rar order by random() limit 1;
+      if not (got ? t) then
+        got := got || jsonb_build_object(t, jsonb_build_object('n', 0, 'isNew', not public.rd_owned(v_have, t)));
+        ord := ord || t;
+      end if;
+      got := jsonb_set(got, array[t, 'n'], to_jsonb((got->t->>'n')::int + 1));
+      if not public.rd_owned(v_have, t) then v_have := v_have || jsonb_build_object(t, true);
+      else v_cards := jsonb_set(v_cards, array[t], to_jsonb(coalesce((v_cards->>t)::int, 0) + 1)); end if;
+    end loop;
+  end loop;
+  update public.rd_profiles p set
+    gold = p.gold - (case when free then 0 else price end), keys = p.keys - (case when free then 3 else 0 end),
+    chests = p.chests + p_n, have = v_have, cards = v_cards, updated_at = now()
+  where p.user_id = r.user_id returning * into r;
+  return jsonb_build_object('got', got, 'order', to_jsonb(ord), 'count', p_n, 'profile', public.rd_json(r));
+end $$;
+
+create or replace function public.rd_open_chest(p_chest text)
+returns jsonb language sql security definer set search_path = '' as $$ select public.rd_open_chests(p_chest, 1); $$;
+
+revoke all on function public.rd_open_chests(text, integer) from public, anon;
+grant execute on function public.rd_open_chests(text, integer) to authenticated;
+
+-- 0.10 : 21 nouveaux écureuils (non destructif)
+insert into public.rd_types (id, rarity) values
+('mitraille','commun'),('herisson','commun'),('glandlourd','commun'),('lancepierre','commun'),('resine','commun'),
+('spore','rare'),('tornade','rare'),('banquier','rare'),('picvert','rare'),('stalactite','rare'),('tambour','rare'),
+('damocles','epique'),('farceur','epique'),('sangsue','epique'),('jumeau','epique'),('boomerang','epique'),
+('satellite','legendaire'),('phenix','legendaire'),('trounoir','legendaire'),('chronos','legendaire'),('midas','legendaire')
+on conflict (id) do nothing;
+
+-- 0.12 : dés d'équipe et Soleil (non destructif)
+insert into public.rd_types (id, rarity) values
+('facteur','rare'),('fanfare','rare'),('cadeau','epique'),('renfort','epique'),('soleil','legendaire')
+on conflict (id) do nothing;
