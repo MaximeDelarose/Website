@@ -347,6 +347,11 @@
       }
       if (from === i) { ctx.strokeStyle = "#fdf3de"; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.5, y + 0.5, 25, 25); }
     }
+    // pas de commandes pour les plateaux qu'on ne contrôle pas (coéquipier en ligne, adversaire, IA)
+    if (!mine) {
+      if (p.world.boards.length > 1) { var cc0 = ctrlCenter(o); text(b.name.slice(0, 16), cc0.x, cc0.y, "#c9b8a0", "center", 7); }
+      return;
+    }
     // commandes (à l'envers pour le joueur d'en face)
     if (fl) { var cc = ctrlCenter(o); ctx.save(); ctx.translate(cc.x, cc.y); ctx.rotate(Math.PI); ctx.translate(-cc.x, -cc.y); }
     var sr = sumRect(o), cost = K.summonCost(b), full = !K.freeSlots(b).length, can = !full && b.sp >= cost && mine && !p.world.over;
