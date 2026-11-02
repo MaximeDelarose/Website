@@ -6,6 +6,7 @@
 (function () {
   "use strict";
   var VERSION = "0.3.0";
+  var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
   if (!stage || !window.RD_DATA || !window.RD_CORE || !window.ES_DATA) return;
@@ -864,7 +865,8 @@
         '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="lcoop"' + (deckOk ? "" : " disabled") + '>👥 Coop à 2 (même écran)</button><button class="btn btn-ghost btn-small" type="button" data-action="lvs"' + (deckOk ? "" : " disabled") + ">⚔ Versus à 2 (même écran)</button></div>" +
         '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="deck">🃏 Deck & écureuils' + (D.ORDER.some(canLevel) ? " ⬆" : "") + '</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="chests">🎁 Coffres' + (S.keys >= D.KEYS_FOR_FREE ? " ✨" : "") + '</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="succes">🏆 Succès</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Règles</button></div>' +
         "</div>" +
-        '<p class="game-small">Aucun achat : tout se débloque en jouant. Versus gagnés : ' + S.wins + ".</p>";
+        '<p class="game-small">Aucun achat : tout se débloque en jouant. Versus gagnés : ' + S.wins + ".</p>" +
+        (DEBUG ? '<p class="game-small">🧪 Mode test : <button class="btn btn-ghost btn-small" type="button" data-action="testgold">+5 000 glands d\'or</button></p>' : "");
     },
     deck: function () {
       var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Deck</h2>' +
@@ -898,7 +900,7 @@
       var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="deck">← Deck</button><h2>Coffres</h2><span></span></div>' +
         '<p class="gold-badge">' + goldIc() + " " + S.gold + " · 🗝 " + Math.min(S.keys, D.KEYS_FOR_FREE) + "/" + D.KEYS_FOR_FREE + "</p>" +
         '<p class="game-small">Chaque partie terminée donne une clé ; ' + D.KEYS_FOR_FREE + " clés ouvrent un coffre en bois gratuit. Les coffres se paient seulement en glands d'or gagnés en jouant.</p>" +
-        '<div class="rd-chests">';
+        '<div class="rd-chest-list">';
       D.CHESTS.forEach(function (c, i) {
         var isFree = i === 0 && free, ok = isFree || S.gold >= c.price;
         html += '<div class="rd-chest" style="--cc:' + c.color + '"><img src="' + sprUrl("chest") + '" alt=""><strong>' + esc(c.name) + "</strong>" +
@@ -1046,6 +1048,7 @@
       openedScreen(c, openChest(c));
     },
     resume: function () { togglePause(); },
+    testgold: function () { if (!DEBUG) return; S.gold += 5000; save(); SND.pu(); show("menu"); },
     quit: function () {
       paused = false;
       if (G) { var w = G.panels[0].world; finish({ mode: G.mode, wave: w.wave, kills: w.kills, bosses: w.bosses, maxPip: maxPip(w), win: false, why: "Partie abandonnée.", local: G.kind === "local-vs" ? "Personne ne" : null, bot: G.kind === "bot" }); }
