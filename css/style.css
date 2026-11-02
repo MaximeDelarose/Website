@@ -1914,3 +1914,5 @@ button.tu-next:active { transform: translateY(2px); }
 .kicker a:hover { text-decoration: underline; }
 .card-media a { display: block; height: 100%; }
 .games-intro { margin: 0 0 32px; }
+.room-players .ver-bad { color: var(--berry); font-weight: 800; margin-left: 4px; }
+.net-err .btn { margin-left: 6px; vertical-align: middle; }

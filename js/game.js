@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "0.26.3";
+  var VERSION = "0.26.4";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -2201,10 +2201,19 @@
     });
     return { shrines: shrines, seed: seed, floor: floor, rooms: rooms, corridors: corridors, spikes: spikes, pits: pits, puddles: puddles, pillars: pillars, decor: decor, torches: torches };
   }
+  // empreinte de la géométrie d'un étage (salles, bras, couloirs, piliers, trous) : sert à détecter une désynchro en coop
+  function dgHash(g) {
+    var h = 7, add = function (v) { h = (Math.imul(h, 31) + (Math.round(v) | 0)) | 0; };
+    g.rooms.forEach(function (rm) { add(rm.idx); rm.parts.forEach(function (q) { add(q.x); add(q.y); add(q.w); add(q.h); }); });
+    g.corridors.forEach(function (c) { c.segs.forEach(function (q) { add(q.x); add(q.y); add(q.w); add(q.h); }); });
+    g.pillars.forEach(function (q) { add(q.x); add(q.y); add(q.w); });
+    g.pits.forEach(function (q) { add(q.x); add(q.y); add(q.w); add(q.h); });
+    return h >>> 0;
+  }
   function buildFloor(n) {
     var g = genFloor(r.seed, n);
     var keepCleared = r.dg ? r.dg.clearedTotal : 0;
-    r.dg = { shrines: g.shrines, floor: n, rooms: g.rooms, corridors: g.corridors, spikes: g.spikes, pits: g.pits, puddles: g.puddles, pillars: g.pillars, decor: g.decor, torches: g.torches,
+    r.dg = { hash: dgHash(g), shrines: g.shrines, floor: n, rooms: g.rooms, corridors: g.corridors, spikes: g.spikes, pits: g.pits, puddles: g.puddles, pillars: g.pillars, decor: g.decor, torches: g.torches,
              active: -1, stairs: null, visited: {}, clearedTotal: keepCleared, winT: 0, theme: DGT.themes[(n - 1) % DGT.themes.length] };
     var st = g.rooms[0];
     players.forEach(function (pl, i) { pl.x = pl.tx = st.cx + (i - (players.length - 1) / 2) * 18; pl.y = pl.ty = st.cy; pl.safeX = pl.x; pl.safeY = pl.y; });
@@ -3742,8 +3751,16 @@
         (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
         (!ok ? '<p class="game-small">Connexion au salon… (' + esc(Net.status || "") + ")</p>" : "") +
         '<ul class="room-players">';
+      var newest = VERSION, mism = false;
+      Net.roster.forEach(function (x) { if (x.v !== VERSION) mism = true; if (x.v && verCmp(x.v, newest) > 0) newest = x.v; });
+      if (mism) {
+        var old = Net.roster.filter(function (x) { return x.id !== Net.id && verCmp(x.v, newest) < 0; }).map(function (x) { return esc(x.name || "Écureuil"); });
+        html += verCmp(VERSION, newest) < 0
+          ? '<p class="net-err">⚠️ Ta version du jeu (' + VERSION + ") est plus ancienne que celle des autres (" + esc(newest) + ') : la partie ne peut pas se lancer. <button class="btn btn-small" type="button" data-action="reload">Recharger</button></p>'
+          : '<p class="net-err">⚠️ ' + (old.join(", ") || "Un joueur") + " n'a pas la même version du jeu : il doit recharger la page (ou rouvrir le lien) avant de lancer.</p>";
+      }
       Net.roster.slice(0, MAX_PLAYERS).forEach(function (x) {
-        html += "<li>" + img(charById(x.char).sprite) + "<b>" + esc(x.name || "Écureuil") + "</b>" + (x.prog && x.prog.pr ? ' <span class="stars">' + stars(x.prog.pr) + "</span>" : "") + (x.host ? " 👑" : "") + linkBadge(x.id) + (x.id === Net.id ? " <small>(toi)</small>" : "") + "</li>";
+        html += "<li>" + img(charById(x.char).sprite) + "<b>" + esc(x.name || "Écureuil") + "</b>" + (x.v !== VERSION ? ' <small class="ver-bad">' + (x.v ? "v" + esc(x.v) : "ancienne version") + "</small>" : "") + (x.prog && x.prog.pr ? ' <span class="stars">' + stars(x.prog.pr) + "</span>" : "") + (x.host ? " 👑" : "") + linkBadge(x.id) + (x.id === Net.id ? " <small>(toi)</small>" : "") + "</li>";
       });
       if (!Net.roster.length) html += "<li><small>En attente…</small></li>";
       html += "</ul><h3 class=\"pick-title\">Ton écureuil</h3><div class=\"tile-row\">";
@@ -3969,6 +3986,7 @@
       if (code.length !== 4) { Net.err = "Le code fait 4 lettres."; go("coop"); return; }
       Net.joinTs = Date.now(); netJoin(code, false); go("lobby");
     },
+    reload: function () { reloadGame(); },
     leave: function () { netLeave(); Net.err = ""; go("menu"); },
     lchar: function (id) { if (!charAvailable(charById(id))) return; S.char = id; save(); trackMe(); SND.click(); go("lobby"); },
     lmap: function (id) { if (Net.role !== "host") return; S.map = id; save(); trackMe(); SND.click(); go("lobby"); },
@@ -4145,25 +4163,34 @@
     Net.on = true; Net.role = asHost ? "host" : "guest"; Net.code = code; Net.status = "connexion"; Net.err = ""; Net.started = false; Net.roster = [];
     var ch = cl.channel("es-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: Net.id } } });
     ch.on("presence", { event: "sync" }, onPresence);
-    ["start", "s", "in", "pick", "end", "round", "next", "rdy", "tp", "floor"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
+    ["start", "s", "in", "pick", "end", "round", "next", "rdy", "tp", "floor", "need"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
     ch.on("broadcast", { event: "sig" }, function (msg) { try { onSignal(msg.payload); } catch (err) { try { console.warn(err); } catch (e) {} } });
     ch.subscribe(function (status) {
       Net.status = status;
-      if (status === "SUBSCRIBED") { trackMe(); if (Net.role === "guest" && Net.hostId) p2pConnectToHost(); }
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") Net.err = "Connexion impossible au salon. Vérifie ta connexion et réessaie.";
+      if (Net.ch !== ch) return;
+      if (status === "SUBSCRIBED") { if (/Connexion/.test(Net.err || "")) Net.err = ""; trackMe(); if (Net.role === "guest" && Net.hostId) p2pConnectToHost(); }
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        Net.err = "Connexion au salon perdue, reconnexion…";
+        // le salon se reconnecte tout seul (téléphone en veille, changement d'appli pour partager le code…)
+        clearTimeout(Net.retryT);
+        Net.retryT = setTimeout(function () { if (Net.ch === ch && Net.status !== "SUBSCRIBED" && !Net.started) { var c0 = Net.code, h0 = Net.role === "host"; netJoin(c0, h0); refreshLobby(); } }, 4000);
+      }
       if (state === "menu" && screen === "lobby") go("lobby");
     });
     Net.ch = ch;
+    checkUpdate();
   }
   function netLeave(silent) {
+    clearTimeout(Net.retryT);
     Object.keys(Net.peers || {}).forEach(closePeer);
     Net.hostId = null; Net.seen = {};
     if (Net.ch) { try { Net.ch.untrack(); } catch (e) {} try { Net.client.removeChannel(Net.ch); } catch (e) {} }
+    Net.startInfo = null; Net.dgBad = 0;
     Net.ch = null; Net.on = false; Net.role = null; Net.started = false; Net.roster = []; Net.cur = Net.prev = null;
   }
   function trackMe() {
     if (!Net.ch) return;
-    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), char: S.char, host: Net.role === "host", map: S.map, dtype: S.dungeon || "terriers", diff: S.diff, mode: S.mode || "survie",
+    Net.ch.track({ v: VERSION, id: Net.id, name: (S.name || "Écureuil").slice(0, 16), char: S.char, host: Net.role === "host", map: S.map, dtype: S.dungeon || "terriers", diff: S.diff, mode: S.mode || "survie",
                    prog: { shop: S.shop, tree: S.tree, pr: S.prestige, pu: S.pshop }, ingame: Net.started, ts: Net.joinTs || (Net.joinTs = Date.now()) });
   }
   function onPresence() {
@@ -4175,7 +4202,12 @@
     var host = list.filter(function (x) { return x.host; })[0];
     if (Net.role === "guest") {
       if (!host && Net.started && state !== "over") { bannerAll("L'hôte a quitté la partie"); gameOver(true, "L'hôte a quitté la partie."); return; }
-      if (host && host.ingame && !Net.started && state === "menu") Net.err = "Une partie est déjà en cours dans ce salon : attends la fin pour la rejoindre.";
+      if (host && host.v !== VERSION) { if (/version/.test(Net.err || "")) Net.err = ""; }   // affiché par le salon
+      else if (host && host.ingame && !Net.started && state === "menu") {
+        // lancement manqué (message perdu) : on redemande les infos de la partie à l'hôte
+        Net.err = "Une partie est en cours dans ce salon : connexion à la partie…";
+        netSend("need", { id: Net.id });
+      }
       var idx = list.map(function (x) { return x.id; }).indexOf(Net.id);
       if (idx >= MAX_PLAYERS && !Net.started) { Net.err = "Salon plein (" + MAX_PLAYERS + " joueurs max)."; netLeave(); go("coop"); return; }
       if (host) { Net.hostId = host.id; p2pConnectToHost(); }
@@ -4196,7 +4228,16 @@
   function onNet(ev, d, direct) {
     if (!d) return;
     if (ev === "s" && !direct && Net.role === "guest" && hostLinkOpen()) return;   // déjà reçu en direct
-    if (ev === "start" && Net.role === "guest") { startOnline(d); return; }
+    if (ev === "start" && Net.role === "guest") {
+      if (Net.started) return;
+      if (d.v !== VERSION) { Net.err = verMsg(d.v); netSend("need", { id: Net.id, v: VERSION, bad: 1 }); refreshLobby(); checkUpdate(true); return; }
+      if (d.roster && !d.roster.some(function (x) { return x.id === Net.id; })) { Net.err = "La partie a été lancée sans toi : attends la fin pour la rejoindre."; refreshLobby(); return; }
+      startOnline(d); return;
+    }
+    if (ev === "need" && Net.role === "host") {
+      if (Net.started && Net.startInfo && !d.bad && Net.startInfo.roster.some(function (x) { return x.id === d.id; })) { netSend("start", Net.startInfo); sendFast("start", Net.startInfo); }
+      return;
+    }
     if (ev === "in" && Net.role === "host") {
       var pl = playerById(d.id); if (!pl) return;
       pl.tx = d.x; pl.ty = d.y; pl.face = d.f; pl.moving = !!d.m; pl.choosing = !!d.c;
@@ -4239,10 +4280,14 @@
   }
   function hostStart() {
     if (Net.role !== "host") return;
-    var info = { map: S.map, dtype: S.dungeon || "terriers", diff: S.diff, mode: S.mode || "survie", seed: (Math.random() * 1e9) | 0, roster: Net.roster.slice(0, MAX_PLAYERS).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0, pshop: g.pu || {} }; }) };
+    var bad = Net.roster.slice(0, MAX_PLAYERS).filter(function (x) { return x.v !== VERSION; });
+    if (bad.length) { Net.err = "Impossible de lancer : " + bad.map(function (x) { return x.name || "un joueur"; }).join(", ") + " n'a pas la même version du jeu (" + bad.map(function (x) { return x.v || "ancienne"; }).join(", ") + " au lieu de " + VERSION + "). Il doit recharger la page."; go("lobby"); return; }
+    var info = { v: VERSION, map: S.map, dtype: S.dungeon || "terriers", diff: S.diff, mode: S.mode || "survie", seed: (Math.random() * 1e9) | 0, roster: Net.roster.slice(0, MAX_PLAYERS).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0, pshop: g.pu || {} }; }) };
     if (!info.roster.some(function (x) { return x.id === Net.id; })) info.roster.unshift({ id: Net.id, name: S.name || "Hôte", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige, pshop: S.pshop });
+    Net.startInfo = info;
     netSend("start", info);
     startOnline(info);
+    sendFast("start", info);
   }
   function startOnline(info) {
     Net.started = true; Net.ev = []; Net.acc = 0; Net.inAcc = 0; Net.cur = Net.prev = null;
@@ -4298,7 +4343,7 @@
               o.name, o.sprite, o.weapons, orb, Math.round(o.area * 100), o.amount, o.shield ? 1 : 0, Math.round(o.reviveT * 10), o.oshield > 0 ? 1 : 0];
     });
     return { r: [Math.round(r.time * 10), r.kills, r.level, Math.round(Math.min(1, xp / xpNext) * 1000), Math.floor(r.gold), r.bosses, Math.round(r.freeze * 10), Math.round(r.flash * 100), r.round, Math.round(r.roundT * 10)],
-             dg: isDungeon() ? [r.dg.floor, r.dg.active, r.dg.rooms.filter(function (x) { return x.state === "cleared"; }).map(function (x) { return x.idx; }), r.dg.stairs ? [Math.round(r.dg.stairs.x), Math.round(r.dg.stairs.y)] : 0, r.dg.clearedTotal] : 0,
+             dg: isDungeon() ? [r.dg.floor, r.dg.active, r.dg.rooms.filter(function (x) { return x.state === "cleared"; }).map(function (x) { return x.idx; }), r.dg.stairs ? [Math.round(r.dg.stairs.x), Math.round(r.dg.stairs.y)] : 0, r.dg.clearedTotal, r.dg.hash] : 0,
              e: e, pr: pr, lb: lb, g: g, h: h, w: w, pl: pl, b: curBoss ? [bossTitle(curBoss), Math.round(curBoss.hp / curBoss.maxHp * 1000), affMask(curBoss)] : 0, ev: Net.ev,
              sh: [Object.keys(r.sh).filter(function (k) { return r.sh[k].used || r.sh[k].p > 0; }).map(function (k) { return [k, Math.round(r.sh[k].p * 100), r.sh[k].used ? 1 : 0]; }), r.madness || 0, r.devil || 0],
              z: zones.length ? zones.reduce(function (a, z) { a.push(R1(z.x), R1(z.y), R1(z.r), ZONE_K.indexOf(z.kind), Math.round((z.dur - z.t) * 10)); return a; }, []) : 0 };
@@ -4314,6 +4359,8 @@
       r.dg.active = d.dg[1]; r.dg.clearedTotal = d.dg[4] || 0;
       d.dg[2].forEach(function (i) { if (r.dg.rooms[i]) r.dg.rooms[i].state = "cleared"; });
       r.dg.stairs = d.dg[3] ? { x: d.dg[3][0], y: d.dg[3][1] } : null;
+      // plan différent de celui de l'hôte : on le signale (une fois par étage) au lieu de jouer sur deux cartes différentes
+      if (d.dg[5] && d.dg[5] !== r.dg.hash && Net.dgBad !== r.dg.floor) { Net.dgBad = r.dg.floor; banner("Plan du donjon différent de l'hôte : rechargez tous les deux le jeu"); try { console.warn("dg hash", d.dg[5], r.dg.hash); } catch (e) {} }
     }
     if (isArena() && rr[8]) { r.round = rr[8]; r.roundT = rr[9] / 10; r.roundLen = A.roundTime(r.round); }
     xp = rr[3]; xpNext = 1000;
@@ -4535,6 +4582,17 @@
 
   // nouvelle version en ligne ? (vérifié au lancement, toutes les 2 min et au retour sur l'onglet)
   var updShown = false;
+  // versions : "0.26.10" > "0.26.9"
+  function verCmp(a, b) {
+    var x = String(a || "0").split("."), y = String(b || "0").split(".");
+    for (var i = 0; i < Math.max(x.length, y.length); i++) { var d = (parseInt(x[i], 10) || 0) - (parseInt(y[i], 10) || 0); if (d) return d < 0 ? -1 : 1; }
+    return 0;
+  }
+  function verMsg(other) {
+    return verCmp(other, VERSION) > 0 ? "Ta version du jeu (" + VERSION + ") est plus ancienne que celle de l'hôte (" + other + ") : recharge la page pour jouer ensemble."
+                                      : "L'hôte a une ancienne version du jeu" + (other ? " (" + other + ")" : "") + " : il doit recharger la page.";
+  }
+  function reloadGame() { location.replace(location.pathname + "?r=" + Date.now() + location.hash); }
   function checkUpdate() {
     if (updShown || !window.fetch) return;
     fetch("js/version.json?t=" + Date.now(), { cache: "no-store" }).then(function (x) { return x.json(); }).then(function (j) {
@@ -4543,10 +4601,7 @@
       var bar = document.createElement("div");
       bar.className = "update-bar";
       bar.innerHTML = "<span>🐿️ Nouvelle version <b>" + esc(j.v) + "</b> disponible</span><button type=\"button\" class=\"btn btn-small\">Recharger</button>";
-      bar.querySelector("button").addEventListener("click", function () {
-        var u = location.pathname + "?r=" + Date.now() + location.hash;
-        location.replace(u);
-      });
+      bar.querySelector("button").addEventListener("click", reloadGame);
       document.body.appendChild(bar);
     }, function () {});
   }
@@ -4725,6 +4780,8 @@
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: TIERS[tierN()].name, madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
     quests: function () { return S.quests; },
+    dgHash: function () { return r && r.dg ? dgHash(r.dg) : 0; },
+    nextFloor: function () { nextFloor(); },
     goStairs: function () { if (r && r.dg && r.dg.stairs) { me.x = r.dg.stairs.x; me.y = r.dg.stairs.y; return true; } return false; },
     killRoom: function () { enemies.forEach(function (e) { if (!e.d.prop && e.room !== undefined) { e.hp = 0; kill(e); } }); },
     endRound: function () { if (r && isArena() && r.phase === "fight") r.roundT = r.roundLen; },
