@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261103td1">
-  <link rel="stylesheet" href="css/idle.css?v=20261102a">
+  <link rel="stylesheet" href="css/idle.css?v=20261103b">
 </head>
 <body data-page="idle">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -60,52 +60,47 @@
     </div>
   </header>
 
-  <main id="main" class="section game-section">
-    <div class="wrap">
-      <div class="game-head">
-        <div>
-          <span class="kicker">Idle maison</span>
-          <h1>Le Grand Chêne</h1>
+  <main id="main" class="idle-page">
+    <h1 class="visually-hidden">Le Grand Chêne</h1>
+    <div class="idle-stage" data-idle>
+      <canvas class="idle-canvas" data-scene tabindex="0" aria-label="Le Grand Chêne : tape sur l'arbre pour récolter des glands (Espace ou Entrée au clavier). Le jardin, la ferme et l'enclos sont cliquables."></canvas>
+      <div class="idle-golden-layer" data-golden-layer></div>
+
+      <div class="idle-hud">
+        <div class="idle-count"><span class="idle-ico" aria-hidden="true">🌰</span><b data-r="acorns">0</b></div>
+        <div class="idle-rates"><span><b data-r="cps">0</b> /s</span><span><b data-r="click">1</b> par clic</span></div>
+        <div class="idle-mini" data-r="mini"></div>
+        <div class="idle-combo" data-r="combowrap">
+          <div class="idle-combo-bar"><i data-r="combobar"></i></div>
+          <span data-r="combo">Combo 0</span>
         </div>
+        <div class="idle-buffs" data-buffs></div>
       </div>
+      <span class="idle-season" data-r="season"></span>
+      <button class="idle-fs" type="button" data-fs aria-label="Plein écran">⛶</button>
 
-      <div class="idle" data-idle>
-        <div class="idle-main panel">
-          <div class="idle-top">
-            <div class="idle-count"><span class="idle-ico" aria-hidden="true">🌰</span><b data-r="acorns">0</b></div>
-            <div class="idle-rates"><span><b data-r="cps">0</b> /s</span><span><b data-r="click">1</b> par clic</span></div>
-            <div class="idle-mini" data-r="mini"></div>
-          </div>
-          <div class="idle-tree" data-tree tabindex="0" role="button" aria-label="Le Grand Chêne : tape dessus pour récolter des glands (Espace ou Entrée au clavier)">
-            <canvas aria-hidden="true"></canvas>
-            <div class="idle-golden-layer" data-golden-layer></div>
-            <span class="idle-season" data-r="season"></span>
-          </div>
-          <div class="idle-combo" data-r="combowrap">
-            <div class="idle-combo-bar"><i data-r="combobar"></i></div>
-            <span data-r="combo">Combo 0</span>
-          </div>
-          <div class="idle-buffs" data-buffs></div>
-        </div>
+      <nav class="idle-btns left" data-btns="left" aria-label="Forêt et prestiges"></nav>
+      <nav class="idle-btns right" data-btns="right" aria-label="Jardin, ferme, bétail et options"></nav>
 
-        <div class="idle-side panel">
-          <nav class="idle-tabs" data-tabs role="tablist" aria-label="Onglets du jeu"></nav>
-          <div class="idle-body" data-body></div>
-        </div>
-      </div>
+      <aside class="idle-drawer panel" data-drawer hidden>
+        <header class="idle-drawer-head"><strong data-drawer-title></strong><button type="button" class="idle-x" data-drawer-close aria-label="Fermer">✕</button></header>
+        <div class="idle-body" data-body></div>
+      </aside>
+      <div class="idle-tip" data-tip hidden></div>
+    </div>
 
-      <div class="game-info idle-info">
-        <div class="panel game-help">
-          <h2 class="section-title">Comment ça marche</h2>
-          <ul>
-            <li><strong>Tape sur le chêne</strong> pour récolter des glands 🌰. Enchaîne les clics pour monter le <strong>combo</strong> et tente les <strong>critiques</strong>. Avec « Sève dans les veines », chaque clic rapporte aussi un pourcentage de ta production : le clic reste fort jusqu'au bout.</li>
+    <div class="wrap idle-help">
+      <div class="panel game-help">
+        <h2 class="section-title">Comment ça marche</h2>
+        <ul>
+            <li><strong>Tape sur le chêne</strong> (n'importe où dans le ciel ou sur l'arbre) pour récolter des glands 🌰. Enchaîne les clics pour monter le <strong>combo</strong> et tente les <strong>critiques</strong>. Avec « Sève dans les veines », chaque clic rapporte aussi un pourcentage de ta production : le clic reste fort jusqu'au bout.</li>
             <li>Les <strong>habitants de la forêt</strong> récoltent tout seuls. Le <strong>pic tapeur</strong> clique pour toi (moins fort que ta main : ni combo, ni critique).</li>
             <li>Attrape les <strong>glands dorés</strong> qui tombent de temps en temps : frénésie, pluie de glands ou fièvre du clic.</li>
+            <li>Les <strong>boutons sur les côtés</strong> ouvrent les améliorations. Tout le reste se passe dans le décor : <strong>jardin</strong> (clique un pot pour planter, arroser ou cueillir), <strong>ferme</strong> (clique une parcelle pour semer ou récolter, ou le « + » pour en acheter une) et <strong>enclos</strong> (clique-le pour vendre œufs, laine, lait…). Les panneaux en bois servent à changer de graine ou de semence.</li>
             <li><strong>Jardin</strong> : plante des fleurs en pot, arrose-les et attends qu'elles poussent pour des bonus et des pétales 🌸. <strong>Ferme</strong> : tes cultures donnent la nourriture 🥫 du <strong>bétail</strong>, qui produit des marchandises à vendre et donne des bonus tant qu'il est nourri.</li>
             <li><strong>Racines</strong> : replante le chêne pour gagner des graines 🌱 (+5 % à tout chacune) et les dépenser en améliorations permanentes et en automatisations. <strong>Saisons</strong> : le 2e prestige, qui donne de l'essence 🍃 et change la saison (chacune a son bonus).</li>
             <li>Le jeu tourne <strong>hors ligne</strong> (jusqu'à 2 h au départ) et sauvegarde tout seul dans ton navigateur. Exporte ta sauvegarde dans ⚙️ Options pour changer d'appareil.</li>
           </ul>
-        </div>
       </div>
     </div>
   </main>
@@ -127,7 +122,7 @@
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/cloudsave.js?v=20261103re4" data-game="grand-chene" data-key="idle-chene-v1"></script>
   <script src="js/main.js?v=20261103re4"></script>
-  <script src="js/idle-data.js?v=20261102a"></script>
-  <script src="js/idle.js?v=20261102a"></script>
+  <script src="js/idle-data.js?v=20261103b"></script>
+  <script src="js/idle.js?v=20261103b"></script>
 </body>
 </html>

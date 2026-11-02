@@ -13,62 +13,84 @@
   --idle-ready: #6b5a1f;
 }
 
-.idle { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(320px, 1.15fr); gap: 20px; align-items: start; }
-.idle-main { position: sticky; top: 84px; padding: 14px; display: grid; gap: 10px; }
-.idle-side { padding: 12px; min-height: 560px; }
-.idle-info { grid-template-columns: 1fr; }
-
-/* ---------- compteurs ---------- */
-.idle-top { display: grid; gap: 2px; text-align: center; }
-.idle-count { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: clamp(2rem, 4.4vw, 2.8rem); font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.idle-count b { font-weight: 900; }
-.idle-ico { font-size: .85em; }
-.idle-rates { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 18px; color: var(--ink-soft); font-weight: 700; font-variant-numeric: tabular-nums; }
-.idle-rates b { color: var(--ink); }
-.idle-mini { min-height: 1.4em; font-size: .92rem; font-weight: 800; white-space: pre-wrap; color: var(--ink-soft); }
-
-/* ---------- l'arbre ---------- */
-.idle-tree {
-  position: relative; aspect-ratio: 1 / .94; width: 100%; max-height: 62vh; overflow: hidden;
-  background: linear-gradient(180deg, var(--sky-1), var(--sky-2));
-  box-shadow: inset 0 0 0 3px var(--line);
-  cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+/* ---------- la scène plein écran ---------- */
+.idle-page { padding: 0; }
+.idle-stage {
+  position: relative; overflow: hidden; height: calc(100svh - 72px); min-height: 520px;
+  background: #8fcdee; border-bottom: var(--px) solid var(--line);
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
 }
-.idle-tree canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.idle-tree:focus-visible { outline-offset: 2px; }
-.idle-season { position: absolute; left: 8px; top: 8px; padding: 2px 8px; background: rgba(43, 23, 9, .7); color: #fdf3de; font-size: .85rem; font-weight: 800; pointer-events: none; }
-.idle-golden-layer { position: absolute; inset: 0; pointer-events: none; }
+.idle-stage:fullscreen, .idle-stage.is-max { height: 100%; min-height: 0; border: 0; }
+.idle-stage.is-max { position: fixed; inset: 0; z-index: 200; height: 100dvh; }
+.idle-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: manipulation; outline: none; }
+.idle-canvas:focus-visible { outline: 3px dashed var(--focus); outline-offset: -6px; }
+.idle-golden-layer { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .idle-golden {
-  position: absolute; left: -22px; top: -22px; width: 48px; height: 48px; padding: 0; border: 0; background: none;
-  font-size: 34px; line-height: 48px; cursor: pointer; pointer-events: auto;
+  position: absolute; left: -24px; top: -24px; width: 52px; height: 52px; padding: 0; border: 0; background: none;
+  font-size: 38px; line-height: 52px; cursor: pointer; pointer-events: auto;
   filter: sepia(1) saturate(4) hue-rotate(5deg) brightness(1.25) drop-shadow(0 0 6px #ffe680) drop-shadow(0 0 2px #fff6c0);
   animation: idle-gold-pulse .6s steps(3) infinite alternate;
 }
-@keyframes idle-gold-pulse { to { font-size: 40px; } }
+@keyframes idle-gold-pulse { to { font-size: 44px; } }
 
-/* ---------- combo / bonus ---------- */
-.idle-combo { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; font-weight: 800; font-size: .92rem; font-variant-numeric: tabular-nums; }
-.idle-combo-bar { height: 12px; background: rgba(0, 0, 0, .14); box-shadow: inset 0 0 0 2px var(--line); }
+/* ---------- compteurs (en haut, sur le ciel) ---------- */
+.idle-hud {
+  position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 2; width: min(460px, calc(100% - 140px));
+  display: grid; justify-items: center; gap: 2px; pointer-events: none; text-align: center; color: #fdf3de;
+  text-shadow: 0 3px 0 #2b1709, 2px 0 0 #2b1709, -2px 0 0 #2b1709, 0 -2px 0 #2b1709, 2px 2px 0 #2b1709, -2px 2px 0 #2b1709;
+}
+.idle-count { display: flex; align-items: center; gap: 10px; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.idle-count b { font-weight: 900; }
+.idle-ico { font-size: .8em; text-shadow: none; }
+.idle-rates { display: flex; justify-content: center; flex-wrap: wrap; gap: 0 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.idle-mini { min-height: 1.3em; font-size: .9rem; font-weight: 800; white-space: pre-wrap; }
+.idle-combo { display: grid; grid-template-columns: 140px auto; gap: 8px; align-items: center; font-weight: 800; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.idle-combo-bar { height: 10px; background: rgba(43, 23, 9, .55); box-shadow: 0 0 0 2px #2b1709; }
 .idle-combo-bar i { display: block; height: 100%; width: 0; background: var(--orange); transition: width .15s; }
 .idle-combo.hot .idle-combo-bar i { background: var(--idle-gold); }
-.idle-buffs { display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; }
+.idle-buffs { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 2px; }
 .idle-buffs:empty { display: none; }
-.idle-buff { padding: 3px 8px; background: #2b1709; color: var(--idle-gold); font-size: .85rem; font-weight: 800; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+.idle-buff { padding: 2px 8px; background: #2b1709; color: var(--idle-gold); font-size: .8rem; font-weight: 800; text-shadow: none; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+.idle-season { display: none; position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); z-index: 2; padding: 1px 8px; background: rgba(43, 23, 9, .7); color: #fdf3de; font-size: .8rem; font-weight: 800; pointer-events: none; }
+.idle-fs { position: absolute; right: 10px; bottom: 10px; z-index: 4; width: 36px; height: 36px; border: 0; cursor: pointer; font-size: 1.1rem; color: #fdf3de; background: rgba(43, 23, 9, .65); box-shadow: inset 0 0 0 2px #2b1709; }
 
-/* ---------- onglets ---------- */
-.idle-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.idle-tab {
-  position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
-  font: 800 .92rem "Nunito", system-ui, sans-serif; color: var(--ink); background: var(--panel-2);
-  border: 0; box-shadow: inset 0 0 0 2px var(--line), 0 3px 0 var(--depth); cursor: pointer;
+/* ---------- boutons sur les côtés ---------- */
+.idle-btns { position: absolute; top: 12px; z-index: 4; display: grid; gap: 8px; }
+.idle-btns.left { left: 10px; }
+.idle-btns.right { right: 10px; }
+.idle-sbtn {
+  position: relative; width: 66px; padding: 6px 2px 4px; display: grid; justify-items: center; gap: 0;
+  font: 800 .72rem/1.15 "Nunito", system-ui, sans-serif; color: var(--ink); background: var(--panel); border: 0; cursor: pointer;
+  box-shadow: inset 0 0 0 3px var(--line), 0 4px 0 var(--depth);
 }
-.idle-tab:hover { filter: brightness(1.05); }
-.idle-tab.on { background: var(--orange); color: var(--btn-ink); }
-.idle-tab.lock { opacity: .55; }
-.idle-tab .ti { font-size: 1.05rem; }
-.idle-tab .dot { display: none; position: absolute; right: -4px; top: -4px; width: 10px; height: 10px; background: var(--berry); box-shadow: 0 0 0 2px var(--line); }
-.idle-tab.alert .dot { display: block; animation: idle-blink 1s steps(2) infinite; }
+.idle-sbtn .si { font-size: 1.7rem; line-height: 1.1; }
+.idle-sbtn .sl { max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.idle-sbtn:hover { filter: brightness(1.06); }
+.idle-sbtn:active { transform: translateY(3px); box-shadow: inset 0 0 0 3px var(--line), 0 1px 0 var(--depth); }
+.idle-sbtn.on { background: var(--orange); color: var(--btn-ink); }
+.idle-sbtn.lock { opacity: .6; }
+.idle-sbtn .dot { display: none; position: absolute; right: -4px; top: -4px; width: 12px; height: 12px; background: var(--berry); box-shadow: 0 0 0 2px var(--line); }
+.idle-sbtn.alert .dot { display: block; animation: idle-blink 1s steps(2) infinite; }
 @keyframes idle-blink { 50% { opacity: .3; } }
+
+/* ---------- panneau qui s'ouvre ---------- */
+.idle-drawer {
+  position: absolute; top: 8px; bottom: 12px; z-index: 5; width: min(430px, calc(100% - 180px));
+  display: flex; flex-direction: column; margin: 0; animation: idle-drawer-in .18s steps(4);
+}
+.idle-drawer[hidden] { display: none; }
+.idle-drawer[data-side="left"] { left: 88px; }
+.idle-drawer[data-side="right"] { right: 88px; }
+@keyframes idle-drawer-in { from { opacity: 0; transform: translateY(8px); } }
+.idle-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px 8px; border-bottom: 3px solid var(--line); font-size: 1.15rem; }
+.idle-x { width: 34px; height: 34px; border: 0; cursor: pointer; font-size: 1rem; font-weight: 900; color: var(--ink); background: var(--panel-2); box-shadow: inset 0 0 0 2px var(--line); }
+.idle-body { flex: 1; overflow-y: auto; padding: 10px 12px 14px; overscroll-behavior: contain; }
+.idle-tip {
+  position: absolute; left: 0; top: 0; z-index: 6; max-width: 270px; padding: 5px 9px; pointer-events: none;
+  background: #2b1709; color: #fdf3de; border: 2px solid var(--idle-gold); font-size: .85rem; font-weight: 700; line-height: 1.3;
+}
+.idle-tip[hidden] { display: none; }
+.idle-help { padding: 28px 0 40px; }
 
 /* ---------- listes ---------- */
 .ib-sec + .ib-sec { margin-top: 16px; }
@@ -121,7 +143,7 @@
 .idle-stats dd { margin: 0; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ---------- toasts / fenêtres ---------- */
-.idle-toasts { position: fixed; right: 16px; bottom: 16px; z-index: 300; display: grid; gap: 8px; width: min(340px, calc(100vw - 32px)); pointer-events: none; }
+.idle-toasts { position: fixed; left: 50%; top: 190px; transform: translateX(-50%); z-index: 300; display: grid; gap: 8px; width: min(340px, calc(100vw - 32px)); pointer-events: none; }
 .idle-toast { display: grid; gap: 2px; padding: 8px 12px; background: #2b1709; color: #fdf3de; border: 3px solid var(--idle-gold); box-shadow: 0 4px 0 rgba(0,0,0,.3); font-size: .9rem; animation: idle-toast-in .25s steps(4); }
 .idle-toast strong { color: var(--idle-gold); }
 .idle-toast.out { opacity: 0; transition: opacity .5s; }
@@ -139,30 +161,24 @@
   #site-nav a { padding: 8px 7px; font-size: .98rem; }
 }
 
-/* ---------- mobile : l'arbre reste en haut ---------- */
-@media (max-width: 860px) {
-  .idle { grid-template-columns: 1fr; gap: 12px; }
-  .idle-main {
-    top: 68px; z-index: 20; padding: 8px; gap: 6px;
-    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-areas: "top tree" "combo tree" "buffs tree";
-    align-items: start;
-  }
-  .idle-top { grid-area: top; text-align: left; }
-  .idle-count { justify-content: flex-start; font-size: 1.7rem; gap: 6px; }
-  .idle-rates { justify-content: flex-start; flex-direction: column; gap: 0; font-size: .9rem; }
-  .idle-mini { font-size: .82rem; }
-  .idle-tree { grid-area: tree; aspect-ratio: 1 / 1; max-height: 34vh; }
-  .idle-combo { grid-area: combo; grid-template-columns: 1fr; gap: 2px; font-size: .82rem; }
-  .idle-buffs { grid-area: buffs; }
-  .idle-buff { font-size: .75rem; padding: 2px 6px; }
-  .idle-side { min-height: 0; padding: 10px; }
-  .idle-tab .tn { display: none; }
-  .idle-tab.on .tn { display: inline; }
-  .idle-tab { padding: 6px 9px; }
-}
-@media (max-width: 860px) and (max-height: 560px) {
-  .idle-main { position: static; }
+/* ---------- mobile ---------- */
+@media (max-width: 760px) {
+  .idle-stage { height: calc(100svh - 68px); min-height: 480px; }
+  .idle-hud { width: calc(100% - 120px); top: 6px; }
+  .idle-count { font-size: 1.9rem; gap: 6px; }
+  .idle-rates { font-size: .85rem; gap: 0 10px; }
+  .idle-mini { font-size: .78rem; }
+  .idle-combo { grid-template-columns: 90px auto; font-size: .75rem; }
+  .idle-btns { top: 8px; gap: 6px; }
+  .idle-btns.left { left: 6px; } .idle-btns.right { right: 6px; }
+  .idle-sbtn { width: 48px; padding: 5px 0 3px; }
+  .idle-sbtn .si { font-size: 1.35rem; }
+  .idle-sbtn .sl { display: none; }
+  .idle-drawer, .idle-drawer[data-side="left"], .idle-drawer[data-side="right"] { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 60%; margin: 0; }
+  .idle-toasts { top: 150px; }
+  .idle-tip { display: none; }
+  .idle-fs { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ib-card.st-ready, .idle-tab.alert .dot, .idle-golden { animation: none; }
+  .ib-card.st-ready, .idle-sbtn.alert .dot, .idle-golden, .idle-drawer { animation: none; }
 }
