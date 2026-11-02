@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.10.1";
+  var VERSION = "0.11.0";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -1231,13 +1231,21 @@
         for (var dI = 0; dI < 6; dI++) pushVfx(p, { k: "smoke", x: qs.x + 4 + dI * 4, y: qs.y + 24, vx: (dI - 2.5) * 6, r: 2 + Math.random() * 2, c: "#c9b8a0", d: 0.45, wait: 0.2 });
         pushVfx(p, { k: "ring", x: qs.x + 13, y: qs.y + 22, r: 16, c: "#fdf3de", d: 0.3, wait: 0.2 });
         if (loud) SND.summon();
-      } else if (e.k === "stun") { var q2 = slotXY(w, e.b, e.s); pushVfx(p, { k: "txt", s: "BAM", x: q2.x + 13, y: q2.y + 6, c: "#f29a85", d: 0.7 }); sparks(p, q2.x + 13, q2.y + 10, 6, "#f29a85", 60, 0.4, 1.5); shake(2); }
+      } else if (e.k === "stun") {
+        var q2 = slotXY(w, e.b, e.s), sc = e.tag === "roots" ? "#9cd06a" : e.tag === "spore" ? "#e08ae8" : "#f29a85";
+        pushVfx(p, { k: "txt", s: e.tag === "roots" ? "RACINES" : e.tag === "spore" ? "Zzz" : "BAM", x: q2.x + 13, y: q2.y + 6, c: sc, d: 0.8 });
+        sparks(p, q2.x + 13, q2.y + 10, 6, sc, 60, 0.4, 1.5); shake(2);
+        if (e.tag === "roots") pushVfx(p, { k: "flash", x: q2.x + 1, y: q2.y + 1, w: 24, h: 24, c: "#5b8a2a", d: 0.6, a: 0.7 });
+      }
+      else if (e.k === "swarm") { pushVfx(p, { k: "ring", x: e.x, y: e.y - 6, r: 22, c: "#f2c230", d: 0.4 }); sparks(p, e.x, e.y - 6, 8, ["#f2c230", "#2b1709"], 70, 0.4, 1.4); if (loud) banner("La Reine des guêpes appelle l'essaim !", 1100); }
+      else if (e.k === "spores") { pushVfx(p, { k: "ring", x: e.x, y: e.y - 6, r: 44, c: "#e08ae8", d: 0.6 }); pushVfx(p, { k: "pop", x: e.x, y: e.y - 6, r: 30, c: "#c86ad8", d: 0.4 }); sparks(p, e.x, e.y - 6, 14, ["#e08ae8", "#9cd06a", "#ffffff"], 60, 0.7, 1.5); if (loud) banner("Le Roi Champignon répand ses spores…", 1100); }
+      else if (e.k === "roots") { shake(4); pushVfx(p, { k: "ring", x: e.x, y: e.y - 6, r: 40, c: "#9cd06a", d: 0.5 }); if (loud) banner("Les racines du Golem t'agrippent !", 1100); }
       else if (e.k === "exec") { pushVfx(p, { k: "txt", s: "CROC !", x: e.x, y: e.y - 12, c: "#fdf3de", d: 0.6, sz: 5.5 }); pushVfx(p, { k: "ring", x: e.x, y: e.y - 3, r: 14, c: "#fdf3de", d: 0.25 }); }
       else if (e.k === "steal") { pushVfx(p, { k: "txt", s: "+" + e.v, x: e.x, y: e.y - 16, c: e.gold ? "#ffd34a" : "#5fd0ff", d: 0.7, sz: 5.5 }); if (e.gold) sparks(p, e.x, e.y - 4, 6, ["#ffd34a", "#fffbe0"], 60, 0.4, 1.4); }
       else if (e.k === "income") { var o = w.lay.boards[e.b]; pushVfx(p, { k: "txt", s: "+" + e.v, x: o.x + K.BW - 20, y: o.cy + 4, c: "#f6d36b", d: 1 }); G.spPulse = G.spPulse || {}; G.spPulse[e.b] = 1; }
       else if (e.k === "pu" && loud) { SND.pu(); var ob = w.lay.boards[e.b]; if (ob) { var rr = puRect(ob, e.i); sparks(p, rr.x + rr.w / 2, rr.y + 8, 10, ["#f6d36b", "#ffffff"], 60, 0.4, 1.4); pushVfx(p, { k: "pop", x: rr.x + rr.w / 2, y: rr.y + 10, r: 16, c: "#f6d36b", d: 0.25 }); } }
       else if (e.k === "leak") { pushVfx(p, { k: "vignette", d: 0.6 }); shake(5); if (loud) SND.leak(); }
-      else if (e.k === "boss") shake(4);
+      else if (e.k === "boss") { shake(4); var bd = D.ENEMIES[e.type]; if (loud && bd) setTimeout(function () { banner(bd.name + " · " + bd.powerDesc, 1600); }, 900); }
       else if (e.k === "bump") {
         G.bumpT = G.bumpT || {}; G.bumpT[w.map + e.bk] = 1;
         pushVfx(p, { k: "ring", x: e.x, y: e.y - 2, r: 18, c: "#ff9a7a", d: 0.3 });
@@ -1924,7 +1932,7 @@
         "<li>Chaque écureuil a une <b>portée</b> : touche-le (ou survole-le) pour voir son cercle. Fusionner sur une case bien placée, près du chemin, change tout.</li>" +
         "<li><b>Améliorer</b> (les 5 boutons du bas) renforce tous les écureuils de ce type pour la partie.</li>" +
         "<li>Les bestioles suivent le chemin. Si l'une d'elles atteint ta réserve de noisettes, tu perds une vie (deux pour les gros, toutes pour un boss). 3 vies.</li>" +
-        "<li>Une vague sur 5 : un <b>boss</b>. Le Grand Sanglier assomme tes écureuils, le Hibou Ancien les transforme.</li>" +
+        "<li>Une vague sur 5 : un <b>boss</b>. 5 boss à tour de rôle : le Grand Sanglier assomme tes écureuils, la Reine des guêpes appelle l'essaim, le Hibou Ancien transforme, le Roi Champignon soigne et endort, le Golem de racines (blindé) bloque 3 écureuils.</li>" +
         "<li><b>Coop</b> : deux plateaux l'un au-dessus de l'autre ; les bestioles descendent et montent par la gauche, se rejoignent au centre puis filent à droite entre les deux plateaux. Vies partagées, chaque bestiole vaincue rapporte des noisettes aux deux.</li>" +
         "<li><b>Versus</b> : mêmes vagues pour les deux joueurs, chacun sur son chemin. Le dernier debout gagne.</li>" +
         "<li>Clavier : <kbd>Espace</kbd> invoque, <kbd>1</kbd>…<kbd>5</kbd> améliorent, <kbd>Échap</kbd> pause.</li>" +

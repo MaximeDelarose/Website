@@ -298,10 +298,16 @@
     // boss : une vague sur 5, en alternance
     boar: { name: "Grand Sanglier", hp: 14, spd: 9, leak: 99, boss: true, power: "charge",
             powerDesc: "Charge et assomme 2 écureuils" },
-    owl:  { name: "Hibou Ancien", hp: 18, spd: 8.5, leak: 99, boss: true, power: "hoot",
+    owl:  { name: "Hibou Ancien", hp: 15, spd: 8.5, leak: 99, boss: true, power: "hoot",
             powerDesc: "Change 2 écureuils et appelle des papillons" },
+    queen: { name: "Reine des guêpes", hp: 11, spd: 10, leak: 99, boss: true, power: "swarm", fly: true,
+            powerDesc: "Vole et appelle sans cesse des guêpes" },
+    mushking: { name: "Roi Champignon", hp: 16, spd: 7.5, leak: 99, boss: true, power: "spores",
+            powerDesc: "Soigne les bestioles autour et endort un écureuil" },
+    golem: { name: "Golem de racines", hp: 15, spd: 7, leak: 99, boss: true, power: "roots", armor: 0.4,
+            powerDesc: "Blindé ; ses racines bloquent 3 écureuils" },
   };
-  var BOSSES = ["boar", "owl"];
+  var BOSSES = ["boar", "queen", "owl", "mushking", "golem"];
 
   /* =====================================================================
      Réglages

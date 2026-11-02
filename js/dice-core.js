@@ -309,13 +309,13 @@
     if (e.d.split) for (var i = 0; i < e.d.split; i++) spawnEnemy(w, "slug", Math.max(0, e.dist - 4 - i * 4), e.max * 0.3, e.lane);
     if (e.d.stunOnDeath) stunRandom(w, 1, e.d.stunOnDeath);
   }
-  function stunRandom(w, n, dur) {
+  function stunRandom(w, n, dur, tag) {
     var all = [];
     w.boards.forEach(function (b, bi) { b.slots.forEach(function (s, si) { if (s && s.stun <= 0) all.push([bi, si]); }); });
     for (var i = 0; i < n && all.length; i++) {
       var k = Math.floor(Math.random() * all.length), it = all.splice(k, 1)[0];
       w.boards[it[0]].slots[it[1]].stun = dur;
-      w.ev.push({ k: "stun", b: it[0], s: it[1] });
+      w.ev.push({ k: "stun", b: it[0], s: it[1], tag: tag });
     }
   }
   function transformRandom(w, n) {
@@ -610,8 +610,23 @@
         en2.power -= dt;
         if (en2.chargeT > 0) { en2.chargeT -= dt; sp *= 2.2; }
         if (en2.power <= 0) {
+          var bp = epos(w, en2);
           if (dd2.power === "charge") { en2.power = 6; en2.chargeT = 1.1; stunRandom(w, 2, 3); w.ev.push({ k: "charge" }); }
-          else { en2.power = 7; transformRandom(w, 2); for (var mo = 0; mo < 2; mo++) spawnEnemy(w, "moth", Math.max(0, en2.dist - 6 - mo * 6), en2.max * 0.02, en2.lane); w.ev.push({ k: "hoot" }); }
+          else if (dd2.power === "swarm") {
+            en2.power = 5;
+            for (var wq = 0; wq < 3; wq++) spawnEnemy(w, "wasp", Math.max(0, en2.dist - 4 - wq * 7), en2.max * 0.025, en2.lane);
+            w.ev.push({ k: "swarm", x: bp.x, y: bp.y });
+          } else if (dd2.power === "spores") {
+            en2.power = 6;
+            en2.hp = Math.min(en2.max, en2.hp + en2.max * 0.05);
+            w.enemies.forEach(function (o) { if (o !== en2 && !o.dead && near(w, o, en2, 44)) o.hp = Math.min(o.max, o.hp + o.max * 0.25); });
+            stunRandom(w, 1, 2.5, "spore");
+            w.ev.push({ k: "spores", x: bp.x, y: bp.y });
+          } else if (dd2.power === "roots") {
+            en2.power = 8;
+            stunRandom(w, 3, 2.5, "roots");
+            w.ev.push({ k: "roots", x: bp.x, y: bp.y });
+          } else { en2.power = 7; transformRandom(w, 2); for (var mo = 0; mo < 2; mo++) spawnEnemy(w, "moth", Math.max(0, en2.dist - 6 - mo * 6), en2.max * 0.02, en2.lane); w.ev.push({ k: "hoot" }); }
         }
       }
       var d0 = en2.dist;
