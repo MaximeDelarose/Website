@@ -26,28 +26,43 @@
   function pick(arr, rnd) { return arr[Math.floor((rnd || Math.random)() * arr.length)]; }
 
   /* ---------- géométrie ---------- */
-  // vertical : plateaux empilés (coop sur écran en hauteur)
-  function layout(n, vertical) {
-    var top = 24, by = 39, left = 10;
-    var boards = [], right, bottom;
-    for (var i = 0; i < n; i++) boards.push(vertical ? { x: 25, y: by + i * (BH + 64) } : { x: 25 + i * (BW + 30), y: by });
-    if (vertical) { right = 25 + BW + 15; bottom = boards[n - 1].y + BH + 25; }
-    else { right = 25 + n * BW + (n - 1) * 30 + 15; bottom = by + BH + 25; }
-    var pts = [[left, bottom], [left, top], [right, top], [right, bottom]];
+  function makePath(pts) {
     var segs = [], L = 0;
     for (var k = 0; k < pts.length - 1; k++) {
       var a = pts[k], b = pts[k + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       segs.push({ a: a, b: b, len: len, at: L });
       L += len;
     }
-    return { w: right + 10, h: bottom + 50, vertical: !!vertical, pts: pts, segs: segs, len: L, boards: boards, top: top, left: left, right: right, bottom: bottom };
+    return { pts: pts, segs: segs, len: L };
   }
-  function posAt(lay, dist) {
-    var segs = lay.segs, s = segs[segs.length - 1];
+  // 1 plateau : le chemin fait le tour (monte à gauche, traverse en haut, descend à droite).
+  // 2 plateaux (coop) : plateaux l'un au-dessus de l'autre ; une moitié des bestioles
+  // descend à gauche, l'autre monte, elles se rejoignent au centre puis filent à droite.
+  // Chaque plateau a ses commandes (cy) : sous le plateau du bas, au-dessus de celui du haut.
+  var SOLO_LEN = 0;
+  function layout(n) {
+    var left = 10, right = 25 + BW + 15;
+    if (n === 1) {
+      var top = 24, by = 39, bottom = by + BH + 25;
+      var p = makePath([[left, bottom], [left, top], [right, top], [right, bottom]]);
+      return { w: right + 10, h: bottom + 50, paths: [p], len: p.len, spdMul: 1, boards: [{ x: 25, y: by, cy: by + BH + 7 }] };
+    }
+    var b0 = 80, mid = b0 + BH + 15, b1 = mid + 15, endX = right + 4;
+    var pa = makePath([[left, b0 - 6], [left, mid], [endX, mid]]);
+    var pb = makePath([[left, b1 + BH + 6], [left, mid], [endX, mid]]);
+    return { w: right + 10, h: b1 + BH + 8 + 54 + 14, paths: [pa, pb], len: pa.len, spdMul: pa.len / SOLO_LEN, coop: true,
+             boards: [{ x: 25, y: b0, cy: 18 }, { x: 25, y: b1, cy: b1 + BH + 8 }] };
+  }
+  SOLO_LEN = layout(1).len;
+  function posAt(lay, dist, lane) {
+    var segs = lay.paths[lane || 0].segs, s = segs[segs.length - 1];
     for (var i = 0; i < segs.length; i++) if (dist < segs[i].at + segs[i].len) { s = segs[i]; break; }
     var f = Math.max(0, Math.min(1, (dist - s.at) / s.len));
     return { x: s.a[0] + (s.b[0] - s.a[0]) * f, y: s.a[1] + (s.b[1] - s.a[1]) * f, dx: Math.sign(s.b[0] - s.a[0]), dy: Math.sign(s.b[1] - s.a[1]) };
   }
+  function epos(w, e) { return posAt(w.lay, e.dist, e.lane); }
+  function near(w, a, b, r) { var p = epos(w, a), q = epos(w, b); return Math.hypot(p.x - q.x, p.y - q.y) <= r; }
+  function rangeOf(type) { var r = T[type].range; return r === undefined ? 100 : r; }
   function slotCenter(lay, bi, s) {
     var b = lay.boards[bi];
     return { x: b.x + (s % COLS) * CELL + CELL / 2, y: b.y + Math.floor(s / COLS) * CELL + CELL / 2 };
@@ -62,7 +77,7 @@
   function createWorld(opt) {
     var n = opt.boards.length;
     var w = {
-      mode: opt.mode || "solo", lay: layout(n, opt.vertical), boards: opt.boards.map(makeBoard),
+      mode: opt.mode || "solo", lay: layout(n), boards: opt.boards.map(makeBoard),
       rng: rngOf(opt.seed || 1), t: 0, wave: 0, waveT: 0, nextWave: 3, spawnQ: [], lives: C.lives, over: false,
       enemies: [], emap: {}, projs: [], mines: [], nextId: 1, ev: [], fx: [], bossAlive: 0, bosses: 0, kills: 0,
       hpMul: n > 1 ? C.coopHp : 1, view: !!opt.view,
@@ -165,10 +180,10 @@
     for (var i = 0; i < list.length; i++) { x -= D.ENEMIES[list[i]].w; if (x <= 0) return list[i]; }
     return list[0];
   }
-  function spawnEnemy(w, type, dist, hp) {
+  function spawnEnemy(w, type, dist, hp, lane) {
     var d = D.ENEMIES[type];
     var max = hp || waveHp(w, Math.max(1, w.wave)) * d.hp;
-    var e = { id: w.nextId++, type: type, d: d, hp: max, max: max, dist: dist || 0, spd: d.spd * Math.min(1.45, 1 + 0.012 * w.wave),
+    var e = { id: w.nextId++, type: type, d: d, hp: max, max: max, dist: dist || 0, lane: lane || 0, spd: d.spd * Math.min(1.45, 1 + 0.012 * w.wave) * w.lay.spdMul,
               slowT: 0, slowF: 0, poison: 0, poisonT: 0, t: Math.random() * 3, power: 3, chargeT: 0, under: false, flash: 0, baby: !!hp };
     if (d.boss) { w.bossAlive++; w.ev.push({ k: "boss", type: type }); }
     w.enemies.push(e); w.emap[e.id] = e;
@@ -181,16 +196,26 @@
     b.slots.forEach(function (s) { if (s && s.t === "lune") c += s.p * T.lune.critPip; });
     return Math.min(0.6, c);
   }
+  function boardAura(b) {
+    var a = 0;
+    b.slots.forEach(function (s) { if (s && T[s.t].aura && s.stun <= 0) a += s.p * (T[s.t].aura + T[s.t].auraPu * puOf(b, s.t)); });
+    return a;
+  }
   function targetable(e) { return !e.dead && !e.under && e.dist >= 0; }
-  function chooseTarget(w, mode) {
+  // from / range : seules les bestioles à portée de l'écureuil comptent
+  function inRange(w, e, from, range) {
+    if (!from || !isFinite(range)) return true;
+    var p = epos(w, e); return Math.hypot(p.x - from.x, p.y - from.y) <= range;
+  }
+  function chooseTarget(w, mode, from, range) {
     var best = null, bv = -Infinity, list = w.enemies;
     if (mode === "random") {
-      var pool = list.filter(function (e) { return targetable(e) && !e.poison; });
-      if (!pool.length) pool = list.filter(targetable);
+      var pool = list.filter(function (e) { return targetable(e) && !e.poison && inRange(w, e, from, range); });
+      if (!pool.length) pool = list.filter(function (e) { return targetable(e) && inRange(w, e, from, range); });
       return pool.length ? pick(pool) : null;
     }
     for (var i = 0; i < list.length; i++) {
-      var e = list[i]; if (!targetable(e)) continue;
+      var e = list[i]; if (!targetable(e) || !inRange(w, e, from, range)) continue;
       var v = mode === "strong" ? e.hp : e.dist;
       if (v > bv) { bv = v; best = e; }
     }
@@ -211,10 +236,10 @@
     if (e.baby) gain = Math.ceil(gain / 2);
     w.boards.forEach(function (b) { b.sp += gain; });
     if (w.boards[bi]) w.boards[bi].kills++;
-    var p = posAt(w.lay, e.dist);
+    var p = epos(w, e);
     w.ev.push({ k: "kill", x: p.x, y: p.y, type: e.type, boss: !!e.d.boss });
     if (e.d.boss) { w.bossAlive--; w.bosses++; w.ev.push({ k: "bossdead", type: e.type }); }
-    if (e.d.split) for (var i = 0; i < e.d.split; i++) spawnEnemy(w, "slug", Math.max(0, e.dist - 4 - i * 4), e.max * 0.3);
+    if (e.d.split) for (var i = 0; i < e.d.split; i++) spawnEnemy(w, "slug", Math.max(0, e.dist - 4 - i * 4), e.max * 0.3, e.lane);
     if (e.d.stunOnDeath) stunRandom(w, 1, e.d.stunOnDeath);
   }
   function stunRandom(w, n, dur) {
@@ -237,7 +262,7 @@
   }
   function hit(w, pr, e) {
     var b = w.boards[pr.b], Tp = T[pr.t];
-    if (e.d.dodge && Math.random() < e.d.dodge) { var mp = posAt(w.lay, e.dist); w.ev.push({ k: "miss", x: mp.x, y: mp.y }); return; }
+    if (e.d.dodge && Math.random() < e.d.dodge) { var mp = epos(w, e); w.ev.push({ k: "miss", x: mp.x, y: mp.y }); return; }
     var dmg = pr.dmg, crit = Math.random() < pr.crit;
     if (crit) dmg *= C.critMul;
     if (Tp.bossMul && e.d.boss) dmg *= Tp.bossMul;
@@ -251,26 +276,32 @@
       if (dps >= e.poison) { e.poison = dps; e.poisonB = pr.b; }
       e.poisonT = 4;
     }
-    damage(w, e, dmg, pr.b);
-    if (crit) { var cp = posAt(w.lay, e.dist); w.ev.push({ k: "crit", x: cp.x, y: cp.y, v: Math.round(dmg) }); }
+    if (Tp.freeze && !e.d.noSlow) e.frozenT = Math.max(e.frozenT || 0, (Tp.freeze + Tp.freezePip * (pr.p - 1)) * (e.d.boss ? 0.5 : 1));
+    damage(w, e, dmg, pr.b, { pure: !!Tp.pierce });
+    if (!e.dead && Tp.exec && !e.d.boss && e.hp < e.max * (Tp.exec + Tp.execPip * (pr.p - 1))) {
+      var xp = epos(w, e); w.ev.push({ k: "exec", x: xp.x, y: xp.y });
+      damage(w, e, e.hp + 1, pr.b, { pure: true });
+    }
+    if (e.dead && Tp.steal && b) { var st = Tp.steal * pr.p; b.sp += st; var sp0 = epos(w, e); w.ev.push({ k: "steal", x: sp0.x, y: sp0.y, v: st }); }
+    if (crit) { var cp = epos(w, e); w.ev.push({ k: "crit", x: cp.x, y: cp.y, v: Math.round(dmg) }); }
     if (Tp.splash) {
       w.enemies.forEach(function (o) {
         if (o === e || !targetable(o)) return;
-        if (Math.abs(o.dist - e.dist) <= Tp.splashR) damage(w, o, dmg * Tp.splash, pr.b);
+        if (near(w, o, e, Tp.splashR)) damage(w, o, dmg * Tp.splash, pr.b);
       });
-      var sp = posAt(w.lay, e.dist); w.ev.push({ k: "boom", x: sp.x, y: sp.y, r: Tp.splashR, c: Tp.color });
+      var sp = epos(w, e); w.ev.push({ k: "boom", x: sp.x, y: sp.y, r: Tp.splashR, c: Tp.color });
     }
     if (Tp.chain) {
-      var hitIds = {}, from = e, left = Tp.chain + (pr.p >= Tp.chainPip ? 1 : 0), d2 = dmg, pts = [posAt(w.lay, e.dist)];
+      var hitIds = {}, from = e, left = Tp.chain + (pr.p >= Tp.chainPip ? 1 : 0), d2 = dmg, pts = [epos(w, e)];
       hitIds[e.id] = 1;
       while (left-- > 0) {
-        var best = null, bd = 34;
+        var best = null, bd = 34, fp = epos(w, from);
         for (var i = 0; i < w.enemies.length; i++) {
           var o = w.enemies[i]; if (hitIds[o.id] || !targetable(o)) continue;
-          var dd = Math.abs(o.dist - from.dist); if (dd < bd) { bd = dd; best = o; }
+          var op = epos(w, o), dd = Math.hypot(op.x - fp.x, op.y - fp.y); if (dd < bd) { bd = dd; best = o; }
         }
         if (!best) break;
-        d2 *= Tp.chainFall; hitIds[best.id] = 1; pts.push(posAt(w.lay, best.dist));
+        d2 *= Tp.chainFall; hitIds[best.id] = 1; pts.push(epos(w, best));
         damage(w, best, d2, pr.b); from = best;
       }
       if (pts.length > 1) w.ev.push({ k: "bolt", pts: pts.map(function (q) { return [q.x, q.y]; }) });
@@ -278,22 +309,37 @@
   }
   function fire(w, bi, si, sq) {
     var b = w.boards[bi], Tp = T[sq.t], pu = puOf(b, sq.t), dmg = (Tp.dmg + Tp.pu * pu) * classMul(b, sq.t) * (1 + C.pipBonus * (sq.p - 1));
-    var c = slotCenter(w.lay, bi, si), crit = boardCrit(b);
+    dmg *= 1 + boardAura(b);
+    var c = slotCenter(w.lay, bi, si), crit = boardCrit(b), rg = rangeOf(sq.t);
+    if (Tp.target === "all") {
+      var any = false;
+      w.enemies.slice().forEach(function (e) { if (targetable(e) && inRange(w, e, c, rg)) { any = true; hit(w, { b: bi, t: sq.t, p: sq.p, dmg: dmg * sq.p, crit: crit }, e); } });
+      if (!any) return false;
+      w.ev.push({ k: "storm", b: bi, s: si });
+      sq.bob = 0.12;
+      return true;
+    }
     if (sq.t === "mine") {
       if (w.mines.length > 40) return false;
+      var spots = [];
+      w.lay.paths.forEach(function (pth, ln) { for (var dd = 4; dd < pth.len - 4; dd += 4) { var q = posAt(w.lay, dd, ln); if (Math.hypot(q.x - c.x, q.y - c.y) <= rg) spots.push([ln, dd]); } });
+      if (!spots.length) return false;
       for (var m = 0; m < sq.p; m++) {
-        var dist = w.lay.len * (0.12 + Math.random() * 0.76);
-        w.mines.push({ dist: dist, dmg: dmg, b: bi, crit: crit, fly: 0.35, x0: c.x, y0: c.y, t: 0 });
+        var spot = pick(spots), dist = spot[1];
+        w.mines.push({ dist: dist, lane: spot[0], dmg: dmg, b: bi, crit: crit, fly: 0.35, x0: c.x, y0: c.y, t: 0 });
       }
       sq.bob = 0.12;
       return true;
     }
-    var first = chooseTarget(w, Tp.target);
+    var first = chooseTarget(w, Tp.target, c, rg);
     if (!first) return false;
     for (var k = 0; k < sq.p; k++) {
-      var tg = k === 0 ? first : (Tp.target === "random" ? chooseTarget(w, "random") || first : first);
-      w.projs.push({ x: c.x, y: c.y, tid: tg.id, t: sq.t, b: bi, p: sq.p, dmg: dmg, crit: crit, delay: k * 0.06 });
-      if (w.fx.length < 200) w.fx.push(bi, si, tg.id, TIDX[sq.t]);
+      var tg = k === 0 ? first : (Tp.target === "random" ? chooseTarget(w, "random", c, rg) || first : first);
+      var shots = Tp.echo && Math.random() < Tp.echo ? 2 : 1;
+      for (var z = 0; z < shots; z++) {
+        w.projs.push({ x: c.x, y: c.y, tid: tg.id, t: sq.t, b: bi, p: sq.p, dmg: dmg, crit: crit, delay: k * 0.06 + z * 0.12 });
+        if (w.fx.length < 200) w.fx.push(bi, si, tg.id, TIDX[sq.t]);
+      }
     }
     sq.bob = 0.12;
     return true;
@@ -308,7 +354,7 @@
       if ((!w.bossAlive && !w.spawnQ.length && w.waveT > 3) || w.waveT > C.bossTimeout) { w.bossDone = w.waveT; startWave(w); }
     } else if (w.waveT >= w.nextWave) startWave(w);
 
-    while (w.spawnQ.length && w.spawnQ[0].t <= w.waveT) spawnEnemy(w, w.spawnQ.shift().type, 0);
+    while (w.spawnQ.length && w.spawnQ[0].t <= w.waveT) { var sq0 = w.spawnQ.shift(); spawnEnemy(w, sq0.type, 0, 0, w.lay.paths.length > 1 ? (w.laneN = (w.laneN || 0) + 1) % 2 : 0); }
 
     // plateaux
     w.boards.forEach(function (b, bi) {
@@ -351,7 +397,7 @@
         if (!nt) { w.projs.splice(i, 1); continue; }
         pr.tid = nt.id; e = nt;
       }
-      var p = posAt(w.lay, e.dist), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = 300 * dt;
+      var p = epos(w, e), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = 300 * dt;
       if (d <= mv + 2) { w.projs.splice(i, 1); if (!pr.vis) hit(w, pr, e); continue; }
       pr.x += dx / d * mv; pr.y += dy / d * mv;
     }
@@ -362,12 +408,13 @@
       mn.t += dt;
       if (mn.t < mn.fly) continue;
       var trig = null;
-      for (var k = 0; k < w.enemies.length; k++) { var en = w.enemies[k]; if (targetable(en) && !en.d.fly && Math.abs(en.dist - mn.dist) < 5) { trig = en; break; } }
+      var mpos = posAt(w.lay, mn.dist, mn.lane);
+      for (var k = 0; k < w.enemies.length; k++) { var en = w.enemies[k]; if (!targetable(en) || en.d.fly) continue; var ep = epos(w, en); if (Math.hypot(ep.x - mpos.x, ep.y - mpos.y) < 6) { trig = en; break; } }
       if (!trig) continue;
       w.mines.splice(m, 1);
       var crit = Math.random() < mn.crit, md = mn.dmg * (crit ? C.critMul : 1);
-      w.enemies.forEach(function (o) { if (targetable(o) && !o.d.fly && Math.abs(o.dist - mn.dist) <= T.mine.mineR) damage(w, o, md, mn.b); });
-      var mp = posAt(w.lay, mn.dist); w.ev.push({ k: "boom", x: mp.x, y: mp.y, r: T.mine.mineR, c: "#e8873a" });
+      w.enemies.forEach(function (o) { if (!targetable(o) || o.d.fly) return; var op = epos(w, o); if (Math.hypot(op.x - mpos.x, op.y - mpos.y) <= T.mine.mineR) damage(w, o, md, mn.b); });
+      var mp = mpos; w.ev.push({ k: "boom", x: mp.x, y: mp.y, r: T.mine.mineR, c: "#e8873a" });
     }
 
     // ennemis
@@ -386,14 +433,15 @@
         if (en2.dead) continue;
       }
       var sp = en2.spd * (1 - en2.slowF);
+      if (en2.frozenT > 0) { en2.frozenT -= dt; sp = 0; }
       if (dd2.hop) sp *= Math.sin(en2.t * 7) > -0.2 ? 1.6 : 0.1;
       if (dd2.burrow) { var ph = en2.t % 3.6; en2.under = ph > 2.4; if (en2.under) sp *= 1.5; }
       if (dd2.heal) {
         en2.power -= dt;
         if (en2.power <= 0) {
           en2.power = 3;
-          w.enemies.forEach(function (o) { if (!o.dead && Math.abs(o.dist - en2.dist) < 30) o.hp = Math.min(o.max, o.hp + o.max * dd2.heal); });
-          var hp = posAt(w.lay, en2.dist); w.ev.push({ k: "heal", x: hp.x, y: hp.y });
+          w.enemies.forEach(function (o) { if (!o.dead && near(w, o, en2, 30)) o.hp = Math.min(o.max, o.hp + o.max * dd2.heal); });
+          var hp = epos(w, en2); w.ev.push({ k: "heal", x: hp.x, y: hp.y });
         }
       }
       if (dd2.boss) {
@@ -401,7 +449,7 @@
         if (en2.chargeT > 0) { en2.chargeT -= dt; sp *= 2.2; }
         if (en2.power <= 0) {
           if (dd2.power === "charge") { en2.power = 6; en2.chargeT = 1.1; stunRandom(w, 2, 3); w.ev.push({ k: "charge" }); }
-          else { en2.power = 7; transformRandom(w, 2); for (var mo = 0; mo < 2; mo++) spawnEnemy(w, "moth", Math.max(0, en2.dist - 6 - mo * 6), en2.max * 0.02); w.ev.push({ k: "hoot" }); }
+          else { en2.power = 7; transformRandom(w, 2); for (var mo = 0; mo < 2; mo++) spawnEnemy(w, "moth", Math.max(0, en2.dist - 6 - mo * 6), en2.max * 0.02, en2.lane); w.ev.push({ k: "hoot" }); }
         }
       }
       en2.dist += sp * dt;
@@ -449,7 +497,7 @@
     w.enemies.forEach(function (en) {
       if (en.dead) return;
       e.push(en.id, EIDX[en.type], Math.round(en.dist * 10), Math.ceil(en.hp), Math.ceil(en.max),
-        (en.under ? 1 : 0) | (en.slowT > 0 ? 2 : 0) | (en.poisonT > 0 ? 4 : 0) | (en.chargeT > 0 ? 8 : 0) | (en.flash > 0 ? 16 : 0));
+        (en.under ? 1 : 0) | (en.slowT > 0 || en.frozenT > 0 ? 2 : 0) | (en.poisonT > 0 ? 4 : 0) | (en.chargeT > 0 ? 8 : 0) | (en.flash > 0 ? 16 : 0) | (en.lane ? 32 : 0));
     });
     var b = w.boards.map(function (bd) {
       var s = [], st = 0;
@@ -457,7 +505,7 @@
       return { sp: Math.floor(bd.sp), n: bd.sumN, pu: bd.pu.slice(), s: s, st: st, k: bd.kills, mp: bd.maxPip };
     });
     var snap = { w: w.wave, wt: Math.round(w.waveT * 10), nw: isFinite(w.nextWave) ? w.nextWave : -1, l: w.lives, o: w.over ? 1 : 0, kl: w.kills, bs: w.bosses,
-                 e: e, b: b, f: w.fx.slice(0, 240), m: w.mines.map(function (mn) { return Math.round(mn.dist); }), v: evs || [] };
+                 e: e, b: b, f: w.fx.slice(0, 240), m: w.mines.map(function (mn) { return Math.round(mn.dist) * 2 + (mn.lane || 0); }), v: evs || [] };
     w.fx.length = 0;
     return snap;
   }
@@ -475,6 +523,7 @@
       var fl = s.e[i + 5];
       en.under = !!(fl & 1); en.slowT = fl & 2 ? 1 : 0; en.poisonT = fl & 4 ? 1 : 0; en.chargeT = fl & 8 ? 1 : 0;
       if (fl & 16) en.flash = 0.08;
+      en.lane = fl & 32 ? 1 : 0;
       seen[id] = 1;
     }
     for (var j = w.enemies.length - 1; j >= 0; j--) {
@@ -497,14 +546,14 @@
       if (sq) sq.bob = 0.12;
       if (w.projs.length < 300) w.projs.push({ x: c.x, y: c.y, tid: s.f[f + 2], t: D.ORDER[s.f[f + 3]], vis: true, delay: (f / 4 % 7) * 0.05 });
     }
-    w.mines = s.m.map(function (d) { return { dist: d, t: 1, fly: 0 }; });
+    w.mines = s.m.map(function (d) { return { dist: d >> 1, lane: d & 1, t: 1, fly: 0 }; });
   }
   // fait avancer un monde « vue » (rempli par instantanés) entre deux réceptions
   function stepView(w, dt) {
     w.enemies.forEach(function (en) {
       en.t += dt;
       if (en.flash > 0) en.flash -= dt;
-      if (en.tdist !== undefined) { en.tdist += en.d.spd * 0.6 * dt; en.dist += (en.tdist - en.dist) * Math.min(1, dt * 10); }
+      if (en.tdist !== undefined) { en.tdist += en.d.spd * w.lay.spdMul * 0.6 * dt; en.dist += (en.tdist - en.dist) * Math.min(1, dt * 10); }
     });
     w.boards.forEach(function (b) { b.slots.forEach(function (s) { if (s) { if (s.bob > 0) s.bob -= dt; if (s.born > 0) s.born -= dt; } }); });
     for (var i = w.projs.length - 1; i >= 0; i--) {
@@ -512,7 +561,7 @@
       if (pr.delay > 0) { pr.delay -= dt; continue; }
       var e = w.emap[pr.tid];
       if (!e) { w.projs.splice(i, 1); continue; }
-      var p = posAt(w.lay, e.dist), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = 300 * dt;
+      var p = epos(w, e), dx = p.x - pr.x, dy = p.y - 3 - pr.y, d = Math.hypot(dx, dy), mv = 300 * dt;
       if (d <= mv + 2) { w.projs.splice(i, 1); continue; }
       pr.x += dx / d * mv; pr.y += dy / d * mv;
     }
@@ -520,7 +569,7 @@
 
   root.RD_CORE = {
     CELL: CELL, COLS: COLS, ROWS: ROWS, NSLOT: NSLOT, BW: BW, BH: BH, EKEYS: EKEYS, TIDX: TIDX,
-    layout: layout, posAt: posAt, slotCenter: slotCenter, createWorld: createWorld, step: step, stepView: stepView,
+    layout: layout, posAt: posAt, epos: epos, rangeOf: rangeOf, slotCenter: slotCenter, createWorld: createWorld, step: step, stepView: stepView,
     summon: summon, merge: merge, canMerge: canMerge, powerUp: powerUp, act: act, botStep: botStep,
     summonCost: summonCost, puCost: puCost, freeSlots: freeSlots, isBossWave: isBossWave, waveHp: waveHp,
     snapshot: snapshot, applySnap: applySnap, boardCrit: boardCrit,

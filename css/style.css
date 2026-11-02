@@ -1115,3 +1115,68 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .room-players .rd-die .rd-ic { width: 9px; }
 .rd-over, .rd-pause { width: min(520px, 100%); }
 .game-stage .game-hud.rd-hud { top: 4px; bottom: auto; right: 6px; }
+
+/* --- Écureuil Dice : deck en grille, raretés, coffres --- */
+.rd-card.rd-chests, .rd-card.rd-opened { width: min(640px, 100%); }
+.rd-slots { display: grid; grid-template-columns: repeat(5, minmax(0, 64px)); justify-content: center; gap: 8px; margin: 10px 0 4px; }
+.rd-slot { aspect-ratio: 1; padding: 0; display: grid; place-items: center; background: none; border: 0; cursor: pointer; }
+.rd-slot .rd-die { width: 100%; height: 100%; }
+.rd-slot .rd-die img { width: 72%; }
+.rd-slot .rd-die .rd-ic { width: 26%; }
+.rd-slot.is-empty { border: 3px dashed var(--line); background: var(--panel-2); color: var(--ink-soft); font-size: 1.6rem; font-weight: 900; opacity: .7; }
+.rd-slots.is-swap .rd-slot { animation: rd-pulse .6s steps(2) infinite alternate; }
+@keyframes rd-pulse { to { transform: translateY(-3px); filter: brightness(1.15); } }
+.rd-hint { margin: 2px 0 8px; }
+.rd-link { background: none; border: 0; padding: 0; font: inherit; font-weight: 800; color: var(--orange-dk); text-decoration: underline; cursor: pointer; }
+.rd-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 8px 6px; }
+.rd-tile { position: relative; padding: 3px 3px 0; display: grid; justify-items: center; gap: 3px; background: var(--panel-2); border: 3px solid var(--rc, #a8a59e); cursor: pointer; font: inherit; color: inherit; }
+.rd-tile .rd-die { width: 100%; height: auto; aspect-ratio: 1; border-width: 2px; }
+.rd-tile .rd-die img { width: 74%; }
+.rd-tile .rd-die .rd-ic { width: 28%; }
+.rd-tile.is-sel { box-shadow: 0 0 0 3px var(--ink); transform: translateY(-2px); }
+.rd-tile.in-deck::after { content: "✔"; position: absolute; top: -8px; left: -6px; width: 18px; height: 18px; display: grid; place-items: center; font-size: .7rem; font-weight: 900; background: var(--moss-2); color: #fff; border: 2px solid var(--line); }
+.rd-tile.is-locked .rd-die { background: #3a3a3a; }
+.rd-tile.is-locked .rd-die img { filter: brightness(0) opacity(.45); }
+.rd-lv { position: absolute; top: 0; right: 0; min-width: 18px; padding: 0 3px; font-style: normal; font-size: .7rem; font-weight: 900; background: var(--line); color: #fdf3de; }
+.rd-q { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; font-size: 1.6rem; font-weight: 900; color: #fdf3de; text-shadow: 0 2px 0 #2b1709; }
+.r-commun { --rc: #a8a59e; } .r-rare { --rc: #5fa3c9; } .r-epique { --rc: #a06ad8; } .r-legendaire { --rc: #f2c230; }
+.rd-tile.r-legendaire, .rd-card-got.r-legendaire { box-shadow: 0 0 10px #f2c23099; }
+.rd-tile.r-legendaire.is-sel { box-shadow: 0 0 0 3px var(--ink), 0 0 10px #f2c230; }
+.rd-bar { position: relative; display: block; width: 100%; height: 12px; background: #2b1709; overflow: hidden; }
+.rd-bar b { position: absolute; inset: 0 auto 0 0; background: #5fa3c9; }
+.rd-bar.is-ready b { background: #9cc56b; }
+.rd-bar em { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; font-size: .62rem; font-weight: 900; color: #fdf3de; line-height: 1; }
+.rd-detail { margin-top: 12px; padding: 12px; text-align: left; background: var(--panel-2); border: 3px solid var(--rc); display: grid; gap: 8px; }
+.rd-detail-head { display: flex; align-items: center; gap: 12px; }
+.rd-detail-head .rd-die { width: 64px; height: 64px; }
+.rd-detail-head .rd-die img { width: 46px; }
+.rd-detail-head .rd-die .rd-ic { width: 16px; }
+.rd-detail-head div { display: grid; line-height: 1.25; }
+.rd-detail-head strong { font-size: 1.2rem; }
+.rd-rar { font-weight: 900; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--rc); text-shadow: 0 1px 0 #2b170966; }
+.rd-detail-head small { color: var(--ink-soft); }
+.rd-stats { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0; font-size: .88rem; }
+.rd-stats dt { font-weight: 800; }
+.rd-stats dd { margin: 0; color: var(--ink-soft); }
+.rd-copies { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; font-weight: 800; font-size: .88rem; }
+.rd-copies .rd-bar { height: 16px; }
+.rd-copies .rd-bar em { font-size: .75rem; }
+.rd-chests { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; }
+.rd-chest { display: grid; justify-items: center; gap: 6px; padding: 12px 8px; background: var(--panel-2); border: 3px solid var(--line); box-shadow: inset 0 -6px 0 var(--cc); }
+.rd-chest img { width: 64px; image-rendering: pixelated; }
+.rd-chest span { font-size: .82rem; color: var(--ink-soft); }
+.rd-open-chest { display: grid; place-items: center; height: 90px; }
+.rd-open-chest img { width: 84px; image-rendering: pixelated; animation: rd-shake .6s steps(6) forwards; }
+@keyframes rd-shake { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-8deg) scale(1.05); } 40% { transform: rotate(8deg) scale(1.1); } 60% { transform: rotate(-8deg) scale(1.15); } 80% { transform: rotate(6deg) scale(1.2); } }
+.rd-reveal { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin: 8px 0; }
+.rd-card-got { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 4px; background: var(--panel-2); border: 3px solid var(--rc); opacity: 0; animation: rd-pop .35s steps(4) forwards; }
+.rd-card-got .rd-die { width: 52px; height: 52px; }
+.rd-card-got b { font-size: .85rem; }
+.rd-card-got small { font-weight: 900; }
+.rd-new { position: absolute; top: -9px; right: -4px; font-style: normal; font-size: .62rem; font-weight: 900; padding: 1px 5px; background: #c8553d; color: #fff; border: 2px solid var(--line); }
+@keyframes rd-pop { 0% { opacity: 0; transform: translateY(10px) scale(.6); } 100% { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rd-card-got { animation: none; opacity: 1; } .rd-open-chest img, .rd-slots.is-swap .rd-slot { animation: none; } }
+.rd-pick { align-items: start; }
+.rd-tile .rd-die { min-width: 0; }
+.rd-tile { min-width: 0; }
+.rd-bar.is-void { visibility: hidden; }
