@@ -14,7 +14,7 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
-  var VERSION = "v8";
+  var VERSION = "0.9.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -29,9 +29,9 @@
      ===================================================================== */
   var SAVE_KEY = "es-save-v1";
   function defaults() {
-    return { gold: 0, shop: {}, ach: {}, owned: { noisette: true }, char: "noisette", map: "clairiere", diff: "normal", name: "",
+    return { gold: 0, shop: {}, ach: {}, owned: { noisette: true }, rank: 1, rankXp: 0, tree: {}, prestige: 0, char: "noisette", map: "clairiere", diff: "normal", name: "",
              opts: { sound: true, shake: true, numbers: true },
-             stats: { kills: 0, goldEarned: 0, runs: 0, bestTime: 0, bestScore: 0, bosses: 0, played: {}, maps: {}, bought: 0 } };
+             stats: { kills: 0, goldEarned: 0, goldSince: 0, runs: 0, bestTime: 0, bestScore: 0, bosses: 0, played: {}, maps: {}, bought: 0 } };
   }
   function load() {
     var s = defaults(), raw = null;
@@ -43,6 +43,8 @@
         else s[k] = raw[k];
       });
       s.stats.played = s.stats.played || {}; s.stats.maps = s.stats.maps || {};
+      if (!raw.stats || raw.stats.goldSince === undefined) s.stats.goldSince = s.stats.goldEarned || 0;
+      s.tree = s.tree || {};
     }
     return s;
   }
@@ -53,6 +55,13 @@
   function netSend(ev, payload) { if (Net.ch) { try { Net.ch.send({ type: "broadcast", event: ev, payload: payload }); } catch (e) {} } }
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
 
+  function earnGold(n) { S.gold += n; S.stats.goldEarned += n; S.stats.goldSince = (S.stats.goldSince || 0) + n; }
+  function skillById(id) { return D.SKILLS.filter(function (k) { return k.id === id; })[0]; }
+  function spentPoints() { var t = 0; Object.keys(S.tree).forEach(function (id) { var k = skillById(id); if (k) t += (S.tree[id] || 0) * k.cost; }); return t; }
+  function totalPoints() { return (S.rank - 1) + S.prestige * D.PRESTIGE.points; }
+  function freePoints() { return totalPoints() - spentPoints(); }
+  function skillOpen(k) { return (!k.prestige || S.prestige >= k.prestige) && (k.req || []).every(function (id) { return (S.tree[id] || 0) > 0; }); }
+  function stars(n) { return n > 0 ? (n > 5 ? "★×" + n : new Array(n + 1).join("★")) : ""; }
   function has(ach) { return !ach || !!S.ach[ach]; }
   function charById(id) { return D.CHARACTERS.filter(function (c) { return c.id === id; })[0] || D.CHARACTERS[0]; }
   function mapById(id) { return D.MAPS.filter(function (m) { return m.id === id; })[0] || D.MAPS[0]; }
@@ -181,21 +190,23 @@
 
   function calc(pl) {
     var p = pl || actingPlayer();
-    var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives;
+    var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives, tr = p.tree || {}, pr = p.prestige || 0, P = D.PRESTIGE;
     var oldMax = p.maxHp || 0;
-    p.maxHp = Math.max(20, 100 + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0));
+    p.maxHp = Math.max(20, 100 + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0));
     p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0));
-    p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0);
-    p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0);
-    p.magnet = 30 * (1 + (m.magnet || 0) + 0.15 * (sh.aimant || 0) + 0.4 * (ps.joues || 0));
-    p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0));
-    p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0);
-    p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0);
+    p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + P.might * pr;
+    p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0) + (tr.s3 || 0);
+    p.magnet = 30 * (1 + (m.magnet || 0) + 0.15 * (sh.aimant || 0) + 0.4 * (ps.joues || 0) + 0.1 * (tr.f1 || 0));
+    p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0));
+    p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + P.xp * pr;
+    p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0);
     p.luck = 1 + 0.15 * (sh.chance || 0) + 0.2 * (ps.trefle || 0);
-    p.area = 1 + (m.area || 0) + 0.05 * (sh.zone || 0) + 0.1 * (ps.loupe || 0);
-    p.amount = (m.amount || 0) + Math.ceil((ps.poches || 0) / 2);
+    p.area = 1 + (m.area || 0) + 0.05 * (sh.zone || 0) + 0.1 * (ps.loupe || 0) + 0.06 * (tr.a3 || 0);
+    p.amount = (m.amount || 0) + Math.ceil((ps.poches || 0) / 2) + (tr.a4 || 0);
     p.shieldCd = ps.mousse ? 16 - 2 * ps.mousse : 0;
-    p.goldMul = (1 + 0.1 * (sh.avarice || 0)) * DIFF.gold * (MAP.gold || 1);
+    p.crit = 0.08 * (tr.a5 || 0); p.rage = !!tr.a6; p.dodge = 0.04 * (tr.s5 || 0); p.taken = tr.s6 ? 0.85 : 1;
+    p.goldX = tr.f6 ? 2 : 1; p.extraChoice = tr.f4 ? 1 : 0;
+    p.goldMul = (1 + 0.1 * (sh.avarice || 0)) * (1 + 0.08 * (tr.f2 || 0)) * (1 + P.gold * pr) * DIFF.gold * (MAP.gold || 1);
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.hp = Math.min(p.hp, p.maxHp);
   }
@@ -204,17 +215,17 @@
   function myId() { return Net.on ? Net.id : "solo"; }
   function reset(roster, mapId, diffId) {
     DIFF = D.DIFFICULTIES[diffId || S.diff] || D.DIFFICULTIES.normal; MAP = mapById(mapId || S.map);
-    roster = roster || [{ id: "solo", name: S.name || "Toi", char: S.char, shop: S.shop }];
+    roster = roster || [{ id: "solo", name: S.name || "Toi", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige }];
     var n = roster.length;
     players = roster.map(function (it, i) {
       var c = charById(it.char);
-      var pl = { id: it.id, name: it.name || "Écureuil", char: c, sprite: c.sprite, shop: it.shop || {}, x: (i - (n - 1) / 2) * 20, y: 0,
+      var pl = { id: it.id, name: it.name || "Écureuil", char: c, sprite: c.sprite, shop: it.shop || {}, tree: it.tree || {}, prestige: it.prestige || 0, x: (i - (n - 1) / 2) * 20, y: 0,
                  hp: 0, face: 1, moving: false, anim: 0, inv: 0, weapons: {}, passives: {}, timers: {}, st: {}, consumed: {},
                  shield: false, shieldT: 0, down: false, reviveT: 0, choosing: false, remote: it.id !== myId() };
       pl.tx = pl.x; pl.ty = pl.y;
       pl.weapons[c.weapon] = 1;
       p = pl; calc(pl); pl.hp = pl.maxHp;
-      pl.revives = pl.shop.renaissance || 0; pl.rerolls = pl.shop.relance || 0;
+      pl.revives = (pl.shop.renaissance || 0) + (pl.tree.s4 || 0); pl.rerolls = pl.shop.relance || 0;
       return pl;
     });
     me = players.filter(function (pl) { return pl.id === myId(); })[0] || players[0];
@@ -224,7 +235,7 @@
           char: CH.id, map: MAP.id, coop: n > 1 };
     enemies = []; projs = []; hostile = []; lobs = []; gems = []; fx = []; texts = []; warns = [];
     biomeCache = new Map();
-    xp = 0; xpNext = need(1); pending = 0; picking = false; netMenuOpen = false;
+    xp = 0; xpNext = need(1); pending = me.tree.f5 ? 1 : 0; picking = false; netMenuOpen = false;
     spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
     if (!Net.on || Net.role === "host") for (var i = 0; i < 4; i++) spawnProp(90 + Math.random() * 120);
@@ -447,7 +458,9 @@
      ===================================================================== */
   function hurt(e, dmg, kx, ky) {
     if (e.dead) return;
-    dmg = Math.max(1, Math.round(dmg * p.might * (0.9 + Math.random() * 0.2)));
+    var crit = p.crit && Math.random() < p.crit;
+    dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? 2 : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
+    dmg = Math.max(1, Math.round(dmg));
     e.hp -= dmg; e.flash = 0.1;
     if (!e.d.prop) {
       var kb = e.d.boss ? 0.12 : 1;
@@ -502,7 +515,8 @@
       burst(p.x, p.y, "#9cc56b", 10); SND.crack();
       return;
     }
-    p.hp -= Math.max(1, dmg - p.armor); p.inv = 0.6;
+    if (p.dodge && Math.random() < p.dodge) { p.inv = 0.3; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
+    p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1)); p.inv = 0.6;
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = 0.25; SND.hurt(); }
     burst(p.x, p.y, "#c8553d", 5);
   }
@@ -885,7 +899,7 @@
     p = me;
     if (players.length > 1) { picking = true; me.choosing = true; sendInput(); } else state = "levelup";
     clearInput();
-    currentChoices = choices(3 + (p.luck > 1.3 && Math.random() < 0.3 ? 1 : 0));
+    currentChoices = choices(3 + (me.extraChoice || 0) + (p.luck > 1.3 && Math.random() < 0.3 ? 1 : 0));
     var html = '<span class="kicker">Niveau ' + r.level + " !</span><h2>Choisis un pouvoir</h2><div class=\"choices\">";
     currentChoices.forEach(function (c, i) {
       var icon, name, lvl = "", desc, cls = "choice", extra = "";
@@ -954,7 +968,8 @@
   var EMPTY_RUN = { time: 0, kills: 0, level: 0, bosses: 0, berries: 0, lastHit: 0, fusions: 0, props: 0 };
   function totals(run) {
     var s = S.stats;
-    return { kills: s.kills + (run && !run.committed ? run.kills : 0), goldEarned: s.goldEarned, played: s.played, maps: s.maps, bought: s.bought };
+    return { kills: s.kills + (run && !run.committed ? run.kills : 0), goldEarned: s.goldEarned, played: s.played, maps: s.maps, bought: s.bought,
+             rank: S.rank, prestige: S.prestige, spent: spentPoints() };
   }
   function checkAchievements(run) {
     var t = totals(run), got = [];
@@ -964,7 +979,7 @@
       try { ok = a.check(run || EMPTY_RUN, t); } catch (e) {}
       if (!ok) return;
       S.ach[a.id] = Date.now();
-      S.gold += a.gold; S.stats.goldEarned += a.gold;
+      earnGold(a.gold);
       got.push(a);
       if (run) run.newAch.push(a);
       toast(a);
@@ -1178,7 +1193,7 @@
     pl = pl || me;
     switch (g.kind) {
       case "xp": xp += g.v * pl.xpMul; if (pl === me) SND.pick(); break;
-      case "gold": addGold(g.v); if (pl === me) SND.gold(); break;
+      case "gold": addGold(g.v * (pl.goldX || 1)); if (pl === me) SND.gold(); break;
       case "berry": pl.hp = Math.min(pl.maxHp, pl.hp + 25); if (pl === me) { r.berries++; SND.level(); } break;
       case "magnet": gems.forEach(function (o) { if (o.kind === "xp" || o.kind === "gold") o.pull = 120; }); bannerAll("Aspirateur à noisettes !"); SND.level(); break;
       case "xpjar": xp += xpNext * 0.75; bannerAll("Pot d'expérience !"); SND.level(); break;
@@ -1647,6 +1662,10 @@
     }, 30);
   }
   function hideCard() { overlay.hidden = true; $("[data-hud]").hidden = false; }
+  function rankBadge() {
+    var need = D.rankNeed(S.rank), k = Math.min(100, Math.round(S.rankXp / need * 100));
+    return '<div class="rank-badge"><span>Rang <b>' + S.rank + "</b>" + (S.prestige ? ' <span class="stars">' + stars(S.prestige) + "</span>" : "") + '</span><span class="rank-bar"><i style="width:' + k + '%"></i></span><small>' + S.rankXp + " / " + need + " XP</small></div>";
+  }
   function goldBadge() { return '<p class="gold-badge">' + goldIc() + " <b>" + S.gold.toLocaleString("fr-FR") + "</b></p>"; }
   function back() { return '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button>'; }
   function iconOfAny(k) { return ALLW[k] ? ALLW[k].icon : (D.PASSIVES[k] ? D.PASSIVES[k].sprite : "nut"); }
@@ -1692,12 +1711,14 @@
     menu: function () {
       var nAch = Object.keys(S.ach).length;
       return '<div class="menu-title"><img src="' + spriteUrl(charById(S.char).sprite) + '" alt=""><div><span class="kicker">La forêt contre-attaque</span><h2>Écureuil Survivor</h2></div></div>' +
-        goldBadge() +
+        goldBadge() + rankBadge() +
         '<div class="menu-buttons">' +
         '<button class="btn" type="button" data-action="go" data-arg="play" data-autofocus>▶ Jouer</button>' +
         '<button class="btn" type="button" data-action="go" data-arg="coop">🌐 Coop en ligne</button>' +
         '<button class="btn btn-alt" type="button" data-action="go" data-arg="shop">🛒 Améliorations</button>' +
         '<button class="btn btn-alt" type="button" data-action="go" data-arg="succes">🏆 Succès <small>' + nAch + "/" + D.ACHIEVEMENTS.length + "</small></button>" +
+        '<div class="menu-row"><button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="tree">🌳 Compétences' + (freePoints() > 0 ? ' <span class="pill">' + freePoints() + "</span>" : "") + "</button>" +
+        '<button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="prestige">✨ Prestige' + (S.stats.goldSince >= D.PRESTIGE.need ? ' <span class="pill">!</span>' : "") + "</button></div>" +
         '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="codex">📜 Fusions</button>' +
         '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Aide</button>' +
         '<button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="options">⚙️ Options</button></div>' +
@@ -1750,7 +1771,7 @@
         (!ok ? '<p class="game-small">Connexion au salon… (' + esc(Net.status || "") + ")</p>" : "") +
         '<ul class="room-players">';
       Net.roster.slice(0, 4).forEach(function (x) {
-        html += "<li>" + img(charById(x.char).sprite) + "<b>" + esc(x.name || "Écureuil") + "</b>" + (x.host ? " 👑" : "") + (x.id === Net.id ? " <small>(toi)</small>" : "") + "</li>";
+        html += "<li>" + img(charById(x.char).sprite) + "<b>" + esc(x.name || "Écureuil") + "</b>" + (x.prog && x.prog.pr ? ' <span class="stars">' + stars(x.prog.pr) + "</span>" : "") + (x.host ? " 👑" : "") + (x.id === Net.id ? " <small>(toi)</small>" : "") + "</li>";
       });
       if (!Net.roster.length) html += "<li><small>En attente…</small></li>";
       html += "</ul><h3 class=\"pick-title\">Ton écureuil</h3><div class=\"tile-row\">";
@@ -1777,6 +1798,36 @@
           '<div class="play-bar"><span class="waiting">' + (hp ? "En attente du lancement par " + esc(hp.name) + "…" : "En attente de l'hôte…") + "</span></div>";
       }
       return html;
+    },
+    tree: function () {
+      var html = '<div class="screen-head">' + back() + '<h2>Compétences</h2><p class="gold-badge">🌳 <b>' + freePoints() + "</b> pt" + (freePoints() > 1 ? "s" : "") + "</p></div>" + rankBadge() +
+        '<p class="game-small">1 point par rang gagné, +' + D.PRESTIGE.points + " par prestige. L'arbre est conservé au prestige.</p>";
+      D.SKILL_BRANCHES.forEach(function (br) {
+        html += '<h3 class="branch-title" style="--br:' + br.color + '">' + esc(br.name) + '</h3><div class="skill-grid">';
+        D.SKILLS.filter(function (k) { return k.branch === br.id; }).forEach(function (k) {
+          var lvl = S.tree[k.id] || 0, open = skillOpen(k), max = lvl >= k.max, can = open && !max && freePoints() >= k.cost;
+          var pips = ""; for (var i = 0; i < k.max; i++) pips += '<i class="' + (i < lvl ? "on" : "") + '"></i>';
+          var lock = !open ? (k.prestige && S.prestige < k.prestige ? "Prestige " + k.prestige + " requis" : "Nécessite " + (k.req || []).map(function (id) { return skillById(id).name; }).join(" + ")) : "";
+          html += '<div class="skill' + (open ? "" : " is-locked") + (max ? " is-max" : "") + (lvl ? " is-on" : "") + '" style="--br:' + br.color + '">' +
+            '<span class="skill-ic">' + (open ? k.icon : "🔒") + '</span><div class="skill-text"><strong>' + esc(k.name) + "</strong><span>" + esc(k.desc) + "</span>" +
+            '<span class="pips">' + pips + "</span>" + (lock ? '<span class="skill-lock">' + esc(lock) + "</span>" : "") + "</div>" +
+            (max ? '<span class="shop-max">MAX</span>' : '<button class="btn btn-small" type="button" data-action="learn" data-arg="' + k.id + '"' + (can ? "" : " disabled") + ">" + k.cost + " pt</button>") +
+            "</div>";
+        });
+        html += "</div>";
+      });
+      html += '<p class="game-small"><button class="link-btn" type="button" data-action="respec">Réinitialiser l\'arbre (gratuit)</button></p>';
+      return html;
+    },
+    prestige: function () {
+      var P = D.PRESTIGE, since = S.stats.goldSince || 0, ok = since >= P.need, k = Math.min(100, Math.round(since / P.need * 100)), n = S.prestige;
+      return '<div class="screen-head">' + back() + "<h2>Prestige</h2>" + goldBadge() + "</div>" +
+        '<div class="prestige-head"><span class="stars big">' + (n ? stars(n) : "☆") + "</span><b>Prestige " + n + "</b></div>" +
+        '<ul class="stat-list prestige-bonus"><li>Glands d\'or <b>+' + Math.round(P.gold * n * 100) + " %</b></li><li>Dégâts <b>+" + Math.round(P.might * n * 100) + " %</b></li><li>Expérience <b>+" + Math.round(P.xp * n * 100) + " %</b></li><li>Points de compétence offerts <b>" + P.points * n + "</b></li></ul>" +
+        '<p class="game-small">Prochain prestige : <b>+' + Math.round(P.gold * 100) + " % d'or, +" + Math.round(P.might * 100) + " % de dégâts, +" + Math.round(P.xp * 100) + " % d'XP et +" + P.points + " points de compétence</b>, pour toujours. Débloque aussi des compétences spéciales.</p>" +
+        '<div class="prestige-progress"><span>Glands d\'or gagnés depuis le dernier prestige</span><span class="rank-bar"><i style="width:' + k + '%"></i></span><small>' + since.toLocaleString("fr-FR") + " / " + P.need.toLocaleString("fr-FR") + "</small></div>" +
+        '<div class="prestige-rules"><p><b>Remis à zéro :</b> tes glands d\'or et les améliorations de la boutique.</p><p><b>Conservé :</b> rang, arbre de compétences, écureuils, cartes, succès et records.</p></div>' +
+        '<div class="btn-row center"><button class="btn" type="button" data-action="doprestige"' + (ok ? "" : " disabled") + ">✨ Faire un prestige</button></div>";
     },
     shop: function () {
       var html = '<div class="screen-head">' + back() + "<h2>Améliorations</h2>" + goldBadge() + '</div><p class="game-small">Bonus permanents, valables pour toutes tes parties.</p><div class="shop-list">';
@@ -1873,6 +1924,22 @@
       var keepName = S.name; S = defaults(); S.name = keepName; save(); go("menu");
     },
     start: function () { start(); },
+    learn: function (id) {
+      var k = skillById(id); if (!k) return;
+      var lvl = S.tree[id] || 0;
+      if (lvl >= k.max || !skillOpen(k) || freePoints() < k.cost) return;
+      S.tree[id] = lvl + 1; save(); SND.gold(); checkAchievements(null); go("tree");
+    },
+    respec: function () {
+      if (!spentPoints() || !window.confirm("Rendre tous tes points de compétence ?")) return;
+      S.tree = {}; save(); go("tree");
+    },
+    doprestige: function () {
+      if ((S.stats.goldSince || 0) < D.PRESTIGE.need) return;
+      if (!window.confirm("Faire un prestige ? Tes glands d'or et tes améliorations de boutique repartent à zéro, en échange de bonus permanents.")) return;
+      S.prestige++; S.gold = 0; S.shop = {}; S.stats.goldSince = 0; save();
+      SND.fusion(); checkAchievements(null); go("prestige");
+    },
     coophost: function () {
       if (!readCoopName()) return;
       var code = ""; for (var i = 0; i < 4; i++) code += CODE_CH[(Math.random() * CODE_CH.length) | 0];
@@ -1957,7 +2024,8 @@
   }
   function trackMe() {
     if (!Net.ch) return;
-    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), char: S.char, host: Net.role === "host", map: S.map, diff: S.diff, shop: S.shop, ingame: Net.started, ts: Net.joinTs || (Net.joinTs = Date.now()) });
+    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), char: S.char, host: Net.role === "host", map: S.map, diff: S.diff,
+                   prog: { shop: S.shop, tree: S.tree, pr: S.prestige }, ingame: Net.started, ts: Net.joinTs || (Net.joinTs = Date.now()) });
   }
   function onPresence() {
     if (!Net.ch) return;
@@ -1999,8 +2067,8 @@
   }
   function hostStart() {
     if (Net.role !== "host") return;
-    var info = { map: S.map, diff: S.diff, roster: Net.roster.slice(0, 4).map(function (x) { return { id: x.id, name: x.name, char: x.char, shop: x.shop || {} }; }) };
-    if (!info.roster.some(function (x) { return x.id === Net.id; })) info.roster.unshift({ id: Net.id, name: S.name || "Hôte", char: S.char, shop: S.shop });
+    var info = { map: S.map, diff: S.diff, roster: Net.roster.slice(0, 4).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0 }; }) };
+    if (!info.roster.some(function (x) { return x.id === Net.id; })) info.roster.unshift({ id: Net.id, name: S.name || "Hôte", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige });
     netSend("start", info);
     startOnline(info);
   }
@@ -2223,7 +2291,10 @@
     var sc = score(), gold = runGold();
     S.stats.kills += r.kills; r.committed = true;
     S.stats.runs++;
-    S.gold += gold; S.stats.goldEarned += gold;
+    earnGold(gold);
+    var rankGain = Math.floor(r.time / 10 + r.kills / 20 + r.bosses * 20 + r.level * 2), ranksUp = 0;
+    S.rankXp += rankGain;
+    while (S.rankXp >= D.rankNeed(S.rank)) { S.rankXp -= D.rankNeed(S.rank); S.rank++; ranksUp++; }
     var isBest = sc > S.stats.bestScore;
     S.stats.bestScore = Math.max(S.stats.bestScore, sc);
     S.stats.bestTime = Math.max(S.stats.bestTime, Math.floor(r.time));
@@ -2238,6 +2309,7 @@
       '<ul class="over-stats"><li><span>Survie</span><strong>' + fmtTime(r.time) + "</strong></li><li><span>Ennemis</span><strong>" + r.kills + "</strong></li><li><span>Niveau</span><strong>" + r.level + "</strong></li>" +
       '<li class="total"><span>Score' + (DIFF.score > 1 ? " (×" + fr(DIFF.score) + ")" : "") + "</span><strong>" + sc.toLocaleString("fr-FR") + "</strong></li>" +
       '<li class="gold"><span>Glands d\'or gagnés</span><strong>+' + gold + " " + goldIc() + "</strong></li></ul>" +
+      '<p class="rank-line">+' + rankGain + " XP de rang · <b>Rang " + S.rank + "</b>" + (ranksUp ? ' <span class="rank-up">Rang supérieur ! +' + ranksUp + " point" + (ranksUp > 1 ? "s" : "") + " de compétence</span>" : "") + "</p>" +
       '<p class="game-small">' + (isBest ? "🏆 Nouveau record perso !" : "Ton record : " + S.stats.bestScore.toLocaleString("fr-FR")) + "</p>" + achHtml +
       (lbOk ? '<form class="submit-score" data-submit><label for="es-name">Ton pseudo pour le classement</label><div class="submit-row">' +
         '<input id="es-name" type="text" maxlength="20" autocomplete="nickname" placeholder="Pseudo" value="' + esc(S.name || "") + '">' +
@@ -2363,7 +2435,8 @@
 
   // outils de test (console) : ES_DEBUG.gold(500), ES_DEBUG.time(170), ES_DEBUG.give("gland", 5)
   window.ES_DEBUG = {
-    gold: function (n) { S.gold += n || 500; save(); if (state === "menu") go(screen); },
+    gold: function (n) { earnGold(n || 500); save(); if (state === "menu") go(screen); },
+    rank: function (n) { S.rank += n || 1; save(); if (state === "menu") go(screen); },
     time: function (t) { if (r) { r.time = t; nextSwarm = Math.ceil(t / 60) * 60; nextBoss = Math.max(180, Math.ceil(t / 180) * 180); } },
     give: function (id, lvl) { if (!p) return; if (ALLW[id]) p.weapons[id] = lvl || 5; else if (D.PASSIVES[id]) p.passives[id] = lvl || 5; calc(); refreshCounts(); },
     drop: function (kind) { if (p) drop(kind, p.x + 20, p.y); },
