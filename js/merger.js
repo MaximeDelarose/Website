@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "1.1.0";              // version affichée dans le menu (tag git : merger-v<VERSION>)
+  var VERSION = "1.2.0";              // version affichée dans le menu (tag git : merger-v<VERSION>)
   var GAME_ID = "merger";
   var stage = document.querySelector("[data-merger]");
   if (!stage) return;
@@ -52,6 +52,9 @@
   var BOWL = 330;                     // rayon de l'arrondi du fond
   var BX = JW / 2, BY = JH - BOWL;    // centre de l'arrondi
   var G = 1500, DAMP = 0.995, ITER = 6;
+  var MAXV = 6;                      // vitesse max par sous-pas (sécurité anti-éjection)
+  var BREATH = 0.06;                  // amplitude de la respiration (le rayon physique gonfle de ±6 %)
+  var SQUISH = 0.09;                  // « mou » : de combien deux écureuils peuvent s'enfoncer l'un dans l'autre (part du rayon)
 
   function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -79,9 +82,10 @@
     pair = newPair(); next = newPair(); aimX = JW / 2; cooldown = 0;
   }
 
+  var ballId = 0;
   function newBall(type, x, y) {
-    return { type: type, x: x, y: y, px: x, py: y, r: R, born: 1, dead: false, age: 0,
-      blink: Math.random() * 4, sq: 0, lastV: 0, pal: false, flip: Math.random() < 0.5 ? -1 : 1, breath: Math.random() * 6.28, rate: 1.6 + Math.random() * 0.8 };
+    return { id: ++ballId, type: type, x: x, y: y, px: x, py: y, r: R, born: 1, dead: false, age: 0,
+      blink: Math.random() * 4, lastV: 0, pal: false, jw: 0, jv: 0, cx: 0, cy: 0, cz: 0, flip: Math.random() < 0.5 ? -1 : 1, breath: Math.random() * 6.28, rate: 1.6 + Math.random() * 0.8 };
   }
 
   function clampAim(x) { return Math.max(R * 2, Math.min(JW - R * 2, x)); }
@@ -110,11 +114,16 @@
     a.px = a.x - vx; a.py = a.y - vy;
   }
 
-  function step(dt) {
+  function step(dt, last) {
     var i, j, a, b, n = balls.length;
     for (i = 0; i < n; i++) {
       a = balls[i];
+      // la respiration change vraiment la taille physique : il pousse ses voisins
+      a.r = R * (1 + BREATH * Math.sin(clock * a.rate + a.breath));
+      if (last) { a.cx = 0; a.cy = 0; a.cz = 0; }
       var vx = (a.x - a.px) * DAMP, vy = (a.y - a.py) * DAMP;
+      var sp = vx * vx + vy * vy;
+      if (sp > MAXV * MAXV) { sp = MAXV / Math.sqrt(sp); vx *= sp; vy *= sp; }   // sécurité : jamais d'éjection
       a.px = a.x; a.py = a.y;
       a.x += vx; a.y += vy + G * dt * dt;
       a.age += dt;
@@ -126,19 +135,25 @@
           b = balls[j];
           var dx = b.x - a.x, dy = b.y - a.y, rr = a.r + b.r, d2 = dx * dx + dy * dy;
           if (d2 >= rr * rr || d2 === 0) continue;
-          var d = Math.sqrt(d2), o = (rr - d) / d * 0.5;
+          // contact mou : la partie « coussin » (SQUISH) n'est repoussée que doucement,
+          // le reste fermement → ils s'enfoncent un peu les uns dans les autres
+          var d = Math.sqrt(d2), ov = rr - d, slop = rr * SQUISH * 0.5;
+          var push = ov > slop ? (ov - slop) * 0.9 + slop * 0.12 : ov * 0.12;
+          var o = push / d * 0.5;
           a.x -= dx * o; a.y -= dy * o;
           b.x += dx * o; b.y += dy * o;
+          if (last && k === ITER - 1) squeeze(a, dx / d, dy / d, ov); if (last && k === ITER - 1) squeeze(b, dx / d, dy / d, ov);
         }
         var wvx = a.x - a.px, wvy = a.y - a.py;
         // murs
-        if (a.x < a.r) { a.x = a.r; bounce(a, -1, 0, wvx, wvy); }
-        else if (a.x > JW - a.r) { a.x = JW - a.r; bounce(a, 1, 0, wvx, wvy); }
+        if (a.x < a.r * (1 - SQUISH * 0.5)) { if (last) squeeze(a, 1, 0, a.r - a.x); a.x = a.r * (1 - SQUISH * 0.5); bounce(a, -1, 0, wvx, wvy); }
+        else if (a.x > JW - a.r * (1 - SQUISH * 0.5)) { if (last) squeeze(a, 1, 0, a.x - (JW - a.r)); a.x = JW - a.r * (1 - SQUISH * 0.5); bounce(a, 1, 0, wvx, wvy); }
         // fond arrondi vers le centre
         if (a.y > BY) {
-          var ex = a.x - BX, ey = a.y - BY, ed = Math.sqrt(ex * ex + ey * ey), lim = BOWL - a.r;
+          var ex = a.x - BX, ey = a.y - BY, ed = Math.sqrt(ex * ex + ey * ey), lim = BOWL - a.r * (1 - SQUISH * 0.5);
           if (ed > lim) {
             var nx = ex / ed, ny = ey / ed;
+            if (last) squeeze(a, nx, ny, ed - (BOWL - a.r) + 0.6);
             var ovx = a.x - a.px, ovy = a.y - a.py;
             a.x = BX + nx * lim; a.y = BY + ny * lim;
             bounce(a, nx, ny, ovx, ovy);
@@ -148,10 +163,18 @@
     }
   }
 
+  // retient dans quelle direction (et combien) l'écureuil est écrasé, pour le déformer à l'écran.
+  // On additionne les angles doublés : écrasé par la gauche ou par la droite, c'est le même axe.
+  function squeeze(a, nx, ny, ov) {
+    if (ov <= 0) return;
+    var c2 = nx * nx - ny * ny, s2 = 2 * nx * ny;
+    a.cx += c2 * ov; a.cy += s2 * ov; a.cz += ov;
+  }
+
   /* ---------- groupes de 3 ---------- */
   function findGroups() {
     var n = balls.length, seen = new Array(n), groups = [], i, j;
-    var touch = (R * 2 + 3) * (R * 2 + 3);
+    var touch = (R * 2 * (1 + BREATH) + 3) * (R * 2 * (1 + BREATH) + 3);
     for (i = 0; i < n; i++) {
       if (seen[i] || balls[i].age < 0.08) continue;
       var stack = [i], grp = [];
@@ -203,7 +226,7 @@
     clock += dt;
     if (state === "play") {
       var sub = 3, h = dt / sub;
-      for (var s = 0; s < sub; s++) step(h);
+      for (var s = 0; s < sub; s++) step(h, s === sub - 1);
       clearGroups();
       if (cooldown > 0) cooldown -= dt;
       if (comboT > 0) comboT -= dt; else combo = 0;
@@ -225,9 +248,11 @@
       b.blink -= dt; if (b.blink < -0.15) b.blink = 2 + Math.random() * 4;
       // petit écrasement quand il atterrit
       var v = b.y - b.py;
-      if (b.lastV > 2.5 && v < 0.8) b.sq = Math.min(1, b.lastV / 6);
+      if (b.lastV > 1.5 && v < 0.6) b.jv += Math.min(7, b.lastV) * 0.9;   // boing !
       b.lastV = v;
-      if (b.sq > 0) b.sq = Math.max(0, b.sq - dt * 5);
+      // gelée : ressort amorti (jw > 0 = aplati, < 0 = étiré) → il rebondit en tremblotant
+      b.jv += (-260 * b.jw - 9 * b.jv) * dt;
+      b.jw = Math.max(-0.22, Math.min(0.22, b.jw + b.jv * dt));
     });
   }
 
@@ -286,7 +311,8 @@
   function lookIndex(lx, ly) { return lx || ly ? (Math.round(Math.atan2(ly, lx) / (Math.PI / 4)) + 8) % 8 : -1; }
 
   // dessine un écureuil depuis le cache. r = rayon (unités courantes), px = pixels par unité,
-  // o = { k (échelle respiration/apparition), alpha, flip, blink, mood, lx, ly, sq, wag }
+  // o = { k (échelle respiration/apparition), alpha, flip, blink, mood, lx, ly, sq, wag,
+  //       comp + ang (écrasement par les voisins), jw (rebond de gelée) }
   function blit(x, y, type, r, px, o) {
     o = o || {};
     var f = o.flip || 1, pr = Math.max(4, Math.round(r * px)), u = r / pr;
@@ -297,6 +323,9 @@
     if (o.alpha != null) ctx.globalAlpha = o.alpha;
     ctx.translate(x, y);
     if (sq) { ctx.translate(0, r * 0.14 * sq); ctx.scale(1 + 0.14 * sq, 1 - 0.14 * sq); }
+    // mou : aplati le long de l'axe où on l'écrase (et gonflé sur les côtés), puis effet gelée
+    if (o.comp) { ctx.rotate(o.ang); ctx.scale(1 - o.comp, 1 + o.comp * 0.7); ctx.rotate(-o.ang); }
+    if (o.jw) { ctx.translate(0, r * o.jw * 0.5); ctx.scale(1 + o.jw * 0.8, 1 - o.jw); }
     ctx.scale(k * u, k * u);
     // la queue remue autour de sa base
     ctx.save();
@@ -519,7 +548,7 @@
   }
 
   // respiration : chaque écureuil gonfle et dégonfle doucement, à son rythme
-  function breathe(b) { return 1 + 0.045 * Math.sin(clock * b.rate + b.breath); }
+  function breathe(b) { return b.r / R; }   // le dessin suit le rayon physique
 
   function render(now) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -560,7 +589,8 @@
       // il suit la paire du regard, remue la queue, sourit près d'un copain, panique près de la ligne
       var dx = ax - b.x, dy = DROP_Y - b.y, dl = Math.sqrt(dx * dx + dy * dy) || 1;
       var mood = b.y - b.r < TOP + 24 && b.age > 0.8 ? "worried" : b.pal ? "happy" : "";
-      blit(b.x, b.y, b.type, R, PX, { k: sc, blink: b.blink, flip: b.flip, lx: dx / dl, ly: dy / dl, mood: mood, sq: b.sq,
+      var comp = Math.min(0.13, b.cz / R * 1.2), ang = Math.atan2(b.cy, b.cx) / 2;
+      blit(b.x, b.y, b.type, R, PX, { k: sc, blink: b.blink, flip: b.flip, lx: dx / dl, ly: dy / dl, mood: mood, jw: b.jw, comp: comp, ang: ang,
         wag: Math.sin(clock * b.rate * (mood ? 3 : 1.4) + b.breath) });
     });
 
@@ -830,8 +860,9 @@
   window.MERGER_DEBUG = {
     version: VERSION,
     state: function () { return { state: state, score: score, balls: balls.length, diff: diff, cleared: cleared, pair: pair && pair.slice() }; },
-    add: function (type, x) { balls.push(newBall(type, x == null ? JW / 2 : x, DROP_Y)); },
+    add: function (type, x, y) { balls.push(newBall(type, x == null ? JW / 2 : x, y == null ? DROP_Y : y)); },
     swap: swap,
+    balls: function () { return balls.map(function (b) { return { id: b.id, x: b.x, y: b.y, r: b.r, v: Math.hypot(b.x - b.px, b.y - b.py) }; }); },
     geo: function () { return { ox: OX, oy: OY, s: S, ax: clampAim(aimX), dropY: DROP_Y, sprites: sprites.size }; },
     draw: function (g, x, y, type, r, o) { drawSquirrel(g, x, y, type, r, o); },
     over: function () { gameOver(); },
