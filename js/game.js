@@ -14,7 +14,7 @@
   var $ = function (s) { return stage.querySelector(s); };
   var card = $("[data-card]"), overlay = $("[data-overlay]");
   var GAME_ID = "ecureuil-survivor";
-  var VERSION = "0.9.3";
+  var VERSION = "0.10.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -29,7 +29,7 @@
      ===================================================================== */
   var SAVE_KEY = "es-save-v1";
   function defaults() {
-    return { gold: 0, shop: {}, ach: {}, owned: { noisette: true }, rank: 1, rankXp: 0, tree: {}, prestige: 0, char: "noisette", map: "clairiere", diff: "normal", name: "",
+    return { gold: 0, shop: {}, ach: {}, owned: { noisette: true }, rank: 1, rankXp: 0, tree: {}, prestige: 0, ppts: 0, pshop: {}, char: "noisette", map: "clairiere", diff: "normal", name: "",
              opts: { sound: true, shake: true, numbers: true },
              stats: { kills: 0, goldEarned: 0, goldSince: 0, runs: 0, bestTime: 0, bestScore: 0, bosses: 0, played: {}, maps: {}, bought: 0 } };
   }
@@ -44,7 +44,7 @@
       });
       s.stats.played = s.stats.played || {}; s.stats.maps = s.stats.maps || {};
       if (!raw.stats || raw.stats.goldSince === undefined) s.stats.goldSince = s.stats.goldEarned || 0;
-      s.tree = s.tree || {};
+      s.tree = s.tree || {}; s.pshop = s.pshop || {}; s.ppts = s.ppts || 0;
     }
     return s;
   }
@@ -58,14 +58,22 @@
   function earnGold(n) { S.gold += n; S.stats.goldEarned += n; S.stats.goldSince = (S.stats.goldSince || 0) + n; }
   function skillById(id) { return D.SKILLS.filter(function (k) { return k.id === id; })[0]; }
   function spentPoints() { var t = 0; Object.keys(S.tree).forEach(function (id) { var k = skillById(id); if (k) t += (S.tree[id] || 0) * k.cost; }); return t; }
-  function totalPoints() { return (S.rank - 1) + S.prestige * D.PRESTIGE.points; }
+  function pu(id) { return (S.pshop || {})[id] || 0; }
+  function totalPoints() { return (S.rank - 1) + 2 * pu("points"); }
   function freePoints() { return totalPoints() - spentPoints(); }
   function skillOpen(k) { return (!k.prestige || S.prestige >= k.prestige) && (k.req || []).every(function (id) { return (S.tree[id] || 0) > 0; }); }
-  function shopMaxed() { return D.SHOP.filter(function (it) { return (S.shop[it.id] || 0) >= it.max; }).length; }
-  // compétences exigées : toutes, sauf celles réservées à un prestige pas encore atteint
-  function treeNeeded() { return D.SKILLS.filter(function (k) { return !k.prestige || S.prestige >= k.prestige; }); }
-  function treeMaxed() { return treeNeeded().filter(function (k) { return (S.tree[k.id] || 0) >= k.max; }).length; }
-  function prestigeReady() { return shopMaxed() === D.SHOP.length && treeMaxed() === treeNeeded().length && S.gold >= D.PRESTIGE.cost; }
+  // progression = niveaux de boutique + niveaux de l'arbre (hors compétences d'un prestige pas encore atteint)
+  function progressParts() {
+    var have = 0, max = 0;
+    D.SHOP.forEach(function (it) { have += Math.min(it.max, S.shop[it.id] || 0); max += it.max; });
+    D.SKILLS.forEach(function (k) { if (k.prestige && S.prestige < k.prestige) return; have += Math.min(k.max, S.tree[k.id] || 0); max += k.max; });
+    return { have: have, max: max, frac: max ? have / max : 0 };
+  }
+  function prestigeReq() { var P = D.PRESTIGE; return Math.min(P.reqMax, P.reqBase + P.reqStep * S.prestige); }
+  function prestigeCost() { var P = D.PRESTIGE; return Math.round(P.costBase * Math.pow(P.costGrowth, S.prestige) / 100) * 100; }
+  function prestigeGain() { return Math.floor(D.PRESTIGE.fullPoints * progressParts().frac * (1 + 0.25 * pu("multi"))); }
+  function prestigeReady() { return progressParts().frac >= prestigeReq() - 1e-9 && S.gold >= prestigeCost(); }
+  function pupCost(it, lvl) { var c = it.costs || D.PRESTIGE.upCosts; return c[Math.min(lvl, c.length - 1)] * (lvl >= c.length ? Math.pow(2, lvl - c.length + 1) : 1); }
   function stars(n) { return n > 0 ? (n > 5 ? "★×" + n : new Array(n + 1).join("★")) : ""; }
   function has(ach) { return !ach || !!S.ach[ach]; }
   function charById(id) { return D.CHARACTERS.filter(function (c) { return c.id === id; })[0] || D.CHARACTERS[0]; }
@@ -195,15 +203,15 @@
 
   function calc(pl) {
     var p = pl || actingPlayer();
-    var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives, tr = p.tree || {}, pr = p.prestige || 0, P = D.PRESTIGE;
+    var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives, tr = p.tree || {}, pg = p.pshop || {};
     var oldMax = p.maxHp || 0;
-    p.maxHp = Math.max(20, 100 + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0));
+    p.maxHp = Math.max(20, 100 + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0));
     p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0));
-    p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + P.might * pr;
+    p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + 0.08 * (pg.racines || 0);
     p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0) + (tr.s3 || 0);
     p.magnet = 30 * (1 + (m.magnet || 0) + 0.15 * (sh.aimant || 0) + 0.4 * (ps.joues || 0) + 0.1 * (tr.f1 || 0));
     p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0));
-    p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + P.xp * pr;
+    p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + 0.1 * (pg.seve || 0);
     p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0);
     p.luck = 1 + 0.15 * (sh.chance || 0) + 0.2 * (ps.trefle || 0);
     p.area = 1 + (m.area || 0) + 0.05 * (sh.zone || 0) + 0.1 * (ps.loupe || 0) + 0.06 * (tr.a3 || 0);
@@ -211,7 +219,7 @@
     p.shieldCd = ps.mousse ? 16 - 2 * ps.mousse : 0;
     p.crit = 0.08 * (tr.a5 || 0); p.rage = !!tr.a6; p.dodge = 0.04 * (tr.s5 || 0); p.taken = tr.s6 ? 0.85 : 1;
     p.goldX = tr.f6 ? 2 : 1; p.extraChoice = tr.f4 ? 1 : 0;
-    p.goldMul = (1 + 0.1 * (sh.avarice || 0)) * (1 + 0.08 * (tr.f2 || 0)) * (1 + P.gold * pr) * DIFF.gold * (MAP.gold || 1);
+    p.goldMul = (1 + 0.1 * (sh.avarice || 0)) * (1 + 0.08 * (tr.f2 || 0)) * (1 + 0.12 * (pg.tresor || 0)) * DIFF.gold * (MAP.gold || 1);
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.hp = Math.min(p.hp, p.maxHp);
   }
@@ -220,11 +228,11 @@
   function myId() { return Net.on ? Net.id : "solo"; }
   function reset(roster, mapId, diffId) {
     DIFF = D.DIFFICULTIES[diffId || S.diff] || D.DIFFICULTIES.normal; MAP = mapById(mapId || S.map);
-    roster = roster || [{ id: "solo", name: S.name || "Toi", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige }];
+    roster = roster || [{ id: "solo", name: S.name || "Toi", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige, pshop: S.pshop }];
     var n = roster.length;
     players = roster.map(function (it, i) {
       var c = charById(it.char);
-      var pl = { id: it.id, name: it.name || "Écureuil", char: c, sprite: c.sprite, shop: it.shop || {}, tree: it.tree || {}, prestige: it.prestige || 0, x: (i - (n - 1) / 2) * 20, y: 0,
+      var pl = { id: it.id, name: it.name || "Écureuil", char: c, sprite: c.sprite, shop: it.shop || {}, tree: it.tree || {}, prestige: it.prestige || 0, pshop: it.pshop || {}, x: (i - (n - 1) / 2) * 20, y: 0,
                  hp: 0, face: 1, moving: false, anim: 0, inv: 0, weapons: {}, passives: {}, timers: {}, st: {}, consumed: {},
                  shield: false, shieldT: 0, down: false, reviveT: 0, choosing: false, remote: it.id !== myId() };
       pl.tx = pl.x; pl.ty = pl.y;
@@ -1875,30 +1883,34 @@
       var html = '<div class="screen-head">' + back() + '<h2>Compétences</h2><p class="gold-badge">🌳 <b>' + freePoints() + "</b> pt" + (freePoints() > 1 ? "s" : "") + "</p></div>" + rankBadge();
       html += '<div class="tentacles-wrap">' + tentacleSvg(sel) + "</div>";
       html += skillPanel(sel);
-      html += '<p class="game-small">1 point par rang gagné, +' + D.PRESTIGE.points + ' par prestige. <button class="link-btn" type="button" data-action="respec">Réinitialiser l\'arbre (gratuit)</button></p>';
+      html += '<p class="game-small">1 point par rang gagné, +2 par niveau de « Graines de savoir » (prestige). <button class="link-btn" type="button" data-action="respec">Réinitialiser l\'arbre (gratuit)</button></p>';
       return html;
     },
     prestige: function () {
-      var P = D.PRESTIGE, n = S.prestige, sm = shopMaxed(), okShop = sm === D.SHOP.length, okGold = S.gold >= P.cost;
-      var kg = Math.min(100, Math.round(S.gold / P.cost * 100)), ks = Math.round(sm / D.SHOP.length * 100);
-      return '<div class="screen-head">' + back() + "<h2>Prestige</h2>" + goldBadge() + "</div>" +
+      var n = S.prestige, pp = progressParts(), req = prestigeReq(), cost = prestigeCost();
+      var okProg = pp.frac >= req - 1e-9, okGold = S.gold >= cost, needLv = Math.ceil(req * pp.max - 1e-9);
+      var html = '<div class="screen-head">' + back() + '<h2>Prestige</h2><p class="gold-badge">✨ <b>' + S.ppts.toLocaleString("fr-FR") + "</b></p></div>" +
         '<div class="prestige-head"><span class="stars big">' + (n ? stars(n) : "☆") + "</span><b>Prestige " + n + "</b></div>" +
-        '<ul class="stat-list prestige-bonus"><li>Glands d\'or <b>+' + Math.round(P.gold * n * 100) + " %</b></li><li>Dégâts <b>+" + Math.round(P.might * n * 100) + " %</b></li><li>Expérience <b>+" + Math.round(P.xp * n * 100) + " %</b></li><li>Points de compétence offerts <b>" + P.points * n + "</b></li></ul>" +
-        '<p class="game-small">Prochain prestige : <b>+' + Math.round(P.gold * 100) + " % d'or, +" + Math.round(P.might * 100) + " % de dégâts, +" + Math.round(P.xp * 100) + " % d'XP et +" + P.points + " points de compétence</b>, pour toujours. Débloque aussi des compétences spéciales.</p>" +
-        '<h3 class="pick-title">Conditions</h3>' +
-        '<div class="prestige-progress' + (okShop ? " is-ok" : "") + '"><span>' + (okShop ? "✅" : "⬜") + " Toutes les améliorations au maximum</span>" +
-          '<span class="rank-bar"><i style="width:' + ks + '%"></i></span><small>' + sm + " / " + D.SHOP.length + " améliorations au max" + (okShop ? "" : ' · <button class="link-btn" type="button" data-action="go" data-arg="shop">aller à la boutique</button>') + "</small></div>" +
-        (function () {
-          var tn = treeNeeded().length, tm = treeMaxed(), ok = tm === tn;
-          return '<div class="prestige-progress' + (ok ? " is-ok" : "") + '"><span>' + (ok ? "✅" : "⬜") + " Arbre de compétences au maximum</span>" +
-            '<span class="rank-bar"><i style="width:' + Math.round(tm / tn * 100) + '%"></i></span><small>' + tm + " / " + tn + " compétences au max" +
-            (ok ? "" : ' · <button class="link-btn" type="button" data-action="go" data-arg="tree">aller à l\'arbre</button>') + "</small></div>";
-        })() +
-        '<div class="prestige-progress' + (okGold ? " is-ok" : "") + '"><span>' + (okGold ? "✅" : "⬜") + " " + P.cost.toLocaleString("fr-FR") + " glands d\'or (consommés)</span>" +
-          '<span class="rank-bar"><i style="width:' + kg + '%"></i></span><small>' + S.gold.toLocaleString("fr-FR") + " / " + P.cost.toLocaleString("fr-FR") + "</small></div>" +
-        '<div class="prestige-rules"><p><b>Tout repart à zéro :</b> glands d\'or, améliorations, rang, arbre de compétences, succès, écureuils et cartes débloqués, statistiques.</p>' +
-        "<p><b>Conservé :</b> ton niveau de prestige et ses bonus, tes records, ton pseudo et tes options.</p></div>" +
-        '<div class="btn-row center"><button class="btn" type="button" data-action="doprestige"' + (prestigeReady() ? "" : " disabled") + ">✨ Faire un prestige</button></div>";
+        '<h3 class="pick-title">Prochain prestige</h3>' +
+        '<div class="prestige-progress' + (okProg ? " is-ok" : "") + '"><span>' + (okProg ? "✅" : "⬜") + " Progression débloquée : " + Math.floor(pp.frac * 100) + " % (requis : " + Math.ceil(req * 100) + " %)</span>" +
+          '<span class="rank-bar req-bar" style="--req:' + (req * 100) + '%"><i style="width:' + Math.round(pp.frac * 100) + '%"></i></span>' +
+          "<small>" + pp.have + " / " + pp.max + " niveaux (boutique + arbre) · il en faut " + needLv +
+          (okProg ? "" : ' · <button class="link-btn" type="button" data-action="go" data-arg="shop">boutique</button> · <button class="link-btn" type="button" data-action="go" data-arg="tree">arbre</button>') + "</small></div>" +
+        '<div class="prestige-progress' + (okGold ? " is-ok" : "") + '"><span>' + (okGold ? "✅" : "⬜") + " " + cost.toLocaleString("fr-FR") + " glands d\'or (consommés)</span>" +
+          '<span class="rank-bar"><i style="width:' + Math.min(100, Math.round(S.gold / cost * 100)) + '%"></i></span><small>' + S.gold.toLocaleString("fr-FR") + " / " + cost.toLocaleString("fr-FR") + "</small></div>" +
+        '<p class="prestige-gain">Gain si tu fais le prestige maintenant : <b>+' + prestigeGain().toLocaleString("fr-FR") + " ✨</b>" +
+          '<small>Tout débloqué = ' + D.PRESTIGE.fullPoints.toLocaleString("fr-FR") + " ✨" + (pu("multi") ? " · multiplicateur ×" + fr(1 + 0.25 * pu("multi")) : "") + "</small></p>" +
+        '<div class="prestige-rules"><p><b>Tout repart à zéro :</b> glands d\'or, améliorations, rang, arbre de compétences' + (pu("memoire") ? "" : ", succès, écureuils et cartes débloqués") + ", statistiques.</p>" +
+        "<p><b>Conservé :</b> niveau de prestige, points ✨ et améliorations de prestige" + (pu("memoire") ? ", succès, écureuils et cartes" : "") + ", records, pseudo et options.</p></div>" +
+        '<div class="btn-row center"><button class="btn" type="button" data-action="doprestige"' + (prestigeReady() ? "" : " disabled") + ">✨ Faire un prestige (+" + prestigeGain().toLocaleString("fr-FR") + ")</button></div>" +
+        '<h3 class="pick-title">Améliorations de prestige</h3><p class="game-small">Permanentes : elles ne sont jamais remises à zéro.</p><div class="shop-list">';
+      D.PRESTIGE_SHOP.forEach(function (it) {
+        var lvl = pu(it.id), max = lvl >= it.max, c = pupCost(it, lvl), pips = "";
+        for (var i = 0; i < it.max; i++) pips += '<i class="' + (i < lvl ? "on" : "") + '"></i>';
+        html += '<div class="shop-item pshop-item"><span class="shop-ic">' + it.icon + '</span><div class="shop-text"><strong>' + esc(it.name) + "</strong><span>" + esc(it.desc) + (it.max > 1 ? " par niveau" : "") + '</span><span class="pips">' + pips + "</span></div>" +
+          (max ? '<span class="shop-max">MAX</span>' : '<button class="btn btn-small" type="button" data-action="pbuy" data-arg="' + it.id + '"' + (S.ppts < c ? " disabled" : "") + ">" + c.toLocaleString("fr-FR") + " ✨</button>") + "</div>";
+      });
+      return html + "</div>";
     },
     shop: function () {
       var html = '<div class="screen-head">' + back() + "<h2>Améliorations</h2>" + goldBadge() + '</div><p class="game-small">Bonus permanents, valables pour toutes tes parties.</p><div class="shop-list">';
@@ -1996,6 +2008,12 @@
     },
     start: function () { start(); },
     tsel: function (id) { treeSel = id; SND.click(); go("tree"); },
+    pbuy: function (id) {
+      var it = D.PRESTIGE_SHOP.filter(function (x) { return x.id === id; })[0]; if (!it) return;
+      var lvl = pu(id), c = pupCost(it, lvl);
+      if (lvl >= it.max || S.ppts < c) return;
+      S.ppts -= c; S.pshop[id] = lvl + 1; save(); SND.fusion(); go("prestige");
+    },
     learn: function (id) {
       var k = skillById(id); if (!k) return;
       var lvl = S.tree[id] || 0;
@@ -2008,12 +2026,15 @@
     },
     doprestige: function () {
       if (!prestigeReady()) return;
-      if (!window.confirm("Faire un prestige ? TOUT repart à zéro (or, améliorations, rang, compétences, succès, écureuils, cartes) sauf ton niveau de prestige, tes records et tes options.")) return;
-      if (!window.confirm("Vraiment sûr ? C'est irréversible.")) return;
-      var keep = { name: S.name, opts: S.opts, prestige: S.prestige + 1, runs: S.stats.runs, bestTime: S.stats.bestTime, bestScore: S.stats.bestScore };
+      var gain = prestigeGain();
+      if (!window.confirm("Faire un prestige et gagner " + gain + " points de prestige ? Tout repart à zéro (or, améliorations, rang, compétences" + (pu("memoire") ? "" : ", succès, écureuils, cartes") + ").")) return;
+      var keep = { name: S.name, opts: S.opts, prestige: S.prestige + 1, ppts: S.ppts + gain, pshop: S.pshop, runs: S.stats.runs, bestTime: S.stats.bestTime, bestScore: S.stats.bestScore,
+                   ach: S.ach, owned: S.owned, memo: pu("memoire") > 0, heritage: pu("heritage") };
       S = defaults();
-      S.name = keep.name; S.opts = keep.opts; S.prestige = keep.prestige;
+      S.name = keep.name; S.opts = keep.opts; S.prestige = keep.prestige; S.ppts = keep.ppts; S.pshop = keep.pshop;
       S.stats.runs = keep.runs; S.stats.bestTime = keep.bestTime; S.stats.bestScore = keep.bestScore;
+      if (keep.memo) { S.ach = keep.ach; S.owned = keep.owned; }
+      S.gold = 1000 * keep.heritage;
       sanitize(); save();
       SND.fusion(); checkAchievements(null); muteLabel(); go("prestige");
     },
@@ -2102,7 +2123,7 @@
   function trackMe() {
     if (!Net.ch) return;
     Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), char: S.char, host: Net.role === "host", map: S.map, diff: S.diff,
-                   prog: { shop: S.shop, tree: S.tree, pr: S.prestige }, ingame: Net.started, ts: Net.joinTs || (Net.joinTs = Date.now()) });
+                   prog: { shop: S.shop, tree: S.tree, pr: S.prestige, pu: S.pshop }, ingame: Net.started, ts: Net.joinTs || (Net.joinTs = Date.now()) });
   }
   function onPresence() {
     if (!Net.ch) return;
@@ -2144,8 +2165,8 @@
   }
   function hostStart() {
     if (Net.role !== "host") return;
-    var info = { map: S.map, diff: S.diff, roster: Net.roster.slice(0, 4).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0 }; }) };
-    if (!info.roster.some(function (x) { return x.id === Net.id; })) info.roster.unshift({ id: Net.id, name: S.name || "Hôte", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige });
+    var info = { map: S.map, diff: S.diff, roster: Net.roster.slice(0, 4).map(function (x) { var g = x.prog || {}; return { id: x.id, name: x.name, char: x.char, shop: g.shop || {}, tree: g.tree || {}, prestige: g.pr || 0, pshop: g.pu || {} }; }) };
+    if (!info.roster.some(function (x) { return x.id === Net.id; })) info.roster.unshift({ id: Net.id, name: S.name || "Hôte", char: S.char, shop: S.shop, tree: S.tree, prestige: S.prestige, pshop: S.pshop });
     netSend("start", info);
     startOnline(info);
   }
@@ -2369,7 +2390,7 @@
     S.stats.kills += r.kills; r.committed = true;
     S.stats.runs++;
     earnGold(gold);
-    var rankGain = Math.floor(r.time / 10 + r.kills / 20 + r.bosses * 20 + r.level * 2), ranksUp = 0;
+    var rankGain = Math.floor((r.time / 10 + r.kills / 20 + r.bosses * 20 + r.level * 2) * (1 + 0.2 * pu("rang"))), ranksUp = 0;
     S.rankXp += rankGain;
     while (S.rankXp >= D.rankNeed(S.rank)) { S.rankXp -= D.rankNeed(S.rank); S.rank++; ranksUp++; }
     var isBest = sc > S.stats.bestScore;
@@ -2514,6 +2535,7 @@
   window.ES_DEBUG = {
     gold: function (n) { earnGold(n || 500); save(); if (state === "menu") go(screen); },
     rank: function (n) { S.rank += n || 1; save(); if (state === "menu") go(screen); },
+    ppts: function (n) { S.ppts += n || 500; save(); if (state === "menu") go(screen); },
     time: function (t) { if (r) { r.time = t; nextSwarm = Math.ceil(t / 60) * 60; nextBoss = Math.max(180, Math.ceil(t / 180) * 180); } },
     give: function (id, lvl) { if (!p) return; if (ALLW[id]) p.weapons[id] = lvl || 5; else if (D.PASSIVES[id]) p.passives[id] = lvl || 5; calc(); refreshCounts(); },
     drop: function (kind) { if (p) drop(kind, p.x + 20, p.y); },

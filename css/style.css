@@ -1033,3 +1033,8 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 @media (max-width: 480px) { .skill-panel { flex-wrap: wrap; } .skill-panel .btn { width: 100%; justify-content: center; } }
 .tnode .hit { fill: transparent; }
 .tentacle { animation-name: tentacle-sway; }
+.req-bar { position: relative; }
+.req-bar::after { content: ""; position: absolute; top: -4px; bottom: -4px; left: var(--req); width: 2px; background: var(--berry); }
+.prestige-gain { margin: 10px 0; padding: 8px 12px; background: #f6d36b33; border: 3px solid #c99a00; font-size: .95rem; }
+.prestige-gain small { display: block; color: var(--ink-soft); }
+.pshop-item .btn { min-width: 84px; justify-content: center; }
