@@ -431,6 +431,50 @@ window.ES_DATA = (function () {
   ];
 
   /* =====================================================================
+     Arbre de compétences (permanent, payé en points de compétence)
+     Un point par rang d'écureuil gagné, +2 par niveau de prestige.
+     req : compétences qui doivent avoir au moins 1 niveau ; prestige : niveau de prestige requis
+     ===================================================================== */
+  var SKILL_BRANCHES = [
+    { id: "attaque", name: "Attaque", color: "#c8553d" },
+    { id: "survie", name: "Survie", color: "#5b8a4a" },
+    { id: "fortune", name: "Fortune", color: "#c99a00" },
+  ];
+  var SKILLS = [
+    { id: "a1", branch: "attaque", name: "Crocs", icon: "🦷", desc: "+4 % de dégâts par niveau.", max: 3, cost: 1 },
+    { id: "a2", branch: "attaque", name: "Cadence", icon: "⏱️", desc: "-3 % de recharge par niveau.", max: 3, cost: 1, req: ["a1"] },
+    { id: "a3", branch: "attaque", name: "Portée", icon: "📏", desc: "+6 % de zone d'effet par niveau.", max: 3, cost: 1, req: ["a1"] },
+    { id: "a5", branch: "attaque", name: "Coup critique", icon: "💥", desc: "8 % de chances par niveau de doubler les dégâts.", max: 3, cost: 1, req: ["a2"] },
+    { id: "a4", branch: "attaque", name: "Salve", icon: "🎯", desc: "+1 projectile pour toutes les armes.", max: 1, cost: 3, req: ["a2", "a3"] },
+    { id: "a6", branch: "attaque", name: "Rage ancestrale", icon: "🔥", desc: "+25 % de dégâts sous 30 % de PV.", max: 1, cost: 3, req: ["a4"], prestige: 1 },
+    { id: "s1", branch: "survie", name: "Peau dure", icon: "❤️", desc: "+10 PV max par niveau.", max: 3, cost: 1 },
+    { id: "s2", branch: "survie", name: "Régénération", icon: "💧", desc: "+0,15 PV par seconde par niveau.", max: 3, cost: 1, req: ["s1"] },
+    { id: "s3", branch: "survie", name: "Carapace", icon: "🛡️", desc: "+1 armure par niveau.", max: 2, cost: 1, req: ["s1"] },
+    { id: "s5", branch: "survie", name: "Esquive", icon: "💨", desc: "4 % de chances par niveau d'esquiver un coup.", max: 3, cost: 1, req: ["s3"] },
+    { id: "s4", branch: "survie", name: "Second souffle", icon: "💖", desc: "+1 renaissance par partie.", max: 1, cost: 3, req: ["s2", "s3"] },
+    { id: "s6", branch: "survie", name: "Écorce millénaire", icon: "🌳", desc: "-15 % de dégâts reçus.", max: 1, cost: 3, req: ["s4"], prestige: 1 },
+    { id: "f1", branch: "fortune", name: "Flair", icon: "🧲", desc: "+10 % de ramassage par niveau.", max: 3, cost: 1 },
+    { id: "f2", branch: "fortune", name: "Avidité", icon: "💰", desc: "+8 % de glands d'or par niveau.", max: 3, cost: 1, req: ["f1"] },
+    { id: "f3", branch: "fortune", name: "Érudit", icon: "📖", desc: "+6 % d'expérience par niveau.", max: 3, cost: 1, req: ["f1"] },
+    { id: "f5", branch: "fortune", name: "Coffre de départ", icon: "🎁", desc: "Commence chaque partie avec un pouvoir au choix.", max: 1, cost: 2, req: ["f3"] },
+    { id: "f4", branch: "fortune", name: "Choix multiple", icon: "🃏", desc: "4 pouvoirs proposés à chaque niveau au lieu de 3.", max: 1, cost: 3, req: ["f2", "f3"] },
+    { id: "f6", branch: "fortune", name: "Mains d'or", icon: "✋", desc: "Les glands d'or ramassés comptent double.", max: 1, cost: 3, req: ["f4"], prestige: 1 },
+  ];
+
+  /* =====================================================================
+     Prestige : remet à zéro les glands d'or et la boutique, garde le reste.
+     ===================================================================== */
+  var PRESTIGE = {
+    need: 2500,          // glands d'or à gagner depuis le dernier prestige
+    gold: 0.10,          // +10 % de glands d'or par niveau
+    might: 0.05,         // +5 % de dégâts par niveau
+    xp: 0.05,            // +5 % d'expérience par niveau
+    points: 2,           // points de compétence offerts par niveau
+  };
+  // XP de rang nécessaire pour passer du rang n au rang n+1
+  function rankNeed(n) { return 100 + (n - 1) * 60; }
+
+  /* =====================================================================
      Succès
      check(r, s) : r = partie en cours, s = statistiques totales
      ===================================================================== */
@@ -462,6 +506,10 @@ window.ES_DATA = (function () {
     { id: "riche", name: "Bas de laine", desc: "Gagne 1 000 glands d'or au total.", gold: 100, check: function (r, s) { return s.goldEarned >= 1000; } },
     { id: "troupe", name: "Toute la famille", desc: "Joue une partie avec chaque écureuil.", gold: 200, check: function (r, s) { return CHARACTERS.every(function (c) { return s.played[c.id]; }); } },
     { id: "explorateur", name: "Explorateur", desc: "Joue sur chaque carte.", gold: 200, check: function (r, s) { return MAPS.every(function (m) { return s.maps[m.id]; }); } },
+    { id: "rang_5", name: "Écureuil confirmé", desc: "Atteins le rang 5.", gold: 80, check: function (r, s) { return s.rank >= 5; } },
+    { id: "rang_15", name: "Vétéran du chêne", desc: "Atteins le rang 15.", gold: 250, check: function (r, s) { return s.rank >= 15; } },
+    { id: "prestige_1", name: "Renouveau", desc: "Fais ton premier prestige.", gold: 0, check: function (r, s) { return s.prestige >= 1; } },
+    { id: "arbre", name: "Arbre fleuri", desc: "Dépense 10 points de compétence.", gold: 100, check: function (r, s) { return s.spent >= 10; } },
     { id: "prevoyant", name: "Prévoyant", desc: "Achète 10 améliorations dans la boutique.", gold: 50, check: function (r, s) { return s.bought >= 10; } },
     { id: "coeur_chene", name: "Cœur de chêne", desc: "Survis 5 minutes en mode Difficile.", gold: 300, check: function (r) { return r.hard && r.time >= 300; } },
   ];
@@ -494,6 +542,6 @@ window.ES_DATA = (function () {
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
