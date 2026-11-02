@@ -300,7 +300,7 @@ window.ES_DATA = (function () {
     { id: "capitaine", name: "Capitaine", title: "Écureuil pirate", sprite: "sq_capitaine", weapon: "roquettes",
       desc: "Un œil, zéro peur. Ses roquettes font de gros trous.", mods: { area: 0.15, amount: 1, speed: -0.05 },
       unlock: "survie_10", price: 900 },
-    { id: "jumeaux", name: "Pip & Pop", title: "Écureuils jumeaux", sprite: "sq_pip", weapon: "gland", twin: { name: "Pop", sprite: "sq_pop", dmg: 0.6 },
+    { id: "jumeaux", name: "Pip & Pop", title: "Écureuils jumeaux", sprite: "sq_pip", weapon: "gland", quest: "q_duo10", twin: { name: "Pop", sprite: "sq_pop", dmg: 0.6 },
       desc: "Deux écureuils sur les mêmes commandes, chacun sa vie. Leurs armes font 60 % des dégâts. Si l'un tombe, l'autre peut le relever.", mods: {},
       unlock: "survie_5", price: 1000 },
     { id: "chevalier", name: "Bastien", title: "Écureuil chevalier", sprite: "sq_chevalier", weapon: "ecu",
@@ -312,7 +312,7 @@ window.ES_DATA = (function () {
     { id: "bucheron", name: "Bûche", title: "Écureuil bûcheron", sprite: "sq_bucheron", weapon: "hache",
       desc: "Lance sa hache qui revient en fauchant tout sur son passage.", mods: { might: 0.2, hp: 20, speed: -0.08 },
       unlock: "boss_1", price: 800 },
-    { id: "ninja", name: "Ombre", title: "Écureuil ninja", sprite: "sq_ninja", weapon: "shuriken",
+    { id: "ninja", name: "Ombre", title: "Écureuil ninja", sprite: "sq_ninja", weapon: "shuriken", quest: "q_intouchable",
       desc: "Rapide et insaisissable. Ses shurikens transpercent tout.", mods: { speed: 0.18, hp: -20, dodge: 0.1 },
       unlock: "tueur_500", price: 1000 },
     { id: "druide", name: "Fougère", title: "Écureuil druide", sprite: "sq_druide", weapon: "ronces",
@@ -372,10 +372,10 @@ window.ES_DATA = (function () {
     lien: { name: "Arc électrique", icon: "lienicon", type: "tether", coop: true,
       desc: ["COOP · Un arc électrique relie tes alliés proches et électrocute tout ce qui le traverse.", "+dégâts.", "Portée plus longue.", "Arc plus large.", "+dégâts, crépite plus vite."],
       dmg: [7, 10, 10, 12, 16], tick: [0.3, 0.3, 0.28, 0.25, 0.2], range: [130, 130, 160, 160, 180], width: [7, 7, 8, 11, 12] },
-    ronde: { name: "Ronde des amis", icon: "ronde", type: "orbit", sprite: "acorn", around: "partner", coop: true,
+    ronde: { name: "Ronde des amis", icon: "ronde", type: "orbit", sprite: "acorn", around: "partner", coop: true, quest: "q_coopboss",
       desc: ["COOP · Des glands tournent autour de ton allié le plus proche pour le protéger.", "+1 gland.", "+dégâts.", "+1 gland, cercle plus grand.", "+1 gland, tournent plus vite."],
       n: [3, 4, 4, 5, 6], R: [18, 18, 18, 22, 24], dmg: [9, 9, 13, 13, 16], spd: [3, 3, 3, 3.2, 3.8] },
-    solitaire: { name: "Épines de l'ermite", icon: "needle", type: "radial", sprite: "needle", solo: true,
+    solitaire: { name: "Épines de l'ermite", icon: "needle", type: "radial", sprite: "needle", solo: true, quest: "q_seul",
       desc: ["SOLO · Des aiguilles de pin jaillissent tout autour de toi.", "+2 aiguilles.", "+dégâts, transpercent plus.", "+2 aiguilles.", "+3 aiguilles, plus fréquentes."],
       n: [6, 8, 8, 10, 13], dmg: [10, 10, 14, 14, 17], pierce: [2, 2, 3, 3, 4], cd: [1.8, 1.8, 1.7, 1.6, 1.25], spd: 130 },
     lucioles: { name: "Lucioles", icon: "firefly", type: "chain", unlock: "boss_1",
@@ -421,19 +421,19 @@ window.ES_DATA = (function () {
     obus: { name: "Obus de noisette", icon: "rocket", from: ["roquettes", "loupe"], type: "rocket",
       desc: ["Des roquettes lentes à l'explosion énorme.", "+dégâts.", "Explosion plus large.", "+1 obus.", "+dégâts, plus fréquent."],
       n: [1, 1, 1, 2, 2], dmg: [55, 70, 70, 75, 90], rad: [34, 34, 42, 42, 46], cd: [2.4, 2.3, 2.3, 2.2, 1.8], spd: 95 },
-    rempart: { name: "Rempart", icon: "shieldorb", from: ["ecu", "ecorce"], type: "orbit", sprite: "shieldorb",
+    rempart: { name: "Rempart", icon: "shieldorb", quest: "q_chevalier", from: ["ecu", "ecorce"], type: "orbit", sprite: "shieldorb",
       desc: ["Un mur d'écus qui tourne autour de toi.", "+1 écu.", "+dégâts.", "+1 écu, cercle plus grand.", "+2 écus."],
       n: [5, 6, 6, 7, 9], R: [24, 24, 24, 30, 32], dmg: [15, 15, 20, 20, 23], spd: [2.2, 2.2, 2.4, 2.4, 2.8] },
-    supernova: { name: "Supernova", icon: "orb", from: ["nova", "savoir"], type: "nova", twice: [1, 1, 1, 1, 1],
+    supernova: { name: "Supernova", icon: "orb", quest: "q_mage", from: ["nova", "savoir"], type: "nova", twice: [1, 1, 1, 1, 1],
       desc: ["Deux ondes arcaniques coup sur coup.", "Plus large.", "+dégâts.", "Plus fréquente.", "Onde gigantesque."],
       R: [62, 70, 70, 74, 86], dmg: [28, 28, 38, 38, 46], cd: [2.0, 2.0, 1.9, 1.5, 1.3] },
-    double_hache: { name: "Double hache", icon: "axe", from: ["hache", "griffes"], type: "boomerang", sprite: "axe",
+    double_hache: { name: "Double hache", icon: "axe", quest: "q_bucheron", from: ["hache", "griffes"], type: "boomerang", sprite: "axe",
       desc: ["Deux haches lourdes qui reviennent.", "+dégâts.", "Vont plus loin.", "+1 hache.", "+dégâts, plus fréquentes."],
       n: [2, 2, 2, 3, 3], dmg: [36, 44, 44, 48, 58], range: [95, 95, 115, 115, 120], cd: [1.7, 1.7, 1.6, 1.5, 1.2], chain: 0 },
-    tempete_shuriken: { name: "Tempête de shurikens", icon: "shuriken", from: ["shuriken", "pattes"], type: "shooter", sprite: "shuriken", anim: true,
+    tempete_shuriken: { name: "Tempête de shurikens", icon: "shuriken", quest: "q_ninja", from: ["shuriken", "pattes"], type: "shooter", sprite: "shuriken", anim: true,
       desc: ["Une rafale de shurikens qui traversent tout.", "+1 shuriken.", "+dégâts.", "Transpercent plus.", "Rafale continue."],
       count: [3, 4, 4, 4, 5], dmg: [13, 13, 17, 17, 19], pierce: [6, 6, 6, 9, 9], cd: [0.55, 0.55, 0.5, 0.5, 0.35], spd: 210, range: 170 },
-    foret: { name: "Forêt vivante", icon: "thorn", from: ["ronces", "seve"], type: "thorns",
+    foret: { name: "Forêt vivante", icon: "thorn", quest: "q_druide", from: ["ronces", "seve"], type: "thorns",
       desc: ["Des ronciers géants partout autour de toi.", "+1 roncier.", "Plus grands.", "+dégâts.", "+2 ronciers."],
       n: [3, 4, 4, 4, 6], dmg: [9, 9, 9, 13, 14], rad: [24, 24, 30, 30, 32], dur: [5, 5, 5, 5, 6], cd: [2.2, 2.2, 2.1, 2, 1.8] },
     gatling: { name: "Gatling de chêne", icon: "gatling", from: ["gland", "mitraillette"], type: "shooter", sprite: "goldacorn",
@@ -498,11 +498,11 @@ window.ES_DATA = (function () {
     loupe: { name: "Loupe", sprite: "loupe", desc: "+10 % de zone d'effet." },
     trefle: { name: "Trèfle", sprite: "clover", desc: "+20 % de chance de butin." },
     meute: { name: "Esprit de meute", sprite: "paws2", coop: true, desc: "COOP · Avec un allié à moins de 80 px : +8 % de dégâts et -1 dégât reçu." },
-    entraide: { name: "Main tendue", sprite: "hand", coop: true, desc: "COOP · Soigne tes alliés proches (0,3 PV/s) et relève 25 % plus vite." },
+    entraide: { name: "Main tendue", sprite: "hand", coop: true, quest: "q_releve1", desc: "COOP · Soigne tes alliés proches (0,3 PV/s) et relève 25 % plus vite." },
     ermite: { name: "Lanterne de l'ermite", sprite: "lantern", solo: true, desc: "SOLO · +12 % de dégâts et +8 % d'expérience." },
-    crocs: { name: "Crocs", sprite: "fang", desc: "+5 % de coups critiques." },
-    queuetouffue: { name: "Queue touffue", sprite: "tailpuff", desc: "4 % de chance d'esquiver un coup." },
-    sacglands: { name: "Sac de glands", sprite: "sack", desc: "+10 % de glands d'or." },
+    crocs: { name: "Crocs", sprite: "fang", quest: "q_crits", desc: "+5 % de coups critiques." },
+    queuetouffue: { name: "Queue touffue", sprite: "tailpuff", quest: "q_esquive", desc: "4 % de chance d'esquiver un coup." },
+    sacglands: { name: "Sac de glands", sprite: "sack", quest: "q_riche", desc: "+10 % de glands d'or." },
     mousse: { name: "Coussin de mousse", sprite: "moss", desc: "Bloque un coup, se recharge plus vite à chaque niveau." },
   };
 
@@ -631,6 +631,45 @@ window.ES_DATA = (function () {
     need: function (L) { return 18 + (L - 1) * 11; },
   };
   // Reliques : butin rare des salles d'élite et des gardiens (bonus pour la partie)
+  // Types de donjon (remplacent les cartes en mode Donjon) : ambiance des étages, ennemis, mini-boss, boss final, dangers
+  var DUNGEONS = [
+    { id: "terriers", name: "Terriers oubliés", icon: "golem", desc: "Galeries de terre, grottes moussues et racines. Le donjon classique.",
+      hp: 1, gold: 1, final: "golem", finalHp: 1.3, guards: ["bigmole", "queen", "stag"], poison: 0, pits: 1,
+      themes: [
+        { name: "Terriers", floor: "#4a3a2c", grid: "#43342a", wall: "#2a1d14", top: "#5a4330", dark: 0.5, accent: "#6b5440" },
+        { name: "Grottes moussues", floor: "#34402f", grid: "#2c3727", wall: "#1b2218", top: "#4c5a3c", dark: 0.6, accent: "#55704a" },
+        { name: "Racines profondes", floor: "#3d2a2e", grid: "#35242a", wall: "#1e1215", top: "#5a3038", dark: 0.7, accent: "#6a3a44" }],
+      pools: [["slug", "beetle", "spider", "bombshroom", "rat", "rat", "bat", "puffball"],
+              ["beetle", "spider", "frog", "mole", "hedgehog", "weaver", "snake", "salamander", "bat", "turtle"],
+              ["frog", "mole", "hedgehog", "crow", "badger", "toad", "salamander", "weaver", "firefly", "turtle", "snake"]] },
+    { id: "ruche", name: "Ruche abandonnée", icon: "queen", desc: "Alvéoles de cire et couloirs bourdonnants. Insectes partout, la Reine au fond.", unlock: "donjon_2",
+      hp: 1.15, gold: 1.3, final: "queen", finalHp: 2.6, guards: ["queen", "bigmole", "queen"], poison: 0.05, pits: 0.6,
+      themes: [
+        { name: "Alvéoles", floor: "#8a6a2a", grid: "#7a5c22", wall: "#3a2a10", top: "#b8902e", dark: 0.45, accent: "#d8b040" },
+        { name: "Couvain", floor: "#7a5226", grid: "#6a461f", wall: "#2e1e0c", top: "#a87830", dark: 0.55, accent: "#e0a83a" },
+        { name: "Chambre royale", floor: "#6a3a1e", grid: "#5a3018", wall: "#2a140a", top: "#9a5a26", dark: 0.65, accent: "#f2c230" }],
+      pools: [["wasp", "wasp", "beetle", "spider", "moth", "firefly"],
+              ["wasp", "weaver", "spider", "moth", "firefly", "beetle", "bat"],
+              ["wasp", "weaver", "firefly", "moth", "crow", "salamander", "spider"]] },
+    { id: "crypte", name: "Crypte fongique", icon: "mushking", desc: "Champignons géants, spores et flaques toxiques. Beaucoup de poison.", unlock: "donjon_win",
+      hp: 1.3, gold: 1.6, final: "mushking", finalHp: 2.2, guards: ["mushking", "bigmole", "mushking"], poison: 0.35, pits: 0.8,
+      themes: [
+        { name: "Mycélium", floor: "#3e3550", grid: "#352d46", wall: "#1a1424", top: "#5a4a72", dark: 0.55, accent: "#8a6ac8" },
+        { name: "Spores bleues", floor: "#2a3e4a", grid: "#233540", wall: "#10181e", top: "#3a5a6a", dark: 0.65, accent: "#7fd1c7" },
+        { name: "Cœur pourri", floor: "#2e3a24", grid: "#26311e", wall: "#12180c", top: "#4a5a30", dark: 0.75, accent: "#9ad04a" }],
+      pools: [["slug", "puffball", "bombshroom", "moth", "frog"],
+              ["puffball", "bombshroom", "toad", "frog", "weaver", "slug", "moth"],
+              ["puffball", "bombshroom", "toad", "badger", "weaver", "turtle", "firefly"]] },
+    { id: "taniere", name: "Tanière des bêtes", icon: "stag", desc: "Ruines envahies où rôdent renards, blaireaux et hérissons. Le Grand Cerf règne.", unlock: "boss_1",
+      hp: 1.2, gold: 1.4, final: "stag", finalHp: 2.3, guards: ["boar", "bigmole", "stag"], poison: 0, pits: 1.3,
+      themes: [
+        { name: "Sous-bois en ruine", floor: "#4a4a34", grid: "#40402c", wall: "#22221a", top: "#62623e", dark: 0.5, accent: "#7a8a4a" },
+        { name: "Halls effondrés", floor: "#4a3e36", grid: "#40352e", wall: "#221c18", top: "#6a5a4a", dark: 0.6, accent: "#a08060" },
+        { name: "Trône du cerf", floor: "#3a2e24", grid: "#32281f", wall: "#1a140e", top: "#5a4630", dark: 0.7, accent: "#c09a5a" }],
+      pools: [["rat", "fox", "bunny", "beetle", "hedgehog"],
+              ["fox", "badger", "hedgehog", "crow", "snake", "rat"],
+              ["badger", "fox", "hedgehog", "crow", "turtle", "salamander", "snake"]] },
+  ];
   var RELICS = [
     { id: "croc", name: "Croc de loup", icon: "🦷", desc: "+15 % de dégâts" },
     { id: "plume", name: "Plume de geai", icon: "🪶", desc: "+12 % de vitesse" },
@@ -844,10 +883,95 @@ window.ES_DATA = (function () {
     { id: "carnet", r: 0, solo: true, icon: "📓", name: "Carnet de survie", desc: "SOLO · +0,5 PV/s et +5 % d'XP." },
     { id: "lanterne", r: 1, solo: true, icon: "🏮", name: "Lanterne de l'ermite", desc: "SOLO · -15 % de recharge quand tes PV sont au-dessus de 80 %." },
     { id: "pleinelune", r: 2, solo: true, icon: "🌕", name: "Pleine lune", desc: "SOLO · +25 % de dégâts contre les élites et les boss." },
+    // ---- objets à débloquer par des quêtes (re-verrouillés à chaque prestige)
+    { id: "trefle4", r: 2, quest: "q_coffres", icon: "🍀", name: "Trèfle à quatre feuilles", desc: "+40 % de chance de butin." },
+    { id: "cor", r: 1, quest: "q_elites", icon: "📣", name: "Cor de guerre", desc: "Après avoir tué une élite : +15 % de dégâts pendant 5 s." },
+    { id: "masque", r: 3, quest: "q_pactes", icon: "👺", name: "Masque du démon", desc: "+10 % de dégâts par pacte du diable scellé." },
+    { id: "halo", r: 2, quest: "q_sanctuaires", icon: "🌟", name: "Halo d'or", desc: "+0,5 PV/s par sanctuaire activé dans la partie (max 5)." },
+    { id: "fiole", r: 1, quest: "q_survie8", icon: "🧪", name: "Fiole de rage", desc: "Sous 30 % de PV : les armes rechargent 30 % plus vite." },
+    { id: "trophee", r: 2, quest: "q_folie", icon: "🏆", name: "Trophée de chasse", desc: "+25 % de dégâts contre les boss." },
+    { id: "graine", r: 0, quest: "q_niveau15", icon: "🌱", name: "Graine ancienne", desc: "+10 PV max et +0,2 PV/s." },
+    { id: "boussole", r: 0, quest: "q_palier", icon: "🧭", name: "Boussole", desc: "+10 % de vitesse, les sanctuaires se chargent 30 % plus vite." },
+    { id: "dague_ombre", r: 3, quest: "q_donjon", icon: "🗡️", name: "Dague de l'ombre", desc: "15 % de chance par coup d'infliger ×4 dégâts." },
+    { id: "nid", r: 2, quest: "q_releve", icon: "🪺", name: "Nid douillet", desc: "+1 renaissance, et tu relèves deux fois plus vite." },
+    { id: "plume_solo", r: 1, quest: "q_arene", icon: "🪶", name: "Plume solitaire", desc: "+20 % d'expérience." },
+    { id: "eclat", r: 2, quest: "q_massacre", icon: "💠", name: "Éclat de météore", desc: "+20 % de zone d'effet." },
+    // ---- pool des boss (lâchés seulement par les boss)
+    { id: "plume_hibou", r: 2, pool: "boss", icon: "🦉", name: "Plume du Hibou ancien", desc: "BOSS · +1 projectile pour toutes les armes." },
+    { id: "bois_roi", r: 2, pool: "boss", icon: "🦌", name: "Couronne de bois", desc: "BOSS · +25 PV max et +1 armure." },
+    { id: "dard_reine", r: 2, pool: "boss", icon: "🐝", name: "Dard de la Reine", desc: "BOSS · Tes coups critiques explosent (15 dégâts autour)." },
+    { id: "coeur_golem", r: 3, pool: "boss", icon: "🗿", name: "Cœur de golem", desc: "BOSS · +50 PV max, +2 armure, -5 % de vitesse." },
+    // ---- pacte du diable (autel de sang : coûte 20 % de PV max)
+    { id: "pacte_force", r: 3, pool: "diable", icon: "😈", name: "Pacte de force", desc: "DIABLE · +40 % de dégâts." },
+    { id: "pacte_ailes", r: 3, pool: "diable", icon: "🦇", name: "Ailes de chauve-souris", desc: "DIABLE · +25 % de vitesse et -20 % de recharge." },
+    { id: "pacte_calice", r: 3, pool: "diable", icon: "🍷", name: "Calice de sang", desc: "DIABLE · Chaque ennemi tué rend 3 PV." },
+    { id: "pacte_ombre", r: 3, pool: "diable", icon: "👁️", name: "Ombre du démon", desc: "DIABLE · +2 projectiles pour toutes les armes." },
+    // ---- sacré (statue sainte, seulement sans pacte)
+    { id: "aureole", r: 3, pool: "sacre", icon: "😇", name: "Auréole", desc: "SACRÉ · +20 % de dégâts et +15 % de vitesse." },
+    { id: "plume_ange", r: 3, pool: "sacre", icon: "🕊️", name: "Plume d'ange", desc: "SACRÉ · Un bouclier qui bloque un coup, rechargé toutes les 10 s." },
+    { id: "eau_benite", r: 3, pool: "sacre", icon: "💧", name: "Eau bénite", desc: "SACRÉ · Régénère 2 PV par seconde." },
+    { id: "lumiere", r: 3, pool: "sacre", icon: "✨", name: "Lumière divine", desc: "SACRÉ · Toutes les 4 s, une onde de lumière blesse tout autour (60 dégâts)." },
     { id: "phenix",   r: 3, icon: "🌅", name: "Plume de phénix", desc: "Une renaissance de plus." },
     { id: "couronne", r: 3, icon: "👑", name: "Couronne de glands", desc: "+50 % d'or et d'XP." },
     { id: "meteore",  r: 3, icon: "☄️", name: "Cœur de météore", desc: "4 % de chance par coup de faire tomber un météore (150 dégâts)." },
     { id: "horloge",  r: 3, icon: "🕰️", name: "Horloge de la forêt", desc: "-20 % de recharge et +15 % de dégâts." },
+  ];
+
+  /* =====================================================================
+     Difficulté qui monte avec le temps (à la Risk of Rain) et sanctuaires
+     ===================================================================== */
+  var TIERS = [
+    { name: "Très facile", color: "#5ac85a" }, { name: "Facile", color: "#9ad04a" }, { name: "Moyen", color: "#e8d040" },
+    { name: "Difficile", color: "#f0a030" }, { name: "Très difficile", color: "#f06a30" }, { name: "Épuisant", color: "#e0383a" },
+    { name: "Infernal", color: "#c02860" }, { name: "Impossible", color: "#8a2ab0" }, { name: "Je te vois", color: "#5a1a8a" },
+    { name: "HAHAHAHA", color: "#2a0a30" },
+  ];
+  var TIER = {
+    minutes: 2.2,          // minutes par palier (mode Normal)
+    hp: 0.12, dmg: 0.16, spawn: 0.1, elite: 0.006, // bonus par palier
+  };
+  // Sanctuaires : on les active en restant dans leur zone (jauge au sol)
+  var SHRINES = [
+    { id: "coffre", name: "Coffre scellé",  color: "#f6d36b", time: 1.4, weight: 30, desc: "Paie des glands pour un objet." },
+    { id: "defi",   name: "Totem de défi",  color: "#ff5a3a", time: 2.0, weight: 18, desc: "Fait venir des élites. Récompense quand elles sont toutes mortes." },
+    { id: "sang",   name: "Autel de sang",  color: "#c0283a", time: 2.0, weight: 12, desc: "Pacte du diable : -20 % de PV max contre un objet maudit." },
+    { id: "boss",   name: "Autel du boss",  color: "#b07cf0", time: 2.5, weight: 9,  desc: "Invoque un boss tout de suite." },
+    { id: "folie",  name: "Totem de folie", color: "#ff40c0", time: 2.0, weight: 9,  desc: "Les prochains boss arrivent en plus d'exemplaires (cumulable)." },
+    { id: "soin",   name: "Source claire",  color: "#6ad8ff", time: 1.4, weight: 14, desc: "Soigne toute l'équipe de moitié." },
+    { id: "sacre",  name: "Statue sainte",  color: "#fff3b0", time: 2.5, weight: 6,  desc: "Un objet sacré… si tu n'as fait aucun pacte." },
+  ];
+
+  /* =====================================================================
+     Quêtes : débloquent des objets (comme dans les roguelites), à refaire à chaque prestige
+     r = partie en cours (ou finie)
+     ===================================================================== */
+  var QUESTS = [
+    { id: "q_niveau15", desc: "Atteins le niveau 15 dans une partie.", check: function (r) { return r.level >= 15; } },
+    { id: "q_palier", desc: "Atteins le palier de difficulté « Difficile ».", check: function (r) { return (r.tier || 0) >= 3; } },
+    { id: "q_coffres", desc: "Ouvre 3 coffres scellés dans une partie.", check: function (r) { return (r.chestsOpened || 0) >= 3; } },
+    { id: "q_elites", desc: "Tue 15 élites dans une partie.", check: function (r) { return (r.elites || 0) >= 15; } },
+    { id: "q_sanctuaires", desc: "Active 6 sanctuaires dans une partie.", check: function (r) { return (r.shrinesUsed || 0) >= 6; } },
+    { id: "q_survie8", desc: "Survis 8 minutes.", check: function (r) { return r.time >= 480; } },
+    { id: "q_pactes", desc: "Scelle 2 pactes du diable dans une partie.", check: function (r) { return (r.devil || 0) >= 2; } },
+    { id: "q_folie", desc: "Bats un boss pendant la folie (totem de folie activé).", check: function (r) { return (r.madBoss || 0) >= 1; } },
+    { id: "q_massacre", desc: "Tue 1 000 ennemis dans une partie.", check: function (r) { return r.kills >= 1000; } },
+    { id: "q_releve", desc: "Relève 3 fois un coéquipier (ou ton jumeau) dans une partie.", check: function (r) { return (r.revivesDone || 0) >= 3; } },
+    { id: "q_arene", desc: "Atteins la manche 10 de l'Arène en solo.", check: function (r) { return r.mode === "arena" && !r.coop && r.round >= 10; } },
+    { id: "q_donjon", desc: "Bats le boss final du Donjon.", check: function (r) { return r.mode === "dungeon" && r.won; } },
+    // quêtes qui débloquent des armes, objets de niveau, fusions et persos
+    { id: "q_coopboss", desc: "Bats un boss en coop (ou avec les jumeaux).", check: function (r) { return r.duo && r.bosses >= 1; } },
+    { id: "q_seul", desc: "Survis 6 minutes en solo, sans partenaire.", check: function (r) { return !r.duo && r.time >= 360; } },
+    { id: "q_crits", desc: "Fais 400 coups critiques dans une partie.", check: function (r) { return (r.crits || 0) >= 400; } },
+    { id: "q_esquive", desc: "Esquive 15 coups dans une partie.", check: function (r) { return (r.dodges || 0) >= 15; } },
+    { id: "q_riche", desc: "Ramasse 400 glands d'or dans une partie.", check: function (r) { return r.gold >= 400; } },
+    { id: "q_releve1", desc: "Relève un coéquipier (ou ton jumeau) en coop.", check: function (r) { return r.duo && (r.revivesDone || 0) >= 1; } },
+    { id: "q_druide", desc: "Survis 7 minutes avec Fougère.", check: function (r) { return r.char === "druide" && r.time >= 420; } },
+    { id: "q_bucheron", desc: "Survis 7 minutes avec Bûche.", check: function (r) { return r.char === "bucheron" && r.time >= 420; } },
+    { id: "q_ninja", desc: "Survis 7 minutes avec Ombre.", check: function (r) { return r.char === "ninja" && r.time >= 420; } },
+    { id: "q_mage", desc: "Survis 7 minutes avec Myrtille.", check: function (r) { return r.char === "mage" && r.time >= 420; } },
+    { id: "q_chevalier", desc: "Survis 7 minutes avec Bastien.", check: function (r) { return r.char === "chevalier" && r.time >= 420; } },
+    { id: "q_intouchable", desc: "Ne prends aucun coup pendant 2 minutes d'affilée (après 3 min de jeu).", check: function (r) { return r.time >= 180 && r.time - (r.lastHit || 0) >= 120; } },
+    { id: "q_duo10", desc: "Survis 10 minutes.", check: function (r) { return r.time >= 600; } },
   ];
 
   /* =====================================================================
@@ -870,6 +994,6 @@ window.ES_DATA = (function () {
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
