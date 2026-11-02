@@ -1658,3 +1658,7 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
   .rd-reveal { grid-template-columns: repeat(3, 1fr); }
   .over-stats { grid-template-columns: repeat(3, 1fr); }
 }
+/* deck : double toucher (pas de zoom au double toucher sur mobile) */
+.rd-slot, .rd-tile, .rd-pick, .rd-slots { touch-action: manipulation; }
+.rd-slot.is-sel { outline: 3px solid var(--ink); outline-offset: 3px; }
+.rd-warn { color: var(--berry); }

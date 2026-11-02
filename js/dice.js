@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.5.0";
+  var VERSION = "0.5.1";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -849,7 +849,14 @@
       return '<span class="rd-die" style="--c:' + T[k].color + ';--d:' + T[k].dark + '" title="' + esc(T[k].name) + '"><img src="' + sqUrl(k) + '" alt=""><img class="rd-ic" src="' + iconUrl(k) + '" alt=""></span>';
     }).join("") + "</div>";
   }
-  var swapK = null, openedHtml = "";
+  var swapK = null, openedHtml = "", lastTap = { id: "", t: 0 }, hintMsg = "";
+  // double toucher maison : l'écran est redessiné à chaque toucher, le « dblclick » du navigateur ne suffit pas
+  function doubleTap(id) {
+    var now = performance.now(), dbl = lastTap.id === id && now - lastTap.t < 380;
+    lastTap = dbl ? { id: "", t: 0 } : { id: id, t: now };
+    return dbl;
+  }
+  function flashHint(msg) { hintMsg = msg; }
   function sprUrl(name) { return urlCache["s" + name] || (urlCache["s" + name] = SPR[name][0].c.toDataURL()); }
   function dieHtml(k) {
     return '<span class="rd-die" style="--c:' + T[k].color + ";--d:" + T[k].dark + '"><img src="' + sqUrl(k) + '" alt=""><img class="rd-ic" src="' + iconUrl(k) + '" alt=""></span>';
@@ -1166,12 +1173,14 @@
       html += '<div class="rd-slots' + (swapK ? " is-swap" : "") + '">';
       for (var i = 0; i < 5; i++) {
         var dk = S.deck[i];
-        html += dk ? '<button class="rd-slot" type="button" data-action="dslot" data-arg="' + i + '" aria-label="Enlever ' + esc(T[dk].name) + ' du deck">' + dieHtml(dk) + "</button>"
+        html += dk ? '<button class="rd-slot' + (S.sel === dk ? " is-sel" : "") + '" type="button" data-action="dslot" data-arg="' + i + '" aria-label="' + esc(T[dk].name) + ' (double toucher pour l\'enlever du deck)">' + dieHtml(dk) + "</button>"
                    : '<button class="rd-slot is-empty" type="button" data-action="dslot" data-arg="' + i + '" aria-label="Place libre"><span>+</span></button>';
       }
       html += "</div>";
       html += '<p class="game-small rd-hint">' + (swapK ? "Touche le dé du deck à remplacer par <b>" + esc(T[swapK].name) + '</b>. <button class="rd-link" type="button" data-action="noswap">Annuler</button>'
-        : S.deck.length < 5 ? "Touche un écureuil pour l'ajouter au deck (" + S.deck.length + "/5)." : "Touche un dé du deck pour l'enlever, ou un écureuil pour voir sa fiche.") + "</p>";
+        : hintMsg ? '<b class="rd-warn">' + esc(hintMsg) + "</b>"
+        : "Touche un dé pour voir sa fiche. <b>Double-touche</b> un écureuil pour le mettre dans le deck (" + S.deck.length + "/5), ou un dé du deck pour l'enlever.") + "</p>";
+      hintMsg = "";
       // la grille des écureuils
       html += '<div class="rd-pick">';
       D.ORDER.forEach(function (k) {
@@ -1324,16 +1333,27 @@
       if (i >= 0) S.deck.splice(i, 1); else if (S.deck.length < 5) S.deck.push(k);
       swapK = null; save(); pushDeck(); SND.click(); show("deck", true);
     },
+    // grille : 1 toucher = fiche ; 2 touchers rapides = mettre dans le deck (ou l'en retirer)
     pick: function (k) {
+      var dbl = doubleTap("g" + k);
       S.sel = k;
       if (swapK) swapK = null;
-      if (owned(k) && S.deck.indexOf(k) < 0 && S.deck.length < 5) { S.deck.push(k); SND.summon(); pushDeck(); } else SND.click();
+      if (dbl && owned(k)) {
+        var i = S.deck.indexOf(k);
+        if (i >= 0) { S.deck.splice(i, 1); SND.click(); pushDeck(); }
+        else if (S.deck.length < 5) { S.deck.push(k); SND.summon(); pushDeck(); }
+        else { SND.no(); flashHint("Deck plein : enlève d'abord un dé (2 touchers dessus), ou utilise « Remplacer »."); }
+      } else SND.click();
       save(); show("deck", true);
     },
+    // deck : 1 toucher = fiche ; 2 touchers rapides = l'enlever
     dslot: function (a) {
       var i = +a, k = S.deck[i];
       if (swapK) { if (k) S.deck[i] = swapK; else if (S.deck.indexOf(swapK) < 0) S.deck.push(swapK); swapK = null; save(); pushDeck(); SND.summon(); show("deck", true); return; }
-      if (k) { S.deck.splice(i, 1); S.sel = k; save(); pushDeck(); SND.click(); show("deck", true); }
+      if (!k) return;
+      if (doubleTap("d" + k)) { S.deck.splice(i, 1); pushDeck(); SND.click(); }
+      else SND.click();
+      S.sel = k; save(); show("deck", true);
     },
     swap: function (k) { swapK = k; SND.click(); show("deck", true); },
     noswap: function () { swapK = null; show("deck", true); },
