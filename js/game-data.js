@@ -459,6 +459,8 @@ window.ES_DATA = (function () {
     ],
     guards: ["toad", "badger", "hedgehog"],
     healOnStairs: 0.35,
+    // XP par niveau : ~1 niveau par salle au début, niveau ~5 fin d'étage 1, ~10 fin d'étage 2, ~15 au boss
+    need: function (L) { return 18 + (L - 1) * 11; },
   };
   // Reliques : butin rare des salles d'élite et des gardiens (bonus pour la partie)
   var RELICS = [
