@@ -412,6 +412,28 @@ window.ES_DATA = (function () {
   ];
 
   /* =====================================================================
+     Mode Arène : arène fermée, manches chronométrées, boutique entre les manches
+     ===================================================================== */
+  var ARENA = {
+    w: 240, h: 165,                // demi-largeur / demi-hauteur de l'arène (pixels de jeu)
+    rounds: 20,                    // manches à gagner
+    roundTime: function (n) { return Math.min(60, 22 + n * 2); },
+    eliteEvery: 3, bossEvery: 5,   // manche d'élite (malus) et manche de boss
+    income: function (n, kills) { return 14 + n * 2 + Math.floor(kills * 0.4); },
+    interestPer: 5, interestMax: 5, // +1 noisette par tranche de 5 gardées, 5 max
+    rerollBase: 3,
+    prices: { newWeapon: 18, upgrade: 10, perLevel: 5, item: 13, fusion: 55, heal: 8, maxhp: 12 },
+    priceGrowth: 0.08,             // +8 % de prix par manche
+    mods: [
+      { id: "enrages", name: "Enragés", desc: "+35 % de vitesse ennemie", spd: 1.35 },
+      { id: "blindes", name: "Blindés", desc: "+60 % de PV ennemis", hp: 1.6 },
+      { id: "nuee", name: "Nuée", desc: "+60 % d'ennemis", rate: 1.6 },
+      { id: "disette", name: "Disette", desc: "Revenu de manche divisé par deux", income: 0.5 },
+      { id: "verre", name: "Peau de verre", desc: "+50 % de dégâts reçus", taken: 1.5 },
+    ],
+  };
+
+  /* =====================================================================
      Boutique (améliorations permanentes)
      ===================================================================== */
   var SHOP = [
@@ -529,6 +551,8 @@ window.ES_DATA = (function () {
     { id: "rang_15", name: "Vétéran du chêne", desc: "Atteins le rang 15.", gold: 250, check: function (r, s) { return s.rank >= 15; } },
     { id: "prestige_1", name: "Renouveau", desc: "Fais ton premier prestige.", gold: 0, check: function (r, s) { return s.prestige >= 1; } },
     { id: "arbre", name: "Arbre fleuri", desc: "Dépense 10 points de compétence.", gold: 100, check: function (r, s) { return s.spent >= 10; } },
+    { id: "arene_10", name: "Gladiateur", desc: "Atteins la manche 10 en Arène.", gold: 150, check: function (r) { return r.mode === "arena" && r.round >= 10; } },
+    { id: "arene_win", name: "Champion de l'arène", desc: "Gagne les 20 manches de l'Arène.", gold: 500, check: function (r) { return r.mode === "arena" && r.won; } },
     { id: "prevoyant", name: "Prévoyant", desc: "Achète 10 améliorations dans la boutique.", gold: 50, check: function (r, s) { return s.bought >= 10; } },
     { id: "coeur_chene", name: "Cœur de chêne", desc: "Survis 5 minutes en mode Difficile.", gold: 300, check: function (r) { return r.hard && r.time >= 300; } },
   ];
@@ -561,6 +585,6 @@ window.ES_DATA = (function () {
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();

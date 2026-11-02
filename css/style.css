@@ -1042,6 +1042,40 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .link-tag.direct { background: #9cc56b; color: #1f3a2b; }
 .link-tag.relay { background: #f6d36b; color: #2b1709; }
 
+/* --- 0.12 : mode Arène --- */
+.coins-line { margin: 4px 0 8px; font-size: 1.1rem; }
+.coins-line small { display: block; font-size: .78rem; color: var(--ink-soft); }
+.choices.ashop { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.choice.offer { padding-bottom: 8px; }
+.choice.offer .price { font-weight: 900; font-size: .95rem; padding: 2px 10px; background: #f6d36b; color: #2b1709; border: 2px solid var(--line); }
+.choice.offer[disabled] { opacity: .55; cursor: not-allowed; transform: none; }
+.choice.offer.is-sold { opacity: .35; }
+.next-round { margin: 10px 0 0; font-size: .88rem; color: var(--berry) !important; }
+.btn-row .waiting { font-weight: 800; color: var(--ink-soft); }
+.mode-desc { margin: 2px 0 0; }
+.game-lb .leaderboard + .leaderboard { margin-top: 16px; }
+@media (max-width: 760px) {
+  .choices.ashop { grid-template-columns: 1fr; gap: 6px; }
+  .choices.ashop .choice { flex-direction: row; text-align: left; align-items: center; padding: 8px 10px; }
+  .choices.ashop .choice-text { flex: 1; min-width: 0; }
+  .choices.ashop .choice-text > span:not(.syn) { font-size: .8rem; }
+  .choices.ashop .price { flex: none; }
+}
+/* ---------- mini jeu : Merger ---------- */
+.merger-stage { background: #1f3a2b; height: min(80vh, 720px); min-height: 460px; }
+.merger-stage .game-canvas { cursor: pointer; }
+.merger-stage .game-overlay { background: rgba(20, 30, 20, .45); }
+.merger-stage.is-full .fs-exit { display: grid; }
+.mg-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 10px 0 6px; }
+.mg-pick { aspect-ratio: 1; padding: 2px; display: grid; place-items: center; cursor: pointer; background: #1f3a2b; border: 3px solid var(--line); box-shadow: 0 3px 0 var(--depth); }
+.mg-pick img { width: 100%; max-width: 52px; height: auto; }
+.mg-pick[aria-pressed="false"] { background: transparent; box-shadow: none; }
+.mg-pick[aria-pressed="false"] img { opacity: .3; filter: grayscale(1); }
+.mg-pick:focus-visible { outline: 3px solid #f6d36b; outline-offset: 2px; }
+.mg-diff { margin: 6px 0; }
+.mg-quick { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.merger-stage .hud-swap { font-size: 1.2rem; }
+@media (max-width: 420px) { .mg-picker { grid-template-columns: repeat(4, 1fr); } }
 /* --- Écureuil Dice --- */
 .rd-hud { display: flex; justify-content: flex-end; gap: 6px; inset: 0 0 auto auto; }
 .hud-btn[hidden] { display: none; }

@@ -158,7 +158,8 @@ insert into public.lb_games (id, name, higher_is_better, min_score, max_score)
 values
   ('demo',   'Démo (tests)', true, 0, 1000000),
   ('chaaat', 'Chaaat',       true, 0, 10000000),
-  ('ecureuil-survivor', 'Écureuil Survivor', true, 0, 2000000)
+  ('ecureuil-survivor', 'Écureuil Survivor', true, 0, 2000000),
+  ('ecureuil-arene', 'Écureuil Survivor : Arène', true, 0, 200000)
 on conflict (id) do nothing;
 
 -- Pour un jeu chronométré (plus petit temps = mieux), par exemple :
