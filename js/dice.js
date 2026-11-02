@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.2.0";
+  var VERSION = "0.3.0";
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
   if (!stage || !window.RD_DATA || !window.RD_CORE || !window.ES_DATA) return;
@@ -159,8 +159,7 @@
     newGame({ mode: "versus", kind: "bot", bot: true, botLvl: lvl, sims: [me, bot], panels: [{ world: me, mine: [0] }, { world: bot, mine: [], opp: true, seed: 9 }] });
   }
   function localCoop() {
-    var vertical = stage.clientWidth < stage.clientHeight * 1.2;
-    var w = K.createWorld({ mode: "coop", seed: (Math.random() * 1e9) | 0, vertical: vertical,
+    var w = K.createWorld({ mode: "coop", seed: (Math.random() * 1e9) | 0,
       boards: [{ name: "Joueur 1", deck: S.deck, cls: myCls() }, { name: "Joueur 2", deck: S.deck, cls: myCls() }] });
     newGame({ mode: "coop", kind: "local-coop", sims: [w], panels: [{ world: w, mine: [0, 1] }] });
   }
@@ -218,9 +217,9 @@
   /* =====================================================================
      Rendu
      ===================================================================== */
-  var BTN_SUM = { dx: 0, dy: K.BH + 7, w: 84, h: 20 };
-  function puRect(b, i) { return { x: b.x + i * 26.5, y: b.y + K.BH + 31, w: 24, h: 30 }; }
-  function sumRect(b) { return { x: b.x + BTN_SUM.dx, y: b.y + BTN_SUM.dy, w: BTN_SUM.w, h: BTN_SUM.h }; }
+  // commandes d'un plateau : à partir de b.cy (sous le plateau, ou au-dessus en coop pour celui du haut)
+  function puRect(b, i) { return { x: b.x + i * 26.5, y: b.cy + 24, w: 24, h: 30 }; }
+  function sumRect(b) { return { x: b.x, y: b.cy, w: 84, h: 20 }; }
   function font(sz, w) { ctx.font = (w || 900) + " " + sz + "px Nunito, system-ui, sans-serif"; }
   function text(str, x, y, color, align, sz, outline) {
     font(sz || 6); ctx.textAlign = align || "left"; ctx.textBaseline = "middle";
@@ -290,20 +289,21 @@
     });
     // chemin
     ctx.lineCap = "square"; ctx.lineJoin = "miter";
-    ctx.beginPath(); lay.pts.forEach(function (q, i) { if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); });
-    ctx.strokeStyle = "#6b4430"; ctx.lineWidth = 17; ctx.stroke();
-    ctx.strokeStyle = "#b07a4f"; ctx.lineWidth = 13; ctx.stroke();
-    ctx.strokeStyle = "#c99a6a"; ctx.lineWidth = 3; ctx.setLineDash([2, 5]); ctx.stroke(); ctx.setLineDash([]);
-    // terrier de départ et réserve de noisettes au bout
-    var s0 = lay.pts[0], s1 = lay.pts[lay.pts.length - 1];
-    rect(s0[0] - 7, s0[1] - 2, 14, 8, "#2b1709"); rect(s0[0] - 5, s0[1], 10, 6, "#120a04");
+    function trace() { ctx.beginPath(); lay.paths.forEach(function (pth) { pth.pts.forEach(function (q, i) { if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); }); }); }
+    trace(); ctx.strokeStyle = "#6b4430"; ctx.lineWidth = 17; ctx.stroke();
+    trace(); ctx.strokeStyle = "#b07a4f"; ctx.lineWidth = 13; ctx.stroke();
+    trace(); ctx.strokeStyle = "#c99a6a"; ctx.lineWidth = 3; ctx.setLineDash([2, 5]); ctx.stroke(); ctx.setLineDash([]);
+    // terriers de départ et réserve de noisettes au bout
+    lay.paths.forEach(function (pth) { var s0 = pth.pts[0]; rect(s0[0] - 7, s0[1] - 4, 14, 8, "#2b1709"); rect(s0[0] - 5, s0[1] - 2, 10, 6, "#120a04"); });
+    var s1 = lay.paths[0].pts[lay.paths[0].pts.length - 1];
     drawSpr(SPR.stump[0], s1[0] - 6, s1[1] - 4);
     for (var hI = 0; hI < CFG.lives; hI++) if (hI < w.lives) drawSpr(SPR.nut[0], s1[0] - 9 + hI * 6, s1[1] - 9);
     // plateaux
     w.boards.forEach(function (b, bi) { drawBoard(p, b, bi); });
+    drawRange(p);
     // pièges
     w.mines.forEach(function (m) {
-      var q = K.posAt(lay, m.dist), x = q.x, y = q.y;
+      var q = K.posAt(lay, m.dist, m.lane), x = q.x, y = q.y;
       if (m.t < m.fly && m.x0 !== undefined) { var f = m.t / m.fly; x = m.x0 + (q.x - m.x0) * f; y = m.y0 + (q.y - m.y0) * f - Math.sin(f * Math.PI) * 14; }
       drawSpr(SPR.pinecone[0], x - 3.5, y - 4);
     });
@@ -351,7 +351,7 @@
     box(nx, sr.y, K.BW - sr.w - 3, sr.h, "#3a2618", OUT, OUT);
     drawSpr(SPR.nut[0], nx + 3, sr.y + 6.5);
     text(fmt(b.sp), nx + 11, sr.y + 9.5, "#f6d36b", "left", 7.5);
-    if (!mine) text(b.name.slice(0, 12), o.x + K.BW / 2, o.y + K.BH + 2, "#fdf3de", "center", 4.5);
+    if (!mine) text(b.name.slice(0, 12), nx + (K.BW - sr.w - 3) / 2, sr.y + 17, "#c9b8a0", "center", 4);
     // améliorations
     b.deck.forEach(function (k, i) {
       var r = puRect(o, i), c = K.puCost(b, i), ok = mine && isFinite(c) && b.sp >= c && !p.world.over;
@@ -360,6 +360,35 @@
       text("NV" + (b.pu[i] + 1), r.x + r.w / 2, r.y + 17.5, "#fdf3de", "center", 5);
       text(isFinite(c) ? fmt(c) : "MAX", r.x + r.w / 2, r.y + 24.5, ok ? "#f6d36b" : "#c9b8a0", "center", 5);
     });
+  }
+
+  // cercle de portée de l'écureuil tenu, sélectionné ou survolé
+  function drawRange(p) {
+    var it = null;
+    Object.keys(G.drag).forEach(function (id) { var d = G.drag[id]; if (d.panel === p) it = d; });
+    if (!it && G.sel && G.sel.panel === p) it = G.sel;
+    if (!it && G.hover && G.hover.panel === p) it = G.hover;
+    if (!it) return;
+    var sq = p.world.boards[it.bi] && p.world.boards[it.bi].slots[it.slot]; if (!sq) return;
+    var c = K.slotCenter(p.world.lay, it.bi, it.slot), Tp = T[sq.t];
+    if (Tp.target === "none" && sq.t !== "mine") {
+      // soutien : on montre les cases voisines concernées
+      if (!Tp.haste) return;
+      [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (d) {
+        var cx = it.slot % K.COLS + d[0], cyy = Math.floor(it.slot / K.COLS) + d[1];
+        if (cx < 0 || cx >= K.COLS || cyy < 0 || cyy >= K.ROWS) return;
+        var o = p.world.lay.boards[it.bi];
+        ctx.strokeStyle = "rgba(156,208,106,.9)"; ctx.lineWidth = 1.5; ctx.strokeRect(o.x + cx * K.CELL + 1, o.y + cyy * K.CELL + 1, 24, 24);
+      });
+      return;
+    }
+    var r = K.rangeOf(sq.t);
+    if (!isFinite(r)) return;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 15, p.world.lay.w, p.world.lay.h - 15); ctx.clip();
+    ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(253,243,222,.08)"; ctx.fill();
+    ctx.strokeStyle = Tp.color; ctx.globalAlpha = 0.9; ctx.lineWidth = 1.2; ctx.setLineDash([3, 2]); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   function drawTile(sq, x, y, t) {
@@ -389,7 +418,7 @@
   }
 
   function drawEnemy(w, e) {
-    var q = K.posAt(w.lay, e.dist), fr = SPR[e.type][Math.floor(e.t * 5) % SPR[e.type].length];
+    var q = K.epos(w, e), fr = SPR[e.type][Math.floor(e.t * 5) % SPR[e.type].length];
     var big = e.d.boss ? 1 : 0, x = q.x - fr.w / 2, y = q.y - fr.h + 4;
     if (e.d.hop) y -= Math.max(0, Math.sin(e.t * 7)) * 3;
     if (e.d.fly) y -= 3 + Math.sin(e.t * 4) * 1.5;
@@ -489,7 +518,7 @@
       else if (e.k === "exec") pushVfx(p, { k: "txt", s: "CROC !", x: e.x, y: e.y - 12, c: "#fdf3de", d: 0.6, sz: 5 });
       else if (e.k === "steal") pushVfx(p, { k: "txt", s: "+" + e.v, x: e.x, y: e.y - 16, c: "#5fa3c9", d: 0.7, sz: 5 });
       else if (e.k === "storm") { pushVfx(p, { k: "flash", x: 0, y: 0, w: w.lay.w, h: w.lay.h, c: "#f6d36b", d: 0.18 }); if (loud) SND.zap(); }
-      else if (e.k === "income") { var o = w.lay.boards[e.b]; pushVfx(p, { k: "txt", s: "+" + e.v, x: o.x + K.BW - 20, y: o.y + K.BH + 12, c: "#f6d36b", d: 1 }); }
+      else if (e.k === "income") { var o = w.lay.boards[e.b]; pushVfx(p, { k: "txt", s: "+" + e.v, x: o.x + K.BW - 20, y: o.cy + 4, c: "#f6d36b", d: 1 }); }
       else if (e.k === "pu" && loud) SND.pu();
       else if (e.k === "leak") { pushVfx(p, { k: "flash", x: 0, y: 0, w: w.lay.w, h: w.lay.h, c: "#c8553d", d: 0.35 }); if (loud) SND.leak(); }
       else if (e.k === "wave" && loud) {
@@ -647,6 +676,10 @@
   });
   canvas.addEventListener("pointermove", function (e) {
     if (!G) return;
+    if (e.pointerType === "mouse" && !G.drag[e.pointerId]) {
+      var hL = toLogical(e), hh = hitAt(hL.x, hL.y);
+      G.hover = hh && hh.slot !== undefined ? { panel: hh.p, bi: hh.bi, slot: hh.slot } : null;
+    }
     var d = G.drag[e.pointerId]; if (!d) return;
     var L = toLogical(e); d.x = L.x; d.y = L.y;
     if (Math.hypot(d.x - d.sx, d.y - d.sy) > 4) d.moved = true;
@@ -740,6 +773,8 @@
     if (t.dmg) stats.push(["Dégâts par tir", Math.round(t.dmg * mul) + (t.pu ? " (+" + Math.round(t.pu * mul) + " par amélioration)" : "")]);
     if (t.target !== "none") stats.push(["Cadence", "1 salve / " + String(t.every).replace(".", ",") + " s"]);
     stats.push(["Cible", TARGET[t.target] || t.target]);
+    if (t.target !== "none" || k === "mine") stats.push(["Portée", isFinite(K.rangeOf(k)) ? (K.rangeOf(k) / K.CELL).toFixed(1).replace(".", ",") + " cases" : "tout le chemin"]);
+    else if (t.haste) stats.push(["Portée", "les 4 cases voisines"]);
     stats.push(["Bonus de niveau", "+" + Math.round((mul - 1) * 100) + " % de dégâts"]);
     html += '<dl class="rd-stats">' + stats.map(function (st) { return "<dt>" + st[0] + "</dt><dd>" + st[1] + "</dd>"; }).join("") + "</dl>";
     if (!have) return html + '<p class="game-small">Trouve-le dans un <button class="rd-link" type="button" data-action="go" data-arg="chests">coffre</button>.</p></div>';
@@ -866,10 +901,11 @@
         "<li><b>Invoquer</b> pose un écureuil au hasard de ton deck (1 point) sur une case libre. Chaque invocation coûte 10 noisettes de plus.</li>" +
         "<li><b>Fusionner</b> : glisse un écureuil sur un autre <b>du même type et avec le même nombre de points</b> (ou touche l'un puis l'autre). Tu obtiens un écureuil au hasard de ton deck avec 1 point de plus (7 max).</li>" +
         "<li>Chaque point = un tir par salve, et chaque point au-delà du premier ajoute +" + Math.round(CFG.pipBonus * 100) + " % de dégâts par tir.</li>" +
+        "<li>Chaque écureuil a une <b>portée</b> : touche-le (ou survole-le) pour voir son cercle. Fusionner sur une case bien placée, près du chemin, change tout.</li>" +
         "<li><b>Améliorer</b> (les 5 boutons du bas) renforce tous les écureuils de ce type pour la partie.</li>" +
         "<li>Les bestioles suivent le chemin. Si l'une d'elles atteint ta réserve de noisettes, tu perds une vie (deux pour les gros, toutes pour un boss). 3 vies.</li>" +
         "<li>Une vague sur 5 : un <b>boss</b>. Le Grand Sanglier assomme tes écureuils, le Hibou Ancien les transforme.</li>" +
-        "<li><b>Coop</b> : deux plateaux autour du même chemin, vies partagées, chaque bestiole vaincue rapporte des noisettes aux deux.</li>" +
+        "<li><b>Coop</b> : deux plateaux l'un au-dessus de l'autre ; les bestioles descendent et montent par la gauche, se rejoignent au centre puis filent à droite entre les deux plateaux. Vies partagées, chaque bestiole vaincue rapporte des noisettes aux deux.</li>" +
         "<li><b>Versus</b> : mêmes vagues pour les deux joueurs, chacun sur son chemin. Le dernier debout gagne.</li>" +
         "<li>Clavier : <kbd>Espace</kbd> invoque, <kbd>1</kbd>…<kbd>5</kbd> améliorent, <kbd>Échap</kbd> pause.</li>" +
         "<li>Les <b>glands d'or</b> gagnés en jouant ouvrent des <b>coffres</b> : chaque coffre donne des écureuils (commun, rare, épique ou légendaire). Avec assez d'exemplaires du même écureuil, tu montes son niveau. Aucun achat avec de l'argent réel.</li>" +
@@ -1091,7 +1127,7 @@
   function hostStart() {
     if (Net.role !== "host" || Net.roster.length < 2) return;
     var roster = Net.roster.slice(0, 2).map(function (x) { return { id: x.id, name: x.name, deck: x.deck, cls: x.cls }; });
-    var info = { mode: Net.mode, seed: (Math.random() * 1e9) | 0, roster: roster, vertical: stage.clientWidth < stage.clientHeight * 1.2 };
+    var info = { mode: Net.mode, seed: (Math.random() * 1e9) | 0, roster: roster };
     netSend("start", info);
     startOnline(info);
   }
@@ -1102,7 +1138,7 @@
     var other = info.roster[1 - meI];
     var boards = info.roster.map(function (x) { return { id: x.id, name: x.name, deck: x.deck, cls: x.cls }; });
     if (info.mode === "coop") {
-      var w = K.createWorld({ mode: "coop", seed: info.seed, vertical: info.vertical, boards: boards, view: Net.role !== "host" });
+      var w = K.createWorld({ mode: "coop", seed: info.seed, boards: boards, view: Net.role !== "host" });
       var cfg = { mode: "coop", kind: "net-coop", panels: [{ world: w, mine: [meI], view: Net.role !== "host" }], sims: Net.role === "host" ? [w] : [] };
       newGame(cfg);
     } else {
