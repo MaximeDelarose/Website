@@ -1850,3 +1850,61 @@ button.tu-next:active { transform: translateY(2px); }
   .td-pill { font-size: .9rem; padding: 0 7px; }
   .td-go { width: 58px; height: 58px; }
 }
+
+/* ---------- Merger : choix Solo / Coop ---------- */
+.game-stage[hidden] { display: none !important; }
+.game-help[hidden] { display: none; }
+.mg-modes { display: inline-flex; gap: 4px; padding: 4px; background: var(--panel-2); border: 3px solid var(--line); box-shadow: 0 3px 0 var(--depth); margin-left: auto; }
+.mg-modes button {
+  font: inherit; font-weight: 800; font-size: .95rem; padding: 6px 14px; border: 0; cursor: pointer;
+  background: transparent; color: var(--ink-soft); transition: background .18s, color .18s, transform .18s;
+}
+.mg-modes button:hover { color: var(--ink); transform: translateY(-1px); }
+.mg-modes button.is-on { background: var(--orange); color: #2b1709; box-shadow: inset 0 -3px 0 var(--orange-dk); }
+.mg-modes button[data-mode="coop"].is-on { background: #3fb6c6; box-shadow: inset 0 -3px 0 #1d6f7a; }
+@media (max-width: 640px) { .mg-modes { order: 3; width: 100%; } .mg-modes button { flex: 1; } }
+
+/* ---------- Merger Coop ---------- */
+.mc-stage { background: #27465f; height: min(82vh, 760px); }
+.mc-stage .game-canvas { cursor: crosshair; }
+.mc-stage .game-overlay { background: radial-gradient(ellipse at center, rgba(20, 35, 40, .35), rgba(10, 20, 25, .7)); }
+.mc-stage .mc-hud { top: auto; bottom: 8px; right: 50%; transform: translateX(50%); }
+.mc-card { width: min(640px, 100%); border-radius: 0; }
+.mc-card.mc-in { animation: mc-pop .38s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes mc-pop { from { transform: scale(.86) translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+.mc-title { font-size: clamp(1.6rem, 4vw, 2.3rem); margin-bottom: .2em; }
+.mc-title span { color: #2b9fb0; }
+.mc-sub { max-width: 46ch; margin: 0 auto 10px; }
+.mc-cast { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px; margin: 4px 0 10px; }
+.mc-who img { display: block; animation: mc-bob 2.4s ease-in-out infinite; }
+.mc-who:nth-child(2n) img { animation-delay: -.6s; }
+.mc-who:nth-child(3n) img { animation-delay: -1.2s; }
+.mc-who img:hover { animation: mc-jump .5s ease; }
+@keyframes mc-bob { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-5px) scale(.97, 1.03); } }
+@keyframes mc-jump { 0% { transform: scale(1); } 30% { transform: scale(1.15, .85); } 60% { transform: translateY(-12px) scale(.9, 1.1); } 100% { transform: none; } }
+.mc-players { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; margin: 6px 0; }
+.mc-p { padding: 10px 12px; border: 3px solid var(--line); display: grid; gap: 4px; font-size: .9rem; background: var(--panel-2); }
+.mc-p strong { font-size: 1rem; }
+.mc-p small { color: var(--ink-soft); font-size: .75rem; }
+.mc-p1 { box-shadow: inset 6px 0 0 #f08a3c; }
+.mc-p2 { box-shadow: inset -6px 0 0 #3fb6c6; }
+.mc-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 12px 0 6px; }
+.mc-card .btn { transition: transform .15s cubic-bezier(.2, 1.6, .4, 1), filter .15s; }
+.mc-card .btn:hover { transform: translateY(-2px) scale(1.04); }
+.mc-card .btn:active { transform: translateY(1px) scale(.97); }
+.mc-go { font-size: 1.15rem; padding: 12px 26px; animation: mc-breathe 2.2s ease-in-out infinite; }
+.mc-go small { font-size: .75rem; opacity: .8; }
+@keyframes mc-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.mc-more { text-align: left; margin: 6px 0; }
+.mc-more summary { cursor: pointer; font-weight: 800; }
+.mc-settings { display: grid; gap: 8px; margin: 10px 0; text-align: left; }
+.mc-settings label { display: grid; grid-template-columns: 7.5em 1fr; align-items: center; gap: 10px; font-weight: 700; font-size: .92rem; }
+.mc-settings label.mc-check { grid-template-columns: auto 1fr; }
+.mc-settings input[type="range"] { width: 100%; accent-color: var(--orange); }
+.mc-score { font-size: clamp(2.2rem, 7vw, 3.4rem); font-weight: 900; margin: 0; color: var(--orange) !important; animation: mc-pop .5s .15s cubic-bezier(.2, 1.6, .4, 1) both; }
+.mc-stats { list-style: none; padding: 0; margin: 10px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.mc-stats li { padding: 8px 4px; background: var(--panel-2); border: 3px solid var(--line); display: grid; gap: 2px; }
+.mc-stats b { font-size: 1.4rem; }
+.mc-stats span { font-size: .72rem; color: var(--ink-soft); line-height: 1.2; }
+@media (max-width: 560px) { .mc-players { grid-template-columns: 1fr; } .mc-stats { grid-template-columns: repeat(2, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .mc-who img, .mc-go, .mc-card.mc-in { animation: none; } }

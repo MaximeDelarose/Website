@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "1.3.2";              // version affichée dans le menu (tag git : merger-v<VERSION>)
+  var VERSION = "2.0.0";              // version affichée dans le menu (tag git : merger-v<VERSION>)
   var GAME_ID = "merger";
   var stage = document.querySelector("[data-merger]");
   if (!stage) return;
@@ -24,23 +24,9 @@
   var swapBtn = stage.querySelector("[data-swap]");
   var hud = stage.querySelector("[data-hud]");
 
-  /* ---------- les 12 écureuils ----------
-     body / dark = couleurs ; fur = motif de fourrure ; eyes / mouth / brow = expression ;
-     acc = accessoire ; face / eyeC / nose / blush = retouches (voir drawSquirrel) */
-  var SQUIRRELS = [
-    { name: "Rosette",   body: "#f2a7a0", dark: "#c46f68", fur: "belly",      eyes: "sparkle",   mouth: "smile", acc: "bow", blush: 1.4 },
-    { name: "Noisette",  body: "#f6c453", dark: "#c99520", fur: "stripes",    eyes: "happy",     mouth: "open" },
-    { name: "Mousse",    body: "#9fcf6e", dark: "#6a9a3e", fur: "freckles",   eyes: "sleepy",    mouth: "smile", acc: "leaf" },
-    { name: "Myrtille",  body: "#7fb0e8", dark: "#4f7fbb", fur: "cheekfluff", eyes: "glasses",   mouth: "smug" },
-    { name: "Grisou",    body: "#b6b3cc", dark: "#7f7b99", fur: "spiky",      eyes: "normal",    mouth: "flat",  brow: "angry" },
-    { name: "Roux",      body: "#e8873a", dark: "#b0581a", fur: "chest",      eyes: "wink",      mouth: "grin" },
-    { name: "Châtaigne", body: "#a8673f", dark: "#6f3c20", fur: "mask",       eyes: "puppy",     mouth: "teeth" },
-    { name: "Flocon",    body: "#fdf3de", dark: "#cdb58a", fur: "curls",      eyes: "surprised", mouth: "o",     nose: "#e86a8a" },
-    { name: "Corbeau",   body: "#45415a", dark: "#24212f", fur: "star",       eyes: "slit",      mouth: "fang",  face: "#5f5a77", eyeC: "#f6d36b", nose: "#f6d36b" },
-    { name: "Cerise",    body: "#e0544b", dark: "#a3302a", fur: "tiger",      eyes: "normal",    mouth: "open",  brow: "angry" },
-    { name: "Lagon",     body: "#5cc6c0", dark: "#2f8f8a", fur: "swirl",      eyes: "starry",    mouth: "smile" },
-    { name: "Lilas",     body: "#a982dc", dark: "#7652a8", fur: "bangs",      eyes: "dreamy",    mouth: "w",     blush: 1.5 },
-  ];
+  /* ---------- les 12 écureuils : voir js/merger-art.js (partagé avec le mode Coop) ---------- */
+  var ART = window.MergerArt;
+  var SQUIRRELS = ART.SQUIRRELS;
   var N = SQUIRRELS.length;
   var R = 26.4;                       // rayon de tous les écureuils
   var GROUP = 3;                      // combien doivent se toucher pour disparaître
@@ -264,7 +250,7 @@
     S = Math.min(availW / (JW + 24), availH / (JH + 24));
     OX = SIDE ? 210 + (cw - 210 - JW * S) / 2 : (cw - JW * S) / 2;
     OY = SIDE ? (ch - JH * S) / 2 : 88 + (availH - JH * S) / 2;
-    sprites.clear();
+    spriteCache.clear();
     paintBackground();
   }
 
@@ -285,241 +271,9 @@
     for (var py = 0; py < H + 60; py += 70) for (var px = (py / 70 % 2) * 35; px < W + 60; px += 70) acorn(g, px, py, 9);
   }
 
-  var sprites = new Map();
-  function sprite(type, pr, flip, part, blink, mood, look) {
-    var key = type + "|" + pr + "|" + flip + "|" + part + "|" + blink + "|" + mood + "|" + look;
-    var sp = sprites.get(key);
-    if (sp) return sp;
-    if (sprites.size > 1500) sprites.clear();
-    var size = Math.ceil(pr * 3.1) + 4, c = document.createElement("canvas");
-    c.width = c.height = size;
-    var cx = size / 2, cy = size * 0.56;
-    var a = look < 0 ? 0 : look * Math.PI / 4;
-    drawSquirrel(c.getContext("2d"), cx, cy, type, pr, { part: part, flip: flip, blink: blink ? -1 : 1, mood: mood,
-      lx: look < 0 ? 0 : Math.cos(a), ly: look < 0 ? 0 : Math.sin(a) });
-    sp = { c: c, cx: cx, cy: cy };
-    sprites.set(key, sp);
-    return sp;
-  }
-  function lookIndex(lx, ly) { return lx || ly ? (Math.round(Math.atan2(ly, lx) / (Math.PI / 4)) + 8) % 8 : -1; }
-
-  // dessine un écureuil depuis le cache. r = rayon (unités courantes), px = pixels par unité,
-  // o = { k (échelle respiration/apparition), alpha, flip, blink, mood, lx, ly, sq, wag,
-  // }
-  function blit(x, y, type, r, px, o) {
-    o = o || {};
-    var f = o.flip || 1, pr = Math.max(4, Math.round(r * px)), u = r / pr;
-    var look = lookIndex(o.lx || 0, o.ly || 0), blink = (o.blink != null && o.blink < 0) ? 1 : 0, mood = o.mood || "";
-    var tail = sprite(type, pr, f, "tail", 0, "", -1), body = sprite(type, pr, f, "body", blink, mood, look);
-    var k = o.k || 1, sq = o.sq || 0;
-    ctx.save();
-    if (o.alpha != null) ctx.globalAlpha = o.alpha;
-    ctx.translate(x, y);
-    if (sq) { ctx.translate(0, r * 0.14 * sq); ctx.scale(1 + 0.14 * sq, 1 - 0.14 * sq); }
-    // mou : aplati le long de l'axe où on l'écrase (et gonflé sur les côtés), puis effet gelée
-    ctx.scale(k * u, k * u);
-    // la queue remue autour de sa base
-    ctx.save();
-    ctx.translate(f * pr * 0.6, pr * 0.3); ctx.rotate(f * (o.wag || 0) * 0.16); ctx.translate(-f * pr * 0.6, -pr * 0.3);
-    ctx.drawImage(tail.c, -tail.cx, -tail.cy);
-    ctx.restore();
-    ctx.drawImage(body.c, -body.cx, -body.cy);
-    ctx.restore();
-  }
-
-  function lighten(hex) {
-    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
-    return "rgb(" + Math.min(255, r + 50) + "," + Math.min(255, g + 50) + "," + Math.min(255, b + 50) + ")";
-  }
-
-  /* ---------- dessin d'un écureuil ----------
-     o = { blink, alpha, flip, lx, ly (regard -1..1), mood ("happy" | "worried"),
-           sq (écrasement 0..1), wag (queue -1..1), part ("tail" | "body" | tout) } — tout est optionnel.
-     En jeu on passe par blit() (cache de sprites) ; drawSquirrel sert à remplir le cache. */
-  var TAU = 6.2832;
-  function drawSquirrel(g, x, y, type, r, o) {
-    o = o || {};
-    var c = SQUIRRELS[type], f = o.flip || 1, blink = o.blink == null ? 1 : o.blink;
-    var lx = o.lx || 0, ly = o.ly || 0, mood = o.mood || "", sq = o.sq || 0, wag = o.wag || 0;
-    var line = "#2b1709", lw = Math.max(1.2, r * 0.08), lite = lighten(c.body), dk = c.dark;
-    g.save();
-    g.globalAlpha = o.alpha == null ? 1 : o.alpha;
-    g.translate(x, y);
-    if (sq) { g.translate(0, r * 0.14 * sq); g.scale(1 + 0.14 * sq, 1 - 0.14 * sq); }
-    g.strokeStyle = line; g.lineWidth = lw; g.lineJoin = "round"; g.lineCap = "round";
-    function ell(cx, cy, rx, ry, rot, fill, stroke) { g.beginPath(); g.ellipse(cx, cy, rx, ry, rot || 0, 0, TAU); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) g.stroke(); }
-    function poly(pts, fill, stroke) { g.beginPath(); g.moveTo(pts[0] * r, pts[1] * r); for (var i = 2; i < pts.length; i += 2) g.lineTo(pts[i] * r, pts[i + 1] * r); g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) g.stroke(); }
-
-    /* --- derrière le corps : queue (qui remue), touffes, oreilles --- */
-    if (o.part !== "body") {
-    g.save();
-    g.translate(f * r * 0.6, r * 0.3); g.rotate(f * wag * 0.16); g.translate(-f * r * 0.6, -r * 0.3);
-    g.save();
-    g.translate(f * r * 0.78, -r * 0.3); g.rotate(f * 0.35);
-    ell(0, 0, r * 0.42, r * 0.8, 0, dk, true);
-    ell(f * r * 0.06, -r * 0.1, r * 0.2, r * 0.55, 0, lighten(dk));
-    g.restore();
-    ell(f * r * 0.5, -r * 1.02, r * 0.3, r * 0.3, 0, dk, true);
-    ell(f * r * 0.46, -r * 1.06, r * 0.14, r * 0.14, 0, lighten(dk));
-    g.restore();
-    }
-    if (o.part === "tail") { g.restore(); return; }
-    if (c.fur === "cheekfluff") [-1, 1].forEach(function (s) {
-      poly([s * 0.88, -0.2, s * 1.2, -0.06, s * 0.98, 0.04, s * 1.22, 0.18, s * 0.96, 0.26, s * 1.12, 0.4, s * 0.85, 0.45], c.body, true);
-    });
-    [-1, 1].forEach(function (s) {
-      ell(s * r * 0.45, -r * 0.82, r * 0.17, r * 0.26, s * 0.25, c.body, true);
-      ell(s * r * 0.45, -r * 0.8, r * 0.08, r * 0.15, s * 0.25, "#f7b6a4");
-      poly([s * 0.4, -1.04, s * 0.5, -1.24, s * 0.56, -1.02], dk);
-    });
-
-    /* --- corps + motifs de fourrure (découpés dans la boule) --- */
-    var gr = g.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
-    gr.addColorStop(0, lite); gr.addColorStop(0.7, c.body); gr.addColorStop(1, dk);
-    g.fillStyle = gr;
-    g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
-    g.save();
-    g.beginPath(); g.arc(0, 0, r, 0, TAU); g.clip();
-    var face = c.face || "rgba(253,243,222,.88)";
-    switch (c.fur) {
-      case "belly": ell(0, r * 0.42, r * 0.62, r * 0.5, 0, face); break;
-      case "stripes":
-        g.strokeStyle = dk; g.lineWidth = r * 0.1;
-        g.beginPath(); g.moveTo(0, -r); g.lineTo(0, -r * 0.42); g.moveTo(-r * 0.2, -r); g.lineTo(-r * 0.14, -r * 0.5); g.moveTo(r * 0.2, -r); g.lineTo(r * 0.14, -r * 0.5); g.stroke();
-        break;
-      case "freckles":
-        ell(-r * 0.42, -r * 0.6, r * 0.13, r * 0.1, 0.4, lite); ell(r * 0.38, -r * 0.7, r * 0.08, r * 0.07, 0, lite); ell(r * 0.62, -r * 0.42, r * 0.06, r * 0.05, 0, lite);
-        break;
-      case "chest": ell(0, -r * 0.62, r * 0.13, r * 0.42, 0, face); break;
-      case "mask": [-1, 1].forEach(function (s) { ell(s * r * 0.3, -r * 0.13, r * 0.23, r * 0.2, s * 0.3, "rgba(60,30,15,.45)"); }); break;
-      case "tiger":
-        g.strokeStyle = dk; g.lineWidth = r * 0.09;
-        [-1, 1].forEach(function (s) { for (var i = 0; i < 3; i++) { g.beginPath(); g.moveTo(s * r, -r * 0.45 + i * r * 0.28); g.quadraticCurveTo(s * r * 0.8, -r * 0.38 + i * r * 0.28, s * r * 0.68, -r * 0.5 + i * r * 0.28); g.stroke(); } });
-        g.beginPath(); g.moveTo(0, -r); g.lineTo(0, -r * 0.6); g.stroke();
-        break;
-      case "swirl":
-        g.strokeStyle = lite; g.lineWidth = r * 0.07;
-        g.beginPath(); g.arc(0, -r * 0.6, r * 0.14, 0.5, TAU - 0.3); g.stroke();
-        g.beginPath(); g.arc(r * 0.02, -r * 0.6, r * 0.06, 0, Math.PI * 1.4); g.stroke();
-        break;
-      case "bangs":
-        [-0.34, 0, 0.34].forEach(function (cx, i) { ell(cx * r, -r * (0.8 - (i === 1 ? 0.06 : 0)), r * 0.25, r * 0.23, 0, dk); });
-        break;
-    }
-    ell(0, r * 0.3, r * 0.48, r * 0.4, 0, face);       // museau
-    if (c.fur === "freckles") [-1, 1].forEach(function (s) { [[0.5, 0.06], [0.42, 0.13], [0.58, 0.15]].forEach(function (p) { ell(s * p[0] * r, p[1] * r, r * 0.03, r * 0.03, 0, dk); }); });
-    g.restore();
-    g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke();
-
-    /* --- devant : boucles, étoile, feuille, nœud --- */
-    if (c.fur === "spiky") poly([-0.3, -0.9, -0.3, -1.2, -0.13, -1.0, 0.02, -1.3, 0.14, -0.99, 0.32, -1.16, 0.3, -0.88, 0, -0.96], dk, true);
-    if (c.fur === "curls") [[-0.3, -0.86], [0.3, -0.86], [-0.12, -0.98], [0.14, -0.98]].forEach(function (p) { ell(p[0] * r, p[1] * r, r * 0.17, r * 0.17, 0, lite, true); });
-    if (c.fur === "star") {
-      g.beginPath();
-      for (var k = 0; k < 10; k++) { var a = -Math.PI / 2 + k * Math.PI / 5, rad = (k % 2 ? 0.07 : 0.16) * r; g.lineTo(Math.cos(a) * rad, -r * 0.6 + Math.sin(a) * rad); }
-      g.closePath(); g.fillStyle = "#8f88b8"; g.fill();
-    }
-    if (c.acc === "leaf") {
-      g.save(); g.translate(-f * r * 0.12, -r * 0.98); g.rotate(-f * 0.5);
-      ell(0, -r * 0.14, r * 0.1, r * 0.2, 0, "#3f8a3a", true);
-      g.strokeStyle = "#9fd77e"; g.lineWidth = Math.max(1, r * 0.03); g.beginPath(); g.moveTo(0, -r * 0.3); g.lineTo(0, r * 0.04); g.stroke();
-      g.restore(); g.strokeStyle = line; g.lineWidth = lw;
-    }
-    if (c.acc === "bow") {
-      g.save(); g.translate(-f * r * 0.45, -r * 1.02); g.lineWidth = Math.max(1, lw * 0.7);
-      poly([0, 0, -0.2, -0.13, -0.2, 0.13], "#e8506e", true); poly([0, 0, 0.2, -0.13, 0.2, 0.13], "#e8506e", true);
-      ell(0, 0, r * 0.06, r * 0.06, 0, "#ff8fa8", true);
-      g.restore(); g.lineWidth = lw;
-    }
-
-    /* --- yeux (qui regardent) --- */
-    var ex = r * 0.3, ey = -r * 0.14, px = lx * r * 0.045, py = ly * r * 0.045;
-    var eyeC = c.eyeC || "#2b1709";
-    function closed(s, up) { g.strokeStyle = eyeC; g.lineWidth = lw; g.beginPath(); if (up) g.arc(s * ex, ey + r * 0.04, r * 0.1, Math.PI + 0.35, TAU - 0.35); else g.arc(s * ex, ey - r * 0.04, r * 0.1, 0.35, Math.PI - 0.35); g.stroke(); }
-    function dot(s, w, h, col) { ell(s * ex + px, ey + py, w, h, 0, col || eyeC); }
-    function shine(s, sz, dx, dy) { ell(s * ex + px - r * (dx == null ? 0.035 : dx), ey + py - r * (dy == null ? 0.06 : dy), r * sz, r * sz, 0, "#fff"); }
-    function lashes(s) { g.strokeStyle = eyeC; g.lineWidth = Math.max(1, lw * 0.6); g.beginPath(); g.moveTo(s * (ex + r * 0.1), ey - r * 0.1); g.lineTo(s * (ex + r * 0.19), ey - r * 0.17); g.moveTo(s * (ex + r * 0.04), ey - r * 0.15); g.lineTo(s * (ex + r * 0.09), ey - r * 0.24); g.stroke(); }
-    var eyes = c.eyes;
-    if (mood === "happy" && eyes !== "slit" && eyes !== "glasses") eyes = "happy";
-    [-1, 1].forEach(function (s) {
-      if (blink < 0 && eyes !== "happy") { closed(s); return; }
-      switch (eyes) {
-        case "sparkle": dot(s, r * 0.14, r * 0.17); shine(s, 0.06); shine(s, 0.03, -0.04, -0.06); lashes(s); break;
-        case "happy": closed(s, true); break;
-        case "sleepy":
-          // paupières mi-closes : demi-œil sous un trait
-          g.beginPath(); g.ellipse(s * ex, ey - r * 0.02, r * 0.12, r * 0.12, 0, 0, Math.PI); g.fillStyle = eyeC; g.fill();
-          g.strokeStyle = eyeC; g.lineWidth = lw; g.beginPath(); g.moveTo(s * ex - r * 0.14, ey - r * 0.02); g.lineTo(s * ex + r * 0.14, ey - r * 0.02); g.stroke();
-          ell(s * ex - r * 0.04, ey + r * 0.03, r * 0.025, r * 0.025, 0, "#fff");
-          break;
-        case "glasses": dot(s, r * 0.08, r * 0.1); shine(s, 0.03, 0.02, 0.04); break;
-        case "wink": if (s === 1) { g.strokeStyle = eyeC; g.lineWidth = lw; g.beginPath(); g.moveTo(s * ex - r * 0.1, ey - r * 0.08); g.lineTo(s * ex + r * 0.06, ey); g.lineTo(s * ex - r * 0.1, ey + r * 0.08); g.stroke(); } else { dot(s, r * 0.12, r * 0.15); shine(s, 0.05); } break;
-        case "puppy": dot(s, r * 0.16, r * 0.19); shine(s, 0.075, 0.05, 0.07); shine(s, 0.035, -0.06, -0.06); break;
-        case "surprised": ell(s * ex, ey, r * 0.14, r * 0.15, 0, "#fff", true); dot(s, r * 0.05, r * 0.05); break;
-        case "slit": ell(s * ex + px, ey + py, r * 0.13, r * 0.15, 0, eyeC); ell(s * ex + px, ey + py, r * 0.035, r * 0.12, 0, "#1a1622"); shine(s, 0.03, 0.05, 0.07); break;
-        case "starry":
-          dot(s, r * 0.14, r * 0.16);
-          g.beginPath();
-          for (var k = 0; k < 10; k++) { var a = -Math.PI / 2 + k * Math.PI / 5, rad = (k % 2 ? 0.035 : 0.085) * r; g.lineTo(s * ex + px + Math.cos(a) * rad, ey + py - r * 0.02 + Math.sin(a) * rad); }
-          g.closePath(); g.fillStyle = "#fff"; g.fill();
-          break;
-        case "dreamy": dot(s, r * 0.12, r * 0.15); shine(s, 0.045, 0.02, 0.08); shine(s, 0.025, -0.05, 0.02); lashes(s); break;
-        default: dot(s, r * 0.12, r * 0.15); shine(s, 0.05);
-      }
-    });
-    if (c.eyes === "glasses") {
-      g.strokeStyle = "#2b1709"; g.lineWidth = Math.max(1, lw * 0.8);
-      [-1, 1].forEach(function (s) { g.beginPath(); g.arc(s * ex, ey, r * 0.17, 0, TAU); g.stroke(); });
-      g.beginPath(); g.moveTo(-ex + r * 0.17, ey); g.quadraticCurveTo(0, ey - r * 0.06, ex - r * 0.17, ey); g.stroke();
-      g.fillStyle = "rgba(255,255,255,.35)"; [-1, 1].forEach(function (s) { g.beginPath(); g.arc(s * ex, ey, r * 0.16, 3.6, 4.6); g.lineTo(s * ex, ey); g.fill(); });
-    }
-    // sourcils
-    var brow = mood === "worried" ? "worried" : c.brow;
-    if (brow) {
-      var k2 = brow === "angry" ? 0.07 : -0.07;
-      g.strokeStyle = line; g.lineWidth = Math.max(1.2, r * 0.07);
-      [-1, 1].forEach(function (s) { g.beginPath(); g.moveTo(s * r * 0.14, ey - r * 0.24 + k2 * r); g.lineTo(s * r * 0.44, ey - r * 0.24 - k2 * r); g.stroke(); });
-    }
-
-    /* --- joues, nez, bouche --- */
-    g.fillStyle = "rgba(240,110,110," + (0.42 * (c.blush || 1)) + ")";
-    [-1, 1].forEach(function (s) { g.beginPath(); g.ellipse(s * r * 0.5, r * 0.16, r * 0.14 * (c.blush || 1), r * 0.09, 0, 0, TAU); g.fill(); });
-    ell(0, r * 0.1, r * 0.08, r * 0.055, 0, c.nose || "#5a2f1c");
-    var mouth = c.mouth;
-    if (mood === "happy" && mouth !== "grin" && mouth !== "fang") mouth = "open";
-    if (mood === "worried") mouth = "wobble";
-    g.strokeStyle = line; g.lineWidth = Math.max(1, lw * 0.7);
-    function teeth(w, h) { g.fillStyle = "#fff"; g.lineWidth = Math.max(1, lw * 0.5); g.beginPath(); g.rect(-r * w / 2, r * 0.235, r * w, r * h); g.fill(); g.stroke(); g.beginPath(); g.moveTo(0, r * 0.235); g.lineTo(0, r * (0.235 + h)); g.stroke(); }
-    function smile() { g.beginPath(); g.moveTo(0, r * 0.15); g.lineTo(0, r * 0.22); g.moveTo(-r * 0.13, r * 0.2); g.quadraticCurveTo(0, r * 0.28, r * 0.13, r * 0.2); g.stroke(); }
-    switch (mouth) {
-      case "open":
-        g.beginPath(); g.moveTo(-r * 0.16, r * 0.19); g.quadraticCurveTo(0, r * 0.46, r * 0.16, r * 0.19); g.closePath(); g.fillStyle = "#7a2a2a"; g.fill(); g.stroke();
-        ell(0, r * 0.32, r * 0.07, r * 0.04, 0, "#e86a7a");
-        g.fillStyle = "#fff"; g.fillRect(-r * 0.065, r * 0.2, r * 0.13, r * 0.06);
-        break;
-      case "o": ell(0, r * 0.27, r * 0.05, r * 0.065, 0, "#7a2a2a", true); break;
-      case "smug": g.beginPath(); g.moveTo(-r * 0.12, r * 0.23); g.quadraticCurveTo(r * 0.04, r * 0.28, r * 0.16, r * 0.16); g.stroke(); break;
-      case "flat": g.beginPath(); g.moveTo(-r * 0.11, r * 0.23); g.lineTo(r * 0.11, r * 0.23); g.stroke(); break;
-      case "grin":
-        g.beginPath(); g.moveTo(-r * 0.24, r * 0.17); g.quadraticCurveTo(0, r * 0.44, r * 0.24, r * 0.17); g.closePath(); g.fillStyle = "#fff"; g.fill(); g.stroke();
-        g.lineWidth = Math.max(1, lw * 0.4); g.beginPath(); g.moveTo(-r * 0.2, r * 0.23); g.lineTo(r * 0.2, r * 0.23); g.moveTo(-r * 0.08, r * 0.18); g.lineTo(-r * 0.08, r * 0.32); g.moveTo(r * 0.08, r * 0.18); g.lineTo(r * 0.08, r * 0.32); g.stroke();
-        break;
-      case "teeth": smile(); teeth(0.2, 0.17); break;
-      case "fang":
-        g.beginPath(); g.moveTo(-r * 0.14, r * 0.2); g.quadraticCurveTo(0, r * 0.27, r * 0.15, r * 0.17); g.stroke();
-        poly([0.04, 0.225, 0.11, 0.21, 0.08, 0.31], "#fff", true);
-        break;
-      case "w": g.beginPath(); g.arc(-r * 0.07, r * 0.19, r * 0.07, 0.2, Math.PI - 0.2); g.arc(r * 0.07, r * 0.19, r * 0.07, 0.2, Math.PI - 0.2); g.stroke(); break;
-      case "wobble": g.beginPath(); g.moveTo(-r * 0.14, r * 0.25); for (var i = 1; i <= 4; i++) g.lineTo(-r * 0.14 + i * r * 0.07, r * (i % 2 ? 0.21 : 0.25)); g.stroke(); break;
-      default: smile(); teeth(0.15, 0.12);
-    }
-    // goutte de sueur quand ça déborde
-    if (mood === "worried") {
-      g.beginPath(); g.moveTo(-f * r * 0.72, -r * 0.62); g.quadraticCurveTo(-f * r * 0.86, -r * 0.4, -f * r * 0.72, -r * 0.36); g.quadraticCurveTo(-f * r * 0.58, -r * 0.4, -f * r * 0.72, -r * 0.62);
-      g.fillStyle = "#9fdcff"; g.fill(); g.lineWidth = Math.max(1, lw * 0.5); g.strokeStyle = "#2b6a8a"; g.stroke();
-    }
-    g.restore();
-  }
+  var spriteCache = ART.cache();
+  function blit(x, y, type, r, px, o) { spriteCache.blit(ctx, x, y, type, r, px, o); }
+  var drawSquirrel = ART.draw;
 
   // forme du bac : murs droits + fond arrondi vers le centre
   function jarPath(pad) {
@@ -699,6 +453,7 @@
       '<button class="btn btn-ghost btn-small" type="button" data-act="all">Tout 12/12</button></p>' +
       '<p><button class="btn" type="button" data-act="start">▶ Jouer</button></p>' +
       '<p class="game-small"><span class="ctrl-desk">Souris ou ← → pour viser · clic / Espace pour lâcher · clic sur la paire, clic droit ou ↑ pour permuter · P pour la pause</span></p>' +
+      '<p><button class="btn btn-alt btn-small" type="button" data-act="coop">👥 Nouveau : mode Coop à 2</button></p>' +
       '<p class="game-version">Merger v' + VERSION + '</p>');
   }
 
@@ -761,6 +516,7 @@
     var a = b.getAttribute("data-act");
     if (a === "start") start();
     else if (a === "resume") resume();
+    else if (a === "coop") { if (window.MergerMode) window.MergerMode("coop"); }
     else if (a === "menu") { pair = null; balls = []; score = 0; combo = 0; menu(); }
     else if (a === "easy") setPicked([0, 1, 2, 3]);
     else if (a === "mid") setPicked([0, 1, 2, 3, 4, 5]);
@@ -792,6 +548,7 @@
   canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   var keys = {};
   document.addEventListener("keydown", function (e) {
+    if (stage.hidden) return;   // mode Coop affiché
     if (e.target && /input|textarea/i.test(e.target.tagName)) return;
     var k = e.key;
     if (state === "play" && (k === " " || k === "ArrowDown" || k === "Enter" || k === "s" || k === "S")) { e.preventDefault(); drop(); }
@@ -825,7 +582,7 @@
   document.addEventListener("fullscreenchange", syncFull);
   document.addEventListener("webkitfullscreenchange", syncFull);
   var fsBtn = document.querySelector("[data-game-fullscreen]");
-  if (fsBtn) fsBtn.addEventListener("click", function () { if (isFull()) exitFull(); else enterFull(); });
+  if (fsBtn) fsBtn.addEventListener("click", function () { if (stage.hidden) return; if (isFull()) exitFull(); else enterFull(); });
   var fsExit = stage.querySelector("[data-fs-exit]");
   if (fsExit) fsExit.addEventListener("click", exitFull);
 
@@ -837,6 +594,7 @@
   var last = performance.now();
   function loop(now) {
     var dt = Math.min(0.033, (now - last) / 1000); last = now;
+    if (stage.hidden) { requestAnimationFrame(loop); return; }   // mode Coop affiché : on ne calcule rien
     if (state === "play") {
       var mv = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.q || keys.a ? 1 : 0);
       if (mv) aimX = clampAim(clampAim(aimX) + mv * 360 * dt);
@@ -853,7 +611,7 @@
     add: function (type, x, y) { balls.push(newBall(type, x == null ? JW / 2 : x, y == null ? DROP_Y : y)); },
     swap: swap,
     balls: function () { return balls.map(function (b) { return { id: b.id, x: b.x, y: b.y, r: b.r, v: Math.hypot(b.x - b.px, b.y - b.py), floor: b.y }; }); },
-    geo: function () { return { ox: OX, oy: OY, s: S, ax: clampAim(aimX), dropY: DROP_Y, sprites: sprites.size }; },
+    geo: function () { return { ox: OX, oy: OY, s: S, ax: clampAim(aimX), dropY: DROP_Y, sprites: spriteCache.size() }; },
     draw: function (g, x, y, type, r, o) { drawSquirrel(g, x, y, type, r, o); },
     over: function () { gameOver(); },
   };
