@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261103td1">
+  <link rel="stylesheet" href="css/style.css?v=20261103td2">
 </head>
 <body data-page="defense">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -73,24 +73,28 @@
         <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Écureuil Défense"></canvas>
         <button class="fs-exit" type="button" data-fs-exit aria-label="Quitter le plein écran">✕</button>
 
-        <aside class="td-side" data-side hidden aria-label="Tours et améliorations">
-          <div class="td-top" data-top>
-            <span class="td-stat" title="Vies">❤ <b data-lives>0</b></span>
-            <span class="td-stat" title="Noisettes">🌰 <b data-cash>0</b></span>
-            <span class="td-stat" title="Manche">⚑ <b data-round>0</b></span>
+        <div class="td-top" data-hud hidden>
+          <span class="td-pill td-lives" title="Vies">❤ <b data-lives>0</b></span>
+          <span class="td-pill td-cash" title="Noisettes">🌰 <b data-cash>0</b></span>
+          <span class="td-pill td-round" title="Manche">Manche <b data-round>0</b></span>
+          <span class="td-topbtns">
+            <button class="hud-btn" type="button" data-mute aria-label="Couper le son">🔊</button>
+            <button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button>
+            <button class="hud-btn hud-exit" type="button" data-exit-max aria-label="Quitter le plein écran">✕</button>
+          </span>
+        </div>
+
+        <aside class="td-shop" data-shop hidden aria-label="Tours">
+          <div class="td-shopgrid" data-shopgrid></div>
+          <p class="td-shopinfo" data-shopinfo></p>
+          <div class="td-play">
+            <button class="td-auto" type="button" data-auto aria-pressed="false" title="Enchaîner les manches automatiquement">Auto</button>
+            <button class="td-go" type="button" data-go aria-label="Lancer la manche">▶</button>
           </div>
-          <div class="td-ctrl">
-            <button class="btn btn-small btn-alt" type="button" data-act="go" data-go>▶ Manche 1</button>
-            <button class="btn btn-ghost btn-small td-autob" type="button" data-act="auto" data-auto aria-pressed="false" title="Enchaîner les manches automatiquement">Auto</button>
-          </div>
-          <div class="td-body" data-body></div>
         </aside>
 
-        <div class="game-hud td-hud" data-hud hidden>
-          <button class="hud-btn" type="button" data-mute aria-label="Couper le son">🔊</button>
-          <button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button>
-          <button class="hud-btn hud-exit" type="button" data-exit-max aria-label="Quitter le plein écran">✕</button>
-        </div>
+        <aside class="td-upg" data-upg hidden aria-label="Améliorations"></aside>
+        <div class="td-abil" data-abil hidden></div>
         <p class="game-banner" data-banner hidden></p>
 
         <div class="game-overlay" data-overlay>
@@ -105,7 +109,7 @@
         <div class="panel game-help">
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
-            <li><strong>Pose</strong> des écureuils n'importe où à côté du chemin (pas dessus, ni dans l'eau, ni sur les arbres et les rochers).</li>
+            <li><strong>Glisse</strong> une tour de la boutique jusqu'au terrain pour la poser, n'importe où à côté du chemin (pas dessus, ni dans l'eau, ni sur les arbres et les rochers).</li>
             <li><strong>Améliore</strong> chaque tour sur <strong>3 voies de 5 niveaux</strong>. Tu peux suivre 2 voies sur une tour, et une seule peut dépasser le niveau 2 : à toi de choisir entre 5-2-0, 2-0-5, 0-3-2…</li>
             <li>Les bestioles de la forêt (celles d'<a href="jeu.html">Écureuil Survivor</a>) arrivent par manches : certaines sont <strong>blindées</strong> (il faut percer l'armure), <strong>camouflées</strong> (il faut une tour qui les voit) ou libèrent des petites en mourant.</li>
             <li>Une manche sur 10, un <strong>boss</strong> : Grand Sanglier, Reine des guêpes, Grand Cerf, Roi Champignon, Golem de racines.</li>
@@ -135,8 +139,8 @@
   <script src="js/leaderboard.js?v=20261103re9"></script>
   <script src="js/main.js?v=20261103re9"></script>
   <script src="js/game-data.js?v=20261103re9"></script>
-  <script src="js/defense-data.js?v=20261103td1"></script>
-  <script src="js/defense-core.js?v=20261103td1"></script>
-  <script src="js/defense.js?v=20261103td1"></script>
+  <script src="js/defense-data.js?v=20261103td2"></script>
+  <script src="js/defense-core.js?v=20261103td2"></script>
+  <script src="js/defense.js?v=20261103td2"></script>
 </body>
 </html>

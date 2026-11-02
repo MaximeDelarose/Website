@@ -5,13 +5,15 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.1.0";
+  var VERSION = "0.2.0";
   var stage = document.querySelector("[data-defense]");
   if (!stage || !window.TD_DATA || !window.TD_CORE || !window.ES_DATA) return;
   var D = window.TD_DATA, K = window.TD_CORE, ES = window.ES_DATA, T = D.TOWERS, CFG = D.CFG;
   var $ = function (s) { return stage.querySelector(s); };
   var canvas = $("canvas"), ctx = canvas.getContext("2d");
-  var overlay = $("[data-overlay]"), card = $("[data-card]"), hud = $("[data-hud]"), side = $("[data-side]");
+  var overlay = $("[data-overlay]"), card = $("[data-card]"), hud = $("[data-hud]");
+  var shop = $("[data-shop]"), shopGrid = $("[data-shopgrid]"), shopInfo = $("[data-shopinfo]"), upg = $("[data-upg]"), abil = $("[data-abil]");
+  var livesEl = $("[data-lives]"), cashEl = $("[data-cash]"), roundEl = $("[data-round]"), goBtnEl = $("[data-go]"), autoEl = $("[data-auto]");
   var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* =====================================================================
@@ -60,7 +62,7 @@
   var SQ = {};
   D.TOWER_ORDER.forEach(function (k) { SQ[k] = ES.SPRITES.sq_noisette.frames.map(function (f) { return sprite(f, T[k].fur); }); });
   var urlCache = {};
-  function sqUrl(k) { return urlCache[k] || (urlCache[k] = SQ[k][0].c.toDataURL()); }
+  function sqUrl(k) { return towerIcon(k); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function fmt(n) { n = Math.floor(n); return n >= 100000 ? Math.round(n / 1000) + " k" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "\u202f"); }
 
@@ -97,6 +99,7 @@
     over: function () { arp([392, 330, 262, 196], 160, "triangle", 0.06); },
     coin: function () { thr("coin", 60, function () { arp([988, 1319], 40, "square", 0.025); }); },
     no: function () { sfx(180, 0.08, "square", 0.03); },
+    click: function () { sfx(660, 0.04, "square", 0.025); },
     power: function () { arp([330, 494, 659, 988], 50, "sawtooth", 0.04); },
   };
 
@@ -109,16 +112,22 @@
   var view = { scale: 1, ox: 0, oy: 0 };
   var bgCache = {};
 
-  /* ---------- disposition : terrain + panneau (à droite si large, en bas si haut) ---------- */
+  /* ---------- disposition : boutique à droite (écran large) ou en bas (écran haut) ---------- */
+  var TOP_H = 40;
+  function wideMode() { var cw = stage.clientWidth, ch = stage.clientHeight; return cw / ch > 1.15 || cw > 900; }
   function layout() {
-    var cw = stage.clientWidth, ch = stage.clientHeight;
-    var wide = cw / ch > 1.15 || cw > 900;
+    var cw = stage.clientWidth, ch = stage.clientHeight, wide = wideMode();
     stage.classList.toggle("td-wide", wide); stage.classList.toggle("td-tall", !wide);
-    var sw = 0, sh = 0;
-    if (state === "play") { if (wide) sw = side.offsetWidth; else sh = side.offsetHeight; }
-    var fw = cw - sw, fh = ch - sh, pad = 4;
+    var sw = 0, sh = 0, top = 0;
+    // écran haut : la carte prend toute la largeur, la boutique / les améliorations prennent tout le reste en bas
+    if (!wide) stage.style.setProperty("--td-bottom", Math.max(190, Math.floor(ch - TOP_H - (cw - 8) * CFG.H / CFG.W - 8)) + "px");
+    if (state === "play") { top = TOP_H; if (wide) sw = shop.offsetWidth; else sh = shop.offsetHeight; }
+    var fw = cw - sw, fh = ch - sh - top, pad = 4;
     view.scale = Math.min((fw - pad * 2) / CFG.W, (fh - pad * 2) / CFG.H);
-    view.ox = (fw - CFG.W * view.scale) / 2; view.oy = (fh - CFG.H * view.scale) / 2;
+    view.ox = (fw - CFG.W * view.scale) / 2; view.oy = top + (fh - CFG.H * view.scale) / 2;
+    view.fw = fw; view.fh = fh; view.top = top; view.sh = sh; view.sw = sw;
+    stage.style.setProperty("--td-field-w", fw + "px");
+    stage.style.setProperty("--td-shop-h", sh + "px");
   }
   function resize() {
     var dpr = window.devicePixelRatio || 1, cw = stage.clientWidth, ch = stage.clientHeight;
@@ -237,7 +246,7 @@
       var ok = !err && afford, rg = T[placing].base.range;
       if (rg < 5000) circle(ghost.x, ghost.y, rg, ok ? "rgba(253,243,222,.15)" : "rgba(200,85,61,.22)", ok ? "rgba(253,243,222,.7)" : "rgba(242,154,133,.8)", 1);
       circle(ghost.x, ghost.y, CFG.towerR, ok ? "rgba(156,208,106,.35)" : "rgba(200,85,61,.45)");
-      ctx.globalAlpha = 0.85; var sq = SQ[placing][0]; drawSpr(sq, ghost.x - sq.w / 2, ghost.y - sq.h + 4, false); ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.9; ctx.save(); ctx.translate(ghost.x, ghost.y); ctx.scale(1.2, 1.2); art(ctx, placing, [0, 0, 0], 0, 0, -0.5, W.t, false); ctx.restore(); ctx.globalAlpha = 1;
       if (err || !afford) text(err || "Pas assez de noisettes", ghost.x, ghost.y - 18, "#f29a85", "center", 6);
     }
     ctx.restore();
@@ -258,32 +267,154 @@
     var bg = bakeMap(K.mapById(S.map));
     var s = Math.max(cw / CFG.W, ch / CFG.H);
     ctx.globalAlpha = 0.55; ctx.drawImage(bg, (cw - CFG.W * s) / 2, (ch - CFG.H * s) / 2, CFG.W * s, CFG.H * s); ctx.globalAlpha = 1;
-    var sq = SQ[D.TOWER_ORDER[Math.floor(menuT / 2) % D.TOWER_ORDER.length]][Math.floor(menuT * 4) % 2];
-    ctx.drawImage(sq.c, cw / 2 - sq.w * sc / 2, ch - sq.h * sc - 10 * sc, sq.w * sc, sq.h * sc);
+    ctx.save(); ctx.setTransform(sc, 0, 0, sc, 0, 0);
+    D.TOWER_ORDER.forEach(function (k, i) { art(ctx, k, [0, 0, 0], (cw / sc) * (i + 0.5) / D.TOWER_ORDER.length, ch / sc - 8, Math.sin(menuT + i), menuT + i, false); });
+    ctx.restore();
   }
 
+  /* =====================================================================
+     Apparence des tours : chaque tour a sa silhouette, qui change avec les améliorations
+     (dessin en pixels, pieds de la tour en x, y ; ang = direction de la cible)
+     ===================================================================== */
+  var BASE = { noisette: "#c98d4a", braise: "#6a2a1a", rafale: "#3f8f8a", givre: "#bfe8ff", eclair: "#8a857e", guetteur: "#6b5a3a", chene: "#2f4f2a", pepite: "#e0a82a" };
+  function R(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); }
+  function El(g, x, y, rx, ry, c) { g.fillStyle = c; g.beginPath(); g.ellipse(x, y, Math.max(0.5, rx), Math.max(0.5, ry), 0, 0, 7); g.fill(); }
+  function Poly(g, pts, c, out) { g.beginPath(); pts.forEach(function (p, i) { if (i) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); }); g.closePath(); if (out) { g.lineWidth = 2; g.strokeStyle = OUT; g.lineJoin = "round"; g.stroke(); } g.fillStyle = c; g.fill(); }
+  function barrel(g, len, wid, col, hi, off) {
+    R(g, -1, off - wid / 2 - 1, len + 2, wid + 2, OUT);
+    R(g, 0, off - wid / 2, len, wid, col);
+    R(g, 0, off - wid / 2, len, Math.max(1, wid / 3), hi);
+  }
+  var ART = {
+    noisette: function (g, tr, x, y, ang, t, fire) {
+      var flip = Math.cos(ang) < 0, fr = SQ.noisette[fire ? 1 : Math.floor(t * 2) % 2], d = flip ? -1 : 1;
+      if (tr[2] >= 3) { R(g, x - 7, y - 9, 14, 6, tr[2] >= 5 ? "#5a2a6a" : "#2f4f2a"); R(g, x - 6, y - 8, 12, 4, tr[2] >= 5 ? "#8a4aa8" : "#5b8a4a"); } // cape
+      g.drawImage(flip ? fr.f : fr.c, Math.round(x - fr.w / 2), Math.round(y - fr.h + 3));
+      var hx = x + d * 6, hy = y - 7;
+      // fronde (Y)
+      R(g, hx - 0.5, hy - 1, 1, 5, "#6b4430"); R(g, hx - 2, hy - 3, 1, 3, "#6b4430"); R(g, hx + 1, hy - 3, 1, 3, "#6b4430");
+      if (tr[1] >= 3) { R(g, x - 5, y - 7, 10, 1.5, "#4a2a10"); R(g, x - 3, y - 7, 1, 1, "#f6d36b"); R(g, x + 1, y - 7, 1, 1, "#f6d36b"); } // cartouchière
+      if (tr[1] >= 5) { R(g, hx + d * 1 - 2, hy - 1, 5, 4, "#3a3a44"); R(g, hx + d * 3 - 1, hy, 3, 1, "#8a857e"); R(g, hx + d * 3 - 1, hy + 2, 3, 1, "#8a857e"); }
+      if (tr[0] >= 3) { var r = 1.5 + tr[0] * 0.6; El(g, x - d * 2, y - 16 - r, r + 1, r + 1, OUT); El(g, x - d * 2, y - 16 - r, r, r, tr[0] >= 5 ? "#8a857e" : "#b07a4f"); R(g, x - d * 2 - r / 2, y - 17 - r * 1.5, r / 2, r / 2, tr[0] >= 5 ? "#b8b2a8" : "#d39a52"); }
+      if (tr[2] >= 4) { R(g, x + d * 3 - 1, y - 13, 3, 2, "#2b1709"); R(g, x + d * 3, y - 13, 1, 1, "#9fd8ff"); } // lunette
+    },
+    braise: function (g, tr, x, y, ang, t, fire) {
+      var volc = tr[0] >= 3, n = tr[1] >= 5 ? 3 : tr[1] >= 3 ? 2 : 1;
+      R(g, x - 7, y - 7, 14, 5, OUT); R(g, x - 6, y - 6, 12, 3, "#8a5a3b");
+      g.save(); g.translate(x, y - 8); g.rotate(ang);
+      var len = 10 + tr[2] * 1.4 - (fire ? 2 : 0), wid = 4.5 + tr[0] * 0.5;
+      for (var i = 0; i < n; i++) {
+        var off = (i - (n - 1) / 2) * (wid + 0.5);
+        barrel(g, len, wid, volc ? "#5a2010" : "#3a3a44", volc ? "#c8553d" : "#6a6a7a", off);
+        R(g, len - 2, off - wid / 2, 2, wid, volc ? "#ff8a2a" : "#5a5a66");
+        if (tr[2] >= 3) R(g, len * 0.5, off - wid / 2 - 1, 1.5, wid + 2, "#f6d36b");
+      }
+      if (fire) { El(g, len + 3, 0, 3, 3, "#fff3b0"); El(g, len + 5, 0, 2, 2, "#ff8a2a"); }
+      g.restore();
+      [-5, 5].forEach(function (dx) { El(g, x + dx, y - 2, 3.5, 3.5, OUT); El(g, x + dx, y - 2, 2.5, 2.5, "#6b4430"); R(g, x + dx - 0.5, y - 2.5, 1, 1, "#d39a52"); });
+      if (volc) R(g, x - 1, y - 11 + Math.sin(t * 9), 1, 1, "#ffd34a");
+    },
+    rafale: function (g, tr, x, y, ang, t, fire, main, top) {
+      var col = tr[1] >= 1 ? "#ff8a4a" : tr[2] >= 1 ? "#bfe8ff" : "#f0fffb", edge = tr[1] >= 1 ? "#c8453d" : tr[2] >= 1 ? "#5fa3c9" : "#3f8f8a";
+      R(g, x - 6, y - 9, 12, 9, OUT); R(g, x - 5, y - 8, 10, 8, "#d8c8a0"); R(g, x - 5, y - 8, 10, 2, "#b8a888"); R(g, x - 1.5, y - 5, 3, 5, "#6b4430");
+      Poly(g, [[x - 7, y - 9], [x, y - 14], [x + 7, y - 9]], "#3f8f8a", true);
+      var n = 4 + (tr[0] >= 3 ? 2 : 0) + (tr[2] >= 2 ? 2 : 0), L = 9 + top * 0.6, hx = x, hy = y - 15, rot = t * (2 + top * 0.8) + (fire ? 0.3 : 0);
+      for (var i = 0; i < n; i++) {
+        g.save(); g.translate(hx, hy); g.rotate(rot + i / n * Math.PI * 2);
+        R(g, 0, -1.5, L + 1, 3, OUT); R(g, 1, -1, L - 1, 2, edge); R(g, 3, -1, L - 4, 3.5, col);
+        g.restore();
+      }
+      El(g, hx, hy, 2.5, 2.5, OUT); El(g, hx, hy, 1.5, 1.5, "#f6d36b");
+      if (tr[1] >= 4) { g.globalAlpha = 0.35 + 0.2 * Math.sin(t * 8); El(g, hx, hy, L + 2, L + 2, "#ff8a2a"); g.globalAlpha = 1; }
+    },
+    givre: function (g, tr, x, y, ang, t, fire, main, top) {
+      El(g, x, y - 1, 8, 3.5, OUT); El(g, x, y - 1.5, 7, 2.8, "#e6f6fa");
+      var bob = Math.sin(t * 2) * 1, h = 11 + top * 1.3, w = 4.5 + top * 0.45, cy = y - 5 + bob, deep = tr[0] >= 3;
+      var c1 = deep ? "#2a5a7a" : "#5fa3c9", c2 = deep ? "#5fa3c9" : "#9fd8ff", c3 = "#e6f6fa";
+      Poly(g, [[x, cy - h], [x + w, cy - h * 0.45], [x, cy], [x - w, cy - h * 0.45]], c2, true);
+      Poly(g, [[x, cy - h], [x, cy], [x - w, cy - h * 0.45]], c3);
+      Poly(g, [[x, cy - h * 0.7], [x + w * 0.5, cy - h * 0.45], [x, cy - h * 0.2]], c1);
+      if (tr[0] >= 4) { Poly(g, [[x - w - 1, cy - h * 0.3], [x - w - 5, cy - h * 0.5], [x - w, cy - h * 0.55]], c2, true); Poly(g, [[x + w + 1, cy - h * 0.3], [x + w + 5, cy - h * 0.5], [x + w, cy - h * 0.55]], c2, true); }
+      if (tr[1] >= 3) for (var i = 0; i < 3; i++) { var a = t * 2 + i * 2.1; Poly(g, [[x + Math.cos(a) * 10, cy - h / 2 + Math.sin(a) * 4 - 3], [x + Math.cos(a) * 10 + 2, cy - h / 2 + Math.sin(a) * 4], [x + Math.cos(a) * 10, cy - h / 2 + Math.sin(a) * 4 + 3], [x + Math.cos(a) * 10 - 2, cy - h / 2 + Math.sin(a) * 4]], "#bfe8ff", true); }
+      if (tr[2] >= 3) for (var j = 0; j < 8; j++) { var b = -t * 1.5 + j / 8 * Math.PI * 2; R(g, x + Math.cos(b) * 12, y - 3 + Math.sin(b) * 4, 1.5, 1.5, "#ffffff"); }
+      if (fire) { g.globalAlpha = 0.5; El(g, x, cy - h / 2, w + 4, h / 2 + 3, "#ffffff"); g.globalAlpha = 1; }
+    },
+    eclair: function (g, tr, x, y, ang, t, fire, main, top) {
+      R(g, x - 6, y - 5, 12, 5, OUT); R(g, x - 5, y - 4, 10, 4, "#8a857e"); R(g, x - 5, y - 4, 10, 1, "#b8b2a8");
+      var n = 4 + Math.min(4, tr[0]), cy = y - 5;
+      R(g, x - 1, cy - n * 2.2 - 3, 2, n * 2.2 + 3, "#6a6a7a");
+      for (var i = 0; i < n; i++) { var wv = 7 - i * 0.4; R(g, x - wv / 2 - 0.5, cy - (i + 1) * 2.2 - 0.5, wv + 1, 2.2, OUT); R(g, x - wv / 2, cy - (i + 1) * 2.2, wv, 1.4, i % 2 ? "#c8783a" : "#e0a060"); }
+      var oy = cy - n * 2.2 - 5, r = 2.6 + tr[1] * 0.45, plasma = tr[1] >= 3, pul = 0.5 + 0.5 * Math.sin(t * 7);
+      g.globalAlpha = 0.25 + 0.25 * pul + (fire ? 0.4 : 0); El(g, x, oy, r + 3, r + 3, plasma ? "#c9b3ff" : "#ffe46b"); g.globalAlpha = 1;
+      El(g, x, oy, r + 1, r + 1, OUT); El(g, x, oy, r, r, plasma ? "#9a7ae0" : "#f6d36b"); R(g, x - r / 2, oy - r / 2, r / 2, r / 2, "#ffffff");
+      if (tr[2] >= 3) { [-1, 1].forEach(function (s) { R(g, x + s * 5 - 0.5, cy - n * 1.5, 1, n * 1.5, "#6a6a7a"); El(g, x + s * 5, cy - n * 1.5 - 1, 1.5, 1.5, "#9fd8ff"); }); }
+      if (fire || Math.random() < 0.04) { g.strokeStyle = "#fff8c0"; g.lineWidth = 0.8; g.beginPath(); g.moveTo(x, oy); g.lineTo(x + (Math.random() - 0.5) * 10, oy - 3 - Math.random() * 5); g.stroke(); }
+    },
+    guetteur: function (g, tr, x, y, ang, t, fire) {
+      R(g, x - 7, y - 15, 2, 15, OUT); R(g, x + 5, y - 15, 2, 15, OUT); R(g, x - 6.5, y - 15, 1, 15, "#8a5a3b"); R(g, x + 5.5, y - 15, 1, 15, "#8a5a3b");
+      g.strokeStyle = "#6b4430"; g.lineWidth = 1; g.beginPath(); g.moveTo(x - 6, y - 2); g.lineTo(x + 6, y - 12); g.moveTo(x + 6, y - 2); g.lineTo(x - 6, y - 12); g.stroke();
+      R(g, x - 9, y - 17, 18, 4, OUT); R(g, x - 8, y - 16.5, 16, 2.5, "#b07a4f");
+      if (tr[2] >= 3) { R(g, x - 8, y - 30, 1, 14, "#4a2a10"); Poly(g, [[x - 7, y - 30], [x - 1 + Math.sin(t * 5), y - 28], [x - 7, y - 26]], tr[2] >= 5 ? "#f6d36b" : "#c8553d"); }
+      // hibou
+      var hy = y - 21; El(g, x, hy, 5, 5.5, OUT); El(g, x, hy, 4, 4.5, "#8a6a4a"); El(g, x, hy + 1, 2.8, 3, "#d8c8a0");
+      R(g, x - 4, hy - 6, 2, 2, "#8a6a4a"); R(g, x + 2, hy - 6, 2, 2, "#8a6a4a");
+      R(g, x - 2.5, hy - 2, 2, 2, "#f6d36b"); R(g, x + 0.5, hy - 2, 2, 2, "#f6d36b"); R(g, x - 2, hy - 1.5, 1, 1, OUT); R(g, x + 1, hy - 1.5, 1, 1, OUT);
+      R(g, x - 0.5, hy, 1, 1.5, "#e8873a");
+      g.save(); g.translate(x, hy + 2); g.rotate(ang);
+      var len = 11 + tr[0] * 1.2 - (fire ? 1.5 : 0), wid = 1.6 + tr[0] * 0.3;
+      barrel(g, len, wid, "#3a2a1a", "#6b5a3a", 0);
+      if (tr[1] >= 3) barrel(g, len - 1, wid, "#3a2a1a", "#6b5a3a", wid + 1.2);
+      R(g, 3, -wid / 2 - 2.5, 4, 1.5, "#2b1709");
+      if (fire) El(g, len + 2, 0, 2.5, 2, "#fff3b0");
+      g.restore();
+    },
+    chene: function (g, tr, x, y, ang, t, fire, main, top) {
+      if (tr[2] >= 1) { var nn = 6 + tr[2] * 2; for (var i = 0; i < nn; i++) { var a = i / nn * Math.PI * 2, rx = x + Math.cos(a) * 9, ry = y - 1 + Math.sin(a) * 3.5; Poly(g, [[rx - 1.5, ry + 1], [rx, ry - 2 - tr[2] * 0.5], [rx + 1.5, ry + 1]], tr[2] >= 3 ? "#6a2a4a" : "#4a6a2a"); } }
+      R(g, x - 2.5, y - 10, 5, 10, OUT); R(g, x - 1.5, y - 10, 3, 10, "#6b4430"); R(g, x - 4, y - 2, 8, 2, "#6b4430");
+      var s = 8 + top * 0.7, cy = y - 13 - s * 0.4, sway = Math.sin(t * 1.5) * 0.6;
+      El(g, x + sway, cy + 1, s + 1, s * 0.8 + 1, OUT);
+      El(g, x + sway, cy + 1, s, s * 0.8, "#2f4f2a"); El(g, x - 2 + sway, cy - 1, s * 0.75, s * 0.6, "#3f6b3a"); El(g, x - 3 + sway, cy - 3, s * 0.4, s * 0.3, "#5b8a4a");
+      if (tr[0] >= 3) for (var j = 0; j < 4 + tr[0]; j++) { var b = j * 1.7; R(g, x + Math.cos(b) * s * 0.7, cy + Math.sin(b) * s * 0.5, 1.5, 1.5, (Math.sin(t * 3 + j) > 0) ? "#f6d36b" : "#e0a82a"); }
+      if (tr[1] >= 1) { R(g, x - 1.5, y - 7, 1, 1, "#f6d36b"); R(g, x + 0.5, y - 7, 1, 1, "#f6d36b"); }
+      if (tr[1] >= 3) for (var k = 0; k < 3; k++) { var c = t * 1.3 + k * 2.1; g.globalAlpha = 0.6 + 0.4 * Math.sin(t * 6 + k); R(g, x + Math.cos(c) * (s + 3), cy + Math.sin(c) * (s * 0.6), 1.5, 1.5, "#fff3b0"); g.globalAlpha = 1; }
+    },
+    pepite: function (g, tr, x, y, ang, t, fire, main, top) {
+      if (tr[1] >= 3) { R(g, x + 5, y - 7, 7, 7, OUT); R(g, x + 6, y - 6, 5, 5, "#8a857e"); El(g, x + 8.5, y - 3.5, 1.2, 1.2, "#f6d36b"); }
+      R(g, x - 8, y - 11, 14, 11, OUT); R(g, x - 7, y - 10, 12, 10, "#c98d4a");
+      for (var i = 0; i < 3; i++) R(g, x - 7, y - 8 + i * 3, 12, 0.7, "#8a5a3b");
+      R(g, x - 3, y - 6, 4, 6, "#4a2a10");
+      Poly(g, [[x - 10, y - 10], [x - 1, y - 18 - top * 0.4], [x + 8, y - 10]], tr[0] >= 3 ? "#f6d36b" : "#8a3a2a", true);
+      if (tr[2] >= 3) { for (var j = 0; j < 4; j++) R(g, x - 6 + j * 3, y - 11, 3, 2, j % 2 ? "#fdf3de" : "#c8453d"); }
+      var n = 2 + tr[0];
+      for (var k = 0; k < n; k++) { var px = x - 8 + (k % 4) * 3, py = y - 1 - Math.floor(k / 4) * 2; El(g, px, py, 1.8, 1.6, OUT); El(g, px, py, 1.2, 1.1, k % 3 ? "#ffd34a" : "#f6d36b"); }
+    },
+  };
+  function art(g, type, tiers, x, y, ang, t, fire) {
+    var top = Math.max(tiers[0], tiers[1], tiers[2]);
+    El(g, x, y + 1, 10, 4, "rgba(20,30,15,.35)");
+    El(g, x, y, 9, 3.8, OUT); El(g, x, y - 0.5, 8, 3, top >= 5 ? "#f6d36b" : BASE[type]);
+    ART[type](g, tiers, x, y, ang, t, fire, tiers.indexOf(top), top);
+  }
+  // icône d'une tour (boutique, améliorations) : même dessin, en image
+  function towerIcon(type, tiers) {
+    tiers = tiers || [0, 0, 0];
+    var key = "ic" + type + tiers.join("");
+    if (urlCache[key]) return urlCache[key];
+    var c = document.createElement("canvas"); c.width = 34; c.height = 38;
+    var g = c.getContext("2d"); g.imageSmoothingEnabled = false;
+    art(g, type, tiers, 17, 33, -0.45, 0.3, false);
+    return (urlCache[key] = c.toDataURL());
+  }
   function drawTower(t) {
-    var s = t.st, d = T[t.type], top = Math.max(t.tiers[0], t.tiers[1], t.tiers[2]);
-    // socle
-    ctx.fillStyle = "rgba(20,30,15,.35)"; ctx.beginPath(); ctx.ellipse(t.x, t.y + 2, 9, 4, 0, 0, 7); ctx.fill();
-    var ring = top >= 5 ? "#f6d36b" : top >= 3 ? "#fdf3de" : d.color;
-    ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(t.x, t.y + 1, 8, 3.6, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = ring; ctx.beginPath(); ctx.ellipse(t.x, t.y + 0.5, 7, 2.8, 0, 0, 7); ctx.fill();
-    if (t.buffT > 0) { ctx.globalAlpha = 0.4 + 0.3 * Math.sin(W.t * 12); circle(t.x, t.y - 4, 11, null, "#f6d36b", 1.5); ctx.globalAlpha = 1; }
-    var shooting = s.rate && t.cd > s.rate - 0.12;
-    var fr = SQ[t.type][shooting ? 1 : Math.floor((W.t + t.id * 0.37) * 2) % 2];
-    var flip = Math.cos(t.ang) < 0;
-    drawSpr(fr, t.x - fr.w / 2, t.y - fr.h + 3 - (shooting ? 1 : 0), flip);
-    // couronne / chapeau selon le niveau
-    if (top >= 3) {
-      var hx = t.x + (flip ? 2 : -2), hy = t.y - fr.h + 1;
-      if (top >= 5) { rect(hx - 3, hy - 3, 7, 2, "#f6d36b"); rect(hx - 3, hy - 5, 1, 2, "#f6d36b"); rect(hx, hy - 6, 1, 3, "#f6d36b"); rect(hx + 3, hy - 5, 1, 2, "#f6d36b"); rect(hx, hy - 4, 1, 1, "#c8553d"); }
-      else { rect(hx - 3, hy - 2, 7, 2, d.color); rect(hx - 2, hy - 4, 5, 2, d.color); }
-    }
-    // niveaux des 3 voies
-    for (var p = 0; p < 3; p++) for (var i = 0; i < t.tiers[p]; i++) rect(t.x - 6 + p * 5, t.y + 5 - i * 1.4, 3, 1, ["#f2b05e", "#9cd06a", "#9fd8ff"][p]);
-    if (t === sel) { ctx.globalAlpha = 0.7 + 0.3 * Math.sin(W.t * 6); circle(t.x, t.y - 3, 11, null, "#f6d36b", 1); ctx.globalAlpha = 1; }
-    if (s.ability && t.acd <= 0 && W.running) { rect(t.x + 6, t.y - 16, 3, 3, "#f6d36b"); }
+    var s = t.st;
+    if (t.buffT > 0) { ctx.globalAlpha = 0.4 + 0.3 * Math.sin(W.t * 12); circle(t.x, t.y - 6, 13, null, "#f6d36b", 1.5); ctx.globalAlpha = 1; }
+    var fire = s.rate && t.cd > s.rate - 0.12;
+    ctx.save(); ctx.translate(t.x, t.y); ctx.scale(1.2, 1.2);
+    art(ctx, t.type, t.tiers, 0, 0, t.ang, W.t + t.id * 0.37, fire);
+    ctx.restore();
+    for (var p = 0; p < 3; p++) for (var i = 0; i < t.tiers[p]; i++) rect(t.x - 7 + p * 5, t.y + 5 - i * 1.4, 4, 1, ["#f2b05e", "#9cd06a", "#9fd8ff"][p]);
+    if (t === sel) { ctx.globalAlpha = 0.6 + 0.3 * Math.sin(W.t * 6); ctx.beginPath(); ctx.ellipse(t.x, t.y, 12, 5, 0, 0, 7); ctx.lineWidth = 1.2; ctx.strokeStyle = "#f6d36b"; ctx.stroke(); ctx.globalAlpha = 1; }
+    if (s.ability && t.acd <= 0 && W.running) { circle(t.x + 8, t.y - 18, 2.5, "#f6d36b", OUT, 1); }
   }
 
   function drawEnemy(e) {
@@ -421,102 +552,122 @@
   }
 
   /* =====================================================================
-     Panneau latéral (boutique, améliorations, pouvoirs)
+     Interface : barre du haut, boutique, panneau d'améliorations, pouvoirs
      ===================================================================== */
-  var sideSig = "";
-  var TNAME = { first: "Premier", last: "Dernier", strong: "Fort", close: "Proche" };
-  function costTxt(c) { return c === Infinity ? "—" : "🌰 " + fmt(c); }
-  function towerHtml(t) {
+  var TNAME = { first: "Premier", last: "Dernier", strong: "Le plus fort", close: "Le plus proche" };
+  var PATHCOL = ["#f2b05e", "#9cd06a", "#9fd8ff"];
+  function costTxt(c) { return c === Infinity ? "—" : fmt(c); }
+  function showUI(on) {
+    hud.hidden = !on; shop.hidden = !on; abil.hidden = !on;
+    if (!on) upg.hidden = true;
+    stage.classList.toggle("td-playing", !!on);
+  }
+  // boutique
+  var shopSig = "";
+  function buildShop() {
+    var h = "";
+    D.TOWER_ORDER.forEach(function (k, i) {
+      var c = K.towerCost(W, k);
+      h += '<button type="button" class="td-buy" data-t="' + k + '" aria-label="' + esc(T[k].name + ", " + c + " noisettes") + '">' +
+        '<img src="' + towerIcon(k) + '" alt="" draggable="false"><span>' + esc(T[k].name) + "</span><b>🌰 " + fmt(c) + "</b><kbd>" + (i + 1) + "</kbd></button>";
+    });
+    shopGrid.innerHTML = h; shopSig = "";
+  }
+  function renderShop() {
+    var aff = D.TOWER_ORDER.map(function (k) { return W.cash >= K.towerCost(W, k) ? 1 : 0; }).join("");
+    var info = placing || hoverType || "";
+    var sig = aff + "|" + placing + "|" + info;
+    if (sig === shopSig) return; shopSig = sig;
+    shopGrid.querySelectorAll("[data-t]").forEach(function (b, i) {
+      var k = b.getAttribute("data-t");
+      b.classList.toggle("poor", aff[i] === "0"); b.classList.toggle("on", placing === k);
+    });
+    shopInfo.innerHTML = info ? "<strong>" + esc(T[info].name) + "</strong> · " + esc(T[info].role) + "<br>" + esc(T[info].desc) +
+      (placing ? '<br><em>' + (touchUI ? "Glisse-la sur le terrain, ou touche l'endroit voulu." : "Clique sur le terrain pour la poser · Échap pour annuler") + "</em>" : "")
+      : (touchUI ? "Glisse une tour sur le terrain. Touche une tour posée pour l'améliorer." : "Glisse une tour sur le terrain (ou clique puis clique). Clique sur une tour posée pour l'améliorer.");
+  }
+  // panneau d'améliorations
+  var upgSig = "";
+  function renderUpg() {
+    var t = sel && W.towers.indexOf(sel) >= 0 ? sel : null; if (!t) sel = null;
+    stage.classList.toggle("td-selected", !!t);
+    if (!t) { if (!upg.hidden) { upg.hidden = true; upgSig = ""; } return; }
+    var aff = [0, 1, 2].map(function (p) { return W.cash >= K.upCost(W, t, p) ? 1 : 0; }).join("");
+    var side = t.x > CFG.W / 2 ? "left" : "right";
+    var sig = [t.id, t.tiers.join(""), aff, t.target, K.sellValue(W, t), side, t.buffed].join("|");
+    upg.hidden = false;
+    upg.classList.toggle("td-left", side === "left"); upg.classList.toggle("td-right", side === "right");
+    if (sig === upgSig) { var kk = upg.querySelector("[data-kills]"); if (kk) kk.textContent = fmt(t.kills) + " vaincues"; return; }
+    upgSig = sig;
     var d = T[t.type], s = t.st, h = "";
-    h += '<div class="td-selhead"><img src="' + sqUrl(t.type) + '" alt=""><div><strong>' + esc(d.name) + "</strong><span>" + esc(d.role) + " · " + fmt(t.kills) + " vaincues</span></div>" +
-      '<button class="td-x" type="button" data-act="desel" aria-label="Fermer">✕</button></div>';
-    h += '<div class="td-paths">';
+    h += '<div class="tu-head"><img src="' + towerIcon(t.type, t.tiers) + '" alt=""><div><strong>' + esc(d.name) + "</strong><span>" + esc(d.role) + "</span><span data-kills>" + fmt(t.kills) + " vaincues</span></div>" +
+      '<button class="tu-x" type="button" data-act="desel" aria-label="Fermer">✕</button></div>';
+    if (s.kind !== "aura" && s.kind !== "farm" && s.kind !== "pulse" && s.kind !== "ring")
+      h += '<div class="tu-target"><button type="button" data-act="tprev" aria-label="Cible précédente">◀</button><span>🎯 ' + TNAME[t.target] + '</span><button type="button" data-act="tnext" aria-label="Cible suivante">▶</button></div>';
     d.paths.forEach(function (p, pi) {
       var tier = t.tiers[pi], lim = K.pathLimit(t, pi), next = p.up[tier];
       var pips = ""; for (var i = 0; i < 5; i++) pips += '<i class="' + (i < tier ? "on" : i >= lim ? "lock" : "") + '"></i>';
-      h += '<div class="td-path td-p' + pi + '"><div class="td-pathname">' + esc(p.name) + '<span class="td-pips">' + pips + "</span></div>";
-      if (!next) h += '<div class="td-up done">Voie terminée ★</div>';
-      else if (tier >= lim) h += '<div class="td-up locked"><strong>' + esc(next.n) + "</strong><span>Voie bloquée : 2 voies au maximum, et une seule au-delà du niveau 2.</span></div>";
+      var cur = tier ? p.up[tier - 1].n : "Aucune";
+      h += '<div class="tu-path" style="--pc:' + PATHCOL[pi] + '"><div class="tu-cur"><small>' + esc(p.name) + '</small><strong>' + esc(cur) + '</strong><span class="tu-pips">' + pips + "</span></div>";
+      if (!next) h += '<div class="tu-next max"><strong>Voie terminée</strong><span>★ Niveau max</span></div>';
+      else if (tier >= lim) h += '<div class="tu-next lock" title="2 voies au maximum, et une seule au-delà du niveau 2"><strong>Voie bloquée</strong><span>' + esc(next.n) + "</span></div>";
       else {
-        var c = K.upCost(W, t, pi), can = W.cash >= c;
-        h += '<button type="button" class="td-up' + (can ? "" : " poor") + '" data-act="up" data-p="' + pi + '"><strong>' + esc(next.n) + '</strong><span>' + esc(next.d) + '</span><b>' + costTxt(c) + "</b></button>";
+        var c = K.upCost(W, t, pi), can = W.cash >= c, nt = t.tiers.slice(); nt[pi]++;
+        h += '<button type="button" class="tu-next ' + (can ? "ok" : "poor") + '" data-act="up" data-p="' + pi + '" title="' + esc(next.d) + '"><img src="' + towerIcon(t.type, nt) + '" alt=""><span class="tu-txt"><strong>' + esc(next.n) + '</strong><small>' + esc(next.d) + '</small></span><b>🌰 ' + costTxt(c) + "</b></button>";
       }
       h += "</div>";
     });
-    h += "</div>";
-    h += '<div class="td-selfoot">';
-    if (s.kind !== "aura" && s.kind !== "farm" && s.kind !== "pulse" && s.kind !== "ring") h += '<button type="button" class="btn btn-ghost btn-small" data-act="target">🎯 ' + TNAME[t.target] + "</button>";
-    h += '<button type="button" class="btn btn-small" data-act="sell">Vendre ' + costTxt(K.sellValue(W, t)) + "</button></div>";
-    if (s.income) h += '<p class="td-note">Rapporte ' + fmt(s.income) + " noisettes par manche.</p>";
-    if (t.buffed) h += '<p class="td-note">🌳 Boostée par une tour de soutien.</p>';
-    return h;
+    var extra = s.income ? "+" + fmt(s.income) + " / manche" : t.buffed ? "🌳 Boostée" : "";
+    h += '<div class="tu-foot"><span>' + extra + '</span><button type="button" class="tu-sell" data-act="sell">Vendre 🌰 ' + costTxt(K.sellValue(W, t)) + "</button></div>";
+    upg.innerHTML = h;
   }
-  function shopHtml() {
-    var h = '<div class="td-shop">';
-    D.TOWER_ORDER.forEach(function (k, i) {
-      var c = K.towerCost(W, k), can = W.cash >= c;
-      h += '<button type="button" class="td-buy' + (can ? "" : " poor") + (placing === k ? " on" : "") + '" data-act="buy" data-t="' + k + '" title="' + esc(T[k].name + " — " + T[k].desc) + '">' +
-        '<img src="' + sqUrl(k) + '" alt=""><span>' + esc(T[k].name) + "</span><b>" + fmt(c) + "</b><kbd>" + (i + 1) + "</kbd></button>";
-    });
-    h += "</div>";
-    var info = placing || hoverType;
-    if (info) h += '<p class="td-info"><strong>' + esc(T[info].name) + "</strong> · " + esc(T[info].role) + "<br>" + esc(T[info].desc) + (placing ? "<br><em>Touche le terrain pour la poser · Échap pour annuler</em>" : "") + "</p>";
-    else h += '<p class="td-info">Choisis une tour puis pose-la à côté du chemin. Touche une tour posée pour l\'améliorer.</p>';
-    return h;
-  }
-  function abilitiesHtml() {
+  // pouvoirs (en bas à gauche du terrain)
+  var abilSig = "";
+  function renderAbil() {
     var list = W.towers.filter(function (t) { return t.st.ability; });
-    if (!list.length) return "";
-    var h = '<div class="td-abil">';
-    list.forEach(function (t) {
-      var a = t.st.ability, cd = Math.max(0, t.acd), ready = cd <= 0 && W.running;
-      h += '<button type="button" class="td-ab' + (ready ? " ready" : "") + '" data-act="ability" data-id="' + t.id + '" title="' + esc(a.name) + '"><img src="' + sqUrl(t.type) + '" alt=""><span>' + esc(a.name) + "</span>" +
-        (cd > 0 ? "<b>" + Math.ceil(cd) + " s</b>" : !W.running ? "<b>—</b>" : "<b>Prêt</b>") + "</button>";
+    var sig = list.map(function (t) { return t.id + t.st.ability.id; }).join(",");
+    if (sig !== abilSig) {
+      abilSig = sig;
+      abil.innerHTML = list.map(function (t) { return '<button type="button" class="td-ab" data-act="ability" data-id="' + t.id + '" title="' + esc(t.st.ability.name + " (" + T[t.type].name + ")") + '"><img src="' + towerIcon(t.type, t.tiers) + '" alt=""><span>' + esc(t.st.ability.name) + "</span></button>"; }).join("");
+    }
+    abil.querySelectorAll(".td-ab").forEach(function (b) {
+      var t = W.towers.filter(function (o) { return o.id === +b.getAttribute("data-id"); })[0]; if (!t) return;
+      var f = t.st.ability.cd ? Math.max(0, t.acd) / t.st.ability.cd : 0;
+      b.style.setProperty("--cd", (f * 100).toFixed(1) + "%");
+      b.classList.toggle("ready", f <= 0 && W.running);
     });
-    return h + "</div>";
   }
-  function updateSide(force) {
-    var t = sel && W.towers.indexOf(sel) >= 0 ? sel : null; if (!t) sel = null;
-    var aff = D.TOWER_ORDER.map(function (k) { return W.cash >= K.towerCost(W, k) ? 1 : 0; }).join("");
-    var upA = t ? [0, 1, 2].map(function (p) { return W.cash >= K.upCost(W, t, p) ? 1 : 0; }).join("") + t.tiers.join("") + t.target + K.sellValue(W, t) : "";
-    var ab = W.towers.filter(function (o) { return o.st.ability; }).map(function (o) { return o.id + ":" + Math.ceil(Math.max(0, o.acd)); }).join(",");
-    var sig = [t ? t.id : 0, aff, upA, placing, hoverType, ab, W.running, speed, W.auto, W.won, W.towers.length].join("|");
-    var top = $("[data-top]");
-    if (top) {
-      top.querySelector("[data-cash]").textContent = fmt(W.cash);
-      top.querySelector("[data-lives]").textContent = fmt(W.lives);
-      top.querySelector("[data-round]").textContent = Math.max(1, W.round) + (W.freeplay ? "" : " / " + W.mode.rounds);
+  function renderTop() {
+    livesEl.textContent = fmt(W.lives); cashEl.textContent = fmt(W.cash);
+    roundEl.textContent = Math.max(1, W.round) + (W.freeplay ? "" : " / " + W.mode.rounds);
+    var st = W.running ? "run" + speed : W.won && !W.freeplay ? "won" : "idle";
+    if (goBtnEl.getAttribute("data-state") !== st) {
+      goBtnEl.setAttribute("data-state", st);
+      goBtnEl.innerHTML = W.running ? (speed === 1 ? "⏵⏵" : "⏵⏵<small>×" + speed + "</small>") : "▶";
+      goBtnEl.setAttribute("aria-label", W.running ? "Accélérer (vitesse ×" + speed + ")" : "Lancer la manche " + (W.round + 1));
+      goBtnEl.title = W.running ? "Vitesse ×" + speed + " (clic pour changer)" : "Lancer la manche " + (W.round + 1);
     }
-    if (sig === sideSig && !force) return;
-    sideSig = sig;
-    var go = $("[data-go]");
-    if (go) {
-      go.textContent = W.running ? (speed === 1 ? "▶ Vitesse ×1" : "⏩ Vitesse ×" + speed) : W.won && !W.freeplay ? "Victoire !" : "▶ Manche " + (W.round + 1);
-      go.classList.toggle("btn-alt", !W.running);
-      go.setAttribute("aria-label", W.running ? "Changer la vitesse" : "Lancer la manche");
-    }
-    var auto = $("[data-auto]"); if (auto) auto.setAttribute("aria-pressed", W.auto ? "true" : "false");
-    var body = $("[data-body]");
-    body.innerHTML = abilitiesHtml() + (t ? towerHtml(t) : shopHtml());
+    autoEl.setAttribute("aria-pressed", W.auto ? "true" : "false");
   }
-  side.addEventListener("click", function (ev) {
-    var b = ev.target.closest("[data-act]"); if (!b || !W) return;
-    var act = b.getAttribute("data-act");
-    if (act === "buy") { var k = b.getAttribute("data-t"); placing = placing === k ? null : k; sel = null; ghost = null; SND.place(); }
-    if (act === "desel") sel = null;
-    if (act === "up" && sel) { if (!K.upgrade(W, sel, +b.getAttribute("data-p"))) SND.no(); handleEvents(); }
-    if (act === "sell" && sel) { K.sell(W, sel); sel = null; handleEvents(); }
-    if (act === "target" && sel) { K.cycleTarget(sel); }
-    if (act === "ability") { var id = +b.getAttribute("data-id"), tw = W.towers.filter(function (o) { return o.id === id; })[0]; if (tw && K.useAbility(W, tw)) handleEvents(); else SND.no(); }
-    if (act === "go") goBtn();
-    if (act === "auto") { W.auto = !W.auto; }
-    updateSide(true);
-  });
-  side.addEventListener("mouseover", function (ev) {
-    var b = ev.target.closest("[data-act=buy]"); var k = b ? b.getAttribute("data-t") : null;
-    if (k !== hoverType) { hoverType = k; }
-  });
-  side.addEventListener("mouseleave", function () { hoverType = null; });
+  function updateUI(force) {
+    if (force) { shopSig = upgSig = ""; }
+    renderTop(); renderShop(); renderUpg(); renderAbil();
+  }
+  var updateSide = updateUI;
+
+  function act(b) {
+    var a = b.getAttribute("data-act");
+    if (a === "desel") sel = null;
+    if (a === "up" && sel) { if (!K.upgrade(W, sel, +b.getAttribute("data-p"))) SND.no(); handleEvents(); }
+    if (a === "sell" && sel) { K.sell(W, sel); sel = null; handleEvents(); }
+    if (a === "tnext" && sel) K.cycleTarget(sel);
+    if (a === "tprev" && sel) { K.cycleTarget(sel); K.cycleTarget(sel); K.cycleTarget(sel); }
+    if (a === "ability") { var id = +b.getAttribute("data-id"), tw = W.towers.filter(function (o) { return o.id === id; })[0]; if (tw && K.useAbility(W, tw)) handleEvents(); else SND.no(); }
+    updateUI(true);
+  }
+  [upg, abil].forEach(function (el) { el.addEventListener("click", function (ev) { var b = ev.target.closest("[data-act]"); if (b && W) act(b); }); });
+  goBtnEl.addEventListener("click", function () { goBtn(); updateUI(true); });
+  autoEl.addEventListener("click", function () { if (W) { W.auto = !W.auto; updateUI(true); } });
   function goBtn() {
     if (!W || W.over) return;
     if (W.won && !W.freeplay) return;
@@ -525,65 +676,103 @@
   }
 
   /* =====================================================================
-     Commandes sur le terrain
+     Pose des tours : glisser depuis la boutique (comme on le ferait avec une carte),
+     ou toucher une tour puis toucher le terrain
      ===================================================================== */
-  function toLogical(e) {
+  var touchUI = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  var drag = null, down = null;
+  function toLogical(cx, cy) {
     var r = canvas.getBoundingClientRect();
-    return { x: (e.clientX - r.left - view.ox) / view.scale, y: (e.clientY - r.top - view.oy) / view.scale };
+    return { x: (cx - r.left - view.ox) / view.scale, y: (cy - r.top - view.oy) / view.scale };
   }
+  function overField(cx, cy) {
+    var r = canvas.getBoundingClientRect(), x = cx - r.left, y = cy - r.top;
+    if (x < 0 || y < view.top || x > view.fw || y > view.top + view.fh) return false;
+    var u = upg.hidden ? null : upg.getBoundingClientRect();
+    if (u && cx >= u.left && cx <= u.right && cy >= u.top && cy <= u.bottom) return false;
+    return true;
+  }
+  function setGhost(cx, cy, lift) {
+    if (!overField(cx, cy)) { ghost = null; return; }
+    var p = toLogical(cx, cy);
+    ghost = { x: Math.round(p.x), y: Math.round(p.y - (lift ? 30 / view.scale : 0)) };
+  }
+  function tryPlace(keep) {
+    if (!placing || !ghost) return false;
+    var err = K.placeError(W, placing, ghost.x, ghost.y);
+    if (err || W.cash < K.towerCost(W, placing)) { SND.no(); return false; }
+    var t = K.place(W, placing, ghost.x, ghost.y); handleEvents();
+    if (!keep) { placing = null; ghost = null; sel = t; }
+    return true;
+  }
+  shopGrid.addEventListener("pointerdown", function (e) {
+    var b = e.target.closest("[data-t]"); if (!b || !W || state !== "play") return;
+    e.preventDefault();
+    var k = b.getAttribute("data-t");
+    drag = { type: k, id: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false, touch: e.pointerType !== "mouse", was: placing === k };
+    placing = k; sel = null; ghost = null; hoverType = k;
+    updateUI(true);
+  });
+  window.addEventListener("pointermove", function (e) {
+    if (drag && e.pointerId === drag.id) {
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 8) drag.moved = true;
+      if (drag.moved) setGhost(e.clientX, e.clientY, drag.touch);
+    }
+  });
+  function endDrag(e, cancel) {
+    if (!drag || e.pointerId !== drag.id) return;
+    var d = drag; drag = null;
+    if (d.moved) {
+      if (!cancel && ghost && tryPlace(e.shiftKey)) {}
+      else { placing = null; ghost = null; }
+    } else if (d.was) { placing = null; ghost = null; }   // re-toucher la même tour annule
+    hoverType = null;
+    updateUI(true);
+  }
+  window.addEventListener("pointerup", function (e) { endDrag(e, false); });
+  window.addEventListener("pointercancel", function (e) { endDrag(e, true); });
+  shopGrid.addEventListener("mouseover", function (ev) { var b = ev.target.closest("[data-t]"); hoverType = b ? b.getAttribute("data-t") : null; });
+  shopGrid.addEventListener("mouseleave", function () { hoverType = null; });
+
   function towerAt(x, y) {
-    var best = null, bd = (CFG.towerR + 4) * (CFG.towerR + 4);
-    W.towers.forEach(function (t) { var d = (t.x - x) * (t.x - x) + (t.y - 4 - y) * (t.y - 4 - y); if (d < bd) { bd = d; best = t; } });
+    var best = null, bd = 13 * 13;
+    W.towers.forEach(function (t) { var d = (t.x - x) * (t.x - x) + (t.y - 7 - y) * (t.y - 7 - y); if (d < bd) { bd = d; best = t; } });
     return best;
   }
-  var down = null;
   canvas.addEventListener("pointerdown", function (e) {
-    if (!W || state !== "play") return;
-    canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
-    var p = toLogical(e);
-    down = { x: p.x, y: p.y, id: e.pointerId, type: e.pointerType };
-    if (placing) ghost = { x: Math.round(p.x), y: Math.round(p.y) };
+    if (!W || state !== "play" || drag) return;
+    down = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false };
+    if (placing) setGhost(e.clientX, e.clientY, false);
   });
   canvas.addEventListener("pointermove", function (e) {
-    if (!W || state !== "play") return;
-    var p = toLogical(e);
-    if (down && Math.hypot(p.x - down.x, p.y - down.y) > 5) down.moved = true;
-    // au doigt : la tour glisse un peu au-dessus du doigt pour rester visible
-    if (placing && (e.pointerType === "mouse" || down)) ghost = { x: Math.round(p.x), y: Math.round(p.y) + (e.pointerType !== "mouse" && down && down.moved ? -16 : 0) };
+    if (!W || state !== "play" || drag) return;
+    if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) down.moved = true;
+    if (placing && (e.pointerType === "mouse" || down)) setGhost(e.clientX, e.clientY, e.pointerType !== "mouse" && down && down.moved);
   });
   canvas.addEventListener("pointerup", function (e) {
-    if (!W || state !== "play" || !down) return;
-    var p = toLogical(e); down = null;
-    if (placing) {
-      var gx = ghost ? ghost.x : Math.round(p.x), gy = ghost ? ghost.y : Math.round(p.y);
-      var err = K.placeError(W, placing, gx, gy);
-      if (!err && W.cash >= K.towerCost(W, placing)) {
-        var t = K.place(W, placing, gx, gy); handleEvents();
-        if (!e.shiftKey) { placing = null; sel = t; }
-      } else { SND.no(); if (e.pointerType !== "mouse") return; }
-      if (e.pointerType !== "mouse") ghost = null;
-      updateSide(true);
-      return;
-    }
-    var tw = towerAt(p.x, p.y);
+    if (!W || state !== "play" || !down || drag) return;
+    down = null;
+    if (placing) { if (!tryPlace(e.shiftKey) && e.pointerType !== "mouse") {} updateUI(true); return; }
+    var p = toLogical(e.clientX, e.clientY), tw = towerAt(p.x, p.y);
     sel = tw || null;
-    if (tw) SND.place();
-    updateSide(true);
+    if (tw) SND.click();
+    updateUI(true);
   });
-  canvas.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse" && placing) ghost = null; });
-  canvas.addEventListener("contextmenu", function (e) { if (placing || sel) { e.preventDefault(); placing = null; sel = null; ghost = null; updateSide(true); } });
+  canvas.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse" && placing && !drag) ghost = null; });
+  canvas.addEventListener("contextmenu", function (e) { if (placing || sel) { e.preventDefault(); placing = null; sel = null; ghost = null; updateUI(true); } });
 
   document.addEventListener("keydown", function (e) {
     if (!W || state !== "play") return;
     if (e.target && /input|textarea|select/i.test(e.target.tagName)) return;
     var k = e.key;
-    if (k === " ") { e.preventDefault(); goBtn(); updateSide(true); }
-    else if (k === "Escape") { if (placing || sel) { placing = null; sel = null; ghost = null; updateSide(true); } else togglePause(); }
-    else if (/^[1-8]$/.test(k)) { placing = D.TOWER_ORDER[+k - 1]; sel = null; updateSide(true); }
-    else if (sel && (k === "a" || k === "q" || k === ",")) { K.upgrade(W, sel, 0); handleEvents(); updateSide(true); }
-    else if (sel && (k === "z" || k === "w" || k === ";" || k === ".")) { K.upgrade(W, sel, 1); handleEvents(); updateSide(true); }
-    else if (sel && (k === "e" || k === ":" || k === "/")) { K.upgrade(W, sel, 2); handleEvents(); updateSide(true); }
-    else if (sel && k === "Tab") { e.preventDefault(); K.cycleTarget(sel); updateSide(true); }
+    if (k === " ") { e.preventDefault(); goBtn(); updateUI(true); }
+    else if (k === "Escape") { if (placing || sel) { placing = null; sel = null; ghost = null; updateUI(true); } else togglePause(); }
+    else if (/^[1-8]$/.test(k)) { placing = D.TOWER_ORDER[+k - 1]; sel = null; updateUI(true); }
+    else if (sel && (k === "a" || k === "q" || k === ",")) { K.upgrade(W, sel, 0); handleEvents(); updateUI(true); }
+    else if (sel && (k === "z" || k === "w" || k === ";" || k === ".")) { K.upgrade(W, sel, 1); handleEvents(); updateUI(true); }
+    else if (sel && (k === "e" || k === ":" || k === "/")) { K.upgrade(W, sel, 2); handleEvents(); updateUI(true); }
+    else if (sel && k === "Tab") { e.preventDefault(); K.cycleTarget(sel); updateUI(true); }
+    else if (sel && (k === "Delete" || k === "Backspace")) { K.sell(W, sel); sel = null; handleEvents(); updateUI(true); }
     else if (k === "p") togglePause();
   });
 
@@ -611,8 +800,8 @@
     return D.MODES.map(function (m) { var on = S.medals[mapId] && S.medals[mapId][m.id]; return '<i class="td-medal td-m-' + m.id + (on ? " on" : "") + '" title="' + esc(m.name) + (on ? " : réussi" : "") + '"></i>'; }).join("");
   }
   function showMenu() {
-    state = "menu"; W = null; sel = null; placing = null; paused = false; hud.hidden = true; side.hidden = true; stage.classList.remove("td-playing"); resize();
-    var h = '<div class="screen-head"><h2>Écureuil Défense</h2><p class="game-small">Pose des écureuils le long du chemin, améliore-les sur 3 voies et protège ta réserve de noisettes.</p></div>';
+    state = "menu"; W = null; sel = null; placing = null; paused = false; showUI(false); resize();
+    var h = '<div class="screen-head"><h2>Écureuil Défense</h2><p class="game-small">Pose tes tours le long du chemin, améliore-les sur 3 voies et protège ta réserve de noisettes.</p></div>';
     h += '<h3 class="pick-title">Carte</h3><div class="td-maps">';
     D.MAPS.forEach(function (m) {
       var best = S.best[m.id + "_" + S.mode] || 0;
@@ -651,7 +840,7 @@
     var h = "<h2>Pause</h2><p>Manche " + W.round + " · " + esc(W.map.name) + " · " + esc(W.mode.name) + "</p>" +
       '<div class="btn-row center"><button class="btn" type="button" data-resume>▶ Reprendre</button><button class="btn btn-ghost" type="button" data-help>Les tours</button></div>' +
       '<div class="btn-row center"><button class="btn btn-ghost btn-small" type="button" data-restart>Recommencer</button><button class="btn btn-ghost btn-small" type="button" data-quit>Menu</button></div>' +
-      '<p class="game-small">Raccourcis : Espace = lancer / accélérer · 1-8 = tours · A Z E = améliorer les voies · Tab = cible · Échap = annuler. Maj + clic pour poser plusieurs tours.</p>';
+      '<p class="game-small">Glisse une tour de la boutique vers le terrain pour la poser. Raccourcis : Espace = lancer / accélérer · 1-8 = tours · A Z E = améliorer les voies · Tab = cible · Suppr = vendre · Échap = annuler · Maj + clic = poser plusieurs tours.</p>';
     showCard(h, "game-card-pause");
     card.querySelector("[data-resume]").addEventListener("click", function () { paused = false; syncHud(); hideOverlay(); });
     card.querySelector("[data-help]").addEventListener("click", showTowers);
@@ -660,10 +849,10 @@
   }
   function startGame() {
     W = K.createWorld({ map: S.map, mode: S.mode, seed: (Math.random() * 1e9) | 0 });
-    state = "play"; paused = false; speed = 1; sel = null; placing = null; vfx = []; sideSig = "";
+    state = "play"; paused = false; speed = 1; sel = null; placing = null; vfx = []; shopSig = upgSig = abilSig = "";
     S.games++; save();
-    hideOverlay(); hud.hidden = false; side.hidden = false; stage.classList.add("td-playing");
-    syncHud(); resize(); updateSide(true);
+    hideOverlay(); showUI(true);
+    buildShop(); syncHud(); resize(); updateSide(true);
     banner(W.map.name + " · " + W.mode.name);
   }
   function record() {
@@ -676,17 +865,17 @@
     S.medals[W.map.id] = S.medals[W.map.id] || {};
     var first = !S.medals[W.map.id][W.mode.id];
     S.medals[W.map.id][W.mode.id] = true; S.wins++; save();
-    SND.win(); paused = true; hud.hidden = true; syncHud();
+    SND.win(); paused = true; syncHud();
     var h = "<h2>Victoire !</h2><p>" + esc(W.map.name) + " · " + esc(W.mode.name) + " : les " + W.mode.rounds + " manches sont passées, la réserve est sauve.</p>" +
       (first ? '<p class="td-gain">🏅 Nouvelle médaille !</p>' : "") +
       '<ul class="over-stats"><li><span>Vies</span><strong>' + W.lives + "</strong></li><li><span>Bestioles</span><strong>" + fmt(W.kills) + "</strong></li><li><span>Tours</span><strong>" + W.towers.length + "</strong></li></ul>" +
       '<div class="btn-row center"><button class="btn" type="button" data-free>Continuer en mode libre</button><button class="btn btn-ghost" type="button" data-menu>Menu</button></div>';
     showCard(h, "game-card-over");
-    card.querySelector("[data-free]").addEventListener("click", function () { W.freeplay = true; paused = false; hud.hidden = false; syncHud(); hideOverlay(); updateSide(true); });
+    card.querySelector("[data-free]").addEventListener("click", function () { W.freeplay = true; paused = false; syncHud(); hideOverlay(); updateSide(true); });
     card.querySelector("[data-menu]").addEventListener("click", showMenu);
   }
   function onLose() {
-    record(); SND.over(); state = "over"; hud.hidden = true;
+    record(); SND.over(); state = "over";
     var h = "<h2>La réserve est pillée !</h2><p>" + esc(W.map.name) + " · " + esc(W.mode.name) + " : tu as tenu jusqu'à la manche <strong>" + W.round + "</strong>.</p>" +
       '<ul class="over-stats"><li><span>Manche</span><strong>' + W.round + "</strong></li><li><span>Bestioles</span><strong>" + fmt(W.kills) + "</strong></li><li><span>Record</span><strong>" + (S.best[W.map.id + "_" + W.mode.id] || 0) + "</strong></li></ul>" +
       '<div class="btn-row center"><button class="btn" type="button" data-again>Rejouer</button><button class="btn btn-ghost" type="button" data-menu>Menu</button></div>';

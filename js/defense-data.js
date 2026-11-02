@@ -19,9 +19,9 @@
      ===================================================================== */
   var TOWERS = {
     noisette: {
-      name: "Noisette", role: "Lanceuse", cost: 200, color: "#c98d4a",
+      name: "Frondeur", role: "Écureuil à la fronde", cost: 200, color: "#c98d4a",
       fur: { t: "#f2b05e", d: "#b85e2a", o: "#e8873a", c: "#fdf3de", k: "#2b1709", n: "#6b4430" },
-      desc: "Lance des noisettes sur la bestiole la plus avancée. Pas chère, polyvalente.",
+      desc: "Un écureuil qui lance des noisettes à la fronde. Pas cher, polyvalent.",
       base: { kind: "proj", range: 92, rate: 0.85, dmg: 2, pierce: 2, pspd: 320 },
       paths: [
         { name: "Force", up: [
@@ -45,9 +45,9 @@
       ] },
 
     braise: {
-      name: "Braise", role: "Explosions", cost: 450, color: "#c8553d",
+      name: "Canon", role: "Canon à braises", cost: 450, color: "#c8553d",
       fur: { t: "#f6d36b", d: "#a8321e", o: "#e0542a", c: "#ffd9a0", k: "#2b1709", n: "#6b2010" },
-      desc: "Lance des glands enflammés qui explosent : touche un groupe et perce l'armure.",
+      desc: "Un canon qui tire des boulets de braise : ils explosent sur un groupe et percent l'armure.",
       base: { kind: "proj", range: 88, rate: 1.4, dmg: 2, pierce: 1, pspd: 230, splash: 18, ap: true, psize: 1 },
       paths: [
         { name: "Explosions", up: [
@@ -71,9 +71,9 @@
       ] },
 
     rafale: {
-      name: "Rafale", role: "Tout autour", cost: 280, color: "#3f8f8a",
+      name: "Moulin", role: "Moulin à plumes", cost: 280, color: "#3f8f8a",
       fur: { t: "#e0fff8", d: "#3f8f8a", o: "#7fd1c7", c: "#f0fffb", k: "#2b1709", n: "#1f4f4a" },
-      desc: "Envoie 8 plumes dans toutes les directions. Petite portée : place-la au bord d'un virage.",
+      desc: "Ses ailes projettent 8 plumes tout autour. Petite portée : place-le dans un virage.",
       base: { kind: "ring", range: 52, rate: 1.3, dmg: 1, pierce: 1, count: 8, pspd: 300 },
       paths: [
         { name: "Lames", up: [
@@ -97,9 +97,9 @@
       ] },
 
     givre: {
-      name: "Givre", role: "Gel", cost: 320, color: "#5fa3c9",
+      name: "Cristal", role: "Cristal de givre", cost: 320, color: "#5fa3c9",
       fur: { t: "#e6f6fa", d: "#5f8fb8", o: "#a8d8f0", c: "#ffffff", k: "#2b1709", n: "#5f8fb8" },
-      desc: "Une onde de froid gèle toutes les bestioles autour (pas les gros, ni les boss : ils sont juste ralentis).",
+      desc: "Un cristal qui gèle tout ce qui l'entoure (les gros et les boss sont juste ralentis).",
       base: { kind: "pulse", range: 50, rate: 2.2, dmg: 0, freeze: 1.0, camo: true },
       paths: [
         { name: "Gel", up: [
@@ -123,9 +123,9 @@
       ] },
 
     eclair: {
-      name: "Éclair", role: "Chaîne", cost: 420, color: "#4a4a8a",
+      name: "Bobine", role: "Bobine à éclairs", cost: 420, color: "#4a4a8a",
       fur: { t: "#fff2a0", d: "#b8901a", o: "#f2c230", c: "#fffbe0", k: "#2b1709", n: "#8a6a10" },
-      desc: "La foudre frappe une bestiole puis rebondit sur 2 voisines.",
+      desc: "Une bobine de cuivre : la foudre frappe une bestiole puis rebondit sur 2 voisines.",
       base: { kind: "chain", range: 88, rate: 1.1, dmg: 2, chain: 2, chainR: 46 },
       paths: [
         { name: "Foudre", up: [
@@ -149,9 +149,9 @@
       ] },
 
     guetteur: {
-      name: "Guetteur", role: "Tireur d'élite", cost: 350, color: "#5a6a2a",
+      name: "Mirador", role: "Hibou tireur d'élite", cost: 350, color: "#5a6a2a",
       fur: { t: "#8a6a4a", d: "#3a2a1a", o: "#6b5a3a", c: "#d8c8a0", k: "#2b1709", n: "#3a2a1a" },
-      desc: "Tir instantané à portée infinie. Lent, mais il ne rate jamais rien sur la carte.",
+      desc: "Un hibou perché sur son mirador : tir instantané à portée infinie, lent mais précis.",
       base: { kind: "snipe", range: 9999, rate: 1.6, dmg: 3 },
       paths: [
         { name: "Calibre", up: [
@@ -175,9 +175,9 @@
       ] },
 
     chene: {
-      name: "Chêne", role: "Soutien", cost: 650, color: "#3f6b3a",
+      name: "Chêne", role: "Vieux chêne (soutien)", cost: 650, color: "#3f6b3a",
       fur: { t: "#9cd06a", d: "#2f4f2a", o: "#5b8a4a", c: "#d8efb0", k: "#2b1709", n: "#1f3a1b" },
-      desc: "N'attaque pas au début : les tours dans sa portée tirent 10 % plus vite.",
+      desc: "N'attaque pas au début : les tours sous ses branches tirent 10 % plus vite.",
       base: { kind: "aura", range: 70, rate: 1, auraSpd: 0.1 },
       paths: [
         { name: "Sève", up: [
@@ -201,7 +201,7 @@
       ] },
 
     pepite: {
-      name: "Pépite", role: "Économie", cost: 1000, color: "#a8741a",
+      name: "Grenier", role: "Grenier à noisettes", cost: 1000, color: "#a8741a",
       fur: { t: "#ffe27a", d: "#a8741a", o: "#e0a82a", c: "#fff3c0", k: "#2b1709", n: "#6b4430" },
       desc: "N'attaque pas : rapporte 70 noisettes à chaque fin de manche.",
       base: { kind: "farm", range: 60, rate: 1, income: 70 },
