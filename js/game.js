@@ -16,7 +16,7 @@
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
   var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.14.1";
+  var VERSION = "0.14.2";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -1285,10 +1285,10 @@
     var corridors = Object.keys(links).map(function (k) {
       var A = rooms[links[k][0]], B = rooms[links[k][1]], c;
       if (A.gy === B.gy) {
-        var L = A.gx < B.gx ? A : B, Rr = A.gx < B.gx ? B : A, x1 = L.rect.x + L.rect.w - 4, x2 = Rr.rect.x + 4;
+        var L = A.gx < B.gx ? A : B, Rr = A.gx < B.gx ? B : A, x1 = L.rect.x + L.rect.w - 16, x2 = Rr.rect.x + 16;
         c = { x: x1, y: A.cy - 18, w: x2 - x1, h: 36, a: L.idx, b: Rr.idx, horiz: true };
       } else {
-        var T = A.gy < B.gy ? A : B, Bt = A.gy < B.gy ? B : A, y1 = T.rect.y + T.rect.h - 4, y2 = Bt.rect.y + 4;
+        var T = A.gy < B.gy ? A : B, Bt = A.gy < B.gy ? B : A, y1 = T.rect.y + T.rect.h - 16, y2 = Bt.rect.y + 16;
         c = { x: A.cx - 18, y: y1, w: 36, h: y2 - y1, a: T.idx, b: Bt.idx, horiz: false };
       }
       return c;
@@ -1309,7 +1309,11 @@
     var dg = r.dg, m = 7;
     if (dg.active >= 0) return inRect(x, y, dg.rooms[dg.active].rect, m);
     for (var i = 0; i < dg.rooms.length; i++) if (inRect(x, y, dg.rooms[i].rect, m)) return true;
-    for (i = 0; i < dg.corridors.length; i++) { var c = dg.corridors[i]; if (inRect(x, y, { x: c.x, y: c.y, w: c.w, h: c.h }, c.horiz ? 0 : 7) && inRect(x, y, { x: c.x - 1, y: c.y - 1, w: c.w + 2, h: c.h + 2 }, c.horiz ? 7 : 0)) return true; }
+    // couloirs : on y marche sur toute la longueur (ils mordent dans les salles), avec une marge sur la largeur
+    for (i = 0; i < dg.corridors.length; i++) {
+      var c = dg.corridors[i];
+      if (c.horiz ? (x >= c.x && x <= c.x + c.w && y >= c.y + m && y <= c.y + c.h - m) : (y >= c.y && y <= c.y + c.h && x >= c.x + m && x <= c.x + c.w - m)) return true;
+    }
     return false;
   }
   function dungeonMove(o, nx, ny) {
@@ -3370,6 +3374,22 @@
     dungeon: function () { return r && r.dg ? { floor: r.dg.floor, active: r.dg.active, rooms: r.dg.rooms.map(function (x) { return x.type[0] + (x.state === "cleared" ? "*" : ""); }).join(""), stairs: !!r.dg.stairs, cleared: r.dg.clearedTotal } : null; },
     goRoom: function (type) { if (!r || !r.dg) return; var rm = r.dg.rooms.filter(function (x) { return x.type === type && x.state !== "cleared"; })[0]; if (rm) { me.x = rm.cx; me.y = rm.cy; } return !!rm; },
     chest: function (t) { chestQueue.push(t || 0); },
+    walkTest: function () {
+      var bad = 0, tot = 0, save = r.dg.active; r.dg.active = -1;
+      r.dg.corridors.forEach(function (c) {
+        var A = r.dg.rooms[c.a], B = r.dg.rooms[c.b], o = { x: A.cx, y: A.cy }; tot++;
+        var mid = c.horiz ? c.y + c.h / 2 : c.x + c.w / 2;
+        for (var k = 0; k < 2000; k++) {
+          var tx = c.horiz ? (Math.abs(o.y - mid) > 1 ? o.x : B.cx) : (Math.abs(o.x - mid) > 1 ? mid : B.cx);
+          var ty = c.horiz ? (Math.abs(o.y - mid) > 1 ? mid : B.cy) : (Math.abs(o.x - mid) > 1 ? o.y : B.cy);
+          var dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy); if (d < 1) break;
+          dungeonMove(o, o.x + dx / d * 1.5, o.y + dy / d * 1.5);
+        }
+        if (Math.hypot(o.x - B.cx, o.y - B.cy) > 3) bad++;
+      });
+      r.dg.active = save; return bad + "/" + tot;
+    },
+    regen: function (seed) { r.seed = seed; buildFloor(1); },
     goStairs: function () { if (r && r.dg && r.dg.stairs) { me.x = r.dg.stairs.x; me.y = r.dg.stairs.y; return true; } return false; },
     killRoom: function () { enemies.forEach(function (e) { if (!e.d.prop && e.room !== undefined) { e.hp = 0; kill(e); } }); },
     endRound: function () { if (r && isArena() && r.phase === "fight") r.roundT = r.roundLen; },
