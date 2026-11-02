@@ -16,7 +16,7 @@
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
   var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.23.0";
+  var VERSION = "0.23.1";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -1303,14 +1303,17 @@
       ctx.fillStyle = SHR[s.k].color; ctx.fillRect(Math.round(px) - 2, Math.round(py) - 2, 4, 4);
     });
   }
-  function drawTierBar() {
+  // jauge de difficulté, alignée à droite sous l'or ; renvoie la hauteur suivante libre
+  function drawTierBar(by) {
     var pos = tierPos(), t = Math.min(TIERS.length - 1, Math.floor(pos)), fr = t >= TIERS.length - 1 ? 1 : pos - t;
-    var bw = 92, bx = Math.round(W / 2 - bw / 2), by = 13;
+    var bw = 64, bx = W - 4 - bw;
     box(bx, by, bw, 9, "#1a120c");
     ctx.fillStyle = TIERS[t].color; ctx.fillRect(bx + 1, by + 1, Math.round((bw - 2) * fr), 7);
     if (t < TIERS.length - 1) { ctx.fillStyle = TIERS[t + 1].color; ctx.globalAlpha = 0.35; ctx.fillRect(bx + 1 + Math.round((bw - 2) * fr), by + 1, bw - 2 - Math.round((bw - 2) * fr), 7); ctx.globalAlpha = 1; }
-    drawText(TIERS[t].name, W / 2, by + 2, t >= 8 && Math.sin(r.time * 10) > 0 ? "#ff5a3a" : "#fdf3de", "c");
-    if (r.madness) drawText("FOLIE X" + (1 + r.madness), W / 2, by + 11, "#ff40c0", "c");
+    drawText(TIERS[t].name, bx + bw / 2, by + 2, t >= 8 && Math.sin(r.time * 10) > 0 ? "#ff5a3a" : "#fdf3de", "c");
+    by += 12;
+    if (r.madness) { drawText("FOLIE X" + (1 + r.madness), W - 4, by, "#ff40c0", "r"); by += 8; }
+    return by;
   }
   function updateWarns(dt) {
     for (var i = warns.length - 1; i >= 0; i--) {
@@ -3364,7 +3367,6 @@
     ctx.fillStyle = "#e0a82a"; ctx.fillRect(3, 3, Math.round((bw - 2) * ratio), 7);
     ctx.fillStyle = "#ffe27a"; ctx.fillRect(3, 3, Math.round((bw - 2) * ratio), 2);
     drawText("NIV " + r.level, W / 2, 4, "#fdf3de", "c");
-    drawTierBar();
     drawShrineMarkers();
     // cases d'armes (haut) et d'objets (bas), 6 chacune
     var wl2 = Object.keys(p.weapons).map(function (id) { return [id, p.weapons[id]]; });
@@ -3392,14 +3394,16 @@
     // chrono, ennemis, or (à droite)
     if (isDungeon()) {
       drawText(fmtTime(r.time), W - 4, 15, "#fdf3de", "r", 2);
-      drawText("ETAGE " + r.dg.floor + "/" + DG.floors, W - 4, 45, "#f6d36b", "r");
-      drawMinimap(W - 4, 54);
+      var ty = drawTierBar(45);
+      drawText("ETAGE " + r.dg.floor + "/" + DG.floors, W - 4, ty, "#f6d36b", "r");
+      drawMinimap(W - 4, ty + 9);
     } else if (isArena()) {
       var left = Math.max(0, r.roundLen - r.roundT);
       drawText(fmtTime(Math.ceil(left)), W - 4, 15, left < 5 && r.phase === "fight" ? "#ff5a3a" : "#fdf3de", "r", 2);
-      drawText("MANCHE " + r.round + "/" + A.rounds, W - 4, 45, "#f6d36b", "r");
-      if (r.mod && r.phase === "fight") drawText(r.mod.name, W - 4, 53, "#ff8a6a", "r");
-    } else drawText(fmtTime(r.time), W - 4, 15, "#fdf3de", "r", 2);
+      var ta = drawTierBar(45);
+      drawText("MANCHE " + r.round + "/" + A.rounds, W - 4, ta, "#f6d36b", "r");
+      if (r.mod && r.phase === "fight") drawText(r.mod.name, W - 4, ta + 8, "#ff8a6a", "r");
+    } else { drawText(fmtTime(r.time), W - 4, 15, "#fdf3de", "r", 2); drawTierBar(45); }
     // reliques et objets sous les cases
     var rk = Object.keys(me.relics || {});
     rk.forEach(function (id, i) { var rl = D.RELICS.filter(function (x) { return x.id === id; })[0]; if (rl) { ctx.font = "8px sans-serif"; ctx.fillText(rl.icon, 2 + i * 10, yy + 6); } });
