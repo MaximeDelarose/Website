@@ -70,6 +70,8 @@ window.ES_DATA = (function () {
   var LUMB_TOP = ["....tt..........", "..ttttt...rRrR..", ".tttdtttt.RrRrR.", ".ttd...ttrrrrrrr", ".ttd....t.ookooo", ".ttd......ooooon", "..ttd....ooccc..", "...ttd..ooocc.aa", "....tddoooocchaa", ".....doooooc.h..", ".....ddooooo.h.."];
   var NIN_TOP = ["....tt..........", "..ttttt.........", ".tttdtttt..d..d.", ".ttd..rrrrrrrrr.", ".ttdrr..t.kkwkko", ".ttd......ooooon", "..ttd....ooccc..", "...ttd..ooocc...", "....tddoooocc...", ".....doooooc....", ".....ddooooo...."];
   var DRU_TOP = ["....tt..........", "..ttttt...f.y.f.", ".tttdtttt.lflfl.", ".ttd...tt.ooooo.", ".ttd....t.ookooo", ".ttd......ooooon", "..ttd..llooccc..", "...ttdllloocc...", "....tlllooocc...", ".....llooooc....", ".....ddooooo...."];
+  var PIP_TOP = ["....tt..........", "..ttttt.........", ".tttdtttt..d..d.", ".ttd...tt.ooooo.", ".ttd....t.ookooo", ".ttd......ooooon", "..ttd...sSssss..", "...ttd..soocc...", "....tddoooocc...", ".....doooooc....", ".....ddooooo...."];
+  var POP_TOP = ["....tt..........", "..ttttt....bBb..", ".tttdtttt..dbd..", ".ttd...tt.ooooo.", ".ttd....t.ookooo", ".ttd......ooooon", "..ttd....ooccc..", "...ttd..ooocc...", "....tddoooocc...", ".....doooooc....", ".....ddooooo...."];
   function squirrel(pal) { return { pal: pal, frames: [SQ_TOP.concat([LEGS_A]), SQ_TOP.concat([LEGS_B])] }; }
 
   var FOX_TOP = [
@@ -91,6 +93,8 @@ window.ES_DATA = (function () {
 
   var SPRITES = {
     /* --- écureuils jouables --- */
+    sq_pip: { pal: { t: "#f2b05e", d: "#b85e2a", o: "#e8873a", c: "#fdf3de", k: "#2b1709", n: "#6b4430", s: "#3a7ad8", S: "#8ac0ff" }, frames: [PIP_TOP.concat([LEGS_A]), PIP_TOP.concat([LEGS_B])] },
+    sq_pop: { pal: { t: "#f6c27a", d: "#c0703a", o: "#f0a060", c: "#fdf3de", k: "#2b1709", n: "#6b4430", b: "#e84a8a", B: "#ffb0d0" }, frames: [POP_TOP.concat([LEGS_A]), POP_TOP.concat([LEGS_B])] },
     sq_chevalier: { pal: { t: "#e0c49a", d: "#8a6a48", o: "#c49a6a", c: "#fdf3de", k: "#1b1226", n: "#5a4030", h: "#8a929a", H: "#c0c8d0", S: "#3a5aa8", Y: "#f6d36b" }, frames: [KNIGHT_TOP.concat([LEGS_A]), KNIGHT_TOP.concat([LEGS_B])] },
     sq_mage: { pal: { t: "#b0a0c8", d: "#5a4a78", o: "#8a7aa8", c: "#efe6ff", k: "#1b1226", n: "#3a2a58", p: "#4a3a9a", y: "#f6d36b", w: "#8a5a3b" }, frames: [WIZ_TOP.concat([LEGS_A]), WIZ_TOP.concat([LEGS_B])] },
     sq_bucheron: { pal: { t: "#d88a4a", d: "#8a4a20", o: "#c06a30", c: "#fdf3de", k: "#2b1709", n: "#5a3018", r: "#c8282a", R: "#2b1709", a: "#c0c8d0", h: "#8a5a3b" }, frames: [LUMB_TOP.concat([LEGS_A]), LUMB_TOP.concat([LEGS_B])] },
@@ -296,6 +300,9 @@ window.ES_DATA = (function () {
     { id: "capitaine", name: "Capitaine", title: "Écureuil pirate", sprite: "sq_capitaine", weapon: "roquettes",
       desc: "Un œil, zéro peur. Ses roquettes font de gros trous.", mods: { area: 0.15, amount: 1, speed: -0.05 },
       unlock: "survie_10", price: 900 },
+    { id: "jumeaux", name: "Pip & Pop", title: "Écureuils jumeaux", sprite: "sq_pip", weapon: "gland", twin: { name: "Pop", sprite: "sq_pop", dmg: 0.6 },
+      desc: "Deux écureuils sur les mêmes commandes, chacun sa vie. Leurs armes font 60 % des dégâts. Si l'un tombe, l'autre peut le relever.", mods: {},
+      unlock: "survie_5", price: 1000 },
     { id: "chevalier", name: "Bastien", title: "Écureuil chevalier", sprite: "sq_chevalier", weapon: "ecu",
       desc: "Casque, écu et cœur vaillant. Ses boucliers tournent autour de lui.", mods: { hp: 40, armor: 2, speed: -0.12, might: -0.05 },
       unlock: "donjon_2", price: 800 },
