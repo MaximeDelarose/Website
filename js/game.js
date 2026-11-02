@@ -16,7 +16,7 @@
   var GAME_ID = "ecureuil-survivor", GAME_ID_ARENA = "ecureuil-arene", GAME_ID_DUNGEON = "ecureuil-donjon";
   var DG = D.DUNGEON;
   var A = D.ARENA;
-  var VERSION = "0.20.0";
+  var VERSION = "0.21.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -209,18 +209,19 @@
     var p = pl || actingPlayer();
     var m = p.char.mods || {}, sh = p.shop || {}, ps = p.passives, tr = p.tree || {}, pg = p.pshop || {}, rl = p.relics || {}, it = p.items || {};
     var oldMax = p.maxHp || 0;
-    p.maxHp = Math.max(20, 100 + (p.bonusHp || 0) + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0) + (rl.coeur ? 30 : 0)) * (1 + 0.25 * (it.coeurchene || 0));
-    p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0) + (rl.plume ? 0.12 : 0) + 0.08 * (it.plume || 0));
-    p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + 0.08 * (pg.racines || 0) + (rl.croc ? 0.15 : 0) + 0.15 * (it.horloge || 0);
-    p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0) + (tr.s3 || 0) + 2 * (it.ecaille || 0);
+    p.maxHp = Math.max(20, 100 + (p.bonusHp || 0) + (m.hp || 0) + 10 * (sh.vigueur || 0) + 20 * (ps.appetit || 0) + 10 * (tr.s1 || 0) + 15 * (pg.ecorce || 0) + (rl.coeur ? 30 : 0) + 25 * (it.bois_roi || 0) + 50 * (it.coeur_golem || 0)) * (1 + 0.25 * (it.coeurchene || 0)) * Math.pow(0.8, p.devil || 0);
+    p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0) + (rl.plume ? 0.12 : 0) + 0.08 * (it.plume || 0) + 0.25 * (it.pacte_ailes || 0) + 0.15 * (it.aureole || 0) - 0.05 * (it.coeur_golem || 0));
+    p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + 0.08 * (pg.racines || 0) + (rl.croc ? 0.15 : 0) + 0.15 * (it.horloge || 0) + 0.4 * (it.pacte_force || 0) + 0.2 * (it.aureole || 0);
+    p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0) + (tr.s3 || 0) + 2 * (it.ecaille || 0) + (it.bois_roi || 0) + 2 * (it.coeur_golem || 0);
     p.magnet = 30 * (1 + (m.magnet || 0) + 0.15 * (sh.aimant || 0) + 0.4 * (ps.joues || 0) + 0.1 * (tr.f1 || 0) + (rl.aimant ? 0.6 : 0));
-    p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0) - (rl.sablier ? 0.1 : 0) - 0.06 * (it.sablier || 0) - 0.2 * (it.horloge || 0));
+    p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0) - (rl.sablier ? 0.1 : 0) - 0.06 * (it.sablier || 0) - 0.2 * (it.horloge || 0) - 0.2 * (it.pacte_ailes || 0));
     p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + 0.1 * (pg.seve || 0) + 0.5 * (it.couronne || 0);
-    p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0) + (rl.mousse ? 0.8 : 0) + (it.coeurchene || 0) + (m.regen || 0);
+    p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0) + (rl.mousse ? 0.8 : 0) + (it.coeurchene || 0) + (m.regen || 0) + 2 * (it.eau_benite || 0);
     p.luck = 1 + 0.15 * (sh.chance || 0) + 0.2 * (ps.trefle || 0) + (rl.trefle ? 0.3 : 0);
     p.area = 1 + (m.area || 0) + 0.05 * (sh.zone || 0) + 0.1 * (ps.loupe || 0) + 0.06 * (tr.a3 || 0) + (rl.loupe ? 0.2 : 0);
-    p.amount = (m.amount || 0) + Math.ceil((ps.poches || 0) / 2) + (tr.a4 || 0) + (rl.poche ? 1 : 0);
+    p.amount = (m.amount || 0) + Math.ceil((ps.poches || 0) / 2) + (tr.a4 || 0) + (rl.poche ? 1 : 0) + (it.plume_hibou || 0) + 2 * (it.pacte_ombre || 0);
     p.shieldCd = ps.mousse ? 16 - 2 * ps.mousse : 0;
+    if (it.plume_ange) { p.shieldCd = p.shieldCd ? Math.min(p.shieldCd, 10) : 10; if (!p.shield && !(p.shieldT > 0)) p.shieldT = 1; }
     p.crit = 0.08 * (tr.a5 || 0) + 0.05 * (ps.crocs || 0) + (rl.oeil ? 0.1 : 0) + 0.07 * (it.griffes || 0) + 0.1 * (it.corne || 0); p.rage = !!tr.a6; p.dodge = 0.04 * (tr.s5 || 0) + 0.04 * (ps.queuetouffue || 0) + (m.dodge || 0); p.taken = tr.s6 ? 0.85 : 1;
     p.goldX = tr.f6 ? 2 : 1; p.extraChoice = tr.f4 ? 1 : 0;
     p.goldMul = (1 + 0.1 * (sh.avarice || 0)) * (1 + 0.08 * (tr.f2 || 0)) * (1 + 0.12 * (pg.tresor || 0)) * DIFF.gold * (MAP.gold || 1) * (1 + 0.5 * (it.couronne || 0)) * (1 + 0.1 * (ps.sacglands || 0));
@@ -276,7 +277,8 @@
           fusions: 0, legend: 0, biome: -1, props: 0, freeze: 0, flash: 0, hard: (diffId || S.diff) !== "normal", ended: false, committed: false, newAch: [], bonus: 0,
           char: CH.id, map: MAP.id, coop: n > 1, mode: mode || "survie",
           round: 1, roundT: 0, roundLen: A.roundTime(1), roundKills: 0, phase: "fight", mod: null, won: false, ready: {} };
-    players.forEach(function (pl) { pl.coins = 0; pl.bonusHp = 0; pl.relics = {}; });
+    players.forEach(function (pl) { pl.coins = 0; pl.bonusHp = 0; pl.relics = {}; pl.devil = 0; });
+    r.sh = {}; r.trials = {}; r.madness = 0; r.devil = 0; r.tier = undefined; shrineCache = {};
     if (r.mode === "dungeon") { r.seed = seed || ((Math.random() * 1e9) | 0); buildFloor(1); }
     enemies = []; projs = []; hostile = []; lobs = []; gems = []; fx = []; texts = []; warns = []; zones = [];
     biomeCache = new Map();
@@ -460,7 +462,9 @@
     if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
     return e;
   }
-  function hpMul() { if (isDungeon()) return (1 + 0.9 * (r.dg.floor - 1)) * (1 + r.time / 400) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); return (isArena() ? 1 + 0.07 * (r.round - 1) : 1) * (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
+  function tierHp() { return 1 + TIER.hp * tierN(); }
+  function hpMul() { return hpMul0() * tierHp(); }
+  function hpMul0() { if (isDungeon()) return (1 + 0.9 * (r.dg.floor - 1)) * (1 + r.time / 400) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); return (isArena() ? 1 + 0.07 * (r.round - 1) : 1) * (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
   function makeEnemy(type, d, x, y, hp) {
     var e = { id: ++uid, type: type, d: d, spr: SPR[d.sprite], x: x, y: y, hp: hp, maxHp: hp, kx: 0, ky: 0, flash: 0, slowT: 0, slow: 0,
               anim: Math.random() * 2, phase: Math.random() * 6, face: 1, charge: 0, windup: 0, cd: 3, spd: (d.spd || 0) * DIFF.spd, cool: null };
@@ -481,7 +485,7 @@
     // élites en survie : de plus en plus fréquentes ; boss avec pouvoirs à partir du 2e
     if (!isArena() && !isDungeon()) {
       if (d.boss) { if (bossCount >= 1) giveAffixes(e, bossCount >= 3 ? 2 : 1); }
-      else if (r.time > 90 && Math.random() < Math.min(0.035, 0.004 + r.time / 18000)) giveAffixes(e, r.time > 480 ? 2 : 1);
+      else if (r.time > 90 && Math.random() < Math.min(0.035, 0.004 + r.time / 18000) + TIER.elite * tierN()) giveAffixes(e, r.time > 480 || tierN() >= 5 ? 2 : 1);
     }
     return e;
   }
@@ -514,7 +518,7 @@
     clearTimeout(banner.t); banner.t = setTimeout(function () { b.hidden = true; }, 2600);
   }
   function director(dt) {
-    var rate = Math.min(14, 1.7 + r.time / 30) * DIFF.spawn * (1 + 0.6 * (players.length - 1));
+    var rate = Math.min(14, 1.7 + r.time / 30) * DIFF.spawn * (1 + 0.6 * (humans() - 1)) * (1 + TIER.spawn * tierN());
     spawnAcc += rate * dt;
     while (spawnAcc >= 1) { spawnAcc--; if (enemies.length < 290) spawn(); }
     if (r.time >= nextSwarm) {
@@ -529,9 +533,9 @@
     if (r.time >= nextBoss) {
       nextBoss += 180;
       var bt = MAP.bosses[bossCount % MAP.bosses.length];
-      spawn(bt);
+      for (var bk = 0; bk < 1 + (r.madness || 0); bk++) spawn(bt);
       bossCount++;
-      bannerAll(D.ENEMIES[bt].name + " arrive !");
+      bannerAll(D.ENEMIES[bt].name + (r.madness ? " x" + (1 + r.madness) : "") + " arrive !");
       SND.boom();
     }
     propTimer -= dt;
@@ -564,6 +568,7 @@
     if (S.opts.numbers && texts.length < 60) texts.push({ x: e.x + (Math.random() * 6 - 3), y: e.y - e.d.r - 6, n: dmg, life: 0.6 });
     if (Net.dmgN < 30) { Net.dmgN++; netEv(["d", Math.round(e.x), Math.round(e.y - e.d.r - 6), dmg]); }
     if (p.items) onHitProcs(e);
+    if (crit && itn(p, "dard_reine") && !procLock && !e.d.prop) { procLock = true; explode(e.x, e.y, 18, 15 * itn(p, "dard_reine")); procLock = false; }
     if (e.hp <= 0 && !e.dead) kill(e);
   }
   function drop(kind, x, y, v) { gems.push({ x: x, y: y, kind: kind, v: v || 0 }); }
@@ -577,7 +582,8 @@
     }
     r.kills++; r.roundKills++;
     onKillProcs(e);
-    if (e.d.boss) dropItem(e.x + 10, e.y, Math.random() < 0.25 ? 2 : 1);
+    if (e.d.boss) { if (Math.random() < 0.5) drop("item", e.x + 10, e.y, rollItem(0, 1, "boss").idx); else dropItem(e.x + 10, e.y, Math.random() < 0.25 ? 2 : 1); }
+    if (e.quest) trialKill(e);
     else if (e.aff && Math.random() < 0.3) dropItem(e.x, e.y + 4, 0);
     if (e.type === "puffball") addZone(e.x, e.y, 24, 3.5, "spore", 4);
     if (e.aff) {
@@ -621,6 +627,7 @@
     }
     if (p.dodge && Math.random() < p.dodge) { p.inv = 0.3; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     p.calmT = 0;
+    if (r && TIER) dmg *= 1 + TIER.dmg * tierN();
     if (p.oshield > 0) { var ab = Math.min(p.oshield, dmg); p.oshield -= ab; dmg -= ab; p.inv = 0.3; burst(p.x, p.y, "#9cc56b", 4); if (dmg <= 0) return; }
     if (p.packN && p.passives && p.passives.meute) dmg -= p.passives.meute;
     p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)); p.inv = 0.6;
@@ -903,12 +910,13 @@
   var ITM = {}, procLock = false;
   D.ITEMS.forEach(function (it, i) { ITM[it.id] = it; it.idx = i; });
   function itn(pl, id) { return (pl.items && pl.items[id]) || 0; }
-  function rollItem(minR, luck) {
+  function rollItem(minR, luck, pool0) {
+    if (pool0) { var pl0 = D.ITEMS.filter(function (it) { return it.pool === pool0; }); return pl0[(Math.random() * pl0.length) | 0]; }
     var L = luck || 1, pool = [], tot = 0;
     D.RARITIES.forEach(function (ra, i) { if (i < (minR || 0)) return; var w = ra.weight * (i ? L : 1); pool.push([i, w]); tot += w; });
     var x = Math.random() * tot, ri = pool[pool.length - 1][0];
     for (var k = 0; k < pool.length; k++) { x -= pool[k][1]; if (x <= 0) { ri = pool[k][0]; break; } }
-    var list = D.ITEMS.filter(function (it) { return it.r === ri && allowed(it); });
+    var list = D.ITEMS.filter(function (it) { return it.r === ri && !it.pool && allowed(it); });
     return list[(Math.random() * list.length) | 0];
   }
   function dropItem(x, y, minR) { var it = rollItem(minR, p ? p.luck : 1); drop("item", x, y, it.idx); }
@@ -959,6 +967,7 @@
     if (!p || !p.items || e.d.prop) return;
     var n;
     if ((n = itn(p, "baies"))) p.hp = Math.min(p.maxHp, p.hp + n);
+    if ((n = itn(p, "pacte_calice"))) p.hp = Math.min(p.maxHp, p.hp + 3 * n);
     if ((n = itn(p, "lune")) && Math.random() < 0.04 * n) drop("berry", e.x, e.y);
     if ((n = itn(p, "follet")) && !procLock) { procLock = true; explode(e.x, e.y, 22 * p.area, 20 * n); procLock = false; }
   }
@@ -971,13 +980,15 @@
       pl.totemT = (pl.totemT === undefined ? 3 : pl.totemT) - dt;
       if (pl.totemT <= 0) { pl.totemT = 3; var t = nearest(4, 140, pl); if (t.length) { var tg = t[(Math.random() * t.length) | 0]; zapChain(tg, 1, 45 * n, { x: tg.x, y: tg.y - 70 }); SND.zap(); } }
     }
+    if ((n = itn(pl, "lumiere"))) { pl.lightT = (pl.lightT === undefined ? 4 : pl.lightT) - dt; if (pl.lightT <= 0) { pl.lightT = 4; var kp = p; p = pl; fireNova(60 * pl.area, 60 * n); p = kp; } }
     if ((n = itn(pl, "pomme"))) { pl.calmT = (pl.calmT || 0) + dt; if (pl.calmT >= 4 && !(pl.oshield > 0)) { pl.oshield = pl.maxHp * 0.1 * n; burst(pl.x, pl.y, "#9cc56b", 6); } }
   }
   function syncTwins() {
     for (var i = 0; i < players.length; i++) {
       var t = players[i]; if (!t.twin || !t.owner) continue;
       var o = t.owner, ch = t.weapons !== o.weapons || t.passives !== o.passives || t.items !== o.items || t.relics !== o.relics;
-      t.weapons = o.weapons; t.passives = o.passives; t.items = o.items; t.relics = o.relics; t.consumed = o.consumed; t.bonusHp = o.bonusHp;
+      ch = ch || t.devil !== o.devil;
+      t.weapons = o.weapons; t.passives = o.passives; t.items = o.items; t.relics = o.relics; t.consumed = o.consumed; t.bonusHp = o.bonusHp; t.devil = o.devil;
       if (ch || (t.syncT = (t.syncT || 0) - 1) <= 0) { t.syncT = 30; calc(t); }
     }
   }
@@ -1116,6 +1127,175 @@
     fx.push({ kind: "ring", x: p.x, y: p.y, r: R, life: 0.32, max: 0.32, col: "168,122,232" });
     netEv(["nv", Math.round(p.x), Math.round(p.y), Math.round(R)]);
     SND.zap();
+  }
+  /* =====================================================================
+     Difficulté qui monte (paliers) et sanctuaires à activer
+     ===================================================================== */
+  var TIERS = D.TIERS, TIER = D.TIER;
+  function tierPos() {
+    if (!r) return 0;
+    if (isArena()) return Math.max(0, (r.round - 1) / 2.4);
+    var m = r.time / 60 + (isDungeon() && r.dg ? (r.dg.floor - 1) * 3 : 0);
+    return m * (DIFF.hp > 1 ? 1.4 : 1) / TIER.minutes;
+  }
+  function tierN() { return Math.min(TIERS.length - 1, Math.floor(tierPos())); }
+  function tierTick() {
+    var t = tierN();
+    if (r.tier === undefined) r.tier = t;
+    if (t > r.tier) { r.tier = t; bannerAll("Difficulté : " + TIERS[t].name); SND.boom(); }
+  }
+  var SHR = {}; D.SHRINES.forEach(function (s) { SHR[s.id] = s; });
+  var SC = 380, shrineCache = {};
+  function pickShrineKind(h) {
+    var tot = 0; D.SHRINES.forEach(function (s) { tot += s.weight; });
+    var x = h % tot;
+    for (var i = 0; i < D.SHRINES.length; i++) { x -= D.SHRINES[i].weight; if (x < 0) return D.SHRINES[i].id; }
+    return "coffre";
+  }
+  function shrineCell(cx, cy) {
+    var key = cx + "," + cy;
+    if (shrineCache[key] !== undefined) return shrineCache[key];
+    var h = hash(cx * 13 + 7 + giantSeed * 3, cy * 17 + 91) >>> 0, s = null;
+    if ((h % 100) < 42) {
+      var x = cx * SC + 60 + ((h >>> 7) % (SC - 120)), y = cy * SC + 60 + ((h >>> 15) % (SC - 120));
+      if (Math.abs(x) > 110 || Math.abs(y) > 90) {
+        var gc = giantAt(Math.floor(x / GC), Math.floor(y / GC));
+        if (!gc || Math.hypot(gc.x - x, gc.y - y) > 40) s = { id: "s" + cx + "_" + cy, x: x, y: y, k: pickShrineKind(h >>> 3) };
+      }
+    }
+    shrineCache[key] = s;
+    return s;
+  }
+  function shrinesNear(x, y, rad) {
+    if (isDungeon()) return (r.dg && r.dg.shrines || []).filter(function (s) { return Math.abs(s.x - x) < rad && Math.abs(s.y - y) < rad; });
+    if (isArena()) return [];
+    var out = [], c0 = Math.floor((x - rad) / SC), c1 = Math.floor((x + rad) / SC), d0 = Math.floor((y - rad) / SC), d1 = Math.floor((y + rad) / SC);
+    for (var cx = c0; cx <= c1; cx++) for (var cy = d0; cy <= d1; cy++) { var s = shrineCell(cx, cy); if (s && Math.abs(s.x - x) < rad && Math.abs(s.y - y) < rad) out.push(s); }
+    return out;
+  }
+  function shState(s) { return (r.sh[s.id] = r.sh[s.id] || { p: 0, used: 0 }); }
+  function chestCost() { return Math.round((18 + 9 * tierN()) * (MAP.gold || 1)); }
+  function shrineTick(dt) {
+    var seen = {};
+    players.forEach(function (pl) {
+      if (pl.down) return;
+      shrinesNear(pl.x, pl.y, 40).forEach(function (s) {
+        var st = shState(s); if (st.used || seen[s.id]) return;
+        if (Math.hypot(pl.x - s.x, (pl.y - s.y) * 1.25) > 22) return;
+        seen[s.id] = pl;
+      });
+    });
+    Object.keys(r.sh).forEach(function (id) {
+      var st = r.sh[id]; if (st.used) return;
+      if (!seen[id]) { st.p = Math.max(0, st.p - dt * 0.6); if (st.cd) st.cd -= dt; return; }
+    });
+    Object.keys(seen).forEach(function (id) {
+      var pl = seen[id], s = shrinesNear(pl.x, pl.y, 40).filter(function (q) { return q.id === id; })[0], st = shState(s), def = SHR[s.k];
+      if (st.cd > 0) { st.cd -= dt; return; }
+      st.p = Math.min(1, st.p + dt / def.time);
+      if (st.p >= 1) activateShrine(s, st, pl);
+    });
+  }
+  function activateShrine(s, st, pl) {
+    var def = SHR[s.k], k;
+    if (s.k === "coffre") {
+      var cost = chestCost();
+      if (r.gold < cost) { st.p = 0; st.cd = 2; bannerAll("Il faut " + cost + " glands pour l'ouvrir"); return; }
+      r.gold -= cost; dropItem(s.x, s.y - 14, 0); if (Math.random() < 0.3) dropItem(s.x + 14, s.y - 8, 0);
+      bannerAll("Coffre ouvert !"); SND.gold();
+    } else if (s.k === "defi") {
+      var n = 5 + tierN(); r.trials[s.id] = n;
+      for (k = 0; k < n; k++) {
+        var pool = isDungeon() ? dgPool() : MAP.biomes[biomeAtTile(Math.floor(s.x / 16), Math.floor(s.y / 16))].enemies.map(function (q) { return q[0]; });
+        var a = k / n * TAU, e = spawnAt(pool[(Math.random() * pool.length) | 0], s.x + Math.cos(a) * 70, s.y + Math.sin(a) * 55);
+        giveAffixes(e, tierN() >= 4 ? 2 : 1); e.quest = s.id; e.wander = true; e.awake = true;
+      }
+      bannerAll("Défi : élimine les " + n + " élites !"); SND.boom();
+    } else if (s.k === "sang") {
+      pl.devil = (pl.devil || 0) + 1; r.devil = (r.devil || 0) + 1; calc(pl); if (pl.owner) calc(pl.owner);
+      drop("item", s.x, s.y - 14, rollItem(0, 1, "diable").idx);
+      burst(s.x, s.y, "#c0283a", 20); bannerAll("Pacte scellé… (-20 % de PV max)"); SND.boom();
+    } else if (s.k === "boss") {
+      var list = isDungeon() ? DG.guards : MAP.bosses, bt = list[(Math.random() * list.length) | 0];
+      for (k = 0; k < 1 + (r.madness || 0); k++) { var b = spawnAt(bt, s.x + (k - r.madness / 2) * 30, s.y - 60); b.wander = true; b.awake = true; }
+      bossCount++; bannerAll(D.ENEMIES[bt].name + (r.madness ? " x" + (1 + r.madness) : "") + " est invoqué !"); SND.boom();
+    } else if (s.k === "folie") {
+      r.madness = (r.madness || 0) + 1; bannerAll("Folie x" + (1 + r.madness) + " : les prochains boss seront plus nombreux !"); SND.fusion();
+    } else if (s.k === "soin") {
+      players.forEach(function (o) { if (!o.down) { o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.5); burst(o.x, o.y, "#6ad8ff", 8); } });
+      bannerAll("L'eau claire vous soigne"); SND.level();
+    } else if (s.k === "sacre") {
+      if (r.devil) bannerAll("La statue se détourne de vous… (un pacte a été scellé)");
+      else { drop("item", s.x, s.y - 14, rollItem(0, 1, "sacre").idx); bannerAll("Bénédiction !"); SND.fusion(); }
+    }
+    st.used = 1; st.p = 1;
+    ring(s.x, s.y, 26, false);
+  }
+  function trialKill(e) {
+    if (!e.quest || r.trials[e.quest] === undefined) return;
+    if (--r.trials[e.quest] > 0) return;
+    delete r.trials[e.quest];
+    var s = shrinesNear(e.x, e.y, 2000).filter(function (q) { return q.id === e.quest; })[0] || e;
+    drop("chest", s.x - 8, s.y - 10, 1); dropItem(s.x + 10, s.y - 10, 1);
+    bannerAll("Défi réussi !"); SND.fusion();
+  }
+  function drawShrines(cx, cy) {
+    var list = shrinesNear(cx + W / 2, cy + H / 2, Math.max(W, H));
+    list.forEach(function (s) {
+      var def = SHR[s.k], st = r.sh[s.id] || { p: 0, used: 0 }, x = Math.round(s.x), y = Math.round(s.y);
+      var dead = st.used || (s.k === "sacre" && r.devil), col = dead ? "#6a625a" : def.color;
+      // zone et jauge au sol
+      ctx.fillStyle = dead ? "rgba(40,30,25,.25)" : "rgba(20,14,10,.3)"; ctx.beginPath(); ctx.ellipse(x, y, 22, 17.6, 0, 0, TAU); ctx.fill();
+      if (!dead) {
+        ctx.strokeStyle = col; ctx.globalAlpha = 0.45; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.lineDashOffset = -r.time * 12;
+        ctx.beginPath(); ctx.ellipse(x, y, 22, 17.6, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+        if (st.p > 0) { ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y, 22, 17.6, 0, -Math.PI / 2, -Math.PI / 2 + st.p * TAU); ctx.stroke(); ctx.fillStyle = col; ctx.globalAlpha = 0.18 * st.p; ctx.beginPath(); ctx.ellipse(x, y, 22 * st.p, 17.6 * st.p, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
+      }
+      // le totem lui-même
+      var bob = dead ? 0 : Math.round(Math.sin(r.time * 3 + x) * 1.5);
+      if (s.k === "coffre") {
+        ctx.fillStyle = "#2b1709"; ctx.fillRect(x - 9, y - 12, 18, 12);
+        ctx.fillStyle = dead ? "#5a4a3a" : "#8a5a3b"; ctx.fillRect(x - 8, y - 11, 16, 10);
+        ctx.fillStyle = col; ctx.fillRect(x - 8, y - 8, 16, 2); ctx.fillRect(x - 2, y - 9, 4, 5);
+      } else {
+        ctx.fillStyle = "#2b1709"; ctx.fillRect(x - 5, y - 20, 10, 21);
+        ctx.fillStyle = dead ? "#5a524a" : "#8a8278"; ctx.fillRect(x - 4, y - 19, 8, 19);
+        ctx.fillStyle = dead ? "#4a443e" : "#6a625a"; ctx.fillRect(x - 4, y - 19, 2, 19); ctx.fillRect(x - 4, y - 8, 8, 1);
+        ctx.fillStyle = "#2b1709"; ctx.fillRect(x - 4, y - 28 + bob, 8, 8);
+        ctx.fillStyle = col; ctx.fillRect(x - 3, y - 27 + bob, 6, 6);
+        ctx.fillStyle = "rgba(255,255,255,.7)"; if (!dead) ctx.fillRect(x - 2, y - 26 + bob, 2, 2);
+        if (s.k === "sang" && !dead) { ctx.fillStyle = "#c0283a"; ctx.fillRect(x - 1, y - 18, 2, 6 + ((r.time * 4) | 0) % 6); }
+        if (s.k === "folie" && !dead) { ctx.fillStyle = "#ff40c0"; ctx.fillRect(x - 6 + ((r.time * 8) | 0) % 12, y - 30, 1, 1); }
+      }
+      // nom et coût quand on s'approche
+      if (!dead && Math.hypot(me.x - x, me.y - y) < 60) {
+        var label = def.name + (s.k === "coffre" ? " " + chestCost() : s.k === "sang" ? " -20% PV" : "");
+        drawText(label, x, y - 38, col, "c");
+        if (s.k === "coffre") icon("gold", x + textWidth(label) / 2 + 2, y - 37);
+      }
+    });
+  }
+  // flèches au bord de l'écran vers les sanctuaires proches
+  function drawShrineMarkers() {
+    if (isArena()) return;
+    var cx = me.x - W / 2, cy = me.y - H / 2;
+    shrinesNear(me.x, me.y, 560).forEach(function (s) {
+      var st = r.sh[s.id]; if ((st && st.used) || (s.k === "sacre" && r.devil)) return;
+      var sx = s.x - cx, sy = s.y - cy;
+      if (sx > 4 && sx < W - 4 && sy > 4 && sy < H - 4) return;
+      var px = Math.max(8, Math.min(W - 8, sx)), py = Math.max(16, Math.min(H - 8, sy));
+      ctx.fillStyle = "rgba(20,14,10,.6)"; ctx.fillRect(Math.round(px) - 4, Math.round(py) - 4, 8, 8);
+      ctx.fillStyle = SHR[s.k].color; ctx.fillRect(Math.round(px) - 2, Math.round(py) - 2, 4, 4);
+    });
+  }
+  function drawTierBar() {
+    var pos = tierPos(), t = Math.min(TIERS.length - 1, Math.floor(pos)), fr = t >= TIERS.length - 1 ? 1 : pos - t;
+    var bw = 92, bx = Math.round(W / 2 - bw / 2), by = 13;
+    box(bx, by, bw, 9, "#1a120c");
+    ctx.fillStyle = TIERS[t].color; ctx.fillRect(bx + 1, by + 1, Math.round((bw - 2) * fr), 7);
+    if (t < TIERS.length - 1) { ctx.fillStyle = TIERS[t + 1].color; ctx.globalAlpha = 0.35; ctx.fillRect(bx + 1 + Math.round((bw - 2) * fr), by + 1, bw - 2 - Math.round((bw - 2) * fr), 7); ctx.globalAlpha = 1; }
+    drawText(TIERS[t].name, W / 2, by + 2, t >= 8 && Math.sin(r.time * 10) > 0 ? "#ff5a3a" : "#fdf3de", "c");
+    if (r.madness) drawText("FOLIE X" + (1 + r.madness), W / 2, by + 11, "#ff40c0", "c");
   }
   function updateWarns(dt) {
     for (var i = warns.length - 1; i >= 0; i--) {
@@ -1629,6 +1809,8 @@
     var bi = biomeAtTile(Math.floor(me.x / 16), Math.floor(me.y / 16));
     if (bi !== r.biome && !isDungeon()) { if (r.biome >= 0) banner(MAP.biomes[bi].name); r.biome = bi; }
 
+    tierTick();
+    if (!isArena()) shrineTick(dt);
     if (isArena()) arenaDirector(dt); else if (isDungeon()) { dungeonTick(dt); if (state !== "play") return; } else director(dt);
     buildGrid();
     players.forEach(function (pl) { if (pl.down) return; p = pl; teamTick(pl, dt); if (isDungeon() && !inCombat(pl)) return; itemTick(pl, dt); weapons(dt); });
@@ -1951,12 +2133,20 @@
       });
       c.monsters = rnd() < DG.corridorMobs ? RI(2, 2 + floor) : 0;
     });
-    return { seed: seed, floor: floor, rooms: rooms, corridors: corridors, spikes: spikes, pits: pits, puddles: puddles, pillars: pillars, decor: decor, torches: torches };
+    var shrines = [];
+    rooms.forEach(function (rm) {
+      if (rm.type === "start" || rm.type === "boss" || rnd() >= 0.4) return;
+      var sp = spotIn(rm, 26, 26, 8); if (!sp) return;
+      var tot = 0; D.SHRINES.forEach(function (q) { tot += q.weight; }); var x = rnd() * tot, kind = "coffre";
+      for (var qi = 0; qi < D.SHRINES.length; qi++) { x -= D.SHRINES[qi].weight; if (x < 0) { kind = D.SHRINES[qi].id; break; } }
+      shrines.push({ id: "d" + floor + "_" + rm.idx, x: sp.x + 13, y: sp.y + 16, k: kind });
+    });
+    return { shrines: shrines, seed: seed, floor: floor, rooms: rooms, corridors: corridors, spikes: spikes, pits: pits, puddles: puddles, pillars: pillars, decor: decor, torches: torches };
   }
   function buildFloor(n) {
     var g = genFloor(r.seed, n);
     var keepCleared = r.dg ? r.dg.clearedTotal : 0;
-    r.dg = { floor: n, rooms: g.rooms, corridors: g.corridors, spikes: g.spikes, pits: g.pits, puddles: g.puddles, pillars: g.pillars, decor: g.decor, torches: g.torches,
+    r.dg = { shrines: g.shrines, floor: n, rooms: g.rooms, corridors: g.corridors, spikes: g.spikes, pits: g.pits, puddles: g.puddles, pillars: g.pillars, decor: g.decor, torches: g.torches,
              active: -1, stairs: null, visited: {}, clearedTotal: keepCleared, winT: 0, theme: DG_THEMES[(n - 1) % DG_THEMES.length] };
     var st = g.rooms[0];
     players.forEach(function (pl, i) { pl.x = pl.tx = st.cx + (i - (players.length - 1) / 2) * 18; pl.y = pl.ty = st.cy; pl.safeX = pl.x; pl.safeY = pl.y; });
@@ -2096,8 +2286,9 @@
     rm.state = "active"; r.dg.active = rm.idx;
     if (rm.type === "combat") rm.waves = [normal(wv[0]), normal(wv[1])];
     else if (rm.type === "elite") { var el = []; for (var i = 0; i < 1 + (r.dg.floor >= 2 ? 1 : 0); i++) el.push([pick(), "elite"]); rm.waves = [el.concat(normal(3)), normal(wv[1])]; }
-    else if (rm.type === "guard") rm.waves = [[[DG.guards[(r.dg.floor - 1) % DG.guards.length], "guard"]].concat(normal(3)), normal(4)];
-    else if (rm.type === "boss") rm.waves = [[[DG.finalBoss, "boss"]].concat(normal(4)), normal(6)];
+    var cop = function (t, k) { var a = []; for (var c = 0; c < 1 + (r.madness || 0); c++) a.push([t, k]); return a; };
+    if (rm.type === "guard") rm.waves = [cop(DG.guards[(r.dg.floor - 1) % DG.guards.length], "guard").concat(normal(3)), normal(4)];
+    else if (rm.type === "boss") rm.waves = [cop(DG.finalBoss, "boss").concat(normal(4)), normal(6)];
     // toute l'équipe rejoint la salle avant la fermeture des portes
     players.forEach(function (pl) {
       if (inRoom(rm, pl.x, pl.y, 10) && !pitAt(pl.x, pl.y + 3)) return;
@@ -2762,6 +2953,7 @@
     if (isDungeon()) drawDungeon(cx, cy);
     var giants = useGiants() ? visibleGiants(cx, cy) : null;
     if (giants) drawGiantBases(giants);
+    if (!isArena()) drawShrines(cx, cy);
 
     var bob = Math.sin(r.time * 4);
     gems.forEach(function (g) {
@@ -3001,6 +3193,7 @@
     dg.decor.forEach(function (o) { if (o.k === "glow") hole(o.x, o.y, 26, 0.7); });
     dg.puddles.forEach(function (u) { if (u.k === "poison") hole(u.x, u.y, u.rx + 10, 0.4); });
     if (dg.stairs) hole(dg.stairs.x, dg.stairs.y, 60, 0.9);
+    (dg.shrines || []).forEach(function (sq) { var stq = r.sh[sq.id]; if (!stq || !stq.used) hole(sq.x, sq.y - 10, 40, 0.75); });
     hostile.forEach(function (q) { hole(q.x, q.y, 16, 0.9); });
     zones.forEach(function (z) { if (z.kind === "fire") hole(z.x, z.y, z.r + 14, 0.7); });
     warns.forEach(function (w) { hole(w.x, w.y, w.r + 8, 0.6); });
@@ -3124,6 +3317,8 @@
     ctx.fillStyle = "#e0a82a"; ctx.fillRect(3, 3, Math.round((bw - 2) * ratio), 7);
     ctx.fillStyle = "#ffe27a"; ctx.fillRect(3, 3, Math.round((bw - 2) * ratio), 2);
     drawText("NIV " + r.level, W / 2, 4, "#fdf3de", "c");
+    drawTierBar();
+    drawShrineMarkers();
     // cases d'armes (haut) et d'objets (bas), 6 chacune
     var wl2 = Object.keys(p.weapons).map(function (id) { return [id, p.weapons[id]]; });
     var pl2 = Object.keys(p.passives).map(function (id) { return [id, p.passives[id]]; });
@@ -3941,6 +4136,7 @@
     return { r: [Math.round(r.time * 10), r.kills, r.level, Math.round(Math.min(1, xp / xpNext) * 1000), Math.floor(r.gold), r.bosses, Math.round(r.freeze * 10), Math.round(r.flash * 100), r.round, Math.round(r.roundT * 10)],
              dg: isDungeon() ? [r.dg.floor, r.dg.active, r.dg.rooms.filter(function (x) { return x.state === "cleared"; }).map(function (x) { return x.idx; }), r.dg.stairs ? [Math.round(r.dg.stairs.x), Math.round(r.dg.stairs.y)] : 0, r.dg.clearedTotal] : 0,
              e: e, pr: pr, lb: lb, g: g, h: h, w: w, pl: pl, b: curBoss ? [bossTitle(curBoss), Math.round(curBoss.hp / curBoss.maxHp * 1000), affMask(curBoss)] : 0, ev: Net.ev,
+             sh: [Object.keys(r.sh).filter(function (k) { return r.sh[k].used || r.sh[k].p > 0; }).map(function (k) { return [k, Math.round(r.sh[k].p * 100), r.sh[k].used ? 1 : 0]; }), r.madness || 0, r.devil || 0],
              z: zones.length ? zones.reduce(function (a, z) { a.push(R1(z.x), R1(z.y), R1(z.r), ZONE_K.indexOf(z.kind), Math.round((z.dur - z.t) * 10)); return a; }, []) : 0 };
   }
   // ---------- invité : réception et lissage ----------
@@ -3971,6 +4167,7 @@
     });
     players = players.filter(function (o) { return o === me || o === me.twinRef || seen[o.id]; });
     curBoss = d.b ? { d: { name: d.b[0] }, title: d.b[0], hp: d.b[1], maxHp: 1000, aff: d.b[2] ? D.AFFIXES.filter(function (a) { return d.b[2] & a.bit; }).map(function (a) { return a.id; }) : null } : null;
+    if (d.sh) { r.sh = {}; d.sh[0].forEach(function (q) { r.sh[q[0]] = { p: q[1] / 100, used: q[2] }; }); r.madness = d.sh[1]; r.devil = d.sh[2]; }
     zones = [];
     if (d.z) for (var zi = 0; zi < d.z.length; zi += 5) zones.push({ x: d.z[zi], y: d.z[zi + 1], r: d.z[zi + 2], kind: ZONE_K[d.z[zi + 3]], t: 0, dur: Math.max(0.1, d.z[zi + 4] / 10) });
     // événements
@@ -4324,6 +4521,9 @@
     twin: function () { var t = me.twinRef; return t ? { x: Math.round(t.x), y: Math.round(t.y), hp: Math.round(t.hp), max: Math.round(t.maxHp), down: t.down, might: Math.round(t.might * 100) / 100, meMight: Math.round(me.might * 100) / 100, w: t.weapons === me.weapons, meDown: me.down, n: players.length } : null; },
     downMe: function (who) { var t = who === "twin" ? me.twinRef : me; t.hp = -1; t.inv = 0; },
     ids: function () { return players.map(function (o) { return [o.id, o.name, Math.round(o.x), Math.round(o.y), o.twin ? "J" : ""]; }); },
+    shrines: function (rad) { return shrinesNear(me.x, me.y, rad || 900).map(function (s) { return [s.id, s.k, Math.round(s.x), Math.round(s.y), r.sh[s.id] ? r.sh[s.id].used : 0]; }); },
+    tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: TIERS[tierN()].name, madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
+    gold: function (n) { r.gold += n; },
     goStairs: function () { if (r && r.dg && r.dg.stairs) { me.x = r.dg.stairs.x; me.y = r.dg.stairs.y; return true; } return false; },
     killRoom: function () { enemies.forEach(function (e) { if (!e.d.prop && e.room !== undefined) { e.hp = 0; kill(e); } }); },
     endRound: function () { if (r && isArena() && r.phase === "fight") r.roundT = r.roundLen; },

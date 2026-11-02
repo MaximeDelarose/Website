@@ -844,10 +844,49 @@ window.ES_DATA = (function () {
     { id: "carnet", r: 0, solo: true, icon: "📓", name: "Carnet de survie", desc: "SOLO · +0,5 PV/s et +5 % d'XP." },
     { id: "lanterne", r: 1, solo: true, icon: "🏮", name: "Lanterne de l'ermite", desc: "SOLO · -15 % de recharge quand tes PV sont au-dessus de 80 %." },
     { id: "pleinelune", r: 2, solo: true, icon: "🌕", name: "Pleine lune", desc: "SOLO · +25 % de dégâts contre les élites et les boss." },
+    // ---- pool des boss (lâchés seulement par les boss)
+    { id: "plume_hibou", r: 2, pool: "boss", icon: "🦉", name: "Plume du Hibou ancien", desc: "BOSS · +1 projectile pour toutes les armes." },
+    { id: "bois_roi", r: 2, pool: "boss", icon: "🦌", name: "Couronne de bois", desc: "BOSS · +25 PV max et +1 armure." },
+    { id: "dard_reine", r: 2, pool: "boss", icon: "🐝", name: "Dard de la Reine", desc: "BOSS · Tes coups critiques explosent (15 dégâts autour)." },
+    { id: "coeur_golem", r: 3, pool: "boss", icon: "🗿", name: "Cœur de golem", desc: "BOSS · +50 PV max, +2 armure, -5 % de vitesse." },
+    // ---- pacte du diable (autel de sang : coûte 20 % de PV max)
+    { id: "pacte_force", r: 3, pool: "diable", icon: "😈", name: "Pacte de force", desc: "DIABLE · +40 % de dégâts." },
+    { id: "pacte_ailes", r: 3, pool: "diable", icon: "🦇", name: "Ailes de chauve-souris", desc: "DIABLE · +25 % de vitesse et -20 % de recharge." },
+    { id: "pacte_calice", r: 3, pool: "diable", icon: "🍷", name: "Calice de sang", desc: "DIABLE · Chaque ennemi tué rend 3 PV." },
+    { id: "pacte_ombre", r: 3, pool: "diable", icon: "👁️", name: "Ombre du démon", desc: "DIABLE · +2 projectiles pour toutes les armes." },
+    // ---- sacré (statue sainte, seulement sans pacte)
+    { id: "aureole", r: 3, pool: "sacre", icon: "😇", name: "Auréole", desc: "SACRÉ · +20 % de dégâts et +15 % de vitesse." },
+    { id: "plume_ange", r: 3, pool: "sacre", icon: "🕊️", name: "Plume d'ange", desc: "SACRÉ · Un bouclier qui bloque un coup, rechargé toutes les 10 s." },
+    { id: "eau_benite", r: 3, pool: "sacre", icon: "💧", name: "Eau bénite", desc: "SACRÉ · Régénère 2 PV par seconde." },
+    { id: "lumiere", r: 3, pool: "sacre", icon: "✨", name: "Lumière divine", desc: "SACRÉ · Toutes les 4 s, une onde de lumière blesse tout autour (60 dégâts)." },
     { id: "phenix",   r: 3, icon: "🌅", name: "Plume de phénix", desc: "Une renaissance de plus." },
     { id: "couronne", r: 3, icon: "👑", name: "Couronne de glands", desc: "+50 % d'or et d'XP." },
     { id: "meteore",  r: 3, icon: "☄️", name: "Cœur de météore", desc: "4 % de chance par coup de faire tomber un météore (150 dégâts)." },
     { id: "horloge",  r: 3, icon: "🕰️", name: "Horloge de la forêt", desc: "-20 % de recharge et +15 % de dégâts." },
+  ];
+
+  /* =====================================================================
+     Difficulté qui monte avec le temps (à la Risk of Rain) et sanctuaires
+     ===================================================================== */
+  var TIERS = [
+    { name: "Très facile", color: "#5ac85a" }, { name: "Facile", color: "#9ad04a" }, { name: "Moyen", color: "#e8d040" },
+    { name: "Difficile", color: "#f0a030" }, { name: "Très difficile", color: "#f06a30" }, { name: "Épuisant", color: "#e0383a" },
+    { name: "Infernal", color: "#c02860" }, { name: "Impossible", color: "#8a2ab0" }, { name: "Je te vois", color: "#5a1a8a" },
+    { name: "HAHAHAHA", color: "#2a0a30" },
+  ];
+  var TIER = {
+    minutes: 2.2,          // minutes par palier (mode Normal)
+    hp: 0.12, dmg: 0.16, spawn: 0.1, elite: 0.006, // bonus par palier
+  };
+  // Sanctuaires : on les active en restant dans leur zone (jauge au sol)
+  var SHRINES = [
+    { id: "coffre", name: "Coffre scellé",  color: "#f6d36b", time: 1.4, weight: 30, desc: "Paie des glands pour un objet." },
+    { id: "defi",   name: "Totem de défi",  color: "#ff5a3a", time: 2.0, weight: 18, desc: "Fait venir des élites. Récompense quand elles sont toutes mortes." },
+    { id: "sang",   name: "Autel de sang",  color: "#c0283a", time: 2.0, weight: 12, desc: "Pacte du diable : -20 % de PV max contre un objet maudit." },
+    { id: "boss",   name: "Autel du boss",  color: "#b07cf0", time: 2.5, weight: 9,  desc: "Invoque un boss tout de suite." },
+    { id: "folie",  name: "Totem de folie", color: "#ff40c0", time: 2.0, weight: 9,  desc: "Les prochains boss arrivent en plus d'exemplaires (cumulable)." },
+    { id: "soin",   name: "Source claire",  color: "#6ad8ff", time: 1.4, weight: 14, desc: "Soigne toute l'équipe de moitié." },
+    { id: "sacre",  name: "Statue sainte",  color: "#fff3b0", time: 2.5, weight: 6,  desc: "Un objet sacré… si tu n'as fait aucun pacte." },
   ];
 
   /* =====================================================================
@@ -870,6 +909,6 @@ window.ES_DATA = (function () {
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
