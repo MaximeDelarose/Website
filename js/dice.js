@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.12.0";
+  var VERSION = "0.12.1";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -82,6 +82,7 @@
     }).catch(function (err) { Cloud.loading = false; Cloud.err = window.SiteAuth.message(err); refreshScreen(); });
   }
   function pushDeck() {
+    if (Net.on) trackMe(); // salon en ligne : l'autre joueur voit le nouveau deck
     if (!Cloud.on) return;
     clearTimeout(pushDeck.t);
     pushDeck.t = setTimeout(function () {
@@ -294,8 +295,12 @@
   }
   function drawSpr(s, x, y, flip, white) { ctx.drawImage(white ? s.wc : (flip ? s.f : s.c), Math.round(x), Math.round(y)); }
 
+  var renderErr = 0;
   function render() {
     var dpr = window.devicePixelRatio || 1;
+    // état du dessin remis à zéro à chaque image : une erreur ne peut pas laisser un découpage ou une transparence bloqués
+    if (ctx.reset) ctx.reset(); else if (renderErr) { canvas.width = canvas.width; renderErr = 0; }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#1f3a2b"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
@@ -304,8 +309,10 @@
     G.panels.forEach(function (p) {
       ctx.setTransform(s, 0, 0, s, (view.ox + p.ox * view.scale) * dpr, (view.oy + p.oy * view.scale) * dpr);
       if (p.flip) { ctx.translate(p.world.lay.w, p.world.lay.h); ctx.rotate(Math.PI); }
-      if (G.shake > 0.05 && !p.opp && !REDUCED) ctx.translate((Math.random() - 0.5) * 2 * G.shake, (Math.random() - 0.5) * 2 * G.shake);
-      drawPanel(p);
+      if (G.shake > 0.3 && !p.opp && !REDUCED) ctx.translate(Math.round((Math.random() - 0.5) * 2 * G.shake), Math.round((Math.random() - 0.5) * 2 * G.shake));
+      ctx.save();
+      try { drawPanel(p); } catch (err) { renderErr++; if (renderErr < 3 && window.console) console.error(err); }
+      ctx.restore(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
     });
     // écureuil tenu au doigt / à la souris
     ctx.setTransform(s, 0, 0, s, view.ox * dpr, view.oy * dpr);
@@ -1072,7 +1079,8 @@
     ctx.restore();
   }
   function pushVfx(p, v) { if (G.vfx.length < 520) { v.p = p; v.t = 0; G.vfx.push(v); } }
-  function shake(a) { if (!REDUCED) G.shake = Math.max(G.shake || 0, a); }
+  // tremblement de l'écran : doux et plafonné (seulement le terrain, jamais au-delà de 2,5 px)
+  function shake(a) { if (!REDUCED && G) G.shake = Math.max(G.shake || 0, Math.min(2.5, a * 0.5)); }
   function sparks(p, x, y, n, cols, spd, life, sz) {
     for (var i = 0; i < n; i++) {
       var an = Math.random() * 6.3, v = (spd || 60) * (0.4 + Math.random() * 0.8);
@@ -1903,7 +1911,7 @@
       return head("Compte") + acctHtml() + '<p class="game-small"><a href="compte.html">Gérer mon compte (pseudo, données) →</a></p>';
     },
     deck: function () {
-      var html = head("Deck", "menu", "Retour", '<button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="chests">🎁<span class="bk-tx"> Coffres</span>' + (S.keys >= D.KEYS_FOR_FREE ? " ✨" : "") + "</button>") +
+      var html = head("Deck", Net.on ? "lobby" : "menu", Net.on ? "Salon" : "Retour", '<button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="chests">🎁<span class="bk-tx"> Coffres</span>' + (S.keys >= D.KEYS_FOR_FREE ? " ✨" : "") + "</button>") +
         '<p class="gold-badge rd-mini-gold">' + goldIc() + " " + S.gold.toLocaleString("fr-FR") + "</p>";
       // les 5 places du deck
       html += '<div class="rd-slots' + (swapK ? " is-swap" : "") + '">';
@@ -1999,16 +2007,20 @@
         (!ok ? '<p class="game-small">Connexion au salon… (' + esc(Net.status || "") + ")</p>" : "") +
         '<ul class="room-players">';
       Net.roster.slice(0, 2).forEach(function (x) {
-        html += "<li>" + deckStrip(x.deck || []) + "<b>" + esc(x.name || "Écureuil") + "</b>" + (x.host ? " 👑" : "") + (x.id === Net.id ? " <small>(toi)</small>" : "") + "</li>";
+        html += "<li>" + deckStrip(x.deck || []) + "<b>" + esc(x.name || "Écureuil") + "</b>" + (x.host ? " 👑" : "") + (x.id === Net.id ? " <small>(toi)</small>" : "") +
+          (x.v && x.v !== VERSION ? ' <small class="rd-warn">⚠ version ' + esc(String(x.v)) + "</small>" : "") + "</li>";
       });
+      var badV = Net.roster.some(function (x) { return x.v && x.v !== VERSION; });
       if (Net.roster.length < 2) html += "<li><small>En attente d'un deuxième joueur…</small></li>";
       html += "</ul>";
+      if (badV) html += '<p class="net-err">Vous n\'avez pas la même version du jeu : rechargez tous les deux la page avant de jouer.</p>';
+      html += '<div class="menu-row"><button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="deck">🃏 Modifier mon deck</button></div>';
       html += '<p class="game-small">Mode :</p><div class="menu-row">' +
         ["coop", "versus"].map(function (m) {
           return '<button class="btn btn-small ' + (mode === m ? "" : "btn-ghost") + '" type="button" data-action="lmode" data-arg="' + m + '"' + (host ? "" : " disabled") + ">" + (m === "coop" ? "👥 Coop" : "⚔ Versus") + "</button>";
         }).join("") + "</div>";
       { var hm = mode === "versus" ? K.mapById(host ? S.map : (hp && hp.map)) : K.coopMapById(host ? S.coopMap : (hp && hp.coopMap)); html += '<p class="game-small">Carte : <b>' + hm.icon + " " + esc(hm.name) + "</b>" + (host ? ' · <button class="rd-link" type="button" data-action="go" data-arg="maps">changer</button>' : " (choisie par l'hôte)") + "</p>"; }
-      if (host) html += '<div class="menu-buttons"><button class="btn" type="button" data-action="start"' + (ok && Net.roster.length >= 2 ? "" : " disabled") + ">▶ Lancer la partie</button></div>";
+      if (host) html += '<div class="menu-buttons"><button class="btn" type="button" data-action="start"' + (ok && Net.roster.length >= 2 && !badV ? "" : " disabled") + ">▶ Lancer la partie</button></div>";
       else html += '<p class="game-small">L\'hôte lance la partie.</p>';
       return html;
     },
@@ -2205,7 +2217,7 @@
   }
   function trackMe() {
     if (!Net.ch) return;
-    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), host: Net.role === "host", mode: Net.mode, map: S.map, coopMap: S.coopMap, deck: S.deck, cls: myCls(), ingame: Net.started, ts: Net.ts });
+    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), host: Net.role === "host", mode: Net.mode, map: S.map, coopMap: S.coopMap, deck: S.deck, cls: myCls(), ingame: Net.started, ts: Net.ts, v: VERSION });
   }
   function onPresence() {
     if (!Net.ch) return;
