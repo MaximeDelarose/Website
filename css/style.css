@@ -1283,3 +1283,28 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 }
 .chest-mini .cslot em { max-width: 48px; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 460px) { .chest-mini { top: 13%; } }
+
+/* --- Compte du site (connexion Google) et confidentialité --- */
+.narrow { max-width: 760px; }
+.account-btn { text-decoration: none; color: var(--ink); }
+.account-btn.is-on { background: var(--orange); color: var(--btn-ink, #2b1709); }
+.account-initial { font-weight: 900; font-size: 1.15rem; line-height: 1; }
+.account-panel, .legal-panel { padding: 22px; display: grid; gap: 12px; }
+.account-panel h2, .legal-panel h2 { margin: 10px 0 0; font-size: 1.25rem; }
+.account-panel p, .legal-panel p, .legal-panel ul { margin: 0; }
+.legal-panel ul { padding-left: 1.2em; display: grid; gap: 6px; }
+.account-head { display: flex; align-items: center; gap: 12px; }
+.account-head div { display: grid; line-height: 1.25; }
+.account-head strong { font-size: 1.2rem; }
+.account-head small { color: var(--ink-soft); }
+.account-avatar { width: 48px; height: 48px; display: grid; place-items: center; font-weight: 900; font-size: 1.5rem; background: var(--orange); color: #2b1709; border: 3px solid var(--line); }
+.account-form { display: grid; gap: 4px; font-weight: 700; font-size: .9rem; }
+.account-form input { flex: 1; min-width: 0; font: inherit; padding: 8px 10px; background: var(--panel); color: var(--ink); border: 3px solid var(--line); }
+.account-msg { font-weight: 800; color: var(--orange-dk); }
+.account-games { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.account-games li { display: grid; padding: 8px 10px; background: var(--panel-2); border: 3px solid var(--line); }
+.account-games span { font-size: .88rem; color: var(--ink-soft); }
+.account-danger summary { cursor: pointer; font-weight: 800; color: var(--berry); }
+.account-danger p { margin: 8px 0; }
+.account-delete { --b: var(--berry); --bd: #7a2a1a; color: #fff; }
+.footer-small a { color: inherit; }

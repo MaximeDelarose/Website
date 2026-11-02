@@ -13,6 +13,8 @@ Site statique (HTML/CSS/JS, rien à compiler) : il s'héberge tel quel sur GitHu
 | `dice.html` | **Écureuil Dice** : défense « fusion de dés » avec des écureuils (13 types), les ennemis et boss du Survivor ; solo, versus contre l'IA, coop et versus à 2 (en ligne ou même écran), aucun achat |
 | `idle.html` | **Le Grand Chêne** : idle / incrémental maison. On tape sur le chêne pour récolter des glands (combo, critiques, % de la production par clic), habitants de la forêt et pic tapeur en automatique, glands dorés, jardin (fleurs en pot à arroser → bonus et pétales), ferme (cultures → nourriture), bétail (marchandises à vendre + bonus tant qu'il est nourri), 2 prestiges (Replanter → graines, Saisons → essence), succès, hors ligne, export de sauvegarde |
 | `bio.html` | Biographie |
+| `compte.html` | Mon compte : connexion Google (facultative), pseudo, progression, export et suppression des données |
+| `confidentialite.html` | Ce que le site garde (ou pas) : pas de pub, pas de traceur, compte facultatif |
 | `contact.html` | Formulaire « message direct » + liens |
 | `projet.html?id=<id>` | Fiche d'un projet : jaquette, images, vidéo, description complète, infos, bouton Télécharger (renvoie vers la section téléchargement d'itch.io) |
 
@@ -44,6 +46,8 @@ Presque tout se règle dans **`js/data.js`** :
   - `js/idle-data.js` : tout le contenu modifiable à la main : habitants (`PRODUCERS`), améliorations (`LEVELED`, `PROD_UPG`, `CLICK_UPG`, `SAP_UPG`, `GLOBAL_UPG`, `GOLD_UPG`), fleurs (`FLOWERS`) et boutique du jardin, cultures (`CROPS`) et matériel de ferme, animaux (`ANIMALS`), marchandises (`GOODS`), racines (`ROOTS`, 1er prestige, formule des graines `SEED_DIV` / `SEED_POW`), saisons (`SEASONS`, `PERKS`, 2e prestige).
   - `js/idle.js` : moteur, rendu du chêne (canvas pixel), interface, succès (`ACH`), sauvegarde (localStorage `idle-chene-v1`, toutes les 15 s) et progression hors ligne. Version : `VERSION` en haut du fichier. `idle.html?debug` expose `IDLE_DEBUG` dans la console (ex. `IDLE_DEBUG.skip(3600)` pour avancer d'une heure).
   - `css/idle.css` : la mise en page du jeu (sur mobile, l'arbre reste collé en haut de l'écran).
+- **Compte unique du site** (`js/auth.js`, chargé sur toutes les pages) : connexion Google via Supabase Auth, bouton dans l'en-tête, liens « Mon compte · Confidentialité » dans le pied de page. La bibliothèque Supabase n'est chargée que si quelqu'un est connecté ou clique sur « Se connecter ». Côté jeux : `SiteAuth.rpc("fonction", {...})`. Base de données, anti-triche et réglages Google : voir [`supabase/README.md`](supabase/README.md).
+  - **Écureuil Dice** : connecté, la progression (glands, coffres, niveaux, deck) est sur le serveur et chaque action passe par une fonction qui vérifie tout (coffres tirés côté serveur, gains de fin de partie bornés par la durée réelle). En invité, la progression reste dans le navigateur ; le jeu en ligne demande un compte.
 - **Réseaux** : `SITE.links` (laisse `""` pour masquer un lien).
 
 Le texte de la bio est directement dans `bio.html`.

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mon compte · AkarisuMD</title>
+  <meta name="description" content="Ton compte AkarisuMD : connexion Google, pseudo, progression des jeux, export et suppression de tes données.">
+  <meta property="og:title" content="Mon compte · AkarisuMD">
+  <meta property="og:description" content="Ton compte AkarisuMD : connexion Google, pseudo, progression des jeux, export et suppression de tes données.">
+  <meta name="theme-color" content="#3f6b3a">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261103m">
+</head>
+<body data-page="account">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
+          <li><a href="jeu.html" data-page="game">Survivor</a></li>
+          <li><a href="merger.html" data-page="merger">Merger</a></li>
+          <li><a href="dice.html" data-page="dice">Dice</a></li>
+          <li><a href="idle.html" data-page="idle">Chêne</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="page-banner">
+    <canvas class="pixel-scene" data-seed="41" data-compact="true" aria-hidden="true"></canvas>
+    <div class="banner-title"><div class="wrap"><div class="panel"><span class="kicker">Ton terrier</span><h1>Mon compte</h1></div></div></div>
+  </section>
+
+  <main id="main" class="section">
+    <div class="wrap narrow">
+      <div class="panel account-panel" data-account>
+        <p>Chargement…</p>
+        <noscript><p>Cette page a besoin de JavaScript.</p></noscript>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261103m"></script>
+  <script src="js/auth.js?v=20261103m"></script>
+  <script src="js/main.js?v=20261103m"></script>
+  <script src="js/scene.js?v=20261103m"></script>
+  <script src="js/compte.js?v=20261103m"></script>
+</body>
+</html>
