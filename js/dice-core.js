@@ -57,19 +57,15 @@
   function makeBoard(info) {
     var deck = (info.deck || D.START_DECK).slice(0, 5);
     return { name: info.name || "Écureuil", id: info.id || "solo", deck: deck, cls: info.cls || {}, slots: new Array(NSLOT).fill(null),
-             sp: C.startSp, sumN: 0, pu: [0, 0, 0, 0, 0], kills: 0, dmg: 0, bot: !!info.bot, botT: 1, maxPip: 1,
-             open: info.open ? info.open.slice() : null, mods: {} };
+             sp: C.startSp, sumN: 0, pu: [0, 0, 0, 0, 0], kills: 0, dmg: 0, bot: !!info.bot, botT: 1, maxPip: 1 };
   }
-  // mode Saisons : seules certaines cases sont ouvertes ; mods = effets des reliques
-  function isOpen(b, i) { return !b.open || !!b.open[i]; }
-  function mod(b, k) { return (b.mods && b.mods[k]) || 0; }
   function createWorld(opt) {
     var n = opt.boards.length;
     var w = {
       mode: opt.mode || "solo", lay: layout(n, opt.vertical), boards: opt.boards.map(makeBoard),
       rng: rngOf(opt.seed || 1), t: 0, wave: 0, waveT: 0, nextWave: 3, spawnQ: [], lives: C.lives, over: false,
       enemies: [], emap: {}, projs: [], mines: [], nextId: 1, ev: [], fx: [], bossAlive: 0, bosses: 0, kills: 0,
-      hpMul: n > 1 ? C.coopHp : 1, view: !!opt.view, run: opt.run ? { phase: "wave" } : null, waveTotal: 0,
+      hpMul: n > 1 ? C.coopHp : 1, view: !!opt.view,
     };
     return w;
   }
@@ -77,9 +73,9 @@
   /* ---------- outils plateau ---------- */
   function classMul(b, type) { var lv = b.cls[type] || 1; return 1 + C.classBonus * (lv - 1); }
   function puOf(b, type) { var i = b.deck.indexOf(type); return i < 0 ? 0 : b.pu[i]; }
-  function summonCost(b) { return Math.ceil((C.summonBase + C.summonStep * b.sumN) * (1 - mod(b, "summonDisc"))); }
+  function summonCost(b) { return C.summonBase + C.summonStep * b.sumN; }
   function puCost(b, i) { return b.pu[i] >= C.puCosts.length ? Infinity : C.puCosts[b.pu[i]]; }
-  function freeSlots(b) { var out = []; for (var i = 0; i < NSLOT; i++) if (!b.slots[i] && isOpen(b, i)) out.push(i); return out; }
+  function freeSlots(b) { var out = []; for (var i = 0; i < NSLOT; i++) if (!b.slots[i]) out.push(i); return out; }
   function newSq(b, type, pips) {
     var sq = { t: type, p: pips, cd: Math.random() * 0.5, stun: 0, bob: 0, born: 0.25 };
     if (T[type].grow) sq.grow = T[type].grow - T[type].growPu * puOf(b, type);
@@ -97,7 +93,7 @@
     if (w.over || !free.length || b.sp < cost) return false;
     b.sp -= cost; b.sumN++;
     var s = pick(free);
-    b.slots[s] = newSq(b, pick(b.deck), Math.random() < mod(b, "pip2") ? 2 : 1);
+    b.slots[s] = newSq(b, pick(b.deck), 1);
     w.ev.push({ k: "summon", b: bi, s: s });
     return true;
   }
@@ -118,9 +114,8 @@
       return true;
     }
     b.slots[a] = null;
-    var np = Math.random() < mod(b, "merge2") ? Math.min(C.maxPips, A.p + 2) : A.p + 1;
-    b.slots[c] = newSq(b, pick(b.deck), np);
-    w.ev.push({ k: "merge", b: bi, s: c, p: np });
+    b.slots[c] = newSq(b, pick(b.deck), A.p + 1);
+    w.ev.push({ k: "merge", b: bi, s: c, p: A.p + 1 });
     return true;
   }
   function powerUp(w, bi, i) {
@@ -140,37 +135,28 @@
 
   /* ---------- vagues ---------- */
   function waveHp(w, n) { return C.hpBase * Math.pow(C.hpGrowth, n - 1) * (1 + C.hpLin * (n - 1)) * w.hpMul; }
-  function isBossWave(n, w) { return n > 0 && n % (w && w.run ? C.runBossEvery : C.bossEvery) === 0; }
+  function isBossWave(n) { return n % C.bossEvery === 0; }
   function startWave(w) {
     w.wave++; w.waveT = 0;
     var n = w.wave, rnd = w.rng, q = [];
-    if (isBossWave(n, w)) {
-      var boss = D.BOSSES[(n / (w.run ? C.runBossEvery : C.bossEvery) - 1) % D.BOSSES.length];
+    if (isBossWave(n)) {
+      var boss = D.BOSSES[(n / C.bossEvery - 1) % D.BOSSES.length];
       q.push({ t: 1.5, type: boss });
       for (var e = 0; e < 4 + Math.floor(n / 5); e++) q.push({ t: 4 + e * 1.2, type: pickEnemy(n, rnd) });
-      w.nextWave = Infinity;
-    } else if (w.run) {
-      var cnt = Math.min(40, 6 + 2 * n);
-      for (var r = 0; r < cnt; r++) q.push({ t: 0.6 + r * Math.max(0.35, 12 / cnt), type: pickEnemy(n, rnd) });
       w.nextWave = Infinity;
     } else {
       var count = Math.min(44, 7 + 2 * n);
       for (var i = 0; i < count; i++) q.push({ t: 0.6 + i * (C.spawnLen / count), type: pickEnemy(n, rnd) });
       w.nextWave = C.waveLen;
     }
-    w.spawnQ = q; w.waveTotal = q.length;
-    // revenus des Pépites (+ reliques de début de vague)
+    w.spawnQ = q;
+    // revenus des Pépites
     w.boards.forEach(function (b, bi) {
-      var inc = mod(b, "waveSp");
-      for (var g = 0; g < mod(b, "waveGrow"); g++) {
-        var up = [];
-        b.slots.forEach(function (sq, si) { if (sq && sq.p < C.maxPips) up.push(si); });
-        if (up.length) { var gi = pick(up); b.slots[gi].p++; if (b.slots[gi].p > b.maxPip) b.maxPip = b.slots[gi].p; w.ev.push({ k: "grow", b: bi, s: gi }); }
-      }
+      var inc = 0;
       b.slots.forEach(function (s) { if (s && T[s.t].income) inc += s.p * (T[s.t].income + T[s.t].incomePu * puOf(b, s.t)); });
       if (inc) { b.sp += inc; w.ev.push({ k: "income", b: bi, v: inc }); }
     });
-    w.ev.push({ k: "wave", n: n, boss: isBossWave(n, w) });
+    w.ev.push({ k: "wave", n: n, boss: isBossWave(n) });
   }
   function pickEnemy(n, rnd) {
     var tot = 0, list = [];
@@ -191,7 +177,7 @@
 
   /* ---------- combat ---------- */
   function boardCrit(b) {
-    var c = C.crit + mod(b, "crit");
+    var c = C.crit;
     b.slots.forEach(function (s) { if (s && s.t === "lune") c += s.p * T.lune.critPip; });
     return Math.min(0.6, c);
   }
@@ -223,7 +209,7 @@
     w.kills++;
     var gain = e.d.boss ? C.bossSp * (Math.floor(w.wave / C.bossEvery) || 1) : C.killSp + C.killSpWave * w.wave;
     if (e.baby) gain = Math.ceil(gain / 2);
-    w.boards.forEach(function (b) { b.sp += gain + mod(b, "killSp"); });
+    w.boards.forEach(function (b) { b.sp += gain; });
     if (w.boards[bi]) w.boards[bi].kills++;
     var p = posAt(w.lay, e.dist);
     w.ev.push({ k: "kill", x: p.x, y: p.y, type: e.type, boss: !!e.d.boss });
@@ -250,12 +236,11 @@
     }
   }
   function hit(w, pr, e) {
-    var b = w.boards[pr.b], Tp = T[pr.t], cm = C.critMul + mod(b, "critMul");
+    var b = w.boards[pr.b], Tp = T[pr.t];
     if (e.d.dodge && Math.random() < e.d.dodge) { var mp = posAt(w.lay, e.dist); w.ev.push({ k: "miss", x: mp.x, y: mp.y }); return; }
     var dmg = pr.dmg, crit = Math.random() < pr.crit;
-    if (crit) dmg *= cm;
+    if (crit) dmg *= C.critMul;
     if (Tp.bossMul && e.d.boss) dmg *= Tp.bossMul;
-    if (e.d.boss) dmg *= 1 + mod(b, "boss");
     if (Tp.slow && !e.d.noSlow) {
       var f = Math.min(Tp.slowMax, Tp.slow + Tp.slowPip * (pr.p - 1)) * (e.d.boss ? 0.5 : 1);
       if (f >= e.slowF || e.slowT < 0.5) { e.slowF = f; }
@@ -292,13 +277,13 @@
     }
   }
   function fire(w, bi, si, sq) {
-    var b = w.boards[bi], Tp = T[sq.t], pu = puOf(b, sq.t), dmg = (Tp.dmg + Tp.pu * pu) * classMul(b, sq.t) * (1 + C.pipBonus * (sq.p - 1)) * relicMul(b, sq.t);
+    var b = w.boards[bi], Tp = T[sq.t], pu = puOf(b, sq.t), dmg = (Tp.dmg + Tp.pu * pu) * classMul(b, sq.t) * (1 + C.pipBonus * (sq.p - 1));
     var c = slotCenter(w.lay, bi, si), crit = boardCrit(b);
     if (sq.t === "mine") {
       if (w.mines.length > 40) return false;
       for (var m = 0; m < sq.p; m++) {
         var dist = w.lay.len * (0.12 + Math.random() * 0.76);
-        w.mines.push({ dist: dist, dmg: dmg, b: bi, crit: crit, cm: C.critMul + mod(b, "critMul"), fly: 0.35, x0: c.x, y0: c.y, t: 0 });
+        w.mines.push({ dist: dist, dmg: dmg, b: bi, crit: crit, fly: 0.35, x0: c.x, y0: c.y, t: 0 });
       }
       sq.bob = 0.12;
       return true;
@@ -314,28 +299,12 @@
     return true;
   }
 
-  // bonus de dégâts des reliques
-  function relicMul(b, type) {
-    var m = b.mods; if (!m) return 1;
-    var add = (m.dmg || 0) + ((m.typeDmg && m.typeDmg[type]) || 0);
-    if (m.hermit || m.variety) {
-      var empty = 0, kinds = {};
-      for (var i = 0; i < NSLOT; i++) { if (!isOpen(b, i)) continue; if (b.slots[i]) kinds[b.slots[i].t] = 1; else empty++; }
-      add += (m.hermit || 0) * empty + (m.variety || 0) * Object.keys(kinds).length;
-    }
-    return 1 + add;
-  }
-
   /* ---------- pas de simulation ---------- */
   function step(w, dt) {
     if (w.over) return;
-    if (w.run && w.run.phase !== "wave") return;
     w.t += dt; w.waveT += dt;
     if (w.wave === 0) { if (w.waveT >= w.nextWave) startWave(w); }
-    else if (w.run) {
-      if (!w.spawnQ.length && !w.enemies.length && w.waveT > 1) { w.run.phase = "shop"; w.projs.length = 0; w.ev.push({ k: "clear", n: w.wave }); return; }
-    }
-    else if (isBossWave(w.wave, w)) {
+    else if (isBossWave(w.wave)) {
       if ((!w.bossAlive && !w.spawnQ.length && w.waveT > 3) || w.waveT > C.bossTimeout) { w.bossDone = w.waveT; startWave(w); }
     } else if (w.waveT >= w.nextWave) startWave(w);
 
@@ -366,7 +335,7 @@
         }
         var Tp = T[s.t];
         if (Tp.target === "none" && s.t !== "mine") return;
-        s.cd -= dt * (1 + haste[i] + mod(b, "haste"));
+        s.cd -= dt * (1 + haste[i]);
         if (s.cd <= 0) { if (fire(w, bi, i, s)) s.cd += Tp.every; else s.cd = 0; }
       });
     });
@@ -396,14 +365,13 @@
       for (var k = 0; k < w.enemies.length; k++) { var en = w.enemies[k]; if (targetable(en) && !en.d.fly && Math.abs(en.dist - mn.dist) < 5) { trig = en; break; } }
       if (!trig) continue;
       w.mines.splice(m, 1);
-      var crit = Math.random() < mn.crit, md = mn.dmg * (crit ? mn.cm : 1);
+      var crit = Math.random() < mn.crit, md = mn.dmg * (crit ? C.critMul : 1);
       w.enemies.forEach(function (o) { if (targetable(o) && !o.d.fly && Math.abs(o.dist - mn.dist) <= T.mine.mineR) damage(w, o, md, mn.b); });
       var mp = posAt(w.lay, mn.dist); w.ev.push({ k: "boom", x: mp.x, y: mp.y, r: T.mine.mineR, c: "#e8873a" });
     }
 
     // ennemis
-    var L = w.lay.len, slowAll = 0;
-    w.boards.forEach(function (b) { slowAll = Math.max(slowAll, mod(b, "slowAll")); });
+    var L = w.lay.len;
     for (var j = w.enemies.length - 1; j >= 0; j--) {
       var en2 = w.enemies[j];
       if (en2.dead) { w.enemies.splice(j, 1); delete w.emap[en2.id]; continue; }
@@ -417,7 +385,7 @@
         if (en2.poisonT <= 0) en2.poison = 0;
         if (en2.dead) continue;
       }
-      var sp = en2.spd * (1 - en2.slowF) * (1 - slowAll);
+      var sp = en2.spd * (1 - en2.slowF);
       if (dd2.hop) sp *= Math.sin(en2.t * 7) > -0.2 ? 1.6 : 0.1;
       if (dd2.burrow) { var ph = en2.t % 3.6; en2.under = ph > 2.4; if (en2.under) sp *= 1.5; }
       if (dd2.heal) {
@@ -554,7 +522,7 @@
     CELL: CELL, COLS: COLS, ROWS: ROWS, NSLOT: NSLOT, BW: BW, BH: BH, EKEYS: EKEYS, TIDX: TIDX,
     layout: layout, posAt: posAt, slotCenter: slotCenter, createWorld: createWorld, step: step, stepView: stepView,
     summon: summon, merge: merge, canMerge: canMerge, powerUp: powerUp, act: act, botStep: botStep,
-    summonCost: summonCost, isOpen: isOpen, startWave: startWave, relicMul: relicMul, puCost: puCost, freeSlots: freeSlots, isBossWave: isBossWave, waveHp: waveHp,
+    summonCost: summonCost, puCost: puCost, freeSlots: freeSlots, isBossWave: isBossWave, waveHp: waveHp,
     snapshot: snapshot, applySnap: applySnap, boardCrit: boardCrit,
   };
 })(typeof window !== "undefined" ? window : globalThis);
