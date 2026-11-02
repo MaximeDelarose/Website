@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.3.0";
+  var VERSION = "0.4.0";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -907,18 +907,162 @@
     save();
     return { got: got, order: order };
   }
-  function openedScreen(c, res) {
+  /* =====================================================================
+     Ouverture de coffre : chute, coups pour ouvrir, explosion, cartes une par une
+     ===================================================================== */
+  var CHEST_PAL = {
+    bois: { b: "#6b4430", B: "#a06a3e", k: "#3a2618", y: "#f2c230", g: "#fff3b0" },
+    fer: { b: "#55524e", B: "#8d8a86", k: "#2b2926", y: "#c8d8e8", g: "#ffffff" },
+    or: { b: "#a8741a", B: "#e0a82a", k: "#5a3a08", y: "#fff3b0", g: "#ffffff" },
+  };
+  var chestArt = {};
+  function chestImgs(id) {
+    if (chestArt[id]) return chestArt[id];
+    var pal = CHEST_PAL[id] || CHEST_PAL.bois;
+    var lid = sprite(["...bbbbbb...", "..bBBBBBBb..", ".bBBBBBBBBb.", "bBBBBBBBBBBb", "kkkkkyykkkkk"], pal);
+    var base = sprite(["kggggggggggk", "bBBBByyBBBBb", "bBBBBBBBBBBb", "bBBBBBBBBBBb", "bbbbbbbbbbbb"], pal);
+    return (chestArt[id] = { lid: lid.c.toDataURL(), base: base.c.toDataURL() });
+  }
+  var RCOL = { commun: "#d8d4cc", rare: "#5fa3c9", epique: "#b07ae8", legendaire: "#f2c230" };
+  function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+  var REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function shakeStage(cls) {
+    if (REDUCED) return;
+    stage.classList.remove("rd-shake-s", "rd-shake-l"); void stage.offsetWidth; stage.classList.add(cls);
+    setTimeout(function () { stage.classList.remove(cls); }, 450);
+  }
+  // resP : Promise<{ got, order }> (tirage local ou serveur) ; la séquence démarre sans attendre le serveur
+  function chestFx(c, resP) {
+    var art = chestImgs(c.id), res = null, failed = null, step = 0, idx = -1, taps = 0, done = false, timer = 0;
+    var layer = document.createElement("div");
+    layer.className = "rd-cfx"; layer.setAttribute("role", "dialog"); layer.setAttribute("aria-label", "Ouverture du " + c.name);
+    layer.innerHTML =
+      '<div class="rd-cfx-rays"></div>' +
+      '<div class="rd-cfx-title">' + esc(c.name) + "</div>" +
+      '<div class="rd-cfx-chest"><div class="rd-cfx-glow"></div><img class="rd-cfx-base" src="' + art.base + '" alt=""><img class="rd-cfx-lid" src="' + art.lid + '" alt=""></div>' +
+      '<div class="rd-cfx-card" hidden></div>' +
+      '<div class="rd-cfx-hint">Touche le coffre pour l\'ouvrir</div>' +
+      '<div class="rd-cfx-count" hidden></div>' +
+      '<button class="btn btn-ghost btn-small rd-cfx-skip" type="button" hidden>Tout révéler ⏭</button>';
+    stage.appendChild(layer);
+    var $c = function (q) { return layer.querySelector(q); };
+    var chestEl = $c(".rd-cfx-chest"), cardEl = $c(".rd-cfx-card"), hint = $c(".rd-cfx-hint"), count = $c(".rd-cfx-count"), skip = $c(".rd-cfx-skip");
+    hideOverlay();
+    resP.then(function (r) {
+      res = r;
+      var best = r.order[r.order.length - 1];
+      layer.style.setProperty("--glow", RCOL[T[best].rarity]);       // la lueur trahit la meilleure rareté
+      layer.dataset.best = T[best].rarity;
+    }).catch(function (err) { failed = err; if (step < 2) abort(); });
+    // 1. chute
+    chestEl.classList.add("is-drop");
+    sfx(140, 0.25, "triangle", 0.06, 0.5);
+    setTimeout(function () { puff(chestEl, 10, "#c9b8a0"); buzz(20); shakeStage("rd-shake-s"); SND.boom(); }, 380);
+    setTimeout(function () { step = 1; chestEl.classList.remove("is-drop"); }, 700);
+
+    function puff(el, n, col, big) {
+      var r = el.getBoundingClientRect(), lr = layer.getBoundingClientRect();
+      var cx = r.left - lr.left + r.width / 2, cy = r.top - lr.top + r.height * (big ? 0.45 : 0.9);
+      for (var i = 0; i < n; i++) {
+        var pdom = document.createElement("i"), a = Math.random() * Math.PI * 2, d = (big ? 90 : 40) + Math.random() * (big ? 160 : 50);
+        pdom.className = "rd-cfx-p" + (big && i % 3 === 0 ? " star" : "");
+        pdom.style.left = cx + "px"; pdom.style.top = cy + "px";
+        pdom.style.setProperty("--dx", Math.cos(a) * d + "px"); pdom.style.setProperty("--dy", (Math.sin(a) * d * (big ? 1 : 0.4) - (big ? 30 : 10)) + "px");
+        pdom.style.background = Array.isArray(col) ? col[i % col.length] : col;
+        pdom.style.animationDuration = (0.5 + Math.random() * 0.5) + "s";
+        layer.appendChild(pdom);
+        setTimeout(function (x) { return function () { x.remove(); }; }(pdom), 1100);
+      }
+    }
+    // 2. coups pour ouvrir (3), de plus en plus forts
+    function tapChest() {
+      if (step !== 1) return;
+      taps++;
+      chestEl.classList.remove("hit1", "hit2", "hit3"); void chestEl.offsetWidth; chestEl.classList.add("hit" + Math.min(3, taps));
+      layer.style.setProperty("--charge", Math.min(1, taps / 3));
+      sfx(180 + taps * 110, 0.1, "square", 0.05, 1.6); buzz(15 * taps);
+      shakeStage("rd-shake-s");
+      puff(chestEl, 4 + taps * 2, ["#f6d36b", "#fdf3de"]);
+      if (taps >= 3) { step = 1.5; hint.textContent = "…"; waitOpen(); }
+      else hint.textContent = taps === 1 ? "Encore !" : "Plus fort !";
+    }
+    function waitOpen() {
+      if (failed) { abort(); return; }
+      if (!res) { chestEl.classList.add("is-wait"); setTimeout(waitOpen, 120); return; }
+      chestEl.classList.remove("is-wait");
+      explode();
+    }
+    // 3. explosion
+    function explode() {
+      step = 2;
+      var best = layer.dataset.best;
+      layer.classList.add("is-open", "b-" + best);
+      hint.hidden = true;
+      sfx(90, 0.5, "sawtooth", 0.08, 0.3); setTimeout(function () { SND.boom(); }, 40);
+      arp(best === "legendaire" ? [523, 659, 784, 1047, 1319, 1568] : best === "epique" ? [523, 659, 784, 1047] : [523, 784, 1047], 55, "triangle", 0.05);
+      shakeStage("rd-shake-l"); buzz(best === "legendaire" ? [60, 40, 120] : 50);
+      puff(chestEl, best === "legendaire" ? 46 : best === "epique" ? 34 : 24, [RCOL[best], "#fdf3de", "#f6d36b"], true);
+      skip.hidden = false; count.hidden = false;
+      timer = setTimeout(next, 650);
+    }
+    // 4. cartes une par une
+    function next() {
+      clearTimeout(timer);
+      if (!res || done) return;
+      idx++;
+      if (idx >= res.order.length) { finish(); return; }
+      step = 3;
+      var k = res.order[idx], g = res.got[k], R = T[k].rarity, big = R === "legendaire" || R === "epique";
+      count.textContent = (idx + 1) + " / " + res.order.length;
+      cardEl.hidden = false;
+      cardEl.className = "rd-cfx-card r-" + R + " is-back" + (big ? " is-tease" : "");
+      cardEl.innerHTML = '<div class="rd-cfx-face">' + dieHtml(k) + "<b>" + esc(T[k].name) + '</b><span class="rd-cfx-rar">' + D.RARITY[R].name + "</span><small>×" + g.n + "</small>" +
+        (g.isNew ? '<em class="rd-cfx-new">NOUVEAU !</em>' : "") + '</div><div class="rd-cfx-back">?</div>';
+      sfx(500, 0.06, "square", 0.03, 1.8);
+      var tease = R === "legendaire" ? 900 : R === "epique" ? 450 : 0;
+      if (tease) { sfx(220, tease / 1000, "sawtooth", 0.035, 3); buzz(tease / 3); }
+      setTimeout(function () {
+        if (done || res.order[idx] !== k) return;
+        cardEl.classList.remove("is-back", "is-tease"); cardEl.classList.add("is-flip");
+        puff(cardEl, big ? 26 : R === "rare" ? 14 : 8, [RCOL[R], "#fdf3de"], true);
+        if (R === "legendaire") { SND.win(); shakeStage("rd-shake-l"); buzz([80, 40, 160]); }
+        else if (R === "epique") { arp([659, 784, 988, 1319], 60, "triangle", 0.05); shakeStage("rd-shake-s"); buzz(40); }
+        else if (R === "rare") arp([784, 1047], 60, "square", 0.035);
+        else sfx(880, 0.08, "square", 0.03, 1.3);
+        if (g.isNew) setTimeout(function () { sfx(330, 0.12, "square", 0.05, 0.6); }, 260);
+        timer = setTimeout(next, R === "legendaire" ? 2600 : R === "epique" ? 1700 : 1100);
+      }, 160 + tease);
+    }
+    function finish() {
+      if (done) return;
+      done = true; clearTimeout(timer);
+      layer.classList.add("is-out");
+      setTimeout(function () { layer.remove(); }, 250);
+      openedScreen(c, res, true);
+    }
+    function abort() {
+      done = true; clearTimeout(timer); layer.remove();
+      Cloud.err = failed ? window.SiteAuth.message(failed) : ""; show("chests", true); Cloud.err = "";
+    }
+    layer.addEventListener("click", function (e) {
+      if (e.target === skip) { if (step >= 2) finish(); return; }
+      if (step === 1) tapChest();
+      else if (step === 3) next();
+    });
+  }
+
+  function openedScreen(c, res, fast) {
     var best = res.order[res.order.length - 1], bestR = T[best].rarity;
     openedHtml = '<h2>' + esc(c.name) + "</h2>" +
-      '<div class="rd-open-chest" style="--cc:' + c.color + '"><img src="' + sprUrl("chest") + '" alt=""></div>' +
+      (fast ? "" : '<div class="rd-open-chest" style="--cc:' + c.color + '"><img src="' + sprUrl("chest") + '" alt=""></div>') +
       '<div class="rd-reveal">' + res.order.map(function (k, i) {
         var g = res.got[k];
-        return '<div class="rd-card-got r-' + T[k].rarity + '" style="animation-delay:' + (0.6 + i * 0.18).toFixed(2) + 's">' + dieHtml(k) +
+        return '<div class="rd-card-got r-' + T[k].rarity + '" style="animation-delay:' + (fast ? i * 0.04 : 0.6 + i * 0.18).toFixed(2) + 's">' + dieHtml(k) +
           '<b>' + esc(T[k].name) + "</b><small>×" + g.n + "</small>" + (g.isNew ? '<em class="rd-new">NOUVEAU</em>' : "") + "</div>";
       }).join("") + "</div>" +
       '<div class="btn-row center"><button class="btn" type="button" data-action="go" data-arg="deck">🃏 Voir le deck</button><button class="btn btn-ghost" type="button" data-action="go" data-arg="chests">🎁 Coffres</button></div>';
     show("opened");
-    setTimeout(function () { if (bestR === "legendaire") SND.win(); else if (bestR === "epique") SND.merge(5); else SND.pu(); }, 600);
+    if (!fast) setTimeout(function () { if (bestR === "legendaire") SND.win(); else if (bestR === "epique") SND.merge(5); else SND.pu(); }, 600);
   }
 
   function adminCall(fn, args, ok) {
@@ -1153,18 +1297,19 @@
     open: function (a) {
       var c = D.CHESTS[+a]; if (!c || Cloud.busy) return;
       if (Cloud.on) {
-        Cloud.busy = true; show("chests", true);
-        window.SiteAuth.rpc("rd_open_chest", { p_chest: c.id }).then(function (r) {
+        Cloud.busy = true;
+        // la séquence commence tout de suite, pendant que le serveur fait le tirage
+        chestFx(c, window.SiteAuth.rpc("rd_open_chest", { p_chest: c.id }).then(function (r) {
           applyServer(r.profile); Cloud.busy = false;
           var order = (r.order || []).slice().sort(function (x, y) { return RORD.indexOf(T[x].rarity) - RORD.indexOf(T[y].rarity); });
-          openedScreen(c, { got: r.got, order: order });
-        }).catch(function (err) { Cloud.busy = false; Cloud.err = window.SiteAuth.message(err); show("chests", true); Cloud.err = ""; resync(); });
+          return { got: r.got, order: order };
+        }, function (err) { Cloud.busy = false; resync(); throw err; }));
         return;
       }
       if (+a === 0 && S.keys >= D.KEYS_FOR_FREE) S.keys -= D.KEYS_FOR_FREE;
       else if (S.gold >= c.price) S.gold -= c.price;
       else return;
-      openedScreen(c, openChest(c));
+      chestFx(c, Promise.resolve(openChest(c)));
     },
     resume: function () { togglePause(); },
     admgold: function (a) { adminCall("rd_admin_gold", { p_amount: +a }, "+" + a + " glands d'or ajoutés."); },

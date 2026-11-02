@@ -1343,3 +1343,108 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
   box-shadow: 0 0 0 3px #f6d36b; transition: opacity .6s;
 }
 .cs-toast.out { opacity: 0; }
+
+/* --- Écureuil Dice : ouverture de coffre (game feel) --- */
+.rd-cfx {
+  --glow: #f6d36b; --charge: 0;
+  position: absolute; inset: 0; z-index: 30; overflow: hidden; overflow: clip; cursor: pointer; user-select: none;
+  display: grid; grid-template-rows: auto 1fr auto auto; justify-items: center; align-items: center; padding: 18px 12px;
+  background: radial-gradient(circle at 50% 55%, rgba(60, 40, 20, .55), rgba(10, 8, 6, .92) 70%);
+  animation: rd-cfx-in .25s ease-out;
+}
+.rd-cfx [hidden] { display: none !important; }
+.rd-cfx.is-out { animation: rd-cfx-outa .25s ease-in forwards; }
+@keyframes rd-cfx-in { from { opacity: 0; } }
+@keyframes rd-cfx-outa { to { opacity: 0; } }
+.rd-cfx-title { font: 900 clamp(1.2rem, 4vw, 1.8rem) "Nunito", sans-serif; color: #fdf3de; text-shadow: 0 3px 0 #2b1709; letter-spacing: .02em; }
+.rd-cfx-rays {
+  position: absolute; left: 50%; top: 55%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax; pointer-events: none; opacity: 0;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--glow) 40%, transparent) 0deg 9deg, transparent 9deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 0, #000 12%, transparent 45%); mask: radial-gradient(circle, #000 0, #000 12%, transparent 45%);
+  transition: opacity .4s; animation: rd-spin 14s linear infinite;
+}
+.rd-cfx.is-open .rd-cfx-rays { opacity: 1; }
+.rd-cfx.b-legendaire .rd-cfx-rays { animation-duration: 6s; }
+@keyframes rd-spin { to { transform: rotate(360deg); } }
+
+/* coffre */
+.rd-cfx-chest { position: relative; grid-row: 2; width: clamp(150px, 34vmin, 230px); aspect-ratio: 14 / 11; transform-origin: 50% 100%; }
+.rd-cfx-chest img { position: absolute; left: 0; width: 100%; image-rendering: pixelated; }
+.rd-cfx-base { bottom: 0; }
+.rd-cfx-lid { bottom: 42%; transform-origin: 15% 100%; }
+.rd-cfx-glow {
+  position: absolute; left: 10%; right: 10%; bottom: 40%; height: 18%; border-radius: 50%; pointer-events: none;
+  background: var(--glow); filter: blur(10px); opacity: calc(var(--charge) * .9); transition: opacity .2s;
+}
+.rd-cfx-chest.is-drop { animation: rd-drop .7s cubic-bezier(.3, 0, .4, 1) both; }
+@keyframes rd-drop {
+  0% { transform: translateY(-120vh) scale(.9, 1.15); }
+  55% { transform: translateY(0) scale(1.25, .7); }
+  72% { transform: translateY(-6%) scale(.92, 1.1); }
+  86% { transform: translateY(0) scale(1.06, .95); }
+  100% { transform: none; }
+}
+.rd-cfx-chest.hit1 { animation: rd-hit .25s ease-out; }
+.rd-cfx-chest.hit2 { animation: rd-hit .25s ease-out; --amp: 1.6; }
+.rd-cfx-chest.hit3, .rd-cfx-chest.is-wait { animation: rd-hit .2s ease-out infinite; --amp: 2.3; }
+@keyframes rd-hit {
+  0% { transform: scale(1, 1); }
+  30% { transform: scale(calc(1 + .08 * var(--amp, 1)), calc(1 - .1 * var(--amp, 1))) rotate(calc(-3deg * var(--amp, 1))); }
+  60% { transform: scale(calc(1 - .04 * var(--amp, 1)), calc(1 + .06 * var(--amp, 1))) rotate(calc(3deg * var(--amp, 1))); }
+  100% { transform: none; }
+}
+.rd-cfx.is-open .rd-cfx-lid { animation: rd-lid .7s cubic-bezier(.2, .8, .3, 1) forwards; }
+@keyframes rd-lid { to { transform: translate(-30%, -170%) rotate(-38deg); opacity: 0; } }
+.rd-cfx.is-open .rd-cfx-glow { opacity: 1; height: 40%; bottom: 35%; filter: blur(16px); }
+.rd-cfx.is-open .rd-cfx-chest { animation: rd-pop-chest .5s ease-out; }
+@keyframes rd-pop-chest { 0% { transform: scale(1.3, .75); } 40% { transform: scale(.9, 1.12); } 100% { transform: none; } }
+.rd-cfx.is-open:has(.rd-cfx-card:not([hidden])) .rd-cfx-chest { opacity: .35; transform: translateY(18%) scale(.8); transition: all .4s; }
+.rd-cfx::after { content: ""; position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.rd-cfx.is-open::after { animation: rd-flash .45s ease-out; }
+@keyframes rd-flash { 0% { opacity: .85; } 100% { opacity: 0; } }
+.rd-cfx-hint { grid-row: 3; color: #fdf3de; font-weight: 800; font-size: 1.05rem; animation: rd-blink 1s steps(2) infinite; margin-top: 8px; }
+@keyframes rd-blink { 50% { opacity: .45; } }
+.rd-cfx-count { grid-row: 3; color: #c9b8a0; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 6px; }
+.rd-cfx-skip { grid-row: 4; margin-top: 8px; }
+
+/* particules */
+.rd-cfx-p { position: absolute; width: 6px; height: 6px; pointer-events: none; animation: rd-p .8s cubic-bezier(.2, .7, .4, 1) forwards; }
+.rd-cfx-p.star { width: 9px; height: 9px; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
+@keyframes rd-p { 0% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 40px)) scale(.3); opacity: 0; } }
+
+/* carte révélée */
+.rd-cfx-card { grid-row: 2; position: absolute; top: 50%; left: 50%; width: clamp(150px, 38vmin, 210px); transform: translate(-50%, -50%); perspective: 600px; z-index: 2; }
+.rd-cfx-card > div { width: 100%; padding: 16px 10px 14px; display: grid; justify-items: center; gap: 4px; background: var(--panel); border: 4px solid var(--rc, #a8a59e); box-shadow: 0 0 0 3px #2b1709, 0 0 30px color-mix(in srgb, var(--rc, #fff) 70%, transparent); backface-visibility: hidden; }
+.rd-cfx-back { position: absolute; inset: 0; place-items: center !important; font: 900 3.5rem "Nunito", sans-serif; color: #fdf3de;
+  background: repeating-linear-gradient(45deg, #6b4430 0 10px, #8a5a3b 10px 20px) !important; border-color: #2b1709 !important; transform: rotateY(180deg); }
+.rd-cfx-card.is-back { animation: rd-card-in .2s ease-out; }
+.rd-cfx-card.is-back .rd-cfx-face { transform: rotateY(180deg); }
+.rd-cfx-card.is-back .rd-cfx-back { transform: rotateY(0); }
+.rd-cfx-card.is-tease { animation: rd-card-in .2s ease-out, rd-tease .12s linear .2s infinite; }
+.rd-cfx-card.is-tease .rd-cfx-back { box-shadow: 0 0 0 3px #2b1709, 0 0 50px var(--rc); }
+@keyframes rd-tease { 0%, 100% { transform: translate(-50%, -50%) rotate(-2deg); } 50% { transform: translate(-50%, -50%) rotate(2deg) scale(1.03); } }
+@keyframes rd-card-in { from { transform: translate(-50%, 40%) scale(.3); opacity: 0; } }
+.rd-cfx-face, .rd-cfx-back { transition: transform .32s cubic-bezier(.3, 1.6, .5, 1); }
+.rd-cfx-card.is-flip { animation: rd-punch .45s cubic-bezier(.3, 1.8, .5, 1); }
+@keyframes rd-punch { 0% { transform: translate(-50%, -50%) scale(.85); } 40% { transform: translate(-50%, -50%) scale(1.18); } 100% { transform: translate(-50%, -50%) scale(1); } }
+.rd-cfx-face .rd-die { width: 84px; height: 84px; border-width: 4px; }
+.rd-cfx-face .rd-die img { width: 62px; }
+.rd-cfx-face .rd-die .rd-ic { width: 22px; }
+.rd-cfx-face b { font-size: 1.25rem; }
+.rd-cfx-face small { font-weight: 900; font-size: 1.1rem; }
+.rd-cfx-rar { font-weight: 900; font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--rc); text-shadow: 0 1px 0 #2b1709; }
+.rd-cfx-card.r-legendaire .rd-cfx-rar { font-size: 1rem; animation: rd-blink .5s steps(2) 3; }
+.rd-cfx-new { position: absolute; top: -14px; right: -14px; padding: 3px 8px; font-style: normal; font-weight: 900; font-size: .8rem; color: #fff; background: #c8553d; border: 3px solid #2b1709; transform: rotate(12deg); }
+.rd-cfx-card.is-flip .rd-cfx-new { animation: rd-stamp .35s cubic-bezier(.3, 1.6, .5, 1) .25s both; }
+@keyframes rd-stamp { 0% { transform: rotate(12deg) scale(3); opacity: 0; } 100% { transform: rotate(12deg) scale(1); opacity: 1; } }
+
+/* secousse de l'écran */
+.game-stage.rd-shake-s { animation: rd-shake .25s linear; }
+.game-stage.rd-shake-l { animation: rd-shake .45s linear; --sh: 7px; }
+@keyframes rd-shake {
+  0%, 100% { translate: 0 0; } 15% { translate: calc(var(--sh, 3px) * -1) calc(var(--sh, 3px) * .6); } 30% { translate: var(--sh, 3px) calc(var(--sh, 3px) * -.6); }
+  45% { translate: calc(var(--sh, 3px) * -.7) calc(var(--sh, 3px) * -.4); } 60% { translate: calc(var(--sh, 3px) * .6) calc(var(--sh, 3px) * .5); } 80% { translate: calc(var(--sh, 3px) * -.3) 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-cfx-rays, .rd-cfx-chest, .rd-cfx-card, .rd-cfx-p, .rd-cfx::after { animation: none !important; }
+}
