@@ -1453,3 +1453,5 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .ach.quest { border-left: 4px solid var(--rc, #e8e0d0); }
 .ach.quest .q-item { color: var(--rc); filter: brightness(.75); }
 .ach.quest:not(.is-done) .ach-ic { filter: grayscale(1); opacity: .7; }
+.quest-toast img { width: 14px; vertical-align: -2px; image-rendering: pixelated; }
+.ach.quest .ach-ic img { width: 24px; image-rendering: pixelated; }
