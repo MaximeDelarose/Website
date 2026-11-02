@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "0.26.1";
+  var VERSION = "0.26.2";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -2222,12 +2222,21 @@
     }
     return false;
   }
+  // sol sous un point (salles, bras, couloirs), sans marge
+  function onFloor(x, y, only) {
+    if (only) return inRoom(only, x, y, 0);
+    var dg = r.dg;
+    for (var i = 0; i < dg.rooms.length; i++) if (inRoom(dg.rooms[i], x, y, 0)) return true;
+    var cs = dg.corridors;
+    for (i = 0; i < cs.length; i++) for (var j = 0; j < 3; j++) if (inRect(x, y, cs[i].segs[j], 0)) return true;
+    return false;
+  }
+  // praticable si le point ET ses voisins (à 7 px) sont sur du sol : aucun raccord ne peut faire de mur invisible
   function walkable(x, y) {
-    var dg = r.dg, m = 7;
+    var dg = r.dg, m = 7, only = dg.active >= 0 ? dg.rooms[dg.active] : null;
     if (inPillar(x, y, 4)) return false;
-    if (dg.active >= 0) return inRoom(dg.rooms[dg.active], x, y, m);
-    for (var i = 0; i < dg.rooms.length; i++) if (inRoom(dg.rooms[i], x, y, m)) return true;
-    return inCorridor(x, y, m);
+    return onFloor(x, y, only) && onFloor(x - m, y, only) && onFloor(x + m, y, only) && onFloor(x, y - m, only) && onFloor(x, y + m, only) &&
+           onFloor(x - 5, y - 5, only) && onFloor(x + 5, y - 5, only) && onFloor(x - 5, y + 5, only) && onFloor(x + 5, y + 5, only);
   }
   function dungeonMove(o, nx, ny) {
     if (r.dg.active >= 0 && !walkable(o.x, o.y)) { var rc = r.dg.rooms[r.dg.active].core; o.x = Math.max(rc.x + 14, Math.min(rc.x + rc.w - 14, o.x)); o.y = Math.max(rc.y + 14, Math.min(rc.y + rc.h - 14, o.y)); return; }
@@ -4673,6 +4682,9 @@
       });
       r.dg.active = save; return bad + "/" + tot;
     },
+    probe: function (x, y) { var o = []; for (var k = 0; k <= 30; k += 3) o.push([y - k, walkable(x, y - k) ? 1 : 0, inPillar(x, y - k, 4) ? "P" : "", pitAt(x, y - k + 3) ? "T" : "", onFloor(x, y - k - 7) ? "" : "noFloorUp"]); var rm = roomAt(x, y + 5, 0); return { pts: o, parts: rm ? rm.parts.map(function (q) { return [Math.round(q.x), Math.round(q.y), Math.round(q.w), Math.round(q.h)]; }) : null, me: [Math.round(me.x), Math.round(me.y)] }; },
+    clearAll: function () { r.dg.active = -1; r.dg.rooms.forEach(function (rm) { rm.state = "cleared"; }); enemies = []; },
+    upArms: function () { var out = []; r.dg.rooms.forEach(function (rm) { rm.parts.forEach(function (pp, i) { if (i && pp.y + pp.h <= rm.core.y + 30 && pp.y < rm.core.y) out.push({ x: Math.round(pp.x + pp.w / 2), cy: Math.round(rm.core.y + rm.core.h / 2), top: Math.round(pp.y + 20), coreTop: Math.round(rm.core.y) }); }); }); return out; },
     regen: function (seed) { r.seed = seed; buildFloor(1); },
     vacuum: function () { gems.forEach(function (o) { if (o.kind === "xp") { o.x = me.x; o.y = me.y; } }); return { xp: xp, next: xpNext, level: r.level }; },
     elite: function (type, n, ids) { var e = spawn(type || "beetle", Math.random() * TAU, 50 + Math.random() * 40); e.aff = null; if (ids && !ids.length) return null; if (ids) { e.aff = ids.slice(); e.d = Object.assign({}, e.d, { elite: true }); } else giveAffixes(e, n || 1); if (isDungeon()) { e.room = undefined; e.wander = true; e.awake = true; } return e.aff; },
