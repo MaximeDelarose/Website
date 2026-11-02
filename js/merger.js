@@ -11,6 +11,7 @@
 (function () {
   "use strict";
 
+  var VERSION = "1.0.0";              // version affichée dans le menu (tag git : merger-v<VERSION>)
   var GAME_ID = "merger";
   var stage = document.querySelector("[data-merger]");
   if (!stage) return;
@@ -618,7 +619,8 @@
       '<button class="btn btn-ghost btn-small" type="button" data-act="mid">Moyen 6/12</button> ' +
       '<button class="btn btn-ghost btn-small" type="button" data-act="all">Tout 12/12</button></p>' +
       '<p><button class="btn" type="button" data-act="start">▶ Jouer</button></p>' +
-      '<p class="game-small"><span class="ctrl-desk">Souris ou ← → pour viser · clic / Espace pour lâcher · clic droit / ↑ pour permuter · P pour la pause</span></p>');
+      '<p class="game-small"><span class="ctrl-desk">Souris ou ← → pour viser · clic / Espace pour lâcher · clic droit / ↑ pour permuter · P pour la pause</span></p>' +
+      '<p class="game-version">Merger v' + VERSION + '</p>');
   }
 
   function setPicked(a) { picked = a.slice().sort(function (x, y) { return x - y; }); store("merger-pick", picked.join(",")); menu(); }
@@ -760,6 +762,7 @@
 
   // outils de test (console)
   window.MERGER_DEBUG = {
+    version: VERSION,
     state: function () { return { state: state, score: score, balls: balls.length, diff: diff, cleared: cleared, pair: pair && pair.slice() }; },
     add: function (type, x) { balls.push(newBall(type, x == null ? JW / 2 : x, DROP_Y)); },
     swap: swap,
