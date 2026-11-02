@@ -278,6 +278,54 @@
       paths: [[[0, 0], [3, 0], [3, 2], [6, 2]], [[0, 4], [3, 4], [3, 2], [6, 2]]], mods: { spd: 0.8, hp: 0.9 } },
   ];
 
+  /* =====================================================================
+     Cartes coop : 2 plateaux. « 1 » = emplacement du joueur du haut, « 2 » = du bas.
+     Dans paths, "tp" = portail : la bestiole saute instantanément au point suivant.
+     « O » = portail (décor), « B » = champignon rebondissant : renvoie la bestiole
+     en arrière sur le chemin (une fois par champignon et par bestiole).
+     Plusieurs « E » = plusieurs sorties (les vies restent communes).
+     ===================================================================== */
+  var COOP_MAPS = [
+    { id: "carrefour2", name: "Le Grand Carrefour", icon: "🔀", ground: "#3f6b3a",
+      spec: "Deux terriers, un en haut, un en bas : les bestioles se rejoignent au milieu puis filent vers la sortie.",
+      rows: ["S11111.",
+             "P11111.",
+             "P11111.",
+             "PPPPPPE",
+             "P22222.",
+             "P22222.",
+             "S22222."],
+      paths: [[[0, 0], [0, 3], [6, 3]], [[0, 6], [0, 3], [6, 3]]], mods: {} },
+    { id: "chasse", name: "Chassé-croisé", icon: "🔁", ground: "#45703a",
+      spec: "Chaque file entre chez un joueur, se mêle à l'autre au milieu… puis repart chez l'autre joueur. Deux sorties.",
+      rows: ["S.111.E",
+             "P11111P",
+             "P11111P",
+             "PPPPPPP",
+             "P22222P",
+             "P22222P",
+             "S.222.E"],
+      paths: [[[0, 0], [0, 3], [6, 3], [6, 6]], [[0, 6], [0, 3], [6, 3], [6, 0]]], mods: {} },
+    { id: "portails", name: "Portails", icon: "🌀", ground: "#3a5a52",
+      spec: "Un seul terrier. Un portail envoie les bestioles du plateau du haut vers celui du bas, un autre les ramène au milieu pour le final.",
+      rows: ["SPPPPPO",
+             ".11111.",
+             ".11111.",
+             "EPPPPPO",
+             ".22222.",
+             ".22222.",
+             "OPPPPPO"],
+      paths: [[[0, 0], [6, 0], "tp", [6, 6], [0, 6], "tp", [6, 3], [0, 3]]], mods: { hp: 1.1 } },
+    { id: "flipper", name: "Flipper", icon: "🍄", ground: "#4a6a3a",
+      spec: "Chemin très court… mais deux champignons rebondissants renvoient chaque bestiole en arrière. À vous de placer les tirs au bon endroit !",
+      rows: ["S11111.",
+             "P11111.",
+             "PPBPBPE",
+             "P22222.",
+             "S22222."],
+      paths: [[[0, 0], [0, 2], [6, 2]], [[0, 4], [0, 2], [6, 2]]], mods: { bump: 52, hp: 1.15 } },
+  ];
+
   var ACHIEVEMENTS = [
     { id: "v5", name: "Premier boss", desc: "Atteins la vague 6 en solo.", gold: 30, check: function (r) { return r.mode === "solo" && r.wave >= 6; } },
     { id: "v15", name: "Écureuil de garde", desc: "Atteins la vague 15 en solo.", gold: 80, check: function (r) { return r.mode === "solo" && r.wave >= 15; } },
@@ -289,5 +337,5 @@
     { id: "boss5", name: "Chasseur de boss", desc: "Bats 5 boss en une partie.", gold: 120, check: function (r) { return r.bosses >= 5; } },
   ];
 
-  root.RD_DATA = { TYPES: TYPES, ORDER: ORDER, START_DECK: START_DECK, ENEMIES: ENEMIES, BOSSES: BOSSES, CFG: CFG, ACHIEVEMENTS: ACHIEVEMENTS, MAPS: MAPS, RARITY: RARITY, COPIES: COPIES, CHESTS: CHESTS, KEYS_FOR_FREE: KEYS_FOR_FREE };
+  root.RD_DATA = { TYPES: TYPES, ORDER: ORDER, START_DECK: START_DECK, ENEMIES: ENEMIES, BOSSES: BOSSES, CFG: CFG, ACHIEVEMENTS: ACHIEVEMENTS, MAPS: MAPS, COOP_MAPS: COOP_MAPS, RARITY: RARITY, COPIES: COPIES, CHESTS: CHESTS, KEYS_FOR_FREE: KEYS_FOR_FREE };
 })(typeof window !== "undefined" ? window : globalThis);

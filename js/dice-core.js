@@ -26,14 +26,26 @@
   function pick(arr, rnd) { return arr[Math.floor((rnd || Math.random)() * arr.length)]; }
 
   /* ---------- géométrie ---------- */
-  function makePath(pts) {
+  // un tracé ; "tp" entre deux points = portail (segment de longueur nulle : saut instantané)
+  function makePath(raw) {
+    var pts = [], tpAfter = {};
+    raw.forEach(function (q) { if (q === "tp") tpAfter[pts.length - 1] = true; else pts.push(q); });
     var segs = [], L = 0;
     for (var k = 0; k < pts.length - 1; k++) {
-      var a = pts[k], b = pts[k + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      segs.push({ a: a, b: b, len: len, at: L });
+      var a = pts[k], b = pts[k + 1], tp = !!tpAfter[k], len = tp ? 0 : Math.hypot(b[0] - a[0], b[1] - a[1]);
+      segs.push({ a: a, b: b, len: len, at: L, tp: tp });
       L += len;
     }
     return { pts: pts, segs: segs, len: L };
+  }
+  // distance le long d'un tracé où il passe par (x, y), ou undefined
+  function distAt(path, x, y) {
+    for (var i = 0; i < path.segs.length; i++) {
+      var sg = path.segs[i]; if (sg.tp) continue;
+      var minx = Math.min(sg.a[0], sg.b[0]) - 1, maxx = Math.max(sg.a[0], sg.b[0]) + 1, miny = Math.min(sg.a[1], sg.b[1]) - 1, maxy = Math.max(sg.a[1], sg.b[1]) + 1;
+      if (x >= minx && x <= maxx && y >= miny && y <= maxy) return sg.at + Math.hypot(x - sg.a[0], y - sg.a[1]);
+    }
+    return undefined;
   }
   // chaque plateau : cells = cases des écureuils (coin haut-gauche, 26 px), nb = cases voisines (pour le Chêne),
   // x / cy = position des commandes (Invoquer, noisettes, améliorations)
@@ -46,35 +58,42 @@
     });
   }
   function mkBoard(x, y, cy, cells) { return { x: x, y: y, cy: cy, cells: cells, nb: neighbors(cells) }; }
-  // carte de grille (solo / versus) : voir MAPS dans dice-data.js
-  function mapById(id) { return (D.MAPS || []).filter(function (m) { return m.id === id; })[0] || (D.MAPS || [])[0]; }
-  function mapLayout(m) {
-    var Y0 = 18, cells = [], deco = [];
+  // cartes de grille : MAPS (1 plateau) et COOP_MAPS (2 plateaux) dans dice-data.js
+  function mapById(id) {
+    var all = (D.MAPS || []).concat(D.COOP_MAPS || []);
+    return all.filter(function (m) { return m.id === id; })[0] || (D.MAPS || [])[0];
+  }
+  function coopMapById(id) { return (D.COOP_MAPS || []).filter(function (m) { return m.id === id; })[0] || (D.COOP_MAPS || [])[0]; }
+  var SOLO_LEN = 396; // longueur de référence pour la vitesse en coop
+  function mapLayout(m, coop) {
+    var Y0 = coop ? 80 : 18, cells = [[], []], deco = [], bumps = [];
     m.rows.forEach(function (row, r) {
       for (var c = 0; c < row.length; c++) {
         var ch = row[c], x = c * CELL, y = Y0 + r * CELL;
-        if (ch === "#") cells.push({ x: x, y: y });
-        else if (ch === "T" || ch === "~") deco.push({ x: x, y: y, k: ch });
+        if (ch === "#" || ch === "1") cells[0].push({ x: x, y: y });
+        else if (ch === "2") cells[1].push({ x: x, y: y });
+        else if (ch === "T" || ch === "~" || ch === "O") deco.push({ x: x, y: y, k: ch });
+        else if (ch === "B") bumps.push({ x: x + CELL / 2, y: y + CELL / 2, at: {} });
       }
     });
-    var paths = m.paths.map(function (wp) { return makePath(wp.map(function (q) { return [q[0] * CELL + CELL / 2, Y0 + q[1] * CELL + CELL / 2]; })); });
-    var cy = Y0 + m.rows.length * CELL + 6;
-    return { w: 7 * CELL, h: cy + 62, paths: paths, len: paths[0].len, spdMul: 1, map: m.id, mods: m.mods || {}, deco: deco, ground: m.ground,
-             boards: [mkBoard(26, Y0, cy, cells)] };
+    var paths = m.paths.map(function (wp) { return makePath(wp.map(function (q) { return q === "tp" ? q : [q[0] * CELL + CELL / 2, Y0 + q[1] * CELL + CELL / 2]; })); });
+    bumps.forEach(function (bm) { paths.forEach(function (pth, ln) { var d = distAt(pth, bm.x, bm.y); if (d !== undefined) bm.at[ln] = d; }); });
+    var gridH = m.rows.length * CELL, mods = m.mods || {};
+    var avg = paths.reduce(function (a, pth) { return a + pth.len; }, 0) / paths.length;
+    var lay = { w: 7 * CELL, paths: paths, len: paths[0].len, map: m.id, mods: mods, deco: deco, bumps: bumps, ground: m.ground, gridY: Y0, gridH: gridH };
+    if (coop) {
+      var cy1 = Y0 + gridH + 8;
+      lay.boards = [mkBoard(26, Y0, 18, cells[0]), mkBoard(26, Y0, cy1, cells[1])];
+      lay.h = cy1 + 54 + 14; lay.coop = true; lay.spdMul = Math.min(1, avg / SOLO_LEN);
+    } else {
+      var cy = Y0 + gridH + 6;
+      lay.boards = [mkBoard(26, Y0, cy, cells[0])];
+      lay.h = cy + 62; lay.spdMul = 1;
+    }
+    return lay;
   }
-  // 2 plateaux (coop) : plateaux l'un au-dessus de l'autre ; une moitié des bestioles
-  // descend à gauche, l'autre monte, elles se rejoignent au centre puis filent à droite.
-  // Chaque plateau a ses commandes (cy) : sous le plateau du bas, au-dessus de celui du haut.
-  var SOLO_LEN = 396; // longueur du chemin de référence (vitesse de la coop)
-  function layout(n, mapId) {
-    if (n === 1) return mapLayout(mapById(mapId));
-    var left = 10, right = 25 + BW + 15;
-    var b0 = 80, mid = b0 + BH + 15, b1 = mid + 15, endX = right + 4;
-    var pa = makePath([[left, b0 - 6], [left, mid], [endX, mid]]);
-    var pb = makePath([[left, b1 + BH + 6], [left, mid], [endX, mid]]);
-    return { w: right + 10, h: b1 + BH + 8 + 54 + 14, paths: [pa, pb], len: pa.len, spdMul: pa.len / SOLO_LEN, coop: true, mods: {}, deco: [],
-             boards: [mkBoard(25, b0, 18, gridCells(25, b0)), mkBoard(25, b1, b1 + BH + 8, gridCells(25, b1))] };
-  }
+  // 1 plateau : carte solo ; 2 plateaux : carte coop (en haut le joueur 1 des cases « 1 », en bas celui des « 2 »)
+  function layout(n, mapId) { return n === 1 ? mapLayout(mapById(mapId), false) : mapLayout(coopMapById(mapId), true); }
   function posAt(lay, dist, lane) {
     var segs = lay.paths[lane || 0].segs, s = segs[segs.length - 1];
     for (var i = 0; i < segs.length; i++) if (dist < segs[i].at + segs[i].len) { s = segs[i]; break; }
@@ -480,7 +499,16 @@
           else { en2.power = 7; transformRandom(w, 2); for (var mo = 0; mo < 2; mo++) spawnEnemy(w, "moth", Math.max(0, en2.dist - 6 - mo * 6), en2.max * 0.02, en2.lane); w.ev.push({ k: "hoot" }); }
         }
       }
+      var d0 = en2.dist;
       en2.dist += sp * dt;
+      if (w.lay.bumps && w.lay.bumps.length) w.lay.bumps.forEach(function (bm, bk) {
+        var at = bm.at[en2.lane || 0];
+        if (at === undefined || d0 >= at || en2.dist < at || (en2.bumped && en2.bumped[bk])) return;
+        (en2.bumped = en2.bumped || {})[bk] = 1;
+        en2.dist = Math.max(0, at - (w.lay.mods.bump || 52) * (dd2.boss ? 0.35 : 1));
+        bm.hit = (bm.hit || 0) + 1;
+        w.ev.push({ k: "bump", x: bm.x, y: bm.y, bk: bk });
+      });
       if (en2.dist >= L) {
         en2.dead = true; w.enemies.splice(j, 1); delete w.emap[en2.id];
         if (dd2.boss) w.bossAlive--;
@@ -596,7 +624,7 @@
   }
 
   root.RD_CORE = {
-    CELL: CELL, COLS: COLS, ROWS: ROWS, NSLOT: NSLOT, BW: BW, BH: BH, EKEYS: EKEYS, TIDX: TIDX, mapById: mapById,
+    CELL: CELL, COLS: COLS, ROWS: ROWS, NSLOT: NSLOT, BW: BW, BH: BH, EKEYS: EKEYS, TIDX: TIDX, mapById: mapById, coopMapById: coopMapById,
     layout: layout, posAt: posAt, epos: epos, rangeOf: rangeOf, slotCenter: slotCenter, createWorld: createWorld, step: step, stepView: stepView,
     summon: summon, merge: merge, canMerge: canMerge, powerUp: powerUp, act: act, botStep: botStep,
     summonCost: summonCost, puCost: puCost, freeSlots: freeSlots, isBossWave: isBossWave, waveHp: waveHp,

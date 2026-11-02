@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.8.0";
+  var VERSION = "0.9.0";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -20,7 +20,7 @@
      ===================================================================== */
   var SAVE_KEY = "rd-save-v1";
   function defaults() {
-    return { map: "clairiere", gold: 0, deck: D.START_DECK.slice(), cls: {}, owned: {}, have: null, cards: {}, keys: 0, chests: 0, sel: "noisette",
+    return { map: "clairiere", coopMap: "carrefour2", gold: 0, deck: D.START_DECK.slice(), cls: {}, owned: {}, have: null, cards: {}, keys: 0, chests: 0, sel: "noisette",
              best: { solo: 0, coop: 0 }, wins: 0, games: 0, ach: {}, name: "", mute: false, botLvl: 1 };
   }
   var S = defaults();
@@ -33,7 +33,7 @@
   var LOCAL = S;
   var Cloud = { on: false, loading: false, busy: false, msg: "", err: "" };
   function save() {
-    if (Cloud.on) { LOCAL.mute = S.mute; LOCAL.botLvl = S.botLvl; LOCAL.sel = S.sel; LOCAL.name = S.name; LOCAL.map = S.map; }
+    if (Cloud.on) { LOCAL.mute = S.mute; LOCAL.botLvl = S.botLvl; LOCAL.sel = S.sel; LOCAL.name = S.name; LOCAL.map = S.map; LOCAL.coopMap = S.coopMap; }
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(LOCAL)); } catch (e) {}
   }
   // ancienne sauvegarde : on garde tout ce qui était débloqué ou déjà joué
@@ -51,6 +51,7 @@
   if (!S.deck.length) S.deck = D.START_DECK.slice();
   if (!T[S.sel]) S.sel = "noisette";
   if (!D.MAPS.some(function (m) { return m.id === S.map; })) S.map = D.MAPS[0].id;
+  if (!D.COOP_MAPS.some(function (m) { return m.id === S.coopMap; })) S.coopMap = D.COOP_MAPS[0].id;
 
   /* ---------- compte du site (js/auth.js) : progression sur le serveur ---------- */
   var PROG = ["gold", "keys", "chests", "have", "cards", "cls", "deck", "best", "wins", "games", "ach"];
@@ -211,7 +212,7 @@
     newGame({ mode: "versus", kind: "bot", bot: true, botLvl: lvl, sims: [me, bot], panels: [{ world: me, mine: [0] }, { world: bot, mine: [], opp: true, seed: 9 }] });
   }
   function localCoop() {
-    var w = K.createWorld({ mode: "coop", seed: (Math.random() * 1e9) | 0,
+    var w = K.createWorld({ mode: "coop", map: S.coopMap, seed: (Math.random() * 1e9) | 0,
       boards: [{ name: "Joueur 2", deck: S.deck, cls: myCls() }, { name: "Joueur 1", deck: S.deck, cls: myCls() }] });
     // même écran : le joueur 2 est en face (plateau du haut, écureuils et commandes à l'envers)
     newGame({ mode: "coop", kind: "local-coop", sims: [w], panels: [{ world: w, mine: [0, 1], flipB: [0] }] });
@@ -347,16 +348,22 @@
     });
     // chemin
     ctx.lineCap = "square"; ctx.lineJoin = "miter";
-    function trace() { ctx.beginPath(); lay.paths.forEach(function (pth) { pth.pts.forEach(function (q, i) { if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); }); }); }
+    function trace() { tracePaths(lay); }
     trace(); ctx.strokeStyle = "#6b4430"; ctx.lineWidth = 17; ctx.stroke();
     trace(); ctx.strokeStyle = "#b07a4f"; ctx.lineWidth = 13; ctx.stroke();
     trace(); ctx.strokeStyle = "#c99a6a"; ctx.lineWidth = 3; ctx.setLineDash([2, 5]); ctx.stroke(); ctx.setLineDash([]);
     // terriers de départ et réserve de noisettes au bout
-    lay.paths.forEach(function (pth) { var s0 = pth.pts[0]; rect(s0[0] - 7, s0[1] - 4, 14, 8, "#2b1709"); rect(s0[0] - 5, s0[1] - 2, 10, 6, "#120a04"); });
+    var seen = {};
+    lay.paths.forEach(function (pth) {
+      var s0 = pth.pts[0], k0 = s0.join(",");
+      if (!seen[k0]) { seen[k0] = 1; rect(s0[0] - 7, s0[1] - 4, 14, 8, "#2b1709"); rect(s0[0] - 5, s0[1] - 2, 10, 6, "#120a04"); }
+      var e1 = pth.pts[pth.pts.length - 1], k1 = "e" + e1.join(",");
+      if (!seen[k1]) { seen[k1] = 1; drawSpr(SPR.stump[0], e1[0] - 6, e1[1] - 4); }
+    });
+    drawBumpers(p);
     var s1 = lay.paths[0].pts[lay.paths[0].pts.length - 1];
-    drawSpr(SPR.stump[0], s1[0] - 6, s1[1] - 4);
     for (var hI = 0; hI < CFG.lives; hI++) if (hI < w.lives) drawSpr(SPR.nut[0], s1[0] - 9 + hI * 6, s1[1] - 9);
-    (lay.deco || []).forEach(function (d) { if (d.k === "T") drawTree(d.x, d.y); else drawPuddle(d.x, d.y); });
+    (lay.deco || []).forEach(function (d) { if (d.k === "T") drawTree(d.x, d.y); else if (d.k === "O") drawPortal(d.x, d.y, G.t); else drawPuddle(d.x, d.y); });
     // plateaux
     w.boards.forEach(function (b, bi) { drawBoard(p, b, bi); });
     drawRange(p);
@@ -368,7 +375,20 @@
     });
     // ennemis (du plus loin au plus proche pour le chevauchement)
     var list = w.enemies.slice().sort(function (a, b2) { return a.dist - b2.dist; });
-    list.forEach(function (e) { drawEnemy(w, e); });
+    list.forEach(function (e) {
+      var q = K.epos(w, e);
+      if (e._lx !== undefined && Math.hypot(q.x - e._lx, q.y - e._ly) > 30 && !e.under) {
+        // passage d'un portail : tourbillon au départ et à l'arrivée
+        [[e._lx, e._ly], [q.x, q.y]].forEach(function (pt) {
+          pushVfx(p, { k: "ring", x: pt[0], y: pt[1] - 3, r: 14, c: "#c9a0ff", d: 0.35 });
+          pushVfx(p, { k: "pop", x: pt[0], y: pt[1] - 3, r: 14, c: "#b080ff", d: 0.3 });
+          sparks(p, pt[0], pt[1] - 3, 6, ["#c9a0ff", "#ffffff"], 50, 0.4, 1.3);
+        });
+        if (!p.opp) thr("tp", 120, function () { sfx(300, 0.15, "sine", 0.04, 3); });
+      }
+      e._lx = q.x; e._ly = q.y;
+      drawEnemy(w, e);
+    });
     // projectiles (traînée + lueur propres à chaque type)
     w.projs.forEach(function (pr) { if (pr.delay <= 0) drawProj(p, pr); });
     drawVfx(p);
@@ -376,6 +396,38 @@
     drawHud(p);
   }
 
+  function tracePaths(lay) {
+    ctx.beginPath();
+    lay.paths.forEach(function (pth) {
+      ctx.moveTo(pth.pts[0][0], pth.pts[0][1]);
+      pth.segs.forEach(function (sg) { if (sg.tp) ctx.moveTo(sg.b[0], sg.b[1]); else ctx.lineTo(sg.b[0], sg.b[1]); });
+    });
+  }
+  function drawPortal(x, y, t) {
+    var cx = x + 13, cy = y + 13;
+    glow(cx, cy, 16, "#9a60ff", 0.5 + Math.sin(t * 4) * 0.15);
+    for (var i = 0; i < 3; i++) {
+      ctx.strokeStyle = ["#5a2a8a", "#9a60ff", "#e0c8ff"][i]; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(cx, cy, 10 - i * 3, 8 - i * 2.5, 0, t * (2 + i) + i, t * (2 + i) + i + 4.2); ctx.stroke();
+    }
+    rect(cx - 1, cy - 1, 2, 2, "#ffffff");
+  }
+  function drawBumpers(p) {
+    var lay = p.world.lay;
+    (lay.bumps || []).forEach(function (bm, bk) {
+      var hitT = (G.bumpT && G.bumpT[p.world.map + bk]) || 0;
+      if (hitT > 0) G.bumpT[p.world.map + bk] = Math.max(0, hitT - FDT * 5);
+      var sq = Math.sin(hitT * Math.PI) * hitT, x = bm.x, y = bm.y + 4;
+      ctx.fillStyle = "rgba(20,12,6,.35)"; ctx.beginPath(); ctx.ellipse(x, y + 3, 10, 3, 0, 0, 6.3); ctx.fill();
+      ctx.save(); ctx.translate(x, y); ctx.scale(1 + 0.35 * sq, 1 - 0.3 * sq);
+      rect(-3, -5, 6, 7, "#f3e1c0"); rect(-3, -5, 1, 7, "#d8c4a0");
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(0, -6, 11, 7.5, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = "#c8553d"; ctx.beginPath(); ctx.ellipse(0, -6, 10, 6.5, 0, Math.PI, 0); ctx.fill();
+      [[-5, -8, 2], [2, -10, 1.6], [5, -7, 1.3]].forEach(function (d) { ctx.fillStyle = "#fdf3de"; ctx.beginPath(); ctx.arc(d[0], d[1], d[2], 0, 6.3); ctx.fill(); });
+      ctx.restore();
+      if (hitT > 0) glow(x, y - 6, 18, "#ff9a7a", hitT * 0.7);
+    });
+  }
   function drawTree(x, y) {
     ctx.fillStyle = "rgba(20,12,6,.3)"; ctx.beginPath(); ctx.ellipse(x + 13, y + 22, 10, 3.5, 0, 0, 6.3); ctx.fill();
     rect(x + 11, y + 15, 4, 8, "#5a3a22"); rect(x + 12, y + 15, 1, 8, "#7a5232");
@@ -521,23 +573,28 @@
   var thumbCache = {};
   function mapThumb(id) {
     if (thumbCache[id]) return thumbCache[id];
-    var lay = K.layout(1, id), c = document.createElement("canvas"), y0 = 16, h = lay.boards[0].cy - 4 - y0;
+    var coop = isCoopMap(id), lay = K.layout(coop ? 2 : 1, id), c = document.createElement("canvas"), y0 = lay.gridY - 2, h = lay.gridH + 4;
     c.width = lay.w; c.height = h;
     var keep = ctx; ctx = c.getContext("2d");
     try {
       ctx.translate(0, -y0);
       rect(0, y0, lay.w, h, lay.ground || "#3f6b3a");
-      lay.deco.forEach(function (d) { if (d.k === "T") drawTree(d.x, d.y); else drawPuddle(d.x, d.y); });
+      lay.deco.forEach(function (d) { if (d.k === "T") drawTree(d.x, d.y); else if (d.k === "O") drawPortal(d.x, d.y, 1); else drawPuddle(d.x, d.y); });
       ctx.lineCap = "square";
-      [["#6b4430", 17], ["#b07a4f", 13]].forEach(function (st) { ctx.beginPath(); lay.paths.forEach(function (pth) { pth.pts.forEach(function (q, i) { if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); }); }); ctx.strokeStyle = st[0]; ctx.lineWidth = st[1]; ctx.stroke(); });
+      [["#6b4430", 17], ["#b07a4f", 13]].forEach(function (st) { tracePaths(lay); ctx.strokeStyle = st[0]; ctx.lineWidth = st[1]; ctx.stroke(); });
       lay.paths.forEach(function (pth) { var q = pth.pts[0]; rect(q[0] - 6, q[1] - 4, 12, 8, "#120a04"); });
       var e = lay.paths[0].pts[lay.paths[0].pts.length - 1]; drawSpr(SPR.stump[0], e[0] - 6, e[1] - 5);
-      lay.boards[0].cells.forEach(function (q) { rect(q.x, q.y, 26, 26, "#2b1709"); rect(q.x + 1, q.y + 1, 24, 24, "#4a3524"); rect(q.x + 2, q.y + 2, 22, 22, "#5a4230"); });
+      lay.boards.forEach(function (bd, bi) {
+        var tint = coop ? (bi ? "#5a4a8a" : "#3a6a8a") : "#5a4230";
+        bd.cells.forEach(function (q) { rect(q.x, q.y, 26, 26, "#2b1709"); rect(q.x + 1, q.y + 1, 24, 24, "#4a3524"); rect(q.x + 2, q.y + 2, 22, 22, tint); });
+      });
+      var keepG = G; G = { t: 0, bumpT: {} }; try { drawBumpers({ world: { lay: lay, map: id } }); } finally { G = keepG; }
     } finally { ctx = keep; }
     return (thumbCache[id] = c.toDataURL());
   }
   function curMap() { return K.mapById(S.map); }
-  function mapCells(id) { return K.layout(1, id).boards[0].cells.length; }
+  function isCoopMap(id) { return D.COOP_MAPS.some(function (m) { return m.id === id; }); }
+  function mapCells(id) { var c = isCoopMap(id); var l = K.layout(c ? 2 : 1, id); return c ? "2 × " + l.boards[0].cells.length : l.boards[0].cells.length; }
   // la même image en HTML (menus, deck, coffres)
   var faceCache = {};
   function faceUrl(k) {
@@ -849,6 +906,13 @@
       else if (e.k === "pu" && loud) { SND.pu(); var ob = w.lay.boards[e.b]; if (ob) { var rr = puRect(ob, e.i); sparks(p, rr.x + rr.w / 2, rr.y + 8, 10, ["#f6d36b", "#ffffff"], 60, 0.4, 1.4); pushVfx(p, { k: "pop", x: rr.x + rr.w / 2, y: rr.y + 10, r: 16, c: "#f6d36b", d: 0.25 }); } }
       else if (e.k === "leak") { pushVfx(p, { k: "vignette", d: 0.6 }); shake(5); if (loud) SND.leak(); }
       else if (e.k === "boss") shake(4);
+      else if (e.k === "bump") {
+        G.bumpT = G.bumpT || {}; G.bumpT[w.map + e.bk] = 1;
+        pushVfx(p, { k: "ring", x: e.x, y: e.y - 2, r: 18, c: "#ff9a7a", d: 0.3 });
+        sparks(p, e.x, e.y - 6, 6, ["#ff9a7a", "#fdf3de"], 70, 0.35, 1.4);
+        pushVfx(p, { k: "txt", s: "BOING", x: e.x, y: e.y - 14, c: "#ffd0c0", d: 0.5, sz: 4.5 });
+        if (loud) thr("bump", 70, function () { sfx(220, 0.14, "square", 0.04, 2.6); });
+      }
       else if (e.k === "wave" && loud) {
         if (e.boss) { banner("Vague " + e.n + " · Boss !"); SND.boss(); shake(3); }
         else { if (e.n > 1 && e.n % 5 === 1) banner("Vague " + e.n); SND.wave(); }
@@ -1417,7 +1481,7 @@
         '<button class="btn btn-ghost mm-coop" type="button" data-action="go" data-arg="bot"' + dis + "><span>🤖 Vs l'IA</span><small>" + (S.botLvl === 2 ? "coriace" : "normale") + " · " + S.wins + " victoire" + (S.wins > 1 ? "s" : "") + "</small></button></div>" +
         '<div class="mm-grid">' +
         tile("online", "", "🌐", "En ligne", "Coop · versus", "", false, !deckOk) +
-        tile("lcoop", "", "👥", "Coop à 2", "Même écran", "", false, !deckOk) +
+        tile("lcoop", "", "👥", "Coop à 2", esc(K.coopMapById(S.coopMap).name), "", false, !deckOk) +
         tile("lvs", "", "⚔️", "Versus à 2", "Même écran", "", false, !deckOk) +
         tile("go", "deck", "🃏", "Deck", up ? "Amélioration prête" : D.ORDER.filter(owned).length + " / " + D.ORDER.length + " écureuils", up ? "⬆" : "", up || !deckOk) +
         tile("go", "chests", "🎁", "Coffres", freeChest ? "Un coffre gratuit !" : "Bois · fer · doré", freeChest ? "!" : "", freeChest) +
@@ -1432,13 +1496,15 @@
         "</div>";
     },
     maps: function () {
-      return head("Cartes") + '<p class="game-small">Chaque carte a son chemin, ses emplacements et ses règles. Elle sert en solo, contre l\'IA et en versus.</p><div class="rd-map-list">' +
-        D.MAPS.map(function (m) {
-          return '<button type="button" class="rd-map' + (S.map === m.id ? " is-on" : "") + '" data-action="mapsel" data-arg="' + m.id + '">' +
+      function card(m, on) {
+          return '<button type="button" class="rd-map' + (on ? " is-on" : "") + '" data-action="mapsel" data-arg="' + m.id + '">' +
             '<img src="' + mapThumb(m.id) + '" alt="">' +
             '<span class="rd-map-tx"><b>' + m.icon + " " + esc(m.name) + "</b><small class=\"rd-map-n\">" + mapCells(m.id) + " emplacements" + (m.paths.length > 1 ? " · " + m.paths.length + " terriers" : "") + "</small>" +
             "<small>" + esc(m.spec) + "</small></span></button>";
-        }).join("") + "</div>";
+      }
+      return head("Cartes") +
+        '<h3 class="rd-sec">Solo · contre l\'IA · versus</h3><div class="rd-map-list">' + D.MAPS.map(function (m) { return card(m, S.map === m.id); }).join("") + "</div>" +
+        '<h3 class="rd-sec">Coop à 2 <small>(même écran ou en ligne)</small></h3><div class="rd-map-list">' + D.COOP_MAPS.map(function (m) { return card(m, S.coopMap === m.id); }).join("") + "</div>";
     },
     bot: function () {
       function opt(lvl, ic, name, desc) {
@@ -1558,7 +1624,7 @@
         ["coop", "versus"].map(function (m) {
           return '<button class="btn btn-small ' + (mode === m ? "" : "btn-ghost") + '" type="button" data-action="lmode" data-arg="' + m + '"' + (host ? "" : " disabled") + ">" + (m === "coop" ? "👥 Coop" : "⚔ Versus") + "</button>";
         }).join("") + "</div>";
-      if (mode === "versus") { var hm = K.mapById(host ? S.map : (hp && hp.map)); html += '<p class="game-small">Carte : <b>' + hm.icon + " " + esc(hm.name) + "</b>" + (host ? ' · <button class="rd-link" type="button" data-action="go" data-arg="maps">changer</button>' : " (choisie par l'hôte)") + "</p>"; }
+      { var hm = mode === "versus" ? K.mapById(host ? S.map : (hp && hp.map)) : K.coopMapById(host ? S.coopMap : (hp && hp.coopMap)); html += '<p class="game-small">Carte : <b>' + hm.icon + " " + esc(hm.name) + "</b>" + (host ? ' · <button class="rd-link" type="button" data-action="go" data-arg="maps">changer</button>' : " (choisie par l'hôte)") + "</p>"; }
       if (host) html += '<div class="menu-buttons"><button class="btn" type="button" data-action="start"' + (ok && Net.roster.length >= 2 ? "" : " disabled") + ">▶ Lancer la partie</button></div>";
       else html += '<p class="game-small">L\'hôte lance la partie.</p>';
       return html;
@@ -1610,7 +1676,9 @@
     solo: function () { SND.click(); soloGame(); },
     bot: function () { SND.click(); botGame(); },
     botlvl: function (a) { S.botLvl = +a; save(); SND.click(); show("menu"); },
-    mapsel: function (id) { if (!D.MAPS.some(function (m) { return m.id === id; })) return; S.map = id; save(); SND.click(); if (Net.on) { trackMe(); show("lobby"); } else show("menu"); },
+    mapsel: function (id) {
+      if (isCoopMap(id)) S.coopMap = id; else if (D.MAPS.some(function (m) { return m.id === id; })) S.map = id; else return;
+      save(); SND.click(); if (Net.on) { trackMe(); show("lobby"); } else show("menu"); },
     botgo: function (a) { S.botLvl = +a === 2 ? 2 : 1; save(); SND.click(); botGame(); },
     fs: function () { if (isFull()) exitFull(); else enterFull(); setTimeout(function () { if (state === "menu" && screen === "menu") show("menu", true); }, 300); },
     lcoop: function () { SND.click(); localCoop(); },
@@ -1754,7 +1822,7 @@
   }
   function trackMe() {
     if (!Net.ch) return;
-    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), host: Net.role === "host", mode: Net.mode, map: S.map, deck: S.deck, cls: myCls(), ingame: Net.started, ts: Net.ts });
+    Net.ch.track({ id: Net.id, name: (S.name || "Écureuil").slice(0, 16), host: Net.role === "host", mode: Net.mode, map: S.map, coopMap: S.coopMap, deck: S.deck, cls: myCls(), ingame: Net.started, ts: Net.ts });
   }
   function onPresence() {
     if (!Net.ch) return;
@@ -1781,7 +1849,7 @@
   function hostStart() {
     if (Net.role !== "host" || Net.roster.length < 2) return;
     var roster = Net.roster.slice(0, 2).map(function (x) { return { id: x.id, name: x.name, deck: x.deck, cls: x.cls }; });
-    var info = { mode: Net.mode, map: S.map, seed: (Math.random() * 1e9) | 0, roster: roster };
+    var info = { mode: Net.mode, map: S.map, coopMap: S.coopMap, seed: (Math.random() * 1e9) | 0, roster: roster };
     netSend("start", info);
     startOnline(info);
   }
@@ -1792,7 +1860,7 @@
     var other = info.roster[1 - meI];
     var boards = info.roster.map(function (x) { return { id: x.id, name: x.name, deck: x.deck, cls: x.cls }; });
     if (info.mode === "coop") {
-      var w = K.createWorld({ mode: "coop", seed: info.seed, boards: boards, view: Net.role !== "host" });
+      var w = K.createWorld({ mode: "coop", map: info.coopMap, seed: info.seed, boards: boards, view: Net.role !== "host" });
       var cfg = { mode: "coop", kind: "net-coop", panels: [{ world: w, mine: [meI], view: Net.role !== "host" }], sims: Net.role === "host" ? [w] : [] };
       newGame(cfg);
     } else {
