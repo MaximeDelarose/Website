@@ -5,7 +5,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "0.4.1";
+  var VERSION = "0.5.0";
   var DEBUG = /[?&]debug\b/.test(location.search); // dice.html?debug : outils de test
   var GAME_ID = "ecureuil-dice";
   var stage = document.querySelector("[data-dice]");
@@ -1098,29 +1098,70 @@
     return h;
   }
 
+  // en-tête d'écran : bouton Retour compact (comme le Survivor)
+  function head(title, back, label, right) {
+    return '<div class="screen-head rd-head"><button class="btn btn-ghost btn-small btn-back" type="button" data-action="' + (back === "leave" ? "leave" : "go") + '" data-arg="' + (back || "menu") + '" aria-label="Retour">←<span class="bk-tx"> ' + (label || "Retour") + "</span></button><h2>" + title + "</h2>" + (right || "<span></span>") + "</div>";
+  }
+  function acctMsgs() {
+    var h = "";
+    if (Cloud.msg) { h += '<p class="game-small rd-center">' + esc(Cloud.msg) + "</p>"; Cloud.msg = ""; }
+    if (Cloud.err) h += '<p class="net-err rd-center">' + esc(Cloud.err) + "</p>";
+    return h;
+  }
   var SCREENS = {
     menu: function () {
-      var deckOk = S.deck.length === 5;
-      return '<div class="menu-title"><img src="' + sqUrl("noisette") + '" alt=""><div><span class="kicker">Défense de dés · v' + VERSION + '</span><h2>Écureuil Dice</h2></div></div>' +
-        '<p class="gold-badge">' + goldIc() + " " + S.gold + " glands d'or</p>" +
-        deckStrip(S.deck) +
-        (deckOk ? "" : '<p class="net-err">Ton deck doit contenir 5 écureuils : ouvre « Deck & écureuils ».</p>') +
-        '<div class="menu-buttons">' +
-        '<button class="btn" type="button" data-action="solo"' + (deckOk ? "" : " disabled") + ">▶ Solo <small>record : vague " + (S.best.solo || 0) + "</small></button>" +
-        '<button class="btn btn-alt" type="button" data-action="bot"' + (deckOk ? "" : " disabled") + ">🤖 Versus contre l'IA</button>" +
-        '<div class="menu-row rd-bot-lvl"><button class="btn btn-ghost btn-small' + (S.botLvl !== 2 ? " is-on" : "") + '" type="button" data-action="botlvl" data-arg="1">IA normale</button><button class="btn btn-ghost btn-small' + (S.botLvl === 2 ? " is-on" : "") + '" type="button" data-action="botlvl" data-arg="2">IA coriace</button></div>' +
-        '<button class="btn btn-alt" type="button" data-action="online"' + (deckOk ? "" : " disabled") + ">🌐 En ligne : coop / versus</button>" +
-        '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="lcoop"' + (deckOk ? "" : " disabled") + '>👥 Coop à 2 (même écran)</button><button class="btn btn-ghost btn-small" type="button" data-action="lvs"' + (deckOk ? "" : " disabled") + ">⚔ Versus à 2 (même écran)</button></div>" +
-        '<div class="menu-row"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="deck">🃏 Deck & écureuils' + (D.ORDER.some(canLevel) ? " ⬆" : "") + '</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="chests">🎁 Coffres' + (S.keys >= D.KEYS_FOR_FREE ? " ✨" : "") + '</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="succes">🏆 Succès</button><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="help">❓ Règles</button></div>' +
+      var deckOk = S.deck.length === 5, dis = deckOk ? "" : " disabled";
+      var nAch = Object.keys(S.ach || {}).length, up = D.ORDER.some(canLevel), freeChest = S.keys >= D.KEYS_FOR_FREE;
+      function tile(act, arg, ic, label, sub, badge, hot, off) {
+        return '<button type="button" class="mm-tile' + (hot ? " is-hot" : "") + '" data-action="' + act + '"' + (arg ? ' data-arg="' + arg + '"' : "") + (off ? " disabled" : "") + ">" +
+          '<span class="mm-ic">' + ic + '</span><span class="mm-lb"><b>' + label + "</b>" + (sub ? "<small>" + sub + "</small>" : "") + "</span>" +
+          (badge ? '<span class="pill">' + badge + "</span>" : "") + "</button>";
+      }
+      var acct = !window.SiteAuth ? "" : Cloud.on ? tile("go", "account", "☁", esc(S.name || "Mon compte"), "Connecté") :
+        Cloud.loading ? tile("go", "account", "☁", "Compte", "Chargement…") : tile("login", "", "👤", "Connexion", "Sauvegarde en ligne", "", true);
+      return '<div class="mm">' +
+        '<header class="mm-head"><img src="' + sqUrl("noisette") + '" alt=""><div><span class="kicker">Défense de dés</span><h2>Écureuil Dice</h2></div></header>' +
+        '<div class="mm-stats rd-stats-row"><span class="mm-gold">' + goldIc() + " <b>" + S.gold.toLocaleString("fr-FR") + "</b></span>" +
+        '<span class="rd-keys" title="Clés : ' + D.KEYS_FOR_FREE + ' = un coffre gratuit">🗝 <b>' + Math.min(S.keys || 0, D.KEYS_FOR_FREE) + "</b>/" + D.KEYS_FOR_FREE + "</span>" +
+        '<span class="rd-best">Record <b>vague ' + (S.best.solo || 0) + "</b></span></div>" +
+        '<button type="button" class="rd-deckbar" data-action="go" data-arg="deck" aria-label="Modifier le deck">' +
+        '<span class="rd-deckbar-dice">' + [0, 1, 2, 3, 4].map(function (i) { var k = S.deck[i]; return k ? dieHtml(k) : '<span class="rd-die rd-die-empty">+</span>'; }).join("") + "</span>" +
+        '<span class="rd-deckbar-tx">' + (deckOk ? "Deck" : "Deck incomplet") + "<small>Modifier</small></span></button>" +
+        '<div class="mm-main">' +
+        '<button class="btn mm-play" type="button" data-action="solo"' + dis + "><span>▶ Jouer</span><small>Solo · record vague " + (S.best.solo || 0) + "</small></button>" +
+        '<button class="btn btn-ghost mm-coop" type="button" data-action="go" data-arg="bot"' + dis + "><span>🤖 Vs l'IA</span><small>" + (S.botLvl === 2 ? "coriace" : "normale") + " · " + S.wins + " victoire" + (S.wins > 1 ? "s" : "") + "</small></button></div>" +
+        '<div class="mm-grid">' +
+        tile("online", "", "🌐", "En ligne", "Coop · versus", "", false, !deckOk) +
+        tile("lcoop", "", "👥", "Coop à 2", "Même écran", "", false, !deckOk) +
+        tile("lvs", "", "⚔️", "Versus à 2", "Même écran", "", false, !deckOk) +
+        tile("go", "deck", "🃏", "Deck", up ? "Amélioration prête" : D.ORDER.filter(owned).length + " / " + D.ORDER.length + " écureuils", up ? "⬆" : "", up || !deckOk) +
+        tile("go", "chests", "🎁", "Coffres", freeChest ? "Un coffre gratuit !" : "Bois · fer · doré", freeChest ? "!" : "", freeChest) +
+        tile("go", "succes", "🏆", "Succès", nAch + " / " + D.ACHIEVEMENTS.length) +
+        tile("go", "help", "❓", "Règles", "Comment jouer") +
+        acct +
         "</div>" +
-        '<p class="game-small">Aucun achat : tout se débloque en jouant. Versus gagnés : ' + S.wins + ".</p>" +
-        acctHtml() +
-        (DEBUG && !Cloud.on ? '<p class="game-small">🧪 Mode test : <button class="btn btn-ghost btn-small" type="button" data-action="testgold">+5 000 glands d\'or</button></p>' : "");
+        (deckOk ? "" : '<p class="net-err rd-center">Ton deck doit contenir 5 écureuils pour jouer.</p>') +
+        acctMsgs() +
+        '<footer class="mm-foot"><span>Aucun achat : tout se gagne en jouant.</span><span><button class="mm-link" type="button" data-action="fs">' + (isFull() ? "✕ Quitter le plein écran" : "⛶ Plein écran") + "</button> · v" + VERSION + "</span></footer>" +
+        (DEBUG && !Cloud.on ? '<p class="game-small rd-center">🧪 Mode test : <button class="btn btn-ghost btn-small" type="button" data-action="testgold">+5 000 glands d\'or</button></p>' : "") +
+        "</div>";
+    },
+    bot: function () {
+      function opt(lvl, ic, name, desc) {
+        return '<button type="button" class="rd-opt' + ((S.botLvl || 1) === lvl ? " is-on" : "") + '" data-action="botgo" data-arg="' + lvl + '">' +
+          '<span class="rd-opt-ic">' + ic + "</span><span><b>" + name + "</b><small>" + desc + "</small></span><span class=\"rd-opt-go\">▶</span></button>";
+      }
+      return head("Contre l'IA") +
+        '<p class="game-small">Mêmes vagues pour toi et l\'IA : le dernier debout gagne.</p>' +
+        '<div class="rd-opts">' + opt(1, "🐿️", "IA normale", "Pour s'entraîner. Victoire : +25 glands d'or.") +
+        opt(2, "🦊", "IA coriace", "Écureuils niveau 4, décide deux fois plus vite.") + "</div>";
+    },
+    account: function () {
+      return head("Compte") + acctHtml() + '<p class="game-small"><a href="compte.html">Gérer mon compte (pseudo, données) →</a></p>';
     },
     deck: function () {
-      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Deck</h2>' +
-        '<button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="chests">🎁 Coffres' + (S.keys >= D.KEYS_FOR_FREE ? " ✨" : "") + "</button></div>" +
-        '<p class="gold-badge">' + goldIc() + " " + S.gold + "</p>";
+      var html = head("Deck", "menu", "Retour", '<button class="btn btn-alt btn-small" type="button" data-action="go" data-arg="chests">🎁<span class="bk-tx"> Coffres</span>' + (S.keys >= D.KEYS_FOR_FREE ? " ✨" : "") + "</button>") +
+        '<p class="gold-badge rd-mini-gold">' + goldIc() + " " + S.gold.toLocaleString("fr-FR") + "</p>";
       // les 5 places du deck
       html += '<div class="rd-slots' + (swapK ? " is-swap" : "") + '">';
       for (var i = 0; i < 5; i++) {
@@ -1146,7 +1187,7 @@
     },
     chests: function () {
       var free = S.keys >= D.KEYS_FOR_FREE;
-      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="deck">← Deck</button><h2>Coffres</h2><span></span></div>' +
+      var html = head("Coffres", "deck", "Deck") +
         '<p class="gold-badge">' + goldIc() + " " + S.gold + " · 🗝 " + Math.min(S.keys, D.KEYS_FOR_FREE) + "/" + D.KEYS_FOR_FREE + "</p>" +
         '<p class="game-small">Chaque partie terminée donne une clé ; ' + D.KEYS_FOR_FREE + " clés ouvrent un coffre en bois gratuit. Les coffres se paient seulement en glands d'or gagnés en jouant.</p>" +
         '<div class="rd-chest-list">';
@@ -1164,14 +1205,14 @@
     },
     opened: function () { return openedHtml; },
     succes: function () {
-      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Succès</h2><span></span></div><ul class="rd-ach">';
+      var html = head("Succès") + '<ul class="rd-ach">';
       D.ACHIEVEMENTS.forEach(function (a) {
         html += '<li class="' + (S.ach[a.id] ? "is-done" : "") + '"><strong>' + (S.ach[a.id] ? "✔ " : "") + esc(a.name) + "</strong><span>" + esc(a.desc) + "</span><em>" + goldIc() + " " + a.gold + "</em></li>";
       });
       return html + "</ul>";
     },
     help: function () {
-      return '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>Règles</h2><span></span></div>' +
+      return head("Règles") +
         '<ul class="rd-rules">' +
         "<li><b>Invoquer</b> pose un écureuil au hasard de ton deck (1 point) sur une case libre. Chaque invocation coûte 10 noisettes de plus.</li>" +
         "<li><b>Fusionner</b> : glisse un écureuil sur un autre <b>du même type et avec le même nombre de points</b> (ou touche l'un puis l'autre). Tu obtiens un écureuil au hasard de ton deck avec 1 point de plus (7 max).</li>" +
@@ -1191,11 +1232,11 @@
         '<button class="btn btn-ghost" type="button" data-action="quit">Abandonner</button></div>';
     },
     online: function () {
-      if (!Cloud.on) return '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>En ligne</h2><span></span></div>' +
+      if (!Cloud.on) return head("En ligne") +
         '<p>Le jeu en ligne demande un compte : chacun y joue avec la progression enregistrée sur le serveur, pas avec une sauvegarde modifiable.</p>' +
         (Cloud.loading ? '<p class="game-small">☁ Chargement de ton compte…</p>' : '<div class="menu-buttons"><button class="btn" type="button" data-action="login">Se connecter avec Google</button></div>') +
         '<p class="game-small">Le compte ne garde que ton identifiant, ton email (pour la connexion) et ta progression. <a href="confidentialite.html">Confidentialité</a>.</p>';
-      return '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="go" data-arg="menu">← Retour</button><h2>En ligne</h2><span></span></div>' +
+      return head("En ligne") +
         '<p class="game-small">Joue à 2 avec un ami : crée un salon et donne-lui le code.</p>' +
         (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
         '<label class="rd-field">Ton pseudo<input data-name data-focus type="text" maxlength="16" autocomplete="nickname" value="' + esc(S.name || "") + '"></label>' +
@@ -1207,7 +1248,7 @@
       if (!Net.on) return SCREENS.online();
       var host = Net.role === "host", ok = Net.status === "SUBSCRIBED", hp = Net.roster.filter(function (x) { return x.host; })[0];
       var mode = host ? Net.mode : (hp && hp.mode) || "coop";
-      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="leave">← Quitter</button><h2>Salon</h2><span></span></div>' +
+      var html = head("Salon", "leave", "Quitter") +
         '<div class="room-code"><span>Code du salon</span><b>' + esc(Net.code) + '</b><button class="btn btn-alt btn-small" type="button" data-action="invite">📨 Inviter</button></div>' +
         (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
         (!ok ? '<p class="game-small">Connexion au salon… (' + esc(Net.status || "") + ")</p>" : "") +
@@ -1272,6 +1313,8 @@
     solo: function () { SND.click(); soloGame(); },
     bot: function () { SND.click(); botGame(); },
     botlvl: function (a) { S.botLvl = +a; save(); SND.click(); show("menu"); },
+    botgo: function (a) { S.botLvl = +a === 2 ? 2 : 1; save(); SND.click(); botGame(); },
+    fs: function () { if (isFull()) exitFull(); else enterFull(); setTimeout(function () { if (state === "menu" && screen === "menu") show("menu", true); }, 300); },
     lcoop: function () { SND.click(); localCoop(); },
     lvs: function () { SND.click(); localVs(); },
     online: function () { SND.click(); Net.err = ""; show(Net.on ? "lobby" : "online"); },

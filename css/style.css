@@ -1595,3 +1595,66 @@ html.es-max, html.es-max body { overflow: hidden; overscroll-behavior: none; }
 .update-bar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 9999; display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 14px; max-width: calc(100% - 24px);
   background: #2b1709; color: #fdf3de; font-size: .9rem; box-shadow: 0 0 0 3px #f6d36b, 0 6px 0 3px rgba(0,0,0,.35); animation: toast-in .25s steps(4); }
 .update-bar .btn { margin: 0; }
+
+/* ---------- Écureuil Dice : menus (même style que l'accueil du Survivor) ---------- */
+.rd-card.rd-menu { width: min(560px, 100%); padding: 18px 18px 12px; text-align: left; }
+.rd-card.rd-bot, .rd-card.rd-account, .rd-card.rd-pause { width: min(480px, 100%); }
+.rd-center { text-align: center; margin: 0; }
+.rd-stats-row { justify-content: space-between; flex-wrap: wrap; font-size: .92rem; }
+.rd-stats-row b { font-variant-numeric: tabular-nums; }
+.rd-keys, .rd-best { white-space: nowrap; }
+.rd-best { color: var(--ink-soft); }
+.rd-best b { color: var(--ink); }
+.rd-deckbar {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+  background: var(--panel-2); border: 0; box-shadow: 0 0 0 2px var(--line), 0 4px 0 2px var(--line); margin-bottom: 4px;
+}
+.rd-deckbar:hover { filter: brightness(1.05); }
+.rd-deckbar:active { transform: translateY(3px); box-shadow: 0 0 0 2px var(--line), 0 1px 0 2px var(--line); }
+.rd-deckbar-dice { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; flex: 1; min-width: 0; max-width: 300px; }
+.rd-deckbar-dice .rd-die { width: 100%; height: auto; aspect-ratio: 1; border-width: 2px; }
+.rd-deckbar-dice .rd-die img { width: 74%; }
+.rd-deckbar-dice .rd-die .rd-ic { width: 28%; }
+.rd-die-empty { background: var(--panel) !important; border-style: dashed !important; color: var(--ink-soft); font-weight: 900; font-size: 1.3rem; }
+.rd-deckbar-tx { display: grid; font-weight: 900; line-height: 1.15; margin-left: auto; text-align: right; }
+.rd-deckbar-tx small { font-weight: 700; font-size: .75rem; color: var(--ink-soft); text-decoration: underline; }
+.mm-tile[disabled] { opacity: .5; cursor: not-allowed; }
+.mm-tile .pill { min-width: 22px; height: 22px; padding: 0 6px; display: grid; place-items: center; font-size: .8rem; font-weight: 900; color: #fff; background: var(--berry); box-shadow: 0 0 0 2px var(--line); }
+.rd-menu .mm-foot { margin-top: 2px; }
+/* choix de l'IA */
+.rd-opts { display: grid; gap: 10px; margin-top: 10px; }
+.rd-opt {
+  display: flex; align-items: center; gap: 12px; padding: 12px; font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+  background: var(--panel-2); border: 0; box-shadow: 0 0 0 2px var(--line), 0 4px 0 2px var(--line); margin-bottom: 4px;
+}
+.rd-opt.is-on { box-shadow: 0 0 0 3px var(--orange), 0 4px 0 3px var(--line); }
+.rd-opt:active { transform: translateY(3px); }
+.rd-opt > span:nth-child(2) { display: grid; flex: 1; line-height: 1.25; }
+.rd-opt small { color: var(--ink-soft); font-size: .82rem; }
+.rd-opt-ic { width: 44px; height: 44px; display: grid; place-items: center; font-size: 1.6rem; background: var(--panel); box-shadow: 0 0 0 2px var(--line); flex: none; }
+.rd-opt-go { font-size: 1.2rem; font-weight: 900; color: var(--orange-dk); }
+/* en-têtes d'écran compacts */
+.rd-head { flex-wrap: nowrap; }
+.rd-head h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rd-head > :last-child:not(h2) { min-width: 44px; }
+.rd-mini-gold { margin: 0 auto 4px; }
+@media (max-width: 420px) {
+  .rd-card.rd-menu { padding: 14px 12px 10px; }
+  .rd-card { padding: 14px 12px 12px; }
+  .rd-head h2 { font-size: 1.3rem; }
+  .rd-deckbar { gap: 8px; padding: 6px 8px; }
+  .rd-menu .mm-coop span { font-size: .95rem; white-space: nowrap; }
+  .rd-deckbar-tx { font-size: .85rem; }
+  .rd-stats-row { font-size: .85rem; gap: 6px 10px; }
+  .rd-slots { gap: 6px; }
+  .rd-pick { grid-template-columns: repeat(4, 1fr); gap: 7px 5px; }
+  .rd-chest-list { grid-template-columns: 1fr; }
+  .rd-chest { grid-template-columns: 56px 1fr 1fr; grid-template-areas: "img name name" "img info info" "b1 b1 b2"; justify-items: start; text-align: left; column-gap: 10px; }
+  .rd-chest > img { grid-area: img; width: 56px; align-self: center; }
+  .rd-chest > strong { grid-area: name; }
+  .rd-chest > span { grid-area: info; }
+  .rd-chest > .btn:not(.rd-x10) { grid-area: b1; justify-self: stretch; justify-content: center; }
+  .rd-chest > .rd-x10 { grid-area: b2; justify-self: stretch; }
+  .rd-reveal { grid-template-columns: repeat(3, 1fr); }
+  .over-stats { grid-template-columns: repeat(3, 1fr); }
+}
