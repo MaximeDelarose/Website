@@ -160,14 +160,15 @@
   }
   function localCoop() {
     var w = K.createWorld({ mode: "coop", seed: (Math.random() * 1e9) | 0,
-      boards: [{ name: "Joueur 1", deck: S.deck, cls: myCls() }, { name: "Joueur 2", deck: S.deck, cls: myCls() }] });
-    newGame({ mode: "coop", kind: "local-coop", sims: [w], panels: [{ world: w, mine: [0, 1] }] });
+      boards: [{ name: "Joueur 2", deck: S.deck, cls: myCls() }, { name: "Joueur 1", deck: S.deck, cls: myCls() }] });
+    // même écran : le joueur 2 est en face (plateau du haut, écureuils et commandes à l'envers)
+    newGame({ mode: "coop", kind: "local-coop", sims: [w], panels: [{ world: w, mine: [0, 1], flipB: [0] }] });
   }
   function localVs() {
     var seed = (Math.random() * 1e9) | 0;
     var a = K.createWorld({ mode: "versus", seed: seed, boards: [{ name: "Joueur 1", deck: S.deck, cls: myCls() }] });
     var b = K.createWorld({ mode: "versus", seed: seed, boards: [{ name: "Joueur 2", deck: S.deck, cls: myCls() }] });
-    newGame({ mode: "versus", kind: "local-vs", sims: [a, b], panels: [{ world: a, mine: [0] }, { world: b, mine: [0], seed: 9 }] });
+    newGame({ mode: "versus", kind: "local-vs", sims: [a, b], panels: [{ world: a, mine: [0] }, { world: b, mine: [0], seed: 9, flip: true }] });
   }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = (Math.random() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 
@@ -183,10 +184,11 @@
       var a = P[0].world.lay, b = P[1].world.lay;
       var sH = Math.min(cw / (a.w + b.w + gap + pad * 2), (ch - HUD_H) / (Math.max(a.h, b.h) + pad * 2));
       var sV = Math.min(cw / (Math.max(a.w, b.w) + pad * 2), (ch - HUD_H) / (a.h + b.h + gap + pad * 2));
+      if (G.kind === "local-vs") sH = -1; // même écran : toujours face à face, le joueur 2 en haut à l'envers
       if (sH >= sV) { P[0].ox = 0; P[0].oy = 0; P[1].ox = a.w + gap; P[1].oy = 0; view.W = a.w + b.w + gap; view.H = Math.max(a.h, b.h); }
       else {
         // en hauteur : l'adversaire en haut, toi en bas (plus près du pouce)
-        var top = P[0].opp ? 0 : 1, bot = 1 - top;
+        var top = P[0].opp || P[0].flip ? 0 : 1, bot = 1 - top;
         P[top].ox = 0; P[top].oy = 0; P[bot].ox = 0; P[bot].oy = P[top].world.lay.h + gap;
         view.W = Math.max(a.w, b.w); view.H = a.h + b.h + gap;
       }
@@ -248,6 +250,7 @@
     var s = view.scale * dpr;
     G.panels.forEach(function (p) {
       ctx.setTransform(s, 0, 0, s, (view.ox + p.ox * view.scale) * dpr, (view.oy + p.oy * view.scale) * dpr);
+      if (p.flip) { ctx.translate(p.world.lay.w, p.world.lay.h); ctx.rotate(Math.PI); }
       drawPanel(p);
     });
     // écureuil tenu au doigt / à la souris
@@ -255,7 +258,9 @@
     Object.keys(G.drag).forEach(function (id) {
       var d = G.drag[id]; if (!d.moved) return;
       var sq = d.panel.world.boards[d.bi].slots[d.slot]; if (!sq) return;
-      ctx.globalAlpha = 0.9; drawTile(sq, d.x - 12, d.y - 14, 0); ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.9;
+      if (d.panel.flip || flipped(d.panel, d.bi)) drawTileR(sq, d.x - 12, d.y - 10, 0); else drawTile(sq, d.x - 12, d.y - 14, 0);
+      ctx.globalAlpha = 1;
     });
   }
   var menuT = 0;
@@ -325,23 +330,25 @@
     rect(o.x - 3, o.y - 3, K.BW + 6, K.BH + 6, "#2b1709");
     rect(o.x - 2, o.y - 2, K.BW + 4, K.BH + 4, "#36592f");
     var drag = dragOn(p, bi), sel = G.sel && G.sel.panel === p && G.sel.bi === bi ? G.sel.slot : -1;
-    var from = drag ? drag.slot : sel;
+    var from = drag ? drag.slot : sel, fl = flipped(p, bi);
     for (var i = 0; i < K.NSLOT; i++) {
       var x = o.x + (i % K.COLS) * K.CELL, y = o.y + Math.floor(i / K.COLS) * K.CELL;
       rect(x + 1, y + 1, 24, 24, "#2f4f2a"); rect(x + 2, y + 2, 22, 22, "#335a2e");
       var sq = b.slots[i];
       if (!sq) continue;
       var lifted = drag && drag.moved && drag.slot === i;
-      if (lifted) { ctx.globalAlpha = 0.35; drawTile(sq, x + 1, y + 1, G.t); ctx.globalAlpha = 1; continue; }
+      var tile = fl ? drawTileR : drawTile;
+      if (lifted) { ctx.globalAlpha = 0.35; tile(sq, x + 1, y + 1, G.t); ctx.globalAlpha = 1; continue; }
       var bob = sq.bob > 0 ? -1 : 0, pop = sq.born > 0 ? sq.born * 3 : 0;
-      drawTile(sq, x + 1, y + 1 + bob - pop, G.t);
+      tile(sq, x + 1, y + 1 + (fl ? -bob + pop : bob - pop), G.t);
       if (from >= 0 && from !== i && K.canMerge(b, from, i)) {
         var a = 0.5 + 0.5 * Math.sin(G.t * 10);
         ctx.strokeStyle = "rgba(246,211,107," + (0.5 + a * 0.5) + ")"; ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, 24, 24);
       }
       if (from === i) { ctx.strokeStyle = "#fdf3de"; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.5, y + 0.5, 25, 25); }
     }
-    // commandes
+    // commandes (à l'envers pour le joueur d'en face)
+    if (fl) { var cc = ctrlCenter(o); ctx.save(); ctx.translate(cc.x, cc.y); ctx.rotate(Math.PI); ctx.translate(-cc.x, -cc.y); }
     var sr = sumRect(o), cost = K.summonCost(b), full = !K.freeSlots(b).length, can = !full && b.sp >= cost && mine && !p.world.over;
     box(sr.x, sr.y, sr.w, sr.h, can ? "#e8873a" : "#8a7660", OUT, can ? "#a8541a" : "#5a4a3a");
     text(full ? "PLATEAU PLEIN" : "INVOQUER", sr.x + sr.w / 2, sr.y + 6.5, "#fdf3de", "center", 6);
@@ -360,6 +367,12 @@
       text("NV" + (b.pu[i] + 1), r.x + r.w / 2, r.y + 17.5, "#fdf3de", "center", 5);
       text(isFinite(c) ? fmt(c) : "MAX", r.x + r.w / 2, r.y + 24.5, ok ? "#f6d36b" : "#c9b8a0", "center", 5);
     });
+    if (fl) ctx.restore();
+  }
+  function flipped(p, bi) { return !!(p.flipB && p.flipB.indexOf(bi) >= 0); }
+  function ctrlCenter(o) { return { x: o.x + K.BW / 2, y: o.cy + 27 }; }
+  function drawTileR(sq, x, y, t) {
+    ctx.save(); ctx.translate(x + 12, y + 12); ctx.rotate(Math.PI); drawTile(sq, -12, -12, t); ctx.restore();
   }
 
   // cercle de portée de l'écureuil tenu, sélectionné ou survolé
@@ -633,11 +646,14 @@
     if (!G) return null;
     for (var pi = 0; pi < G.panels.length; pi++) {
       var p = G.panels[pi], x = lx - p.ox, y = ly - p.oy;
+      if (p.flip) { x = p.world.lay.w - x; y = p.world.lay.h - y; }
       for (var j = 0; j < p.mine.length; j++) {
         var bi = p.mine[j], o = p.world.lay.boards[bi];
         if (x >= o.x && x < o.x + K.BW && y >= o.y && y < o.y + K.BH) return { p: p, bi: bi, slot: Math.floor((x - o.x) / K.CELL) + Math.floor((y - o.y) / K.CELL) * K.COLS };
-        if (inR(x, y, sumRect(o))) return { p: p, bi: bi, btn: "sum" };
-        for (var i = 0; i < 5; i++) if (inR(x, y, puRect(o, i))) return { p: p, bi: bi, btn: "pu", i: i };
+        var cx = x, cy = y;
+        if (flipped(p, bi)) { var cc = ctrlCenter(o); cx = 2 * cc.x - x; cy = 2 * cc.y - y; }
+        if (inR(cx, cy, sumRect(o))) return { p: p, bi: bi, btn: "sum" };
+        for (var i = 0; i < 5; i++) if (inR(cx, cy, puRect(o, i))) return { p: p, bi: bi, btn: "pu", i: i };
       }
     }
     return null;
@@ -710,7 +726,7 @@
     var p = G.panels[0];
     if (e.code === "Escape" || e.code === "KeyP") { e.preventDefault(); togglePause(); return; }
     if (paused || !p.mine.length) return;
-    var bi = G.kind === "net-coop" && Net.role === "guest" ? 1 : p.mine[0];
+    var bi = (G.kind === "net-coop" && Net.role === "guest") || G.kind === "local-coop" ? 1 : p.mine[0];
     if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); doAct(p, bi, { a: "sum" }); }
     var m = /^Digit([1-5])$/.exec(e.code);
     if (m) doAct(p, bi, { a: "pu", i: +m[1] - 1 });
