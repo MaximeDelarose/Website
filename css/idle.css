@@ -1,0 +1,168 @@
+/* =========================================================================
+   Le Grand Chêne (idle.html)
+   ========================================================================= */
+:root {
+  --sky-1: #bfe3f2; --sky-2: #f6e7c8;
+  --idle-card: var(--panel-2);
+  --idle-ready: #ffe08a;
+  --idle-gold: #f6d36b;
+}
+:root[data-theme="dark"] {
+  --sky-1: #0e2233; --sky-2: #24402f;
+  --idle-card: #24402f;
+  --idle-ready: #6b5a1f;
+}
+
+.idle { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(320px, 1.15fr); gap: 20px; align-items: start; }
+.idle-main { position: sticky; top: 84px; padding: 14px; display: grid; gap: 10px; }
+.idle-side { padding: 12px; min-height: 560px; }
+.idle-info { grid-template-columns: 1fr; }
+
+/* ---------- compteurs ---------- */
+.idle-top { display: grid; gap: 2px; text-align: center; }
+.idle-count { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: clamp(2rem, 4.4vw, 2.8rem); font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.idle-count b { font-weight: 900; }
+.idle-ico { font-size: .85em; }
+.idle-rates { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 18px; color: var(--ink-soft); font-weight: 700; font-variant-numeric: tabular-nums; }
+.idle-rates b { color: var(--ink); }
+.idle-mini { min-height: 1.4em; font-size: .92rem; font-weight: 800; white-space: pre-wrap; color: var(--ink-soft); }
+
+/* ---------- l'arbre ---------- */
+.idle-tree {
+  position: relative; aspect-ratio: 1 / .94; width: 100%; max-height: 62vh; overflow: hidden;
+  background: linear-gradient(180deg, var(--sky-1), var(--sky-2));
+  box-shadow: inset 0 0 0 3px var(--line);
+  cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.idle-tree canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.idle-tree:focus-visible { outline-offset: 2px; }
+.idle-season { position: absolute; left: 8px; top: 8px; padding: 2px 8px; background: rgba(43, 23, 9, .7); color: #fdf3de; font-size: .85rem; font-weight: 800; pointer-events: none; }
+.idle-golden-layer { position: absolute; inset: 0; pointer-events: none; }
+.idle-golden {
+  position: absolute; left: -22px; top: -22px; width: 48px; height: 48px; padding: 0; border: 0; background: none;
+  font-size: 34px; line-height: 48px; cursor: pointer; pointer-events: auto;
+  filter: sepia(1) saturate(4) hue-rotate(5deg) brightness(1.25) drop-shadow(0 0 6px #ffe680) drop-shadow(0 0 2px #fff6c0);
+  animation: idle-gold-pulse .6s steps(3) infinite alternate;
+}
+@keyframes idle-gold-pulse { to { font-size: 40px; } }
+
+/* ---------- combo / bonus ---------- */
+.idle-combo { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; font-weight: 800; font-size: .92rem; font-variant-numeric: tabular-nums; }
+.idle-combo-bar { height: 12px; background: rgba(0, 0, 0, .14); box-shadow: inset 0 0 0 2px var(--line); }
+.idle-combo-bar i { display: block; height: 100%; width: 0; background: var(--orange); transition: width .15s; }
+.idle-combo.hot .idle-combo-bar i { background: var(--idle-gold); }
+.idle-buffs { display: flex; flex-wrap: wrap; gap: 6px; min-height: 0; }
+.idle-buffs:empty { display: none; }
+.idle-buff { padding: 3px 8px; background: #2b1709; color: var(--idle-gold); font-size: .85rem; font-weight: 800; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+
+/* ---------- onglets ---------- */
+.idle-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.idle-tab {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+  font: 800 .92rem "Nunito", system-ui, sans-serif; color: var(--ink); background: var(--panel-2);
+  border: 0; box-shadow: inset 0 0 0 2px var(--line), 0 3px 0 var(--depth); cursor: pointer;
+}
+.idle-tab:hover { filter: brightness(1.05); }
+.idle-tab.on { background: var(--orange); color: var(--btn-ink); }
+.idle-tab.lock { opacity: .55; }
+.idle-tab .ti { font-size: 1.05rem; }
+.idle-tab .dot { display: none; position: absolute; right: -4px; top: -4px; width: 10px; height: 10px; background: var(--berry); box-shadow: 0 0 0 2px var(--line); }
+.idle-tab.alert .dot { display: block; animation: idle-blink 1s steps(2) infinite; }
+@keyframes idle-blink { 50% { opacity: .3; } }
+
+/* ---------- listes ---------- */
+.ib-sec + .ib-sec { margin-top: 16px; }
+.ib-h { font-size: 1.1rem; margin: 0 0 4px; }
+.ib-note { margin: 0 0 8px; font-size: .9rem; color: var(--ink-soft); }
+.ib-note b { color: var(--ink); }
+.ib-list { display: grid; gap: 8px; }
+.ib-list.grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.ib-card {
+  position: relative; display: grid; grid-template-columns: 40px 1fr auto; gap: 4px 10px; align-items: center;
+  width: 100%; padding: 8px 10px; text-align: left; font: inherit; color: var(--ink);
+  background: var(--idle-card); border: 0; cursor: pointer;
+  box-shadow: inset 0 0 0 2px var(--line), 0 3px 0 var(--depth);
+}
+.ib-card:active:not([aria-disabled="true"]) { transform: translateY(2px); box-shadow: inset 0 0 0 2px var(--line), 0 1px 0 var(--depth); }
+.ib-card:hover:not([aria-disabled="true"]) { filter: brightness(1.05); }
+.ib-card.st-no { opacity: .62; cursor: default; }
+.ib-card.st-done { opacity: .75; cursor: default; }
+.ib-card.st-done .ib-cost { color: var(--moss); }
+.ib-card.st-ready { background: var(--idle-ready); animation: idle-ready 1.2s steps(2) infinite; }
+@keyframes idle-ready { 50% { box-shadow: inset 0 0 0 3px var(--orange), 0 3px 0 var(--depth); } }
+.ib-card.st-got { box-shadow: inset 0 0 0 2px var(--line), inset 0 0 0 5px var(--leaf), 0 3px 0 var(--depth); }
+.ib-card.st-danger { color: var(--berry); }
+.ib-card.big { padding: 14px 12px; grid-template-columns: 52px 1fr auto; }
+.ib-card.big .ib-icon { font-size: 2.3rem; }
+.ib-card.big .ib-title { font-size: 1.2rem; }
+.ib-icon { font-size: 1.7rem; text-align: center; line-height: 1; }
+.ib-main { min-width: 0; }
+.ib-title { display: block; font-weight: 800; line-height: 1.2; }
+.ib-desc { display: block; font-size: .84rem; line-height: 1.35; color: var(--ink-soft); }
+.ib-side { display: grid; justify-items: end; text-align: right; gap: 2px; }
+.ib-badge { font-weight: 900; font-size: 1.15rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.ib-cost { font-size: .85rem; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ib-card.st-ok .ib-cost { color: var(--moss); }
+:root[data-theme="dark"] .ib-card.st-ok .ib-cost { color: var(--leaf); }
+.ib-card.st-no .ib-cost { color: var(--berry); }
+.ib-bar { grid-column: 1 / -1; height: 8px; background: rgba(0, 0, 0, .15); box-shadow: inset 0 0 0 1px var(--line); }
+.ib-bar i { display: block; height: 100%; width: 0; background: var(--leaf); }
+.ib-card.st-ready .ib-bar i { background: var(--orange); }
+.ib-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ib-chip {
+  padding: 5px 10px; font: 800 .88rem "Nunito", system-ui, sans-serif; color: var(--ink);
+  background: var(--panel); border: 0; cursor: pointer; box-shadow: inset 0 0 0 2px var(--line), 0 2px 0 var(--depth);
+}
+.ib-chip.on { background: var(--leaf); color: #1e2a12; }
+.ib-text p { margin: 0 0 6px; font-size: .92rem; }
+.ib-small { font-size: .82rem !important; color: var(--ink-soft); }
+.idle-stats { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; margin: 0 0 8px; font-size: .9rem; }
+.idle-stats dt { color: var(--ink-soft); }
+.idle-stats dd { margin: 0; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- toasts / fenêtres ---------- */
+.idle-toasts { position: fixed; right: 16px; bottom: 16px; z-index: 300; display: grid; gap: 8px; width: min(340px, calc(100vw - 32px)); pointer-events: none; }
+.idle-toast { display: grid; gap: 2px; padding: 8px 12px; background: #2b1709; color: #fdf3de; border: 3px solid var(--idle-gold); box-shadow: 0 4px 0 rgba(0,0,0,.3); font-size: .9rem; animation: idle-toast-in .25s steps(4); }
+.idle-toast strong { color: var(--idle-gold); }
+.idle-toast.out { opacity: 0; transition: opacity .5s; }
+@keyframes idle-toast-in { from { transform: translateY(12px); opacity: 0; } }
+.idle-modal { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: rgba(20, 30, 20, .55); overflow-y: auto; }
+.idle-modal-card { width: min(480px, 100%); padding: 22px; }
+.idle-modal-card h2 { font-size: 1.5rem; }
+.idle-modal-body p { color: var(--ink-soft); }
+.idle-modal-body b { color: var(--ink); }
+.idle-list { margin: 0 0 12px; padding-left: 1.2em; display: grid; gap: 4px; }
+.idle-ta { width: 100%; min-height: 110px; font: .8rem ui-monospace, monospace; padding: 8px; background: var(--panel-2); color: var(--ink); border: 3px solid var(--line); word-break: break-all; }
+
+/* ---------- navigation un peu plus serrée avec un onglet en plus ---------- */
+@media (min-width: 761px) and (max-width: 1100px) {
+  #site-nav a { padding: 8px 7px; font-size: .98rem; }
+}
+
+/* ---------- mobile : l'arbre reste en haut ---------- */
+@media (max-width: 860px) {
+  .idle { grid-template-columns: 1fr; gap: 12px; }
+  .idle-main {
+    top: 68px; z-index: 20; padding: 8px; gap: 6px;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-areas: "top tree" "combo tree" "buffs tree";
+    align-items: start;
+  }
+  .idle-top { grid-area: top; text-align: left; }
+  .idle-count { justify-content: flex-start; font-size: 1.7rem; gap: 6px; }
+  .idle-rates { justify-content: flex-start; flex-direction: column; gap: 0; font-size: .9rem; }
+  .idle-mini { font-size: .82rem; }
+  .idle-tree { grid-area: tree; aspect-ratio: 1 / 1; max-height: 34vh; }
+  .idle-combo { grid-area: combo; grid-template-columns: 1fr; gap: 2px; font-size: .82rem; }
+  .idle-buffs { grid-area: buffs; }
+  .idle-buff { font-size: .75rem; padding: 2px 6px; }
+  .idle-side { min-height: 0; padding: 10px; }
+  .idle-tab .tn { display: none; }
+  .idle-tab.on .tn { display: inline; }
+  .idle-tab { padding: 6px 9px; }
+}
+@media (max-width: 860px) and (max-height: 560px) {
+  .idle-main { position: static; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ib-card.st-ready, .idle-tab.alert .dot, .idle-golden { animation: none; }
+}
