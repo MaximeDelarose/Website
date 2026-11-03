@@ -55,6 +55,9 @@ export class MergeScene extends BaseScene {
   private selHi!: Phaser.GameObjects.Image;
   private targetHi!: Phaser.GameObjects.Image;
   private hintHi: Phaser.GameObjects.Image[] = [];
+  /** Cases compatibles avec l'objet touché (surbrillance) et objets qui pulsent. */
+  private matchHi: Phaser.GameObjects.Image[] = [];
+  private matchCells: number[] = [];
   private basket!: Phaser.GameObjects.Image;
   private basketLabel!: Phaser.GameObjects.Text;
   private comboText!: Phaser.GameObjects.Text;
@@ -188,6 +191,7 @@ export class MergeScene extends BaseScene {
 
   layout(): void {
     if (this.drag) this.cancelDrag();
+    this.setSelected(-1);
     this.computeGeometry();
     this.buildBoard();
   }
@@ -262,6 +266,57 @@ export class MergeScene extends BaseScene {
     const sp = this.sprites[i];
     if (!sp) return;
     this.drag = { from: i, sprite: sp, startX: x, startY: y, moved: false, pointerId: p.id };
+    // Dès que le doigt se pose : l'objet grossit et ses partenaires de fusion s'allument.
+    if (this.selected < 0 || this.selected === i) {
+      this.lift(sp);
+      this.showMatches(i);
+      this.selHi.setPosition(this.cx(i), this.cy(i)).setScale(1 / texScale()).setVisible(true);
+    }
+  }
+
+  private lift(sp: Phaser.GameObjects.Image): void {
+    this.tweens.killTweensOf(sp);
+    this.tweens.add({ targets: sp, scale: this.itemScale() * 1.25, duration: 140, ease: 'Back.easeOut' });
+  }
+
+  private unlift(i: number): void {
+    const sp = this.sprites[i];
+    if (!sp || this.locked.has(i)) return;
+    this.tweens.killTweensOf(sp);
+    this.tweens.add({ targets: sp, scale: this.itemScale(), duration: 140, ease: 'Quad.easeOut' });
+  }
+
+  /** Allume les cases où l'objet de la case i peut fusionner. */
+  private showMatches(i: number): void {
+    this.clearMatches();
+    const a = this.state.cells[i]?.item;
+    if (!a) return;
+    const k = 1 / texScale();
+    for (let j = 0; j < BOARD_SIZE; j++) {
+      if (j === i) continue;
+      const c = this.state.cells[j];
+      const ok = R.canMerge(a, c.item) || (!!c.gift && a.c === 'special' && a.l === SPECIAL.KEY);
+      if (!ok) continue;
+      const hi = this.add.image(this.cx(j), this.cy(j), 'cell:ok').setScale(k);
+      this.boardLayer.addAt(hi, this.tiles.length);
+      this.tweens.add({ targets: hi, alpha: 0.4, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.easeInOut' });
+      this.matchHi.push(hi);
+      const sp = this.sprites[j] ?? this.gifts[j];
+      if (sp && !this.locked.has(j)) {
+        this.matchCells.push(j);
+        if (this.sprites[j]) this.tweens.add({ targets: sp, scale: this.itemScale() * 1.08, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.easeInOut' });
+      }
+    }
+  }
+
+  private clearMatches(): void {
+    this.matchHi.forEach((m) => { this.tweens.killTweensOf(m); m.destroy(); });
+    this.matchHi = [];
+    for (const j of this.matchCells) {
+      const sp = this.sprites[j];
+      if (sp && !this.locked.has(j) && this.drag?.sprite !== sp && this.selected !== j) { this.tweens.killTweensOf(sp); sp.setScale(this.itemScale()); }
+    }
+    this.matchCells = [];
   }
 
   private onMove(p: Phaser.Input.Pointer): void {
@@ -272,7 +327,9 @@ export class MergeScene extends BaseScene {
     if (!d.moved) {
       if (Math.hypot(x - d.startX, y - d.startY) < 8) return;
       d.moved = true;
-      this.setSelected(-1);
+      // on garde la surbrillance des partenaires pendant le glisser
+      this.selected = -1;
+      this.selHi.setVisible(false);
       this.boardLayer.bringToTop(d.sprite);
       this.tweens.killTweensOf(d.sprite);
       this.tweens.add({ targets: d.sprite, scale: this.itemScale() * 1.18, duration: 120, ease: 'Quad.easeOut' });
@@ -301,7 +358,7 @@ export class MergeScene extends BaseScene {
     if (!d.moved) {
       // simple toucher
       const it = this.state.cells[d.from].item;
-      if (it?.c === 'special' && it.l === SPECIAL.BOX) { this.apply(R.tapItem(this.state, this.def, d.from)); return; }
+      if (it?.c === 'special' && it.l === SPECIAL.BOX) { this.clearMatches(); this.apply(R.tapItem(this.state, this.def, d.from)); return; }
       if (this.selected >= 0 && this.selected !== d.from) {
         const from = this.selected;
         this.setSelected(-1);
@@ -309,12 +366,14 @@ export class MergeScene extends BaseScene {
         return;
       }
       if (this.selected === d.from) { this.setSelected(-1); this.host.onInspect(null); return; }
+      // l'objet reste sélectionné : grossi, partenaires allumés
       this.setSelected(d.from);
       this.host.onInspect(it);
-      this.tweens.add({ targets: d.sprite, scale: this.itemScale() * 1.12, yoyo: true, duration: 110 });
       audio.play('pickup');
       return;
     }
+    this.clearMatches();
+    this.selHi.setVisible(false);
     const t = this.cellAt(x, y);
     if (t < 0 || t === d.from) {
       // relâché hors du plateau (ou sur place) → retour
@@ -329,6 +388,8 @@ export class MergeScene extends BaseScene {
     if (!d) return;
     this.drag = null;
     this.targetHi.setVisible(false);
+    this.clearMatches();
+    this.selHi.setVisible(false);
     this.returnSprite(d.from, d.sprite);
   }
 
@@ -340,10 +401,19 @@ export class MergeScene extends BaseScene {
   }
 
   private setSelected(i: number): void {
+    const prev = this.selected;
     this.selected = i;
-    if (i < 0) { this.selHi.setVisible(false); return; }
+    if (i < 0) {
+      this.selHi.setVisible(false);
+      this.clearMatches();
+      if (prev >= 0) this.unlift(prev);
+      return;
+    }
     this.selHi.setPosition(this.cx(i), this.cy(i)).setVisible(true);
     this.selHi.setScale(1 / texScale());
+    const sp = this.sprites[i];
+    if (sp) this.lift(sp);
+    this.showMatches(i);
   }
 
   private attemptMove(from: number, to: number, dragged = false): void {
