@@ -13,7 +13,7 @@
   var stage = document.querySelector("[data-arcane]");
   if (!A || !ART || !stage) return;
 
-  var VERSION = "1.2.0";
+  var VERSION = "1.3.0";
   var TW = 96, TH = 48, HW = TW / 2, HH = TH / 2;
   var TAU = Math.PI * 2;
   var canvas = stage.querySelector("canvas");
@@ -614,7 +614,7 @@
       var p = iso(v.gx, v.gy), cls = w.players[i].profile.cls;
       items.push({ d: v.gx + v.gy, o: 4, f: function (g) {
         if (duo && i === focusPi) { ART.ell(g, p.x, p.y, 22, 10, "rgba(255,255,255,.25)"); g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = 2; g.beginPath(); g.ellipse(p.x, p.y, 22, 10, 0, 0, TAU); g.stroke(); }
-        ART.hero(g, cls, p.x, p.y, { t: clock + i, flip: v.face === 1 || v.face === -2 ? 1 : -1, back: v.face < 0, walk: v.walk, seed: i * 3 });
+        ART.hero(g, cls, p.x, p.y, { t: clock + i, flip: v.face === 1 || v.face === -2 ? 1 : -1, back: v.face < 0, walk: v.walk, seed: i * 3, gear: A.gearOf(w.players[i].profile) });
         if (w.players.filter(Boolean).length > 1) label(g, p.x, p.y - 84, w.players[i].name, isLocal(i) ? "#ffffff" : "#9fd8ff", 12);
       } });
     });
@@ -784,6 +784,7 @@
     } else if (u.side === 0) {
       // bouclier : bulle légère
       if (u.shield.length) { ART.glow(g, x, y - 34, 44, "rgba(159,216,255,.45)", 0.8); g.strokeStyle = "rgba(159,216,255,.7)"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y - 34, 30, 40, 0, 0, TAU); g.stroke(); }
+      opt.gear = w.players[u.pi] ? A.gearOf(w.players[u.pi].profile) : null;
       ART.hero(g, u.cls, x, y, opt);
     } else {
       var M = A.MOBS[u.type];
@@ -867,7 +868,7 @@
       var xpk = pr.level >= A.CFG.maxLevel ? 1 : pr.xp / A.xpNeed(pr.level);
       var act = w.combat && A.active(w.combat) && u && A.active(w.combat).id === u.id;
       return '<button type="button" class="at-pf' + (isLocal(i) && i === focusPi ? " me" : "") + (act ? " act" : "") + (u && !u.alive ? " ko" : "") + '" data-focus="' + i + '">' +
-        '<img src="' + ART.heroIcon(pr.cls, 44) + '" alt="" width="44" height="44">' +
+        '<img src="' + ART.heroIcon(pr.cls, 44, A.gearOf(pr)) + '" alt="" width="44" height="44">' +
         '<span class="at-pf-b"><span class="at-pf-n">' + esc(pl.name) + ' <em>niv. ' + pr.level + '</em></span>' +
         '<span class="at-pf-hp"><i style="width:' + (hp / mhp * 100).toFixed(1) + '%"></i>' + (sh ? '<u style="width:' + Math.min(100, sh / mhp * 100).toFixed(1) + '%"></u>' : "") + '<b>' + Math.max(0, hp) + " / " + mhp + (sh ? " +" + sh : "") + '</b></span>' +
         '<span class="at-pf-xp"><i style="width:' + (xpk * 100).toFixed(1) + '%"></i></span>' +
@@ -882,7 +883,7 @@
       var c = w.combat, order = [], n = c.order.length;
       for (var j = 0; j < n; j++) { var uu = A.uById(c, c.order[(c.turn + j) % n]); if (uu && uu.alive) order.push(uu); }
       top.innerHTML = '<div class="at-tl"><span class="at-round">Tour ' + c.round + "</span>" + order.slice(0, 9).map(function (x, k) {
-        var img = x.summon ? ART.summonIcon(x.cls, 40) : x.side === 0 ? ART.heroIcon(x.cls, 40) : ART.mobIcon(x.type, 40, A.MOBS[x.type].col, !!x.affix);
+        var img = x.summon ? ART.summonIcon(x.cls, 40) : x.side === 0 ? ART.heroIcon(x.cls, 40, w.players[x.pi] ? A.gearOf(w.players[x.pi].profile) : null) : ART.mobIcon(x.type, 40, A.MOBS[x.type].col, !!x.affix);
         return '<span class="at-tl-u' + (k === 0 ? " now" : "") + (x.side ? " mob" : " ally") + (x.affix ? " elite" : "") + '" data-unit="' + x.id + '"><img src="' + img + '" alt="" width="40" height="40"><i style="width:' + (x.hp / x.maxHp * 100).toFixed(0) + '%"></i></span>';
       }).join("") + "</div>";
     } else if (w.combat) top.innerHTML = '<div class="at-zone"><b>' + (w.combat.phase === "place" ? "Placement" : w.loot && w.loot.won ? "Victoire" : "Fin du combat") + '</b><span>' + (w.combat.room ? esc(w.combat.room.name) : esc(A.ZONES[w.zone].name)) + "</span></div>";
@@ -1021,7 +1022,7 @@
         var acts = worn ? '<p class="at-it-ok">✔ Équipé</p>' : inBag ? '<div class="at-it-a"><button class="btn btn-small' + (better(pl, it) ? "" : " btn-ghost") + '" type="button" data-equip="' + it.uid + '" data-pi="' + i + '">' + (better(pl, it) ? "▲ Équiper" : "Équiper") + '</button><button class="btn btn-small btn-ghost" type="button" data-sell="' + it.uid + '" data-pi="' + i + '">Vendre ' + it.value + "</button></div>" : it.sold ? '<p class="at-it-ok">Sac plein : vendu ' + it.value + " or</p>" : '<p class="at-it-ok">Vendu</p>';
         return '<div class="at-loot-i" style="--d:' + (0.35 + k * 0.28) + 's">' + (it.r >= 3 ? '<span class="at-rays"></span>' : "") + itemHtml(it, { pl: pl, actions: acts }) + "</div>";
       }).join("");
-      return '<div class="at-loot-p">' + (duo || w.players.filter(Boolean).length > 1 ? '<h3><img src="' + ART.heroIcon(pl.profile.cls, 28) + '" alt="" width="28" height="28"> ' + esc(pl.name) + "</h3>" : "") +
+      return '<div class="at-loot-p">' + (duo || w.players.filter(Boolean).length > 1 ? '<h3><img src="' + ART.heroIcon(pl.profile.cls, 28, A.gearOf(pl.profile)) + '" alt="" width="28" height="28"> ' + esc(pl.name) + "</h3>" : "") +
         (L.won ? '<div class="at-gains"><span class="xp">+' + fmt(res.xp) + ' XP</span><span class="gold">+' + fmt(res.gold) + " or</span>" + (res.levels ? '<span class="lvl">Niveau ' + pl.profile.level + " !</span>" : "") + "</div>" +
           '<div class="at-xpbar"><i style="width:' + (xpk * 100).toFixed(1) + '%"></i><span>Niv. ' + pl.profile.level + " · " + fmt(pl.profile.xp) + " / " + fmt(A.xpNeed(pl.profile.level)) + " XP</span></div>" +
           (st ? '<p class="at-cstats">⚔ ' + fmt(st.dmg) + " dégâts · ✚ " + fmt(st.heal) + " soins · ☠ " + st.kills + "</p>" : "") +
@@ -1071,7 +1072,7 @@
     var sline = function (n, v) { return "<li><span>" + n + "</span><b>" + v + "</b></li>"; };
     show('<div class="at-inv-h"><h2>Sac</h2><span class="at-gold">' + fmt(pr.gold) + ' or</span><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' + tabs +
       '<div class="at-inv">' +
-      '<div class="at-inv-l"><div class="at-doll"><img src="' + ART.heroIcon(pr.cls, 72) + '" alt="" width="72" height="72"><div><b>' + esc(pl.name) + "</b><small>" + A.CLASSES[pr.cls].name + " · niv. " + pr.level + "</small></div></div>" +
+      '<div class="at-inv-l"><div class="at-doll"><img src="' + ART.heroIcon(pr.cls, 110, A.gearOf(pr), true) + '" alt="" width="72" height="72"><div><b>' + esc(pl.name) + "</b><small>" + A.CLASSES[pr.cls].name + " · niv. " + pr.level + "</small></div></div>" +
       '<div class="at-slots">' + slots + "</div>" +
       '<ul class="at-stats">' + sline("PV", st.hp) + sline("PA", st.pa) + sline("PM", st.pm) + sline("Portée", "+" + st.po) + sline("Initiative", st.ini) + sline("Critique", st.crit + " %") + sline("Résistance", st.res + " %") + sline("Dommages", "+" + st.dom) + sline("Prospection", st.pros) + "</ul>" +
       (pr.pts ? '<p class="at-pts">✦ <b>' + pr.pts + "</b> point" + (pr.pts > 1 ? "s" : "") + " à répartir</p>" : "") +
@@ -1130,6 +1131,7 @@
       "<li><b>Sibylle</b> (le pion) invoque des Pions d'encre qui se battent tout seuls juste après elle ; elle les promeut en Dame, les sacrifie ou échange sa place avec eux.</li>" +
       "<li><b>Clarine</b> soigne de loin et brûle avec le même feu. <b>Orage</b> cogne très fort en ligne et en diagonale, mais ne soigne pas. <b>Ondine</b> ne lance que des sorts de zone : croix, disques, lames d'eau.</li>" +
       "<li><b>Caractéristiques</b> : Vitalité (PV), Sagesse (XP), Force / Intelligence / Chance / Agilité (+1 % aux dégâts Terre / Feu / Eau / Air par point ; l'Intelligence soigne, l'Agilité donne du critique), Dommages (ajoutés à chaque coup), Prospection (butin), Initiative, Résistance. <b>5 points à répartir</b> à chaque niveau, dans le sac.</li>" +
+      "<li><b>Objets visibles</b> : tout ce que tu équipes se voit sur ton héros (chapeau champignon, poisson-épée, ailes de dragon, pattes de canard…). La couleur suit la rareté. Les objets rares et plus peuvent donner <b>+1 Portée</b>.</li>" +
       "<li><b>Butin</b> : chaque monstre peut lâcher un objet aléatoire : 50 % commun, 12 % magique, 8 % rare, <b>20 % épique</b>, <b>10 % légendaire</b> (avec un pouvoir). Parfois <b>+1 PA</b>, <b>+1 PM</b> ou <b>+Portée</b>. Les élites (★) lâchent toujours quelque chose, le boss trois objets.</li>" +
       "<li><b>Donjons</b> : Incarnam (niv. 2, portail au nord de la Prairie) puis le Sanctuaire brisé (niv. 7, Falaises). Trois salles d'affilée, les PV ne remontent qu'en partie entre deux.</li>" +
       (TOUCH ? "<li><b>Tactile</b> : touche une case pour l'aperçu, touche-la encore pour confirmer. Glisse pour déplacer la vue, pince pour zoomer.</li>" : "") +
@@ -1576,7 +1578,7 @@
   function heroCard(cls, selected, taken) {
     var C = A.CLASSES[cls], pr = SAVE.profiles[cls], st = A.heroStats(pr);
     return '<button type="button" class="at-hero' + (selected ? " on" : "") + (taken ? " taken" : "") + '" data-pick="' + cls + '"' + (taken ? " disabled" : "") + ">" +
-      '<span class="at-hero-art" style="--hc:' + ART.HERO_PAL[cls].main + '"><img src="' + ART.heroIcon(cls, 96) + '" alt="" width="96" height="96"></span>' +
+      '<span class="at-hero-art" style="--hc:' + ART.HERO_PAL[cls].main + '"><img src="' + ART.heroIcon(cls, 96, A.gearOf(pr), Object.keys(A.gearOf(pr)).length > 0) + '" alt="" width="96" height="96"></span>' +
       "<b>" + C.name + '</b><em>' + C.role + "</em><small>Niv. " + pr.level + " · " + st.hp + " PV · " + st.pa + " PA · " + st.pm + " PM</small>" +
       '<span class="at-hero-sp">' + C.spells.map(function (s) { return '<img src="' + ART.spellIcon(s, 26) + '" alt="" width="26" height="26" title="' + esc(A.SPELLS[s].name) + '">'; }).join("") + "</span>" +
       '<span class="at-hero-d">' + esc(C.desc) + "</span></button>";

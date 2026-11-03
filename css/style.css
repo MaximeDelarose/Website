@@ -2419,7 +2419,7 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .at-card-inv { width: min(900px, 100%); text-align: left; }
 .at-inv { display: grid; grid-template-columns: 250px 1fr; gap: 14px; }
 .at-doll { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
-.at-doll img { border-radius: 12px; }
+.at-doll img { border-radius: 12px; width: 110px; height: 110px; }
 .at-doll b { display: block; }
 .at-doll small { color: #8a5cc7; font-weight: 800; }
 .at-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }

@@ -318,14 +318,14 @@
     first: { name: "Fulgurance", desc: "+60 % de dégâts sur ton premier sort offensif du tour." },
   };
   var POWER_IDS = Object.keys(POWERS);
-  var ITEM_BASES = {
-    // nom:genre (m, f, mp = masculin pluriel, fp = féminin pluriel)
-    arme: { bastion: ["Bouclier:m", "Égide:f", "Pavois:m"], prisme: ["Focus:m", "Sceptre:m", "Orbe:m"], voltige: ["Lames:fp", "Dagues:fp", "Griffes:fp"], sibylle: ["Grimoire:m", "Encrier:m", "Plume:f"], any: ["Talisman:m"] },
-    coiffe: { any: ["Heaume:m", "Capuche:f", "Diadème:m", "Masque:m"] },
-    cape: { any: ["Cape:f", "Manteau:m", "Voile:m", "Étole:f"] },
-    amulette: { any: ["Amulette:f", "Pendentif:m", "Médaillon:m"] },
-    anneau: { any: ["Anneau:m", "Bague:f", "Sceau:m"] },
-    bottes: { any: ["Bottes:fp", "Sandales:fp", "Grèves:fp", "Jambières:fp"] },
+  // apparences des objets : chaque objet en tire une au hasard (nom:genre ; m, f, mp, fp), et elle se voit sur le héros
+  var LOOKS = {
+    arme: ["Cuillère géante:f", "Poisson-épée:m", "Marteau énorme:m", "Baguette de pain:f", "Parapluie:m", "Faux:f", "Peluche:f", "Ancre:f", "Poêle:f", "Canne à pêche:f"],
+    coiffe: ["Casque à cornes:m", "Chapeau champignon:m", "Citrouille:f", "Seau:m", "Couronne géante:f", "Chapeau pointu XXL:m", "Poisson-chapeau:m", "Nid d'oiseau:m", "Abat-jour:m", "Bonnet à pompon:m"],
+    cape: ["Ailes de dragon:fp", "Cape-drapeau:f", "Serviette de plage:f", "Ailes de papillon:fp", "Cape étoilée:f", "Carapace:f", "Cape de super-héros:f", "Sac à dos géant:m"],
+    amulette: ["Médaillon énorme:m", "Cloche:f", "Œil pendentif:m", "Clé géante:f", "Horloge:f", "Donut:m"],
+    anneau: ["Bague à gemme énorme:f", "Bague-ballon:f", "Bague-fleur:f", "Chevalière:f"],
+    bottes: ["Bottes de géant:fp", "Pattes de canard:fp", "Ressorts:mp", "Pantoufles lapin:fp", "Bottes-fusées:fp", "Palmes:fp", "Patins:mp"],
   };
   var ITEM_SUFFIX = { vit: "de vitalité", sag: "du sage", for: "du titan", int: "de la flamme", cha: "des marées", agi: "du zéphyr", dom: "du tonnerre", res: "du rempart", ini: "du vif-argent", pros: "du chercheur", pa: "de l'archimage", pm: "du voyageur", po: "de l'horizon" };
   // adjectifs : m|f|mp|fp
@@ -539,7 +539,7 @@
     if (!p.base) { p.base = {}; for (var k in CLASSES[p.cls].base) p.base[k] = CLASSES[p.cls].base[k]; p.pts = (p.pts || 0) + 5 * (p.level - 1); }
     p.pts = Math.max(0, Math.floor(p.pts) || 0);
     // anciens objets (v1.0) : leurs caractéristiques n'existent plus, on les convertit
-    var conv = function (it) { if (!it || !it.st) return; var st = {}, el = ELEMENTS[CLASSES[p.cls].el].stat; for (var k in it.st) { var nk = k === "pow" ? el : k === "crit" ? "agi" : k === "heal" ? "int" : k; st[nk] = (st[nk] || 0) + it.st[k]; } it.st = st; };
+    var conv = function (it) { if (!it || !it.st) return; if (it.look == null) it.look = Math.floor(Math.random() * LOOKS[it.slot].length); var st = {}, el = ELEMENTS[CLASSES[p.cls].el].stat; for (var k in it.st) { var nk = k === "pow" ? el : k === "crit" ? "agi" : k === "heal" ? "int" : k; st[nk] = (st[nk] || 0) + it.st[k]; } it.st = st; };
     SLOTS.forEach(function (sl) { conv(p.equip[sl]); }); p.bag.forEach(conv);
     p.quests = p.quests || {}; p.qdone = p.qdone || {}; p.uid = p.uid || 1; p.rev = p.rev || 0; p.kills = p.kills || 0; p.bossKills = p.bossKills || 0;
     return p;
@@ -563,6 +563,13 @@
     s.pa = Math.min(CFG.caps.pa, s.pa); s.pm = Math.min(CFG.caps.pm, s.pm); s.po = Math.min(CFG.caps.po, s.po);
     s.res = Math.min(CFG.caps.res, s.res);
     return s;
+  }
+  // ce que porte un héros, pour le dessin : { coiffe: { look, r }, ... }
+  function gearOf(p) {
+    var g = {};
+    if (!p || !p.equip) return g;
+    SLOTS.forEach(function (sl) { var it = p.equip[sl]; if (it) g[sl] = { look: it.look || 0, r: it.r }; });
+    return g;
   }
   function itemScore(it) {
     if (!it) return 0;
@@ -606,13 +613,15 @@
       var sp = pick(R, specials);
       st[sp] = (st[sp] || 0) + (sp === "po" && rarityIdx >= 3 && R() < 0.4 ? 2 : 1);
     }
+    // la portée tombe aussi toute seule sur les objets rares et plus
+    if (!st.po && rarityIdx >= 2 && R() < 0.22) st.po = 1;
     var power = rarityIdx === 4 ? pick(R, POWER_IDS) : null;
-    var bases = ITEM_BASES[slot][p.cls] || ITEM_BASES[slot].any;
-    var main2 = nSpecial ? Object.keys(st).filter(function (k) { return STATS[k].special; })[0] : main;
-    var base = pick(R, bases).split(":"), adj = pick(R, ITEM_ADJ[rar.id]).split("|");
+    var main2 = nSpecial || st.po ? Object.keys(st).filter(function (k) { return STATS[k].special; })[0] : main;
+    var look = ri(R, 0, LOOKS[slot].length - 1);
+    var base = LOOKS[slot][look].split(":"), adj = pick(R, ITEM_ADJ[rar.id]).split("|");
     var name = base[0] + " " + (adj[GENDER[base[1]]] || adj[0]);
     if (rarityIdx < 4) name += " " + ITEM_SUFFIX[main2];
-    var it = { uid: p.uid++, slot: slot, r: rarityIdx, lvl: L, name: name, st: st, power: power, isNew: true };
+    var it = { uid: p.uid++, slot: slot, r: rarityIdx, lvl: L, name: name, st: st, power: power, look: look, isNew: true };
     it.value = Math.round((6 + L * 3) * rar.sell);
     return it;
   }
@@ -1798,7 +1807,7 @@
     CFG: CFG, CLASSES: CLASSES, CLASS_IDS: CLASS_IDS, SPELLS: SPELLS, SUMMONS: SUMMONS, spellsOf: spellsOf, MOBS: MOBS, MOB_SPELLS: MOB_SPELLS, AFFIXES: AFFIXES,
     SLOTS: SLOTS, SLOT_NAME: SLOT_NAME, RARITIES: RARITIES, STATS: STATS, POWERS: POWERS, QUESTS: QUESTS, ZONES: ZONES, ZONE_IDS: ZONE_IDS,
     DUNGEONS: DUNGEONS, NPCS: NPCS, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, BAG_MAX: BAG_MAX,
-    newProfile: newProfile, fixProfile: fixProfile, heroStats: heroStats, xpNeed: xpNeed, itemScore: itemScore, makeItem: makeItem, rollRarity: rollRarity,
+    newProfile: newProfile, fixProfile: fixProfile, heroStats: heroStats, gearOf: gearOf, LOOKS: LOOKS, xpNeed: xpNeed, itemScore: itemScore, makeItem: makeItem, rollRarity: rollRarity,
     createWorld: createWorld, addPlayer: addPlayer, removePlayer: removePlayer, zoneMap: zoneMap, exploreWalkable: exploreWalkable, portalAt: portalAt, findPath: findPath,
     cmd: cmd, step: step, active: active, unitAt: unitAt, objAt: objAt, uById: uById, inArena: inArena, groundOk: groundOk, cellFree: cellFree,
     targets: targets, area: area, canCast: canCast, spellCost: spellCost, reach: reach, combatPath: combatPath, myTurn: myTurn, los: los,
