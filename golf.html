@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261104mb2">
-  <link rel="stylesheet" href="css/golf.css?v=20261109gf3">
+  <link rel="stylesheet" href="css/golf.css?v=20261109gf4">
   <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
 </head>
 <body data-page="golf">
@@ -72,17 +72,21 @@
         <div class="game-stage golf-stage" data-stage>
           <canvas class="game-canvas golf-canvas" data-canvas aria-label="Terrain de mini-golf"></canvas>
           <div class="golf-hud" data-hud hidden>
-            <div class="golf-hud-left">
-              <p class="golf-hud-hole" data-hud-hole></p>
-              <p class="golf-hud-strokes" data-hud-strokes></p>
+            <div class="golf-side">
+              <svg class="golf-club" viewBox="0 0 12 12" width="30" height="30" shape-rendering="crispEdges" aria-hidden="true"><rect width="12" height="12" fill="#6fd13f"/><g fill="#14141e"><rect x="8" y="1" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="4" y="5" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="2" y="7" width="3" height="2"/></g><rect x="8" y="8" width="2" height="2" fill="#fff"/></svg>
+              <p class="golf-count" data-hud-count>0</p>
+              <p class="golf-par" data-hud-par>PAR 3</p>
+              <p class="golf-holeno" data-hud-hole>1/9</p>
               <div class="golf-power" aria-hidden="true"><i data-power></i></div>
             </div>
             <ul class="golf-board" data-hud-board hidden></ul>
           </div>
-          <div class="golf-cam" aria-label="Orienter la caméra">
-            <button type="button" data-cam="-1" aria-label="Tourner la caméra à gauche" title="Tourner la vue (Q)">⟲</button>
-            <button type="button" data-cam="1" aria-label="Tourner la caméra à droite" title="Tourner la vue (E)">⟳</button>
+          <div class="golf-cam" aria-label="Pivoter la vue">
+            <button type="button" data-cam="-1" aria-label="Pivoter la vue à gauche" title="Pivoter la vue (Q)">⟲</button>
+            <button type="button" data-cam="1" aria-label="Pivoter la vue à droite" title="Pivoter la vue (E)">⟳</button>
           </div>
+          <div class="golf-msg" data-msg hidden></div>
+          <div class="golf-tags" data-tags></div>
           <div class="game-overlay golf-overlay" data-overlay>
             <div class="panel game-card golf-card" data-card>
               <p>Chargement du jeu…</p>
@@ -97,8 +101,8 @@
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
             <li><strong>Tirer</strong> : appuie n'importe où sur le terrain et tire en arrière, comme un lance-pierre. Plus tu tires loin, plus la balle part fort ; la flèche te montre la direction et la puissance. Relâche pour frapper.</li>
-            <li><strong>Au clavier</strong> : <kbd>←</kbd> <kbd>→</kbd> tournent la visée (avec <kbd>Maj</kbd> pour être précis), <kbd>↑</kbd> <kbd>↓</kbd> règlent la puissance, <kbd>Espace</kbd> frappe. <kbd>Q</kbd> / <kbd>E</kbd> (ou les boutons ⟲ ⟳) font pivoter la caméra par pas de 45°.</li>
-            <li><strong>Le terrain</strong> (vu en 3D) : les murs en bois font rebondir la balle, le <em>sable</em> la freine, l'<em>eau</em> la renvoie d'où tu as tiré (+1 coup), les <em>piliers-champignons</em> la font rebondir. Les <em>bosses</em> la repoussent et les <em>creux</em> la ramènent vers leur centre. Les <em>tuyaux</em> (ronds verts ou bleus) l'avalent et la recrachent par l'autre bout, les <em>tremplins</em> jaunes l'envoient voler par-dessus l'eau et les obstacles, et il y a des <em>blocs qui coulissent</em> et des <em>pales qui tournent</em> : il faut du timing. Une balle trop rapide passe par-dessus le trou : vise doux.</li>
+            <li><strong>Au clavier</strong> : <kbd>←</kbd> <kbd>→</kbd> tournent la visée (avec <kbd>Maj</kbd> pour être précis), <kbd>↑</kbd> <kbd>↓</kbd> règlent la puissance, <kbd>Espace</kbd> frappe. <kbd>Q</kbd> / <kbd>E</kbd> (ou les boutons ⟲ ⟳) font pivoter la vue d'un quart de tour (sur téléphone en portrait, elle se tourne toute seule pour agrandir le terrain).</li>
+            <li><strong>Le terrain</strong> (vu du dessus, en pixel art) : les murs en bois font rebondir la balle, le <em>sable</em> la freine, l'<em>eau</em> la renvoie d'où tu as tiré (+1 coup), les <em>champignons</em> la font rebondir. Les <em>bosses</em> la repoussent et les <em>creux</em> la ramènent vers leur centre. Les <em>tuyaux</em> (ronds verts ou bleus) l'avalent et la recrachent par l'autre bout, les <em>tremplins</em> jaunes l'envoient voler par-dessus l'eau et les obstacles, et il y a des <em>blocs qui coulissent</em> et des <em>pales qui tournent</em> : il faut du timing. Une balle trop rapide passe par-dessus le trou : vise doux.</li>
             <li><strong>Solo</strong> : 9 trous, un record gardé sur ton appareil. Au bout de 8 coups la balle est ramassée. Tu peux aussi t'entraîner sur un seul trou.</li>
             <li><strong>En ligne</strong> : crée un salon, envoie le code de 4 lettres (ou le lien) à 1 à 3 amis, et lancez la partie. Tout le monde joue en même temps, les balles des autres sont des fantômes. Le trou suivant démarre quand tout le monde a fini (ou une minute après le premier arrivé). Le plus petit total gagne.</li>
           </ul>
@@ -125,6 +129,6 @@
   <script src="js/main.js?v=20261110uch3"></script>
   <script src="js/gamekit.js?v=20261114gk2"></script>
   <script src="js/vendor/supabase-2.45.4.min.js"></script>
-  <script src="js/golf.js?v=20261109gf3"></script>
+  <script src="js/golf.js?v=20261109gf4"></script>
 </body>
 </html>
