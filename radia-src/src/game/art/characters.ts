@@ -167,7 +167,7 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
   let lookY = -h * 0.02;
   if (expr === 'shy') lookX = 5;
   if (expr === 'love') lookY = -h * 0.1;
-  const ir = h * 0.74;
+  const ir = h * (st.wing ? 0.6 : 0.72);
   const ix = lookX * side;
   ctx.beginPath();
   ctx.arc(ix, lookY, ir, 0, Math.PI * 2);
@@ -195,12 +195,12 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
     const mx = ixImg + Math.cos(a) * ir * EYE_MARK.radius;
     const my = lookY + Math.sin(a) * ir * EYE_MARK.radius;
     ctx.beginPath();
-    ctx.ellipse(mx, my, ir * 0.34, ir * 0.27, -0.5, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(110,62,34,0.55)';
+    ctx.ellipse(mx, my, ir * 0.5, ir * 0.4, -0.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(130,70,36,0.7)';
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(mx, my, ir * 0.22, ir * 0.18, -0.5, 0, Math.PI * 2);
-    ctx.fillStyle = '#3E1F10';
+    ctx.ellipse(mx, my, ir * 0.32, ir * 0.26, -0.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#3A1A0C';
     ctx.fill();
     ctx.restore();
   }
@@ -224,10 +224,15 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
   ctx.fill();
   ctx.restore();
   // paupière supérieure épaisse (eye-liner)
+  const lidT = st.wing ? 4.4 : st.lashes ? 3.6 : 3;
   ctx.beginPath();
   ctx.moveTo(-w * 0.6, 1.5);
-  ctx.bezierCurveTo(-w * 0.35, top - 0.5, w * 0.3, top - 1.5, w * 0.62, -h * 0.08);
-  stroke(ctx, st.wing ? 4.6 : st.lashes ? 4 : 3.4, st.lash);
+  ctx.bezierCurveTo(-w * 0.35, top - 1.2, w * 0.3, top - 2.2, w * 0.62, -h * 0.1);
+  ctx.bezierCurveTo(w * 0.3, top + lidT - 1, -w * 0.3, top + lidT, -w * 0.6, 1.5);
+  ctx.closePath();
+  ctx.fillStyle = st.lash;
+  ctx.fill();
+  stroke(ctx, 1.2, st.lash);
   if (st.wing) {
     // aile d'eye-liner
     ctx.beginPath();
@@ -242,7 +247,7 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
     ctx.beginPath();
     ctx.moveTo(-w * 0.34, top - 5);
     ctx.quadraticCurveTo(0, top - 10, w * 0.46, top - 4);
-    stroke(ctx, 1.1, 'rgba(120,64,44,0.55)');
+    stroke(ctx, 1, 'rgba(120,64,44,0.4)');
   }
   if (st.lashes && !st.wing) {
     ctx.beginPath();
@@ -357,8 +362,8 @@ function drawMouth(ctx: CanvasRenderingContext2D, cy: number, expr: Expr, lip: s
         gloss(ctx, -4, 7, 6, 1.8, 0.5, 0);
       } else {
         ctx.beginPath();
-        ctx.moveTo(-w * 0.8, 0 + smirk * 0.4);
-        ctx.quadraticCurveTo(0, 6, w * 0.8, -2 - smirk);
+        ctx.moveTo(-w * 0.8, -2 + smirk * 0.4);
+        ctx.quadraticCurveTo(0, 8, w * 0.8, -4 - smirk);
         stroke(ctx, 2.6, dark);
       }
     }
@@ -457,7 +462,7 @@ function radiaHairBack(ctx: CanvasRenderingContext2D, sway: number, bottom: numb
   const side = (s: -1 | 1): Pt[] => {
     const k = s === -1 ? 1.1 : 1;
     const len = s === -1 ? bottom : bottom * 0.84;
-    const base: Pt[] = [[-112, 40], [-84, 82], [-36, 98], [32, 102], [92, 108], [150, 118], [204, 130], [len - 34, 140], [len, 104]];
+    const base: Pt[] = [[-112, 52], [-84, 86], [-40, 100], [20, 106], [92, 110], [150, 118], [204, 130], [len - 34, 140], [len, 104]];
     const out: Pt[] = [];
     for (const [y, x] of base) {
       const wv = y > 80 ? 9 * Math.sin(y / 34 + (s === -1 ? 0.5 : 2)) : 0;
@@ -558,7 +563,7 @@ function radiaFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
   ctx.rect(-30, 60, 60, 108);
   ctx.clip();
   ellipse(ctx, 0, 106, 44, 22);
-  ctx.fillStyle = 'rgba(120,64,40,0.38)';
+  ctx.fillStyle = 'rgba(120,64,40,0.26)';
   ctx.fill();
   ctx.restore();
   // oreilles (à peine visibles)
@@ -814,7 +819,7 @@ function crown(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number,
   ctx.restore();
 }
 
-const CROWN = { x: -2, y: -142, s: 0.92, rot: -0.04 };
+const CROWN = { x: -2, y: -134, s: 0.92, rot: -0.04 };
 const R_HAIR_BOTTOM = 262; // portrait
 const R_HAIR_BOTTOM_FULL = 400; // corps entier
 
@@ -834,56 +839,53 @@ export function drawRadiaPortrait(ctx: CanvasRenderingContext2D, o: FaceOpts & {
 // ============================================================ AUGUSTE
 
 function augusteHair(ctx: CanvasRenderingContext2D) {
-  const base = (): void => {
-    smoothPath(ctx, [
-      [-76, 8], [-84, -40], [-72, -92], [-40, -122], [4, -130], [46, -122], [76, -94], [86, -44], [78, 6],
-      [70, 0], [66, -34], [56, -58], [32, -66], [4, -58], [-24, -72], [-46, -64], [-62, -40], [-68, -6],
-    ]);
-  };
   const grad = () => {
-    const g = ctx.createLinearGradient(-60, -136, 60, -30);
-    g.addColorStop(0, '#9C7048');
-    g.addColorStop(0.45, '#6E4A30');
+    const g = ctx.createLinearGradient(-70, -146, 70, -20);
+    g.addColorStop(0, '#A87B50');
+    g.addColorStop(0.45, '#744D32');
     g.addColorStop(1, '#43291B');
     return g;
   };
-  base();
+  smoothPath(ctx, [
+    [-80, 12], [-87, -30], [-85, -72], [-62, -110], [-24, -132], [22, -140], [62, -126], [88, -94], [92, -50], [84, 12],
+    [77, -6], [72, -40], [58, -62], [36, -64], [10, -56], [-14, -68], [-40, -70], [-60, -52], [-72, -30], [-76, -8],
+  ]);
   ctx.fillStyle = grad();
   ctx.fill();
   stroke(ctx, 2.4);
-  // grosses vagues / boucles volumineuses sur le dessus (rubans courbes)
+  // grosses vagues / boucles volumineuses (rubans courbes)
   const tufts: [Pt[], number][] = [
-    [[[56, -62], [76, -84], [70, -110], [40, -122]], 30],
-    [[[-62, -40], [-78, -72], [-60, -108], [-24, -124]], 30],
-    [[[-40, -64], [-48, -96], [-22, -122], [14, -126]], 34],
-    [[[40, -64], [56, -98], [40, -124], [8, -128]], 32],
-    [[[10, -58], [30, -92], [14, -118], [-14, -122]], 28],
-    [[[-18, -70], [-6, -100], [-30, -112], [-52, -102]], 24],
-    [[[-2, -64], [26, -84], [48, -108], [70, -100]], 22],
+    [[[-38, -70], [-62, -84], [-78, -70], [-82, -44]], 22],
+    [[[52, -60], [76, -78], [84, -104], [66, -118]], 28],
+    [[[40, -62], [30, -98], [6, -120], [-30, -122]], 38],
+    [[[10, -58], [-2, -92], [-32, -110], [-62, -98]], 32],
+    [[[24, -108], [48, -126], [72, -118], [84, -96]], 26],
+    [[[-30, -114], [-10, -132], [22, -134], [44, -126]], 24],
+    [[[-56, -96], [-62, -116], [-44, -128], [-20, -128]], 22],
   ];
   for (const [pts, wd] of tufts) {
     strand(ctx, pts, wd);
     ctx.fillStyle = grad();
     ctx.fill();
-    stroke(ctx, 1.6, 'rgba(40,22,12,0.75)');
+    stroke(ctx, 1.6, 'rgba(40,22,12,0.8)');
   }
   // mèches fines + reflets
   ctx.lineCap = 'round';
-  ctx.lineWidth = 1.4;
-  ctx.strokeStyle = 'rgba(35,18,10,0.55)';
+  ctx.lineWidth = 1.3;
+  ctx.strokeStyle = 'rgba(35,18,10,0.5)';
   for (const pts of [
-    [[-30, -64], [-26, -90], [-8, -112]],
-    [[30, -62], [38, -90], [22, -116]],
-    [[-56, -44], [-66, -74], [-48, -104]],
-    [[52, -50], [66, -80], [58, -104]],
+    [[34, -64], [26, -92], [6, -112]],
+    [[2, -62], [-8, -88], [-34, -104]],
+    [[60, -64], [76, -84], [74, -108]],
+    [[-70, -60], [-78, -52], [-82, -34]],
   ] as Pt[][]) {
     ctx.beginPath();
     curveThrough(ctx, pts);
     ctx.stroke();
   }
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = 'rgba(215,165,110,0.35)';
-  for (const pts of [[[-48, -100], [-20, -122], [20, -122]], [[34, -112], [58, -100], [70, -78]]] as Pt[][]) {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(225,175,120,0.32)';
+  for (const pts of [[[-46, -124], [-18, -142], [24, -140]], [[40, -118], [66, -122], [84, -102]], [[28, -90], [12, -108], [-14, -112]]] as Pt[][]) {
     ctx.beginPath();
     curveThrough(ctx, pts);
     ctx.stroke();
@@ -961,12 +963,12 @@ function augusteFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
   const mOpen = expr === 'laugh' ? 22 : expr === 'smile' ? 14 : expr === 'surprise' ? 16 : 6;
   const gy = 68 + mOpen + 6;
   ctx.beginPath();
-  ctx.moveTo(-15, gy - 5);
-  ctx.quadraticCurveTo(-18, gy + 12, 0, gy + 18);
-  ctx.quadraticCurveTo(18, gy + 12, 15, gy - 5);
-  ctx.quadraticCurveTo(0, gy - 1, -15, gy - 5);
+  ctx.moveTo(-12, gy - 4);
+  ctx.quadraticCurveTo(-15, gy + 8, 0, gy + 12);
+  ctx.quadraticCurveTo(15, gy + 8, 12, gy - 4);
+  ctx.quadraticCurveTo(0, gy - 1, -12, gy - 4);
   ctx.closePath();
-  fillGrad(ctx, 0, gy - 5, 0, gy + 18, [[0, '#4A2F22'], [1, '#2F1D15']]);
+  fillGrad(ctx, 0, gy - 5, 0, gy + 12, [[0, '#4A2F22'], [1, '#2F1D15']]);
   stroke(ctx, 1.4, '#2A180F');
   // bouche
   drawMouth(ctx, 68, expr, '#C88E84', false);
@@ -985,12 +987,14 @@ function augusteFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
 
 function augusteBust(ctx: CanvasRenderingContext2D) {
   augusteNeck(ctx);
+  ctx.save();
+  ctx.translate(0, -14);
   // pull gris à col rond côtelé
   ctx.beginPath();
-  ctx.moveTo(-90, 150);
-  ctx.lineTo(90, 150);
-  ctx.lineTo(96, 480);
-  ctx.lineTo(-96, 480);
+  ctx.moveTo(-62, 150);
+  ctx.lineTo(62, 150);
+  ctx.lineTo(70, 500);
+  ctx.lineTo(-70, 500);
   ctx.closePath();
   fillGrad(ctx, -90, 150, 90, 480, [[0, '#8C8388'], [0.5, SWEATER], [1, '#5E565C']]);
   stroke(ctx, 2.4);
@@ -1065,6 +1069,7 @@ function augusteBust(ctx: CanvasRenderingContext2D) {
     stroke(ctx, 1.5, STITCH);
     ctx.setLineDash([]);
   }
+  ctx.restore();
 }
 
 /** Auguste : portrait (buste) dans un repère 400 × 480. */
@@ -1083,12 +1088,13 @@ export interface FullOpts extends FaceOpts { step?: number; arms?: 'down' | 'wav
 
 const HEAD_X = 120;
 const HEAD_Y = 100;
-const HEAD_K = 0.52;
+const HEAD_K = 0.56;
 
 function sneaker(ctx: CanvasRenderingContext2D, cx: number, y: number, dir: number, color: string) {
   const w = 46;
   ctx.save();
   ctx.translate(cx, y);
+  ctx.scale(1.1, 1.18);
   // dessus
   ctx.beginPath();
   ctx.moveTo(-w / 2 + 2, -4);
@@ -1196,11 +1202,11 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
     ctx.beginPath();
     ctx.moveTo(120 + s * 1.5, 340);
     ctx.lineTo(120 + s * 60, 340);
-    ctx.bezierCurveTo(120 + s * 62, 420, 120 + s * 60, 500, 120 + s * 62 + off, 566);
-    ctx.quadraticCurveTo(120 + s * 34 + off, 572, 120 + s * 6 + off, 566);
+    ctx.bezierCurveTo(120 + s * 62, 420, 120 + s * 60, 500, 120 + s * 62 + off, 556);
+    ctx.quadraticCurveTo(120 + s * 34 + off, 562, 120 + s * 6 + off, 556);
     ctx.bezierCurveTo(120 + s * 3, 500, 120 + s * 2, 420, 120 + s * 1.5, 340);
     ctx.closePath();
-    fillGrad(ctx, 120 - s * 40, 340, 120 + s * 70, 566, [[0, shade(pant, 0.22)], [0.55, pant], [1, shade(pant, -0.22)]]);
+    fillGrad(ctx, 120 - s * 40, 340, 120 + s * 70, 556, [[0, shade(pant, 0.1)], [0.55, pant], [1, shade(pant, -0.22)]]);
     stroke(ctx, 2.2);
     // pli central et reflet
     ctx.beginPath();
@@ -1240,7 +1246,6 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
     ctx.closePath();
     fillGrad(ctx, 0, 142, 0, 178, [[0, HOODIE_LIGHT], [1, HOODIE_DARK]]);
     stroke(ctx, 2);
-    radiaNeckPatch(ctx);
   }
   // bras (avant le torse pour les poses le long du corps)
   const sc0 = shirt ? '#4A3A37' : HOODIE_LIGHT;
@@ -1250,11 +1255,11 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
     const pose = o.arms;
     const [c0, c1] = sleeveCol();
     const swing = st * s * -6;
-    let x1 = 120 + s * 76 + swing * 0.3;
+    let x1 = 120 + s * 80 + swing * 0.3;
     let y1 = 322;
-    let cxm = 120 + s * 92;
-    let cym = 258;
-    let wid = shirt ? 24 : 32;
+    let cxm = 120 + s * 102;
+    let cym = 262;
+    let wid = shirt ? 24 : 36;
     if (pose === 'wave' && s === 1) { x1 = 208; y1 = 150; cxm = 206; cym = 216; }
     else if (pose === 'heart') { x1 = 120 + s * 16; y1 = 286; cxm = 120 + s * 76; cym = 262; }
     else if (pose === 'open') { x1 = 120 + s * 94; y1 = 316; cxm = 120 + s * 90; cym = 236; wid = shirt ? 22 : 28; }
@@ -1268,7 +1273,6 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
     hand(ctx, hx, hy, SKIN_R, ang, 9.5);
   };
   // le côté sac (image droite) est dessiné après le torse
-  arm(-1);
   body();
   if (shirt) {
     fillGrad(ctx, 60, 170, 180, 352, [[0, '#58443F'], [0.55, '#3A2C2B'], [1, '#261C1D']]);
@@ -1346,6 +1350,7 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
       ctx.fill();
     }
   }
+  arm(-1);
   arm(1);
   if (o.arms === 'heart') {
     heartPath(ctx, 120, 296, 30);
@@ -1356,8 +1361,6 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
   }
   if (bag) {
     // bandoulière et petit sac noir à fermoir doré (hanche à droite de l'image)
-    const lifted = o.arms === 'wave' || o.arms === 'open' || o.arms === 'heart';
-    void lifted;
     ctx.beginPath();
     ctx.moveTo(146, 168);
     ctx.bezierCurveTo(154, 220, 162, 270, 170, 330);
@@ -1402,9 +1405,6 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
   ctx.restore();
 }
 
-/** Petit raccord de peau entre cou et col (évite un trou). */
-function radiaNeckPatch(_ctx: CanvasRenderingContext2D) { void _ctx; }
-
 export function drawAugusteFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
   const st = o.step ?? 0;
   const pose = o.arms;
@@ -1421,11 +1421,11 @@ export function drawAugusteFull(ctx: CanvasRenderingContext2D, o: FullOpts = {})
     ctx.beginPath();
     ctx.moveTo(120 + s * 1.5, 330);
     ctx.lineTo(120 + s * 62, 330);
-    ctx.bezierCurveTo(120 + s * 64, 420, 120 + s * 62, 500, 120 + s * 64 + off, 566);
-    ctx.quadraticCurveTo(120 + s * 35 + off, 572, 120 + s * 6 + off, 566);
+    ctx.bezierCurveTo(120 + s * 64, 420, 120 + s * 62, 500, 120 + s * 64 + off, 556);
+    ctx.quadraticCurveTo(120 + s * 35 + off, 562, 120 + s * 6 + off, 556);
     ctx.bezierCurveTo(120 + s * 3, 500, 120 + s * 2, 420, 120 + s * 1.5, 330);
     ctx.closePath();
-    fillGrad(ctx, 120 - s * 40, 330, 120 + s * 70, 566, [[0, shade(PANTS_A, 0.26)], [0.55, PANTS_A], [1, shade(PANTS_A, -0.25)]]);
+    fillGrad(ctx, 120 - s * 40, 330, 120 + s * 70, 556, [[0, shade(PANTS_A, 0.14)], [0.55, PANTS_A], [1, shade(PANTS_A, -0.25)]]);
     stroke(ctx, 2.2);
     ctx.beginPath();
     ctx.moveTo(120 + s * 36, 350);
@@ -1519,7 +1519,7 @@ export function drawAugusteFull(ctx: CanvasRenderingContext2D, o: FullOpts = {})
   const arm = (s: -1 | 1) => {
     let x1 = 120 + s * 50;
     let y1 = 316;
-    let cxm = 120 + s * 94;
+    let cxm = 120 + s * 88;
     let cym = 262;
     const wid = 30;
     if (pose === 'wave' && s === 1) { x1 = 208; y1 = 152; cxm = 208; cym = 222; }

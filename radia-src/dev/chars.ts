@@ -20,12 +20,13 @@ if (mode === 'faces') {
   const r2 = row();
   for (const o of [{}, { arms: 'wave' }, { step: -1 }, { step: 1 }, { arms: 'heart' }, { arms: 'open' }] as const) r2.append(fullCanvas('auguste', o as never, 200));
 } else if (mode === 'perf') {
-  const c = document.createElement('canvas'); c.width = 240; c.height = 600; const ctx = c.getContext('2d')!;
+  const c = document.createElement('canvas'); c.width = 240; c.height = 600; const ctx = c.getContext('2d', { willReadFrequently: false })!;
   const res: string[] = [];
   for (const [n, f] of [['radia', drawRadiaFull], ['auguste', drawAugusteFull]] as const) {
     for (let i = 0; i < 5; i++) { ctx.clearRect(0, 0, 240, 600); f(ctx, { expr: 'smile' }); }
     const t = performance.now(); const N = 60;
-    for (let i = 0; i < N; i++) { ctx.clearRect(0, 0, 240, 600); f(ctx, { expr: 'smile', step: Math.sin(i) * 0.3 }); }
+    for (let i = 0; i < N; i++) { ctx.clearRect(0, 0, 240, 600); f(ctx, { expr: 'smile', step: Math.sin(i) * 0.3 }); ctx.getImageData(0, 0, 1, 1); }
+    ctx.getImageData(0, 0, 1, 1);
     res.push(`${n}: ${((performance.now() - t) / N).toFixed(2)} ms`);
   }
   out.textContent = res.join(' | ');

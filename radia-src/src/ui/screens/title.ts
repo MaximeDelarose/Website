@@ -28,7 +28,7 @@ const hasProgress = () => save.data.story.step > 0 || Object.keys(save.data.leve
 function titleArt(): { el: HTMLCanvasElement; stop: () => void } {
   const W = 300;
   const H = 340;
-  const scale = Math.min(3, window.devicePixelRatio || 1);
+  const scale = Math.min(2, window.devicePixelRatio || 1);
   const cv = document.createElement('canvas');
   cv.width = W * scale;
   cv.height = H * scale;
@@ -39,6 +39,26 @@ function titleArt(): { el: HTMLCanvasElement; stop: () => void } {
   let blinkR = 0;
   let blinkA = 0;
   const outfit = currentOutfit();
+  // Chaque pose (clignement × pas de marche) est dessinée une seule fois dans
+  // un canvas à part ; l'animation ne fait ensuite que 2 drawImage par image.
+  const k = scale * 0.52;
+  const cache = new Map<string, HTMLCanvasElement>();
+  const sprite = (who: 'radia' | 'auguste', blink: boolean, step: number): HTMLCanvasElement => {
+    const key = `${who}:${blink ? 1 : 0}:${step}`;
+    let c = cache.get(key);
+    if (!c) {
+      c = document.createElement('canvas');
+      c.width = Math.ceil(240 * k);
+      c.height = Math.ceil(600 * k);
+      const g = c.getContext('2d')!;
+      g.scale(k, k);
+      if (who === 'radia') drawRadiaFull(g, { expr: 'smile', blink, outfit, step });
+      else drawAugusteFull(g, { expr: 'smile', blink });
+      cache.set(key, c);
+    }
+    return c;
+  };
+  const STEPS = [-0.35, -0.175, 0, 0.175, 0.35];
   const draw = (t: number) => {
     raf = requestAnimationFrame(draw);
     if (t - last < 50) return; // ~20 images/s suffisent
@@ -50,22 +70,16 @@ function titleArt(): { el: HTMLCanvasElement; stop: () => void } {
     const ba = blinkA - s < 0.13;
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    // Auguste (à droite, un peu derrière)
-    ctx.save();
-    const bA = Math.sin(s * 1.6 + 1) * 0.008;
-    ctx.translate(150, H);
-    ctx.scale(0.5, 0.5 * (1 + bA));
-    ctx.translate(0, -600);
-    drawAugusteFull(ctx, { expr: 'smile', blink: ba });
-    ctx.restore();
-    // Radia (à gauche, devant)
-    ctx.save();
-    const bR = Math.sin(s * 1.6) * 0.01;
-    ctx.translate(30, H);
-    ctx.scale(0.52, 0.52 * (1 + bR));
-    ctx.translate(0, -600);
-    drawRadiaFull(ctx, { expr: 'smile', blink: br, outfit, step: Math.sin(s * 0.9) * 0.35 });
-    ctx.restore();
+    const hh = 600 * 0.52;
+    const ww = 240 * 0.52;
+    // Auguste (à droite, un peu derrière), respiration
+    const bA = 1 + Math.sin(s * 1.6 + 1) * 0.008;
+    ctx.drawImage(sprite('auguste', ba, 0), 214 - ww / 2, H - hh * bA, ww, hh * bA);
+    // Radia (à gauche, devant) : léger balancement entre 5 poses
+    const raw = Math.sin(s * 0.9) * 0.35;
+    const step = STEPS.reduce((best, v) => (Math.abs(v - raw) < Math.abs(best - raw) ? v : best), 0);
+    const bR = 1 + Math.sin(s * 1.6) * 0.01;
+    ctx.drawImage(sprite('radia', br, step), 88 - ww / 2, H - hh * bR, ww, hh * bR);
   };
   raf = requestAnimationFrame(draw);
   return { el: cv, stop: () => cancelAnimationFrame(raf) };
