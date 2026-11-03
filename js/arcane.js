@@ -1415,6 +1415,7 @@
     var ch = cl.channel("at-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: NET.id } } });
     ch.on("presence", { event: "sync" }, onPresence);
     ["hello", "start", "s", "cmd", "bye"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload); } catch (err) { if (window.console) console.error(err); } }); });
+    if (window.Party && window.Party.emoteChannel) window.Party.emoteChannel(ch, myName);   // émotes (bouton 😀 / touche T)
     ch.subscribe(function (status) {
       NET.status = status;
       if (status === "SUBSCRIBED") { trackMe(); if (NET.role === "guest") sayHello(); }
@@ -1426,6 +1427,7 @@
     showOnline();
   }
   function netLeave() {
+    if (NET.ch && window.Party && window.Party.emoteChannelOff) window.Party.emoteChannelOff();
     if (NET.ch) { try { netSend("bye", { id: NET.id }); NET.ch.untrack(); } catch (e) {} try { NET.client.removeChannel(NET.ch); } catch (e) {} }
     NET.ch = null; NET.on = false; NET.role = null; NET.started = false; NET.roster = []; NET.code = null; NET.guest = null; NET.sentRev = {}; NET.profiles = {};
   }

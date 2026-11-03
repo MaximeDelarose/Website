@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Versus · AkarisuMD</title>
+  <meta name="description" content="Versus entre amis sur tous les jeux du site : crée une party de 2 à 4 joueurs, enchaîne les manches (1v1, 2v2, chacun pour soi) et gagne des points.">
+  <meta property="og:title" content="Versus · AkarisuMD">
+  <meta property="og:description" content="Versus entre amis sur tous les jeux du site : crée une party de 2 à 4 joueurs, enchaîne les manches (1v1, 2v2, chacun pour soi) et gagne des points.">
+  <meta name="theme-color" content="#3f6b3a">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261104mb2">
+  <link rel="stylesheet" href="css/party.css?v=20261107vs2">
+  <link rel="stylesheet" href="css/versus.css?v=20261107vs2">
+</head>
+<body data-page="versus">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="versus.html" data-page="versus">Versus</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="page-banner">
+    <canvas class="pixel-scene" data-seed="21" data-compact="true" aria-hidden="true"></canvas>
+    <div class="banner-title"><div class="wrap"><div class="panel"><span class="kicker">Entre amis, de 2 à 4 joueurs</span><h1>Versus</h1></div></div></div>
+  </section>
+
+  <main id="main" class="section vs-section">
+    <div class="wrap" data-versus>
+      <p class="lead">Crée une party, envoie le code à tes amis et enchaînez les manches sur tous les jeux du site : 1 contre 1, 2 contre 2, chacun pour soi… Le meilleur de chaque manche marque un point, le premier au but remporte la party. Les connexions aux jeux se font toutes seules.</p>
+      <div data-vs-app><p>Chargement…</p></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261103re4"></script>
+  <script src="js/auth.js?v=20261103re4"></script>
+  <script src="js/leaderboard.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261105kd101"></script>
+  <script src="js/party-modes.js?v=20261107vs2"></script>
+  <script src="js/party.js?v=20261107vs2"></script>
+  <script src="js/versus.js?v=20261107vs2"></script>
+  <script src="js/scene.js?v=20261103re4"></script>
+</body>
+</html>

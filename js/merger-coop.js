@@ -1289,6 +1289,7 @@
     var ch = cl.channel("mg-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: NET.id } } });
     ch.on("presence", { event: "sync" }, onPresence);
     ["start", "s", "cmd", "aim", "end", "again"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload); } catch (err) { if (window.console) console.error(err); } }); });
+    if (window.Party && window.Party.emoteChannel) window.Party.emoteChannel(ch, function () { return myName; });   // émotes (bouton 😀 / touche T)
     ch.subscribe(function (status) {
       NET.status = status;
       if (status === "SUBSCRIBED") trackMe();
@@ -1300,6 +1301,7 @@
     showOnline();
   }
   function netLeave() {
+    if (NET.ch && window.Party && window.Party.emoteChannelOff) window.Party.emoteChannelOff();
     if (NET.ch) { try { NET.ch.untrack(); } catch (e) {} try { NET.client.removeChannel(NET.ch); } catch (e) {} }
     NET.ch = null; NET.on = false; NET.role = null; NET.started = false; NET.roster = []; NET.code = null;
   }
@@ -1320,9 +1322,14 @@
       var idx = list.map(function (x) { return x.id; }).indexOf(NET.id);
       if (idx >= 2) { NET.err = "Salon plein (2 joueurs max)."; netLeave(); showOnline(); return; }
     }
-    if (NET.started && NET.otherId && !list.some(function (x) { return x.id === NET.otherId; })) {
-      NET.started = false;
-      if (state === "aim" || state === "flight" || state === "pause") gameOver(NET.role === "host" ? "Ton coéquipier a quitté la partie." : "L'hôte a quitté la partie.");
+    // l'autre joueur absent : on attend 4 s avant de conclure (la présence clignote parfois)
+    if (NET.started && NET.otherId && !list.some(function (x) { return x.id === NET.otherId; }) && !NET.goneT) {
+      NET.goneT = setTimeout(function () {
+        NET.goneT = 0;
+        if (!NET.started || !NET.otherId || NET.roster.some(function (x) { return x.id === NET.otherId; })) return;
+        NET.started = false;
+        if (state === "aim" || state === "flight" || state === "pause") gameOver(NET.role === "host" ? "Ton coéquipier a quitté la partie." : "L'hôte a quitté la partie.");
+      }, 4000);
     }
     if (state === "menu" && screen === "online") showOnline();
   }
@@ -1629,7 +1636,7 @@
     document.querySelectorAll("[data-help]").forEach(function (h) { h.hidden = h.getAttribute("data-help") !== m; });
     store("merger-mode", m);
     if (m === "coop") { if (history.replaceState && !/#coop/.test(location.hash)) history.replaceState(null, "", "#coop"); resize(); if (state === "menu" && screen === "menu") menu(); }
-    else { if (history.replaceState) history.replaceState(null, "", location.pathname + location.search); if ((state === "aim" || state === "flight") && !NET.started) pause(); stopMusic(); }
+    else { if (history.replaceState && !/^#party/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search); if ((state === "aim" || state === "flight") && !NET.started) pause(); stopMusic(); }
   }
   tabs.forEach(function (t) { t.addEventListener("click", function () { setMode(t.getAttribute("data-mode")); }); });
   window.MergerMode = setMode;
@@ -1698,6 +1705,7 @@
 
   var hashCode = /#coop=([A-Za-z]{4})/.exec(location.hash || "");
   var startMode = /#coop/.test(location.hash) ? "coop" : (load("merger-mode", "solo") === "coop" ? "coop" : "solo");
+  if (/^#party/.test(location.hash)) startMode = "solo";   // manche de party (js/party.js)
   reset();
   setMode(startMode);
   menu();

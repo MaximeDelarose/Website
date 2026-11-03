@@ -257,6 +257,7 @@
      ===================================================================== */
   var CAP = 1e300;
   function earn(x) {
+    if (party && party.frozen) return;
     if (!(x > 0)) return;
     if (!isFinite(x)) x = CAP;
     S.acorns = Math.min(CAP, S.acorns + x); S.runTotal = Math.min(CAP, S.runTotal + x);
@@ -631,6 +632,7 @@
      sauvegarde
      ===================================================================== */
   function save() {
+    if (PT) return;                 // manche de party : forêt temporaire, rien n'est enregistré
     S.last = Date.now();
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {}
   }
@@ -1762,7 +1764,23 @@
   /* =====================================================================
      démarrage
      ===================================================================== */
-  var loaded = load();
+  /* ---------- party (versus multi-jeux, js/party.js) : forêt toute neuve, sauvegarde intacte ---------- */
+  var party = null;
+  var PT = window.Party && window.Party.pending && window.Party.pending();
+  if (PT && PT.mode.game !== "idle") PT = null;
+  if (PT) {
+    party = { frozen: true };
+    window.Party.register("idle", {
+      start: function (ctx) {
+        S = fresh(); tabKeys = {}; treeDirty = true; tabsDirty = true;
+        calc(); checkUnlocks(); render();
+        party = { ctx: ctx, frozen: false };
+      },
+      stop: function () { party.frozen = true; return { score: Math.floor(S.runTotal) }; },
+    });
+    setInterval(function () { if (party && !party.frozen && party.ctx) window.Party.score(Math.floor(S.runTotal)); }, 500);
+  }
+  var loaded = PT ? false : load();
   calc();
   if (loaded) offline((Date.now() - S.last) / 1000);
   checkUnlocks();
@@ -1780,7 +1798,7 @@
   document.addEventListener("visibilitychange", function () { if (document.hidden) save(); });
   window.addEventListener("pagehide", save);
   window.addEventListener("beforeunload", save);
-  if (!loaded) toast("🌳 Le Grand Chêne", "Tape sur l'arbre pour récolter tes premiers glands !");
+  if (!loaded && !PT) toast("🌳 Le Grand Chêne", "Tape sur l'arbre pour récolter tes premiers glands !");
 
   if (/[?&]debug\b/.test(location.search)) {
     window.IDLE_DEBUG = { get S() { return S; }, C: C, act: act, UPG: UPG, seedGain: seedGain, essenceGain: essenceGain, click: function () { playerClick(10, 10); }, calc: calc, earn: function (x) { earn(x); render(); }, tick: tick, offline: offline, save: save,

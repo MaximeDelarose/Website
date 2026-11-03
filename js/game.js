@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "0.27.0";
+  var VERSION = "0.28.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -205,7 +205,9 @@
   var p = null, r = null, CH, DIFF, MAP, enemies, projs, hostile, lobs, gems, fx, texts, grid, warns;
   var spawnAcc, nextSwarm, nextBoss, bossCount, shake, uid, achTick, pending, xp, xpNext, propTimer;
 
-  function need(L) { if (r && r.mode === "arena") return D.ARENA.need(L); if (r && r.mode === "dungeon") return D.DUNGEON.need(L); return 5 + (L - 1) * 3 + Math.max(0, L - 15) * 4 + Math.max(0, L - 30) * 8; }
+  // l'XP est commune et chaque niveau donne un choix à CHAQUE joueur : en coop il en faut plus par niveau
+  function teamXp() { return players && players.length ? 1 + 0.9 * (humans() - 1) : 1; }
+  function need(L) { if (r && r.mode === "arena") return D.ARENA.need(L); if (r && r.mode === "dungeon") return Math.round(D.DUNGEON.need(L) * teamXp()); return Math.round((5 + (L - 1) * 3 + Math.max(0, L - 15) * 4 + Math.max(0, L - 30) * 8) * teamXp()); }
   function V(w, k, l) { var v = w[k]; return Array.isArray(v) ? v[Math.min(l, v.length - 1)] : v; }
 
   function calc(pl) {
@@ -255,6 +257,7 @@
     for (var i = 0; i < players.length; i++) { var o = players[i]; if (o === pl || o.down) continue; var d = Math.hypot(o.x - pl.x, o.y - pl.y); if (d < bd) { bd = d; best = o; } }
     return best;
   }
+  var party = null;                 // manche de party en cours (voir plus bas)
   function myId() { return Net.on ? Net.id : "solo"; }
   function reset(roster, mapId, diffId, mode, seed, dtype) {
     DGT = dungeonById(dtype || S.dungeon);
@@ -474,7 +477,9 @@
     if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
     return e;
   }
-  function tierHp() { return 1 + TIER.hp * tierN(); }
+  function tierHp() { return 1 + tcfg().hp * tierN(); }
+  // réglages de la montée en difficulté : ceux du mode choisi s'il en a (Difficile), sinon ceux de TIER
+  function tcfg() { return (DIFF && DIFF.tier) || TIER; }
   function hpMul() { return hpMul0() * tierHp(); }
   function zoneHp() { return isDungeon() ? DGT.hp || 1 : MAP.hp || 1; }
   function zoneGold() { return r && r.mode === "dungeon" ? DGT.gold || 1 : MAP.gold || 1; }
@@ -649,10 +654,10 @@
     }
     if (p.dodge && Math.random() < p.dodge) { p.inv = 0.3; r.dodges = (r.dodges || 0) + 1; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     p.calmT = 0;
-    if (r && TIER) dmg *= (1 + TIER.dmg * tierN()) * rageDmg();
+    if (r && TIER) dmg *= (1 + tcfg().dmg * tierN()) * rageDmg();
     if (p.oshield > 0) { var ab = Math.min(p.oshield, dmg); p.oshield -= ab; dmg -= ab; p.inv = 0.3; burst(p.x, p.y, "#9cc56b", 4); if (dmg <= 0) return; }
     if (p.packN && p.passives && p.passives.meute) dmg -= p.passives.meute;
-    p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)); p.inv = 0.22;
+    p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)); p.inv = DIFF.inv || 0.35;
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = 0.25; SND.hurt(); }
     burst(p.x, p.y, "#c8553d", 5);
   }
@@ -1159,7 +1164,7 @@
     if (!r) return 0;
     if (isArena()) return Math.max(0, (r.round - 1) / 2.4);
     var m = r.time / 60 + (isDungeon() && r.dg ? (r.dg.floor - 1) * 3 : 0);
-    return m * (DIFF.hp > 1 ? 1.4 : 1) / TIER.minutes;
+    return m / tcfg().minutes;
   }
   function tierN() { return Math.floor(tierPos()); }                       // continue de monter après le dernier palier
   function tierName(t) { return TIERS[Math.min(TIERS.length - 1, t)].name + (t >= TIERS.length ? " +" + (t - TIERS.length + 1) : ""); }
@@ -1206,7 +1211,7 @@
   }
   function shState(s) { return (r.sh[s.id] = r.sh[s.id] || { p: 0, used: 0 }); }
   function chestCost() { return Math.round((18 + 9 * tierN()) * zoneGold()); }
-  function shopCost() { return Math.round(chestCost() * 2.2); }
+  function merchantCost() { return Math.round(chestCost() * 2.2); }
   function betCost() { return Math.round(chestCost() * 1.2); }
   function payGold(cost, st, what) {
     if (r.gold >= cost) { r.gold -= cost; r.goldSpent = (r.goldSpent || 0) + cost; return true; }
@@ -1262,7 +1267,7 @@
       players.forEach(function (o) { if (!o.down) { o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.5); burst(o.x, o.y, "#6ad8ff", 8); } });
       bannerAll("L'eau claire vous soigne"); SND.level();
     } else if (s.k === "marchand") {
-      if (!payGold(shopCost(), st, "pour acheter")) return;
+      if (!payGold(merchantCost(), st, "pour acheter")) return;
       dropItem(s.x, s.y - 16, 1); bannerAll("Marché conclu !"); SND.gold();
     } else if (s.k === "fortune") {
       var bet = betCost(); if (!payGold(bet, st, "pour miser")) return;
@@ -1332,7 +1337,7 @@
       }
       // nom et coût quand on s'approche
       if (!dead && Math.hypot(me.x - x, me.y - y) < 60) {
-        var cst = s.k === "coffre" ? chestCost() : s.k === "marchand" ? shopCost() : s.k === "fortune" ? betCost() : 0;
+        var cst = s.k === "coffre" ? chestCost() : s.k === "marchand" ? merchantCost() : s.k === "fortune" ? betCost() : 0;
         var label = def.name + (cst ? " " + cst : s.k === "sang" ? " -20% PV" : s.k === "sacrifice" ? " -1 objet" : "");
         drawText(label, x, y - 38, col, "c");
         if (cst) icon("gold", x + textWidth(label) / 2 + 2, y - 37);
@@ -1392,7 +1397,7 @@
     r.stage = (r.stage || 0) + 1; r.portals = (r.portals || 0) + 1;
     enterMap(nm.id, r.stage, r.time);
     // tout le monde passe : remis au centre de la nouvelle carte
-    players.forEach(function (pl, k) { pl.x = pl.tx = (k - (players.length - 1) / 2) * 20; pl.y = pl.ty = 0; if (pl.down) { pl.down = false; pl.reviveT = 0; pl.hp = pl.maxHp * 0.5; } if (pl.remote) netSend("tp", { id: pl.id, x: Math.round(pl.x), y: 0 }); });
+    players.forEach(function (pl, k) { pl.x = pl.tx = (k - (players.length - 1) / 2) * 20; pl.y = pl.ty = 0; if (pl.down && !(party && party.ctx.opts.noRevive)) { pl.down = false; pl.reviveT = 0; pl.hp = pl.maxHp * 0.5; } if (pl.remote) netSend("tp", { id: pl.id, x: Math.round(pl.x), y: 0 }); });
     enemies = []; projs = []; hostile = []; lobs = []; warns = []; gems = []; zones = []; curBoss = null;
     nextSwarm = r.time + 60; spawnAcc = 3; propTimer = 0;
     netEv(["mp", nm.id, r.stage, Math.round(r.time * 10)]);
@@ -2222,6 +2227,7 @@
     for (i = 0; i < players.length; i++) {
       var pd = players[i];
       if (pd.down) {
+        if (party && party.ctx.opts.noRevive) continue;   // party « Dernier debout » : pas de relève
         var rate = 0;
         players.forEach(function (o) { if (o !== pd && !o.down && Math.hypot(o.x - pd.x, o.y - pd.y) < 22) rate = Math.max(rate, (1 + 0.25 * ((o.passives && o.passives.entraide) || 0) + 0.5 * itn(o, "ralliement")) * (itn(o, "nid") ? 2 : 1)); });
         pd.reviveT = rate ? pd.reviveT + dt * rate : Math.max(0, pd.reviveT - dt * 0.5);
@@ -4484,6 +4490,7 @@
     ch.on("presence", { event: "sync" }, onPresence);
     ["start", "s", "in", "pick", "end", "round", "next", "rdy", "tp", "floor", "need"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
     ch.on("broadcast", { event: "sig" }, function (msg) { try { onSignal(msg.payload); } catch (err) { try { console.warn(err); } catch (e) {} } });
+    if (window.Party && window.Party.emoteChannel) window.Party.emoteChannel(ch, function () { return S.name; });   // émotes (bouton 😀 / touche T)
     ch.subscribe(function (status) {
       Net.status = status;
       if (Net.ch !== ch) return;
@@ -4503,6 +4510,7 @@
     clearTimeout(Net.retryT);
     Object.keys(Net.peers || {}).forEach(closePeer);
     Net.hostId = null; Net.seen = {};
+    if (window.Party && window.Party.emoteChannelOff) window.Party.emoteChannelOff();
     if (Net.ch) { try { Net.ch.untrack(); } catch (e) {} try { Net.client.removeChannel(Net.ch); } catch (e) {} }
     Net.startInfo = null; Net.dgBad = 0;
     Net.ch = null; Net.on = false; Net.role = null; Net.started = false; Net.roster = []; Net.cur = Net.prev = null;
@@ -4835,7 +4843,7 @@
       '<button class="btn btn-ghost btn-small" type="button" data-action="quit">🏳️ Quitter la partie</button></div>', "netmenu");
   }
   function pause() {
-    if (state !== "play" || picking) return;
+    if (state !== "play" || picking || party) return;
     if (humans() > 1) { if (netMenuOpen) resume(); else netMenu(); return; }
     state = "pause"; clearInput();
     var html = '<h2>Pause</h2><div class="pause-grid"><div><h3>Armes (' + Object.keys(p.weapons).length + "/" + MAX_W + ')</h3><ul class="build-list">';
@@ -4874,6 +4882,7 @@
     curBoss = null;
     r.ended = true;
     var sc = score(), gold = runGold();
+    if (party) partyEnded(quit);
     S.stats.kills += r.kills; r.committed = true;
     S.stats.runs++;
     earnGold(gold);
@@ -5146,8 +5155,73 @@
     state: function () { return { state: state, screen: screen, level: r && r.level, hp: p && p.hp, kills: r && r.kills, weapons: p && p.weapons, passives: p && p.passives, enemies: enemies && enemies.length, x: me && me.x, y: me && me.y }; },
   };
 
+  /* =====================================================================
+     Party : versus multi-jeux (js/party.js, modes dans js/party-modes.js)
+     - modes « chacun sa partie » : on lance directement une partie solo
+     - modes « room » : salon coop en ligne créé / rejoint tout seul
+     ===================================================================== */
+  function partyMetric() {
+    var o = party.ctx.opts;
+    if (o.metric === "kills") return r.kills;
+    if (o.metric === "score") return Math.round(score());
+    return Math.floor(window.Party.elapsed());
+  }
+  function partyRestore() {
+    if (!party || !party.keep) return;
+    Object.keys(party.keep).forEach(function (k) { S[k] = party.keep[k]; });
+    party.keep = null; save();
+  }
+  function partyEnded(quit) {
+    if (!party || party.ended) return;
+    party.ended = true;
+    // quit : fin imposée (chrono, hôte qui arrête la manche) → pas une élimination
+    window.Party.over({ score: partyMetric(), dead: !r.won && !quit, done: !!r.won });
+    partyRestore();
+  }
+  var PT = window.Party && window.Party.pending && window.Party.pending();
+  if (PT && PT.mode.game !== "survivor") PT = null;
+  if (PT) {
+    window.Party.register("survivor", {
+      start: function (ctx) {
+        party = { ctx: ctx, ended: false, keep: null };
+        var o = ctx.opts;
+        if (ctx.mode.room) {
+          party.keep = { mode: S.mode, map: S.map, diff: S.diff, dungeon: S.dungeon, name: S.name };
+          S.mode = o.mode || "survie"; S.map = o.map || "clairiere"; S.diff = "normal"; S.dungeon = o.dungeon || "terriers"; S.name = ctx.name;
+          Net.joinTs = Date.now(); netJoin(ctx.room, ctx.roomHost); go("lobby");
+          if (ctx.roomHost) {
+            var t0 = Date.now(), iv = setInterval(function () {
+              if (!party || state === "play" || state === "over") { clearInterval(iv); return; }
+              var want = ctx.roomIds.filter(ctx.present).length, t = Date.now() - t0;
+              if ((Net.status === "SUBSCRIBED" && (Net.roster.length >= want || (t > 15000 && Net.roster.length >= 2))) || t > 30000) { clearInterval(iv); start(); }
+            }, 500);
+          }
+        } else {
+          sanitize();
+          reset(null, o.map || "clairiere", "normal", o.mode || "survie", ctx.seed, o.dungeon || "terriers");
+          beginPlay();
+        }
+      },
+      stop: function (why) {
+        if (state !== "over" && r && !r.ended && (state !== "menu" || Net.started)) gameOver(true, why === "time" ? "Temps écoulé !" : "Fin de la manche !");
+        if (party && !party.ended) { party.ended = true; partyRestore(); return { score: r ? partyMetric() : 0 }; }
+        return null;
+      },
+    });
+    setInterval(function () {
+      if (!party || party.ended || !r || r.ended || (state !== "play" && state !== "levelup" && state !== "pause")) return;
+      window.Party.score(partyMetric());
+      if (party.ctx.opts.noRevive && me && me.down && (!me.twinRef || me.twinRef.down)) {
+        party.ended = true;
+        window.Party.over({ score: partyMetric(), dead: true });
+        banner("Éliminé ! Tu peux regarder la fin de la manche.");
+      }
+    }, 500);
+  }
+
   checkAchievements(null);
   go("menu");
+  if (PT) showCard('<h2>Manche de party</h2><p>' + esc(PT.mode.name) + ' : la partie démarre toute seule dans un instant.</p>', "party");
   function joinFromHash() {
     var m = /#coop=([A-Za-z]{4})/.exec(location.hash || "");
     if (!m || (Net.on && Net.code === m[1].toUpperCase())) return;

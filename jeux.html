@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261104ct8">
+  <link rel="stylesheet" href="css/style.css?v=20261104mb2">
 </head>
 <body data-page="games">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -36,6 +36,7 @@
           <li><a href="index.html" data-page="home">Accueil</a></li>
           <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
           <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="versus.html" data-page="versus">Versus</a></li>
           <li><a href="bio.html" data-page="bio">Bio</a></li>
           <li><a href="contact.html" data-page="contact">Contact</a></li>
         </ul>
@@ -58,7 +59,8 @@
   <main id="main" class="section">
     <div class="wrap">
       <p class="lead games-intro">Mes petits jeux maison, faits pour tourner directement dans le navigateur, sur ordinateur comme sur mobile. Mes jeux de game jam sont dans la <a class="text-link" href="bibliotheque.html#jeux">bibliothèque</a>.</p>
-      <div class="grid">
+      <a class="panel vs-teaser" href="versus.html"><span class="vs-teaser-ico" aria-hidden="true">⚔️</span><span><strong>Nouveau : Versus entre amis</strong><br>Crée une party de 2 à 4 joueurs et enchaînez les manches sur tous ces jeux : 1 contre 1, 2 contre 2, chacun pour soi, avec des points et des émotes.</span><span class="btn btn-small">Jouer en versus</span></a>
+      <div class="grid games-grid">
         <article class="card">
           <div class="card-media"><a href="jeu.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="survivor" data-icon="paw" data-palette="#9cc56b,#5b8a4a,#1f3a2b"></canvas></a></div>
           <div class="card-body">
@@ -110,6 +112,16 @@
           </div>
         </article>
         <article class="card">
+          <div class="card-media"><a href="echecs.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="chess" data-icon="knight" data-palette="#f3e2bf,#7a9a5a,#2b3a24"></canvas></a></div>
+          <div class="card-body">
+            <h2 class="card-title"><a href="echecs.html">Échecs</a></h2>
+            <p class="card-meta">Stratégie · bots, en ligne & à deux</p>
+            <p class="card-text">Affronte 6 bots de la forêt, du Gland au Grand Chêne, défie un ami en ligne avec un code de salon, ou jouez à deux sur le même écran.</p>
+            <ul class="tags"><li>Échecs</li><li>En ligne</li><li>Bots</li></ul>
+            <a class="btn btn-small" href="echecs.html">▶ Jouer</a>
+          </div>
+        </article>
+        <article class="card">
           <div class="card-media"><a href="defense.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="defense" data-icon="tower" data-palette="#c9b6e4,#7a5ea8,#2b1f3d"></canvas></a></div>
           <div class="card-body">
             <h2 class="card-title"><a href="defense.html">Écureuil Défense</a></h2>
@@ -149,7 +161,7 @@
   <script src="js/data.js?v=20261103re4"></script>
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/leaderboard.js?v=20261103re4"></script>
-  <script src="js/main.js?v=20261106at100"></script>
+  <script src="js/main.js?v=20261107ch4"></script>
   <script src="js/scene.js?v=20261103re4"></script>
 </body>
 </html>

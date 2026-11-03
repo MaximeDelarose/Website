@@ -1000,8 +1000,8 @@ window.ES_DATA = (function () {
     { name: "C'est la fin", color: "#100008" },
   ];
   var TIER = {
-    minutes: 2.0,          // minutes par palier (mode Normal)
-    hp: 0.14, dmg: 0.22, spawn: 0.1, elite: 0.006, // bonus par palier (continue au-delà du dernier palier)
+    minutes: 2.4,          // minutes par palier (mode Normal)
+    hp: 0.12, dmg: 0.18, spawn: 0.1, elite: 0.006, // bonus par palier (continue au-delà du dernier palier)
   };
   // Rage : passé 10 min sur une même carte, les bêtes s'énervent de plus en plus vite (dégâts et vitesse)
   var RAGE = { start: 600, dmgK: 0.5, dmgPow: 1.6, spdPerMin: 0.07, spdMax: 2.2, hpPerMin: 0.25 };
@@ -1069,7 +1069,9 @@ window.ES_DATA = (function () {
 
   var DIFFICULTIES = {
     normal: { name: "Normal", hp: 1, spd: 1, spawn: 1, gold: 1, score: 1 },
-    difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
+    // Difficile : la montée en difficulté de la 0.27.0 (paliers toutes les 2 min, +22 % de dégâts par palier, invulnérabilité courte)
+    difficile: { name: "Difficile", hp: 1.3, spd: 1.05, spawn: 1.15, gold: 1.6, score: 1.5, unlock: "survie_5",
+                 tier: { minutes: 2.0, hp: 0.14, dmg: 0.22, spawn: 0.1, elite: 0.006 }, inv: 0.22 },
   };
 
   return { RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,

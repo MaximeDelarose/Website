@@ -435,6 +435,7 @@
         setTimeout(function () { if (tok === overToken && mode === "over") gameOverCard(); }, 1700);
         mode = "over"; hud.hidden = true; updateLaunch(); if (tipEl) tipEl.hidden = true;
         recordBest(e.winner);
+        if (party && !party.ended) { party.ended = true; var me0 = isVs() ? Math.max(0, myIdx()) : -1; window.Party.over({ score: partyScore(), dead: !(isVs() && e.winner === me0) }); }
         break;
       }
       case "upgrade": {
@@ -1430,7 +1431,7 @@
     NET.role = asHost ? "host" : "guest"; NET.code = code; NET.status = "connexion"; NET.err = ""; NET.started = false; NET.roster = []; NET.ts = Date.now();
     if (asHost && kind) NET.kind = kind;
     var api = NETM && NETM.open({
-      code: code, id: NET.id, meta: netMeta, events: ["start", "s", "cmd", "cur"],
+      code: code, id: NET.id, meta: netMeta, events: ["start", "s", "cmd", "cur", "emo"],
       onEvent: function (evn, payload) { try { onNet(evn, payload); } catch (err) { if (window.console) console.error(err); } },
       onRoster: onRoster,
       onStatus: function (st) {
@@ -1441,10 +1442,13 @@
     });
     if (!api) { NET.err = "Le jeu en ligne est indisponible (connexion au serveur impossible)."; NET.role = null; showOnline(); return; }
     NET.api = api; NET.on = true;
-    if (history.replaceState) history.replaceState(null, "", "#kd=" + code);
+    // émotes (bouton 😀 / touche T), sauf pendant une manche de party (elle s'en charge)
+    if (window.Party && window.Party.emoteBridge) window.Party.emoteBridge({ send: function (i, n, c) { api.send("emo", { n: n, i: i, c: c }); } });
+    if (history.replaceState && !party) history.replaceState(null, "", "#kd=" + code);
     showOnline();
   }
   function netLeave() {
+    if (NET.api && window.Party && window.Party.emoteBridgeOff) window.Party.emoteBridgeOff();
     if (NET.api) { try { NET.api.close(); } catch (e) {} }
     NET.api = null; NET.on = false; NET.role = null; NET.started = false; NET.roster = []; NET.code = ""; NET.otherId = null; NET.out = [];
   }
@@ -1456,13 +1460,18 @@
       var host = list.filter(function (x) { return x.host; })[0];
       if (host && host.kind) NET.kind = host.kind;
     }
+    // l'autre joueur absent : on attend 4 s avant de conclure (la présence clignote parfois quand quelqu'un met à jour son état)
     if (NET.started && NET.otherId && !list.some(function (x) { return x.id === NET.otherId; })) {
-      var msg = NET.role === "host" ? "L'autre joueur a quitté la partie." : "L'hôte a quitté la partie.";
-      leaveOnline(msg); return;
+      if (!NET.goneT) NET.goneT = setTimeout(function () {
+        NET.goneT = 0;
+        if (!NET.started || !NET.otherId || NET.roster.some(function (x) { return x.id === NET.otherId; })) return;
+        leaveOnline(NET.role === "host" ? "L'autre joueur a quitté la partie." : "L'hôte a quitté la partie.");
+      }, 4000);
     }
     if (mode === "menu") showOnline();
   }
   function leaveOnline(msg) {
+    if (party && !party.ended) { party.ended = true; window.Party.over({ score: partyScore(), alive: true }); }
     overToken++;
     netLeave(); stopMusic(); hide();
     newGame("coop"); menu();
@@ -1487,6 +1496,7 @@
     if (evn === "start") { if (NET.role === "guest") startOnline(d); }
     else if (evn === "s") { if (isGuest() && w) { applyRemote(d); } }
     else if (evn === "cmd") { if (isHost() && mode === "play") applyCmd(1, d); }
+    else if (evn === "emo") { if (window.Party && d) window.Party.emoteFrom(d.n, d.i, d.c); }
     else if (evn === "cur") { if (NET.started && ui && d && d.p === 1 - myIdx() && K.inZone(d.p, d.c, d.r)) ui[d.p].cur = { c: d.c, r: d.r }; }
   }
   // l'invité : rejoue les effets, puis copie l'état exact de l'hôte
@@ -1887,7 +1897,7 @@
     G.me = -1; newGame("coop"); menu();
   }
   function pause() {
-    if (mode !== "play") return;
+    if (mode !== "play" || (party && !NET.started)) return;
     SFX.pause();
     ui.forEach(function (u) { u.drag = null; });
     if (tipEl) tipEl.hidden = true;
@@ -2059,10 +2069,55 @@
     clearBoard: function () { for (var c = 0; c < 7; c++) for (var r = 0; r < 7; r++) w.grid[c][r] = null; },
   };
 
-  var hashM = /#kd=([A-Za-z0-9]{4})/.exec(location.hash);
+  /* ====================== PARTY (versus multi-jeux, js/party.js) ======================
+     opts.kind : "solo" (seul à la souris sur les deux côtés, vagues automatiques),
+                 "net-vs" (versus en ligne, salon créé / rejoint tout seul),
+                 "net-coop" (une coop en ligne par équipe). */
+  var party = null;
+  function partyScore() { if (!w) return 0; if (isVs()) { var pl = w.players[Math.max(0, myIdx())]; return pl ? pl.score : 0; } return w.score; }
+  var PT = window.Party && window.Party.pending && window.Party.pending();
+  if (PT && PT.mode.game !== "kingdice") PT = null;
+  if (PT) {
+    window.Party.register("kingdice", {
+      start: function (ctx) {
+        party = { ctx: ctx, ended: false, prep: 0 };
+        store("kd-tuto", "1");
+        var kind = ctx.opts.kind || "solo";
+        if (kind === "solo") { start("coop"); tuto.on = false; tutoShow(); return; }
+        netJoin(ctx.room, ctx.roomHost, kind === "net-vs" ? "versus" : "coop");
+        if (ctx.roomHost) {
+          var t0 = Date.now(), iv = setInterval(function () {
+            if (!party || NET.started || party.ended) { clearInterval(iv); return; }
+            if (NET.roster.length >= 2) { clearInterval(iv); hostStart(); }
+            else if (Date.now() - t0 > 30000) { clearInterval(iv); party.ended = true; window.Party.over({ score: 0 }); }
+          }, 500);
+        }
+      },
+      stop: function () {
+        if (party && !party.ended && w) {
+          party.ended = true;
+          if (mode === "play" || mode === "pause") {
+            w.state = "over"; mode = "over"; pauseOpen = false; hud.hidden = true; updateLaunch(); stopMusic();
+            show('<h2 class="kd-h">Temps écoulé !</h2><p>Vague <strong>' + w.wave + "</strong> · Score <strong>" + fmt(partyScore()) + "</strong></p>", "kd-over");
+          }
+        }
+        return { score: partyScore() };
+      },
+    });
+    setInterval(function () {
+      if (!party || party.ended || !w || mode !== "play") return;
+      window.Party.score(partyScore());
+      var auto = party.ctx.opts.autoWave;
+      if (auto && !isVs() && (!NET.started || isHost()) && w.state === "prep") { party.prep += 0.25; if (party.prep >= auto) { party.prep = 0; doLaunch(0); } }
+      else party.prep = 0;
+    }, 250);
+  }
+
+  var hashM = PT ? null : /#kd=([A-Za-z0-9]{4})/.exec(location.hash);
   newGame("coop");
   resize();
-  menu();
+  if (PT) show('<h2 class="kd-h">Manche de party</h2><p>' + esc(PT.mode.name) + " : la partie démarre toute seule dans un instant.</p>", "kd-help");
+  else menu();
   if (hashM && NETM) { NET.kind = "coop"; netJoin(hashM[1].toUpperCase(), false); }
   requestAnimationFrame(loop);
 })();
