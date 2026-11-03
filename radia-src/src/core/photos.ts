@@ -49,7 +49,8 @@ export function photoUrl(name: string): Promise<string | null> {
         if (!res.ok) return null;
         const buf = new Uint8Array(await res.arrayBuffer());
         const plain = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
-        const url = URL.createObjectURL(new Blob([plain], { type: 'image/jpeg' }));
+        const type = /^(char|bust)-/.test(name) ? 'image/webp' : 'image/jpeg';
+        const url = URL.createObjectURL(new Blob([plain], { type }));
         ready.set(name, url);
         return url;
       } catch {

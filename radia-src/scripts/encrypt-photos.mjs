@@ -12,12 +12,12 @@ if (!keyB64) {
 }
 const key = await crypto.subtle.importKey('raw', Buffer.from(keyB64, 'base64url'), 'AES-GCM', false, ['encrypt']);
 mkdirSync('public/assets/p', { recursive: true });
-for (const f of readdirSync('private/photos').filter((f) => f.endsWith('.jpg'))) {
+for (const f of readdirSync('private/photos').filter((f) => f.endsWith('.jpg') || f.endsWith('.webp'))) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, readFileSync('private/photos/' + f)));
   const out = new Uint8Array(12 + data.length);
   out.set(iv); out.set(data, 12);
-  writeFileSync('public/assets/p/' + f.replace('.jpg', '.bin'), out);
+  writeFileSync('public/assets/p/' + f.replace(/\.(jpg|webp)$/, '.bin'), out);
   console.log('chiffré', f, out.length);
 }
 console.log('clé :', keyB64);

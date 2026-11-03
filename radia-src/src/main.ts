@@ -72,7 +72,7 @@ async function boot(): Promise<void> {
   setLowFx(save.data.settings.effects === 'reduced');
   applySettings();
   void save.requestPersistence();
-  preloadPhotos(['face-radia', 'face-auguste']);
+  preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste']);
   progress(0.3);
 
   // Écriture immédiate quand Safari passe en arrière-plan ou se ferme.
