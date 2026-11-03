@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>King Dice · AkarisuMD</title>
-  <meta name="description" content="King Dice : un tower defense coopératif à 2 sur le même ordinateur. Invoquez des pièces d'échecs au hasard, fusionnez-les et protégez ensemble votre roi.">
+  <meta name="description" content="King Dice : un tower defense à 2 joueurs, en coop ou en versus, sur le même écran ou en ligne. Invoquez des pièces d'échecs au hasard, fusionnez-les et protégez votre roi.">
   <meta property="og:title" content="King Dice · AkarisuMD">
-  <meta property="og:description" content="King Dice : un tower defense coopératif à 2 sur le même ordinateur. Invoquez des pièces d'échecs au hasard, fusionnez-les et protégez ensemble votre roi.">
+  <meta property="og:description" content="King Dice : un tower defense à 2 joueurs, en coop ou en versus, sur le même écran ou en ligne. Invoquez des pièces d'échecs au hasard, fusionnez-les et protégez votre roi.">
   <meta name="theme-color" content="#3f6b3a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261104mb1">
+  <link rel="stylesheet" href="css/style.css?v=20261104ct8">
 </head>
 <body data-page="kingdice">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -59,7 +59,7 @@
     <div class="wrap">
       <div class="game-head">
         <div>
-          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · coop à 2</span>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · coop, versus et en ligne</span>
           <h1>King Dice</h1>
         </div>
         <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
@@ -71,6 +71,7 @@
         <div class="game-hud kd-hud" data-hud hidden>
           <button class="hud-btn" type="button" data-kd-mute aria-label="Couper le son">🔊</button>
           <button class="hud-btn" type="button" data-kd-pause aria-label="Pause et réglages">⏸</button>
+          <button class="hud-btn hud-exit" type="button" data-kd-exit aria-label="Quitter le plein écran">✕</button>
         </div>
         <button class="kd-launch" type="button" data-kd-launch hidden>⚔ Lancer la vague <b>1</b><small>V</small></button>
         <div class="kd-tip" data-kd-tip hidden></div>
@@ -86,18 +87,17 @@
         <div class="panel game-help">
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
-            <li>Deux joueurs sur le <strong>même ordinateur</strong> protègent <strong>ensemble</strong> leur roi. Chacun a sa zone (bleue à gauche, orange à droite), son curseur et son mana ; les ennemis descendent par le couloir du milieu.</li>
-            <li><strong>Invoquer</strong> : sur une case vide de ton côté, ton bouton d'action fait apparaître une Tour, un Fou ou un Cavalier au hasard (3 mana).</li>
-            <li>Chaque pièce tire toute seule <strong>selon sa forme aux échecs</strong> : la Tour sur sa ligne, le Fou en diagonale, le Cavalier en L.</li>
-            <li><strong>Fusionner</strong> : deux pièces du même type et du même niveau donnent une pièce au hasard un niveau au-dessus (jusqu'au niveau 4). C'est gratuit.</li>
-            <li><strong>Combo coop</strong> : un ennemi touché par vos deux camps puis éliminé rapporte du mana à chacun et remplit la jauge des pouvoirs (grenade, gel, arc-en-ciel).</li>
-            <li><strong>Joueur 1</strong> : <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> + <kbd>Espace</kbd> (<kbd>E</kbd> pouvoir). <strong>Joueur 2</strong> : flèches + <kbd>Entrée</kbd> (<kbd>Maj droite</kbd> pouvoir). Ou tout à la souris pour jouer seul. <kbd>V</kbd> lance la vague, <kbd>Échap</kbd> met en pause.</li>
-            <li>Pas de chrono entre les vagues : vous lancez la suivante quand vous êtes prêts.</li>
+            <li><strong>Coop</strong> (même écran ou en ligne) : deux joueurs protègent <strong>ensemble</strong> un roi commun. Chacun a sa zone (bleue à gauche, orange à droite), son curseur et son mana ; les ennemis descendent par le couloir du milieu.</li>
+            <li><strong>Versus</strong> (même écran ou en ligne) : chacun son roi. Vous recevez les mêmes vagues, mais vos pièces ne tirent que sur <em>vos</em> ennemis. Dépense du mana pour <strong>envoyer des renforts</strong> chez l'adversaire : le dernier roi debout gagne.</li>
+            <li><strong>Invoquer</strong> : sur une case vide de ton côté, une Tour, un Fou, un Cavalier ou un Pion au hasard (3 mana). Chaque pièce tire toute seule <strong>selon sa forme aux échecs</strong>.</li>
+            <li><strong>Fusionner</strong> : deux pièces du même type et du même niveau donnent une pièce au hasard un niveau au-dessus (jusqu'au niveau 4). Parfois… une <strong>Dame</strong>, qui n'apparaît que comme ça.</li>
+            <li><strong>Pouvoirs</strong> (jauge coop, ou tes éliminations en versus) : Météore, Gel, Foudre, Soin, Furie et Arc-en-ciel.</li>
+            <li><strong>Joueur 1</strong> : <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> + <kbd>Espace</kbd> (<kbd>E</kbd> pouvoir, <kbd>1</kbd>…<kbd>5</kbd> renforcer). <strong>Joueur 2</strong> : flèches + <kbd>Entrée</kbd> (<kbd>Maj droite</kbd> pouvoir, <kbd>6</kbd>…<kbd>0</kbd> renforcer). <kbd>V</kbd> lance la vague, <kbd>Échap</kbd> met en pause.</li>
+            <li><strong>Téléphone / tablette</strong> : tout se joue au doigt, en portrait comme en paysage. Touche une case pour agir, une pièce puis une autre pour fusionner, les boutons des panneaux pour le reste.</li>
           </ul>
         </div>
       </div>
-    </div>
-  </main>
+    </main>
 
   <footer class="site-footer">
     <div class="wrap footer-inner">
@@ -115,7 +115,11 @@
   <script src="js/data.js?v=20261103re4"></script>
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/main.js?v=20261106at100"></script>
-  <script src="js/kingdice-core.js?v=20261105kd100"></script>
-  <script src="js/kingdice.js?v=20261105kd100"></script>
+  <script src="js/vendor/supabase-2.45.4.min.js"></script>
+  <script src="js/kingdice-core.js?v=20261106kd200"></script>
+  <script src="js/kingdice-art.js?v=20261106kd200"></script>
+  <script src="js/kingdice-audio.js?v=20261106kd200"></script>
+  <script src="js/kingdice-net.js?v=20261106kd200"></script>
+  <script src="js/kingdice.js?v=20261106kd200"></script>
 </body>
 </html>

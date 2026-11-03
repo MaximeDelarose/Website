@@ -2080,8 +2080,7 @@ button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--de
   .tags-row .chip { flex: none; }
 }
 
-/* =========================================================================
-   Arcane Tactics (arcane.html)
+/* ==================================================================   Arcane Tactics (arcane.html)
    ========================================================================= */
 .at-stage { background: #241a44; height: min(86vh, 820px); min-height: 500px; }
 .at-stage .game-canvas { cursor: default; }
@@ -2360,3 +2359,98 @@ button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--de
   .at-party { gap: 4px; }
   .at-bar.hint span { font-size: .7rem; }
 }
+=======
+/* ---------- King Dice 2 : modes, salon en ligne, versus, mobile ---------- */
+.game-stage .game-hud.kd-hud { inset: 7px 8px auto auto; gap: 6px; }
+.kd-hud .hud-btn { width: 36px; height: 36px; }
+.kd-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 6px; }
+.kd-mode {
+  display: grid; gap: 2px; padding: 12px 10px; text-align: center; cursor: pointer; color: inherit; font: inherit;
+  background: var(--panel-2); border: 3px solid var(--line); border-radius: 16px; box-shadow: 0 4px 0 var(--depth);
+  transition: transform .15s cubic-bezier(.2, 1.6, .4, 1), box-shadow .15s, filter .15s;
+}
+.kd-mode b { font-size: 1.1rem; }
+.kd-mode span { font-size: .8rem; color: var(--ink-soft); }
+.kd-mode:hover { transform: translateY(-3px) scale(1.03); filter: brightness(1.04); }
+.kd-mode:active { transform: translateY(2px) scale(.97); box-shadow: 0 1px 0 var(--depth); }
+.kd-mode:focus-visible { outline: 3px solid #f08a3c; outline-offset: 2px; }
+.kd-m-coop { background: linear-gradient(135deg, #dce9ff, #ffe6d0); }
+.kd-m-vs { background: linear-gradient(135deg, #ffd9d0, #ffeab8); }
+.kd-m-on { background: linear-gradient(135deg, #e0f4ee, #e7e0ff); }
+.kd-h3 { margin: 10px 0 2px; font-size: 1.1rem; text-align: left; }
+.kd-note { margin: 0 0 8px; padding: 8px 12px; border-radius: 12px; background: #ffe3dc; color: #8a2d1a !important; border: 2px solid #e57a6a; font-weight: 700; font-size: .9rem; }
+.kd-kind { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+.kd-k-btn { font: inherit; font-weight: 800; padding: 9px 16px; border-radius: 999px; cursor: pointer; color: var(--ink); background: var(--panel-2); border: 3px solid var(--line); transition: transform .15s cubic-bezier(.2, 1.6, .4, 1), background .15s; }
+.kd-k-btn:hover:not(:disabled) { transform: scale(1.05); }
+.kd-k-btn.is-on { background: #f08a3c; color: #fff; border-color: #7c370c; box-shadow: 0 3px 0 #7c370c; }
+.kd-k-btn:disabled { opacity: .55; cursor: default; }
+.kd-join { display: flex; gap: 8px; justify-content: center; align-items: center; margin: 10px 0 4px; }
+.kd-join input { width: 8em; font: 900 1.4rem/1 Nunito, system-ui, sans-serif; letter-spacing: .25em; text-align: center; text-transform: uppercase; padding: 10px 8px; border: 3px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); }
+.kd-code { font: 900 clamp(2.4rem, 9vw, 3.6rem)/1 Nunito, system-ui, sans-serif; letter-spacing: .2em; margin: 0 0 4px; padding-left: .2em; color: #f08a3c !important; text-shadow: 0 3px 0 #7c370c; animation: kd-card .5s cubic-bezier(.2, 1.6, .4, 1) both; }
+.kd-roster { list-style: none; padding: 0; margin: 8px auto; display: grid; gap: 6px; max-width: 18em; }
+.kd-roster li { padding: 8px 12px; border-radius: 12px; background: var(--panel-2); border: 3px solid var(--line); font-weight: 800; }
+.kd-roster li.kd-me { border-color: #f08a3c; }
+.kd-roster li.kd-wait, .kd-wait { color: var(--ink-soft); font-weight: 700; border-style: dashed; animation: kd-blink 1.4s ease-in-out infinite; }
+@keyframes kd-blink { 50% { opacity: .5; } }
+.kd-vs-res { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+.kd-vs-p { padding: 10px 8px; border-radius: 14px; border: 3px solid var(--line); background: var(--panel-2); display: grid; gap: 2px; box-shadow: inset 0 6px 0 var(--c); padding-top: 14px; }
+.kd-vs-p b { font-size: 1.8rem; color: var(--ink); }
+.kd-vs-p span { font-size: .8rem; color: var(--ink-soft); }
+.kd-vs-p.is-win { border-color: #e0a82a; background: #fff3c9; }
+.kd-powers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin: 6px 0; text-align: left; }
+.kd-powers > div { display: grid; grid-template-columns: 40px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 6px 8px; background: var(--panel-2); border: 3px solid var(--line); border-radius: 12px; }
+.kd-powers img { grid-row: 1 / 3; }
+.kd-powers b { font-size: .92rem; }
+.kd-powers span { font-size: .75rem; color: var(--ink-soft); line-height: 1.25; }
+.kd-pieces { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important; }
+.kd-p span { display: block; }
+.kd-help, .kd-online { width: min(700px, 100%); }
+.kd-card kbd { white-space: nowrap; }
+.kd-card { max-width: 100%; }
+
+/* petits écrans : le jeu prend tout l'écran, les cartes se resserrent */
+@media (max-width: 880px) {
+  .kd-stage { height: calc(100svh - 150px); min-height: 460px; }
+  .kd-stage.is-max { position: fixed; inset: 0; width: 100vw; height: 100dvh; min-height: 0; z-index: 300; }
+  .kd-card { padding: 14px 12px 12px; border-radius: 16px; }
+  .kd-modes { gap: 8px; }
+  .kd-mode { padding: 10px 6px; }
+  .kd-mode b { font-size: 1rem; }
+  .kd-title { font-size: 2.3rem; }
+  .kd-logo img { width: 64px; height: 64px; }
+  .kd-who img { width: 40px; height: 40px; }
+  .kd-sub { font-size: .92rem; }
+  .kd-powers { grid-template-columns: 1fr; }
+  .kd-vs-res { gap: 6px; }
+  .kd-vs-p b { font-size: 1.4rem; }
+  .kd-tip { width: calc(100% - 16px); padding: 8px 10px; }
+  .kd-tip p { font-size: .82rem; }
+}
+.game-stage.is-max .game-overlay { padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+@media (max-height: 520px) and (orientation: landscape) {
+  .kd-stage { height: calc(100svh - 24px); min-height: 300px; }
+  .kd-logo img { width: 46px; height: 46px; }
+  .kd-cast, .kd-sub { display: none; }
+  .kd-modes { grid-template-columns: repeat(4, 1fr); }
+}
+.kd-stage.is-max .game-hud .hud-exit { display: grid; }
+.kd-stage:not(.is-full) .game-hud .hud-exit { display: none; }
+.kd-stage.is-full:has(.game-hud:not([hidden])) .fs-exit { display: none; }
+/* Merger Coop 2.2 : difficulté */
+.mc-label { margin: 8px 0 2px; font-weight: 800; font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft) !important; }
+.mc-diffs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0; }
+.mc-diff {
+  display: grid; gap: 1px; padding: 8px 4px; font: inherit; color: var(--ink); cursor: pointer; text-align: center;
+  background: var(--panel-2); border: 3px solid var(--line); box-shadow: 0 3px 0 var(--depth);
+  transition: transform .15s cubic-bezier(.2, 1.6, .4, 1), background .15s, box-shadow .15s;
+}
+.mc-diff b { font-size: .92rem; white-space: nowrap; }
+.mc-diff span { font-size: .75rem; color: var(--ink-soft); font-weight: 800; }
+.mc-diff:hover { transform: translateY(-2px); }
+.mc-diff:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--depth); }
+.mc-diff.is-on { background: #f6d36b; box-shadow: 0 3px 0 #b8891a, inset 0 0 0 2px #fff3c4; transform: translateY(-1px); }
+.mc-diff.is-on span { color: #5a3a08; }
+.mc-diff[data-diff="hard"].is-on { background: #f2a35e; }
+.mc-diff[data-diff="expert"].is-on { background: #e36b6b; }
+.mc-diff-desc { margin: 4px 0 8px; font-size: .9rem; min-height: 2.6em; }
+@media (max-width: 560px) { .mc-diffs { grid-template-columns: repeat(2, 1fr); } }

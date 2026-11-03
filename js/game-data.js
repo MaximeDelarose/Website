@@ -179,6 +179,39 @@ window.ES_DATA = (function () {
     weaver: { pal: { p: "#3a2a4a", P: "#6a4a8a", w: "#e8e0f0", r: "#d0281a" }, frames: [
       ["..p......p..", "...p....p...", "p..pPPPPp..p", ".ppPrPPrPpp.", "..pPPPPPPp..", "ppPPwwwwPPpp", "..pPPPPPPp..", ".p..pppp..p."],
       [".p........p.", "..p......p..", "...pPPPPp...", "pppPrPPrPppp", "..pPPPPPPp..", ".pPPwwwwPPp.", "p.pPPPPPPp.p", "....pppp...."]] },
+    // ---- compagnons : familiers, tourelles, drones, montures
+    pethog: { pal: { s: "#6b4430", S: "#a06a3e", f: "#f0d2a8", k: "#2b1709", g: "#5ac85a" }, frames: [
+      ["..ssss....", ".sSsSss...", "sSsSsSsff.", "sssssssfkf", "gggssssfff", ".ssssssff.", ".k..k..k.."],
+      ["..ssss....", ".sSsSss...", "sSsSsSsff.", "sssssssfkf", "gggssssfff", ".ssssssff.", "..k..k..k."]] },
+    pethog2: { pal: { s: "#3a2a5a", S: "#8a6ad8", f: "#f0d2a8", k: "#1b1226", g: "#f6d36b" }, frames: [
+      ["..ssss....", ".sSsSss...", "sSsSsSsff.", "sssssssfkf", "gggssssfff", ".ssssssff.", ".k..k..k.."],
+      ["..ssss....", ".sSsSss...", "sSsSsSsff.", "sssssssfkf", "gggssssfff", ".ssssssff.", "..k..k..k."]] },
+    petowl: { flying: true, pal: { b: "#8a7a5a", B: "#c8b48a", w: "#fdf3de", k: "#1b1226", o: "#e8873a" }, frames: [
+      [".k....k.", ".bbbbbb.", "bwkbbkwb", "bbboobbb", "bBbBbBbb", ".bbbbbb.", "..o..o.."],
+      ["bk....kb", "bbbbbbbb", "bwkbbkwb", "bbboobbb", "bBbBbBbb", "..bbbb..", "..o..o.."]] },
+    petowl2: { flying: true, pal: { b: "#4a4a6a", B: "#c8c0e8", w: "#fdf3de", k: "#1b1226", o: "#f6d36b" }, frames: [
+      ["..k......k..", "..bbbbbbbb..", ".bbbbbbbbbb.", "bwwkbbbbkwwb", "bwwwbooBwwwb", "bbbbbbobbbbb", "bBbBbBbBbBbb", ".bBbBbBbBbb.", "..bbbbbbbb..", "...oo..oo..."],
+      ["bk........kb", "bbbbbbbbbbbb", ".bbbbbbbbbb.", "bwwkbbbbkwwb", "bwwwbooBwwwb", "bbbbbbobbbbb", "bBbBbBbBbBbb", ".bBbBbBbBbb.", "...bbbbbb...", "...oo..oo..."]] },
+    turret: { pal: { a: "#8a8278", A: "#c8c0b0", g: "#2b1709", b: "#8a5a3b", B: "#c08a52", k: "#2b1709" }, frames: [
+      ["...kkkk...", "..kaaaakkk", "..kaAAaagk", "..kaaaakkk", "...kkkk...", ".kbbbbbbk.", ".kbBbbBbk.", "kbbbbbbbbk", "kkkkkkkkkk"]] },
+    turret2: { pal: { a: "#c8553d", A: "#ff9a6a", g: "#2b1709", b: "#5a5a6a", B: "#9a9aaa", k: "#1a120c" }, frames: [
+      ["..kkkkkk..", ".kaaaaaakk", ".kaAAAaagk", ".kaaaaaakk", "..kkkkkk..", ".kbbbbbbk.", "kbBbbbbBbk", "kbbbbbbbbk", "kkkkkkkkkk"]] },
+    drone: { flying: true, pal: { k: "#2b1709", c: "#3a6aa8", C: "#6ad8ff", y: "#f6e06b", w: "#d8e8ff" }, frames: [
+      ["ww....ww", ".wkkkkw.", ".kcCCck.", "..kyyk..", "...yy..."],
+      ["........", "wwkkkkww", ".kcCCck.", "..kyyk..", "...yy..."]] },
+    drone2: { flying: true, pal: { k: "#1b1226", c: "#8a2ab0", C: "#ff7af0", y: "#ffd84a", w: "#ffd8f8" }, frames: [
+      ["ww....ww", ".wkkkkw.", ".kcCCck.", "..kyyk..", "...yy..."],
+      ["........", "wwkkkkww", ".kcCCck.", "..kyyk..", "...yy..."]] },
+    spark: { pal: { y: "#fff8c0", c: "#6ad8ff" }, frames: [[".c.", "cyc", ".c."]] },
+    mount_scarab: { pal: { k: "#1b1226", b: "#3a6a4a", B: "#6ad89a", e: "#f6d36b" }, frames: [
+      ["..kkkkkkkk....", ".kbBBbbBBbk...", "kbBbbbbbbBbkkk", "kbbbbbbbbbbkek", ".kbbbbbbbbkkkk", "..k.k..k.k...."],
+      ["..kkkkkkkk....", ".kbBBbbBBbk...", "kbBbbbbbbBbkkk", "kbbbbbbbbbbkek", ".kbbbbbbbbkkkk", ".k.k..k.k....."]] },
+    mount_hare: { pal: { k: "#2b1709", g: "#c8a878", G: "#e8d4b0", w: "#fdf3de" }, frames: [
+      ["..........kk..", ".........kgk..", "..ggggggggggk.", ".gGGGgggggggwk", "gggggggggggkkk", ".gg......gg..."],
+      ["..........kk..", ".........kgk..", "..ggggggggggk.", ".gGGGgggggggwk", "gggggggggggkkk", "gg........gg.."]] },
+    mount_boar: { pal: { k: "#2b1709", b: "#6b4430", B: "#a06a3e", w: "#fdf3de", p: "#c8553d" }, frames: [
+      ["...kkkkkkkk.....", "..kbbbbbbbbkk...", ".kbBBbbbbbbbbkk.", "kbBBBbbbbbbbbwpk", "kbbbbbbbbbbbbbpk", ".kbbbbbbbbbbbkk.", "..kk.kk..kk.kk.."],
+      ["...kkkkkkkk.....", "..kbbbbbbbbkk...", ".kbBBbbbbbbbbkk.", "kbBBBbbbbbbbbwpk", "kbbbbbbbbbbbbbpk", ".kbbbbbbbbbbbkk.", ".kk.kk....kk.kk."]] },
     luciole: { flying: true, pal: { k: "#2b1709", y: "#f6e06b", Y: "#fff8c0", w: "#d8e8ff" }, frames: [
       [".w....w.", "ww.kk.ww", ".wkkkkw.", "..kyyk..", "..yYYy..", "...yy..."],
       ["........", "...kk...", "wwkkkkww", ".wkyykw.", "..yYYy..", "...yy..."]] },
@@ -324,6 +357,19 @@ window.ES_DATA = (function () {
      Armes. type = comportement dans le moteur. Les tableaux = niveaux 1 à 5.
      ===================================================================== */
   var WEAPONS = {
+    // ---- compagnons
+    familier: { name: "Hérisson fidèle", icon: "pethog", type: "pet", pet: "pethog",
+      desc: ["Un hérisson te suit et fonce mordre les ennemis proches.", "+dégâts.", "+1 hérisson.", "Plus rapide, mord plus souvent.", "+1 hérisson, +dégâts."],
+      n: [1, 1, 2, 2, 3], dmg: [9, 13, 13, 16, 21], rate: [0.6, 0.6, 0.55, 0.42, 0.38], spd: [95, 95, 100, 125, 130], range: 150 },
+    chouette: { name: "Chouette gardienne", icon: "petowl", type: "pet", pet: "petowl", fly: true,
+      desc: ["Une chouette plane au-dessus de toi et pique sur les ennemis.", "+dégâts.", "Pique plus souvent.", "+1 chouette.", "Ses piqûres explosent en petite zone."],
+      n: [1, 1, 1, 2, 2], dmg: [12, 17, 17, 19, 24], rate: [0.9, 0.9, 0.65, 0.65, 0.6], spd: [140, 140, 150, 150, 165], range: 190, splash: [0, 0, 0, 0, 22] },
+    tourelle: { name: "Tourelle à glands", icon: "turret", type: "turret", turret: "turret", sprite: "acorn",
+      desc: ["Pose régulièrement une tourelle qui tire sur les ennemis.", "Tire plus vite.", "+1 tourelle en même temps.", "Dure plus longtemps, +dégâts.", "+1 tourelle, tirs perçants."],
+      n: [1, 1, 2, 2, 3], dmg: [8, 8, 10, 13, 15], rate: [0.6, 0.45, 0.45, 0.4, 0.35], cd: [6, 6, 5.5, 5, 4.5], dur: [9, 9, 10, 13, 14], pierce: [1, 1, 1, 1, 2], range: 160 },
+    drone: { name: "Drone-luciole", icon: "drone", type: "drone", drone: "drone", sprite: "spark",
+      desc: ["Un petit drone vole autour de toi et tire des étincelles.", "+1 drone.", "Tire plus vite.", "+1 drone, +dégâts.", "Les étincelles transpercent."],
+      n: [1, 2, 2, 3, 3], dmg: [6, 6, 6, 8, 9], rate: [0.7, 0.7, 0.5, 0.5, 0.45], pierce: [1, 1, 1, 1, 3], range: 140 },
     gland: { name: "Glands", icon: "acorn", type: "shooter", sprite: "acorn",
       desc: ["Lance un gland sur l'ennemi le plus proche.", "+1 gland à chaque tir.", "+50 % de dégâts.", "+1 gland, transperce un ennemi de plus.", "Tire bien plus vite."],
       count: [1, 2, 2, 3, 3], dmg: [11, 11, 16, 16, 19], pierce: [1, 1, 1, 2, 2], cd: [0.75, 0.75, 0.75, 0.7, 0.5], spd: 150, range: 135 },
@@ -389,6 +435,22 @@ window.ES_DATA = (function () {
      case se libère). Arme + objet : l'arme est remplacée, l'objet reste.
      ===================================================================== */
   var FUSIONS = {
+    // ---- compagnons
+    meute_herissons: { name: "Meute de hérissons", icon: "pethog2", from: ["familier", "dresseur"], type: "pet", pet: "pethog2", roll: 1,
+      desc: ["Une meute de hérissons-boules roule sur tout ce qui bouge.", "+1 hérisson.", "+dégâts.", "Roulés plus larges.", "+1 hérisson, +dégâts."],
+      n: [3, 4, 4, 4, 5], dmg: [18, 18, 24, 26, 32], rate: [0.35, 0.35, 0.32, 0.3, 0.26], spd: [140, 140, 150, 160, 170], range: 190, splash: [14, 14, 16, 20, 22] },
+    grand_duc: { name: "Grand-duc", icon: "petowl2", from: ["chouette", "dresseur"], type: "pet", pet: "petowl2", fly: true,
+      desc: ["Un énorme hibou fond sur les ennemis et fait trembler le sol.", "+dégâts.", "+1 grand-duc.", "Explosions plus larges.", "Plonge sans arrêt."],
+      n: [1, 1, 2, 2, 2], dmg: [40, 52, 52, 58, 70], rate: [0.9, 0.9, 0.85, 0.8, 0.55], spd: [170, 170, 175, 180, 200], range: 220, splash: [30, 30, 32, 40, 42] },
+    fortin: { name: "Fortin à roquettes", icon: "turret2", from: ["tourelle", "mecano"], type: "turret", turret: "turret2", rocket: 1,
+      desc: ["Tes tourelles deviennent des fortins qui tirent des roquettes.", "+1 fortin.", "+dégâts.", "Durent plus longtemps.", "+1 fortin, tirs plus rapides."],
+      n: [2, 3, 3, 3, 4], dmg: [22, 22, 30, 32, 38], rate: [0.8, 0.8, 0.75, 0.7, 0.55], cd: [5, 5, 4.5, 4.5, 4], dur: [12, 12, 13, 17, 18], rad: [22, 22, 24, 26, 30], range: 190 },
+    essaim_drones: { name: "Essaim de drones", icon: "drone2", from: ["drone", "mecano"], type: "drone", drone: "drone2", zap: 1,
+      desc: ["Un essaim de drones lance des arcs électriques qui rebondissent.", "+1 drone.", "+1 rebond.", "+dégâts.", "+1 drone, plus rapides."],
+      n: [3, 4, 4, 4, 5], dmg: [12, 12, 12, 16, 18], rate: [0.6, 0.6, 0.6, 0.55, 0.45], chain: [2, 2, 3, 3, 4], range: 160 },
+    tourelle_vivante: { name: "Hérisson-tourelle", icon: "pethog", from: ["familier", "tourelle"], type: "turret", turret: "pethog", sprite: "needle",
+      desc: ["Des hérissons s'enracinent et crachent leurs piquants partout.", "+1 hérisson-tourelle.", "+dégâts.", "Plus de piquants.", "Durent bien plus longtemps."],
+      n: [2, 3, 3, 3, 3], dmg: [12, 12, 16, 16, 19], rate: [0.5, 0.5, 0.45, 0.4, 0.4], cd: [5, 5, 4.5, 4.5, 4], dur: [10, 10, 11, 12, 18], spray: [4, 4, 5, 7, 7], pierce: [2, 2, 2, 2, 3], range: 150 },
     // ---- exclusives coop / solo
     orage_meute: { name: "Tempête de meute", icon: "lienicon", from: ["lien", "meute"], type: "tether", coop: true, chain: 3,
       desc: ["COOP · Arcs géants entre alliés, qui rebondissent sur 3 ennemis.", "+dégâts.", "Plus long.", "+1 rebond.", "Orage permanent."],
@@ -503,6 +565,8 @@ window.ES_DATA = (function () {
     crocs: { name: "Crocs", sprite: "fang", quest: "q_crits", desc: "+5 % de coups critiques." },
     queuetouffue: { name: "Queue touffue", sprite: "tailpuff", quest: "q_esquive", desc: "4 % de chance d'esquiver un coup." },
     sacglands: { name: "Sac de glands", sprite: "sack", quest: "q_riche", desc: "+10 % de glands d'or." },
+    dresseur: { name: "Dresseur", sprite: "pethog", desc: "+15 % de dégâts des familiers, tourelles et drones." },
+    mecano: { name: "Petit mécano", sprite: "turret", desc: "Tourelles +25 % de durée, drones et tourelles tirent 10 % plus vite." },
     mousse: { name: "Coussin de mousse", sprite: "moss", desc: "Bloque un coup, se recharge plus vite à chaque niveau." },
   };
 
@@ -880,6 +944,13 @@ window.ES_DATA = (function () {
     { id: "glandsjumeaux", r: 0, coop: true, icon: "🤝", name: "Glands jumeaux", desc: "COOP · +10 % de critiques avec un allié à moins de 70 px." },
     { id: "ralliement", r: 1, coop: true, icon: "📯", name: "Cri de ralliement", desc: "COOP · Quand un allié tombe : +40 % de dégâts pendant 6 s ; tu relèves 50 % plus vite." },
     { id: "talisman", r: 2, coop: true, icon: "💞", name: "Talisman d'amitié", desc: "COOP · 10 % de chance par coup de soigner ton allié le plus proche (3 PV)." },
+    { id: "sifflet",   r: 0, icon: "🎶", name: "Sifflet de berger", desc: "Un hérisson vient t'aider (+1 par exemplaire, plus fort à chaque copie)." },
+    { id: "ruche",     r: 1, icon: "🛸", name: "Nid de lucioles", desc: "Un drone-luciole tourne autour de toi (+1 par exemplaire)." },
+    { id: "caisse",    r: 1, icon: "🧰", name: "Caisse à outils", desc: "Pose une tourelle toutes les 12 s (plus souvent avec des copies)." },
+    { id: "oeuf",      r: 2, icon: "🥚", name: "Œuf de chouette", desc: "Une chouette éclot et chasse avec toi (+1 par exemplaire)." },
+    { id: "selle",     r: 1, icon: "🪲", name: "Selle de scarabée", desc: "MONTURE · +20 % de vitesse, tu écrases les ennemis que tu touches." },
+    { id: "lievre",    r: 2, icon: "🐇", name: "Lièvre de course", desc: "MONTURE · +35 % de vitesse et +8 % d'esquive." },
+    { id: "laie",      r: 3, icon: "🐗", name: "Laie de guerre", desc: "MONTURE · +25 % de vitesse, +2 d'armure, charge et renverse tout sur son passage." },
     { id: "carnet", r: 0, solo: true, icon: "📓", name: "Carnet de survie", desc: "SOLO · +0,5 PV/s et +5 % d'XP." },
     { id: "lanterne", r: 1, solo: true, icon: "🏮", name: "Lanterne de l'ermite", desc: "SOLO · -15 % de recharge quand tes PV sont au-dessus de 80 %." },
     { id: "pleinelune", r: 2, solo: true, icon: "🌕", name: "Pleine lune", desc: "SOLO · +25 % de dégâts contre les élites et les boss." },
@@ -924,12 +995,16 @@ window.ES_DATA = (function () {
     { name: "Très facile", color: "#5ac85a" }, { name: "Facile", color: "#9ad04a" }, { name: "Moyen", color: "#e8d040" },
     { name: "Difficile", color: "#f0a030" }, { name: "Très difficile", color: "#f06a30" }, { name: "Épuisant", color: "#e0383a" },
     { name: "Infernal", color: "#c02860" }, { name: "Impossible", color: "#8a2ab0" }, { name: "Je te vois", color: "#5a1a8a" },
-    { name: "HAHAHAHA", color: "#2a0a30" },
+    { name: "J'arrive", color: "#3a1070" }, { name: "Cours", color: "#2a0a50" }, { name: "HAHAHAHA", color: "#2a0a30" },
+    { name: "HAHAHAHAHAHA", color: "#40081a" }, { name: "HAAAAAAAAAAAA", color: "#600010" }, { name: "AAAAAAAAAAAAAAAA", color: "#900010" },
+    { name: "C'est la fin", color: "#100008" },
   ];
   var TIER = {
-    minutes: 2.2,          // minutes par palier (mode Normal)
-    hp: 0.12, dmg: 0.16, spawn: 0.1, elite: 0.006, // bonus par palier
+    minutes: 2.0,          // minutes par palier (mode Normal)
+    hp: 0.14, dmg: 0.22, spawn: 0.1, elite: 0.006, // bonus par palier (continue au-delà du dernier palier)
   };
+  // Rage : passé 10 min sur une même carte, les bêtes s'énervent de plus en plus vite (dégâts et vitesse)
+  var RAGE = { start: 600, dmgK: 0.5, dmgPow: 1.6, spdPerMin: 0.07, spdMax: 2.2, hpPerMin: 0.25 };
   // Sanctuaires : on les active en restant dans leur zone (jauge au sol)
   var SHRINES = [
     { id: "coffre", name: "Coffre scellé",  color: "#f6d36b", time: 1.4, weight: 30, desc: "Paie des glands pour un objet." },
@@ -938,6 +1013,9 @@ window.ES_DATA = (function () {
     { id: "boss",   name: "Autel du boss",  color: "#b07cf0", time: 2.5, weight: 9,  desc: "Invoque un boss tout de suite." },
     { id: "folie",  name: "Totem de folie", color: "#ff40c0", time: 2.0, weight: 9,  desc: "Les prochains boss arrivent en plus d'exemplaires (cumulable)." },
     { id: "soin",   name: "Source claire",  color: "#6ad8ff", time: 1.4, weight: 14, desc: "Soigne toute l'équipe de moitié." },
+    { id: "marchand", name: "Écureuil marchand", color: "#7ad07a", time: 1.2, weight: 14, desc: "Vend un objet peu commun ou mieux contre des glands." },
+    { id: "fortune",  name: "Totem de fortune",  color: "#ffd84a", time: 1.2, weight: 12, desc: "Mise des glands : tout perdre, doubler la mise ou gagner un objet." },
+    { id: "sacrifice",name: "Autel du sacrifice",color: "#e07a3a", time: 2.0, weight: 10, desc: "Sacrifie un de tes objets au hasard contre un objet plus rare." },
     { id: "sacre",  name: "Statue sainte",  color: "#fff3b0", time: 2.5, weight: 6,  desc: "Un objet sacré… si tu n'as fait aucun pacte." },
   ];
 
@@ -994,6 +1072,6 @@ window.ES_DATA = (function () {
     difficile: { name: "Difficile", hp: 1.6, spd: 1.1, spawn: 1.25, gold: 1.6, score: 1.5, unlock: "survie_5" },
   };
 
-  return { DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();

@@ -10,9 +10,17 @@
    des réactions en chaîne. Score commun, pas de chrono : la partie s'arrête
    quand la pile reste au-dessus de la ligne.
 
-   Physique : vitesses + impulsions (rebond, frottement) et corrections de
-   position, 8 sous-pas par image et vitesse plafonnée → un projectile avance
-   d'au plus ~3 unités par sous-pas (rayon 24) : il ne peut rien traverser.
+   Physique : celle de base du Solo — Verlet à pas fixe (1/480 s), gravité 1500,
+   frottement de l'air, corrections de position, petit rebond (BOUNCE) — et une
+   vitesse plafonnée : un tir avance d'au plus ~4 unités par pas (rayon 24), il
+   ne peut rien traverser.
+
+   Visée : on appuie là où on veut envoyer le personnage ; le jeu cherche l'angle
+   et la puissance dont la trajectoire (simulée avec la même physique) passe par
+   ce point ou touche le personnage visé. Les touches règlent toujours à la main.
+
+   Difficulté : 4 niveaux (DIFFS) qui changent le nombre de personnages, la
+   fréquence des pluies, la hauteur de la ligne de danger et le multiplicateur de score.
 
    En ligne (Supabase Realtime, comme Survivor et Dice) : l'hôte (Joueur 1)
    calcule tout et envoie l'état ~10 fois par seconde avec la liste des effets ;
@@ -27,7 +35,7 @@
   var stage = document.querySelector("[data-merger-coop]");
   if (!ART || !stage) return;
 
-  var VERSION = "2.1.0";
+  var VERSION = "2.2.0";
   var TAU = Math.PI * 2;
   var SQ = ART.SQUIRRELS;
   var canvas = stage.querySelector("canvas");
@@ -40,23 +48,37 @@
   var FW = 760, FH = 560;              // terrain (unités)
   var R = 24;                          // rayon d'un personnage
   var BOWL = 900, BX = FW / 2, BY = FH - BOWL;   // fond légèrement arrondi vers le centre
-  var DANGER = 170;                    // ligne de danger (y)
-  var G = 1150;                        // gravité (cartoon)
-  var SUB = 8, ITER = 4;               // sous-pas physiques par image, passes de collision
-  var MAXV = 1350;                     // vitesse max (unités/s) → jamais de traversée
-  var BOUNCE = 0.24, BOUNCE_MIN = 80;  // rebond des personnages posés
-  var BOUNCE_SHOT = 0.5;               // rebond d'un tir juste après son premier contact (plus vivant)
-  var SHOT_FRESH = 0.7;                // … pendant combien de secondes
-  var VMIN = 380, VMAX = 1020;         // vitesse de tir (puissance 0 → 1)
-  var A_MIN = -1.3, A_MAX = 0.85;      // angle de tir (radians, négatif = vers le haut)
+  var G = 1500;                        // gravité de base (comme en Solo)
+  var STEP = 1 / 480;                  // pas de temps fixe de la physique (8 par image à 60 FPS)
+  var ITER = 6;                        // passes de collision par pas
+  var DAMP = Math.pow(0.995, 180 * STEP);       // frottement de l'air de base (0,995 par 1/180 s)
+  var WALLFRIC = Math.pow(0.97, 180 * STEP);    // frottement contre les parois et le fond
+  var MAXV = 1800;                     // vitesse max (unités/s) → jamais de traversée
+  var BOUNCE = 0.12, BOUNCE_MIN = 80;  // rebond de base (comme en Solo), au-dessus d'une petite vitesse d'impact
+  var VMIN = 250, VMAX = 1500;         // vitesse de tir (puissance 0 → 1)
+  var A_MIN = -1.3, A_MAX = 1.2;       // angle de tir (radians, négatif = vers le haut)
   var GROUP = 3;
   var TOUCH = 7;                       // tolérance de contact pour les groupes
   // les 7 personnages du mode coop, choisis pour leurs silhouettes très différentes
   var TYPES = [1, 3, 0, 2, 5, 8, 10];
-  var START_TYPES = 4, UNLOCK_AT = [500, 1400, 3000];   // un nouveau personnage à ces scores
-  var RAIN_EVERY = 4;                  // tous les 4 tirs, des personnages tombent du ciel (pression douce, sans chrono)
-  var RAINBOW_CHANCE = 0.1;            // 10 % de chance que le prochain tir soit la boule multicolore (joker)
-  var GRENADE_CHANCE = 0.5;            // chance qu'une pluie apporte une grenade (max 2 dans le terrain)
+  // niveaux de difficulté
+  //   start    : personnages différents au départ     unlock : scores qui en ajoutent un de plus
+  //   rain     : une pluie tous les N tirs            rainMin/rainMax : nombre de personnages par pluie
+  //   rainbow  : chance que le prochain tir soit la boule multicolore (joker)
+  //   grenade  : chance qu'une pluie apporte une grenade
+  //   danger   : hauteur de la ligne de danger (plus bas = moins de place)
+  //   init     : personnages posés au départ          mult : multiplicateur de score
+  var DIFFS = [
+    { id: "chill",  name: "Chill",     icon: "🌿", mult: 1,   start: 3, unlock: [400, 1000, 2200, 4000], rain: 6, rainMin: 1, rainMax: 3, rainbow: 0.16, grenade: 0.8, danger: 150, init: 8,
+      desc: "Peu de personnages, pluies rares, beaucoup de place. Pour jouer tranquille." },
+    { id: "normal", name: "Normal",    icon: "🍃", mult: 1.5, start: 4, unlock: [500, 1400, 3000],       rain: 4, rainMin: 2, rainMax: 7, rainbow: 0.10, grenade: 0.5, danger: 170, init: 10,
+      desc: "L'équilibre : une pluie tous les 4 tirs." },
+    { id: "hard",   name: "Difficile", icon: "🔥", mult: 2,   start: 5, unlock: [900, 2400],             rain: 3, rainMin: 3, rainMax: 8, rainbow: 0.07, grenade: 0.4, danger: 188, init: 12,
+      desc: "5 personnages d'emblée, pluies plus fréquentes, moins de place." },
+    { id: "expert", name: "Expert",    icon: "💀", mult: 3,   start: 6, unlock: [1500],                  rain: 3, rainMin: 4, rainMax: 9, rainbow: 0.05, grenade: 0.3, danger: 200, init: 14,
+      desc: "6 personnages, grosses pluies, la ligne est basse. Chaque tir compte." },
+  ];
+  function diffById(id) { for (var i = 0; i < DIFFS.length; i++) if (DIFFS[i].id === id) return DIFFS[i]; return DIFFS[1]; }
   var GRENADE_RAD = 2.7;               // rayon d'explosion (en rayons de personnage)
   // pouvoirs offerts par les gros combos (débloqués après N tirs)
   var BONUS = [{ kind: "rainbow", at: 0 }, { kind: "lightning", at: 8 }, { kind: "bomb", at: 14 }];
@@ -71,7 +93,10 @@
   var SET = { music: 0.45, sfx: 0.8, fx: "full", mute: false };
   try { var s0 = JSON.parse(load("merger-coop-settings", "{}")); for (var k0 in s0) if (k0 in SET) SET[k0] = s0[k0]; } catch (e) {}
   function saveSet() { store("merger-coop-settings", JSON.stringify(SET)); }
-  var best = Number(load("merger-coop-best", 0)) || 0;
+  var D = diffById(load("merger-coop-diff", "normal"));
+  var dangerY = D.danger;
+  function bestFor(id) { return Number(load("merger-coop-best-" + id, id === "normal" ? load("merger-coop-best", 0) : 0)) || 0; }
+  var best = bestFor(D.id);
 
   /* ====================== ÉTAT ====================== */
   var state = "menu";                  // menu | aim | flight | pause | over
@@ -79,7 +104,7 @@
   var prevState = "aim";
   var balls = [], parts = [], rings = [], texts = [], bolts = [];
   var players, active = 0, shots = 0, score = 0, shownScore = 0, scoreBump = 0;
-  var chain = 0, chainShow = 0, chainLvlShown = 0, typesN = START_TYPES;
+  var chain = 0, chainShow = 0, chainLvlShown = 0, typesN = D.start, accT = 0, lastAimState = "";
   var flying = null, resolveT = 0, calmT = 0, bombsTicked = false, rained = false, overT = 0, lastShooter = 0;
   var flash = 0, flashCol = "#fff", trauma = 0, hitStop = 0, clock = 0, glow = 0;
   var banner = null, toasts = [], popEvents = [];
@@ -90,36 +115,40 @@
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function fxMul() { return SET.fx === "full" ? 1 : 0.45; }
 
-  function mkPlayer(i) { return { i: i, ang: -0.42, pow: 0.62, cur: null, next: null, rec: 0, recV: 0, load: 1, deny: 0, keys: {} }; }
+  function mkPlayer(i) { return { i: i, ang: -0.42, pow: 0.62, cur: null, next: null, rec: 0, recV: 0, load: 1, deny: 0, keys: {}, target: null }; }
   function isPower(it) { return it && it.kind !== "sq"; }
   function gen() {
     var queued = players.some(function (q) { return isPower(q.cur) || isPower(q.next); });
-    if (shots >= 2 && !queued && Math.random() < RAINBOW_CHANCE) return { kind: "rainbow" };
+    if (shots >= 2 && !queued && Math.random() < D.rainbow) return { kind: "rainbow" };
     return { kind: "sq", type: TYPES[rnd(typesN)] };
   }
 
   function newBall(item, x, y) {
-    return { id: ++ballId, kind: item.kind, type: item.kind === "sq" ? item.type : -1, x: x, y: y, vx: 0, vy: 0, r: R,
-      tx: x, ty: y, proj: false, fresh: 0, age: 0, pop: -1, popLvl: 1, dead: false, touch: false,
+    return { id: ++ballId, kind: item.kind, type: item.kind === "sq" ? item.type : -1, x: x, y: y, px: x, py: y, vx: 0, vy: 0, r: R,
+      tx: x, ty: y, proj: false, age: 0, pop: -1, popLvl: 1, dead: false,
       jw: 0, jv: 0, jang: 0, impCd: 0, blink: Math.random() * 4, flip: Math.random() < 0.5 ? -1 : 1,
       breath: Math.random() * TAU, rate: 1.4 + Math.random() * 0.8, pal: false, owner: -1, scared: 0,
       count: item.kind === "bomb" ? 3 : 0, morph: -1, morphTo: -1, waitT: 0, trail: null, shotNo: 0 };
   }
+  // Verlet : la vitesse d'un personnage, c'est sa position moins sa position au pas précédent
+  function setVel(b, vx, vy) { b.vx = vx; b.vy = vy; b.px = b.x - vx * STEP; b.py = b.y - vy * STEP; }
+  function push(b, dvx, dvy) { b.px -= dvx * STEP; b.py -= dvy * STEP; }
+  function syncVel() { for (var i = 0; i < balls.length; i++) { var b = balls[i]; b.vx = (b.x - b.px) / STEP; b.vy = (b.y - b.py) / STEP; } }
   function byId(id) { for (var i = 0; i < balls.length; i++) if (balls[i].id === id) return balls[i]; return null; }
 
   function reset() {
     balls = []; parts = []; rings = []; texts = []; bolts = []; toasts = []; popEvents = [];
     players = [mkPlayer(0), mkPlayer(1)];
-    active = 0; shots = 0; score = 0; shownScore = 0; chain = 0; chainShow = 0; typesN = START_TYPES;
+    active = 0; shots = 0; score = 0; shownScore = 0; chain = 0; chainShow = 0; typesN = D.start; dangerY = D.danger; best = bestFor(D.id); accT = 0; lastAimState = "";
     flying = null; resolveT = 0; calmT = 0; overT = 0; bombsTicked = false; rained = false; trauma = 0; hitStop = 0; flash = 0; banner = null;
     stats = { maxChain: 0, maxGroup: 0, shots: 0, powers: 0, popped: 0, booms: 0 };
     players.forEach(function (p) { p.cur = gen(); p.next = gen(); });
     // quelques personnages pour commencer, rangés pour qu'aucun groupe de 3 ne se forme tout seul, + une grenade
-    var n = 10;
+    var n = D.init;
     for (var i = 0; i < n; i++) {
       var x = 150 + (FW - 300) * (i / (n - 1)) + (Math.random() - 0.5) * 10;
-      var b = newBall(i === 5 ? { kind: "grenade" } : { kind: "sq", type: TYPES[i % START_TYPES] }, x, -40 - i * 38 - Math.random() * 20);
-      b.vy = 120; b.age = 2;
+      var b = newBall(i === 5 ? { kind: "grenade" } : { kind: "sq", type: TYPES[i % D.start] }, x, -40 - i * 38 - Math.random() * 20);
+      setVel(b, 0, 120); b.age = 2;
       balls.push(b);
     }
   }
@@ -202,18 +231,18 @@
 
   /* ====================== PHYSIQUE ====================== */
   function isStatic(b) { return b.pop >= 0 || b.dead; }
+  var BTHR = BOUNCE_MIN * STEP;       // seuil de rebond, en distance par pas
 
-  function step(dt) {
-    var i, j, k, a, b, n = balls.length;
+  // un pas de physique : Verlet, la même base que le Solo (gravité, frottement de l'air, passes de collision)
+  function step() {
+    var h = STEP, i, j, k, a, b, n = balls.length, vmax = MAXV * h;
     for (i = 0; i < n; i++) {
       a = balls[i];
-      a.touch = false;
       if (isStatic(a)) continue;
-      a.vy += G * dt;
-      a.vx *= 0.9995; a.vy *= 0.9995;
-      var sp = a.vx * a.vx + a.vy * a.vy;
-      if (sp > MAXV * MAXV) { sp = MAXV / Math.sqrt(sp); a.vx *= sp; a.vy *= sp; }
-      a.x += a.vx * dt; a.y += a.vy * dt;
+      var vx = (a.x - a.px) * DAMP, vy = (a.y - a.py) * DAMP, sp = vx * vx + vy * vy;
+      if (sp > vmax * vmax) { sp = vmax / Math.sqrt(sp); vx *= sp; vy *= sp; }
+      a.px = a.x; a.py = a.y;
+      a.x += vx; a.y += vy + G * h * h;
     }
     // balayage : triés par x, on ne teste que les voisins proches
     balls.sort(function (p, q) { return p.x - q.x; });
@@ -230,14 +259,9 @@
     }
     for (i = 0; i < n; i++) {
       a = balls[i];
-      if (isStatic(a)) continue;
-      // au repos et en contact : on calme les micro-tremblements pour une pile stable
-      if (a.touch && !a.proj && a.fresh <= 0 && a.vx * a.vx + a.vy * a.vy < 14 * 14) { a.vx *= 0.86; a.vy *= 0.86; }
-      if (!isFinite(a.x) || !isFinite(a.y) || !isFinite(a.vx) || !isFinite(a.vy)) { a.x = FW / 2; a.y = 60; a.vx = a.vy = 0; }
+      if (!isFinite(a.x) || !isFinite(a.y) || !isFinite(a.px) || !isFinite(a.py)) { a.x = a.px = FW / 2; a.y = a.py = 60; }
     }
   }
-
-  function bounceOf(a, b) { return (a.proj || a.fresh > 0 || (b && (b.proj || b.fresh > 0))) ? BOUNCE_SHOT : BOUNCE; }
 
   function collide(a, b, first) {
     var dx = b.x - a.x, dy = b.y - a.y, rr = a.r + b.r, d2 = dx * dx + dy * dy;
@@ -250,63 +274,60 @@
     if (sa && sb) return;
     var d = Math.sqrt(d2);
     if (d < 0.0001) { dx = 0.01; dy = -1; d = 1; }
-    var nx = dx / d, ny = dy / d, ov = rr - d;
-    var wa = sa ? 0 : (sb ? 1 : 0.5), wb = sb ? 0 : (sa ? 1 : 0.5);
-    a.x -= nx * ov * wa; a.y -= ny * ov * wa;
-    b.x += nx * ov * wb; b.y += ny * ov * wb;
-    a.touch = b.touch = true;
-    var rvx = b.vx - a.vx, rvy = b.vy - a.vy, vn = rvx * nx + rvy * ny;
-    if (vn < 0) {
-      var e = -vn > BOUNCE_MIN ? bounceOf(a, b) : 0;
-      var jn = -(1 + e) * vn;
-      a.vx -= nx * jn * wa; a.vy -= ny * jn * wa;
-      b.vx += nx * jn * wb; b.vy += ny * jn * wb;
-      var tx = -ny, ty = nx, vt = rvx * tx + rvy * ty, jt = vt * 0.1;
-      a.vx += tx * jt * wa; a.vy += ty * jt * wa;
-      b.vx -= tx * jt * wb; b.vy -= ty * jt * wb;
-      if (first && -vn > 90 && (a.impCd <= 0 || b.impCd <= 0) && clock - lastImpactSfx > 0.035) {
+    var nx = dx / d, ny = dy / d;
+    if (first) {
+      // rebond : si les deux se rapprochent assez vite, on renvoie une petite part de la vitesse
+      // (en Verlet, la vitesse c'est x - px : on décale px pour la changer)
+      var vn = ((b.x - b.px) - (a.x - a.px)) * nx + ((b.y - b.py) - (a.y - a.py)) * ny;
+      if (vn < 0 && -vn / STEP > 90 && (a.impCd <= 0 || b.impCd <= 0) && clock - lastImpactSfx > 0.035) {
         lastImpactSfx = clock; a.impCd = b.impCd = 0.08;
-        emit("impact", a.id, b.id, +nx.toFixed(2), +ny.toFixed(2), Math.round(-vn), Math.round(a.x + nx * a.r), Math.round(a.y + ny * a.r));
+        emit("impact", a.id, b.id, +nx.toFixed(2), +ny.toFixed(2), Math.round(-vn / STEP), Math.round(a.x + nx * a.r), Math.round(a.y + ny * a.r));
+      }
+      if (vn < -BTHR) {
+        var imp = -(1 + BOUNCE) * vn * ((sa || sb) ? 1 : 0.5);
+        if (!sa) { a.px += imp * nx; a.py += imp * ny; }
+        if (!sb) { b.px -= imp * nx; b.py -= imp * ny; }
       }
     }
+    var o = (rr - d), wa = sa ? 0 : (sb ? 1 : 0.5), wb = sb ? 0 : (sa ? 1 : 0.5);
+    a.x -= nx * o * wa; a.y -= ny * o * wa;
+    b.x += nx * o * wb; b.y += ny * o * wb;
     if (a.proj) landed(a);
     if (b.proj) landed(b);
   }
 
+  // rebond contre une paroi ; (nx, ny) = normale vers l'extérieur du terrain, (ovx, ovy) = vitesse avant correction
+  function wallBounce(b, nx, ny, first, ovx, ovy) {
+    var vn = ovx * nx + ovy * ny;
+    if (vn > 0) {
+      wallFx(b, nx, ny, vn / STEP, first);
+      var e = vn > BTHR ? 1 + BOUNCE : 1;
+      ovx -= vn * e * nx; ovy -= vn * e * ny; ovx *= WALLFRIC; ovy *= WALLFRIC;
+    }
+    b.px = b.x - ovx; b.py = b.y - ovy;
+    b.hitWall = true;
+  }
+
   function bounds(b, first) {
     if (isStatic(b)) return;
-    var hit = false, e, eb = bounceOf(b, null);
-    if (b.x < b.r) {
-      b.x = b.r;
-      if (b.vx < 0) { wallFx(b, -1, 0, -b.vx, first); e = -b.vx > BOUNCE_MIN ? eb : 0; b.vx = -b.vx * e; b.vy *= 0.985; }
-      hit = true;
-    } else if (b.x > FW - b.r) {
-      b.x = FW - b.r;
-      if (b.vx > 0) { wallFx(b, 1, 0, b.vx, first); e = b.vx > BOUNCE_MIN ? eb : 0; b.vx = -b.vx * e; b.vy *= 0.985; }
-      hit = true;
-    }
-    if (b.y < b.r) { b.y = b.r; if (b.vy < 0) b.vy = -b.vy * eb; }
+    b.hitWall = false;
+    var ovx = b.x - b.px, ovy = b.y - b.py;
+    if (b.x < b.r) { b.x = b.r; wallBounce(b, -1, 0, first, ovx, ovy); }
+    else if (b.x > FW - b.r) { b.x = FW - b.r; wallBounce(b, 1, 0, first, ovx, ovy); }
     if (b.y > BY) {
       var ex = b.x - BX, ey = b.y - BY, ed = Math.sqrt(ex * ex + ey * ey), lim = BOWL - b.r;
       if (ed > lim) {
         var nx = ex / ed, ny = ey / ed;
+        ovx = b.x - b.px; ovy = b.y - b.py;
         b.x = BX + nx * lim; b.y = BY + ny * lim;
-        var vn = b.vx * nx + b.vy * ny;
-        if (vn > 0) {
-          wallFx(b, nx, ny, vn, first);
-          e = vn > BOUNCE_MIN ? eb : 0;
-          b.vx -= (1 + e) * vn * nx; b.vy -= (1 + e) * vn * ny;
-          var tx = -ny, ty = nx, vt = b.vx * tx + b.vy * ty;
-          b.vx -= tx * vt * 0.05; b.vy -= ty * vt * 0.05;
-        }
-        hit = true;
+        wallBounce(b, nx, ny, first, ovx, ovy);
       }
     }
-    // filet de sécurité : jamais hors du terrain
+    // filet de sécurité : jamais hors du terrain (le haut reste ouvert, comme en Solo)
     if (b.x < b.r) b.x = b.r;
     if (b.x > FW - b.r) b.x = FW - b.r;
     if (b.y > FH - b.r) b.y = FH - b.r;
-    if (hit) { b.touch = true; if (b.proj) landed(b); }
+    if (b.hitWall && b.proj) landed(b);
   }
   function wallFx(b, nx, ny, v, first) {
     if (!first || v <= 90 || b.impCd > 0 || clock - lastImpactSfx < 0.035) return;
@@ -317,7 +338,7 @@
   /* premier contact d'un projectile : il rebondit encore un peu, puis redevient un personnage normal */
   function landed(b) {
     if (!b.proj) return;
-    b.proj = false; b.fresh = SHOT_FRESH;
+    b.proj = false;
     if (b.kind === "lightning") zap(b);
     else if (b.kind === "rainbow") b.waitT = 0;
   }
@@ -372,7 +393,7 @@
 
   function startPop(group, kind) {
     var lvl = Math.max(1, chain);
-    group.forEach(function (b) { b.pop = kind === "blast" ? ANTIC * 0.55 : 0; b.popLvl = lvl; b.vx = b.vy = 0; });
+    group.forEach(function (b) { b.pop = kind === "blast" ? ANTIC * 0.55 : 0; b.popLvl = lvl; b.vx = b.vy = 0; b.px = b.x; b.py = b.y; });
     popEvents.push({ balls: group, lvl: lvl, kind: kind || "match", done: false });
   }
 
@@ -409,7 +430,7 @@
       ev.balls.forEach(function (b) { b.dead = true; cx += b.x; cy += b.y; data.push(Math.round(b.x), Math.round(b.y), b.type); });
       cx /= n; cy /= n;
       stats.popped += n;
-      var gain = (ev.kind === "match" ? n * 10 + Math.max(0, n - 3) * 20 : n * 20) * ev.lvl;
+      var gain = Math.round((ev.kind === "match" ? n * 10 + Math.max(0, n - 3) * 20 : n * 20) * ev.lvl * D.mult);
       addScore(gain);
       // les explosions affichent leur total dans « BOUM ! », pas de nombre en double
       emit("pop", Math.round(cx), Math.round(cy), ev.lvl, n, ev.kind === "match" ? gain : 0, ev.kind, data);
@@ -424,7 +445,7 @@
   // grenade posée dans le terrain : un tir dedans la fait exploser et rapporte des points
   function grenadeHit(g, shot) {
     if (g.dead) return;
-    shot.proj = false; shot.fresh = SHOT_FRESH;
+    shot.proj = false;
     stats.booms++;
     explode(g, GRENADE_RAD * R, "grenade");
   }
@@ -437,10 +458,10 @@
     balls.forEach(function (b) {
       if (b === src || near.indexOf(b) >= 0 || isStatic(b)) return;
       var dx = b.x - src.x, dy = b.y - src.y, d = Math.hypot(dx, dy) || 1;
-      if (d < rad * 2.2) { var f = (1 - d / (rad * 2.2)) * 520; b.vx += dx / d * f; b.vy += dy / d * f - 60; }
+      if (d < rad * 2.2) { var f = (1 - d / (rad * 2.2)) * 520; push(b, dx / d * f, dy / d * f - 60); }
     });
-    var gain = (50 + victims.length * 20) * Math.max(1, chain);
-    addScore(50 * Math.max(1, chain));     // la prime de la grenade ; les personnages emportés comptent à leur POP
+    var gain = Math.round((50 + victims.length * 20) * Math.max(1, chain) * D.mult);
+    addScore(Math.round(50 * Math.max(1, chain) * D.mult));     // la prime de la grenade ; les personnages emportés comptent à leur POP
     if (victims.length) startPop(victims, "blast");
     emit("boom", Math.round(src.x), Math.round(src.y), rad, kind, kind === "grenade" ? gain : 0);
     // une grenade prise dans l'explosion saute à son tour
@@ -457,7 +478,7 @@
     victims = victims.filter(function (b) { return !b.dead; });
     if (victims.length) startPop(victims, "blast");
     var floorY = BY + Math.sqrt(Math.max(0, BOWL * BOWL - (x - BX) * (x - BX)));
-    emit("zap", Math.round(x), Math.round(floorY), victims.length * 20);
+    emit("zap", Math.round(x), Math.round(floorY), Math.round(victims.length * 20 * D.mult));
   }
 
   // la boule multicolore (joker) prend la couleur qui fait le plus gros groupe autour d'elle
@@ -503,6 +524,81 @@
   }
   function shotSpeed(p) { return VMIN + (VMAX - VMIN) * p.pow; }
 
+  /* ---------- viser là où on appuie ----------
+     simulate() rejoue un tir avec EXACTEMENT la physique du jeu (même pas, même gravité,
+     même frottement). solveAim() essaie des angles du plus tendu au plus lobé ; pour chacun
+     il cherche (dichotomie) la puissance qui fait passer le tir par le point visé, puis
+     vérifie avec les vrais personnages sur le chemin qu'il y arrive bien. */
+  function simFree(p, ang, pow, tx) {            // hauteur du tir quand il passe à l'abscisse tx, sans obstacle
+    var L = LAUNCH[p.i], dir = L.dir, c = Math.cos(ang), sn = Math.sin(ang), v = (VMIN + (VMAX - VMIN) * pow) * STEP;
+    var x = L.x + c * dir * 34, y = L.y + sn * 34, px = x - c * dir * v, py = y - sn * v, g = G * STEP * STEP;
+    if ((tx - x) * dir < 4) return 1e9;
+    for (var i = 0; i < 2600; i++) {
+      var nx = x + (x - px) * DAMP, ny = y + (y - py) * DAMP + g;
+      if ((nx - tx) * dir >= 0) return y + (ny - y) * ((tx - x) / (nx - x));
+      px = x; py = y; x = nx; y = ny;
+      if (y > FH + 300) return 1e9;
+    }
+    return 1e9;
+  }
+  function simulate(p, ang, pow) {                // le vrai tir, jusqu'au premier contact
+    var L = LAUNCH[p.i], dir = L.dir, c = Math.cos(ang), sn = Math.sin(ang), v = (VMIN + (VMAX - VMIN) * pow) * STEP;
+    var x = L.x + c * dir * 34, y = L.y + sn * 34, px = x - c * dir * v, py = y - sn * v, g = G * STEP * STEP;
+    var pts = [], hit = null, cand = balls.filter(function (b) { return b.pop < 0 && !b.dead && !b.proj; }), lim2 = (BOWL - R) * (BOWL - R);
+    for (var i = 0; i < 2600; i++) {
+      var nx = x + (x - px) * DAMP, ny = y + (y - py) * DAMP + g;
+      px = x; py = y; x = nx; y = ny;
+      if (i % 4 === 0) pts.push(x, y);
+      if (x < R || x > FW - R) { hit = { x: clamp(x, R, FW - R), y: y }; break; }
+      if (y > BY) { var ex = x - BX, ey = y - BY; if (ex * ex + ey * ey > lim2) { hit = { x: x, y: y }; break; } }
+      if (y > FH + 300) break;
+      for (var j = 0; j < cand.length; j++) { var b = cand[j], dx = b.x - x, dy = b.y - y, lm = b.r + R; if (dx * dx + dy * dy < lm * lm) { hit = { x: x, y: y, ball: b }; break; } }
+      if (hit) break;
+    }
+    return { pts: pts, hit: hit };
+  }
+  function predict(p) { return simulate(p, p.ang, p.pow); }
+
+  // à quel point ce tir atteint-il (tx, ty) ? 0 = en plein dedans
+  function aimScore(sim, tx, ty) {
+    if (sim.hit && sim.hit.ball && Math.hypot(sim.hit.ball.x - tx, sim.hit.ball.y - ty) < R * 1.15) return 0;   // on a visé ce personnage-là
+    var best = 1e9, i, d;
+    for (i = 0; i < sim.pts.length; i += 2) { d = Math.hypot(sim.pts[i] - tx, sim.pts[i + 1] - ty); if (d < best) best = d; }
+    if (sim.hit) { d = Math.hypot(sim.hit.x - tx, sim.hit.y - ty); if (d < best) best = d; }
+    return best;
+  }
+  function powerFor(p, ang, tx, ty) {
+    var lo = 0, hi = 1;
+    if (!(simFree(p, ang, 0, tx) >= ty && simFree(p, ang, 1, tx) <= ty)) return -1;
+    for (var k = 0; k < 14; k++) { var mid = (lo + hi) / 2; if (simFree(p, ang, mid, tx) > ty) lo = mid; else hi = mid; }
+    return (lo + hi) / 2;
+  }
+  function solveAim(p, tx, ty) {
+    var angles = [0], m, a, best = null, sc, sim, pw;
+    for (m = 1; m * 0.035 <= 1.31; m++) { angles.push(m * 0.035, -m * 0.035); }
+    angles = angles.filter(function (q) { return q >= A_MIN && q <= A_MAX; });
+    for (var i = 0; i < angles.length; i++) {
+      a = angles[i];
+      pw = powerFor(p, a, tx, ty);
+      if (pw < 0) continue;
+      sim = simulate(p, a, pw); sc = aimScore(sim, tx, ty);
+      if (!best || sc < best.score - 0.5) best = { ang: a, pow: pw, score: sc };
+      if (sc <= R * 0.8) return { ang: a, pow: pw, score: sc };      // le plus tendu qui arrive jusque-là
+    }
+    if (best) return best;
+    // hors de portée : on tire le plus fort possible vers le point, au meilleur angle
+    for (var j = 0; j < angles.length; j++) {
+      a = angles[j]; sim = simulate(p, a, 1); sc = aimScore(sim, tx, ty);
+      if (!best || sc < best.score) best = { ang: a, pow: 1, score: sc };
+    }
+    return best || { ang: p.ang, pow: p.pow, score: 1e9 };
+  }
+  function aimAt(p, x, y) {
+    var r = solveAim(p, x, y);
+    p.ang = clamp(r.ang, A_MIN, A_MAX); p.pow = clamp(r.pow, 0, 1); p.target = { x: x, y: y };
+    return r.score;
+  }
+
   // un joueur d'ici essaie de tirer (clavier, souris)
   function tryFire(p) {
     if (state !== "aim") return;
@@ -514,10 +610,10 @@
     if (state !== "aim" || p.i !== active) return;
     var m = muzzle(p), v = shotSpeed(p), it = p.cur;
     var b = newBall(it, m.x, m.y);
-    b.vx = m.vx * v; b.vy = m.vy * v; b.proj = true; b.owner = p.i; b.flip = LAUNCH[p.i].dir; b.shotNo = shots + 1; b.trail = [];
+    setVel(b, m.vx * v, m.vy * v); b.proj = true; b.owner = p.i; b.flip = LAUNCH[p.i].dir; b.shotNo = shots + 1; b.trail = [];
     balls.push(b);
     flying = b; lastShooter = p.i;
-    p.cur = p.next; p.next = gen();
+    p.cur = p.next; p.next = gen(); p.target = null;
     shots++; stats.shots++;
     state = "flight"; resolveT = 0; calmT = 0; chain = 0; bombsTicked = false; rained = false;
     emit("launch", p.i, Math.round(m.x), Math.round(m.y), +m.vx.toFixed(2), +m.vy.toFixed(2), +p.pow.toFixed(2));
@@ -549,15 +645,15 @@
       if (tickBombs()) { calmT = 0; resolveT = Math.min(resolveT, 5); return; }
     }
     // pluie d'écureuils (parfois avec une grenade)
-    if (!rained && shots > 0 && shots % RAIN_EVERY === 0) {
+    if (!rained && shots > 0 && shots % D.rain === 0) {
       rained = true;
-      var n = Math.min(7, 2 + Math.floor(shots / 16));
+      var n = clamp(D.rainMin + Math.floor(shots / 16), D.rainMin, D.rainMax);
       var grenades = balls.filter(function (b) { return b.kind === "grenade"; }).length;
-      var gi = grenades < 2 && Math.random() < GRENADE_CHANCE ? rnd(n) : -1;
+      var gi = grenades < 2 && Math.random() < D.grenade ? rnd(n) : -1;
       for (var i = 0; i < n; i++) {
         var x = 110 + Math.random() * (FW - 220);
         var b = newBall(i === gi ? { kind: "grenade" } : { kind: "sq", type: TYPES[rnd(typesN)] }, x, -30 - i * 50);
-        b.vy = 60; b.age = 0.5;
+        setVel(b, 0, 60); b.age = 0.5;
         balls.push(b);
       }
       emit("banner", gi >= 0 ? "Pluie d'écureuils… et une grenade !" : "Pluie d'écureuils !", -1, null);
@@ -567,7 +663,7 @@
     }
     flying = null;
     // nouveau personnage débloqué ?
-    var want = Math.min(TYPES.length, START_TYPES + UNLOCK_AT.filter(function (s) { return score >= s; }).length);
+    var want = Math.min(TYPES.length, D.start + D.unlock.filter(function (s) { return score >= s; }).length);
     if (want > typesN) {
       typesN = want;
       var t = TYPES[typesN - 1];
@@ -583,7 +679,7 @@
 
   /* ====================== FIN DE PARTIE ====================== */
   function checkDanger(dt) {
-    var danger = balls.some(function (b) { return !b.proj && b.pop < 0 && b.age > 1 && b.y - b.r < DANGER && b.vx * b.vx + b.vy * b.vy < 60 * 60; });
+    var danger = balls.some(function (b) { return !b.proj && b.pop < 0 && b.age > 1 && b.y - b.r < dangerY && b.vx * b.vx + b.vy * b.vy < 60 * 60; });
     overT = danger ? overT + dt : Math.max(0, overT - dt * 2);
     if (overT > 2.6) gameOver();
   }
@@ -751,30 +847,15 @@
     var pulse = overT > 0 ? 0.5 + 0.5 * Math.sin(now / 90) : 0;
     ctx.strokeStyle = overT > 0 ? "rgba(255," + Math.round(90 + 100 * pulse) + ",90,1)" : "rgba(255,170,120,.35)";
     ctx.lineWidth = 3; ctx.setLineDash([14, 12]);
-    ctx.beginPath(); ctx.moveTo(90, DANGER); ctx.lineTo(FW - 90, DANGER); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(90, dangerY); ctx.lineTo(FW - 90, dangerY); ctx.stroke();
     ctx.setLineDash([]);
-  }
-
-  // trajectoire prévue : on simule le même vol jusqu'au premier contact
-  function predict(p) {
-    var m = muzzle(p), v = shotSpeed(p), x = m.x, y = m.y, vx = m.vx * v, vy = m.vy * v, pts = [], dt = 1 / 120, hit = null;
-    var cand = balls.filter(function (b) { return b.pop < 0 && !b.proj; });
-    for (var i = 0; i < 300; i++) {
-      vy += G * dt; x += vx * dt; y += vy * dt;
-      if (i % 3 === 0) pts.push(x, y);
-      if (x < R || x > FW - R || y < R) { hit = { x: clamp(x, R, FW - R), y: Math.max(R, y) }; break; }
-      if (y > BY) { var ex = x - BX, ey = y - BY; if (ex * ex + ey * ey > (BOWL - R) * (BOWL - R)) { hit = { x: x, y: y }; break; } }
-      for (var j = 0; j < cand.length; j++) { var b = cand[j], dx = b.x - x, dy = b.y - y, lim = b.r + R; if (dx * dx + dy * dy < lim * lim) { hit = { x: x, y: y, ball: b }; break; } }
-      if (hit) break;
-    }
-    return { pts: pts, hit: hit };
   }
 
   function drawPreview(p) {
     var me = p.i === active && state === "aim";
     var pr = predict(p), col = PCOL[p.i];
     var alpha = me ? 1 : 0.35;
-    for (var i = 0; i < pr.pts.length; i += 2) {
+    for (var i = 0; i < pr.pts.length; i += 6) {
       var k = i / pr.pts.length;
       ctx.globalAlpha = alpha * (1 - k * 0.6);
       ctx.fillStyle = col.light;
@@ -786,6 +867,20 @@
       ctx.beginPath(); ctx.arc(pr.hit.x, pr.hit.y, R, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
       if (onGrenade && me) pr.hit.ball.scared = 0.4;   // la grenade voit qu'on la vise
     }
+    ctx.globalAlpha = 1;
+  }
+
+  // la croix : l'endroit où on a appuyé (dessinée par-dessus les personnages)
+  function drawTarget(p) {
+    var me = p.i === active && state === "aim", col = PCOL[p.i];
+    if (!p.target || !(me || p.i === pointerPlayer()) || (state !== "aim" && state !== "flight")) return;
+    var tp = 0.5 + 0.5 * Math.sin(clock * 7), alpha = me ? 1 : 0.5, t = p.target;
+    ctx.globalAlpha = alpha; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(20,30,30,.55)";
+    ctx.beginPath(); ctx.arc(t.x, t.y, 12 + 3 * tp, 0, TAU); ctx.stroke();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = col.light;
+    ctx.beginPath(); ctx.arc(t.x, t.y, 12 + 3 * tp, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(t.x - 19, t.y); ctx.lineTo(t.x - 7, t.y); ctx.moveTo(t.x + 7, t.y); ctx.lineTo(t.x + 19, t.y);
+    ctx.moveTo(t.x, t.y - 19); ctx.lineTo(t.x, t.y - 7); ctx.moveTo(t.x, t.y + 7); ctx.lineTo(t.x, t.y + 19); ctx.stroke();
     ctx.globalAlpha = 1;
   }
 
@@ -882,7 +977,7 @@
       mood = "pop";
       if (b.pop < ANTIC) { var q = b.pop / ANTIC; k *= 1 + 0.18 * q; ox = Math.sin(b.pop * 95) * 1.6 * q; oy = Math.cos(b.pop * 80) * 1.2 * q; white = 0.45 * q; }
       else { var c = Math.min(1, (b.pop - ANTIC) / (POP_T - ANTIC)); def = { ang: 0, sx: 1.18 + 0.3 * c, sy: 1.18 - 0.55 * c }; white = 0.55 + 0.4 * c; }
-    } else if (b.y - b.r < DANGER + 26 && b.age > 1 && !b.proj) mood = "worried";
+    } else if (b.y - b.r < dangerY + 26 && b.age > 1 && !b.proj) mood = "worried";
     else if (b.pal) mood = "happy";
     if (b.kind === "sq") {
       var tgt = flying && !flying.dead ? flying : { x: LAUNCH[active].x, y: LAUNCH[active].y };
@@ -964,10 +1059,10 @@
     ctx.restore();
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.font = "700 12px Nunito, sans-serif"; ctx.fillStyle = "rgba(230,245,225,.65)";
-    ctx.fillText("meilleur : " + Math.max(best, score).toLocaleString("fr-FR"), FW / 2, 64);
+    ctx.fillText(D.icon + " " + D.name + " ×" + String(D.mult).replace(".", ",") + " · meilleur : " + Math.max(best, score).toLocaleString("fr-FR"), FW / 2, 64);
     for (var i = 0; i < typesN; i++) art.blit(ctx, FW / 2 + (i - (typesN - 1) / 2) * 24, 88, TYPES[i], 9, S * dpr, {});
     // prochaine pluie
-    var left = RAIN_EVERY - (shots % RAIN_EVERY);
+    var left = D.rain - (shots % D.rain);
     ctx.font = "700 11px Nunito, sans-serif"; ctx.fillStyle = "rgba(230,245,225,.55)";
     ctx.fillText(left === 1 ? "pluie au prochain tir" : "pluie dans " + left + " tirs", FW / 2, 108);
     if (chainShow > 0 && chainLvlShown >= 2) {
@@ -1014,6 +1109,7 @@
     if (state === "aim" || state === "flight") players.forEach(drawPreview);
     balls.forEach(drawTrail);
     balls.forEach(drawBall);
+    players.forEach(drawTarget);
     players.forEach(drawLauncher);
     drawEffects();
     drawHud();
@@ -1032,12 +1128,15 @@
     if (isGuest()) guestUpdate(dt);
     else if (hitStop > 0) hitStop -= dt;
     else if (running) {
-      var h = dt / SUB;
-      for (var i = 0; i < SUB; i++) step(h);
+      accT += dt;
+      var guard = 0;
+      while (accT >= STEP && guard++ < 40) { step(); accT -= STEP; }
+      if (accT > STEP) accT = 0;
+      syncVel();
       balls.forEach(function (b) {
-        b.age += dt; if (b.impCd > 0) b.impCd -= dt; if (b.fresh > 0) b.fresh -= dt;
+        b.age += dt; if (b.impCd > 0) b.impCd -= dt;
         rainbowCheck(b, dt);
-        if (b.trail) { if (b.proj || b.fresh > 0.4) { b.trail.push([b.x, b.y]); if (b.trail.length > 9) b.trail.shift(); } else if (b.trail.length) b.trail.shift(); }
+        if (b.trail) { if (b.proj) { b.trail.push([b.x, b.y]); if (b.trail.length > 9) b.trail.shift(); } else if (b.trail.length) b.trail.shift(); }
       });
       updatePops(dt);
       if (state !== "menu") checkCombos(); else findGroups();
@@ -1046,6 +1145,7 @@
     }
     if ((state === "aim" || state === "flight") && !overlayOpen) players.forEach(function (p) { keyAim(p, dt); });
     if (NET.started) netTick(dt);
+    reaim();
     players.forEach(function (p) {
       p.recV += (-220 * p.rec - 13 * p.recV) * dt; p.rec += p.recV * dt;
       if (p.load < 1) p.load = Math.min(1, p.load + dt * 3.5);
@@ -1113,7 +1213,7 @@
     var t = keyTarget(map);
     if (t.act === "fire") { if (!e.repeat) tryFire(t.p); }
     else if (t.act === "swap") { if (!e.repeat) trySwap(t.p); }
-    else t.p.keys[t.act] = true;
+    else { t.p.keys[t.act] = true; t.p.target = null; }
   });
   document.addEventListener("keyup", function (e) {
     var map = KEYMAP[e.code];
@@ -1123,10 +1223,12 @@
   });
   window.addEventListener("blur", function () { if (players) players.forEach(function (p) { p.keys = {}; }); });
 
-  // souris / doigt : le joueur actif (en ligne : moi) tire comme à la fronde
+  // souris / doigt : on vise là où on appuie. Souris : la visée suit le curseur, un clic tire.
+  // Doigt : on appuie (la visée se place), on glisse pour ajuster, on relâche pour tirer.
   function toField(e) { var rc = canvas.getBoundingClientRect(); return { x: (e.clientX - rc.left - OX) / S, y: (e.clientY - rc.top - OY) / S }; }
-  var drag = null;
-  function pointerPlayer() { return NET.started ? myIndex() : active; }
+  var drag = null, hoverT = 0;
+  // en ligne : mon lanceur ; sur ce PC : celui qui tire (ou, pendant un tir, celui qui tirera ensuite)
+  function pointerPlayer() { return NET.started ? myIndex() : (state === "flight" ? 1 - active : active); }
   canvas.addEventListener("pointerdown", function (e) {
     audio(); startMusic();
     if (state !== "aim" && state !== "flight") return;
@@ -1136,23 +1238,31 @@
       var p = players[i], L = LAUNCH[i];
       if ((p.nextX && Math.hypot(f.x - p.nextX, f.y - p.nextY) < 22) || Math.hypot(f.x - L.x, f.y - L.y) < 30) { trySwap(p); return; }
     }
-    if (state !== "aim") return;
-    drag = { x: f.x, y: f.y, id: e.pointerId, moved: false };
+    var pi = pointerPlayer();
+    aimAt(players[pi], f.x, f.y);
+    drag = { id: e.pointerId, pi: pi };
     try { canvas.setPointerCapture(e.pointerId); } catch (er) {}
   });
   canvas.addEventListener("pointermove", function (e) {
-    if (!drag || drag.id !== e.pointerId || state !== "aim") return;
-    var pi = pointerPlayer(), f = toField(e), p = players[pi], dir = LAUNCH[pi].dir;
-    var dx = drag.x - f.x, dy = drag.y - f.y, d = Math.hypot(dx, dy);
-    if (d > 10) { drag.moved = true; p.ang = clamp(Math.atan2(dy, dx * dir), A_MIN, A_MAX); p.pow = clamp((d - 10) / 190, 0, 1); }
+    if (state !== "aim" && state !== "flight") return;
+    var now = performance.now();
+    if (drag && drag.id === e.pointerId) { if (now - hoverT > 30) { hoverT = now; var f = toField(e); aimAt(players[drag.pi], f.x, f.y); } return; }
+    if (e.pointerType === "mouse" && !overlayOpen && now - hoverT > 40) { hoverT = now; var g = toField(e); aimAt(players[pointerPlayer()], g.x, g.y); }
   });
   function endDrag(e) {
     if (!drag || drag.id !== e.pointerId) return;
-    var ok = drag.moved; drag = null;
-    if (ok && state === "aim") tryFire(players[pointerPlayer()]);
+    var pi = drag.pi, f = toField(e);
+    drag = null;
+    aimAt(players[pi], f.x, f.y);
+    if (state === "aim") tryFire(players[pi]);
   }
   canvas.addEventListener("pointerup", endDrag);
   canvas.addEventListener("pointercancel", function () { drag = null; });
+  // quand c'est de nouveau à nous de tirer, on re-vise le point choisi (la pile a bougé entre-temps)
+  function reaim() {
+    if (state === "aim" && lastAimState !== "aim") players.forEach(function (p) { if (p.target && !drag) aimAt(p, p.target.x, p.target.y); });
+    lastAimState = state;
+  }
 
   /* ====================== EN LIGNE ====================== */
   var CODE_CH = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -1193,7 +1303,13 @@
     if (NET.ch) { try { NET.ch.untrack(); } catch (e) {} try { NET.client.removeChannel(NET.ch); } catch (e) {} }
     NET.ch = null; NET.on = false; NET.role = null; NET.started = false; NET.roster = []; NET.code = null;
   }
-  function trackMe() { if (NET.ch) NET.ch.track({ id: NET.id, name: myName || "Écureuil", host: NET.role === "host", ingame: NET.started, ts: NET.ts, v: VERSION }); }
+  function trackMe() { if (NET.ch) NET.ch.track({ id: NET.id, name: myName || "Écureuil", host: NET.role === "host", ingame: NET.started, ts: NET.ts, v: VERSION, d: D.id }); }
+  function setDiff(id, quiet) {
+    if (NET.on && NET.role === "guest" && !quiet) return;       // c'est l'hôte qui choisit
+    D = diffById(id);
+    if (!quiet) store("merger-coop-diff", D.id);
+    if (!quiet) { reset(); if (NET.on) trackMe(); if (state === "menu") { if (screen === "online") showOnline(); else menu(); } }
+  }
   function onPresence() {
     if (!NET.ch) return;
     var st = NET.ch.presenceState(), list = [];
@@ -1214,13 +1330,14 @@
     if (NET.role !== "host" || NET.roster.length < 2) return;
     var other = NET.roster.filter(function (x) { return x.id !== NET.id; })[0];
     if (!other) return;
-    var info = { names: [myName || "Écureuil", other.name || "Écureuil"], ids: [NET.id, other.id], v: VERSION };
+    var info = { names: [myName || "Écureuil", other.name || "Écureuil"], ids: [NET.id, other.id], v: VERSION, d: D.id };
     netSend("start", info);
     startOnline(info);
   }
   function startOnline(info) {
     NET.started = true; NET.out = []; NET.acc = 0;
     names = info.names.slice(0, 2);
+    if (info.d) setDiff(info.d, true);
     NET.otherId = info.ids[NET.role === "host" ? 1 : 0];
     trackMe();
     start(true);
@@ -1336,12 +1453,20 @@
       "</div>";
   }
 
+  function diffHtml() {
+    var h = '<div class="mc-diffs" role="radiogroup" aria-label="Difficulté">';
+    DIFFS.forEach(function (d) {
+      h += '<button type="button" class="mc-diff' + (d.id === D.id ? " is-on" : "") + '" role="radio" aria-checked="' + (d.id === D.id) + '" data-diff="' + d.id + '"><b>' + d.icon + " " + d.name + "</b><span>×" + String(d.mult).replace(".", ",") + "</span></button>";
+    });
+    return h + '</div><p class="mc-diff-desc">' + esc(D.desc) + "</p>";
+  }
   function menu() {
     state = "menu"; screen = "menu"; hud.hidden = true; overlayOpen = false;
     var who = TYPES.map(function (t) { return '<span class="mc-who" title="' + esc(SQ[t].name) + '">' + icon(t, 44) + "</span>"; }).join("");
     show('<h2 class="mc-title">Merger <span>Coop</span></h2>' +
       '<p class="mc-sub">Un puzzle tout doux à deux. Visez ensemble, empilez, faites des groupes de <strong>3 identiques</strong> et lancez des réactions en chaîne. Pas de chrono.</p>' +
       '<div class="mc-cast">' + who + "</div>" +
+      '<p class="mc-label">Difficulté</p>' + diffHtml() +
       '<div class="mc-modes">' +
       '<button class="mc-mode" type="button" data-act="start"><b>🎮 Sur ce PC</b><span>À deux sur le même clavier</span></button>' +
       '<button class="mc-mode mc-mode-net" type="button" data-act="online"><b>🌐 En ligne</b><span>Chacun chez soi, avec un code</span></button>' +
@@ -1354,9 +1479,9 @@
       '<details class="mc-more"><summary>Commandes et réglages</summary>' +
       '<div class="mc-players">' +
       '<div class="mc-p mc-p1"><strong>Joueur 1</strong> · à gauche<span>' + kbd("Z") + kbd("S") + " viser · " + kbd("Q") + kbd("D") + " puissance</span><span>" + kbd("Espace") + " tirer · " + kbd("E") + " échanger</span><small>(QWERTY : W A S D) · en ligne : toutes les touches</small></div>" +
-      '<div class="mc-p mc-p2"><strong>Joueur 2</strong> · à droite<span>' + kbd("↑") + kbd("↓") + " viser · " + kbd("←") + kbd("→") + " puissance</span><span>" + kbd("Entrée") + " tirer · " + kbd("Maj droite") + " échanger</span><small>Souris ou doigt : tirer en arrière comme une fronde</small></div>" +
+      '<div class="mc-p mc-p2"><strong>Joueur 2</strong> · à droite<span>' + kbd("↑") + kbd("↓") + " viser · " + kbd("←") + kbd("→") + " puissance</span><span>" + kbd("Entrée") + " tirer · " + kbd("Maj droite") + " échanger</span><small>Souris ou doigt : appuie là où tu veux viser, relâche pour tirer</small></div>" +
       "</div>" + settingsHtml() + "</details>" +
-      '<p class="game-small">Meilleur score d\'équipe : <strong>' + best.toLocaleString("fr-FR") + "</strong> · <span class=\"game-version\">Merger Coop v" + VERSION + "</span></p>", "mc-menu");
+      '<p class="game-small">Meilleur score d\'équipe (' + D.name + ') : <strong>' + best.toLocaleString("fr-FR") + "</strong> · <span class=\"game-version\">Merger Coop v" + VERSION + "</span></p>", "mc-menu");
   }
 
   function showOnline() {
@@ -1372,6 +1497,11 @@
     } else {
       var link = location.origin + location.pathname + "#coop=" + NET.code;
       html += '<p class="game-small">Code du salon</p><p class="mc-code">' + esc(NET.code) + "</p>";
+      if (NET.role === "host") html += diffHtml();
+      else {
+        var hostRow = NET.roster.filter(function (x) { return x.host; })[0], hd = diffById(hostRow && hostRow.d);
+        html += '<p class="mc-diff-desc">Difficulté choisie par l\'hôte : <b>' + hd.icon + " " + hd.name + "</b> (score ×" + String(hd.mult).replace(".", ",") + ")</p>";
+      }
       html += '<p class="game-small">Envoie ce code, ou ce lien à ton ami·e : <a class="text-link" href="' + esc(link) + '" data-copy="' + esc(link) + '">copier le lien</a></p>';
       html += '<ul class="mc-roster">';
       for (var i = 0; i < 2; i++) {
@@ -1425,7 +1555,7 @@
     state = "over"; hud.hidden = true; overlayOpen = false;
     if (NET.started && NET.role === "host") { netSend("s", snapshot()); netSend("end", { sc: score, stats: stats }); }
     var rec = score > best;
-    if (rec) { best = score; store("merger-coop-best", String(best)); }
+    if (rec) { best = score; store("merger-coop-best-" + D.id, String(best)); }
     sfxOver();
     setTimeout(function () {
       if (state !== "over") return;
@@ -1433,18 +1563,21 @@
                          : '<button class="btn mc-go" type="button" data-act="start">↻ Rejouer <small>(Entrée)</small></button> ';
       show('<h2 class="mc-title">' + (why ? esc(why) : rec ? "Nouveau record d'équipe !" : "Le terrain déborde !") + "</h2>" +
         '<p class="mc-score">' + score.toLocaleString("fr-FR") + "</p>" +
+        '<p class="game-small">' + D.icon + " " + D.name + " · score ×" + String(D.mult).replace(".", ",") + "</p>" +
         '<ul class="mc-stats">' +
         "<li><b>" + stats.maxChain + "</b><span>plus longue chaîne</span></li>" +
         "<li><b>" + stats.maxGroup + "</b><span>plus gros groupe</span></li>" +
         "<li><b>" + stats.popped + "</b><span>personnages libérés</span></li>" +
         "<li><b>" + ((stats.booms || 0) + stats.powers) + "</b><span>grenades et pouvoirs</span></li></ul>" +
         '<p class="mc-actions">' + again + '<button class="btn btn-ghost" type="button" data-act="menu">Menu</button></p>' +
-        '<p class="game-small">Meilleur score d\'équipe : <strong>' + best.toLocaleString("fr-FR") + "</strong></p>", "mc-over");
+        '<p class="game-small">Meilleur score d\'équipe (' + D.name + ') : <strong>' + best.toLocaleString("fr-FR") + "</strong></p>", "mc-over");
       var go = card.querySelector(".mc-go"); if (go) go.focus({ preventScroll: true });
     }, 900);
   }
 
   card.addEventListener("click", function (e) {
+    var dd = e.target.closest("[data-diff]");
+    if (dd) { audio(); sfxUi(); setDiff(dd.getAttribute("data-diff")); return; }
     var cp = e.target.closest("[data-copy]");
     if (cp) { e.preventDefault(); try { navigator.clipboard.writeText(cp.getAttribute("data-copy")); cp.textContent = "lien copié !"; } catch (er) {} return; }
     var b = e.target.closest("[data-act]");
@@ -1544,20 +1677,22 @@
     score: function (n) { addScore(n); },
     over: function () { gameOver(); },
     clear: function () { balls = []; },
-    // tir « intelligent » pour les tests : cherche l'angle/puissance qui touche un personnage de la même couleur (ou une grenade)
+    geo: function () { return { ox: OX, oy: OY, s: S, w: W, h: H }; },
+    setDiff: function (id) { setDiff(id); },
+    diff: function () { return { id: D.id, mult: D.mult, danger: dangerY, types: typesN }; },
+    aimAt: function (i, x, y) { return aimAt(players[i], x, y); },
+    // tir « intelligent » pour les tests : vise le personnage de même couleur (ou une grenade) avec la vraie visée au pointeur
     bestShot: function (i) {
-      var p = players[i], it = p.cur, keep = [p.ang, p.pow], bestS = -1, bestA = keep;
-      for (var a = A_MIN; a <= A_MAX; a += 0.06) for (var w = 0.05; w <= 1; w += 0.05) {
-        p.ang = a; p.pow = w;
-        var pr = predict(p); if (!pr.hit) continue;
-        var sc = 0;
-        if (pr.hit.ball && pr.hit.ball.kind === "grenade") sc += 4;
-        balls.forEach(function (b) { if (b.pop < 0 && it.kind === "sq" && b.type === it.type) { var d = Math.hypot(b.x - pr.hit.x, b.y - pr.hit.y); if (d < R * 2.4) sc += 3; } });
-        sc += pr.hit.y / 1000;
-        if (sc > bestS) { bestS = sc; bestA = [a, w]; }
-      }
-      p.ang = bestA[0]; p.pow = bestA[1];
-      return bestS;
+      var p = players[i], it = p.cur, tgt = null, bestD = 1e9;
+      balls.forEach(function (b) {
+        if (b.pop >= 0 || b.dead || b.proj) return;
+        var ok = b.kind === "grenade" || (it.kind === "sq" && b.type === it.type);
+        if (!ok) return;
+        var d = Math.abs(b.x - LAUNCH[i].x) - (b.kind === "grenade" ? 80 : 0);
+        if (d < bestD) { bestD = d; tgt = b; }
+      });
+      if (!tgt) { var pool = balls.filter(function (b) { return b.pop < 0 && !b.dead && !b.proj; }); tgt = pool[rnd(pool.length)] || { x: FW / 2, y: 500 }; }
+      return aimAt(p, tgt.x, tgt.y);
     },
   };
 
