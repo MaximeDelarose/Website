@@ -1,0 +1,72 @@
+[
+  {
+    "id": "spring", "title": "Source claire", "icon": "flask",
+    "text": "Une eau limpide jaillit entre deux racines. Elle sent la menthe et le vieux sortilège.",
+    "choices": [
+      { "label": "Boire longuement", "effects": [{ "type": "heal", "value": 18 }], "result": "L'eau glacée te requinque." },
+      { "label": "Remplir tes bouteilles vides", "requires": { "item": "empty_bottle" }, "effects": [{ "type": "refill", "from": "empty_bottle", "into": "health_potion", "charges": 1 }], "result": "Tes bouteilles vides redeviennent des potions de soin (1 dose chacune)." },
+      { "label": "Passer ton chemin", "effects": [] }
+    ]
+  },
+  {
+    "id": "peddler", "title": "Colporteur louche", "icon": "pot",
+    "text": "Un petit homme encapuchonné ouvre son manteau : « Un objet rare, sans poser de question. Huit pièces. »",
+    "choices": [
+      { "label": "Payer 8 or", "requires": { "gold": 8 }, "effects": [{ "type": "gold", "value": -8 }, { "type": "item", "table": "forest_elite" }], "result": "Il te glisse quelque chose dans le sac et disparaît." },
+      { "label": "Refuser", "effects": [] }
+    ]
+  },
+  {
+    "id": "thorn_altar", "title": "Autel de ronces", "icon": "thorns",
+    "text": "Un autel couvert d'épines. Au centre, un objet brille, protégé par les ronces.",
+    "choices": [
+      { "label": "Tendre la main (-8 PV)", "effects": [{ "type": "hp", "value": -8 }, { "type": "item", "table": "forest_elite" }], "result": "Les épines mordent, mais l'objet est à toi." },
+      { "label": "Laisser l'autel tranquille", "effects": [] }
+    ]
+  },
+  {
+    "id": "trapped_chest", "title": "Coffre abandonné", "icon": "patch",
+    "text": "Un coffre au bord du sentier. Le cadenas a l'air… trop facile à forcer.",
+    "choices": [
+      {
+        "label": "Le forcer",
+        "effects": [{ "type": "random", "outcomes": [
+          { "weight": 1, "effects": [{ "type": "gold", "value": 12 }, { "type": "item", "table": "forest_common" }], "result": "Il était plein ! De l'or et un objet." },
+          { "weight": 1, "effects": [{ "type": "hp", "value": -7 }], "result": "Une aiguille empoisonnée te pique le doigt." }
+        ] }]
+      },
+      { "label": "Ne pas y toucher", "effects": [] }
+    ]
+  },
+  {
+    "id": "wounded", "title": "Voyageur blessé", "icon": "herb",
+    "text": "Un voyageur adossé à un arbre te regarde, la jambe en sang. « Une potion… je te paierai. »",
+    "choices": [
+      { "label": "Lui donner une potion", "requires": { "tag": "Potion" }, "effects": [{ "type": "loseItem", "tag": "Potion" }, { "type": "gold", "value": 14 }, { "type": "maxHp", "value": 4 }], "result": "Il te remercie, te paie et t'apprend un vieux souffle de marche (+4 PV max)." },
+      { "label": "Continuer ta route", "effects": [] }
+    ]
+  },
+  {
+    "id": "mushrooms", "title": "Champignons lumineux", "icon": "heart",
+    "text": "Un cercle de champignons qui brillent doucement dans la pénombre.",
+    "choices": [
+      {
+        "label": "En goûter un",
+        "effects": [{ "type": "random", "outcomes": [
+          { "weight": 2, "effects": [{ "type": "maxHp", "value": 6 }, { "type": "heal", "value": 6 }], "result": "Une chaleur te traverse (+6 PV max)." },
+          { "weight": 1, "effects": [{ "type": "hp", "value": -9 }], "result": "Beurk. Ton ventre se tord." }
+        ] }]
+      },
+      { "label": "Les cueillir pour plus tard", "effects": [{ "type": "addItem", "item": "healing_herb" }], "result": "Tu ranges une poignée d'herbes dans ta réserve." }
+    ]
+  },
+  {
+    "id": "ambush", "title": "Embuscade", "icon": "dagger",
+    "text": "Deux silhouettes surgissent des fourrés : « La bourse ou la vie ! »",
+    "choices": [
+      { "label": "Se battre", "effects": [{ "type": "fight", "enemies": ["bandit", "goblin"] }], "result": "" },
+      { "label": "Donner 10 or", "requires": { "gold": 10 }, "effects": [{ "type": "gold", "value": -10 }], "result": "Ils filent avec ton or en ricanant." },
+      { "label": "Fuir (-6 PV)", "effects": [{ "type": "hp", "value": -6 }], "result": "Tu t'échappes, mais pas sans une égratignure." }
+    ]
+  }
+]

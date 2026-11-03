@@ -15,7 +15,8 @@
 
 import { readFileSync } from "node:fs";
 import { loadContentFromDir } from "../src/content/node";
-import { combatResult, createCombat, queueAction, stepCombat, type CombatResult, type CombatSetup, type Content, type Placement } from "../src/engine";
+import { runCombat, type CombatResult, type CombatSetup, type Content, type Placement } from "../src/engine";
+import { fightWithPotions } from "../src/game/bot";
 
 interface Args {
   n: number;
@@ -44,22 +45,8 @@ function parseArgs(argv: string[]): Args {
   return a;
 }
 
-/** Joueur bot : boit une potion de soin quand il passe sous 40 % de PV. */
 function runWithPolicy(content: Content, setup: CombatSetup, policy: Args["policy"]): CombatResult {
-  const st = createCombat(content, setup);
-  while (!st.outcome) {
-    if (policy === "potion") {
-      const p = st.combatants[0];
-      if (p.alive && p.hp < p.maxHp * 0.4) {
-        const potion = p.items.find(
-          (i) => !i.removed && i.def.manual && (i.charges ?? 0) > 0 && i.def.effects.some((e) => e.type === "heal") && st.timeMs >= i.lockoutUntilMs,
-        );
-        if (potion && !st.pending.some((x) => x.item === potion.uid)) queueAction(st, { type: "drink", combatant: 0, item: potion.uid });
-      }
-    }
-    stepCombat(st);
-  }
-  return combatResult(st);
+  return policy === "potion" ? fightWithPotions(content, setup) : runCombat(content, setup);
 }
 
 const pct = (x: number, n: number) => `${((100 * x) / n).toFixed(1)}%`.padStart(7);

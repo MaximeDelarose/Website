@@ -13,6 +13,7 @@ npm test            # suite de tests (vitest)
 npm run typecheck   # tsc --noEmit
 npm run sim         # sac de départ contre chaque ennemi, 500 combats chacun
 npm run sim -- --enemies goblin,wolf,spider --n 2000 --policy potion --items
+npm run sim:run     # parties complètes jouées par un bot (taux de victoire, où il meurt)
 npm run dev         # serveur Vite (index.html) pour travailler sur l'interface
 npm run build       # compile app/bagbound.js + app/bagbound.css et met à jour le ?v= de ../bagbound.html
 ```
@@ -23,8 +24,8 @@ npm run build       # compile app/bagbound.js + app/bagbound.css et met à jour 
 |---|---|
 | `src/engine/` | Bibliothèque pure : RNG à seed, géométrie des sacs, registres, effets/déclencheurs/statuts, boucle de combat. **Interdits** : `Math.random`, `Date.now`, `performance.now`, DOM, Node (vérifié par `tests/purity.test.ts`). |
 | `src/content/` | Schémas zod (`schema.ts`), chargeur + vérification des références (`loader.ts`), lecture depuis le disque pour Node (`node.ts`). |
-| `data/` | Tout le contenu : `rules.json` (équilibrage global), `tags.json`, `items.json`, `enemies.json`, `classes.json`. Rien n'est codé en dur. |
-| `src/game/` | Logique de jeu hors combat, sans DOM : `bag.ts` (sac du joueur : placement, rotation, miroir, réserve, sauvegarde). |
+| `data/` | Tout le contenu : `rules.json` (équilibrage du combat), `tags.json`, `items.json`, `enemies.json`, `classes.json`, `run.json` (règles de run), `zones.json`, `loot.json`, `events.json`, `sandbox.json` (atelier). Rien n'est codé en dur. |
+| `src/game/` | Logique de jeu hors combat, sans DOM : `bag.ts` (sac du joueur), `map.ts` (carte d'un étage), `run.ts` (boucle de run), `autoplace.ts` (rangement automatique), `bot.ts` (joueur automatique pour les tests et les simulations). |
 | `src/ui/` | Interface navigateur : `app.ts` (atelier, combat en direct, entrées tactiles/souris/clavier), `draw.ts` (rendu canvas), `sprites.ts` (pixel art 16 x 16 en texte + variantes de palette), `describe.ts` (infobulles générées depuis les données), `layout.ts`, `fx.ts`, `style.css`. |
 | `app/` | Build publié (ne pas modifier à la main). |
 | `scripts/simulate.ts` | Simulation en masse (N combats headless) : victoires, durée, PV restants, contribution de chaque objet. |
@@ -154,9 +155,11 @@ Les modules de base sont dans `src/engine/builtins.ts`.
   1 élite et 1 boss à 2 phases, 1 classe), tests, simulation en masse.
 - [x] Phase 2 : grille, placement, rotation, glisser-déposer, rendu du combat
   (atelier jouable sur le site, voir ci-dessous).
-- [ ] Phase 3 : boucle de run (carte, boutique, butin, événements), sauvegarde.
-- L'équilibrage du contenu de départ est à faire avec `npm run sim` : le sac de
-  départ bat tous les monstres seuls et perd contre les groupes et le boss.
+- [x] Phase 3 : boucle de run (carte, boutique, butin, événements, coffres, feux de camp, boss), sauvegarde.
+- [ ] Phase 4 : fusions, potions (remplissage), extensions de sac.
+- Équilibrage : `npm run sim:run` donne environ 15 % de victoires au bot (qui
+  range de façon gloutonne, sans chercher les synergies ni lancer de potions) ;
+  la plupart des défaites ont lieu aux étages 2 et 3, contre les groupes.
 
 ## Interface (Phase 2)
 
@@ -183,3 +186,32 @@ Les modules de base sont dans `src/engine/builtins.ts`.
   dans `VARIANTS`). Un test vérifie que chaque objet et chaque ennemi a un sprite.
 - **Atelier** (`data/sandbox.json`) : classe, objets de la réserve, rencontres
   proposées. C'est un mode d'essai en attendant la boucle de run (Phase 3).
+
+## Run (Phase 3)
+
+Une partie traverse les zones de `data/zones.json` (pour l'instant la Forêt des
+Murmures : 3 étages, boss à la fin). Toute la logique est dans `src/game/run.ts`,
+pure, déterministe (RNG de la run) et sérialisable telle quelle en JSON.
+
+- **Carte** (`map.ts`) : `run.json.rows` rangées de 2 à 4 nœuds, reliées vers le
+  haut sans croisement marqué (chaque nœud a une entrée et une sortie). Première
+  rangée = combats, élites à partir de `eliteMinRow`, types tirés selon
+  `nodeWeights`. Le dernier étage d'une zone finit par un feu de camp puis le boss.
+  Les rencontres sont tirées à la génération dans `zones.json` (par étage :
+  `normal`, `elite`, `hpMul`) et révélées en touchant le nœud.
+- **Combat** : `combatSetup(run)` donne la seed, les PV actuels et le sac posé ;
+  `finishCombat(run, …, résultat)` reprend les PV, le sac après combat (charges,
+  potions vidées, objets lancés) et donne l'or (`loot.gold` des ennemis, bonus
+  d'élite) puis 3 objets au choix tirés dans la table `loot.table` de l'ennemi le
+  plus fort (`loot.json`). Défaite ou égalité = fin de la partie.
+- **Boutique** : stock tiré dans `shopTable`, achat, vente (`sellRatio`),
+  renouvellement (prix croissant), soin payant. **Coffre** : or + 1 objet parmi 2.
+  **Feu de camp** : se reposer (`healPct`) ou s'entraîner (+PV max).
+- **Événements** (`events.json`) : texte, choix avec conditions (`gold`, `tag`,
+  `item`) et effets en données : `gold`, `hp`, `heal`, `maxHp`, `item` (tiré
+  dans une table), `addItem`, `loseItem` (par tag), `refill` (remplit les
+  bouteilles vides), `fight` (combat), `random` (issues pondérées).
+- **Sauvegarde** : l'état complet est écrit en localStorage après chaque étape ;
+  un combat interrompu reprend à l'identique (même seed).
+- **Réserve** : les objets gagnés arrivent dans la réserve ; seuls les objets
+  posés dans le sac combattent.

@@ -60,3 +60,43 @@
 .bb-inspect { display: grid; gap: 8px; }
 .bb-inspect .bb-tipbox { box-shadow: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* --- run (Phase 3) --- */
+.bb-hud { font-variant-numeric: tabular-nums; white-space: nowrap; padding: 0 2px; }
+.bb-gold { color: #ffd27a; }
+.bb-floor { flex: 1; min-width: 0; text-align: center; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.bb-logo { font-size: 2.2rem; letter-spacing: .04em; color: #8a5a2b; }
+.bb-menu { display: grid; gap: 8px; margin: 12px 0 4px; }
+.bb-menu .btn { width: 100%; justify-content: center; text-align: center; }
+.bb-menu small, .bb-actions small { font-weight: 600; opacity: .75; }
+.bb-danger { color: #b33a2a; }
+.bb-left { justify-content: flex-start; }
+.bb-cards { display: grid; gap: 8px; margin: 8px 0; }
+.bb-item {
+  display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: center;
+  padding: 8px; background: #fffaf0; border: 3px solid var(--rc, #c9b48e); outline: 2px solid #1a1220;
+  font: 600 13px/1.3 Nunito, system-ui, sans-serif; color: #2b1709;
+}
+.bb-item img, .bb-sell img, .bb-ev-icon { image-rendering: pixelated; background: #3b2a20; }
+.bb-item ul { margin: 2px 0 0; padding-left: 16px; }
+.bb-item .bb-tip-name { margin: 0; }
+.bb-item-act { display: grid; gap: 4px; justify-items: end; }
+.bb-item-act .btn { white-space: nowrap; }
+.bb-sold { font-weight: 800; opacity: .55; }
+.bb-sell { margin: 6px 0; }
+.bb-sell summary { cursor: pointer; font-weight: 800; }
+.bb-sell ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; max-height: 210px; overflow-y: auto; }
+.bb-sell li { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; font-size: .9rem; }
+.bb-msgs { margin: 6px 0; padding-left: 18px; font-weight: 700; }
+.bb-ev-icon { display: block; margin: 0 auto 6px; border: 2px solid #1a1220; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.bb-pager { width: auto; }
+.bb-auto { width: auto !important; padding: 0 8px !important; margin-right: auto; }
+@media (max-width: 420px) {
+  .bb-bar { gap: 4px; padding: 6px 5px; font-size: 13px; }
+  .bb-btn { padding: 0 7px; min-width: 30px; }
+  .bb-item { grid-template-columns: 40px 1fr; }
+  .bb-item img { width: 40px; height: 40px; }
+  .bb-item-act { grid-column: 1 / -1; justify-items: end; }
+  .bb-item-act .btn { padding: 4px 14px; }
+}
