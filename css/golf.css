@@ -55,3 +55,7 @@
   .golf-board { font-size: .72rem; max-width: 56%; }
   .golf-power { width: 90px; }
 }
+
+.golf-cam { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: flex; gap: 6px; }
+.golf-cam button { width: 40px; height: 40px; font-size: 1.3rem; line-height: 1; cursor: pointer; color: #fdf3de; background: rgba(20, 12, 4, .7); border: 3px solid #2b1709; }
+.golf-cam button:hover { background: rgba(60, 36, 12, .9); }

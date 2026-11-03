@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261104mb2">
-  <link rel="stylesheet" href="css/golf.css?v=20261109gf2">
+  <link rel="stylesheet" href="css/golf.css?v=20261109gf3">
 </head>
 <body data-page="golf">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -78,6 +78,10 @@
             </div>
             <ul class="golf-board" data-hud-board hidden></ul>
           </div>
+          <div class="golf-cam" aria-label="Orienter la caméra">
+            <button type="button" data-cam="-1" aria-label="Tourner la caméra à gauche" title="Tourner la vue (Q)">⟲</button>
+            <button type="button" data-cam="1" aria-label="Tourner la caméra à droite" title="Tourner la vue (E)">⟳</button>
+          </div>
           <div class="game-overlay golf-overlay" data-overlay>
             <div class="panel game-card golf-card" data-card>
               <p>Chargement du jeu…</p>
@@ -92,8 +96,8 @@
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
             <li><strong>Tirer</strong> : appuie n'importe où sur le terrain et tire en arrière, comme un lance-pierre. Plus tu tires loin, plus la balle part fort ; la flèche te montre la direction et la puissance. Relâche pour frapper.</li>
-            <li><strong>Au clavier</strong> : <kbd>←</kbd> <kbd>→</kbd> tournent la visée (avec <kbd>Maj</kbd> pour être précis), <kbd>↑</kbd> <kbd>↓</kbd> règlent la puissance, <kbd>Espace</kbd> frappe.</li>
-            <li><strong>Le terrain</strong> : les murs en bois font rebondir la balle, le <em>sable</em> la freine, l'<em>eau</em> la renvoie d'où tu as tiré (+1 coup), les <em>champignons</em> la font rebondir, et le <em>moulin</em> demande un peu de timing. Une balle trop rapide passe par-dessus le trou : vise doux.</li>
+            <li><strong>Au clavier</strong> : <kbd>←</kbd> <kbd>→</kbd> tournent la visée (avec <kbd>Maj</kbd> pour être précis), <kbd>↑</kbd> <kbd>↓</kbd> règlent la puissance, <kbd>Espace</kbd> frappe. <kbd>Q</kbd> / <kbd>E</kbd> (ou les boutons ⟲ ⟳) font pivoter la caméra par pas de 45°.</li>
+            <li><strong>Le terrain</strong> (vu en 3D) : les murs en bois font rebondir la balle, le <em>sable</em> la freine, l'<em>eau</em> la renvoie d'où tu as tiré (+1 coup), les <em>piliers-champignons</em> la font rebondir. Les <em>bosses</em> la repoussent et les <em>creux</em> la ramènent vers leur centre. Les <em>tuyaux</em> (ronds verts ou bleus) l'avalent et la recrachent par l'autre bout, les <em>tremplins</em> jaunes l'envoient voler par-dessus l'eau et les obstacles, et il y a des <em>blocs qui coulissent</em> et des <em>pales qui tournent</em> : il faut du timing. Une balle trop rapide passe par-dessus le trou : vise doux.</li>
             <li><strong>Solo</strong> : 9 trous, un record gardé sur ton appareil. Au bout de 8 coups la balle est ramassée. Tu peux aussi t'entraîner sur un seul trou.</li>
             <li><strong>En ligne</strong> : crée un salon, envoie le code de 4 lettres (ou le lien) à 1 à 3 amis, et lancez la partie. Tout le monde joue en même temps, les balles des autres sont des fantômes. Le trou suivant démarre quand tout le monde a fini (ou une minute après le premier arrivé). Le plus petit total gagne.</li>
           </ul>
@@ -117,8 +121,8 @@
 
   <script src="js/data.js?v=20261103re4"></script>
   <script src="js/auth.js?v=20261103re4"></script>
-  <script src="js/main.js?v=20261109gf2"></script>
+  <script src="js/main.js?v=20261109gf3"></script>
   <script src="js/vendor/supabase-2.45.4.min.js"></script>
-  <script src="js/golf.js?v=20261109gf2"></script>
+  <script src="js/golf.js?v=20261109gf3"></script>
 </body>
 </html>
