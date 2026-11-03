@@ -16,6 +16,7 @@
   var me = document.currentScript;
   var GAME = me && me.getAttribute("data-game"), KEY = me && me.getAttribute("data-key"), PREFIX = me && me.getAttribute("data-prefix");
   if (!GAME || (!KEY && !PREFIX)) return;
+  if (/^#party/.test(location.hash)) return;   // manche de party (js/party.js) : partie temporaire, on ne synchronise rien
   var META = "cs-meta-" + GAME, NOTE = "cs-note-" + GAME, PENDING = "cs-pending-" + GAME;
   var REASONS = {
     conflict: "ta progression a avancé sur un autre appareil : c'est celle-ci qui est reprise.",

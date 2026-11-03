@@ -785,6 +785,7 @@
         setTimeout(function () { if (tok === overToken && mode === "over") gameOverCard(); }, 1700);
         mode = "over"; hud.hidden = true; updateLaunch();
         recordBest();
+        if (party && !party.ended) { party.ended = true; window.Party.over({ score: w.score, dead: true }); }
         break;
       }
       case "upgrade": {
@@ -1909,7 +1910,7 @@
     canvas.focus({ preventScroll: true });
   }
   function pause() {
-    if (mode !== "play") return;
+    if (mode !== "play" || party) return;
     mode = "pause"; SFX.pause(); updateLaunch(); if (tipEl) tipEl.hidden = true;
     ui.forEach(function (u) { u.drag = null; });
     pauseCard();
@@ -2021,8 +2022,42 @@
     grid: function () { var o = []; for (var r = 0; r < 7; r++) { var row = []; for (var c = 0; c < 7; c++) { var pc = w.grid[c][r]; row.push(pc ? pc.type[0].toUpperCase() + pc.lvl + (pc.owner ? "b" : "a") : ".."); } o.push(row.join(" ")); } return o.join("\n"); },
   };
 
+  /* ====================== PARTY (versus multi-jeux, js/party.js) ======================
+     Chacun protège son roi seul à la souris ; les vagues partent toutes seules
+     après opts.autoWave secondes de préparation ; score = score d'équipe. */
+  var party = null;
+  var PT = window.Party && window.Party.pending && window.Party.pending();
+  if (PT && PT.mode.game !== "kingdice") PT = null;
+  if (PT) {
+    window.Party.register("kingdice", {
+      start: function (ctx) {
+        party = { ctx: ctx, ended: false, prep: 0 };
+        store("kd-tuto", "1");
+        start();
+        tuto.on = false; tutoShow();
+      },
+      stop: function () {
+        if (party && !party.ended && w) {
+          party.ended = true;
+          if (mode === "play" || mode === "pause") {
+            w.state = "over"; mode = "over"; hud.hidden = true; updateLaunch(); stopMusic(); recordBest();
+            show('<h2 class="kd-h">Temps écoulé !</h2><p>Vague <strong>' + w.wave + "</strong> · Score <strong>" + fmt(w.score) + "</strong></p>", "kd-over");
+          }
+        }
+        return { score: w ? w.score : 0 };
+      },
+    });
+    setInterval(function () {
+      if (!party || party.ended || !w || mode !== "play") return;
+      window.Party.score(w.score);
+      if (w.state === "prep") { party.prep += 0.25; if (party.prep >= (party.ctx.opts.autoWave || 6)) { party.prep = 0; launchWave(); } }
+      else party.prep = 0;
+    }, 250);
+  }
+
   newGame();
   resize();
-  menu();
+  if (PT) show('<h2 class="kd-h">Manche de party</h2><p>' + PT.mode.name + " : la partie démarre toute seule dans un instant.</p>", "kd-help");
+  else menu();
   requestAnimationFrame(loop);
 })();

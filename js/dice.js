@@ -188,6 +188,7 @@
   var state = "menu", screen = "menu", paused = false, speed = 1;
   // G.worlds : mondes simulés ici (sim) ou reçus (view) ; G.panels : ce qu'on dessine
   var G = null;
+  var party = null;   // manche de party (js/party.js), voir plus bas
   var view = { scale: 1, ox: 0, oy: 0, W: 0, H: 0 };
 
   function newGame(cfg) {
@@ -1410,6 +1411,7 @@
   function finish(res) {
     if (G.ended) return;
     G.ended = true; state = "over"; hud.hidden = true;
+    if (party) partyEnded(res);
     var win = res.win;
     if (res.local) SND.win(); else if (win) SND.win(); else SND.over();
     if (Cloud.on) { finishCloud(res); return; }
@@ -1539,7 +1541,7 @@
      HUD HTML (pause, son, vitesse)
      ===================================================================== */
   var btnPause = $("[data-pause]"), btnMute = $("[data-mute]"), btnSpeed = $("[data-speed]");
-  function canPause() { return G && !Net.on; }
+  function canPause() { return G && !Net.on && !party; }
   function syncHud() {
     btnMute.textContent = S.mute ? "🔇" : "🔊";
     btnPause.hidden = !canPause();
@@ -2343,10 +2345,63 @@
   // outil de test : dice.html?debug expose l'état dans la console
   if (/[?&]debug\b/.test(location.search)) window.RD_DEBUG = { get G() { return G; }, view: view, get S() { return S; }, get Cloud() { return Cloud; }, setSpeed: function (v) { speed = v; } };
 
+  /* =====================================================================
+     Party : versus multi-jeux (js/party.js, modes dans js/party-modes.js)
+       solo    : chacun sa partie (même carte, même graine)
+       net-vs  : le versus en ligne du jeu, salon créé / rejoint tout seul
+       net-coop: une partie coop en ligne par équipe
+     ===================================================================== */
+  function partyScore(w) { return w ? w.wave * 100 + Math.min(99, Math.floor(w.kills / 10)) : 0; }
+  function myWorld() { return G && (G.sims[0] || G.panels[0].world); }
+  function partyEnded(res) {
+    if (!party || party.ended) return;
+    party.ended = true;
+    var sc = res.wave * 100 + Math.min(99, Math.floor((res.kills || 0) / 10));
+    window.Party.over({ score: sc, dead: !party.forced && !res.win });
+    if (party.keep) { S.name = party.keep.name; save(); party.keep = null; }
+  }
+  var PT = window.Party && window.Party.pending && window.Party.pending();
+  if (PT && PT.mode.game !== "dice") PT = null;
+  if (PT) {
+    window.Party.register("dice", {
+      start: function (ctx) {
+        party = { ctx: ctx, ended: false, forced: false };
+        var kind = ctx.opts.kind || "solo";
+        if (!S.deck || S.deck.length !== 5) S.deck = D.ORDER.slice(0, 5);
+        if (kind === "solo") {
+          var w = K.createWorld({ mode: "solo", map: S.map, seed: ctx.seed, boards: [{ name: ctx.name, deck: S.deck, cls: myCls() }] });
+          newGame({ mode: "solo", kind: "solo", sims: [w], panels: [{ world: w, mine: [0] }] });
+          return;
+        }
+        party.keep = { name: S.name };
+        S.name = ctx.name;
+        Net.mode = kind === "net-coop" ? "coop" : "versus";
+        netJoin(ctx.room, ctx.roomHost); show("lobby");
+        if (ctx.roomHost) {
+          var t0 = Date.now(), iv = setInterval(function () {
+            if (!party || Net.started) { clearInterval(iv); return; }
+            var want = Math.max(2, ctx.roomIds.filter(ctx.present).length);
+            if (Net.status === "SUBSCRIBED" && Net.roster.length >= Math.min(2, want)) { Net.mode = kind === "net-coop" ? "coop" : "versus"; trackMe(); clearInterval(iv); hostStart(); }
+            else if (Date.now() - t0 > 30000) { clearInterval(iv); party.forced = true; partyEnded({ wave: 0, kills: 0 }); }
+          }, 500);
+        }
+      },
+      stop: function () {
+        if (!party) return null;
+        party.forced = true;
+        var w = myWorld();
+        if (G && !G.ended) finish({ mode: G.mode, wave: w.wave, kills: w.kills, bosses: w.bosses, maxPip: maxPip(w), why: "Temps écoulé !", online: Net.on });
+        return { score: partyScore(w) };
+      },
+    });
+    setInterval(function () { if (party && !party.ended && G && state === "play") window.Party.score(partyScore(myWorld())); }, 500);
+  }
+
   /* ---------- démarrage ---------- */
   if (window.SiteAuth) { window.SiteAuth.ready.then(cloudStart); window.SiteAuth.on(cloudStart); }
   var m = /salon=([A-Za-z]{4})/.exec(location.hash);
   if (m) { Net.pendingCode = m[1].toUpperCase(); show("online"); } else show("menu");
+  if (PT) { card.innerHTML = "<h2>Manche de party</h2><p>" + esc(PT.mode.name) + " : la partie démarre toute seule dans un instant.</p>"; }
   hud.hidden = true;
   resize(); syncHud();
   requestAnimationFrame(frame);

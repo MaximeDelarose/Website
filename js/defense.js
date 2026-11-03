@@ -784,7 +784,7 @@
     var p = $("[data-pause]"); if (p) p.textContent = paused ? "▶" : "⏸";
   }
   function togglePause() {
-    if (state !== "play") return;
+    if (state !== "play" || party) return;
     paused = !paused; syncHud();
     if (paused) showPause(); else hideOverlay();
   }
@@ -847,20 +847,23 @@
     card.querySelector("[data-restart]").addEventListener("click", function () { if (confirm("Recommencer la partie ?")) startGame(); });
     card.querySelector("[data-quit]").addEventListener("click", function () { if (confirm("Quitter la partie ?")) showMenu(); });
   }
-  function startGame() {
-    W = K.createWorld({ map: S.map, mode: S.mode, seed: (Math.random() * 1e9) | 0 });
+  function startGame(o) {
+    o = o && o.map ? o : null;
+    W = K.createWorld({ map: o ? o.map : S.map, mode: o ? o.mode : S.mode, seed: o ? o.seed : (Math.random() * 1e9) | 0 });
     state = "play"; paused = false; speed = 1; sel = null; placing = null; vfx = []; shopSig = upgSig = abilSig = "";
-    S.games++; save();
+    if (!party) { S.games++; save(); }
     hideOverlay(); showUI(true);
     buildShop(); syncHud(); resize(); updateSide(true);
     banner(W.map.name + " · " + W.mode.name);
   }
   function record() {
+    if (party) return;
     var key = W.map.id + "_" + W.mode.id;
     if (W.round > (S.best[key] || 0)) S.best[key] = W.round;
     save();
   }
   function onWin() {
+    if (party) { W.freeplay = true; banner("Toutes les manches ! On continue en mode libre"); return; }
     record();
     S.medals[W.map.id] = S.medals[W.map.id] || {};
     var first = !S.medals[W.map.id][W.mode.id];
@@ -876,6 +879,11 @@
   }
   function onLose() {
     record(); SND.over(); state = "over";
+    if (party && !party.ended) {
+      party.ended = true; window.Party.over({ score: partyScore(), dead: true });
+      showCard("<h2>La réserve est pillée !</h2><p>Manche <strong>" + W.round + "</strong> · " + fmt(W.kills) + " bestioles</p>", "game-card-over");
+      return;
+    }
     var h = "<h2>La réserve est pillée !</h2><p>" + esc(W.map.name) + " · " + esc(W.mode.name) + " : tu as tenu jusqu'à la manche <strong>" + W.round + "</strong>.</p>" +
       '<ul class="over-stats"><li><span>Manche</span><strong>' + W.round + "</strong></li><li><span>Bestioles</span><strong>" + fmt(W.kills) + "</strong></li><li><span>Record</span><strong>" + (S.best[W.map.id + "_" + W.mode.id] || 0) + "</strong></li></ul>" +
       '<div class="btn-row center"><button class="btn" type="button" data-again>Rejouer</button><button class="btn btn-ghost" type="button" data-menu>Menu</button></div>';
@@ -918,7 +926,34 @@
 
   if (/[?&]debug\b/.test(location.search)) window.TD_DEBUG = { get W() { return W; }, view: view, get S() { return S; }, cash: function (v) { W.cash += v; }, setSpeed: function (v) { speed = v; } };
 
-  showMenu();
+  /* =====================================================================
+     Party : versus multi-jeux (js/party.js). Même carte et même graine pour
+     tout le monde, manches enchaînées toutes seules ; score = manche × 1000
+     + bestioles. Rien n'est enregistré dans la sauvegarde.
+     ===================================================================== */
+  var party = null;
+  function partyScore() { return W ? W.round * 1000 + W.kills : 0; }
+  var PT = window.Party && window.Party.pending && window.Party.pending();
+  if (PT && PT.mode.game !== "defense") PT = null;
+  if (PT) {
+    window.Party.register("defense", {
+      start: function (ctx) {
+        party = { ctx: ctx, ended: false };
+        startGame({ map: ctx.opts.map || "clairiere", mode: ctx.opts.mode || "normal", seed: ctx.seed });
+        W.auto = true;
+        setTimeout(function () { if (W && !W.running && !W.over && W.round === 0) { K.startRound(W); syncHud(); } }, 4000);
+      },
+      stop: function () {
+        if (party && !party.ended && W) {
+          party.ended = true; W.over = true; state = "over";
+          showCard("<h2>Temps écoulé !</h2><p>Manche <strong>" + W.round + "</strong> · " + fmt(W.kills) + " bestioles</p>", "game-card-over");
+        }
+        return { score: partyScore() };
+      },
+    });
+    setInterval(function () { if (party && !party.ended && W && state === "play") window.Party.score(partyScore()); }, 500);
+    showCard("<h2>Manche de party</h2><p>" + esc(PT.mode.name) + " : la partie démarre toute seule dans un instant.</p>");
+  } else showMenu();
   syncHud(); resize();
   requestAnimationFrame(frame);
 })();

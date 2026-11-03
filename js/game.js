@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "0.27.0";
+  var VERSION = "0.28.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -255,6 +255,7 @@
     for (var i = 0; i < players.length; i++) { var o = players[i]; if (o === pl || o.down) continue; var d = Math.hypot(o.x - pl.x, o.y - pl.y); if (d < bd) { bd = d; best = o; } }
     return best;
   }
+  var party = null;                 // manche de party en cours (voir plus bas)
   function myId() { return Net.on ? Net.id : "solo"; }
   function reset(roster, mapId, diffId, mode, seed, dtype) {
     DGT = dungeonById(dtype || S.dungeon);
@@ -1392,7 +1393,7 @@
     r.stage = (r.stage || 0) + 1; r.portals = (r.portals || 0) + 1;
     enterMap(nm.id, r.stage, r.time);
     // tout le monde passe : remis au centre de la nouvelle carte
-    players.forEach(function (pl, k) { pl.x = pl.tx = (k - (players.length - 1) / 2) * 20; pl.y = pl.ty = 0; if (pl.down) { pl.down = false; pl.reviveT = 0; pl.hp = pl.maxHp * 0.5; } if (pl.remote) netSend("tp", { id: pl.id, x: Math.round(pl.x), y: 0 }); });
+    players.forEach(function (pl, k) { pl.x = pl.tx = (k - (players.length - 1) / 2) * 20; pl.y = pl.ty = 0; if (pl.down && !(party && party.ctx.opts.noRevive)) { pl.down = false; pl.reviveT = 0; pl.hp = pl.maxHp * 0.5; } if (pl.remote) netSend("tp", { id: pl.id, x: Math.round(pl.x), y: 0 }); });
     enemies = []; projs = []; hostile = []; lobs = []; warns = []; gems = []; zones = []; curBoss = null;
     nextSwarm = r.time + 60; spawnAcc = 3; propTimer = 0;
     netEv(["mp", nm.id, r.stage, Math.round(r.time * 10)]);
@@ -2222,6 +2223,7 @@
     for (i = 0; i < players.length; i++) {
       var pd = players[i];
       if (pd.down) {
+        if (party && party.ctx.opts.noRevive) continue;   // party « Dernier debout » : pas de relève
         var rate = 0;
         players.forEach(function (o) { if (o !== pd && !o.down && Math.hypot(o.x - pd.x, o.y - pd.y) < 22) rate = Math.max(rate, (1 + 0.25 * ((o.passives && o.passives.entraide) || 0) + 0.5 * itn(o, "ralliement")) * (itn(o, "nid") ? 2 : 1)); });
         pd.reviveT = rate ? pd.reviveT + dt * rate : Math.max(0, pd.reviveT - dt * 0.5);
@@ -4835,7 +4837,7 @@
       '<button class="btn btn-ghost btn-small" type="button" data-action="quit">🏳️ Quitter la partie</button></div>', "netmenu");
   }
   function pause() {
-    if (state !== "play" || picking) return;
+    if (state !== "play" || picking || party) return;
     if (humans() > 1) { if (netMenuOpen) resume(); else netMenu(); return; }
     state = "pause"; clearInput();
     var html = '<h2>Pause</h2><div class="pause-grid"><div><h3>Armes (' + Object.keys(p.weapons).length + "/" + MAX_W + ')</h3><ul class="build-list">';
@@ -4874,6 +4876,7 @@
     curBoss = null;
     r.ended = true;
     var sc = score(), gold = runGold();
+    if (party) partyEnded(quit);
     S.stats.kills += r.kills; r.committed = true;
     S.stats.runs++;
     earnGold(gold);
@@ -5146,8 +5149,73 @@
     state: function () { return { state: state, screen: screen, level: r && r.level, hp: p && p.hp, kills: r && r.kills, weapons: p && p.weapons, passives: p && p.passives, enemies: enemies && enemies.length, x: me && me.x, y: me && me.y }; },
   };
 
+  /* =====================================================================
+     Party : versus multi-jeux (js/party.js, modes dans js/party-modes.js)
+     - modes « chacun sa partie » : on lance directement une partie solo
+     - modes « room » : salon coop en ligne créé / rejoint tout seul
+     ===================================================================== */
+  function partyMetric() {
+    var o = party.ctx.opts;
+    if (o.metric === "kills") return r.kills;
+    if (o.metric === "score") return Math.round(score());
+    return Math.floor(window.Party.elapsed());
+  }
+  function partyRestore() {
+    if (!party || !party.keep) return;
+    Object.keys(party.keep).forEach(function (k) { S[k] = party.keep[k]; });
+    party.keep = null; save();
+  }
+  function partyEnded(quit) {
+    if (!party || party.ended) return;
+    party.ended = true;
+    // quit : fin imposée (chrono, hôte qui arrête la manche) → pas une élimination
+    window.Party.over({ score: partyMetric(), dead: !r.won && !quit, done: !!r.won });
+    partyRestore();
+  }
+  var PT = window.Party && window.Party.pending && window.Party.pending();
+  if (PT && PT.mode.game !== "survivor") PT = null;
+  if (PT) {
+    window.Party.register("survivor", {
+      start: function (ctx) {
+        party = { ctx: ctx, ended: false, keep: null };
+        var o = ctx.opts;
+        if (ctx.mode.room) {
+          party.keep = { mode: S.mode, map: S.map, diff: S.diff, dungeon: S.dungeon, name: S.name };
+          S.mode = o.mode || "survie"; S.map = o.map || "clairiere"; S.diff = "normal"; S.dungeon = o.dungeon || "terriers"; S.name = ctx.name;
+          Net.joinTs = Date.now(); netJoin(ctx.room, ctx.roomHost); go("lobby");
+          if (ctx.roomHost) {
+            var t0 = Date.now(), iv = setInterval(function () {
+              if (!party || state === "play" || state === "over") { clearInterval(iv); return; }
+              var want = ctx.roomIds.filter(ctx.present).length, t = Date.now() - t0;
+              if ((Net.status === "SUBSCRIBED" && (Net.roster.length >= want || (t > 15000 && Net.roster.length >= 2))) || t > 30000) { clearInterval(iv); start(); }
+            }, 500);
+          }
+        } else {
+          sanitize();
+          reset(null, o.map || "clairiere", "normal", o.mode || "survie", ctx.seed, o.dungeon || "terriers");
+          beginPlay();
+        }
+      },
+      stop: function (why) {
+        if (state !== "over" && r && !r.ended && (state !== "menu" || Net.started)) gameOver(true, why === "time" ? "Temps écoulé !" : "Fin de la manche !");
+        if (party && !party.ended) { party.ended = true; partyRestore(); return { score: r ? partyMetric() : 0 }; }
+        return null;
+      },
+    });
+    setInterval(function () {
+      if (!party || party.ended || !r || r.ended || (state !== "play" && state !== "levelup" && state !== "pause")) return;
+      window.Party.score(partyMetric());
+      if (party.ctx.opts.noRevive && me && me.down && (!me.twinRef || me.twinRef.down)) {
+        party.ended = true;
+        window.Party.over({ score: partyMetric(), dead: true });
+        banner("Éliminé ! Tu peux regarder la fin de la manche.");
+      }
+    }, 500);
+  }
+
   checkAchievements(null);
   go("menu");
+  if (PT) showCard('<h2>Manche de party</h2><p>' + esc(PT.mode.name) + ' : la partie démarre toute seule dans un instant.</p>', "party");
   function joinFromHash() {
     var m = /#coop=([A-Za-z]{4})/.exec(location.hash || "");
     if (!m || (Net.on && Net.code === m[1].toUpperCase())) return;

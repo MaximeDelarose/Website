@@ -58,7 +58,14 @@
   var cleared = 0, swapT = 0, shake = 0, diff = picked.length, best = 0, clock = 0;
 
   function bestFor(n) { return Number(load("merger-best-" + n, 0)) || 0; }
-  function rnd(n) { return Math.floor(Math.random() * n); }
+  var rng = Math.random;               // tirage des écureuils (graine commune en party)
+  function rnd(n) { return Math.floor(rng() * n); }
+  function seeded(a) { return function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+  /* ---------- party (versus multi-jeux, js/party.js) ---------- */
+  var PT = window.Party && Party.pending && Party.pending();
+  if (PT && PT.mode.game !== "merger") PT = null;
+  var party = null;                   // { ctx, rain: écureuils à faire tomber, rainT }
   function pickType() { return picked[rnd(picked.length)]; }
   function newPair() { return [pickType(), pickType()]; }
 
@@ -191,6 +198,14 @@
       g.forEach(function (b) { b.dead = true; cx += b.x; cy += b.y; burst(b.x, b.y, SQUIRRELS[b.type].body, 7); });
       cx /= g.length; cy /= g.length;
       score += gain; cleared += g.length;
+      if (party) {
+        Party.score(score);
+        if (party.ctx.opts.garbage && party.ctx.opponents.length) {
+          var n = g.length - 2 + Math.min(combo, 4) - 1;
+          Party.sendGame("rain", { n: n, from: party.ctx.me }, party.ctx.opponents);
+          pops.push({ x: cx, y: cy - 26, t: 0, txt: "☔ " + n + " chez les autres !" });
+        }
+      }
       pops.push({ x: cx, y: cy, t: 0, txt: "+" + gain.toLocaleString("fr-FR") + (mult > 1 ? " x" + mult : "") });
       beep(330 + Math.min(combo, 6) * 90, 0.14, "sine", 0.08);
       if (g.length >= 5 || combo >= 3) shake = 0.25;
@@ -217,6 +232,14 @@
       var danger = balls.some(function (b) { return b.age > 1.2 && b.y - b.r < TOP && Math.abs(b.y - b.py) < 2; });
       overT = danger ? overT + dt : Math.max(0, overT - dt * 2);
       if (overT > 2.2) gameOver();
+      if (party && party.rain > 0 && state === "play") {
+        party.rainT -= dt;
+        if (party.rainT <= 0) {
+          party.rainT = 0.18; party.rain--;
+          var gx = R * 2 + Math.random() * (JW - R * 4), gb = newBall(pickType(), gx, DROP_Y - 10);
+          gb.py = gb.y - 4; balls.push(gb);
+        }
+      }
     }
     if (swapT > 0) swapT = Math.max(0, swapT - dt * 8);
     if (shake > 0) shake = Math.max(0, shake - dt);
@@ -460,12 +483,13 @@
   function setPicked(a) { picked = a.slice().sort(function (x, y) { return x - y; }); store("merger-pick", picked.join(",")); menu(); }
 
   function start() {
+    if (party) { rng = seeded(party.ctx.seed + party.tries++ * 7919); party.rain = 0; party.rainT = 0; }
     reset(); state = "play"; hide(); hud.hidden = false;
     canvas.focus({ preventScroll: true });
   }
 
   function pause() {
-    if (state !== "play") return;
+    if (state !== "play" || party) return;
     state = "pause";
     show('<h2>Pause</h2><p>Score : <strong>' + score.toLocaleString("fr-FR") + '</strong> · difficulté ' + diff + '/' + N + '</p>' +
       '<p><button class="btn" type="button" data-act="resume">▶ Reprendre</button> ' +
@@ -475,6 +499,14 @@
   function resume() { if (state === "pause") { state = "play"; hide(); canvas.focus({ preventScroll: true }); } }
 
   function gameOver() {
+    if (state === "over") return;
+    if (party) {
+      state = "over"; hud.hidden = true;
+      beep(300, 0.3, "sawtooth", 0.05);
+      show('<h2>Le bac déborde !</h2><p>Score : <strong>' + score.toLocaleString("fr-FR") + '</strong></p>');
+      Party.over({ score: score, dead: true });
+      return;
+    }
     state = "over"; hud.hidden = true;
     var rec = score > best;
     if (rec) { best = score; store("merger-best-" + diff, String(best)); }
@@ -616,6 +648,30 @@
     over: function () { gameOver(); },
   };
 
-  menu();
+  if (PT) {
+    // manche de party : pas de menu, la party lance la partie
+    Party.register("merger", {
+      start: function (ctx) {
+        if (window.MergerMode) window.MergerMode("solo");
+        party = party || { ctx: ctx, tries: 0, rain: 0, rainT: 0 };
+        party.ctx = ctx;
+        if (ctx.opts.picked) picked = ctx.opts.picked.slice();
+        start();
+      },
+      stop: function () {
+        if (state === "play" || state === "pause") { state = "over"; hud.hidden = true; show('<h2>Temps écoulé !</h2><p>Score : <strong>' + score.toLocaleString("fr-FR") + '</strong></p>'); }
+        return { score: score };
+      },
+    });
+    Party.onGame("rain", function (d) {
+      if (!party || state !== "play") return;
+      var n = Math.max(1, Math.min(12, d.n | 0));
+      party.rain += n;
+      pops.push({ x: JW / 2, y: TOP + 40, t: 0, txt: "☔ " + n + " écureuils arrivent !" });
+      shake = 0.2; beep(180, 0.2, "square", 0.05);
+    });
+    state = "menu"; hud.hidden = true;
+    show('<h2>Merger</h2><p>Manche de party : la partie démarre toute seule.</p>');
+  } else menu();
   requestAnimationFrame(loop);
 })();

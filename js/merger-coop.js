@@ -1496,7 +1496,7 @@
     document.querySelectorAll("[data-help]").forEach(function (h) { h.hidden = h.getAttribute("data-help") !== m; });
     store("merger-mode", m);
     if (m === "coop") { if (history.replaceState && !/#coop/.test(location.hash)) history.replaceState(null, "", "#coop"); resize(); if (state === "menu" && screen === "menu") menu(); }
-    else { if (history.replaceState) history.replaceState(null, "", location.pathname + location.search); if ((state === "aim" || state === "flight") && !NET.started) pause(); stopMusic(); }
+    else { if (history.replaceState && !/^#party/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search); if ((state === "aim" || state === "flight") && !NET.started) pause(); stopMusic(); }
   }
   tabs.forEach(function (t) { t.addEventListener("click", function () { setMode(t.getAttribute("data-mode")); }); });
   window.MergerMode = setMode;
@@ -1563,6 +1563,7 @@
 
   var hashCode = /#coop=([A-Za-z]{4})/.exec(location.hash || "");
   var startMode = /#coop/.test(location.hash) ? "coop" : (load("merger-mode", "solo") === "coop" ? "coop" : "solo");
+  if (/^#party/.test(location.hash)) startMode = "solo";   // manche de party (js/party.js)
   reset();
   setMode(startMode);
   menu();

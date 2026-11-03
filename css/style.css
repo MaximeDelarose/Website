@@ -2079,3 +2079,9 @@ button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--de
   .tags-row::-webkit-scrollbar { display: none; }
   .tags-row .chip { flex: none; }
 }
+
+/* ---------- Jeux : encart Versus ---------- */
+.vs-teaser { display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin-bottom: 28px; text-decoration: none; color: inherit; flex-wrap: wrap; }
+.vs-teaser:hover { filter: brightness(1.04); }
+.vs-teaser-ico { font-size: 40px; }
+.vs-teaser > span:nth-child(2) { flex: 1 1 260px; }
