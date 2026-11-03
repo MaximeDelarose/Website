@@ -96,6 +96,10 @@ Presque tout se règle dans **`js/data.js`** :
 
 Le texte de la bio est directement dans `bio.html`.
 
+## BAGBOUND (en développement)
+
+Roguelite auto-battler en sac à dos, dans `bagbound/` (TypeScript, compilé à part : c'est la seule partie du site qui a un `npm install`). Pour l'instant : le moteur de combat headless, le contenu en JSON et les tests (`cd bagbound && npm install && npm test`, simulation en masse : `npm run sim`). Détails dans [`bagbound/README.md`](bagbound/README.md).
+
 ## Le reste
 
 - `css/style.css` : couleurs (variables en haut du fichier, jour et nuit), blocs pixel, mise en page.

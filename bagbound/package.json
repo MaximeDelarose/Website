@@ -1,0 +1,23 @@
+{
+  "name": "bagbound",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BAGBOUND (titre provisoire) : roguelite auto-battler en sac à dos. Phase 1 : moteur de combat headless.",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "sim": "tsx scripts/simulate.ts",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "zod": "3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "tsx": "4.19.2",
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
+  }
+}
