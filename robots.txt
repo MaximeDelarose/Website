@@ -1,0 +1,4 @@
+User-agent: *
+# jeux et cadeaux privés : ne pas explorer
+Disallow: /radia/
+Disallow: /_radia/

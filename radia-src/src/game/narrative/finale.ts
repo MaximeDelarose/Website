@@ -15,6 +15,8 @@ import { playLines, currentOutfit } from '../../ui/components/Dialogue';
 import { h, tap } from '../../ui/dom';
 import { ui } from '../../ui/ui';
 import { wait } from '../../utils/math';
+import { hasPhotos, photoUrl } from '../../core/photos';
+import { unlockPhoto } from './Story';
 
 const ARABIC = 'اللهم اشهد أنني أعاهدك أن أبذل كل ما بوسعي لأسعد هذه المرأة، وأن أكون لها سندًا وأمانًا ما حييت.';
 
@@ -99,6 +101,22 @@ export async function runFinale(replay: boolean): Promise<void> {
       { text: 'Ô Allah, sois témoin : je prends devant Toi l\'engagement de faire tout ce qui est en mon pouvoir pour rendre cette femme heureuse, d\'être son soutien et de lui apporter de la sécurité aussi longtemps que je vivrai.' },
       { text: ARABIC, cls: 'ar', lang: 'ar', dir: 'rtl' },
     ], { dark: true });
+  });
+
+  // Notre photo (si le lien secret a été utilisé)
+  await go(async () => {
+    const url = hasPhotos() ? await photoUrl('p6') : null;
+    if (!url) return;
+    unlockPhoto('p6');
+    await new Promise<void>((resolve) => {
+      const layer = h('div.finale-layer.dark',
+        h('figure.polaroid.finale-photo', h('img', { src: url, alt: '' }), h('figcaption', 'Nous ♡')),
+        h('div.finale-hint', 'Touche pour continuer'));
+      let ok = false;
+      window.setTimeout(() => { ok = true; }, 2200);
+      layer.addEventListener('click', () => { if (!ok) return; layer.classList.add('leaving'); window.setTimeout(() => layer.remove(), 800); resolve(); });
+      ui.root.append(layer);
+    });
   });
 
   // Étape 5 — Conclusion

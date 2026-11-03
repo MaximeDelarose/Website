@@ -55,11 +55,12 @@ export const DIALOGUES: Record<string, DialogueDef> = {
   },
   basket: {
     id: 'basket',
-    title: 'Le panier magique',
+    title: 'Le pot de fleurs magique',
     lines: [
-      A('smile', 'Ce panier, c\'est mon petit cadeau : touche-le et il te donne de quoi fusionner. Il ne se vide jamais.'),
-      R('tease', 'Comme toi quand tu parles ?'),
-      A('laugh', '…Je vais faire semblant de ne pas avoir entendu.'),
+      A('smile', 'Tu vois le pot de fleurs magique, en bas ? Touche-le : il fait pousser des graines juste à côté.'),
+      A('tease', 'Chaque toucher coûte un éclair d\'énergie. Mais t\'inquiète, elle revient toute seule… et je t\'en offre souvent.'),
+      R('tease', 'Et si je n\'en ai plus ?'),
+      A('laugh', 'J\'ai une carte cadeau à mon nom dans la boutique. Je dis ça, je dis rien.'),
     ],
   },
   combo: {
@@ -208,9 +209,9 @@ export const DIALOGUES: Record<string, DialogueDef> = {
       N('Une petite couronne dorée se pose sur la tête de Radia.'),
       R('surprise', 'Une couronne ? Pour moi ?', 'royal'),
       A('love', 'Aux échecs, on dit que la reine est la pièce la plus puissante. Moi, je crois surtout qu\'elle est celle qui rend tout le jeu plus beau.'),
-      A('smile', 'Le mode Échecs est ouvert. Et je te préviens : l\'IA, elle, ne te laissera pas gagner exprès.'),
-      R('tease', 'Et toi, si ?', 'royal'),
-      A('laugh', '…Peut-être.'),
+      A('smile', 'Le mode Échecs est ouvert. Viens jouer contre moi… si tu oses.'),
+      R('tease', 'Tu vas pleurer.', 'royal'),
+      A('laugh', 'On verra bien, ma reine. Je ne te ferai pas de cadeau.'),
     ],
   },
   ch5_intro: {

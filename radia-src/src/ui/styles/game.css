@@ -255,3 +255,24 @@
 .finale-skip { position: absolute; top: calc(var(--sat) + 10px); right: calc(var(--sar) + 14px); z-index: 43; }
 .finale-bottom { justify-content: flex-end; padding-bottom: calc(var(--sab) + 40px); }
 @keyframes finaleIn { from { opacity: 0; transform: translateY(14px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+
+/* ---------------------------------------------------------------- photos */
+.polaroid { margin: 6px auto 4px; padding: 10px 10px 34px; background: #fff; border-radius: 6px; box-shadow: 0 10px 24px rgba(59, 49, 82, 0.35); transform: rotate(-2.5deg); max-width: 300px; position: relative; animation: polaroidIn 0.8s var(--ease-pop); }
+.polaroid img { display: block; width: 100%; max-height: 52vh; object-fit: cover; border-radius: 2px; }
+.polaroid figcaption { position: absolute; left: 0; right: 0; bottom: 6px; font-family: var(--font-script); font-size: 22px; color: var(--nuit); text-align: center; }
+@keyframes polaroidIn { from { opacity: 0; transform: rotate(-14deg) translateY(30px) scale(0.85); filter: blur(6px); } to { opacity: 1; transform: rotate(-2.5deg); filter: none; } }
+.photo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 4px; }
+.photo-grid .polaroid { padding: 6px 6px 24px; animation: none; transform: rotate(var(--rot, -2deg)); }
+.photo-grid .polaroid img { aspect-ratio: 3 / 4; max-height: none; }
+.photo-grid .polaroid figcaption { font-size: 15px; bottom: 3px; }
+.photo-grid .locked { aspect-ratio: 3 / 4.6; border-radius: 6px; display: grid; place-items: center; background: repeating-linear-gradient(45deg, #efe0d3, #efe0d3 10px, #f6eadf 10px, #f6eadf 20px); color: #cbb7a7; }
+.photo-full { position: absolute; inset: 0; z-index: 60; background: rgba(30, 24, 42, 0.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: calc(var(--sat) + 20px) 16px calc(var(--sab) + 20px); animation: fadeIn 0.25s ease; color: #fff; text-align: center; }
+.photo-full img { max-width: 100%; max-height: 72vh; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.photo-full b { font-family: var(--font-script); font-size: 28px; }
+.finale-photo { width: min(70vw, 280px); }
+
+
+/* barre du haut de l'accueil */
+.title-top { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.title-top .shop-btn small { color: #fff; }
+.title-screen .title-logo { margin-top: 0; font-size: clamp(42px, 13vw, 66px); }

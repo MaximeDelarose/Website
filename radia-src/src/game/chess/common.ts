@@ -12,10 +12,17 @@ export const sqToCell = (sq: string) => (8 - Number(sq[1])) * 8 + (sq.charCodeAt
 export const cellToSq = (c: number) => (String.fromCharCode(97 + (c % 8)) + (8 - Math.floor(c / 8))) as Square;
 export const isDarkSq = (c: number) => ((c % 8) + Math.floor(c / 8)) % 2 === 1;
 
-export function chessPieces(c: Chess): BoardPiece[] {
+/**
+ * `face` peut remplacer le dessin d'une pièce (visage de Radia pour sa dame,
+ * d'Auguste pour son roi) : la nature de la pièce change alors (suffixe « f »)
+ * pour que le plateau la redessine.
+ */
+export function chessPieces(c: Chess, face?: (color: Side, type: PieceKind) => string | null): BoardPiece[] {
   const out: BoardPiece[] = [];
   c.board().forEach((row, y) => row.forEach((p, x) => {
-    if (p) out.push({ cell: y * 8 + x, kind: p.color + p.type, html: pieceSvg(p.color as Side, p.type as PieceKind) });
+    if (!p) return;
+    const f = face?.(p.color as Side, p.type as PieceKind) ?? null;
+    out.push({ cell: y * 8 + x, kind: p.color + p.type + (f ? 'f' : ''), html: f ?? pieceSvg(p.color as Side, p.type as PieceKind) });
   }));
   return out;
 }

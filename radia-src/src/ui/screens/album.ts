@@ -13,18 +13,21 @@ import { canvasUrl, paint } from '../../game/art/kit';
 import { drawMemory } from '../../game/art/scenes';
 import { itemImageUrl } from '../../game/merge/textures';
 import { playLines } from '../components/Dialogue';
+import { PHOTOS } from '../../data/photos';
+import { hasPhotos, photoUrl } from '../../core/photos';
+import { syncPassedPhotos } from '../../game/narrative/Story';
 
 export function memoryImageUrl(id: string): string {
   return canvasUrl(`mem:${id}`, () => paint(330, 440, 2, (ctx) => drawMemory(ctx, id, 330, 440)));
 }
 
-type Tab = 'memories' | 'collections' | 'history';
+type Tab = 'memories' | 'photos' | 'collections' | 'history';
 
 export function openAlbum(tab: Tab = 'memories', overlay = false): Promise<void> {
   return new Promise((resolve) => {
     const body = h('div.screen-body');
     const seg = h('div.seg');
-    const tabs: [Tab, string][] = [['memories', 'Souvenirs'], ['collections', 'Collections'], ['history', 'Histoire']];
+    const tabs: [Tab, string][] = [['memories', 'Souvenirs'], ['photos', 'Photos'], ['collections', 'Objets'], ['history', 'Histoire']];
     for (const [t, label] of tabs) {
       const b = h(`button${t === tab ? '.on' : ''}`, label);
       b.addEventListener('click', tap(() => { seg.querySelectorAll('button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); render(t); }));
@@ -38,6 +41,7 @@ export function openAlbum(tab: Tab = 'memories', overlay = false): Promise<void>
       body.textContent = '';
       body.scrollTop = 0;
       if (t === 'memories') renderMemories();
+      else if (t === 'photos') renderPhotos();
       else if (t === 'collections') renderCollections();
       else renderHistory();
     }
@@ -60,6 +64,33 @@ export function openAlbum(tab: Tab = 'memories', overlay = false): Promise<void>
       body.append(grid);
     }
 
+    function renderPhotos() {
+      syncPassedPhotos();
+      const got = save.data.photos;
+      body.append(h('p.center.muted', { style: 'margin:0 0 10px;font-size:14px' }, `${got.length}/${PHOTOS.length} photos de nous`));
+      if (!hasPhotos()) {
+        body.append(h('p.center.muted', { style: 'font-size:14px' }, 'Les photos s\'ouvrent avec le lien secret envoyé par Auguste ♡'));
+      }
+      const grid = h('div.photo-grid');
+      PHOTOS.forEach((p, i) => {
+        const rot = `${(i % 2 ? 1.8 : -2.2)}deg`;
+        if (!got.includes(p.id) || !hasPhotos()) {
+          grid.append(h('div.locked', { style: `--rot:${rot}` }, icon('lock', 30)));
+          return;
+        }
+        const img = h('img', { alt: p.title });
+        void photoUrl(p.id).then((u) => { if (u) img.src = u; });
+        const card = h('button.polaroid', { style: `--rot:${rot}` }, img, h('figcaption', p.title));
+        card.addEventListener('click', tap(() => {
+          const full = h('div.photo-full', h('img', { src: img.src, alt: p.title }), h('b', p.title), h('p', { style: 'margin:0;max-width:340px' }, p.caption), h('small', { style: 'opacity:.7' }, 'Touche pour fermer'));
+          full.addEventListener('click', () => full.remove());
+          ui.root.append(full);
+        }));
+        grid.append(card);
+      });
+      body.append(grid);
+    }
+
     function renderCollections() {
       const d = new Set(save.data.discovered);
       const total = 43;
@@ -73,7 +104,7 @@ export function openAlbum(tab: Tab = 'memories', overlay = false): Promise<void>
             b.addEventListener('click', tap(() => void ui.modal({
               title: itemName(r),
               body: h('div', h('img', { src: itemImageUrl(r, 160), alt: '', style: 'width:120px;height:120px' }), h('p', itemBlurb(r)),
-                r.c !== 'special' ? h('p.muted', { style: 'font-size:14px' }, `${COLLECTIONS[r.c].name} · niveau ${r.l}/10`) : null),
+                r.c !== 'special' && r.c !== 'gen' ? h('p.muted', { style: 'font-size:14px' }, `${COLLECTIONS[r.c].name} · niveau ${r.l}/10`) : null),
               actions: [{ label: 'Joli !', value: 'ok' }],
             })));
             return b;

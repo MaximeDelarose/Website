@@ -5,13 +5,15 @@
  */
 import './ui/styles/base.css';
 import './ui/styles/game.css';
-import { save, setGame, applySettings, audio, game as getGame } from './core/app';
+import { save, setGame, applySettings, audio, events, game as getGame } from './core/app';
+import { ACHIEVEMENT_DIAMONDS } from './core/progress';
 import { createGame } from './game/GameConfig';
 import { setLowFx } from './game/layout';
 import { ui } from './ui/ui';
 import { h } from './ui/dom';
 import { showTitle } from './ui/screens/title';
 import { BackdropScene } from './game/scenes/BackdropScene';
+import { preloadPhotos } from './core/photos';
 
 const progress = (p: number) => {
   const bar = document.getElementById('splash-progress');
@@ -43,12 +45,34 @@ async function handleSaveProblems(): Promise<void> {
   }
 }
 
+/** Nouveautés de la grande mise à jour (une seule fois, pour les parties existantes). */
+async function showWhatsNew(): Promise<void> {
+  if (save.data.seenUpdates.includes('v2')) return;
+  save.data.seenUpdates.push('v2');
+  save.save();
+  if (!save.hadSave) return;
+  const li = (t: string) => h('li', { style: 'margin:4px 0' }, t);
+  await ui.modal({
+    title: 'Nouveautés ♡',
+    body: h('div', { style: 'text-align:left;font-size:15px' },
+      h('ul', { style: 'padding-left:18px;margin:6px 0' },
+        li('Les générateurs sont sur le plateau : touche-les pour produire des objets (1 ⚡).'),
+        li('L\'énergie revient toute seule, et Auguste en offre souvent.'),
+        li('Des diamants pour des bonus, des coffres, des objets rares et un sac de rangement.'),
+        li('« Notre petit monde » à décorer avec tes cœurs.'),
+        li('Et une boutique très spéciale : la carte d\'Auguste…')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, '50 diamants offerts pour fêter ça 💎')),
+    actions: [{ label: 'Trop bien !', value: 'ok' }],
+  });
+}
+
 async function boot(): Promise<void> {
   progress(0.1);
   save.load();
   setLowFx(save.data.settings.effects === 'reduced');
   applySettings();
   void save.requestPersistence();
+  preloadPhotos(['face-radia', 'face-auguste']);
   progress(0.3);
 
   // Écriture immédiate quand Safari passe en arrière-plan ou se ferme.
@@ -58,6 +82,13 @@ async function boot(): Promise<void> {
   // Premier toucher : déverrouillage audio (exigence iOS).
   const unlock = () => { audio.unlock(); };
   window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+
+  // Succès : notification + diamants offerts
+  events.on('achievement', (a) => {
+    audio.play('achievement');
+    ui.toast({ title: `Succès : ${a.name}`, sub: `${a.desc} · +${ACHIEVEMENT_DIAMONDS} 💎`, icon: 'trophy', ms: 3600 });
+    events.emit('economy', undefined);
+  });
 
   const game = createGame();
   setGame(game);
@@ -79,6 +110,7 @@ async function boot(): Promise<void> {
   hideSplash();
   showTitle();
   await handleSaveProblems();
+  await showWhatsNew();
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('./sw.js').catch(() => undefined);

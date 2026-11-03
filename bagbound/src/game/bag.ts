@@ -152,9 +152,13 @@ export class Bag {
     return true;
   }
 
-  stash(uid: string): void {
+  /** Range un objet dans la réserve. Un objet maudit refuse (false). */
+  stash(uid: string): boolean {
     const e = this.get(uid);
-    if (e) e.pos = null;
+    if (!e) return false;
+    if (e.pos && this.content.items[e.item]?.cursed) return false;
+    e.pos = null;
+    return true;
   }
 
   /** Essaie une transformation sur place, puis en décalant un peu l'objet. */

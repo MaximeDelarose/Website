@@ -12,6 +12,7 @@ import {
   cue, makeWorld, moving, pottedCount, respawnCue, shoot, step, type Ball, type BallKind, type World,
 } from './logic/billiard';
 import { fxTextures, burst } from './fx';
+import { augusteSays } from '../../ui/components/augusteSays';
 import type { MinigameHost } from './index';
 
 const RIM = 26; // bord en bois (points de table)
@@ -318,7 +319,7 @@ export class BilliardScene extends BaseScene {
     }
     if (kind === 'cue') {
       audio.play('invalid');
-      this.host.banner('Oups, la blanche !', true);
+      augusteSays('Aha, tu fais tout le temps rentrer la blanche toi, c\'est vrai !');
       return;
     }
     audio.play(kind === 'gold' ? 'rare' : 'pop3');

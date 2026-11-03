@@ -1,7 +1,7 @@
 /* Service worker de RADIA — généré à la build (voir vite.config.ts). */
-const VERSION = 'mw0gmd58';
+const VERSION = 'mw0js9di';
 const CACHE = 'radia-' + VERSION;
-const PRECACHE = ["assets/chess-core-DDhsYLKr.js","assets/dancing-script-latin-700-normal-CX8AaSVl.woff2","assets/finale-qqgYLelI.js","assets/fredoka-latin-400-normal-Bxuk_fn1.woff2","assets/fredoka-latin-500-normal-DjswcPAG.woff2","assets/fredoka-latin-600-normal-5ja5qWal.woff2","assets/fredoka-latin-700-normal-C3QZl44p.woff2","assets/icons/apple-touch-icon.png","assets/icons/favicon-64.png","assets/icons/icon-192.png","assets/icons/icon-512.png","assets/icons/icon-maskable-512.png","assets/index-BGx17I9W.css","assets/index-CAiLxbEH.js","assets/index-DMZcblIt.js","assets/index-DWIvPCUL.css","assets/index-D_Bfde9M.css","assets/index-zqDPan6W.js","assets/music/radia-theme.mp3","assets/phaser-0YPJO2g1.js","index.html","manifest.webmanifest"];
+const PRECACHE = ["assets/chess-core-DDhsYLKr.js","assets/dancing-script-latin-700-normal-CX8AaSVl.woff2","assets/decor-DJv2fAPi.js","assets/finale-D-SAD-1F.js","assets/fredoka-latin-400-normal-Bxuk_fn1.woff2","assets/fredoka-latin-500-normal-DjswcPAG.woff2","assets/fredoka-latin-600-normal-5ja5qWal.woff2","assets/fredoka-latin-700-normal-C3QZl44p.woff2","assets/icons/apple-touch-icon.png","assets/icons/favicon-64.png","assets/icons/icon-192.png","assets/icons/icon-512.png","assets/icons/icon-maskable-512.png","assets/index-CBCzc5G7.js","assets/index-CLtrdHUJ.css","assets/index-D_Bfde9M.css","assets/index-DcPuGFNJ.js","assets/index-HfPF13l2.js","assets/index-yQhkBcPI.css","assets/music/radia-theme-2.mp3","assets/music/radia-theme.mp3","assets/p/face-auguste.bin","assets/p/face-radia.bin","assets/p/p1.bin","assets/p/p2.bin","assets/p/p3.bin","assets/p/p4.bin","assets/p/p5.bin","assets/p/p6.bin","assets/phaser-0YPJO2g1.js","index.html","manifest.webmanifest"];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(

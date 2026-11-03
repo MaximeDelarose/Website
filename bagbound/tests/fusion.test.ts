@@ -177,7 +177,7 @@ describe("run et phase 4", () => {
     run.bag.entries[0].fusedFrom = ["rusty_dagger", "rusty_dagger"];
     run.bag.cells!.push([0, 0]);
     R.enterNode(run, content, rd, R.reachable(run)[0].id);
-    R.finishCombat(run, content, rd, runCombat(content, R.combatSetup(run)));
+    R.finishCombat(run, content, rd, runCombat(content, R.combatSetup(run, content)));
     expect(run.bag.cells).toHaveLength(14);
     expect(run.bag.entries.find((e) => e.item === "wooden_sword")!.fusedFrom).toEqual(["rusty_dagger", "rusty_dagger"]);
   });
@@ -202,5 +202,16 @@ describe("run et phase 4", () => {
   it("le bot sait fusionner et reste reproductible", () => {
     const a = botRun(content, rd, "vagabond", 21, recipes);
     expect(botRun(content, rd, "vagabond", 21, recipes).run).toEqual(a.run);
+  });
+});
+
+describe("recettes par tag : pas d'arme dans l'ingrédient « élément »", () => {
+  it("dague rouillée + dague empoisonnée ne refait pas une dague empoisonnée", () => {
+    const bag = new Bag(content, rect(3, 2));
+    bag.add("rusty_dagger", [0, 0]);
+    bag.add("poison_dagger", [1, 0]);
+    expect(names(bag)).not.toContain("poison_dagger");
+    bag.add("poison_flask", [0, 1]);
+    expect(names(bag)).toContain("poison_dagger");
   });
 });

@@ -17,6 +17,10 @@ import { ENDLESS_DEF } from '../../game/merge/rules';
 import { openAlbum } from './album';
 import { openSettings } from './settings';
 import { currentOutfit } from '../components/Dialogue';
+import { events } from '../../core/app';
+import { wallet, fmt } from '../../core/wallet';
+import { openShop, shopButton, diamondUrl, energyUrl } from './shop';
+import { openEnergyPanel } from '../components/energyPanel';
 
 const hasProgress = () => save.data.story.step > 0 || Object.keys(save.data.levels).length > 0;
 
@@ -87,10 +91,22 @@ export function showTitle(): void {
   if (!chessUnlocked()) chessBtn.classList.add('locked');
   menu.append(h('div.row', chessBtn, btn('SOUVENIRS', '.gold', () => void go(() => openAlbum('memories').then(showTitle)), 260, icon('album', 20))));
   menu.append(h('div.row',
-    btn('SUCCÈS', '.secondary', () => void go(achievements), 300, icon('trophy', 20)),
-    btn('PARAMÈTRES', '.secondary', () => void openSettings(), 340, icon('settings', 20))));
+    btn('DÉCORER', '.secondary', () => void go(async () => { const d = await import('./decor'); await d.openDecor(); showTitle(); }), 300, icon('home', 20)),
+    btn('SUCCÈS', '.secondary', () => void go(achievements), 340, icon('trophy', 20))));
+
+  // barre du haut : réglages · énergie / diamants · carte d'Auguste
+  const gems = h('button.res-chip', { 'aria-label': 'Diamants' }, h('img', { src: diamondUrl(52), alt: '' }), h('span', fmt(wallet.diamonds())), h('span.plus', '+'));
+  gems.addEventListener('click', tap(() => void openShop('diamonds').then(() => { (gems.children[1] as HTMLElement).textContent = fmt(wallet.diamonds()); })));
+  const nrg = h('button.res-chip', { 'aria-label': 'Énergie' }, h('img', { src: energyUrl(52), alt: '' }), h('span', fmt(wallet.energy())));
+  nrg.addEventListener('click', tap(() => void openEnergyPanel(false)));
+  const offEco = events.on('economy', () => { (gems.children[1] as HTMLElement).textContent = fmt(wallet.diamonds()); (nrg.children[1] as HTMLElement).textContent = fmt(wallet.energy()); });
+  const topBar = h('div.title-top',
+    h('button.icon-btn', { 'aria-label': 'Paramètres', on: { click: tap(() => void openSettings()) } }, icon('settings')),
+    h('div.res-row', nrg, gems),
+    shopButton());
 
   const scr = h('div.title-screen',
+    topBar,
     h('div', h('div.title-logo', 'RADIA ', h('span.heart', '♡')), h('div.title-sub', 'Un petit monde, rien que pour toi.')),
     h('div.title-art', art.el),
     menu);
@@ -102,6 +118,7 @@ export function showTitle(): void {
     audio.unlock();
     audio.playMusic();
     art.stop();
+    offEco();
     setBarkSink(null);
     await fn();
   }

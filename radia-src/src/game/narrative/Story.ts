@@ -5,6 +5,8 @@
 import { STORY, CHAPTERS, chapterAt, stepKey, reconcileStep, type StoryStep } from '../../data/story';
 import { levelById } from '../../data/levels';
 import { memoryById } from '../../data/memories';
+import { photoById } from '../../data/photos';
+import { hasPhotos, photoUrl } from '../../core/photos';
 import { save, audio } from '../../core/app';
 import { checkAchievements, unlockMemory, stat, markMinigame } from '../../core/progress';
 import { playDialogue } from '../../ui/components/Dialogue';
@@ -35,6 +37,7 @@ export async function runStory(): Promise<void> {
   try {
     audio.playMusic();
     save.data.story.step = reconcileStep(save.data.story.step, save.data.story.stepKey);
+    syncPassedPhotos();
     while (save.data.story.step < STORY.length) {
       const idx = save.data.story.step;
       const step = STORY[idx];
@@ -81,6 +84,9 @@ async function runStep(step: StoryStep): Promise<StepResult> {
     case 'memory':
       if (unlockMemory(step.id)) await revealMemory(step.id);
       return 'ok';
+    case 'photo':
+      if (unlockPhoto(step.id)) await revealPhoto(step.id);
+      return 'ok';
     case 'queen': {
       if (autoTest()) return 'ok';
       const c = await import('../chess/index');
@@ -92,7 +98,7 @@ async function runStep(step: StoryStep): Promise<StepResult> {
       audio.play('achievement');
       await ui.modal({
         title: 'Mode Échecs débloqué !',
-        body: h('div', h('p', 'Le royaume t\'appartient : joue contre l\'IA (trois niveaux), résous des problèmes et les puzzles du Mode Reine.'), h('p.muted', { style: 'font-size:14px' }, 'Accessible à tout moment depuis le menu principal.')),
+        body: h('div', h('p', 'Le royaume t\'appartient : joue contre Auguste (il a trois humeurs), résous des problèmes et les puzzles du Mode Reine.'), h('p.muted', { style: 'font-size:14px' }, 'Accessible à tout moment depuis le menu principal.')),
         actions: [{ label: 'Continuer l\'histoire', value: 'ok' }],
         dismissible: false,
       });
@@ -136,6 +142,41 @@ async function levelIntro(def: LevelDef): Promise<void> {
     h('p.tip', `💡 ${def.hint}`),
   );
   await ui.modal({ title: def.title, body, actions: [{ label: 'C\'est parti !', value: 'go' }], dismissible: false, className: 'level-intro-modal' });
+}
+
+/** Photo débloquée une seule fois. */
+export function unlockPhoto(id: string): boolean {
+  if (!photoById(id) || save.data.photos.includes(id)) return false;
+  save.data.photos.push(id);
+  save.save();
+  return true;
+}
+
+/**
+ * Photos ajoutées après coup (mise à jour du jeu) : celles dont l'étape est
+ * déjà dépassée sont débloquées directement.
+ */
+export function syncPassedPhotos(): void {
+  const step = Math.min(save.data.story.step, STORY.length);
+  for (let i = 0; i < step; i++) {
+    const s = STORY[i];
+    if (s.t === 'photo') unlockPhoto(s.id);
+  }
+}
+
+/** Polaroïd : une vraie photo apparaît (si la clé des photos est présente). */
+export async function revealPhoto(id: string): Promise<void> {
+  const p = photoById(id);
+  if (!p || !hasPhotos()) return;
+  const url = await photoUrl(id);
+  if (!url) return;
+  audio.play('chest');
+  audio.duck(0.6, 3);
+  const body = h('div.polaroid-reveal',
+    h('figure.polaroid', h('img', { src: url, alt: p.title }), h('figcaption', p.title)),
+    h('p', { style: 'margin:6px 0 0' }, p.caption),
+    h('p.muted', { style: 'font-size:13px;margin:0' }, 'Ajoutée à l\'album · Nos photos ♡'));
+  await ui.modal({ title: 'Une photo de nous', body, actions: [{ label: 'Garder cette photo ♡', value: 'ok' }], dismissible: false });
 }
 
 export async function revealMemory(id: string): Promise<void> {

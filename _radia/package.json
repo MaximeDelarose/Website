@@ -1,0 +1,29 @@
+{
+  "name": "radia",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RADIA ♛ — jeu d'échecs romantique (cadeau privé). Contenu personnel chiffré au build.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && tsx scripts/seal.ts",
+    "preview": "vite preview --outDir ../radia",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "unpack": "tsx scripts/unpack.ts",
+    "photos": "tsx scripts/photos.ts"
+  },
+  "dependencies": {
+    "chess.js": "1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "esbuild": "0.23.1",
+    "jsdom": "25.0.1",
+    "stockfish": "18.0.8",
+    "tsx": "4.19.2",
+    "typescript": "5.7.2",
+    "vite": "6.0.7",
+    "vitest": "2.1.8"
+  }
+}

@@ -8,8 +8,6 @@
 import '../../ui/styles/chess.css';
 import { h, tap } from '../../ui/dom';
 import { ui } from '../../ui/ui';
-import { canvasUrl } from '../art/kit';
-import { medallionCanvas } from '../art/characters';
 import { setBarkSink } from '../../core/progress';
 import { classicView } from './classic';
 import { puzzleView } from './puzzleView';
@@ -18,14 +16,13 @@ import type { View } from './common';
 
 export type ChessTab = 'ai' | 'puzzles' | 'queen';
 
-const augusteImg = () => canvasUrl('chess:aug', () => medallionCanvas('auguste', { expr: 'smile' }, 120));
 
 export function openChess(opts: { tab?: ChessTab } = {}): Promise<void> {
   return new Promise((resolve) => {
     let view: View | null = null;
     let augSpot: HTMLElement | null = null;
     const body = h('div.chess-body');
-    const tabs: [ChessTab, string][] = [['ai', 'Contre l\'IA'], ['puzzles', 'Problèmes'], ['queen', 'Mode Reine']];
+    const tabs: [ChessTab, string][] = [['ai', 'Contre Auguste'], ['puzzles', 'Problèmes'], ['queen', 'Mode Reine']];
     const tabBtns = tabs.map(([k, label]) => h('button', { on: { click: tap(() => show(k)) } }, label));
     const seg = h('div.seg.chess-tabs', ...tabBtns);
     const close = () => {
@@ -47,7 +44,7 @@ export function openChess(opts: { tab?: ChessTab } = {}): Promise<void> {
       tabBtns.forEach((b, i) => b.classList.toggle('on', tabs[i][0] === k));
       augSpot = null;
       view = k === 'ai'
-        ? classicView((spot) => { augSpot = spot; spot.append(h('img', { src: augusteImg(), alt: 'Auguste' })); })
+        ? classicView((spot) => { augSpot = spot; })
         : k === 'puzzles' ? puzzleView() : queenTabView();
       body.append(view.el);
     };

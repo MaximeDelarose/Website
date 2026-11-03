@@ -4,7 +4,7 @@
  * pas les règles des échecs classiques pour la collection « Échecs »).
  */
 export type CollectionId = 'flowers' | 'love' | 'paris' | 'chess';
-export type ItemColl = CollectionId | 'special';
+export type ItemColl = CollectionId | 'special' | 'gen';
 
 export interface ItemRef { c: ItemColl; l: number }
 
@@ -110,6 +110,19 @@ export const SPECIAL_ITEMS: Record<number, { name: string; blurb: string }> = {
 
 export const COLLECTION_IDS: CollectionId[] = ['flowers', 'love', 'paris', 'chess'];
 
+/**
+ * Générateurs posés sur le plateau ({ c: 'gen', l: 1..4 }) : on les touche pour
+ * produire des objets de leur collection (1 énergie par toucher).
+ */
+export const GENERATORS: Record<number, { coll: CollectionId; name: string; blurb: string }> = {
+  1: { coll: 'flowers', name: 'Pot de fleurs magique', blurb: 'Touche-le : il fait pousser des graines (1 ⚡).' },
+  2: { coll: 'love', name: 'Boîte aux lettres', blurb: 'Touche-la : elle offre des étincelles d\'amour (1 ⚡).' },
+  3: { coll: 'paris', name: 'Appareil photo', blurb: 'Touche-le : il imprime des souvenirs de Paris (1 ⚡).' },
+  4: { coll: 'chess', name: 'Coffret d\'échecs', blurb: 'Touche-le : il libère des pièces du royaume (1 ⚡).' },
+};
+export const genKindOf = (c: CollectionId): number => COLLECTION_IDS.indexOf(c) + 1;
+export const isGen = (r: ItemRef | null | undefined): boolean => !!r && r.c === 'gen';
+
 export const itemKey = (r: ItemRef) => `${r.c}:${r.l}`;
 export const parseKey = (k: string): ItemRef => {
   const [c, l] = k.split(':');
@@ -120,11 +133,13 @@ export const sameItem = (a: ItemRef | null | undefined, b: ItemRef | null | unde
 
 export function itemName(r: ItemRef): string {
   if (r.c === 'special') return SPECIAL_ITEMS[r.l]?.name ?? 'Objet spécial';
+  if (r.c === 'gen') return GENERATORS[r.l]?.name ?? 'Générateur';
   return COLLECTIONS[r.c].items[r.l - 1] ?? '?';
 }
 
 export function itemBlurb(r: ItemRef): string {
   if (r.c === 'special') return SPECIAL_ITEMS[r.l]?.blurb ?? '';
+  if (r.c === 'gen') return GENERATORS[r.l]?.blurb ?? '';
   return COLLECTIONS[r.c].blurbs[r.l - 1] ?? '';
 }
 

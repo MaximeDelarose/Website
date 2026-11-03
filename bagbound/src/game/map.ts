@@ -2,7 +2,7 @@
 // boutique, événement, coffre, feu de camp ; boss en fin de zone).
 // Génération déterministe à partir de l'état RNG de la run.
 
-import type { NodeType, RunData } from "../content/runData";
+import type { NodeType, RouteDef, RunData } from "../content/runData";
 import { chance, nextInt, pick, type RngHolder } from "../engine/rng";
 
 export interface MapNode {
@@ -30,11 +30,11 @@ export function weightedPick<T>(h: RngHolder, list: readonly { w: number; v: T }
   return list[list.length - 1].v;
 }
 
-function rowType(h: RngHolder, rd: RunData, row: number): NodeType {
+function rowType(h: RngHolder, rd: RunData, row: number, eliteWeightMul = 1): NodeType {
   if (row === 0) return rd.rules.firstRow;
   const opts = (Object.entries(rd.rules.nodeWeights) as [NodeType, number][])
     .filter(([t, w]) => w > 0 && t !== "boss" && (t !== "elite" || row >= rd.rules.eliteMinRow))
-    .map(([t, w]) => ({ w, v: t }));
+    .map(([t, w]) => ({ w: t === "elite" ? w * eliteWeightMul : w, v: t }));
   return weightedPick(h, opts);
 }
 
@@ -69,19 +69,18 @@ function link(h: RngHolder, cur: MapNode[], nxt: MapNode[]): void {
   for (const node of cur) node.next.sort((a, b) => nxt.findIndex((x) => x.id === a) - nxt.findIndex((x) => x.id === b));
 }
 
-export function generateFloor(h: RngHolder, rd: RunData, zoneIdx: number, floorIdx: number): MapNode[] {
-  const zone = rd.zones[zoneIdx];
-  const floor = zone.floors[floorIdx];
-  const last = floorIdx === zone.floors.length - 1;
+export function generateFloor(h: RngHolder, rd: RunData, route: RouteDef, zoneIdx: number, floorIdx: number, eliteWeightMul = 1): MapNode[] {
+  const floor = route.floors[floorIdx];
+  const last = floorIdx === route.floors.length - 1;
   const rows: MapNode[][] = [];
   const [minN, maxN] = rd.rules.nodesPerRow;
   const make = (row: number, count: number, typeOf: () => NodeType): MapNode[] =>
     Array.from({ length: count }, (_, col) => {
-      const jitter = count > 1 ? (nextInt(h, -40, 40) / 1000) : 0;
+      const jitter = count > 1 ? nextInt(h, -40, 40) / 1000 : 0;
       const node: MapNode = { id: `${zoneIdx}-${floorIdx}-${row}-${col}`, row, col, x: (col + 1) / (count + 1) + jitter, type: typeOf(), next: [], done: false };
       return node;
     });
-  for (let r = 0; r < rd.rules.rows; r++) rows.push(make(r, nextInt(h, minN, maxN), () => rowType(h, rd, r)));
+  for (let r = 0; r < rd.rules.rows; r++) rows.push(make(r, nextInt(h, minN, maxN), () => rowType(h, rd, r, eliteWeightMul)));
   if (last) {
     rows.push(make(rd.rules.rows, 1, () => "campfire"));
     rows.push(make(rd.rules.rows + 1, 1, () => "boss"));
@@ -94,10 +93,28 @@ export function generateFloor(h: RngHolder, rd: RunData, zoneIdx: number, floorI
       node.hpMul = floor.hpMul;
       node.seed = nextInt(h, 0, 2 ** 31 - 1);
     } else if (node.type === "boss") {
-      node.enemies = [...zone.boss];
-      node.hpMul = zone.bossHpMul;
+      node.enemies = [...route.boss];
+      node.hpMul = route.bossHpMul;
       node.seed = nextInt(h, 0, 2 ** 31 - 1);
     }
   }
   return rows.flat();
+}
+
+/** Zone finale : un feu de camp, puis le boss final. */
+export function generateFinal(h: RngHolder, rd: RunData, zoneIdx: number): MapNode[] {
+  const camp: MapNode = { id: `${zoneIdx}-0-0-0`, row: 0, col: 0, x: 0.5, type: "campfire", next: [`${zoneIdx}-0-1-0`], done: false };
+  const boss: MapNode = {
+    id: `${zoneIdx}-0-1-0`,
+    row: 1,
+    col: 0,
+    x: 0.5,
+    type: "boss",
+    next: [],
+    done: false,
+    enemies: [...rd.final.boss],
+    hpMul: rd.final.bossHpMul,
+    seed: nextInt(h, 0, 2 ** 31 - 1),
+  };
+  return [camp, boss];
 }

@@ -28,7 +28,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'nord_paris', name: 'Le Nord de Paris bb', desc: 'Terminer le chapitre 2.', icon: 'arc', check: (s) => chapterDone(s, 2) },
   { id: 'first_crown', name: 'Ma première couronne', desc: 'Créer une Couronne.', icon: 'crown', check: (s) => has(s, 'chess:6') },
   { id: 'queen_right', name: 'La reine a toujours raison', desc: 'Résoudre tous les puzzles du Mode Reine.', icon: 'queen', check: (s) => stat(s, 'queenPuzzlesTotal') > 0 && s.chess.queen.length >= stat(s, 'queenPuzzlesTotal') },
-  { id: 'checkmate', name: 'Échec et mat !', desc: 'Battre l\'IA aux échecs.', icon: 'chess', check: (s) => s.chess.wins.easy + s.chess.wins.normal + s.chess.wins.hard >= 1 },
+  { id: 'checkmate', name: 'Échec et mat !', desc: 'Battre Auguste aux échecs.', icon: 'chess', check: (s) => s.chess.wins.easy + s.chess.wins.normal + s.chess.wins.hard >= 1 },
   { id: 'memory_collector', name: 'Collectionneuse de souvenirs', desc: 'Débloquer les 8 souvenirs.', icon: 'album', check: (s) => s.memories.length >= 8 },
   { id: 'precious_heart', name: 'Le cœur précieux', desc: 'Créer un Cœur précieux.', icon: 'heart', check: (s) => has(s, 'love:9') },
   { id: 'world_for_you', name: 'Un monde pour toi', desc: 'Découvrir la fin de l\'histoire.', icon: 'globe', check: (s) => s.story.endingSeen },

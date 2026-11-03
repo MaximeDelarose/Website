@@ -1,5 +1,8 @@
 /**
- * Partie d'échecs classique contre l'IA (règles complètes via chess.js).
+ * Partie d'échecs classique « contre Auguste » (règles complètes via chess.js).
+ * Le moteur joue pour lui, mais tout est présenté comme une vraie partie
+ * contre Auguste : son visage, ses humeurs, son temps de réflexion humain et
+ * ses petites piques affectueuses. La dame de Radia porte le visage de Radia.
  */
 import { Chess } from 'chess.js';
 import { h, tap } from '../../ui/dom';
@@ -12,7 +15,35 @@ import { GridBoard } from './GridBoard';
 import { AI_LEVELS, aiMove } from './ai';
 import { askPromotion, cellToSq, chessPieces, chessTargets, fitBoard, isDarkSq, needsPromotion, sqToCell, type View } from './common';
 import { gameEnd, playUci, toUci, type GameEnd } from './rules';
-import type { Side } from './pieces';
+import type { Side, PieceKind } from './pieces';
+import { canvasUrl } from '../art/kit';
+import { medallionCanvas } from '../art/characters';
+import { hasPhotos, photoUrl, photoUrlNow } from '../../core/photos';
+
+/** Petites piques d'Auguste (choisies au hasard, sans répétition immédiate). */
+const TAUNTS = {
+  start: ['Prête à perdre, galbi ?', 'Je te préviens, je suis en forme aujourd\'hui.', 'Allez, montre-moi ce que la reine sait faire.'],
+  startBlack: ['Je commence. C\'est de la galanterie, version échecs.', 'Les blancs pour moi, le premier coup aussi. Désolé, pas désolé.'],
+  resume: ['Ah, tu reviens ! On reprend là où on s\'était arrêtés.', 'Je n\'ai pas touché au plateau, promis.'],
+  augCapture: ['Merci pour le cadeau 😌', 'Celle-là, je la garde en souvenir.', 'Oups… elle était à toi ?', 'Je prends, je prends.', 'Tu me la laissais exprès, non ?'],
+  radiaCapture: ['Hé ! Je l\'aimais bien celle-là.', 'Ok… là tu m\'as eu.', 'Tu triches ou quoi ?', 'Doucement, galbi !', 'Je l\'avais pas vue venir, celle-là.'],
+  augCheck: ['Échec, ma reine 😏', 'Attention à ton roi… je suis tout près.', 'Échec ! Tu fais moins la maligne, hein ?'],
+  radiaCheck: ['Doucement avec mon roi…', 'Hé, laisse mon roi tranquille !', 'Ok ok, je me cache.'],
+  queenThreat: ['Ta tête est en danger… et ça me fait mal au cœur.', 'Je vise ta dame. Enfin… toi. 😘', 'Joli visage, ta dame. Ce serait dommage de la perdre.'],
+  queenTaken: ['J\'ai attrapé ta dame… mais ton cœur, je l\'avais déjà.', 'Je t\'ai capturée. Je ne te rends pas.'],
+  radiaTakesQueen: ['Ma dame ! Tu n\'as aucune pitié…', 'Tu as pris ma dame. Je vais m\'en remettre… peut-être.'],
+  longThink: ['Tu réfléchis ou tu m\'admires ?', 'Prends ton temps, je ne vais nulle part.', 'Je t\'attends… comme toujours.', 'Tu veux un indice ? Non ? Ok, je me tais.'],
+  undo: ['Un retour en arrière ? Pour toi, d\'accord.', 'Je n\'ai rien vu. 🙈'],
+  augWin: ['Je t\'aime, mais aux échecs je ne fais pas de cadeau.', 'Revanche ? Je suis sûr que tu la veux.'],
+  radiaWin: ['Même dans mon propre jeu, tu trouves le moyen de me battre…', 'Bon. Tu peux arrêter de m\'humilier devant tout le royaume ?'],
+  draw: ['Égalité. Comme nous deux : impossible de nous départager.'],
+} as const;
+type TauntKey = keyof typeof TAUNTS;
+
+/** Temps de réflexion « humain » d'Auguste (ms), selon son humeur. */
+const THINK: Record<ChessDifficulty, [number, number]> = { easy: [900, 2300], normal: [1300, 3300], hard: [1700, 4200] };
+
+const crownSvg = (fill: string) => `<svg class="face-crown" viewBox="0 0 40 24" aria-hidden="true"><path d="M3 21 L1 5 L11 13 L20 2 L29 13 L39 5 L37 21 Z" fill="${fill}" stroke="#58433F" stroke-width="2.2" stroke-linejoin="round"/><circle cx="20" cy="15" r="2.6" fill="#FF75A8"/></svg>`;
 
 const DIFFS: ChessDifficulty[] = ['easy', 'normal', 'hard'];
 
@@ -35,8 +66,8 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
     const desc = h('p.muted.center.setup-desc', AI_LEVELS[diff].desc);
     const w = save.data.chess.wins;
     el.append(h('div.panel.chess-setup',
-      h('h2', 'Une partie contre l\'IA'),
-      h('div.setup-row', h('label', 'Difficulté'), seg(DIFFS.map((d) => [d, AI_LEVELS[d].label] as [ChessDifficulty, string]), diff, (v) => { diff = v; })),
+      h('h2', 'Une partie contre Auguste'),
+      h('div.setup-row', h('label', 'Son humeur'), seg(DIFFS.map((d) => [d, AI_LEVELS[d].label] as [ChessDifficulty, string]), diff, (v) => { diff = v; })),
       desc,
       h('div.setup-row', h('label', 'Tes pièces'), seg([['w', 'Blancs'], ['b', 'Noirs'], ['r', 'Hasard']] as ['w' | 'b' | 'r', string][], color, (v) => { color = v; })),
       h('button.btn.wide', { on: { click: tap(() => {
@@ -46,7 +77,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
         startGame();
       }) } }, icon('play', 20), 'Commencer'),
       h('div.chess-stats',
-        h('span.chip', `Victoires · Facile ${w.easy} · Normal ${w.normal} · Difficile ${w.hard}`),
+        h('span.chip', `Victoires · Détendu ${w.easy} · Concentré ${w.normal} · Sérieux ${w.hard}`),
         h('span.chip', `Nulles ${save.data.chess.draws} · Défaites ${save.data.chess.losses}`)),
     ));
   };
@@ -69,7 +100,44 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
     const hist = chess.history({ verbose: true });
     if (hist.length) { const m = hist[hist.length - 1]; lastMove = [sqToCell(m.from), sqToCell(m.to)]; }
 
+    const augColor: Side = player === 'w' ? 'b' : 'w';
+    // ---- visages : la dame de Radia = Radia ; le roi d'Auguste = Auguste
+    const herFace = () => (hasPhotos() && photoUrlNow('face-radia')) || canvasUrl('med:radia:royal', () => medallionCanvas('radia', { expr: 'smile', outfit: 'royal' }, 160));
+    const hisFace = () => (hasPhotos() && photoUrlNow('face-auguste')) || canvasUrl('med:auguste:smile', () => medallionCanvas('auguste', { expr: 'smile' }, 160));
+    const face = (color: Side, type: PieceKind): string | null => {
+      if (color === player && type === 'q') return `<div class="face-piece her"><img src="${herFace()}" alt="" draggable="false">${crownSvg('#F3C86B')}</div>`;
+      if (color === augColor && type === 'k') return `<div class="face-piece his"><img src="${hisFace()}" alt="" draggable="false">${crownSvg('#B9A5E8')}</div>`;
+      return null;
+    };
+    if (hasPhotos()) {
+      void Promise.all([photoUrl('face-radia'), photoUrl('face-auguste')]).then(() => { if (alive) { board.setPieces([], undefined); render(); avatar.src = hisFace(); } });
+    }
+
+    // ---- répliques d'Auguste
+    let lastTaunt = 0;
+    const lastLine: Partial<Record<TauntKey, number>> = {};
+    const say = (k: TauntKey, chance = 1, force = false) => {
+      const now = Date.now();
+      if (!force && (now - lastTaunt < 6500 || Math.random() > chance)) return;
+      const lines = TAUNTS[k];
+      let i = Math.floor(Math.random() * lines.length);
+      if (lines.length > 1 && i === lastLine[k]) i = (i + 1) % lines.length;
+      lastLine[k] = i;
+      lastTaunt = now;
+      const r = aug.getBoundingClientRect();
+      ui.bubble(lines[i], Math.max(8, r.left), r.top - 8, 3600);
+      audio.play('pickup');
+    };
+    let idleTimer: number | undefined;
+    const armIdle = () => {
+      window.clearTimeout(idleTimer);
+      if (over) return;
+      idleTimer = window.setTimeout(() => { if (alive && !over && chess.turn() === player) say('longThink', 1, true); }, 28_000);
+    };
+    const herQueenThreatened = () => chess.board().flat().some((p) => p && p.type === 'q' && p.color === player && chess.isAttacked(p.square, augColor));
+
     const status = h('div.chess-status');
+    const avatar = h('img', { src: hisFace(), alt: 'Auguste' });
     const aug = h('div.chess-aug');
     const moves = h('div.chess-moves');
     const holder = h('div.board-holder');
@@ -97,13 +165,14 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       }) } }, icon('flag', 18), 'Abandon'),
     );
     el.append(
-      h('div.chess-top', aug, h('div.grow', h('div.chess-who', `IA · ${AI_LEVELS[diff].label}`), status)),
+      h('div.chess-top', aug, h('div.grow', h('div.chess-who', `Auguste · ${AI_LEVELS[diff].label}`), status)),
       moves, holder, bar,
     );
     onAugusteSpot(aug);
+    aug.append(avatar);
 
     const render = () => {
-      board.setPieces(chessPieces(chess), lastMove);
+      board.setPieces(chessPieces(chess, face), lastMove);
       const marks: [number, string][] = [];
       if (lastMove) marks.push([lastMove[0], 'gb-last'], [lastMove[1], 'gb-last']);
       if (chess.inCheck()) {
@@ -120,7 +189,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       moves.scrollLeft = moves.scrollWidth;
       undoBtn.toggleAttribute('disabled', thinking || chess.history().length < (player === 'w' ? 1 : 2));
       if (over) return;
-      status.textContent = thinking ? 'Réfléchit…' : chess.turn() === player ? (chess.inCheck() ? 'Échec ! À toi de jouer' : 'À toi de jouer') : '…';
+      status.textContent = thinking ? 'Auguste réfléchit' : chess.turn() === player ? (chess.inCheck() ? 'Échec ! À toi de jouer' : 'À toi de jouer') : '…';
       status.classList.toggle('thinking', thinking);
     };
 
@@ -128,7 +197,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       if (save.data.chess.game) { save.data.chess.game.pgn = chess.pgn(); save.save(); }
     };
 
-    const afterMove = (captured: boolean) => {
+    const afterMove = (captured: string | undefined, byAug: boolean) => {
       if (chess.isCheckmate()) audio.play('victory');
       else if (chess.inCheck()) audio.play('check');
       else audio.play(captured ? 'capture' : 'move');
@@ -136,6 +205,18 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       render();
       const end = gameEnd(chess);
       if (end) { window.setTimeout(() => finish(end), 650); return; }
+      if (byAug) {
+        if (captured === 'q') say('queenTaken', 1, true);
+        else if (chess.inCheck()) say('augCheck', 0.8);
+        else if (herQueenThreatened()) say('queenThreat', 0.7);
+        else if (captured) say('augCapture', 0.55);
+        armIdle();
+      } else {
+        window.clearTimeout(idleTimer);
+        if (captured === 'q') say('radiaTakesQueen', 1, true);
+        else if (chess.inCheck()) say('radiaCheck', 0.7);
+        else if (captured) say('radiaCapture', 0.5);
+      }
       if (chess.turn() !== player) void aiTurn();
     };
 
@@ -145,7 +226,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       const m = playUci(chess, cellToSq(from) + cellToSq(to) + (promo ?? ''));
       if (!m) { audio.play('invalid'); render(); return; }
       lastMove = [from, to];
-      afterMove(!!m.captured);
+      afterMove(m.captured, false);
     };
 
     const aiTurn = async () => {
@@ -153,13 +234,20 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       board.locked = true;
       render();
       const my = ++token;
+      // Auguste « réfléchit » comme un humain : plus vite s'il n'a qu'un coup possible.
+      const [a, b] = THINK[diff];
+      const forced = chess.moves().length <= 1;
+      const think = forced ? 700 : a + Math.random() * (b - a);
+      const t0 = performance.now();
       const uci = await aiMove(new Chess().fen(), chess.history({ verbose: true }).map(toUci), chess.fen(), diff);
+      const left = think - (performance.now() - t0);
+      if (left > 0) await new Promise((r) => window.setTimeout(r, left));
       if (!alive || my !== token || over) return;
       thinking = false;
       board.locked = false;
       const m = uci ? playUci(chess, uci) : null;
       if (m) lastMove = [sqToCell(m.from), sqToCell(m.to)];
-      afterMove(!!m?.captured);
+      afterMove(m?.captured, true);
     };
 
     const undo = () => {
@@ -173,6 +261,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       audio.play('move');
       persist();
       render();
+      say('undo', 0.8);
     };
 
     let recorded = false;
@@ -181,7 +270,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       recorded = true;
       const c = save.data.chess;
       if (end.kind === 'draw') c.draws++;
-      else if (end.winner === player) c.wins[diff]++;
+      else if (end.winner === player) { c.wins[diff]++; save.data.economy.diamonds += diff === 'hard' ? 15 : diff === 'normal' ? 8 : 4; }
       else c.losses++;
       c.game = null;
       save.save();
@@ -197,9 +286,11 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       render();
       const win = end.kind === 'mate' && end.winner === player;
       const title = end.kind === 'draw' ? 'Partie nulle' : win ? 'Échec et mat !' : resign ? 'Partie abandonnée' : 'Échec et mat…';
-      const text = end.kind === 'draw' ? `Nulle par ${end.reason}. Personne ne perd, tout le monde s'aime.` : win ? `Tu as battu l'IA en ${AI_LEVELS[diff].label}. Quelle reine !` : 'L\'IA a gagné cette fois. Revanche ?';
+      const text = end.kind === 'draw' ? `Nulle par ${end.reason}. Personne ne perd, tout le monde s'aime.` : win ? `Tu as battu Auguste (${AI_LEVELS[diff].label.toLowerCase()}). Quelle reine !` : resign ? 'Auguste fait semblant de ne pas être fier. Il l\'est.' : 'Auguste a gagné cette fois… Revanche ?';
       status.textContent = title;
-      if (win) { audio.play('victory'); bark('chessWin', true); } else if (end.kind === 'mate') bark('chessLoss', true);
+      window.clearTimeout(idleTimer);
+      if (win) { audio.play('victory'); say('radiaWin', 1, true); } else if (end.kind === 'mate') say('augWin', 1, true); else say('draw', 1, true);
+      void bark;
       const v = await ui.modal({ title, body: text, actions: [{ label: 'Rejouer', value: 'again' }, { label: 'Voir le plateau', value: 'view', style: 'secondary' }] });
       if (!alive) return;
       if (v === 'again') { save.data.chess.game = { pgn: '', difficulty: diff, color: player }; save.save(); startGame(); }
@@ -212,8 +303,15 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
     render();
     const end0 = gameEnd(chess);
     if (end0) void finish(end0);
-    else if (chess.turn() !== player) void aiTurn();
-    destroyFn = () => { alive = false; token++; unfit(); };
+    else {
+      window.setTimeout(() => {
+        if (!alive || over) return;
+        if (chess.history().length) say('resume', 1, true);
+        else say(player === 'b' ? 'startBlack' : 'start', 1, true);
+      }, 700);
+      if (chess.turn() !== player) void aiTurn(); else armIdle();
+    }
+    destroyFn = () => { alive = false; token++; unfit(); board.dispose(); window.clearTimeout(idleTimer); };
   };
 
   if (save.data.chess.game) startGame(); else showSetup();

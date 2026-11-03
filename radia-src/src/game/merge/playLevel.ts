@@ -17,6 +17,17 @@ import { canvasUrl } from '../art/kit';
 import { medallionCanvas } from '../art/characters';
 import { setBackdrop, themeForChapter } from '../scenes/backdrop';
 import { openSettings } from '../../ui/screens/settings';
+import { wallet, fmt, fmtTime } from '../../core/wallet';
+import { openShop, shopButton, diamondUrl, energyUrl, bagIconUrl } from '../../ui/screens/shop';
+import { openEnergyPanel } from '../../ui/components/energyPanel';
+import { drawRequester } from '../art/generators';
+import { paint } from '../art/kit';
+
+/** Personnages qui passent commande. */
+const REQUESTERS = ['auguste', 'cat', 'florist', 'pawn'] as const;
+const requesterUrl = (who: (typeof REQUESTERS)[number]) => who === 'auguste'
+  ? canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120))
+  : canvasUrl(`req:${who}`, () => paint(64, 64, 2, (c) => drawRequester(c, who, 64)));
 
 export type LevelResult = 'won' | 'quit';
 
@@ -59,6 +70,8 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       state = R.createRun(def, mode, mode === 'endless' ? (Date.now() >>> 0) : undefined);
       if (mode === 'endless') save.data.endless.runs++;
     }
+    // anciennes parties (avant les générateurs) : on les pose sur le plateau
+    R.ensureGenerators(state, def);
     const persist = () => {
       if (opts.replay) return; // une partie rejouée n'écrase pas celle de l'histoire
       if (mode === 'endless') save.data.endless.run = state;
@@ -75,7 +88,22 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
 
     // ---------------------------------------------------------- HUD
     const chapter = CHAPTERS.find((c) => c.n === def.chapter);
-    const heartsEl = h('span.mh-hearts.interactive', icon('heart'), h('span', String(save.data.hearts)));
+    const heartsEl = h('button.res-chip.interactive', { 'aria-label': 'Cœurs' }, h('span.ic', icon('heart')), h('span', fmt(save.data.hearts)));
+    const energyEl = h('button.res-chip.interactive', { 'aria-label': 'Énergie' }, h('img', { src: energyUrl(52), alt: '' }), h('span', ''), h('small', ''));
+    const diamondEl = h('button.res-chip.interactive', { 'aria-label': 'Diamants' }, h('img', { src: diamondUrl(52), alt: '' }), h('span', ''), h('span.plus', '+'));
+    const resRow = h('div.res-row', energyEl, heartsEl, diamondEl);
+    const renderRes = () => {
+      const e = wallet.energy();
+      (energyEl.children[1] as HTMLElement).textContent = fmt(e);
+      const next = wallet.nextEnergyIn();
+      (energyEl.children[2] as HTMLElement).textContent = next ? fmtTime(next) : '';
+      energyEl.classList.toggle('low', e < 5);
+      (diamondEl.children[1] as HTMLElement).textContent = fmt(wallet.diamonds());
+    };
+    const resTimer = window.setInterval(renderRes, 1000);
+    energyEl.addEventListener('click', tap(() => void openEnergyPanel(false)));
+    diamondEl.addEventListener('click', tap(() => void openShop('diamonds')));
+    heartsEl.addEventListener('click', tap(() => ui.toast({ title: `${fmt(save.data.hearts)} cœurs`, sub: 'Gagnés en livrant les commandes · pour décorer notre petit monde', icon: 'heart' })));
     const aug = h('button.mh-auguste', { 'aria-label': 'Auguste' }, h('img', { src: canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120)), alt: '' }));
     const titleEl = h('div.mh-title',
       h('b', mode === 'endless' ? 'Mode infini' : `${def.id}. ${def.title}`),
@@ -83,7 +111,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     const pauseBtn = h('button.icon-btn', { 'aria-label': 'Pause', on: { click: tap(() => void pause()) } }, icon('pause'));
     const objsEl = h('div.mh-objs');
     const ordersEl = h('div.mh-orders');
-    const top = h('div.mh-top', h('div.mh-bar', pauseBtn, titleEl, heartsEl, aug), objsEl, ordersEl);
+    const top = h('div.mh-top', h('div.mh-bar', pauseBtn, titleEl, aug), resRow, objsEl, ordersEl);
 
     const countEl = (k: 'wand' | 'wind') => {
       const n = save.data.boosters[k];
@@ -99,10 +127,23 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
         btn.classList.toggle('active', booster === k);
       }
     };
-    const bottom = h('div.mh-bottom', h('div.mh-side', wandBtn, hintBtn), h('div.mh-side', windBtn));
+    const bagBtn = h('button.booster.bag-btn', { 'aria-label': 'Sac' }, h('img', { src: bagIconUrl(), alt: '', style: 'width:30px;height:30px' }), h('small', 'Sac'), h('span.count', ''));
+    const renderBag = () => { (bagBtn.querySelector('.count') as HTMLElement).textContent = `${wallet.bag().length}/${wallet.bagSlots()}`; };
+    bagBtn.addEventListener('click', tap(() => void openBag()));
+    const bottom = h('div.mh-bottom', h('div.mh-side', wandBtn, hintBtn), h('div.mh-side', bagBtn, windBtn, shopButton()));
     const hud = h('div.merge-hud', top, bottom);
     ui.root.append(hud);
     refreshBoosters();
+    renderRes();
+    renderBag();
+    let skinNow = wallet.skin();
+    const offEco = events.on('economy', () => {
+      renderRes();
+      renderBag();
+      refreshBoosters();
+      if (wallet.skin() !== skinNow) { skinNow = wallet.skin(); scene?.layout(); }
+    });
+    const offBoost = events.on('boosters', () => refreshBoosters());
 
     const info = (html: Node | string, ms = 2600) => {
       hud.querySelector('.mh-info')?.remove();
@@ -114,7 +155,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     const clearInfo = () => { hud.querySelector('.mh-info')?.remove(); };
 
     const offHearts = events.on('hearts', (n) => {
-      (heartsEl.lastChild as HTMLElement).textContent = String(n);
+      (heartsEl.lastChild as HTMLElement).textContent = fmt(n);
       heartsEl.classList.add('bump');
       window.setTimeout(() => heartsEl.classList.remove('bump'), 200);
     });
@@ -161,7 +202,17 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
           return h(`img${idx >= 0 ? '' : '.missing'}`, { src: itemImageUrl(r, 76), alt: itemName(r), title: itemName(r) });
         });
         const give = h('button.btn.small.give', { disabled: !cells, on: { click: tap(() => { if (scene?.deliver(slot)) { /* animé */ } }) } }, 'Donner');
-        const card = h(`div.order.interactive${cells ? '.ready' : ''}`, { 'data-slot': String(slot) }, h('div.items', ...imgs), h('span.reward', `+${R.orderHearts(o)} ♡`), give);
+        const who = REQUESTERS[o.id % REQUESTERS.length];
+        const rush = cells ? null : h('button.rush', { 'aria-label': 'Terminer avec des diamants' }, h('img', { src: diamondUrl(32), alt: '' }), String(R.rushPrice(o)));
+        rush?.addEventListener('click', tap(async () => {
+          const price = R.rushPrice(o);
+          const ok = await ui.confirm('Accélérer la commande ?', `Terminer la commande tout de suite pour ${price} diamants (tu en as ${fmt(wallet.diamonds())}).`, `Oui · ${price} 💎`, 'Non');
+          if (!ok) return;
+          if (!wallet.spendDiamonds(price)) { const g = await ui.confirm('Pas assez de diamants', 'La carte d\'Auguste peut arranger ça… 😌', 'Boutique', 'Plus tard'); if (g) void openShop('diamonds'); return; }
+          scene?.rushOrder(slot);
+        }));
+        const card = h(`div.order.interactive${cells ? '.ready' : ''}`, { 'data-slot': String(slot) },
+          h('img.who', { src: requesterUrl(who), alt: '' }), rush, h('div.items', ...imgs), h('span.reward', `+${R.orderHearts(o)} ♡`), give);
         ordersEl.append(card);
       });
     };
@@ -176,7 +227,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       onWin: () => void win(),
       onInspect: (r: ItemRef | null) => {
         if (!r) { clearInfo(); return; }
-        const coll = r.c === 'special' ? 'Objet spécial' : `${COLLECTIONS[r.c].name} · niveau ${r.l}`;
+        const coll = r.c === 'special' ? 'Objet spécial' : r.c === 'gen' ? 'Générateur · touche-le pour produire' : `${COLLECTIONS[r.c].name} · niveau ${r.l}`;
         info(h('div', h('b', itemName(r)), h('small', ` — ${coll}`), h('div', itemBlurb(r))), 3200);
       },
       booster: () => booster,
@@ -200,7 +251,50 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       onStuck: () => void stuck(),
       onFull: () => info('Plus de place ! Fusionne ou livre une commande.', 2200),
       onActivity: () => { /* rien */ },
+      useEnergy: (n) => {
+        if (wallet.useEnergy(n)) { renderRes(); return true; }
+        energyEl.classList.add('bump');
+        window.setTimeout(() => energyEl.classList.remove('bump'), 250);
+        void openEnergyPanel(true);
+        return false;
+      },
+      overBag: (x, y) => {
+        const r = bagBtn.getBoundingClientRect();
+        return x > r.left - 24 && x < r.right + 24 && y > r.top - 30 && y < r.bottom + 20;
+      },
+      bagHasRoom: () => wallet.bagHasRoom(),
+      bagPut: (r) => { wallet.bagPut(r); bagBtn.classList.add('drop'); window.setTimeout(() => bagBtn.classList.remove('drop'), 300); },
+      bagAnchor: () => { const r = bagBtn.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; },
+      onBagFull: () => info(`Sac plein (${wallet.bagSlots()} places) · agrandis-le dans la boutique`, 2400),
+      skin: () => wallet.skin(),
+      fxStyle: () => wallet.fxStyle(),
     };
+
+    // ---------------------------------------------------------- sac
+    async function openBag() {
+      const items = wallet.bag();
+      const grid = h('div.bag-grid');
+      let pickedIndex = -1;
+      for (let k = 0; k < wallet.bagSlots(); k++) {
+        const it = items[k];
+        if (!it) { grid.append(h('div.bag-cell.empty')); continue; }
+        const b = h('button.bag-cell', { 'aria-label': itemName(it) }, h('img', { src: itemImageUrl(it, 80), alt: '' }));
+        b.addEventListener('click', tap(() => { pickedIndex = k; (document.querySelector('.modal-backdrop:last-child .actions button') as HTMLElement)?.click(); }));
+        grid.append(b);
+      }
+      const v = await ui.modal({
+        title: 'Le sac de Radia',
+        body: h('div', h('p', { style: 'margin:0 0 6px;font-size:15px' }, items.length ? 'Touche un objet pour le poser sur le plateau.' : 'Glisse un objet du plateau jusqu\'au sac pour le garder pour plus tard.'), grid),
+        actions: [{ label: 'Fermer', value: 'close', style: 'secondary' }, { label: 'Agrandir le sac', value: 'more', style: 'gold' }],
+      });
+      if (v === 'more') { void openShop('spend'); return; }
+      if (pickedIndex >= 0) {
+        const it = wallet.bag()[pickedIndex];
+        if (!it) return;
+        if (scene?.placeFromBag(it)) wallet.bagTake(pickedIndex);
+        else info('Plus de place sur le plateau !', 2000);
+      }
+    }
 
     const toggleBooster = (k: 'wand' | 'wind') => {
       if (finished) return;
@@ -222,7 +316,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     wandBtn.addEventListener('click', tap(() => toggleBooster('wand')));
     windBtn.addEventListener('click', tap(() => toggleBooster('wind')));
     hintBtn.addEventListener('click', tap(() => {
-      if (!scene?.showHint()) info(R.emptyCount(state) > 0 ? 'Aucune fusion possible : touche le panier !' : 'Plateau bloqué… essaie le Souffle.', 2400);
+      if (!scene?.showHint()) info(R.emptyCount(state) > 0 ? 'Aucune fusion possible : touche un générateur !' : 'Plateau bloqué… essaie le Souffle.', 2400);
     }));
 
     // ---------------------------------------------------------- événements
@@ -240,9 +334,12 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
         } else if (e.t === 'deliver') {
           addHearts(e.hearts);
           stat('ordersDelivered');
+          // récompenses de commande : un peu d'énergie, parfois un diamant
+          wallet.giveEnergy(3);
+          if ((save.data.stats.ordersDelivered ?? 0) % 3 === 0) { wallet.giveDiamonds(1); ui.toast({ title: '+1 diamant', sub: 'Pour ta commande ♡', img: diamondUrl(64), ms: 1600 }); }
         } else if (e.t === 'combo') {
           statMax('bestCombo', e.value);
-          if (e.value >= 5) bark('combo5'); else if (e.value >= 3) bark('combo3');
+          if (e.value >= 5) { bark('combo5'); wallet.giveEnergy(5); } else if (e.value >= 3) bark('combo3');
           if (e.reward === 'wand') { save.data.boosters.wand++; refreshBoosters(); ui.toast({ title: 'Combo ×8 !', sub: '+1 Baguette magique', icon: 'wand' }); }
           if (e.reward === 'hearts') addHearts(e.value >= 12 ? 15 : 5);
           if (e.reward === 'star') ui.toast({ title: `Combo ×${e.value} !`, sub: 'Une Étoile filante est apparue ✨', icon: 'sparkle' });
@@ -322,10 +419,13 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       save.data.levels[def.id] = { stars: Math.max(stars, rec?.stars ?? 0), best: Math.max(state.score, rec?.best ?? 0), done: true };
       const reward = first ? def.reward.hearts : Math.ceil(def.reward.hearts / 3);
       addHearts(reward);
+      const gems = first && mode === 'story' ? (def.id % 6 === 0 ? 10 : 3) : 0;
       if (first) {
         if (def.reward.wand) save.data.boosters.wand += def.reward.wand;
         if (def.reward.wind) save.data.boosters.wind += def.reward.wind;
+        wallet.giveDiamonds(gems);
       }
+      wallet.giveEnergy(first ? 15 : 5);
       stat('levelsWon');
       if (!opts.replay) save.data.run = null;
       save.save();
@@ -345,8 +445,10 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
         h('div.win-stars', ...[1, 2, 3].map((k) => h(`span${k <= stars ? '.on' : ''}`, '★'))),
         h('div.win-stats',
           h('span.chip', icon('star', 16), `${state.score} pts`),
-          h('span.chip', { style: 'color:#E8558F' }, icon('heart', 16), `+${reward + state.hearts}`)),
-        stars < 3 ? h('p.muted', { style: 'font-size:14px;margin:6px 0 0' }, `3 étoiles : utiliser le panier ${def.par} fois au plus (${state.taps} cette fois).`) : h('p', { style: 'margin:6px 0 0' }, 'Parfait ! ✨'),
+          h('span.chip', { style: 'color:#E8558F' }, icon('heart', 16), `+${reward + state.hearts}`),
+          gems ? h('span.chip', h('img', { src: diamondUrl(32), alt: '', style: 'width:18px;height:18px' }), `+${gems}`) : null,
+          h('span.chip', h('img', { src: energyUrl(32), alt: '', style: 'width:18px;height:18px' }), `+${first ? 15 : 5}`)),
+        stars < 3 ? h('p.muted', { style: 'font-size:14px;margin:6px 0 0' }, `3 étoiles : toucher les générateurs ${def.par} fois au plus (${state.taps} cette fois).`) : h('p', { style: 'margin:6px 0 0' }, 'Parfait ! ✨'),
         first && (def.reward.wand || def.reward.wind) ? h('p', { style: 'margin:4px 0 0;font-size:15px' }, `Bonus : ${def.reward.wand ? '+1 Baguette ' : ''}${def.reward.wind ? '+1 Souffle' : ''}`) : null,
       );
       await ui.modal({ title: 'Niveau réussi !', body, actions: [{ label: 'Continuer', value: 'ok' }], dismissible: false });
@@ -374,6 +476,9 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       persist();
       if (r === 'won' && mode === 'story' && !opts.replay) { save.data.run = null; save.save(); }
       offHearts();
+      offEco();
+      offBoost();
+      window.clearInterval(resTimer);
       setBarkSink(null);
       window.clearTimeout(infoTimer);
       hud.style.transition = 'opacity 0.3s';

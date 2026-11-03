@@ -4,6 +4,7 @@ import { DIALOGUES, BARKS } from '../src/data/dialogue';
 import { MEMORIES } from '../src/data/memories';
 import { LEVELS } from '../src/data/levels';
 import { ACHIEVEMENTS } from '../src/data/achievements';
+import { PHOTOS } from '../src/data/photos';
 import { defaultSave } from '../src/save/schema';
 
 describe('histoire', () => {
@@ -12,6 +13,7 @@ describe('histoire', () => {
       if (s.t === 'dialogue') expect(DIALOGUES[s.id], s.id).toBeTruthy();
       if (s.t === 'level') expect(LEVELS.find((l) => l.id === s.id), String(s.id)).toBeTruthy();
       if (s.t === 'memory') expect(MEMORIES.find((m) => m.id === s.id), s.id).toBeTruthy();
+      if (s.t === 'photo') expect(PHOTOS.find((m) => m.id === s.id), s.id).toBeTruthy();
       if (s.t === 'chapter') expect(CHAPTERS.find((c) => c.n === s.ch)).toBeTruthy();
     }
   });

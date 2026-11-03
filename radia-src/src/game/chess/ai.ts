@@ -8,9 +8,9 @@ import type { ChessDifficulty } from '../../save/schema';
 
 /** Réglages du moteur par difficulté (profondeur, bruit, hasard, temps). */
 export const AI_LEVELS: Record<ChessDifficulty, { label: string; desc: string; engine: Record<string, unknown> }> = {
-  easy: { label: 'Facile', desc: 'Des coups raisonnables… mais pas toujours.', engine: { id: 2, depth: 2, noise: 130, random: 0.08, q: true } },
-  normal: { label: 'Normal', desc: 'Joue sérieusement, sans pitié pour les pièces en prise.', engine: { id: 3, depth: 3, noise: 45, random: 0.02, q: true } },
-  hard: { label: 'Difficile', desc: 'Réfléchit plus longtemps, ne laisse rien passer.', engine: { id: 5, time: 1500, maxDepth: 9, noise: 0, random: 0, q: true, book: true } },
+  easy: { label: 'Détendu', desc: 'Auguste joue d\'une main, l\'autre sur son téléphone.', engine: { id: 2, depth: 2, noise: 130, random: 0.08, q: true } },
+  normal: { label: 'Concentré', desc: 'Auguste se concentre. Il ne laisse plus rien traîner.', engine: { id: 3, depth: 3, noise: 45, random: 0.02, q: true } },
+  hard: { label: 'Sérieux', desc: 'Auguste ne rigole plus. Enfin… presque.', engine: { id: 5, time: 1500, maxDepth: 9, noise: 0, random: 0, q: true, book: true } },
 };
 
 let worker: Worker | null = null;
