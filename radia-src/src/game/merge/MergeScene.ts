@@ -72,6 +72,8 @@ export class MergeScene extends BaseScene {
   private drag: Drag | null = null;
   private selected = -1;
   private locked = new Set<number>();
+  /** Vrai quand aucune animation de fusion ni glisser en cours (invitations : moment sûr pour notifier). */
+  isIdle(): boolean { return this.locked.size === 0 && !this.drag; }
   private ended = false;
   private boardLayer!: Phaser.GameObjects.Container;
   private fxLayer!: Phaser.GameObjects.Container;

@@ -66,7 +66,10 @@ const dpr = () => Math.min(2, Math.max(1, window.devicePixelRatio || 1));
 
 let busy = false;
 
-export function openDressing(): Promise<void> {
+export interface DressingOpts { title?: string; hint?: string; cta?: string }
+
+/** `opts` : mode « préparation d'événement » (titre, conseil, gros bouton « prête » qui ferme l'écran). */
+export function openDressing(opts: DressingOpts = {}): Promise<void> {
   if (busy) return Promise.resolve();
   busy = true;
   W.ensureWardrobe();
@@ -231,7 +234,10 @@ export function openDressing(): Promise<void> {
     const bar = h('div.dr-bar');
     const panel = h('div.dr-panel', tabs, styles, grid, bar);
 
-    const screen = h('div.bg-soft.dr-screen', ui.header('Le dressing de Radia ♡', close), bal, stage, panel);
+    const readyBtn = opts.cta ? h('button.btn.dr-ready', opts.cta) : null;
+    readyBtn?.addEventListener('click', tap(() => { ui.closeScreen(); close(); }));
+    const hintEl = opts.hint ? h('p.dr-hint', opts.hint) : null;
+    const screen = h('div.bg-soft.dr-screen', ui.header(opts.title ?? 'Le dressing de Radia ♡', () => { if (opts.cta) ui.closeScreen(); close(); }), hintEl, bal, stage, panel, readyBtn);
     ui.showScreen(screen);
 
     // ---------------------------------------------------------- rendu

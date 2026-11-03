@@ -287,3 +287,6 @@
 /* l'objectif ne doit jamais passer sous les commandes */
 .mh-objs { position: relative; z-index: 2; }
 .mh-orders { position: relative; z-index: 1; }
+
+.title-left { display: flex; align-items: center; gap: 8px; }
+.mh-phone { width: 40px; height: 40px; }

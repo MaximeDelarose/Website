@@ -20,7 +20,7 @@ import { CALLS, type CallDef } from '../../data/world/kidCalls';
 import type { KidId } from '../../data/world/ids';
 
 /** Visage rond : on repère la silhouette dessinée, puis on recadre sur la tête et les épaules. */
-const faceUrl = (k: KidId): string => canvasUrl(`kidface2:${k}`, () => {
+export const faceUrl = (k: KidId): string => canvasUrl(`kidface2:${k}`, () => {
   const big = makeCanvas(300, 500);
   const bg = big.getContext('2d')!;
   drawKid(bg, k, 'idle', big.width, big.height, 0);
@@ -128,7 +128,7 @@ let nextAt = 90_000; // première visite après ~1 min 30 de jeu effectif
 let lastId = '';
 
 const busy = (): boolean =>
-  !!document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .kc');
+  !!document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .kc, .ev-layer, .ev-notif, .ev-inv-back, .ph-back');
 
 /** Le plateau de fusion est affiché et aucun autre mini-jeu n'est en cours. */
 function onMergeBoard(): boolean {

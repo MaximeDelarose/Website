@@ -3,10 +3,12 @@
  * Une donnée invalide est remplacée par sa valeur par défaut : on ne plante
  * jamais à cause d'une sauvegarde abîmée, et on ne l'efface jamais en silence.
  */
+import { defaultEvents, sanitizeEvents } from '../events/state';
+import type { EventsState } from '../events/types';
 import type { RunState } from '../game/merge/types';
 import { DEFAULT_LOOK, STARTER_CLOTHES, KID_IDS, ROOM_IDS, type Look, type KidId, type RoomId } from '../data/world/ids';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export type ChessDifficulty = 'easy' | 'normal' | 'hard';
 
@@ -70,6 +72,8 @@ export interface SaveData {
   seenUpdates: string[];
   /** v3 — « Le château de Radia » : château, dressing, chat, famille, jardin, chocolats, carrières, fans. */
   world: World;
+  /** v4 — invitations surprises, téléphone, photos souvenirs. */
+  events: EventsState;
 }
 
 export interface PlacedItem { uid: number; id: string; x: number; y: number; color: string; flip?: boolean }
@@ -206,8 +210,9 @@ export function defaultSave(): SaveData {
     economy: defaultEconomy(),
     cosmetics: { tiles: 'classic', fx: 'classic', owned: ['classic'] },
     decor: [],
-    seenUpdates: ['v2', 'v3'],
+    seenUpdates: ['v2', 'v3', 'v4'],
     world: defaultWorld(),
+    events: defaultEvents(),
   };
 }
 
@@ -350,6 +355,7 @@ export function sanitize(raw: unknown): SaveData {
   d.decor = strArr(s.decor);
   if (Array.isArray(s.seenUpdates)) d.seenUpdates = strArr(s.seenUpdates);
   d.world = sanitizeWorld(s.world);
+  d.events = sanitizeEvents(s.events);
   void str;
   return d;
 }
@@ -359,6 +365,8 @@ export function sanitize(raw: unknown): SaveData {
  * (Aucune pour l'instant : la V1 est le premier format.)
  */
 const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string, unknown>> = {
+  // v3 → v4 : invitations surprises. Rien d'autre ne change.
+  3: (raw) => ({ ...raw, events: defaultEvents() }),
   // v2 → v3 : le château de Radia (monde). On ajoute l'état par défaut, rien d'autre ne change.
   2: (raw) => ({ ...raw, world: defaultWorld(), seenUpdates: Array.isArray(raw.seenUpdates) ? raw.seenUpdates : ['v2'] }),
   // v1 → v2 : arrivée de l'énergie, des diamants, du sac, des décorations.

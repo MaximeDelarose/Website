@@ -13,7 +13,7 @@ let nextAt = 4 * 60_000; // premier mot après ~4 minutes de présence
 let lastLine = '';
 
 const busy = (): boolean =>
-  !!document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .kc, .aug-says, .splash');
+  !!document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .kc, .aug-says, .splash, .ev-layer, .ev-notif, .ev-inv-back, .ph-back');
 
 const noMinigame = (): boolean => {
   try {

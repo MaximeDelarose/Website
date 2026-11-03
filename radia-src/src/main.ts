@@ -18,6 +18,7 @@ import { loadFamily } from './core/family';
 import { installNoZoom } from './ui/noZoom';
 import { startKidCalls } from './ui/components/kidCalls';
 import { startCheckins } from './ui/components/checkins';
+import { startInvitations, offerNow } from './events/scheduler';
 import { warmAuguste } from './game/art/world/radiaNow';
 
 const progress = (p: number) => {
@@ -71,6 +72,26 @@ async function showWhatsNew(): Promise<void> {
   });
 }
 
+/** Nouveautés v4 : les invitations surprises (une seule fois, pour les parties existantes). */
+async function showWhatsNewV4(): Promise<void> {
+  if (save.data.seenUpdates.includes('v4')) return;
+  save.data.seenUpdates.push('v4');
+  save.save();
+  if (!save.hadSave) return;
+  const li = (t: string) => h('li', { style: 'margin:4px 0' }, t);
+  await ui.modal({
+    title: 'Ton téléphone sonne… ♡',
+    body: h('div', { style: 'text-align:left;font-size:15px' },
+      h('ul', { style: 'padding-left:18px;margin:6px 0' },
+        li('Des invitations surprises arrivent pendant que tu joues : restaurant, palace, feu d\'artifice, spa, bal…'),
+        li('Les enfants te proposent aussi des activités, et ta carrière t\'ouvre des portes.'),
+        li('Tu peux dire « J\'arrive ♡ » ou « Plus tard » : rien n\'est jamais perdu.'),
+        li('Tes messages, tes photos souvenirs et ton historique sont dans le petit téléphone 📱.')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, 'Chaque sortie rapporte pièces, diamants et souvenirs ♡')),
+    actions: [{ label: 'J\'ai hâte !', value: 'ok' }],
+  });
+}
+
 /** Nouveautés v3 : le château de Radia (une seule fois, pour les parties existantes). */
 async function showWhatsNewV3(): Promise<void> {
   if (save.data.seenUpdates.includes('v3')) return;
@@ -102,6 +123,7 @@ async function boot(): Promise<void> {
   installNoZoom();
   startKidCalls();
   startCheckins();
+  startInvitations();
   void warmAuguste();
   preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste', 'head-new']);
   progress(0.3);
@@ -143,6 +165,7 @@ async function boot(): Promise<void> {
   await handleSaveProblems();
   await showWhatsNew();
   await showWhatsNewV3();
+  await showWhatsNewV4();
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('./sw.js').catch(() => undefined);
@@ -158,5 +181,5 @@ boot().catch((e) => {
 
 // Accès debug en développement : window.RADIA
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  (window as unknown as Record<string, unknown>).RADIA = { save, audio, game: () => getGame(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
+  (window as unknown as Record<string, unknown>).RADIA = { save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
 }

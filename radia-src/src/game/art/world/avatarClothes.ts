@@ -794,6 +794,12 @@ function jacketCroppedPink(ctx: C): void {
 export function installClothes(): void {
   const set = <T>(tbl: Partial<Record<ClothId, T>>, id: string, v: T): void => { (tbl as Record<string, T>)[id] = v; };
 
+  // --- tenues d'événements : peignoir et pyjamas (robes courtes ou longues, manches douces)
+  set(DRESSES, 'dr-bathrobe', genDress({ col: '#FFFFFF', col2: '#E8E2F2', accent: '#B9A5E8', hem: 520, flare: 22, pat: 'lace', neck: 'v', belt: '#D9CDF5', scallop: 2, sleeve: { len: 0.9, wid: 36, c0: '#FFFFFF', c1: '#E4DDF0', cuff: '#D9CDF5' } }));
+  set(DRESSES, 'dr-pajama-pink', genDress({ col: '#FFD3E2', col2: '#F3A5C0', accent: '#FFFFFF', hem: 430, flare: 26, pat: 'dots', neck: 'round', belt: '#FFFFFF', sleeve: { len: 0.32, wid: 34, c0: '#FFE1EB', c1: '#F3A5C0', hem: true } }));
+  set(DRESSES, 'dr-pajama-stars', genDress({ col: '#C9C0F2', col2: '#8F82D6', accent: '#FFE7A0', hem: 470, flare: 24, pat: 'hearts', neck: 'round', belt: '#FFE7A0', sleeve: { len: 0.9, wid: 33, c0: '#D8D1F7', c1: '#8F82D6', cuff: '#B9AEEA' } }));
+  set(DRESSES, 'dr-nightgown-silk', genDress({ col: '#F5C9D6', col2: '#D98EA6', accent: '#FFF4E8', hem: 540, flare: 28, pat: 'plain', neck: 'sweet', scallop: 3 }));
+
   set(SLEEVES, 'top-stripe-blue', { len: 1, wid: 28, c0: '#4A72E6', c1: '#1D3A98', cuff: '#2447B0' });
   set(SLEEVES, 'top-pinstripe-brown', { len: 0.74, wid: 29, c0: '#6A4A3A', c1: '#3F281F', cuff: '#5A3C2F' });
   set(SLEEVES, 'top-satin-pink', { len: 0.3, wid: 40, c0: '#FFD3DF', c1: '#D98AA2', hem: true, puff: '#F8BCCB' });

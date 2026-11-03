@@ -14,7 +14,7 @@ await sleep(2500);
 const out = [];
 const check = (name, ok) => { out.push(`${ok ? 'OK ' : 'KO '} ${name}`); };
 // migration v2 -> v3 + fenêtre « Nouveautés »
-check('migration v3', await page.evaluate(() => window.RADIA?.save.data.v === 3));
+check('migration v4', await page.evaluate(() => window.RADIA?.save.data.v === 4));
 await page.evaluate(() => { window.RADIA.save.data.world.res.coins = 3000; window.RADIA.save.data.world.res.flowers = 50; window.RADIA.save.data.world.res.fabric = 50; window.RADIA.save.data.world.res.cocoa = 50; });
 for (let i = 0; i < 3; i++) { const b = page.locator('.modal-backdrop:not(.leaving) .actions button'); if (await b.count()) { await b.first().click(); await sleep(500); } }
 await page.getByText('MON MONDE').first().click();

@@ -11,6 +11,7 @@ import { save, audio, events } from '../../../core/app';
 import { fmt, wallet } from '../../../core/wallet';
 import { world, firstTime } from '../../../core/world';
 import { RES_NAMES, ROOM_IDS, CHOC_IDS, FAN_TIERS, CAREER_NAMES, type ResKind } from '../../../data/world/ids';
+import { phoneButton } from '../../../events/scheduler';
 import { salaryInfo } from '../../../game/world/careers';
 import { resIconUrl } from '../../../game/art/world/resources';
 import { diamondUrl } from '../shop';
@@ -126,7 +127,7 @@ export function openWorldHub(): Promise<void> {
     const intro = h('p.hub-intro', 'Ton château, ton jardin, ta famille, ta carrière… un mode de jeu rien que pour toi ♡');
     const body = h('div.screen-body', chips, intro, grid,
       h('p.muted.center', { style: 'font-size:12.5px;margin:10px 4px 0' }, 'Les pièces et les matériaux se gagnent en fusionnant et en livrant des commandes.'));
-    scr = h('div.bg-soft.hub-screen', ui.header('Mon monde ♡', close), body);
+    scr = h('div.bg-soft.hub-screen', ui.header('Mon monde ♡', close, phoneButton()), body);
     ui.showScreen(scr);
     renderChips();
     renderGrid();

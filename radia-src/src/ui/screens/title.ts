@@ -19,6 +19,7 @@ import { openAlbum } from './album';
 import { openSettings } from './settings';
 import { events } from '../../core/app';
 import { wallet, fmt } from '../../core/wallet';
+import { phoneButton } from '../../events/scheduler';
 import { openShop, shopButton, diamondUrl, energyUrl } from './shop';
 import { openEnergyPanel } from '../components/energyPanel';
 import { hasPhotos } from '../../core/photos';
@@ -160,7 +161,7 @@ export function showTitle(): void {
   nrg.addEventListener('click', tap(() => void openEnergyPanel(false)));
   const offEco = events.on('economy', () => { (gems.children[1] as HTMLElement).textContent = fmt(wallet.diamonds()); (nrg.children[1] as HTMLElement).textContent = fmt(wallet.energy()); });
   const topBar = h('div.title-top',
-    h('button.icon-btn', { 'aria-label': 'Paramètres', on: { click: tap(() => void openSettings()) } }, icon('settings')),
+    h('div.title-left', h('button.icon-btn', { 'aria-label': 'Paramètres', on: { click: tap(() => void openSettings()) } }, icon('settings')), phoneButton()),
     h('div.res-row', nrg, gems),
     shopButton());
 

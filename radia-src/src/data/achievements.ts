@@ -50,5 +50,15 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'w_chocolates', name: 'Chocolatière', desc: 'Découvrir les 8 chocolats.', icon: 'gift', check: (s) => s.world.choc.collection.length >= 8 },
   { id: 'w_career', name: 'Sous les projecteurs', desc: 'Atteindre le palier 5 d\'une carrière.', icon: 'star', check: (s) => Object.values(s.world.careers.progress).some((p) => p.level >= 5) },
   { id: 'w_fans', name: 'Mille admirateurs', desc: 'Atteindre 1 000 fans.', icon: 'trophy', check: (s) => s.world.fans >= 1000 },
+  // ---- invitations surprises
+  { id: 'ev_first', name: 'Première invitation', desc: 'Terminer ta première sortie surprise.', icon: 'mail', check: (s) => Object.keys(s.events.done).length >= 1 },
+  { id: 'ev_know', name: 'Tu me connais par cœur', desc: 'Deviner les trois plats d\'Auguste au restaurant.', icon: 'heart', check: (s) => (s.events.counters['restaurant.perfect'] ?? 0) >= 1 },
+  { id: 'ev_two_plates', name: 'Deux assiettes, un seul cœur', desc: 'Deviner le menu d\'Auguste trois fois.', icon: 'heart', check: (s) => (s.events.counters['restaurant.perfect'] ?? 0) >= 3 },
+  { id: 'ev_palace', name: 'Une soirée de reine', desc: 'Passer la soirée au palace.', icon: 'crown', check: (s) => (s.events.done['r-palace']?.count ?? 0) >= 1 },
+  { id: 'ev_ball', name: 'Une valse pour deux', desc: 'Danser au bal romantique.', icon: 'sparkle', check: (s) => (s.events.done['r-ball']?.count ?? 0) >= 1 },
+  { id: 'ev_golden', name: 'Journée surprise', desc: 'Ouvrir une enveloppe dorée.', icon: 'gift', check: (s) => (s.events.done['g-day']?.count ?? 0) >= 1 },
+  { id: 'ev_family', name: 'Une maman en or', desc: 'Terminer 3 activités avec les enfants.', icon: 'heart', check: (s) => (s.stats['events.family'] ?? 0) >= 3 },
+  { id: 'ev_photos', name: 'Album de souvenirs', desc: 'Garder 10 photos souvenirs.', icon: 'camera', check: (s) => s.events.photos.length >= 10 },
+  { id: 'ev_ten', name: 'Une vie bien remplie', desc: 'Terminer 10 invitations.', icon: 'star', check: (s) => (s.stats['events.done'] ?? 0) >= 10 },
   { id: 'w_covers', name: 'À la une !', desc: 'Collectionner les 5 couvertures de magazine.', icon: 'album', check: (s) => s.world.magazines.length >= 5 },
 ];

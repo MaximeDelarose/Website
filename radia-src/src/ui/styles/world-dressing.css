@@ -161,3 +161,7 @@
 .dr-avatar-wrap.catwalk { animation: drCatwalk 0.84s ease-in-out infinite; }
 @keyframes drCatwalk { 0%, 100% { transform: translateY(0) scale(1.05, 1.05) rotate(-1.2deg); } 50% { transform: translateY(-5px) scale(1.07, 1.06) rotate(1.2deg); } }
 .dr-stage .dr-floor { transition: transform 0.3s, opacity 0.3s; }
+
+/* mode préparation d'événement */
+.dr-hint { margin: -4px 0 4px; text-align: center; font-size: 14px; font-weight: 600; color: var(--rose-deep); flex-shrink: 0; }
+.dr-ready { flex-shrink: 0; margin-top: 8px; min-height: 52px; font-size: 18px; }

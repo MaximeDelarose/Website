@@ -2,6 +2,7 @@
  * Lance un niveau de fusion (ou le mode infini) : interface HTML (HUD) +
  * scène Phaser, récompenses, sauvegarde automatique. Résout à la fin.
  */
+import { phoneButton } from '../../events/scheduler';
 import { h, tap, clear } from '../../ui/dom';
 import { icon } from '../../ui/icons';
 import { ui } from '../../ui/ui';
@@ -102,7 +103,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     const heartsEl = h('button.res-chip.interactive', { 'aria-label': 'Cœurs' }, h('span.ic', icon('heart')), h('span', fmt(save.data.hearts)));
     const energyEl = h('button.res-chip.interactive', { 'aria-label': 'Énergie' }, h('img', { src: energyUrl(52), alt: '' }), h('span', ''), h('small', ''));
     const diamondEl = h('button.res-chip.interactive', { 'aria-label': 'Diamants' }, h('img', { src: diamondUrl(52), alt: '' }), h('span', ''), h('span.plus', '+'));
-    const resRow = h('div.res-row', energyEl, heartsEl, diamondEl);
+    const resRow = h('div.res-row', energyEl, heartsEl, diamondEl, phoneButton('mh-phone'));
     const renderRes = () => {
       const e = wallet.energy();
       (energyEl.children[1] as HTMLElement).textContent = fmt(e);

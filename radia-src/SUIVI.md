@@ -81,3 +81,13 @@ Aucun paiement réel, aucun service de paiement, aucune donnée bancaire : tout 
 - Économie : la fusion rapporte pièces, fleurs, tissu, cacao. Sauvegarde v3 avec migration depuis v2.
 - Vérifié : tsc propre, 295 tests Vitest, parcours Playwright (Chromium émulé 393×852) hub → 8 destinations → retour, sans erreur console.
 - Non vérifié : vrai iPhone/Safari, difficulté des mini-jeux (testés par bot seulement), équilibrage de l'économie, musique/rythme à l'oreille.
+
+## v4 — Invitations surprises
+- Téléphone intégré (messages, invitations, souvenirs, historique) + notifications (rebond, son doux, « Voir l'invitation » / « Plus tard ») ; file d'attente, un seul message à la fois.
+- Planificateur : temps de jeu ACTIF, tirage pondéré, max 2 grandes invitations / 30 min, écart minimal, pas de répétition immédiate, enveloppe dorée rare. Réglages dans `src/events/manager.ts` (EVENT_CONFIG). Notification uniquement à un moment sûr (pas en pleine fusion/animation, minijeu, cinématique, transaction).
+- 24 événements : 11 sorties romantiques (restaurant « Devine ce que je prends ♡ », palace, feu d'artifice, spa, hôtel, cinéma, marché aux fleurs, chocolats, shopping, rooftop, bal), 5 activités familiales, 7 de carrière, 1 enveloppe dorée (shopping + restaurant + palace).
+- 14 mini-jeux (src/events/activities), 15 décors, photos souvenirs (poses, cadres, filtres, export PNG, aucune caméra réelle).
+- Reprise : l'activité interrompue est sauvegardée (étape + choix) ; le mode d'origine (fusion ou Mon monde) est mis en pause puis retrouvé à l'identique.
+- Récompense versée UNE seule fois par partie (runId), rejeux réduits.
+- Sauvegarde v4 (migration depuis v3).
+- Vérifié : tsc, 378 tests, parcours automatisés (restaurant de bout en bout depuis l'accueil et en pleine fusion ; 24 événements déroulés avec mini-jeux sautés en mode test ; 14 mini-jeux montés ; téléphone). Non vérifié : vrai iPhone/Safari ; difficulté et équilibrage des mini-jeux (essais robotisés) ; illustration d'Auguste détourée dans les photos (testée sans la clé) ; mode « animations réduites ».
