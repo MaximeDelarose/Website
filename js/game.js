@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "0.27.1";
+  var VERSION = "0.27.2";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -476,7 +476,9 @@
     if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
     return e;
   }
-  function tierHp() { return 1 + TIER.hp * tierN(); }
+  function tierHp() { return 1 + tcfg().hp * tierN(); }
+  // réglages de la montée en difficulté : ceux du mode choisi s'il en a (Difficile), sinon ceux de TIER
+  function tcfg() { return (DIFF && DIFF.tier) || TIER; }
   function hpMul() { return hpMul0() * tierHp(); }
   function zoneHp() { return isDungeon() ? DGT.hp || 1 : MAP.hp || 1; }
   function zoneGold() { return r && r.mode === "dungeon" ? DGT.gold || 1 : MAP.gold || 1; }
@@ -651,10 +653,10 @@
     }
     if (p.dodge && Math.random() < p.dodge) { p.inv = 0.3; r.dodges = (r.dodges || 0) + 1; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     p.calmT = 0;
-    if (r && TIER) dmg *= (1 + TIER.dmg * tierN()) * rageDmg();
+    if (r && TIER) dmg *= (1 + tcfg().dmg * tierN()) * rageDmg();
     if (p.oshield > 0) { var ab = Math.min(p.oshield, dmg); p.oshield -= ab; dmg -= ab; p.inv = 0.3; burst(p.x, p.y, "#9cc56b", 4); if (dmg <= 0) return; }
     if (p.packN && p.passives && p.passives.meute) dmg -= p.passives.meute;
-    p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)); p.inv = 0.35;
+    p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)); p.inv = DIFF.inv || 0.35;
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = 0.25; SND.hurt(); }
     burst(p.x, p.y, "#c8553d", 5);
   }
@@ -1161,7 +1163,7 @@
     if (!r) return 0;
     if (isArena()) return Math.max(0, (r.round - 1) / 2.4);
     var m = r.time / 60 + (isDungeon() && r.dg ? (r.dg.floor - 1) * 3 : 0);
-    return m * (DIFF.hp > 1 ? 1.4 : 1) / TIER.minutes;
+    return m / tcfg().minutes;
   }
   function tierN() { return Math.floor(tierPos()); }                       // continue de monter après le dernier palier
   function tierName(t) { return TIERS[Math.min(TIERS.length - 1, t)].name + (t >= TIERS.length ? " +" + (t - TIERS.length + 1) : ""); }
