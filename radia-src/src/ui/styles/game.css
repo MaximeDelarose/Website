@@ -270,3 +270,4 @@
 .photo-full img { max-width: 100%; max-height: 72vh; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
 .photo-full b { font-family: var(--font-script); font-size: 28px; }
 .finale-photo { width: min(70vw, 280px); }
+

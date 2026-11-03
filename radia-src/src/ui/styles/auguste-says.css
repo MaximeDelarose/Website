@@ -1,0 +1,7 @@
+/* bulle d'Auguste (mini-jeux) */
+.aug-says { position: absolute; z-index: 70; left: 50%; top: calc(var(--sat) + 86px); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; width: min(92vw, 360px); padding: 10px 14px 10px 10px; border-radius: 20px; background: #fff; box-shadow: 0 0 0 2px rgba(88, 67, 63, 0.1), 0 10px 24px rgba(59, 49, 82, 0.35); pointer-events: none; animation: augIn 0.4s var(--ease-pop); }
+.aug-says.out { animation: fadeOut 0.3s ease forwards; }
+.aug-says img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex-shrink: 0; box-shadow: 0 0 0 2.5px #b9a5e8; }
+.aug-says b { display: block; font-size: 13px; color: var(--nuit); }
+.aug-says span { font-size: 16px; line-height: 1.3; }
+@keyframes augIn { from { opacity: 0; transform: translate(-50%, -14px) scale(0.9); } to { opacity: 1; transform: translateX(-50%); } }
