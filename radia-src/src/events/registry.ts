@@ -16,6 +16,9 @@ const LOADERS: Record<ActivityId, () => Promise<{ default: Activity }>> = {
   memoryChallenge: () => import('./activities/memoryChallenge'),
   fashionThemes: () => import('./activities/fashionThemes'),
   careerGame: () => import('./activities/careerGame'),
+  dressVerdict: () => import('./activities/dressVerdict'),
+  photoShoot: () => import('./activities/photoShoot'),
+  braceletReveal: () => import('./activities/braceletReveal'),
 };
 
 export async function loadActivity(id: ActivityId): Promise<Activity> {

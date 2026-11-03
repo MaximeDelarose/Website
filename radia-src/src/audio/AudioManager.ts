@@ -41,6 +41,9 @@ export class AudioManager {
   private lastPlayed = new Map<Sfx, number>();
   private noise: AudioBuffer | null = null;
   musicVolume = 0.35;
+  private duckLevel = 1;
+  /** Volume visé de la musique (réglage × atténuation tenue). */
+  musicTarget(): number { return this.musicVolume * this.duckLevel; }
   sfxVolume = 0.7;
   musicOn = true;
   sfxOn = true;
@@ -186,7 +189,7 @@ export class AudioManager {
   private startElement(): void {
     if (!this.el) return;
     const p = this.el.play();
-    if (p) p.then(() => this.fadeMusicTo(this.musicOn ? this.musicVolume : 0, 2.2)).catch(() => undefined);
+    if (p) p.then(() => this.fadeMusicTo(this.musicOn ? this.musicTarget() : 0, 2.2)).catch(() => undefined);
   }
 
   /** Lance (ou continue) la musique avec un fondu d'entrée. */
@@ -196,7 +199,7 @@ export class AudioManager {
     if (!this.el) return; // démarrera à unlock()
     if (this.musicLoaded) {
       if (this.el.paused) this.startElement();
-      else this.fadeMusicTo(this.musicVolume, 1.2);
+      else this.fadeMusicTo(this.musicTarget(), 1.2);
     }
   }
 
@@ -209,8 +212,59 @@ export class AudioManager {
   /** Baisse temporairement la musique (moments émotionnels, victoire…). */
   duck(amount = 0.45, seconds = 1.5): void {
     if (!this.musicOn || !this.wantMusic) return;
-    this.fadeMusicTo(this.musicVolume * amount, 0.3);
-    window.setTimeout(() => { if (this.wantMusic && this.musicOn) this.fadeMusicTo(this.musicVolume, 0.8); }, seconds * 1000);
+    this.fadeMusicTo(this.musicTarget() * amount, 0.3);
+    window.setTimeout(() => { if (this.wantMusic && this.musicOn) this.fadeMusicTo(this.musicTarget(), 0.8); }, seconds * 1000);
+  }
+
+  /** Baisse la musique tant que `duckRelease` n'est pas appelé (message vocal, moment émotionnel). */
+  duckHold(level = 0.14, seconds = 0.9): void {
+    this.duckLevel = level;
+    if (this.wantMusic && this.musicOn) this.fadeMusicTo(this.musicTarget(), seconds);
+  }
+
+  duckRelease(seconds = 1.6): void {
+    this.duckLevel = 1;
+    if (this.wantMusic && this.musicOn) this.fadeMusicTo(this.musicTarget(), seconds);
+  }
+
+  private ringTimer = 0;
+  /** Sonnerie douce d'appel entrant (effet synthétisé, jamais une voix). */
+  ringStart(): void {
+    this.ringStop();
+    const ring = () => {
+      const c = this.ctx;
+      if (!c || !this.sfxGain || !this.sfxOn) return;
+      const t = c.currentTime;
+      [[659.25, 0], [987.77, 0.22], [659.25, 0.9], [987.77, 1.12]].forEach(([f, d]) => {
+        const o = c.createOscillator(); const g = c.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.22, t + d + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.5);
+        o.connect(g); g.connect(this.sfxGain!);
+        o.start(t + d); o.stop(t + d + 0.55);
+      });
+      try { navigator.vibrate?.([180, 90, 180]); } catch { /* ignoré */ }
+    };
+    ring();
+    this.ringTimer = window.setInterval(ring, 2600);
+  }
+
+  ringStop(): void { if (this.ringTimer) { window.clearInterval(this.ringTimer); this.ringTimer = 0; } }
+
+  /**
+   * Fait passer un <audio> (voix) par Web Audio : léger gain + limiteur (sans toucher à la voix),
+   * et renvoie un analyseur pour animer l'avatar. Sans contexte audio : null (lecture normale).
+   */
+  routeVoice(el: HTMLAudioElement, gain = 2): AnalyserNode | null {
+    const c = this.ctx;
+    if (!c || !this.master) return null;
+    try {
+      const src = c.createMediaElementSource(el);
+      const g = c.createGain(); g.gain.value = gain;
+      const lim = c.createDynamicsCompressor(); lim.threshold.value = -6; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.2;
+      const an = c.createAnalyser(); an.fftSize = 256;
+      src.connect(g); g.connect(lim); lim.connect(an); an.connect(this.master);
+      return an;
+    } catch { return null; }
   }
 
   fadeMusicTo(v: number, seconds: number): void {
@@ -230,7 +284,7 @@ export class AudioManager {
     if (this.wantMusic) {
       if (this.musicOn) {
         if (this.el?.paused && this.musicLoaded) this.startElement();
-        this.fadeMusicTo(this.musicVolume, 0.25);
+        this.fadeMusicTo(this.musicTarget(), 0.25);
       } else {
         this.fadeMusicTo(0, 0.25);
         window.setTimeout(() => { if (!this.musicOn) this.el?.pause(); }, 300);

@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { createHash } from 'node:crypto';
 import { EVENT_CONFIG, canOfferBig, canSendSmall, claimOnce, eligible, offerInvite, pickEvent, pendingInvites, pushMessage, recordDone, settleStale, setInviteState, type Progress } from '../src/events/manager';
 import { defaultEvents, sanitizeEvents } from '../src/events/state';
 import { EVENTS, eventById, SMALL_MESSAGES } from '../src/events/data';
@@ -29,9 +28,10 @@ describe('données des événements', () => {
   it('aucun prénom d\'enfant en clair dans les textes (locuteurs neutres seulement)', () => {
     const all = JSON.stringify(EVENTS) + JSON.stringify(SMALL_MESSAGES);
     // vérification par empreintes : aucun mot du texte ne doit correspondre à un prénom protégé
-    const banned = new Set(['b709ebbce1b402e2bbd711edfc62aff0344f65ffa34e844f7e1022bacf007cbd', '1fee1f227499d5ee23a09cced26da212e5acd5832401a5dae2b107f5624f7d66', '37755b1afe16a4973d4d2208c4a7dea45e2e5772015dc3d34e04eeed77f58591', '2f70f3f302c95ad5b09efa54b2b3931d6cdcfc57f6b842c8c34efee5f9f69ddc']);
+    const fnv = (w: string): number => { let x = 2166136261; for (let i = 0; i < w.length; i++) { x ^= w.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; } return x >>> 0; };
+    const banned = new Set<number>([3946716181, 2134510645, 4286642214, 2941064473]);
     const words = all.toLowerCase().match(/[a-zà-ÿ]+/g) ?? [];
-    for (const w of new Set(words)) expect(banned.has(createHash('sha256').update(w).digest('hex'))).toBe(false);
+    for (const w of new Set(words)) expect(banned.has(fnv(w))).toBe(false);
   });
   it('le restaurant : invitation exacte, menu choisi AVANT la devinette', () => {
     const r = eventById('r-restaurant')!;

@@ -13,8 +13,9 @@ import type { Expr } from '../../../data/dialogue';
 import { radiaParts as P } from '../characters';
 import { PAL, heartPath, roundRect, shade, gloss, starPath } from '../kit';
 import { makeCanvas } from '../kit';
+import { BRACELET_ID, SHINE_STEPS, shineStep } from './wristShine';
 
-export interface AvatarOpts { expr?: Expr; step?: number; arms?: 'down' | 'wave' | 'heart' | 'open'; blink?: boolean }
+export interface AvatarOpts { expr?: Expr; step?: number; arms?: 'down' | 'wave' | 'heart' | 'open'; blink?: boolean; /** reflet du bracelet 0–1 (animation douce) */ shine?: number }
 
 export type C = CanvasRenderingContext2D;
 export type Pt = [number, number];
@@ -1105,6 +1106,8 @@ export const EXTRA = {
   hairFront: {} as Record<string, (ctx: C, sway: number) => void>,
   /** bijoux de cou, repère avatar 240 × 600, dessinés avant la tête */
   neck: {} as Record<string, (ctx: C) => void>,
+  /** bracelets : dessinés sur chaque poignet (arms = géométrie des deux bras, angle = direction de la main), `shine` ∈ [0,1] = reflet animé */
+  wrist: {} as Record<string, (ctx: C, arms: Arm[], angle: (a: Arm) => number, shine: number) => void>,
   /** accessoires de visage (boucles, lunettes, foulards…), repère avatar 240 × 600, après les cheveux de devant */
   face: {} as Record<string, (ctx: C) => void>,
 };
@@ -1742,6 +1745,9 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
     gloss(ctx, 110, 286, 6, 3, 0.6, -0.6);
   }
 
+  // 5b. bracelets (au-dessus des mains)
+  for (const a of accs) EXTRA.wrist[a]?.(ctx, arms, (ar) => endAng(ar, 1), opts.shine ?? 0);
+
   // 6. sac
   if (bag === 'bg-crossbody-black') bagCross(ctx);
   else if (bag === 'bg-mini-gold') bagGold(ctx);
@@ -1819,11 +1825,13 @@ const cache = new Map<string, HTMLCanvasElement>();
 
 /** Avatar rendu une fois et mis en cache (clé = look + options + taille) pour l'interface. */
 export function avatarCanvas(look: Look, w: number, h: number, opts: AvatarOpts = {}): HTMLCanvasElement {
-  const key = `${w}x${h}|${look.hair}|${look.top}|${look.bottom}|${look.dress}|${look.jacket}|${look.shoes}|${look.bag}|${look.acc.join(',')}|${look.crown}|${opts.expr ?? ''}|${opts.step ?? 0}|${opts.arms ?? ''}|${opts.blink ? 1 : 0}`;
+  // le reflet du bracelet n'entre dans la clé que si le look le porte (6 pas)
+  const sh = look.acc.includes(BRACELET_ID) ? shineStep(opts.shine ?? 0) : 0;
+  const key = `${w}x${h}|${look.hair}|${look.top}|${look.bottom}|${look.dress}|${look.jacket}|${look.shoes}|${look.bag}|${look.acc.join(',')}|${look.crown}|${opts.expr ?? ''}|${opts.step ?? 0}|${opts.arms ?? ''}|${opts.blink ? 1 : 0}|${sh}`;
   let c = cache.get(key);
   if (!c) {
     c = makeCanvas(w, h);
-    drawAvatar(c.getContext('2d')!, look, c.width, c.height, opts);
+    drawAvatar(c.getContext('2d')!, look, c.width, c.height, { ...opts, shine: sh / SHINE_STEPS });
     if (cache.size > 120) cache.delete(cache.keys().next().value as string);
     cache.set(key, c);
   }

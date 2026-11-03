@@ -59,6 +59,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'ev_golden', name: 'Journée surprise', desc: 'Ouvrir une enveloppe dorée.', icon: 'gift', check: (s) => (s.events.done['g-day']?.count ?? 0) >= 1 },
   { id: 'ev_family', name: 'Une maman en or', desc: 'Terminer 3 activités avec les enfants.', icon: 'heart', check: (s) => (s.stats['events.family'] ?? 0) >= 3 },
   { id: 'ev_photos', name: 'Album de souvenirs', desc: 'Garder 10 photos souvenirs.', icon: 'camera', check: (s) => s.events.photos.length >= 10 },
+  { id: 'ev_promise', name: 'Une promesse qui brille ♡', desc: 'Recevoir le bracelet d\'Auguste.', icon: 'sparkle', check: (s) => s.world.wardrobe.owned.includes('br-promise') },
   { id: 'ev_ten', name: 'Une vie bien remplie', desc: 'Terminer 10 invitations.', icon: 'star', check: (s) => (s.stats['events.done'] ?? 0) >= 10 },
   { id: 'w_covers', name: 'À la une !', desc: 'Collectionner les 5 couvertures de magazine.', icon: 'album', check: (s) => s.world.magazines.length >= 5 },
 ];

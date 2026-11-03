@@ -18,7 +18,8 @@ import { loadFamily } from './core/family';
 import { installNoZoom } from './ui/noZoom';
 import { startKidCalls } from './ui/components/kidCalls';
 import { startCheckins } from './ui/components/checkins';
-import { startInvitations, offerNow } from './events/scheduler';
+import { startGiftBubbles, spawnGiftNow } from './ui/components/giftBubble';
+import { startInvitations, offerNow, secretNow, secretAdvance } from './events/scheduler';
 import { warmAuguste } from './game/art/world/radiaNow';
 
 const progress = (p: number) => {
@@ -124,6 +125,7 @@ async function boot(): Promise<void> {
   startKidCalls();
   startCheckins();
   startInvitations();
+  startGiftBubbles();
   void warmAuguste();
   preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste', 'head-new']);
   progress(0.3);
@@ -181,5 +183,5 @@ boot().catch((e) => {
 
 // Accès debug en développement : window.RADIA
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  (window as unknown as Record<string, unknown>).RADIA = { save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
+  (window as unknown as Record<string, unknown>).RADIA = { save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), gift: () => spawnGiftNow(), secretCall: () => secretNow(), secretAdvance: (m: number) => secretAdvance(m), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
 }

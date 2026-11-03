@@ -14,6 +14,7 @@ import { CLOTHES, HAIRS, STYLE_NAMES } from '../../../data/world/wardrobe';
 import type { Expr } from '../../../data/dialogue';
 import * as W from '../../../game/world/wardrobe';
 import { avatarCanvas, drawAvatar } from '../../../game/art/world/avatar';
+import { BRACELET_ID, shineAt, shineStep } from '../../../game/art/world/wristShine';
 import { resIconUrl } from '../../../game/art/world/resources';
 import { canvasUrl, makeCanvas } from '../../../game/art/kit';
 import { reactAuguste } from '../../../game/world/auguste';
@@ -25,10 +26,12 @@ const CATS: { key: CatKey; label: string }[] = [
   { key: 'top', label: 'Hauts' }, { key: 'bottom', label: 'Pantalons & jupes' }, { key: 'dress', label: 'Robes' },
   { key: 'jacket', label: 'Vestes' }, { key: 'shoes', label: 'Chaussures' }, { key: 'bag', label: 'Sacs' },
   { key: 'hair', label: 'Coiffures' }, { key: 'head', label: 'Foulards & cheveux' }, { key: 'glasses', label: 'Lunettes' },
-  { key: 'ears', label: 'Boucles d\'oreilles' }, { key: 'lips', label: 'Rouge à lèvres' }, { key: 'neck', label: 'Bijoux' }, { key: 'crown', label: 'Couronnes' },
+  { key: 'ears', label: 'Boucles d\'oreilles' }, { key: 'lips', label: 'Rouge à lèvres' }, { key: 'neck', label: 'Bijoux' }, { key: 'wrist', label: 'Bracelets' }, { key: 'crown', label: 'Couronnes' },
 ];
 const STYLES: StyleId[] = ['casual', 'chic', 'romantic', 'royal', 'stage'];
 const isHairId = (id: string): id is HairId => (HAIR_IDS as readonly string[]).includes(id);
+/** Un cadeau n'apparaît dans le dressing que s'il est possédé. */
+const visible = (id: ItemId): boolean => isHairId(id) || !CLOTHES[id].gift || W.owns(id);
 const nameOf = (id: ItemId) => (isHairId(id) ? HAIRS[id].name : CLOTHES[id].name);
 
 // ------------------------------------------------------------------ vignettes dessinées
@@ -37,7 +40,7 @@ const THUMB_BASE: Look = { hair: 'hair-loose', top: 'top-tee-white', bottom: 'bo
 const CROPS: Record<CatKey, [number, number, number, number]> = {
   top: [26, 138, 188, 236], bottom: [20, 268, 200, 322], dress: [0, 140, 240, 452], jacket: [22, 138, 196, 236],
   shoes: [26, 498, 188, 104], bag: [0, 150, 240, 262], crown: [26, -14, 188, 178], hair: [8, 0, 224, 262],
-  head: [44, -4, 152, 164], glasses: [60, 36, 120, 80], ears: [44, 50, 152, 104], lips: [84, 108, 72, 56], neck: [50, 128, 140, 100],
+  head: [44, -4, 152, 164], glasses: [60, 36, 120, 80], ears: [44, 50, 152, 104], lips: [84, 108, 72, 56], neck: [50, 128, 140, 100], wrist: [-6, 278, 64, 64],
 };
 const catOf = (id: ItemId): CatKey => (isHairId(id) ? 'hair' : CLOTHES[id].slot === 'acc' ? (accGroup(id) ?? 'neck') : (CLOTHES[id].slot as CatKey));
 const PX = 192;
@@ -46,7 +49,7 @@ const PX = 192;
 export function thumbUrl(id: ItemId): string {
   return canvasUrl(`dr:thumb:${id}`, () => {
     const look = isHairId(id) ? { ...W.cloneLook(THUMB_BASE), hair: id } : W.applyItem(THUMB_BASE, id);
-    if (!isHairId(id) && CLOTHES[id].slot !== 'crown' && CLOTHES[id].slot !== 'acc') look.hair = 'hair-bun'; // dégage les épaules pour bien voir la pièce
+    if (!isHairId(id) && (CLOTHES[id].slot !== 'crown' && CLOTHES[id].slot !== 'acc' || catOf(id) === 'wrist')) look.hair = 'hair-bun'; // dégage les épaules (et le poignet) pour bien voir la pièce
     if (!isHairId(id) && CLOTHES[id].slot === 'dress') { look.top = null; look.bottom = null; }
     const [cx, cy, cw, ch] = CROPS[catOf(id)];
     const c = makeCanvas(PX, PX);
@@ -57,7 +60,7 @@ export function thumbUrl(id: ItemId): string {
     ctx.beginPath();
     ctx.rect(cx, cy, cw, ch);
     ctx.clip();
-    drawAvatar(ctx, look, 240, 600, { expr: 'smile' });
+    drawAvatar(ctx, look, 240, 600, { expr: 'smile', arms: catOf(id) === 'wrist' ? 'open' : undefined });
     return c;
   });
 }
@@ -96,6 +99,16 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
     const stage = h('div.dr-stage', h('div.dr-floor'), wrap);
     if (reducedFx()) wrap.classList.add('calm');
 
+    /** Reflet périodique du bracelet (0 si effets réduits ou bracelet non porté). */
+    const curShine = (): number => (reducedFx() || !shown().acc.includes(BRACELET_ID) ? 0 : shineAt(performance.now() / 1000));
+    let lastStep = 0;
+    const shineLoop = () => {
+      const st = shineStep(curShine());
+      if (st !== lastStep) { lastStep = st; paint(); }
+      later(shineLoop, 110);
+    };
+    later(shineLoop, 600);
+
     const shown = (): Look => (preview ? W.previewLook(W.getLook(), preview) : W.getLook());
     const paintNow = () => {
       const d = dpr();
@@ -104,7 +117,7 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
       if (cvs.width !== wpx) { cvs.width = wpx; cvs.height = hpx; }
       const ctx = cvs.getContext('2d')!;
       ctx.clearRect(0, 0, wpx, hpx);
-      ctx.drawImage(avatarCanvas(shown(), wpx, hpx, { expr, blink, step: walk, arms: armPose }), 0, 0);
+      ctx.drawImage(avatarCanvas(shown(), wpx, hpx, { expr, blink, step: walk, arms: armPose, shine: curShine() }), 0, 0);
     };
     const paint = () => { if (Date.now() >= heldUntil) paintNow(); };
 
@@ -212,11 +225,11 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
       { label: 'Tenues', ic: 'sparkle', subs: ['top', 'bottom', 'dress', 'jacket'] },
       { label: 'Sacs & souliers', ic: 'basket', subs: ['shoes', 'bag'] },
       { label: 'Cheveux', ic: 'wand', subs: ['hair', 'head'] },
-      { label: 'Visage', ic: 'smile', subs: ['glasses', 'ears', 'lips', 'neck'] },
+      { label: 'Visage', ic: 'smile', subs: ['glasses', 'ears', 'lips', 'neck', 'wrist'] },
       { label: 'Couronnes', ic: 'crown', subs: ['crown'] },
     ];
     const groupOf = (k: CatKey) => GROUPS.findIndex((g) => g.subs.includes(k));
-    const SHORT: Partial<Record<CatKey, string>> = { top: 'Hauts', bottom: 'Bas', dress: 'Robes', jacket: 'Vestes', shoes: 'Chaussures', bag: 'Sacs', hair: 'Coiffures', head: 'Foulards', glasses: 'Lunettes', ears: 'Boucles', lips: 'Rouges', neck: 'Bijoux', crown: 'Couronnes' };
+    const SHORT: Partial<Record<CatKey, string>> = { top: 'Hauts', bottom: 'Bas', dress: 'Robes', jacket: 'Vestes', shoes: 'Chaussures', bag: 'Sacs', hair: 'Coiffures', head: 'Foulards', glasses: 'Lunettes', ears: 'Boucles', lips: 'Rouges', neck: 'Bijoux', wrist: 'Bracelets', crown: 'Couronnes' };
     const labelOf = (k: CatKey) => SHORT[k] ?? CATS.find((c) => c.key === k)?.label ?? '';
     const tabs = h('div.dr-groups', { role: 'tablist' });
     const groupEls = GROUPS.map((g) => {
@@ -249,7 +262,7 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
 
     const items = (): ItemId[] => {
       if (tab === 'hair') return [...HAIR_IDS];
-      return (Object.keys(CLOTHES) as ClothId[]).filter((id) => catOf(id) === tab && (style === 'all' || CLOTHES[id].styles.includes(style)));
+      return (Object.keys(CLOTHES) as ClothId[]).filter((id) => visible(id) && catOf(id) === tab && (style === 'all' || CLOTHES[id].styles.includes(style)));
     };
 
     const ownedNow = (id: ItemId) => (isHairId(id) ? W.ownsHair(id) : W.owns(id));
@@ -299,16 +312,17 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
       const gi = groupOf(tab);
       groupEls.forEach((el, k) => { el.classList.toggle('on', k === gi); el.setAttribute('aria-selected', String(k === gi)); });
       subRow.textContent = '';
-      const subs = GROUPS[gi]?.subs ?? [];
+      const subs = (GROUPS[gi]?.subs ?? []).filter((k) => k !== 'wrist' || (Object.keys(CLOTHES) as ClothId[]).some((id) => catOf(id) === 'wrist' && visible(id)));
       for (const k of subs) {
-        const all = k === 'hair' ? [...HAIR_IDS] : (Object.keys(CLOTHES) as ClothId[]).filter((id) => catOf(id) === k);
+        const all = k === 'hair' ? [...HAIR_IDS] : (Object.keys(CLOTHES) as ClothId[]).filter((id) => visible(id) && catOf(id) === k);
         const have = all.filter((id) => ownedNow(id)).length;
         const b = h(`button.dr-tab${k === tab ? '.on' : ''}`, { role: 'tab' }, labelOf(k), h('small', `${have}/${all.length}`));
         b.addEventListener('click', tap(() => { tab = k; renderAll(); }, { sound: false }));
         subRow.append(b);
       }
       subRow.classList.toggle('single', subs.length < 2);
-      subRow.scrollLeft = 0;
+      const onTab = subRow.querySelector<HTMLElement>('.dr-tab.on');
+      subRow.scrollLeft = onTab ? Math.max(0, onTab.offsetLeft - 12) : 0; // l'onglet choisi reste visible
       styleBtn.textContent = style === 'all' ? 'Style ▾' : STYLE_NAMES[style];
       styleBtn.classList.toggle('on', style !== 'all');
       styles.classList.toggle('nostyle', tab === 'hair');
@@ -373,6 +387,7 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
     }
 
     async function purchase(id: ItemId) {
+      if (!isHairId(id) && CLOTHES[id].gift) return fail('gift'); // un cadeau ne s'achète pas
       const hair = isHairId(id);
       const p = hair ? { coins: HAIRS[id].coins, fabric: 0, diamonds: 0 } : W.priceOf(id);
       const coinOk = hair ? W.canBuyHair(id).ok : W.canBuy(id, 'coins').ok;

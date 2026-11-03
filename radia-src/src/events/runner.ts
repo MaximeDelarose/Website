@@ -60,8 +60,7 @@ export async function startEvent(def: EventDef, runId: string, resume?: ActiveRu
   const st = ev();
   const origin = captureOrigin();
   const run: ActiveRun = resume ?? { runId, eventId: def.id, step: 0, data: {}, origin: { mode: origin.mode }, startedAt: Date.now() };
-  st.current = run;
-  setInviteState(st, run.runId, 'seen');
+  if (!def.ephemeral) { st.current = run; setInviteState(st, run.runId, 'seen'); } // une scène « revue » n'est jamais enregistrée comme activité en cours
   save.save();
 
   let alive = true;
@@ -71,14 +70,27 @@ export async function startEvent(def: EventDef, runId: string, resume?: ActiveRu
   const body = h('div.ev-body');
   const title = h('h2', def.title);
   const dots = h('div.ev-dots', ...def.steps.map((s) => h('i', { title: stepLabel(s) })));
+  // quête en plusieurs phases : indicateur clair (étapes terminées, en cours, objectif)
+  const phaseOf = (i: number): number => { let p = 0; (def.phases ?? []).forEach((ph, k) => { if (i >= ph.from) p = k; }); return p; };
+  const phaseBar = def.phases ? h('div.ev-phases', ...def.phases.map((ph, k) => h('div.ev-ph', h('i', String(k + 1)), h('small', ph.label)))) : null;
+  const goal = def.phases ? h('div.ev-goal') : null;
   let quitting = false;
   const quitBtn = h('button.icon-btn', { 'aria-label': 'Quitter l’événement' }, icon('close'));
-  root.append(h('div.ev-top', quitBtn, title, h('div', { style: 'width:44px' })), dots, body);
+  root.append(h('div.ev-top', quitBtn, title, h('div', { style: 'width:44px' })), phaseBar ?? dots);
+  if (goal) root.append(goal);
+  root.append(body);
   ui.root.append(root);
   ui.root.classList.add('ev-active');
   audio.play('whoosh');
 
-  const setDots = (i: number) => [...dots.children].forEach((d, k) => { d.className = k < i ? 'on' : k === i ? 'cur' : ''; });
+  const setDots = (i: number) => {
+    [...dots.children].forEach((d, k) => { d.className = k < i ? 'on' : k === i ? 'cur' : ''; });
+    if (phaseBar && def.phases) {
+      const cur = phaseOf(i);
+      [...phaseBar.children].forEach((d, k) => { d.className = `ev-ph${k < cur ? ' done' : k === cur ? ' cur' : ''}`; (d.firstChild as HTMLElement).textContent = k < cur ? '✓' : String(k + 1); });
+      if (goal) goal.textContent = `Objectif : ${def.phases[cur].goal}`;
+    }
+  };
   const clearBody = () => { stage?.dispose(); stage = null; root.classList.remove('stage'); body.textContent = ''; };
   const showStage = (place: PlaceId, opts: { auguste?: boolean; kids?: ActiveRun['data'] extends never ? never : import('../data/world/ids').KidId[]; walk?: boolean }) => {
     clearBody();
@@ -106,6 +118,7 @@ export async function startEvent(def: EventDef, runId: string, resume?: ActiveRu
       setDots(i);
       save.save();
       const s = def.steps[i];
+      const repeatNow = st.done[def.id]?.count ?? 0;
       const mkCtx = (params: Record<string, unknown>) => createCtx({ root: body, eventId: def.id, runId: run.runId, params, data: run.data, repeat: st.done[def.id]?.count ?? 0, alive: () => alive });
       if (s.t === 'dress') {
         const { openDressing } = await import('../ui/screens/world/dressing');
@@ -130,7 +143,7 @@ export async function startEvent(def: EventDef, runId: string, resume?: ActiveRu
         try { for (const l of s.lines) { if (!alive) break; await ctx.say(l.who, l.text, l.expr); } } finally { dispose(); }
       } else if (s.t === 'activity') {
         clearBody();
-        const { ctx, dispose } = mkCtx(s.params ?? {});
+        const { ctx, dispose } = mkCtx({ ...(s.params ?? {}), ...(s.id === 'braceletReveal' ? { replay: repeatNow > 0 } : {}) });
         try {
           // test automatisé uniquement (window.__EV_FAST) : saute le mini-jeu, le reste de l'événement se déroule normalement
           const fast = (window as unknown as { __EV_FAST?: boolean }).__EV_FAST === true;
@@ -172,12 +185,21 @@ export async function startEvent(def: EventDef, runId: string, resume?: ActiveRu
     outcome = 'quit';
   }
 
+  if (outcome === 'quit' && def.ephemeral) { cleanup(); origin.restore(); return 'quit'; }
   if (outcome === 'quit') {
     // suspendu : l'activité reste dans le téléphone (« Reprendre »), rien n'est perdu ni versé
     cleanup();
     origin.restore();
     save.save();
     return 'quit';
+  }
+
+  if (def.ephemeral) { // scène revue : rien n'est versé ni enregistré
+    st.current = null;
+    save.save();
+    cleanup();
+    origin.restore();
+    return 'done';
   }
 
   // ---- fin : récompense unique, souvenir, succès
@@ -187,6 +209,9 @@ export async function startEvent(def: EventDef, runId: string, resume?: ActiveRu
   const pick = (run.data.shopTry as { pick?: string } | undefined)?.pick;
   const extra: ClothId[] = pick ? [pick as ClothId] : [];
   const reward: RewardOutcome = grantReward(def, run.runId, times, extra);
+  // le bracelet : « Le porter » équipe, « Le garder » le laisse dans le dressing (jamais d'obligation)
+  const br = run.data.braceletReveal as { equip?: boolean; replay?: boolean } | undefined;
+  if (reward.cloth.includes('br-promise') && br?.equip) { try { const { equip } = await import('../game/world/wardrobe'); equip('br-promise'); } catch { /* ignoré */ } }
   const rec = recordDone(st, def.id, avg, Date.now());
   setInviteState(st, run.runId, 'done');
   st.current = null;

@@ -19,6 +19,8 @@ export interface ClothDef {
   diamonds?: number;
   /** Possédé dès le départ. */
   starter?: boolean;
+  /** Cadeau : jamais en vente ; n'apparaît dans le dressing qu'une fois reçu. */
+  gift?: boolean;
 }
 
 const C = (id: ClothId, name: string, styles: StyleId[], coins: number, extra: Partial<ClothDef> = {}): ClothDef => ({ id, name, slot: CLOTH_SLOTS[id], styles, coins, ...extra });
@@ -116,6 +118,8 @@ export const CLOTHES: Record<ClothId, ClothDef> = {
   'dr-pajama-pink': C('dr-pajama-pink', 'Pyjama rose à pois', ['casual', 'romantic'], 90, {}),
   'dr-pajama-stars': C('dr-pajama-stars', 'Pyjama étoilé', ['casual', 'romantic'], 100, {}),
   'dr-nightgown-silk': C('dr-nightgown-silk', 'Nuisette en soie', ['romantic', 'chic'], 160, { fabric: 3 }),
+  // cadeau d'Auguste : ni achetable ni vendu, il se reçoit pendant « Une soirée avec A ♡ »
+  'br-promise': C('br-promise', 'La promesse d’Auguste ♡', ['romantic', 'royal'], 0, { gift: true }),
   'jk-blazer-cream': C('jk-blazer-cream', 'Blazer crème', ['chic'], 240, { fabric: 3 }),
   'jk-leather-black': C('jk-leather-black', 'Veste en cuir noire', ['casual', 'stage'], 280, { fabric: 3 }),
   'jk-denim': C('jk-denim', 'Veste en jean', ['casual'], 150, { fabric: 2 }),

@@ -290,3 +290,27 @@
 
 .title-left { display: flex; align-items: center; gap: 8px; }
 .mh-phone { width: 40px; height: 40px; }
+
+/* bulle « Salaire prêt ! » sur le bouton Mon monde */
+.title-menu .btn.mode { position: relative; }
+.mode-bubble { position: absolute; top: -12px; right: 10px; display: none; align-items: center; gap: 3px; padding: 3px 10px 3px 7px; border-radius: 99px 99px 99px 4px; background: #fff; color: var(--rose-deep); font-size: 13px; font-weight: 800; box-shadow: 0 0 0 2px #f5a0bb, 0 6px 14px rgba(59, 49, 82, 0.35); animation: bubBob 1.6s ease-in-out infinite; pointer-events: none; }
+.mode-bubble.on { display: inline-flex; }
+@keyframes bubBob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
+
+/* bulles-cadeaux */
+.gift-bub { position: absolute; z-index: 66; top: var(--y); width: 70px; height: 70px; padding: 0; border-radius: 50%; pointer-events: auto; transform: translateX(0); transition: none; }
+.gift-bub.go { animation: gbFloat 12s linear forwards, gbBob 1.8s ease-in-out infinite; }
+.gift-bub.leave { animation: fadeOut 0.5s ease forwards; pointer-events: none; }
+.gift-bub.pop { animation: gbPop 0.3s ease-out forwards; pointer-events: none; }
+.gb-ball { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 32% 28%, #fff 0 12%, rgba(255, 255, 255, 0.35) 13% 30%, rgba(255, 186, 214, 0.75) 60%, rgba(185, 165, 232, 0.8) 100%); box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.85), 0 8px 18px rgba(59, 49, 82, 0.35), inset 0 -6px 14px rgba(232, 85, 143, 0.35); display: grid; place-items: center; }
+.gb-ribbon { position: absolute; left: 50%; top: 18%; width: 6px; height: 64%; margin-left: -3px; background: linear-gradient(180deg, #f3c86b, #e0a83e); border-radius: 3px; opacity: 0.9; }
+.gb-bow { position: relative; font-style: normal; font-size: 26px; color: #e8558f; text-shadow: 0 1px 0 #fff; }
+.gb-glint { position: absolute; left: 20%; top: 14%; width: 14px; height: 14px; border-radius: 50%; background: #fff; opacity: 0.9; filter: blur(1px); }
+@keyframes gbFloat { from { transform: translateX(0); } to { transform: translateX(calc(var(--dir) * (100vw + 160px))); } }
+@keyframes gbBob { 0%, 100% { margin-top: 0; } 50% { margin-top: -12px; } }
+@keyframes gbPop { 0% { transform: scale(1); opacity: 1; } 60% { transform: scale(1.5); opacity: 0.9; } 100% { transform: scale(1.8); opacity: 0; } }
+.gb-reward { position: absolute; z-index: 67; transform: translate(-50%, 0); display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px 6px 8px; border-radius: 99px; background: #fff8e1; box-shadow: 0 0 0 2.5px #f3c86b, 0 8px 20px rgba(59, 49, 82, 0.4); font-size: 18px; color: var(--choco); animation: gbRise 1.7s ease-out forwards; pointer-events: none; }
+.gb-reward img { width: 28px; height: 28px; }
+.gb-spark { position: absolute; z-index: 67; width: 8px; height: 8px; margin: -4px; border-radius: 50%; background: #ffd86b; pointer-events: none; animation: gbSpark 0.8s ease-out forwards; }
+@keyframes gbRise { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.7); } 18% { opacity: 1; transform: translate(-50%, -6px) scale(1.08); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -48px); } }
+@keyframes gbSpark { to { transform: rotate(var(--a)) translateX(54px) scale(0.2); opacity: 0; } }

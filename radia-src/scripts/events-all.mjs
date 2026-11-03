@@ -5,7 +5,7 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-124
 const p = await (await b.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true })).newPage();
 const errs = []; p.on('pageerror', e => errs.push('page: ' + e.message)); p.on('console', m => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push('console: ' + m.text()); });
 await p.addInitScript(() => { window.__EV_FAST = true; if (!localStorage.getItem('radia-save-v1')) localStorage.setItem('radia-save-v1', JSON.stringify({ v: 3, seenUpdates: ['v2', 'v3', 'v4'], story: { step: 0 }, levels: {}, hearts: 0 })); });
-await p.goto('http://localhost:5230/?debug'); await p.waitForTimeout(3000);
+await p.goto('http://localhost:4173/?debug'); await p.waitForTimeout(3000);
 const ids = await p.evaluate(async () => (await import('/src/events/data/index.ts')).EVENTS.map(e => e.id));
 await p.evaluate(() => { const s = window.RADIA.save.data; s.world.careers.current = 'photo'; for (const c of ['photo','model','actress','singer']) s.world.careers.progress[c] = { level: 1, xp: 50, best: 50 }; s.world.res.coins = 100; });
 const res = [];

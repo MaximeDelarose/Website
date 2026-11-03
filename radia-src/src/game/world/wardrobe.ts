@@ -22,7 +22,7 @@ import { CLOTHES, ELEGANT_CLOTHES, HAIRS, type ClothDef } from '../../data/world
 import { accGroup } from '../../data/world/ids';
 
 export type PayWith = 'coins' | 'diamonds';
-export type FailReason = 'unknown' | 'owned' | 'coins' | 'fabric' | 'diamonds' | 'no-diamond-price' | 'not-owned' | 'bad-slot' | 'empty-name';
+export type FailReason = 'unknown' | 'owned' | 'coins' | 'fabric' | 'diamonds' | 'no-diamond-price' | 'not-owned' | 'bad-slot' | 'empty-name' | 'gift';
 export interface Result { ok: boolean; reason?: FailReason }
 
 export const MAX_ACC = 6;
@@ -119,6 +119,7 @@ export function canBuy(id: ClothId, payWith: PayWith = 'coins'): Result {
   if (!isCloth(id)) return { ok: false, reason: 'unknown' };
   ensureWardrobe();
   if (state().owned.includes(id)) return { ok: false, reason: 'owned' };
+  if (CLOTHES[id].gift) return { ok: false, reason: 'gift' }; // un cadeau ne s'achète jamais
   const p = priceOf(id);
   if (payWith === 'diamonds') {
     if (!p.diamonds) return { ok: false, reason: 'no-diamond-price' };
@@ -144,6 +145,23 @@ export function buy(id: ClothId, payWith: PayWith = 'coins'): Result {
   save.save();
   stat('world.wardrobe.bought');
   return { ok: true };
+}
+
+/** Pièce offerte (jamais en vente) ? */
+export const isGift = (id: ClothId): boolean => !!CLOTHES[id]?.gift;
+
+/**
+ * Reçoit un cadeau (ex. le bracelet d'Auguste) : l'ajoute aux pièces possédées, sans rien débiter ni l'équiper.
+ * Idempotent. Refuse tout ce qui n'est pas un cadeau (pas de contournement de la boutique).
+ */
+export function grantGift(id: ClothId): Result & { added?: boolean } {
+  if (!isCloth(id)) return { ok: false, reason: 'unknown' };
+  if (!CLOTHES[id].gift) return { ok: false, reason: 'unknown' };
+  ensureWardrobe();
+  if (state().owned.includes(id)) return { ok: true, added: false };
+  state().owned.push(id);
+  save.save();
+  return { ok: true, added: true };
 }
 
 export function canBuyHair(id: HairId, payWith: PayWith = 'coins'): Result {

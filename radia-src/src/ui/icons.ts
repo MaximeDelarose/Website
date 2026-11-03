@@ -4,6 +4,7 @@
  */
 const P: Record<string, string> = {
   back: '<path d="M15 5l-7 7 7 7"/>',
+  handset: '<path d="M5.2 3.5h3.3l1.6 4.2-2 1.4a10.6 10.6 0 004.8 4.8l1.4-2 4.2 1.6v3.3a1.9 1.9 0 01-2 1.9A15.6 15.6 0 013.3 5.5a1.9 1.9 0 011.9-2z" fill="currentColor"/>',
   phone: '<rect x="7" y="2.5" width="10" height="19" rx="2.8"/><path d="M10.5 18.2h3"/>',
   mail: '<rect x="3" y="5.5" width="18" height="13" rx="2.6"/><path d="M3.6 7.2l8.4 6 8.4-6"/>',
   camera: '<path d="M4 8.2h3l1.6-2.4h6.8L17 8.2h3V19H4z"/><circle cx="12" cy="13.4" r="3.4"/>',

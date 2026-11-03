@@ -15,7 +15,7 @@ beforeEach(() => { save.data = defaultSave(); });
 
 describe('catalogue', () => {
   it('chaque identifiant a une fiche, un emplacement cohérent et un prix', () => {
-    expect(CLOTH_IDS.length).toBe(108);
+    expect(CLOTH_IDS.length).toBe(109);
     for (const id of CLOTH_IDS) {
       expect(CLOTHES[id].slot).toBe(CLOTH_SLOTS[id]);
       expect(CLOTHES[id].coins).toBeGreaterThanOrEqual(0);

@@ -9,6 +9,7 @@ import { makeCanvas } from '../../game/art/kit';
 import { W, H, type PlaceDef } from './common';
 import { restaurant, palace, ballroom, hotel } from './romantic';
 import { fireworks, rooftop, cinema, stage } from './night';
+import { fountain } from './fountain';
 import { flowerMarket, garden, boutique, studio, home, pajama, spa } from './day';
 
 export const PLACE_NAMES: Record<PlaceId, string> = {
@@ -27,10 +28,11 @@ export const PLACE_NAMES: Record<PlaceId, string> = {
   stage: 'Scène',
   studio: 'Studio photo',
   home: 'À la maison',
+  fountain: 'Devant la fontaine',
 };
 
 const DEFS: Record<PlaceId, PlaceDef> = {
-  restaurant, palace, fireworks, spa, hotel, cinema, flowerMarket, rooftop, ballroom, garden, pajama, boutique, stage, studio, home,
+  restaurant, palace, fireworks, spa, hotel, cinema, flowerMarket, rooftop, ballroom, garden, pajama, boutique, stage, studio, home, fountain,
 };
 
 const cache = new Map<string, HTMLCanvasElement>();

@@ -3,7 +3,13 @@ import type { EventsState, Invite, PhotoRec, ActiveRun, Msg, Sender } from './ty
 import { PLACE_IDS } from './types';
 import { CLOTH_SLOTS, HAIR_IDS, KID_IDS, DEFAULT_LOOK, type ClothId, type KidId, type Look } from '../data/world/ids';
 
+export const SECRET_MIN = 20 * 60_000;
+export const SECRET_MAX = 30 * 60_000;
+/** Tire le seuil de déclenchement : variable, entre 20 et 30 minutes. */
+export const rollSecretTarget = (r: number = Math.random()): number => Math.round(SECRET_MIN + Math.min(0.999999, Math.max(0, r)) * (SECRET_MAX - SECRET_MIN));
+
 export const defaultEvents = (): EventsState => ({
+  secret: { activeMs: 0, target: rollSecretTarget(), triggered: false, heard: 0, runId: '' },
   inbox: [], msgs: [], done: {}, current: null, photos: [], claimed: {}, playMs: 0, lastInviteAt: 0,
   bigLog: [], smallLog: [], lastEventId: '', seq: 1, counters: {},
 });
@@ -42,6 +48,14 @@ function sanitizeData(v: unknown, depth = 0): Record<string, unknown> {
 export function sanitizeEvents(raw: unknown): EventsState {
   const d = defaultEvents();
   if (!isObj(raw)) return d;
+  if (isObj(raw.secret)) {
+    const s = raw.secret;
+    const t = num(s.target, 0);
+    d.secret = {
+      activeMs: num(s.activeMs, 0, 0, 1e10), target: t >= SECRET_MIN && t <= SECRET_MAX ? t : d.secret.target,
+      triggered: s.triggered === true, heard: Math.floor(num(s.heard, 0, 0, 9999)), runId: str(s.runId, '', 40),
+    };
+  }
   if (Array.isArray(raw.inbox)) {
     d.inbox = raw.inbox.filter(isObj).slice(-60).map((i): Invite => ({
       runId: str(i.runId, '', 40), eventId: str(i.eventId, '', 40), at: num(i.at, 0),

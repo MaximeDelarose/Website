@@ -100,19 +100,20 @@ export const CLOTH_SLOTS = {
   'gl-aviator': 'acc', 'gl-round-gold': 'acc', 'gl-cat-eye': 'acc', 'gl-heart-pink': 'acc', 'gl-clear-round': 'acc',
   'ea-pearl-studs': 'acc', 'ea-drop-gold': 'acc', 'ea-hoops-silver': 'acc', 'ea-hearts': 'acc', 'ea-stars': 'acc', 'ea-big-hoops': 'acc',
   'lp-red': 'acc', 'lp-rose': 'acc', 'lp-nude': 'acc', 'lp-berry': 'acc', 'lp-coral': 'acc', 'lp-gloss': 'acc',
-  'ac-chain-gold': 'acc', 'ac-choker': 'acc', 'ac-pendant': 'acc',
+  'br-promise': 'acc', 'ac-chain-gold': 'acc', 'ac-choker': 'acc', 'ac-pendant': 'acc',
   'cr-gold': 'crown', 'cr-flowers': 'crown', 'cr-tiara': 'crown',
 } as const;
 export type ClothId = keyof typeof CLOTH_SLOTS;
 
 /** Les accessoires sont rangés par famille : un seul objet par famille à la fois. */
-export type AccGroup = 'head' | 'glasses' | 'ears' | 'lips' | 'neck';
-export const ACC_GROUP_NAMES: Record<AccGroup, string> = { head: 'Cheveux & foulards', glasses: 'Lunettes', ears: 'Boucles d\'oreilles', lips: 'Rouge à lèvres', neck: 'Bijoux' };
+export type AccGroup = 'head' | 'glasses' | 'ears' | 'lips' | 'neck' | 'wrist';
+export const ACC_GROUP_NAMES: Record<AccGroup, string> = { head: 'Cheveux & foulards', glasses: 'Lunettes', ears: 'Boucles d\'oreilles', lips: 'Rouge à lèvres', neck: 'Bijoux', wrist: 'Bracelets' };
 export const accGroup = (id: string): AccGroup | null => {
   if (id.startsWith('hd-')) return 'head';
   if (id.startsWith('gl-') || id === 'ac-sunglasses') return 'glasses';
   if (id.startsWith('ea-') || id === 'ac-hoops') return 'ears';
   if (id.startsWith('lp-')) return 'lips';
+  if (id.startsWith('br-')) return 'wrist';
   if (id === 'ac-scarf' || id === 'ac-pearls' || id.startsWith('ac-')) return 'neck';
   return null;
 };

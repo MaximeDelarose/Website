@@ -9,7 +9,8 @@ import { EVENTS, eventById } from '../data';
 import { ev } from '../api';
 import { pendingInvites } from '../manager';
 import { abandonCurrent } from '../runner';
-import { openInvite, replay, resumeFlow } from '../flow';
+import { openInvite, replay, resumeFlow, replayVoice, replayBraceletScene } from '../flow';
+import { SECRET_ID } from '../data';
 import { emitPhone } from '../bus';
 import { senderFace, senderName } from './people';
 import type { EventDef, Sender } from '../types';
@@ -73,6 +74,12 @@ export function openPhone(tab: Tab = 'messages'): void {
       save.save();
       const invs = st.inbox.filter((i) => eventById(i.eventId)?.sender === s).slice(-8);
       const list = h('div.ph-thread');
+      if (s === 'auguste' && st.secret.triggered) {
+        const done = (st.done[SECRET_ID]?.count ?? 0) > 0;
+        const card = h('button.ph-voice', icon('play', 20), h('div', h('b', 'Message vocal de A'), h('small', done ? 'Réécouter ♡' : 'Écouter · une surprise t’attend ♡')));
+        card.addEventListener('click', tap(() => { closePhone(); void replayVoice(); }, { sound: false }));
+        list.append(card);
+      }
       for (const i of invs) { const d = eventById(i.eventId); if (d) list.append(bubble(d.teaser), inviteCard(i.runId, d, i.state)); }
       for (const m of msgs.slice(-12)) list.append(bubble(m.text));
       if (!list.children.length) list.append(h('p.ph-empty', 'Aucun message pour l’instant.'));
@@ -128,7 +135,13 @@ export function openPhone(tab: Tab = 'messages'): void {
   function renderSouvenirs() {
     title.textContent = 'Souvenirs';
     const st = ev();
-    if (!st.photos.length) { content.append(h('p.ph-empty', 'Tes photos souvenirs apparaîtront ici après chaque sortie ♡')); return; }
+    if ((st.done[SECRET_ID]?.count ?? 0) > 0) {
+      const slot = h('div.ph-promise');
+      content.append(slot);
+      const photo = st.photos.slice().reverse().find((p) => p.eventId === SECRET_ID);
+      void import('./promiseCard').then((m) => slot.append(m.buildPromiseCard({ photo, onReplay: () => { closePhone(); void replayBraceletScene(); } }))).catch(() => undefined);
+    }
+    if (!st.photos.length) { if (!content.children.length) content.append(h('p.ph-empty', 'Tes photos souvenirs apparaîtront ici après chaque sortie ♡')); return; }
     const slot = h('div.ph-gallery');
     content.append(h('small.ph-count', `${st.photos.length} photo${st.photos.length > 1 ? 's' : ''}`), slot);
     void import('../photo/gallery').then((m) => { slot.append(m.buildGallery(st.photos.slice().reverse(), { onSelect: (p) => m.openPhotoViewer(p) })); }).catch(() => slot.append(h('p.ph-empty', 'Galerie indisponible.')));

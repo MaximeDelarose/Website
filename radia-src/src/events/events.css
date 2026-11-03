@@ -116,3 +116,18 @@
 .ph-empty { text-align: center; color: var(--choco-soft); padding: 24px 10px; font-size: 15px; }
 .ph-count { color: var(--choco-soft); font-size: 13px; }
 .ev-under { display: none !important; }
+
+/* quête : indicateur de phases */
+.ev-phases { display: flex; gap: 4px; align-items: flex-start; justify-content: space-between; padding: 2px 2px 4px; flex-shrink: 0; }
+.ev-ph { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; min-width: 0; opacity: 0.6; }
+.ev-ph i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; background: rgba(255, 255, 255, 0.8); color: var(--choco-soft); box-shadow: 0 0 0 1.5px rgba(88, 67, 63, 0.15); }
+.ev-ph small { font-size: 10.5px; font-weight: 700; color: var(--choco-soft); line-height: 1.1; }
+.ev-ph.done { opacity: 1; } .ev-ph.done i { background: #8fd19e; color: #fff; }
+.ev-ph.cur { opacity: 1; } .ev-ph.cur i { background: var(--or); color: #fff; box-shadow: 0 0 0 3px rgba(243, 200, 107, 0.5); animation: evPop 0.5s var(--ease-pop); } .ev-ph.cur small { color: var(--nuit); }
+.ev-goal { text-align: center; font-size: 13px; font-weight: 700; color: var(--rose-deep); padding: 0 6px 6px; flex-shrink: 0; min-height: 18px; }
+
+.ph-voice { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border-radius: 18px; background: linear-gradient(180deg, #fff6d9, #ffe9a6); box-shadow: 0 0 0 2.5px #f3c86b; text-align: left; color: var(--nuit); }
+.ph-voice > svg { width: 38px; height: 38px; padding: 9px; border-radius: 50%; background: var(--rose-deep); color: #fff; flex-shrink: 0; }
+.ph-voice b { display: block; font-size: 15.5px; } .ph-voice small { font-size: 13px; color: var(--choco-soft); }
+.ph-promise { margin-bottom: 8px; }
+.ev-active .modal-backdrop { z-index: 99; }

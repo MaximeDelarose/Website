@@ -3,8 +3,10 @@ import { ROMANTIC } from './romantic';
 import { FAMILY } from './family';
 import { CAREER_EVENTS } from './career';
 import { GOLDEN } from './golden';
+import { SECRET } from './secret';
+export { SECRET_ID } from './secret';
 
-export const EVENTS: EventDef[] = [...ROMANTIC, ...FAMILY, ...CAREER_EVENTS, ...GOLDEN];
+export const EVENTS: EventDef[] = [...ROMANTIC, ...FAMILY, ...CAREER_EVENTS, ...GOLDEN, SECRET];
 const BY_ID = new Map(EVENTS.map((e) => [e.id, e]));
 export const eventById = (id: string): EventDef | undefined => BY_ID.get(id);
 

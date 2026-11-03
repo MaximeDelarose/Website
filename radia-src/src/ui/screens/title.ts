@@ -20,6 +20,8 @@ import { openSettings } from './settings';
 import { events } from '../../core/app';
 import { wallet, fmt } from '../../core/wallet';
 import { phoneButton } from '../../events/scheduler';
+import { salaryInfo } from '../../game/world/careers';
+import { world } from '../../core/world';
 import { openShop, shopButton, diamondUrl, energyUrl } from './shop';
 import { openEnergyPanel } from '../components/energyPanel';
 import { hasPhotos } from '../../core/photos';
@@ -144,15 +146,22 @@ export function showTitle(): void {
     b.addEventListener('click', tap(fn));
     return b;
   };
-  const chapSub = storyFinished() ? 'Mode infini · de nouveaux défis' : progress ? 'Continue ton histoire' : 'Fusionne et découvre l\'histoire';
-  menu.append(mode('', 'heart', 'MODE CHAPITRES', chapSub, () => void go(() => (progress ? (storyFinished() ? endless() : story()) : story())), 100));
-  menu.append(mode('.gold', 'home', 'MON MONDE', 'Château · dressing · jardin · famille', () => void go(async () => { const d = await import('./world/hub'); await d.openWorldHub(); showTitle(); }), 160));
+  // Le mode chapitres ouvre la carte des niveaux : on voit tout de suite où on en est.
+  const nextLevel = LEVELS.find((l) => !save.data.levels[l.id]?.done);
+  const chapSub = !progress ? 'Fusionne et découvre l\'histoire' : nextLevel ? `Niveau ${nextLevel.id} · Chapitre ${nextLevel.chapter} · ${LEVELS.filter((l) => save.data.levels[l.id]?.done).length}/${LEVELS.length} faits` : 'Tous les niveaux · mode infini';
+  menu.append(mode('', 'heart', 'MODE CHAPITRES', chapSub, () => void go(() => (progress ? openMap() : story())), 100));
+  const monde = mode('.gold', 'home', 'MON MONDE', 'Château · dressing · jardin · famille', () => void go(async () => { const d = await import('./world/hub'); await d.openWorldHub(); showTitle(); }), 160);
+  // bulle de notification : le salaire est prêt, elle peut venir le récupérer
+  const bubble = h('span.mode-bubble', icon('star', 14), ' Salaire prêt !');
+  monde.append(bubble);
+  const refreshBubble = () => { bubble.classList.toggle('on', salaryInfo(world(), Date.now()).ready); if (!monde.isConnected) window.clearInterval(bubbleTimer); };
+  const bubbleTimer = window.setInterval(refreshBubble, 20_000);
+  refreshBubble();
+  menu.append(monde);
   const chessBtn = btn('ÉCHECS', '.lavande', () => void go(chess), 220, chessUnlocked() ? icon('chess', 20) : h('span.lock', icon('lock', 18)));
   if (!chessUnlocked()) chessBtn.classList.add('locked');
   menu.append(h('div.row', chessBtn, btn('SOUVENIRS', '.secondary', () => void go(() => openAlbum('memories').then(showTitle)), 260, icon('album', 20))));
-  menu.append(h('div.row',
-    progress ? btn('NIVEAUX', '.secondary', () => void go(() => openMap()), 300, icon('map', 20)) : btn('SUCCÈS', '.secondary', () => void go(achievements), 300, icon('trophy', 20)),
-    progress ? btn('SUCCÈS', '.secondary', () => void go(achievements), 340, icon('trophy', 20)) : h('span')));
+  menu.append(btn('SUCCÈS', '.secondary', () => void go(achievements), 300, icon('trophy', 20)));
 
   // barre du haut : réglages · énergie / diamants · carte d'Auguste
   const gems = h('button.res-chip', { 'aria-label': 'Diamants' }, h('img', { src: diamondUrl(52), alt: '' }), h('span', fmt(wallet.diamonds())), h('span.plus', '+'));

@@ -14,7 +14,7 @@ import { canOfferBig, canSendSmall, offerInvite, pickEvent, pushMessage, settleS
 import { ev, nextId } from './api';
 import { showNotification, notificationVisible } from './ui/notify';
 import { isEventRunning } from './runner';
-import { openInvite, resumeFlow } from './flow';
+import { openInvite, resumeFlow, triggerSecretCall } from './flow';
 import { emitPhone, onPhoneChange } from './bus';
 
 let started = false;
@@ -36,7 +36,7 @@ export function progress(): Progress {
 /** Moment sûr pour afficher une notification (aucune interaction ni animation critique en cours). */
 export function safeToNotify(): boolean {
   if (document.hidden || isEventRunning() || notificationVisible()) return false;
-  if (document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .cg-screen, .fam-scene, .fam-body, .kc, .aug-says, .splash, .ev-layer, .ev-inv-back, .ph-back')) return false;
+  if (document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .cg-screen, .fam-scene, .fam-body, .kc, .aug-says, .splash, .ev-layer, .ev-inv-back, .ph-back, .call-layer')) return false;
   try {
     const g = getGame();
     if (g.scene.getScenes(true).some((s) => !['backdrop', 'merge'].includes(s.sys.settings.key))) return false; // billard, chemin, puzzle…
@@ -49,6 +49,7 @@ export function safeToNotify(): boolean {
 function maybeNotify(): void {
   if (!safeToNotify()) return;
   const st = ev();
+  if (st.current && !eventById(st.current.eventId)) { st.current = null; save.save(); } // activité inconnue : on ne bloque jamais les invitations
   if (st.current && !resumeOffered) {
     const def = eventById(st.current.eventId);
     if (def) {
@@ -57,7 +58,7 @@ function maybeNotify(): void {
       return;
     }
   }
-  const inv = st.inbox.find((i) => i.state === 'new' && !shown.has(i.runId));
+  const inv = st.inbox.find((i) => i.state === 'new' && !shown.has(i.runId) && i.runId !== st.secret.runId);
   const def = inv ? eventById(inv.eventId) : undefined;
   if (!inv || !def) return;
   shown.add(inv.runId);
@@ -69,6 +70,11 @@ function maybeNotify(): void {
 }
 
 /** Tirage + petits messages. `force` : debug / tests (ignore les limites de fréquence). */
+/** Mode développeur (debug uniquement) : déclenche l'appel tout de suite. */
+export const secretNow = (): void => { void triggerSecretCall(); };
+/** Mode développeur : avance le compteur de jeu actif (en minutes). */
+export const secretAdvance = (min: number): void => { ev().secret.activeMs += min * 60_000; };
+
 export function offerNow(eventId?: string): string | null {
   const st = ev();
   const def = eventId ? eventById(eventId) : pickEvent(EVENTS, st, progress(), Math.random);
@@ -82,7 +88,9 @@ export function offerNow(eventId?: string): string | null {
 function tick(dt: number): void {
   const st = ev();
   const active = !document.hidden && Date.now() - lastInput < 90_000 && !isEventRunning();
-  if (active) st.playMs += dt;
+  if (active) { st.playMs += dt; st.secret.activeMs += dt; }
+  // quête secrète : une seule fois, à un moment stable, entre 20 et 30 minutes de jeu ACTIF
+  if (!st.secret.triggered && st.secret.activeMs >= st.secret.target && !isEventRunning() && safeToNotify()) { void triggerSecretCall(); return; }
   settleStale(st);
   if (!isEventRunning()) {
     if (canOfferBig(st)) {

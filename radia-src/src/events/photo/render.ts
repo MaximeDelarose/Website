@@ -1,12 +1,12 @@
 /** Rendu des photos souvenirs : décor + Radia + Auguste + enfants + filtre + cadre + titre. */
 import type { PhotoRec } from '../types';
-import { makeCanvas, heartPath, seeded } from '../../game/art/kit';
+import { makeCanvas, heartPath, starPath, seeded } from '../../game/art/kit';
 import { drawAvatar } from '../../game/art/world/avatar';
 import { drawAugusteCutout, warmAuguste, augusteCutout } from '../../game/art/world/radiaNow';
 import { drawAugusteFull } from '../../game/art/characters';
 import { drawKid } from '../../game/art/world/kids';
 import { drawPlace } from '../places';
-import { POSES, FRAMES, FILTERS, frameAt, filterAt, poseAt, exportFileName, fmtDate, kidSlots, type FrameDef, type FilterDef } from './data';
+import { POSES, FRAMES, FILTERS, frameAt, filterAt, poseAt, exportFileName, fmtDate, kidSlots, type FrameDef, type FilterDef, type PoseDef } from './data';
 
 export { POSES, FRAMES, FILTERS, exportFileName };
 
@@ -81,6 +81,14 @@ function frameLayer(fr: FrameDef, w: number, h: number, title: string, ts: numbe
   } else if (fr.id === 'or') {
     g.strokeStyle = fr.line; g.lineWidth = 2 * u; g.strokeRect(6 * u, 6 * u, w - 12 * u, h - 12 * u);
     g.strokeStyle = fr.accent; g.lineWidth = 1.2 * u; g.strokeRect(3 * u, 3 * u, w - 6 * u, h - 6 * u);
+  } else if (fr.id === 'romantique') {
+    g.fillStyle = 'rgba(255,255,255,0.8)';
+    for (let x = 14 * u; x < w; x += 26 * u) { heartPath(g, x, 10 * u, 4.6 * u); g.fill(); heartPath(g, x + 13 * u, h - 10 * u, 4.6 * u); g.fill(); }
+    for (let y = 14 * u; y < h; y += 26 * u) { heartPath(g, 10 * u, y + 13 * u, 4.6 * u); g.fill(); heartPath(g, w - 10 * u, y, 4.6 * u); g.fill(); }
+    g.strokeStyle = fr.accent; g.lineWidth = 1.2 * u; g.strokeRect(17 * u, 17 * u, w - 34 * u, h - 34 * u);
+  } else if (fr.id === 'classique') {
+    g.strokeStyle = fr.accent; g.lineWidth = 1.2 * u; g.strokeRect(6 * u, 6 * u, w - 12 * u, h - 12 * u);
+    g.strokeStyle = fr.line; g.lineWidth = 2 * u; g.strokeRect(10 * u, 10 * u, w - 20 * u, h - 20 * u);
   } else if (fr.id === 'rose') {
     g.strokeStyle = fr.line; g.lineWidth = 2.4 * u; g.setLineDash([1, 6 * u]); g.strokeRect(7 * u, 7 * u, w - 14 * u, h - 14 * u); g.setLineDash([]);
   }
@@ -167,13 +175,26 @@ export function drawPhoto(g: C, rec: PhotoRec, w: number, h: number, t = 0): voi
   const breathe = Math.sin(t * 1.8) * 1.2 * u;
   const rx = rec.auguste ? cx - d : cx;
   const shadow = (x: number, rxs: number): void => { g.fillStyle = 'rgba(60,40,80,0.22)'; g.beginPath(); g.ellipse(x, ground - 2 * u, rxs, 6 * u, 0, 0, 7); g.fill(); };
-  shadow(rx, hr * 0.2);
-  g.drawImage(radiaCanvas(rec, aw, hr, pose.radia.arms, pose.radia.step, pose.radia.expr), Math.round(rx - aw / 2), Math.round(ground - hr - breathe * 0.4), aw, hr);
-  if (rec.auguste) {
-    const ax = cx + d, hh = Math.round(hr * 1.02);
-    shadow(ax, hr * 0.2);
-    g.drawImage(augusteCanvas(aw, hh, pose.auguste.arms, pose.auguste.step, pose.auguste.expr), Math.round(ax - aw / 2), Math.round(ground - hh - breathe * 0.4), aw, hh);
-  }
+  const radSpr = radiaCanvas(rec, aw, hr, pose.radia.arms, pose.radia.step, pose.radia.expr);
+  const hh = Math.round(hr * 1.02);
+  const augSpr = rec.auguste ? augusteCanvas(aw, hh, pose.auguste.arms, pose.auguste.step, pose.auguste.expr) : null;
+  const k = hr / 600; // échelle du sprite 240 × 600
+  const ax = cx + d;
+  const sh = pose.shift ?? [0, 0];
+  /** Dessine un sprite posé au sol (pivot aux pieds) avec inclinaison / échelle éventuelles. */
+  const put = (spr: HTMLCanvasElement, x: number, sw: number, shh: number, i: 0 | 1): void => {
+    const tl = pose.tilt?.[i] ?? 0, sc = pose.scale?.[i] ?? 1;
+    if (!tl && sc === 1) { g.drawImage(spr, Math.round(x - sw / 2), Math.round(ground - shh - breathe * 0.4), sw, shh); return; }
+    g.save(); g.translate(x, ground - breathe * 0.4); g.rotate(tl); g.scale(sc, sc);
+    g.drawImage(spr, -sw / 2, -shh, sw, shh);
+    g.restore();
+  };
+  const rxs = rx + sh[0] * iw;
+  shadow(rxs, hr * 0.2);
+  if (pose.extra === 'arm' && augSpr) { shadow(ax, hr * 0.2); put(augSpr, ax, aw, hh, 1); }
+  put(radSpr, rxs, aw, hr, 0);
+  if (augSpr && pose.extra !== 'arm') { shadow(ax, hr * 0.2); put(augSpr, ax, aw, hh, 1); }
+  if (rec.auguste && pose.extra) drawPoseExtra(g, pose.extra, { rx: rxs, ax, ground, hr, hh, k, u, t, radSpr, aw, breathe });
   // enfants au premier plan
   const kids = rec.kids ?? [];
   const slots = kidSlots(kids.length);
@@ -215,3 +236,59 @@ export async function exportPng(rec: PhotoRec): Promise<void> {
   a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
+
+
+// ---- accessoires des poses de la séance (petits cœurs, mains jointes, bras autour de la taille)
+interface ExtraCtx { rx: number; ax: number; ground: number; hr: number; hh: number; k: number; u: number; t: number; radSpr: HTMLCanvasElement; aw: number; breathe: number }
+const SKIN = '#f2c6a6';
+function miniHeart(g: C, x: number, y: number, s: number, a = 1): void {
+  g.save(); g.globalAlpha = a; heartPath(g, x, y, s); g.fillStyle = '#ff6f9f'; g.fill();
+  g.strokeStyle = '#58433f'; g.lineWidth = Math.max(1, s * 0.16); g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.ellipse(x - s * 0.32, y - s * 0.18, s * 0.16, s * 0.1, -0.6, 0, 7); g.fill();
+  g.restore();
+}
+function drawPoseExtra(g: C, kind: NonNullable<PoseDefExtra>, e: ExtraCtx): void {
+  const { rx, ax, ground, hr, k, u, t } = e;
+  const bob = Math.sin(t * 2.2) * 1.5 * u;
+  if (kind === 'hand') {
+    const hx = (rx + ax) / 2, hy = ground - hr + 336 * k;
+    g.save();
+    g.lineWidth = 1.3 * u; g.strokeStyle = '#58433f'; g.lineCap = 'round';
+    for (const [dx, rot] of [[-3.4, -0.25], [3.4, 0.25]] as const) {
+      g.beginPath(); g.ellipse(hx + dx * u, hy, 8 * u, 6.4 * u, rot, 0, 7); g.fillStyle = SKIN; g.fill(); g.stroke();
+    }
+    g.beginPath(); g.moveTo(hx - 3 * u, hy - 2 * u); g.lineTo(hx + 3 * u, hy + 2 * u); g.stroke();
+    g.restore();
+    miniHeart(g, hx, hy - hr * 0.16 + bob, 10 * u, 0.95);
+  } else if (kind === 'kiss') {
+    const hx = (rx + ax) / 2 + hr * 0.02, hy = ground - hr * 0.78;
+    miniHeart(g, hx, hy - 10 * u + bob, 13 * u);
+    miniHeart(g, hx + 10 * u, hy - 58 * u + bob * 1.4, 7.5 * u, 0.85);
+    miniHeart(g, hx - 18 * u, hy - 40 * u - bob, 6 * u, 0.75);
+  } else if (kind === 'arm') {
+    // bras de Radia (manche = couleur échantillonnée sur son propre sprite) qui passe autour de la taille d'Auguste
+    let sleeve = '#4a4560';
+    try {
+      const px0 = Math.round(e.aw / 2 + 72 * k), py0 = Math.round(270 * k);
+      const dta = e.radSpr.getContext('2d')!.getImageData(px0, py0, 1, 1).data;
+      if (dta[3] > 200) sleeve = `rgb(${dta[0]},${dta[1]},${dta[2]})`;
+    } catch { /* couleur par défaut */ }
+    const sx0 = rx + 48 * k, sy0 = ground - hr + 214 * k;
+    const ex = (rx + ax) / 2 + 30 * k, ey = ground - hr * 0.56;
+    g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(sx0, sy0); g.quadraticCurveTo(sx0 + 34 * k, sy0 + 46 * k, ex, ey);
+    g.strokeStyle = '#58433f'; g.lineWidth = 30 * k + 2.4 * u; g.stroke();
+    g.strokeStyle = sleeve; g.lineWidth = 30 * k; g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 9 * k; g.beginPath(); g.moveTo(sx0 + 2 * k, sy0 + 4 * k); g.quadraticCurveTo(sx0 + 30 * k, sy0 + 42 * k, ex - 6 * k, ey - 4 * k); g.stroke();
+    g.lineWidth = 1.2 * u; g.strokeStyle = '#58433f';
+    g.beginPath(); g.ellipse(ex + 5 * k, ey + 6 * k, 7.4 * u, 6.2 * u, 0.5, 0, 7); g.fillStyle = SKIN; g.fill(); g.stroke(); g.restore();
+    miniHeart(g, (rx + ax) / 2 + 4 * u, ground - hr * 0.98 + bob, 6 * u, 0.9);
+  } else if (kind === 'chic') {
+    for (const [dx, dy, s] of [[-0.3, 0.9, 5], [0.45, 0.82, 4], [0.05, 0.97, 3.4]] as const) {
+      const a = 0.5 + 0.5 * Math.abs(Math.sin(t * 2.4 + dx * 9));
+      g.save(); g.globalAlpha = a; g.fillStyle = '#fff3c4'; g.strokeStyle = '#e0b24d'; g.lineWidth = 0.8 * u;
+      g.translate((rx + ax) / 2 + dx * hr * 0.7, ground - hr * dy); starPath(g, 0, 0, s * u, s * u * 0.28, 4); g.fill(); g.stroke(); g.restore();
+    }
+  }
+}
+type PoseDefExtra = PoseDef['extra'];

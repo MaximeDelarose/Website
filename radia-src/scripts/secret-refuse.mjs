@@ -1,0 +1,27 @@
+// Refuser l'appel : rien n'est perdu, le message reste dans le téléphone et peut être réécouté.
+import { chromium } from 'playwright';
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
+const p = await (await b.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true })).newPage();
+const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push(m.text().slice(0, 100)); });
+await p.addInitScript(() => { localStorage.setItem('radia-save-v1', JSON.stringify({ v: 3, seenUpdates: ['v2', 'v3', 'v4'], story: { step: 0 }, levels: {}, hearts: 0 })); });
+await p.goto(`http://localhost:${process.env.PORT ?? 4180}/?debug#k=${process.env.PHOTO_KEY}`); await p.waitForTimeout(4000);
+const out = []; const check = (n, ok, x = '') => out.push(`${ok ? 'OK ' : 'KO '} ${n}${x ? ' — ' + x : ''}`);
+await p.evaluate(() => window.RADIA.secretCall());
+await p.waitForSelector('.call-layer'); await p.waitForTimeout(600);
+await p.getByRole('button', { name: 'Refuser' }).click(); await p.waitForTimeout(900);
+const st = await p.evaluate(() => { const e = window.RADIA.save.data.events; return { trig: e.secret.triggered, inv: e.inbox.filter(i => i.eventId === 's-evening').map(i => i.state), msg: e.msgs.some(m => m.text.includes('Message vocal')) }; });
+check('appel refusé : invitation conservée (« plus tard »)', st.trig && st.inv.length === 1 && st.inv[0] === 'later', JSON.stringify(st.inv));
+check('message vocal enregistré dans le téléphone', st.msg);
+check('l\'appel ne se redéclenche pas tout seul', await p.evaluate(async () => { window.RADIA.save.data.events.secret.activeMs = 99 * 60000; await new Promise(r => setTimeout(r, 6000)); return !document.querySelector('.call-layer'); }));
+await p.evaluate(() => window.RADIA.phone()); await p.waitForTimeout(500);
+await p.locator('.ph-row').first().click(); await p.waitForTimeout(500);
+await p.screenshot({ path: 'shots/se-6-phone.png' });
+check('carte « Message vocal de A » dans la conversation', (await p.locator('.ph-voice').count()) === 1);
+await p.locator('.ph-voice').click(); await p.waitForSelector('.call-layer'); await p.waitForTimeout(500);
+await p.getByRole('button', { name: 'Écouter' }).click(); await p.waitForTimeout(2200);
+const t = await p.evaluate(() => 1);
+check('réécoute possible depuis le téléphone', (await p.locator('.call-bar').count()) === 1);
+await p.getByRole('button', { name: 'Raccrocher' }).click(); await p.waitForTimeout(600);
+check('raccrocher ferme sans rien perdre', (await p.locator('.call-layer').count()) === 0 && await p.evaluate(() => window.RADIA.save.data.events.inbox.some(i => i.eventId === 's-evening' && i.state === 'later')));
+console.log(out.join('\n')); console.log('erreurs:', errs.length ? errs.slice(0, 4) : 'aucune');
+await b.close();

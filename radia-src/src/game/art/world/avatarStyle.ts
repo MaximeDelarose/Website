@@ -7,6 +7,7 @@ import { lg, fs, line, dot, bow, hairCap, hairDome, ropeStrand, EXTRA, CX, INK, 
 import type { C, Pt } from './avatar';
 import { radiaParts as P } from '../characters';
 import { heartPath, starPath, roundRect, shade, gloss } from '../kit';
+import { installWrist } from './avatarWrist';
 
 // ================================================================ chaussures
 
@@ -1148,4 +1149,5 @@ export function installStyle(): void {
   installHeadwear();
   installGlasses();
   installEarrings();
+  installWrist();
 }

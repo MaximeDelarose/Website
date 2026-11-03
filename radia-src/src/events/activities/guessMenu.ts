@@ -2,7 +2,7 @@ import type { Activity } from '../types';
 import { h } from '../../ui/dom';
 import { reducedFx } from '../../core/app';
 import {
-  STEPS, STEP_LABEL, DISH_NAMES, LINE_INTRO, isMenu, styleOf, defaultMenu, proposalsFor, augusteMenuFor, evaluateGuess,
+  STEPS, STEP_LABEL, DISH_NAMES, LINE_INTRO, SECRET_INTRO, isMenu, styleOf, defaultMenu, proposalsFor, augusteMenuFor, evaluateGuess,
   revealScript, reactionFor, askFor, isChocolateDessert, cloneMenu,
   type Step, type DishId, type MenuChoice, type Predictions,
 } from '../restaurant/logic';
@@ -30,7 +30,8 @@ const activity: Activity = async (ctx) => {
   ctx.onDispose(() => { dead = true; });
 
   // ---------------------------------------------------------------- 1) devinette
-  await ctx.say('auguste', LINE_INTRO, 'tease');
+  const secret = ctx.params.lines === 'secret';
+  await ctx.say('auguste', secret ? SECRET_INTRO : LINE_INTRO, 'tease');
   if (dead) return { score: 0, ok: false };
 
   const predictions: Partial<Predictions> = {};
@@ -85,7 +86,7 @@ const activity: Activity = async (ctx) => {
   // ---------------------------------------------------------------- 2) évaluation (pure, sans toucher aux entrées)
   const augusteMenu = augusteMenuFor(radiaMenu);
   const ev = evaluateGuess(radiaMenu, flat);
-  const script = revealScript(ev, radiaMenu, ctx.repeat, ctx.rng);
+  const script = revealScript(ev, radiaMenu, ctx.repeat, ctx.rng, secret);
 
   // ---------------------------------------------------------------- 3) scène de table
   wrap.remove();

@@ -13,7 +13,7 @@ export type Sender = 'auguste' | KidId | 'agency';
 /** Lieux (décors dessinés dans src/events/places). */
 export const PLACE_IDS = [
   'restaurant', 'palace', 'fireworks', 'spa', 'hotel', 'cinema', 'flowerMarket', 'rooftop', 'ballroom',
-  'garden', 'pajama', 'boutique', 'stage', 'studio', 'home',
+  'garden', 'pajama', 'boutique', 'stage', 'studio', 'home', 'fountain',
 ] as const;
 export type PlaceId = (typeof PLACE_IDS)[number];
 
@@ -21,6 +21,7 @@ export type PlaceId = (typeof PLACE_IDS)[number];
 export const ACTIVITY_IDS = [
   'menuPick', 'guessMenu', 'photoBooth', 'bouquet', 'chocolateBox', 'decorTable', 'shopTry',
   'rhythmDance', 'fireworksPhoto', 'spaRelax', 'cinemaQuiz', 'memoryChallenge', 'fashionThemes', 'careerGame',
+  'dressVerdict', 'photoShoot', 'braceletReveal',
 ] as const;
 export type ActivityId = (typeof ACTIVITY_IDS)[number];
 
@@ -67,6 +68,12 @@ export interface EventDef {
   memoryTitle: string;
   /** Succès débloqués (identifiants de src/data/achievements.ts). */
   achievements?: string[];
+  /** Quête en plusieurs phases : indicateur de progression clair (de `from` = index d'étape). */
+  phases?: { label: string; goal: string; from: number }[];
+  /** Nom affiché de l'expéditeur si différent (ex. « A »). */
+  senderLabel?: string;
+  /** Scène à revoir : ni récompense, ni historique, ni souvenir (ex. revoir la remise du bracelet). */
+  ephemeral?: boolean;
 }
 
 // ------------------------------------------------------------------ sauvegarde
@@ -85,7 +92,20 @@ export interface ActiveRun {
 }
 /** Petit message dans le téléphone (conversation). */
 export interface Msg { at: number; from: Sender; text: string; read: boolean }
+/** Quête secrète « Une soirée avec A ♡ » : déclenchement après 20 à 30 minutes de jeu ACTIF. */
+export interface SecretState {
+  /** Temps de jeu actif cumulé depuis le début de la quête (ms). */
+  activeMs: number;
+  /** Seuil tiré une fois pour toutes entre 20 et 30 minutes (ms). */
+  target: number;
+  /** L'appel a déjà été déclenché automatiquement (une seule fois). */
+  triggered: boolean;
+  /** Nombre d'écoutes du message vocal. */
+  heard: number;
+  runId: string;
+}
 export interface EventsState {
+  secret: SecretState;
   inbox: Invite[];
   msgs: Msg[];
   done: Record<string, { count: number; last: number; best: number }>;

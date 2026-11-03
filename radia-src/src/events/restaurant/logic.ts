@@ -114,6 +114,9 @@ export const LINE_INTRO = 'Bon, maintenant essaie de deviner ce que je vais pren
 export const LINE_ALL = 'Mais comment tu fais pour me connaître aussi bien, galbi ?';
 export const LINE_NOT_ALL = 'Tu pensais vraiment que j’allais choisir autre chose que toi ?';
 export const LINE_RULE = 'En fait, je prends comme toi. Comme ça, même quand je sais pas quoi choisir, je sais que je vais aimer.';
+/** Variante de la quête « Une soirée avec A ♡ ». */
+export const SECRET_INTRO = 'Bon, maintenant tu vas devoir deviner ce que je prends, moi.';
+export const SECRET_RULE = 'Bon… j’avoue. J’ai pris exactement comme toi.';
 export const LINE_CHOCO = 'Bon, là c’était trop facile… Tu pensais vraiment que j’allais te laisser manger du chocolat toute seule ?';
 
 const ALL_VARIANTS = [
@@ -143,10 +146,10 @@ export const CHOICE_ASKS: Record<Step, readonly string[]> = {
 export interface Script { lines: string[]; transition: string }
 
 /** Dialogues de révélation d'Auguste, selon le résultat (phrases exactes toujours présentes dans les variantes). */
-export function revealScript(ev: GuessEval, radiaMenu: MenuChoice, repeat: number, rng: () => number): Script {
+export function revealScript(ev: GuessEval, radiaMenu: MenuChoice, repeat: number, rng: () => number, secret = false): Script {
   const lines: string[] = [];
   lines.push(ev.perfect ? pickV(ALL_VARIANTS, repeat, rng) : pickV(NOT_ALL_VARIANTS, repeat, rng));
-  lines.push(LINE_RULE);
+  lines.push(secret ? SECRET_RULE : LINE_RULE);
   if (isChocolateDessert(radiaMenu.dessert)) lines.push(LINE_CHOCO);
   return { lines, transition: pickV(TRANSITIONS, repeat, rng) };
 }
