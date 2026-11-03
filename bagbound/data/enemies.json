@@ -1,0 +1,96 @@
+[
+  {
+    "id": "goblin", "name": "Gobelin", "hp": 30, "rank": "mob",
+    "bag": [
+      { "item": "rusty_dagger", "pos": [0, 0] },
+      { "item": "goblin_club", "pos": [1, 0] }
+    ],
+    "loot": { "gold": [3, 6], "table": "forest_common" }
+  },
+  {
+    "id": "slime", "name": "Gluant", "hp": 32, "rank": "mob",
+    "bag": [
+      { "item": "acid_goo", "pos": [0, 0] },
+      { "item": "healing_herb", "pos": [0, 1] }
+    ],
+    "loot": { "gold": [2, 5], "table": "forest_common" }
+  },
+  {
+    "id": "wolf", "name": "Loup", "hp": 26, "rank": "mob",
+    "bag": [
+      { "item": "wolf_fangs", "pos": [0, 0] },
+      { "item": "wolf_fangs", "pos": [1, 0] }
+    ],
+    "loot": { "gold": [3, 5], "table": "forest_common" }
+  },
+  {
+    "id": "spider", "name": "Araignée des fourrés", "hp": 24, "rank": "mob",
+    "bag": [
+      { "item": "spider_web", "pos": [0, 0] },
+      { "item": "spider_fangs", "pos": [0, 1] }
+    ],
+    "loot": { "gold": [2, 5], "table": "forest_common" }
+  },
+  {
+    "id": "bandit", "name": "Bandit", "hp": 34, "rank": "mob",
+    "bag": [
+      { "item": "rusty_dagger", "pos": [0, 0] },
+      { "item": "rusty_dagger", "pos": [1, 0] },
+      { "item": "bandit_tonic", "pos": [2, 0] }
+    ],
+    "loot": { "gold": [5, 9], "table": "forest_common" }
+  },
+  {
+    "id": "fire_imp", "name": "Diablotin de braise", "hp": 28, "rank": "mob",
+    "bag": [
+      { "item": "ember_breath", "pos": [0, 0] },
+      { "item": "rusty_dagger", "pos": [1, 0] }
+    ],
+    "loot": { "gold": [3, 6], "table": "forest_common" }
+  },
+  {
+    "id": "frost_wisp", "name": "Feu follet de givre", "hp": 26, "rank": "mob",
+    "bag": [
+      { "item": "frost_aura", "pos": [0, 0] },
+      { "item": "rusty_dagger", "pos": [1, 0] }
+    ],
+    "loot": { "gold": [3, 6], "table": "forest_common" }
+  },
+  {
+    "id": "goblin_tinker", "name": "Bricoleur gobelin", "hp": 32, "rank": "mob",
+    "bag": [
+      { "item": "rusty_dagger", "pos": [0, 0] },
+      { "item": "gear", "pos": [1, 0] },
+      { "item": "rusty_dagger", "pos": [2, 0] }
+    ],
+    "loot": { "gold": [4, 7], "table": "forest_common" }
+  },
+  {
+    "id": "treant", "name": "Sylvanier", "hp": 70, "rank": "elite",
+    "bag": [
+      { "item": "bark_skin", "pos": [0, 0] },
+      { "item": "branch_slam", "pos": [2, 0] }
+    ],
+    "loot": { "gold": [10, 16], "table": "forest_elite" }
+  },
+  {
+    "id": "forest_warden", "name": "Gardienne des ronces", "hp": 150, "rank": "boss",
+    "bag": [
+      { "item": "branch_slam", "pos": [0, 0] },
+      { "item": "bark_skin", "pos": [1, 0] },
+      { "item": "sap_heart", "pos": [1, 2] }
+    ],
+    "phases": [
+      {
+        "hpBelow": 0.5, "mode": "replace", "name": "Colère des ronces", "shield": 10,
+        "bag": [
+          { "item": "thorn_volley", "pos": [0, 0] },
+          { "item": "wrath_root", "pos": [0, 1] },
+          { "item": "branch_slam", "pos": [1, 1] },
+          { "item": "thorn_volley", "pos": [2, 0] }
+        ]
+      }
+    ],
+    "loot": { "gold": [25, 35], "table": "forest_boss" }
+  }
+]

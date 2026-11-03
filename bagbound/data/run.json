@@ -1,0 +1,13 @@
+{
+  "startGold": 15,
+  "rows": 6,
+  "nodesPerRow": [2, 4],
+  "firstRow": "combat",
+  "eliteMinRow": 2,
+  "nodeWeights": { "combat": 46, "event": 18, "shop": 12, "elite": 9, "chest": 8, "campfire": 7 },
+  "rewardChoices": 3,
+  "eliteGoldBonus": 8,
+  "campfire": { "healPct": 0.4, "maxHp": 5 },
+  "shop": { "stock": 5, "priceMul": 1, "reroll": 3, "rerollStep": 2, "healCost": 8, "healAmount": 15, "sellRatio": 0.5 },
+  "chest": { "gold": [6, 14], "choices": 2 }
+}

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "forest",
+    "name": "Forêt des Murmures",
+    "shopTable": "forest_shop",
+    "chestTable": "forest_chest",
+    "floors": [
+      {
+        "hpMul": 1,
+        "normal": [["goblin"], ["slime"], ["wolf"], ["spider"], ["fire_imp"], ["frost_wisp"]],
+        "elite": [["treant"]]
+      },
+      {
+        "hpMul": 1.08,
+        "normal": [["bandit"], ["goblin_tinker"], ["wolf", "wolf"], ["spider", "goblin"], ["fire_imp", "frost_wisp"], ["slime", "slime"]],
+        "elite": [["treant"], ["bandit", "goblin_tinker"]]
+      },
+      {
+        "hpMul": 1.15,
+        "normal": [["goblin", "wolf", "spider"], ["bandit", "goblin_tinker"], ["wolf", "wolf", "spider"], ["fire_imp", "frost_wisp", "goblin"]],
+        "elite": [["treant", "goblin"], ["treant", "spider"]]
+      }
+    ],
+    "boss": ["forest_warden"],
+    "bossHpMul": 1
+  }
+]

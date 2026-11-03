@@ -1,0 +1,38 @@
+{
+  "forest_common": [
+    { "item": "wooden_sword", "weight": 6 }, { "item": "rusty_dagger", "weight": 6 }, { "item": "wooden_shield", "weight": 6 },
+    { "item": "leather_armor", "weight": 5 }, { "item": "healing_herb", "weight": 6 }, { "item": "banana", "weight": 5 },
+    { "item": "whetstone", "weight": 5 }, { "item": "tar_pot", "weight": 4 }, { "item": "health_potion", "weight": 5 },
+    { "item": "antidote", "weight": 3 }, { "item": "iron_sword", "weight": 3 }, { "item": "poison_dagger", "weight": 3 },
+    { "item": "spiked_buckler", "weight": 3 }, { "item": "torch", "weight": 3 }, { "item": "ice_shard", "weight": 3 },
+    { "item": "gear", "weight": 2 }, { "item": "bone_trophy", "weight": 2 }, { "item": "poison_flask", "weight": 2 },
+    { "item": "frost_flask", "weight": 2 }
+  ],
+  "forest_elite": [
+    { "item": "iron_sword", "weight": 4 }, { "item": "poison_dagger", "weight": 4 }, { "item": "spiked_buckler", "weight": 4 },
+    { "item": "torch", "weight": 4 }, { "item": "ice_shard", "weight": 4 }, { "item": "gear", "weight": 4 },
+    { "item": "flame_sword", "weight": 3 }, { "item": "hourglass", "weight": 3 }, { "item": "rage_amulet", "weight": 3 },
+    { "item": "vampire_fang", "weight": 3 }, { "item": "war_drum", "weight": 3 }
+  ],
+  "forest_boss": [
+    { "item": "flame_sword", "weight": 1 }, { "item": "hourglass", "weight": 1 }, { "item": "rage_amulet", "weight": 1 },
+    { "item": "vampire_fang", "weight": 1 }, { "item": "war_drum", "weight": 1 }
+  ],
+  "forest_shop": [
+    { "item": "wooden_sword", "weight": 4 }, { "item": "rusty_dagger", "weight": 4 }, { "item": "wooden_shield", "weight": 4 },
+    { "item": "leather_armor", "weight": 4 }, { "item": "healing_herb", "weight": 4 }, { "item": "banana", "weight": 4 },
+    { "item": "whetstone", "weight": 4 }, { "item": "tar_pot", "weight": 3 }, { "item": "health_potion", "weight": 5 },
+    { "item": "antidote", "weight": 3 }, { "item": "poison_flask", "weight": 3 }, { "item": "frost_flask", "weight": 3 },
+    { "item": "iron_sword", "weight": 3 }, { "item": "poison_dagger", "weight": 3 }, { "item": "spiked_buckler", "weight": 3 },
+    { "item": "torch", "weight": 3 }, { "item": "ice_shard", "weight": 3 }, { "item": "gear", "weight": 3 },
+    { "item": "bone_trophy", "weight": 2 }, { "item": "flame_sword", "weight": 1 }, { "item": "hourglass", "weight": 1 },
+    { "item": "rage_amulet", "weight": 1 }, { "item": "vampire_fang", "weight": 1 }, { "item": "war_drum", "weight": 1 }
+  ],
+  "forest_chest": [
+    { "item": "iron_sword", "weight": 3 }, { "item": "poison_dagger", "weight": 3 }, { "item": "spiked_buckler", "weight": 3 },
+    { "item": "torch", "weight": 3 }, { "item": "ice_shard", "weight": 3 }, { "item": "gear", "weight": 3 },
+    { "item": "health_potion", "weight": 3 }, { "item": "bone_trophy", "weight": 2 }, { "item": "flame_sword", "weight": 1 },
+    { "item": "hourglass", "weight": 1 }, { "item": "rage_amulet", "weight": 1 }, { "item": "vampire_fang", "weight": 1 },
+    { "item": "war_drum", "weight": 1 }
+  ]
+}
