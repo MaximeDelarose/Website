@@ -10,6 +10,7 @@ import { applyFusion, findFusions, type FusionOption } from "../game/fusion";
 import * as R from "../game/run";
 import * as H from "../game/hub";
 import type { QuestDef, StoryData } from "../content/story";
+import type { MetaData } from "../content/meta";
 import { Bag } from "../game/bag";
 import { combatResult, createCombat, queueAction, stepCombat } from "../engine/combat";
 import { key } from "../engine/geometry";
@@ -138,6 +139,8 @@ export class App {
   private profile: H.Profile;
   private journalEl: HTMLDivElement;
   private npcRects = new Map<string, Rect>();
+  /** Choix au départ (classe, palier). */
+  private departChoice = { cls: "vagabond", tier: 0 };
   /** Bilan de la run qui vient de finir (affiché puis effacé). */
   private endSummary: H.RunSummary | null = null;
   private run: R.RunState | null = null;
@@ -157,6 +160,7 @@ export class App {
     private recipes: Recipe[],
     private story: StoryData,
     private quests: QuestDef[],
+    private meta: MetaData,
   ) {
     this.profile = this.loadProfile();
     this.cls = content.classes[sandbox.class];
@@ -344,6 +348,7 @@ export class App {
       const saved = this.loadSavedRun();
       this.barEl.innerHTML = `
         <span class="bb-floor bb-left-text">⛺ ${esc(this.story.hub.name)}</span>
+        <button type="button" class="bb-btn bb-shards" data-act="upgrades" title="${esc(this.meta.currency.name)} : améliorations du campement">✦ ${this.profile.shards}</button>
         <button type="button" class="bb-btn bb-go" data-act="depart">${saved ? "▶ Reprendre l'expédition" : "⚑ Partir"}</button>
         <button type="button" class="bb-btn" data-menu aria-label="Menu">☰</button>`;
       return;
@@ -423,10 +428,10 @@ export class App {
     this.hideTip();
     this.closeModal();
     let setup;
-    if (this.ctx === "run" && this.run) setup = R.combatSetup(this.run);
+    if (this.ctx === "run" && this.run) setup = R.combatSetup(this.run, this.content);
     else {
       const sd = seed ?? Math.floor(Math.random() * 4294967296) >>> 0;
-      setup = { seed: sd, player: { hp: this.cls.hp, bag: this.bag.placements() }, enemies: this.encounter.enemies.map((id) => ({ id })) };
+      setup = { seed: sd, player: { hp: this.cls.hp, bag: this.bag.placements(), innate: this.cls.innate }, enemies: this.encounter.enemies.map((id) => ({ id })) };
     }
     const s = setup.seed;
     const state = createCombat(this.content, setup, { record: true });
@@ -755,7 +760,7 @@ export class App {
     this.saveRun();
     if (this.run && (this.run.phase === "dead" || this.run.phase === "won") && !this.endSummary) {
       // fin de l'expédition : le campement en tire les conséquences (une seule fois)
-      this.endSummary = H.applyRun(this.profile, this.run, this.quests, this.story, this.content, this.runData);
+      this.endSummary = H.applyRun(this.profile, this.run, this.quests, this.story, this.content, this.runData, this.meta);
       this.saveProfile();
     }
     this.showPhase();
@@ -867,7 +872,7 @@ export class App {
     const sell = sellable
       .map(
         ({ e, i }) =>
-          `<li><img src="${iconUrl(e.item)}" alt="" width="24" height="24"><span>${esc(this.content.items[e.item].name)}${e.pos ? " <small>(dans le sac)</small>" : ""}</span><button type="button" class="btn btn-small btn-ghost" data-act="sell:${i}">+${R.sellPrice(this.content, this.runData, e.item)}</button></li>`,
+          `<li><img src="${iconUrl(e.item)}" alt="" width="24" height="24"><span>${esc(this.content.items[e.item].name)}${e.pos ? " <small>(dans le sac)</small>" : ""}</span><button type="button" class="btn btn-small btn-ghost" data-act="sell:${i}"${this.content.items[e.item].cursed ? " disabled" : ""}>+${R.sellPrice(this.content, this.runData, e.item)}</button></li>`,
       )
       .join("");
     const reroll = R.rerollCost(run, this.runData);
@@ -941,7 +946,7 @@ export class App {
     const free = chest.slots - chest.items.length;
     const keep = free > 0
       ? `<details class="bb-sell" open><summary>Coffre de Pip : garder un objet (${free} place${free > 1 ? "s" : ""})</summary><ul>${run.bag.entries
-          .map((e, i) => `<li><img src="${iconUrl(e.item)}" alt="" width="24" height="24"><span>${esc(this.content.items[e.item].name)}</span><button type="button" class="btn btn-small btn-ghost" data-act="keep:${i}">Garder</button></li>`)
+          .map((e, i) => (this.content.items[e.item]?.cursed ? "" : `<li><img src="${iconUrl(e.item)}" alt="" width="24" height="24"><span>${esc(this.content.items[e.item].name)}</span><button type="button" class="btn btn-small btn-ghost" data-act="keep:${i}">Garder</button></li>`))
           .join("")}</ul></details>`
       : `<p class="bb-seed">Coffre plein : ${chest.items.map((i) => esc(this.content.items[i].name)).join(", ")}.</p>`;
     this.showModal(`
@@ -951,6 +956,8 @@ export class App {
         <li>${run.stats.combats} combat(s), dont ${run.stats.elites} élite(s)</li>
         <li>${run.stats.kills} ennemi(s) vaincu(s) · ${run.stats.goldEarned} or gagné</li>
       </ul>
+      ${sum?.shards ? `<p class="bb-shards-won">✦ +${sum.shards} ${esc(this.meta.currency.short)} (à dépenser au campement)</p>` : ""}
+      ${sum?.tierUnlocked !== null && sum?.tierUnlocked !== undefined ? `<p class="bb-quest-done">Nouveau palier de difficulté : <b>${esc(this.meta.tiers[sum.tierUnlocked].name)}</b></p>` : ""}
       ${qs}${lore}${keep}
       <div class="bb-actions"><button type="button" class="btn btn-small" data-act="tohub">Retour au campement</button></div>`);
   }
@@ -979,16 +986,35 @@ export class App {
         case "depart": {
           const saved = this.loadSavedRun();
           if (saved) return this.startRun(saved);
+          this.departChoice = { cls: this.profile.lastClass, tier: this.profile.lastTier };
+          if (this.profile.classes.length > 1 || H.availableTiers(this.profile, this.meta).length > 1) return this.showDeparture();
+          return this.onAct("go");
+        }
+        case "pick-class":
+          this.departChoice.cls = arg;
+          return this.showDeparture();
+        case "pick-tier":
+          this.departChoice.tier = Number(arg);
+          return this.showDeparture();
+        case "go": {
           const seed = Math.floor(Math.random() * 4294967296) >>> 0;
-          const opts = H.departure(this.profile, this.quests, this.runData);
+          const opts = H.departure(this.profile, this.quests, this.runData, this.meta, this.departChoice);
           this.saveProfile();
           this.endSummary = null;
-          this.startRun(R.newRun(this.content, this.runData, this.sandbox.class, seed, opts));
+          this.startRun(R.newRun(this.content, this.runData, this.profile.lastClass, seed, opts));
           return;
         }
+        case "upgrades":
+          return this.showUpgrades();
+        case "buy-up":
+          H.buyUpgrade(this.profile, this.meta, arg);
+          this.saveProfile();
+          this.renderBar();
+          this.renderJournal();
+          return this.showUpgrades();
         case "keep": {
           const e = this.run?.bag.entries[Number(arg)];
-          if (e && H.depositChest(this.profile, e.item)) {
+          if (e && H.depositChest(this.profile, e.item, this.content)) {
             this.run!.bag.entries.splice(Number(arg), 1);
             this.saveProfile();
             if (this.run) this.showEnd(this.run);
@@ -1317,6 +1343,7 @@ export class App {
       <h3>Quêtes</h3><ul class="bb-quests">${quests}</ul>
       <h3>Coffre <small>(repart avec toi à la prochaine expédition)</small></h3><div class="bb-chest">${chest}</div>
       ${start.length ? `<h3>Au départ</h3><p>${start.map(esc).join(", ")}</p>` : ""}
+      <h3>${esc(this.meta.currency.name)} <small>(améliorations : bouton ✦)</small></h3><p>✦ ${p.shards} · ${p.totalShards} gagné(s) au total · classes : ${p.classes.map((c) => esc(this.content.classes[c]?.name ?? c)).join(", ")}${p.bestTier >= 0 ? ` · meilleur palier gagné : ${esc(this.meta.tiers[p.bestTier].name)}` : ""}</p>
       <h3>Fragments d'histoire <small>(${p.lore.length}/${this.story.lore.length})</small></h3><div class="bb-lore">${lore}</div>
       <p class="bb-seed">${p.runs} expédition(s) · ${p.deaths} retour(s) · ${p.wins} victoire(s)</p>`;
   }
@@ -1372,7 +1399,7 @@ export class App {
     g.fillStyle = "#5e3a1c";
     g.fillRect(fx - 7 * s, ground - 2 * s, 14 * s, 2 * s);
     // le vagabond, un peu en retrait derrière le feu
-    drawFighter(g, "player", fx + 16 * s * 0.75, ground - 8, Math.max(2, s - 1), true, { bob: Math.floor(this.time * 1.5) % 2 });
+    drawFighter(g, `class_${this.profile.lastClass}`, fx + 16 * s * 0.75, ground - 8, Math.max(2, s - 1), true, { bob: Math.floor(this.time * 1.5) % 2 });
     // PNJ
     this.npcRects.clear();
     for (const n of H.visibleNpcs(this.profile, this.story)) {
@@ -1398,6 +1425,67 @@ export class App {
       this.npcRects.set(n.id, { x: nx - 8 * s - 6, y: ground - 16 * s - 26, w: 16 * s + 12, h: 16 * s + 46 });
     }
     outlinedText(g, "Touche un habitant pour lui parler", A.x + A.w / 2, A.y + A.h - 10, "rgba(253,243,222,.75)", 11);
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Méta-progression : départ (classe, palier) et améliorations
+  // -------------------------------------------------------------------------
+
+  private showDeparture(): void {
+    const p = this.profile;
+    const ch = this.departChoice;
+    if (!p.classes.includes(ch.cls)) ch.cls = "vagabond";
+    const tiers = H.availableTiers(p, this.meta);
+    if (!tiers.some((t) => t.id === ch.tier)) ch.tier = tiers[tiers.length - 1].id;
+    const classes = Object.values(this.content.classes)
+      .map((c) => {
+        const unlocked = p.classes.includes(c.id);
+        const innate = c.innate.map((id) => this.content.items[id]?.description ?? "").filter(Boolean).join(" ");
+        return `<button type="button" class="bb-pick${ch.cls === c.id ? " is-on" : ""}" data-act="pick-class:${c.id}"${unlocked ? "" : " disabled"}>
+          <img src="${iconUrl(`class_${c.id}`)}" alt="" width="48" height="48">
+          <span><b>${esc(c.name)}</b> <small>${c.hp} PV · ${c.bagCells.length} cases</small><br>${esc(unlocked ? c.description : "À débloquer au campement (✦).")}${unlocked && innate ? `<br><em>${esc(innate.replace(/^Inné \([^)]*\) : /, ""))}</em>` : ""}</span>
+        </button>`;
+      })
+      .join("");
+    const tierBtns = tiers
+      .map((t) => `<button type="button" class="bb-pick bb-tier${ch.tier === t.id ? " is-on" : ""}" data-act="pick-tier:${t.id}"><span><b>${t.id} · ${esc(t.name)}</b> <small>✦ ×${t.shardMul}</small><br>${esc(t.text)}</span></button>`)
+      .join("");
+    const locked = this.meta.tiers.length - tiers.length;
+    this.showModal(`
+      <h2 class="bb-title">Départ</h2>
+      <p class="bb-sub">Qui part, et à quel point la forêt doit-elle résister ?</p>
+      <div class="bb-picks">${classes}</div>
+      <h3 class="bb-h3">Difficulté</h3>
+      <div class="bb-picks">${tierBtns}</div>
+      ${locked ? `<p class="bb-seed">${locked} palier(s) de plus se débloquent en gagnant au plus haut palier atteint.</p>` : ""}
+      <div class="bb-actions">
+        <button type="button" class="btn btn-small btn-ghost" data-close>Rester</button>
+        <button type="button" class="btn btn-small" data-act="go">⚑ Partir</button>
+      </div>`);
+  }
+
+  private showUpgrades(): void {
+    const p = this.profile;
+    const list = this.meta.upgrades
+      .map((u) => {
+        const lvl = H.upgradeLevel(p, u.id);
+        const cost = H.nextCost(p, u);
+        const reqOk = u.requires.every((r) => H.upgradeLevel(p, r) > 0);
+        const req = reqOk ? "" : ` <small>(demande : ${u.requires.map((r) => esc(this.meta.upgrades.find((x) => x.id === r)?.name ?? r)).join(", ")})</small>`;
+        const btn =
+          cost === null
+            ? `<span class="bb-sold">Max</span>`
+            : `<button type="button" class="btn btn-small" data-act="buy-up:${u.id}"${H.canBuy(p, u) ? "" : " disabled"}>✦ ${cost}</button>`;
+        const pips = u.costs.length > 1 ? `<span class="bb-pips">${"●".repeat(lvl)}${"○".repeat(u.costs.length - lvl)}</span>` : "";
+        return `<li class="${reqOk ? "" : "is-locked"}"><div><b>${esc(u.name)}</b> ${pips}${req}<br><small>${esc(u.text)}</small></div>${btn}</li>`;
+      })
+      .join("");
+    this.showModal(`
+      <h2 class="bb-title">Améliorations</h2>
+      <p class="bb-sub">✦ <b>${p.shards}</b> ${esc(this.meta.currency.name)}. On en gagne à chaque expédition, même ratée.</p>
+      <ul class="bb-upgrades">${list}</ul>
+      <div class="bb-actions"><button type="button" class="btn btn-small" data-close>Fermer</button></div>`);
   }
 
   // -------------------------------------------------------------------------
@@ -1777,8 +1865,10 @@ export class App {
     this.drag = null;
     const inStash = inRect(this.L.stash, x, y);
     const e = this.bag.get(d.uid)!;
-    if (inStash) {
-      this.bag.stash(d.uid);
+    if (inStash && !this.bag.stash(d.uid)) {
+      this.fx.shake.set(d.uid, 0.3);
+      this.fx.showBanner("Un objet maudit ne quitte pas le sac", "#d05aa0");
+    } else if (inStash) {
       e.rot = d.rot;
       e.mirror = d.mirror;
       // l'objet rangé passe en tête de réserve
@@ -1912,7 +2002,7 @@ export class App {
       const frame = Math.floor(this.time * 2 + i * 0.7) % 2;
       const lunge = this.fx.lunge.get(i) ?? 0;
       const dx = lunge > 0 ? Math.sin((lunge / 0.16) * Math.PI) * 10 * (enemy ? -1 : 1) : 0;
-      const sprite = enemy ? c.id : "player";
+      const sprite = enemy ? c.id : `class_${this.run?.cls ?? (this.ctx === "sandbox" ? this.sandbox.class : "vagabond")}`;
       drawFighter(this.g, sprite, P.cx, P.ground, P.s, enemy, {
         alpha: c.alive ? 1 : 0.25,
         flash: this.fx.hit.get(i),
@@ -1997,7 +2087,7 @@ export class App {
 
     if (this.mode === "combat" && this.fight) {
       for (const it of this.fight.state.combatants[0].items) {
-        if (it.removed) continue;
+        if (it.removed || it.ref === "innate") continue;
         const cells = it.cells.map(([x, y]) => [x, y] as Vec);
         drawItem(g, { id: it.def.id, def: it.def, cells, rot: it.rot, mirror: it.mirror }, ox, oy, L.cell, {
           progress: it.cooldownMs !== null ? this.progressOf(it) : null,

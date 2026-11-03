@@ -24,7 +24,7 @@ npm run build       # compile app/bagbound.js + app/bagbound.css et met à jour 
 |---|---|
 | `src/engine/` | Bibliothèque pure : RNG à seed, géométrie des sacs, registres, effets/déclencheurs/statuts, boucle de combat. **Interdits** : `Math.random`, `Date.now`, `performance.now`, DOM, Node (vérifié par `tests/purity.test.ts`). |
 | `src/content/` | Schémas zod (`schema.ts`), chargeur + vérification des références (`loader.ts`), lecture depuis le disque pour Node (`node.ts`). |
-| `data/` | Tout le contenu : `rules.json` (équilibrage du combat), `tags.json`, `items.json`, `enemies.json`, `classes.json`, `recipes.json` (fusions), `run.json` (règles de run), `zones.json` (zones, routes, zone finale), `story.json` (PNJ, dialogues, fragments, retours), `quests.json`, `loot.json`, `events.json`, `sandbox.json` (atelier). Rien n'est codé en dur. |
+| `data/` | Tout le contenu : `rules.json` (équilibrage du combat), `tags.json`, `items.json`, `enemies.json`, `classes.json`, `recipes.json` (fusions), `run.json` (règles de run), `zones.json` (zones, routes, zone finale), `story.json` (PNJ, dialogues, fragments, retours), `quests.json`, `meta.json` (monnaie, paliers, améliorations), `loot.json`, `events.json`, `sandbox.json` (atelier). Rien n'est codé en dur. |
 | `src/game/` | Logique de jeu hors combat, sans DOM : `bag.ts` (sac du joueur), `map.ts` (carte d'un étage), `run.ts` (boucle de run), `fusion.ts` (fusions, défusion), `hub.ts` (campement : profil, quêtes, dialogues, coffre), `autoplace.ts` (rangement automatique), `bot.ts` (joueur automatique pour les tests et les simulations). |
 | `src/ui/` | Interface navigateur : `app.ts` (atelier, combat en direct, entrées tactiles/souris/clavier), `draw.ts` (rendu canvas), `sprites.ts` (pixel art 16 x 16 en texte + variantes de palette), `describe.ts` (infobulles générées depuis les données), `layout.ts`, `fx.ts`, `style.css`. |
 | `app/` | Build publié (ne pas modifier à la main). |
@@ -158,7 +158,8 @@ Les modules de base sont dans `src/engine/builtins.ts`.
 - [x] Phase 3 : boucle de run (carte, boutique, butin, événements, coffres, feux de camp, boss), sauvegarde.
 - [x] Phase 4 : fusions, potions (remplissage), extensions de sac.
 - [x] Phase 5 : hub, quêtes, narration, boss de zone, boss final, routes.
-- [ ] Phase 6 : méta-progression, classes, difficultés, équilibrage en masse.
+- [x] Phase 6 : méta-progression, classes, difficultés, équilibrage en masse.
+- [ ] Phase 7 : multijoueur (seed quotidien, puis fantômes).
 - Équilibrage : une expédition complète va maintenant jusqu'au boss final
   (2 zones + le Cœur de la Trame). `npm run sim:run` (tout débloqué) donne
   environ 5 % de victoires au bot, `--locked` (nouveau joueur, forêt seule)
@@ -277,3 +278,36 @@ pure, déterministe (RNG de la run) et sérialisable telle quelle en JSON.
 - **Coffre** : en fin d'expédition, on y dépose des objets (1 place au départ) ;
   au départ suivant, ils partent dans la réserve.
 - **Événements** : nouveaux effets `lore` (fragment d'histoire) et `flag`.
+
+## Méta-progression, classes, difficulté (Phase 6)
+
+- **Éclats de Trame** (`data/meta.json` → `shards`) : gagnés à chaque fin
+  d'expédition, même ratée (par combat gagné, élite, boss, étage terminé,
+  victoire), multipliés par le palier (`shardMul`). `shardsFor(run, meta)`.
+- **Améliorations du campement** (`meta.json` → `upgrades`) : niveaux et prix
+  (`costs`), prérequis (`requires`), effets `maxHp`, `startGold`,
+  `campfireHeal`, `shopDiscount`, `freeRerolls`, `rewardChoices`, `chestSlot`,
+  `startItem`, `unlockClass`. Achat : `buyUpgrade` ; effets appliqués au départ
+  par `departure(profil, quêtes, monde, meta, { cls, tier })`, qui produit les
+  `RunOptions` (dont `RunMods` : remise, relances gratuites, choix de butin,
+  soin au feu de camp, PV / dégâts des ennemis, poids des élites).
+- **Classes** (`classes.json`) : forme et taille max du sac, PV, sac de départ,
+  et une **mécanique innée** (`innate`) : des objets du contenu (Cœur de forge,
+  Mains sûres, Lames enduites) que le moteur active en combat hors du sac
+  (repère `ref: "innate"`, sans voisins, jamais rendus dans le sac). Le
+  Vagabond est donné ; les trois autres s'achètent au campement.
+- **Paliers de difficulté** (`meta.json` → `tiers`, 0 à 5) : PV et dégâts des
+  ennemis (`CombatantSetup.damageMul`, appliqué aux coups directs), soin des
+  feux de camp, or de départ, poids des élites, **objets maudits** posés dans le
+  sac au départ (`cursed: true` : ils ne vont ni en réserve, ni en vente, ni au
+  coffre ; l'Épine maudite blesse son porteur). Gagner au palier le plus haut
+  atteint ouvre le suivant.
+- **Équilibrage en masse** : `npm run sim:run -- --matrix [--upgrades] --n 100`
+  joue des expéditions complètes pour chaque classe et chaque palier. Le bot
+  lance désormais ses potions offensives. Résultats de référence (palier 0) :
+  ~9 % (Vagabond), ~13 % (Forgeronne), ~3 % (Apothicaire), ~8 % (Rôdeuse) sans
+  amélioration ; ~23 / 27 / 10 / 25 % avec toutes les améliorations. Le retard
+  de l'Apothicaire vient surtout du bot, qui range par prix (il sépare l'alambic
+  des bouteilles) et ne remplit jamais ses bouteilles en boutique.
+  Par palier (Vagabond, améliorations au max) : 24 / 19 / 9 / 7 / 1 / 1 %.
+  Une expédition rapporte 30 à 55 éclats ; l'arbre complet en coûte 845.

@@ -30,11 +30,11 @@ export function weightedPick<T>(h: RngHolder, list: readonly { w: number; v: T }
   return list[list.length - 1].v;
 }
 
-function rowType(h: RngHolder, rd: RunData, row: number): NodeType {
+function rowType(h: RngHolder, rd: RunData, row: number, eliteWeightMul = 1): NodeType {
   if (row === 0) return rd.rules.firstRow;
   const opts = (Object.entries(rd.rules.nodeWeights) as [NodeType, number][])
     .filter(([t, w]) => w > 0 && t !== "boss" && (t !== "elite" || row >= rd.rules.eliteMinRow))
-    .map(([t, w]) => ({ w, v: t }));
+    .map(([t, w]) => ({ w: t === "elite" ? w * eliteWeightMul : w, v: t }));
   return weightedPick(h, opts);
 }
 
@@ -69,7 +69,7 @@ function link(h: RngHolder, cur: MapNode[], nxt: MapNode[]): void {
   for (const node of cur) node.next.sort((a, b) => nxt.findIndex((x) => x.id === a) - nxt.findIndex((x) => x.id === b));
 }
 
-export function generateFloor(h: RngHolder, rd: RunData, route: RouteDef, zoneIdx: number, floorIdx: number): MapNode[] {
+export function generateFloor(h: RngHolder, rd: RunData, route: RouteDef, zoneIdx: number, floorIdx: number, eliteWeightMul = 1): MapNode[] {
   const floor = route.floors[floorIdx];
   const last = floorIdx === route.floors.length - 1;
   const rows: MapNode[][] = [];
@@ -80,7 +80,7 @@ export function generateFloor(h: RngHolder, rd: RunData, route: RouteDef, zoneId
       const node: MapNode = { id: `${zoneIdx}-${floorIdx}-${row}-${col}`, row, col, x: (col + 1) / (count + 1) + jitter, type: typeOf(), next: [], done: false };
       return node;
     });
-  for (let r = 0; r < rd.rules.rows; r++) rows.push(make(r, nextInt(h, minN, maxN), () => rowType(h, rd, r)));
+  for (let r = 0; r < rd.rules.rows; r++) rows.push(make(r, nextInt(h, minN, maxN), () => rowType(h, rd, r, eliteWeightMul)));
   if (last) {
     rows.push(make(rd.rules.rows, 1, () => "campfire"));
     rows.push(make(rd.rules.rows + 1, 1, () => "boss"));

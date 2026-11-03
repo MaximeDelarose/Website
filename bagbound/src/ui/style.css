@@ -139,3 +139,23 @@
 .bb-route { padding: 10px; background: #fffaf0; border: 3px solid #c9b48e; outline: 2px solid #1a1220; }
 .bb-route p { margin: 0 0 8px; }
 .bb-left-text { text-align: left; padding-left: 4px; }
+
+/* --- méta-progression (Phase 6) --- */
+.bb-shards { color: #d9b4ff; }
+.bb-shards-won { color: #7a3ab0; font-weight: 800; }
+.bb-h3 { margin: 12px 0 6px; }
+.bb-picks { display: grid; gap: 6px; }
+.bb-pick {
+  display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; text-align: left; cursor: pointer;
+  padding: 8px; background: #fffaf0; border: 3px solid #c9b48e; outline: 2px solid #1a1220; color: #2b1709;
+  font: 600 13px/1.35 Nunito, system-ui, sans-serif;
+}
+.bb-pick.bb-tier { grid-template-columns: 1fr; }
+.bb-pick.is-on { border-color: #e0a82a; background: #fff2c0; }
+.bb-pick[disabled] { opacity: .45; cursor: not-allowed; }
+.bb-pick img { image-rendering: pixelated; background: #3b2a20; border: 2px solid #1a1220; }
+.bb-pick em { color: #2f6b34; font-style: normal; font-weight: 700; }
+.bb-upgrades { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+.bb-upgrades li { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; background: #fffaf0; border: 2px solid #c9b48e; }
+.bb-upgrades li.is-locked { opacity: .6; }
+.bb-pips { color: #7a3ab0; letter-spacing: 1px; }

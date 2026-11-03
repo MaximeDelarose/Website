@@ -17,7 +17,7 @@ describe("sprites", () => {
   it("chaque objet, chaque ennemi et chaque PNJ a un sprite", () => {
     const c = loadContentFromDir();
     const { story } = loadStoryFromDir(c, loadRunDataFromDir(c));
-    for (const id of [...Object.keys(c.items), ...Object.keys(c.enemies), ...story.npcs.map((n) => n.sprite)]) {
+    for (const id of [...Object.keys(c.items), ...Object.keys(c.enemies), ...story.npcs.map((n) => n.sprite), ...Object.keys(c.classes).map((id) => `class_${id}`)]) {
       expect(VARIANTS[id], id).toBeDefined();
       expect(SPRITES[VARIANTS[id].sprite], id).toBeDefined();
     }

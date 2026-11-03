@@ -17,6 +17,8 @@ import { loadRecipes } from "./recipes";
 import storyRaw from "../../data/story.json";
 import questsRaw from "../../data/quests.json";
 import { loadStory } from "./story";
+import metaRaw from "../../data/meta.json";
+import { loadMeta } from "./meta";
 import { loadContent } from "./loader";
 import { loadSandbox } from "./sandbox";
 
@@ -31,5 +33,6 @@ export function loadBundledContent() {
     recipes: loadRecipes(recipes, content),
     story,
     quests,
+    meta: loadMeta(metaRaw, content),
   };
 }

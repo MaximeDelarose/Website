@@ -5,7 +5,7 @@
 import type { EventDef, EventEffect, RouteDef, RunData } from "../content/runData";
 import { nextInt, type RngHolder } from "../engine/rng";
 import type { CombatResult, CombatSetup, Content, Placement } from "../engine/types";
-import type { SavedBag } from "./bag";
+import { Bag, type SavedBag } from "./bag";
 import { generateFinal, generateFloor, weightedPick, type MapNode } from "./map";
 
 export type RunPhase = "route" | "map" | "combat" | "reward" | "shop" | "event" | "campfire" | "chest" | "dead" | "won";
@@ -41,7 +41,34 @@ export interface RunOptions {
   lockedItems?: string[];
   startItems?: string[];
   startGold?: number;
+  /** Méta-progression et difficulté. */
+  maxHpBonus?: number;
+  mods?: Partial<RunMods>;
+  /** Objets maudits posés dans le sac au départ. */
+  curses?: string[];
+  tier?: number;
 }
+
+/** Modificateurs de la run (améliorations du campement, palier de difficulté). */
+export interface RunMods {
+  rewardChoicesBonus: number;
+  shopDiscount: number;
+  freeRerolls: number;
+  campfireHealMul: number;
+  enemyHpMul: number;
+  enemyDamageMul: number;
+  eliteWeightMul: number;
+}
+
+export const DEFAULT_MODS: RunMods = {
+  rewardChoicesBonus: 0,
+  shopDiscount: 0,
+  freeRerolls: 0,
+  campfireHealMul: 1,
+  enemyHpMul: 1,
+  enemyDamageMul: 1,
+  eliteWeightMul: 1,
+};
 
 export interface RunStats {
   combats: number;
@@ -74,6 +101,9 @@ export interface RunState extends RngHolder {
   /** Route de la zone en cours ("final" dans la zone finale, "" pendant le choix). */
   route: string;
   unlockedRoutes: string[];
+  mods: RunMods;
+  /** Palier de difficulté. */
+  tier: number;
   lockedItems: string[];
   /** PV perdus depuis le début de l'étage. */
   floorHpLost: number;
@@ -99,9 +129,9 @@ export function newRun(content: Content, rd: RunData, clsId: string, seed: numbe
     cls: clsId,
     zone: 0,
     floor: 0,
-    hp: cls.hp,
-    maxHp: cls.hp,
-    gold: rd.rules.startGold + (opts.startGold ?? 0),
+    hp: cls.hp + (opts.maxHpBonus ?? 0),
+    maxHp: cls.hp + (opts.maxHpBonus ?? 0),
+    gold: Math.max(0, rd.rules.startGold + (opts.startGold ?? 0)),
     bag: { cells: cls.bagCells.map(([x, y]) => [x, y]), entries: cls.startingBag.map((p) => ({ item: p.item, rot: p.rot ?? 0, mirror: p.mirror, pos: [p.pos[0], p.pos[1]] })) },
     map: [],
     current: null,
@@ -111,11 +141,14 @@ export function newRun(content: Content, rd: RunData, clsId: string, seed: numbe
     stats: { combats: 0, elites: 0, kills: 0, goldEarned: 0, nodes: 0, killedBy: null },
     route: "",
     unlockedRoutes: [...(opts.unlockedRoutes ?? [])],
+    mods: { ...DEFAULT_MODS, ...(opts.mods ?? {}) },
+    tier: opts.tier ?? 0,
     lockedItems: [...(opts.lockedItems ?? [])],
     floorHpLost: 0,
     log: [],
   };
   for (const id of [...(opts.startItems ?? [])].reverse()) if (content.items[id]) addToStash(run, id);
+  if (opts.curses?.length) placeCurses(run, content, opts.curses);
   enterZone(run, rd, 0);
   return run;
 }
@@ -155,10 +188,32 @@ export function chooseRoute(run: RunState, rd: RunData, id: string, auto = false
   if (!auto && (run.phase !== "route" || run.pending?.kind !== "route" || !run.pending.options.includes(id))) fail(`Route indisponible : ${id}`);
   const route = rd.zones[run.zone].routes.find((r) => r.id === id) ?? fail(`Route inconnue : ${id}`);
   run.route = route.id;
-  run.map = generateFloor(run, rd, route, run.zone, 0);
+  run.map = generateFloor(run, rd, route, run.zone, 0, run.mods.eliteWeightMul);
   run.phase = "map";
   run.pending = null;
   run.log.push({ type: "zone", zone: run.zone, route: route.id });
+}
+
+/** Pose les malédictions dans le sac (première place libre), sinon elles chassent un objet en réserve. */
+function placeCurses(run: RunState, content: Content, curses: string[]): void {
+  const cls = content.classes[run.cls];
+  const bag = Bag.fromJSON(content, cls.bagCells, run.bag, cls.maxBag);
+  for (const id of curses) {
+    const e = bag.add(id);
+    const b = bag.bounds();
+    let ok = false;
+    for (let rot = 0; rot < 4 && !ok; rot++)
+      for (let y = b.minY; y < b.minY + b.h && !ok; y++) for (let x = b.minX; x < b.minX + b.w && !ok; x++) ok = bag.move(e.uid, [x, y], rot, false);
+    if (!ok) {
+      // plus de place : l'objet posé le moins cher part en réserve
+      const victim = bag.placed().filter((x) => x !== e && !content.items[x.item].cursed).sort((a, c) => content.items[a.item].price - content.items[c.item].price)[0];
+      if (victim) bag.stash(victim.uid);
+      const b2 = bag.bounds();
+      for (let rot = 0; rot < 4 && !ok; rot++)
+        for (let y = b2.minY; y < b2.minY + b2.h && !ok; y++) for (let x = b2.minX; x < b2.minX + b2.w && !ok; x++) ok = bag.move(e.uid, [x, y], rot, false);
+    }
+  }
+  run.bag = bag.toJSON();
 }
 
 export function logFusion(run: RunState, result: string): void {
@@ -245,7 +300,7 @@ function shopStock(run: RunState, content: Content, rd: RunData): ShopSlot[] {
   const route = currentRoute(run, rd) ?? rd.zones[rd.zones.length - 1].routes[0];
   return lootPick(run, rd, route.shopTable, rd.rules.shop.stock).map((item) => ({
     item,
-    price: Math.max(1, Math.round(content.items[item].price * rd.rules.shop.priceMul)),
+    price: Math.max(1, Math.round(content.items[item].price * rd.rules.shop.priceMul * (1 - run.mods.shopDiscount))),
     sold: false,
   }));
 }
@@ -303,7 +358,7 @@ export function completeNode(run: RunState, rd: RunData): void {
     if (run.floor + 1 < route.floors.length) {
       run.floor++;
       run.floorHpLost = 0;
-      run.map = generateFloor(run, rd, route, run.zone, run.floor);
+      run.map = generateFloor(run, rd, route, run.zone, run.floor, run.mods.eliteWeightMul);
       run.current = null;
     } else {
       enterZone(run, rd, run.zone + 1);
@@ -315,14 +370,14 @@ export function completeNode(run: RunState, rd: RunData): void {
 // Combat
 // ---------------------------------------------------------------------------
 
-export function combatSetup(run: RunState): CombatSetup {
+export function combatSetup(run: RunState, content: Content): CombatSetup {
   const p = run.pending;
   if (run.phase !== "combat" || p?.kind !== "combat") fail("Pas de combat en cours");
   const c = p as Extract<Pending, { kind: "combat" }>;
   return {
     seed: c.seed,
-    player: { hp: run.hp, maxHp: run.maxHp, bag: placementsOf(run.bag) },
-    enemies: c.enemies.map((id) => ({ id, hpMul: c.hpMul })),
+    player: { hp: run.hp, maxHp: run.maxHp, bag: placementsOf(run.bag), innate: content.classes[run.cls]?.innate ?? [] },
+    enemies: c.enemies.map((id) => ({ id, hpMul: c.hpMul * run.mods.enemyHpMul, damageMul: run.mods.enemyDamageMul })),
   };
 }
 
@@ -384,7 +439,7 @@ export function finishCombat(run: RunState, content: Content, rd: RunData, resul
   const top = [...c.enemies].sort((a, b) => rank[content.enemies[b].rank] - rank[content.enemies[a].rank])[0];
   const table = content.enemies[top]?.loot?.table ?? chestTableOf(run, rd);
   run.phase = "reward";
-  run.pending = { kind: "reward", gold, choices: lootPick(run, rd, table, rd.rules.rewardChoices), boss: c.boss };
+  run.pending = { kind: "reward", gold, choices: lootPick(run, rd, table, rd.rules.rewardChoices + run.mods.rewardChoicesBonus), boss: c.boss };
 }
 
 export function takeReward(run: RunState, rd: RunData, item: string | null): void {
@@ -425,12 +480,15 @@ export function sellPrice(content: Content, rd: RunData, item: string): number {
 export function sell(run: RunState, content: Content, rd: RunData, index: number): void {
   shopOf(run);
   const e = run.bag.entries[index] ?? fail("Objet introuvable");
+  if (content.items[e.item]?.cursed) fail("Un objet maudit ne se vend pas");
   run.gold += sellPrice(content, rd, e.item);
   run.bag.entries.splice(index, 1);
 }
 
 export function rerollCost(run: RunState, rd: RunData): number {
-  return rd.rules.shop.reroll + shopOf(run).rerolls * rd.rules.shop.rerollStep;
+  const n = shopOf(run).rerolls;
+  if (n < run.mods.freeRerolls) return 0;
+  return rd.rules.shop.reroll + (n - run.mods.freeRerolls) * rd.rules.shop.rerollStep;
 }
 
 export function reroll(run: RunState, content: Content, rd: RunData): void {
@@ -489,9 +547,13 @@ export function leaveShop(run: RunState, rd: RunData): void {
 // Feu de camp, coffre
 // ---------------------------------------------------------------------------
 
+export function campfireHeal(run: RunState, rd: RunData): number {
+  return Math.round(run.maxHp * rd.rules.campfire.healPct * run.mods.campfireHealMul);
+}
+
 export function campfire(run: RunState, rd: RunData, choice: "rest" | "train"): void {
   if (run.phase !== "campfire") fail("Pas de feu de camp");
-  if (choice === "rest") run.hp = Math.min(run.maxHp, run.hp + Math.round(run.maxHp * rd.rules.campfire.healPct));
+  if (choice === "rest") run.hp = Math.min(run.maxHp, run.hp + campfireHeal(run, rd));
   else {
     run.maxHp += rd.rules.campfire.maxHp;
     run.hp += rd.rules.campfire.maxHp;

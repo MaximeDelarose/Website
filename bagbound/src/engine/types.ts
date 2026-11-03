@@ -108,6 +108,8 @@ export interface ItemDef {
   throwEffects: EffectDef[] | null;
   /** Extension de sac (objet-case posé au bord du sac). */
   extends: boolean;
+  /** Maudit : ne peut ni quitter le sac ni être vendu. */
+  cursed: boolean;
   description?: string;
 }
 
@@ -151,6 +153,8 @@ export interface ClassDef {
   hp: number;
   bagCells: Vec[];
   maxBag: [number, number];
+  description: string;
+  innate: string[];
   startingBag: Placement[];
 }
 
@@ -264,6 +268,8 @@ export interface Combatant {
   phasesDone: number;
   /** Rang d'ennemi (mob/elite/boss) ou "player". */
   rank: string;
+  /** Multiplicateur des dégâts directs (1 par défaut). */
+  damageMul: number;
 }
 
 export interface CombatantSetup {
@@ -276,6 +282,10 @@ export interface CombatantSetup {
   phases?: PhaseDef[];
   /** Multiplicateur de PV (difficulté). */
   hpMul?: number;
+  /** Multiplicateur des dégâts directs infligés (difficulté). */
+  damageMul?: number;
+  /** Objets innés (mécanique de classe) : actifs en combat, hors du sac, sans voisins. */
+  innate?: string[];
 }
 
 /** Action manuelle du joueur (potions). */

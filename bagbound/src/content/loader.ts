@@ -120,7 +120,10 @@ export function loadContent(raw: RawContent): Content {
     checkBag(`enemies.json[${e.id}].bag`, e.bag);
     e.phases.forEach((ph, i) => checkBag(`enemies.json[${e.id}].phases[${i}].bag`, ph.bag));
   }
-  for (const c of classList) checkBag(`classes.json[${c.id}].startingBag`, c.startingBag, c.bagCells);
+  for (const c of classList) {
+    checkBag(`classes.json[${c.id}].startingBag`, c.startingBag, c.bagCells);
+    for (const id of c.innate) if (!items[id]) issues.push(`classes.json[${c.id}]: objet inné inconnu « ${id} »`);
+  }
 
   if (issues.length) throw new ContentError(issues);
   return { rules, tags: [...tags], items, enemies, classes };

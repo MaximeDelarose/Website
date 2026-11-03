@@ -77,7 +77,7 @@ function makeCombatant(
   state: CombatState,
   index: number,
   side: Combatant["side"],
-  s: { id: string; name: string; hp: number; maxHp: number; bag: Placement[]; phases: Combatant["phases"]; rank: string },
+  s: { id: string; name: string; hp: number; maxHp: number; bag: Placement[]; phases: Combatant["phases"]; rank: string; damageMul?: number; innate?: string[] },
 ): Combatant {
   const c: Combatant = {
     index,
@@ -93,9 +93,12 @@ function makeCombatant(
     phases: [...s.phases].sort((a, b) => b.hpBelow - a.hpBelow),
     phasesDone: 0,
     rank: s.rank,
+    damageMul: s.damageMul ?? 1,
   };
   state.combatants.push(c);
   c.items = s.bag.map((p) => instantiateItem(state, index, p));
+  // objets innés : loin de la grille (aucune adjacence), repère « innate »
+  (s.innate ?? []).forEach((id, k) => c.items.push(instantiateItem(state, index, { item: id, pos: [-1000 - 10 * k, -1000], ref: "innate" })));
   recomputeLayout(c);
   return c;
 }
@@ -114,6 +117,8 @@ function enemySetup(content: Content, s: CombatantSetup) {
     bag: s.bag ?? def?.bag ?? [],
     phases: s.phases ?? def?.phases ?? [],
     rank: def?.rank ?? "mob",
+    damageMul: s.damageMul,
+    innate: s.innate,
   };
 }
 
@@ -152,6 +157,8 @@ export function createCombat(content: Content, setup: CombatSetup, opts: CombatO
     bag: p.bag,
     phases: [],
     rank: "player",
+    damageMul: p.damageMul,
+    innate: p.innate,
   });
   setup.enemies.forEach((e, i) => makeCombatant(state, i + 1, "enemy", enemySetup(content, e)));
   return state;
@@ -303,7 +310,7 @@ export function stepCombat(state: CombatState): void {
 
 export function playerBagAfter(state: CombatState): Placement[] {
   return state.combatants[0].items
-    .filter((i) => !i.removed)
+    .filter((i) => !i.removed && i.ref !== "innate")
     .map((i) => {
       const p: Placement = { item: i.def.id, pos: [i.pos[0], i.pos[1]], rot: i.rot };
       if (i.mirror) p.mirror = true;

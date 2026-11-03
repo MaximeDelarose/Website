@@ -2,10 +2,11 @@
 // fragments d'histoire, coffre. Pur et sérialisable (localStorage).
 // Mourir fait avancer l'histoire : chaque fin de run passe par applyRun.
 
+import type { MetaData, TierDef, UpgradeDef } from "../content/meta";
 import type { RunData } from "../content/runData";
 import type { Cond, QuestDef, Reward, StoryData } from "../content/story";
 import type { Content } from "../engine/types";
-import type { RunOptions, RunState } from "./run";
+import type { RunMods, RunOptions, RunState } from "./run";
 
 export interface QuestState {
   progress: number;
@@ -38,6 +39,18 @@ export interface Profile {
   seenDialogues: string[];
   bossKills: Record<string, number>;
   last: LastRun | null;
+  /** Monnaie persistante (Éclats de Trame) et total gagné. */
+  shards: number;
+  totalShards: number;
+  /** Niveau acheté de chaque amélioration du campement. */
+  upgrades: Record<string, number>;
+  /** Classes jouables. */
+  classes: string[];
+  /** Plus haut palier de difficulté remporté (-1 : aucun). */
+  bestTier: number;
+  /** Derniers choix au départ (classe, palier). */
+  lastClass: string;
+  lastTier: number;
 }
 
 export function newProfile(): Profile {
@@ -57,6 +70,13 @@ export function newProfile(): Profile {
     seenDialogues: [],
     bossKills: {},
     last: null,
+    shards: 0,
+    totalShards: 0,
+    upgrades: {},
+    classes: ["vagabond"],
+    bestTier: -1,
+    lastClass: "vagabond",
+    lastTier: 0,
   };
 }
 
@@ -65,7 +85,8 @@ export function parseProfile(raw: string | null): Profile | null {
   try {
     const p = JSON.parse(raw) as Profile;
     if (p?.v !== 1 || typeof p.runs !== "number" || !p.quests || !p.chest) return null;
-    return p;
+    // profils plus anciens (avant la méta-progression) : champs manquants complétés
+    return { ...newProfile(), ...p };
   } catch {
     return null;
   }
@@ -151,11 +172,36 @@ export interface RunSummary {
   /** Nouvelles quêtes disponibles. */
   fresh: string[];
   returnText: string;
+  /** Éclats gagnés. */
+  shards: number;
+  /** Nouveau palier débloqué (victoire au plus haut palier atteint). */
+  tierUnlocked: number | null;
 }
 
 /** Fin de run : statistiques, quêtes, fragments, drapeaux, texte de retour. */
-export function applyRun(p: Profile, run: RunState, quests: QuestDef[], story: StoryData, content: Content, rd: RunData): RunSummary {
+/** Éclats de Trame gagnés par une run : combats, élites, boss, étages, victoire, × palier. */
+export function shardsFor(run: RunState, meta: MetaData): number {
+  const s = meta.shards;
+  let total = 0;
+  for (const e of run.log) {
+    if (e.type === "combat" && e.win) total += s.perCombat + (e.elite ? s.perElite : 0) + (e.boss ? s.perBoss : 0);
+    if (e.type === "floor") total += s.perFloor;
+  }
+  if (run.phase === "won") total += s.win;
+  const tier = meta.tiers[Math.min(run.tier ?? 0, meta.tiers.length - 1)];
+  return Math.round(total * tier.shardMul);
+}
+
+export function applyRun(p: Profile, run: RunState, quests: QuestDef[], story: StoryData, content: Content, rd: RunData, meta?: MetaData): RunSummary {
   const won = run.phase === "won";
+  const shards = meta ? shardsFor(run, meta) : 0;
+  p.shards += shards;
+  p.totalShards += shards;
+  let tierUnlocked: number | null = null;
+  if (won && meta && (run.tier ?? 0) > p.bestTier) {
+    p.bestTier = run.tier ?? 0;
+    if (p.bestTier + 1 < meta.tiers.length) tierUnlocked = p.bestTier + 1;
+  }
   p.runs++;
   if (won) p.wins++;
   else p.deaths++;
@@ -183,7 +229,7 @@ export function applyRun(p: Profile, run: RunState, quests: QuestDef[], story: S
   }
   const fresh = refreshQuests(p, quests);
   const ret = [...story.returns].sort((a, b) => b.priority - a.priority).find((r) => cond(p, r.conditions));
-  return { completed, newLore, fresh, returnText: ret?.text ?? "" };
+  return { completed, newLore, fresh, returnText: ret?.text ?? "", shards, tierUnlocked };
 }
 
 export function applyReward(p: Profile, r: Reward): void {
@@ -265,21 +311,107 @@ export function markTalked(p: Profile, t: Talk): void {
 // Départ et coffre
 // ---------------------------------------------------------------------------
 
+export interface DepartureChoice {
+  cls?: string;
+  tier?: number;
+}
+
+/** Paliers accessibles : le suivant s'ouvre en gagnant au palier précédent. */
+export function availableTiers(p: Profile, meta: MetaData): TierDef[] {
+  return meta.tiers.filter((t) => t.id <= p.bestTier + 1);
+}
+
 /** Options de la prochaine run ; les objets du coffre partent avec toi (le coffre se vide). */
-export function departure(p: Profile, quests: QuestDef[], rd: RunData): RunOptions {
+export function departure(p: Profile, quests: QuestDef[], rd: RunData, meta?: MetaData, choice: DepartureChoice = {}): RunOptions {
   const fromChest = [...p.chest.items];
   p.chest.items = [];
   const routes = rd.zones.flatMap((z) => z.routes.filter((r) => !r.unlock || p.routes.includes(r.id)).map((r) => r.id));
-  return {
+  const opts: RunOptions = {
     unlockedRoutes: routes,
     lockedItems: lockedItems(p, quests),
     startItems: [...p.startItems, ...fromChest],
     startGold: p.startGold,
   };
+  if (!meta) return opts;
+  const tiers = availableTiers(p, meta);
+  const tier = tiers.find((t) => t.id === (choice.tier ?? 0)) ?? tiers[0];
+  const mods: Partial<RunMods> = {
+    enemyHpMul: tier.enemyHpMul,
+    enemyDamageMul: tier.enemyDamageMul,
+    eliteWeightMul: tier.eliteWeightMul,
+    campfireHealMul: tier.campfireHealMul,
+    rewardChoicesBonus: 0,
+    shopDiscount: 0,
+    freeRerolls: 0,
+  };
+  let maxHp = 0;
+  let gold = p.startGold + tier.startGold;
+  const items = [...opts.startItems!];
+  let campBonus = 0;
+  for (const u of meta.upgrades) {
+    const lvl = p.upgrades[u.id] ?? 0;
+    if (!lvl) continue;
+    const e = u.effect;
+    switch (e.type) {
+      case "maxHp":
+        maxHp += e.value * lvl;
+        break;
+      case "startGold":
+        gold += e.value * lvl;
+        break;
+      case "campfireHeal":
+        campBonus += e.value * lvl;
+        break;
+      case "shopDiscount":
+        mods.shopDiscount! += e.value * lvl;
+        break;
+      case "freeRerolls":
+        mods.freeRerolls! += e.value * lvl;
+        break;
+      case "rewardChoices":
+        mods.rewardChoicesBonus! += e.value * lvl;
+        break;
+      case "startItem":
+        for (let k = 0; k < lvl; k++) items.push(e.item);
+        break;
+      default:
+        break; // chestSlot / unlockClass : appliqués à l'achat
+    }
+  }
+  mods.campfireHealMul = tier.campfireHealMul * (1 + campBonus);
+  const cls = choice.cls && p.classes.includes(choice.cls) ? choice.cls : "vagabond";
+  p.lastClass = cls;
+  p.lastTier = tier.id;
+  return { ...opts, startGold: gold, startItems: items, maxHpBonus: maxHp, mods, curses: [...tier.curses], tier: tier.id };
 }
 
-export function depositChest(p: Profile, item: string): boolean {
+export function upgradeLevel(p: Profile, id: string): number {
+  return p.upgrades[id] ?? 0;
+}
+
+/** Prix du prochain niveau, ou null si l'amélioration est au maximum. */
+export function nextCost(p: Profile, u: UpgradeDef): number | null {
+  const lvl = upgradeLevel(p, u.id);
+  return lvl < u.costs.length ? u.costs[lvl] : null;
+}
+
+export function canBuy(p: Profile, u: UpgradeDef): boolean {
+  const cost = nextCost(p, u);
+  return cost !== null && p.shards >= cost && u.requires.every((r) => upgradeLevel(p, r) > 0);
+}
+
+export function buyUpgrade(p: Profile, meta: MetaData, id: string): void {
+  const u = meta.upgrades.find((x) => x.id === id);
+  if (!u || !canBuy(p, u)) throw new Error(`Amélioration impossible : ${id}`);
+  p.shards -= nextCost(p, u)!;
+  p.upgrades[id] = upgradeLevel(p, id) + 1;
+  if (u.effect.type === "chestSlot") p.chest.slots += u.effect.value;
+  if (u.effect.type === "unlockClass" && !p.classes.includes(u.effect.class)) p.classes.push(u.effect.class);
+}
+
+export function depositChest(p: Profile, item: string, content?: Content): boolean {
   if (p.chest.items.length >= p.chest.slots) return false;
+  if (content?.items[item]?.cursed) return false;
   p.chest.items.push(item);
   return true;
 }

@@ -75,7 +75,7 @@ describe("déroulement d'une run", () => {
     const first = R.reachable(run)[0];
     R.enterNode(run, content, rd, first.id);
     expect(run.phase).toBe("combat");
-    const setup = R.combatSetup(run);
+    const setup = R.combatSetup(run, content);
     expect(setup.player.hp).toBe(run.hp);
     expect(setup.enemies.map((e) => e.id)).toEqual(first.enemies);
     const result = runCombat(content, setup);
@@ -96,7 +96,7 @@ describe("déroulement d'une run", () => {
   it("charges des potions et objets lancés conservés après le combat", () => {
     const run = R.newRun(content, rd, CLS, 7);
     R.enterNode(run, content, rd, R.reachable(run)[0].id);
-    const setup = R.combatSetup(run);
+    const setup = R.combatSetup(run, content);
     const potion = setup.player.bag.findIndex((p) => p.item === "health_potion");
     const result = runCombat(content, { ...setup, actions: [{ tick: 3, type: "drink", combatant: 0, item: `0:${potion}` }] });
     run.bag.entries.push({ item: "antidote", rot: 0, pos: null });
@@ -171,7 +171,7 @@ describe("déroulement d'une run", () => {
     enter("ambush");
     R.chooseEvent(run, content, rd, 0);
     expect(run.phase).toBe("combat");
-    expect(R.combatSetup(run).enemies.map((e) => e.id)).toEqual(["bandit", "goblin"]);
+    expect(R.combatSetup(run, content).enemies.map((e) => e.id)).toEqual(["bandit", "goblin"]);
   });
 
   it("fin de rangée : étage suivant ; boss vaincu : victoire", () => {
@@ -205,7 +205,7 @@ describe("déroulement d'une run", () => {
     R.enterNode(run, content, rd, R.reachable(run)[0].id);
     const back = R.parseRun(R.serializeRun(run))!;
     expect(back).toEqual(run);
-    expect(runCombat(content, R.combatSetup(back)).hash).toBe(runCombat(content, R.combatSetup(run)).hash);
+    expect(runCombat(content, R.combatSetup(back, content)).hash).toBe(runCombat(content, R.combatSetup(run, content)).hash);
     expect(R.parseRun("{oups")).toBeNull();
     expect(R.parseRun(JSON.stringify({ v: 1, map: [], bag: { entries: [] } }))).toBeNull();
   });

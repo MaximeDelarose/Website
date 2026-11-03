@@ -1062,6 +1062,16 @@ export const VARIANTS: Record<string, { sprite: string; pal?: Palette }> = {
   chainmail: { sprite: "armor", pal: { a: "#c9ced3", b: "#9fb0bd", c: "#6e7c87", d: "#e8eef2" } },
   golem_heart: { sprite: "heart", pal: { a: "#f2a04a", b: "#b0602a" } },
   weaver_needle: { sprite: "dagger", pal: { a: "#ffffff", b: "#c8c8d8", d: "#b47ae8" } },
+  // Phase 6 : objets innés, malédictions, classes
+  forge_heart: { sprite: "heart", pal: { a: "#ffa531", b: "#c0602a" } },
+  steady_hands: { sprite: "flask", pal: { a: "#ffe27a", b: "#7cbf4a" } },
+  coated_blades: { sprite: "dagger", pal: { a: "#c8f08a", b: "#3f9a3a", d: "#7a3ab0" } },
+  cursed_weight: { sprite: "stone", pal: { a: "#6a4a7a", b: "#4a2a5a", c: "#2a1a3a" } },
+  cursed_thorn: { sprite: "thorns", pal: { a: "#8a3a6a", b: "#d05aa0" } },
+  class_vagabond: { sprite: "hero" },
+  class_smith: { sprite: "smith", pal: { a: "#a0602a", b: "#5e3a1c", s: "#f2c9a0", d: "#c0392b", e: "#c9ced3" } },
+  class_apothecary: { sprite: "witch", pal: { a: "#2f6b34", b: "#4f8a5b", s: "#f2c9a0", d: "#ffe27a" } },
+  class_ranger: { sprite: "hero", pal: { a: "#3a4a3a", b: "#1f2f22", s: "#e8b890", d: "#5a3a2a", e: "#2a2a2a" } },
   // personnages
   player: { sprite: "hero" },
   goblin: { sprite: "goblin" },
