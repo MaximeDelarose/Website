@@ -217,13 +217,13 @@
       steps: [{ shape: "self", range: [0, 0], target: "self" }] },
     // ---------- Ondine ----------
     vague: { name: "Vague", pa: 3, icon: "vague", el: "eau", dmg: 19, perTurn: 2,
-      desc: "Vise une case à 2–5 cases : croix de 5 cases, 17 dégâts d'eau à chaque ennemi.",
+      desc: "Vise une case à 2–5 cases : croix de 5 cases, 19 dégâts d'eau à chaque ennemi.",
       steps: [{ shape: "any", range: [2, 5], boost: true, los: true, target: "cell" }] },
     geyser: { name: "Geyser", pa: 4, icon: "geyser", el: "eau", dmg: 23, push: 1, perTurn: 1,
-      desc: "Vise une case à 1–4 cases : 21 dégâts à tout ce qui est à 1 case autour, et ça repousse.",
+      desc: "Vise une case à 1–4 cases : 23 dégâts à tout ce qui est à 1 case autour, et ça repousse.",
       steps: [{ shape: "any", range: [1, 4], boost: true, los: true, target: "cell" }] },
     deferlante: { name: "Déferlante", pa: 3, icon: "deferlante", el: "eau", dmg: 20, perTurn: 1,
-      desc: "Choisis une direction : une lame de 4 cases part de toi, 18 dégâts à chaque ennemi.",
+      desc: "Choisis une direction (case à côté de toi) : une lame de 4 cases part de toi, 20 dégâts à chaque ennemi.",
       steps: [{ shape: "line", range: [1, 1], los: false, target: "cell" }] },
     rosee: { name: "Rosée", pa: 2, icon: "rosee", heal: 10, perTurn: 1,
       desc: "Petite pluie : 10 PV aux alliés dans une croix autour de la cible (toi compris).",
@@ -248,6 +248,17 @@
     sentence: { name: "Sentence", pa: 4, range: [0, 0], shape: "self", telegraph: true, dmg: 34 },
     appel: { name: "Appel du vide", pa: 3, range: [0, 0], shape: "self", summon: "glorbe", cd: 3 },
     racines: { name: "Racines", pa: 4, range: [0, 0], shape: "self", telegraph: true, dmg: 22 },
+    sucre: { name: "Jet de sucre", pa: 3, range: [1, 3], shape: "any", los: true, dmg: 13 },
+    langue: { name: "Coup de langue", pa: 3, range: [1, 3], shape: "line", los: true, dmg: 14, pull: 2 },
+    cocon: { name: "Câlin cotonneux", pa: 3, range: [0, 4], shape: "any", los: true, heal: 22 },
+    eclair: { name: "Petit éclair", pa: 3, range: [2, 5], shape: "any", los: true, dmg: 16 },
+    tictac: { name: "Tic-tac", pa: 4, range: [1, 1], shape: "any", los: true, dmg: 24 },
+    rembobine: { name: "Rembobinage", pa: 3, range: [0, 0], shape: "self", los: false, heal: 30, cd: 3 },
+    calin: { name: "Gros câlin", pa: 4, range: [1, 1], shape: "any", los: true, dmg: 22, push: 2 },
+    pluie: { name: "Pluie de sucre", pa: 4, range: [0, 0], shape: "self", telegraph: true, dmg: 28 },
+    sucreries: { name: "Appel des sucreries", pa: 3, range: [0, 0], shape: "self", summon: "bonbonk", cd: 3 },
+    carillon: { name: "Carillon", pa: 5, range: [0, 0], shape: "self", telegraph: true, dmg: 38 },
+    aiguilles: { name: "Aiguilles", pa: 3, range: [1, 3], shape: "line", los: true, dmg: 26 },
     lierre: { name: "Appel du lierre", pa: 3, range: [0, 0], shape: "self", summon: "ronceau", cd: 3 },
     // invocations alliées
     pointe: { name: "Pointe", pa: 2, range: [1, 1], shape: "any", los: true, dmg: 11 },
@@ -261,6 +272,12 @@
     sylphe: { name: "Sylphe fêlée", hp: 38, pa: 6, pm: 3, ini: 12, res: 5, spells: ["rosee", "souffle"], ranged: true, healer: true, xp: 16, col: "#c7a6ff", shape: "sylph" },
     golem: { name: "Golem de rune", hp: 92, pa: 6, pm: 2, ini: 4, res: 20, spells: ["rune"], xp: 22, col: "#a99a86", shape: "golem" },
     cristallin: { name: "Cristallin", hp: 44, pa: 6, pm: 3, ini: 11, res: 10, spells: ["eclat"], ranged: true, xp: 18, col: "#8fe6ff", shape: "shard" },
+    bonbonk: { name: "Bonbonk", hp: 42, pa: 5, pm: 3, ini: 9, res: 5, spells: ["sucre"], ranged: true, xp: 17, col: "#ff7bb0", shape: "candy" },
+    grenouillon: { name: "Grenouillon", hp: 50, pa: 5, pm: 5, ini: 13, res: 0, spells: ["langue"], xp: 18, col: "#6fd36a", shape: "frog" },
+    nuagelet: { name: "Nuagelet", hp: 48, pa: 6, pm: 3, ini: 10, res: 10, spells: ["cocon", "eclair"], ranged: true, healer: true, xp: 24, col: "#f7f3ff", shape: "cloudsheep" },
+    horlogeon: { name: "Horlogeon", hp: 80, pa: 6, pm: 3, ini: 7, res: 20, spells: ["tictac", "rembobine"], xp: 28, col: "#d9a441", shape: "clock" },
+    guimauve: { name: "Reine Guimauve", hp: 340, pa: 8, pm: 2, ini: 8, res: 10, spells: ["pluie", "sucreries", "calin"], boss: true, xp: 300, col: "#ffb3d9", shape: "queen" },
+    tictac: { name: "Grand Tic-Tac", hp: 560, pa: 9, pm: 2, ini: 10, res: 20, spells: ["carillon", "aiguilles", "rembobine"], boss: true, xp: 520, col: "#c48a2a", shape: "bigclock" },
     sentinelle: { name: "Sentinelle d'Incarnam", hp: 190, pa: 7, pm: 2, ini: 6, res: 10, spells: ["racines", "lierre", "rune"], boss: true, xp: 160, col: "#8fa37a", shape: "statue" },
     archonte: { name: "Archonte fractal", hp: 460, pa: 8, pm: 2, ini: 9, res: 15, spells: ["sentence", "appel", "pique"], boss: true, xp: 420, col: "#d36cff", shape: "boss" },
   };
@@ -346,7 +363,13 @@
     { id: "q5", name: "Chasse aux élites", desc: "Vaincre 3 monstres élites (contour doré).", kind: "elite", n: 3, req: "q4", xp: 260, gold: 160, item: "epique" },
     { id: "q6", name: "Les Falaises", desc: "Atteindre les Falaises de Cristal.", kind: "zone", zone: "falaises", req: "q5", xp: 300, gold: 200, item: "epique" },
     { id: "q7", name: "Cœur de pierre", desc: "Vaincre 4 Golems de rune.", kind: "kill", mob: "golem", n: 4, req: "q6", xp: 420, gold: 260, item: "epique" },
-    { id: "q8", name: "L'Archonte", desc: "Vaincre l'Archonte fractal au fond du Sanctuaire brisé.", kind: "boss", n: 1, req: "q7", xp: 900, gold: 500, item: "legendaire" },
+    { id: "qm1", name: "Ça bulle", desc: "Entrer dans le Marais Bulleux (portail au sud du Bois Fractal).", kind: "zone", zone: "marais", req: "q3", xp: 160, gold: 100, item: "rare" },
+    { id: "qm2", name: "Sucre d'orge", desc: "Vaincre 5 Bonbonks.", kind: "kill", mob: "bonbonk", n: 5, req: "qm1", xp: 240, gold: 150, item: "epique" },
+    { id: "qm3", name: "La Reine Guimauve", desc: "Vaincre la Reine Guimauve au fond de sa Confiserie.", kind: "kill", mob: "guimauve", n: 1, req: "qm2", xp: 500, gold: 300, item: "legendaire" },
+    { id: "q8", name: "L'Archonte", desc: "Vaincre l'Archonte fractal au fond du Sanctuaire brisé.", kind: "kill", mob: "archonte", n: 1, req: "q7", xp: 900, gold: 500, item: "legendaire" },
+    { id: "qn1", name: "Tête dans les nuages", desc: "Atteindre les Îles Cotonneuses (à l'est des Falaises).", kind: "zone", zone: "nuages", req: "q8", xp: 500, gold: 300, item: "epique" },
+    { id: "qn2", name: "L'heure tourne", desc: "Vaincre 4 Horlogeons.", kind: "kill", mob: "horlogeon", n: 4, req: "qn1", xp: 700, gold: 400, item: "legendaire" },
+    { id: "qn3", name: "Le Grand Tic-Tac", desc: "Vaincre le Grand Tic-Tac au sommet de la Tour des Horloges.", kind: "kill", mob: "tictac", n: 1, req: "qn2", xp: 1500, gold: 900, item: "legendaire" },
   ];
 
   /* ====================== ZONES ====================== */
@@ -359,17 +382,33 @@
       portals: [{ x: 0, y: 11, to: "village", label: "Lumebourg" }, { x: 25, y: 11, to: "bois", req: 3, label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:incarnam", req: 2, label: "Donjon d'Incarnam" }] },
     bois: { name: "Bois Fractal", sub: "Niv. 3 à 6", w: 26, h: 24, lvl: [3, 6], theme: "bois", seed: 303, packs: 7, size: [2, 3],
       mobs: ["ronceau", "lanterneau", "sylphe", "scarabrume", "lanterneau"],
-      portals: [{ x: 0, y: 12, to: "prairie", label: "Prairie des Runes" }, { x: 25, y: 12, to: "falaises", req: 5, label: "Falaises de Cristal" }] },
+      portals: [{ x: 0, y: 12, to: "prairie", label: "Prairie des Runes" }, { x: 25, y: 12, to: "falaises", req: 5, label: "Falaises de Cristal" }, { x: 13, y: 23, to: "marais", req: 4, label: "Marais Bulleux" }] },
+    marais: { name: "Marais Bulleux", sub: "Niv. 4 à 7 · grenouilles et bonbons", w: 26, h: 22, lvl: [4, 7], theme: "marais", seed: 505, packs: 7, size: [2, 3], elite: 0.15,
+      mobs: ["grenouillon", "bonbonk", "grenouillon", "lanterneau", "glorbe"],
+      portals: [{ x: 13, y: 0, to: "bois", label: "Bois Fractal" }, { x: 25, y: 11, to: "dungeon:confiserie", req: 5, label: "Confiserie de la Reine Guimauve (donjon)" }] },
     falaises: { name: "Falaises de Cristal", sub: "Niv. 6 à 9", w: 26, h: 24, lvl: [6, 9], theme: "falaises", seed: 404, packs: 7, size: [2, 4], elite: 0.2,
       mobs: ["golem", "cristallin", "sylphe", "lanterneau", "cristallin"],
-      portals: [{ x: 0, y: 12, to: "bois", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:sanctuaire", req: 7, label: "Sanctuaire brisé (donjon)" }] },
+      portals: [{ x: 0, y: 12, to: "bois", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:sanctuaire", req: 7, label: "Sanctuaire brisé (donjon)" }, { x: 25, y: 12, to: "nuages", req: 9, label: "Îles Cotonneuses" }] },
+    nuages: { name: "Îles Cotonneuses", sub: "Niv. 9 à 12 · au-dessus des nuages", w: 26, h: 22, lvl: [9, 12], theme: "nuages", seed: 606, packs: 7, size: [2, 4], elite: 0.25,
+      mobs: ["nuagelet", "horlogeon", "nuagelet", "cristallin", "sylphe"],
+      portals: [{ x: 0, y: 11, to: "falaises", label: "Falaises de Cristal" }, { x: 13, y: 21, to: "dungeon:horloge", req: 10, label: "Tour des Horloges (donjon)" }] },
   };
-  var ZONE_IDS = ["village", "prairie", "bois", "falaises"];
+  var ZONE_IDS = ["village", "prairie", "bois", "marais", "falaises", "nuages"];
   var DUNGEONS = {
     incarnam: { name: "Donjon d'Incarnam", sub: "Niv. 2 à 4 · 3 salles", exit: "prairie", req: 2, rooms: [
       { name: "Cour envahie", lvl: 2, mobs: ["glorbe", "scarabrume", "glorbe", "ronceau"], elite: 0.15 },
       { name: "Serre aux lierres", lvl: 3, mobs: ["ronceau", "scarabrume", "lanterneau", "glorbe"], elite: 0.35 },
       { name: "Salle de la Sentinelle", lvl: 4, mobs: ["sentinelle", "ronceau", "glorbe"], boss: true },
+    ] },
+    confiserie: { name: "Confiserie de la Reine Guimauve", sub: "Niv. 5 à 7 · 3 salles", exit: "marais", req: 5, theme: "confiserie", rooms: [
+      { name: "Cuisine en sucre", lvl: 5, mobs: ["bonbonk", "grenouillon", "bonbonk", "glorbe"], elite: 0.2 },
+      { name: "Grand four à guimauves", lvl: 6, mobs: ["bonbonk", "lanterneau", "grenouillon", "bonbonk"], elite: 0.45 },
+      { name: "Trône en chamallow", lvl: 7, mobs: ["guimauve", "bonbonk", "grenouillon"], boss: true },
+    ] },
+    horloge: { name: "Tour des Horloges", sub: "Niv. 11 à 13 · 3 salles", exit: "nuages", req: 10, theme: "horloge", rooms: [
+      { name: "Salle des engrenages", lvl: 11, mobs: ["horlogeon", "nuagelet", "cristallin", "horlogeon"], elite: 0.3 },
+      { name: "Escalier à rebours", lvl: 12, mobs: ["horlogeon", "sylphe", "nuagelet", "golem"], elite: 0.6 },
+      { name: "Cadran du Grand Tic-Tac", lvl: 13, mobs: ["tictac", "horlogeon", "nuagelet"], boss: true },
     ] },
     sanctuaire: { name: "Sanctuaire brisé", sub: "Niv. 8 à 10 · 3 salles", exit: "falaises", req: 7, rooms: [
       { name: "Salle des échos", lvl: 8, mobs: ["cristallin", "golem", "lanterneau", "glorbe"], elite: 0.25 },
@@ -413,7 +452,7 @@
     Z.portals.forEach(function (p) { g[p.x][p.y] = 2; delete deco[key(p.x, p.y)]; });
     if (Z.theme !== "village") {
       // amas de décor
-      var dens = Z.theme === "bois" ? 0.17 : Z.theme === "falaises" ? 0.15 : 0.11;
+      var dens = Z.theme === "bois" ? 0.17 : Z.theme === "falaises" ? 0.15 : Z.theme === "marais" ? 0.16 : Z.theme === "nuages" ? 0.14 : 0.11;
       for (x = 1; x < W - 1; x++) for (y = 1; y < H - 1; y++) {
         if (path[key(x, y)]) continue;
         var near = 0;
@@ -423,8 +462,11 @@
       }
       // petit lac / gouffre
       if (Z.theme !== "village") {
-        var lx = ri(r, 5, W - 7), ly = ri(r, 4, H - 6), lw = ri(r, 2, 3), lh = ri(r, 2, 3);
-        for (x = lx; x < lx + lw; x++) for (y = ly; y < ly + lh; y++) if (!path[key(x, y)] && g[x][y] === 0) { g[x][y] = 3; delete deco[key(x, y)]; }
+        var lakes = Z.theme === "marais" ? 4 : Z.theme === "nuages" ? 3 : 1;
+        for (var lk = 0; lk < lakes; lk++) {
+          var lx = ri(r, 4, W - 8), ly = ri(r, 3, H - 7), lw = ri(r, 2, 4), lh = ri(r, 2, 3);
+          for (x = lx; x < lx + lw; x++) for (y = ly; y < ly + lh; y++) if (!path[key(x, y)] && g[x][y] === 0) { g[x][y] = 3; delete deco[key(x, y)]; }
+        }
       }
     }
     Object.keys(path).forEach(function (k) { var p = k.split(","), px = +p[0], py = +p[1]; if (g[px][py] !== 1 || !(px === 0 || py === 0 || px === W - 1 || py === H - 1)) { if (g[px][py] === 1 && deco[k] && deco[k].big) return; g[px][py] = 2; delete deco[k]; } });
@@ -454,6 +496,8 @@
   function borderDeco(theme, r) {
     if (theme === "falaises") return { t: r() < 0.6 ? "cliff" : "crystal", s: 0.9 + r() * 0.4, v: r() };
     if (theme === "village") return { t: r() < 0.5 ? "fence" : "tree", s: 0.9 + r() * 0.3, v: r() };
+    if (theme === "marais") return { t: r() < 0.5 ? "bigshroom" : "pine", s: 1 + r() * 0.4, v: r() };
+    if (theme === "nuages") return { t: r() < 0.7 ? "cloud" : "cotton", s: 1 + r() * 0.4, v: r() };
     return { t: r() < 0.75 ? "tree" : "rock", s: 0.95 + r() * 0.45, v: r() };
   }
   function fieldDeco(theme, r) {
@@ -461,6 +505,8 @@
     if (theme === "prairie") return { t: v < 0.45 ? "tree" : v < 0.75 ? "bush" : v < 0.92 ? "rock" : "rune", s: 0.8 + r() * 0.4, v: r() };
     if (theme === "bois") return { t: v < 0.6 ? "pine" : v < 0.8 ? "mushroom" : v < 0.92 ? "rock" : "rune", s: 0.85 + r() * 0.5, v: r() };
     if (theme === "falaises") return { t: v < 0.45 ? "crystal" : v < 0.8 ? "rock" : v < 0.9 ? "pine" : "rune", s: 0.8 + r() * 0.5, v: r() };
+    if (theme === "marais") return { t: v < 0.35 ? "bigshroom" : v < 0.6 ? "lantern" : v < 0.8 ? "reed" : v < 0.92 ? "mushroom" : "rune", s: 0.85 + r() * 0.5, v: r() };
+    if (theme === "nuages") return { t: v < 0.4 ? "cotton" : v < 0.65 ? "cloud" : v < 0.85 ? "star" : "balloon", s: 0.85 + r() * 0.5, v: r() };
     return { t: v < 0.5 ? "tree" : "bush", s: 0.9 + r() * 0.3, v: r() };
   }
   function buildVillage(g, deco, W, H, path) {
@@ -477,13 +523,13 @@
   }
   function exploreWalkable(m, x, y) { return x >= 0 && y >= 0 && x < m.w && y < m.h && (m.g[x][y] === 0 || m.g[x][y] === 2); }
 
-  // arène de combat : 13 × 13 aux coins coupés
-  var AW = 13, AH = 13;
+  // arène de combat : 11 × 11 aux coins coupés (petite : les combats vont vite, et ça tient sur un téléphone)
+  var AW = 11, AH = 11;
   function genArena(theme, seed, nHeroes) {
     var r = rng(seed), g = [];
-    for (var x = 0; x < AW; x++) { g.push([]); for (var y = 0; y < AH; y++) g[x].push(Math.abs(x - 6) + Math.abs(y - 6) > 9 ? 9 : 0); }
+    for (var x = 0; x < AW; x++) { g.push([]); for (var y = 0; y < AH; y++) g[x].push(Math.abs(x - 5) + Math.abs(y - 5) > 8 ? 9 : 0); }
     var heroCells = [], mobCells = [];
-    for (x = 3; x <= 9; x++) { heroCells.push([x, 11], [x, 10]); mobCells.push([x, 1], [x, 2]); }
+    for (x = 2; x <= 8; x++) { heroCells.push([x, 9], [x, 8]); mobCells.push([x, 1], [x, 2]); }
     heroCells = heroCells.filter(function (c) { return g[c[0]][c[1]] === 0; });
     mobCells = mobCells.filter(function (c) { return g[c[0]][c[1]] === 0; });
     var reserved = {};
@@ -492,13 +538,13 @@
     do {
       for (x = 0; x < AW; x++) for (y = 0; y < AH; y++) if (g[x][y] === 1) { g[x][y] = 0; }
       deco = {};
-      var n = ri(r, 9, 14);
+      var n = ri(r, 6, 10);
       for (var i = 0; i < n; i++) {
-        var ox = ri(r, 1, 11), oy = ri(r, 3, 9);
+        var ox = ri(r, 1, 9), oy = ri(r, 3, 7);
         if (g[ox][oy] !== 0 || reserved[key(ox, oy)]) continue;
         g[ox][oy] = 1; deco[key(ox, oy)] = arenaDeco(theme, r);
         // parfois une paire symétrique : lisible et tactique
-        var sx = 12 - ox;
+        var sx = 10 - ox;
         if (r() < 0.45 && g[sx][oy] === 0 && !reserved[key(sx, oy)]) { g[sx][oy] = 1; deco[key(sx, oy)] = arenaDeco(theme, r); }
       }
       tries++;
@@ -510,6 +556,10 @@
   function arenaDeco(theme, r) {
     var v = r();
     if (theme === "donjon") return { t: v < 0.5 ? "pillar" : "crystal", s: 1 + r() * 0.25, v: r() };
+    if (theme === "marais") return { t: v < 0.5 ? "bigshroom" : v < 0.8 ? "lantern" : "reed", s: 1 + r() * 0.3, v: r() };
+    if (theme === "nuages") return { t: v < 0.5 ? "cotton" : v < 0.8 ? "cloud" : "star", s: 1 + r() * 0.3, v: r() };
+    if (theme === "confiserie") return { t: v < 0.5 ? "candy" : v < 0.8 ? "cupcake" : "lollipop", s: 1 + r() * 0.3, v: r() };
+    if (theme === "horloge") return { t: v < 0.5 ? "gear" : v < 0.8 ? "pillar" : "pendulum", s: 1 + r() * 0.3, v: r() };
     if (theme === "falaises") return { t: v < 0.5 ? "crystal" : "rock", s: 1.1 + r() * 0.3, v: r() };
     if (theme === "bois") return { t: v < 0.5 ? "pine" : v < 0.8 ? "mushroom" : "rock", s: 1 + r() * 0.3, v: r() };
     return { t: v < 0.45 ? "rock" : v < 0.8 ? "bush" : "tree", s: 1.1 + r() * 0.3, v: r() };
@@ -826,7 +876,7 @@
 
   /* ====================== COMBAT : MISE EN PLACE ====================== */
   function startCombat(w, pk, room) {
-    var theme = room ? "donjon" : ZONES[w.zone].theme;
+    var theme = room ? (DUNGEONS[room.dungeon] && DUNGEONS[room.dungeon].theme) || "donjon" : ZONES[w.zone].theme;
     var A = genArena(theme, Math.floor(R() * 1e9), w.players.length);
     var c = { arena: A, units: [], uid: 1, turn: -1, order: [], round: 1, phase: "place", objects: [], tele: [], log: [], packId: pk ? pk.id : null, room: room || null, aiT: 0, aiN: 0, stats: {} };
     w.combat = c; w.mode = "combat";
@@ -835,7 +885,7 @@
       if (!pl) return;
       var s = heroStats(pl.profile), C = CLASSES[pl.profile.cls];
       var keepHp = w.dungeon && w.dungeon.hp && w.dungeon.hp[i] != null ? w.dungeon.hp[i] : null;
-      var cell = A.heroCells[i * 3 + 4] || A.heroCells[i];
+      var cell = A.heroCells[i * 4 + 4] || A.heroCells[i];
       c.units.push({ id: c.uid++, side: 0, pi: i, cls: pl.profile.cls, name: pl.name, lvl: pl.profile.level,
         x: cell[0], y: cell[1], hp: keepHp != null ? Math.max(1, Math.min(s.hp, keepHp)) : s.hp, maxHp: s.hp,
         pa: s.pa, pm: s.pm, maxPa: s.pa, maxPm: s.pm, po: s.po, res: s.res, ini: s.ini, crit: s.crit, heal: s.heal, pow: 0, elem: s.elem, dom: s.dom,
@@ -1533,6 +1583,7 @@
       else if (u.summon) ev(w, { k: "slash", id: u.id, to: [t.x, t.y], col: "#2f8f6c" });
       damage(w, u, t, S.dmg);
       if (S.push && t.alive) knock(w, u, t, u.x, u.y, S.push);
+      if (S.pull && t.alive) knock(w, u, t, u.x, u.y, S.pull, true);
     }
     afterAction(w);
     return 0.85;
@@ -1806,7 +1857,7 @@
   var API = {
     CFG: CFG, CLASSES: CLASSES, CLASS_IDS: CLASS_IDS, SPELLS: SPELLS, SUMMONS: SUMMONS, spellsOf: spellsOf, MOBS: MOBS, MOB_SPELLS: MOB_SPELLS, AFFIXES: AFFIXES,
     SLOTS: SLOTS, SLOT_NAME: SLOT_NAME, RARITIES: RARITIES, STATS: STATS, POWERS: POWERS, QUESTS: QUESTS, ZONES: ZONES, ZONE_IDS: ZONE_IDS,
-    DUNGEONS: DUNGEONS, NPCS: NPCS, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, BAG_MAX: BAG_MAX,
+    DUNGEONS: DUNGEONS, NPCS: NPCS, AW: AW, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, BAG_MAX: BAG_MAX,
     newProfile: newProfile, fixProfile: fixProfile, heroStats: heroStats, gearOf: gearOf, LOOKS: LOOKS, xpNeed: xpNeed, itemScore: itemScore, makeItem: makeItem, rollRarity: rollRarity,
     createWorld: createWorld, addPlayer: addPlayer, removePlayer: removePlayer, zoneMap: zoneMap, exploreWalkable: exploreWalkable, portalAt: portalAt, findPath: findPath,
     cmd: cmd, step: step, active: active, unitAt: unitAt, objAt: objAt, uById: uById, inArena: inArena, groundOk: groundOk, cellFree: cellFree,
