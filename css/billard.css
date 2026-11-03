@@ -39,3 +39,43 @@
   .pool { grid-template-columns: 1fr; }
   .pool-side { padding: 10px; }
 }
+
+/* plein écran (API Fullscreen ou repli CSS sur iPhone) */
+.pool-noscroll, .pool-noscroll body { overflow: hidden; }
+.pool:fullscreen, .pool.is-max {
+  position: fixed; inset: 0; z-index: 1000; width: 100vw; height: 100vh; height: 100dvh; box-sizing: border-box;
+  background: #1b1410; gap: 8px; align-items: center; align-content: center;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  grid-template-columns: minmax(0, 1fr) 250px; overflow: auto;
+}
+.pool.is-full .pool-stage { border-width: 0; box-shadow: none; background: transparent; }
+.pool.is-full .pool-side { padding: 8px; gap: 8px; max-height: 100%; overflow: auto; }
+.pool.is-full .pool-pot { display: none; }
+@media (max-width: 760px) and (orientation: portrait) {
+  .pool:fullscreen, .pool.is-max { grid-template-columns: 1fr; grid-template-rows: auto auto; align-content: start; }
+}
+@media (max-width: 760px) and (orientation: portrait) {
+  .pool.is-full .pool-players { grid-template-columns: 1fr 1fr; }
+  .pool.is-full .pool-player { padding: 4px 6px; }
+  .pool.is-full .pool-status { min-height: 0; font-size: .9rem; }
+  .pool.is-full .pool-tray { display: none; }
+}
+
+/* écrans bas (téléphone en paysage) : panneau compact */
+@media (max-height: 520px) {
+  .pool.is-full .pool-side { gap: 6px; padding: 6px; }
+  .pool.is-full .pool-player { padding: 3px 8px; }
+  .pool.is-full .pool-pname { font-size: .85rem; }
+  .pool.is-full .pool-tray { display: none; }
+  .pool.is-full .pool-status { min-height: 0; font-size: .8rem; line-height: 1.25; }
+  .pool.is-full .pool-shoot { gap: 4px; }
+  .pool.is-full .pool-power { font-size: .8rem; }
+  .pool.is-full .btn { padding: 4px 8px; font-size: .8rem; }
+  .pool.is-full .pool-actions { gap: 4px; }
+}
+@media (max-width: 760px) and (orientation: portrait) {
+  .pool.is-full .pool-side { gap: 6px; padding: 8px; }
+  .pool.is-full .btn { padding: 4px 8px; font-size: .8rem; }
+  .pool.is-full .pool-shoot { gap: 4px; }
+  .pool.is-full .pool-actions { gap: 4px; }
+}

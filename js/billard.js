@@ -45,7 +45,7 @@
   var overlay = $("[data-overlay]", root), card = $("[data-card]", root);
   var elPlayers = $("[data-players]", root), elStatus = $("[data-status]", root), elPot = $("[data-pot]", root);
   var elShoot = $("[data-shoot]", root), elPower = $("[data-power]", root), elPowerOut = $("[data-power-out]", root);
-  var elActions = $("[data-actions]", root);
+  var elActions = $("[data-actions]", root), elSide = $(".pool-side", root);
 
   /* ---------- état ---------- */
   var myName = String(lget("billard-name", "") || "").slice(0, 16);
@@ -399,16 +399,23 @@
 
   /* --- rendu de la table --- */
   function layout() {
-    var wrapW = Math.max(240, stage.clientWidth || root.clientWidth), vh = window.innerHeight || 700;
+    var wrapW = Math.max(240, (isFull() && !(window.innerWidth < 760 && window.innerHeight > window.innerWidth * 1.1)) ? window.innerWidth - 270 : (stage.clientWidth || root.clientWidth)), vh = window.innerHeight || 700;
     rot = window.innerWidth < 760 && window.innerHeight > window.innerWidth * 1.1;
     var lw = W + 2 * FRAME, lh = H + 2 * FRAME;
     var aw = rot ? lh : lw, ah = rot ? lw : lh;
-    var maxH = Math.max(260, vh - (rot ? 150 : 190));
+    var full = isFull();
+    if (full) vh = window.innerHeight;
+    var sideH = full && rot ? (elSide.offsetHeight || 230) : 0;
+    var maxH = Math.max(200, vh - (full ? (rot ? sideH + 14 : 16) : (rot ? 150 : 190)));
     var cssW = Math.min(wrapW, aw * (maxH / ah), 1200);
     var cssH = cssW * ah / aw;
     var dpr = Math.min(2.5, window.devicePixelRatio || 1);
-    canvas.style.width = Math.round(cssW) + "px"; canvas.style.height = Math.round(cssH) + "px";
-    canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+    var key = Math.round(cssW) + "x" + Math.round(cssH) + "@" + dpr + (rot ? "r" : "");
+    if (key !== layout.key) {
+      layout.key = key;
+      canvas.style.width = Math.round(cssW) + "px"; canvas.style.height = Math.round(cssH) + "px";
+      canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+    }
     CW = aw; CH = ah; scale = canvas.width / aw;
   }
   function setTransform() {
@@ -647,11 +654,13 @@
     elStatus.textContent = st;
     elShoot.hidden = !isMyTurn();
     renderActions();
+    if (isFull()) layout();
   }
   function renderActions() {
     var h = '<button class="btn btn-ghost btn-small" type="button" data-act="menu">☰ Menu</button>';
     h += '<button class="btn btn-ghost btn-small" type="button" data-act="sound">' + (soundOn ? "🔊" : "🔇") + "</button>";
     if (G && !G.over && !G.local && myIdx() >= 0) h += '<button class="btn btn-ghost btn-small" type="button" data-act="resign">🏳️ Abandonner</button>';
+    h += '<button class="btn btn-ghost btn-small" type="button" data-act="full">' + (isFull() ? "⛶ Quitter le plein écran" : "⛶ Plein écran") + "</button>";
     elActions.innerHTML = h;
   }
   root.addEventListener("click", function (ev) {
@@ -663,6 +672,7 @@
   function handleAct(a, el) {
     audioInit();
     if (a === "sound") { soundOn = !soundOn; lset("billard-sound", soundOn ? "1" : "0"); if (soundOn) audioInit(); renderActions(); return; }
+    if (a === "full") { toggleFull(); return; }
     if (a === "menu") { showMenu(G ? "pause" : "home"); return; }
     if (a === "close") { overlay.hidden = true; screen = "game"; return; }
     if (a === "resign") {
@@ -695,6 +705,33 @@
       return;
     }
   }
+  /* plein écran : API Fullscreen, ou repli CSS (iPhone) */
+  function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement) || root.classList.contains("is-max"); }
+  function syncFull() {
+    var f = isFull();
+    root.classList.toggle("is-full", f);
+    document.documentElement.classList.toggle("pool-noscroll", f);
+    layout(); renderActions(); layout();
+    setTimeout(layout, 150);
+  }
+  function toggleFull() {
+    if (isFull()) {
+      root.classList.remove("is-max");
+      var ex = document.exitFullscreen || document.webkitExitFullscreen;
+      if (document.fullscreenElement || document.webkitFullscreenElement) { try { var r = ex.call(document); if (r && r.catch) r.catch(function () {}); } catch (e) {} }
+      try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+      syncFull(); return;
+    }
+    var req = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (req) {
+      var pr; try { pr = req.call(root); } catch (e) { pr = null; }
+      var fallback = function () { root.classList.add("is-max"); syncFull(); };
+      if (pr && pr.then) pr.then(function () { try { if (screen.orientation && screen.orientation.lock && window.innerWidth > window.innerHeight * 0.7) screen.orientation.lock("landscape").catch(function () {}); } catch (e) {} syncFull(); }, fallback);
+      else fallback();
+    } else { root.classList.add("is-max"); syncFull(); }
+  }
+  document.addEventListener("fullscreenchange", syncFull);
+  document.addEventListener("webkitfullscreenchange", syncFull);
   function copyLink() {
     if (!NET.code) return;
     var link = location.href.split("#")[0] + "#salon=" + NET.code;
@@ -748,7 +785,7 @@
   /* =====================================================================
      DÉMARRAGE
      ===================================================================== */
-  window.addEventListener("resize", layout);
+  window.addEventListener("resize", function () { layout(); });
   window.addEventListener("orientationchange", function () { setTimeout(layout, 120); });
   layout();
   elPowerOut.textContent = power; elPower.value = power;
