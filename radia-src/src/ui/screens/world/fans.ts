@@ -113,7 +113,7 @@ export function openFans(opts: { album?: boolean } = {}): Promise<void> {
       h('div.fn-counter', count, h('span', 'fans')),
       h('div.fn-bar', bar),
       h('small.fn-next', next ? `Prochain palier : ${fmt(next)} fans` : 'Tous les paliers sont atteints !'),
-      h('small.fn-fict', 'popularité fictive du jeu')));
+      h('small.fn-fict', 'popularité')));
     countUp(count, 0, w.fans, 1300);
     window.setTimeout(() => { bar.style.width = `${Math.round(pct * 100)}%`; }, 100);
 
@@ -150,7 +150,7 @@ export function openFans(opts: { album?: boolean } = {}): Promise<void> {
       album.append(cell);
     }
     body.append(h('h3.fn-h#album', `Album des couvertures · ${owned.length}/${MAGAZINE_IDS.length}`), album,
-      h('small.fn-note', 'Magazines fictifs : ils n\'existent que dans le jeu ♡'));
+      h('small.fn-note', 'Collectionne les 5 couvertures de magazine ♡'));
     void magazineUnlocked;
 
     if (opts.album) window.setTimeout(() => body.querySelector('#album')?.scrollIntoView({ behavior: 'smooth' }), 250);

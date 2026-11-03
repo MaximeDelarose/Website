@@ -58,7 +58,7 @@ export function openCareer(): Promise<void> {
         h('p.cr-lead', 'Choisis ta voie, Radia. Tu peux changer quand tu veux : rien n\'est perdu.'),
         h('div.cr-grid', ...cards),
         h('div.cr-links', fans, mags),
-        h('small.cr-fict', 'Carrières et popularité fictives : tout se passe dans le jeu ♡'));
+        h('small.cr-fict', 'Chaque carrière se gagne en jouant ♡'));
       ui.showScreen(h('div.screen.bg-soft.cr-screen', ui.header('La carrière de Radia ♡', leave), body));
       if (firstTime('tip.career.intro')) ui.toast({ title: 'Quatre carrières', sub: 'Chaque séance est un petit jeu : plus tu progresses, plus c\'est difficile… et plus tu as de fans.', icon: 'sparkle', ms: 3200 });
       reactAuguste('career', 0.25);
@@ -144,7 +144,7 @@ export function openCareer(): Promise<void> {
         h('div.cr-lines', ...res.lines.map((l) => h('div', l))),
         chips, bar,
         out.levelUp ? h('div.cr-up', icon('trophy', 22), h('b', ` Palier ${out.levelUp.to} : ${out.levelUp.tier.title}`)) : null,
-        h('small.cr-fict', `Fans : ${fmt(w.fans)} (popularité fictive du jeu)`),
+        h('small.cr-fict', `Fans : ${fmt(w.fans)}`),
         again, back);
       ui.showScreen(h('div.screen.bg-soft.cr-screen', ui.header(def.session, () => showSheet(id)), body));
       audio.play(out.score >= 60 ? 'reward' : 'pickup');

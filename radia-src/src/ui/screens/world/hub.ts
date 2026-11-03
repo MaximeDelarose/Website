@@ -121,15 +121,15 @@ export function openWorldHub(): Promise<void> {
         grid.append(card);
       });
     };
-    const intro = h('p.hub-intro', 'Ton château, ton jardin, ta famille, ta carrière… tout un petit monde rien que pour toi ♡');
+    const intro = h('p.hub-intro', 'Ton château, ton jardin, ta famille, ta carrière… un mode de jeu rien que pour toi ♡');
     const body = h('div.screen-body', chips, intro, grid,
       h('p.muted.center', { style: 'font-size:12.5px;margin:10px 4px 0' }, 'Les pièces et les matériaux se gagnent en fusionnant et en livrant des commandes.'));
-    scr = h('div.bg-soft.hub-screen', ui.header('Mon domaine', close), body);
+    scr = h('div.bg-soft.hub-screen', ui.header('Mon monde ♡', close), body);
     ui.showScreen(scr);
     renderChips();
     renderGrid();
     const off = events.on('economy', renderChips);
-    if (firstTime('tip.hub')) window.setTimeout(() => augusteSays('Bienvenue dans ton domaine, ma reine. Tout ici est à toi.', 4200), 700);
+    if (firstTime('tip.hub')) window.setTimeout(() => augusteSays('Bienvenue dans ton monde, ma reine. Tout ici est à toi.', 4200), 700);
 
     function close() {
       off();

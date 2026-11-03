@@ -224,7 +224,7 @@ export function drawMagazine(ctx: CanvasRenderingContext2D, id: MagazineId, w: n
   ctx.fillStyle = OUTLINE;
   const rr = seeded(id.length * 31);
   for (let x = 224; x < 284; x += 3) ctx.fillRect(x, 346, rr() < 0.4 ? 1 : 2, 24);
-  txt(ctx, 'ÉDITION FICTIVE ♡', 255, 384, { size: 7.4, weight: 600, fill: PAL.choco, align: 'center' });
+  txt(ctx, 'ÉDITION SPÉCIALE ♡', 255, 384, { size: 7.4, weight: 600, fill: PAL.choco, align: 'center' });
   // étincelles
   sparkle(ctx, 268, 118, 9, '#FFFFFF'); sparkle(ctx, 252, 136, 5, m.accent);
   ctx.restore();

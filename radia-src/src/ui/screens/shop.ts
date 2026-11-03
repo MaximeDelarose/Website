@@ -118,7 +118,7 @@ export function openShop(tab: Tab = 'diamonds'): Promise<void> {
           h('div.pack-gems', ...Array.from({ length: Math.min(5, i + 1) }, (_, k) => h('img', { src: diamondUrl(64), alt: '', style: `--k:${k}` }))),
           h('b.pack-amount', fmt(p.diamonds)),
           h('span.pack-label', 'diamants'),
-          h('span.pack-price', `${p.euros} €`, h('small', ' fictif')));
+          h('span.pack-price', `${p.euros} €`));
         c.addEventListener('click', tap(() => { selected = p; cards.forEach((x) => x.classList.toggle('on', x === c)); payBtn.textContent = `Payer avec la carte d'Auguste · ${p.euros} €`; audio.play('pickup'); }));
         return c;
       });
@@ -126,7 +126,6 @@ export function openShop(tab: Tab = 'diamonds'): Promise<void> {
       const payBtn = h('button.btn.wide.pay-btn', `Payer avec la carte d'Auguste · ${selected.euros} €`);
       payBtn.addEventListener('click', tap(() => void pay(selected)));
       body.append(
-        h('p.fake-note', '✨ Prix fictifs : rien n\'est jamais débité. C\'est un cadeau d\'Auguste, pour de faux… mais avec amour.'),
         grid, payBtn);
     }
 
@@ -258,7 +257,7 @@ export function openShop(tab: Tab = 'diamonds'): Promise<void> {
         }
         body.append(group);
       }
-      const deco = h('button.btn.wide.secondary', { style: 'margin-top:8px' }, icon('home', 20), 'Décorer notre petit monde');
+      const deco = h('button.btn.wide.secondary', { style: 'margin-top:8px' }, icon('home', 20), 'Mon monde');
       deco.addEventListener('click', tap(async () => { close(); const d = await import('./decor'); await d.openDecor(); }));
       body.append(deco);
     }
@@ -310,7 +309,7 @@ export function diamondBurst(x: number, y: number, n = 26): void {
 /** Paiement fictif : la carte, le terminal, la validation, les diamants. */
 function payAnimation(diamonds: number, euros: number): Promise<void> {
   return new Promise((resolve) => {
-    const status = h('div.pay-status', h('span.pay-dots', 'Paiement en cours'), h('small', `${euros} € · prix fictif`));
+    const status = h('div.pay-status', h('span.pay-dots', 'Paiement en cours'), h('small', `${euros} €`));
     const terminal = h('div.pay-terminal', h('div.pt-screen', h('span', '♡'), h('small', `${euros},00 €`)), h('div.pt-keys', ...Array.from({ length: 6 }, () => h('i'))));
     const card = giftCard();
     card.classList.add('paying');

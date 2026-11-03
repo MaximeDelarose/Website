@@ -137,7 +137,7 @@ export function defaultWorld(): World {
   const kids = {} as Record<KidId, KidState>;
   for (const k of KID_IDS) kids[k] = { bond: 0, games: {}, seenScenes: [] };
   return {
-    res: { coins: 120, flowers: 0, fabric: 0, cocoa: 0 },
+    res: { coins: 60, flowers: 0, fabric: 0, cocoa: 0 },
     castle: { unlocked: ['bedroom', 'salon', 'garden'], rooms, owned: {}, nextUid: 1 },
     wardrobe: { owned: [...STARTER_CLOTHES], look: { ...DEFAULT_LOOK, acc: [] }, looks: [null, null, null], hairOwned: ['hair-loose', 'hair-wavy'] },
     cat: { adopted: false, name: '', items: [], equipped: { collar: null, bed: null }, bond: 0, treats: 3, lastSeen: 0, counters: {} },
@@ -170,7 +170,7 @@ export interface Economy {
 }
 
 export const defaultEconomy = (): Economy => ({
-  energy: 100, energyTs: Date.now(), diamonds: 30, freeRefillTs: 0, freeChestTs: 0, bag: [], bagSlots: 6, giftCount: 0, diamondsGifted: 0,
+  energy: 100, energyTs: Date.now(), diamonds: 10, freeRefillTs: 0, freeChestTs: 0, bag: [], bagSlots: 6, giftCount: 0, diamondsGifted: 0,
 });
 
 export function defaultSave(): SaveData {
@@ -365,7 +365,7 @@ const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string
   // On offre 50 diamants de bienvenue et on prévoit l'écran « Nouveautés ».
   1: (raw) => ({
     ...raw,
-    economy: { ...defaultEconomy(), diamonds: 50 },
+    economy: { ...defaultEconomy(), diamonds: 15 },
     cosmetics: { tiles: 'classic', fx: 'classic', owned: ['classic'] },
     decor: [],
     seenUpdates: [],

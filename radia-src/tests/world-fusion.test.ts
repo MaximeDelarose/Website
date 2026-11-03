@@ -43,7 +43,7 @@ describe('sauvegarde v3', () => {
   it('migration v1 → v3 enchaînée', () => {
     const m = migrate({ v: 1, hearts: 5 });
     expect(m.data.v).toBe(SAVE_VERSION);
-    expect(m.data.economy.diamonds).toBe(50);
+    expect(m.data.economy.diamonds).toBe(15);
     expect(m.data.world.fans).toBe(0);
   });
   it('monde abîmé → valeurs sûres, jamais d\'exception', () => {

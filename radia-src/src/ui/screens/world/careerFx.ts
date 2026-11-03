@@ -131,7 +131,7 @@ export function showFanTier(c: FanTierClaim): Promise<void> {
     h('p.fx-sub', c.def.note),
     c.def.event ? h('p.fx-event', `Événement : ${c.def.event}`) : null,
     h('div.rc-row', ...rewardChips(c.def.reward, c.items)),
-    h('small.fx-fict', 'popularité fictive du jeu'),
+    h('small.fx-fict', 'popularité'),
     btn);
   const L = layer([card], 'fx-big');
   btn.addEventListener('click', tap(L.close));

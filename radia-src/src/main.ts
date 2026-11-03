@@ -85,8 +85,8 @@ async function showWhatsNewV3(): Promise<void> {
         li('Le dressing : vêtements, coiffures, couronnes, 3 looks favoris.'),
         li('Un chat à adopter (tu choisis son prénom), un jardin de fleurs, une chocolaterie.'),
         li('Les jeux en famille, quatre carrières, des fans et des couvertures de magazine.'),
-        li('Tout se trouve dans DÉCORER. Les pièces et matériaux se gagnent en fusionnant !')),
-      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, '120 pièces offertes pour commencer ♡')),
+        li('Tout se trouve dans MON MONDE. Les pièces et matériaux se gagnent en fusionnant !')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, '60 pièces offertes pour commencer ♡')),
     actions: [{ label: 'Découvrir', value: 'ok' }],
   });
 }

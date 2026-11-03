@@ -136,17 +136,22 @@ export function showTitle(): void {
   };
   const progress = hasProgress();
   const menu = h('div.title-menu');
-  if (progress) {
-    const label = storyFinished() ? 'CONTINUER · Mode infini' : 'CONTINUER';
-    menu.append(btn(label, '', () => void go(() => (storyFinished() ? endless() : story())), 100));
-  }
-  menu.append(btn('JOUER', progress ? '.secondary' : '', () => void go(() => (progress ? openMap() : story())), 160));
+  // Deux grands modes bien visibles : l'histoire en chapitres, et « Mon monde ».
+  const mode = (cls: string, ic: string, title: string, sub: string, fn: () => void, delay: number) => {
+    const b = h(`button.btn.enter.mode${cls}`, { style: `animation-delay:${delay}ms` },
+      h('span.mode-ic', icon(ic, 30)), h('span.mode-tx', h('b', title), h('small', sub)));
+    b.addEventListener('click', tap(fn));
+    return b;
+  };
+  const chapSub = storyFinished() ? 'Mode infini · de nouveaux défis' : progress ? 'Continue ton histoire' : 'Fusionne et découvre l\'histoire';
+  menu.append(mode('', 'heart', 'MODE CHAPITRES', chapSub, () => void go(() => (progress ? (storyFinished() ? endless() : story()) : story())), 100));
+  menu.append(mode('.gold', 'home', 'MON MONDE', 'Château · dressing · jardin · famille', () => void go(async () => { const d = await import('./world/hub'); await d.openWorldHub(); showTitle(); }), 160));
   const chessBtn = btn('ÉCHECS', '.lavande', () => void go(chess), 220, chessUnlocked() ? icon('chess', 20) : h('span.lock', icon('lock', 18)));
   if (!chessUnlocked()) chessBtn.classList.add('locked');
-  menu.append(h('div.row', chessBtn, btn('SOUVENIRS', '.gold', () => void go(() => openAlbum('memories').then(showTitle)), 260, icon('album', 20))));
+  menu.append(h('div.row', chessBtn, btn('SOUVENIRS', '.secondary', () => void go(() => openAlbum('memories').then(showTitle)), 260, icon('album', 20))));
   menu.append(h('div.row',
-    btn('DÉCORER', '.secondary', () => void go(async () => { const d = await import('./world/hub'); await d.openWorldHub(); showTitle(); }), 300, icon('home', 20)),
-    btn('SUCCÈS', '.secondary', () => void go(achievements), 340, icon('trophy', 20))));
+    progress ? btn('NIVEAUX', '.secondary', () => void go(() => openMap()), 300, icon('map', 20)) : btn('SUCCÈS', '.secondary', () => void go(achievements), 300, icon('trophy', 20)),
+    progress ? btn('SUCCÈS', '.secondary', () => void go(achievements), 340, icon('trophy', 20)) : h('span')));
 
   // barre du haut : réglages · énergie / diamants · carte d'Auguste
   const gems = h('button.res-chip', { 'aria-label': 'Diamants' }, h('img', { src: diamondUrl(52), alt: '' }), h('span', fmt(wallet.diamonds())), h('span.plus', '+'));

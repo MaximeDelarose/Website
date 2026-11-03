@@ -66,7 +66,7 @@ describe('diamants, sac, coffres', () => {
     }
   });
   it('packs et décorations cohérents', () => {
-    expect(PACKS.map((p) => [p.euros, p.diamonds])).toEqual([[1, 100], [5, 600], [10, 1400], [20, 3200], [50, 10000]]);
+    expect(PACKS.map((p) => [p.euros, p.diamonds])).toEqual([[1, 50], [5, 275], [10, 600], [20, 1300], [50, 3500]]);
     expect(DECOR.length).toBe(12);
   });
 });
@@ -79,7 +79,7 @@ describe('migration v1 → v2', () => {
     expect(m.data.v).toBe(SAVE_VERSION);
     expect(m.data.hearts).toBe(120);
     expect(m.data.memories).toEqual(['flowers']);
-    expect(m.data.economy.diamonds).toBe(50);
+    expect(m.data.economy.diamonds).toBe(15);
     expect(m.data.economy.energy).toBe(100);
     expect(m.data.seenUpdates).toEqual([]);
   });

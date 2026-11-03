@@ -49,6 +49,6 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'w_bouquet', name: 'Un bouquet pour ma reine', desc: 'Composer un premier bouquet.', icon: 'flower', check: (s) => stat(s, 'world.garden.bouquet') >= 1 },
   { id: 'w_chocolates', name: 'Chocolatière', desc: 'Découvrir les 8 chocolats.', icon: 'gift', check: (s) => s.world.choc.collection.length >= 8 },
   { id: 'w_career', name: 'Sous les projecteurs', desc: 'Atteindre le palier 5 d\'une carrière.', icon: 'star', check: (s) => Object.values(s.world.careers.progress).some((p) => p.level >= 5) },
-  { id: 'w_fans', name: 'Mille admirateurs', desc: 'Atteindre 1 000 fans (fictifs).', icon: 'trophy', check: (s) => s.world.fans >= 1000 },
+  { id: 'w_fans', name: 'Mille admirateurs', desc: 'Atteindre 1 000 fans.', icon: 'trophy', check: (s) => s.world.fans >= 1000 },
   { id: 'w_covers', name: 'À la une !', desc: 'Collectionner les 5 couvertures de magazine.', icon: 'album', check: (s) => s.world.magazines.length >= 5 },
 ];

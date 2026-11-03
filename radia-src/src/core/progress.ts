@@ -64,7 +64,7 @@ export function markMinigame(id: string, score = 0): boolean {
 
 /** Vérifie tous les succès ; renvoie ceux qui viennent d'être débloqués. */
 /** Diamants offerts pour chaque succès. */
-export const ACHIEVEMENT_DIAMONDS = 10;
+export const ACHIEVEMENT_DIAMONDS = 5;
 
 export function checkAchievements(): AchievementDef[] {
   const fresh: AchievementDef[] = [];

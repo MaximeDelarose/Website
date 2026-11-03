@@ -107,7 +107,7 @@ export const FAN_TIER_DEFS: FanTierDef[] = [
   { n: 1000, title: 'On parle de toi', note: 'Les passants te reconnaissent.', reward: { coins: 200, diamonds: 8, cloth: ['sh-heels'] } },
   { n: 10000, title: 'Idole de Paris', note: 'Une robe de scène t\'attend.', reward: { coins: 300, fabric: 6, cloth: ['dr-stage-sequin'] } },
   { n: 100000, title: 'Star du royaume', note: 'Le tapis rouge est déroulé.', reward: { coins: 600, diamonds: 20, cloth: ['cr-tiara'], furniture: ['red-carpet'] }, event: 'Soirée de gala' },
-  { n: 1000000, title: 'Légende', note: 'Un million de cœurs (fictifs).', reward: { coins: 1500, diamonds: 50, cloth: ['cr-gold', 'dr-redcarpet'], furniture: ['chandelier'] }, magazine: 'star-royaume', event: 'Grande soirée du royaume' },
+  { n: 1000000, title: 'Légende', note: 'Un million de cœurs.', reward: { coins: 1500, diamonds: 50, cloth: ['cr-gold', 'dr-redcarpet'], furniture: ['chandelier'] }, magazine: 'star-royaume', event: 'Grande soirée du royaume' },
 ];
 
 /** Fiche d'Auguste (fan n° 1) et ses répliques de fiche (en plus de celles d'auguste.ts). */
@@ -161,7 +161,7 @@ export const MAGAZINES: Record<MagazineId, MagazineDef> = {
   'star-royaume': {
     id: 'star-royaume', name: 'Star du Royaume', how: '100 000 fans, ou une carrière au palier 5', unlock: { anyLevel: 5, fansTier: 4 },
     bg: ['#3B3152', '#E8558F'], accent: '#F3C86B', ink: '#FFF9EE', slogan: 'La couronne lui va si bien', issue: 'Numéro collector',
-    heads: ['Couronnée !', 'Une légende (fictive) est née', 'Tout le royaume chante'],
+    heads: ['Couronnée !', 'Une légende est née', 'Tout le royaume chante'],
   },
 };
 

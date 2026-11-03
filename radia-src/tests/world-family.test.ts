@@ -166,7 +166,7 @@ describe('récompenses et complicité', () => {
   it('applyReward crédite pièces, fleurs, cacao, meubles, coffrets et collection', () => {
     const w = defaultWorld();
     const r = applyReward(w, { ...rewardFor('choc', 3, mulberry32(1)), furniture: 'candles' }, ['milk', 'praline', 'heart']);
-    expect(w.res.coins).toBe(120 + r.coins);
+    expect(w.res.coins).toBe(60 + r.coins);
     expect(w.res.cocoa).toBe(r.cocoa);
     expect(w.choc.boxes).toBe(1);
     expect(w.castle.owned.candles).toBe(1);
