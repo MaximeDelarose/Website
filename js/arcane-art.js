@@ -64,6 +64,8 @@
     g.scale(s * (o.flip || 1) / sq * (o.hurt ? 1 + o.hurt * 0.06 : 1), s * sq);
     g.rotate((o.flip || 1) < 0 ? -lean : lean);
     if (o.hurt) g.translate(-o.hurt * 4, 0);
+    var G = o.gear || {};
+    if (G.cape) gearCape(g, G.cape, t, o);
     if (cls === "bastion") drawBastion(g, P, t, o, bob);
     else if (cls === "prisme") drawPrisme(g, P, t, o, bob);
     else if (cls === "sibylle") drawSibylle(g, P, t, o, bob);
@@ -71,6 +73,11 @@
     else if (cls === "orage") drawOrage(g, P, t, o, bob);
     else if (cls === "ondine") drawOndine(g, P, t, o, bob);
     else drawVoltige(g, P, t, o, bob);
+    if (G.bottes) gearBoots(g, G.bottes, t, o);
+    if (G.amulette) gearAmulet(g, G.amulette, t, o);
+    if (G.anneau) gearRing(g, G.anneau, t, o);
+    if (G.coiffe) gearHat(g, G.coiffe, t, o, cls === "bastion" ? -70 : cls === "orage" || cls === "ondine" ? -66 : -62);
+    if (G.arme) gearWeapon(g, G.arme, t, o, cls);
     if (o.hurt > 0.3) { g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(255,255,255," + (o.hurt * 0.7) + ")"; g.fillRect(-40, -80, 80, 90); g.globalCompositeOperation = "source-over"; }
     g.restore();
   }
@@ -306,6 +313,177 @@
     glow(g, 0, -8, 12, "rgba(63,232,255,.6)", 0.7);
     poly(g, [-2, 2, 0, -18, 2, 2], P.cyan, "#ffffff", 1);
     g.fillStyle = P.ash; g.fillRect(-3, 2, 6, 3);
+    g.restore();
+  }
+
+  /* ====================== ÉQUIPEMENT VISIBLE (gros et rigolo) ====================== */
+  var RCOL = ["#c9ccd6", "#5fb7ff", "#ffd257", "#c77dff", "#ff9a3c"];
+  function rc(it) { return RCOL[it.r] || RCOL[0]; }
+  function sparkle(g, x, y, t, col) { var k = 0.5 + Math.sin(t * 5) * 0.5; poly(g, [x, y - 4 * k, x + 2 * k, y, x, y + 4 * k, x - 2 * k, y], col || "#fff"); }
+  // ---- coiffes : posées sur le haut de la tête (y = top) ----
+  function gearHat(g, it, t, o, top) {
+    var c = rc(it), d = shade(c, -0.4), l = shade(c, 0.35);
+    g.save(); g.translate(0, top);
+    switch (it.look % 10) {
+      case 0: // casque à cornes
+        poly(g, [-12, 6, 12, 6, 11, -4, 0, -9, -11, -4], "#8a8fa3", "#3a3e4c", 1.5);
+        poly(g, [-10, -2, -16, -10, -26, -22, -22, -4, -12, 4], c, d, 1.5); poly(g, [10, -2, 16, -10, 26, -22, 22, -4, 12, 4], c, d, 1.5);
+        break;
+      case 1: // chapeau champignon
+        g.fillStyle = c; g.beginPath(); g.ellipse(0, 0, 24, 14, 0, Math.PI, TAU); g.fill(); g.strokeStyle = d; g.lineWidth = 1.5; g.stroke();
+        g.fillStyle = "#fff"; g.beginPath(); g.ellipse(0, 1, 24, 4, 0, 0, Math.PI); g.fill();
+        circ(g, -10, -6, 3.5, "#fff"); circ(g, 6, -9, 3, "#fff"); circ(g, 14, -3, 2.5, "#fff"); circ(g, -2, -2, 2, "#fff");
+        break;
+      case 2: // citrouille
+        for (var i = -2; i <= 2; i++) ell(g, i * 6, -2, 8, 12, i % 2 ? shade("#ff8c2a", -0.1) : "#ff8c2a");
+        g.strokeStyle = "#8a3a0a"; g.lineWidth = 1.5; g.beginPath(); g.ellipse(0, -2, 20, 12, 0, 0, TAU); g.stroke();
+        rrect(g, -2, -18, 5, 7, 2, "#4f7a2a");
+        poly(g, [-8, -6, -4, -1, -11, -1], "#3a1a08"); poly(g, [8, -6, 11, -1, 4, -1], "#3a1a08"); poly(g, [-7, 4, 7, 4, 4, 8, 1, 5, -2, 8, -5, 5], "#3a1a08");
+        glow(g, 0, 0, 22, c, 0.3);
+        break;
+      case 3: // seau renversé
+        poly(g, [-16, 4, 16, 4, 12, -20, -12, -20], "#9aa3b8", "#4b5266", 1.5); g.fillStyle = "#6f788c"; g.fillRect(-13, -22, 26, 4);
+        g.strokeStyle = d; g.lineWidth = 3; g.beginPath(); g.arc(0, -20, 12, Math.PI, TAU); g.stroke();
+        break;
+      case 4: // couronne géante
+        poly(g, [-20, 4, 20, 4, 20, -14, 12, -4, 6, -22, 0, -6, -6, -22, -12, -4, -20, -14], c, d, 1.5);
+        circ(g, 0, -4, 3.5, "#ff5a6a"); circ(g, -12, -2, 2.5, "#5fd3c0"); circ(g, 12, -2, 2.5, "#5fd3c0");
+        break;
+      case 5: // chapeau pointu XXL
+        ell(g, 0, 2, 26, 7, d); poly(g, [-14, 2, 14, 2, 4, -44 + Math.sin(t * 2) * 2, -2, -30], c, d, 1.5);
+        g.fillStyle = l; g.fillRect(-13, -4, 26, 4); sparkle(g, 4, -44 + Math.sin(t * 2) * 2, t);
+        break;
+      case 6: // poisson sur la tête
+        g.save(); g.rotate(-0.25);
+        poly(g, [-18, 0, -8, -9, 10, -9, 20, -2, 10, 5, -8, 5], "#5fb6e6", "#1f5f8a", 1.5); poly(g, [20, -2, 30, -10, 28, 6], "#5fb6e6", "#1f5f8a", 1.5);
+        circ(g, -8, -3, 2.5, "#fff"); circ(g, -8, -3, 1.2, "#000"); g.fillStyle = c; g.fillRect(-2, -9, 10, 3);
+        g.restore();
+        break;
+      case 7: // nid d'oiseau
+        ell(g, 0, 2, 18, 7, "#8a5a3b"); ell(g, 0, 0, 16, 5, "#c98f5c");
+        g.strokeStyle = "#6b4a2a"; g.lineWidth = 1.2; for (var n = -3; n <= 3; n++) { g.beginPath(); g.moveTo(n * 5, 2); g.lineTo(n * 5 + 3, 7); g.stroke(); }
+        var hop = Math.abs(Math.sin(t * 4)) * 3;
+        circ(g, 0, -8 - hop, 6, c); circ(g, 5, -11 - hop, 4, c); poly(g, [8, -11 - hop, 13, -10 - hop, 8, -9 - hop], "#ff9a3c"); circ(g, 6, -12 - hop, 1, "#000");
+        break;
+      case 8: // abat-jour
+        poly(g, [-22, 4, 22, 4, 14, -20, -14, -20], c, d, 1.5); g.fillStyle = "rgba(255,255,255,.25)"; g.fillRect(-18, -8, 36, 3);
+        glow(g, 0, 8, 26, "rgba(255,230,160,.8)", 0.5 + Math.sin(t * 3) * 0.1);
+        break;
+      default: // bonnet à pompon
+        g.fillStyle = c; g.beginPath(); g.moveTo(-16, 4); g.quadraticCurveTo(-14, -26, 10, -30); g.quadraticCurveTo(22, -16, 16, 4); g.closePath(); g.fill(); g.strokeStyle = d; g.lineWidth = 1.5; g.stroke();
+        rrect(g, -17, -2, 34, 8, 4, "#f4ecd8"); circ(g, 12 + Math.sin(t * 3) * 2, -32, 7, "#f4ecd8");
+    }
+    g.restore();
+  }
+  // ---- capes : derrière le corps ----
+  function gearCape(g, it, t, o) {
+    var c = rc(it), d = shade(c, -0.4), fl = Math.sin(t * 2.5) * 3;
+    g.save();
+    switch (it.look % 8) {
+      case 0: // ailes de dragon
+        [-1, 1].forEach(function (sd) {
+          var wf = Math.sin(t * 3) * 4;
+          poly(g, [sd * 8, -34, sd * 34, -56 + wf, sd * 42, -30 + wf, sd * 36, -20, sd * 24, -12, sd * 10, -14], "#7a2a3a", "#3a1020", 2);
+          g.strokeStyle = "#3a1020"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(sd * 8, -34); g.lineTo(sd * 36, -20); g.moveTo(sd * 8, -34); g.lineTo(sd * 42, -30 + wf); g.stroke();
+        });
+        break;
+      case 1: // cape-drapeau
+        g.strokeStyle = "#6b4a2a"; g.lineWidth = 3; g.beginPath(); g.moveTo(-10, -36); g.lineTo(-10, -84); g.stroke();
+        g.fillStyle = c; g.beginPath(); g.moveTo(-10, -84); for (var i = 0; i <= 4; i++) g.lineTo(-10 + i * 9, -84 + Math.sin(t * 4 + i) * 3); g.lineTo(26, -60 + Math.sin(t * 4 + 4) * 3); for (var j = 4; j >= 0; j--) g.lineTo(-10 + j * 9, -60 + Math.sin(t * 4 + j) * 3); g.closePath(); g.fill(); g.strokeStyle = d; g.lineWidth = 1.5; g.stroke();
+        sparkle(g, 8, -72, t, "#fff");
+        break;
+      case 2: // serviette de plage
+        for (var k = 0; k < 5; k++) poly(g, [-18, -38 + k * 8, 18, -38 + k * 8, 20 + fl, -30 + k * 8, -20 + fl, -30 + k * 8], k % 2 ? "#fff" : c);
+        break;
+      case 3: // ailes de papillon
+        [-1, 1].forEach(function (sd) {
+          var wf = Math.sin(t * 5) * 0.15;
+          g.save(); g.translate(sd * 6, -34); g.scale(1 + wf, 1);
+          ell(g, sd * 20, -12, 18, 14, c); ell(g, sd * 16, 8, 13, 10, shade(c, 0.2));
+          circ(g, sd * 22, -12, 5, "#fff"); circ(g, sd * 22, -12, 2.5, d); circ(g, sd * 16, 8, 3, "#fff");
+          g.restore();
+        });
+        break;
+      case 4: // cape étoilée immense
+        g.fillStyle = "#1d1438"; g.beginPath(); g.moveTo(-14, -38); g.lineTo(14, -38); g.quadraticCurveTo(34 + fl, -10, 30 + fl, 6); g.lineTo(-30 - fl, 6); g.quadraticCurveTo(-34 - fl, -10, -14, -38); g.fill();
+        for (var st = 0; st < 7; st++) sparkle(g, -22 + st * 7 + (st % 2) * 3, -26 + (st * 13) % 28, t + st, st % 3 ? "#ffd257" : "#fff");
+        break;
+      case 5: // carapace
+        ell(g, 0, -24, 22, 26, "#4f7a2a"); ell(g, 0, -24, 18, 22, "#6fa040");
+        g.strokeStyle = "#3a5a1a"; g.lineWidth = 1.5; for (var h = 0; h < 3; h++) { g.beginPath(); g.ellipse(0, -24, 6 + h * 6, 7 + h * 7, 0, 0, TAU); g.stroke(); }
+        break;
+      case 6: // cape de super-héros
+        g.fillStyle = c; g.beginPath(); g.moveTo(-12, -38); g.lineTo(12, -38); g.lineTo(26 + fl * 2, 4); g.lineTo(-26 - fl * 2, 4); g.closePath(); g.fill(); g.strokeStyle = d; g.lineWidth = 1.5; g.stroke();
+        g.fillStyle = "#fff"; g.font = "900 14px Nunito, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("!", 0, -18);
+        break;
+      default: // sac à dos géant
+        rrect(g, -20, -46, 40, 44, 8, c); rrect(g, -16, -42, 32, 14, 5, d); rrect(g, -8, -22, 16, 10, 3, d);
+        g.strokeStyle = "#6b4a2a"; g.lineWidth = 2; g.beginPath(); g.moveTo(-20, -40); g.lineTo(-24, -14); g.moveTo(20, -40); g.lineTo(24, -14); g.stroke();
+        circ(g, 12, -50, 5, "#f4ecd8"); circ(g, 12, -50, 2, "#000");   // un petit copain qui dépasse
+    }
+    g.restore();
+  }
+  // ---- armes : dans la main droite ----
+  function gearWeapon(g, it, t, o, cls) {
+    var c = rc(it), d = shade(c, -0.4), sw = o.cast ? Math.sin(o.cast * Math.PI) : 0;
+    g.save(); g.translate(16, -30); g.rotate(-0.35 + Math.sin(t * 1.6) * 0.06 - sw * 1.3);
+    switch (it.look % 10) {
+      case 0: rrect(g, -2, -44, 4, 54, 2, "#9aa3b8"); ell(g, 0, -48, 10, 14, "#b8c4d6"); ell(g, -2, -50, 5, 8, "#dfe4ee"); break;   // cuillère géante
+      case 1: poly(g, [-5, 10, 5, 10, 7, -20, 3, -56, 0, -70, -3, -56, -7, -20], "#5fb6e6", "#1f5f8a", 1.5); poly(g, [-5, 10, -14, 22, 0, 16, 14, 22, 5, 10], "#5fb6e6", "#1f5f8a", 1.5); circ(g, 3, -18, 2.5, "#fff"); circ(g, 3, -18, 1.2, "#000"); break;   // poisson-épée
+      case 2: rrect(g, -2.5, -40, 5, 50, 2, "#7a5236"); rrect(g, -16, -56, 32, 20, 5, "#6f788c"); rrect(g, -16, -56, 32, 6, 3, "#9aa3b8"); break;   // marteau énorme
+      case 3: g.save(); g.rotate(0.2); rrect(g, -5, -50, 10, 62, 5, "#e0a85a"); g.strokeStyle = "#a66f2e"; g.lineWidth = 2; for (var i = 0; i < 5; i++) { g.beginPath(); g.moveTo(-4, -44 + i * 11); g.lineTo(4, -40 + i * 11); g.stroke(); } g.restore(); break;   // baguette
+      case 4: rrect(g, -1.5, -40, 3, 52, 1.5, "#3a3e4c"); g.fillStyle = c; g.beginPath(); g.moveTo(-26, -40); g.quadraticCurveTo(0, -70, 26, -40); for (var k = 2; k >= -2; k--) g.quadraticCurveTo(k * 13 - 6.5, -34, k * 13 - 13, -40); g.fill(); g.strokeStyle = d; g.lineWidth = 1.5; g.stroke(); g.strokeStyle = "#3a3e4c"; g.lineWidth = 3; g.beginPath(); g.arc(4, 12, 4, 0, Math.PI); g.stroke(); break;   // parapluie
+      case 5: rrect(g, -2, -60, 4, 72, 2, "#7a5236"); g.fillStyle = "#b8c4d6"; g.beginPath(); g.moveTo(0, -60); g.quadraticCurveTo(30, -62, 34, -44); g.quadraticCurveTo(22, -52, 0, -54); g.fill(); g.strokeStyle = "#4b5266"; g.lineWidth = 1.5; g.stroke(); break;   // faux
+      case 6: circ(g, 0, -24, 14, c); circ(g, -10, -36, 6, c); circ(g, 10, -36, 6, c); ell(g, 0, -8, 12, 9, c); circ(g, -5, -26, 2, "#000"); circ(g, 5, -26, 2, "#000"); poly(g, [-3, -20, 3, -20, 0, -17], "#000"); circ(g, 0, -8, 5, shade(c, 0.4)); break;   // peluche
+      case 7: rrect(g, -2.5, -46, 5, 56, 2, "#4b5266"); g.strokeStyle = "#4b5266"; g.lineWidth = 6; g.beginPath(); g.arc(0, -2, 16, 0.2, Math.PI - 0.2); g.stroke(); rrect(g, -14, -46, 28, 5, 2, "#4b5266"); g.lineWidth = 3; g.beginPath(); g.arc(0, -52, 5, 0, TAU); g.stroke(); break;   // ancre
+      case 8: rrect(g, -2.5, -30, 5, 40, 2, "#3a3e4c"); circ(g, 0, -44, 16, "#3a3e4c"); circ(g, 0, -44, 12, "#6f788c"); ell(g, -3, -47, 5, 3, "#ffd257"); ell(g, -3, -47, 2, 1.5, "#fff"); break;   // poêle (avec un œuf)
+      default: rrect(g, -1.5, -62, 3, 74, 1.5, "#7a5236"); g.strokeStyle = "#e8e1cf"; g.lineWidth = 1; g.beginPath(); g.moveTo(0, -62); g.quadraticCurveTo(26, -60, 22, -20 + Math.sin(t * 2) * 4); g.stroke(); circ(g, 22, -18 + Math.sin(t * 2) * 4, 3, "#ff5a6a"); poly(g, [22, -14 + Math.sin(t * 2) * 4, 26, -6 + Math.sin(t * 2) * 4, 18, -6 + Math.sin(t * 2) * 4], "#5fb6e6");   // canne à pêche
+    }
+    g.restore();
+  }
+  // ---- bottes : aux pieds ----
+  function gearBoots(g, it, t, o) {
+    var c = rc(it), d = shade(c, -0.4);
+    [-7, 7].forEach(function (x, i) {
+      var hop = o.walk != null ? Math.sin((o.walk + i * 0.5) * TAU) * 2 : 0;
+      g.save(); g.translate(x, hop);
+      switch (it.look % 7) {
+        case 0: rrect(g, -9, -16, 18, 16, 5, c); rrect(g, -11, -4, 22, 6, 3, d); g.fillStyle = shade(c, 0.3); g.fillRect(-7, -14, 14, 3); break;   // bottes de géant
+        case 1: poly(g, [-4, -8, 4, -8, 4, -2, 16, 0, 8, 4, -8, 4, -16, 0, -4, -2], "#ff9a3c", "#b35a0a", 1.5); break;   // pattes de canard
+        case 2: g.strokeStyle = "#9aa3b8"; g.lineWidth = 2.5; g.beginPath(); for (var k = 0; k < 4; k++) { g.moveTo(-7, -2 - k * 3.5); g.lineTo(7, -4 - k * 3.5); } g.stroke(); rrect(g, -8, 0, 16, 3, 1.5, "#4b5266"); break;   // ressorts
+        case 3: ell(g, 0, -4, 10, 7, "#fff"); ell(g, 0, -4, 7, 4, "#ffc4d6"); rrect(g, -8, -22, 5, 16, 2.5, "#fff"); rrect(g, 3, -22, 5, 16, 2.5, "#fff"); circ(g, -5, -1, 1.2, "#000"); circ(g, 5, -1, 1.2, "#000"); break;   // pantoufles lapin
+        case 4: rrect(g, -7, -14, 14, 14, 4, c); rrect(g, -9, -4, 18, 5, 2, "#6f788c"); var f = 6 + Math.random() * 6; poly(g, [-5, 1, 5, 1, 0, 1 + f], "#ff9a3c"); poly(g, [-2.5, 1, 2.5, 1, 0, 1 + f * 0.6], "#ffe08a"); break;   // bottes-fusées
+        case 5: poly(g, [-5, -8, 5, -8, 6, -2, 20, -1, 18, 4, -6, 4, -6, -2], "#2fd29a", "#0f6a4a", 1.5); break;   // palmes
+        default: rrect(g, -7, -12, 14, 12, 3, c); g.strokeStyle = "#9aa3b8"; g.lineWidth = 2; g.beginPath(); g.moveTo(-9, 2); g.lineTo(11, 2); g.stroke();   // patins
+      }
+      g.restore();
+    });
+  }
+  // ---- amulette : pendue au cou ----
+  function gearAmulet(g, it, t, o) {
+    var c = rc(it), d = shade(c, -0.4), sw = Math.sin(t * 1.8) * 2;
+    g.save(); g.translate(sw, -22);
+    g.strokeStyle = "#ffd257"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-9, -16); g.lineTo(0, -4); g.lineTo(9, -16); g.stroke();
+    switch (it.look % 6) {
+      case 0: circ(g, 0, 6, 11, "#ffd257"); circ(g, 0, 6, 8, c); circ(g, 0, 6, 3, "#fff"); break;   // médaillon énorme
+      case 1: poly(g, [-9, 10, 9, 10, 6, -2, 0, -6, -6, -2], "#ffd257", "#9a6f1a", 1.5); circ(g, 0, 11, 2.5, "#9a6f1a"); break;   // cloche
+      case 2: ell(g, 0, 4, 11, 7, "#fff"); circ(g, 0 + Math.sin(t * 2) * 3, 4, 4, c); circ(g, Math.sin(t * 2) * 3, 4, 1.8, "#000"); break;   // œil
+      case 3: circ(g, 0, -1, 5, "#ffd257"); circ(g, 0, -1, 2, d); rrect(g, -1.5, 2, 3, 16, 1, "#ffd257"); g.fillStyle = "#ffd257"; g.fillRect(1, 12, 5, 2.5); g.fillRect(1, 16, 4, 2.5); break;   // clé géante
+      case 4: circ(g, 0, 5, 10, "#f4ecd8"); circ(g, 0, 5, 8, "#fff"); g.strokeStyle = "#000"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(0, 5); g.lineTo(0, 0); g.moveTo(0, 5); g.lineTo(Math.cos(t) * 5, 5 + Math.sin(t) * 5); g.stroke(); break;   // horloge
+      default: g.strokeStyle = c; g.lineWidth = 7; g.beginPath(); g.arc(0, 5, 7, 0, TAU); g.stroke(); g.strokeStyle = "#ff8aa8"; g.lineWidth = 4; g.beginPath(); g.arc(0, 5, 7, 0, TAU); g.stroke(); for (var i = 0; i < 5; i++) circ(g, Math.cos(i * 1.3) * 7, 5 + Math.sin(i * 1.3) * 7, 1, ["#fff", "#5fd3c0", "#ffd257"][i % 3]);   // donut
+    }
+    g.restore();
+  }
+  // ---- anneau : sur la main gauche, énorme ----
+  function gearRing(g, it, t, o) {
+    var c = rc(it);
+    g.save(); g.translate(-14, -26);
+    switch (it.look % 4) {
+      case 0: g.strokeStyle = "#ffd257"; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 4, 0, TAU); g.stroke(); poly(g, [0, -16, 7, -8, 0, -2, -7, -8], c, "#fff", 1); glow(g, 0, -9, 12, c, 0.35 + Math.sin(t * 4) * 0.15); sparkle(g, 4, -14, t); break;
+      case 1: g.strokeStyle = "#ffd257"; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 4, 0, TAU); g.stroke(); var by = -14 + Math.sin(t * 2) * 2; g.strokeStyle = "#fff"; g.lineWidth = 1; g.beginPath(); g.moveTo(0, -4); g.lineTo(0, by + 8); g.stroke(); ell(g, 0, by, 8, 10, c); ell(g, -3, by - 3, 2.5, 3.5, "rgba(255,255,255,.5)"); break;   // bague-ballon
+      case 2: for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3 + t * 0.5; ell(g, Math.cos(a) * 6, -8 + Math.sin(a) * 6, 4, 2.5, c); } circ(g, 0, -8, 3.5, "#ffd257"); break;   // bague-fleur
+      default: g.strokeStyle = "#ffd257"; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 4, 0, TAU); g.stroke(); rrect(g, -8, -16, 16, 12, 3, "#ffd257"); rrect(g, -5, -13, 10, 6, 2, c);   // chevalière
+    }
     g.restore();
   }
 
@@ -624,13 +802,14 @@
     iconCache[k] = c.toDataURL();
     return iconCache[k];
   }
-  function heroIcon(cls, size) {
-    return icon("h-" + cls, size, function (g, s) {
+  function heroIcon(cls, size, gear, full) {
+    var gk = gear ? Object.keys(gear).map(function (k) { return k[0] + gear[k].look + gear[k].r; }).join("") : "";
+    return icon("h-" + cls + gk + (full ? "F" : ""), size, function (g, s) {
       var gr = g.createLinearGradient(0, 0, 0, s);
       var bg = { bastion: ["#3a4f9a", "#1a2550"], prisme: ["#6e3fb0", "#2a1446"], voltige: ["#ff8a6a", "#7a2a22"], sibylle: ["#2fa37a", "#134a39"], clarine: ["#ffd27d", "#9a6f1a"], orage: ["#a3335c", "#2a0a18"], ondine: ["#4fb6dd", "#0f2a4a"] }[cls];
       gr.addColorStop(0, bg[0]); gr.addColorStop(1, bg[1]);
       g.fillStyle = gr; g.fillRect(0, 0, s, s);
-      hero(g, cls, s / 2, s * 1.12, { t: 0.6, flip: 1, scale: s / 52, noShadow: true });
+      hero(g, cls, s / 2, full ? s * 0.97 : s * 1.12, { t: 0.6, flip: 1, scale: full ? s / 118 : s / 52, noShadow: !full, gear: gear });
     });
   }
   function summonIcon(cls, size) {

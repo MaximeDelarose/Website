@@ -1,0 +1,58 @@
+# RADIA ♡ — fichier de suivi
+
+Jeu cadeau pour Radia : fusion « cozy » + histoire en 5 chapitres + échecs.
+Source : `radia-src/` (TypeScript strict, Phaser 3.90, Vite 6, chess.js).
+Version compilée : `radia-52c8654e04/` (site statique, servi tel quel par GitHub Pages → `https://mdelarose.fr/radia-52c8654e04/` une fois fusionné dans `main`).
+
+## Commandes
+
+```bash
+cd radia-src
+npm install
+npm run dev        # http://localhost:5173 (ajouter ?debug pour window.RADIA)
+npm test           # Vitest : règles, niveaux, sauvegarde, histoire, échecs, mini-jeux
+npm run build      # vérifie les types puis écrit ../radia-52c8654e04 (+ service worker)
+npx vite preview   # sert ../radia-52c8654e04 sur http://localhost:4173
+```
+
+## État — ce qui est terminé et vérifié
+
+| Élément | État | Vérification |
+|---|---|---|
+| Fusion 6×6 (glisser-déposer, toucher-toucher, annulation hors plateau, anti double action) | ✅ | tests unitaires + Playwright (souris en mode mobile) |
+| 43 objets (4 collections × 10 + 3 spéciaux), visuels distincts | ✅ | test d'unicité + captures |
+| 30 niveaux (6 par chapitre), commandes, paquets cadeaux, combos, bonus | ✅ | bot : chaque niveau gagné avec 8 graines ; équilibrage `scripts/balance.ts` |
+| Récupération en cas de blocage (Souffle magique gratuit) | ✅ | test unitaire |
+| Game feel (anticipation, compression, flash, particules, rebond, score flottant, sons, secousse) | ✅ | revu en capture ; ressenti tactile à valider sur iPhone |
+| 5 chapitres, 25 dialogues, choix « Nord de Paris bb », répliques contextuelles avec temps de recharge | ✅ | parcours automatique complet de l'histoire (74 étapes) |
+| 8 souvenirs + album (souvenirs, collections, historique des dialogues) | ✅ | captures |
+| 3 mini-jeux (puzzle Arc de Triomphe, billard des cœurs, chemin des deux cœurs) | ✅ | tests de solvabilité + réussite complète dans le navigateur |
+| Échecs : règles complètes, IA dans un Web Worker (Facile / Normal / Difficile), annuler, partie reprise | ✅ | tests chess.js (roque, en passant, promotion, pat, nullités) + navigateur |
+| 11 problèmes d'échecs + 11 puzzles Mode Reine (bouclier, portails, dalles) | ✅ | solveur BFS en test |
+| Scène finale (Auguste, miroir « Oui ♡ », déclaration FR + arabe, retour au jeu, rejouable depuis l'album) | ✅ | parcours automatique + captures |
+| Mode infini (défis renouvelables, record) après la fin | ✅ | logique testée ; écran vérifié |
+| 17 succès à conditions mesurables | ✅ | test « aucun succès sur une sauvegarde neuve » |
+| Sauvegarde auto versionnée, validée, copie de secours, migration, recalage de l'histoire | ✅ | tests + rechargement en plein niveau (plateau identique) |
+| Musique (MP3 fourni), 35 % au départ, fondus, continuité, réglages, interruptions iOS | ✅ code | à écouter sur iPhone (pas de son dans le navigateur de test) |
+| PWA : manifeste, icônes, service worker, jeu hors ligne après la 1ʳᵉ visite | ✅ | test hors ligne Playwright (Chromium) |
+| Mobile : portrait, zones sûres, `dvh`, redimensionnement, message en paysage | ✅ | Chromium 393×852, 430×932, 852×393, 768×1024 |
+
+## Décisions techniques
+
+- **Rendu hybride** : Phaser (canvas WebGL) pour le plateau, les mini-jeux et la fin ; HTML/CSS pour les menus, dialogues et le HUD (texte net, accessible, plus léger). Toutes les scènes travaillent en pixels CSS, caméra zoomée de la densité d'écran (net sur Retina).
+- **Illustrations vectorielles en Canvas 2D** (`src/game/art/`) : aucun fichier image lourd, rendu net à toute taille, personnages animables par paramètres (expressions, clignement, marche). Pas de génération d'images par IA.
+- **Marque dans l'œil** : œil situé à gauche de l'image, bord de l'iris vers « 8 heures » (constante `EYE_MARK` dans `characters.ts`), anneau au nez sur la narine à droite de l'image (`NOSE_RING_SIDE`) — comme sur les photos fournies. Les portraits ne sont jamais retournés en miroir.
+- **Règles séparées du rendu** : `src/game/merge/rules.ts`, `src/game/chess/rules.ts`, `src/game/chess/queen.ts`, `src/game/minigames/logic/*` sont sans DOM et testés.
+- **Données modifiables sans toucher au moteur** : `src/data/` (objets, niveaux, dialogues, histoire, souvenirs, succès).
+- **IA d'échecs** : moteur alpha-bêta déjà écrit pour le site (`js/chess-core.js`), copié dans `src/game/chess/engine/` (petite correction de détection du Worker pour Vite).
+- **Musique** : un seul `<audio>` chargé en mémoire (blob) et branché sur Web Audio (sur iOS, `audio.volume` est ignoré) ; effets sonores synthétisés.
+- **Étoiles** : 3 ★ si le panier est utilisé au plus `par` fois (par calé sur la simulation).
+- **Histoire** : liste d'étapes (`src/data/story.ts`) ; la sauvegarde retient l'index ET l'identifiant de l'étape, pour qu'une mise à jour qui insère des étapes ne décale pas une partie en cours.
+
+## Reste à faire / limites connues
+
+- **Aucun test sur un vrai iPhone ni dans Safari/WebKit** (seul Chromium est disponible ici). Voir la liste de vérifications manuelles dans `README.md`.
+- Les personnages sont dessinés de face : le souvenir « Arc de Triomphe » les montre côte à côte (pas dos à dos comme dans la trend).
+- Pas d'images de démarrage iOS dédiées (`apple-touch-startup-image`) : l'écran de chargement HTML s'affiche à la place.
+- P2 non commencé (volontairement) : échecs en ligne, coopératif à deux — il faudrait un serveur (Supabase est déjà utilisé ailleurs sur le site).
+- Phaser pèse ~340 Ko compressé ; une build Phaser sur mesure pourrait réduire le premier chargement.
