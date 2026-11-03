@@ -3,7 +3,7 @@
  * (foulards, lunettes, boucles d'oreilles). Enregistre les dessins dans `EXTRA` (voir avatar.ts).
  * ⚠ import circulaire avec avatar.ts : aucune `const` de module utilisée à l'installation.
  */
-import { lg, fs, line, dot, bow, hairCap, hairDome, ropeStrand, EXTRA, CX, INK, SKIN, SKIN_L, GOLD, SHOE_Y } from './avatar';
+import { lg, fs, line, dot, bow, hairCap, hairDome, ropeStrand, EXTRA, CX, INK, SKIN, SKIN_D, SKIN_L, GOLD, SHOE_Y } from './avatar';
 import type { C, Pt } from './avatar';
 import { radiaParts as P } from '../characters';
 import { heartPath, starPath, roundRect, shade, gloss } from '../kit';
@@ -50,7 +50,7 @@ function strapLine(ctx: C, pts: Pt[], w: number, col: string, smooth = true): vo
 function heelShoe(ctx: C, cx: number, s: number, o: ShoeO): void {
   const p = o.p ?? 0;
   const H = o.H;
-  const tip = o.front === 'pointed' ? 33 : o.front === 'round' ? 28 : 30;
+  const tip = o.front === 'pointed' ? 35 : o.front === 'round' ? 29 : 31;
   const hc = o.hc ?? o.c1;
   ctx.save();
   ctx.translate(cx, SHOE_Y);
@@ -94,7 +94,7 @@ function heelShoe(ctx: C, cx: number, s: number, o: ShoeO): void {
 
   // --- pied
   footPath(ctx, H, p, tip);
-  fs(ctx, lg(ctx, -18, -26, 26, 0, SKIN_L, SKIN), 2);
+  fs(ctx, lg(ctx, -25, 0, 21, 0, SKIN_L, SKIN, SKIN_D), 2);
 
   // --- empeigne (clippée sur le pied)
   ctx.save();
@@ -104,23 +104,23 @@ function heelShoe(ctx: C, cx: number, s: number, o: ShoeO): void {
   const up = lg(ctx, -16, -34, 28, 2, shade(o.c0, 0.08), o.c0, o.c1);
   if (o.front === 'pointed' || o.front === 'round') {
     ctx.beginPath();
-    ctx.moveTo(11, -60); ctx.lineTo(9.5, -p - 19);
-    ctx.quadraticCurveTo(1.5, -p - 9, 7, -p + 7);
+    ctx.moveTo(8, -60); ctx.lineTo(5, -p - 19);
+    ctx.quadraticCurveTo(-3, -p - 9, 3, -p + 7);
     ctx.lineTo(50, 12); ctx.lineTo(50, -60); ctx.closePath();
     ctx.fillStyle = up;
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(9.5, -p - 19); ctx.quadraticCurveTo(1.5, -p - 9, 7, -p + 7);
+    ctx.moveTo(5, -p - 19); ctx.quadraticCurveTo(-3, -p - 9, 3, -p + 7);
     ctx.lineWidth = 1.8; ctx.strokeStyle = INK; ctx.stroke();
   }
   if (o.back === 'closed') {
     ctx.beginPath();
-    ctx.moveTo(-40, -29); ctx.lineTo(-13, -27.5); ctx.quadraticCurveTo(-2, -17, 3, -p - 6);
-    ctx.lineTo(3, 12); ctx.lineTo(-40, 12); ctx.closePath();
+    ctx.moveTo(-40, -33); ctx.lineTo(-12, -31); ctx.quadraticCurveTo(-1, -21, -1, -p - 8);
+    ctx.lineTo(-1, 12); ctx.lineTo(-40, 12); ctx.closePath();
     ctx.fillStyle = up;
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(-13, -27.5); ctx.quadraticCurveTo(-2, -17, 3, -p - 6);
+    ctx.moveTo(-12, -31); ctx.quadraticCurveTo(-1, -21, -1, -p - 8);
     ctx.lineWidth = 1.8; ctx.strokeStyle = INK; ctx.stroke();
   }
   ctx.restore();
@@ -154,8 +154,20 @@ function heelShoe(ctx: C, cx: number, s: number, o: ShoeO): void {
     ctx.lineWidth = 0.9; ctx.strokeStyle = INK; ctx.stroke();
   }
   if (o.front === 'band') {
-    strapLine(ctx, [[2, -p - 5], [9, -p - 13], [17, -p - 13], [24, -p - 6]], 8, sc);
-    gloss(ctx, 13, -p - 15, 4, 1.3, 0.55, -0.1);
+    ctx.save();
+    footPath(ctx, H, p, tip);
+    ctx.closePath();
+    ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(2, -60); ctx.lineTo(2, -p - 19); ctx.quadraticCurveTo(-1, -p - 9, 5, 12);
+    ctx.lineTo(26, 12); ctx.quadraticCurveTo(20, -p - 9, 20, -60); ctx.closePath();
+    ctx.fillStyle = lg(ctx, 2, -p - 20, 22, 0, shade(sc, 0.3), sc, shade(sc, -0.12));
+    ctx.fill();
+    ctx.lineWidth = 1.8; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, -p - 14); ctx.quadraticCurveTo(10, -p - 6, 12, 2);
+    ctx.lineWidth = 1.6; ctx.strokeStyle = GOLD; ctx.stroke();
+    gloss(ctx, 12, -p - 13, 3, 6, 0.5, 0.3);
+    ctx.restore();
   }
   if (o.front === 'open') {
     // bride de peep-toe + bride d'orteil
@@ -194,31 +206,35 @@ function platformBoot(ctx: C, cx: number, s: number): void {
   fs(ctx, lg(ctx, 0, -12, 0, 0, '#5A4A56', '#17111A'), 1.9);
   // botte
   ctx.beginPath();
-  ctx.moveTo(-20, -86);
-  ctx.lineTo(16, -86);
-  ctx.bezierCurveTo(18, -66, 15, -52, 17, -40);
+  ctx.moveTo(-20, -106);
+  ctx.lineTo(16, -106);
+  ctx.bezierCurveTo(18, -80, 15, -56, 17, -40);
   ctx.bezierCurveTo(26, -36, 36, -30, 34, -19);
   ctx.bezierCurveTo(33, -14, 28, -12, 24, -12);
   ctx.lineTo(-24, -12);
-  ctx.bezierCurveTo(-25, -40, -20, -60, -20, -86);
+  ctx.bezierCurveTo(-25, -40, -20, -70, -20, -106);
   ctx.closePath();
-  fs(ctx, lg(ctx, -22, -88, 30, -10, col0, '#2A2028', col1), 2.3);
+  fs(ctx, lg(ctx, -22, -108, 30, -10, col0, '#2A2028', col1), 2.3);
   // bord haut + coutures
-  ctx.beginPath(); ctx.moveTo(-20, -80); ctx.lineTo(16, -80);
+  ctx.beginPath(); ctx.moveTo(-20, -99); ctx.lineTo(16, -99);
   ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.stroke();
   ctx.beginPath(); ctx.moveTo(-22, -13.5); ctx.lineTo(26, -13.5);
   ctx.lineWidth = 2.4; ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.stroke();
   // zip argenté sur le côté
-  line(ctx, [[-13, -82], [-14, -52], [-13, -26]], '#D9DEE8', 1.8, false);
-  dot(ctx, -13, -80, 2, '#E8ECF4', INK, 0.8);
+  line(ctx, [[-13, -102], [-14, -62], [-13, -26]], '#D9DEE8', 1.8, false);
+  dot(ctx, -13, -100, 2, '#E8ECF4', INK, 0.8);
   // reflets de cuir verni
-  gloss(ctx, 4, -62, 2.6, 13, 0.3, 0.05);
+  gloss(ctx, 4, -76, 2.6, 18, 0.3, 0.05);
   gloss(ctx, 21, -24, 6, 1.7, 0.5, -0.5);
   // bride / boucle
-  roundRect(ctx, -21, -58, 38, 6, 2.5);
+  roundRect(ctx, -21, -62, 38, 6, 2.5);
   fs(ctx, '#2A2028', 1.5);
-  roundRect(ctx, 4, -59, 6.5, 8, 1.5);
-  fs(ctx, lg(ctx, 4, -59, 10, -51, '#FFF0B8', GOLD, '#C8902C'), 1);
+  roundRect(ctx, 4, -63, 6.5, 8, 1.5);
+  fs(ctx, lg(ctx, 4, -63, 10, -55, '#FFF0B8', GOLD, '#C8902C'), 1);
+  roundRect(ctx, -21, -88, 38, 6, 2.5);
+  fs(ctx, '#2A2028', 1.5);
+  roundRect(ctx, 4, -89, 6.5, 8, 1.5);
+  fs(ctx, lg(ctx, 4, -89, 10, -81, '#FFF0B8', GOLD, '#C8902C'), 1);
   ctx.restore();
 }
 
@@ -272,8 +288,8 @@ function installBags(): void {
   // pochette rose perlée, tenue à la main gauche de l'image
   B['bg-clutch-pink'] = (ctx) => {
     ctx.save();
-    ctx.translate(CX - 82, 338);
-    ctx.rotate(-0.1);
+    ctx.translate(CX - 66, 354);
+    ctx.rotate(-0.12);
     roundRect(ctx, -26, -17, 52, 32, 7);
     fs(ctx, lg(ctx, -26, -17, 26, 15, '#FFE0EC', '#F6A6C4', '#E477A2'), 2.3);
     // perles
@@ -296,10 +312,11 @@ function installBags(): void {
 
   // baguette argentée sous l'aisselle droite de l'image
   B['bg-silver'] = (ctx) => {
-    strapBand(ctx, [[CX + 46, 172], [CX + 66, 214], [CX + 76, 246]], 3.4, '#C8CEDA', 'rgba(255,255,255,0.7)');
+    strapBand(ctx, [[CX + 44, 172], [CX + 52, 206], [CX + 40, 246]], 3.4, '#C8CEDA', 'rgba(255,255,255,0.7)');
     ctx.save();
-    ctx.translate(CX + 74, 262);
-    ctx.rotate(0.08);
+    ctx.translate(CX + 56, 262);
+    ctx.rotate(0.2);
+    ctx.scale(1.05, 1.05);
     ctx.beginPath();
     ctx.moveTo(-30, -11);
     ctx.quadraticCurveTo(0, -17, 30, -11);
@@ -381,7 +398,7 @@ function installBags(): void {
   // pochette nacrée tenue dans la main droite de l'image
   B['bg-pearl-clutch'] = (ctx) => {
     ctx.save();
-    ctx.translate(CX + 82, 336);
+    ctx.translate(CX + 68, 354);
     ctx.rotate(0.12);
     roundRect(ctx, -25, -15, 50, 30, 9);
     fs(ctx, lg(ctx, -25, -15, 25, 15, '#FFFFFF', '#F2E8F4', '#D5C4E4', '#E8DCEE'), 2.3);
@@ -495,10 +512,10 @@ function installHair(): void {
 
   // --- carré au menton
   HB['hair-bob'] = (ctx, sway) => {
-    hairMass(ctx, 112, 106, 106, 6, sway * 0.15, 4);
+    hairMass(ctx, 112, 98, 84, 16, sway * 0.15, 0);
     hairDome(ctx);
   };
-  HF['hair-bob'] = (ctx, sway) => frontLocks(ctx, 56, 48, 46, 0, 0, -6, sway * 0.2, 84);
+  HF['hair-bob'] = (ctx, sway) => frontLocks(ctx, 100, 40, 28, 0, 0, -14, sway * 0.2, 82);
 
   // --- tresse sur l'épaule (droite de l'image)
   HB['hair-braid'] = (ctx, sway) => {
@@ -522,11 +539,11 @@ function installHair(): void {
       return [path[i][0] + (path[i + 1][0] - path[i][0]) * u, path[i][1] + (path[i + 1][1] - path[i][1]) * u];
     };
     // fond
-    ropeStrand(ctx, path, 34, 22);
+    ropeStrand(ctx, path, 40, 26);
     for (let i = 0; i < n; i++) {
       const t = (i + 0.5) / n;
       const [x, y] = at(t);
-      const wd = 17 - t * 6;
+      const wd = 20 - t * 7;
       for (const d of [-1, 1]) {
         ctx.save();
         ctx.translate(x + d * wd * 0.2, y);
@@ -636,8 +653,8 @@ function installHair(): void {
   // --- queue haute lisse et longue
   HB['hair-high-pony'] = (ctx, sway) => {
     hairDome(ctx);
-    const pts: Pt[] = [[26, -116], [66, -156], [112, -128], [130, -50], [128, 40 + sway * 0.6], [122, 130 + sway * 1.2], [126, 214 + sway * 1.8], [122, 262 + sway * 2]];
-    ropeStrand(ctx, pts, 40, 48);
+    const pts: Pt[] = [[26, -116], [64, -146], [108, -124], [128, -50], [128, 40 + sway * 0.6], [122, 130 + sway * 1.2], [126, 214 + sway * 1.8], [122, 262 + sway * 2]];
+    ropeStrand(ctx, pts, 46, 56);
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineWidth = 1.8;
@@ -694,17 +711,17 @@ function installNeck(): void {
 
   N['ac-choker'] = (ctx) => {
     ctx.beginPath();
-    ctx.moveTo(CX - 27, 150);
-    ctx.bezierCurveTo(CX - 20, 168, CX + 20, 168, CX + 27, 150);
-    ctx.lineTo(CX + 26, 158);
-    ctx.bezierCurveTo(CX + 19, 177, CX - 19, 177, CX - 26, 158);
+    ctx.moveTo(CX - 27, 157);
+    ctx.bezierCurveTo(CX - 20, 176, CX + 20, 176, CX + 27, 157);
+    ctx.lineTo(CX + 26, 166);
+    ctx.bezierCurveTo(CX + 19, 186, CX - 19, 186, CX - 26, 166);
     ctx.closePath();
-    fs(ctx, lg(ctx, CX - 27, 150, CX + 27, 176, '#4A3E4C', '#1C1520', '#0C0910'), 1.9);
-    line(ctx, [[CX - 20, 160], [CX, 170], [CX + 20, 160]], 'rgba(255,255,255,0.22)', 1.4);
+    fs(ctx, lg(ctx, CX - 27, 157, CX + 27, 184, '#4A3E4C', '#1C1520', '#0C0910'), 1.9);
+    line(ctx, [[CX - 20, 168], [CX, 178], [CX + 20, 168]], 'rgba(255,255,255,0.22)', 1.4);
     // petit bijou central
-    heartPath(ctx, CX, 171, 11);
-    fs(ctx, lg(ctx, CX - 5, 165, CX + 5, 177, '#FFF0B8', GOLD, '#C8902C'), 1.4);
-    dot(ctx, CX, 171, 1.8, '#FF75A8', INK, 0.7);
+    heartPath(ctx, CX, 184, 12);
+    fs(ctx, lg(ctx, CX - 5, 178, CX + 5, 190, '#FFF0B8', GOLD, '#C8902C'), 1.4);
+    dot(ctx, CX, 184, 1.9, '#FF75A8', INK, 0.7);
   };
 
   N['ac-pendant'] = (ctx) => {
@@ -1100,7 +1117,7 @@ function installEarrings(): void {
       const x = s * 72;
       dot(ctx, x, 52, 3, GOLD, INK, 1.1);
       line(ctx, [[x, 54], [x, 64]], '#C8902C', 2, false);
-      heartPath(ctx, x, 75, 24);
+      heartPath(ctx, x, 77, 28);
       fs(ctx, lg(ctx, x - 10, 64, x + 10, 86, '#FFB3D0', '#F0568E', '#C0264F'), 1.9);
       gloss(ctx, x - 3.4, 71, 2.6, 1.5, 0.8, -0.6);
     }
@@ -1111,7 +1128,7 @@ function installEarrings(): void {
       const x = s * 72;
       dot(ctx, x, 51, 2.8, GOLD, INK, 1);
       line(ctx, [[x, 53], [x, 64]], '#C8902C', 2, false);
-      starPath(ctx, x, 76, 12.5, 5.6);
+      starPath(ctx, x, 77, 14.5, 6.4);
       fs(ctx, lg(ctx, x - 10, 64, x + 10, 88, '#FFF8D0', '#FFD84A', '#E0A030'), 1.9, '#6A4418');
       gloss(ctx, x - 2.6, 72, 1.8, 1.2, 0.85, -0.5);
       starPath(ctx, x + s * 1, 96, 5.2, 2.4);

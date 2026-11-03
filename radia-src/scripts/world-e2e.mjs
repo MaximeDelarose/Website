@@ -17,7 +17,7 @@ const check = (name, ok) => { out.push(`${ok ? 'OK ' : 'KO '} ${name}`); };
 check('migration v3', await page.evaluate(() => window.RADIA?.save.data.v === 3));
 await page.evaluate(() => { window.RADIA.save.data.world.res.coins = 3000; window.RADIA.save.data.world.res.flowers = 50; window.RADIA.save.data.world.res.fabric = 50; window.RADIA.save.data.world.res.cocoa = 50; });
 for (let i = 0; i < 3; i++) { const b = page.locator('.modal-backdrop:not(.leaving) .actions button'); if (await b.count()) { await b.first().click(); await sleep(500); } }
-await page.getByText('DÉCORER').first().click();
+await page.getByText('MON MONDE').first().click();
 await sleep(1200);
 await page.screenshot({ path: 'shots/w-hub.png' });
 const dests = ['Château', 'Dressing', 'Jardin', 'Chocolaterie', 'Famille', 'Chat', 'Carrière', 'Fans'];
