@@ -20,7 +20,7 @@
   "use strict";
   var root = document.querySelector("[data-golf]");
   if (!root) return;
-  var VERSION = "2.0.0";
+  var VERSION = "3.0.0";
 
   function $(s, r) { return (r || document).querySelector(s); }
   function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
@@ -45,7 +45,7 @@
   var GRAV = 1100;                 // gravité des vols (px/s²)
   var PIPE_R = 13;                 // rayon d'une bouche de tuyau
   var WALL_H = 16, WALL_T = 9;     // hauteur et épaisseur des murs (rendu)
-  var COLORS = ["#ffffff", "#f6c445", "#6fd3c6", "#f28b8b"];
+  var COLORS = ["#c8fff0", "#f6c445", "#6fd3c6", "#f28b8b"];
   var NAMES_SCORE = { "-3": "Albatros !", "-2": "Eagle !", "-1": "Birdie !", "0": "Par", "1": "Bogey", "2": "Double bogey" };
 
   /* =====================================================================
@@ -196,7 +196,7 @@
 
   var stage = $("[data-stage]", root), canvas = $("[data-canvas]", root), cx = canvas.getContext("2d");
   var overlay = $("[data-overlay]", root), cardEl = $("[data-card]", root);
-  var hudHole = $("[data-hud-hole]", root), hudStrokes = $("[data-hud-strokes]", root), hudBoard = $("[data-hud-board]", root);
+  var hudHole = $("[data-hud-hole]", root), hudCount = $("[data-hud-count]", root), hudPar = $("[data-hud-par]", root), hudBoard = $("[data-hud-board]", root);
   var hudPower = $("[data-power]", root), hudMsg = $("[data-msg]", root), hudBar = $("[data-hud]", root);
   var cw = 0, ch = 0, dpr = 1, sc = 1, ox = 0, oy = 0;
 
@@ -222,7 +222,7 @@
     G.ang = Math.atan2(h.cup[1] - h.tee[1], h.cup[0] - h.tee[0]);
     G.others = {};
     G.players.forEach(function (p) { if (p.id !== ME) G.others[p.id] = { x: h.tee[0], y: h.tee[1], tx: h.tee[0], ty: h.tee[1], s: 0, done: false, holed: false }; });
-    setMsg(G.mode === "practice" ? "" : "Trou " + (G.hi + 1) + " · " + h.name, 2200);
+    setMsg((G.mode === "practice" ? "Entraînement · " : "Trou " + (G.hi + 1) + " · ") + h.name, 2200);
     fitView();
     hudUpdate(true);
     if (G.mode === "online") netSend("pos", { gid: G.gid, h: G.hi, id: ME, x: h.tee[0], y: h.tee[1], s: 0 });
@@ -430,263 +430,288 @@
   }
 
   /* =====================================================================
-     RENDU 3D (caméra en perspective, inclinée à 45°, tournable par pas de 45°)
-     Le terrain est dessiné au sol, puis les objets debout (murs, piliers,
-     pales, tuyaux, balles…) sont triés du plus loin au plus proche.
+     RENDU 2D PIXEL ART (vue du dessus, esprit jeux de golf 8 bits)
+     L'image est dessinée en petit (≈ 230 pixels de large) puis agrandie sans
+     lissage. Le terrain est calculé pixel par pixel et mis en cache ; les
+     objets mobiles sont dessinés par-dessus à chaque image. La vue peut
+     pivoter par quarts de tour (Q / E), et se tourne seule en portrait.
      ===================================================================== */
-  var cam = { yaw: Math.PI / 4, yawT: Math.PI / 4, pitch: Math.PI / 4, dist: 900, F: 1, ox: 0, oy: 0, E: [0, 0, 0], f: [0, 0, 0], r: [0, 0, 0], u: [0, 0, 0] };
-  var Px = 0, Py = 0, Ps = 1;                       // résultat de proj()
-  function proj(x, y, z) {
-    var px = x - cam.E[0], py = y - cam.E[1], pz = z - cam.E[2];
-    var cd = px * cam.f[0] + py * cam.f[1] + pz * cam.f[2];
-    Px = cam.ox + cam.F * (px * cam.r[0] + py * cam.r[1]) / cd;
-    Py = cam.oy - cam.F * (px * cam.u[0] + py * cam.u[1] + pz * cam.u[2]) / cd;
-    Ps = cam.F / cd;
+  var view = { rot: 0, ws: 1, ox: 0, oy: 0, mx: 0, my: 0, aw: 0, ah: 0, S: 3, lm: 0, tm: 0 };
+  var terr = { key: "", canvas: document.createElement("canvas") };
+  var terrCtx = terr.canvas.getContext("2d");
+  var VX = 0, VY = 0;
+  function w2v(x, y) {            // monde -> pixels de l'image
+    var dx = x - view.mx, dy = y - view.my, vx, vy;
+    switch (view.rot) { case 0: vx = dx; vy = dy; break; case 1: vx = -dy; vy = dx; break; case 2: vx = -dx; vy = -dy; break; default: vx = dy; vy = -dx; }
+    VX = view.ox + vx * view.ws; VY = view.oy + vy * view.ws;
   }
-  function depthOf(x, y, z) { return (x - cam.E[0]) * cam.f[0] + (y - cam.E[1]) * cam.f[1] + (z - cam.E[2]) * cam.f[2]; }
-  // pixel -> point du sol (z = 0)
-  function unproject(sx, sy) {
-    var a = (sx - cam.ox) / cam.F, b = (cam.oy - sy) / cam.F;
-    var dx = cam.f[0] + a * cam.r[0] + b * cam.u[0], dy = cam.f[1] + a * cam.r[1] + b * cam.u[1], dz = cam.f[2] + b * cam.u[2];
-    var t = -cam.E[2] / dz;
-    return { x: cam.E[0] + t * dx, y: cam.E[1] + t * dy };
+  var WX = 0, WY = 0;
+  function v2w(ax, ay) {          // pixels de l'image -> monde
+    var vx = (ax - view.ox) / view.ws, vy = (ay - view.oy) / view.ws, dx, dy;
+    switch (view.rot) { case 0: dx = vx; dy = vy; break; case 1: dx = vy; dy = -vx; break; case 2: dx = -vx; dy = -vy; break; default: dx = -vy; dy = vx; }
+    WX = view.mx + dx; WY = view.my + dy;
   }
-  function setCam(h) {
-    var bb = h.bb, mx = (bb[0] + bb[2]) / 2, my = (bb[1] + bb[3]) / 2;
-    var st = Math.sin(cam.yaw), ct = Math.cos(cam.yaw), sp = Math.sin(cam.pitch), cp = Math.cos(cam.pitch);
-    cam.f = [-st * cp, -ct * cp, -sp]; cam.r = [ct, -st, 0]; cam.u = [-st * sp, -ct * sp, cp];
-    cam.E = [mx - cam.dist * cam.f[0], my - cam.dist * cam.f[1], -cam.dist * cam.f[2]];
-    cam.F = 1; cam.ox = 0; cam.oy = 0;
-    var x1 = 1e9, x2 = -1e9, y1 = 1e9, y2 = -1e9, p = h.poly, zs = [-26, 56];
-    for (var i = 0; i < p.length; i++) for (var j = 0; j < 2; j++) {
-      proj(p[i][0], p[i][1], zs[j]);
-      x1 = Math.min(x1, Px); x2 = Math.max(x2, Px); y1 = Math.min(y1, Py); y2 = Math.max(y2, Py);
-    }
-    var F = Math.min(cw * 0.94 / (x2 - x1), ch * 0.84 / (y2 - y1));
-    cam.F = F; cam.ox = cw / 2 - F * (x1 + x2) / 2; cam.oy = ch / 2 + 14 - F * (y1 + y2) / 2;
+  function setView(h, rot) {
+    var bb = h.bb, w = bb[2] - bb[0] + 2 * WALL_T + 14, hh = bb[3] - bb[1] + 2 * WALL_T + 14;
+    var rw = (rot & 1) ? hh : w, rh = (rot & 1) ? w : hh;
+    var aW = view.aw - view.lm, aH = view.ah - view.tm;
+    view.rot = rot; view.ws = Math.max(0.2, Math.min(aW / rw, aH / rh));
+    view.mx = (bb[0] + bb[2]) / 2; view.my = (bb[1] + bb[3]) / 2;
+    view.ox = view.lm + aW / 2; view.oy = view.tm + aH / 2;
   }
   function resize() {
     var r = stage.getBoundingClientRect();
-    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     cw = Math.max(200, r.width); ch = Math.max(200, r.height);
-    canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
-    canvas.style.width = cw + "px"; canvas.style.height = ch + "px";
+    var portrait = ch > cw * 1.05;
+    view.S = Math.max(2, Math.round(cw / 230));
+    view.aw = Math.floor(cw / view.S); view.ah = Math.floor(ch / view.S);
+    canvas.width = view.aw; canvas.height = view.ah;
+    canvas.style.width = view.aw * view.S + "px"; canvas.style.height = view.ah * view.S + "px";
+    canvas.style.left = Math.floor((cw - view.aw * view.S) / 2) + "px"; canvas.style.top = Math.floor((ch - view.ah * view.S) / 2) + "px";
+    cx.imageSmoothingEnabled = false;
+    terr.canvas.width = view.aw; terr.canvas.height = view.ah; terr.key = "";
+    view.lm = portrait ? 0 : Math.ceil(80 / view.S); view.tm = portrait ? Math.ceil(60 / view.S) : 0;
     if (G) fitView();
   }
-  // en portrait (téléphone), on choisit parmi les 4 diagonales celle qui agrandit le plus le trou
+  // en portrait, on choisit le quart de tour qui agrandit le plus le trou
   function fitView() {
-    if (!G || !(ch > cw * 1.1)) return;
-    var h = curHole(), keep = cam.yaw, bestF = -1, bestY = cam.yawT;
-    for (var k = 0; k < 4; k++) {
-      cam.yaw = Math.PI / 4 + k * Math.PI / 2; setCam(h);
-      if (cam.F > bestF + 0.001) { bestF = cam.F; bestY = cam.yaw; }
-    }
-    cam.yaw = keep; cam.yawT = bestY;
+    if (!G) return;
+    var h = curHole(), best = 0, bw = -1;
+    if (ch > cw * 1.05) for (var k = 0; k < 4; k++) { setView(h, k); if (view.ws > bw + 0.001) { bw = view.ws; best = k; } }
+    setView(h, best);
   }
-  function toWorld(ev) { var r = canvas.getBoundingClientRect(); return unproject(ev.clientX - r.left, ev.clientY - r.top); }
+  function toWorld(ev) {
+    var r = canvas.getBoundingClientRect();
+    v2w((ev.clientX - r.left) / view.S, (ev.clientY - r.top) / view.S);
+    return { x: WX, y: WY };
+  }
 
-  // ---------- petits outils de dessin ----------
-  function sh(c, k) { return "rgb(" + Math.min(255, Math.round(c[0] * k)) + "," + Math.min(255, Math.round(c[1] * k)) + "," + Math.min(255, Math.round(c[2] * k)) + ")"; }
-  var LX = -0.55, LY = -0.83;       // direction de la lumière (vers la lampe), dans le plan
-  function lightK(nx, ny) { return 0.66 + 0.34 * (nx * LX + ny * LY); }
-  function fillPoly(pts, fill, stroke, lw) {
-    cx.beginPath();
-    for (var i = 0; i < pts.length; i++) { proj(pts[i][0], pts[i][1], pts[i][2]); if (i) cx.lineTo(Px, Py); else cx.moveTo(Px, Py); }
-    cx.closePath();
-    if (fill) { cx.fillStyle = fill; cx.fill(); }
-    if (stroke) { cx.strokeStyle = stroke; cx.lineWidth = lw || 1; cx.stroke(); }
+  // ---------- palette ----------
+  var C = {
+    fair: "#a8e63a", fair2: "#96d632", stripe: "#c6f55c", side: "#139a56", side2: "#0e7f49",
+    rough: "#1f8f4e", rough2: "#177a42", tree: "#0b5a33", treeHi: "#34aa5c",
+    sand: "#f3eea0", sandDot: "#4a4528", sandEdge: "#d6cd78", water: "#27a9f1", waterHi: "#8dd8ff", waterEdge: "#126aa6",
+    white: "#ffffff", black: "#14141e", gray: "#cdd2dc", yellow: "#f6c445", brown: "#7a4b00",
+    red: "#d8322b", red2: "#ef6a52", cream: "#fdf3de", orange: "#e8872a", orange2: "#b05c14",
+  };
+  var PK = {};
+  Object.keys(C).forEach(function (k) { var n = parseInt(C[k].slice(1), 16); PK[k] = (255 << 24) | ((n & 255) << 16) | (n & 0xff00) | (n >> 16); });
+  function hash(x, y) { var n = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; }
+  function segDist(s, x, y) {
+    var dx = s[2] - s[0], dy = s[3] - s[1], t = clamp(((x - s[0]) * dx + (y - s[1]) * dy) / (dx * dx + dy * dy), 0, 1);
+    var ex = x - (s[0] + t * dx), ey = y - (s[1] + t * dy);
+    return Math.sqrt(ex * ex + ey * ey);
   }
-  function circlePts(x, y, r, z, n) { var o = []; for (var i = 0; i < n; i++) { var a = i / n * 6.2832; o.push([x + Math.cos(a) * r, y + Math.sin(a) * r, z]); } return o; }
-  function rectPts(r, z) { return [[r[0], r[1], z], [r[2], r[1], z], [r[2], r[3], z], [r[0], r[3], z]]; }
-  function rectC(r) { return [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]]; }
-  // prisme vertical : c = 4 coins (x,y) dans l'ordre, de z0 à z1
-  function prism(c, z0, z1, col, topCol) {
-    var mx = 0, my = 0, i;
-    for (i = 0; i < 4; i++) { mx += c[i][0] / 4; my += c[i][1] / 4; }
-    for (i = 0; i < 4; i++) {
-      var a = c[i], b = c[(i + 1) & 3], ex = b[0] - a[0], ey = b[1] - a[1], len = Math.sqrt(ex * ex + ey * ey) || 1;
-      var nx = ey / len, ny = -ex / len, qx = (a[0] + b[0]) / 2, qy = (a[1] + b[1]) / 2;
-      if (nx * (qx - mx) + ny * (qy - my) < 0) { nx = -nx; ny = -ny; }
-      if (nx * (cam.E[0] - qx) + ny * (cam.E[1] - qy) <= 0) continue;
-      var f = sh(col, lightK(nx, ny));
-      fillPoly([[a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1]], f, f, 1);
+  function forest(ax, ay) {
+    var cxl = Math.floor(ax / 8), cyl = Math.floor(ay / 8);
+    if (hash(cxl, cyl) < 0.58) {
+      var tx = cxl * 8 + 3 + Math.floor(hash(cxl + 7, cyl) * 3), ty = cyl * 8 + 3 + Math.floor(hash(cxl, cyl + 9) * 3);
+      var dx = ax - tx, dy = ay - ty, d2 = dx * dx + dy * dy;
+      if (d2 <= 9) return d2 <= 2 && dx <= 0 && dy <= 0 ? PK.treeHi : PK.tree;
     }
-    fillPoly([[c[0][0], c[0][1], z1], [c[1][0], c[1][1], z1], [c[2][0], c[2][1], z1], [c[3][0], c[3][1], z1]], topCol || sh(col, 1.18), "rgba(20,10,0,.45)", 1);
+    return hash(ax, ay) < 0.16 ? PK.rough2 : PK.rough;
   }
-  function cylinder(x, y, r, z0, z1, col, topFill, n) {
-    n = n || 20;
-    for (var i = 0; i < n; i++) {
-      var a0 = i / n * 6.2832, a1 = (i + 1) / n * 6.2832, am = (a0 + a1) / 2, nx = Math.cos(am), ny = Math.sin(am);
-      if (nx * (cam.E[0] - (x + nx * r)) + ny * (cam.E[1] - (y + ny * r)) <= 0) continue;
-      var f = sh(col, lightK(nx, ny));
-      fillPoly([[x + Math.cos(a0) * r, y + Math.sin(a0) * r, z0], [x + Math.cos(a1) * r, y + Math.sin(a1) * r, z0], [x + Math.cos(a1) * r, y + Math.sin(a1) * r, z1], [x + Math.cos(a0) * r, y + Math.sin(a0) * r, z1]], f, f, 1);
+  // couleur du terrain au pixel (ax, ay) de l'image, point (x, y) du monde
+  function terrainPixel(h, x, y, ax, ay) {
+    var i, dd, chk = (ax ^ ay) & 1;
+    if (!inPoly(h.poly, x, y)) {
+      var best = 1e9, hor = true;
+      for (i = 0; i < h.polySegs.length; i++) { dd = segDist(h.polySegs[i], x, y); if (dd < best) { best = dd; hor = h.polySegs[i][1] === h.polySegs[i][3]; } }
+      var rows = Math.max(3, Math.round(WALL_T * view.ws));
+      if (best * view.ws < rows) {
+        var row = Math.floor(best * view.ws);
+        if (row === 0 || row === rows - 1) return PK.black;
+        return (((hor ? ax : ay) >> 1) & 1) ? PK.white : PK.gray;
+      }
+      return forest(ax, ay);
     }
-    if (topFill) fillPoly(circlePts(x, y, r, z1, n), topFill, "rgba(20,10,0,.45)", 1.5);
-  }
-  var WOOD = [150, 98, 50], AMBER = [226, 170, 40], EARTH = [112, 74, 40], PIPE = { g: [64, 176, 92], b: [70, 128, 214] };
-
-  // ---------- sol ----------
-  function drawGround(h, t) {
-    var i, k, p = h.poly;
-    // dalle : les côtés visibles, sous le gazon
-    for (i = 0; i < p.length; i++) {
-      var a = p[i], b = p[(i + 1) % p.length], n = h.polyN[i], qx = (a[0] + b[0]) / 2, qy = (a[1] + b[1]) / 2;
-      if (n[0] * (cam.E[0] - qx) + n[1] * (cam.E[1] - qy) <= 0) continue;
-      var f = sh(EARTH, lightK(n[0], n[1]));
-      fillPoly([[a[0], a[1], 0], [b[0], b[1], 0], [b[0], b[1], -26], [a[0], a[1], -26]], f, f, 1);
-    }
-    fillPoly(p.map(function (q) { return [q[0], q[1], 0]; }), "#5fae4f", null);
-    cx.save();
-    cx.beginPath();
-    for (i = 0; i < p.length; i++) { proj(p[i][0], p[i][1], 0); if (i) cx.lineTo(Px, Py); else cx.moveTo(Px, Py); }
-    cx.closePath(); cx.clip();
-    var bb = h.bb;
-    for (var sx = bb[0] - 40; sx < bb[2]; sx += 80) fillPoly([[sx, bb[1] - 40, 0], [sx + 40, bb[1] - 40, 0], [sx + 40, bb[3] + 40, 0], [sx, bb[3] + 40, 0]], "rgba(255,255,255,.07)", null);
-    // creux et bosses : anneaux du bord vers le centre
-    function relief(q, sign) {
-      var N = 9;
-      for (k = 0; k < N; k++) {
-        var rr = q[2] * (1 - k / N), s2 = (rr / q[2]) * (rr / q[2]), z = sign * q[4] * (1 - s2) * (1 - s2), u = k / (N - 1);
-        var l = sign > 0 ? 50 + u * 34 : 50 - u * 26;
-        fillPoly(circlePts(q[0] - (sign > 0 ? u * q[2] * 0.12 : 0), q[1] - (sign > 0 ? u * q[2] * 0.12 : 0), rr, z, 28), "hsl(104," + (sign > 0 ? 42 : 38) + "%," + l + "%)", k === 0 ? "rgba(20,60,20,.35)" : null, 1.5);
+    if (h.blocks) for (i = 0; i < h.blocks.length; i++) {
+      var b = h.blocks[i];
+      if (x > b[0] && x < b[2] && y > b[1] && y < b[3]) {
+        var eb = Math.min(x - b[0], b[2] - x, y - b[1], b[3] - y) * view.ws;
+        if (eb < 1) return PK.black;
+        return (((ax >> 1) + (ay >> 1)) & 1) ? PK.white : PK.gray;
       }
     }
-    (h.dips || []).forEach(function (q) { relief(q, -1); });
-    (h.hills || []).forEach(function (q) {
-      fillPoly(circlePts(q[0] + 6, q[1] + 9, q[2] * 0.95, 0.1, 24), "rgba(0,0,0,.16)", null);
-      relief(q, 1);
-    });
-    (h.sand || []).forEach(function (r) {
-      fillPoly(rectPts(r, 0.2), "#e6cd8c", null);
-      cx.fillStyle = "rgba(150,110,50,.4)";
-      for (var x = r[0] + 6; x < r[2]; x += 14) for (var y = r[1] + 6 + ((x / 14) % 2) * 7; y < r[3]; y += 14) { proj(x, y, 0.3); cx.fillRect(Px, Py, Ps * 2.4, Ps * 1.6); }
-    });
-    (h.water || []).forEach(function (r) {
-      fillPoly(rectPts(r, 0.2), "#3f95cf", "#2f6fa0", 2);
-      cx.strokeStyle = "rgba(255,255,255,.5)"; cx.lineWidth = 2;
-      for (var y = r[1] + 12; y < r[3]; y += 22) {
-        cx.beginPath();
-        for (var x = r[0]; x <= r[2]; x += 6) { proj(x, y + Math.sin(x * 0.12 + t / 420 + y) * 2.5, 0.4); if (x === r[0]) cx.moveTo(Px, Py); else cx.lineTo(Px, Py); }
-        cx.stroke();
-      }
-    });
-    (h.pads || []).forEach(function (pd) {
-      fillPoly(rectPts([pd.x1, pd.y1, pd.x2, pd.y2], 0.5), "#f6c445", "#7a4b00", 2);
-      var cxp = (pd.x1 + pd.x2) / 2, cyp = (pd.y1 + pd.y2) / 2, dx = Math.cos(pd.ang), dy = Math.sin(pd.ang);
-      cx.strokeStyle = "#7a4b00"; cx.lineWidth = 3; cx.lineJoin = "round";
-      [-9, 9].forEach(function (o) {
-        cx.beginPath();
-        proj(cxp + dx * (o - 5) - dy * 11, cyp + dy * (o - 5) + dx * 11, 0.8); cx.moveTo(Px, Py);
-        proj(cxp + dx * (o + 5), cyp + dy * (o + 5), 0.8); cx.lineTo(Px, Py);
-        proj(cxp + dx * (o - 5) + dy * 11, cyp + dy * (o - 5) - dx * 11, 0.8); cx.lineTo(Px, Py);
-        cx.stroke();
-      });
-    });
-    // fil des tuyaux (sous le terrain)
-    for (i = 0; i < h.pipeMouths.length; i += 2) {
-      var m0 = h.pipeMouths[i], m1 = h.pipeMouths[i + 1], pc = PIPE[m0.col] || PIPE.g;
-      proj(m0.x, m0.y, 0.6); var ax = Px, ay = Py; proj(m1.x, m1.y, 0.6); var bx = Px, by = Py;
-      cx.strokeStyle = "rgba(" + pc[0] + "," + pc[1] + "," + pc[2] + ",.5)"; cx.lineWidth = 3; cx.setLineDash([6, 8]);
-      cx.beginPath(); cx.moveTo(ax, ay); cx.quadraticCurveTo((ax + bx) / 2, Math.min(ay, by) - 50 * cam.F / 600, bx, by); cx.stroke(); cx.setLineDash([]);
+    if (h.water) for (i = 0; i < h.water.length; i++) {
+      var w = h.water[i];
+      if (x > w[0] && x < w[2] && y > w[1] && y < w[3]) return Math.min(x - w[0], w[2] - x, y - w[1], w[3] - y) * view.ws < 1.1 ? PK.waterEdge : PK.water;
     }
-    (h.bumpers || []).forEach(function (q) { fillPoly(circlePts(q[0] + 8, q[1] + 11, q[2] * 1.1, 0.15, 20), "rgba(0,0,0,.25)", null); });
-    fillPoly(circlePts(h.tee[0], h.tee[1], 13, 0.3, 20), "rgba(0,0,0,.18)", null);
-    fillPoly(circlePts(h.cup[0], h.cup[1], CUP_R, 0.4, 24), "#12100b", "#2b1709", 2);
-    cx.restore();
+    if (h.pads) for (i = 0; i < h.pads.length; i++) {
+      var pd = h.pads[i];
+      if (x > pd.x1 && x < pd.x2 && y > pd.y1 && y < pd.y2) {
+        if (Math.min(x - pd.x1, pd.x2 - x, y - pd.y1, pd.y2 - y) * view.ws < 1) return PK.black;
+        var ca = Math.cos(pd.ang), sa = Math.sin(pd.ang), mx0 = (pd.x1 + pd.x2) / 2, my0 = (pd.y1 + pd.y2) / 2;
+        var u = (x - mx0) * ca + (y - my0) * sa, v = -(x - mx0) * sa + (y - my0) * ca;
+        for (var off = -9; off <= 9; off += 18) if (Math.abs(v) < 12 && Math.abs(u - (off - 0.75 * Math.abs(v)) + 4) < 2.2) return PK.brown;
+        return PK.yellow;
+      }
+    }
+    if (inRects(h.sand, x, y)) {
+      var sr = null; for (i = 0; i < h.sand.length; i++) { var q = h.sand[i]; if (x > q[0] && x < q[2] && y > q[1] && y < q[3]) sr = q; }
+      if (Math.min(x - sr[0], sr[2] - x, y - sr[1], sr[3] - y) * view.ws < 1.1) return PK.sandEdge;
+      return hash(ax, ay) < 0.085 ? PK.sandDot : PK.sand;
+    }
+    dd = Math.sqrt((x - h.cup[0]) * (x - h.cup[0]) + (y - h.cup[1]) * (y - h.cup[1]));
+    if (dd < CUP_R) return PK.black;
+    if (dd < CUP_R + 1.8) return PK.side2;
+    dd = Math.sqrt((x - h.tee[0]) * (x - h.tee[0]) + (y - h.tee[1]) * (y - h.tee[1]));
+    if (dd < 10) return dd > 8 ? PK.side : PK.fair2;
+    reliefAt(h, x, y, tmpR);
+    var z = tmpR.z;
+    if (z > 0.4) return z > 12 ? ((ax + ay) % 7 < 3 ? PK.stripe : PK.fair) : (chk ? PK.side : PK.fair);
+    if (z > 2.5) return chk ? PK.side2 : PK.side;
+    if (z > 0.6) return chk ? PK.side : PK.fair;
+    if (z < -9) return chk ? PK.side2 : PK.side;
+    if (z < -3) return chk ? PK.side : PK.fair2;
+    if (z < -0.6) return chk ? PK.fair2 : PK.fair;
+    if (h.bumpers) for (i = 0; i < h.bumpers.length; i++) {
+      var bm = h.bumpers[i], sdx = x - bm[0] - 5, sdy = y - bm[1] - 6;
+      if (sdx * sdx + sdy * sdy < bm[2] * bm[2] * 1.1 && chk) return PK.fair2;
+    }
+    return hash(ax, ay) < 0.1 ? PK.fair2 : PK.fair;
+  }
+  function buildTerrain(h) {
+    var aw = view.aw, ah = view.ah, img = terrCtx.createImageData(aw, ah), d = new Uint32Array(img.data.buffer);
+    for (var ay = 0; ay < ah; ay++) for (var ax = 0; ax < aw; ax++) { v2w(ax + 0.5, ay + 0.5); d[ay * aw + ax] = terrainPixel(h, WX, WY, ax, ay); }
+    terrCtx.putImageData(img, 0, 0);
   }
 
-  // ---------- balle ----------
-  function drawBall(h, x, y, lift, color, scale, alpha, label) {
-    var gz = groundZ(h, x, y), zc = gz + lift + R * scale;
-    cx.save(); cx.globalAlpha = alpha == null ? 1 : alpha;
-    fillPoly(circlePts(x + lift * 0.15, y + lift * 0.25, R * scale * (1 + lift / 140), gz + 0.4, 14), "rgba(0,0,0," + (0.32 - Math.min(0.2, lift / 260)) + ")", null);
-    proj(x, y, zc);
-    var rr = R * scale * Ps, bx = Px, by = Py;
-    var g = cx.createRadialGradient(bx - rr * 0.35, by - rr * 0.4, rr * 0.1, bx, by, rr);
-    g.addColorStop(0, "#ffffff"); g.addColorStop(0.35, color); g.addColorStop(1, "#7c7467");
-    cx.fillStyle = g; cx.strokeStyle = "#1a1208"; cx.lineWidth = Math.max(1, rr * 0.22);
-    cx.beginPath(); cx.arc(bx, by, rr, 0, 6.3); cx.fill(); cx.stroke();
-    if (label) {
-      cx.font = "bold 12px Nunito, sans-serif"; cx.textAlign = "center"; cx.lineWidth = 3; cx.strokeStyle = "rgba(20,12,4,.85)"; cx.fillStyle = "#fdf3de";
-      cx.strokeText(label, bx, by - rr - 8); cx.fillText(label, bx, by - rr - 8);
-    }
-    cx.restore();
+  // ---------- primitives pixel ----------
+  function pxDisc(x, y, r, col) {
+    x = Math.round(x); y = Math.round(y); cx.fillStyle = col;
+    for (var dy = -r; dy <= r; dy++) { var w = Math.floor(Math.sqrt(r * r + r * 0.8 - dy * dy)); cx.fillRect(x - w, y + dy, 2 * w + 1, 1); }
   }
+  function pxLine(x0, y0, x1, y1, th, colFn) {
+    var n = Math.max(1, Math.round(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))));
+    for (var i = 0; i <= n; i++) { cx.fillStyle = colFn(i, n); cx.fillRect(Math.round(x0 + (x1 - x0) * i / n - th / 2), Math.round(y0 + (y1 - y0) * i / n - th / 2), th, th); }
+  }
+  function pxRing(x, y, r, col, alpha) {
+    cx.globalAlpha = alpha; cx.fillStyle = col;
+    var n = Math.max(12, Math.round(r * 5));
+    for (var i = 0; i < n; i++) { var a = i / n * 6.2832; cx.fillRect(Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r), 1, 1); }
+    cx.globalAlpha = 1;
+  }
+  var PIPE_COL = { g: "#2fb85a", b: "#3a74e0" };
+  function drawBall(h, x, y, lift, color, scale, alpha) {
+    w2v(x, y);
+    var rr = Math.max(2, Math.round(R * view.ws * scale)), bx = Math.round(VX), by = Math.round(VY - lift * view.ws * 0.5), so = 1 + Math.round(lift * view.ws * 0.06);
+    cx.globalAlpha = alpha == null ? 1 : alpha;
+    cx.globalAlpha *= 0.35; pxDisc(bx + so, Math.round(VY) + so, rr, C.black); cx.globalAlpha = alpha == null ? 1 : alpha;
+    pxDisc(bx, by, rr + 1, C.black); pxDisc(bx, by, rr, color);
+    cx.fillStyle = "rgba(20,60,70,.35)"; cx.fillRect(bx + 1, by + 1, Math.max(1, rr - 1), Math.max(1, rr - 1));
+    pxDisc(bx, by, Math.max(0, rr - 1), color);
+    cx.fillStyle = "#ffffff"; cx.fillRect(bx - Math.floor(rr / 2), by - Math.floor(rr / 2), Math.max(1, Math.round(rr / 2)), 1); cx.fillRect(bx - Math.floor(rr / 2), by - Math.floor(rr / 2), 1, Math.max(1, Math.round(rr / 2)));
+    cx.globalAlpha = 1;
+    VX = bx; VY = by - rr;
+  }
+
+  var tagEls = {}, msgShown = "";
+  var tagsEl = $("[data-tags]", root);
+  function setTag(id, text, px, py) {
+    var el = tagEls[id];
+    if (!el) { el = document.createElement("span"); el.className = "golf-tag"; tagsEl.appendChild(el); tagEls[id] = el; }
+    if (text === null) { el.hidden = true; return; }
+    if (el.textContent !== text) el.textContent = text;
+    el.hidden = false; el.style.left = (parseFloat(canvas.style.left) + px * view.S) + "px"; el.style.top = (parseFloat(canvas.style.top) + py * view.S) + "px";
+  }
+  function setPower(p, col) { var w = hudPower.parentNode; w.style.setProperty("--p", Math.round(p * 100)); hudPower.style.background = col || ""; }
 
   function draw(t) {
-    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cx.fillStyle = "#1f3a2b"; cx.fillRect(0, 0, cw, ch);
     var h = G ? curHole() : HOLES[3], i, k;
-    setCam(h);
-    drawGround(h, t);
-    var list = [];
-    function add(x, y, z, fn) { list.push({ d: depthOf(x, y, z), f: fn }); }
+    setView(h, view.rot);
+    var key = (G ? G.order[G.hi] : "p") + "|" + view.rot + "|" + view.aw + "|" + view.ah + "|" + Math.round(view.ws * 1000);
+    if (terr.key !== key) { buildTerrain(h); terr.key = key; }
+    cx.imageSmoothingEnabled = false;
+    cx.drawImage(terr.canvas, 0, 0);
     var fxs = G ? G.fx : [];
 
-    h.walls.forEach(function (w) { add(w.mx, w.my, WALL_H / 2, function () { prism(w.c, 0, WALL_H, WOOD, "#c9955a"); }); });
-    (h.blocks || []).forEach(function (r) { add((r[0] + r[2]) / 2, (r[1] + r[3]) / 2, 9, function () { prism(rectC(r), 0, 20, WOOD, "#c9955a"); }); });
-    (h.movers || []).forEach(function (m) {
-      var bx = moverBox(m, simT);
-      add((bx[0] + bx[2]) / 2, (bx[1] + bx[3]) / 2, 10, function () { prism(rectC(bx), 0, 22, AMBER, "#ffd75a"); });
+    // eau qui scintille
+    (h.water || []).forEach(function (r) {
+      var W = r[2] - r[0], H = r[3] - r[1], n = Math.round(W * H / 700);
+      cx.fillStyle = C.waterHi;
+      for (var j = 0; j < n; j++) {
+        var px = r[0] + ((hash(j, 3) * W + t * (0.012 + hash(j, 5) * 0.012) * 1000 / 60) % W), py = r[1] + 4 + hash(j, 8) * (H - 8);
+        if (((t / 500 + j) | 0) % 3 === 0) continue;
+        w2v(px, py); cx.fillRect(Math.round(VX), Math.round(VY), 2, 1);
+      }
     });
+    // lien des tuyaux
+    for (i = 0; i < h.pipeMouths.length; i += 2) {
+      var m0 = h.pipeMouths[i], m1 = h.pipeMouths[i + 1];
+      w2v(m0.x, m0.y); var ax0 = VX, ay0 = VY; w2v(m1.x, m1.y);
+      var nn = Math.round(Math.sqrt((VX - ax0) * (VX - ax0) + (VY - ay0) * (VY - ay0)) / 6);
+      cx.fillStyle = PIPE_COL[m0.col] || PIPE_COL.g; cx.globalAlpha = 0.55;
+      for (k = 1; k < nn; k++) cx.fillRect(Math.round(ax0 + (VX - ax0) * k / nn), Math.round(ay0 + (VY - ay0) * k / nn), 1, 1);
+      cx.globalAlpha = 1;
+    }
+    // blocs qui coulissent (caisses)
+    (h.movers || []).forEach(function (m) {
+      var bx = moverBox(m, simT); w2v(bx[0], bx[1]); var x0 = VX, y0 = VY; w2v(bx[2], bx[3]);
+      var rx = Math.round(Math.min(x0, VX)), ry = Math.round(Math.min(y0, VY)), rw = Math.round(Math.abs(VX - x0)), rh = Math.round(Math.abs(VY - y0));
+      cx.fillStyle = C.black; cx.fillRect(rx - 1, ry - 1, rw + 2, rh + 2);
+      cx.fillStyle = C.orange; cx.fillRect(rx, ry, rw, rh);
+      cx.fillStyle = C.orange2;
+      for (var s = 3; s < Math.max(rw, rh); s += 4) { if (rw >= rh) cx.fillRect(rx + s, ry, 1, rh); else cx.fillRect(rx, ry + s, rw, 1); }
+      cx.fillStyle = "#ffc46a"; cx.fillRect(rx, ry, rw, 1); cx.fillRect(rx, ry, 1, rh);
+    });
+    // pales
+    (h.mills || []).forEach(function (m) {
+      millEnds(m, simT, tmpM);
+      w2v(m.x - tmpM.cx, m.y - tmpM.cy); var x0 = VX, y0 = VY; w2v(m.x + tmpM.cx, m.y + tmpM.cy); var x1 = VX, y1 = VY;
+      var th = Math.max(3, Math.round(5.5 * view.ws));
+      pxLine(x0, y0, x1, y1, th + 2, function () { return C.black; });
+      pxLine(x0, y0, x1, y1, th, function (a, n) { var f = a / n, blk = (a >> 1) & 1; return (f < 0.2 || f > 0.8) ? (blk ? C.red : C.red2) : (blk ? C.white : C.gray); });
+      w2v(m.x, m.y); var hr = Math.max(3, Math.round(9 * view.ws));
+      pxDisc(VX, VY, hr + 1, C.black); pxDisc(VX, VY, hr, "#b8bcc8"); pxDisc(VX - 1, VY - 1, Math.max(1, hr - 2), "#e6e9f0"); pxDisc(VX, VY, 1, C.black);
+    });
+    // champignons (piliers rebondissants)
     (h.bumpers || []).forEach(function (q, idx) {
       var pop = 0; for (k = 0; k < fxs.length; k++) if (fxs[k].k === "bump" && fxs[k].i === idx) pop = Math.max(pop, 1 - fxs[k].t / 0.18);
-      add(q[0], q[1], 13, function () {
-        var r = q[2], zt = 26;
-        cylinder(q[0], q[1], r, 0, zt, [214, 70, 58], sh([240, 90, 76], 1.05 + pop * 0.2));
-        cylinder(q[0], q[1], r + 1.5, zt - 7, zt - 3, [253, 243, 222], null);
-        [[-0.4, -0.35, 0.2], [0.35, -0.2, 0.17], [-0.05, 0.4, 0.19], [0.1, -0.05, 0.11]].forEach(function (d) { fillPoly(circlePts(q[0] + d[0] * r, q[1] + d[1] * r, d[2] * r, zt + 0.2, 10), "#fdf3de", null); });
-      });
+      w2v(q[0], q[1]); var rr = Math.max(3, Math.round(q[2] * view.ws * (1 + pop * 0.14))), bx = Math.round(VX), by = Math.round(VY);
+      pxDisc(bx, by, rr + 1, C.black); pxDisc(bx, by, rr, C.red); pxDisc(bx - rr * 0.22, by - rr * 0.3, Math.max(1, Math.round(rr * 0.55)), C.red2);
+      [[-0.45, -0.32, 0.2], [0.4, -0.2, 0.19], [-0.02, 0.45, 0.2], [0.05, -0.04, 0.12]].forEach(function (d) { pxDisc(bx + d[0] * rr, by + d[1] * rr, Math.max(1, Math.round(rr * d[2])), C.cream); });
     });
-    (h.mills || []).forEach(function (m) {
-      add(m.x, m.y, 9, function () {
-        millEnds(m, simT, tmpM);
-        var L = Math.sqrt(tmpM.cx * tmpM.cx + tmpM.cy * tmpM.cy), px = -tmpM.cy / L * 3.8, py = tmpM.cx / L * 3.8;
-        function seg(t0, t1, col, top) {
-          var x0 = m.x + tmpM.cx * t0, y0 = m.y + tmpM.cy * t0, x1 = m.x + tmpM.cx * t1, y1 = m.y + tmpM.cy * t1;
-          prism([[x0 + px, y0 + py], [x1 + px, y1 + py], [x1 - px, y1 - py], [x0 - px, y0 - py]], 0, 16, col, top);
-        }
-        seg(-1, 1, [250, 240, 220], "#fff");
-        seg(0.62, 1, [214, 70, 58], "#f06a5a"); seg(-1, -0.62, [214, 70, 58], "#f06a5a");
-        cylinder(m.x, m.y, 9, 0, 32, WOOD, "#c9955a");
-      });
-    });
+    // tuyaux
     h.pipeMouths.forEach(function (m) {
-      add(m.x, m.y, 3, function () {
-        var pc = PIPE[m.col] || PIPE.g;
-        cylinder(m.x, m.y, PIPE_R + 2, 0, 7, pc, sh(pc, 1.25));
-        fillPoly(circlePts(m.x, m.y, PIPE_R - 4, 7.2, 20), "#0b0906", null);
-      });
+      w2v(m.x, m.y); var rr = Math.max(3, Math.round(PIPE_R * view.ws)), bx = Math.round(VX), by = Math.round(VY);
+      var pcol = PIPE_COL[m.col] || PIPE_COL.g;
+      pxDisc(bx, by, rr + 1, C.black); pxDisc(bx, by, rr, pcol); pxDisc(bx - 1, by - 1, Math.max(1, rr - 1), pcol);
+      cx.fillStyle = "rgba(255,255,255,.6)"; cx.fillRect(bx - rr + 1, by - Math.round(rr / 2), 1, Math.max(1, Math.round(rr / 2))); cx.fillRect(bx - Math.round(rr / 2), by - rr + 1, Math.max(1, Math.round(rr / 2)), 1);
+      pxDisc(bx, by, Math.max(1, Math.round((PIPE_R - 8) * view.ws)), C.black);
     });
-    add(h.cup[0], h.cup[1], 20, function () {
-      var cxp = h.cup[0], cyp = h.cup[1];
-      proj(cxp, cyp, 0); var x0 = Px, y0 = Py;
-      proj(cxp, cyp, 48); cx.strokeStyle = "#fdf3de"; cx.lineWidth = Math.max(2, Ps * 3); cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(Px, Py); cx.stroke();
-      var w = Math.sin(t / 260) * 2;
-      fillPoly([[cxp, cyp, 48], [cxp + cam.r[0] * 19, cyp + cam.r[1] * 19, 42 + w], [cxp, cyp, 35]], "#f6c445", "#2b1709", 1.5);
-    });
+    // drapeau
+    w2v(h.cup[0], h.cup[1]);
+    var fx0 = Math.round(VX), fy0 = Math.round(VY), fl = Math.max(8, Math.round(26 * view.ws)), wv = (t / 250 | 0) % 2;
+    cx.fillStyle = C.black; cx.fillRect(fx0 - 1, fy0 - fl - 1, 3, fl + 2);
+    cx.fillStyle = C.white; cx.fillRect(fx0, fy0 - fl, 1, fl);
+    cx.fillStyle = C.black; cx.fillRect(fx0 + 1, fy0 - fl - 1, 7 + wv, 6);
+    cx.fillStyle = C.red; cx.fillRect(fx0 + 1, fy0 - fl, 5 + wv, 4);
+    cx.fillStyle = C.red2; cx.fillRect(fx0 + 1, fy0 - fl, 5 + wv, 1);
+
     // balles
+    var live = {};
     if (G) {
       G.players.forEach(function (p, idx) {
         if (p.id === ME) return;
-        var o = G.others[p.id]; if (!o || o.holed) return;
-        add(o.x, o.y, 4, function () { drawBall(h, o.x, o.y, 0, COLORS[idx % COLORS.length], 1, 0.62, p.name); });
+        var o = G.others[p.id];
+        if (!o || o.holed) { setTag(p.id, null); return; }
+        drawBall(h, o.x, o.y, 0, COLORS[idx % COLORS.length], 1, 0.7);
+        setTag(p.id, p.name, VX, VY - 4);
       });
       var myCol = COLORS[Math.max(0, playerIndex(ME)) % COLORS.length], b = G.ball;
       if (G.phase === "sink") {
-        var u = clamp(G.sinkT / 0.35, 0, 1), sx0 = G.sinkFrom.x + (h.cup[0] - G.sinkFrom.x) * u, sy0 = G.sinkFrom.y + (h.cup[1] - G.sinkFrom.y) * u;
-        add(sx0, sy0, 4, function () { drawBall(h, sx0, sy0, -u * R * 1.6, myCol, 1 - u * 0.5, 1); });
-      } else if (G.phase === "aim" || G.phase === "roll") add(b.x, b.y, b.z + 4, function () { drawBall(h, b.x, b.y, b.z, myCol, 1, 1); });
+        var u = clamp(G.sinkT / 0.35, 0, 1);
+        drawBall(h, G.sinkFrom.x + (h.cup[0] - G.sinkFrom.x) * u, G.sinkFrom.y + (h.cup[1] - G.sinkFrom.y) * u, 0, myCol, 1 - u * 0.6, 1);
+      } else if (G.phase === "aim" || G.phase === "roll") drawBall(h, b.x, b.y, b.z, myCol, 1, 1);
     }
-    list.sort(function (a, b) { return b.d - a.d; });
-    for (i = 0; i < list.length; i++) list[i].f();
-
     // effets
     fxs.forEach(function (f) {
-      if (f.k === "splash") { var u2 = f.t / 0.6; fillPoly(circlePts(f.x, f.y, 6 + u2 * 26, 0.8, 20), null, "rgba(255,255,255," + (1 - u2) + ")", 3); }
-      else if (f.k === "puff") { var u3 = f.t / 0.4; fillPoly(circlePts(f.x, f.y, 4 + u3 * 16, 0.8, 16), null, "rgba(255,255,255," + (0.8 - u3 * 0.8) + ")", 2.5); }
+      w2v(f.x, f.y);
+      if (f.k === "splash") { var u2 = f.t / 0.6; pxRing(VX, VY, (6 + u2 * 26) * view.ws, C.white, 1 - u2); pxRing(VX, VY, (3 + u2 * 16) * view.ws, C.waterHi, 1 - u2); }
+      else if (f.k === "puff") { var u3 = f.t / 0.4; pxRing(VX, VY, (4 + u3 * 16) * view.ws, C.white, 0.9 - u3 * 0.9); }
     });
-    // visée (sur le sol)
+    // visée : traînée de points noirs et blancs
     if (G && G.phase === "aim" && overlay.hidden) {
       var ang = G.ang, pw = G.pow;
       if (G.drag) {
@@ -694,25 +719,19 @@
         if (dl > 14) { ang = Math.atan2(ddy, ddx); pw = clamp((dl - 10) / 150, 0.04, 1); G.dragOK = true; } else G.dragOK = false;
       } else G.dragOK = true;
       if (G.dragOK && (G.drag || G.kbd)) {
-        var ux = Math.cos(ang), uy = Math.sin(ang), len = 40 + pw * 230, col = "hsl(" + Math.round(120 - 120 * pw) + ",85%,62%)", bx0 = G.ball.x, by0 = G.ball.y, gz = groundZ(h, bx0, by0) + 1.5;
-        for (var d = 20; d < len; d += 17) {
-          proj(bx0 + ux * d, by0 + uy * d, gz);
-          cx.fillStyle = "rgba(20,12,4,.6)"; cx.beginPath(); cx.arc(Px, Py, Ps * 4.4, 0, 6.3); cx.fill();
-          cx.fillStyle = col; cx.beginPath(); cx.arc(Px, Py, Ps * 3, 0, 6.3); cx.fill();
+        var ux = Math.cos(ang), uy = Math.sin(ang), lenW = 40 + pw * 230, n = Math.max(2, Math.floor(lenW * view.ws / 4.5)), col = "hsl(" + Math.round(120 - 120 * pw) + ",90%,55%)";
+        for (i = 1; i <= n; i++) {
+          var dw = 9 + i * 4.5 / view.ws; w2v(G.ball.x + ux * dw, G.ball.y + uy * dw);
+          var last = i === n, rd = last ? 2 : (i > n - 3 ? 1 : 1);
+          pxDisc(VX, VY, rd + 1, C.black); pxDisc(VX, VY, rd, last ? col : C.white);
         }
-        fillPoly([[bx0 + ux * (len + 16), by0 + uy * (len + 16), gz], [bx0 + ux * len - uy * 9, by0 + uy * len + ux * 9, gz], [bx0 + ux * len + uy * 9, by0 + uy * len - ux * 9, gz]], col, "rgba(20,12,4,.7)", 2);
-        hudPower.style.width = Math.round(pw * 100) + "%";
-        hudPower.style.background = "hsl(" + Math.round(120 - 120 * pw) + ",75%,52%)";
-      } else if (!G.drag) hudPower.style.width = Math.round(G.pow * 100) + "%";
-      if (!G.drag && !G.kbd) { proj(G.ball.x, G.ball.y, 26 + Math.sin(t / 240) * 2); cx.fillStyle = "rgba(255,255,255,.9)"; cx.beginPath(); cx.arc(Px, Py, 3.5, 0, 6.3); cx.fill(); }
+        setPower(pw, col);
+      } else if (!G.drag) setPower(G.pow, "");
+      if (!G.drag && !G.kbd) { w2v(G.ball.x, G.ball.y); var bob = Math.round(Math.sin(t / 240)); cx.fillStyle = C.black; cx.fillRect(Math.round(VX) - 2, Math.round(VY) - 9 + bob, 5, 3); cx.fillStyle = C.white; cx.fillRect(Math.round(VX) - 1, Math.round(VY) - 8 + bob, 3, 1); cx.fillRect(Math.round(VX), Math.round(VY) - 7 + bob, 1, 1); }
     }
     // message
-    if (G && G.msg && now() < G.msgT) {
-      cx.font = "800 " + Math.round(clamp(cw / 22, 15, 26)) + "px Nunito, sans-serif"; cx.textAlign = "center";
-      cx.lineWidth = 5; cx.strokeStyle = "#2b1709"; cx.fillStyle = "#fdf3de";
-      var my = ch - 66;
-      cx.strokeText(G.msg, cw / 2, my); cx.fillText(G.msg, cw / 2, my);
-    }
+    var msg = G && G.msg && now() < G.msgT ? G.msg : "";
+    if (msg !== msgShown) { msgShown = msg; hudMsg.textContent = msg; hudMsg.hidden = !msg; }
   }
 
   /* =====================================================================
@@ -723,7 +742,6 @@
     requestAnimationFrame(frame);
     var dt = Math.min(0.05, (ts - lastT) / 1000 || 0); lastT = ts;
     simT = now() / 1000 + clockOff;
-    cam.yaw += (cam.yawT - cam.yaw) * Math.min(1, dt * 9);
     if (G) {
       acc += dt;
       while (acc >= STEP) { acc -= STEP; simStep(); }
@@ -738,10 +756,10 @@
         leaderTick();
       }
       if (ts - (frame.hud || 0) > 200) { frame.hud = ts; hudUpdate(false); }
-    }
+    } else { var tgs = Object.keys(tagEls); for (var q = 0; q < tgs.length; q++) tagEls[tgs[q]].hidden = true; }
     draw(ts);
   }
-  function turnCam(dir) { cam.yawT += dir * Math.PI / 4; }
+  function turnCam(dir) { view.rot = (view.rot + dir + 4) & 3; }
   root.addEventListener("click", function (ev) { var b = ev.target.closest("[data-cam]"); if (b) turnCam(Number(b.dataset.cam)); });
   document.addEventListener("keydown", function (ev) {
     var tg = ev.target && ev.target.tagName;
@@ -797,8 +815,9 @@
     if (!G) { hudBar.hidden = true; fitView(); return; }
     hudBar.hidden = false;
     var h = curHole();
-    hudHole.textContent = G.mode === "practice" ? "Entraînement · " + h.name : "Trou " + (G.hi + 1) + "/" + G.order.length + " · " + h.name;
-    hudStrokes.textContent = "Par " + h.par + " · Coups " + G.strokes;
+    hudHole.textContent = G.mode === "practice" ? "ENTR." : (G.hi + 1) + "/" + G.order.length;
+    hudHole.title = h.name;
+    hudCount.textContent = G.strokes; hudPar.textContent = "PAR " + h.par;
     if (G.mode === "online") {
       var rows = G.players.map(function (p, i) {
         var tot = totalOf(p.id, G.hi), o = G.others[p.id], live = p.id === ME ? G.strokes : (o ? o.s : 0);
@@ -1133,5 +1152,5 @@
     if (m && m[1].toUpperCase() !== NET.code) netJoin(m[1].toUpperCase(), false);
   });
   window.addEventListener("beforeunload", function () { if (NET.ch) try { NET.ch.untrack(); } catch (e) {} });
-  if (/[?&]debug/.test(location.search)) window.GOLF_DEBUG = { G: function () { return G; }, NET: NET, HOLES: HOLES, shoot: shoot, load: function (i) { G.hi = i; loadHole(); closeCard(); }, inPoly: inPoly, inRects: inRects, setT: function (t) { simT = t; }, step: function (n) { for (var i = 0; i < n; i++) { simStep(); if ((i & 255) === 0) G.fx.length = 0; } }, cam: cam };
+  if (/[?&]debug/.test(location.search)) window.GOLF_DEBUG = { G: function () { return G; }, NET: NET, HOLES: HOLES, shoot: shoot, load: function (i) { G.hi = i; loadHole(); closeCard(); }, inPoly: inPoly, inRects: inRects, setT: function (t) { simT = t; }, step: function (n) { for (var i = 0; i < n; i++) { simStep(); if ((i & 255) === 0) G.fx.length = 0; } }, view: view };
 })();

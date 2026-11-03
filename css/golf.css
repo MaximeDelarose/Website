@@ -1,23 +1,37 @@
 /* =========================================================================
-   Mini-golf (golf.html, js/golf.js)
+   Mini-golf (golf.html, js/golf.js) — pixel art 2D vu du dessus
    ========================================================================= */
-.golf-stage { height: min(74vh, 640px); min-height: 360px; background: #1f3a2b; }
-.golf-canvas { cursor: crosshair; touch-action: none; }
-.golf-hud {
-  position: absolute; inset: 0 0 auto 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
-  padding: 8px 10px; pointer-events: none; color: #fdf3de; font-weight: 800; text-shadow: 0 2px 0 #2b1709;
+.golf-stage { height: min(74vh, 640px); min-height: 360px; background: #1f8f4e; }
+.golf-canvas { image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; touch-action: none; }
+
+/* barre noire : coups, par, trou, jauge de puissance */
+.golf-hud { position: absolute; inset: 0; z-index: 2; pointer-events: none; font-family: "Londrina", "Courier New", monospace; color: #fff; }
+.golf-hud[hidden], .golf-board[hidden], .golf-msg[hidden] { display: none; }
+.golf-side {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 78px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 10px 4px; background: #05050a; border-right: 3px solid #23233a;
 }
-.golf-hud[hidden], .golf-board[hidden] { display: none; }
-.golf-hud p { margin: 0; line-height: 1.25; }
-.golf-hud-hole { font-size: 1rem; }
-.golf-hud-strokes { font-size: .85rem; opacity: .9; }
-.golf-power { width: 120px; height: 8px; margin-top: 6px; background: rgba(20, 12, 4, .6); border: 2px solid #2b1709; }
-.golf-power i { display: block; height: 100%; width: 0; background: #7bd35a; }
-.golf-board { list-style: none; margin: 0; padding: 6px 8px; display: grid; gap: 3px; background: rgba(20, 12, 4, .6); border: 2px solid #2b1709; font-size: .8rem; text-shadow: none; max-width: 52%; }
+.golf-side p { margin: 0; line-height: 1; text-align: center; }
+.golf-club { image-rendering: pixelated; margin-bottom: 4px; }
+.golf-count { font-size: 2.9rem; font-weight: 900; letter-spacing: .02em; }
+.golf-par { font-size: 1rem; color: #a8e63a; letter-spacing: .08em; }
+.golf-holeno { font-size: 1.05rem; color: #cdd2dc; letter-spacing: .06em; margin-top: 4px !important; }
+.golf-power { position: relative; flex: 1 1 auto; min-height: 40px; width: 14px; margin-top: 8px; background: #3a0a0a; border: 2px solid #5a5a70; }
+.golf-power i { position: absolute; left: 0; bottom: 0; width: 100%; height: calc(var(--p, 0) * 1%); background: #a8e63a; }
+.golf-board { position: absolute; top: 8px; right: 8px; list-style: none; margin: 0; padding: 6px 8px; display: grid; gap: 3px; background: #05050a; border: 2px solid #23233a; font-family: "Nunito", system-ui, sans-serif; font-size: .8rem; font-weight: 800; max-width: 46%; }
 .golf-board li { display: flex; align-items: center; gap: 6px; }
-.golf-board i, .golf-roster i, .golf-table i { display: inline-block; width: 10px; height: 10px; border: 2px solid #2b1709; border-radius: 50%; flex: none; }
+.golf-board i, .golf-roster i, .golf-table i { display: inline-block; width: 10px; height: 10px; border: 2px solid #14141e; border-radius: 50%; flex: none; }
 .golf-board b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
 .golf-board span { margin-left: auto; padding-left: 8px; white-space: nowrap; color: #f6d36b; }
+.golf-msg {
+  position: absolute; left: calc(50% + 39px); bottom: 14px; transform: translateX(-50%); z-index: 2; max-width: calc(100% - 100px); text-align: center; pointer-events: none;
+  padding: 5px 12px; background: #05050a; color: #fff; border: 3px solid #a8e63a; font: 800 .95rem "Nunito", system-ui, sans-serif;
+}
+.golf-tags { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.golf-tag { position: absolute; transform: translate(-50%, -100%); font: 800 11px "Nunito", system-ui, sans-serif; color: #fff; white-space: nowrap; text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; }
+.golf-cam { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: flex; gap: 6px; }
+.golf-cam button { width: 40px; height: 40px; font-size: 1.3rem; line-height: 1; cursor: pointer; color: #fff; background: #05050a; border: 3px solid #23233a; }
+.golf-cam button:hover { background: #1c1c2e; }
 
 .golf-overlay { z-index: 3; }
 .golf-card h2 { margin-bottom: .3em; }
@@ -60,13 +74,18 @@
 .golf-cam button { width: 40px; height: 40px; font-size: 1.3rem; line-height: 1; cursor: pointer; color: #fdf3de; background: rgba(20, 12, 4, .7); border: 3px solid #2b1709; }
 .golf-cam button:hover { background: rgba(60, 36, 12, .9); }
 
-/* téléphone en portrait : la scène prend la hauteur de l'écran, boutons plus gros */
+/* téléphone en portrait : barre noire en haut, scène pleine hauteur */
 @media (orientation: portrait) and (max-width: 700px) {
   .golf-stage { height: calc(100dvh - 250px); min-height: 460px; max-height: 820px; }
+  .golf-side { right: 0; bottom: auto; width: auto; height: 58px; flex-direction: row; justify-content: space-around; align-items: center; gap: 8px; padding: 4px 12px; border-right: 0; border-bottom: 3px solid #23233a; }
+  .golf-club { margin: 0; }
+  .golf-count { font-size: 2.2rem; }
+  .golf-holeno { margin-top: 0 !important; }
+  .golf-power { flex: 0 0 auto; width: 90px; height: 14px; min-height: 0; margin: 0; }
+  .golf-power i { width: calc(var(--p, 0) * 1%); height: 100%; }
+  .golf-board { top: 66px; max-width: 52%; font-size: .72rem; }
+  .golf-msg { left: 50%; bottom: 66px; max-width: calc(100% - 24px); }
   .golf-cam button { width: 48px; height: 48px; font-size: 1.5rem; }
-  .golf-hud { padding: 6px 8px; }
-  .golf-hud-hole { font-size: .9rem; }
-  .golf-board { max-width: 50%; }
   .golf-card { padding: 16px 14px 14px; }
   .golf-card h2 { font-size: 1.5rem; }
   .golf-stack .btn, .golf-join { min-width: 0; width: 100%; }
