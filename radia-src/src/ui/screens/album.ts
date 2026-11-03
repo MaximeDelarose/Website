@@ -11,6 +11,7 @@ import { COLLECTIONS, COLLECTION_IDS, SPECIAL_ITEMS, itemBlurb, itemName, type I
 import { DIALOGUES } from '../../data/dialogue';
 import { canvasUrl, paint } from '../../game/art/kit';
 import { drawMemory } from '../../game/art/scenes';
+import { lookKey, augusteCutout } from '../../game/art/world/radiaNow';
 import { itemImageUrl } from '../../game/merge/textures';
 import { playLines } from '../components/Dialogue';
 import { PHOTOS } from '../../data/photos';
@@ -18,7 +19,7 @@ import { hasPhotos, photoUrl } from '../../core/photos';
 import { syncPassedPhotos } from '../../game/narrative/Story';
 
 export function memoryImageUrl(id: string): string {
-  return canvasUrl(`mem:${id}`, () => paint(330, 440, 2, (ctx) => drawMemory(ctx, id, 330, 440)));
+  return canvasUrl(`mem:${id}:${lookKey()}:${augusteCutout() ? 1 : 0}`, () => paint(330, 440, 2, (ctx) => drawMemory(ctx, id, 330, 440)));
 }
 
 type Tab = 'memories' | 'photos' | 'collections' | 'history';

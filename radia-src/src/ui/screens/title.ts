@@ -6,7 +6,8 @@ import { ui } from '../ui';
 import { icon } from '../icons';
 import { save, audio } from '../../core/app';
 import { checkAchievements, bark, setBarkSink, stat } from '../../core/progress';
-import { drawAugusteFull, drawRadiaFull } from '../../game/art/characters';
+import { drawAugusteFull } from '../../game/art/characters';
+import { drawRadiaNow, lookKey, augusteCutout, warmAuguste } from '../../game/art/world/radiaNow';
 import { setBackdrop, setDim, themeForChapter } from '../../game/scenes/backdrop';
 import { runStory, storyFinished, chessUnlocked } from '../../game/narrative/Story';
 import { STORY, CHAPTERS, chapterAt } from '../../data/story';
@@ -16,12 +17,11 @@ import { playLevel } from '../../game/merge/playLevel';
 import { ENDLESS_DEF } from '../../game/merge/rules';
 import { openAlbum } from './album';
 import { openSettings } from './settings';
-import { currentOutfit } from '../components/Dialogue';
 import { events } from '../../core/app';
 import { wallet, fmt } from '../../core/wallet';
 import { openShop, shopButton, diamondUrl, energyUrl } from './shop';
 import { openEnergyPanel } from '../components/energyPanel';
-import { hasPhotos, photoUrl } from '../../core/photos';
+import { hasPhotos } from '../../core/photos';
 
 const hasProgress = () => save.data.story.step > 0 || Object.keys(save.data.levels).length > 0;
 
@@ -39,13 +39,12 @@ function titleArt(): { el: HTMLCanvasElement; stop: () => void } {
   let last = 0;
   let blinkR = 0;
   let blinkA = 0;
-  const outfit = currentOutfit();
   // Chaque pose (clignement × pas de marche) est dessinée une seule fois dans
   // un canvas à part ; l'animation ne fait ensuite que 2 drawImage par image.
   const k = scale * 0.52;
   const cache = new Map<string, HTMLCanvasElement>();
   const sprite = (who: 'radia' | 'auguste', blink: boolean, step: number): HTMLCanvasElement => {
-    const key = `${who}:${blink ? 1 : 0}:${step}`;
+    const key = `${who === 'radia' ? lookKey() : 'a'}:${who}:${blink ? 1 : 0}:${step}`;
     let c = cache.get(key);
     if (!c) {
       c = document.createElement('canvas');
@@ -53,7 +52,7 @@ function titleArt(): { el: HTMLCanvasElement; stop: () => void } {
       c.height = Math.ceil(600 * k);
       const g = c.getContext('2d')!;
       g.scale(k, k);
-      if (who === 'radia') drawRadiaFull(g, { expr: 'smile', blink, outfit, step });
+      if (who === 'radia') drawRadiaNow(g, 240, 600, { expr: 'smile', blink, step });
       else drawAugusteFull(g, { expr: 'smile', blink });
       cache.set(key, c);
     }
@@ -61,20 +60,13 @@ function titleArt(): { el: HTMLCanvasElement; stop: () => void } {
   };
   const STEPS = [-0.35, -0.175, 0, 0.175, 0.35];
 
-  // Avec le lien secret : l'illustration d'Auguste et Radia, détourée.
-  const art: { r: HTMLImageElement | null; a: HTMLImageElement | null } = { r: null, a: null };
+  // Avec le lien secret : Auguste en illustration détourée ; Radia reste dessinée
+  // avec sa tenue actuelle (dressing), comme partout ailleurs dans le jeu.
+  const art: { a: HTMLImageElement | null } = { a: null };
   const waitingPhotos = hasPhotos();
   const born = performance.now();
-  if (waitingPhotos) {
-    const load = (name: string) => photoUrl(name).then((u) => {
-      if (!u) return null;
-      const im = new Image();
-      im.src = u;
-      return im.decode().then(() => im).catch(() => null);
-    });
-    void Promise.all([load(outfit === 'royal' ? 'char-radia' : 'char-radia-nc'), load('char-auguste')]).then(([r, a]) => { if (r && a) { art.r = r; art.a = a; } });
-  }
-  const drawArt = (s: number, hr: HTMLImageElement, ha: HTMLImageElement) => {
+  if (waitingPhotos) void warmAuguste().then(() => { art.a = augusteCutout(); });
+  const drawArt = (s: number, ha: HTMLImageElement) => {
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.clearRect(0, 0, W, H);
     ctx.imageSmoothingQuality = 'high';
@@ -97,18 +89,19 @@ function titleArt(): { el: HTMLCanvasElement; stop: () => void } {
     const bA = 1 + Math.sin(s * 1.6 + 1) * 0.006;
     const bR = 1 + Math.sin(s * 1.6) * 0.007;
     const hA = 322;
-    const hR = 306;
+    const hR = 326;
+    const rs = sprite('radia', false, 0);
     const wA = (ha.width / ha.height) * hA;
-    const wR = (hr.width / hr.height) * hR;
+    const wR = (rs.width / rs.height) * hR;
     ctx.drawImage(ha, 212 - wA / 2, gy - hA * bA, wA, hA * bA);
-    ctx.drawImage(hr, 92 - wR / 2, gy - hR * bR, wR, hR * bR);
+    ctx.drawImage(rs, 92 - wR / 2, gy + 4 - hR * bR, wR, hR * bR);
   };
   const draw = (t: number) => {
     raf = requestAnimationFrame(draw);
     if (t - last < 50) return; // ~20 images/s suffisent
     last = t;
     const s = t / 1000;
-    if (art.r && art.a) { drawArt(s, art.r, art.a); return; }
+    if (art.a) { drawArt(s, art.a); return; }
     // clé présente : on attend un instant l'illustration plutôt que d'afficher le dessin de secours
     if (waitingPhotos && performance.now() - born < 2500) return;
     if (s > blinkR) blinkR = s + 2.5 + Math.random() * 3;

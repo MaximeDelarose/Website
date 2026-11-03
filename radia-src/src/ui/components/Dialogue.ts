@@ -7,6 +7,7 @@ import { h, tap } from '../dom';
 import { ui } from '../ui';
 import { canvasUrl } from '../../game/art/kit';
 import { portraitCanvas, type Outfit } from '../../game/art/characters';
+import { radiaBustCanvas, lookKey } from '../../game/art/world/radiaNow';
 import { DIALOGUES, type DialogueDef, type DialogueLine, type Expr } from '../../data/dialogue';
 import { save, audio } from '../../core/app';
 import { hasPhotos, photoUrlNow } from '../../core/photos';
@@ -17,11 +18,11 @@ const NAMES = { auguste: 'Auguste', radia: 'Radia', narrator: '' } as const;
  * Buste détouré de l'illustration d'Auguste et Radia (disponible avec le lien
  * secret, une fois chargé). Radia porte sa couronne à partir du chapitre 4.
  */
-export function bustUrl(who: 'radia' | 'auguste', outfit: Outfit): string | null {
+export function bustUrl(who: 'radia' | 'auguste', _outfit: Outfit, expr: Expr = 'neutral'): string | null {
+  // Radia : toujours son avatar, avec la tenue choisie au dressing (donc la même partout).
+  if (who === 'radia') return canvasUrl(`rb:${expr}:${lookKey()}`, () => radiaBustCanvas(expr, 420));
   if (!hasPhotos()) return null;
-  if (who === 'auguste') return photoUrlNow('bust-auguste');
-  if (outfit === 'stripes') return null;
-  return photoUrlNow(outfit === 'royal' ? 'bust-radia' : 'bust-radia-nc');
+  return photoUrlNow('bust-auguste');
 }
 
 export function portraitUrl(who: 'radia' | 'auguste', expr: Expr = 'neutral', outfit: Outfit = 'hoodie', blink = false): string {
@@ -81,7 +82,7 @@ export function playLines(lines: DialogueLine[], choice?: DialogueDef['choice'],
       nameEl.classList.toggle('right', right);
       const outfit = l.who === 'radia' ? l.outfit ?? currentOutfit() : 'hoodie';
       const expr = l.expr ?? 'neutral';
-      const bust = bustUrl(l.who, outfit);
+      const bust = bustUrl(l.who, outfit, expr);
       portraitWrap.dataset.expr = expr;
       portraitWrap.classList.toggle('bust', !!bust);
       const src = bust ?? portraitUrl(l.who, expr, outfit);

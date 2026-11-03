@@ -1,0 +1,15 @@
+/* Bulles « Maman ! » des enfants */
+.kc { position: absolute; z-index: 68; left: 50%; bottom: calc(var(--sab) + 128px); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; width: min(92vw, 372px); padding: 10px 14px 10px 10px; border-radius: 22px; background: #fffaf5; box-shadow: 0 0 0 2.5px #f5a0bb, 0 12px 26px rgba(59, 49, 82, 0.4); pointer-events: auto; animation: kcIn 0.4s var(--ease-pop); }
+.kc.out { animation: fadeOut 0.3s ease forwards; pointer-events: none; }
+.kc.pulse .kc-face { animation: kcPop 0.35s var(--ease-pop); }
+.kc-face { width: 58px; height: 58px; flex-shrink: 0; border-radius: 50%; overflow: hidden; background: linear-gradient(160deg, #efe6fb, #fbe2ec); box-shadow: 0 0 0 2.5px #f5a0bb; }
+.kc-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.kc-body { min-width: 0; flex: 1; }
+.kc-body b { display: block; font-size: 13px; color: var(--rose-deep); }
+.kc-body span { display: block; font-size: 17px; line-height: 1.25; font-weight: 700; color: var(--choco); word-break: break-word; }
+.kc-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.kc-actions:empty { display: none; }
+.kc.done { box-shadow: 0 0 0 2.5px #8fd19e, 0 12px 26px rgba(59, 49, 82, 0.4); }
+.kc.done .kc-body b { color: #2f7a43; }
+@keyframes kcIn { from { opacity: 0; transform: translate(-50%, 18px) scale(0.9); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes kcPop { 0% { transform: scale(0.8) rotate(-6deg); } 60% { transform: scale(1.12) rotate(3deg); } 100% { transform: none; } }

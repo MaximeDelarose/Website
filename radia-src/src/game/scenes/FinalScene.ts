@@ -4,7 +4,8 @@
  */
 import Phaser from 'phaser';
 import { BaseScene } from './BaseScene';
-import { drawAugusteFull, drawRadiaFull, drawRadiaPortrait, type Outfit } from '../art/characters';
+import { drawAugusteFull } from '../art/characters';
+import { drawRadiaNow, radiaFaceCanvas, drawAugusteCutout, warmAuguste, lookKey } from '../art/world/radiaNow';
 import { OUTLINE, PAL, ellipse, heartPath, sparkle, texScale, paint } from '../art/kit';
 import { ensureFxTextures } from '../merge/textures';
 import { audio, reducedFx } from '../../core/app';
@@ -15,14 +16,13 @@ export class FinalScene extends BaseScene {
   private radia!: Phaser.GameObjects.Image;
   private auguste!: Phaser.GameObjects.Image;
   private mirror: Phaser.GameObjects.Container | null = null;
-  private outfit: Outfit = 'royal';
   private walkT = 0;
   private walking = false;
   private hearts!: Phaser.GameObjects.Particles.ParticleEmitter;
 
   constructor() { super(FinalScene.KEY); }
 
-  init(data: { outfit?: Outfit }): void { this.outfit = data.outfit ?? 'royal'; this.mirror = null; this.walking = false; }
+  init(): void { void warmAuguste(); this.mirror = null; this.walking = false; }
 
   create(): void {
     this.initLayout();
@@ -44,14 +44,14 @@ export class FinalScene extends BaseScene {
     this.tweens.add({ targets: this.radia, scaleY: this.radia.scaleY * 1.012, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.easeInOut' });
   }
 
-  private key(who: string, e: string, st: number) { return `fin:${who}:${e}:${st}:${this.outfit}`; }
+  private key(who: string, e: string, st: number) { return `fin:${who}:${e}:${st}:${who === 'radia' ? lookKey() : 'a'}`; }
 
   private charTex(who: 'radia' | 'auguste', expr: Expr, step: number): void {
     const k = this.key(who, expr, step);
     if (this.textures.exists(k)) return;
     this.textures.addCanvas(k, paint(240, 600, Math.min(2, texScale()), (ctx) => {
-      if (who === 'radia') drawRadiaFull(ctx, { expr, outfit: this.outfit });
-      else drawAugusteFull(ctx, { expr, step });
+      if (who === 'radia') drawRadiaNow(ctx, 240, 600, { expr });
+      else if (!drawAugusteCutout(ctx, 240, 600)) drawAugusteFull(ctx, { expr, step });
     }));
   }
 
@@ -148,7 +148,7 @@ export class FinalScene extends BaseScene {
       const glass = c.getByName('glass') as Phaser.GameObjects.Image;
       const gw = glass.displayWidth;
       const gh = glass.displayHeight;
-      const pk = `mirrorRadia:${Math.round(gw)}:${this.outfit}`;
+      const pk = `mirrorRadia:${Math.round(gw)}:${lookKey()}`;
       if (!this.textures.exists(pk)) {
         this.textures.addCanvas(pk, paint(gw, gh, texScale(), (ctx) => {
           ctx.save();
@@ -159,10 +159,9 @@ export class FinalScene extends BaseScene {
           g.addColorStop(1, '#D9CDF5');
           ctx.fillStyle = g;
           ctx.fillRect(0, 0, gw, gh);
-          const k = (gw * 1.05) / 400;
-          ctx.translate(gw / 2 - 200 * k, gh * 0.12);
-          ctx.scale(k, k);
-          drawRadiaPortrait(ctx, { expr: 'love', outfit: this.outfit });
+          const fc = radiaFaceCanvas('love', 360);
+          const fw = gw * 0.95;
+          ctx.drawImage(fc, (gw - fw) / 2, gh * 0.2, fw, fw * (fc.height / fc.width));
           ctx.restore();
         }));
       }

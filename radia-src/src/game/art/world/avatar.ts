@@ -599,6 +599,72 @@ function flower(ctx: C, x: number, y: number, r: number, petal: string, centre: 
   dot(ctx, x, y, r * 0.38, centre);
 }
 
+// ---- robes « sur mesure » : une même silhouette, des longueurs, coupes et motifs variés
+interface GenDress {
+  col: string; col2: string; accent: string; hem: number; flare: number;
+  pat: 'plain' | 'dots' | 'stripes' | 'gingham' | 'hearts' | 'lace' | 'buttons';
+  neck?: 'v' | 'round' | 'sweet'; belt?: string; sleeve?: SleeveSpec; scallop?: number;
+}
+function genDress(g: GenDress): DressFx {
+  return {
+    sleeve: g.sleeve,
+    front(ctx, st) {
+      const sw = st * 3;
+      const w = 40 + g.flare;
+      const path = (c: C) => {
+        c.beginPath();
+        c.moveTo(CX - 40, 171);
+        c.lineTo(CX - 25, 167);
+        if (g.neck === 'round') c.quadraticCurveTo(CX, 200, CX + 25, 167);
+        else if (g.neck === 'sweet') { c.quadraticCurveTo(CX - 22, 190, CX - 8, 188); c.quadraticCurveTo(CX, 196, CX + 8, 188); c.quadraticCurveTo(CX + 22, 190, CX + 25, 167); }
+        else { c.lineTo(CX, 214); c.lineTo(CX + 25, 167); }
+        c.lineTo(CX + 40, 171);
+        c.bezierCurveTo(CX + 44, 190, CX + 50, 205, CX + 46, 222);
+        c.bezierCurveTo(CX + 42, 246, CX + 44, 262, CX + 40, 276);
+        c.bezierCurveTo(CX + 50 + g.flare * 0.2, 276 + (g.hem - 276) * 0.3, CX + w * 0.9 + sw, g.hem - (g.hem - 276) * 0.3, CX + w + sw, g.hem);
+        wave(c, CX - w, CX + w + sw, g.hem, g.scallop ?? 3, Math.max(4, Math.round(w / 12)));
+        c.bezierCurveTo(CX - w * 0.9, g.hem - (g.hem - 276) * 0.3, CX - 50 - g.flare * 0.2, 276 + (g.hem - 276) * 0.3, CX - 40, 276);
+        c.bezierCurveTo(CX - 44, 262, CX - 42, 246, CX - 46, 222);
+        c.bezierCurveTo(CX - 50, 205, CX - 44, 190, CX - 40, 171);
+        c.closePath();
+      };
+      path(ctx);
+      fs(ctx, lg(ctx, CX - w, 170, CX + w, g.hem, shade(g.col, 0.18), g.col, g.col2), 2.4);
+      clipped(ctx, path, () => {
+        const y0 = 172, y1 = g.hem + 6;
+        if (g.pat === 'dots') {
+          for (let r = 0; y0 + 12 + r * 22 < y1; r++) for (let k = -5; k <= 5; k++) dot(ctx, CX + k * 22 + (r % 2) * 11, y0 + 12 + r * 22, 3.6, g.accent);
+        } else if (g.pat === 'stripes') {
+          for (let y = y0; y < y1; y += 22) { ctx.fillStyle = g.accent; ctx.fillRect(CX - 120, y, 240, 8); }
+        } else if (g.pat === 'gingham') {
+          ctx.fillStyle = 'rgba(255,255,255,0.5)';
+          for (let x = -130; x < 130; x += 20) ctx.fillRect(CX + x, y0, 9, y1 - y0);
+          for (let y = y0; y < y1; y += 20) ctx.fillRect(CX - 130, y, 260, 9);
+        } else if (g.pat === 'hearts') {
+          for (let r = 0; y0 + 16 + r * 30 < y1; r++) for (let k = -4; k <= 4; k++) { heartPath(ctx, CX + k * 28 + (r % 2) * 14, y0 + 16 + r * 30, 7); ctx.fillStyle = g.accent; ctx.fill(); }
+        } else if (g.pat === 'lace') {
+          ctx.lineWidth = 1.3; ctx.strokeStyle = g.accent;
+          for (let y = g.hem - 34; y < g.hem + 6; y += 11) { ctx.beginPath(); for (let x = CX - w; x < CX + w; x += 12) { ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 6, y + 8, x + 12, y); } ctx.stroke(); }
+          for (let k = 0; k < 14; k++) dot(ctx, CX - 36 + (k % 7) * 12, 190 + Math.floor(k / 7) * 26, 2.2, g.accent);
+        } else if (g.pat === 'buttons') {
+          line(ctx, [[CX, 214], [CX, g.hem]], 'rgba(20,40,80,0.35)', 1.4, false);
+          for (let y = 224; y < g.hem - 6; y += 30) dot(ctx, CX, y, 3, g.accent, 'rgba(20,40,80,0.5)', 0.8);
+          ctx.setLineDash([3, 3]); line(ctx, [[CX - 22, 214], [CX - 22, g.hem]], g.accent, 1, false); line(ctx, [[CX + 22, 214], [CX + 22, g.hem]], g.accent, 1, false); ctx.setLineDash([]);
+        }
+        sheen(ctx, CX - w, 290, CX + w, g.hem, 0.14);
+      });
+      if (g.neck === 'round') line(ctx, [[CX - 25, 167], [CX, 200], [CX + 25, 167]], g.accent, 2.2);
+      else if (g.neck !== 'sweet') line(ctx, [[CX - 25, 167], [CX, 214], [CX + 25, 167]], g.accent, 2.2, false);
+      if (g.belt) {
+        ctx.beginPath();
+        ctx.moveTo(CX - 40, 272); ctx.quadraticCurveTo(CX, 282, CX + 40, 272); ctx.lineTo(CX + 41, 282); ctx.quadraticCurveTo(CX, 292, CX - 41, 282); ctx.closePath();
+        fs(ctx, g.belt, 1.8);
+        dot(ctx, CX, 284, 3.2, GOLD, INK, 0.8);
+      }
+    },
+  };
+}
+
 const DRESSES: Partial<Record<ClothId, DressFx>> = {
   'dr-flowy-floral': {
     front(ctx, st) {
@@ -893,6 +959,17 @@ const DRESSES: Partial<Record<ClothId, DressFx>> = {
     },
   },
 };
+
+Object.assign(DRESSES, {
+  'dr-sundress-yellow': genDress({ col: '#FFE27A', col2: '#F2B93D', accent: '#FFFFFF', hem: 440, flare: 34, pat: 'dots', neck: 'round', belt: '#FFFFFF' }),
+  'dr-little-black': genDress({ col: '#3B3A4D', col2: '#1F1E2B', accent: '#F3C86B', hem: 410, flare: 14, pat: 'plain', neck: 'round', belt: '#F3C86B' }),
+  'dr-gingham-red': genDress({ col: '#E2506A', col2: '#B83250', accent: '#FFFFFF', hem: 455, flare: 42, pat: 'gingham', neck: 'sweet', belt: '#FFF4E8', sleeve: { len: 0.24, wid: 36, c0: '#EE6F86', c1: '#C03A58', hem: true, puff: '#E85F7B' } }),
+  'dr-denim': genDress({ col: '#6F93C9', col2: '#47689F', accent: '#F2C06B', hem: 430, flare: 22, pat: 'buttons', neck: 'v', belt: '#8A5A3A' }),
+  'dr-lavender-tulle': genDress({ col: '#D9C9F7', col2: '#A98CE0', accent: '#FFFFFF', hem: 535, flare: 54, pat: 'hearts', neck: 'sweet', belt: '#F5A0BB', sleeve: { len: 0.28, wid: 40, c0: '#E4D7FA', c1: '#B79BE8', hem: true, puff: '#D3BFF5' } }),
+  'dr-white-gown': genDress({ col: '#FFFBF5', col2: '#EADDCF', accent: '#E6C9B8', hem: 582, flare: 58, pat: 'lace', neck: 'sweet', belt: '#F5D6E0', scallop: 5 }),
+  'dr-emerald-evening': genDress({ col: '#2E9C7E', col2: '#125E4A', accent: '#F3C86B', hem: 575, flare: 30, pat: 'plain', neck: 'v', belt: '#F3C86B' }),
+  'dr-striped-navy': genDress({ col: '#FFFFFF', col2: '#E7E9F2', accent: '#3C4F8A', hem: 425, flare: 26, pat: 'stripes', neck: 'round', belt: '#E8558F' }),
+} as Partial<Record<ClothId, DressFx>>);
 
 // ---------------------------------------------------------------- vestes
 

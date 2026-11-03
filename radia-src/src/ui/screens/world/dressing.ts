@@ -163,7 +163,7 @@ export function openDressing(): Promise<void> {
         if (f) {
           const mini = h('canvas.dr-slot-av');
           const d = dpr();
-          mini.width = Math.round(30 * d); mini.height = Math.round(75 * d);
+          mini.width = Math.round(22 * d); mini.height = Math.round(54 * d);
           mini.getContext('2d')!.drawImage(avatarCanvas(f.look, mini.width, mini.height, { expr: 'smile' }), 0, 0);
           b.append(mini, h('span', f.name));
           b.classList.add('full');

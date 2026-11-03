@@ -6,6 +6,7 @@
 import Phaser from 'phaser';
 import { BaseScene } from '../scenes/BaseScene';
 import { drawMemory } from '../art/scenes';
+import { lookKey } from '../art/world/radiaNow';
 import { roundRect, texScale, PAL } from '../art/kit';
 import { audio, reducedFx } from '../../core/app';
 import { shuffle, swap, isSolved, isLocked, minSwaps, puzzleStars, correctCount } from './logic/puzzle';
@@ -74,7 +75,7 @@ export class PuzzleScene extends BaseScene {
   private buildTiles(): void {
     const w = Math.round(this.bw);
     const hgt = Math.round(this.bh);
-    this.texKey = `mg:arc:${w}x${hgt}`;
+    this.texKey = `mg:arc:${w}x${hgt}:${lookKey()}`;
     this.tex(this.texKey, w, hgt, (ctx) => drawMemory(ctx, 'arc', w, hgt));
     const s = texScale();
     const tex = this.textures.get(this.texKey);

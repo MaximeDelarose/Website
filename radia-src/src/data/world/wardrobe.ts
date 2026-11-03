@@ -40,6 +40,14 @@ export const CLOTHES: Record<ClothId, ClothDef> = {
   'dr-royal-gown': C('dr-royal-gown', 'Robe royale', ['royal'], 520, { fabric: 8, diamonds: 40 }),
   'dr-stage-sequin': C('dr-stage-sequin', 'Robe de scène à paillettes', ['stage'], 420, { fabric: 6 }),
   'dr-redcarpet': C('dr-redcarpet', 'Robe de tapis rouge', ['stage', 'royal'], 600, { fabric: 9, diamonds: 60 }),
+  'dr-sundress-yellow': C('dr-sundress-yellow', 'Robe d\'été jaune', ['casual', 'romantic'], 150, { fabric: 2 }),
+  'dr-little-black': C('dr-little-black', 'Petite robe noire', ['chic'], 240, { fabric: 3 }),
+  'dr-gingham-red': C('dr-gingham-red', 'Robe vichy rouge', ['romantic', 'casual'], 200, { fabric: 3 }),
+  'dr-denim': C('dr-denim', 'Robe en jean', ['casual'], 170, { fabric: 2 }),
+  'dr-lavender-tulle': C('dr-lavender-tulle', 'Robe lavande en tulle', ['romantic', 'royal'], 380, { fabric: 6 }),
+  'dr-white-gown': C('dr-white-gown', 'Robe blanche en dentelle', ['romantic', 'royal'], 460, { fabric: 7, diamonds: 30 }),
+  'dr-emerald-evening': C('dr-emerald-evening', 'Robe de soirée émeraude', ['chic', 'stage'], 440, { fabric: 6, diamonds: 25 }),
+  'dr-striped-navy': C('dr-striped-navy', 'Robe marinière', ['casual'], 130, { fabric: 2 }),
   'jk-blazer-cream': C('jk-blazer-cream', 'Blazer crème', ['chic'], 240, { fabric: 3 }),
   'jk-leather-black': C('jk-leather-black', 'Veste en cuir noire', ['casual', 'stage'], 280, { fabric: 3 }),
   'jk-denim': C('jk-denim', 'Veste en jean', ['casual'], 150, { fabric: 2 }),
@@ -72,4 +80,4 @@ export const STYLE_NAMES: Record<StyleId, string> = {
 };
 
 /** Une tenue « particulièrement élégante » (réaction spéciale d'Auguste). */
-export const ELEGANT_CLOTHES: ClothId[] = ['dr-royal-gown', 'dr-redcarpet', 'dr-romantic-pink', 'dr-stage-sequin', 'jk-blazer-cream'];
+export const ELEGANT_CLOTHES: ClothId[] = ['dr-white-gown', 'dr-emerald-evening', 'dr-little-black', 'dr-lavender-tulle', 'dr-royal-gown', 'dr-redcarpet', 'dr-romantic-pink', 'dr-stage-sequin', 'jk-blazer-cream'];

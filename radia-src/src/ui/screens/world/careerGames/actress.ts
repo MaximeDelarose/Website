@@ -2,14 +2,14 @@
 import { h, tap } from '../../../dom';
 import { audio } from '../../../../core/app';
 import { canvasUrl } from '../../../../game/art/kit';
-import { portraitCanvas } from '../../../../game/art/characters';
+import { radiaFaceCanvas, lookKey } from '../../../../game/art/world/radiaNow';
 import { EXPR_LABELS, type Take } from '../../../../data/world/careers';
 import type { Expr } from '../../../../data/dialogue';
 import { buildScene, isPerfect, scoreScene, scoreTake, sceneTags } from '../../../../game/world/careerGames/actress';
 import { mulberry32 } from '../../../../game/world/careerGames/rng';
 import { bigButton, gameShell, stars, tip, wait, type GameCtx, type GameResult } from './shared';
 
-const face = (e: Expr): string => canvasUrl(`ac:radia:${e}`, () => portraitCanvas('radia', { expr: e }, 230));
+const face = (e: Expr): string => canvasUrl(`ac:radia:${e}:${lookKey()}`, () => radiaFaceCanvas(e, 230));
 let lastScene: string | undefined;
 
 export function playActress(g: GameCtx): Promise<GameResult | null> {

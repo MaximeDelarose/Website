@@ -17,6 +17,8 @@ export type Sfx =
 /** Les versions de « J'arrive pas à t'oublier » : elles s'enchaînent tour à tour. */
 const TRACKS = ['./assets/music/radia-theme.mp3', './assets/music/radia-theme-2.mp3'];
 const MAX_VOICES = 10;
+/** Plafond de volume musique : même au réglage maximal, elle reste douce. */
+const MUSIC_CEIL = 0.7;
 
 export class AudioManager {
   ctx: AudioContext | null = null;
@@ -24,6 +26,10 @@ export class AudioManager {
   private musicGain: GainNode | null = null;
   private sfxGain: GainNode | null = null;
   private comp: DynamicsCompressorNode | null = null;
+  private norm: GainNode | null = null;
+  private musicComp: DynamicsCompressorNode | null = null;
+  /** Gain de normalisation par version (loudness mesurée), pour qu'aucune ne soit plus forte. */
+  private normGains = new Map<number, number>();
   private el: HTMLAudioElement | null = null;
   private elSource: MediaElementAudioSourceNode | null = null;
   private wantMusic = false;
@@ -68,6 +74,16 @@ export class AudioManager {
       this.musicGain.gain.value = 0;
       this.sfxGain.connect(this.comp);
       this.comp.connect(this.master);
+      // chaîne musique : normalisation par version → limiteur doux → volume réglé
+      this.norm = this.ctx.createGain();
+      this.musicComp = this.ctx.createDynamicsCompressor();
+      this.musicComp.threshold.value = -20;
+      this.musicComp.knee.value = 12;
+      this.musicComp.ratio.value = 10;
+      this.musicComp.attack.value = 0.01;
+      this.musicComp.release.value = 0.25;
+      this.norm.connect(this.musicComp);
+      this.musicComp.connect(this.musicGain);
       this.musicGain.connect(this.master);
       this.master.connect(this.ctx.destination);
       this.applyVolumes();
@@ -102,7 +118,7 @@ export class AudioManager {
     try {
       if (this.ctx && this.musicGain) {
         this.elSource = this.ctx.createMediaElementSource(el);
-        this.elSource.connect(this.musicGain);
+        this.elSource.connect(this.norm ?? this.musicGain);
       }
     } catch {
       this.elSource = null;
@@ -117,6 +133,7 @@ export class AudioManager {
     const el = this.el;
     if (!el) return;
     const play = (src: string) => {
+      this.applyNorm(i);
       el.src = src;
       this.musicLoaded = true;
       if (this.wantMusic && this.musicOn) {
@@ -128,12 +145,39 @@ export class AudioManager {
     if (cached) { play(cached); return; }
     fetch(TRACKS[i])
       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); })
-      .then((b) => { const u = URL.createObjectURL(b); this.blobs.set(i, u); play(u); })
+      .then(async (b) => {
+        const u = URL.createObjectURL(b);
+        this.blobs.set(i, u);
+        await this.measure(i, b); // mesure avant de lancer : le volume est juste dès la première seconde
+        play(u);
+      })
       .catch(() => {
         if (i !== 0) { this.track = 0; this.loadTrack(0, fadeIn); return; }
         el.addEventListener('error', () => { this.musicMissing = true; }, { once: true });
         play(TRACKS[0]);
       });
+  }
+
+  /** Mesure l'intensité moyenne (RMS) d'une version et en déduit son gain de normalisation. */
+  private async measure(i: number, blob: Blob): Promise<void> {
+    if (this.normGains.has(i) || !this.ctx) return;
+    try {
+      const buf = await this.ctx.decodeAudioData(await blob.arrayBuffer());
+      let sum = 0;
+      let n = 0;
+      for (let c = 0; c < buf.numberOfChannels; c++) {
+        const d = buf.getChannelData(c);
+        for (let k = 0; k < d.length; k += 4) { sum += d[k] * d[k]; n++; }
+      }
+      const rms = Math.sqrt(sum / Math.max(1, n));
+      // cible ≈ -22 dBFS ; jamais plus de +6 dB ni de -12 dB de correction
+      const g = rms > 0.001 ? Math.min(2, Math.max(0.25, 0.08 / rms)) : 1;
+      this.normGains.set(i, g);
+    } catch { this.normGains.set(i, 1); }
+  }
+
+  private applyNorm(i: number): void {
+    if (this.norm && this.ctx) this.norm.gain.setTargetAtTime(this.normGains.get(i) ?? 1, this.ctx.currentTime, 0.05);
   }
 
   private startElement(): void {
@@ -172,7 +216,7 @@ export class AudioManager {
       const t = this.ctx.currentTime;
       g.cancelScheduledValues(t);
       g.setValueAtTime(g.value, t);
-      g.linearRampToValueAtTime(v, t + Math.max(0.02, seconds));
+      g.linearRampToValueAtTime(Math.min(v, 1) * MUSIC_CEIL, t + Math.max(0.02, seconds));
     } else if (this.el) {
       this.el.volume = Math.max(0, Math.min(1, v));
     }

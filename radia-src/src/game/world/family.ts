@@ -31,7 +31,7 @@ export function recordVisit(w: World, kid: KidId, now: number): { gained: boolea
   return { gained: true, levelUp: addBond(w, kid, 1) };
 }
 
-function addBond(w: World, kid: KidId, n: number): boolean {
+export function addBond(w: World, kid: KidId, n: number): boolean {
   const k = w.family.kids[kid];
   const before = kidBondLevel(k.bond).level;
   k.bond += n;

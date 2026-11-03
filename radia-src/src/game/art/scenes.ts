@@ -11,7 +11,8 @@
 import {
   OUTLINE, PAL, ellipse, glow, heartPath, rgba, roundRect, seeded, shade, sparkle, starPath,
 } from './kit';
-import { drawAugusteFull, drawRadiaFull, type FullOpts } from './characters';
+import { drawAugusteFull, type FullOpts } from './characters';
+import { drawRadiaNow, drawAugusteCutout } from './world/radiaNow';
 import { drawItem } from './items';
 
 export type Theme = 'title' | 'garden' | 'paris' | 'souvenirs' | 'royaume' | 'monde';
@@ -563,7 +564,7 @@ function person(c: C, who: 'radia' | 'auguste', x: number, y: number, hgt: numbe
   c.scale(flip ? -k : k, k);
   c.translate(-120, -592);
   groundShadowAt(c, 120, 590, 70, 12);
-  if (who === 'radia') drawRadiaFull(c, o); else drawAugusteFull(c, o);
+  if (who === 'radia') drawRadiaNow(c, 240, 600, { expr: o.expr, blink: o.blink, step: o.step, arms: o.arms }); else if (!drawAugusteCutout(c, 240, 600)) drawAugusteFull(c, o);
   c.restore();
 }
 

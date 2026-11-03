@@ -15,6 +15,9 @@ import { showTitle } from './ui/screens/title';
 import { BackdropScene } from './game/scenes/BackdropScene';
 import { preloadPhotos } from './core/photos';
 import { loadFamily } from './core/family';
+import { installNoZoom } from './ui/noZoom';
+import { startKidCalls } from './ui/components/kidCalls';
+import { warmAuguste } from './game/art/world/radiaNow';
 
 const progress = (p: number) => {
   const bar = document.getElementById('splash-progress');
@@ -95,6 +98,9 @@ async function boot(): Promise<void> {
   applySettings();
   void save.requestPersistence();
   void loadFamily();
+  installNoZoom();
+  startKidCalls();
+  void warmAuguste();
   preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste', 'head-new']);
   progress(0.3);
 
@@ -150,5 +156,5 @@ boot().catch((e) => {
 
 // Accès debug en développement : window.RADIA
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  (window as unknown as Record<string, unknown>).RADIA = { save, audio, game: () => getGame() };
+  (window as unknown as Record<string, unknown>).RADIA = { save, audio, game: () => getGame(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
 }
