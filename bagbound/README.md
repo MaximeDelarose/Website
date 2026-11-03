@@ -24,8 +24,8 @@ npm run build       # compile app/bagbound.js + app/bagbound.css et met à jour 
 |---|---|
 | `src/engine/` | Bibliothèque pure : RNG à seed, géométrie des sacs, registres, effets/déclencheurs/statuts, boucle de combat. **Interdits** : `Math.random`, `Date.now`, `performance.now`, DOM, Node (vérifié par `tests/purity.test.ts`). |
 | `src/content/` | Schémas zod (`schema.ts`), chargeur + vérification des références (`loader.ts`), lecture depuis le disque pour Node (`node.ts`). |
-| `data/` | Tout le contenu : `rules.json` (équilibrage du combat), `tags.json`, `items.json`, `enemies.json`, `classes.json`, `recipes.json` (fusions), `run.json` (règles de run), `zones.json`, `loot.json`, `events.json`, `sandbox.json` (atelier). Rien n'est codé en dur. |
-| `src/game/` | Logique de jeu hors combat, sans DOM : `bag.ts` (sac du joueur), `map.ts` (carte d'un étage), `run.ts` (boucle de run), `fusion.ts` (fusions, défusion), `autoplace.ts` (rangement automatique), `bot.ts` (joueur automatique pour les tests et les simulations). |
+| `data/` | Tout le contenu : `rules.json` (équilibrage du combat), `tags.json`, `items.json`, `enemies.json`, `classes.json`, `recipes.json` (fusions), `run.json` (règles de run), `zones.json` (zones, routes, zone finale), `story.json` (PNJ, dialogues, fragments, retours), `quests.json`, `loot.json`, `events.json`, `sandbox.json` (atelier). Rien n'est codé en dur. |
+| `src/game/` | Logique de jeu hors combat, sans DOM : `bag.ts` (sac du joueur), `map.ts` (carte d'un étage), `run.ts` (boucle de run), `fusion.ts` (fusions, défusion), `hub.ts` (campement : profil, quêtes, dialogues, coffre), `autoplace.ts` (rangement automatique), `bot.ts` (joueur automatique pour les tests et les simulations). |
 | `src/ui/` | Interface navigateur : `app.ts` (atelier, combat en direct, entrées tactiles/souris/clavier), `draw.ts` (rendu canvas), `sprites.ts` (pixel art 16 x 16 en texte + variantes de palette), `describe.ts` (infobulles générées depuis les données), `layout.ts`, `fx.ts`, `style.css`. |
 | `app/` | Build publié (ne pas modifier à la main). |
 | `scripts/simulate.ts` | Simulation en masse (N combats headless) : victoires, durée, PV restants, contribution de chaque objet. |
@@ -157,12 +157,15 @@ Les modules de base sont dans `src/engine/builtins.ts`.
   (atelier jouable sur le site, voir ci-dessous).
 - [x] Phase 3 : boucle de run (carte, boutique, butin, événements, coffres, feux de camp, boss), sauvegarde.
 - [x] Phase 4 : fusions, potions (remplissage), extensions de sac.
-- [ ] Phase 5 : hub, quêtes, narration, boss de zone, boss final, routes.
-- Équilibrage : `npm run sim:run` donne environ 23 % de victoires au bot (qui
-  range de façon gloutonne, fusionne ce qui prend de la valeur, pose ses
-  extensions, mais ne cherche pas les synergies et ne lance pas de potions) ;
-  15 % sans les fusions (`--no-fusion`). La plupart des défaites ont lieu aux
-  étages 2 et 3, contre les groupes.
+- [x] Phase 5 : hub, quêtes, narration, boss de zone, boss final, routes.
+- [ ] Phase 6 : méta-progression, classes, difficultés, équilibrage en masse.
+- Équilibrage : une expédition complète va maintenant jusqu'au boss final
+  (2 zones + le Cœur de la Trame). `npm run sim:run` (tout débloqué) donne
+  environ 5 % de victoires au bot, `--locked` (nouveau joueur, forêt seule)
+  environ 15 %. Le bot range de façon gloutonne, fusionne et pose ses
+  extensions, mais ne cherche pas les synergies et ne lance pas de potions ;
+  ses défaites se répartissent entre les deux routes des Lisières, les Mines
+  et le Tisserand.
 
 ## Interface (Phase 2)
 
@@ -244,3 +247,33 @@ pure, déterministe (RNG de la run) et sérialisable telle quelle en JSON.
   `classes.json.maxBag` ; ils deviennent des cases (définitif). La forme du sac
   est sauvegardée dans `SavedBag.cells`. Pendant qu'une extension attend dans
   la réserve, la grille garde une case de marge et montre les cases possibles.
+
+## Campement, quêtes, histoire, routes (Phase 5)
+
+- **Monde** (`data/zones.json`) : `zones` (Les Lisières, Les Profondeurs), chacune
+  avec ses **routes** (Forêt des Murmures ; Marais Putride, fermé tant que la
+  quête d'Ysolde ne l'a pas ouvert ; Mines Oubliées) — ennemis, élites, boss,
+  boutique, coffres et ambiance propres — puis `final` (Cœur de la Trame : un
+  feu de camp, puis le Tisserand, boss à 3 phases). Avec plusieurs routes
+  ouvertes, la run passe par une phase `route` (choix du chemin).
+- **Journal de run** (`run.log`) : combats (ennemis, élites, boss, potions bues
+  et objets lancés, comptés par le moteur dans `CombatResult.used`), fusions,
+  étages (PV perdus), zones atteintes, fragments et drapeaux d'événements, fin.
+- **Campement** (`src/game/hub.ts`, profil `bagbound-profile-v1`) : à la fin de
+  chaque run (mort comprise), `applyRun` compte le journal pour les quêtes
+  actives, note les boss vaincus, les zones atteintes et les fragments, et
+  choisit le texte de retour (`story.returns`, par priorité et conditions).
+  Les PNJ (`story.npcs`) arrivent selon des conditions ; `talk` donne, dans
+  l'ordre : quête à rendre, dialogue jamais vu (le plus prioritaire), nouvelle
+  quête, bavardage. Le campement se reconstruit (tentes) au fil des quêtes rendues.
+- **Conditions** (PNJ, dialogues, quêtes, retours) : `runs`, `deaths`, `wins`,
+  `flags`, `notFlags`, `questsClaimed`, `bossKilled`, `lore`, `lastWon`,
+  `lastKilledBy`, `lastZone`.
+- **Quêtes** (`data/quests.json`) : objectifs `winCombat`, `killEnemy`, `fuse`,
+  `drink`, `throw`, `goldEarned`, `reachZone`, `floorNoDamage`, `die`,
+  `endWithTag`, `winRun` (cumulés d'une run à l'autre) ; récompenses
+  `unlockItem` (l'objet est retiré des tables de butin tant qu'il n'est pas
+  débloqué), `unlockRoute`, `chestSlot`, `startItem`, `startGold`, `flag`, `lore`.
+- **Coffre** : en fin d'expédition, on y dépose des objets (1 place au départ) ;
+  au départ suivant, ils partent dans la réserve.
+- **Événements** : nouveaux effets `lore` (fragment d'histoire) et `flag`.

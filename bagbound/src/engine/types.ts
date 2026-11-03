@@ -363,6 +363,8 @@ export interface CombatState {
   uidCounter: number;
   /** Objets sortis d'un sac (transformés, lancés, remplacés par une phase) : gardés pour les stats. */
   retired: ItemInstance[];
+  /** Actions manuelles acceptées du joueur (quêtes : potions bues, objets lancés). */
+  used: { drink: number; throw: number };
   suddenDeathTimerMs: number;
   suddenDeathCount: number;
 }
@@ -376,6 +378,8 @@ export interface CombatResult {
   /** Sac du joueur après le combat (charges consommées, potions vidées…). */
   playerBagAfter: Placement[];
   itemStats: { uid: string; owner: number; item: string; stats: ItemStats }[];
+  /** Potions bues / objets lancés par le joueur. */
+  used: { drink: number; throw: number };
   hash: string;
   events: CombatEvent[];
   actions: CombatAction[];

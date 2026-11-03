@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SPRITES, VARIANTS } from "../src/ui/sprites";
-import { loadContentFromDir } from "../src/content/node";
+import { loadContentFromDir, loadRunDataFromDir, loadStoryFromDir } from "../src/content/node";
 
 describe("sprites", () => {
   for (const [id, def] of Object.entries(SPRITES)) {
@@ -14,9 +14,10 @@ describe("sprites", () => {
     });
   }
 
-  it("chaque objet et chaque ennemi a un sprite", () => {
+  it("chaque objet, chaque ennemi et chaque PNJ a un sprite", () => {
     const c = loadContentFromDir();
-    for (const id of [...Object.keys(c.items), ...Object.keys(c.enemies)]) {
+    const { story } = loadStoryFromDir(c, loadRunDataFromDir(c));
+    for (const id of [...Object.keys(c.items), ...Object.keys(c.enemies), ...story.npcs.map((n) => n.sprite)]) {
       expect(VARIANTS[id], id).toBeDefined();
       expect(SPRITES[VARIANTS[id].sprite], id).toBeDefined();
     }

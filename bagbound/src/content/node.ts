@@ -8,6 +8,7 @@ import type { Content } from "../engine/types";
 import { loadContent } from "./loader";
 import { loadRecipes, type Recipe } from "./recipes";
 import { loadRunData, type RunData } from "./runData";
+import { loadStory } from "./story";
 
 export const DATA_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../../data");
 
@@ -37,4 +38,8 @@ export function loadRunDataFromDir(content: Content, dir: string = DATA_DIR): Ru
 
 export function loadRecipesFromDir(content: Content, dir: string = DATA_DIR): Recipe[] {
   return loadRecipes(readJson(dir, "recipes.json"), content);
+}
+
+export function loadStoryFromDir(content: Content, rd: RunData, dir: string = DATA_DIR) {
+  return loadStory(readJson(dir, "story.json"), readJson(dir, "quests.json"), content, rd);
 }

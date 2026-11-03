@@ -101,6 +101,57 @@
       "enemies": [
         "forest_warden"
       ]
+    },
+    {
+      "id": "swamp",
+      "name": "Marais : crapaud + moustiques",
+      "enemies": [
+        "bog_toad",
+        "mosquito_cloud"
+      ]
+    },
+    {
+      "id": "hydra",
+      "name": "Hydre des roseaux (élite)",
+      "enemies": [
+        "reed_hydra"
+      ]
+    },
+    {
+      "id": "queen",
+      "name": "Reine des tourbières (boss)",
+      "enemies": [
+        "bog_queen"
+      ]
+    },
+    {
+      "id": "mines",
+      "name": "Mines : kobold + chauve-souris",
+      "enemies": [
+        "kobold_miner",
+        "cave_bat"
+      ]
+    },
+    {
+      "id": "foreman",
+      "name": "Contremaître de fer (élite)",
+      "enemies": [
+        "iron_foreman"
+      ]
+    },
+    {
+      "id": "colossus",
+      "name": "Colosse de rouille (boss)",
+      "enemies": [
+        "rust_colossus"
+      ]
+    },
+    {
+      "id": "weaver",
+      "name": "Le Tisserand (boss final)",
+      "enemies": [
+        "weaver"
+      ]
     }
   ]
 }

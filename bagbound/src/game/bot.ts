@@ -44,7 +44,8 @@ export function repack(run: R.RunState, content: Content, recipes: Recipe[] = []
       return gain > 0;
     });
     if (!opt) break;
-    applyFusion(bag, opt);
+    const fused = applyFusion(bag, opt);
+    R.logFusion(run, fused.entry.item);
     for (const e of bag.entries) bag.stash(e.uid);
     autoPlace(bag, (id) => !content.items[id].tags.includes("Vide"));
   }
@@ -56,11 +57,16 @@ export interface BotReport {
   steps: number;
 }
 
-export function botRun(content: Content, rd: RunData, cls: string, seed: number, recipes: Recipe[] = [], maxSteps = 400): BotReport {
-  const run = R.newRun(content, rd, cls, seed);
+export function botRun(content: Content, rd: RunData, cls: string, seed: number, recipes: Recipe[] = [], opts: R.RunOptions = {}, maxSteps = 600): BotReport {
+  const run = R.newRun(content, rd, cls, seed, opts);
   let steps = 0;
   while (steps++ < maxSteps && run.phase !== "dead" && run.phase !== "won") {
     switch (run.phase) {
+      case "route": {
+        const p = run.pending as Extract<R.Pending, { kind: "route" }>;
+        R.chooseRoute(run, rd, p.options[seed % p.options.length]);
+        break;
+      }
       case "map": {
         const opts = R.reachable(run);
         const hpPct = run.hp / run.maxHp;

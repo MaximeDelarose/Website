@@ -139,6 +139,7 @@ export function createCombat(content: Content, setup: CombatSetup, opts: CombatO
     events: [],
     uidCounter: 0,
     retired: [],
+    used: { drink: 0, throw: 0 },
     suddenDeathTimerMs: 0,
     suddenDeathCount: 0,
   };
@@ -190,6 +191,7 @@ function applyAction(state: CombatState, a: CombatAction): void {
     if (item.charges !== null && item.charges <= 0) return reject(state, a.item, "empty");
     item.lockoutUntilMs = state.timeMs + state.rules.potionLockoutMs;
     emit(state, { type: "drink", item: item.uid, owner: c.index });
+    if (c.index === 0) state.used.drink++;
     fireItem(state, item, 0, "drink");
     return;
   }
@@ -198,6 +200,7 @@ function applyAction(state: CombatState, a: CombatAction): void {
   if (!target || !target.alive || target.side === c.side) return reject(state, a.item, "badTarget");
   item.lockoutUntilMs = state.timeMs + state.rules.potionLockoutMs;
   emit(state, { type: "throw", item: item.uid, owner: c.index, target: target.index });
+  if (c.index === 0) state.used.throw++;
   const effects = throwEffectsOf(item);
   if (item.charges !== null && item.charges > 0) {
     // Potion pleine : on lance une dose (une charge), la bouteille reste.
@@ -320,6 +323,7 @@ export function combatResult(state: CombatState): CombatResult {
     enemies: enemies.map((e) => ({ id: e.id, hp: e.hp, maxHp: e.maxHp })),
     playerBagAfter: playerBagAfter(state),
     itemStats: allItems(state).map((i) => ({ uid: i.uid, owner: i.owner, item: i.def.id, stats: i.stats })),
+    used: { ...state.used },
     hash: hashState(state),
     events: state.events,
     actions: state.actionLog,

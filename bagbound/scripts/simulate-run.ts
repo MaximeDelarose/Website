@@ -9,6 +9,10 @@ const n = Number(args[args.indexOf("--n") + 1]) || 200;
 const content = loadContentFromDir();
 const rd = loadRunDataFromDir(content);
 const recipes = args.includes("--no-fusion") ? [] : loadRecipesFromDir(content);
+// --locked : comme un nouveau joueur (routes et objets de quêtes fermés) ; sinon tout est débloqué
+const opts = args.includes("--locked")
+  ? { lockedItems: ["lumber_axe", "chainmail", "crossbow", "golem_heart", "spore_pouch", "miner_lantern", "weaver_needle"] }
+  : { unlockedRoutes: rd.zones.flatMap((z) => z.routes.map((r) => r.id)) };
 const cls = Object.keys(content.classes)[0];
 let wins = 0;
 const floors = new Map<string, number>();
@@ -17,10 +21,10 @@ let gold = 0;
 let combats = 0;
 const t0 = performance.now();
 for (let i = 1; i <= n; i++) {
-  const { run } = botRun(content, rd, cls, i, recipes);
+  const { run } = botRun(content, rd, cls, i, recipes, opts);
   if (run.phase === "won") wins++;
   else {
-    const k = `zone ${run.zone + 1} étage ${run.floor + 1}`;
+    const k = run.zone >= rd.zones.length ? "boss final" : `zone ${run.zone + 1} (${run.route}) étage ${run.floor + 1}`;
     floors.set(k, (floors.get(k) ?? 0) + 1);
     const by = (run.stats.killedBy ?? ["?"]).join(" + ");
     killers.set(by, (killers.get(by) ?? 0) + 1);

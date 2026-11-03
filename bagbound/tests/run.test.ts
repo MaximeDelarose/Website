@@ -12,6 +12,7 @@ import * as R from "../src/game/run";
 const content = loadContentFromDir();
 const rd = loadRunDataFromDir(content);
 const CLS = "vagabond";
+const FOREST = rd.zones[0].routes[0];
 
 const fakeResult = (outcome: CombatResult["outcome"], hp: number, bag = R.placementsOf({ entries: [] })): CombatResult => ({
   outcome,
@@ -22,6 +23,7 @@ const fakeResult = (outcome: CombatResult["outcome"], hp: number, bag = R.placem
   playerBagAfter: bag,
   itemStats: [],
   hash: "",
+  used: { drink: 0, throw: 0 },
   events: [],
   actions: [],
 });
@@ -29,8 +31,8 @@ const fakeResult = (outcome: CombatResult["outcome"], hp: number, bag = R.placem
 describe("carte", () => {
   it("déterministe et bien formée", () => {
     for (let seed = 1; seed <= 30; seed++) {
-      const a = generateFloor({ rngState: seed }, rd, 0, 0);
-      const b = generateFloor({ rngState: seed }, rd, 0, 0);
+      const a = generateFloor({ rngState: seed }, rd, FOREST, 0, 0);
+      const b = generateFloor({ rngState: seed }, rd, FOREST, 0, 0);
       expect(b).toEqual(a);
       const ids = new Set(a.map((n) => n.id));
       expect(ids.size).toBe(a.length);
@@ -48,12 +50,12 @@ describe("carte", () => {
   });
 
   it("le dernier étage finit par un feu de camp puis le boss", () => {
-    const last = rd.zones[0].floors.length - 1;
-    const f = generateFloor({ rngState: 3 }, rd, 0, last);
+    const last = FOREST.floors.length - 1;
+    const f = generateFloor({ rngState: 3 }, rd, FOREST, 0, last);
     const maxRow = Math.max(...f.map((n) => n.row));
     expect(f.filter((n) => n.row === maxRow).map((n) => n.type)).toEqual(["boss"]);
     expect(f.filter((n) => n.row === maxRow - 1).map((n) => n.type)).toEqual(["campfire"]);
-    expect(f.find((n) => n.type === "boss")!.enemies).toEqual(rd.zones[0].boss);
+    expect(f.find((n) => n.type === "boss")!.enemies).toEqual(FOREST.boss);
   });
 });
 
@@ -181,12 +183,21 @@ describe("déroulement d'une run", () => {
     expect(run.current).toBeNull();
     expect(run.map[0].id.startsWith("0-1-")).toBe(true);
 
-    run.floor = rd.zones[0].floors.length - 1;
-    run.map = generateFloor(run, rd, 0, run.floor);
-    const boss = run.map.find((n) => n.type === "boss")!;
-    run.current = boss.id;
+    // boss de la dernière zone, puis zone finale, puis victoire
+    run.zone = rd.zones.length - 1;
+    run.route = rd.zones[run.zone].routes[0].id;
+    run.floor = rd.zones[run.zone].routes[0].floors.length - 1;
+    run.map = generateFloor(run, rd, rd.zones[run.zone].routes[0], run.zone, run.floor);
+    run.current = run.map.find((n) => n.type === "boss")!.id;
+    R.completeNode(run, rd);
+    expect(run.zone).toBe(rd.zones.length);
+    expect(run.route).toBe("final");
+    expect(run.map.map((n) => n.type)).toEqual(["campfire", "boss"]);
+    expect(run.map[1].enemies).toEqual(rd.final.boss);
+    run.current = run.map[1].id;
     R.completeNode(run, rd);
     expect(run.phase).toBe("won");
+    expect(run.log.at(-1)).toMatchObject({ type: "end", won: true });
   });
 
   it("sauvegarde : aller-retour JSON, sauvegarde abîmée ignorée", () => {
@@ -196,7 +207,7 @@ describe("déroulement d'une run", () => {
     expect(back).toEqual(run);
     expect(runCombat(content, R.combatSetup(back)).hash).toBe(runCombat(content, R.combatSetup(run)).hash);
     expect(R.parseRun("{oups")).toBeNull();
-    expect(R.parseRun(JSON.stringify({ v: 2 }))).toBeNull();
+    expect(R.parseRun(JSON.stringify({ v: 1, map: [], bag: { entries: [] } }))).toBeNull();
   });
 });
 
@@ -223,8 +234,8 @@ describe("données de run", () => {
   it("références invalides refusées", () => {
     const raw = (name: string) => JSON.parse(JSON.stringify(require(`../data/${name}.json`)));
     const zones = raw("zones");
-    zones[0].shopTable = "nope";
-    zones[0].boss = ["ghost"];
+    zones.zones[0].routes[0].shopTable = "nope";
+    zones.zones[0].routes[0].boss = ["ghost"];
     const events = raw("events");
     events[0].choices[0].effects.push({ type: "addItem", item: "licorne" });
     try {
