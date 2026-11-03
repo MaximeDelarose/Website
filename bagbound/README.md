@@ -1,10 +1,10 @@
 # BAGBOUND (titre provisoire)
 
-Roguelite auto-battler en sac à dos. Ce dossier contient la **Phase 1** de la
-roadmap : le **moteur de combat headless** (TypeScript, sans aucun rendu), le
-contenu en JSON validé par schéma, une suite de tests et un script de
-simulation en masse. L'UI (Vite + Canvas) arrive en Phase 2 : le site reste
-statique, le jeu sera compilé dans un dossier publié tel quel.
+Roguelite auto-battler en sac à dos, jouable sur le site (`../bagbound.html`).
+Ce dossier contient le **moteur de combat headless** (Phase 1 : TypeScript pur,
+sans rendu), le contenu en JSON validé par schéma, les tests, un script de
+simulation en masse, et l'**interface navigateur** (Phase 2 : Vite + Canvas 2D)
+compilée dans `app/`. Le site reste statique : `app/` est publié tel quel.
 
 ```bash
 cd bagbound
@@ -13,6 +13,8 @@ npm test            # suite de tests (vitest)
 npm run typecheck   # tsc --noEmit
 npm run sim         # sac de départ contre chaque ennemi, 500 combats chacun
 npm run sim -- --enemies goblin,wolf,spider --n 2000 --policy potion --items
+npm run dev         # serveur Vite (index.html) pour travailler sur l'interface
+npm run build       # compile app/bagbound.js + app/bagbound.css et met à jour le ?v= de ../bagbound.html
 ```
 
 ## Organisation
@@ -22,6 +24,9 @@ npm run sim -- --enemies goblin,wolf,spider --n 2000 --policy potion --items
 | `src/engine/` | Bibliothèque pure : RNG à seed, géométrie des sacs, registres, effets/déclencheurs/statuts, boucle de combat. **Interdits** : `Math.random`, `Date.now`, `performance.now`, DOM, Node (vérifié par `tests/purity.test.ts`). |
 | `src/content/` | Schémas zod (`schema.ts`), chargeur + vérification des références (`loader.ts`), lecture depuis le disque pour Node (`node.ts`). |
 | `data/` | Tout le contenu : `rules.json` (équilibrage global), `tags.json`, `items.json`, `enemies.json`, `classes.json`. Rien n'est codé en dur. |
+| `src/game/` | Logique de jeu hors combat, sans DOM : `bag.ts` (sac du joueur : placement, rotation, miroir, réserve, sauvegarde). |
+| `src/ui/` | Interface navigateur : `app.ts` (atelier, combat en direct, entrées tactiles/souris/clavier), `draw.ts` (rendu canvas), `sprites.ts` (pixel art 16 x 16 en texte + variantes de palette), `describe.ts` (infobulles générées depuis les données), `layout.ts`, `fx.ts`, `style.css`. |
+| `app/` | Build publié (ne pas modifier à la main). |
 | `scripts/simulate.ts` | Simulation en masse (N combats headless) : victoires, durée, PV restants, contribution de chaque objet. |
 | `tests/` | Déterminisme, effets, statuts, déclencheurs, adjacence, cases spéciales, potions, phases, mort subite, validation du contenu, extensibilité. |
 
@@ -147,6 +152,34 @@ Les modules de base sont dans `src/engine/builtins.ts`.
 
 - [x] Phase 1 : moteur headless, contenu de départ (≈40 objets, 10 ennemis dont
   1 élite et 1 boss à 2 phases, 1 classe), tests, simulation en masse.
-- [ ] Phase 2 : grille, placement, rotation, glisser-déposer, rendu du combat.
+- [x] Phase 2 : grille, placement, rotation, glisser-déposer, rendu du combat
+  (atelier jouable sur le site, voir ci-dessous).
+- [ ] Phase 3 : boucle de run (carte, boutique, butin, événements), sauvegarde.
 - L'équilibrage du contenu de départ est à faire avec `npm run sim` : le sac de
   départ bat tous les monstres seuls et perd contre les groupes et le boss.
+
+## Interface (Phase 2)
+
+- **Mise en page** : portrait d'abord (arène ~40 % en haut, barre de commandes,
+  sac en bas, réserve sous le sac hors combat) ; en paysage, l'arène prend toute
+  la largeur et la colonne du sac s'élargit.
+- **Atelier** : glisser un objet entre la réserve et le sac (aperçu vert/rouge,
+  aimanté sur la grille), toucher = rotation (`R` ou clic droit sur PC, `M` =
+  miroir, deuxième doigt pendant un glisser = rotation), toucher long ou survol =
+  infobulle. Les bonus réels du sac (adjacence, pointes) sont calculés par le
+  moteur et affichés (petit + vert, valeurs « 6 (5 +1) » dans l'infobulle).
+  La flèche jaune montre la case visée par une case spéciale.
+- **Combat** : `createCombat` + `stepCombat` à 10 ticks/s × vitesse (x1/x2/x4),
+  barres de cooldown interpolées entre deux ticks, effets lus dans le journal
+  d'événements (chiffres flottants, flashs, particules, élan d'attaque,
+  projectile des lancers, bannières de phase et de mort subite). Potions :
+  toucher = boire, toucher long / clic droit = lancer (`queueAction`). Toucher un
+  ennemi = inspecter son sac. `Espace` pause, `1/2/3` vitesse, ⏭ fin immédiate.
+- **Résultat** : contribution de chaque objet, graine du combat, « Revoir »
+  rejoue exactement le même combat (même graine, même sac).
+- **Sprites** : 16 x 16 pour les objets et les personnages (2 frames d'idle
+  par décalage), à remplacer par du 32 x 32 plus tard sans toucher au code
+  (une entrée par sprite dans `SPRITES`, une variante de palette par objet
+  dans `VARIANTS`). Un test vérifie que chaque objet et chaque ennemi a un sprite.
+- **Atelier** (`data/sandbox.json`) : classe, objets de la réserve, rencontres
+  proposées. C'est un mode d'essai en attendant la boucle de run (Phase 3).

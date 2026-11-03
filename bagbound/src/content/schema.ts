@@ -174,3 +174,21 @@ export const tagsSchema = z.array(z.string().min(1)).nonempty();
 export const itemsSchema = z.array(itemSchema);
 export const enemiesSchema = z.array(enemySchema);
 export const classesSchema = z.array(classSchema);
+
+export const sandboxSchema = z
+  .object({
+    class: z.string(),
+    stash: z.array(z.string()),
+    encounters: z
+      .array(
+        z
+          .object({
+            id: z.string(),
+            name: z.string(),
+            enemies: z.array(z.string()).min(1).max(3),
+          })
+          .strict(),
+      )
+      .nonempty(),
+  })
+  .strict();
