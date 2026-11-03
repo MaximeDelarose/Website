@@ -2,7 +2,7 @@
 
 Jeu cadeau pour Radia : fusion « cozy » + histoire en 5 chapitres + échecs.
 Source : `radia-src/` (TypeScript strict, Phaser 3.90, Vite 6, chess.js).
-Version compilée : `radia/` (site statique, servi tel quel par GitHub Pages → `https://mdelarose.fr/radia/` une fois fusionné dans `main`).
+Version compilée : `radia-52c8654e04/` (site statique, servi tel quel par GitHub Pages → `https://mdelarose.fr/radia-52c8654e04/` une fois fusionné dans `main`).
 
 ## Commandes
 
@@ -11,8 +11,8 @@ cd radia-src
 npm install
 npm run dev        # http://localhost:5173 (ajouter ?debug pour window.RADIA)
 npm test           # Vitest : règles, niveaux, sauvegarde, histoire, échecs, mini-jeux
-npm run build      # vérifie les types puis écrit ../radia (+ service worker)
-npx vite preview   # sert ../radia sur http://localhost:4173
+npm run build      # vérifie les types puis écrit ../radia-52c8654e04 (+ service worker)
+npx vite preview   # sert ../radia-52c8654e04 sur http://localhost:4173
 ```
 
 ## État — ce qui est terminé et vérifié

@@ -12,7 +12,7 @@ cd radia-src
 npm install
 npm run dev      # puis ouvrir http://localhost:5173 (sur le téléphone : http://<ip-du-pc>:5173)
 npm test
-npm run build    # écrit le site prêt à publier dans ../radia
+npm run build    # écrit le site prêt à publier dans ../radia-52c8654e04
 ```
 
 `?debug` dans l'adresse expose `window.RADIA` (sauvegarde, audio, jeu) dans la console.
@@ -39,12 +39,12 @@ public/assets/music/radia-theme.mp3   la musique (fichier fourni, réencodé en 
 
 ## Publier (quand tu le décides)
 
-Le site `mdelarose.fr` est servi par GitHub Pages depuis ce dépôt. Le dossier `radia/`
+Le site `mdelarose.fr` est servi par GitHub Pages depuis ce dépôt. Le dossier `radia-52c8654e04/`
 (résultat de `npm run build`) est un site statique autonome :
 
 1. `cd radia-src && npm run build` (déjà fait dans cette branche).
-2. Fusionner la branche dans `main` → le jeu sera à l'adresse **https://mdelarose.fr/radia/**.
-   (N'importe quel hébergeur HTTPS statique fonctionne aussi : Netlify, Vercel, Cloudflare Pages… — il suffit d'y déposer le contenu de `radia/`.)
+2. Fusionner la branche dans `main` → le jeu sera à l'adresse **https://mdelarose.fr/radia-52c8654e04/**.
+   (N'importe quel hébergeur HTTPS statique fonctionne aussi : Netlify, Vercel, Cloudflare Pages… — il suffit d'y déposer le contenu de `radia-52c8654e04/`.)
 3. Envoyer le lien à Radia. Dans Safari : bouton Partager → « Sur l'écran d'accueil » pour l'installer comme une appli (plein écran, hors ligne, et Safari efface moins volontiers ses données).
 
 Le jeu n'est pas listé dans la page « Jeux » du site et la page porte `noindex` : seules les personnes qui ont le lien le trouvent. ⚠️ Si le dépôt GitHub est public, le code source (dialogues, déclaration, musique) y est lisible.

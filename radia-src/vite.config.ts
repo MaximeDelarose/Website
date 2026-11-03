@@ -38,7 +38,7 @@ function serviceWorker(): Plugin {
 export default defineConfig({
   base: './',
   build: {
-    outDir: '../radia',
+    outDir: '../radia-52c8654e04',
     emptyOutDir: true,
     target: 'es2020',
     assetsInlineLimit: 0,

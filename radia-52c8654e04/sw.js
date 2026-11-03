@@ -1,5 +1,5 @@
 /* Service worker de RADIA — généré à la build (voir vite.config.ts). */
-const VERSION = 'mw0g1iod';
+const VERSION = 'mw0g6y6j';
 const CACHE = 'radia-' + VERSION;
 const PRECACHE = ["assets/chess-core-DDhsYLKr.js","assets/dancing-script-latin-700-normal-CX8AaSVl.woff2","assets/finale-U3g5pNhC.js","assets/fredoka-latin-400-normal-Bxuk_fn1.woff2","assets/fredoka-latin-500-normal-DjswcPAG.woff2","assets/fredoka-latin-600-normal-5ja5qWal.woff2","assets/fredoka-latin-700-normal-C3QZl44p.woff2","assets/icons/apple-touch-icon.png","assets/icons/favicon-64.png","assets/icons/icon-192.png","assets/icons/icon-512.png","assets/icons/icon-maskable-512.png","assets/index-BGx17I9W.css","assets/index-BON0I4rL.js","assets/index-Cw0wKFnm.js","assets/index-DWIvPCUL.css","assets/index-D_Bfde9M.css","assets/index-FZLEnFTA.js","assets/music/radia-theme.mp3","assets/phaser-0YPJO2g1.js","index.html","manifest.webmanifest"];
 
