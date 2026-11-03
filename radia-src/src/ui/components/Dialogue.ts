@@ -9,8 +9,20 @@ import { canvasUrl } from '../../game/art/kit';
 import { portraitCanvas, type Outfit } from '../../game/art/characters';
 import { DIALOGUES, type DialogueDef, type DialogueLine, type Expr } from '../../data/dialogue';
 import { save, audio } from '../../core/app';
+import { hasPhotos, photoUrlNow } from '../../core/photos';
 
 const NAMES = { auguste: 'Auguste', radia: 'Radia', narrator: '' } as const;
+
+/**
+ * Buste détouré de l'illustration d'Auguste et Radia (disponible avec le lien
+ * secret, une fois chargé). Radia porte sa couronne à partir du chapitre 4.
+ */
+export function bustUrl(who: 'radia' | 'auguste', outfit: Outfit): string | null {
+  if (!hasPhotos()) return null;
+  if (who === 'auguste') return photoUrlNow('bust-auguste');
+  if (outfit === 'stripes') return null;
+  return photoUrlNow(outfit === 'royal' ? 'bust-radia' : 'bust-radia-nc');
+}
 
 export function portraitUrl(who: 'radia' | 'auguste', expr: Expr = 'neutral', outfit: Outfit = 'hoodie', blink = false): string {
   return canvasUrl(`p:${who}:${expr}:${outfit}:${blink ? 1 : 0}`, () => portraitCanvas(who, { expr, outfit, blink }, 540));
@@ -69,7 +81,10 @@ export function playLines(lines: DialogueLine[], choice?: DialogueDef['choice'],
       nameEl.classList.toggle('right', right);
       const outfit = l.who === 'radia' ? l.outfit ?? currentOutfit() : 'hoodie';
       const expr = l.expr ?? 'neutral';
-      const src = portraitUrl(l.who, expr, outfit);
+      const bust = bustUrl(l.who, outfit);
+      portraitWrap.dataset.expr = expr;
+      portraitWrap.classList.toggle('bust', !!bust);
+      const src = bust ?? portraitUrl(l.who, expr, outfit);
       if (img.getAttribute('src') !== src) {
         img.src = src;
         portraitWrap.style.animation = 'none';
@@ -77,7 +92,7 @@ export function playLines(lines: DialogueLine[], choice?: DialogueDef['choice'],
         portraitWrap.style.animation = '';
       }
       window.clearInterval(blinkTimer);
-      if (expr !== 'laugh') {
+      if (expr !== 'laugh' && !bust) {
         const closed = portraitUrl(l.who, expr, outfit, true);
         blinkTimer = window.setInterval(() => {
           img.src = closed;

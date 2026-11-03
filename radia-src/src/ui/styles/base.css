@@ -536,3 +536,18 @@ input[type='range']::-moz-range-thumb { width: 26px; height: 26px; border-radius
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after { animation-duration: 0.01ms !important; transition-duration: 0.05s !important; }
+
+/* portraits détourés : l'émotion passe par le mouvement */
+.dialog-portrait.bust { filter: drop-shadow(0 8px 14px rgba(59, 49, 82, 0.4)); }
+.dialog-portrait.bust img { animation: breathe 3.6s ease-in-out infinite; }
+.dialog-portrait.bust[data-expr='laugh'] img { animation: bustLaugh 0.5s ease-in-out 3, breathe 3.6s ease-in-out 1.5s infinite; }
+.dialog-portrait.bust[data-expr='surprise'] img { animation: bustJump 0.5s var(--ease-pop), breathe 3.6s ease-in-out 0.5s infinite; }
+.dialog-portrait.bust[data-expr='love'] img,
+.dialog-portrait.bust[data-expr='shy'] img { animation: bustSway 2.4s ease-in-out infinite; }
+.dialog-portrait.bust[data-expr='tease'] img { animation: bustTease 2.2s ease-in-out infinite; }
+.dialog-portrait.bust[data-expr='sad'] img { animation: bustSad 3s ease-in-out infinite; }
+@keyframes bustLaugh { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-8px) rotate(-2deg); } }
+@keyframes bustJump { 0% { transform: translateY(0) scale(1); } 40% { transform: translateY(-22px) scale(1.04); } 100% { transform: none; } }
+@keyframes bustSway { 0%, 100% { transform: rotate(-1.8deg) translateY(0); } 50% { transform: rotate(1.8deg) translateY(-3px); } }
+@keyframes bustTease { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(2.6deg) translateX(3px); } }
+@keyframes bustSad { 0%, 100% { transform: translateY(2px) scale(0.99); } 50% { transform: translateY(5px) scale(0.985); } }
