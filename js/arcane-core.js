@@ -66,8 +66,20 @@
       hp: 95, hpL: 9, pa: 6, pm: 4, res: 0, ini: 16, crit: 12, heal: 0, pow: 0,
       spells: ["bond", "frappe", "fantome", "brume", "danse"],
     },
+    sibylle: {
+      name: "Sibylle", role: "Invocatrice · pions d'encre", piece: "Pion",
+      desc: "Fragile, mais jamais seule : elle invoque des pions d'encre que tu contrôles, les promeut en Dame et les sacrifie au bon moment.",
+      hp: 85, hpL: 7, pa: 6, pm: 3, res: 0, ini: 11, crit: 6, heal: 12, pow: 0,
+      spells: ["pion", "promotion", "sacrifice", "roque", "maree"],
+    },
   };
-  var CLASS_IDS = ["bastion", "prisme", "voltige"];
+  var CLASS_IDS = ["bastion", "prisme", "voltige", "sibylle"];
+  // invocations contrôlées par le joueur (elles jouent juste après leur invocatrice)
+  var SUMMONS = {
+    pion: { name: "Pion d'encre", hp: 20, hpL: 3, pa: 3, pm: 3, ini: 6, spells: ["pointe"], desc: "Petit, nombreux, et il avance. Promu en Dame, il devient redoutable." },
+    dame: { name: "Dame d'encre", hp: 54, hpL: 7, pa: 4, pm: 4, ini: 9, spells: ["ravage", "pointe"], desc: "La pièce promue : frappe en ligne et en diagonale." },
+  };
+  var SUMMON_MAX = 3;
   var ULT_LEVEL = 5;
 
   /* Sorts.
@@ -129,7 +141,31 @@
       desc: "ULTIME. Jusqu'à 3 bonds en L d'affilée : chaque atterrissage inflige 20 dégâts aux ennemis autour.",
       minSteps: 1,
       steps: [{ shape: "knight", range: [0, 0], target: "empty", from: "prev" }, { shape: "knight", range: [0, 0], target: "empty", from: "prev" }, { shape: "knight", range: [0, 0], target: "empty", from: "prev" }] },
+    // ---------- Sibylle ----------
+    pion: { name: "Pion d'encre", pa: 2, icon: "pion", perTurn: 2,
+      desc: "Invoque un Pion d'encre sur une case libre à côté de toi (3 invocations max). Il joue juste après toi : 3 PA, 3 PM, une pointe au contact.",
+      steps: [{ shape: "any", range: [1, 2], los: false, target: "empty" }] },
+    promotion: { name: "Promotion", pa: 3, icon: "promotion", cd: 2,
+      desc: "Comme un pion qui atteint la dernière rangée : un de tes Pions devient une Dame d'encre (plus de PV, 4 PA, 4 PM, attaque en ligne et en diagonale). Une seule Dame à la fois.",
+      steps: [{ shape: "any", range: [1, 6], los: false, target: "summon" }] },
+    sacrifice: { name: "Sacrifice", pa: 2, icon: "sacrifice", dmg: 16, heal: 18, perTurn: 2,
+      desc: "Une de tes invocations éclate : 16 dégâts aux ennemis collés, 18 PV aux alliés à 2 cases (toi compris).",
+      steps: [{ shape: "any", range: [0, 8], los: false, target: "summon" }] },
+    roque: { name: "Roque", pa: 2, icon: "roque", cd: 1,
+      desc: "Tu échanges ta place avec une de tes invocations, où qu'elle soit. Pour fuir, ou envoyer un pion en première ligne.",
+      steps: [{ shape: "any", range: [1, 12], los: false, target: "summon" }] },
+    maree: { name: "Marée d'encre", pa: 5, icon: "maree", ult: true, cd: 4, shield: 12,
+      desc: "ULTIME. Trois Pions d'encre surgissent autour de toi (dans la limite de 3 invocations) et toutes tes invocations gagnent un bouclier de 12 et +1 PA ce tour.",
+      steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    // ---------- invocations ----------
+    pointe: { name: "Pointe", pa: 2, icon: "pointe", dmg: 12, perTurn: 2,
+      desc: "Au contact. 12 dégâts.",
+      steps: [{ shape: "any", range: [1, 1], los: true, target: "enemy" }] },
+    ravage: { name: "Ravage", pa: 3, icon: "ravage", dmg: 19, perTurn: 1,
+      desc: "En ligne ou en diagonale, 1 à 4 cases. 19 dégâts.",
+      steps: [{ shape: "queen", range: [1, 4], los: true, target: "enemy" }] },
   };
+  function spellsOf(u) { return u.summon ? SUMMONS[u.cls].spells : CLASSES[u.cls].spells; }
 
   /* ====================== MONSTRES ====================== */
   var MOB_SPELLS = {
@@ -205,7 +241,7 @@
   var POWER_IDS = Object.keys(POWERS);
   var ITEM_BASES = {
     // nom:genre (m, f, mp = masculin pluriel, fp = féminin pluriel)
-    arme: { bastion: ["Bouclier:m", "Égide:f", "Pavois:m"], prisme: ["Focus:m", "Sceptre:m", "Orbe:m"], voltige: ["Lames:fp", "Dagues:fp", "Griffes:fp"], any: ["Talisman:m"] },
+    arme: { bastion: ["Bouclier:m", "Égide:f", "Pavois:m"], prisme: ["Focus:m", "Sceptre:m", "Orbe:m"], voltige: ["Lames:fp", "Dagues:fp", "Griffes:fp"], sibylle: ["Grimoire:m", "Encrier:m", "Plume:f"], any: ["Talisman:m"] },
     coiffe: { any: ["Heaume:m", "Capuche:f", "Diadème:m", "Masque:m"] },
     cape: { any: ["Cape:f", "Manteau:m", "Voile:m", "Étole:f"] },
     amulette: { any: ["Amulette:f", "Pendentif:m", "Médaillon:m"] },
@@ -769,6 +805,7 @@
       case "diag": return adx === ady && adx >= mn && adx <= mx;
       case "ray": return adx === ady && adx >= 1;
       case "knight": return (adx === 1 && ady === 2) || (adx === 2 && ady === 1);
+      case "queen": return (dx === 0 || dy === 0 || adx === ady) && Math.max(adx, ady) >= mn && Math.max(adx, ady) <= mx;
       default: return d >= mn && d <= mx;
     }
   }
@@ -787,6 +824,8 @@
     if ((u.cds[sid] || 0) > 0) return "Recharge : " + u.cds[sid] + " tour" + (u.cds[sid] > 1 ? "s" : "");
     if (S.perTurn && (u.used[sid] || 0) >= S.perTurn) return "Déjà lancé " + S.perTurn + "× ce tour";
     if (spellCost(u, sid) > u.pa) return "Pas assez de PA";
+    if ((sid === "pion" || sid === "maree") && mySummons(c, u).length >= SUMMON_MAX) return SUMMON_MAX + " invocations maximum";
+    if (sid === "promotion" && mySummons(c, u).some(function (x) { return x.cls === "dame"; })) return "Une seule Dame à la fois";
     if (sid === "balise" && c.objects.filter(function (o) { return o.kind === "beacon" && o.by === u.id; }).length >= S.max) return "2 cristaux maximum";
     return null;
   }
@@ -825,6 +864,7 @@
         if (sid === "fantome") return !!behindCell(c, u, t);
         return true;
       case "ally": if (!t || t.side !== u.side) return false; if (SPELLS[sid].perTarget && (u.usedT[sid + ":" + t.id] || 0) >= SPELLS[sid].perTarget) return false; return true;
+      case "summon": return !!(t && t.summon && t.owner === u.id && (sid !== "promotion" || t.cls === "pion"));
       case "allyOrBeacon": { if (t && t.side === u.side && t !== u) return true; var o = objAt(c, x, y); return !!(o && o.kind === "beacon"); }
       case "empty": {
         if (!groundOk(c, x, y) || solidObj(c, x, y)) return false;
@@ -909,6 +949,7 @@
     var c = w.combat;
     t.hp = 0; t.alive = false; t.shield = [];
     ev(w, { k: "die", id: t.id });
+    if (!t.summon) c.units.forEach(function (m) { if (m.alive && m.summon && m.owner === t.id) { m.alive = false; m.hp = 0; ev(w, { k: "die", id: m.id, quiet: true }); } });
     // les cristaux et murs de ce lanceur restent ; ses télégraphes tombent
     c.tele = c.tele.filter(function (tl) { return tl.by !== t.id; });
     if (src && src.side === 0 && t.side === 1) {
@@ -989,7 +1030,50 @@
   }
   function faceOf(dx, dy) { return Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 1 : -1) : (dy >= 0 ? 2 : -2); }
   function powScale(u) { return 1; }
+  function mySummons(c, u) { return c.units.filter(function (x) { return x.alive && x.summon && x.owner === u.id; }); }
+  function addSummon(w, u, cls, x, y) {
+    var c = w.combat, S = SUMMONS[cls], hp = Math.round((S.hp + S.hpL * u.lvl) * (1 + (u.heal || 0) / 200));
+    var m = { id: c.uid++, side: 0, pi: u.pi, cls: cls, summon: true, owner: u.id, name: S.name, lvl: u.lvl, x: x, y: y, hp: hp, maxHp: hp,
+      pa: S.pa, pm: S.pm, maxPa: S.pa, maxPm: S.pm, po: 0, res: 0, ini: S.ini, crit: Math.round(u.crit / 2), heal: 0, pow: u.pow,
+      powers: [], shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: u.face, ult: false };
+    c.units.push(m);
+    // elle joue juste après son invocatrice
+    var at = c.order.indexOf(u.id);
+    c.order.splice(at < 0 ? c.order.length : at + 1, 0, m.id);
+    ev(w, { k: "summon", id: m.id, hero: true });
+    return m;
+  }
   var EFFECTS = {
+    pion: function (w, u, tg) { addSummon(w, u, "pion", tg[0][0], tg[0][1]); },
+    promotion: function (w, u, tg) {
+      var c = w.combat, t = unitAt(c, tg[0][0], tg[0][1]), S = SUMMONS.dame;
+      var hp = Math.round((S.hp + S.hpL * u.lvl) * (1 + (u.heal || 0) / 200));
+      t.cls = "dame"; t.name = S.name; t.maxHp = hp; t.hp = Math.min(hp, t.hp + Math.round(hp * 0.5)); t.ini = S.ini;
+      t.maxPa = S.pa; t.maxPm = S.pm; t.pa = Math.min(t.pa + 1, S.pa); t.pm = Math.min(t.pm + 1, S.pm);
+      ev(w, { k: "promote", id: t.id });
+    },
+    sacrifice: function (w, u, tg, S) {
+      var c = w.combat, t = unitAt(c, tg[0][0], tg[0][1]);
+      ev(w, { k: "burst", at: [t.x, t.y] });
+      ring8(c, t.x, t.y).forEach(function (p) { var e = unitAt(c, p[0], p[1]); if (e && e.side !== u.side) damage(w, u, e, S.dmg); });
+      disc(c, t.x, t.y, 2).forEach(function (p) { var a = unitAt(c, p[0], p[1]); if (a && a.side === u.side && a !== t && !a.summon) heal(w, u, a, S.heal * (1 + u.heal / 100)); });
+      t.alive = false; t.hp = 0; ev(w, { k: "die", id: t.id, quiet: true });
+    },
+    roque: function (w, u, tg) {
+      var c = w.combat, t = unitAt(c, tg[0][0], tg[0][1]), ux = u.x, uy = u.y;
+      u.x = t.x; u.y = t.y; t.x = ux; t.y = uy;
+      ev(w, { k: "tp", id: u.id, from: [ux, uy], to: [u.x, u.y], fx: "ink" });
+      ev(w, { k: "tp", id: t.id, from: [u.x, u.y], to: [ux, uy], fx: "ink" });
+    },
+    maree: function (w, u, tg, S) {
+      var c = w.combat, spots = ring8(c, u.x, u.y).filter(function (q) { return cellFree(c, q[0], q[1]); });
+      var n = Math.min(3, SUMMON_MAX - mySummons(c, u).length, spots.length);
+      for (var i = 0; i < n; i++) addSummon(w, u, "pion", spots[i][0], spots[i][1]);
+      mySummons(c, u).forEach(function (m) { addShield(w, u, m, S.shield); m.maxPaBonus = 1; });
+      ev(w, { k: "ink", at: [u.x, u.y] });
+    },
+    pointe: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); ev(w, { k: "slash", id: u.id, to: tg[0], col: "#2f8f6c" }); damage(w, u, t, S.dmg); },
+    ravage: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); ev(w, { k: "beam", from: [u.x, u.y], to: tg[0], col: "#2fd29a" }); damage(w, u, t, S.dmg); },
     impact: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); damage(w, u, t, S.dmg); if (t && t.alive) knock(w, u, t, u.x, u.y, S.push); },
     rempart: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); addShield(w, u, t, S.shield); },
     mur: function (w, u, tg, S) {
@@ -1123,7 +1207,7 @@
   }
   function startTurn(w, u) {
     var c = w.combat;
-    u.pa = u.maxPa; u.pm = u.maxPm; u.used = {}; u.usedT = {}; u.castThisTurn = false; u.firstHit = false;
+    u.pa = u.maxPa + (u.maxPaBonus || 0); u.maxPaBonus = 0; u.pm = u.maxPm; u.used = {}; u.usedT = {}; u.castThisTurn = false; u.firstHit = false;
     for (var k in u.cds) if (u.cds[k] > 0) u.cds[k]--;
     // ce que ce lanceur a posé expire à son tour
     c.units.forEach(function (o) {
@@ -1159,7 +1243,7 @@
   function checkEnd(w) {
     var c = w.combat;
     if (!c || c.phase !== "fight") return false;
-    var heroes = c.units.some(function (u) { return u.side === 0 && u.alive; });
+    var heroes = c.units.some(function (u) { return u.side === 0 && u.alive && !u.summon; });
     var mobs = c.units.some(function (u) { return u.side === 1 && u.alive; });
     if (!mobs) { finishCombat(w, true); return true; }
     if (!heroes) { finishCombat(w, false); return true; }
@@ -1323,7 +1407,7 @@
     loot.dungeonNext = won && w.dungeon && w.dungeon.room < DUNGEON.length - 1;
     loot.dungeonDone = won && w.dungeon && w.dungeon.room === DUNGEON.length - 1;
     if (w.dungeon) {
-      w.dungeon.hp = c.units.filter(function (u) { return u.side === 0; }).reduce(function (o, u) { o[u.pi] = u.alive ? u.hp : 1; return o; }, {});
+      w.dungeon.hp = c.units.filter(function (u) { return u.side === 0 && !u.summon; }).reduce(function (o, u) { o[u.pi] = u.alive ? u.hp : 1; return o; }, {});
     }
     // le groupe battu disparaît un moment
     if (won && c.packId) w.packs.forEach(function (pk) { if (pk.id === c.packId) { pk.dead = true; pk.t = CFG.respawn; } });
@@ -1483,7 +1567,7 @@
         ev(w, { k: "fountain", pi: pi }); bump(w); return true;
       case "place": {
         if (!cb || cb.phase !== "place") return false;
-        var me = cb.units.filter(function (u) { return u.side === 0 && u.pi === pi; })[0];
+        var me = cb.units.filter(function (u) { return u.side === 0 && u.pi === pi && !u.summon; })[0];
         if (!me || !cb.arena.heroCells.some(function (h) { return h[0] === c.x && h[1] === c.y; })) return false;
         var other = unitAt(cb, c.x, c.y);
         if (other && other.side === 0 && other !== me) { other.x = me.x; other.y = me.y; }
@@ -1540,7 +1624,7 @@
   }
 
   var API = {
-    CFG: CFG, CLASSES: CLASSES, CLASS_IDS: CLASS_IDS, SPELLS: SPELLS, MOBS: MOBS, MOB_SPELLS: MOB_SPELLS, AFFIXES: AFFIXES,
+    CFG: CFG, CLASSES: CLASSES, CLASS_IDS: CLASS_IDS, SPELLS: SPELLS, SUMMONS: SUMMONS, spellsOf: spellsOf, MOBS: MOBS, MOB_SPELLS: MOB_SPELLS, AFFIXES: AFFIXES,
     SLOTS: SLOTS, SLOT_NAME: SLOT_NAME, RARITIES: RARITIES, STATS: STATS, POWERS: POWERS, QUESTS: QUESTS, ZONES: ZONES, ZONE_IDS: ZONE_IDS,
     DUNGEON: DUNGEON, NPCS: NPCS, ULT_LEVEL: ULT_LEVEL, BAG_MAX: BAG_MAX,
     newProfile: newProfile, fixProfile: fixProfile, heroStats: heroStats, xpNeed: xpNeed, itemScore: itemScore, makeItem: makeItem, rollRarity: rollRarity,

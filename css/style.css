@@ -2200,10 +2200,12 @@ button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--de
 .at-tip-dim { color: #9a90c0 !important; font-size: .72rem; }
 
 /* menu */
-.at-card-menu { width: min(860px, 100%); }
+.at-card-menu { width: min(980px, 100%); }
+.at-sumtag { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: #7df0c2; }
+.at-sumtag img { border-radius: 8px; }
 .at-logo span { display: block; font-size: .75rem; letter-spacing: .2em; text-transform: uppercase; color: #8a5cc7; font-weight: 900; }
 .at-logo h2 { font-family: "Londrina", "Nunito", sans-serif; font-size: clamp(2rem, 5vw, 3rem); margin: 0 0 10px; background: linear-gradient(90deg, #5b2d8e, #3fb8d0, #ff6f59); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.at-heroes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 6px 0 12px; }
+.at-heroes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 6px 0 12px; }
 .at-hero { display: grid; justify-items: center; gap: 3px; padding: 10px 8px 10px; border: 3px solid #d9cff2; border-radius: 16px; background: #fff; color: #241a44; cursor: pointer; font: inherit; transition: transform .15s cubic-bezier(.2, 1.6, .4, 1), border-color .15s; }
 :root[data-theme="dark"] .at-hero { background: #2a2150; color: #f4f1ff; border-color: #43387a; }
 .at-hero:hover { transform: translateY(-3px); }
@@ -2335,6 +2337,7 @@ button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--de
 .at-card-s { width: min(400px, 100%); }
 
 @media (max-width: 860px) {
+  .at-heroes { grid-template-columns: repeat(2, 1fr); }
   .at-top { max-width: calc(100% - 16px); top: 104px; }
   .at-toasts { top: 160px; }
   .at-side { display: none; }
@@ -2346,10 +2349,36 @@ button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--de
 }
 @media (max-width: 640px) {
   .at-stage { height: calc(100svh - 100px); min-height: 460px; }
-  .at-heroes { grid-template-columns: 1fr; }
+  .at-bar { left: 0; right: 0; bottom: 0; transform: none; max-width: none; border-radius: 16px 16px 0 0; gap: 6px 8px; padding: 8px 8px calc(env(safe-area-inset-bottom, 0px) + 8px); }
+  .at-bar.fight, .at-bar.place { border-width: 2px 0 0; }
+  .at-bar.hint { padding: 0 8px 8px; background: none; }
+  .at-end, .at-ready { flex: 1; padding: 10px 12px; }
+  .at-end small, .at-ready small { display: none; }
+  .at-go { flex: 1; }
+  .at-hint { font-size: .74rem; }
+  .at-sumtag { flex-basis: 100%; justify-content: center; }
+  .at-sp kbd { display: none; }
+  .at-top { top: auto; bottom: 150px; left: 8px; right: auto; transform: none; max-width: calc(100% - 16px); }
+  .at-tl { padding: 4px 6px; }
+  .at-round { display: none; }
+  .at-toasts { top: 120px; }
+  .at-btns { gap: 4px; }
+  .at-hbtn { width: 36px; height: 36px; }
+  .at-pf { padding: 4px 8px 4px 4px; }
+  .at-card-loot, .at-card-inv { padding: 12px 10px; }
+  .at-loot-grid { grid-template-columns: 1fr; }
+  .at-bag { grid-template-columns: repeat(6, 1fr); }
+  .at-slots { grid-template-columns: repeat(6, 1fr); }
+  .at-stats { grid-template-columns: 1fr 1fr 1fr; font-size: .76rem; }
+  .at-doll { margin-bottom: 4px; }
+  .at-tip { max-width: 240px; font-size: .74rem; }
+  .at-heroes { grid-template-columns: 1fr; gap: 6px; }
   .at-hero { grid-template-columns: 64px 1fr; justify-items: start; text-align: left; }
-  .at-hero-art { grid-row: span 4; }
+  .at-hero-art { grid-row: span 4; align-self: start; width: 64px; height: 64px; }
   .at-hero-art img { width: 64px; height: 64px; }
+  .at-hero { padding: 8px; }
+  .at-zone { padding: 4px 10px; }
+  .at-zone b { font-size: .85rem; }
   .at-hero-d { display: none; }
   .at-sp { width: 44px; height: 44px; }
   .at-papm span { width: 40px; height: 40px; }

@@ -11,6 +11,7 @@
     bastion: { main: "#2c3e78", dark: "#1a2550", light: "#4d64b0", gold: "#f2c14e", stone: "#e8e1cf", cape: "#a8323e" },
     prisme: { main: "#5b2d8e", dark: "#371a5c", light: "#8a5cc7", teal: "#3fe0d0", white: "#f4f1ff", gem: "#7ff6ff" },
     voltige: { main: "#ff6f59", dark: "#c2453a", light: "#ff9b85", cyan: "#3fe8ff", ash: "#33373f", ash2: "#4a505b" },
+    sibylle: { main: "#1f7a5c", dark: "#134a39", light: "#2fa37a", ivory: "#f4ecd8", bronze: "#c98a3a", ink: "#17233a", mint: "#7df0c2" },
   };
   var THEMES = {
     village: { top: ["#9ed27b", "#93c972", "#a7d985"], path: ["#e8d4a2", "#dfc994"], side: "#6f9a4f", side2: "#5a8340", water: "#5fb2e6", line: "rgba(40,70,30,.10)" },
@@ -62,6 +63,7 @@
     if (o.hurt) g.translate(-o.hurt * 4, 0);
     if (cls === "bastion") drawBastion(g, P, t, o, bob);
     else if (cls === "prisme") drawPrisme(g, P, t, o, bob);
+    else if (cls === "sibylle") drawSibylle(g, P, t, o, bob);
     else drawVoltige(g, P, t, o, bob);
     if (o.hurt > 0.3) { g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(255,255,255," + (o.hurt * 0.7) + ")"; g.fillRect(-40, -80, 80, 90); g.globalCompositeOperation = "source-over"; }
     g.restore();
@@ -153,6 +155,69 @@
     var sw = c ? Math.sin(c * Math.PI) : 0;
     blade(g, 13 + sw * 6, -28 - sw * 6, -0.9 + sw * 1.8, P);
     blade(g, -13, -27, 0.7 + Math.sin(t * 2) * 0.1, P);
+  }
+  function drawSibylle(g, P, t, o, bob) {
+    var c = o.cast || 0, back = o.back;
+    // robe émeraude évasée, liseré ivoire
+    poly(g, [-8, -40, 8, -40, 15, 0, 0, 3, -15, 0], P.main, P.dark, 2);
+    poly(g, [-8, -40, -2, -40, -6, 0, -13, 0], P.light);
+    g.strokeStyle = P.ivory; g.lineWidth = 2; g.beginPath(); g.moveTo(-13, -3); g.lineTo(13, -3); g.stroke();
+    if (!back) { g.fillStyle = P.ivory; g.fillRect(-2, -38, 4, 34); poly(g, [0, -30, 3, -26, 0, -22, -3, -26], P.bronze); }
+    // bras tenant le grand bâton-encrier
+    var sx = 13, sy = -30;
+    g.strokeStyle = P.main; g.lineWidth = 5; g.lineCap = "round"; g.beginPath(); g.moveTo(6, -34); g.lineTo(sx, sy); g.stroke();
+    circ(g, sx, sy, 3, "#f2dccd");
+    g.strokeStyle = P.bronze; g.lineWidth = 3; g.beginPath(); g.moveTo(sx + 2, 2); g.lineTo(sx + 2, -62 - c * 4); g.stroke();
+    // encrier ouvert au sommet, encre qui goutte
+    rrect(g, sx - 5, -70 - c * 4, 14, 9, 3, P.ink); rrect(g, sx - 3, -72 - c * 4, 10, 3, 1.5, P.bronze);
+    glow(g, sx + 2, -68 - c * 4, 18, "rgba(125,240,194,.7)", 0.4 + c * 0.6);
+    for (var i = 0; i < 3; i++) { var a = t * 2 + i * 2.1, dy = ((t * 18 + i * 11) % 26); circ(g, sx + 2 + Math.cos(a) * 9, -62 + dy - c * 6, 2.2 - dy / 20, i === 1 ? P.mint : P.ink); }
+    // tête, capuche souple en pointe repliée
+    circ(g, 0, -47, 9, back ? P.dark : "#f2dccd");
+    poly(g, [-12, -44, -11, -56, -4, -63, 6, -63, 12, -56, 13, -44, 8, -50, -8, -50], P.dark, P.ink, 1.6);
+    poly(g, [6, -63, 12, -56, 20, -70, 10, -72], P.main);
+    g.fillStyle = P.ivory; g.fillRect(-10, -52, 20, 2);
+    if (!back) { eyes(g, 0, -46, 3.4, 1.8, o); g.fillStyle = P.ink; g.fillRect(-1, -42, 2.5, 1.4); }
+    // petit pion d'encre familier qui flotte à gauche
+    var fx = -16 + Math.sin(t * 1.5) * 2, fy = -30 + Math.sin(t * 2.6) * 3;
+    summonBody(g, "pion", fx, fy, 0.45, t, P);
+  }
+  // corps d'une invocation (pion / dame d'encre), aux pieds en (x, y)
+  function summonBody(g, cls, x, y, s, t, P) {
+    g.save(); g.translate(x, y); g.scale(s, s);
+    var w = Math.sin(t * 3) * 1.5;
+    ell(g, 0, 0, 16, 6, P.ink);
+    poly(g, [-13, -2, 13, -2, 9, -8, -9, -8], P.ink, P.ivory, 1.5);
+    if (cls === "pion") {
+      poly(g, [-8, -8, 8, -8, 5, -30 + w, -5, -30 + w], P.ink);
+      circ(g, 0, -37 + w, 9, P.ink);
+      circ(g, -3, -40 + w, 3, "rgba(255,255,255,.25)");
+      circ(g, 2, -36 + w, 2.6, P.mint);
+      circ(g, 2.6, -36.6 + w, 1, "#fff");
+    } else {
+      poly(g, [-9, -8, 9, -8, 6, -40 + w, -6, -40 + w], P.ink);
+      g.strokeStyle = P.ivory; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-6, -20); g.lineTo(6, -20); g.stroke();
+      circ(g, 0, -46 + w, 8, P.ink);
+      poly(g, [-9, -50 + w, -6, -62 + w, -2, -54 + w, 0, -64 + w, 2, -54 + w, 6, -62 + w, 9, -50 + w], P.bronze, P.ink, 1.2);
+      circ(g, -3, -47 + w, 2.4, P.mint); circ(g, 3, -47 + w, 2.4, P.mint);
+      circ(g, -2.5, -47.5 + w, 0.9, "#fff"); circ(g, 3.5, -47.5 + w, 0.9, "#fff");
+    }
+    g.restore();
+  }
+  // invocation sur le plateau (même options que hero)
+  function summon(g, cls, x, y, o) {
+    o = o || {};
+    var t = o.t || 0, P = HERO_PAL.sibylle, s = o.scale || 1;
+    g.save(); g.translate(x, y);
+    if (!o.noShadow) shadow(g, 0, 0, 13 * s, 0.28);
+    var hop = o.walk != null ? -Math.abs(Math.sin(o.walk * Math.PI)) * 5 : 0;
+    g.translate(0, hop);
+    if (o.hurt) g.translate(-o.hurt * 3, 0);
+    var sq = 1 + (o.cast ? Math.sin(o.cast * Math.PI) * 0.12 : 0);
+    g.scale(s * (o.flip || 1) / sq, s * sq);
+    summonBody(g, cls, 0, 0, cls === "dame" ? 0.95 : 0.8, t + (o.seed || 0), P);
+    if (o.hurt > 0.3) { g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(255,255,255," + (o.hurt * 0.7) + ")"; g.fillRect(-40, -80, 80, 90); g.globalCompositeOperation = "source-over"; }
+    g.restore();
   }
   function blade(g, x, y, a, P) {
     g.save(); g.translate(x, y); g.rotate(a);
@@ -463,10 +528,17 @@
   function heroIcon(cls, size) {
     return icon("h-" + cls, size, function (g, s) {
       var gr = g.createLinearGradient(0, 0, 0, s);
-      var bg = { bastion: ["#3a4f9a", "#1a2550"], prisme: ["#6e3fb0", "#2a1446"], voltige: ["#ff8a6a", "#7a2a22"] }[cls];
+      var bg = { bastion: ["#3a4f9a", "#1a2550"], prisme: ["#6e3fb0", "#2a1446"], voltige: ["#ff8a6a", "#7a2a22"], sibylle: ["#2fa37a", "#134a39"] }[cls];
       gr.addColorStop(0, bg[0]); gr.addColorStop(1, bg[1]);
       g.fillStyle = gr; g.fillRect(0, 0, s, s);
       hero(g, cls, s / 2, s * 1.12, { t: 0.6, flip: 1, scale: s / 52, noShadow: true });
+    });
+  }
+  function summonIcon(cls, size) {
+    return icon("sm-" + cls, size, function (g, s) {
+      var gr = g.createLinearGradient(0, 0, 0, s); gr.addColorStop(0, "#2fa37a"); gr.addColorStop(1, "#17233a");
+      g.fillStyle = gr; g.fillRect(0, 0, s, s);
+      summon(g, cls, s / 2, s * 1.05, { t: 0.6, scale: s / (cls === "dame" ? 62 : 48), noShadow: true });
     });
   }
   function mobIcon(type, size, col, elite) {
@@ -493,7 +565,8 @@
   }
   var SPELL_COL = { impact: "#4d64b0", rempart: "#f2c14e", mur: "#8a93b8", attraction: "#5bc0ff", forteresse: "#ffd257",
     rayon: "#b98cff", balise: "#7ff6ff", transpo: "#3fe0d0", onde: "#7dffb0", convergence: "#9ff3ff",
-    bond: "#ff8a6a", frappe: "#3fe8ff", fantome: "#a7b0c0", brume: "#c7c9e8", danse: "#ffb347" };
+    bond: "#ff8a6a", frappe: "#3fe8ff", fantome: "#a7b0c0", brume: "#c7c9e8", danse: "#ffb347",
+    pion: "#7df0c2", promotion: "#c98a3a", sacrifice: "#ff7b9c", roque: "#f4ecd8", maree: "#2fd29a", pointe: "#7df0c2", ravage: "#2fd29a" };
   function spellIcon(sid, size) {
     return icon("s-" + sid, size, function (g, s) {
       var c = SPELL_COL[sid] || "#fff";
@@ -519,11 +592,17 @@
         case "fantome": g.globalAlpha = 0.5; circ(g, -6, 0, 7, c); g.globalAlpha = 1; circ(g, 6, -2, 7, c); L([-14, 12, 14, 12]); break;
         case "brume": circ(g, -6, 2, 8, c); circ(g, 6, 0, 9, c); circ(g, 0, -6, 8, shade(c, 0.3)); break;
         case "danse": L([-14, 12, -14, 2, -8, 2]); L([-6, 0, -6, -8, 2, -8]); L([4, -10, 4, -14, 12, -14]); circ(g, 12, -14, 3, "#fff"); break;
+        case "pion": case "pointe": poly(g, [-9, 12, 9, 12, 5, 0, -5, 0], c); circ(g, 0, -7, 7, c); if (sid === "pointe") { L([8, -12, 15, -15]); L([11, -15, 15, -15, 15, -11]); } break;
+        case "promotion": poly(g, [-10, 12, 10, 12, 6, -2, -6, -2], c); poly(g, [-9, -4, -6, -15, -2, -8, 0, -16, 2, -8, 6, -15, 9, -4], "#fff", c, 1.5); break;
+        case "sacrifice": circ(g, 0, 2, 7, c); for (var k = 0; k < 6; k++) { var a = k * Math.PI / 3; L([Math.cos(a) * 10, 2 + Math.sin(a) * 10, Math.cos(a) * 15, 2 + Math.sin(a) * 15]); } break;
+        case "roque": L([-13, 2, 13, 2]); L([8, -4, 13, 2, 8, 8]); L([-8, -4, -13, 2, -8, 8]); circ(g, -4, -10, 4, c); circ(g, 6, -10, 3, "#fff"); break;
+        case "maree": for (var m = 0; m < 3; m++) { var mx = -11 + m * 11; poly(g, [mx - 5, 12, mx + 5, 12, mx + 3, 2, mx - 3, 2], c); circ(g, mx, -3, 4.5, c); } L([-14, -12, -8, -15, -2, -12, 4, -15, 10, -12, 14, -14]); break;
+        case "ravage": L([-12, 0, 12, 0]); L([0, -12, 0, 12]); L([-9, -9, 9, 9]); L([-9, 9, 9, -9]); circ(g, 0, 0, 4, "#fff"); break;
       }
       g.restore();
     });
   }
 
-  root.AT_ART = { hero: hero, mob: mob, npc: npc, deco: deco, diamond: diamond, shade: shade, glow: glow, circ: circ, ell: ell, poly: poly, rrect: rrect,
+  root.AT_ART = { hero: hero, mob: mob, summon: summon, summonIcon: summonIcon, npc: npc, deco: deco, diamond: diamond, shade: shade, glow: glow, circ: circ, ell: ell, poly: poly, rrect: rrect,
     heroIcon: heroIcon, mobIcon: mobIcon, itemIcon: itemIcon, spellIcon: spellIcon, THEMES: THEMES, HERO_PAL: HERO_PAL, SPELL_COL: SPELL_COL };
 })(typeof window !== "undefined" ? window : globalThis);

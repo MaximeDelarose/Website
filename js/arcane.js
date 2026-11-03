@@ -13,7 +13,7 @@
   var stage = document.querySelector("[data-arcane]");
   if (!A || !ART || !stage) return;
 
-  var VERSION = "1.0.0";
+  var VERSION = "1.1.0";
   var TW = 96, TH = 48, HW = TW / 2, HH = TH / 2;
   var TAU = Math.PI * 2;
   var canvas = stage.querySelector("canvas");
@@ -80,6 +80,9 @@
   var lootSeen = null;
   var menuSel = SAVE.last || "bastion", menuSel2 = SAVE.last2 || "prisme", menuStep = "main";
   var mouse = { x: 0, y: 0, in: false, down: null };
+  var TOUCH = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  var pendingTap = null;        // tactile : première touche = aperçu, deuxième = confirmation
+  function portrait() { return H > W * 0.9 || W < 700; }
   var cam = { x: 0, y: 0, z: 1, zu: 1, free: false, fit: 1 };
 
   /* ====================== SON (WebAudio, généré) ====================== */
@@ -179,15 +182,22 @@
     W = Math.max(200, stage.clientWidth); H = Math.max(200, stage.clientHeight);
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
-    fitZoom();
+    fitZoom(); cam.free = false;
   }
   function fitZoom() {
-    if (w && w.combat) cam.fit = clamp(Math.min(W / (13 * TW + 40), (H - 150) / (13 * TH + 140)), W < 700 ? 0.5 : 0.35, 1.25);
-    else cam.fit = clamp(Math.min(W / 1100, H / 640), 0.5, 1.2);
+    if (w && w.combat) cam.fit = portrait() ? clamp(W / 560, 0.6, 1) : clamp(Math.min(W / (13 * TW + 40), (H - 150) / (13 * TH + 140)), 0.35, 1.25);
+    else cam.fit = portrait() ? clamp(W / 600, 0.6, 1) : clamp(Math.min(W / 1100, H / 640), 0.5, 1.2);
   }
   function camTarget() {
     if (!w) return { x: 0, y: 0 };
-    if (w.combat) { var c = iso(6, 6); return { x: c.x, y: c.y - 30 + (W < 700 ? 0 : 20) }; }
+    if (w.combat) {
+      if (!portrait() || w.combat.phase !== "fight") { var c = iso(6, 6); return { x: c.x, y: c.y - 30 + (portrait() ? -40 : 20) }; }
+      // en portrait, on suit l'unité qui joue (ou la case visée)
+      var a = A.active(w.combat), fv = a ? vis["u" + a.id] : null;
+      var gx = fv ? fv.gx : a ? a.x : 6, gy = fv ? fv.gy : a ? a.y : 6;
+      if (pendingTap) { gx = (gx + pendingTap.x) / 2; gy = (gy + pendingTap.y) / 2; }
+      var q = iso(gx, gy); return { x: q.x, y: q.y - 20 };
+    }
     var v = vis["h" + focusPi] || w.heroes[focusPi] && { gx: w.heroes[focusPi].x, gy: w.heroes[focusPi].y };
     if (v) { var p = iso(v.gx, v.gy); return { x: p.x, y: p.y - 30 }; }
     return { x: 0, y: 0 };
@@ -284,8 +294,8 @@
       case "fight": banner("Que le combat commence !", null, "fight"); SFX.turn(); break;
       case "turn":
         if (u) {
-          sel = null;
-          if (u.side === 0 && isLocal(u.pi)) { banner(duo ? "Au tour de " + u.name : "À toi de jouer !", u.pa + " PA · " + u.pm + " PM", "turn"); SFX.turn(); }
+          sel = null; pendingTap = null; cam.free = false;
+          if (u.side === 0 && isLocal(u.pi)) { banner(duo ? "Au tour de " + u.name : u.summon ? "Ton " + u.name : "À toi de jouer !", u.pa + " PA · " + u.pm + " PM", "turn"); SFX.turn(); }
           if (u.side === 0) focusPi = isLocal(u.pi) ? u.pi : focusPi;
         }
         break;
@@ -293,7 +303,7 @@
       case "slide": if (v) { v.q = v.q.concat(e.path); v.speed = 11; } break;
       case "bump": if (u) { p = unitScreen(u); shake(5); addParts(p.x, p.y - 20, 10, ["#fff", "#ffd257"], { max: 120 }); addText(u.x, u.y, "Bam !", "#ffd257", { size: 16, h: 90 }); SFX.hit(true); } break;
       case "jump": if (v) { v.q = []; v.jump = { from: e.from, to: e.to, t: -(e.i || 0) * 0.32, dur: 0.32 }; SFX.jump(); var a = iso(e.from[0], e.from[1]); addParts(a.x, a.y, 8, ["#3fe8ff", "#ff8a6a"], { max: 90, g: 0 }); } break;
-      case "tp": if (v) { var f = iso(e.from[0], e.from[1]); addParts(f.x, f.y - 30, 18, e.fx === "ghost" ? ["#a7b0c0", "#ffffff"] : ["#7ff6ff", "#c77dff", "#fff"], { shape: "t", g: -40, max: 90 }); v.q = []; v.jump = null; v.gx = e.to[0]; v.gy = e.to[1]; v.tpIn = 0.35; var t2 = iso(e.to[0], e.to[1]); after(0.12, function () { addParts(t2.x, t2.y - 30, 18, ["#7ff6ff", "#c77dff", "#fff"], { shape: "t", g: 60, max: 70 }); }); SFX.tp(); } break;
+      case "tp": if (v) { var f = iso(e.from[0], e.from[1]); addParts(f.x, f.y - 30, 18, e.fx === "ghost" ? ["#a7b0c0", "#ffffff"] : e.fx === "ink" ? ["#17233a", "#7df0c2"] : ["#7ff6ff", "#c77dff", "#fff"], { shape: "t", g: -40, max: 90 }); v.q = []; v.jump = null; v.gx = e.to[0]; v.gy = e.to[1]; v.tpIn = 0.35; var t2 = iso(e.to[0], e.to[1]); after(0.12, function () { addParts(t2.x, t2.y - 30, 18, ["#7ff6ff", "#c77dff", "#fff"], { shape: "t", g: 60, max: 70 }); }); SFX.tp(); } break;
       case "tpobj": { var tf = iso(e.from[0], e.from[1]); addParts(tf.x, tf.y - 30, 14, ["#7ff6ff", "#fff"], { shape: "t" }); SFX.tp(); break; }
       case "cast": onCast(e, u, v); break;
       case "beam": {
@@ -304,7 +314,7 @@
         if (big) { shake(6); flash = 0.35; flashCol = e.col; }
         break;
       }
-      case "slash": { var st = iso(e.to[0], e.to[1]); slashes.push({ x: st.x, y: st.y - 30, t: 0, life: 0.28, col: "#3fe8ff", a: rnd(-0.6, 0.6) }); hitstop = Math.max(hitstop, 0.07); break; }
+      case "slash": { var st = iso(e.to[0], e.to[1]); slashes.push({ x: st.x, y: st.y - 30, t: 0, life: 0.28, col: e.col || "#3fe8ff", a: rnd(-0.6, 0.6) }); hitstop = Math.max(hitstop, 0.07); break; }
       case "dmg":
         if (u) {
           p = unitScreen(u);
@@ -326,6 +336,7 @@
       case "die":
         if (u && v) {
           p = unitScreen(u); v.dying = 0;
+          if (e.quiet) { addParts(p.x, p.y - 16, 10, ["#17233a", "#7df0c2"], { max: 70 }); break; }
           addParts(p.x, p.y - 26, 26, u.side ? [A.MOBS[u.type] ? A.MOBS[u.type].col : "#fff", "#fff"] : ["#ffffff", "#9fd8ff"], { max: 180, up: 40 });
           addRing(p.x, p.y, "#ffffff", 8, 46, 0.5, { flat: true });
           SFX.die();
@@ -336,7 +347,10 @@
       case "smoke": { var sm = iso(e.at[0], e.at[1]); addParts(sm.x, sm.y - 10, 22, ["#d8dcef", "#a9aec8", "#fff"], { g: -20, max: 70, r: 30, s0: 5, s1: 10, life: 1.2 }); noise(0.4, 0.15, 900); break; }
       case "tele": e.cells.forEach(function (c) { objBorn["t" + c[0] + "," + c[1]] = clock; }); SFX.warn(); toast("⚠ L'Archonte prépare une <b>Sentence</b> : quittez les cases rouges !", "warn"); break;
       case "boom": e.cells.forEach(function (c, i) { var q = iso(c[0], c[1]); after(i * 0.02, function () { addParts(q.x, q.y - 10, 6, ["#ff5a6a", "#ffd257", "#d36cff"], { up: 80, max: 120 }); }); booms.push({ x: q.x, y: q.y, t: 0 }); }); shake(12); SFX.boom(); break;
-      case "summon": if (u) { p = unitScreen(u); addParts(p.x, p.y - 20, 18, ["#d36cff", "#fff"], { up: 60 }); SFX.tp(); } break;
+      case "summon": if (u) { p = unitScreen(u); addParts(p.x, p.y - 20, 18, e.hero ? ["#17233a", "#7df0c2", "#f4ecd8"] : ["#d36cff", "#fff"], { up: 60, shape: e.hero ? "c" : "c" }); if (e.hero) { uvis(u).tpIn = 0.3; addRing(p.x, p.y, "#7df0c2", 4, 30, 0.4, { flat: true }); } SFX.tp(); } break;
+      case "promote": if (u) { p = unitScreen(u); addParts(p.x, p.y - 40, 24, ["#c98a3a", "#f4ecd8", "#7df0c2"], { up: 90, max: 120 }); addRing(p.x, p.y - 30, "#c98a3a", 10, 60, 0.6); addText(u.x, u.y, "Promotion !", "#ffd257", { size: 18, h: 100 }); flash = 0.25; flashCol = "#c98a3a"; SFX.level(); } break;
+      case "burst": { var bq = iso(e.at[0], e.at[1]); addParts(bq.x, bq.y - 20, 26, ["#17233a", "#ff7b9c", "#7df0c2"], { max: 170, up: 30, s0: 3, s1: 6 }); addRing(bq.x, bq.y, "#ff7b9c", 6, 2 * TW, 0.5, { flat: true, lw: 5 }); shake(6); SFX.boom(); break; }
+      case "ink": { var iq = iso(e.at[0], e.at[1]); addRing(iq.x, iq.y, "#17233a", 10, 1.6 * TW, 0.7, { flat: true, lw: 8 }); addParts(iq.x, iq.y - 20, 30, ["#17233a", "#7df0c2"], { max: 140, up: 50, s0: 3, s1: 7 }); flash = 0.3; flashCol = "#2fd29a"; shake(5); break; }
       case "victory": banner("Victoire !", null, "win"); SFX.win(); w.combat.units.forEach(function (x) { if (x.side === 0 && x.alive) uvis(x).win = clock; }); break;
       case "defeat": banner("Défaite…", "Retour au village", "lose"); SFX.lose(); break;
       case "levelup": if (isLocal(e.pi)) { after(0.8, function () { banner("Niveau " + e.level + " !", "PV et puissance augmentés", "level"); SFX.level(); }); } break;
@@ -664,13 +678,14 @@
       }
     }
     if (hover && A.inArena(c, hover.x, hover.y) && !panel) strokeCell(g, hover.x, hover.y, "rgba(255,255,255,.85)", 2);
+    if (pendingTap && A.inArena(c, pendingTap.x, pendingTap.y)) { var ppt = iso(pendingTap.x, pendingTap.y); strokeCell(g, pendingTap.x, pendingTap.y, "#ffd257", 3); label(g, ppt.x, ppt.y - 40 - 10 * Math.abs(Math.sin(clock * 4)), "Touche encore pour confirmer", "#ffd257", 12); }
     // anneaux au sol
     c.units.forEach(function (u) {
       var v = vis["u" + u.id]; if (!v || (!u.alive && v.dying == null)) return;
       if (!u.alive) return;
       var p = iso(v.gx, v.gy), isA = a && a.id === u.id;
-      g.strokeStyle = u.side === 0 ? "rgba(90,170,255,.9)" : "rgba(255,90,110,.9)"; g.lineWidth = 2.5;
-      g.beginPath(); g.ellipse(p.x, p.y, 24, 11, 0, 0, TAU); g.stroke();
+      g.strokeStyle = u.summon ? "rgba(125,240,194,.9)" : u.side === 0 ? "rgba(90,170,255,.9)" : "rgba(255,90,110,.9)"; g.lineWidth = 2.5;
+      g.beginPath(); g.ellipse(p.x, p.y, u.summon ? 18 : 24, u.summon ? 8 : 11, 0, 0, TAU); g.stroke();
       if (isA) { g.strokeStyle = "#ffd257"; g.lineWidth = 3; g.beginPath(); g.ellipse(p.x, p.y, 29 + Math.sin(clock * 5) * 2, 14 + Math.sin(clock * 5), 0, 0, TAU); g.stroke(); }
     });
     booms.forEach(function (b) { g.globalAlpha = 1 - b.t / 0.6; g.fillStyle = "#ff5a6a"; ART.diamond(g, b.x, b.y, HW * (0.6 + b.t), HH * (0.6 + b.t)); g.fill(); g.globalAlpha = 1; });
@@ -694,7 +709,7 @@
     c.units.forEach(function (u) {
       if (!u.alive) return;
       var v = vis["u" + u.id]; if (!v) return;
-      var p = iso(v.gx, v.gy), h = u.boss ? 150 : u.side === 0 ? 102 : 76;
+      var p = iso(v.gx, v.gy), h = u.boss ? 150 : u.summon ? (u.cls === "dame" ? 84 : 66) : u.side === 0 ? 102 : 76;
       if (v.jump) h += 40;
       hpBar(g, p.x, p.y - h, u);
     });
@@ -755,7 +770,10 @@
     g.globalAlpha = alpha;
     var opt = { t: clock + u.id, flip: flip, back: back, walk: v.q.length ? v.walk || 0.01 : null, cast: v.cast || 0, hurt: v.hurt, seed: u.id, noShadow: !!v.jump, scale: 1.22 };
     if (v.win && clock - v.win < 2) opt.win = true;
-    if (u.side === 0) {
+    if (u.summon) {
+      if (u.shield.length) ART.glow(g, x, y - 24, 32, "rgba(159,216,255,.45)", 0.8);
+      ART.summon(g, u.cls, x, y, opt);
+    } else if (u.side === 0) {
       // bouclier : bulle légère
       if (u.shield.length) { ART.glow(g, x, y - 34, 44, "rgba(159,216,255,.45)", 0.8); g.strokeStyle = "rgba(159,216,255,.7)"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y - 34, 30, 40, 0, 0, TAU); g.stroke(); }
       ART.hero(g, u.cls, x, y, opt);
@@ -768,7 +786,7 @@
     g.restore();
   }
   function hpBar(g, x, y, u) {
-    var bw = u.boss ? 80 : 46, hpk = clamp(u.hp / u.maxHp, 0, 1);
+    var bw = u.boss ? 80 : u.summon ? 32 : 46, hpk = clamp(u.hp / u.maxHp, 0, 1);
     var sh = u.shield.reduce(function (s, q) { return s + q.v; }, 0);
     ART.rrect(g, x - bw / 2 - 2, y - 3, bw + 4, 9, 4, "rgba(20,14,40,.75)");
     ART.rrect(g, x - bw / 2, y - 1, bw * hpk, 5, 3, u.side === 0 ? (hpk > 0.35 ? "#5dff9a" : "#ffb347") : (u.affix ? "#ffd257" : "#ff5a6a"));
@@ -836,7 +854,7 @@
     // portraits du groupe
     var party = w.players.map(function (pl, i) {
       if (!pl) return "";
-      var pr = pl.profile, st = A.heroStats(pr), u = w.combat ? w.combat.units.filter(function (x) { return x.side === 0 && x.pi === i; })[0] : null;
+      var pr = pl.profile, st = A.heroStats(pr), u = w.combat ? w.combat.units.filter(function (x) { return x.side === 0 && x.pi === i && !x.summon; })[0] : null;
       var hp = u ? u.hp : st.hp, mhp = u ? u.maxHp : st.hp, sh = u ? u.shield.reduce(function (s, q) { return s + q.v; }, 0) : 0;
       var xpk = pr.level >= A.CFG.maxLevel ? 1 : pr.xp / A.xpNeed(pr.level);
       var act = w.combat && A.active(w.combat) && u && A.active(w.combat).id === u.id;
@@ -856,7 +874,7 @@
       var c = w.combat, order = [], n = c.order.length;
       for (var j = 0; j < n; j++) { var uu = A.uById(c, c.order[(c.turn + j) % n]); if (uu && uu.alive) order.push(uu); }
       top.innerHTML = '<div class="at-tl"><span class="at-round">Tour ' + c.round + "</span>" + order.slice(0, 9).map(function (x, k) {
-        var img = x.side === 0 ? ART.heroIcon(x.cls, 40) : ART.mobIcon(x.type, 40, A.MOBS[x.type].col, !!x.affix);
+        var img = x.summon ? ART.summonIcon(x.cls, 40) : x.side === 0 ? ART.heroIcon(x.cls, 40) : ART.mobIcon(x.type, 40, A.MOBS[x.type].col, !!x.affix);
         return '<span class="at-tl-u' + (k === 0 ? " now" : "") + (x.side ? " mob" : " ally") + (x.affix ? " elite" : "") + '" data-unit="' + x.id + '"><img src="' + img + '" alt="" width="40" height="40"><i style="width:' + (x.hp / x.maxHp * 100).toFixed(0) + '%"></i></span>';
       }).join("") + "</div>";
     } else if (w.combat) top.innerHTML = '<div class="at-zone"><b>' + (w.combat.phase === "place" ? "Placement" : w.loot && w.loot.won ? "Victoire" : "Fin du combat") + '</b><span>' + (w.combat.room ? esc(w.combat.room.name) : esc(A.ZONES[w.zone].name)) + "</span></div>";
@@ -875,7 +893,7 @@
     var c = w.combat;
     if (w.mode === "explore") {
       bar.className = "at-bar hint";
-      bar.innerHTML = '<span>' + (matchMedia("(pointer: coarse)").matches ? "Touche une case pour marcher · touche un monstre pour l'attaquer" : "Clic : marcher · clic sur des monstres : combat · <kbd>I</kbd> sac · <kbd>J</kbd> quêtes · molette : zoom") + (duo ? " · <kbd>Tab</kbd> changer de héros" : "") + "</span>";
+      bar.innerHTML = '<span>' + (TOUCH ? "Touche une case pour marcher · touche un monstre pour l'attaquer" : "Clic : marcher · clic sur des monstres : combat · <kbd>I</kbd> sac · <kbd>J</kbd> quêtes · molette : zoom") + (duo ? " · <kbd>Tab</kbd> changer de héros" : "") + "</span>";
       return;
     }
     if (!c) { bar.innerHTML = ""; return; }
@@ -889,10 +907,11 @@
     }
     if (c.phase !== "fight" || w.mode !== "combat") { bar.innerHTML = ""; return; }
     var a = A.active(c), me = activeLocal();
-    var shown = me || c.units.filter(function (u) { return u.side === 0 && u.pi === focusPi; })[0];
+    var shown = me || c.units.filter(function (u) { return u.side === 0 && u.pi === focusPi && !u.summon; })[0];
     if (!shown) { bar.innerHTML = ""; return; }
-    var spells = A.CLASSES[shown.cls].spells;
-    var html = '<div class="at-papm"><span class="pa" title="Points d\'action"><b>' + shown.pa + '</b>PA</span><span class="pm" title="Points de mouvement"><b>' + shown.pm + '</b>PM</span></div><div class="at-spells">';
+    var spells = A.spellsOf(shown);
+    var html = (shown.summon ? '<span class="at-sumtag"><img src="' + ART.summonIcon(shown.cls, 28) + '" alt="" width="28" height="28">' + esc(shown.name) + "</span>" : "") +
+      '<div class="at-papm"><span class="pa" title="Points d\'action"><b>' + shown.pa + '</b>PA</span><span class="pm" title="Points de mouvement"><b>' + shown.pm + '</b>PM</span></div><div class="at-spells">';
     spells.forEach(function (sid, i) {
       var S = A.SPELLS[sid], why = A.canCast(w, shown, sid), cd = shown.cds[sid] || 0, locked = S.ult && !shown.ult;
       html += '<button type="button" class="at-sp' + (sel && sel.sid === sid ? " on" : "") + (why || !me ? " off" : "") + (S.ult ? " ult" : "") + (locked ? " lock" : "") + '" data-spell="' + sid + '">' +
@@ -902,6 +921,7 @@
     if (me) {
       var S2 = sel && A.SPELLS[sel.sid], need = S2 ? S2.minSteps || S2.steps.length : 0;
       if (S2 && S2.steps.length > 1 && sel.tg.length >= need) html += '<button class="btn btn-small at-go" type="button" data-act="confirm">Lancer <small>Entrée</small></button>';
+      else if (pendingTap) html += '<button class="btn btn-small at-go" type="button" data-act="tapok">' + (sel ? "Lancer" : "Y aller") + "</button>";
       html += '<button class="btn at-end" type="button" data-act="end">Fin du tour <small>Espace</small></button>';
     } else html += '<span class="at-wait">' + (a ? (a.side ? "Tour de " + esc(a.name) + "…" : "Tour de " + esc(a.name)) : "") + "</span>";
     bar.className = "at-bar fight" + (me ? " mine" : "");
@@ -911,7 +931,7 @@
       var hint = sel.sid === "transpo" ? (sel.tg.length ? "Choisis la case d'arrivée" : "Choisis l'allié ou le cristal à téléporter") :
         sel.sid === "danse" ? "Bond " + (sel.tg.length + 1) + " / 3 · Entrée pour lancer" :
         sel.sid === "convergence" ? (sel.tg.length ? "2ᵉ diagonale (facultatif) · Entrée pour lancer" : "Choisis une diagonale") : st ? "Choisis une cible" : "";
-      bar.insertAdjacentHTML("afterbegin", '<span class="at-hint">' + esc(A.SPELLS[sel.sid].name) + " · " + hint + " · clic droit : annuler</span>");
+      bar.insertAdjacentHTML("afterbegin", '<span class="at-hint">' + esc(A.SPELLS[sel.sid].name) + " · " + hint + (TOUCH ? "" : " · clic droit : annuler") + "</span>");
     }
   }
   function spellTip(sid, u) {
@@ -922,11 +942,12 @@
       (S.ult && u && !u.ult ? '<p class="at-tip-warn">Débloqué au niveau ' + A.ULT_LEVEL + "</p>" : "") + (u && A.canCast(w, u, sid) && A.canCast(w, u, sid) !== "Pas assez de PA" ? '<p class="at-tip-warn">' + esc(A.canCast(w, u, sid)) + "</p>" : "");
   }
   function unitTip(u) {
-    var name = u.side === 0 ? u.name + " · " + A.CLASSES[u.cls].name : A.MOBS[u.type].name;
+    var name = u.summon ? u.name + " · invocation de " + (A.uById(w.combat, u.owner) || {}).name : u.side === 0 ? u.name + " · " + A.CLASSES[u.cls].name : A.MOBS[u.type].name;
     var sh = u.shield.reduce(function (s, q) { return s + q.v; }, 0);
     var html = "<strong>" + esc(name) + " <em>niv. " + u.lvl + "</em></strong>" +
       '<p class="at-tip-m"><span>❤ ' + u.hp + " / " + u.maxHp + (sh ? " (+" + sh + ")" : "") + "</span><span>" + u.maxPa + " PA</span><span>" + u.maxPm + " PM</span>" + (u.res ? "<span>" + (u.res + A.statusSum(u, "res")) + " % rés.</span>" : "") + "</p>";
     if (u.affix) html += '<p class="at-tip-gold">Élite : ' + esc(A.AFFIXES[u.affix].name) + "</p>";
+    if (u.summon) html += "<p>" + esc(A.SUMMONS[u.cls].desc) + "</p>";
     if (u.side === 1) html += "<p>" + A.MOBS[u.type].spells.map(function (s) { var M = A.MOB_SPELLS[s]; return esc(M.name) + (M.dmg ? " (" + M.dmg + ")" : M.heal ? " (soin)" : ""); }).join(" · ") + "</p>";
     if (u.side === 1 && w.combat.phase === "fight") html += '<p class="at-tip-dim">En rouge : là où il peut marcher</p>';
     return html;
@@ -1091,7 +1112,9 @@
       "<li><b>Bastion</b> (la tour) frappe et attire en ligne droite, pose des murs et des boucliers. Une cible poussée contre un obstacle prend des dégâts.</li>" +
       "<li><b>Prisme</b> (le fou) tire en diagonale, soigne, téléporte ses alliés et pose des cristaux d'où partent ses rayons.</li>" +
       "<li><b>Voltige</b> (le cavalier) bondit en L par-dessus tout, passe derrière les ennemis et les aveugle avec sa brume.</li>" +
+      "<li><b>Sibylle</b> (le pion) invoque des Pions d'encre que tu contrôles (ils jouent juste après elle), les promeut en Dame, les sacrifie ou échange sa place avec eux.</li>" +
       "<li><b>Butin</b> : chaque monstre peut lâcher un objet aléatoire. 5 raretés, de grosses caractéristiques, parfois <b>+1 PA</b>, <b>+1 PM</b> ou <b>+Portée</b>, et des pouvoirs légendaires. Les élites (★) lâchent toujours quelque chose.</li>" +
+      (TOUCH ? "<li><b>Tactile</b> : touche une case pour l'aperçu, touche-la encore pour confirmer. Glisse pour déplacer la vue, pince pour zoomer.</li>" : "") +
       "<li><b>Raccourcis</b> : <kbd>1</kbd>–<kbd>5</kbd> sorts · <kbd>Espace</kbd> fin du tour · clic droit annule · <kbd>I</kbd> sac · <kbd>J</kbd> quêtes · <kbd>C</kbd> recentrer · molette zoom · glisser pour déplacer la vue.</li></ul>";
   }
   function showPause() {
@@ -1119,6 +1142,7 @@
   function pickSpell(sid) {
     var u = activeLocal();
     if (!u) return;
+    pendingTap = null;
     if (sel && sel.sid === sid) { sel = null; hudDirty = true; return; }
     var why = A.canCast(w, u, sid);
     if (why) { toast(esc(why), "warn"); SFX.error(); return; }
@@ -1157,7 +1181,7 @@
     }
     if (!c || w.mode !== "combat") return;
     if (c.phase === "place") {
-      var me = c.units.filter(function (u) { return u.side === 0 && u.pi === focusPi; })[0];
+      var me = c.units.filter(function (u) { return u.side === 0 && u.pi === focusPi && !u.summon; })[0];
       var t = A.unitAt(c, x, y);
       if (t && t.side === 0 && isLocal(t.pi) && t !== me) { focusPi = t.pi; hudDirty = true; return; }
       sendCmd({ t: "place", x: x, y: y });
@@ -1167,7 +1191,9 @@
     if (!u) return;
     if (sel) {
       var ok = A.targets(w, u, sel.sid, sel.tg).some(function (q) { return q[0] === x && q[1] === y; });
-      if (!ok) { sel = null; hudDirty = true; return; }
+      if (!ok) { sel = null; pendingTap = null; hudDirty = true; return; }
+      if (touchTap && !(pendingTap && pendingTap.x === x && pendingTap.y === y)) { pendingTap = { x: x, y: y }; hover = pendingTap; SFX.click(); hudDirty = true; return; }
+      pendingTap = null;
       sel.tg.push([x, y]);
       var S = A.SPELLS[sel.sid];
       if (sel.tg.length >= S.steps.length || !A.targets(w, u, sel.sid, sel.tg).length) {
@@ -1178,8 +1204,12 @@
       return;
     }
     var r = A.reach(w, u);
-    if (r[x + "," + y] > 0) sendCmd({ t: "move", x: x, y: y }, u.pi);
+    if (!(r[x + "," + y] > 0)) { pendingTap = null; hudDirty = true; return; }
+    if (touchTap && !(pendingTap && pendingTap.x === x && pendingTap.y === y)) { pendingTap = { x: x, y: y }; hover = pendingTap; SFX.click(); hudDirty = true; return; }
+    pendingTap = null;
+    sendCmd({ t: "move", x: x, y: y }, u.pi);
   }
+  var touchTap = false;
   function followWalk(o, x, y) {
     var m = A.zoneMap(w.zone);
     var cands = [[x - 1, y], [x, y - 1], [x + 1, y], [x, y + 1], [x - 1, y - 1], [x + 1, y + 1]];
@@ -1205,7 +1235,7 @@
       var p = iso(gx, gy), s = toScreen(p.x, p.y);
       if (Math.abs(sx - s.x) < 24 * cam.z && sy < s.y + 8 * cam.z && sy > s.y - h * cam.z && gx + gy > bd) { bd = gx + gy; best = o; }
     };
-    if (w.combat) w.combat.units.forEach(function (u) { if (u.alive) { var v = vis["u" + u.id]; test(v ? v.gx : u.x, v ? v.gy : u.y, u.boss ? 150 : 92, { unit: u.id, x: u.x, y: u.y }); } });
+    if (w.combat) w.combat.units.forEach(function (u) { if (u.alive) { var v = vis["u" + u.id]; test(v ? v.gx : u.x, v ? v.gy : u.y, u.boss ? 150 : u.summon ? 70 : 92, { unit: u.id, x: u.x, y: u.y }); } });
     else {
       w.packs.forEach(function (pk) { if (!pk.dead) { var v = vis["p" + pk.id]; if (v) test(v.gx, v.gy, 60, { pack: pk.id, x: pk.x, y: pk.y }); } });
       (A.NPCS[w.zone] || []).forEach(function (n) { test(n.x, n.y, n.obj ? 60 : 80, { npc: n.id, x: n.x, y: n.y }); });
@@ -1234,12 +1264,19 @@
     if (!d || d.moved) return;
     if (d.btn === 2) { if (sel) { sel = null; hudDirty = true; } return; }
     var p = evPos(e);
-    mouse.x = p.x; mouse.y = p.y; updateHover();
+    touchTap = e.pointerType === "touch";
+    mouse.in = true; mouse.x = p.x; mouse.y = p.y; updateHover();
     if (panel || screen !== "game") return;
     var tgt = hoverObj && w && w.combat ? { x: hoverObj.x, y: hoverObj.y } : hover;
     if (tgt) clickCell(tgt.x, tgt.y);
+    if (touchTap) { mouse.in = false; if (!pendingTap) hover = null; }
   });
-  canvas.addEventListener("pointerleave", function () { mouse.in = false; hover = null; hoverObj = null; hideTip(); });
+  canvas.addEventListener("pointerleave", function () { mouse.in = false; if (!pendingTap) hover = null; hoverObj = null; hideTip(); });
+  // pincement à deux doigts : zoom
+  var pinch = null;
+  canvas.addEventListener("touchstart", function (e) { if (e.touches.length === 2) { pinch = { d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY), z: cam.zu }; mouse.down = null; } }, { passive: true });
+  canvas.addEventListener("touchmove", function (e) { if (pinch && e.touches.length === 2) { var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); cam.zu = clamp(pinch.z * d / pinch.d, 0.55, 2); } }, { passive: true });
+  canvas.addEventListener("touchend", function (e) { if (e.touches.length < 2) pinch = null; }, { passive: true });
   canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   canvas.addEventListener("wheel", function (e) {
     e.preventDefault();
@@ -1248,7 +1285,7 @@
   function updateHover() {
     if (!w || screen !== "game") return;
     hoverObj = mouse.in ? pickObj(mouse.x, mouse.y) : null;
-    hover = mouse.in ? (hoverObj && w.combat ? { x: hoverObj.x, y: hoverObj.y } : cellAt(mouse.x, mouse.y)) : null;
+    hover = mouse.in ? (hoverObj && w.combat ? { x: hoverObj.x, y: hoverObj.y } : cellAt(mouse.x, mouse.y)) : pendingTap;
     if (sel && w.combat && hover) {
       // en visant, on vise la case (les unités ne cachent pas leurs voisines)
       var cc = cellAt(mouse.x, mouse.y), u = activeLocal();
@@ -1272,7 +1309,7 @@
   });
   hud.addEventListener("pointerover", function (e) {
     var b = e.target.closest("[data-spell]");
-    if (b) { var u = activeLocal() || (w && w.combat && w.combat.units.filter(function (x) { return x.side === 0 && x.pi === focusPi; })[0]); var r = b.getBoundingClientRect(), sr = stage.getBoundingClientRect(); showTip(spellTip(b.dataset.spell, u), r.left - sr.left, r.top - sr.top - 150); return; }
+    if (b) { var u = activeLocal() || (w && w.combat && w.combat.units.filter(function (x) { return x.side === 0 && x.pi === focusPi && !x.summon; })[0]); var r = b.getBoundingClientRect(), sr = stage.getBoundingClientRect(); showTip(spellTip(b.dataset.spell, u), r.left - sr.left, r.top - sr.top - 150); return; }
     var t = e.target.closest("[data-unit]");
     if (t && w && w.combat) { var un = A.uById(w.combat, +t.dataset.unit); var r2 = t.getBoundingClientRect(), sr2 = stage.getBoundingClientRect(); if (un) showTip(unitTip(un), r2.left - sr2.left, r2.bottom - sr2.top); }
   });
@@ -1288,8 +1325,9 @@
       case "close": closePanel(); if (w && w.mode === "loot") showLoot(); break;
       case "ready": locals.forEach(function (i) { if (w.players[i] && !w.players[i].ready) sendCmd({ t: "ready" }, i); }); SFX.click(); break;
       case "flee": hide(); sendCmd({ t: "flee" }); break;
-      case "end": sel = null; var u = activeLocal(); if (u) sendCmd({ t: "end" }, u.pi); break;
+      case "end": sel = null; pendingTap = null; var u = activeLocal(); if (u) sendCmd({ t: "end" }, u.pi); break;
       case "confirm": confirmSpell(); break;
+      case "tapok": if (pendingTap) { touchTap = false; var pt = pendingTap; clickCell(pt.x, pt.y); } break;
       case "lootok": locals.forEach(function (i) { if (w.players[i] && !w.players[i].ready) sendCmd({ t: "lootok" }, i); }); SFX.click(); break;
       case "chest": sendCmd({ t: "chest" }); break;
       case "quit": quitToMenu(); break;
@@ -1334,7 +1372,7 @@
     if (k === "Escape") { if (sel) { sel = null; hudDirty = true; } else if (panel && panel !== "loot") closePanel(); else if (!panel) showPause(); e.preventDefault(); return; }
     if (panel === "loot" && (k === "Enter" || k === " ")) { act("lootok"); e.preventDefault(); return; }
     if (panel) { if (k === "i" || k === "I") { if (panel === "inv") closePanel(); } if (k === "j" || k === "J") { if (panel === "quests") closePanel(); } return; }
-    if (k >= "1" && k <= "5") { var u = activeLocal(); if (u) pickSpell(A.CLASSES[u.cls].spells[+k - 1]); e.preventDefault(); return; }
+    if (k >= "1" && k <= "5") { var u = activeLocal(); if (u && A.spellsOf(u)[+k - 1]) pickSpell(A.spellsOf(u)[+k - 1]); e.preventDefault(); return; }
     if (k === " " || k === "Enter") {
       e.preventDefault();
       if (w.combat && w.combat.phase === "place") { act("ready"); return; }
