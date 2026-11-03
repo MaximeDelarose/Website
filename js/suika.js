@@ -25,9 +25,9 @@
   var RADII = [14, 20, 26, 33, 41, 50, 60, 72, 86, 101, 118];   // rapport des tailles du vrai jeu (cerise → pastèque)
   var SKIN = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];       // niveau → écureuil de MergerArt
   var DROP_MAX = 4;                                       // on ne lâche que les niveaux 0 à 4
-  var W = 400, H = 600;                                   // le bac
-  var TOP = 110;                                          // ligne de danger
-  var DROP_Y = 52;                                        // hauteur de l'écureuil qui attend
+  var W = 400, H = 560;                                   // le bac
+  var TOP = 100;                                          // ligne de danger
+  var DROP_Y = 46;                                        // hauteur de l'écureuil qui attend
   var G = 1900, REST = 0.18, MU = 0.45, MU_WALL = 0.35, SLOP = 0.3, ITERS = 10;   // gravité, rebond, frottements
   var SUB = 4, STEP = 1 / 240;                            // sous-pas de physique
   var DANGER_TIME = 2.2;                                  // secondes au-dessus de la ligne avant la défaite
@@ -315,8 +315,17 @@
     var o = { lx: b && b.look ? Math.max(-1, Math.min(1, b.look * 3)) : 0, ly: 0.2, blink: 1, mood: "" };
     if (b) { var t = (clock + b.blink * 7) % 4.5; if (t < 0.13) o.blink = -1; if (b.over > 0.3) o.mood = "worried"; }
     if (extra) for (var k in extra) o[k] = extra[k];
-    if (o.rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(o.rot); ART.draw(ctx, 0, 0, SKIN[b.l], r * 0.92, o); ctx.restore(); }
-    else ART.draw(ctx, x, y, SKIN[b ? b.l : cur], r * 0.92, o);
+    // comme les fruits du vrai jeu : un disque net (la collision) avec le visage de l'écureuil dedans
+    var t = o.lvl != null ? o.lvl : b ? b.l : cur, c = ART.SQUIRRELS[SKIN[t]], al = o.alpha == null ? 1 : o.alpha;
+    ctx.save(); ctx.globalAlpha = al; ctx.translate(x, y);
+    var rad = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
+    rad.addColorStop(0, ART.lighten(c.body)); rad.addColorStop(0.55, c.body); rad.addColorStop(1, c.dark);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.283); ctx.fillStyle = rad; ctx.fill();
+    ctx.lineWidth = Math.max(2, r * 0.07); ctx.strokeStyle = "#2b1709"; ctx.stroke();
+    if (o.rot) ctx.rotate(o.rot);
+    o.part = "body"; o.alpha = 1;
+    ART.draw(ctx, 0, r * 0.06, SKIN[t], r * 0.74, o);
+    ctx.restore();
   }
 
   function render() {
@@ -381,7 +390,7 @@
       var nr = 26, nx = wide ? ox + W * scale + 56 : ox + W * scale - nr - 6, ny = wide ? oy + 70 : oy + nr + 22;
       ctx.textAlign = "center"; ctx.font = "800 " + (fs * 0.7) + "px Nunito, system-ui, sans-serif";
       var ly = ny - nr - 4; ctx.strokeText("Suivant", nx, ly); ctx.fillText("Suivant", nx, ly);
-      ART.draw(ctx, nx, ny, SKIN[next], nr * 0.9, {});
+      sq(null, nx, ny, nr * 0.9 + 4, { lvl: next });
     }
     if (state === "over" && overT < 1) { ctx.fillStyle = "rgba(255,60,40," + (0.25 * (1 - overT)) + ")"; ctx.fillRect(0, 0, cw, ch); }
   }
