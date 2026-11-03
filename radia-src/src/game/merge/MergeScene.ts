@@ -10,7 +10,7 @@ import * as R from './rules';
 import { suggestMerge, botStep } from './bot';
 import { MAX_LEVEL, SPECIAL, type ItemRef } from '../../data/items';
 import {
-  COLLECTION_TINTS, drawBasket, ensureBoardTextures, ensureFxTextures, ensureItemTexture,
+  COLLECTION_TINTS, ITEM_TEX, drawBasket, ensureBoardTextures, ensureFxTextures, ensureItemTexture,
 } from './textures';
 import { audio, reducedFx } from '../../core/app';
 import { texScale, paint } from '../art/kit';
@@ -121,7 +121,8 @@ export class MergeScene extends BaseScene {
     this.oy = Math.round(a.top + Math.max(4, (availH - bh) / 2) + 4);
   }
 
-  private itemScale(): number { return (this.cell * 0.86) / 72; }
+  /** Les textures font 72 px logiques × densité : on ramène l'objet à ~86 % de la case. */
+  private itemScale(): number { return (this.cell * 0.92) / (ITEM_TEX * texScale()); }
   private cx(i: number) { return this.ox + (i % BOARD_W) * this.cell + this.cell / 2; }
   private cy(i: number) { return this.oy + Math.floor(i / BOARD_W) * this.cell + this.cell / 2; }
 
@@ -205,7 +206,7 @@ export class MergeScene extends BaseScene {
     this.glows[i] = null;
     if (!r || (r.c !== 'special' && r.l < 8) || reducedFx()) return;
     const g = this.add.image(this.cx(i), this.cy(i), 'fx:light').setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.35);
-    g.setScale((this.cell * 1.1) / 40 * (1 / 1));
+    g.setScale((this.cell * 1.1) / 40 / texScale());
     this.boardLayer.addAt(g, this.boardLayer.getIndex(this.sprites[i]!));
     this.tweens.add({ targets: g, alpha: 0.12, yoyo: true, repeat: -1, duration: 1100, ease: 'Sine.easeInOut' });
     this.glows[i] = g;
@@ -493,9 +494,9 @@ export class MergeScene extends BaseScene {
       a?.destroy();
       b?.destroy();
       // 4. flash doux
-      const fl = this.add.image(x, y, 'fx:flash').setBlendMode(Phaser.BlendModes.ADD).setScale(0.2 * (this.cell / 56));
+      const fl = this.add.image(x, y, 'fx:flash').setBlendMode(Phaser.BlendModes.ADD).setScale((0.2 * (this.cell / 56)) / texScale());
       this.fxLayer.add(fl);
-      this.tweens.add({ targets: fl, scale: (big ? 1.6 : 1.0) * (this.cell / 56), alpha: 0, duration: dur * 0.9, ease: 'Quad.easeOut', onComplete: () => fl.destroy() });
+      this.tweens.add({ targets: fl, scale: ((big ? 1.6 : 1.0) * (this.cell / 56)) / texScale(), alpha: 0, duration: dur * 0.9, ease: 'Quad.easeOut', onComplete: () => fl.destroy() });
       // 5. particules
       this.burst(x, y, e.result, big ? 18 : e.result.l >= 4 ? 11 : 7, variant);
       if (big) this.ring(x, y, 0xffe7a0);
@@ -529,9 +530,9 @@ export class MergeScene extends BaseScene {
   }
 
   private ring(x: number, y: number, tint: number): void {
-    const r = this.add.image(x, y, 'fx:ring').setTint(tint).setScale(0.2).setBlendMode(Phaser.BlendModes.ADD);
+    const r = this.add.image(x, y, 'fx:ring').setTint(tint).setScale(0.2 / texScale()).setBlendMode(Phaser.BlendModes.ADD);
     this.fxLayer.add(r);
-    this.tweens.add({ targets: r, scale: (this.cell * 2.4) / 96, alpha: 0, duration: 520, ease: 'Cubic.easeOut', onComplete: () => r.destroy() });
+    this.tweens.add({ targets: r, scale: (this.cell * 2.4) / 96 / texScale(), alpha: 0, duration: 520, ease: 'Cubic.easeOut', onComplete: () => r.destroy() });
   }
 
   private floatText(x: number, y: number, str: string, color = '#FFFFFF', size = 18): void {
@@ -747,10 +748,10 @@ export class MergeScene extends BaseScene {
       order.forEach((i, k) => {
         const sp = this.sprites[i]!;
         this.time.delayedCall(400 + k * 110, () => {
-          const l = this.add.image(sp.x, sp.y, 'fx:light').setBlendMode(Phaser.BlendModes.ADD).setScale(0.6);
+          const l = this.add.image(sp.x, sp.y, 'fx:light').setBlendMode(Phaser.BlendModes.ADD).setScale(0.6 / texScale());
           this.fxLayer.add(l);
           this.tweens.add({ targets: sp, scale: 0, alpha: 0, duration: 300, onComplete: () => sp.destroy() });
-          this.tweens.add({ targets: l, y: -40, x: l.x + (Math.random() - 0.5) * 120, scale: 0.3, duration: 2600 + Math.random() * 800, ease: 'Sine.easeIn', onComplete: () => l.destroy() });
+          this.tweens.add({ targets: l, y: -40, x: l.x + (Math.random() - 0.5) * 120, scale: 0.3 / texScale(), duration: 2600 + Math.random() * 800, ease: 'Sine.easeIn', onComplete: () => l.destroy() });
           audio.play('sparkle', 0.9 + (k % 6) * 0.06);
         });
       });
@@ -762,7 +763,7 @@ export class MergeScene extends BaseScene {
           this.tweens.add({ targets: heart, x: this.W / 2, y: this.H * 0.42, scale: this.itemScale() * 3.2, duration: 1600, ease: 'Sine.easeInOut' });
           const halo = this.add.image(this.W / 2, this.H * 0.42, 'fx:light').setBlendMode(Phaser.BlendModes.ADD).setScale(0).setAlpha(0.9);
           this.boardLayer.addAt(halo, 0);
-          this.tweens.add({ targets: halo, scale: 9, duration: 1800, ease: 'Sine.easeOut' });
+          this.tweens.add({ targets: halo, scale: 9 / texScale(), duration: 1800, ease: 'Sine.easeOut' });
           this.tweens.add({ targets: halo, alpha: 0.5, yoyo: true, repeat: -1, duration: 900, delay: 1800 });
           this.tweens.add({ targets: heart, scale: this.itemScale() * 3.4, yoyo: true, repeat: -1, duration: 700, delay: 1700, ease: 'Sine.easeInOut' });
         }
