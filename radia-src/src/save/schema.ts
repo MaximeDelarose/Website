@@ -42,6 +42,8 @@ export interface SaveData {
   boosters: { wand: number; wind: number };
   discovered: string[];
   memories: string[];
+  /** Photos débloquées (album « Nos photos »). */
+  photos: string[];
   achievements: Record<string, number>;
   stats: Record<string, number>;
   minigames: Record<string, { done: boolean; best: number }>;
@@ -82,6 +84,7 @@ export function defaultSave(): SaveData {
     boosters: { wand: 1, wind: 2 },
     discovered: [],
     memories: [],
+    photos: [],
     achievements: {},
     stats: {},
     minigames: {},
@@ -173,6 +176,7 @@ export function sanitize(raw: unknown): SaveData {
   if (isObj(s.boosters)) d.boosters = { wand: Math.floor(num(s.boosters.wand, 1, 0, 99)), wind: Math.floor(num(s.boosters.wind, 2, 0, 99)) };
   d.discovered = strArr(s.discovered);
   d.memories = strArr(s.memories);
+  d.photos = strArr(s.photos);
   d.achievements = numRecord(s.achievements);
   d.stats = numRecord(s.stats);
   if (isObj(s.minigames)) {

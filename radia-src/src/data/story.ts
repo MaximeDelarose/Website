@@ -9,6 +9,7 @@ export type StoryStep =
   | { t: 'level'; id: number }
   | { t: 'minigame'; id: 'puzzle' | 'billard' | 'chemin' }
   | { t: 'memory'; id: string }
+  | { t: 'photo'; id: string }
   | { t: 'queen' }
   | { t: 'unlockChess' }
   | { t: 'final' };
@@ -26,32 +27,33 @@ export const CHAPTERS: ChapterDef[] = [
 const L = (id: number): StoryStep => ({ t: 'level', id });
 const D = (id: string): StoryStep => ({ t: 'dialogue', id });
 const M = (id: string): StoryStep => ({ t: 'memory', id });
+const P = (id: string): StoryStep => ({ t: 'photo', id });
 
 export const STORY: StoryStep[] = [
   D('intro'),
   { t: 'chapter', ch: 1 },
-  L(1), D('basket'), L(2), L(3), D('bouquet'), M('flowers'), D('orders'), L(4), D('gifts'), L(5), D('combo'), L(6), D('ch1_end'),
+  L(1), D('basket'), L(2), L(3), D('bouquet'), M('flowers'), D('orders'), L(4), D('gifts'), L(5), D('combo'), L(6), D('ch1_end'), P('p4'),
 
   { t: 'chapter', ch: 2 },
   D('ch2_intro'), M('nord'),
   L(7), L(8), L(9), D('arc_intro'), { t: 'minigame', id: 'puzzle' }, D('arc_done'), M('arc'),
-  L(10), L(11), L(12), D('ch2_end'),
+  L(10), L(11), L(12), D('ch2_end'), P('p1'),
 
   { t: 'chapter', ch: 3 },
   D('ch3_intro'),
   L(13), L(14), D('cinema'), M('cinema'), L(15), L(16),
   D('billard_intro'), { t: 'minigame', id: 'billard' }, D('billard_done'), M('billard'),
-  L(17), L(18), D('promenade'), M('promenade'),
+  L(17), L(18), D('promenade'), M('promenade'), P('p3'),
 
   { t: 'chapter', ch: 4 },
   D('ch4_intro'),
-  D('pawn'), L(19), L(20), L(21), L(22), D('queen'), { t: 'queen' }, L(23), L(24), D('crown'), M('royaume'), { t: 'unlockChess' },
+  D('pawn'), L(19), L(20), L(21), L(22), D('queen'), { t: 'queen' }, L(23), L(24), D('crown'), M('royaume'), P('p5'), { t: 'unlockChess' },
 
   { t: 'chapter', ch: 5 },
   D('ch5_intro'),
-  L(25), L(26), D('thousand'), L(27), D('chemin_intro'), { t: 'minigame', id: 'chemin' }, D('chemin_done'),
+  L(25), L(26), D('thousand'), P('p2'), L(27), D('chemin_intro'), { t: 'minigame', id: 'chemin' }, D('chemin_done'),
   L(28), L(29), D('last'), L(30),
-  { t: 'final' }, M('monde'),
+  { t: 'final' }, M('monde'), P('p6'),
 ];
 
 /** Chapitre en cours à une étape donnée. */
@@ -70,7 +72,7 @@ export const levelStep = (id: number) => STORY.findIndex((s) => s.t === 'level' 
 /** Identifiant stable d'une étape (sert à retrouver sa place si l'histoire change). */
 export function stepKey(s: StoryStep): string {
   switch (s.t) {
-    case 'dialogue': case 'memory': return `${s.t}:${s.id}`;
+    case 'dialogue': case 'memory': case 'photo': return `${s.t}:${s.id}`;
     case 'level': return `level:${s.id}`;
     case 'minigame': return `minigame:${s.id}`;
     case 'chapter': return `chapter:${s.ch}`;

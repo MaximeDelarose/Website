@@ -51,10 +51,33 @@ export class GridBoard {
     this.el.append(grid, this.decor, this.marks, this.layer);
     this.paintSquares();
     this.el.addEventListener('pointerdown', (e) => this.down(e));
-    this.el.addEventListener('pointermove', (e) => this.move(e));
-    this.el.addEventListener('pointerup', (e) => this.up(e));
-    this.el.addEventListener('pointercancel', () => this.cancelDrag());
-    this.el.addEventListener('lostpointercapture', () => { if (this.drag) this.cancelDrag(); });
+    // Déplacement et relâcher écoutés sur la fenêtre : le doigt peut sortir du
+    // plateau, et Safari iOS gère la « capture » des touchers à sa façon.
+    // (On n'écoute plus « lostpointercapture » : sur iPhone, ce signal arrive
+    // dès qu'on prend une pièce et annulait le glisser.)
+    window.addEventListener('pointermove', this.onWinMove, { passive: false });
+    window.addEventListener('pointerup', this.onWinUp);
+    window.addEventListener('pointercancel', this.onWinCancel);
+    // le plateau ne doit jamais faire défiler la page sous le doigt
+    this.el.addEventListener('touchmove', (e) => { if (this.drag) e.preventDefault(); }, { passive: false });
+  }
+
+  private onWinMove = (e: PointerEvent) => { if (this.gone()) return; this.move(e); };
+  private onWinUp = (e: PointerEvent) => { if (this.gone()) return; this.up(e); };
+  /** Plateau retiré de la page : on se désabonne tout seul. */
+  private gone(): boolean {
+    if (this.el.isConnected) return false;
+    if (!this.drag) this.dispose();
+    return true;
+  }
+  private onWinCancel = (e: PointerEvent) => { if (this.drag && e.pointerId === this.drag.id) this.cancelDrag(); };
+
+  /** À appeler quand le plateau disparaît. */
+  dispose(): void {
+    window.removeEventListener('pointermove', this.onWinMove);
+    window.removeEventListener('pointerup', this.onWinUp);
+    window.removeEventListener('pointercancel', this.onWinCancel);
+    this.drag = null;
   }
 
   setFlip(flip: boolean): void {
@@ -215,7 +238,6 @@ export class GridBoard {
       if (!wasSelected) this.select(cell);
       const pe = this.pieces.find((p) => p.cell === cell) ?? null;
       this.drag = { id: e.pointerId, from: cell, x: e.clientX, y: e.clientY, moved: false, pe, wasSelected };
-      try { this.el.setPointerCapture(e.pointerId); } catch { /* ignoré */ }
       pe?.el.classList.add('lifted');
       return;
     }
@@ -229,9 +251,10 @@ export class GridBoard {
   private move(e: PointerEvent): void {
     const d = this.drag;
     if (!d || e.pointerId !== d.id || !d.pe) return;
+    if (e.cancelable) e.preventDefault();
     const dx = e.clientX - d.x;
     const dy = e.clientY - d.y;
-    if (!d.moved && Math.hypot(dx, dy) < 7) return;
+    if (!d.moved && Math.hypot(dx, dy) < 9) return;
     d.moved = true;
     const r = this.el.getBoundingClientRect();
     const size = r.width / this.o.w;
@@ -246,7 +269,6 @@ export class GridBoard {
     const d = this.drag;
     if (!d || e.pointerId !== d.id) return;
     this.drag = null;
-    try { this.el.releasePointerCapture(e.pointerId); } catch { /* ignoré */ }
     d.pe?.el.classList.remove('lifted', 'dragging');
     if (!d.moved) {
       if (d.wasSelected) this.select(null); // second toucher = désélection

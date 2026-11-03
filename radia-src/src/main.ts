@@ -12,6 +12,7 @@ import { ui } from './ui/ui';
 import { h } from './ui/dom';
 import { showTitle } from './ui/screens/title';
 import { BackdropScene } from './game/scenes/BackdropScene';
+import { preloadPhotos } from './core/photos';
 
 const progress = (p: number) => {
   const bar = document.getElementById('splash-progress');
@@ -49,6 +50,7 @@ async function boot(): Promise<void> {
   setLowFx(save.data.settings.effects === 'reduced');
   applySettings();
   void save.requestPersistence();
+  preloadPhotos(['face-radia', 'face-auguste']);
   progress(0.3);
 
   // Écriture immédiate quand Safari passe en arrière-plan ou se ferme.

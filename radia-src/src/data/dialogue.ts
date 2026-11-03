@@ -208,9 +208,9 @@ export const DIALOGUES: Record<string, DialogueDef> = {
       N('Une petite couronne dorée se pose sur la tête de Radia.'),
       R('surprise', 'Une couronne ? Pour moi ?', 'royal'),
       A('love', 'Aux échecs, on dit que la reine est la pièce la plus puissante. Moi, je crois surtout qu\'elle est celle qui rend tout le jeu plus beau.'),
-      A('smile', 'Le mode Échecs est ouvert. Et je te préviens : l\'IA, elle, ne te laissera pas gagner exprès.'),
-      R('tease', 'Et toi, si ?', 'royal'),
-      A('laugh', '…Peut-être.'),
+      A('smile', 'Le mode Échecs est ouvert. Viens jouer contre moi… si tu oses.'),
+      R('tease', 'Tu vas pleurer.', 'royal'),
+      A('laugh', 'On verra bien, ma reine. Je ne te ferai pas de cadeau.'),
     ],
   },
   ch5_intro: {
