@@ -59,3 +59,18 @@
 .golf-cam { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: flex; gap: 6px; }
 .golf-cam button { width: 40px; height: 40px; font-size: 1.3rem; line-height: 1; cursor: pointer; color: #fdf3de; background: rgba(20, 12, 4, .7); border: 3px solid #2b1709; }
 .golf-cam button:hover { background: rgba(60, 36, 12, .9); }
+
+/* téléphone en portrait : la scène prend la hauteur de l'écran, boutons plus gros */
+@media (orientation: portrait) and (max-width: 700px) {
+  .golf-stage { height: calc(100dvh - 250px); min-height: 460px; max-height: 820px; }
+  .golf-cam button { width: 48px; height: 48px; font-size: 1.5rem; }
+  .golf-hud { padding: 6px 8px; }
+  .golf-hud-hole { font-size: .9rem; }
+  .golf-board { max-width: 50%; }
+  .golf-card { padding: 16px 14px 14px; }
+  .golf-card h2 { font-size: 1.5rem; }
+  .golf-stack .btn, .golf-join { min-width: 0; width: 100%; }
+  .golf-picks { grid-template-columns: 1fr 1fr; }
+  .golf-table table { font-size: .72rem; }
+  .golf-table th, .golf-table td { padding: 4px 4px; }
+}

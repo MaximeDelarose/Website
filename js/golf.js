@@ -471,8 +471,18 @@
     cw = Math.max(200, r.width); ch = Math.max(200, r.height);
     canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
     canvas.style.width = cw + "px"; canvas.style.height = ch + "px";
+    if (G) fitView();
   }
-  function fitView() { /* la caméra se recale à chaque image */ }
+  // en portrait (téléphone), on choisit parmi les 4 diagonales celle qui agrandit le plus le trou
+  function fitView() {
+    if (!G || !(ch > cw * 1.1)) return;
+    var h = curHole(), keep = cam.yaw, bestF = -1, bestY = cam.yawT;
+    for (var k = 0; k < 4; k++) {
+      cam.yaw = Math.PI / 4 + k * Math.PI / 2; setCam(h);
+      if (cam.F > bestF + 0.001) { bestF = cam.F; bestY = cam.yaw; }
+    }
+    cam.yaw = keep; cam.yawT = bestY;
+  }
   function toWorld(ev) { var r = canvas.getBoundingClientRect(); return unproject(ev.clientX - r.left, ev.clientY - r.top); }
 
   // ---------- petits outils de dessin ----------
@@ -700,7 +710,7 @@
     if (G && G.msg && now() < G.msgT) {
       cx.font = "800 " + Math.round(clamp(cw / 22, 15, 26)) + "px Nunito, sans-serif"; cx.textAlign = "center";
       cx.lineWidth = 5; cx.strokeStyle = "#2b1709"; cx.fillStyle = "#fdf3de";
-      var my = ch - 22;
+      var my = ch - 66;
       cx.strokeText(G.msg, cw / 2, my); cx.fillText(G.msg, cw / 2, my);
     }
   }
@@ -1123,5 +1133,5 @@
     if (m && m[1].toUpperCase() !== NET.code) netJoin(m[1].toUpperCase(), false);
   });
   window.addEventListener("beforeunload", function () { if (NET.ch) try { NET.ch.untrack(); } catch (e) {} });
-  if (/[?&]debug/.test(location.search)) window.GOLF_DEBUG = { G: function () { return G; }, NET: NET, HOLES: HOLES, shoot: shoot, load: function (i) { G.hi = i; loadHole(); closeCard(); }, inPoly: inPoly, inRects: inRects, setT: function (t) { simT = t; }, step: function (n) { for (var i = 0; i < n; i++) simStep(); }, cam: cam };
+  if (/[?&]debug/.test(location.search)) window.GOLF_DEBUG = { G: function () { return G; }, NET: NET, HOLES: HOLES, shoot: shoot, load: function (i) { G.hi = i; loadHole(); closeCard(); }, inPoly: inPoly, inRects: inRects, setT: function (t) { simT = t; }, step: function (n) { for (var i = 0; i < n; i++) { simStep(); if ((i & 255) === 0) G.fx.length = 0; } }, cam: cam };
 })();
