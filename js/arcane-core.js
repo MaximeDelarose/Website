@@ -51,33 +51,59 @@
     bastion: {
       name: "Bastion", role: "Tank · contrôle des lignes", piece: "Tour",
       desc: "Protège son partenaire, pousse, attire et coupe le terrain avec des murs.",
-      hp: 120, hpL: 12, pa: 6, pm: 3, res: 12, ini: 10, crit: 5, heal: 0, pow: 0,
+      hp: 120, hpL: 12, pa: 6, pm: 3, res: 12, ini: 10, crit: 5, el: "terre",
+      base: { vit: 20, sag: 0, for: 25, int: 0, cha: 0, agi: 5 },
       spells: ["impact", "rempart", "mur", "attraction", "forteresse"],
     },
     prisme: {
       name: "Prisme", role: "Mage · soutien des diagonales", piece: "Fou",
       desc: "Frappe en diagonale, soigne, place des cristaux relais et téléporte ses alliés.",
-      hp: 90, hpL: 8, pa: 6, pm: 3, res: 0, ini: 12, crit: 8, heal: 10, pow: 0,
+      hp: 90, hpL: 8, pa: 6, pm: 3, res: 0, ini: 12, crit: 8, el: "feu",
+      base: { vit: 5, sag: 10, for: 0, int: 30, cha: 0, agi: 5 },
       spells: ["rayon", "balise", "transpo", "onde", "convergence"],
     },
     voltige: {
       name: "Voltige", role: "Assassin · bonds en L", piece: "Cavalier",
       desc: "Bondit en L par-dessus les obstacles, frappe fort au contact et passe derrière les ennemis.",
-      hp: 95, hpL: 9, pa: 6, pm: 4, res: 0, ini: 16, crit: 12, heal: 0, pow: 0,
+      hp: 95, hpL: 9, pa: 6, pm: 4, res: 0, ini: 16, crit: 12, el: "air",
+      base: { vit: 5, sag: 0, for: 0, int: 0, cha: 5, agi: 35 },
       spells: ["bond", "frappe", "fantome", "brume", "danse"],
     },
     sibylle: {
       name: "Sibylle", role: "Invocatrice · pions d'encre", piece: "Pion",
-      desc: "Fragile, mais jamais seule : elle invoque des pions d'encre que tu contrôles, les promeut en Dame et les sacrifie au bon moment.",
-      hp: 85, hpL: 7, pa: 6, pm: 3, res: 0, ini: 11, crit: 6, heal: 12, pow: 0,
+      desc: "Fragile, mais jamais seule : ses pions d'encre se battent tout seuls à ses côtés. Elle les promeut en Dame et les sacrifie au bon moment.",
+      hp: 85, hpL: 7, pa: 6, pm: 3, res: 0, ini: 11, crit: 6, el: "eau",
+      base: { vit: 10, sag: 5, for: 0, int: 10, cha: 25, agi: 0 },
       spells: ["pion", "promotion", "sacrifice", "roque", "maree"],
     },
+    clarine: {
+      name: "Clarine", role: "Soigneuse · feu sacré", piece: "Roi",
+      desc: "Soigne ses alliés de loin, les protège, et brûle les ennemis avec le même feu. Jamais inutile, jamais en première ligne.",
+      hp: 95, hpL: 8, pa: 6, pm: 3, res: 5, ini: 9, crit: 5, el: "feu",
+      base: { vit: 10, sag: 10, for: 0, int: 35, cha: 0, agi: 0 },
+      spells: ["lueur", "eclat", "benediction", "rayonnement", "aurore"],
+    },
+    orage: {
+      name: "Orage", role: "Cogneuse · lignes et diagonales", piece: "Dame",
+      desc: "Frappe comme une dame d'échecs : loin, fort, dans toutes les directions. Mais personne ne la soigne à part ses alliés.",
+      hp: 110, hpL: 10, pa: 6, pm: 3, res: 5, ini: 12, crit: 10, el: "terre",
+      base: { vit: 10, sag: 0, for: 40, int: 0, cha: 0, agi: 5 },
+      spells: ["foudre", "fracas", "trombe", "transe", "jugement"],
+    },
+    ondine: {
+      name: "Ondine", role: "Maîtresse des zones · eau", piece: "Fou",
+      desc: "Vagues, geysers et déferlantes : tous ses sorts touchent plusieurs cases. Placement des ennemis = dégâts doublés.",
+      hp: 92, hpL: 8, pa: 6, pm: 3, res: 0, ini: 11, crit: 7, el: "eau",
+      base: { vit: 5, sag: 5, for: 0, int: 5, cha: 35, agi: 0 },
+      spells: ["vague", "geyser", "deferlante", "rosee", "razdemaree"],
+    },
   };
-  var CLASS_IDS = ["bastion", "prisme", "voltige", "sibylle"];
-  // invocations contrôlées par le joueur (elles jouent juste après leur invocatrice)
+  var CLASS_IDS = ["bastion", "prisme", "voltige", "sibylle", "clarine", "orage", "ondine"];
+  var ELEMENTS = { terre: { name: "Terre", stat: "for", col: "#c98a3a" }, feu: { name: "Feu", stat: "int", col: "#ff7b4a" }, eau: { name: "Eau", stat: "cha", col: "#4fb6dd" }, air: { name: "Air", stat: "agi", col: "#7df0c2" } };
+  // invocations : des IA alliées (elles jouent toutes seules juste après leur invocatrice)
   var SUMMONS = {
-    pion: { name: "Pion d'encre", hp: 20, hpL: 3, pa: 3, pm: 3, ini: 6, spells: ["pointe"], desc: "Petit, nombreux, et il avance. Promu en Dame, il devient redoutable." },
-    dame: { name: "Dame d'encre", hp: 54, hpL: 7, pa: 4, pm: 4, ini: 9, spells: ["ravage", "pointe"], desc: "La pièce promue : frappe en ligne et en diagonale." },
+    pion: { name: "Pion d'encre", hp: 20, hpL: 3, pa: 3, pm: 3, ini: 6, spells: ["pointe"], desc: "Petit, nombreux, et il avance tout seul vers l'ennemi. Promu en Dame, il devient redoutable." },
+    dame: { name: "Dame d'encre", hp: 54, hpL: 7, pa: 4, pm: 4, ini: 9, spells: ["ravage", "pointe"], desc: "La pièce promue : frappe en ligne et en diagonale, toute seule." },
   };
   var SUMMON_MAX = 3;
   var ULT_LEVEL = 5;
@@ -92,7 +118,7 @@
      minSteps : étapes minimum (le reste est facultatif, on valide avec « Lancer ») */
   var SPELLS = {
     // ---------- Bastion ----------
-    impact: { name: "Impact rectiligne", pa: 3, icon: "impact", dmg: 22, push: 1, perTurn: 2,
+    impact: { name: "Impact rectiligne", pa: 3, el: "terre", icon: "impact", dmg: 22, push: 1, perTurn: 2,
       desc: "Ligne droite, 1 à 3 cases. 22 dégâts et repousse d'une case (une poussée bloquée blesse).",
       steps: [{ shape: "line", range: [1, 3], boost: true, los: true, target: "enemy" }] },
     rempart: { name: "Rempart", pa: 2, icon: "rempart", shield: 25, perTurn: 2, perTarget: 1,
@@ -101,14 +127,14 @@
     mur: { name: "Mur runique", pa: 3, icon: "mur", cd: 2, dur: 2,
       desc: "Fait surgir un mur de 2 cases pendant 2 tours. Bloque le passage et la ligne de vue.",
       steps: [{ shape: "any", range: [1, 4], boost: true, los: true, target: "empty" }] },
-    attraction: { name: "Attraction", pa: 2, icon: "attraction", dmg: 6, pull: 2, perTurn: 1,
+    attraction: { name: "Attraction", pa: 2, el: "terre", icon: "attraction", dmg: 6, pull: 2, perTurn: 1,
       desc: "Attire un ennemi de 2 cases vers toi, en ligne droite. Parfait pour préparer un combo.",
       steps: [{ shape: "line", range: [2, 5], boost: true, los: true, target: "enemy" }] },
     forteresse: { name: "Forteresse vivante", pa: 5, icon: "forteresse", ult: true, cd: 4, shield: 40,
       desc: "ULTIME. Bouclier de 40 et +25 % de résistance aux alliés à 2 cases, repousse les ennemis collés.",
       steps: [{ shape: "self", range: [0, 0], target: "self" }] },
     // ---------- Prisme ----------
-    rayon: { name: "Rayon oblique", pa: 3, icon: "rayon", dmg: 20, perTurn: 2,
+    rayon: { name: "Rayon oblique", pa: 3, el: "feu", icon: "rayon", dmg: 20, perTurn: 2,
       desc: "Diagonale, 2 à 5 cases. 20 dégâts. Peut partir d'un de tes cristaux.",
       steps: [{ shape: "diag", range: [2, 5], boost: true, los: true, target: "enemy", from: "relay" }] },
     balise: { name: "Balise prismatique", pa: 2, icon: "balise", dur: 3, max: 2, hp: 20,
@@ -120,7 +146,7 @@
     onde: { name: "Onde réparatrice", pa: 3, icon: "onde", heal: 24, perTurn: 1,
       desc: "Rend 24 PV à un allié ou à toi. Peut partir d'un cristal.",
       steps: [{ shape: "any", range: [0, 4], boost: true, los: true, target: "ally", from: "relay" }] },
-    convergence: { name: "Convergence astrale", pa: 5, icon: "convergence", ult: true, cd: 4, dmg: 30, heal: 15,
+    convergence: { name: "Convergence astrale", pa: 5, el: "feu", icon: "convergence", ult: true, cd: 4, dmg: 30, heal: 15,
       desc: "ULTIME. Choisis 1 ou 2 diagonales : des rayons les traversent (et partent aussi de tes cristaux). 30 dégâts aux ennemis, 15 PV aux alliés.",
       minSteps: 1,
       steps: [{ shape: "ray", range: [1, 12], los: false, target: "cell" }, { shape: "ray", range: [1, 12], los: false, target: "cell" }] },
@@ -128,16 +154,16 @@
     bond: { name: "Bond du cavalier", pa: 2, icon: "bond", perTurn: 2,
       desc: "Saut en L exact (2 + 1 cases), par-dessus les obstacles. La case d'arrivée doit être libre.",
       steps: [{ shape: "knight", range: [0, 0], los: false, target: "empty" }] },
-    frappe: { name: "Frappe éclair", pa: 3, icon: "frappe", dmg: 26, perTurn: 2,
+    frappe: { name: "Frappe éclair", pa: 3, el: "air", icon: "frappe", dmg: 26, perTurn: 2,
       desc: "Au contact. 26 dégâts, frappe lourde.",
       steps: [{ shape: "any", range: [1, 1], los: true, target: "enemy" }] },
-    fantome: { name: "Passage fantôme", pa: 3, icon: "fantome", dmg: 18, cd: 1,
+    fantome: { name: "Passage fantôme", pa: 3, el: "air", icon: "fantome", dmg: 18, cd: 1,
       desc: "Se téléporte derrière un ennemi proche (case libre) et lui inflige 18 dégâts.",
       steps: [{ shape: "any", range: [1, 4], boost: true, los: true, target: "enemy" }] },
     brume: { name: "Brume fractale", pa: 2, icon: "brume", cd: 1, dur: 1,
       desc: "Nuage en croix jusqu'à ton prochain tour : bloque les lignes de vue.",
       steps: [{ shape: "any", range: [1, 4], boost: true, los: false, target: "cell" }] },
-    danse: { name: "Danse du cavalier", pa: 5, icon: "danse", ult: true, cd: 4, dmg: 20,
+    danse: { name: "Danse du cavalier", pa: 5, el: "air", icon: "danse", ult: true, cd: 4, dmg: 20,
       desc: "ULTIME. Jusqu'à 3 bonds en L d'affilée : chaque atterrissage inflige 20 dégâts aux ennemis autour.",
       minSteps: 1,
       steps: [{ shape: "knight", range: [0, 0], target: "empty", from: "prev" }, { shape: "knight", range: [0, 0], target: "empty", from: "prev" }, { shape: "knight", range: [0, 0], target: "empty", from: "prev" }] },
@@ -148,7 +174,7 @@
     promotion: { name: "Promotion", pa: 3, icon: "promotion", cd: 2,
       desc: "Comme un pion qui atteint la dernière rangée : un de tes Pions devient une Dame d'encre (plus de PV, 4 PA, 4 PM, attaque en ligne et en diagonale). Une seule Dame à la fois.",
       steps: [{ shape: "any", range: [1, 6], los: false, target: "summon" }] },
-    sacrifice: { name: "Sacrifice", pa: 2, icon: "sacrifice", dmg: 16, heal: 18, perTurn: 2,
+    sacrifice: { name: "Sacrifice", pa: 2, el: "eau", icon: "sacrifice", dmg: 16, heal: 18, perTurn: 2,
       desc: "Une de tes invocations éclate : 16 dégâts aux ennemis collés, 18 PV aux alliés à 2 cases (toi compris).",
       steps: [{ shape: "any", range: [0, 8], los: false, target: "summon" }] },
     roque: { name: "Roque", pa: 2, icon: "roque", cd: 1,
@@ -157,15 +183,56 @@
     maree: { name: "Marée d'encre", pa: 5, icon: "maree", ult: true, cd: 4, shield: 12,
       desc: "ULTIME. Trois Pions d'encre surgissent autour de toi (dans la limite de 3 invocations) et toutes tes invocations gagnent un bouclier de 12 et +1 PA ce tour.",
       steps: [{ shape: "self", range: [0, 0], target: "self" }] },
-    // ---------- invocations ----------
-    pointe: { name: "Pointe", pa: 2, icon: "pointe", dmg: 12, perTurn: 2,
-      desc: "Au contact. 12 dégâts.",
+    // ---------- Clarine ----------
+    lueur: { name: "Lueur", pa: 3, icon: "lueur", heal: 26, perTurn: 2,
+      desc: "Rend 26 PV à un allié jusqu'à 5 cases (ou à toi). Monte avec l'Intelligence.",
+      steps: [{ shape: "any", range: [0, 5], boost: true, los: true, target: "ally" }] },
+    eclat: { name: "Éclat sacré", pa: 3, icon: "eclat", el: "feu", dmg: 20, perTurn: 2,
+      desc: "Feu, 1 à 4 cases. 20 dégâts : la soigneuse frappe aussi.",
+      steps: [{ shape: "any", range: [1, 4], boost: true, los: true, target: "enemy" }] },
+    benediction: { name: "Bénédiction", pa: 2, icon: "benediction", heal: 12, shield: 12, cd: 1,
+      desc: "Un allié reçoit 12 PV et un bouclier de 12 jusqu'à ton prochain tour.",
+      steps: [{ shape: "any", range: [0, 4], boost: true, los: true, target: "ally" }] },
+    rayonnement: { name: "Rayonnement", pa: 3, icon: "rayonnement", el: "feu", dmg: 14, heal: 10, cd: 2,
+      desc: "Zone autour de toi (2 cases) : 14 dégâts de feu aux ennemis, 10 PV aux alliés.",
+      steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    aurore: { name: "Aurore", pa: 5, icon: "aurore", ult: true, cd: 4, el: "feu", dmg: 24, heal: 40,
+      desc: "ULTIME. Tous tes alliés, où qu'ils soient, récupèrent 40 PV ; les ennemis à 3 cases prennent 24 dégâts de feu.",
+      steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    // ---------- Orage ----------
+    foudre: { name: "Foudre", pa: 4, icon: "foudre", el: "terre", dmg: 32, perTurn: 2,
+      desc: "Comme une dame : en ligne ou en diagonale, 1 à 5 cases. 32 dégâts.",
+      steps: [{ shape: "queen", range: [1, 5], boost: true, los: true, target: "enemy" }] },
+    fracas: { name: "Fracas", pa: 3, icon: "fracas", el: "terre", dmg: 36, cd: 1,
+      desc: "Au contact. 36 dégâts. Lourd.",
       steps: [{ shape: "any", range: [1, 1], los: true, target: "enemy" }] },
-    ravage: { name: "Ravage", pa: 3, icon: "ravage", dmg: 19, perTurn: 1,
-      desc: "En ligne ou en diagonale, 1 à 4 cases. 19 dégâts.",
-      steps: [{ shape: "queen", range: [1, 4], los: true, target: "enemy" }] },
+    trombe: { name: "Trombe", pa: 3, icon: "trombe", el: "terre", dmg: 24, push: 2, perTurn: 1,
+      desc: "Ligne droite, 1 à 3 cases. 24 dégâts et repousse de 2 cases (poussée bloquée = dégâts en plus).",
+      steps: [{ shape: "line", range: [1, 3], boost: true, los: true, target: "enemy" }] },
+    transe: { name: "Transe", pa: 2, icon: "transe", perTurn: 1,
+      desc: "+25 dommages sur tous tes coups jusqu'à la fin de ton tour.",
+      steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    jugement: { name: "Jugement", pa: 5, icon: "jugement", ult: true, cd: 4, el: "terre", dmg: 30,
+      desc: "ULTIME. Huit rayons partent de toi (lignes et diagonales) : 30 dégâts à chaque ennemi traversé.",
+      steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    // ---------- Ondine ----------
+    vague: { name: "Vague", pa: 3, icon: "vague", el: "eau", dmg: 19, perTurn: 2,
+      desc: "Vise une case à 2–5 cases : croix de 5 cases, 17 dégâts d'eau à chaque ennemi.",
+      steps: [{ shape: "any", range: [2, 5], boost: true, los: true, target: "cell" }] },
+    geyser: { name: "Geyser", pa: 4, icon: "geyser", el: "eau", dmg: 23, push: 1, perTurn: 1,
+      desc: "Vise une case à 1–4 cases : 21 dégâts à tout ce qui est à 1 case autour, et ça repousse.",
+      steps: [{ shape: "any", range: [1, 4], boost: true, los: true, target: "cell" }] },
+    deferlante: { name: "Déferlante", pa: 3, icon: "deferlante", el: "eau", dmg: 20, perTurn: 1,
+      desc: "Choisis une direction : une lame de 4 cases part de toi, 18 dégâts à chaque ennemi.",
+      steps: [{ shape: "line", range: [1, 1], los: false, target: "cell" }] },
+    rosee: { name: "Rosée", pa: 2, icon: "rosee", heal: 10, perTurn: 1,
+      desc: "Petite pluie : 10 PV aux alliés dans une croix autour de la cible (toi compris).",
+      steps: [{ shape: "any", range: [0, 4], los: true, target: "ally" }] },
+    razdemaree: { name: "Raz-de-marée", pa: 5, icon: "razdemaree", ult: true, cd: 4, el: "eau", dmg: 34, heal: 8,
+      desc: "ULTIME. Vise une case à 1–5 cases : 34 dégâts d'eau à tous les ennemis à 2 cases autour, 8 PV aux alliés.",
+      steps: [{ shape: "any", range: [1, 5], boost: true, los: false, target: "cell" }] },
   };
-  function spellsOf(u) { return u.summon ? SUMMONS[u.cls].spells : CLASSES[u.cls].spells; }
+  function spellsOf(u) { return u.summon ? [] : CLASSES[u.cls].spells; }
 
   /* ====================== MONSTRES ====================== */
   var MOB_SPELLS = {
@@ -180,6 +247,11 @@
     pique: { name: "Pique fractale", pa: 3, range: [1, 2], shape: "line", los: true, dmg: 22 },
     sentence: { name: "Sentence", pa: 4, range: [0, 0], shape: "self", telegraph: true, dmg: 34 },
     appel: { name: "Appel du vide", pa: 3, range: [0, 0], shape: "self", summon: "glorbe", cd: 3 },
+    racines: { name: "Racines", pa: 4, range: [0, 0], shape: "self", telegraph: true, dmg: 22 },
+    lierre: { name: "Appel du lierre", pa: 3, range: [0, 0], shape: "self", summon: "ronceau", cd: 3 },
+    // invocations alliées
+    pointe: { name: "Pointe", pa: 2, range: [1, 1], shape: "any", los: true, dmg: 11 },
+    ravage: { name: "Ravage", pa: 3, range: [1, 4], shape: "queen", los: true, dmg: 19 },
   };
   var MOBS = {
     glorbe: { name: "Glorbe", hp: 34, pa: 4, pm: 3, ini: 8, res: 0, spells: ["gobe"], xp: 10, col: "#5fd3c0", shape: "blob" },
@@ -189,6 +261,7 @@
     sylphe: { name: "Sylphe fêlée", hp: 38, pa: 6, pm: 3, ini: 12, res: 5, spells: ["rosee", "souffle"], ranged: true, healer: true, xp: 16, col: "#c7a6ff", shape: "sylph" },
     golem: { name: "Golem de rune", hp: 92, pa: 6, pm: 2, ini: 4, res: 20, spells: ["rune"], xp: 22, col: "#a99a86", shape: "golem" },
     cristallin: { name: "Cristallin", hp: 44, pa: 6, pm: 3, ini: 11, res: 10, spells: ["eclat"], ranged: true, xp: 18, col: "#8fe6ff", shape: "shard" },
+    sentinelle: { name: "Sentinelle d'Incarnam", hp: 190, pa: 7, pm: 2, ini: 6, res: 10, spells: ["racines", "lierre", "rune"], boss: true, xp: 160, col: "#8fa37a", shape: "statue" },
     archonte: { name: "Archonte fractal", hp: 460, pa: 8, pm: 2, ini: 9, res: 15, spells: ["sentence", "appel", "pique"], boss: true, xp: 420, col: "#d36cff", shape: "boss" },
   };
   var AFFIXES = {
@@ -205,26 +278,32 @@
   var SLOTS = ["arme", "coiffe", "cape", "amulette", "anneau", "bottes"];
   var SLOT_NAME = { arme: "Arme", coiffe: "Coiffe", cape: "Cape", amulette: "Amulette", anneau: "Anneau", bottes: "Bottes" };
   var RARITIES = [
-    { id: "commun", name: "Commun", col: "#c9ccd6", mul: 1, affixes: 1, special: 0.02, w: 52, sell: 1 },
-    { id: "magique", name: "Magique", col: "#5fb7ff", mul: 1.3, affixes: 2, special: 0.08, w: 29, sell: 2 },
-    { id: "rare", name: "Rare", col: "#ffd257", mul: 1.65, affixes: 3, special: 0.2, w: 13, sell: 4 },
-    { id: "epique", name: "Épique", col: "#c77dff", mul: 2.05, affixes: 4, special: 0.42, w: 4.8, sell: 8 },
-    { id: "legendaire", name: "Légendaire", col: "#ff9a3c", mul: 2.6, affixes: 4, special: 1, w: 1.2, sell: 16 },
+    { id: "commun", name: "Commun", col: "#c9ccd6", mul: 1, affixes: 1, special: 0.02, w: 50, sell: 1 },
+    { id: "magique", name: "Magique", col: "#5fb7ff", mul: 1.3, affixes: 2, special: 0.08, w: 12, sell: 2 },
+    { id: "rare", name: "Rare", col: "#ffd257", mul: 1.65, affixes: 3, special: 0.2, w: 8, sell: 4 },
+    { id: "epique", name: "Épique", col: "#c77dff", mul: 2.05, affixes: 4, special: 0.42, w: 20, sell: 8 },
+    { id: "legendaire", name: "Légendaire", col: "#ff9a3c", mul: 2.6, affixes: 4, special: 1, w: 10, sell: 16 },
   ];
   // caractéristiques : base + parNiveau, multipliées par la rareté
+  // caractéristiques : les 6 principales se répartissent aussi à chaque niveau (5 points)
   var STATS = {
-    vit: { name: "Vitalité", short: "PV", base: 10, lvl: 3.4, fmt: "+{v} PV" },
-    pow: { name: "Puissance", short: "Puiss.", base: 5, lvl: 1.4, fmt: "+{v} % dégâts" },
-    res: { name: "Résistance", short: "Rés.", base: 2.5, lvl: 0.5, fmt: "+{v} % résistance" },
-    crit: { name: "Critique", short: "Crit.", base: 2.5, lvl: 0.45, fmt: "+{v} % critique" },
-    heal: { name: "Soins", short: "Soins", base: 5, lvl: 1.3, fmt: "+{v} % soins et boucliers" },
-    ini: { name: "Initiative", short: "Ini.", base: 3, lvl: 1, fmt: "+{v} initiative" },
+    vit: { name: "Vitalité", short: "Vita", base: 16, lvl: 6, fmt: "+{v} Vitalité", main: true, desc: "+1 PV par point" },
+    sag: { name: "Sagesse", short: "Sag", base: 6, lvl: 2.2, fmt: "+{v} Sagesse", main: true, desc: "+1 % d'XP par point" },
+    for: { name: "Force", short: "For", base: 8, lvl: 3.2, fmt: "+{v} Force", main: true, el: "terre", desc: "+1 % aux dégâts Terre par point" },
+    int: { name: "Intelligence", short: "Int", base: 8, lvl: 3.2, fmt: "+{v} Intelligence", main: true, el: "feu", desc: "+1 % aux dégâts Feu et aux soins par point" },
+    cha: { name: "Chance", short: "Cha", base: 8, lvl: 3.2, fmt: "+{v} Chance", main: true, el: "eau", desc: "+1 % aux dégâts Eau par point" },
+    agi: { name: "Agilité", short: "Agi", base: 8, lvl: 3.2, fmt: "+{v} Agilité", main: true, el: "air", desc: "+1 % aux dégâts Air par point, +1 % critique tous les 10 points" },
+    dom: { name: "Dommages", short: "Dom", base: 2, lvl: 0.7, fmt: "+{v} Dommages", desc: "Ajoutés à chaque coup" },
+    res: { name: "Résistance", short: "Rés", base: 2.5, lvl: 0.5, fmt: "+{v} % Résistance" },
+    ini: { name: "Initiative", short: "Ini", base: 10, lvl: 4, fmt: "+{v} Initiative" },
+    pros: { name: "Prospection", short: "Pros", base: 5, lvl: 2, fmt: "+{v} Prospection", desc: "+1 % de chance de butin par point" },
     pa: { name: "PA", short: "PA", special: true, fmt: "+{v} PA" },
     pm: { name: "PM", short: "PM", special: true, fmt: "+{v} PM" },
-    po: { name: "Portée", short: "PO", special: true, fmt: "+{v} portée" },
+    po: { name: "Portée", short: "PO", special: true, fmt: "+{v} Portée" },
   };
-  var NORMAL_STATS = ["vit", "pow", "res", "crit", "heal", "ini"];
-  var SLOT_MAIN = { arme: ["pow", "crit", "heal"], coiffe: ["vit", "res", "ini"], cape: ["res", "vit", "heal"], amulette: ["pow", "heal", "vit"], anneau: ["crit", "pow", "ini"], bottes: ["ini", "vit", "res"] };
+  var NORMAL_STATS = ["vit", "sag", "for", "int", "cha", "agi", "dom", "res", "ini", "pros"];
+  var MAIN_STATS = ["vit", "sag", "for", "int", "cha", "agi"];
+  var SLOT_MAIN = { arme: ["elem", "elem", "dom"], coiffe: ["vit", "sag", "res"], cape: ["res", "vit", "elem"], amulette: ["elem", "sag", "vit"], anneau: ["elem", "dom", "ini"], bottes: ["ini", "vit", "pros"] };
   var SLOT_SPECIAL = { arme: ["po", "pa"], coiffe: ["pa", "po"], cape: ["pm", "pa"], amulette: ["pa", "po"], anneau: ["pa", "pm", "po"], bottes: ["pm", "pm", "pa"] };
   // pouvoirs des objets légendaires
   var POWERS = {
@@ -248,7 +327,7 @@
     anneau: { any: ["Anneau:m", "Bague:f", "Sceau:m"] },
     bottes: { any: ["Bottes:fp", "Sandales:fp", "Grèves:fp", "Jambières:fp"] },
   };
-  var ITEM_SUFFIX = { vit: "de vitalité", pow: "du tonnerre", res: "du rempart", crit: "de la faille", heal: "de l'aube", ini: "du vif-argent", pa: "de l'archimage", pm: "du voyageur", po: "de l'horizon" };
+  var ITEM_SUFFIX = { vit: "de vitalité", sag: "du sage", for: "du titan", int: "de la flamme", cha: "des marées", agi: "du zéphyr", dom: "du tonnerre", res: "du rempart", ini: "du vif-argent", pros: "du chercheur", pa: "de l'archimage", pm: "du voyageur", po: "de l'horizon" };
   // adjectifs : m|f|mp|fp
   var ITEM_ADJ = { commun: ["usé|usée|usés|usées", "simple|simple|simples|simples", "robuste|robuste|robustes|robustes"],
     magique: ["runique|runique|runiques|runiques", "chatoyant|chatoyante|chatoyants|chatoyantes", "enchanté|enchantée|enchantés|enchantées"],
@@ -261,6 +340,7 @@
   var QUESTS = [
     { id: "q1", name: "Premiers pas", desc: "Vaincre 4 Glorbes dans la Prairie des Runes.", kind: "kill", mob: "glorbe", n: 4, xp: 60, gold: 40, item: "magique" },
     { id: "q2", name: "Nuisibles", desc: "Vaincre 3 Scarabrumes.", kind: "kill", mob: "scarabrume", n: 3, req: "q1", xp: 90, gold: 60, item: "rare" },
+    { id: "qi", name: "Le donjon d'Incarnam", desc: "Vaincre la Sentinelle au fond du donjon d'Incarnam (portail au nord de la Prairie).", kind: "kill", mob: "sentinelle", n: 1, req: "q2", xp: 220, gold: 150, item: "epique" },
     { id: "q3", name: "Bois Fractal", desc: "Atteindre le niveau 3 et entrer dans le Bois Fractal.", kind: "zone", zone: "bois", req: "q2", xp: 120, gold: 80, item: "rare" },
     { id: "q4", name: "Lanternes folles", desc: "Vaincre 5 Lanterneaux.", kind: "kill", mob: "lanterneau", n: 5, req: "q3", xp: 180, gold: 120, item: "rare" },
     { id: "q5", name: "Chasse aux élites", desc: "Vaincre 3 monstres élites (contour doré).", kind: "elite", n: 3, req: "q4", xp: 260, gold: 160, item: "epique" },
@@ -276,20 +356,27 @@
       spawn: { x: 9, y: 9 } },
     prairie: { name: "Prairie des Runes", sub: "Niv. 1 à 3", w: 26, h: 22, lvl: [1, 3], theme: "prairie", seed: 202, packs: 6, size: [1, 3],
       mobs: ["glorbe", "glorbe", "scarabrume", "ronceau"],
-      portals: [{ x: 0, y: 11, to: "village", label: "Lumebourg" }, { x: 25, y: 11, to: "bois", req: 3, label: "Bois Fractal" }] },
+      portals: [{ x: 0, y: 11, to: "village", label: "Lumebourg" }, { x: 25, y: 11, to: "bois", req: 3, label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:incarnam", req: 2, label: "Donjon d'Incarnam" }] },
     bois: { name: "Bois Fractal", sub: "Niv. 3 à 6", w: 26, h: 24, lvl: [3, 6], theme: "bois", seed: 303, packs: 7, size: [2, 3],
       mobs: ["ronceau", "lanterneau", "sylphe", "scarabrume", "lanterneau"],
       portals: [{ x: 0, y: 12, to: "prairie", label: "Prairie des Runes" }, { x: 25, y: 12, to: "falaises", req: 5, label: "Falaises de Cristal" }] },
     falaises: { name: "Falaises de Cristal", sub: "Niv. 6 à 9", w: 26, h: 24, lvl: [6, 9], theme: "falaises", seed: 404, packs: 7, size: [2, 4], elite: 0.2,
       mobs: ["golem", "cristallin", "sylphe", "lanterneau", "cristallin"],
-      portals: [{ x: 0, y: 12, to: "bois", label: "Bois Fractal" }, { x: 13, y: 0, to: "donjon", req: 7, label: "Sanctuaire brisé (donjon)" }] },
+      portals: [{ x: 0, y: 12, to: "bois", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:sanctuaire", req: 7, label: "Sanctuaire brisé (donjon)" }] },
   };
   var ZONE_IDS = ["village", "prairie", "bois", "falaises"];
-  var DUNGEON = [
-    { name: "Salle des échos", lvl: 8, mobs: ["cristallin", "golem", "lanterneau", "glorbe"], elite: 0.25 },
-    { name: "Galerie fêlée", lvl: 9, mobs: ["sylphe", "golem", "cristallin", "scarabrume"], elite: 0.6 },
-    { name: "Trône fractal", lvl: 10, mobs: ["archonte", "cristallin", "glorbe"], boss: true },
-  ];
+  var DUNGEONS = {
+    incarnam: { name: "Donjon d'Incarnam", sub: "Niv. 2 à 4 · 3 salles", exit: "prairie", req: 2, rooms: [
+      { name: "Cour envahie", lvl: 2, mobs: ["glorbe", "scarabrume", "glorbe", "ronceau"], elite: 0.15 },
+      { name: "Serre aux lierres", lvl: 3, mobs: ["ronceau", "scarabrume", "lanterneau", "glorbe"], elite: 0.35 },
+      { name: "Salle de la Sentinelle", lvl: 4, mobs: ["sentinelle", "ronceau", "glorbe"], boss: true },
+    ] },
+    sanctuaire: { name: "Sanctuaire brisé", sub: "Niv. 8 à 10 · 3 salles", exit: "falaises", req: 7, rooms: [
+      { name: "Salle des échos", lvl: 8, mobs: ["cristallin", "golem", "lanterneau", "glorbe"], elite: 0.25 },
+      { name: "Galerie fêlée", lvl: 9, mobs: ["sylphe", "golem", "cristallin", "scarabrume"], elite: 0.6 },
+      { name: "Trône fractal", lvl: 10, mobs: ["archonte", "cristallin", "glorbe"], boss: true },
+    ] },
+  };
   var NPCS = {
     village: [
       { id: "elya", name: "Elya la gardienne", x: 8, y: 6, role: "quests", col: "#ffd257" },
@@ -442,12 +529,18 @@
 
   /* ====================== PROFILS (sauvegarde d'un héros) ====================== */
   function newProfile(cls, name) {
-    return { cls: cls, name: name || CLASSES[cls].name, level: 1, xp: 0, gold: 30, equip: {}, bag: [], quests: {}, qdone: {}, kills: 0, bossKills: 0, uid: 1, rev: 0, created: Date.now() };
+    var b = {}; for (var k in CLASSES[cls].base) b[k] = CLASSES[cls].base[k];
+    return { cls: cls, name: name || CLASSES[cls].name, level: 1, xp: 0, gold: 30, equip: {}, bag: [], quests: {}, qdone: {}, kills: 0, bossKills: 0, uid: 1, rev: 0, base: b, pts: 0, created: Date.now() };
   }
   function fixProfile(p) {
     if (!p || !CLASSES[p.cls]) return null;
     p.level = clamp(Math.floor(p.level) || 1, 1, CFG.maxLevel); p.xp = Math.max(0, Math.floor(p.xp) || 0);
     p.gold = Math.max(0, Math.floor(p.gold) || 0); p.equip = p.equip || {}; p.bag = (p.bag || []).slice(0, BAG_MAX);
+    if (!p.base) { p.base = {}; for (var k in CLASSES[p.cls].base) p.base[k] = CLASSES[p.cls].base[k]; p.pts = (p.pts || 0) + 5 * (p.level - 1); }
+    p.pts = Math.max(0, Math.floor(p.pts) || 0);
+    // anciens objets (v1.0) : leurs caractéristiques n'existent plus, on les convertit
+    var conv = function (it) { if (!it || !it.st) return; var st = {}, el = ELEMENTS[CLASSES[p.cls].el].stat; for (var k in it.st) { var nk = k === "pow" ? el : k === "crit" ? "agi" : k === "heal" ? "int" : k; st[nk] = (st[nk] || 0) + it.st[k]; } it.st = st; };
+    SLOTS.forEach(function (sl) { conv(p.equip[sl]); }); p.bag.forEach(conv);
     p.quests = p.quests || {}; p.qdone = p.qdone || {}; p.uid = p.uid || 1; p.rev = p.rev || 0; p.kills = p.kills || 0; p.bossKills = p.bossKills || 0;
     return p;
   }
@@ -455,21 +548,25 @@
   function xpNeed(l) { return Math.round(28 * Math.pow(l, 1.55) + 22); }
   function heroStats(p) {
     var C = CLASSES[p.cls], L = p.level;
-    var s = { hp: C.hp + C.hpL * (L - 1), pa: C.pa, pm: C.pm, po: 0, res: C.res, ini: C.ini + L, crit: C.crit, heal: C.heal, pow: C.pow + (L - 1) * 3, powers: [] };
+    var s = { pa: C.pa, pm: C.pm, po: 0, res: C.res, ini: 0, dom: 0, pros: 0, powers: [], vit: 0, sag: 0, for: 0, int: 0, cha: 0, agi: 0 };
+    for (var b in p.base) s[b] = (s[b] || 0) + p.base[b];
     SLOTS.forEach(function (sl) {
       var it = p.equip[sl]; if (!it) return;
-      for (var k in it.st) {
-        if (k === "vit") s.hp += it.st[k]; else s[k] = (s[k] || 0) + it.st[k];
-      }
+      for (var k in it.st) s[k] = (s[k] || 0) + it.st[k];
       if (it.power && s.powers.indexOf(it.power) < 0) s.powers.push(it.power);
     });
+    s.hp = C.hp + C.hpL * (L - 1) + s.vit;
+    s.elem = { terre: s.for, feu: s.int, eau: s.cha, air: s.agi };
+    s.heal = s.int;
+    s.crit = Math.min(CFG.caps.crit, C.crit + Math.floor(s.agi / 10));
+    s.ini = C.ini + L + s.ini + Math.round((s.for + s.int + s.cha + s.agi) / 10);
     s.pa = Math.min(CFG.caps.pa, s.pa); s.pm = Math.min(CFG.caps.pm, s.pm); s.po = Math.min(CFG.caps.po, s.po);
-    s.res = Math.min(CFG.caps.res, s.res); s.crit = Math.min(CFG.caps.crit, s.crit);
+    s.res = Math.min(CFG.caps.res, s.res);
     return s;
   }
   function itemScore(it) {
     if (!it) return 0;
-    var w = { vit: 0.55, pow: 2, res: 2.6, crit: 2.2, heal: 1.3, ini: 0.5, pa: 30, pm: 20, po: 14 }, s = 0;
+    var w = { vit: 0.5, sag: 0.6, for: 1, int: 1, cha: 1, agi: 1, dom: 3, res: 2.6, ini: 0.25, pros: 0.5, pa: 40, pm: 28, po: 18 }, s = 0;
     for (var k in it.st) s += (w[k] || 1) * it.st[k];
     if (it.power) s += 25;
     return Math.round(s);
@@ -478,7 +575,7 @@
   /* ====================== FABRICATION DES OBJETS ====================== */
   function rollRarity(luck, min) {
     // luck : 0 normal, 1 élite, 2 boss
-    var ws = RARITIES.map(function (rr, i) { return rr.w * (i >= 2 ? Math.pow(2.4, luck) : 1) * (i === 0 && luck ? 0.5 : 1); });
+    var ws = RARITIES.map(function (rr, i) { return rr.w * (i >= 3 ? Math.pow(1.5, luck) : 1) * (i === 0 && luck ? 0.5 : 1); });
     var tot = ws.reduce(function (a, b) { return a + b; }, 0), v = R() * tot, i = 0;
     for (; i < ws.length - 1; i++) { if (v < ws[i]) break; v -= ws[i]; }
     return Math.max(i, min || 0);
@@ -487,9 +584,13 @@
     var rar = RARITIES[rarityIdx], L = Math.max(1, level);
     slot = slot || pick(R, SLOTS);
     var st = {}, used = {};
+    var elemStat = ELEMENTS[CLASSES[p.cls].el].stat;
     var main = pick(R, SLOT_MAIN[slot]);
+    if (main === "elem") main = R() < 0.75 ? elemStat : pick(R, ["for", "int", "cha", "agi"]);
     var order = [main];
     var pool = NORMAL_STATS.filter(function (k) { return k !== main; });
+    // l'élément de la classe revient souvent, les autres éléments rarement
+    pool = pool.filter(function (k) { return !STATS[k].el || k === elemStat || R() < 0.25; });
     while (order.length < rar.affixes && pool.length) order.push(pool.splice(Math.floor(R() * pool.length), 1)[0]);
     order.forEach(function (k, i) {
       var S = STATS[k];
@@ -682,7 +783,7 @@
       var po = portalAt(w.zone, h.x, h.y);
       if (po && !h.path.length) {
         if (po.req && partyLevel(w) < po.req) { say(w, "Il faut être niveau " + po.req + " pour aller vers « " + po.label + " ».", i); h.path = []; }
-        else if (po.to === "donjon") { startDungeon(w); return; }
+        else if (po.to.indexOf("dungeon:") === 0) { startDungeon(w, po.to.slice(8)); return; }
         else { enterZone(w, po.to, w.zone); return; }
       }
     }
@@ -728,7 +829,7 @@
       var cell = A.heroCells[i * 3 + 4] || A.heroCells[i];
       c.units.push({ id: c.uid++, side: 0, pi: i, cls: pl.profile.cls, name: pl.name, lvl: pl.profile.level,
         x: cell[0], y: cell[1], hp: keepHp != null ? Math.max(1, Math.min(s.hp, keepHp)) : s.hp, maxHp: s.hp,
-        pa: s.pa, pm: s.pm, maxPa: s.pa, maxPm: s.pm, po: s.po, res: s.res, ini: s.ini, crit: s.crit, heal: s.heal, pow: s.pow,
+        pa: s.pa, pm: s.pm, maxPa: s.pa, maxPm: s.pm, po: s.po, res: s.res, ini: s.ini, crit: s.crit, heal: s.heal, pow: 0, elem: s.elem, dom: s.dom,
         powers: s.powers, shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: 1, ult: pl.profile.level >= ULT_LEVEL });
       c.stats[i] = { dmg: 0, heal: 0, kills: 0 };
     });
@@ -891,7 +992,14 @@
     var last = tg[tg.length - 1];
     if (sid === "mur") return wallCells(c, u, last[0], last[1]);
     if (sid === "brume") return plus(last[0], last[1]).filter(function (p) { return inArena(c, p[0], p[1]); });
-    if (sid === "forteresse") return disc(c, u.x, u.y, 2);
+    if (sid === "forteresse" || sid === "rayonnement") return disc(c, u.x, u.y, 2);
+    if (sid === "aurore") return disc(c, u.x, u.y, 3);
+    if (sid === "transe") return [[u.x, u.y]];
+    if (sid === "jugement") { [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(function (d) { var x = u.x + d[0], y = u.y + d[1]; while (inArena(c, x, y) && c.arena.g[x][y] !== 1) { out.push([x, y]); x += d[0]; y += d[1]; } }); return out; }
+    if (sid === "vague" || sid === "rosee") return plus(last[0], last[1]).filter(function (p) { return inArena(c, p[0], p[1]); });
+    if (sid === "geyser") return disc(c, last[0], last[1], 1);
+    if (sid === "razdemaree") return disc(c, last[0], last[1], 2);
+    if (sid === "deferlante") return lineFrom(c, u, last, 4);
     if (sid === "convergence") { tg.forEach(function (p) { rays(c, u, p).forEach(function (r) { out = out.concat(r.cells); }); }); return out; }
     if (sid === "danse") { tg.forEach(function (p) { out = out.concat(ring8(c, p[0], p[1])); }); return out; }
     if (sid === "impact" || sid === "attraction") return [last];
@@ -923,12 +1031,15 @@
     var c = w.combat;
     opt = opt || {};
     if (!t || !t.alive) return 0;
-    var mul = 1 + (src ? src.pow : 0) / 100;
+    var el = opt.el || (src && src.curEl) || null;
+    var stat = src ? (src.elem ? (el ? src.elem[el] || 0 : Math.max(src.elem.terre, src.elem.feu, src.elem.eau, src.elem.air)) : src.pow || 0) : 0;
+    var mul = 1 + stat / 100;
     if (src && src.powers.indexOf("first") >= 0 && !src.firstHit && !opt.noFirst) { mul *= 1.6; src.firstHit = true; }
     var crit = !opt.noCrit && src && R() * 100 < src.crit;
     if (crit) mul *= src.powers.indexOf("critx2") >= 0 ? 2 : 1.5;
+    var flat = src ? (src.dom || 0) + statusSum(src, "dom") : 0;
     var res = t.res + statusSum(t, "res");
-    var d = Math.max(1, Math.round(base * mul * (1 - clamp(res, -50, 75) / 100) * (0.92 + R() * 0.16)));
+    var d = Math.max(1, Math.round((base * mul + (opt.push ? 0 : flat)) * (1 - clamp(res, -50, 75) / 100) * (0.92 + R() * 0.16)));
     var absorbed = 0;
     while (d > 0 && t.shield.length) {
       var sh = t.shield[0], a = Math.min(sh.v, d);
@@ -1016,7 +1127,7 @@
     var cost = spellCost(u, sid);
     var echo = u.powers.indexOf("echo") >= 0 && R() < 0.2;
     u.pa -= echo ? 0 : cost;
-    u.castThisTurn = true;
+    u.castThisTurn = true; u.curEl = S.el || null;
     u.used[sid] = (u.used[sid] || 0) + 1;
     if (S.cd) u.cds[sid] = S.cd + 1;
     var t0 = tg[0], tu = unitAt(c, t0[0], t0[1]);
@@ -1030,11 +1141,27 @@
   }
   function faceOf(dx, dy) { return Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 1 : -1) : (dy >= 0 ? 2 : -2); }
   function powScale(u) { return 1; }
+  // zone : dégâts aux ennemis, soins aux alliés (jamais au lanceur lui-même pour les dégâts)
+  function zone(w, u, cells, dmg, hl) {
+    var c = w.combat, seen = {};
+    cells.forEach(function (p) {
+      var t = unitAt(c, p[0], p[1]);
+      if (!t || seen[t.id]) return;
+      seen[t.id] = 1;
+      if (t.side !== u.side) { if (dmg) damage(w, u, t, dmg); }
+      else if (hl) heal(w, u, t, hl * (1 + u.heal / 100));
+    });
+  }
+  function lineFrom(c, u, dir, n) {
+    var dx = sgn(dir[0] - u.x), dy = sgn(dir[1] - u.y), out = [];
+    for (var i = 1; i <= n; i++) { var x = u.x + dx * i, y = u.y + dy * i; if (!inArena(c, x, y) || c.arena.g[x][y] === 1) break; out.push([x, y]); }
+    return out;
+  }
   function mySummons(c, u) { return c.units.filter(function (x) { return x.alive && x.summon && x.owner === u.id; }); }
   function addSummon(w, u, cls, x, y) {
     var c = w.combat, S = SUMMONS[cls], hp = Math.round((S.hp + S.hpL * u.lvl) * (1 + (u.heal || 0) / 200));
     var m = { id: c.uid++, side: 0, pi: u.pi, cls: cls, summon: true, owner: u.id, name: S.name, lvl: u.lvl, x: x, y: y, hp: hp, maxHp: hp,
-      pa: S.pa, pm: S.pm, maxPa: S.pa, maxPm: S.pm, po: 0, res: 0, ini: S.ini, crit: Math.round(u.crit / 2), heal: 0, pow: u.pow,
+      pa: S.pa, pm: S.pm, maxPa: S.pa, maxPm: S.pm, po: 0, res: 0, ini: S.ini, crit: Math.round(u.crit / 2), heal: 0, pow: Math.round((u.elem ? u.elem[CLASSES[u.cls].el] : 0) * 0.8), dom: Math.round((u.dom || 0) / 2),
       powers: [], shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: u.face, ult: false };
     c.units.push(m);
     // elle joue juste après son invocatrice
@@ -1072,8 +1199,41 @@
       mySummons(c, u).forEach(function (m) { addShield(w, u, m, S.shield); m.maxPaBonus = 1; });
       ev(w, { k: "ink", at: [u.x, u.y] });
     },
-    pointe: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); ev(w, { k: "slash", id: u.id, to: tg[0], col: "#2f8f6c" }); damage(w, u, t, S.dmg); },
-    ravage: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); ev(w, { k: "beam", from: [u.x, u.y], to: tg[0], col: "#2fd29a" }); damage(w, u, t, S.dmg); },
+    // Clarine
+    lueur: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); if (t !== u) ev(w, { k: "beam", from: [u.x, u.y], to: tg[0], col: "#ffd27d", w: 3 }); heal(w, u, t, S.heal * (1 + u.heal / 100)); },
+    eclat: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); ev(w, { k: "beam", from: [u.x, u.y], to: tg[0], col: "#ff9a3c" }); damage(w, u, t, S.dmg); },
+    benediction: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); heal(w, u, t, S.heal * (1 + u.heal / 100)); addShield(w, u, t, S.shield); },
+    rayonnement: function (w, u, tg, S) { ev(w, { k: "nova", at: [u.x, u.y], r: 2, col: "#ff9a3c" }); zone(w, u, disc(w.combat, u.x, u.y, 2), S.dmg, S.heal); },
+    aurore: function (w, u, tg, S) {
+      var c = w.combat;
+      ev(w, { k: "nova", at: [u.x, u.y], r: 3, col: "#ffd27d", big: true });
+      c.units.forEach(function (t) { if (t.alive && t.side === u.side && !t.summon) heal(w, u, t, S.heal * (1 + u.heal / 100)); });
+      disc(c, u.x, u.y, 3).forEach(function (p) { var t = unitAt(c, p[0], p[1]); if (t && t.side !== u.side) damage(w, u, t, S.dmg); });
+    },
+    // Orage
+    foudre: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); ev(w, { k: "beam", from: [u.x, u.y], to: tg[0], col: "#e0c060", big: true }); damage(w, u, t, S.dmg); },
+    fracas: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); ev(w, { k: "slash", id: u.id, to: tg[0], col: "#e0c060" }); damage(w, u, t, S.dmg); },
+    trombe: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); ev(w, { k: "beam", from: [u.x, u.y], to: tg[0], col: "#c9b2ff", w: 5 }); damage(w, u, t, S.dmg); if (t && t.alive) knock(w, u, t, u.x, u.y, S.push); },
+    transe: function (w, u, tg, S) { u.status.push({ k: "dom", v: 25, by: u.id, turns: 1, name: "Transe" }); ev(w, { k: "buff", id: u.id, text: "+25 dommages" }); ev(w, { k: "nova", at: [u.x, u.y], r: 1, col: "#e0c060" }); },
+    jugement: function (w, u, tg, S) {
+      var c = w.combat, hit = {};
+      [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(function (d) {
+        var cells = [], x = u.x + d[0], y = u.y + d[1];
+        while (inArena(c, x, y) && c.arena.g[x][y] !== 1 && !(objAt(c, x, y) && objAt(c, x, y).kind === "wall")) { cells.push([x, y]); x += d[0]; y += d[1]; }
+        ev(w, { k: "beam", from: [u.x, u.y], to: cells.length ? cells[cells.length - 1] : [u.x, u.y], col: "#e0c060", big: true });
+        cells.forEach(function (p) { var t = unitAt(c, p[0], p[1]); if (t && t.side !== u.side && !hit[t.id]) { hit[t.id] = 1; damage(w, u, t, S.dmg); } });
+      });
+    },
+    // Ondine
+    vague: function (w, u, tg, S) { ev(w, { k: "splash", cells: plus(tg[0][0], tg[0][1]) }); zone(w, u, plus(tg[0][0], tg[0][1]), S.dmg, 0); },
+    geyser: function (w, u, tg, S) {
+      var c = w.combat, cells = disc(c, tg[0][0], tg[0][1], 1);
+      ev(w, { k: "splash", cells: cells, big: true });
+      cells.forEach(function (p) { var t = unitAt(c, p[0], p[1]); if (t && t.side !== u.side) { damage(w, u, t, S.dmg); if (t.alive && !(p[0] === tg[0][0] && p[1] === tg[0][1])) knock(w, u, t, tg[0][0], tg[0][1], S.push); } });
+    },
+    deferlante: function (w, u, tg, S) { var cells = lineFrom(w.combat, u, tg[0], 4); ev(w, { k: "splash", cells: cells, wave: true }); zone(w, u, cells, S.dmg, 0); },
+    rosee: function (w, u, tg, S) { ev(w, { k: "splash", cells: plus(tg[0][0], tg[0][1]), soft: true }); zone(w, u, plus(tg[0][0], tg[0][1]), 0, S.heal); },
+    razdemaree: function (w, u, tg, S) { var cells = disc(w.combat, tg[0][0], tg[0][1], 2); ev(w, { k: "splash", cells: cells, big: true, huge: true }); zone(w, u, cells, S.dmg, S.heal); },
     impact: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); damage(w, u, t, S.dmg); if (t && t.alive) knock(w, u, t, u.x, u.y, S.push); },
     rempart: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); addShield(w, u, t, S.shield); },
     mur: function (w, u, tg, S) {
@@ -1229,7 +1389,7 @@
       });
       if (checkEnd(w)) return;
     }
-    c.aiT = u.side === 1 ? 0.75 : 0;
+    c.aiT = u.side === 1 || u.summon ? 0.75 : 0;
     bump(w);
   }
   function endTurn(w) {
@@ -1253,7 +1413,8 @@
   }
 
   /* ---------- IA des monstres ---------- */
-  function mobSpells(u) { return MOBS[u.type].spells.map(function (id) { return { id: id, S: MOB_SPELLS[id] }; }); }
+  function mobSpells(u) { return (u.summon ? SUMMONS[u.cls].spells : MOBS[u.type].spells).map(function (id) { return { id: id, S: MOB_SPELLS[id] }; }); }
+  function mobDef(u) { return u.summon ? SUMMONS[u.cls] : MOBS[u.type]; }
   function mobCanHit(c, u, S, fx, fy, t) {
     var dx = t.x - fx, dy = t.y - fy;
     if (!shapeOk({ shape: S.shape, range: S.range }, dx, dy, 0)) return false;
@@ -1269,7 +1430,7 @@
   }
   function aiStep(w) {
     var c = w.combat, u = active(c);
-    if (!u || u.side !== 1) return null;
+    if (!u || (u.side !== 1 && !u.summon)) return null;
     var foes = c.units.filter(function (o) { return o.alive && o.side !== u.side; });
     var friends = c.units.filter(function (o) { return o.alive && o.side === u.side; });
     if (!foes.length) return null;
@@ -1308,7 +1469,7 @@
       var canNow = atk.some(function (s) { return foes.some(function (f) { return mobCanHit(c, u, s.S, x, y, f); }); });
       if (!canNow) return;
       var near = foes.reduce(function (m, f) { return Math.min(m, Math.abs(f.x - x) + Math.abs(f.y - y)); }, 99);
-      var sc = (MOBS[u.type].ranged ? near * 2 : -near) - d * 0.3;
+      var sc = (mobDef(u).ranged ? near * 2 : -near) - d * 0.3;
       if (!cand || sc > cand.sc) cand = { sc: sc, x: x, y: y };
     });
     if (cand) return { t: "mmove", x: cand.x, y: cand.y };
@@ -1359,7 +1520,8 @@
       ev(w, { k: "tele", cells: cells });
     } else if (S.heal) heal(w, u, t, S.heal * (1 + u.lvl * 0.08));
     else if (t) {
-      if (S.shape === "diag" || S.range[1] > 1) ev(w, { k: "beam", from: [u.x, u.y], to: [t.x, t.y], col: MOBS[u.type].col, mob: true });
+      if (S.shape === "diag" || S.range[1] > 1) ev(w, { k: "beam", from: [u.x, u.y], to: [t.x, t.y], col: u.summon ? "#2fd29a" : MOBS[u.type].col, mob: true });
+      else if (u.summon) ev(w, { k: "slash", id: u.id, to: [t.x, t.y], col: "#2f8f6c" });
       damage(w, u, t, S.dmg);
       if (S.push && t.alive) knock(w, u, t, u.x, u.y, S.push);
     }
@@ -1376,7 +1538,8 @@
     var defeated = c.defeated || [];
     w.players.forEach(function (pl, i) {
       if (!pl) return;
-      var p = pl.profile, res = { xp: 0, gold: 0, items: [], levels: 0, quests: [] };
+      var p = pl.profile, res = { xp: 0, gold: 0, items: [], levels: 0, quests: [] }, hs = heroStats(p);
+      var dropP = Math.min(0.95, CFG.dropChance * (1 + (hs.pros || 0) / 100));
       if (won) {
         defeated.forEach(function (d) {
           var M = MOBS[d.type];
@@ -1384,7 +1547,7 @@
           res.gold += Math.round((3 + d.lvl * 2) * (d.affix ? 2.5 : 1) * (0.7 + R() * 0.6)) + (d.boss ? 200 : 0);
           // le butin : chaque monstre tire au hasard, pour chaque joueur
           var luck = d.boss ? 2 : d.affix ? 1 : 0;
-          var n = d.boss ? 3 : d.affix ? 1 : (R() < CFG.dropChance ? 1 : 0);
+          var n = d.boss ? 3 : d.affix ? 1 : (R() < dropP ? 1 : 0);
           for (var k = 0; k < n; k++) res.items.push(makeItem(p, d.lvl + (R() < 0.3 ? 1 : 0), rollRarity(luck, d.boss ? 3 : 0)));
           questEvent(w, i, { kind: "kill", mob: d.type, elite: !!d.affix, boss: d.boss }, res);
           p.kills++;
@@ -1393,6 +1556,7 @@
         // jamais les mains vides
         if (!res.items.length && defeated.length) res.items.push(makeItem(p, Math.round(defeated.reduce(function (a, d) { return a + d.lvl; }, 0) / defeated.length), rollRarity(0)));
         if (c.room) { res.xp = Math.round(res.xp * 1.3); }
+        res.xp = Math.round(res.xp * (1 + (hs.sag || 0) / 100));
         res.items = res.items.slice(0, 6);
         res.items.sort(function (a, b) { return b.r - a.r; });
         giveXp(w, i, res.xp, res);
@@ -1404,8 +1568,8 @@
     });
     loot.stats = c.stats;
     loot.room = c.room;
-    loot.dungeonNext = won && w.dungeon && w.dungeon.room < DUNGEON.length - 1;
-    loot.dungeonDone = won && w.dungeon && w.dungeon.room === DUNGEON.length - 1;
+    loot.dungeonNext = won && w.dungeon && w.dungeon.room < DUNGEONS[w.dungeon.id].rooms.length - 1;
+    loot.dungeonDone = won && w.dungeon && w.dungeon.room === DUNGEONS[w.dungeon.id].rooms.length - 1;
     if (w.dungeon) {
       w.dungeon.hp = c.units.filter(function (u) { return u.side === 0 && !u.summon; }).reduce(function (o, u) { o[u.pi] = u.alive ? u.hp : 1; return o; }, {});
     }
@@ -1421,7 +1585,7 @@
     var p = w.players[i].profile;
     p.xp += xp;
     while (p.level < CFG.maxLevel && p.xp >= xpNeed(p.level)) {
-      p.xp -= xpNeed(p.level); p.level++;
+      p.xp -= xpNeed(p.level); p.level++; p.pts += 5;
       if (res) res.levels++;
       ev(w, { k: "levelup", pi: i, level: p.level });
       if (p.level === ULT_LEVEL) ev(w, { k: "ult", pi: i });
@@ -1448,27 +1612,29 @@
         dungeonRoom(w);
         return;
       }
+      var exitZone = DUNGEONS[w.dungeon.id].exit;
       w.dungeon = null;
       w.mode = "explore";
-      enterZone(w, L.won ? "falaises" : "village", L.won ? "donjon" : null);
+      enterZone(w, L.won ? exitZone : "village", null);
       return;
     }
     w.mode = "explore";
     if (!L.won) enterZone(w, "village", null);
     bump(w);
   }
-  function startDungeon(w) {
-    w.dungeon = { room: 0, hp: {} };
-    ev(w, { k: "dungeon" });
+  function startDungeon(w, id) {
+    if (!DUNGEONS[id]) id = "sanctuaire";
+    w.dungeon = { id: id, room: 0, hp: {} };
+    ev(w, { k: "dungeon", id: id });
     dungeonRoom(w);
   }
   function dungeonRoom(w) {
-    var D = DUNGEON[w.dungeon.room], n = w.players.filter(Boolean).length;
+    var D = DUNGEONS[w.dungeon.id].rooms[w.dungeon.room], n = w.players.filter(Boolean).length;
     var mobs = [];
-    if (D.boss) { mobs.push({ type: "archonte", lvl: D.lvl, affix: null }); for (var b = 0; b < n; b++) mobs.push({ type: D.mobs[1 + (b % 2)], lvl: D.lvl - 1, affix: null }); }
+    if (D.boss) { mobs.push({ type: D.mobs[0], lvl: D.lvl, affix: null }); for (var b = 0; b < n; b++) mobs.push({ type: D.mobs[1 + (b % 2)], lvl: D.lvl - 1, affix: null }); }
     else for (var i = 0; i < 2 + n; i++) mobs.push({ type: D.mobs[i % D.mobs.length], lvl: D.lvl + (i % 2), affix: R() < D.elite ? pick(R, AFFIX_IDS) : null });
     var hpMul = n === 1 ? 0.8 : 1;
-    startCombat(w, { id: 0, mobs: mobs }, { idx: w.dungeon.room, name: D.name, boss: !!D.boss });
+    startCombat(w, { id: 0, mobs: mobs }, { idx: w.dungeon.room, name: D.name, boss: !!D.boss, dungeon: w.dungeon.id });
     if (D.boss) w.combat.units.forEach(function (u) { if (u.boss) { u.maxHp = Math.round(u.maxHp * hpMul); u.hp = u.maxHp; } });
   }
 
@@ -1594,6 +1760,11 @@
       case "junk": return sellJunk(w, pi, c.r | 0) > 0;
       case "lock": { var p = w.players[pi].profile, ix = findBag(p, c.uid); if (ix < 0) return false; p.bag[ix].lock = !p.bag[ix].lock; p.rev++; bump(w); return true; }
       case "chest": return w.mode === "explore" && buyChest(w, pi);
+      case "stat": {
+        var sp = w.players[pi].profile, n = Math.max(1, c.n | 0);
+        if (!STATS[c.k] || !STATS[c.k].main || sp.pts < n) return false;
+        sp.pts -= n; sp.base[c.k] = (sp.base[c.k] || 0) + n; sp.rev++; bump(w); return true;
+      }
       case "seen": { var pp = w.players[pi].profile; pp.bag.forEach(function (it) { it.isNew = false; }); pp.rev++; bump(w); return true; }
     }
     return false;
@@ -1602,7 +1773,7 @@
     var c = w.combat;
     if (!c || c.phase !== "fight" || w.mode !== "combat") return null;
     var u = active(c);
-    return u && u.side === 0 && u.pi === pi && u.alive ? u : null;
+    return u && u.side === 0 && u.pi === pi && u.alive && !u.summon ? u : null;
   }
 
   /* ====================== AVANCER LE TEMPS (hôte) ====================== */
@@ -1611,7 +1782,7 @@
     if (w.mode === "explore") stepExplore(w, dt);
     else if (w.mode === "combat" && w.combat && w.combat.phase === "fight") {
       var c = w.combat, u = active(c);
-      if (u && u.side === 1) {
+      if (u && (u.side === 1 || u.summon)) {
         c.aiT -= dt;
         if (c.aiT <= 0) {
           var a = aiStep(w);
@@ -1626,7 +1797,7 @@
   var API = {
     CFG: CFG, CLASSES: CLASSES, CLASS_IDS: CLASS_IDS, SPELLS: SPELLS, SUMMONS: SUMMONS, spellsOf: spellsOf, MOBS: MOBS, MOB_SPELLS: MOB_SPELLS, AFFIXES: AFFIXES,
     SLOTS: SLOTS, SLOT_NAME: SLOT_NAME, RARITIES: RARITIES, STATS: STATS, POWERS: POWERS, QUESTS: QUESTS, ZONES: ZONES, ZONE_IDS: ZONE_IDS,
-    DUNGEON: DUNGEON, NPCS: NPCS, ULT_LEVEL: ULT_LEVEL, BAG_MAX: BAG_MAX,
+    DUNGEONS: DUNGEONS, NPCS: NPCS, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, BAG_MAX: BAG_MAX,
     newProfile: newProfile, fixProfile: fixProfile, heroStats: heroStats, xpNeed: xpNeed, itemScore: itemScore, makeItem: makeItem, rollRarity: rollRarity,
     createWorld: createWorld, addPlayer: addPlayer, removePlayer: removePlayer, zoneMap: zoneMap, exploreWalkable: exploreWalkable, portalAt: portalAt, findPath: findPath,
     cmd: cmd, step: step, active: active, unitAt: unitAt, objAt: objAt, uById: uById, inArena: inArena, groundOk: groundOk, cellFree: cellFree,
