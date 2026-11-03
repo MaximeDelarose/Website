@@ -47,7 +47,7 @@
   }
   var page = document.body.dataset.page;
   // les pages des jeux web sont regroupées sous l'onglet « Jeux »
-  var GAME_PAGES = ["games", "game", "merger", "suika", "dice", "kingdice", "arcane", "chess", "pool", "golf", "defense", "idle", "bagbound", "flippers", "ultimate"];
+  var GAME_PAGES = ["games", "game", "merger", "suika", "dice", "kingdice", "arcane", "chess", "pool", "golf", "defense", "idle", "bagbound", "flippers", "ultimate", "grimpe"];
   var navPage = GAME_PAGES.indexOf(page) >= 0 ? "games" : page;
   $$("#site-nav a").forEach(function (a) {
     if (a.dataset.page === navPage) a.setAttribute("aria-current", "page");
@@ -103,6 +103,7 @@
     knight: ["..xx.x..", ".xxxxx..", "xxwxxxx.", "xxxxxxxx", "....xxxx", "...xxxxx", "..xxxxxx", "eeeeeeee"],
     bag: ["...xxx...", "..x...x..", ".xxxxxxx.", "xxwwwwwxx", "xxxxxxxxx", "xxxeeexxx", "xxxewexxx", "xxxxxxxxx", ".xxxxxxx."],
     flag: ["xxxxxx...", "xxxxxxxx.", "xwxxxxxxx", "xxxxxxxx.", "xxxxxx...", "e........", "e........", "e........", "eeeee...."],
+    tree: ["....xx....", "...xxxx...", "..xxxxxx..", ".xxxxxxxx.", "..xxxxxx..", ".xxxxxxxx.", "xxxxxxxxxx", "....ee....", "....ee....", "...eeee..."],
     pinball: ["...xxx...", "..xwxxx..", "..xxxxx..", "...xxx...", ".........", "xx.....xx", ".xxx.xxx.", "..xxxxx.."],
     golf: ["...xxx...", "...xxxx..", "...xxx...", "...x.....", "...x.....", "...x.....", "...x..w..", "eeeeeeeee"],
     box: ["..xxxxxx..", ".xwwwwwwx.", "xwwwwwwwwx", "xxxxeexxxx", "xxxxeexxxx", "xxxxxxxxxx", "xxxxxxxxxx", "eeeeeeeeee"],
