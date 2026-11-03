@@ -19,6 +19,7 @@ import {
   addShield,
   addStacks,
   dealDamage,
+  transformItem,
   effectValue,
   emit,
   frontEnemy,
@@ -221,6 +222,20 @@ registerEffect({
       // prochain tick de recharge. Évite les boucles infinies.
       t.progressMs = effect.full ? t.cooldownMs : Math.min(t.cooldownMs, t.progressMs + ms(effectValue(ctx, effect)));
       emit(ctx.state, { type: "recharge", item: t.uid, ms: t.progressMs - before });
+    }
+  },
+});
+
+registerEffect({
+  type: "fill",
+  targetKind: "item",
+  defaultTarget: "adjacent",
+  requires: ["into"],
+  apply(ctx, effect, targets) {
+    // remplit (transforme) les objets visés, par défaut les bouteilles vides voisines
+    for (const t of targets) {
+      if (t.removed || t.def.id === effect.into) continue;
+      transformItem(ctx.state, t, effect.into!, effect.charges);
     }
   },
 });

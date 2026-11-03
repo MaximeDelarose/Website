@@ -74,7 +74,7 @@ export function newRun(content: Content, rd: RunData, clsId: string, seed: numbe
     hp: cls.hp,
     maxHp: cls.hp,
     gold: rd.rules.startGold,
-    bag: { entries: cls.startingBag.map((p) => ({ item: p.item, rot: p.rot ?? 0, mirror: p.mirror, pos: [p.pos[0], p.pos[1]] })) },
+    bag: { cells: cls.bagCells.map(([x, y]) => [x, y]), entries: cls.startingBag.map((p) => ({ item: p.item, rot: p.rot ?? 0, mirror: p.mirror, pos: [p.pos[0], p.pos[1]] })) },
     map: [],
     current: null,
     phase: "map",
@@ -109,9 +109,11 @@ export function zoneName(run: RunState, rd: RunData): string {
 /** Placements pour le moteur (même ordre que Bag.placements()). */
 export function placementsOf(bag: SavedBag): Placement[] {
   return bag.entries
-    .filter((e) => e.pos !== null)
-    .map((e) => {
-      const p: Placement = { item: e.item, pos: [e.pos![0], e.pos![1]], rot: e.rot };
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => e.pos !== null)
+    .map(({ e, i }) => {
+      // ref = indice dans le sac : permet de retrouver l'entrée après le combat
+      const p: Placement = { item: e.item, pos: [e.pos![0], e.pos![1]], rot: e.rot, ref: String(i) };
       if (e.mirror) p.mirror = true;
       if (e.charges !== undefined) p.charges = e.charges;
       return p;
@@ -235,13 +237,18 @@ export function finishCombat(run: RunState, content: Content, rd: RunData, resul
   const c = p as Extract<Pending, { kind: "combat" }>;
   run.stats.combats++;
   run.hp = Math.max(0, result.player.hp);
-  const stashed = run.bag.entries.filter((e) => e.pos === null);
+  const before = run.bag.entries;
+  const stashed = before.filter((e) => e.pos === null);
   run.bag = {
+    ...run.bag,
     entries: [
       ...result.playerBagAfter.map((pl) => {
         const e: SavedBag["entries"][number] = { item: pl.item, rot: pl.rot ?? 0, pos: [pl.pos[0], pl.pos[1]] };
         if (pl.mirror) e.mirror = true;
         if (pl.charges !== undefined) e.charges = pl.charges;
+        // un objet fusionné garde ses ingrédients (sauf s'il s'est transformé)
+        const old = pl.ref !== undefined ? before[Number(pl.ref)] : undefined;
+        if (old?.fusedFrom && old.item === pl.item) e.fusedFrom = [...old.fusedFrom];
         return e;
       }),
       ...stashed,
@@ -333,6 +340,36 @@ export function shopHeal(run: RunState, rd: RunData): void {
   if (run.hp >= run.maxHp) fail("PV déjà au maximum");
   run.gold -= rd.rules.shop.healCost;
   run.hp = Math.min(run.maxHp, run.hp + rd.rules.shop.healAmount);
+}
+
+/** Défusion à la boutique : l'objet redevient ses ingrédients (en réserve), contre de l'or. */
+export function unfuseAt(run: RunState, rd: RunData, index: number): void {
+  shopOf(run);
+  const e = run.bag.entries[index] ?? fail("Objet introuvable");
+  if (!e.fusedFrom?.length) fail("Cet objet n'est pas une fusion");
+  if (run.gold < rd.rules.shop.unfuseCost) fail("Pas assez d'or");
+  run.gold -= rd.rules.shop.unfuseCost;
+  run.bag.entries.splice(index, 1);
+  for (const id of [...e.fusedFrom!].reverse()) addToStash(run, id);
+}
+
+export function emptyBottles(run: RunState, rd: RunData): number {
+  return run.bag.entries.filter((e) => e.item === rd.rules.refill.from).length;
+}
+
+/** Remplit toutes les bouteilles vides (prix par bouteille). */
+export function refillBottles(run: RunState, rd: RunData): void {
+  shopOf(run);
+  const n = emptyBottles(run, rd);
+  if (!n) fail("Aucune bouteille vide");
+  const cost = n * rd.rules.refill.cost;
+  if (run.gold < cost) fail("Pas assez d'or");
+  run.gold -= cost;
+  for (const e of run.bag.entries) {
+    if (e.item !== rd.rules.refill.from) continue;
+    e.item = rd.rules.refill.into;
+    e.charges = rd.rules.refill.charges;
+  }
 }
 
 export function leaveShop(run: RunState, rd: RunData): void {

@@ -285,6 +285,7 @@ export function instantiateItem(state: CombatState, owner: number, p: Placement)
   const mirror = p.mirror === true;
   return {
     uid: newUid(state, owner),
+    ref: p.ref,
     def,
     owner,
     pos: [p.pos[0], p.pos[1]],
@@ -363,9 +364,9 @@ export function consumeCharge(state: CombatState, item: ItemInstance): void {
   if (item.charges === 0 && item.def.onEmpty) transformItem(state, item, item.def.onEmpty.transformInto);
 }
 
-export function transformItem(state: CombatState, item: ItemInstance, into: string): ItemInstance {
+export function transformItem(state: CombatState, item: ItemInstance, into: string, charges?: number): ItemInstance {
   const owner = state.combatants[item.owner];
-  const fresh = instantiateItem(state, item.owner, { item: into, pos: item.pos, rot: item.rot, mirror: item.mirror });
+  const fresh = instantiateItem(state, item.owner, { item: into, pos: item.pos, rot: item.rot, mirror: item.mirror, ref: item.ref, charges });
   fresh.lockoutUntilMs = item.lockoutUntilMs;
   item.removed = true;
   state.retired.push(item);

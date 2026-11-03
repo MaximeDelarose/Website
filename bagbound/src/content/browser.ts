@@ -12,6 +12,8 @@ import zones from "../../data/zones.json";
 import loot from "../../data/loot.json";
 import events from "../../data/events.json";
 import { loadRunData } from "./runData";
+import recipes from "../../data/recipes.json";
+import { loadRecipes } from "./recipes";
 import { loadContent } from "./loader";
 import { loadSandbox } from "./sandbox";
 
@@ -21,5 +23,6 @@ export function loadBundledContent() {
     content,
     sandbox: loadSandbox(sandbox, content),
     runData: loadRunData({ rules: runRules, zones, loot, events }, content),
+    recipes: loadRecipes(recipes, content),
   };
 }

@@ -305,6 +305,7 @@ export function playerBagAfter(state: CombatState): Placement[] {
       const p: Placement = { item: i.def.id, pos: [i.pos[0], i.pos[1]], rot: i.rot };
       if (i.mirror) p.mirror = true;
       if (i.def.charges !== null) p.charges = i.charges;
+      if (i.ref !== undefined) p.ref = i.ref;
       return p;
     });
 }

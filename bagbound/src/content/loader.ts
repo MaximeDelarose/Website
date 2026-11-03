@@ -69,6 +69,7 @@ export function loadContent(raw: RawContent): Content {
     if (!th) issues.push(`${where}: cible inconnue « ${tName} »`);
     else if (th.kind !== h.targetKind) issues.push(`${where}: la cible ${tName} ne convient pas à l'effet ${e.type}`);
     checkFilter(where, e.filter);
+    if (e.into !== undefined && !items[e.into]) issues.push(`${where}: objet inconnu « ${e.into} »`);
   };
 
   for (const it of itemList) {

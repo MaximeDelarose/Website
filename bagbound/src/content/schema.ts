@@ -22,6 +22,8 @@ export const effectSchema = z
     count: z.number().int().positive().optional(),
     filter: tagFilterSchema.optional(),
     full: z.boolean().optional(),
+    into: z.string().optional(),
+    charges: z.number().int().positive().optional(),
   })
   .strict();
 
@@ -82,6 +84,8 @@ export const itemSchema = z
     charges: z.number().int().nonnegative().nullable().default(null),
     manual: z.boolean().default(false),
     onEmpty: z.object({ transformInto: z.string() }).strict().nullable().default(null),
+    /** Extension de sac : se pose au bord du sac et devient des cases. */
+    extends: z.boolean().default(false),
     throwEffects: z.array(effectSchema).nullable().default(null),
     description: z.string().optional(),
   })
@@ -94,6 +98,7 @@ export const placementSchema = z
     rot: z.number().int().min(0).max(3).optional(),
     mirror: z.boolean().optional(),
     charges: z.number().int().nonnegative().nullable().optional(),
+    ref: z.string().optional(),
   })
   .strict();
 
@@ -132,6 +137,8 @@ export const classSchema = z
     name: z.string().min(1),
     hp: z.number().int().positive(),
     bagCells: z.array(vec).nonempty(),
+    /** Taille max du sac (largeur, hauteur) une fois agrandi par les extensions. */
+    maxBag: z.tuple([z.number().int().positive(), z.number().int().positive()]).default([7, 5]),
     startingBag: z.array(placementSchema),
   })
   .strict();

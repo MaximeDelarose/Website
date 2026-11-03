@@ -100,3 +100,9 @@
   .bb-item-act { grid-column: 1 / -1; justify-items: end; }
   .bb-item-act .btn { padding: 4px 14px; }
 }
+
+/* --- fusions (Phase 4) --- */
+.bb-recipe { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin: 6px 0; }
+.bb-ing { display: grid; justify-items: center; gap: 2px; max-width: 76px; text-align: center; font-size: 11px; font-weight: 700; line-height: 1.1; }
+.bb-ing img { image-rendering: pixelated; background: #3b2a20; border: 2px solid #1a1220; }
+.bb-plus { font-weight: 900; font-size: 1.3rem; }

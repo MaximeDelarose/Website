@@ -30,9 +30,11 @@ const runRulesSchema = z
         healCost: z.number().int().nonnegative(),
         healAmount: z.number().int().nonnegative(),
         sellRatio: z.number().min(0).max(1),
+        unfuseCost: z.number().int().nonnegative(),
       })
       .strict(),
     chest: z.object({ gold: range, choices: z.number().int().min(1).max(4) }).strict(),
+    refill: z.object({ from: z.string(), into: z.string(), charges: z.number().int().positive(), cost: z.number().int().nonnegative() }).strict(),
   })
   .strict();
 
@@ -144,6 +146,7 @@ export function loadRunData(raw: RawRunData, content: Content): RunData {
   const table = (w: string, id: string) => {
     if (!loot[id]) issues.push(`${w}: table de butin inconnue « ${id} »`);
   };
+  for (const id of [rules.refill.from, rules.refill.into]) if (!content.items[id]) issues.push(`run.json: refill, objet inconnu « ${id} »`);
   for (const [id, list] of Object.entries(loot)) for (const e of list) if (!content.items[e.item]) issues.push(`loot.json[${id}]: objet inconnu « ${e.item} »`);
   for (const zn of zones) {
     const w = `zones.json[${zn.id}]`;
