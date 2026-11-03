@@ -103,14 +103,14 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
     const augColor: Side = player === 'w' ? 'b' : 'w';
     // ---- visages : la dame de Radia = Radia ; le roi d'Auguste = Auguste
     const herFace = () => (hasPhotos() && photoUrlNow('face-radia')) || canvasUrl('med:radia:royal', () => medallionCanvas('radia', { expr: 'smile', outfit: 'royal' }, 160));
-    const hisFace = () => (hasPhotos() && photoUrlNow('face-auguste')) || canvasUrl('med:auguste:smile', () => medallionCanvas('auguste', { expr: 'smile' }, 160));
+    const hisFace = () => (hasPhotos() && photoUrlNow('head-new')) || canvasUrl('med:auguste:smile', () => medallionCanvas('auguste', { expr: 'smile' }, 160));
     const face = (color: Side, type: PieceKind): string | null => {
       if (color === player && type === 'q') return `<div class="face-piece her"><img src="${herFace()}" alt="" draggable="false">${crownSvg('#F3C86B')}</div>`;
       if (color === augColor && type === 'k') return `<div class="face-piece his"><img src="${hisFace()}" alt="" draggable="false">${crownSvg('#B9A5E8')}</div>`;
       return null;
     };
     if (hasPhotos()) {
-      void Promise.all([photoUrl('face-radia'), photoUrl('face-auguste')]).then(() => { if (alive) { board.setPieces([], undefined); render(); avatar.src = hisFace(); } });
+      void Promise.all([photoUrl('face-radia'), photoUrl('head-new')]).then(() => { if (alive) { board.setPieces([], undefined); render(); avatar.src = hisFace(); } });
     }
 
     // ---- répliques d'Auguste

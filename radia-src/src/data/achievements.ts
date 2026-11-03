@@ -38,4 +38,17 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'starry', name: 'Pluie d\'étoiles', desc: 'Obtenir 60 étoiles dans les niveaux.', icon: 'star', check: (s) => totalStars(s) >= 60 },
   { id: 'tactician', name: 'Mat en beauté', desc: 'Résoudre tous les problèmes d\'échecs.', icon: 'chess', check: (s) => stat(s, 'chessPuzzlesTotal') > 0 && s.chess.puzzles.length >= stat(s, 'chessPuzzlesTotal') },
   { id: 'teaser', name: 'Arrête de m\'embêter', desc: 'Taquiner Auguste 10 fois.', icon: 'smile', check: (s) => stat(s, 'augusteTaps') >= 10 },
+  // ---- le château de Radia
+  { id: 'w_home', name: 'Comme chez soi', desc: 'Placer un premier meuble dans le château.', icon: 'home', check: (s) => stat(s, 'world.castle.placed') >= 1 },
+  { id: 'w_decorator', name: 'Décoratrice', desc: 'Placer 15 meubles.', icon: 'home', check: (s) => stat(s, 'world.castle.placed') >= 15 },
+  { id: 'w_palace', name: 'Tout le château', desc: 'Débloquer toutes les pièces du château.', icon: 'crown', check: (s) => s.world.castle.unlocked.length >= 9 },
+  { id: 'w_fashion', name: 'Fashionista', desc: 'Acheter 5 vêtements.', icon: 'sparkle', check: (s) => stat(s, 'world.wardrobe.bought') >= 5 },
+  { id: 'w_look', name: 'Mon style', desc: 'Sauvegarder un look favori.', icon: 'star', check: (s) => stat(s, 'world.wardrobe.looksSaved') >= 1 },
+  { id: 'w_cat', name: 'Trois dans le château', desc: 'Adopter un chat et lui donner un prénom.', icon: 'smile', check: (s) => s.world.cat.adopted && s.world.cat.name.length > 0 },
+  { id: 'w_family', name: 'Une équipe formidable', desc: 'Jouer 4 fois aux jeux en famille.', icon: 'heart', check: (s) => stat(s, 'world.family.game') >= 4 },
+  { id: 'w_bouquet', name: 'Un bouquet pour ma reine', desc: 'Composer un premier bouquet.', icon: 'flower', check: (s) => stat(s, 'world.garden.bouquet') >= 1 },
+  { id: 'w_chocolates', name: 'Chocolatière', desc: 'Découvrir les 8 chocolats.', icon: 'gift', check: (s) => s.world.choc.collection.length >= 8 },
+  { id: 'w_career', name: 'Sous les projecteurs', desc: 'Atteindre le palier 5 d\'une carrière.', icon: 'star', check: (s) => Object.values(s.world.careers.progress).some((p) => p.level >= 5) },
+  { id: 'w_fans', name: 'Mille admirateurs', desc: 'Atteindre 1 000 fans (fictifs).', icon: 'trophy', check: (s) => s.world.fans >= 1000 },
+  { id: 'w_covers', name: 'À la une !', desc: 'Collectionner les 5 couvertures de magazine.', icon: 'album', check: (s) => s.world.magazines.length >= 5 },
 ];

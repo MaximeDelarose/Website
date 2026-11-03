@@ -17,6 +17,10 @@ import { canvasUrl } from '../art/kit';
 import { medallionCanvas } from '../art/characters';
 import { setBackdrop, themeForChapter } from '../scenes/backdrop';
 import { openSettings } from '../../ui/screens/settings';
+import { addRes } from '../../core/world';
+import { mergeReward, deliverReward, levelReward, addGain, type Gain } from '../world/fusionRewards';
+import { RES_NAMES, type ResKind } from '../../data/world/ids';
+import { resIconUrl } from '../art/world/resources';
 import { hasPhotos, photoUrl, photoUrlNow } from '../../core/photos';
 import { wallet, fmt, fmtTime } from '../../core/wallet';
 import { openShop, shopButton, diamondUrl, energyUrl, bagIconUrl } from '../../ui/screens/shop';
@@ -27,7 +31,7 @@ import { paint } from '../art/kit';
 /** Personnages qui passent commande. */
 const REQUESTERS = ['auguste', 'cat', 'florist', 'pawn'] as const;
 const requesterUrl = (who: (typeof REQUESTERS)[number]) => who === 'auguste'
-  ? (hasPhotos() && photoUrlNow('head-auguste')) || canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120))
+  ? (hasPhotos() && photoUrlNow('head-new')) || canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120))
   : canvasUrl(`req:${who}`, () => paint(64, 64, 2, (c) => drawRequester(c, who, 64)));
 
 export type LevelResult = 'won' | 'quit';
@@ -81,6 +85,12 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     };
     persist();
 
+    // pièces et matériaux gagnés pendant ce niveau (créditent le château)
+    let totalGain: Gain = {};
+    const gain = (g: Gain) => {
+      totalGain = addGain(totalGain, g);
+      for (const [k, n] of Object.entries(g) as [ResKind, number][]) if (n) addRes(k, n);
+    };
     let booster: 'wand' | 'wind' | null = null;
     let finished = false;
     let infoTimer: number | undefined;
@@ -108,7 +118,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     const augImg = h('img', { src: canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120)), alt: '' });
     const aug = h('button.mh-auguste', { 'aria-label': 'Auguste' }, augImg);
     // avec le lien secret : la tête de l'illustration
-    if (hasPhotos()) void photoUrl('head-auguste').then((u) => { if (u) augImg.src = u; });
+    if (hasPhotos()) void photoUrl('head-new').then((u) => { if (u) augImg.src = u; });
     const titleEl = h('div.mh-title',
       h('b', mode === 'endless' ? 'Mode infini' : `${def.id}. ${def.title}`),
       h('small', mode === 'endless' ? `Record : ${save.data.endless.best}` : `Chapitre ${def.chapter} · ${chapter?.title ?? ''}`));
@@ -330,6 +340,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
         if (e.t === 'merge') {
           stat('merges');
           invalidStreak = 0;
+          gain(mergeReward(e.result, e.combo));
           isNew(e.result);
           if (e.result.l >= 7) bark('rare');
         } else if (e.t === 'spawn' || e.t === 'giftOpen' || e.t === 'upgrade') {
@@ -338,6 +349,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
         } else if (e.t === 'deliver') {
           addHearts(e.hearts);
           stat('ordersDelivered');
+          gain(deliverReward(e.items ?? [], e.hearts));
           // récompenses de commande : un peu d'énergie, parfois un diamant
           wallet.giveEnergy(3);
           if ((save.data.stats.ordersDelivered ?? 0) % 3 === 0) { wallet.giveDiamonds(1); ui.toast({ title: '+1 diamant', sub: 'Pour ta commande ♡', img: diamondUrl(64), ms: 1600 }); }
@@ -423,6 +435,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       save.data.levels[def.id] = { stars: Math.max(stars, rec?.stars ?? 0), best: Math.max(state.score, rec?.best ?? 0), done: true };
       const reward = first ? def.reward.hearts : Math.ceil(def.reward.hearts / 3);
       addHearts(reward);
+      gain(levelReward(def.reward.hearts, first));
       const gems = first && mode === 'story' ? (def.id % 6 === 0 ? 10 : 3) : 0;
       if (first) {
         if (def.reward.wand) save.data.boosters.wand += def.reward.wand;
@@ -449,6 +462,9 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
         h('div.win-stars', ...[1, 2, 3].map((k) => h(`span${k <= stars ? '.on' : ''}`, '★'))),
         h('div.win-stats',
           h('span.chip', icon('star', 16), `${state.score} pts`),
+          ...(['coins', 'flowers', 'fabric', 'cocoa'] as const).map((k) => totalGain[k]
+            ? h('span.chip', h('img', { src: resIconUrl(k, 32), alt: RES_NAMES[k], style: 'width:20px;height:20px' }), `+${fmt(totalGain[k]!)}`)
+            : null),
           h('span.chip', { style: 'color:#E8558F' }, icon('heart', 16), `+${reward + state.hearts}`),
           gems ? h('span.chip', h('img', { src: diamondUrl(32), alt: '', style: 'width:18px;height:18px' }), `+${gems}`) : null,
           h('span.chip', h('img', { src: energyUrl(32), alt: '', style: 'width:18px;height:18px' }), `+${first ? 15 : 5}`)),

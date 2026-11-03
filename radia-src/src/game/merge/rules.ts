@@ -118,7 +118,7 @@ export function deliver(s: RunState, def: LevelDef, slot: number): BoardEvent[] 
   s.hearts += hearts;
   s.score += points;
   s.ordersDone++;
-  const ev: BoardEvent[] = [{ t: 'deliver', slot, cells, hearts, points }];
+  const ev: BoardEvent[] = [{ t: 'deliver', slot, cells, hearts, points, items: o.items.map((r) => ({ ...r })) }];
   s.orders[slot] = null;
   if (fillOrder(s, def, slot)) ev.push({ t: 'orderNew', slot });
   return ev.concat(afterAction(s, def));
@@ -166,7 +166,7 @@ export function forceDeliver(s: RunState, def: LevelDef, slot: number): BoardEve
   s.hearts += hearts;
   s.score += points;
   s.ordersDone++;
-  const ev: BoardEvent[] = [{ t: 'deliver', slot, cells: [], hearts, points }];
+  const ev: BoardEvent[] = [{ t: 'deliver', slot, cells: [], hearts, points, items: o.items.map((r) => ({ ...r })) }];
   s.orders[slot] = null;
   if (fillOrder(s, def, slot)) ev.push({ t: 'orderNew', slot });
   return ev.concat(afterAction(s, def));

@@ -1,0 +1,26 @@
+/* ================================================ Hub « Mon domaine » */
+.hub-res { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 10px; }
+.hub-res .res-chip { display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 10px 0 4px; border-radius: 99px; background: rgba(255, 255, 255, 0.92); box-shadow: 0 3px 8px rgba(59, 49, 82, 0.15); color: var(--nuit); font-size: 15px; }
+.hub-res .res-chip img { width: 26px; height: 26px; }
+.hub-intro { margin: 0 6px 12px; text-align: center; font-family: var(--font-script); font-size: 22px; color: var(--nuit); line-height: 1.2; }
+.hub-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 2px; }
+.hub-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: 128px; padding: 14px 8px; border-radius: 24px; text-align: center; color: var(--nuit);
+  box-shadow: 0 5px 0 rgba(88, 67, 63, 0.18), 0 12px 22px rgba(81, 68, 109, 0.2), inset 0 2px 0 rgba(255, 255, 255, 0.7);
+  transition: transform 0.12s var(--ease-pop);
+  animation: btnIn 0.5s var(--ease-pop) backwards; animation-delay: calc(var(--i) * 55ms);
+}
+.hub-card:active { transform: translateY(4px) scale(0.97); box-shadow: 0 1px 0 rgba(88, 67, 63, 0.18); }
+.hub-card b { font-size: 18px; }
+.hub-card small { font-size: 13px; color: var(--choco-soft); font-weight: 500; }
+.hub-ico { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, 0.75); box-shadow: 0 3px 8px rgba(81, 68, 109, 0.18); margin-bottom: 4px; }
+.hub-badge { position: absolute; top: 8px; right: 8px; padding: 2px 9px; border-radius: 99px; background: linear-gradient(180deg, #ff8fba, var(--rose-vif)); color: #fff; font-size: 11px; font-weight: 700; box-shadow: 0 2px 0 #c4407a; animation: nudge 1.4s ease-in-out infinite; }
+.tone-rose { background: linear-gradient(180deg, #ffe4ee, #f5b5c8); }
+.tone-lavande { background: linear-gradient(180deg, #efe7ff, #cdbdf0); }
+.tone-sage { background: linear-gradient(180deg, #edf7ea, #b5cdb0); }
+.tone-choc { background: linear-gradient(180deg, #f3e1d6, #d9b49a); }
+.tone-peach { background: linear-gradient(180deg, #fff0e6, #ffc0a3); }
+.tone-cream { background: linear-gradient(180deg, #fffaf2, #ffe9d6); }
+.tone-gold { background: linear-gradient(180deg, #fff3cf, #f3c86b); }
+.tone-violet { background: linear-gradient(180deg, #e7def8, #b9a5e8); }

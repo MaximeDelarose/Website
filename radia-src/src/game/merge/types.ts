@@ -75,7 +75,7 @@ export type BoardEvent =
   | { t: 'invalid'; from: number; to: number; reason: 'different' | 'max' | 'gift' | 'empty' }
   | { t: 'spawn'; at: number; item: ItemRef; source: 'gen' | 'box' | 'combo' | 'reward'; from?: number }
   | { t: 'giftOpen'; at: number; item: ItemRef }
-  | { t: 'deliver'; slot: number; cells: number[]; hearts: number; points: number }
+  | { t: 'deliver'; slot: number; cells: number[]; hearts: number; points: number; items?: ItemRef[] }
   | { t: 'orderNew'; slot: number }
   | { t: 'combo'; value: number; reward?: 'star' | 'wand' | 'hearts' }
   | { t: 'remove'; at: number; points: number }

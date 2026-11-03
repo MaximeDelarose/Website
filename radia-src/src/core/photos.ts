@@ -37,25 +37,31 @@ function cryptoKey(): Promise<CryptoKey | null> {
   return keyP;
 }
 
+/** Octets d'un fichier chiffré (assets/p/NOM.bin) ou null (pas de clé / absent). */
+export async function decryptAsset(name: string): Promise<Uint8Array | null> {
+  const key = await cryptoKey();
+  if (!key) return null;
+  try {
+    const res = await fetch(`./assets/p/${name}.bin`);
+    if (!res.ok) return null;
+    const buf = new Uint8Array(await res.arrayBuffer());
+    return new Uint8Array(await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12)));
+  } catch {
+    return null;
+  }
+}
+
 /** URL (blob:) de la photo déchiffrée, ou null si indisponible. */
 export function photoUrl(name: string): Promise<string | null> {
   let p = cache.get(name);
   if (!p) {
     p = (async () => {
-      const key = await cryptoKey();
-      if (!key) return null;
-      try {
-        const res = await fetch(`./assets/p/${name}.bin`);
-        if (!res.ok) return null;
-        const buf = new Uint8Array(await res.arrayBuffer());
-        const plain = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
-        const type = /^(char|bust)-/.test(name) ? 'image/webp' : 'image/jpeg';
-        const url = URL.createObjectURL(new Blob([plain], { type }));
-        ready.set(name, url);
-        return url;
-      } catch {
-        return null;
-      }
+      const plain = await decryptAsset(name);
+      if (!plain) return null;
+      const type = /^(char|bust)-/.test(name) ? 'image/webp' : 'image/jpeg';
+      const url = URL.createObjectURL(new Blob([plain as BlobPart], { type }));
+      ready.set(name, url);
+      return url;
     })();
     cache.set(name, p);
   }

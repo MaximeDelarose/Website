@@ -152,7 +152,7 @@ export function showTitle(): void {
   if (!chessUnlocked()) chessBtn.classList.add('locked');
   menu.append(h('div.row', chessBtn, btn('SOUVENIRS', '.gold', () => void go(() => openAlbum('memories').then(showTitle)), 260, icon('album', 20))));
   menu.append(h('div.row',
-    btn('DÉCORER', '.secondary', () => void go(async () => { const d = await import('./decor'); await d.openDecor(); showTitle(); }), 300, icon('home', 20)),
+    btn('DÉCORER', '.secondary', () => void go(async () => { const d = await import('./world/hub'); await d.openWorldHub(); showTitle(); }), 300, icon('home', 20)),
     btn('SUCCÈS', '.secondary', () => void go(achievements), 340, icon('trophy', 20))));
 
   // barre du haut : réglages · énergie / diamants · carte d'Auguste

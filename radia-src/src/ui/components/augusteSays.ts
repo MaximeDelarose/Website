@@ -10,7 +10,7 @@ let current: HTMLElement | null = null;
 
 export function augusteSays(text: string, ms = 3400): void {
   current?.remove();
-  const src = (hasPhotos() && photoUrlNow('face-auguste')) || canvasUrl('med:auguste:laugh', () => medallionCanvas('auguste', { expr: 'laugh' }, 120));
+  const src = (hasPhotos() && photoUrlNow('head-new')) || canvasUrl('med:auguste:laugh', () => medallionCanvas('auguste', { expr: 'laugh' }, 120));
   const el = h('div.aug-says', h('img', { src, alt: 'Auguste' }), h('div', h('b', 'Auguste'), h('span', text)));
   ui.root.append(el);
   current = el;

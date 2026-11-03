@@ -14,6 +14,7 @@ import { h } from './ui/dom';
 import { showTitle } from './ui/screens/title';
 import { BackdropScene } from './game/scenes/BackdropScene';
 import { preloadPhotos } from './core/photos';
+import { loadFamily } from './core/family';
 
 const progress = (p: number) => {
   const bar = document.getElementById('splash-progress');
@@ -66,13 +67,35 @@ async function showWhatsNew(): Promise<void> {
   });
 }
 
+/** Nouveautés v3 : le château de Radia (une seule fois, pour les parties existantes). */
+async function showWhatsNewV3(): Promise<void> {
+  if (save.data.seenUpdates.includes('v3')) return;
+  save.data.seenUpdates.push('v3');
+  save.save();
+  if (!save.hadSave) return;
+  const li = (t: string) => h('li', { style: 'margin:4px 0' }, t);
+  await ui.modal({
+    title: 'Le château de Radia ♡',
+    body: h('div', { style: 'text-align:left;font-size:15px' },
+      h('ul', { style: 'padding-left:18px;margin:6px 0' },
+        li('Ton château à décorer pièce par pièce, avec des couleurs au choix.'),
+        li('Le dressing : vêtements, coiffures, couronnes, 3 looks favoris.'),
+        li('Un chat à adopter (tu choisis son prénom), un jardin de fleurs, une chocolaterie.'),
+        li('Les jeux en famille, quatre carrières, des fans et des couvertures de magazine.'),
+        li('Tout se trouve dans DÉCORER. Les pièces et matériaux se gagnent en fusionnant !')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, '120 pièces offertes pour commencer ♡')),
+    actions: [{ label: 'Découvrir', value: 'ok' }],
+  });
+}
+
 async function boot(): Promise<void> {
   progress(0.1);
   save.load();
   setLowFx(save.data.settings.effects === 'reduced');
   applySettings();
   void save.requestPersistence();
-  preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste']);
+  void loadFamily();
+  preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste', 'head-new']);
   progress(0.3);
 
   // Écriture immédiate quand Safari passe en arrière-plan ou se ferme.
@@ -111,6 +134,7 @@ async function boot(): Promise<void> {
   showTitle();
   await handleSaveProblems();
   await showWhatsNew();
+  await showWhatsNewV3();
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('./sw.js').catch(() => undefined);

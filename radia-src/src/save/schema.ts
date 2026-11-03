@@ -4,8 +4,9 @@
  * jamais à cause d'une sauvegarde abîmée, et on ne l'efface jamais en silence.
  */
 import type { RunState } from '../game/merge/types';
+import { DEFAULT_LOOK, STARTER_CLOTHES, KID_IDS, ROOM_IDS, type Look, type KidId, type RoomId } from '../data/world/ids';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export type ChessDifficulty = 'easy' | 'normal' | 'hard';
 
@@ -67,6 +68,89 @@ export interface SaveData {
   decor: string[];
   /** Nouveautés déjà présentées (une seule fois chacune). */
   seenUpdates: string[];
+  /** v3 — « Le château de Radia » : château, dressing, chat, famille, jardin, chocolats, carrières, fans. */
+  world: World;
+}
+
+export interface PlacedItem { uid: number; id: string; x: number; y: number; color: string; flip?: boolean }
+export interface RoomState { wall: string; floor: string; curtain: string; items: PlacedItem[] }
+export interface KidState { bond: number; games: Record<string, { best: number; plays: number }>; seenScenes: string[] }
+export interface GardenPlot { flower: string | null; plantedAt: number; stage: number }
+
+export interface World {
+  /** Ressources gagnées en fusionnant et en livrant des commandes. */
+  res: { coins: number; flowers: number; fabric: number; cocoa: number };
+  castle: {
+    unlocked: RoomId[];
+    rooms: Record<RoomId, RoomState>;
+    /** Meubles possédés (id → quantité achetée). Un meuble placé reste « possédé ». */
+    owned: Record<string, number>;
+    nextUid: number;
+  };
+  wardrobe: {
+    owned: string[];
+    look: Look;
+    /** Trois emplacements de tenue favorite. */
+    looks: ({ name: string; look: Look } | null)[];
+    hairOwned: string[];
+  };
+  cat: {
+    adopted: boolean;
+    name: string;
+    items: string[];
+    equipped: { collar: string | null; bed: string | null };
+    bond: number;
+    treats: number;
+    lastSeen: number;
+    counters: Record<string, number>;
+  };
+  family: { kids: Record<KidId, KidState>; scenes: string[] };
+  garden: {
+    plots: (GardenPlot | null)[];
+    plotCount: number;
+    unlocked: string[];
+    harvested: Record<string, number>;
+    bouquets: Record<string, number>;
+    seeds: Record<string, number>;
+  };
+  choc: { recipes: string[]; made: Record<string, number>; boxes: number; shopLevel: number; collection: string[] };
+  careers: { current: string | null; progress: Record<string, { level: number; xp: number; best: number }> };
+  fans: number;
+  fansTierSeen: number;
+  magazines: string[];
+  /** Drapeaux de tutoriels, scènes vues… (une clé par fonctionnalité). */
+  flags: Record<string, boolean>;
+  /** Compteurs libres pour chaque module (clés préfixées : « garden.xxx », « cat.xxx »…). */
+  extra: Record<string, number>;
+}
+
+const emptyRoom = (wall: string, floor: string, curtain: string): RoomState => ({ wall, floor, curtain, items: [] });
+
+export function defaultWorld(): World {
+  const rooms = {} as Record<RoomId, RoomState>;
+  const base: Record<RoomId, [string, string, string]> = {
+    bedroom: ['rose', 'cream', 'lavender'], salon: ['cream', 'beige', 'rose'], dressing: ['lavender', 'white', 'rose'],
+    reception: ['white', 'gold', 'rose'], garden: ['sage', 'beige', 'white'], familySalon: ['peach', 'cream', 'sage'],
+    kid1: ['peach', 'cream', 'rose'], kid2: ['lavender', 'white', 'rose'], kid3: ['sage', 'cream', 'cream'],
+  };
+  for (const r of ROOM_IDS) rooms[r] = emptyRoom(...base[r]);
+  const kids = {} as Record<KidId, KidState>;
+  for (const k of KID_IDS) kids[k] = { bond: 0, games: {}, seenScenes: [] };
+  return {
+    res: { coins: 120, flowers: 0, fabric: 0, cocoa: 0 },
+    castle: { unlocked: ['bedroom', 'salon', 'garden'], rooms, owned: {}, nextUid: 1 },
+    wardrobe: { owned: [...STARTER_CLOTHES], look: { ...DEFAULT_LOOK, acc: [] }, looks: [null, null, null], hairOwned: ['hair-loose', 'hair-wavy'] },
+    cat: { adopted: false, name: '', items: [], equipped: { collar: null, bed: null }, bond: 0, treats: 3, lastSeen: 0, counters: {} },
+    family: { kids, scenes: [] },
+    garden: { plots: [null, null, null, null], plotCount: 4, unlocked: ['rose', 'daisy', 'tulip'], harvested: {}, bouquets: {}, seeds: {} },
+    choc: { recipes: ['milk', 'dark'], made: {}, boxes: 0, shopLevel: 1, collection: [] },
+    careers: { current: null, progress: {} },
+    fans: 0,
+    fansTierSeen: -1,
+    magazines: [],
+    flags: {},
+    extra: {},
+  };
 }
 
 export interface Economy {
@@ -122,7 +206,8 @@ export function defaultSave(): SaveData {
     economy: defaultEconomy(),
     cosmetics: { tiles: 'classic', fx: 'classic', owned: ['classic'] },
     decor: [],
-    seenUpdates: ['v2'],
+    seenUpdates: ['v2', 'v3'],
+    world: defaultWorld(),
   };
 }
 
@@ -264,6 +349,7 @@ export function sanitize(raw: unknown): SaveData {
   }
   d.decor = strArr(s.decor);
   if (Array.isArray(s.seenUpdates)) d.seenUpdates = strArr(s.seenUpdates);
+  d.world = sanitizeWorld(s.world);
   void str;
   return d;
 }
@@ -273,6 +359,8 @@ export function sanitize(raw: unknown): SaveData {
  * (Aucune pour l'instant : la V1 est le premier format.)
  */
 const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string, unknown>> = {
+  // v2 → v3 : le château de Radia (monde). On ajoute l'état par défaut, rien d'autre ne change.
+  2: (raw) => ({ ...raw, world: defaultWorld(), seenUpdates: Array.isArray(raw.seenUpdates) ? raw.seenUpdates : ['v2'] }),
   // v1 → v2 : arrivée de l'énergie, des diamants, du sac, des décorations.
   // On offre 50 diamants de bienvenue et on prévoit l'écran « Nouveautés ».
   1: (raw) => ({
@@ -299,4 +387,118 @@ export function migrate(raw: unknown): { data: SaveData; migrated: boolean; tooN
   const data = sanitize(cur);
   data.v = SAVE_VERSION;
   return { data, migrated, tooNew: false };
+}
+
+
+// ------------------------------------------------------------ monde (v3)
+
+function sanitizeLook(v: unknown): Look {
+  const d: Look = { ...DEFAULT_LOOK, acc: [] };
+  if (!isObj(v)) return d;
+  const sl = (x: unknown) => (typeof x === 'string' ? (x as never) : null);
+  return {
+    hair: typeof v.hair === 'string' ? (v.hair as Look['hair']) : d.hair,
+    top: sl(v.top), bottom: sl(v.bottom), dress: sl(v.dress), jacket: sl(v.jacket), shoes: sl(v.shoes), bag: sl(v.bag),
+    acc: strArr(v.acc) as Look['acc'], crown: sl(v.crown),
+  };
+}
+
+export function sanitizeWorld(raw: unknown): World {
+  const d = defaultWorld();
+  if (!isObj(raw)) return d;
+  const w = raw;
+  if (isObj(w.res)) {
+    for (const k of ['coins', 'flowers', 'fabric', 'cocoa'] as const) d.res[k] = Math.floor(num(w.res[k], d.res[k], 0, 999_999_999));
+  }
+  if (isObj(w.castle)) {
+    const c = w.castle;
+    const un = strArr(c.unlocked).filter((r): r is RoomId => (ROOM_IDS as readonly string[]).includes(r));
+    if (un.length) d.castle.unlocked = un;
+    if (isObj(c.rooms)) {
+      for (const r of ROOM_IDS) {
+        const rs = c.rooms[r];
+        if (!isObj(rs)) continue;
+        const items = Array.isArray(rs.items)
+          ? rs.items.filter(isObj).map((i) => ({ uid: Math.floor(num(i.uid, 0, 0)), id: str(i.id, ''), x: Math.floor(num(i.x, 0, 0, 99)), y: Math.floor(num(i.y, 0, 0, 99)), color: str(i.color, 'cream'), flip: i.flip === true })).filter((i) => i.id)
+          : [];
+        d.castle.rooms[r] = { wall: str(rs.wall, d.castle.rooms[r].wall), floor: str(rs.floor, d.castle.rooms[r].floor), curtain: str(rs.curtain, d.castle.rooms[r].curtain), items };
+      }
+    }
+    d.castle.owned = numRecord(c.owned);
+    d.castle.nextUid = Math.floor(num(c.nextUid, 1, 1));
+    const maxUid = Math.max(0, ...ROOM_IDS.flatMap((r) => d.castle.rooms[r].items.map((i) => i.uid)));
+    d.castle.nextUid = Math.max(d.castle.nextUid, maxUid + 1);
+  }
+  if (isObj(w.wardrobe)) {
+    const o = strArr(w.wardrobe.owned);
+    d.wardrobe.owned = [...new Set([...STARTER_CLOTHES, ...o])];
+    d.wardrobe.look = sanitizeLook(w.wardrobe.look);
+    const ls = Array.isArray(w.wardrobe.looks) ? w.wardrobe.looks : [];
+    d.wardrobe.looks = [0, 1, 2].map((i) => {
+      const l = ls[i];
+      return isObj(l) ? { name: str(l.name, `Look ${i + 1}`).slice(0, 24), look: sanitizeLook(l.look) } : null;
+    });
+    d.wardrobe.hairOwned = [...new Set(['hair-loose', 'hair-wavy', ...strArr(w.wardrobe.hairOwned)])];
+  }
+  if (isObj(w.cat)) {
+    const c = w.cat;
+    d.cat = {
+      adopted: bool(c.adopted, false),
+      name: str(c.name, '').slice(0, 20),
+      items: strArr(c.items),
+      equipped: { collar: isObj(c.equipped) && typeof c.equipped.collar === 'string' ? c.equipped.collar : null, bed: isObj(c.equipped) && typeof c.equipped.bed === 'string' ? c.equipped.bed : null },
+      bond: Math.floor(num(c.bond, 0, 0)),
+      treats: Math.floor(num(c.treats, 3, 0, 9999)),
+      lastSeen: num(c.lastSeen, 0, 0),
+      counters: numRecord(c.counters),
+    };
+  }
+  if (isObj(w.family)) {
+    for (const k of KID_IDS) {
+      const ks = isObj(w.family.kids) ? w.family.kids[k] : null;
+      if (!isObj(ks)) continue;
+      const games: Record<string, { best: number; plays: number }> = {};
+      if (isObj(ks.games)) for (const [g, v] of Object.entries(ks.games)) if (isObj(v)) games[g] = { best: num(v.best, 0, 0), plays: Math.floor(num(v.plays, 0, 0)) };
+      d.family.kids[k] = { bond: Math.floor(num(ks.bond, 0, 0)), games, seenScenes: strArr(ks.seenScenes) };
+    }
+    d.family.scenes = strArr(w.family.scenes);
+  }
+  if (isObj(w.garden)) {
+    const g = w.garden;
+    d.garden.plotCount = Math.floor(num(g.plotCount, 4, 4, 16));
+    const plots = Array.isArray(g.plots) ? g.plots : [];
+    d.garden.plots = Array.from({ length: d.garden.plotCount }, (_, i) => {
+      const p = plots[i];
+      return isObj(p) && typeof p.flower === 'string' ? { flower: p.flower, plantedAt: num(p.plantedAt, 0, 0), stage: Math.floor(num(p.stage, 0, 0, 3)) } : null;
+    });
+    const un = strArr(g.unlocked);
+    d.garden.unlocked = [...new Set([...d.garden.unlocked, ...un])];
+    d.garden.harvested = numRecord(g.harvested);
+    d.garden.bouquets = numRecord(g.bouquets);
+    d.garden.seeds = numRecord(g.seeds);
+  }
+  if (isObj(w.choc)) {
+    const c = w.choc;
+    d.choc = {
+      recipes: [...new Set([...d.choc.recipes, ...strArr(c.recipes)])],
+      made: numRecord(c.made),
+      boxes: Math.floor(num(c.boxes, 0, 0)),
+      shopLevel: Math.floor(num(c.shopLevel, 1, 1, 9)),
+      collection: strArr(c.collection),
+    };
+  }
+  if (isObj(w.careers)) {
+    d.careers.current = typeof w.careers.current === 'string' ? w.careers.current : null;
+    if (isObj(w.careers.progress)) {
+      for (const [k, v] of Object.entries(w.careers.progress)) {
+        if (isObj(v)) d.careers.progress[k] = { level: Math.floor(num(v.level, 0, 0, 5)), xp: num(v.xp, 0, 0), best: num(v.best, 0, 0) };
+      }
+    }
+  }
+  d.fans = Math.floor(num(w.fans, 0, 0, 999_999_999));
+  d.fansTierSeen = Math.floor(num(w.fansTierSeen, -1, -1, 20));
+  d.magazines = strArr(w.magazines);
+  if (isObj(w.flags)) for (const [k, v] of Object.entries(w.flags)) if (typeof v === 'boolean') d.flags[k] = v;
+  d.extra = numRecord(w.extra);
+  return d;
 }
