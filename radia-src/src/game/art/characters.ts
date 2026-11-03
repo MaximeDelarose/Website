@@ -24,7 +24,14 @@ export const EYE_MARK = { eye: 'imageLeft' as const, angleDeg: 155, radius: 1.12
 export const NOSE_RING_SIDE = 1; // +1 = droite de l'image
 
 export type Outfit = 'hoodie' | 'stripes' | 'royal';
-export interface FaceOpts { expr?: Expr; blink?: boolean; outfit?: Outfit; hood?: boolean; /** couleur de rouge à lèvres (avatar) */ lip?: string }
+export interface FaceOpts {
+  expr?: Expr; blink?: boolean; outfit?: Outfit; hood?: boolean;
+  /** couleur de rouge à lèvres (avatar) */ lip?: string;
+  /** couleur des yeux (iris) */ iris?: string;
+  /** forme de la bouche */ mouth?: 'full' | 'thin' | 'cupid' | 'wide' | 'closed';
+  /** trait d'eye-liner */ liner?: 'wing' | 'soft' | 'none' | 'bold';
+  /** fard à paupières (couleur) */ shadow?: string;
+}
 
 const INK = '#3B2419'; // contour fin brun foncé
 
@@ -117,7 +124,7 @@ function curveThrough(ctx: CanvasRenderingContext2D, pts: Pt[]) {
 
 // ============================================================ yeux, sourcils, bouche
 
-interface EyeStyle { iris: string; lash: string; w: number; h: number; lashes: boolean; wing?: boolean }
+interface EyeStyle { iris: string; lash: string; w: number; h: number; lashes: boolean; wing?: boolean; bold?: boolean; shadow?: string }
 
 function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1 | 1, expr: Expr, blink: boolean, st: EyeStyle, mark: boolean) {
   const w = st.w;
@@ -223,8 +230,24 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
   ctx.fillStyle = 'rgba(110,60,50,0.2)';
   ctx.fill();
   ctx.restore();
+  // fard à paupières : léger dégradé sur la paupière
+  if (st.shadow) {
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.6, 1);
+    ctx.bezierCurveTo(-w * 0.45, top - 17, w * 0.3, top - 19, w * 0.66, -h * 0.12);
+    ctx.bezierCurveTo(w * 0.3, top - 2, -w * 0.3, top - 1, -w * 0.6, 1);
+    ctx.closePath();
+    const sg = ctx.createLinearGradient(0, top - 18, 0, top + 2);
+    sg.addColorStop(0, shade(st.shadow, 0.25));
+    sg.addColorStop(1, st.shadow);
+    ctx.save();
+    ctx.globalAlpha = 0.78;
+    ctx.fillStyle = sg;
+    ctx.fill();
+    ctx.restore();
+  }
   // paupière supérieure épaisse (eye-liner)
-  const lidT = st.wing ? 4.4 : st.lashes ? 3.6 : 3;
+  const lidT = st.bold ? 5.6 : st.wing ? 4.4 : st.lashes ? 3.6 : 2.2;
   ctx.beginPath();
   ctx.moveTo(-w * 0.6, 1.5);
   ctx.bezierCurveTo(-w * 0.35, top - 1.2, w * 0.3, top - 2.2, w * 0.62, -h * 0.1);
@@ -285,11 +308,18 @@ function drawBrow(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -
   ctx.restore();
 }
 
-function drawMouth(ctx: CanvasRenderingContext2D, cy: number, expr: Expr, lip: string, female: boolean) {
+function drawMouth(ctx: CanvasRenderingContext2D, cy: number, expr0: Expr, lip: string, female: boolean, shape?: 'full' | 'thin' | 'cupid' | 'wide' | 'closed') {
   ctx.save();
   ctx.translate(0, cy);
   const dark = shade(lip, -0.4);
-  const w = female ? 21 : 19;
+  // formes de bouche : lèvres plus ou moins pleines, arc de Cupidon, grand sourire, sourire fermé
+  const U = shape === 'full' ? 1.4 : shape === 'thin' ? 0.7 : shape === 'cupid' ? 1.15 : 1; // lèvre du haut
+  const L = shape === 'full' ? 1.3 : shape === 'thin' ? 0.75 : 1; // lèvre du bas
+  const cupid = shape === 'cupid';
+  const w = (female ? 21 : 19) * (shape === 'wide' ? 1.15 : 1);
+  const closedSmile = shape === 'closed' && (expr0 === 'smile' || expr0 === 'love');
+  const expr: Expr = closedSmile ? 'neutral' : expr0;
+  const up = closedSmile ? 2.8 : 0; // coins relevés
   switch (expr) {
     case 'laugh':
     case 'smile': {
@@ -317,9 +347,9 @@ function drawMouth(ctx: CanvasRenderingContext2D, cy: number, expr: Expr, lip: s
       if (female) {
         ctx.beginPath();
         ctx.moveTo(-w - 1, -2);
-        ctx.quadraticCurveTo(-w * 0.5, -8, -4, -7);
-        ctx.quadraticCurveTo(0, -5, 4, -7);
-        ctx.quadraticCurveTo(w * 0.5, -8, w + 1, -2);
+        ctx.quadraticCurveTo(-w * 0.5, -8 * U, -4, (cupid ? -9 : -7) * U);
+        ctx.quadraticCurveTo(0, cupid ? -2.5 : -5, 4, (cupid ? -9 : -7) * U);
+        ctx.quadraticCurveTo(w * 0.5, -8 * U, w + 1, -2);
         ctx.quadraticCurveTo(0, 1, -w - 1, -2);
         ctx.fillStyle = lip;
         ctx.fill();
@@ -346,18 +376,18 @@ function drawMouth(ctx: CanvasRenderingContext2D, cy: number, expr: Expr, lip: s
       const smirk = expr === 'tease' ? 4 : 0;
       if (female) {
         ctx.beginPath();
-        ctx.moveTo(-w, 1 + smirk * 0.3);
-        ctx.quadraticCurveTo(-w * 0.55, -7, -5, -6);
-        ctx.quadraticCurveTo(0, -3.5, 5, -6);
-        ctx.quadraticCurveTo(w * 0.55, -7, w, 1 - smirk);
-        ctx.quadraticCurveTo(w * 0.5, 12, 0, 12);
-        ctx.quadraticCurveTo(-w * 0.5, 12, -w, 1 + smirk * 0.3);
+        ctx.moveTo(-w, 1 + smirk * 0.3 - up);
+        ctx.quadraticCurveTo(-w * 0.55, -7 * U, -5, (cupid ? -8.5 : -6) * U);
+        ctx.quadraticCurveTo(0, cupid ? -1.5 : -3.5, 5, (cupid ? -8.5 : -6) * U);
+        ctx.quadraticCurveTo(w * 0.55, -7 * U, w, 1 - smirk - up);
+        ctx.quadraticCurveTo(w * 0.5, 12 * L + up * 0.6, 0, 12 * L + up * 0.6);
+        ctx.quadraticCurveTo(-w * 0.5, 12 * L + up * 0.6, -w, 1 + smirk * 0.3 - up);
         ctx.closePath();
         fillGrad(ctx, 0, -7, 0, 13, [[0, shade(lip, -0.06)], [0.5, lip], [1, shade(lip, 0.14)]]);
         stroke(ctx, 1.5, dark);
         ctx.beginPath();
-        ctx.moveTo(-w + 1, 1 + smirk * 0.3);
-        ctx.quadraticCurveTo(0, 4.5 - smirk * 0.4, w - 1, 1 - smirk);
+        ctx.moveTo(-w + 1, 1 + smirk * 0.3 - up);
+        ctx.quadraticCurveTo(0, 4.5 - smirk * 0.4 + up * 1.4, w - 1, 1 - smirk - up);
         stroke(ctx, 2, dark);
         gloss(ctx, -4, 7, 6, 1.8, 0.5, 0);
       } else {
@@ -599,7 +629,8 @@ function radiaFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
     ctx.fill();
   }
   // yeux
-  const eye: EyeStyle = { iris: IRIS_R, lash: '#1B100C', w: 42, h: 27, lashes: true, wing: true };
+  const ln = o.liner ?? 'wing';
+  const eye: EyeStyle = { iris: o.iris ?? IRIS_R, lash: '#1B100C', w: 42, h: 27, lashes: ln !== 'none', wing: ln === 'wing' || ln === 'bold', bold: ln === 'bold', shadow: o.shadow };
   drawEye(ctx, -34, 9, -1, expr, !!o.blink, eye, EYE_MARK.eye === 'imageLeft');
   drawEye(ctx, 34, 9, 1, expr, !!o.blink, eye, false);
   // sourcils foncés bien dessinés
@@ -629,7 +660,7 @@ function radiaFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
   ctx.lineWidth = 1.5;
   ctx.strokeStyle = '#F4DFA0';
   ctx.stroke();
-  drawMouth(ctx, 69, expr, o.lip ?? '#C9807A', true);
+  drawMouth(ctx, 69, expr, o.lip ?? '#C9807A', true, o.mouth);
 }
 
 // ============================================================ RADIA : buste

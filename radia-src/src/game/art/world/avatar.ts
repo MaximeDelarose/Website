@@ -8,7 +8,7 @@
  * Le visage, les yeux, le nez (anneau) et la marque dans l'œil sont ceux de characters.ts.
  */
 import type { Look, ClothId, HairId } from '../../../data/world/ids';
-import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, accGroup } from '../../../data/world/ids';
+import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, EYE_COLOR, MOUTH_SHAPE, LINER_STYLE, SHADOW_COLOR, accGroup } from '../../../data/world/ids';
 import type { Expr } from '../../../data/dialogue';
 import { radiaParts as P } from '../characters';
 import { PAL, heartPath, roundRect, shade, gloss, starPath } from '../kit';
@@ -1763,7 +1763,9 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   ctx.translate(P.HEAD_X, P.HEAD_Y);
   ctx.scale(P.HEAD_K, P.HEAD_K);
   const lipId = accs.find((a) => a.startsWith('lp-'));
-  P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined });
+  const pickId = (pre: string) => accs.find((a) => a.startsWith(pre));
+  const eyeId = pickId('ey-'), moId = pickId('mo-'), elId = pickId('el-'), esId = pickId('es-');
+  P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, iris: eyeId ? EYE_COLOR[eyeId] : undefined, mouth: moId ? MOUTH_SHAPE[moId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
   ctx.restore();
   hairFrontLayer(ctx, hair, sway);
   if (accs.includes('ac-hoops')) hoops(ctx);

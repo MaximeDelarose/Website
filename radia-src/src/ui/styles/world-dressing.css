@@ -163,5 +163,7 @@
 .dr-stage .dr-floor { transition: transform 0.3s, opacity 0.3s; }
 
 /* mode préparation d'événement */
-.dr-hint { margin: -4px 0 4px; text-align: center; font-size: 14px; font-weight: 600; color: var(--rose-deep); flex-shrink: 0; }
-.dr-ready { flex-shrink: 0; margin-top: 8px; min-height: 52px; font-size: 18px; }
+.dr-evhint { margin: -6px 0 6px; flex: 0 0 auto; text-align: center; font-size: 13.5px; font-weight: 600; color: var(--rose-deep); }
+.dr-ready { flex: 1; min-height: 52px; font-size: 18px; }
+.dr-event .dr-stage { height: clamp(190px, 29vh, 260px); }
+.dr-event .dr-bal { margin-bottom: 2px; }

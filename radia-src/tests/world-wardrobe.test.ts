@@ -15,7 +15,7 @@ beforeEach(() => { save.data = defaultSave(); });
 
 describe('catalogue', () => {
   it('chaque identifiant a une fiche, un emplacement cohérent et un prix', () => {
-    expect(CLOTH_IDS.length).toBe(109);
+    expect(CLOTH_IDS.length).toBe(132);
     for (const id of CLOTH_IDS) {
       expect(CLOTHES[id].slot).toBe(CLOTH_SLOTS[id]);
       expect(CLOTHES[id].coins).toBeGreaterThanOrEqual(0);
@@ -149,6 +149,7 @@ describe('coiffure conservée', () => {
 
 describe('essayage', () => {
   it('ne modifie ni la sauvegarde ni les possessions', () => {
+    W.ensureWardrobe(); // normalise (options gratuites incluses) avant de comparer
     const before = JSON.stringify(w().wardrobe);
     const p = W.previewLook(W.getLook(), 'dr-royal-gown');
     expect(p.dress).toBe('dr-royal-gown');

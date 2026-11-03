@@ -25,7 +25,7 @@ export type PayWith = 'coins' | 'diamonds';
 export type FailReason = 'unknown' | 'owned' | 'coins' | 'fabric' | 'diamonds' | 'no-diamond-price' | 'not-owned' | 'bad-slot' | 'empty-name' | 'gift';
 export interface Result { ok: boolean; reason?: FailReason }
 
-export const MAX_ACC = 6;
+export const MAX_ACC = 14;
 export const FAVORITE_SLOTS = 3;
 export const NAME_MAX = 24;
 
@@ -84,7 +84,8 @@ const ownedSet = (w: WardrobeState = state()) => new Set<string>([...w.owned, ..
  */
 export function ensureWardrobe(): void {
   const w = state();
-  const owned = [...new Set([...STARTER_CLOTHES, ...w.owned.filter(isCloth)])];
+  const free = (Object.keys(CLOTHES) as ClothId[]).filter((id) => CLOTHES[id].free); // options de visage gratuites : toujours possédées
+  const owned = [...new Set([...STARTER_CLOTHES, ...free, ...w.owned.filter(isCloth)])];
   w.owned = owned;
   w.hairOwned = [...new Set<string>(['hair-loose', 'hair-wavy', ...w.hairOwned.filter(isHair)])];
   const os = new Set<string>([...owned, ...w.hairOwned]);

@@ -21,12 +21,13 @@ import { reactAuguste } from '../../../game/world/auguste';
 import { diamondUrl } from '../shop';
 
 type ItemId = ClothId | HairId;
-type CatKey = 'top' | 'bottom' | 'dress' | 'jacket' | 'shoes' | 'bag' | 'hair' | 'crown' | AccGroup;
+type CatKey = 'top' | 'bottom' | 'dress' | 'jacket' | 'shoes' | 'bag' | 'hair' | 'crown' | 'makeup' | AccGroup;
 const CATS: { key: CatKey; label: string }[] = [
   { key: 'top', label: 'Hauts' }, { key: 'bottom', label: 'Pantalons & jupes' }, { key: 'dress', label: 'Robes' },
   { key: 'jacket', label: 'Vestes' }, { key: 'shoes', label: 'Chaussures' }, { key: 'bag', label: 'Sacs' },
   { key: 'hair', label: 'Coiffures' }, { key: 'head', label: 'Foulards & cheveux' }, { key: 'glasses', label: 'Lunettes' },
   { key: 'ears', label: 'Boucles d\'oreilles' }, { key: 'lips', label: 'Rouge à lèvres' }, { key: 'neck', label: 'Bijoux' }, { key: 'wrist', label: 'Bracelets' }, { key: 'crown', label: 'Couronnes' },
+  { key: 'eyes', label: 'Yeux' }, { key: 'mouth', label: 'Bouche' }, { key: 'makeup', label: 'Maquillage des yeux' },
 ];
 const STYLES: StyleId[] = ['casual', 'chic', 'romantic', 'royal', 'stage'];
 const isHairId = (id: string): id is HairId => (HAIR_IDS as readonly string[]).includes(id);
@@ -41,8 +42,14 @@ const CROPS: Record<CatKey, [number, number, number, number]> = {
   top: [26, 138, 188, 236], bottom: [20, 268, 200, 322], dress: [0, 140, 240, 452], jacket: [22, 138, 196, 236],
   shoes: [26, 498, 188, 104], bag: [0, 150, 240, 262], crown: [26, -14, 188, 178], hair: [8, 0, 224, 262],
   head: [44, -4, 152, 164], glasses: [60, 36, 120, 80], ears: [44, 50, 152, 104], lips: [84, 108, 72, 56], neck: [50, 128, 140, 100], wrist: [-6, 278, 64, 64],
+  eyes: [66, 62, 108, 82], mouth: [72, 102, 96, 74], liner: [66, 62, 108, 82], shadow: [66, 58, 108, 86], makeup: [66, 60, 108, 84],
 };
-const catOf = (id: ItemId): CatKey => (isHairId(id) ? 'hair' : CLOTHES[id].slot === 'acc' ? (accGroup(id) ?? 'neck') : (CLOTHES[id].slot as CatKey));
+const catOf = (id: ItemId): CatKey => {
+  if (isHairId(id)) return 'hair';
+  if (CLOTHES[id].slot !== 'acc') return CLOTHES[id].slot as CatKey;
+  const g = accGroup(id) ?? 'neck';
+  return g === 'liner' || g === 'shadow' ? 'makeup' : g; // eye-liner et fards : un seul rayon « Maquillage des yeux »
+};
 const PX = 192;
 
 /** Aperçu dessiné d'une pièce, porté par un mannequin neutre (mise en cache). */
@@ -224,12 +231,12 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
     const GROUPS: { label: string; ic: string; subs: CatKey[] }[] = [
       { label: 'Tenues', ic: 'sparkle', subs: ['top', 'bottom', 'dress', 'jacket'] },
       { label: 'Sacs & souliers', ic: 'basket', subs: ['shoes', 'bag'] },
-      { label: 'Cheveux', ic: 'wand', subs: ['hair', 'head'] },
-      { label: 'Visage', ic: 'smile', subs: ['glasses', 'ears', 'lips', 'neck', 'wrist'] },
-      { label: 'Couronnes', ic: 'crown', subs: ['crown'] },
+      { label: 'Cheveux', ic: 'wand', subs: ['hair', 'head', 'crown'] },
+      { label: 'Bijoux', ic: 'crown', subs: ['glasses', 'ears', 'neck', 'wrist'] },
+      { label: 'Beauté', ic: 'smile', subs: ['eyes', 'lips', 'mouth', 'makeup'] },
     ];
     const groupOf = (k: CatKey) => GROUPS.findIndex((g) => g.subs.includes(k));
-    const SHORT: Partial<Record<CatKey, string>> = { top: 'Hauts', bottom: 'Bas', dress: 'Robes', jacket: 'Vestes', shoes: 'Chaussures', bag: 'Sacs', hair: 'Coiffures', head: 'Foulards', glasses: 'Lunettes', ears: 'Boucles', lips: 'Rouges', neck: 'Bijoux', wrist: 'Bracelets', crown: 'Couronnes' };
+    const SHORT: Partial<Record<CatKey, string>> = { top: 'Hauts', bottom: 'Bas', dress: 'Robes', jacket: 'Vestes', shoes: 'Chaussures', bag: 'Sacs', hair: 'Coiffures', head: 'Foulards', glasses: 'Lunettes', ears: 'Boucles', lips: 'Lèvres', neck: 'Colliers', wrist: 'Bracelets', crown: 'Couronnes', eyes: 'Yeux', mouth: 'Bouche', makeup: 'Maquillage' };
     const labelOf = (k: CatKey) => SHORT[k] ?? CATS.find((c) => c.key === k)?.label ?? '';
     const tabs = h('div.dr-groups', { role: 'tablist' });
     const groupEls = GROUPS.map((g) => {
@@ -249,8 +256,9 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
 
     const readyBtn = opts.cta ? h('button.btn.dr-ready', opts.cta) : null;
     readyBtn?.addEventListener('click', tap(() => { ui.closeScreen(); close(); }));
-    const hintEl = opts.hint ? h('p.dr-hint', opts.hint) : null;
-    const screen = h('div.bg-soft.dr-screen', ui.header(opts.title ?? 'Le dressing de Radia ♡', () => { if (opts.cta) ui.closeScreen(); close(); }), hintEl, bal, stage, panel, readyBtn);
+    const hintEl = opts.hint ? h('p.dr-evhint', opts.hint) : null;
+    // en mode événement, le gros bouton « Je suis prête » prend la place de la barre quand rien n'est en essayage (rien ne se superpose)
+    const screen = h(`div.bg-soft.dr-screen${opts.cta ? '.dr-event' : ''}`, ui.header(opts.title ?? 'Le dressing de Radia ♡', () => { if (opts.cta) ui.closeScreen(); close(); }), hintEl, bal, stage, panel);
     ui.showScreen(screen);
 
     // ---------------------------------------------------------- rendu
@@ -295,7 +303,8 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
     function renderBar() {
       bar.textContent = '';
       if (!preview) {
-        bar.append(h('p.dr-hint', 'Touche un vêtement pour l’essayer sur Radia ♡'));
+        if (readyBtn) bar.append(readyBtn);
+        else bar.append(h('p.dr-hint', 'Touche un vêtement pour l’essayer sur Radia ♡'));
         return;
       }
       const id = preview;

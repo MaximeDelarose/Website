@@ -19,6 +19,8 @@ export interface ClothDef {
   diamonds?: number;
   /** Possédé dès le départ. */
   starter?: boolean;
+  /** Toujours possédé (gratuit) : options de visage à changer librement. */
+  free?: boolean;
   /** Cadeau : jamais en vente ; n'apparaît dans le dressing qu'une fois reçu. */
   gift?: boolean;
 }
@@ -118,6 +120,29 @@ export const CLOTHES: Record<ClothId, ClothDef> = {
   'dr-pajama-pink': C('dr-pajama-pink', 'Pyjama rose à pois', ['casual', 'romantic'], 90, {}),
   'dr-pajama-stars': C('dr-pajama-stars', 'Pyjama étoilé', ['casual', 'romantic'], 100, {}),
   'dr-nightgown-silk': C('dr-nightgown-silk', 'Nuisette en soie', ['romantic', 'chic'], 160, { fabric: 3 }),
+  'ey-brown': C('ey-brown', 'Yeux marron (naturels)', ['romantic', 'casual'], 0, { free: true }),
+  'ey-hazel': C('ey-hazel', 'Yeux noisette', ['romantic', 'casual'], 0, { free: true }),
+  'ey-honey': C('ey-honey', 'Yeux miel', ['romantic', 'casual'], 0, { free: true }),
+  'ey-green': C('ey-green', 'Yeux verts', ['romantic', 'casual'], 0, { free: true }),
+  'ey-blue': C('ey-blue', 'Yeux bleu-gris', ['romantic', 'casual'], 0, { free: true }),
+  'ey-violet': C('ey-violet', 'Yeux violets', ['romantic', 'casual'], 0, { free: true }),
+  'ey-black': C('ey-black', 'Yeux noirs', ['romantic', 'casual'], 0, { free: true }),
+  'mo-full': C('mo-full', 'Lèvres pulpeuses', ['romantic', 'casual'], 0, { free: true }),
+  'mo-thin': C('mo-thin', 'Lèvres fines', ['romantic', 'casual'], 0, { free: true }),
+  'mo-cupid': C('mo-cupid', 'Arc de Cupidon', ['romantic', 'casual'], 0, { free: true }),
+  'mo-wide': C('mo-wide', 'Grand sourire', ['romantic', 'casual'], 0, { free: true }),
+  'mo-closed': C('mo-closed', 'Sourire fermé', ['romantic', 'casual'], 0, { free: true }),
+  'el-wing': C('el-wing', 'Trait ailé (naturel)', ['romantic', 'casual'], 0, { free: true }),
+  'el-soft': C('el-soft', 'Trait doux', ['romantic', 'casual'], 0, { free: true }),
+  'el-none': C('el-none', 'Sans eye-liner', ['romantic', 'casual'], 0, { free: true }),
+  'el-bold': C('el-bold', 'Trait appuyé', ['romantic', 'casual'], 0, { free: true }),
+  'es-rose': C('es-rose', 'Fard rose', ['romantic', 'stage'], 40),
+  'es-lavender': C('es-lavender', 'Fard lavande', ['romantic', 'stage'], 40),
+  'es-gold': C('es-gold', 'Fard doré', ['romantic', 'stage'], 40),
+  'es-bronze': C('es-bronze', 'Fard bronze', ['romantic', 'stage'], 40),
+  'es-smoky': C('es-smoky', 'Fard smoky', ['romantic', 'stage'], 40),
+  'es-green': C('es-green', 'Fard vert tendre', ['romantic', 'stage'], 40),
+  'es-blue': C('es-blue', 'Fard bleu ciel', ['romantic', 'stage'], 40),
   // cadeau d'Auguste : ni achetable ni vendu, il se reçoit pendant « Une soirée avec A ♡ »
   'br-promise': C('br-promise', 'La promesse d’Auguste ♡', ['romantic', 'royal'], 0, { gift: true }),
   'jk-blazer-cream': C('jk-blazer-cream', 'Blazer crème', ['chic'], 240, { fabric: 3 }),
