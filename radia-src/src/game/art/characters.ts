@@ -1643,3 +1643,10 @@ export function crownCanvas(size = 96): HTMLCanvasElement {
 }
 
 export { starPath };
+
+/** Briques de dessin de Radia réutilisées par l'avatar en couches (src/game/art/world/avatar.ts). */
+export const radiaParts = {
+  radiaFace, radiaHairBack, radiaHairFront, hairGrad, wavyLock, lockShape, lockDetail, smoothPath, curveThrough,
+  stroke, fillGrad, hand, sneaker, crown,
+  INK, GOLD, SKIN_R, SKIN_R_SHADOW, SKIN_R_LIGHT, HEAD_X, HEAD_Y, HEAD_K, R_HAIR_BOTTOM_FULL, CROWN,
+};

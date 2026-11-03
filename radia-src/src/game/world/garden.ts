@@ -13,6 +13,9 @@ import {
 export type Stage = 0 | 1 | 2 | 3;
 export const STOCK_CAP = 999;
 
+import { FUSION_CHAIN } from '../../data/world/garden';
+/** Ordre d'affichage / de fusion (de la plus simple à la plus rare). */
+export const FUSION_ORDER = FUSION_CHAIN;
 export const isFlower = (id: string): id is FlowerId => (FLOWER_IDS as readonly string[]).includes(id);
 const garden = (w: World) => w.garden;
 const totalKey = (id: string) => `garden.total.${id}`;

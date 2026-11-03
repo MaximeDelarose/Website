@@ -1,0 +1,70 @@
+/* ===================================================== Le chat de Radia */
+.cat-screen { background: radial-gradient(130% 80% at 50% 0%, #ffe4ee 0%, var(--rose) 45%, var(--lavande) 100%); }
+.cat-script { font-family: var(--font-script); font-size: 30px; color: var(--rose-deep); line-height: 1.1; }
+.cat-name { text-align: center; margin: -4px 0 4px; min-height: 36px; }
+.cat-body { display: flex; flex-direction: column; gap: 10px; }
+.cat-stage {
+  position: relative; width: 100%; aspect-ratio: 1 / 0.82; border-radius: 26px; overflow: hidden; flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(88, 67, 63, 0.18), 0 10px 24px rgba(81, 68, 109, 0.3); touch-action: none; background: #ffe4ee;
+}
+.cat-cv { width: 100%; height: 100%; display: block; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.cat-fx { position: absolute; pointer-events: none; font-weight: 700; font-size: 26px; transform: translate(-50%, 0); animation: catFloat 1.4s ease-out forwards; text-shadow: 0 2px 0 rgba(255, 255, 255, 0.8); }
+.cat-fx.heart { color: var(--rose-vif); }
+.cat-fx.spark { color: var(--or-deep); font-size: 22px; }
+.cat-fx.coin, .cat-fx.hearts, .cat-fx.treat { font-size: 17px; color: var(--nuit); background: rgba(255, 255, 255, 0.9); border-radius: 99px; padding: 2px 10px; box-shadow: 0 2px 6px rgba(81, 68, 109, 0.25); }
+.cat-fx.hearts { color: var(--rose-deep); }
+@keyframes catFloat { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.5); } 18% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 100% { opacity: 0; transform: translate(-50%, -70px) scale(1); } }
+.cat-bond { padding: 0 4px; }
+.cat-bond-top { display: flex; justify-content: space-between; font-size: 14px; color: var(--nuit); margin-bottom: 4px; }
+.cat-bar { height: 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.7); box-shadow: inset 0 2px 3px rgba(81, 68, 109, 0.2); overflow: hidden; }
+.cat-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--rose-vif), var(--or)); transition: width 0.5s var(--ease-out); }
+.cat-chips { justify-content: center; gap: 8px; flex-wrap: wrap; }
+.cat-treats svg, .cat-treats .cat-ico svg { width: 18px; height: 18px; }
+.cat-treats small { opacity: 0.7; font-weight: 500; }
+.cat-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 8px; }
+.cat-act {
+  width: 76px; min-height: 76px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: linear-gradient(180deg, #fffaf4, var(--creme)); color: var(--choco); font: inherit; border: 0;
+  box-shadow: 0 4px 0 #e3c7b0, 0 8px 14px rgba(81, 68, 109, 0.2), inset 0 2px 0 #fff; transition: transform 0.12s var(--ease-pop);
+}
+.cat-act small { font-size: 11.5px; font-weight: 600; color: var(--nuit); }
+.cat-act:active { transform: translateY(3px) scale(0.95); box-shadow: 0 1px 0 #e3c7b0; }
+.cat-act .cat-ico { color: var(--rose-deep); display: inline-flex; }
+.cat-act.empty { opacity: 0.6; }
+.cat-act.nope { animation: catNope 0.35s; }
+@keyframes catNope { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.cat-tools { justify-content: center; gap: 12px; margin-top: 4px; }
+/* adoption */
+.cat-adopt { display: flex; align-items: center; justify-content: center; }
+.cat-adopt-card { width: 100%; max-width: 380px; text-align: center; padding: 14px 8px; }
+.cat-adopt-card h3 { margin: 6px 0 2px; font-size: 24px; color: var(--nuit); }
+.cat-adopt-stage { width: 70%; aspect-ratio: 1 / 0.95; margin: 6px auto; border-radius: 28px; background: radial-gradient(circle at 50% 70%, #fff7fb 0%, rgba(255, 255, 255, 0.35) 70%); box-shadow: 0 0 0 3px rgba(88, 67, 63, 0.14); overflow: hidden; }
+.cat-adopt-cv { width: 100%; height: 100%; display: block; }
+.cat-sub { margin: 2px 0 10px; font-size: 15px; color: var(--choco-soft); }
+.cat-form { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.cat-input {
+  width: 100%; box-sizing: border-box; height: 54px; border-radius: 18px; border: 3px solid rgba(88, 67, 63, 0.25); padding: 0 16px;
+  font: 600 20px/1 var(--font); color: var(--nuit); text-align: center; background: #fff; outline: none; -webkit-appearance: none; appearance: none; user-select: text; -webkit-user-select: text;
+}
+.cat-input:focus { border-color: var(--rose-vif); box-shadow: 0 0 0 4px rgba(255, 117, 168, 0.25); }
+.cat-input.shake { animation: catNope 0.35s; }
+.cat-msg { min-height: 20px; font-size: 14px; color: #c4407a; }
+.cat-cancel { align-self: center; }
+/* surcouches */
+.cat-layer { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(59, 49, 82, 0.5); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); animation: fadeIn 0.2s ease; }
+.cat-layer.out { opacity: 0; transition: opacity 0.2s; }
+.cat-layer.sheet { align-items: flex-end; padding: 0; }
+.cat-modal { width: 100%; max-width: 360px; text-align: center; animation: popIn 0.35s var(--ease-pop); }
+.cat-sheet { width: 100%; max-height: 82%; overflow-y: auto; touch-action: pan-y; padding: 8px 16px calc(var(--sab) + 14px); border-radius: 28px 28px 0 0; background: linear-gradient(180deg, #fff7fb, var(--creme)); animation: catSheet 0.4s var(--ease-out); display: flex; flex-direction: column; gap: 10px; }
+@keyframes catSheet { from { transform: translateY(100%); } to { transform: none; } }
+.cat-grab { width: 44px; height: 5px; border-radius: 9px; background: rgba(88, 67, 63, 0.18); margin: 2px auto 2px; }
+.cat-sheet-head { display: flex; justify-content: space-between; align-items: center; }
+.cat-sheet-head h2 { margin: 0; font-size: 22px; }
+.cat-shop-list { display: flex; flex-direction: column; gap: 8px; }
+.cat-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 18px; background: #fff; box-shadow: 0 2px 0 rgba(88, 67, 63, 0.12); }
+.cat-item img { width: 58px; height: 58px; flex-shrink: 0; }
+.cat-item-t { flex: 1; display: flex; flex-direction: column; text-align: left; min-width: 0; }
+.cat-item-t small { color: var(--choco-soft); font-size: 12.5px; line-height: 1.25; }
+.cat-item .btn { min-width: 92px; }
+.cat-owned { font-size: 13px; color: var(--leaf-deep, #4e9a62); font-weight: 600; }
+@media (max-height: 700px) { .cat-act { width: 70px; min-height: 66px; } }

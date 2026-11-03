@@ -103,3 +103,9 @@ export const MOTHER_SCENE_LINES: { text: string }[] = [
   { text: 'Tu sais ce que j\'admire aussi chez toi ? C\'est tout l\'amour et l\'énergie que tu donnes chaque jour à ta famille.' },
   { text: 'Moi, je t\'ai construit un château… Mais toi, tu as déjà construit quelque chose de bien plus précieux : une famille.' },
 ];
+
+/** Noms des meubles pouvant être gagnés à « Harmonie ». */
+export const FURNITURE_LABEL: Partial<Record<FurnitureId, string>> = {
+  'rug-round': 'Tapis rond', 'lamp-table': 'Lampe de chevet', 'plant-pot': 'Plante en pot', painting: 'Tableau',
+  'flower-vase': 'Vase de fleurs', candles: 'Bougies', 'plush-toys': 'Peluches', easel: 'Chevalet',
+};
