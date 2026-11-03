@@ -2446,7 +2446,30 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .at-tabs button.on { border-color: #8a5cc7; background: #ece4ff; color: #241a44; }
 .at-tabs img { border-radius: 5px; }
 .at-card-inv { width: min(900px, 100%); text-align: left; }
-.at-inv { display: grid; grid-template-columns: 250px 1fr; gap: 14px; }
+.at-inv { display: grid; grid-template-columns: 270px 1fr; gap: 14px; }
+.at-inv-h h2 small { font-size: .78rem; font-weight: 700; color: var(--atcyan); margin-left: 6px; }
+.at-inv-tabs { margin-bottom: 10px; }
+.at-doll2 { display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; align-items: center; justify-items: center; padding: 8px; border-radius: 14px; background: radial-gradient(ellipse at 50% 70%, rgba(95, 224, 255, .14), transparent 70%); }
+.at-doll2 > img { border-radius: 14px; width: 120px; height: 120px; }
+.at-doll-col { display: grid; gap: 6px; }
+.at-doll-col .at-slot { width: 44px; height: 44px; aspect-ratio: auto; border-width: 2px; }
+.at-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 0; }
+.at-chips span { display: grid; place-items: center; min-width: 46px; padding: 3px 6px; border-radius: 9px; background: rgba(18, 24, 50, .8); border: 1px solid #3b4a80; font-size: .6rem; color: #b7c2ea; line-height: 1.1; flex: 1; }
+.at-chips b { font-size: .92rem; color: #f6f3ff; }
+.at-pts-btn { display: block; width: 100%; border: 0; font: inherit; cursor: pointer; text-align: center; }
+.at-stats.at-main2 { grid-template-columns: 1fr; gap: 6px; margin-top: 8px; }
+.at-stats.at-main2 li { padding: 8px 10px; border-radius: 10px; background: #243058; border-bottom: 0; font-size: .9rem; }
+.at-stats.at-main2 li span { display: grid; }
+.at-stats.at-main2 li span small { font-size: .68rem; color: #b7c2ea; font-weight: 600; }
+.at-stats.at-main2 li b { font-size: 1.1rem; min-width: 2.6em; }
+.at-stats.at-main2 .at-plus { font-size: .8rem; padding: 2px 8px; }
+.at-bag-h { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: .82rem; }
+.at-bag-h b { font-size: 1rem; }
+.at-bag-h span { color: #b7c2ea; margin-right: auto; }
+.at-bag-h .text-link { font: inherit; font-size: .78rem; background: none; border: 0; padding: 0; cursor: pointer; color: var(--atcyan, #5fe0ff); text-decoration: underline; }
+.at-it.compact { padding: 8px 10px; }
+.at-it.compact ul { margin-top: 5px; font-size: .8rem; }
+.at-it.compact .at-it-a { margin-top: 6px; }
 .at-doll { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
 .at-doll img { border-radius: 12px; width: 110px; height: 110px; }
 .at-doll b { display: block; }
@@ -2455,13 +2478,14 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .at-slot, .at-bagc { position: relative; aspect-ratio: 1; display: grid; place-items: center; padding: 0; border: 3px solid #d9cff2; border-radius: 10px; background: #2a2150; cursor: pointer; line-height: 0; }
 .at-slot[style], .at-bagc[style] { border-color: var(--rc); }
 .at-slot.on, .at-bagc.on { box-shadow: 0 0 0 3px #241a44, 0 0 0 5px var(--rc); }
-.at-slot img, .at-bagc img { width: 80%; height: 80%; border-radius: 6px; }
+.at-slot img, .at-bagc img { width: 78%; height: 78%; border-radius: 5px; }
 .at-slot-e { font-size: .68rem; line-height: 1.1; color: #9a90c0; font-weight: 800; }
 .at-bagc.at-bage { cursor: default; background: rgba(42, 33, 80, .25); border-style: dashed; }
 .at-bagc b { position: absolute; left: -4px; top: -6px; font-size: .55rem; line-height: 1.4; padding: 0 4px; border-radius: 5px; background: #ff5a6a; color: #fff; }
 .at-bagc i { position: absolute; right: 1px; bottom: 1px; font-style: normal; font-size: .7rem; line-height: 1.2; color: #5dff9a; text-shadow: 0 1px 0 #000; }
 .at-bagc u { position: absolute; left: 1px; bottom: 1px; font-size: .6rem; line-height: 1; text-decoration: none; }
-.at-bag { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; }
+.at-bag { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-bottom: 8px; }
+.at-bag .at-bagc { border-width: 2px; border-radius: 8px; max-width: 46px; }
 .at-bag-n { font-size: .8rem; margin: 6px 0; }
 .at-bag-n .text-link { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: #8a5cc7; text-decoration: underline; }
 .at-stats { list-style: none; padding: 0; margin: 10px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: .82rem; }
@@ -2581,8 +2605,16 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
   .at-card-loot, .at-card-inv { padding: 12px 10px; }
   .at-loot-grid { grid-template-columns: 1fr; }
   .at-bag { grid-template-columns: repeat(6, 1fr); }
+  .at-bag .at-bagc { max-width: none; }
   .at-slots { grid-template-columns: repeat(6, 1fr); }
   .at-stats { grid-template-columns: 1fr 1fr 1fr; font-size: .76rem; }
+  .at-doll2 > img { width: 96px; height: 96px; }
+  .at-chips { gap: 3px; }
+  .at-chips span { min-width: 0; flex: 1 1 18%; padding: 3px 2px; font-size: .56rem; white-space: nowrap; }
+  .at-chips b { font-size: .8rem; }
+  .at-bag { grid-template-columns: repeat(8, 1fr); gap: 3px; }
+  .at-bag .at-bagc { border-radius: 6px; }
+  .at-bagc b { font-size: .5rem; padding: 0 3px; }
   .at-doll { margin-bottom: 4px; }
   .at-tip { max-width: 240px; font-size: .74rem; }
   .at-heroes { grid-template-columns: 1fr; gap: 6px; }

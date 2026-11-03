@@ -13,7 +13,7 @@
   var stage = document.querySelector("[data-arcane]");
   if (!A || !ART || !stage) return;
 
-  var VERSION = "2.1.0";
+  var VERSION = "2.2.0";
   var TW = 96, TH = 48, HW = TW / 2, HH = TH / 2;
   var TAU = Math.PI * 2;
   var canvas = stage.querySelector("canvas");
@@ -71,7 +71,7 @@
   var hover = null;             // case survolée { x, y }
   var hoverObj = null;          // unité / groupe / PNJ survolé
   var panel = null;             // inv | quests | shop | help | pause | loot
-  var panelPi = 0, invSel = null, shopReveal = null;
+  var panelPi = 0, invSel = null, shopReveal = null, invTabSel = "equip";
   var pendingNpc = null;
   var lastRev = -1, hudDirty = true;
   var clock = 0;
@@ -1027,8 +1027,8 @@
         cmp = '<p class="at-it-cmp">vs équipé : ' + (d || "<span>identique</span>") + "</p>";
       } else if (!cur) cmp = '<p class="at-it-cmp"><span class="up">Emplacement vide</span></p>';
     }
-    return '<div class="at-it r' + it.r + '" style="--rc:' + R.col + '">' +
-      '<div class="at-it-h"><img src="' + ART.itemIcon(it.slot, R.col, 40) + '" alt="" width="40" height="40"><div><b>' + esc(it.name) + "</b><small>" + R.name + " · " + A.SLOT_NAME[it.slot] + " · niv. " + it.lvl + "</small></div></div>" +
+    return '<div class="at-it r' + it.r + (opt.compact ? " compact" : "") + '" style="--rc:' + R.col + '">' +
+      '<div class="at-it-h"><img src="' + ART.itemIcon(it.slot, R.col, 32) + '" alt="" width="32" height="32"><div><b>' + esc(it.name) + "</b><small>" + R.name + " · " + A.SLOT_NAME[it.slot] + " · niv. " + it.lvl + "</small></div></div>" +
       "<ul>" + stats + "</ul>" + pw + cmp + (opt.actions || "") + "</div>";
   }
   function better(pl, it) { var cur = pl.profile.equip[it.slot]; return !cur || A.itemScore(it) > A.itemScore(cur); }
@@ -1077,38 +1077,51 @@
     panel = "inv";
     var pr = pl.profile, st = A.heroStats(pr), fighting = w.combat && w.combat.phase === "fight" && w.mode === "combat";
     var tabs = locals.length > 1 ? '<div class="at-tabs">' + locals.map(function (i) { return w.players[i] ? '<button type="button" class="' + (i === panelPi ? "on" : "") + '" data-invpi="' + i + '"><img src="' + ART.heroIcon(w.players[i].profile.cls, 24) + '" alt="" width="24" height="24"> ' + esc(w.players[i].name) + "</button>" : ""; }).join("") + "</div>" : "";
-    var slots = A.SLOTS.map(function (sl) {
+    var slotBtn = function (sl) {
       var it = pr.equip[sl];
-      return '<button type="button" class="at-slot' + (it ? " r" + it.r : "") + (invSel && it && invSel === it.uid ? " on" : "") + '" ' + (it ? 'data-isel="' + it.uid + '" style="--rc:' + A.RARITIES[it.r].col + '"' : "") + ">" +
-        (it ? '<img src="' + ART.itemIcon(sl, A.RARITIES[it.r].col, 40) + '" alt="" width="40" height="40">' : '<span class="at-slot-e">' + A.SLOT_NAME[sl] + "</span>") + "</button>";
-    }).join("");
+      return '<button type="button" class="at-slot' + (it ? " r" + it.r : "") + (invSel && it && invSel === it.uid ? " on" : "") + '" ' + (it ? 'data-isel="' + it.uid + '" style="--rc:' + A.RARITIES[it.r].col + '"' : "") + ' title="' + (it ? esc(it.name) : A.SLOT_NAME[sl]) + '">' +
+        (it ? '<img src="' + ART.itemIcon(sl, A.RARITIES[it.r].col, 32) + '" alt="" width="32" height="32">' : '<span class="at-slot-e">' + A.SLOT_NAME[sl] + "</span>") + "</button>";
+    };
+    // poupée : 3 emplacements de chaque côté du héros
+    var doll = '<div class="at-doll2"><div class="at-doll-col">' + ["coiffe", "amulette", "anneau"].map(slotBtn).join("") + '</div><img src="' + ART.heroIcon(pr.cls, 120, A.gearOf(pr), true) + '" alt="" width="120" height="120"><div class="at-doll-col">' + ["arme", "cape", "bottes"].map(slotBtn).join("") + "</div></div>";
     var bag = "";
     for (var i = 0; i < A.BAG_MAX; i++) {
       var it = pr.bag[i];
-      bag += it ? '<button type="button" class="at-bagc r' + it.r + (invSel === it.uid ? " on" : "") + '" data-isel="' + it.uid + '" style="--rc:' + A.RARITIES[it.r].col + '" title="' + esc(it.name) + '"><img src="' + ART.itemIcon(it.slot, A.RARITIES[it.r].col, 36) + '" alt="" width="36" height="36">' + (it.isNew ? "<b>new</b>" : "") + (better(pl, it) ? "<i>▲</i>" : "") + (it.lock ? "<u>🔒</u>" : "") + "</button>" : '<span class="at-bagc at-bage"></span>';
+      bag += it ? '<button type="button" class="at-bagc r' + it.r + (invSel === it.uid ? " on" : "") + '" data-isel="' + it.uid + '" style="--rc:' + A.RARITIES[it.r].col + '" title="' + esc(it.name) + '"><img src="' + ART.itemIcon(it.slot, A.RARITIES[it.r].col, 28) + '" alt="" width="28" height="28">' + (it.isNew ? "<b>new</b>" : "") + (better(pl, it) ? "<i>▲</i>" : "") + (it.lock ? "<u>🔒</u>" : "") + "</button>" : '<span class="at-bagc at-bage"></span>';
     }
     var selIt = invSel ? (pr.bag.filter(function (x) { return x.uid === invSel; })[0] || A.SLOTS.map(function (s) { return pr.equip[s]; }).filter(function (x) { return x && x.uid === invSel; })[0]) : null;
     var worn = selIt && pr.equip[selIt.slot] && pr.equip[selIt.slot].uid === selIt.uid;
-    var detail = selIt ? itemHtml(selIt, { pl: pl, cmp: !worn, actions: '<div class="at-it-a">' +
+    var detail = selIt ? itemHtml(selIt, { pl: pl, cmp: !worn, compact: true, actions: '<div class="at-it-a">' +
       (worn ? '<button class="btn btn-small btn-ghost" type="button" data-unequip="' + selIt.slot + '"' + (fighting ? " disabled" : "") + ">Retirer</button>" :
         '<button class="btn btn-small" type="button" data-equip="' + selIt.uid + '" data-pi="' + panelPi + '"' + (fighting ? " disabled" : "") + ">Équiper</button>" +
         '<button class="btn btn-small btn-ghost" type="button" data-sell="' + selIt.uid + '" data-pi="' + panelPi + '"' + (selIt.lock ? " disabled" : "") + ">Vendre " + selIt.value + " or</button>" +
         '<button class="btn btn-small btn-ghost" type="button" data-lock="' + selIt.uid + '">' + (selIt.lock ? "Déverrouiller" : "🔒") + "</button>") + "</div>" }) : '<p class="game-small">Choisis un objet pour voir ses caractéristiques. ▲ = mieux que ce que tu portes.</p>';
-    var sline = function (n, v) { return "<li><span>" + n + "</span><b>" + v + "</b></li>"; };
-    show('<div class="at-inv-h"><h2>Sac</h2><span class="at-gold">' + fmt(pr.gold) + ' or</span><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' + tabs +
-      '<div class="at-inv">' +
-      '<div class="at-inv-l"><div class="at-doll"><img src="' + ART.heroIcon(pr.cls, 110, A.gearOf(pr), true) + '" alt="" width="72" height="72"><div><b>' + esc(pl.name) + "</b><small>" + A.CLASSES[pr.cls].name + " · niv. " + pr.level + "</small></div></div>" +
-      '<div class="at-slots">' + slots + "</div>" +
-      '<ul class="at-stats">' + sline("PV", st.hp) + sline("PA", st.pa) + sline("PM", st.pm) + sline("Portée", "+" + st.po) + sline("Initiative", st.ini) + sline("Critique", st.crit + " %") + sline("Résistance", st.res + " %") + sline("Dommages", "+" + st.dom) + sline("Prospection", st.pros) + "</ul>" +
-      (pr.pts ? '<p class="at-pts">✦ <b>' + pr.pts + "</b> point" + (pr.pts > 1 ? "s" : "") + " à répartir</p>" : "") +
-      '<ul class="at-stats at-main">' + A.MAIN_STATS.map(function (k) {
+    var chip = function (n, v) { return "<span><b>" + v + "</b>" + n + "</span>"; };
+    var invTab = invTabSel || "equip";
+    var invTabs = '<div class="at-tabs at-inv-tabs">' + [["equip", "🎒 Équipement"], ["stats", "📊 Caractéristiques"]].map(function (t) { return '<button type="button" class="' + (invTab === t[0] ? "on" : "") + '" data-invtab="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
+    var head = '<div class="at-inv-h"><h2>' + esc(pl.name) + ' <small>' + A.CLASSES[pr.cls].name + " · niv. " + pr.level + '</small></h2><span class="at-gold">' + fmt(pr.gold) + ' or</span><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' + tabs + invTabs;
+    var chips = '<div class="at-chips">' + chip("PV", st.hp) + chip("PA", st.pa) + chip("PM", st.pm) + chip("PO", "+" + st.po) + chip("Ini", st.ini) + chip("Crit", st.crit + " %") + chip("Rés", st.res + " %") + chip("Dom", "+" + st.dom) + chip("Pros", st.pros) + "</div>";
+    if (invTab === "stats") {
+      show(head + chips + (pr.pts ? '<p class="at-pts">✦ <b>' + pr.pts + "</b> point" + (pr.pts > 1 ? "s" : "") + " à répartir (5 par niveau)</p>" : '<p class="game-small">Tu gagnes 5 points à répartir à chaque niveau.</p>') +
+        '<ul class="at-stats at-main at-main2">' + A.MAIN_STATS.map(function (k) {
+          var SS = A.STATS[k], main = SS.el === A.CLASSES[pr.cls].el;
+          return '<li class="' + (main ? "main" : "") + '"><span>' + SS.name + (SS.el ? ' <i style="color:' + A.ELEMENTS[SS.el].col + '">●</i>' : "") + "<small>" + esc(SS.desc) + "</small></span><b>" + st[k] + "</b>" +
+            (pr.pts ? '<button type="button" class="at-plus" data-stat="' + k + '" data-n="1">+1</button>' + (pr.pts >= 5 ? '<button type="button" class="at-plus" data-stat="' + k + '" data-n="5">+5</button>' : "") : "") + "</li>";
+        }).join("") + "</ul>" +
+        (st.powers.length ? '<h4 class="at-sh4">Pouvoirs</h4><p class="at-pows">' + st.powers.map(function (p) { return "<span>✦ " + esc(A.POWERS[p].name) + " · " + esc(A.POWERS[p].desc) + "</span>"; }).join("") + "</p>" : ""), "at-card-inv");
+      return;
+    }
+    show(head + '<div class="at-inv">' +
+      '<div class="at-inv-l">' + doll + chips +
+      (pr.pts ? '<button type="button" class="at-pts at-pts-btn" data-invtab="stats">✦ <b>' + pr.pts + "</b> point" + (pr.pts > 1 ? "s" : "") + " à répartir →</button>" : "") +
+      (false ? A.MAIN_STATS.map(function (k) {
         var SS = A.STATS[k], main = SS.el === A.CLASSES[pr.cls].el;
         return '<li class="' + (main ? "main" : "") + '" title="' + esc(SS.desc) + '"><span>' + SS.name + (SS.el ? ' <i style="color:' + A.ELEMENTS[SS.el].col + '">●</i>' : "") + "</span><b>" + st[k] + "</b>" +
           (pr.pts ? '<button type="button" class="at-plus" data-stat="' + k + '" data-n="1">+1</button>' + (pr.pts >= 5 ? '<button type="button" class="at-plus" data-stat="' + k + '" data-n="5">+5</button>' : "") : "") + "</li>";
-      }).join("") + "</ul>" +
-      (st.powers.length ? '<p class="at-pows">' + st.powers.map(function (p) { return "<span title=\"" + esc(A.POWERS[p].desc) + "\">✦ " + esc(A.POWERS[p].name) + "</span>"; }).join("") + "</p>" : "") +
+      }).join("") : "") +
       (pr.pet || pr.mount ? '<p class="at-pows">' + (pr.pet ? "<span>🐾 " + esc(A.PETS[pr.pet].name) + "</span>" : "") + (pr.mount ? '<button type="button" class="at-plus" data-act="ride"' + (fighting ? " disabled" : "") + ">" + (pr.riding ? "🐎 " + esc(A.MOUNTS[pr.mount].name) + " · descendre" : "🐎 remonter en selle") + "</button>" : "") + "</p>" : "") + "</div>" +
-      '<div class="at-inv-r"><div class="at-bag">' + bag + '</div><p class="at-bag-n">' + pr.bag.length + " / " + A.BAG_MAX + ' · <button class="text-link" type="button" data-junk="0">Vendre les communs</button> · <button class="text-link" type="button" data-junk="1">et les magiques</button></p>' +
+      '<div class="at-inv-r"><div class="at-bag-h"><b>Sac</b><span>' + pr.bag.length + " / " + A.BAG_MAX + '</span><button class="text-link" type="button" data-junk="0">Vendre les communs</button><button class="text-link" type="button" data-junk="1">+ magiques</button></div>' +
+      '<div class="at-bag">' + bag + '</div>' +
       '<div class="at-detail">' + detail + "</div></div></div>" + (fighting ? '<p class="game-small">On ne peut pas changer d\'équipement pendant un combat.</p>' : ""), "at-card-inv");
     if (pr.bag.some(function (x) { return x.isNew; })) setTimeout(function () { sendCmd({ t: "seen" }, panelPi); }, 1200);
   }
@@ -1263,7 +1276,7 @@
       "<li><b>Familiers et montures</b> (onglet Compagnons des hôtels de vente) : un familier suit ton héros et donne un bonus permanent ; une monture te porte, marche deux fois plus vite et donne de la Vitalité, parfois +1 PM. On descend de selle dans le sac.</li>" +
       "<li><b>Hôtels de vente</b> : un dans chaque zone (8 objets au niveau de la zone, coffres, et des <b>tenues</b> avec aura : royale, astrale, infernale, givre, ombre).</li>" +
       "<li><b>Zones</b> : Prairie des Runes → Bois Fractal → Marais Bulleux (au sud du Bois) → Falaises de Cristal → Îles Cotonneuses. Le bouton <b>?</b> de la barre de sorts explique chaque sort de ton héros.</li>" +
-      (TOUCH ? "<li><b>Tactile</b> : touche une case pour l'aperçu, touche-la encore pour confirmer. Glisse pour déplacer la vue, pince pour zoomer.</li>" : "") +
+      (TOUCH ? "<li><b>Tactile</b> : avec un sort choisi, toucher un ennemi (ou un allié à soigner) lance directement ; pour viser une case vide ou te déplacer, touche une fois pour l'aperçu, encore pour confirmer. Glisse pour déplacer la vue, pince pour zoomer.</li>" : "") +
       "<li><b>Raccourcis</b> : <kbd>1</kbd>–<kbd>5</kbd> sorts · <kbd>Espace</kbd> fin du tour · clic droit annule · <kbd>I</kbd> sac · <kbd>J</kbd> quêtes · <kbd>C</kbd> recentrer · molette zoom · glisser pour déplacer la vue.</li></ul>";
   }
   function showPause() {
@@ -1341,7 +1354,9 @@
     if (sel) {
       var ok = A.targets(w, u, sel.sid, sel.tg).some(function (q) { return q[0] === x && q[1] === y; });
       if (!ok) { sel = null; pendingTap = null; hudDirty = true; return; }
-      if (touchTap && !(pendingTap && pendingTap.x === x && pendingTap.y === y)) { pendingTap = { x: x, y: y }; hover = pendingTap; SFX.click(); hudDirty = true; return; }
+      // au doigt : poser le doigt sur une unité valide, c'est lancer ; on ne confirme que pour viser une case vide
+      var onUnit = !!A.unitAt(c, x, y);
+      if (touchTap && !onUnit && !(pendingTap && pendingTap.x === x && pendingTap.y === y)) { pendingTap = { x: x, y: y }; hover = pendingTap; SFX.click(); hudDirty = true; return; }
       pendingTap = null;
       sel.tg.push([x, y]);
       var S = A.SPELLS[sel.sid];
@@ -1481,7 +1496,7 @@
   stage.addEventListener("pointerup", function (e) { if (e.pointerType === "touch") { clearTimeout(tipTimer); tipTimer = setTimeout(hideTip, 1800); } });
   function act(a) {
     switch (a) {
-      case "inv": invSel = null; showInv(focusPi); break;
+      case "inv": invSel = null; invTabSel = "equip"; showInv(focusPi); break;
       case "quests": showQuests(); break;
       case "full": toggleFull(); break;
       case "center": cam.free = false; cam.zu = 1; SFX.click(); break;
@@ -1520,6 +1535,7 @@
     if (b.dataset.junk != null) { sendCmd({ t: "junk", r: +b.dataset.junk }, panel === "inv" ? panelPi : focusPi); refreshPanelSoon(); return; }
     if (b.dataset.isel) { invSel = +b.dataset.isel; SFX.click(); showInv(); return; }
     if (b.dataset.invpi != null) { invSel = null; showInv(+b.dataset.invpi); return; }
+    if (b.dataset.invtab) { invTabSel = b.dataset.invtab; SFX.click(); showInv(); return; }
     if (b.dataset.menu) { menuAct(b.dataset.menu, b); return; }
     if (b.dataset.pick) { if (menuStep === "duo2") menuSel2 = b.dataset.pick; else menuSel = b.dataset.pick; SFX.click(); menuT = 0; showMenu(); return; }
     if (b.dataset.act) act(b.dataset.act);
@@ -1898,6 +1914,7 @@
   window.AT_DEBUG = {
     version: VERSION,
     world: function () { return w; },
+    sel: function () { return { sel: sel, pending: pendingTap, hover: hover, hoverObj: hoverObj, touchTap: touchTap }; },
     dungeon: function (id) { A.startDungeon(w, id || "incarnam"); },
     pts: function (n) { w.players[0].profile.pts += n || 20; w.players[0].profile.rev++; w.rev++; },
     screenOf: function (x, y) { var p = iso(x, y), q = toScreen(p.x, p.y), r = canvas.getBoundingClientRect(); return { x: q.x + r.left, y: q.y + r.top }; },
