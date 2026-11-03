@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Grimpe-Chêne · AkarisuMD</title>
+  <meta name="description" content="Grimpe-Chêne : un jeu de grimpe à la Jump King. Maintiens pour armer ton saut, choisis la direction, relâche : pas de contrôle en l'air, et une chute peut coûter cher. Atteins le gland doré tout en haut.">
+  <meta property="og:title" content="Grimpe-Chêne · AkarisuMD">
+  <meta property="og:description" content="Grimpe-Chêne : un jeu de grimpe à la Jump King. Maintiens pour armer ton saut, choisis la direction, relâche : pas de contrôle en l'air, et une chute peut coûter cher. Atteins le gland doré tout en haut.">
+  <meta name="theme-color" content="#3f6b3a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Grimpe-Chêne">
+  <link rel="apple-touch-icon" href="assets/squirrel.png">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261104mb2">
+  <link rel="stylesheet" href="css/grimpe.css?v=20261111gr1">
+</head>
+<body data-page="grimpe">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="versus.html" data-page="versus">Versus</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="section game-section">
+    <div class="wrap">
+      <div class="game-head">
+        <div>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · solo</span>
+          <h1>Grimpe-Chêne</h1>
+        </div>
+        <div class="gr-head-btns">
+          <button class="btn btn-ghost btn-small" type="button" data-gr-sound aria-pressed="true">🔊 Son</button>
+          <button class="btn btn-ghost btn-small" type="button" data-gr-pause>⏸ Pause</button>
+        </div>
+      </div>
+
+      <div class="gr" data-gr>
+        <div class="gr-stage">
+          <canvas class="gr-canvas" data-gr-canvas width="320" height="240" aria-label="Le grand chêne à escalader"></canvas>
+          <div class="game-overlay gr-overlay" data-gr-overlay>
+            <div class="panel game-card" data-gr-card><p>Chargement du jeu…</p></div>
+          </div>
+        </div>
+        <aside class="panel gr-side" aria-label="Partie">
+          <dl class="gr-stats">
+            <div class="gr-wide"><dt>Hauteur</dt><dd data-gr-height>0 m</dd></div>
+            <div><dt>Record</dt><dd data-gr-best>0 m</dd></div>
+            <div><dt>Écran</dt><dd data-gr-screen>1 / 11</dd></div>
+            <div><dt>Sauts</dt><dd data-gr-jumps>0</dd></div>
+            <div><dt>Chutes</dt><dd data-gr-falls>0</dd></div>
+            <div class="gr-wide"><dt>Temps</dt><dd data-gr-time>0:00</dd></div>
+          </dl>
+          <p class="gr-msg" data-gr-msg aria-live="polite"></p>
+          <div class="gr-pad" aria-label="Commandes tactiles">
+            <button type="button" class="btn gr-btn" data-gr-btn="left">◀</button>
+            <button type="button" class="btn gr-btn gr-btn-jump" data-gr-btn="jump">Saut</button>
+            <button type="button" class="btn gr-btn" data-gr-btn="right">▶</button>
+          </div>
+        </aside>
+      </div>
+
+      <div class="game-info">
+        <div class="panel game-help">
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li><strong>Sauter</strong> : maintiens <kbd>Espace</kbd> (ou <kbd>↑</kbd> / <kbd>Z</kbd>) pour armer, puis relâche. Plus tu tiens, plus tu sautes haut (la jauge au-dessus de l'écureuil se remplit, et le saut part tout seul au maximum).</li>
+            <li><strong>Direction</strong> : <kbd>←</kbd> / <kbd>→</kbd> (ou <kbd>Q</kbd> / <kbd>D</kbd>) au moment du saut. Sans direction, tu sautes droit. Hors saut, tu marches doucement.</li>
+            <li><strong>Pas de contrôle en l'air.</strong> Une fois parti, tu ne peux plus rien changer : les murs te font rebondir, les plafonds te cognent la tête.</li>
+            <li><strong>Attention aux chutes</strong> : tomber de très haut t'écrase (un instant d'étourdissement), et tu peux perdre beaucoup de hauteur.</li>
+            <li><strong>Glace</strong> : l’écureuil glisse et ne s'arrête pas tout de suite. <strong>Nuages</strong> : on les traverse par le dessous. <strong>Vent</strong> dans les derniers écrans.</li>
+            <li>L'écran change quand tu passes d'un étage à l'autre. Ta position est gardée si tu fermes la page. Atteins le <strong>gland doré</strong> tout en haut !</li>
+            <li>Au doigt : maintiens « Saut » et appuie sur ◀ ou ▶ au moment de relâcher.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261103re4"></script>
+  <script src="js/auth.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261110uch3"></script>
+  <script src="js/grimpe-core.js?v=20261111gr1"></script>
+  <script src="js/grimpe-data.js?v=20261111gr1"></script>
+  <script src="js/grimpe.js?v=20261111gr1"></script>
+</body>
+</html>
