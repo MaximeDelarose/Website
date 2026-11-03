@@ -2330,6 +2330,17 @@ button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--de
 .at-sp kbd { position: absolute; left: 2px; top: 2px; min-width: 0; padding: 0 3px; font-size: .6rem; line-height: 1.3; background: rgba(0, 0, 0, .55); border: 0; box-shadow: none; color: #fff; border-radius: 4px; }
 .at-sp em { position: absolute; right: 2px; bottom: 2px; font-style: normal; font-size: .72rem; line-height: 1.3; padding: 0 4px; border-radius: 6px; background: #2c5bc7; color: #fff; }
 .at-sp > b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.3rem; background: rgba(0, 0, 0, .45); color: #fff; }
+.at-sp-help { display: grid; place-items: center; font: 900 1.3rem/1 Nunito, sans-serif; color: #c9b2ff; background: #2a2150; border-color: #43387a; }
+.at-sp-help:hover { color: #fff; }
+.at-slist { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }
+.at-sl { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 12px; background: #ece4ff; }
+:root[data-theme="dark"] .at-sl { background: #2a2150; }
+.at-sl img { border-radius: 9px; flex: none; }
+.at-sl b { display: block; }
+.at-sl b em { font-style: normal; font-size: .72rem; padding: 0 6px; border-radius: 6px; background: #ff9a3c; color: #2b1d08; }
+.at-sl p { margin: 3px 0 0; font-size: .82rem; }
+.at-sl .at-tip-m span { background: rgba(0, 0, 0, .08); }
+.at-sl.lock { opacity: .55; }
 .at-end, .at-ready { background: #ffd257; --b: #ffd257; --bd: #b8861a; color: #2b1d08; white-space: nowrap; }
 .at-end small, .at-ready small, .at-go small { font-size: .65rem; opacity: .7; margin-left: 4px; }
 .at-wait { font-size: .85rem; color: #c9c0e8; min-width: 120px; text-align: center; }
@@ -2540,8 +2551,14 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
   .at-tl { padding: 4px 6px; }
   .at-round { display: none; }
   .at-toasts { top: 120px; }
-  .at-btns { gap: 4px; }
-  .at-hbtn { width: 36px; height: 36px; }
+  .at-btns { gap: 3px; }
+  .at-hbtn { width: 34px; height: 34px; font-size: .9rem; border-radius: 9px; }
+  .at-pf img { width: 36px; height: 36px; }
+  .at-pf-b { width: 76px; }
+  .at-pf-n { font-size: .78rem; }
+  .at-pf-hp { height: 13px; }
+  .at-pf-hp b { font-size: .66rem; line-height: 13px; }
+  .at-top { bottom: 196px; }
   .at-pf { padding: 4px 8px 4px 4px; }
   .at-card-loot, .at-card-inv { padding: 12px 10px; }
   .at-loot-grid { grid-template-columns: 1fr; }
@@ -2558,9 +2575,13 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
   .at-zone { padding: 4px 10px; }
   .at-zone b { font-size: .85rem; }
   .at-hero-d { display: none; }
-  .at-sp { width: 44px; height: 44px; }
-  .at-papm span { width: 40px; height: 40px; }
-  .at-papm b { font-size: 1.1rem; }
+  .at-sp { width: 50px; height: 50px; border-width: 2px; }
+  .at-sp em { font-size: .78rem; }
+  .at-spells { gap: 5px; }
+  .at-papm span { width: 46px; height: 46px; }
+  .at-papm b { font-size: 1.2rem; }
+  .at-end, .at-ready { font-size: 1.05rem; padding: 12px; }
+  .at-bar.fight { gap: 8px 6px; }
   .at-tl-u img { width: 30px; height: 30px; }
   .at-pf img { width: 34px; height: 34px; }
   .at-party { gap: 4px; }

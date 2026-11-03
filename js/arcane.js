@@ -13,7 +13,7 @@
   var stage = document.querySelector("[data-arcane]");
   if (!A || !ART || !stage) return;
 
-  var VERSION = "1.3.0";
+  var VERSION = "1.4.0";
   var TW = 96, TH = 48, HW = TW / 2, HH = TH / 2;
   var TAU = Math.PI * 2;
   var canvas = stage.querySelector("canvas");
@@ -167,6 +167,7 @@
     '<button class="at-hbtn" type="button" data-act="inv" title="Sac (I)">🎒<b data-newcount hidden></b></button>' +
     '<button class="at-hbtn" type="button" data-act="quests" title="Quêtes (J)">📜</button>' +
     '<button class="at-hbtn" type="button" data-act="mute" title="Son">🔊</button>' +
+    '<button class="at-hbtn" type="button" data-act="center" title="Recentrer (C)">◎</button>' +
     '<button class="at-hbtn" type="button" data-act="full" title="Plein écran">⛶</button>' +
     '<button class="at-hbtn" type="button" data-act="pause" title="Menu (Échap)">☰</button></div>' +
     '<div class="at-bar" data-bar></div>' +
@@ -186,13 +187,13 @@
     fitZoom(); cam.free = false;
   }
   function fitZoom() {
-    if (w && w.combat) cam.fit = portrait() ? clamp(W / 560, 0.6, 1) : clamp(Math.min(W / (13 * TW + 40), (H - 150) / (13 * TH + 140)), 0.35, 1.25);
+    if (w && w.combat) cam.fit = portrait() ? clamp(W / 520, 0.62, 1) : clamp(Math.min(W / (A.AW * TW + 40), (H - 150) / (A.AW * TH + 140)), 0.35, 1.3);
     else cam.fit = portrait() ? clamp(W / 600, 0.6, 1) : clamp(Math.min(W / 1100, H / 640), 0.5, 1.2);
   }
   function camTarget() {
     if (!w) return { x: 0, y: 0 };
     if (w.combat) {
-      if (!portrait() || w.combat.phase !== "fight") { var c = iso(6, 6); return { x: c.x, y: c.y - 30 + (portrait() ? -40 : 20) }; }
+      if (!portrait() || w.combat.phase !== "fight") { var c = iso((A.AW - 1) / 2, (A.AW - 1) / 2); return { x: c.x, y: c.y - 30 + (portrait() ? -40 : 20) }; }
       // en portrait, on suit l'unité qui joue (ou la case visée)
       var a = A.active(w.combat), fv = a ? vis["u" + a.id] : null;
       var gx = fv ? fv.gx : a ? a.x : 6, gy = fv ? fv.gy : a ? a.y : 6;
@@ -468,13 +469,14 @@
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     var theme = w && w.combat ? w.combat.arena.theme : w ? A.ZONES[w.zone].theme : "prairie";
     var bg = g.createLinearGradient(0, 0, 0, H);
-    var BG = { village: ["#7ec8e8", "#cfe9d6"], prairie: ["#86cbe9", "#d9f0cf"], bois: ["#20403a", "#4f7d5d"], falaises: ["#6f7fb5", "#c9d6ef"], donjon: ["#160f2a", "#3a2a5c"] }[theme] || ["#222", "#444"];
+    var BG = { village: ["#7ec8e8", "#cfe9d6"], prairie: ["#86cbe9", "#d9f0cf"], bois: ["#20403a", "#4f7d5d"], falaises: ["#6f7fb5", "#c9d6ef"], donjon: ["#160f2a", "#3a2a5c"],
+      marais: ["#1d3a3a", "#3f7a6a"], nuages: ["#ffd9ec", "#bfe4ff"], confiserie: ["#ff9fcb", "#fff1c2"], horloge: ["#0f1626", "#3b4a66"] }[theme] || ["#222", "#444"];
     bg.addColorStop(0, BG[0]); bg.addColorStop(1, BG[1]);
     g.fillStyle = bg; g.fillRect(0, 0, W, H);
     // brume d'ambiance
     for (var i = 0; i < 5; i++) {
       var bx = (i * 271 + clock * 6) % (W + 300) - 150, by = H * (0.15 + i * 0.17);
-      ART.glow(g, bx, by, 160, theme === "donjon" ? "rgba(160,90,255,.12)" : "rgba(255,255,255,.18)", 1);
+      ART.glow(g, bx, by, 160, theme === "donjon" ? "rgba(160,90,255,.12)" : theme === "horloge" ? "rgba(217,164,65,.10)" : theme === "marais" ? "rgba(95,211,192,.14)" : "rgba(255,255,255,.18)", 1);
     }
     if (!w) return;
     var sx = shakeT ? rnd(-shakeT, shakeT) * 0.5 : 0, sy = shakeT ? rnd(-shakeT, shakeT) * 0.5 : 0;
@@ -726,7 +728,7 @@
     var S = A.SPELLS[s.sid], st = S.steps[s.tg.length], c = w.combat, out = [];
     if (!st || st.shape === "self") return out;
     var o = st.from === "prev" && s.tg.length ? s.tg[s.tg.length - 1] : [u.x, u.y];
-    for (var x = 0; x < 13; x++) for (var y = 0; y < 13; y++) {
+    for (var x = 0; x < A.AW; x++) for (var y = 0; y < A.AW; y++) {
       if (!A.inArena(c, x, y)) continue;
       var dx = x - o[0], dy = y - o[1], adx = Math.abs(dx), ady = Math.abs(dy), d = adx + ady, mx = st.range[1] + (st.boost ? u.po : 0);
       var ok = st.shape === "line" ? (dx === 0 || dy === 0) && d >= st.range[0] && d <= mx :
@@ -926,7 +928,7 @@
       html += '<button type="button" class="at-sp' + (sel && sel.sid === sid ? " on" : "") + (why || !me ? " off" : "") + (S.ult ? " ult" : "") + (locked ? " lock" : "") + '" data-spell="' + sid + '">' +
         '<img src="' + ART.spellIcon(sid, 48) + '" alt="" width="48" height="48"><kbd>' + (i + 1) + "</kbd><em>" + A.spellCost(shown, sid) + "</em>" + (cd ? "<b>" + cd + "</b>" : "") + (locked ? "<b>🔒</b>" : "") + "</button>";
     });
-    html += "</div>";
+    html += '<button type="button" class="at-sp at-sp-help" data-act="spells" title="Mes sorts">?</button></div>';
     if (me) {
       var S2 = sel && A.SPELLS[sel.sid], need = S2 ? S2.minSteps || S2.steps.length : 0;
       if (S2 && S2.steps.length > 1 && sel.tg.length >= need) html += '<button class="btn btn-small at-go" type="button" data-act="confirm">Lancer <small>Entrée</small></button>';
@@ -1117,6 +1119,24 @@
       '<div class="btn-row center"><button class="btn btn-ghost btn-small" type="button" data-act="inv">🎒 Vendre depuis le sac</button><button class="btn btn-ghost btn-small" type="button" data-junk="0">Vendre tous les communs</button></div>', "at-card-shop");
   }
 
+  // fiche des sorts du héros (pratique sur téléphone, où il n'y a pas de survol)
+  function showSpells() {
+    var pl = myPlayer(); if (!pl) return;
+    panel = "help";
+    var u = w.combat ? w.combat.units.filter(function (x) { return x.side === 0 && x.pi === focusPi && !x.summon; })[0] : null;
+    var st = A.heroStats(pl.profile);
+    var rows = A.CLASSES[pl.profile.cls].spells.map(function (sid, i) {
+      var S = A.SPELLS[sid], step = S.steps[0];
+      var rng = step.shape === "self" ? "soi-même" : step.shape === "knight" ? "en L" : step.shape === "ray" ? "diagonales" : (step.range[0] === step.range[1] ? step.range[0] : step.range[0] + "–" + (step.range[1] + (step.boost ? st.po : 0))) + " case" + (step.range[1] > 1 ? "s" : "") + (step.shape === "line" ? (step.range[1] === 1 ? " : direction" : " en ligne") : step.shape === "diag" ? " en diagonale" : step.shape === "queen" ? " ligne / diagonale" : "");
+      return '<li class="at-sl' + (S.ult && pl.profile.level < A.ULT_LEVEL ? " lock" : "") + '"><img src="' + ART.spellIcon(sid, 44) + '" alt="" width="44" height="44"><div><b>' + (i + 1) + ". " + esc(S.name) + (S.ult ? " <em>ultime</em>" : "") + "</b>" +
+        '<p class="at-tip-m"><span>' + S.pa + " PA</span>" + (S.el ? '<span style="color:' + A.ELEMENTS[S.el].col + '">' + A.ELEMENTS[S.el].name + " +" + st.elem[S.el] + " %</span>" : "") + "<span>" + esc(rng) + "</span>" + (step.los ? "<span>ligne de vue</span>" : "") + (S.cd ? "<span>recharge " + S.cd + "</span>" : "") + (S.perTurn ? "<span>" + S.perTurn + "× / tour</span>" : "") + "</p>" +
+        "<p>" + esc(S.desc) + "</p>" + (u && A.canCast(w, u, sid) ? '<p class="at-tip-warn">' + esc(A.canCast(w, u, sid)) + "</p>" : "") + "</div></li>";
+    }).join("");
+    show('<div class="at-inv-h"><img src="' + ART.heroIcon(pl.profile.cls, 40, A.gearOf(pl.profile)) + '" alt="" width="40" height="40" style="border-radius:10px"><h2>' + esc(A.CLASSES[pl.profile.cls].name) + '</h2><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' +
+      '<p class="game-small" style="margin:0 0 8px">' + esc(A.CLASSES[pl.profile.cls].desc) + "</p>" +
+      '<ul class="at-slist">' + rows + "</ul>" +
+      '<div class="btn-row center"><button class="btn" type="button" data-act="close">' + (w.combat ? "Retour au combat" : "Fermer") + "</button></div>", "at-card-q");
+  }
   function showSource() {
     panel = "help";
     show('<div class="at-inv-h"><h2>Source de mana</h2><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' +
@@ -1133,7 +1153,8 @@
       "<li><b>Caractéristiques</b> : Vitalité (PV), Sagesse (XP), Force / Intelligence / Chance / Agilité (+1 % aux dégâts Terre / Feu / Eau / Air par point ; l'Intelligence soigne, l'Agilité donne du critique), Dommages (ajoutés à chaque coup), Prospection (butin), Initiative, Résistance. <b>5 points à répartir</b> à chaque niveau, dans le sac.</li>" +
       "<li><b>Objets visibles</b> : tout ce que tu équipes se voit sur ton héros (chapeau champignon, poisson-épée, ailes de dragon, pattes de canard…). La couleur suit la rareté. Les objets rares et plus peuvent donner <b>+1 Portée</b>.</li>" +
       "<li><b>Butin</b> : chaque monstre peut lâcher un objet aléatoire : 50 % commun, 12 % magique, 8 % rare, <b>20 % épique</b>, <b>10 % légendaire</b> (avec un pouvoir). Parfois <b>+1 PA</b>, <b>+1 PM</b> ou <b>+Portée</b>. Les élites (★) lâchent toujours quelque chose, le boss trois objets.</li>" +
-      "<li><b>Donjons</b> : Incarnam (niv. 2, portail au nord de la Prairie) puis le Sanctuaire brisé (niv. 7, Falaises). Trois salles d'affilée, les PV ne remontent qu'en partie entre deux.</li>" +
+      "<li><b>Donjons</b> : Incarnam (niv. 2, nord de la Prairie), la Confiserie de la Reine Guimauve (niv. 5, Marais Bulleux), le Sanctuaire brisé (niv. 7, Falaises) et la Tour des Horloges (niv. 10, Îles Cotonneuses). Trois salles d'affilée, les PV ne remontent qu'en partie entre deux.</li>" +
+      "<li><b>Zones</b> : Prairie des Runes → Bois Fractal → Marais Bulleux (au sud du Bois) → Falaises de Cristal → Îles Cotonneuses. Le bouton <b>?</b> de la barre de sorts explique chaque sort de ton héros.</li>" +
       (TOUCH ? "<li><b>Tactile</b> : touche une case pour l'aperçu, touche-la encore pour confirmer. Glisse pour déplacer la vue, pince pour zoomer.</li>" : "") +
       "<li><b>Raccourcis</b> : <kbd>1</kbd>–<kbd>5</kbd> sorts · <kbd>Espace</kbd> fin du tour · clic droit annule · <kbd>I</kbd> sac · <kbd>J</kbd> quêtes · <kbd>C</kbd> recentrer · molette zoom · glisser pour déplacer la vue.</li></ul>";
   }
@@ -1341,6 +1362,8 @@
       case "inv": invSel = null; showInv(focusPi); break;
       case "quests": showQuests(); break;
       case "full": toggleFull(); break;
+      case "center": cam.free = false; cam.zu = 1; SFX.click(); break;
+      case "spells": showSpells(); break;
       case "mute": SET.mute = !SET.mute; saveSet(); applyVolume(); $("[data-act=mute]", hud).textContent = SET.mute ? "🔇" : "🔊"; break;
       case "pause": showPause(); break;
       case "close": closePanel(); if (w && w.mode === "loot") showLoot(); break;
@@ -1405,6 +1428,7 @@
     if (k === "i" || k === "I") { act("inv"); return; }
     if (k === "j" || k === "J") { act("quests"); return; }
     if (k === "c" || k === "C") { cam.free = false; cam.zu = 1; return; }
+    if (k === "h" || k === "H" || k === "?") { showSpells(); return; }
     if (k === "Tab") { e.preventDefault(); if (duo) { focusPi = focusPi === locals[0] ? locals[1] : locals[0]; hudDirty = true; cam.free = false; } return; }
   });
   window.addEventListener("keyup", function (e) { keys[e.key.toLowerCase()] = false; });
