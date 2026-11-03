@@ -5,10 +5,11 @@ import type { BubbleEvent } from "../content/types";
 const CHANCE: Record<BubbleEvent, number> = {
   greet: 1, goodMove: 0.6, capturePawn: 0.35, captureMinor: 0.6, captureRook: 0.95, captureQueen: 1,
   check: 0.55, aiMistake: 0.4, exploit: 0.95, aiCapture: 0.35, aiCheck: 0.4, win: 1, loss: 1, draw: 1, lowTime: 0.6,
+  taunt: 0.5, idle: 1, aiGood: 0.7,
 };
 /** Ces événements passent outre le délai minimal entre deux bulles. */
 const PRIORITY = new Set<BubbleEvent>(["captureQueen", "exploit", "win", "loss", "draw", "greet"]);
-const MIN_GAP_MS = 7000;
+const MIN_GAP_MS = 6000;
 
 export class BubbleManager {
   private lastAt = -1e9;

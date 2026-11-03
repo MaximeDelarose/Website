@@ -17,7 +17,7 @@ cards[4].trigger = "rook";
 
 const content: Content = {
   player: { name: "Joueuse", tag: "Joueuse ♛" },
-  rival: { name: "Rival", tag: "Rival ♟", subtitle: "Adversaire virtuel" },
+  rival: { name: "Rival", tag: "Rival ♟", subtitle: "Adversaire" },
   title: "ÉCHECS ♛",
   subtitle: "Contenu d'exemple",
   intro: ["Bienvenue ♡", "Tu joues les Blancs.", "À chaque capture, une surprise."],
@@ -30,7 +30,7 @@ const content: Content = {
     captureMinor: ["Aïe."], captureRook: ["Ma tour !"], captureQueen: ["Ma dame !"],
     check: ["Échec…"], aiMistake: ["Oups."], exploit: ["Bien vu."], aiCapture: ["Merci !"],
     aiCheck: ["Échec !"], lowTime: ["Attention au temps."], win: ["Bravo !"], loss: ["Revanche ?"],
-    draw: ["Nulle."],
+    draw: ["Nulle."], taunt: ["Hmm."], idle: ["Tu es là ?"], aiGood: ["Pas mal, moi."],
   },
   results: {
     win: { title: "Victoire", line: "Bravo." }, loss: { title: "Défaite", line: "Revanche ?" },

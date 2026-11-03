@@ -33,7 +33,8 @@ export interface MemoryCard {
 
 export type BubbleEvent =
   | "greet" | "goodMove" | "capturePawn" | "captureMinor" | "captureRook" | "captureQueen"
-  | "check" | "aiMistake" | "exploit" | "aiCapture" | "aiCheck" | "win" | "loss" | "draw" | "lowTime";
+  | "check" | "aiMistake" | "exploit" | "aiCapture" | "aiCheck" | "win" | "loss" | "draw" | "lowTime"
+  | "taunt" | "idle" | "aiGood";
 
 export interface ResultText { title: string; line: string }
 
@@ -54,6 +55,8 @@ export interface Content {
     resign: ResultText;
   };
   finale: { menuLabel: string; lines: string[]; thanks: string; button: string; albumTitle: string };
+  /** Photo du visage de Radia (carrée), affichée sur la dame blanche. */
+  queenFace?: string;
   /** Chemin du MP3 dans private/ (ex. "music/radia-theme.mp3"). */
   music?: string;
 }

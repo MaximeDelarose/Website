@@ -30,7 +30,6 @@ export class HomeScreen {
         h("header", { class: "home-title" }, h("h1", {}, c.title), h("p", {}, c.subtitle)),
         this.scene,
         this.actions,
-        h("p", { class: "home-foot" }, "Un adversaire virtuel · aucune partie en ligne"),
       ),
     );
   }
@@ -53,7 +52,7 @@ export class HomeScreen {
       add("JOUER", "primary big", () => ctx.go("game"));
     }
     const sub = h("button", { class: "play-sub", type: "button" },
-      DIFFICULTIES[s.prefs.difficulty].label + " · " + CADENCES[s.prefs.cadence].label + " · changer");
+      "Partie en " + CADENCES[s.prefs.cadence].label + " · changer");
     sub.onclick = () => { ctx.tap(); void ctx.openSettings().then(() => this.enter()); };
     this.actions.append(sub);
     const grid = h("div", { class: "home-grid" });
@@ -197,7 +196,8 @@ export function openSettings(ctx: Ctx, inGame: boolean, onChange: () => void, ab
 
   const game = section("Partie");
   const diffs = (Object.keys(DIFFICULTIES) as Difficulty[]).map((d) => [d, DIFFICULTIES[d].label, DIFFICULTIES[d].description] as [Difficulty, string, string]);
-  seg(game, "Difficulté d'" + ctx.content.rival.name, diffs, p.difficulty, (v) => s.setPref("difficulty", v), inGame ? "S'applique à la prochaine partie." : undefined);
+  // Le niveau d'Auguste reste caché (réglable par l'adresse : ?niveau=doux|joueur|defi).
+  void diffs;
   seg(game, "Cadence", (Object.keys(CADENCES) as Cadence[]).map((c) => [c, CADENCES[c].label] as [Cadence, string]), p.cadence, (v) => s.setPref("cadence", v), "Sans incrément. " + (inGame ? "S'applique à la prochaine partie." : ""));
 
   const snd = section("Son");
