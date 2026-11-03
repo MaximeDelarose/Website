@@ -8,6 +8,9 @@ import type { Recipe } from "../content/recipes";
 import { autoPlace } from "../game/autoplace";
 import { applyFusion, findFusions, type FusionOption } from "../game/fusion";
 import * as R from "../game/run";
+import * as H from "../game/hub";
+import type { QuestDef, StoryData } from "../content/story";
+import type { MetaData } from "../content/meta";
 import { Bag } from "../game/bag";
 import { combatResult, createCombat, queueAction, stepCombat } from "../engine/combat";
 import { key } from "../engine/geometry";
@@ -28,6 +31,7 @@ type Hit =
   | { kind: "enemy"; index: number }
   | { kind: "node"; id: string }
   | { kind: "fuse"; index: number }
+  | { kind: "npc"; id: string }
   | { kind: "none" };
 
 interface Fight {
@@ -66,7 +70,7 @@ interface Press {
 
 const SAVE_KEY = "bagbound-atelier-v1";
 const RUN_KEY = "bagbound-run-v1";
-const STATS_KEY = "bagbound-stats-v1";
+const PROFILE_KEY = "bagbound-profile-v1";
 
 const NODE_LOOK: Record<string, { icon: string; color: string; name: string }> = {
   combat: { icon: "⚔️", color: "#8a4a3a", name: "Combat" },
@@ -130,8 +134,15 @@ export class App {
   private tipFor = "";
   /** Dernier type de pointeur : l'appui long tactile déclenche aussi « contextmenu ». */
   private lastPointer = "mouse";
-  /** Atelier (bac à sable) ou run. */
-  private ctx: "sandbox" | "run" = "sandbox";
+  /** Atelier (bac à sable), campement ou run. */
+  private ctx: "sandbox" | "run" | "hub" = "sandbox";
+  private profile: H.Profile;
+  private journalEl: HTMLDivElement;
+  private npcRects = new Map<string, Rect>();
+  /** Choix au départ (classe, palier). */
+  private departChoice = { cls: "vagabond", tier: 0 };
+  /** Bilan de la run qui vient de finir (affiché puis effacé). */
+  private endSummary: H.RunSummary | null = null;
   private run: R.RunState | null = null;
   private selectedNode: string | null = null;
   private nodePos = new Map<string, { x: number; y: number; r: number }>();
@@ -147,7 +158,11 @@ export class App {
     private sandbox: Sandbox,
     private runData: RunData,
     private recipes: Recipe[],
+    private story: StoryData,
+    private quests: QuestDef[],
+    private meta: MetaData,
   ) {
+    this.profile = this.loadProfile();
     this.cls = content.classes[sandbox.class];
     this.encounter = sandbox.encounters[0];
     this.bag = this.defaultBag();
@@ -164,8 +179,10 @@ export class App {
     this.tipEl.hidden = true;
     this.modalEl = el("div", "bb-modal");
     this.modalEl.hidden = true;
+    this.journalEl = el("div", "bb-journal");
+    this.journalEl.hidden = true;
     stage.prepend(this.canvas);
-    stage.append(this.barEl, this.pagerEl, this.tipEl, this.modalEl);
+    stage.append(this.barEl, this.pagerEl, this.journalEl, this.tipEl, this.modalEl);
 
     this.bindInput();
     this.bindFullscreen();
@@ -253,7 +270,10 @@ export class App {
     // marge d'une case autour du sac quand une extension attend dans la réserve
     const dragExt = this.drag ? this.bag.isExtension(this.bag.get(this.drag.uid)!) : false;
     this.margin = this.mode === "prep" && (dragExt || this.bag.stashed().some((e) => this.bag.isExtension(e))) ? 1 : 0;
-    this.L = computeLayout(W, H, b.w + 2 * this.margin, b.h + 2 * this.margin, this.mode === "prep");
+    this.L = computeLayout(W, H, b.w + 2 * this.margin, b.h + 2 * this.margin, this.mode === "prep" && this.ctx !== "hub");
+    const top = this.L.bar.y + this.L.bar.h + 4;
+    Object.assign(this.journalEl.style, { left: `${this.L.col.x + 8}px`, top: `${top}px`, width: `${this.L.col.w - 16}px`, height: `${H - top - 6}px` });
+    this.journalEl.hidden = this.ctx !== "hub";
     const bar = this.L.bar;
     Object.assign(this.barEl.style, { left: `${bar.x}px`, top: `${bar.y}px`, width: `${bar.w}px`, height: `${bar.h}px` });
     this.packStash();
@@ -324,16 +344,26 @@ export class App {
   // -------------------------------------------------------------------------
 
   private renderBar(): void {
+    if (this.ctx === "hub") {
+      const saved = this.loadSavedRun();
+      this.barEl.innerHTML = `
+        <span class="bb-floor bb-left-text">⛺ ${esc(this.story.hub.name)}</span>
+        <button type="button" class="bb-btn bb-shards" data-act="upgrades" title="${esc(this.meta.currency.name)} : améliorations du campement">✦ ${this.profile.shards}</button>
+        <button type="button" class="bb-btn bb-go" data-act="depart">${saved ? "▶ Reprendre l'expédition" : "⚑ Partir"}</button>
+        <button type="button" class="bb-btn" data-menu aria-label="Menu">☰</button>`;
+      return;
+    }
     if (this.mode === "prep" && this.ctx === "run" && this.run) {
       const r = this.run;
-      const zone = this.runData.zones[r.zone];
+      const route = R.currentRoute(r, this.runData);
+      const zoneLabel = R.zoneName(r, this.runData);
       const reopen =
         r.phase === "shop" ? `<button type="button" class="bb-btn bb-go" data-reopen>💰 Boutique</button>`
         : r.phase !== "map" && r.phase !== "combat" ? `<button type="button" class="bb-btn bb-go" data-reopen>↩ Reprendre</button>` : "";
       this.barEl.innerHTML = `
         <span class="bb-hud" title="Points de vie">❤ ${r.hp}/${r.maxHp}</span>
         <span class="bb-hud bb-gold" title="Or">● ${r.gold}</span>
-        <span class="bb-floor" title="${esc(zone?.name ?? "")}">Étage ${r.floor + 1}/${zone?.floors.length ?? 1}</span>
+        <span class="bb-floor" title="${esc(zoneLabel)}">${route ? `Étage ${r.floor + 1}/${route.floors.length}` : esc(zoneLabel)}</span>
         ${reopen}
         <button type="button" class="bb-btn" data-menu aria-label="Menu">☰</button>`;
       return;
@@ -361,6 +391,8 @@ export class App {
 
   private onBarClick(t: HTMLElement): void {
     if (t.closest("[data-menu]")) return this.showMenu();
+    const act = t.closest<HTMLElement>("[data-act]");
+    if (act) return this.onAct(act.dataset.act!);
     if (t.closest("[data-reopen]")) return this.showPhase();
     if (t.closest("[data-fight]")) return this.startFight();
     if (t.closest("[data-reset]")) {
@@ -396,10 +428,10 @@ export class App {
     this.hideTip();
     this.closeModal();
     let setup;
-    if (this.ctx === "run" && this.run) setup = R.combatSetup(this.run);
+    if (this.ctx === "run" && this.run) setup = R.combatSetup(this.run, this.content);
     else {
       const sd = seed ?? Math.floor(Math.random() * 4294967296) >>> 0;
-      setup = { seed: sd, player: { hp: this.cls.hp, bag: this.bag.placements() }, enemies: this.encounter.enemies.map((id) => ({ id })) };
+      setup = { seed: sd, player: { hp: this.cls.hp, bag: this.bag.placements(), innate: this.cls.innate }, enemies: this.encounter.enemies.map((id) => ({ id })) };
     }
     const s = setup.seed;
     const state = createCombat(this.content, setup, { record: true });
@@ -647,24 +679,21 @@ export class App {
     }
   }
 
-  private stats(): { runs: number; wins: number; best: number } {
+  private loadProfile(): H.Profile {
+    let p: H.Profile | null = null;
     try {
-      const s = JSON.parse(localStorage.getItem(STATS_KEY) ?? "null");
-      if (s && typeof s.runs === "number") return s;
+      p = H.parseProfile(localStorage.getItem(PROFILE_KEY));
     } catch {
-      /* rien */
+      /* stockage indisponible */
     }
-    return { runs: 0, wins: 0, best: 0 };
+    const prof = p ?? H.newProfile();
+    H.refreshQuests(prof, this.quests);
+    return prof;
   }
 
-  private recordEnd(run: R.RunState): void {
-    const s = this.stats();
-    s.runs++;
-    if (run.phase === "won") s.wins++;
-    const depth = run.zone * 10 + run.floor + 1;
-    s.best = Math.max(s.best, depth);
+  private saveProfile(): void {
     try {
-      localStorage.setItem(STATS_KEY, JSON.stringify(s));
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(this.profile));
     } catch {
       /* rien */
     }
@@ -673,25 +702,26 @@ export class App {
   private showMenu(): void {
     this.hideTip();
     const saved = this.ctx === "run" && this.run ? this.run : this.loadSavedRun();
-    const st = this.stats();
+    const p = this.profile;
     const inRun = this.ctx === "run" && this.run && this.mode === "prep";
     const cont = saved
-      ? `<button type="button" class="btn" data-act="continue">▶ Continuer la partie <small>(étage ${saved.floor + 1}, ${saved.hp}/${saved.maxHp} PV)</small></button>`
+      ? `<button type="button" class="btn" data-act="continue">▶ Continuer l'expédition <small>(${esc(R.zoneName(saved, this.runData) || "départ")}, ${saved.hp}/${saved.maxHp} PV)</small></button>`
       : "";
-    const record = st.runs ? `<p class="bb-seed">${st.runs} partie(s) · ${st.wins} victoire(s)</p>` : "";
+    const record = p.runs ? `<p class="bb-seed">${p.runs} expédition(s) · ${p.wins} victoire(s) · ${H.hubLevel(p)} quête(s) accomplie(s)</p>` : "";
     this.showModal(`
       <h2 class="bb-title bb-logo">BAGBOUND</h2>
       <p class="bb-sub">Range ton sac. Le reste se joue tout seul.</p>
       <div class="bb-menu">
         ${inRun ? `<button type="button" class="btn" data-act="resume">Reprendre</button>` : cont}
-        <button type="button" class="btn${saved ? " btn-ghost" : ""}" data-act="new">${saved ? "Nouvelle partie" : "▶ Nouvelle partie"}</button>
+        ${this.ctx === "hub" ? `<button type="button" class="btn${saved ? " btn-ghost" : ""}" data-close>Rester au campement</button>` : `<button type="button" class="btn${saved || inRun ? " btn-ghost" : ""}" data-act="hub">⛺ ${esc(this.story.hub.name)}</button>`}
         <button type="button" class="btn btn-ghost" data-act="sandbox">Atelier (essais libres)</button>
-        ${inRun ? `<button type="button" class="btn btn-ghost bb-danger" data-act="abandon">Abandonner la partie</button>` : ""}
+        ${inRun ? `<button type="button" class="btn btn-ghost bb-danger" data-act="abandon">Abandonner l'expédition</button>` : ""}
       </div>
       ${record}`);
   }
 
   private startRun(run: R.RunState): void {
+    this.journalEl.hidden = true;
     this.ctx = "run";
     this.run = run;
     this.cls = this.content.classes[run.cls];
@@ -708,6 +738,7 @@ export class App {
   }
 
   private toSandbox(): void {
+    this.journalEl.hidden = true;
     this.ctx = "sandbox";
     this.run = null;
     this.cls = this.content.classes[this.sandbox.class];
@@ -727,7 +758,11 @@ export class App {
   private commit(): void {
     this.syncBagFromRun();
     this.saveRun();
-    if (this.run && (this.run.phase === "dead" || this.run.phase === "won")) this.recordEnd(this.run);
+    if (this.run && (this.run.phase === "dead" || this.run.phase === "won") && !this.endSummary) {
+      // fin de l'expédition : le campement en tire les conséquences (une seule fois)
+      this.endSummary = H.applyRun(this.profile, this.run, this.quests, this.story, this.content, this.runData, this.meta);
+      this.saveProfile();
+    }
     this.showPhase();
   }
 
@@ -751,6 +786,16 @@ export class App {
       case "map":
         this.closeModal();
         break;
+      case "route": {
+        const opts = (p as Extract<R.Pending, { kind: "route" }>).options.map((id) => this.runData.zones[run.zone].routes.find((r) => r.id === id)!);
+        this.showModal(`
+          <h2 class="bb-title">${esc(this.runData.zones[run.zone].name)}</h2>
+          <p class="bb-sub">Deux chemins s'ouvrent devant toi.</p>
+          <div class="bb-cards">${opts
+            .map((r) => `<div class="bb-route"><p class="bb-tip-name">${esc(r.name)}</p><p>${esc(r.intro ?? "")}</p><button type="button" class="btn btn-small" data-act="route:${r.id}">Prendre ce chemin</button></div>`)
+            .join("")}</div>`);
+        break;
+      }
       case "reward": {
         const r = p as Extract<R.Pending, { kind: "reward" }>;
         this.showModal(`
@@ -827,7 +872,7 @@ export class App {
     const sell = sellable
       .map(
         ({ e, i }) =>
-          `<li><img src="${iconUrl(e.item)}" alt="" width="24" height="24"><span>${esc(this.content.items[e.item].name)}${e.pos ? " <small>(dans le sac)</small>" : ""}</span><button type="button" class="btn btn-small btn-ghost" data-act="sell:${i}">+${R.sellPrice(this.content, this.runData, e.item)}</button></li>`,
+          `<li><img src="${iconUrl(e.item)}" alt="" width="24" height="24"><span>${esc(this.content.items[e.item].name)}${e.pos ? " <small>(dans le sac)</small>" : ""}</span><button type="button" class="btn btn-small btn-ghost" data-act="sell:${i}"${this.content.items[e.item].cursed ? " disabled" : ""}>+${R.sellPrice(this.content, this.runData, e.item)}</button></li>`,
       )
       .join("");
     const reroll = R.rerollCost(run, this.runData);
@@ -885,22 +930,36 @@ export class App {
 
   private showEnd(run: R.RunState): void {
     const won = run.phase === "won";
-    const zone = this.runData.zones[Math.min(run.zone, this.runData.zones.length - 1)];
-    const where = won ? `${esc(zone.name)} traversée !` : `Tombé à ${esc(zone.name)}, étage ${run.floor + 1}.`;
-    const by = !won && run.stats.killedBy ? `<p>Vaincu par : ${esc(run.stats.killedBy.join(", "))}</p>` : "";
+    const where = won ? "Le Tisserand est vaincu. La Trame se relâche." : `Tombé : ${esc(R.zoneName(run, this.runData))}${R.currentRoute(run, this.runData) ? `, étage ${run.floor + 1}` : ""}.`;
+    const by = !won && run.stats.killedBy?.length ? `<p>Vaincu par : ${esc(run.stats.killedBy.join(", "))}</p>` : "";
+    const sum = this.endSummary;
+    const qs = sum?.completed.length
+      ? `<p class="bb-quest-done">✔ Quête(s) accomplie(s) : ${sum.completed
+          .map((id) => {
+            const q = this.quests.find((x) => x.id === id)!;
+            return `<b>${esc(q.title)}</b> (va voir ${esc(this.story.npcs.find((n) => n.id === q.npc)?.name ?? q.npc)})`;
+          })
+          .join(", ")}</p>`
+      : "";
+    const lore = sum?.newLore.length ? `<p>📜 Nouveau(x) fragment(s) : ${sum.newLore.map((id) => esc(this.story.lore.find((l) => l.id === id)?.title ?? id)).join(", ")}</p>` : "";
+    const chest = this.profile.chest;
+    const free = chest.slots - chest.items.length;
+    const keep = free > 0
+      ? `<details class="bb-sell" open><summary>Coffre de Pip : garder un objet (${free} place${free > 1 ? "s" : ""})</summary><ul>${run.bag.entries
+          .map((e, i) => (this.content.items[e.item]?.cursed ? "" : `<li><img src="${iconUrl(e.item)}" alt="" width="24" height="24"><span>${esc(this.content.items[e.item].name)}</span><button type="button" class="btn btn-small btn-ghost" data-act="keep:${i}">Garder</button></li>`))
+          .join("")}</ul></details>`
+      : `<p class="bb-seed">Coffre plein : ${chest.items.map((i) => esc(this.content.items[i].name)).join(", ")}.</p>`;
     this.showModal(`
-      <h2 class="bb-title bb-${won ? "win" : "loss"}">${won ? "Victoire !" : "Fin de la partie"}</h2>
+      <h2 class="bb-title bb-${won ? "win" : "loss"}">${won ? "Victoire !" : "Fin de l'expédition"}</h2>
       <p class="bb-sub">${where}</p>${by}
       <ul class="bb-msgs">
         <li>${run.stats.combats} combat(s), dont ${run.stats.elites} élite(s)</li>
-        <li>${run.stats.kills} ennemi(s) vaincu(s)</li>
-        <li>${run.stats.goldEarned} or gagné</li>
+        <li>${run.stats.kills} ennemi(s) vaincu(s) · ${run.stats.goldEarned} or gagné</li>
       </ul>
-      <p class="bb-seed">Graine de la partie : ${run.seed}</p>
-      <div class="bb-actions">
-        <button type="button" class="btn btn-small btn-ghost" data-act="menu">Menu</button>
-        <button type="button" class="btn btn-small" data-act="new">Nouvelle partie</button>
-      </div>`);
+      ${sum?.shards ? `<p class="bb-shards-won">✦ +${sum.shards} ${esc(this.meta.currency.short)} (à dépenser au campement)</p>` : ""}
+      ${sum?.tierUnlocked !== null && sum?.tierUnlocked !== undefined ? `<p class="bb-quest-done">Nouveau palier de difficulté : <b>${esc(this.meta.tiers[sum.tierUnlocked].name)}</b></p>` : ""}
+      ${qs}${lore}${keep}
+      <div class="bb-actions"><button type="button" class="btn btn-small" data-act="tohub">Retour au campement</button></div>`);
   }
 
   private applyFightResult(): void {
@@ -921,12 +980,64 @@ export class App {
           if (saved) this.startRun(saved);
           return;
         }
-        case "new": {
-          if (this.ctx === "run" && this.run && this.run.phase !== "dead" && this.run.phase !== "won" && !confirm("Abandonner la partie en cours ?")) return;
-          const saved = this.ctx !== "run" ? this.loadSavedRun() : null;
-          if (saved && !confirm("Une partie est en cours. En commencer une nouvelle ?")) return;
+        case "hub":
+          this.toHub();
+          return;
+        case "depart": {
+          const saved = this.loadSavedRun();
+          if (saved) return this.startRun(saved);
+          this.departChoice = { cls: this.profile.lastClass, tier: this.profile.lastTier };
+          if (this.profile.classes.length > 1 || H.availableTiers(this.profile, this.meta).length > 1) return this.showDeparture();
+          return this.onAct("go");
+        }
+        case "pick-class":
+          this.departChoice.cls = arg;
+          return this.showDeparture();
+        case "pick-tier":
+          this.departChoice.tier = Number(arg);
+          return this.showDeparture();
+        case "go": {
           const seed = Math.floor(Math.random() * 4294967296) >>> 0;
-          this.startRun(R.newRun(this.content, this.runData, this.sandbox.class, seed));
+          const opts = H.departure(this.profile, this.quests, this.runData, this.meta, this.departChoice);
+          this.saveProfile();
+          this.endSummary = null;
+          this.startRun(R.newRun(this.content, this.runData, this.profile.lastClass, seed, opts));
+          return;
+        }
+        case "upgrades":
+          return this.showUpgrades();
+        case "buy-up":
+          H.buyUpgrade(this.profile, this.meta, arg);
+          this.saveProfile();
+          this.renderBar();
+          this.renderJournal();
+          return this.showUpgrades();
+        case "keep": {
+          const e = this.run?.bag.entries[Number(arg)];
+          if (e && H.depositChest(this.profile, e.item, this.content)) {
+            this.run!.bag.entries.splice(Number(arg), 1);
+            this.saveProfile();
+            if (this.run) this.showEnd(this.run);
+          }
+          return;
+        }
+        case "tohub": {
+          const text = this.endSummary?.returnText ?? "";
+          this.endSummary = null;
+          this.run = null;
+          this.toHub();
+          if (text) this.showModal(`<p class="bb-return">${esc(text)}</p><div class="bb-actions"><button type="button" class="btn btn-small" data-close>Continuer</button></div>`);
+          return;
+        }
+        case "talk":
+          this.talkTo(arg);
+          return;
+        case "claim": {
+          const q = H.claimQuest(this.profile, this.quests, arg);
+          this.saveProfile();
+          this.renderJournal();
+          const rewards = q.rewards.map((r) => this.rewardText(r)).filter(Boolean);
+          this.showModal(`<h2 class="bb-title bb-win">${esc(q.title)}</h2><p>Récompense :</p><ul class="bb-msgs">${rewards.map((r) => `<li>${esc(r)}</li>`).join("")}</ul><div class="bb-actions"><button type="button" class="btn btn-small" data-close>Super</button></div>`);
           return;
         }
         case "sandbox":
@@ -944,6 +1055,7 @@ export class App {
           const opt = this.fusions[Number(arg)];
           if (!opt) return;
           const r = applyFusion(this.bag, opt);
+          if (this.ctx === "run" && this.run) R.logFusion(this.run, r.entry.item);
           this.closeModal();
           this.stashPage = 0;
           this.bagChanged();
@@ -958,9 +1070,8 @@ export class App {
           return;
         }
         case "abandon":
-          if (!run || !confirm("Abandonner la partie ? Elle sera perdue.")) return;
-          run.phase = "dead";
-          run.stats.killedBy = ["l'abandon"];
+          if (!run || !confirm("Abandonner l'expédition ? Elle compte comme une défaite.")) return;
+          R.abandon(run);
           this.commit();
           return;
       }
@@ -971,6 +1082,9 @@ export class App {
           break;
         case "chest":
           R.takeChest(run, this.runData, arg || null);
+          break;
+        case "route":
+          R.chooseRoute(run, this.runData, arg);
           break;
         case "camp":
           R.campfire(run, this.runData, arg === "train" ? "train" : "rest");
@@ -1108,8 +1222,8 @@ export class App {
       }
       g.globalAlpha = 1;
     }
-    const zone = this.runData.zones[run.zone];
-    outlinedText(g, `${zone?.name ?? ""} · étage ${run.floor + 1}/${zone?.floors.length ?? 1}`, zx + 12, A.y + 14, "#ffd27a", 13, "left");
+    const route = R.currentRoute(run, this.runData);
+    outlinedText(g, route ? `${route.name} · étage ${run.floor + 1}/${route.floors.length}` : R.zoneName(run, this.runData), zx + 12, A.y + 14, "#ffd27a", 13, "left");
     // étiquette du nœud choisi
     const sel = this.selectedNode ? run.map.find((x) => x.id === this.selectedNode) : null;
     let label = run.phase === "map" ? "Touche un nœud lumineux pour choisir ta route" : "";
@@ -1125,6 +1239,253 @@ export class App {
       g.fillRect(A.x + (A.w - w) / 2, A.y + A.h - 18, w, 17);
       outlinedText(g, label, A.x + A.w / 2, A.y + A.h - 9, COLORS.ink, 12);
     }
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Campement (hub)
+  // -------------------------------------------------------------------------
+
+  private toHub(): void {
+    this.ctx = "hub";
+    this.run = null;
+    this.fight = null;
+    this.mode = "prep";
+    this.fx.clear();
+    this.closeModal();
+    this.hideTip();
+    this.pagerEl.hidden = true;
+    H.refreshQuests(this.profile, this.quests);
+    this.saveProfile();
+    this.resize();
+    this.renderBar();
+    this.renderJournal();
+    // premier passage : le forgeron accueille
+    if (this.profile.runs === 0 && !this.profile.seenDialogues.length) this.talkTo("orme");
+  }
+
+  private rewardText(r: QuestDef["rewards"][number]): string {
+    const item = (id: string) => this.content.items[id]?.name ?? id;
+    switch (r.type) {
+      case "unlockItem":
+        return `${item(r.item)} peut désormais apparaître en expédition`;
+      case "unlockRoute": {
+        const route = this.runData.zones.flatMap((z) => z.routes).find((x) => x.id === r.route);
+        return `Nouveau chemin : ${route?.name ?? r.route}`;
+      }
+      case "chestSlot":
+        return "Une place de plus dans le coffre";
+      case "startItem":
+        return `Tu partiras avec : ${item(r.item)}`;
+      case "startGold":
+        return `+${r.value} or au départ`;
+      case "lore":
+        return `Fragment d'histoire : ${this.story.lore.find((l) => l.id === r.id)?.title ?? r.id}`;
+      case "flag":
+        return "";
+    }
+  }
+
+  private objectiveProgress(q: QuestDef): string {
+    const st = this.profile.quests[q.id];
+    return `${st?.progress ?? 0}/${q.objective.count}`;
+  }
+
+  private talkTo(npcId: string): void {
+    const npc = this.story.npcs.find((n) => n.id === npcId);
+    if (!npc) return;
+    const t = H.talk(this.profile, this.story, this.quests, npcId);
+    const head = `<div class="bb-npc"><img src="${iconUrl(npc.sprite)}" alt="" width="56" height="56"><div><h2 class="bb-title">${esc(npc.name)}</h2><p class="bb-sub">${esc(npc.title)}</p></div></div>`;
+    let body = "";
+    let actions = `<button type="button" class="btn btn-small" data-close>Au revoir</button>`;
+    if (t.kind === "dialogue") body = t.lines.map((l) => `<p>« ${esc(l)} »</p>`).join("");
+    else if (t.kind === "idle") body = `<p>« ${esc(t.line)} »</p>`;
+    else if (t.kind === "offer")
+      body = `<p class="bb-quest-new">Nouvelle quête : <b>${esc(t.quest.title)}</b></p><p>${esc(t.quest.text)}</p><p class="bb-seed">Elle avance pendant tes expéditions ; reviens me voir quand c'est fait.</p>`;
+    else {
+      body = `<p>« ${esc(t.quest.done)} »</p>`;
+      actions = `<button type="button" class="btn btn-small" data-act="claim:${t.quest.id}">Recevoir la récompense</button>`;
+    }
+    H.markTalked(this.profile, t);
+    this.saveProfile();
+    this.renderJournal();
+    const more = t.kind !== "idle" && t.kind !== "claim" && H.hasNews(this.profile, this.story, this.quests, npcId);
+    if (more) actions = `<button type="button" class="btn btn-small btn-ghost" data-close>Plus tard</button><button type="button" class="btn btn-small" data-act="talk:${npcId}">Autre chose ?</button>`;
+    this.showModal(`${head}${body}<div class="bb-actions">${actions}</div>`);
+  }
+
+  private renderJournal(): void {
+    if (this.ctx !== "hub") return;
+    const p = this.profile;
+    const npcName = (id: string) => this.story.npcs.find((n) => n.id === id)?.name ?? id;
+    const active = this.quests.filter((q) => p.quests[q.id] && p.quests[q.id].state !== "claimed");
+    const quests = active.length
+      ? active
+          .map((q) => {
+            const st = p.quests[q.id];
+            const pct = Math.round((100 * st.progress) / q.objective.count);
+            return `<li class="${st.state === "done" ? "is-done" : ""}"><b>${esc(q.title)}</b> <small>· ${esc(npcName(q.npc))}</small><br>${esc(q.text)}
+              ${st.state === "done" ? `<span class="bb-qdone">✔ À rendre à ${esc(npcName(q.npc))}</span>` : `<span class="bb-qbar"><i style="width:${pct}%"></i><em>${this.objectiveProgress(q)}</em></span>`}</li>`;
+          })
+          .join("")
+      : "<li>Aucune quête en cours. Parle aux habitants du campement.</li>";
+    const lore = p.lore.length
+      ? p.lore
+          .map((id) => this.story.lore.find((l) => l.id === id))
+          .filter(Boolean)
+          .map((l) => `<details><summary>${esc(l!.title)}</summary><p>${esc(l!.text)}</p></details>`)
+          .join("")
+      : "<p class=\"bb-seed\">Chaque expédition, même ratée, révèle un peu de l'histoire.</p>";
+    const chest = `${p.chest.items.map((i) => `<img src="${iconUrl(i)}" alt="${esc(this.content.items[i].name)}" title="${esc(this.content.items[i].name)}" width="32" height="32">`).join("")}${'<span class="bb-slot"></span>'.repeat(Math.max(0, p.chest.slots - p.chest.items.length))}`;
+    const start = [...p.startItems.map((i) => this.content.items[i]?.name ?? i), ...(p.startGold ? [`+${p.startGold} or`] : [])];
+    this.journalEl.innerHTML = `
+      <p class="bb-hubintro">${esc(this.story.hub.intro)}</p>
+      <h3>Quêtes</h3><ul class="bb-quests">${quests}</ul>
+      <h3>Coffre <small>(repart avec toi à la prochaine expédition)</small></h3><div class="bb-chest">${chest}</div>
+      ${start.length ? `<h3>Au départ</h3><p>${start.map(esc).join(", ")}</p>` : ""}
+      <h3>${esc(this.meta.currency.name)} <small>(améliorations : bouton ✦)</small></h3><p>✦ ${p.shards} · ${p.totalShards} gagné(s) au total · classes : ${p.classes.map((c) => esc(this.content.classes[c]?.name ?? c)).join(", ")}${p.bestTier >= 0 ? ` · meilleur palier gagné : ${esc(this.meta.tiers[p.bestTier].name)}` : ""}</p>
+      <h3>Fragments d'histoire <small>(${p.lore.length}/${this.story.lore.length})</small></h3><div class="bb-lore">${lore}</div>
+      <p class="bb-seed">${p.runs} expédition(s) · ${p.deaths} retour(s) · ${p.wins} victoire(s)</p>`;
+  }
+
+  private drawHub(): void {
+    const g = this.g;
+    const A = this.L.arena;
+    this.enemyRects.clear();
+    this.nodePos.clear();
+    g.drawImage(arenaBackground(A.w, A.h, false), A.x, A.y, Math.ceil(A.w / 3) * 3, Math.ceil(A.h / 3) * 3);
+    const zw = Math.min(A.w, 720);
+    const zx = Math.round((A.w - zw) / 2);
+    const ground = Math.round(A.y + A.h * 0.62);
+    const s = Math.max(2, Math.min(4, Math.floor((A.h * 0.22) / 16), Math.floor(zw / 90)));
+    const level = H.hubLevel(this.profile);
+    // tentes : le campement se reconstruit au fil des quêtes rendues
+    const tents = Math.min(5, 1 + Math.floor(level / 3));
+    for (let i = 0; i < tents; i++) {
+      const tx = zx + zw * (0.08 + i * 0.2) + (i % 2) * 14;
+      const ty = ground - 6 - (i % 2) * 10;
+      const w = 16 * s * 1.3;
+      const h = 16 * s * 0.9;
+      g.fillStyle = COLORS.dark;
+      g.beginPath();
+      g.moveTo(tx - w / 2 - 3, ty + 2);
+      g.lineTo(tx, ty - h - 3);
+      g.lineTo(tx + w / 2 + 3, ty + 2);
+      g.fill();
+      g.fillStyle = ["#a8743f", "#7a8a4a", "#8a5a7a", "#5a7a9a", "#a0602a"][i % 5];
+      g.beginPath();
+      g.moveTo(tx - w / 2, ty);
+      g.lineTo(tx, ty - h);
+      g.lineTo(tx + w / 2, ty);
+      g.fill();
+      g.fillStyle = "#2b1709";
+      g.beginPath();
+      g.moveTo(tx - w / 8, ty);
+      g.lineTo(tx, ty - h * 0.45);
+      g.lineTo(tx + w / 8, ty);
+      g.fill();
+    }
+    // feu de camp
+    const fx = zx + zw * 0.47;
+    const flick = Math.sin(this.time * 9) * 0.5 + Math.sin(this.time * 13) * 0.5;
+    g.save();
+    g.globalCompositeOperation = "lighter";
+    g.fillStyle = "rgba(120, 60, 10, .35)";
+    g.beginPath();
+    g.arc(fx, ground - 6, 16 * s * (1.5 + flick * 0.06), 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    g.drawImage(spriteCanvas("ember_breath"), Math.round(fx - 8 * s), Math.round(ground - 16 * s - flick * 2), 16 * s, 16 * s);
+    g.fillStyle = "#5e3a1c";
+    g.fillRect(fx - 7 * s, ground - 2 * s, 14 * s, 2 * s);
+    // le vagabond, un peu en retrait derrière le feu
+    drawFighter(g, `class_${this.profile.lastClass}`, fx + 16 * s * 0.75, ground - 8, Math.max(2, s - 1), true, { bob: Math.floor(this.time * 1.5) % 2 });
+    // PNJ
+    this.npcRects.clear();
+    for (const n of H.visibleNpcs(this.profile, this.story)) {
+      const nx = zx + zw * n.x;
+      drawFighter(g, n.sprite, nx, ground + 2, s, n.x > 0.5, { bob: Math.floor(this.time * 2 + n.x * 3) % 2 });
+      outlinedText(g, n.name, nx, ground + 14, COLORS.ink, 12);
+      if (H.hasNews(this.profile, this.story, this.quests, n.id)) {
+        const by = ground - 16 * s - 14 + Math.sin(this.time * 4) * 3;
+        g.fillStyle = COLORS.dark;
+        g.beginPath();
+        g.arc(nx, by, 11, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = "#ffd27a";
+        g.beginPath();
+        g.arc(nx, by, 9, 0, Math.PI * 2);
+        g.fill();
+        g.font = "900 15px Nunito, system-ui, sans-serif";
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillStyle = "#2b1709";
+        g.fillText("!", nx, by + 1);
+      }
+      this.npcRects.set(n.id, { x: nx - 8 * s - 6, y: ground - 16 * s - 26, w: 16 * s + 12, h: 16 * s + 46 });
+    }
+    outlinedText(g, "Touche un habitant pour lui parler", A.x + A.w / 2, A.y + A.h - 10, "rgba(253,243,222,.75)", 11);
+  }
+
+
+  // -------------------------------------------------------------------------
+  // Méta-progression : départ (classe, palier) et améliorations
+  // -------------------------------------------------------------------------
+
+  private showDeparture(): void {
+    const p = this.profile;
+    const ch = this.departChoice;
+    if (!p.classes.includes(ch.cls)) ch.cls = "vagabond";
+    const tiers = H.availableTiers(p, this.meta);
+    if (!tiers.some((t) => t.id === ch.tier)) ch.tier = tiers[tiers.length - 1].id;
+    const classes = Object.values(this.content.classes)
+      .map((c) => {
+        const unlocked = p.classes.includes(c.id);
+        const innate = c.innate.map((id) => this.content.items[id]?.description ?? "").filter(Boolean).join(" ");
+        return `<button type="button" class="bb-pick${ch.cls === c.id ? " is-on" : ""}" data-act="pick-class:${c.id}"${unlocked ? "" : " disabled"}>
+          <img src="${iconUrl(`class_${c.id}`)}" alt="" width="48" height="48">
+          <span><b>${esc(c.name)}</b> <small>${c.hp} PV · ${c.bagCells.length} cases</small><br>${esc(unlocked ? c.description : "À débloquer au campement (✦).")}${unlocked && innate ? `<br><em>${esc(innate.replace(/^Inné \([^)]*\) : /, ""))}</em>` : ""}</span>
+        </button>`;
+      })
+      .join("");
+    const tierBtns = tiers
+      .map((t) => `<button type="button" class="bb-pick bb-tier${ch.tier === t.id ? " is-on" : ""}" data-act="pick-tier:${t.id}"><span><b>${t.id} · ${esc(t.name)}</b> <small>✦ ×${t.shardMul}</small><br>${esc(t.text)}</span></button>`)
+      .join("");
+    const locked = this.meta.tiers.length - tiers.length;
+    this.showModal(`
+      <h2 class="bb-title">Départ</h2>
+      <p class="bb-sub">Qui part, et à quel point la forêt doit-elle résister ?</p>
+      <div class="bb-picks">${classes}</div>
+      <h3 class="bb-h3">Difficulté</h3>
+      <div class="bb-picks">${tierBtns}</div>
+      ${locked ? `<p class="bb-seed">${locked} palier(s) de plus se débloquent en gagnant au plus haut palier atteint.</p>` : ""}
+      <div class="bb-actions">
+        <button type="button" class="btn btn-small btn-ghost" data-close>Rester</button>
+        <button type="button" class="btn btn-small" data-act="go">⚑ Partir</button>
+      </div>`);
+  }
+
+  private showUpgrades(): void {
+    const p = this.profile;
+    const list = this.meta.upgrades
+      .map((u) => {
+        const lvl = H.upgradeLevel(p, u.id);
+        const cost = H.nextCost(p, u);
+        const reqOk = u.requires.every((r) => H.upgradeLevel(p, r) > 0);
+        const req = reqOk ? "" : ` <small>(demande : ${u.requires.map((r) => esc(this.meta.upgrades.find((x) => x.id === r)?.name ?? r)).join(", ")})</small>`;
+        const btn =
+          cost === null
+            ? `<span class="bb-sold">Max</span>`
+            : `<button type="button" class="btn btn-small" data-act="buy-up:${u.id}"${H.canBuy(p, u) ? "" : " disabled"}>✦ ${cost}</button>`;
+        const pips = u.costs.length > 1 ? `<span class="bb-pips">${"●".repeat(lvl)}${"○".repeat(u.costs.length - lvl)}</span>` : "";
+        return `<li class="${reqOk ? "" : "is-locked"}"><div><b>${esc(u.name)}</b> ${pips}${req}<br><small>${esc(u.text)}</small></div>${btn}</li>`;
+      })
+      .join("");
+    this.showModal(`
+      <h2 class="bb-title">Améliorations</h2>
+      <p class="bb-sub">✦ <b>${p.shards}</b> ${esc(this.meta.currency.name)}. On en gagne à chaque expédition, même ratée.</p>
+      <ul class="bb-upgrades">${list}</ul>
+      <div class="bb-actions"><button type="button" class="btn btn-small" data-close>Fermer</button></div>`);
   }
 
   // -------------------------------------------------------------------------
@@ -1200,6 +1561,10 @@ export class App {
   }
 
   private hitTest(x: number, y: number): Hit {
+    if (this.ctx === "hub") {
+      for (const [id, r] of this.npcRects) if (inRect(r, x, y)) return { kind: "npc", id };
+      return { kind: "none" };
+    }
     if (this.mode === "prep") {
       for (let i = this.fuseBadges.length - 1; i >= 0; i--) {
         const b = this.fuseBadges[i];
@@ -1357,7 +1722,7 @@ export class App {
         this.hover!.y = p.y;
       }
       if (hit.kind === "none" || hit.kind === "enemy") this.hideTip();
-      this.canvas.style.cursor = hit.kind === "bag" || hit.kind === "stash" ? "grab" : hit.kind === "enemy" ? "zoom-in" : hit.kind === "fight" ? "pointer" : "default";
+      this.canvas.style.cursor = hit.kind === "bag" || hit.kind === "stash" ? "grab" : hit.kind === "enemy" ? "zoom-in" : hit.kind === "none" ? "default" : "pointer";
     }
   }
 
@@ -1408,6 +1773,9 @@ export class App {
         break;
       case "fuse":
         this.showFusion(h.index);
+        break;
+      case "npc":
+        this.talkTo(h.id);
         break;
       default:
         if (this.selectedNode) this.selectedNode = null;
@@ -1497,8 +1865,10 @@ export class App {
     this.drag = null;
     const inStash = inRect(this.L.stash, x, y);
     const e = this.bag.get(d.uid)!;
-    if (inStash) {
-      this.bag.stash(d.uid);
+    if (inStash && !this.bag.stash(d.uid)) {
+      this.fx.shake.set(d.uid, 0.3);
+      this.fx.showBanner("Un objet maudit ne quitte pas le sac", "#d05aa0");
+    } else if (inStash) {
       e.rot = d.rot;
       e.mirror = d.mirror;
       // l'objet rangé passe en tête de réserve
@@ -1604,6 +1974,7 @@ export class App {
     g.fillRect(0, 0, L.W, L.H);
     const st = this.fight?.state ?? this.preview;
     this.drawArena(st);
+    if (this.ctx === "hub") return this.drawFx();
     this.drawBagArea();
     if (this.mode === "prep") this.drawStash();
     this.drawDrag();
@@ -1611,6 +1982,7 @@ export class App {
   }
 
   private drawArena(st: CombatState): void {
+    if (this.ctx === "hub") return this.drawHub();
     if (this.ctx === "run" && this.mode === "prep" && this.run) return this.drawMap(this.run);
     this.nodePos.clear();
     const g = this.g;
@@ -1630,7 +2002,7 @@ export class App {
       const frame = Math.floor(this.time * 2 + i * 0.7) % 2;
       const lunge = this.fx.lunge.get(i) ?? 0;
       const dx = lunge > 0 ? Math.sin((lunge / 0.16) * Math.PI) * 10 * (enemy ? -1 : 1) : 0;
-      const sprite = enemy ? c.id : "player";
+      const sprite = enemy ? c.id : `class_${this.run?.cls ?? (this.ctx === "sandbox" ? this.sandbox.class : "vagabond")}`;
       drawFighter(this.g, sprite, P.cx, P.ground, P.s, enemy, {
         alpha: c.alive ? 1 : 0.25,
         flash: this.fx.hit.get(i),
@@ -1715,7 +2087,7 @@ export class App {
 
     if (this.mode === "combat" && this.fight) {
       for (const it of this.fight.state.combatants[0].items) {
-        if (it.removed) continue;
+        if (it.removed || it.ref === "innate") continue;
         const cells = it.cells.map(([x, y]) => [x, y] as Vec);
         drawItem(g, { id: it.def.id, def: it.def, cells, rot: it.rot, mirror: it.mirror }, ox, oy, L.cell, {
           progress: it.cooldownMs !== null ? this.progressOf(it) : null,

@@ -86,6 +86,8 @@ export const itemSchema = z
     onEmpty: z.object({ transformInto: z.string() }).strict().nullable().default(null),
     /** Extension de sac : se pose au bord du sac et devient des cases. */
     extends: z.boolean().default(false),
+    /** Objet maudit : ne quitte jamais le sac (ni réserve, ni vente). */
+    cursed: z.boolean().default(false),
     throwEffects: z.array(effectSchema).nullable().default(null),
     description: z.string().optional(),
   })
@@ -139,6 +141,9 @@ export const classSchema = z
     bagCells: z.array(vec).nonempty(),
     /** Taille max du sac (largeur, hauteur) une fois agrandi par les extensions. */
     maxBag: z.tuple([z.number().int().positive(), z.number().int().positive()]).default([7, 5]),
+    description: z.string().default(""),
+    /** Objets innés : la mécanique propre de la classe (active en combat, hors du sac). */
+    innate: z.array(z.string()).default([]),
     startingBag: z.array(placementSchema),
   })
   .strict();
