@@ -89,12 +89,15 @@
   /* ------------------------------------------------------------------ état global */
   var cfg = Object.assign({ total: 4, humans: 1, target: 50 }, store("uch-cfg") || {});
   if (DEMO) cfg.humans = 0;
+  if (window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches) cfg.humans = 1;
   var phase = "menu";
   var players = [], round = 0, timer = 0, paused = false, prevPhase = "";
   var grid, own, occ, dirs, saws, movers, cannons, arrows, parts, pits, placedPieces;
   var offer = [], pickOrder = [], pickIdx = 0, pickT = 0, runT = 0, firstDone = false, finishCount = 0;
   var banner = { text: "", t: 0 };
-  var scale = 1, offX = 0, offY = 0;
+  var scale = 1, offX = 0, offY = 0, vw = 640, vh = 384, fit = 1, zoomed = false, camX = 0, hs = 1;
+  var COARSE = window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches;
+  var ptr = { x: 0, y: 0, down: false, touch: false, seen: false };
   var time = 0;
 
   /* ------------------------------------------------------------------ niveau */
@@ -254,7 +257,7 @@
         '<span class="choice-text"><strong>' + esc(pc.name) + '</strong>' + (pc.hazard ? "<em>Piège</em>" : "<em>Construction</em>") + '<span>' + esc(pc.tip) + '</span></span>' +
         (taken ? '<span class="uch-by" style="background:' + players[pc.takenBy].col.body + '">' + esc(players[pc.takenBy].col.name) + '</span>' : "") + '</button>';
     });
-    h += '</div><p class="game-small">Le moins bien classé choisit en premier. Clique une pièce ou touche <kbd>1</kbd>…<kbd>' + offer.length + '</kbd>.</p>';
+    h += '</div><p class="game-small">Le moins bien classé choisit en premier. Touche une pièce<span class="uch-key-hint"> (ou <kbd>1</kbd>…<kbd>' + offer.length + '</kbd>)</span>.</p>';
     showCard(h, "uch-card-wide");
     card.querySelectorAll("canvas[data-prev]").forEach(function (c) { drawPreview(c, offer[+c.dataset.prev]); });
     card.querySelectorAll("[data-pc]").forEach(function (b) { b.addEventListener("click", function () { humanPick(+b.dataset.pc); }); });
@@ -298,6 +301,7 @@
       if (p.piece.kind === "cannon") p.ghost.rot = 2;
     });
     touchBar.dataset.mode = players[0].human ? "place" : "none";
+    if (zoomed) { players[0].ghost.c = Math.round(camX / TS) - 1; players[0].ghost.r = GROUND - 7; }
     setBanner("Pose ta pièce !", 1.4);
   }
   function placeGhost(p) {
@@ -414,7 +418,7 @@
         else if (a === "again") { hideCard(); startGame(); }
         else if (a === "menu") showMenu();
         else if (a === "resume") togglePause(false);
-        else if (a === "start") startGame();
+        else if (a === "start") { if (COARSE && !isFull()) toggleFull(); startGame(); }
       });
     });
   }
@@ -435,7 +439,7 @@
     }
     var h = '<h2>Ultimate Écureuil</h2><p>Construis le parcours… puis fais tomber tes rivaux dedans ! <small>v' + VERSION + '</small></p>' +
       row("Joueurs", "total", [2, 3, 4]) +
-      row("Humains", "humans", [1, 2], function (v) { return v + (v === 1 ? " (+ bots)" : " (même clavier)"); }) +
+      (COARSE ? "" : row("Humains", "humans", [1, 2], function (v) { return v + (v === 1 ? " (+ bots)" : " (même clavier)"); })) +
       row("Points pour gagner", "target", [30, 50, 80]) +
       '<div class="game-btns"><button class="btn" type="button" data-act="start">▶ Jouer</button></div>' +
       '<p class="game-small">Les bots complètent jusqu\'à ' + cfg.total + ' écureuils.</p>';
@@ -844,7 +848,7 @@
     parts.forEach(function (q) { fr(g, q.c, q.x, q.y, q.s, q.s); });
     g.restore();
     // HUD
-    g.setTransform(scale * dpr, 0, 0, scale * dpr, offX * dpr, offY * dpr);
+    g.setTransform(hs * dpr, 0, 0, hs * dpr, 0, 0);
     drawHud(g);
   }
 
@@ -856,7 +860,7 @@
     if (phase === "menu") return;
     // scores
     players.forEach(function (p, i) {
-      var x = 6 + i * 74, y = 6;
+      var x = 6 + i * 74, y = 6 + (COARSE ? 0 : 0);
       g.fillStyle = "rgba(43,23,9,.72)"; g.fillRect(x, y, 70, 18);
       fr(g, p.col.body, x + 2, y + 2, 5, 14);
       text(g, p.col.name.slice(0, 6) + (p.human ? " J" + p.human : ""), x + 10, y + 6, 7, "#fdf3de");
@@ -866,15 +870,15 @@
         else if (!p.alive) text(g, "✖", x + 62, y + 10, 10, "#ff7a6a", "center");
       }
     });
-    var mid = W / 2;
-    if (phase === "place") text(g, "Pose : " + Math.max(0, Math.ceil(timer)) + " s", W - 8, 15, 11, "#fdf3de", "right");
-    if (phase === "run") text(g, Math.max(0, Math.ceil(timer)) + " s", W - 8, 15, 11, timer < 6 ? "#ff7a6a" : "#fdf3de", "right");
-    if (phase === "countdown") text(g, String(Math.max(1, Math.ceil(timer - 0.4))), mid, H * 0.35, 56, "#ffd257", "center");
-    if (banner.t > 0 && banner.text) text(g, banner.text, mid, H * 0.22, 20, "#ffd257", "center");
+    var HW = vw / hs, HH = vh / hs, mid = HW / 2;
+    if (phase === "place") text(g, "Pose : " + Math.max(0, Math.ceil(timer)) + " s", HW - (COARSE ? 60 : 8), 15, 11, "#fdf3de", "right");
+    if (phase === "run") text(g, Math.max(0, Math.ceil(timer)) + " s", HW - (COARSE ? 60 : 8), 15, 11, timer < 6 ? "#ff7a6a" : "#fdf3de", "right");
+    if (phase === "countdown") text(g, String(Math.max(1, Math.ceil(timer - 0.4))), mid, HH * 0.35, 56, "#ffd257", "center");
+    if (banner.t > 0 && banner.text) text(g, banner.text, mid, HH * 0.22, 20, "#ffd257", "center");
     if (phase === "place") {
       var me = players[0];
-      if (me && me.human && !me.ghost.placed) text(g, "Souris / flèches : déplacer · clic / Espace : poser · clic droit / E : tourner", mid, H - 10, 8, "#fff", "center");
-      else if (me && me.ghost && me.ghost.placed) text(g, "En attente des autres…", mid, H - 10, 9, "#fff", "center");
+      if (me && me.human && !me.ghost.placed) text(g, COARSE ? "Glisse pour placer la pièce, ⟳ pour tourner, ✓ pour poser" : "Souris / flèches : déplacer · clic / Espace : poser · clic droit / E : tourner", mid, HH - (COARSE ? 96 : 10), 8, "#fff", "center");
+      else if (me && me.ghost && me.ghost.placed) text(g, "En attente des autres…", mid, HH - (COARSE ? 96 : 10), 9, "#fff", "center");
     }
   }
 
@@ -913,23 +917,28 @@
   window.addEventListener("keyup", function (e) { down[e.code] = false; });
   window.addEventListener("blur", function () { down = {}; touch.l = touch.r = touch.j = false; });
 
-  function ptToTile(e) {
+  function ptToTile(x0, y0) {
     var r = cv.getBoundingClientRect();
-    var x = (e.clientX - r.left - offX) / scale, y = (e.clientY - r.top - offY) / scale;
+    var x = (x0 - r.left - offX) / scale, y = (y0 - r.top - offY) / scale;
+    // au doigt, la pièce est tenue au-dessus du pouce pour qu'on la voie
+    if (ptr.touch) y -= 38 / 1;
     return { c: Math.floor(x / TS), r: Math.floor(y / TS) };
   }
-  function moveGhostTo(e) {
-    if (phase !== "place" || paused) return;
+  function moveGhost() {
+    if (phase !== "place" || paused || !ptr.seen) return;
     var p = players[0]; if (!p || !p.human || p.ghost.placed) return;
-    var t = ptToTile(e), cs = cellsOf(p.piece, p.ghost.rot), mw = 0, mh = 0;
+    var t = ptToTile(ptr.x, ptr.y), cs = cellsOf(p.piece, p.ghost.rot), mw = 0, mh = 0;
     cs.forEach(function (c) { mw = Math.max(mw, c[0] + 1); mh = Math.max(mh, c[1] + 1); });
     p.ghost.c = clamp(t.c - Math.floor(mw / 2), -2, COLS - 1); p.ghost.r = clamp(t.r - Math.floor(mh / 2), 0, ROWS - 1);
   }
-  cv.addEventListener("pointermove", moveGhostTo);
+  function setPtr(e) { ptr.x = e.clientX; ptr.y = e.clientY; ptr.touch = e.pointerType !== "mouse"; ptr.seen = true; }
+  cv.addEventListener("pointermove", function (e) { setPtr(e); if (e.pointerType === "mouse" || ptr.down) moveGhost(); });
   cv.addEventListener("pointerdown", function (e) {
-    moveGhostTo(e);
+    setPtr(e); ptr.down = true; moveGhost();
     if (e.pointerType === "mouse" && e.button === 0 && phase === "place" && players[0] && players[0].human) placeGhost(players[0]);
   });
+  function ptrUp() { ptr.down = false; }
+  cv.addEventListener("pointerup", ptrUp); cv.addEventListener("pointercancel", ptrUp);
   cv.addEventListener("contextmenu", function (e) {
     e.preventDefault();
     var p = players[0];
@@ -968,10 +977,43 @@
   document.addEventListener("fullscreenchange", function () { if (fsBtn) fsBtn.textContent = isFull() ? "✕ Quitter le plein écran" : "⛶ Plein écran"; resize(); });
   function resize() {
     var r = root.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-    cv.style.width = r.width + "px"; cv.style.height = r.height + "px";
-    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
-    scale = Math.min(r.width / W, r.height / H);
-    offX = (r.width - W * scale) / 2; offY = (r.height - H * scale) / 2;
+    vw = r.width; vh = r.height;
+    cv.style.width = vw + "px"; cv.style.height = vh + "px";
+    cv.width = Math.round(vw * dpr); cv.height = Math.round(vh * dpr);
+    fit = Math.min(vw / W, vh / H);
+    // téléphone en portrait : on zoome et la caméra suit le joueur
+    scale = Math.max(fit, Math.min(0.95, vh / H));
+    zoomed = scale > fit + 0.001;
+    hs = Math.max(scale, Math.min(1, vw / 420));
+    if (!zoomed) { offX = (vw - W * scale) / 2; offY = (vh - H * scale) / 2; } else camX = Math.max(camX, vw / scale / 2);
+    offY = (vh - H * scale) / 2;
+  }
+  function camTarget() {
+    var me = players[0];
+    if (phase === "run" || phase === "countdown") {
+      var best = null;
+      if (me && me.human && me.alive && !me.done) best = me;
+      else players.forEach(function (p) { if (p.alive && !p.done && (!best || p.x > best.x)) best = p; });
+      if (!best) { players.forEach(function (p) { if (!best || p.x > best.x) best = p; }); }
+      return best ? best.x + 10 : W / 2;
+    }
+    if (phase === "place") {
+      // doigt près d'un bord : on fait défiler le niveau
+      var half = vw / scale / 2, t = camX;
+      if (ptr.down && ptr.touch) {
+        var rr = cv.getBoundingClientRect(), fx = (ptr.x - rr.left) / vw;
+        if (fx < 0.18) t = camX - 140; else if (fx > 0.82) t = camX + 140;
+      }
+      return clamp(t, half, W - half);
+    }
+    return vw / scale / 2;
+  }
+  function applyCam(dt) {
+    if (!zoomed) { offX = (vw - W * scale) / 2; return; }
+    var half = vw / scale / 2, t = clamp(camTarget(), half, W - half);
+    camX += (t - camX) * Math.min(1, dt * (phase === "place" ? 5 : 8));
+    camX = clamp(camX, half, W - half);
+    offX = vw / 2 - camX * scale;
   }
   window.addEventListener("resize", resize);
 
@@ -981,6 +1023,8 @@
     var dt = Math.min(0.05, (ts - last) / 1000 || 0); last = ts;
     acc += dt;
     while (acc >= 1 / 60) { tick(1 / 60); acc -= 1 / 60; }
+    applyCam(dt);
+    if (phase === "place" && zoomed && ptr.down) moveGhost();
     render();
     requestAnimationFrame(frame);
   }

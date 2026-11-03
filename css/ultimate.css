@@ -43,3 +43,30 @@
   .uch-recap li { grid-template-columns: auto 1fr auto; }
   .uch-recap i { grid-column: 2 / 4; grid-row: 2; }
 }
+
+/* téléphone : cartes de pioche compactes, tout tient dans l'écran */
+@media (max-width: 760px), (max-height: 520px) {
+  .uch-card { padding: 10px 10px 8px; max-height: 100%; overflow-y: auto; }
+  .uch-card h2 { font-size: 1.15rem; margin: 0 0 .3em; }
+  .uch-card .game-small { font-size: .75rem; margin-top: 4px; }
+  .uch-offer { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+  .uch-pc { padding: 6px 4px; gap: 4px; flex-direction: column !important; align-items: center; text-align: center; min-width: 0; }
+  .uch-pc .choice-text { min-width: 0; width: 100%; overflow-wrap: anywhere; }
+  .uch-pc .choice-text em { font-size: .65rem; }
+  .uch-pc canvas { max-width: 72px; }
+  .uch-pc .choice-text { font-size: .75rem; }
+  .uch-pc .choice-text strong { font-size: .8rem; }
+  .uch-pc .choice-text span { display: none; }
+  .uch-pc .choice-key { display: none; }
+  .uch-recap li { padding: 4px 8px; }
+  .uch-row { margin: 6px 0; }
+  .game-btns { margin-top: 8px; }
+  .uch-card p { margin: .2em 0; }
+}
+.uch-stage .game-overlay { padding: 8px; }
+@media (hover: none) and (pointer: coarse) {
+  .uch-stage:not(.is-max) .game-hud { top: auto; bottom: 8px; }
+  .uch-pad button { min-width: 72px; height: 72px; }
+}
+
+@media (hover: none) and (pointer: coarse) { .uch-key-hint { display: none; } }
