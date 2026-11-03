@@ -58,6 +58,7 @@
     { id: "golf", title: "Mini-golf", ico: "⛳" },
     { id: "defense", title: "Écureuil Défense", ico: "🗼" },
     { id: "flippers", title: "Flippers", ico: "📍" },
+    { id: "grimpe", title: "Grimpe-Chêne", ico: "🌳" },
     { id: "idle", title: "Le Grand Chêne", ico: "🌰" }
   ];
   var BY_ID = {};
@@ -172,7 +173,7 @@
   }
 
   /* ---------- plein écran universel ---------- */
-  var ROOT_SEL = ".game-stage, .pool, .fl, .chess, .idle-stage";
+  var ROOT_SEL = ".game-stage, .pool, .fl, .gr, .chess, .idle-stage";
   function visible(el) { return !!(el && (el.offsetParent !== null || getComputedStyle(el).position === "fixed")); }
   function fsEl() { return doc.fullscreenElement || doc.webkitFullscreenElement || null; }
   function primaryRoot() {
@@ -470,7 +471,7 @@
     var gear = h("button", { class: "btn btn-ghost btn-small gk-gear", type: "button", "aria-label": "Réglages du jeu", title: "Réglages (son, vibrations, changer de jeu)" }, [h("span", { "aria-hidden": "true", text: "⚙" }), h("span", { class: "gk-btn-label", text: " Réglages" })]);
     gear.addEventListener("click", openSettings);
     if (head) {
-      var wrap = $(".fl-head-btns", head);
+      var wrap = $("[class$='-head-btns']", head);
       if (!wrap) {
         wrap = h("div", { class: "gk-head-actions" });
         Array.prototype.slice.call(head.children).forEach(function (c) { if (c.tagName === "BUTTON" || c.classList.contains("btn")) wrap.appendChild(c); });
