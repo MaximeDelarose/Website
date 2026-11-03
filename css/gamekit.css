@@ -236,3 +236,19 @@ html.gk-reduce-fx .game-overlay, html.gk-reduce-fx .game-overlay > * { animation
   .gr.gk-fs .gr-stats { position: fixed; z-index: 5; top: calc(env(safe-area-inset-top, 0px) + 6px); left: calc(env(safe-area-inset-left, 0px) + 6px); grid-template-columns: auto; background: rgba(13, 31, 20, .72); padding: 4px 10px; pointer-events: none; text-align: left; }
   .gr.gk-fs .gr-stats > div { text-align: left; }
 }
+
+/* ---------- texte agrandi (réglage de taille de police d'Android/iOS) : rien ne doit dépasser des cartes ---------- */
+.game-card .btn, .game-card button, .game-card input, .game-card select, .game-card label { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.game-card .btn { white-space: normal; }
+.game-card input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) { width: 100%; }
+.mm-main { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+.mm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mm-head, .mm-stats { min-width: 0; flex-wrap: wrap; }
+.mm-head > div, .mm-tile, .mm-stats > * { min-width: 0; }
+.rd-deckbar, .td-map { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.rd-best, .td-medals { min-width: 0; overflow-wrap: anywhere; }
+/* Billard : menus (pseudo, code du salon, boutons) */
+.pool-menu-btns { grid-template-columns: minmax(0, 1fr); }
+.pool-field { min-width: 0; }
+.pool-field input { width: 100%; min-width: 0; box-sizing: border-box; }
+.pool-card .btn { white-space: normal; }
