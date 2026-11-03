@@ -1,0 +1,22 @@
+import { chromium } from '@playwright/test';
+import fs from 'fs';
+const [,, name, lookJson, cols='4', w='220', h='550', extra='{}', crop='0,1'] = process.argv;
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
+const page = await browser.newPage({ viewport: { width: 600, height: 700 } });
+const errs = [];
+page.on('console', m => { if (m.type()==='error') errs.push(m.text()); });
+page.on('pageerror', e => errs.push(String(e)));
+await page.goto('http://localhost:5202/?debug');
+const url = await page.evaluate(async ({ looks, cols, w, h, extra, crop }) => {
+  const m = await import('/src/game/art/world/avatar.ts');
+  const base = { hair:'hair-loose', top:'top-tee-white', bottom:'bot-jeans', dress:null, jacket:null, shoes:'sh-sneakers-white', bag:null, acc:[], crown:null };
+  const n = looks.length, rows = Math.ceil(n/cols);
+  const ch = Math.round((crop[1]-crop[0])*h);
+  const c = document.createElement('canvas'); c.width = cols*w; c.height = rows*ch;
+  const x = c.getContext('2d'); x.fillStyle = '#F4E6EC'; x.fillRect(0,0,c.width,c.height);
+  looks.forEach((l,i) => { const o = l.__o || {}; const cv = m.avatarCanvas({ ...base, ...l }, w, h, { expr:'smile', ...extra, ...o }); x.drawImage(cv, 0, crop[0]*h, w, ch, (i%cols)*w, Math.floor(i/cols)*ch, w, ch); });
+  return c.toDataURL('image/png');
+}, { looks: JSON.parse(lookJson), cols: +cols, w: +w, h: +h, extra: JSON.parse(extra), crop: crop.split(',').map(Number) });
+fs.writeFileSync(`shots/${name}.png`, Buffer.from(url.split(',')[1], 'base64'));
+console.log('errors:', errs);
+await browser.close();
