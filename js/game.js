@@ -205,7 +205,9 @@
   var p = null, r = null, CH, DIFF, MAP, enemies, projs, hostile, lobs, gems, fx, texts, grid, warns;
   var spawnAcc, nextSwarm, nextBoss, bossCount, shake, uid, achTick, pending, xp, xpNext, propTimer;
 
-  function need(L) { if (r && r.mode === "arena") return D.ARENA.need(L); if (r && r.mode === "dungeon") return D.DUNGEON.need(L); return 5 + (L - 1) * 3 + Math.max(0, L - 15) * 4 + Math.max(0, L - 30) * 8; }
+  // l'XP est commune et chaque niveau donne un choix à CHAQUE joueur : en coop il en faut plus par niveau
+  function teamXp() { return players && players.length ? 1 + 0.9 * (humans() - 1) : 1; }
+  function need(L) { if (r && r.mode === "arena") return D.ARENA.need(L); if (r && r.mode === "dungeon") return Math.round(D.DUNGEON.need(L) * teamXp()); return Math.round((5 + (L - 1) * 3 + Math.max(0, L - 15) * 4 + Math.max(0, L - 30) * 8) * teamXp()); }
   function V(w, k, l) { var v = w[k]; return Array.isArray(v) ? v[Math.min(l, v.length - 1)] : v; }
 
   function calc(pl) {
@@ -475,7 +477,9 @@
     if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
     return e;
   }
-  function tierHp() { return 1 + TIER.hp * tierN(); }
+  function tierHp() { return 1 + tcfg().hp * tierN(); }
+  // réglages de la montée en difficulté : ceux du mode choisi s'il en a (Difficile), sinon ceux de TIER
+  function tcfg() { return (DIFF && DIFF.tier) || TIER; }
   function hpMul() { return hpMul0() * tierHp(); }
   function zoneHp() { return isDungeon() ? DGT.hp || 1 : MAP.hp || 1; }
   function zoneGold() { return r && r.mode === "dungeon" ? DGT.gold || 1 : MAP.gold || 1; }
@@ -650,10 +654,10 @@
     }
     if (p.dodge && Math.random() < p.dodge) { p.inv = 0.3; r.dodges = (r.dodges || 0) + 1; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     p.calmT = 0;
-    if (r && TIER) dmg *= (1 + TIER.dmg * tierN()) * rageDmg();
+    if (r && TIER) dmg *= (1 + tcfg().dmg * tierN()) * rageDmg();
     if (p.oshield > 0) { var ab = Math.min(p.oshield, dmg); p.oshield -= ab; dmg -= ab; p.inv = 0.3; burst(p.x, p.y, "#9cc56b", 4); if (dmg <= 0) return; }
     if (p.packN && p.passives && p.passives.meute) dmg -= p.passives.meute;
-    p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)); p.inv = 0.22;
+    p.hp -= Math.max(1, (dmg - p.armor) * (p.taken || 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)); p.inv = DIFF.inv || 0.35;
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = 0.25; SND.hurt(); }
     burst(p.x, p.y, "#c8553d", 5);
   }
@@ -1160,7 +1164,7 @@
     if (!r) return 0;
     if (isArena()) return Math.max(0, (r.round - 1) / 2.4);
     var m = r.time / 60 + (isDungeon() && r.dg ? (r.dg.floor - 1) * 3 : 0);
-    return m * (DIFF.hp > 1 ? 1.4 : 1) / TIER.minutes;
+    return m / tcfg().minutes;
   }
   function tierN() { return Math.floor(tierPos()); }                       // continue de monter après le dernier palier
   function tierName(t) { return TIERS[Math.min(TIERS.length - 1, t)].name + (t >= TIERS.length ? " +" + (t - TIERS.length + 1) : ""); }
@@ -1207,7 +1211,7 @@
   }
   function shState(s) { return (r.sh[s.id] = r.sh[s.id] || { p: 0, used: 0 }); }
   function chestCost() { return Math.round((18 + 9 * tierN()) * zoneGold()); }
-  function shopCost() { return Math.round(chestCost() * 2.2); }
+  function merchantCost() { return Math.round(chestCost() * 2.2); }
   function betCost() { return Math.round(chestCost() * 1.2); }
   function payGold(cost, st, what) {
     if (r.gold >= cost) { r.gold -= cost; r.goldSpent = (r.goldSpent || 0) + cost; return true; }
@@ -1263,7 +1267,7 @@
       players.forEach(function (o) { if (!o.down) { o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.5); burst(o.x, o.y, "#6ad8ff", 8); } });
       bannerAll("L'eau claire vous soigne"); SND.level();
     } else if (s.k === "marchand") {
-      if (!payGold(shopCost(), st, "pour acheter")) return;
+      if (!payGold(merchantCost(), st, "pour acheter")) return;
       dropItem(s.x, s.y - 16, 1); bannerAll("Marché conclu !"); SND.gold();
     } else if (s.k === "fortune") {
       var bet = betCost(); if (!payGold(bet, st, "pour miser")) return;
@@ -1333,7 +1337,7 @@
       }
       // nom et coût quand on s'approche
       if (!dead && Math.hypot(me.x - x, me.y - y) < 60) {
-        var cst = s.k === "coffre" ? chestCost() : s.k === "marchand" ? shopCost() : s.k === "fortune" ? betCost() : 0;
+        var cst = s.k === "coffre" ? chestCost() : s.k === "marchand" ? merchantCost() : s.k === "fortune" ? betCost() : 0;
         var label = def.name + (cst ? " " + cst : s.k === "sang" ? " -20% PV" : s.k === "sacrifice" ? " -1 objet" : "");
         drawText(label, x, y - 38, col, "c");
         if (cst) icon("gold", x + textWidth(label) / 2 + 2, y - 37);
@@ -4486,6 +4490,7 @@
     ch.on("presence", { event: "sync" }, onPresence);
     ["start", "s", "in", "pick", "end", "round", "next", "rdy", "tp", "floor", "need"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
     ch.on("broadcast", { event: "sig" }, function (msg) { try { onSignal(msg.payload); } catch (err) { try { console.warn(err); } catch (e) {} } });
+    if (window.Party && window.Party.emoteChannel) window.Party.emoteChannel(ch, function () { return S.name; });   // émotes (bouton 😀 / touche T)
     ch.subscribe(function (status) {
       Net.status = status;
       if (Net.ch !== ch) return;
@@ -4505,6 +4510,7 @@
     clearTimeout(Net.retryT);
     Object.keys(Net.peers || {}).forEach(closePeer);
     Net.hostId = null; Net.seen = {};
+    if (window.Party && window.Party.emoteChannelOff) window.Party.emoteChannelOff();
     if (Net.ch) { try { Net.ch.untrack(); } catch (e) {} try { Net.client.removeChannel(Net.ch); } catch (e) {} }
     Net.startInfo = null; Net.dgBad = 0;
     Net.ch = null; Net.on = false; Net.role = null; Net.started = false; Net.roster = []; Net.cur = Net.prev = null;

@@ -97,3 +97,13 @@
 .vs-launch p:first-child { font-size: 80px; margin: 0; }
 .vs-launch h2 { font: 900 clamp(32px, 8vw, 64px) "Londrina", "Nunito", sans-serif; color: #ffd257; margin: 0; }
 .vs-launch p { font-weight: 800; font-size: 1.2rem; }
+.vs-bots { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; font-weight: 800; }
+.vs-bots span { margin-right: 4px; }
+.vs-bots .vs-chipbtn { padding: 4px 10px; font-size: .9rem; }
+
+/* mobile : la prochaine manche juste après le code et les joueurs */
+@media (max-width: 820px) {
+  .vs-grid { display: flex; flex-direction: column; gap: 8px; }
+  .vs-side, .vs-main { display: contents; }
+  .vs-code { order: 1; } .vs-players-box { order: 2; } .vs-main > * { order: 3; } .vs-side > * { order: 4; }
+}

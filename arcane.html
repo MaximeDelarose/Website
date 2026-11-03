@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Arcane Tactics · AkarisuMD</title>
+  <meta name="description" content="Arcane Tactics : un RPG tactique isométrique au tour par tour, seul ou en coop à 2 (même écran ou en ligne). Trois héros inspirés des échecs, des combats en cases avec PA et PM, et du butin aléatoire après chaque combat.">
+  <meta property="og:title" content="Arcane Tactics · AkarisuMD">
+  <meta property="og:description" content="Arcane Tactics : un RPG tactique isométrique au tour par tour, seul ou en coop à 2 (même écran ou en ligne). Trois héros inspirés des échecs, des combats en cases avec PA et PM, et du butin aléatoire après chaque combat.">
+  <meta name="theme-color" content="#2a1f4a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Arcane Tactics">
+  <link rel="apple-touch-icon" href="assets/squirrel.png">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261107vs2">
+  <link rel="stylesheet" href="css/party.css?v=20261107vs2">
+</head>
+<body data-page="arcane">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="versus.html" data-page="versus">Versus</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="section game-section">
+    <div class="wrap">
+      <div class="game-head">
+        <div>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · solo & coop à 2</span>
+          <h1>Arcane Tactics</h1>
+        </div>
+        <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
+      </div>
+
+      <div class="game-stage at-stage" data-arcane>
+        <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Arcane Tactics"></canvas>
+        <button class="fs-exit" type="button" data-fs-exit aria-label="Quitter le plein écran">✕</button>
+        <div class="game-overlay" data-overlay>
+          <div class="panel game-card at-card" data-card>
+            <p>Chargement du jeu…</p>
+            <noscript><p>Ce jeu a besoin de JavaScript.</p></noscript>
+          </div>
+        </div>
+      </div>
+
+      <div class="game-info">
+        <div class="panel game-help">
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li>Choisis un héros, explore Lumebourg et ses environs <strong>case par case</strong>, et clique sur un groupe de monstres pour lancer un <strong>combat au tour par tour</strong>.</li>
+            <li>À ton tour : tes <strong>PA</strong> servent à lancer des sorts, tes <strong>PM</strong> à marcher. Turquoise = où marcher, violet = où viser, jaune = zone touchée, rouge = danger.</li>
+            <li><strong>Bastion</strong> (la tour) contrôle les lignes droites : pousse, attire, murs et boucliers. <strong>Prisme</strong> (le fou) tire en diagonale, soigne, téléporte et pose des cristaux relais. <strong>Voltige</strong> (le cavalier) bondit en L par-dessus les obstacles et frappe dans le dos.</li>
+            <li>Après chaque combat, les monstres <strong>lâchent du butin au hasard</strong> : 5 raretés, de grosses caractéristiques, parfois <strong>+1 PA</strong>, <strong>+1 PM</strong> ou <strong>+Portée</strong>, et des pouvoirs légendaires. Les élites (★) lâchent toujours quelque chose.</li>
+            <li>Joue <strong>seul</strong>, à <strong>deux sur le même écran</strong>, ou <strong>en ligne</strong> avec un code de salon. Chaque héros garde sa progression.</li>
+            <li><kbd>1</kbd>–<kbd>5</kbd> sorts · <kbd>Espace</kbd> fin du tour · clic droit annule · <kbd>I</kbd> sac · <kbd>J</kbd> quêtes · molette zoom · glisser pour bouger la vue.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261103re4"></script>
+  <script src="js/auth.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261107ch4"></script>
+  <script src="js/party-modes.js?v=20261107vs2"></script>
+  <script src="js/party.js?v=20261107vs2"></script>
+  <script src="js/vendor/supabase-2.45.4.min.js"></script>
+  <script src="js/arcane-core.js?v=20261106at100"></script>
+  <script src="js/arcane-art.js?v=20261106at100"></script>
+  <script src="js/arcane.js?v=20261107vs2"></script>
+</body>
+</html>

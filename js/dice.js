@@ -2204,7 +2204,8 @@
     Net.on = true; Net.role = asHost ? "host" : "guest"; Net.code = code; Net.status = "connexion"; Net.err = ""; Net.started = false; Net.roster = []; Net.ts = Date.now();
     var ch = cl.channel("rd-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: Net.id } } });
     ch.on("presence", { event: "sync" }, onPresence);
-    ["start", "s", "cmd", "end", "vs", "dead"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload); } catch (err) { showError(err); } }); });
+    if (window.Party && window.Party.emoteChannel) window.Party.emoteChannel(ch, function () { return S.name; });   // émotes (bouton 😀 / touche T)
+    ["start", "s", "cmd", "end", "vs", "dead", "fx"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload); } catch (err) { showError(err); } }); });
     ch.subscribe(function (status) {
       Net.status = status;
       if (status === "SUBSCRIBED") trackMe();
@@ -2214,6 +2215,7 @@
     Net.ch = ch;
   }
   function netLeave() {
+    if (Net.ch && window.Party && window.Party.emoteChannelOff) window.Party.emoteChannelOff();
     if (Net.ch) { try { Net.ch.untrack(); } catch (e) {} try { Net.client.removeChannel(Net.ch); } catch (e) {} }
     Net.ch = null; Net.on = false; Net.role = null; Net.started = false; Net.roster = [];
   }
@@ -2233,15 +2235,22 @@
       if (idx >= 2) { Net.err = "Salon plein (2 joueurs max)."; netLeave(); show("online"); return; }
       if (host && host.ingame) Net.err = "Une partie est déjà en cours dans ce salon.";
     }
+    // l'autre joueur absent : on attend 4 s avant de conclure (la présence clignote parfois quand quelqu'un met à jour son état)
+    if (Net.started && G && state === "play" && !list.some(function (x) { return x.id === G.otherId; }) && !Net.goneT) {
+      var g0 = G;
+      Net.goneT = setTimeout(function () { Net.goneT = 0; if (G === g0) otherGone(); }, 4000);
+    }
+    if (state === "menu" && screen === "lobby") show("lobby");
+  }
+  function otherGone() {
     if (Net.started && G && state === "play") {
-      var other = G.otherId, still = list.some(function (x) { return x.id === other; });
+      var other = G.otherId, still = Net.roster.some(function (x) { return x.id === other; });
       if (!still) {
         if (G.kind === "net-vs") { var me = G.sims[0]; finish({ mode: "versus", wave: me.wave, kills: me.kills, bosses: me.bosses, maxPip: maxPip(me), win: true, online: true, why: "Ton adversaire a quitté la partie." }); }
         else if (Net.role === "guest") { var w = G.panels[0].world; finish({ mode: "coop", wave: w.wave, kills: w.kills, bosses: w.bosses, maxPip: maxPip(w), why: "L'hôte a quitté la partie." }); }
         else banner("Ton coéquipier est parti");
       }
     }
-    if (state === "menu" && screen === "lobby") show("lobby");
   }
   function hostStart() {
     if (Net.role !== "host" || Net.roster.length < 2) return;

@@ -21,6 +21,7 @@
   function present() {
     var ids = [];
     P.roster.forEach(function (x) { if (ids.indexOf(x.id) < 0 && (!P.st || P.st.members[x.id] || x.id === P.me.id)) ids.push(x.id); });
+    if (P.st) Object.keys(P.st.members).forEach(function (id) { if (P.st.members[id].bot && ids.indexOf(id) < 0) ids.push(id); });
     return ids.slice(0, 4);
   }
   function syncTeams() {
@@ -77,17 +78,24 @@
     h += '<section class="panel vs-box vs-code"><p class="vs-kicker">Code de la party</p><p class="vs-big">' + esc(P.code) + '</p>' +
       '<div class="btn-row"><button class="btn btn-small" type="button" data-vs="copy">' + (ui.copied ? "Lien copié ✓" : "Copier le lien") + '</button><button class="btn btn-ghost btn-small" type="button" data-vs="leave">Quitter</button></div>' +
       (P.status !== "on" ? '<p class="vs-status">Connexion : ' + esc(P.status) + "</p>" : "") + "</section>";
-    h += '<section class="panel vs-box"><h2>Joueurs</h2><ul class="vs-players">';
+    h += '<section class="panel vs-box vs-players-box"><h2>Joueurs</h2><ul class="vs-players">';
     var ids = Object.keys(st.members).sort(function (a, b) { return (st.pts[b] || 0) - (st.pts[a] || 0) || st.members[a].ts - st.members[b].ts; });
     ids.forEach(function (id) {
-      var mb = st.members[id], on = P.present(id), you = id === P.me.id;
+      var mb = st.members[id], on = P.present(id), you = id === P.me.id, bot = !!mb.bot;
       h += '<li class="vs-player' + (on ? "" : " is-off") + '" style="--pc:' + esc(mb.c) + '" data-vs-pl="' + esc(id) + '"><span class="vs-pav">' + esc(mb.a) + "</span>" +
         '<span class="vs-pname">' + esc(mb.n) + (id === st.leader ? ' <span title="Chef de la party">👑</span>' : "") + (you ? ' <small>(toi)</small>' : "") + (on ? "" : ' <small>· absent</small>') + "</span>" +
         '<span class="vs-pts">' + (st.pts[id] || 0) + "<small>/" + st.goal + "</small></span>" +
-        (lead && !you ? '<span class="vs-pact"><button type="button" class="vs-mini" data-vs="lead" data-id="' + esc(id) + '" title="Passer chef">👑</button>' + (on ? "" : '<button type="button" class="vs-mini" data-vs="kick" data-id="' + esc(id) + '" title="Retirer">✕</button>') + "</span>" : "") +
+        (lead && bot ? '<span class="vs-pact"><button type="button" class="vs-mini" data-vs="unbot" data-id="' + esc(id) + '" title="Retirer le bot">✕</button></span>' :
+         lead && !you ? '<span class="vs-pact"><button type="button" class="vs-mini" data-vs="lead" data-id="' + esc(id) + '" title="Passer chef">👑</button>' + (on ? "" : '<button type="button" class="vs-mini" data-vs="kick" data-id="' + esc(id) + '" title="Retirer">✕</button>') + "</span>" : "") +
         '<span class="vs-bubble" data-vs-bubble="' + esc(id) + '"></span></li>';
     });
-    h += "</ul>" + (present().length > 4 ? '<p class="vs-note">4 joueurs max par manche : les suivants regardent.</p>' : "") + "</section>";
+    h += "</ul>";
+    if (lead) {
+      var full = present().length >= 4;
+      h += '<div class="vs-bots"><span>🤖 Ajouter un bot</span>' + [1, 2, 3].map(function (lv) { return '<button type="button" class="vs-chipbtn" data-vs-bot="' + lv + '"' + (full ? " disabled" : "") + ">" + P.BOT_LV[lv].n + "</button>"; }).join("") + "</div>" +
+        '<p class="vs-note">Les bots jouent les modes « chacun sa partie » (pas ceux en ligne). Pratique pour jouer seul ou compléter une équipe.</p>';
+    }
+    h += "</section>";
     h += '<section class="panel vs-box"><h2>Ton écureuil</h2>' + profileHtml() + "</section>";
     h += rulesHtml(lead);
     h += "</aside>";
@@ -122,7 +130,7 @@
   function nextHtml(lead) {
     var n = present().length, st = P.st;
     var h = '<section class="panel vs-box vs-next"><h2>Prochaine manche' + (st.round ? " (" + (st.round + 1) + ")" : "") + "</h2>";
-    if (n < 2) h += '<p class="vs-status">En attente d\'un deuxième joueur… Envoie le code <b>' + esc(P.code) + "</b> à un ami.</p>";
+    if (n < 2) h += '<p class="vs-status">En attente d\'un deuxième joueur… Envoie le code <b>' + esc(P.code) + "</b> à un ami, ou ajoute un bot 🤖.</p>";
     if (n >= 2) {
       h += '<div class="vs-formats" role="group" aria-label="Format">' + P.formatsFor(n).map(function (f) {
         return '<button type="button" class="vs-chipbtn' + (f.id === ui.format ? " is-on" : "") + '" data-vs-format="' + f.id + '"' + (lead ? "" : " disabled") + ">" + esc(f.name) + "</button>";
@@ -190,6 +198,7 @@
     if (b.dataset.vsFormat) { ui.format = b.dataset.vsFormat; ui.teams = null; render(); return; }
     if (b.dataset.vsSwap) { swapTeam(b.dataset.vsSwap); render(); return; }
     if (b.dataset.vsLaunch) { launch(b.dataset.vsLaunch); return; }
+    if (b.dataset.vsBot) { P.addBot(+b.dataset.vsBot); return; }
     if (a === "create") { saveName(); P.create(); P.ensureUi(); ui.err = ""; render(); }
     else if (a === "join") {
       saveName();
@@ -207,6 +216,7 @@
     else if (a === "shuffle") { ui.teams = P.makeTeams(present(), ui.format, true); render(); }
     else if (a === "roulette") roulette();
     else if (a === "kick") P.kick(b.dataset.id);
+    else if (a === "unbot") P.removeBot(b.dataset.id);
     else if (a === "lead") { if (confirm("Passer le rôle de chef ?")) P.giveLead(b.dataset.id); }
   });
   app.addEventListener("change", function (e) {
@@ -273,7 +283,7 @@
     if (st.match && st.match.status !== "done") return;
     if (st.match && Date.now() - (st.match.endAt || 0) < 20000) return;
     if (present().length < 2) return;
-    var back = present().every(function (id) { return P.roster.some(function (x) { return x.id === id && x.pg === "versus.html"; }); });
+    var back = present().filter(function (id) { return !P.isBot(id); }).every(function (id) { return P.roster.some(function (x) { return x.id === id && x.pg === "versus.html"; }); });
     if (back) roulette();
   }, 2000);
   render();

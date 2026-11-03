@@ -151,7 +151,67 @@
     }
     emit("roster", list);
   }
-  P.present = function (id) { return P.roster.some(function (x) { return x.id === id; }); };
+  P.present = function (id) { return isBot(id) || P.roster.some(function (x) { return x.id === id; }); };
+  function isBot(id) { return !!(P.st && P.st.members[id] && P.st.members[id].bot); }
+  P.isBot = isBot;
+
+  /* ---------- bots ----------
+     Un bot est un membre de la party simulé par le chef : son score suit le
+     profil « bot » du mode (js/party-modes.js), avec un peu de hasard. Il peut
+     être éliminé, finir une course, et faire pleuvoir des écureuils. */
+  var BOT_LV = [null, { n: "facile", k: 0.6 }, { n: "moyen", k: 1 }, { n: "fort", k: 1.5 }];
+  var BOT_NAMES = ["Robo-Noisette", "Bip-Gland", "Tic-Tac", "Mécanoix", "Boulon", "Clic-Clac"];
+  P.BOT_LV = BOT_LV;
+  P.addBot = function (lv) {
+    lv = Math.max(1, Math.min(3, lv | 0 || 2));
+    return P.mutate(function (s) {
+      var used = Object.keys(s.members).map(function (k) { return s.members[k].n; });
+      var name = BOT_NAMES.filter(function (n) { return !used.some(function (u) { return u.indexOf(n) === 0; }); })[0] || "Bot";
+      var id = "bot-" + rid(5);
+      s.members[id] = { n: name + " (" + BOT_LV[lv].n + ")", c: COLORS[(Object.keys(s.members).length * 3 + 1) % COLORS.length], a: "🤖", ts: now(), bot: lv };
+      s.pts[id] = 0;
+    });
+  };
+  P.removeBot = function (id) { return P.mutate(function (s) { if (s.members[id] && s.members[id].bot) { delete s.members[id]; delete s.pts[id]; } }); };
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function botPlan(mode, lv) {
+    var k = (BOT_LV[lv] || BOT_LV[2]).k, b = mode.bot || {}, pl = { k: k, noise: rnd(0.85, 1.15) };
+    if (b.death) pl.death = Math.round(rnd(b.death[0], b.death[1]) * (0.7 + 0.3 * k));
+    if (b.finish) pl.finish = Math.round(rnd(b.finish[0], b.finish[1]) / (0.7 + 0.3 * k));
+    return pl;
+  }
+  function botTick(m, mode) {
+    var el = (now() - m.goAt) / 1000 - COUNTDOWN, dur = mode.dur || 300, b = mode.bot;
+    if (el < 0 || !b || !m.bots) return;
+    if (now() - (P._bt || 0) < 900) return;
+    P._bt = now();
+    participants(m).forEach(function (id) {
+      var pl = m.bots[id]; if (!pl || m.res[id]) return;
+      var tt = Math.min(el, dur), cv = b.curve || 1.05;
+      var sc = Math.round((b.rate || 0) * pl.k * pl.noise * Math.pow(tt, cv) / Math.pow(dur, cv - 1));
+      var r = null;
+      if (pl.death && el >= pl.death) r = { s: sc, al: false, t: pl.death };
+      else if (pl.finish && el >= pl.finish) r = { s: b.winScore != null ? b.winScore : sc, al: true, dn: true, t: pl.finish };
+      else if (m.status === "stop" || el >= dur) r = { s: sc, al: true, t: Math.round(el) };
+      if (r) {
+        takeResult(id, m.id, r);
+        if (Math.random() < 0.5) { var ei = r.dn ? 0 : r.al ? 6 : 4; send("emo", { id: id, i: ei }); showEmote(id, ei); }
+        return;
+      }
+      P.live[id] = { s: sc, al: true, at: now() };
+      send("sc", { id: id, m: m.id, s: sc, al: true });
+      if (b.rain && Math.random() < 0.07 * pl.k) {
+        var team = m.teams.filter(function (t) { return t.indexOf(id) >= 0; })[0] || [id];
+        var opp = participants(m).filter(function (x) { return team.indexOf(x) < 0 && !isBot(x); });
+        if (opp.length) deliverGame("rain", { n: 2 + Math.floor(Math.random() * 3 * pl.k), from: id }, opp, id);
+      }
+    });
+    emit("live", P.live); hudScores();
+  }
+  function deliverGame(ev, d, to, from) {
+    send("g", { ev: ev, d: d, to: to || null, from: from });
+    if (!to || to.indexOf(P.me.id) >= 0) (gameHandlers[ev] || []).forEach(function (fn) { try { fn(d, from); } catch (e) {} });
+  }
 
   /* ---------- état partagé ---------- */
   function newState() {
@@ -246,6 +306,9 @@
   P.modeFits = function (mode, teams) {
     var n = teams.reduce(function (a, t) { return a + t.length; }, 0), f = P.formatOf(teams);
     if (n < (mode.min || 2) || n > (mode.max || 4)) return false;
+    var bots = teams.some(function (t) { return t.some(isBot); });
+    if (bots && (!mode.bot || mode.room)) return false;
+    if (!teams.some(function (t) { return t.some(function (id) { return !isBot(id); }); })) return false;
     if (mode.formats && mode.formats.indexOf(f) < 0 && !(f !== "ffa" && mode.formats.indexOf("teams") >= 0)) return false;
     return true;
   };
@@ -254,7 +317,8 @@
   P.launch = function (modeId, teams) {
     var mode = modeById(modeId); if (!mode || !isLeader()) return false;
     return P.mutate(function (s) {
-      s.match = { id: rid(6), mode: modeId, teams: teams, seed: (Math.random() * 1e9) | 0, at: now(), status: "launch", res: {}, goAt: 0 };
+      s.match = { id: rid(6), mode: modeId, teams: teams, seed: (Math.random() * 1e9) | 0, at: now(), status: "launch", res: {}, goAt: 0, bots: {} };
+      participants(s.match).forEach(function (id) { if (isBot(id)) s.match.bots[id] = botPlan(mode, s.members[id].bot); });
       s.champ = null;
     });
   };
@@ -267,12 +331,15 @@
     var mode = modeById(m.mode); if (!mode) return;
     var ids = participants(m), t = now();
     if (m.status === "launch") {
-      var loaded = ids.filter(function (id) { return P.roster.some(function (x) { return x.id === id && x.ld === m.id; }); });
-      if (loaded.length === ids.length || (t - m.at > LOAD_WAIT && loaded.length)) P.mutate(function (s2) { s2.match.status = "play"; s2.match.goAt = now(); });
+      var humans = ids.filter(function (id) { return !isBot(id); });
+      var loaded = humans.filter(function (id) { return P.roster.some(function (x) { return x.id === id && x.ld === m.id; }); });
+      if (loaded.length === humans.length || (t - m.at > LOAD_WAIT && loaded.length)) P.mutate(function (s2) { s2.match.status = "play"; s2.match.goAt = now(); });
       else if (t - m.at > LOAD_WAIT * 2) P.mutate(function (s2) { s2.match = null; });   // personne n'a chargé
       return;
     }
     if (m.status === "play" || m.status === "stop") {
+      botTick(m, mode);
+      if (P.st.match !== m || m.status === "done") return;
       var dur = (mode.dur || 300) * 1000;
       if (m.status === "stop" && t - m.stopAt > 9000) finalize();
       else if (t - m.goAt > dur + (COUNTDOWN + 25) * 1000) finalize();
@@ -366,8 +433,9 @@
          stop  : le temps est écoulé (ou la manche est arrêtée) : finir tout de
                  suite ; peut renvoyer { score } (sinon dernier Party.score)
        Party.score(n, texte?)   score en direct
-       Party.over({ score, dead, done })  fin de partie pour ce joueur
-         dead : éliminé (modes « dernier debout ») ; done : parcours fini (course)
+       Party.over({ score, dead, done, alive })  fin de partie pour ce joueur
+         dead : éliminé (modes « dernier debout ») ; done : parcours fini (course) ;
+         sans dead : fin sans élimination (nulle, adversaire parti…)
        Party.pending()  → { mode, opts, seed } avant même le départ (ou null)
        Party.sendGame(ev, data, to?) / Party.onGame(ev, fn) : messages libres
          entre joueurs de la manche (ex. Merger envoie des écureuils aux autres)
@@ -401,6 +469,7 @@
     var t = (now() - r.t0) / 1000;
     if (r.forced) { submit({ al: !r.dead, dn: !!o.done }); return; }
     if (o.done) { submit({ al: true, dn: true, t: t }); return; }
+    if (o.alive || !o.dead) { submit({ al: true, t: t }); return; }   // fin sans élimination (nulle, adversaire parti…)
     // éliminé
     if (r.mode.retry && r.left() > 8) {
       r.best = Math.max(r.best, r.cur); r.tries++;
@@ -463,7 +532,7 @@
     if (P.adapter && P.loadedMatch !== m.id) { P.loadedMatch = m.id; track(); }
     if (m.status === "launch") {
       var ids = participants(m);
-      var ok = ids.filter(function (id) { return P.roster.some(function (x) { return x.id === id && x.ld === m.id; }); }).length;
+      var ok = ids.filter(function (id) { return isBot(id) || P.roster.some(function (x) { return x.id === id && x.ld === m.id; }); }).length;
       card('<p class="pt-kicker">Manche ' + (P.st.round + 1) + ' · ' + esc(gameById(mode.game).name) + '</p><h2>' + esc(mode.name) + '</h2><p>' + esc(mode.desc) + '</p>' +
         teamsHtml(m) + '<p class="pt-wait">' + (P.adapter ? "En attente des joueurs… " + ok + "/" + ids.length : "Chargement du jeu…") + '</p>');
       return;
@@ -538,7 +607,7 @@
     document.addEventListener("keydown", function (e) {
       var tg = e.target && e.target.tagName;
       if (tg === "INPUT" || tg === "TEXTAREA" || tg === "SELECT" || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (!P.code) return;
+      if (!P.code && !bridge) return;
       if (!ui.wheel.hidden) {
         var k = e.key;
         if (/^[0-9]$/.test(k)) { P.emote(k === "0" ? 9 : +k - 1); toggleWheel(false); e.preventDefault(); e.stopPropagation(); return; }
@@ -549,16 +618,41 @@
   function toggleWheel(on) { ui.wheel.hidden = on == null ? !ui.wheel.hidden : !on; ui.emoBtn.classList.toggle("is-on", !ui.wheel.hidden); }
   var lastEmo = 0;
   P.emote = function (i) {
-    if (!P.me || !EMOTES[i] || now() - lastEmo < 1200) return;
-    lastEmo = now(); send("emo", { id: P.me.id, i: i }); showEmote(P.me.id, i);
+    if (!EMOTES[i] || now() - lastEmo < 1200) return;
+    if (P.me && P.code) { lastEmo = now(); send("emo", { id: P.me.id, i: i }); showEmote(P.me.id, i); return; }
+    if (bridge) { lastEmo = now(); var pr = profile(); try { bridge.send(i, pr.name, pr.color); } catch (e) {} showEmoteRaw({ n: pr.name, c: pr.color }, i); }
   };
+  /* Émotes dans les salons en ligne propres aux jeux (hors party) :
+       Party.emoteBridge({ send: function (i, name, color) { ...diffuser dans le salon du jeu... } })
+       Party.emoteFrom(name, i, color)  à la réception
+       Party.emoteBridgeOff()           en quittant le salon */
+  var bridge = null;
+  P.emoteBridge = function (o) {
+    if (P.code && P.inGame) return false;   // la party s'en occupe déjà
+    bridge = o; ensureUi(); ui.emoBtn.hidden = false; return true;
+  };
+  P.emoteBridgeOff = function () {
+    bridge = null;
+    if (ui.emoBtn && !P.code) { ui.emoBtn.hidden = true; toggleWheel(false); }
+  };
+  // raccourci pour un canal Supabase Realtime (à appeler avant ch.subscribe)
+  P.emoteChannel = function (ch, nameFn) {
+    if (!ch || (P.code && P.inGame)) return;
+    try { ch.on("broadcast", { event: "emo" }, function (m) { var d = m.payload || {}; P.emoteFrom(d.n, d.i, d.c); }); } catch (e) { return; }
+    P.emoteBridge({ ch: ch, send: function (i, n, c) { try { ch.send({ type: "broadcast", event: "emo", payload: { n: (nameFn && nameFn()) || n, i: i, c: c } }); } catch (e) {} } });
+  };
+  P.emoteChannelOff = function (ch) { if (bridge && (!ch || bridge.ch === ch)) P.emoteBridgeOff(); };
+  P.emoteFrom = function (name, i, color) { if (EMOTES[i]) showEmoteRaw({ n: String(name || "?").slice(0, 16), c: /^#[0-9a-f]{6}$/i.test(color || "") ? color : "#888" }, i); };
   function memberOf(id) { var m = P.st && P.st.members[id]; if (m) return m; var x = P.roster.filter(function (r) { return r.id === id; })[0]; return x ? { n: x.n, c: x.c, a: x.a } : { n: "?", c: "#888", a: "🐿️" }; }
   P.memberOf = memberOf;
   function showEmote(id, i) {
     var x = EMOTES[i]; if (!x) return;
     emit("emote", { id: id, i: i, e: x.e, t: x.t });
-    if (!ui.feed) return;
-    var m = memberOf(id), b = el("div", "pt-emo", ui.feed);
+    showEmoteRaw(memberOf(id), i);
+  }
+  function showEmoteRaw(m, i) {
+    var x = EMOTES[i]; if (!x || !ui.feed) return;
+    var b = el("div", "pt-emo", ui.feed);
     b.style.setProperty("--pc", m.c || "#888");
     b.innerHTML = '<span class="pt-emo-e">' + x.e + '</span><span><b>' + esc(m.n) + '</b> ' + esc(x.t) + '</span>';
     setTimeout(function () { b.classList.add("is-out"); }, 3200);
