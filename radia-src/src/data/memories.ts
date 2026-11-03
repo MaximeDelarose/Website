@@ -38,7 +38,7 @@ export const MEMORIES: MemoryDef[] = [
   {
     id: 'cinema',
     title: 'Le cinéma',
-    desc: 'Un film dont Auguste ne se souvient pas vraiment. Il regardait ailleurs.',
+    desc: 'Un film de super-héros dont Auguste ne se souvient pas vraiment. Il regardait ailleurs.',
     how: 'Chapitre 3',
     lines: [{ who: 'auguste', expr: 'tease', text: 'J\'aurais pu regarder le film dix fois… mais je crois que je me serais encore laissé distraire par toi.' }],
   },

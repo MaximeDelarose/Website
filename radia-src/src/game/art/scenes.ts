@@ -648,43 +648,84 @@ const MEMS: Record<string, (c: C, w: number, h: number) => void> = {
   cinema: (c, w, h) => {
     const f = frame(w, h);
     sky(c, f, [[0, '#2A2238'], [1, '#1B1626']]);
-    // écran lumineux
-    const sx = w * 0.12, sw = w * 0.76, sy = h * 0.08, sh = h * 0.32;
-    glow(c, w / 2, sy + sh / 2, w * 0.7, '#BFD8FF', 0.35);
-    c.fillStyle = vgrad(c, sy, sy + sh, [[0, '#E6F0FF'], [1, '#B9C8F0']]);
-    roundRect(c, sx, sy, sw, sh, w * 0.02); c.fill();
+    // grand écran : un film de super-héros à toile (hommage stylisé, sans logo)
+    const sx = w * 0.07, sw = w * 0.86, sy = h * 0.05, sh = h * 0.36;
+    glow(c, w / 2, sy + sh / 2, w * 0.8, '#BFD8FF', 0.4);
+    c.save();
+    roundRect(c, sx, sy, sw, sh, w * 0.025); c.clip();
+    c.fillStyle = vgrad(c, sy, sy + sh, [[0, '#4C7BE0'], [0.55, '#F2A0B8'], [1, '#FFD9A8']]);
+    c.fillRect(sx, sy, sw, sh);
+    // immeubles de la ville
+    for (let i = 0; i < 9; i++) {
+      const bw = sw / 9, bx = sx + i * bw, bh = sh * (0.32 + ((i * 37) % 5) * 0.07);
+      c.fillStyle = i % 2 ? '#2C3A78' : '#3A4A92';
+      c.fillRect(bx, sy + sh - bh, bw * 0.92, bh);
+      c.fillStyle = 'rgba(255,230,150,0.75)';
+      for (let k = 0; k < 4; k++) for (let m = 0; m < 3; m++) if ((i + k + m) % 3) c.fillRect(bx + bw * (0.14 + m * 0.27), sy + sh - bh + bh * (0.1 + k * 0.22), bw * 0.14, bh * 0.1);
+    }
+    // fil de toile depuis le haut de l'écran
+    c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = Math.max(1.2, w / 200);
+    c.beginPath(); c.moveTo(sx + sw * 0.9, sy - 2); c.quadraticCurveTo(sx + sw * 0.75, sy + sh * 0.12, sx + sw * 0.6, sy + sh * 0.3); c.stroke();
+    // le héros en plein élan (rouge et bleu, masque à toile, grands yeux blancs)
+    c.save();
+    c.translate(sx + sw * 0.5, sy + sh * 0.56);
+    c.rotate(-0.42);
+    const u = sh * 0.34;
+    const RED = '#D8353F', BLUE = '#2B4CB8', INK = '#1C1730';
+    c.lineWidth = Math.max(1.4, w / 170); c.strokeStyle = INK;
+    // jambes
+    c.fillStyle = BLUE;
+    c.beginPath(); c.moveTo(-u * 0.25, u * 0.55); c.lineTo(-u * 0.95, u * 1.15); c.lineTo(-u * 0.72, u * 1.3); c.lineTo(-u * 0.05, u * 0.8); c.closePath(); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(u * 0.2, u * 0.55); c.lineTo(u * 0.55, u * 1.25); c.lineTo(u * 0.82, u * 1.2); c.lineTo(u * 0.5, u * 0.5); c.closePath(); c.fill(); c.stroke();
+    // bras tendu vers le fil
+    c.fillStyle = RED;
+    c.beginPath(); c.moveTo(u * 0.3, -u * 0.35); c.lineTo(u * 1.25, -u * 1.0); c.lineTo(u * 1.38, -u * 0.82); c.lineTo(u * 0.5, -u * 0.1); c.closePath(); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(-u * 0.3, -u * 0.2); c.lineTo(-u * 1.0, u * 0.2); c.lineTo(-u * 0.86, u * 0.4); c.lineTo(-u * 0.15, u * 0.1); c.closePath(); c.fill(); c.stroke();
+    // torse
+    c.fillStyle = RED;
+    c.beginPath(); c.moveTo(-u * 0.45, -u * 0.5); c.quadraticCurveTo(0, -u * 0.7, u * 0.45, -u * 0.5); c.lineTo(u * 0.3, u * 0.6); c.lineTo(-u * 0.3, u * 0.6); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = BLUE;
+    c.beginPath(); c.moveTo(-u * 0.3, -u * 0.1); c.lineTo(-u * 0.45, -u * 0.5); c.lineTo(-u * 0.3, u * 0.6); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(u * 0.3, -u * 0.1); c.lineTo(u * 0.45, -u * 0.5); c.lineTo(u * 0.3, u * 0.6); c.closePath(); c.fill();
+    // tête masquée
+    c.fillStyle = RED;
+    c.beginPath(); c.ellipse(0, -u * 0.95, u * 0.42, u * 0.5, 0, 0, 7); c.fill(); c.stroke();
+    c.save(); c.beginPath(); c.ellipse(0, -u * 0.95, u * 0.42, u * 0.5, 0, 0, 7); c.clip();
+    c.strokeStyle = 'rgba(28,23,48,0.55)'; c.lineWidth = Math.max(0.8, w / 330);
+    for (let a = 0; a < 8; a++) { c.beginPath(); c.moveTo(0, -u * 0.95); c.lineTo(Math.cos(a * Math.PI / 4) * u, -u * 0.95 + Math.sin(a * Math.PI / 4) * u); c.stroke(); }
+    for (let r = 1; r < 4; r++) { c.beginPath(); c.ellipse(0, -u * 0.95, u * 0.14 * r, u * 0.16 * r, 0, 0, 7); c.stroke(); }
+    c.restore();
+    c.fillStyle = '#FFFFFF'; c.strokeStyle = INK; c.lineWidth = Math.max(1.2, w / 190);
+    for (const sgn of [-1, 1]) { c.beginPath(); c.moveTo(sgn * u * 0.06, -u * 0.86); c.quadraticCurveTo(sgn * u * 0.3, -u * 1.12, sgn * u * 0.38, -u * 0.98); c.quadraticCurveTo(sgn * u * 0.3, -u * 0.78, sgn * u * 0.06, -u * 0.86); c.closePath(); c.fill(); c.stroke(); }
+    c.restore();
+    c.restore();
+    c.lineWidth = Math.max(2, w / 110); c.strokeStyle = '#3A2F52'; roundRect(c, sx, sy, sw, sh, w * 0.025); c.stroke();
     // faisceau du projecteur
-    c.fillStyle = 'rgba(220,230,255,0.08)';
+    c.fillStyle = 'rgba(220,230,255,0.07)';
     c.beginPath(); c.moveTo(w * 0.5, h); c.lineTo(sx, sy + sh); c.lineTo(sx + sw, sy + sh); c.fill();
-    // rangées de sièges
-    for (let row = 0; row < 3; row++) {
-      const y = h * (0.6 + row * 0.14);
+    // Radia et Auguste, installés devant l'écran (tenue actuelle de Radia)
+    const feet = h * 0.9, hgt = h * 0.68;
+    person(c, 'auguste', w * 0.69, feet, hgt, { expr: 'smile' });
+    person(c, 'radia', w * 0.31, feet, hgt, { expr: 'love' });
+    // rangées de fauteuils au premier plan (cachent les jambes)
+    for (let row = 0; row < 2; row++) {
+      const y = h * (0.7 + row * 0.14);
       const n = 5 + row;
       for (let i = 0; i < n; i++) {
         const x = (i + 0.5) * (w / n);
-        c.fillStyle = shade('#B03A5C', -0.15 * row);
-        roundRect(c, x - w / n * 0.42, y, w / n * 0.84, h * 0.12, w * 0.03); c.fill();
+        c.fillStyle = shade('#B03A5C', -0.18 * (row + 1));
+        roundRect(c, x - w / n * 0.48, y, w / n * 0.96, h * 0.16, w * 0.03); c.fill();
+        c.lineWidth = Math.max(1, w / 220); c.strokeStyle = 'rgba(20,10,25,0.5)'; c.stroke();
       }
     }
-    // deux silhouettes de dos (cheveux longs / cheveux courts)
-    const hy = h * 0.6, hr = Math.min(w, h) * 0.075;
-    c.fillStyle = '#5A3A2B';
-    c.beginPath(); c.ellipse(w * 0.6, hy, hr * 1.15, hr * 1.1, 0, 0, 7); c.fill();
-    c.beginPath(); c.moveTo(w * 0.6 - hr * 1.2, hy); c.quadraticCurveTo(w * 0.6 - hr * 1.5, hy + hr * 2.6, w * 0.6 - hr * 0.9, hy + hr * 3); c.lineTo(w * 0.6 + hr * 0.9, hy + hr * 3); c.quadraticCurveTo(w * 0.6 + hr * 1.5, hy + hr * 2.6, w * 0.6 + hr * 1.2, hy); c.fill();
-    c.fillStyle = '#2E2532';
-    c.beginPath(); c.ellipse(w * 0.38, hy - hr * 0.1, hr, hr * 1.05, 0, 0, 7); c.fill();
-    c.fillStyle = '#4A3227';
-    c.beginPath(); c.ellipse(w * 0.38, hy - hr * 0.4, hr * 1.02, hr * 0.75, 0, Math.PI, 0); c.fill();
-    c.fillStyle = '#2A2630';
-    roundRect(c, w * 0.38 - hr * 1.5, hy + hr * 0.9, hr * 3, hr * 2.4, hr); c.fill();
-    // pot de pop-corn partagé
-    const px = w * 0.49, py = hy + hr * 0.6, pw = hr * 1.3;
-    for (let i = 0; i < 7; i++) { c.fillStyle = '#FFF4D6'; c.beginPath(); c.arc(px - pw * 0.4 + (i % 4) * pw * 0.27, py - pw * 0.1 - Math.floor(i / 4) * pw * 0.2, pw * 0.2, 0, 7); c.fill(); }
-    c.beginPath(); c.moveTo(px - pw / 2, py); c.lineTo(px + pw / 2, py); c.lineTo(px + pw * 0.38, py + pw * 1.2); c.lineTo(px - pw * 0.38, py + pw * 1.2); c.closePath();
+    // pot de pop-corn partagé et cœur
+    const pw = w * 0.1, px = w * 0.5, py = h * 0.62;
+    for (let i = 0; i < 8; i++) { c.fillStyle = '#FFF4D6'; c.beginPath(); c.arc(px - pw * 0.38 + (i % 4) * pw * 0.26, py - pw * 0.05 - Math.floor(i / 4) * pw * 0.22, pw * 0.2, 0, 7); c.fill(); }
+    c.beginPath(); c.moveTo(px - pw / 2, py); c.lineTo(px + pw / 2, py); c.lineTo(px + pw * 0.38, py + pw * 1.3); c.lineTo(px - pw * 0.38, py + pw * 1.3); c.closePath();
     c.fillStyle = '#FFFFFF'; c.fill();
-    c.save(); c.clip(); c.fillStyle = '#E8484F'; for (let i = -2; i < 3; i += 2) c.fillRect(px + i * pw * 0.13 - pw * 0.065, py, pw * 0.13, pw * 1.2); c.restore();
+    c.save(); c.clip(); c.fillStyle = '#E8484F'; for (let i = -2; i < 3; i += 2) c.fillRect(px + i * pw * 0.13 - pw * 0.065, py, pw * 0.13, pw * 1.3); c.restore();
     c.lineWidth = Math.max(1, w / 200); c.strokeStyle = OUTLINE; c.stroke();
-    heartPath(c, w * 0.49, hy - hr * 2, hr); c.fillStyle = rgba(PAL.roseVif, 0.85); c.fill();
+    heartPath(c, w * 0.5, h * 0.5, w * 0.045); c.fillStyle = rgba(PAL.roseVif, 0.9); c.fill();
     vignette(c, w, h, '#120E1A', 0.4);
   },
   billard: (c, w, h) => {
