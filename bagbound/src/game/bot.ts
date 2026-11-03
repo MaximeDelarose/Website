@@ -12,11 +12,24 @@ import * as R from "./run";
 
 const RARITY_RANK: Record<string, number> = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
 
-/** Combat headless avec un joueur qui boit ses potions de soin sous 40 % de PV. */
+const OFFENSIVE = new Set(["damage", "poison", "burn", "freeze", "slow"]);
+
+/**
+ * Combat headless avec un joueur simple : il boit ses potions de soin sous
+ * 40 % de PV et lance ses potions offensives (une dose) dès le début.
+ */
 export function fightWithPotions(content: Content, setup: CombatSetup): CombatResult {
   const st = createCombat(content, setup);
   while (!st.outcome) {
     const p = st.combatants[0];
+    if (p.alive && st.tick >= 3) {
+      const bomb = p.items.find(
+        (i) =>
+          !i.removed && i.def.manual && (i.charges ?? 0) > 0 && !i.def.effects.some((e) => e.type === "heal") &&
+          (i.def.throwEffects ?? i.def.effects).some((e) => OFFENSIVE.has(e.type)) && st.timeMs >= i.lockoutUntilMs,
+      );
+      if (bomb && !st.pending.some((x) => x.item === bomb.uid)) queueAction(st, { type: "throw", combatant: 0, item: bomb.uid });
+    }
     if (p.alive && p.hp < p.maxHp * 0.4) {
       const potion = p.items.find(
         (i) => !i.removed && i.def.manual && (i.charges ?? 0) > 0 && i.def.effects.some((e) => e.type === "heal") && st.timeMs >= i.lockoutUntilMs,
@@ -44,7 +57,8 @@ export function repack(run: R.RunState, content: Content, recipes: Recipe[] = []
       return gain > 0;
     });
     if (!opt) break;
-    applyFusion(bag, opt);
+    const fused = applyFusion(bag, opt);
+    R.logFusion(run, fused.entry.item);
     for (const e of bag.entries) bag.stash(e.uid);
     autoPlace(bag, (id) => !content.items[id].tags.includes("Vide"));
   }
@@ -56,11 +70,16 @@ export interface BotReport {
   steps: number;
 }
 
-export function botRun(content: Content, rd: RunData, cls: string, seed: number, recipes: Recipe[] = [], maxSteps = 400): BotReport {
-  const run = R.newRun(content, rd, cls, seed);
+export function botRun(content: Content, rd: RunData, cls: string, seed: number, recipes: Recipe[] = [], opts: R.RunOptions = {}, maxSteps = 600): BotReport {
+  const run = R.newRun(content, rd, cls, seed, opts);
   let steps = 0;
   while (steps++ < maxSteps && run.phase !== "dead" && run.phase !== "won") {
     switch (run.phase) {
+      case "route": {
+        const p = run.pending as Extract<R.Pending, { kind: "route" }>;
+        R.chooseRoute(run, rd, p.options[seed % p.options.length]);
+        break;
+      }
       case "map": {
         const opts = R.reachable(run);
         const hpPct = run.hp / run.maxHp;
@@ -71,7 +90,7 @@ export function botRun(content: Content, rd: RunData, cls: string, seed: number,
         break;
       }
       case "combat":
-        R.finishCombat(run, content, rd, fightWithPotions(content, R.combatSetup(run)));
+        R.finishCombat(run, content, rd, fightWithPotions(content, R.combatSetup(run, content)));
         break;
       case "reward": {
         const p = run.pending as Extract<R.Pending, { kind: "reward" }>;

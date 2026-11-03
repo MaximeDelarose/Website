@@ -17,6 +17,7 @@ export function matchesInput(def: ItemDef, inp: RecipeInput): boolean {
   if (inp.item !== undefined && def.id !== inp.item) return false;
   if (inp.tag !== undefined && !def.tags.includes(inp.tag)) return false;
   if (inp.anyTag !== undefined && !inp.anyTag.some((t) => def.tags.includes(t))) return false;
+  if (inp.notTag !== undefined && def.tags.includes(inp.notTag)) return false;
   return true;
 }
 

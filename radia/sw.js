@@ -1,6 +1,6 @@
 /* Service worker : jeu utilisable hors ligne après la première ouverture.
    Les fichiers du coffre sont chiffrés et nommés d'après leur contenu : on peut les garder en cache. */
-const CACHE = "radia-c403aa6ef3";
+const CACHE = "radia-64f35bd54e";
 const FRESH = /\/(index\.html|loader\.js|manifest\.webmanifest|vault\/meta\.json)?(\?.*)?$/;
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => {

@@ -40,10 +40,14 @@ const runRulesSchema = z
 
 const encounterList = z.array(z.array(z.string()).min(1).max(3)).nonempty();
 
-const zoneSchema = z
+/** Une route : un chemin possible dans une zone (forêt ou marais…). */
+const routeSchema = z
   .object({
     id: z.string(),
     name: z.string(),
+    intro: z.string().optional(),
+    /** Route fermée tant qu'une quête ne l'a pas ouverte. */
+    unlock: z.boolean().default(false),
     shopTable: z.string(),
     chestTable: z.string(),
     floors: z.array(z.object({ hpMul: z.number().positive(), normal: encounterList, elite: encounterList }).strict()).nonempty(),
@@ -51,6 +55,14 @@ const zoneSchema = z
     bossHpMul: z.number().positive().default(1),
   })
   .strict();
+
+const zoneSchema = z.object({ id: z.string(), name: z.string(), routes: z.array(routeSchema).nonempty() }).strict();
+
+const finalSchema = z
+  .object({ id: z.string(), name: z.string(), intro: z.string().optional(), boss: z.array(z.string()).min(1).max(3), bossHpMul: z.number().positive().default(1) })
+  .strict();
+
+const worldSchema = z.object({ zones: z.array(zoneSchema).nonempty(), final: finalSchema }).strict();
 
 const lootSchema = z.record(z.array(z.object({ item: z.string(), weight: z.number().positive() }).strict()).nonempty());
 
@@ -64,6 +76,8 @@ export type EventEffect =
   | { type: "loseItem"; tag: string }
   | { type: "refill"; from: string; into: string; charges: number }
   | { type: "fight"; enemies: string[] }
+  | { type: "lore"; id: string }
+  | { type: "flag"; id: string }
   | { type: "random"; outcomes: { weight: number; effects: EventEffect[]; result?: string }[] };
 
 const eventEffectSchema: z.ZodType<EventEffect> = z.lazy(() =>
@@ -77,6 +91,8 @@ const eventEffectSchema: z.ZodType<EventEffect> = z.lazy(() =>
     z.object({ type: z.literal("loseItem"), tag: z.string() }).strict(),
     z.object({ type: z.literal("refill"), from: z.string(), into: z.string(), charges: z.number().int().positive() }).strict(),
     z.object({ type: z.literal("fight"), enemies: z.array(z.string()).min(1).max(3) }).strict(),
+    z.object({ type: z.literal("lore"), id: z.string() }).strict(),
+    z.object({ type: z.literal("flag"), id: z.string() }).strict(),
     z
       .object({
         type: z.literal("random"),
@@ -109,12 +125,15 @@ const eventSchema = z
 
 export type RunRules = z.infer<typeof runRulesSchema>;
 export type ZoneDef = z.infer<typeof zoneSchema>;
+export type RouteDef = z.infer<typeof routeSchema>;
+export type FinalDef = z.infer<typeof finalSchema>;
 export type LootTables = z.infer<typeof lootSchema>;
 export type EventDef = z.infer<typeof eventSchema>;
 
 export interface RunData {
   rules: RunRules;
   zones: ZoneDef[];
+  final: FinalDef;
   loot: LootTables;
   events: EventDef[];
 }
@@ -135,10 +154,11 @@ export function loadRunData(raw: RawRunData, content: Content): RunData {
     return null;
   };
   const rules = parse(runRulesSchema, raw.rules, "run.json");
-  const zones = parse(z.array(zoneSchema).nonempty(), raw.zones, "zones.json");
+  const world = parse(worldSchema, raw.zones, "zones.json");
   const loot = parse(lootSchema, raw.loot, "loot.json");
   const events = parse(z.array(eventSchema), raw.events, "events.json");
-  if (!rules || !zones || !loot || !events) throw new ContentError(issues);
+  if (!rules || !world || !loot || !events) throw new ContentError(issues);
+  const zones = world.zones;
 
   const enemy = (w: string, id: string) => {
     if (!content.enemies[id]) issues.push(`${w}: ennemi inconnu « ${id} »`);
@@ -148,13 +168,20 @@ export function loadRunData(raw: RawRunData, content: Content): RunData {
   };
   for (const id of [rules.refill.from, rules.refill.into]) if (!content.items[id]) issues.push(`run.json: refill, objet inconnu « ${id} »`);
   for (const [id, list] of Object.entries(loot)) for (const e of list) if (!content.items[e.item]) issues.push(`loot.json[${id}]: objet inconnu « ${e.item} »`);
+  const routeIds = new Set<string>();
   for (const zn of zones) {
-    const w = `zones.json[${zn.id}]`;
-    table(w, zn.shopTable);
-    table(w, zn.chestTable);
-    zn.boss.forEach((id) => enemy(w, id));
-    zn.floors.forEach((f) => [...f.normal, ...f.elite].forEach((enc) => enc.forEach((id) => enemy(w, id))));
+    if (!zn.routes.some((r) => !r.unlock)) issues.push(`zones.json[${zn.id}]: il faut au moins une route ouverte`);
+    for (const rt of zn.routes) {
+      const w = `zones.json[${zn.id}/${rt.id}]`;
+      if (routeIds.has(rt.id)) issues.push(`${w}: id de route en double`);
+      routeIds.add(rt.id);
+      table(w, rt.shopTable);
+      table(w, rt.chestTable);
+      rt.boss.forEach((id) => enemy(w, id));
+      rt.floors.forEach((f) => [...f.normal, ...f.elite].forEach((enc) => enc.forEach((id) => enemy(w, id))));
+    }
   }
+  world.final.boss.forEach((id) => enemy("zones.json[final]", id));
   for (const e of Object.values(content.enemies)) if (e.loot?.table) table(`enemies.json[${e.id}]`, e.loot.table);
   const checkEffects = (w: string, list: EventEffect[]) => {
     for (const ef of list) {
@@ -175,5 +202,5 @@ export function loadRunData(raw: RawRunData, content: Content): RunData {
     });
   }
   if (issues.length) throw new ContentError(issues);
-  return { rules, zones, loot, events };
+  return { rules, zones, final: world.final, loot, events };
 }

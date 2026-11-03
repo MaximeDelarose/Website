@@ -6,7 +6,7 @@ import { pickCard } from "../core/memories";
 import { thinkDelay, DIFFICULTIES, type Choice } from "../ai/persona";
 import { BoardView, bounce } from "../board/board";
 import { Particles } from "../fx/particles";
-import { pieceSVG, PIECE_NAMES } from "../art/pieces";
+import { pieceSVG, PIECE_NAMES, setQueenFace, hasQueenFace, queenFaceUrl } from "../art/pieces";
 import { radiaSVG, augusteSVG, crownSVG } from "../art/portraits";
 import { CADENCES, type Cadence } from "../store/save";
 import { BubbleManager } from "./bubbles";
@@ -39,6 +39,8 @@ export class GameScreen {
   private cardOpen = false;
   private tickT = 0;
   private lowTimeWarned = false;
+  private turnStartedAt = 0;
+  private idleTeased = false;
   private started = false;
   private ui!: {
     rivalClock: HTMLElement; meClock: HTMLElement; rivalCap: HTMLElement; meCap: HTMLElement;
@@ -66,6 +68,13 @@ export class GameScreen {
       if (document.hidden) this.clock.pause("hidden"); else this.clock.resume("hidden");
     });
     window.addEventListener("pagehide", () => this.persist());
+    const face = ctx.content.queenFace;
+    if (face && !hasQueenFace()) void ctx.vault.url(face).then((u) => {
+      if (!u) return;
+      setQueenFace(u);
+      this.board.refreshPieces("w", "q");
+      this.renderCaptured(true);
+    });
   }
 
   // ================================================================ interface
@@ -81,7 +90,7 @@ export class GameScreen {
     const diffTag = h("span", { class: "diff-tag" });
     const status = h("span", { class: "status" });
     const rivalBar = h("div", { class: "player-bar rival" }, rivalAvatar,
-      h("div", { class: "pb-info" }, h("div", { class: "pb-name" }, c.rival.tag, diffTag), h("div", { class: "pb-sub" }, c.rival.subtitle), rivalCap),
+      h("div", { class: "pb-info" }, h("div", { class: "pb-name" }, c.rival.tag, diffTag), h("div", { class: "pb-sub" }, h("span", { class: "online-dot" }), "en ligne · " + c.rival.subtitle), rivalCap),
       h("div", { class: "pb-right" }, status, rivalClock));
     const meBar = h("div", { class: "player-bar me" }, meAvatar,
       h("div", { class: "pb-info" }, h("div", { class: "pb-name" }, c.player.tag), meCap),
@@ -290,7 +299,7 @@ export class GameScreen {
     g.style.left = x + "px";
     g.style.top = y + "px";
     g.style.setProperty("--s", size + "px");
-    g.innerHTML = `<div class="qp-ring"></div><div class="qp-face">${radiaSVG({ expr: "smile", crown: true, outfit: this.ctx.store.prefs.outfit, blink: false })}</div>`;
+    g.innerHTML = `<div class="qp-ring"></div><div class="qp-face">${queenFaceUrl() ? `<img src="${queenFaceUrl()}" alt="">` : radiaSVG({ expr: "smile", crown: true, outfit: this.ctx.store.prefs.outfit, blink: false })}</div>`;
     bounce(g, "show");
     bounce(this.ui.meAvatar, "glow");
     if (!this.ctx.store.prefs.reducedFx) this.fx.sparkles(x, y, size, 10);
@@ -352,9 +361,13 @@ export class GameScreen {
       }
       if (!this.over && this.game.turn === "b") void this.aiTurn();
     } else {
+      this.turnStartedAt = performance.now();
+      this.idleTeased = false;
       if (capture) this.bubbles.trigger("aiCapture");
       else if (inCheck) this.bubbles.trigger("aiCheck");
       else if (this.lastAi?.quality === "mistake") this.bubbles.trigger("aiMistake");
+      else if (this.lastAi && this.lastAi.quality === "best" && this.lastAi.cp >= 120) this.bubbles.trigger("aiGood");
+      else this.bubbles.trigger("taunt");
     }
   }
 
@@ -563,7 +576,6 @@ export class GameScreen {
       row.append(b);
     };
     add("Revanche ♡", "primary", () => this.newGame(true));
-    if (r === "loss") add("Changer la difficulté", "ghost", () => void this.ctx.openSettings(true).then(() => this.newGame(true)));
     if (r === "win") add("Mes souvenirs", "ghost", () => this.ctx.go("album"));
     add("Menu", "ghost", () => this.ctx.go("home"));
     el.append(row);
@@ -624,6 +636,10 @@ export class GameScreen {
     if (!this.over) {
       const f = this.clock.flagged();
       if (f) { void this.finish(this.game.timeoutOutcome(f)); return; }
+      if (!this.idleTeased && this.game.turn === "w" && this.clock.running && this.clock.active === "w" && performance.now() - this.turnStartedAt > 35_000) {
+        this.idleTeased = true;
+        this.bubbles.trigger("idle", true);
+      }
       const me = this.clock.remaining("w");
       if (!this.lowTimeWarned && me < 30_000 && this.clock.active === "w") {
         this.lowTimeWarned = true;
@@ -638,7 +654,8 @@ export class GameScreen {
     this.renderCaptured();
     this.renderHistory();
     this.renderStatus();
-    this.ui.diffTag.textContent = DIFFICULTIES[this.difficulty].label + " · " + CADENCES[this.cadence].label;
+    this.ui.diffTag.textContent = CADENCES[this.cadence].label;
+    void DIFFICULTIES;
     const claim = !this.over && this.game.turn === "w" && this.game.claimableDraw();
     this.ui.claim.hidden = !claim;
   }
@@ -667,14 +684,14 @@ export class GameScreen {
     this.ui.rivalBar.classList.toggle("is-thinking", this.thinking && !this.over);
   }
 
-  private renderCaptured(): void {
+  private renderCaptured(force = false): void {
     const taken = { w: [] as PieceSymbol[], b: [] as PieceSymbol[] }; // pièces prises PAR chaque camp
     for (const m of this.game.history()) if (m.captured) taken[m.color].push(m.captured);
     const order: PieceSymbol[] = ["q", "r", "b", "n", "p"];
     const draw = (el: HTMLElement, list: PieceSymbol[], color: Color, diff: number) => {
       const sorted = [...list].sort((a, b) => order.indexOf(a) - order.indexOf(b));
       const html = sorted.map((t) => `<span class="cap-p" title="${PIECE_NAMES[t]}">${pieceSVG(color, t)}</span>`).join("") + (diff > 0 ? `<span class="cap-diff">+${diff}</span>` : "");
-      if (el.dataset.n !== String(sorted.length) || el.innerHTML !== html) {
+      if (force || el.dataset.n !== String(sorted.length) || el.innerHTML !== html) {
         const grew = Number(el.dataset.n ?? 0) < sorted.length;
         el.innerHTML = html;
         el.dataset.n = String(sorted.length);

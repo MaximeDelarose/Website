@@ -6,7 +6,7 @@ import type { Content } from "../engine/types";
 import { ContentError } from "./loader";
 
 const inputSchema = z
-  .object({ item: z.string().optional(), tag: z.string().optional(), anyTag: z.array(z.string()).nonempty().optional() })
+  .object({ item: z.string().optional(), tag: z.string().optional(), anyTag: z.array(z.string()).nonempty().optional(), notTag: z.string().optional() })
   .strict()
   .refine((x) => x.item !== undefined || x.tag !== undefined || x.anyTag !== undefined, "ingrédient vide");
 

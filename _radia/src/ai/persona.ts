@@ -132,9 +132,11 @@ export function pickMove(cands: Candidate[], cfg: PersonaConfig, rng: () => numb
 /** Temps de « réflexion » humain (ms), en fonction de la pendule restante. */
 export function thinkDelay(rng: () => number, remainingMs: number, quality: MoveQuality, legalCount: number): number {
   if (legalCount <= 1) return 350;
-  let t = 650 + rng() * 1300;
-  if (quality === "mistake") t += 300; // il « hésite »… puis se trompe
-  if (legalCount > 30) t += 300;
+  // rythme d'une vraie personne : souvent 1 à 4 s, parfois une longue réflexion
+  let t = 900 + rng() * 2600;
+  if (rng() < 0.12) t += 2500 + rng() * 3000;
+  if (quality === "mistake") t += 400; // il « hésite »… puis se trompe
+  if (legalCount > 30) t += 400;
   if (remainingMs < 120_000) t *= 0.6;
   if (remainingMs < 30_000) t = Math.min(t, 400);
   if (remainingMs < 8_000) t = 120;

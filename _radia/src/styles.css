@@ -403,3 +403,11 @@ a { color: var(--pink); }
 }
 .reduced-fx .portrait .breathe, .reduced-fx .home-scene .char { animation: none; }
 .reduced-fx .board.shake-small, .reduced-fx .board.shake-big { animation: none; }
+
+/* Auguste « en ligne » */
+.online-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #3CC97A; margin-right: 5px; vertical-align: 1px; box-shadow: 0 0 0 2px rgba(60,201,122,.2); animation: online 2.4s ease-in-out infinite; }
+@keyframes online { 50% { box-shadow: 0 0 0 4px rgba(60,201,122,.08); } }
+/* la dame au visage de Radia */
+.piece.wq .piece-svg.qface { filter: drop-shadow(0 2px 2px rgba(46,37,71,.35)); }
+.piece.wq.lifted .piece-in { transform: translateY(-10%) scale(1.14); }
+.qp-face img { width: 100%; height: 100%; object-fit: cover; display: block; }

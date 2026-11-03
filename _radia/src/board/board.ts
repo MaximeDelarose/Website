@@ -62,6 +62,13 @@ export class BoardView {
     this.el.addEventListener("contextmenu", (e) => e.preventDefault());
   }
 
+  /** Redessine les pièces d'un type (ex. la dame quand le visage de Radia est prêt). */
+  refreshPieces(color: Color, type: PieceSymbol): void {
+    for (const pe of this.pieces.values()) if (pe.color === color && pe.type === type) {
+      pe.el.innerHTML = `<div class="piece-in">${pieceSVG(color, type)}</div>`;
+    }
+  }
+
   setCoords(on: boolean): void { this.el.classList.toggle("no-coords", !on); }
   setLocked(l: boolean): void { this.locked = l; if (l) { this.cancelDrag(); } }
 

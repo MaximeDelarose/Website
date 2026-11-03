@@ -57,7 +57,10 @@ export function start(root: HTMLElement, vault: Vault, opts: StartOptions): void
   let current: Screen | null = null;
   let game: GameScreen | null = null;
   const screens: Partial<Record<ScreenId, Screen>> = {};
-  const about = `RADIA ♛ v${opts.version} — un cadeau fait main.<br>Règles : chess.js (BSD-2). Adversaire : Stockfish 18 (GPLv3, <a href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener">code source</a>), personnalité d'Auguste ajoutée par-dessus. Aucun classement Elo n'est annoncé : la force réelle n'a pas été mesurée face à des humains.`;
+  const about = `RADIA ♛ v${opts.version} — fait main, avec amour ♡`;
+  // niveau d'Auguste choisi discrètement par l'adresse (…/radia/?niveau=joueur)
+  const lv = /[?&]niveau=(doux|joueur|defi)/.exec(location.search)?.[1] as "doux" | "joueur" | "defi" | undefined;
+  if (lv) store.setPref("difficulty", lv);
 
   const ctx: Ctx = {
     content, store, audio, ai, vault, fullscreen,

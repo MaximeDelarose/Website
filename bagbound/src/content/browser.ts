@@ -14,15 +14,25 @@ import events from "../../data/events.json";
 import { loadRunData } from "./runData";
 import recipes from "../../data/recipes.json";
 import { loadRecipes } from "./recipes";
+import storyRaw from "../../data/story.json";
+import questsRaw from "../../data/quests.json";
+import { loadStory } from "./story";
+import metaRaw from "../../data/meta.json";
+import { loadMeta } from "./meta";
 import { loadContent } from "./loader";
 import { loadSandbox } from "./sandbox";
 
 export function loadBundledContent() {
   const content = loadContent({ rules, tags, items, enemies, classes });
+  const runData = loadRunData({ rules: runRules, zones, loot, events }, content);
+  const { story, quests } = loadStory(storyRaw, questsRaw, content, runData);
   return {
     content,
     sandbox: loadSandbox(sandbox, content),
-    runData: loadRunData({ rules: runRules, zones, loot, events }, content),
+    runData,
     recipes: loadRecipes(recipes, content),
+    story,
+    quests,
+    meta: loadMeta(metaRaw, content),
   };
 }

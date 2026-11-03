@@ -65,6 +65,7 @@ export function pieceSpriteSVG(): string {
     <linearGradient id="g-gold" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#FFE7A6"/><stop offset="1" stop-color="#E9B44F"/>
     </linearGradient>
+    <clipPath id="qf-clip"><circle cx="50" cy="56" r="26.5"/></clipPath>
   </defs>
   <style>
     .pc path, .pc rect, .pc circle { stroke-width: 3.1; stroke-linejoin: round; stroke-linecap: round; }
@@ -84,7 +85,28 @@ export function pieceSpriteSVG(): string {
 </svg>`;
 }
 
+/* La dame blanche peut porter le vrai visage de Radia (photo déchiffrée à la volée). */
+let queenFace: string | null = null;
+export function setQueenFace(url: string | null): void { queenFace = url; }
+export function hasQueenFace(): boolean { return !!queenFace; }
+export function queenFaceUrl(): string | null { return queenFace; }
+
+function faceQueen(cls: string): string {
+  return `<svg class="piece-svg qface ${cls}" viewBox="0 0 100 100" aria-hidden="true">
+    <path d="M25 92 Q25 84 33 83 H67 Q75 84 75 92 Z" fill="url(#g-gold)" stroke="#8A6326" stroke-width="2.6" stroke-linejoin="round"/>
+    <circle cx="50" cy="56" r="31" fill="#FFF4E8" stroke="#8A6326" stroke-width="2.6"/>
+    <circle cx="50" cy="56" r="28.5" fill="url(#g-gold)"/>
+    <image href="${queenFace}" x="23.5" y="29.5" width="53" height="53" clip-path="url(#qf-clip)" preserveAspectRatio="xMidYMid slice"/>
+    <circle cx="50" cy="56" r="26.5" fill="none" stroke="#FFF4E8" stroke-width="1.6"/>
+    <path d="M33 27 L29 9 L40 19 L50 4 L60 19 L71 9 L67 27 Z" fill="url(#g-gold)" stroke="#8A6326" stroke-width="2.4" stroke-linejoin="round"/>
+    <circle cx="50" cy="4.5" r="3.2" fill="#FF75A8" stroke="#B8406E" stroke-width="1.2"/>
+    <circle cx="29" cy="9" r="2.4" fill="#FFF4E8"/><circle cx="71" cy="9" r="2.4" fill="#FFF4E8"/>
+    <path d="M50 93 C45.5 89.6 45.8 86 48.1 85.8 C49.1 85.7 49.7 86.4 50 87.1 C50.3 86.4 50.9 85.7 51.9 85.8 C54.2 86 54.5 89.6 50 93 Z" fill="#FF75A8"/>
+  </svg>`;
+}
+
 export function pieceSVG(color: Color, type: PieceSymbol, cls = ""): string {
+  if (queenFace && color === "w" && type === "q") return faceQueen(cls);
   return `<svg class="piece-svg ${cls}" viewBox="0 0 100 100" aria-hidden="true"><use href="#pc-${color}${type}"/></svg>`;
 }
 

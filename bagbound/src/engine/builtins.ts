@@ -110,7 +110,7 @@ registerEffect({
   defaultTarget: "enemy",
   requires: ["value"],
   apply(ctx, effect, targets) {
-    const v = effectValue(ctx, effect);
+    const v = effectValue(ctx, effect) * ctx.owner.damageMul;
     for (const t of targets) dealDamage(ctx.state, { source: ctx.owner, target: t, amount: v, item: ctx.item, kind: "damage", depth: ctx.depth });
   },
 });
