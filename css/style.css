@@ -2620,3 +2620,14 @@ button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--de
 .vs-teaser:hover { filter: brightness(1.04); }
 .vs-teaser-ico { font-size: 40px; }
 .vs-teaser > span:nth-child(2) { flex: 1 1 260px; }
+
+/* ---------- page Jeux sur mobile : grille de 3 par ligne ---------- */
+@media (max-width: 600px) {
+  .games-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
+  .games-grid .card { flex-direction: column; position: relative; margin: 3px 3px 8px; }
+  .games-grid .card-media { flex: none; aspect-ratio: 1; border-right: 0; border-bottom: 3px solid var(--line); }
+  .games-grid .card-body { padding: 6px 4px 8px; text-align: center; }
+  .games-grid .card-title { font-size: .8rem; line-height: 1.15; margin: 0; }
+  .games-grid .card-title a::after { content: ""; position: absolute; inset: 0; }
+  .games-grid .card-meta, .games-grid .card-text, .games-grid .card-body .btn { display: none; }
+}
