@@ -2896,3 +2896,11 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .at-sd-fx li { display: flex; gap: 10px; align-items: flex-start; padding: 7px 10px; border-radius: 10px; background: var(--atbg2); font-size: .86rem; }
 .at-sd-fx i { font-style: normal; width: 1.4em; text-align: center; flex: none; }
 .at-sd-fx b { color: var(--atacc); }
+
+/* ---------- mini jeu : Suika ---------- */
+.suika-stage { background: #1f3a2b; height: min(80vh, 720px); min-height: 460px; }
+.suika-stage .game-canvas { cursor: pointer; touch-action: none; }
+.suika-stage .game-overlay { background: rgba(20, 30, 20, .45); }
+.suika-stage.is-full .fs-exit { display: grid; }
+.sk-evo { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; margin: 8px 0; }
+.sk-evo img { width: 34px; height: 34px; }
