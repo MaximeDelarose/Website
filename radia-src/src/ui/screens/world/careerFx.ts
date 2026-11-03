@@ -10,8 +10,8 @@ import { audio, reducedFx } from '../../../core/app';
 import { fmt } from '../../../core/wallet';
 import { canvasUrl, paint } from '../../../game/art/kit';
 import { drawCareerIcon, drawMagazine } from '../../../game/art/world/careers';
-import { CAREERS, FAN_TIER_DEFS, FURN_NAMES, MAGAZINES, REWARD_LABELS, type Reward, type TierDef } from '../../../data/world/careers';
-import { CAREER_NAMES, type CareerId, type MagazineId } from '../../../data/world/ids';
+import { CAREERS, FAN_TIER_DEFS, FURN_NAMES, REWARD_LABELS, type Reward, type TierDef } from '../../../data/world/careers';
+import { CAREER_NAMES, MAGAZINE_NAMES, type CareerId, type MagazineId } from '../../../data/world/ids';
 import { CLOTHES } from '../../../data/world/wardrobe';
 import { diamondUrl, energyUrl } from '../shop';
 import type { FanTierClaim, GrantedItems } from '../../../game/world/careers';
@@ -141,19 +141,15 @@ export function showFanTier(c: FanTierClaim): Promise<void> {
   return L.closed;
 }
 
-export const magazineUrl = (id: MagazineId, w = 300, h2 = 400, look?: Parameters<typeof drawMagazine>[4], cacheKey = ''): string =>
-  look || cacheKey ? paint(w, h2, 2, (c) => drawMagazine(c, id, w, h2, look)).toDataURL('image/png') : canvasUrl(`mag:${id}:${w}`, () => paint(w, h2, 2, (c) => drawMagazine(c, id, w, h2)));
-
 /** Une nouvelle couverture : elle tourne et se pose, avec des éclats. */
 export function showMagazineReveal(id: MagazineId): Promise<void> {
-  const m = MAGAZINES[id];
-  const cover = h('img.mag-cover', { src: paint(300, 400, 2, (c) => drawMagazine(c, id, 300, 400)).toDataURL('image/png'), alt: m.name });
+  const cover = h('img.mag-cover', { src: paint(300, 400, 2, (c) => drawMagazine(c, id, 300, 400)).toDataURL('image/png'), alt: MAGAZINE_NAMES[id] });
   const sparks = Array.from({ length: 14 }, (_, i) => h('i.mag-spark', { style: `--a:${(i / 14) * 360}deg;--d:${90 + (i % 3) * 30}px;--t:${0.55 + (i % 4) * 0.05}s` }));
   const btn = h('button.btn.wide', 'Superbe ♡');
   const card = h('div.fx-card.fx-mag',
     h('small.fx-kicker.light', 'Nouvelle couverture !'),
     h('div.mag-stage', cover, ...sparks),
-    h('h2.fx-title.light', m.name),
+    h('h2.fx-title.light', MAGAZINE_NAMES[id]),
     h('p.fx-sub.light', 'Ajoutée à ton album. Tu peux l\'accrocher dans ton château.'),
     btn);
   const L = layer([card], 'fx-mag-layer');

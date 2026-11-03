@@ -16,9 +16,9 @@
 .fn-tier { display: flex; gap: 10px; padding: 10px 12px; border-radius: 18px; background: rgba(255, 255, 255, 0.55); box-shadow: inset 0 0 0 2px rgba(88, 67, 63, 0.08); animation: crIn 0.45s var(--ease-pop) backwards; animation-delay: calc(var(--i) * 60ms); }
 .fn-tier.on { background: #fff; box-shadow: 0 0 0 2.5px #7fc48a; }
 .fn-tier.next { box-shadow: 0 0 0 3px var(--rose-vif); background: #fff; }
-.fn-t-n { flex: 0 0 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--choco-soft); }
+.fn-t-n { flex: 0 0 78px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--choco-soft); }
 .fn-tier.on .fn-t-n { color: #3e9a58; }
-.fn-t-n b { font-size: 17px; color: var(--nuit); font-variant-numeric: tabular-nums; }
+.fn-t-n b { white-space: nowrap; font-size: 16px; color: var(--nuit); font-variant-numeric: tabular-nums; }
 .fn-t-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .fn-t-body b { font-size: 16.5px; color: var(--nuit); }
 .fn-t-body small { font-size: 13px; color: var(--choco-soft); }

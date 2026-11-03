@@ -236,7 +236,7 @@ for (const k of ['kid1', 'kid2', 'kid3']) {
   if (k === 'kid1') await shot('23-chambre-enfant-boutique');
   await click('.cs-sheet-head .icon-btn'); await wait(400);
   if (k === 'kid1') await shot('24-chambre-enfant');
-  if (k !== 'kid3') { await click('.screen-head .icon-btn'); await page.waitForSelector('.cs-map-canvas'); await wait(500); }
+  { await click('.screen-head .icon-btn'); await page.waitForSelector('.cs-map-canvas'); await wait(500); }
 }
 await wait(900);
 check('scène finale affichée (texte exact)', (await page.locator('.cs-finale-card p').innerText().catch(() => '')) === 'Chaque pièce de ce château a sa couleur. Mais ce sont les personnes qui y vivent qui lui donnent toute sa beauté.');

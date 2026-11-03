@@ -113,7 +113,7 @@ describe('placement', () => {
     // hors grille
     C.buyFurniture(ctx, 'bed-royal');
     expect(C.placeFurniture(ctx, 'bedroom', 'bed-royal', 6, 0).ok).toBe(false);
-    expect(C.placeFurniture(ctx, 'bedroom', 'bed-royal', 0, 5).ok).toBe(false);
+    expect(C.placeFurniture(ctx, 'bedroom', 'bed-royal', 0, 6).ok).toBe(false);
     expect(C.placeFurniture(ctx, 'bedroom', 'bed-royal', -1, 0).ok).toBe(false);
     expect(C.placeFurniture(ctx, 'bedroom', 'bed-royal', 0.5, 0).ok).toBe(false);
     // pièce interdite
@@ -142,7 +142,7 @@ describe('placement', () => {
     C.buyFurniture(ctx, 'rug-rect');
     const p = C.findFreeSpot(ctx.world, 'salon', 'rug-rect')!;
     expect(C.checkPlacement(ctx.world, 'salon', 'rug-rect', p.x, p.y).ok).toBe(true);
-    // pièce pleine de tapis 3×2 : 2 par rangée × 3 rangées
+    // pièce pleine de tapis 3×2
     let n = 0;
     for (;;) { C.buyFurniture(ctx, 'rug-rect'); const s = C.findFreeSpot(ctx.world, 'salon', 'rug-rect'); if (!s) break; expect(C.placeFurniture(ctx, 'salon', 'rug-rect', s.x, s.y).ok).toBe(true); if (++n > 30) throw new Error('boucle'); }
     expect(n).toBeGreaterThan(0);
@@ -394,8 +394,8 @@ describe('invariants (fuzz)', () => {
       const pick = items[Math.floor(rnd() * items.length)];
       const op = Math.floor(rnd() * 8);
       if (op === 0) { if (C.buyFurniture(ctx, id).ok) purchased[id] = (purchased[id] ?? 0) + 1; }
-      else if (op === 1) C.placeFurniture(ctx, room, id, Math.floor(rnd() * 8), Math.floor(rnd() * 6));
-      else if (op === 2 && pick) C.moveItem(ctx, room, pick.uid, Math.floor(rnd() * 8), Math.floor(rnd() * 6));
+      else if (op === 1) C.placeFurniture(ctx, room, id, Math.floor(rnd() * 8), Math.floor(rnd() * 8));
+      else if (op === 2 && pick) C.moveItem(ctx, room, pick.uid, Math.floor(rnd() * 8), Math.floor(rnd() * 8));
       else if (op === 3 && pick) C.storeItem(ctx, room, pick.uid);
       else if (op === 4 && pick) C.flipItem(ctx, room, pick.uid);
       else if (op === 5) C.undo(ctx, rnd() < 0.5 ? room : undefined);

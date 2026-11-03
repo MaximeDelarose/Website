@@ -19,7 +19,7 @@ import { canvasUrl, paint } from '../../../game/art/kit';
 import { medallionCanvas } from '../../../game/art/characters';
 import { drawMagazine } from '../../../game/art/world/careers';
 import { AUGUSTE_FICHE, FAN_TIER_DEFS, MAGAZINES } from '../../../data/world/careers';
-import { FAN_TIERS, MAGAZINE_IDS, type MagazineId } from '../../../data/world/ids';
+import { FAN_TIERS, MAGAZINE_IDS, MAGAZINE_NAMES, type MagazineId } from '../../../data/world/ids';
 import { claimFanTiers, fansTierOf, magazineUnlocked, syncMagazines, ownedMagazinesOf, type FanTierClaim } from '../../../game/world/careers';
 import { countUp, rewardChips, runQueue, showFanTier, showMagazineReveal } from './careerFx';
 
@@ -72,10 +72,10 @@ function augusteReacts(): void {
 function viewer(id: MagazineId): void {
   const m = MAGAZINES[id];
   const cv = paint(300, 400, 2, (c) => drawMagazine(c, id, 300, 400));
-  const img = h('img.mag-full', { src: cv.toDataURL('image/png'), alt: m.name });
-  const wrap = h('div.mag-viewer', { role: 'dialog', 'aria-label': m.name },
+  const img = h('img.mag-full', { src: cv.toDataURL('image/png'), alt: MAGAZINE_NAMES[id] });
+  const wrap = h('div.mag-viewer', { role: 'dialog', 'aria-label': MAGAZINE_NAMES[id] },
     h('div.mag-view-stage', img),
-    h('h3', m.name),
+    h('h3', MAGAZINE_NAMES[id]),
     h('p', m.heads.join(' · ')),
     h('button.btn.secondary', { on: { click: tap(() => { wrap.classList.add('leaving'); window.setTimeout(() => wrap.remove(), 220); }) } }, 'Fermer'));
   wrap.addEventListener('click', (e) => { if (e.target === wrap) { wrap.classList.add('leaving'); window.setTimeout(() => wrap.remove(), 220); } });
@@ -142,11 +142,11 @@ export function openFans(opts: { album?: boolean } = {}): Promise<void> {
       const m = MAGAZINES[id];
       const has = owned.includes(id);
       const thumb = has
-        ? h('img', { src: canvasUrl(`mag:${id}:150`, () => paint(150, 200, 2, (c) => drawMagazine(c, id, 150, 200))), alt: m.name })
+        ? h('img', { src: canvasUrl(`mag:${id}:150`, () => paint(150, 200, 2, (c) => drawMagazine(c, id, 150, 200))), alt: MAGAZINE_NAMES[id] })
         : h('div.fn-locked', icon('lock', 26));
-      const cell = h(`button.fn-mag${has ? '' : '.locked'}`, { 'aria-label': has ? m.name : `${m.name} (verrouillé)` }, thumb, h('b', has ? m.name : '???'), h('small', has ? '' : m.how));
+      const cell = h(`button.fn-mag${has ? '' : '.locked'}`, { 'aria-label': has ? MAGAZINE_NAMES[id] : `${MAGAZINE_NAMES[id]} (verrouillé)` }, thumb, h('b', has ? MAGAZINE_NAMES[id] : '???'), h('small', has ? '' : m.how));
       if (has) cell.addEventListener('click', tap(() => viewer(id), { sound: false }));
-      else cell.addEventListener('click', tap(() => ui.toast({ title: m.name, sub: m.how, icon: 'lock' })));
+      else cell.addEventListener('click', tap(() => ui.toast({ title: MAGAZINE_NAMES[id], sub: m.how, icon: 'lock' })));
       album.append(cell);
     }
     body.append(h('h3.fn-h#album', `Album des couvertures · ${owned.length}/${MAGAZINE_IDS.length}`), album,

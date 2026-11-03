@@ -1,5 +1,6 @@
 /* ===== Le château de Radia ===== */
 .cs-screen { padding-bottom: calc(var(--sab) + 10px); }
+.cs-screen .screen-head h2 { font-size: 21px; line-height: 1.1; }
 .cs-coin { width: 18px; height: 18px; display: inline-block; vertical-align: -3px; }
 
 /* --- carte --- */
