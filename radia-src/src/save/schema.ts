@@ -5,7 +5,7 @@
  */
 import type { RunState } from '../game/merge/types';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export type ChessDifficulty = 'easy' | 'normal' | 'hard';
 
@@ -59,7 +59,35 @@ export interface SaveData {
   endless: { best: number; runs: number; run: RunState | null; challenges: number };
   /** Message d'Auguste déjà affichés (anti-répétition). */
   barks: Record<string, number>;
+  /** v2 — économie façon jeu de fusion mobile (aucun argent réel). */
+  economy: Economy;
+  /** v2 — apparence du plateau achetée avec des diamants. */
+  cosmetics: { tiles: string; fx: string; owned: string[] };
+  /** v2 — décorations de « Notre petit monde ». */
+  decor: string[];
+  /** Nouveautés déjà présentées (une seule fois chacune). */
+  seenUpdates: string[];
 }
+
+export interface Economy {
+  energy: number;
+  /** Instant (ms) de la dernière mise à jour de l'énergie (recharge naturelle). */
+  energyTs: number;
+  diamonds: number;
+  /** Dernière recharge gratuite prise / dernier coffre gratuit ouvert (ms). */
+  freeRefillTs: number;
+  freeChestTs: number;
+  /** Sac de rangement : objets mis de côté hors du plateau. */
+  bag: { c: string; l: number }[];
+  bagSlots: number;
+  /** Nombre de « paiements » avec la carte d'Auguste (fictifs). */
+  giftCount: number;
+  diamondsGifted: number;
+}
+
+export const defaultEconomy = (): Economy => ({
+  energy: 100, energyTs: Date.now(), diamonds: 30, freeRefillTs: 0, freeChestTs: 0, bag: [], bagSlots: 6, giftCount: 0, diamondsGifted: 0,
+});
 
 export function defaultSave(): SaveData {
   const now = Date.now();
@@ -91,6 +119,10 @@ export function defaultSave(): SaveData {
     chess: { wins: { easy: 0, normal: 0, hard: 0 }, losses: 0, draws: 0, puzzles: [], queen: [], game: null },
     endless: { best: 0, runs: 0, run: null, challenges: 0 },
     barks: {},
+    economy: defaultEconomy(),
+    cosmetics: { tiles: 'classic', fx: 'classic', owned: ['classic'] },
+    decor: [],
+    seenUpdates: ['v2'],
   };
 }
 
@@ -207,6 +239,31 @@ export function sanitize(raw: unknown): SaveData {
     };
   }
   d.barks = numRecord(s.barks);
+  if (isObj(s.economy)) {
+    const e = s.economy;
+    const bag = Array.isArray(e.bag) ? e.bag.filter((x): x is { c: string; l: number } => isObj(x) && typeof x.c === 'string' && typeof x.l === 'number' && x.c !== 'gen') : [];
+    d.economy = {
+      energy: Math.floor(num(e.energy, 100, 0, 9999)),
+      energyTs: num(e.energyTs, Date.now(), 0),
+      diamonds: Math.floor(num(e.diamonds, 30, 0, 99_999_999)),
+      freeRefillTs: num(e.freeRefillTs, 0, 0),
+      freeChestTs: num(e.freeChestTs, 0, 0),
+      bag,
+      bagSlots: Math.floor(num(e.bagSlots, 6, 6, 24)),
+      giftCount: Math.floor(num(e.giftCount, 0, 0)),
+      diamondsGifted: Math.floor(num(e.diamondsGifted, 0, 0)),
+    };
+    d.economy.bag = d.economy.bag.slice(0, d.economy.bagSlots);
+  }
+  if (isObj(s.cosmetics)) {
+    const owned = strArr(s.cosmetics.owned);
+    if (!owned.includes('classic')) owned.unshift('classic');
+    const tiles = str(s.cosmetics.tiles, 'classic');
+    const fx = str(s.cosmetics.fx, 'classic');
+    d.cosmetics = { owned, tiles: owned.includes(tiles) ? tiles : 'classic', fx: owned.includes(fx) ? fx : 'classic' };
+  }
+  d.decor = strArr(s.decor);
+  if (Array.isArray(s.seenUpdates)) d.seenUpdates = strArr(s.seenUpdates);
   void str;
   return d;
 }
@@ -215,7 +272,17 @@ export function sanitize(raw: unknown): SaveData {
  * Migrations : chaque entrée transforme la version N en N+1.
  * (Aucune pour l'instant : la V1 est le premier format.)
  */
-const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string, unknown>> = {};
+const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string, unknown>> = {
+  // v1 → v2 : arrivée de l'énergie, des diamants, du sac, des décorations.
+  // On offre 50 diamants de bienvenue et on prévoit l'écran « Nouveautés ».
+  1: (raw) => ({
+    ...raw,
+    economy: { ...defaultEconomy(), diamonds: 50 },
+    cosmetics: { tiles: 'classic', fx: 'classic', owned: ['classic'] },
+    decor: [],
+    seenUpdates: [],
+  }),
+};
 
 export function migrate(raw: unknown): { data: SaveData; migrated: boolean; tooNew: boolean } {
   if (!isObj(raw)) return { data: defaultSave(), migrated: false, tooNew: false };

@@ -73,7 +73,7 @@ export type BoardEvent =
   | { t: 'move'; from: number; to: number }
   | { t: 'merge'; from: number; to: number; result: ItemRef; points: number; combo: number; joker?: boolean }
   | { t: 'invalid'; from: number; to: number; reason: 'different' | 'max' | 'gift' | 'empty' }
-  | { t: 'spawn'; at: number; item: ItemRef; source: 'gen' | 'box' | 'combo' | 'reward' }
+  | { t: 'spawn'; at: number; item: ItemRef; source: 'gen' | 'box' | 'combo' | 'reward'; from?: number }
   | { t: 'giftOpen'; at: number; item: ItemRef }
   | { t: 'deliver'; slot: number; cells: number[]; hearts: number; points: number }
   | { t: 'orderNew'; slot: number }

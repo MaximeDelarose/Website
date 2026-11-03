@@ -57,11 +57,15 @@ export function markMinigame(id: string, score = 0): boolean {
   const cur = save.data.minigames[id];
   const first = !cur?.done;
   save.data.minigames[id] = { done: true, best: Math.max(cur?.best ?? 0, score) };
+  if (first) { save.data.economy.diamonds += 10; events.emit('economy', undefined); }
   save.save();
   return first;
 }
 
 /** Vérifie tous les succès ; renvoie ceux qui viennent d'être débloqués. */
+/** Diamants offerts pour chaque succès. */
+export const ACHIEVEMENT_DIAMONDS = 10;
+
 export function checkAchievements(): AchievementDef[] {
   const fresh: AchievementDef[] = [];
   for (const a of ACHIEVEMENTS) {
@@ -70,6 +74,7 @@ export function checkAchievements(): AchievementDef[] {
     try { ok = a.check(save.data); } catch { ok = false; }
     if (ok) {
       save.data.achievements[a.id] = Date.now();
+      save.data.economy.diamonds += ACHIEVEMENT_DIAMONDS;
       fresh.push(a);
     }
   }

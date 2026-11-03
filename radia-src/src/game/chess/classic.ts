@@ -270,7 +270,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       recorded = true;
       const c = save.data.chess;
       if (end.kind === 'draw') c.draws++;
-      else if (end.winner === player) c.wins[diff]++;
+      else if (end.winner === player) { c.wins[diff]++; save.data.economy.diamonds += diff === 'hard' ? 15 : diff === 'normal' ? 8 : 4; }
       else c.losses++;
       c.game = null;
       save.save();

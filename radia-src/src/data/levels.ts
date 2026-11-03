@@ -23,7 +23,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 2, chapter: 1, title: 'Ça pousse !', difficulty: 1, dominant: 'flowers',
-    hint: 'Touche le panier pour faire apparaître de nouvelles graines.',
+    hint: 'Touche le pot de fleurs magique pour faire apparaître des graines (1 ⚡ par toucher).',
     gen: [['flowers', 1, 8], ['flowers', 2, 2]],
     start: [P(2, 2, 'flowers', 2), P(3, 2, 'flowers', 1)],
     objectives: [{ t: 'create', item: ['flowers', 4] }],
@@ -75,7 +75,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 8, chapter: 2, title: 'Un café en terrasse', difficulty: 2, dominant: 'paris',
-    hint: 'Le panier donne maintenant des fleurs et des souvenirs de Paris.',
+    hint: 'Deux générateurs maintenant : le pot de fleurs et l\'appareil photo.',
     gen: [['paris', 1, 5], ['paris', 2, 3], ['flowers', 1, 2], ['flowers', 2, 2]],
     orders: [[['paris', 3]], [['flowers', 3]], [['paris', 3], ['flowers', 3]], [['paris', 4]]],
     objectives: [{ t: 'orders', count: 4 }],
@@ -230,7 +230,7 @@ export const LEVELS: LevelDef[] = [
   // ================================================== CHAPITRE 5 — Le monde que j'ai créé
   {
     id: 25, chapter: 5, title: 'Tous nos souvenirs', difficulty: 3, dominant: 'paris',
-    hint: 'Toutes les collections se retrouvent. Le panier aussi.',
+    hint: 'Tous les générateurs sont réunis sur le plateau.',
     gen: [['flowers', 2, 3], ['love', 2, 3], ['paris', 2, 3], ['chess', 2, 3], ['special', 3, 0.4]],
     orders: [
       [['flowers', 4]], [['love', 4]], [['paris', 4]], [['chess', 4]],

@@ -104,7 +104,7 @@ export function openAlbum(tab: Tab = 'memories', overlay = false): Promise<void>
             b.addEventListener('click', tap(() => void ui.modal({
               title: itemName(r),
               body: h('div', h('img', { src: itemImageUrl(r, 160), alt: '', style: 'width:120px;height:120px' }), h('p', itemBlurb(r)),
-                r.c !== 'special' ? h('p.muted', { style: 'font-size:14px' }, `${COLLECTIONS[r.c].name} · niveau ${r.l}/10`) : null),
+                r.c !== 'special' && r.c !== 'gen' ? h('p.muted', { style: 'font-size:14px' }, `${COLLECTIONS[r.c].name} · niveau ${r.l}/10`) : null),
               actions: [{ label: 'Joli !', value: 'ok' }],
             })));
             return b;

@@ -89,6 +89,8 @@ export const ui = {
       ? h('img', { src: o.img, alt: '', style: 'width:38px;height:38px;object-fit:contain' })
       : h('span.t-icon', icon(o.icon ?? 'star', 20));
     const t = h('div.toast', ic, h('div', o.title, o.sub ? h('small', o.sub) : null));
+    // au plus 2 notifications à la fois : la plus ancienne s'efface
+    while (toastWrap.children.length >= 2) toastWrap.firstElementChild?.remove();
     toastWrap.append(t);
     window.setTimeout(() => { t.classList.add('out'); window.setTimeout(() => t.remove(), 320); }, o.ms ?? 2600);
   },

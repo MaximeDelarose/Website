@@ -1,6 +1,7 @@
 /** Textures du plateau de fusion (cases, paquets, panier, effets). */
 import Phaser from 'phaser';
 import { drawItem } from '../art/items';
+import { drawGenerator, type GenKind } from '../art/generators';
 import { itemKey, type ItemRef } from '../../data/items';
 import {
   OUTLINE, PAL, ellipse, fillShaded, gloss, groundShadow, heartPath, paint, roundRect, shade, sparkle, starPath, texScale, canvasUrl,
@@ -13,17 +14,32 @@ export function itemTexKey(r: ItemRef) { return `item:${itemKey(r)}`; }
 export function ensureItemTexture(scene: Phaser.Scene, r: ItemRef): string {
   const key = itemTexKey(r);
   if (!scene.textures.exists(key)) {
-    scene.textures.addCanvas(key, paint(ITEM_TEX, ITEM_TEX, texScale(), (ctx) => drawItem(ctx, r, ITEM_TEX)));
+    scene.textures.addCanvas(key, paint(ITEM_TEX, ITEM_TEX, texScale(), (ctx) => drawAny(ctx, r, ITEM_TEX)));
   }
   return key;
 }
 
 /** Image d'objet pour l'interface HTML (mise en cache). */
 export function itemImageUrl(r: ItemRef, size = 96): string {
-  return canvasUrl(`ui-item:${itemKey(r)}:${size}`, () => paint(size, size, 2, (ctx) => drawItem(ctx, r, size)));
+  return canvasUrl(`ui-item:${itemKey(r)}:${size}`, () => paint(size, size, 2, (ctx) => drawAny(ctx, r, size)));
 }
 
-export function ensureBoardTextures(scene: Phaser.Scene, cell: number): void {
+/** Objet ou générateur. */
+export function drawAny(ctx: CanvasRenderingContext2D, r: ItemRef, size: number): void {
+  if (r.c === 'gen') drawGenerator(ctx, r.l as GenKind, size);
+  else drawItem(ctx, r, size);
+}
+
+/** Couleurs des cases selon l'apparence achetée. */
+const SKINS: Record<string, [string, string, string]> = {
+  classic: ['#FFF8F0', '#FFEFE6', 'rgba(88,67,63,0.10)'],
+  gold: ['#FFF6DD', '#FFE7AE', 'rgba(181,134,44,0.30)'],
+  lavender: ['#F5F0FF', '#E6DBFA', 'rgba(81,68,109,0.18)'],
+  night: ['#6A5B8C', '#5A4C7A', 'rgba(255,255,255,0.18)'],
+};
+
+export function ensureBoardTextures(scene: Phaser.Scene, cell: number, skin = 'classic'): void {
+  const [ca, cb, line] = SKINS[skin] ?? SKINS.classic;
   const s = texScale();
   const add = (key: string, w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) => {
     if (scene.textures.exists(key)) scene.textures.remove(key);
@@ -31,21 +47,23 @@ export function ensureBoardTextures(scene: Phaser.Scene, cell: number): void {
   };
   const c = Math.round(cell);
   // case du plateau
-  for (const [key, col] of [['cell:a', '#FFF8F0'], ['cell:b', '#FFEFE6']] as const) {
+  for (const [key, col] of [['cell:a', ca], ['cell:b', cb]] as const) {
     add(key, c, c, (ctx) => {
       roundRect(ctx, 2, 3, c - 4, c - 4, c * 0.22);
       ctx.fillStyle = 'rgba(81,68,109,0.16)';
       ctx.fill();
       roundRect(ctx, 2, 1.5, c - 4, c - 5, c * 0.22);
       const g = ctx.createLinearGradient(0, 0, 0, c);
-      g.addColorStop(0, '#FFFFFF');
+      g.addColorStop(0, skin === 'night' ? shade(col, 0.15) : '#FFFFFF');
       g.addColorStop(0.25, col);
       g.addColorStop(1, shade(col, -0.04));
       ctx.fillStyle = g;
       ctx.fill();
       ctx.lineWidth = 1.2;
-      ctx.strokeStyle = 'rgba(88,67,63,0.10)';
+      ctx.strokeStyle = line;
       ctx.stroke();
+      if (skin === 'night') { ctx.fillStyle = 'rgba(255,255,255,0.5)'; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(c * (0.2 + k * 0.31), c * (0.25 + ((k * 37) % 50) / 100), 0.9, 0, Math.PI * 2); ctx.fill(); } }
+      if (skin === 'gold') { ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(c * 0.24, c * 0.22, 1.4, 0, Math.PI * 2); ctx.fill(); }
     });
   }
   // surbrillances

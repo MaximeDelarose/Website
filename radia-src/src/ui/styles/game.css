@@ -271,3 +271,8 @@
 .photo-full b { font-family: var(--font-script); font-size: 28px; }
 .finale-photo { width: min(70vw, 280px); }
 
+
+/* barre du haut de l'accueil */
+.title-top { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.title-top .shop-btn small { color: #fff; }
+.title-screen .title-logo { margin-top: 0; font-size: clamp(42px, 13vw, 66px); }

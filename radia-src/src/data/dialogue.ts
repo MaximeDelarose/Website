@@ -55,11 +55,12 @@ export const DIALOGUES: Record<string, DialogueDef> = {
   },
   basket: {
     id: 'basket',
-    title: 'Le panier magique',
+    title: 'Le pot de fleurs magique',
     lines: [
-      A('smile', 'Ce panier, c\'est mon petit cadeau : touche-le et il te donne de quoi fusionner. Il ne se vide jamais.'),
-      R('tease', 'Comme toi quand tu parles ?'),
-      A('laugh', '…Je vais faire semblant de ne pas avoir entendu.'),
+      A('smile', 'Tu vois le pot de fleurs magique, en bas ? Touche-le : il fait pousser des graines juste à côté.'),
+      A('tease', 'Chaque toucher coûte un éclair d\'énergie. Mais t\'inquiète, elle revient toute seule… et je t\'en offre souvent.'),
+      R('tease', 'Et si je n\'en ai plus ?'),
+      A('laugh', 'J\'ai une carte cadeau à mon nom dans la boutique. Je dis ça, je dis rien.'),
     ],
   },
   combo: {

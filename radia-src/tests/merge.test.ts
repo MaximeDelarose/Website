@@ -3,6 +3,7 @@ import { LEVELS } from '../src/data/levels';
 import { allItems, itemKey, SPECIAL } from '../src/data/items';
 import {
   createRun, move, tapGenerator, deliver, isStuck, recover, idx, useWand, useWind, tapItem, cloneRun, stars,
+  generatorCells, stashItem, placeItem,
 } from '../src/game/merge/rules';
 import { simulate } from '../src/game/merge/bot';
 import { BOARD_SIZE, type LevelDef } from '../src/game/merge/types';
@@ -11,7 +12,7 @@ const base: LevelDef = {
   id: 999, chapter: 1, title: 't', hint: '', dominant: 'flowers', difficulty: 1,
   gen: [['flowers', 1, 1]], objectives: [{ t: 'create', item: ['flowers', 4] }], par: 5, reward: { hearts: 1 },
 };
-const count = (s: ReturnType<typeof createRun>) => s.cells.filter((c) => c.item || c.gift).length;
+const count = (s: ReturnType<typeof createRun>) => s.cells.filter((c) => (c.item && c.item.c !== 'gen') || c.gift).length;
 
 describe('objets', () => {
   it('au moins 40 objets fusionnables distincts', () => {
@@ -62,9 +63,44 @@ describe('règles de fusion', () => {
 
   it('génération dans une case libre, et plateau plein', () => {
     const s = createRun(base);
-    for (let k = 0; k < BOARD_SIZE; k++) expect(tapGenerator(s, base)[0].t).toBe('spawn');
+    // un générateur occupe une case
+    for (let k = 0; k < BOARD_SIZE - 1; k++) expect(tapGenerator(s, base)[0].t).toBe('spawn');
     expect(tapGenerator(s, base)[0].t).toBe('full');
-    expect(s.taps).toBe(BOARD_SIZE);
+    expect(s.taps).toBe(BOARD_SIZE - 1);
+  });
+
+  it('générateurs : un par collection, objets produits à côté, jamais fusionnés ni retirés', () => {
+    const def: LevelDef = { ...base, gen: [['flowers', 1, 1], ['love', 1, 1], ['special', 1, 0.2]] };
+    const s = createRun(def);
+    const gens = generatorCells(s);
+    expect(gens.map((g) => s.cells[g].item!.l).sort()).toEqual([1, 2]);
+    const love = gens.find((g) => s.cells[g].item!.l === 2)!;
+    for (let k = 0; k < 6; k++) {
+      const ev = tapGenerator(s, def, love);
+      const sp = ev[0] as { t: string; item: { c: string }; at: number };
+      expect(sp.t).toBe('spawn');
+      expect(['love', 'special']).toContain(sp.item.c);
+    }
+    // l'objet apparaît au plus près du générateur
+    const first = createRun(def);
+    const ev = tapGenerator(first, def, love) as { at: number }[];
+    const d = (a: number, b: number) => Math.abs((a % 6) - (b % 6)) + Math.abs(Math.floor(a / 6) - Math.floor(b / 6));
+    expect(d(ev[0].at, love)).toBe(1);
+    expect(useWind(s, def, love)).toEqual([]);
+    expect(useWand(s, def, love, 0)).toEqual([]);
+    expect(recover(s, def).some((e) => (e as { at?: number }).at === love)).toBe(false);
+    expect(s.cells[love].item?.c).toBe('gen');
+  });
+
+  it('sac : ranger puis ressortir un objet', () => {
+    const s = createRun({ ...base, start: [{ x: 0, y: 0, c: 'paris', l: 3 }] });
+    const r = stashItem(s, base, 0);
+    expect(r?.item).toEqual({ c: 'paris', l: 3 });
+    expect(s.cells[0].item).toBeNull();
+    expect(stashItem(s, base, generatorCells(s)[0])).toBeNull();
+    const ev = placeItem(s, base, { c: 'paris', l: 3 });
+    expect(ev[0].t).toBe('spawn');
+    expect(s.cells.filter((c) => c.item?.c === 'paris').length).toBe(1);
   });
 
   it('combo : fenêtre de 3 s', () => {

@@ -14,7 +14,8 @@ export type Sfx =
   | 'move' | 'capture' | 'victory' | 'invalid' | 'spawn' | 'deliver' | 'pickup' | 'drop' | 'whoosh'
   | 'heart' | 'check' | 'sparkle' | 'page';
 
-const MUSIC_URL = './assets/music/radia-theme.mp3';
+/** Les versions de « J'arrive pas à t'oublier » : elles s'enchaînent tour à tour. */
+const TRACKS = ['./assets/music/radia-theme.mp3', './assets/music/radia-theme-2.mp3'];
 const MAX_VOICES = 10;
 
 export class AudioManager {
@@ -82,29 +83,22 @@ export class AudioManager {
     if (this.wantMusic && this.musicOn) void this.el?.play().catch(() => undefined);
   }
 
+  private track = 0;
+  private blobs = new Map<number, string>();
+
   private prepareMusic(): void {
     const el = new Audio();
-    el.loop = true;
+    el.loop = false;
     el.preload = 'auto';
     el.setAttribute('playsinline', '');
     el.crossOrigin = 'anonymous';
     this.el = el;
-    // On charge le fichier entier en mémoire (blob) : lecture fiable hors ligne
-    // et pas de requêtes partielles à gérer par le service worker.
-    fetch(MUSIC_URL)
-      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); })
-      .then((b) => {
-        el.src = URL.createObjectURL(b);
-        this.musicLoaded = true;
-        if (this.wantMusic && this.musicOn) this.startElement();
-      })
-      .catch(() => {
-        // Dernière chance : lecture directe.
-        el.src = MUSIC_URL;
-        el.addEventListener('error', () => { this.musicMissing = true; }, { once: true });
-        this.musicLoaded = true;
-        if (this.wantMusic && this.musicOn) this.startElement();
-      });
+    // À la fin d'une version, on passe à l'autre (fondu d'entrée doux).
+    el.addEventListener('ended', () => {
+      this.track = (this.track + 1) % TRACKS.length;
+      this.loadTrack(this.track, true);
+    });
+    this.loadTrack(0, false);
     try {
       if (this.ctx && this.musicGain) {
         this.elSource = this.ctx.createMediaElementSource(el);
@@ -113,6 +107,33 @@ export class AudioManager {
     } catch {
       this.elSource = null;
     }
+  }
+
+  /**
+   * Charge une version en mémoire (blob) : lecture fiable hors ligne et pas
+   * de requêtes partielles à gérer par le service worker.
+   */
+  private loadTrack(i: number, fadeIn: boolean): void {
+    const el = this.el;
+    if (!el) return;
+    const play = (src: string) => {
+      el.src = src;
+      this.musicLoaded = true;
+      if (this.wantMusic && this.musicOn) {
+        if (fadeIn) this.fadeMusicTo(0, 0.01);
+        this.startElement();
+      }
+    };
+    const cached = this.blobs.get(i);
+    if (cached) { play(cached); return; }
+    fetch(TRACKS[i])
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); })
+      .then((b) => { const u = URL.createObjectURL(b); this.blobs.set(i, u); play(u); })
+      .catch(() => {
+        if (i !== 0) { this.track = 0; this.loadTrack(0, fadeIn); return; }
+        el.addEventListener('error', () => { this.musicMissing = true; }, { once: true });
+        play(TRACKS[0]);
+      });
   }
 
   private startElement(): void {

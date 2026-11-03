@@ -3,7 +3,7 @@
  * Toutes les actions prennent l'état, le modifient et renvoient la liste des
  * événements à animer. Une action invalide ne modifie jamais l'état.
  */
-import { MAX_LEVEL, SPECIAL, itemKey, mergePoints, sameItem, COLLECTION_IDS, type ItemRef } from '../../data/items';
+import { MAX_LEVEL, SPECIAL, itemKey, mergePoints, sameItem, COLLECTION_IDS, GENERATORS, genKindOf, type CollectionId, type ItemRef } from '../../data/items';
 import { Rng, hashString } from '../../utils/rng';
 import {
   BOARD_H, BOARD_SIZE, BOARD_W, COMBO_WINDOW_MS,
@@ -11,7 +11,11 @@ import {
 } from './types';
 
 const ref = (t: Tuple): ItemRef => ({ c: t[0], l: t[1] });
-const isSpecial = (r: ItemRef | null) => !!r && r.c === 'special';
+const isSpecial = (r: ItemRef | null) => !!r && (r.c === 'special' || r.c === 'gen');
+const isGenItem = (r: ItemRef | null | undefined) => !!r && r.c === 'gen';
+
+/** Chance qu'un générateur offre un objet rare (Coffret surprise). */
+export const RARE_CHANCE = 0.025;
 
 export const idx = (x: number, y: number) => y * BOARD_W + x;
 export const xy = (i: number) => ({ x: i % BOARD_W, y: Math.floor(i / BOARD_W) });
@@ -32,6 +36,8 @@ export function createRun(def: LevelDef, mode: 'story' | 'endless' = 'story', se
   const cells: Cell[] = Array.from({ length: BOARD_SIZE }, () => ({ item: null, gift: null }));
   for (const p of def.start ?? []) cells[idx(p.x, p.y)].item = { c: p.c, l: p.l };
   for (const g of def.gifts ?? []) { const c = cells[idx(g.x, g.y)]; c.item = null; c.gift = { c: g.c, l: g.l }; }
+  const colls = mode === 'endless' ? endlessColls(0) : levelColls(def);
+  for (const c of colls) placeGenerator(cells, genKindOf(c));
   const s: RunState = {
     mode,
     levelId: def.id,
@@ -118,15 +124,66 @@ export function deliver(s: RunState, def: LevelDef, slot: number): BoardEvent[] 
   return ev.concat(afterAction(s, def));
 }
 
+// ------------------------------------------------------------- générateurs
+
+/** Collections produites par les générateurs d'un niveau (d'après son panier). */
+export function levelColls(def: LevelDef): CollectionId[] {
+  const out: CollectionId[] = [];
+  for (const [c, , w] of def.gen) if (c !== 'special' && c !== 'gen' && w > 0 && !out.includes(c)) out.push(c);
+  return out;
+}
+
+const GEN_SPOTS: [number, number][] = [[2, 5], [3, 5], [0, 5], [5, 5], [0, 4], [5, 4], [1, 5], [4, 5]];
+
+function placeGenerator(cells: Cell[], kind: number): number {
+  if (cells.some((c) => c.item?.c === 'gen' && c.item.l === kind)) return -1;
+  for (const [x, y] of GEN_SPOTS) {
+    const i = idx(x, y);
+    if (!cells[i].item && !cells[i].gift) { cells[i].item = { c: 'gen', l: kind }; return i; }
+  }
+  for (let i = BOARD_SIZE - 1; i >= 0; i--) if (!cells[i].item && !cells[i].gift) { cells[i].item = { c: 'gen', l: kind }; return i; }
+  return -1;
+}
+
+/** Ajoute les générateurs manquants (sauvegardes d'avant les générateurs). */
+export function ensureGenerators(s: RunState, def: LevelDef): void {
+  const colls = s.mode === 'endless' ? endlessColls(endlessTier(s)) : levelColls(def);
+  for (const c of colls) placeGenerator(s.cells, genKindOf(c));
+}
+
+export const generatorCells = (s: RunState) => s.cells.map((c, i) => (isGenItem(c.item) ? i : -1)).filter((i) => i >= 0);
+
+/** Prix en diamants pour terminer une commande tout de suite (accélérer). */
+export const rushPrice = (o: OrderState) => Math.max(5, o.items.reduce((a, r) => a + 2 * r.l, 0));
+
+/** Commande terminée sans les objets (payée en diamants). */
+export function forceDeliver(s: RunState, def: LevelDef, slot: number): BoardEvent[] {
+  if (s.won && s.mode === 'story') return [];
+  const o = s.orders[slot];
+  if (!o) return [];
+  const hearts = orderHearts(o);
+  const points = orderPoints(o);
+  s.hearts += hearts;
+  s.score += points;
+  s.ordersDone++;
+  const ev: BoardEvent[] = [{ t: 'deliver', slot, cells: [], hearts, points }];
+  s.orders[slot] = null;
+  if (fillOrder(s, def, slot)) ev.push({ t: 'orderNew', slot });
+  return ev.concat(afterAction(s, def));
+}
+
 // ------------------------------------------------------------- panier
 
-/** Case vide où apparaît un nouvel objet : la plus proche du panier (en bas au centre). */
-export function spawnCell(s: RunState, prefer?: number): number {
+/**
+ * Case vide où apparaît un nouvel objet : la plus proche de `near` (le
+ * générateur touché), sinon du bas du plateau.
+ */
+export function spawnCell(s: RunState, prefer?: number, near?: number): number {
   if (prefer !== undefined && isFree(s.cells[prefer])) return prefer;
   let best = -1;
   let bestD = Infinity;
-  const gx = (BOARD_W - 1) / 2;
-  const gy = BOARD_H + 0.6;
+  const gx = near !== undefined ? xy(near).x : (BOARD_W - 1) / 2;
+  const gy = near !== undefined ? xy(near).y : BOARD_H + 0.6;
   for (let i = 0; i < BOARD_SIZE; i++) {
     if (!isFree(s.cells[i])) continue;
     const { x, y } = xy(i);
@@ -139,29 +196,65 @@ export function spawnCell(s: RunState, prefer?: number): number {
 const isFree = (c: Cell) => !c.item && !c.gift;
 export const emptyCount = (s: RunState) => s.cells.filter(isFree).length;
 
-export function rollGen(s: RunState, def: LevelDef): ItemRef {
+/**
+ * Tirage d'un objet. Avec `coll`, seul le générateur de cette collection
+ * produit : ses objets + sa part des objets spéciaux + une petite chance
+ * d'objet rare.
+ */
+export function rollGen(s: RunState, def: LevelDef, coll?: CollectionId): ItemRef {
   const rng = new Rng(s.rng);
-  const pool = s.mode === 'endless' ? endlessPool(s) : def.gen;
+  let pool = s.mode === 'endless' ? endlessPool(s) : def.gen;
+  if (coll) {
+    const mine = pool.filter(([c]) => c === coll);
+    const total = pool.filter(([c]) => c !== 'special').reduce((a, [, , w]) => a + w, 0) || 1;
+    const share = mine.reduce((a, [, , w]) => a + w, 0) / total;
+    const specials = pool.filter(([c]) => c === 'special').map(([c, l, w]) => [c, l, w * share] as [ItemRef['c'], number, number]);
+    const sum = mine.reduce((a, [, , w]) => a + w, 0) + specials.reduce((a, [, , w]) => a + w, 0);
+    pool = mine.length ? [...mine, ...specials, ['special', SPECIAL.BOX, sum * RARE_CHANCE]] : pool;
+  }
   const pick = rng.weighted(pool.map(([c, l, w]) => [{ c, l } as ItemRef, w] as const));
   s.rng = rng.state;
   return { c: pick.c, l: pick.l };
 }
 
-export function tapGenerator(s: RunState, def: LevelDef): BoardEvent[] {
+/**
+ * Toucher un générateur (case `gen`). Sans `gen`, on prend le premier
+ * générateur du plateau (tests, anciennes sauvegardes).
+ */
+export function tapGenerator(s: RunState, def: LevelDef, gen?: number): BoardEvent[] {
   if (s.won && s.mode === 'story') return [];
-  const at = spawnCell(s);
+  const g = gen ?? generatorCells(s)[0];
+  const it = g !== undefined ? s.cells[g]?.item : null;
+  const coll = it && isGenItem(it) ? GENERATORS[it.l]?.coll : undefined;
+  const at = spawnCell(s, undefined, coll ? g : undefined);
   if (at < 0) return [{ t: 'full' }];
-  const item = rollGen(s, def);
+  const item = rollGen(s, def, coll);
   s.cells[at].item = item;
   s.taps++;
-  return [{ t: 'spawn', at, item, source: 'gen' }, ...afterAction(s, def)];
+  return [{ t: 'spawn', at, item, source: 'gen', from: coll ? g : undefined }, ...afterAction(s, def)];
+}
+
+/** Retire un objet du plateau pour le ranger dans le sac (pas les générateurs). */
+export function stashItem(s: RunState, def: LevelDef, i: number): { item: ItemRef; ev: BoardEvent[] } | null {
+  const it = s.cells[i]?.item;
+  if (!it || isGenItem(it)) return null;
+  s.cells[i].item = null;
+  return { item: it, ev: [{ t: 'remove', at: i, points: 0 }, ...afterAction(s, def)] };
+}
+
+/** Sort un objet du sac sur le plateau. */
+export function placeItem(s: RunState, def: LevelDef, r: ItemRef): BoardEvent[] {
+  const at = spawnCell(s);
+  if (at < 0) return [{ t: 'full' }];
+  s.cells[at].item = { c: r.c, l: r.l };
+  return [{ t: 'spawn', at, item: r, source: 'reward' }, ...afterAction(s, def)];
 }
 
 // --------------------------------------------------------------- fusion
 
 export function canMerge(a: ItemRef | null, b: ItemRef | null): boolean {
   if (!a || !b) return false;
-  if (a.c === 'special' && a.l === SPECIAL.STAR) return b.c !== 'special' && b.l < MAX_LEVEL;
+  if (a.c === 'special' && a.l === SPECIAL.STAR) return b.c !== 'special' && b.c !== 'gen' && b.l < MAX_LEVEL;
   if (isSpecial(a) || isSpecial(b)) return false;
   return sameItem(a, b) && a.l < MAX_LEVEL;
 }
@@ -270,7 +363,7 @@ export function tapItem(s: RunState, def: LevelDef, i: number): BoardEvent[] {
 
 export function useWand(s: RunState, def: LevelDef, i: number, now: number): BoardEvent[] {
   const it = s.cells[i]?.item;
-  if (!it || it.c === 'special' || it.l >= MAX_LEVEL) return [];
+  if (!it || it.c === 'special' || it.c === 'gen' || it.l >= MAX_LEVEL) return [];
   const result = { c: it.c, l: it.l + 1 };
   s.cells[i].item = result;
   const key = itemKey(result);
@@ -282,7 +375,7 @@ export function useWand(s: RunState, def: LevelDef, i: number, now: number): Boa
 
 export function useWind(s: RunState, def: LevelDef, i: number): BoardEvent[] {
   const it = s.cells[i]?.item;
-  if (!it) return [];
+  if (!it || it.c === 'gen') return [];
   s.cells[i].item = null;
   const points = it.c === 'special' ? 5 : Math.round(mergePoints(it.l) / 2);
   s.score += points;
@@ -296,7 +389,7 @@ export function hasMergeAvailable(s: RunState): boolean {
   const giftLeft = s.cells.some((c) => c.gift);
   for (let i = 0; i < items.length; i++) {
     const a = items[i];
-    if (!a) continue;
+    if (!a || a.c === 'gen') continue;
     if (a.c === 'special') {
       if (a.l === SPECIAL.BOX) return true;
       if (a.l === SPECIAL.KEY && giftLeft) return true;
@@ -325,7 +418,7 @@ export function recover(s: RunState, def: LevelDef): BoardEvent[] {
   for (const o of s.orders) if (o) for (const r of o.items) wanted.add(itemKey(r));
   const candidates = s.cells
     .map((c, i) => ({ i, it: c.item }))
-    .filter((e): e is { i: number; it: ItemRef } => !!e.it && e.it.c !== 'special')
+    .filter((e): e is { i: number; it: ItemRef } => !!e.it && e.it.c !== 'special' && e.it.c !== 'gen')
     .sort((a, b) => {
       const wa = wanted.has(itemKey(a.it)) ? 1 : 0;
       const wb = wanted.has(itemKey(b.it)) ? 1 : 0;
@@ -370,6 +463,10 @@ export const objectiveDone = (s: RunState, o: Objective) => {
 function afterAction(s: RunState, def: LevelDef): BoardEvent[] {
   const ev: BoardEvent[] = [];
   if (s.mode === 'endless') {
+    for (const c of endlessColls(endlessTier(s))) {
+      const at = placeGenerator(s.cells, genKindOf(c));
+      if (at >= 0) ev.push({ t: 'spawn', at, item: { c: 'gen', l: genKindOf(c) }, source: 'reward' });
+    }
     const ch = s.challenge;
     if (ch && challengeDone(s, ch)) {
       s.hearts += ch.reward;
@@ -398,10 +495,12 @@ export function endlessTier(s: RunState) {
   return Math.min(6, Math.floor(Math.sqrt(s.score / 400)));
 }
 
+export const endlessColls = (t: number): CollectionId[] => COLLECTION_IDS.slice(0, Math.min(4, 2 + Math.floor(t / 2)));
+
 function endlessPool(s: RunState): [ItemRef['c'], number, number][] {
   const t = endlessTier(s);
   const pool: [ItemRef['c'], number, number][] = [];
-  const colls = COLLECTION_IDS.slice(0, Math.min(4, 2 + Math.floor(t / 2)));
+  const colls = endlessColls(t);
   for (const c of colls) {
     pool.push([c, 1, 10]);
     pool.push([c, 2, 4 + t]);

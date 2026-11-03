@@ -37,6 +37,25 @@ npx vite preview   # sert ../radia-52c8654e04 sur http://localhost:4173
 | PWA : manifeste, icônes, service worker, jeu hors ligne après la 1ʳᵉ visite | ✅ | test hors ligne Playwright (Chromium) |
 | Mobile : portrait, zones sûres, `dvh`, redimensionnement, message en paysage | ✅ | Chromium 393×852, 430×932, 852×393, 768×1024 |
 
+## Mise à jour v2 — jeu de fusion façon mobile (inspiration Gossip Harbor, sans rien copier)
+
+| Élément | État | Vérification |
+|---|---|---|
+| Générateurs posés sur le plateau (pot de fleurs, boîte aux lettres, appareil photo, coffret d'échecs), déplaçables, débloqués au fil des chapitres | ✅ | tests de règles + bot : 30 niveaux gagnables |
+| Énergie : 1 ⚡ par toucher, +1 toutes les 30 s, recharge gratuite +50 toutes les 5 min, récompenses (commandes, combos, niveaux), achat en diamants | ✅ | tests unitaires + captures |
+| Diamants : gagnés en jouant (niveaux, succès, mini-jeux, échecs, commandes) et offerts par « la carte d'Auguste » | ✅ | tests + parcours navigateur |
+| Boutique « La carte d'Auguste ♡ » : carte cadeau fictive (aucun numéro), 5 packs aux prix fictifs, animation de paiement, éclats de diamants, 12 répliques d'Auguste sans répétition rapprochée | ✅ | captures de chaque étape |
+| Dépenses en diamants : énergie, baguettes, souffles, objets rares (sac), coffre du royaume, agrandir le sac, accélérer une commande, apparence du plateau et des fusions | ✅ | tests + captures |
+| Sac de rangement (glisser un objet sur le sac, le ressortir) | ✅ | test navigateur |
+| Commandes passées par des personnages (Auguste, Minou, Rosie, Petit Pion) | ✅ | captures |
+| « Notre petit monde » : 12 décorations achetées avec les cœurs (une en diamants), scène animée | ✅ | captures |
+| Objets rares : 2,5 % de Coffret surprise à chaque toucher de générateur | ✅ | règles |
+| Coffre gratuit toutes les 4 h | ✅ | — |
+| Deux versions de la musique qui s'enchaînent | ✅ code | à écouter sur iPhone |
+| Migration de sauvegarde v1 → v2 (+50 💎 offerts, écran « Nouveautés ») | ✅ | test de migration |
+
+Aucun paiement réel, aucun service de paiement, aucune donnée bancaire : tout est local et gratuit.
+
 ## Décisions techniques
 
 - **Rendu hybride** : Phaser (canvas WebGL) pour le plateau, les mini-jeux et la fin ; HTML/CSS pour les menus, dialogues et le HUD (texte net, accessible, plus léger). Toutes les scènes travaillent en pixels CSS, caméra zoomée de la densité d'écran (net sur Retina).

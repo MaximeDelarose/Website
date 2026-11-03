@@ -5,8 +5,10 @@
  */
 import { SPECIAL, sameItem } from '../../data/items';
 import {
-  canMerge, deliver, isStuck, move, neighbors, orderCells, recover, tapGenerator, tapItem,
+  canMerge, deliver, generatorCells, isStuck, move, neighbors, orderCells, recover, tapGenerator, tapItem,
 } from './rules';
+import { GENERATORS } from '../../data/items';
+import { Rng } from '../../utils/rng';
 import { BOARD_SIZE, type BoardEvent, type LevelDef, type RunState } from './types';
 
 export interface Suggestion { from: number; to: number }
@@ -66,12 +68,24 @@ export function botStep(s: RunState, def: LevelDef, now: number): BoardEvent[] {
     }
     return move(s, def, sug.from, sug.to, now);
   }
-  const ev = tapGenerator(s, def);
+  const ev = tapGenerator(s, def, pickGenerator(s, def));
   if (ev.length && ev[0].t === 'full') {
     if (isStuck(s)) return recover(s, def);
     return [];
   }
   return ev;
+}
+
+/** Choisit quel générateur toucher (au hasard, pondéré par le panier du niveau). */
+export function pickGenerator(s: RunState, def: LevelDef): number | undefined {
+  const gens = generatorCells(s);
+  if (gens.length <= 1) return gens[0];
+  const w = gens.map((g) => {
+    const coll = GENERATORS[s.cells[g].item!.l].coll;
+    return def.gen.filter(([c]) => c === coll).reduce((a, [, , x]) => a + x, 0) || 1;
+  });
+  const r = new Rng((s.rng ^ (s.taps * 2654435761)) >>> 0);
+  return r.weighted(gens.map((g, k) => [g, w[k]] as const));
 }
 
 export interface SimResult { won: boolean; taps: number; actions: number; recoveries: number }

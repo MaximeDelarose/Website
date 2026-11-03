@@ -17,6 +17,8 @@ export type AppEvents = {
   memory: string;
   discover: ItemRef;
   settings: void;
+  /** Énergie, diamants, sac ou apparence ont changé. */
+  economy: void;
 };
 
 export const save = new SaveManager();
