@@ -22,14 +22,14 @@
 
   /* ---------- réglages ---------- */
   var LEVELS = 11;
-  var RADII = [15, 21, 27, 34, 42, 51, 61, 72, 84, 97, 112];
+  var RADII = [14, 20, 26, 33, 41, 50, 60, 72, 86, 101, 118];   // rapport des tailles du vrai jeu (cerise → pastèque)
   var SKIN = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];       // niveau → écureuil de MergerArt
   var DROP_MAX = 4;                                       // on ne lâche que les niveaux 0 à 4
-  var W = 400, H = 600;                                   // le bac
-  var TOP = 110;                                          // ligne de danger
-  var DROP_Y = 52;                                        // hauteur de l'écureuil qui attend
-  var G = 1300, DAMP = 0.999, BOUNCE = 0.08, FRICTION = 0.12;
-  var SUB = 3, STEP = 1 / 180;                            // sous-pas de physique
+  var W = 400, H = 560;                                   // le bac
+  var TOP = 100;                                          // ligne de danger
+  var DROP_Y = 46;                                        // hauteur de l'écureuil qui attend
+  var G = 1900, REST = 0.18, MU = 0.45, MU_WALL = 0.35, SLOP = 0.3, ITERS = 10;   // gravité, rebond, frottements
+  var SUB = 4, STEP = 1 / 240;                            // sous-pas de physique
   var DANGER_TIME = 2.2;                                  // secondes au-dessus de la ligne avant la défaite
   var NAMES = ["Gland", "Noisette", "Mousse", "Myrtille", "Grisou", "Roux", "Châtaigne", "Flocon", "Corbeau", "Cerise", "Grand Chêne"];
 
@@ -61,7 +61,7 @@
 
   /* ---------- partie ---------- */
   function newBall(level, x, y) {
-    return { id: nextId++, l: level, r: RADII[level], x: x, y: y, px: x, py: y, vx: 0, vy: 0, age: 0, grow: 0, dead: false, over: 0, blink: 1 + rnd() * 3, look: 0 };
+    return { id: nextId++, l: level, r: RADII[level], x: x, y: y, px: x, py: y, vx: 0, vy: 0, age: 0, grow: 0, a: rnd() * 6.283, w: 0, m: RADII[level] * RADII[level], dead: false, over: 0, blink: 1 + rnd() * 3, look: 0 };
   }
 
   function start() {
@@ -75,7 +75,7 @@
     if (state !== "play" || cooldown > 0) return;
     var r = RADII[cur], x = Math.max(r, Math.min(W - r, aimX));
     var b = newBall(cur, x, DROP_Y);
-    b.vy = 60; b.py = b.y - b.vy * STEP * SUB; // petite vitesse initiale vers le bas
+    b.vy = 0;
     balls.push(b);
     cur = next; next = pickLevel(); cooldown = 0.55;
     beep(300, 0.08, "triangle", 0.05);
@@ -90,15 +90,15 @@
     var x = (a.x + b.x) / 2, y = (a.y + b.y) / 2;
     combo = comboT > 0 ? combo + 1 : 1; comboT = 1.2;
     var l = a.l;
-    var pts = (l + 1) * (l + 2) / 2 * Math.min(combo, 6);
+    var pts = (l + 1) * (l + 2) / 2;
     if (l >= LEVELS - 1) {
-      pts = 150 * Math.min(combo, 6);
+      pts = 66;
       burst(x, y, 40, a.r, "#fff2b0");
       beep(520, 0.3, "square", 0.07); beep(780, 0.3, "square", 0.06, 0.1); beep(1040, 0.4, "square", 0.06, 0.2);
     } else {
       var n = newBall(l + 1, x, y);
       n.vx = (a.vx + b.vx) / 2; n.vy = (a.vy + b.vy) / 2;
-      n.px = x - n.vx * STEP * SUB; n.py = y - n.vy * STEP * SUB;
+      n.w = (a.w + b.w) / 2;
       n.grow = 0.0001; n.age = 1;
       balls.push(n);
       if (l + 1 > maxLevel) maxLevel = l + 1;
@@ -108,7 +108,7 @@
       shake = Math.max(shake, Math.min(6, 1 + l * 0.5));
     }
     addScore(pts);
-    pops.push({ x: x, y: y - a.r, t: 0, text: "+" + pts + (combo > 1 ? " ×" + Math.min(combo, 6) : "") });
+    pops.push({ x: x, y: y - a.r, t: 0, text: "+" + pts + (combo > 1 ? " ×" + combo : "") });
   }
 
   function burst(x, y, n, r, col) {
@@ -118,46 +118,74 @@
     }
   }
 
+  // Physique de corps rigides (cercles) : impulsions séquentielles avec rebond, frottement et rotation,
+  // comme Box2D dans le vrai jeu. Masse ∝ r², moment d'inertie d'un disque.
+  function contact(a, b, nx, ny, pen, wall) {
+    // a peut être null (mur = masse infinie) ; n va de a vers b
+    var ima = a ? 1 / a.m : 0, imb = 1 / b.m, tx = -ny, ty = nx;
+    var rva = a ? a.r : 0;
+    var vax = a ? a.vx : 0, vay = a ? a.vy : 0, wa = a ? a.w : 0;
+    var vn = (b.vx - vax) * nx + (b.vy - vay) * ny;
+    var jn = 0;
+    if (vn < 0) {
+      var e = vn < -60 ? REST : 0;
+      jn = -(1 + e) * vn / (ima + imb);
+      if (a) { a.vx -= jn * ima * nx; a.vy -= jn * ima * ny; }
+      b.vx += jn * imb * nx; b.vy += jn * imb * ny;
+    }
+    var vt = (b.vx - (a ? a.vx : 0)) * tx + (b.vy - (a ? a.vy : 0)) * ty - b.w * b.r - (a ? a.w * rva : 0);
+    var jt = -vt / (3 * (ima + imb));
+    // cap de Coulomb, avec une impulsion normale « de support » pour que la pile reste stable
+    var support = Math.max(jn, (a ? Math.min(a.m, b.m) : b.m) * G * STEP * 1.2);
+    var lim = (wall ? MU_WALL : MU) * support;
+    if (jt > lim) jt = lim; else if (jt < -lim) jt = -lim;
+    if (a) { a.vx -= jt * ima * tx; a.vy -= jt * ima * ty; a.w -= jt * ima * 2 / a.r; }
+    b.vx += jt * imb * tx; b.vy += jt * imb * ty; b.w -= jt * imb * 2 / b.r;
+    // correction de position
+    var corr = Math.max(pen - SLOP, 0) * 0.45 / (ima + imb);
+    if (a) { a.x -= corr * ima * nx; a.y -= corr * ima * ny; }
+    b.x += corr * imb * nx; b.y += corr * imb * ny;
+  }
+
   function substep(dt) {
-    var i, j, b, a;
-    // intégration (Verlet)
+    var i, j, a, b;
     for (i = 0; i < balls.length; i++) {
       b = balls[i];
-      if (b.grow > 0) { b.grow += dt * 7; if (b.grow >= 1) b.grow = 0; }
-      var vx = (b.x - b.px) * DAMP, vy = (b.y - b.py) * DAMP;
-      b.px = b.x; b.py = b.y;
-      b.x += vx; b.y += vy + G * dt * dt;
+      if (b.grow > 0) { b.grow += dt * 7 * 4; if (b.grow >= 1) b.grow = 0; }
+      b.vy += G * dt;
+      b.vx *= 0.9997; b.vy *= 0.9997; b.w *= 0.998;
+      b.x += b.vx * dt; b.y += b.vy * dt; b.a += b.w * dt;
     }
-    // collisions bac + entre écureuils (quelques passes pour stabiliser la pile)
-    for (var it = 0; it < 4; it++) {
+    for (var it = 0; it < ITERS; it++) {
       for (i = 0; i < balls.length; i++) {
         b = balls[i];
-        var r = b.r;
-        if (b.x < r) { b.x = r; b.px = b.x + (b.px - b.x) * BOUNCE; }
-        else if (b.x > W - r) { b.x = W - r; b.px = b.x + (b.px - b.x) * BOUNCE; }
-        if (b.y > H - r) {
-          b.y = H - r;
-          var vxx = b.x - b.px; b.px += vxx * FRICTION;
-          b.py = b.y + (b.py - b.y) * BOUNCE;
-        }
+        if (b.x < b.r) { contact(null, b, 1, 0, b.r - b.x, true); }
+        else if (b.x > W - b.r) contact(null, b, -1, 0, b.x - (W - b.r), true);
+        if (b.y > H - b.r) contact(null, b, 0, -1, b.y - (H - b.r), true);
+        // sécurité : jamais hors du bac
+        if (b.x < b.r) b.x = b.r; else if (b.x > W - b.r) b.x = W - b.r;
+        if (b.y > H - b.r) b.y = H - b.r;
       }
       for (i = 0; i < balls.length; i++) {
         a = balls[i];
         for (j = i + 1; j < balls.length; j++) {
           b = balls[j];
           var dx = b.x - a.x, dy = b.y - a.y, min = a.r + b.r;
-          if (Math.abs(dx) > min || Math.abs(dy) > min) continue;
+          if (dx > min || dx < -min || dy > min || dy < -min) continue;
           var d2 = dx * dx + dy * dy;
           if (d2 >= min * min) continue;
           if (a.dead || b.dead) continue;
-          if (a.l === b.l && !a.dead && !b.dead && a.grow === 0 && b.grow === 0) { mergePair(a, b); continue; }
-          var d = Math.sqrt(d2) || 0.0001, nx = dx / d, ny = dy / d, over = min - d;
-          var ma = a.r * a.r, mb = b.r * b.r, tot = ma + mb;
-          a.x -= nx * over * (mb / tot); a.y -= ny * over * (mb / tot);
-          b.x += nx * over * (ma / tot); b.y += ny * over * (ma / tot);
+          if (a.l === b.l && a.grow === 0 && b.grow === 0) { mergePair(a, b); continue; }
+          var d = Math.sqrt(d2) || 0.0001;
+          contact(a, b, dx / d, dy / d, min - d, false);
         }
       }
       if (it === 0) cleanup();
+    }
+    // petites vitesses : on les éteint pour que la pile s'endorme
+    for (i = 0; i < balls.length; i++) {
+      b = balls[i];
+      if (b.vx * b.vx + b.vy * b.vy < 36) { b.vx *= 0.96; b.vy *= 0.96; b.w *= 0.9; }
     }
   }
 
@@ -177,7 +205,7 @@
       var b = balls[i];
       b.age += dt;
       b.look += (((aimX - b.x) / W) - b.look) * Math.min(1, dt * 4);
-      var speed = Math.abs(b.y - b.py) * 60;
+      var speed = Math.abs(b.vy);
       if (b.age > 1.2 && b.y - b.r < TOP && speed < 40) { b.over += dt; if (b.over > DANGER_TIME) over = true; }
       else b.over = Math.max(0, b.over - dt * 2);
     }
@@ -287,7 +315,17 @@
     var o = { lx: b && b.look ? Math.max(-1, Math.min(1, b.look * 3)) : 0, ly: 0.2, blink: 1, mood: "" };
     if (b) { var t = (clock + b.blink * 7) % 4.5; if (t < 0.13) o.blink = -1; if (b.over > 0.3) o.mood = "worried"; }
     if (extra) for (var k in extra) o[k] = extra[k];
-    ART.draw(ctx, x, y, SKIN[b ? b.l : cur], r * 0.92, o);
+    // comme les fruits du vrai jeu : un disque net (la collision) avec le visage de l'écureuil dedans
+    var t = o.lvl != null ? o.lvl : b ? b.l : cur, c = ART.SQUIRRELS[SKIN[t]], al = o.alpha == null ? 1 : o.alpha;
+    ctx.save(); ctx.globalAlpha = al; ctx.translate(x, y);
+    var rad = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
+    rad.addColorStop(0, ART.lighten(c.body)); rad.addColorStop(0.55, c.body); rad.addColorStop(1, c.dark);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.283); ctx.fillStyle = rad; ctx.fill();
+    ctx.lineWidth = Math.max(2, r * 0.07); ctx.strokeStyle = "#2b1709"; ctx.stroke();
+    if (o.rot) ctx.rotate(o.rot);
+    o.part = "body"; o.alpha = 1;
+    ART.draw(ctx, 0, r * 0.06, SKIN[t], r * 0.74, o);
+    ctx.restore();
   }
 
   function render() {
@@ -313,7 +351,7 @@
     // écureuils
     for (var i = 0; i < balls.length; i++) {
       var b = balls[i], k = b.grow > 0 ? 0.6 + 0.4 * Math.min(1, b.grow) + Math.sin(Math.min(1, b.grow) * 3.14) * 0.15 : 1;
-      sq(b, b.x, b.y, b.r * k);
+      sq(b, b.x, b.y, b.r * k, { rot: b.a });
     }
     // écureuil en attente + guide
     if (state === "play") {
@@ -352,7 +390,7 @@
       var nr = 26, nx = wide ? ox + W * scale + 56 : ox + W * scale - nr - 6, ny = wide ? oy + 70 : oy + nr + 22;
       ctx.textAlign = "center"; ctx.font = "800 " + (fs * 0.7) + "px Nunito, system-ui, sans-serif";
       var ly = ny - nr - 4; ctx.strokeText("Suivant", nx, ly); ctx.fillText("Suivant", nx, ly);
-      ART.draw(ctx, nx, ny, SKIN[next], nr * 0.9, {});
+      sq(null, nx, ny, nr * 0.9 + 4, { lvl: next });
     }
     if (state === "over" && overT < 1) { ctx.fillStyle = "rgba(255,60,40," + (0.25 * (1 - overT)) + ")"; ctx.fillRect(0, 0, cw, ch); }
   }

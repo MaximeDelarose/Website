@@ -47,7 +47,7 @@
   }
   var page = document.body.dataset.page;
   // les pages des jeux web sont regroupées sous l'onglet « Jeux »
-  var GAME_PAGES = ["games", "game", "merger", "suika", "dice", "kingdice", "arcane", "chess", "pool", "defense", "idle", "bagbound"];
+  var GAME_PAGES = ["games", "game", "merger", "suika", "dice", "kingdice", "arcane", "chess", "pool", "golf", "defense", "idle", "bagbound", "flippers"];
   var navPage = GAME_PAGES.indexOf(page) >= 0 ? "games" : page;
   $$("#site-nav a").forEach(function (a) {
     if (a.dataset.page === navPage) a.setAttribute("aria-current", "page");
@@ -102,6 +102,8 @@
     ball: ["..xxxx..", ".xxxxxx.", "xxwwwxxx", "xxwexwxx", "xxwwwxxx", "xxwexwxx", ".xxwwxx.", "..xxxx.."],
     knight: ["..xx.x..", ".xxxxx..", "xxwxxxx.", "xxxxxxxx", "....xxxx", "...xxxxx", "..xxxxxx", "eeeeeeee"],
     bag: ["...xxx...", "..x...x..", ".xxxxxxx.", "xxwwwwwxx", "xxxxxxxxx", "xxxeeexxx", "xxxewexxx", "xxxxxxxxx", ".xxxxxxx."],
+    pinball: ["...xxx...", "..xwxxx..", "..xxxxx..", "...xxx...", ".........", "xx.....xx", ".xxx.xxx.", "..xxxxx.."],
+    golf: ["...xxx...", "...xxxx..", "...xxx...", "...x.....", "...x.....", "...x.....", "...x..w..", "eeeeeeeee"],
     box: ["..xxxxxx..", ".xwwwwwwx.", "xwwwwwwwwx", "xxxxeexxxx", "xxxxeexxxx", "xxxxxxxxxx", "xxxxxxxxxx", "eeeeeeeeee"],
   };
   function hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
