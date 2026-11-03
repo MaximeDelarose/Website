@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="googlebot" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#2E2547">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="♛">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <title>♛</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #2E2547; overflow: hidden; }
+    #lock { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px;
+      background: radial-gradient(120% 80% at 50% 0%, #6B5A93 0%, #3E3360 45%, #241D3B 100%);
+      font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif; color: #FFF4E8; }
+    .card { width: min(100%, 360px); text-align: center; }
+    .crown { font-size: 64px; line-height: 1; color: #F3C86B; filter: drop-shadow(0 4px 16px rgba(243,200,107,.5)); animation: beat 1.8s ease-in-out infinite; }
+    h1 { font-family: "Didot", "Bodoni 72", Georgia, serif; font-weight: 400; font-style: italic; font-size: 22px; margin: 16px 0 22px; color: #F5B5C8; }
+    form { display: none; flex-direction: column; gap: 12px; }
+    .ask form { display: flex; }
+    input[type=password] { font: inherit; font-size: 18px; padding: 15px 18px; border-radius: 16px; border: 2px solid rgba(255,244,232,.25); background: rgba(255,244,232,.1); color: #FFF4E8; outline: none; text-align: center; }
+    input[type=password]:focus { border-color: #FF75A8; }
+    button { font: inherit; font-weight: 700; font-size: 17px; border: 0; border-radius: 99px; padding: 15px; background: linear-gradient(180deg, #FF8DB7, #FF75A8); color: #fff; box-shadow: 0 6px 18px rgba(255,117,168,.42); }
+    button:disabled { opacity: .6; }
+    label { font-size: 13px; color: rgba(255,244,232,.7); display: flex; gap: 8px; align-items: center; justify-content: center; }
+    #msg { min-height: 22px; font-size: 14px; color: #F5B5C8; margin: 14px 0 0; }
+    .busy .crown { animation-duration: .9s; }
+    @keyframes beat { 50% { transform: scale(1.08); } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <div id="lock">
+    <div class="card">
+      <div class="crown">♛</div>
+      <h1>Un petit cadeau t'attend…</h1>
+      <form id="form" autocomplete="on">
+        <input id="pw" type="password" autocomplete="current-password" placeholder="Mot de passe" aria-label="Mot de passe" enterkeyhint="go">
+        <button id="go" type="submit">Ouvrir ♡</button>
+        <label><input id="remember" type="checkbox" checked> Se souvenir sur cet appareil</label>
+      </form>
+      <p id="msg" aria-live="polite"></p>
+      <noscript>JavaScript est nécessaire.</noscript>
+    </div>
+  </div>
+  <script type="module" src="loader.js?v=c403aa6ef3"></script>
+</body>
+</html>
