@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261104mb2">
-  <link rel="stylesheet" href="css/flippers.css?v=20261109fl1">
+  <link rel="stylesheet" href="css/flippers.css?v=20261110fl2">
 </head>
 <body data-page="flippers">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -72,7 +72,7 @@
 
       <div class="fl" data-fl>
         <div class="fl-stage">
-          <canvas class="fl-canvas" data-fl-canvas width="400" height="700" aria-label="Table de flipper"></canvas>
+          <canvas class="fl-canvas" data-fl-canvas width="480" height="840" aria-label="Table de flipper"></canvas>
           <div class="game-overlay fl-overlay" data-fl-overlay>
             <div class="panel game-card" data-fl-card><p>Chargement du jeu…</p></div>
           </div>
@@ -83,12 +83,15 @@
             <div><dt>Record</dt><dd data-fl-best>0</dd></div>
             <div><dt>Billes</dt><dd data-fl-balls>3</dd></div>
             <div><dt>Multiplicateur</dt><dd data-fl-mult>×1</dd></div>
+            <div><dt>Bonus</dt><dd data-fl-bonus>×1</dd></div>
+            <div><dt>Verrous</dt><dd data-fl-lock>0/3</dd></div>
           </dl>
           <p class="fl-msg" data-fl-msg aria-live="polite"></p>
           <div class="fl-pad" aria-label="Commandes tactiles">
             <button type="button" class="btn fl-btn" data-fl-btn="left">◀ Gauche</button>
             <button type="button" class="btn fl-btn fl-btn-plunger" data-fl-btn="plunger">Lancer</button>
             <button type="button" class="btn fl-btn" data-fl-btn="right">Droite ▶</button>
+            <button type="button" class="btn btn-ghost fl-btn fl-btn-nudge" data-fl-nudge>Secouer</button>
           </div>
         </aside>
       </div>
@@ -100,11 +103,15 @@
             <li><strong>Lancer la bille</strong> : maintiens <kbd>Espace</kbd> (ou <kbd>↓</kbd>) pour armer le ressort, relâche pour tirer. Plus tu tiens, plus la bille part fort. Sur téléphone, maintiens le bouton « Lancer » ou touche le couloir de droite.</li>
             <li><strong>Flippers</strong> : <kbd>←</kbd> / <kbd>Q</kbd> / <kbd>Maj gauche</kbd> pour celui de gauche, <kbd>→</kbd> / <kbd>M</kbd> / <kbd>Maj droite</kbd> pour celui de droite. Au doigt : touche la moitié gauche ou droite de la table.</li>
             <li><strong>Secouer la table</strong> : <kbd>↑</kbd> ou <kbd>N</kbd> donne un petit coup à la bille. Trois coups trop rapprochés et c'est la faute (TILT) : les flippers se coupent jusqu'à la bille suivante.</li>
-            <li><strong>Champignons</strong> : ils repoussent la bille et rapportent des points. Chaque série de 10 chocs fait monter le bonus de fin de bille.</li>
-            <li><strong>GLAND</strong> : allume les 5 lettres pour gagner 5 000 points et passer le multiplicateur au niveau supérieur.</li>
-            <li><strong>Passages du haut</strong> : fais passer la bille par les 3 couloirs pour monter le multiplicateur (jusqu'à ×5).</li>
-            <li><strong>Le terrier</strong> : la bille y est avalée un instant, puis recrachée avec 1 500 points.</li>
-            <li>Tu as <strong>3 billes</strong>. Une bille perdue dans les 10 premières secondes est rendue. Ton record est gardé dans ce navigateur.</li>
+            <li><strong>Champignons</strong> : ils repoussent la bille et rapportent des points. Chaque choc fait monter le bonus de fin de bille.</li>
+            <li><strong>Orbite et spinner</strong> : tire la bille dans le couloir de gauche, elle fait tourner le spinner (100 points par demi-tour) puis fait le tour de l'arche.</li>
+            <li><strong>Rampe</strong> (à droite) : une bille bien lancée y monte, traverse la table par-dessus et retombe vers le terrier. Les tirs de suite valent de plus en plus.</li>
+            <li><strong>Cibles rabattables</strong> : abats les 4 cibles pour 3 000 points, allumer le verrou et sauver l'outlane droite.</li>
+            <li><strong>Terrier et multibille</strong> : verrou allumé, le terrier garde la bille (et t'en rend une autre). Au 3ᵉ verrou, <strong>multibille</strong> : 3 billes en jeu, les rampes valent 10 000.</li>
+            <li><strong>GLAND</strong> : allume les 5 lettres pour 5 000 points et un cran de multiplicateur. Les 3 passages du haut aussi (jusqu'à ×5).</li>
+            <li><strong>Voies des flippers</strong> : les 4 voies (inlanes et outlanes) s'allument à ton passage et <em>tournent</em> quand tu appuies sur un flipper. Toutes allumées : bonus de fin de bille ×2, ×3…</li>
+            <li><strong>Kickback</strong> : l'outlane gauche renvoie la bille une fois par bille. La lampe « SAUVE » à droite est allumée par les cibles rabattables.</li>
+            <li>Tu as <strong>3 billes</strong>. Une bille perdue dans les 10 premières secondes (ou au début d'un multibille) est rendue, une fois. Ton record est gardé dans ce navigateur.</li>
           </ul>
         </div>
       </div>
@@ -126,7 +133,7 @@
 
   <script src="js/data.js?v=20261103re4"></script>
   <script src="js/auth.js?v=20261103re4"></script>
-  <script src="js/main.js?v=20261109fl1"></script>
-  <script src="js/flippers.js?v=20261109fl1"></script>
+  <script src="js/main.js?v=20261110fl2"></script>
+  <script src="js/flippers.js?v=20261110fl2"></script>
 </body>
 </html>

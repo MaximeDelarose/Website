@@ -3,8 +3,8 @@
    ========================================================================= */
 .fl { display: grid; grid-template-columns: auto minmax(220px, 300px); gap: 20px; justify-content: center; align-items: start; }
 .fl-stage {
-  position: relative; width: min(100%, calc((100vh - 300px) * 400 / 700), 460px); min-width: 280px;
-  aspect-ratio: 400 / 700; border: 4px solid var(--line, #3a2618); border-radius: 18px; overflow: hidden;
+  position: relative; width: min(100%, calc((100vh - 300px) * 480 / 840), 460px); min-width: 280px;
+  aspect-ratio: 480 / 840; border: 4px solid var(--line, #3a2618); border-radius: 18px; overflow: hidden;
   background: #10241a; box-shadow: 0 6px 0 rgba(0, 0, 0, .25); touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .fl-canvas { display: block; width: 100%; height: 100%; touch-action: none; -webkit-tap-highlight-color: transparent; }
@@ -28,11 +28,12 @@
 .fl-pad { display: none; grid-template-columns: 1fr 1fr; gap: 8px; }
 .fl-btn { padding: 14px 8px; font-size: 1rem; touch-action: none; user-select: none; -webkit-user-select: none; }
 .fl-btn-plunger { grid-column: 1 / -1; order: -1; }
+.fl-btn-nudge { grid-column: 1 / -1; padding: 8px; }
 .fl-head-btns { display: flex; gap: 8px; }
 @media (hover: none), (max-width: 760px) { .fl-pad { display: grid; } }
 @media (max-width: 760px) {
   .fl { grid-template-columns: 1fr; justify-items: center; gap: 12px; }
-  .fl-stage { width: min(100%, calc((100vh - 380px) * 400 / 700)); min-width: 250px; }
+  .fl-stage { width: min(100%, calc((100vh - 380px) * 480 / 840)); min-width: 250px; }
   .fl-side { width: 100%; max-width: 460px; padding: 12px 14px; gap: 8px; }
   .fl-stats { grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .fl-stats > div { padding: 6px 8px; }
