@@ -462,3 +462,22 @@ describe('mini-jeu Chanteuse', () => {
     expect(Sing.singerTags(SONGS[2], 70)).toEqual(['song3']);
   });
 });
+
+import { salaryAmount, salaryInfo, claimSalary, SALARY_COOLDOWN_MS } from '../src/game/world/careers';
+
+describe('salaire de Radia', () => {
+  it('se touche une fois, puis attend, et croît avec les paliers', () => {
+    const w = defaultWorld();
+    const base = salaryAmount(w);
+    expect(base).toBeGreaterThanOrEqual(60);
+    const t0 = 1_000_000_000_000;
+    expect(salaryInfo(w, t0).ready).toBe(true);
+    const c0 = w.res.coins;
+    expect(claimSalary(w, t0)).toBe(base);
+    expect(w.res.coins).toBe(c0 + base);
+    expect(claimSalary(w, t0 + 1000)).toBe(0);
+    expect(salaryInfo(w, t0 + SALARY_COOLDOWN_MS).ready).toBe(true);
+    w.careers.progress.photo = { level: 3, xp: 0, best: 0 } as never;
+    expect(salaryAmount(w)).toBeGreaterThan(base);
+  });
+});

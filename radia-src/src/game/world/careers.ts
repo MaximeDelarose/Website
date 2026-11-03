@@ -147,7 +147,7 @@ export function recordSession(w: World, id: CareerId, input: SessionInput): Sess
 
   const fans0 = fansForSession(score, level);
   const outside: Outside = { diamonds: 0, energy: 0, fans: fans0 };
-  const sessCoins = Math.round(8 + score * 0.9 + difficulty * 6);
+  const sessCoins = Math.round(25 + score * 2.4 + difficulty * 20 + level * 20); // un vrai métier : ça rapporte
   w.res.coins = Math.min(999_999_999, w.res.coins + sessCoins);
   let coins = sessCoins;
 
@@ -238,3 +238,29 @@ export const ownedMagazinesOf = (w: World): MagazineId[] => MAGAZINE_IDS.filter(
 export const totalLevels = (w: World): number => CAREER_IDS.reduce((a, c) => a + levelOf(w, c), 0);
 
 export type { Objective };
+
+// ------------------------------------------------------------------ salaire
+export const SALARY_COOLDOWN_MS = 4 * 3600_000;
+const SALARY_KEY = 'career.salary.ts';
+
+export interface SalaryInfo { ready: boolean; amount: number; nextInMs: number }
+
+/** Salaire à toucher : une base, plus un bonus par palier de carrière et par tranche de fans. */
+export function salaryAmount(w: World): number {
+  return 60 + totalLevels(w) * 55 + Math.min(300, Math.floor(w.fans / 40));
+}
+
+export function salaryInfo(w: World, now: number): SalaryInfo {
+  const last = w.extra[SALARY_KEY] ?? 0;
+  const wait = last > now ? SALARY_COOLDOWN_MS : Math.max(0, last + SALARY_COOLDOWN_MS - now);
+  return { ready: wait === 0, amount: salaryAmount(w), nextInMs: wait };
+}
+
+/** Touche le salaire s'il est prêt ; renvoie le montant versé (0 sinon). */
+export function claimSalary(w: World, now: number): number {
+  const info = salaryInfo(w, now);
+  if (!info.ready) return 0;
+  w.extra[SALARY_KEY] = now;
+  w.res.coins = Math.min(999_999_999, w.res.coins + info.amount);
+  return info.amount;
+}

@@ -24,7 +24,7 @@ export const EYE_MARK = { eye: 'imageLeft' as const, angleDeg: 155, radius: 1.12
 export const NOSE_RING_SIDE = 1; // +1 = droite de l'image
 
 export type Outfit = 'hoodie' | 'stripes' | 'royal';
-export interface FaceOpts { expr?: Expr; blink?: boolean; outfit?: Outfit; hood?: boolean }
+export interface FaceOpts { expr?: Expr; blink?: boolean; outfit?: Outfit; hood?: boolean; /** couleur de rouge à lèvres (avatar) */ lip?: string }
 
 const INK = '#3B2419'; // contour fin brun foncé
 
@@ -629,7 +629,7 @@ function radiaFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
   ctx.lineWidth = 1.5;
   ctx.strokeStyle = '#F4DFA0';
   ctx.stroke();
-  drawMouth(ctx, 69, expr, '#C9807A', true);
+  drawMouth(ctx, 69, expr, o.lip ?? '#C9807A', true);
 }
 
 // ============================================================ RADIA : buste

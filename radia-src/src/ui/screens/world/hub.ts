@@ -11,6 +11,7 @@ import { save, audio, events } from '../../../core/app';
 import { fmt, wallet } from '../../../core/wallet';
 import { world, firstTime } from '../../../core/world';
 import { RES_NAMES, ROOM_IDS, CHOC_IDS, FAN_TIERS, CAREER_NAMES, type ResKind } from '../../../data/world/ids';
+import { salaryInfo } from '../../../game/world/careers';
 import { resIconUrl } from '../../../game/art/world/resources';
 import { diamondUrl } from '../shop';
 import { setBackdrop } from '../../../game/scenes/backdrop';
@@ -67,6 +68,7 @@ const DESTS: Dest[] = [
       const cur = world().careers.current;
       return cur ? CAREER_NAMES[cur as keyof typeof CAREER_NAMES] ?? 'En route' : 'Choisis ta voie';
     },
+    badge: () => (salaryInfo(world(), Date.now()).ready ? 'Salaire !' : null),
     open: async () => (await mod(import('./career'))).openCareer(),
   },
   {

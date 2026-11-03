@@ -60,41 +60,41 @@ export const CAREERS: Record<CareerId, CareerDef> = {
   photo: {
     id: 'photo', name: 'Modèle photo', tagline: 'Pose, souris, et capture la lumière.', session: 'Séance photo', color: '#F5B5C8', color2: '#E8558F',
     tiers: [
-      T('Première séance', 'Réussir 3 séances avec un score ≥ 60', 's60', 3, 'séances ≥ 60', 60, { coins: 100, energy: 10 }),
-      T('Visage de la campagne', 'Réussir 3 séances avec un score ≥ 75', 's75', 3, 'séances ≥ 75', 160, { coins: 150, fabric: 4, cloth: ['ac-sunglasses'] }),
-      T('Pose élégante', 'Réussir 2 séances avec une pose de style Chic', 'tag:chic', 2, 'séances Chic ≥ 60', 300, { coins: 250, diamonds: 5, fans: 30, furniture: ['mirror-standing'] }),
-      T('Muse du photographe', 'Enchaîner 4 succès à la suite', 'streak', 4, 'succès à la suite', 480, { coins: 300, fabric: 6, cloth: ['jk-blazer-cream'], furniture: ['easel'] }),
-      T('Couverture de rêve', 'Réussir 2 séances avec un score ≥ 90', 's90', 2, 'séances ≥ 90', 700, { coins: 500, diamonds: 15, fans: 200, cloth: ['cr-flowers'] }),
+      T('Première séance', 'Réussir 3 séances avec un score ≥ 60', 's60', 3, 'séances ≥ 60', 60, { coins: 200, energy: 10 }),
+      T('Visage de la campagne', 'Réussir 3 séances avec un score ≥ 75', 's75', 3, 'séances ≥ 75', 160, { coins: 300, fabric: 4, cloth: ['ac-sunglasses'] }),
+      T('Pose élégante', 'Réussir 2 séances avec une pose de style Chic', 'tag:chic', 2, 'séances Chic ≥ 60', 300, { coins: 500, diamonds: 5, fans: 30, furniture: ['mirror-standing'] }),
+      T('Muse du photographe', 'Enchaîner 4 succès à la suite', 'streak', 4, 'succès à la suite', 480, { coins: 600, fabric: 6, cloth: ['jk-blazer-cream'], furniture: ['easel'] }),
+      T('Couverture de rêve', 'Réussir 2 séances avec un score ≥ 90', 's90', 2, 'séances ≥ 90', 700, { coins: 1000, diamonds: 15, fans: 200, cloth: ['cr-flowers'] }),
     ],
   },
   model: {
     id: 'model', name: 'Mannequin', tagline: 'Compose la tenue, défile sur le podium.', session: 'Défilé', color: '#B9A5E8', color2: '#7A66B8',
     tiers: [
-      T('Premier défilé', 'Réussir 3 défilés avec un score ≥ 60', 's60', 3, 'défilés ≥ 60', 60, { coins: 100, fabric: 3 }),
-      T('Style Chic', 'Présenter 2 tenues de style Chic', 'tag:chic', 2, 'tenues Chic ≥ 60', 160, { coins: 150, cloth: ['bot-trousers-chic'] }),
-      T('Sans faute', 'Réussir 3 défilés avec un score ≥ 75', 's75', 3, 'défilés ≥ 75', 300, { coins: 300, diamonds: 5, fans: 40, furniture: ['clothes-rack'] }),
-      T('Tenue de gala', 'Présenter 2 tenues de style Royal', 'tag:royal', 2, 'tenues Royal ≥ 60', 480, { coins: 350, fabric: 8, cloth: ['bg-mini-gold'] }),
-      T('Reine des podiums', 'Réussir 3 défilés avec un score ≥ 90', 's90', 3, 'défilés ≥ 90', 700, { coins: 500, diamonds: 20, fans: 250, cloth: ['dr-royal-gown'] }),
+      T('Premier défilé', 'Réussir 3 défilés avec un score ≥ 60', 's60', 3, 'défilés ≥ 60', 60, { coins: 200, fabric: 3 }),
+      T('Style Chic', 'Présenter 2 tenues de style Chic', 'tag:chic', 2, 'tenues Chic ≥ 60', 160, { coins: 300, cloth: ['bot-trousers-chic'] }),
+      T('Sans faute', 'Réussir 3 défilés avec un score ≥ 75', 's75', 3, 'défilés ≥ 75', 300, { coins: 600, diamonds: 5, fans: 40, furniture: ['clothes-rack'] }),
+      T('Tenue de gala', 'Présenter 2 tenues de style Royal', 'tag:royal', 2, 'tenues Royal ≥ 60', 480, { coins: 700, fabric: 8, cloth: ['bg-mini-gold'] }),
+      T('Reine des podiums', 'Réussir 3 défilés avec un score ≥ 90', 's90', 3, 'défilés ≥ 90', 700, { coins: 1000, diamonds: 20, fans: 250, cloth: ['dr-royal-gown'] }),
     ],
   },
   actress: {
     id: 'actress', name: 'Actrice', tagline: 'Trouve l\'émotion juste, la caméra t\'adore.', session: 'Tournage', color: '#FFC0A3', color2: '#E08A5E',
     tiers: [
-      T('Le casting', 'Réussir 3 scènes avec un score ≥ 60', 's60', 3, 'scènes ≥ 60', 60, { coins: 100, energy: 10 }),
-      T('Première réplique', 'Enchaîner 2 succès à la suite', 'streak', 2, 'succès à la suite', 160, { coins: 150, cloth: ['ac-scarf'] }),
-      T('Rôle principal', 'Réussir 3 scènes avec un score ≥ 75', 's75', 3, 'scènes ≥ 75', 300, { coins: 250, diamonds: 5, cloth: ['top-cardigan-lavender'], furniture: ['candles'] }),
-      T('Le tournage', 'Réussir 2 scènes avec un score ≥ 90', 's90', 2, 'scènes ≥ 90', 480, { coins: 300, fans: 80, cloth: ['dr-flowy-floral'] }),
-      T('La grande première', 'Jouer 2 scènes parfaites (100)', 's100', 2, 'scènes parfaites', 700, { coins: 500, diamonds: 20, fans: 250, cloth: ['dr-redcarpet'] }),
+      T('Le casting', 'Réussir 3 scènes avec un score ≥ 60', 's60', 3, 'scènes ≥ 60', 60, { coins: 200, energy: 10 }),
+      T('Première réplique', 'Enchaîner 2 succès à la suite', 'streak', 2, 'succès à la suite', 160, { coins: 300, cloth: ['ac-scarf'] }),
+      T('Rôle principal', 'Réussir 3 scènes avec un score ≥ 75', 's75', 3, 'scènes ≥ 75', 300, { coins: 500, diamonds: 5, cloth: ['top-cardigan-lavender'], furniture: ['candles'] }),
+      T('Le tournage', 'Réussir 2 scènes avec un score ≥ 90', 's90', 2, 'scènes ≥ 90', 480, { coins: 600, fans: 80, cloth: ['dr-flowy-floral'] }),
+      T('La grande première', 'Jouer 2 scènes parfaites (100)', 's100', 2, 'scènes parfaites', 700, { coins: 1000, diamonds: 20, fans: 250, cloth: ['dr-redcarpet'] }),
     ],
   },
   singer: {
     id: 'singer', name: 'Chanteuse', tagline: 'Répète, monte sur scène, chante pour tes fans.', session: 'Concert', color: '#FFD98A', color2: '#D9A43C',
     tiers: [
-      T('La répétition', 'Réussir 3 concerts avec un score ≥ 60', 's60', 3, 'concerts ≥ 60', 60, { coins: 100, energy: 10 }),
-      T('Premier concert', 'Atteindre un combo de 12 notes', 'combo', 12, 'meilleur combo', 160, { coins: 150, cloth: ['ac-hoops'] }),
-      T('Tenue de scène', 'Réussir 3 concerts avec un score ≥ 75', 's75', 3, 'concerts ≥ 75', 300, { coins: 250, diamonds: 5, fabric: 4, cloth: ['jk-leather-black'] }),
-      T('Les fans chantent', 'Réussir « Reine de la nuit » (≥ 60)', 'tag:song3', 1, 'chanson 3 réussie', 480, { coins: 350, fans: 80, cloth: ['sh-heels'] }),
-      T('La tournée', 'Réussir « Paris Lumières » (≥ 75)', 'tag:song4s', 1, 'chanson 4 ≥ 75', 700, { coins: 500, diamonds: 20, fans: 250, cloth: ['dr-stage-sequin'], furniture: ['chandelier'] }),
+      T('La répétition', 'Réussir 3 concerts avec un score ≥ 60', 's60', 3, 'concerts ≥ 60', 60, { coins: 200, energy: 10 }),
+      T('Premier concert', 'Atteindre un combo de 12 notes', 'combo', 12, 'meilleur combo', 160, { coins: 300, cloth: ['ac-hoops'] }),
+      T('Tenue de scène', 'Réussir 3 concerts avec un score ≥ 75', 's75', 3, 'concerts ≥ 75', 300, { coins: 500, diamonds: 5, fabric: 4, cloth: ['jk-leather-black'] }),
+      T('Les fans chantent', 'Réussir « Reine de la nuit » (≥ 60)', 'tag:song3', 1, 'chanson 3 réussie', 480, { coins: 700, fans: 80, cloth: ['sh-heels'] }),
+      T('La tournée', 'Réussir « Paris Lumières » (≥ 75)', 'tag:song4s', 1, 'chanson 4 ≥ 75', 700, { coins: 1000, diamonds: 20, fans: 250, cloth: ['dr-stage-sequin'], furniture: ['chandelier'] }),
     ],
   },
 };
@@ -102,12 +102,12 @@ export const CAREERS: Record<CareerId, CareerDef> = {
 // ------------------------------------------------------------------ fans
 export interface FanTierDef { n: number; title: string; reward: Reward; magazine?: MagazineId; event?: string; note: string }
 export const FAN_TIER_DEFS: FanTierDef[] = [
-  { n: 10, title: 'Premiers admirateurs', note: 'Un petit club de fans naît.', reward: { coins: 60, cloth: ['top-tee-pink'] } },
-  { n: 100, title: 'Le fan-club', note: 'Un tableau pour ton château.', reward: { coins: 120, furniture: ['painting'] } },
-  { n: 1000, title: 'On parle de toi', note: 'Les passants te reconnaissent.', reward: { coins: 200, diamonds: 8, cloth: ['sh-heels'] } },
-  { n: 10000, title: 'Idole de Paris', note: 'Une robe de scène t\'attend.', reward: { coins: 300, fabric: 6, cloth: ['dr-stage-sequin'] } },
-  { n: 100000, title: 'Star du royaume', note: 'Le tapis rouge est déroulé.', reward: { coins: 600, diamonds: 20, cloth: ['cr-tiara'], furniture: ['red-carpet'] }, event: 'Soirée de gala' },
-  { n: 1000000, title: 'Légende', note: 'Un million de cœurs.', reward: { coins: 1500, diamonds: 50, cloth: ['cr-gold', 'dr-redcarpet'], furniture: ['chandelier'] }, magazine: 'star-royaume', event: 'Grande soirée du royaume' },
+  { n: 10, title: 'Premiers admirateurs', note: 'Un petit club de fans naît.', reward: { coins: 120, cloth: ['top-tee-pink'] } },
+  { n: 100, title: 'Le fan-club', note: 'Un tableau pour ton château.', reward: { coins: 240, furniture: ['painting'] } },
+  { n: 1000, title: 'On parle de toi', note: 'Les passants te reconnaissent.', reward: { coins: 400, diamonds: 8, cloth: ['sh-heels'] } },
+  { n: 10000, title: 'Idole de Paris', note: 'Une robe de scène t\'attend.', reward: { coins: 600, fabric: 6, cloth: ['dr-stage-sequin'] } },
+  { n: 100000, title: 'Star du royaume', note: 'Le tapis rouge est déroulé.', reward: { coins: 1200, diamonds: 20, cloth: ['cr-tiara'], furniture: ['red-carpet'] }, event: 'Soirée de gala' },
+  { n: 1000000, title: 'Légende', note: 'Un million de cœurs.', reward: { coins: 3000, diamonds: 50, cloth: ['cr-gold', 'dr-redcarpet'], furniture: ['chandelier'] }, magazine: 'star-royaume', event: 'Grande soirée du royaume' },
 ];
 
 /** Fiche d'Auguste (fan n° 1) et ses répliques de fiche (en plus de celles d'auguste.ts). */

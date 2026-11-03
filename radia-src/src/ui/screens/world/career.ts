@@ -16,7 +16,7 @@ import { currentLook } from '../../../game/world/look';
 import { CAREERS } from '../../../data/world/careers';
 import { STYLE_NAMES } from '../../../data/world/wardrobe';
 import { CAREER_IDS, MAGAZINE_IDS, type CareerId, type StyleId } from '../../../data/world/ids';
-import { difficultyFor, levelOf, objectiveProgress, ownedMagazinesOf, progressOf, recordSession, setCurrent, wantedTag, currentCareer, MAX_LEVEL } from '../../../game/world/careers';
+import { claimSalary, salaryInfo, difficultyFor, levelOf, objectiveProgress, ownedMagazinesOf, progressOf, recordSession, setCurrent, wantedTag, currentCareer, MAX_LEVEL } from '../../../game/world/careers';
 import { lookIsOwned } from '../../../game/world/careerGames/model';
 import { careerIconUrl, countUp, rewardChips, showLevelUp, showMagazineReveal } from './careerFx';
 import { grantFans, openFans, ownedMagazines } from './fans';
@@ -54,7 +54,24 @@ export function openCareer(): Promise<void> {
       fans.addEventListener('click', tap(async () => { await openFans(); if (alive) showSelect(); }));
       const mags = h('button.btn.secondary.cr-link', icon('album', 18), ' Couvertures ', h('b', `${ownedMagazinesOf(w).length}/${MAGAZINE_IDS.length}`));
       mags.addEventListener('click', tap(async () => { await openFans({ album: true }); if (alive) showSelect(); }));
+      const sal = salaryInfo(w, Date.now());
+      const mins = Math.ceil(sal.nextInMs / 60_000);
+      const salBtn = h('button.btn.gold.small', sal.ready ? 'Toucher' : `${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`}`);
+      if (!sal.ready) salBtn.setAttribute('disabled', '');
+      salBtn.addEventListener('click', tap(() => {
+        const got = claimSalary(world(), Date.now());
+        if (!got) return;
+        events.emit('economy', undefined);
+        stat('world.career.salary');
+        save.save();
+        audio.play('reward');
+        ui.toast({ title: `Salaire : +${fmt(got)} pièces`, sub: 'Tout ce que tu construis, tu le construis toi-même ♡', icon: 'star', ms: 3400 });
+        reactAuguste('career', 1, true);
+        showSelect();
+      }, { sound: false }));
+      const salary = h('div.cr-salary', h('div.cr-sal-t', h('b', 'Mon salaire ♡'), h('small', sal.ready ? `${fmt(sal.amount)} pièces t\'attendent` : `${fmt(sal.amount)} pièces au prochain versement`)), salBtn);
       const body = h('div.screen-body.cr-body',
+        salary,
         h('p.cr-lead', 'Choisis ta voie, Radia. Tu peux changer quand tu veux : rien n\'est perdu.'),
         h('div.cr-grid', ...cards),
         h('div.cr-links', fans, mags),

@@ -9,7 +9,7 @@ import { icon } from '../../icons';
 import { audio, events, reducedFx } from '../../../core/app';
 import { firstTime, res } from '../../../core/world';
 import { wallet, fmt } from '../../../core/wallet';
-import { HAIR_IDS, type ClothId, type HairId, type Look, type StyleId } from '../../../data/world/ids';
+import { HAIR_IDS, accGroup, type AccGroup, type ClothId, type HairId, type Look, type StyleId } from '../../../data/world/ids';
 import { CLOTHES, HAIRS, STYLE_NAMES } from '../../../data/world/wardrobe';
 import type { Expr } from '../../../data/dialogue';
 import * as W from '../../../game/world/wardrobe';
@@ -20,11 +20,12 @@ import { reactAuguste } from '../../../game/world/auguste';
 import { diamondUrl } from '../shop';
 
 type ItemId = ClothId | HairId;
-type CatKey = 'top' | 'bottom' | 'dress' | 'jacket' | 'shoes' | 'bag' | 'acc' | 'hair' | 'crown';
+type CatKey = 'top' | 'bottom' | 'dress' | 'jacket' | 'shoes' | 'bag' | 'hair' | 'crown' | AccGroup;
 const CATS: { key: CatKey; label: string }[] = [
   { key: 'top', label: 'Hauts' }, { key: 'bottom', label: 'Pantalons & jupes' }, { key: 'dress', label: 'Robes' },
   { key: 'jacket', label: 'Vestes' }, { key: 'shoes', label: 'Chaussures' }, { key: 'bag', label: 'Sacs' },
-  { key: 'acc', label: 'Accessoires' }, { key: 'hair', label: 'Coiffures' }, { key: 'crown', label: 'Couronnes' },
+  { key: 'hair', label: 'Coiffures' }, { key: 'head', label: 'Foulards & cheveux' }, { key: 'glasses', label: 'Lunettes' },
+  { key: 'ears', label: 'Boucles d\'oreilles' }, { key: 'lips', label: 'Rouge à lèvres' }, { key: 'neck', label: 'Bijoux' }, { key: 'crown', label: 'Couronnes' },
 ];
 const STYLES: StyleId[] = ['casual', 'chic', 'romantic', 'royal', 'stage'];
 const isHairId = (id: string): id is HairId => (HAIR_IDS as readonly string[]).includes(id);
@@ -35,16 +36,17 @@ const nameOf = (id: ItemId) => (isHairId(id) ? HAIRS[id].name : CLOTHES[id].name
 const THUMB_BASE: Look = { hair: 'hair-loose', top: 'top-tee-white', bottom: 'bot-jeans', dress: null, jacket: null, shoes: 'sh-sneakers-white', bag: null, acc: [], crown: null };
 const CROPS: Record<CatKey, [number, number, number, number]> = {
   top: [26, 138, 188, 236], bottom: [20, 268, 200, 322], dress: [0, 140, 240, 452], jacket: [22, 138, 196, 236],
-  shoes: [26, 498, 188, 104], bag: [0, 150, 240, 262], acc: [28, 8, 184, 206], crown: [26, -14, 188, 178], hair: [8, 0, 224, 262],
+  shoes: [26, 498, 188, 104], bag: [0, 150, 240, 262], crown: [26, -14, 188, 178], hair: [8, 0, 224, 262],
+  head: [44, -4, 152, 164], glasses: [60, 36, 120, 80], ears: [44, 50, 152, 104], lips: [84, 108, 72, 56], neck: [50, 128, 140, 100],
 };
-const catOf = (id: ItemId): CatKey => (isHairId(id) ? 'hair' : (CLOTHES[id].slot as CatKey));
+const catOf = (id: ItemId): CatKey => (isHairId(id) ? 'hair' : CLOTHES[id].slot === 'acc' ? (accGroup(id) ?? 'neck') : (CLOTHES[id].slot as CatKey));
 const PX = 192;
 
 /** Aperçu dessiné d'une pièce, porté par un mannequin neutre (mise en cache). */
 export function thumbUrl(id: ItemId): string {
   return canvasUrl(`dr:thumb:${id}`, () => {
     const look = isHairId(id) ? { ...W.cloneLook(THUMB_BASE), hair: id } : W.applyItem(THUMB_BASE, id);
-    if (!isHairId(id) && CLOTHES[id].slot !== 'crown') look.hair = 'hair-bun'; // dégage les épaules pour bien voir la pièce
+    if (!isHairId(id) && CLOTHES[id].slot !== 'crown' && CLOTHES[id].slot !== 'acc') look.hair = 'hair-bun'; // dégage les épaules pour bien voir la pièce
     if (!isHairId(id) && CLOTHES[id].slot === 'dress') { look.top = null; look.bottom = null; }
     const [cx, cy, cw, ch] = CROPS[catOf(id)];
     const c = makeCanvas(PX, PX);
@@ -207,7 +209,7 @@ export function openDressing(): Promise<void> {
 
     const items = (): ItemId[] => {
       if (tab === 'hair') return [...HAIR_IDS];
-      return (Object.keys(CLOTHES) as ClothId[]).filter((id) => CLOTHES[id].slot === tab && (style === 'all' || CLOTHES[id].styles.includes(style)));
+      return (Object.keys(CLOTHES) as ClothId[]).filter((id) => catOf(id) === tab && (style === 'all' || CLOTHES[id].styles.includes(style)));
     };
 
     const ownedNow = (id: ItemId) => (isHairId(id) ? W.ownsHair(id) : W.owns(id));

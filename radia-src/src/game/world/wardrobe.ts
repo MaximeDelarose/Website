@@ -19,12 +19,13 @@ import {
   type ClothId, type ClothSlot, type HairId, type Look, type StyleId,
 } from '../../data/world/ids';
 import { CLOTHES, ELEGANT_CLOTHES, HAIRS, type ClothDef } from '../../data/world/wardrobe';
+import { accGroup } from '../../data/world/ids';
 
 export type PayWith = 'coins' | 'diamonds';
 export type FailReason = 'unknown' | 'owned' | 'coins' | 'fabric' | 'diamonds' | 'no-diamond-price' | 'not-owned' | 'bad-slot' | 'empty-name';
 export interface Result { ok: boolean; reason?: FailReason }
 
-export const MAX_ACC = 3;
+export const MAX_ACC = 6;
 export const FAVORITE_SLOTS = 3;
 export const NAME_MAX = 24;
 
@@ -60,7 +61,10 @@ export function repairLook(raw: Partial<Look> | null | undefined, owned?: Readon
   const accs = Array.isArray(r.acc) ? r.acc : [];
   for (const a of accs) {
     const c = ok(a, 'acc');
-    if (c && !l.acc.includes(c)) l.acc.push(c);
+    if (!c || l.acc.includes(c)) continue;
+    const g = accGroup(c);
+    if (g) l.acc = l.acc.filter((x) => accGroup(x) !== g); // un seul objet par famille
+    l.acc.push(c);
   }
   l.acc = l.acc.slice(-MAX_ACC);
   if (l.dress) { l.top = null; l.bottom = null; }
@@ -172,7 +176,11 @@ export function applyItem(look: Look, id: ClothId): Look {
     case 'bottom': l.bottom = id; l.dress = null; break;
     case 'dress': l.dress = id; l.top = null; l.bottom = null; break;
     case 'acc':
-      if (!l.acc.includes(id)) l.acc.push(id);
+      if (!l.acc.includes(id)) {
+        const g = accGroup(id);
+        if (g) l.acc = l.acc.filter((x) => accGroup(x) !== g); // remplace l'objet de la même famille
+        l.acc.push(id);
+      }
       l.acc = l.acc.slice(-MAX_ACC);
       break;
     default: l[slot] = id; break;

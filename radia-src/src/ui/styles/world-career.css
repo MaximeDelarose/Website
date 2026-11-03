@@ -221,3 +221,9 @@
 .sg-cv { touch-action: none; }
 
 .cr-screen .screen-head h2, .fn-screen .screen-head h2, .cg-screen .screen-head h2 { font-size: 22px; white-space: nowrap; }
+
+/* salaire */
+.cr-salary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; margin-bottom: 10px; border-radius: 20px; background: linear-gradient(180deg, #fff6d9, #ffe9a6); box-shadow: 0 0 0 2px #f3c86b, 0 4px 0 rgba(181, 134, 44, 0.35); }
+.cr-sal-t b { display: block; font-size: 17px; color: var(--nuit); }
+.cr-sal-t small { font-size: 13px; color: var(--choco-soft); }
+.cr-salary .btn[disabled] { opacity: 0.6; }

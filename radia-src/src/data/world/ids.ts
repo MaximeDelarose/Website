@@ -64,7 +64,8 @@ export const FURNITURE_IDS = [
 export type FurnitureId = (typeof FURNITURE_IDS)[number];
 
 // ------------------------------------------------------------------ vêtements
-export const HAIR_IDS = ['hair-loose', 'hair-wavy', 'hair-ponytail', 'hair-bun', 'hair-half'] as const;
+export const HAIR_IDS = ['hair-loose', 'hair-wavy', 'hair-ponytail', 'hair-bun', 'hair-half',
+  'hair-sleek-part', 'hair-medium', 'hair-bob', 'hair-braid', 'hair-curly', 'hair-space-buns', 'hair-high-pony'] as const;
 export type HairId = (typeof HAIR_IDS)[number];
 
 export type ClothSlot = 'top' | 'bottom' | 'dress' | 'jacket' | 'shoes' | 'bag' | 'acc' | 'crown';
@@ -82,9 +83,43 @@ export const CLOTH_SLOTS = {
   'sh-sneakers-white': 'shoes', 'sh-heels': 'shoes', 'sh-boots': 'shoes', 'sh-flats-red': 'shoes',
   'bg-crossbody-black': 'bag', 'bg-mini-gold': 'bag',
   'ac-pearls': 'acc', 'ac-hoops': 'acc', 'ac-scarf': 'acc', 'ac-sunglasses': 'acc',
+  // --- hauts, bas, robes, vestes (inspirés des tenues de Radia)
+  'top-stripe-blue': 'top', 'top-pinstripe-brown': 'top', 'top-satin-pink': 'top', 'top-tank-white': 'top',
+  'top-stripe-yellow': 'top', 'top-crop-black': 'top', 'top-lace-cream': 'top',
+  'bot-jeans-light': 'bottom', 'bot-wide-brown': 'bottom', 'bot-pencil-pink': 'bottom', 'bot-gingham-pants': 'bottom',
+  'bot-sweat-grey': 'bottom', 'bot-track-red': 'bottom', 'bot-mini-black': 'bottom',
+  'dr-mini-black': 'dress', 'dr-bodycon-red': 'dress', 'dr-satin-champagne': 'dress', 'dr-sage-linen': 'dress',
+  'jk-track-red': 'jacket', 'jk-trench-beige': 'jacket', 'jk-cropped-pink': 'jacket',
+  // --- chaussures (talons et autres), sacs
+  'sh-sandals-red': 'shoes', 'sh-platform-boots': 'shoes', 'sh-heels-nude': 'shoes', 'sh-heels-red': 'shoes',
+  'sh-heels-gold': 'shoes', 'sh-heels-silver': 'shoes', 'sh-heels-pink': 'shoes', 'sh-mules-cream': 'shoes', 'sh-strappy-black': 'shoes',
+  'bg-shoulder-black': 'bag', 'bg-clutch-pink': 'bag', 'bg-silver': 'bag', 'bg-tote-beige': 'bag', 'bg-red-mini': 'bag', 'bg-pearl-clutch': 'bag',
+  // --- accessoires : foulards/cheveux, lunettes, boucles d'oreilles, rouge à lèvres, bijoux de cou
+  'hd-bandana-orange': 'acc', 'hd-bandana-pink': 'acc', 'hd-headband-velvet': 'acc', 'hd-silk-blue': 'acc',
+  'hd-bow-pink': 'acc', 'hd-beret': 'acc', 'hd-claw-clip': 'acc', 'hd-pearl-pins': 'acc',
+  'gl-aviator': 'acc', 'gl-round-gold': 'acc', 'gl-cat-eye': 'acc', 'gl-heart-pink': 'acc', 'gl-clear-round': 'acc',
+  'ea-pearl-studs': 'acc', 'ea-drop-gold': 'acc', 'ea-hoops-silver': 'acc', 'ea-hearts': 'acc', 'ea-stars': 'acc', 'ea-big-hoops': 'acc',
+  'lp-red': 'acc', 'lp-rose': 'acc', 'lp-nude': 'acc', 'lp-berry': 'acc', 'lp-coral': 'acc', 'lp-gloss': 'acc',
+  'ac-chain-gold': 'acc', 'ac-choker': 'acc', 'ac-pendant': 'acc',
   'cr-gold': 'crown', 'cr-flowers': 'crown', 'cr-tiara': 'crown',
 } as const;
 export type ClothId = keyof typeof CLOTH_SLOTS;
+
+/** Les accessoires sont rangés par famille : un seul objet par famille à la fois. */
+export type AccGroup = 'head' | 'glasses' | 'ears' | 'lips' | 'neck';
+export const ACC_GROUP_NAMES: Record<AccGroup, string> = { head: 'Cheveux & foulards', glasses: 'Lunettes', ears: 'Boucles d\'oreilles', lips: 'Rouge à lèvres', neck: 'Bijoux' };
+export const accGroup = (id: string): AccGroup | null => {
+  if (id.startsWith('hd-')) return 'head';
+  if (id.startsWith('gl-') || id === 'ac-sunglasses') return 'glasses';
+  if (id.startsWith('ea-') || id === 'ac-hoops') return 'ears';
+  if (id.startsWith('lp-')) return 'lips';
+  if (id === 'ac-scarf' || id === 'ac-pearls' || id.startsWith('ac-')) return 'neck';
+  return null;
+};
+/** Couleur de chaque rouge à lèvres (utilisée par l'avatar). */
+export const LIP_COLOR: Record<string, string> = {
+  'lp-red': '#C4202F', 'lp-rose': '#E0617E', 'lp-nude': '#C08F80', 'lp-berry': '#8C2A55', 'lp-coral': '#E8674F', 'lp-gloss': '#E2909A',
+};
 export const CLOTH_IDS = Object.keys(CLOTH_SLOTS) as ClothId[];
 
 /** Un look = ce que porte Radia. `dress` remplace `top` + `bottom`. */

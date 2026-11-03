@@ -8,7 +8,7 @@
  * Le visage, les yeux, le nez (anneau) et la marque dans l'œil sont ceux de characters.ts.
  */
 import type { Look, ClothId, HairId } from '../../../data/world/ids';
-import { CLOTH_SLOTS } from '../../../data/world/ids';
+import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, accGroup } from '../../../data/world/ids';
 import type { Expr } from '../../../data/dialogue';
 import { radiaParts as P } from '../characters';
 import { PAL, heartPath, roundRect, shade, gloss, starPath } from '../kit';
@@ -16,26 +16,26 @@ import { makeCanvas } from '../kit';
 
 export interface AvatarOpts { expr?: Expr; step?: number; arms?: 'down' | 'wave' | 'heart' | 'open'; blink?: boolean }
 
-type C = CanvasRenderingContext2D;
-type Pt = [number, number];
+export type C = CanvasRenderingContext2D;
+export type Pt = [number, number];
 
-const CX = 120;
-const INK = P.INK;
-const SKIN = P.SKIN_R;
-const SKIN_D = P.SKIN_R_SHADOW;
-const SKIN_L = P.SKIN_R_LIGHT;
-const GOLD = P.GOLD;
+export const CX = 120;
+export const INK = P.INK;
+export const SKIN = P.SKIN_R;
+export const SKIN_D = P.SKIN_R_SHADOW;
+export const SKIN_L = P.SKIN_R_LIGHT;
+export const GOLD = P.GOLD;
 
 // ---------------------------------------------------------------- petits outils
 
-function lg(ctx: C, x0: number, y0: number, x1: number, y1: number, ...cols: string[]): CanvasGradient {
+export function lg(ctx: C, x0: number, y0: number, x1: number, y1: number, ...cols: string[]): CanvasGradient {
   const g = ctx.createLinearGradient(x0, y0, x1, y1);
   cols.forEach((c, i) => g.addColorStop(cols.length === 1 ? 0 : i / (cols.length - 1), c));
   return g;
 }
 
 /** Remplit puis contourne le chemin courant. */
-function fs(ctx: C, fill: string | CanvasGradient, lw = 2.2, ink: string = INK): void {
+export function fs(ctx: C, fill: string | CanvasGradient, lw = 2.2, ink: string = INK): void {
   ctx.fillStyle = fill;
   ctx.fill();
   ctx.lineWidth = lw;
@@ -43,7 +43,7 @@ function fs(ctx: C, fill: string | CanvasGradient, lw = 2.2, ink: string = INK):
   ctx.stroke();
 }
 
-function line(ctx: C, pts: Pt[], color: string, w = 1.4, smooth = true): void {
+export function line(ctx: C, pts: Pt[], color: string, w = 1.4, smooth = true): void {
   ctx.beginPath();
   if (smooth && pts.length > 2) P.curveThrough(ctx, pts);
   else { ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); }
@@ -52,7 +52,7 @@ function line(ctx: C, pts: Pt[], color: string, w = 1.4, smooth = true): void {
   ctx.stroke();
 }
 
-function dot(ctx: C, x: number, y: number, r: number, fill: string, ink: string | null = null, lw = 1): void {
+export function dot(ctx: C, x: number, y: number, r: number, fill: string, ink: string | null = null, lw = 1): void {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fillStyle = fill;
@@ -61,7 +61,7 @@ function dot(ctx: C, x: number, y: number, r: number, fill: string, ink: string 
 }
 
 /** Exécute `inner` à l'intérieur de la forme décrite par `path`. */
-function clipped(ctx: C, path: (c: C) => void, inner: () => void): void {
+export function clipped(ctx: C, path: (c: C) => void, inner: () => void): void {
   ctx.save();
   path(ctx);
   ctx.clip();
@@ -70,7 +70,7 @@ function clipped(ctx: C, path: (c: C) => void, inner: () => void): void {
 }
 
 /** Reflets de satin : quelques bandes claires obliques. */
-function sheen(ctx: C, x0: number, y0: number, x1: number, y1: number, alpha = 0.22): void {
+export function sheen(ctx: C, x0: number, y0: number, x1: number, y1: number, alpha = 0.22): void {
   ctx.save();
   ctx.lineCap = 'butt';
   for (const [o, w] of [[0.18, 7], [0.46, 12], [0.78, 5]] as const) {
@@ -84,7 +84,7 @@ function sheen(ctx: C, x0: number, y0: number, x1: number, y1: number, alpha = 0
   ctx.restore();
 }
 
-function bow(ctx: C, x: number, y: number, s: number, color: string, rot = 0): void {
+export function bow(ctx: C, x: number, y: number, s: number, color: string, rot = 0): void {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rot);
@@ -104,9 +104,9 @@ function bow(ctx: C, x: number, y: number, s: number, color: string, rot = 0): v
 
 // ---------------------------------------------------------------- bras
 
-interface Arm { x0: number; y0: number; cx: number; cy: number; x1: number; y1: number }
+export interface Arm { x0: number; y0: number; cx: number; cy: number; x1: number; y1: number }
 
-function armGeo(s: -1 | 1, pose: AvatarOpts['arms'], st: number): Arm {
+export function armGeo(s: -1 | 1, pose: AvatarOpts['arms'], st: number): Arm {
   const swing = st * s * -6;
   let x1 = CX + s * 74 + swing * 0.3, y1 = 322, cx = CX + s * 98, cy = 262;
   if (pose === 'wave' && s === 1) { x1 = 208; y1 = 150; cx = 206; cy = 216; }
@@ -147,7 +147,7 @@ function endAng(a: Arm, t: number): number {
 }
 
 /** Bande d'extrémité d'une manche (poignet, ourlet). */
-function sleeveEnd(ctx: C, a: Arm, t: number, width: number, h: number, color: string | null): void {
+export function sleeveEnd(ctx: C, a: Arm, t: number, width: number, h: number, color: string | null): void {
   const [x, y] = qAt(a, t);
   ctx.save();
   ctx.translate(x, y);
@@ -166,14 +166,14 @@ function sleeveEnd(ctx: C, a: Arm, t: number, width: number, h: number, color: s
   ctx.restore();
 }
 
-interface SleeveSpec { len: number; wid: number; c0: string; c1: string; cuff?: string; hem?: boolean; puff?: string; trim?: string }
+export interface SleeveSpec { len: number; wid: number; c0: string; c1: string; cuff?: string; hem?: boolean; puff?: string; trim?: string }
 
 // ---------------------------------------------------------------- torse
 
-interface TorsoO { hem: number; hemW?: number; waist?: number; shW?: number; neck?: 'crew' | 'v' | 'scoop' | 'sweet'; nd?: number; wy?: number }
+export interface TorsoO { hem: number; hemW?: number; waist?: number; shW?: number; neck?: 'crew' | 'v' | 'scoop' | 'sweet'; nd?: number; wy?: number }
 
 /** Silhouette du buste (chemin fermé, sans remplissage). */
-function torso(ctx: C, o: TorsoO): void {
+export function torso(ctx: C, o: TorsoO): void {
   const sw = o.shW ?? 58, ww = o.waist ?? 50, hw = o.hemW ?? 54, wy = o.wy ?? 272, hem = o.hem;
   const nx = o.neck === 'v' ? 24 : 22;
   ctx.beginPath();
@@ -197,7 +197,7 @@ function torso(ctx: C, o: TorsoO): void {
 }
 
 /** Contour du col (liseré) le long de l'encolure. */
-function neckTrim(ctx: C, kind: 'crew' | 'v' | 'scoop', nd: number, color: string, w = 3.2): void {
+export function neckTrim(ctx: C, kind: 'crew' | 'v' | 'scoop', nd: number, color: string, w = 3.2): void {
   ctx.beginPath();
   if (kind === 'v') { ctx.moveTo(CX - 24, 166); ctx.lineTo(CX, 166 + nd); ctx.lineTo(CX + 24, 166); }
   else { ctx.moveTo(CX - 22, 166); ctx.quadraticCurveTo(CX, 166 + nd * (kind === 'scoop' ? 1.5 : 1.2), CX + 22, 166); }
@@ -206,7 +206,7 @@ function neckTrim(ctx: C, kind: 'crew' | 'v' | 'scoop', nd: number, color: strin
   ctx.stroke();
 }
 
-function chestSkin(ctx: C): void {
+export function chestSkin(ctx: C): void {
   ctx.beginPath();
   ctx.moveTo(107, 144);
   ctx.lineTo(133, 144);
@@ -231,9 +231,9 @@ const HOODIE = '#26212B';
 const HOODIE_LIGHT = '#42394A';
 const HOODIE_DARK = '#15111A';
 
-type TopFn = (ctx: C) => void;
+export type TopFn = (ctx: C) => void;
 
-function hoodie(ctx: C, col: string, hoodCol: [string, string], strings: string, motif: boolean): void {
+export function hoodie(ctx: C, col: string, hoodCol: [string, string], strings: string, motif: boolean): void {
   // capuche baissée derrière la nuque
   ctx.beginPath();
   ctx.moveTo(86, 176);
@@ -300,7 +300,7 @@ function hoodie(ctx: C, col: string, hoodCol: [string, string], strings: string,
   }
 }
 
-function tee(ctx: C, col: string, heart: boolean): void {
+export function tee(ctx: C, col: string, heart: boolean): void {
   const nd = heart ? 18 : 14;
   torso(ctx, { hem: 322, hemW: 52, waist: 47, shW: 56, neck: 'scoop', nd });
   fs(ctx, lg(ctx, 60, 170, 180, 322, shade(col, 0.08), col, shade(col, -0.12)), 2.4);
@@ -322,7 +322,7 @@ function tee(ctx: C, col: string, heart: boolean): void {
   }
 }
 
-function cardigan(ctx: C): void {
+export function cardigan(ctx: C): void {
   const col = '#B9A5E8';
   const hem = 342;
   const o: TorsoO = { hem, hemW: 58, waist: 50, shW: 59, neck: 'v', nd: 96 };
@@ -376,7 +376,7 @@ function cardigan(ctx: C): void {
   }
 }
 
-function blouse(ctx: C): void {
+export function blouse(ctx: C): void {
   const col = '#F6E3CF';
   const o: TorsoO = { hem: 312, hemW: 54, waist: 49, shW: 59, neck: 'scoop', nd: 8, wy: 268 };
   torso(ctx, o);
@@ -400,7 +400,7 @@ function blouse(ctx: C): void {
   for (const y of [252, 270, 288]) dot(ctx, CX, y, 1.6, '#FFF6EA', 'rgba(120,70,50,0.6)', 0.8);
 }
 
-function stripeShirt(ctx: C): void {
+export function stripeShirt(ctx: C): void {
   const col = '#FBF8F4';
   const o: TorsoO = { hem: 340, hemW: 57, waist: 52, shW: 58, neck: 'v', nd: 40 };
   torso(ctx, o);
@@ -441,7 +441,7 @@ function stripeShirt(ctx: C): void {
 
 // ---- hauts : table
 
-const SLEEVES: Partial<Record<ClothId, SleeveSpec>> = {
+export const SLEEVES: Partial<Record<ClothId, SleeveSpec>> = {
   'top-tee-white': { len: 0.34, wid: 31, c0: '#FFFFFF', c1: '#EAE2E2', hem: true },
   'top-tee-pink': { len: 0.34, wid: 31, c0: '#FBC6D6', c1: '#EF96B3', hem: true },
   'top-hoodie-black': { len: 1, wid: 36, c0: HOODIE_LIGHT, c1: HOODIE_DARK, cuff: '#352E3C' },
@@ -451,7 +451,7 @@ const SLEEVES: Partial<Record<ClothId, SleeveSpec>> = {
   'top-stripe-shirt': { len: 0.72, wid: 28, c0: '#FFFFFF', c1: '#E8DFD8', cuff: '#DCE6F5' },
 };
 
-const TOPS: Partial<Record<ClothId, TopFn>> = {
+export const TOPS: Partial<Record<ClothId, TopFn>> = {
   'top-tee-white': (c) => tee(c, '#FBF8F6', false),
   'top-tee-pink': (c) => tee(c, '#F5A9C0', true),
   'top-hoodie-black': (c) => hoodie(c, HOODIE, [HOODIE_LIGHT, HOODIE_DARK], '#B8B0C2', false),
@@ -461,7 +461,7 @@ const TOPS: Partial<Record<ClothId, TopFn>> = {
   'top-stripe-shirt': stripeShirt,
 };
 /** Hauts rentrés dans le bas (dessinés avant). */
-const TUCKED = new Set<ClothId>(['top-blouse-silk']);
+export const TUCKED = new Set<ClothId>(['top-blouse-silk']);
 /** Hauts très longs : le bas est dessiné avant (le haut passe par-dessus). */
 const camisole = (ctx: C) => {
   const o: TorsoO = { hem: 316, hemW: 48, waist: 44, shW: 46, neck: 'scoop', nd: 18 };
@@ -471,9 +471,9 @@ const camisole = (ctx: C) => {
 
 // ---------------------------------------------------------------- bas
 
-interface LegO { topW: number; outer: number; inner: number; hemY: number; color: string; wy?: number }
+export interface LegO { topW: number; outer: number; inner: number; hemY: number; color: string; wy?: number }
 
-function pants(ctx: C, st: number, o: LegO, deco: (s: -1 | 1, off: number) => void, waistband: () => void): void {
+export function pants(ctx: C, st: number, o: LegO, deco: (s: -1 | 1, off: number) => void, waistband: () => void): void {
   const wy = o.wy ?? 292;
   for (const s of [-1, 1] as const) {
     const off = st * s * 12;
@@ -494,7 +494,7 @@ function pants(ctx: C, st: number, o: LegO, deco: (s: -1 | 1, off: number) => vo
   waistband();
 }
 
-const BOTTOMS: Partial<Record<ClothId, (ctx: C, st: number) => void>> = {
+export const BOTTOMS: Partial<Record<ClothId, (ctx: C, st: number) => void>> = {
   'bot-wide-black': (ctx, st) => {
     const col = '#211C25';
     pants(ctx, st, { topW: 52, outer: 62, inner: 6, hemY: 548, color: col }, (s, off) => {
@@ -547,7 +547,7 @@ const BOTTOMS: Partial<Record<ClothId, (ctx: C, st: number) => void>> = {
   },
 };
 
-function skirtPleated(ctx: C): void {
+export function skirtPleated(ctx: C): void {
   const col = '#A8506F';
   const path = (c: C) => {
     c.beginPath();
@@ -580,9 +580,9 @@ function skirtPleated(ctx: C): void {
 
 // ---------------------------------------------------------------- robes
 
-interface DressFx { back?: (ctx: C, st: number) => void; front: (ctx: C, st: number) => void; sleeve?: SleeveSpec }
+export interface DressFx { back?: (ctx: C, st: number) => void; front: (ctx: C, st: number) => void; sleeve?: SleeveSpec }
 
-function wave(ctx: C, x0: number, x1: number, y: number, amp: number, n: number): void {
+export function wave(ctx: C, x0: number, x1: number, y: number, amp: number, n: number): void {
   // trace le bas d'une jupe de droite à gauche avec des festons
   const step = (x1 - x0) / n;
   for (let i = 0; i < n; i++) {
@@ -591,7 +591,7 @@ function wave(ctx: C, x0: number, x1: number, y: number, amp: number, n: number)
   }
 }
 
-function flower(ctx: C, x: number, y: number, r: number, petal: string, centre: string): void {
+export function flower(ctx: C, x: number, y: number, r: number, petal: string, centre: string): void {
   for (let i = 0; i < 5; i++) {
     const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
     dot(ctx, x + Math.cos(a) * r * 0.7, y + Math.sin(a) * r * 0.7, r * 0.55, petal);
@@ -600,12 +600,12 @@ function flower(ctx: C, x: number, y: number, r: number, petal: string, centre: 
 }
 
 // ---- robes « sur mesure » : une même silhouette, des longueurs, coupes et motifs variés
-interface GenDress {
+export interface GenDress {
   col: string; col2: string; accent: string; hem: number; flare: number;
   pat: 'plain' | 'dots' | 'stripes' | 'gingham' | 'hearts' | 'lace' | 'buttons';
   neck?: 'v' | 'round' | 'sweet'; belt?: string; sleeve?: SleeveSpec; scallop?: number;
 }
-function genDress(g: GenDress): DressFx {
+export function genDress(g: GenDress): DressFx {
   return {
     sleeve: g.sleeve,
     front(ctx, st) {
@@ -665,7 +665,7 @@ function genDress(g: GenDress): DressFx {
   };
 }
 
-const DRESSES: Partial<Record<ClothId, DressFx>> = {
+export const DRESSES: Partial<Record<ClothId, DressFx>> = {
   'dr-flowy-floral': {
     front(ctx, st) {
       const col = '#FFE7E9';
@@ -973,9 +973,9 @@ Object.assign(DRESSES, {
 
 // ---------------------------------------------------------------- vestes
 
-type JacketFn = (ctx: C) => void;
+export type JacketFn = (ctx: C) => void;
 
-function lapels(ctx: C, col: string, ink = INK): void {
+export function lapels(ctx: C, col: string, ink = INK): void {
   for (const s of [-1, 1]) {
     ctx.beginPath();
     ctx.moveTo(CX + s * 20, 160);
@@ -989,7 +989,7 @@ function lapels(ctx: C, col: string, ink = INK): void {
   }
 }
 
-const JACKETS: Partial<Record<ClothId, { draw: JacketFn; sleeve: SleeveSpec }>> = {
+export const JACKETS: Partial<Record<ClothId, { draw: JacketFn; sleeve: SleeveSpec }>> = {
   'jk-blazer-cream': {
     sleeve: { len: 1, wid: 31, c0: '#FFF6E6', c1: '#E6D4B6', cuff: '#EFE0C6' },
     draw(ctx) {
@@ -1092,7 +1092,22 @@ const JACKETS: Partial<Record<ClothId, { draw: JacketFn; sleeve: SleeveSpec }>> 
 
 // ---------------------------------------------------------------- chaussures
 
-const SHOE_Y = 592;
+export const SHOE_Y = 592;
+
+/** Éléments ajoutés par les modules avatarClothes.ts / avatarStyle.ts (enregistrés en bas de fichier). */
+export const EXTRA = {
+  /** chaussures : dessine UN pied (cx = centre du pied, s = ±1 côté) */
+  shoe: {} as Record<string, (ctx: C, cx: number, s: number) => void>,
+  /** sacs : repère avatar 240 × 600 */
+  bag: {} as Record<string, (ctx: C) => void>,
+  /** coiffures, dans le repère de la tête (déjà translaté/mis à l'échelle) */
+  hairBack: {} as Record<string, (ctx: C, sway: number, crownOn: boolean) => void>,
+  hairFront: {} as Record<string, (ctx: C, sway: number) => void>,
+  /** bijoux de cou, repère avatar 240 × 600, dessinés avant la tête */
+  neck: {} as Record<string, (ctx: C) => void>,
+  /** accessoires de visage (boucles, lunettes, foulards…), repère avatar 240 × 600, après les cheveux de devant */
+  face: {} as Record<string, (ctx: C) => void>,
+};
 
 function legsSkin(ctx: C, st: number): void {
   for (const s of [-1, 1] as const) {
@@ -1124,19 +1139,19 @@ function shoesDraw(ctx: C, id: ClothId | null, st: number, only?: -1 | 1): void 
       case 'sh-heels': pump(ctx, cx, s); break;
       case 'sh-boots': boot(ctx, cx, s); break;
       case 'sh-flats-red': flat(ctx, cx, s); break;
-      default: foot(ctx, cx, s); break;
+      default: { const f = id ? EXTRA.shoe[id] : undefined; if (f) f(ctx, cx, s); else foot(ctx, cx, s); break; }
     }
   }
 }
 
 /** Pied nu (aucune chaussure équipée). */
-function foot(ctx: C, cx: number, s: number): void {
+export function foot(ctx: C, cx: number, s: number): void {
   ctx.beginPath();
   ctx.ellipse(cx + s * 3, SHOE_Y - 8, 20, 11, 0, 0, Math.PI * 2);
   fs(ctx, lg(ctx, 0, SHOE_Y - 18, 0, SHOE_Y, SKIN_L, SKIN), 2);
 }
 
-function pump(ctx: C, cx: number, s: number): void {
+export function pump(ctx: C, cx: number, s: number): void {
   ctx.save();
   ctx.translate(cx, SHOE_Y);
   ctx.scale(s, 1);
@@ -1172,7 +1187,7 @@ function pump(ctx: C, cx: number, s: number): void {
   ctx.restore();
 }
 
-function boot(ctx: C, cx: number, s: number): void {
+export function boot(ctx: C, cx: number, s: number): void {
   ctx.save();
   ctx.translate(cx, SHOE_Y);
   ctx.scale(s, 1);
@@ -1203,7 +1218,7 @@ function boot(ctx: C, cx: number, s: number): void {
   ctx.restore();
 }
 
-function flat(ctx: C, cx: number, s: number): void {
+export function flat(ctx: C, cx: number, s: number): void {
   ctx.save();
   ctx.translate(cx, SHOE_Y);
   ctx.scale(s, 1);
@@ -1450,7 +1465,7 @@ function crownTiara(ctx: C): void {
 // ---------------------------------------------------------------- cheveux
 
 /** Calotte lisse avec raie au milieu (identique à celle des portraits). */
-function hairCap(ctx: C): void {
+export function hairCap(ctx: C): void {
   const cap: Pt[] = [
     [0, -118], [-46, -112], [-82, -84], [-94, -34], [-92, 14], [-82, 20],
     [-72, -2], [-68, -40], [-54, -64], [-32, -78], [-10, -84], [0, -84],
@@ -1489,7 +1504,7 @@ function hairCap(ctx: C): void {
 }
 
 /** Masse de cheveux derrière la tête (dôme) pour les coiffures attachées. */
-function hairDome(ctx: C): void {
+export function hairDome(ctx: C): void {
   ctx.beginPath();
   ctx.moveTo(-96, 20);
   ctx.bezierCurveTo(-110, -30, -96, -112, 0, -122);
@@ -1502,7 +1517,7 @@ function hairDome(ctx: C): void {
   P.stroke(ctx, 2.4);
 }
 
-function ropeStrand(ctx: C, pts: Pt[], w0: number, w1: number): void {
+export function ropeStrand(ctx: C, pts: Pt[], w0: number, w1: number): void {
   // mèche épaisse suivant une courbe (queue de cheval)
   const L: Pt[] = [];
   const R: Pt[] = [];
@@ -1527,7 +1542,8 @@ function hairBackLayer(ctx: C, hair: HairId, sway: number, crownOn: boolean): vo
   ctx.translate(P.HEAD_X, P.HEAD_Y);
   ctx.scale(P.HEAD_K, P.HEAD_K);
   const bottom = P.R_HAIR_BOTTOM_FULL;
-  if (hair === 'hair-loose' || hair === 'hair-half') P.radiaHairBack(ctx, sway, bottom);
+  if (EXTRA.hairBack[hair]) EXTRA.hairBack[hair](ctx, sway, crownOn);
+  else if (hair === 'hair-loose' || hair === 'hair-half') P.radiaHairBack(ctx, sway, bottom);
   else if (hair === 'hair-wavy') {
     P.radiaHairBack(ctx, sway + 8, bottom - 40);
     // boucles supplémentaires qui dépassent
@@ -1582,7 +1598,9 @@ function hairFrontLayer(ctx: C, hair: HairId, sway: number): void {
   ctx.scale(P.HEAD_K, P.HEAD_K);
   const bottom = P.R_HAIR_BOTTOM_FULL;
   const w = sway * 0.5;
-  if (hair === 'hair-loose' || hair === 'hair-half') {
+  if (EXTRA.hairFront[hair]) {
+    EXTRA.hairFront[hair](ctx, sway);
+  } else if (hair === 'hair-loose' || hair === 'hair-half') {
     P.radiaHairFront(ctx, sway, bottom);
     if (hair === 'hair-half') {
       // petit chignon-noeud sur le dessus, noué par un ruban
@@ -1663,7 +1681,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const bag = pick(look.bag, 'bag');
   const accs = (Array.isArray(look.acc) ? look.acc : []).map((a) => pick(a, 'acc')).filter((a): a is ClothId => !!a);
   const crown = pick(look.crown, 'crown');
-  const hair: HairId = (['hair-loose', 'hair-wavy', 'hair-ponytail', 'hair-bun', 'hair-half'] as const).includes(look.hair) ? look.hair : 'hair-loose';
+  const hair: HairId = (HAIR_IDS as readonly string[]).includes(look.hair) ? look.hair : 'hair-loose';
   const dfx = dress ? DRESSES[dress] : undefined;
 
   ctx.save();
@@ -1727,20 +1745,25 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   // 6. sac
   if (bag === 'bg-crossbody-black') bagCross(ctx);
   else if (bag === 'bg-mini-gold') bagGold(ctx);
+  else if (bag && EXTRA.bag[bag]) EXTRA.bag[bag](ctx);
 
   // 7. accessoires du cou
   if (accs.includes('ac-scarf')) scarf(ctx);
   if (accs.includes('ac-pearls')) pearls(ctx);
+  for (const a of accs) EXTRA.neck[a]?.(ctx);
 
   // 8. tête
   ctx.save();
   ctx.translate(P.HEAD_X, P.HEAD_Y);
   ctx.scale(P.HEAD_K, P.HEAD_K);
-  P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink });
+  const lipId = accs.find((a) => a.startsWith('lp-'));
+  P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined });
   ctx.restore();
   hairFrontLayer(ctx, hair, sway);
   if (accs.includes('ac-hoops')) hoops(ctx);
   if (accs.includes('ac-sunglasses')) sunglasses(ctx);
+  // boucles → lunettes → foulards / accessoires de cheveux (du plus près au plus haut)
+  for (const grp of ['ears', 'glasses', 'head'] as const) for (const a of accs) if (accGroup(a) === grp) EXTRA.face[a]?.(ctx);
   if (crown === 'cr-gold') crownGold(ctx);
   else if (crown === 'cr-flowers') crownFlowers(ctx);
   else if (crown === 'cr-tiara') crownTiara(ctx);
@@ -1809,3 +1832,9 @@ export function avatarCanvas(look: Look, w: number, h: number, opts: AvatarOpts 
 
 /** Look actuellement porté (lu depuis la sauvegarde). */
 export { currentLook } from '../../world/look';
+
+// ---- modules d'ajouts (enregistrent leurs dessins dans les tables ci-dessus)
+import { installClothes } from './avatarClothes';
+import { installStyle } from './avatarStyle';
+installClothes();
+installStyle();
