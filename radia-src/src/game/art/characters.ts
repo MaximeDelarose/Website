@@ -839,56 +839,86 @@ export function drawRadiaPortrait(ctx: CanvasRenderingContext2D, o: FaceOpts & {
 // ============================================================ AUGUSTE
 
 function augusteHair(ctx: CanvasRenderingContext2D) {
-  const grad = () => {
-    const g = ctx.createLinearGradient(-70, -146, 70, -20);
-    g.addColorStop(0, '#A87B50');
-    g.addColorStop(0.45, '#744D32');
-    g.addColorStop(1, '#43291B');
+  // Cheveux bruns ondulés, volumineux sur le dessus : silhouette aux bosses
+  // douces, longues vagues, frange balayée vers la gauche de l'image,
+  // pattes ondulées devant les oreilles.
+  const grad = (x0 = -80, y0 = -160, x1 = 70, y1 = -20) => {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, '#B98F60');
+    g.addColorStop(0.42, '#7B5336');
+    g.addColorStop(1, '#45281A');
     return g;
   };
+  // 1. masse : bosses ondulées sur le dessus, front dégagé
   smoothPath(ctx, [
-    [-80, 12], [-87, -30], [-85, -72], [-62, -110], [-24, -132], [22, -140], [62, -126], [88, -94], [92, -50], [84, 12],
-    [77, -6], [72, -40], [58, -62], [36, -64], [10, -56], [-14, -68], [-40, -70], [-60, -52], [-72, -30], [-76, -8],
+    [-94, 18], [-106, -22], [-104, -52], [-110, -78], [-92, -92], [-96, -112], [-76, -122], [-70, -142], [-48, -140], [-38, -160], [-14, -150],
+    [2, -166], [24, -154], [42, -166], [60, -146], [78, -146], [88, -122], [106, -118], [104, -92], [114, -66], [100, -42], [104, -18], [94, 18],
+    [80, -2], [74, -44], [62, -68], [36, -78], [8, -72], [-20, -80], [-48, -76], [-68, -60], [-76, -30], [-82, -4],
   ]);
   ctx.fillStyle = grad();
   ctx.fill();
-  stroke(ctx, 2.4);
-  // grosses vagues / boucles volumineuses (rubans courbes)
-  const tufts: [Pt[], number][] = [
-    [[[-38, -70], [-62, -84], [-78, -70], [-82, -44]], 22],
-    [[[52, -60], [76, -78], [84, -104], [66, -118]], 28],
-    [[[40, -62], [30, -98], [6, -120], [-30, -122]], 38],
-    [[[10, -58], [-2, -92], [-32, -110], [-62, -98]], 32],
-    [[[24, -108], [48, -126], [72, -118], [84, -96]], 26],
-    [[[-30, -114], [-10, -132], [22, -134], [44, -126]], 24],
-    [[[-56, -96], [-62, -116], [-44, -128], [-20, -128]], 22],
+  stroke(ctx, 2.5);
+  ctx.save();
+  ctx.clip();
+  // 2. ombre sous le volume (profondeur près du front et des tempes)
+  ctx.save();
+  smoothPath(ctx, [
+    [-92, 16], [-102, -26], [-98, -64], [-86, -96], [-70, -118], [4, -100], [80, -126], [92, -102], [104, -70], [100, -30], [92, 16],
+    [80, -2], [74, -44], [62, -68], [36, -78], [8, -72], [-20, -80], [-48, -76], [-68, -60], [-76, -30], [-82, -4],
+  ]);
+  ctx.clip();
+  const sh = ctx.createLinearGradient(0, -120, 0, 10);
+  sh.addColorStop(0, 'rgba(40,22,12,0)');
+  sh.addColorStop(0.45, 'rgba(40,22,12,0.28)');
+  sh.addColorStop(1, 'rgba(40,22,12,0.05)');
+  ctx.fillStyle = sh;
+  ctx.fillRect(-120, -120, 240, 140);
+  ctx.restore();
+  // 3. grandes vagues qui partent du front vers l'arrière (traits sombres + reflets)
+  ctx.lineCap = 'round';
+  const waves: Pt[][] = [
+    [[-64, -66], [-70, -96], [-52, -122], [-48, -144]],
+    [[-36, -76], [-40, -104], [-22, -128], [-14, -152]],
+    [[-6, -74], [-4, -102], [14, -124], [24, -156]],
+    [[24, -76], [32, -102], [50, -122], [60, -146]],
+    [[52, -70], [66, -96], [82, -108], [92, -122]],
   ];
-  for (const [pts, wd] of tufts) {
+  for (const w of waves) {
+    ctx.beginPath();
+    curveThrough(ctx, w);
+    ctx.lineWidth = 1.7;
+    ctx.strokeStyle = 'rgba(40,22,12,0.55)';
+    ctx.stroke();
+    ctx.beginPath();
+    curveThrough(ctx, w.map(([x, y]) => [x + 5, y - 2] as Pt));
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(236,192,140,0.34)';
+    ctx.stroke();
+  }
+  ctx.restore();
+  // 4. frange : mèches ondulées balayées vers la gauche de l'image, bouts effilés
+  const fringe: [Pt[], number][] = [
+    [[[78, -96], [60, -114], [30, -122], [0, -112], [-28, -96], [-52, -84]], 30],
+    [[[58, -84], [38, -102], [10, -104], [-16, -92], [-40, -78], [-58, -66]], 26],
+    [[[30, -80], [8, -94], [-18, -90], [-38, -76], [-52, -64]], 20],
+  ];
+  for (const [pts, wd] of fringe) {
     strand(ctx, pts, wd);
+    ctx.fillStyle = grad(70, -130, -50, -60);
+    ctx.fill();
+    stroke(ctx, 1.9, 'rgba(40,22,12,0.85)');
+    ctx.beginPath();
+    curveThrough(ctx, pts.map(([x, y]) => [x + 1, y - 4] as Pt));
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(236,192,140,0.4)';
+    ctx.stroke();
+  }
+  // 5. pattes ondulées devant les oreilles
+  for (const sd of [-1, 1] as const) {
+    strand(ctx, [[sd * 80, -74], [sd * 92, -52], [sd * 82, -30], [sd * 92, -8], [sd * 82, 10]], 17);
     ctx.fillStyle = grad();
     ctx.fill();
-    stroke(ctx, 1.6, 'rgba(40,22,12,0.8)');
-  }
-  // mèches fines + reflets
-  ctx.lineCap = 'round';
-  ctx.lineWidth = 1.3;
-  ctx.strokeStyle = 'rgba(35,18,10,0.5)';
-  for (const pts of [
-    [[34, -64], [26, -92], [6, -112]],
-    [[2, -62], [-8, -88], [-34, -104]],
-    [[60, -64], [76, -84], [74, -108]],
-    [[-70, -60], [-78, -52], [-82, -34]],
-  ] as Pt[][]) {
-    ctx.beginPath();
-    curveThrough(ctx, pts);
-    ctx.stroke();
-  }
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = 'rgba(225,175,120,0.32)';
-  for (const pts of [[[-46, -124], [-18, -142], [24, -140]], [[40, -118], [66, -122], [84, -102]], [[28, -90], [12, -108], [-14, -112]]] as Pt[][]) {
-    ctx.beginPath();
-    curveThrough(ctx, pts);
-    ctx.stroke();
+    stroke(ctx, 1.9, 'rgba(40,22,12,0.85)');
   }
 }
 
