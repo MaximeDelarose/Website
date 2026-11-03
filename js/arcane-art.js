@@ -25,6 +25,7 @@
     marais: { top: ["#3fa37a", "#36966e", "#4ab086"], path: ["#a08a58", "#927c4e"], side: "#236e4f", side2: "#19533c", water: "#2fd6c0", line: "rgba(10,50,30,.18)" },
     nuages: { top: ["#f3eefc", "#ebe4f8", "#faf6ff"], path: ["#ffd9ec", "#ffcde6"], side: "#c9b8e8", side2: "#b3a0d9", water: "#9fd8ff", line: "rgba(120,90,160,.10)" },
     confiserie: { top: ["#ffd3e6", "#ffc6de", "#ffe0ee"], path: ["#fff1c2", "#ffe9a8"], side: "#e08ab0", side2: "#c96a94", water: "#ff8ab4", line: "rgba(160,60,110,.10)" },
+    racines: { top: ["#3f8a52", "#377c49", "#49985c"], path: ["#9a7a48", "#8d6e40"], side: "#255634", side2: "#1a4226", water: "#3fb8a8", line: "rgba(10,50,20,.2)" },
     horloge: { top: ["#3b4a66", "#34425c", "#425272"], path: ["#5a6a86", "#4f5e78"], side: "#222c40", side2: "#161d2c", water: "#d9a441", line: "rgba(217,164,65,.14)" },
   };
 
@@ -65,6 +66,7 @@
     if (!o.noShadow) shadow(g, 0, 0, 17 * s, 0.3);
     if (skin && !o.noAura) aura(g, skin.aura, t, s);
     STROKE = 1.6;
+    if (o.gear && o.gear.mount) { mount(g, o.gear.mount, t, s, o); }
     var bob = Math.sin(t * 3.2) * 1.4, hop = 0, lean = 0;
     if (o.walk != null) { hop = -Math.abs(Math.sin(o.walk * Math.PI)) * 5; bob = 0; lean = 0.06; }
     if (o.win) hop = -Math.abs(Math.sin(t * 6)) * 9;
@@ -74,6 +76,7 @@
     g.rotate((o.flip || 1) < 0 ? -lean : lean);
     if (o.hurt) g.translate(-o.hurt * 4, 0);
     var G = o.gear || {};
+    if (G.mount) g.translate(0, -26);
     if (G.cape) gearCape(g, G.cape, t, o);
     if (cls === "bastion") drawBastion(g, P, t, o, bob);
     else if (cls === "prisme") drawPrisme(g, P, t, o, bob);
@@ -90,6 +93,51 @@
     if (skin && !o.noAura) auraFront(g, skin.aura, t, s);
     STROKE = 1;
     if (o.hurt > 0.3) { g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(255,255,255," + (o.hurt * 0.7) + ")"; g.fillRect(-40, -80, 80, 90); g.globalCompositeOperation = "source-over"; }
+    g.restore();
+  }
+  // ---- montures : dessinées sous le héros (le corps est monté au-dessus) ----
+  var MOUNT_COL = { dragodinde: "#d99a3a", dragodore: "#ffd257", muldo: "#dff6ff", volkorne: "#5fe0ff" };
+  function mount(g, id, t, s, o) {
+    var c = MOUNT_COL[id] || "#d99a3a", d = shade(c, -0.4), wk = o.walk != null ? Math.sin(o.walk * TAU) : 0;
+    g.save(); g.scale(s * (o.flip || 1), s);
+    if (id === "muldo") {
+      ell(g, 0, 2, 26, 9, "rgba(0,0,0,.2)");
+      rrect(g, -18, -18, 10, 18, 4, d); rrect(g, 8, -18, 10, 18, 4, d);
+      rrect(g, -26, -40, 52, 28, 14, c); ell(g, -20, -48, 10, 8, c); poly(g, [-30, -56, -24, -70, -20, -54], d); poly(g, [-14, -56, -10, -70, -8, -54], d);
+      circ(g, -24, -49, 2, "#1b1530"); rrect(g, -22, -30, 44, 6, 3, "#8a5a3b");
+    } else if (id === "volkorne") {
+      ell(g, 0, 2, 26, 9, "rgba(0,0,0,.2)");
+      [-1, 1].forEach(function (sd) { g.save(); g.translate(sd * 10, -36); g.rotate(sd * (0.5 + Math.sin(t * 7) * 0.3)); poly(g, [0, 0, sd * 34, -14, sd * 36, -2, sd * 24, 6], "#dff6ff", c, 1.5); g.restore(); });
+      g.strokeStyle = d; g.lineWidth = 3; for (var l = -1; l <= 1; l += 2) { g.beginPath(); g.moveTo(l * 12, -16); g.lineTo(l * 12 + wk * 6, 0); g.moveTo(l * 6, -16); g.lineTo(l * 6 - wk * 6, 0); g.stroke(); }
+      rrect(g, -22, -36, 44, 22, 10, c); ell(g, 22, -44, 9, 7, c); g.strokeStyle = "#f4ecd8"; g.lineWidth = 2; g.beginPath(); g.moveTo(26, -50); g.lineTo(30, -66); g.moveTo(26, -50); g.lineTo(36, -58); g.moveTo(24, -50); g.lineTo(20, -64); g.stroke();
+      circ(g, 25, -45, 2, "#1b1530"); rrect(g, -18, -28, 36, 5, 3, "#8a5a3b");
+    } else {
+      // dragodinde : cou long, crête, pattes d'oiseau
+      ell(g, 0, 2, 24, 8, "rgba(0,0,0,.2)");
+      g.strokeStyle = d; g.lineWidth = 4; g.lineCap = "round"; g.beginPath(); g.moveTo(-8, -14); g.lineTo(-8 + wk * 7, 0); g.moveTo(8, -14); g.lineTo(8 - wk * 7, 0); g.stroke();
+      ell(g, 0, -26, 22, 13, c); poly(g, [-20, -30, -34, -24, -30, -14], c);
+      g.strokeStyle = c; g.lineWidth = 9; g.beginPath(); g.moveTo(16, -32); g.quadraticCurveTo(30, -46, 28, -62); g.stroke();
+      ell(g, 30, -64, 9, 7, c); poly(g, [36, -66, 46, -62, 36, -60], "#ffd257"); circ(g, 30, -66, 2, "#1b1530");
+      for (var k = 0; k < 4; k++) poly(g, [22 + k * 2, -58 + k * 7, 30 + k * 2, -64 + k * 7, 26 + k * 2, -52 + k * 7], shade(c, 0.3));
+      rrect(g, -16, -32, 32, 6, 3, "#8a5a3b");
+    }
+    g.restore();
+  }
+  // ---- familiers : petite bestiole qui suit, dessinée à côté ----
+  var PET_COL = { bouloute: "#ff8ab4", tiwabbit: "#f4ecd8", pyrounet: "#ff7b4a", sablon: "#c98a3a", goutine: "#4fb6dd", chouquette: "#ffd257", dragounet: "#c77dff" };
+  function pet(g, id, x, y, o) {
+    o = o || {}; var t = o.t || 0, c = PET_COL[id] || "#fff", s = o.scale || 1;
+    g.save(); g.translate(x, y); g.scale(s, s);
+    shadow(g, 0, 0, 9, 0.22);
+    var hop = -Math.abs(Math.sin(t * 5)) * 4;
+    g.translate(0, hop);
+    if (id === "pyrounet") { glow(g, 0, -10, 18, "rgba(255,123,74,.8)", 0.6); poly(g, [0, -26 + Math.sin(t * 9) * 2, 8, -8, 0, -2, -8, -8], c); poly(g, [0, -16, 4, -8, 0, -4, -4, -8], "#ffe08a"); }
+    else if (id === "goutine") { poly(g, [0, -24, 8, -8, 0, -2, -8, -8], c); circ(g, -2, -12, 2, "#fff"); }
+    else if (id === "chouquette") { ell(g, 0, -10, 8, 10, c); circ(g, 0, -20, 7, c); circ(g, -2.5, -21, 2.5, "#fff"); circ(g, 2.5, -21, 2.5, "#fff"); circ(g, -2.5, -21, 1.2, "#000"); circ(g, 2.5, -21, 1.2, "#000"); poly(g, [-1.5, -17, 1.5, -17, 0, -14], "#ff9a3c"); }
+    else if (id === "dragounet") { ell(g, 0, -10, 10, 8, c); circ(g, 7, -18, 6, c); [-1, 1].forEach(function (sd) { poly(g, [sd * 4, -14, sd * 16, -26 + Math.sin(t * 8) * 3, sd * 12, -10], shade(c, -0.3)); }); circ(g, 9, -19, 1.5, "#fff"); poly(g, [-10, -10, -18, -6, -12, -2], c); }
+    else if (id === "sablon") { ell(g, 0, -8, 11, 7, c); for (var i = -2; i <= 2; i++) { g.strokeStyle = shade(c, -0.3); g.lineWidth = 2; g.beginPath(); g.moveTo(i * 4, -4); g.lineTo(i * 5, 0); g.stroke(); } circ(g, -4, -12, 2, "#000"); circ(g, 4, -12, 2, "#000"); poly(g, [-11, -10, -17, -16, -13, -6], c); poly(g, [11, -10, 17, -16, 13, -6], c); }
+    else if (id === "tiwabbit") { ell(g, 0, -9, 8, 7, c); circ(g, 5, -16, 6, c); ell(g, 3, -26, 2.5, 7, c); ell(g, 8, -26, 2.5, 7, c); circ(g, 7, -17, 1.5, "#000"); circ(g, -7, -8, 3, "#fff"); }
+    else { circ(g, 0, -10, 9, c); circ(g, -5, -16, 3, shade(c, 0.3)); circ(g, -3, -11, 2, "#000"); circ(g, 3, -11, 2, "#000"); g.strokeStyle = "#000"; g.lineWidth = 1.2; g.beginPath(); g.arc(0, -7, 2.5, 0.2, Math.PI - 0.2); g.stroke(); }
     g.restore();
   }
   // ---- tenues (skins) : palette + aura au sol et autour ----
@@ -736,6 +784,19 @@
       var gl = 0.5 + Math.sin(t * 6) * 0.4; g.fillStyle = "rgba(255,210,87," + gl + ")"; g.fillRect(-4, -82, 8, 4);
       rrect(g, -34, -56, 9, 30, 4, shade(c, -0.2)); rrect(g, 25, -56, 9, 30, 4, shade(c, -0.2));
     },
+    treant: function (g, c, t, o) {
+      // Ancien Sylvestre : souche-tronc qui marche, branches qui grincent, visage dans l'écorce
+      var b = Math.sin(t * 1.3) * 1.5;
+      rrect(g, -18, -10, 12, 10, 3, shade(c, -0.35)); rrect(g, 6, -10, 12, 10, 3, shade(c, -0.35));
+      poly(g, [-22, -8, 22, -8, 18, -62 + b, -18, -62 + b], c, shade(c, -0.5), 2.5);
+      g.strokeStyle = shade(c, -0.4); g.lineWidth = 2; for (var i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(i * 9, -10); g.quadraticCurveTo(i * 11 + 2, -36 + b, i * 8, -58 + b); g.stroke(); }
+      g.strokeStyle = c; g.lineWidth = 6; g.lineCap = "round";
+      g.beginPath(); g.moveTo(-16, -50 + b); g.quadraticCurveTo(-36, -62 + b, -40, -88 + b); g.moveTo(16, -50 + b); g.quadraticCurveTo(38, -64 + b, 42, -86 + b); g.moveTo(0, -62 + b); g.lineTo(2, -92 + b); g.stroke();
+      [[-40, -88], [-30, -74], [42, -86], [30, -72], [2, -92], [-8, -80], [12, -82]].forEach(function (q, k) { circ(g, q[0], q[1] + b, 11 + (k % 2) * 3, k % 3 ? "#62b25b" : "#85cc6c"); });
+      circ(g, -32, -84 + b, 3, "#ff7b9c"); circ(g, 36, -80 + b, 3, "#fff1a8");
+      if (!o.back) { poly(g, [-9, -46 + b, -3, -42 + b, -9, -38 + b], "#1b1530"); poly(g, [9, -46 + b, 3, -42 + b, 9, -38 + b], "#1b1530"); g.fillStyle = "#1b1530"; g.beginPath(); g.moveTo(-6, -28 + b); g.quadraticCurveTo(0, -22 + b, 6, -28 + b); g.quadraticCurveTo(0, -24 + b, -6, -28 + b); g.fill(); }
+      var gl = 0.5 + Math.sin(t * 2) * 0.3; g.fillStyle = "rgba(255,241,168," + gl + ")"; g.fillRect(-7, -45 + b, 3, 2); g.fillRect(4, -45 + b, 3, 2);
+    },
     statue: function (g, c, t, o) {
       // Sentinelle d'Incarnam : statue de pierre couverte de lierre, un œil de rune
       var b = Math.sin(t * 1.2) * 1;
@@ -1054,7 +1115,7 @@
     return iconCache[k];
   }
   function heroIcon(cls, size, gear, full) {
-    var gk = gear ? Object.keys(gear).map(function (k) { return k === "skin" ? "S" + gear[k] : k[0] + gear[k].look + gear[k].r; }).join("") : "";
+    var gk = gear ? Object.keys(gear).map(function (k) { return k === "skin" || k === "pet" || k === "mount" ? k[0].toUpperCase() + gear[k] : k[0] + gear[k].look + gear[k].r; }).join("") : "";
     return icon("h-" + cls + gk + (full ? "F" : ""), size, function (g, s) {
       var gr = g.createLinearGradient(0, 0, 0, s);
       var bg = { bastion: ["#3a4f9a", "#1a2550"], prisme: ["#6e3fb0", "#2a1446"], voltige: ["#ff8a6a", "#7a2a22"], sibylle: ["#2fa37a", "#134a39"], clarine: ["#ffd27d", "#9a6f1a"], orage: ["#a3335c", "#2a0a18"], ondine: ["#4fb6dd", "#0f2a4a"] }[cls];
@@ -1070,10 +1131,12 @@
       summon(g, cls, s / 2, s * 1.05, { t: 0.6, scale: s / (cls === "ours" || cls === "dame" ? 62 : cls === "lama" ? 58 : 48), noShadow: true });
     });
   }
+  function petIcon(id, size) { return icon("pet-" + id, size, function (g, s) { g.fillStyle = "#1b2443"; g.fillRect(0, 0, s, s); pet(g, id, s / 2, s * 0.92, { t: 0.4, scale: s / 36 }); }); }
+  function mountIcon(id, size) { return icon("mnt-" + id, size, function (g, s) { g.fillStyle = "#1b2443"; g.fillRect(0, 0, s, s); g.save(); g.translate(s / 2, s * 0.92); mount(g, id, 0.4, s / 92, { flip: 1 }); g.restore(); }); }
   function mobIcon(type, size, col, elite) {
     return icon("m-" + type + (elite ? "e" : ""), size, function (g, s) {
       g.fillStyle = elite ? "#4a3a12" : "#2a2342"; g.fillRect(0, 0, s, s);
-      var big = /^(archonte|guimauve|tictac|sentinelle)$/.test(type);
+      var big = /^(archonte|guimauve|tictac|sentinelle|sylvestre)$/.test(type);
       mob(g, type, s / 2, s * (big ? 1.25 : 0.92), { t: 0.6, col: col, scale: s / (big ? 80 : 44), noShadow: true });
     });
   }
@@ -1167,6 +1230,6 @@
     });
   }
 
-  root.AT_ART = { hero: hero, mob: mob, summon: summon, summonIcon: summonIcon, SKIN_PAL: SKIN_PAL, npc: npc, deco: deco, diamond: diamond, shade: shade, glow: glow, circ: circ, ell: ell, poly: poly, rrect: rrect,
+  root.AT_ART = { hero: hero, mob: mob, summon: summon, pet: pet, mount: mount, petIcon: petIcon, mountIcon: mountIcon, PET_COL: PET_COL, MOUNT_COL: MOUNT_COL, summonIcon: summonIcon, SKIN_PAL: SKIN_PAL, npc: npc, deco: deco, diamond: diamond, shade: shade, glow: glow, circ: circ, ell: ell, poly: poly, rrect: rrect,
     heroIcon: heroIcon, mobIcon: mobIcon, itemIcon: itemIcon, spellIcon: spellIcon, THEMES: THEMES, HERO_PAL: HERO_PAL, SPELL_COL: SPELL_COL };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -110,6 +110,23 @@
     phenix: { name: "Phénix d'encre", hp: 40, hpL: 5, pa: 5, pm: 4, ini: 15, spells: ["flamme", "cocon"], el: "feu", ranged: true, healer: true, desc: "Brûle à 1–5 cases (Feu) et soigne les alliés." },
   };
   var SUMMON_MAX = 3;
+  // familiers : un bonus de caractéristiques, ils suivent le héros
+  var PETS = {
+    bouloute: { name: "Bouloute", price: 300, st: { vit: 40 }, col: "#ff8ab4", desc: "Boule de poils rose. +40 Vitalité." },
+    tiwabbit: { name: "Tiwabbit", price: 450, st: { agi: 25 }, col: "#f4ecd8", desc: "Petit lapin nerveux. +25 Agilité." },
+    pyrounet: { name: "Pyrounet", price: 450, st: { int: 25 }, col: "#ff7b4a", desc: "Flamme domestique. +25 Intelligence." },
+    sablon: { name: "Sablon", price: 450, st: { for: 25 }, col: "#c98a3a", desc: "Crabe de sable. +25 Force." },
+    goutine: { name: "Goutine", price: 450, st: { cha: 25 }, col: "#4fb6dd", desc: "Goutte d'eau vivante. +25 Chance." },
+    chouquette: { name: "Chouquette", price: 900, st: { sag: 30, pros: 30 }, col: "#ffd257", desc: "Chouette dorée. +30 Sagesse, +30 Prospection." },
+    dragounet: { name: "Dragounet", price: 2500, st: { dom: 12, vit: 60 }, col: "#c77dff", desc: "Bébé dragon violet. +12 Dommages, +60 Vitalité." },
+  };
+  // montures : on les chevauche en exploration et en combat ; vitesse de marche et bonus
+  var MOUNTS = {
+    dragodinde: { name: "Dragodinde rousse", price: 1500, st: { vit: 60, pm: 0 }, speed: 0.12, col: "#d99a3a", desc: "La monture de base : marche deux fois plus vite. +60 Vitalité." },
+    dragodore: { name: "Dragodinde dorée", price: 3500, st: { vit: 100, pm: 1 }, speed: 0.11, col: "#ffd257", desc: "+1 PM en combat, +100 Vitalité." },
+    muldo: { name: "Muldo des neiges", price: 4500, st: { vit: 120, res: 8 }, speed: 0.13, col: "#dff6ff", desc: "Lourd et solide : +120 Vitalité, +8 % résistance." },
+    volkorne: { name: "Volkorne", price: 7000, st: { vit: 140, pm: 1, ini: 60 }, speed: 0.1, col: "#5fe0ff", desc: "Cerf ailé : +1 PM, +140 Vitalité, +60 Initiative. Le plus rapide." },
+  };
   // niveaux de déblocage des 10 sorts de chaque héros (le 5e est l'ultime)
   var SPELL_LEVELS = [1, 1, 3, 6, 10, 15, 25, 40, 60, 80];
   var ULT_LEVEL = SPELL_LEVELS[4];
@@ -341,6 +358,7 @@
     guimauve: { name: "Reine Guimauve", hp: 340, pa: 8, pm: 2, ini: 8, res: 10, spells: ["pluie", "sucreries", "calin"], boss: true, xp: 300, col: "#ffb3d9", shape: "queen" },
     tictac: { name: "Grand Tic-Tac", hp: 560, pa: 9, pm: 2, ini: 10, res: 20, spells: ["carillon", "aiguilles", "rembobine"], boss: true, xp: 520, col: "#c48a2a", shape: "bigclock" },
     dopeul: { name: "Dopeul", hp: 700, pa: 9, pm: 4, ini: 30, res: 20, spells: ["dopfrappe", "doptir", "dopsoin"], boss: true, xp: 4000, col: "#2b1d3a", shape: "dopeul" },
+    sylvestre: { name: "Ancien Sylvestre", hp: 260, pa: 7, pm: 2, ini: 5, res: 15, spells: ["racines", "fouet", "lierre"], boss: true, xp: 220, col: "#7a5236", shape: "treant" },
     sentinelle: { name: "Sentinelle d'Incarnam", hp: 190, pa: 7, pm: 2, ini: 6, res: 10, spells: ["racines", "lierre", "rune"], boss: true, xp: 160, col: "#8fa37a", shape: "statue" },
     archonte: { name: "Archonte fractal", hp: 460, pa: 8, pm: 2, ini: 9, res: 15, spells: ["sentence", "appel", "pique"], boss: true, xp: 420, col: "#d36cff", shape: "boss" },
   };
@@ -421,7 +439,8 @@
     { id: "q1", name: "Premiers pas", desc: "Vaincre 4 Glorbes dans la Prairie des Runes.", kind: "kill", mob: "glorbe", n: 4, xp: 60, gold: 40, item: "magique" },
     { id: "q2", name: "Nuisibles", desc: "Vaincre 3 Scarabrumes.", kind: "kill", mob: "scarabrume", n: 3, req: "q1", xp: 90, gold: 60, item: "rare" },
     { id: "qi", name: "Le donjon d'Incarnam", desc: "Vaincre la Sentinelle au fond du donjon d'Incarnam (portail au nord de la Prairie).", kind: "kill", mob: "sentinelle", n: 1, req: "q2", xp: 220, gold: 150, item: "epique" },
-    { id: "q3", name: "Bois Fractal", desc: "Atteindre le niveau 3 et entrer dans le Bois Fractal.", kind: "zone", zone: "bois", req: "q2", xp: 120, gold: 80, item: "rare" },
+    { id: "q3", name: "Bois Fractal", desc: "Atteindre le niveau 3, battre Incarnam et entrer dans le Bois Fractal.", kind: "zone", zone: "bois", req: "q2", xp: 120, gold: 80, item: "rare" },
+    { id: "qr", name: "L'Ancien Sylvestre", desc: "Vaincre l'Ancien Sylvestre au Cœur du Bois Fractal (portail au nord du Bois). Il garde la route du Marais.", kind: "kill", mob: "sylvestre", n: 1, req: "q3", xp: 300, gold: 180, item: "epique" },
     { id: "q4", name: "Lanternes folles", desc: "Vaincre 5 Lanterneaux.", kind: "kill", mob: "lanterneau", n: 5, req: "q3", xp: 180, gold: 120, item: "rare" },
     { id: "q5", name: "Chasse aux élites", desc: "Vaincre 3 monstres élites (contour doré).", kind: "elite", n: 3, req: "q4", xp: 260, gold: 160, item: "epique" },
     { id: "q6", name: "Les Falaises", desc: "Atteindre les Falaises de Cristal.", kind: "zone", zone: "falaises", req: "q5", xp: 300, gold: 200, item: "epique" },
@@ -443,16 +462,16 @@
       spawn: { x: 9, y: 9 } },
     prairie: { name: "Prairie des Runes", sub: "Niv. 1 à 3", w: 26, h: 22, lvl: [1, 3], theme: "prairie", seed: 202, packs: 6, size: [1, 3],
       mobs: ["glorbe", "glorbe", "scarabrume", "ronceau"],
-      portals: [{ x: 0, y: 11, to: "village", label: "Lumebourg" }, { x: 25, y: 11, to: "bois", req: 3, label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:incarnam", req: 2, label: "Donjon d'Incarnam" }] },
+      portals: [{ x: 0, y: 11, to: "village", label: "Lumebourg" }, { x: 25, y: 11, to: "bois", req: 3, dng: "incarnam", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:incarnam", req: 2, label: "Donjon d'Incarnam" }] },
     bois: { name: "Bois Fractal", sub: "Niv. 3 à 6", w: 26, h: 24, lvl: [3, 6], theme: "bois", seed: 303, packs: 7, size: [2, 3],
       mobs: ["ronceau", "lanterneau", "sylphe", "scarabrume", "lanterneau"],
-      portals: [{ x: 0, y: 12, to: "prairie", label: "Prairie des Runes" }, { x: 25, y: 12, to: "falaises", req: 5, label: "Falaises de Cristal" }, { x: 13, y: 23, to: "marais", req: 4, label: "Marais Bulleux" }] },
+      portals: [{ x: 0, y: 12, to: "prairie", label: "Prairie des Runes" }, { x: 25, y: 12, to: "falaises", req: 5, dng: "confiserie", label: "Falaises de Cristal" }, { x: 13, y: 23, to: "marais", req: 4, dng: "racines", label: "Marais Bulleux" }, { x: 13, y: 0, to: "dungeon:racines", req: 4, label: "Cœur du Bois Fractal (donjon)" }] },
     marais: { name: "Marais Bulleux", sub: "Niv. 4 à 7 · grenouilles et bonbons", w: 26, h: 22, lvl: [4, 7], theme: "marais", seed: 505, packs: 7, size: [2, 3], elite: 0.15,
       mobs: ["grenouillon", "bonbonk", "grenouillon", "lanterneau", "glorbe"],
       portals: [{ x: 13, y: 0, to: "bois", label: "Bois Fractal" }, { x: 25, y: 11, to: "dungeon:confiserie", req: 5, label: "Confiserie de la Reine Guimauve (donjon)" }] },
     falaises: { name: "Falaises de Cristal", sub: "Niv. 6 à 9", w: 26, h: 24, lvl: [6, 9], theme: "falaises", seed: 404, packs: 7, size: [2, 4], elite: 0.2,
       mobs: ["golem", "cristallin", "sylphe", "lanterneau", "cristallin"],
-      portals: [{ x: 0, y: 12, to: "bois", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:sanctuaire", req: 7, label: "Sanctuaire brisé (donjon)" }, { x: 25, y: 12, to: "nuages", req: 9, label: "Îles Cotonneuses" }] },
+      portals: [{ x: 0, y: 12, to: "bois", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:sanctuaire", req: 7, label: "Sanctuaire brisé (donjon)" }, { x: 25, y: 12, to: "nuages", req: 9, dng: "sanctuaire", label: "Îles Cotonneuses" }] },
     nuages: { name: "Îles Cotonneuses", sub: "Niv. 9 à 12 · au-dessus des nuages", w: 26, h: 22, lvl: [9, 12], theme: "nuages", seed: 606, packs: 7, size: [2, 4], elite: 0.25,
       mobs: ["nuagelet", "horlogeon", "nuagelet", "cristallin", "sylphe"],
       portals: [{ x: 0, y: 11, to: "falaises", label: "Falaises de Cristal" }, { x: 13, y: 21, to: "dungeon:horloge", req: 10, label: "Tour des Horloges (donjon)" }] },
@@ -463,6 +482,11 @@
       { name: "Cour envahie", lvl: 2, mobs: ["glorbe", "scarabrume", "glorbe", "ronceau"], elite: 0.15 },
       { name: "Serre aux lierres", lvl: 3, mobs: ["ronceau", "scarabrume", "lanterneau", "glorbe"], elite: 0.35 },
       { name: "Salle de la Sentinelle", lvl: 4, mobs: ["sentinelle", "ronceau", "glorbe"], boss: true },
+    ] },
+    racines: { name: "Cœur du Bois Fractal", sub: "Niv. 4 à 6 · 3 salles", exit: "bois", req: 4, theme: "racines", rooms: [
+      { name: "Sentier des lucioles", lvl: 4, mobs: ["lanterneau", "ronceau", "scarabrume", "lanterneau"], elite: 0.2 },
+      { name: "Clairière fêlée", lvl: 5, mobs: ["sylphe", "ronceau", "lanterneau", "ronceau"], elite: 0.4 },
+      { name: "Souche de l'Ancien", lvl: 6, mobs: ["sylvestre", "ronceau", "lanterneau"], boss: true },
     ] },
     confiserie: { name: "Confiserie de la Reine Guimauve", sub: "Niv. 5 à 7 · 3 salles", exit: "marais", req: 5, theme: "confiserie", rooms: [
       { name: "Cuisine en sucre", lvl: 5, mobs: ["bonbonk", "grenouillon", "bonbonk", "glorbe"], elite: 0.2 },
@@ -606,14 +630,17 @@
     do {
       for (x = 0; x < AW; x++) for (y = 0; y < AH; y++) if (g[x][y] === 1) { g[x][y] = 0; }
       deco = {};
+      for (x = 0; x < AW; x++) for (y = 0; y < AH; y++) if (g[x][y] === 4) { g[x][y] = 0; }
       var n = ri(r, 6, 10);
       for (var i = 0; i < n; i++) {
         var ox = ri(r, 1, 9), oy = ri(r, 3, 7);
         if (g[ox][oy] !== 0 || reserved[key(ox, oy)]) continue;
-        g[ox][oy] = 1; deco[key(ox, oy)] = arenaDeco(theme, r);
+        // 1 = obstacle (bloque passage et vue), 4 = trou (bloque le passage, pas la vue)
+        var kind = r() < 0.35 ? 4 : 1;
+        g[ox][oy] = kind; if (kind === 1) deco[key(ox, oy)] = arenaDeco(theme, r);
         // parfois une paire symétrique : lisible et tactique
         var sx = 10 - ox;
-        if (r() < 0.45 && g[sx][oy] === 0 && !reserved[key(sx, oy)]) { g[sx][oy] = 1; deco[key(sx, oy)] = arenaDeco(theme, r); }
+        if (r() < 0.45 && g[sx][oy] === 0 && !reserved[key(sx, oy)]) { g[sx][oy] = kind; if (kind === 1) deco[key(sx, oy)] = arenaDeco(theme, r); }
       }
       tries++;
     } while (!arenaConnected(g, heroCells, mobCells) && tries < 30);
@@ -627,6 +654,7 @@
     if (theme === "marais") return { t: v < 0.5 ? "bigshroom" : v < 0.8 ? "lantern" : "reed", s: 1 + r() * 0.3, v: r() };
     if (theme === "nuages") return { t: v < 0.5 ? "cotton" : v < 0.8 ? "cloud" : "star", s: 1 + r() * 0.3, v: r() };
     if (theme === "confiserie") return { t: v < 0.5 ? "candy" : v < 0.8 ? "cupcake" : "lollipop", s: 1 + r() * 0.3, v: r() };
+    if (theme === "racines") return { t: v < 0.5 ? "pine" : v < 0.75 ? "bigshroom" : "rune", s: 1 + r() * 0.3, v: r() };
     if (theme === "horloge") return { t: v < 0.5 ? "gear" : v < 0.8 ? "pillar" : "pendulum", s: 1 + r() * 0.3, v: r() };
     if (theme === "falaises") return { t: v < 0.5 ? "crystal" : "rock", s: 1.1 + r() * 0.3, v: r() };
     if (theme === "bois") return { t: v < 0.5 ? "pine" : v < 0.8 ? "mushroom" : "rock", s: 1 + r() * 0.3, v: r() };
@@ -648,14 +676,14 @@
   /* ====================== PROFILS (sauvegarde d'un héros) ====================== */
   function newProfile(cls, name) {
     var b = {}; for (var k in CLASSES[cls].base) b[k] = CLASSES[cls].base[k];
-    return { cls: cls, name: name || CLASSES[cls].name, level: 1, xp: 0, gold: 30, equip: {}, bag: [], quests: {}, qdone: {}, kills: 0, bossKills: 0, uid: 1, rev: 0, base: b, pts: 0, created: Date.now() };
+    return { cls: cls, name: name || CLASSES[cls].name, level: 1, xp: 0, gold: 30, equip: {}, bag: [], quests: {}, qdone: {}, dungeons: {}, kills: 0, bossKills: 0, uid: 1, rev: 0, base: b, pts: 0, created: Date.now() };
   }
   function fixProfile(p) {
     if (!p || !CLASSES[p.cls]) return null;
     p.level = clamp(Math.floor(p.level) || 1, 1, CFG.maxLevel); p.xp = Math.max(0, Math.floor(p.xp) || 0);
     p.gold = Math.max(0, Math.floor(p.gold) || 0); p.equip = p.equip || {}; p.bag = (p.bag || []).slice(0, BAG_MAX);
     if (!p.base) { p.base = {}; for (var k in CLASSES[p.cls].base) p.base[k] = CLASSES[p.cls].base[k]; p.pts = (p.pts || 0) + 5 * (p.level - 1); }
-    p.pts = Math.max(0, Math.floor(p.pts) || 0);
+    p.pts = Math.max(0, Math.floor(p.pts) || 0); p.dungeons = p.dungeons || {};
     // anciens objets (v1.0) : leurs caractéristiques n'existent plus, on les convertit
     var conv = function (it) { if (!it || !it.st) return; if (it.look == null) it.look = Math.floor(Math.random() * LOOKS[it.slot].length); var st = {}, el = ELEMENTS[CLASSES[p.cls].el].stat; for (var k in it.st) { var nk = k === "pow" ? el : k === "crit" ? "agi" : k === "heal" ? "int" : k; st[nk] = (st[nk] || 0) + it.st[k]; } it.st = st; };
     SLOTS.forEach(function (sl) { conv(p.equip[sl]); }); p.bag.forEach(conv);
@@ -668,6 +696,8 @@
     var C = CLASSES[p.cls], L = p.level;
     var s = { pa: C.pa, pm: C.pm, po: 0, res: C.res, ini: 0, dom: 0, pros: 0, powers: [], vit: 0, sag: 0, for: 0, int: 0, cha: 0, agi: 0 };
     for (var b in p.base) s[b] = (s[b] || 0) + p.base[b];
+    if (p.pet && PETS[p.pet]) for (var pk in PETS[p.pet].st) s[pk] = (s[pk] || 0) + PETS[p.pet].st[pk];
+    if (p.mount && p.riding && MOUNTS[p.mount]) for (var mk in MOUNTS[p.mount].st) s[mk] = (s[mk] || 0) + MOUNTS[p.mount].st[mk];
     SLOTS.forEach(function (sl) {
       var it = p.equip[sl]; if (!it) return;
       for (var k in it.st) s[k] = (s[k] || 0) + it.st[k];
@@ -688,6 +718,8 @@
     if (!p || !p.equip) return g;
     SLOTS.forEach(function (sl) { var it = p.equip[sl]; if (it) g[sl] = { look: it.look || 0, r: it.r }; });
     if (p.skin && SKINS[p.skin]) g.skin = p.skin;
+    if (p.pet && PETS[p.pet]) g.pet = p.pet;
+    if (p.mount && p.riding && MOUNTS[p.mount]) g.mount = p.mount;
     return g;
   }
   function itemScore(it) {
@@ -781,6 +813,7 @@
   function ev(w, e) { w.events.push(e); }
   function bump(w) { w.rev++; }
   function say(w, text, pi) { ev(w, { k: "msg", text: text, pi: pi == null ? -1 : pi }); }
+  function partyHasDungeon(w, id) { return w.players.some(function (p) { return p && p.profile.dungeons && p.profile.dungeons[id]; }); }
   function partyLevel(w) { var m = 1; w.players.forEach(function (p) { if (p) m = Math.max(m, p.profile.level); }); return m; }
   function avgLevel(w) { var s = 0, n = 0; w.players.forEach(function (p) { if (p) { s += p.profile.level; n++; } }); return n ? s / n : 1; }
 
@@ -906,11 +939,13 @@
       var nx = h.path.shift();
       h.face = sgn(nx[0] - h.x) || sgn(nx[1] - h.y) * 2 || h.face;
       h.dir = [nx[0] - h.x, nx[1] - h.y];
-      h.x = nx[0]; h.y = nx[1]; h.t = CFG.exploreStep; changed = true;
+      var hp = w.players[i].profile;
+      h.x = nx[0]; h.y = nx[1]; h.t = hp.mount && hp.riding && MOUNTS[hp.mount] ? MOUNTS[hp.mount].speed : CFG.exploreStep; changed = true;
       ev(w, { k: "step", pi: i });
       var po = portalAt(w.zone, h.x, h.y);
       if (po && !h.path.length) {
         if (po.req && partyLevel(w) < po.req) { say(w, "Il faut être niveau " + po.req + " pour aller vers « " + po.label + " ».", i); h.path = []; }
+        else if (po.dng && !partyHasDungeon(w, po.dng)) { say(w, "Il faut d'abord vaincre le donjon « " + DUNGEONS[po.dng].name + " » pour aller vers « " + po.label + " ».", i); h.path = []; }
         else if (po.to.indexOf("dungeon:") === 0) { startDungeon(w, po.to.slice(8)); return; }
         else { enterZone(w, po.to, w.zone); return; }
       }
@@ -1710,7 +1745,7 @@
           for (var k = 0; k < n; k++) res.items.push(makeItem(p, d.lvl + (R() < 0.3 ? 1 : 0), rollRarity(luck, d.boss ? 3 : 0)));
           questEvent(w, i, { kind: "kill", mob: d.type, elite: !!d.affix, boss: d.boss }, res);
           p.kills++;
-          if (d.boss) p.bossKills++;
+          if (d.boss) { p.bossKills++; if (c.room && c.room.dungeon && DUNGEONS[c.room.dungeon]) { p.dungeons = p.dungeons || {}; if (!p.dungeons[c.room.dungeon]) { p.dungeons[c.room.dungeon] = 1; ev(w, { k: "dngdone", pi: i, id: c.room.dungeon }); } } }
         });
         // jamais les mains vides
         if (!res.items.length && defeated.length) res.items.push(makeItem(p, Math.round(defeated.reduce(function (a, d) { return a + d.lvl; }, 0) / defeated.length), rollRarity(0)));
@@ -1967,6 +2002,9 @@
       case "buy": return w.mode === "explore" && buyStock(w, pi, c.uid);
       case "stock": shopStock(w, w.zone); bump(w); return true;
       case "skin": return buySkin(w, pi, c.id);
+      case "pet": { var pp2 = w.players[pi].profile, PT = PETS[c.id]; if (!PT || w.mode !== "explore") return false; pp2.pets = pp2.pets || {}; if (!pp2.pets[c.id]) { if (pp2.gold < PT.price) return false; pp2.gold -= PT.price; pp2.pets[c.id] = 1; } pp2.pet = pp2.pet === c.id && !c.force ? null : c.id; pp2.rev++; ev(w, { k: "pet", pi: pi, id: pp2.pet }); bump(w); return true; }
+      case "mount": { var pm2 = w.players[pi].profile, MT = MOUNTS[c.id]; if (!MT || w.mode !== "explore") return false; pm2.mounts = pm2.mounts || {}; if (!pm2.mounts[c.id]) { if (pm2.gold < MT.price) return false; pm2.gold -= MT.price; pm2.mounts[c.id] = 1; } pm2.mount = c.id; pm2.riding = true; pm2.rev++; ev(w, { k: "mount", pi: pi, id: c.id }); bump(w); return true; }
+      case "ride": { var pr2 = w.players[pi].profile; if (!pr2.mount || (w.combat && w.combat.phase === "fight")) return false; pr2.riding = !pr2.riding; pr2.rev++; bump(w); return true; }
       case "wear": { var wp = w.players[pi].profile; if (c.id && !(wp.skins || {})[c.id]) return false; wp.skin = c.id || null; wp.rev++; bump(w); return true; }
       case "dopeul": {
         if (w.mode !== "explore" || w.zone !== "village" || w.players[pi].profile.level < DOPEUL_LEVEL) return false;
@@ -2010,12 +2048,12 @@
   var API = {
     CFG: CFG, CLASSES: CLASSES, CLASS_IDS: CLASS_IDS, SPELLS: SPELLS, SUMMONS: SUMMONS, spellsOf: spellsOf, MOBS: MOBS, MOB_SPELLS: MOB_SPELLS, AFFIXES: AFFIXES,
     SLOTS: SLOTS, SLOT_NAME: SLOT_NAME, RARITIES: RARITIES, STATS: STATS, POWERS: POWERS, QUESTS: QUESTS, ZONES: ZONES, ZONE_IDS: ZONE_IDS,
-    DUNGEONS: DUNGEONS, NPCS: NPCS, AW: AW, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, SPELL_LEVELS: SPELL_LEVELS, spellLevel: spellLevel, unlockedSpells: unlockedSpells, DOPEUL_LEVEL: DOPEUL_LEVEL, SKINS: SKINS, shopStock: shopStock, BAG_MAX: BAG_MAX,
+    DUNGEONS: DUNGEONS, NPCS: NPCS, AW: AW, PETS: PETS, MOUNTS: MOUNTS, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, SPELL_LEVELS: SPELL_LEVELS, spellLevel: spellLevel, unlockedSpells: unlockedSpells, DOPEUL_LEVEL: DOPEUL_LEVEL, SKINS: SKINS, shopStock: shopStock, BAG_MAX: BAG_MAX,
     newProfile: newProfile, fixProfile: fixProfile, heroStats: heroStats, gearOf: gearOf, LOOKS: LOOKS, xpNeed: xpNeed, itemScore: itemScore, makeItem: makeItem, rollRarity: rollRarity,
     createWorld: createWorld, addPlayer: addPlayer, removePlayer: removePlayer, zoneMap: zoneMap, exploreWalkable: exploreWalkable, portalAt: portalAt, findPath: findPath,
     cmd: cmd, step: step, active: active, unitAt: unitAt, objAt: objAt, uById: uById, inArena: inArena, groundOk: groundOk, cellFree: cellFree,
     targets: targets, area: area, canCast: canCast, spellCost: spellCost, reach: reach, combatPath: combatPath, myTurn: myTurn, los: los,
-    chestPrice: chestPrice, partyLevel: partyLevel, checkEnd: checkEnd, startDungeon: startDungeon, enterZone: enterZone, statusSum: statusSum, aiStep: aiStep, aiDo: aiDo,
+    chestPrice: chestPrice, partyLevel: partyLevel, partyHasDungeon: partyHasDungeon, checkEnd: checkEnd, startDungeon: startDungeon, enterZone: enterZone, statusSum: statusSum, aiStep: aiStep, aiDo: aiDo,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = API;
   root.AT_CORE = API;
