@@ -175,7 +175,7 @@ export function openCat(): Promise<void> {
         window.setTimeout(() => { for (let i = 0; i < 6; i++) window.setTimeout(() => float(stage, '♥', 'heart', 50, 30), i * 120); }, 250);
         pose = 'purr'; poseUntil = performance.now() + 3500;
       }
-      if (firstTime('tip.cat')) window.setTimeout(() => ui.toast({ title: 'Touche ton chat !', sub: 'Caresse-le, joue avec lui, offre-lui une friandise.', icon: 'heart' }), 700);
+      if (firstTime('tip.cat') && !justAdopted) window.setTimeout(() => ui.toast({ title: 'Touche ton chat !', sub: 'Caresse-le, joue avec lui, offre-lui une friandise.', icon: 'heart' }), 700);
 
       cv.addEventListener('pointerdown', (e) => {
         e.preventDefault();

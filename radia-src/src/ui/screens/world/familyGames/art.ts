@@ -133,10 +133,10 @@ export function drawMiniRoom(c: Ctx, w: number, h: number, wall: string, floor: 
     c.beginPath(); const x0 = s < 0 ? wx - 8 : wx + ww + 8; c.moveTo(x0, wy - 6); c.lineTo(x0 + s * -ww * 0.34, wy - 6); c.quadraticCurveTo(x0 + s * -ww * 0.2 + sw, wy + wh * 0.5, x0 + s * -ww * 0.3, wy + wh + 6); c.lineTo(x0, wy + wh + 6); c.closePath();
     fillShaded(c, curtain, { x: x0 - ww * 0.4, y: wy, w: ww * 0.4, h: wh }, 2.6, { light: 0.2 });
   }
-  roundRect(c, wx - 12, wy - 12, ww + 24, 8, 4); fillShaded(c, shade(curtain, -0.25), { x: wx, y: wy - 12, w: ww, h: 8 }, 2.4);
+  roundRect(c, wx - 12, wy - 12, ww + 24, 8, 4); c.fillStyle = shade(curtain, -0.25); c.fill(); c.lineWidth = 2.4; c.strokeStyle = OUTLINE; c.stroke();
   // petit lit + plante
   roundRect(c, w * 0.06, fy - h * 0.13, w * 0.3, h * 0.22, 8); fillShaded(c, '#FFF9EE', { x: w * 0.06, y: fy - h * 0.13, w: w * 0.3, h: h * 0.22 }, 2.6);
-  roundRect(c, w * 0.06, fy - h * 0.13, w * 0.3, h * 0.08, 6); fillShaded(c, shade(curtain, 0.1), { x: w * 0.06, y: fy - h * 0.13, w: w * 0.3, h: h * 0.08 }, 2.2);
+  roundRect(c, w * 0.06, fy - h * 0.13, w * 0.3, h * 0.08, 6); c.fillStyle = shade(curtain, 0.05); c.fill(); c.lineWidth = 2.2; c.strokeStyle = OUTLINE; c.stroke();
   roundRect(c, w * 0.78, fy - h * 0.02, w * 0.1, h * 0.14, 5); fillShaded(c, '#D99C74', { x: w * 0.78, y: fy, w: w * 0.1, h: h * 0.14 }, 2.4);
   for (const [dx, dy] of [[-0.04, -0.1], [0.04, -0.12], [0, -0.06]]) { ellipse(c, w * 0.83 + dx * w, fy + dy * h, w * 0.04, h * 0.07, dx * 8); fillShaded(c, PAL.leaf, { x: w * 0.79, y: fy - h * 0.18, w: w * 0.08, h: h * 0.14 }, 2); }
   c.restore();

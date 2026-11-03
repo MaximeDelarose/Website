@@ -23,6 +23,7 @@ export function playHarmony(kid: KidId): Promise<void> {
       const picks: Partial<Picks> = {};
       let active: Slot = 'wall';
       let locked = false;
+      let phase: 'pick' | 'feedback' = 'pick';
       const round = h('div.hm-round');
       const theme = h('div.hm-theme');
       info.append(round);
@@ -40,7 +41,7 @@ export function playHarmony(kid: KidId): Promise<void> {
         swBtns.set(p.id, b); sw.append(b);
       }
       const feedback = h('div.hm-feedback');
-      const go = h('button.btn.wide.hm-go', { on: { click: tap(() => void validate()) } }, 'Valider') as HTMLButtonElement;
+      const go = h('button.btn.wide.hm-go', { on: { click: tap(() => void (phase === 'pick' ? validate() : next())) } }, 'Valider') as HTMLButtonElement;
       stage.append(theme, h('div.hm-roomwrap', cv), slotRow, sw, feedback, go);
 
       const refresh = () => {
@@ -80,7 +81,7 @@ export function playHarmony(kid: KidId): Promise<void> {
         );
         go.textContent = harmonyDone(s) ? 'Terminer' : 'Manche suivante';
         go.disabled = false; go.classList.remove('locked');
-        go.onclick = tap(() => void next());
+        phase = 'feedback';
         draw();
       }
 
@@ -95,7 +96,7 @@ export function playHarmony(kid: KidId): Promise<void> {
         }
         for (const sl of SLOTS) delete picks[sl];
         active = 'wall'; locked = false; feedback.replaceChildren();
-        go.textContent = 'Valider'; go.onclick = tap(() => void validate());
+        go.textContent = 'Valider'; phase = 'pick';
         refresh(); draw();
       }
 

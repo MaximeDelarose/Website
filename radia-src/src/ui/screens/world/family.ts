@@ -107,13 +107,13 @@ function gardenScene(): Promise<void> {
       hill(0.42, '#CFE8BF', '#A9D49A', 14, 0); hill(0.52, '#A7D59A', '#7FC48A', 12, 2);
       // arche de fleurs
       x.strokeStyle = '#7FC48A'; x.lineWidth = 6; x.beginPath(); x.moveTo(w * 0.12, hh * 0.62); x.quadraticCurveTo(w * 0.5, -hh * 0.02, w * 0.88, hh * 0.62); x.stroke();
-      for (let i = 0; i < 12; i++) { const p = i / 11; const ax = w * 0.12 + p * w * 0.76; const ay = hh * 0.62 - Math.sin(p * Math.PI) * hh * 0.5; const im = imgs.get(1 + (i % 3))!; if (im.complete) x.drawImage(im, ax - 13, ay - 13, 26, 26); }
+      for (let i = 0; i < 12; i++) { const p = i / 11; const q = 1 - p; const ax = q * q * w * 0.12 + 2 * q * p * w * 0.5 + p * p * w * 0.88; const ay = q * q * hh * 0.62 + 2 * q * p * -hh * 0.02 + p * p * hh * 0.62; const im = imgs.get(1 + (i % 3))!; if (im.complete) x.drawImage(im, ax - 13, ay - 13, 26, 26); }
       for (const f of flowers.sort((a, b) => a.y - b.y)) { const im = imgs.get(f.l)!; if (!im.complete) continue; const sz = 18 + f.y * 26; x.save(); x.translate(f.x * w, f.y * hh); x.rotate(Math.sin(s * 1.4 + f.ph) * 0.12); x.drawImage(im, -sz / 2, -sz, sz, sz); x.restore(); }
       for (let i = 0; i < 3; i++) { if (!bf.complete) break; const bx = ((s * 0.05 + i * 0.37) % 1.2 - 0.1) * w; const by = hh * (0.22 + i * 0.1) + Math.sin(s * 2 + i) * 14; x.drawImage(bf, bx, by, 30, 30); }
       // les trois enfants
-      const kw = w * 0.34; const kh = hh * 0.62;
+      const kw = w * 0.34; const kh = hh * 0.56;
       const poses: [KidId, number, KidPose][] = [['kid2', 0.17, 'wave'], ['kid1', 0.5, 'happy'], ['kid3', 0.83, 'wave']];
-      for (const [kid, px, pose] of poses) { x.save(); x.translate(px * w - kw / 2, hh * 0.9 - kh); drawKid(x, kid, pose === 'happy' ? 'idle' : pose, kw, kh, s + px * 3); x.restore(); }
+      for (const [kid, px, pose] of poses) { x.save(); x.translate(px * w - kw / 2, hh * 0.77 - kh); drawKid(x, kid, pose === 'happy' ? 'idle' : pose, kw, kh, s + px * 3); x.restore(); }
     };
     raf = requestAnimationFrame(loop);
     audio.play('sparkle');
@@ -186,13 +186,13 @@ export function openFamily(): Promise<void> {
       const hearts: Heart[] = [];
       let nextWave = performance.now() + 4000;
       const bg = { c: null as HTMLCanvasElement | null, w: 0, h: 0 };
-      const col: Record<KidId, number> = { kid2: 0.2, kid1: 0.5, kid3: 0.78 };
+      const col: Record<KidId, number> = { kid2: 0.16, kid1: 0.42, kid3: 0.68 };
       cv.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         const r = cv.getBoundingClientRect();
         const fx = (e.clientX - r.left) / r.width;
         const now = performance.now();
-        if (w.cat.adopted && fx > 0.86) { catState.pose = 'purr'; catState.until = now + 2500; hearts.push({ x: 0.92, y: 0.5, t0: now }); audio.play('heart'); stat('world.cat.pet'); return; }
+        if (w.cat.adopted && fx > 0.8) { catState.pose = 'purr'; catState.until = now + 2500; hearts.push({ x: 0.89, y: 0.55, t0: now }); audio.play('heart'); stat('world.cat.pet'); return; }
         let best: KidId = 'kid1'; let d = 9;
         for (const k of KID_IDS) { const dd = Math.abs(col[k] - fx); if (dd < d) { d = dd; best = k; } }
         poses[best] = { pose: Math.random() < 0.5 ? 'happy' : 'wave', until: now + 2200 };
@@ -223,8 +223,8 @@ export function openFamily(): Promise<void> {
         }
         if (w.cat.adopted) {
           if (catState.until < t) catState.pose = 'sit';
-          const cwid = cw * 0.2;
-          x.save(); x.translate(cw * 0.92 - cwid / 2, ch * 0.9 - cwid * 0.95); drawCat(x, catState.pose, cwid, cwid * 0.95, s, { collar: w.cat.equipped.collar, bed: w.cat.equipped.bed }); x.restore();
+          const cwid = cw * 0.27;
+          x.save(); x.translate(cw * 0.89 - cwid / 2, ch * 0.93 - cwid * 0.95); drawCat(x, catState.pose, cwid, cwid * 0.95, s, { collar: w.cat.equipped.collar, bed: w.cat.equipped.bed }); x.restore();
         }
         for (let i = hearts.length - 1; i >= 0; i--) {
           const hh = hearts[i]; const p = (t - hh.t0) / 1500;

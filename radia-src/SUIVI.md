@@ -75,3 +75,9 @@ Aucun paiement réel, aucun service de paiement, aucune donnée bancaire : tout 
 - Pas d'images de démarrage iOS dédiées (`apple-touch-startup-image`) : l'écran de chargement HTML s'affiche à la place.
 - P2 non commencé (volontairement) : échecs en ligne, coopératif à deux — il faudrait un serveur (Supabase est déjà utilisé ailleurs sur le site).
 - Phaser pèse ~340 Ko compressé ; une build Phaser sur mesure pourrait réduire le premier chargement.
+
+## v3 — « Mon domaine » (Décorer)
+- Hub à 8 destinations : château (9 pièces, 36 meubles, couleurs), dressing (32 pièces, 5 coiffures, 3 looks), jardin, chocolaterie, famille (3 enfants fictives, 4 mini-jeux), chat, carrières (4 × 5 paliers), fans (6 paliers, 5 couvertures).
+- Économie : la fusion rapporte pièces, fleurs, tissu, cacao. Sauvegarde v3 avec migration depuis v2.
+- Vérifié : tsc propre, 295 tests Vitest, parcours Playwright (Chromium émulé 393×852) hub → 8 destinations → retour, sans erreur console.
+- Non vérifié : vrai iPhone/Safari, difficulté des mini-jeux (testés par bot seulement), équilibrage de l'économie, musique/rythme à l'oreille.

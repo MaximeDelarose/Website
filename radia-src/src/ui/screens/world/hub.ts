@@ -95,6 +95,12 @@ export function openWorldHub(): Promise<void> {
       }
       chips.append(h('span.res-chip', { title: 'Diamants' }, h('img', { src: diamondUrl(40), alt: 'Diamants' }), h('b', fmt(wallet.diamonds()))));
     };
+    let scr: HTMLElement;
+    const reshow = () => {
+      scr.classList.remove('leaving');
+      scr.style.pointerEvents = '';
+      if (ui.screen !== scr || !scr.isConnected) ui.showScreen(scr);
+    };
     const renderGrid = () => {
       grid.textContent = '';
       DESTS.forEach((d, i) => {
@@ -107,6 +113,7 @@ export function openWorldHub(): Promise<void> {
         card.addEventListener('click', tap(async () => {
           audio.play('whoosh');
           await d.open();
+          reshow();
           renderChips();
           renderGrid();
           setBackdrop('monde');
@@ -117,7 +124,7 @@ export function openWorldHub(): Promise<void> {
     const intro = h('p.hub-intro', 'Ton château, ton jardin, ta famille, ta carrière… tout un petit monde rien que pour toi ♡');
     const body = h('div.screen-body', chips, intro, grid,
       h('p.muted.center', { style: 'font-size:12.5px;margin:10px 4px 0' }, 'Les pièces et les matériaux se gagnent en fusionnant et en livrant des commandes.'));
-    const scr = h('div.bg-soft.hub-screen', ui.header('Mon domaine', close), body);
+    scr = h('div.bg-soft.hub-screen', ui.header('Mon domaine', close), body);
     ui.showScreen(scr);
     renderChips();
     renderGrid();

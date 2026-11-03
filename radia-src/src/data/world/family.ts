@@ -10,7 +10,7 @@ export type CatSlot = 'bed' | 'collar' | 'toy';
 export const CAT_ITEMS: Record<CatItemId, { name: string; price: number; slot: CatSlot; desc: string }> = {
   cushion: { name: 'Coussin moelleux', price: 60, slot: 'bed', desc: 'Un coussin rose pour les siestes.' },
   'toy-ball': { name: 'Balle à grelot', price: 40, slot: 'toy', desc: 'Pour jouer sans jamais se lasser.' },
-  'collar-bell': { name: 'Collier à grelot', price: 80, slot: 'collar', desc: 'Un nœud rose avec un petit grelot.' },
+  'collar-bell': { name: 'Collier à grelot', price: 80, slot: 'collar', desc: 'Un collier rose avec un petit grelot doré.' },
   basket: { name: 'Petit panier', price: 120, slot: 'bed', desc: 'Un panier douillet en osier.' },
 };
 
