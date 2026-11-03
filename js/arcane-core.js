@@ -23,7 +23,7 @@
 
   /* ====================== RÉGLAGES GÉNÉRAUX ====================== */
   var CFG = {
-    maxLevel: 15,
+    maxLevel: 100,
     exploreStep: 0.2,          // s par case en exploration
     packWander: [2.5, 6],      // s entre deux pas d'un groupe de monstres
     respawn: 35,               // s avant qu'un groupe battu revienne
@@ -53,60 +53,68 @@
       desc: "Protège son partenaire, pousse, attire et coupe le terrain avec des murs.",
       hp: 120, hpL: 12, pa: 6, pm: 3, res: 12, ini: 10, crit: 5, el: "terre",
       base: { vit: 20, sag: 0, for: 25, int: 0, cha: 0, agi: 5 },
-      spells: ["impact", "rempart", "mur", "attraction", "forteresse"],
+      spells: ["impact", "rempart", "mur", "attraction", "forteresse", "coupbouclier", "tellurique", "ardent", "seisme", "colere"],
     },
     prisme: {
       name: "Prisme", role: "Mage · soutien des diagonales", piece: "Fou",
       desc: "Frappe en diagonale, soigne, place des cristaux relais et téléporte ses alliés.",
       hp: 90, hpL: 8, pa: 6, pm: 3, res: 0, ini: 12, crit: 8, el: "feu",
       base: { vit: 5, sag: 10, for: 0, int: 30, cha: 0, agi: 5 },
-      spells: ["rayon", "balise", "transpo", "onde", "convergence"],
+      spells: ["rayon", "balise", "transpo", "onde", "convergence", "venteux", "miroir", "prismeardent", "verre", "lumiere"],
     },
     voltige: {
       name: "Voltige", role: "Assassin · bonds en L", piece: "Cavalier",
       desc: "Bondit en L par-dessus les obstacles, frappe fort au contact et passe derrière les ennemis.",
       hp: 95, hpL: 9, pa: 6, pm: 4, res: 0, ini: 16, crit: 12, el: "air",
       base: { vit: 5, sag: 0, for: 0, int: 0, cha: 5, agi: 35 },
-      spells: ["bond", "frappe", "fantome", "brume", "danse"],
+      spells: ["bond", "frappe", "fantome", "brume", "danse", "lamepluie", "souffle", "ombre", "rafale", "jumelles"],
     },
     sibylle: {
       name: "Sibylle", role: "Invocatrice · pions d'encre", piece: "Pion",
-      desc: "Fragile, mais jamais seule : ses pions d'encre se battent tout seuls à ses côtés. Elle les promeut en Dame et les sacrifie au bon moment.",
+      desc: "Fragile, mais jamais seule : ses animaux d'encre se battent tout seuls à ses côtés. Écureuil, hérisson, lama, hibou, ours, phénix : de près ou de loin, de tous les éléments.",
       hp: 85, hpL: 7, pa: 6, pm: 3, res: 0, ini: 11, crit: 6, el: "eau",
       base: { vit: 10, sag: 5, for: 0, int: 10, cha: 25, agi: 0 },
-      spells: ["pion", "promotion", "sacrifice", "roque", "maree"],
+      spells: ["ecureuil", "sacrifice", "herisson", "roque", "menagerie", "lama", "hibou", "ours", "benanimale", "phenix"],
     },
     clarine: {
       name: "Clarine", role: "Soigneuse · feu sacré", piece: "Roi",
       desc: "Soigne ses alliés de loin, les protège, et brûle les ennemis avec le même feu. Jamais inutile, jamais en première ligne.",
       hp: 95, hpL: 8, pa: 6, pm: 3, res: 5, ini: 9, crit: 5, el: "feu",
       base: { vit: 10, sag: 10, for: 0, int: 35, cha: 0, agi: 0 },
-      spells: ["lueur", "eclat", "benediction", "rayonnement", "aurore"],
+      spells: ["lueur", "eclat", "benediction", "rayonnement", "aurore", "pluiebenie", "vengeresse", "voeu", "jetsacre", "miracle"],
     },
     orage: {
       name: "Orage", role: "Cogneuse · lignes et diagonales", piece: "Dame",
       desc: "Frappe comme une dame d'échecs : loin, fort, dans toutes les directions. Mais personne ne la soigne à part ses alliés.",
       hp: 110, hpL: 10, pa: 6, pm: 3, res: 5, ini: 12, crit: 10, el: "terre",
       base: { vit: 10, sag: 0, for: 40, int: 0, cha: 0, agi: 5 },
-      spells: ["foudre", "fracas", "trombe", "transe", "jugement"],
+      spells: ["foudre", "fracas", "trombe", "transe", "jugement", "brasier", "charge", "fureur", "lave", "cataclysme"],
     },
     ondine: {
       name: "Ondine", role: "Maîtresse des zones · eau", piece: "Fou",
       desc: "Vagues, geysers et déferlantes : tous ses sorts touchent plusieurs cases. Placement des ennemis = dégâts doublés.",
       hp: 92, hpL: 8, pa: 6, pm: 3, res: 0, ini: 11, crit: 7, el: "eau",
       base: { vit: 5, sag: 5, for: 0, int: 5, cha: 35, agi: 0 },
-      spells: ["vague", "geyser", "deferlante", "rosee", "razdemaree"],
+      spells: ["vague", "geyser", "deferlante", "rosee", "razdemaree", "bulle", "cyclone", "mareebasse", "ouragan", "abysses"],
     },
   };
   var CLASS_IDS = ["bastion", "prisme", "voltige", "sibylle", "clarine", "orage", "ondine"];
   var ELEMENTS = { terre: { name: "Terre", stat: "for", col: "#c98a3a" }, feu: { name: "Feu", stat: "int", col: "#ff7b4a" }, eau: { name: "Eau", stat: "cha", col: "#4fb6dd" }, air: { name: "Air", stat: "agi", col: "#7df0c2" } };
   // invocations : des IA alliées (elles jouent toutes seules juste après leur invocatrice)
   var SUMMONS = {
-    pion: { name: "Pion d'encre", hp: 20, hpL: 3, pa: 3, pm: 3, ini: 6, spells: ["pointe"], desc: "Petit, nombreux, et il avance tout seul vers l'ennemi. Promu en Dame, il devient redoutable." },
-    dame: { name: "Dame d'encre", hp: 54, hpL: 7, pa: 4, pm: 4, ini: 9, spells: ["ravage", "pointe"], desc: "La pièce promue : frappe en ligne et en diagonale, toute seule." },
+    ecureuil: { name: "Écureuil d'encre", hp: 22, hpL: 3, pa: 3, pm: 4, ini: 12, spells: ["croc"], el: "terre", desc: "Rapide, mord au contact (Terre)." },
+    herisson: { name: "Hérisson d'encre", hp: 30, hpL: 4, pa: 3, pm: 3, ini: 8, spells: ["piquants"], el: "air", ranged: true, desc: "Lance ses piquants à 1–2 cases (Air)." },
+    lama: { name: "Lama d'encre", hp: 28, hpL: 3, pa: 4, pm: 3, ini: 9, spells: ["crachat"], el: "eau", ranged: true, desc: "Crache de loin, 2 à 5 cases (Eau)." },
+    hibou: { name: "Hibou d'encre", hp: 26, hpL: 3, pa: 4, pm: 4, ini: 14, spells: ["serres", "cocon"], el: "feu", ranged: true, healer: true, desc: "Griffe en diagonale (Feu) et soigne un allié blessé." },
+    ours: { name: "Ours d'encre", hp: 60, hpL: 7, pa: 4, pm: 2, ini: 5, spells: ["patte"], el: "terre", desc: "Gros, lent, encaisse et tape fort au contact (Terre)." },
+    phenix: { name: "Phénix d'encre", hp: 40, hpL: 5, pa: 5, pm: 4, ini: 15, spells: ["flamme", "cocon"], el: "feu", ranged: true, healer: true, desc: "Brûle à 1–5 cases (Feu) et soigne les alliés." },
   };
   var SUMMON_MAX = 3;
-  var ULT_LEVEL = 5;
+  // niveaux de déblocage des 10 sorts de chaque héros (le 5e est l'ultime)
+  var SPELL_LEVELS = [1, 1, 3, 6, 10, 15, 25, 40, 60, 80];
+  var ULT_LEVEL = SPELL_LEVELS[4];
+  var DOPEUL_LEVEL = 100;
+  function spellLevel(cls, sid) { var i = CLASSES[cls].spells.indexOf(sid); return i < 0 ? 1 : SPELL_LEVELS[i]; }
 
   /* Sorts.
      steps : une étape de ciblage par clic.
@@ -168,21 +176,67 @@
       minSteps: 1,
       steps: [{ shape: "knight", range: [0, 0], target: "empty", from: "prev" }, { shape: "knight", range: [0, 0], target: "empty", from: "prev" }, { shape: "knight", range: [0, 0], target: "empty", from: "prev" }] },
     // ---------- Sibylle ----------
-    pion: { name: "Pion d'encre", pa: 2, icon: "pion", perTurn: 2,
-      desc: "Invoque un Pion d'encre sur une case libre à côté de toi (3 invocations max). Il joue juste après toi : 3 PA, 3 PM, une pointe au contact.",
+    ecureuil: { name: "Écureuil d'encre", pa: 2, icon: "ecureuil", summon: "ecureuil", perTurn: 2,
+      desc: "Invoque un Écureuil d'encre à côté de toi (3 invocations max). Rapide, il mord au contact (Terre).",
       steps: [{ shape: "any", range: [1, 2], los: false, target: "empty" }] },
-    promotion: { name: "Promotion", pa: 3, icon: "promotion", cd: 2,
-      desc: "Comme un pion qui atteint la dernière rangée : un de tes Pions devient une Dame d'encre (plus de PV, 4 PA, 4 PM, attaque en ligne et en diagonale). Une seule Dame à la fois.",
-      steps: [{ shape: "any", range: [1, 6], los: false, target: "summon" }] },
+    herisson: { name: "Hérisson d'encre", pa: 3, icon: "herisson", summon: "herisson", perTurn: 1,
+      desc: "Invoque un Hérisson d'encre : il lance ses piquants à 1–2 cases (Air) et encaisse bien.",
+      steps: [{ shape: "any", range: [1, 2], los: false, target: "empty" }] },
+    lama: { name: "Lama d'encre", pa: 3, icon: "lama", summon: "lama", perTurn: 1,
+      desc: "Invoque un Lama d'encre : il crache de loin, 2 à 5 cases (Eau).",
+      steps: [{ shape: "any", range: [1, 2], los: false, target: "empty" }] },
+    hibou: { name: "Hibou d'encre", pa: 3, icon: "hibou", summon: "hibou", cd: 1,
+      desc: "Invoque un Hibou d'encre : griffes en diagonale (Feu) et soins sur les alliés blessés.",
+      steps: [{ shape: "any", range: [1, 3], los: false, target: "empty" }] },
+    ours: { name: "Ours d'encre", pa: 4, icon: "ours", summon: "ours", cd: 2,
+      desc: "Invoque un Ours d'encre : beaucoup de PV, lent, tape très fort au contact (Terre). Parfait pour bloquer un couloir.",
+      steps: [{ shape: "any", range: [1, 2], los: false, target: "empty" }] },
+    benanimale: { name: "Bénédiction animale", pa: 3, icon: "benanimale", cd: 2, healSummons: 25, shield: 15,
+      desc: "Toutes tes invocations récupèrent 25 PV, un bouclier de 15 et +1 PA à leur prochain tour.",
+      steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    phenix: { name: "Phénix d'encre", pa: 4, icon: "phenix", summon: "phenix", cd: 3,
+      desc: "Invoque un Phénix d'encre : brûle à 1–5 cases (Feu) et soigne les alliés. Rapide et fragile.",
+      steps: [{ shape: "any", range: [1, 3], los: false, target: "empty" }] },
     sacrifice: { name: "Sacrifice", pa: 2, el: "eau", icon: "sacrifice", dmg: 16, heal: 18, perTurn: 2,
       desc: "Une de tes invocations éclate : 16 dégâts aux ennemis collés, 18 PV aux alliés à 2 cases (toi compris).",
       steps: [{ shape: "any", range: [0, 8], los: false, target: "summon" }] },
     roque: { name: "Roque", pa: 2, icon: "roque", cd: 1,
       desc: "Tu échanges ta place avec une de tes invocations, où qu'elle soit. Pour fuir, ou envoyer un pion en première ligne.",
       steps: [{ shape: "any", range: [1, 12], los: false, target: "summon" }] },
-    maree: { name: "Marée d'encre", pa: 5, icon: "maree", ult: true, cd: 4, shield: 12,
-      desc: "ULTIME. Trois Pions d'encre surgissent autour de toi (dans la limite de 3 invocations) et toutes tes invocations gagnent un bouclier de 12 et +1 PA ce tour.",
+    menagerie: { name: "Grande ménagerie", pa: 5, icon: "maree", ult: true, cd: 4, shield: 12,
+      desc: "ULTIME. Tes animaux débloqués surgissent autour de toi (jusqu'à 3 invocations) et toutes tes invocations gagnent un bouclier de 12 et +1 PA.",
       steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    // ---------- sorts débloqués plus tard (effets génériques pilotés par les données : dmg / heal / shield / push / pull / area / status) ----------
+    coupbouclier: { name: "Coup de bouclier", pa: 4, el: "feu", icon: "g", dmg: 30, push: 1, perTurn: 1, desc: "Au contact, Feu : 30 dégâts et repousse d'une case.", steps: [{ shape: "any", range: [1, 1], los: true, target: "enemy" }] },
+    tellurique: { name: "Onde tellurique", pa: 4, el: "terre", icon: "g", dmg: 24, area: "plus", perTurn: 1, desc: "Ligne droite, 1 à 4 cases, Terre : 24 dégâts en croix autour de la cible.", steps: [{ shape: "line", range: [1, 4], boost: true, los: true, target: "cell" }] },
+    ardent: { name: "Bastion ardent", pa: 3, icon: "g", status: { k: "res", v: 20, turns: 1 }, status2: { k: "dom", v: 15, turns: 1 }, cd: 2, desc: "+20 % de résistance et +15 dommages jusqu'à ton prochain tour.", steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    seisme: { name: "Séisme", pa: 5, el: "terre", icon: "g", dmg: 28, area: "disc2", cd: 2, desc: "Terre : 28 dégâts à tous les ennemis à 2 cases autour de toi.", steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    colere: { name: "Colère du gardien", pa: 5, el: "feu", icon: "g", dmg: 40, cd: 2, desc: "Feu, en ligne ou en diagonale jusqu'à 4 cases : 40 dégâts.", steps: [{ shape: "queen", range: [1, 4], boost: true, los: true, target: "enemy" }] },
+    venteux: { name: "Éclat venteux", pa: 3, el: "air", icon: "g", dmg: 22, push: 1, perTurn: 2, desc: "Air, 1 à 5 cases : 22 dégâts et repousse d'une case.", steps: [{ shape: "any", range: [1, 5], boost: true, los: true, target: "enemy" }] },
+    miroir: { name: "Miroir", pa: 2, icon: "g", shield: 30, cd: 2, desc: "Bouclier de 30 sur toi jusqu'à ton prochain tour.", steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    prismeardent: { name: "Prisme ardent", pa: 4, el: "feu", icon: "g", dmg: 26, area: "plus", perTurn: 1, desc: "Diagonale, 1 à 6 cases, Feu : 26 dégâts en croix.", steps: [{ shape: "diag", range: [1, 6], boost: true, los: true, target: "cell" }] },
+    verre: { name: "Tempête de verre", pa: 4, el: "air", icon: "g", dmg: 24, area: "disc1", cd: 1, desc: "Air, 1 à 5 cases : 24 dégâts à tout ce qui est à 1 case autour de la cible.", steps: [{ shape: "any", range: [1, 5], boost: true, los: true, target: "cell" }] },
+    lumiere: { name: "Lumière pure", pa: 5, el: "feu", icon: "g", dmg: 44, healSelf: 15, cd: 2, desc: "Feu, 1 à 6 cases : 44 dégâts, et tu récupères 15 PV.", steps: [{ shape: "any", range: [1, 6], boost: true, los: true, target: "enemy" }] },
+    lamepluie: { name: "Lame de pluie", pa: 3, el: "eau", icon: "g", dmg: 24, perTurn: 2, desc: "Au contact, Eau : 24 dégâts.", steps: [{ shape: "any", range: [1, 1], los: true, target: "enemy" }] },
+    souffle: { name: "Souffle", pa: 2, el: "air", icon: "g", dmg: 14, push: 2, perTurn: 1, desc: "Ligne, 1 à 2 cases, Air : 14 dégâts et repousse de 2 cases.", steps: [{ shape: "line", range: [1, 2], los: true, target: "enemy" }] },
+    ombre: { name: "Ombre liquide", pa: 3, icon: "g", shield: 20, status: { k: "dom", v: 15, turns: 1 }, cd: 2, desc: "Bouclier de 20 et +15 dommages jusqu'à ton prochain tour.", steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    rafale: { name: "Rafale", pa: 4, el: "air", icon: "g", dmg: 30, cd: 1, desc: "Air, 1 à 3 cases : 30 dégâts.", steps: [{ shape: "any", range: [1, 3], boost: true, los: true, target: "enemy" }] },
+    jumelles: { name: "Lames jumelles", pa: 5, el: "eau", icon: "g", dmg: 50, cd: 2, desc: "Au contact, Eau : 50 dégâts. Le coup le plus fort de Voltige.", steps: [{ shape: "any", range: [1, 1], los: true, target: "enemy" }] },
+    pluiebenie: { name: "Pluie bénie", pa: 3, el: "eau", icon: "g", heal: 16, area: "disc1", perTurn: 1, desc: "Eau, 1 à 4 cases : 16 PV aux alliés à 1 case autour de la cible.", steps: [{ shape: "any", range: [0, 4], boost: true, los: true, target: "cell" }] },
+    vengeresse: { name: "Flamme vengeresse", pa: 4, el: "feu", icon: "g", dmg: 28, perTurn: 2, desc: "Feu, 1 à 5 cases : 28 dégâts.", steps: [{ shape: "any", range: [1, 5], boost: true, los: true, target: "enemy" }] },
+    voeu: { name: "Vœu", pa: 3, icon: "g", heal: 10, shield: 25, cd: 1, desc: "Un allié récupère 10 PV et un bouclier de 25.", steps: [{ shape: "any", range: [0, 5], boost: true, los: true, target: "ally" }] },
+    jetsacre: { name: "Jet sacré", pa: 4, el: "eau", icon: "g", dmg: 30, push: 1, cd: 1, desc: "Ligne, 1 à 5 cases, Eau : 30 dégâts et repousse d'une case.", steps: [{ shape: "line", range: [1, 5], boost: true, los: true, target: "enemy" }] },
+    miracle: { name: "Miracle", pa: 5, icon: "g", healAll: 60, cd: 3, desc: "Tous tes alliés, où qu'ils soient, récupèrent 60 PV.", steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    brasier: { name: "Brasier", pa: 4, el: "feu", icon: "g", dmg: 26, area: "disc1", perTurn: 1, desc: "Feu, 1 à 4 cases : 26 dégâts à 1 case autour de la cible.", steps: [{ shape: "any", range: [1, 4], boost: true, los: true, target: "cell" }] },
+    charge: { name: "Charge", pa: 3, el: "terre", icon: "g", dmg: 26, pull: 2, perTurn: 1, desc: "Ligne, 1 à 3 cases, Terre : 26 dégâts et attire la cible de 2 cases.", steps: [{ shape: "line", range: [1, 3], boost: true, los: true, target: "enemy" }] },
+    fureur: { name: "Fureur", pa: 2, icon: "g", status: { k: "dom", v: 40, turns: 1 }, cd: 3, desc: "+40 dommages jusqu'à ton prochain tour.", steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    lave: { name: "Lave", pa: 5, el: "feu", icon: "g", dmg: 38, cd: 1, desc: "Feu, en ligne ou en diagonale jusqu'à 5 cases : 38 dégâts.", steps: [{ shape: "queen", range: [1, 5], boost: true, los: true, target: "enemy" }] },
+    cataclysme: { name: "Cataclysme", pa: 6, el: "terre", icon: "g", dmg: 45, area: "disc2", cd: 3, desc: "Terre, 1 à 4 cases : 45 dégâts à tous les ennemis à 2 cases autour de la cible.", steps: [{ shape: "any", range: [1, 4], boost: true, los: true, target: "cell" }] },
+    bulle: { name: "Bulle", pa: 2, icon: "g", shield: 18, cd: 1, desc: "Bouclier de 18 sur un allié ou toi.", steps: [{ shape: "any", range: [0, 4], boost: true, los: true, target: "ally" }] },
+    cyclone: { name: "Cyclone", pa: 4, el: "air", icon: "g", dmg: 22, area: "disc1", push: 1, perTurn: 1, desc: "Air, 1 à 5 cases : 22 dégâts à 1 case autour, et ça repousse.", steps: [{ shape: "any", range: [1, 5], boost: true, los: true, target: "cell" }] },
+    mareebasse: { name: "Marée basse", pa: 3, el: "eau", icon: "g", dmg: 20, area: "plus", perTurn: 2, desc: "Ligne, 1 à 4 cases, Eau : 20 dégâts en croix.", steps: [{ shape: "line", range: [1, 4], boost: true, los: true, target: "cell" }] },
+    ouragan: { name: "Ouragan", pa: 5, el: "air", icon: "g", dmg: 28, area: "disc2", cd: 2, desc: "Air, 1 à 5 cases : 28 dégâts à 2 cases autour de la cible.", steps: [{ shape: "any", range: [1, 5], boost: true, los: true, target: "cell" }] },
+    abysses: { name: "Abysses", pa: 6, el: "eau", icon: "g", dmg: 44, area: "disc2", cd: 3, desc: "Eau, 1 à 5 cases : 44 dégâts à 2 cases autour de la cible. Le fond de l'océan remonte.", steps: [{ shape: "any", range: [1, 5], boost: true, los: false, target: "cell" }] },
     // ---------- Clarine ----------
     lueur: { name: "Lueur", pa: 3, icon: "lueur", heal: 26, perTurn: 2,
       desc: "Rend 26 PV à un allié jusqu'à 5 cases (ou à toi). Monte avec l'Intelligence.",
@@ -233,6 +287,7 @@
       steps: [{ shape: "any", range: [1, 5], boost: true, los: false, target: "cell" }] },
   };
   function spellsOf(u) { return u.summon ? [] : CLASSES[u.cls].spells; }
+  function unlockedSpells(cls, level) { return CLASSES[cls].spells.filter(function (sid, i) { return level >= SPELL_LEVELS[i]; }); }
 
   /* ====================== MONSTRES ====================== */
   var MOB_SPELLS = {
@@ -260,9 +315,16 @@
     carillon: { name: "Carillon", pa: 5, range: [0, 0], shape: "self", telegraph: true, dmg: 38 },
     aiguilles: { name: "Aiguilles", pa: 3, range: [1, 3], shape: "line", los: true, dmg: 26 },
     lierre: { name: "Appel du lierre", pa: 3, range: [0, 0], shape: "self", summon: "ronceau", cd: 3 },
-    // invocations alliées
-    pointe: { name: "Pointe", pa: 2, range: [1, 1], shape: "any", los: true, dmg: 11 },
-    ravage: { name: "Ravage", pa: 3, range: [1, 4], shape: "queen", los: true, dmg: 19 },
+    dopfrappe: { name: "Reflet brutal", pa: 4, range: [1, 1], shape: "any", los: true, dmg: 48 },
+    doptir: { name: "Reflet perçant", pa: 4, range: [2, 6], shape: "queen", los: true, dmg: 40 },
+    dopsoin: { name: "Reflet soigneur", pa: 3, range: [0, 0], shape: "self", los: false, heal: 60, cd: 2 },
+    // invocations alliées (chacune son élément)
+    croc: { name: "Croc", pa: 2, range: [1, 1], shape: "any", los: true, dmg: 12, el: "terre" },
+    piquants: { name: "Piquants", pa: 3, range: [1, 2], shape: "any", los: true, dmg: 13, el: "air" },
+    crachat: { name: "Crachat", pa: 3, range: [2, 5], shape: "any", los: true, dmg: 15, el: "eau" },
+    serres: { name: "Serres", pa: 3, range: [1, 4], shape: "diag", los: true, dmg: 16, el: "feu" },
+    patte: { name: "Coup de patte", pa: 3, range: [1, 1], shape: "any", los: true, dmg: 24, el: "terre" },
+    flamme: { name: "Flamme", pa: 3, range: [1, 5], shape: "any", los: true, dmg: 20, el: "feu" },
   };
   var MOBS = {
     glorbe: { name: "Glorbe", hp: 34, pa: 4, pm: 3, ini: 8, res: 0, spells: ["gobe"], xp: 10, col: "#5fd3c0", shape: "blob" },
@@ -278,6 +340,7 @@
     horlogeon: { name: "Horlogeon", hp: 80, pa: 6, pm: 3, ini: 7, res: 20, spells: ["tictac", "rembobine"], xp: 28, col: "#d9a441", shape: "clock" },
     guimauve: { name: "Reine Guimauve", hp: 340, pa: 8, pm: 2, ini: 8, res: 10, spells: ["pluie", "sucreries", "calin"], boss: true, xp: 300, col: "#ffb3d9", shape: "queen" },
     tictac: { name: "Grand Tic-Tac", hp: 560, pa: 9, pm: 2, ini: 10, res: 20, spells: ["carillon", "aiguilles", "rembobine"], boss: true, xp: 520, col: "#c48a2a", shape: "bigclock" },
+    dopeul: { name: "Dopeul", hp: 700, pa: 9, pm: 4, ini: 30, res: 20, spells: ["dopfrappe", "doptir", "dopsoin"], boss: true, xp: 4000, col: "#2b1d3a", shape: "dopeul" },
     sentinelle: { name: "Sentinelle d'Incarnam", hp: 190, pa: 7, pm: 2, ini: 6, res: 10, spells: ["racines", "lierre", "rune"], boss: true, xp: 160, col: "#8fa37a", shape: "statue" },
     archonte: { name: "Archonte fractal", hp: 460, pa: 8, pm: 2, ini: 9, res: 15, spells: ["sentence", "appel", "pique"], boss: true, xp: 420, col: "#d36cff", shape: "boss" },
   };
@@ -369,6 +432,7 @@
     { id: "q8", name: "L'Archonte", desc: "Vaincre l'Archonte fractal au fond du Sanctuaire brisé.", kind: "kill", mob: "archonte", n: 1, req: "q7", xp: 900, gold: 500, item: "legendaire" },
     { id: "qn1", name: "Tête dans les nuages", desc: "Atteindre les Îles Cotonneuses (à l'est des Falaises).", kind: "zone", zone: "nuages", req: "q8", xp: 500, gold: 300, item: "epique" },
     { id: "qn2", name: "L'heure tourne", desc: "Vaincre 4 Horlogeons.", kind: "kill", mob: "horlogeon", n: 4, req: "qn1", xp: 700, gold: 400, item: "legendaire" },
+    { id: "qd", name: "Le Dopeul", desc: "Niveau 100 : affronter ton propre reflet chez le Maître des Dopeuls, à Lumebourg.", kind: "kill", mob: "dopeul", n: 1, req: "qn3", xp: 5000, gold: 3000, item: "legendaire" },
     { id: "qn3", name: "Le Grand Tic-Tac", desc: "Vaincre le Grand Tic-Tac au sommet de la Tour des Horloges.", kind: "kill", mob: "tictac", n: 1, req: "qn2", xp: 1500, gold: 900, item: "legendaire" },
   ];
 
@@ -421,7 +485,13 @@
       { id: "elya", name: "Elya la gardienne", x: 8, y: 6, role: "quests", col: "#ffd257" },
       { id: "tobin", name: "Tobin le marchand", x: 12, y: 12, role: "shop", col: "#ff9a3c" },
       { id: "source", name: "Source de mana", x: 9, y: 9, role: "heal", col: "#5fd3c0", obj: true },
+      { id: "dopeul", name: "Maître des Dopeuls", x: 16, y: 7, role: "dopeul", col: "#c77dff", min: DOPEUL_LEVEL },
     ],
+    prairie: [{ id: "hv-prairie", name: "Hôtel de vente", x: 11, y: 9, role: "shop", col: "#ff9a3c" }],
+    bois: [{ id: "hv-bois", name: "Hôtel de vente", x: 11, y: 10, role: "shop", col: "#ff9a3c" }],
+    marais: [{ id: "hv-marais", name: "Hôtel de vente", x: 11, y: 9, role: "shop", col: "#ff9a3c" }],
+    falaises: [{ id: "hv-falaises", name: "Hôtel de vente", x: 11, y: 10, role: "shop", col: "#ff9a3c" }],
+    nuages: [{ id: "hv-nuages", name: "Hôtel de vente", x: 11, y: 9, role: "shop", col: "#ff9a3c" }],
   };
 
   /* ====================== GÉNÉRATION DES CARTES ====================== */
@@ -471,10 +541,8 @@
     }
     Object.keys(path).forEach(function (k) { var p = k.split(","), px = +p[0], py = +p[1]; if (g[px][py] !== 1 || !(px === 0 || py === 0 || px === W - 1 || py === H - 1)) { if (g[px][py] === 1 && deco[k] && deco[k].big) return; g[px][py] = 2; delete deco[k]; } });
     Z.portals.forEach(function (p) { g[p.x][p.y] = 2; delete deco[key(p.x, p.y)]; });
-    if (Z.theme === "village") {
-      buildVillage(g, deco, W, H, path);
-      (NPCS[id] || []).forEach(function (n) { if (!n.obj) { g[n.x][n.y] = 1; delete deco[key(n.x, n.y)]; } });
-    }
+    if (Z.theme === "village") buildVillage(g, deco, W, H, path);
+    (NPCS[id] || []).forEach(function (n) { if (!n.obj) { g[n.x][n.y] = 1; delete deco[key(n.x, n.y)]; for (var d = 0; d < 4; d++) { var ax = n.x + DX[d], ay = n.y + DY[d]; if (ax > 0 && ay > 0 && ax < W - 1 && ay < H - 1 && g[ax][ay] === 1 && !(deco[key(ax, ay)] && deco[key(ax, ay)].big)) { g[ax][ay] = 0; delete deco[key(ax, ay)]; } } } });
     // on bouche tout ce qui n'est pas relié au centre
     var seen = {}, q = [[center.x, center.y]]; seen[key(center.x, center.y)] = 1;
     while (q.length) {
@@ -595,7 +663,7 @@
     return p;
   }
   var BAG_MAX = 30;
-  function xpNeed(l) { return Math.round(28 * Math.pow(l, 1.55) + 22); }
+  function xpNeed(l) { return Math.round(24 * Math.pow(l, 1.45) + 20); }
   function heroStats(p) {
     var C = CLASSES[p.cls], L = p.level;
     var s = { pa: C.pa, pm: C.pm, po: 0, res: C.res, ini: 0, dom: 0, pros: 0, powers: [], vit: 0, sag: 0, for: 0, int: 0, cha: 0, agi: 0 };
@@ -619,6 +687,7 @@
     var g = {};
     if (!p || !p.equip) return g;
     SLOTS.forEach(function (sl) { var it = p.equip[sl]; if (it) g[sl] = { look: it.look || 0, r: it.r }; });
+    if (p.skin && SKINS[p.skin]) g.skin = p.skin;
     return g;
   }
   function itemScore(it) {
@@ -897,7 +966,8 @@
     mobs.forEach(function (mb, i) {
       var cell = A.mobCells[(i * 5 + 3) % A.mobCells.length];
       while (unitAt(c, cell[0], cell[1])) cell = A.mobCells[(A.mobCells.indexOf(cell) + 1) % A.mobCells.length];
-      addMob(c, mb.type, mb.lvl, mb.affix, cell[0], cell[1]);
+      var mobU = addMob(c, mb.type, mb.lvl, mb.affix, cell[0], cell[1]);
+      if (mb.mirror) { mobU.mirror = mb.mirror; mobU.name = "Dopeul " + CLASSES[mb.mirror].name; }
     });
     computeOrder(c);
     ev(w, { k: "combat" });
@@ -980,12 +1050,12 @@
   function canCast(w, u, sid) {
     var c = w.combat, S = SPELLS[sid];
     if (!c || !u || !S) return "?";
-    if (S.ult && !u.ult) return "Débloqué au niveau " + ULT_LEVEL;
+    if (!u.summon && u.lvl < spellLevel(u.cls, sid)) return "Débloqué au niveau " + spellLevel(u.cls, sid);
     if ((u.cds[sid] || 0) > 0) return "Recharge : " + u.cds[sid] + " tour" + (u.cds[sid] > 1 ? "s" : "");
     if (S.perTurn && (u.used[sid] || 0) >= S.perTurn) return "Déjà lancé " + S.perTurn + "× ce tour";
     if (spellCost(u, sid) > u.pa) return "Pas assez de PA";
-    if ((sid === "pion" || sid === "maree") && mySummons(c, u).length >= SUMMON_MAX) return SUMMON_MAX + " invocations maximum";
-    if (sid === "promotion" && mySummons(c, u).some(function (x) { return x.cls === "dame"; })) return "Une seule Dame à la fois";
+    if ((S.summon || sid === "menagerie") && mySummons(c, u).length >= SUMMON_MAX) return SUMMON_MAX + " invocations maximum";
+    if ((sid === "benanimale") && !mySummons(c, u).length) return "Aucune invocation";
     if (sid === "balise" && c.objects.filter(function (o) { return o.kind === "beacon" && o.by === u.id; }).length >= S.max) return "2 cristaux maximum";
     return null;
   }
@@ -1024,7 +1094,7 @@
         if (sid === "fantome") return !!behindCell(c, u, t);
         return true;
       case "ally": if (!t || t.side !== u.side) return false; if (SPELLS[sid].perTarget && (u.usedT[sid + ":" + t.id] || 0) >= SPELLS[sid].perTarget) return false; return true;
-      case "summon": return !!(t && t.summon && t.owner === u.id && (sid !== "promotion" || t.cls === "pion"));
+      case "summon": return !!(t && t.summon && t.owner === u.id);
       case "allyOrBeacon": { if (t && t.side === u.side && t !== u) return true; var o = objAt(c, x, y); return !!(o && o.kind === "beacon"); }
       case "empty": {
         if (!groundOk(c, x, y) || solidObj(c, x, y)) return false;
@@ -1051,6 +1121,8 @@
     var last = tg[tg.length - 1];
     if (sid === "mur") return wallCells(c, u, last[0], last[1]);
     if (sid === "brume") return plus(last[0], last[1]).filter(function (p) { return inArena(c, p[0], p[1]); });
+    var SG = SPELLS[sid];
+    if (SG.area && !EFFECTS[sid]) return areaCells(c, u, SG, SG.steps[0].shape === "self" ? [u.x, u.y] : last);
     if (sid === "forteresse" || sid === "rayonnement") return disc(c, u.x, u.y, 2);
     if (sid === "aurore") return disc(c, u.x, u.y, 3);
     if (sid === "transe") return [[u.x, u.y]];
@@ -1194,7 +1266,7 @@
     ev(w, { k: "cast", id: u.id, s: sid, tg: tg, echo: echo });
     if (echo) ev(w, { k: "buff", id: u.id, text: "Écho ! 0 PA" });
     if (S.perTarget && tu) u.usedT[sid + ":" + tu.id] = (u.usedT[sid + ":" + tu.id] || 0) + 1;
-    EFFECTS[sid](w, u, tg, S);
+    (EFFECTS[sid] || genericEffect)(w, u, tg, S);
     afterAction(w);
     return true;
   }
@@ -1220,7 +1292,7 @@
   function addSummon(w, u, cls, x, y) {
     var c = w.combat, S = SUMMONS[cls], hp = Math.round((S.hp + S.hpL * u.lvl) * (1 + (u.heal || 0) / 200));
     var m = { id: c.uid++, side: 0, pi: u.pi, cls: cls, summon: true, owner: u.id, name: S.name, lvl: u.lvl, x: x, y: y, hp: hp, maxHp: hp,
-      pa: S.pa, pm: S.pm, maxPa: S.pa, maxPm: S.pm, po: 0, res: 0, ini: S.ini, crit: Math.round(u.crit / 2), heal: 0, pow: Math.round((u.elem ? u.elem[CLASSES[u.cls].el] : 0) * 0.8), dom: Math.round((u.dom || 0) / 2),
+      pa: S.pa, pm: S.pm, maxPa: S.pa, maxPm: S.pm, po: 0, res: 0, ini: S.ini, crit: Math.round(u.crit / 2), heal: Math.round((u.heal || 0) / 2), pow: 0, elem: u.elem ? { terre: Math.round(u.elem.terre * 0.8), feu: Math.round(u.elem.feu * 0.8), eau: Math.round(u.elem.eau * 0.8), air: Math.round(u.elem.air * 0.8) } : null, dom: Math.round((u.dom || 0) / 2),
       powers: [], shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: u.face, ult: false };
     c.units.push(m);
     // elle joue juste après son invocatrice
@@ -1229,15 +1301,41 @@
     ev(w, { k: "summon", id: m.id, hero: true });
     return m;
   }
+  // effet générique : lit les champs du sort (dmg, heal, shield, push, pull, area, status, healAll, healSelf, summon)
+  function areaCells(c, u, S, p) {
+    if (S.area === "plus") return plus(p[0], p[1]).filter(function (q) { return inArena(c, q[0], q[1]); });
+    if (S.area === "disc1") return disc(c, p[0], p[1], 1);
+    if (S.area === "disc2") return disc(c, p[0], p[1], 2);
+    return [p];
+  }
+  function genericEffect(w, u, tg, S) {
+    var c = w.combat, p = tg[0] || [u.x, u.y];
+    if (S.summon) { addSummon(w, u, S.summon, p[0], p[1]); return; }
+    if (S.status) u.status.push({ k: S.status.k, v: S.status.v, by: u.id, turns: S.status.turns + 0, name: S.name });
+    if (S.status2) u.status.push({ k: S.status2.k, v: S.status2.v, by: u.id, turns: S.status2.turns + 0, name: S.name });
+    if (S.status || S.status2) { ev(w, { k: "buff", id: u.id, text: S.name }); ev(w, { k: "nova", at: [u.x, u.y], r: 1, col: S.el ? ELEMENTS[S.el].col : "#ffd257" }); }
+    if (S.healAll) c.units.forEach(function (t) { if (t.alive && t.side === u.side && !t.summon) heal(w, u, t, S.healAll * (1 + u.heal / 100)); });
+    if (S.healSummons) mySummons(c, u).forEach(function (m) { heal(w, u, m, S.healSummons * (1 + u.heal / 100)); if (S.shield) addShield(w, u, m, S.shield); m.maxPaBonus = 1; });
+    var cells = S.area ? areaCells(c, u, S, p) : [p];
+    if (S.area) ev(w, { k: S.el === "eau" ? "splash" : "nova", cells: cells, at: p, r: S.area === "disc2" ? 2 : 1, col: S.el ? ELEMENTS[S.el].col : "#ffd257", big: S.area === "disc2" });
+    else if (tg[0] && (tg[0][0] !== u.x || tg[0][1] !== u.y) && (S.dmg || S.heal)) ev(w, { k: "beam", from: [u.x, u.y], to: tg[0], col: S.el ? ELEMENTS[S.el].col : "#7dffb0", big: S.dmg >= 35 });
+    var seen = {};
+    cells.forEach(function (q) {
+      var t = unitAt(c, q[0], q[1]);
+      if (!t || seen[t.id]) return;
+      seen[t.id] = 1;
+      if (t.side !== u.side) {
+        if (S.dmg) damage(w, u, t, S.dmg);
+        if (t.alive && S.push) knock(w, u, t, S.area ? p[0] : u.x, S.area ? p[1] : u.y, S.push);
+        if (t.alive && S.pull) knock(w, u, t, u.x, u.y, S.pull, true);
+      } else if (!S.healSummons) {
+        if (S.heal && !(S.area && t.summon)) heal(w, u, t, S.heal * (1 + u.heal / 100));
+        if (S.shield && !S.area) addShield(w, u, t, S.shield);
+      }
+    });
+    if (S.healSelf) heal(w, u, u, S.healSelf * (1 + u.heal / 100));
+  }
   var EFFECTS = {
-    pion: function (w, u, tg) { addSummon(w, u, "pion", tg[0][0], tg[0][1]); },
-    promotion: function (w, u, tg) {
-      var c = w.combat, t = unitAt(c, tg[0][0], tg[0][1]), S = SUMMONS.dame;
-      var hp = Math.round((S.hp + S.hpL * u.lvl) * (1 + (u.heal || 0) / 200));
-      t.cls = "dame"; t.name = S.name; t.maxHp = hp; t.hp = Math.min(hp, t.hp + Math.round(hp * 0.5)); t.ini = S.ini;
-      t.maxPa = S.pa; t.maxPm = S.pm; t.pa = Math.min(t.pa + 1, S.pa); t.pm = Math.min(t.pm + 1, S.pm);
-      ev(w, { k: "promote", id: t.id });
-    },
     sacrifice: function (w, u, tg, S) {
       var c = w.combat, t = unitAt(c, tg[0][0], tg[0][1]);
       ev(w, { k: "burst", at: [t.x, t.y] });
@@ -1251,10 +1349,11 @@
       ev(w, { k: "tp", id: u.id, from: [ux, uy], to: [u.x, u.y], fx: "ink" });
       ev(w, { k: "tp", id: t.id, from: [u.x, u.y], to: [ux, uy], fx: "ink" });
     },
-    maree: function (w, u, tg, S) {
+    menagerie: function (w, u, tg, S) {
       var c = w.combat, spots = ring8(c, u.x, u.y).filter(function (q) { return cellFree(c, q[0], q[1]); });
+      var kinds = unlockedSpells(u.cls, u.lvl).map(function (sid) { return SPELLS[sid].summon; }).filter(Boolean).reverse();
       var n = Math.min(3, SUMMON_MAX - mySummons(c, u).length, spots.length);
-      for (var i = 0; i < n; i++) addSummon(w, u, "pion", spots[i][0], spots[i][1]);
+      for (var i = 0; i < n; i++) addSummon(w, u, kinds[i % kinds.length] || "ecureuil", spots[i][0], spots[i][1]);
       mySummons(c, u).forEach(function (m) { addShield(w, u, m, S.shield); m.maxPaBonus = 1; });
       ev(w, { k: "ink", at: [u.x, u.y] });
     },
@@ -1556,7 +1655,7 @@
       return 0.18 * p.length + 0.25;
     }
     var S = MOB_SPELLS[a.s];
-    u.pa -= S.pa;
+    u.pa -= S.pa; u.curEl = S.el || null;
     if (S.cd) u.cds[a.s] = S.cd + 1;
     var t = a.x != null ? unitAt(c, a.x, a.y) : null;
     if (t && t !== u) u.face = faceOf(t.x - u.x, t.y - u.y);
@@ -1648,7 +1747,9 @@
       p.xp -= xpNeed(p.level); p.level++; p.pts += 5;
       if (res) res.levels++;
       ev(w, { k: "levelup", pi: i, level: p.level });
-      if (p.level === ULT_LEVEL) ev(w, { k: "ult", pi: i });
+      var newSpell = CLASSES[p.cls].spells[SPELL_LEVELS.indexOf(p.level)];
+      if (newSpell) ev(w, { k: "newspell", pi: i, sid: newSpell });
+      if (p.level === DOPEUL_LEVEL) ev(w, { k: "dopeul", pi: i });
     }
     if (p.level >= CFG.maxLevel) p.xp = Math.min(p.xp, xpNeed(p.level));
     updateQuests(w, i);
@@ -1769,6 +1870,49 @@
     return g;
   }
   function chestPrice(p) { return 45 + p.level * 28; }
+  // hôtels de vente : un stock par zone, renouvelé toutes les 10 minutes de jeu
+  function shopStock(w, zone) {
+    w.stock = w.stock || {};
+    var st = w.stock[zone], Z = ZONES[zone];
+    if (st && w.t - st.t < 600) return st.items;
+    var lvl = Z.safe ? Math.max(2, partyLevel(w)) : Z.lvl[1];
+    var fake = { cls: CLASS_IDS[Math.floor(R() * CLASS_IDS.length)], uid: 1 }, items = [];
+    for (var i = 0; i < 8; i++) {
+      fake.cls = CLASS_IDS[Math.floor(R() * CLASS_IDS.length)];
+      var it = makeItem(fake, lvl + ri(R, 0, 2), rollRarity(1, 1)); it.uid = w.packId++;
+      it.price = Math.round(it.value * 4 + it.lvl * 10 + (it.r >= 4 ? 400 : it.r === 3 ? 150 : 0)); it.forCls = fake.cls;
+      items.push(it);
+    }
+    w.stock[zone] = { t: w.t, items: items };
+    return items;
+  }
+  function buyStock(w, pi, uid) {
+    var p = w.players[pi].profile, items = shopStock(w, w.zone), i = -1;
+    for (var k = 0; k < items.length; k++) if (items[k].uid === uid) i = k;
+    if (i < 0 || p.gold < items[i].price || p.bag.length >= BAG_MAX) return false;
+    var it = items.splice(i, 1)[0];
+    p.gold -= it.price; it.uid = p.uid++; it.isNew = true; delete it.price; delete it.forCls;
+    p.bag.push(it); p.rev++;
+    ev(w, { k: "buy", pi: pi, item: it }); bump(w);
+    return true;
+  }
+  // skins royaux : palette + aura, achetés une fois par héros
+  var SKINS = {
+    royal: { name: "Tenue royale", price: 1200, aura: "royal", pal: { main: "#d4a62a", dark: "#8a5f0e", light: "#ffe28a" }, desc: "Or et pourpre, couronne de lumière et pluie de paillettes dorées." },
+    astral: { name: "Tenue astrale", price: 1800, aura: "astral", pal: { main: "#5b2d8e", dark: "#2a1446", light: "#c77dff" }, desc: "Violet profond, étoiles qui tournent autour de toi." },
+    infernal: { name: "Tenue infernale", price: 2400, aura: "infernal", pal: { main: "#b3261e", dark: "#5c0f0a", light: "#ff8a4a" }, desc: "Rouge braise, flammes qui lèchent le sol." },
+    givre: { name: "Tenue de givre", price: 2400, aura: "givre", pal: { main: "#4fb6dd", dark: "#1f5f8a", light: "#dff6ff" }, desc: "Bleu glacier, cristaux de glace et flocons." },
+    ombre: { name: "Tenue d'ombre", price: 3600, aura: "ombre", pal: { main: "#1b1530", dark: "#09060f", light: "#5b4a9e" }, desc: "Noir d'encre, brume violette et yeux qui luisent. Pour impressionner." },
+  };
+  function buySkin(w, pi, id) {
+    var p = w.players[pi].profile, S = SKINS[id];
+    if (!S || w.mode !== "explore") return false;
+    p.skins = p.skins || {};
+    if (p.skins[id] || p.gold < S.price) return false;
+    p.gold -= S.price; p.skins[id] = 1; p.skin = id; p.rev++;
+    ev(w, { k: "skin", pi: pi, id: id }); bump(w);
+    return true;
+  }
   function buyChest(w, pi) {
     var p = w.players[pi].profile, cost = chestPrice(p);
     if (p.gold < cost || p.bag.length >= BAG_MAX) return false;
@@ -1820,6 +1964,15 @@
       case "junk": return sellJunk(w, pi, c.r | 0) > 0;
       case "lock": { var p = w.players[pi].profile, ix = findBag(p, c.uid); if (ix < 0) return false; p.bag[ix].lock = !p.bag[ix].lock; p.rev++; bump(w); return true; }
       case "chest": return w.mode === "explore" && buyChest(w, pi);
+      case "buy": return w.mode === "explore" && buyStock(w, pi, c.uid);
+      case "stock": shopStock(w, w.zone); bump(w); return true;
+      case "skin": return buySkin(w, pi, c.id);
+      case "wear": { var wp = w.players[pi].profile; if (c.id && !(wp.skins || {})[c.id]) return false; wp.skin = c.id || null; wp.rev++; bump(w); return true; }
+      case "dopeul": {
+        if (w.mode !== "explore" || w.zone !== "village" || w.players[pi].profile.level < DOPEUL_LEVEL) return false;
+        startCombat(w, { id: 0, mobs: [{ type: "dopeul", lvl: DOPEUL_LEVEL, affix: null, mirror: w.players[pi].profile.cls }] }, { idx: 0, name: "Temple des Dopeuls", boss: true, dungeon: "dopeul" });
+        return true;
+      }
       case "stat": {
         var sp = w.players[pi].profile, n = Math.max(1, c.n | 0);
         if (!STATS[c.k] || !STATS[c.k].main || sp.pts < n) return false;
@@ -1857,7 +2010,7 @@
   var API = {
     CFG: CFG, CLASSES: CLASSES, CLASS_IDS: CLASS_IDS, SPELLS: SPELLS, SUMMONS: SUMMONS, spellsOf: spellsOf, MOBS: MOBS, MOB_SPELLS: MOB_SPELLS, AFFIXES: AFFIXES,
     SLOTS: SLOTS, SLOT_NAME: SLOT_NAME, RARITIES: RARITIES, STATS: STATS, POWERS: POWERS, QUESTS: QUESTS, ZONES: ZONES, ZONE_IDS: ZONE_IDS,
-    DUNGEONS: DUNGEONS, NPCS: NPCS, AW: AW, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, BAG_MAX: BAG_MAX,
+    DUNGEONS: DUNGEONS, NPCS: NPCS, AW: AW, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, SPELL_LEVELS: SPELL_LEVELS, spellLevel: spellLevel, unlockedSpells: unlockedSpells, DOPEUL_LEVEL: DOPEUL_LEVEL, SKINS: SKINS, shopStock: shopStock, BAG_MAX: BAG_MAX,
     newProfile: newProfile, fixProfile: fixProfile, heroStats: heroStats, gearOf: gearOf, LOOKS: LOOKS, xpNeed: xpNeed, itemScore: itemScore, makeItem: makeItem, rollRarity: rollRarity,
     createWorld: createWorld, addPlayer: addPlayer, removePlayer: removePlayer, zoneMap: zoneMap, exploreWalkable: exploreWalkable, portalAt: portalAt, findPath: findPath,
     cmd: cmd, step: step, active: active, unitAt: unitAt, objAt: objAt, uById: uById, inArena: inArena, groundOk: groundOk, cellFree: cellFree,

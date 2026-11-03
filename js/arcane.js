@@ -13,7 +13,7 @@
   var stage = document.querySelector("[data-arcane]");
   if (!A || !ART || !stage) return;
 
-  var VERSION = "1.4.0";
+  var VERSION = "1.5.0";
   var TW = 96, TH = 48, HW = TW / 2, HH = TH / 2;
   var TAU = Math.PI * 2;
   var canvas = stage.querySelector("canvas");
@@ -29,6 +29,8 @@
   function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   function fmt(n) { return Math.round(n).toLocaleString("fr-FR"); }
+  function spellImg(sid, size) { var S = A.SPELLS[sid]; if (S.summon) return ART.summonIcon(S.summon, size); return ART.spellIcon(S.icon === "g" ? "g:" + (S.el || "none") + ":" + S.name.charAt(0).toUpperCase() : S.icon || sid, size); }
+  var KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
 
   /* ====================== RÉGLAGES ====================== */
   var SET = { sfx: 0.7, music: 0.3, mute: false, fx: "full", grid: true };
@@ -289,7 +291,8 @@
         sel = null; objBorn = {}; fitZoom(); cam.free = false; cam.zu = 1;
         setTimeout(snapCam, 0);
         var room = w.combat && w.combat.room;
-        banner(room ? room.name : "Combat !", room && room.boss ? "Boss · Archonte fractal" : "Placez-vous sur les cases bleues", "fight");
+        var bossU = room && room.boss ? w.combat.units.filter(function (x) { return x.boss; })[0] : null;
+        banner(room ? room.name : "Combat !", bossU ? "Boss · " + bossU.name : "Placez-vous sur les cases bleues", "fight");
         SFX.warn(); flash = 0.5; flashCol = "#ffffff";
         break;
       }
@@ -363,7 +366,10 @@
       case "victory": banner("Victoire !", null, "win"); SFX.win(); w.combat.units.forEach(function (x) { if (x.side === 0 && x.alive) uvis(x).win = clock; }); break;
       case "defeat": banner("Défaite…", "Retour au village", "lose"); SFX.lose(); break;
       case "levelup": if (isLocal(e.pi)) { after(0.8, function () { banner("Niveau " + e.level + " !", "+5 points à répartir dans le sac (I)", "level"); SFX.level(); }); } break;
-      case "ult": if (isLocal(e.pi)) after(1.6, function () { toast("✨ <b>Sort ultime débloqué !</b> (touche 5)", "gold"); }); break;
+      case "newspell": if (isLocal(e.pi)) after(1.6, function () { toast("✨ <b>Nouveau sort : " + esc(A.SPELLS[e.sid].name) + "</b> (" + (A.SPELLS[e.sid].ult ? "ultime, " : "") + "touche " + KEYS[A.CLASSES[w.players[e.pi].profile.cls].spells.indexOf(e.sid)] + ")", "gold"); }); break;
+      case "dopeul": if (isLocal(e.pi)) after(2.2, function () { toast("👁 <b>Niveau 100 !</b> Le Maître des Dopeuls t'attend à Lumebourg : affronte ton propre reflet.", "gold"); }); break;
+      case "buy": if (isLocal(e.pi)) { SFX.coin(); toast("🛒 Acheté : <b>" + esc(e.item.name) + "</b>", "gold"); if (panel === "shop") refreshPanelSoon(); } break;
+      case "skin": if (isLocal(e.pi)) { SFX.level(); banner(A.SKINS[e.id].name, "Nouvelle tenue équipée", "level"); var hv = w.heroes[e.pi]; if (hv) { var hq = iso(hv.x, hv.y); addParts(hq.x, hq.y - 30, 40, ["#ffd257", "#fff", "#c77dff"], { up: 80, max: 160 }); addRing(hq.x, hq.y, "#ffd257", 10, 2 * TW, 0.8, { flat: true, lw: 6 }); } if (panel === "shop") refreshPanelSoon(); } break;
       case "quest": if (isLocal(e.pi)) { var Q = A.QUESTS.filter(function (q) { return q.id === e.q; })[0]; toast("📜 Quête terminée : <b>" + esc(Q ? Q.name : "") + "</b>", "gold"); } break;
       case "equip": if (isLocal(e.pi)) SFX.click(); break;
       case "sell": if (isLocal(e.pi)) { SFX.coin(); toast("+" + fmt(e.v) + " or", "gold"); } break;
@@ -580,16 +586,16 @@
       } });
     });
     (A.NPCS[w.zone] || []).forEach(function (n) {
-      if (n.obj) return;
+      if (n.obj || (n.min && A.partyLevel(w) < n.min)) return;
       var p = iso(n.x, n.y);
       items.push({ d: n.x + n.y, o: 2, f: function (g) {
         ART.npc(g, n.id, p.x, p.y, { t: clock, flip: me && me.x + me.y < n.x + n.y ? -1 : 1 });
         var hv = hoverObj && hoverObj.npc === n.id;
         label(g, p.x, p.y - 78, n.name, hv ? "#ffd257" : "#fff", 13);
         var bob = Math.sin(clock * 3) * 3;
-        ART.circ(g, p.x, p.y - 98 + bob, 10, n.role === "quests" ? "#ffd257" : "#ff9a3c");
+        ART.circ(g, p.x, p.y - 98 + bob, 10, n.role === "quests" ? "#ffd257" : n.role === "dopeul" ? "#c77dff" : "#ff9a3c");
         g.fillStyle = "#3a2618"; g.font = "900 14px Nunito, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
-        g.fillText(n.role === "quests" ? "!" : "$", p.x, p.y - 97 + bob);
+        g.fillText(n.role === "quests" ? "!" : n.role === "dopeul" ? "👁" : "$", p.x, p.y - 97 + bob);
       } });
     });
     w.packs.forEach(function (pk) {
@@ -790,7 +796,7 @@
       ART.hero(g, u.cls, x, y, opt);
     } else {
       var M = A.MOBS[u.type];
-      opt.col = M.col; opt.elite = !!u.affix; opt.boss = u.boss;
+      opt.col = M.col; opt.elite = !!u.affix; opt.boss = u.boss; opt.mirror = u.mirror;
       if (u.shield.length) ART.glow(g, x, y - 26, 36, "rgba(159,216,255,.45)", 0.8);
       ART.mob(g, u.type, x, y, opt);
     }
@@ -885,7 +891,7 @@
       var c = w.combat, order = [], n = c.order.length;
       for (var j = 0; j < n; j++) { var uu = A.uById(c, c.order[(c.turn + j) % n]); if (uu && uu.alive) order.push(uu); }
       top.innerHTML = '<div class="at-tl"><span class="at-round">Tour ' + c.round + "</span>" + order.slice(0, 9).map(function (x, k) {
-        var img = x.summon ? ART.summonIcon(x.cls, 40) : x.side === 0 ? ART.heroIcon(x.cls, 40, w.players[x.pi] ? A.gearOf(w.players[x.pi].profile) : null) : ART.mobIcon(x.type, 40, A.MOBS[x.type].col, !!x.affix);
+        var img = x.summon ? ART.summonIcon(x.cls, 40) : x.side === 0 ? ART.heroIcon(x.cls, 40, w.players[x.pi] ? A.gearOf(w.players[x.pi].profile) : null) : x.mirror ? ART.heroIcon(x.mirror, 40, { skin: "ombre" }) : ART.mobIcon(x.type, 40, A.MOBS[x.type].col, !!x.affix);
         return '<span class="at-tl-u' + (k === 0 ? " now" : "") + (x.side ? " mob" : " ally") + (x.affix ? " elite" : "") + '" data-unit="' + x.id + '"><img src="' + img + '" alt="" width="40" height="40"><i style="width:' + (x.hp / x.maxHp * 100).toFixed(0) + '%"></i></span>';
       }).join("") + "</div>";
     } else if (w.combat) top.innerHTML = '<div class="at-zone"><b>' + (w.combat.phase === "place" ? "Placement" : w.loot && w.loot.won ? "Victoire" : "Fin du combat") + '</b><span>' + (w.combat.room ? esc(w.combat.room.name) : esc(A.ZONES[w.zone].name)) + "</span></div>";
@@ -924,9 +930,9 @@
     var html = (shown.summon ? '<span class="at-sumtag"><img src="' + ART.summonIcon(shown.cls, 28) + '" alt="" width="28" height="28">' + esc(shown.name) + "</span>" : "") +
       '<div class="at-papm"><span class="pa" title="Points d\'action"><b>' + shown.pa + '</b>PA</span><span class="pm" title="Points de mouvement"><b>' + shown.pm + '</b>PM</span></div><div class="at-spells">';
     spells.forEach(function (sid, i) {
-      var S = A.SPELLS[sid], why = A.canCast(w, shown, sid), cd = shown.cds[sid] || 0, locked = S.ult && !shown.ult;
+      var S = A.SPELLS[sid], why = A.canCast(w, shown, sid), cd = shown.cds[sid] || 0, lvl = A.spellLevel(shown.cls, sid), locked = shown.lvl < lvl;
       html += '<button type="button" class="at-sp' + (sel && sel.sid === sid ? " on" : "") + (why || !me ? " off" : "") + (S.ult ? " ult" : "") + (locked ? " lock" : "") + '" data-spell="' + sid + '">' +
-        '<img src="' + ART.spellIcon(sid, 48) + '" alt="" width="48" height="48"><kbd>' + (i + 1) + "</kbd><em>" + A.spellCost(shown, sid) + "</em>" + (cd ? "<b>" + cd + "</b>" : "") + (locked ? "<b>🔒</b>" : "") + "</button>";
+        '<img src="' + spellImg(sid, 48) + '" alt="" width="48" height="48"><kbd>' + KEYS[i] + "</kbd><em>" + A.spellCost(shown, sid) + "</em>" + (cd ? "<b>" + cd + "</b>" : "") + (locked ? "<b>🔒<small>niv. " + lvl + "</small></b>" : "") + "</button>";
     });
     html += '<button type="button" class="at-sp at-sp-help" data-act="spells" title="Mes sorts">?</button></div>';
     if (me) {
@@ -1107,16 +1113,46 @@
       '<p class="game-small">Les quêtes avancent toutes seules en jouant. Leur récompense tombe directement dans ton sac.</p>', "at-card-q");
   }
 
+  var shopTab = "items";
   function showShop() {
     var pl = myPlayer(); if (!pl) return;
     panel = "shop";
-    var pr = pl.profile, price = A.chestPrice(pr);
-    show('<div class="at-inv-h"><h2>Tobin le marchand</h2><span class="at-gold">' + fmt(pr.gold) + ' or</span><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' +
-      '<p>« Des coffres scellés, tout droit des ruines ! Rare garanti au minimum… ou presque. Et je rachète tout ce que tu trouves. »</p>' +
-      '<div class="at-shop"><div class="at-chest' + (shopReveal ? " open" : "") + '"><span></span></div>' +
-      '<button class="btn" type="button" data-act="chest"' + (pr.gold < price || pr.bag.length >= A.BAG_MAX ? " disabled" : "") + ">Ouvrir un coffre runique · " + fmt(price) + " or</button>" +
-      (shopReveal ? '<div class="at-loot-i" style="--d:.2s">' + (shopReveal.r >= 3 ? '<span class="at-rays"></span>' : "") + itemHtml(shopReveal, { pl: pl, actions: pr.bag.some(function (b) { return b.uid === shopReveal.uid; }) ? '<div class="at-it-a"><button class="btn btn-small" type="button" data-equip="' + shopReveal.uid + '" data-pi="' + focusPi + '">Équiper</button></div>' : "" }) + "</div>" : "") + "</div>" +
+    var pr = pl.profile, price = A.chestPrice(pr), guest = NET.started && NET.role === "guest";
+    var npc = (A.NPCS[w.zone] || []).filter(function (n) { return n.role === "shop"; })[0];
+    var tabs = '<div class="at-tabs">' + [["items", "🛒 Objets"], ["chest", "🎁 Coffres"], ["skins", "👑 Tenues"]].map(function (t) { return '<button type="button" class="' + (shopTab === t[0] ? "on" : "") + '" data-shoptab="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
+    var body = "";
+    if (shopTab === "items") {
+      var stock = w.stock && w.stock[w.zone] ? w.stock[w.zone].items : (guest ? null : A.shopStock(w, w.zone));
+      if (!stock) { sendCmd({ t: "stock" }); body = "<p>Le marchand déballe sa marchandise…</p>"; }
+      else body = '<p class="game-small">Huit objets au niveau de la zone, renouvelés régulièrement. Chaque hôtel de vente a son propre stock.</p><div class="at-loot-grid">' + (stock.length ? stock.map(function (it) {
+        return '<div class="at-loot-i no-anim">' + itemHtml(it, { pl: pl, actions: '<div class="at-it-a"><button class="btn btn-small' + (pr.gold < it.price || pr.bag.length >= A.BAG_MAX ? " btn-ghost" : "") + '" type="button" data-buy="' + it.uid + '"' + (pr.gold < it.price || pr.bag.length >= A.BAG_MAX ? " disabled" : "") + ">Acheter · " + fmt(it.price) + " or</button></div>" }) + "</div>";
+      }).join("") : "<p>Tout est vendu ! Reviens plus tard.</p>") + "</div>";
+    } else if (shopTab === "chest") {
+      body = '<p>« Des coffres scellés, tout droit des ruines ! Rare garanti au minimum… ou presque. »</p>' +
+        '<div class="at-shop"><div class="at-chest' + (shopReveal ? " open" : "") + '"><span></span></div>' +
+        '<button class="btn" type="button" data-act="chest"' + (pr.gold < price || pr.bag.length >= A.BAG_MAX ? " disabled" : "") + ">Ouvrir un coffre runique · " + fmt(price) + " or</button>" +
+        (shopReveal ? '<div class="at-loot-i" style="--d:.2s">' + (shopReveal.r >= 3 ? '<span class="at-rays"></span>' : "") + itemHtml(shopReveal, { pl: pl, actions: pr.bag.some(function (b) { return b.uid === shopReveal.uid; }) ? '<div class="at-it-a"><button class="btn btn-small" type="button" data-equip="' + shopReveal.uid + '" data-pi="' + focusPi + '">Équiper</button></div>' : "" }) + "</div>" : "") + "</div>";
+    } else {
+      var owned = pr.skins || {};
+      body = '<p class="game-small">Une tenue change les couleurs de ton héros et lui donne une <b>aura</b> visible par tout le monde. Achetée une fois, pour toujours.</p><div class="at-skins">' +
+        '<button type="button" class="at-skin' + (!pr.skin ? " on" : "") + '" data-wear=""><img src="' + ART.heroIcon(pr.cls, 72, gearNoSkin(pr), true) + '" alt="" width="72" height="72"><b>Tenue de base</b><small>' + (!pr.skin ? "Portée" : "Porter") + "</small></button>" +
+        Object.keys(A.SKINS).map(function (id) {
+          var S = A.SKINS[id], g = gearNoSkin(pr); g.skin = id;
+          return '<button type="button" class="at-skin' + (pr.skin === id ? " on" : "") + (owned[id] ? " owned" : "") + '" data-' + (owned[id] ? "wear" : "skin") + '="' + id + '"' + (!owned[id] && pr.gold < S.price ? " disabled" : "") + '><img src="' + ART.heroIcon(pr.cls, 72, g, true) + '" alt="" width="72" height="72"><b>' + esc(S.name) + "</b><span>" + esc(S.desc) + "</span><small>" + (pr.skin === id ? "Portée" : owned[id] ? "Porter" : fmt(S.price) + " or") + "</small></button>";
+        }).join("") + "</div>";
+    }
+    show('<div class="at-inv-h"><h2>' + esc(npc ? npc.name : "Hôtel de vente") + '</h2><span class="at-gold">' + fmt(pr.gold) + ' or</span><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' + tabs + body +
       '<div class="btn-row center"><button class="btn btn-ghost btn-small" type="button" data-act="inv">🎒 Vendre depuis le sac</button><button class="btn btn-ghost btn-small" type="button" data-junk="0">Vendre tous les communs</button></div>', "at-card-shop");
+  }
+  function gearNoSkin(pr) { var g = A.gearOf(pr); delete g.skin; return g; }
+  function showDopeul() {
+    var pl = myPlayer(); if (!pl) return;
+    panel = "help";
+    var ok = pl.profile.level >= A.DOPEUL_LEVEL;
+    show('<div class="at-inv-h"><h2>Maître des Dopeuls</h2><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' +
+      '<p>« Tu crois avoir tout appris ? Alors bats ton propre reflet. Il a tes forces, et aucune de tes faiblesses. »</p>' +
+      '<div class="at-skins"><button type="button" class="at-skin on"><img src="' + ART.heroIcon(pl.profile.cls, 96, { skin: "ombre" }, true) + '" alt="" width="96" height="96"><b>Dopeul ' + esc(A.CLASSES[pl.profile.cls].name) + "</b><span>700 PV · 9 PA · 4 PM · frappe, tire et se soigne</span></button></div>" +
+      '<div class="btn-row center"><button class="btn" type="button" data-act="dopeul"' + (ok ? "" : " disabled") + ">" + (ok ? "⚔ Affronter mon Dopeul" : "Reviens au niveau " + A.DOPEUL_LEVEL) + '</button><button class="btn btn-ghost" type="button" data-act="close">Plus tard</button></div>', "at-card-q");
   }
 
   // fiche des sorts du héros (pratique sur téléphone, où il n'y a pas de survol)
@@ -1128,12 +1164,13 @@
     var rows = A.CLASSES[pl.profile.cls].spells.map(function (sid, i) {
       var S = A.SPELLS[sid], step = S.steps[0];
       var rng = step.shape === "self" ? "soi-même" : step.shape === "knight" ? "en L" : step.shape === "ray" ? "diagonales" : (step.range[0] === step.range[1] ? step.range[0] : step.range[0] + "–" + (step.range[1] + (step.boost ? st.po : 0))) + " case" + (step.range[1] > 1 ? "s" : "") + (step.shape === "line" ? (step.range[1] === 1 ? " : direction" : " en ligne") : step.shape === "diag" ? " en diagonale" : step.shape === "queen" ? " ligne / diagonale" : "");
-      return '<li class="at-sl' + (S.ult && pl.profile.level < A.ULT_LEVEL ? " lock" : "") + '"><img src="' + ART.spellIcon(sid, 44) + '" alt="" width="44" height="44"><div><b>' + (i + 1) + ". " + esc(S.name) + (S.ult ? " <em>ultime</em>" : "") + "</b>" +
+      var lvl = A.spellLevel(pl.profile.cls, sid), locked = pl.profile.level < lvl;
+      return '<li class="at-sl' + (locked ? " lock" : "") + '"><img src="' + spellImg(sid, 44) + '" alt="" width="44" height="44"><div><b>' + KEYS[i] + ". " + esc(S.name) + (S.ult ? " <em>ultime</em>" : "") + (locked ? ' <em class="lvl">niveau ' + lvl + "</em>" : "") + "</b>" +
         '<p class="at-tip-m"><span>' + S.pa + " PA</span>" + (S.el ? '<span style="color:' + A.ELEMENTS[S.el].col + '">' + A.ELEMENTS[S.el].name + " +" + st.elem[S.el] + " %</span>" : "") + "<span>" + esc(rng) + "</span>" + (step.los ? "<span>ligne de vue</span>" : "") + (S.cd ? "<span>recharge " + S.cd + "</span>" : "") + (S.perTurn ? "<span>" + S.perTurn + "× / tour</span>" : "") + "</p>" +
         "<p>" + esc(S.desc) + "</p>" + (u && A.canCast(w, u, sid) ? '<p class="at-tip-warn">' + esc(A.canCast(w, u, sid)) + "</p>" : "") + "</div></li>";
     }).join("");
     show('<div class="at-inv-h"><img src="' + ART.heroIcon(pl.profile.cls, 40, A.gearOf(pl.profile)) + '" alt="" width="40" height="40" style="border-radius:10px"><h2>' + esc(A.CLASSES[pl.profile.cls].name) + '</h2><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' +
-      '<p class="game-small" style="margin:0 0 8px">' + esc(A.CLASSES[pl.profile.cls].desc) + "</p>" +
+      '<p class="game-small" style="margin:0 0 8px">' + esc(A.CLASSES[pl.profile.cls].desc) + " Un nouveau sort aux niveaux " + A.SPELL_LEVELS.slice(2).join(", ") + ", puis le Dopeul au niveau " + A.DOPEUL_LEVEL + ".</p>" +
       '<ul class="at-slist">' + rows + "</ul>" +
       '<div class="btn-row center"><button class="btn" type="button" data-act="close">' + (w.combat ? "Retour au combat" : "Fermer") + "</button></div>", "at-card-q");
   }
@@ -1154,6 +1191,8 @@
       "<li><b>Objets visibles</b> : tout ce que tu équipes se voit sur ton héros (chapeau champignon, poisson-épée, ailes de dragon, pattes de canard…). La couleur suit la rareté. Les objets rares et plus peuvent donner <b>+1 Portée</b>.</li>" +
       "<li><b>Butin</b> : chaque monstre peut lâcher un objet aléatoire : 50 % commun, 12 % magique, 8 % rare, <b>20 % épique</b>, <b>10 % légendaire</b> (avec un pouvoir). Parfois <b>+1 PA</b>, <b>+1 PM</b> ou <b>+Portée</b>. Les élites (★) lâchent toujours quelque chose, le boss trois objets.</li>" +
       "<li><b>Donjons</b> : Incarnam (niv. 2, nord de la Prairie), la Confiserie de la Reine Guimauve (niv. 5, Marais Bulleux), le Sanctuaire brisé (niv. 7, Falaises) et la Tour des Horloges (niv. 10, Îles Cotonneuses). Trois salles d'affilée, les PV ne remontent qu'en partie entre deux.</li>" +
+      "<li><b>Sorts</b> : 10 par héros, un nouveau aux niveaux 3, 6, 10 (ultime), 15, 25, 40, 60 et 80, dans plusieurs éléments. Au niveau 100, le Maître des Dopeuls de Lumebourg te fait affronter ton reflet.</li>" +
+      "<li><b>Hôtels de vente</b> : un dans chaque zone (8 objets au niveau de la zone, coffres, et des <b>tenues</b> avec aura : royale, astrale, infernale, givre, ombre).</li>" +
       "<li><b>Zones</b> : Prairie des Runes → Bois Fractal → Marais Bulleux (au sud du Bois) → Falaises de Cristal → Îles Cotonneuses. Le bouton <b>?</b> de la barre de sorts explique chaque sort de ton héros.</li>" +
       (TOUCH ? "<li><b>Tactile</b> : touche une case pour l'aperçu, touche-la encore pour confirmer. Glisse pour déplacer la vue, pince pour zoomer.</li>" : "") +
       "<li><b>Raccourcis</b> : <kbd>1</kbd>–<kbd>5</kbd> sorts · <kbd>Espace</kbd> fin du tour · clic droit annule · <kbd>I</kbd> sac · <kbd>J</kbd> quêtes · <kbd>C</kbd> recentrer · molette zoom · glisser pour déplacer la vue.</li></ul>";
@@ -1263,7 +1302,7 @@
     if (Math.abs(h.x - pendingNpc.x) + Math.abs(h.y - pendingNpc.y) <= 1) {
       var n = pendingNpc; pendingNpc = null;
       SFX.click();
-      if (n.role === "quests") showQuests(); else if (n.role === "shop") { shopReveal = null; showShop(); } else showSource();
+      if (n.role === "quests") showQuests(); else if (n.role === "shop") { shopReveal = null; shopTab = "items"; showShop(); } else if (n.role === "dopeul") showDopeul(); else showSource();
     }
   }
 
@@ -1279,7 +1318,7 @@
     if (w.combat) w.combat.units.forEach(function (u) { if (u.alive) { var v = vis["u" + u.id]; test(v ? v.gx : u.x, v ? v.gy : u.y, u.boss ? 150 : u.summon ? 70 : 92, { unit: u.id, x: u.x, y: u.y }); } });
     else {
       w.packs.forEach(function (pk) { if (!pk.dead) { var v = vis["p" + pk.id]; if (v) test(v.gx, v.gy, 60, { pack: pk.id, x: pk.x, y: pk.y }); } });
-      (A.NPCS[w.zone] || []).forEach(function (n) { test(n.x, n.y, n.obj ? 60 : 80, { npc: n.id, x: n.x, y: n.y }); });
+      (A.NPCS[w.zone] || []).forEach(function (n) { if (n.min && A.partyLevel(w) < n.min) return; test(n.x, n.y, n.obj ? 60 : 80, { npc: n.id, x: n.x, y: n.y }); });
       w.heroes.forEach(function (h, i) { if (h && duo) { var v = vis["h" + i]; if (v) test(v.gx, v.gy, 70, { hero: i, x: h.x, y: h.y }); } });
     }
     return best;
@@ -1335,7 +1374,7 @@
     if (panel) { hideTip(); return; }
     if (hoverObj && hoverObj.unit) { var un = A.uById(w.combat, hoverObj.unit); if (un) showTip(unitTip(un), mouse.x, mouse.y); }
     else if (hoverObj && hoverObj.pack) { var pk = w.packs.filter(function (q) { return q.id === hoverObj.pack; })[0]; if (pk) showTip(packTip(pk), mouse.x, mouse.y); }
-    else if (hoverObj && hoverObj.npc) { var n = A.NPCS[w.zone].filter(function (q) { return q.id === hoverObj.npc; })[0]; showTip("<strong>" + esc(n.name) + "</strong><p>" + (n.role === "quests" ? "Quêtes et récompenses" : n.role === "shop" ? "Coffres runiques · rachète ton butin" : "Conseils et rappels") + "</p>", mouse.x, mouse.y); }
+    else if (hoverObj && hoverObj.npc) { var n = A.NPCS[w.zone].filter(function (q) { return q.id === hoverObj.npc; })[0]; showTip("<strong>" + esc(n.name) + "</strong><p>" + (n.role === "quests" ? "Quêtes et récompenses" : n.role === "shop" ? "Objets, coffres, tenues royales · rachète ton butin" : n.role === "dopeul" ? "Affronte ton reflet (niveau 100)" : "Conseils et rappels") + "</p>", mouse.x, mouse.y); }
     else hideTip();
     canvas.style.cursor = hoverObj && (hoverObj.pack || hoverObj.npc) ? "pointer" : sel ? "crosshair" : "default";
   }
@@ -1374,6 +1413,7 @@
       case "tapok": if (pendingTap) { touchTap = false; var pt = pendingTap; clickCell(pt.x, pt.y); } break;
       case "lootok": locals.forEach(function (i) { if (w.players[i] && !w.players[i].ready) sendCmd({ t: "lootok" }, i); }); SFX.click(); break;
       case "chest": sendCmd({ t: "chest" }); break;
+      case "dopeul": hide(); sendCmd({ t: "dopeul" }); break;
       case "quit": quitToMenu(); break;
     }
   }
@@ -1385,6 +1425,10 @@
     if (b.dataset.unequip) { sendCmd({ t: "unequip", slot: b.dataset.unequip }, panelPi); invSel = null; refreshPanelSoon(); return; }
     if (b.dataset.lock) { sendCmd({ t: "lock", uid: +b.dataset.lock }, panelPi); refreshPanelSoon(); return; }
     if (b.dataset.stat) { sendCmd({ t: "stat", k: b.dataset.stat, n: +b.dataset.n }, panelPi); SFX.coin(); refreshPanelSoon(); return; }
+    if (b.dataset.shoptab) { shopTab = b.dataset.shoptab; SFX.click(); showShop(); return; }
+    if (b.dataset.buy) { sendCmd({ t: "buy", uid: +b.dataset.buy }); refreshPanelSoon(); return; }
+    if (b.dataset.skin) { sendCmd({ t: "skin", id: b.dataset.skin }); refreshPanelSoon(); return; }
+    if (b.dataset.wear != null) { sendCmd({ t: "wear", id: b.dataset.wear || null }); SFX.click(); refreshPanelSoon(); return; }
     if (b.dataset.junk != null) { sendCmd({ t: "junk", r: +b.dataset.junk }, panel === "inv" ? panelPi : focusPi); refreshPanelSoon(); return; }
     if (b.dataset.isel) { invSel = +b.dataset.isel; SFX.click(); showInv(); return; }
     if (b.dataset.invpi != null) { invSel = null; showInv(+b.dataset.invpi); return; }
@@ -1417,7 +1461,7 @@
     if (k === "Escape") { if (sel) { sel = null; hudDirty = true; } else if (panel && panel !== "loot") closePanel(); else if (!panel) showPause(); e.preventDefault(); return; }
     if (panel === "loot" && (k === "Enter" || k === " ")) { act("lootok"); e.preventDefault(); return; }
     if (panel) { if (k === "i" || k === "I") { if (panel === "inv") closePanel(); } if (k === "j" || k === "J") { if (panel === "quests") closePanel(); } return; }
-    if (k >= "1" && k <= "5") { var u = activeLocal(); if (u && A.spellsOf(u)[+k - 1]) pickSpell(A.spellsOf(u)[+k - 1]); e.preventDefault(); return; }
+    if (KEYS.indexOf(k) >= 0) { var u = activeLocal(); var ki = KEYS.indexOf(k); if (u && A.spellsOf(u)[ki]) pickSpell(A.spellsOf(u)[ki]); e.preventDefault(); return; }
     if (k === " " || k === "Enter") {
       e.preventDefault();
       if (w.combat && w.combat.phase === "place") { act("ready"); return; }
@@ -1604,7 +1648,7 @@
     return '<button type="button" class="at-hero' + (selected ? " on" : "") + (taken ? " taken" : "") + '" data-pick="' + cls + '"' + (taken ? " disabled" : "") + ">" +
       '<span class="at-hero-art" style="--hc:' + ART.HERO_PAL[cls].main + '"><img src="' + ART.heroIcon(cls, 96, A.gearOf(pr), Object.keys(A.gearOf(pr)).length > 0) + '" alt="" width="96" height="96"></span>' +
       "<b>" + C.name + '</b><em>' + C.role + "</em><small>Niv. " + pr.level + " · " + st.hp + " PV · " + st.pa + " PA · " + st.pm + " PM</small>" +
-      '<span class="at-hero-sp">' + C.spells.map(function (s) { return '<img src="' + ART.spellIcon(s, 26) + '" alt="" width="26" height="26" title="' + esc(A.SPELLS[s].name) + '">'; }).join("") + "</span>" +
+      '<span class="at-hero-sp">' + C.spells.map(function (s, i) { return '<img src="' + spellImg(s, 22) + '" alt="" width="22" height="22" title="' + esc(A.SPELLS[s].name) + " (niv. " + A.SPELL_LEVELS[i] + ')"' + (pr.level < A.SPELL_LEVELS[i] ? ' class="lock"' : "") + ">"; }).join("") + "</span>" +
       '<span class="at-hero-d">' + esc(C.desc) + "</span></button>";
   }
   function showMenu(msg) {
