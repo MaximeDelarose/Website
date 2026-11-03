@@ -24,8 +24,8 @@ npm run build       # compile app/bagbound.js + app/bagbound.css et met à jour 
 |---|---|
 | `src/engine/` | Bibliothèque pure : RNG à seed, géométrie des sacs, registres, effets/déclencheurs/statuts, boucle de combat. **Interdits** : `Math.random`, `Date.now`, `performance.now`, DOM, Node (vérifié par `tests/purity.test.ts`). |
 | `src/content/` | Schémas zod (`schema.ts`), chargeur + vérification des références (`loader.ts`), lecture depuis le disque pour Node (`node.ts`). |
-| `data/` | Tout le contenu : `rules.json` (équilibrage du combat), `tags.json`, `items.json`, `enemies.json`, `classes.json`, `run.json` (règles de run), `zones.json`, `loot.json`, `events.json`, `sandbox.json` (atelier). Rien n'est codé en dur. |
-| `src/game/` | Logique de jeu hors combat, sans DOM : `bag.ts` (sac du joueur), `map.ts` (carte d'un étage), `run.ts` (boucle de run), `autoplace.ts` (rangement automatique), `bot.ts` (joueur automatique pour les tests et les simulations). |
+| `data/` | Tout le contenu : `rules.json` (équilibrage du combat), `tags.json`, `items.json`, `enemies.json`, `classes.json`, `recipes.json` (fusions), `run.json` (règles de run), `zones.json`, `loot.json`, `events.json`, `sandbox.json` (atelier). Rien n'est codé en dur. |
+| `src/game/` | Logique de jeu hors combat, sans DOM : `bag.ts` (sac du joueur), `map.ts` (carte d'un étage), `run.ts` (boucle de run), `fusion.ts` (fusions, défusion), `autoplace.ts` (rangement automatique), `bot.ts` (joueur automatique pour les tests et les simulations). |
 | `src/ui/` | Interface navigateur : `app.ts` (atelier, combat en direct, entrées tactiles/souris/clavier), `draw.ts` (rendu canvas), `sprites.ts` (pixel art 16 x 16 en texte + variantes de palette), `describe.ts` (infobulles générées depuis les données), `layout.ts`, `fx.ts`, `style.css`. |
 | `app/` | Build publié (ne pas modifier à la main). |
 | `scripts/simulate.ts` | Simulation en masse (N combats headless) : victoires, durée, PV restants, contribution de chaque objet. |
@@ -156,10 +156,13 @@ Les modules de base sont dans `src/engine/builtins.ts`.
 - [x] Phase 2 : grille, placement, rotation, glisser-déposer, rendu du combat
   (atelier jouable sur le site, voir ci-dessous).
 - [x] Phase 3 : boucle de run (carte, boutique, butin, événements, coffres, feux de camp, boss), sauvegarde.
-- [ ] Phase 4 : fusions, potions (remplissage), extensions de sac.
-- Équilibrage : `npm run sim:run` donne environ 15 % de victoires au bot (qui
-  range de façon gloutonne, sans chercher les synergies ni lancer de potions) ;
-  la plupart des défaites ont lieu aux étages 2 et 3, contre les groupes.
+- [x] Phase 4 : fusions, potions (remplissage), extensions de sac.
+- [ ] Phase 5 : hub, quêtes, narration, boss de zone, boss final, routes.
+- Équilibrage : `npm run sim:run` donne environ 23 % de victoires au bot (qui
+  range de façon gloutonne, fusionne ce qui prend de la valeur, pose ses
+  extensions, mais ne cherche pas les synergies et ne lance pas de potions) ;
+  15 % sans les fusions (`--no-fusion`). La plupart des défaites ont lieu aux
+  étages 2 et 3, contre les groupes.
 
 ## Interface (Phase 2)
 
@@ -215,3 +218,29 @@ pure, déterministe (RNG de la run) et sérialisable telle quelle en JSON.
   un combat interrompu reprend à l'identique (même seed).
 - **Réserve** : les objets gagnés arrivent dans la réserve ; seuls les objets
   posés dans le sac combattent.
+
+## Fusions, potions, extensions (Phase 4)
+
+- **Recettes** (`data/recipes.json`) : `{ id, kind, inputs, result, adjacency }`.
+  Les ingrédients sont des ids (`{ "item": "iron_sword" }`) ou des tags
+  (`{ "tag": "Feu" }`, `{ "anyTag": [...] }`), de 2 à 4. `kind: "upgrade"` =
+  objets identiques vers un tier supérieur (vérifié au chargement),
+  `"recipe"` = recette libre. La forme du résultat est celle de l'objet
+  résultat. Avec `adjacency` (par défaut), les ingrédients doivent former un
+  groupe d'objets posés qui se touchent (un groupe connexe suffit à 3 ou 4).
+- `findFusions(sac, recettes)` liste les fusions possibles (affichées par une
+  pastille ⚗️ / ⬆️ entre les ingrédients) ; `applyFusion` retire les
+  ingrédients, pose le résultat en recouvrant au mieux la place libérée (toutes
+  rotations) ou le met en réserve s'il ne rentre pas. Le résultat garde
+  `fusedFrom` (ses ingrédients) : `unfuse` / la boutique (`unfuseCost`) les
+  rendent. `fusedFrom` traverse les combats grâce au repère `ref` des
+  placements, recopié par le moteur dans le sac d'après combat.
+- **Potions** : effet de combat `fill` (`into`, `charges`, cible par défaut les
+  voisins) — l'Alambic remplit les bouteilles vides voisines pendant le
+  combat ; la boutique remplit les bouteilles vides (`run.json.refill`) ;
+  l'événement « Source claire » aussi.
+- **Extensions** : objets `"extends": true` (tag Extension). Ils se posent hors
+  du sac, en touchant au moins une case par un côté, sans dépasser
+  `classes.json.maxBag` ; ils deviennent des cases (définitif). La forme du sac
+  est sauvegardée dans `SavedBag.cells`. Pendant qu'une extension attend dans
+  la réserve, la grille garde une case de marge et montre les cases possibles.

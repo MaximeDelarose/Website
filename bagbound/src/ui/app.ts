@@ -4,7 +4,9 @@
 
 import type { RunData } from "../content/runData";
 import type { Encounter, Sandbox } from "../content/sandbox";
+import type { Recipe } from "../content/recipes";
 import { autoPlace } from "../game/autoplace";
+import { applyFusion, findFusions, type FusionOption } from "../game/fusion";
 import * as R from "../game/run";
 import { Bag } from "../game/bag";
 import { combatResult, createCombat, queueAction, stepCombat } from "../engine/combat";
@@ -25,6 +27,7 @@ type Hit =
   | { kind: "fight"; uid: string }
   | { kind: "enemy"; index: number }
   | { kind: "node"; id: string }
+  | { kind: "fuse"; index: number }
   | { kind: "none" };
 
 interface Fight {
@@ -132,12 +135,18 @@ export class App {
   private run: R.RunState | null = null;
   private selectedNode: string | null = null;
   private nodePos = new Map<string, { x: number; y: number; r: number }>();
+  /** Fusions possibles dans le sac (hors combat) et position de leur pastille. */
+  private fusions: FusionOption[] = [];
+  private fuseBadges: { x: number; y: number; r: number }[] = [];
+  /** Marge (en cases) autour du sac pour poser une extension. */
+  private margin = 0;
 
   constructor(
     private stage: HTMLElement,
     private content: Content,
     private sandbox: Sandbox,
     private runData: RunData,
+    private recipes: Recipe[],
   ) {
     this.cls = content.classes[sandbox.class];
     this.encounter = sandbox.encounters[0];
@@ -173,7 +182,7 @@ export class App {
   // -------------------------------------------------------------------------
 
   private defaultBag(): Bag {
-    const bag = new Bag(this.content, this.cls.bagCells);
+    const bag = new Bag(this.content, this.cls.bagCells, this.cls.maxBag);
     for (const p of this.cls.startingBag) bag.add(p.item, p.pos, p.rot ?? 0, p.mirror === true);
     for (const id of this.sandbox.stash) bag.add(id);
     return bag;
@@ -184,7 +193,7 @@ export class App {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return;
       const data = JSON.parse(raw);
-      const bag = Bag.fromJSON(this.content, this.cls.bagCells, data.bag);
+      const bag = Bag.fromJSON(this.content, this.cls.bagCells, data.bag, this.cls.maxBag);
       if (bag.entries.length) this.bag = bag;
       const enc = this.sandbox.encounters.find((e) => e.id === data.encounter);
       if (enc) this.encounter = enc;
@@ -211,6 +220,7 @@ export class App {
     });
     this.uidMap.clear();
     placed.forEach((e, i) => this.uidMap.set(e.uid, `0:${i}`));
+    this.fusions = findFusions(this.bag, this.recipes);
   }
 
   private previewItem(uid: string): ItemInstance | undefined {
@@ -240,7 +250,10 @@ export class App {
     this.canvas.style.width = `${W}px`;
     this.canvas.style.height = `${H}px`;
     const b = this.bag.bounds();
-    this.L = computeLayout(W, H, b.w, b.h, this.mode === "prep");
+    // marge d'une case autour du sac quand une extension attend dans la réserve
+    const dragExt = this.drag ? this.bag.isExtension(this.bag.get(this.drag.uid)!) : false;
+    this.margin = this.mode === "prep" && (dragExt || this.bag.stashed().some((e) => this.bag.isExtension(e))) ? 1 : 0;
+    this.L = computeLayout(W, H, b.w + 2 * this.margin, b.h + 2 * this.margin, this.mode === "prep");
     const bar = this.L.bar;
     Object.assign(this.barEl.style, { left: `${bar.x}px`, top: `${bar.y}px`, width: `${bar.w}px`, height: `${bar.h}px` });
     this.packStash();
@@ -248,7 +261,8 @@ export class App {
 
   private gridOrigin(): { ox: number; oy: number } {
     const b = this.bag.bounds();
-    return { ox: this.L.gx - b.minX * this.L.cell, oy: this.L.gy - b.minY * this.L.cell };
+    const m = this.margin;
+    return { ox: this.L.gx - (b.minX - m) * this.L.cell, oy: this.L.gy - (b.minY - m) * this.L.cell };
   }
 
   private packStash(): void {
@@ -529,9 +543,12 @@ export class App {
   // Fenêtres (résultat, inspection)
   // -------------------------------------------------------------------------
 
+  private modalAt = 0;
+
   private showModal(html: string): void {
     this.modalEl.innerHTML = `<div class="bb-card panel">${html}</div>`;
     this.modalEl.hidden = false;
+    this.modalAt = performance.now();
   }
 
   private closeModal(): void {
@@ -678,7 +695,7 @@ export class App {
     this.ctx = "run";
     this.run = run;
     this.cls = this.content.classes[run.cls];
-    this.bag = Bag.fromJSON(this.content, this.cls.bagCells, run.bag);
+    this.bag = Bag.fromJSON(this.content, this.cls.bagCells, run.bag, this.cls.maxBag);
     this.stashPage = 0;
     this.selectedNode = null;
     this.fight = null;
@@ -702,7 +719,7 @@ export class App {
   /** Recharge le sac depuis la run (après un butin, un achat, un événement…). */
   private syncBagFromRun(): void {
     if (!this.run) return;
-    this.bag = Bag.fromJSON(this.content, this.cls.bagCells, this.run.bag);
+    this.bag = Bag.fromJSON(this.content, this.cls.bagCells, this.run.bag, this.cls.maxBag);
     this.packStash();
     this.refreshPreview();
   }
@@ -814,6 +831,15 @@ export class App {
       )
       .join("");
     const reroll = R.rerollCost(run, this.runData);
+    const fused = run.bag.entries
+      .map((e, i) => ({ e, i }))
+      .filter(({ e }) => e.fusedFrom?.length)
+      .map(
+        ({ e, i }) =>
+          `<li><img src="${iconUrl(e.item)}" alt="" width="24" height="24"><span>${esc(this.content.items[e.item].name)} <small>→ ${e.fusedFrom!.map((x) => esc(this.content.items[x].name)).join(" + ")}</small></span><button type="button" class="btn btn-small btn-ghost" data-act="unfuse:${i}"${run.gold < rr.unfuseCost ? " disabled" : ""}>Défaire</button></li>`,
+      )
+      .join("");
+    const bottles = R.emptyBottles(run, this.runData);
     this.showModal(`
       <h2 class="bb-title">Boutique</h2>
       <p class="bb-sub">Tu as <b>● ${run.gold}</b> or · ${run.hp}/${run.maxHp} PV. Les achats vont dans ta réserve.</p>
@@ -823,6 +849,8 @@ export class App {
         <button type="button" class="btn btn-small btn-ghost" data-act="heal"${run.gold < rr.healCost || run.hp >= run.maxHp ? " disabled" : ""}>❤ +${rr.healAmount} PV (● ${rr.healCost})</button>
       </div>
       <details class="bb-sell"><summary>Vendre un objet</summary><ul>${sell || "<li>Rien à vendre.</li>"}</ul></details>
+      ${fused ? `<details class="bb-sell"><summary>Défusionner (● ${rr.unfuseCost})</summary><ul>${fused}</ul></details>` : ""}
+      ${bottles ? `<div class="bb-actions bb-left"><button type="button" class="btn btn-small btn-ghost" data-act="refill"${run.gold < bottles * this.runData.rules.refill.cost ? " disabled" : ""}>🧪 Remplir ${bottles} bouteille(s) vide(s) (● ${bottles * this.runData.rules.refill.cost})</button></div>` : ""}
       <div class="bb-actions">
         <button type="button" class="btn btn-small btn-ghost" data-close>Ranger mon sac</button>
         <button type="button" class="btn btn-small" data-act="leave">Partir →</button>
@@ -912,6 +940,23 @@ export class App {
           this.closeModal();
           this.showPhase();
           return;
+        case "fuse": {
+          const opt = this.fusions[Number(arg)];
+          if (!opt) return;
+          const r = applyFusion(this.bag, opt);
+          this.closeModal();
+          this.stashPage = 0;
+          this.bagChanged();
+          this.resize();
+          const name = this.content.items[r.entry.item].name;
+          this.fx.showBanner(r.placed ? `${name} !` : `${name} → réserve`, "#d9b4ff");
+          if (r.entry.pos) {
+            const { ox, oy } = this.gridOrigin();
+            const cs = this.bag.cellsAt(r.entry, r.entry.pos);
+            for (const [cx, cy] of cs) this.fx.burst(ox + (cx + 0.5) * this.L.cell, oy + (cy + 0.5) * this.L.cell, "#d9b4ff", 6, 70);
+          }
+          return;
+        }
         case "abandon":
           if (!run || !confirm("Abandonner la partie ? Elle sera perdue.")) return;
           run.phase = "dead";
@@ -941,6 +986,12 @@ export class App {
           break;
         case "heal":
           R.shopHeal(run, this.runData);
+          break;
+        case "unfuse":
+          R.unfuseAt(run, this.runData, Number(arg));
+          break;
+        case "refill":
+          R.refillBottles(run, this.runData);
           break;
         case "leave":
           R.leaveShop(run, this.runData);
@@ -1080,8 +1131,9 @@ export class App {
   // Infobulles
   // -------------------------------------------------------------------------
 
-  private tipHtml(def: ItemDef, mods?: ItemInstance["mods"], charges?: number | null): string {
+  private tipHtml(def: ItemDef, mods?: ItemInstance["mods"], charges?: number | null, fusedFrom?: string[]): string {
     const info = describeItem(def, { mods, charges });
+    if (fusedFrom?.length) info.lines.push({ kind: "note", text: `Fusion de : ${fusedFrom.map((x) => this.content.items[x]?.name ?? x).join(" + ")}` });
     const col = RARITY_COLOR[def.rarity] ?? RARITY_COLOR.common;
     const tags = info.tags.map((t) => `<span class="bb-tag">${esc(t)}</span>`).join("");
     const lines = info.lines.map((l) => `<li class="bb-l-${l.kind}">${esc(l.text)}</li>`).join("");
@@ -1092,6 +1144,7 @@ export class App {
     let def: ItemDef | undefined;
     let mods: ItemInstance["mods"] | undefined;
     let charges: number | null | undefined;
+    let fusedFrom: string[] | undefined;
     let id = "";
     if (hit.kind === "bag" || hit.kind === "stash") {
       const e = this.bag.get(hit.uid);
@@ -1100,6 +1153,7 @@ export class App {
       const pi = hit.kind === "bag" ? this.previewItem(e.uid) : undefined;
       mods = pi?.mods;
       charges = e.charges;
+      fusedFrom = e.fusedFrom;
       id = hit.uid;
     } else if (hit.kind === "fight") {
       const it = this.fight?.state.combatants[0].items.find((i) => i.uid === hit.uid);
@@ -1111,7 +1165,7 @@ export class App {
     }
     if (!def) return;
     if (this.tipFor !== id || this.tipEl.hidden) {
-      this.tipEl.innerHTML = this.tipHtml(def, mods, charges);
+      this.tipEl.innerHTML = this.tipHtml(def, mods, charges, fusedFrom);
       this.tipFor = id;
     }
     this.tipEl.hidden = false;
@@ -1146,6 +1200,12 @@ export class App {
   }
 
   private hitTest(x: number, y: number): Hit {
+    if (this.mode === "prep") {
+      for (let i = this.fuseBadges.length - 1; i >= 0; i--) {
+        const b = this.fuseBadges[i];
+        if (Math.hypot(x - b.x, y - b.y) <= b.r + 6) return { kind: "fuse", index: i };
+      }
+    }
     if (this.ctx === "run" && this.mode === "prep") {
       for (const [id, p] of this.nodePos) if (Math.hypot(x - p.x, y - p.y) <= p.r + 6) return { kind: "node", id };
     }
@@ -1175,6 +1235,8 @@ export class App {
     cv.addEventListener("pointermove", (ev) => this.onMove(ev));
     cv.addEventListener("pointerup", (ev) => this.onUp(ev));
     cv.addEventListener("pointercancel", (ev) => this.onCancel(ev));
+    // pas de « clic » synthétique après un toucher : il tomberait sur la fenêtre qui vient de s'ouvrir
+    cv.addEventListener("touchend", (ev) => { if (ev.cancelable) ev.preventDefault(); }, { passive: false });
     cv.addEventListener("pointerleave", (ev) => {
       // en tactile, pointerleave suit chaque relâchement : on ne ferme que pour la souris
       if (ev.pointerType === "mouse" && !this.press && !this.drag) {
@@ -1221,6 +1283,7 @@ export class App {
       const act = t.closest<HTMLElement>("[data-act]");
       if (act && !(act as HTMLButtonElement).disabled) return this.onAct(act.dataset.act!);
       if (t.closest("[data-continue]")) return this.applyFightResult();
+      if (t === this.modalEl && performance.now() - this.modalAt < 400) return;
       if (t === this.modalEl && this.ctx === "run" && this.run && this.run.phase !== "map") return;
       if (t.closest("[data-again]")) this.startFight();
       else if (t.closest("[data-replay]") && this.fight) this.startFight(this.fight.seed);
@@ -1343,6 +1406,9 @@ export class App {
       case "node":
         this.tapNode(h.id);
         break;
+      case "fuse":
+        this.showFusion(h.index);
+        break;
       default:
         if (this.selectedNode) this.selectedNode = null;
         this.hideTip();
@@ -1404,7 +1470,8 @@ export class App {
       gy = (y - oy) / this.L.cell - e.pos![1];
     }
     this.drag = { uid, pointerId, gx, gy, rot: e.rot, mirror: e.mirror, fromStash, x, y };
-    this.packStash();
+    if (this.bag.isExtension(e) && this.margin === 0) this.resize();
+    else this.packStash();
   }
 
   private rotateDrag(): void {
@@ -1438,12 +1505,14 @@ export class App {
       this.bag.entries = [e, ...this.bag.entries.filter((x) => x !== e)];
       this.stashPage = 0;
     } else if (anchor && this.bag.check(d.uid, anchor, d.rot, d.mirror).ok) {
+      const ext = this.bag.isExtension(e);
       this.bag.move(d.uid, anchor, d.rot, d.mirror);
+      if (ext) this.fx.showBanner("Le sac s'agrandit !", "#ffd27a");
     } else {
       this.fx.shake.set(d.uid, 0.3);
     }
-    this.packStash();
     this.bagChanged();
+    this.resize();
   }
 
   private rotateEntry(uid: string): void {
@@ -1668,8 +1737,16 @@ export class App {
       return;
     }
 
-    // aperçu de dépôt
+    // extension en main : cases du bord où elle peut aller
     const d = this.drag;
+    if (d && this.bag.isExtension(this.bag.get(d.uid)!)) {
+      g.strokeStyle = "rgba(255, 210, 122, .7)";
+      g.lineWidth = 2;
+      g.setLineDash([4, 4]);
+      for (const [x, y] of this.bag.extensionSlots()) g.strokeRect(ox + x * L.cell + 4, oy + y * L.cell + 4, L.cell - 8, L.cell - 8);
+      g.setLineDash([]);
+    }
+    // aperçu de dépôt
     const anchor = this.dragAnchor();
     if (d && anchor && inRect(L.grid, d.x, d.y, L.cell * 0.5)) {
       const chk = this.bag.check(d.uid, anchor, d.rot, d.mirror);
@@ -1688,6 +1765,73 @@ export class App {
         shake: this.fx.shake.get(e.uid),
       });
     }
+    this.drawFuseBadges(ox, oy);
+  }
+
+  /** Pastilles ⚗ entre les objets qui peuvent fusionner. */
+  private drawFuseBadges(ox: number, oy: number): void {
+    const g = this.g;
+    const c = this.L.cell;
+    this.fuseBadges = [];
+    if (this.drag) return;
+    const r = Math.max(10, Math.min(16, c * 0.22));
+    const pulse = 0.5 + 0.5 * Math.sin(this.time * 4);
+    for (const opt of this.fusions) {
+      const cells = opt.uids.flatMap((u) => {
+        const e = this.bag.get(u);
+        return e?.pos ? this.bag.cellsAt(e, e.pos) : [];
+      });
+      if (!cells.length) continue;
+      // point de contact : milieu des centres des ingrédients
+      const centers = opt.uids.map((u) => {
+        const e = this.bag.get(u)!;
+        const cs = this.bag.cellsAt(e, e.pos!);
+        return [cs.reduce((a, q) => a + q[0], 0) / cs.length, cs.reduce((a, q) => a + q[1], 0) / cs.length];
+      });
+      let x = ox + (centers.reduce((a, q) => a + q[0], 0) / centers.length + 0.5) * c;
+      let y = oy + (centers.reduce((a, q) => a + q[1], 0) / centers.length + 0.5) * c;
+      for (let k = 0; k < 6 && this.fuseBadges.some((b) => Math.hypot(b.x - x, b.y - y) < r * 2); k++) {
+        x += r * 1.6;
+        y += r * 0.4;
+      }
+      this.fuseBadges.push({ x, y, r });
+      g.fillStyle = `rgba(180, 122, 232, ${0.35 + pulse * 0.3})`;
+      g.beginPath();
+      g.arc(x, y, r + 4, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = COLORS.dark;
+      g.beginPath();
+      g.arc(x, y, r + 1.5, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = opt.recipe.kind === "upgrade" ? "#f2b84a" : "#b47ae8";
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fill();
+      g.font = `${Math.round(r * 1.2)}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(opt.recipe.kind === "upgrade" ? "⬆️" : "⚗️", x, y + 1);
+    }
+  }
+
+  private showFusion(index: number): void {
+    const opt = this.fusions[index];
+    if (!opt) return;
+    const res = this.content.items[opt.recipe.result];
+    const ings = opt.uids
+      .map((u) => this.bag.get(u)?.item)
+      .filter((x): x is string => !!x)
+      .map((id) => `<span class="bb-ing"><img src="${iconUrl(id)}" alt="" width="40" height="40"><small>${esc(this.content.items[id].name)}</small></span>`)
+      .join('<span class="bb-plus">+</span>');
+    this.showModal(`
+      <h2 class="bb-title">${opt.recipe.kind === "upgrade" ? "Amélioration" : "Fusion"}</h2>
+      <div class="bb-recipe">${ings}<span class="bb-plus">→</span></div>
+      <div class="bb-cards">${this.itemCard(res.id, "")}</div>
+      <p class="bb-seed">Les ingrédients disparaissent. Le résultat prend leur place s'il y rentre, sinon il va dans ta réserve.${this.ctx === "run" ? " Une boutique peut le défusionner contre de l'or." : ""}</p>
+      <div class="bb-actions">
+        <button type="button" class="btn btn-small btn-ghost" data-close>Annuler</button>
+        <button type="button" class="btn btn-small" data-act="fuse:${index}">⚗ Fusionner</button>
+      </div>`);
   }
 
   private drawStash(): void {

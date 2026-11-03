@@ -4,7 +4,9 @@
 import type { RunData } from "../content/runData";
 import { combatResult, createCombat, queueAction, stepCombat } from "../engine/combat";
 import type { CombatResult, CombatSetup, Content } from "../engine/types";
-import { autoPlace } from "./autoplace";
+import type { Recipe } from "../content/recipes";
+import { autoPlace, placeExtensions } from "./autoplace";
+import { applyFusion, findFusions } from "./fusion";
 import { Bag } from "./bag";
 import * as R from "./run";
 
@@ -29,11 +31,23 @@ export function fightWithPotions(content: Content, setup: CombatSetup): CombatRe
 const value = (content: Content, id: string) => (RARITY_RANK[content.items[id].rarity] ?? 0) * 100 + content.items[id].price;
 
 /** Range tout le sac de zéro : objets les plus précieux d'abord. */
-export function repack(run: R.RunState, content: Content): void {
+export function repack(run: R.RunState, content: Content, recipes: Recipe[] = []): void {
   const cls = content.classes[run.cls];
-  const bag = Bag.fromJSON(content, cls.bagCells, run.bag);
+  const bag = Bag.fromJSON(content, cls.bagCells, run.bag, cls.maxBag);
+  placeExtensions(bag);
   for (const e of bag.entries) bag.stash(e.uid);
-  autoPlace(bag, (id) => !content.items[id].tags.includes("Vide") || false);
+  autoPlace(bag, (id) => !content.items[id].tags.includes("Vide"));
+  // fusions : on prend tout ce qui monte en valeur, puis on range à nouveau
+  for (let guard = 0; guard < 6; guard++) {
+    const opt = findFusions(bag, recipes).find((o) => {
+      const gain = content.items[o.recipe.result].price - o.uids.reduce((s, u) => s + content.items[bag.get(u)!.item].price, 0) * 0.7;
+      return gain > 0;
+    });
+    if (!opt) break;
+    applyFusion(bag, opt);
+    for (const e of bag.entries) bag.stash(e.uid);
+    autoPlace(bag, (id) => !content.items[id].tags.includes("Vide"));
+  }
   run.bag = bag.toJSON();
 }
 
@@ -42,7 +56,7 @@ export interface BotReport {
   steps: number;
 }
 
-export function botRun(content: Content, rd: RunData, cls: string, seed: number, maxSteps = 400): BotReport {
+export function botRun(content: Content, rd: RunData, cls: string, seed: number, recipes: Recipe[] = [], maxSteps = 400): BotReport {
   const run = R.newRun(content, rd, cls, seed);
   let steps = 0;
   while (steps++ < maxSteps && run.phase !== "dead" && run.phase !== "won") {
@@ -63,13 +77,13 @@ export function botRun(content: Content, rd: RunData, cls: string, seed: number,
         const p = run.pending as Extract<R.Pending, { kind: "reward" }>;
         const best = [...p.choices].sort((a, b) => value(content, b) - value(content, a))[0] ?? null;
         R.takeReward(run, rd, best);
-        repack(run, content);
+        repack(run, content, recipes);
         break;
       }
       case "chest": {
         const p = run.pending as Extract<R.Pending, { kind: "chest" }>;
         R.takeChest(run, rd, [...p.choices].sort((a, b) => value(content, b) - value(content, a))[0] ?? null);
-        repack(run, content);
+        repack(run, content, recipes);
         break;
       }
       case "shop": {
@@ -78,7 +92,7 @@ export function botRun(content: Content, rd: RunData, cls: string, seed: number,
         const order = p.stock.map((s, i) => [s, i] as const).sort((a, b) => value(content, b[0].item) - value(content, a[0].item));
         for (const [s, i] of order) if (!s.sold && run.gold >= s.price) R.buy(run, i);
         R.leaveShop(run, rd);
-        repack(run, content);
+        repack(run, content, recipes);
         break;
       }
       case "campfire":
@@ -93,7 +107,7 @@ export function botRun(content: Content, rd: RunData, cls: string, seed: number,
         }
         const idx = ev.choices.findIndex((c) => R.choiceAvailable(run, content, c));
         R.chooseEvent(run, content, rd, idx);
-        repack(run, content);
+        repack(run, content, recipes);
         break;
       }
     }
