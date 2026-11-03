@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Billard · AkarisuMD</title>
+  <meta name="description" content="Billard américain 2D : défie un ami en ligne avec un code de salon, ou jouez à deux sur le même écran.">
+  <meta property="og:title" content="Billard · AkarisuMD">
+  <meta property="og:description" content="Billard américain 2D : défie un ami en ligne avec un code de salon, ou jouez à deux sur le même écran.">
+  <meta name="theme-color" content="#3f6b3a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Billard">
+  <link rel="apple-touch-icon" href="assets/squirrel.png">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261104mb2">
+  <link rel="stylesheet" href="css/billard.css?v=20261109bi1">
+</head>
+<body data-page="pool">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="versus.html" data-page="versus">Versus</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="section game-section">
+    <div class="wrap">
+      <div class="game-head">
+        <div>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · en ligne & à deux</span>
+          <h1>Billard</h1>
+        </div>
+        <button class="btn btn-ghost btn-small" type="button" data-pool-menu>☰ Menu</button>
+      </div>
+
+      <div class="pool" data-pool>
+        <div class="pool-stage" data-stage>
+          <canvas class="pool-canvas" data-canvas aria-label="Table de billard"></canvas>
+          <div class="game-overlay pool-overlay" data-overlay>
+            <div class="panel game-card pool-card" data-card><p>Chargement du jeu…</p><noscript><p>Ce jeu a besoin de JavaScript.</p></noscript></div>
+          </div>
+        </div>
+        <aside class="panel pool-side" aria-label="Partie">
+          <div class="pool-players" data-players></div>
+          <p class="pool-status" data-status aria-live="polite">Chargement…</p>
+          <div class="pool-pot" data-pot></div>
+          <div class="pool-shoot" data-shoot hidden>
+            <label class="pool-power">Puissance <input type="range" min="3" max="100" value="55" data-power><output data-power-out>55</output></label>
+            <div class="pool-fine">
+              <button class="btn btn-ghost btn-small" type="button" data-fine="-1" aria-label="Viser un peu plus à gauche">◀</button>
+              <button class="btn btn-small" type="button" data-shot>🎱 Tirer</button>
+              <button class="btn btn-ghost btn-small" type="button" data-fine="1" aria-label="Viser un peu plus à droite">▶</button>
+            </div>
+          </div>
+          <div class="pool-actions" data-actions></div>
+        </aside>
+      </div>
+
+      <div class="game-info">
+        <div class="panel game-help">
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li><strong>Viser</strong> : déplace la souris (ou glisse le doigt) sur la table, la queue se tourne vers le pointeur. Les boutons ◀ ▶ (ou les flèches <kbd>←</kbd> <kbd>→</kbd>) affinent. Le trait montre où la blanche va taper.</li>
+            <li><strong>Tirer</strong> : règle la puissance avec la jauge puis appuie sur « Tirer » (ou <kbd>Espace</kbd>). <kbd>↑</kbd> <kbd>↓</kbd> changent la puissance.</li>
+            <li><strong>Règles (8-ball)</strong> : 15 billes, les pleines (1–7) contre les rayées (9–15). Le premier qui empoche une bille choisit son groupe. Tant que tu empoches, tu rejoues. Empoche toutes tes billes puis la noire (8) pour gagner ; la noire trop tôt, ou avec une faute, fait perdre.</li>
+            <li><strong>Fautes</strong> : blanche empochée, aucune bille touchée, mauvaise bille touchée en premier, ou aucune bille qui touche une bande après le contact. L'adversaire a alors la <strong>blanche en main</strong> : glisse-la où tu veux.</li>
+            <li><strong>En ligne</strong> : crée un salon et envoie le code de 4 lettres (ou le lien) à ton adversaire. Les autres personnes qui rejoignent le salon regardent la partie. Chacun voit le tir de l'autre en direct.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261103re4"></script>
+  <script src="js/auth.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261110uch3"></script>
+  <script src="js/vendor/supabase-2.45.4.min.js"></script>
+  <script src="js/billard.js?v=20261109bi1"></script>
+</body>
+</html>
