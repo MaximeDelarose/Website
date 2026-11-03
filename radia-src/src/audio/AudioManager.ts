@@ -14,8 +14,11 @@ export type Sfx =
   | 'move' | 'capture' | 'victory' | 'invalid' | 'spawn' | 'deliver' | 'pickup' | 'drop' | 'whoosh'
   | 'heart' | 'check' | 'sparkle' | 'page';
 
-/** Les versions de « J'arrive pas à t'oublier » : elles s'enchaînent tour à tour. */
-const TRACKS = ['./assets/music/radia-theme.mp3', './assets/music/radia-theme-2.mp3'];
+/** Les morceaux s'enchaînent tour à tour (le niveau sonore de chacun est égalisé au chargement). */
+const TRACKS = [
+  './assets/music/radia-theme.mp3', './assets/music/radia-warm-world.mp3', './assets/music/radia-theme-2.mp3',
+  './assets/music/radia-quiet-resolution.mp3', './assets/music/radia-lingering-notes.mp3',
+];
 const MAX_VOICES = 10;
 /** Plafond de volume musique : même au réglage maximal, elle reste douce. */
 const MUSIC_CEIL = 0.7;
