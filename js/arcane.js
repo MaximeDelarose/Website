@@ -13,7 +13,7 @@
   var stage = document.querySelector("[data-arcane]");
   if (!A || !ART || !stage) return;
 
-  var VERSION = "2.0.0";
+  var VERSION = "2.1.0";
   var TW = 96, TH = 48, HW = TW / 2, HH = TH / 2;
   var TAU = Math.PI * 2;
   var canvas = stage.querySelector("canvas");
@@ -33,7 +33,7 @@
   var KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
 
   /* ====================== RÉGLAGES ====================== */
-  var SET = { sfx: 0.7, music: 0.3, mute: false, fx: "full", grid: true };
+  var SET = { sfx: 0.7, music: 0.3, mute: false, fx: "full", grid: true, tactical: true };
   try { var s0 = JSON.parse(load("at-settings", "{}")); for (var k0 in s0) if (k0 in SET) SET[k0] = s0[k0]; } catch (e) {}
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches && load("at-settings", null) == null) SET.fx = "reduced";
   function saveSet() { store("at-settings", JSON.stringify(SET)); }
@@ -169,6 +169,7 @@
     '<button class="at-hbtn" type="button" data-act="inv" title="Sac (I)">🎒<b data-newcount hidden></b></button>' +
     '<button class="at-hbtn" type="button" data-act="quests" title="Quêtes (J)">📜</button>' +
     '<button class="at-hbtn" type="button" data-act="mute" title="Son">🔊</button>' +
+    '<button class="at-hbtn" type="button" data-act="tactical" title="Mode tactique (T)">⊞</button>' +
     '<button class="at-hbtn" type="button" data-act="center" title="Recentrer (C)">◎</button>' +
     '<button class="at-hbtn" type="button" data-act="full" title="Plein écran">⛶</button>' +
     '<button class="at-hbtn" type="button" data-act="pause" title="Menu (Échap)">☰</button></div>' +
@@ -369,6 +370,8 @@
       case "newspell": if (isLocal(e.pi)) after(1.6, function () { toast("✨ <b>Nouveau sort : " + esc(A.SPELLS[e.sid].name) + "</b> (" + (A.SPELLS[e.sid].ult ? "ultime, " : "") + "touche " + KEYS[A.CLASSES[w.players[e.pi].profile.cls].spells.indexOf(e.sid)] + ")", "gold"); }); break;
       case "dopeul": if (isLocal(e.pi)) after(2.2, function () { toast("👁 <b>Niveau 100 !</b> Le Maître des Dopeuls t'attend à Lumebourg : affronte ton propre reflet.", "gold"); }); break;
       case "buy": if (isLocal(e.pi)) { SFX.coin(); toast("🛒 Acheté : <b>" + esc(e.item.name) + "</b>", "gold"); if (panel === "shop") refreshPanelSoon(); } break;
+      case "pet": if (isLocal(e.pi)) { SFX.coin(); toast(e.id ? "🐾 <b>" + esc(A.PETS[e.id].name) + "</b> te suit" : "Ton familier se repose", "gold"); if (panel === "shop") refreshPanelSoon(); } break;
+      case "mount": if (isLocal(e.pi)) { SFX.level(); banner(A.MOUNTS[e.id].name, "Tu es en selle !", "level"); if (panel === "shop") refreshPanelSoon(); } break;
       case "skin": if (isLocal(e.pi)) { SFX.level(); banner(A.SKINS[e.id].name, "Nouvelle tenue équipée", "level"); var hv = w.heroes[e.pi]; if (hv) { var hq = iso(hv.x, hv.y); addParts(hq.x, hq.y - 30, 40, ["#ffd257", "#fff", "#c77dff"], { up: 80, max: 160 }); addRing(hq.x, hq.y, "#ffd257", 10, 2 * TW, 0.8, { flat: true, lw: 6 }); } if (panel === "shop") refreshPanelSoon(); } break;
       case "dngdone": if (isLocal(e.pi)) after(1.2, function () { banner(A.DUNGEONS[e.id].name + " vaincu !", "La zone suivante est ouverte", "win"); }); break;
       case "quest": if (isLocal(e.pi)) { var Q = A.QUESTS.filter(function (q) { return q.id === e.q; })[0]; toast("📜 Quête terminée : <b>" + esc(Q ? Q.name : "") + "</b>", "gold"); } break;
@@ -488,6 +491,7 @@
     if (!w) return;
     var sx = shakeT ? rnd(-shakeT, shakeT) * 0.5 : 0, sy = shakeT ? rnd(-shakeT, shakeT) * 0.5 : 0;
     g.setTransform(dpr * cam.z, 0, 0, dpr * cam.z, dpr * (W / 2 - cam.x * cam.z + sx), dpr * (H / 2 - cam.y * cam.z + sy));
+    if (w.combat && SET.tactical) { g.save(); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = "rgba(20,22,30,.55)"; g.fillRect(0, 0, W, H); g.restore(); }
     if (w.combat) renderCombat(g); else renderExplore(g);
     renderFx(g);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -624,7 +628,9 @@
       var p = iso(v.gx, v.gy), cls = w.players[i].profile.cls;
       items.push({ d: v.gx + v.gy, o: 4, f: function (g) {
         if (duo && i === focusPi) { ART.ell(g, p.x, p.y, 22, 10, "rgba(255,255,255,.25)"); g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = 2; g.beginPath(); g.ellipse(p.x, p.y, 22, 10, 0, 0, TAU); g.stroke(); }
-        ART.hero(g, cls, p.x, p.y, { t: clock + i, flip: v.face === 1 || v.face === -2 ? 1 : -1, back: v.face < 0, walk: v.walk, seed: i * 3, gear: A.gearOf(w.players[i].profile) });
+        var gr = A.gearOf(w.players[i].profile);
+        if (gr.pet) ART.pet(g, gr.pet, p.x - 30, p.y + 6, { t: clock + i });
+        ART.hero(g, cls, p.x, p.y, { t: clock + i, flip: v.face === 1 || v.face === -2 ? 1 : -1, back: v.face < 0, walk: v.walk, seed: i * 3, gear: gr });
         if (w.players.filter(Boolean).length > 1) label(g, p.x, p.y - 84, w.players[i].name, isLocal(i) ? "#ffffff" : "#9fd8ff", 12);
       } });
     });
@@ -644,15 +650,23 @@
 
   /* ---------- combat ---------- */
   function renderCombat(g) {
-    var c = w.combat, Ar = c.arena, T = ART.THEMES[Ar.theme] || ART.THEMES.prairie;
+    var c = w.combat, Ar = c.arena, T = ART.THEMES[Ar.theme] || ART.THEMES.prairie, tac = SET.tactical;
     for (var s = 0; s < Ar.w + Ar.h; s++) for (var x = 0; x <= s; x++) {
       var y = s - x;
       if (x >= Ar.w || y >= Ar.h || Ar.g[x][y] === 9) continue;
-      var tint = Ar.tint[x][y], chk = (x + y) % 2;
+      var tint = Ar.tint[x][y], chk = (x + y) % 2, k = Ar.g[x][y];
+      var below = y + 1 >= Ar.h || Ar.g[x][y + 1] === 9, right = x + 1 >= Ar.w || Ar.g[x + 1][y] === 9;
+      if (tac) {
+        // mode tactique façon Dofus : sol beige quadrillé, trous noirs, obstacles en blocs gris
+        if (k === 4) { drawTile(g, x, y, "#15171c", below || right ? 34 : 0, below ? "#3f4350" : null, right ? "#30333d" : null, "rgba(0,0,0,.6)"); continue; }
+        drawTile(g, x, y, chk ? "#b8b09a" : "#aaa38e", below || right ? 34 : 0, below ? "#6f6a5a" : null, right ? "#5a5648" : null, "rgba(40,36,28,.45)");
+        if (k === 1) { var pb = iso(x, y), hb = 28; g.fillStyle = "#6c6c74"; g.beginPath(); g.moveTo(pb.x - HW, pb.y); g.lineTo(pb.x, pb.y + HH); g.lineTo(pb.x, pb.y + HH - hb); g.lineTo(pb.x - HW, pb.y - hb); g.closePath(); g.fill(); g.fillStyle = "#8a8a94"; g.beginPath(); g.moveTo(pb.x + HW, pb.y); g.lineTo(pb.x, pb.y + HH); g.lineTo(pb.x, pb.y + HH - hb); g.lineTo(pb.x + HW, pb.y - hb); g.closePath(); g.fill(); g.fillStyle = "#a9a9b4"; ART.diamond(g, pb.x, pb.y - hb, HW, HH); g.fill(); g.strokeStyle = "rgba(40,36,28,.5)"; g.lineWidth = 1; ART.diamond(g, pb.x, pb.y - hb, HW, HH); g.stroke(); }
+        continue;
+      }
       var top = T.top[chk ? 0 : 2];
       if (Ar.theme === "donjon") top = chk ? "#5d527c" : "#665b88";
-      var below = y + 1 >= Ar.h || Ar.g[x][y + 1] === 9, right = x + 1 >= Ar.w || Ar.g[x + 1][y] === 9;
-      drawTile(g, x, y, ART.shade(top, (tint - 0.5) * 0.06 - (Ar.g[x][y] === 1 ? 0.18 : 0)), below || right ? 34 : 0, below ? T.side : null, right ? T.side2 : null, "rgba(255,255,255,.14)");
+      if (k === 4) { drawTile(g, x, y, "#0d0f16", below || right ? 34 : 0, below ? T.side : null, right ? T.side2 : null, "rgba(0,0,0,.5)"); continue; }
+      drawTile(g, x, y, ART.shade(top, (tint - 0.5) * 0.06 - (k === 1 ? 0.18 : 0)), below || right ? 34 : 0, below ? T.side : null, right ? T.side2 : null, "rgba(255,255,255,.14)");
     }
     var a = A.active(c), my = a && a.side === 0 && isLocal(a.pi) && c.phase === "fight" && w.mode === "combat";
     // placement
@@ -708,7 +722,7 @@
     });
     booms.forEach(function (b) { g.globalAlpha = 1 - b.t / 0.6; g.fillStyle = "#ff5a6a"; ART.diamond(g, b.x, b.y, HW * (0.6 + b.t), HH * (0.6 + b.t)); g.fill(); g.globalAlpha = 1; });
     var occ = occluders(), items = [];
-    Object.keys(Ar.deco).forEach(function (key) {
+    if (!tac) Object.keys(Ar.deco).forEach(function (key) {
       var q = key.split(","), x = +q[0], y = +q[1], d = Ar.deco[key], p = iso(x, y);
       var al = decoAlpha(x, y, occ, true);
       items.push({ d: x + y, o: 1, f: function (g) { ART.deco(g, d, p.x, p.y, { t: clock, alpha: al }); } });
@@ -727,7 +741,7 @@
     c.units.forEach(function (u) {
       if (!u.alive) return;
       var v = vis["u" + u.id]; if (!v) return;
-      var p = iso(v.gx, v.gy), h = u.boss ? 150 : u.summon ? (u.cls === "dame" ? 84 : 66) : u.side === 0 ? 102 : 76;
+      var p = iso(v.gx, v.gy), h = u.boss ? 150 : u.summon ? (u.cls === "dame" ? 84 : 66) : u.side === 0 ? 102 + (w.players[u.pi] && w.players[u.pi].profile.riding && w.players[u.pi].profile.mount ? 32 : 0) : 76;
       if (v.jump) h += 40;
       hpBar(g, p.x, p.y - h, u);
     });
@@ -795,6 +809,7 @@
       // bouclier : bulle légère
       if (u.shield.length) { ART.glow(g, x, y - 34, 44, "rgba(159,216,255,.45)", 0.8); g.strokeStyle = "rgba(159,216,255,.7)"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y - 34, 30, 40, 0, 0, TAU); g.stroke(); }
       opt.gear = w.players[u.pi] ? A.gearOf(w.players[u.pi].profile) : null;
+      if (opt.gear && opt.gear.pet) ART.pet(g, opt.gear.pet, x - 34, y + 4, { t: clock + u.id, scale: 0.9 });
       ART.hero(g, u.cls, x, y, opt);
     } else {
       var M = A.MOBS[u.type];
@@ -1091,7 +1106,8 @@
         return '<li class="' + (main ? "main" : "") + '" title="' + esc(SS.desc) + '"><span>' + SS.name + (SS.el ? ' <i style="color:' + A.ELEMENTS[SS.el].col + '">●</i>' : "") + "</span><b>" + st[k] + "</b>" +
           (pr.pts ? '<button type="button" class="at-plus" data-stat="' + k + '" data-n="1">+1</button>' + (pr.pts >= 5 ? '<button type="button" class="at-plus" data-stat="' + k + '" data-n="5">+5</button>' : "") : "") + "</li>";
       }).join("") + "</ul>" +
-      (st.powers.length ? '<p class="at-pows">' + st.powers.map(function (p) { return "<span title=\"" + esc(A.POWERS[p].desc) + "\">✦ " + esc(A.POWERS[p].name) + "</span>"; }).join("") + "</p>" : "") + "</div>" +
+      (st.powers.length ? '<p class="at-pows">' + st.powers.map(function (p) { return "<span title=\"" + esc(A.POWERS[p].desc) + "\">✦ " + esc(A.POWERS[p].name) + "</span>"; }).join("") + "</p>" : "") +
+      (pr.pet || pr.mount ? '<p class="at-pows">' + (pr.pet ? "<span>🐾 " + esc(A.PETS[pr.pet].name) + "</span>" : "") + (pr.mount ? '<button type="button" class="at-plus" data-act="ride"' + (fighting ? " disabled" : "") + ">" + (pr.riding ? "🐎 " + esc(A.MOUNTS[pr.mount].name) + " · descendre" : "🐎 remonter en selle") + "</button>" : "") + "</p>" : "") + "</div>" +
       '<div class="at-inv-r"><div class="at-bag">' + bag + '</div><p class="at-bag-n">' + pr.bag.length + " / " + A.BAG_MAX + ' · <button class="text-link" type="button" data-junk="0">Vendre les communs</button> · <button class="text-link" type="button" data-junk="1">et les magiques</button></p>' +
       '<div class="at-detail">' + detail + "</div></div></div>" + (fighting ? '<p class="game-small">On ne peut pas changer d\'équipement pendant un combat.</p>' : ""), "at-card-inv");
     if (pr.bag.some(function (x) { return x.isNew; })) setTimeout(function () { sendCmd({ t: "seen" }, panelPi); }, 1200);
@@ -1121,7 +1137,7 @@
     panel = "shop";
     var pr = pl.profile, price = A.chestPrice(pr), guest = NET.started && NET.role === "guest";
     var npc = (A.NPCS[w.zone] || []).filter(function (n) { return n.role === "shop"; })[0];
-    var tabs = '<div class="at-tabs">' + [["items", "🛒 Objets"], ["chest", "🎁 Coffres"], ["skins", "👑 Tenues"]].map(function (t) { return '<button type="button" class="' + (shopTab === t[0] ? "on" : "") + '" data-shoptab="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
+    var tabs = '<div class="at-tabs">' + [["items", "🛒 Objets"], ["chest", "🎁 Coffres"], ["skins", "👑 Tenues"], ["pets", "🐾 Compagnons"]].map(function (t) { return '<button type="button" class="' + (shopTab === t[0] ? "on" : "") + '" data-shoptab="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
     var body = "";
     if (shopTab === "items") {
       var stock = w.stock && w.stock[w.zone] ? w.stock[w.zone].items : (guest ? null : A.shopStock(w, w.zone));
@@ -1134,6 +1150,17 @@
         '<div class="at-shop"><div class="at-chest' + (shopReveal ? " open" : "") + '"><span></span></div>' +
         '<button class="btn" type="button" data-act="chest"' + (pr.gold < price || pr.bag.length >= A.BAG_MAX ? " disabled" : "") + ">Ouvrir un coffre runique · " + fmt(price) + " or</button>" +
         (shopReveal ? '<div class="at-loot-i" style="--d:.2s">' + (shopReveal.r >= 3 ? '<span class="at-rays"></span>' : "") + itemHtml(shopReveal, { pl: pl, actions: pr.bag.some(function (b) { return b.uid === shopReveal.uid; }) ? '<div class="at-it-a"><button class="btn btn-small" type="button" data-equip="' + shopReveal.uid + '" data-pi="' + focusPi + '">Équiper</button></div>' : "" }) + "</div>" : "") + "</div>";
+    } else if (shopTab === "pets") {
+      var petsO = pr.pets || {}, mountsO = pr.mounts || {};
+      body = '<p class="game-small">Les <b>familiers</b> suivent ton héros et donnent un bonus permanent. Les <b>montures</b> te portent : marche plus rapide, gros bonus de Vitalité, parfois +1 PM. Un seul de chaque à la fois.</p>' +
+        '<h4 class="at-sh4">Familiers</h4><div class="at-skins">' + Object.keys(A.PETS).map(function (id) {
+          var P = A.PETS[id], on = pr.pet === id;
+          return '<button type="button" class="at-skin' + (on ? " on" : "") + (petsO[id] ? " owned" : "") + '" data-pet="' + id + '"' + (!petsO[id] && pr.gold < P.price ? " disabled" : "") + '><img src="' + ART.petIcon(id, 64) + '" alt="" width="64" height="64"><b>' + esc(P.name) + "</b><span>" + esc(P.desc) + "</span><small>" + (on ? "Avec toi" : petsO[id] ? "Appeler" : fmt(P.price) + " or") + "</small></button>";
+        }).join("") + "</div>" +
+        '<h4 class="at-sh4">Montures</h4><div class="at-skins">' + Object.keys(A.MOUNTS).map(function (id) {
+          var M = A.MOUNTS[id], on = pr.mount === id;
+          return '<button type="button" class="at-skin' + (on ? " on" : "") + (mountsO[id] ? " owned" : "") + '" data-mount="' + id + '"' + (!mountsO[id] && pr.gold < M.price ? " disabled" : "") + '><img src="' + ART.mountIcon(id, 64) + '" alt="" width="64" height="64"><b>' + esc(M.name) + "</b><span>" + esc(M.desc) + "</span><small>" + (on ? (pr.riding ? "En selle" : "À pied") : mountsO[id] ? "Monter" : fmt(M.price) + " or") + "</small></button>";
+        }).join("") + "</div>" + (pr.mount ? '<div class="btn-row center"><button class="btn btn-small btn-ghost" type="button" data-act="ride">' + (pr.riding ? "Descendre de la monture" : "Remonter en selle") + "</button></div>" : "");
     } else {
       var owned = pr.skins || {};
       body = '<p class="game-small">Une tenue change les couleurs de ton héros et lui donne une <b>aura</b> visible par tout le monde. Achetée une fois, pour toujours.</p><div class="at-skins">' +
@@ -1232,6 +1259,8 @@
       "<li><b>Donjons</b> : Incarnam (niv. 2, Prairie), le Cœur du Bois Fractal (niv. 4, Bois), la Confiserie de la Reine Guimauve (niv. 5, Marais), le Sanctuaire brisé (niv. 7, Falaises) et la Tour des Horloges (niv. 10, Îles). Trois salles d'affilée, les PV ne remontent qu'en partie entre deux.</li>" +
       "<li><b>Sorts</b> : 10 par héros, un nouveau aux niveaux 3, 6, 10 (ultime), 15, 25, 40, 60 et 80, dans plusieurs éléments. <b>Appui long</b> (ou clic droit) sur un sort : sa fiche détaillée avec les dégâts réels. Au niveau 100, le Maître des Dopeuls de Lumebourg te fait affronter ton reflet.</li>" +
       "<li><b>Progression</b> : chaque zone a son donjon, et il faut vaincre le boss du donjon pour ouvrir la zone suivante : Incarnam → Bois Fractal, Cœur du Bois → Marais, Confiserie → Falaises, Sanctuaire → Îles Cotonneuses.</li>" +
+      "<li><b>Mode tactique</b> (bouton ⊞ ou <kbd>T</kbd>) : en combat, le sol devient un quadrillage beige, les trous sont noirs (infranchissables, mais on tire par-dessus) et les obstacles des blocs gris (bloquent passage et vue).</li>" +
+      "<li><b>Familiers et montures</b> (onglet Compagnons des hôtels de vente) : un familier suit ton héros et donne un bonus permanent ; une monture te porte, marche deux fois plus vite et donne de la Vitalité, parfois +1 PM. On descend de selle dans le sac.</li>" +
       "<li><b>Hôtels de vente</b> : un dans chaque zone (8 objets au niveau de la zone, coffres, et des <b>tenues</b> avec aura : royale, astrale, infernale, givre, ombre).</li>" +
       "<li><b>Zones</b> : Prairie des Runes → Bois Fractal → Marais Bulleux (au sud du Bois) → Falaises de Cristal → Îles Cotonneuses. Le bouton <b>?</b> de la barre de sorts explique chaque sort de ton héros.</li>" +
       (TOUCH ? "<li><b>Tactile</b> : touche une case pour l'aperçu, touche-la encore pour confirmer. Glisse pour déplacer la vue, pince pour zoomer.</li>" : "") +
@@ -1456,6 +1485,8 @@
       case "quests": showQuests(); break;
       case "full": toggleFull(); break;
       case "center": cam.free = false; cam.zu = 1; SFX.click(); break;
+      case "tactical": SET.tactical = !SET.tactical; saveSet(); SFX.click(); toast(SET.tactical ? "Mode tactique : <b>activé</b>" : "Mode tactique : <b>désactivé</b>"); break;
+      case "ride": sendCmd({ t: "ride" }); SFX.click(); refreshPanelSoon(); break;
       case "spells": showSpells(); break;
       case "mute": SET.mute = !SET.mute; saveSet(); applyVolume(); $("[data-act=mute]", hud).textContent = SET.mute ? "🔇" : "🔊"; break;
       case "pause": showPause(); break;
@@ -1483,6 +1514,8 @@
     if (b.dataset.sdetail) { showSpellDetail(b.dataset.sdetail, b.dataset.cls); return; }
     if (b.dataset.buy) { sendCmd({ t: "buy", uid: +b.dataset.buy }); refreshPanelSoon(); return; }
     if (b.dataset.skin) { sendCmd({ t: "skin", id: b.dataset.skin }); refreshPanelSoon(); return; }
+    if (b.dataset.pet) { sendCmd({ t: "pet", id: b.dataset.pet }); refreshPanelSoon(); return; }
+    if (b.dataset.mount) { sendCmd({ t: "mount", id: b.dataset.mount }); refreshPanelSoon(); return; }
     if (b.dataset.wear != null) { sendCmd({ t: "wear", id: b.dataset.wear || null }); SFX.click(); refreshPanelSoon(); return; }
     if (b.dataset.junk != null) { sendCmd({ t: "junk", r: +b.dataset.junk }, panel === "inv" ? panelPi : focusPi); refreshPanelSoon(); return; }
     if (b.dataset.isel) { invSel = +b.dataset.isel; SFX.click(); showInv(); return; }
@@ -1527,6 +1560,7 @@
     if (k === "i" || k === "I") { act("inv"); return; }
     if (k === "j" || k === "J") { act("quests"); return; }
     if (k === "c" || k === "C") { cam.free = false; cam.zu = 1; return; }
+    if (k === "t" || k === "T") { act("tactical"); return; }
     if (k === "h" || k === "H" || k === "?") { showSpells(); return; }
     if (k === "Tab") { e.preventDefault(); if (duo) { focusPi = focusPi === locals[0] ? locals[1] : locals[0]; hudDirty = true; cam.free = false; } return; }
   });

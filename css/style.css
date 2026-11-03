@@ -2347,6 +2347,7 @@ button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--de
 .at-skin.on small { background: #ffd257; color: #2b1d08; }
 .at-skin[disabled] { opacity: .55; cursor: not-allowed; }
 .at-card-shop { width: min(900px, 100%); }
+.at-sh4 { margin: 10px 0 4px; font-size: 1rem; }
 .at-sp-help { display: grid; place-items: center; font: 900 1.3rem/1 Nunito, sans-serif; color: #c9b2ff; background: #2a2150; border-color: #43387a; }
 .at-sp-help:hover { color: #fff; }
 .at-slist { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }

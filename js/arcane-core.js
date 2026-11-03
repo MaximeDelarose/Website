@@ -110,6 +110,23 @@
     phenix: { name: "Phénix d'encre", hp: 40, hpL: 5, pa: 5, pm: 4, ini: 15, spells: ["flamme", "cocon"], el: "feu", ranged: true, healer: true, desc: "Brûle à 1–5 cases (Feu) et soigne les alliés." },
   };
   var SUMMON_MAX = 3;
+  // familiers : un bonus de caractéristiques, ils suivent le héros
+  var PETS = {
+    bouloute: { name: "Bouloute", price: 300, st: { vit: 40 }, col: "#ff8ab4", desc: "Boule de poils rose. +40 Vitalité." },
+    tiwabbit: { name: "Tiwabbit", price: 450, st: { agi: 25 }, col: "#f4ecd8", desc: "Petit lapin nerveux. +25 Agilité." },
+    pyrounet: { name: "Pyrounet", price: 450, st: { int: 25 }, col: "#ff7b4a", desc: "Flamme domestique. +25 Intelligence." },
+    sablon: { name: "Sablon", price: 450, st: { for: 25 }, col: "#c98a3a", desc: "Crabe de sable. +25 Force." },
+    goutine: { name: "Goutine", price: 450, st: { cha: 25 }, col: "#4fb6dd", desc: "Goutte d'eau vivante. +25 Chance." },
+    chouquette: { name: "Chouquette", price: 900, st: { sag: 30, pros: 30 }, col: "#ffd257", desc: "Chouette dorée. +30 Sagesse, +30 Prospection." },
+    dragounet: { name: "Dragounet", price: 2500, st: { dom: 12, vit: 60 }, col: "#c77dff", desc: "Bébé dragon violet. +12 Dommages, +60 Vitalité." },
+  };
+  // montures : on les chevauche en exploration et en combat ; vitesse de marche et bonus
+  var MOUNTS = {
+    dragodinde: { name: "Dragodinde rousse", price: 1500, st: { vit: 60, pm: 0 }, speed: 0.12, col: "#d99a3a", desc: "La monture de base : marche deux fois plus vite. +60 Vitalité." },
+    dragodore: { name: "Dragodinde dorée", price: 3500, st: { vit: 100, pm: 1 }, speed: 0.11, col: "#ffd257", desc: "+1 PM en combat, +100 Vitalité." },
+    muldo: { name: "Muldo des neiges", price: 4500, st: { vit: 120, res: 8 }, speed: 0.13, col: "#dff6ff", desc: "Lourd et solide : +120 Vitalité, +8 % résistance." },
+    volkorne: { name: "Volkorne", price: 7000, st: { vit: 140, pm: 1, ini: 60 }, speed: 0.1, col: "#5fe0ff", desc: "Cerf ailé : +1 PM, +140 Vitalité, +60 Initiative. Le plus rapide." },
+  };
   // niveaux de déblocage des 10 sorts de chaque héros (le 5e est l'ultime)
   var SPELL_LEVELS = [1, 1, 3, 6, 10, 15, 25, 40, 60, 80];
   var ULT_LEVEL = SPELL_LEVELS[4];
@@ -613,14 +630,17 @@
     do {
       for (x = 0; x < AW; x++) for (y = 0; y < AH; y++) if (g[x][y] === 1) { g[x][y] = 0; }
       deco = {};
+      for (x = 0; x < AW; x++) for (y = 0; y < AH; y++) if (g[x][y] === 4) { g[x][y] = 0; }
       var n = ri(r, 6, 10);
       for (var i = 0; i < n; i++) {
         var ox = ri(r, 1, 9), oy = ri(r, 3, 7);
         if (g[ox][oy] !== 0 || reserved[key(ox, oy)]) continue;
-        g[ox][oy] = 1; deco[key(ox, oy)] = arenaDeco(theme, r);
+        // 1 = obstacle (bloque passage et vue), 4 = trou (bloque le passage, pas la vue)
+        var kind = r() < 0.35 ? 4 : 1;
+        g[ox][oy] = kind; if (kind === 1) deco[key(ox, oy)] = arenaDeco(theme, r);
         // parfois une paire symétrique : lisible et tactique
         var sx = 10 - ox;
-        if (r() < 0.45 && g[sx][oy] === 0 && !reserved[key(sx, oy)]) { g[sx][oy] = 1; deco[key(sx, oy)] = arenaDeco(theme, r); }
+        if (r() < 0.45 && g[sx][oy] === 0 && !reserved[key(sx, oy)]) { g[sx][oy] = kind; if (kind === 1) deco[key(sx, oy)] = arenaDeco(theme, r); }
       }
       tries++;
     } while (!arenaConnected(g, heroCells, mobCells) && tries < 30);
@@ -676,6 +696,8 @@
     var C = CLASSES[p.cls], L = p.level;
     var s = { pa: C.pa, pm: C.pm, po: 0, res: C.res, ini: 0, dom: 0, pros: 0, powers: [], vit: 0, sag: 0, for: 0, int: 0, cha: 0, agi: 0 };
     for (var b in p.base) s[b] = (s[b] || 0) + p.base[b];
+    if (p.pet && PETS[p.pet]) for (var pk in PETS[p.pet].st) s[pk] = (s[pk] || 0) + PETS[p.pet].st[pk];
+    if (p.mount && p.riding && MOUNTS[p.mount]) for (var mk in MOUNTS[p.mount].st) s[mk] = (s[mk] || 0) + MOUNTS[p.mount].st[mk];
     SLOTS.forEach(function (sl) {
       var it = p.equip[sl]; if (!it) return;
       for (var k in it.st) s[k] = (s[k] || 0) + it.st[k];
@@ -696,6 +718,8 @@
     if (!p || !p.equip) return g;
     SLOTS.forEach(function (sl) { var it = p.equip[sl]; if (it) g[sl] = { look: it.look || 0, r: it.r }; });
     if (p.skin && SKINS[p.skin]) g.skin = p.skin;
+    if (p.pet && PETS[p.pet]) g.pet = p.pet;
+    if (p.mount && p.riding && MOUNTS[p.mount]) g.mount = p.mount;
     return g;
   }
   function itemScore(it) {
@@ -915,7 +939,8 @@
       var nx = h.path.shift();
       h.face = sgn(nx[0] - h.x) || sgn(nx[1] - h.y) * 2 || h.face;
       h.dir = [nx[0] - h.x, nx[1] - h.y];
-      h.x = nx[0]; h.y = nx[1]; h.t = CFG.exploreStep; changed = true;
+      var hp = w.players[i].profile;
+      h.x = nx[0]; h.y = nx[1]; h.t = hp.mount && hp.riding && MOUNTS[hp.mount] ? MOUNTS[hp.mount].speed : CFG.exploreStep; changed = true;
       ev(w, { k: "step", pi: i });
       var po = portalAt(w.zone, h.x, h.y);
       if (po && !h.path.length) {
@@ -1977,6 +2002,9 @@
       case "buy": return w.mode === "explore" && buyStock(w, pi, c.uid);
       case "stock": shopStock(w, w.zone); bump(w); return true;
       case "skin": return buySkin(w, pi, c.id);
+      case "pet": { var pp2 = w.players[pi].profile, PT = PETS[c.id]; if (!PT || w.mode !== "explore") return false; pp2.pets = pp2.pets || {}; if (!pp2.pets[c.id]) { if (pp2.gold < PT.price) return false; pp2.gold -= PT.price; pp2.pets[c.id] = 1; } pp2.pet = pp2.pet === c.id && !c.force ? null : c.id; pp2.rev++; ev(w, { k: "pet", pi: pi, id: pp2.pet }); bump(w); return true; }
+      case "mount": { var pm2 = w.players[pi].profile, MT = MOUNTS[c.id]; if (!MT || w.mode !== "explore") return false; pm2.mounts = pm2.mounts || {}; if (!pm2.mounts[c.id]) { if (pm2.gold < MT.price) return false; pm2.gold -= MT.price; pm2.mounts[c.id] = 1; } pm2.mount = c.id; pm2.riding = true; pm2.rev++; ev(w, { k: "mount", pi: pi, id: c.id }); bump(w); return true; }
+      case "ride": { var pr2 = w.players[pi].profile; if (!pr2.mount || (w.combat && w.combat.phase === "fight")) return false; pr2.riding = !pr2.riding; pr2.rev++; bump(w); return true; }
       case "wear": { var wp = w.players[pi].profile; if (c.id && !(wp.skins || {})[c.id]) return false; wp.skin = c.id || null; wp.rev++; bump(w); return true; }
       case "dopeul": {
         if (w.mode !== "explore" || w.zone !== "village" || w.players[pi].profile.level < DOPEUL_LEVEL) return false;
@@ -2020,7 +2048,7 @@
   var API = {
     CFG: CFG, CLASSES: CLASSES, CLASS_IDS: CLASS_IDS, SPELLS: SPELLS, SUMMONS: SUMMONS, spellsOf: spellsOf, MOBS: MOBS, MOB_SPELLS: MOB_SPELLS, AFFIXES: AFFIXES,
     SLOTS: SLOTS, SLOT_NAME: SLOT_NAME, RARITIES: RARITIES, STATS: STATS, POWERS: POWERS, QUESTS: QUESTS, ZONES: ZONES, ZONE_IDS: ZONE_IDS,
-    DUNGEONS: DUNGEONS, NPCS: NPCS, AW: AW, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, SPELL_LEVELS: SPELL_LEVELS, spellLevel: spellLevel, unlockedSpells: unlockedSpells, DOPEUL_LEVEL: DOPEUL_LEVEL, SKINS: SKINS, shopStock: shopStock, BAG_MAX: BAG_MAX,
+    DUNGEONS: DUNGEONS, NPCS: NPCS, AW: AW, PETS: PETS, MOUNTS: MOUNTS, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, SPELL_LEVELS: SPELL_LEVELS, spellLevel: spellLevel, unlockedSpells: unlockedSpells, DOPEUL_LEVEL: DOPEUL_LEVEL, SKINS: SKINS, shopStock: shopStock, BAG_MAX: BAG_MAX,
     newProfile: newProfile, fixProfile: fixProfile, heroStats: heroStats, gearOf: gearOf, LOOKS: LOOKS, xpNeed: xpNeed, itemScore: itemScore, makeItem: makeItem, rollRarity: rollRarity,
     createWorld: createWorld, addPlayer: addPlayer, removePlayer: removePlayer, zoneMap: zoneMap, exploreWalkable: exploreWalkable, portalAt: portalAt, findPath: findPath,
     cmd: cmd, step: step, active: active, unitAt: unitAt, objAt: objAt, uById: uById, inArena: inArena, groundOk: groundOk, cellFree: cellFree,
