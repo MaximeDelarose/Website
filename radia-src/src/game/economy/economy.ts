@@ -12,11 +12,11 @@ import type { ItemRef } from '../../data/items';
 import { COLLECTION_IDS, SPECIAL } from '../../data/items';
 
 export const ENERGY_MAX = 100;
-/** Une énergie revient toutes les minutes (plein en 100 min). */
-export const REGEN_MS = 60_000;
-/** Recharge gratuite d'Auguste : +25, toutes les 15 minutes. */
-export const FREE_REFILL = 25;
-export const FREE_REFILL_MS = 15 * 60_000;
+/** Une énergie revient toutes les 45 s (plein en ~75 min). */
+export const REGEN_MS = 45_000;
+/** Recharge gratuite d'Auguste : +38, toutes les 10 minutes. */
+export const FREE_REFILL = 38;
+export const FREE_REFILL_MS = 10 * 60_000;
 /** Coffre gratuit toutes les 4 heures. */
 export const FREE_CHEST_MS = 4 * 3600_000;
 export const BAG_MAX = 18;
@@ -108,13 +108,13 @@ export function rollChest(kind: 'free' | 'royal', rand: () => number): ChestLoot
   const coll = () => COLLECTION_IDS[Math.floor(rand() * COLLECTION_IDS.length)];
   if (kind === 'free') {
     return {
-      energy: r(8, 16), hearts: r(10, 30), diamonds: rand() < 0.35 ? r(1, 3) : 0, wands: rand() < 0.25 ? 1 : 0, winds: rand() < 0.4 ? 1 : 0,
+      energy: r(14, 28), hearts: r(10, 30), diamonds: rand() < 0.35 ? r(1, 3) : 0, wands: rand() < 0.25 ? 1 : 0, winds: rand() < 0.4 ? 1 : 0,
       items: rand() < 0.5 ? [{ c: 'special', l: SPECIAL.STAR }] : [],
     };
   }
   const items: ItemRef[] = [{ c: 'special', l: SPECIAL.STAR }, { c: coll(), l: r(4, 6) }];
   if (rand() < 0.5) items.push({ c: 'special', l: SPECIAL.BOX });
-  return { energy: r(25, 50), hearts: r(40, 90), diamonds: 0, wands: r(1, 2), winds: r(1, 2), items };
+  return { energy: r(42, 85), hearts: r(40, 90), diamonds: 0, wands: r(1, 2), winds: r(1, 2), items };
 }
 
 // ------------------------------------------------------- catalogue boutique

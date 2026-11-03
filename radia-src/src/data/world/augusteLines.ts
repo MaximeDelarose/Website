@@ -4,7 +4,7 @@ export type AugTopic =
   | 'furniture' | 'color' | 'room' | 'castleDone'
   | 'cat' | 'catName' | 'catPet' | 'catPlay'
   | 'family' | 'kidGame' | 'garden' | 'flowers' | 'chocolate'
-  | 'career' | 'careerUp' | 'fans' | 'fansTier' | 'magazine' | 'shop' | 'event';
+  | 'career' | 'careerUp' | 'fans' | 'fansTier' | 'magazine' | 'shop' | 'event' | 'checkin';
 
 export const AUG_LINES: Record<AugTopic, string[]> = {
   outfit: [
@@ -41,9 +41,36 @@ export const AUG_LINES: Record<AugTopic, string[]> = {
   fansTier: ['T\'auras beau avoir un million de fans, je garde ma place de premier, galbi.', 'MachaAllah, regarde tout ce que tu accomplis.'],
   magazine: ['En couverture ! Évidemment.', 'Ils ont enfin compris ce que je sais depuis le début.'],
   shop: ['T\'inquiète, c\'est cadeau. Twahechtek.', 'Même ici, j\'arrive pas à te dire non.'],
+  checkin: [
+    'J\'espère que tu passes un bon moment, ma reine ♡',
+    'Si tu as besoin de moi, je serai toujours là, inchallah.',
+    'Je pense à toi. Prends ton temps : ici, il n\'y a aucune pression.',
+    'Un petit coucou d\'Auguste : j\'espère que ta journée se passe bien ♡',
+    'N\'oublie pas de boire un verre d\'eau et de respirer un peu. Je suis fier de toi.',
+    'Quoi qu\'il arrive, je suis là pour toi. Toujours. Inchallah.',
+    'Si la journée est lourde, pose le téléphone un instant. Je t\'attends ici, sans souci ♡',
+    'Tu fais tellement de choses pour les autres… j\'espère que tu prends aussi du temps pour toi.',
+    'Je suis juste là, si tu veux parler. Tu me trouves toujours, inchallah.',
+    'Qu\'Allah t\'apporte douceur et sérénité aujourd\'hui. Moi, je suis là ♡',
+    'Tu n\'as rien à prouver ici, galbi. Joue comme ça te fait plaisir.',
+    'Même de loin, je pense à toi. Prends soin de toi, ma reine.',
+  ],
   event: ['Quelle soirée ! Tout le monde parle de toi.', 'Tu as organisé ça comme une vraie reine.'],
 };
 
 
 /** Nombre total de répliques contextuelles (≥ 20 exigé). */
 export const AUG_LINE_COUNT = Object.values(AUG_LINES).reduce((a, l) => a + l.length, 0);
+
+/** Attention d'Auguste selon l'heure (0–23) : matin, soirée, nuit, ou une phrase de la journée. */
+export function checkinLine(hour: number, pickIndex: (n: number) => number): string {
+  const t = hour >= 23 || hour < 5 ? 'night' : hour < 11 ? 'morning' : hour >= 18 ? 'evening' : 'day';
+  const specials: Record<string, string[]> = {
+    night: ['Il est tard, ma reine. Repose-toi : je serai toujours là demain, inchallah ♡', 'Il se fait tard… dors bien. Je suis là quand tu reviens ♡'],
+    morning: ['Bonjour ma reine ♡ J\'espère que ta journée commence en douceur.', 'Bonne matinée à toi. Si tu as besoin de moi, je suis là, inchallah.'],
+    evening: ['Bonne soirée à toi. J\'espère que tu passes un bon moment ♡', 'Une belle soirée, ma reine. Je suis là si tu as besoin de moi, inchallah.'],
+    day: [],
+  };
+  const pool = [...specials[t], ...AUG_LINES.checkin];
+  return pool[pickIndex(pool.length)];
+}

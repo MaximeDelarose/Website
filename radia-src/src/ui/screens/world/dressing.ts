@@ -76,6 +76,10 @@ export function openDressing(): Promise<void> {
     let preview: ItemId | null = null;
     let expr: Expr = 'smile';
     let blink = false;
+    let walk = 0;
+    let armPose: 'down' | 'wave' | 'heart' | 'open' = 'down';
+    let animUntil = 0;
+    let animOn = false;
     let heldUntil = 0;
     const timers = new Set<number>();
     const later = (fn: () => void, ms: number) => { const t = window.setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); return t; };
@@ -97,9 +101,33 @@ export function openDressing(): Promise<void> {
       if (cvs.width !== wpx) { cvs.width = wpx; cvs.height = hpx; }
       const ctx = cvs.getContext('2d')!;
       ctx.clearRect(0, 0, wpx, hpx);
-      ctx.drawImage(avatarCanvas(shown(), wpx, hpx, { expr, blink }), 0, 0);
+      ctx.drawImage(avatarCanvas(shown(), wpx, hpx, { expr, blink, step: walk, arms: armPose }), 0, 0);
     };
     const paint = () => { if (Date.now() >= heldUntil) paintNow(); };
+
+    /** Défilé : tant qu'elle essaye une pièce (ou juste après l'avoir mise), Radia marche sur place, salue et envoie un cœur. */
+    const startAnim = () => {
+      if (reducedFx() || animOn) return;
+      animOn = true;
+      const frames = [0.3, 0, -0.3, 0];
+      let i = 0;
+      const tick = () => {
+        if (!preview && Date.now() >= animUntil) {
+          animOn = false; walk = 0; armPose = 'down';
+          wrap.classList.remove('catwalk');
+          paint();
+          return;
+        }
+        walk = frames[i % 4];
+        armPose = i % 8 === 3 ? 'wave' : i % 8 === 7 ? 'heart' : 'down';
+        i++;
+        wrap.classList.add('catwalk');
+        paint();
+        later(tick, 420);
+      };
+      tick();
+    };
+    const showOff = (ms = 3800) => { animUntil = Date.now() + ms; startAnim(); };
 
     /** Petit tour sur soi-même : le nouveau look apparaît à mi-chemin. */
     const twirl = (e: Expr = 'love') => {
@@ -303,6 +331,7 @@ export function openDressing(): Promise<void> {
       expr = 'smile';
       renderAll();
       twirl('smile');
+      showOff();
     }
 
     /** Porte une pièce possédée (ou retire celle qui est déjà portée, sauf haut / bas / robe / coiffure). */
@@ -327,6 +356,7 @@ export function openDressing(): Promise<void> {
       if (!r.ok) return fail(r.reason);
       audio.play('heart');
       twirl('love');
+      showOff();
       const look = W.getLook();
       reactAuguste(W.isElegant(look) ? 'outfitElegant' : 'outfit', W.isElegant(look) ? 0.55 : 0.3);
     }

@@ -17,6 +17,7 @@ import { preloadPhotos } from './core/photos';
 import { loadFamily } from './core/family';
 import { installNoZoom } from './ui/noZoom';
 import { startKidCalls } from './ui/components/kidCalls';
+import { startCheckins } from './ui/components/checkins';
 import { warmAuguste } from './game/art/world/radiaNow';
 
 const progress = (p: number) => {
@@ -100,6 +101,7 @@ async function boot(): Promise<void> {
   void loadFamily();
   installNoZoom();
   startKidCalls();
+  startCheckins();
   void warmAuguste();
   preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste', 'head-new']);
   progress(0.3);
