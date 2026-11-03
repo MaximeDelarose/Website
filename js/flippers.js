@@ -33,7 +33,7 @@
   var PLUNGER_Y = 800, PLUNGER_TRAVEL = 26;
   var MULT_MAX = 5, BONUSX_MAX = 5;
   var EXTRA_BALL_AT = 75000;
-  var BEST_KEY = "flippers-best-v1", SND_KEY = "flippers-sound-v1";
+  var BEST_KEY = "flippers-best-v1", SND_KEY = "flippers-sound-v1", CBEST_KEY = "flippers-climb-best-v1", CTIME_KEY = "flippers-climb-time-v1", MODE_KEY = "flippers-mode-v1";
 
   var FLIPPER = { L: 92, rest: 0.5, up: -0.48, wUp: 15, wDown: 9, e: 0.45, r0: 11, r1: 6 };
   var BUMPERS = [{ x: 180, y: 200, r: 24 }, { x: 264, y: 200, r: 24 }, { x: 222, y: 272, r: 24 }];
@@ -95,23 +95,32 @@
   ];
 
   // trajet de la rampe : longueurs cumulées
-  var rampLen = [0];
-  for (var rp = 1; rp < RAMP.pts.length; rp++) {
-    var ddx = RAMP.pts[rp][0] - RAMP.pts[rp - 1][0], ddy = RAMP.pts[rp][1] - RAMP.pts[rp - 1][1];
-    rampLen.push(rampLen[rp - 1] + Math.sqrt(ddx * ddx + ddy * ddy));
+  function prepRamp(r) {
+    r.len = [0];
+    for (var i = 1; i < r.pts.length; i++) {
+      var dx = r.pts[i][0] - r.pts[i - 1][0], dy = r.pts[i][1] - r.pts[i - 1][1];
+      r.len.push(r.len[i - 1] + Math.sqrt(dx * dx + dy * dy));
+    }
+    r.total = r.len[r.len.length - 1];
+    return r;
   }
-  var RAMP_TOTAL = rampLen[rampLen.length - 1];
-  function rampPoint(d) {
-    d = Math.max(0, Math.min(RAMP_TOTAL, d));
-    for (var k = 1; k < rampLen.length; k++) {
-      if (d <= rampLen[k]) {
-        var t = (d - rampLen[k - 1]) / (rampLen[k] - rampLen[k - 1]), a = RAMP.pts[k - 1], b = RAMP.pts[k];
+  function rampPoint(r, d) {
+    d = Math.max(0, Math.min(r.total, d));
+    for (var k = 1; k < r.len.length; k++) {
+      if (d <= r.len[k]) {
+        var t = (d - r.len[k - 1]) / (r.len[k] - r.len[k - 1]), a = r.pts[k - 1], b = r.pts[k];
         return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t };
       }
     }
-    var l = RAMP.pts[RAMP.pts.length - 1];
+    var l = r.pts[r.pts.length - 1];
     return { x: l[0], y: l[1] };
   }
+  prepRamp(RAMP);
+  var RAMPS = [RAMP];
+  var WORLD_H = H, LANE_MINY = 360;
+  var M = { climb: false };
+  var CLASSIC = { segs: segs, flippers: flippers, BUMPERS: BUMPERS, TARGETS: TARGETS, DROPS: DROPS, SLINGS: SLINGS };
+  var CLIMB = null;
 
   /* ---------- état ---------- */
   var S = {
@@ -126,6 +135,7 @@
     spin: { a: 0, w: 0, n: 0 }, dropReset: 0,
     draining: false, drainTimer: 0, saucerCool: 0, t: 0, shake: 0,
     msg: "", msgT: 0, newBest: false, nextId: 1,
+    pref: store(MODE_KEY) === "climb" ? "climb" : "classic", room: 0, topY: 0, climbTime: 0, camY: 0, won: false, bestTime: parseFloat(store(CTIME_KEY)) || 0, newBestTime: false,
   };
   var particles = [], popups = [];
   var bumpFlash = BUMPERS.map(function () { return 0; });
@@ -189,16 +199,26 @@
     score: $("[data-fl-score]"), best: $("[data-fl-best]"), balls: $("[data-fl-balls]"),
     mult: $("[data-fl-mult]"), bonus: $("[data-fl-bonus]"), lock: $("[data-fl-lock]"), msg: $("[data-fl-msg]"),
   };
+  hud.bonusLabel = hud.bonus && hud.bonus.previousElementSibling; hud.lockLabel = hud.lock && hud.lock.previousElementSibling;
   var hudCache = {};
   function setHud(k, v) { if (hudCache[k] !== v && hud[k]) { hudCache[k] = v; hud[k].textContent = v; } }
+  function fmtTime(t) { t = Math.floor(t); return Math.floor(t / 60) + ":" + (t % 60 < 10 ? "0" : "") + (t % 60); }
   function fmt(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
   function updateHud() {
     setHud("score", fmt(S.score));
     setHud("best", fmt(Math.max(S.best, S.score)));
     setHud("balls", S.mode === "menu" ? String(LIVES) : String(Math.max(0, S.lives)));
     setHud("mult", "×" + S.mult);
-    setHud("bonus", "×" + S.bonusX);
-    setHud("lock", S.multi ? "MULTI" : S.locked + "/3" + (S.lockLit ? " ★" : ""));
+    if (M.climb) {
+      setHud("bonus", Math.max(0, Math.round((PLUNGER_Y - S.topY) / 20)) + " m");
+      setHud("lock", (S.room + 1) + "/5 · " + fmtTime(S.climbTime));
+    } else {
+      setHud("bonus", "×" + S.bonusX);
+      setHud("lock", S.multi ? "MULTI" : S.locked + "/3" + (S.lockLit ? " ★" : ""));
+    }
+    if (hud.bonusLabel && hudCache.mode !== M.climb) {
+      hudCache.mode = M.climb; hud.bonusLabel.textContent = M.climb ? "Hauteur" : "Bonus"; hud.lockLabel.textContent = M.climb ? "Étage · temps" : "Verrous";
+    }
     setHud("msg", S.msg);
   }
   function say(text, secs) { S.msg = text; S.msgT = secs || 2.5; }
@@ -368,6 +388,7 @@
     { x1: 384, y1: 670, x2: 328, y2: 740, nx: -0.78, ny: -0.62 },
   ];
   function contain(b) {
+    if (M.climb) { if (b.x < 24 + R) { b.x = 24 + R; if (b.vx < 0) b.vx = 0; } if (b.x > LANE_X1 - R) { b.x = LANE_X1 - R; if (b.vx > 0) b.vx = 0; } return; }
     if (b.x > LANE_X0 - 2) {                              // couloir du ressort
       if (b.x > LANE_X1 - R) { b.x = LANE_X1 - R; if (b.vx > 0) b.vx = 0; }
       if (b.y < AC.y && b.x > LANE_X0) {
@@ -420,8 +441,13 @@
     SND.launch();
   }
 
-  function startRamp(b) {
-    b.mode = "ramp"; b.pt = 0; b.vx = b.vy = 0; b.x = RAMP.mouth.x; b.y = RAMP.mouth.y;
+  function startRamp(b, r) {
+    b.mode = "ramp"; b.pt = 0; b.vx = b.vy = 0; b.x = r.mouth.x; b.y = r.mouth.y; b.ramp = r;
+    if (M.climb) {
+      addScore(r.top ? 0 : 500, r.mouth.x, r.mouth.y - 30); SND.ramp();
+      say(r.top ? "Le sommet !" : "La rampe t'emporte vers l'étage " + (r.room + 2), 2.5);
+      return;
+    }
     var pts = S.multi ? 10000 : 1500 + 500 * Math.min(S.rampCombo, 6);
     S.rampCombo++; S.bonusExtra += 1000;
     addScore(pts, 340, 300);
@@ -429,7 +455,8 @@
     SND.ramp();
   }
   function endRamp(b) {
-    var p = RAMP.pts[RAMP.pts.length - 1];
+    var r = b.ramp, p = r.pts[r.pts.length - 1];
+    if (r.top) { S.balls.splice(S.balls.indexOf(b), 1); climbWin(); return; }
     b.mode = "live"; b.x = p[0]; b.y = p[1]; b.vx = -60; b.vy = 200; b.trail = [];
     burst(b.x, b.y, "#c9d3d1", 8, 140);
   }
@@ -453,9 +480,9 @@
   function stepBall(b, dt) {
     if (b.mode === "saucer") { b.timer -= dt; if (b.timer <= 0) saucerEnd(b); return; }
     if (b.mode === "ramp") {
-      b.pt += RAMP.speed * dt;
-      var rp2 = rampPoint(b.pt); b.x = rp2.x; b.y = rp2.y;
-      if (b.pt >= RAMP_TOTAL) endRamp(b);
+      b.pt += b.ramp.speed * dt;
+      var rp2 = rampPoint(b.ramp, b.pt); b.x = rp2.x; b.y = rp2.y;
+      if (b.pt >= b.ramp.total) endRamp(b);
       return;
     }
     if (b.mode === "lane" && b.auto > 0) {
@@ -469,14 +496,15 @@
     var sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
     if (sp > VMAX) { b.vx *= VMAX / sp; b.vy *= VMAX / sp; sp = VMAX; }
 
-    var inLane = b.x > LANE_X0 && b.y > 360;
+    var inLane = b.x > LANE_X0 && b.y > LANE_MINY;
     if (b.mode === "lane") {
       if (!inLane || b.y < PLUNGER_Y - 80) {
         b.mode = "live";
         if (S.saverArm) { S.saver = SAVE_TIME; S.saverArm = false; }
       }
-    } else if (b.mode === "live" && inLane && b.y > 620 && sp < 70) { b.mode = "lane"; }
+    } else if (b.mode === "live" && inLane && b.y > PLUNGER_Y - 180 && sp < 70) { b.mode = "lane"; }
     if (b.mode !== "live") return;
+    if (M.climb) { climbBall(b, dt, sp); return; }
 
     // terrier
     var sx = b.x - SAUCER.x, sy = b.y - SAUCER.y;
@@ -491,7 +519,7 @@
     }
     // rampe
     var mdx = b.x - RAMP.mouth.x, mdy = b.y - RAMP.mouth.y;
-    if (b.vy < -260 && mdx * mdx + mdy * mdy < RAMP.mouth.r * RAMP.mouth.r) { startRamp(b); return; }
+    if (b.vy < -260 && mdx * mdx + mdy * mdy < RAMP.mouth.r * RAMP.mouth.r) { startRamp(b, RAMP); return; }
     // spinner
     if (Math.abs(b.x - SPINNER.x) < SPINNER.hw && Math.abs(b.y - SPINNER.y) < 16 && sp > 150) {
       S.spin.w = Math.max(S.spin.w, Math.min(34, sp * 0.03 + 6));
@@ -531,7 +559,84 @@
       b.still += dt;
       if (b.still > 3) { b.still = 0; b.vx += (Math.random() - 0.5) * 240; b.vy -= 200; }
     } else b.still = 0;
-    if (b.y > H + 16) b.lost = "drain";
+    if (b.y > WORLD_H + 16) b.lost = "drain";
+  }
+
+  /* ---------- mode Ascension : table haute de 5 étages ---------- */
+  var CLIMB_FLOORS = 5, CLIMB_GAP = 700, CLIMB_PY0 = 3500;
+  function buildClimb() {
+    var K = { segs: [], flippers: [], bumpers: [], ramps: [], worldH: 3640, plungerY: 3560, laneMinY: 3060, pys: [] };
+    function add(x1, y1, x2, y2, o) { o = o || {}; K.segs.push({ x1: x1, y1: y1, x2: x2, y2: y2, e: o.e != null ? o.e : 0.35, r: o.r != null ? o.r : 2.5, oneWay: !!o.oneWay, sling: null, kind: o.kind || "wall" }); }
+    // arche du sommet
+    var ac = { x: 222, y: 218, r: 198 }, n = 40, i, k;
+    for (i = 0; i < n; i++) {
+      var a1 = Math.PI + Math.PI * i / n, a2 = Math.PI + Math.PI * (i + 1) / n;
+      add(ac.x + Math.cos(a1) * ac.r, ac.y + Math.sin(a1) * ac.r, ac.x + Math.cos(a2) * ac.r, ac.y + Math.sin(a2) * ac.r, { kind: "arc" });
+    }
+    K.arch = ac;
+    var py0 = CLIMB_PY0;
+    add(24, 218, 24, py0 - 90);                                   // mur gauche
+    add(LANE_X0, 218, LANE_X0, 3040);                             // mur droit de la table
+    add(LANE_X0, 3040, LANE_X0, 3120, { oneWay: true });          // clapet en haut du couloir
+    add(LANE_X0, 3120, LANE_X0, 3590);                            // paroi du couloir
+    add(LANE_X1, 3120, LANE_X1, 3590);                            // mur extérieur du couloir
+    add(LANE_X0, 3590, LANE_X1, 3590);                            // fond du couloir
+    var qn = 12, qc = { x: LANE_X1 - 80, y: 3120 };               // quart de cercle qui renvoie la bille vers la table
+    for (i = 0; i < qn; i++) {
+      var b1 = -Math.PI / 2 * i / qn, b2 = -Math.PI / 2 * (i + 1) / qn;
+      add(qc.x + Math.cos(b1) * 80, qc.y + Math.sin(b1) * 80, qc.x + Math.cos(b2) * 80, qc.y + Math.sin(b2) * 80, { kind: "arc" });
+    }
+    for (k = 0; k < CLIMB_FLOORS; k++) {
+      var py = py0 - CLIMB_GAP * k; K.pys.push(py);
+      add(24, py - 90, 104, py, { e: 0.2, kind: "slope" });       // cuvette : rampes vers les flippers
+      add(LANE_X0, py - 90, 340, py, { e: 0.2, kind: "slope" });
+      K.flippers.push({ px: 104, py: py, s: 1, a: FLIPPER.rest, w: 0, key: "left" }, { px: 340, py: py, s: -1, a: FLIPPER.rest, w: 0, key: "right" });
+      // champignons de l'étage (au-dessus de la cuvette)
+      var lay = [
+        [[140, -300], [304, -300], [222, -430]],
+        [[110, -270], [222, -350], [334, -270]],
+        [[170, -430], [274, -430], [222, -300]],
+      ][k % 3];
+      lay.forEach(function (q) { K.bumpers.push({ x: q[0], y: py + q[1], r: 24 }); });
+      // rampe vers l'étage du dessus (ou vers le sommet)
+      var mx = k % 2 === 0 ? 72 : 372, my = py - 480, r;
+      if (k < CLIMB_FLOORS - 1) {
+        var ex = k % 2 === 0 ? 294 : 150, ey = py - CLIMB_GAP - 260;
+        r = { mouth: { x: mx, y: my, r: 22 }, pts: [[mx, my], [mx, my - 110], [(mx + ex) / 2, (my + ey) / 2], [ex, ey]], speed: 600, room: k, top: false };
+      } else {
+        r = { mouth: { x: mx, y: my, r: 22 }, pts: [[mx, my], [mx, my - 90], [300, 120], [222, 86]], speed: 520, room: k, top: true };
+      }
+      K.ramps.push(prepRamp(r));
+    }
+    return K;
+  }
+  function setMode(climb) {
+    M.climb = !!climb;
+    if (!climb) {
+      segs = CLASSIC.segs; flippers = CLASSIC.flippers; BUMPERS = CLASSIC.BUMPERS; TARGETS = CLASSIC.TARGETS; DROPS = CLASSIC.DROPS; SLINGS = CLASSIC.SLINGS;
+      RAMPS = [RAMP]; PLUNGER_Y = 800; WORLD_H = H; LANE_MINY = 360;
+    } else {
+      if (!CLIMB) CLIMB = buildClimb();
+      segs = CLIMB.segs; flippers = CLIMB.flippers; BUMPERS = CLIMB.bumpers; TARGETS = []; DROPS = []; SLINGS = [];
+      RAMPS = CLIMB.ramps; PLUNGER_Y = CLIMB.plungerY; WORLD_H = CLIMB.worldH; LANE_MINY = CLIMB.laneMinY;
+    }
+    bumpFlash = BUMPERS.map(function () { return 0; }); targetFlash = TARGETS.map(function () { return 0; });
+    S.plungerY = PLUNGER_Y; S.best = parseInt(store(climb ? CBEST_KEY : BEST_KEY), 10) || 0; bg = null;
+  }
+  function roomOf(y) { return Math.max(0, Math.min(CLIMB_FLOORS - 1, Math.floor((CLIMB_PY0 - y) / CLIMB_GAP))); }
+  function climbBall(b, dt, sp) {
+    for (var i = 0; i < RAMPS.length; i++) {
+      var r = RAMPS[i], dx = b.x - r.mouth.x, dy = b.y - r.mouth.y;
+      if (b.vy < -320 && dx * dx + dy * dy < r.mouth.r * r.mouth.r) { startRamp(b, r); return; }
+    }
+    if (b.y < S.topY || S.topY === 0) S.topY = b.y;
+    var rm = roomOf(b.y);
+    if (rm > S.room) { S.room = rm; addScore(2500 * rm, b.x, b.y - 30, true); say("Étage " + (rm + 1) + " !", 2.5); SND.jackpot(); }
+    if (sp < 30 && !(b.x > LANE_X0 && b.y > LANE_MINY)) {
+      b.still += dt;
+      if (b.still > 3) { b.still = 0; b.vx += (Math.random() - 0.5) * 240; b.vy -= 200; }
+    } else b.still = 0;
+    if (b.y > WORLD_H + 16) b.lost = "drain";
   }
 
   function ballPairs() {
@@ -632,7 +737,8 @@
 
   /* ---------- flux de partie ---------- */
   function startGame() {
-    S.score = 0; S.lives = LIVES; S.ballNo = 1; S.mult = 1; S.extraGiven = false; S.newBest = false;
+    setMode(S.pref === "climb");
+    S.score = 0; S.room = 0; S.topY = 0; S.climbTime = 0; S.won = false; S.lives = LIVES; S.ballNo = 1; S.mult = 1; S.extraGiven = false; S.newBest = false;
     S.letters = [false, false, false, false, false];
     S.locked = 0; S.lockLit = false; S.draining = false;
     S.hold = { left: {}, right: {}, plunger: {} };
@@ -640,16 +746,24 @@
     flippers.forEach(function (f) { f.a = FLIPPER.rest; f.w = 0; });
     particles.length = 0; popups.length = 0;
     newBall();
+    S.camY = Math.max(0, WORLD_H - H);
     S.mode = "play";
     setOverlay(null);
-    say("Maintiens Espace (ou « Lancer ») pour armer, relâche pour tirer", 6);
+    say(M.climb ? "Monte étage par étage : vise les rampes ! Espace pour armer le ressort" : "Maintiens Espace (ou « Lancer ») pour armer, relâche pour tirer", 6);
     updateHud();
     audio();
   }
   function gameOver() {
     S.mode = "over";
-    if (S.score > S.best) { S.best = S.score; S.newBest = true; store(BEST_KEY, String(S.best)); }
+    if (S.score > S.best) { S.best = S.score; S.newBest = true; store(M.climb ? CBEST_KEY : BEST_KEY, String(S.best)); }
     setOverlay("over");
+  }
+  function climbWin() {
+    S.won = true;
+    addScore(20000 + Math.max(0, 600 - Math.floor(S.climbTime)) * 20, null, null, true);
+    SND.jackpot();
+    if (!S.bestTime || S.climbTime < S.bestTime) { S.bestTime = S.climbTime; S.newBestTime = true; store(CTIME_KEY, String(S.bestTime)); } else S.newBestTime = false;
+    gameOver();
   }
   function pause(on) {
     if (on && S.mode === "play") { S.mode = "paused"; S.hold = { left: {}, right: {}, plunger: {} }; S.charge = 0; setOverlay("pause"); }
@@ -663,17 +777,19 @@
     overlay.hidden = false;
     var h = "";
     if (kind === "menu") {
-      h = '<h2>Flippers</h2><p>Un flipper dans la forêt : rampe, spinner, cibles rabattables, terrier à verrou et multibille. 3 billes pour battre ton record.</p>' +
+      h = '<h2>Flippers</h2><p><strong>Classique</strong> : rampe, spinner, cibles rabattables, terrier à verrou et multibille.<br><strong>Ascension</strong> : une table de 5 étages, monte jusqu\'au sommet !</p>' +
         '<p><kbd>Espace</kbd> ressort · <kbd>←</kbd> <kbd>→</kbd> flippers · <kbd>↑</kbd> secouer</p>' +
-        '<p class="fl-best">Record : <strong>' + fmt(S.best) + '</strong></p>' +
-        '<button class="btn" type="button" data-fl-act="start">▶ Jouer</button>';
+        '<p class="fl-best">Records : classique <strong>' + fmt(parseInt(store(BEST_KEY), 10) || 0) + '</strong> · ascension <strong>' + fmt(parseInt(store(CBEST_KEY), 10) || 0) + '</strong>' + (S.bestTime ? ' (' + fmtTime(S.bestTime) + ')' : '') + '</p>' +
+        '<button class="btn" type="button" data-fl-act="start" data-fl-mode="classic">▶ Classique</button>' +
+        '<button class="btn" type="button" data-fl-act="start" data-fl-mode="climb">⛰ Ascension</button>';
     } else if (kind === "pause") {
       h = '<h2>Pause</h2><button class="btn" type="button" data-fl-act="resume">▶ Reprendre</button>' +
         '<button class="btn btn-ghost" type="button" data-fl-act="start">↺ Recommencer</button>';
     } else if (kind === "over") {
-      h = '<h2>Partie terminée</h2><p class="fl-big">' + fmt(S.score) + '</p>' +
+      h = (S.won ? '<h2>🏆 Sommet atteint !</h2><p>Temps : <strong>' + fmtTime(S.climbTime) + '</strong>' + (S.newBestTime ? ' · nouveau meilleur temps !' : '') + '</p>' : '<h2>Partie terminée</h2>') + '<p class="fl-big">' + fmt(S.score) + '</p>' +
         (S.newBest ? '<p><strong>Nouveau record !</strong> 🏆</p>' : '<p>Record : <strong>' + fmt(S.best) + '</strong></p>') +
-        '<button class="btn" type="button" data-fl-act="start">↺ Rejouer</button>';
+        '<button class="btn" type="button" data-fl-act="start">↺ Rejouer</button>' +
+        '<button class="btn btn-ghost" type="button" data-fl-act="menu">☰ Changer de mode</button>';
     }
     card.innerHTML = h;
     var btn = card.querySelector("button");
@@ -682,7 +798,8 @@
   card.addEventListener("click", function (e) {
     var b = e.target.closest("[data-fl-act]");
     if (!b) return;
-    if (b.dataset.flAct === "start") startGame();
+    if (b.dataset.flAct === "start") { if (b.dataset.flMode) { S.pref = b.dataset.flMode; store(MODE_KEY, S.pref); } startGame(); }
+    else if (b.dataset.flAct === "menu") { S.mode = "menu"; setOverlay("menu"); }
     else if (b.dataset.flAct === "resume") pause(false);
   });
 
@@ -941,8 +1058,8 @@
     }
     return out;
   }
-  function drawRamp(c) {
-    var P = RAMP.pts;
+  function drawRamp(c, r) {
+    var P = r.pts;
     c.lineCap = "round"; c.lineJoin = "round";
     c.strokeStyle = "rgba(0,0,0,.28)"; c.lineWidth = 24;
     woodLine(c, P.map(function (p) { return [p[0] + 7, p[1] + 10]; })); c.stroke();
@@ -952,9 +1069,8 @@
       c.strokeStyle = "#e3eceb"; c.lineWidth = 2.6; woodLine(c, op); c.stroke();
       c.strokeStyle = "rgba(60,80,76,.8)"; c.lineWidth = 0.8; woodLine(c, op); c.stroke();
     });
-    // barrettes
-    for (var d = 20; d < RAMP_TOTAL; d += 46) {
-      var p1 = rampPoint(d), p2 = rampPoint(d + 2), dx = p2.x - p1.x, dy = p2.y - p1.y, l = Math.sqrt(dx * dx + dy * dy) || 1;
+    for (var d = 20; d < r.total; d += 46) {
+      var p1 = rampPoint(r, d), p2 = rampPoint(r, d + 2), dx = p2.x - p1.x, dy = p2.y - p1.y, l = Math.sqrt(dx * dx + dy * dy) || 1;
       c.strokeStyle = "rgba(227,236,235,.5)"; c.lineWidth = 1.4;
       c.beginPath(); c.moveTo(p1.x + dy / l * 11, p1.y - dx / l * 11); c.lineTo(p1.x - dy / l * 11, p1.y + dx / l * 11); c.stroke();
     }
@@ -962,7 +1078,128 @@
     c.fillStyle = "#c9d3d1"; c.beginPath(); c.arc(last[0], last[1], 6, 0, 7); c.fill();
   }
 
+  /* ---------- rendu du mode Ascension ---------- */
+  var SKY = [[14, 34, 22], [26, 66, 46], [40, 84, 112], [104, 164, 214], [156, 218, 255]];
+  function skyAt(a) {
+    a = Math.max(0, Math.min(1, a)) * (SKY.length - 1);
+    var i = Math.min(SKY.length - 2, Math.floor(a)), t = a - i, p = SKY[i], q = SKY[i + 1];
+    return "rgb(" + Math.round(p[0] + (q[0] - p[0]) * t) + "," + Math.round(p[1] + (q[1] - p[1]) * t) + "," + Math.round(p[2] + (q[2] - p[2]) * t) + ")";
+  }
+  function hash2(a, b) { var h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+  function drawClimb() {
+    var c = ctx, K = CLIMB, cam = S.camY, t = S.t, i, k;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    var g = c.createLinearGradient(0, 0, 0, canvas.height);
+    g.addColorStop(0, skyAt(1 - cam / K.worldH)); g.addColorStop(1, skyAt(1 - (cam + H) / K.worldH));
+    c.fillStyle = g; c.fillRect(0, 0, canvas.width, canvas.height);
+    var sx = 0, sy = 0;
+    if (S.shake > 0.05) { sx = (Math.random() - 0.5) * S.shake; sy = (Math.random() - 0.5) * S.shake; }
+    c.setTransform(scale, 0, 0, scale, sx * scale, (sy - cam) * scale);
+    // décor : nuages en altitude, feuillages en bas
+    var y0 = Math.floor(cam / 90) - 1;
+    for (var cy = y0; cy < y0 + 12; cy++) {
+      var wy = cy * 90, alt = 1 - wy / K.worldH;
+      for (i = 0; i < 3; i++) {
+        var hx = 40 + hash2(cy, i) * 340, hy = wy + hash2(i, cy + 50) * 80;
+        if (alt > 0.5) { c.fillStyle = "rgba(255,255,255,.5)"; c.fillRect(hx, hy, 46, 8); c.fillRect(hx + 8, hy - 6, 28, 7); c.fillRect(hx + 14, hy + 7, 22, 4); }
+        else { c.fillStyle = "rgba(" + (alt < 0.25 ? "50,110,66" : "80,140,96") + ",.22)"; c.fillRect(hx, hy, 18, 7); c.fillRect(hx + 4, hy - 4, 10, 5); }
+      }
+    }
+    // couloir du ressort
+    c.fillStyle = "rgba(0,0,0,.28)"; c.fillRect(LANE_X0, 3050, LANE_X1 - LANE_X0, 540);
+    // rails
+    c.lineCap = "round"; c.lineJoin = "round";
+    function rails(lw, col) {
+      c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
+      for (var j = 0; j < K.segs.length; j++) {
+        var sg = K.segs[j];
+        if (Math.max(sg.y1, sg.y2) < cam - 20 || Math.min(sg.y1, sg.y2) > cam + H + 20) continue;
+        c.moveTo(sg.x1, sg.y1); c.lineTo(sg.x2, sg.y2);
+      }
+      c.stroke();
+    }
+    rails(10, "#2a170b"); rails(6, "#8a5a2b");
+    // étiquettes d'étage et repères d'altitude
+    c.textAlign = "center"; c.textBaseline = "middle";
+    for (k = 0; k < CLIMB_FLOORS; k++) {
+      var py = K.pys[k];
+      if (py < cam - 700 || py - 700 > cam + H) continue;
+      c.fillStyle = "rgba(255,255,255,.13)"; c.font = "900 34px Nunito, system-ui, sans-serif";
+      c.fillText("ÉTAGE " + (k + 1), 222, py - 590);
+      c.fillStyle = "rgba(242,212,138,.22)"; c.font = "800 12px Nunito, system-ui, sans-serif";
+      c.fillText(Math.round((PLUNGER_Y - py) / 20) + " m", 222, py - 548);
+    }
+    // sommet : gland doré
+    var gy = 86 + Math.sin(t * 3) * 3;
+    if (cam < 400) {
+      c.fillStyle = "rgba(255, 220, 100, " + (0.25 + 0.12 * Math.sin(t * 4)) + ")"; c.beginPath(); c.arc(222, gy, 34, 0, 7); c.fill();
+      c.fillStyle = "#c98a1e"; c.fillRect(210, gy - 16, 24, 9);
+      c.fillStyle = "#ffd257"; c.beginPath(); c.ellipse(222, gy + 2, 13, 16, 0, 0, 7); c.fill();
+      c.fillStyle = "#fff3c4"; c.fillRect(216, gy - 6, 4, 9);
+    }
+    // rampes
+    K.ramps.forEach(function (r) {
+      var lo = Math.min.apply(null, r.pts.map(function (p) { return p[1]; })), hi = Math.max.apply(null, r.pts.map(function (p) { return p[1]; }));
+      if (hi < cam - 30 || lo > cam + H + 30) return;
+      c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.arc(r.mouth.x, r.mouth.y + 2, r.mouth.r + 6, Math.PI, 0); c.lineTo(r.mouth.x + r.mouth.r + 6, r.mouth.y + 36); c.lineTo(r.mouth.x - r.mouth.r - 6, r.mouth.y + 36); c.closePath(); c.fill();
+      drawRamp(c, r);
+      lamp(c, r.mouth.x, r.mouth.y + 28, 7, true, r.top ? "#ffd257" : "#7fd1ff", true);
+    });
+    for (i = 0; i < BUMPERS.length; i++) { if (BUMPERS[i].y > cam - 40 && BUMPERS[i].y < cam + H + 40) drawBumper(c, BUMPERS[i], bumpFlash[i]); }
+    // ressort
+    var py2 = S.plungerY;
+    c.strokeStyle = "#cfd6d4"; c.lineWidth = 2; c.beginPath();
+    var y1 = 3586; c.moveTo(LANE_C, py2 + 3);
+    for (var z = 1; z <= 9; z++) c.lineTo(LANE_C + (z % 2 ? 9 : -9), py2 + 3 + (y1 - py2 - 3) * z / 9);
+    c.stroke();
+    c.fillStyle = "#b5bbb8"; c.fillRect(LANE_X0 + 4, py2 - 1, LANE_X1 - LANE_X0 - 8, 6);
+    c.fillStyle = "#e8873a"; c.fillRect(LANE_X0 + 4, py2 - 1, LANE_X1 - LANE_X0 - 8, 2);
+    flippers.forEach(function (f) { if (f.py > cam - 120 && f.py < cam + H + 120) drawFlipper(c, f); });
+    // billes
+    S.balls.forEach(function (b) {
+      if (b.mode === "ramp") return;
+      for (var ti = 0; ti < b.trail.length - 1; ti++) {
+        c.fillStyle = "rgba(220, 235, 230, " + (ti / b.trail.length * 0.22) + ")";
+        c.beginPath(); c.arc(b.trail[ti].x, b.trail[ti].y, R * (0.4 + ti / b.trail.length * 0.5), 0, 7); c.fill();
+      }
+      drawBall(c, b, false);
+    });
+    S.balls.forEach(function (b) { if (b.mode === "ramp") drawBall(c, b, true); });
+    particles.forEach(function (p) { c.globalAlpha = Math.max(0, p.life); c.fillStyle = p.col; c.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); });
+    c.globalAlpha = 1;
+    c.font = "900 15px Nunito, system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+    popups.forEach(function (p) {
+      c.globalAlpha = Math.max(0, Math.min(1, p.life * 1.5));
+      c.lineWidth = 3.5; c.strokeStyle = "rgba(20,10,0,.8)"; c.strokeText(p.text, p.x, p.y);
+      c.fillStyle = p.col; c.fillText(p.text, p.x, p.y);
+    });
+    c.globalAlpha = 1;
+    var waiting = S.mode === "play" && S.balls.some(function (b) { return b.mode === "lane" && b.auto === 0 && b.y > PLUNGER_Y - 40; });
+    if (waiting && S.charge === 0) {
+      c.fillStyle = "rgba(255, 243, 196, " + (0.55 + 0.35 * Math.sin(t * 6)) + ")";
+      c.font = "800 11px Nunito, system-ui, sans-serif"; c.textBaseline = "alphabetic";
+      c.fillText("ESPACE", LANE_C, PLUNGER_Y - 55); c.fillText("▼", LANE_C, PLUNGER_Y - 39);
+    }
+    if (S.charge > 0) {
+      c.fillStyle = "rgba(0,0,0,.45)"; c.fillRect(LANE_X0 + 4, PLUNGER_Y - 140, 6, 84);
+      c.fillStyle = S.charge > 0.8 ? "#ff7a5a" : "#ffd257"; c.fillRect(LANE_X0 + 4, PLUNGER_Y - 56 - 84 * S.charge, 6, 84 * S.charge);
+    }
+    // éléments d'interface (fixes à l'écran)
+    c.setTransform(scale, 0, 0, scale, 0, 0);
+    if (S.saver > 0 && S.mode === "play" && !S.saverArm) lamp(c, 450, 24, 8, true, "#ffd257", true);
+    if (S.tilt) {
+      c.fillStyle = "rgba(220, 40, 40, " + (0.5 + 0.4 * Math.sin(t * 14)) + ")";
+      c.font = "900 40px Nunito, system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+      c.fillText("TILT", 222, 180);
+    }
+    // jauge d'altitude
+    var frac = Math.max(0, Math.min(1, (PLUNGER_Y - S.topY) / (PLUNGER_Y - 86)));
+    c.fillStyle = "rgba(0,0,0,.35)"; c.fillRect(8, 60, 6, 200);
+    c.fillStyle = "#ffd257"; c.fillRect(8, 260 - 200 * frac, 6, 200 * frac);
+  }
+
   function drawFrame() {
+    if (M.climb) { drawClimb(); return; }
     var c = ctx;
     if (!bg) bg = buildBackground();
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -1051,7 +1288,7 @@
       drawBall(c, b, false);
     });
     S.balls.forEach(function (b) { if (b.mode === "saucer") { c.save(); c.globalAlpha = 0.9; drawBall(c, { x: b.x, y: b.y }, false); c.restore(); } });
-    drawRamp(c);
+    drawRamp(c, RAMP);
     S.balls.forEach(function (b) { if (b.mode === "ramp") drawBall(c, b, true); });
 
     particles.forEach(function (p) {
@@ -1088,6 +1325,14 @@
 
   /* ---------- boucle ---------- */
   var acc = 0, last = 0;
+  function updateCamera(dt) {
+    var b = null;
+    for (var i = 0; i < S.balls.length; i++) { var q = S.balls[i]; if (!b || q.y < b.y) b = q; }
+    var maxCam = Math.max(0, WORLD_H - H), target = b ? b.y - 500 + Math.max(-300, Math.min(300, b.vy * 0.12)) : maxCam;
+    target = Math.max(0, Math.min(maxCam, target));
+    S.camY += (target - S.camY) * Math.min(1, dt * 6);
+  }
+
   function update(dt) {
     var i;
     for (i = 0; i < bumpFlash.length; i++) bumpFlash[i] = Math.max(0, bumpFlash[i] - dt * 5);
@@ -1107,6 +1352,7 @@
     if (S.msgT > 0) { S.msgT -= dt; if (S.msgT <= 0) S.msg = ""; }
 
     if (S.mode !== "play") return;
+    if (M.climb) { S.climbTime += dt; updateCamera(dt); }
     var pl = anyHold(S.hold.plunger);
     var waiting = S.balls.some(function (b) { return b.mode === "lane" && b.auto === 0; });
     if (pl && waiting) S.charge = Math.min(1, S.charge + dt * 1.2);
@@ -1147,7 +1393,7 @@
   if (/[?&]debug\b/.test(location.search)) {
     window.FLIPPERS_DEBUG = {
       S: S, step: function (n) { for (var i = 0; i < n; i++) step(DT); }, startGame: startGame,
-      hold: setHold, launch: launch, flippers: flippers, nudge: nudge, tick: update,
+      hold: setHold, launch: launch, flippers: function () { return flippers; }, nudge: nudge, tick: update, M: M, setPref: function (m) { S.pref = m; }, climb: function () { return CLIMB; },
     };
   }
 })();
