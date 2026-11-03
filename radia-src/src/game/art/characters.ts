@@ -36,7 +36,7 @@ const IRIS_R = '#5A3520';
 const SKIN_A = '#F0C8A6';
 const SKIN_A_SHADOW = '#D29F7E';
 const SKIN_A_LIGHT = '#FADFC8';
-const IRIS_A = '#6A4528';
+const IRIS_A = '#6F9490';
 
 const HOODIE = '#26212B';
 const HOODIE_LIGHT = '#42394A';
