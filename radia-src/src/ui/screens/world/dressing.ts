@@ -86,8 +86,7 @@ export function openDressing(): Promise<void> {
     const cv = h('canvas.dr-avatar', { 'aria-label': 'Radia' });
     const cvs = cv as HTMLCanvasElement;
     const wrap = h('div.dr-avatar-wrap', cv);
-    const tryBadge = h('div.dr-try-badge', icon('eye', 14), h('span', 'Essayage'));
-    const stage = h('div.dr-stage', h('div.dr-floor'), wrap, tryBadge);
+    const stage = h('div.dr-stage', h('div.dr-floor'), wrap);
     if (reducedFx()) wrap.classList.add('calm');
 
     const shown = (): Look => (preview ? W.previewLook(W.getLook(), preview) : W.getLook());
@@ -177,22 +176,29 @@ export function openDressing(): Promise<void> {
     };
 
     // ---------------------------------------------------------- panneau : onglets, styles, grille, barre d'achat
-    const tabs = h('div.dr-tabs', { role: 'tablist' });
-    const tabEls = new Map<CatKey, HTMLElement>();
-    for (const c of CATS) {
-      const b = h('button.dr-tab', { role: 'tab' }, c.label);
-      b.addEventListener('click', tap(() => { tab = c.key; renderAll(); b.scrollIntoView?.({ inline: 'center', block: 'nearest', behavior: reducedFx() ? 'auto' : 'smooth' }); }, { sound: false }));
-      tabEls.set(c.key, b);
+    // niveau 1 : 5 grandes familles toujours visibles ; niveau 2 : les rayons de la famille
+    const GROUPS: { label: string; ic: string; subs: CatKey[] }[] = [
+      { label: 'Tenues', ic: 'sparkle', subs: ['top', 'bottom', 'dress', 'jacket'] },
+      { label: 'Sacs & souliers', ic: 'basket', subs: ['shoes', 'bag'] },
+      { label: 'Cheveux', ic: 'wand', subs: ['hair', 'head'] },
+      { label: 'Visage', ic: 'smile', subs: ['glasses', 'ears', 'lips', 'neck'] },
+      { label: 'Couronnes', ic: 'crown', subs: ['crown'] },
+    ];
+    const groupOf = (k: CatKey) => GROUPS.findIndex((g) => g.subs.includes(k));
+    const SHORT: Partial<Record<CatKey, string>> = { top: 'Hauts', bottom: 'Bas', dress: 'Robes', jacket: 'Vestes', shoes: 'Chaussures', bag: 'Sacs', hair: 'Coiffures', head: 'Foulards', glasses: 'Lunettes', ears: 'Boucles', lips: 'Rouges', neck: 'Bijoux', crown: 'Couronnes' };
+    const labelOf = (k: CatKey) => SHORT[k] ?? CATS.find((c) => c.key === k)?.label ?? '';
+    const tabs = h('div.dr-groups', { role: 'tablist' });
+    const groupEls = GROUPS.map((g) => {
+      const b = h('button.dr-group', { role: 'tab' }, icon(g.ic, 22), h('span', g.label));
+      b.addEventListener('click', tap(() => { if (!g.subs.includes(tab)) { tab = g.subs[0]; renderAll(); } }, { sound: false }));
       tabs.append(b);
-    }
-    const styles = h('div.dr-styles');
-    const styleEls = new Map<string, HTMLElement>();
-    for (const s of ['all', ...STYLES] as const) {
-      const b = h('button.dr-sty', s === 'all' ? 'Tous' : STYLE_NAMES[s]);
-      b.addEventListener('click', tap(() => { style = s; renderAll(); }, { sound: false }));
-      styleEls.set(s, b);
-      styles.append(b);
-    }
+      return b;
+    });
+    const subRow = h('div.dr-tabs');
+    const STYLE_CYCLE: (StyleId | 'all')[] = ['all', ...STYLES];
+    const styleBtn = h('button.dr-sty-cycle', { 'aria-label': 'Filtrer par style' });
+    styleBtn.addEventListener('click', tap(() => { style = STYLE_CYCLE[(STYLE_CYCLE.indexOf(style) + 1) % STYLE_CYCLE.length]; renderAll(); }, { sound: false }));
+    const styles = h('div.dr-subbar', subRow, styleBtn);
     const grid = h('div.dr-grid');
     const bar = h('div.dr-bar');
     const panel = h('div.dr-panel', tabs, styles, grid, bar);
@@ -247,7 +253,7 @@ export function openDressing(): Promise<void> {
       }
       const id = preview;
       const own = ownedNow(id);
-      const info = h('div.dr-bar-info', h('b', nameOf(id)), own ? h('small', 'Déjà dans ton dressing') : (isHairId(id) ? price(HAIRS[id].coins, 0, 0) : (() => { const p = W.priceOf(id); return price(p.coins, p.fabric, p.diamonds); })()));
+      const info = h('div.dr-bar-info', h('span.dr-try', icon('eye', 13), own ? 'Aperçu' : 'Essayage'), h('b', nameOf(id)), own ? h('small', 'Déjà dans ton dressing') : (isHairId(id) ? price(HAIRS[id].coins, 0, 0) : (() => { const p = W.priceOf(id); return price(p.coins, p.fabric, p.diamonds); })()));
       const stop = h('button.icon-btn.dr-x', { 'aria-label': 'Arrêter l’essayage', on: { click: tap(() => { preview = null; renderAll(); paint(); }) } }, icon('close', 20));
       const go = h(`button.btn.small${missing(id) ? '.locked' : ''}`, own ? 'Porter' : 'Acheter');
       go.addEventListener('click', tap(() => { if (own) { wear(id); preview = null; renderAll(); } else void purchase(id); }));
@@ -256,9 +262,22 @@ export function openDressing(): Promise<void> {
 
     function renderAll() {
       refreshBal();
-      for (const [k, el] of tabEls) { el.classList.toggle('on', k === tab); el.setAttribute('aria-selected', String(k === tab)); }
-      styles.classList.toggle('off', tab === 'hair');
-      for (const [k, el] of styleEls) el.classList.toggle('on', k === style);
+      const gi = groupOf(tab);
+      groupEls.forEach((el, k) => { el.classList.toggle('on', k === gi); el.setAttribute('aria-selected', String(k === gi)); });
+      subRow.textContent = '';
+      const subs = GROUPS[gi]?.subs ?? [];
+      for (const k of subs) {
+        const all = k === 'hair' ? [...HAIR_IDS] : (Object.keys(CLOTHES) as ClothId[]).filter((id) => catOf(id) === k);
+        const have = all.filter((id) => ownedNow(id)).length;
+        const b = h(`button.dr-tab${k === tab ? '.on' : ''}`, { role: 'tab' }, labelOf(k), h('small', `${have}/${all.length}`));
+        b.addEventListener('click', tap(() => { tab = k; renderAll(); }, { sound: false }));
+        subRow.append(b);
+      }
+      subRow.classList.toggle('single', subs.length < 2);
+      subRow.scrollLeft = 0;
+      styleBtn.textContent = style === 'all' ? 'Style ▾' : STYLE_NAMES[style];
+      styleBtn.classList.toggle('on', style !== 'all');
+      styles.classList.toggle('nostyle', tab === 'hair');
       grid.textContent = '';
       const list = items();
       if (!list.length) grid.append(h('p.dr-empty', 'Rien dans ce style pour l’instant.'));
@@ -266,7 +285,6 @@ export function openDressing(): Promise<void> {
       renderBar();
       styleBadge.textContent = '';
       styleBadge.append(icon('sparkle', 14), `${STYLE_NAMES[W.styleOf(shown())]}`);
-      tryBadge.classList.toggle('on', !!preview && !ownedNow(preview));
       refreshSlots();
       paint();
     }
