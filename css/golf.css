@@ -1,0 +1,57 @@
+/* =========================================================================
+   Mini-golf (golf.html, js/golf.js)
+   ========================================================================= */
+.golf-stage { height: min(74vh, 640px); min-height: 360px; background: #1f3a2b; }
+.golf-canvas { cursor: crosshair; touch-action: none; }
+.golf-hud {
+  position: absolute; inset: 0 0 auto 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+  padding: 8px 10px; pointer-events: none; color: #fdf3de; font-weight: 800; text-shadow: 0 2px 0 #2b1709;
+}
+.golf-hud[hidden], .golf-board[hidden] { display: none; }
+.golf-hud p { margin: 0; line-height: 1.25; }
+.golf-hud-hole { font-size: 1rem; }
+.golf-hud-strokes { font-size: .85rem; opacity: .9; }
+.golf-power { width: 120px; height: 8px; margin-top: 6px; background: rgba(20, 12, 4, .6); border: 2px solid #2b1709; }
+.golf-power i { display: block; height: 100%; width: 0; background: #7bd35a; }
+.golf-board { list-style: none; margin: 0; padding: 6px 8px; display: grid; gap: 3px; background: rgba(20, 12, 4, .6); border: 2px solid #2b1709; font-size: .8rem; text-shadow: none; max-width: 52%; }
+.golf-board li { display: flex; align-items: center; gap: 6px; }
+.golf-board i, .golf-roster i, .golf-table i { display: inline-block; width: 10px; height: 10px; border: 2px solid #2b1709; border-radius: 50%; flex: none; }
+.golf-board b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+.golf-board span { margin-left: auto; padding-left: 8px; white-space: nowrap; color: #f6d36b; }
+
+.golf-overlay { z-index: 3; }
+.golf-card h2 { margin-bottom: .3em; }
+.golf-card-wide { width: min(720px, 100%); }
+.golf-card-lobby { width: min(520px, 100%); }
+.golf-stack { display: grid; gap: 4px; justify-items: center; margin: 10px 0 4px; }
+.golf-stack .btn { justify-content: center; min-width: min(300px, 100%); }
+.golf-best { font-weight: 700; }
+.golf-err { color: #c0392b; font-weight: 800; }
+.golf-field { display: grid; gap: 4px; text-align: left; margin: 10px 0; font-weight: 700; }
+.golf-field input, .golf-join input {
+  font: inherit; padding: 10px 12px; color: var(--ink); background: var(--panel-2, #fff);
+  border: 3px solid var(--line); min-width: 0; width: 100%;
+}
+.golf-join { display: flex; align-items: center; width: min(300px, 100%); }
+.golf-join input { text-transform: uppercase; letter-spacing: .25em; text-align: center; font-weight: 800; }
+.golf-join .btn { flex: none; }
+.golf-code { letter-spacing: .2em; color: var(--orange, #e8873a); }
+.golf-card code { display: block; word-break: break-all; padding: 6px 8px; margin-top: 6px; background: var(--panel-2, rgba(0, 0, 0, .06)); font-size: .8rem; }
+.golf-roster { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 6px; text-align: left; font-weight: 800; }
+.golf-roster li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel-2, rgba(0, 0, 0, .06)); }
+.golf-picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 2px 4px; margin: 10px 0; }
+.golf-picks .btn { justify-content: flex-start; }
+.golf-picks small { margin-left: auto; opacity: .7; }
+.golf-table { overflow-x: auto; margin: 10px 0; }
+.golf-table table { border-collapse: collapse; margin: 0 auto; font-size: .85rem; }
+.golf-table th, .golf-table td { padding: 5px 7px; border-bottom: 2px solid var(--line); text-align: center; white-space: nowrap; }
+.golf-table th:first-child { text-align: left; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.golf-table tr.par td, .golf-table tr.par th { color: var(--ink-soft); }
+.golf-table td.good { color: #2e8b3d; font-weight: 800; }
+.golf-table td.bad { color: #c0392b; font-weight: 800; }
+.golf-table i { margin-right: 5px; }
+.golf-card .waiting { font-weight: 800; color: var(--ink-soft); }
+@media (max-width: 520px) {
+  .golf-board { font-size: .72rem; max-width: 56%; }
+  .golf-power { width: 90px; }
+}
