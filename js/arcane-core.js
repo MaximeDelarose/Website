@@ -341,6 +341,7 @@
     guimauve: { name: "Reine Guimauve", hp: 340, pa: 8, pm: 2, ini: 8, res: 10, spells: ["pluie", "sucreries", "calin"], boss: true, xp: 300, col: "#ffb3d9", shape: "queen" },
     tictac: { name: "Grand Tic-Tac", hp: 560, pa: 9, pm: 2, ini: 10, res: 20, spells: ["carillon", "aiguilles", "rembobine"], boss: true, xp: 520, col: "#c48a2a", shape: "bigclock" },
     dopeul: { name: "Dopeul", hp: 700, pa: 9, pm: 4, ini: 30, res: 20, spells: ["dopfrappe", "doptir", "dopsoin"], boss: true, xp: 4000, col: "#2b1d3a", shape: "dopeul" },
+    sylvestre: { name: "Ancien Sylvestre", hp: 260, pa: 7, pm: 2, ini: 5, res: 15, spells: ["racines", "fouet", "lierre"], boss: true, xp: 220, col: "#7a5236", shape: "treant" },
     sentinelle: { name: "Sentinelle d'Incarnam", hp: 190, pa: 7, pm: 2, ini: 6, res: 10, spells: ["racines", "lierre", "rune"], boss: true, xp: 160, col: "#8fa37a", shape: "statue" },
     archonte: { name: "Archonte fractal", hp: 460, pa: 8, pm: 2, ini: 9, res: 15, spells: ["sentence", "appel", "pique"], boss: true, xp: 420, col: "#d36cff", shape: "boss" },
   };
@@ -421,7 +422,8 @@
     { id: "q1", name: "Premiers pas", desc: "Vaincre 4 Glorbes dans la Prairie des Runes.", kind: "kill", mob: "glorbe", n: 4, xp: 60, gold: 40, item: "magique" },
     { id: "q2", name: "Nuisibles", desc: "Vaincre 3 Scarabrumes.", kind: "kill", mob: "scarabrume", n: 3, req: "q1", xp: 90, gold: 60, item: "rare" },
     { id: "qi", name: "Le donjon d'Incarnam", desc: "Vaincre la Sentinelle au fond du donjon d'Incarnam (portail au nord de la Prairie).", kind: "kill", mob: "sentinelle", n: 1, req: "q2", xp: 220, gold: 150, item: "epique" },
-    { id: "q3", name: "Bois Fractal", desc: "Atteindre le niveau 3 et entrer dans le Bois Fractal.", kind: "zone", zone: "bois", req: "q2", xp: 120, gold: 80, item: "rare" },
+    { id: "q3", name: "Bois Fractal", desc: "Atteindre le niveau 3, battre Incarnam et entrer dans le Bois Fractal.", kind: "zone", zone: "bois", req: "q2", xp: 120, gold: 80, item: "rare" },
+    { id: "qr", name: "L'Ancien Sylvestre", desc: "Vaincre l'Ancien Sylvestre au Cœur du Bois Fractal (portail au nord du Bois). Il garde la route du Marais.", kind: "kill", mob: "sylvestre", n: 1, req: "q3", xp: 300, gold: 180, item: "epique" },
     { id: "q4", name: "Lanternes folles", desc: "Vaincre 5 Lanterneaux.", kind: "kill", mob: "lanterneau", n: 5, req: "q3", xp: 180, gold: 120, item: "rare" },
     { id: "q5", name: "Chasse aux élites", desc: "Vaincre 3 monstres élites (contour doré).", kind: "elite", n: 3, req: "q4", xp: 260, gold: 160, item: "epique" },
     { id: "q6", name: "Les Falaises", desc: "Atteindre les Falaises de Cristal.", kind: "zone", zone: "falaises", req: "q5", xp: 300, gold: 200, item: "epique" },
@@ -443,16 +445,16 @@
       spawn: { x: 9, y: 9 } },
     prairie: { name: "Prairie des Runes", sub: "Niv. 1 à 3", w: 26, h: 22, lvl: [1, 3], theme: "prairie", seed: 202, packs: 6, size: [1, 3],
       mobs: ["glorbe", "glorbe", "scarabrume", "ronceau"],
-      portals: [{ x: 0, y: 11, to: "village", label: "Lumebourg" }, { x: 25, y: 11, to: "bois", req: 3, label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:incarnam", req: 2, label: "Donjon d'Incarnam" }] },
+      portals: [{ x: 0, y: 11, to: "village", label: "Lumebourg" }, { x: 25, y: 11, to: "bois", req: 3, dng: "incarnam", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:incarnam", req: 2, label: "Donjon d'Incarnam" }] },
     bois: { name: "Bois Fractal", sub: "Niv. 3 à 6", w: 26, h: 24, lvl: [3, 6], theme: "bois", seed: 303, packs: 7, size: [2, 3],
       mobs: ["ronceau", "lanterneau", "sylphe", "scarabrume", "lanterneau"],
-      portals: [{ x: 0, y: 12, to: "prairie", label: "Prairie des Runes" }, { x: 25, y: 12, to: "falaises", req: 5, label: "Falaises de Cristal" }, { x: 13, y: 23, to: "marais", req: 4, label: "Marais Bulleux" }] },
+      portals: [{ x: 0, y: 12, to: "prairie", label: "Prairie des Runes" }, { x: 25, y: 12, to: "falaises", req: 5, dng: "confiserie", label: "Falaises de Cristal" }, { x: 13, y: 23, to: "marais", req: 4, dng: "racines", label: "Marais Bulleux" }, { x: 13, y: 0, to: "dungeon:racines", req: 4, label: "Cœur du Bois Fractal (donjon)" }] },
     marais: { name: "Marais Bulleux", sub: "Niv. 4 à 7 · grenouilles et bonbons", w: 26, h: 22, lvl: [4, 7], theme: "marais", seed: 505, packs: 7, size: [2, 3], elite: 0.15,
       mobs: ["grenouillon", "bonbonk", "grenouillon", "lanterneau", "glorbe"],
       portals: [{ x: 13, y: 0, to: "bois", label: "Bois Fractal" }, { x: 25, y: 11, to: "dungeon:confiserie", req: 5, label: "Confiserie de la Reine Guimauve (donjon)" }] },
     falaises: { name: "Falaises de Cristal", sub: "Niv. 6 à 9", w: 26, h: 24, lvl: [6, 9], theme: "falaises", seed: 404, packs: 7, size: [2, 4], elite: 0.2,
       mobs: ["golem", "cristallin", "sylphe", "lanterneau", "cristallin"],
-      portals: [{ x: 0, y: 12, to: "bois", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:sanctuaire", req: 7, label: "Sanctuaire brisé (donjon)" }, { x: 25, y: 12, to: "nuages", req: 9, label: "Îles Cotonneuses" }] },
+      portals: [{ x: 0, y: 12, to: "bois", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:sanctuaire", req: 7, label: "Sanctuaire brisé (donjon)" }, { x: 25, y: 12, to: "nuages", req: 9, dng: "sanctuaire", label: "Îles Cotonneuses" }] },
     nuages: { name: "Îles Cotonneuses", sub: "Niv. 9 à 12 · au-dessus des nuages", w: 26, h: 22, lvl: [9, 12], theme: "nuages", seed: 606, packs: 7, size: [2, 4], elite: 0.25,
       mobs: ["nuagelet", "horlogeon", "nuagelet", "cristallin", "sylphe"],
       portals: [{ x: 0, y: 11, to: "falaises", label: "Falaises de Cristal" }, { x: 13, y: 21, to: "dungeon:horloge", req: 10, label: "Tour des Horloges (donjon)" }] },
@@ -463,6 +465,11 @@
       { name: "Cour envahie", lvl: 2, mobs: ["glorbe", "scarabrume", "glorbe", "ronceau"], elite: 0.15 },
       { name: "Serre aux lierres", lvl: 3, mobs: ["ronceau", "scarabrume", "lanterneau", "glorbe"], elite: 0.35 },
       { name: "Salle de la Sentinelle", lvl: 4, mobs: ["sentinelle", "ronceau", "glorbe"], boss: true },
+    ] },
+    racines: { name: "Cœur du Bois Fractal", sub: "Niv. 4 à 6 · 3 salles", exit: "bois", req: 4, theme: "racines", rooms: [
+      { name: "Sentier des lucioles", lvl: 4, mobs: ["lanterneau", "ronceau", "scarabrume", "lanterneau"], elite: 0.2 },
+      { name: "Clairière fêlée", lvl: 5, mobs: ["sylphe", "ronceau", "lanterneau", "ronceau"], elite: 0.4 },
+      { name: "Souche de l'Ancien", lvl: 6, mobs: ["sylvestre", "ronceau", "lanterneau"], boss: true },
     ] },
     confiserie: { name: "Confiserie de la Reine Guimauve", sub: "Niv. 5 à 7 · 3 salles", exit: "marais", req: 5, theme: "confiserie", rooms: [
       { name: "Cuisine en sucre", lvl: 5, mobs: ["bonbonk", "grenouillon", "bonbonk", "glorbe"], elite: 0.2 },
@@ -627,6 +634,7 @@
     if (theme === "marais") return { t: v < 0.5 ? "bigshroom" : v < 0.8 ? "lantern" : "reed", s: 1 + r() * 0.3, v: r() };
     if (theme === "nuages") return { t: v < 0.5 ? "cotton" : v < 0.8 ? "cloud" : "star", s: 1 + r() * 0.3, v: r() };
     if (theme === "confiserie") return { t: v < 0.5 ? "candy" : v < 0.8 ? "cupcake" : "lollipop", s: 1 + r() * 0.3, v: r() };
+    if (theme === "racines") return { t: v < 0.5 ? "pine" : v < 0.75 ? "bigshroom" : "rune", s: 1 + r() * 0.3, v: r() };
     if (theme === "horloge") return { t: v < 0.5 ? "gear" : v < 0.8 ? "pillar" : "pendulum", s: 1 + r() * 0.3, v: r() };
     if (theme === "falaises") return { t: v < 0.5 ? "crystal" : "rock", s: 1.1 + r() * 0.3, v: r() };
     if (theme === "bois") return { t: v < 0.5 ? "pine" : v < 0.8 ? "mushroom" : "rock", s: 1 + r() * 0.3, v: r() };
@@ -648,14 +656,14 @@
   /* ====================== PROFILS (sauvegarde d'un héros) ====================== */
   function newProfile(cls, name) {
     var b = {}; for (var k in CLASSES[cls].base) b[k] = CLASSES[cls].base[k];
-    return { cls: cls, name: name || CLASSES[cls].name, level: 1, xp: 0, gold: 30, equip: {}, bag: [], quests: {}, qdone: {}, kills: 0, bossKills: 0, uid: 1, rev: 0, base: b, pts: 0, created: Date.now() };
+    return { cls: cls, name: name || CLASSES[cls].name, level: 1, xp: 0, gold: 30, equip: {}, bag: [], quests: {}, qdone: {}, dungeons: {}, kills: 0, bossKills: 0, uid: 1, rev: 0, base: b, pts: 0, created: Date.now() };
   }
   function fixProfile(p) {
     if (!p || !CLASSES[p.cls]) return null;
     p.level = clamp(Math.floor(p.level) || 1, 1, CFG.maxLevel); p.xp = Math.max(0, Math.floor(p.xp) || 0);
     p.gold = Math.max(0, Math.floor(p.gold) || 0); p.equip = p.equip || {}; p.bag = (p.bag || []).slice(0, BAG_MAX);
     if (!p.base) { p.base = {}; for (var k in CLASSES[p.cls].base) p.base[k] = CLASSES[p.cls].base[k]; p.pts = (p.pts || 0) + 5 * (p.level - 1); }
-    p.pts = Math.max(0, Math.floor(p.pts) || 0);
+    p.pts = Math.max(0, Math.floor(p.pts) || 0); p.dungeons = p.dungeons || {};
     // anciens objets (v1.0) : leurs caractéristiques n'existent plus, on les convertit
     var conv = function (it) { if (!it || !it.st) return; if (it.look == null) it.look = Math.floor(Math.random() * LOOKS[it.slot].length); var st = {}, el = ELEMENTS[CLASSES[p.cls].el].stat; for (var k in it.st) { var nk = k === "pow" ? el : k === "crit" ? "agi" : k === "heal" ? "int" : k; st[nk] = (st[nk] || 0) + it.st[k]; } it.st = st; };
     SLOTS.forEach(function (sl) { conv(p.equip[sl]); }); p.bag.forEach(conv);
@@ -781,6 +789,7 @@
   function ev(w, e) { w.events.push(e); }
   function bump(w) { w.rev++; }
   function say(w, text, pi) { ev(w, { k: "msg", text: text, pi: pi == null ? -1 : pi }); }
+  function partyHasDungeon(w, id) { return w.players.some(function (p) { return p && p.profile.dungeons && p.profile.dungeons[id]; }); }
   function partyLevel(w) { var m = 1; w.players.forEach(function (p) { if (p) m = Math.max(m, p.profile.level); }); return m; }
   function avgLevel(w) { var s = 0, n = 0; w.players.forEach(function (p) { if (p) { s += p.profile.level; n++; } }); return n ? s / n : 1; }
 
@@ -911,6 +920,7 @@
       var po = portalAt(w.zone, h.x, h.y);
       if (po && !h.path.length) {
         if (po.req && partyLevel(w) < po.req) { say(w, "Il faut être niveau " + po.req + " pour aller vers « " + po.label + " ».", i); h.path = []; }
+        else if (po.dng && !partyHasDungeon(w, po.dng)) { say(w, "Il faut d'abord vaincre le donjon « " + DUNGEONS[po.dng].name + " » pour aller vers « " + po.label + " ».", i); h.path = []; }
         else if (po.to.indexOf("dungeon:") === 0) { startDungeon(w, po.to.slice(8)); return; }
         else { enterZone(w, po.to, w.zone); return; }
       }
@@ -1710,7 +1720,7 @@
           for (var k = 0; k < n; k++) res.items.push(makeItem(p, d.lvl + (R() < 0.3 ? 1 : 0), rollRarity(luck, d.boss ? 3 : 0)));
           questEvent(w, i, { kind: "kill", mob: d.type, elite: !!d.affix, boss: d.boss }, res);
           p.kills++;
-          if (d.boss) p.bossKills++;
+          if (d.boss) { p.bossKills++; if (c.room && c.room.dungeon && DUNGEONS[c.room.dungeon]) { p.dungeons = p.dungeons || {}; if (!p.dungeons[c.room.dungeon]) { p.dungeons[c.room.dungeon] = 1; ev(w, { k: "dngdone", pi: i, id: c.room.dungeon }); } } }
         });
         // jamais les mains vides
         if (!res.items.length && defeated.length) res.items.push(makeItem(p, Math.round(defeated.reduce(function (a, d) { return a + d.lvl; }, 0) / defeated.length), rollRarity(0)));
@@ -2015,7 +2025,7 @@
     createWorld: createWorld, addPlayer: addPlayer, removePlayer: removePlayer, zoneMap: zoneMap, exploreWalkable: exploreWalkable, portalAt: portalAt, findPath: findPath,
     cmd: cmd, step: step, active: active, unitAt: unitAt, objAt: objAt, uById: uById, inArena: inArena, groundOk: groundOk, cellFree: cellFree,
     targets: targets, area: area, canCast: canCast, spellCost: spellCost, reach: reach, combatPath: combatPath, myTurn: myTurn, los: los,
-    chestPrice: chestPrice, partyLevel: partyLevel, checkEnd: checkEnd, startDungeon: startDungeon, enterZone: enterZone, statusSum: statusSum, aiStep: aiStep, aiDo: aiDo,
+    chestPrice: chestPrice, partyLevel: partyLevel, partyHasDungeon: partyHasDungeon, checkEnd: checkEnd, startDungeon: startDungeon, enterZone: enterZone, statusSum: statusSum, aiStep: aiStep, aiDo: aiDo,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = API;
   root.AT_CORE = API;

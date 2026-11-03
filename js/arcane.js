@@ -13,7 +13,7 @@
   var stage = document.querySelector("[data-arcane]");
   if (!A || !ART || !stage) return;
 
-  var VERSION = "1.5.0";
+  var VERSION = "2.0.0";
   var TW = 96, TH = 48, HW = TW / 2, HH = TH / 2;
   var TAU = Math.PI * 2;
   var canvas = stage.querySelector("canvas");
@@ -370,6 +370,7 @@
       case "dopeul": if (isLocal(e.pi)) after(2.2, function () { toast("👁 <b>Niveau 100 !</b> Le Maître des Dopeuls t'attend à Lumebourg : affronte ton propre reflet.", "gold"); }); break;
       case "buy": if (isLocal(e.pi)) { SFX.coin(); toast("🛒 Acheté : <b>" + esc(e.item.name) + "</b>", "gold"); if (panel === "shop") refreshPanelSoon(); } break;
       case "skin": if (isLocal(e.pi)) { SFX.level(); banner(A.SKINS[e.id].name, "Nouvelle tenue équipée", "level"); var hv = w.heroes[e.pi]; if (hv) { var hq = iso(hv.x, hv.y); addParts(hq.x, hq.y - 30, 40, ["#ffd257", "#fff", "#c77dff"], { up: 80, max: 160 }); addRing(hq.x, hq.y, "#ffd257", 10, 2 * TW, 0.8, { flat: true, lw: 6 }); } if (panel === "shop") refreshPanelSoon(); } break;
+      case "dngdone": if (isLocal(e.pi)) after(1.2, function () { banner(A.DUNGEONS[e.id].name + " vaincu !", "La zone suivante est ouverte", "win"); }); break;
       case "quest": if (isLocal(e.pi)) { var Q = A.QUESTS.filter(function (q) { return q.id === e.q; })[0]; toast("📜 Quête terminée : <b>" + esc(Q ? Q.name : "") + "</b>", "gold"); } break;
       case "equip": if (isLocal(e.pi)) SFX.click(); break;
       case "sell": if (isLocal(e.pi)) { SFX.coin(); toast("+" + fmt(e.v) + " or", "gold"); } break;
@@ -579,10 +580,11 @@
       items.push({ d: x + y + (d.t === "house" ? 0.2 : 0), o: 1, f: function (g) { ART.deco(g, d, p.x, p.y, { t: clock, alpha: a }); } });
     });
     Z.portals.forEach(function (po) {
-      var p = iso(po.x, po.y), locked = po.req && A.partyLevel(w) < po.req;
+      var p = iso(po.x, po.y), lockLvl = po.req && A.partyLevel(w) < po.req, lockDng = po.dng && !A.partyHasDungeon(w, po.dng), locked = lockLvl || lockDng;
+      var isDng = po.to.indexOf("dungeon:") === 0, done = isDng && A.partyHasDungeon(w, po.to.slice(8));
       items.push({ d: po.x + po.y - 0.5, o: 0, f: function (g) {
         ART.deco(g, { t: "portal", s: 1, v: 0 }, p.x, p.y, { t: clock, locked: locked });
-        label(g, p.x, p.y - 62, (locked ? "🔒 " : "→ ") + po.label + (locked ? " (niv. " + po.req + ")" : ""), locked ? "#ffb0b0" : "#ffffff", 13);
+        label(g, p.x, p.y - 62, (locked ? "🔒 " : isDng ? "⚔ " : "→ ") + po.label + (lockLvl ? " (niv. " + po.req + ")" : lockDng ? " (battre " + A.DUNGEONS[po.dng].name + ")" : done ? " ✓" : ""), locked ? "#ffb0b0" : isDng ? "#ffd257" : "#ffffff", 13);
       } });
     });
     (A.NPCS[w.zone] || []).forEach(function (n) {
@@ -1157,22 +1159,59 @@
 
   // fiche des sorts du héros (pratique sur téléphone, où il n'y a pas de survol)
   function showSpells() {
-    var pl = myPlayer(); if (!pl) return;
+    var pl = myPlayer() || (screen === "menu" ? { profile: SAVE.profiles[menuStep === "duo2" ? menuSel2 : menuSel] } : null); if (!pl) return;
     panel = "help";
-    var u = w.combat ? w.combat.units.filter(function (x) { return x.side === 0 && x.pi === focusPi && !x.summon; })[0] : null;
+    var u = w && w.combat ? w.combat.units.filter(function (x) { return x.side === 0 && x.pi === focusPi && !x.summon; })[0] : null;
     var st = A.heroStats(pl.profile);
     var rows = A.CLASSES[pl.profile.cls].spells.map(function (sid, i) {
       var S = A.SPELLS[sid], step = S.steps[0];
       var rng = step.shape === "self" ? "soi-même" : step.shape === "knight" ? "en L" : step.shape === "ray" ? "diagonales" : (step.range[0] === step.range[1] ? step.range[0] : step.range[0] + "–" + (step.range[1] + (step.boost ? st.po : 0))) + " case" + (step.range[1] > 1 ? "s" : "") + (step.shape === "line" ? (step.range[1] === 1 ? " : direction" : " en ligne") : step.shape === "diag" ? " en diagonale" : step.shape === "queen" ? " ligne / diagonale" : "");
       var lvl = A.spellLevel(pl.profile.cls, sid), locked = pl.profile.level < lvl;
-      return '<li class="at-sl' + (locked ? " lock" : "") + '"><img src="' + spellImg(sid, 44) + '" alt="" width="44" height="44"><div><b>' + KEYS[i] + ". " + esc(S.name) + (S.ult ? " <em>ultime</em>" : "") + (locked ? ' <em class="lvl">niveau ' + lvl + "</em>" : "") + "</b>" +
+      return '<li class="at-sl' + (locked ? " lock" : "") + '" data-sdetail="' + sid + '" data-cls="' + pl.profile.cls + '"><img src="' + spellImg(sid, 44) + '" alt="" width="44" height="44"><div><b>' + KEYS[i] + ". " + esc(S.name) + (S.ult ? " <em>ultime</em>" : "") + (locked ? ' <em class="lvl">niveau ' + lvl + "</em>" : "") + "</b>" +
         '<p class="at-tip-m"><span>' + S.pa + " PA</span>" + (S.el ? '<span style="color:' + A.ELEMENTS[S.el].col + '">' + A.ELEMENTS[S.el].name + " +" + st.elem[S.el] + " %</span>" : "") + "<span>" + esc(rng) + "</span>" + (step.los ? "<span>ligne de vue</span>" : "") + (S.cd ? "<span>recharge " + S.cd + "</span>" : "") + (S.perTurn ? "<span>" + S.perTurn + "× / tour</span>" : "") + "</p>" +
         "<p>" + esc(S.desc) + "</p>" + (u && A.canCast(w, u, sid) ? '<p class="at-tip-warn">' + esc(A.canCast(w, u, sid)) + "</p>" : "") + "</div></li>";
     }).join("");
     show('<div class="at-inv-h"><img src="' + ART.heroIcon(pl.profile.cls, 40, A.gearOf(pl.profile)) + '" alt="" width="40" height="40" style="border-radius:10px"><h2>' + esc(A.CLASSES[pl.profile.cls].name) + '</h2><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' +
       '<p class="game-small" style="margin:0 0 8px">' + esc(A.CLASSES[pl.profile.cls].desc) + " Un nouveau sort aux niveaux " + A.SPELL_LEVELS.slice(2).join(", ") + ", puis le Dopeul au niveau " + A.DOPEUL_LEVEL + ".</p>" +
       '<ul class="at-slist">' + rows + "</ul>" +
-      '<div class="btn-row center"><button class="btn" type="button" data-act="close">' + (w.combat ? "Retour au combat" : "Fermer") + "</button></div>", "at-card-q");
+      '<div class="btn-row center"><button class="btn" type="button" data-act="close">' + (w && w.combat ? "Retour au combat" : "Fermer") + "</button></div>", "at-card-q");
+  }
+  // fiche détaillée d'un sort (appui long, clic droit, ou depuis la liste)
+  function spellEffects(S, st) {
+    var out = [], mul = S.el && st ? (1 + (st.elem[S.el] || 0) / 100) : 1;
+    var step = S.steps[0], area = S.area === "plus" ? "en croix (5 cases)" : S.area === "disc1" ? "à 1 case autour (5 cases)" : S.area === "disc2" ? "à 2 cases autour (13 cases)" : "";
+    if (S.dmg) out.push(["⚔", (S.el ? A.ELEMENTS[S.el].name + " : " : "") + S.dmg + " dégâts de base" + (st ? " → <b>" + Math.round(S.dmg * mul + (st.dom || 0)) + "</b> avec tes caractéristiques" : "") + (area ? ", " + area : "")]);
+    if (S.heal) out.push(["✚", S.heal + " PV rendus" + (st ? " → <b>" + Math.round(S.heal * (1 + st.heal / 100)) + "</b>" : "") + (area ? ", " + area : "")]);
+    if (S.healAll) out.push(["✚", S.healAll + " PV à tous tes alliés, où qu'ils soient" + (st ? " (<b>" + Math.round(S.healAll * (1 + st.heal / 100)) + "</b>)" : "")]);
+    if (S.healSelf) out.push(["✚", S.healSelf + " PV pour toi"]);
+    if (S.healSummons) out.push(["✚", S.healSummons + " PV à chaque invocation, +1 PA à leur prochain tour"]);
+    if (S.shield) out.push(["🛡", "Bouclier de " + S.shield + " jusqu'à ton prochain tour" + (st ? " (<b>" + Math.round(S.shield * (1 + st.heal / 100)) + "</b>)" : "")]);
+    if (S.push) out.push(["➡", "Repousse de " + S.push + " case" + (S.push > 1 ? "s" : "") + " ; une poussée bloquée fait " + A.CFG.pushDmg + " dégâts par case"]);
+    if (S.pull) out.push(["⬅", "Attire de " + S.pull + " cases vers toi"]);
+    if (S.status) out.push(["✦", (S.status.k === "dom" ? "+" + S.status.v + " dommages" : "+" + S.status.v + " % résistance") + " jusqu'à ton prochain tour"]);
+    if (S.status2) out.push(["✦", "+" + S.status2.v + (S.status2.k === "dom" ? " dommages" : " % résistance") + " jusqu'à ton prochain tour"]);
+    if (S.summon) { var SM = A.SUMMONS[S.summon]; out.push(["🐾", SM.name + " : " + (SM.hp + SM.hpL * (st ? st.lvl || 1 : 1)) + " PV, " + SM.pa + " PA, " + SM.pm + " PM, " + SM.spells.map(function (ms) { var M = A.MOB_SPELLS[ms]; return M.name + (M.dmg ? " (" + M.dmg + " " + (M.el ? A.ELEMENTS[M.el].name : "") + ", " + M.range[0] + "–" + M.range[1] + " cases)" : M.heal ? " (soin " + M.heal + ")" : ""); }).join(", ") + ". " + SM.desc]); }
+    if (step.los) out.push(["👁", "Ligne de vue nécessaire"]);
+    if (S.cd) out.push(["⏳", "Recharge : " + S.cd + " tour" + (S.cd > 1 ? "s" : "")]);
+    if (S.perTurn) out.push(["🔁", S.perTurn + " lancer" + (S.perTurn > 1 ? "s" : "") + " par tour maximum"]);
+    if (S.perTarget) out.push(["🔁", "Une fois par cible et par tour"]);
+    if (S.ult) out.push(["★", "Sort ultime"]);
+    return out;
+  }
+  function showSpellDetail(sid, cls) {
+    var S = A.SPELLS[sid]; if (!S) return;
+    var pl = myPlayer(), pr = pl ? pl.profile : (cls ? SAVE.profiles[cls] : null);
+    cls = cls || (pr ? pr.cls : null);
+    var st = pr ? A.heroStats(pr) : null; if (st) st.lvl = pr.level;
+    var lvl = cls ? A.spellLevel(cls, sid) : 1, locked = pr && pr.level < lvl;
+    var step = S.steps[0];
+    var rng = step.shape === "self" ? "Soi-même" : step.shape === "knight" ? "Mouvement en L" : step.shape === "ray" ? "Diagonales entières" : (step.range[0] === step.range[1] ? step.range[0] : step.range[0] + " à " + (step.range[1] + (step.boost && st ? st.po : 0))) + " case" + (step.range[1] > 1 ? "s" : "") + (step.shape === "line" ? (step.range[1] === 1 ? " (direction)" : " en ligne droite") : step.shape === "diag" ? " en diagonale" : step.shape === "queen" ? " en ligne ou en diagonale" : "") + (step.boost ? " (+ Portée)" : "");
+    panel = "help";
+    show('<div class="at-sd"><div class="at-sd-h"><img src="' + spellImg(sid, 88) + '" alt="" width="88" height="88"><div><span class="at-sd-k">' + (cls ? esc(A.CLASSES[cls].name) + " · " : "") + "sort " + (A.CLASSES[cls] ? A.CLASSES[cls].spells.indexOf(sid) + 1 : "") + (S.ult ? " · ultime" : "") + "</span><h2>" + esc(S.name) + "</h2>" +
+      '<p class="at-tip-m"><span class="pa">' + S.pa + " PA</span>" + (S.el ? '<span style="color:' + A.ELEMENTS[S.el].col + '">● ' + A.ELEMENTS[S.el].name + (st ? " +" + (st.elem[S.el] || 0) + " %" : "") + "</span>" : "") + "<span>" + esc(rng) + "</span>" + (locked ? '<span class="lock">🔒 niveau ' + lvl + "</span>" : "") + "</p></div></div>" +
+      '<p class="at-sd-d">' + esc(S.desc) + "</p>" +
+      '<ul class="at-sd-fx">' + spellEffects(S, st).map(function (f) { return "<li><i>" + f[0] + "</i><span>" + f[1] + "</span></li>"; }).join("") + "</ul>" +
+      '<div class="btn-row center"><button class="btn btn-ghost btn-small" type="button" data-act="spells">Tous mes sorts</button><button class="btn" type="button" data-act="close">' + (w && w.combat ? "Retour au combat" : "Fermer") + "</button></div></div>", "at-card-q");
   }
   function showSource() {
     panel = "help";
@@ -1190,8 +1229,9 @@
       "<li><b>Caractéristiques</b> : Vitalité (PV), Sagesse (XP), Force / Intelligence / Chance / Agilité (+1 % aux dégâts Terre / Feu / Eau / Air par point ; l'Intelligence soigne, l'Agilité donne du critique), Dommages (ajoutés à chaque coup), Prospection (butin), Initiative, Résistance. <b>5 points à répartir</b> à chaque niveau, dans le sac.</li>" +
       "<li><b>Objets visibles</b> : tout ce que tu équipes se voit sur ton héros (chapeau champignon, poisson-épée, ailes de dragon, pattes de canard…). La couleur suit la rareté. Les objets rares et plus peuvent donner <b>+1 Portée</b>.</li>" +
       "<li><b>Butin</b> : chaque monstre peut lâcher un objet aléatoire : 50 % commun, 12 % magique, 8 % rare, <b>20 % épique</b>, <b>10 % légendaire</b> (avec un pouvoir). Parfois <b>+1 PA</b>, <b>+1 PM</b> ou <b>+Portée</b>. Les élites (★) lâchent toujours quelque chose, le boss trois objets.</li>" +
-      "<li><b>Donjons</b> : Incarnam (niv. 2, nord de la Prairie), la Confiserie de la Reine Guimauve (niv. 5, Marais Bulleux), le Sanctuaire brisé (niv. 7, Falaises) et la Tour des Horloges (niv. 10, Îles Cotonneuses). Trois salles d'affilée, les PV ne remontent qu'en partie entre deux.</li>" +
-      "<li><b>Sorts</b> : 10 par héros, un nouveau aux niveaux 3, 6, 10 (ultime), 15, 25, 40, 60 et 80, dans plusieurs éléments. Au niveau 100, le Maître des Dopeuls de Lumebourg te fait affronter ton reflet.</li>" +
+      "<li><b>Donjons</b> : Incarnam (niv. 2, Prairie), le Cœur du Bois Fractal (niv. 4, Bois), la Confiserie de la Reine Guimauve (niv. 5, Marais), le Sanctuaire brisé (niv. 7, Falaises) et la Tour des Horloges (niv. 10, Îles). Trois salles d'affilée, les PV ne remontent qu'en partie entre deux.</li>" +
+      "<li><b>Sorts</b> : 10 par héros, un nouveau aux niveaux 3, 6, 10 (ultime), 15, 25, 40, 60 et 80, dans plusieurs éléments. <b>Appui long</b> (ou clic droit) sur un sort : sa fiche détaillée avec les dégâts réels. Au niveau 100, le Maître des Dopeuls de Lumebourg te fait affronter ton reflet.</li>" +
+      "<li><b>Progression</b> : chaque zone a son donjon, et il faut vaincre le boss du donjon pour ouvrir la zone suivante : Incarnam → Bois Fractal, Cœur du Bois → Marais, Confiserie → Falaises, Sanctuaire → Îles Cotonneuses.</li>" +
       "<li><b>Hôtels de vente</b> : un dans chaque zone (8 objets au niveau de la zone, coffres, et des <b>tenues</b> avec aura : royale, astrale, infernale, givre, ombre).</li>" +
       "<li><b>Zones</b> : Prairie des Runes → Bois Fractal → Marais Bulleux (au sud du Bois) → Falaises de Cristal → Îles Cotonneuses. Le bouton <b>?</b> de la barre de sorts explique chaque sort de ton héros.</li>" +
       (TOUCH ? "<li><b>Tactile</b> : touche une case pour l'aperçu, touche-la encore pour confirmer. Glisse pour déplacer la vue, pince pour zoomer.</li>" : "") +
@@ -1394,6 +1434,20 @@
     if (t && w && w.combat) { var un = A.uById(w.combat, +t.dataset.unit); var r2 = t.getBoundingClientRect(), sr2 = stage.getBoundingClientRect(); if (un) showTip(unitTip(un), r2.left - sr2.left, r2.bottom - sr2.top); }
   });
   hud.addEventListener("pointerout", function (e) { if (e.target.closest("[data-spell],[data-unit]")) hideTip(); });
+  // appui long sur un sort (doigt ou souris) : fiche détaillée
+  var pressTimer = 0, pressFired = false;
+  function startPress(target, pi) {
+    clearTimeout(pressTimer); pressFired = false;
+    pressTimer = setTimeout(function () { pressFired = true; showSpellDetail(target.dataset.spell || target.dataset.sdetail, target.dataset.cls); if (navigator.vibrate) navigator.vibrate(15); }, 420);
+  }
+  function endPress() { clearTimeout(pressTimer); }
+  hud.addEventListener("pointerdown", function (e) { pressFired = false; var b = e.target.closest("[data-spell]"); if (b) startPress(b); });
+  hud.addEventListener("pointerup", endPress); hud.addEventListener("pointercancel", endPress); hud.addEventListener("pointerleave", endPress);
+  card.addEventListener("pointerdown", function (e) { pressFired = false; var b = e.target.closest("[data-sdetail]"); if (b) startPress(b); });
+  card.addEventListener("pointerup", endPress); card.addEventListener("pointercancel", endPress);
+  hud.addEventListener("click", function (e) { if (pressFired) { pressFired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  card.addEventListener("click", function (e) { if (pressFired) { pressFired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  hud.addEventListener("contextmenu", function (e) { var b = e.target.closest("[data-spell]"); if (b) { e.preventDefault(); clearTimeout(pressTimer); showSpellDetail(b.dataset.spell); } });
   var tipTimer = 0;
   stage.addEventListener("pointerup", function (e) { if (e.pointerType === "touch") { clearTimeout(tipTimer); tipTimer = setTimeout(hideTip, 1800); } });
   function act(a) {
@@ -1405,7 +1459,7 @@
       case "spells": showSpells(); break;
       case "mute": SET.mute = !SET.mute; saveSet(); applyVolume(); $("[data-act=mute]", hud).textContent = SET.mute ? "🔇" : "🔊"; break;
       case "pause": showPause(); break;
-      case "close": closePanel(); if (w && w.mode === "loot") showLoot(); break;
+      case "close": closePanel(); if (screen === "menu") showMenu(); else if (w && w.mode === "loot") showLoot(); break;
       case "ready": locals.forEach(function (i) { if (w.players[i] && !w.players[i].ready) sendCmd({ t: "ready" }, i); }); SFX.click(); break;
       case "flee": hide(); sendCmd({ t: "flee" }); break;
       case "end": sel = null; pendingTap = null; var u = activeLocal(); if (u) sendCmd({ t: "end" }, u.pi); break;
@@ -1419,13 +1473,14 @@
   }
   card.addEventListener("click", function (e) {
     audio();
-    var b = e.target.closest("button"); if (!b) return;
+    var b = e.target.closest("button, li[data-sdetail]"); if (!b) return;
     if (b.dataset.equip) { var pi = +b.dataset.pi; sendCmd({ t: "equip", uid: +b.dataset.equip }, pi); invSel = null; refreshPanelSoon(); return; }
     if (b.dataset.sell) { sendCmd({ t: "sell", uid: +b.dataset.sell }, +b.dataset.pi); invSel = null; refreshPanelSoon(); return; }
     if (b.dataset.unequip) { sendCmd({ t: "unequip", slot: b.dataset.unequip }, panelPi); invSel = null; refreshPanelSoon(); return; }
     if (b.dataset.lock) { sendCmd({ t: "lock", uid: +b.dataset.lock }, panelPi); refreshPanelSoon(); return; }
     if (b.dataset.stat) { sendCmd({ t: "stat", k: b.dataset.stat, n: +b.dataset.n }, panelPi); SFX.coin(); refreshPanelSoon(); return; }
     if (b.dataset.shoptab) { shopTab = b.dataset.shoptab; SFX.click(); showShop(); return; }
+    if (b.dataset.sdetail) { showSpellDetail(b.dataset.sdetail, b.dataset.cls); return; }
     if (b.dataset.buy) { sendCmd({ t: "buy", uid: +b.dataset.buy }); refreshPanelSoon(); return; }
     if (b.dataset.skin) { sendCmd({ t: "skin", id: b.dataset.skin }); refreshPanelSoon(); return; }
     if (b.dataset.wear != null) { sendCmd({ t: "wear", id: b.dataset.wear || null }); SFX.click(); refreshPanelSoon(); return; }
@@ -1433,7 +1488,7 @@
     if (b.dataset.isel) { invSel = +b.dataset.isel; SFX.click(); showInv(); return; }
     if (b.dataset.invpi != null) { invSel = null; showInv(+b.dataset.invpi); return; }
     if (b.dataset.menu) { menuAct(b.dataset.menu, b); return; }
-    if (b.dataset.pick) { if (menuStep === "duo2") menuSel2 = b.dataset.pick; else menuSel = b.dataset.pick; SFX.click(); showMenu(); return; }
+    if (b.dataset.pick) { if (menuStep === "duo2") menuSel2 = b.dataset.pick; else menuSel = b.dataset.pick; SFX.click(); menuT = 0; showMenu(); return; }
     if (b.dataset.act) act(b.dataset.act);
   });
   card.addEventListener("input", function (e) {
@@ -1643,6 +1698,46 @@
   }
 
   /* ====================== MENU ====================== */
+  // écran de sélection : liste à gauche, gros héros animé au centre, sorts et équipement à droite
+  var menuCanvas = null, menuT = 0;
+  function selectScreen(sel, title, sub, taken, buttons, extra) {
+    var C = A.CLASSES[sel], pr = SAVE.profiles[sel], st = A.heroStats(pr), gear = A.gearOf(pr);
+    var list = A.CLASS_IDS.map(function (c) {
+      var P = SAVE.profiles[c];
+      return '<button type="button" class="at-cs-h' + (c === sel ? " on" : "") + (c === taken ? " taken" : "") + '" data-pick="' + c + '"' + (c === taken ? " disabled" : "") + ' style="--hc:' + ART.HERO_PAL[c].main + '"><img src="' + ART.heroIcon(c, 52, A.gearOf(P)) + '" alt="" width="52" height="52"><span><b>' + A.CLASSES[c].name + "</b><small>" + A.CLASSES[c].role + "</small></span><em>" + P.level + "</em></button>";
+    }).join("");
+    var spells = C.spells.map(function (sid, i) {
+      var lv = A.SPELL_LEVELS[i], lock = pr.level < lv, S = A.SPELLS[sid];
+      return '<button type="button" class="at-cs-sp' + (lock ? " lock" : "") + (S.ult ? " ult" : "") + '" data-sdetail="' + sid + '" data-cls="' + sel + '" title="' + esc(S.name) + '"><img src="' + spellImg(sid, 54) + '" alt="" width="54" height="54"><b>' + S.pa + "</b><small>" + (lock ? "niv. " + lv : esc(S.name)) + "</small></button>";
+    }).join("");
+    var equip = A.SLOTS.map(function (sl) { var it = pr.equip[sl]; return '<span class="at-cs-eq' + (it ? " r" + it.r : "") + '" style="' + (it ? "--rc:" + A.RARITIES[it.r].col : "") + '" title="' + (it ? esc(it.name) : A.SLOT_NAME[sl]) + '">' + (it ? '<img src="' + ART.itemIcon(sl, A.RARITIES[it.r].col, 36) + '" alt="" width="36" height="36">' : "<i>" + A.SLOT_NAME[sl].charAt(0) + "</i>") + "</span>"; }).join("");
+    var powers = st.powers.map(function (p) { return "<span>✦ " + esc(A.POWERS[p].name) + "</span>"; }).join("");
+    show('<div class="at-cs">' +
+      '<aside class="at-cs-list"><div class="at-logo"><span>' + esc(sub) + "</span><h2>" + esc(title) + "</h2></div>" + list + "</aside>" +
+      '<section class="at-cs-center"><canvas class="at-cs-canvas" data-menu-canvas width="420" height="520"></canvas>' +
+      '<div class="at-cs-name"><span class="at-cs-piece">' + esc(C.piece) + "</span><h3>" + esc(C.name) + "</h3><em>" + esc(C.role) + "</em><p>" + esc(C.desc) + "</p></div>" +
+      '<div class="at-cs-stats"><span><b>' + st.hp + "</b>PV</span><span><b>" + st.pa + "</b>PA</span><span><b>" + st.pm + "</b>PM</span><span><b>" + st.ini + "</b>Ini</span><span><b>" + st.crit + " %</b>Crit</span><span><b>+" + st.po + "</b>PO</span></div>" +
+      '<div class="at-cs-equip">' + equip + "</div>" + (powers ? '<p class="at-pows">' + powers + "</p>" : "") +
+      '<div class="at-cs-lvl"><b>Niv. ' + pr.level + "</b><i><u style=\"width:" + (pr.level >= A.CFG.maxLevel ? 100 : pr.xp / A.xpNeed(pr.level) * 100).toFixed(1) + '%"></u></i><small>' + fmt(pr.gold) + " or" + (pr.skin ? " · " + esc(A.SKINS[pr.skin].name) : "") + "</small></div></section>" +
+      '<aside class="at-cs-right"><h4>Sorts <small>appui long = détail</small></h4><div class="at-cs-spells">' + spells + "</div>" +
+      '<p class="game-small">Nouveau sort aux niveaux ' + A.SPELL_LEVELS.slice(2).join(", ") + ". Dopeul au niveau " + A.DOPEUL_LEVEL + ".</p>" + (extra || "") + "</aside></div>" +
+      '<div class="at-cs-foot">' + buttons + "</div>", "at-card-menu at-card-cs");
+    menuCanvas = card.querySelector("[data-menu-canvas]");
+  }
+  function drawMenuHero(dt) {
+    if (!menuCanvas || screen !== "menu") return;
+    menuT += dt;
+    var sel = menuStep === "duo2" ? menuSel2 : menuSel, pr = SAVE.profiles[sel];
+    var g = menuCanvas.getContext("2d"), W2 = menuCanvas.width, H2 = menuCanvas.height;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W2, H2);
+    // rayons de lumière façon vitrine
+    var P = ART.HERO_PAL[sel];
+    for (var i = 0; i < 7; i++) { g.save(); g.translate(W2 / 2, -40); g.rotate((i - 3) * 0.22 + Math.sin(menuT * 0.5 + i) * 0.04); g.globalAlpha = 0.08 + (i % 2) * 0.05; g.fillStyle = P.main; g.beginPath(); g.moveTo(-14, 0); g.lineTo(14, 0); g.lineTo(60, H2 + 80); g.lineTo(-60, H2 + 80); g.fill(); g.restore(); }
+    var gl = g.createRadialGradient(W2 / 2, H2 * 0.78, 10, W2 / 2, H2 * 0.78, 180); gl.addColorStop(0, "rgba(255,255,255,.18)"); gl.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gl; g.fillRect(0, 0, W2, H2);
+    ART.ell(g, W2 / 2, H2 * 0.86, 120, 22, "rgba(0,0,0,.25)");
+    for (var k = 0; k < 10; k++) { var sx = (k * 97 + menuT * 20) % W2, sy = (H2 - (k * 53 + menuT * 30) % H2); ART.circ(g, sx, sy, 1.5 + (k % 3), "rgba(255,255,255," + (0.2 + (k % 3) * 0.15) + ")"); }
+    ART.hero(g, sel, W2 / 2, H2 * 0.9, { t: menuT, flip: 1, scale: 4.6, gear: A.gearOf(pr), seed: 3 });
+  }
   function heroCard(cls, selected, taken) {
     var C = A.CLASSES[cls], pr = SAVE.profiles[cls], st = A.heroStats(pr);
     return '<button type="button" class="at-hero' + (selected ? " on" : "") + (taken ? " taken" : "") + '" data-pick="' + cls + '"' + (taken ? " disabled" : "") + ">" +
@@ -1653,23 +1748,22 @@
   }
   function showMenu(msg) {
     screen = "menu"; panel = null; hud.hidden = true;
+    menuCanvas = null;
     if (menuStep === "duo2") {
       if (menuSel2 === menuSel) menuSel2 = A.CLASS_IDS.filter(function (c) { return c !== menuSel; })[0];
-      show('<div class="at-logo"><span>Joueur 2</span><h2>Choisis le second héros</h2></div>' +
-        '<div class="at-heroes">' + A.CLASS_IDS.map(function (c) { return heroCard(c, c === menuSel2, c === menuSel); }).join("") + "</div>" +
-        '<div class="btn-row center"><button class="btn" type="button" data-menu="duogo">▶ Partir à deux</button><button class="btn btn-ghost" type="button" data-menu="back">Retour</button></div>' +
-        '<p class="game-small">Même écran : chacun joue son tour à la souris. <kbd>Tab</kbd> change de héros en exploration.</p>', "at-card-menu");
+      selectScreen(menuSel2, "Choisis le second héros", "Joueur 2", menuSel,
+        '<button class="btn" type="button" data-menu="duogo">▶ Partir à deux</button><button class="btn btn-ghost" type="button" data-menu="back">Retour</button>',
+        '<p class="game-small">Même écran : chacun joue son tour. <kbd>Tab</kbd> change de héros en exploration.</p>');
       return;
     }
     if (menuStep === "online") { showOnline(); return; }
-    show('<div class="at-logo"><span>RPG tactique coop</span><h2>Arcane Tactics</h2></div>' +
+    selectScreen(menuSel, "Arcane Tactics", "RPG tactique coop", null,
       (msg ? '<p class="at-err">' + esc(msg) + "</p>" : "") +
-      '<div class="at-heroes">' + A.CLASS_IDS.map(function (c) { return heroCard(c, c === menuSel); }).join("") + "</div>" +
       '<label class="at-name">Ton nom <input type="text" maxlength="14" placeholder="' + esc(A.CLASSES[menuSel].name) + '" value="' + esc(SAVE.name || "") + '" data-name></label>' +
-      '<div class="btn-row center"><button class="btn" type="button" data-menu="solo">▶ Jouer seul</button>' +
+      '<button class="btn" type="button" data-menu="solo">▶ Jouer seul</button>' +
       '<button class="btn btn-alt" type="button" data-menu="duo">👥 Duo même écran</button>' +
-      '<button class="btn btn-alt" type="button" data-menu="online">🌐 Coop en ligne</button></div>' +
-      '<p class="game-small">Chaque héros garde sa propre progression (niveau, butin, quêtes) dans ce navigateur. ' + (TOUCH ? "Sur téléphone, le bouton ⛶ en haut à droite passe en plein écran. " : "") + "v" + VERSION + "</p>", "at-card-menu");
+      '<button class="btn btn-alt" type="button" data-menu="online">🌐 Coop en ligne</button>',
+      '<p class="game-small">Chaque héros garde sa progression dans ce navigateur. ' + (TOUCH ? "⛶ en haut à droite : plein écran. " : "") + "v" + VERSION + "</p>");
   }
   function showOnline() {
     if (screen !== "menu") return;
@@ -1739,6 +1833,7 @@
     clock += rdt;
     var dt = rdt;
     if (hitstop > 0) { hitstop -= rdt; dt = rdt * 0.15; }
+    if (screen === "menu") drawMenuHero(rdt);
     if (screen === "game" && w) {
       var host = !(NET.started && NET.role === "guest");
       if (host) {

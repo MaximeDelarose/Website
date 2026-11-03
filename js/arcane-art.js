@@ -25,6 +25,7 @@
     marais: { top: ["#3fa37a", "#36966e", "#4ab086"], path: ["#a08a58", "#927c4e"], side: "#236e4f", side2: "#19533c", water: "#2fd6c0", line: "rgba(10,50,30,.18)" },
     nuages: { top: ["#f3eefc", "#ebe4f8", "#faf6ff"], path: ["#ffd9ec", "#ffcde6"], side: "#c9b8e8", side2: "#b3a0d9", water: "#9fd8ff", line: "rgba(120,90,160,.10)" },
     confiserie: { top: ["#ffd3e6", "#ffc6de", "#ffe0ee"], path: ["#fff1c2", "#ffe9a8"], side: "#e08ab0", side2: "#c96a94", water: "#ff8ab4", line: "rgba(160,60,110,.10)" },
+    racines: { top: ["#3f8a52", "#377c49", "#49985c"], path: ["#9a7a48", "#8d6e40"], side: "#255634", side2: "#1a4226", water: "#3fb8a8", line: "rgba(10,50,20,.2)" },
     horloge: { top: ["#3b4a66", "#34425c", "#425272"], path: ["#5a6a86", "#4f5e78"], side: "#222c40", side2: "#161d2c", water: "#d9a441", line: "rgba(217,164,65,.14)" },
   };
 
@@ -736,6 +737,19 @@
       var gl = 0.5 + Math.sin(t * 6) * 0.4; g.fillStyle = "rgba(255,210,87," + gl + ")"; g.fillRect(-4, -82, 8, 4);
       rrect(g, -34, -56, 9, 30, 4, shade(c, -0.2)); rrect(g, 25, -56, 9, 30, 4, shade(c, -0.2));
     },
+    treant: function (g, c, t, o) {
+      // Ancien Sylvestre : souche-tronc qui marche, branches qui grincent, visage dans l'écorce
+      var b = Math.sin(t * 1.3) * 1.5;
+      rrect(g, -18, -10, 12, 10, 3, shade(c, -0.35)); rrect(g, 6, -10, 12, 10, 3, shade(c, -0.35));
+      poly(g, [-22, -8, 22, -8, 18, -62 + b, -18, -62 + b], c, shade(c, -0.5), 2.5);
+      g.strokeStyle = shade(c, -0.4); g.lineWidth = 2; for (var i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(i * 9, -10); g.quadraticCurveTo(i * 11 + 2, -36 + b, i * 8, -58 + b); g.stroke(); }
+      g.strokeStyle = c; g.lineWidth = 6; g.lineCap = "round";
+      g.beginPath(); g.moveTo(-16, -50 + b); g.quadraticCurveTo(-36, -62 + b, -40, -88 + b); g.moveTo(16, -50 + b); g.quadraticCurveTo(38, -64 + b, 42, -86 + b); g.moveTo(0, -62 + b); g.lineTo(2, -92 + b); g.stroke();
+      [[-40, -88], [-30, -74], [42, -86], [30, -72], [2, -92], [-8, -80], [12, -82]].forEach(function (q, k) { circ(g, q[0], q[1] + b, 11 + (k % 2) * 3, k % 3 ? "#62b25b" : "#85cc6c"); });
+      circ(g, -32, -84 + b, 3, "#ff7b9c"); circ(g, 36, -80 + b, 3, "#fff1a8");
+      if (!o.back) { poly(g, [-9, -46 + b, -3, -42 + b, -9, -38 + b], "#1b1530"); poly(g, [9, -46 + b, 3, -42 + b, 9, -38 + b], "#1b1530"); g.fillStyle = "#1b1530"; g.beginPath(); g.moveTo(-6, -28 + b); g.quadraticCurveTo(0, -22 + b, 6, -28 + b); g.quadraticCurveTo(0, -24 + b, -6, -28 + b); g.fill(); }
+      var gl = 0.5 + Math.sin(t * 2) * 0.3; g.fillStyle = "rgba(255,241,168," + gl + ")"; g.fillRect(-7, -45 + b, 3, 2); g.fillRect(4, -45 + b, 3, 2);
+    },
     statue: function (g, c, t, o) {
       // Sentinelle d'Incarnam : statue de pierre couverte de lierre, un œil de rune
       var b = Math.sin(t * 1.2) * 1;
@@ -1073,7 +1087,7 @@
   function mobIcon(type, size, col, elite) {
     return icon("m-" + type + (elite ? "e" : ""), size, function (g, s) {
       g.fillStyle = elite ? "#4a3a12" : "#2a2342"; g.fillRect(0, 0, s, s);
-      var big = /^(archonte|guimauve|tictac|sentinelle)$/.test(type);
+      var big = /^(archonte|guimauve|tictac|sentinelle|sylvestre)$/.test(type);
       mob(g, type, s / 2, s * (big ? 1.25 : 0.92), { t: 0.6, col: col, scale: s / (big ? 80 : 44), noShadow: true });
     });
   }
