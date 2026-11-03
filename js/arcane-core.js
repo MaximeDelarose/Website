@@ -1,0 +1,1554 @@
+/* =========================================================================
+   Arcane Tactics — règles du jeu, sans DOM
+   (le rendu, les commandes et le réseau sont dans js/arcane.js)
+
+   RPG tactique isométrique coop à 2 : exploration case par case, combats
+   au tour par tour (PA / PM), 3 héros inspirés des pièces d'échecs
+   (Bastion = la tour, Prisme = le fou, Voltige = le cavalier), monstres,
+   zones, donjon, quêtes, et surtout du BUTIN ALÉATOIRE après chaque
+   combat : objets à raretés, grosses caractéristiques, +1 PA, +1 PM, +PO
+   et pouvoirs légendaires.
+
+   Tout le monde du jeu (w) est un objet JSON : l'hôte le fait avancer et
+   l'envoie tel quel à l'invité. Les cartes d'exploration ne sont pas
+   envoyées : elles sont générées à l'identique à partir de leur graine.
+
+   Testable dans Node :
+     const A = require("./js/arcane-core.js");
+     const w = A.createWorld({ players: [{ name: "Moi", profile: A.newProfile("bastion") }] });
+     A.cmd(w, 0, { t: "walk", x: 10, y: 8 }); A.step(w, 1);
+   ========================================================================= */
+(function (root) {
+  "use strict";
+
+  /* ====================== RÉGLAGES GÉNÉRAUX ====================== */
+  var CFG = {
+    maxLevel: 15,
+    exploreStep: 0.2,          // s par case en exploration
+    packWander: [2.5, 6],      // s entre deux pas d'un groupe de monstres
+    respawn: 35,               // s avant qu'un groupe battu revienne
+    caps: { pa: 12, pm: 7, po: 4, res: 50, crit: 60 },
+    dropChance: 0.5,           // chance qu'un monstre normal lâche un objet (par joueur)
+    eliteChance: 0.12,
+    pushDmg: 9,                // dégâts par case de poussée bloquée
+    dungeonHeal: 0.4,          // part des PV rendue entre deux salles du donjon
+  };
+
+  /* ====================== HASARD ====================== */
+  function rng(seed) {
+    var s = (seed >>> 0) || 1;
+    return function () { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+  }
+  function ri(r, a, b) { return a + Math.floor(r() * (b - a + 1)); }
+  function pick(r, arr) { return arr[Math.floor(r() * arr.length)]; }
+  var R = Math.random;
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function sgn(v) { return v > 0 ? 1 : v < 0 ? -1 : 0; }
+  function key(x, y) { return x + "," + y; }
+
+  /* ====================== HÉROS ====================== */
+  var CLASSES = {
+    bastion: {
+      name: "Bastion", role: "Tank · contrôle des lignes", piece: "Tour",
+      desc: "Protège son partenaire, pousse, attire et coupe le terrain avec des murs.",
+      hp: 120, hpL: 12, pa: 6, pm: 3, res: 12, ini: 10, crit: 5, heal: 0, pow: 0,
+      spells: ["impact", "rempart", "mur", "attraction", "forteresse"],
+    },
+    prisme: {
+      name: "Prisme", role: "Mage · soutien des diagonales", piece: "Fou",
+      desc: "Frappe en diagonale, soigne, place des cristaux relais et téléporte ses alliés.",
+      hp: 90, hpL: 8, pa: 6, pm: 3, res: 0, ini: 12, crit: 8, heal: 10, pow: 0,
+      spells: ["rayon", "balise", "transpo", "onde", "convergence"],
+    },
+    voltige: {
+      name: "Voltige", role: "Assassin · bonds en L", piece: "Cavalier",
+      desc: "Bondit en L par-dessus les obstacles, frappe fort au contact et passe derrière les ennemis.",
+      hp: 95, hpL: 9, pa: 6, pm: 4, res: 0, ini: 16, crit: 12, heal: 0, pow: 0,
+      spells: ["bond", "frappe", "fantome", "brume", "danse"],
+    },
+  };
+  var CLASS_IDS = ["bastion", "prisme", "voltige"];
+  var ULT_LEVEL = 5;
+
+  /* Sorts.
+     steps : une étape de ciblage par clic.
+       shape : line (ligne droite) | diag | any (distance de Manhattan) | knight (L exact) | self | ray (une des 4 diagonales)
+       range : [min, max] ; boost : la portée des objets s'ajoute
+       los : ligne de vue nécessaire
+       target : enemy | ally | allyOrBeacon | empty | cell | self
+       from : caster (défaut) | prev (la case de l'étape précédente) | relay (le lanceur ou un de ses cristaux)
+     minSteps : étapes minimum (le reste est facultatif, on valide avec « Lancer ») */
+  var SPELLS = {
+    // ---------- Bastion ----------
+    impact: { name: "Impact rectiligne", pa: 3, icon: "impact", dmg: 22, push: 1, perTurn: 2,
+      desc: "Ligne droite, 1 à 3 cases. 22 dégâts et repousse d'une case (une poussée bloquée blesse).",
+      steps: [{ shape: "line", range: [1, 3], boost: true, los: true, target: "enemy" }] },
+    rempart: { name: "Rempart", pa: 2, icon: "rempart", shield: 25, perTurn: 2, perTarget: 1,
+      desc: "Bouclier de 25 sur soi ou un allié proche, jusqu'à ton prochain tour.",
+      steps: [{ shape: "any", range: [0, 3], los: true, target: "ally" }] },
+    mur: { name: "Mur runique", pa: 3, icon: "mur", cd: 2, dur: 2,
+      desc: "Fait surgir un mur de 2 cases pendant 2 tours. Bloque le passage et la ligne de vue.",
+      steps: [{ shape: "any", range: [1, 4], boost: true, los: true, target: "empty" }] },
+    attraction: { name: "Attraction", pa: 2, icon: "attraction", dmg: 6, pull: 2, perTurn: 1,
+      desc: "Attire un ennemi de 2 cases vers toi, en ligne droite. Parfait pour préparer un combo.",
+      steps: [{ shape: "line", range: [2, 5], boost: true, los: true, target: "enemy" }] },
+    forteresse: { name: "Forteresse vivante", pa: 5, icon: "forteresse", ult: true, cd: 4, shield: 40,
+      desc: "ULTIME. Bouclier de 40 et +25 % de résistance aux alliés à 2 cases, repousse les ennemis collés.",
+      steps: [{ shape: "self", range: [0, 0], target: "self" }] },
+    // ---------- Prisme ----------
+    rayon: { name: "Rayon oblique", pa: 3, icon: "rayon", dmg: 20, perTurn: 2,
+      desc: "Diagonale, 2 à 5 cases. 20 dégâts. Peut partir d'un de tes cristaux.",
+      steps: [{ shape: "diag", range: [2, 5], boost: true, los: true, target: "enemy", from: "relay" }] },
+    balise: { name: "Balise prismatique", pa: 2, icon: "balise", dur: 3, max: 2, hp: 20,
+      desc: "Pose un cristal (3 tours, 2 max). Tes rayons et soins peuvent partir du cristal. Il bloque le passage.",
+      steps: [{ shape: "any", range: [1, 4], boost: true, los: false, target: "empty" }] },
+    transpo: { name: "Transposition", pa: 3, icon: "transpo", cd: 1,
+      desc: "Choisis un allié (ou un cristal) puis une case libre à 4 cases de lui : il s'y téléporte.",
+      steps: [{ shape: "any", range: [1, 5], los: false, target: "allyOrBeacon" }, { shape: "any", range: [1, 4], los: false, target: "empty", from: "prev" }] },
+    onde: { name: "Onde réparatrice", pa: 3, icon: "onde", heal: 24, perTurn: 1,
+      desc: "Rend 24 PV à un allié ou à toi. Peut partir d'un cristal.",
+      steps: [{ shape: "any", range: [0, 4], boost: true, los: true, target: "ally", from: "relay" }] },
+    convergence: { name: "Convergence astrale", pa: 5, icon: "convergence", ult: true, cd: 4, dmg: 30, heal: 15,
+      desc: "ULTIME. Choisis 1 ou 2 diagonales : des rayons les traversent (et partent aussi de tes cristaux). 30 dégâts aux ennemis, 15 PV aux alliés.",
+      minSteps: 1,
+      steps: [{ shape: "ray", range: [1, 12], los: false, target: "cell" }, { shape: "ray", range: [1, 12], los: false, target: "cell" }] },
+    // ---------- Voltige ----------
+    bond: { name: "Bond du cavalier", pa: 2, icon: "bond", perTurn: 2,
+      desc: "Saut en L exact (2 + 1 cases), par-dessus les obstacles. La case d'arrivée doit être libre.",
+      steps: [{ shape: "knight", range: [0, 0], los: false, target: "empty" }] },
+    frappe: { name: "Frappe éclair", pa: 3, icon: "frappe", dmg: 26, perTurn: 2,
+      desc: "Au contact. 26 dégâts, frappe lourde.",
+      steps: [{ shape: "any", range: [1, 1], los: true, target: "enemy" }] },
+    fantome: { name: "Passage fantôme", pa: 3, icon: "fantome", dmg: 18, cd: 1,
+      desc: "Se téléporte derrière un ennemi proche (case libre) et lui inflige 18 dégâts.",
+      steps: [{ shape: "any", range: [1, 4], boost: true, los: true, target: "enemy" }] },
+    brume: { name: "Brume fractale", pa: 2, icon: "brume", cd: 1, dur: 1,
+      desc: "Nuage en croix jusqu'à ton prochain tour : bloque les lignes de vue.",
+      steps: [{ shape: "any", range: [1, 4], boost: true, los: false, target: "cell" }] },
+    danse: { name: "Danse du cavalier", pa: 5, icon: "danse", ult: true, cd: 4, dmg: 20,
+      desc: "ULTIME. Jusqu'à 3 bonds en L d'affilée : chaque atterrissage inflige 20 dégâts aux ennemis autour.",
+      minSteps: 1,
+      steps: [{ shape: "knight", range: [0, 0], target: "empty", from: "prev" }, { shape: "knight", range: [0, 0], target: "empty", from: "prev" }, { shape: "knight", range: [0, 0], target: "empty", from: "prev" }] },
+  };
+
+  /* ====================== MONSTRES ====================== */
+  var MOB_SPELLS = {
+    gobe: { name: "Gobe", pa: 3, range: [1, 1], shape: "any", los: true, dmg: 11 },
+    mandibule: { name: "Mandibules", pa: 2, range: [1, 1], shape: "any", los: true, dmg: 8 },
+    fouet: { name: "Fouet épineux", pa: 3, range: [1, 2], shape: "line", los: true, dmg: 13 },
+    flamme: { name: "Flamme follette", pa: 3, range: [2, 6], shape: "any", los: true, dmg: 11 },
+    souffle: { name: "Souffle d'éther", pa: 3, range: [1, 4], shape: "any", los: true, dmg: 9 },
+    rosee: { name: "Rosée", pa: 3, range: [0, 5], shape: "any", los: true, heal: 18 },
+    rune: { name: "Coup de rune", pa: 4, range: [1, 1], shape: "any", los: true, dmg: 19, push: 1 },
+    eclat: { name: "Éclat de cristal", pa: 3, range: [1, 3], shape: "diag", los: true, dmg: 14 },
+    pique: { name: "Pique fractale", pa: 3, range: [1, 2], shape: "line", los: true, dmg: 22 },
+    sentence: { name: "Sentence", pa: 4, range: [0, 0], shape: "self", telegraph: true, dmg: 34 },
+    appel: { name: "Appel du vide", pa: 3, range: [0, 0], shape: "self", summon: "glorbe", cd: 3 },
+  };
+  var MOBS = {
+    glorbe: { name: "Glorbe", hp: 34, pa: 4, pm: 3, ini: 8, res: 0, spells: ["gobe"], xp: 10, col: "#5fd3c0", shape: "blob" },
+    scarabrume: { name: "Scarabrume", hp: 30, pa: 4, pm: 5, ini: 14, res: 0, spells: ["mandibule"], xp: 11, col: "#7a8cf0", shape: "beetle" },
+    ronceau: { name: "Ronceau", hp: 56, pa: 5, pm: 2, ini: 5, res: 10, spells: ["fouet"], xp: 14, col: "#7fb257", shape: "bush" },
+    lanterneau: { name: "Lanterneau", hp: 32, pa: 6, pm: 3, ini: 10, res: 0, spells: ["flamme"], ranged: true, xp: 14, col: "#ffb347", shape: "lantern" },
+    sylphe: { name: "Sylphe fêlée", hp: 38, pa: 6, pm: 3, ini: 12, res: 5, spells: ["rosee", "souffle"], ranged: true, healer: true, xp: 16, col: "#c7a6ff", shape: "sylph" },
+    golem: { name: "Golem de rune", hp: 92, pa: 6, pm: 2, ini: 4, res: 20, spells: ["rune"], xp: 22, col: "#a99a86", shape: "golem" },
+    cristallin: { name: "Cristallin", hp: 44, pa: 6, pm: 3, ini: 11, res: 10, spells: ["eclat"], ranged: true, xp: 18, col: "#8fe6ff", shape: "shard" },
+    archonte: { name: "Archonte fractal", hp: 460, pa: 8, pm: 2, ini: 9, res: 15, spells: ["sentence", "appel", "pique"], boss: true, xp: 420, col: "#d36cff", shape: "boss" },
+  };
+  var AFFIXES = {
+    enrage: { name: "Enragé", pow: 30 },
+    blinde: { name: "Blindé", res: 20 },
+    rapide: { name: "Rapide", pm: 2 },
+    arcanique: { name: "Arcanique", pa: 3 },
+    geant: { name: "Géant", hpMul: 1.6 },
+    vampire: { name: "Vampire", vamp: 30 },
+  };
+  var AFFIX_IDS = Object.keys(AFFIXES);
+
+  /* ====================== BUTIN ====================== */
+  var SLOTS = ["arme", "coiffe", "cape", "amulette", "anneau", "bottes"];
+  var SLOT_NAME = { arme: "Arme", coiffe: "Coiffe", cape: "Cape", amulette: "Amulette", anneau: "Anneau", bottes: "Bottes" };
+  var RARITIES = [
+    { id: "commun", name: "Commun", col: "#c9ccd6", mul: 1, affixes: 1, special: 0.02, w: 52, sell: 1 },
+    { id: "magique", name: "Magique", col: "#5fb7ff", mul: 1.3, affixes: 2, special: 0.08, w: 29, sell: 2 },
+    { id: "rare", name: "Rare", col: "#ffd257", mul: 1.65, affixes: 3, special: 0.2, w: 13, sell: 4 },
+    { id: "epique", name: "Épique", col: "#c77dff", mul: 2.05, affixes: 4, special: 0.42, w: 4.8, sell: 8 },
+    { id: "legendaire", name: "Légendaire", col: "#ff9a3c", mul: 2.6, affixes: 4, special: 1, w: 1.2, sell: 16 },
+  ];
+  // caractéristiques : base + parNiveau, multipliées par la rareté
+  var STATS = {
+    vit: { name: "Vitalité", short: "PV", base: 10, lvl: 3.4, fmt: "+{v} PV" },
+    pow: { name: "Puissance", short: "Puiss.", base: 5, lvl: 1.4, fmt: "+{v} % dégâts" },
+    res: { name: "Résistance", short: "Rés.", base: 2.5, lvl: 0.5, fmt: "+{v} % résistance" },
+    crit: { name: "Critique", short: "Crit.", base: 2.5, lvl: 0.45, fmt: "+{v} % critique" },
+    heal: { name: "Soins", short: "Soins", base: 5, lvl: 1.3, fmt: "+{v} % soins et boucliers" },
+    ini: { name: "Initiative", short: "Ini.", base: 3, lvl: 1, fmt: "+{v} initiative" },
+    pa: { name: "PA", short: "PA", special: true, fmt: "+{v} PA" },
+    pm: { name: "PM", short: "PM", special: true, fmt: "+{v} PM" },
+    po: { name: "Portée", short: "PO", special: true, fmt: "+{v} portée" },
+  };
+  var NORMAL_STATS = ["vit", "pow", "res", "crit", "heal", "ini"];
+  var SLOT_MAIN = { arme: ["pow", "crit", "heal"], coiffe: ["vit", "res", "ini"], cape: ["res", "vit", "heal"], amulette: ["pow", "heal", "vit"], anneau: ["crit", "pow", "ini"], bottes: ["ini", "vit", "res"] };
+  var SLOT_SPECIAL = { arme: ["po", "pa"], coiffe: ["pa", "po"], cape: ["pm", "pa"], amulette: ["pa", "po"], anneau: ["pa", "pm", "po"], bottes: ["pm", "pm", "pa"] };
+  // pouvoirs des objets légendaires
+  var POWERS = {
+    vamp: { name: "Soif d'arcane", desc: "Tes dégâts te soignent de 15 %." },
+    cheap: { name: "Élan", desc: "Ton premier sort de chaque tour coûte 1 PA de moins." },
+    killpm: { name: "Chasseur", desc: "Chaque ennemi vaincu te rend 2 PM et 2 PA." },
+    aegis: { name: "Égide", desc: "Début de tour : bouclier de 12 % de tes PV max." },
+    crush: { name: "Écrasement", desc: "Les poussées bloquées font le triple de dégâts." },
+    critx2: { name: "Coup fatal", desc: "Tes coups critiques font ×2 au lieu de ×1,5." },
+    thorns: { name: "Épines runiques", desc: "Les ennemis qui te frappent au contact subissent 30 % des dégâts." },
+    echo: { name: "Écho", desc: "20 % de chance qu'un sort ne coûte aucun PA." },
+    first: { name: "Fulgurance", desc: "+60 % de dégâts sur ton premier sort offensif du tour." },
+  };
+  var POWER_IDS = Object.keys(POWERS);
+  var ITEM_BASES = {
+    // nom:genre (m, f, mp = masculin pluriel, fp = féminin pluriel)
+    arme: { bastion: ["Bouclier:m", "Égide:f", "Pavois:m"], prisme: ["Focus:m", "Sceptre:m", "Orbe:m"], voltige: ["Lames:fp", "Dagues:fp", "Griffes:fp"], any: ["Talisman:m"] },
+    coiffe: { any: ["Heaume:m", "Capuche:f", "Diadème:m", "Masque:m"] },
+    cape: { any: ["Cape:f", "Manteau:m", "Voile:m", "Étole:f"] },
+    amulette: { any: ["Amulette:f", "Pendentif:m", "Médaillon:m"] },
+    anneau: { any: ["Anneau:m", "Bague:f", "Sceau:m"] },
+    bottes: { any: ["Bottes:fp", "Sandales:fp", "Grèves:fp", "Jambières:fp"] },
+  };
+  var ITEM_SUFFIX = { vit: "de vitalité", pow: "du tonnerre", res: "du rempart", crit: "de la faille", heal: "de l'aube", ini: "du vif-argent", pa: "de l'archimage", pm: "du voyageur", po: "de l'horizon" };
+  // adjectifs : m|f|mp|fp
+  var ITEM_ADJ = { commun: ["usé|usée|usés|usées", "simple|simple|simples|simples", "robuste|robuste|robustes|robustes"],
+    magique: ["runique|runique|runiques|runiques", "chatoyant|chatoyante|chatoyants|chatoyantes", "enchanté|enchantée|enchantés|enchantées"],
+    rare: ["astral|astrale|astraux|astrales", "prismatique|prismatique|prismatiques|prismatiques", "ancestral|ancestrale|ancestraux|ancestrales"],
+    epique: ["fractal|fractale|fractals|fractales", "éthéré|éthérée|éthérés|éthérées", "céleste|céleste|célestes|célestes"],
+    legendaire: ["de l'Archonte", "des Sept Lunes", "du Premier Mage", "de l'Aube éternelle"] };
+  var GENDER = { m: 0, f: 1, mp: 2, fp: 3 };
+
+  /* ====================== QUÊTES ====================== */
+  var QUESTS = [
+    { id: "q1", name: "Premiers pas", desc: "Vaincre 4 Glorbes dans la Prairie des Runes.", kind: "kill", mob: "glorbe", n: 4, xp: 60, gold: 40, item: "magique" },
+    { id: "q2", name: "Nuisibles", desc: "Vaincre 3 Scarabrumes.", kind: "kill", mob: "scarabrume", n: 3, req: "q1", xp: 90, gold: 60, item: "rare" },
+    { id: "q3", name: "Bois Fractal", desc: "Atteindre le niveau 3 et entrer dans le Bois Fractal.", kind: "zone", zone: "bois", req: "q2", xp: 120, gold: 80, item: "rare" },
+    { id: "q4", name: "Lanternes folles", desc: "Vaincre 5 Lanterneaux.", kind: "kill", mob: "lanterneau", n: 5, req: "q3", xp: 180, gold: 120, item: "rare" },
+    { id: "q5", name: "Chasse aux élites", desc: "Vaincre 3 monstres élites (contour doré).", kind: "elite", n: 3, req: "q4", xp: 260, gold: 160, item: "epique" },
+    { id: "q6", name: "Les Falaises", desc: "Atteindre les Falaises de Cristal.", kind: "zone", zone: "falaises", req: "q5", xp: 300, gold: 200, item: "epique" },
+    { id: "q7", name: "Cœur de pierre", desc: "Vaincre 4 Golems de rune.", kind: "kill", mob: "golem", n: 4, req: "q6", xp: 420, gold: 260, item: "epique" },
+    { id: "q8", name: "L'Archonte", desc: "Vaincre l'Archonte fractal au fond du Sanctuaire brisé.", kind: "boss", n: 1, req: "q7", xp: 900, gold: 500, item: "legendaire" },
+  ];
+
+  /* ====================== ZONES ====================== */
+  var ZONES = {
+    village: { name: "Lumebourg", sub: "Village", w: 20, h: 18, lvl: [1, 1], safe: true, theme: "village", seed: 101,
+      portals: [{ x: 19, y: 9, to: "prairie", label: "Prairie des Runes" }],
+      spawn: { x: 9, y: 9 } },
+    prairie: { name: "Prairie des Runes", sub: "Niv. 1 à 3", w: 26, h: 22, lvl: [1, 3], theme: "prairie", seed: 202, packs: 6, size: [1, 3],
+      mobs: ["glorbe", "glorbe", "scarabrume", "ronceau"],
+      portals: [{ x: 0, y: 11, to: "village", label: "Lumebourg" }, { x: 25, y: 11, to: "bois", req: 3, label: "Bois Fractal" }] },
+    bois: { name: "Bois Fractal", sub: "Niv. 3 à 6", w: 26, h: 24, lvl: [3, 6], theme: "bois", seed: 303, packs: 7, size: [2, 3],
+      mobs: ["ronceau", "lanterneau", "sylphe", "scarabrume", "lanterneau"],
+      portals: [{ x: 0, y: 12, to: "prairie", label: "Prairie des Runes" }, { x: 25, y: 12, to: "falaises", req: 5, label: "Falaises de Cristal" }] },
+    falaises: { name: "Falaises de Cristal", sub: "Niv. 6 à 9", w: 26, h: 24, lvl: [6, 9], theme: "falaises", seed: 404, packs: 7, size: [2, 4], elite: 0.2,
+      mobs: ["golem", "cristallin", "sylphe", "lanterneau", "cristallin"],
+      portals: [{ x: 0, y: 12, to: "bois", label: "Bois Fractal" }, { x: 13, y: 0, to: "donjon", req: 7, label: "Sanctuaire brisé (donjon)" }] },
+  };
+  var ZONE_IDS = ["village", "prairie", "bois", "falaises"];
+  var DUNGEON = [
+    { name: "Salle des échos", lvl: 8, mobs: ["cristallin", "golem", "lanterneau", "glorbe"], elite: 0.25 },
+    { name: "Galerie fêlée", lvl: 9, mobs: ["sylphe", "golem", "cristallin", "scarabrume"], elite: 0.6 },
+    { name: "Trône fractal", lvl: 10, mobs: ["archonte", "cristallin", "glorbe"], boss: true },
+  ];
+  var NPCS = {
+    village: [
+      { id: "elya", name: "Elya la gardienne", x: 8, y: 6, role: "quests", col: "#ffd257" },
+      { id: "tobin", name: "Tobin le marchand", x: 12, y: 12, role: "shop", col: "#ff9a3c" },
+      { id: "source", name: "Source de mana", x: 9, y: 9, role: "heal", col: "#5fd3c0", obj: true },
+    ],
+  };
+
+  /* ====================== GÉNÉRATION DES CARTES ====================== */
+  // cellule d'exploration : 0 = sol, 1 = bloqué (décor), 2 = chemin (sol), 3 = eau (bloque)
+  var mapCache = {};
+  function zoneMap(id) {
+    if (mapCache[id]) return mapCache[id];
+    var Z = ZONES[id], r = rng(Z.seed), W = Z.w, H = Z.h;
+    var g = [], deco = {};
+    for (var x = 0; x < W; x++) { g.push([]); for (var y = 0; y < H; y++) g[x].push(0); }
+    // bordure
+    for (x = 0; x < W; x++) for (y = 0; y < H; y++) if (x === 0 || y === 0 || x === W - 1 || y === H - 1) { g[x][y] = 1; deco[key(x, y)] = borderDeco(Z.theme, r); }
+    var anchors = Z.portals.map(function (p) { return { x: p.x, y: p.y }; });
+    var center = Z.spawn || { x: Math.floor(W / 2), y: Math.floor(H / 2) };
+    // chemins : de chaque portail vers le centre, en serpentant un peu
+    var path = {};
+    anchors.forEach(function (a) {
+      var cx = a.x, cy = a.y, guard = 0;
+      while ((cx !== center.x || cy !== center.y) && guard++ < 400) {
+        path[key(cx, cy)] = 1;
+        var dx = center.x - cx, dy = center.y - cy;
+        if (r() < 0.25) { if (dx !== 0 && r() < 0.5) cy += sgn(r() - 0.5); else if (dy !== 0) cx += sgn(r() - 0.5); }
+        else if (Math.abs(dx) > Math.abs(dy) || (Math.abs(dx) === Math.abs(dy) && r() < 0.5)) cx += sgn(dx); else cy += sgn(dy);
+        cx = clamp(cx, 1, W - 2); cy = clamp(cy, 1, H - 2);
+      }
+      path[key(center.x, center.y)] = 1;
+    });
+    Z.portals.forEach(function (p) { g[p.x][p.y] = 2; delete deco[key(p.x, p.y)]; });
+    if (Z.theme !== "village") {
+      // amas de décor
+      var dens = Z.theme === "bois" ? 0.17 : Z.theme === "falaises" ? 0.15 : 0.11;
+      for (x = 1; x < W - 1; x++) for (y = 1; y < H - 1; y++) {
+        if (path[key(x, y)]) continue;
+        var near = 0;
+        for (var i = 0; i < anchors.length; i++) if (Math.abs(anchors[i].x - x) + Math.abs(anchors[i].y - y) < 3) near = 1;
+        if (near) continue;
+        if (r() < dens) { g[x][y] = 1; deco[key(x, y)] = fieldDeco(Z.theme, r); }
+      }
+      // petit lac / gouffre
+      if (Z.theme !== "village") {
+        var lx = ri(r, 5, W - 7), ly = ri(r, 4, H - 6), lw = ri(r, 2, 3), lh = ri(r, 2, 3);
+        for (x = lx; x < lx + lw; x++) for (y = ly; y < ly + lh; y++) if (!path[key(x, y)] && g[x][y] === 0) { g[x][y] = 3; delete deco[key(x, y)]; }
+      }
+    }
+    Object.keys(path).forEach(function (k) { var p = k.split(","), px = +p[0], py = +p[1]; if (g[px][py] !== 1 || !(px === 0 || py === 0 || px === W - 1 || py === H - 1)) { if (g[px][py] === 1 && deco[k] && deco[k].big) return; g[px][py] = 2; delete deco[k]; } });
+    Z.portals.forEach(function (p) { g[p.x][p.y] = 2; delete deco[key(p.x, p.y)]; });
+    if (Z.theme === "village") {
+      buildVillage(g, deco, W, H, path);
+      (NPCS[id] || []).forEach(function (n) { if (!n.obj) { g[n.x][n.y] = 1; delete deco[key(n.x, n.y)]; } });
+    }
+    // on bouche tout ce qui n'est pas relié au centre
+    var seen = {}, q = [[center.x, center.y]]; seen[key(center.x, center.y)] = 1;
+    while (q.length) {
+      var c = q.shift();
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+        var nx = c[0] + d[0], ny = c[1] + d[1], k = key(nx, ny);
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[k]) return;
+        if (g[nx][ny] === 0 || g[nx][ny] === 2) { seen[k] = 1; q.push([nx, ny]); }
+      });
+    }
+    for (x = 0; x < W; x++) for (y = 0; y < H; y++) if ((g[x][y] === 0 || g[x][y] === 2) && !seen[key(x, y)]) { g[x][y] = 1; deco[key(x, y)] = fieldDeco(Z.theme, r); }
+    // variations de sol et petites fleurs (purement visuel)
+    var tint = [], flora = {};
+    for (x = 0; x < W; x++) { tint.push([]); for (y = 0; y < H; y++) { tint[x].push(r()); if ((g[x][y] === 0) && r() < 0.12) flora[key(x, y)] = ri(r, 0, 3); } }
+    var m = { id: id, w: W, h: H, g: g, deco: deco, tint: tint, flora: flora, spawn: center };
+    mapCache[id] = m;
+    return m;
+  }
+  function borderDeco(theme, r) {
+    if (theme === "falaises") return { t: r() < 0.6 ? "cliff" : "crystal", s: 0.9 + r() * 0.4, v: r() };
+    if (theme === "village") return { t: r() < 0.5 ? "fence" : "tree", s: 0.9 + r() * 0.3, v: r() };
+    return { t: r() < 0.75 ? "tree" : "rock", s: 0.95 + r() * 0.45, v: r() };
+  }
+  function fieldDeco(theme, r) {
+    var v = r();
+    if (theme === "prairie") return { t: v < 0.45 ? "tree" : v < 0.75 ? "bush" : v < 0.92 ? "rock" : "rune", s: 0.8 + r() * 0.4, v: r() };
+    if (theme === "bois") return { t: v < 0.6 ? "pine" : v < 0.8 ? "mushroom" : v < 0.92 ? "rock" : "rune", s: 0.85 + r() * 0.5, v: r() };
+    if (theme === "falaises") return { t: v < 0.45 ? "crystal" : v < 0.8 ? "rock" : v < 0.9 ? "pine" : "rune", s: 0.8 + r() * 0.5, v: r() };
+    return { t: v < 0.5 ? "tree" : "bush", s: 0.9 + r() * 0.3, v: r() };
+  }
+  function buildVillage(g, deco, W, H, path) {
+    var houses = [{ x: 4, y: 3, c: 0 }, { x: 13, y: 3, c: 1 }, { x: 3, y: 12, c: 2 }, { x: 15, y: 13, c: 3 }, { x: 8, y: 14, c: 1 }];
+    houses.forEach(function (hs) {
+      for (var x = hs.x; x < hs.x + 2; x++) for (var y = hs.y; y < hs.y + 2; y++) { g[x][y] = 1; delete deco[key(x, y)]; }
+      deco[key(hs.x + 1, hs.y + 1)] = { t: "house", s: 1, v: hs.c / 4, big: true };
+    });
+    // places pavées autour de la source
+    for (var x = 6; x <= 12; x++) for (var y = 7; y <= 11; y++) if (g[x][y] === 0) { g[x][y] = 2; path[key(x, y)] = 1; }
+    g[9][9] = 1; deco[key(9, 9)] = { t: "fountain", s: 1, v: 0 };
+    [[2, 7], [17, 6], [6, 16], [17, 16], [11, 2], [2, 2], [17, 2]].forEach(function (p) { if (g[p[0]][p[1]] === 0) { g[p[0]][p[1]] = 1; deco[key(p[0], p[1])] = { t: "tree", s: 1.1, v: 0.3 }; } });
+    [[6, 5], [12, 6], [5, 10], [14, 10], [11, 15]].forEach(function (p) { if (g[p[0]][p[1]] === 0) { g[p[0]][p[1]] = 1; deco[key(p[0], p[1])] = { t: p[0] % 2 ? "lamp" : "crate", s: 1, v: 0.5 }; } });
+  }
+  function exploreWalkable(m, x, y) { return x >= 0 && y >= 0 && x < m.w && y < m.h && (m.g[x][y] === 0 || m.g[x][y] === 2); }
+
+  // arène de combat : 13 × 13 aux coins coupés
+  var AW = 13, AH = 13;
+  function genArena(theme, seed, nHeroes) {
+    var r = rng(seed), g = [];
+    for (var x = 0; x < AW; x++) { g.push([]); for (var y = 0; y < AH; y++) g[x].push(Math.abs(x - 6) + Math.abs(y - 6) > 9 ? 9 : 0); }
+    var heroCells = [], mobCells = [];
+    for (x = 3; x <= 9; x++) { heroCells.push([x, 11], [x, 10]); mobCells.push([x, 1], [x, 2]); }
+    heroCells = heroCells.filter(function (c) { return g[c[0]][c[1]] === 0; });
+    mobCells = mobCells.filter(function (c) { return g[c[0]][c[1]] === 0; });
+    var reserved = {};
+    heroCells.concat(mobCells).forEach(function (c) { reserved[key(c[0], c[1])] = 1; });
+    var tries = 0, deco = {};
+    do {
+      for (x = 0; x < AW; x++) for (y = 0; y < AH; y++) if (g[x][y] === 1) { g[x][y] = 0; }
+      deco = {};
+      var n = ri(r, 9, 14);
+      for (var i = 0; i < n; i++) {
+        var ox = ri(r, 1, 11), oy = ri(r, 3, 9);
+        if (g[ox][oy] !== 0 || reserved[key(ox, oy)]) continue;
+        g[ox][oy] = 1; deco[key(ox, oy)] = arenaDeco(theme, r);
+        // parfois une paire symétrique : lisible et tactique
+        var sx = 12 - ox;
+        if (r() < 0.45 && g[sx][oy] === 0 && !reserved[key(sx, oy)]) { g[sx][oy] = 1; deco[key(sx, oy)] = arenaDeco(theme, r); }
+      }
+      tries++;
+    } while (!arenaConnected(g, heroCells, mobCells) && tries < 30);
+    var tint = [];
+    for (x = 0; x < AW; x++) { tint.push([]); for (y = 0; y < AH; y++) tint[x].push(Math.round(r() * 100) / 100); }
+    return { w: AW, h: AH, g: g, deco: deco, tint: tint, heroCells: heroCells, mobCells: mobCells, theme: theme };
+  }
+  function arenaDeco(theme, r) {
+    var v = r();
+    if (theme === "donjon") return { t: v < 0.5 ? "pillar" : "crystal", s: 1 + r() * 0.25, v: r() };
+    if (theme === "falaises") return { t: v < 0.5 ? "crystal" : "rock", s: 1.1 + r() * 0.3, v: r() };
+    if (theme === "bois") return { t: v < 0.5 ? "pine" : v < 0.8 ? "mushroom" : "rock", s: 1 + r() * 0.3, v: r() };
+    return { t: v < 0.45 ? "rock" : v < 0.8 ? "bush" : "tree", s: 1.1 + r() * 0.3, v: r() };
+  }
+  function arenaConnected(g, a, b) {
+    var seen = {}, q = [a[0]]; seen[key(a[0][0], a[0][1])] = 1;
+    while (q.length) {
+      var c = q.shift();
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+        var nx = c[0] + d[0], ny = c[1] + d[1];
+        if (nx < 0 || ny < 0 || nx >= AW || ny >= AH || g[nx][ny] !== 0 || seen[key(nx, ny)]) return;
+        seen[key(nx, ny)] = 1; q.push([nx, ny]);
+      });
+    }
+    return a.concat(b).every(function (c) { return seen[key(c[0], c[1])]; });
+  }
+
+  /* ====================== PROFILS (sauvegarde d'un héros) ====================== */
+  function newProfile(cls, name) {
+    return { cls: cls, name: name || CLASSES[cls].name, level: 1, xp: 0, gold: 30, equip: {}, bag: [], quests: {}, qdone: {}, kills: 0, bossKills: 0, uid: 1, rev: 0, created: Date.now() };
+  }
+  function fixProfile(p) {
+    if (!p || !CLASSES[p.cls]) return null;
+    p.level = clamp(Math.floor(p.level) || 1, 1, CFG.maxLevel); p.xp = Math.max(0, Math.floor(p.xp) || 0);
+    p.gold = Math.max(0, Math.floor(p.gold) || 0); p.equip = p.equip || {}; p.bag = (p.bag || []).slice(0, BAG_MAX);
+    p.quests = p.quests || {}; p.qdone = p.qdone || {}; p.uid = p.uid || 1; p.rev = p.rev || 0; p.kills = p.kills || 0; p.bossKills = p.bossKills || 0;
+    return p;
+  }
+  var BAG_MAX = 30;
+  function xpNeed(l) { return Math.round(28 * Math.pow(l, 1.55) + 22); }
+  function heroStats(p) {
+    var C = CLASSES[p.cls], L = p.level;
+    var s = { hp: C.hp + C.hpL * (L - 1), pa: C.pa, pm: C.pm, po: 0, res: C.res, ini: C.ini + L, crit: C.crit, heal: C.heal, pow: C.pow + (L - 1) * 3, powers: [] };
+    SLOTS.forEach(function (sl) {
+      var it = p.equip[sl]; if (!it) return;
+      for (var k in it.st) {
+        if (k === "vit") s.hp += it.st[k]; else s[k] = (s[k] || 0) + it.st[k];
+      }
+      if (it.power && s.powers.indexOf(it.power) < 0) s.powers.push(it.power);
+    });
+    s.pa = Math.min(CFG.caps.pa, s.pa); s.pm = Math.min(CFG.caps.pm, s.pm); s.po = Math.min(CFG.caps.po, s.po);
+    s.res = Math.min(CFG.caps.res, s.res); s.crit = Math.min(CFG.caps.crit, s.crit);
+    return s;
+  }
+  function itemScore(it) {
+    if (!it) return 0;
+    var w = { vit: 0.55, pow: 2, res: 2.6, crit: 2.2, heal: 1.3, ini: 0.5, pa: 30, pm: 20, po: 14 }, s = 0;
+    for (var k in it.st) s += (w[k] || 1) * it.st[k];
+    if (it.power) s += 25;
+    return Math.round(s);
+  }
+
+  /* ====================== FABRICATION DES OBJETS ====================== */
+  function rollRarity(luck, min) {
+    // luck : 0 normal, 1 élite, 2 boss
+    var ws = RARITIES.map(function (rr, i) { return rr.w * (i >= 2 ? Math.pow(2.4, luck) : 1) * (i === 0 && luck ? 0.5 : 1); });
+    var tot = ws.reduce(function (a, b) { return a + b; }, 0), v = R() * tot, i = 0;
+    for (; i < ws.length - 1; i++) { if (v < ws[i]) break; v -= ws[i]; }
+    return Math.max(i, min || 0);
+  }
+  function makeItem(p, level, rarityIdx, slot) {
+    var rar = RARITIES[rarityIdx], L = Math.max(1, level);
+    slot = slot || pick(R, SLOTS);
+    var st = {}, used = {};
+    var main = pick(R, SLOT_MAIN[slot]);
+    var order = [main];
+    var pool = NORMAL_STATS.filter(function (k) { return k !== main; });
+    while (order.length < rar.affixes && pool.length) order.push(pool.splice(Math.floor(R() * pool.length), 1)[0]);
+    order.forEach(function (k, i) {
+      var S = STATS[k];
+      var v = (S.base + S.lvl * L) * rar.mul * (0.8 + R() * 0.45) * (i === 0 ? 1.35 : 1);
+      st[k] = Math.max(1, Math.round(v));
+      used[k] = 1;
+    });
+    // caractéristiques spéciales : +PA, +PM, +portée
+    var specials = SLOT_SPECIAL[slot], nSpecial = 0;
+    if (rar.special >= 1) nSpecial = 1 + (R() < 0.3 ? 1 : 0);
+    else if (R() < rar.special) nSpecial = 1;
+    for (var n = 0; n < nSpecial; n++) {
+      var sp = pick(R, specials);
+      st[sp] = (st[sp] || 0) + (sp === "po" && rarityIdx >= 3 && R() < 0.4 ? 2 : 1);
+    }
+    var power = rarityIdx === 4 ? pick(R, POWER_IDS) : null;
+    var bases = ITEM_BASES[slot][p.cls] || ITEM_BASES[slot].any;
+    var main2 = nSpecial ? Object.keys(st).filter(function (k) { return STATS[k].special; })[0] : main;
+    var base = pick(R, bases).split(":"), adj = pick(R, ITEM_ADJ[rar.id]).split("|");
+    var name = base[0] + " " + (adj[GENDER[base[1]]] || adj[0]);
+    if (rarityIdx < 4) name += " " + ITEM_SUFFIX[main2];
+    var it = { uid: p.uid++, slot: slot, r: rarityIdx, lvl: L, name: name, st: st, power: power, isNew: true };
+    it.value = Math.round((6 + L * 3) * rar.sell);
+    return it;
+  }
+
+  /* ====================== MONDE ====================== */
+  function createWorld(opt) {
+    opt = opt || {};
+    var w = {
+      v: 1, rev: 0, seed: opt.seed || Math.floor(Math.random() * 1e9),
+      mode: "explore",            // explore | combat | loot | over
+      zone: "village", players: [], heroes: [], packs: [], packId: 1,
+      combat: null, loot: null, dungeon: null, msg: [], events: [], t: 0, local: !!opt.local,
+    };
+    (opt.players || []).forEach(function (pl, i) { addPlayer(w, pl.name, pl.profile, i); });
+    enterZone(w, "village", null);
+    return w;
+  }
+  function addPlayer(w, name, profile, i) {
+    profile = fixProfile(profile) || newProfile("bastion", name);
+    w.players[i] = { name: name || profile.name, profile: profile, ready: false };
+    var m = zoneMap(w.zone);
+    w.heroes[i] = { pi: i, x: m.spawn.x + i, y: m.spawn.y + 1, path: [], t: 0, face: 1 };
+    updateQuests(w, i);
+  }
+  // un joueur en ligne s'en va : son héros quitte la partie
+  function removePlayer(w, i) {
+    if (!w.players[i]) return;
+    w.players[i] = null; w.heroes[i] = null;
+    var c = w.combat;
+    if (c) {
+      c.units.forEach(function (u) { if (u.side === 0 && u.pi === i && u.alive) { u.alive = false; u.hp = 0; ev(w, { k: "die", id: u.id }); } });
+      if (c.phase === "place" && w.players.every(function (p) { return !p || p.ready; })) beginFight(w);
+      else if (c.phase === "fight") { var a = active(c); if (a && !a.alive) nextTurn(w); checkEnd(w); }
+    }
+    if (w.mode === "loot" && w.players.every(function (p) { return !p || p.ready; })) { var any = w.players.findIndex(function (p) { return p; }); if (any >= 0) { w.players[any].ready = false; lootDone(w, any); } }
+    bump(w);
+  }
+  function ev(w, e) { w.events.push(e); }
+  function bump(w) { w.rev++; }
+  function say(w, text, pi) { ev(w, { k: "msg", text: text, pi: pi == null ? -1 : pi }); }
+  function partyLevel(w) { var m = 1; w.players.forEach(function (p) { if (p) m = Math.max(m, p.profile.level); }); return m; }
+  function avgLevel(w) { var s = 0, n = 0; w.players.forEach(function (p) { if (p) { s += p.profile.level; n++; } }); return n ? s / n : 1; }
+
+  function enterZone(w, id, fromZone) {
+    w.zone = id;
+    var m = zoneMap(id), Z = ZONES[id], at = m.spawn;
+    if (fromZone) Z.portals.forEach(function (p) { if (p.to === fromZone) at = { x: p.x, y: p.y }; });
+    w.heroes.forEach(function (h, i) {
+      if (!h) return;
+      var c = freeNear(m, at.x, at.y, i, w);
+      h.x = c.x; h.y = c.y; h.path = []; h.t = 0;
+    });
+    w.packs = [];
+    if (!Z.safe) for (var i = 0; i < Z.packs; i++) spawnPack(w, id);
+    w.players.forEach(function (p, pi) { if (p) questEvent(w, pi, { kind: "zone", zone: id }); });
+    ev(w, { k: "zone", zone: id });
+    bump(w);
+  }
+  function freeNear(m, x, y, n, w) {
+    var out = [];
+    for (var r = 0; r < 6 && out.length <= n; r++)
+      for (var dx = -r; dx <= r; dx++) for (var dy = -r; dy <= r; dy++) {
+        if (Math.abs(dx) + Math.abs(dy) !== r) continue;
+        var cx = x + dx, cy = y + dy;
+        if (exploreWalkable(m, cx, cy) && !portalAt(w.zone, cx, cy)) out.push({ x: cx, y: cy });
+      }
+    return out[Math.min(n, out.length - 1)] || { x: x, y: y };
+  }
+  function portalAt(zone, x, y) { var Z = ZONES[zone]; for (var i = 0; i < Z.portals.length; i++) if (Z.portals[i].x === x && Z.portals[i].y === y) return Z.portals[i]; return null; }
+  function spawnPack(w, zid) {
+    var Z = ZONES[zid], m = zoneMap(zid), r = R;
+    for (var tries = 0; tries < 60; tries++) {
+      var x = ri(r, 2, m.w - 3), y = ri(r, 2, m.h - 3);
+      if (!exploreWalkable(m, x, y) || portalAt(zid, x, y)) continue;
+      if (Math.abs(x - m.spawn.x) + Math.abs(y - m.spawn.y) < 6) continue;
+      if (w.packs.some(function (p) { return Math.abs(p.x - x) + Math.abs(p.y - y) < 4; })) continue;
+      if (w.heroes.some(function (h) { return h && Math.abs(h.x - x) + Math.abs(h.y - y) < 5; })) continue;
+      var size = ri(r, Z.size[0], Z.size[1]) + (w.players.filter(Boolean).length - 1);
+      var mobs = [];
+      for (var i = 0; i < size; i++) {
+        var lvl = ri(r, Z.lvl[0], Z.lvl[1]);
+        var mob = { type: pick(r, Z.mobs), lvl: lvl, affix: null };
+        if (r() < (Z.elite || CFG.eliteChance)) mob.affix = pick(r, AFFIX_IDS);
+        mobs.push(mob);
+      }
+      mobs.sort(function (a, b) { return (b.affix ? 1 : 0) - (a.affix ? 1 : 0) || b.lvl - a.lvl; });
+      w.packs.push({ id: w.packId++, x: x, y: y, hx: x, hy: y, mobs: mobs, t: 1 + r() * 4, face: 1 });
+      return;
+    }
+  }
+
+  /* ---------- chemins (A*) ---------- */
+  function findPath(W, H, ok, sx, sy, tx, ty, maxLen) {
+    if (sx === tx && sy === ty) return [];
+    var open = [[sx, sy]], came = {}, gS = {}, sk = key(sx, sy);
+    gS[sk] = 0;
+    var fS = {}; fS[sk] = Math.abs(tx - sx) + Math.abs(ty - sy);
+    var guard = 0;
+    while (open.length && guard++ < 4000) {
+      var bi = 0;
+      for (var i = 1; i < open.length; i++) if (fS[key(open[i][0], open[i][1])] < fS[key(open[bi][0], open[bi][1])]) bi = i;
+      var c = open.splice(bi, 1)[0], ck = key(c[0], c[1]);
+      if (c[0] === tx && c[1] === ty) {
+        var out = [], k = ck;
+        while (k !== sk) { var p = k.split(","); out.unshift([+p[0], +p[1]]); k = came[k]; }
+        return out;
+      }
+      if (maxLen != null && gS[ck] >= maxLen) continue;
+      for (var d = 0; d < 4; d++) {
+        var nx = c[0] + DX[d], ny = c[1] + DY[d], nk = key(nx, ny);
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        if (!(nx === tx && ny === ty && ok(nx, ny, true)) && !ok(nx, ny, false)) continue;
+        var ng = gS[ck] + 1;
+        if (gS[nk] == null || ng < gS[nk]) {
+          gS[nk] = ng; came[nk] = ck; fS[nk] = ng + Math.abs(tx - nx) + Math.abs(ty - ny);
+          if (!open.some(function (o) { return o[0] === nx && o[1] === ny; })) open.push([nx, ny]);
+        }
+      }
+    }
+    return null;
+  }
+  var DX = [1, -1, 0, 0], DY = [0, 0, 1, -1];
+
+  /* ====================== EXPLORATION ====================== */
+  function walkTo(w, pi, x, y) {
+    var h = w.heroes[pi], m = zoneMap(w.zone);
+    if (!h || w.mode !== "explore") return false;
+    if (!exploreWalkable(m, x, y)) {
+      // clic sur un décor : on va à côté
+      var best = null, bd = 1e9;
+      for (var d = 0; d < 4; d++) { var nx = x + DX[d], ny = y + DY[d]; if (exploreWalkable(m, nx, ny)) { var dd = Math.abs(nx - h.x) + Math.abs(ny - h.y); if (dd < bd) { bd = dd; best = [nx, ny]; } } }
+      if (!best) return false;
+      x = best[0]; y = best[1];
+    }
+    var sx = h.path.length ? h.path[0][0] : h.x, sy = h.path.length ? h.path[0][1] : h.y;
+    var p = findPath(m.w, m.h, function (cx, cy) { return exploreWalkable(m, cx, cy); }, h.x, h.y, x, y);
+    if (!p) return false;
+    h.path = p; h.target = null;
+    if (h.t <= 0) h.t = 0.001;
+    bump(w);
+    return true;
+  }
+  function engage(w, pi, packId) {
+    var pk = w.packs.filter(function (p) { return p.id === packId; })[0];
+    if (!pk) return false;
+    var h = w.heroes[pi];
+    if (Math.abs(pk.x - h.x) + Math.abs(pk.y - h.y) <= 1) { startCombat(w, pk); return true; }
+    var m = zoneMap(w.zone);
+    var p = findPath(m.w, m.h, function (cx, cy, end) { return exploreWalkable(m, cx, cy) || end; }, h.x, h.y, pk.x, pk.y);
+    if (!p) return false;
+    p.pop();
+    h.path = p; h.target = packId; if (h.t <= 0) h.t = 0.001;
+    bump(w);
+    return true;
+  }
+  function stepExplore(w, dt) {
+    var m = zoneMap(w.zone), changed = false;
+    for (var i = 0; i < w.heroes.length; i++) {
+      var h = w.heroes[i];
+      if (!h || !h.path.length) continue;
+      h.t -= dt;
+      if (h.t > 0) continue;
+      var nx = h.path.shift();
+      h.face = sgn(nx[0] - h.x) || sgn(nx[1] - h.y) * 2 || h.face;
+      h.dir = [nx[0] - h.x, nx[1] - h.y];
+      h.x = nx[0]; h.y = nx[1]; h.t = CFG.exploreStep; changed = true;
+      ev(w, { k: "step", pi: i });
+      var po = portalAt(w.zone, h.x, h.y);
+      if (po && !h.path.length) {
+        if (po.req && partyLevel(w) < po.req) { say(w, "Il faut être niveau " + po.req + " pour aller vers « " + po.label + " ».", i); h.path = []; }
+        else if (po.to === "donjon") { startDungeon(w); return; }
+        else { enterZone(w, po.to, w.zone); return; }
+      }
+    }
+    // les groupes se promènent
+    w.packs.forEach(function (pk) {
+      if (pk.dead) { pk.t -= dt; if (pk.t <= 0) { pk.dead = false; pk.t = 3; changed = true; } return; }
+      pk.t -= dt;
+      if (pk.t > 0) return;
+      // un groupe visé par un héros l'attend
+      if (w.heroes.some(function (h) { return h && h.target === pk.id && h.path.length; })) { pk.t = 0.5; return; }
+      pk.t = CFG.packWander[0] + R() * (CFG.packWander[1] - CFG.packWander[0]);
+      var d = Math.floor(R() * 4), nx = pk.x + DX[d], ny = pk.y + DY[d];
+      if (!exploreWalkable(m, nx, ny) || portalAt(w.zone, nx, ny) || Math.abs(nx - pk.hx) + Math.abs(ny - pk.hy) > 3) return;
+      if (w.heroes.some(function (h) { return h && h.x === nx && h.y === ny; })) return;
+      if (w.packs.some(function (o) { return o !== pk && !o.dead && o.x === nx && o.y === ny; })) return;
+      pk.face = sgn(nx - pk.x) || sgn(ny - pk.y) * 2; pk.x = nx; pk.y = ny; changed = true;
+      ev(w, { k: "pstep", id: pk.id });
+    });
+    // un groupe de monstres collé à un héros : combat !
+    for (var hi = 0; hi < w.heroes.length; hi++) {
+      var hh = w.heroes[hi];
+      if (!hh) continue;
+      for (var j = 0; j < w.packs.length; j++) {
+        var pk = w.packs[j];
+        if (pk.dead || pk.calm > w.t) continue;
+        if (Math.abs(pk.x - hh.x) + Math.abs(pk.y - hh.y) <= 1) { w.heroes.forEach(function (o) { if (o) { o.path = []; o.target = null; } }); startCombat(w, pk); return; }
+      }
+    }
+    if (changed) bump(w);
+  }
+
+  /* ====================== COMBAT : MISE EN PLACE ====================== */
+  function startCombat(w, pk, room) {
+    var theme = room ? "donjon" : ZONES[w.zone].theme;
+    var A = genArena(theme, Math.floor(R() * 1e9), w.players.length);
+    var c = { arena: A, units: [], uid: 1, turn: -1, order: [], round: 1, phase: "place", objects: [], tele: [], log: [], packId: pk ? pk.id : null, room: room || null, aiT: 0, aiN: 0, stats: {} };
+    w.combat = c; w.mode = "combat";
+    // héros
+    w.players.forEach(function (pl, i) {
+      if (!pl) return;
+      var s = heroStats(pl.profile), C = CLASSES[pl.profile.cls];
+      var keepHp = w.dungeon && w.dungeon.hp && w.dungeon.hp[i] != null ? w.dungeon.hp[i] : null;
+      var cell = A.heroCells[i * 3 + 4] || A.heroCells[i];
+      c.units.push({ id: c.uid++, side: 0, pi: i, cls: pl.profile.cls, name: pl.name, lvl: pl.profile.level,
+        x: cell[0], y: cell[1], hp: keepHp != null ? Math.max(1, Math.min(s.hp, keepHp)) : s.hp, maxHp: s.hp,
+        pa: s.pa, pm: s.pm, maxPa: s.pa, maxPm: s.pm, po: s.po, res: s.res, ini: s.ini, crit: s.crit, heal: s.heal, pow: s.pow,
+        powers: s.powers, shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: 1, ult: pl.profile.level >= ULT_LEVEL });
+      c.stats[i] = { dmg: 0, heal: 0, kills: 0 };
+    });
+    // monstres
+    var mobs = pk ? pk.mobs : [];
+    mobs.forEach(function (mb, i) {
+      var cell = A.mobCells[(i * 5 + 3) % A.mobCells.length];
+      while (unitAt(c, cell[0], cell[1])) cell = A.mobCells[(A.mobCells.indexOf(cell) + 1) % A.mobCells.length];
+      addMob(c, mb.type, mb.lvl, mb.affix, cell[0], cell[1]);
+    });
+    computeOrder(c);
+    ev(w, { k: "combat" });
+    bump(w);
+  }
+  function addMob(c, type, lvl, affix, x, y, summoned) {
+    var M = MOBS[type], A = affix ? AFFIXES[affix] : {};
+    var hp = Math.round(M.hp * (1 + 0.24 * (lvl - 1)) * (A.hpMul || 1) * (affix ? 1.15 : 1));
+    var u = { id: c.uid++, side: 1, type: type, name: M.name, lvl: lvl, affix: affix, x: x, y: y, hp: hp, maxHp: hp,
+      pa: M.pa + (A.pa || 0), pm: M.pm + (A.pm || 0), maxPa: M.pa + (A.pa || 0), maxPm: M.pm + (A.pm || 0), po: 0,
+      res: (M.res || 0) + (A.res || 0), ini: M.ini + lvl, crit: 5, heal: 0, pow: (lvl - 1) * 7 + (A.pow || 0), vamp: A.vamp || 0,
+      powers: [], shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: -1, boss: !!M.boss, summoned: !!summoned };
+    c.units.push(u);
+    return u;
+  }
+  function computeOrder(c) {
+    // ordre par initiative, en alternant les camps comme sur un échiquier
+    var h = c.units.filter(function (u) { return u.side === 0 && u.alive; }).sort(byIni);
+    var m = c.units.filter(function (u) { return u.side === 1 && u.alive; }).sort(byIni);
+    var first = (h[0] ? h[0].ini : 0) >= (m[0] ? m[0].ini : 0) ? [h, m] : [m, h], out = [];
+    while (first[0].length || first[1].length) { if (first[0].length) out.push(first[0].shift().id); if (first[1].length) out.push(first[1].shift().id); }
+    c.order = out;
+  }
+  function byIni(a, b) { return b.ini - a.ini || a.id - b.id; }
+  function unitAt(c, x, y) { for (var i = 0; i < c.units.length; i++) { var u = c.units[i]; if (u.alive && u.x === x && u.y === y) return u; } return null; }
+  function objAt(c, x, y) { for (var i = 0; i < c.objects.length; i++) { var o = c.objects[i]; if (o.x === x && o.y === y) return o; } return null; }
+  function uById(c, id) { for (var i = 0; i < c.units.length; i++) if (c.units[i].id === id) return c.units[i]; return null; }
+  function active(c) { return c && c.turn >= 0 ? uById(c, c.order[c.turn]) : null; }
+  function inArena(c, x, y) { var A = c.arena; return x >= 0 && y >= 0 && x < A.w && y < A.h && A.g[x][y] !== 9; }
+  function groundOk(c, x, y) { return inArena(c, x, y) && c.arena.g[x][y] === 0; }
+  function solidObj(c, x, y) { var o = objAt(c, x, y); return o && (o.kind === "wall" || o.kind === "beacon"); }
+  function cellFree(c, x, y, ignore) {
+    if (!groundOk(c, x, y) || solidObj(c, x, y)) return false;
+    var u = unitAt(c, x, y);
+    return !u || u === ignore;
+  }
+  function blocksLos(c, x, y) {
+    if (!inArena(c, x, y)) return true;
+    if (c.arena.g[x][y] === 1) return true;
+    var o = objAt(c, x, y);
+    if (o && (o.kind === "wall" || o.kind === "beacon" || o.kind === "smoke")) return true;
+    return !!unitAt(c, x, y);
+  }
+  // ligne de vue : on parcourt les cases traversées par le segment (sans les deux bouts)
+  function los(c, ax, ay, bx, by) {
+    var dx = bx - ax, dy = by - ay, n = Math.max(Math.abs(dx), Math.abs(dy)) * 4;
+    if (n === 0) return true;
+    var last = null;
+    for (var i = 1; i < n; i++) {
+      var t = i / n, fx = ax + dx * t, fy = ay + dy * t;
+      // on décale un peu pour ne pas « frôler » un coin exact
+      var cx = Math.round(fx + 1e-4), cy = Math.round(fy - 1e-4);
+      var k = cx + "," + cy;
+      if (k === last) continue; last = k;
+      if ((cx === ax && cy === ay) || (cx === bx && cy === by)) continue;
+      if (blocksLos(c, cx, cy)) return false;
+    }
+    return true;
+  }
+  function shapeOk(st, dx, dy, bonus) {
+    var mn = st.range[0], mx = st.range[1] + (st.boost ? bonus : 0), adx = Math.abs(dx), ady = Math.abs(dy), d = adx + ady;
+    switch (st.shape) {
+      case "self": return dx === 0 && dy === 0;
+      case "line": return (dx === 0 || dy === 0) && d >= mn && d <= mx;
+      case "diag": return adx === ady && adx >= mn && adx <= mx;
+      case "ray": return adx === ady && adx >= 1;
+      case "knight": return (adx === 1 && ady === 2) || (adx === 2 && ady === 1);
+      default: return d >= mn && d <= mx;
+    }
+  }
+
+  /* ---------- ciblage ---------- */
+  function spellOrigins(c, u, st, prev) {
+    if (st.from === "prev") return [prev.length ? prev[prev.length - 1] : [u.x, u.y]];
+    var o = [[u.x, u.y]];
+    if (st.from === "relay") c.objects.forEach(function (b) { if (b.kind === "beacon" && b.by === u.id) o.push([b.x, b.y]); });
+    return o;
+  }
+  function canCast(w, u, sid) {
+    var c = w.combat, S = SPELLS[sid];
+    if (!c || !u || !S) return "?";
+    if (S.ult && !u.ult) return "Débloqué au niveau " + ULT_LEVEL;
+    if ((u.cds[sid] || 0) > 0) return "Recharge : " + u.cds[sid] + " tour" + (u.cds[sid] > 1 ? "s" : "");
+    if (S.perTurn && (u.used[sid] || 0) >= S.perTurn) return "Déjà lancé " + S.perTurn + "× ce tour";
+    if (spellCost(u, sid) > u.pa) return "Pas assez de PA";
+    if (sid === "balise" && c.objects.filter(function (o) { return o.kind === "beacon" && o.by === u.id; }).length >= S.max) return "2 cristaux maximum";
+    return null;
+  }
+  function spellCost(u, sid) {
+    var cost = SPELLS[sid].pa;
+    if (u.powers.indexOf("cheap") >= 0 && !u.castThisTurn) cost = Math.max(1, cost - 1);
+    return cost;
+  }
+  // cases valides pour l'étape suivante (prev = cases déjà choisies)
+  function targets(w, u, sid, prev) {
+    var c = w.combat, S = SPELLS[sid];
+    prev = prev || [];
+    var st = S.steps[prev.length];
+    if (!st || !c) return [];
+    var out = [], seen = {}, A = c.arena, origins = spellOrigins(c, u, st, prev);
+    // pour les bonds enchaînés et le passage fantôme : le lanceur a quitté sa case
+    origins.forEach(function (o) {
+      for (var x = 0; x < A.w; x++) for (var y = 0; y < A.h; y++) {
+        if (seen[key(x, y)] || !inArena(c, x, y)) continue;
+        var dx = x - o[0], dy = y - o[1];
+        if (!shapeOk(st, dx, dy, u.po || 0)) continue;
+        if (st.shape === "ray" && prev.some(function (p) { return sgn(p[0] - u.x) === sgn(dx) && sgn(p[1] - u.y) === sgn(dy); })) continue;
+        if (!targetOk(c, u, st, x, y, sid, prev)) continue;
+        if (st.los && !(dx === 0 && dy === 0) && !los(c, o[0], o[1], x, y)) continue;
+        seen[key(x, y)] = 1; out.push([x, y]);
+      }
+    });
+    return out;
+  }
+  function targetOk(c, u, st, x, y, sid, prev) {
+    var t = unitAt(c, x, y);
+    switch (st.target) {
+      case "self": return t === u;
+      case "enemy":
+        if (!t || t.side === u.side) return false;
+        if (sid === "fantome") return !!behindCell(c, u, t);
+        return true;
+      case "ally": if (!t || t.side !== u.side) return false; if (SPELLS[sid].perTarget && (u.usedT[sid + ":" + t.id] || 0) >= SPELLS[sid].perTarget) return false; return true;
+      case "allyOrBeacon": { if (t && t.side === u.side && t !== u) return true; var o = objAt(c, x, y); return !!(o && o.kind === "beacon"); }
+      case "empty": {
+        if (!groundOk(c, x, y) || solidObj(c, x, y)) return false;
+        var occ = unitAt(c, x, y);
+        if (sid === "danse") { if (occ && occ !== u) return false; return !prev.some(function (p) { return p[0] === x && p[1] === y; }); }
+        if (sid === "transpo" && prev.length) { var mover = unitAt(c, prev[0][0], prev[0][1]); return !occ || occ === mover; }
+        return !occ;
+      }
+      default: return inArena(c, x, y);
+    }
+  }
+  function behindCell(c, u, t) {
+    var dx = t.x - u.x, dy = t.y - u.y, cands = [];
+    if (Math.abs(dx) >= Math.abs(dy)) cands.push([t.x + sgn(dx), t.y]);
+    if (Math.abs(dy) >= Math.abs(dx)) cands.push([t.x, t.y + sgn(dy)]);
+    cands.push([t.x + sgn(dx || 1), t.y + sgn(dy)], [t.x - sgn(dy), t.y + sgn(dx)], [t.x + sgn(dy), t.y - sgn(dx)]);
+    for (var i = 0; i < cands.length; i++) if (cellFree(c, cands[i][0], cands[i][1], u) && !(cands[i][0] === u.x && cands[i][1] === u.y && false)) return cands[i];
+    return null;
+  }
+  // cases touchées (aperçu en jaune / rouge)
+  function area(w, u, sid, tg) {
+    var c = w.combat, out = [];
+    if (!c || !tg || !tg.length) return out;
+    var last = tg[tg.length - 1];
+    if (sid === "mur") return wallCells(c, u, last[0], last[1]);
+    if (sid === "brume") return plus(last[0], last[1]).filter(function (p) { return inArena(c, p[0], p[1]); });
+    if (sid === "forteresse") return disc(c, u.x, u.y, 2);
+    if (sid === "convergence") { tg.forEach(function (p) { rays(c, u, p).forEach(function (r) { out = out.concat(r.cells); }); }); return out; }
+    if (sid === "danse") { tg.forEach(function (p) { out = out.concat(ring8(c, p[0], p[1])); }); return out; }
+    if (sid === "impact" || sid === "attraction") return [last];
+    return [last];
+  }
+  function plus(x, y) { return [[x, y], [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]; }
+  function ring8(c, x, y) { var o = []; for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) if ((dx || dy) && inArena(c, x + dx, y + dy)) o.push([x + dx, y + dy]); return o; }
+  function disc(c, x, y, r) { var o = []; for (var dx = -r; dx <= r; dx++) for (var dy = -r; dy <= r; dy++) if (Math.abs(dx) + Math.abs(dy) <= r && inArena(c, x + dx, y + dy)) o.push([x + dx, y + dy]); return o; }
+  function wallCells(c, u, x, y) {
+    var dx = x - u.x, dy = y - u.y, out = [[x, y]];
+    var side = Math.abs(dx) >= Math.abs(dy) ? [[x, y + 1], [x, y - 1]] : [[x + 1, y], [x - 1, y]];
+    for (var i = 0; i < side.length; i++) if (groundOk(c, side[i][0], side[i][1]) && !unitAt(c, side[i][0], side[i][1]) && !objAt(c, side[i][0], side[i][1])) { out.push(side[i]); break; }
+    return out;
+  }
+  function rays(c, u, p) {
+    var dx = sgn(p[0] - u.x), dy = sgn(p[1] - u.y), out = [];
+    var origins = [[u.x, u.y]];
+    c.objects.forEach(function (b) { if (b.kind === "beacon" && b.by === u.id) origins.push([b.x, b.y]); });
+    origins.forEach(function (o) {
+      var cells = [], x = o[0] + dx, y = o[1] + dy;
+      while (inArena(c, x, y) && c.arena.g[x][y] !== 1 && !(objAt(c, x, y) && objAt(c, x, y).kind === "wall")) { cells.push([x, y]); x += dx; y += dy; }
+      out.push({ from: o, dir: [dx, dy], cells: cells });
+    });
+    return out;
+  }
+
+  /* ---------- dégâts, soins, déplacements forcés ---------- */
+  function damage(w, src, t, base, opt) {
+    var c = w.combat;
+    opt = opt || {};
+    if (!t || !t.alive) return 0;
+    var mul = 1 + (src ? src.pow : 0) / 100;
+    if (src && src.powers.indexOf("first") >= 0 && !src.firstHit && !opt.noFirst) { mul *= 1.6; src.firstHit = true; }
+    var crit = !opt.noCrit && src && R() * 100 < src.crit;
+    if (crit) mul *= src.powers.indexOf("critx2") >= 0 ? 2 : 1.5;
+    var res = t.res + statusSum(t, "res");
+    var d = Math.max(1, Math.round(base * mul * (1 - clamp(res, -50, 75) / 100) * (0.92 + R() * 0.16)));
+    var absorbed = 0;
+    while (d > 0 && t.shield.length) {
+      var sh = t.shield[0], a = Math.min(sh.v, d);
+      sh.v -= a; d -= a; absorbed += a;
+      if (sh.v <= 0) t.shield.shift();
+    }
+    t.hp -= d;
+    ev(w, { k: "dmg", id: t.id, v: d, sh: absorbed, crit: crit, src: src ? src.id : 0, push: !!opt.push });
+    if (src && src.side === 0) c.stats[src.pi] && (c.stats[src.pi].dmg += d + absorbed);
+    // vol de vie
+    if (src && src.alive && (src.vamp || src.powers.indexOf("vamp") >= 0) && d > 0) heal(w, src, src, Math.round(d * ((src.vamp || 15) / 100)), true);
+    // épines
+    if (src && !opt.thorn && t.powers.indexOf("thorns") >= 0 && Math.abs(src.x - t.x) + Math.abs(src.y - t.y) <= 1) damage(w, t, src, Math.round((d + absorbed) * 0.3 / (1 + t.pow / 100)), { thorn: true, noCrit: true, noFirst: true });
+    if (t.hp <= 0) kill(w, t, src);
+    return d;
+  }
+  function kill(w, t, src) {
+    var c = w.combat;
+    t.hp = 0; t.alive = false; t.shield = [];
+    ev(w, { k: "die", id: t.id });
+    // les cristaux et murs de ce lanceur restent ; ses télégraphes tombent
+    c.tele = c.tele.filter(function (tl) { return tl.by !== t.id; });
+    if (src && src.side === 0 && t.side === 1) {
+      if (c.stats[src.pi]) c.stats[src.pi].kills++;
+      if (src.powers.indexOf("killpm") >= 0 && src.alive) { src.pm += 2; src.pa += 2; ev(w, { k: "buff", id: src.id, text: "+2 PA +2 PM" }); }
+    }
+    if (t.side === 1 && !t.summoned) { c.defeated = c.defeated || []; c.defeated.push({ type: t.type, lvl: t.lvl, affix: t.affix, boss: t.boss }); }
+  }
+  function heal(w, src, t, v, silent) {
+    if (!t || !t.alive) return 0;
+    var a = Math.min(t.maxHp - t.hp, Math.round(v));
+    if (a <= 0 && silent) return 0;
+    t.hp += Math.max(0, a);
+    ev(w, { k: "heal", id: t.id, v: Math.max(0, a) });
+    if (src && src.side === 0 && w.combat.stats[src.pi] && !silent) w.combat.stats[src.pi].heal += Math.max(0, a);
+    return a;
+  }
+  function addShield(w, src, t, v) {
+    var amt = Math.round(v * (1 + (src.heal || 0) / 100));
+    t.shield.push({ v: amt, by: src.id });
+    ev(w, { k: "shield", id: t.id, v: amt });
+  }
+  function statusSum(u, k) { var s = 0; u.status.forEach(function (st) { if (st.k === k) s += st.v; }); return s; }
+  // pousse (d > 0) ou attire (d < 0) t par rapport à la case (ox, oy)
+  function knock(w, src, t, ox, oy, dist, pull) {
+    var c = w.combat;
+    if (!t.alive || t.boss) { if (t.boss) ev(w, { k: "buff", id: t.id, text: "Inébranlable" }); return; }
+    var dx = sgn(t.x - ox), dy = sgn(t.y - oy);
+    if (pull) { dx = -dx; dy = -dy; }
+    if (dx && dy) { if (Math.abs(t.x - ox) >= Math.abs(t.y - oy)) dy = 0; else dx = 0; }
+    var moved = 0, path = [];
+    for (var i = 0; i < dist; i++) {
+      var nx = t.x + dx, ny = t.y + dy;
+      if (pull && nx === ox && ny === oy) break;
+      if (!cellFree(c, nx, ny)) break;
+      t.x = nx; t.y = ny; moved++; path.push([nx, ny]);
+    }
+    if (moved) ev(w, { k: "slide", id: t.id, path: path });
+    if (!pull && moved < dist) {
+      var hit = CFG.pushDmg * (dist - moved) * (src && src.powers.indexOf("crush") >= 0 ? 3 : 1);
+      ev(w, { k: "bump", id: t.id, dx: dx, dy: dy });
+      damage(w, src, t, hit, { push: true, noFirst: true });
+      var other = unitAt(c, t.x + dx, t.y + dy);
+      if (other && other !== src) damage(w, src, other, Math.round(hit / 2), { push: true, noFirst: true });
+    }
+  }
+  function teleport(w, u, x, y, fx) {
+    var from = [u.x, u.y];
+    u.x = x; u.y = y;
+    ev(w, { k: "tp", id: u.id, from: from, to: [x, y], fx: fx || "tri" });
+  }
+
+  /* ---------- lancer un sort ---------- */
+  function cast(w, u, sid, tg) {
+    var c = w.combat, S = SPELLS[sid];
+    if (canCast(w, u, sid)) return false;
+    var need = S.minSteps || S.steps.length;
+    if (!tg || tg.length < need || tg.length > S.steps.length) return false;
+    // on valide chaque étape
+    for (var i = 0; i < tg.length; i++) {
+      var ok = targets(w, u, sid, tg.slice(0, i)).some(function (p) { return p[0] === tg[i][0] && p[1] === tg[i][1]; });
+      if (!ok) return false;
+    }
+    var cost = spellCost(u, sid);
+    var echo = u.powers.indexOf("echo") >= 0 && R() < 0.2;
+    u.pa -= echo ? 0 : cost;
+    u.castThisTurn = true;
+    u.used[sid] = (u.used[sid] || 0) + 1;
+    if (S.cd) u.cds[sid] = S.cd + 1;
+    var t0 = tg[0], tu = unitAt(c, t0[0], t0[1]);
+    if (tu && tu !== u) u.face = faceOf(t0[0] - u.x, t0[1] - u.y);
+    ev(w, { k: "cast", id: u.id, s: sid, tg: tg, echo: echo });
+    if (echo) ev(w, { k: "buff", id: u.id, text: "Écho ! 0 PA" });
+    if (S.perTarget && tu) u.usedT[sid + ":" + tu.id] = (u.usedT[sid + ":" + tu.id] || 0) + 1;
+    EFFECTS[sid](w, u, tg, S);
+    afterAction(w);
+    return true;
+  }
+  function faceOf(dx, dy) { return Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 1 : -1) : (dy >= 0 ? 2 : -2); }
+  function powScale(u) { return 1; }
+  var EFFECTS = {
+    impact: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); damage(w, u, t, S.dmg); if (t && t.alive) knock(w, u, t, u.x, u.y, S.push); },
+    rempart: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); addShield(w, u, t, S.shield); },
+    mur: function (w, u, tg, S) {
+      var c = w.combat;
+      wallCells(c, u, tg[0][0], tg[0][1]).forEach(function (p) { c.objects.push({ kind: "wall", x: p[0], y: p[1], by: u.id, turns: S.dur }); });
+      ev(w, { k: "wall", cells: wallCells(c, u, tg[0][0], tg[0][1]) });
+    },
+    attraction: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); damage(w, u, t, S.dmg); if (t && t.alive) knock(w, u, t, u.x, u.y, S.pull, true); },
+    forteresse: function (w, u, tg, S) {
+      var c = w.combat;
+      disc(c, u.x, u.y, 2).forEach(function (p) {
+        var t = unitAt(c, p[0], p[1]);
+        if (t && t.side === u.side) { addShield(w, u, t, S.shield); t.status.push({ k: "res", v: 25, by: u.id, turns: 1, name: "Forteresse" }); }
+      });
+      ring8(c, u.x, u.y).forEach(function (p) { var t = unitAt(c, p[0], p[1]); if (t && t.side !== u.side) knock(w, u, t, u.x, u.y, 1); });
+    },
+    rayon: function (w, u, tg, S) {
+      var c = w.combat, t = unitAt(c, tg[0][0], tg[0][1]);
+      // d'où part le rayon ? du lanceur si possible, sinon d'un cristal
+      var st = S.steps[0], from = [u.x, u.y];
+      var os = spellOrigins(c, u, st, []);
+      for (var i = 0; i < os.length; i++) { var o = os[i]; if (shapeOk(st, tg[0][0] - o[0], tg[0][1] - o[1], u.po) && los(c, o[0], o[1], tg[0][0], tg[0][1])) { from = o; break; } }
+      ev(w, { k: "beam", from: from, to: tg[0], col: "#b98cff" });
+      damage(w, u, t, S.dmg + (from[0] !== u.x || from[1] !== u.y ? 4 : 0));
+    },
+    balise: function (w, u, tg, S) { w.combat.objects.push({ kind: "beacon", x: tg[0][0], y: tg[0][1], by: u.id, turns: S.dur, hp: S.hp }); },
+    transpo: function (w, u, tg) {
+      var c = w.combat, t = unitAt(c, tg[0][0], tg[0][1]);
+      if (t) teleport(w, t, tg[1][0], tg[1][1]);
+      else { var o = objAt(c, tg[0][0], tg[0][1]); if (o) { ev(w, { k: "tpobj", from: [o.x, o.y], to: tg[1] }); o.x = tg[1][0]; o.y = tg[1][1]; } }
+    },
+    onde: function (w, u, tg, S) {
+      var c = w.combat, t = unitAt(c, tg[0][0], tg[0][1]);
+      heal(w, u, t, S.heal * (1 + u.heal / 100));
+    },
+    convergence: function (w, u, tg, S) {
+      var c = w.combat, hitOnce = {};
+      tg.forEach(function (p) {
+        rays(c, u, p).forEach(function (r) {
+          ev(w, { k: "beam", from: r.from, to: r.cells.length ? r.cells[r.cells.length - 1] : r.from, col: "#9ff3ff", big: true });
+          r.cells.forEach(function (cl) {
+            var t = unitAt(c, cl[0], cl[1]);
+            if (!t || hitOnce[t.id]) return;
+            hitOnce[t.id] = 1;
+            if (t.side !== u.side) damage(w, u, t, S.dmg); else heal(w, u, t, S.heal * (1 + u.heal / 100));
+          });
+        });
+      });
+    },
+    bond: function (w, u, tg) { var from = [u.x, u.y]; u.x = tg[0][0]; u.y = tg[0][1]; u.face = faceOf(u.x - from[0], u.y - from[1]); ev(w, { k: "jump", id: u.id, from: from, to: tg[0] }); },
+    frappe: function (w, u, tg, S) { var t = unitAt(w.combat, tg[0][0], tg[0][1]); ev(w, { k: "slash", id: u.id, to: tg[0] }); damage(w, u, t, S.dmg); },
+    fantome: function (w, u, tg, S) {
+      var c = w.combat, t = unitAt(c, tg[0][0], tg[0][1]), b = behindCell(c, u, t);
+      if (b) { teleport(w, u, b[0], b[1], "ghost"); u.face = faceOf(t.x - u.x, t.y - u.y); }
+      ev(w, { k: "slash", id: u.id, to: tg[0] });
+      damage(w, u, t, S.dmg);
+    },
+    brume: function (w, u, tg, S) {
+      var c = w.combat;
+      plus(tg[0][0], tg[0][1]).forEach(function (p) {
+        if (!inArena(c, p[0], p[1]) || c.arena.g[p[0]][p[1]] === 1) return;
+        var o = objAt(c, p[0], p[1]); if (o) return;
+        c.objects.push({ kind: "smoke", x: p[0], y: p[1], by: u.id, turns: S.dur });
+      });
+      ev(w, { k: "smoke", at: tg[0] });
+    },
+    danse: function (w, u, tg, S) {
+      var c = w.combat, hit = {};
+      tg.forEach(function (p, i) {
+        var from = [u.x, u.y];
+        u.x = p[0]; u.y = p[1];
+        ev(w, { k: "jump", id: u.id, from: from, to: p, i: i });
+        ring8(c, p[0], p[1]).forEach(function (q) {
+          var t = unitAt(c, q[0], q[1]);
+          if (t && t.side !== u.side && !hit[t.id + ":" + i]) { hit[t.id + ":" + i] = 1; damage(w, u, t, S.dmg); }
+        });
+      });
+    },
+  };
+
+  /* ---------- déplacement en combat ---------- */
+  function reach(w, u) {
+    var c = w.combat, out = {}, q = [[u.x, u.y, 0]];
+    out[key(u.x, u.y)] = 0;
+    while (q.length) {
+      var p = q.shift();
+      if (p[2] >= u.pm) continue;
+      for (var d = 0; d < 4; d++) {
+        var nx = p[0] + DX[d], ny = p[1] + DY[d], k = key(nx, ny);
+        if (out[k] != null || !cellFree(c, nx, ny)) continue;
+        out[k] = p[2] + 1; q.push([nx, ny, p[2] + 1]);
+      }
+    }
+    return out;
+  }
+  function combatPath(c, u, x, y, max) {
+    return findPath(c.arena.w, c.arena.h, function (cx, cy) { return cellFree(c, cx, cy, u); }, u.x, u.y, x, y, max);
+  }
+  function moveUnit(w, u, x, y) {
+    var c = w.combat;
+    if (!cellFree(c, x, y)) return false;
+    var p = combatPath(c, u, x, y, u.pm);
+    if (!p || !p.length || p.length > u.pm) return false;
+    u.pm -= p.length;
+    var last = p[p.length - 1], prev = p.length > 1 ? p[p.length - 2] : [u.x, u.y];
+    u.face = faceOf(last[0] - prev[0], last[1] - prev[1]);
+    u.x = last[0]; u.y = last[1];
+    ev(w, { k: "move", id: u.id, path: p });
+    // marcher dans un télégraphe ne déclenche rien tout de suite (il explose au tour du boss)
+    afterAction(w);
+    return true;
+  }
+
+  /* ---------- tours ---------- */
+  function beginFight(w) {
+    var c = w.combat;
+    c.phase = "fight"; c.turn = -1; c.round = 1;
+    computeOrder(c);
+    ev(w, { k: "fight" });
+    nextTurn(w);
+  }
+  function nextTurn(w) {
+    var c = w.combat;
+    if (!c || c.phase !== "fight") return;
+    for (var guard = 0; guard < 40; guard++) {
+      c.turn++;
+      if (c.turn >= c.order.length) { c.turn = 0; c.round++; }
+      var u = uById(c, c.order[c.turn]);
+      if (u && u.alive) { startTurn(w, u); return; }
+    }
+  }
+  function startTurn(w, u) {
+    var c = w.combat;
+    u.pa = u.maxPa; u.pm = u.maxPm; u.used = {}; u.usedT = {}; u.castThisTurn = false; u.firstHit = false;
+    for (var k in u.cds) if (u.cds[k] > 0) u.cds[k]--;
+    // ce que ce lanceur a posé expire à son tour
+    c.units.forEach(function (o) {
+      o.shield = o.shield.filter(function (s) { return s.by !== u.id; });
+      o.status = o.status.filter(function (s) { if (s.by !== u.id) return true; s.turns--; return s.turns > 0; });
+    });
+    var before = c.objects.length;
+    c.objects = c.objects.filter(function (o) { if (o.by !== u.id) return true; o.turns--; return o.turns > 0; });
+    if (c.objects.length !== before) ev(w, { k: "expire" });
+    if (u.powers.indexOf("aegis") >= 0) addShield(w, u, u, Math.round(u.maxHp * 0.12) / (1 + u.heal / 100));
+    ev(w, { k: "turn", id: u.id, round: c.round });
+    // le boss déclenche ses sentences
+    var mine = c.tele.filter(function (t) { return t.by === u.id; });
+    if (mine.length) {
+      c.tele = c.tele.filter(function (t) { return t.by !== u.id; });
+      mine.forEach(function (tl) {
+        ev(w, { k: "boom", cells: tl.cells });
+        tl.cells.forEach(function (p) { var t = unitAt(c, p[0], p[1]); if (t && t.side !== u.side) damage(w, u, t, tl.dmg, { noFirst: true }); });
+      });
+      if (checkEnd(w)) return;
+    }
+    c.aiT = u.side === 1 ? 0.75 : 0;
+    bump(w);
+  }
+  function endTurn(w) {
+    var c = w.combat, u = active(c);
+    if (!u || c.phase !== "fight") return;
+    ev(w, { k: "endturn", id: u.id });
+    nextTurn(w);
+    bump(w);
+  }
+  function afterAction(w) { checkEnd(w); bump(w); }
+  function checkEnd(w) {
+    var c = w.combat;
+    if (!c || c.phase !== "fight") return false;
+    var heroes = c.units.some(function (u) { return u.side === 0 && u.alive; });
+    var mobs = c.units.some(function (u) { return u.side === 1 && u.alive; });
+    if (!mobs) { finishCombat(w, true); return true; }
+    if (!heroes) { finishCombat(w, false); return true; }
+    var a = active(c);
+    if (a && !a.alive) { nextTurn(w); }
+    return false;
+  }
+
+  /* ---------- IA des monstres ---------- */
+  function mobSpells(u) { return MOBS[u.type].spells.map(function (id) { return { id: id, S: MOB_SPELLS[id] }; }); }
+  function mobCanHit(c, u, S, fx, fy, t) {
+    var dx = t.x - fx, dy = t.y - fy;
+    if (!shapeOk({ shape: S.shape, range: S.range }, dx, dy, 0)) return false;
+    if (S.los && !(dx === 0 && dy === 0) && !losFrom(c, u, fx, fy, t.x, t.y)) return false;
+    return true;
+  }
+  function losFrom(c, u, fx, fy, tx, ty) {
+    // la case de départ peut être hypothétique : on retire le monstre le temps du calcul
+    var ox = u.x, oy = u.y; u.x = fx; u.y = fy;
+    var r = los(c, fx, fy, tx, ty);
+    u.x = ox; u.y = oy;
+    return r;
+  }
+  function aiStep(w) {
+    var c = w.combat, u = active(c);
+    if (!u || u.side !== 1) return null;
+    var foes = c.units.filter(function (o) { return o.alive && o.side !== u.side; });
+    var friends = c.units.filter(function (o) { return o.alive && o.side === u.side; });
+    if (!foes.length) return null;
+    var spells = mobSpells(u).filter(function (s) { return s.S.pa <= u.pa && !(u.cds[s.id] > 0); });
+    // boss : sentence télégraphiée et invocations
+    if (u.boss) {
+      var sum = spells.filter(function (s) { return s.S.summon; })[0];
+      if (sum && friends.length < 4 && c.round % 3 === 1) return { t: "mcast", s: sum.id };
+      var sen = spells.filter(function (s) { return s.S.telegraph; })[0];
+      if (sen && !c.tele.some(function (tl) { return tl.by === u.id; })) return { t: "mcast", s: sen.id };
+    }
+    // soigneur
+    var healS = spells.filter(function (s) { return s.S.heal; })[0];
+    if (healS) {
+      var hurt = friends.filter(function (f) { return f.hp < f.maxHp * 0.65 && mobCanHit(c, u, healS.S, u.x, u.y, f); }).sort(function (a, b) { return a.hp / a.maxHp - b.hp / b.maxHp; })[0];
+      if (hurt) return { t: "mcast", s: healS.id, x: hurt.x, y: hurt.y };
+    }
+    var atk = spells.filter(function (s) { return s.S.dmg && !s.S.telegraph; });
+    // frapper d'ici
+    var best = null;
+    atk.forEach(function (s) {
+      foes.forEach(function (f) {
+        if (!mobCanHit(c, u, s.S, u.x, u.y, f)) return;
+        var sc = s.S.dmg * 2 - f.hp / f.maxHp * 10 - (f.shield.length ? 6 : 0);
+        if (!best || sc > best.sc) best = { sc: sc, s: s.id, x: f.x, y: f.y };
+      });
+    });
+    if (best) return { t: "mcast", s: best.s, x: best.x, y: best.y };
+    if (u.pm <= 0) return null;
+    // aller vers une case d'où l'on peut frapper
+    var rc = reach(w, u), cand = null;
+    var allAtk = mobSpells(u).filter(function (s) { return s.S.dmg && !s.S.telegraph && s.S.pa <= u.maxPa; });
+    Object.keys(rc).forEach(function (k) {
+      var p = k.split(","), x = +p[0], y = +p[1], d = rc[k];
+      if (d === 0) return;
+      var canNow = atk.some(function (s) { return foes.some(function (f) { return mobCanHit(c, u, s.S, x, y, f); }); });
+      if (!canNow) return;
+      var near = foes.reduce(function (m, f) { return Math.min(m, Math.abs(f.x - x) + Math.abs(f.y - y)); }, 99);
+      var sc = (MOBS[u.type].ranged ? near * 2 : -near) - d * 0.3;
+      if (!cand || sc > cand.sc) cand = { sc: sc, x: x, y: y };
+    });
+    if (cand) return { t: "mmove", x: cand.x, y: cand.y };
+    // sinon s'approcher (ou, pour un tireur collé, reculer)
+    var target = foes.slice().sort(function (a, b) { return (Math.abs(a.x - u.x) + Math.abs(a.y - u.y)) - (Math.abs(b.x - u.x) + Math.abs(b.y - u.y)); })[0];
+    var bestC = null;
+    Object.keys(rc).forEach(function (k) {
+      var p = k.split(","), x = +p[0], y = +p[1];
+      if (rc[k] === 0) return;
+      var pth = findPath(c.arena.w, c.arena.h, function (cx, cy, end) { return end || cellFree(c, cx, cy, u); }, x, y, target.x, target.y);
+      var dist = pth ? pth.length : 50 + Math.abs(target.x - x) + Math.abs(target.y - y);
+      if (!bestC || dist < bestC.d) bestC = { d: dist, x: x, y: y };
+    });
+    var curP = findPath(c.arena.w, c.arena.h, function (cx, cy, end) { return end || cellFree(c, cx, cy, u); }, u.x, u.y, target.x, target.y);
+    var curD = curP ? curP.length : 50 + Math.abs(target.x - u.x) + Math.abs(target.y - u.y);
+    if (bestC && bestC.d < curD) return { t: "mmove", x: bestC.x, y: bestC.y };
+    return null;
+  }
+  function aiDo(w, a) {
+    var c = w.combat, u = active(c);
+    if (!a) { endTurn(w); return 0.25; }
+    if (a.t === "mmove") {
+      var p = combatPath(c, u, a.x, a.y, u.pm);
+      if (!p || !moveUnit(w, u, a.x, a.y)) { endTurn(w); return 0.25; }
+      return 0.18 * p.length + 0.25;
+    }
+    var S = MOB_SPELLS[a.s];
+    u.pa -= S.pa;
+    if (S.cd) u.cds[a.s] = S.cd + 1;
+    var t = a.x != null ? unitAt(c, a.x, a.y) : null;
+    if (t && t !== u) u.face = faceOf(t.x - u.x, t.y - u.y);
+    ev(w, { k: "cast", id: u.id, s: a.s, tg: a.x != null ? [[a.x, a.y]] : [], mob: true });
+    if (S.summon) {
+      var spots = ring8(c, u.x, u.y).filter(function (q) { return cellFree(c, q[0], q[1]); }).slice(0, 2);
+      spots.forEach(function (q) {
+        var m = addMob(c, S.summon, u.lvl - 2, null, q[0], q[1], true);
+        c.order.splice(c.turn + 1, 0, m.id);
+        ev(w, { k: "summon", id: m.id });
+      });
+    } else if (S.telegraph) {
+      // une croix ou deux lignes, au choix, centrées sur un héros
+      var foes = c.units.filter(function (o) { return o.alive && o.side !== u.side; });
+      var f = foes[Math.floor(R() * foes.length)], cells = [];
+      if (R() < 0.5) { for (var i = -2; i <= 2; i++) { cells.push([f.x + i, f.y]); if (i) cells.push([f.x, f.y + i]); } }
+      else { for (var j = -2; j <= 2; j++) { cells.push([f.x + j, f.y + j]); if (j) cells.push([f.x + j, f.y - j]); } }
+      cells = cells.filter(function (q) { return inArena(c, q[0], q[1]); });
+      c.tele.push({ by: u.id, cells: cells, dmg: Math.round(S.dmg * (1 + u.pow / 100)) });
+      ev(w, { k: "tele", cells: cells });
+    } else if (S.heal) heal(w, u, t, S.heal * (1 + u.lvl * 0.08));
+    else if (t) {
+      if (S.shape === "diag" || S.range[1] > 1) ev(w, { k: "beam", from: [u.x, u.y], to: [t.x, t.y], col: MOBS[u.type].col, mob: true });
+      damage(w, u, t, S.dmg);
+      if (S.push && t.alive) knock(w, u, t, u.x, u.y, S.push);
+    }
+    afterAction(w);
+    return 0.85;
+  }
+
+  /* ---------- fin de combat et butin ---------- */
+  function finishCombat(w, won) {
+    var c = w.combat;
+    c.phase = "end";
+    ev(w, { k: won ? "victory" : "defeat" });
+    var loot = { won: won, players: [] };
+    var defeated = c.defeated || [];
+    w.players.forEach(function (pl, i) {
+      if (!pl) return;
+      var p = pl.profile, res = { xp: 0, gold: 0, items: [], levels: 0, quests: [] };
+      if (won) {
+        defeated.forEach(function (d) {
+          var M = MOBS[d.type];
+          res.xp += Math.round((M.xp + d.lvl * 6) * (d.affix ? 2 : 1));
+          res.gold += Math.round((3 + d.lvl * 2) * (d.affix ? 2.5 : 1) * (0.7 + R() * 0.6)) + (d.boss ? 200 : 0);
+          // le butin : chaque monstre tire au hasard, pour chaque joueur
+          var luck = d.boss ? 2 : d.affix ? 1 : 0;
+          var n = d.boss ? 3 : d.affix ? 1 : (R() < CFG.dropChance ? 1 : 0);
+          for (var k = 0; k < n; k++) res.items.push(makeItem(p, d.lvl + (R() < 0.3 ? 1 : 0), rollRarity(luck, d.boss ? 3 : 0)));
+          questEvent(w, i, { kind: "kill", mob: d.type, elite: !!d.affix, boss: d.boss }, res);
+          p.kills++;
+          if (d.boss) p.bossKills++;
+        });
+        // jamais les mains vides
+        if (!res.items.length && defeated.length) res.items.push(makeItem(p, Math.round(defeated.reduce(function (a, d) { return a + d.lvl; }, 0) / defeated.length), rollRarity(0)));
+        if (c.room) { res.xp = Math.round(res.xp * 1.3); }
+        res.items = res.items.slice(0, 6);
+        res.items.sort(function (a, b) { return b.r - a.r; });
+        giveXp(w, i, res.xp, res);
+        p.gold += res.gold;
+        res.items.forEach(function (it) { if (p.bag.length < BAG_MAX) p.bag.push(it); else { p.gold += it.value; it.sold = true; } });
+      }
+      p.rev++;
+      loot.players[i] = res;
+    });
+    loot.stats = c.stats;
+    loot.room = c.room;
+    loot.dungeonNext = won && w.dungeon && w.dungeon.room < DUNGEON.length - 1;
+    loot.dungeonDone = won && w.dungeon && w.dungeon.room === DUNGEON.length - 1;
+    if (w.dungeon) {
+      w.dungeon.hp = c.units.filter(function (u) { return u.side === 0; }).reduce(function (o, u) { o[u.pi] = u.alive ? u.hp : 1; return o; }, {});
+    }
+    // le groupe battu disparaît un moment
+    if (won && c.packId) w.packs.forEach(function (pk) { if (pk.id === c.packId) { pk.dead = true; pk.t = CFG.respawn; } });
+    w.packs.forEach(function (pk) { pk.calm = w.t + 4; });
+    loot.id = Math.floor(R() * 1e9);
+    w.loot = loot; w.mode = "loot";
+    w.players.forEach(function (pl) { if (pl) pl.ready = false; });
+    bump(w);
+  }
+  function giveXp(w, i, xp, res) {
+    var p = w.players[i].profile;
+    p.xp += xp;
+    while (p.level < CFG.maxLevel && p.xp >= xpNeed(p.level)) {
+      p.xp -= xpNeed(p.level); p.level++;
+      if (res) res.levels++;
+      ev(w, { k: "levelup", pi: i, level: p.level });
+      if (p.level === ULT_LEVEL) ev(w, { k: "ult", pi: i });
+    }
+    if (p.level >= CFG.maxLevel) p.xp = Math.min(p.xp, xpNeed(p.level));
+    updateQuests(w, i);
+  }
+  function lootDone(w, pi) {
+    if (w.mode !== "loot") return;
+    w.players[pi].ready = true;
+    if (!w.players.every(function (p) { return !p || p.ready; })) { bump(w); return; }
+    var L = w.loot;
+    w.loot = null; w.combat = null;
+    w.players.forEach(function (p) { if (!p) return; p.ready = false; p.profile.bag.forEach(function (it) { it.isNew = false; }); });
+    if (w.dungeon) {
+      if (L.won && L.dungeonNext) {
+        w.dungeon.room++;
+        // un peu de répit entre les salles
+        w.players.forEach(function (pl, i) {
+          if (!pl) return;
+          var mx = heroStats(pl.profile).hp;
+          w.dungeon.hp[i] = Math.min(mx, (w.dungeon.hp[i] || 1) + Math.round(mx * CFG.dungeonHeal));
+        });
+        dungeonRoom(w);
+        return;
+      }
+      w.dungeon = null;
+      w.mode = "explore";
+      enterZone(w, L.won ? "falaises" : "village", L.won ? "donjon" : null);
+      return;
+    }
+    w.mode = "explore";
+    if (!L.won) enterZone(w, "village", null);
+    bump(w);
+  }
+  function startDungeon(w) {
+    w.dungeon = { room: 0, hp: {} };
+    ev(w, { k: "dungeon" });
+    dungeonRoom(w);
+  }
+  function dungeonRoom(w) {
+    var D = DUNGEON[w.dungeon.room], n = w.players.filter(Boolean).length;
+    var mobs = [];
+    if (D.boss) { mobs.push({ type: "archonte", lvl: D.lvl, affix: null }); for (var b = 0; b < n; b++) mobs.push({ type: D.mobs[1 + (b % 2)], lvl: D.lvl - 1, affix: null }); }
+    else for (var i = 0; i < 2 + n; i++) mobs.push({ type: D.mobs[i % D.mobs.length], lvl: D.lvl + (i % 2), affix: R() < D.elite ? pick(R, AFFIX_IDS) : null });
+    var hpMul = n === 1 ? 0.8 : 1;
+    startCombat(w, { id: 0, mobs: mobs }, { idx: w.dungeon.room, name: D.name, boss: !!D.boss });
+    if (D.boss) w.combat.units.forEach(function (u) { if (u.boss) { u.maxHp = Math.round(u.maxHp * hpMul); u.hp = u.maxHp; } });
+  }
+
+  /* ---------- quêtes ---------- */
+  function updateQuests(w, i) {
+    var p = w.players[i].profile;
+    QUESTS.forEach(function (q) {
+      if (p.qdone[q.id] || p.quests[q.id] != null) return;
+      if (q.req && !p.qdone[q.req]) return;
+      p.quests[q.id] = 0;
+    });
+  }
+  function questEvent(w, i, e, res) {
+    var p = w.players[i].profile, changed = false;
+    QUESTS.forEach(function (q) {
+      if (p.quests[q.id] == null || p.qdone[q.id]) return;
+      var inc = 0;
+      if (q.kind === "kill" && e.kind === "kill" && e.mob === q.mob) inc = 1;
+      if (q.kind === "elite" && e.kind === "kill" && e.elite) inc = 1;
+      if (q.kind === "boss" && e.kind === "kill" && e.boss) inc = 1;
+      if (q.kind === "zone" && e.kind === "zone" && e.zone === q.zone) inc = 1;
+      if (!inc) return;
+      p.quests[q.id] = Math.min(q.n || 1, p.quests[q.id] + inc); changed = true;
+      if (p.quests[q.id] >= (q.n || 1)) completeQuest(w, i, q, res);
+    });
+    if (changed) p.rev++;
+  }
+  function completeQuest(w, i, q, res) {
+    var p = w.players[i].profile;
+    p.qdone[q.id] = 1; delete p.quests[q.id];
+    var it = makeItem(p, Math.max(p.level, 2), RARITIES.map(function (r) { return r.id; }).indexOf(q.item));
+    if (p.bag.length < BAG_MAX) p.bag.push(it); else p.gold += it.value;
+    p.gold += q.gold;
+    ev(w, { k: "quest", pi: i, q: q.id, item: it });
+    if (res) { res.quests.push(q.id); res.items.push(it); res.gold += q.gold; res.xp += q.xp; }
+    else giveXp(w, i, q.xp, null);
+    updateQuests(w, i);
+  }
+
+  /* ====================== INVENTAIRE ====================== */
+  function findBag(p, uid) { for (var i = 0; i < p.bag.length; i++) if (p.bag[i].uid === uid) return i; return -1; }
+  function equip(w, pi, uid) {
+    var p = w.players[pi].profile, i = findBag(p, uid);
+    if (i < 0 || (w.mode === "combat" && w.combat && w.combat.phase === "fight")) return false;
+    var it = p.bag.splice(i, 1)[0], old = p.equip[it.slot];
+    it.isNew = false;
+    p.equip[it.slot] = it;
+    if (old) p.bag.splice(i, 0, old);
+    p.rev++;
+    ev(w, { k: "equip", pi: pi, uid: uid });
+    bump(w);
+    return true;
+  }
+  function unequip(w, pi, slot) {
+    var p = w.players[pi].profile, it = p.equip[slot];
+    if (!it || p.bag.length >= BAG_MAX || (w.mode === "combat" && w.combat && w.combat.phase === "fight")) return false;
+    delete p.equip[slot]; p.bag.unshift(it); p.rev++; bump(w); return true;
+  }
+  function sell(w, pi, uid) {
+    var p = w.players[pi].profile, i = findBag(p, uid);
+    if (i < 0) return false;
+    var it = p.bag.splice(i, 1)[0];
+    p.gold += it.value; p.rev++;
+    ev(w, { k: "sell", pi: pi, v: it.value });
+    bump(w);
+    return true;
+  }
+  function sellJunk(w, pi, maxR) {
+    var p = w.players[pi].profile, g = 0;
+    p.bag = p.bag.filter(function (it) { if (it.r <= maxR && !it.lock) { g += it.value; return false; } return true; });
+    if (g) { p.gold += g; p.rev++; ev(w, { k: "sell", pi: pi, v: g }); bump(w); }
+    return g;
+  }
+  function chestPrice(p) { return 45 + p.level * 28; }
+  function buyChest(w, pi) {
+    var p = w.players[pi].profile, cost = chestPrice(p);
+    if (p.gold < cost || p.bag.length >= BAG_MAX) return false;
+    p.gold -= cost;
+    var it = makeItem(p, p.level, rollRarity(1, 1));
+    p.bag.push(it); p.rev++;
+    ev(w, { k: "chest", pi: pi, item: it });
+    bump(w);
+    return true;
+  }
+
+  /* ====================== COMMANDES ====================== */
+  // toutes les actions des joueurs passent par ici (l'invité les envoie à l'hôte)
+  function cmd(w, pi, c) {
+    if (!c || !w.players[pi]) return false;
+    var cb = w.combat;
+    switch (c.t) {
+      case "walk": return w.mode === "explore" && walkTo(w, pi, c.x | 0, c.y | 0);
+      case "engage": return w.mode === "explore" && engage(w, pi, c.id);
+      case "heal":
+        if (w.mode !== "explore") return false;
+        ev(w, { k: "fountain", pi: pi }); bump(w); return true;
+      case "place": {
+        if (!cb || cb.phase !== "place") return false;
+        var me = cb.units.filter(function (u) { return u.side === 0 && u.pi === pi; })[0];
+        if (!me || !cb.arena.heroCells.some(function (h) { return h[0] === c.x && h[1] === c.y; })) return false;
+        var other = unitAt(cb, c.x, c.y);
+        if (other && other.side === 0 && other !== me) { other.x = me.x; other.y = me.y; }
+        else if (other) return false;
+        me.x = c.x; me.y = c.y; ev(w, { k: "place", id: me.id }); bump(w); return true;
+      }
+      case "ready": {
+        if (!cb || cb.phase !== "place") return false;
+        w.players[pi].ready = !w.players[pi].ready;
+        if (w.players.every(function (p) { return !p || p.ready; })) { w.players.forEach(function (p) { if (p) p.ready = false; }); beginFight(w); }
+        bump(w); return true;
+      }
+      case "move": { var u = myTurn(w, pi); return !!u && moveUnit(w, u, c.x | 0, c.y | 0); }
+      case "cast": { var u2 = myTurn(w, pi); return !!u2 && cast(w, u2, c.s, c.tg); }
+      case "end": { var u3 = myTurn(w, pi); if (!u3) return false; endTurn(w); return true; }
+      case "flee": {
+        if (!cb || cb.room) return false;
+        finishCombat(w, false); return true;
+      }
+      case "lootok": lootDone(w, pi); return true;
+      case "equip": return equip(w, pi, c.uid);
+      case "unequip": return unequip(w, pi, c.slot);
+      case "sell": return sell(w, pi, c.uid);
+      case "junk": return sellJunk(w, pi, c.r | 0) > 0;
+      case "lock": { var p = w.players[pi].profile, ix = findBag(p, c.uid); if (ix < 0) return false; p.bag[ix].lock = !p.bag[ix].lock; p.rev++; bump(w); return true; }
+      case "chest": return w.mode === "explore" && buyChest(w, pi);
+      case "seen": { var pp = w.players[pi].profile; pp.bag.forEach(function (it) { it.isNew = false; }); pp.rev++; bump(w); return true; }
+    }
+    return false;
+  }
+  function myTurn(w, pi) {
+    var c = w.combat;
+    if (!c || c.phase !== "fight" || w.mode !== "combat") return null;
+    var u = active(c);
+    return u && u.side === 0 && u.pi === pi && u.alive ? u : null;
+  }
+
+  /* ====================== AVANCER LE TEMPS (hôte) ====================== */
+  function step(w, dt) {
+    w.t += dt;
+    if (w.mode === "explore") stepExplore(w, dt);
+    else if (w.mode === "combat" && w.combat && w.combat.phase === "fight") {
+      var c = w.combat, u = active(c);
+      if (u && u.side === 1) {
+        c.aiT -= dt;
+        if (c.aiT <= 0) {
+          var a = aiStep(w);
+          c.aiT = aiDo(w, a);
+          if (++c.aiN > 12 && a) { c.aiN = 0; endTurn(w); }
+          if (!a) c.aiN = 0;
+        }
+      } else if (c) c.aiN = 0;
+    }
+  }
+
+  var API = {
+    CFG: CFG, CLASSES: CLASSES, CLASS_IDS: CLASS_IDS, SPELLS: SPELLS, MOBS: MOBS, MOB_SPELLS: MOB_SPELLS, AFFIXES: AFFIXES,
+    SLOTS: SLOTS, SLOT_NAME: SLOT_NAME, RARITIES: RARITIES, STATS: STATS, POWERS: POWERS, QUESTS: QUESTS, ZONES: ZONES, ZONE_IDS: ZONE_IDS,
+    DUNGEON: DUNGEON, NPCS: NPCS, ULT_LEVEL: ULT_LEVEL, BAG_MAX: BAG_MAX,
+    newProfile: newProfile, fixProfile: fixProfile, heroStats: heroStats, xpNeed: xpNeed, itemScore: itemScore, makeItem: makeItem, rollRarity: rollRarity,
+    createWorld: createWorld, addPlayer: addPlayer, removePlayer: removePlayer, zoneMap: zoneMap, exploreWalkable: exploreWalkable, portalAt: portalAt, findPath: findPath,
+    cmd: cmd, step: step, active: active, unitAt: unitAt, objAt: objAt, uById: uById, inArena: inArena, groundOk: groundOk, cellFree: cellFree,
+    targets: targets, area: area, canCast: canCast, spellCost: spellCost, reach: reach, combatPath: combatPath, myTurn: myTurn, los: los,
+    chestPrice: chestPrice, partyLevel: partyLevel, checkEnd: checkEnd, startDungeon: startDungeon, enterZone: enterZone, statusSum: statusSum, aiStep: aiStep, aiDo: aiDo,
+  };
+  if (typeof module !== "undefined" && module.exports) module.exports = API;
+  root.AT_CORE = API;
+})(typeof window !== "undefined" ? window : globalThis);
