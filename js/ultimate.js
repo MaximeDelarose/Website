@@ -338,7 +338,14 @@
       } else if (pc.kind === "spring") {
         s += near * 2 + (supported ? 6 : -20);
       } else {
-        s += near * 1.6 + (mid > 8 && mid < 33 ? 4 : 0) - Math.abs((r + 1) - (GROUND - 3)) * 0.8;
+        // un bot bâtisseur comble les trous (planche au niveau du sol) et évite de murer le couloir
+        cs.forEach(function (q) {
+          var qc = c + q[0], qr = r + q[1], inPit = pits.some(function (pt) { return qc >= pt && qc < pt + 3; });
+          if (inPit && qr === GROUND) s += 7;
+          else if (qr >= GROUND - 4 && qr <= GROUND - 2) s -= 6;
+          else if (qr < GROUND - 4 && qr > GROUND - 8) s += 1;
+        });
+        s += near * 0.5;
       }
       if (s > bs) { bs = s; best = { rot: rot, c: c, r: r }; }
     }
@@ -355,6 +362,21 @@
   }
   function startRun() { phase = "run"; runT = 0; timer = 45; SFX.go(); setBanner("Courez !", 1); }
 
+  // personne n'est arrivé : on retire les pièges pour ne pas bloquer la partie
+  function clearTraps() {
+    var n = 0;
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var k = ix(c, r);
+      if (grid[k] === T_SPIKE || grid[k] === T_CANNON) { grid[k] = 0; occ[k] = 0; own[k] = -1; n++; }
+    }
+    saws.forEach(function (sw) {
+      var c0 = Math.round(sw.x / TS) - 1, r0 = Math.round(sw.y / TS) - 1;
+      for (var a = 0; a < 2; a++) for (var b = 0; b < 2; b++) occ[ix(c0 + a, r0 + b)] = 0;
+      n++;
+    });
+    saws = []; cannons = []; arrows = [];
+    return n;
+  }
   function endRun() {
     phase = "recap";
     var fin = players.filter(function (p) { return p.done; }).sort(function (a, b) { return a.doneAt - b.doneAt; });
@@ -375,6 +397,7 @@
       h += '<li><span class="uch-dot" style="background:' + p.col.body + '"></span><b>' + esc(p.col.name) + (p.human ? " (J" + p.human + ")" : "") + '</b><i>' + esc(why.join(" · ")) + '</i><strong>' + p.score + '<small> / ' + cfg.target + '</small></strong></li>';
     });
     h += '</ul>';
+    if (!fin.length && clearTraps()) h += '<p class="game-small">Personne n\'est arrivé : les pièges sont retirés du parcours.</p>';
     if (winner && !tie) {
       h += '<h3>🏆 ' + esc(winner.col.name) + ' gagne la partie !</h3><div class="game-btns"><button class="btn" type="button" data-act="again">Rejouer</button><button class="btn btn-ghost" type="button" data-act="menu">Menu</button></div>';
       SFX.win(); phase = "over";
