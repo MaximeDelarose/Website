@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mini-golf · AkarisuMD</title>
+  <meta name="description" content="Mini-golf : 9 trous dans la forêt (sable, eau, champignons, moulin), en solo ou en ligne jusqu'à 4 joueurs avec un code de salon.">
+  <meta property="og:title" content="Mini-golf · AkarisuMD">
+  <meta property="og:description" content="Mini-golf : 9 trous dans la forêt (sable, eau, champignons, moulin), en solo ou en ligne jusqu'à 4 joueurs avec un code de salon.">
+  <meta name="theme-color" content="#3f6b3a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mini-golf">
+  <link rel="apple-touch-icon" href="assets/squirrel.png">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261104mb2">
+  <link rel="stylesheet" href="css/golf.css?v=20261109gf2">
+</head>
+<body data-page="golf">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="versus.html" data-page="versus">Versus</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="section game-section">
+    <div class="wrap">
+      <div class="game-head">
+        <div>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · solo & en ligne</span>
+          <h1>Mini-golf</h1>
+        </div>
+        <button class="btn btn-ghost btn-small" type="button" data-golf-menu>☰ Menu</button>
+      </div>
+
+      <div data-golf>
+        <div class="game-stage golf-stage" data-stage>
+          <canvas class="game-canvas golf-canvas" data-canvas aria-label="Terrain de mini-golf"></canvas>
+          <div class="golf-hud" data-hud hidden>
+            <div class="golf-hud-left">
+              <p class="golf-hud-hole" data-hud-hole></p>
+              <p class="golf-hud-strokes" data-hud-strokes></p>
+              <div class="golf-power" aria-hidden="true"><i data-power></i></div>
+            </div>
+            <ul class="golf-board" data-hud-board hidden></ul>
+          </div>
+          <div class="game-overlay golf-overlay" data-overlay>
+            <div class="panel game-card golf-card" data-card>
+              <p>Chargement du jeu…</p>
+              <noscript><p>Ce jeu a besoin de JavaScript.</p></noscript>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="game-info">
+        <div class="panel game-help">
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li><strong>Tirer</strong> : appuie n'importe où sur le terrain et tire en arrière, comme un lance-pierre. Plus tu tires loin, plus la balle part fort ; la flèche te montre la direction et la puissance. Relâche pour frapper.</li>
+            <li><strong>Au clavier</strong> : <kbd>←</kbd> <kbd>→</kbd> tournent la visée (avec <kbd>Maj</kbd> pour être précis), <kbd>↑</kbd> <kbd>↓</kbd> règlent la puissance, <kbd>Espace</kbd> frappe.</li>
+            <li><strong>Le terrain</strong> : les murs en bois font rebondir la balle, le <em>sable</em> la freine, l'<em>eau</em> la renvoie d'où tu as tiré (+1 coup), les <em>champignons</em> la font rebondir, et le <em>moulin</em> demande un peu de timing. Une balle trop rapide passe par-dessus le trou : vise doux.</li>
+            <li><strong>Solo</strong> : 9 trous, un record gardé sur ton appareil. Au bout de 8 coups la balle est ramassée. Tu peux aussi t'entraîner sur un seul trou.</li>
+            <li><strong>En ligne</strong> : crée un salon, envoie le code de 4 lettres (ou le lien) à 1 à 3 amis, et lancez la partie. Tout le monde joue en même temps, les balles des autres sont des fantômes. Le trou suivant démarre quand tout le monde a fini (ou une minute après le premier arrivé). Le plus petit total gagne.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261103re4"></script>
+  <script src="js/auth.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261109gf2"></script>
+  <script src="js/vendor/supabase-2.45.4.min.js"></script>
+  <script src="js/golf.js?v=20261109gf2"></script>
+</body>
+</html>
