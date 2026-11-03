@@ -215,7 +215,7 @@ export class MergeScene extends BaseScene {
     }
 
     this.comboText?.destroy();
-    this.comboText = this.text(this.W / 2, this.oy - 6, '', { fontSize: '22px', fontStyle: '700', color: '#FFFFFF', stroke: '#E8558F', strokeThickness: 6 }).setOrigin(0.5, 1).setDepth(120).setAlpha(0);
+    this.comboText = this.text(this.W / 2, this.oy + this.cell * 1.1, '', { fontSize: '30px', fontStyle: '700', color: '#FFFFFF', stroke: '#E8558F', strokeThickness: 8 }).setOrigin(0.5, 0.5).setDepth(120).setAlpha(0);
   }
 
   layout(): void {
@@ -861,11 +861,11 @@ export class MergeScene extends BaseScene {
   private animCombo(value: number): void {
     const t = this.comboText;
     t.setText(value >= 5 ? `COMBO ×${value} !` : `Combo ×${value}`);
-    t.setY(this.oy - 6);
+    t.setY(this.oy + this.cell * 1.1);
     this.tweens.killTweensOf(t);
     t.setAlpha(1).setScale(0.6);
     this.tweens.add({ targets: t, scale: value >= 5 ? 1.25 : 1.05, duration: 220, ease: 'Back.easeOut' });
-    this.tweens.add({ targets: t, alpha: 0, delay: 900, duration: 400 });
+    this.tweens.add({ targets: t, alpha: 0, delay: 1100, duration: 400 });
     audio.play('combo', 1 + value * 0.1);
     const bx = this.W / 2;
     const by = this.oy + (this.cell * BOARD_H) / 2;

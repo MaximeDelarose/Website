@@ -8,7 +8,7 @@
   right: calc(var(--sar) + 10px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .mh-bar { display: flex; align-items: center; gap: 8px; }
 .mh-title {
@@ -21,7 +21,7 @@
   line-height: 1.15;
 }
 .mh-title b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--nuit); }
-.mh-title small { font-size: 12px; color: var(--choco-soft); font-weight: 500; }
+.mh-title small { display: block; font-size: 12px; color: var(--choco-soft); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mh-hearts {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 6px 10px; border-radius: 999px;
@@ -54,7 +54,8 @@
 .obj-chip.done { background: linear-gradient(180deg, #fff3cc, #ffe39a); }
 .obj-chip.done::after { content: '✓'; color: #5aa36b; font-weight: 700; }
 .obj-chip.pulse { transform: scale(1.12); }
-.mh-orders { display: flex; justify-content: center; gap: 8px; min-height: 0; }
+.mh-orders { display: flex; justify-content: center; gap: 20px; min-height: 0; padding-top: 14px; }
+.mh-orders:empty { padding-top: 0; }
 .order {
   position: relative;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -283,3 +284,6 @@
 .btn.mode .mode-tx { display: flex; flex-direction: column; min-width: 0; line-height: 1.1; }
 .btn.mode .mode-tx b { font-size: 19px; letter-spacing: 0.02em; }
 .btn.mode .mode-tx small { font-size: 12.5px; font-weight: 600; opacity: 0.9; margin-top: 3px; white-space: normal; }
+/* l'objectif ne doit jamais passer sous les commandes */
+.mh-objs { position: relative; z-index: 2; }
+.mh-orders { position: relative; z-index: 1; }

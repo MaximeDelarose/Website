@@ -36,3 +36,11 @@ describe('garde-robe : robes', () => {
     for (const d of dresses) expect(CLOTHES[d].name.length).toBeGreaterThan(3);
   });
 });
+
+describe('la petite insiste', () => {
+  it('l\'appel de la petite peut être repoussé (aucune pénalité) et redemande plus fort', () => {
+    const c = CALLS.find((x) => x.id === 'cuddle')!;
+    expect(c.escalate).toBe(true);
+    expect(CALLS.filter((x) => x.escalate).every((x) => x.kids.length === 1 && x.kids[0] === 'kid1')).toBe(true);
+  });
+});

@@ -14,6 +14,8 @@ export interface CallDef {
   cta: string;
   done: string;
   coins: number;
+  /** Si on la fait attendre, l'enfant redemande aussitôt, de plus en plus fort (aucune pénalité). */
+  escalate?: boolean;
   lines: (name: (k: KidId) => string, says: (k: KidId) => string[], pick: <T>(a: T[]) => T) => CallLine[];
 }
 
@@ -42,7 +44,7 @@ export const CALLS: CallDef[] = [
     ],
   },
   {
-    id: 'cuddle', kids: ['kid1'], cta: 'Faire un câlin', done: 'Un câlin de maman, et c\'est reparti ♡', coins: 10,
+    id: 'cuddle', kids: ['kid1'], cta: 'Faire un câlin', done: 'Voilà ! Un grand sourire et un gros câlin ♡', coins: 10, escalate: true,
     lines: (_n, says, pick) => {
       const own = says('kid1');
       return [{ kid: 'kid1', text: own.length ? pick(own) : 'MAMANNN !' }];
