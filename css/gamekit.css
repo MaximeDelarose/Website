@@ -1,0 +1,213 @@
+/* =========================================================================
+   GameKit : styles communs des pages de jeux (voir js/gamekit.js)
+   Chargé après style.css et le CSS propre à chaque jeu.
+   ========================================================================= */
+
+/* ---------- en-tête des jeux : boutons regroupés ---------- */
+.gk-head-actions { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: 8px; margin-left: auto; }
+.game-head > div:first-child { min-width: 0; }
+.game-head .gk-head-actions .btn { white-space: nowrap; }
+@media (max-width: 560px) {
+  .gk-btn-label { display: none; }
+  .gk-gear, .gk-fsbtn { padding-inline: 12px; }
+}
+
+/* ---------- confort mobile ---------- */
+body.gk button, body.gk .btn, body.gk .chip, body.gk summary, body.gk select, body.gk label { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+body.gk canvas { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+html.gk-full, html.gk-full body { overflow: hidden; overscroll-behavior: none; }
+.game-stage, .pool-stage, .fl-stage, .idle-stage, .chess { overscroll-behavior: contain; }
+
+/* retour de pression sur les boutons : tous les jeux se sentent pareil
+   (propriété « scale » : se combine avec les transform déjà utilisés) */
+body.gk .btn, body.gk .chip, body.gk .hud-btn, body.gk .gk-tile, body.gk .gk-star, body.gk .gk-resume-item {
+  transition: scale .08s ease-out, filter .12s;
+}
+body.gk .btn:active, body.gk .chip:active, body.gk .hud-btn:active, body.gk .gk-tile:active, body.gk .gk-resume-item:active { scale: .96; }
+body.gk .btn:focus-visible, body.gk .chip:focus-visible, body.gk .hud-btn:focus-visible, .gk-switch input:focus-visible + .gk-switch-ui,
+.gk-tile:focus-visible, .gk-x:focus-visible, .gk-star:focus-visible { outline: 3px solid var(--orange, #e8873a); outline-offset: 2px; }
+
+/* menus et fenêtres des jeux : apparition douce, même rythme partout */
+.game-overlay:not([hidden]) { animation: gk-fade .18s ease-out; }
+.game-overlay:not([hidden]) > .game-card, .game-overlay:not([hidden]) > .panel { animation: gk-pop .24s cubic-bezier(.2, 1.25, .4, 1); }
+@keyframes gk-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gk-pop { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
+/* défilement discret dans les fenêtres */
+.game-card, .gk-sheet { scrollbar-width: thin; scrollbar-color: var(--depth, #c9a77a) transparent; }
+/* cibles tactiles : au moins 40 px sur écran tactile pour les petits boutons de jeu */
+@media (pointer: coarse) {
+  .hud-btn, .idle-x, .fs-exit, .gk-fs-exit { min-width: 40px; min-height: 40px; }
+  .game-head .btn { min-height: 40px; }
+  .gk-gear, .gk-fsbtn { min-width: 42px; }
+  .mm-link, .link-btn, .bb-btn, .bb-auto, .td-auto { min-height: 36px; min-width: 36px; }
+  .idle-sbtn { min-height: 38px; }
+  .game-card select, .gk-sheet select, body.gk select { min-height: 40px; }
+}
+html.gk-reduce-fx .game-stage, html.gk-reduce-fx .fl-stage, html.gk-reduce-fx .pool-stage { animation: none !important; }
+html.gk-reduce-fx .game-overlay, html.gk-reduce-fx .game-overlay > * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .game-overlay:not([hidden]), .game-overlay:not([hidden]) > * { animation: none; }
+}
+
+/* ---------- bouton « quitter le plein écran » générique ---------- */
+.gk-fs-exit {
+  display: none; position: absolute; z-index: 60; place-items: center;
+  top: calc(env(safe-area-inset-top, 0px) + 8px); right: calc(env(safe-area-inset-right, 0px) + 8px);
+  width: 40px; height: 40px; font-size: 1.05rem; font-weight: 900; cursor: pointer;
+  background: rgba(43, 23, 9, .78); color: #fdf3de; border: 2px solid #2b1709; border-radius: 8px;
+}
+.gk-fs > .gk-fs-exit { display: grid; }
+
+/* ---------- bouton réglages dans Le Grand Chêne (pas d'en-tête) ---------- */
+.gk-fab {
+  position: absolute; left: 10px; bottom: 10px; z-index: 4; width: 36px; height: 36px; padding: 0; border: 0; cursor: pointer;
+  font-size: 1.1rem; color: #fdf3de; background: rgba(43, 23, 9, .65); box-shadow: inset 0 0 0 2px #2b1709;
+}
+
+/* ---------- plein écran des jeux qui n'ont pas de scène .game-stage ---------- */
+.chess.is-max, .chess:fullscreen, .pool.is-max, .pool:fullscreen, .fl.is-max, .fl:fullscreen {
+  position: fixed; inset: 0; z-index: 300; width: 100vw; height: 100vh; height: 100dvh; margin: 0; box-sizing: border-box;
+  overflow: auto; background: #1f3a2b; overscroll-behavior: contain;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.chess:fullscreen, .pool:fullscreen, .fl:fullscreen { position: static; }
+
+/* ---------- toasts ---------- */
+.gk-toasts {
+  position: fixed; z-index: 2000; left: 50%; transform: translateX(-50%); width: min(92vw, 420px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); display: grid; gap: 8px; pointer-events: none; justify-items: center;
+}
+.gk-toast {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 9px 14px; font: 800 .95rem "Nunito", system-ui, sans-serif;
+  background: var(--panel, #fdf3de); color: var(--ink, #3d2a1e);
+  box-shadow: 0 0 0 3px var(--line, #3d2a1e), 0 6px 0 3px var(--depth, #c9a77a);
+  animation: gk-toast-in .24s cubic-bezier(.2, 1.3, .4, 1);
+}
+.gk-toast.gk-out { opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s; }
+.gk-toast-ico { font-size: 1.05rem; }
+@keyframes gk-toast-in { from { opacity: 0; transform: translateY(14px) scale(.94); } to { opacity: 1; transform: none; } }
+
+/* ---------- feuille de réglages ---------- */
+.gk-backdrop {
+  position: fixed; inset: 0; z-index: 1500; display: grid; place-items: center; padding: 16px;
+  background: rgba(31, 22, 14, .6); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  animation: gk-fade .16s ease-out; touch-action: auto; user-select: none; -webkit-user-select: none;
+}
+.gk-backdrop.gk-out { opacity: 0; transition: opacity .17s; }
+.gk-sheet {
+  position: relative; width: min(100%, 460px); max-height: calc(100dvh - 32px); overflow-y: auto; overflow-x: hidden; touch-action: pan-y;
+  background: var(--panel, #fdf3de); color: var(--ink, #3d2a1e); text-align: left;
+  box-shadow: 0 -4px 0 0 var(--line, #3d2a1e), 0 4px 0 0 var(--line, #3d2a1e), -4px 0 0 0 var(--line, #3d2a1e), 4px 0 0 0 var(--line, #3d2a1e), 0 12px 0 0 var(--depth, #c9a77a);
+  animation: gk-pop .24s cubic-bezier(.2, 1.25, .4, 1);
+}
+.gk-sheet-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 10px; background: var(--panel, #fdf3de); border-bottom: 3px solid var(--panel-2, #f3e1c0); }
+.gk-sheet-title { margin: 0; font-size: 1.35rem; }
+.gk-x { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border: 0; cursor: pointer; font-size: 1rem; font-weight: 900; color: var(--ink, #3d2a1e); background: var(--panel-2, #f3e1c0); box-shadow: 0 0 0 3px var(--line, #3d2a1e); }
+.gk-sheet-body { padding: 6px 16px 10px; }
+.gk-sheet-foot { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 10px; padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 12px); background: var(--panel, #fdf3de); border-top: 3px solid var(--panel-2, #f3e1c0); }
+.gk-confirm-text { margin: 8px 0; font-size: 1.05rem; }
+.gk-sec { padding: 8px 0 12px; border-bottom: 3px dashed var(--panel-2, #f3e1c0); }
+.gk-sec:last-of-type { border-bottom: 0; }
+.gk-sec h3 { margin: 0 0 8px; font-size: .85rem; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-soft, #6b5844); }
+.gk-wide { width: 100%; justify-content: center; }
+.gk-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.gk-stat { margin: 4px 0 12px; font-size: .9rem; color: var(--ink-soft, #6b5844); }
+
+/* interrupteurs */
+.gk-switch { display: flex; align-items: center; gap: 12px; padding: 8px 0; cursor: pointer; min-height: 44px; }
+.gk-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.gk-switch-ui {
+  flex: none; position: relative; width: 48px; height: 26px; background: var(--panel-2, #e9d6b3); box-shadow: 0 0 0 3px var(--line, #3d2a1e);
+  transition: background .15s;
+}
+.gk-switch-ui::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: var(--ink-soft, #6b5844); transition: transform .15s steps(3), background .15s; }
+.gk-switch input:checked + .gk-switch-ui { background: var(--leaf, #9cc56b); }
+.gk-switch input:checked + .gk-switch-ui::after { transform: translateX(22px); background: var(--ink, #3d2a1e); }
+.gk-switch.is-off { opacity: .5; cursor: not-allowed; }
+.gk-switch-text { display: grid; font-weight: 800; line-height: 1.2; }
+.gk-switch-text small { font-weight: 600; font-size: .8rem; color: var(--ink-soft, #6b5844); }
+
+/* volume */
+.gk-slider { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 6px 0 10px; font-weight: 800; }
+.gk-slider input { grid-column: 1 / -1; grid-row: 2; width: 100%; height: 32px; accent-color: var(--orange, #e8873a); touch-action: pan-y; }
+.gk-slider output { font-variant-numeric: tabular-nums; color: var(--ink-soft, #6b5844); font-weight: 800; }
+
+/* changement de jeu */
+.gk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.gk-tile {
+  position: relative; display: grid; justify-items: center; align-content: start; gap: 2px; padding: 10px 4px 8px; text-align: center; text-decoration: none;
+  color: var(--ink, #3d2a1e); background: var(--panel-2, #f3e1c0); box-shadow: 0 0 0 3px var(--line, #3d2a1e); min-height: 74px;
+}
+.gk-tile:hover { background: var(--leaf, #9cc56b); color: #15260f; }
+.gk-tile.is-current { background: var(--orange, #e8873a); color: var(--btn-ink, #2b1709); }
+.gk-tile-ico { font-size: 1.5rem; line-height: 1.1; }
+.gk-tile-name { font-size: .74rem; font-weight: 800; line-height: 1.1; }
+.gk-tile-fav { position: absolute; top: 2px; right: 5px; font-size: .8rem; color: #e0a82a; }
+
+/* ---------- page Jeux : favoris + reprendre ---------- */
+.gk-star {
+  position: absolute; z-index: 3; top: 6px; right: 6px; width: 34px; height: 34px; display: grid; place-items: center; padding: 0; cursor: pointer;
+  font-size: 1.1rem; line-height: 1; color: rgba(253, 243, 222, .75); background: rgba(43, 23, 9, .55); border: 0; box-shadow: inset 0 0 0 2px rgba(43, 23, 9, .85);
+}
+.gk-star[aria-pressed="true"] { color: #ffd257; background: rgba(43, 23, 9, .75); }
+@media (max-width: 600px) { .gk-star { top: 3px; right: 3px; width: 28px; height: 28px; font-size: .95rem; } }
+.gk-resume { margin: 0 0 28px; }
+.gk-resume-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin-bottom: 10px; }
+.gk-resume-head h2 { margin: 0; font-size: 1.3rem; }
+.gk-resume-total { font-size: .85rem; font-weight: 700; color: var(--ink-soft, #6b5844); }
+.gk-resume-row { display: flex; gap: 12px; align-items: center; overflow-x: auto; padding: 4px 4px 12px; scrollbar-width: none; }
+.gk-resume-row::-webkit-scrollbar { display: none; }
+.gk-resume-item {
+  flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 10px; text-decoration: none; color: var(--ink, #3d2a1e);
+  background: var(--panel, #fdf3de); box-shadow: 0 0 0 3px var(--line, #3d2a1e), 0 5px 0 3px var(--depth, #c9a77a);
+}
+.gk-resume-item:hover { background: var(--panel-2, #f3e1c0); }
+.gk-resume-ico { font-size: 1.6rem; }
+.gk-resume-txt { display: grid; line-height: 1.15; }
+.gk-resume-txt strong { font-size: 1rem; }
+.gk-resume-txt small { font-size: .78rem; color: var(--ink-soft, #6b5844); font-weight: 700; }
+.gk-rand { flex: none; }
+
+/* ---------- Échecs en plein écran : échiquier le plus grand possible ---------- */
+.chess.gk-fs { min-height: 0; align-content: start; gap: 8px; background: #1f3a2b; padding: calc(env(safe-area-inset-top, 0px) + 6px) calc(env(safe-area-inset-right, 0px) + 8px) calc(env(safe-area-inset-bottom, 0px) + 8px) calc(env(safe-area-inset-left, 0px) + 8px); }
+.chess.gk-fs .chess-main { max-width: min(100%, calc(100dvh - 250px)); }
+.chess.gk-fs .chess-side { position: static; }
+.chess.gk-fs .chess-moves { max-height: 120px; }
+@media (orientation: landscape) and (max-height: 620px) {
+  .chess.gk-fs { grid-template-columns: auto minmax(0, 1fr); align-items: start; padding-right: calc(env(safe-area-inset-right, 0px) + 56px); }
+  .chess.gk-fs .chess-main { width: calc(100dvh - 110px); max-width: none; min-width: 0; }
+  .chess.gk-fs .chess-bar { min-height: 28px; padding-block: 0; }
+  .chess.gk-fs .chess-side { max-height: calc(100dvh - 16px); overflow-y: auto; }
+  .chess.gk-fs .chess-moves { max-height: 90px; }
+}
+
+/* ---------- Flippers en plein écran : table maximale, score en surimpression ---------- */
+.fl.gk-fs { background: #0c1a12; grid-template-columns: auto; justify-content: center; align-content: center; gap: 0; }
+.fl.gk-fs .fl-stage { width: min(100%, calc((100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 480 / 840)); min-width: 0; border-width: 0; border-radius: 0; box-shadow: none; }
+.fl.gk-fs .fl-side {
+  position: fixed; z-index: 5; top: calc(env(safe-area-inset-top, 0px) + 6px); left: calc(env(safe-area-inset-left, 0px) + 6px);
+  width: auto; max-width: none; padding: 4px 8px; gap: 0; background: rgba(16, 36, 26, .72); box-shadow: 0 0 0 2px rgba(0, 0, 0, .5); pointer-events: none; color: #fdf3de;
+}
+.fl.gk-fs .fl-stats { grid-template-columns: repeat(4, auto); gap: 4px 12px; }
+.fl.gk-fs .fl-stats > div { background: none; padding: 0; }
+.fl.gk-fs .fl-stats > div:first-child { grid-column: auto; }
+.fl.gk-fs .fl-stats > div:nth-child(2), .fl.gk-fs .fl-stats > div:nth-child(5) { display: none; }
+.fl.gk-fs .fl-stats dt { font-size: .6rem; color: rgba(253, 243, 222, .7); }
+.fl.gk-fs .fl-stats dd, .fl.gk-fs .fl-stats > div:first-child dd { font-size: 1.05rem; color: #fdf3de; }
+.fl.gk-fs .fl-msg { display: none; }
+.fl.gk-fs .fl-pad { display: none; }
+@media (orientation: landscape) and (max-height: 620px) {
+  /* téléphone en paysage : table au centre, boutons de chaque côté */
+  .fl.gk-fs { grid-template-columns: 1fr auto 1fr; grid-template-rows: 1fr auto auto; gap: 0 12px; align-content: stretch; }
+  .fl.gk-fs .fl-stage { grid-column: 2; grid-row: 1 / 4; align-self: center; width: calc((100dvh - 8px) * 480 / 840); }
+  .fl.gk-fs .fl-side, .fl.gk-fs .fl-pad { display: contents; }
+  .fl.gk-fs .fl-stats { position: fixed; z-index: 5; top: calc(env(safe-area-inset-top, 0px) + 6px); left: calc(env(safe-area-inset-left, 0px) + 6px); grid-template-columns: 1fr 1fr; background: rgba(16, 36, 26, .72); padding: 4px 8px; pointer-events: none; }
+  .fl.gk-fs .fl-btn { align-self: end; margin: 0 8px calc(env(safe-area-inset-bottom, 0px) + 10px); min-height: 64px; }
+  .fl.gk-fs [data-fl-btn="left"] { grid-column: 1; grid-row: 3; }
+  .fl.gk-fs [data-fl-btn="right"] { grid-column: 3; grid-row: 3; }
+  .fl.gk-fs [data-fl-btn="plunger"] { grid-column: 3; grid-row: 2; order: 0; min-height: 52px; }
+  .fl.gk-fs [data-fl-nudge] { display: none; }
+}
+
+/* Mini-golf : la hauteur max de la scène ne doit pas limiter le plein écran */
+.golf-stage.is-max, .golf-stage:fullscreen { max-height: none; min-height: 0; }

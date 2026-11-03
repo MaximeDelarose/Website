@@ -101,6 +101,17 @@ Presque tout se règle dans **`js/data.js`** :
 
 Le texte de la bio est directement dans `bio.html`.
 
+## Briques communes des jeux (GameKit)
+
+`js/gamekit.js` + `css/gamekit.css` sont chargés sur les 14 pages de jeux (script juste après `main.js`, avant le code du jeu ; CSS en dernier) et sur `jeux.html`. Ils ne demandent aucune modification du code des jeux. Pour un nouveau jeu : ajoute ces deux balises, une scène avec l'une des classes `.game-stage`, `.pool`, `.fl`, `.chess` ou `.idle-stage` (ou l'attribut `data-gk-stage`), et son entrée dans `GAMES` en haut de `js/gamekit.js`.
+
+- **Plein écran universel** : `GameKit.fullscreen.toggle(el)`. API Fullscreen, sinon repli CSS `is-max` (iPhone). Même convention que les jeux existants (classes `is-max` / `is-full`, évènement `fullscreenchange`, émis aussi pour le repli), donc le code propre à chaque jeu continue de fonctionner. Bouton ⛶ ajouté dans l'en-tête des jeux qui n'en avaient pas (Échecs, Mini-golf, Flippers, Billard), bouton ✕ pour sortir, et mises en page plein écran dédiées (Échecs, Flippers) dans `css/gamekit.css`.
+- **Réglages globaux** (⚙ dans l'en-tête, `localStorage` `gk-prefs-v1`, partagés entre tous les jeux) : volume général et muet, sons de menus, vibrations, effets réduits, écran toujours allumé. Le volume s'applique à tous les jeux sans toucher à leur audio : `AudioContext.destination` est remplacé par un gain maître.
+- **Mobile** : l'audio est débloqué au premier toucher, suspendu quand l'onglet est masqué puis repris, écran gardé allumé (Wake Lock), pas de zoom par pincement ni de menu contextuel sur les scènes, petits boutons agrandis sur écran tactile, vibration sur les secousses d'écran (`*shake*`) et les boutons de menu.
+- **UI** : `GameKit.ui.toast(msg)`, `.sheet({title, body, actions})`, `.confirm({...})` (Promise), `.settings()`. Animations d'ouverture des menus (`.game-overlay`) et retour de pression sur les boutons communs à tous les jeux.
+- **Changer de jeu** : la feuille de réglages liste tous les jeux (favoris en premier) et propose « Au hasard ».
+- **Journal de jeu et favoris** (`gk-playlog-v1`, `gk-favs-v1`) : dernier lancement, temps de jeu actif, nombre de parties. La page Jeux affiche « Reprendre », un bouton « Au hasard » et une étoile ★ de favori sur chaque carte (les favoris passent en tête).
+
 ## BAGBOUND (en développement)
 
 Roguelite auto-battler en sac à dos, dans `bagbound/`. C'est la seule partie du site écrite en TypeScript : le code est compilé dans `bagbound/app/bagbound.js` + `bagbound.css` (fichiers publiés tels quels, le site reste statique), chargés par `bagbound.html`.
