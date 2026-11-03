@@ -1,7 +1,7 @@
 /** Effets partagés par les mini-jeux (textures de particules, éclats). */
 import type Phaser from 'phaser';
 import type { BaseScene } from '../scenes/BaseScene';
-import { PAL, heartPath, sparkle, glow } from '../art/kit';
+import { PAL, heartPath, sparkle, glow, texScale } from '../art/kit';
 import { reducedFx } from '../../core/app';
 
 export function fxTextures(s: BaseScene): void {
@@ -22,12 +22,12 @@ export function burst(s: BaseScene, x: number, y: number, n = 14, depth = 50): v
   const count = reducedFx() ? Math.ceil(n / 3) : n;
   const em = s.add.particles(x, y, 'mgfx:heart', {
     speed: { min: 80, max: 240 }, angle: { min: 0, max: 360 }, lifespan: 900,
-    scale: { start: 0.5, end: 0 }, gravityY: 260, rotate: { min: -40, max: 40 }, emitting: false,
+    scale: { start: 0.7 / texScale(), end: 0 }, gravityY: 260, rotate: { min: -40, max: 40 }, emitting: false,
   }).setDepth(depth);
   em.explode(count);
   const sp = s.add.particles(x, y, 'mgfx:spark', {
     speed: { min: 40, max: 180 }, angle: { min: 0, max: 360 }, lifespan: 700,
-    scale: { start: 0.7, end: 0 }, emitting: false,
+    scale: { start: 0.9 / texScale(), end: 0 }, emitting: false,
   }).setDepth(depth);
   sp.explode(count);
   s.time.delayedCall(1200, () => { em.destroy(); sp.destroy(); });

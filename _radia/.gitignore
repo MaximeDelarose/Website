@@ -1,0 +1,6 @@
+node_modules/
+dist-app/
+# Contenu PERSONNEL (photos, musique, textes) : jamais commité en clair.
+# Il est publié uniquement chiffré dans ../radia/vault/. Pour le récupérer : npm run unpack
+private/
+.password

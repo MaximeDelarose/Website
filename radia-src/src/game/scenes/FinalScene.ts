@@ -35,7 +35,7 @@ export class FinalScene extends BaseScene {
     this.auguste = this.add.image(0, 0, this.key('auguste', 'smile', 0)).setOrigin(0.5, 1).setVisible(false);
     this.hearts = this.add.particles(0, 0, 'fx:heart', {
       x: { min: 0, max: 400 }, y: 900, lifespan: 7000, speedY: { min: -70, max: -35 }, speedX: { min: -12, max: 12 },
-      scale: { min: 0.25, max: 0.5 }, alpha: { start: 0.9, end: 0 }, frequency: reducedFx() ? 900 : 300, emitting: false,
+      scale: { min: 0.8 / texScale(), max: 1.4 / texScale() }, alpha: { start: 0.9, end: 0 }, frequency: reducedFx() ? 900 : 300, emitting: false,
     }).setDepth(5);
     this.layout();
     // Radia apparaît doucement
@@ -123,7 +123,7 @@ export class FinalScene extends BaseScene {
       const glassKey = `mirrorGlass:${Math.round(mw)}`;
       if (!this.textures.exists(glassKey)) this.textures.addCanvas(glassKey, paint(mw, mh, texScale(), (ctx) => drawMirrorGlass(ctx, mw, mh)));
       const c = this.add.container(this.W / 2, this.H * 0.4).setDepth(20);
-      const halo = this.add.image(0, 0, 'fx:light').setScale((mw * 2.4) / 40).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.5);
+      const halo = this.add.image(0, 0, 'fx:light').setScale((mw * 2.4) / 40 / texScale()).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.5);
       const glass = this.add.image(0, 0, glassKey).setDisplaySize(mw * 0.84, mh * 0.84).setName('glass');
       const frame = this.add.image(0, 10, frameKey).setDisplaySize(mw + 40, mh + 60);
       c.add([halo, glass, frame]);
@@ -168,10 +168,10 @@ export class FinalScene extends BaseScene {
       }
       const face = this.add.image(0, 0, pk).setDisplaySize(gw, gh).setAlpha(0);
       c.addAt(face, 2);
-      const flash = this.add.image(0, 0, 'fx:flash').setBlendMode(Phaser.BlendModes.ADD).setScale(0.3);
+      const flash = this.add.image(0, 0, 'fx:flash').setBlendMode(Phaser.BlendModes.ADD).setScale(0.3 / texScale());
       c.add(flash);
       audio.play('chest');
-      this.tweens.add({ targets: flash, scale: (gw * 2) / 96, alpha: 0, duration: 900, ease: 'Quad.easeOut', onComplete: () => flash.destroy() });
+      this.tweens.add({ targets: flash, scale: (gw * 2) / 96 / texScale(), alpha: 0, duration: 900, ease: 'Quad.easeOut', onComplete: () => flash.destroy() });
       this.tweens.add({ targets: face, alpha: 1, duration: 1400, delay: 200, ease: 'Sine.easeInOut', onComplete: () => resolve() });
       this.sparkleAround(c.x, c.y, gw * 0.6, 22);
       this.heartsRise(true);

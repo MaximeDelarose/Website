@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 const [scenario = 'title', prefix = 'shots/play'] = process.argv.slice(2);
 const base = process.env.URL ?? 'http://localhost:5173/';
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
-const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: Number(process.env.DPR ?? 1), hasTouch: true, isMobile: true });
 const page = await ctx.newPage();
 const errors = [];
 page.on('console', (m) => { if (m.type() === 'error') { errors.push(m.text()); console.log('[console.error]', m.text()); } });
@@ -19,6 +19,16 @@ await page.goto(base, { waitUntil: 'networkidle' });
 await sleep(1500);
 await shot('0-title');
 const scenarios = {
+  async level() {
+    await clickText('CONTINUER'); await sleep(900);
+    for (let i = 0; i < 30 && !(await page.getByText("C'est parti").count()); i++) { await page.mouse.click(200, 760); await sleep(300); }
+    await clickText("C'est parti"); await sleep(1500);
+    for (let i = 0; i < 14; i++) { await page.evaluate(() => window.RADIA.game().scene.getScene('merge').debugBotStep()); await sleep(250); }
+    await sleep(900); await shot('lvl');
+    // doigt posé sur un objet : il grossit et ses partenaires s'allument
+    const pos = await page.evaluate(() => { const sc = window.RADIA.game().scene.getScene('merge'); const i = sc.state.cells.findIndex((c, k) => c.item && sc.state.cells.some((d, j) => j !== k && d.item && d.item.c === c.item.c && d.item.l === c.item.l)); return i >= 0 ? sc.cellCenter(i) : null; });
+    if (pos) { await page.mouse.move(pos.x, pos.y); await page.mouse.down(); await sleep(700); await shot('hold'); await page.mouse.up(); await sleep(500); await shot('selected'); }
+  },
   async finale() {
     await clickText('CONTINUER');
     const snap = async (n, wait = 0) => { await sleep(wait); await shot(n); };

@@ -10,7 +10,7 @@ import * as R from './rules';
 import { suggestMerge, botStep } from './bot';
 import { MAX_LEVEL, SPECIAL, type ItemRef } from '../../data/items';
 import {
-  COLLECTION_TINTS, drawBasket, ensureBoardTextures, ensureFxTextures, ensureItemTexture,
+  COLLECTION_TINTS, ITEM_TEX, drawBasket, ensureBoardTextures, ensureFxTextures, ensureItemTexture,
 } from './textures';
 import { audio, reducedFx } from '../../core/app';
 import { texScale, paint } from '../art/kit';
@@ -55,6 +55,9 @@ export class MergeScene extends BaseScene {
   private selHi!: Phaser.GameObjects.Image;
   private targetHi!: Phaser.GameObjects.Image;
   private hintHi: Phaser.GameObjects.Image[] = [];
+  /** Cases compatibles avec l'objet touché (surbrillance) et objets qui pulsent. */
+  private matchHi: Phaser.GameObjects.Image[] = [];
+  private matchCells: number[] = [];
   private basket!: Phaser.GameObjects.Image;
   private basketLabel!: Phaser.GameObjects.Text;
   private comboText!: Phaser.GameObjects.Text;
@@ -103,7 +106,7 @@ export class MergeScene extends BaseScene {
     this.sprites.forEach((sp, i) => {
       if (!sp) return;
       sp.setScale(0);
-      this.tweens.add({ targets: sp, scale: this.itemScale(), duration: 380, delay: 120 + i * 12, ease: 'Back.easeOut' });
+      this.tweens.add({ targets: sp, scale: this.itemScale(sp), duration: 380, delay: 120 + i * 12, ease: 'Back.easeOut' });
     });
   }
 
@@ -121,7 +124,22 @@ export class MergeScene extends BaseScene {
     this.oy = Math.round(a.top + Math.max(4, (availH - bh) / 2) + 4);
   }
 
-  private itemScale(): number { return (this.cell * 0.86) / 72; }
+  /** Les textures font 72 px logiques × densité : on ramène l'objet à ~86 % de la case. */
+  /**
+   * Taille d'un objet : il occupe ~88 % de la case au niveau 1 et grandit un
+   * peu à chaque niveau (jusqu'à ~97 % au niveau 10), respiration comprise,
+   * sans jamais déborder sur la case voisine.
+   */
+  private scaleFor(r: ItemRef | null | undefined): number {
+    const f = !r ? 1 : r.c === 'special' ? 1.05 : 1 + (Math.min(MAX_LEVEL, r.l) - 1) * 0.011;
+    return (this.cell * f) / (ITEM_TEX * texScale());
+  }
+
+  /** Échelle de repos d'un sprite d'objet. */
+  private itemScale(sp?: Phaser.GameObjects.Image | null): number {
+    const b = sp?.getData('base') as number | undefined;
+    return b ?? this.scaleFor(null);
+  }
   private cx(i: number) { return this.ox + (i % BOARD_W) * this.cell + this.cell / 2; }
   private cy(i: number) { return this.oy + Math.floor(i / BOARD_W) * this.cell + this.cell / 2; }
 
@@ -187,13 +205,19 @@ export class MergeScene extends BaseScene {
 
   layout(): void {
     if (this.drag) this.cancelDrag();
+    this.setSelected(-1);
     this.computeGeometry();
     this.buildBoard();
   }
 
   private makeSprite(i: number, r: ItemRef): Phaser.GameObjects.Image {
     const key = ensureItemTexture(this, r);
-    const sp = this.add.image(this.cx(i), this.cy(i), key).setScale(this.itemScale());
+    const sp = this.add.image(this.cx(i), this.cy(i), key);
+    sp.setData('base', this.scaleFor(r));
+    // respiration propre à chaque objet (phase et rythme différents)
+    sp.setData('phase', Math.random() * Math.PI * 2);
+    sp.setData('speed', 2.2 + Math.random() * 0.9 - Math.min(9, r.l) * 0.07);
+    sp.setScale(this.itemScale(sp));
     this.boardLayer.add(sp);
     this.sprites[i] = sp;
     this.refreshGlow(i, r);
@@ -205,7 +229,7 @@ export class MergeScene extends BaseScene {
     this.glows[i] = null;
     if (!r || (r.c !== 'special' && r.l < 8) || reducedFx()) return;
     const g = this.add.image(this.cx(i), this.cy(i), 'fx:light').setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.35);
-    g.setScale((this.cell * 1.1) / 40 * (1 / 1));
+    g.setScale((this.cell * 1.1) / 40 / texScale());
     this.boardLayer.addAt(g, this.boardLayer.getIndex(this.sprites[i]!));
     this.tweens.add({ targets: g, alpha: 0.12, yoyo: true, repeat: -1, duration: 1100, ease: 'Sine.easeInOut' });
     this.glows[i] = g;
@@ -261,6 +285,57 @@ export class MergeScene extends BaseScene {
     const sp = this.sprites[i];
     if (!sp) return;
     this.drag = { from: i, sprite: sp, startX: x, startY: y, moved: false, pointerId: p.id };
+    // Dès que le doigt se pose : l'objet grossit et ses partenaires de fusion s'allument.
+    if (this.selected < 0 || this.selected === i) {
+      this.lift(sp);
+      this.showMatches(i);
+      this.selHi.setPosition(this.cx(i), this.cy(i)).setScale(1 / texScale()).setVisible(true);
+    }
+  }
+
+  private lift(sp: Phaser.GameObjects.Image): void {
+    this.tweens.killTweensOf(sp);
+    this.tweens.add({ targets: sp, scale: this.itemScale(sp) * 1.25, duration: 140, ease: 'Back.easeOut' });
+  }
+
+  private unlift(i: number): void {
+    const sp = this.sprites[i];
+    if (!sp || this.locked.has(i)) return;
+    this.tweens.killTweensOf(sp);
+    this.tweens.add({ targets: sp, y: this.cy(i), scale: this.itemScale(sp), duration: 140, ease: 'Quad.easeOut' });
+  }
+
+  /** Allume les cases où l'objet de la case i peut fusionner. */
+  private showMatches(i: number): void {
+    this.clearMatches();
+    const a = this.state.cells[i]?.item;
+    if (!a) return;
+    const k = 1 / texScale();
+    for (let j = 0; j < BOARD_SIZE; j++) {
+      if (j === i) continue;
+      const c = this.state.cells[j];
+      const ok = R.canMerge(a, c.item) || (!!c.gift && a.c === 'special' && a.l === SPECIAL.KEY);
+      if (!ok) continue;
+      const hi = this.add.image(this.cx(j), this.cy(j), 'cell:ok').setScale(k);
+      this.boardLayer.addAt(hi, this.tiles.length);
+      this.tweens.add({ targets: hi, alpha: 0.4, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.easeInOut' });
+      this.matchHi.push(hi);
+      const sp = this.sprites[j] ?? this.gifts[j];
+      if (sp && !this.locked.has(j)) {
+        this.matchCells.push(j);
+        if (this.sprites[j]) this.tweens.add({ targets: sp, scale: this.itemScale(this.sprites[j]) * 1.1, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.easeInOut' });
+      }
+    }
+  }
+
+  private clearMatches(): void {
+    this.matchHi.forEach((m) => { this.tweens.killTweensOf(m); m.destroy(); });
+    this.matchHi = [];
+    for (const j of this.matchCells) {
+      const sp = this.sprites[j];
+      if (sp && !this.locked.has(j) && this.drag?.sprite !== sp && this.selected !== j) { this.tweens.killTweensOf(sp); sp.setScale(this.itemScale(sp)).setY(this.cy(j)); }
+    }
+    this.matchCells = [];
   }
 
   private onMove(p: Phaser.Input.Pointer): void {
@@ -271,10 +346,12 @@ export class MergeScene extends BaseScene {
     if (!d.moved) {
       if (Math.hypot(x - d.startX, y - d.startY) < 8) return;
       d.moved = true;
-      this.setSelected(-1);
+      // on garde la surbrillance des partenaires pendant le glisser
+      this.selected = -1;
+      this.selHi.setVisible(false);
       this.boardLayer.bringToTop(d.sprite);
       this.tweens.killTweensOf(d.sprite);
-      this.tweens.add({ targets: d.sprite, scale: this.itemScale() * 1.18, duration: 120, ease: 'Quad.easeOut' });
+      this.tweens.add({ targets: d.sprite, scale: this.itemScale(d.sprite) * 1.18, duration: 120, ease: 'Quad.easeOut' });
       audio.play('pickup');
       this.glows[d.from]?.setVisible(false);
     }
@@ -300,7 +377,7 @@ export class MergeScene extends BaseScene {
     if (!d.moved) {
       // simple toucher
       const it = this.state.cells[d.from].item;
-      if (it?.c === 'special' && it.l === SPECIAL.BOX) { this.apply(R.tapItem(this.state, this.def, d.from)); return; }
+      if (it?.c === 'special' && it.l === SPECIAL.BOX) { this.clearMatches(); this.apply(R.tapItem(this.state, this.def, d.from)); return; }
       if (this.selected >= 0 && this.selected !== d.from) {
         const from = this.selected;
         this.setSelected(-1);
@@ -308,12 +385,14 @@ export class MergeScene extends BaseScene {
         return;
       }
       if (this.selected === d.from) { this.setSelected(-1); this.host.onInspect(null); return; }
+      // l'objet reste sélectionné : grossi, partenaires allumés
       this.setSelected(d.from);
       this.host.onInspect(it);
-      this.tweens.add({ targets: d.sprite, scale: this.itemScale() * 1.12, yoyo: true, duration: 110 });
       audio.play('pickup');
       return;
     }
+    this.clearMatches();
+    this.selHi.setVisible(false);
     const t = this.cellAt(x, y);
     if (t < 0 || t === d.from) {
       // relâché hors du plateau (ou sur place) → retour
@@ -328,21 +407,32 @@ export class MergeScene extends BaseScene {
     if (!d) return;
     this.drag = null;
     this.targetHi.setVisible(false);
+    this.clearMatches();
+    this.selHi.setVisible(false);
     this.returnSprite(d.from, d.sprite);
   }
 
   private returnSprite(i: number, sp: Phaser.GameObjects.Image): void {
     this.tweens.killTweensOf(sp);
-    this.tweens.add({ targets: sp, x: this.cx(i), y: this.cy(i), scale: this.itemScale(), duration: 220, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: sp, x: this.cx(i), y: this.cy(i), scale: this.itemScale(sp), duration: 220, ease: 'Back.easeOut' });
     this.glows[i]?.setVisible(true);
     audio.play('drop');
   }
 
   private setSelected(i: number): void {
+    const prev = this.selected;
     this.selected = i;
-    if (i < 0) { this.selHi.setVisible(false); return; }
+    if (i < 0) {
+      this.selHi.setVisible(false);
+      this.clearMatches();
+      if (prev >= 0) this.unlift(prev);
+      return;
+    }
     this.selHi.setPosition(this.cx(i), this.cy(i)).setVisible(true);
     this.selHi.setScale(1 / texScale());
+    const sp = this.sprites[i];
+    if (sp) this.lift(sp);
+    this.showMatches(i);
   }
 
   private attemptMove(from: number, to: number, dragged = false): void {
@@ -459,7 +549,7 @@ export class MergeScene extends BaseScene {
     this.moveGlow(from, to);
     if (!sp) return;
     this.tweens.killTweensOf(sp);
-    this.tweens.add({ targets: sp, x: this.cx(to), y: this.cy(to), scale: this.itemScale(), duration: 160, ease: 'Quad.easeOut',
+    this.tweens.add({ targets: sp, x: this.cx(to), y: this.cy(to), scale: this.itemScale(sp), duration: 160, ease: 'Quad.easeOut',
       onComplete: () => { this.glows[to]?.setVisible(true); } });
     audio.play('drop');
   }
@@ -477,7 +567,7 @@ export class MergeScene extends BaseScene {
     const big = e.result.l >= 7 || e.result.c === 'special';
     const dur = big ? 420 : e.result.l >= 4 ? 330 : 260;
     this.lock(e.to, dur);
-    const s0 = this.itemScale();
+    const s0 = this.scaleFor(e.result);
     // 1–3. anticipation, rapprochement, compression
     if (b) {
       this.tweens.killTweensOf(b);
@@ -489,21 +579,28 @@ export class MergeScene extends BaseScene {
       this.tweens.add({ targets: a, x, y, scaleX: s0 * 0.9, scaleY: s0 * 0.9, duration: dur * 0.3, ease: 'Quad.easeIn' });
     }
     const variant = Math.random();
+    // Le nouvel objet existe tout de suite dans la grille (invisible) : si une
+    // autre action arrive pendant l'animation, elle agit sur le bon sprite.
+    const sp = this.makeSprite(e.to, e.result);
+    sp.setVisible(false).setScale(s0 * 0.45);
+    if (b) this.boardLayer.bringToTop(b);
+    if (a) this.boardLayer.bringToTop(a);
     this.time.delayedCall(dur * 0.32, () => {
       a?.destroy();
       b?.destroy();
       // 4. flash doux
-      const fl = this.add.image(x, y, 'fx:flash').setBlendMode(Phaser.BlendModes.ADD).setScale(0.2 * (this.cell / 56));
+      const fl = this.add.image(x, y, 'fx:flash').setBlendMode(Phaser.BlendModes.ADD).setScale((0.2 * (this.cell / 56)) / texScale());
       this.fxLayer.add(fl);
-      this.tweens.add({ targets: fl, scale: (big ? 1.6 : 1.0) * (this.cell / 56), alpha: 0, duration: dur * 0.9, ease: 'Quad.easeOut', onComplete: () => fl.destroy() });
+      this.tweens.add({ targets: fl, scale: ((big ? 1.6 : 1.0) * (this.cell / 56)) / texScale(), alpha: 0, duration: dur * 0.9, ease: 'Quad.easeOut', onComplete: () => fl.destroy() });
       // 5. particules
       this.burst(x, y, e.result, big ? 18 : e.result.l >= 4 ? 11 : 7, variant);
       if (big) this.ring(x, y, 0xffe7a0);
       // 6–7. nouvel objet, rebond élastique
-      const sp = this.makeSprite(e.to, e.result);
-      sp.setScale(s0 * 0.45);
-      this.tweens.add({ targets: sp, scale: s0, duration: dur * 0.9, ease: 'Back.easeOut', easeParams: [2.6] });
-      if (variant > 0.5 && !reducedFx()) this.tweens.add({ targets: sp, angle: { from: variant > 0.75 ? -8 : 8, to: 0 }, duration: dur, ease: 'Back.easeOut' });
+      if (sp.active) {
+        sp.setVisible(true);
+        this.tweens.add({ targets: sp, scale: s0, duration: dur * 0.9, ease: 'Back.easeOut', easeParams: [2.6] });
+        if (variant > 0.5 && !reducedFx()) this.tweens.add({ targets: sp, angle: { from: variant > 0.75 ? -8 : 8, to: 0 }, duration: dur, ease: 'Back.easeOut' });
+      }
       // 8. score flottant
       this.floatText(x, y - this.cell * 0.3, `+${e.points}`, e.combo >= 2 ? '#FFE7A0' : '#FFFFFF');
       // 9. son
@@ -529,9 +626,9 @@ export class MergeScene extends BaseScene {
   }
 
   private ring(x: number, y: number, tint: number): void {
-    const r = this.add.image(x, y, 'fx:ring').setTint(tint).setScale(0.2).setBlendMode(Phaser.BlendModes.ADD);
+    const r = this.add.image(x, y, 'fx:ring').setTint(tint).setScale(0.2 / texScale()).setBlendMode(Phaser.BlendModes.ADD);
     this.fxLayer.add(r);
-    this.tweens.add({ targets: r, scale: (this.cell * 2.4) / 96, alpha: 0, duration: 520, ease: 'Cubic.easeOut', onComplete: () => r.destroy() });
+    this.tweens.add({ targets: r, scale: (this.cell * 2.4) / 96 / texScale(), alpha: 0, duration: 520, ease: 'Cubic.easeOut', onComplete: () => r.destroy() });
   }
 
   private floatText(x: number, y: number, str: string, color = '#FFFFFF', size = 18): void {
@@ -546,7 +643,7 @@ export class MergeScene extends BaseScene {
     const sp = this.sprites[from];
     if (sp) {
       this.tweens.killTweensOf(sp);
-      this.tweens.add({ targets: sp, x: this.cx(from), y: this.cy(from), scale: this.itemScale(), duration: 240, ease: 'Back.easeOut',
+      this.tweens.add({ targets: sp, x: this.cx(from), y: this.cy(from), scale: this.itemScale(sp), duration: 240, ease: 'Back.easeOut',
         onComplete: () => this.wiggle(sp) });
       this.glows[from]?.setVisible(true);
     }
@@ -560,7 +657,7 @@ export class MergeScene extends BaseScene {
 
   private animSpawn(at: number, item: ItemRef, source: string): void {
     const sp = this.makeSprite(at, item);
-    const s0 = this.itemScale();
+    const s0 = this.itemScale(sp);
     this.lock(at, 300);
     if (source === 'gen') {
       sp.setPosition(this.basket.x, this.basket.y - 10).setScale(s0 * 0.4);
@@ -601,7 +698,7 @@ export class MergeScene extends BaseScene {
       this.burst(x, y, { c: 'special', l: 1 }, 10, 0.9);
       const sp = this.makeSprite(at, item);
       sp.setScale(0);
-      this.tweens.add({ targets: sp, scale: this.itemScale(), duration: 360, ease: 'Back.easeOut' });
+      this.tweens.add({ targets: sp, scale: this.itemScale(sp), duration: 360, ease: 'Back.easeOut' });
       audio.play('chest');
     });
   }
@@ -616,7 +713,7 @@ export class MergeScene extends BaseScene {
       if (!sp) return;
       this.tweens.killTweensOf(sp);
       this.fxLayer.add(sp);
-      this.tweens.add({ targets: sp, x: target.x, y: target.y, scale: this.itemScale() * 0.5, alpha: 0.2, delay: k * 70, duration: 420, ease: 'Cubic.easeIn', onComplete: () => sp.destroy() });
+      this.tweens.add({ targets: sp, x: target.x, y: target.y, scale: this.itemScale(sp) * 0.5, alpha: 0.2, delay: k * 70, duration: 420, ease: 'Cubic.easeIn', onComplete: () => sp.destroy() });
     });
     this.time.delayedCall(420, () => { audio.play('deliver'); this.heartsFly(target.x, target.y, Math.min(8, e.hearts)); });
     this.floatText(target.x, target.y + 30, `+${e.hearts} ♡`, '#FFD1E0', 20);
@@ -658,7 +755,7 @@ export class MergeScene extends BaseScene {
     this.ring(x, y, 0xffe7a0);
     const sp = this.makeSprite(at, item);
     sp.setScale(0);
-    this.tweens.add({ targets: sp, scale: this.itemScale(), duration: 380, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: sp, scale: this.itemScale(sp), duration: 380, ease: 'Back.easeOut' });
     audio.play('rare');
   }
 
@@ -747,10 +844,10 @@ export class MergeScene extends BaseScene {
       order.forEach((i, k) => {
         const sp = this.sprites[i]!;
         this.time.delayedCall(400 + k * 110, () => {
-          const l = this.add.image(sp.x, sp.y, 'fx:light').setBlendMode(Phaser.BlendModes.ADD).setScale(0.6);
+          const l = this.add.image(sp.x, sp.y, 'fx:light').setBlendMode(Phaser.BlendModes.ADD).setScale(0.6 / texScale());
           this.fxLayer.add(l);
           this.tweens.add({ targets: sp, scale: 0, alpha: 0, duration: 300, onComplete: () => sp.destroy() });
-          this.tweens.add({ targets: l, y: -40, x: l.x + (Math.random() - 0.5) * 120, scale: 0.3, duration: 2600 + Math.random() * 800, ease: 'Sine.easeIn', onComplete: () => l.destroy() });
+          this.tweens.add({ targets: l, y: -40, x: l.x + (Math.random() - 0.5) * 120, scale: 0.3 / texScale(), duration: 2600 + Math.random() * 800, ease: 'Sine.easeIn', onComplete: () => l.destroy() });
           audio.play('sparkle', 0.9 + (k % 6) * 0.06);
         });
       });
@@ -759,12 +856,12 @@ export class MergeScene extends BaseScene {
         this.tweens.add({ targets: [this.boardBg, ...this.tiles, this.basket, this.basketLabel, ...this.gifts.filter(Boolean)], alpha: 0, duration: 1200 });
         if (heart) {
           this.boardLayer.bringToTop(heart);
-          this.tweens.add({ targets: heart, x: this.W / 2, y: this.H * 0.42, scale: this.itemScale() * 3.2, duration: 1600, ease: 'Sine.easeInOut' });
+          this.tweens.add({ targets: heart, x: this.W / 2, y: this.H * 0.42, scale: this.itemScale(heart) * 3.2, duration: 1600, ease: 'Sine.easeInOut' });
           const halo = this.add.image(this.W / 2, this.H * 0.42, 'fx:light').setBlendMode(Phaser.BlendModes.ADD).setScale(0).setAlpha(0.9);
           this.boardLayer.addAt(halo, 0);
-          this.tweens.add({ targets: halo, scale: 9, duration: 1800, ease: 'Sine.easeOut' });
+          this.tweens.add({ targets: halo, scale: 9 / texScale(), duration: 1800, ease: 'Sine.easeOut' });
           this.tweens.add({ targets: halo, alpha: 0.5, yoyo: true, repeat: -1, duration: 900, delay: 1800 });
-          this.tweens.add({ targets: heart, scale: this.itemScale() * 3.4, yoyo: true, repeat: -1, duration: 700, delay: 1700, ease: 'Sine.easeInOut' });
+          this.tweens.add({ targets: heart, scale: this.itemScale(heart) * 3.4, yoyo: true, repeat: -1, duration: 700, delay: 1700, ease: 'Sine.easeInOut' });
         }
         audio.play('victory');
         this.time.delayedCall(2600, () => resolve());
@@ -772,7 +869,32 @@ export class MergeScene extends BaseScene {
     });
   }
 
+  /**
+   * Respiration des objets au repos : léger étirement/écrasement ancré en bas
+   * (l'objet « gonfle » sans bouger de sa case). Les objets précieux respirent
+   * un peu plus lentement et plus amplement.
+   */
+  private breathe(t: number): void {
+    if (reducedFx() || this.ended) return;
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      const sp = this.sprites[i];
+      if (!sp || this.locked.has(i) || i === this.selected || this.drag?.sprite === sp || this.matchCells.includes(i)) continue;
+      if (this.tweens.isTweening(sp)) continue;
+      const base = this.itemScale(sp);
+      const it = this.state.cells[i].item;
+      const amp = 0.022 + Math.min(9, it?.l ?? 1) * 0.0016;
+      const w = Math.sin(t * (sp.getData('speed') as number) + (sp.getData('phase') as number));
+      const sy = 1 + amp * w;
+      const sx = 1 - amp * 0.7 * w;
+      sp.setScale(base * sx, base * sy);
+      // garder la base de l'objet posée au même endroit
+      sp.y = this.cy(i) - (sy - 1) * ITEM_TEX * texScale() * base * 0.38;
+      sp.x = this.cx(i);
+    }
+  }
+
   override update(time: number): void {
+    this.breathe(time / 1000);
     // Indice automatique après un long moment sans action.
     if (!this.ended && !this.drag && time - this.lastAction > 14_000 && time - this.lastHint > 14_000) {
       this.lastHint = time;
