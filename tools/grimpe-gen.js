@@ -5,7 +5,7 @@ function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; le
 
 function landsOn(g, from, to, wind, opt2) {
   const L = C.createLevel({ rows: g.map(r => r.join("")), wind: wind || {} });
-  for (let x = from.c0 * C.TS + 6; x <= (from.c1 + 1) * C.TS - 6; x += 4) for (const d of [-1, 0, 1]) {
+  for (let x = from.c0 * C.TS + 6; x <= (from.c1 + 1) * C.TS - 6; x += 6) for (const d of [-1, 0, 1]) {
     let run = 0;
     for (let ci = 0; ci <= 24; ci++) {
       const p = C.newPlayer(L); p.x = x; p.y = from.row * C.TS; p.charge = Math.max(0.06, ci / 24) * C.P.chargeMax;
@@ -15,7 +15,7 @@ function landsOn(g, from, to, wind, opt2) {
       }
       const ok = p.ground && Math.abs(p.y - to.row * C.TS) < 0.5 && p.x > to.c0 * C.TS + 3 && p.x < (to.c1 + 1) * C.TS - 3;
       run = ok ? run + 1 : 0;
-      if (run >= (opt2 && opt2.run || 3)) return true;
+      if (run >= (opt2 && opt2.run || 2)) return true;
     }
   }
   return false;
@@ -43,6 +43,7 @@ function gen(seed, S, opt) {
     const ice = alt > 0.3 && rnd() < 0.15 + 0.35 * alt;
     const cloud = !ice && alt > 0.75 && rnd() < 0.5;
     const ch = cloud ? "=" : ice ? "I" : "#";
+    if (ice) { b = Math.min(W - 2, a + 7); a = Math.min(a, b - 7); }
     const saved = g[row].slice();
     for (let x = a; x <= b; x++) g[row][x] = ch;
     const nxt = { row, c0: a, c1: b };
