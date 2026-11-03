@@ -730,40 +730,56 @@ const MEMS: Record<string, (c: C, w: number, h: number) => void> = {
   },
   billard: (c, w, h) => {
     const f = frame(w, h);
-    sky(c, f, [[0, '#4A2E2A'], [0.5, '#6B3E36'], [1, '#3A2421']]);
+    sky(c, f, [[0, '#1B0F2E'], [0.55, '#3A1650'], [1, '#150B22']]);
+    // néons du bar (rose et violet)
+    glow(c, w * 0.22, h * 0.14, w * 0.55, '#FF4FA8', 0.38);
+    glow(c, w * 0.8, h * 0.18, w * 0.5, '#8A5CFF', 0.4);
+    c.lineCap = 'round';
+    c.lineWidth = Math.max(3, w / 70); c.strokeStyle = '#FF6EC0';
+    c.shadowColor = '#FF4FA8'; c.shadowBlur = w * 0.03;
+    c.beginPath(); c.moveTo(w * 0.1, h * 0.1); c.lineTo(w * 0.42, h * 0.1); c.stroke();
+    c.strokeStyle = '#A98BFF'; c.shadowColor = '#8A5CFF';
+    c.beginPath(); c.moveTo(w * 0.58, h * 0.13); c.lineTo(w * 0.9, h * 0.13); c.stroke();
+    c.beginPath(); c.moveTo(w * 0.7, h * 0.2); c.lineTo(w * 0.9, h * 0.2); c.stroke();
+    c.shadowBlur = 0;
     // lampe suspendue
-    c.fillStyle = '#2E2740'; c.fillRect(w * 0.5 - 1, 0, 2, h * 0.12);
-    c.fillStyle = PAL.leafDeep;
-    c.beginPath(); c.moveTo(w * 0.3, h * 0.2); c.quadraticCurveTo(w * 0.5, h * 0.06, w * 0.7, h * 0.2); c.closePath(); c.fill();
-    glow(c, w * 0.5, h * 0.55, w * 0.6, '#FFE2A8', 0.45);
-    c.fillStyle = 'rgba(255,230,170,0.12)';
-    c.beginPath(); c.moveTo(w * 0.3, h * 0.2); c.lineTo(w * 0.7, h * 0.2); c.lineTo(w * 0.98, h * 0.75); c.lineTo(w * 0.02, h * 0.75); c.fill();
-    // table en perspective
-    const top = h * 0.4, bot = h * 0.82;
-    c.fillStyle = '#7A4A2C';
-    c.beginPath(); c.moveTo(w * 0.18, top); c.lineTo(w * 0.82, top); c.lineTo(w * 0.98, bot); c.lineTo(w * 0.02, bot); c.closePath(); c.fill();
+    c.fillStyle = '#2E2740'; c.fillRect(w * 0.5 - 1, 0, 2, h * 0.2);
+    c.fillStyle = '#FF7AC6';
+    c.beginPath(); c.moveTo(w * 0.34, h * 0.32); c.quadraticCurveTo(w * 0.5, h * 0.17, w * 0.66, h * 0.32); c.closePath(); c.fill();
+    glow(c, w * 0.5, h * 0.62, w * 0.55, '#FFD6F0', 0.28);
+    // table verte en perspective
+    const top = h * 0.5, bot = h * 0.9;
+    c.fillStyle = '#4A2A3E';
+    c.beginPath(); c.moveTo(w * 0.2, top); c.lineTo(w * 0.8, top); c.lineTo(w * 1.0, bot); c.lineTo(0, bot); c.closePath(); c.fill();
     c.lineWidth = Math.max(1.5, w / 160); c.strokeStyle = OUTLINE; c.stroke();
-    c.fillStyle = '#2F8F6A';
-    c.beginPath(); c.moveTo(w * 0.22, top + h * 0.025); c.lineTo(w * 0.78, top + h * 0.025); c.lineTo(w * 0.92, bot - h * 0.03); c.lineTo(w * 0.08, bot - h * 0.03); c.closePath(); c.fill();
-    c.fillStyle = '#5C3A22'; c.fillRect(w * 0.06, bot, w * 0.06, h * 0.16); c.fillRect(w * 0.88, bot, w * 0.06, h * 0.16);
-    c.fillStyle = '#1B1416';
-    for (const [x, y] of [[0.23, 0.43], [0.77, 0.43], [0.1, 0.78], [0.9, 0.78], [0.5, 0.42], [0.5, 0.8]]) { c.beginPath(); c.arc(w * x, h * y, w * 0.022, 0, 7); c.fill(); }
-    // boules
-    const balls: [number, number, string][] = [[0.5, 0.52, '#FFFFFF'], [0.42, 0.62, PAL.roseVif], [0.56, 0.64, '#F3C86B'], [0.48, 0.68, '#5D4C8C'], [0.62, 0.58, '#E8484F'], [0.36, 0.7, '#3F8FD8']];
+    c.fillStyle = '#2FA070';
+    c.beginPath(); c.moveTo(w * 0.24, top + h * 0.022); c.lineTo(w * 0.76, top + h * 0.022); c.lineTo(w * 0.93, bot - h * 0.03); c.lineTo(w * 0.07, bot - h * 0.03); c.closePath(); c.fill();
+    c.fillStyle = '#12090F';
+    for (const [x, y] of [[0.25, 0.525], [0.75, 0.525], [0.08, 0.87], [0.92, 0.87]]) { c.beginPath(); c.arc(w * x, h * y, w * 0.02, 0, 7); c.fill(); }
+    // boules : une blanche, une rouge, quelques autres
+    const balls: [number, number, string][] = [[0.52, 0.66, '#FFFFFF'], [0.62, 0.6, '#E8484F'], [0.46, 0.58, '#F3C86B'], [0.56, 0.74, '#5D4C8C']];
     for (const [x, y, col] of balls) {
-      const r = w * 0.03;
+      const r = w * 0.028;
       c.fillStyle = col; c.beginPath(); c.arc(w * x, h * y, r, 0, 7); c.fill();
       c.lineWidth = Math.max(1, w / 260); c.strokeStyle = OUTLINE; c.stroke();
       c.fillStyle = 'rgba(255,255,255,0.75)'; c.beginPath(); c.arc(w * x - r * 0.35, h * y - r * 0.35, r * 0.3, 0, 7); c.fill();
     }
-    heartPath(c, w * 0.42, h * 0.62, w * 0.03); c.fillStyle = '#FFFFFF'; c.fill();
-    // queue de billard
-    c.lineWidth = w * 0.018; c.strokeStyle = '#E8C9A0';
-    c.beginPath(); c.moveTo(w * 0.52, h * 0.5); c.lineTo(w * 0.95, h * 0.2); c.stroke();
-    c.lineWidth = w * 0.02; c.strokeStyle = '#4A2E20';
-    c.beginPath(); c.moveTo(w * 0.85, h * 0.27); c.lineTo(w * 0.97, h * 0.18); c.stroke();
-    for (const [x, y] of [[0.15, 0.25], [0.86, 0.36]]) { heartPath(c, w * x, h * y, w * 0.06); c.fillStyle = rgba(PAL.rose, 0.7); c.fill(); }
-    vignette(c, w, h, '#1A0F0E', 0.45);
+    // Auguste regarde, Radia vise (tenue actuelle)
+    const feet = h * 0.98, hgt = h * 0.7;
+    person(c, 'auguste', w * 0.78, feet, hgt, { expr: 'tease' });
+    person(c, 'radia', w * 0.3, feet, hgt, { expr: 'love' });
+    // queue de billard tenue par Radia, pointée vers la boule blanche
+    c.lineCap = 'round';
+    c.lineWidth = w * 0.016; c.strokeStyle = '#E8C9A0';
+    c.beginPath(); c.moveTo(w * 0.1, h * 0.93); c.lineTo(w * 0.5, h * 0.67); c.stroke();
+    c.lineWidth = w * 0.019; c.strokeStyle = '#4A2E20';
+    c.beginPath(); c.moveTo(w * 0.06, h * 0.96); c.lineTo(w * 0.2, h * 0.87); c.stroke();
+    c.lineWidth = w * 0.01; c.strokeStyle = '#7FB6FF';
+    c.beginPath(); c.moveTo(w * 0.48, h * 0.685); c.lineTo(w * 0.5, h * 0.67); c.stroke();
+    // bords de table au premier plan (cachent les jambes)
+    c.fillStyle = '#4A2A3E'; c.fillRect(0, h * 0.94, w, h * 0.06);
+    for (const [x, y] of [[0.14, 0.34], [0.9, 0.4]]) { heartPath(c, w * x, h * y, w * 0.05); c.fillStyle = rgba(PAL.rose, 0.55); c.fill(); }
+    vignette(c, w, h, '#0E0716', 0.45);
   },
   promenade: (c, w, h) => {
     const f = frame(w, h);

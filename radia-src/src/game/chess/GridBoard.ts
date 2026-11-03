@@ -199,6 +199,7 @@ export class GridBoard {
   }
 
   select(cell: number | null): void {
+    if (cell === this.selected && cell !== null) return; // mêmes points : on ne les recrée pas
     this.selected = cell;
     this.targetsNow = cell === null ? [] : this.o.targets(cell);
     this.o.onSelect?.(cell);
@@ -262,7 +263,7 @@ export class GridBoard {
     const py = e.clientY - r.top - size / 2 - size * 0.25; // un peu au-dessus du doigt
     d.pe.el.style.transition = 'none';
     d.pe.el.style.transform = `translate(${px}px, ${py}px) scale(1.15)`;
-    d.pe.el.classList.add('dragging');
+    if (!d.pe.el.classList.contains('dragging')) d.pe.el.classList.add('dragging');
   }
 
   private up(e: PointerEvent): void {

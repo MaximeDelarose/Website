@@ -90,15 +90,16 @@
 .gb-dot::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  left: 36%;
+  top: 36%;
   width: 28%;
   height: 28%;
-  transform: translate(-50%, -50%);
   border-radius: 50%;
   background: rgba(81, 68, 109, 0.32);
-  animation: gbAppear 0.2s ease;
+  /* pas de transform ici : l'apparition ne doit pas déplacer le point */
+  animation: gbDotIn 0.18s ease-out;
 }
+@keyframes gbDotIn { from { opacity: 0; } to { opacity: 1; } }
 .gb-capture::after {
   content: '';
   position: absolute;

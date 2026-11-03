@@ -21,6 +21,7 @@ const drag = async (a, b) => { const p = await sq(a), q = await sq(b); await tou
 const tapSq = async (a) => { const p = await sq(a); await touch('touchStart', p.x, p.y); await sleep(40); await touch('touchEnd'); };
 const fen = () => page.evaluate(() => (window.RADIA.save.data.chess.game?.pgn ?? '(none)').split('\n').pop());
 const waitTurn = async () => { for (let i = 0; i < 60; i++) { const t = await page.evaluate(() => document.querySelector('.chess-status')?.textContent); if (t && t.includes('toi')) return; await sleep(200); } };
+for (let i = 0; i < 3; i++) { const b = page.locator('.modal-backdrop:not(.leaving) .actions button'); if (await b.count()) { await b.first().click(); await sleep(500); } }
 await page.getByText('ÉCHECS').first().click(); await sleep(800);
 const start = page.getByText('Commencer'); if (await start.count()) { await start.click(); await sleep(600); }
 await drag('e2', 'e4'); await sleep(400); console.log('after drag e2e4:', await fen());

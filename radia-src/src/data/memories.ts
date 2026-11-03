@@ -45,7 +45,7 @@ export const MEMORIES: MemoryDef[] = [
   {
     id: 'billard',
     title: 'Le billard',
-    desc: 'Une partie de billard. Le score exact restera un secret d\'État.',
+    desc: 'Une partie de billard dans un bar tout en néons. Le score exact restera un secret d\'État.',
     how: 'Mini-jeu : le billard des cœurs',
     lines: [{ who: 'auguste', expr: 'smile', text: 'Je voulais gagner la partie… mais je crois que j\'ai surtout gagné un beau souvenir.' }],
   },
