@@ -2155,3 +2155,21 @@ button.mc-mode:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--de
 .kd-stage.is-max .game-hud .hud-exit { display: grid; }
 .kd-stage:not(.is-full) .game-hud .hud-exit { display: none; }
 .kd-stage.is-full:has(.game-hud:not([hidden])) .fs-exit { display: none; }
+/* Merger Coop 2.2 : difficulté */
+.mc-label { margin: 8px 0 2px; font-weight: 800; font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft) !important; }
+.mc-diffs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0; }
+.mc-diff {
+  display: grid; gap: 1px; padding: 8px 4px; font: inherit; color: var(--ink); cursor: pointer; text-align: center;
+  background: var(--panel-2); border: 3px solid var(--line); box-shadow: 0 3px 0 var(--depth);
+  transition: transform .15s cubic-bezier(.2, 1.6, .4, 1), background .15s, box-shadow .15s;
+}
+.mc-diff b { font-size: .92rem; white-space: nowrap; }
+.mc-diff span { font-size: .75rem; color: var(--ink-soft); font-weight: 800; }
+.mc-diff:hover { transform: translateY(-2px); }
+.mc-diff:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--depth); }
+.mc-diff.is-on { background: #f6d36b; box-shadow: 0 3px 0 #b8891a, inset 0 0 0 2px #fff3c4; transform: translateY(-1px); }
+.mc-diff.is-on span { color: #5a3a08; }
+.mc-diff[data-diff="hard"].is-on { background: #f2a35e; }
+.mc-diff[data-diff="expert"].is-on { background: #e36b6b; }
+.mc-diff-desc { margin: 4px 0 8px; font-size: .9rem; min-height: 2.6em; }
+@media (max-width: 560px) { .mc-diffs { grid-template-columns: repeat(2, 1fr); } }
