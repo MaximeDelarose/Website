@@ -79,5 +79,6 @@ if (mode === 'palette') { const r = row(); PALETTE.forEach((p) => { const d = do
   const t2 = performance.now(); for (let i = 0; i < 20; i++) { c.clearRect(0, 0, 361, 520); drawCastle(c, 361, 520, new Set(ROOM_IDS), i * 0.05); } c.getImageData(0, 0, 1, 1);
   perf.push(`castle:${((performance.now() - t2) / 20).toFixed(2)}ms`);
   console.log('PERF', perf.join(' '));
+  const pre = document.createElement('pre'); pre.id = 'perf'; pre.textContent = perf.join(' | '); out.append(pre);
 }
 (window as unknown as { done: boolean }).done = true;

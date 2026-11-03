@@ -35,7 +35,7 @@ const dprOf = () => Math.min(2, window.devicePixelRatio || 1);
 
 const SHORT: Record<RoomId, string> = { bedroom: 'Chambre', salon: 'Salon', dressing: 'Dressing', reception: 'Réception', garden: 'Jardin', familySalon: 'Salon familial', kid1: '', kid2: '', kid3: '' };
 const shortName = (r: RoomId): string => (isKidRoom(r) ? kidName(r) : SHORT[r]);
-const MAP_RATIO = 361 / 520;
+const MAP_RATIO = 0.64;
 
 const furnUrl = (id: FurnitureId, color: string, size = 44) => canvasUrl(`cs:f:${id}:${color}:${size}`, () => {
   const f = FURNITURE[id];
@@ -94,6 +94,7 @@ function mapView(scr: HTMLElement, leave: () => void, goRoom: (r: RoomId) => voi
 
   const build = () => {
     hots.textContent = '';
+    hots.append(h('span.cs-wing', 'Aile familiale ♡'));
     for (const hs of pct) {
       const open = CT.isUnlocked(world(), hs.room);
       const rooms = ROOMS[hs.room];
@@ -132,7 +133,7 @@ function mapView(scr: HTMLElement, leave: () => void, goRoom: (r: RoomId) => voi
     audio.play('chest'); window.setTimeout(() => audio.play('reward'), 160);
     burstDom(el, 18);
     build();
-    const nb = hots.querySelector<HTMLElement>(`button:nth-child(${ROOM_IDS.indexOf(r) + 1})`);
+    const nb = hots.querySelectorAll<HTMLElement>('button')[ROOM_IDS.indexOf(r)];
     nb?.classList.add('unlocked-pop');
     ui.toast({ title: `${roomName(r)} débloquée`, sub: 'Touche la fenêtre pour y entrer', icon: 'sparkle' });
     reactAuguste('room', 0.5);

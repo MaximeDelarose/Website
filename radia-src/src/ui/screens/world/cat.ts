@@ -205,7 +205,7 @@ export function openCat(): Promise<void> {
         const wk = pose === 'walk' ? Math.sin(t / 900) * w * 0.2 : 0;
         x.save(); x.translate(wk, 0);
         if (pose === 'walk' && Math.cos(t / 900) < 0) { x.translate(w, 0); x.scale(-1, 1); x.translate(-2 * wk, 0); }
-        drawCat(x, pose, w, hh * 1.02, t / 1000, { collar: cat.equipped.collar, bed: cat.equipped.bed, toy: ownsCatItem(world(), 'toy-ball') });
+        x.translate(0, hh * 0.08); drawCat(x, pose, w, hh * 0.9, t / 1000, { collar: cat.equipped.collar, bed: cat.equipped.bed, toy: ownsCatItem(world(), 'toy-ball') });
         x.restore();
       };
       raf = requestAnimationFrame(loop);

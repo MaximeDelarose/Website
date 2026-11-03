@@ -16,13 +16,16 @@ await page.addInitScript(() => {
   }
 });
 const results = [];
-const check = (name, ok, extra = '') => { results.push({ name, ok: !!ok, extra }); console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} ${extra}`); };
+const T0 = Date.now();
+const check = (name, ok, extra = '') => { results.push({ name, ok: !!ok, extra }); console.log(`${ok ? 'OK  ' : 'FAIL'} [${Math.round((Date.now() - T0) / 1000)}s] ${name} ${extra}`); };
 const W = () => page.evaluate(() => JSON.parse(JSON.stringify(window.__save.data.world)));
 const shot = (n) => page.screenshot({ path: `${out}/${n}.png` });
 const wait = (ms) => page.waitForTimeout(ms);
 // le toucher « tap » du jeu ignore les clics répétés : on laisse un délai
 const click = async (sel, nth = 0) => { await page.locator(sel).nth(nth).click(); await wait(420); };
 
+page.setDefaultTimeout(8000);
+process.on('unhandledRejection', async (e) => { console.log('ERREUR', String(e.message).split('\n')[0]); await page.screenshot({ path: `${out}/ERR.png` }).catch(() => {}); process.exit(2); });
 await page.goto(`http://localhost:${port}/dev/castle-ui.html`);
 await page.waitForSelector('.cs-map-canvas');
 await wait(900);
@@ -234,6 +237,7 @@ for (const k of ['kid1', 'kid2', 'kid3']) {
   await page.locator('.cs-tab', { hasText: 'Enfants' }).click(); await wait(250);
   for (const n of ['Peluches', 'Cubes de jeu', 'Chevalet']) { await page.locator('.cs-card', { hasText: n }).first().locator('.btn').first().click(); await wait(650); }
   if (k === 'kid1') await shot('23-chambre-enfant-boutique');
+  if (k === 'kid3') break; // la scène finale se déclenche dès le 3e meuble de la dernière chambre
   await click('.cs-sheet-head .icon-btn'); await wait(400);
   if (k === 'kid1') await shot('24-chambre-enfant');
   { await click('.screen-head .icon-btn'); await page.waitForSelector('.cs-map-canvas'); await wait(500); }
