@@ -47,7 +47,7 @@
   }
   var page = document.body.dataset.page;
   // les pages des jeux web sont regroupées sous l'onglet « Jeux »
-  var GAME_PAGES = ["games", "game", "merger", "dice", "defense", "idle"];
+  var GAME_PAGES = ["games", "game", "merger", "dice", "kingdice", "defense", "idle"];
   var navPage = GAME_PAGES.indexOf(page) >= 0 ? "games" : page;
   $$("#site-nav a").forEach(function (a) {
     if (a.dataset.page === navPage) a.setAttribute("aria-current", "page");
@@ -98,6 +98,7 @@
     dice: ["xxxxxxxxx", "xwxxxxxwx", "xxxxxxxxx", "xxxxwxxxx", "xxxxxxxxx", "xwxxxxxwx", "xxxxxxxxx", "eeeeeeeee"],
     acorn: ["....e....", "..eeeee..", ".eeeeeee.", "eeeeeeeee", ".xxxxxxx.", ".xwxxxxx.", "..xxxxx..", "...xxx...", "....x...."],
     tower: ["x.x.x.x", "xxxxxxx", ".xxxxx.", ".xewex.", ".xxxxx.", ".xxxxx.", ".xxexx.", "xxxexxx"],
+    crown: ["x..x..x", "xx.x.xx", "xxxxxxx", "xwxexwx", "xxxxxxx", ".eeeee.", ".xxxxx.", "xxxxxxx"],
     box: ["..xxxxxx..", ".xwwwwwwx.", "xwwwwwwwwx", "xxxxeexxxx", "xxxxeexxxx", "xxxxxxxxxx", "xxxxxxxxxx", "eeeeeeeeee"],
   };
   function hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
