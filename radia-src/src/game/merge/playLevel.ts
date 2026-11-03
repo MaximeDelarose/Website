@@ -17,6 +17,7 @@ import { canvasUrl } from '../art/kit';
 import { medallionCanvas } from '../art/characters';
 import { setBackdrop, themeForChapter } from '../scenes/backdrop';
 import { openSettings } from '../../ui/screens/settings';
+import { hasPhotos, photoUrl, photoUrlNow } from '../../core/photos';
 import { wallet, fmt, fmtTime } from '../../core/wallet';
 import { openShop, shopButton, diamondUrl, energyUrl, bagIconUrl } from '../../ui/screens/shop';
 import { openEnergyPanel } from '../../ui/components/energyPanel';
@@ -26,7 +27,7 @@ import { paint } from '../art/kit';
 /** Personnages qui passent commande. */
 const REQUESTERS = ['auguste', 'cat', 'florist', 'pawn'] as const;
 const requesterUrl = (who: (typeof REQUESTERS)[number]) => who === 'auguste'
-  ? canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120))
+  ? (hasPhotos() && photoUrlNow('head-auguste')) || canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120))
   : canvasUrl(`req:${who}`, () => paint(64, 64, 2, (c) => drawRequester(c, who, 64)));
 
 export type LevelResult = 'won' | 'quit';
@@ -104,7 +105,10 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     energyEl.addEventListener('click', tap(() => void openEnergyPanel(false)));
     diamondEl.addEventListener('click', tap(() => void openShop('diamonds')));
     heartsEl.addEventListener('click', tap(() => ui.toast({ title: `${fmt(save.data.hearts)} cœurs`, sub: 'Gagnés en livrant les commandes · pour décorer notre petit monde', icon: 'heart' })));
-    const aug = h('button.mh-auguste', { 'aria-label': 'Auguste' }, h('img', { src: canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120)), alt: '' }));
+    const augImg = h('img', { src: canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120)), alt: '' });
+    const aug = h('button.mh-auguste', { 'aria-label': 'Auguste' }, augImg);
+    // avec le lien secret : la tête de l'illustration
+    if (hasPhotos()) void photoUrl('head-auguste').then((u) => { if (u) augImg.src = u; });
     const titleEl = h('div.mh-title',
       h('b', mode === 'endless' ? 'Mode infini' : `${def.id}. ${def.title}`),
       h('small', mode === 'endless' ? `Record : ${save.data.endless.best}` : `Chapitre ${def.chapter} · ${chapter?.title ?? ''}`));
