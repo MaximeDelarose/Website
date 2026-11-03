@@ -20,7 +20,7 @@
 import { PAL, ellipse, gloss, heartPath, paint, roundRect, shade, starPath } from './kit';
 import type { Expr } from '../../data/dialogue';
 
-export const EYE_MARK = { eye: 'imageLeft' as const, angleDeg: 155, radius: 1.12 };
+export const EYE_MARK = { eye: 'imageLeft' as const, angleDeg: 192, radius: 0.6 };
 export const NOSE_RING_SIDE = 1; // +1 = droite de l'image
 
 export type Outfit = 'hoodie' | 'stripes' | 'royal';
@@ -174,7 +174,7 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
   let lookY = -h * 0.02;
   if (expr === 'shy') lookX = 5;
   if (expr === 'love') lookY = -h * 0.1;
-  const ir = h * (st.wing ? 0.6 : 0.72);
+  const ir = h * (st.wing ? 0.68 : 0.72);
   const ix = lookX * side;
   ctx.beginPath();
   ctx.arc(ix, lookY, ir, 0, Math.PI * 2);
@@ -202,12 +202,8 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
     const mx = ixImg + Math.cos(a) * ir * EYE_MARK.radius;
     const my = lookY + Math.sin(a) * ir * EYE_MARK.radius;
     ctx.beginPath();
-    ctx.ellipse(mx, my, ir * 0.5, ir * 0.4, -0.5, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(130,70,36,0.7)';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(mx, my, ir * 0.32, ir * 0.26, -0.5, 0, Math.PI * 2);
-    ctx.fillStyle = '#3A1A0C';
+    ctx.ellipse(mx, my, ir * 0.24, ir * 0.2, -0.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#0B0507';
     ctx.fill();
     ctx.restore();
   }
@@ -317,7 +313,8 @@ function drawMouth(ctx: CanvasRenderingContext2D, cy: number, expr0: Expr, lip: 
   const L = shape === 'full' ? 1.3 : shape === 'thin' ? 0.75 : 1; // lèvre du bas
   const cupid = shape === 'cupid';
   const w = (female ? 21 : 19) * (shape === 'wide' ? 1.15 : 1);
-  const closedSmile = shape === 'closed' && (expr0 === 'smile' || expr0 === 'love');
+  // sourire naturel : bouche FERMÉE par défaut (les dents ne se voient plus que pour un vrai rire ou le choix « grand sourire »)
+  const closedSmile = female && shape !== 'wide' && (expr0 === 'smile' || expr0 === 'love');
   const expr: Expr = closedSmile ? 'neutral' : expr0;
   const up = closedSmile ? 2.8 : 0; // coins relevés
   switch (expr) {
@@ -621,21 +618,21 @@ function radiaFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
   ctx.fill();
   stroke(ctx, 2.4);
   blush(ctx, expr, 38, 47);
-  // deux minuscules points sur les pommettes
-  ctx.fillStyle = 'rgba(140,82,54,0.6)';
-  for (const [x, y, r] of [[-49, 31, 1.7], [47, 33, 1.5], [-43, 38, 1], [52, 38, 1]] as const) {
+  // deux petits points clairs sur les pommettes
+  ctx.fillStyle = 'rgba(255,238,214,0.85)';
+  for (const [x, y, r] of [[-50, 36, 3.4], [49, 38, 3.2]] as const) {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
   }
   // yeux
   const ln = o.liner ?? 'wing';
-  const eye: EyeStyle = { iris: o.iris ?? IRIS_R, lash: '#1B100C', w: 42, h: 27, lashes: ln !== 'none', wing: ln === 'wing' || ln === 'bold', bold: ln === 'bold', shadow: o.shadow };
+  const eye: EyeStyle = { iris: o.iris ?? IRIS_R, lash: '#1B100C', w: 48, h: 24, lashes: ln !== 'none', wing: ln === 'wing' || ln === 'bold', bold: ln === 'bold', shadow: o.shadow };
   drawEye(ctx, -34, 9, -1, expr, !!o.blink, eye, EYE_MARK.eye === 'imageLeft');
   drawEye(ctx, 34, 9, 1, expr, !!o.blink, eye, false);
   // sourcils foncés bien dessinés
-  drawBrow(ctx, -34, -22, -1, expr, '#2B1A13', 5.2);
-  drawBrow(ctx, 34, -22, 1, expr, '#2B1A13', 5.2);
+  drawBrow(ctx, -34, -22, -1, expr, '#33201A', 6.4);
+  drawBrow(ctx, 34, -22, 1, expr, '#33201A', 6.4);
   // nez fin
   ctx.beginPath();
   ctx.moveTo(5, 12);

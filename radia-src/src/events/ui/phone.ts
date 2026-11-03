@@ -81,7 +81,16 @@ export function openPhone(tab: Tab = 'messages'): void {
         list.append(card);
       }
       for (const i of invs) { const d = eventById(i.eventId); if (d) list.append(bubble(d.teaser), inviteCard(i.runId, d, i.state)); }
-      for (const m of msgs.slice(-12)) list.append(bubble(m.text));
+      for (const m of msgs.slice(-12)) {
+        if (m.from === 'kid1' && /dessin/i.test(m.text)) {
+          // le dessin de la petite : on peut l'ouvrir et l'admirer
+          const mini = h('canvas.ph-draw-mini') as HTMLCanvasElement;
+          void import('./drawing').then((d) => { const c = d.sailboatCanvas(120); mini.width = c.width; mini.height = c.height; mini.getContext('2d')!.drawImage(c, 0, 0); });
+          const card = h('button.ph-draw', mini, h('div', h('b', m.text), h('small', 'Touche pour voir le dessin ♡')));
+          card.addEventListener('click', tap(() => { void import('./drawing').then((d) => d.openDrawing()); }, { sound: false }));
+          list.append(card);
+        } else list.append(bubble(m.text));
+      }
       if (!list.children.length) list.append(h('p.ph-empty', 'Aucun message pour l’instant.'));
       content.append(list);
       emitPhone();
@@ -140,6 +149,13 @@ export function openPhone(tab: Tab = 'messages'): void {
       content.append(slot);
       const photo = st.photos.slice().reverse().find((p) => p.eventId === SECRET_ID);
       void import('./promiseCard').then((m) => slot.append(m.buildPromiseCard({ photo, onReplay: () => { closePhone(); void replayBraceletScene(); } }))).catch(() => undefined);
+    }
+    if (st.counters['drawing.seen']) {
+      const card = h('button.ph-draw', h('canvas.ph-draw-mini'), h('div', h('b', 'Le voilier jaune'), h('small', 'Un dessin à garder ♡')));
+      const mini = card.querySelector('canvas') as HTMLCanvasElement;
+      void import('./drawing').then((d) => { const c = d.sailboatCanvas(120); mini.width = c.width; mini.height = c.height; mini.getContext('2d')!.drawImage(c, 0, 0); });
+      card.addEventListener('click', tap(() => { void import('./drawing').then((d) => d.openDrawing()); }, { sound: false }));
+      content.append(card);
     }
     if (!st.photos.length) { if (!content.children.length) content.append(h('p.ph-empty', 'Tes photos souvenirs apparaîtront ici après chaque sortie ♡')); return; }
     const slot = h('div.ph-gallery');
