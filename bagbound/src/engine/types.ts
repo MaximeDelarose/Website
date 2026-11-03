@@ -35,6 +35,10 @@ export interface EffectDef {
   filter?: TagFilter;
   /** recharge : remet la barre pleine. */
   full?: boolean;
+  /** fill : objet obtenu en remplissant (ex. bouteille vide -> potion). */
+  into?: string;
+  /** fill : charges de l'objet obtenu. */
+  charges?: number;
 }
 
 export interface TriggerDef {
@@ -102,6 +106,8 @@ export interface ItemDef {
   onEmpty: { transformInto: string } | null;
   /** Effets appliqués quand l'objet est lancé. Défaut : effects vers l'ennemi. */
   throwEffects: EffectDef[] | null;
+  /** Extension de sac (objet-case posé au bord du sac). */
+  extends: boolean;
   description?: string;
 }
 
@@ -114,6 +120,8 @@ export interface Placement {
   mirror?: boolean;
   /** Charges restantes (persistées entre les combats d'une run). */
   charges?: number | null;
+  /** Repère opaque recopié tel quel dans le sac d'après combat (transformations comprises). */
+  ref?: string;
 }
 
 export interface PhaseDef {
@@ -142,6 +150,7 @@ export interface ClassDef {
   name: string;
   hp: number;
   bagCells: Vec[];
+  maxBag: [number, number];
   startingBag: Placement[];
 }
 
@@ -210,6 +219,7 @@ export interface TriggerRuntime {
 
 export interface ItemInstance {
   uid: string;
+  ref?: string;
   def: ItemDef;
   owner: number;
   pos: Vec;

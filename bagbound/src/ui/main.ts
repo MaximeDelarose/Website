@@ -10,9 +10,9 @@ function boot(): void {
   if (!stage) return;
   const overlay = stage.querySelector<HTMLElement>("[data-overlay]");
   try {
-    const { content, sandbox } = loadBundledContent();
+    const { content, sandbox, runData, recipes } = loadBundledContent();
     if (overlay) overlay.hidden = true;
-    const app = new App(stage, content, sandbox);
+    const app = new App(stage, content, sandbox, runData, recipes);
     (window as unknown as { BB_DEBUG: unknown }).BB_DEBUG = { app, content };
   } catch (err) {
     console.error(err);

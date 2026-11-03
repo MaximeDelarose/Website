@@ -1,219 +1,60 @@
 [
-  {
-    "id": "wooden_sword", "name": "Épée en bois", "description": "Une arme d'entraînement, mais elle frappe.",
-    "shape": [[0, 0], [0, 1]], "tags": ["Arme", "Bois"], "rarity": "common", "price": 3,
-    "cooldown": 2, "effects": [{ "type": "damage", "value": 4 }]
-  },
-  {
-    "id": "rusty_dagger", "name": "Dague rouillée",
-    "shape": [[0, 0]], "tags": ["Arme", "Métal"], "rarity": "common", "price": 2,
-    "cooldown": 1.5, "effects": [{ "type": "damage", "value": 2 }]
-  },
-  {
-    "id": "iron_sword", "name": "Épée de fer", "description": "La pointe aiguise l'objet posé devant elle (+2 dégâts).",
-    "shape": [[0, 0], [0, 1], [0, 2]], "tags": ["Arme", "Métal"], "rarity": "uncommon", "price": 7,
-    "specialCells": [{ "cell": [0, 0], "role": "tip", "dir": [0, -1], "effect": { "type": "buff", "stat": "damage", "value": 2 } }],
-    "cooldown": 2.5, "effects": [{ "type": "damage", "value": 7 }]
-  },
-  {
-    "id": "flame_sword", "name": "Épée de flammes", "description": "Brûle l'ennemi ; accélère les armes voisines.",
-    "shape": [[0, 0], [0, 1], [0, 2]], "tags": ["Arme", "Métal", "Feu"], "tier": 2, "rarity": "rare", "price": 12,
-    "specialCells": [{ "cell": [0, 0], "role": "tip", "dir": [0, -1], "effect": { "type": "buff", "stat": "burn", "value": 1 } }],
-    "cooldown": 3, "effects": [{ "type": "damage", "value": 6 }, { "type": "burn", "value": 2 }],
-    "adjacency": [{ "target": { "tag": "Arme" }, "effect": { "type": "haste", "value": 0.15 } }]
-  },
-  {
-    "id": "poison_dagger", "name": "Dague empoisonnée",
-    "shape": [[0, 0], [0, 1]], "tags": ["Arme", "Métal", "Poison"], "rarity": "uncommon", "price": 6,
-    "cooldown": 2, "effects": [{ "type": "damage", "value": 1 }, { "type": "poison", "value": 2 }]
-  },
-  {
-    "id": "wooden_shield", "name": "Bouclier en bois",
-    "shape": [[0, 0], [1, 0], [0, 1], [1, 1]], "tags": ["Armure", "Bois"], "rarity": "common", "price": 4,
-    "cooldown": 3, "effects": [{ "type": "shield", "value": 5 }]
-  },
-  {
-    "id": "leather_armor", "name": "Armure de cuir", "description": "Bouclier au début du combat.",
-    "shape": [[0, 0], [1, 0], [0, 1], [1, 1]], "tags": ["Armure"], "rarity": "common", "price": 5,
-    "triggers": [{ "type": "onCombatStart" }], "effects": [{ "type": "shield", "value": 12 }]
-  },
-  {
-    "id": "spiked_buckler", "name": "Rondache à pointes", "description": "Riposte quand on vous frappe.",
-    "shape": [[0, 0], [1, 0]], "tags": ["Armure", "Métal"], "rarity": "uncommon", "price": 6,
-    "cooldown": 4, "effects": [{ "type": "shield", "value": 3 }, { "type": "damage", "value": 1 }],
-    "triggers": [{ "type": "onDamaged", "icd": 0.8 }]
-  },
-  {
-    "id": "healing_herb", "name": "Herbe médicinale",
-    "shape": [[0, 0]], "tags": ["Nourriture"], "rarity": "common", "price": 2,
-    "cooldown": 4, "effects": [{ "type": "heal", "value": 3 }]
-  },
-  {
-    "id": "banana", "name": "Banane", "description": "Donne de l'énergie aux armes voisines (+10 % de vitesse).",
-    "shape": [[0, 0], [1, 0], [1, 1]], "tags": ["Nourriture"], "rarity": "common", "price": 3,
-    "cooldown": 5, "effects": [{ "type": "heal", "value": 4 }],
-    "adjacency": [{ "target": { "tag": "Arme" }, "effect": { "type": "haste", "value": 0.1 } }]
-  },
-  {
-    "id": "whetstone", "name": "Pierre à aiguiser", "description": "+1 dégât aux armes voisines.",
-    "shape": [[0, 0]], "tags": ["Outil", "Métal"], "rarity": "common", "price": 3,
-    "adjacency": [{ "target": { "tag": "Arme" }, "effect": { "type": "buff", "stat": "damage", "value": 1 } }]
-  },
-  {
-    "id": "torch", "name": "Torche", "description": "Quand une arme voisine frappe, brûle l'ennemi.",
-    "shape": [[0, 0], [0, 1]], "tags": ["Outil", "Feu", "Bois"], "rarity": "uncommon", "price": 5,
-    "triggers": [{ "type": "onAdjacentTrigger", "filter": { "tag": "Arme" } }],
-    "effects": [{ "type": "burn", "value": 1 }]
-  },
-  {
-    "id": "ice_shard", "name": "Éclat de glace", "description": "Gèle un objet ennemi.",
-    "shape": [[0, 0]], "tags": ["Glace", "Magie"], "rarity": "uncommon", "price": 5,
-    "cooldown": 4, "effects": [{ "type": "freeze", "duration": 1.5 }]
-  },
-  {
-    "id": "hourglass", "name": "Sablier", "description": "Accélère les objets voisins pendant 2 s.",
-    "shape": [[0, 0]], "tags": ["Magie", "Outil"], "rarity": "rare", "price": 8,
-    "cooldown": 5, "effects": [{ "type": "haste", "value": 0.5, "duration": 2 }]
-  },
-  {
-    "id": "tar_pot", "name": "Pot de goudron", "description": "Ralentit un objet ennemi.",
-    "shape": [[0, 0]], "tags": ["Outil"], "rarity": "common", "price": 4,
-    "cooldown": 4, "effects": [{ "type": "slow", "value": 0.4, "duration": 3 }]
-  },
-  {
-    "id": "gear", "name": "Engrenage", "description": "Fait avancer d'une demi-seconde la barre des objets voisins.",
-    "shape": [[0, 0]], "tags": ["Outil", "Métal"], "rarity": "uncommon", "price": 6,
-    "cooldown": 3, "effects": [{ "type": "recharge", "value": 0.5 }]
-  },
-  {
-    "id": "rage_amulet", "name": "Amulette de rage", "description": "Sous 30 % de PV : tout le sac s'accélère.",
-    "shape": [[0, 0]], "tags": ["Bijou", "Magie"], "rarity": "rare", "price": 9,
-    "triggers": [{ "type": "onLowHP" }],
-    "effects": [{ "type": "haste", "value": 1, "duration": 5, "target": "allAllyItems" }]
-  },
-  {
-    "id": "vampire_fang", "name": "Croc de vampire", "description": "Soigne un peu à chaque coup porté.",
-    "shape": [[0, 0]], "tags": ["Bijou", "Animal"], "rarity": "rare", "price": 8,
-    "triggers": [{ "type": "onHit", "icd": 1 }], "effects": [{ "type": "heal", "value": 1 }]
-  },
-  {
-    "id": "bone_trophy", "name": "Trophée d'os", "description": "Soigne quand un ennemi tombe.",
-    "shape": [[0, 0], [1, 0]], "tags": ["Bijou", "Animal"], "rarity": "uncommon", "price": 5,
-    "triggers": [{ "type": "onKill" }], "effects": [{ "type": "heal", "value": 10 }]
-  },
-  {
-    "id": "war_drum", "name": "Tambour de guerre", "description": "Quand une arme frappe, 20 % de chances de recharger une autre arme.",
-    "shape": [[0, 0], [1, 0]], "tags": ["Outil", "Bois"], "rarity": "rare", "price": 9,
-    "triggers": [{ "type": "onItemTrigger", "filter": { "tag": "Arme" }, "chance": 0.2 }],
-    "effects": [{ "type": "recharge", "full": true, "target": "randomAllyItem", "filter": { "tag": "Arme" } }]
-  },
-  {
-    "id": "health_potion", "name": "Potion de soin", "description": "Tap : boire (+15 PV). Tap long : lancer.",
-    "shape": [[0, 0]], "tags": ["Potion", "Verre"], "rarity": "common", "price": 4,
-    "charges": 2, "manual": true, "effects": [{ "type": "heal", "value": 15 }],
-    "throwEffects": [{ "type": "damage", "value": 3 }],
-    "onEmpty": { "transformInto": "empty_bottle" }
-  },
-  {
-    "id": "poison_flask", "name": "Fiole de poison", "description": "Empoisonne l'ennemi (bu : enduit vos lames ; lancé : plus fort).",
-    "shape": [[0, 0]], "tags": ["Potion", "Verre", "Poison"], "rarity": "uncommon", "price": 5,
-    "charges": 2, "manual": true, "effects": [{ "type": "poison", "value": 3 }],
-    "throwEffects": [{ "type": "poison", "value": 5 }],
-    "onEmpty": { "transformInto": "empty_bottle" }
-  },
-  {
-    "id": "frost_flask", "name": "Fiole de givre", "description": "Gèle deux objets ennemis.",
-    "shape": [[0, 0]], "tags": ["Potion", "Verre", "Glace"], "rarity": "uncommon", "price": 5,
-    "charges": 1, "manual": true, "effects": [{ "type": "freeze", "duration": 2, "count": 2 }],
-    "throwEffects": [{ "type": "freeze", "duration": 2.5, "count": 3 }],
-    "onEmpty": { "transformInto": "empty_bottle" }
-  },
-  {
-    "id": "antidote", "name": "Antidote", "description": "Purge poison, brûlure, gel et ralentissements.",
-    "shape": [[0, 0]], "tags": ["Potion", "Verre"], "rarity": "common", "price": 3,
-    "charges": 2, "manual": true, "effects": [{ "type": "purge" }],
-    "throwEffects": [{ "type": "damage", "value": 3 }],
-    "onEmpty": { "transformInto": "empty_bottle" }
-  },
-  {
-    "id": "empty_bottle", "name": "Bouteille vide", "description": "À remplir, vendre, ou lancer (dégâts de verre).",
-    "shape": [[0, 0]], "tags": ["Verre", "Vide"], "rarity": "common", "price": 1,
-    "charges": 0, "manual": true, "throwEffects": [{ "type": "damage", "value": 3 }]
-  },
-  {
-    "id": "bag_patch_1", "name": "Pièce de sac", "description": "Extension : +1 case.",
-    "shape": [[0, 0]], "tags": ["Extension"], "rarity": "common", "price": 4
-  },
-  {
-    "id": "bag_patch_2", "name": "Rabat de sac", "description": "Extension : +2 cases.",
-    "shape": [[0, 0], [1, 0]], "tags": ["Extension"], "rarity": "uncommon", "price": 7
-  },
-
-  {
-    "id": "goblin_club", "name": "Gourdin de gobelin",
-    "shape": [[0, 0], [0, 1]], "tags": ["Arme", "Bois"], "rarity": "common", "price": 3,
-    "cooldown": 2.4, "effects": [{ "type": "damage", "value": 4 }]
-  },
-  {
-    "id": "acid_goo", "name": "Gelée acide",
-    "shape": [[0, 0], [1, 0]], "tags": ["Poison"], "rarity": "common", "price": 3,
-    "cooldown": 3, "effects": [{ "type": "poison", "value": 1 }]
-  },
-  {
-    "id": "wolf_fangs", "name": "Crocs de loup",
-    "shape": [[0, 0]], "tags": ["Arme", "Animal"], "rarity": "common", "price": 3,
-    "cooldown": 1.8, "effects": [{ "type": "damage", "value": 3 }]
-  },
-  {
-    "id": "bark_skin", "name": "Écorce",
-    "shape": [[0, 0], [1, 0], [0, 1], [1, 1]], "tags": ["Armure", "Bois"], "rarity": "uncommon", "price": 5,
-    "cooldown": 5, "effects": [{ "type": "shield", "value": 6 }],
-    "triggers": [{ "type": "onCombatStart" }]
-  },
-  {
-    "id": "spider_web", "name": "Toile collante",
-    "shape": [[0, 0], [1, 0]], "tags": ["Animal"], "rarity": "common", "price": 3,
-    "cooldown": 3.5, "effects": [{ "type": "slow", "value": 0.5, "duration": 2 }]
-  },
-  {
-    "id": "spider_fangs", "name": "Chélicères",
-    "shape": [[0, 0]], "tags": ["Arme", "Animal", "Poison"], "rarity": "common", "price": 3,
-    "cooldown": 2.5, "effects": [{ "type": "damage", "value": 1 }, { "type": "poison", "value": 1 }]
-  },
-  {
-    "id": "ember_breath", "name": "Souffle de braise",
-    "shape": [[0, 0]], "tags": ["Feu", "Magie"], "rarity": "common", "price": 4,
-    "cooldown": 3, "effects": [{ "type": "burn", "value": 3 }]
-  },
-  {
-    "id": "frost_aura", "name": "Aura de givre",
-    "shape": [[0, 0], [0, 1]], "tags": ["Glace", "Magie"], "rarity": "uncommon", "price": 5,
-    "cooldown": 5, "effects": [{ "type": "freeze", "duration": 1.5 }, { "type": "damage", "value": 2 }]
-  },
-  {
-    "id": "bandit_tonic", "name": "Tonique de bandit", "description": "Bu automatiquement sous 30 % de PV.",
-    "shape": [[0, 0]], "tags": ["Potion", "Verre"], "rarity": "common", "price": 3,
-    "charges": 1, "triggers": [{ "type": "onLowHP" }], "effects": [{ "type": "heal", "value": 12 }],
-    "onEmpty": { "transformInto": "empty_bottle" }
-  },
-  {
-    "id": "branch_slam", "name": "Branche massive",
-    "shape": [[0, 0], [0, 1], [0, 2]], "tags": ["Arme", "Bois"], "rarity": "uncommon", "price": 6,
-    "cooldown": 3.5, "effects": [{ "type": "damage", "value": 9 }]
-  },
-  {
-    "id": "sap_heart", "name": "Cœur de sève",
-    "shape": [[0, 0], [1, 0], [0, 1], [1, 1]], "tags": ["Nourriture", "Magie"], "rarity": "rare", "price": 8,
-    "cooldown": 4, "effects": [{ "type": "heal", "value": 6 }]
-  },
-  {
-    "id": "thorn_volley", "name": "Volée d'épines",
-    "shape": [[0, 0], [1, 0]], "tags": ["Arme", "Bois", "Poison"], "rarity": "rare", "price": 8,
-    "cooldown": 2, "effects": [{ "type": "damage", "value": 3 }, { "type": "poison", "value": 2 }]
-  },
-  {
-    "id": "wrath_root", "name": "Racine de colère", "description": "Accélère les armes voisines.",
-    "shape": [[0, 0]], "tags": ["Bois", "Magie"], "rarity": "rare", "price": 8,
-    "adjacency": [{ "target": { "tag": "Arme" }, "effect": { "type": "haste", "value": 0.3 } }]
-  }
+  {"id": "wooden_sword", "name": "Épée en bois", "description": "Une arme d'entraînement, mais elle frappe.", "shape": [[0, 0], [0, 1]], "tags": ["Arme", "Bois"], "rarity": "common", "price": 3, "cooldown": 2, "effects": [{"type": "damage", "value": 4}]},
+  {"id": "rusty_dagger", "name": "Dague rouillée", "shape": [[0, 0]], "tags": ["Arme", "Métal"], "rarity": "common", "price": 2, "cooldown": 1.5, "effects": [{"type": "damage", "value": 2}]},
+  {"id": "iron_sword", "name": "Épée de fer", "description": "La pointe aiguise l'objet posé devant elle (+2 dégâts).", "shape": [[0, 0], [0, 1], [0, 2]], "tags": ["Arme", "Métal"], "rarity": "uncommon", "price": 7, "specialCells": [{"cell": [0, 0], "role": "tip", "dir": [0, -1], "effect": {"type": "buff", "stat": "damage", "value": 2}}], "cooldown": 2.5, "effects": [{"type": "damage", "value": 7}]},
+  {"id": "flame_sword", "name": "Épée de flammes", "description": "Brûle l'ennemi ; accélère les armes voisines.", "shape": [[0, 0], [0, 1], [0, 2]], "tags": ["Arme", "Métal", "Feu"], "tier": 2, "rarity": "rare", "price": 12, "specialCells": [{"cell": [0, 0], "role": "tip", "dir": [0, -1], "effect": {"type": "buff", "stat": "burn", "value": 1}}], "cooldown": 3, "effects": [{"type": "damage", "value": 6}, {"type": "burn", "value": 2}], "adjacency": [{"target": {"tag": "Arme"}, "effect": {"type": "haste", "value": 0.15}}]},
+  {"id": "poison_dagger", "name": "Dague empoisonnée", "shape": [[0, 0], [0, 1]], "tags": ["Arme", "Métal", "Poison"], "rarity": "uncommon", "price": 6, "cooldown": 2, "effects": [{"type": "damage", "value": 1}, {"type": "poison", "value": 2}]},
+  {"id": "wooden_shield", "name": "Bouclier en bois", "shape": [[0, 0], [1, 0], [0, 1], [1, 1]], "tags": ["Armure", "Bois"], "rarity": "common", "price": 4, "cooldown": 3, "effects": [{"type": "shield", "value": 5}]},
+  {"id": "leather_armor", "name": "Armure de cuir", "description": "Bouclier au début du combat.", "shape": [[0, 0], [1, 0], [0, 1], [1, 1]], "tags": ["Armure"], "rarity": "common", "price": 5, "triggers": [{"type": "onCombatStart"}], "effects": [{"type": "shield", "value": 12}]},
+  {"id": "spiked_buckler", "name": "Rondache à pointes", "description": "Riposte quand on vous frappe.", "shape": [[0, 0], [1, 0]], "tags": ["Armure", "Métal"], "rarity": "uncommon", "price": 6, "cooldown": 4, "effects": [{"type": "shield", "value": 3}, {"type": "damage", "value": 1}], "triggers": [{"type": "onDamaged", "icd": 0.8}]},
+  {"id": "healing_herb", "name": "Herbe médicinale", "shape": [[0, 0]], "tags": ["Nourriture"], "rarity": "common", "price": 2, "cooldown": 4, "effects": [{"type": "heal", "value": 3}]},
+  {"id": "banana", "name": "Banane", "description": "Donne de l'énergie aux armes voisines (+10 % de vitesse).", "shape": [[0, 0], [1, 0], [1, 1]], "tags": ["Nourriture"], "rarity": "common", "price": 3, "cooldown": 5, "effects": [{"type": "heal", "value": 4}], "adjacency": [{"target": {"tag": "Arme"}, "effect": {"type": "haste", "value": 0.1}}]},
+  {"id": "whetstone", "name": "Pierre à aiguiser", "description": "+1 dégât aux armes voisines.", "shape": [[0, 0]], "tags": ["Outil", "Métal"], "rarity": "common", "price": 3, "adjacency": [{"target": {"tag": "Arme"}, "effect": {"type": "buff", "stat": "damage", "value": 1}}]},
+  {"id": "torch", "name": "Torche", "description": "Quand une arme voisine frappe, brûle l'ennemi.", "shape": [[0, 0], [0, 1]], "tags": ["Outil", "Feu", "Bois"], "rarity": "uncommon", "price": 5, "triggers": [{"type": "onAdjacentTrigger", "filter": {"tag": "Arme"}}], "effects": [{"type": "burn", "value": 1}]},
+  {"id": "ice_shard", "name": "Éclat de glace", "description": "Gèle un objet ennemi.", "shape": [[0, 0]], "tags": ["Glace", "Magie"], "rarity": "uncommon", "price": 5, "cooldown": 4, "effects": [{"type": "freeze", "duration": 1.5}]},
+  {"id": "hourglass", "name": "Sablier", "description": "Accélère les objets voisins pendant 2 s.", "shape": [[0, 0]], "tags": ["Magie", "Outil"], "rarity": "rare", "price": 8, "cooldown": 5, "effects": [{"type": "haste", "value": 0.5, "duration": 2}]},
+  {"id": "tar_pot", "name": "Pot de goudron", "description": "Ralentit un objet ennemi.", "shape": [[0, 0]], "tags": ["Outil"], "rarity": "common", "price": 4, "cooldown": 4, "effects": [{"type": "slow", "value": 0.4, "duration": 3}]},
+  {"id": "gear", "name": "Engrenage", "description": "Fait avancer d'une demi-seconde la barre des objets voisins.", "shape": [[0, 0]], "tags": ["Outil", "Métal"], "rarity": "uncommon", "price": 6, "cooldown": 3, "effects": [{"type": "recharge", "value": 0.5}]},
+  {"id": "rage_amulet", "name": "Amulette de rage", "description": "Sous 30 % de PV : tout le sac s'accélère.", "shape": [[0, 0]], "tags": ["Bijou", "Magie"], "rarity": "rare", "price": 9, "triggers": [{"type": "onLowHP"}], "effects": [{"type": "haste", "value": 1, "duration": 5, "target": "allAllyItems"}]},
+  {"id": "vampire_fang", "name": "Croc de vampire", "description": "Soigne un peu à chaque coup porté.", "shape": [[0, 0]], "tags": ["Bijou", "Animal"], "rarity": "rare", "price": 8, "triggers": [{"type": "onHit", "icd": 1}], "effects": [{"type": "heal", "value": 1}]},
+  {"id": "bone_trophy", "name": "Trophée d'os", "description": "Soigne quand un ennemi tombe.", "shape": [[0, 0], [1, 0]], "tags": ["Bijou", "Animal"], "rarity": "uncommon", "price": 5, "triggers": [{"type": "onKill"}], "effects": [{"type": "heal", "value": 10}]},
+  {"id": "war_drum", "name": "Tambour de guerre", "description": "Quand une arme frappe, 20 % de chances de recharger une autre arme.", "shape": [[0, 0], [1, 0]], "tags": ["Outil", "Bois"], "rarity": "rare", "price": 9, "triggers": [{"type": "onItemTrigger", "filter": {"tag": "Arme"}, "chance": 0.2}], "effects": [{"type": "recharge", "full": true, "target": "randomAllyItem", "filter": {"tag": "Arme"}}]},
+  {"id": "health_potion", "name": "Potion de soin", "description": "Tap : boire (+15 PV). Tap long : lancer.", "shape": [[0, 0]], "tags": ["Potion", "Verre"], "rarity": "common", "price": 4, "charges": 2, "manual": true, "effects": [{"type": "heal", "value": 15}], "throwEffects": [{"type": "damage", "value": 3}], "onEmpty": {"transformInto": "empty_bottle"}},
+  {"id": "poison_flask", "name": "Fiole de poison", "description": "Empoisonne l'ennemi (bu : enduit vos lames ; lancé : plus fort).", "shape": [[0, 0]], "tags": ["Potion", "Verre", "Poison"], "rarity": "uncommon", "price": 5, "charges": 2, "manual": true, "effects": [{"type": "poison", "value": 3}], "throwEffects": [{"type": "poison", "value": 5}], "onEmpty": {"transformInto": "empty_bottle"}},
+  {"id": "frost_flask", "name": "Fiole de givre", "description": "Gèle deux objets ennemis.", "shape": [[0, 0]], "tags": ["Potion", "Verre", "Glace"], "rarity": "uncommon", "price": 5, "charges": 1, "manual": true, "effects": [{"type": "freeze", "duration": 2, "count": 2}], "throwEffects": [{"type": "freeze", "duration": 2.5, "count": 3}], "onEmpty": {"transformInto": "empty_bottle"}},
+  {"id": "antidote", "name": "Antidote", "description": "Purge poison, brûlure, gel et ralentissements.", "shape": [[0, 0]], "tags": ["Potion", "Verre"], "rarity": "common", "price": 3, "charges": 2, "manual": true, "effects": [{"type": "purge"}], "throwEffects": [{"type": "damage", "value": 3}], "onEmpty": {"transformInto": "empty_bottle"}},
+  {"id": "empty_bottle", "name": "Bouteille vide", "description": "À remplir, vendre, ou lancer (dégâts de verre).", "shape": [[0, 0]], "tags": ["Verre", "Vide"], "rarity": "common", "price": 1, "charges": 0, "manual": true, "throwEffects": [{"type": "damage", "value": 3}]},
+  {"id": "bag_patch_1", "name": "Pièce de sac", "description": "Extension à poser au bord du sac : +1 case.", "shape": [[0, 0]], "tags": ["Extension"], "rarity": "common", "price": 4, "extends": true},
+  {"id": "bag_patch_2", "name": "Rabat de sac", "description": "Extension à poser au bord du sac : +2 cases.", "shape": [[0, 0], [1, 0]], "tags": ["Extension"], "rarity": "uncommon", "price": 7, "extends": true},
+  {"id": "goblin_club", "name": "Gourdin de gobelin", "shape": [[0, 0], [0, 1]], "tags": ["Arme", "Bois"], "rarity": "common", "price": 3, "cooldown": 2.4, "effects": [{"type": "damage", "value": 4}]},
+  {"id": "acid_goo", "name": "Gelée acide", "shape": [[0, 0], [1, 0]], "tags": ["Poison"], "rarity": "common", "price": 3, "cooldown": 3, "effects": [{"type": "poison", "value": 1}]},
+  {"id": "wolf_fangs", "name": "Crocs de loup", "shape": [[0, 0]], "tags": ["Arme", "Animal"], "rarity": "common", "price": 3, "cooldown": 1.8, "effects": [{"type": "damage", "value": 3}]},
+  {"id": "bark_skin", "name": "Écorce", "shape": [[0, 0], [1, 0], [0, 1], [1, 1]], "tags": ["Armure", "Bois"], "rarity": "uncommon", "price": 5, "cooldown": 5, "effects": [{"type": "shield", "value": 6}], "triggers": [{"type": "onCombatStart"}]},
+  {"id": "spider_web", "name": "Toile collante", "shape": [[0, 0], [1, 0]], "tags": ["Animal"], "rarity": "common", "price": 3, "cooldown": 3.5, "effects": [{"type": "slow", "value": 0.5, "duration": 2}]},
+  {"id": "spider_fangs", "name": "Chélicères", "shape": [[0, 0]], "tags": ["Arme", "Animal", "Poison"], "rarity": "common", "price": 3, "cooldown": 2.5, "effects": [{"type": "damage", "value": 1}, {"type": "poison", "value": 1}]},
+  {"id": "ember_breath", "name": "Souffle de braise", "shape": [[0, 0]], "tags": ["Feu", "Magie"], "rarity": "common", "price": 4, "cooldown": 3, "effects": [{"type": "burn", "value": 3}]},
+  {"id": "frost_aura", "name": "Aura de givre", "shape": [[0, 0], [0, 1]], "tags": ["Glace", "Magie"], "rarity": "uncommon", "price": 5, "cooldown": 5, "effects": [{"type": "freeze", "duration": 1.5}, {"type": "damage", "value": 2}]},
+  {"id": "bandit_tonic", "name": "Tonique de bandit", "description": "Bu automatiquement sous 30 % de PV.", "shape": [[0, 0]], "tags": ["Potion", "Verre"], "rarity": "common", "price": 3, "charges": 1, "triggers": [{"type": "onLowHP"}], "effects": [{"type": "heal", "value": 12}], "onEmpty": {"transformInto": "empty_bottle"}},
+  {"id": "branch_slam", "name": "Branche massive", "shape": [[0, 0], [0, 1], [0, 2]], "tags": ["Arme", "Bois"], "rarity": "uncommon", "price": 6, "cooldown": 3.5, "effects": [{"type": "damage", "value": 9}]},
+  {"id": "sap_heart", "name": "Cœur de sève", "shape": [[0, 0], [1, 0], [0, 1], [1, 1]], "tags": ["Nourriture", "Magie"], "rarity": "rare", "price": 8, "cooldown": 4, "effects": [{"type": "heal", "value": 6}]},
+  {"id": "thorn_volley", "name": "Volée d'épines", "shape": [[0, 0], [1, 0]], "tags": ["Arme", "Bois", "Poison"], "rarity": "rare", "price": 8, "cooldown": 2, "effects": [{"type": "damage", "value": 3}, {"type": "poison", "value": 2}]},
+  {"id": "wrath_root", "name": "Racine de colère", "description": "Accélère les armes voisines.", "shape": [[0, 0]], "tags": ["Bois", "Magie"], "rarity": "rare", "price": 8, "adjacency": [{"target": {"tag": "Arme"}, "effect": {"type": "haste", "value": 0.3}}]},
+  {"id": "oak_sword", "name": "Épée de chêne", "description": "Deux épées en bois, liées et durcies au feu.", "shape": [[0, 0], [0, 1]], "tags": ["Arme", "Bois"], "tier": 2, "rarity": "uncommon", "price": 7, "cooldown": 1.8, "effects": [{"type": "damage", "value": 7}]},
+  {"id": "steel_dagger", "name": "Dague d'acier", "shape": [[0, 0]], "tags": ["Arme", "Métal"], "tier": 2, "rarity": "uncommon", "price": 5, "cooldown": 1.2, "effects": [{"type": "damage", "value": 4}]},
+  {"id": "tower_shield", "name": "Pavois", "description": "Plus haut, plus étroit, bien plus solide.", "shape": [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [1, 2]], "tags": ["Armure", "Bois"], "tier": 2, "rarity": "uncommon", "price": 8, "cooldown": 3, "effects": [{"type": "shield", "value": 12}]},
+  {"id": "herbal_bundle", "name": "Bouquet d'herbes", "shape": [[0, 0]], "tags": ["Nourriture"], "tier": 2, "rarity": "uncommon", "price": 5, "cooldown": 3.5, "effects": [{"type": "heal", "value": 7}]},
+  {"id": "great_potion", "name": "Grande potion de soin", "description": "Tap : boire (+25 PV). Tap long : lancer.", "shape": [[0, 0]], "tags": ["Potion", "Verre"], "tier": 2, "rarity": "rare", "price": 9, "charges": 3, "manual": true, "effects": [{"type": "heal", "value": 25}], "throwEffects": [{"type": "damage", "value": 5}], "onEmpty": {"transformInto": "empty_bottle"}},
+  {"id": "knight_sword", "name": "Épée de chevalier", "description": "La pointe renforce l'objet posé devant elle (+3 dégâts).", "shape": [[0, 0], [0, 1], [0, 2]], "tags": ["Arme", "Métal"], "tier": 3, "rarity": "rare", "price": 15, "specialCells": [{"cell": [0, 0], "role": "tip", "dir": [0, -1], "effect": {"type": "buff", "stat": "damage", "value": 3}}], "cooldown": 2.4, "effects": [{"type": "damage", "value": 14}]},
+  {"id": "ember_dagger", "name": "Dague de braise", "shape": [[0, 0]], "tags": ["Arme", "Métal", "Feu"], "tier": 2, "rarity": "uncommon", "price": 6, "cooldown": 1.5, "effects": [{"type": "damage", "value": 2}, {"type": "burn", "value": 2}]},
+  {"id": "frost_blade", "name": "Lame de givre", "description": "Gèle un objet ennemi à chaque coup.", "shape": [[0, 0], [0, 1], [0, 2]], "tags": ["Arme", "Métal", "Glace"], "tier": 2, "rarity": "rare", "price": 12, "specialCells": [{"cell": [0, 0], "role": "tip", "dir": [0, -1], "effect": {"type": "buff", "stat": "damage", "value": 2}}], "cooldown": 3, "effects": [{"type": "damage", "value": 7}, {"type": "freeze", "duration": 1.2}]},
+  {"id": "fruit_salad", "name": "Salade de fruits", "description": "Donne de l'énergie aux armes voisines (+15 % de vitesse).", "shape": [[0, 0], [1, 0], [1, 1]], "tags": ["Nourriture"], "tier": 2, "rarity": "uncommon", "price": 7, "cooldown": 4, "effects": [{"type": "heal", "value": 8}], "adjacency": [{"target": {"tag": "Arme"}, "effect": {"type": "haste", "value": 0.15}}]},
+  {"id": "clockwork", "name": "Mécanisme d'horloge", "description": "Accélère et recharge les objets voisins.", "shape": [[0, 0], [1, 0]], "tags": ["Outil", "Métal", "Magie"], "tier": 2, "rarity": "rare", "price": 13, "cooldown": 4, "effects": [{"type": "haste", "value": 0.5, "duration": 2}, {"type": "recharge", "value": 0.5}]},
+  {"id": "thorn_shield", "name": "Bouclier d'épines", "description": "Protège et riposte quand on vous frappe.", "shape": [[0, 0], [1, 0], [0, 1], [1, 1]], "tags": ["Armure", "Bois", "Métal"], "tier": 2, "rarity": "rare", "price": 11, "cooldown": 3, "effects": [{"type": "shield", "value": 5}, {"type": "damage", "value": 2}], "triggers": [{"type": "onDamaged", "icd": 0.8}]},
+  {"id": "greek_fire", "name": "Feu grégeois", "description": "Tap : brûle l'ennemi. Tap long : lancer (brûlure bien plus forte).", "shape": [[0, 0]], "tags": ["Potion", "Verre", "Feu"], "tier": 2, "rarity": "uncommon", "price": 6, "charges": 1, "manual": true, "effects": [{"type": "burn", "value": 4}], "throwEffects": [{"type": "burn", "value": 8}], "onEmpty": {"transformInto": "empty_bottle"}},
+  {"id": "predator_collar", "name": "Collier du prédateur", "description": "Soigne à chaque coup et à chaque ennemi tombé ; renforce les armes voisines.", "shape": [[0, 0], [1, 0]], "tags": ["Bijou", "Animal", "Magie"], "tier": 3, "rarity": "legendary", "price": 25, "triggers": [{"type": "onHit", "icd": 0.8}, {"type": "onKill"}], "effects": [{"type": "heal", "value": 3}], "adjacency": [{"target": {"tag": "Arme"}, "effect": {"type": "buff", "stat": "damage", "value": 2}}]},
+  {"id": "rampart", "name": "Rempart", "description": "Un mur entier dans ton sac.", "shape": [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [1, 2]], "tags": ["Armure", "Bois", "Métal"], "tier": 3, "rarity": "epic", "price": 20, "cooldown": 3, "triggers": [{"type": "onCombatStart"}], "effects": [{"type": "shield", "value": 9}]},
+  {"id": "prism_elixir", "name": "Élixir prismatique", "description": "Bu : soin et purge. Lancé : poison, brûlure et gel.", "shape": [[0, 0]], "tags": ["Potion", "Verre", "Magie"], "tier": 3, "rarity": "epic", "price": 18, "charges": 2, "manual": true, "effects": [{"type": "heal", "value": 20}, {"type": "purge"}], "throwEffects": [{"type": "poison", "value": 5}, {"type": "burn", "value": 4}, {"type": "freeze", "duration": 2, "count": 2}], "onEmpty": {"transformInto": "empty_bottle"}},
+  {"id": "alembic", "name": "Alambic", "description": "Remplit les bouteilles vides voisines pendant le combat.", "shape": [[0, 0], [0, 1]], "tags": ["Outil", "Verre"], "rarity": "uncommon", "price": 7, "cooldown": 6, "effects": [{"type": "fill", "into": "health_potion", "charges": 1, "target": "adjacent", "filter": {"tag": "Vide"}}]},
+  {"id": "bag_patch_3", "name": "Coin de sac", "description": "Extension : +3 cases en L.", "shape": [[0, 0], [1, 0], [0, 1]], "tags": ["Extension"], "rarity": "rare", "price": 10, "extends": true},
+  {"id": "bag_patch_4", "name": "Poche cousue", "description": "Extension : +4 cases.", "shape": [[0, 0], [1, 0], [0, 1], [1, 1]], "tags": ["Extension"], "rarity": "epic", "price": 14, "extends": true}
 ]

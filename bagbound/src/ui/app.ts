@@ -2,7 +2,12 @@
 // Le moteur ne sait rien du rendu : on lui envoie des placements, on lit son
 // état et son journal d'événements.
 
+import type { RunData } from "../content/runData";
 import type { Encounter, Sandbox } from "../content/sandbox";
+import type { Recipe } from "../content/recipes";
+import { autoPlace } from "../game/autoplace";
+import { applyFusion, findFusions, type FusionOption } from "../game/fusion";
+import * as R from "../game/run";
 import { Bag } from "../game/bag";
 import { combatResult, createCombat, queueAction, stepCombat } from "../engine/combat";
 import { key } from "../engine/geometry";
@@ -21,6 +26,8 @@ type Hit =
   | { kind: "stash"; uid: string }
   | { kind: "fight"; uid: string }
   | { kind: "enemy"; index: number }
+  | { kind: "node"; id: string }
+  | { kind: "fuse"; index: number }
   | { kind: "none" };
 
 interface Fight {
@@ -58,6 +65,28 @@ interface Press {
 }
 
 const SAVE_KEY = "bagbound-atelier-v1";
+const RUN_KEY = "bagbound-run-v1";
+const STATS_KEY = "bagbound-stats-v1";
+
+const NODE_LOOK: Record<string, { icon: string; color: string; name: string }> = {
+  combat: { icon: "⚔️", color: "#8a4a3a", name: "Combat" },
+  elite: { icon: "💀", color: "#7a2a4a", name: "Élite" },
+  boss: { icon: "👑", color: "#a0322a", name: "Boss" },
+  shop: { icon: "💰", color: "#9a7a2a", name: "Boutique" },
+  event: { icon: "❓", color: "#3a5a8a", name: "Événement" },
+  chest: { icon: "🎁", color: "#6a4a8a", name: "Coffre" },
+  campfire: { icon: "🔥", color: "#a0602a", name: "Feu de camp" },
+};
+
+const iconCache = new Map<string, string>();
+function iconUrl(id: string): string {
+  let u = iconCache.get(id);
+  if (!u) {
+    u = spriteCanvas(id).toDataURL();
+    iconCache.set(id, u);
+  }
+  return u;
+}
 const LONG_MS = 430;
 const TICK_S = 0.1;
 
@@ -101,11 +130,23 @@ export class App {
   private tipFor = "";
   /** Dernier type de pointeur : l'appui long tactile déclenche aussi « contextmenu ». */
   private lastPointer = "mouse";
+  /** Atelier (bac à sable) ou run. */
+  private ctx: "sandbox" | "run" = "sandbox";
+  private run: R.RunState | null = null;
+  private selectedNode: string | null = null;
+  private nodePos = new Map<string, { x: number; y: number; r: number }>();
+  /** Fusions possibles dans le sac (hors combat) et position de leur pastille. */
+  private fusions: FusionOption[] = [];
+  private fuseBadges: { x: number; y: number; r: number }[] = [];
+  /** Marge (en cases) autour du sac pour poser une extension. */
+  private margin = 0;
 
   constructor(
     private stage: HTMLElement,
     private content: Content,
     private sandbox: Sandbox,
+    private runData: RunData,
+    private recipes: Recipe[],
   ) {
     this.cls = content.classes[sandbox.class];
     this.encounter = sandbox.encounters[0];
@@ -133,6 +174,7 @@ export class App {
     this.refreshPreview();
     this.renderBar();
     requestAnimationFrame((t) => this.frame(t));
+    this.showMenu();
   }
 
   // -------------------------------------------------------------------------
@@ -140,7 +182,7 @@ export class App {
   // -------------------------------------------------------------------------
 
   private defaultBag(): Bag {
-    const bag = new Bag(this.content, this.cls.bagCells);
+    const bag = new Bag(this.content, this.cls.bagCells, this.cls.maxBag);
     for (const p of this.cls.startingBag) bag.add(p.item, p.pos, p.rot ?? 0, p.mirror === true);
     for (const id of this.sandbox.stash) bag.add(id);
     return bag;
@@ -151,7 +193,7 @@ export class App {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return;
       const data = JSON.parse(raw);
-      const bag = Bag.fromJSON(this.content, this.cls.bagCells, data.bag);
+      const bag = Bag.fromJSON(this.content, this.cls.bagCells, data.bag, this.cls.maxBag);
       if (bag.entries.length) this.bag = bag;
       const enc = this.sandbox.encounters.find((e) => e.id === data.encounter);
       if (enc) this.encounter = enc;
@@ -173,11 +215,12 @@ export class App {
     const placed = this.bag.placed();
     this.preview = createCombat(this.content, {
       seed: 1,
-      player: { hp: this.cls.hp, bag: this.bag.placements() },
+      player: { hp: this.run?.hp ?? this.cls.hp, maxHp: this.run?.maxHp, bag: this.bag.placements() },
       enemies: this.encounter.enemies.map((id) => ({ id })),
     });
     this.uidMap.clear();
     placed.forEach((e, i) => this.uidMap.set(e.uid, `0:${i}`));
+    this.fusions = findFusions(this.bag, this.recipes);
   }
 
   private previewItem(uid: string): ItemInstance | undefined {
@@ -187,7 +230,10 @@ export class App {
 
   private bagChanged(): void {
     this.refreshPreview();
-    this.save();
+    if (this.ctx === "run" && this.run) {
+      this.run.bag = this.bag.toJSON();
+      this.saveRun();
+    } else this.save();
   }
 
   // -------------------------------------------------------------------------
@@ -204,7 +250,10 @@ export class App {
     this.canvas.style.width = `${W}px`;
     this.canvas.style.height = `${H}px`;
     const b = this.bag.bounds();
-    this.L = computeLayout(W, H, b.w, b.h, this.mode === "prep");
+    // marge d'une case autour du sac quand une extension attend dans la réserve
+    const dragExt = this.drag ? this.bag.isExtension(this.bag.get(this.drag.uid)!) : false;
+    this.margin = this.mode === "prep" && (dragExt || this.bag.stashed().some((e) => this.bag.isExtension(e))) ? 1 : 0;
+    this.L = computeLayout(W, H, b.w + 2 * this.margin, b.h + 2 * this.margin, this.mode === "prep");
     const bar = this.L.bar;
     Object.assign(this.barEl.style, { left: `${bar.x}px`, top: `${bar.y}px`, width: `${bar.w}px`, height: `${bar.h}px` });
     this.packStash();
@@ -212,7 +261,8 @@ export class App {
 
   private gridOrigin(): { ox: number; oy: number } {
     const b = this.bag.bounds();
-    return { ox: this.L.gx - b.minX * this.L.cell, oy: this.L.gy - b.minY * this.L.cell };
+    const m = this.margin;
+    return { ox: this.L.gx - (b.minX - m) * this.L.cell, oy: this.L.gy - (b.minY - m) * this.L.cell };
   }
 
   private packStash(): void {
@@ -260,9 +310,13 @@ export class App {
       this.packStash();
       return;
     }
-    this.pagerEl.hidden = this.stashPages <= 1;
-    this.pagerEl.innerHTML = `<button type="button" data-p="-1" aria-label="Page précédente">◀</button><span>${this.stashPage + 1}/${this.stashPages}</span><button type="button" data-p="1" aria-label="Page suivante">▶</button>`;
-    Object.assign(this.pagerEl.style, { left: `${r.x + r.w - 118}px`, top: `${r.y - 2}px` });
+    this.pagerEl.hidden = false;
+    const pagerHtml =
+      this.stashPages > 1
+        ? `<button type="button" data-p="-1" aria-label="Page précédente">◀</button><span>${this.stashPage + 1}/${this.stashPages}</span><button type="button" data-p="1" aria-label="Page suivante">▶</button>`
+        : "";
+    this.pagerEl.innerHTML = `<button type="button" class="bb-auto" data-auto title="Poser automatiquement les objets de la réserve">Ranger</button>${pagerHtml}`;
+    Object.assign(this.pagerEl.style, { left: `${r.x + 80}px`, top: `${r.y - 2}px`, width: `${r.w - 86}px` });
   }
 
   // -------------------------------------------------------------------------
@@ -270,6 +324,20 @@ export class App {
   // -------------------------------------------------------------------------
 
   private renderBar(): void {
+    if (this.mode === "prep" && this.ctx === "run" && this.run) {
+      const r = this.run;
+      const zone = this.runData.zones[r.zone];
+      const reopen =
+        r.phase === "shop" ? `<button type="button" class="bb-btn bb-go" data-reopen>💰 Boutique</button>`
+        : r.phase !== "map" && r.phase !== "combat" ? `<button type="button" class="bb-btn bb-go" data-reopen>↩ Reprendre</button>` : "";
+      this.barEl.innerHTML = `
+        <span class="bb-hud" title="Points de vie">❤ ${r.hp}/${r.maxHp}</span>
+        <span class="bb-hud bb-gold" title="Or">● ${r.gold}</span>
+        <span class="bb-floor" title="${esc(zone?.name ?? "")}">Étage ${r.floor + 1}/${zone?.floors.length ?? 1}</span>
+        ${reopen}
+        <button type="button" class="bb-btn" data-menu aria-label="Menu">☰</button>`;
+      return;
+    }
     if (this.mode === "prep") {
       const opts = this.sandbox.encounters
         .map((e) => `<option value="${esc(e.id)}"${e.id === this.encounter.id ? " selected" : ""}>${esc(e.name)}</option>`)
@@ -277,7 +345,8 @@ export class App {
       this.barEl.innerHTML = `
         <label class="bb-enc"><span class="sr-only">Rencontre</span><select data-enc>${opts}</select></label>
         <button type="button" class="bb-btn" data-reset title="Revenir au sac de départ">↺</button>
-        <button type="button" class="bb-btn bb-go" data-fight>⚔ Combattre</button>`;
+        <button type="button" class="bb-btn bb-go" data-fight>⚔ Combattre</button>
+        <button type="button" class="bb-btn" data-menu aria-label="Menu">☰</button>`;
     } else {
       const f = this.fight!;
       const sp = [1, 2, 4].map((s) => `<button type="button" class="bb-btn bb-speed${f.speed === s ? " is-on" : ""}" data-speed="${s}">x${s}</button>`).join("");
@@ -286,11 +355,13 @@ export class App {
         ${sp}
         <span class="bb-time" data-time>0,0 s</span>
         <button type="button" class="bb-btn" data-skip title="Aller à la fin">⏭</button>
-        <button type="button" class="bb-btn" data-quit title="Retour à l'atelier">✕</button>`;
+        ${this.ctx === "sandbox" ? `<button type="button" class="bb-btn" data-quit title="Retour à l'atelier">✕</button>` : ""}`;
     }
   }
 
   private onBarClick(t: HTMLElement): void {
+    if (t.closest("[data-menu]")) return this.showMenu();
+    if (t.closest("[data-reopen]")) return this.showPhase();
     if (t.closest("[data-fight]")) return this.startFight();
     if (t.closest("[data-reset]")) {
       this.bag = this.defaultBag();
@@ -324,12 +395,14 @@ export class App {
   private startFight(seed?: number): void {
     this.hideTip();
     this.closeModal();
-    const s = seed ?? Math.floor(Math.random() * 4294967296) >>> 0;
-    const state = createCombat(
-      this.content,
-      { seed: s, player: { hp: this.cls.hp, bag: this.bag.placements() }, enemies: this.encounter.enemies.map((id) => ({ id })) },
-      { record: true },
-    );
+    let setup;
+    if (this.ctx === "run" && this.run) setup = R.combatSetup(this.run);
+    else {
+      const sd = seed ?? Math.floor(Math.random() * 4294967296) >>> 0;
+      setup = { seed: sd, player: { hp: this.cls.hp, bag: this.bag.placements() }, enemies: this.encounter.enemies.map((id) => ({ id })) };
+    }
+    const s = setup.seed;
+    const state = createCombat(this.content, setup, { record: true });
     const speed = this.fight?.speed ?? 1;
     this.fight = { state, seed: s, speed, paused: false, acc: 0, endT: 0, suddenShown: false, result: null };
     this.fx.clear();
@@ -470,9 +543,12 @@ export class App {
   // Fenêtres (résultat, inspection)
   // -------------------------------------------------------------------------
 
+  private modalAt = 0;
+
   private showModal(html: string): void {
     this.modalEl.innerHTML = `<div class="bb-card panel">${html}</div>`;
     this.modalEl.hidden = false;
+    this.modalAt = performance.now();
   }
 
   private closeModal(): void {
@@ -512,6 +588,15 @@ export class App {
           .map((x) => `<tr><td>${esc(x.name)}</td>${cols.map(([k]) => `<td>${x[k] || (k === "t" ? 0 : "")}</td>`).join("")}</tr>`)
           .join("")}</tbody></table></div>`
       : "<p>Ton sac était vide !</p>";
+    if (this.ctx === "run") {
+      const names = f.state.combatants.slice(1).map((c) => c.name).join(", ");
+      this.showModal(`
+      <h2 class="bb-title bb-${r.outcome}">${title}</h2>
+      <p class="bb-sub">${esc(names)} · ${r.seconds.toFixed(1).replace(".", ",")} s · PV ${r.player.hp}/${r.player.maxHp}</p>
+      ${table}
+      <div class="bb-actions"><button type="button" class="btn btn-small" data-continue>Continuer</button></div>`);
+      return;
+    }
     this.showModal(`
       <h2 class="bb-title bb-${r.outcome}">${title}</h2>
       <p class="bb-sub">${esc(this.encounter.name)} · ${r.seconds.toFixed(1).replace(".", ",")} s · PV ${r.player.hp}/${r.player.maxHp}</p>
@@ -538,12 +623,517 @@ export class App {
       <div class="bb-actions"><button type="button" class="btn btn-small" data-close>Fermer</button></div>`);
   }
 
+
+  // -------------------------------------------------------------------------
+  // Run : menu, phases, actions
+  // -------------------------------------------------------------------------
+
+  private loadSavedRun(): R.RunState | null {
+    try {
+      const r = R.parseRun(localStorage.getItem(RUN_KEY));
+      return r && r.phase !== "dead" && r.phase !== "won" && this.content.classes[r.cls] ? r : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private saveRun(): void {
+    if (!this.run) return;
+    try {
+      if (this.run.phase === "dead" || this.run.phase === "won") localStorage.removeItem(RUN_KEY);
+      else localStorage.setItem(RUN_KEY, R.serializeRun(this.run));
+    } catch {
+      /* stockage indisponible */
+    }
+  }
+
+  private stats(): { runs: number; wins: number; best: number } {
+    try {
+      const s = JSON.parse(localStorage.getItem(STATS_KEY) ?? "null");
+      if (s && typeof s.runs === "number") return s;
+    } catch {
+      /* rien */
+    }
+    return { runs: 0, wins: 0, best: 0 };
+  }
+
+  private recordEnd(run: R.RunState): void {
+    const s = this.stats();
+    s.runs++;
+    if (run.phase === "won") s.wins++;
+    const depth = run.zone * 10 + run.floor + 1;
+    s.best = Math.max(s.best, depth);
+    try {
+      localStorage.setItem(STATS_KEY, JSON.stringify(s));
+    } catch {
+      /* rien */
+    }
+  }
+
+  private showMenu(): void {
+    this.hideTip();
+    const saved = this.ctx === "run" && this.run ? this.run : this.loadSavedRun();
+    const st = this.stats();
+    const inRun = this.ctx === "run" && this.run && this.mode === "prep";
+    const cont = saved
+      ? `<button type="button" class="btn" data-act="continue">▶ Continuer la partie <small>(étage ${saved.floor + 1}, ${saved.hp}/${saved.maxHp} PV)</small></button>`
+      : "";
+    const record = st.runs ? `<p class="bb-seed">${st.runs} partie(s) · ${st.wins} victoire(s)</p>` : "";
+    this.showModal(`
+      <h2 class="bb-title bb-logo">BAGBOUND</h2>
+      <p class="bb-sub">Range ton sac. Le reste se joue tout seul.</p>
+      <div class="bb-menu">
+        ${inRun ? `<button type="button" class="btn" data-act="resume">Reprendre</button>` : cont}
+        <button type="button" class="btn${saved ? " btn-ghost" : ""}" data-act="new">${saved ? "Nouvelle partie" : "▶ Nouvelle partie"}</button>
+        <button type="button" class="btn btn-ghost" data-act="sandbox">Atelier (essais libres)</button>
+        ${inRun ? `<button type="button" class="btn btn-ghost bb-danger" data-act="abandon">Abandonner la partie</button>` : ""}
+      </div>
+      ${record}`);
+  }
+
+  private startRun(run: R.RunState): void {
+    this.ctx = "run";
+    this.run = run;
+    this.cls = this.content.classes[run.cls];
+    this.bag = Bag.fromJSON(this.content, this.cls.bagCells, run.bag, this.cls.maxBag);
+    this.stashPage = 0;
+    this.selectedNode = null;
+    this.fight = null;
+    this.mode = "prep";
+    this.fx.clear();
+    this.saveRun();
+    this.resize();
+    this.refreshPreview();
+    this.showPhase();
+  }
+
+  private toSandbox(): void {
+    this.ctx = "sandbox";
+    this.run = null;
+    this.cls = this.content.classes[this.sandbox.class];
+    this.bag = this.defaultBag();
+    this.load();
+    this.toPrep();
+  }
+
+  /** Recharge le sac depuis la run (après un butin, un achat, un événement…). */
+  private syncBagFromRun(): void {
+    if (!this.run) return;
+    this.bag = Bag.fromJSON(this.content, this.cls.bagCells, this.run.bag, this.cls.maxBag);
+    this.packStash();
+    this.refreshPreview();
+  }
+
+  private commit(): void {
+    this.syncBagFromRun();
+    this.saveRun();
+    if (this.run && (this.run.phase === "dead" || this.run.phase === "won")) this.recordEnd(this.run);
+    this.showPhase();
+  }
+
+  /** Affiche l'écran qui correspond à la phase de la run. */
+  private showPhase(): void {
+    const run = this.run;
+    if (!run) return;
+    if (run.phase === "combat") {
+      if (this.mode !== "combat") this.startFight();
+      return;
+    }
+    if (this.mode !== "prep") {
+      this.fight = null;
+      this.mode = "prep";
+      this.fx.clear();
+      this.resize();
+    }
+    this.renderBar();
+    const p = run.pending;
+    switch (run.phase) {
+      case "map":
+        this.closeModal();
+        break;
+      case "reward": {
+        const r = p as Extract<R.Pending, { kind: "reward" }>;
+        this.showModal(`
+          <h2 class="bb-title bb-win">${r.boss ? "Le boss est vaincu !" : "Butin"}</h2>
+          <p class="bb-sub">+${r.gold} or · choisis un objet (il va dans ta réserve)</p>
+          <div class="bb-cards">${r.choices.map((id) => this.itemCard(id, `<button type="button" class="btn btn-small" data-act="reward:${id}">Prendre</button>`)).join("")}</div>
+          <div class="bb-actions"><button type="button" class="btn btn-small btn-ghost" data-act="reward:">Ne rien prendre</button></div>`);
+        break;
+      }
+      case "chest": {
+        const c = p as Extract<R.Pending, { kind: "chest" }>;
+        this.showModal(`
+          <h2 class="bb-title">Coffre</h2>
+          <p class="bb-sub">+${c.gold} or · et un objet au choix</p>
+          <div class="bb-cards">${c.choices.map((id) => this.itemCard(id, `<button type="button" class="btn btn-small" data-act="chest:${id}">Prendre</button>`)).join("")}</div>
+          <div class="bb-actions"><button type="button" class="btn btn-small btn-ghost" data-act="chest:">Juste l'or</button></div>`);
+        break;
+      }
+      case "campfire": {
+        const rr = this.runData.rules.campfire;
+        const heal = Math.min(run.maxHp - run.hp, Math.round(run.maxHp * rr.healPct));
+        this.showModal(`
+          <h2 class="bb-title">Feu de camp</h2>
+          <p class="bb-sub">Les braises crépitent. ${run.hp}/${run.maxHp} PV.</p>
+          <div class="bb-menu">
+            <button type="button" class="btn" data-act="camp:rest">🔥 Se reposer <small>(+${heal} PV)</small></button>
+            <button type="button" class="btn btn-ghost" data-act="camp:train">💪 S'entraîner <small>(+${rr.maxHp} PV max)</small></button>
+          </div>`);
+        break;
+      }
+      case "shop":
+        this.showShop();
+        break;
+      case "event":
+        this.showEvent();
+        break;
+      case "dead":
+      case "won":
+        this.showEnd(run);
+        break;
+    }
+  }
+
+  private itemCard(id: string, action: string, note = ""): string {
+    const def = this.content.items[id];
+    const info = describeItem(def);
+    const col = RARITY_COLOR[def.rarity] ?? RARITY_COLOR.common;
+    const lines = info.lines.filter((l) => l.kind !== "note" && l.kind !== "manual").map((l) => `<li>${esc(l.text)}</li>`).join("");
+    return `<div class="bb-item" style="--rc:${col}">
+      <img src="${iconUrl(id)}" alt="" width="48" height="48">
+      <div class="bb-item-body"><p class="bb-tip-name">${esc(def.name)} <small>${esc(info.rarity)}</small></p>
+      <div class="bb-tags">${def.tags.map((t) => `<span class="bb-tag">${esc(t)}</span>`).join("")}</div>
+      <ul>${lines}</ul>${note}</div>
+      <div class="bb-item-act">${action}</div></div>`;
+  }
+
+  private showShop(): void {
+    const run = this.run!;
+    const p = run.pending as Extract<R.Pending, { kind: "shop" }>;
+    const rr = this.runData.rules.shop;
+    const stock = p.stock
+      .map((s, i) =>
+        this.itemCard(
+          s.item,
+          s.sold
+            ? `<span class="bb-sold">Vendu</span>`
+            : `<button type="button" class="btn btn-small" data-act="buy:${i}"${run.gold < s.price ? " disabled" : ""}>● ${s.price}</button>`,
+        ),
+      )
+      .join("");
+    const sellable = run.bag.entries
+      .map((e, i) => ({ e, i }))
+      .sort((a, b) => (a.e.pos === null ? 0 : 1) - (b.e.pos === null ? 0 : 1));
+    const sell = sellable
+      .map(
+        ({ e, i }) =>
+          `<li><img src="${iconUrl(e.item)}" alt="" width="24" height="24"><span>${esc(this.content.items[e.item].name)}${e.pos ? " <small>(dans le sac)</small>" : ""}</span><button type="button" class="btn btn-small btn-ghost" data-act="sell:${i}">+${R.sellPrice(this.content, this.runData, e.item)}</button></li>`,
+      )
+      .join("");
+    const reroll = R.rerollCost(run, this.runData);
+    const fused = run.bag.entries
+      .map((e, i) => ({ e, i }))
+      .filter(({ e }) => e.fusedFrom?.length)
+      .map(
+        ({ e, i }) =>
+          `<li><img src="${iconUrl(e.item)}" alt="" width="24" height="24"><span>${esc(this.content.items[e.item].name)} <small>→ ${e.fusedFrom!.map((x) => esc(this.content.items[x].name)).join(" + ")}</small></span><button type="button" class="btn btn-small btn-ghost" data-act="unfuse:${i}"${run.gold < rr.unfuseCost ? " disabled" : ""}>Défaire</button></li>`,
+      )
+      .join("");
+    const bottles = R.emptyBottles(run, this.runData);
+    this.showModal(`
+      <h2 class="bb-title">Boutique</h2>
+      <p class="bb-sub">Tu as <b>● ${run.gold}</b> or · ${run.hp}/${run.maxHp} PV. Les achats vont dans ta réserve.</p>
+      <div class="bb-cards">${stock}</div>
+      <div class="bb-actions bb-left">
+        <button type="button" class="btn btn-small btn-ghost" data-act="reroll"${run.gold < reroll ? " disabled" : ""}>↻ Renouveler (● ${reroll})</button>
+        <button type="button" class="btn btn-small btn-ghost" data-act="heal"${run.gold < rr.healCost || run.hp >= run.maxHp ? " disabled" : ""}>❤ +${rr.healAmount} PV (● ${rr.healCost})</button>
+      </div>
+      <details class="bb-sell"><summary>Vendre un objet</summary><ul>${sell || "<li>Rien à vendre.</li>"}</ul></details>
+      ${fused ? `<details class="bb-sell"><summary>Défusionner (● ${rr.unfuseCost})</summary><ul>${fused}</ul></details>` : ""}
+      ${bottles ? `<div class="bb-actions bb-left"><button type="button" class="btn btn-small btn-ghost" data-act="refill"${run.gold < bottles * this.runData.rules.refill.cost ? " disabled" : ""}>🧪 Remplir ${bottles} bouteille(s) vide(s) (● ${bottles * this.runData.rules.refill.cost})</button></div>` : ""}
+      <div class="bb-actions">
+        <button type="button" class="btn btn-small btn-ghost" data-close>Ranger mon sac</button>
+        <button type="button" class="btn btn-small" data-act="leave">Partir →</button>
+      </div>`);
+  }
+
+  private showEvent(): void {
+    const run = this.run!;
+    const ev = R.currentEvent(run, this.runData);
+    const p = run.pending as Extract<R.Pending, { kind: "event" }>;
+    if (!ev) return;
+    const icon = ev.icon ? `<img class="bb-ev-icon" src="${iconUrl(ev.icon)}" alt="" width="64" height="64">` : "";
+    if (p.result !== null) {
+      const msgs = p.messages.length ? `<ul class="bb-msgs">${p.messages.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : "";
+      this.showModal(`
+        ${icon}<h2 class="bb-title">${esc(ev.title)}</h2>
+        <p>${esc(p.result)}</p>${msgs}
+        <div class="bb-actions"><button type="button" class="btn btn-small" data-act="evclose">Continuer</button></div>`);
+      return;
+    }
+    const choices = ev.choices
+      .map((c, i) => {
+        const ok = R.choiceAvailable(run, this.content, c);
+        return `<button type="button" class="btn${i ? " btn-ghost" : ""}" data-act="ev:${i}"${ok ? "" : " disabled"}>${esc(c.label)}</button>`;
+      })
+      .join("");
+    this.showModal(`
+      ${icon}<h2 class="bb-title">${esc(ev.title)}</h2>
+      <p>${esc(ev.text)}</p>
+      <div class="bb-menu">${choices}</div>`);
+  }
+
+  private showEnd(run: R.RunState): void {
+    const won = run.phase === "won";
+    const zone = this.runData.zones[Math.min(run.zone, this.runData.zones.length - 1)];
+    const where = won ? `${esc(zone.name)} traversée !` : `Tombé à ${esc(zone.name)}, étage ${run.floor + 1}.`;
+    const by = !won && run.stats.killedBy ? `<p>Vaincu par : ${esc(run.stats.killedBy.join(", "))}</p>` : "";
+    this.showModal(`
+      <h2 class="bb-title bb-${won ? "win" : "loss"}">${won ? "Victoire !" : "Fin de la partie"}</h2>
+      <p class="bb-sub">${where}</p>${by}
+      <ul class="bb-msgs">
+        <li>${run.stats.combats} combat(s), dont ${run.stats.elites} élite(s)</li>
+        <li>${run.stats.kills} ennemi(s) vaincu(s)</li>
+        <li>${run.stats.goldEarned} or gagné</li>
+      </ul>
+      <p class="bb-seed">Graine de la partie : ${run.seed}</p>
+      <div class="bb-actions">
+        <button type="button" class="btn btn-small btn-ghost" data-act="menu">Menu</button>
+        <button type="button" class="btn btn-small" data-act="new">Nouvelle partie</button>
+      </div>`);
+  }
+
+  private applyFightResult(): void {
+    const f = this.fight;
+    if (this.ctx !== "run" || !this.run || !f?.result) return this.closeModal();
+    if (this.run.phase === "combat") R.finishCombat(this.run, this.content, this.runData, f.result);
+    this.fight = null;
+    this.commit();
+  }
+
+  private onAct(act: string): void {
+    const [cmd, arg = ""] = act.split(":");
+    const run = this.run;
+    try {
+      switch (cmd) {
+        case "continue": {
+          const saved = this.loadSavedRun();
+          if (saved) this.startRun(saved);
+          return;
+        }
+        case "new": {
+          if (this.ctx === "run" && this.run && this.run.phase !== "dead" && this.run.phase !== "won" && !confirm("Abandonner la partie en cours ?")) return;
+          const saved = this.ctx !== "run" ? this.loadSavedRun() : null;
+          if (saved && !confirm("Une partie est en cours. En commencer une nouvelle ?")) return;
+          const seed = Math.floor(Math.random() * 4294967296) >>> 0;
+          this.startRun(R.newRun(this.content, this.runData, this.sandbox.class, seed));
+          return;
+        }
+        case "sandbox":
+          this.closeModal();
+          this.toSandbox();
+          return;
+        case "menu":
+          this.showMenu();
+          return;
+        case "resume":
+          this.closeModal();
+          this.showPhase();
+          return;
+        case "fuse": {
+          const opt = this.fusions[Number(arg)];
+          if (!opt) return;
+          const r = applyFusion(this.bag, opt);
+          this.closeModal();
+          this.stashPage = 0;
+          this.bagChanged();
+          this.resize();
+          const name = this.content.items[r.entry.item].name;
+          this.fx.showBanner(r.placed ? `${name} !` : `${name} → réserve`, "#d9b4ff");
+          if (r.entry.pos) {
+            const { ox, oy } = this.gridOrigin();
+            const cs = this.bag.cellsAt(r.entry, r.entry.pos);
+            for (const [cx, cy] of cs) this.fx.burst(ox + (cx + 0.5) * this.L.cell, oy + (cy + 0.5) * this.L.cell, "#d9b4ff", 6, 70);
+          }
+          return;
+        }
+        case "abandon":
+          if (!run || !confirm("Abandonner la partie ? Elle sera perdue.")) return;
+          run.phase = "dead";
+          run.stats.killedBy = ["l'abandon"];
+          this.commit();
+          return;
+      }
+      if (!run) return;
+      switch (cmd) {
+        case "reward":
+          R.takeReward(run, this.runData, arg || null);
+          break;
+        case "chest":
+          R.takeChest(run, this.runData, arg || null);
+          break;
+        case "camp":
+          R.campfire(run, this.runData, arg === "train" ? "train" : "rest");
+          break;
+        case "buy":
+          R.buy(run, Number(arg));
+          break;
+        case "sell":
+          R.sell(run, this.content, this.runData, Number(arg));
+          break;
+        case "reroll":
+          R.reroll(run, this.content, this.runData);
+          break;
+        case "heal":
+          R.shopHeal(run, this.runData);
+          break;
+        case "unfuse":
+          R.unfuseAt(run, this.runData, Number(arg));
+          break;
+        case "refill":
+          R.refillBottles(run, this.runData);
+          break;
+        case "leave":
+          R.leaveShop(run, this.runData);
+          break;
+        case "ev":
+          R.chooseEvent(run, this.content, this.runData, Number(arg));
+          break;
+        case "evclose":
+          R.closeEvent(run, this.runData);
+          break;
+        default:
+          return;
+      }
+      this.commit();
+    } catch (err) {
+      if (err instanceof R.RunError) console.warn(err.message);
+      else throw err;
+    }
+  }
+
+  private tapNode(id: string): void {
+    const run = this.run;
+    if (!run) return;
+    const can = R.reachable(run).some((n) => n.id === id);
+    if (!can || run.phase !== "map") {
+      this.selectedNode = id;
+      return;
+    }
+    if (this.selectedNode !== id) {
+      this.selectedNode = id;
+      return;
+    }
+    this.selectedNode = null;
+    R.enterNode(run, this.content, this.runData, id);
+    this.commit();
+  }
+
+  private drawMap(run: R.RunState): void {
+    const g = this.g;
+    const A = this.L.arena;
+    this.enemyRects.clear();
+    g.drawImage(arenaBackground(A.w, A.h, false), A.x, A.y, Math.ceil(A.w / 3) * 3, Math.ceil(A.h / 3) * 3);
+    g.fillStyle = "rgba(16, 12, 10, .55)";
+    g.fillRect(A.x, A.y, A.w, A.h);
+    const zw = Math.min(A.w, 640);
+    const zx = Math.round((A.w - zw) / 2);
+    const top = A.y + 40;
+    const bottom = A.y + A.h - 40;
+    const maxRow = Math.max(...run.map.map((n) => n.row));
+    const step = (bottom - top) / Math.max(1, maxRow);
+    const r = Math.max(11, Math.min(20, step * 0.38, zw / 18));
+    this.nodePos.clear();
+    for (const n of run.map) this.nodePos.set(n.id, { x: zx + 24 + n.x * (zw - 48), y: bottom - n.row * step, r });
+    const reach = new Set(R.reachable(run).map((n) => n.id));
+    const pulse = 0.5 + 0.5 * Math.sin(this.time * 5);
+    // chemins
+    for (const n of run.map) {
+      const a = this.nodePos.get(n.id)!;
+      for (const id of n.next) {
+        const b = this.nodePos.get(id)!;
+        const m = run.map.find((x) => x.id === id)!;
+        const walked = n.done && (m.done || run.current === id);
+        const open = run.current === n.id && reach.has(id);
+        g.strokeStyle = walked ? "#ffd27a" : open ? "rgba(255,210,122,.75)" : "rgba(253,243,222,.25)";
+        g.lineWidth = walked ? 4 : open ? 3 : 2;
+        g.setLineDash(walked ? [] : [5, 5]);
+        g.beginPath();
+        g.moveTo(a.x, a.y);
+        g.lineTo(b.x, b.y);
+        g.stroke();
+      }
+    }
+    g.setLineDash([]);
+    // nœuds
+    for (const n of run.map) {
+      const p = this.nodePos.get(n.id)!;
+      const look = NODE_LOOK[n.type];
+      const isReach = reach.has(n.id);
+      const rr = n.type === "boss" ? p.r * 1.35 : p.r;
+      g.globalAlpha = n.done || isReach || n.id === run.current ? 1 : 0.6;
+      if (isReach) {
+        g.fillStyle = `rgba(255, 210, 122, ${0.25 + pulse * 0.35})`;
+        g.beginPath();
+        g.arc(p.x, p.y, rr + 5 + pulse * 2, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.fillStyle = COLORS.dark;
+      g.beginPath();
+      g.arc(p.x, p.y, rr + 2, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = n.done ? "#4a3a30" : look.color;
+      g.beginPath();
+      g.arc(p.x, p.y, rr, 0, Math.PI * 2);
+      g.fill();
+      g.font = `${Math.round(rr * 1.05)}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(look.icon, p.x, p.y + 1);
+      if (n.id === run.current) {
+        g.strokeStyle = COLORS.ink;
+        g.lineWidth = 3;
+        g.beginPath();
+        g.arc(p.x, p.y, rr + 4, 0, Math.PI * 2);
+        g.stroke();
+      }
+      if (n.id === this.selectedNode) {
+        g.strokeStyle = "#ffffff";
+        g.lineWidth = 3;
+        g.setLineDash([4, 3]);
+        g.beginPath();
+        g.arc(p.x, p.y, rr + 7, 0, Math.PI * 2);
+        g.stroke();
+        g.setLineDash([]);
+      }
+      g.globalAlpha = 1;
+    }
+    const zone = this.runData.zones[run.zone];
+    outlinedText(g, `${zone?.name ?? ""} · étage ${run.floor + 1}/${zone?.floors.length ?? 1}`, zx + 12, A.y + 14, "#ffd27a", 13, "left");
+    // étiquette du nœud choisi
+    const sel = this.selectedNode ? run.map.find((x) => x.id === this.selectedNode) : null;
+    let label = run.phase === "map" ? "Touche un nœud lumineux pour choisir ta route" : "";
+    if (sel) {
+      const look = NODE_LOOK[sel.type];
+      const who = sel.enemies?.length ? ` : ${sel.enemies.map((id) => this.content.enemies[id]?.name ?? id).join(", ")}` : "";
+      label = `${look.name}${who}${reach.has(sel.id) ? " · touche encore pour y aller" : ""}`;
+    }
+    if (label) {
+      g.font = "800 12px Nunito, system-ui, sans-serif";
+      const w = Math.min(A.w - 16, g.measureText(label).width + 20);
+      g.fillStyle = "rgba(20,12,16,.75)";
+      g.fillRect(A.x + (A.w - w) / 2, A.y + A.h - 18, w, 17);
+      outlinedText(g, label, A.x + A.w / 2, A.y + A.h - 9, COLORS.ink, 12);
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Infobulles
   // -------------------------------------------------------------------------
 
-  private tipHtml(def: ItemDef, mods?: ItemInstance["mods"], charges?: number | null): string {
+  private tipHtml(def: ItemDef, mods?: ItemInstance["mods"], charges?: number | null, fusedFrom?: string[]): string {
     const info = describeItem(def, { mods, charges });
+    if (fusedFrom?.length) info.lines.push({ kind: "note", text: `Fusion de : ${fusedFrom.map((x) => this.content.items[x]?.name ?? x).join(" + ")}` });
     const col = RARITY_COLOR[def.rarity] ?? RARITY_COLOR.common;
     const tags = info.tags.map((t) => `<span class="bb-tag">${esc(t)}</span>`).join("");
     const lines = info.lines.map((l) => `<li class="bb-l-${l.kind}">${esc(l.text)}</li>`).join("");
@@ -554,6 +1144,7 @@ export class App {
     let def: ItemDef | undefined;
     let mods: ItemInstance["mods"] | undefined;
     let charges: number | null | undefined;
+    let fusedFrom: string[] | undefined;
     let id = "";
     if (hit.kind === "bag" || hit.kind === "stash") {
       const e = this.bag.get(hit.uid);
@@ -562,6 +1153,7 @@ export class App {
       const pi = hit.kind === "bag" ? this.previewItem(e.uid) : undefined;
       mods = pi?.mods;
       charges = e.charges;
+      fusedFrom = e.fusedFrom;
       id = hit.uid;
     } else if (hit.kind === "fight") {
       const it = this.fight?.state.combatants[0].items.find((i) => i.uid === hit.uid);
@@ -573,7 +1165,7 @@ export class App {
     }
     if (!def) return;
     if (this.tipFor !== id || this.tipEl.hidden) {
-      this.tipEl.innerHTML = this.tipHtml(def, mods, charges);
+      this.tipEl.innerHTML = this.tipHtml(def, mods, charges, fusedFrom);
       this.tipFor = id;
     }
     this.tipEl.hidden = false;
@@ -608,6 +1200,15 @@ export class App {
   }
 
   private hitTest(x: number, y: number): Hit {
+    if (this.mode === "prep") {
+      for (let i = this.fuseBadges.length - 1; i >= 0; i--) {
+        const b = this.fuseBadges[i];
+        if (Math.hypot(x - b.x, y - b.y) <= b.r + 6) return { kind: "fuse", index: i };
+      }
+    }
+    if (this.ctx === "run" && this.mode === "prep") {
+      for (const [id, p] of this.nodePos) if (Math.hypot(x - p.x, y - p.y) <= p.r + 6) return { kind: "node", id };
+    }
     for (const [i, r] of this.enemyRects) if (inRect(r, x, y)) return { kind: "enemy", index: i };
     const [cx, cy] = this.gridCellAt(x, y);
     if (this.mode === "combat" && this.fight) {
@@ -634,6 +1235,8 @@ export class App {
     cv.addEventListener("pointermove", (ev) => this.onMove(ev));
     cv.addEventListener("pointerup", (ev) => this.onUp(ev));
     cv.addEventListener("pointercancel", (ev) => this.onCancel(ev));
+    // pas de « clic » synthétique après un toucher : il tomberait sur la fenêtre qui vient de s'ouvrir
+    cv.addEventListener("touchend", (ev) => { if (ev.cancelable) ev.preventDefault(); }, { passive: false });
     cv.addEventListener("pointerleave", (ev) => {
       // en tactile, pointerleave suit chaque relâchement : on ne ferme que pour la souris
       if (ev.pointerType === "mouse" && !this.press && !this.drag) {
@@ -662,6 +1265,14 @@ export class App {
       }
     });
     this.pagerEl.addEventListener("click", (ev) => {
+      if ((ev.target as HTMLElement).closest("[data-auto]")) {
+        const n = autoPlace(this.bag);
+        if (n) {
+          this.packStash();
+          this.bagChanged();
+        }
+        return;
+      }
       const b = (ev.target as HTMLElement).closest<HTMLElement>("[data-p]");
       if (!b) return;
       this.stashPage = (this.stashPage + Number(b.dataset.p) + this.stashPages) % this.stashPages;
@@ -669,6 +1280,11 @@ export class App {
     });
     this.modalEl.addEventListener("click", (ev) => {
       const t = ev.target as HTMLElement;
+      const act = t.closest<HTMLElement>("[data-act]");
+      if (act && !(act as HTMLButtonElement).disabled) return this.onAct(act.dataset.act!);
+      if (t.closest("[data-continue]")) return this.applyFightResult();
+      if (t === this.modalEl && performance.now() - this.modalAt < 400) return;
+      if (t === this.modalEl && this.ctx === "run" && this.run && this.run.phase !== "map") return;
       if (t.closest("[data-again]")) this.startFight();
       else if (t.closest("[data-replay]") && this.fight) this.startFight(this.fight.seed);
       else if (t.closest("[data-prep]")) this.toPrep();
@@ -787,7 +1403,14 @@ export class App {
       case "enemy":
         this.inspectEnemy(h.index);
         break;
+      case "node":
+        this.tapNode(h.id);
+        break;
+      case "fuse":
+        this.showFusion(h.index);
+        break;
       default:
+        if (this.selectedNode) this.selectedNode = null;
         this.hideTip();
     }
   }
@@ -811,7 +1434,7 @@ export class App {
           else this.rotateEntry(this.hover.hit.uid);
         } else return;
         ev.preventDefault();
-      } else if (k === "enter" && this.modalEl.hidden) {
+      } else if (k === "enter" && this.modalEl.hidden && this.ctx === "sandbox") {
         this.startFight();
         ev.preventDefault();
       }
@@ -847,7 +1470,8 @@ export class App {
       gy = (y - oy) / this.L.cell - e.pos![1];
     }
     this.drag = { uid, pointerId, gx, gy, rot: e.rot, mirror: e.mirror, fromStash, x, y };
-    this.packStash();
+    if (this.bag.isExtension(e) && this.margin === 0) this.resize();
+    else this.packStash();
   }
 
   private rotateDrag(): void {
@@ -881,12 +1505,14 @@ export class App {
       this.bag.entries = [e, ...this.bag.entries.filter((x) => x !== e)];
       this.stashPage = 0;
     } else if (anchor && this.bag.check(d.uid, anchor, d.rot, d.mirror).ok) {
+      const ext = this.bag.isExtension(e);
       this.bag.move(d.uid, anchor, d.rot, d.mirror);
+      if (ext) this.fx.showBanner("Le sac s'agrandit !", "#ffd27a");
     } else {
       this.fx.shake.set(d.uid, 0.3);
     }
-    this.packStash();
     this.bagChanged();
+    this.resize();
   }
 
   private rotateEntry(uid: string): void {
@@ -985,6 +1611,8 @@ export class App {
   }
 
   private drawArena(st: CombatState): void {
+    if (this.ctx === "run" && this.mode === "prep" && this.run) return this.drawMap(this.run);
+    this.nodePos.clear();
     const g = this.g;
     const A = this.L.arena;
     const danger = this.mode === "combat" && st.timeMs > st.rules.suddenDeath.startMs;
@@ -1109,8 +1737,16 @@ export class App {
       return;
     }
 
-    // aperçu de dépôt
+    // extension en main : cases du bord où elle peut aller
     const d = this.drag;
+    if (d && this.bag.isExtension(this.bag.get(d.uid)!)) {
+      g.strokeStyle = "rgba(255, 210, 122, .7)";
+      g.lineWidth = 2;
+      g.setLineDash([4, 4]);
+      for (const [x, y] of this.bag.extensionSlots()) g.strokeRect(ox + x * L.cell + 4, oy + y * L.cell + 4, L.cell - 8, L.cell - 8);
+      g.setLineDash([]);
+    }
+    // aperçu de dépôt
     const anchor = this.dragAnchor();
     if (d && anchor && inRect(L.grid, d.x, d.y, L.cell * 0.5)) {
       const chk = this.bag.check(d.uid, anchor, d.rot, d.mirror);
@@ -1129,6 +1765,73 @@ export class App {
         shake: this.fx.shake.get(e.uid),
       });
     }
+    this.drawFuseBadges(ox, oy);
+  }
+
+  /** Pastilles ⚗ entre les objets qui peuvent fusionner. */
+  private drawFuseBadges(ox: number, oy: number): void {
+    const g = this.g;
+    const c = this.L.cell;
+    this.fuseBadges = [];
+    if (this.drag) return;
+    const r = Math.max(10, Math.min(16, c * 0.22));
+    const pulse = 0.5 + 0.5 * Math.sin(this.time * 4);
+    for (const opt of this.fusions) {
+      const cells = opt.uids.flatMap((u) => {
+        const e = this.bag.get(u);
+        return e?.pos ? this.bag.cellsAt(e, e.pos) : [];
+      });
+      if (!cells.length) continue;
+      // point de contact : milieu des centres des ingrédients
+      const centers = opt.uids.map((u) => {
+        const e = this.bag.get(u)!;
+        const cs = this.bag.cellsAt(e, e.pos!);
+        return [cs.reduce((a, q) => a + q[0], 0) / cs.length, cs.reduce((a, q) => a + q[1], 0) / cs.length];
+      });
+      let x = ox + (centers.reduce((a, q) => a + q[0], 0) / centers.length + 0.5) * c;
+      let y = oy + (centers.reduce((a, q) => a + q[1], 0) / centers.length + 0.5) * c;
+      for (let k = 0; k < 6 && this.fuseBadges.some((b) => Math.hypot(b.x - x, b.y - y) < r * 2); k++) {
+        x += r * 1.6;
+        y += r * 0.4;
+      }
+      this.fuseBadges.push({ x, y, r });
+      g.fillStyle = `rgba(180, 122, 232, ${0.35 + pulse * 0.3})`;
+      g.beginPath();
+      g.arc(x, y, r + 4, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = COLORS.dark;
+      g.beginPath();
+      g.arc(x, y, r + 1.5, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = opt.recipe.kind === "upgrade" ? "#f2b84a" : "#b47ae8";
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fill();
+      g.font = `${Math.round(r * 1.2)}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(opt.recipe.kind === "upgrade" ? "⬆️" : "⚗️", x, y + 1);
+    }
+  }
+
+  private showFusion(index: number): void {
+    const opt = this.fusions[index];
+    if (!opt) return;
+    const res = this.content.items[opt.recipe.result];
+    const ings = opt.uids
+      .map((u) => this.bag.get(u)?.item)
+      .filter((x): x is string => !!x)
+      .map((id) => `<span class="bb-ing"><img src="${iconUrl(id)}" alt="" width="40" height="40"><small>${esc(this.content.items[id].name)}</small></span>`)
+      .join('<span class="bb-plus">+</span>');
+    this.showModal(`
+      <h2 class="bb-title">${opt.recipe.kind === "upgrade" ? "Amélioration" : "Fusion"}</h2>
+      <div class="bb-recipe">${ings}<span class="bb-plus">→</span></div>
+      <div class="bb-cards">${this.itemCard(res.id, "")}</div>
+      <p class="bb-seed">Les ingrédients disparaissent. Le résultat prend leur place s'il y rentre, sinon il va dans ta réserve.${this.ctx === "run" ? " Une boutique peut le défusionner contre de l'or." : ""}</p>
+      <div class="bb-actions">
+        <button type="button" class="btn btn-small btn-ghost" data-close>Annuler</button>
+        <button type="button" class="btn btn-small" data-act="fuse:${index}">⚗ Fusionner</button>
+      </div>`);
   }
 
   private drawStash(): void {

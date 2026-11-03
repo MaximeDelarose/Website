@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261107at110">
-  <link rel="stylesheet" href="bagbound/app/bagbound.css?v=85739dc7">
+  <link rel="stylesheet" href="bagbound/app/bagbound.css?v=abda45bc">
 </head>
 <body data-page="bagbound">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -81,12 +81,15 @@
         <div class="panel game-help">
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
-            <li>Le combat est <strong>entièrement automatique</strong> : tout se joue dans le <strong>rangement de ton sac</strong>. Chaque objet a une barre qui se remplit ; pleine, l'objet frappe, protège ou soigne.</li>
-            <li><strong>Glisse</strong> les objets de la réserve vers le sac. <strong>Touche</strong> un objet pour le tourner (ou <kbd>R</kbd> / clic droit, <kbd>M</kbd> pour le miroir). <strong>Touche longtemps</strong> (ou survole à la souris) pour voir ce qu'il fait.</li>
+            <li><strong>Nouvelle partie</strong> : traverse la Forêt des Murmures (3 étages) jusqu'à la Gardienne des ronces. Sur la carte, touche un nœud lumineux pour voir ce qui t'attend, touche-le encore pour y aller : ⚔️ combat, 💀 élite, 💰 boutique, ❓ événement, 🎁 coffre, 🔥 feu de camp, 👑 boss.</li>
+            <li>Le combat est <strong>entièrement automatique</strong> : tout se joue dans le <strong>rangement de ton sac</strong>. Chaque objet a une barre qui se remplit ; pleine, l'objet frappe, protège ou soigne. Tes <strong>PV</strong> et les <strong>charges de tes potions</strong> restent d'un combat à l'autre.</li>
+            <li><strong>Glisse</strong> les objets entre la réserve et le sac (le bouton <strong>Ranger</strong> pose ce qui rentre). <strong>Touche</strong> un objet pour le tourner (ou <kbd>R</kbd> / clic droit, <kbd>M</kbd> pour le miroir). <strong>Touche longtemps</strong> (ou survole à la souris) pour voir ce qu'il fait. Seuls les objets posés dans le sac combattent.</li>
             <li>Les objets <strong>se renforcent entre voisins</strong> : la pierre à aiguiser affûte les armes qui la touchent, la torche enflamme leurs coups, la pointe de l'épée de fer (flèche jaune) renforce l'objet posé devant elle. Le petit <strong>+</strong> vert indique un objet qui reçoit un bonus.</li>
-            <li>Pendant le combat, les <strong>potions</strong> sont la seule action : touche pour boire, touche longtemps (ou clic droit) pour lancer sur l'ennemi. Vide, une potion devient une bouteille… qu'on peut lancer aussi.</li>
-            <li>Touche un ennemi pour <strong>inspecter son sac</strong>. Vitesse x1 / x2 / x4, pause avec <kbd>Espace</kbd>, <kbd>Entrée</kbd> lance le combat.</li>
-            <li>Version d'essai (atelier) : choisis une rencontre, du gobelin jusqu'à la Gardienne des ronces. La carte, la boutique, les fusions et l'histoire arrivent ensuite.</li>
+            <li><strong>Fusions</strong> : quand des objets qui se touchent peuvent fusionner, une pastille ⚗️ (recette) ou ⬆️ (deux objets identiques → version supérieure) apparaît entre eux. Touche-la pour voir le résultat. Certaines recettes demandent 3 ou 4 objets. Une boutique peut défaire une fusion contre de l'or.</li>
+            <li><strong>Extensions</strong> : les pièces de sac (tag Extension) se posent <strong>au bord</strong> du sac (cases en pointillés) et deviennent de nouvelles cases, pour de bon.</li>
+            <li>Pendant le combat, les <strong>potions</strong> sont la seule action : touche pour boire, touche longtemps (ou clic droit) pour lancer sur l'ennemi. Vide, une potion devient une bouteille… qu'on peut lancer, remplir à une source ou en boutique, ou laisser à côté d'un alambic qui la remplit pendant le combat.</li>
+            <li>Touche un ennemi pour <strong>inspecter son sac</strong>. Vitesse x1 / x2 / x4, pause avec <kbd>Espace</kbd>. La partie est sauvegardée à chaque étape : tu peux fermer la page et revenir.</li>
+            <li>L'<strong>Atelier</strong> (menu ☰) permet d'essayer librement tous les objets contre n'importe quelle rencontre.</li>
           </ul>
         </div>
       </div>
@@ -109,6 +112,6 @@
   <script src="js/data.js?v=20261103re4"></script>
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/main.js?v=20261108bb1"></script>
-  <script type="module" src="bagbound/app/bagbound.js?v=85739dc7"></script>
+  <script type="module" src="bagbound/app/bagbound.js?v=abda45bc"></script>
 </body>
 </html>

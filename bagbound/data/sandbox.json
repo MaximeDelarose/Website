@@ -1,19 +1,106 @@
 {
   "class": "vagabond",
   "stash": [
-    "iron_sword", "flame_sword", "poison_dagger", "rusty_dagger", "leather_armor", "spiked_buckler",
-    "banana", "torch", "ice_shard", "hourglass", "tar_pot", "gear", "rage_amulet", "vampire_fang",
-    "bone_trophy", "war_drum", "poison_flask", "frost_flask", "antidote", "health_potion", "whetstone"
+    "iron_sword",
+    "flame_sword",
+    "poison_dagger",
+    "rusty_dagger",
+    "leather_armor",
+    "spiked_buckler",
+    "banana",
+    "torch",
+    "ice_shard",
+    "hourglass",
+    "tar_pot",
+    "gear",
+    "rage_amulet",
+    "vampire_fang",
+    "bone_trophy",
+    "war_drum",
+    "poison_flask",
+    "frost_flask",
+    "antidote",
+    "health_potion",
+    "whetstone",
+    "wooden_sword",
+    "rusty_dagger",
+    "healing_herb",
+    "iron_sword",
+    "wooden_shield",
+    "alembic",
+    "empty_bottle",
+    "bag_patch_1",
+    "bag_patch_3"
   ],
   "encounters": [
-    { "id": "goblin", "name": "Gobelin", "enemies": ["goblin"] },
-    { "id": "slime", "name": "Gluant", "enemies": ["slime"] },
-    { "id": "wolves", "name": "Meute", "enemies": ["wolf", "wolf"] },
-    { "id": "thicket", "name": "Fourrés", "enemies": ["spider", "goblin"] },
-    { "id": "bandits", "name": "Embuscade", "enemies": ["bandit", "goblin_tinker"] },
-    { "id": "elements", "name": "Esprits", "enemies": ["fire_imp", "frost_wisp"] },
-    { "id": "trio", "name": "Lisière", "enemies": ["goblin", "wolf", "spider"] },
-    { "id": "treant", "name": "Sylvanier (élite)", "enemies": ["treant"] },
-    { "id": "warden", "name": "Gardienne des ronces (boss)", "enemies": ["forest_warden"] }
+    {
+      "id": "goblin",
+      "name": "Gobelin",
+      "enemies": [
+        "goblin"
+      ]
+    },
+    {
+      "id": "slime",
+      "name": "Gluant",
+      "enemies": [
+        "slime"
+      ]
+    },
+    {
+      "id": "wolves",
+      "name": "Meute",
+      "enemies": [
+        "wolf",
+        "wolf"
+      ]
+    },
+    {
+      "id": "thicket",
+      "name": "Fourrés",
+      "enemies": [
+        "spider",
+        "goblin"
+      ]
+    },
+    {
+      "id": "bandits",
+      "name": "Embuscade",
+      "enemies": [
+        "bandit",
+        "goblin_tinker"
+      ]
+    },
+    {
+      "id": "elements",
+      "name": "Esprits",
+      "enemies": [
+        "fire_imp",
+        "frost_wisp"
+      ]
+    },
+    {
+      "id": "trio",
+      "name": "Lisière",
+      "enemies": [
+        "goblin",
+        "wolf",
+        "spider"
+      ]
+    },
+    {
+      "id": "treant",
+      "name": "Sylvanier (élite)",
+      "enemies": [
+        "treant"
+      ]
+    },
+    {
+      "id": "warden",
+      "name": "Gardienne des ronces (boss)",
+      "enemies": [
+        "forest_warden"
+      ]
+    }
   ]
 }

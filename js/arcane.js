@@ -13,7 +13,7 @@
   var stage = document.querySelector("[data-arcane]");
   if (!A || !ART || !stage) return;
 
-  var VERSION = "1.1.0";
+  var VERSION = "1.4.0";
   var TW = 96, TH = 48, HW = TW / 2, HH = TH / 2;
   var TAU = Math.PI * 2;
   var canvas = stage.querySelector("canvas");
@@ -167,6 +167,8 @@
     '<button class="at-hbtn" type="button" data-act="inv" title="Sac (I)">🎒<b data-newcount hidden></b></button>' +
     '<button class="at-hbtn" type="button" data-act="quests" title="Quêtes (J)">📜</button>' +
     '<button class="at-hbtn" type="button" data-act="mute" title="Son">🔊</button>' +
+    '<button class="at-hbtn" type="button" data-act="center" title="Recentrer (C)">◎</button>' +
+    '<button class="at-hbtn" type="button" data-act="full" title="Plein écran">⛶</button>' +
     '<button class="at-hbtn" type="button" data-act="pause" title="Menu (Échap)">☰</button></div>' +
     '<div class="at-bar" data-bar></div>' +
     '<div class="at-toasts" data-toasts></div>' +
@@ -185,13 +187,13 @@
     fitZoom(); cam.free = false;
   }
   function fitZoom() {
-    if (w && w.combat) cam.fit = portrait() ? clamp(W / 560, 0.6, 1) : clamp(Math.min(W / (13 * TW + 40), (H - 150) / (13 * TH + 140)), 0.35, 1.25);
+    if (w && w.combat) cam.fit = portrait() ? clamp(W / 520, 0.62, 1) : clamp(Math.min(W / (A.AW * TW + 40), (H - 150) / (A.AW * TH + 140)), 0.35, 1.3);
     else cam.fit = portrait() ? clamp(W / 600, 0.6, 1) : clamp(Math.min(W / 1100, H / 640), 0.5, 1.2);
   }
   function camTarget() {
     if (!w) return { x: 0, y: 0 };
     if (w.combat) {
-      if (!portrait() || w.combat.phase !== "fight") { var c = iso(6, 6); return { x: c.x, y: c.y - 30 + (portrait() ? -40 : 20) }; }
+      if (!portrait() || w.combat.phase !== "fight") { var c = iso((A.AW - 1) / 2, (A.AW - 1) / 2); return { x: c.x, y: c.y - 30 + (portrait() ? -40 : 20) }; }
       // en portrait, on suit l'unité qui joue (ou la case visée)
       var a = A.active(w.combat), fv = a ? vis["u" + a.id] : null;
       var gx = fv ? fv.gx : a ? a.x : 6, gy = fv ? fv.gy : a ? a.y : 6;
@@ -281,7 +283,7 @@
         banner(Z.name, Z.sub, "zone");
         break;
       }
-      case "dungeon": banner("Sanctuaire brisé", "Donjon · 3 salles", "zone"); break;
+      case "dungeon": { var DG = A.DUNGEONS[e.id] || A.DUNGEONS.sanctuaire; banner(DG.name, DG.sub, "zone"); break; }
       case "combat": {
         Object.keys(vis).forEach(function (k) { if (k[0] === "u") delete vis[k]; });
         sel = null; objBorn = {}; fitZoom(); cam.free = false; cam.zu = 1;
@@ -295,7 +297,7 @@
       case "turn":
         if (u) {
           sel = null; pendingTap = null; cam.free = false;
-          if (u.side === 0 && isLocal(u.pi)) { banner(duo ? "Au tour de " + u.name : u.summon ? "Ton " + u.name : "À toi de jouer !", u.pa + " PA · " + u.pm + " PM", "turn"); SFX.turn(); }
+          if (u.side === 0 && isLocal(u.pi) && !u.summon) { banner(duo ? "Au tour de " + u.name : "À toi de jouer !", u.pa + " PA · " + u.pm + " PM", "turn"); SFX.turn(); }
           if (u.side === 0) focusPi = isLocal(u.pi) ? u.pi : focusPi;
         }
         break;
@@ -348,12 +350,19 @@
       case "tele": e.cells.forEach(function (c) { objBorn["t" + c[0] + "," + c[1]] = clock; }); SFX.warn(); toast("⚠ L'Archonte prépare une <b>Sentence</b> : quittez les cases rouges !", "warn"); break;
       case "boom": e.cells.forEach(function (c, i) { var q = iso(c[0], c[1]); after(i * 0.02, function () { addParts(q.x, q.y - 10, 6, ["#ff5a6a", "#ffd257", "#d36cff"], { up: 80, max: 120 }); }); booms.push({ x: q.x, y: q.y, t: 0 }); }); shake(12); SFX.boom(); break;
       case "summon": if (u) { p = unitScreen(u); addParts(p.x, p.y - 20, 18, e.hero ? ["#17233a", "#7df0c2", "#f4ecd8"] : ["#d36cff", "#fff"], { up: 60, shape: e.hero ? "c" : "c" }); if (e.hero) { uvis(u).tpIn = 0.3; addRing(p.x, p.y, "#7df0c2", 4, 30, 0.4, { flat: true }); } SFX.tp(); } break;
+      case "nova": { var nq = iso(e.at[0], e.at[1]); addRing(nq.x, nq.y, e.col, 10, (e.r + 0.4) * TW, e.big ? 0.9 : 0.6, { flat: true, lw: e.big ? 8 : 5 }); addRing(nq.x, nq.y - 30, e.col, 8, 60, 0.5); addParts(nq.x, nq.y - 30, e.big ? 36 : 18, [e.col, "#fff"], { max: 120 + e.r * 40, g: -30 }); if (e.big) { flash = 0.35; flashCol = e.col; shake(5); } SFX.cast(); break; }
+      case "splash": {
+        e.cells.forEach(function (cc, i) { var sq = iso(cc[0], cc[1]); after(i * (e.wave ? 0.06 : 0.02), function () { addParts(sq.x, sq.y - 6, e.big ? 9 : 5, e.soft ? ["#7dffb0", "#bff0ff"] : ["#4fb6dd", "#bff0ff", "#fff"], { up: e.big ? 140 : 80, max: 70, g: 220, s0: 2, s1: e.big ? 5 : 3.5 }); addRing(sq.x, sq.y, e.soft ? "#7dffb0" : "#4fb6dd", 4, 40, 0.35, { flat: true }); }); });
+        if (e.huge) { flash = 0.4; flashCol = "#4fb6dd"; shake(9); } else if (e.big) shake(4);
+        noise(0.3, e.big ? 0.3 : 0.15, 1200);
+        break;
+      }
       case "promote": if (u) { p = unitScreen(u); addParts(p.x, p.y - 40, 24, ["#c98a3a", "#f4ecd8", "#7df0c2"], { up: 90, max: 120 }); addRing(p.x, p.y - 30, "#c98a3a", 10, 60, 0.6); addText(u.x, u.y, "Promotion !", "#ffd257", { size: 18, h: 100 }); flash = 0.25; flashCol = "#c98a3a"; SFX.level(); } break;
       case "burst": { var bq = iso(e.at[0], e.at[1]); addParts(bq.x, bq.y - 20, 26, ["#17233a", "#ff7b9c", "#7df0c2"], { max: 170, up: 30, s0: 3, s1: 6 }); addRing(bq.x, bq.y, "#ff7b9c", 6, 2 * TW, 0.5, { flat: true, lw: 5 }); shake(6); SFX.boom(); break; }
       case "ink": { var iq = iso(e.at[0], e.at[1]); addRing(iq.x, iq.y, "#17233a", 10, 1.6 * TW, 0.7, { flat: true, lw: 8 }); addParts(iq.x, iq.y - 20, 30, ["#17233a", "#7df0c2"], { max: 140, up: 50, s0: 3, s1: 7 }); flash = 0.3; flashCol = "#2fd29a"; shake(5); break; }
       case "victory": banner("Victoire !", null, "win"); SFX.win(); w.combat.units.forEach(function (x) { if (x.side === 0 && x.alive) uvis(x).win = clock; }); break;
       case "defeat": banner("Défaite…", "Retour au village", "lose"); SFX.lose(); break;
-      case "levelup": if (isLocal(e.pi)) { after(0.8, function () { banner("Niveau " + e.level + " !", "PV et puissance augmentés", "level"); SFX.level(); }); } break;
+      case "levelup": if (isLocal(e.pi)) { after(0.8, function () { banner("Niveau " + e.level + " !", "+5 points à répartir dans le sac (I)", "level"); SFX.level(); }); } break;
       case "ult": if (isLocal(e.pi)) after(1.6, function () { toast("✨ <b>Sort ultime débloqué !</b> (touche 5)", "gold"); }); break;
       case "quest": if (isLocal(e.pi)) { var Q = A.QUESTS.filter(function (q) { return q.id === e.q; })[0]; toast("📜 Quête terminée : <b>" + esc(Q ? Q.name : "") + "</b>", "gold"); } break;
       case "equip": if (isLocal(e.pi)) SFX.click(); break;
@@ -460,13 +469,14 @@
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     var theme = w && w.combat ? w.combat.arena.theme : w ? A.ZONES[w.zone].theme : "prairie";
     var bg = g.createLinearGradient(0, 0, 0, H);
-    var BG = { village: ["#7ec8e8", "#cfe9d6"], prairie: ["#86cbe9", "#d9f0cf"], bois: ["#20403a", "#4f7d5d"], falaises: ["#6f7fb5", "#c9d6ef"], donjon: ["#160f2a", "#3a2a5c"] }[theme] || ["#222", "#444"];
+    var BG = { village: ["#7ec8e8", "#cfe9d6"], prairie: ["#86cbe9", "#d9f0cf"], bois: ["#20403a", "#4f7d5d"], falaises: ["#6f7fb5", "#c9d6ef"], donjon: ["#160f2a", "#3a2a5c"],
+      marais: ["#1d3a3a", "#3f7a6a"], nuages: ["#ffd9ec", "#bfe4ff"], confiserie: ["#ff9fcb", "#fff1c2"], horloge: ["#0f1626", "#3b4a66"] }[theme] || ["#222", "#444"];
     bg.addColorStop(0, BG[0]); bg.addColorStop(1, BG[1]);
     g.fillStyle = bg; g.fillRect(0, 0, W, H);
     // brume d'ambiance
     for (var i = 0; i < 5; i++) {
       var bx = (i * 271 + clock * 6) % (W + 300) - 150, by = H * (0.15 + i * 0.17);
-      ART.glow(g, bx, by, 160, theme === "donjon" ? "rgba(160,90,255,.12)" : "rgba(255,255,255,.18)", 1);
+      ART.glow(g, bx, by, 160, theme === "donjon" ? "rgba(160,90,255,.12)" : theme === "horloge" ? "rgba(217,164,65,.10)" : theme === "marais" ? "rgba(95,211,192,.14)" : "rgba(255,255,255,.18)", 1);
     }
     if (!w) return;
     var sx = shakeT ? rnd(-shakeT, shakeT) * 0.5 : 0, sy = shakeT ? rnd(-shakeT, shakeT) * 0.5 : 0;
@@ -606,7 +616,7 @@
       var p = iso(v.gx, v.gy), cls = w.players[i].profile.cls;
       items.push({ d: v.gx + v.gy, o: 4, f: function (g) {
         if (duo && i === focusPi) { ART.ell(g, p.x, p.y, 22, 10, "rgba(255,255,255,.25)"); g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = 2; g.beginPath(); g.ellipse(p.x, p.y, 22, 10, 0, 0, TAU); g.stroke(); }
-        ART.hero(g, cls, p.x, p.y, { t: clock + i, flip: v.face === 1 || v.face === -2 ? 1 : -1, back: v.face < 0, walk: v.walk, seed: i * 3 });
+        ART.hero(g, cls, p.x, p.y, { t: clock + i, flip: v.face === 1 || v.face === -2 ? 1 : -1, back: v.face < 0, walk: v.walk, seed: i * 3, gear: A.gearOf(w.players[i].profile) });
         if (w.players.filter(Boolean).length > 1) label(g, p.x, p.y - 84, w.players[i].name, isLocal(i) ? "#ffffff" : "#9fd8ff", 12);
       } });
     });
@@ -718,7 +728,7 @@
     var S = A.SPELLS[s.sid], st = S.steps[s.tg.length], c = w.combat, out = [];
     if (!st || st.shape === "self") return out;
     var o = st.from === "prev" && s.tg.length ? s.tg[s.tg.length - 1] : [u.x, u.y];
-    for (var x = 0; x < 13; x++) for (var y = 0; y < 13; y++) {
+    for (var x = 0; x < A.AW; x++) for (var y = 0; y < A.AW; y++) {
       if (!A.inArena(c, x, y)) continue;
       var dx = x - o[0], dy = y - o[1], adx = Math.abs(dx), ady = Math.abs(dy), d = adx + ady, mx = st.range[1] + (st.boost ? u.po : 0);
       var ok = st.shape === "line" ? (dx === 0 || dy === 0) && d >= st.range[0] && d <= mx :
@@ -776,6 +786,7 @@
     } else if (u.side === 0) {
       // bouclier : bulle légère
       if (u.shield.length) { ART.glow(g, x, y - 34, 44, "rgba(159,216,255,.45)", 0.8); g.strokeStyle = "rgba(159,216,255,.7)"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y - 34, 30, 40, 0, 0, TAU); g.stroke(); }
+      opt.gear = w.players[u.pi] ? A.gearOf(w.players[u.pi].profile) : null;
       ART.hero(g, u.cls, x, y, opt);
     } else {
       var M = A.MOBS[u.type];
@@ -846,7 +857,7 @@
   function activeLocal() {
     if (!w || !w.combat || w.combat.phase !== "fight" || w.mode !== "combat") return null;
     var a = A.active(w.combat);
-    return a && a.side === 0 && isLocal(a.pi) ? a : null;
+    return a && a.side === 0 && !a.summon && isLocal(a.pi) ? a : null;
   }
   function refreshHud() {
     if (!w) return;
@@ -859,7 +870,7 @@
       var xpk = pr.level >= A.CFG.maxLevel ? 1 : pr.xp / A.xpNeed(pr.level);
       var act = w.combat && A.active(w.combat) && u && A.active(w.combat).id === u.id;
       return '<button type="button" class="at-pf' + (isLocal(i) && i === focusPi ? " me" : "") + (act ? " act" : "") + (u && !u.alive ? " ko" : "") + '" data-focus="' + i + '">' +
-        '<img src="' + ART.heroIcon(pr.cls, 44) + '" alt="" width="44" height="44">' +
+        '<img src="' + ART.heroIcon(pr.cls, 44, A.gearOf(pr)) + '" alt="" width="44" height="44">' +
         '<span class="at-pf-b"><span class="at-pf-n">' + esc(pl.name) + ' <em>niv. ' + pr.level + '</em></span>' +
         '<span class="at-pf-hp"><i style="width:' + (hp / mhp * 100).toFixed(1) + '%"></i>' + (sh ? '<u style="width:' + Math.min(100, sh / mhp * 100).toFixed(1) + '%"></u>' : "") + '<b>' + Math.max(0, hp) + " / " + mhp + (sh ? " +" + sh : "") + '</b></span>' +
         '<span class="at-pf-xp"><i style="width:' + (xpk * 100).toFixed(1) + '%"></i></span>' +
@@ -874,7 +885,7 @@
       var c = w.combat, order = [], n = c.order.length;
       for (var j = 0; j < n; j++) { var uu = A.uById(c, c.order[(c.turn + j) % n]); if (uu && uu.alive) order.push(uu); }
       top.innerHTML = '<div class="at-tl"><span class="at-round">Tour ' + c.round + "</span>" + order.slice(0, 9).map(function (x, k) {
-        var img = x.summon ? ART.summonIcon(x.cls, 40) : x.side === 0 ? ART.heroIcon(x.cls, 40) : ART.mobIcon(x.type, 40, A.MOBS[x.type].col, !!x.affix);
+        var img = x.summon ? ART.summonIcon(x.cls, 40) : x.side === 0 ? ART.heroIcon(x.cls, 40, w.players[x.pi] ? A.gearOf(w.players[x.pi].profile) : null) : ART.mobIcon(x.type, 40, A.MOBS[x.type].col, !!x.affix);
         return '<span class="at-tl-u' + (k === 0 ? " now" : "") + (x.side ? " mob" : " ally") + (x.affix ? " elite" : "") + '" data-unit="' + x.id + '"><img src="' + img + '" alt="" width="40" height="40"><i style="width:' + (x.hp / x.maxHp * 100).toFixed(0) + '%"></i></span>';
       }).join("") + "</div>";
     } else if (w.combat) top.innerHTML = '<div class="at-zone"><b>' + (w.combat.phase === "place" ? "Placement" : w.loot && w.loot.won ? "Victoire" : "Fin du combat") + '</b><span>' + (w.combat.room ? esc(w.combat.room.name) : esc(A.ZONES[w.zone].name)) + "</span></div>";
@@ -917,7 +928,7 @@
       html += '<button type="button" class="at-sp' + (sel && sel.sid === sid ? " on" : "") + (why || !me ? " off" : "") + (S.ult ? " ult" : "") + (locked ? " lock" : "") + '" data-spell="' + sid + '">' +
         '<img src="' + ART.spellIcon(sid, 48) + '" alt="" width="48" height="48"><kbd>' + (i + 1) + "</kbd><em>" + A.spellCost(shown, sid) + "</em>" + (cd ? "<b>" + cd + "</b>" : "") + (locked ? "<b>🔒</b>" : "") + "</button>";
     });
-    html += "</div>";
+    html += '<button type="button" class="at-sp at-sp-help" data-act="spells" title="Mes sorts">?</button></div>';
     if (me) {
       var S2 = sel && A.SPELLS[sel.sid], need = S2 ? S2.minSteps || S2.steps.length : 0;
       if (S2 && S2.steps.length > 1 && sel.tg.length >= need) html += '<button class="btn btn-small at-go" type="button" data-act="confirm">Lancer <small>Entrée</small></button>';
@@ -938,7 +949,8 @@
     var S = A.SPELLS[sid], st = S.steps[0];
     var rng = st.shape === "self" ? "Soi-même" : st.shape === "knight" ? "Mouvement en L" : st.shape === "ray" ? "Diagonales" :
       (st.range[0] === st.range[1] ? st.range[0] : st.range[0] + " à " + (st.range[1] + (st.boost && u ? u.po : 0))) + " case" + (st.range[1] > 1 ? "s" : "") + (st.shape === "line" ? " en ligne" : st.shape === "diag" ? " en diagonale" : "");
-    return "<strong>" + esc(S.name) + "</strong><p>" + esc(S.desc) + '</p><p class="at-tip-m"><span>' + A.spellCost(u || { powers: [] }, sid) + " PA</span><span>" + esc(rng) + "</span>" + (st.los ? "<span>Ligne de vue</span>" : "") + (S.cd ? "<span>Recharge " + S.cd + "</span>" : "") + (S.perTurn ? "<span>" + S.perTurn + "× / tour</span>" : "") + "</p>" +
+    var elTag = S.el ? '<span style="color:' + A.ELEMENTS[S.el].col + '">' + A.ELEMENTS[S.el].name + (u && u.elem ? " +" + (u.elem[S.el] || 0) + " %" : "") + "</span>" : "";
+    return "<strong>" + esc(S.name) + "</strong><p>" + esc(S.desc) + '</p><p class="at-tip-m"><span>' + A.spellCost(u || { powers: [] }, sid) + " PA</span>" + elTag + "<span>" + esc(rng) + "</span>" + (st.los ? "<span>Ligne de vue</span>" : "") + (S.cd ? "<span>Recharge " + S.cd + "</span>" : "") + (S.perTurn ? "<span>" + S.perTurn + "× / tour</span>" : "") + "</p>" +
       (S.ult && u && !u.ult ? '<p class="at-tip-warn">Débloqué au niveau ' + A.ULT_LEVEL + "</p>" : "") + (u && A.canCast(w, u, sid) && A.canCast(w, u, sid) !== "Pas assez de PA" ? '<p class="at-tip-warn">' + esc(A.canCast(w, u, sid)) + "</p>" : "");
   }
   function unitTip(u) {
@@ -1012,7 +1024,7 @@
         var acts = worn ? '<p class="at-it-ok">✔ Équipé</p>' : inBag ? '<div class="at-it-a"><button class="btn btn-small' + (better(pl, it) ? "" : " btn-ghost") + '" type="button" data-equip="' + it.uid + '" data-pi="' + i + '">' + (better(pl, it) ? "▲ Équiper" : "Équiper") + '</button><button class="btn btn-small btn-ghost" type="button" data-sell="' + it.uid + '" data-pi="' + i + '">Vendre ' + it.value + "</button></div>" : it.sold ? '<p class="at-it-ok">Sac plein : vendu ' + it.value + " or</p>" : '<p class="at-it-ok">Vendu</p>';
         return '<div class="at-loot-i" style="--d:' + (0.35 + k * 0.28) + 's">' + (it.r >= 3 ? '<span class="at-rays"></span>' : "") + itemHtml(it, { pl: pl, actions: acts }) + "</div>";
       }).join("");
-      return '<div class="at-loot-p">' + (duo || w.players.filter(Boolean).length > 1 ? '<h3><img src="' + ART.heroIcon(pl.profile.cls, 28) + '" alt="" width="28" height="28"> ' + esc(pl.name) + "</h3>" : "") +
+      return '<div class="at-loot-p">' + (duo || w.players.filter(Boolean).length > 1 ? '<h3><img src="' + ART.heroIcon(pl.profile.cls, 28, A.gearOf(pl.profile)) + '" alt="" width="28" height="28"> ' + esc(pl.name) + "</h3>" : "") +
         (L.won ? '<div class="at-gains"><span class="xp">+' + fmt(res.xp) + ' XP</span><span class="gold">+' + fmt(res.gold) + " or</span>" + (res.levels ? '<span class="lvl">Niveau ' + pl.profile.level + " !</span>" : "") + "</div>" +
           '<div class="at-xpbar"><i style="width:' + (xpk * 100).toFixed(1) + '%"></i><span>Niv. ' + pl.profile.level + " · " + fmt(pl.profile.xp) + " / " + fmt(A.xpNeed(pl.profile.level)) + " XP</span></div>" +
           (st ? '<p class="at-cstats">⚔ ' + fmt(st.dmg) + " dégâts · ✚ " + fmt(st.heal) + " soins · ☠ " + st.kills + "</p>" : "") +
@@ -1062,9 +1074,15 @@
     var sline = function (n, v) { return "<li><span>" + n + "</span><b>" + v + "</b></li>"; };
     show('<div class="at-inv-h"><h2>Sac</h2><span class="at-gold">' + fmt(pr.gold) + ' or</span><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' + tabs +
       '<div class="at-inv">' +
-      '<div class="at-inv-l"><div class="at-doll"><img src="' + ART.heroIcon(pr.cls, 72) + '" alt="" width="72" height="72"><div><b>' + esc(pl.name) + "</b><small>" + A.CLASSES[pr.cls].name + " · niv. " + pr.level + "</small></div></div>" +
+      '<div class="at-inv-l"><div class="at-doll"><img src="' + ART.heroIcon(pr.cls, 110, A.gearOf(pr), true) + '" alt="" width="72" height="72"><div><b>' + esc(pl.name) + "</b><small>" + A.CLASSES[pr.cls].name + " · niv. " + pr.level + "</small></div></div>" +
       '<div class="at-slots">' + slots + "</div>" +
-      '<ul class="at-stats">' + sline("PV", st.hp) + sline("PA", st.pa) + sline("PM", st.pm) + sline("Portée", "+" + st.po) + sline("Puissance", st.pow + " %") + sline("Résistance", st.res + " %") + sline("Critique", st.crit + " %") + sline("Soins", st.heal + " %") + sline("Initiative", st.ini) + "</ul>" +
+      '<ul class="at-stats">' + sline("PV", st.hp) + sline("PA", st.pa) + sline("PM", st.pm) + sline("Portée", "+" + st.po) + sline("Initiative", st.ini) + sline("Critique", st.crit + " %") + sline("Résistance", st.res + " %") + sline("Dommages", "+" + st.dom) + sline("Prospection", st.pros) + "</ul>" +
+      (pr.pts ? '<p class="at-pts">✦ <b>' + pr.pts + "</b> point" + (pr.pts > 1 ? "s" : "") + " à répartir</p>" : "") +
+      '<ul class="at-stats at-main">' + A.MAIN_STATS.map(function (k) {
+        var SS = A.STATS[k], main = SS.el === A.CLASSES[pr.cls].el;
+        return '<li class="' + (main ? "main" : "") + '" title="' + esc(SS.desc) + '"><span>' + SS.name + (SS.el ? ' <i style="color:' + A.ELEMENTS[SS.el].col + '">●</i>' : "") + "</span><b>" + st[k] + "</b>" +
+          (pr.pts ? '<button type="button" class="at-plus" data-stat="' + k + '" data-n="1">+1</button>' + (pr.pts >= 5 ? '<button type="button" class="at-plus" data-stat="' + k + '" data-n="5">+5</button>' : "") : "") + "</li>";
+      }).join("") + "</ul>" +
       (st.powers.length ? '<p class="at-pows">' + st.powers.map(function (p) { return "<span title=\"" + esc(A.POWERS[p].desc) + "\">✦ " + esc(A.POWERS[p].name) + "</span>"; }).join("") + "</p>" : "") + "</div>" +
       '<div class="at-inv-r"><div class="at-bag">' + bag + '</div><p class="at-bag-n">' + pr.bag.length + " / " + A.BAG_MAX + ' · <button class="text-link" type="button" data-junk="0">Vendre les communs</button> · <button class="text-link" type="button" data-junk="1">et les magiques</button></p>' +
       '<div class="at-detail">' + detail + "</div></div></div>" + (fighting ? '<p class="game-small">On ne peut pas changer d\'équipement pendant un combat.</p>' : ""), "at-card-inv");
@@ -1101,6 +1119,24 @@
       '<div class="btn-row center"><button class="btn btn-ghost btn-small" type="button" data-act="inv">🎒 Vendre depuis le sac</button><button class="btn btn-ghost btn-small" type="button" data-junk="0">Vendre tous les communs</button></div>', "at-card-shop");
   }
 
+  // fiche des sorts du héros (pratique sur téléphone, où il n'y a pas de survol)
+  function showSpells() {
+    var pl = myPlayer(); if (!pl) return;
+    panel = "help";
+    var u = w.combat ? w.combat.units.filter(function (x) { return x.side === 0 && x.pi === focusPi && !x.summon; })[0] : null;
+    var st = A.heroStats(pl.profile);
+    var rows = A.CLASSES[pl.profile.cls].spells.map(function (sid, i) {
+      var S = A.SPELLS[sid], step = S.steps[0];
+      var rng = step.shape === "self" ? "soi-même" : step.shape === "knight" ? "en L" : step.shape === "ray" ? "diagonales" : (step.range[0] === step.range[1] ? step.range[0] : step.range[0] + "–" + (step.range[1] + (step.boost ? st.po : 0))) + " case" + (step.range[1] > 1 ? "s" : "") + (step.shape === "line" ? (step.range[1] === 1 ? " : direction" : " en ligne") : step.shape === "diag" ? " en diagonale" : step.shape === "queen" ? " ligne / diagonale" : "");
+      return '<li class="at-sl' + (S.ult && pl.profile.level < A.ULT_LEVEL ? " lock" : "") + '"><img src="' + ART.spellIcon(sid, 44) + '" alt="" width="44" height="44"><div><b>' + (i + 1) + ". " + esc(S.name) + (S.ult ? " <em>ultime</em>" : "") + "</b>" +
+        '<p class="at-tip-m"><span>' + S.pa + " PA</span>" + (S.el ? '<span style="color:' + A.ELEMENTS[S.el].col + '">' + A.ELEMENTS[S.el].name + " +" + st.elem[S.el] + " %</span>" : "") + "<span>" + esc(rng) + "</span>" + (step.los ? "<span>ligne de vue</span>" : "") + (S.cd ? "<span>recharge " + S.cd + "</span>" : "") + (S.perTurn ? "<span>" + S.perTurn + "× / tour</span>" : "") + "</p>" +
+        "<p>" + esc(S.desc) + "</p>" + (u && A.canCast(w, u, sid) ? '<p class="at-tip-warn">' + esc(A.canCast(w, u, sid)) + "</p>" : "") + "</div></li>";
+    }).join("");
+    show('<div class="at-inv-h"><img src="' + ART.heroIcon(pl.profile.cls, 40, A.gearOf(pl.profile)) + '" alt="" width="40" height="40" style="border-radius:10px"><h2>' + esc(A.CLASSES[pl.profile.cls].name) + '</h2><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' +
+      '<p class="game-small" style="margin:0 0 8px">' + esc(A.CLASSES[pl.profile.cls].desc) + "</p>" +
+      '<ul class="at-slist">' + rows + "</ul>" +
+      '<div class="btn-row center"><button class="btn" type="button" data-act="close">' + (w.combat ? "Retour au combat" : "Fermer") + "</button></div>", "at-card-q");
+  }
   function showSource() {
     panel = "help";
     show('<div class="at-inv-h"><h2>Source de mana</h2><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' +
@@ -1112,8 +1148,13 @@
       "<li><b>Bastion</b> (la tour) frappe et attire en ligne droite, pose des murs et des boucliers. Une cible poussée contre un obstacle prend des dégâts.</li>" +
       "<li><b>Prisme</b> (le fou) tire en diagonale, soigne, téléporte ses alliés et pose des cristaux d'où partent ses rayons.</li>" +
       "<li><b>Voltige</b> (le cavalier) bondit en L par-dessus tout, passe derrière les ennemis et les aveugle avec sa brume.</li>" +
-      "<li><b>Sibylle</b> (le pion) invoque des Pions d'encre que tu contrôles (ils jouent juste après elle), les promeut en Dame, les sacrifie ou échange sa place avec eux.</li>" +
-      "<li><b>Butin</b> : chaque monstre peut lâcher un objet aléatoire. 5 raretés, de grosses caractéristiques, parfois <b>+1 PA</b>, <b>+1 PM</b> ou <b>+Portée</b>, et des pouvoirs légendaires. Les élites (★) lâchent toujours quelque chose.</li>" +
+      "<li><b>Sibylle</b> (le pion) invoque des Pions d'encre qui se battent tout seuls juste après elle ; elle les promeut en Dame, les sacrifie ou échange sa place avec eux.</li>" +
+      "<li><b>Clarine</b> soigne de loin et brûle avec le même feu. <b>Orage</b> cogne très fort en ligne et en diagonale, mais ne soigne pas. <b>Ondine</b> ne lance que des sorts de zone : croix, disques, lames d'eau.</li>" +
+      "<li><b>Caractéristiques</b> : Vitalité (PV), Sagesse (XP), Force / Intelligence / Chance / Agilité (+1 % aux dégâts Terre / Feu / Eau / Air par point ; l'Intelligence soigne, l'Agilité donne du critique), Dommages (ajoutés à chaque coup), Prospection (butin), Initiative, Résistance. <b>5 points à répartir</b> à chaque niveau, dans le sac.</li>" +
+      "<li><b>Objets visibles</b> : tout ce que tu équipes se voit sur ton héros (chapeau champignon, poisson-épée, ailes de dragon, pattes de canard…). La couleur suit la rareté. Les objets rares et plus peuvent donner <b>+1 Portée</b>.</li>" +
+      "<li><b>Butin</b> : chaque monstre peut lâcher un objet aléatoire : 50 % commun, 12 % magique, 8 % rare, <b>20 % épique</b>, <b>10 % légendaire</b> (avec un pouvoir). Parfois <b>+1 PA</b>, <b>+1 PM</b> ou <b>+Portée</b>. Les élites (★) lâchent toujours quelque chose, le boss trois objets.</li>" +
+      "<li><b>Donjons</b> : Incarnam (niv. 2, nord de la Prairie), la Confiserie de la Reine Guimauve (niv. 5, Marais Bulleux), le Sanctuaire brisé (niv. 7, Falaises) et la Tour des Horloges (niv. 10, Îles Cotonneuses). Trois salles d'affilée, les PV ne remontent qu'en partie entre deux.</li>" +
+      "<li><b>Zones</b> : Prairie des Runes → Bois Fractal → Marais Bulleux (au sud du Bois) → Falaises de Cristal → Îles Cotonneuses. Le bouton <b>?</b> de la barre de sorts explique chaque sort de ton héros.</li>" +
       (TOUCH ? "<li><b>Tactile</b> : touche une case pour l'aperçu, touche-la encore pour confirmer. Glisse pour déplacer la vue, pince pour zoomer.</li>" : "") +
       "<li><b>Raccourcis</b> : <kbd>1</kbd>–<kbd>5</kbd> sorts · <kbd>Espace</kbd> fin du tour · clic droit annule · <kbd>I</kbd> sac · <kbd>J</kbd> quêtes · <kbd>C</kbd> recentrer · molette zoom · glisser pour déplacer la vue.</li></ul>";
   }
@@ -1320,6 +1361,9 @@
     switch (a) {
       case "inv": invSel = null; showInv(focusPi); break;
       case "quests": showQuests(); break;
+      case "full": toggleFull(); break;
+      case "center": cam.free = false; cam.zu = 1; SFX.click(); break;
+      case "spells": showSpells(); break;
       case "mute": SET.mute = !SET.mute; saveSet(); applyVolume(); $("[data-act=mute]", hud).textContent = SET.mute ? "🔇" : "🔊"; break;
       case "pause": showPause(); break;
       case "close": closePanel(); if (w && w.mode === "loot") showLoot(); break;
@@ -1340,6 +1384,7 @@
     if (b.dataset.sell) { sendCmd({ t: "sell", uid: +b.dataset.sell }, +b.dataset.pi); invSel = null; refreshPanelSoon(); return; }
     if (b.dataset.unequip) { sendCmd({ t: "unequip", slot: b.dataset.unequip }, panelPi); invSel = null; refreshPanelSoon(); return; }
     if (b.dataset.lock) { sendCmd({ t: "lock", uid: +b.dataset.lock }, panelPi); refreshPanelSoon(); return; }
+    if (b.dataset.stat) { sendCmd({ t: "stat", k: b.dataset.stat, n: +b.dataset.n }, panelPi); SFX.coin(); refreshPanelSoon(); return; }
     if (b.dataset.junk != null) { sendCmd({ t: "junk", r: +b.dataset.junk }, panel === "inv" ? panelPi : focusPi); refreshPanelSoon(); return; }
     if (b.dataset.isel) { invSel = +b.dataset.isel; SFX.click(); showInv(); return; }
     if (b.dataset.invpi != null) { invSel = null; showInv(+b.dataset.invpi); return; }
@@ -1383,6 +1428,7 @@
     if (k === "i" || k === "I") { act("inv"); return; }
     if (k === "j" || k === "J") { act("quests"); return; }
     if (k === "c" || k === "C") { cam.free = false; cam.zu = 1; return; }
+    if (k === "h" || k === "H" || k === "?") { showSpells(); return; }
     if (k === "Tab") { e.preventDefault(); if (duo) { focusPi = focusPi === locals[0] ? locals[1] : locals[0]; hudDirty = true; cam.free = false; } return; }
   });
   window.addEventListener("keyup", function (e) { keys[e.key.toLowerCase()] = false; });
@@ -1556,7 +1602,7 @@
   function heroCard(cls, selected, taken) {
     var C = A.CLASSES[cls], pr = SAVE.profiles[cls], st = A.heroStats(pr);
     return '<button type="button" class="at-hero' + (selected ? " on" : "") + (taken ? " taken" : "") + '" data-pick="' + cls + '"' + (taken ? " disabled" : "") + ">" +
-      '<span class="at-hero-art" style="--hc:' + ART.HERO_PAL[cls].main + '"><img src="' + ART.heroIcon(cls, 96) + '" alt="" width="96" height="96"></span>' +
+      '<span class="at-hero-art" style="--hc:' + ART.HERO_PAL[cls].main + '"><img src="' + ART.heroIcon(cls, 96, A.gearOf(pr), Object.keys(A.gearOf(pr)).length > 0) + '" alt="" width="96" height="96"></span>' +
       "<b>" + C.name + '</b><em>' + C.role + "</em><small>Niv. " + pr.level + " · " + st.hp + " PV · " + st.pa + " PA · " + st.pm + " PM</small>" +
       '<span class="at-hero-sp">' + C.spells.map(function (s) { return '<img src="' + ART.spellIcon(s, 26) + '" alt="" width="26" height="26" title="' + esc(A.SPELLS[s].name) + '">'; }).join("") + "</span>" +
       '<span class="at-hero-d">' + esc(C.desc) + "</span></button>";
@@ -1579,7 +1625,7 @@
       '<div class="btn-row center"><button class="btn" type="button" data-menu="solo">▶ Jouer seul</button>' +
       '<button class="btn btn-alt" type="button" data-menu="duo">👥 Duo même écran</button>' +
       '<button class="btn btn-alt" type="button" data-menu="online">🌐 Coop en ligne</button></div>' +
-      '<p class="game-small">Chaque héros garde sa propre progression (niveau, butin, quêtes) dans ce navigateur. v' + VERSION + "</p>", "at-card-menu");
+      '<p class="game-small">Chaque héros garde sa propre progression (niveau, butin, quêtes) dans ce navigateur. ' + (TOUCH ? "Sur téléphone, le bouton ⛶ en haut à droite passe en plein écran. " : "") + "v" + VERSION + "</p>", "at-card-menu");
   }
   function showOnline() {
     if (screen !== "menu") return;
@@ -1618,14 +1664,23 @@
 
   /* ====================== PLEIN ÉCRAN ====================== */
   function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement) || stage.classList.contains("is-max"); }
-  function syncFull() { stage.classList.toggle("is-full", isFull()); setTimeout(resize, 50); }
-  var fsBtn = document.querySelector("[data-game-fullscreen]");
-  if (fsBtn) fsBtn.addEventListener("click", function () {
+  function syncFull() {
+    var f = isFull();
+    stage.classList.toggle("is-full", f);
+    document.documentElement.classList.toggle("at-lock", f);
+    var hb = $("[data-act=full]", hud); if (hb) { hb.textContent = f ? "✕" : "⛶"; hb.title = f ? "Quitter le plein écran" : "Plein écran"; }
+    setTimeout(resize, 50);
+    if (f && TOUCH && window.screen && window.screen.orientation && window.screen.orientation.lock) { try { window.screen.orientation.lock("portrait").catch(function () {}); } catch (e) {} }
+  }
+  // sur iPhone, requestFullscreen n'existe pas : on étale la scène sur tout l'écran (is-max)
+  function toggleFull() {
     if (isFull()) { stage.classList.remove("is-max"); if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {}); syncFull(); return; }
     var req = stage.requestFullscreen || stage.webkitRequestFullscreen;
-    var fallback = function () { stage.classList.add("is-max"); syncFull(); };
-    if (req) { try { var pr = req.call(stage); if (pr && pr.catch) pr.catch(fallback); } catch (er) { fallback(); } } else fallback();
-  });
+    var fallback = function () { stage.classList.add("is-max"); syncFull(); window.scrollTo(0, 0); };
+    if (req && !TOUCH) { try { var pr = req.call(stage); if (pr && pr.catch) pr.catch(fallback); } catch (er) { fallback(); } } else fallback();
+  }
+  var fsBtn = document.querySelector("[data-game-fullscreen]");
+  if (fsBtn) fsBtn.addEventListener("click", toggleFull);
   document.addEventListener("fullscreenchange", syncFull);
   var fsExit = stage.querySelector("[data-fs-exit]");
   if (fsExit) fsExit.addEventListener("click", function () { stage.classList.remove("is-max"); if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {}); syncFull(); });
@@ -1670,6 +1725,8 @@
   window.AT_DEBUG = {
     version: VERSION,
     world: function () { return w; },
+    dungeon: function (id) { A.startDungeon(w, id || "incarnam"); },
+    pts: function (n) { w.players[0].profile.pts += n || 20; w.players[0].profile.rev++; w.rev++; },
     screenOf: function (x, y) { var p = iso(x, y), q = toScreen(p.x, p.y), r = canvas.getBoundingClientRect(); return { x: q.x + r.left, y: q.y + r.top }; },
     level: function (n, pi) { var p = w.players[pi || 0].profile; p.level = n; p.xp = 0; p.rev++; w.rev++; },
     gold: function (n) { w.players[0].profile.gold += n; w.players[0].profile.rev++; w.rev++; },

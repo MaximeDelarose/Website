@@ -30,7 +30,7 @@ export function computeLayout(W: number, H: number, bagW: number, bagH: number, 
   const landscape = W > H * 1.1;
   const colW = landscape ? Math.min(W, 760) : Math.min(W, Math.max(340, Math.min(560, Math.round(H * 0.68))));
   const col: Rect = { x: Math.round((W - colW) / 2), y: 0, w: colW, h: H };
-  const arenaH = Math.round(H * (withStash ? 0.36 : 0.42));
+  const arenaH = Math.round(H * (withStash && !landscape ? 0.36 : 0.42));
   const arena: Rect = { x: 0, y: 0, w: W, h: arenaH };
   const bar: Rect = { x: col.x, y: arenaH, w: colW, h: BAR_H };
   const top = arenaH + BAR_H + 4;
