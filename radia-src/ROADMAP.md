@@ -20,6 +20,20 @@ Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commenc
 | Journaux de diagnostic | 🟡 | `radia-errors` (8 dernières erreurs, localStorage) existe ; pas encore d'écran pour les lire. |
 | Ancienne version déjà installée sur l'iPhone | ⚠️ | Elle ne contient pas le nouveau système : **fermer complètement l'application (la faire glisser hors du sélecteur) puis la rouvrir une fois** ; ensuite les mises à jour sont automatiques. |
 
+### Diagnostic « application installée ≠ Safari » (étape 3 — terminée, ⚠️ à confirmer sur iPhone)
+
+**Constat** (code + captures de l'app installée) : ce n'est PAS une ancienne version du code. L'app « Ouvrir comme app web » a son **propre stockage** (iOS le sépare de Safari) :
+partie neuve (150 ⚡ / 70 💎 / tutoriel du chapitre 1) et **aucune clé de photos** → personnages dessinés, fonctionnalités de départ.
+Le raccourci « Ouvrir comme app web » désactivé ouvre Safari, donc la mémoire de Safari (partie avancée + clé) → « la bonne version ».
+Vérifié : `manifest.webmanifest` (`start_url`/`scope` relatifs → `radia-52c8654e04/`, + `id` stable), aucun code propre au mode standalone, l'ancien dossier `radia/` est une autre application (échecs ♛), service worker identique depuis le début (réseau d'abord pour la page).
+
+**Corrigé** : Paramètres → **Diagnostic** (build, déploiement publié, mise à jour, adresse sans `#`, mode Safari/app, service worker, cache, « partie existante / NEUVE », « photos présentes / ABSENTES », bouton Copier) ;
+au 1ᵉʳ lancement de l'app avec une mémoire vide : explication + « Importer ma partie » (avec « Coller depuis le presse-papiers »).
+Tests : `scripts/standalone-e2e.mjs` 12/12 (même build dans les deux modes, partie et clé reprises, cœurs/pièces identiques), `tests/diagnostics.test.ts`.
+**Non testé** : vrai iPhone / WebKit (non installé ici).
+
+**Vérifier sur iPhone** : (1) Safari → Paramètres → Diagnostic → noter « Build » ; (2) Paramètres → « Copier ma sauvegarde » ; (3) ouvrir l'icône (app web) → « Importer ma partie » → « Coller » ; (4) Paramètres → Diagnostic dans l'app : « Build » identique, « Mode : APPLICATION INSTALLÉE », partie existante, photos présentes.
+
 ## PRIORITÉ 2 — Notifications et interface
 
 | Demande | État | Détail |
