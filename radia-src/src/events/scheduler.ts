@@ -10,7 +10,7 @@ import { world } from '../core/world';
 import { LEVELS } from '../data/levels';
 import { chessUnlocked } from '../game/narrative/Story';
 import { EVENTS, SMALL_MESSAGES, eventById } from './data';
-import { canOfferBig, canSendSmall, offerInvite, pickEvent, pushMessage, settleStale, setInviteState, unreadCount, type Progress } from './manager';
+import { canOfferBig, canSendSmall, offerInvite, pickEvent, pushMessage, settleStale, setInviteState, type Progress } from './manager';
 import { ev, nextId } from './api';
 import { showNotification, notificationVisible } from './ui/notify';
 import { isEventRunning } from './runner';
