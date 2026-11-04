@@ -3297,6 +3297,15 @@ window.ES_DATA = (function () {
     Object.keys(EMOJI_PX).forEach(function (e) { var b = e.replace(/️/g, ""); if (b !== e && !EMOJI_PX[b]) EMOJI_PX[b] = EMOJI_PX[e]; });
   })();
 
+  /* Équilibrage 2.6 : dégâts de l'attaque de base de chaque arme, mesurés en partie simulée
+     (dégâts par seconde contre un groupe de blaireaux) puis ramenés dans une même fourchette */
+  var BASE_BAL = { canne: 4.5, lampion: 3.6, conque: 3.6, flute: 3.6, sarbacane: 2.6, fronde: 2.6, arc: 1.45, carillon: 0.85, baton: 0.85, yoyo: 0.85 };
+  Object.keys(BASE_BAL).forEach(function (a) {
+    var w = ARMES[a] && WEAPONS[ARMES[a].base]; if (!w || !w.dmg) return;
+    w.dmg = w.dmg.map(function (v) { return Math.round(v * BASE_BAL[a]); });
+  });
+  // succès qui demandent la coop en ligne (pas encore en 2.0) : rangés à part, hors du compte
+  ["x_sauveteur", "c_quatre", "c_bande"].forEach(function (id) { ACHIEVEMENTS.forEach(function (a) { if (a.id === id) a.soon = true; }); });
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };

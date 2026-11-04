@@ -2965,3 +2965,4 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .vol-row { cursor: default; }
 .vol-ctl { display: inline-flex; align-items: center; gap: 6px; }
 .vol-ctl b { min-width: 3.2em; text-align: center; }
+.ach.is-soon { opacity: .55; }
