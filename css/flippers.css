@@ -42,3 +42,5 @@
   .fl-msg { min-height: 1.4em; }
   .fl-head-btns .btn { font-size: .85rem; padding: 6px 10px; }
 }
+/* mode Ascension : rendu pixel art (image 240 × 420 agrandie sans lissage) */
+.fl-stage.fl-pixel .fl-canvas { image-rendering: pixelated; image-rendering: crisp-edges; }

@@ -10,20 +10,23 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "1.0.0";
+  var VERSION = "1.2.0";
 
   /* ---------- table et physique ---------- */
-  var W = 1000, H = 500, R = 12, FRAME = 40;
+  var W = 1000, H = 500, R = 18, FRAME = 52;
   var DT = 1 / 480;                      // pas de simulation
   var FC = 260, FK = 0.45;               // frottement : constant (u/s²) + proportionnel (1/s)
   var VMIN = 8;                          // en dessous, la bille s'arrête
   var E_BALL = 0.95, E_CUSH = 0.78;      // rebonds bille/bille, bille/bande
   var VMAX = 2200;
+  var FOLLOW = 0.55, DRAW = 0.8, RAILK = 0.3;   // effet : coulé / rétro (transmis à la blanche au premier contact), effet latéral sur les bandes
+  var SP = { ts: 0, ss: 0 };                    // effet de la blanche pendant le tir (ts : haut > 0 / bas < 0, ss : droite > 0 / gauche < 0)
+  var strike = { x: 0, y: 0 };                  // point de frappe choisi sur la boule d'effet
   var HEAD_X = W * 0.25;                 // ligne de départ de la blanche
   var APEX = { x: W * 0.72, y: H / 2 };  // pointe du triangle
   var POCKETS = [
-    { x: -6, y: -6, r: 28 }, { x: W / 2, y: -10, r: 26 }, { x: W + 6, y: -6, r: 28 },
-    { x: -6, y: H + 6, r: 28 }, { x: W / 2, y: H + 10, r: 26 }, { x: W + 6, y: H + 6, r: 28 }
+    { x: -9, y: -9, r: 40 }, { x: W / 2, y: -14, r: 36 }, { x: W + 9, y: -9, r: 40 },
+    { x: -9, y: H + 9, r: 40 }, { x: W / 2, y: H + 14, r: 36 }, { x: W + 9, y: H + 9, r: 40 }
   ];
   var COLORS = ["#f4f1e8", "#f2c21b", "#1f4fd1", "#d62b2b", "#6b2fa3", "#f27a14", "#1c8c3e", "#7b1f26", "#141414"];
   function colorOf(n) { return COLORS[n > 8 ? n - 8 : n]; }
@@ -45,7 +48,8 @@
   var overlay = $("[data-overlay]", root), card = $("[data-card]", root);
   var elPlayers = $("[data-players]", root), elStatus = $("[data-status]", root), elPot = $("[data-pot]", root);
   var elShoot = $("[data-shoot]", root), elPower = $("[data-power]", root), elPowerOut = $("[data-power-out]", root);
-  var elActions = $("[data-actions]", root), elSide = $(".pool-side", root);
+  var elActions = $("[data-actions]", root);
+  var elSpin = $("[data-spin]", root), elSpinT = $("[data-spin-t]", root);
 
   /* ---------- état ---------- */
   var myName = String(lget("billard-name", "") || "").slice(0, 16);
@@ -80,6 +84,7 @@
     return B;
   }
   function newGame(names, ids, breaker, local) {
+    resetRot();
     return { gid: Math.random().toString(36).slice(2, 10), ids: ids || null, names: names, local: !!local, balls: rackBalls(),
       turn: breaker, breaker: breaker, groups: [null, null], hand: true, bd: false, over: null, msg: "", n: 0 };
   }
@@ -109,17 +114,102 @@
   /* =====================================================================
      SIMULATION (pas fixe, déterministe : pas de sin/cos)
      ===================================================================== */
+  /* ---------- billes qui roulent : orientation 3D de chaque bille ---------- */
+  var ROT = [], ACC = new Float64Array(32), SPR = [], SPRC = [], SPRI = [], SPRD = [], sprS = 64, DIG = {}, DS = 64;
+  function rotZ(a) { var c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1]; }
+  function resetRot() { for (var i = 0; i < 16; i++) { ROT[i] = rotZ(i * 2.399 + 0.7); SPRD[i] = true; ACC[i * 2] = ACC[i * 2 + 1] = 0; } }
+  function mul3(a, b) {
+    return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6], a[0] * b[1] + a[1] * b[4] + a[2] * b[7], a[0] * b[2] + a[1] * b[5] + a[2] * b[8],
+      a[3] * b[0] + a[4] * b[3] + a[5] * b[6], a[3] * b[1] + a[4] * b[4] + a[5] * b[7], a[3] * b[2] + a[4] * b[5] + a[5] * b[8],
+      a[6] * b[0] + a[7] * b[3] + a[8] * b[6], a[6] * b[1] + a[7] * b[4] + a[8] * b[7], a[6] * b[2] + a[7] * b[5] + a[8] * b[8]];
+  }
+  function ortho(m) {   // garde la matrice propre (évite la dérive numérique)
+    var l0 = Math.sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]) || 1, a = [m[0] / l0, m[1] / l0, m[2] / l0];
+    var d = a[0] * m[3] + a[1] * m[4] + a[2] * m[5], b = [m[3] - d * a[0], m[4] - d * a[1], m[5] - d * a[2]];
+    var l1 = Math.sqrt(b[0] * b[0] + b[1] * b[1] + b[2] * b[2]) || 1; b[0] /= l1; b[1] /= l1; b[2] /= l1;
+    return [a[0], a[1], a[2], b[0], b[1], b[2], a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  }
+  // une bille qui avance de (dx, dy) tourne de dist / R autour de l'axe (-dy, dx) : elle roule, elle ne glisse pas
+  function spinAll() {
+    for (var i = 0; i < 16; i++) {
+      var dx = ACC[i * 2], dy = ACC[i * 2 + 1]; ACC[i * 2] = ACC[i * 2 + 1] = 0;
+      var d = Math.sqrt(dx * dx + dy * dy); if (d < 0.01) continue;
+      var th = d / R, ax = -dy / d, ay = dx / d, c = Math.cos(th), sn = Math.sin(th), t = 1 - c;
+      ROT[i] = ortho(mul3([t * ax * ax + c, t * ax * ay, ay * sn, t * ax * ay, t * ay * ay + c, -ax * sn, -ay * sn, ax * sn, c], ROT[i]));
+      SPRD[i] = true;
+    }
+  }
+  function digitTex(n) {
+    if (DIG[n]) return DIG[n];
+    var c = document.createElement("canvas"); c.width = c.height = DS; var g = c.getContext("2d");
+    g.fillStyle = "#000"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = "900 " + (n > 9 ? 34 : 46) + "px Nunito, Arial, sans-serif";
+    g.fillText(String(n), DS / 2, DS / 2 + 3);
+    var px = g.getImageData(0, 0, DS, DS).data, a = new Uint8Array(DS * DS);
+    for (var i = 0; i < DS * DS; i++) a[i] = px[i * 4 + 3];
+    return (DIG[n] = a);
+  }
+  var RGB = ["#f4f1e8", "#f2c21b", "#1f4fd1", "#d62b2b", "#6b2fa3", "#f27a14", "#1c8c3e", "#7b1f26", "#141414"].map(function (h) { return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)]; });
+  var LX = -0.38, LY = -0.5, LZ = 0.78, HL = Math.sqrt(LX * LX + LY * LY + (LZ + 1) * (LZ + 1)), HX = LX / HL, HY = LY / HL, HZ = (LZ + 1) / HL;
+  // rend la sphère de la bille n avec son orientation (chiffre, bande, reflets)
+  function renderBall(n) {
+    var S = sprS, cv = SPR[n];
+    if (!cv) { cv = SPR[n] = document.createElement("canvas"); }
+    if (cv.width !== S) { cv.width = cv.height = S; SPRC[n] = cv.getContext("2d"); SPRI[n] = SPRC[n].createImageData(S, S); }
+    var img = SPRI[n], d = img.data, m = ROT[n], m0 = m[0], m1 = m[1], m2 = m[2], m3 = m[3], m4 = m[4], m5 = m[5], m6 = m[6], m7 = m[7], m8 = m[8];
+    var col = RGB[n > 8 ? n - 8 : n], white = RGB[0], dig = n > 0 ? digitTex(n) : null, stripe = n > 8, py, px;
+    for (py = 0; py < S; py++) {
+      var y = (py + 0.5) / S * 2 - 1;
+      for (px = 0; px < S; px++) {
+        var x = (px + 0.5) / S * 2 - 1, r2 = x * x + y * y, idx = (py * S + px) * 4;
+        if (r2 >= 1) { d[idx + 3] = 0; continue; }
+        var nz = Math.sqrt(1 - r2);
+        var qx = m0 * x + m3 * y + m6 * nz, qy = m1 * x + m4 * y + m7 * nz, qz = m2 * x + m5 * y + m8 * nz;
+        var c = col;
+        if (n === 0) { c = white; if (1 - Math.abs(qx) < 0.045 && qz > -0.2 && qz < 0.2 || 1 - Math.abs(qy) < 0.03) c = RGB[3]; }
+        else {
+          if (stripe) c = (qy > -0.5 && qy < 0.5) ? col : white;
+          var az = qz < 0 ? -qz : qz;
+          if (az > 0.5) {
+            var tu = qx / 0.52, tv = qy / 0.52; if (qz < 0) tu = -tu;
+            if (tu * tu + tv * tv < 1) {
+              c = white;
+              var tx = ((tu * 0.5 + 0.5) * DS) | 0, ty = ((tv * 0.5 + 0.5) * DS) | 0;
+              if (dig[ty * DS + tx] > 110) c = [18, 18, 18];
+            }
+          }
+        }
+        var diff = x * LX + y * LY + nz * LZ; if (diff < 0) diff = 0;
+        var shade = (0.42 + 0.68 * diff) * (0.72 + 0.28 * nz);
+        var sp = x * HX + y * HY + nz * HZ; if (sp < 0) sp = 0;
+        sp *= sp; sp *= sp; sp *= sp; sp *= sp; sp *= sp;   // ^32
+        var hl = sp * 190;
+        var rr = c[0] * shade + hl, gg = c[1] * shade + hl, bb = c[2] * shade + hl;
+        d[idx] = rr > 255 ? 255 : rr; d[idx + 1] = gg > 255 ? 255 : gg; d[idx + 2] = bb > 255 ? 255 : bb;
+        var ae = (1 - Math.sqrt(r2)) * S * 0.5; d[idx + 3] = ae >= 1 ? 255 : ae * 255;
+      }
+    }
+    SPRC[n].putImageData(img, 0, 0);
+    SPRD[n] = false;
+  }
+  resetRot();
   function newTrack() { return { first: -1, rail: false, pk: [], snd: [] }; }
   function nearPocket(b, extra) {
     for (var i = 0; i < 6; i++) { var p = POCKETS[i], dx = b.x - p.x, dy = b.y - p.y; if (dx * dx + dy * dy < (p.r + extra) * (p.r + extra)) return i; }
     return -1;
   }
+  function railKick(b, nx, ny, vnPre) {   // effet latéral : la bande « accroche » la blanche
+    if (SP.ss === 0) return;
+    var k = SP.ss * RAILK * vnPre;
+    b.vx += -ny * k; b.vy += nx * k;
+    SP.ss *= 0.65;
+  }
   function step(T) {
     var B = G.balls, i, j, b, sp;
+    SP.ts *= 1 - 0.2 * DT; SP.ss *= 1 - 0.35 * DT;
     for (i = 0; i < 16; i++) {
       b = B[i];
       if (!b.in || (b.vx === 0 && b.vy === 0)) continue;
-      b.x += b.vx * DT; b.y += b.vy * DT;
+      b.x += b.vx * DT; b.y += b.vy * DT; ACC[i * 2] += b.vx * DT; ACC[i * 2 + 1] += b.vy * DT;
       sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
       var ns = sp - (FC + FK * sp) * DT;
       if (ns < VMIN) { b.vx = 0; b.vy = 0; } else { var f = ns / sp; b.vx *= f; b.vy *= f; }
@@ -127,11 +217,11 @@
       if (nearPocket(b, 0) >= 0) { b.in = false; b.vx = 0; b.vy = 0; T.pk.push(i); T.snd.push(["pocket", sp]); continue; }
       // bandes (sauf devant une poche)
       if (nearPocket(b, 2) < 0) {
-        var hit = 0;
-        if (b.x < R) { b.x = R; if (b.vx < 0) { b.vx = -b.vx * E_CUSH; b.vy *= 0.985; hit = 1; } }
-        else if (b.x > W - R) { b.x = W - R; if (b.vx > 0) { b.vx = -b.vx * E_CUSH; b.vy *= 0.985; hit = 1; } }
-        if (b.y < R) { b.y = R; if (b.vy < 0) { b.vy = -b.vy * E_CUSH; b.vx *= 0.985; hit = 1; } }
-        else if (b.y > H - R) { b.y = H - R; if (b.vy > 0) { b.vy = -b.vy * E_CUSH; b.vx *= 0.985; hit = 1; } }
+        var hit = 0, vn;
+        if (b.x < R) { b.x = R; if (b.vx < 0) { vn = -b.vx; b.vx = vn * E_CUSH; b.vy *= 0.985; hit = 1; if (i === 0) railKick(b, -1, 0, vn); } }
+        else if (b.x > W - R) { b.x = W - R; if (b.vx > 0) { vn = b.vx; b.vx = -vn * E_CUSH; b.vy *= 0.985; hit = 1; if (i === 0) railKick(b, 1, 0, vn); } }
+        if (b.y < R) { b.y = R; if (b.vy < 0) { vn = -b.vy; b.vy = vn * E_CUSH; b.vx *= 0.985; hit = 1; if (i === 0) railKick(b, 0, -1, vn); } }
+        else if (b.y > H - R) { b.y = H - R; if (b.vy > 0) { vn = b.vy; b.vy = -vn * E_CUSH; b.vx *= 0.985; hit = 1; if (i === 0) railKick(b, 0, 1, vn); } }
         if (hit) { if (T.first >= 0) T.rail = true; T.snd.push(["rail", sp]); }
       }
     }
@@ -146,8 +236,12 @@
         a.x -= nx * ov; a.y -= ny * ov; b.x += nx * ov; b.y += ny * ov;
         var rel = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
         if (rel > 0) {
-          var jm = (1 + E_BALL) / 2 * rel;
+          var jm = (1 + E_BALL) / 2 * rel, cb = i === 0 ? a : j === 0 ? b : null, cs = cb ? Math.sqrt(cb.vx * cb.vx + cb.vy * cb.vy) : 0, cdx = cs > 0 ? cb.vx / cs : 0, cdy = cs > 0 ? cb.vy / cs : 0;
           a.vx -= jm * nx; a.vy -= jm * ny; b.vx += jm * nx; b.vy += jm * ny;
+          if (cb && SP.ts !== 0) {   // coulé (suit la bille) ou rétro (revient), proportionnel à la part de vitesse transmise
+            var sk = SP.ts * (SP.ts > 0 ? FOLLOW : DRAW) * rel;
+            cb.vx += cdx * sk; cb.vy += cdy * sk; SP.ts = 0;
+          }
           if (T.first < 0 && (i === 0 || j === 0)) T.first = i === 0 ? j : i;
           T.snd.push(["ball", rel]);
         }
@@ -157,9 +251,10 @@
   function moving() { for (var i = 0; i < 16; i++) { var b = G.balls[i]; if (b.in && (b.vx !== 0 || b.vy !== 0)) return true; } return false; }
 
   /* tir : le tireur (ou un spectateur qui rejoue) lance la simulation */
-  function launch(cx, cy, dx, dy, speed, mine) {
+  function launch(cx, cy, dx, dy, speed, mine, sx, sy) {
     var c = G.balls[0];
     c.in = true; c.x = cx; c.y = cy; c.vx = dx * speed; c.vy = dy * speed;
+    SP.ts = Math.max(-1, Math.min(1, +sy || 0)); SP.ss = Math.max(-1, Math.min(1, +sx || 0));
     var pre = {};
     if (mine) pre = { left: G.turn >= 0 ? ballsLeft(G.groups[G.turn]) : 0 };
     run = { acc: 0, track: newTrack(), mine: mine, pending: null, doneAt: 0, pre: pre, asked: false };
@@ -167,13 +262,14 @@
     sfx("cue", speed / VMAX);
     render();
   }
-  function shoot() {
+  function shoot() {   // lit le point de frappe (strike)
     if (!isMyTurn()) return;
     var c = G.balls[0], speed = Math.min(VMAX, 120 + 2080 * Math.pow(power / 100, 1.4));
-    var msg = { gid: G.gid, n: G.n, cx: round2(c.x), cy: round2(c.y), dx: aim.x, dy: aim.y, v: speed };
+    var msg = { gid: G.gid, n: G.n, cx: round2(c.x), cy: round2(c.y), dx: aim.x, dy: aim.y, v: speed, sx: round2(strike.x), sy: round2(strike.y) };
     if (G.hand) G.hand = false;
     if (!G.local) netSend("shot", msg);
-    launch(msg.cx, msg.cy, aim.x, aim.y, speed, true);
+    launch(msg.cx, msg.cy, aim.x, aim.y, speed, true, msg.sx, msg.sy);
+    strike.x = strike.y = 0; drawSpin();
   }
   function round2(v) { return Math.round(v * 100) / 100; }
 
@@ -245,7 +341,7 @@
     G = { gid: st.gid, ids: st.ids, names: st.names, local: false, balls: st.b.map(function (a) { return { x: a[0], y: a[1], vx: 0, vy: 0, in: !!a[2] }; }),
       turn: st.turn, breaker: st.breaker, groups: st.groups, hand: st.hand, bd: st.bd, over: st.over, msg: st.msg, n: st.n };
     run = null; remoteAim = null;
-    if (fresh) { overlay.hidden = true; screen = "game"; }
+    if (fresh) { resetRot(); overlay.hidden = true; screen = "game"; }
     if (myIdx() === G.turn) lookAtRack();
     render();
     if (G.over) showEnd(); else if (fresh || screen === "end") { overlay.hidden = true; screen = "game"; }
@@ -334,7 +430,7 @@
       if (!G || G.gid !== p.gid || run || p.n !== G.n) return;
       if (G.ids && G.ids[G.turn] === NET.id) return;   // c'est moi qui tire
       G.hand = false;
-      launch(p.cx, p.cy, p.dx, p.dy, p.v, false);
+      launch(p.cx, p.cy, p.dx, p.dy, p.v, false, p.sx, p.sy);
       return;
     }
     if (ev === "settle") {
@@ -370,6 +466,7 @@
         run.acc -= DT; step(run.track);
         if (!moving()) break;
       }
+      spinAll();
       var sn = run.track.snd, k = 0; run.track.snd = [];
       for (var i = 0; i < sn.length && k < 5; i++) { sfx(sn[i][0], Math.min(1, sn[i][1] / 900)); k++; }
       if (!moving()) endRun();
@@ -399,24 +496,23 @@
 
   /* --- rendu de la table --- */
   function layout() {
-    var wrapW = Math.max(240, (isFull() && !(window.innerWidth < 760 && window.innerHeight > window.innerWidth * 1.1)) ? window.innerWidth - 270 : (stage.clientWidth || root.clientWidth)), vh = window.innerHeight || 700;
+    var full = isFull(), vh = window.innerHeight || 700;
     rot = window.innerWidth < 760 && window.innerHeight > window.innerWidth * 1.1;
     var lw = W + 2 * FRAME, lh = H + 2 * FRAME;
-    var aw = rot ? lh : lw, ah = rot ? lw : lh;
-    var full = isFull();
-    if (full) vh = window.innerHeight;
-    var sideH = full && rot ? (elSide.offsetHeight || 230) : 0;
-    var maxH = Math.max(200, vh - (full ? (rot ? sideH + 14 : 16) : (rot ? 150 : 190)));
-    var cssW = Math.min(wrapW, aw * (maxH / ah), 1200);
+    var aw = rot ? lh : lw, ah = rot ? lw : lh, cssW;
+    if (full && stage.clientWidth > 50 && stage.clientHeight > 50) cssW = Math.min(stage.clientWidth, aw * (stage.clientHeight / ah));
+    else cssW = Math.min(Math.max(240, stage.clientWidth || root.clientWidth), aw * (Math.max(260, vh - (rot ? 150 : 190)) / ah), 1200);
     var cssH = cssW * ah / aw;
     var dpr = Math.min(2.5, window.devicePixelRatio || 1);
     var key = Math.round(cssW) + "x" + Math.round(cssH) + "@" + dpr + (rot ? "r" : "");
     if (key !== layout.key) {
       layout.key = key;
-      canvas.style.width = Math.round(cssW) + "px"; canvas.style.height = Math.round(cssH) + "px";
+      canvas.style.width = Math.floor(cssW) + "px"; canvas.style.height = Math.floor(cssH) + "px";
       canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
     }
     CW = aw; CH = ah; scale = canvas.width / aw;
+    var ns = Math.max(24, Math.round(2 * R * scale));
+    if (ns !== sprS) { sprS = ns; for (var i = 0; i < 16; i++) SPRD[i] = true; }
   }
   function setTransform() {
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
@@ -450,28 +546,16 @@
     // poches
     for (var p = 0; p < 6; p++) {
       var pk = POCKETS[p];
-      g.fillStyle = "#6b4426"; g.beginPath(); g.arc(pk.x, pk.y, pk.r + 5, 0, 6.2832); g.fill();
-      g.fillStyle = "#050505"; g.beginPath(); g.arc(pk.x, pk.y, pk.r - 1, 0, 6.2832); g.fill();
+      g.fillStyle = "#4a2d17"; g.beginPath(); g.arc(pk.x, pk.y, pk.r * 0.92 + 5, 0, 6.2832); g.fill();
+      g.fillStyle = "#050505"; g.beginPath(); g.arc(pk.x, pk.y, pk.r * 0.92, 0, 6.2832); g.fill();
     }
   }
   function dia(x, y) { ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x + 3, y); ctx.lineTo(x, y + 4); ctx.lineTo(x - 3, y); ctx.fill(); }
-  function drawBall(n, x, y, alpha) {
-    var g = ctx, col = colorOf(n);
-    g.save(); g.globalAlpha = alpha == null ? 1 : alpha;
-    g.fillStyle = "rgba(0,0,0,.3)"; g.beginPath(); g.arc(x + 2.5, y + 3, R, 0, 6.2832); g.fill();
-    g.beginPath(); g.arc(x, y, R, 0, 6.2832); g.clip();
-    g.fillStyle = n > 8 || n === 0 ? "#f4f1e8" : col; g.fillRect(x - R, y - R, 2 * R, 2 * R);
-    if (n > 8) { g.fillStyle = col; g.fillRect(x - R, y - R * 0.55, 2 * R, R * 1.1); }
-    if (n > 0) {
-      g.fillStyle = "#f4f1e8"; g.beginPath(); g.arc(x, y, R * 0.5, 0, 6.2832); g.fill();
-      g.fillStyle = "#111"; g.font = "800 " + (R * 0.72) + "px Nunito, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
-      g.fillText(String(n), x, y + 0.6);
-    }
-    var sh = g.createRadialGradient(x - R * 0.4, y - R * 0.45, 1, x, y, R * 1.1);
-    sh.addColorStop(0, "rgba(255,255,255,.65)"); sh.addColorStop(0.3, "rgba(255,255,255,0)"); sh.addColorStop(1, "rgba(0,0,0,.38)");
-    g.fillStyle = sh; g.fillRect(x - R, y - R, 2 * R, 2 * R);
-    g.restore();
-    g.save(); g.globalAlpha = alpha == null ? 1 : alpha; g.strokeStyle = "rgba(0,0,0,.35)"; g.lineWidth = 0.8; g.beginPath(); g.arc(x, y, R, 0, 6.2832); g.stroke(); g.restore();
+  function drawBall(n, x, y) {
+    var g = ctx;
+    if (SPRD[n] || !SPR[n] || SPR[n].width !== sprS) renderBall(n);
+    g.fillStyle = "rgba(0,0,0,.32)"; g.beginPath(); g.arc(x + 3.5, y + 4.5, R * 0.98, 0, 6.2832); g.fill();
+    g.drawImage(SPR[n], x - R, y - R, 2 * R, 2 * R);
   }
   // guide de visée : jusqu'au premier contact
   function ray(c, dx, dy) {
@@ -492,7 +576,7 @@
   function drawAim(c, dx, dy, pw, mine) {
     var g = ctx, h = ray(c, dx, dy), ex = c.x + dx * h.t, ey = c.y + dy * h.t;
     g.save();
-    g.setLineDash([6, 6]); g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = 1.6;
+    g.setLineDash([8, 8]); g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = 2.2;
     g.beginPath(); g.moveTo(c.x + dx * R, c.y + dy * R); g.lineTo(ex, ey); g.stroke(); g.setLineDash([]);
     g.strokeStyle = "rgba(255,255,255,.85)"; g.beginPath(); g.arc(ex, ey, R, 0, 6.2832); g.stroke();
     if (h.ball > 0) {
@@ -502,13 +586,13 @@
       if (tl > 0.02) { g.strokeStyle = "rgba(255,255,255,.4)"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(ex, ey); g.lineTo(ex + tx / tl * 40, ey + ty2 / tl * 40); g.stroke(); }
     }
     // queue
-    var pull = 14 + pw / 100 * 70, sx = c.x - dx * (R + pull), sy = c.y - dy * (R + pull), len = 380;
+    var pull = 16 + pw / 100 * 90, sx = c.x - dx * (R + pull), sy = c.y - dy * (R + pull), len = 460;
     var ex2 = sx - dx * len, ey2 = sy - dy * len;
     var cg = g.createLinearGradient(sx, sy, ex2, ey2);
     cg.addColorStop(0, "#e9d4a0"); cg.addColorStop(0.55, "#b9854a"); cg.addColorStop(0.56, "#2a2018"); cg.addColorStop(1, "#1b1510");
-    g.strokeStyle = "rgba(0,0,0,.28)"; g.lineWidth = 6; g.lineCap = "round"; g.beginPath(); g.moveTo(sx + 3, sy + 4); g.lineTo(ex2 + 3, ey2 + 4); g.stroke();
-    g.strokeStyle = cg; g.lineWidth = 5.5; g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex2, ey2); g.stroke();
-    g.strokeStyle = "#78b7e8"; g.lineWidth = 5.5; g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx - dx * 5, sy - dy * 5); g.stroke();
+    g.strokeStyle = "rgba(0,0,0,.28)"; g.lineWidth = 9; g.lineCap = "round"; g.beginPath(); g.moveTo(sx + 3, sy + 4); g.lineTo(ex2 + 3, ey2 + 4); g.stroke();
+    g.strokeStyle = cg; g.lineWidth = 8; g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex2, ey2); g.stroke();
+    g.strokeStyle = "#78b7e8"; g.lineWidth = 8; g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx - dx * 5, sy - dy * 5); g.stroke();
     g.restore();
   }
   function draw() {
@@ -585,6 +669,43 @@
     fineT = setInterval(function () { fine(d * (now() - t0 > 600 ? 2 : 0.6)); }, 40);
   });
   window.addEventListener("pointerup", function () { clearInterval(fineT); });
+  /* boule d'effet : on touche l'endroit où la queue frappe la blanche */
+  function drawSpin() {
+    if (!elSpin) return;
+    var g = elSpin.getContext("2d"), S = elSpin.width, c = S / 2, r = S / 2 - 6;
+    g.clearRect(0, 0, S, S);
+    var gr = g.createRadialGradient(c - r * 0.35, c - r * 0.4, r * 0.1, c, c, r);
+    gr.addColorStop(0, "#ffffff"); gr.addColorStop(1, "#cfcabd");
+    g.fillStyle = gr; g.beginPath(); g.arc(c, c, r, 0, 6.2832); g.fill();
+    g.lineWidth = 3; g.strokeStyle = "#3d2a1e"; g.stroke();
+    g.strokeStyle = "rgba(61,42,30,.35)"; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(c - r, c); g.lineTo(c + r, c); g.moveTo(c, c - r); g.lineTo(c, c + r); g.stroke();
+    g.setLineDash([3, 4]); g.beginPath(); g.arc(c, c, r * 0.85, 0, 6.2832); g.stroke(); g.setLineDash([]);
+    var x = c + strike.x * r, y = c - strike.y * r;
+    g.fillStyle = "#d62b2b"; g.beginPath(); g.arc(x, y, 8, 0, 6.2832); g.fill();
+    g.lineWidth = 2.5; g.strokeStyle = "#fff"; g.stroke();
+    if (elSpinT) {
+      var parts = [];
+      if (strike.y > 0.12) parts.push("coulé"); else if (strike.y < -0.12) parts.push("rétro");
+      if (strike.x > 0.12) parts.push("droite"); else if (strike.x < -0.12) parts.push("gauche");
+      elSpinT.textContent = "Effet : " + (parts.length ? parts.join(" · ") : "centre");
+    }
+  }
+  function spinFrom(ev) {
+    var r = elSpin.getBoundingClientRect(), S = elSpin.width, rad = S / 2 - 6, k = S / r.width;
+    var x = ((ev.clientX - r.left) * k - S / 2) / rad, y = -((ev.clientY - r.top) * k - S / 2) / rad, l = Math.sqrt(x * x + y * y);
+    if (l > 0.85) { x *= 0.85 / l; y *= 0.85 / l; }
+    if (l < 0.12) { x = 0; y = 0; }   // près du centre : coup droit
+    strike.x = x; strike.y = y; drawSpin();
+  }
+  if (elSpin) {
+    var spinDrag = false;
+    elSpin.addEventListener("pointerdown", function (ev) { if (!isMyTurn()) return; spinDrag = true; try { elSpin.setPointerCapture(ev.pointerId); } catch (e) {} spinFrom(ev); ev.preventDefault(); });
+    elSpin.addEventListener("pointermove", function (ev) { if (spinDrag) spinFrom(ev); });
+    elSpin.addEventListener("pointerup", function () { spinDrag = false; });
+    elSpin.addEventListener("pointercancel", function () { spinDrag = false; });
+    drawSpin();
+  }
   elPower.addEventListener("input", function () { power = Number(elPower.value); elPowerOut.textContent = power; });
   $("[data-shot]", root).addEventListener("click", function () { audioInit(); shoot(); });
   document.addEventListener("keydown", function (ev) {
@@ -630,7 +751,7 @@
     var me = myIdx(), html = "";
     for (var p = 0; p < 2; p++) {
       var grp = G.groups[p], tray = "";
-      if (grp == null) tray = '<small>Groupe : table ouverte</small>';
+      if (grp == null) tray = '<small>Table ouverte</small>';
       else {
         var from = grp === 0 ? 1 : 9;
         for (var n = from; n < from + 7; n++) tray += miniBall(n, !G.balls[n].in);
@@ -657,10 +778,9 @@
     if (isFull()) layout();
   }
   function renderActions() {
-    var h = '<button class="btn btn-ghost btn-small" type="button" data-act="menu">☰ Menu</button>';
-    h += '<button class="btn btn-ghost btn-small" type="button" data-act="sound">' + (soundOn ? "🔊" : "🔇") + "</button>";
-    if (G && !G.over && !G.local && myIdx() >= 0) h += '<button class="btn btn-ghost btn-small" type="button" data-act="resign">🏳️ Abandonner</button>';
-    h += '<button class="btn btn-ghost btn-small" type="button" data-act="full">' + (isFull() ? "⛶ Quitter le plein écran" : "⛶ Plein écran") + "</button>";
+    var h = '<button class="btn btn-ghost btn-small" type="button" data-act="menu" aria-label="Menu">☰<span class="lbl"> Menu</span></button>';
+    h += '<button class="btn btn-ghost btn-small" type="button" data-act="sound" aria-label="Son">' + (soundOn ? "🔊" : "🔇") + "</button>";
+    if (G && !G.over && !G.local && myIdx() >= 0) h += '<button class="btn btn-ghost btn-small" type="button" data-act="resign" aria-label="Abandonner">🏳️<span class="lbl"> Abandonner</span></button>';
     elActions.innerHTML = h;
   }
   root.addEventListener("click", function (ev) {
@@ -715,6 +835,7 @@
     setTimeout(layout, 150);
   }
   function toggleFull() {
+    if (window.GameKit && GameKit.fullscreen) { GameKit.fullscreen.toggle(root); setTimeout(syncFull, 60); return; }
     if (isFull()) {
       root.classList.remove("is-max");
       var ex = document.exitFullscreen || document.webkitExitFullscreen;
@@ -792,5 +913,5 @@
   render();
   showMenu("home");
   requestAnimationFrame(frame);
-  if (window.BILLARD_DEBUG === undefined && /[?&]debug\b/.test(location.search)) window.BILLARD_DEBUG = { get G() { return G; }, step: step, newTrack: newTrack, evaluate: evaluate, newGame: newGame, shoot: shoot, setG: function (g) { G = g; }, aim: aim };
+  if (window.BILLARD_DEBUG === undefined && /[?&]debug\b/.test(location.search)) window.BILLARD_DEBUG = { SP: SP, get G() { return G; }, step: step, newTrack: newTrack, evaluate: evaluate, newGame: newGame, shoot: shoot, setG: function (g) { G = g; }, aim: aim };
 })();
