@@ -25,6 +25,7 @@ import { goals, secondaryView, treasureView, pendingChests, genLevel, generatorI
 import { pickReaction } from '../../game/fx/reactions';
 import { pickLine } from '../../data/augusteTone';
 import { augusteSays } from '../components/augusteSays';
+import { notify } from '../notify';
 import { sparkleBurst } from '../fx/sparkle';
 import { chestSvg } from './art';
 import { openChestFlow } from './chestFlow';
@@ -112,7 +113,7 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
   // un toucher sur la fiche (hors boutons) la referme : on retrouve aussitôt la rangée d'actions
   selEl.addEventListener('click', (ev) => { if (!(ev.target as HTMLElement).closest('button')) cfg.getScene()?.deselect(); });
   let focus = -1;
-  const gate = new ReactionGate(20_000);
+  const gate = new ReactionGate(); // 90 s entre deux réactions ordinaires, 30 s entre deux importantes
   let prevReady: boolean[] = [false, false, false];
   let lastOrderIds: (number | undefined)[] = [];
   let alive = true;
@@ -127,18 +128,22 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     if (text === lastFeed && now - lastFeedAt < 900) return;
     lastFeed = text;
     lastFeedAt = now;
-    const pill = h(`div.en-pill.${o.kind ?? 'gain'}`, o.img ? h('img', { src: o.img, alt: '' }) : null, h('span', text));
-    if (o.btn) {
-      const b = h('button.en-pill-btn', o.btn.label);
-      b.addEventListener('click', tap(() => { pill.remove(); o.btn!.fn(); }, { sound: false }));
-      pill.append(b);
-      pill.classList.add('has-btn');
-    }
-    // une seule notice à la fois dans la voie du bas : la nouvelle remplace l'ancienne (jamais d'empilement sur le plateau)
-    feedEl.parentElement?.querySelectorAll('.aug-says.en-aug').forEach((e) => e.remove());
-    feedEl.replaceChildren();
-    feedEl.append(pill);
-    window.setTimeout(() => { pill.classList.add('out'); window.setTimeout(() => pill.remove(), 300); }, o.ms ?? 2300);
+    // une seule pastille à la fois, jamais pendant un message d'Auguste (gestionnaire central) : la voie du bas ne déborde pas sur le plateau
+    notify({
+      key: `feed:${text}`, channel: 'ambient', prio: o.kind === 'good' ? 1 : 0, ttl: 2500, ms: o.ms ?? 2300,
+      show: () => {
+        const pill = h(`div.en-pill.${o.kind ?? 'gain'}`, o.img ? h('img', { src: o.img, alt: '' }) : null, h('span', text));
+        if (o.btn) {
+          const b = h('button.en-pill-btn', o.btn.label);
+          b.addEventListener('click', tap(() => { pill.remove(); o.btn!.fn(); }, { sound: false }));
+          pill.append(b);
+          pill.classList.add('has-btn');
+        }
+        feedEl.replaceChildren();
+        feedEl.append(pill);
+        return (immediate) => { if (immediate) { pill.remove(); return; } pill.classList.add('out'); window.setTimeout(() => pill.remove(), 300); };
+      },
+    });
   };
 
   const inventoryToast: EndlessEnv['inventoryToast'] = (cloth, furniture) => {
@@ -178,10 +183,17 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
       for (let k = 0; k < 4 && gate.repeats(text); k++) text = pick(); // jamais deux fois la même phrase de suite
       if (gate.repeats(text)) return;
       gate.mark(now, text);
-      augusteSays(text, 2200);
-      // la bulle d'Auguste rejoint la pile ancrée au-dessus des actions (jamais posée par-dessus un bouton)
-      const bub = ui.root.lastElementChild as HTMLElement | null;
-      if (bub?.classList.contains('aug-says')) { bub.classList.add('en-aug'); const dock = feedEl.parentElement; if (dock) { feedEl.replaceChildren(); dock.querySelectorAll('.aug-says.en-aug').forEach((e) => { if (e !== bub) e.remove(); }); dock.insertBefore(bub, feedEl); } else bub.remove(); /* sans zone d'accueil : on se tait plutôt que de couvrir le plateau */ }
+      // la bulle rejoint la voie des notices sous le plateau (jamais sur les cases) ; sans cette voie, on se tait
+      augusteSays(text, 2200, {
+        className: 'en-aug',
+        mount: (el) => {
+          const dock = feedEl.parentElement;
+          if (!dock) return false;
+          feedEl.replaceChildren();
+          dock.insertBefore(el, feedEl);
+          return true;
+        },
+      });
     }, 1500);
   }
 
