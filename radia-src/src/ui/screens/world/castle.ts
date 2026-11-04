@@ -65,7 +65,19 @@ export function openCastle(room?: RoomId): Promise<void> {
       scr.replaceChildren(header, body);
     };
     const goMap = () => { scr.classList.remove('dc2-screen'); show(...mapView(scr, leave, goRoom)); };
-    const goRoom = (r: RoomId, fromMap = true) => { scr.classList.add('dc2-screen'); show(...roomView(r, fromMap ? goMap : leave, maybeFinale)); };
+    const roomError = (r: RoomId, fromMap: boolean) => {
+      scr.classList.remove('dc2-screen');
+      const hd = ui.header('Oups…', () => (fromMap ? goMap() : leave()));
+      const retry = h('button.btn', { on: { click: tap(() => goRoom(r, fromMap)) } }, 'Réessayer');
+      const home = h('button.btn.secondary', { on: { click: tap(() => leave()) } }, 'Retour à MON MONDE');
+      const bd = h('div.dc2-error', h('h3', 'Cette pièce n’a pas pu s’afficher'), h('p', 'Rien n’est perdu : tes meubles et ta sauvegarde sont intacts.'), retry, home);
+      show(hd, bd, () => undefined);
+    };
+    const goRoom = (r: RoomId, fromMap = true) => {
+      scr.classList.add('dc2-screen');
+      try { show(...roomView(r, fromMap ? goMap : leave, maybeFinale, () => roomError(r, fromMap))); }
+      catch (e) { try { console.error('[castle] ouverture de pièce', e); } catch { /* ignore */ } roomError(r, fromMap); }
+    };
     if (direct) goRoom(room!, false); else goMap();
   });
 }

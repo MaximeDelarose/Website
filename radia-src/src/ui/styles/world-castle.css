@@ -189,3 +189,8 @@
 .reduced-motion .dc2-sheet { transition: none; }
 .dc2-swatches { gap: 6px; padding: 2px 4px; }
 .dc2-swatches .cs-sw { max-width: 38px; min-height: 34px; }
+
+.dc2-error{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px 24px;text-align:center;min-height:50dvh}
+.dc2-error h3{margin:0;font-size:20px}
+.dc2-error p{margin:0 0 6px;opacity:.8}
+.dc2-error .btn{min-width:220px;min-height:48px}

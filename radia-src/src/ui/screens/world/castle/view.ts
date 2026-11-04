@@ -59,7 +59,7 @@ type Gesture =
   | { k: 'drag'; uid: number; off: { x: number; y: number }; pid: number }
   | { k: 'pinch'; st: PinchStart };
 
-export function roomView(room: RoomId, back: () => void, maybeFinale: () => void): [HTMLElement, HTMLElement, () => void] {
+export function roomView(room: RoomId, back: () => void, maybeFinale: () => void, fail?: (e: unknown) => void): [HTMLElement, HTMLElement, () => void] {
   const rdef = ROOMS[room];
   const G = geo(room);
   const draft = new Draft(cctx, room);
@@ -161,7 +161,11 @@ export function roomView(room: RoomId, back: () => void, maybeFinale: () => void
 
   // ---- boucle de rendu
   let last = performance.now(); let lastDraw = 0; let raf = 0;
+  let drawErrors = 0; let everDrawn = false; let failed = false;
+  const giveUp = (e: unknown) => { if (failed) return; failed = true; cancelAnimationFrame(raf); try { console.error('[castle] pièce illisible', e); } catch { /* ignore */ } fail?.(e); };
+  window.setTimeout(() => { if (!everDrawn && !failed) giveUp(new Error('aucun dessin après 3 s')); }, 3000);
   const frame = (nowMs: number) => {
+    if (failed) return;
     raf = requestAnimationFrame(frame);
     const dt = Math.min(0.1, (nowMs - last) / 1000); last = nowMs;
     if (!view.w) return;
@@ -182,10 +186,13 @@ export function roomView(room: RoomId, back: () => void, maybeFinale: () => void
     const c = cv.getContext('2d')!;
     const pendColor = new Map<number, string>();
     if (sel !== null && pend.item) pendColor.set(sel, pend.item);
-    drawScene(c, {
-      room, G, items: draft.items, style: { wall: rgbHex(disp.wall), floor: rgbHex(disp.floor), curtain: rgbHex(disp.curtain) },
-      sel, drag, pendColor, anims, parts, now: nowMs, dt, reduced: reducedFx(), cam, view, dpr,
-    });
+    try {
+      drawScene(c, {
+        room, G, items: draft.items, style: { wall: rgbHex(disp.wall), floor: rgbHex(disp.floor), curtain: rgbHex(disp.curtain) },
+        sel, drag, pendColor, anims, parts, now: nowMs, dt, reduced: reducedFx(), cam, view, dpr,
+      });
+      everDrawn = true; drawErrors = 0;
+    } catch (e) { if (++drawErrors >= 3) giveUp(e); }
   };
   raf = requestAnimationFrame(frame);
 
