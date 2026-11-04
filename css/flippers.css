@@ -44,3 +44,7 @@
 }
 /* mode Ascension : rendu pixel art (image 240 × 420 agrandie sans lissage) */
 .fl-stage.fl-pixel .fl-canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+/* plein écran : la scène prend toute la hauteur disponible (le ratio 480 / 840 est conservé) */
+html .fl.gk-fs, html .fl.is-max, html .fl:fullscreen { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: center; gap: 0; }
+html .fl.gk-fs .fl-stage, html .fl.is-max .fl-stage, html .fl:fullscreen .fl-stage { width: min(100vw, calc(100dvh * 480 / 840)); min-width: 0; max-width: none; max-height: 100dvh; margin: 0 auto; border-width: 0; border-radius: 0; }
+html .fl.gk-fs .fl-side, html .fl.is-max .fl-side, html .fl:fullscreen .fl-side { display: none; }
