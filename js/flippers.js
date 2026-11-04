@@ -272,7 +272,7 @@
     var rvx = b.vx - svx, rvy = b.vy - svy;
     var vn = rvx * nx + rvy * ny;
     if (vn >= 0) return 0;
-    var ee = -vn < 45 ? 0 : e;
+    var ee = -vn < 140 ? 0 : e;      // pas de rebond sur un contact doux (jonction pente / flipper : la bille roule au lieu de sauter)
     rvx -= (1 + ee) * vn * nx; rvy -= (1 + ee) * vn * ny;
     b.vx = rvx + svx; b.vy = rvy + svy;
     return -vn;
@@ -309,7 +309,7 @@
       if (!circleSegT(b, f.px, f.py, tx, ty, t, rad)) continue;
       var d = t * FLIPPER.L;
       var svx = -f.s * Math.sin(f.a) * d * f.w, svy = Math.cos(f.a) * d * f.w;
-      var v = bounce(b, hit.nx, hit.ny, FLIPPER.e, svx, svy);
+      var v = bounce(b, hit.nx, hit.ny, Math.abs(f.w) > 2 ? FLIPPER.e : 0, svx, svy);   // flipper immobile : contact doux (la bille roule dessus au lieu de rebondir)
       if (v > 240 && Math.abs(f.w) > 3) { SND.flip(); S.shake = Math.max(S.shake, 1.4); }
     }
     // champignons
@@ -489,7 +489,7 @@
     if (b.mode === "saucer") { b.timer -= dt; if (b.timer <= 0) saucerEnd(b); return; }
     if (b.mode === "cannon") {
       b.timer -= dt;
-      if (b.timer <= 0) { b.mode = "live"; b.vx = b.cannon.vx; b.vy = b.cannon.vy; b.trail = []; SND.kick(); S.shake = 6; burst(b.x, b.y, "#f6c445", 16, 300); }
+      if (b.timer <= 0) { b.mode = "live"; b.vx = b.cannon.vx * (1 + (Math.random() - 0.5) * 0.12); b.vy = b.cannon.vy * (1 + (Math.random() - 0.5) * 0.05); b.trail = []; SND.kick(); S.shake = 6; burst(b.x, b.y, "#f6c445", 16, 300); }
       return;
     }
     if (b.mode === "warp") {
@@ -599,7 +599,7 @@
       segs = segs.concat(z.segs.filter(function (sg) { return !sg.gate || !sg.gate.open; }));
       flippers = flippers.concat(z.flippers); BUMPERS = BUMPERS.concat(z.bumpers);
       ACT.zones.push(z); ACT.mobs = ACT.mobs.concat(z.mobs); ACT.bosses = ACT.bosses.concat(z.bosses); ACT.bonuses = ACT.bonuses.concat(z.bonuses);
-      ACT.launchers = ACT.launchers.concat(z.launchers); ACT.winds = ACT.winds.concat(z.winds.map(function (w) { return { x0: w.c0 * 32, x1: (w.c1 + 1) * 32, y0: z.y0 + w.r0 * 32, y1: z.y0 + (w.r1 + 1) * 32 }; }));
+      ACT.launchers = ACT.launchers.concat(z.launchers); ACT.winds = ACT.winds.concat(z.winds.map(function (w) { return { x0: w.c0 * 32, x1: (w.c1 + 1) * 32, y0: z.y0 + w.r0 * 32, y1: z.y0 + (w.r1 + 1) * 32, exit: w.r1 === 23 && w.r0 >= 17 }; }));
       ACT.hazards = ACT.hazards.concat(z.hazards.map(function (h) { return { x0: h.c0 * 32, x1: (h.c1 + 1) * 32, y0: z.y0 + h.r * 32 + 6, y1: z.y0 + (h.r + 1) * 32 }; })); ACT.flags = ACT.flags.concat(z.flags);
     }
     bumpFlash = BUMPERS.map(function () { return 0; });
@@ -696,13 +696,6 @@
     var k = zoneOf(b.y), z = CW.zones[k], i;
     if (k !== S.zoneK) { S.zoneK = k; if (k > S.room) { S.room = k; addScore(1000 * k, null, null, true); zoneBanner(z); SND.jackpot(); } }
     if (b.y < S.topY) S.topY = b.y;
-    // tunnel vers la zone du dessus
-    if (z.tube && S.tcool <= 0) {
-      var m = z.tube.mouth;
-      if (b.x > m.x0 && b.x < m.x1 && b.y < m.y + 20 && b.y > m.y - 24) {
-        b.mode = "tube"; b.tube = z.tube; b.pt = 0; b.vx = b.vy = 0; S.tcool = 1; SND.ramp(); addScore(2000 * (k + 1), (m.x0 + m.x1) / 2, m.y + 30, true); say("Le tunnel t'emporte !", 2); return;
-      }
-    }
     for (i = 0; i < ACT.launchers.length; i++) {
       var l = ACT.launchers[i], dx = b.x - l.x, dy = b.y - l.y;
       if (l.gate && !l.gate.open) continue;
@@ -710,7 +703,7 @@
     }
     for (i = 0; i < ACT.winds.length; i++) {
       var w = ACT.winds[i];
-      if (b.x > w.x0 && b.x < w.x1 && b.y > w.y0 && b.y < w.y1) { b.vy -= 3300 * dt; if (b.vy < -700) b.vy = -700; b.vx += ((w.x0 + w.x1) / 2 - b.x) * 10 * dt; b.vx *= 0.99; if (Math.random() < 0.2) particles.push({ x: b.x, y: b.y + 10, vx: 0, vy: 120, life: 1, max: 0.4, col: "#ffffff", size: 3 }); }
+      if (b.x > w.x0 && b.x < w.x1 && b.y > w.y0 && b.y < w.y1) { b.vy -= 3300 * dt; if (b.vy < -700) b.vy = -700; b.vx += ((w.x0 + w.x1) / 2 - b.x) * 10 * dt; b.vx *= 0.99; if (w.exit && b.y < w.y0 + 70) b.vx += (b.x < CW.width / 2 ? 1 : -1) * 2600 * dt; if (Math.random() < 0.2) particles.push({ x: b.x, y: b.y + 10, vx: 0, vy: 120, life: 1, max: 0.4, col: "#ffffff", size: 3 }); }
     }
     for (i = 0; i < ACT.hazards.length; i++) {
       var h = ACT.hazards[i];
@@ -855,7 +848,7 @@
     S.mode = "play";
     setOverlay(null);
     if (M.climb) { zoneBanner(CW.zones[0]); S.zoneK = 0; }
-    say(M.climb ? "Flippers : ← et → · ↑ pour secouer. Vise la bouche du tunnel tout en haut de la zone" : "Maintiens Espace (ou « Lancer ») pour armer, relâche pour tirer", 6);
+    say(M.climb ? "Flippers : ← et → · ↑ pour secouer. Monte sur les corniches, vise le puits de vent en haut de la zone" : "Maintiens Espace (ou « Lancer ») pour armer, relâche pour tirer", 6);
     updateHud();
     audio();
   }

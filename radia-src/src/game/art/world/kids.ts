@@ -15,7 +15,7 @@ interface Spec {
   skin: string; hair: string; top: string; topDark: string; bottom: string; shoes: string; accent: string;
 }
 const SPEC: Record<KidId, Spec> = {
-  kid1: { R: 17, torso: 21, leg: 14, bodyW: 25, skin: '#F3C7A0', hair: '#94603E', top: '#FFB997', topDark: '#F29A78', bottom: '#FFF4E8', shoes: '#E8558F', accent: '#FF75A8' },
+  kid1: { R: 15.5, torso: 21, leg: 14, bodyW: 18.5, skin: '#F3C7A0', hair: '#94603E', top: '#FFB997', topDark: '#F29A78', bottom: '#FFF4E8', shoes: '#E8558F', accent: '#FF75A8' },
   kid2: { R: 13, torso: 30, leg: 40, bodyW: 26, skin: '#EDBB92', hair: '#3F2B27', top: '#B9A5E8', topDark: '#9A86CF', bottom: '#7F98C9', shoes: '#FFF9EE', accent: '#F3C86B' },
   kid3: { R: 13, torso: 27, leg: 34, bodyW: 25, skin: '#F0C09A', hair: '#7A4B2F', top: '#9ECB9A', topDark: '#7FB07C', bottom: '#FFF1DE', shoes: '#8A5A44', accent: '#F5B5C8' },
 };
@@ -191,8 +191,8 @@ function torso(ctx: Ctx, kid: KidId, sp: Spec, breathe: number): void {
   const bw = sp.bodyW;
   ctx.beginPath();
   if (kid === 'kid1') { // robe évasée
-    ctx.moveTo(-bw * 0.42, sy + 2); ctx.quadraticCurveTo(-bw * 0.55, (sy + hy) / 2, -bw * 0.72, hy + 6);
-    ctx.quadraticCurveTo(0, hy + 11, bw * 0.72, hy + 6); ctx.quadraticCurveTo(bw * 0.55, (sy + hy) / 2, bw * 0.42, sy + 2);
+    ctx.moveTo(-bw * 0.46, sy + 2); ctx.quadraticCurveTo(-bw * 0.56, (sy + hy) / 2, -bw * 0.78, hy + 6);
+    ctx.quadraticCurveTo(0, hy + 11, bw * 0.78, hy + 6); ctx.quadraticCurveTo(bw * 0.56, (sy + hy) / 2, bw * 0.46, sy + 2);
     ctx.quadraticCurveTo(0, sy - 2 - breathe, -bw * 0.42, sy + 2);
   } else if (kid === 'kid2') { // cardigan + jean : haut droit
     ctx.moveTo(-bw * 0.5, sy + 2); ctx.lineTo(-bw * 0.46, hy + 3); ctx.quadraticCurveTo(0, hy + 7, bw * 0.46, hy + 3); ctx.lineTo(bw * 0.5, sy + 2);

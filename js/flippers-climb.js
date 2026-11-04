@@ -41,36 +41,39 @@
     set(g, cF, rP, "F"); set(g, cf, rP, "f");
     rect(g, cF, rP + 1, cF, 23, "#"); rect(g, cf, rP + 1, cf, 23, "#");
     rect(g, cF + 1, 21, cF + 2, 23, "#"); rect(g, cf - 2, 21, cf - 1, 23, "#");
+    set(g, cF + 1, 20, "#"); set(g, cf - 1, 20, "#");           // comble le coin sous le pivot : la bille ne peut plus se glisser sous le bras
     set(g, cF + 3, 22, "%"); set(g, cF + 4, 22, "%"); rect(g, cF + 3, 23, cF + 4, 23, "#");
     set(g, cF + 3, 17, "@");
   }
   // petite cuvette à mi-hauteur (corniche avec deux flippers) : c = colonne du flipper gauche, r = rangée des pivots
   function miniTray(g, c, r) { rect(g, c - 1, r + 2, c + 6, r + 3, "#"); set(g, c, r, "F"); set(g, c + 5, r, "f"); rect(g, c, r + 1, c, r + 1, "#"); rect(g, c + 5, r + 1, c + 5, r + 1, "#"); }
-  function mouthAt(g, c) { rect(g, c, 1, c + 2, 1, "m"); }
-  function outletAt(g, c) { set(g, c, 15, "i"); }
+  // puits de vent entre deux zones : la « bouche » perce le plafond de la zone, le « puits » traverse la roche de la zone du dessus
+  function mouthAt(g, c) { rect(g, c, 0, c + 2, 2, "W"); }
+  function shaftAt(g, c) { rect(g, c, 17, c + 2, 23, "W"); rect(g, c, 16, c + 2, 16, "="); }
 
   /* ---------- zones ---------- */
   var Z = [];
-  // 0 · La Lisière : une prairie ouverte pour apprendre les flippers
+  // 0 · La Lisière : la bille monte d'abord sur une corniche (facile), un canon la propulse vers le puits
   Z.push(function () {
-    var g = mk(); frame(g); tray(g, 11); mouthAt(g, 25);
-    blit(g, 6, 8, ["o"]); blit(g, 21, 9, ["o"]); blit(g, 14, 4, ["O"]); blit(g, 17, 13, ["p"]); blit(g, 9, 12, ["p"]);
-    blit(g, 3, 12, ["* *", " x "]); blit(g, 24, 11, ["* *"]); blit(g, 26, 5, ["*"]);
-    for (var k = 0; k < 5; k++) { set(g, 20 + k, 6 - k, "L"); if (6 - k - 1 >= 1) rect(g, 20 + k, 1, 20 + k, 6 - k - 1, "#"); }   // un toit de pierre qui guide la bille vers la bouche
+    var g = mk(); frame(g); tray(g, 11); mouthAt(g, 14);
+    rect(g, 1, 12, 6, 13, "#"); rect(g, 23, 12, 28, 13, "#");      // deux corniches de chaque côté
+    set(g, 3, 11, "e"); set(g, 27, 11, "q");                       // leurs canons visent le puits
+    blit(g, 4, 5, ["o"]); blit(g, 25, 5, ["o"]); blit(g, 14, 9, ["p"]); blit(g, 13, 15, ["* *"]);
+    blit(g, 2, 8, ["*"]); blit(g, 25, 9, ["* *"]); blit(g, 14, 5, ["x"]);
     return { name: "La Lisière", biome: 0, g: g, spawn: [14, 14] };
   });
   // 1 · Les Ruches : un long couloir vers la droite, des abeilles, un canon au bout
   Z.push(function () {
-    var g = mk(); frame(g); tray(g, 3); outletAt(g, 20); mouthAt(g, 25);
+    var g = mk(); frame(g); tray(g, 3); shaftAt(g, 14); mouthAt(g, 25);
     rect(g, 12, 9, 24, 10, "#");                                  // plafond du couloir
-    set(g, 26, 15, "u");                                          // canon : projette vers la bouche
-    blit(g, 15, 12, ["E     E"]); blit(g, 17, 14, ["*  *"]); blit(g, 22, 14, ["x"]);
+    set(g, 26, 15, "u");                                          // canon : projette dans le puits
+    blit(g, 17, 12, ["E     E"]); blit(g, 18, 14, ["*  *"]); blit(g, 22, 14, ["x"]);
     blit(g, 5, 7, ["o"]); blit(g, 9, 4, ["p"]); blit(g, 6, 12, ["*"]); blit(g, 10, 5, ["*"]); blit(g, 22, 4, ["o"]);
     return { name: "Les Ruches", biome: 0, g: g, spawn: [6, 14] };
   });
   // 2 · Le Gros Hérisson : premier boss, la barrière ne s'ouvre qu'à sa défaite
   Z.push(function () {
-    var g = mk(); frame(g); tray(g, 11); outletAt(g, 25); mouthAt(g, 2);
+    var g = mk(); frame(g); tray(g, 11); shaftAt(g, 25); mouthAt(g, 2);
     rect(g, 5, 1, 5, 4, "D"); rect(g, 2, 4, 4, 4, "D");
     blit(g, 8, 6, ["o"]); blit(g, 21, 6, ["o"]); blit(g, 14, 12, ["O"]); blit(g, 4, 11, ["v"]); blit(g, 25, 11, ["* *"]);
     blit(g, 14, 2, ["K"]); set(g, 3, 15, "u");
@@ -78,59 +81,58 @@
   });
   // 3 · Sous-bois : deux étages, une corniche à flippers côté gauche
   Z.push(function () {
-    var g = mk(); frame(g); tray(g, 17); outletAt(g, 3); mouthAt(g, 2);
-    miniTray(g, 2, 8);                                           // la corniche : deux flippers qui renvoient vers la bouche
+    var g = mk(); frame(g); tray(g, 17); shaftAt(g, 2); mouthAt(g, 2);
+    miniTray(g, 2, 8);                                           // la corniche : deux flippers qui renvoient vers le puits
     rect(g, 14, 5, 18, 5, "=");
     blit(g, 13, 10, ["S"]); blit(g, 21, 8, ["S"]); blit(g, 12, 3, ["S"]); blit(g, 24, 13, ["* *"]); blit(g, 6, 5, ["x"]);
     blit(g, 22, 4, ["o"]); blit(g, 26, 7, ["o"]); blit(g, 15, 8, ["p"]); blit(g, 10, 13, ["o"]);
     return { name: "Sous-bois", biome: 1, g: g, spawn: [20, 14] };
   });
-  // 4 · Le Pont des Racines : pierres de gué, un gouffre d'épines près du but
+  // 4 · Le Pont des Racines : pierres de gué, un gouffre d'épines au bout de l'étagère
   Z.push(function () {
-    var g = mk(); frame(g); tray(g, 11); outletAt(g, 3); mouthAt(g, 25);
-    rect(g, 6, 9, 12, 9, "="); rect(g, 15, 6, 21, 6, "="); rect(g, 12, 12, 16, 12, "#");
-    rect(g, 27, 16, 28, 18, "."); rect(g, 27, 17, 28, 18, "X");   // gouffre d'épines sur l'étagère droite
-    blit(g, 7, 7, ["* *"]); blit(g, 16, 4, ["* *"]); blit(g, 14, 10, ["B"]); blit(g, 8, 4, ["B"]);
-    blit(g, 22, 11, ["o"]); blit(g, 4, 11, ["o"]); blit(g, 26, 8, ["n"]); blit(g, 19, 14, ["T"]); blit(g, 10, 6, ["p"]);
+    var g = mk(); frame(g); tray(g, 11); shaftAt(g, 2); mouthAt(g, 8);
+    rect(g, 17, 9, 23, 9, "="); rect(g, 8, 6, 14, 6, "="); rect(g, 13, 12, 17, 12, "#");
+    rect(g, 27, 16, 28, 18, "."); rect(g, 27, 17, 28, 18, "X");   // gouffre d'épines
+    blit(g, 21, 7, ["* *"]); blit(g, 10, 4, ["* *"]); blit(g, 15, 10, ["B"]); blit(g, 21, 4, ["B"]);
+    blit(g, 7, 11, ["o"]); blit(g, 25, 11, ["o"]); blit(g, 3, 8, ["n"]); blit(g, 10, 14, ["T"]); blit(g, 19, 6, ["p"]);
     return { name: "Le Pont des Racines", biome: 1, g: g, spawn: [14, 14] };
   });
-  // 5 · Le Terrier des Taupes : un couloir vers la gauche cette fois, des taupes qui sortent du sol
+  // 5 · Le Terrier des Taupes : un couloir vers la gauche, des taupes qui sortent du sol
   Z.push(function () {
-    var g = mk(); frame(g); tray(g, 17); outletAt(g, 9); mouthAt(g, 2);
+    var g = mk(); frame(g); tray(g, 17); shaftAt(g, 8); mouthAt(g, 2);
     rect(g, 5, 9, 17, 10, "#"); set(g, 3, 15, "u");
-    blit(g, 7, 15, ["T"]); blit(g, 12, 15, ["T"]); blit(g, 9, 12, ["B     B"]); blit(g, 6, 14, ["* *"]); blit(g, 15, 14, ["x"]);
+    blit(g, 12, 15, ["T"]); blit(g, 15, 15, ["T"]); blit(g, 9, 12, ["B     B"]); blit(g, 6, 14, ["* *"]); blit(g, 15, 14, ["x"]);
     blit(g, 22, 5, ["o"]); blit(g, 25, 9, ["o"]); blit(g, 20, 11, ["p"]); blit(g, 24, 3, ["*"]); blit(g, 10, 5, ["*"]);
     return { name: "Le Terrier des Taupes", biome: 1, g: g, spawn: [20, 14] };
   });
-  // 5 · La Reine Araignée : deuxième boss
+  // 6 · La Reine Araignée : deuxième boss
   Z.push(function () {
-    var g = mk(); frame(g); tray(g, 4); outletAt(g, 22); mouthAt(g, 25); set(g, 27, 15, "u");
+    var g = mk(); frame(g); tray(g, 11); shaftAt(g, 2); mouthAt(g, 25); set(g, 27, 15, "u");
     rect(g, 24, 1, 24, 4, "D"); rect(g, 25, 4, 27, 4, "D");
     blit(g, 17, 2, ["K"]); blit(g, 9, 6, ["o"]); blit(g, 20, 8, ["o"]); blit(g, 12, 11, ["O"]); blit(g, 22, 12, ["p"]); blit(g, 6, 3, ["w"]); blit(g, 8, 14, ["v"]);
     rect(g, 18, 13, 22, 13, "=");
-    return { name: "La Reine Araignée", biome: 1, g: g, spawn: [10, 14], boss: { type: "spider", hp: 5, x: 17, y0: 2, y1: 11, speed: 0.9, name: "LA REINE ARAIGNÉE" } };
+    return { name: "La Reine Araignée", biome: 1, g: g, spawn: [14, 14], boss: { type: "spider", hp: 5, x: 17, y0: 2, y1: 11, speed: 0.9, name: "LA REINE ARAIGNÉE" } };
   });
-  // 6 · Le Marais : une îlot-canon au-dessus de l'eau
+  // 7 · Le Marais : un îlot-canon au-dessus de l'eau
   Z.push(function () {
-    var g = mk(); frame(g); tray(g, 11); outletAt(g, 25); mouthAt(g, 2);
-    rect(g, 1, 11, 6, 12, "#"); rect(g, 23, 8, 28, 9, "#");       // deux îlots
-    rect(g, 2, 10, 4, 10, "u");
+    var g = mk(); frame(g); tray(g, 11); shaftAt(g, 25); mouthAt(g, 25);
+    rect(g, 23, 11, 28, 12, "#"); rect(g, 1, 8, 6, 9, "#");       // deux îlots
+    rect(g, 25, 10, 27, 10, "u");
     rect(g, 4, 16, 5, 18, "."); rect(g, 4, 17, 5, 18, "X");       // l'eau, dans l'étagère gauche
-    blit(g, 9, 14, ["R  R"]); blit(g, 14, 9, ["R"]); blit(g, 14, 12, ["* * *"]); blit(g, 25, 6, ["*  v"]); blit(g, 20, 6, ["x"]);
-    blit(g, 12, 7, ["p"]); blit(g, 18, 7, ["p"]); blit(g, 9, 9, ["o"]); blit(g, 17, 3, ["o"]);
+    blit(g, 14, 14, ["R  R"]); blit(g, 15, 9, ["R"]); blit(g, 10, 12, ["* * *"]); blit(g, 2, 6, ["*  v"]); blit(g, 14, 5, ["x"]);
+    blit(g, 17, 7, ["p"]); blit(g, 11, 7, ["p"]); blit(g, 20, 9, ["o"]); blit(g, 8, 3, ["o"]);
     return { name: "Le Marais", biome: 2, g: g, spawn: [14, 14] };
   });
-  // 7 · Les Falaises : une cheminée de vent qui souffle jusqu'à la bouche
+  // 8 · Les Falaises : une cheminée de vent qui souffle jusqu'au puits
   Z.push(function () {
-    var g = mk(); frame(g); tray(g, 3); mouthAt(g, 16);
-    set(g, 2, 17, "i");
+    var g = mk(); frame(g); tray(g, 3); shaftAt(g, 25); mouthAt(g, 16);
     rect(g, 15, 3, 15, 12, "#"); rect(g, 19, 3, 19, 12, "#"); rect(g, 16, 3, 18, 15, "W");
     blit(g, 9, 6, ["B"]); blit(g, 23, 8, ["B"]); blit(g, 22, 12, ["*   *"]); blit(g, 8, 11, ["x"]); blit(g, 26, 5, ["o"]); blit(g, 24, 3, ["p"]);
     return { name: "Les Falaises", biome: 3, g: g, spawn: [10, 14] };
   });
-  // 8 · Le Sommet : nuages, trampolines, dernier boss et gland doré
+  // 9 · Le Sommet : nuages, trampolines, dernier boss et gland doré
   Z.push(function () {
-    var g = mk(); frame(g); tray(g, 3); outletAt(g, 17); set(g, 26, 15, "u");
+    var g = mk(); frame(g); tray(g, 3); shaftAt(g, 16); set(g, 26, 15, "u");
     rect(g, 23, 1, 23, 4, "D"); rect(g, 24, 4, 28, 4, "D"); set(g, 26, 2, "Z");
     rect(g, 6, 9, 11, 9, "="); rect(g, 17, 7, 22, 7, "="); rect(g, 12, 12, 16, 12, "=");
     set(g, 8, 8, "%"); set(g, 19, 6, "%"); set(g, 14, 11, "%");
@@ -207,6 +209,9 @@
         }
         else if (ch === "*" || ch === "x" || ch === "n" || ch === "w" || ch === "v") zn.bonuses.push({ type: ch === "*" ? "acorn" : ch === "x" ? "star" : ch === "n" ? "net" : ch === "w" ? "feather" : "heart", x: cx0, y: y0 + cy0, got: false, z: zi });
       }
+      // les colonnes de vent : on fusionne les rangées empilées (même colonnes, rangées contiguës)
+      zn.winds.sort(function (p1, q1) { return p1.c0 - q1.c0 || p1.c1 - q1.c1 || p1.r0 - q1.r0; });
+      zn.winds = zn.winds.reduce(function (acc, w) { var l = acc[acc.length - 1]; if (l && l.c0 === w.c0 && l.c1 === w.c1 && l.r1 + 1 === w.r0) l.r1 = w.r1; else acc.push(w); return acc; }, []);
       Object.keys(platRuns).forEach(function (rk) { runs(platRuns[rk], function (a, b) { zn.plats.push(seg(a * CS, rk * CS, (b + 1) * CS, rk * CS, { plat: true, kind: "plat" })); }); });
       if (gate) { zn.gates.push(gate); zn.launchers.forEach(function (l) { l.gate = gate; }); }
       if (def.boss && zn.bossCell) {
@@ -216,21 +221,7 @@
       if (zn.goalCell) W.goal = zn.goalCell;
       if (zi === 0) W.spawn = zn.spawn;
     }
-    // tunnels : la bouche de la zone i mène à la sortie de la zone i + 1
-    for (zi = 0; zi < N - 1; zi++) {
-      var a3 = W.zones[zi], b3 = W.zones[zi + 1];
-      if (!a3.mouth || !b3.outlet) throw new Error("zone " + zi + " : bouche ou sortie manquante");
-      var mx = (a3.mouth.c0 + a3.mouth.c1 + 1) / 2 * CS, my = a3.y0 + a3.mouth.r * CS + 16, ox = b3.outlet.x, oy = b3.outlet.y;
-      var tb = a3.tube = { mouth: { x0: a3.mouth.c0 * CS, x1: (a3.mouth.c1 + 1) * CS, y: my }, pts: [[mx, my], [mx, my - 40], [ox, oy + 60], [ox, oy]], speed: 700, outlet: { x: ox, y: oy }, zone: zi, total: 0, len: [0] }, k3;
-      for (k3 = 1; k3 < tb.pts.length; k3++) tb.len.push(tb.len[k3 - 1] + Math.hypot(tb.pts[k3][0] - tb.pts[k3 - 1][0], tb.pts[k3][1] - tb.pts[k3 - 1][1]));
-      tb.total = tb.len[tb.len.length - 1];
-    }
     return W;
-  }
-  function tubePoint(t, d) {
-    d = Math.max(0, Math.min(t.total, d));
-    for (var k = 1; k < t.len.length; k++) if (d <= t.len[k]) { var u = (d - t.len[k - 1]) / (t.len[k] - t.len[k - 1] || 1), a = t.pts[k - 1], b = t.pts[k]; return { x: a[0] + (b[0] - a[0]) * u, y: a[1] + (b[1] - a[1]) * u }; }
-    var l = t.pts[t.pts.length - 1]; return { x: l[0], y: l[1] };
   }
   function mobPos(m, t) {
     var u = m.phase + t * m.speed;
@@ -339,12 +330,6 @@
       var x0 = Math.round(s.x1 / 2), w = Math.round((s.x2 - s.x1) / 2), y0 = Math.round((s.y1 - zn.y0) / 2);
       c.fillStyle = P.black; c.fillRect(x0, y0 - 1, w, 4); c.fillStyle = b === 4 ? P.white : P.brown2; c.fillRect(x0, y0, w, 2); c.fillStyle = b === 4 ? P.gray : P.yellow; c.fillRect(x0, y0, w, 1);
     });
-    var below = W.zones[zn.i - 1];
-    if (below && below.tube && zn.outlet) {                       // le tunnel, dans la roche sous la sortie
-      var ox2 = Math.round(zn.outlet.x / 2), oy2 = Math.round((zn.outlet.y - zn.y0) / 2);
-      c.fillStyle = P.black; c.fillRect(ox2 - 7, oy2 - 2, 14, 16 * 9); c.fillStyle = P.stone3; c.fillRect(ox2 - 5, oy2 - 1, 10, 16 * 9); c.fillStyle = P.gray2; c.fillRect(ox2 - 3, oy2, 6, 16 * 9);
-      c.fillStyle = P.black; c.fillRect(ox2 - 6, oy2 - 3, 12, 3); c.fillStyle = P.white; c.fillRect(ox2 - 5, oy2 - 2, 10, 1);
-    }
     zn.layer = cv; return cv;
   }
 
@@ -400,7 +385,6 @@
         rect2(x0, y0, x1 - x0, y1 - y0, "rgba(255,255,255,.14)");
         for (j = 0; j < 9; j++) { var yy = y1 - ((t * 240 + j * 70) % (y1 - y0)), xx = x0 + 10 + ((j * 37) % (x1 - x0 - 20)); rect2(xx, yy, 2, 10, P.white); rect2(xx + 6, yy + 22, 2, 8, P.waterHi); }
       });
-      if (z.tube) { var m = z.tube.mouth; rect2(m.x0, m.y - 16, m.x1 - m.x0, 24, P.black); rect2(m.x0 + 4, m.y - 12, m.x1 - m.x0 - 8, 16, Math.sin(t * 6) > 0 ? P.yellow : P.orange2); rect2(m.x0 + 8, m.y - 8, m.x1 - m.x0 - 16, 8, P.black); }
       z.flags.forEach(function (f) { rect2(f.x - 1, f.y - 40, 3, 50, P.white); rect2(f.x + 2, f.y - 40, 20, 14, f.hit ? P.yellow : P.red); rect2(f.x + 2, f.y - 40, 20, 3, f.hit ? P.limeHi : P.red2); });
       z.launchers.forEach(function (l) {
         var ang = Math.atan2(l.vy, l.vx);
@@ -421,11 +405,10 @@
       }
     }
     for (i = 0; i < view.balls.length; i++) {
-      var bl = view.balls[i]; if (bl.mode === "tube" || bl.mode === "warp" || bl.mode === "cannon") continue;
+      var bl = view.balls[i]; if (bl.mode === "warp" || bl.mode === "cannon") continue;
       for (j = 0; j < bl.trail.length - 1; j++) if (j % 2) { cx.fillStyle = "rgba(255,255,255," + (j / bl.trail.length * 0.3) + ")"; cx.fillRect(X(bl.trail[j].x) - 2, Y(bl.trail[j].y) - 2, 4, 4); }
       drawBall(bl, false);
     }
-    for (i = 0; i < view.balls.length; i++) if (view.balls[i].mode === "tube") drawBall(view.balls[i], true);
     for (i = 0; i < view.particles.length; i++) { var pa = view.particles[i]; cx.globalAlpha = Math.max(0, pa.life); cx.fillStyle = pa.col; cx.fillRect(X(pa.x), Y(pa.y), Math.max(1, Math.round(pa.size / 2)), Math.max(1, Math.round(pa.size / 2))); }
     cx.globalAlpha = 1; cx.font = "bold 8px monospace"; cx.textAlign = "center"; cx.textBaseline = "middle";
     for (i = 0; i < view.popups.length; i++) { var po = view.popups[i]; cx.globalAlpha = Math.max(0, Math.min(1, po.life * 1.5)); cx.fillStyle = P.black; cx.fillText(po.text, X(po.x) + 1, Y(po.y) + 1); cx.fillStyle = P.white; cx.fillText(po.text, X(po.x), Y(po.y)); }
@@ -441,5 +424,5 @@
   }
 
   function preview(zi) { return Z[zi]().g.map(function (r) { return r.join(""); }).join("\n"); }
-  root.FlippersClimb = { build: build, render: render, mobPos: mobPos, bossPos: bossPos, tubePoint: tubePoint, BIOMES: BIOMES, ZH: ZH, CS: CS, COLS: COLS, BON: BON, preview: preview, zoneCount: function () { return Z.length; } };
+  root.FlippersClimb = { build: build, render: render, mobPos: mobPos, bossPos: bossPos, BIOMES: BIOMES, ZH: ZH, CS: CS, COLS: COLS, BON: BON, preview: preview, zoneCount: function () { return Z.length; } };
 })(typeof window !== "undefined" ? window : this);
