@@ -41,6 +41,7 @@
     set(g, cF, rP, "F"); set(g, cf, rP, "f");
     rect(g, cF, rP + 1, cF, 23, "#"); rect(g, cf, rP + 1, cf, 23, "#");
     rect(g, cF + 1, 21, cF + 2, 23, "#"); rect(g, cf - 2, 21, cf - 1, 23, "#");
+    set(g, cF + 1, 20, "#"); set(g, cf - 1, 20, "#");           // comble le coin sous le pivot : la bille ne peut plus se glisser sous le bras
     set(g, cF + 3, 22, "%"); set(g, cF + 4, 22, "%"); rect(g, cF + 3, 23, cF + 4, 23, "#");
     set(g, cF + 3, 17, "@");
   }

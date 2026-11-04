@@ -272,7 +272,7 @@
     var rvx = b.vx - svx, rvy = b.vy - svy;
     var vn = rvx * nx + rvy * ny;
     if (vn >= 0) return 0;
-    var ee = -vn < 45 ? 0 : e;
+    var ee = -vn < 140 ? 0 : e;      // pas de rebond sur un contact doux (jonction pente / flipper : la bille roule au lieu de sauter)
     rvx -= (1 + ee) * vn * nx; rvy -= (1 + ee) * vn * ny;
     b.vx = rvx + svx; b.vy = rvy + svy;
     return -vn;
@@ -309,7 +309,7 @@
       if (!circleSegT(b, f.px, f.py, tx, ty, t, rad)) continue;
       var d = t * FLIPPER.L;
       var svx = -f.s * Math.sin(f.a) * d * f.w, svy = Math.cos(f.a) * d * f.w;
-      var v = bounce(b, hit.nx, hit.ny, FLIPPER.e, svx, svy);
+      var v = bounce(b, hit.nx, hit.ny, Math.abs(f.w) > 2 ? FLIPPER.e : 0, svx, svy);   // flipper immobile : contact doux (la bille roule dessus au lieu de rebondir)
       if (v > 240 && Math.abs(f.w) > 3) { SND.flip(); S.shake = Math.max(S.shake, 1.4); }
     }
     // champignons
