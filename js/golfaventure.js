@@ -258,6 +258,7 @@
       if (t >= TY.DR0 && t <= TY.DR2 && S.sw[i + ":" + (t - TY.DR0)]) l.grid[k] = fl;
       else if ((t === TY.KDOOR || t === TY.CRACK) && S.opened[i + ":" + k]) l.grid[k] = fl;
     }
+    dirty();
   }
   function pressSwitch(color, x, y) {
     var key = lvIdx + ":" + color;
@@ -267,7 +268,7 @@
     setMsg("Un mécanisme s'active ! Une porte s'ouvre quelque part…", 3000);
   }
   function openTile(tx, ty, why) {
-    var i = ty * L.W + tx; grid[i] = L.dark ? TY.CFLOOR : TY.GRASS; S.opened[lvIdx + ":" + i] = 1; persist();
+    var i = ty * L.W + tx; grid[i] = L.dark ? TY.CFLOOR : TY.GRASS; S.opened[lvIdx + ":" + i] = 1; persist(); dirty();
     fx.push({ k: "puff", x: tx * TILE + 8, y: ty * TILE + 8, t: 0 });
     sfx(why === "key" ? "key" : "crack");
   }
@@ -347,7 +348,7 @@
      ===================================================================== */
   function speedOf(b) { return Math.sqrt(b.vx * b.vx + b.vy * b.vy); }
   function breakBush(tx, ty) {
-    var i = ty * L.W + tx; grid[i] = TY.GRASS; S.bushes[lvIdx + ":" + i] = 1; sfx("bush");
+    var i = ty * L.W + tx; grid[i] = TY.GRASS; S.bushes[lvIdx + ":" + i] = 1; sfx("bush"); dirty();
     fx.push({ k: "puff", x: tx * TILE + 8, y: ty * TILE + 8, t: 0 });
     if (hash(tx, ty, 77) < 0.5) birds.push({ x: tx * TILE + 8, y: ty * TILE + 8, t: 0, life: 7, vx: 0, vy: 0, tt: 0 });
     persist();
@@ -445,13 +446,13 @@
       else setMsg("Il manque des Morceaux de Tee…", 2600);
       faceTarget(); return;
     }
-    S.cups[key] = 1; S.clubs++;
+    S.cups[key] = 1; S.clubs++; dirty();
     if (tn === TY.HOLY) {
       var idx = -1; L.feat.holy.forEach(function (h) { if (h[0] === tx && h[1] === ty) idx = h[2]; });
       if (idx >= 0) S.pieces[idx] = 1;
       var n = S.pieces.reduce(function (a, b2) { return a + b2; }, 0);
       setMsg("Morceau de Tee " + n + "/4 ! (+3 coups max)", 3000);
-      if (n === 4) { LV[0].feat.gates.forEach(function (f) { LV[0].grid[f[1] * LV[0].W + f[0]] = TY.GRASS; }); setTimeout(function () { setMsg("Le temple s'ouvre, au nord !", 3200); }, 3100); }
+      if (n === 4) { LV[0].feat.gates.forEach(function (f) { LV[0].grid[f[1] * LV[0].W + f[0]] = TY.GRASS; }); dirty(); setTimeout(function () { setMsg("Le temple s'ouvre, au nord !", 3200); }, 3100); }
     } else setMsg("Club trouvé ! +3 coups max", 2600);
     strokes = maxStrokes(); floatText(c.x, c.y - 8, "+3", "#f6c445"); hudUpdate(); persist(); faceTarget();
   }
@@ -590,106 +591,25 @@
   function showDialog(text) { hudDlg.textContent = text; hudDlg.hidden = false; dlgT = now() + 6000; }
 
   /* =====================================================================
-     RENDU PIXEL ART
+     RENDU PIXEL ART — palette unique (3 tons par matière), tuiles raccordées
+     entre elles (rives, falaises, forêts, rails continus), lutins dessinés à
+     la main avec un contour commun. Les tuiles sont mises en cache par niveau
+     (L.tc) et recalculées quand le décor change (dirty()).
      ===================================================================== */
-  var C = {
-    fair: "#a8e63a", fair2: "#96d632", stripe: "#c6f55c", side: "#139a56", side2: "#0e7f49",
-    rough: "#7cbf2a", rough2: "#5da31f", tree: "#0b5a33", tree2: "#0f7a44", treeHi: "#34aa5c", forest: "#1f8f4e",
-    sand: "#f3eea0", sandDot: "#7a7440", water: "#27a9f1", waterHi: "#8dd8ff",
-    white: "#ffffff", black: "#14141e", gray: "#cdd2dc", yellow: "#f6c445", brown: "#7a4b00",
-    red: "#d8322b", red2: "#ef6a52", cream: "#fdf3de", orange: "#e8872a", wood: "#b9763a", wood2: "#7c4a1e", purple: "#b06cf0",
-    cfloor: "#6f82a8", cfloor2: "#62749a", cwall: "#2a2440", cwall2: "#443a66", cwallHi: "#5a4d82", stone: "#8a8f9c",
+  var P = {
+    out: "#13171f",
+    g0: "#c9f06a", g1: "#9bd847", g2: "#86c43e", g3: "#5ea236", g4: "#3f7f34", g5: "#2a5f38", g6: "#1b4a34",
+    s0: "#fbf0b8", s1: "#efdc94", s2: "#d2bb6e", s3: "#a99250",
+    w0: "#d4f3ff", w1: "#6dd0f5", w2: "#33a4e6", w3: "#2276c8", w4: "#174f94",
+    e0: "#e8b878", e1: "#b9763a", e2: "#8a5226", e3: "#5a3418",
+    st0: "#f1f3f8", st1: "#c9cfdb", st2: "#8b94a8", st3: "#555e74", st4: "#2e3548",
+    r0: "#ff8a70", r1: "#e04a3a", r2: "#a82a26", y0: "#fff2a8", y1: "#ffd23f", y2: "#d99a1a",
+    p0: "#c89cff", p1: "#8e5ad8", p2: "#5a3a9a",
+    c0: "#7f93bd", c1: "#6a7ea8", c2: "#586b94", c3: "#46577e", c4: "#34446a", c5: "#222c4a", c6: "#161d33",
+    ice0: "#f2fbff", ice1: "#cfeeff", ice2: "#a8d8f2", ice3: "#80bde0",
   };
-  var atlas = {};
-  function mk(fn) { var c = document.createElement("canvas"); c.width = TILE; c.height = TILE; var g = c.getContext("2d"); fn(g); return c; }
-  function fr(g, x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
-  function grassBase(g, v) {
-    fr(g, 0, 0, 16, 16, C.fair);
-    for (var i = 0; i < 14; i++) fr(g, Math.floor(hash(i, v, 11) * 16), Math.floor(hash(i, v, 12) * 16), 1, 1, C.fair2);
-    if (v === 2) { fr(g, 4, 5, 1, 1, C.red2); fr(g, 11, 11, 1, 1, C.white); }
-    if (v === 3) { fr(g, 9, 4, 1, 3, C.side); fr(g, 10, 5, 1, 2, C.side); fr(g, 8, 5, 1, 2, C.side); }
-  }
-  function caveBase(g, v) {
-    fr(g, 0, 0, 16, 16, C.cfloor);
-    for (var i = 0; i < 12; i++) fr(g, Math.floor(hash(i, v, 51) * 16), Math.floor(hash(i, v, 52) * 16), 1, 1, C.cfloor2);
-    if (v === 1) { fr(g, 5, 9, 2, 1, C.cfloor2); fr(g, 6, 10, 1, 1, C.cfloor2); }
-  }
-  function blob(g, cx0, cy0, r, col) { for (var y = -r; y <= r; y++) { var w = Math.floor(Math.sqrt(r * r + r * 0.8 - y * y)); fr(g, cx0 - w, cy0 + y, 2 * w + 1, 1, col); } }
-  function chev(g, dir, col) {
-    var pts = [];
-    for (var k = 0; k < 3; k++) for (var j = -3; j <= 3; j++) {
-      var a = 3 - Math.abs(j), base = 3 + k * 5;
-      if (dir === 8) pts.push([8 + j, base + a]); else if (dir === 7) pts.push([8 + j, base + 3 - a + 1]);
-      else if (dir === 10) pts.push([base + a, 8 + j]); else pts.push([base + 3 - a + 1, 8 + j]);
-    }
-    pts.forEach(function (p) { fr(g, p[0], p[1], 1, 1, col); fr(g, p[0], p[1] + 1, 1, 1, col); });
-  }
-  function drawTile(t, v, f, lv) {
-    return mk(function (g) {
-      var base = lv ? caveBase : grassBase;
-      if (t === TY.GRASS || t === TY.FLAG || t === TY.CUP || t === TY.HOLY || t === TY.TEMPLE) base(g, v);
-      if (t === TY.CFLOOR) caveBase(g, v);
-      if (t === TY.ROUGH) { fr(g, 0, 0, 16, 16, C.rough); for (var i = 0; i < 10; i++) { var x = Math.floor(hash(i, v, 21) * 14) + 1, y = Math.floor(hash(i, v, 22) * 12) + 2; fr(g, x, y, 1, 3, C.rough2); fr(g, x + 1, y + 1, 1, 2, C.rough2); } }
-      else if (t === TY.SAND) { fr(g, 0, 0, 16, 16, C.sand); for (var j = 0; j < 9; j++) fr(g, Math.floor(hash(j, v, 31) * 16), Math.floor(hash(j, v, 32) * 16), 1, 1, C.sandDot); }
-      else if (t === TY.WATER) { fr(g, 0, 0, 16, 16, C.water); var o = f ? 4 : 0; fr(g, 2 + o, 3, 4, 1, C.waterHi); fr(g, 9 - o, 10, 4, 1, C.waterHi); fr(g, 5 + o, 14, 3, 1, C.waterHi); }
-      else if (t === TY.TREE) {
-        fr(g, 0, 0, 16, 16, C.forest);
-        blob(g, 8, 9, 7, C.black); blob(g, 8, 8, 6, C.tree); blob(g, 6, 6, 3, C.tree2); fr(g, 5, 5, 2, 1, C.treeHi); fr(g, 4, 6, 1, 1, C.treeHi);
-        for (var q = 0; q < 6; q++) fr(g, 3 + Math.floor(hash(q, v, 41) * 10), 4 + Math.floor(hash(q, v, 42) * 9), 1, 1, C.tree2);
-      }
-      else if (t === TY.RAIL) { fr(g, 0, 0, 16, 16, C.black); for (var yy = 0; yy < 3; yy++) for (var xx = 0; xx < 3; xx++) fr(g, 1 + xx * 5, 1 + yy * 5, 4, 4, (xx + yy) & 1 ? C.gray : C.white); }
-      else if (t === TY.GATE) { fr(g, 0, 0, 16, 16, C.black); for (var y2 = 0; y2 < 3; y2++) for (var x2 = 0; x2 < 3; x2++) fr(g, 1 + x2 * 5, 1 + y2 * 5, 4, 4, (x2 + y2) & 1 ? "#c98a1a" : C.yellow); }
-      else if (t === TY.BUSH) { base(g, v); blob(g, 8, 9, 6, C.black); blob(g, 8, 8, 5, "#2f9a3a"); blob(g, 6, 6, 2, "#5cc464"); fr(g, 10, 9, 2, 2, C.red); fr(g, 5, 11, 2, 2, C.red); fr(g, 9, 5, 2, 2, C.red2); }
-      else if (t >= TY.UP && t <= TY.RIGHT) {
-        fr(g, 0, 0, 16, 16, lv ? C.cfloor2 : C.fair2);
-        for (var s = 0; s < 16; s += 4) { if (t === TY.UP || t === TY.DOWN) fr(g, 0, s, 16, 2, lv ? C.cfloor : C.fair); else fr(g, s, 0, 2, 16, lv ? C.cfloor : C.fair); }
-        chev(g, t, lv ? "#3c4a70" : C.side);
-      }
-      else if (t === TY.PLATEAU) { fr(g, 0, 0, 16, 16, C.fair); for (var d = -16; d < 16; d += 6) for (var e = 0; e < 16; e++) { var px = d + e; if (px >= 0 && px < 16) fr(g, px, e, 2, 1, C.stripe); } }
-      else if (t === TY.BRIDGE) { fr(g, 0, 0, 16, 16, C.wood2); for (var p = 0; p < 16; p += 4) { fr(g, p, 1, 3, 14, C.wood); fr(g, p, 1, 3, 1, "#d99a58"); } fr(g, 0, 0, 16, 1, C.black); fr(g, 0, 15, 16, 1, C.black); }
-      else if (t >= TY.SW0 && t <= TY.SW2) {
-        base(g, v); var sc = SW_COL[t - TY.SW0]; blob(g, 8, 8, 7, C.black);
-        if (f) { blob(g, 8, 8, 6, "#3a3a4a"); blob(g, 8, 8, 3, sc); } else { blob(g, 8, 8, 6, sc); blob(g, 8, 8, 4, C.white); blob(g, 8, 8, 3, sc); fr(g, 5, 5, 2, 1, C.white); }
-      }
-      else if (t >= TY.DR0 && t <= TY.DR2) {
-        var dc = [["#d8322b", "#8a1d18"], ["#3a74e0", "#244a96"], ["#3fd05a", "#23903a"]][t - TY.DR0];
-        fr(g, 0, 0, 16, 16, C.black); for (var d2 = 0; d2 < 3; d2++) for (var e2 = 0; e2 < 3; e2++) fr(g, 1 + e2 * 5, 1 + d2 * 5, 4, 4, (d2 + e2) & 1 ? dc[1] : dc[0]);
-        fr(g, 6, 6, 4, 4, C.black); fr(g, 7, 7, 2, 2, C.white);
-      }
-      else if (t === TY.KDOOR) { fr(g, 0, 0, 16, 16, C.black); fr(g, 1, 1, 14, 14, "#c98a1a"); fr(g, 2, 2, 12, 12, C.yellow); blob(g, 8, 7, 2, C.black); fr(g, 7, 8, 2, 4, C.black); }
-      else if (t === TY.CRACK) {
-        fr(g, 0, 0, 16, 16, C.black); fr(g, 1, 1, 14, 14, "#8a6a4a"); fr(g, 1, 1, 14, 2, "#b08c62"); fr(g, 3, 9, 4, 3, "#775a3c"); fr(g, 10, 4, 3, 3, "#775a3c");
-        fr(g, 7, 1, 1, 4, C.black); fr(g, 6, 5, 1, 3, C.black); fr(g, 7, 8, 1, 3, C.black); fr(g, 8, 11, 1, 4, C.black); fr(g, 9, 6, 2, 1, C.black);
-      }
-      else if (t === TY.ICE) {
-        fr(g, 0, 0, 16, 16, "#bfe9ff"); for (var i3 = 0; i3 < 5; i3++) fr(g, Math.floor(hash(i3, v, 61) * 14), Math.floor(hash(i3, v, 62) * 14), 2, 1, "#8ccdf0");
-        for (var k3 = 0; k3 < 3; k3++) { fr(g, 2 + k3 * 5 + (v & 1), 3 + k3 * 3, 3, 1, "#f2fbff"); fr(g, 3 + k3 * 5 + (v & 1), 4 + k3 * 3, 2, 1, "#f2fbff"); }
-      }
-      else if (t === TY.BUMP) { base(g, v); blob(g, 8, 9, 7, "rgba(0,0,0,.25)"); blob(g, 8, 8, 7, C.black); blob(g, 8, 8, 6, "#ff6a3a"); blob(g, 7, 7, 4, "#ffa070"); fr(g, 7, 4, 2, 8, C.white); fr(g, 4, 7, 8, 2, C.white); fr(g, 5, 5, 1, 1, C.white); }
-      else if (t === TY.CWALL) {
-        fr(g, 0, 0, 16, 16, C.cwall);
-        for (var r = 0; r < 4; r++) { var off = (r & 1) * 4; for (var c = -1; c < 3; c++) { var bx = c * 8 + off, x0 = Math.max(0, bx), x1 = Math.min(16, bx + 7); if (x1 > x0) { fr(g, x0, r * 4, x1 - x0, 3, C.cwall2); fr(g, x0, r * 4, x1 - x0, 1, C.cwallHi); } } }
-      }
-      else if (t === TY.PORTAL) {
-        if (!lv) { base(g, v); fr(g, 1, 2, 14, 14, C.black); fr(g, 2, 3, 12, 13, C.stone); fr(g, 3, 4, 10, 12, C.black); fr(g, 4, 8, 8, 1, "#2a2a3a"); fr(g, 4, 11, 8, 1, "#3a3a4e"); fr(g, 4, 14, 8, 1, "#4a4a62"); fr(g, 1, 2, 14, 1, C.stone); }
-        else { caveBase(g, v); fr(g, 3, 1, 10, 14, C.black); fr(g, 4, 2, 8, 12, "#1a1a2a"); fr(g, 5, 2, 2, 12, C.wood); fr(g, 9, 2, 2, 12, C.wood); for (var rg = 0; rg < 4; rg++) fr(g, 5, 4 + rg * 3, 6, 1, "#d99a58"); fr(g, 7, 0, 2, 1, C.yellow); fr(g, 6, 1, 4, 1, C.yellow); }
-      }
-      if (t === TY.FLAG) { fr(g, 7, 6, 2, 9, C.black); fr(g, 7, 5, 1, 10, C.white); fr(g, 5, 14, 6, 2, C.black); }
-      if (t === TY.CUP) { blob(g, 8, 8, 7, C.side2); blob(g, 8, 8, 6, C.black); }
-      if (t === TY.HOLY) { blob(g, 8, 8, 8, C.black); blob(g, 8, 8, 7, C.yellow); blob(g, 8, 8, 6, C.black); fr(g, 3, 8, 1, 1, C.white); }
-      if (t === TY.TEMPLE) { blob(g, 8, 8, 8, C.black); blob(g, 8, 8, 7, C.purple); blob(g, 8, 8, 6, C.black); }
-    });
-  }
-  function tileImg(t, tx, ty) {
-    var v = t === TY.TREE || t === TY.WATER ? (hash(tx, ty, 5) < 0.5 ? 0 : 1) : Math.floor(hash(tx, ty, 6) * 4);
-    var f = t === TY.WATER ? ((now() / 600 | 0) + tx + ty) & 1 : (t >= TY.SW0 && t <= TY.SW2 ? (S.sw[lvIdx + ":" + (t - TY.SW0)] ? 1 : 0) : 0), lv = lvIdx;
-    var key = t + "_" + v + "_" + f + "_" + lv;
-    return atlas[key] || (atlas[key] = drawTile(t, v, f, lv));
-  }
-  function cupDoneImg(holy) {
-    var k = "d" + (holy ? "h" : "c") + lvIdx;
-    return atlas[k] || (atlas[k] = mk(function (g) { (lvIdx ? caveBase : grassBase)(g, 0); blob(g, 8, 8, holy ? 8 : 7, "#3a5a3a"); blob(g, 8, 8, 6, "#243a24"); fr(g, 7, 5, 2, 6, C.cream); fr(g, 5, 7, 6, 2, C.cream); }));
-  }
+  // anciens noms (utilisés par la partie dessin des effets)
+  var C = { black: P.out, white: "#ffffff", gray: P.st1, yellow: P.y1, red: P.r1, red2: P.r0, purple: P.p1, waterHi: P.w0, cream: "#fdf3de", orange: "#f08a2a", brown: P.e2, forest: P.g5 };
   function disc(x, y, r, col) { x = Math.round(x); y = Math.round(y); cx.fillStyle = col; for (var dy = -r; dy <= r; dy++) { var w = Math.floor(Math.sqrt(r * r + r * 0.8 - dy * dy)); cx.fillRect(x - w, y + dy, 2 * w + 1, 1); } }
   function rc(x, y, w, h, col) { cx.fillStyle = col; cx.fillRect(Math.round(x), Math.round(y), w, h); }
   var GLYPH = { "0": "111101101101111", "1": "010110010010111", "2": "111001111100111", "3": "111001111001111", "4": "101101111001001", "5": "111100111001111", "6": "111100111101111", "7": "111001001001001", "8": "111101111101111", "9": "111101111001111", "+": "000010111010000", "-": "000000111000000" };
@@ -697,70 +617,329 @@
     x = Math.round(x - text.length * 2); y = Math.round(y);
     for (var pass = 0; pass < 2; pass++) for (var i = 0; i < text.length; i++) {
       var gl = GLYPH[text[i]]; if (!gl) continue;
-      for (var k = 0; k < 15; k++) if (gl[k] === "1") { var px = x + i * 4 + (k % 3), py = y + Math.floor(k / 3); if (pass === 0) rc(px - 1, py - 1, 3, 3, C.black); else rc(px, py, 1, 1, col); }
+      for (var k = 0; k < 15; k++) if (gl[k] === "1") { var px = x + i * 4 + (k % 3), py = y + Math.floor(k / 3); if (pass === 0) rc(px - 1, py - 1, 3, 3, P.out); else rc(px, py, 1, 1, col); }
     }
   }
-  // lutins
-  function drawSlime(s, sx, sy) {
-    var sq = Math.round(Math.sin(s.bob) * 1);
-    disc(sx, sy + 4, 4, "rgba(0,0,0,.25)");
-    rc(sx - 5, sy - 3 - sq, 10, 8 + sq, C.black); rc(sx - 4, sy - 2 - sq, 8, 7 + sq, "#3fd05a"); rc(sx - 4, sy - 2 - sq, 8, 2, "#8cf08a");
-    rc(sx - 3, sy - sq, 2, 2, C.black); rc(sx + 1, sy - sq, 2, 2, C.black); rc(sx - 3, sy - sq, 1, 1, C.white); rc(sx + 1, sy - sq, 1, 1, C.white);
+
+  /* ---------- tuiles ---------- */
+  function dirty() { LV.forEach(function (l) { l.tc = {}; }); }
+  function cv(w, h) { var c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+  function fr(g, x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
+  function blob(g, cx0, cy0, r, col) { for (var y = -r; y <= r; y++) { var w = Math.floor(Math.sqrt(r * r + r * 0.8 - y * y)); fr(g, cx0 - w, cy0 + y, 2 * w + 1, 1, col); } }
+  // classe de terrain d'un type de tuile (pour raccorder les bords)
+  function cls(t) {
+    switch (t) {
+      case TY.WATER: return "W"; case TY.SAND: return "S"; case TY.ROUGH: return "R"; case TY.PLATEAU: return "P"; case TY.ICE: return "I";
+      case TY.TREE: return "T"; case TY.RAIL: return "L"; case TY.CWALL: return "C"; case TY.BRIDGE: return "B";
+    }
+    return lvIdx ? "F" : "G";
   }
-  function drawBat(o, sx, sy) {
-    var w = Math.floor(o.ph) % 2;
-    rc(sx - 7, sy - 2 + (w ? -2 : 1), 5, 3, C.black); rc(sx + 2, sy - 2 + (w ? -2 : 1), 5, 3, C.black);
-    rc(sx - 6, sy - 1 + (w ? -2 : 1), 4, 1, "#7a4ab0"); rc(sx + 2, sy - 1 + (w ? -2 : 1), 4, 1, "#7a4ab0");
-    rc(sx - 3, sy - 3, 6, 6, C.black); rc(sx - 2, sy - 2, 4, 4, "#5a3a8a"); rc(sx - 2, sy - 4, 1, 2, C.black); rc(sx + 1, sy - 4, 1, 2, C.black); rc(sx - 2, sy - 1, 1, 1, C.red2); rc(sx + 1, sy - 1, 1, 1, C.red2);
+  function cAt(tx, ty) { return cls(get(tx, ty)); }
+  // sol sous un objet : celui des voisins directs (sinon herbe / sol de grotte)
+  function underClass(tx, ty) {
+    var a = [cAt(tx, ty - 1), cAt(tx + 1, ty), cAt(tx, ty + 1), cAt(tx - 1, ty)];
+    for (var i = 0; i < 4; i++) if ("SRPIG F".indexOf(a[i]) >= 0 && a[i] !== " ") return a[i];
+    return lvIdx ? "F" : "G";
   }
-  function drawBird(sx, sy, big) {
-    var w = ((now() / 120 | 0) % 2);
-    if (big) {
-      rc(sx - 8, sy - 2 + (w ? -2 : 1), 6, 3, C.black); rc(sx + 2, sy - 2 + (w ? -2 : 1), 6, 3, C.black);
-      rc(sx - 7, sy - 1 + (w ? -2 : 1), 5, 1, "#8a5a2b"); rc(sx + 2, sy - 1 + (w ? -2 : 1), 5, 1, "#8a5a2b");
-      rc(sx - 3, sy - 3, 6, 7, C.black); rc(sx - 2, sy - 2, 4, 5, "#a86a30"); rc(sx - 2, sy - 3, 4, 2, C.white); rc(sx - 1, sy - 1, 1, 1, C.black); rc(sx, sy + 3, 1, 2, C.yellow);
-      rc(sx - 4, sy + 7, 8, 2, "rgba(0,0,0,.18)");
-    } else {
-      disc(sx, sy + 4, 2, "rgba(0,0,0,.25)");
-      rc(sx - 3, sy - 3, 6, 6, C.black); rc(sx - 2, sy - 2, 4, 4, C.yellow); rc(sx - 4, sy - 2 + (w ? -1 : 1), 2, 2, C.yellow); rc(sx + 2, sy - 2 + (w ? -1 : 1), 2, 2, C.yellow); rc(sx + 1, sy - 1, 1, 1, C.black); rc(sx + 3, sy, 2, 1, C.orange);
+  function hh(tx, ty, k) { return hash(tx, ty, k); }
+  function strip(g, k, th, col) { if (k === 0) fr(g, 0, 0, 16, th, col); else if (k === 1) fr(g, 16 - th, 0, th, 16, col); else if (k === 2) fr(g, 0, 16 - th, 16, th, col); else fr(g, 0, 0, th, 16, col); }
+  function dither(g, k, rows, col, seed) {
+    for (var r = 0; r < rows; r++) for (var i = 0; i < 16; i++) {
+      var on = r === 0 ? ((i & 1) === 0) : r === 1 ? (i % 4 === 1) : (i % 8 === 3);
+      if (!on) continue;
+      if (k === 0) fr(g, i, r, 1, 1, col); else if (k === 1) fr(g, 15 - r, i, 1, 1, col); else if (k === 2) fr(g, i, 15 - r, 1, 1, col); else fr(g, r, i, 1, 1, col);
     }
   }
-  function drawBoss(o, sx, sy) {
-    var sq = Math.round(Math.sin(o.bob) * 1.5), fl = o.flash > 0 && ((now() / 70 | 0) % 2);
-    disc(sx, sy + 9, 11, "rgba(0,0,0,.25)");
-    rc(sx - 12, sy - 8 - sq, 24, 18 + sq, C.black); rc(sx - 11, sy - 7 - sq, 22, 16 + sq, fl ? C.white : "#3fd05a"); rc(sx - 11, sy - 7 - sq, 22, 4, fl ? C.white : "#8cf08a");
-    rc(sx - 7, sy - 2 - sq, 4, 5, C.black); rc(sx + 3, sy - 2 - sq, 4, 5, C.black); rc(sx - 7, sy - 2 - sq, 2, 2, C.white); rc(sx + 3, sy - 2 - sq, 2, 2, C.white);
-    rc(sx - 5, sy + 5 - sq, 10, 2, C.black);
-    rc(sx - 8, sy - 13 - sq, 16, 6, C.black); rc(sx - 7, sy - 12 - sq, 14, 4, C.yellow); rc(sx - 7, sy - 15 - sq, 3, 3, C.yellow); rc(sx - 1, sy - 16 - sq, 3, 4, C.yellow); rc(sx + 4, sy - 15 - sq, 3, 3, C.yellow);
-    for (var i = 0; i < 3; i++) rc(sx - 9 + i * 7, sy + 12, 5, 2, i < o.hp ? C.red : "#3a3a4a");
+  function drawGround(g, c, tx, ty) {
+    var v = Math.floor(hh(tx, ty, 6) * 4), i;
+    if (c === "G") {
+      fr(g, 0, 0, 16, 16, P.g1);
+      for (i = 0; i < 3; i++) { var px = Math.floor(hh(tx * 3 + i, ty, 11) * 12), py = Math.floor(hh(tx, ty * 3 + i, 12) * 13); fr(g, px, py, 3, 1, P.g2); fr(g, px + 1, py + 1, 2, 1, P.g2); }
+      if (v < 2) { var tx2 = 3 + Math.floor(hh(tx, ty, 13) * 9), ty2 = 4 + Math.floor(hh(tx, ty, 14) * 8); fr(g, tx2, ty2, 1, 3, P.g3); fr(g, tx2 - 1, ty2 + 1, 1, 2, P.g3); fr(g, tx2 + 1, ty2 + 1, 1, 2, P.g3); }
+    } else if (c === "F") {
+      fr(g, 0, 0, 16, 16, P.c2);
+      for (i = 0; i < 4; i++) { var qx = Math.floor(hh(tx * 4 + i, ty, 21) * 13), qy = Math.floor(hh(tx, ty * 4 + i, 22) * 14); fr(g, qx, qy, 3, 1, P.c1); fr(g, qx + 1, qy + 1, 2, 1, P.c1); }
+      if (v === 0) { fr(g, 5, 9, 2, 1, P.c3); fr(g, 6, 10, 1, 1, P.c3); }
+    } else if (c === "R") {
+      fr(g, 0, 0, 16, 16, P.g3);
+      for (i = 0; i < 7; i++) { var rx = Math.floor(hh(tx * 7 + i, ty, 31) * 14) + 1, ry = Math.floor(hh(tx, ty * 7 + i, 32) * 11) + 2; fr(g, rx, ry, 1, 3, P.g4); fr(g, rx + 1, ry + 1, 1, 2, P.g2); }
+    } else if (c === "S") {
+      fr(g, 0, 0, 16, 16, P.s1);
+      for (i = 0; i < 5; i++) fr(g, Math.floor(hh(tx * 5 + i, ty, 41) * 15), Math.floor(hh(tx, ty * 5 + i, 42) * 15), 1, 1, P.s2);
+      for (i = 0; i < 2; i++) fr(g, Math.floor(hh(tx * 2 + i, ty, 43) * 14), Math.floor(hh(tx, ty * 2 + i, 44) * 14), 2, 1, P.s0);
+    } else if (c === "W" || c === "B") {
+      var deep = true; for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) { var q = cAt(tx + dx, ty + dy); if (q !== "W" && q !== "B") deep = false; }
+      fr(g, 0, 0, 16, 16, deep ? P.w3 : P.w2);
+      if (deep) for (i = 0; i < 3; i++) fr(g, Math.floor(hh(tx * 3 + i, ty, 51) * 12), 2 + i * 5, 4, 1, P.w2);
+    } else if (c === "P") {
+      fr(g, 0, 0, 16, 16, P.g1);
+      for (var d = -16; d < 16; d += 8) for (var e = 0; e < 16; e++) { var sx = d + e + ((tx + ty) & 1) * 2; if (sx >= 0 && sx < 16) fr(g, sx, e, 3, 1, P.g0); }
+    } else if (c === "I") {
+      fr(g, 0, 0, 16, 16, P.ice1);
+      for (i = 0; i < 4; i++) fr(g, Math.floor(hh(tx * 4 + i, ty, 61) * 13), Math.floor(hh(tx, ty * 4 + i, 62) * 14), 3, 1, P.ice2);
+      var sh = (tx + ty) & 1; fr(g, 2 + sh * 4, 3, 4, 1, P.ice0); fr(g, 3 + sh * 4, 4, 2, 1, P.ice0); fr(g, 9 - sh * 3, 11, 3, 1, P.ice0);
+    } else fr(g, 0, 0, 16, 16, P.g5);
+    blendEdges(g, c, tx, ty);
   }
-  function drawNpc(n, sx, sy) {
-    var cols = ["#6a4bd0", "#d0842a", "#2a8a6a", "#c0407a"], c = cols[n.d % 4];
-    disc(sx, sy + 7, 4, "rgba(0,0,0,.25)");
-    rc(sx - 4, sy - 2, 8, 9, C.black); rc(sx - 3, sy - 1, 6, 7, c); rc(sx - 3, sy + 3, 6, 1, "rgba(0,0,0,.25)");
-    rc(sx - 3, sy - 9, 6, 7, C.black); rc(sx - 2, sy - 8, 4, 5, "#f2c79a"); rc(sx - 4, sy - 10, 8, 3, C.black); rc(sx - 3, sy - 10, 6, 2, c); rc(sx - 2, sy - 6, 1, 1, C.black); rc(sx + 1, sy - 6, 1, 1, C.black);
-    if (Math.sin(now() / 400 + n.x) > 0.7) { rc(sx + 4, sy - 12, 1, 3, C.white); rc(sx + 4, sy - 8, 1, 1, C.white); }
+  // raccords entre terrains
+  function blendEdges(g, c, tx, ty) {
+    var n = [cAt(tx, ty - 1), cAt(tx + 1, ty), cAt(tx, ty + 1), cAt(tx - 1, ty)], k;
+    for (k = 0; k < 4; k++) {
+      var m = n[k];
+      if (c === "W") {
+        if (m !== "W" && m !== "B") { strip(g, k, 2, P.w1); for (var i = 0; i < 16; i += 2) { if (k === 0) fr(g, i, 0, 1, 1, P.w0); else if (k === 2) fr(g, i, 15, 1, 1, P.w0); else if (k === 1) fr(g, 15, i, 1, 1, P.w0); else fr(g, 0, i, 1, 1, P.w0); } }
+      } else if (c === "S") {
+        if (m === "W") { strip(g, k, 2, P.s2); strip(g, k, 1, P.s3); }
+      } else if (c === "G") {
+        if (m === "W") { strip(g, k, 2, P.g3); strip(g, k, 1, P.s1); }
+        else if (m === "S") dither(g, k, 3, P.s1);
+        else if (m === "R") dither(g, k, 2, P.g3);
+      } else if (c === "F") {
+        if (m === "W") { strip(g, k, 2, P.c3); strip(g, k, 1, P.c4); }
+        else if (m === "C") { g.fillStyle = "rgba(10,14,30,.30)"; if (k === 0) g.fillRect(0, 0, 16, 4); else if (k === 1) g.fillRect(14, 0, 2, 16); else if (k === 2) g.fillRect(0, 14, 16, 2); else g.fillRect(0, 0, 2, 16); }
+      } else if (c === "R") {
+        if (m === "W") { strip(g, k, 2, P.g4); strip(g, k, 1, P.s1); }
+      } else if (c === "I") {
+        if (m !== "I") { strip(g, k, 1, P.ice0); }
+      } else if (c === "P") {
+        if (k === 0 && m !== "P") fr(g, 0, 0, 16, 1, P.g0);
+        if (k === 3 && m !== "P") fr(g, 0, 0, 1, 16, P.g0);
+      }
+    }
+    if (c === "P") {   // falaises : faces sud et est
+      if (n[2] !== "P") { fr(g, 0, 11, 16, 5, P.g5); fr(g, 0, 11, 16, 1, P.g4); for (var j = 0; j < 16; j += 2) { fr(g, j, 12, 1, 1, P.g4); fr(g, j + 1, 13, 1, 1, P.g6); } fr(g, 0, 15, 16, 1, P.g6); }
+      if (n[1] !== "P") { fr(g, 13, 0, 3, n[2] !== "P" ? 11 : 16, P.g4); for (var j2 = 0; j2 < 16; j2 += 2) fr(g, 14, j2, 1, 1, P.g5); }
+    }
   }
-  function drawItem(it, sx, sy) {
-    var bob = Math.round(Math.sin(now() / 250 + it.x) * 1.5);
-    disc(sx, sy + 5, 3, "rgba(0,0,0,.25)");
-    if (it.kind === "brake") { disc(sx, sy - 2 + bob, 5, C.black); disc(sx, sy - 2 + bob, 4, C.red); rc(sx - 3, sy - 3 + bob, 6, 2, C.white); }
-    else if (it.kind === "key") { disc(sx, sy - 3 + bob, 3, C.black); disc(sx, sy - 3 + bob, 2, C.yellow); rc(sx - 1, sy - 1 + bob, 2, 6, C.black); rc(sx, sy - 1 + bob, 1, 5, C.yellow); rc(sx, sy + 3 + bob, 3, 1, C.yellow); rc(sx, sy + 1 + bob, 2, 1, C.yellow); }
-    else if (it.kind === "float") { disc(sx, sy - 2 + bob, 6, C.black); disc(sx, sy - 2 + bob, 5, C.red); disc(sx, sy - 2 + bob, 2, C.black); rc(sx - 5, sy - 2 + bob, 2, 1, C.white); rc(sx + 3, sy - 2 + bob, 2, 1, C.white); rc(sx - 1, sy - 7 + bob, 2, 1, C.white); }
-    else { disc(sx, sy - 2 + bob, 5, C.black); disc(sx, sy - 2 + bob, 4, C.yellow); rc(sx - 1, sy - 5 + bob, 2, 6, C.brown); rc(sx - 3, sy - 3 + bob, 6, 2, C.brown); }
+  function isT(tx, ty) { return get(tx, ty) === TY.TREE; }
+  function drawTree(g, tx, ty) {
+    var nb = [isT(tx, ty - 1), isT(tx + 1, ty), isT(tx, ty + 1), isT(tx - 1, ty)], cnt = nb[0] + nb[1] + nb[2] + nb[3];
+    drawGround(g, underClassTree(tx, ty), tx, ty);
+    if (cnt === 0) {   // arbre isolé : couronne ronde
+      g.fillStyle = "rgba(0,0,0,.22)"; for (var r = 0; r < 3; r++) g.fillRect(4 - r + 2, 12 + r, 10 + 2 * r - 4, 1);
+      blob(g, 8, 7, 7, P.out); blob(g, 8, 7, 6, P.g6); blob(g, 7, 6, 5, P.g5); blob(g, 6, 5, 3, P.g4);
+      fr(g, 4, 4, 2, 1, P.g3); fr(g, 4, 5, 1, 1, P.g3); fr(g, 10, 8, 2, 1, P.g4); fr(g, 9, 10, 2, 1, P.g6);
+      return;
+    }
+    var l = nb[3] ? 0 : 1, r2 = nb[1] ? 15 : 14, t2 = nb[0] ? 0 : 1, b2 = nb[2] ? 15 : 14;
+    fr(g, l, t2, r2 - l + 1, b2 - t2 + 1, P.g5);
+    for (var i = 0; i < 4; i++) {
+      var lx = l + 2 + Math.floor(hh(tx * 4 + i, ty, 71) * (r2 - l - 4)), ly = t2 + 2 + Math.floor(hh(tx, ty * 4 + i, 72) * (b2 - t2 - 4));
+      blob(g, lx + 1, ly + 1, 2, P.g6); blob(g, lx, ly, 3, P.g4); fr(g, lx - 1, ly - 2, 2, 1, P.g3);
+    }
+    // contour sur les côtés exposés
+    if (!nb[0]) { fr(g, l, 0, r2 - l + 1, 1, P.out); fr(g, l, 1, r2 - l + 1, 1, P.g4); }
+    if (!nb[2]) fr(g, l, 15, r2 - l + 1, 1, P.out);
+    if (!nb[3]) fr(g, 0, t2, 1, b2 - t2 + 1, P.out);
+    if (!nb[1]) fr(g, 15, t2, 1, b2 - t2 + 1, P.out);
+    if (!nb[0] && !nb[3]) fr(g, 0, 0, 2, 2, "rgba(0,0,0,0)");
   }
-  // la balle-héros : une petite bouille qui regarde où elle va
+  function underClassTree(tx, ty) { var a = [cAt(tx, ty - 1), cAt(tx + 1, ty), cAt(tx, ty + 1), cAt(tx - 1, ty)]; for (var i = 0; i < 4; i++) if (a[i] === "S" || a[i] === "R" || a[i] === "P") return a[i]; return lvIdx ? "F" : "G"; }
+  function isRail(tx, ty) { return get(tx, ty) === TY.RAIL; }
+  function drawRail(g, tx, ty) {
+    drawGround(g, underClass(tx, ty), tx, ty);
+    var N = isRail(tx, ty - 1), E = isRail(tx + 1, ty), Sx = isRail(tx, ty + 1), Wx = isRail(tx - 1, ty);
+    function boxes(f) { f(3, 3, 10, 10); if (N) f(3, 0, 10, 4); if (E) f(12, 3, 4, 10); if (Sx) f(3, 12, 10, 4); if (Wx) f(0, 3, 4, 10); }
+    g.fillStyle = "rgba(0,0,0,.22)"; boxes(function (x, y, w, h) { g.fillRect(x + 1, y + 2, w, h); });
+    boxes(function (x, y, w, h) { fr(g, Math.max(0, x - 1), Math.max(0, y - 1), Math.min(16, x + w + 1) - Math.max(0, x - 1), Math.min(16, y + h + 1) - Math.max(0, y - 1), P.out); });
+    boxes(function (x, y, w, h) {
+      for (var yy = y; yy < y + h; yy++) for (var xx = x; xx < x + w; xx++) { var wx = tx * 16 + xx, wy = ty * 16 + yy; fr(g, xx, yy, 1, 1, ((wx >> 2) + (wy >> 2)) & 1 ? P.st1 : P.st0); }
+    });
+    // arêtes : lumière en haut, ombre en bas
+    boxes(function (x, y, w, h) { fr(g, x, y, w, 1, "#ffffff"); fr(g, x, y + h - 1, w, 1, P.st2); });
+  }
+  function drawWall(g, tx, ty) {
+    var below = get(tx, ty + 1) === TY.CWALL;
+    fr(g, 0, 0, 16, 16, P.c5);
+    for (var i = 0; i < 5; i++) fr(g, Math.floor(hh(tx * 5 + i, ty, 81) * 14), Math.floor(hh(tx, ty * 5 + i, 82) * 14), 2, 1, P.c4);
+    if (!below) {   // face de la paroi : briques éclairées
+      fr(g, 0, 5, 16, 11, P.st3); fr(g, 0, 5, 16, 1, P.st1); fr(g, 0, 6, 16, 1, P.st2);
+      for (var r = 0; r < 3; r++) { var off = (r & 1) * 4; fr(g, 0, 8 + r * 3, 16, 1, P.st4); for (var c = off; c < 16; c += 8) fr(g, c, 8 + r * 3 - 3 + (r === 0 ? 0 : 0), 1, 3, P.st4); }
+      fr(g, 0, 15, 16, 1, P.st4);
+    }
+  }
+  // bouton / porte / bumper / etc.
+  var SWC = [[P.r1, P.r0, P.r2], [P.w2, P.w1, P.w4], ["#3fd05a", "#8cf08a", "#23903a"]];
+  function drawObject(g, t, tx, ty, f) {
+    var ground = underClass(tx, ty), v = Math.floor(hh(tx, ty, 6) * 4);
+    if (t === TY.TREE) { drawTree(g, tx, ty); return; }
+    if (t === TY.RAIL) { drawRail(g, tx, ty); return; }
+    if (t === TY.CWALL) { drawWall(g, tx, ty); return; }
+    if (t === TY.BRIDGE) {
+      drawGround(g, "W", tx, ty);
+      fr(g, 0, 2, 16, 12, P.e2); for (var p = 0; p < 16; p += 4) { fr(g, p, 3, 3, 10, P.e1); fr(g, p, 3, 3, 1, P.e0); fr(g, p + 3, 3, 1, 10, P.e3); }
+      fr(g, 0, 1, 16, 2, P.e3); fr(g, 0, 13, 16, 2, P.e3); fr(g, 0, 1, 16, 1, P.e1); fr(g, 0, 15, 16, 1, "rgba(0,0,0,.25)");
+      return;
+    }
+    drawGround(g, ground === "W" || ground === "B" ? (lvIdx ? "F" : "G") : ground, tx, ty);
+    var lv = lvIdx;
+    if (t === TY.BUSH) {
+      g.fillStyle = "rgba(0,0,0,.22)"; g.fillRect(3, 12, 11, 2);
+      blob(g, 8, 8, 7, P.out); blob(g, 8, 8, 6, P.g5); blob(g, 7, 7, 5, P.g4); blob(g, 6, 5, 3, P.g3);
+      fr(g, 10, 9, 2, 2, P.r1); fr(g, 5, 10, 2, 2, P.r1); fr(g, 9, 5, 2, 2, P.r0); fr(g, 10, 9, 1, 1, P.r0);
+    } else if (t >= TY.UP && t <= TY.RIGHT) {
+      fr(g, 0, 0, 16, 16, lv ? P.c1 : P.g2);
+      for (var s = 0; s < 16; s += 4) { if (t === TY.UP || t === TY.DOWN) fr(g, 0, s, 16, 2, lv ? P.c0 : P.g1); else fr(g, s, 0, 2, 16, lv ? P.c0 : P.g1); }
+      var pts = [];
+      for (var k = 0; k < 3; k++) for (var j = -3; j <= 3; j++) {
+        var a = 3 - Math.abs(j), b = 3 + k * 5;
+        if (t === TY.DOWN) pts.push([8 + j, b + a]); else if (t === TY.UP) pts.push([8 + j, b + 3 - a + 1]); else if (t === TY.RIGHT) pts.push([b + a, 8 + j]); else pts.push([b + 3 - a + 1, 8 + j]);
+      }
+      pts.forEach(function (q) { fr(g, q[0], q[1], 1, 2, lv ? P.c4 : P.g4); });
+    } else if (t >= TY.SW0 && t <= TY.SW2) {
+      var sc = SWC[t - TY.SW0];
+      g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(3, 12, 11, 2);
+      blob(g, 8, 8, 7, P.out); blob(g, 8, 8, 6, f ? P.st3 : sc[2]);
+      if (f) blob(g, 8, 8, 3, sc[0]); else { blob(g, 8, 7, 5, sc[0]); blob(g, 7, 6, 3, sc[1]); fr(g, 5, 4, 2, 1, "#ffffff"); }
+    } else if (t >= TY.DR0 && t <= TY.DR2) {
+      var dc = SWC[t - TY.DR0];
+      fr(g, 0, 0, 16, 16, P.out); fr(g, 1, 1, 14, 14, dc[2]); fr(g, 2, 2, 12, 12, dc[0]);
+      for (var d1 = 0; d1 < 12; d1 += 4) { fr(g, 2 + d1, 2, 1, 12, dc[2]); }
+      fr(g, 2, 2, 12, 1, dc[1]); fr(g, 5, 5, 6, 6, P.out); fr(g, 6, 6, 4, 4, dc[1]); fr(g, 7, 7, 2, 2, P.out);
+    } else if (t === TY.GATE) {
+      fr(g, 0, 0, 16, 16, P.out); fr(g, 1, 1, 14, 14, P.y2); fr(g, 2, 2, 12, 12, P.y1); fr(g, 2, 2, 12, 1, P.y0);
+      for (var d2 = 0; d2 < 12; d2 += 4) fr(g, 2 + d2, 2, 1, 12, P.y2);
+      blob(g, 8, 8, 3, P.out); blob(g, 8, 8, 2, P.p1);
+    } else if (t === TY.KDOOR) {
+      fr(g, 0, 0, 16, 16, P.out); fr(g, 1, 1, 14, 14, P.y2); fr(g, 2, 2, 12, 12, P.y1); fr(g, 2, 2, 12, 1, P.y0);
+      blob(g, 8, 7, 2, P.out); fr(g, 7, 8, 2, 4, P.out);
+    } else if (t === TY.CRACK) {
+      fr(g, 0, 0, 16, 16, P.out); fr(g, 1, 1, 14, 14, "#8a6a4a"); fr(g, 1, 1, 14, 2, "#b08c62"); fr(g, 1, 13, 14, 2, "#6a4e34");
+      fr(g, 3, 9, 4, 3, "#775a3c"); fr(g, 10, 4, 3, 3, "#775a3c");
+      fr(g, 7, 1, 1, 4, P.out); fr(g, 6, 5, 1, 3, P.out); fr(g, 7, 8, 1, 3, P.out); fr(g, 8, 11, 1, 4, P.out); fr(g, 9, 6, 2, 1, P.out);
+    } else if (t === TY.BUMP) {
+      g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(3, 12, 11, 3);
+      blob(g, 8, 8, 8, P.out); blob(g, 8, 8, 7, P.r2); blob(g, 8, 7, 6, P.r1); blob(g, 7, 6, 4, P.r0);
+      fr(g, 7, 3, 2, 9, "#ffffff"); fr(g, 4, 6, 8, 2, "#ffffff"); fr(g, 5, 4, 1, 1, "#ffffff");
+    } else if (t === TY.PORTAL) {
+      if (!lv) {
+        fr(g, 0, 1, 16, 15, P.out); fr(g, 1, 2, 14, 14, P.st2); fr(g, 1, 2, 14, 1, P.st1); fr(g, 2, 3, 12, 13, P.st4); fr(g, 3, 4, 10, 12, P.out);
+        fr(g, 4, 8, 8, 1, P.st4); fr(g, 4, 11, 8, 1, P.st3); fr(g, 4, 14, 8, 1, P.st2); fr(g, 3, 3, 1, 1, P.st1); fr(g, 12, 3, 1, 1, P.st1);
+      } else {
+        fr(g, 3, 1, 10, 14, P.out); fr(g, 4, 2, 8, 12, P.c6); fr(g, 5, 2, 2, 12, P.e1); fr(g, 9, 2, 2, 12, P.e1);
+        for (var rg = 0; rg < 4; rg++) fr(g, 5, 4 + rg * 3, 6, 1, P.e0); fr(g, 6, 0, 4, 1, P.y1); fr(g, 7, 1, 2, 1, P.y1);
+      }
+    } else if (t === TY.FLAG) {
+      g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(4, 12, 9, 2);
+      blob(g, 8, 12, 3, P.out); blob(g, 8, 12, 2, P.st2); fr(g, 7, 11, 1, 1, P.st0);
+    } else if (t === TY.CUP || t === TY.HOLY || t === TY.TEMPLE) {
+      var done = (t !== TY.TEMPLE && S.cups[cupKey(tx, ty)]);
+      var ring = t === TY.HOLY ? [P.y2, P.y1] : t === TY.TEMPLE ? [P.p2, P.p1] : [P.g5, P.g4];
+      blob(g, 8, 9, 7, "rgba(0,0,0,.2)"); blob(g, 8, 8, 8, P.out); blob(g, 8, 8, 7, ring[0]); blob(g, 8, 8, 6, ring[1]);
+      if (done) { blob(g, 8, 8, 5, P.st4); fr(g, 7, 5, 2, 6, P.st0); fr(g, 5, 7, 6, 2, P.st0); }
+      else { blob(g, 8, 8, 5, P.out); blob(g, 8, 9, 4, "#05070b"); fr(g, 4, 6, 3, 1, "rgba(255,255,255,.25)"); }
+    }
+  }
+  var OBJ_TILES = { 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 12: 1, 13: 1, 14: 1, 15: 1, 16: 1, 17: 1, 19: 1, 20: 1, 21: 1, 22: 1, 23: 1, 24: 1, 25: 1, 26: 1, 27: 1, 28: 1, 30: 1 };
+  function makeTile(t, tx, ty, f) {
+    var c = cv(TILE, TILE), g = c.getContext("2d");
+    if (tx < 0 || ty < 0 || tx >= L.W || ty >= L.H) { if (t === TY.CWALL) drawWall(g, tx, ty); else drawTree(g, tx, ty); return c; }
+    if (OBJ_TILES[t]) drawObject(g, t, tx, ty, f); else drawGround(g, t === TY.CFLOOR ? "F" : cls(t), tx, ty);
+    return c;
+  }
+  function tileImage(tx, ty) {
+    var t = get(tx, ty), f = (t >= TY.SW0 && t <= TY.SW2 && S.sw[lvIdx + ":" + (t - TY.SW0)]) ? 1 : 0;
+    if (!L.tc) L.tc = {};
+    var key = (tx < 0 || ty < 0 || tx >= L.W || ty >= L.H) ? "o" + tx + "," + ty : (ty * L.W + tx) * 2 + f;
+    return L.tc[key] || (L.tc[key] = makeTile(t, tx, ty, f));
+  }
+  // éclats de l'eau (animés, dessinés par-dessus les tuiles d'eau)
+  function waterGlints(camx, camy, tx0, ty0, tx1, ty1, t) {
+    for (var y = ty0; y <= ty1; y++) for (var x = tx0; x <= tx1; x++) {
+      if (get(x, y) !== TY.WATER) continue;
+      for (var i = 0; i < 2; i++) {
+        var ph = (t / 700 + hash(x, y, 90 + i) * 6) % 3; if (ph > 1.4) continue;
+        var gx = x * TILE + 2 + Math.floor(hash(x, y, 93 + i) * 9), gy = y * TILE + 2 + Math.floor(hash(x, y, 95 + i) * 11);
+        rc(gx - camx, gy - camy, ph < 0.7 ? 3 : 2, 1, P.w0);
+      }
+    }
+  }
+
+  /* ---------- lutins ---------- */
+  var SPR = {};
+  function spr(name, rows, pal) {
+    var key = name; if (SPR[key]) return SPR[key];
+    var w = rows[0].length, h = rows.length, c = cv(w, h), g = c.getContext("2d");
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) { var ch2 = rows[y][x]; if (ch2 !== "." && pal[ch2]) { g.fillStyle = pal[ch2]; g.fillRect(x, y, 1, 1); } }
+    return SPR[key] = c;
+  }
+  function put(c, sx, sy, ax, ay) { cx.drawImage(c, Math.round(sx - (ax == null ? c.width / 2 : ax)), Math.round(sy - (ay == null ? c.height / 2 : ay))); }
+  var BALL_ROWS = ["..OOOOO..", ".OWWWWWO.", "OWWWWWWsO", "OWWDWWWsO", "OWWWWWsSO", "OWDWWsSSO", "OWWWsSSSO", ".OsSSSSO.", "..OOOOO.."];
+  var BALL_PAL = { O: P.out, W: "#ffffff", D: "#d9e4ef", s: "#e8eff6", S: "#b4c6da" };
   function drawHero() {
     var sx = Math.round(B.x - cam.x), sy = Math.round(B.y - cam.y), flash = B.hurt > 0 && ((now() / 80 | 0) % 2);
     if (flash) return;
-    disc(sx + 1, sy + 2, BALL_R, "rgba(0,0,0,.35)");
-    disc(sx, sy, BALL_R + 1, C.black); disc(sx, sy, BALL_R, "#d8fff4");
-    disc(sx, sy, BALL_R - 1, "#bff5e6");
-    rc(sx - 3, sy - 3, 2, 1, C.white); rc(sx - 3, sy - 3, 1, 2, C.white);
-    var ex = Math.round(B.fx), ey = Math.round(B.fy);
-    rc(sx - 3 + ex, sy - 1 + ey, 2, 3, C.black); rc(sx + 1 + ex, sy - 1 + ey, 2, 3, C.black);
-    rc(sx - 3 + ex, sy - 1 + ey, 1, 1, C.white); rc(sx + 1 + ex, sy - 1 + ey, 1, 1, C.white);
-    if (!B.rolling) { rc(sx - 4, sy + 1, 1, 1, "#ff9aa8"); rc(sx + 3, sy + 1, 1, 1, "#ff9aa8"); }
+    cx.fillStyle = "rgba(10,20,10,.32)"; cx.fillRect(sx - 3, sy + 4, 8, 2); cx.fillRect(sx - 2, sy + 3, 6, 1);
+    put(spr("ball", BALL_ROWS, BALL_PAL), sx, sy);
+  }
+  var SLIME_ROWS = ["....OOOO....", "..OOGGGGOO..", ".OGHHGGGGGO.", ".OGHGGGGGGO.", "OGGGGGGGGGGO", "OGOOGGGGOOGO", "OGOWGGGGOWGO", "OSGGGGGGGGSO", ".OOOOOOOOOO."];
+  var SLIME_PAL = { O: P.out, G: "#5ee27a", H: "#b6ffbf", S: "#2fa84e", W: "#ffffff" };
+  function drawSlime(s, sx, sy) {
+    var sq = Math.round(Math.sin(s.bob) * 1);
+    cx.fillStyle = "rgba(10,20,10,.28)"; cx.fillRect(sx - 5, sy + 4, 10, 2);
+    put(spr("slime", SLIME_ROWS, SLIME_PAL), sx, sy - sq, null, 5);
+  }
+  var BAT0 = ["O...........O", "OO..O...O..OO", "OPO.OPPPO.OPO", "OPPOPPPPPOPPO", "OPPPPRPRPPPPO", ".OPPPPPPPPPO.", "..OOPPPPPOO..", "....OOOOO...."];
+  var BAT1 = [".............", "....O...O....", "...OPO.OPO...", "..OPPPOPPPO..", "OOPPPRPRPPPOO", "OPPPPPPPPPPPO", ".OOPPPPPPPOO.", "...OOOOOOO..."];
+  var BAT_PAL = { O: P.out, P: "#7a4ab8", R: "#ff6a6a" };
+  function drawBat(o, sx, sy) {
+    var w = Math.floor(o.ph) % 2;
+    cx.fillStyle = "rgba(10,10,30,.25)"; cx.fillRect(sx - 4, sy + 9, 8, 1);
+    put(spr(w ? "bat1" : "bat0", w ? BAT1 : BAT0, BAT_PAL), sx, sy);
+  }
+  var BIRD0 = ["..OOO...", ".OYYYO.O", "OYYWYYOO", "OYYYYYYO", ".OYYYYO.", "..OOOO.."];
+  var BIRD_PAL = { O: P.out, Y: P.y1, W: "#ffffff", B: P.y2 };
+  function drawBird(sx, sy, big) {
+    var w = ((now() / 120 | 0) % 2);
+    if (big) {   // aigle
+      var wy = w ? -3 : 1;
+      cx.fillStyle = "rgba(10,20,10,.2)"; cx.fillRect(sx - 6, sy + 12, 12, 2);
+      rc(sx - 10, sy - 2 + wy, 8, 4, P.out); rc(sx + 2, sy - 2 + wy, 8, 4, P.out); rc(sx - 9, sy - 1 + wy, 7, 2, "#8a5226"); rc(sx + 2, sy - 1 + wy, 7, 2, "#8a5226"); rc(sx - 9, sy - 1 + wy, 3, 1, "#b9763a"); rc(sx + 6, sy - 1 + wy, 3, 1, "#b9763a");
+      rc(sx - 4, sy - 4, 8, 10, P.out); rc(sx - 3, sy - 3, 6, 8, "#a86a30"); rc(sx - 3, sy - 4, 6, 3, "#ffffff"); rc(sx - 1, sy - 2, 1, 1, P.out); rc(sx + 1, sy - 2, 1, 1, P.out); rc(sx - 1, sy, 2, 2, P.y1); rc(sx - 2, sy + 4, 4, 2, "#e8e8f0");
+    } else {
+      cx.fillStyle = "rgba(10,20,10,.25)"; cx.fillRect(sx - 3, sy + 5, 6, 1);
+      put(spr("bird", BIRD0, BIRD_PAL), sx, sy);
+      rc(sx - 5, sy - 2 + (w ? -2 : 1), 3, 2, P.out); rc(sx + 2, sy - 2 + (w ? -2 : 1), 3, 2, P.out); rc(sx - 4, sy - 1 + (w ? -2 : 1), 2, 1, P.y1); rc(sx + 2, sy - 1 + (w ? -2 : 1), 2, 1, P.y1);
+    }
+  }
+  var NPC_ROWS = ["...OOOO...", "..OHHHHO..", ".OHHHHHHO.", ".OOOOOOOO.", ".OSSSSSSO.", ".OSOSSOSO.", ".OSSSSSSO.", "..OSSSSO..", ".OOCCCCOO.", "OCCCCCCCCO", "OCCCCCCCCO", "OCCDCCDCCO", ".OCCCCCCO.", ".OOOOOOOO.", "..OO..OO.."];
+  var NPC_COL = [["#8a5ad8", "#6a3fb0", "#b08cf0"], ["#e0842a", "#b0601a", "#f4ac60"], ["#2a9a78", "#1c7058", "#60c8a4"], ["#d0407a", "#a02c5c", "#ec7aa4"]];
+  function drawNpc(n, sx, sy) {
+    var c = NPC_COL[n.d % 4];
+    cx.fillStyle = "rgba(10,20,10,.28)"; cx.fillRect(sx - 4, sy + 7, 9, 2);
+    put(spr("npc" + (n.d % 4), NPC_ROWS, { O: P.out, H: c[2], C: c[0], D: c[1], S: "#f6c9a0" }), sx, sy, null, 8);
+    if (Math.sin(now() / 400 + n.x) > 0.7) { rc(sx + 5, sy - 14, 1, 3, "#ffffff"); rc(sx + 5, sy - 10, 1, 1, "#ffffff"); }
+  }
+  var KEY_ROWS = ["..OOO..", ".OYYYO.", ".OYOYO.", ".OYYYO.", "..OYO..", "..OYYO.", "..OYO..", "..OYYO.", "..OYO..", "...O..."];
+  function drawItem(it, sx, sy) {
+    var bob = Math.round(Math.sin(now() / 250 + it.x) * 1.5);
+    cx.fillStyle = "rgba(10,20,10,.28)"; cx.fillRect(sx - 4, sy + 6, 8, 2);
+    sy -= 2 - bob + 0;
+    if (it.kind === "key") put(spr("key", KEY_ROWS, { O: P.out, Y: P.y1 }), sx, sy, null, 5);
+    else if (it.kind === "brake") { disc(sx, sy, 6, P.out); disc(sx, sy, 5, P.r2); disc(sx, sy - 1, 4, P.r1); rc(sx - 4, sy - 2, 8, 3, "#ffffff"); rc(sx - 4, sy - 2, 8, 1, P.st1); }
+    else if (it.kind === "float") { disc(sx, sy, 7, P.out); disc(sx, sy, 6, P.r1); disc(sx, sy, 2, P.out); disc(sx, sy, 1, P.w2); rc(sx - 6, sy - 1, 3, 2, "#ffffff"); rc(sx + 3, sy - 1, 3, 2, "#ffffff"); rc(sx - 1, sy - 6, 2, 3, "#ffffff"); rc(sx - 1, sy + 3, 2, 3, "#ffffff"); }
+    else { disc(sx, sy, 6, P.out); disc(sx, sy, 5, P.y2); disc(sx, sy - 1, 4, P.y1); rc(sx - 1, sy - 4, 2, 8, P.e3); rc(sx - 4, sy - 1, 8, 2, P.e3); rc(sx - 3, sy - 3, 2, 1, P.y0); }
+  }
+  function drawBoss(o, sx, sy) {
+    var sq = Math.round(Math.sin(o.bob) * 1.5), fl = o.flash > 0 && ((now() / 70 | 0) % 2), body = fl ? "#ffffff" : "#5ee27a", hi = fl ? "#ffffff" : "#b6ffbf", lo = fl ? "#dddddd" : "#2fa84e";
+    cx.fillStyle = "rgba(10,20,10,.28)"; cx.fillRect(sx - 12, sy + 10, 24, 3);
+    rc(sx - 13, sy - 7 - sq, 26, 19 + sq, P.out); rc(sx - 12, sy - 6 - sq, 24, 17 + sq, body); rc(sx - 12, sy + 7, 24, 4, lo); rc(sx - 10, sy - 5 - sq, 8, 2, hi); rc(sx - 11, sy - 3 - sq, 2, 4, hi);
+    rc(sx - 8, sy - 1 - sq, 5, 6, P.out); rc(sx + 3, sy - 1 - sq, 5, 6, P.out); rc(sx - 7, sy - sq, 3, 3, "#ffffff"); rc(sx + 4, sy - sq, 3, 3, "#ffffff"); rc(sx - 6, sy + 1 - sq, 2, 2, P.out); rc(sx + 5, sy + 1 - sq, 2, 2, P.out);
+    rc(sx - 5, sy + 6 - sq, 10, 2, P.out);
+    rc(sx - 9, sy - 12 - sq, 18, 6, P.out); rc(sx - 8, sy - 11 - sq, 16, 4, P.y1); rc(sx - 8, sy - 11 - sq, 16, 1, P.y0); rc(sx - 8, sy - 15 - sq, 4, 4, P.out); rc(sx - 7, sy - 14 - sq, 2, 3, P.y1); rc(sx - 2, sy - 17 - sq, 4, 5, P.out); rc(sx - 1, sy - 16 - sq, 2, 4, P.y1); rc(sx + 4, sy - 15 - sq, 4, 4, P.out); rc(sx + 5, sy - 14 - sq, 2, 3, P.y1);
+    rc(sx - 1, sy - 10 - sq, 2, 2, P.r1);
+    for (var i = 0; i < 3; i++) { rc(sx - 10 + i * 7, sy + 13, 6, 3, P.out); rc(sx - 9 + i * 7, sy + 14, 4, 1, i < o.hp ? P.r1 : P.st3); }
+  }
+  // drapeau d'un seul tenant : mât, étoffe qui ondule, socle
+  function drawFlag(sx, sy, t, on) {
+    var w = Math.floor(t / 200) % 4, wave = [0, 1, 1, 0][w];
+    cx.fillStyle = "rgba(10,20,10,.25)"; cx.fillRect(sx - 3, sy + 4, 8, 2);
+    rc(sx - 3, sy + 2, 7, 3, P.out); rc(sx - 2, sy + 2, 5, 2, P.st2); rc(sx - 2, sy + 2, 5, 1, P.st1);
+    rc(sx - 1, sy - 14, 3, 17, P.out); rc(sx, sy - 13, 1, 15, P.st0);
+    var c0 = on ? P.y1 : P.r1, c1 = on ? P.y0 : P.r0, c2 = on ? P.y2 : P.r2;
+    rc(sx + 1, sy - 15, 11 + wave, 9, P.out);
+    rc(sx + 2, sy - 14, 9 + wave, 7, c0); rc(sx + 2, sy - 14, 9 + wave, 2, c1); rc(sx + 2, sy - 9, 9 + wave, 2, c2);
+    rc(sx, sy - 15, 3, 3, P.out); rc(sx, sy - 14, 2, 2, P.y1);
   }
 
   function resize() {
@@ -777,20 +956,15 @@
   }
   function draw(t) {
     cx.imageSmoothingEnabled = false;
-    cx.fillStyle = L && L.dark ? C.black : C.forest; cx.fillRect(0, 0, view.aw, view.ah);
+    cx.fillStyle = L && L.dark ? P.c6 : P.g6; cx.fillRect(0, 0, view.aw, view.ah);
     if (!grid) return;
     var camx = Math.round(cam.x), camy = Math.round(cam.y), tx0 = Math.floor(camx / TILE), ty0 = Math.floor(camy / TILE), tx1 = Math.floor((camx + view.aw) / TILE), ty1 = Math.floor((camy + view.ah) / TILE), x, y;
-    for (y = ty0; y <= ty1; y++) for (x = tx0; x <= tx1; x++) {
-      var tt = get(x, y), img;
-      if ((tt === TY.CUP || tt === TY.HOLY) && S.cups[cupKey(x, y)]) img = cupDoneImg(tt === TY.HOLY); else img = tileImg(tt, x, y);
-      cx.drawImage(img, x * TILE - camx, y * TILE - camy);
-    }
-    if (L.dark) { cx.fillStyle = "rgba(8,14,40,.26)"; cx.fillRect(0, 0, view.aw, view.ah); }
-    // drapeaux (étoffe animée)
+    for (y = ty0; y <= ty1; y++) for (x = tx0; x <= tx1; x++) cx.drawImage(tileImage(x, y), x * TILE - camx, y * TILE - camy);
+    waterGlints(camx, camy, tx0, ty0, tx1, ty1, t);
     L.feat.flags.forEach(function (f, idx) {
-      var c = center(f), sx = Math.round(c.x - camx), sy = Math.round(c.y - camy), w = (t / 220 | 0) % 2, on = S.cp.l === lvIdx && S.cp.i === idx;
-      if (sx < -20 || sx > view.aw + 20 || sy < -20 || sy > view.ah + 20) return;
-      rc(sx, sy - 11, 1, 2, C.white); rc(sx + 1, sy - 11, 7 + w, 6, C.black); rc(sx + 1, sy - 10, 5 + w, 4, on ? C.yellow : C.red); rc(sx + 1, sy - 10, 5 + w, 1, on ? "#fff09a" : C.red2);
+      var c = center(f), sx = Math.round(c.x - camx), sy = Math.round(c.y - camy) + 4;
+      if (sx < -20 || sx > view.aw + 20 || sy < -20 || sy > view.ah + 24) return;
+      drawFlag(sx, sy, t, S.cp.l === lvIdx && S.cp.i === idx);
     });
     if (L.feat.temple && allPieces()) { var tc = center(L.feat.temple), pul = 8 + Math.round(Math.sin(t / 200) * 2); cx.globalAlpha = 0.5; disc(tc.x - camx, tc.y - camy, pul, C.purple); cx.globalAlpha = 1; }
     // lutins triés par profondeur
