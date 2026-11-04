@@ -10,7 +10,7 @@ function settle(L, p, inp) {
   for (let i = 0; i < 900; i++) {
     C.step(L, p, inp, 1 / 60);
     if (p.won) return { won: true, frames: i + 1 };
-    if (p.ground && Math.abs(p.vx) < 1 && p.stun <= 0) return { won: false, frames: i + 1 };
+    if (p.ground && Math.abs(p.vx) < 1 && p.stun <= 0 && C.groundTile(L, p) !== "W") return { won: false, frames: i + 1 };
   }
   return { won: false, frames: 900 };
 }
@@ -36,38 +36,46 @@ Heap.prototype.pop = function () {
 };
 Heap.prototype.size = function () { return this.a.length; };
 
-// Dijkstra : coût = secondes (charge + vol, ou marche). Se termine dès que le but est atteint.
+// Dijkstra : coût = secondes (charge + vol, ou marche). Les états incluent les clés possédées.
+// Se termine dès que le but est atteint.
 function check(L, opts) {
   opts = opts || {};
   const charges = opts.charges || CHARGES;
   const dist = new Map(), heap = new Heap();
-  const key = (x, y) => Math.round(x / 4) + "," + Math.round(y);
-  let best = L.startY, won = false, wonTime = Infinity;
-  function add(x, y, t) { const k = key(x, y), d = dist.get(k); if (d === undefined || t < d) { dist.set(k, t); heap.push(t, { x, y, t, k }); } }
-  add(C.newPlayer(L).x, C.newPlayer(L).y, 0);
+  const kr = opts.keyRes || 4, key = (x, y, m) => Math.round(x / kr) + "," + Math.round(y) + "," + m;
+  let cur0 = null, best = L.startY, won = false, wonTime = Infinity, bestMask = 0;
+  const WW = L.cols * C.TS, HH = L.h * C.TS;
+  function add(x, y, t, m) { if (x < 0 || x > WW || y > HH) { if (opts.debug) console.error('HORS-MONDE', x, y, cur0); return; } const k = key(x, y, m), d = dist.get(k); if (d === undefined || t < d) { dist.set(k, t); heap.push(t, { x, y, t, k, m }); } }
+  const p0 = C.newPlayer(L); add(p0.x, p0.y, 0, 0);
   while (heap.size()) {
-    const [t, s] = heap.pop();
+    const [t, s] = heap.pop(); cur0 = s;
     if (t > dist.get(s.k)) continue;
     if (won && t >= wonTime) break;
-    if (dist.size > (opts.maxStates || 150000)) return { won: false, best, states: dist.size, minTime: null, tooBig: true };
+    if (dist.size > (opts.maxStates || 150000)) return { won: false, best, states: dist.size, minTime: null, tooBig: true, bestMask, dist };
     if (s.y < best) best = s.y;
-    for (const d of [-1, 1]) {                                  // marche
-      const p = C.newPlayer(L); p.x = s.x; p.y = s.y;
+    if (s.m > bestMask) bestMask = s.m;
+    for (const d of [-1, 1]) {                                  // marche (et chute / ressort si on quitte le sol)
+      const p = C.newPlayer(L); p.x = s.x; p.y = s.y; p.mask = s.m;
       for (let i = 0; i < 200; i++) {
         C.step(L, p, { dir: d, jump: false }, 1 / 60);
-        if (!p.ground) break;
-        if (i % 6 === 0) add(p.x, p.y, t + (i + 1) / 60);
+        if (!p.ground) {
+          const r = settle(L, p, { dir: d, jump: false });
+          if (r.won) { won = true; wonTime = Math.min(wonTime, t + (i + 1 + r.frames) / 60); }
+          else if (p.ground) add(p.x, p.y, t + (i + 1 + r.frames) / 60, p.mask);
+          break;
+        }
+        if (i % 6 === 0) add(p.x, p.y, t + (i + 1) / 60, p.mask);
       }
     }
     for (const d of [-1, 0, 1]) for (const c of charges) {      // sauts
-      const p = C.newPlayer(L); p.x = s.x; p.y = s.y; p.charge = c * C.P.chargeMax;
+      const p = C.newPlayer(L); p.x = s.x; p.y = s.y; p.mask = s.m; p.charge = c * C.P.chargeMax;
       const r = settle(L, p, { dir: d, jump: false });
       const cost = t + c * C.P.chargeMax + r.frames / 60 + 0.1;  // + 0.1 s pour viser
       if (r.won) { won = true; if (cost < wonTime) wonTime = cost; }
-      else if (p.ground) add(p.x, p.y, cost);
+      else if (p.ground) add(p.x, p.y, cost, p.mask);
     }
   }
-  return { won, best, states: dist.size, minTime: won ? wonTime : null };
+  return { won, best, states: dist.size, minTime: won ? wonTime : null, bestMask, dist };
 }
 module.exports = { check, settle, CHARGES };
 if (require.main === module) {

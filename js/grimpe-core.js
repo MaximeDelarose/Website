@@ -5,6 +5,10 @@
    Le joueur (AABB 10 × 13) est repéré par x = centre, y = pieds.
    Tuiles : '#' solide · 'I' glace · '=' plateforme traversable par le bas ·
    'G' but (gland doré) · '.' vide.
+   Mécaniques : 'W' ressort (rebondit très haut) · '>' '<' tapis roulants · 'U' courant d'air
+   (gravité réduite : on plane) · 'k' 'l' 'm' clés rouge / bleue / jaune (ramassées au contact) ·
+   'R' 'B' 'Y' portes de la même couleur (solides tant que la clé n'est pas prise).
+   Le monde peut être plus large qu'un écran (data.cols) : il est découpé en écrans de 20 colonnes.
    ========================================================================= */
 (function (root) {
   "use strict";
@@ -20,29 +24,40 @@
     crashV: 520,                 // vitesse d'impact qui fait s'écraser
     stun: 0.9,
     iceAccel: 130, iceFric: 38,
+    belt: 52,                    // vitesse d'un tapis roulant (px/s)
+    spring: 520,                 // vitesse verticale donnée par un ressort
+    lift: 650,                   // courant d'air : poussée vers le haut (gravité 900 → chute lente, longs vols planés)
   };
+  var MASK = 0;                  // clés possédées par le joueur en cours de simulation (bits 1 = rouge, 2 = bleue)
 
   function tile(L, tx, ty) {
-    if (tx < 0 || tx >= COLS) return "#";
+    if (tx < 0 || tx >= L.cols) return "#";
     if (ty >= L.h) return "#";
     if (ty < 0) return ".";
     return L.rows[ty].charAt(tx);
   }
-  function isSolid(c) { return c === "#" || c === "I"; }
+  function isSolid(c) {
+    if (c === "#" || c === "I" || c === "W" || c === ">" || c === "<") return true;
+    if (c === "R") return !(MASK & 1);
+    if (c === "B") return !(MASK & 2);
+    if (c === "Y") return !(MASK & 4);
+    return false;
+  }
 
   function createLevel(data) {
-    var rows = data.rows, L = { rows: rows, h: rows.length, wind: data.wind || {}, name: data.name || "" };
+    var rows = data.rows, L = { rows: rows, h: rows.length, cols: rows[0].length, wind: data.wind || {}, name: data.name || "", t0: data.towerC0 != null ? data.towerC0 : 0, t1: data.towerC1 != null ? data.towerC1 : rows[0].length - 1 };
     L.screens = Math.ceil(L.h / SROWS);
-    L.startX = data.startX != null ? data.startX : COLS * TS / 2;
+    L.startX = data.startX != null ? data.startX : L.cols * TS / 2;
     L.startY = data.startY != null ? data.startY : (L.h - 2) * TS;
     L.goal = null;
     for (var y = 0; y < rows.length; y++) { var x = rows[y].indexOf("G"); if (x >= 0) { L.goal = { x: x, y: y }; break; } }
     return L;
   }
+  function screenXOf(L, x) { return Math.max(0, Math.min(Math.ceil(L.cols / COLS) - 1, Math.floor(x / (TS * COLS)))); }
   function screenOf(L, y) { return Math.max(0, Math.min(L.screens - 1, Math.floor((y - 0.01) / (TS * SROWS)))); }
 
   function newPlayer(L) {
-    return { x: L.startX, y: L.startY, vx: 0, vy: 0, ground: true, charge: 0, stun: 0, facing: 1, won: false, ev: [], minY: L.startY, ice: false };
+    return { x: L.startX, y: L.startY, vx: 0, vy: 0, ground: true, charge: 0, stun: 0, facing: 1, won: false, ev: [], minY: L.startY, ice: false, mask: 0, belt: 0 };
   }
 
   function overlapsSolid(L, l, t, r, b) {
@@ -56,7 +71,7 @@
     var x0 = Math.floor((p.x - PW / 2 + 0.5) / TS), x1 = Math.floor((p.x + PW / 2 - 0.5) / TS), found = "";
     for (var tx = x0; tx <= x1; tx++) {
       var c = tile(L, tx, ty);
-      if (isSolid(c)) { if (c === "I") return "I"; found = "#"; }
+      if (isSolid(c)) { if (c === "W") return "W"; if (c === "I") return "I"; if (c === ">" || c === "<") found = c; else if (found !== ">" && found !== "<") found = "#"; }
       else if (c === "=" && Math.abs(p.y - ty * TS) < 0.7 && !found) found = "=";
     }
     return found;
@@ -65,7 +80,7 @@
   function doJump(p, dir) {
     var c = Math.min(1, Math.max(P.chargeMin, p.charge) / P.chargeMax);
     p.vy = -(P.jmin + (P.jmax - P.jmin) * c);
-    p.vx = dir * P.jx;
+    p.vx = dir * P.jx + p.belt * P.belt * 0.5;
     if (dir) p.facing = dir;
     p.ground = false; p.charge = 0; p.ev.push("jump:" + c.toFixed(2));
   }
@@ -73,14 +88,18 @@
   function sub(L, p, inp, h) {
     var dir = inp.dir | 0, jump = !!inp.jump;
     if (p.stun > 0) { p.stun -= h; dir = 0; jump = false; }
-    var scr = screenOf(L, p.y - 1), wind = L.wind[scr] || 0;
+    MASK = p.mask;
+    var scr = screenOf(L, p.y - 1), wind = (p.x >= L.t0 * TS && p.x < (L.t1 + 1) * TS) ? (L.wind[scr] || 0) : 0;
 
     if (p.ground) {
       var gt = groundTile(L, p);
       if (!gt) { p.ground = false; }
       else {
-        p.ice = gt === "I";
-        if (jump && p.stun <= 0) {
+        p.ice = gt === "I"; p.belt = gt === ">" ? 1 : gt === "<" ? -1 : 0;
+        if (gt === "W") {                                         // ressort : rebond immédiat, avec un peu d'élan
+          p.vy = -P.spring; p.vx = dir * P.jx * 0.8; p.ground = false; p.charge = 0; p.ev.push("spring");
+          if (dir) p.facing = dir;
+        } else if (jump && p.stun <= 0) {
           p.charge += h; if (dir) p.facing = dir;
           if (p.charge >= P.chargeMax) doJump(p, dir);
         } else if (p.charge > 0 && p.stun <= 0) {
@@ -90,7 +109,7 @@
           if (dir) p.facing = dir;
         }
         if (p.ground) {
-          var target = (p.charge > 0 || p.stun > 0) ? 0 : dir * P.walk;
+          var target = ((p.charge > 0 || p.stun > 0) ? 0 : dir * P.walk) + p.belt * P.belt;
           if (p.ice) {
             if (p.vx < target) p.vx = Math.min(target, p.vx + (target === 0 ? P.iceFric : P.iceAccel) * h);
             else if (p.vx > target) p.vx = Math.max(target, p.vx - (target === 0 ? P.iceFric : P.iceAccel) * h);
@@ -102,11 +121,13 @@
     if (!p.ground) {
       p.vy = Math.min(P.vmax, p.vy + P.g * h);
       p.vx += wind * h;
+      if (tile(L, Math.floor(p.x / TS), Math.floor((p.y - PH / 2) / TS)) === "U") p.vy -= P.lift * h;   // courant d'air
     }
 
     // déplacement horizontal
     var nx = p.x + p.vx * h;
-    if (overlapsSolid(L, nx - PW / 2, p.y - PH, nx + PW / 2, p.y - 0.01)) {
+    // (on ignore le dernier pixel sous les pieds : quitter un rebord de quelques dixièmes de pixel ne doit pas compter comme un mur)
+    if (p.vx !== 0 && overlapsSolid(L, nx - PW / 2, p.y - PH, nx + PW / 2, p.y - 1)) {
       if (p.vx > 0) { var tx = Math.floor((nx + PW / 2 - 0.001) / TS); nx = tx * TS - PW / 2 - 0.001; }
       else { var tx2 = Math.floor((nx - PW / 2) / TS); nx = (tx2 + 1) * TS + PW / 2 + 0.001; }
       if (!p.ground && Math.abs(p.vx) > 15) { p.vx = -p.vx * P.bounce; p.ev.push("bump"); } else p.vx = 0;
@@ -141,13 +162,20 @@
         var impact = p.vy;
         p.ground = true; p.vy = 0;
         var gt2 = groundTile(L, p);
-        p.ice = gt2 === "I";
-        if (impact > P.crashV) { p.stun = P.stun; p.vx = 0; p.ev.push("crash"); }
+        p.ice = gt2 === "I"; p.belt = gt2 === ">" ? 1 : gt2 === "<" ? -1 : 0;
+        if (gt2 === "W") { p.ev.push("land"); p.vx = 0; }
+        else if (impact > P.crashV) { p.stun = P.stun; p.vx = 0; p.ev.push("crash"); }
         else { if (!p.ice) p.vx = 0; p.ev.push("land"); }
         p.charge = 0;
       }
     }
     if (p.y - PH < p.minY - PH) p.minY = p.y;
+    // clés : ramassées quand le corps touche la tuile
+    var kx0 = Math.floor((p.x - PW / 2) / TS), kx1 = Math.floor((p.x + PW / 2 - 0.001) / TS), ky0 = Math.floor((p.y - PH) / TS), ky1 = Math.floor((p.y - 0.01) / TS);
+    for (var ky = ky0; ky <= ky1; ky++) for (var kx = kx0; kx <= kx1; kx++) {
+      var kc = tile(L, kx, ky), bit = kc === "k" ? 1 : kc === "l" ? 2 : kc === "m" ? 4 : 0;
+      if (bit && !(p.mask & bit)) { p.mask |= bit; MASK = p.mask; p.ev.push("key:" + bit); }
+    }
     if (L.goal && !p.won) {
       var gx = L.goal.x * TS, gy = L.goal.y * TS;
       if (p.x + PW / 2 > gx && p.x - PW / 2 < gx + TS && p.y > gy && p.y - PH < gy + TS) { p.won = true; p.ev.push("win"); }
@@ -160,6 +188,6 @@
     for (var i = 0; i < n; i++) sub(L, p, inp, h);
   }
 
-  var api = { TS: TS, COLS: COLS, SROWS: SROWS, PW: PW, PH: PH, P: P, tile: tile, isSolid: isSolid, createLevel: createLevel, newPlayer: newPlayer, step: step, screenOf: screenOf, groundTile: groundTile };
+  var api = { TS: TS, COLS: COLS, SROWS: SROWS, PW: PW, PH: PH, P: P, tile: tile, isSolid: isSolid, createLevel: createLevel, newPlayer: newPlayer, step: step, screenOf: screenOf, screenXOf: screenXOf, groundTile: groundTile };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.GrimpeCore = api;
 })(typeof window !== "undefined" ? window : this);

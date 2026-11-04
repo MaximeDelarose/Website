@@ -18,14 +18,14 @@
   }
   var SAVE_KEY = "grimpe-save-v2", BEST_KEY = "grimpe-best-v2", SND_KEY = "grimpe-sound-v1", MUS_KEY = "grimpe-music-v1", CRT_KEY = "grimpe-crt-v1";
   var TS = C.TS, SW = C.COLS * TS, SH = C.SROWS * TS, METERS_PER_TILE = 0.5, VH = SH;   // VH : hauteur visible (plus haute en portrait)
-  var L = C.createLevel(DATA), ZONES = DATA.zones || [{ id: "racines", name: "Grimpe-Chêne", a0: 0, a1: 1 }];
+  var L = C.createLevel(DATA), ZONES = DATA.zones || [{ id: "racines", name: "Grimpe-Chêne", a0: 0, a1: 1 }], REGIONS = DATA.regions || [];
   var canvas = $("[data-gr-canvas]"), ctx = canvas.getContext("2d"), stage = $(".gr-stage");
   canvas.width = SW; canvas.height = SH;
   var FONT = '8px "Press Start 2P", ui-monospace, monospace';
 
   /* ---------- état ---------- */
   var S = { mode: "menu", p: null, jumps: 0, falls: 0, time: 0, scr: 0, msg: "", msgT: 0, shake: 0, t: 0, lastSave: 0,
-            camY: 0, freeze: 0, flash: 0, flashCol: "#FCFCFC", squat: 0, zoneId: "", zoneIdx: 0, banner: null, bolt: 0, boltT: 4, confetti: 0, trailT: 0, windT: 0, lastGround: false };
+            camY: 0, camX: 0, scx: 0, freeze: 0, flash: 0, flashCol: "#FCFCFC", squat: 0, zoneId: "", zoneIdx: 0, banner: null, bolt: 0, boltT: 4, confetti: 0, trailT: 0, windT: 0, lastGround: false };
   var best = (function () { try { return JSON.parse(store(BEST_KEY)) || {}; } catch (e) { return {}; } })();
   var keys = { left: {}, right: {}, jump: {} };
   function any(o) { for (var k in o) if (o[k]) return true; return false; }
@@ -34,15 +34,25 @@
   var TOTAL_M = Math.round((L.startY - (L.goal ? L.goal.y * TS : 0)) / TS * METERS_PER_TILE);
   var WORLD_H = L.h * TS;
   // en portrait on affiche plus d'étages d'un coup : l'écran courant reste au centre, avec du décor au-dessus et en dessous
+  function camXTarget() { return S.scx * SW; }
   function camTarget() { var ex = VH - SH, t = S.scr * SH - ex * 0.55; return Math.round(Math.max(0, Math.min(WORLD_H - VH, t)) / 8) * 8; }
   function fit() {
     var w = stage.clientWidth || 320, portrait = window.innerHeight > window.innerWidth * 1.1, fs = root.classList.contains("gk-fs"), rows = C.SROWS;
     if (portrait) rows = Math.max(C.SROWS, Math.min(34, Math.floor(20 * (window.innerHeight - (fs ? 230 : 390)) / w)));
     if (rows * TS === VH && canvas.height === VH) return;
     VH = rows * TS; canvas.height = VH; amb.length = 0;
-    stage.style.setProperty("--gr-ar", (SW / VH).toFixed(4)); S.camY = camTarget();
+    stage.style.setProperty("--gr-ar", (SW / VH).toFixed(4)); S.camY = camTarget(); S.camX = camXTarget();
   }
   function altAtPx(wy) { return Math.max(0, Math.min(1, 1 - wy / WORLD_H)); }
+  // annexe (château, grottes) qui occupe l'écran (sx, sy), s'il y en a une
+  function regionAtScreen(sx, sy) {
+    for (var i = 0; i < REGIONS.length; i++) { var r = REGIONS[i]; if (sx * C.COLS === r.c0 && sy * C.SROWS >= r.r0 && sy * C.SROWS <= r.r1) return r; }
+    return null;
+  }
+  function regionAtTile(tx, ty) {
+    for (var i = 0; i < REGIONS.length; i++) { var r = REGIONS[i]; if (tx >= r.c0 && tx <= r.c1 && ty >= r.r0 && ty <= r.r1) return r; }
+    return null;
+  }
   function zoneIdxAt(alt) { for (var i = 0; i < ZONES.length; i++) if (alt < ZONES[i].a1) return i; return ZONES.length - 1; }
 
   /* ---------- sons & musique (puces carrées / triangle, façon APU) ---------- */
@@ -85,6 +95,9 @@
     zone: function () { [392, 523, 659, 784].forEach(function (f, i) { tone(f, f, 0.12, "square", 0.04, i * 0.08); }); },
     win: function () { [523, 659, 784, 1047, 1319, 1568, 2093].forEach(function (f, i) { tone(f, f, 0.22, "square", 0.06, i * 0.1); tone(f / 2, f / 2, 0.22, "triangle", 0.05, i * 0.1); }); },
     screen: function () { tone(440, 660, 0.08, "triangle", 0.04); },
+    spring: function () { tone(180, 700, 0.18, "square", 0.05); tone(360, 1400, 0.14, "triangle", 0.03, 0.03); },
+    key: function () { [988, 1319, 1568, 1976].forEach(function (f, i) { tone(f, f, 0.1, "square", 0.04, i * 0.06); }); },
+    door: function () { tone(110, 60, 0.4, "sawtooth", 0.05); noise(0.3, 0.05, 0, 400); },
   };
   // musique : une petite boucle générative par zone (gamme, tempo et timbre propres)
   var ZM = {
@@ -92,7 +105,9 @@
     canopee: { r: 48, sc: [0, 2, 4, 7, 9], bpm: 96, lead: "square" }, orage: { r: 41, sc: [0, 1, 5, 7, 8], bpm: 112, lead: "square" },
     glace: { r: 50, sc: [0, 2, 4, 6, 7, 11], bpm: 88, lead: "triangle" }, nuages: { r: 52, sc: [0, 2, 4, 7, 9, 11], bpm: 100, lead: "square" },
     sommet: { r: 53, sc: [0, 4, 7, 11, 12], bpm: 124, lead: "square" },
+    chateau: { r: 40, sc: [0, 2, 3, 7, 8], bpm: 92, lead: "square" }, grotte: { r: 46, sc: [0, 3, 5, 7, 10], bpm: 70, lead: "triangle" },
   };
+  var KEYCOL = { 1: "#F83800", 2: "#3CBCFC", 4: "#F8D878" }, KEYNAME = { 1: "Clé rouge", 2: "Clé bleue", 4: "Clé jaune" }, KEYFEM = { 1: "rouge", 2: "bleue", 4: "jaune" };
   var MU = { step: 0, next: 0 };
   function midiHz(n) { return 440 * Math.pow(2, (n - 69) / 12); }
   function musicTick() {
@@ -126,23 +141,23 @@
     setHud("jumps", String(S.jumps));
     setHud("falls", String(S.falls));
     setHud("time", fmtTime(S.time));
-    setHud("zone", (S.zoneIdx + 1) + "/" + ZONES.length + " · " + (ZONES[S.zoneIdx] ? ZONES[S.zoneIdx].name : ""));
+    setHud("zone", S.region ? "Annexe · " + S.region.name : (S.zoneIdx + 1) + "/" + ZONES.length + " · " + (ZONES[S.zoneIdx] ? ZONES[S.zoneIdx].name : ""));
     setHud("msg", S.msg);
   }
   function say(t, s) { S.msg = t; S.msgT = s || 2.5; }
 
   /* ---------- partie ---------- */
-  function resetFx() { parts.length = 0; amb.length = 0; S.camY = camTarget(); S.freeze = 0; S.flash = 0; S.banner = null; S.confetti = 0; S.squat = 0; }
-  function enterZone(z, first) {
-    var i = zoneIdxAt(z);
-    if (ZONES[i].id === S.zoneId) return;
-    S.zoneId = ZONES[i].id; S.zoneIdx = i; amb.length = 0;
-    S.banner = { t: 0, a: "ZONE " + (i + 1), b: ZONES[i].name.toUpperCase() };
+  function resetFx() { parts.length = 0; amb.length = 0; S.camY = camTarget(); S.camX = camXTarget(); S.freeze = 0; S.flash = 0; S.banner = null; S.confetti = 0; S.squat = 0; }
+  function enterZone(alt, first) {
+    var rg = regionAtScreen(S.scx, S.scr), i = zoneIdxAt(alt), id = rg ? rg.id : ZONES[i].id;
+    if (id === S.zoneId) return;
+    S.zoneId = id; S.zoneIdx = i; S.region = rg; amb.length = 0;
+    S.banner = { t: 0, a: rg ? "ANNEXE" : "ZONE " + (i + 1), b: (rg ? rg.name : ZONES[i].name).toUpperCase() };
     if (!first) SND.zone();
   }
   function newGame() {
     S.p = C.newPlayer(L); S.jumps = 0; S.falls = 0; S.time = 0;
-    S.scr = C.screenOf(L, S.p.y - C.PH / 2); S.zoneId = ""; resetFx();
+    S.scr = C.screenOf(L, S.p.y - C.PH / 2); S.scx = C.screenXOf(L, S.p.x); S.zoneId = ""; resetFx();
     S.mode = "play"; setOverlay(null);
     enterZone(altAtPx(S.p.y), true);
     say("Maintiens Espace pour armer ton saut, relâche pour sauter", 6);
@@ -152,15 +167,15 @@
     var sv = null;
     try { sv = JSON.parse(store(SAVE_KEY)); } catch (e) {}
     if (!sv) return newGame();
-    S.p = C.newPlayer(L); S.p.x = sv.x; S.p.y = sv.y; S.p.minY = sv.minY != null ? sv.minY : sv.y;
+    S.p = C.newPlayer(L); S.p.x = sv.x; S.p.y = sv.y; S.p.minY = sv.minY != null ? sv.minY : sv.y; S.p.mask = sv.mask | 0;
     S.jumps = sv.jumps | 0; S.falls = sv.falls | 0; S.time = +sv.time || 0;
-    S.scr = C.screenOf(L, S.p.y - C.PH / 2); S.zoneId = ""; resetFx();
+    S.scr = C.screenOf(L, S.p.y - C.PH / 2); S.scx = C.screenXOf(L, S.p.x); S.zoneId = ""; resetFx();
     S.mode = "play"; setOverlay(null); enterZone(altAtPx(S.p.y), true); say("On reprend là où tu t'étais arrêté", 3); audio();
   }
   function hasSave() { try { return !!JSON.parse(store(SAVE_KEY)); } catch (e) { return false; } }
   function saveGame() {
     var p = S.p; if (!p || S.mode !== "play" || !p.ground) return;
-    store(SAVE_KEY, JSON.stringify({ x: p.x, y: p.y, minY: p.minY, jumps: S.jumps, falls: S.falls, time: S.time }));
+    store(SAVE_KEY, JSON.stringify({ x: p.x, y: p.y, minY: p.minY, mask: p.mask, jumps: S.jumps, falls: S.falls, time: S.time }));
   }
   function recordBest(win) {
     var h = standM(S.p), changed = false;
@@ -318,6 +333,13 @@
         SND.crash(); S.shake = 9; S.freeze = 0.14; S.flash = 0.12; S.flashCol = "#FCFCFC"; say("Aïe ! Tu t'écrases…", 2.5); saveGame();
         dust(p.x, p.y, 14, true);
         spawn(p.x, p.y - 8, 14, { v0: 50, v1: 120, g: 260, l0: 0.5, l1: 0.9, col: ["#F8D878", "#FCA044", "#FCFCFC"], s: 2, kind: 1 });
+      } else if (e === "spring") {
+        SND.spring(); S.shake = 2; dust(p.x, p.y, 6);
+        spawn(p.x, p.y, 10, { ang: -1.57, spread: 0.5, v0: 80, v1: 160, g: 200, l0: 0.25, l1: 0.45, col: ["#F8D878", "#FCFCFC", "#E45C10"], s: 2, kind: 1 });
+      } else if (e.indexOf("key:") === 0) {
+        var kb = parseInt(e.slice(4), 10); SND.key(); S.flash = 0.06; S.flashCol = KEYCOL[kb];
+        say(KEYNAME[kb] + " ! Une porte " + KEYFEM[kb] + " s'ouvre quelque part.", 4); saveGame();
+        spawn(p.x, p.y - 8, 18, { v0: 50, v1: 130, g: 100, l0: 0.5, l1: 0.9, col: [KEYCOL[kb], "#FCFCFC"], s: 2, kind: 1 });
       } else if (e === "win") winGame();
     }
     // rémanence de saut + traînée de vitesse
@@ -327,11 +349,11 @@
     } else if (p.ice && Math.abs(p.vx) > 14 && Math.random() < 0.35) spawn(p.x - Math.sign(p.vx) * 4, p.y, 1, { ang: -1.57, spread: 0.6, v0: 6, v1: 20, l0: 0.2, l1: 0.3, col: ["#FCFCFC", "#A4E4FC"], s: 2 });
     else if (p.ground && Math.abs(p.vx) > 5 && Math.random() < 0.12) spawn(p.x - Math.sign(p.vx) * 4, p.y, 1, { ang: -1.57, spread: 0.8, v0: 4, v1: 14, l0: 0.2, l1: 0.3, col: "#BCBCBC", s: 2 });
     // écran courant (le décor change quand on passe d'un étage à l'autre)
-    var scr = C.screenOf(L, p.y - C.PH / 2);
-    if (scr !== S.scr) {
+    var scr = C.screenOf(L, p.y - C.PH / 2), scx = C.screenXOf(L, p.x);
+    if (scr !== S.scr || scx !== S.scx) {
       if (scr > S.scr) { S.falls++; if (p.vy > 200) { SND.fall(); } say(scr - S.scr > 1 ? "Quelle chute !" : "Tu retombes d'un étage", 2.5); }
       else SND.screen();
-      S.scr = scr; recordBest(false); enterZone(altAtPx(p.y - C.PH / 2), false);
+      S.scr = scr; S.scx = scx; recordBest(false); enterZone(altAtPx(p.y - C.PH / 2), false);
     }
   }
   function winGame() {
@@ -363,7 +385,16 @@
     nuages:  { sky: ["#A4E4FC", "#3CBCFC", "#6888FC", "#9878F8"], base: "#B8B8F8", dark: "#9878F8", lite: "#FCFCFC", cap: "#FCFCFC", capL: "#FCFCFC", brA: "#BCBCBC", brB: "#FCFCFC", bush: "#FCFCFC" },
     sommet:  { sky: ["#4428BC", "#0000BC", "#000000"], base: "#F8B800", dark: "#AC7C00", lite: "#F8D878", cap: "#F8D878", capL: "#FCFCFC", brA: "#AC7C00", brB: "#F8D878", bush: "#F8D878" },
   };
+  TH.chateau = { base: "#7C7C7C", dark: "#000000", lite: "#BCBCBC", cap: null, capL: null, brA: "#503000", brB: "#AC7C00", bush: "#7C7C7C" };
+  TH.grotte = { base: "#0000BC", dark: "#000000", lite: "#3CBCFC", cap: "#A4E4FC", capL: "#FCFCFC", brA: "#0058F8", brB: "#A4E4FC", bush: "#FCFCFC" };
+  TH.roche = { base: "#000000", dark: "#000000", lite: "#503000", cap: null, capL: null, brA: "#503000", brB: "#503000", bush: "#503000" };
   function thAt(wy) { return TH[ZONES[zoneIdxAt(altAtPx(wy))].id] || TH.racines; }
+  // thème et identifiant de zone d'une tuile : annexe, roche (hors tronc) ou zone d'altitude
+  function idAt(tx, ty) {
+    var r = regionAtTile(tx, ty); if (r) return r.id;
+    if (tx < L.t0 || tx > L.t1) return "roche";
+    return ZONES[zoneIdxAt(altAtPx(ty * TS + 8))].id;
+  }
   // bandes de ciel globales (du bas de l'arbre vers le sommet)
   var BANDS = [];
   ZONES.forEach(function (z) {
@@ -382,13 +413,43 @@
       }
     }
   }
-  var bgCache = {}, tileCache = {};
-  function trimCache() { [bgCache, tileCache].forEach(function (m) { for (var k in m) if (Math.abs(k - S.scr) > 4) delete m[k]; }); }
-  function bgFor(scr) {
-    if (bgCache[scr]) return bgCache[scr];
+  var bgCache = {}, tileCache = {}, specCache = {};
+  function ck(sx, sy) { return sy * 8 + sx; }
+  function trimCache() { [bgCache, tileCache, specCache].forEach(function (m) { for (var k in m) if (Math.abs((k >> 3) - S.scr) > 4) delete m[k]; }); }
+  // fond des annexes : briques et torches (château), roche bleutée, cristaux et stalactites (grottes)
+  function regionBg(c, rg, sx, sy) {
+    var i, x, y;
+    R(c, "#000000", 0, 0, SW, SH);
+    if (rg.id === "chateau") {
+      for (y = 0; y < SH; y += 16) for (x = -8 * ((y >> 4) & 1); x < SW; x += 16) { dith(c, "#503000", x + 2, y + 2, 12, 6); }
+      for (i = 0; i < 3; i++) {                                                         // bannières
+        x = 24 + Math.floor(hash(sx * 9 + i, sy + 5) * 16) * 16; y = 16 + Math.floor(hash(sy, i + sx) * 4) * 16;
+        R(c, "#AC7C00", x - 2, y, 14, 2); R(c, "#A80020", x, y + 2, 10, 24); R(c, "#F8B800", x + 3, y + 8, 4, 8); R(c, "#A80020", x + 2, y + 26, 2, 4); R(c, "#A80020", x + 6, y + 26, 2, 4);
+      }
+      for (i = 0; i < 3; i++) {                                                         // meurtrières
+        x = 40 + Math.floor(hash(sx + i * 7, sy + 11) * 16) * 16; y = 96 + Math.floor(hash(i, sy + sx) * 5) * 16;
+        R(c, "#000000", x - 2, y - 2, 8, 22); R(c, "#0078F8", x, y, 4, 18); R(c, "#3CBCFC", x, y, 4, 4);
+      }
+    } else {
+      dith(c, "#0000BC", 0, 0, SW, SH);
+      for (i = 0; i < 14; i++) {                                                        // stalactites
+        x = Math.floor(hash(sx + i, sy + 3) * 40) * 8; var len = 8 + Math.floor(hash(i, sy + 9) * 6) * 4;
+        for (y = 0; y < len; y += 2) R(c, y < 6 ? "#0058F8" : "#0000BC", x + (y >> 2), y, Math.max(2, 10 - y / 2 | 0 & ~1), 2);
+      }
+      for (i = 0; i < 10; i++) {                                                        // cristaux
+        x = 24 + Math.floor(hash(sx + i, sy + 21) * 34) * 8; y = 40 + Math.floor(hash(i, sy + 3) * 20) * 8;
+        R(c, "#000000", x - 2, y - 8, 8, 14); R(c, "#3CBCFC", x, y - 6, 4, 10); R(c, "#A4E4FC", x, y - 6, 2, 6); R(c, "#FCFCFC", x, y - 6, 2, 2);
+      }
+    }
+  }
+  function bgFor(sx, sy) {
+    var key = ck(sx, sy);
+    if (bgCache[key]) return bgCache[key];
     trimCache();
     var cv = document.createElement("canvas"); cv.width = SW; cv.height = SH;
-    var c = cv.getContext("2d"), id = ZONES[zoneIdxAt(altAtPx(scr * SH + SH / 2))].id, i, x, y;
+    var c = cv.getContext("2d"), rg = regionAtScreen(sx, sy), scr = sy, id = ZONES[zoneIdxAt(altAtPx(scr * SH + SH / 2))].id, i, x, y;
+    if (rg) { regionBg(c, rg, sx, sy); bgCache[key] = cv; return cv; }
+    if (sx * C.COLS < L.t0 || sx * C.COLS > L.t1) { R(c, "#000000", 0, 0, SW, SH); bgCache[key] = cv; return cv; }
     skyPaint(c, scr);
     if (id === "racines") {                                                             // troncs lointains + champignons
       for (i = 0; i < 4; i++) { x = 8 + Math.floor(hash(scr, i + 70) * 12) * 24; dith(c, "#503000", x, 0, 16, SH); R(c, "#503000", x + 2, 0, 2, SH); }
@@ -410,15 +471,34 @@
       dith(c, "#00E8D8", 0, 24 + Math.floor(hash(scr, 1) * 6) * 8, SW, 14); dith(c, "#58F898", 0, 40 + Math.floor(hash(scr, 2) * 6) * 8, SW, 10);
       for (i = 0; i < 40; i++) R(c, i % 5 ? "#FCFCFC" : "#F8D878", Math.floor(hash(scr, i + 50) * 160) * 2, Math.floor(hash(i, scr + 50) * 120) * 2, i % 7 ? 2 : 4, 2);
     }
-    bgCache[scr] = cv; return cv;
+    bgCache[key] = cv; return cv;
   }
 
   function drawTile(c, ch, tx, ty, px, py) {
-    var T = thAt(ty * TS + 8), h = hash(tx, ty), i, zid = ZONES[zoneIdxAt(altAtPx(ty * TS + 8))].id;
+    var zid = idAt(tx, ty), T = TH[zid] || TH.racines, h = hash(tx, ty), i;
     var upC = C.tile(L, tx, ty - 1), upOpen = upC === "." || upC === "G" || upC === "=";
     function S_(a, b) { return C.isSolid(C.tile(L, a, b)); }
+    if (ch === "W") {                                                                   // ressort
+      R(c, "#000000", px, py + 2, TS, TS - 2); R(c, "#7C7C7C", px + 1, py + 12, TS - 2, 3);
+      R(c, "#F83800", px + 1, py + 3, TS - 2, 4); R(c, "#FCA044", px + 1, py + 3, TS - 2, 2);
+      for (i = 0; i < 3; i++) { R(c, "#FCFCFC", px + 3 + (i % 2) * 6, py + 7 + i * 2, 6, 2); }
+      return;
+    }
+    if (ch === ">" || ch === "<") {                                                     // tapis roulant (les chevrons s'animent à part)
+      R(c, "#000000", px, py, TS, TS); R(c, "#503000", px, py + 2, TS, 6); R(c, "#AC7C00", px, py + 2, TS, 2);
+      R(c, "#7C7C7C", px, py + 10, TS, 4); R(c, "#BCBCBC", px + 2, py + 10, 2, 2); R(c, "#BCBCBC", px + 12, py + 10, 2, 2);
+      return;
+    }
+    if (ch === "#" && zid === "chateau") {                                              // briques
+      R(c, T.base, px, py, TS, TS);
+      R(c, T.dark, px, py + 6, TS, 2); R(c, T.dark, px, py + 14, TS, 2);
+      R(c, T.dark, px + (tx & 1 ? 4 : 12), py, 2, 6); R(c, T.dark, px + (tx & 1 ? 12 : 4), py + 8, 2, 6);
+      R(c, T.lite, px, py, TS, 2); R(c, T.lite, px, py + 8, TS, 2);
+      if (h > 0.8) R(c, "#503000", px + 6, py + 3, 2, 2);
+      return;
+    }
     if (ch === "#") {
-      var side = tx === 0 || tx === C.COLS - 1;
+      var side = (tx === L.t0 || tx === L.t1) && zid !== "roche" && zid !== "chateau" && zid !== "grotte";
       R(c, T.base, px, py, TS, TS);
       for (i = 0; i < 5; i++) R(c, T.dark, px + 2 * Math.floor(hash(tx * 7 + i, ty) * 8), py + 2 * Math.floor(hash(tx, ty * 7 + i) * 8), 2, 2);
       for (i = 0; i < 2; i++) R(c, T.lite, px + 2 * Math.floor(hash(tx * 3 + i, ty + 9) * 8), py + 2 * Math.floor(hash(tx + 9, ty * 3 + i) * 8), 2, 2);
@@ -455,23 +535,71 @@
       }
     }
   }
-  function tilesFor(scr) {
-    if (tileCache[scr]) return tileCache[scr];
+  function tilesFor(sx, sy) {
+    if (tileCache[ck(sx, sy)]) return tileCache[ck(sx, sy)];
     var cv = document.createElement("canvas"); cv.width = SW; cv.height = SH; var c = cv.getContext("2d");
-    var y0 = scr * C.SROWS;
+    var y0 = sy * C.SROWS, x0 = sx * C.COLS;
     for (var ry = 0; ry < C.SROWS; ry++) {
       var ty = y0 + ry; if (ty >= L.h) break;
       var row = L.rows[ty];
-      for (var tx = 0; tx < C.COLS; tx++) { var ch = row.charAt(tx); if (ch === "#" || ch === "I" || ch === "=") drawTile(c, ch, tx, ty, tx * TS, ry * TS); }
+      for (var tx = x0; tx < x0 + C.COLS; tx++) { var ch = row.charAt(tx); if (ch === "#" || ch === "I" || ch === "=" || ch === "W" || ch === ">" || ch === "<") drawTile(c, ch, tx, ty, (tx - x0) * TS, ry * TS); }
     }
-    tileCache[scr] = cv; return cv;
+    tileCache[ck(sx, sy)] = cv; return cv;
+  }
+  // tuiles animées ou dépendantes des clés : courants d'air, tapis, clés, portes
+  function specialsFor(sx, sy) {
+    var key = ck(sx, sy); if (specCache[key]) return specCache[key];
+    var out = [], y0 = sy * C.SROWS, x0 = sx * C.COLS;
+    for (var ry = 0; ry < C.SROWS; ry++) {
+      var row = L.rows[y0 + ry]; if (!row) break;
+      for (var tx = x0; tx < x0 + C.COLS; tx++) { var ch = row.charAt(tx); if ("UklmRBY><".indexOf(ch) >= 0) out.push({ ch: ch, tx: tx, ty: y0 + ry }); }
+    }
+    return (specCache[key] = out);
+  }
+  var DOORS = { R: ["#F83800", "#881400", 1], B: ["#3CBCFC", "#0058F8", 2], Y: ["#F8D878", "#AC7C00", 4] }, KEYS = { k: ["#F83800", 1], l: ["#3CBCFC", 2], m: ["#F8D878", 4] };
+  function drawSpecials(c, sx, sy, mask) {
+    var list = specialsFor(sx, sy), i, q, px, py, t = S.t;
+    for (i = 0; i < list.length; i++) {
+      q = list[i]; px = q.tx * TS; py = q.ty * TS;
+      if (q.ch === "U") {
+        dith(c, "#0078F8", px, py, TS, TS);
+        for (var j = 0; j < 3; j++) { var yy = ((py + TS - ((t * 40 + j * 5 + q.tx * 3) % TS) | 0) & ~1); c.fillStyle = j % 2 ? "#A4E4FC" : "#FCFCFC"; c.fillRect(px + 2 + j * 5, yy, 2, 4); }
+      } else if (q.ch === ">" || q.ch === "<") {
+        var d = q.ch === ">" ? 1 : -1, off = ((t * 18 * d) % 8 + 8) % 8;
+        for (var a = 0; a < 3; a++) {
+          var ax = px + ((a * 8 + off) | 0) % 24 - 4; if (ax < px - 2 || ax > px + TS) continue;
+          c.fillStyle = "#FCA044"; c.fillRect(ax + (d > 0 ? 0 : 2), py + 3, 2, 2); c.fillRect(ax + 2 * d + (d > 0 ? 0 : 2), py + 5, 2, 2); c.fillRect(ax + (d > 0 ? 0 : 2), py + 7, 2, 2);
+        }
+      } else if (KEYS[q.ch]) {
+        if (mask & KEYS[q.ch][1]) continue;
+        var bob = Math.round(Math.sin(t * 4 + q.tx) * 1.5), col = KEYS[q.ch][0];
+        R(c, "#000000", px + 2, py + 1 + bob, 8, 8); R(c, col, px + 3, py + 2 + bob, 6, 6); R(c, "#000000", px + 5, py + 4 + bob, 2, 2);
+        R(c, "#000000", px + 5, py + 8 + bob, 4, 8); R(c, col, px + 6, py + 8 + bob, 2, 7); R(c, "#000000", px + 8, py + 11 + bob, 3, 2); R(c, col, px + 8, py + 12 + bob, 2, 1);
+        if (Math.floor(t * 5 + q.tx) % 6 === 0) { R(c, "#FCFCFC", px + 10, py + 1 + bob, 2, 2); R(c, "#FCFCFC", px + 9, py + 2 + bob, 4, 0); }
+      } else if (DOORS[q.ch]) {
+        if (mask & DOORS[q.ch][2]) continue;
+        var dc = DOORS[q.ch];
+        R(c, "#000000", px, py, TS, TS); R(c, dc[0], px + 1, py + 1, TS - 2, TS - 2); R(c, dc[1], px + 1, py + TS - 5, TS - 2, 4); R(c, dc[1], px + 1, py + 7, TS - 2, 2);
+        R(c, "#FCFCFC", px + 2, py + 2, 2, TS - 4);
+        R(c, "#000000", px + 7, py + 4, 3, 3); R(c, "#000000", px + 8, py + 6, 1, 4);
+      }
+    }
+  }
+  // torches du château (flammes animées)
+  function drawTorches(c, sx, sy) {
+    var rg = regionAtScreen(sx, sy); if (!rg || rg.id !== "chateau") return;
+    for (var i = 0; i < 3; i++) {
+      var x = 24 + Math.floor(hash(sx * 3 + i, sy + 17) * 17) * 16 + 4, y = 40 + Math.floor(hash(i + sy, sx + 2) * 8) * 16, f = Math.floor(S.t * 8 + i) % 3;
+      R(c, "#503000", x, y + 8, 4, 8); R(c, "#7C7C7C", x - 2, y + 6, 8, 3);
+      R(c, "#F83800", x, y - f, 4, 6 + f); R(c, "#F8B800", x + 1, y + 1 - f, 2, 4 + f); if (f === 2) R(c, "#FCFCFC", x + 1, y + 3, 2, 2);
+      dith(c, "#AC7C00", x - 12, y - 12, 28, 28);
+    }
   }
 
   // gland doré : contour noir, reflets, rayons qui tournent
-  function drawGoal(c, oy) {
+  function drawGoal(c) {
     if (!L.goal) return;
-    var px = L.goal.x * TS, py = L.goal.y * TS - oy;
-    if (py < -40 || py > VH + 20) return;
+    var px = L.goal.x * TS, py = L.goal.y * TS;
     var bob = Math.round(Math.sin(S.t * 3) * 1.5), k = Math.floor(S.t * 8) % 4, i;
     for (i = 0; i < 8; i++) {
       var a = i * 0.785 + S.t * 0.8; c.fillStyle = (i + k) % 2 ? "#F8D878" : "#FCFCFC";
@@ -543,7 +671,7 @@
   }
 
   /* ---------- ambiance de zone ---------- */
-  var AMB = { racines: ["fire", 14], tronc: ["mote", 22], canopee: ["leaf", 14], orage: ["rain", 70], glace: ["snow", 46], nuages: ["cloud", 5], sommet: ["spark", 16] };
+  var AMB = { racines: ["fire", 14], tronc: ["mote", 22], canopee: ["leaf", 14], orage: ["rain", 70], glace: ["snow", 46], nuages: ["cloud", 5], sommet: ["spark", 16], chateau: ["mote", 18], grotte: ["drip", 12] };
   function ambInit(kind, q, fresh) {
     q.k = kind; q.ph = rnd(0, 6.28);
     if (kind === "rain") { q.x = rnd(-20, SW + 20); q.y = fresh ? rnd(0, VH) : -8; q.vx = -50; q.vy = rnd(260, 340); }
@@ -552,6 +680,7 @@
     else if (kind === "mote") { q.x = rnd(0, SW); q.y = fresh ? rnd(0, VH) : VH + 4; q.vx = rnd(-4, 4); q.vy = -rnd(6, 16); }
     else if (kind === "fire") { q.x = rnd(10, SW - 10); q.y = rnd(30, VH - 10); q.vx = 0; q.vy = 0; }
     else if (kind === "cloud") { q.x = fresh ? rnd(-20, SW) : -60; q.y = rnd(10, VH - 40); q.vx = rnd(4, 12); q.vy = 0; q.w = 40 + ((Math.random() * 3) | 0) * 12; }
+    else if (kind === "drip") { q.x = rnd(8, SW - 8); q.y = fresh ? rnd(0, VH) : -6; q.vx = 0; q.vy = rnd(120, 200); }
     else if (kind === "spark") { q.x = rnd(0, SW); q.y = fresh ? rnd(0, VH) : VH + 4; q.vx = rnd(-4, 4); q.vy = -rnd(8, 20); }
   }
   function updateAmb(dt) {
@@ -570,6 +699,7 @@
       if (q.k === "cloud") { if (back) { blob(c, "#FCFCFC", x, y, q.w, 14); dith(c, "#BCBCBC", x + 4, y + 10, q.w - 10, 4); } continue; }
       if (back) continue;
       if (q.k === "rain") { c.fillStyle = "#B8B8F8"; c.fillRect(x, y, 2, 6); c.fillRect(x - 2, y + 6, 2, 2); }
+      else if (q.k === "drip") { c.fillStyle = "#A4E4FC"; c.fillRect(x, y, 2, 4); c.fillStyle = "#FCFCFC"; c.fillRect(x, y, 2, 2); }
       else if (q.k === "snow") { c.fillStyle = "#FCFCFC"; c.fillRect(x, y, 2, 2); if (i % 3 === 0) c.fillRect(x + 2, y + 2, 2, 2); }
       else if (q.k === "leaf") { c.fillStyle = q.c; c.fillRect(x, y, 4, 2); c.fillRect(x + (Math.sin(q.ph * 1.5) > 0 ? 2 : 0), y + 2, 2, 2); }
       else if (q.k === "mote") { c.fillStyle = i % 2 ? "#F8D878" : "#FCA044"; c.fillRect(x, y, 2, 2); }
@@ -617,6 +747,12 @@
     if (Math.floor(S.t * 4) % 2 || p.ground) R(c, "#FCFCFC", x - 2, Math.round(y + h - h * pr) - 1, w + 4, 3);
     R(c, "#E45C10", x, Math.round(y + h - h * pr), w, 1);
   }
+  function drawKeyHud(c, p) {
+    var x = 6, i, bits = [1, 2, 4];
+    for (i = 0; i < 3; i++) if (p.mask & bits[i]) {
+      R(c, "#000000", x - 1, 5, 17, 9); R(c, KEYCOL[bits[i]], x, 6, 6, 7); R(c, "#000000", x + 2, 8, 2, 2); R(c, KEYCOL[bits[i]], x + 6, 8, 9, 3); R(c, "#000000", x + 12, 11, 2, 2); x += 20;
+    }
+  }
   function drawCharge(c, p) {
     var f = Math.min(1, p.charge / C.P.chargeMax), bx = Math.round(p.x) - 17, by = Math.round(p.y) - 33, segs = Math.ceil(f * 8), i;
     R(c, "#000000", bx - 1, by - 1, 36, 8);
@@ -631,25 +767,32 @@
     var c = ctx, p = S.p, scr = S.scr;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.imageSmoothingEnabled = false;
-    // caméra : défile par pas de 8 px vers l'écran courant
-    var target = camTarget(), dd = target - S.camY;
+    // caméra : défile par pas de 8 px vers l'écran courant (aussi en largeur : tunnels, château, grottes)
+    var target = camTarget(), dd = target - S.camY, tgx = camXTarget(), ddx = tgx - S.camX;
     if (Math.abs(dd) > 0.5) S.camY += Math.sign(dd) * Math.min(Math.abs(dd), Math.max(16, Math.ceil(Math.abs(dd) * 0.28 / 8) * 8)); else S.camY = target;
-    var cam = Math.round(S.camY), s0 = Math.floor(cam / SH), s1 = Math.floor((cam + VH - 1) / SH), sx = 0, sy = 0;
+    if (Math.abs(ddx) > 0.5) S.camX += Math.sign(ddx) * Math.min(Math.abs(ddx), Math.max(24, Math.ceil(Math.abs(ddx) * 0.3 / 8) * 8)); else S.camX = tgx;
+    var cam = Math.round(S.camY), camx = Math.round(S.camX), s0 = Math.floor(cam / SH), s1 = Math.floor((cam + VH - 1) / SH), x0 = Math.floor(camx / SW), x1 = Math.floor((camx + SW - 1) / SW), sx = 0, sy = 0, kx;
+    var nsx = Math.ceil(L.cols / C.COLS);
     if (S.shake > 0.1) { sx = Math.round((Math.random() - 0.5) * S.shake / 2) * 2; sy = Math.round((Math.random() - 0.5) * S.shake / 2) * 2; }
     c.setTransform(1, 0, 0, 1, sx, sy);
-    for (var k = s0; k <= s1; k++) if (k >= 0 && k < L.screens) c.drawImage(bgFor(k), 0, k * SH - cam);
-    c.save(); c.translate(0, 0); drawAmb(c, true); c.restore();
-    for (k = s0; k <= s1; k++) if (k >= 0 && k < L.screens) c.drawImage(tilesFor(k), 0, k * SH - cam);
-    drawGoal(c, cam);
+    var k;
+    for (k = s0; k <= s1; k++) for (kx = x0; kx <= x1; kx++) if (k >= 0 && k < L.screens && kx >= 0 && kx < nsx) c.drawImage(bgFor(kx, k), kx * SW - camx, k * SH - cam);
+    drawAmb(c, true);
+    c.save(); c.translate(-camx, -cam);
+    for (k = s0; k <= s1; k++) for (kx = x0; kx <= x1; kx++) if (k >= 0 && k < L.screens && kx >= 0 && kx < nsx) drawTorches(c, kx, k);
+    c.restore();
+    for (k = s0; k <= s1; k++) for (kx = x0; kx <= x1; kx++) if (k >= 0 && k < L.screens && kx >= 0 && kx < nsx) c.drawImage(tilesFor(kx, k), kx * SW - camx, k * SH - cam);
+    c.save(); c.translate(-camx, -cam);
+    for (k = s0; k <= s1; k++) for (kx = x0; kx <= x1; kx++) if (k >= 0 && k < L.screens && kx >= 0 && kx < nsx) drawSpecials(c, kx, k, p ? p.mask : 0);
+    drawGoal(c);
     if (p) {
-      c.save(); c.translate(0, -cam);
       drawParts(c, 0);
       drawSquirrel(c, p);
       if (p.charge > 0 && p.ground) drawCharge(c, p);
-      c.restore();
     }
+    c.restore();
     drawAmb(c, false);
-    var wnd = L.wind[scr] || 0; if (wnd && S.mode !== "menu") drawWind(c, wnd);
+    var wnd = (S.scx * C.COLS >= L.t0 && S.scx * C.COLS <= L.t1) ? (L.wind[S.scr] || 0) : 0; if (wnd && S.mode !== "menu") drawWind(c, wnd);
     if (S.confetti > 0 && L.goal) {
       S.confetti -= 1 / 60;
       if (Math.random() < 0.5) spawn(L.goal.x * TS + 8, L.goal.y * TS, 3, { ang: -1.57, spread: 1.2, v0: 60, v1: 150, g: 160, l0: 0.9, l1: 1.6, col: ["#F83800", "#F8B800", "#58D854", "#3CBCFC", "#F878F8", "#FCFCFC"], s: 4 });
@@ -662,7 +805,7 @@
     if (S.flash > 0) { S.flash -= 1 / 60; c.fillStyle = S.flash > 0.06 ? S.flashCol : dpat(S.flashCol); c.fillRect(0, 0, SW, VH); }
     // l'écran se « tasse » dans les derniers pixels, comme sur un vrai téléviseur : liseré clair en haut
     c.setTransform(1, 0, 0, 1, 0, 0);
-    if (p && S.mode !== "menu") { drawMinimap(c, p); drawBanner(c); }
+    if (p && S.mode !== "menu") { if (!S.region) drawMinimap(c, p); drawKeyHud(c, p); drawBanner(c); }
     if (S.mode === "menu") { c.fillStyle = dpat("#000000"); c.fillRect(0, 0, SW, VH); }
   }
 
@@ -683,8 +826,8 @@
     requestAnimationFrame(frame);
   }
 
-  S.p = C.newPlayer(L); S.scr = C.screenOf(L, S.p.y - C.PH / 2); enterZone(altAtPx(S.p.y), true); fit(); S.camY = camTarget();
+  S.p = C.newPlayer(L); S.scr = C.screenOf(L, S.p.y - C.PH / 2); S.scx = C.screenXOf(L, S.p.x); enterZone(altAtPx(S.p.y), true); fit(); S.camY = camTarget(); S.camX = camXTarget();
   setOverlay("menu"); updateHud();
   requestAnimationFrame(function (t) { last = t; requestAnimationFrame(frame); });
-  if (/[?&]debug\b/.test(location.search)) window.GRIMPE_DEBUG = { S: S, L: L, C: C, newGame: newGame, keys: function () { return keys; }, tick: simulate, ZONES: ZONES };
+  if (/[?&]debug\b/.test(location.search)) window.GRIMPE_DEBUG = { S: S, L: L, C: C, newGame: newGame, keys: function () { return keys; }, tick: simulate, ZONES: ZONES, REGIONS: REGIONS };
 })();

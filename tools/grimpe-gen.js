@@ -3,7 +3,15 @@
 // Chaque saut est validé par simulation avec une marge de charge, puis la tour entière est
 // re-vérifiée par tools/grimpe-check.js (atteignable + durée minimale d'une montée parfaite).
 // Usage : node tools/grimpe-gen.js [nbEcrans=48] [dureeMiniSecondes=300]   → écrit js/grimpe-data.js
-const fs = require("fs"), C = require("../js/grimpe-core.js"), { check } = require("./grimpe-check.js");
+const fs = require("fs"), C = require("../js/grimpe-core.js"), { check } = require("./grimpe-check.js"), ROOMS = require("./grimpe-rooms.js");
+// Annexes dessinées à la main, branchées sur le tronc : le château (à droite) et les grottes de glace (à gauche).
+// Chacune occupe 2 écrans de haut (30 rangées, alignées sur la grille des écrans) ; un plafond plein barre
+// le tronc entre leur entrée (en bas) et leur sortie (en haut), donc il faut les traverser pour continuer.
+const ANNEXES = [
+  { id: "chateau", name: "Le Château", tpl: ROOMS.CASTLE, side: "R", screen: 30, exitRow: 5, seal: 14 },
+  { id: "grotte", name: "Les Grottes de Glace", tpl: ROOMS.CAVE, side: "L", screen: 14, exitRow: 2, seal: 14 },
+];
+const SIDE_W = 20;   // largeur d'une annexe (= un écran)
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 // a0..a1 : tranche d'altitude (0 = pied de l'arbre, 1 = sommet)
@@ -50,11 +58,29 @@ function gen(seed, S) {
     const z = zoneAt(altOfRow(s * C.SROWS + C.SROWS / 2));
     if (z.wind) wind[s] = (s % 2 ? 1 : -1) * z.wind;
   }
+  // rangées imposées : sol d'entrée et sol de sortie de chaque annexe (plateformes collées au tronc côté annexe)
+  const forced = [];
+  for (const A of ANNEXES) { forced.push({ row: A.screen * C.SROWS + 29, side: A.side }); forced.push({ row: A.screen * C.SROWS + A.exitRow, side: A.side }); }
+  forced.sort((p, q) => q.row - p.row);
   let tries = 0, cur = { row: H - 2, c0: 1, c1: W - 2 };
   while (cur.row - 3 > top) {
     const alt = altOfRow(cur.row), z = zoneAt(alt);
     let dy = 3; const r4 = rnd(); if (r4 < z.p4) dy = 4; if (z.p5 && rnd() < z.p5) dy = 5;
     if (dy === 5 && cur.row - 5 <= top + 3) dy = 4;
+    const F = forced.find(f => f.row < cur.row);
+    let isForced = false;
+    if (F) { const rem = cur.row - F.row; if (rem <= 5) { dy = rem; isForced = true; } else dy = Math.min(dy, Math.max(3, rem - 3)); }
+    if (isForced) {
+      const row = cur.row - dy; let ok = false;
+      for (const fw of [6, 8, 10, 12]) {
+        const a = F.side === "L" ? 1 : W - 1 - fw, b = a + fw - 1, saved = g[row].slice();
+        for (let x = a; x <= b; x++) g[row][x] = "#";
+        if (landsOn(g, cur, { row, c0: a, c1: b }, wind)) { cur = { row, c0: a, c1: b }; ok = true; break; }
+        g[row] = saved;
+      }
+      if (!ok) throw new Error("plateforme d'annexe impossible (rangée " + row + ")");
+      forced.splice(forced.indexOf(F), 1); tries = 0; continue;
+    }
     const w = Math.max(2, pick(z.w[0], z.w[1]));
     const gapMax = dy === 5 ? 1 : dy === 4 ? Math.min(2, z.gap) : z.gap, gapMin = (z.id === "racines") ? 1 : (rnd() < 0.5 ? 0 : 1);
     let a = 1, b = w;
@@ -90,7 +116,26 @@ function gen(seed, S) {
     if (landsOn(g, cur, { row: fr, c0: fc0, c1: fc1 }, wind)) { g[fr - 1][fc0 + (wf >> 1) - 1] = "G"; placed = true; } else g[fr] = saved;
   }
   if (!placed) throw new Error("pas de plateforme finale");
-  return { name: "Grimpe-Chêne", seed, screens: S, rows: g.map(r => r.join("")), wind, startX: 10 * C.TS, startY: (H - 2) * C.TS };
+  return assemble(seed, S, g, wind);
+}
+
+// Assemble le monde : roche pleine de 60 colonnes, tronc au centre, annexes à gauche et à droite.
+function assemble(seed, S, tower, wind) {
+  const H = S * C.SROWS, W = 3 * SIDE_W, T0 = SIDE_W;
+  const g = []; for (let y = 0; y < H; y++) g.push(Array(W).fill("#"));
+  for (let y = 0; y < H; y++) for (let x = 0; x < SIDE_W; x++) g[y][T0 + x] = tower[y][x];
+  const regions = [];
+  for (const A of ANNEXES) {
+    const r0 = A.screen * C.SROWS, x0 = A.side === "R" ? T0 + SIDE_W : 0;
+    A.tpl.forEach((row, ty) => { for (let x = 0; x < SIDE_W; x++) g[r0 + ty][x0 + x] = row[x]; });
+    // plafond plein dans le tronc entre l'entrée et la sortie
+    for (let x = T0 + 1; x < T0 + SIDE_W - 1; x++) g[r0 + A.seal][x] = "#";
+    // tunnels dans la paroi du tronc, en face des ouvertures de la salle
+    const wallX = A.side === "R" ? T0 + SIDE_W - 1 : T0, edge = A.side === "R" ? 0 : SIDE_W - 1;
+    A.tpl.forEach((row, ty) => { if (row[edge] === ".") g[r0 + ty][wallX] = "."; });
+    regions.push({ id: A.id, name: A.name, c0: x0, c1: x0 + SIDE_W - 1, r0, r1: r0 + 29 });
+  }
+  return { name: "Grimpe-Chêne", seed, screens: S, cols: W, towerC0: T0, towerC1: T0 + SIDE_W - 1, regions, rows: g.map(r => r.join("")), wind, startX: (T0 + 10) * C.TS, startY: (H - 2) * C.TS };
 }
 module.exports = { gen, ZONES, zoneAt };
 if (require.main === module) {
@@ -98,12 +143,12 @@ if (require.main === module) {
   let bestSeed = null;
   for (let seed = 1; seed < 300; seed++) {
     let data; try { data = gen(seed, S); } catch (e) { console.log("graine", seed, e.message); continue; }
-    const L = C.createLevel(data), r = check(L);
+    const L = C.createLevel(data), r = check(L, { maxStates: 250000, keyRes: 6 });
     process.stdout.write("graine " + seed + " : " + (r.tooBig ? "trop de positions (glace ?)" : r.won ? "atteignable, montée parfaite " + Math.round(r.minTime) + " s" : "haut " + Math.round((L.startY - r.best) / 16) + "/" + (L.h - 8)) + "\n");
     if (r.won && r.minTime >= MIN) {
       const zones = ZONES.map(z => ({ id: z.id, name: z.name, a0: z.a0, a1: Math.min(1, z.a1) }));
       fs.writeFileSync(__dirname + "/../js/grimpe-data.js", "/* Tour générée par tools/grimpe-gen.js (graine " + seed + "), validée par tools/grimpe-check.js : montée parfaite " + Math.round(r.minTime) + " s */\nwindow.GRIMPE_LEVEL = " +
-        JSON.stringify({ name: data.name, seed, zones, wind: data.wind, startX: data.startX, startY: data.startY, rows: data.rows }, null, 1).replace(/\n\s+"([#.=GI]{20})"/g, '\n "$1"') + ";\n");
+        JSON.stringify({ name: data.name, seed, zones, cols: data.cols, towerC0: data.towerC0, towerC1: data.towerC1, regions: data.regions, wind: data.wind, startX: data.startX, startY: data.startY, rows: data.rows }, null, 1).replace(/\n\s+"([#.=GIWUkl><mRBY]{60})"/g, '\n "$1"') + ";\n");
       console.log("écrit js/grimpe-data.js"); bestSeed = seed; break;
     }
   }
