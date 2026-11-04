@@ -2377,6 +2377,94 @@ window.ES_DATA = (function () {
     { from: 9, name: "Grottes", desc: "Obscurité hors de ta lueur ; les cristaux au sol éclairent et soignent quand on les casse." },
     { from: 12, name: "Cœur ancien", desc: "La corruption avance 2 fois plus vite, mais chaque élite lâche un objet rare." },
   ];
+  /* =====================================================================
+     Contenu étendu, lot 7 : événements de partie, sanctuaires, structures d'Expédition, modificateurs
+     ===================================================================== */
+  // 12 événements communs et 8 événements de carte : 1 ou 2 par carte en Survie, 1 par étage en Expédition
+  var EVENTS = [
+    { id: "migration", name: "Migration", dur: 30, desc: "Une nuée traverse la carte ; XP x2 pendant 30 s." },
+    { id: "averse", name: "Averse", dur: 45, desc: "Chaque goutte marque Eau ; les réactions avec l'Eau font +30 %." },
+    { id: "coup_vent", name: "Coup de vent", dur: 30, desc: "Un vent pousse tout dans une direction." },
+    { id: "eclipse", name: "Éclipse", dur: 30, desc: "Obscurité ; les élites gagnent un pouvoir de plus." },
+    { id: "pluie_glands", name: "Pluie de glands", dur: 20, desc: "Des glands d'or tombent, gardés par des Rôdeurs." },
+    { id: "marchand_presse", name: "Marchand pressé", dur: 40, desc: "Un marchand passe avec 3 objets à prix cassé." },
+    { id: "cage", name: "Écureuil en cage", dur: 75, desc: "Un ami est retenu dans un camp ennemi ; libéré, il se bat avec toi 60 s." },
+    { id: "duel", name: "Duel d'élite", dur: 45, desc: "Une élite à 2 pouvoirs te défie : bats-la sans quitter le cercle pour un objet rare." },
+    { id: "tresor", name: "Chasse au trésor", dur: 60, desc: "Une carte au trésor : reste ancré sur la croix pour creuser." },
+    { id: "invasion", name: "Invasion", dur: 20, desc: "Une escouade d'une autre carte, d'un autre élément, arrive." },
+    { id: "chasseurs", name: "Nuit des chasseurs", dur: 40, desc: "2 fois plus de Rôdeurs, chacun lâche une noisette d'XP dorée." },
+    { id: "comete", name: "Comète", dur: 12, desc: "Une comète tombe dans une zone annoncée ; son cratère contient un coffre." },
+    { id: "fete_champi", name: "Fête des champignons", map: "clairiere", dur: 12, desc: "Les champignons deviennent des Champignons-bombes, sauf ceux qu'on détruit avant." },
+    { id: "brume", name: "Brume épaisse", map: "marais", dur: 40, desc: "Vision réduite ; les Guetteurs disparaissent." },
+    { id: "chute_feuilles", name: "Chute de feuilles", map: "automne", dur: 30, desc: "Les feuilles cachent tous les pièges." },
+    { id: "essaim_amical", name: "Essaim amical", map: "nuit", dur: 40, desc: "Des lucioles éclairent et soignent ceux qui les suivent." },
+    { id: "eboulement", name: "Éboulement", map: "gouffre", dur: 20, desc: "Un pan de carte s'effondre et ouvre de nouveaux passages." },
+    { id: "degel", name: "Dégel", map: "riviere", dur: 20, desc: "La glace fond par endroits et des trous d'eau apparaissent." },
+    { id: "feu_brousse", name: "Feu de brousse", map: "calcinee", dur: 25, desc: "Un incendie traverse la carte et brûle aussi les ennemis." },
+    { id: "orage_alt", name: "Orage en altitude", map: "cime", dur: 30, desc: "La foudre frappe autour de toi ; rester ancré protège." },
+  ];
+  // 8 sanctuaires de plus : ils agissent sur la posture, l'élément ou les techniques
+  SHRINES.push(
+    { id: "s_posture", name: "Statue de posture", color: "#f2b05e", time: 2, weight: 6, quest: "q7_posture", desc: "Change de posture une fois dans la partie." },
+    { id: "s_elem", name: "Autel élémentaire", color: "#9ee8ff", time: 2, weight: 6, quest: "q7_elem", desc: "Change l'élément de ton arme pour la partie, parmi 2 proposés." },
+    { id: "s_forge", name: "Forge errante", color: "#ff7a2a", time: 1.6, weight: 6, quest: "q7_forge", desc: "Contre des glands, une technique de niveau 4 passe au niveau 5." },
+    { id: "s_nid", name: "Nid abandonné", color: "#c8a060", time: 1.6, weight: 5, quest: "q7_nid", desc: "Un œuf éclot après 150 ennemis tués et donne un familier pour la partie." },
+    { id: "s_memoire", name: "Pierre de mémoire", color: "#b07cf0", time: 1.6, weight: 5, quest: "q7_memoire", desc: "Relance ton dernier choix de cartes." },
+    { id: "s_puits", name: "Puits des souhaits", color: "#6ad8ff", time: 1.8, weight: 5, quest: "q7_puits", desc: "Jette un objet à effets, reçois-en deux d'une rareté en dessous." },
+    { id: "s_cercle", name: "Cercle de pierres", color: "#a8b0b8", time: 2, weight: 5, quest: "q7_cercle", coop: true, desc: "Coop : si tous les joueurs sont dedans, chacun choisit une carte de plus." },
+    { id: "s_escouade", name: "Autel des escouades", color: "#c8553d", time: 1.6, weight: 5, quest: "q7_escouade", desc: "Choisis la prochaine escouade : Nuée pour l'XP, ou élites pour le butin." }
+  );
+  // structures d'Expédition de plus
+  var EXDEF2 = {
+    cache: { name: "Coffre caché", col: "#f6d36b", t: 1.5 },
+    plaques: { name: "Ruines à plaques", col: "#a8b0b8", t: 0 },
+    arene_s: { name: "Arène sauvage", col: "#c8553d", t: 0 },
+    marchands: { name: "Campement de marchands", col: "#7ad07a", t: 1.5 },
+    pont: { name: "Pont-levis", col: "#8a5a3b", t: 0 },
+    terrier_b: { name: "Terrier abandonné", col: "#b07cf0", t: 0 },
+    source_ch: { name: "Source chaude", col: "#ff9a7a", t: 0 },
+    prison: { name: "Camp du prisonnier", col: "#f2b05e", t: 1.5 },
+    autel_prof: { name: "Autel de la profondeur", col: "#6ad8ff", t: 2 },
+  };
+  // 15 modificateurs de plus, partagés entre l'Arène et le défi de la semaine : chacun change une règle
+  var MODS2 = [
+    { id: "miroir", name: "Miroir", desc: "Les ennemis sont de l'élément qui bat celui de ton arme." },
+    { id: "petit", name: "Petit format", desc: "Les ennemis sont 30 % plus petits." },
+    { id: "sansvolte", name: "Sans Volte", desc: "La Volte est désactivée ; cadence +20 %." },
+    { id: "immobiles", name: "Immobiles", desc: "Tes techniques ne tirent qu'ancré, mais font le double." },
+    { id: "course", name: "Course", desc: "Tes techniques ne tirent qu'en mouvement, mais font +50 %." },
+    { id: "fievre", name: "Fièvre élémentaire", desc: "L'élément des ennemis change chaque minute." },
+    { id: "unique", name: "Choix unique", desc: "Une seule carte par niveau." },
+    { id: "elitemania", name: "Élite-mania", desc: "Tous les ennemis ont un pouvoir d'élite, mais 40 % de PV en moins." },
+    { id: "rueeboss", name: "Ruée des boss", desc: "Un boss toutes les 60 s, plus aucune escouade." },
+    { id: "pauvrete", name: "Pauvreté", desc: "Aucun gland en partie ; les coffres sont gratuits." },
+    { id: "brouillard", name: "Brouillard", desc: "Vision réduite de moitié." },
+    { id: "gravite", name: "Gravité", desc: "Les projectiles retombent : portée -40 %, zones +30 %." },
+    { id: "arsenal", name: "Arsenal aléatoire", desc: "Ton attaque de base change à chaque palier." },
+    { id: "revenants", name: "Revenants", desc: "Chaque ennemi tué revient une fois en fantôme." },
+    { id: "mouvante", name: "Arène mouvante", desc: "L'arène rétrécit puis s'élargit toutes les 30 s.", arena: true },
+  ];
+  ARENA.mods = ARENA.mods.concat(MODS2);
+  // objets et anneau qui dépendent des événements et du coffre caché
+  ITEMS.push(
+    { id: "calendrier", r: 2, icon: "📅", name: "Calendrier", desc: "Chaque événement de partie terminé donne un objet commun." },
+    { id: "carte_ciel", r: 2, icon: "🗺️", name: "Carte du ciel", quest: "q7_ciel", desc: "Les événements sont annoncés 30 s à l'avance et durent 50 % plus longtemps." },
+    { id: "carte_froissee", r: 1, expe: true, icon: "📜", name: "Carte froissée", desc: "Révèle le coffre caché de chaque étage." }
+  );
+  ITEMS.forEach(function (it, i) { it.idx = i; });
+  GEAR.r_orage = { slot: "anneau", name: "Anneau de l'orage", icon: "⛈️", ring: "orage", desc: "Événements : un événement de partie de plus par carte ou par étage.", cost: { mousse_noire: 8, poussiere_lune: 6, bois_mort: 3, t_owl: 1 } };
+  // quêtes des sanctuaires (et de la Carte du ciel)
+  QUESTS.push(
+    { id: "q7_posture", desc: "Débloque les 3 postures d'un écureuil.", check: function (r) { return ((r.tot && r.tot.fullChar) || 0) >= 1; } },
+    { id: "q7_elem", desc: "Déclenche les 6 réactions dans une partie.", check: function (r) { return Object.keys(r.reactK || {}).length >= 6; } },
+    { id: "q7_forge", desc: "Fais 10 fusions au total.", check: function (r) { return ((r.tot && r.tot.fusions) || 0) >= 10; } },
+    { id: "q7_nid", desc: "Tue 5 000 ennemis au total.", check: function (r) { return ((r.tot && r.tot.kills) || 0) >= 5000; } },
+    { id: "q7_memoire", desc: "Joue 20 parties.", check: function (r) { return ((r.tot && r.tot.runs) || 0) >= 20; } },
+    { id: "q7_puits", desc: "Sacrifie 5 objets à l'Autel du sacrifice au total.", check: function (r) { return ((r.tot && r.tot.sacrifices) || 0) >= 5; } },
+    { id: "q7_cercle", desc: "Bats un méga boss en coop (Pip & Pop comptent).", check: function (r) { return ((r.tot && r.tot.coopMega) || 0) >= 1; } },
+    { id: "q7_escouade", desc: "Tue 100 élites au total.", check: function (r) { return ((r.tot && r.tot.elites) || 0) >= 100; } },
+    { id: "q7_ciel", desc: "Vis 10 événements au total.", check: function (r) { return ((r.tot && r.tot.events) || 0) >= 10; } }
+  );
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
@@ -2384,6 +2472,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
