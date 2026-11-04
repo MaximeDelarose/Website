@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.2.1";
+  var VERSION = "2.3.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -163,6 +163,10 @@
     var d = D.SPRITES[k];
     SPR[k] = d.frames.map(function (f) { return sprite(f, d.pal); });
     SPR[k].flying = !!d.flying;
+    // style A : images de repos, pose de Volte, rebond de marche
+    if (d.idle) SPR[k].idle = d.idle.map(function (f) { return sprite(f, d.pal); });
+    if (d.volte) SPR[k].volte = sprite(d.volte, d.pal);
+    if (d.bob) SPR[k].bob = d.bob;
   });
   var urlCache = {};
   function spriteUrl(name) { return urlCache[name] || (urlCache[name] = (SPR[name] || SPR.nut)[0].c.toDataURL()); }
@@ -2989,7 +2993,7 @@
     // recharge de la Volte (petit arc) et éclair quand elle est prête
     if (pl.volteCd > 0) { ctx.strokeStyle = "rgba(246,239,122,.5)"; ctx.beginPath(); ctx.arc(x + 9, y - 20, 2.5, -Math.PI / 2, -Math.PI / 2 + (1 - pl.volteCd / V2.volteCd) * TAU); ctx.stroke(); }
     if (pl.volteFlash > 0 && ((pl.volteFlash * 12) | 0) % 2 === 0) { ctx.fillStyle = "#f6ef7a"; ctx.fillRect(x + 8, y - 25, 2, 3); ctx.fillRect(x + 7, y - 23, 2, 2); ctx.fillRect(x + 6, y - 22, 2, 3); }
-    if (pl.volteT > 0) { ctx.globalAlpha = pl.volteT / 0.35 * 0.5; blit(SPR[pl.sprite][0], pl.x - (pl.dir ? pl.dir.x * 6 : 0), pl.y - (pl.dir ? pl.dir.y * 6 : 0), pl.face < 0, true); ctx.globalAlpha = 1; }
+    if (pl.volteT > 0) { ctx.globalAlpha = pl.volteT / 0.35 * 0.5; blit(SPR[pl.sprite].volte || SPR[pl.sprite][0], pl.x - (pl.dir ? pl.dir.x * 6 : 0), pl.y - (pl.dir ? pl.dir.y * 6 : 0), pl.face < 0, true); ctx.globalAlpha = 1; }
   }
   /* ---------- 2.0 phase 2 : techniques habillées par l'arme, évolutions, fusions ---------- */
   function mapv(v, f) { return Array.isArray(v) ? v.map(f) : (typeof v === "number" ? f(v) : v); }
@@ -5807,6 +5811,12 @@
       ctx.fillStyle = G.rockHi; ctx.fillRect(sx + ox, sy + oy - 1, 3, 1);
     }
   }
+  var GSHADE = "rgba(30,52,22,.22)";
+  function mixHex(a, b, t) {
+    function p(c) { c = c.replace("#", ""); if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]; return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)]; }
+    var A = p(a), B = p(b);
+    return "#" + [0, 1, 2].map(function (i) { var v = Math.round(A[i] + (B[i] - A[i]) * t); return (v < 16 ? "0" : "") + v.toString(16); }).join("");
+  }
   function drawGround(cx, cy, M) {
     var T = 16;
     var tx0 = Math.floor(cx / T) - 1, ty0 = Math.floor(cy / T) - 1, tx1 = tx0 + Math.ceil(W / T) + 2, ty1 = ty0 + Math.ceil(H / T) + 2;
@@ -5820,19 +5830,34 @@
       sx = Math.round(tx * T - cx); sy = Math.round(ty * T - cy);
       var h = hash(tx, ty), k = h % 23, ox = (h >>> 8) % 12, oy = (h >>> 12) % 12;
       if (B.decor && (k === 12 || k === 13 || (B.decor === "pond" && k >= 9 && k <= 11))) { drawDecor(B.decor, G, sx, sy, ox, oy, h); continue; }
+      var X = sx + ox, Y = sy + oy;
       if (k < 5) {
-        ctx.fillStyle = G.tuft; ctx.fillRect(sx + ox, sy + oy, 1, 2); ctx.fillRect(sx + ox + 2, sy + oy - 1, 1, 3); ctx.fillRect(sx + ox + 4, sy + oy, 1, 2);
-        ctx.fillStyle = G.hi; ctx.fillRect(sx + ox + 2, sy + oy - 1, 1, 1);
+        // touffe en 3 tons avec ombre (style A)
+        var mid = G._mid || (G._mid = mixHex(G.tuft, G.hi, 0.45));
+        ctx.fillStyle = GSHADE; ctx.fillRect(X - 1, Y + 2, 7, 1);
+        ctx.fillStyle = G.tuft; ctx.fillRect(X, Y + 1, 1, 1); ctx.fillRect(X + 2, Y + 1, 1, 1); ctx.fillRect(X + 4, Y + 1, 1, 1);
+        ctx.fillStyle = mid; ctx.fillRect(X, Y, 1, 1); ctx.fillRect(X + 2, Y, 1, 1); ctx.fillRect(X + 4, Y, 1, 1);
+        if (h & 64) { ctx.fillRect(X + 1, Y, 1, 1); ctx.fillStyle = G.tuft; ctx.fillRect(X + 1, Y + 1, 1, 1); }
+        ctx.fillStyle = G.hi; ctx.fillRect(X + 2, Y - 1, 1, 1);
       } else if (k < 7) {
-        ctx.fillStyle = G.flowers[(h >>> 16) % 4];
-        ctx.fillRect(sx + ox + 1, sy + oy, 1, 1); ctx.fillRect(sx + ox, sy + oy + 1, 3, 1); ctx.fillRect(sx + ox + 1, sy + oy + 2, 1, 1);
-        ctx.fillStyle = G.tuft; ctx.fillRect(sx + ox + 1, sy + oy + 3, 1, 2);
+        var fc = G.flowers[(h >>> 16) % 4];
+        ctx.fillStyle = GSHADE; ctx.fillRect(X, Y + 5, 3, 1);
+        ctx.fillStyle = G.tuft; ctx.fillRect(X + 1, Y + 3, 1, 2);
+        ctx.fillStyle = G._mid || (G._mid = mixHex(G.tuft, G.hi, 0.45)); ctx.fillRect(X + 2, Y + 4, 1, 1);
+        ctx.fillStyle = fc;
+        ctx.fillRect(X + 1, Y, 1, 1); ctx.fillRect(X, Y + 1, 3, 1); ctx.fillRect(X + 1, Y + 2, 1, 1);
+        ctx.fillStyle = fc === "#f6d36b" ? "#c8553d" : "#f6d36b"; ctx.fillRect(X + 1, Y + 1, 1, 1);
       } else if (k === 7) {
-        ctx.fillStyle = G.pebbleDk; ctx.fillRect(sx + ox, sy + oy + 1, 5, 2);
-        ctx.fillStyle = G.pebble; ctx.fillRect(sx + ox + 1, sy + oy, 3, 2);
+        ctx.fillStyle = GSHADE; ctx.fillRect(X, Y + 3, 6, 1);
+        ctx.fillStyle = G.pebbleDk; ctx.fillRect(X, Y + 1, 5, 2);
+        ctx.fillStyle = G.pebble; ctx.fillRect(X + 1, Y, 3, 2);
+        ctx.fillStyle = G._peb || (G._peb = mixHex(G.pebble, "#ffffff", 0.35)); ctx.fillRect(X + 1, Y, 1, 1);
       } else if (k === 8 && (h >>> 20) % 3 === 0) {
-        ctx.fillStyle = G.shroom; ctx.fillRect(sx + ox, sy + oy, 3, 1); ctx.fillRect(sx + ox - 1, sy + oy + 1, 5, 1);
-        ctx.fillStyle = "#f3e1c0"; ctx.fillRect(sx + ox + 1, sy + oy + 2, 1, 2);
+        ctx.fillStyle = GSHADE; ctx.fillRect(X - 1, Y + 4, 5, 1);
+        ctx.fillStyle = G.shroom; ctx.fillRect(X, Y, 3, 1); ctx.fillRect(X - 1, Y + 1, 5, 1);
+        ctx.fillStyle = G._shd || (G._shd = mixHex(G.shroom, "#000000", 0.25)); ctx.fillRect(X - 1, Y + 1, 1, 1); ctx.fillRect(X + 3, Y + 1, 1, 1);
+        ctx.fillStyle = "#fdf3de"; ctx.fillRect(X + 1, Y, 1, 1);
+        ctx.fillStyle = "#f3e1c0"; ctx.fillRect(X + 1, Y + 2, 1, 2);
       } else if (k < 12) {
         ctx.fillStyle = G.hi; ctx.fillRect(sx + ox, sy + oy, 1, 1);
       }
@@ -5846,13 +5871,17 @@
     ctx.fillRect(Math.round(x - w / 2), Math.round(y), Math.round(w), 2);
     ctx.fillRect(Math.round(x - w / 2 + 1), Math.round(y - 1), Math.max(1, Math.round(w - 2)), 4);
   }
-  function drawHero(sprName, x, y, face, moving, anim, inv) {
-    var frames = SPR[sprName], fly = frames.flying;
-    var frame = (moving || fly) ? ((anim | 0) % frames.length) : 0, s = frames[frame];
+  function drawHero(sprName, x, y, face, moving, anim, inv, volte) {
+    var frames = SPR[sprName], fly = frames.flying, s, dy = 0;
+    if (volte && frames.volte) s = frames.volte;
+    else if (frames.bob && (moving || fly)) { var fi = ((anim * 1.25) | 0) % frames.length; s = frames[fi]; dy = frames.bob[fi]; }
+    else if ((moving || fly)) { var fr = (anim | 0) % frames.length; s = frames[fr]; dy = moving && !fly && fr ? 1 : 0; }
+    else if (frames.idle) s = frames.idle[((performance.now() / 1000 + (x * 0.013)) * 2.2 | 0) % frames.idle.length];
+    else s = frames[0];
     var lift = fly ? 6 + Math.sin(anim * 0.8) * 1.5 : 0;
     shadow(x, y + 6, fly ? 8 : 10);
     if (inv > 0 && ((inv * 20) | 0) % 2) return;
-    blit(s, x, y - lift - (moving && !fly && frame ? 1 : 0), face < 0);
+    blit(s, x, y - lift - dy, face < 0);
   }
   var MATE_COL = ["#f6d36b", "#7fd1c7", "#f29ad8", "#9cc56b", "#f2b05e", "#c9b3ff"];
   function mateColor(pl) { return MATE_COL[Math.max(0, players.indexOf(pl)) % MATE_COL.length]; }
@@ -5878,7 +5907,7 @@
         blit(ms, pl.x, pl.y + 7, pl.face < 0);
         drawHero(pl.sprite, pl.x, pl.y - 3, pl.face, false, pl.anim, pl.inv);
       } else
-      drawHero(pl.sprite, pl.x, pl.y, pl.face, pl.moving, pl.anim, pl.inv);
+      drawHero(pl.sprite, pl.x, pl.y, pl.face, pl.moving, pl.anim, pl.inv, pl.volteT > 0);
       if (inv0) ctx.globalAlpha = 1;
       if (szs > 1) ctx.restore();
       if (pl.shield) { ctx.strokeStyle = "rgba(156,197,107,.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(pl.x, pl.y, 10, 9, 0, 0, TAU); ctx.stroke(); }
