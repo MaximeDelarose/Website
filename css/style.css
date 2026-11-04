@@ -2942,3 +2942,8 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .game-toasts { top: auto; bottom: calc(var(--px-game, 3px) * 26); width: min(340px, calc(100% - 24px)); gap: 4px; }
 .game-toast { padding: 5px 10px; font-size: .8rem; border-width: 2px; }
 .game-toasts .game-toast:nth-last-child(n+3) { display: none; }
+
+/* Survivor 2.3 : icônes pixel des objets à la place des emojis */
+.px-ic { display: inline-block; width: 1.45em; height: 1.45em; image-rendering: pixelated; image-rendering: crisp-edges; vertical-align: -0.38em; }
+.choice-emoji .px-ic { width: 42px; height: 42px; vertical-align: middle; }
+.shop-ic .px-ic, .ach-ic .px-ic { width: 28px; height: 28px; vertical-align: middle; }
