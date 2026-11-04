@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.5.1";
+  var VERSION = "2.5.2";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -33,7 +33,7 @@
   var SAVE_KEY = "es2-save-v1";
   function defaults() {
     return { gold: 0, shop: {}, ach: {}, quests: {}, owned: { noisette: true }, rank: 1, rankXp: 0, tree: {}, prestige: 0, ppts: 0, pshop: {}, char: "noisette", map: "clairiere", diff: "normal", name: "",
-             opts: { sound: true, shake: true, numbers: true },
+             opts: { sound: true, shake: true, numbers: true, vol: 0.8, hitstop: true, camlead: true, lowfx: false },
              mode: "survie", posture: {}, eq: { inv: [], worn: {}, uid: 1 }, res: {}, clvl: {}, tal: {}, mast: {}, contracts: { offers: [], taken: [] }, cauch: {}, cn: 0, mega: {}, secureSlots: 0, eqSlot: "coiffe", v2: 0, news: 0, recipes: {}, chestSize: 0, stats: { kills: 0, goldEarned: 0, goldSince: 0, runs: 0, bestTime: 0, bestScore: 0, bosses: 0, played: {}, maps: {}, bought: 0 } };
   }
   function load() {
@@ -223,9 +223,11 @@
   /* son 2.5 : tout passe par un bus compressé (plus de saturation quand ça s'empile), bruit filtré pour les impacts */
   var MASTER = null, NBUF = null;
   function bus() {
-    if (!MASTER) { var comp = actx.createDynamicsCompressor(); comp.threshold.value = -20; comp.knee.value = 12; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.15; MASTER = actx.createGain(); MASTER.gain.value = 0.95; MASTER.connect(comp); comp.connect(actx.destination); }
+    if (!MASTER) { var comp = actx.createDynamicsCompressor(); comp.threshold.value = -20; comp.knee.value = 12; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.15; MASTER = actx.createGain(); MASTER.gain.value = volOf(); MASTER.connect(comp); comp.connect(actx.destination); }
     return MASTER;
   }
+  function volOf() { var v = S.opts.vol; return (v === undefined ? 0.8 : v) * 1.2; }
+  function setVol() { if (MASTER) MASTER.gain.value = volOf(); }
   function jit(f, k) { return f * (1 + (Math.random() - 0.5) * (k || 0.1)); }
   function noise(dur, vol, freq, q, type, slide) {
     if (!S.opts.sound) return;
@@ -295,7 +297,7 @@
   var spawnAcc, nextSwarm, nextBoss, bossCount, shake, uid, achTick, pending, xp, xpNext, propTimer;
   /* ---------- gamefeel (2.5) : arrêts sur image, ralenti, tremblement dosé, caméra qui anticipe ---------- */
   var hitstop = 0, slowmo = 0, hsCd = 0, hurtV = 0, CAM = { x: 0, y: 0, lx: 0, ly: 0, kx: 0, ky: 0, t: 0, on: false };
-  function juiceOk() { return S.opts.shake && !(Net.on); }
+  function juiceOk() { return S.opts.hitstop !== false && !(Net.on); }
   function freezeFrame(t) { if (!juiceOk() || hsCd > 0) return; hitstop = Math.max(hitstop, t); hsCd = t + 0.12; }
   function slowMo(t) { if (juiceOk()) slowmo = Math.max(slowmo, t); }
   function kick(x, y, amt) { if (!S.opts.shake) return; var d = Math.hypot(x, y) || 1; CAM.kx += x / d * amt; CAM.ky += y / d * amt; }
@@ -890,7 +892,7 @@
   var SPARK_C = { feu: ["#ffd05a", "#ff8a2a", "#ff5a1a"], eau: ["#bfefff", "#6ad8ff", "#3a9ad8"], air: ["#ffffff", "#e6f6fa", "#c8f8e8"], terre: ["#c8a060", "#8a6a48", "#6b4430"] };
   function hx2rgb(c) { c = String(c).replace("#", ""); if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]; return parseInt(c.slice(0, 2), 16) + "," + parseInt(c.slice(2, 4), 16) + "," + parseInt(c.slice(4, 6), 16); }
   function spark(x, y, el, crit) {
-    if (fx.length > 260) return;
+    if (fx.length > 260 || (S.opts.lowfx && Math.random() < 0.7)) return;
     fx.push({ kind: "hitstar", x: x, y: y, life: crit ? 0.1 : 0.07, max: crit ? 0.1 : 0.07, col: crit ? "#f6d36b" : "#ffffff", big: crit });
     var C = SPARK_C[el], n = crit ? 4 : 2, i, a;
     for (i = 0; i < n; i++) {
@@ -6237,7 +6239,7 @@
     var cam = me.down ? (me.twinRef && !me.twinRef.down ? me.twinRef : alive()[0] || me) : me;
     if (!isArena()) {
       var mv = cam.moving && cam.vx !== undefined ? Math.hypot(cam.vx, cam.vy) : 0, tlx = mv > 1 ? cam.vx / mv * 18 : 0, tly = mv > 1 ? cam.vy / mv * 12 : 0;
-      if (!S.opts.shake) { tlx = 0; tly = 0; }
+      if (S.opts.camlead === false) { tlx = 0; tly = 0; }
       if (!CAM.on || Math.hypot(cam.x - CAM.x, cam.y - CAM.y) > 120) { CAM.lx = tlx; CAM.ly = tly; CAM.on = true; }
       var kl = 1 - Math.pow(0.08, cdt); CAM.lx += (tlx - CAM.lx) * kl; CAM.ly += (tly - CAM.ly) * kl;
       CAM.x = cam.x; CAM.y = cam.y;
@@ -6342,7 +6344,7 @@
         return;
       }
       var s = SPR[q.sprite] || SPR.acorn;
-      if (fx.length < 220 && flick && (q.vx * q.vx + q.vy * q.vy) > 3600) fx.push({ kind: "trail", x: q.x - q.vx * 0.012, y: q.y - q.vy * 0.012, life: 0.14, max: 0.14, color: q.elem && SPARK_C[q.elem] ? SPARK_C[q.elem][0] : "#fdf3de" });
+      if (fx.length < 220 && flick && !S.opts.lowfx && (q.vx * q.vx + q.vy * q.vy) > 3600) fx.push({ kind: "trail", x: q.x - q.vx * 0.012, y: q.y - q.vy * 0.012, life: 0.14, max: 0.14, color: q.elem && SPARK_C[q.elem] ? SPARK_C[q.elem][0] : "#fdf3de" });
       blit(s[(q.anim || q.kind === "boomerang") ? flick % s.length : 0], q.x, q.y, q.vx < 0);
     });
     hostile.forEach(function (q) {
@@ -7384,11 +7386,17 @@
       return html + "</div>";
     },
     options: function () {
+      function volRow() {
+        var v = Math.round((S.opts.vol === undefined ? 0.8 : S.opts.vol) * 100);
+        return '<div class="toggle vol-row"><span>🎚️ Volume</span><span class="vol-ctl"><button type="button" class="btn btn-ghost btn-small" data-action="vol" data-arg="-1" aria-label="Baisser le volume">−</button><b>' + v + ' %</b><button type="button" class="btn btn-ghost btn-small" data-action="vol" data-arg="1" aria-label="Monter le volume">+</button></span></div>';
+      }
       function tog(k, label) {
-        return '<button type="button" class="toggle' + (S.opts[k] ? " is-on" : "") + '" data-action="opt" data-arg="' + k + '" aria-pressed="' + !!S.opts[k] + '"><span>' + label + "</span><b>" + (S.opts[k] ? "Oui" : "Non") + "</b></button>";
+        var on = k === "lowfx" ? !!S.opts[k] : S.opts[k] !== false;
+        return '<button type="button" class="toggle' + (on ? " is-on" : "") + '" data-action="opt" data-arg="' + k + '" aria-pressed="' + on + '"><span>' + label + "</span><b>" + (on ? "Oui" : "Non") + "</b></button>";
       }
       return '<div class="screen-head">' + back() + "<h2>Options</h2></div>" +
-        '<div class="opt-list">' + tog("sound", "🔊 Son") + tog("shake", "📳 Tremblement de l'écran") + tog("numbers", "🔢 Chiffres de dégâts") + "</div>" +
+        '<div class="opt-list">' + tog("sound", "🔊 Son") + volRow() + tog("shake", "📳 Tremblement de l'écran") + tog("hitstop", "⏸️ Arrêts sur image et ralenti") + tog("camlead", "🎥 Caméra qui regarde devant") +
+        tog("numbers", "🔢 Chiffres de dégâts") + tog("lowfx", "✨ Particules réduites (téléphone lent)") + "</div>" +
         '<p class="game-small"><button class="link-btn danger" type="button" data-action="wipe">Effacer toute ma progression</button></p>';
     },
     help: function () {
@@ -7479,7 +7487,9 @@
       if (!total || !window.confirm("Rembourser " + total + " glands d'or et remettre toutes les améliorations à zéro ?")) return;
       S.gold += total; S.shop = {}; save(); go("shop");
     },
-    opt: function (k) { S.opts[k] = !S.opts[k]; save(); muteLabel(); SND.click(); go("options"); },
+    opt: function (k) { S.opts[k] = k === "lowfx" ? !S.opts[k] : S.opts[k] === false; save(); muteLabel(); SND.click(); go("options"); },
+    vol: function (d) { var v = S.opts.vol === undefined ? 0.8 : S.opts.vol; S.opts.vol = Math.max(0, Math.min(1, Math.round((v + 0.1 * (+d)) * 10) / 10)); save(); setVol(); SND.click(); go("options"); },
+    "opt-p": function (k) { S.opts[k] = S.opts[k] === false; save(); muteLabel(); setVol(); if (netMenuOpen) { netMenu(); return; } state = "play"; pause(); },
     wipe: function () {
       if (!window.confirm("Effacer toute ta progression (or, améliorations, écureuils, succès) ?")) return;
       var keepName = S.name; S = defaults(); S.name = keepName; save(); go("menu");
@@ -8079,6 +8089,14 @@
     Object.keys(p.weapons).forEach(function (k) { var td = techDef(p, k); html += '<li class="' + (td.fusion ? "is-fusion" : "") + '"><img src="' + spriteUrl(td.icon) + '" alt="">' + esc(techName(p, k)) + " <b>niv. " + p.weapons[k] + "</b></li>"; });
     html += '</ul><h3>Objets (' + Object.keys(p.passives).length + "/" + MAX_P + ')</h3><ul class="build-list">';
     Object.keys(p.passives).forEach(function (k) { html += '<li><img src="' + spriteUrl(D.PASSIVES[k].sprite) + '" alt="">' + esc(D.PASSIVES[k].name) + " <b>niv. " + p.passives[k] + "</b>" + synHtml(k) + "</li>"; });
+    var itk = Object.keys(p.items || {}).filter(function (k) { return ITM[k] && p.items[k] > 0; });
+    if (itk.length) {
+      html += '</ul><h3>Objets à effets (' + itk.length + ')</h3><ul class="item-grid">';
+      itk.forEach(function (k) { var it = ITM[k], ra = D.RARITIES[it.r]; html += '<li style="--rc:' + ra.color + '" title="' + esc(it.name + " : " + it.desc) + '"><span class="ig-ic">' + ic(it.icon) + "</span>" + (p.items[k] > 1 ? "<b>" + p.items[k] + "</b>" : "") + "</li>"; });
+      html += '</ul><details class="ig-more"><summary>Voir les effets</summary><ul class="ig-list">';
+      itk.forEach(function (k) { var it = ITM[k], ra = D.RARITIES[it.r]; html += '<li style="--rc:' + ra.color + '">' + ic(it.icon) + ' <strong>' + esc(it.name) + (p.items[k] > 1 ? " ×" + p.items[k] : "") + "</strong> " + esc(it.desc) + "</li>"; });
+      html += "</ul></details><ul>";
+    }
     html += '</ul></div><div><h3>Statistiques</h3><ul class="stat-list">' +
       "<li>PV <b>" + Math.ceil(p.hp) + " / " + p.maxHp + "</b></li>" +
       "<li>Dégâts <b>" + Math.round(p.might * 100) + " %</b></li>" +
@@ -8089,9 +8107,10 @@
       "<li>Armure <b>" + p.armor + "</b></li>" +
       "<li>Renaissances <b>" + me.revives + "</b></li></ul></div></div>" +
       '<div class="btn-row center"><button class="btn" type="button" data-action="resume" data-autofocus>▶ Reprendre</button>' +
-      '<button class="btn btn-ghost btn-small" type="button" data-action="opt-pause">' + (S.opts.sound ? "🔊 Son : oui" : "🔇 Son : non") + "</button>" +
       '<button class="btn btn-ghost btn-small" type="button" data-action="restart">↻ Recommencer</button>' +
-      '<button class="btn btn-ghost btn-small" type="button" data-action="quit">🏳️ Abandonner</button></div>';
+      '<button class="btn btn-ghost btn-small" type="button" data-action="quit">🏳️ Abandonner</button></div>' +
+      '<div class="quick-opts" aria-label="Réglages rapides">' + [["sound", "🔊 Son"], ["shake", "📳 Tremblement"], ["hitstop", "⏸️ Arrêts sur image"], ["numbers", "🔢 Chiffres"]].map(function (o) {
+        var on = S.opts[o[0]] !== false; return '<button type="button" class="qopt' + (on ? " is-on" : "") + '" data-action="opt-p" data-arg="' + o[0] + '" aria-pressed="' + on + '">' + o[1] + "</button>"; }).join("") + "</div>";
     showCard(html, "pause");
   }
   function resume() {
