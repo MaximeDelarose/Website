@@ -171,11 +171,23 @@ export const shouldRefund = (spent: boolean, ev: { t: string; free?: boolean; so
 // ------------------------------------------------------------------ réactions d'Auguste (parcimonie)
 export class ReactionGate {
   private last = -1e12;
-  constructor(public gapMs = 20_000) {}
-  /** Autorisé si la dernière réaction date de plus de `gapMs` et qu'aucune fusion n'est en cours. */
-  allow(now: number, busy: boolean): boolean { return !busy && now - this.last >= this.gapMs; }
-  mark(now: number): void { this.last = now; }
+  private lastText = '';
+  /**
+   * `gapMs` : délai minimal entre deux réactions ordinaires ; `importantGapMs` : entre deux réactions importantes
+   * (fusion maximale, commande difficile, énergie basse…). Une réaction importante n'attend donc jamais autant.
+   */
+  constructor(public gapMs = 90_000, public importantGapMs = 30_000) {}
+  /** Autorisé si le délai (ordinaire ou important selon `prio`) est écoulé et qu'aucune fusion n'est en cours. */
+  allow(now: number, busy: boolean, prio = 0): boolean {
+    if (busy) return false;
+    return now - this.last >= (prio >= IMPORTANT_PRIO ? this.importantGapMs : this.gapMs);
+  }
+  /** Même phrase que la dernière réaction ? (jamais deux fois de suite) */
+  repeats(text: string): boolean { return text === this.lastText; }
+  mark(now: number, text = ''): void { this.last = now; if (text) this.lastText = text; }
 }
+/** À partir de cette priorité, une réaction est « importante » (délai plus court). */
+export const IMPORTANT_PRIO = 4;
 
 export type ReactionKey = 'rare' | 'maxMerge' | 'combo3' | 'combo5' | 'chest' | 'drop' | 'orderDone' | 'energyLow';
 export type ReactionWish = { key: ReactionKey; prio: number };
@@ -183,7 +195,7 @@ export type ReactionWish = { key: ReactionKey; prio: number };
 export function bestReaction(w: ReactionWish[]): ReactionWish | null {
   return w.length ? [...w].sort((a, b) => b.prio - a.prio)[0] : null;
 }
-export const REACTION_PRIO: Record<ReactionKey, number> = { maxMerge: 5, chest: 4, rare: 3, combo5: 2, drop: 2, orderDone: 2, energyLow: 4, combo3: 1 };
+export const REACTION_PRIO: Record<ReactionKey, number> = { maxMerge: 5, chest: 4, rare: 3, combo5: 2, drop: 2, orderDone: 4, energyLow: 4, combo3: 1 };
 
 // ------------------------------------------------------------------ compteur animé
 export function easeCount(from: number, to: number, t: number): number {

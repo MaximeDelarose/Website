@@ -100,7 +100,7 @@ async function run(H) {
     });
     check(`${label} : aucun bouton « i » (.en-geni) sur le plateau`, r.geni === 0 && r.iBtns === 0, `geni=${r.geni}, boutons « i »=${r.iBtns}`);
     check(`${label} : aucun bouton / panneau ne recouvre le plateau`, r.over.length === 0, r.over.join(' | '));
-    check(`${label} : panneau d'objet sous le plateau, au-dessus des actions, sans chevauchement`, r.sel && r.sel.t >= r.board.b - 1 && r.sel.b <= r.act.t + 1, JSON.stringify({ sel: r.sel, board: r.board.b, act: r.act?.t }));
+    check(`${label} : fiche d'objet : cachée si rien n'est sélectionné, sinon sous le plateau (sur la rangée d'actions), sans recouvrir de case`, r.sel && (r.sel.b === 0 || (r.sel.t >= r.board.b - 1 && r.sel.b <= r.act.b + 1)), JSON.stringify({ sel: r.sel, board: r.board.b, act: r.act?.t }));
     check(`${label} : cases ≥ 40 px`, r.cell >= 40, `${Math.round(r.cell)} px`);
     return r;
   };
@@ -193,10 +193,11 @@ async function run(H) {
   // déplacement vers une case vide
   await E('setItem', idx(2, 3), 'flowers', 1);
   await E('setItem', idx(3, 3), null);
+  await E('setItem', idx(2, 4), null); // la case d'arrivée doit être vide (une apparition aléatoire d'une étape précédente peut l'occuper)
   await sleep(400);
   await dragCell(idx(2, 3), idx(2, 4), 240);
   s = await st();
-  check('glissé court vers une case vide : l\'objet se déplace', s.cells.some((c) => c.i === idx(2, 4) && c.c === 'flowers') && !s.cells.some((c) => c.i === idx(2, 3)));
+  check('glissé court vers une case vide : l\'objet se déplace', s.cells.some((c) => c.i === idx(2, 4) && c.c === 'flowers') && !s.cells.some((c) => c.i === idx(2, 3)), JSON.stringify({ cells: s.cells.filter((c) => c.i === idx(2, 3) || c.i === idx(2, 4)), locks: (s.locks || []).filter((c) => c.i === idx(2, 3) || c.i === idx(2, 4)), ptr: await E('pointer'), sheet: await sheetOpen() }));
   // double toucher rapide sur un générateur
   const tapsBefore = (await st()).taps;
   const gp = await xy(g0);

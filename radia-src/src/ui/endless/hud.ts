@@ -109,6 +109,8 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
   const feedEl = h('div.en-feed');
   const layer = h('div.en-layer');
   const selEl = h('div.en-sel.empty', { 'aria-live': 'polite' });
+  // un toucher sur la fiche (hors boutons) la referme : on retrouve aussitôt la rangée d'actions
+  selEl.addEventListener('click', (ev) => { if (!(ev.target as HTMLElement).closest('button')) cfg.getScene()?.deselect(); });
   let focus = -1;
   const gate = new ReactionGate(20_000);
   let prevReady: boolean[] = [false, false, false];
@@ -132,7 +134,9 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
       pill.append(b);
       pill.classList.add('has-btn');
     }
-    while (feedEl.children.length >= 3) feedEl.firstElementChild?.remove();
+    // une seule notice à la fois dans la voie du bas : la nouvelle remplace l'ancienne (jamais d'empilement sur le plateau)
+    feedEl.parentElement?.querySelectorAll('.aug-says.en-aug').forEach((e) => e.remove());
+    feedEl.replaceChildren();
     feedEl.append(pill);
     window.setTimeout(() => { pill.classList.add('out'); window.setTimeout(() => pill.remove(), 300); }, o.ms ?? 2300);
   };
@@ -168,13 +172,16 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
       wishes = [];
       if (!alive || !best) return;
       const now = Date.now();
-      if (!gate.allow(now, cfg.busy())) return;
-      gate.mark(now);
-      const text = best.key === 'orderDone' ? pickLine('orderDone') : best.key === 'energyLow' ? pickLine('energyLow') : pickReaction(best.key);
-      augusteSays(text, 3000);
+      if (!gate.allow(now, cfg.busy(), best.prio)) return;
+      const pick = () => (best.key === 'orderDone' ? pickLine('orderDone') : best.key === 'energyLow' ? pickLine('energyLow') : pickReaction(best.key));
+      let text = pick();
+      for (let k = 0; k < 4 && gate.repeats(text); k++) text = pick(); // jamais deux fois la même phrase de suite
+      if (gate.repeats(text)) return;
+      gate.mark(now, text);
+      augusteSays(text, 2200);
       // la bulle d'Auguste rejoint la pile ancrée au-dessus des actions (jamais posée par-dessus un bouton)
       const bub = ui.root.lastElementChild as HTMLElement | null;
-      if (bub?.classList.contains('aug-says')) { bub.classList.add('en-aug'); const dock = feedEl.parentElement; if (dock) dock.insertBefore(bub, feedEl); }
+      if (bub?.classList.contains('aug-says')) { bub.classList.add('en-aug'); const dock = feedEl.parentElement; if (dock) { feedEl.replaceChildren(); dock.querySelectorAll('.aug-says.en-aug').forEach((e) => { if (e !== bub) e.remove(); }); dock.insertBefore(bub, feedEl); } else bub.remove(); /* sans zone d'accueil : on se tait plutôt que de couvrir le plateau */ }
     }, 1500);
   }
 
@@ -341,10 +348,12 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     const it: ItemRef | null = cell?.item ?? null;
     const lock = cell?.lock ?? null;
     selEl.textContent = '';
+    // la fiche prend la place de la rangée d'actions : celle-ci est masquée (jamais deux boutons l'un sur l'autre)
+    selEl.parentElement?.classList.toggle('sel-open', !!(it || lock));
     if (!it && !lock) {
       focus = -1;
+      // plus de bandeau d'aide permanent : l'état vide ne prend aucune place (l'aide vit dans le menu d'aide)
       selEl.className = 'en-sel empty';
-      selEl.append(h('span.en-sel-hint', 'Touche un objet pour le sélectionner · appui long pour ses infos'));
       return;
     }
     const fn = focus;
@@ -411,12 +420,22 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     window.setTimeout(() => sc.flyTo(kind, from, env.anchor(to), () => cfg.refreshRes()), 140 * k);
   }
 
+  /** Petit « +N » qui monte près d'un compteur (jamais sur le plateau, jamais interactif). */
+  function gainNear(to: AnchorKey, text: string): void {
+    const a = env.anchor(to);
+    if (!a || !alive) return;
+    const el = h('span.en-gain', { 'aria-hidden': 'true' }, text);
+    el.style.left = `${a.x}px`; el.style.top = `${a.y + 14}px`;
+    layer.append(el);
+    window.setTimeout(() => el.remove(), 1000);
+  }
+
   function onEvents(ev: BoardEvent[], got: LootResult) {
     const sc = cfg.getScene();
     for (const e of ev) {
       switch (e.t) {
         case 'merge':
-          if (e.result.c !== 'special' && e.result.c !== 'gen' && e.result.l >= 6) wish('rare');
+          if (e.result.c !== 'special' && e.result.c !== 'gen' && e.result.l >= 7) wish('rare');
           break;
         case 'deliver': {
           haptic('reward');
@@ -433,7 +452,7 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
           feed(parts.length ? parts.join(' · ') : 'Commande livrée ♡', { kind: 'good', ms: 2800 });
           const rr = ordersEl.querySelector(`[data-slot="${e.slot}"]`)?.getBoundingClientRect();
           if (rr) sparkleBurst(rr.left + rr.width / 2, rr.top + rr.height / 2, { rarity: e.tier === 'hard' ? 'epic' : e.tier === 'mid' ? 'rare' : 'uncommon' });
-          wish('orderDone');
+          if (e.tier === 'hard') wish('orderDone'); // seule une commande difficile mérite un mot d'Auguste
           break;
         }
         case 'orderReplace': {
@@ -449,13 +468,12 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
             if (fk) fly(fk, e.at, e.loot.kind === 'diamonds' ? 'diamonds' : e.loot.kind === 'energy' ? 'energy' : e.loot.kind === 'hearts' ? 'hearts' : e.loot.kind === 'chest' ? 'chest' : 'coins', 0);
           }
           if (e.rarity !== 'common' || e.loot.kind !== 'coins') feed(`Drop : ${lootText(e.loot)}`, { kind: 'gain' });
-          if (e.rarity === 'epic' || e.rarity === 'legendary') wish('rare'); else if (e.rarity === 'rare') wish('drop');
+          if (e.rarity === 'epic' || e.rarity === 'legendary') wish('rare');
           break;
         }
         case 'chest':
           feed(e.pending > 1 ? `Coffre gagné ! (${e.pending} à ouvrir)` : 'Coffre gagné ! Touche la jauge pour l\'ouvrir', { kind: 'good', ms: 3200 });
           haptic('reward');
-          wish('chest');
           break;
         case 'discover':
           if (e.isNew) {
@@ -488,11 +506,13 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
           break;
         }
         case 'comboTier':
+          // pas de bandeau : une petite icône vole vers le compteur concerné, qui s'anime avec un « +N » discret
           if (!e.capped) {
-            feed(`Combo ×${e.value}${e.energy ? ` · +${e.energy} ⚡` : ''}${e.hearts ? ` · +${e.hearts} ♡` : ''}`, { kind: 'good' });
+            const at = sc?.lastMerge ?? 14;
+            if (e.energy) { fly('energy', at, 'energy', 0); gainNear('energy', `+${e.energy} ⚡`); }
+            if (e.hearts) { fly('heart', at, 'hearts', 1); gainNear('hearts', `+${e.hearts} ♡`); }
             if (e.reward === 'wand') feed('+1 Baguette magique', { kind: 'good' });
           }
-          if (e.tier >= 1) wish('combo5'); else wish('combo3');
           break;
         case 'rescue':
           feed('Une Étoile filante t\'a débloqué ✨', { kind: 'info', ms: 2800 });
@@ -509,7 +529,7 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
             else if (l.kind === 'coins') fly('coin', e.at, 'coins', k++);
             else if (l.kind === 'chest') fly('chest', e.at, 'chest', k++);
           }
-          if (e.rarity === 'epic' || e.rarity === 'legendary') wish('rare'); else if (e.rarity === 'rare') wish('drop');
+          if (e.rarity === 'epic' || e.rarity === 'legendary') wish('rare');
           break;
         }
         case 'zone':
@@ -546,6 +566,9 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
 
   // premier rendu
   refresh();
+
+  // aide d'accueil : une seule fois, pour une joueuse qui n'a encore livré aucune commande (jamais de bandeau permanent)
+  if ((fun().endless2.counters.orders ?? 0) === 0) window.setTimeout(() => { if (alive) feed('Touche un objet · appui long pour ses infos', { kind: 'info', ms: 4500 }); }, 1500);
 
   return {
     env, top, layer, sel: selEl, select, longPress, feedEl, onEvents, refresh, feed,

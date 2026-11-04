@@ -103,6 +103,23 @@ describe('réactions d\'Auguste', () => {
     expect(g.allow(15_000, false)).toBe(false);
     expect(g.allow(21_001, false)).toBe(true);
   });
+  it('délais par défaut : réactions ordinaires espacées, importantes plus tôt, jamais pendant une fusion', () => {
+    const g = new ReactionGate();
+    g.mark(0, 'Bravo !');
+    expect(g.allow(60_000, false, 0)).toBe(false); // ordinaire : trop tôt
+    expect(g.allow(31_000, false, REACTION_PRIO.maxMerge)).toBe(true); // importante : 30 s suffisent
+    expect(g.allow(95_000, false, 0)).toBe(true);
+    expect(g.allow(95_000, true, REACTION_PRIO.maxMerge)).toBe(false);
+  });
+  it('jamais deux fois la même phrase de suite', () => {
+    const g = new ReactionGate();
+    g.mark(0, 'Bien emballé, bien livré.');
+    expect(g.repeats('Bien emballé, bien livré.')).toBe(true);
+    expect(g.repeats('Quelle élégance.')).toBe(false);
+  });
+  it('les actions banales (combos, commandes simples, coffres, drops) n\'ont aucune priorité « importante »', () => {
+    for (const k of ['combo3', 'combo5', 'drop'] as const) expect(REACTION_PRIO[k]).toBeLessThan(4);
+  });
   it('garde la réaction la plus importante d\'un lot', () => {
     const b = bestReaction([{ key: 'combo3', prio: REACTION_PRIO.combo3 }, { key: 'maxMerge', prio: REACTION_PRIO.maxMerge }]);
     expect(b?.key).toBe('maxMerge');

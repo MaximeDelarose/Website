@@ -68,3 +68,17 @@ export class PointerFsm {
   get swallowed(): boolean { return this.phase === 'long'; }
   get active(): boolean { return this.phase !== 'idle'; }
 }
+
+/** Un contact qui dure plus longtemps que ça est forcément perdu (aucun geste de jeu ne dure 20 s). */
+export const MAX_GESTURE_MS = 20_000;
+
+/**
+ * Le geste mémorisé est-il « coincé » ? Vrai quand le doigt qu'il suit n'appuie plus (relâchement jamais reçu : toucher annulé
+ * par Safari, geste système, relâchement sur une couche HTML), quand un nouvel appui arrive avec le même identifiant de doigt
+ * (le précédent est donc fini), ou quand il dure depuis trop longtemps. Logique pure, testée dans tests/board-pointer.test.ts.
+ */
+export function staleGesture(o: { samePointer: boolean; pointerDown: boolean | undefined; ageMs: number }): boolean {
+  if (o.samePointer) return true;
+  if (o.pointerDown === false) return true;
+  return o.ageMs > MAX_GESTURE_MS;
+}
