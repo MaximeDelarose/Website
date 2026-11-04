@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.0.0-a1";
+  var VERSION = "2.0.0-a2";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -349,7 +349,7 @@
     if (screen === "chest" && chestOpen && (e.code === "Space" || e.code === "Enter") && !(document.activeElement && document.activeElement.tagName === "BUTTON")) { e.preventDefault(); ACTIONS.chestok(); }
     if (state === "levelup" || picking) {
       var n = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3 }[e.code];
-      if (n !== undefined) { var b = card.querySelectorAll("[data-choice]")[n]; if (b) b.click(); }
+      if (n !== undefined) { var b = card.querySelectorAll("[data-choice], [data-action=parme]")[n]; if (b) b.click(); }
     }
   });
   window.addEventListener("keyup", function (e) { if (KEYMAP[e.code]) keys[KEYMAP[e.code]] = false; });
@@ -651,6 +651,7 @@
   function damagePlayer(dmg, pl) {
     var p = pl || me;
     if (p.inv > 0 || p.down || p.choosing || p.god) return;
+    if (riposteOnHit(p)) { p.inv = 0.3; return; }
     if (p.shield) {
       p.shield = false; p.shieldT = p.shieldCd; p.inv = 0.5;
       burst(p.x, p.y, "#9cc56b", 10); SND.crack();
@@ -1739,7 +1740,7 @@
       for (var k = 0; k < n; k++) {
         var t = vis.length ? vis[(Math.random() * vis.length) | 0] : null;
         var tx = t ? t.x : p.x + (Math.random() - 0.5) * W * 0.8, ty = t ? t.y : p.y + (Math.random() - 0.5) * H * 0.8;
-        lobs.push({ owner: p, sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.6 + k * 0.07, dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area, frag: w.frag || 0, sprite: "meteore", sky: true });
+        lobs.push({ owner: p, sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.6 + k * 0.07, dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area, frag: w.frag || 0, sprite: w.lob || "meteore", sky: true });
       }
     },
     rocket: function (id, w, l, dt) {
@@ -1754,14 +1755,11 @@
     },
   };
   function weapons(dt) {
-    Object.keys(p.weapons).forEach(function (id) {
-      var w = ALLW[id]; if (!w) return;
-      var fn = BEHAVIOR[w.type]; if (fn) fn(id, w, p.weapons[id] - 1, dt);
-    });
+    techEntries(p).forEach(function (e) { var fn = BEHAVIOR[e.def.type]; if (fn) fn(e.key, e.def, e.l, dt); });
     itemComps(dt);
     mountTick(dt);
     // compagnons d'une arme perdue (fusionnée) : ils s'en vont
-    if (p.comp) Object.keys(p.comp).forEach(function (id) { if (!p.weapons[id] && !ITEM_COMP[id]) delete p.comp[id]; });
+    if (p.comp) { var live = {}; techEntries(p).forEach(function (e) { live[e.key] = 1; }); Object.keys(p.comp).forEach(function (id) { if (!live[id] && !ITEM_COMP[id]) delete p.comp[id]; }); }
   }
 
   /* ---------- Compagnons : familiers, tourelles, drones ---------- */
@@ -1898,6 +1896,7 @@
   }
   function ingredientName(k) { return (ALLW[k] || D.PASSIVES[k] || {}).name || k; }
   function choices(n) {
+    if (D.TECH) return v2Choices(n);
     var out = readyFusions().slice(0, 2).map(function (id) { return { type: "f", id: id }; });
     var pool = [];
     var nW = Object.keys(p.weapons).length, nP = Object.keys(p.passives).length;
@@ -1970,8 +1969,9 @@
     currentChoices = choices(3 + (me.char.id === "noisette" ? 1 : 0) + (me.extraChoice || 0) + (p.luck > 1.3 && Math.random() < 0.3 ? 1 : 0));
     var html = '<span class="kicker">Niveau ' + r.level + " !</span><h2>Choisis un pouvoir</h2><div class=\"choices\">";
     currentChoices.forEach(function (c, i) {
-      var icon, name, lvl = "", desc, cls = "choice", extra = "";
-      if (c.type === "f") {
+      var icon, name, lvl = "", desc, cls = "choice", extra = "", vc = v2Card(c);
+      if (vc) { icon = img(vc.icon); name = vc.name; lvl = vc.lvl; desc = vc.desc; cls += vc.cls; }
+      else if (c.type === "f") {
         var f = D.FUSIONS[c.id];
         icon = img(f.icon); name = f.name; lvl = f.tier === 2 ? "Fusion légendaire !" : "Fusion !"; cls += f.tier === 2 ? " is-fusion is-legend" : " is-fusion";
         desc = f.desc[0]; extra = recipeHtml(c.id) + synHtml(c.id);
@@ -2006,6 +2006,7 @@
   }
   // applique un choix au joueur actif « p » (moi, ou un invité côté hôte)
   function applyCore(c) {
+    if (v2Apply(c)) { calc(p); return; }
     if (c.type === "f") applyFusion(c.id);
     else if (c.type === "w") p.weapons[c.id] = c.lvl;
     else if (c.type === "p") { p.passives[c.id] = c.lvl; if (c.id === "appetit") p.hp += 20; if (c.id === "mousse" && c.lvl === 1) p.shield = true; }
@@ -2280,6 +2281,206 @@
     if (pl.volteFlash > 0 && ((pl.volteFlash * 12) | 0) % 2 === 0) { ctx.fillStyle = "#f6ef7a"; ctx.fillRect(x + 8, y - 25, 2, 3); ctx.fillRect(x + 7, y - 23, 2, 2); ctx.fillRect(x + 6, y - 22, 2, 3); }
     if (pl.volteT > 0) { ctx.globalAlpha = pl.volteT / 0.35 * 0.5; blit(SPR[pl.sprite][0], pl.x - (pl.dir ? pl.dir.x * 6 : 0), pl.y - (pl.dir ? pl.dir.y * 6 : 0), pl.face < 0, true); ctx.globalAlpha = 1; }
   }
+  /* ---------- 2.0 phase 2 : techniques habillées par l'arme, évolutions, fusions ---------- */
+  function mapv(v, f) { return Array.isArray(v) ? v.map(f) : (typeof v === "number" ? f(v) : v); }
+  function applyMods(d, m) {
+    if (!m) return;
+    Object.keys(m.mul || {}).forEach(function (k) { if (d[k] !== undefined) d[k] = mapv(d[k], function (x) { return x * m.mul[k]; }); });
+    Object.keys(m.add || {}).forEach(function (k) { d[k] = d[k] === undefined ? m.add[k] : mapv(d[k], function (x) { return x + m.add[k]; }); });
+    Object.keys(m.set || {}).forEach(function (k) { d[k] = m.set[k]; });
+  }
+  function armeOf(pl) { return D.ARMES[pl.arme] || D.ARMES.katana; }
+  // définition effective d'une technique pour ce joueur (habillage + évolution + fusion d'objet)
+  function techDef(pl, id, evo, fus) {
+    var base = ALLW[id]; if (!base) return null;
+    if (base.type === "combo") return base;
+    evo = evo === undefined ? (pl.evo || {})[id] : evo; fus = fus === undefined ? !!(pl.tfus || {})[id] : fus;
+    var key = id + "|" + (evo || "") + "|" + (fus ? 1 : 0) + "|" + (pl.arme || "");
+    pl.tdef = pl.tdef || {};
+    if (pl.tdef[key]) return pl.tdef[key];
+    var d = {}; Object.keys(base).forEach(function (k) { d[k] = base[k]; });
+    var sk = D.TECH[id] && armeOf(pl).skin[id];
+    if (sk) { d.name = sk[0]; if (sk[1]) { d.icon = sk[1]; if (d.type === "pet") d.pet = sk[1]; else if (d.type === "turret") d.turret = d.turret; else d.sprite = sk[1]; } d.generic = base.name; }
+    if (evo && base.evos) { var ev = base.evos.filter(function (e) { return e.id === evo; })[0]; if (ev) { applyMods(d, ev); d.evoName = ev.name; } }
+    if (fus && D.TFUS[id]) { applyMods(d, D.TFUS[id]); d.fusName = D.TFUS[id].name; d.fusion = true; }
+    pl.tdef[key] = d;
+    return d;
+  }
+  function techName(pl, id) { var d = techDef(pl, id); if (!d) return id; return d.name + (d.evoName ? " · " + d.evoName : "") + (d.fusName ? " · " + d.fusName : ""); }
+  function scaleDmg(d, k) { var o = {}; Object.keys(d).forEach(function (q) { o[q] = d[q]; }); o.dmg = mapv(d.dmg, function (x) { return x * k; }); return o; }
+  // liste de ce qui agit vraiment : les fusions de techniques font agir leurs composants
+  function techEntries(pl) {
+    var out = [];
+    Object.keys(pl.weapons || {}).forEach(function (id) {
+      var d = ALLW[id]; if (!d) return;
+      if (d.type === "combo") {
+        (pl.cparts && pl.cparts[id] || []).forEach(function (pt, i) {
+          var pd = techDef(pl, pt.id, pt.evo, pt.fus); if (pd) out.push({ key: id + "/" + i, def: scaleDmg(pd, d.mul || 1.35), l: 4 });
+        });
+      } else out.push({ key: id, def: techDef(pl, id), l: pl.weapons[id] - 1 });
+    });
+    return out;
+  }
+  function isTech(id) { return !!D.TECH[id]; }
+  // composants d'une fusion de techniques : leurs évolutions et fusions d'objet sont gardées
+  function partsOf(pl, id) {
+    if (pl.cparts && pl.cparts[id]) return pl.cparts[id];
+    return [{ id: id, evo: (pl.evo || {})[id], fus: !!(pl.tfus || {})[id] }];
+  }
+  function comboReady(pl, cid) {
+    var c = ALLW[cid];
+    return c.parts.every(function (q) { return pl.weapons[q] && (ALLW[q].type === "combo" || (pl.weapons[q] >= MAX_LVL && (pl.evo || {})[q])); }) && !pl.weapons[cid];
+  }
+  function v2Choices(n) {
+    var out = [], pool = [], pl = p, ar = armeOf(pl);
+    var techs = Object.keys(pl.weapons).filter(function (k) { return ALLW[k]; });
+    // évolutions d'abord : on choisit l'une des deux
+    techs.forEach(function (k) { var d = ALLW[k]; if (d.evos && pl.weapons[k] >= MAX_LVL && !(pl.evo || {})[k]) d.evos.forEach(function (e) { out.push({ type: "evo", id: k, evo: e.id }); }); });
+    // fusions prêtes (technique + objet, technique + technique, légendaires)
+    Object.keys(D.COMBOS).concat(Object.keys(D.LEGENDS)).forEach(function (cid) { if (comboReady(pl, cid)) out.push({ type: "cb", id: cid }); });
+    techs.forEach(function (k) { var tf = D.TFUS[k]; if (tf && (pl.evo || {})[k] && !(pl.tfus || {})[k] && (pl.passives[tf.p] || 0) >= MAX_LVL) out.push({ type: "pf", id: k }); });
+    out = out.slice(0, Math.max(2, n - 1));
+    techs.forEach(function (k) { if (ALLW[k].type !== "combo" && pl.weapons[k] < MAX_LVL) pool.push({ type: "w", id: k, lvl: pl.weapons[k] + 1, weight: 3 }); });
+    if (techs.length < MAX_W) Object.keys(ar.skin).forEach(function (k) { if (!pl.weapons[k] && !pl.consumed[k]) pool.push({ type: "w", id: k, lvl: 1, weight: 2 }); });
+    var nP = Object.keys(pl.passives).length;
+    Object.keys(D.PASSIVES).forEach(function (k) {
+      var l = pl.passives[k] || 0;
+      if (l >= MAX_LVL || (!l && nP >= MAX_P) || (!l && (!allowed(D.PASSIVES[k]) || !questOk(D.PASSIVES[k])))) return;
+      var w = l ? 2 : 1.4;
+      if (!l && Object.keys(D.TFUS).some(function (t) { return pl.weapons[t] && D.TFUS[t].p === k; })) w += 1;   // l'objet d'une recette en cours
+      pool.push({ type: "p", id: k, lvl: l + 1, weight: w });
+    });
+    while (out.length < n && pool.length) {
+      var total = pool.reduce(function (s, c) { return s + c.weight; }, 0), x = Math.random() * total;
+      for (var i = 0; i < pool.length; i++) { x -= pool[i].weight; if (x <= 0 || i === pool.length - 1) { out.push(pool.splice(i, 1)[0]); break; } }
+    }
+    if (!out.length) out = [{ type: "heal" }, { type: "gold" }];
+    return out;
+  }
+  function v2Apply(c) {
+    var pl = p;
+    if (c.type === "evo") { pl.evo = pl.evo || {}; pl.evo[c.id] = c.evo; burst(pl.x, pl.y, "#6ad8ff", 16); if (pl === me) banner("Évolution : " + techName(pl, c.id)); return true; }
+    if (c.type === "pf") { pl.tfus = pl.tfus || {}; pl.tfus[c.id] = true; burst(pl.x, pl.y, "#f6d36b", 22); if (pl === me) { r.fusions++; banner("Fusion : " + techName(pl, c.id)); SND.fusion(); } return true; }
+    if (c.type === "cb") {
+      var cd = ALLW[c.id], parts = [];
+      cd.parts.forEach(function (q) { parts = parts.concat(partsOf(pl, q)); delete pl.weapons[q]; pl.consumed[q] = true; if (pl.cparts) delete pl.cparts[q]; delete pl.timers[q]; });
+      pl.cparts = pl.cparts || {}; pl.cparts[c.id] = parts; pl.weapons[c.id] = MAX_LVL;
+      burst(pl.x, pl.y, cd.legend ? "#ff9a3a" : "#f6d36b", 30);
+      if (pl === me) { r.fusions++; if (cd.legend) r.legend++; banner((cd.legend ? "Légendaire : " : "Fusion : ") + cd.name + " !"); SND.fusion(); }
+      return true;
+    }
+    return false;
+  }
+  function v2Card(c) {
+    var pl = me, d;
+    if (c.type === "evo") { var ev = ALLW[c.id].evos.filter(function (e) { return e.id === c.evo; })[0]; d = techDef(pl, c.id); return { icon: d.icon, name: d.name + " → " + ev.name, lvl: "Évolution", desc: ev.desc, cls: " is-fusion" }; }
+    if (c.type === "pf") { var tf = D.TFUS[c.id]; d = techDef(pl, c.id); return { icon: d.icon, name: d.name + " + " + D.PASSIVES[tf.p].name, lvl: "Fusion : " + tf.name, desc: tf.desc, cls: " is-fusion" }; }
+    if (c.type === "cb") { var cb = ALLW[c.id]; return { icon: cb.icon, name: cb.name, lvl: cb.legend ? "Fusion légendaire !" : "Fusion de techniques", desc: cb.desc[0] + " Recette : " + cb.parts.map(function (q) { return ALLW[q].type === "combo" ? ALLW[q].name : techDef(pl, q).name; }).join(" + ") + ". Libère un emplacement.", cls: cb.legend ? " is-fusion is-legend" : " is-fusion" }; }
+    if (c.type === "w") {
+      d = techDef(pl, c.id);
+      var fam = { tir: "Tir", melee: "Mêlée", zone: "Zone", retour: "Retour", compagnon: "Compagnon" }[d.family] || "";
+      var hint = isTech(c.id) ? (c.lvl === 1 ? "Technique " + fam + " (" + d.generic + ")" : "Niv. " + c.lvl) : "Attaque de base · niv. " + c.lvl;
+      var desc = c.lvl === 1 && isTech(c.id) ? "Nouvelle technique. Au niveau 5, choisis entre " + ALLW[c.id].evos.map(function (e) { return e.name; }).join(" et ") + "." : (d.desc && d.desc[c.lvl - 1]) || "Amélioration.";
+      return { icon: d.icon, name: d.name, lvl: hint, desc: desc, cls: "" };
+    }
+    return null;
+  }
+  // arme tirée au début de chaque partie (3 parmi celles débloquées)
+  function openDraft() {
+    state = "levelup"; clearInput();
+    var ids = Object.keys(D.ARMES).sort(function () { return Math.random() - 0.5; }).slice(0, 3);
+    var html = '<span class="kicker">Nouvelle partie</span><h2>Choisis ton arme</h2><div class="choices">';
+    ids.forEach(function (id, i) {
+      var a = D.ARMES[id], b = ALLW[a.base];
+      html += '<button type="button" class="choice" data-action="parme" data-arg="' + id + '"><span class="choice-key">' + (i + 1) + '</span><span class="choice-icon">' + img(a.icon) + '</span>' +
+        '<span class="choice-text"><strong>' + esc(a.name) + "</strong><em>" + esc(b.name) + "</em><span>" + esc(a.desc) + "</span></span></button>";
+    });
+    showCard(html + "</div>", "draft");
+  }
+  function pickArme(id) {
+    var a = D.ARMES[id]; if (!a) return;
+    me.arme = id; me.weapons = {}; me.weapons[a.base] = 1; me.evo = {}; me.tfus = {}; me.cparts = {}; me.tdef = {}; me.timers = {};
+    r.arme = id; calc(me); refreshCounts();
+    state = "play"; hideCard(); last = performance.now();
+  }
+  /* ---- nouveaux comportements ---- */
+  function lineHit(x0, y0, ang, len, wd, fn) {
+    var cx = Math.cos(ang), cy = Math.sin(ang);
+    near(x0 + cx * len / 2, y0 + cy * len / 2, len / 2 + wd + 12, function (e) {
+      var dx = e.x - x0, dy = e.y - y0, t = dx * cx + dy * cy; if (t < -4 || t > len + e.d.r) return;
+      if (Math.abs(-dx * cy + dy * cx) > wd + e.d.r) return; fn(e, cx, cy);
+    });
+  }
+  function aimAngle(range) { var t = nearest(1, range)[0]; return t ? Math.atan2(t.y - p.y, t.x - p.x) : (p.dir ? Math.atan2(p.dir.y, p.dir.x) : (p.face > 0 ? 0 : Math.PI)); }
+  BEHAVIOR.beam = function (id, w, l, dt) {
+    if (!timer(id, V(w, "cd", l), dt)) return;
+    var len = V(w, "len", l) * p.area, wd = V(w, "w", l), dmg = V(w, "dmg", l), a0 = aimAngle(len), k = w.split || 1;
+    for (var i = 0; i < k; i++) {
+      var ag = a0 + (i - (k - 1) / 2) * 0.35;
+      fx.push({ kind: "beam", x: p.x, y: p.y - 2, a: ag, len: len, w: wd, life: 0.2, max: 0.2, col: w.color || "246,239,122" });
+      lineHit(p.x, p.y, ag, len, wd, function (e) { hurt(e, dmg, 0, 0); });
+    }
+    SND.zap();
+  };
+  BEHAVIOR.lunge = function (id, w, l, dt) {
+    if (!timer(id, V(w, "cd", l), dt)) return;
+    var len = V(w, "len", l) * p.area, wd = V(w, "w", l), dmg = V(w, "dmg", l), ag = aimAngle(len + 20);
+    fx.push({ kind: "beam", x: p.x, y: p.y, a: ag, len: len, w: wd * 0.6, life: 0.14, max: 0.14, col: w.color || "253,243,222" });
+    lineHit(p.x, p.y, ag, len, wd, function (e, cx, cy) { hurt(e, dmg * (w.execute && e.hp < e.maxHp * 0.3 ? 2 : 1), cx * 120, cy * 120); });
+    SND.whip();
+  };
+  BEHAVIOR.wave = function (id, w, l, dt) {
+    if (!timer(id, V(w, "cd", l), dt)) return;
+    var a0 = aimAngle(V(w, "range", l) + 30), k = w.fan || 1, spd = w.spd || 150, rr = V(w, "r", l) * p.area;
+    for (var i = 0; i < k; i++) {
+      var ag = a0 + (i - (k - 1) / 2) * 0.6;
+      projs.push({ owner: p, kind: "bullet", x: p.x, y: p.y - 2, vx: Math.cos(ag) * spd, vy: Math.sin(ag) * spd, dmg: V(w, "dmg", l), pierce: 99, sprite: w.sprite || "windblade", life: V(w, "range", l) / spd, hit: [], r: rr, explode: 0 });
+    }
+    SND.whip();
+  };
+  BEHAVIOR.riposte = function (id, w, l, dt) {
+    p.ripo = p.ripo || {}; var st = p.ripo[id] = p.ripo[id] || { cd: 0 };
+    st.cd = Math.max(0, st.cd - dt); st.w = w; st.l = l;
+    if (w.auto) { st.autoT = (st.autoT || 0) + dt; if (st.autoT >= w.auto) { st.autoT = 0; riposteBlast(p, w, l); } }
+  };
+  function riposteBlast(pl, w, l) {
+    var pp = p; p = pl; var R = V(w, "R", l) * pl.area;
+    fx.push({ kind: "ring", x: pl.x, y: pl.y, r: R, life: 0.3, max: 0.3, col: "253,243,222" });
+    near(pl.x, pl.y, R + 12, function (e) { var d = Math.hypot(e.x - pl.x, e.y - pl.y) || 1; if (d < R + e.d.r) hurt(e, V(w, "dmg", l), (e.x - pl.x) / d * 140, (e.y - pl.y) / d * 140); });
+    SND.crack(); p = pp;
+  }
+  // appelé quand le joueur prend un coup : renvoie true si le coup est annulé
+  function riposteOnHit(pl) {
+    if (!pl.ripo) return false;
+    var cancel = false;
+    Object.keys(pl.ripo).forEach(function (k) { var st = pl.ripo[k]; if (!st.w || st.cd > 0) return; st.cd = V(st.w, "cd", st.l) * (pl.cdMul || 1); riposteBlast(pl, st.w, st.l); if (st.w.parry) cancel = true; });
+    return cancel;
+  }
+  BEHAVIOR.grapple = function (id, w, l, dt) {
+    if (!timer(id, V(w, "cd", l), dt)) return;
+    var range = V(w, "range", l), list = nearest(12, range).filter(function (e) { return !e.d.boss; });
+    list.sort(function (a, b) { return Math.hypot(b.x - p.x, b.y - p.y) - Math.hypot(a.x - p.x, a.y - p.y); });
+    list.slice(0, V(w, "n", l)).forEach(function (e) {
+      var dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
+      fx.push({ kind: "beam", x: p.x, y: p.y, a: Math.atan2(-dy, -dx), len: d, w: 1, life: 0.25, max: 0.25, col: "200,190,170" });
+      e.x += dx / d * Math.max(0, d - 18) * 0.85; e.y += dy / d * Math.max(0, d - 18) * 0.85;
+      hurt(e, V(w, "dmg", l), 0, 0);
+      if (w.boom && !e.dead) explode(e.x, e.y, w.boom, V(w, "dmg", l) * 0.8, 0);
+    });
+    SND.whip();
+  };
+  BEHAVIOR.echo = function (id, w, l, dt) {
+    if (!timer(id, V(w, "cd", l), dt)) return;
+    var b = armeOf(p).base, bd = techDef(p, b); if (!bd || !BEHAVIOR[bd.type]) return;
+    var sides = w.twins ? [-1, 1] : [-(p.face || 1)], ox = p.x, oy = p.y, k = V(w, "mul", l);
+    sides.forEach(function (sd) {
+      p.x = ox + sd * 18; p.y = oy - 4;
+      fx.push({ kind: "ghost", x: p.x, y: p.y, life: 0.35, max: 0.35, spr: p.sprite, face: p.face });
+      var tk = "__echo" + sd; p.timers[tk] = 0; BEHAVIOR[bd.type](tk, scaleDmg(bd, k), (p.weapons[b] || 1) - 1, 0);
+    });
+    p.x = ox; p.y = oy;
+  };
+  BEHAVIOR.combo = function () {};
   function moveMe(dt) {
     var v = (me.down || me.choosing || netMenuOpen) ? { x: 0, y: 0 } : inputVector();
     stateTick(me, v, dt);
@@ -3111,7 +3312,7 @@
   }
   function rewardInfo(c) {
     if (c.type === "f") { var f = D.FUSIONS[c.id]; return { icon: f.icon, name: f.name, sub: f.tier === 2 ? "Légendaire !" : "Fusion !", fx: true }; }
-    if (c.type === "w") { var w = ALLW[c.id]; return { icon: w.icon, name: w.name, sub: c.lvl === 1 ? "Nouvelle arme" : "Niv. " + c.lvl }; }
+    var vc = v2Card(c); if (vc) return { icon: vc.icon, name: vc.name, sub: vc.lvl, fx: c.type !== "w" };
     if (c.type === "p") { var ps = D.PASSIVES[c.id]; return { icon: ps.sprite, name: ps.name, sub: c.lvl === 1 ? "Nouvel objet" : "Niv. " + c.lvl }; }
     if (c.type === "heal") return { icon: "berry", name: "Baies", sub: "+40 PV" };
     return { icon: "goldbag", name: "Bourse", sub: "+15 glands" };
@@ -3466,9 +3667,9 @@
     hurricane: { fill: "rgba(160,200,230,.14)", ring: "rgba(230,255,248,.7)", dot: "leaf" },
   };
   function drawAuras(p) {
-    Object.keys(p.weapons).forEach(function (id) {
-      var w = ALLW[id]; if (!w || w.type !== "aura") return;
-      var st = AURA[w.color] || AURA.spore, R = V(w, "R", p.weapons[id] - 1) * p.area;
+    techEntries(p).forEach(function (te) {
+      var id = te.key, w = te.def; if (!w || w.type !== "aura") return;
+      var st = AURA[w.color] || AURA.spore, R = V(w, "R", te.l) * p.area;
       ctx.fillStyle = st.fill;
       ctx.beginPath(); ctx.ellipse(p.x, p.y, R, R * 0.8, 0, 0, TAU); ctx.fill();
       if (st.ring) {
@@ -3484,9 +3685,9 @@
     });
   }
   function drawTethers(p) {
-    Object.keys(p.weapons).forEach(function (id) {
-      var w = ALLW[id]; if (!w || w.type !== "tether") return;
-      var l = p.weapons[id] - 1, rng = V(w, "range", l), big = !!w.chain;
+    techEntries(p).forEach(function (te) {
+      var id = te.key, w = te.def; if (!w || w.type !== "tether") return;
+      var l = te.l, rng = V(w, "range", l), big = !!w.chain;
       players.forEach(function (o) {
         if (o === p || o.down || Math.hypot(o.x - p.x, o.y - p.y) > rng) return;
         if (o.weapons && o.weapons[id] && o.id < p.id) return; // un seul arc si les deux l'ont
@@ -3501,9 +3702,9 @@
     });
   }
   function drawOrbits(p) {
-    Object.keys(p.weapons).forEach(function (id) {
-      var w = ALLW[id]; if (!w || w.type !== "orbit") return;
-      var l = p.weapons[id] - 1, n = V(w, "n", l) + p.amount, R = V(w, "R", l) * p.area;
+    techEntries(p).forEach(function (te) {
+      var id = te.key, w = te.def; if (!w || w.type !== "orbit") return;
+      var l = te.l, n = V(w, "n", l) + p.amount, R = V(w, "R", l) * p.area;
       var c = w.around === "partner" ? (partnerOf(p) || p) : p;
       for (var j = 0; j < n; j++) {
         var oa = (p.st[id] || 0) + j / n * TAU;
@@ -3843,6 +4044,12 @@
       ctx.strokeStyle = f.col ? "rgba(" + f.col + "," + (1 - k) + ")" : f.red ? "rgba(255,70,40," + (1 - k) + ")" : "rgba(242,176,94," + (1 - k) + ")"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * (0.4 + k * 0.6), f.r * (0.4 + k * 0.6) * 0.8, 0, 0, TAU); ctx.stroke();
       ctx.fillStyle = f.col ? "rgba(" + f.col + "," + (0.25 * (1 - k)) + ")" : "rgba(255,226,122," + (0.35 * (1 - k)) + ")"; ctx.fill();
+    } else if (f.kind === "beam") {
+      var tb = f.life / f.max, bx = Math.cos(f.a) * f.len, by = Math.sin(f.a) * f.len;
+      ctx.strokeStyle = "rgba(" + f.col + "," + (0.5 * tb) + ")"; ctx.lineWidth = f.w * 2; ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(f.x + bx, f.y + by); ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255," + tb + ")"; ctx.lineWidth = Math.max(1, f.w * 0.6); ctx.stroke(); ctx.lineWidth = 1;
+    } else if (f.kind === "ghost") {
+      ctx.globalAlpha = 0.5 * f.life / f.max; blit(SPR[f.spr][0], f.x, f.y, f.face < 0, true); ctx.globalAlpha = 1;
     } else if (f.kind === "slash") {
       var tk = 1 - f.life / f.max, o = f.pl || me, a0 = f.a - f.arc / 2, sw = f.arc * Math.min(1, tk * 2.2);
       var s0 = f.flip ? f.a + f.arc / 2 : a0, s1 = f.flip ? s0 - sw : s0 + sw;
@@ -3917,7 +4124,7 @@
     var pl2 = Object.keys(p.passives).map(function (id) { return [id, p.passives[id]]; });
     var ready = {};
     readyFusions().forEach(function (id) { D.FUSIONS[id].from.forEach(function (k) { ready[k] = true; }); });
-    drawSlots(2, 14, wl2, MAX_W, function (id) { return ALLW[id].icon; }, function (id) { return ALLW[id].fusion; }, ready);
+    drawSlots(2, 14, wl2, MAX_W, function (id) { return techDef(me, id).icon; }, function (id) { var d = techDef(me, id); return d.fusion || !!(me.evo || {})[id]; }, ready);
     drawSlots(2, 27, pl2, MAX_P, function (id) { return D.PASSIVES[id].sprite; }, null, ready);
     if (Object.keys(ready).length && Math.sin(r.time * 6) > -0.3) drawText("FUSION PRETE", 2 + MAX_W * 13 + 3, 30, "#f6d36b", "l");
     // PV
@@ -4191,7 +4398,7 @@
         tile("tree", "🌳", "Compétences", fp > 0 ? fp + " point" + (fp > 1 ? "s" : "") + " à dépenser" : "Arbre", fp > 0 ? fp : "", fp > 0) +
         tile("succes", "🏆", "Succès", nAch + " / " + D.ACHIEVEMENTS.length) +
         tile("quetes", "🗝️", "Quêtes", nQ + " / " + D.QUESTS.length) +
-        tile("codex", "📜", "Fusions", Object.keys(D.FUSIONS).length + " recettes") +
+        tile("codex", "📜", "Techniques", "20 techniques · " + (Object.keys(D.TFUS).length + Object.keys(D.COMBOS).length + Object.keys(D.LEGENDS).length) + " fusions") +
         tile("help", "❓", "Aide", "Comment jouer") +
         tile("options", "⚙️", "Options", "Son, effets") +
         "</div>" +
@@ -4384,12 +4591,28 @@
       return html + "</div>";
     },
     codex: function () {
-      var html = '<div class="screen-head">' + back() + '<h2>Fusions</h2></div><p class="game-small">Monte les deux ingrédients au niveau 5 : la fusion apparaît alors dans tes choix (ou sort d\'un coffre). Deux armes fusionnées libèrent une case. Les fusions <b>légendaires</b> se font à partir de fusions au niveau 5.</p><div class="shop-list">';
-      Object.keys(D.FUSIONS).forEach(function (id) {
-        var f = D.FUSIONS[id], a = f.from[0], b = f.from[1], ib = iconOfAny(b);
-        html += '<div class="shop-item fusion-row' + (f.tier === 2 ? " is-legend" : "") + '"><span class="shop-ic"><img src="' + spriteUrl(f.icon) + '" alt=""></span>' +
-          '<div class="shop-text"><strong>' + esc(f.name) + (f.tier === 2 ? ' <em class="legend-tag">Légendaire</em>' : "") + "</strong><span>" + esc(f.desc[0]) + "</span>" +
-          '<span class="fusion-recipe"><img src="' + spriteUrl(iconOfAny(a)) + '" alt=""> ' + esc(ingredientName(a)) + ' + <img src="' + spriteUrl(ib) + '" alt=""> ' + esc(ingredientName(b)) + "</span></div></div>";
+      // 2.0 : la chaîne d'une technique (évolution → fusion avec un objet → fusion de techniques → légendaire)
+      function nm(id) { return ALLW[id].name; }
+      var html = '<div class="screen-head">' + back() + '<h2>Techniques et fusions</h2></div>' +
+        '<p class="game-small">Chaque arme donne accès à 12 des 20 techniques, à sa façon. Une technique monte au niveau 5, puis <b>évolue</b> (2 choix). Évoluée + son objet de niveau au max : <b>fusion</b>. Deux techniques évoluées : une <b>technique fusionnée</b> (libère un emplacement). Deux fusions : une <b>légendaire</b>.</p>';
+      html += '<h3 class="pick-title">Les 3 armes</h3><div class="shop-list">';
+      Object.keys(D.ARMES).forEach(function (id) {
+        var a = D.ARMES[id];
+        html += '<div class="shop-item"><span class="shop-ic"><img src="' + spriteUrl(a.icon) + '" alt=""></span><div class="shop-text"><strong>' + esc(a.name) + "</strong><span>" + esc(a.desc) + '</span><span class="fusion-recipe">' + Object.keys(a.skin).map(function (t) { return esc(a.skin[t][0]) + " (" + esc(nm(t)) + ")"; }).join(" · ") + "</span></div></div>";
+      });
+      html += '</div><h3 class="pick-title">Les 20 techniques et leurs évolutions</h3><div class="shop-list">';
+      Object.keys(D.TECH).forEach(function (id) {
+        var t = D.TECH[id], tf = D.TFUS[id];
+        html += '<div class="shop-item"><span class="shop-ic"><img src="' + spriteUrl(t.icon) + '" alt=""></span><div class="shop-text"><strong>' + esc(t.name) + " <small>" + esc({ tir: "Tir", melee: "Mêlée", zone: "Zone", retour: "Retour", compagnon: "Compagnon" }[t.fam]) + "</small></strong>" +
+          "<span>" + t.evos.map(function (e) { return "<b>" + esc(e.name) + "</b> : " + esc(e.desc); }).join("<br>") + "</span>" +
+          (tf ? '<span class="fusion-recipe">+ ' + esc(D.PASSIVES[tf.p].name) + " → " + esc(tf.name) + " : " + esc(tf.desc) + "</span>" : "") + "</div></div>";
+      });
+      html += '</div><h3 class="pick-title">Fusions de techniques</h3><div class="shop-list">';
+      [D.COMBOS, D.LEGENDS].forEach(function (set) {
+        Object.keys(set).forEach(function (id) {
+          var c = set[id];
+          html += '<div class="shop-item fusion-row' + (c.legend ? " is-legend" : "") + '"><span class="shop-ic"><img src="' + spriteUrl(c.icon) + '" alt=""></span><div class="shop-text"><strong>' + esc(c.name) + (c.legend ? ' <em class="legend-tag">Légendaire</em>' : "") + "</strong><span>" + esc(c.desc[0]) + '</span><span class="fusion-recipe">' + c.parts.map(function (q) { return esc(nm(q)); }).join(" + ") + "</span></div></div>";
+        });
       });
       return html + "</div>";
     },
@@ -4423,6 +4646,7 @@
 
   var ACTIONS = {
     go: function (a) { SND.click(); if (a === "play") { inspect.char = S.char; inspect.map = S.map; } go(a); },
+    parme: function (id) { if (screen === "draft") { SND.level(); pickArme(id); } },
     tpos: function (id) { var ps = posturesOf(S.char).filter(function (x) { return x.id === id; })[0]; if (!ps || !postureOk(ps)) return; S.posture = S.posture || {}; S.posture[S.char] = id; save(); SND.click(); go("play"); },
     tchar: function (id) { inspect.char = id; if (charAvailable(charById(id))) S.char = id; save(); SND.click(); go("play"); },
     tdun: function (id) { inspect.dun = id; if (has(dungeonById(id).unlock)) S.dungeon = id; save(); trackMe(); SND.click(); go("play"); },
@@ -5028,6 +5252,7 @@
     if (!document.fullscreenElement && !stage.classList.contains("is-max") && (rc.top < top || rc.bottom > window.innerHeight))
       window.scrollTo({ top: window.scrollY + rc.top - top - 8, behavior: "smooth" });
     sfx(660, 0.1, "square", 0.04);
+    if (D.ARMES && !Net.on) openDraft();
   }
   function netMenu() {
     netMenuOpen = true; me.choosing = true; clearInput(); sendInput();
@@ -5042,7 +5267,7 @@
     if (humans() > 1) { if (netMenuOpen) resume(); else netMenu(); return; }
     state = "pause"; clearInput();
     var html = '<h2>Pause</h2><div class="pause-grid"><div><h3>Armes (' + Object.keys(p.weapons).length + "/" + MAX_W + ')</h3><ul class="build-list">';
-    Object.keys(p.weapons).forEach(function (k) { html += '<li class="' + (ALLW[k].fusion ? "is-fusion" : "") + '"><img src="' + spriteUrl(ALLW[k].icon) + '" alt="">' + esc(ALLW[k].name) + " <b>niv. " + p.weapons[k] + "</b>" + synHtml(k) + "</li>"; });
+    Object.keys(p.weapons).forEach(function (k) { var td = techDef(p, k); html += '<li class="' + (td.fusion ? "is-fusion" : "") + '"><img src="' + spriteUrl(td.icon) + '" alt="">' + esc(techName(p, k)) + " <b>niv. " + p.weapons[k] + "</b></li>"; });
     html += '</ul><h3>Objets (' + Object.keys(p.passives).length + "/" + MAX_P + ')</h3><ul class="build-list">';
     Object.keys(p.passives).forEach(function (k) { html += '<li><img src="' + spriteUrl(D.PASSIVES[k].sprite) + '" alt="">' + esc(D.PASSIVES[k].name) + " <b>niv. " + p.passives[k] + "</b>" + synHtml(k) + "</li>"; });
     html += '</ul></div><div><h3>Statistiques</h3><ul class="stat-list">' +
@@ -5315,6 +5540,12 @@
     giants: function () { var out = []; for (var i = -3; i <= 3; i++) for (var j = -3; j <= 3; j++) { var g = giantAt(i, j); if (g) out.push([g.k, Math.round(g.x), Math.round(g.y)]); } return { n: out.length, use: useGiants(), list: out.slice(0, 5), seed: giantSeed }; },
     tp: function (x, y) { me.x = x; me.y = y; },
     pool: function () { p = me; var seen = {}; for (var i = 0; i < 300; i++) choices(6).forEach(function (c) { if (c.id) seen[c.id] = 1; }); var its = {}; for (i = 0; i < 400; i++) its[rollItem(0).id] = 1; return { choix: Object.keys(seen), objets: Object.keys(its) }; },
+    evo: function (id, e) { p = me; me.evo = me.evo || {}; me.evo[id] = e || "a"; return techName(me, id); },
+    tfus: function (id) { me.tfus = me.tfus || {}; me.tfus[id] = true; return techName(me, id); },
+    combo: function (id) { p = me; v2Apply({ type: "cb", id: id }); calc(me); return Object.keys(me.weapons); },
+    entries: function () { return techEntries(me).map(function (e) { return e.key + ":" + e.def.type + ":" + Math.round(V(e.def, "dmg", e.l) || 0); }); },
+    arme: function (id) { pickArme(id); return me.weapons; },
+    choicesNow: function (n) { p = me; return v2Choices(n || 4).map(function (c) { var v = v2Card(c); return c.type + ":" + (v ? v.name : c.id); }); },
     give: function (type, id, lvl) { p = me; if (type === "w") me.weapons[id] = lvl || 5; else me.passives[id] = lvl || 5; calc(me); refreshCounts(); return readyFusions(); },
     twin: function () { var t = me.twinRef; return t ? { x: Math.round(t.x), y: Math.round(t.y), hp: Math.round(t.hp), max: Math.round(t.maxHp), down: t.down, might: Math.round(t.might * 100) / 100, meMight: Math.round(me.might * 100) / 100, w: t.weapons === me.weapons, meDown: me.down, n: players.length } : null; },
     downMe: function (who) { var t = who === "twin" ? me.twinRef : me; t.hp = -1; t.inv = 0; },

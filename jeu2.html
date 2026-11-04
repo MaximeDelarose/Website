@@ -95,7 +95,9 @@
             <li><strong>Le mouvement est ta seule commande</strong>, lu en 3 états : <strong>Ancré</strong> (immobile 0,4 s, un anneau se remplit au sol), <strong>Mouvement</strong>, et <strong>Volte</strong> (demi-tour brusque ou arrêt net après une course, recharge 3 s, un éclair signale qu'elle est prête).</li>
             <li><strong>Choisis une posture</strong> avant la partie : elle donne une règle pour chacun des 3 états.</li>
             <li><strong>Chaque écureuil change une règle du jeu</strong> : Noisette choisit parmi 4 cartes, le Capitaine a un équipage, le Planeur glisse sans cesse.</li>
-            <li>Arme unique pour l'instant : le <strong>Katana</strong>. Les autres armes, les techniques, l'équipement, le camp et l'Expédition arrivent dans les prochaines phases.</li>
+            <li><strong>Au début de chaque partie, choisis ton arme</strong> : Katana, Arc ou Bâton. Elle donne ton attaque de base et accès à 12 des 20 techniques, chacune à sa façon.</li>
+            <li><strong>6 techniques et 6 objets de niveau</strong>. Une technique au niveau 5 <strong>évolue</strong> (2 choix) ; évoluée + son objet au max : <strong>fusion</strong> ; deux techniques évoluées : <strong>technique fusionnée</strong> ; deux fusions : <strong>légendaire</strong>. Tout est listé dans le menu Techniques.</li>
+            <li>À venir : éléments et ennemis à rôles, équipement, talents, camp, Expédition.</li>
             <li>Sauvegarde séparée de la version 1, sans classement pendant la bêta.</li>
           </ul>
         </div>
@@ -128,7 +130,7 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v2a1";
+      var FALLBACK = "v2a2";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
         if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261104mb2" + b);
