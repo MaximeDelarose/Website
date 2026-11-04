@@ -86,3 +86,23 @@
   .pool.is-full .pool-actions .btn { min-width: 44px; }
   .pool.is-full .btn { padding: 6px 10px; }
 }
+
+/* ---------- boule d'effet ---------- */
+.pool-spin { display: flex; align-items: center; gap: 12px; }
+.pool-spin canvas { width: 76px; height: 76px; flex: none; touch-action: none; cursor: crosshair; }
+.pool-spin-t { font-size: .85rem; font-weight: 800; color: var(--ink-soft); }
+/* plein écran : la boule passe à gauche des commandes */
+.pool.is-full .pool-shoot { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 10px; }
+.pool.is-full .pool-spin { grid-row: 1 / span 2; }
+.pool.is-full .pool-spin-t { display: none; }
+.pool.is-full .pool-spin canvas { width: 64px; height: 64px; }
+@media (max-height: 520px) { .pool.is-full .pool-spin canvas { width: 54px; height: 54px; } .pool.is-full .pool-shoot { column-gap: 8px; } }
+
+/* paysage bas : commandes de tir resserrées */
+@media (max-height: 520px) {
+  .pool.is-full { grid-template-columns: minmax(0, 1fr) 224px; }
+  .pool.is-full .pool-power .lbl, .pool.is-full .pool-shoot .emo { display: none; }
+  .pool.is-full .pool-power { grid-template-columns: minmax(0, 1fr) auto; }
+  .pool.is-full .pool-fine { gap: 4px; }
+  .pool.is-full .pool-fine .btn { padding: 4px 8px; min-width: 0; }
+}
