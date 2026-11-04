@@ -17,9 +17,9 @@
     try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; }
   }
   var SAVE_KEY = "grimpe-save-v2", BEST_KEY = "grimpe-best-v2", SND_KEY = "grimpe-sound-v1", MUS_KEY = "grimpe-music-v1", CRT_KEY = "grimpe-crt-v1";
-  var TS = C.TS, SW = C.COLS * TS, SH = C.SROWS * TS, METERS_PER_TILE = 0.5;
+  var TS = C.TS, SW = C.COLS * TS, SH = C.SROWS * TS, METERS_PER_TILE = 0.5, VH = SH;   // VH : hauteur visible (plus haute en portrait)
   var L = C.createLevel(DATA), ZONES = DATA.zones || [{ id: "racines", name: "Grimpe-Chêne", a0: 0, a1: 1 }];
-  var canvas = $("[data-gr-canvas]"), ctx = canvas.getContext("2d");
+  var canvas = $("[data-gr-canvas]"), ctx = canvas.getContext("2d"), stage = $(".gr-stage");
   canvas.width = SW; canvas.height = SH;
   var FONT = '8px "Press Start 2P", ui-monospace, monospace';
 
@@ -33,6 +33,15 @@
   function standM(p) { return Math.max(0, Math.round((L.startY - p.y) / TS * METERS_PER_TILE)); }
   var TOTAL_M = Math.round((L.startY - (L.goal ? L.goal.y * TS : 0)) / TS * METERS_PER_TILE);
   var WORLD_H = L.h * TS;
+  // en portrait on affiche plus d'étages d'un coup : l'écran courant reste au centre, avec du décor au-dessus et en dessous
+  function camTarget() { var ex = VH - SH, t = S.scr * SH - ex * 0.55; return Math.round(Math.max(0, Math.min(WORLD_H - VH, t)) / 8) * 8; }
+  function fit() {
+    var w = stage.clientWidth || 320, portrait = window.innerHeight > window.innerWidth * 1.1, fs = root.classList.contains("gk-fs"), rows = C.SROWS;
+    if (portrait) rows = Math.max(C.SROWS, Math.min(34, Math.floor(20 * (window.innerHeight - (fs ? 230 : 390)) / w)));
+    if (rows * TS === VH && canvas.height === VH) return;
+    VH = rows * TS; canvas.height = VH; amb.length = 0;
+    stage.style.setProperty("--gr-ar", (SW / VH).toFixed(4)); S.camY = camTarget();
+  }
   function altAtPx(wy) { return Math.max(0, Math.min(1, 1 - wy / WORLD_H)); }
   function zoneIdxAt(alt) { for (var i = 0; i < ZONES.length; i++) if (alt < ZONES[i].a1) return i; return ZONES.length - 1; }
 
@@ -123,7 +132,7 @@
   function say(t, s) { S.msg = t; S.msgT = s || 2.5; }
 
   /* ---------- partie ---------- */
-  function resetFx() { parts.length = 0; amb.length = 0; S.camY = S.scr * SH; S.freeze = 0; S.flash = 0; S.banner = null; S.confetti = 0; S.squat = 0; }
+  function resetFx() { parts.length = 0; amb.length = 0; S.camY = camTarget(); S.freeze = 0; S.flash = 0; S.banner = null; S.confetti = 0; S.squat = 0; }
   function enterZone(z, first) {
     var i = zoneIdxAt(z);
     if (ZONES[i].id === S.zoneId) return;
@@ -232,7 +241,6 @@
     btn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   });
   // sur la scène : toucher la moitié gauche / droite = direction, double zone basse = saut
-  var stage = $(".gr-stage");
   var pointerRole = {};
   stage.addEventListener("pointerdown", function (e) {
     if (S.mode !== "play" || e.pointerType === "mouse") return;
@@ -375,7 +383,7 @@
     }
   }
   var bgCache = {}, tileCache = {};
-  function trimCache() { [bgCache, tileCache].forEach(function (m) { for (var k in m) if (Math.abs(k - S.scr) > 3) delete m[k]; }); }
+  function trimCache() { [bgCache, tileCache].forEach(function (m) { for (var k in m) if (Math.abs(k - S.scr) > 4) delete m[k]; }); }
   function bgFor(scr) {
     if (bgCache[scr]) return bgCache[scr];
     trimCache();
@@ -463,7 +471,7 @@
   function drawGoal(c, oy) {
     if (!L.goal) return;
     var px = L.goal.x * TS, py = L.goal.y * TS - oy;
-    if (py < -40 || py > SH + 20) return;
+    if (py < -40 || py > VH + 20) return;
     var bob = Math.round(Math.sin(S.t * 3) * 1.5), k = Math.floor(S.t * 8) % 4, i;
     for (i = 0; i < 8; i++) {
       var a = i * 0.785 + S.t * 0.8; c.fillStyle = (i + k) % 2 ? "#F8D878" : "#FCFCFC";
@@ -538,13 +546,13 @@
   var AMB = { racines: ["fire", 14], tronc: ["mote", 22], canopee: ["leaf", 14], orage: ["rain", 70], glace: ["snow", 46], nuages: ["cloud", 5], sommet: ["spark", 16] };
   function ambInit(kind, q, fresh) {
     q.k = kind; q.ph = rnd(0, 6.28);
-    if (kind === "rain") { q.x = rnd(-20, SW + 20); q.y = fresh ? rnd(0, SH) : -8; q.vx = -50; q.vy = rnd(260, 340); }
-    else if (kind === "snow") { q.x = rnd(0, SW); q.y = fresh ? rnd(0, SH) : -4; q.vx = 0; q.vy = rnd(14, 34); }
-    else if (kind === "leaf") { q.x = rnd(0, SW); q.y = fresh ? rnd(0, SH) : -6; q.vx = rnd(8, 22); q.vy = rnd(14, 30); q.c = ["#58D854", "#00A800", "#FCA044", "#B8F818"][(Math.random() * 4) | 0]; }
-    else if (kind === "mote") { q.x = rnd(0, SW); q.y = fresh ? rnd(0, SH) : SH + 4; q.vx = rnd(-4, 4); q.vy = -rnd(6, 16); }
-    else if (kind === "fire") { q.x = rnd(10, SW - 10); q.y = rnd(30, SH - 10); q.vx = 0; q.vy = 0; }
-    else if (kind === "cloud") { q.x = fresh ? rnd(-20, SW) : -60; q.y = rnd(10, SH - 40); q.vx = rnd(4, 12); q.vy = 0; q.w = 40 + ((Math.random() * 3) | 0) * 12; }
-    else if (kind === "spark") { q.x = rnd(0, SW); q.y = fresh ? rnd(0, SH) : SH + 4; q.vx = rnd(-4, 4); q.vy = -rnd(8, 20); }
+    if (kind === "rain") { q.x = rnd(-20, SW + 20); q.y = fresh ? rnd(0, VH) : -8; q.vx = -50; q.vy = rnd(260, 340); }
+    else if (kind === "snow") { q.x = rnd(0, SW); q.y = fresh ? rnd(0, VH) : -4; q.vx = 0; q.vy = rnd(14, 34); }
+    else if (kind === "leaf") { q.x = rnd(0, SW); q.y = fresh ? rnd(0, VH) : -6; q.vx = rnd(8, 22); q.vy = rnd(14, 30); q.c = ["#58D854", "#00A800", "#FCA044", "#B8F818"][(Math.random() * 4) | 0]; }
+    else if (kind === "mote") { q.x = rnd(0, SW); q.y = fresh ? rnd(0, VH) : VH + 4; q.vx = rnd(-4, 4); q.vy = -rnd(6, 16); }
+    else if (kind === "fire") { q.x = rnd(10, SW - 10); q.y = rnd(30, VH - 10); q.vx = 0; q.vy = 0; }
+    else if (kind === "cloud") { q.x = fresh ? rnd(-20, SW) : -60; q.y = rnd(10, VH - 40); q.vx = rnd(4, 12); q.vy = 0; q.w = 40 + ((Math.random() * 3) | 0) * 12; }
+    else if (kind === "spark") { q.x = rnd(0, SW); q.y = fresh ? rnd(0, VH) : VH + 4; q.vx = rnd(-4, 4); q.vy = -rnd(8, 20); }
   }
   function updateAmb(dt) {
     var def = AMB[S.zoneId]; if (!def) return;
@@ -553,7 +561,7 @@
       var q2 = amb[i]; q2.ph += dt * 3;
       if (q2.k === "fire") { q2.x += Math.cos(q2.ph * 0.6) * 12 * dt; q2.y += Math.sin(q2.ph * 0.8) * 10 * dt; }
       else { q2.x += (q2.vx + (q2.k === "snow" ? Math.sin(q2.ph) * 14 : q2.k === "leaf" ? Math.sin(q2.ph * 1.5) * 20 : 0)) * dt; q2.y += q2.vy * dt; }
-      if (q2.y > SH + 10 || q2.y < -12 || q2.x > SW + 70 || q2.x < -80) ambInit(q2.k, q2, false);
+      if (q2.y > VH + 10 || q2.y < -12 || q2.x > SW + 70 || q2.x < -80) ambInit(q2.k, q2, false);
     }
   }
   function drawAmb(c, back) {
@@ -578,7 +586,7 @@
   function drawWind(c, wind) {                                                        // traînées de vent
     var n = 10, dir = wind > 0 ? 1 : -1;
     for (var i = 0; i < n; i++) {
-      var sp = 150 + (i % 3) * 60, len = 10 + (i % 4) * 6, x = ((S.t * sp * dir + i * 97) % (SW + 40) + SW + 40) % (SW + 40) - 20, y = 8 + ((i * 53) % (SH - 16));
+      var sp = 150 + (i % 3) * 60, len = 10 + (i % 4) * 6, x = ((S.t * sp * dir + i * 97) % (SW + 40) + SW + 40) % (SW + 40) - 20, y = 8 + ((i * 53) % (VH - 16));
       c.fillStyle = i % 2 ? "#FCFCFC" : "#BCBCBC"; c.fillRect(Math.round(x / 2) * 2, Math.round(y / 2) * 2, len, 2);
       if (i % 3 === 0) c.fillRect(Math.round(x / 2) * 2 + (dir > 0 ? len : -4), Math.round(y / 2) * 2 + 2, 4, 2);
     }
@@ -601,7 +609,7 @@
     txt(c, b.b.slice(0, Math.max(0, Math.floor((b.t - 0.3) * 28))), SW >> 1, y + 20, "#FCFCFC", "center");
   }
   function drawMinimap(c, p) {
-    var x = SW - 11, y = 22, w = 6, h = 112;
+    var x = SW - 11, y = 22, w = 6, h = Math.min(220, VH - 44);
     R(c, "#000000", x - 2, y - 2, w + 4, h + 4);
     for (var i = 0; i < ZONES.length; i++) { var z = ZONES[i], y0 = Math.round(y + h * (1 - Math.min(1, z.a1))), y1 = Math.round(y + h * (1 - z.a0)); R(c, (TH[z.id] || TH.racines).sky[Math.min(1, (TH[z.id] || TH.racines).sky.length - 1)] === "#000000" ? "#503000" : (TH[z.id] || TH.racines).sky[Math.min(1, (TH[z.id] || TH.racines).sky.length - 1)], x, y0, w, Math.max(2, y1 - y0 - 1)); }
     R(c, "#F8D878", x - 2, y - 4, w + 4, 2);
@@ -624,14 +632,14 @@
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.imageSmoothingEnabled = false;
     // caméra : défile par pas de 8 px vers l'écran courant
-    var target = scr * SH, dd = target - S.camY;
+    var target = camTarget(), dd = target - S.camY;
     if (Math.abs(dd) > 0.5) S.camY += Math.sign(dd) * Math.min(Math.abs(dd), Math.max(16, Math.ceil(Math.abs(dd) * 0.28 / 8) * 8)); else S.camY = target;
-    var cam = Math.round(S.camY), s0 = Math.floor(cam / SH), sx = 0, sy = 0;
+    var cam = Math.round(S.camY), s0 = Math.floor(cam / SH), s1 = Math.floor((cam + VH - 1) / SH), sx = 0, sy = 0;
     if (S.shake > 0.1) { sx = Math.round((Math.random() - 0.5) * S.shake / 2) * 2; sy = Math.round((Math.random() - 0.5) * S.shake / 2) * 2; }
     c.setTransform(1, 0, 0, 1, sx, sy);
-    for (var k = s0; k <= s0 + 1; k++) if (k >= 0 && k < L.screens) c.drawImage(bgFor(k), 0, k * SH - cam);
+    for (var k = s0; k <= s1; k++) if (k >= 0 && k < L.screens) c.drawImage(bgFor(k), 0, k * SH - cam);
     c.save(); c.translate(0, 0); drawAmb(c, true); c.restore();
-    for (k = s0; k <= s0 + 1; k++) if (k >= 0 && k < L.screens) c.drawImage(tilesFor(k), 0, k * SH - cam);
+    for (k = s0; k <= s1; k++) if (k >= 0 && k < L.screens) c.drawImage(tilesFor(k), 0, k * SH - cam);
     drawGoal(c, cam);
     if (p) {
       c.save(); c.translate(0, -cam);
@@ -650,14 +658,16 @@
     if (S.zoneId === "orage" && S.mode === "play") {
       S.boltT -= 1 / 60; if (S.boltT <= 0) { S.boltT = rnd(4, 9); S.bolt = 0.22; SND.thunder(); }
     }
-    if (S.bolt > 0) { S.bolt -= 1 / 60; var ph = Math.floor(S.bolt * 30); if (ph % 3 !== 1) { c.fillStyle = dpat("#FCFCFC"); c.fillRect(0, 0, SW, SH); if (ph % 3 === 0) { c.fillStyle = "#FCFCFC"; var bx = 40 + Math.floor(hash(Math.floor(S.t), 3) * 220); for (var by = 0; by < SH * 0.6; by += 12) { c.fillRect(bx + ((by / 12) % 2) * 6, by, 4, 12); } } } }
-    if (S.flash > 0) { S.flash -= 1 / 60; c.fillStyle = S.flash > 0.06 ? S.flashCol : dpat(S.flashCol); c.fillRect(0, 0, SW, SH); }
+    if (S.bolt > 0) { S.bolt -= 1 / 60; var ph = Math.floor(S.bolt * 30); if (ph % 3 !== 1) { c.fillStyle = dpat("#FCFCFC"); c.fillRect(0, 0, SW, VH); if (ph % 3 === 0) { c.fillStyle = "#FCFCFC"; var bx = 40 + Math.floor(hash(Math.floor(S.t), 3) * 220); for (var by = 0; by < VH * 0.6; by += 12) { c.fillRect(bx + ((by / 12) % 2) * 6, by, 4, 12); } } } }
+    if (S.flash > 0) { S.flash -= 1 / 60; c.fillStyle = S.flash > 0.06 ? S.flashCol : dpat(S.flashCol); c.fillRect(0, 0, SW, VH); }
     // l'écran se « tasse » dans les derniers pixels, comme sur un vrai téléviseur : liseré clair en haut
     c.setTransform(1, 0, 0, 1, 0, 0);
     if (p && S.mode !== "menu") { drawMinimap(c, p); drawBanner(c); }
-    if (S.mode === "menu") { c.fillStyle = dpat("#000000"); c.fillRect(0, 0, SW, SH); }
+    if (S.mode === "menu") { c.fillStyle = dpat("#000000"); c.fillRect(0, 0, SW, VH); }
   }
 
+  window.addEventListener("resize", fit); window.addEventListener("orientationchange", function () { setTimeout(fit, 200); });
+  try { new MutationObserver(function () { setTimeout(fit, 60); }).observe(root, { attributes: true, attributeFilter: ["class"] }); } catch (e) {}
   /* ---------- boucle ---------- */
   var acc = 0, last = 0, STEP = 1 / 60;
   function frame(now) {
@@ -673,7 +683,7 @@
     requestAnimationFrame(frame);
   }
 
-  S.p = C.newPlayer(L); S.scr = C.screenOf(L, S.p.y - C.PH / 2); S.camY = S.scr * SH; enterZone(altAtPx(S.p.y), true);
+  S.p = C.newPlayer(L); S.scr = C.screenOf(L, S.p.y - C.PH / 2); enterZone(altAtPx(S.p.y), true); fit(); S.camY = camTarget();
   setOverlay("menu"); updateHud();
   requestAnimationFrame(function (t) { last = t; requestAnimationFrame(frame); });
   if (/[?&]debug\b/.test(location.search)) window.GRIMPE_DEBUG = { S: S, L: L, C: C, newGame: newGame, keys: function () { return keys; }, tick: simulate, ZONES: ZONES };

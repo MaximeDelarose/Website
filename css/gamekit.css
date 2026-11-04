@@ -214,7 +214,7 @@ html.gk-reduce-fx .game-overlay, html.gk-reduce-fx .game-overlay > * { animation
 
 /* ---------- Grimpe-Chêne en plein écran : scène 4:3 + commandes tactiles larges ---------- */
 .gr.gk-fs { background: #0d1f14; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; justify-items: center; align-content: start; gap: 6px; }
-.gr.gk-fs .gr-stage { width: min(100%, calc((100dvh - 230px) * 4 / 3)); min-width: 0; border-width: 0; border-radius: 0; box-shadow: none; }
+.gr.gk-fs .gr-stage { width: min(100%, calc((100dvh - 230px) * var(--gr-ar, 1.3333))); min-width: 0; border-width: 0; border-radius: 0; box-shadow: none; }
 .gr.gk-fs .gr-side { display: contents; }
 .gr.gk-fs .gr-stats { grid-template-columns: repeat(3, auto); gap: 4px 18px; background: none; padding: 0 8px; color: #fdf3de; }
 .gr.gk-fs .gr-stats > div { background: none; padding: 0; text-align: center; }
