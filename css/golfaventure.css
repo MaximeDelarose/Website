@@ -4,7 +4,7 @@
 .ga-stage { height: min(74vh, 640px); min-height: 360px; background: #1f8f4e; }
 .ga-canvas { image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; cursor: crosshair; }
 .ga-hud { position: absolute; inset: 0; z-index: 2; pointer-events: none; font-family: "Londrina", "Courier New", monospace; color: #fff; }
-.ga-hud[hidden], .ga-msg[hidden], .ga-dialog[hidden], .ga-joy[hidden], .ga-brake[hidden] { display: none; }
+.ga-hud[hidden], .ga-msg[hidden], .ga-dialog[hidden], .ga-brake[hidden] { display: none; }
 .ga-side {
   position: absolute; left: 0; top: 0; bottom: 0; width: 78px; display: flex; flex-direction: column; align-items: center; gap: 8px;
   padding: 10px 4px; background: #05050a; border-right: 3px solid #23233a;
@@ -19,6 +19,7 @@
 .ga-items i { display: block; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #5a5a70; background: transparent; position: relative; }
 .ga-items i[data-item="brake"].on { background: #d8322b; border-color: #fff; }
 .ga-items i[data-item="power"].on { background: #f6c445; border-color: #fff; }
+.ga-items i[data-item="float"].on { background: #3a74e0; border-color: #fff; }
 .ga-pieces { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px; }
 .ga-pieces i { display: block; width: 14px; height: 14px; border: 2px solid #5a5a70; background: #1b1b2a; }
 .ga-pieces i.on { background: #f6c445; border-color: #fff09a; }
@@ -33,8 +34,6 @@
   padding: 10px 14px; background: #05050a; color: #fff; border: 3px solid #fff; font: 700 .95rem/1.35 "Nunito", system-ui, sans-serif;
 }
 .ga-brake { position: absolute; right: 12px; bottom: 12px; z-index: 3; width: 74px; height: 74px; border-radius: 50%; border: 4px solid #fff; background: #d8322b; color: #fff; font: 900 .95rem "Londrina", "Courier New", monospace; letter-spacing: .06em; cursor: pointer; touch-action: none; }
-.ga-joy { position: absolute; z-index: 3; width: 88px; height: 88px; margin: -44px 0 0 -44px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .55); background: rgba(5, 5, 10, .35); pointer-events: none; }
-.ga-joy i { position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; background: rgba(255, 255, 255, .8); border: 3px solid #14141e; }
 .ga-overlay { z-index: 4; }
 .ga-card { width: min(480px, 100%); }
 .ga-card h2 { margin-bottom: .3em; }
