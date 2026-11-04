@@ -945,6 +945,6 @@
   if (/[?&]debug/.test(location.search)) window.GA_DEBUG = {
     S: function () { return S; }, B: B, levels: function () { return LV; }, level: function () { return lvIdx; }, TY: TY, start: startGame, shoot: shoot, strokes: function () { return strokes; },
     step: function (n) { for (var i = 0; i < n; i++) if (B.rolling) stepBall(STEP); }, setStrokes: function (n) { strokes = n; hudUpdate(); }, update: updateAll, mode: function () { return mode; },
-    enter: function (i) { enterLevel(i); }, place: placeBall, setS: function (o) { S = JSON.parse(JSON.stringify(o)); }, boss: function () { return boss; }, rebuild: function () { LV = [buildOverworld(), buildCave(), buildDungeon()]; LV.forEach(function (l, i) { applyLevelState(i); }); enterLevel(lvIdx); }, kill: function () { slimes = []; bats = []; birds = []; eagles = []; }, slimes: function () { return slimes; }, bats: function () { return bats; }, cam: cam,
+    enter: function (i) { enterLevel(i); }, place: placeBall, setS: function (o) { S = JSON.parse(JSON.stringify(o)); }, boss: function () { return boss; }, rebuild: function () { LV = [buildOverworld(), buildCave(), buildDungeon()]; if (allPieces()) LV[0].feat.gates.forEach(function (f) { LV[0].grid[f[1] * LV[0].W + f[0]] = TY.GRASS; }); LV.forEach(function (l, i) { applyLevelState(i); }); enterLevel(lvIdx); }, kill: function () { slimes = []; bats = []; birds = []; eagles = []; }, slimes: function () { return slimes; }, bats: function () { return bats; }, cam: cam,
   };
 })();
