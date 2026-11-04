@@ -73,6 +73,8 @@ export interface TindeurState {
   at: number;
   /** Minutes de jeu actif consécutives (ms), remises à zéro à chaque pause longue. */
   streakMs: number;
+  /** Essais de désinstallation : les deux premiers sont refusés par Auguste, le 3e désinstalle. */
+  uninstallTries?: number;
 }
 
 /** Casino Royal : portefeuille de jetons fictifs et gratuits, séparé des pièces et diamants. */
@@ -180,7 +182,7 @@ export function sanitizeFun(raw: unknown): FunState {
     const t = raw.tindeur;
     d.tindeur = {
       shown: t.shown === true, choice: t.choice === 'keep' || t.choice === 'uninstall' ? t.choice : 'none',
-      installed: t.installed !== false && t.choice !== 'uninstall', at: num(t.at, 0, 0, 1e14), streakMs: num(t.streakMs, 0),
+      installed: t.installed !== false && t.choice !== 'uninstall', at: num(t.at, 0, 0, 1e14), streakMs: num(t.streakMs, 0), uninstallTries: Math.floor(num(t.uninstallTries, 0, 0, 99)),
     };
   }
   if (isObj(raw.casino)) {

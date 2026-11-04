@@ -116,6 +116,8 @@ function tick(dt: number): void {
 export function startInvitations(): void {
   if (started) return;
   started = true;
+  // invitations dont l'événement n'existe plus : on les range (la pastille ne doit pas les compter)
+  for (const i of ev().inbox) if (i.state !== 'done' && !eventById(i.eventId)) i.state = 'done';
   necklaceLaunch();
   installNecklaceDebug((id) => { shown.delete(id); }, () => safeToNotify() && !notificationVisible());
   window.addEventListener('pointerdown', () => { lastInput = Date.now(); }, { passive: true });
@@ -128,12 +130,20 @@ export function startInvitations(): void {
   }, 4000);
 }
 
+const KNOWN_SENDERS = new Set<string>(['auguste', 'kid1', 'kid2', 'kid3', 'agency']);
+/** Non lus RÉELLEMENT visibles dans le téléphone (la pastille ne compte jamais un élément qu'on ne pourrait pas ouvrir). */
+export function visibleUnread(): number {
+  const st = ev();
+  return st.msgs.filter((m) => !m.read && KNOWN_SENDERS.has(m.from)).length + st.inbox.filter((i) => i.state === 'new' && !!eventById(i.eventId)).length;
+}
+
 /** Bouton « téléphone » avec pastille ; à placer dans la fusion, l'accueil et Mon monde. */
 export function phoneButton(extraClass = ''): HTMLElement {
   const badge = h('i.ph-badge');
   const b = h(`button.icon-btn.ph-btn${extraClass ? '.' + extraClass : ''}`, { 'aria-label': 'Mon téléphone' }, icon('phone', 24), badge);
   const refresh = () => {
-    const n = unreadCount(ev()) + (ev().current ? 1 : 0) + funBadge();
+    const cur = ev().current;
+    const n = visibleUnread() + (cur && eventById(cur.eventId) ? 1 : 0) + funBadge();
     badge.textContent = n > 9 ? '9+' : String(n);
     b.classList.toggle('has', n > 0);
     if (!b.isConnected) off();
