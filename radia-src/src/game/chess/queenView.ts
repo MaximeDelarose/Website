@@ -1,6 +1,7 @@
 /**
  * Mode Reine : interface d'un puzzle (règles dans queen.ts).
  */
+import { haptic } from '../../core/haptics';
 import { h, tap } from '../../ui/dom';
 import { icon } from '../../ui/icons';
 import { ui } from '../../ui/ui';
@@ -129,6 +130,7 @@ export function queenPuzzleView(o: QueenPlayOpts): View {
     st = r.state;
     hintCell = null;
     audio.play(r.captured !== undefined ? 'capture' : 'move');
+    haptic(r.captured !== undefined ? 'chessCapture' : 'chessMove');
     render([from, r.path[0]]);
     if (r.teleported !== undefined) {
       busy = true;

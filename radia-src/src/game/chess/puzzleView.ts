@@ -1,6 +1,7 @@
 /**
  * Problèmes d'échecs : mats en 1, mats en 2 et tactiques.
  */
+import { haptic } from '../../core/haptics';
 import { Chess } from 'chess.js';
 import { h, tap } from '../../ui/dom';
 import { icon } from '../../ui/icons';
@@ -107,6 +108,7 @@ export function puzzleView(): View {
       if (!m) return;
       lastMove = [from, to];
       audio.play(m.captured ? 'capture' : chess.inCheck() ? 'check' : 'move');
+      haptic(chess.isCheckmate() ? 'chessMate' : chess.inCheck() ? 'chessCheck' : m.captured ? 'chessCapture' : 'chessMove');
       render();
       const expected = p.line[ply];
       let ok: boolean;
@@ -125,7 +127,7 @@ export function puzzleView(): View {
         const replies = chess.moves({ verbose: true });
         const scripted = p.line[ply];
         const r = (scripted && playUci(chess, scripted)) || (replies.length ? playUci(chess, toUci(replies[0])) : null);
-        if (r) { lastMove = [sqToCell(r.from), sqToCell(r.to)]; audio.play(r.captured ? 'capture' : 'move'); }
+        if (r) { lastMove = [sqToCell(r.from), sqToCell(r.to)]; audio.play(r.captured ? 'capture' : 'move'); if (r.captured) haptic('chessCapture'); }
         ply++;
         busy = false;
         msg.textContent = 'À toi : termine le travail !';

@@ -4,11 +4,13 @@
  * jamais à cause d'une sauvegarde abîmée, et on ne l'efface jamais en silence.
  */
 import { defaultEvents, sanitizeEvents } from '../events/state';
+import { defaultFun, sanitizeFun, type FunState } from './fun';
 import type { EventsState } from '../events/types';
-import type { RunState } from '../game/merge/types';
+import type { OrderState, RunState } from '../game/merge/types';
+import { COLLECTION_IDS, GENERATORS, collMax, type ItemColl, type ItemRef } from '../data/items';
 import { DEFAULT_LOOK, STARTER_CLOTHES, KID_IDS, ROOM_IDS, type Look, type KidId, type RoomId } from '../data/world/ids';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export type ChessDifficulty = 'easy' | 'normal' | 'hard';
 
@@ -20,6 +22,8 @@ export interface Settings {
   effects: 'full' | 'reduced';
   reducedMotion: boolean;
   textSpeed: 'normal' | 'fast' | 'instant';
+  /** v5 — retours haptiques (si l'appareil le permet). */
+  haptics: boolean;
 }
 
 export interface SaveData {
@@ -74,6 +78,8 @@ export interface SaveData {
   world: World;
   /** v4 — invitations surprises, téléphone, photos souvenirs. */
   events: EventsState;
+  /** v5 — Endless 2.0, cadeaux quotidiens, incidents, Tindeur. */
+  fun: FunState;
 }
 
 export interface PlacedItem { uid: number; id: string; x: number; y: number; color: string; flip?: boolean }
@@ -191,6 +197,7 @@ export function defaultSave(): SaveData {
       effects: 'full',
       reducedMotion: false,
       textSpeed: 'normal',
+      haptics: true,
     },
     story: { step: 0, choices: {}, endingSeen: false, history: [] },
     levels: {},
@@ -210,9 +217,10 @@ export function defaultSave(): SaveData {
     economy: defaultEconomy(),
     cosmetics: { tiles: 'classic', fx: 'classic', owned: ['classic'] },
     decor: [],
-    seenUpdates: ['v2', 'v3', 'v4'],
+    seenUpdates: ['v2', 'v3', 'v4', 'v5'],
     world: defaultWorld(),
     events: defaultEvents(),
+    fun: defaultFun(),
   };
 }
 
@@ -231,27 +239,58 @@ function numRecord(v: unknown): Record<string, number> {
   return out;
 }
 
+/** Objet de plateau valide (collection connue, niveau dans les bornes) ou null. */
+function validItem(it: unknown): { c: ItemColl; l: number } | null {
+  if (!isObj(it) || typeof it.c !== 'string' || typeof it.l !== 'number' || !Number.isFinite(it.l)) return null;
+  const l = Math.floor(it.l);
+  if (it.c === 'special') return l >= 1 && l <= 3 ? { c: 'special', l } : null;
+  if (it.c === 'gen') return GENERATORS[l] ? { c: 'gen', l } : null;
+  if (!(COLLECTION_IDS as string[]).includes(it.c)) return null;
+  return l >= 1 && l <= collMax(it.c as ItemColl) ? { c: it.c as ItemColl, l } : null;
+}
+
+/** Commande valide (objets connus) ; les champs Endless 2.0 sont facultatifs et nettoyés. */
+function validOrder(o: unknown): OrderState | null {
+  if (!isObj(o) || !Array.isArray(o.items)) return null;
+  const items = o.items.map(validItem);
+  if (!items.length || items.some((x) => !x || x.c === 'gen' || x.c === 'special')) return null;
+  const out: OrderState = { items: items as ItemRef[], id: Math.floor(num(o.id, 0, 0)) };
+  if (o.tier === 'easy' || o.tier === 'mid' || o.tier === 'hard') out.tier = o.tier;
+  if (isObj(o.reward)) {
+    const r = o.reward;
+    out.reward = {
+      hearts: Math.floor(num(r.hearts, 3, 0, 9999)), coins: Math.floor(num(r.coins, 5, 0, 99999)),
+      mat: r.mat === 'flowers' || r.mat === 'fabric' || r.mat === 'cocoa' ? r.mat : null,
+      matN: Math.floor(num(r.matN, 0, 0, 999)), energy: Math.floor(num(r.energy, 2, 0, 99)), treasure: num(r.treasure, 2, 0, 99),
+    };
+  }
+  if (typeof o.progress === 'number' && Number.isFinite(o.progress)) out.progress = Math.max(0, Math.min(1, o.progress));
+  return out;
+}
+
 function validRun(v: unknown): RunState | null {
   if (!isObj(v)) return null;
   if (!Array.isArray(v.cells) || v.cells.length !== 36) return null;
-  for (const c of v.cells) {
-    if (!isObj(c)) return null;
-    for (const k of ['item', 'gift'] as const) {
-      const it = c[k];
-      if (it !== null && it !== undefined && !(isObj(it) && typeof it.c === 'string' && typeof it.l === 'number')) return null;
-    }
-  }
+  for (const c of v.cells) if (!isObj(c)) return null;
   if (!Array.isArray(v.orders)) return null;
   const r = v as unknown as RunState;
   r.lastMergeAt = 0;
   r.combo = num(r.combo, 0);
-  r.cells = r.cells.map((c) => ({ item: c.item ?? null, gift: c.gift ?? null }));
+  // objets inconnus (version future, corruption) → case vide plutôt que perdre toute la partie
+  r.cells = (v.cells as Record<string, unknown>[]).map((c) => ({ item: validItem(c.item), gift: validItem(c.gift) }));
+  r.orders = (v.orders as unknown[]).slice(0, 4).map(validOrder);
   r.created = numRecord(r.created);
   for (const k of ['score', 'taps', 'merges', 'bestCombo', 'orderCursor', 'ordersDone', 'hearts', 'wandsEarned', 'rng', 'orderSerial', 'levelId'] as const) {
     (r as unknown as Record<string, number>)[k] = num(r[k], 0);
   }
   r.won = bool(r.won, false);
   r.mode = oneOf(r.mode, ['story', 'endless'] as const, 'story');
+  // Endless 2.0 (tous facultatifs) : on garde ce qui est valide, on retire le reste
+  delete r.clock;
+  r.activeMs = num(r.activeMs, 0, 0);
+  if (isObj(r.comboWin)) r.comboWin = { t0: 0, n: num(r.comboWin.n, 0, 0, 99), e: num(r.comboWin.e, 0, 0, 999) }; else delete r.comboWin;
+  if (r.lastDropMerge !== undefined) r.lastDropMerge = num(r.lastDropMerge, -99);
+  if (r.replaceGrantedAt !== undefined) r.replaceGrantedAt = num(r.replaceGrantedAt, 0, 0);
   return r;
 }
 
@@ -273,6 +312,7 @@ export function sanitize(raw: unknown): SaveData {
       effects: oneOf(t.effects, ['full', 'reduced'] as const, 'full'),
       reducedMotion: bool(t.reducedMotion, false),
       textSpeed: oneOf(t.textSpeed, ['normal', 'fast', 'instant'] as const, 'normal'),
+      haptics: bool(t.haptics, true),
     };
   }
   if (isObj(s.story)) {
@@ -356,6 +396,7 @@ export function sanitize(raw: unknown): SaveData {
   if (Array.isArray(s.seenUpdates)) d.seenUpdates = strArr(s.seenUpdates);
   d.world = sanitizeWorld(s.world);
   d.events = sanitizeEvents(s.events);
+  d.fun = sanitizeFun(s.fun);
   void str;
   return d;
 }
@@ -365,6 +406,8 @@ export function sanitize(raw: unknown): SaveData {
  * (Aucune pour l'instant : la V1 est le premier format.)
  */
 const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string, unknown>> = {
+  // v4 → v5 : Endless 2.0 (données neuves, rien d'existant ne change ; « Nouveautés » v5 à présenter).
+  4: (raw) => ({ ...raw, fun: defaultFun() }),
   // v3 → v4 : invitations surprises. Rien d'autre ne change.
   3: (raw) => ({ ...raw, events: defaultEvents() }),
   // v2 → v3 : le château de Radia (monde). On ajoute l'état par défaut, rien d'autre ne change.

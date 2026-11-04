@@ -8,6 +8,7 @@ import type { C, Pt } from './avatar';
 import { radiaParts as P } from '../characters';
 import { heartPath, starPath, roundRect, shade, gloss } from '../kit';
 import { installWrist } from './avatarWrist';
+import { installNecklace } from './avatarNecklace';
 
 // ================================================================ chaussures
 
@@ -1150,4 +1151,5 @@ export function installStyle(): void {
   installGlasses();
   installEarrings();
   installWrist();
+  installNecklace();
 }

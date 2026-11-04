@@ -9,11 +9,29 @@
  */
 import type { SaveData } from '../../save/schema';
 import type { ItemRef } from '../../data/items';
-import { COLLECTION_IDS, SPECIAL } from '../../data/items';
+import { LEGACY_COLLECTION_IDS as COLLECTION_IDS, SPECIAL } from '../../data/items';
+import { ENDLESS_CFG } from '../endless/config';
 
 export const ENERGY_MAX = 100;
 /** Une énergie revient toutes les 45 s (plein en ~75 min). */
 export const REGEN_MS = 45_000;
+
+/**
+ * Endless 2.0 — l'énergie ne bloque JAMAIS longtemps (aucune frustration pour pousser les diamants) :
+ *  - « plancher » : sous FLOOR_LEVEL, la recharge naturelle est accélérée (1 énergie / FLOOR_REGEN_MS,
+ *    soit 0 → 6 en ~2 min 30) ; au-dessus, REGEN_MS ;
+ *  - toucher de générateur GRATUIT : 1 sur FREE_TAP_EVERY, plus une chance liée au niveau du générateur
+ *    (voir rules.tapCost) ;
+ *  - énergie offerte en jouant : livraisons (selon le palier de la commande), paliers de combo, nouveautés
+ *    d'album, drops, coffres (voir src/game/endless/config.ts, section `energy`) ;
+ *  - recharge gratuite d'Auguste (FREE_REFILL toutes les 10 min) et coffre gratuit, inchangés.
+ */
+export const FLOOR_LEVEL = ENDLESS_CFG.energy.floorLevel;
+export const FLOOR_REGEN_MS = ENDLESS_CFG.energy.floorRegenMs;
+export const FREE_TAP_EVERY = ENDLESS_CFG.energy.freeTapEvery;
+export const deliveryEnergy = (tier: 'easy' | 'mid' | 'hard'): number => ENDLESS_CFG.energy.deliverEnergy[tier];
+/** Millisecondes pour regagner UNE énergie quand on en a `energy`. */
+export const regenStep = (energy: number): number => (energy < FLOOR_LEVEL ? FLOOR_REGEN_MS : REGEN_MS);
 /** Recharge gratuite d'Auguste : +38, toutes les 10 minutes. */
 export const FREE_REFILL = 38;
 export const FREE_REFILL_MS = 10 * 60_000;
@@ -26,10 +44,17 @@ type Eco = SaveData['economy'];
 /** Applique la recharge naturelle jusqu'à `now` (sans dépasser le maximum). */
 export function syncEnergy(e: Eco, now: number): void {
   if (e.energy >= ENERGY_MAX) { e.energyTs = now; return; }
-  const gained = Math.floor((now - e.energyTs) / REGEN_MS);
+  let t = e.energyTs;
+  let gained = 0;
+  for (let k = 0; k < ENERGY_MAX * 2 && e.energy < ENERGY_MAX; k++) {
+    const step = regenStep(e.energy);
+    if (now - t < step) break;
+    t += step;
+    e.energy++;
+    gained++;
+  }
   if (gained <= 0) return;
-  e.energy = Math.min(ENERGY_MAX, e.energy + gained);
-  e.energyTs = e.energy >= ENERGY_MAX ? now : e.energyTs + gained * REGEN_MS;
+  e.energyTs = e.energy >= ENERGY_MAX ? now : t;
 }
 
 export function spendEnergy(e: Eco, n: number, now: number): boolean {
@@ -51,7 +76,7 @@ export function addEnergy(e: Eco, n: number, now: number): void {
 export function nextEnergyIn(e: Eco, now: number): number {
   syncEnergy(e, now);
   if (e.energy >= ENERGY_MAX) return 0;
-  return Math.max(0, REGEN_MS - (now - e.energyTs));
+  return Math.max(0, regenStep(e.energy) - (now - e.energyTs));
 }
 
 export const freeRefillIn = (e: Eco, now: number) => Math.max(0, e.freeRefillTs + FREE_REFILL_MS - now);

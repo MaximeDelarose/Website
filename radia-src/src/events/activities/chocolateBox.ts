@@ -175,7 +175,7 @@ const activity: Activity = async (ctx) => {
   draw = null;
   if (!ctx.isAlive()) return { score: 0, ok: false };
   ctx.sound('victory');
-  await ctx.say('auguste', ['Ça sent divinement bon, ma reine.', 'Tes chocolats sont superbes, galbi.', 'Je vais tout goûter, promis.'][Math.floor(ctx.rng() * 3)], 'love');
+  await ctx.say('auguste', ['Ça sent divinement bon, ma reine.', 'Tes chocolats sont superbes.', 'Je vais tout goûter, promis.'][Math.floor(ctx.rng() * 3)], 'love');
   if (!ctx.isAlive()) return { score: 0, ok: false };
 
   // ---------------------------------------------------------- 3. garnitures

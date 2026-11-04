@@ -28,6 +28,14 @@ import { openShop, shopButton, diamondUrl, energyUrl, bagIconUrl } from '../../u
 import { openEnergyPanel } from '../../ui/components/energyPanel';
 import { drawRequester } from '../art/generators';
 import { paint } from '../art/kit';
+import { bindEndless, syncLegacyAlbum, tickActive } from '../endless';
+import { ENDLESS_CFG } from '../endless/config';
+import { createEndlessHud, type EndlessHud } from '../../ui/endless/hud';
+import { settleEvents } from '../../ui/endless/host';
+import { countTo } from '../../ui/endless/sheet';
+import { installEndlessDebug } from '../../ui/endless/dev';
+import { shouldRefund } from '../../ui/endless/logic';
+import { haptic } from '../../core/haptics';
 
 /** Personnages qui passent commande. */
 const REQUESTERS = ['auguste', 'cat', 'florist', 'pawn'] as const;
@@ -70,6 +78,9 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
   return new Promise((resolve) => {
     // ---------------------------------------------------------- état
     let state: RunState;
+    const endlessMode = mode === 'endless';
+    // Endless 2.0 : le moteur lit/écrit save.data.fun (à refaire après tout rechargement de sauvegarde)
+    if (endlessMode) { bindEndless(save.data.fun); syncLegacyAlbum(save.data.fun, save.data.discovered); }
     const saved = opts.replay ? null : mode === 'endless' ? save.data.endless.run : save.data.run;
     if (saved && saved.mode === mode && (mode === 'endless' || saved.levelId === def.id) && !saved.won) state = saved;
     else {
@@ -103,7 +114,8 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     const heartsEl = h('button.res-chip.interactive', { 'aria-label': 'Cœurs' }, h('span.ic', icon('heart')), h('span', fmt(save.data.hearts)));
     const energyEl = h('button.res-chip.interactive', { 'aria-label': 'Énergie' }, h('img', { src: energyUrl(52), alt: '' }), h('span', ''), h('small', ''));
     const diamondEl = h('button.res-chip.interactive', { 'aria-label': 'Diamants' }, h('img', { src: diamondUrl(52), alt: '' }), h('span', ''), h('span.plus', '+'));
-    const resRow = h('div.res-row', energyEl, heartsEl, diamondEl, phoneButton('mh-phone'));
+    const coinsEl = h('button.res-chip.interactive', { 'aria-label': 'Pièces' }, h('img', { src: resIconUrl('coins', 52), alt: '' }), h('span', fmt(save.data.world.res.coins)));
+    const resRow = h('div.res-row', energyEl, heartsEl, ...(endlessMode ? [coinsEl] : []), diamondEl, phoneButton('mh-phone'));
     const renderRes = () => {
       const e = wallet.energy();
       (energyEl.children[1] as HTMLElement).textContent = fmt(e);
@@ -111,22 +123,49 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       (energyEl.children[2] as HTMLElement).textContent = next ? fmtTime(next) : '';
       energyEl.classList.toggle('low', e < 5);
       (diamondEl.children[1] as HTMLElement).textContent = fmt(wallet.diamonds());
+      if (endlessMode) countTo(coinsEl.children[1] as HTMLElement, save.data.world.res.coins, fmt, 450);
+      if (e > 0) energyEmptyShown = false;
     };
+    let energyEmptyShown = false;
+    let spentForTap = false;
     const resTimer = window.setInterval(renderRes, 1000);
-    energyEl.addEventListener('click', tap(() => void openEnergyPanel(false)));
+    const energyOpts = () => ({ taps: state.taps, onWorld: endlessMode ? () => void openWorldFromGame('hub') : undefined, onChess: endlessMode ? () => void openChessFromGame() : undefined });
+    energyEl.addEventListener('click', tap(() => void openEnergyPanel(false, endlessMode ? energyOpts() : undefined)));
     diamondEl.addEventListener('click', tap(() => void openShop('diamonds')));
     heartsEl.addEventListener('click', tap(() => ui.toast({ title: `${fmt(save.data.hearts)} cœurs`, sub: 'Gagnés en livrant les commandes · pour décorer notre petit monde', icon: 'heart' })));
+    coinsEl.addEventListener('click', tap(() => ui.toast({ title: `${fmt(save.data.world.res.coins)} pièces`, sub: 'Pour améliorer les générateurs, le château et le dressing', img: resIconUrl('coins', 64) })));
     const augImg = h('img', { src: canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120)), alt: '' });
     const aug = h('button.mh-auguste', { 'aria-label': 'Auguste' }, augImg);
     // avec le lien secret : la tête de l'illustration
     if (hasPhotos()) void photoUrl('head-new').then((u) => { if (u) augImg.src = u; });
-    const titleEl = h('div.mh-title',
-      h('b', mode === 'endless' ? 'Mode infini' : `${def.id}. ${def.title}`),
-      h('small', mode === 'endless' ? `Record : ${save.data.endless.best}` : `Chapitre ${def.chapter} · ${chapter?.title ?? ''}`));
+    const scoreNum = h('span', '0');
+    const titleSub = endlessMode ? h('small', 'Score ', scoreNum, ` · Record ${save.data.endless.best}`) : h('small', `Chapitre ${def.chapter} · ${chapter?.title ?? ''}`);
+    const titleEl = h('div.mh-title', h('b', endlessMode ? 'Mode infini' : `${def.id}. ${def.title}`), titleSub);
     const pauseBtn = h('button.icon-btn', { 'aria-label': 'Pause', on: { click: tap(() => void pause()) } }, icon('pause'));
+    const worldBtn = endlessMode ? h('button.icon-btn.en-world', { 'aria-label': 'Aller dans MON MONDE', title: 'MON MONDE' }, icon('home', 22)) : null;
+    worldBtn?.addEventListener('click', tap(() => void openWorldFromGame('hub')));
     const objsEl = h('div.mh-objs');
     const ordersEl = h('div.mh-orders');
-    const top = h('div.mh-top', h('div.mh-bar', pauseBtn, titleEl, aug), resRow, objsEl, ordersEl);
+    let eh: EndlessHud | null = null;
+    // injecte des événements dans la scène (animation) puis dans onEvents ; sans scène : directement
+    const pushEvents = (ev: BoardEvent[]) => {
+      if (!ev.length) return;
+      const sc = scene as unknown as { apply?: (e: BoardEvent[]) => void } | null;
+      if (sc && typeof sc.apply === 'function') sc.apply(ev);
+      else onEvents(ev, state);
+    };
+    const anchorOf = (el: HTMLElement) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+    let bagBtnRef: HTMLElement | null = null;
+    if (endlessMode) {
+      eh = createEndlessHud({
+        def, getState: () => state, getScene: () => scene, persist: () => persist(), push: pushEvents,
+        refreshRes: () => renderRes(), openWorld: (w) => openWorldFromGame(w),
+        challengeText: () => (state.challenge ? `${objectiveText(state.challenge.obj)} · ${R.challengeProgress(state)?.cur ?? 0}/${R.challengeProgress(state)?.max ?? 0}` : ''),
+        busy: () => !(scene?.isIdle() ?? true),
+        anchor: (k) => anchorOf(k === 'coins' ? coinsEl : k === 'energy' ? energyEl : k === 'hearts' ? heartsEl : k === 'diamonds' ? diamondEl : k === 'world' ? (worldBtn ?? coinsEl) : k === 'bag' ? (bagBtnRef ?? coinsEl) : (hud.querySelector('.en-tre') as HTMLElement | null) ?? coinsEl),
+      });
+    }
+    const top = h('div.mh-top', h('div.mh-bar', pauseBtn, titleEl, worldBtn, aug), resRow, objsEl, endlessMode ? eh!.top : ordersEl);
 
     const countEl = (k: 'wand' | 'wind') => {
       const n = save.data.boosters[k];
@@ -146,7 +185,8 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     const renderBag = () => { (bagBtn.querySelector('.count') as HTMLElement).textContent = `${wallet.bag().length}/${wallet.bagSlots()}`; };
     bagBtn.addEventListener('click', tap(() => void openBag()));
     const bottom = h('div.mh-bottom', h('div.mh-side', wandBtn, hintBtn), h('div.mh-side', bagBtn, windBtn, shopButton()));
-    const hud = h('div.merge-hud', top, bottom);
+    bagBtnRef = bagBtn;
+    const hud = h(`div.merge-hud${endlessMode ? '.endless' : ''}`, top, bottom, eh ? eh.layer : null);
     ui.root.append(hud);
     refreshBoosters();
     renderRes();
@@ -190,12 +230,8 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     const renderObjectives = (pulse = -1) => {
       clear(objsEl);
       if (mode === 'endless') {
-        const ch = state.challenge;
-        const pr = R.challengeProgress(state);
-        objsEl.append(h('span.obj-chip', h('span.ic', icon('star', 20)), h('span.mh-score', `${state.score}`)));
-        if (ch && pr) {
-          objsEl.append(h('span.obj-chip', objIcon(ch.obj), `${objectiveText(ch.obj)} · ${ch.obj.t === 'combo' ? `×${pr.cur}/×${pr.max}` : `${pr.cur}/${pr.max}`}`));
-        }
+        // le score vit dans le titre ; le défi et les objectifs dans la feuille « Mes objectifs »
+        countTo(scoreNum, state.score, fmt, 0, 450);
         return;
       }
       def.objectives.forEach((o, i) => {
@@ -206,6 +242,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     };
 
     const renderOrders = () => {
+      if (endlessMode) { eh?.refresh(); return; }
       clear(ordersEl);
       state.orders.forEach((o, slot) => {
         if (!o) return;
@@ -257,7 +294,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
         refreshBoosters();
       },
       orderAnchor: (slot) => {
-        const el = ordersEl.querySelector(`[data-slot="${slot}"]`);
+        const el = (endlessMode ? hud : ordersEl).querySelector(`[data-slot="${slot}"]`);
         if (!el) return null;
         const r = el.getBoundingClientRect();
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
@@ -265,12 +302,32 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       heartsAnchor: () => { const r = heartsEl.getBoundingClientRect(); return { x: r.left + 14, y: r.top + r.height / 2 }; },
       onStuck: () => void stuck(),
       onFull: () => info('Plus de place ! Fusionne ou livre une commande.', 2200),
-      onActivity: () => { /* rien */ },
+      onActivity: () => {
+        if (!endlessMode) return;
+        // temps de jeu actif (remplacements gratuits) : la scène n'envoie pas l'heure au moteur
+        const now = Date.now();
+        if (state.clock !== undefined && now > state.clock) {
+          const d = Math.min(now - state.clock, ENDLESS_CFG.orders.activeGapMs);
+          state.activeMs = (state.activeMs ?? 0) + d;
+          tickActive(save.data.fun, d);
+        }
+        state.clock = Math.max(state.clock ?? now, now);
+      },
       useEnergy: (n) => {
-        if (wallet.useEnergy(n)) { renderRes(); return true; }
+        spentForTap = false;
+        if (endlessMode) {
+          // toucher gratuit quel que soit le générateur : rien n'est dépensé (même quand l'énergie est à 0)
+          const gens = R.generatorCells(state);
+          if (gens.length && gens.every((g) => R.tapCost(state, g) === 0)) return true;
+        }
+        if (wallet.useEnergy(n)) { spentForTap = endlessMode; renderRes(); return true; }
         energyEl.classList.add('bump');
         window.setTimeout(() => energyEl.classList.remove('bump'), 250);
-        void openEnergyPanel(true);
+        haptic('error');
+        if (!endlessMode) { void openEnergyPanel(true); return false; }
+        // jamais de mur : message bienveillant, options gratuites (le panneau s'ouvre une fois, ensuite une bulle discrète)
+        if (!energyEmptyShown) { energyEmptyShown = true; void openEnergyPanel(true, energyOpts()); }
+        else eh?.feed(`Plus d'énergie · la prochaine arrive dans ${fmtTime(wallet.nextEnergyIn() || 25_000)}`, { kind: 'info', ms: 3200, btn: { label: 'Options', fn: () => void openEnergyPanel(true, energyOpts()) } });
         return false;
       },
       overBag: (x, y) => {
@@ -337,29 +394,41 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     // ---------------------------------------------------------- événements
     function onEvents(ev: BoardEvent[], s: RunState) {
       let pulse = -1;
+      if (endlessMode) {
+        // toucher devenu gratuit après la dépense de la scène : on rend l'énergie
+        const free = ev.some((e) => e.t === 'spawn' && e.free === true && e.source === 'gen');
+        if (shouldRefund(spentForTap, ev)) wallet.giveEnergy(1);
+        if (free) eh?.feed('Toucher gratuit ✨', { kind: 'good', ms: 1600 });
+        spentForTap = false;
+      }
       for (const e of ev) {
         if (e.t === 'merge') {
           stat('merges');
           invalidStreak = 0;
           gain(mergeReward(e.result, e.combo));
           isNew(e.result);
-          if (e.result.l >= 7) bark('rare');
+          if (!endlessMode && e.result.l >= 7) bark('rare');
         } else if (e.t === 'spawn' || e.t === 'giftOpen' || e.t === 'upgrade') {
           isNew(e.item);
           if (e.t === 'giftOpen') stat('giftsOpened');
         } else if (e.t === 'deliver') {
-          addHearts(e.hearts);
           stat('ordersDelivered');
-          gain(deliverReward(e.items ?? [], e.hearts));
-          // récompenses de commande : un peu d'énergie, parfois un diamant
-          wallet.giveEnergy(3);
-          if ((save.data.stats.ordersDelivered ?? 0) % 3 === 0) { wallet.giveDiamonds(1); ui.toast({ title: '+1 diamant', sub: 'Pour ta commande ♡', img: diamondUrl(64), ms: 1600 }); }
+          if (!endlessMode) {
+            addHearts(e.hearts);
+            gain(deliverReward(e.items ?? [], e.hearts));
+            // récompenses de commande : un peu d'énergie, parfois un diamant
+            wallet.giveEnergy(3);
+            if ((save.data.stats.ordersDelivered ?? 0) % 3 === 0) { wallet.giveDiamonds(1); ui.toast({ title: '+1 diamant', sub: 'Pour ta commande ♡', img: diamondUrl(64), ms: 1600 }); }
+          }
+          // en Endless : cœurs, pièces, matériaux et énergie sont versés UNE fois par applyEvents (plus bas)
         } else if (e.t === 'combo') {
           statMax('bestCombo', e.value);
-          if (e.value >= 5) { bark('combo5'); wallet.giveEnergy(5); } else if (e.value >= 3) bark('combo3');
-          if (e.reward === 'wand') { save.data.boosters.wand++; refreshBoosters(); ui.toast({ title: 'Combo ×8 !', sub: '+1 Baguette magique', icon: 'wand' }); }
-          if (e.reward === 'hearts') addHearts(e.value >= 12 ? 15 : 5);
-          if (e.reward === 'star') ui.toast({ title: `Combo ×${e.value} !`, sub: 'Une Étoile filante est apparue ✨', icon: 'sparkle' });
+          if (!endlessMode) {
+            if (e.value >= 5) { bark('combo5'); wallet.giveEnergy(5); } else if (e.value >= 3) bark('combo3');
+            if (e.reward === 'wand') { save.data.boosters.wand++; refreshBoosters(); ui.toast({ title: 'Combo ×8 !', sub: '+1 Baguette magique', icon: 'wand' }); }
+            if (e.reward === 'hearts') addHearts(e.value >= 12 ? 15 : 5);
+            if (e.reward === 'star') ui.toast({ title: `Combo ×${e.value} !`, sub: 'Une Étoile filante est apparue ✨', icon: 'sparkle' });
+          }
         } else if (e.t === 'invalid') {
           invalidStreak++;
           if (invalidStreak >= 3) { bark('invalid'); invalidStreak = 0; }
@@ -369,18 +438,23 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
           addHearts(e.reward);
           ui.toast({ title: 'Défi réussi !', sub: `+${e.reward} cœurs ♡`, icon: 'star' });
           audio.play('reward');
+          haptic('reward');
         }
       }
       if (mode !== 'endless') def.objectives.forEach((o, i) => { if (R.objectiveDone(s, o) && !objsEl.children[i]?.classList.contains('done')) pulse = i; });
       if (mode === 'endless' && s.score > save.data.endless.best) save.data.endless.best = s.score;
       renderObjectives(pulse);
-      renderOrders();
+      if (endlessMode) {
+        const got = settleEvents(ev); // versement UNIQUE des gains du moteur
+        eh?.onEvents(ev, got);
+      } else renderOrders();
       persist();
       checkAchievements();
     }
 
     function isNew(r: ItemRef) {
       if (!discover(r)) return;
+      if (endlessMode) return; // les nouveautés d'album sont annoncées par l'interface du mode infini
       if (r.l >= 2 || r.c === 'special') {
         ui.toast({ title: `Nouveau : ${itemName(r)}`, sub: itemBlurb(r), img: itemImageUrl(r, 96), ms: 2400 });
         if (r.l >= 4) bark('discover');
@@ -402,7 +476,8 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       });
       if (v === 'settings') { await openSettings(); return; }
       if (v === 'restart') {
-        if (!(await ui.confirm('Recommencer ?', 'Le plateau sera remis à zéro.', 'Recommencer', 'Annuler'))) return;
+        if (!(await ui.confirm('Recommencer ?', endlessMode ? 'Le plateau sera remis à zéro. Tes collections, générateurs, album et gains restent.' : 'Le plateau sera remis à zéro.', 'Recommencer', 'Annuler'))) return;
+        if (endlessMode) bindEndless(save.data.fun);
         state = R.createRun(def, mode, mode === 'endless' ? (Date.now() >>> 0) : undefined);
         persist();
         restartScene();
@@ -425,6 +500,39 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       });
       stuckOpen = false;
       if (v === 'go') scene?.recover();
+    }
+
+    // ---------------------------------------------------------- MON MONDE / échecs depuis le mode infini (la partie reprend au retour)
+    let away = false;
+    async function awayFromBoard(fn: () => Promise<void>, backdropTheme: Parameters<typeof setBackdrop>[0] = 'monde') {
+      if (finished || away) return;
+      away = true;
+      persist();
+      hud.style.display = 'none';
+      g.scene.pause(MergeScene.KEY);
+      g.scene.getScene(MergeScene.KEY)?.scene.setVisible(false);
+      try { await fn(); } finally {
+        ui.closeScreen();
+        setBackdrop(backdropTheme === 'royaume' ? 'monde' : backdropTheme);
+        g.scene.getScene(MergeScene.KEY)?.scene.setVisible(true);
+        g.scene.resume(MergeScene.KEY);
+        hud.style.display = '';
+        away = false;
+        renderRes();
+        eh?.refresh();
+      }
+    }
+    async function openWorldFromGame(which: 'hub' | 'dressing' | 'castle' = 'hub') {
+      await awayFromBoard(async () => {
+        if (which === 'dressing') await (await import('../../ui/screens/world/dressing')).openDressing();
+        else if (which === 'castle') await (await import('../../ui/screens/world/castle')).openCastle();
+        else await (await import('../../ui/screens/world/hub')).openWorldHub();
+      });
+    }
+    async function openChessFromGame() {
+      const st = await import('../narrative/Story');
+      if (!st.chessUnlocked()) { eh?.feed('Les échecs s\'ouvrent après le chapitre 4 ♛', { kind: 'info' }); void openWorldFromGame('hub'); return; }
+      await awayFromBoard(async () => { setBackdrop('royaume'); await (await import('../chess/index')).openChess(); }, 'royaume');
     }
 
     // ---------------------------------------------------------- victoire
@@ -491,10 +599,18 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     // laisser le HUD se mettre en place avant de mesurer la zone libre
     requestAnimationFrame(() => requestAnimationFrame(startScene));
 
+    if (endlessMode && eh) {
+      installEndlessDebug({
+        hud: eh, getState: () => state, getScene: () => scene, def, push: pushEvents, onEvents: (ev) => onEvents(ev, state),
+        restart: () => { R.ensureGenerators(state, def); R.afterAction(state, def); persist(); restartScene(); refresh(); },
+      });
+    }
+
     function finish(r: LevelResult) {
       if (finished) return;
       finished = true;
       persist();
+      eh?.destroy();
       if (r === 'won' && mode === 'story' && !opts.replay) { save.data.run = null; save.save(); }
       offHearts();
       offEco();

@@ -3,6 +3,7 @@ import { h, tap } from '../dom';
 import { ui } from '../ui';
 import { save, applySettings, audio } from '../../core/app';
 import { setLowFx } from '../../game/layout';
+import { haptic, hapticMaybeSupported } from '../../core/haptics';
 
 export function openSettings(): Promise<void> {
   return new Promise((resolve) => {
@@ -35,6 +36,7 @@ export function openSettings(): Promise<void> {
       h('div.setting-row', h('label', 'Effets sonores'), toggle(s.sfxOn, (v) => { s.sfxOn = v; commit(); })),
       h('div.setting-row', h('label', 'Volume effets'), slider(s.sfx, (v) => { s.sfx = v; commit(); audio.play('pop2'); })),
       h('div.setting-row', h('label', 'Effets visuels', h('small', 'Réduits : moins de particules, plus économe')), seg([['full', 'Complets'], ['reduced', 'Réduits']], s.effects, (v) => { s.effects = v; setLowFx(v === 'reduced'); commit(); })),
+      h('div.setting-row', h('label', 'Retours haptiques', h('small', hapticMaybeSupported() ? 'Petites vibrations, si ton téléphone les accepte' : 'Non disponibles ici : le son et l\'image restent')), toggle(s.haptics !== false, (v) => { s.haptics = v; commit(); if (v) haptic('merge'); })),
       h('div.setting-row', h('label', 'Animations réduites'), toggle(s.reducedMotion, (v) => { s.reducedMotion = v; commit(); })),
       h('div.setting-row', h('label', 'Vitesse du texte'), seg([['normal', 'Normale'], ['fast', 'Rapide'], ['instant', 'Immédiate']], s.textSpeed, (v) => { s.textSpeed = v; commit(); })),
       h('div.setting-row', h('label', 'Recommencer depuis le début', h('small', 'Efface toute la progression')),

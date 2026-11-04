@@ -4,7 +4,7 @@ import type { EventDef } from '../types';
 export const ROMANTIC: EventDef[] = [
   {
     id: 'r-restaurant', title: 'Devine ce que je prends ♡', sender: 'auguste', category: 'romantic', big: true, repeatable: true, weight: 12,
-    teaser: 'Galbi, ce soir je t’emmène au restaurant…',
+    teaser: 'Ce soir, je t’emmène au restaurant…',
     invite: 'Galbi, ce soir je t’emmène au restaurant. Mais j’ai un petit jeu pour toi… Tu vas devoir deviner ce que je vais commander.',
     steps: [
       { t: 'dress', hint: 'Choisis ta tenue pour ce soir ♡', style: 'chic' },
@@ -24,7 +24,7 @@ export const ROMANTIC: EventDef[] = [
     id: 'r-palace', title: 'Une soirée de reine', sender: 'auguste', category: 'romantic', big: true, repeatable: true, weight: 6, minPlayMin: 10,
     needs: { doneAll: ['r-restaurant'] },
     teaser: 'Radia, ce soir je t’invite dans un palace…',
-    invite: 'Radia, ce soir je t’invite dans un palace. Mets-toi sur ton trente et un, galbi. J’ai prévu une soirée de reine.',
+    invite: 'Radia, ce soir je t’invite dans un palace. Mets-toi sur ton trente et un. J’ai prévu une soirée de reine.',
     steps: [
       { t: 'dress', hint: 'Mets-toi sur ton trente et un ♡', style: 'royal' },
       { t: 'travel', place: 'palace', label: 'Direction le palace' },
@@ -42,8 +42,8 @@ export const ROMANTIC: EventDef[] = [
   },
   {
     id: 'r-fireworks', title: 'Un feu d’artifice rien que pour toi', sender: 'auguste', category: 'romantic', big: true, repeatable: true, weight: 8, minPlayMin: 6,
-    teaser: 'Galbi, habille-toi, je t’emmène voir quelque chose de magnifique…',
-    invite: 'Galbi, habille-toi. Je t’emmène voir quelque chose de magnifique ce soir.',
+    teaser: 'Habille-toi, je t’emmène voir quelque chose de magnifique…',
+    invite: 'Habille-toi, Radia. Je t’emmène voir quelque chose de magnifique ce soir.',
     steps: [
       { t: 'dress', hint: 'Une tenue pour une belle nuit étoilée', style: 'romantic' },
       { t: 'travel', place: 'fireworks', label: 'Vers la terrasse' },
@@ -58,7 +58,7 @@ export const ROMANTIC: EventDef[] = [
   {
     id: 'r-spa', title: 'Week-end spa & massage', sender: 'auguste', category: 'romantic', big: true, repeatable: true, weight: 6, minPlayMin: 8,
     teaser: 'Ce week-end, je veux que tu prennes du temps pour toi…',
-    invite: 'Ce week-end, je veux que tu prennes du temps pour toi. Spa, massage, détente… J’ai tout prévu, galbi.',
+    invite: 'Ce week-end, je veux que tu prennes du temps pour toi. Spa, massage, détente… J’ai tout prévu.',
     steps: [
       { t: 'dress', hint: 'Une tenue bien confortable', style: 'casual' },
       { t: 'travel', place: 'spa', label: 'Direction le spa' },
@@ -135,7 +135,7 @@ export const ROMANTIC: EventDef[] = [
       { t: 'dress', hint: 'Une tenue pratique pour essayer plein de choses', style: 'chic' },
       { t: 'travel', place: 'boutique', label: 'Direction les boutiques' },
       { t: 'activity', id: 'shopTry', params: { options: ['dr-bodycon-red', 'jk-trench-beige', 'bg-silver', 'sh-heels-red', 'ac-chain-gold'] } },
-      { t: 'scene', lines: [{ who: 'auguste', text: 'Tout te va. C’est presque agaçant, galbi.', expr: 'laugh' }] },
+      { t: 'scene', lines: [{ who: 'auguste', text: 'Tout te va. C’est presque agaçant.', expr: 'laugh' }] },
       { t: 'photo', place: 'boutique', title: 'Journée shopping', withAuguste: true },
     ],
     reward: { coins: 80, diamonds: 5 }, replayReward: { coins: 25 },

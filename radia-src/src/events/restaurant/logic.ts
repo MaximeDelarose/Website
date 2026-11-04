@@ -121,7 +121,7 @@ export const LINE_CHOCO = 'Bon, là c’était trop facile… Tu pensais vraimen
 
 const ALL_VARIANTS = [
   LINE_ALL,
-  'Trois sur trois ! Mais comment tu fais pour me connaître aussi bien, galbi ?',
+  'Trois sur trois ! Mais comment tu fais pour me connaître aussi bien ?',
   'Tu lis dans mes pensées, ma reine… Comment tu fais pour me connaître aussi bien ?',
 ] as const;
 const NOT_ALL_VARIANTS = [
@@ -132,11 +132,11 @@ const NOT_ALL_VARIANTS = [
 export const TRANSITIONS = [
   'Ouvre bien tes yeux, ma reine…',
   'Alors, tu es prête pour la vérité ?',
-  'Tu as bien réfléchi ? Voyons ça, galbi.',
+  'Tu as bien réfléchi ? Voyons ça.',
   'Les plats arrivent… suspense !',
 ] as const;
 export const REACTIONS_HIT = ['Oui, c’est ça !', 'Bingo, ma reine !', 'Exactement ce qu’il fallait !'] as const;
-export const REACTIONS_MISS = ['Presque, galbi…', 'Pas tout à fait !', 'Ah, raté, mais si mignon !'] as const;
+export const REACTIONS_MISS = ['Presque…', 'Pas tout à fait !', 'Ah, raté, mais si mignon !'] as const;
 export const CHOICE_ASKS: Record<Step, readonly string[]> = {
   starter: ['Pour commencer, quelle entrée ?', 'Son entrée, à ton avis ?', 'Que prend-il en entrée ?'],
   main: ['Et pour le plat ?', 'Maintenant, son plat principal…', 'Le plat, alors ?'],

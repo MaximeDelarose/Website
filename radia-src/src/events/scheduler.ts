@@ -15,7 +15,10 @@ import { ev, nextId } from './api';
 import { showNotification, notificationVisible } from './ui/notify';
 import { isEventRunning } from './runner';
 import { openInvite, resumeFlow, triggerSecretCall } from './flow';
-import { emitPhone, onPhoneChange } from './bus';
+import { emitPhone, onPhoneChange, funBusy } from './bus';
+import { funTrack, funMaybe, funBadge } from './incidents/runtime';
+import { necklaceLaunch, necklaceTick } from './necklace/trigger';
+import { installNecklaceDebug } from './necklace/dev';
 
 let started = false;
 let lastInput = Date.now();
@@ -35,8 +38,8 @@ export function progress(): Progress {
 
 /** Moment sûr pour afficher une notification (aucune interaction ni animation critique en cours). */
 export function safeToNotify(): boolean {
-  if (document.hidden || isEventRunning() || notificationVisible()) return false;
-  if (document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .cg-screen, .fam-scene, .fam-body, .kc, .aug-says, .splash, .ev-layer, .ev-inv-back, .ph-back, .call-layer')) return false;
+  if (document.hidden || isEventRunning() || notificationVisible() || funBusy()) return false;
+  if (document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .cg-screen, .fam-scene, .fam-body, .kc, .aug-says, .splash, .ev-layer, .ev-inv-back, .ph-back, .call-layer, .inc-layer, .tdr-layer')) return false;
   try {
     const g = getGame();
     if (g.scene.getScenes(true).some((s) => !['backdrop', 'merge'].includes(s.sys.settings.key))) return false; // billard, chemin, puzzle…
@@ -89,6 +92,10 @@ function tick(dt: number): void {
   const st = ev();
   const active = !document.hidden && Date.now() - lastInput < 90_000 && !isEventRunning();
   if (active) { st.playMs += dt; st.secret.activeMs += dt; }
+  // incidents du château + Tindeur : temps de jeu actif / série consécutive
+  funTrack({ dt, active, hidden: document.hidden, sinceInput: Date.now() - lastInput });
+  // « L'Éclat Éternel ♡ » : minuteur de jeu actif après la 7ᵉ ouverture, invitation unique, rappels discrets (src/events/necklace)
+  necklaceTick(dt, active, safeToNotify() && !notificationVisible(), (id) => { shown.delete(id); });
   // quête secrète : une seule fois, à un moment stable, entre 20 et 30 minutes de jeu ACTIF
   if (!st.secret.triggered && st.secret.activeMs >= st.secret.target && !isEventRunning() && safeToNotify()) { void triggerSecretCall(); return; }
   settleStale(st);
@@ -103,11 +110,14 @@ function tick(dt: number): void {
     }
   }
   maybeNotify();
+  if (!notificationVisible()) funMaybe(safeToNotify());
 }
 
 export function startInvitations(): void {
   if (started) return;
   started = true;
+  necklaceLaunch();
+  installNecklaceDebug((id) => { shown.delete(id); }, () => safeToNotify() && !notificationVisible());
   window.addEventListener('pointerdown', () => { lastInput = Date.now(); }, { passive: true });
   let last = Date.now();
   window.setInterval(() => {
@@ -123,7 +133,7 @@ export function phoneButton(extraClass = ''): HTMLElement {
   const badge = h('i.ph-badge');
   const b = h(`button.icon-btn.ph-btn${extraClass ? '.' + extraClass : ''}`, { 'aria-label': 'Mon téléphone' }, icon('phone', 24), badge);
   const refresh = () => {
-    const n = unreadCount(ev()) + (ev().current ? 1 : 0);
+    const n = unreadCount(ev()) + (ev().current ? 1 : 0) + funBadge();
     badge.textContent = n > 9 ? '9+' : String(n);
     b.classList.toggle('has', n > 0);
     if (!b.isConnected) off();

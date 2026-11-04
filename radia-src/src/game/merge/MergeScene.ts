@@ -2,18 +2,47 @@
  * Scène du plateau de fusion : rendu, glisser-déposer, animations (« game feel »).
  * Les règles sont dans rules.ts ; cette scène ne fait qu'appliquer les
  * actions et animer les événements qu'elles renvoient.
+ *
+ * GAME FEEL (voir aussi src/game/fx/README.md)
+ *  - sélection : micro-haptique `select`, léger soulèvement, petite ombre, son doux ;
+ *  - dépôt : petit rebond + haptique `drop` ;
+ *  - fusion : anticipation (~70 ms, les deux objets se compriment) → impact → POP,
+ *    squash & stretch, éclat, particules, haptique `merge` ;
+ *  - fusion RARE (niveau ≥ 6) : double POP, étincelles dorées, rayons, ralenti ~120 ms, haptique `rare` ;
+ *  - fusion MAXIMALE (niveau max de la collection) : onde de choc, rayons plein plateau,
+ *    pluie d'étincelles, flash, ralenti, haptique `maxMerge` ;
+ *  - combo : compteur discret animé, hauteur du son qui monte, haptique `combo` aux paliers 3/5/8.
+ *  Les animations ordinaires sont écourtées dès qu'une nouvelle action arrive (jamais bloquant).
+ *  Particules plafonnées (ParticleBudget) ; effets réduits → 1/3 ; animations réduites → plus de
+ *  ralenti, de rayons ni de secousse.
+ *
+ * API PUBLIQUE pour l'interface (B2) — coordonnées en pixels CSS (repère de la page) :
+ *  - `dropFx(cell, rarity)`       : arrivée d'un drop sur une case (lumière + étincelles couleur de rareté) ;
+ *  - `chestFx(x, y)`              : ouverture d'un coffre (confettis dorés, rayons, son, haptique `chest`) ;
+ *  - `maxMergeFx(cell)`           : effet spectaculaire du niveau maximal (aussi utilisé par les fusions) ;
+ *  - `comboFx(value, mult)`       : compteur de combo animé (+ son et haptique de palier) ;
+ *  - `flyTo(kind, fromCell, toXY, cb)` : une icône (coin, diamond, energy, heart, star, flowers, fabric,
+ *                                   cocoa, ticket, chest…) vole de la case vers un compteur ; `cb` à l'arrivée ;
+ *  - `highlightCells(cells)`      : fait pulser des cases (commande, tutoriel) ;
+ *  - `cellCenter(i)`, `cellSize`, `isIdle()`, `celebrate()`, `confetti()` (existants).
  */
 import Phaser from 'phaser';
 import { BaseScene } from '../scenes/BaseScene';
 import { BOARD_H, BOARD_SIZE, BOARD_W, type BoardEvent, type LevelDef, type RunState } from './types';
 import * as R from './rules';
 import { suggestMerge, botStep } from './bot';
-import { MAX_LEVEL, SPECIAL, type ItemRef } from '../../data/items';
+import { MAX_LEVEL, RARITY_COLOR, SPECIAL, collMax, type ItemRef, type Rarity } from '../../data/items';
 import {
-  COLLECTION_TINTS, ITEM_TEX, ensureBoardTextures, ensureFxTextures, ensureItemTexture,
+  COLLECTION_TINTS, ITEM_TEX, ensureBoardTextures, ensureFlyTexture, ensureFxTextures, ensureItemTexture,
 } from './textures';
-import { audio, reducedFx } from '../../core/app';
+import { audio, reducedFx, save } from '../../core/app';
+import { haptic } from '../../core/haptics';
 import { texScale } from '../art/kit';
+import {
+  POP_AT_MS, SLAM_MS, WINDUP_MS, ParticleBudget, comboLabel, comboMilestone, comboPitch, fxProfile, hexInt, mergeTier, popSfx, scaledCount,
+  type FxProfile, type MergeTier,
+} from '../fx/feel';
+import type { Sfx } from '../../audio/AudioManager';
 
 export interface MergeHost {
   /** Zone libre pour le plateau (pixels CSS) : entre le haut et le bas de l'interface. */
@@ -79,6 +108,15 @@ export class MergeScene extends BaseScene {
   private fxLayer!: Phaser.GameObjects.Container;
   private lastAction = 0;
   private lastHint = 0;
+  /** Ombre sous l'objet soulevé. */
+  private shadow!: Phaser.GameObjects.Image;
+  /** Budget de particules et profil d'effets (recalculés à chaque effet : réglages modifiables en jeu). */
+  private budget = new ParticleBudget(110);
+  private lastPop: Sfx | undefined;
+  /** Fusions ordinaires en cours : finaliseurs appelés tout de suite si une nouvelle action arrive. */
+  private pending = new Map<number, { fin: () => void; tier: MergeTier }>();
+  private slowDepth = 0;
+  private extraHi: Phaser.GameObjects.Image[] = [];
 
   constructor() { super(MergeScene.KEY); }
 
@@ -91,6 +129,10 @@ export class MergeScene extends BaseScene {
     this.glows = new Array(BOARD_SIZE).fill(null);
     this.tiles = [];
     this.locked.clear();
+    this.pending.clear();
+    this.budget = new ParticleBudget(110);
+    this.slowDepth = 0;
+    this.extraHi = [];
     this.selected = -1;
     this.drag = null;
     this.ended = false;
@@ -116,6 +158,7 @@ export class MergeScene extends BaseScene {
       const d = this.drag;
       if (d?.moved && (e.target as Element | null)?.tagName !== 'CANVAS') {
         d.sprite.setPosition(e.clientX, e.clientY - this.cell * 0.28);
+        this.placeShadow(e.clientX, e.clientY - this.cell * 0.28, 1.15);
         this.targetHi.setVisible(false);
       }
     };
@@ -128,7 +171,10 @@ export class MergeScene extends BaseScene {
     };
     window.addEventListener('pointermove', onWinMove);
     window.addEventListener('pointerup', onWinUp);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { window.removeEventListener('pointermove', onWinMove); window.removeEventListener('pointerup', onWinUp); });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('pointermove', onWinMove); window.removeEventListener('pointerup', onWinUp);
+      this.slowDepth = 0; this.time.timeScale = 1; this.tweens.timeScale = 1;
+    });
     this.lastAction = this.time.now;
     // Apparition du plateau
     this.boardLayer.setAlpha(0);
@@ -160,7 +206,7 @@ export class MergeScene extends BaseScene {
    * sans jamais déborder sur la case voisine.
    */
   private scaleFor(r: ItemRef | null | undefined): number {
-    const f = !r ? 1 : r.c === 'special' || r.c === 'gen' ? 1.06 : 1 + (Math.min(MAX_LEVEL, r.l) - 1) * 0.011;
+    const f = !r ? 1 : r.c === 'special' || r.c === 'gen' ? 1.06 : 1 + ((Math.min(collMax(r.c), r.l) - 1) / Math.max(1, collMax(r.c) - 1)) * 0.099;
     return (this.cell * f) / (ITEM_TEX * texScale());
   }
 
@@ -202,7 +248,10 @@ export class MergeScene extends BaseScene {
     }
     this.selHi = this.add.image(0, 0, 'cell:sel').setScale(k).setVisible(false);
     this.targetHi = this.add.image(0, 0, 'cell:ok').setScale(k).setVisible(false);
-    this.boardLayer.add([this.selHi, this.targetHi]);
+    this.shadow = this.add.image(0, 0, 'fx:shadow').setScale(1 / texScale()).setVisible(false).setAlpha(0.9);
+    this.boardLayer.add([this.selHi, this.targetHi, this.shadow]);
+    this.extraHi.forEach((h) => h.destroy());
+    this.extraHi = [];
 
     for (let i = 0; i < BOARD_SIZE; i++) {
       this.gifts[i]?.destroy();
@@ -217,7 +266,7 @@ export class MergeScene extends BaseScene {
     }
 
     this.comboText?.destroy();
-    this.comboText = this.text(this.W / 2, this.oy + this.cell * 1.1, '', { fontSize: '30px', fontStyle: '700', color: '#FFFFFF', stroke: '#E8558F', strokeThickness: 8 }).setOrigin(0.5, 0.5).setDepth(120).setAlpha(0);
+    this.comboText = this.text(this.W / 2, this.oy + this.cell * 0.55, '', { fontSize: '22px', fontStyle: '700', color: '#FFFFFF', stroke: '#E8558F', strokeThickness: 6 }).setOrigin(0.5, 0.5).setDepth(120).setAlpha(0);
   }
 
   layout(): void {
@@ -244,7 +293,7 @@ export class MergeScene extends BaseScene {
   private refreshGlow(i: number, r: ItemRef | null): void {
     this.glows[i]?.destroy();
     this.glows[i] = null;
-    if (!r || (r.c !== 'special' && r.l < 8) || reducedFx()) return;
+    if (!r || (r.c !== 'special' && r.c !== 'gen' && r.l < Math.max(7, collMax(r.c) - 2)) || r.c === 'gen' || reducedFx()) return;
     const g = this.add.image(this.cx(i), this.cy(i), 'fx:light').setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.35);
     g.setScale((this.cell * 1.1) / 40 / texScale());
     this.boardLayer.addAt(g, this.boardLayer.getIndex(this.sprites[i]!));
@@ -274,6 +323,7 @@ export class MergeScene extends BaseScene {
     this.host.onActivity();
     this.lastAction = this.time.now;
     this.clearHint();
+    this.flushOrdinary();
     const x = p.worldX;
     const y = p.worldY;
     const i = this.cellAt(x, y);
@@ -299,21 +349,35 @@ export class MergeScene extends BaseScene {
     // Dès que le doigt se pose : l'objet grossit et ses partenaires de fusion s'allument.
     if (this.selected < 0 || this.selected === i) {
       this.lift(sp);
+      haptic('select');
+      audio.play('select');
       this.showMatches(i);
       this.selHi.setPosition(this.cx(i), this.cy(i)).setScale(1 / texScale()).setVisible(true);
     }
   }
 
+  /** Soulèvement : l'objet grossit, monte un peu et projette une petite ombre. */
   private lift(sp: Phaser.GameObjects.Image): void {
     this.tweens.killTweensOf(sp);
-    this.tweens.add({ targets: sp, scale: this.itemScale(sp) * 1.25, duration: 140, ease: 'Back.easeOut' });
+    this.boardLayer.bringToTop(sp);
+    const lifted = this.cy(this.sprites.indexOf(sp)) - this.cell * 0.05;
+    this.tweens.add({ targets: sp, scale: this.itemScale(sp) * 1.25, y: Number.isFinite(lifted) ? lifted : sp.y, duration: 140, ease: 'Back.easeOut' });
+    this.placeShadow(sp.x, lifted, 1);
   }
 
   private unlift(i: number): void {
+    this.shadow.setVisible(false);
     const sp = this.sprites[i];
     if (!sp || this.locked.has(i)) return;
     this.tweens.killTweensOf(sp);
     this.tweens.add({ targets: sp, y: this.cy(i), scale: this.itemScale(sp), duration: 140, ease: 'Quad.easeOut' });
+  }
+
+  /** Ombre douce sous un objet soulevé (x, y = centre de l'objet). */
+  private placeShadow(x: number, y: number, k: number): void {
+    if (!this.shadow) return;
+    this.shadow.setPosition(x + this.cell * 0.04, y + this.cell * 0.36);
+    this.shadow.setScale((this.cell / 44 / texScale()) * k).setAlpha(0.9).setVisible(true);
   }
 
   /** Allume les cases où l'objet de la case i peut fusionner. */
@@ -363,11 +427,11 @@ export class MergeScene extends BaseScene {
       this.boardLayer.bringToTop(d.sprite);
       this.tweens.killTweensOf(d.sprite);
       this.tweens.add({ targets: d.sprite, scale: this.itemScale(d.sprite) * 1.18, duration: 120, ease: 'Quad.easeOut' });
-      audio.play('pickup');
       this.glows[d.from]?.setVisible(false);
     }
     // l'objet suit le doigt, légèrement au-dessus pour rester visible
     d.sprite.setPosition(x, y - this.cell * 0.28);
+    this.placeShadow(x, y - this.cell * 0.28, 1.15);
     const t = this.cellAt(x, y);
     if (t >= 0 && t !== d.from) {
       const a = this.state.cells[d.from].item;
@@ -400,6 +464,7 @@ export class MergeScene extends BaseScene {
     if (this.drag !== d) return;
     this.drag = null;
     this.targetHi.setVisible(false);
+    if (d.moved) this.shadow.setVisible(false);
     if (!d.moved) {
       // simple toucher
       const it = this.state.cells[d.from].item;
@@ -421,7 +486,6 @@ export class MergeScene extends BaseScene {
       // l'objet reste sélectionné : grossi, partenaires allumés
       this.setSelected(d.from);
       this.host.onInspect(it);
-      audio.play('pickup');
       return;
     }
     this.clearMatches();
@@ -471,6 +535,7 @@ export class MergeScene extends BaseScene {
     const r = R.stashItem(this.state, this.def, i);
     if (!r) { this.returnSprite(i, sp); return; }
     this.sprites[i] = null;
+    this.shadow.setVisible(false);
     this.glows[i]?.destroy();
     this.glows[i] = null;
     const target = this.host.bagAnchor?.() ?? { x: this.W - 40, y: this.H - 60 };
@@ -494,6 +559,7 @@ export class MergeScene extends BaseScene {
     if (!d) return;
     this.drag = null;
     this.targetHi.setVisible(false);
+    this.shadow.setVisible(false);
     this.clearMatches();
     this.selHi.setVisible(false);
     this.returnSprite(d.from, d.sprite);
@@ -501,6 +567,7 @@ export class MergeScene extends BaseScene {
 
   private returnSprite(i: number, sp: Phaser.GameObjects.Image): void {
     this.tweens.killTweensOf(sp);
+    this.shadow.setVisible(false);
     this.tweens.add({ targets: sp, x: this.cx(i), y: this.cy(i), scale: this.itemScale(sp), duration: 220, ease: 'Back.easeOut' });
     this.glows[i]?.setVisible(true);
     audio.play('drop');
@@ -629,19 +696,103 @@ export class MergeScene extends BaseScene {
     this.time.delayedCall(ms, () => this.locked.delete(i));
   }
 
+  // ------------------------------------------------------- game feel (utilitaires)
+
+  private prof(): FxProfile {
+    const p = fxProfile(save.data.settings.effects, save.data.settings.reducedMotion);
+    this.budget.cap = p.particleCap;
+    return p;
+  }
+
+  /**
+   * Crée une particule (image) sous le budget. Renvoie null si le plafond est atteint.
+   * La particule est détruite et le budget rendu par `done()`.
+   */
+  private spark(tex: string, x: number, y: number, tint?: number, scale = 1, add = false): { p: Phaser.GameObjects.Image; done: () => void } | null {
+    this.prof();
+    if (this.budget.take(1) < 1) return null;
+    const p = this.add.image(x, y, tex).setScale(scale / texScale());
+    if (tint !== undefined) p.setTint(tint);
+    if (add) p.setBlendMode(Phaser.BlendModes.ADD);
+    this.fxLayer.add(p);
+    let freed = false;
+    return { p, done: () => { if (freed) return; freed = true; this.budget.release(); p.destroy(); } };
+  }
+
+  /** Ralenti visuel très court (temps réel) ; ignoré en animations réduites. */
+  private slowmo(ms: number, scale = 0.35): void {
+    if (!this.prof().slowmo) return;
+    this.slowDepth++;
+    this.time.timeScale = scale;
+    this.tweens.timeScale = scale;
+    window.setTimeout(() => {
+      this.slowDepth = Math.max(0, this.slowDepth - 1);
+      if (this.slowDepth === 0 && this.sys?.isActive()) { this.time.timeScale = 1; this.tweens.timeScale = 1; }
+    }, ms);
+  }
+
+  /** Écourte toutes les fusions ordinaires encore en cours (une nouvelle action arrive). */
+  private flushOrdinary(): void {
+    for (const [, v] of [...this.pending]) if (v.tier === 'normal') v.fin();
+  }
+
+  /** Rayons lumineux tournants autour de (x, y). */
+  private rays(x: number, y: number, n: number, len: number, tint = 0xfff1c0, life = 600): void {
+    const count = Math.min(n, this.prof().rays);
+    if (count <= 0) return;
+    for (let k = 0; k < count; k++) {
+      const sp = this.spark('fx:ray', x, y, tint, 1, true);
+      if (!sp) break;
+      const a = (k / count) * Math.PI * 2 + Math.random() * 0.2;
+      sp.p.setOrigin(0.5, 1).setRotation(a).setAlpha(0).setScale((len / 128) / texScale() * 0.5, (len / 128) / texScale() * 0.2);
+      this.tweens.add({ targets: sp.p, alpha: 0.9, scaleY: (len / 128) / texScale(), scaleX: (len / 128) / texScale() * 0.7, rotation: a + 0.35, duration: life * 0.35, ease: 'Quad.easeOut',
+        onComplete: () => this.tweens.add({ targets: sp.p, alpha: 0, rotation: a + 0.6, duration: life * 0.65, ease: 'Quad.easeIn', onComplete: sp.done }) });
+    }
+  }
+
+  /** Éclat lumineux (additif). */
+  private flashAt(x: number, y: number, size: number, ms: number, tint?: number): void {
+    const sp = this.spark('fx:flash', x, y, tint, 0.2 * (this.cell / 56), true);
+    if (!sp) return;
+    this.tweens.add({ targets: sp.p, scale: (size * (this.cell / 56)) / texScale(), alpha: 0, duration: ms, ease: 'Quad.easeOut', onComplete: sp.done });
+  }
+
+  // ------------------------------------------------------- animations
+
   private animMove(from: number, to: number): void {
     const sp = this.sprites[from];
     this.sprites[from] = null;
     this.sprites[to] = sp;
     this.moveGlow(from, to);
+    this.shadow.setVisible(false);
     if (!sp) return;
     this.tweens.killTweensOf(sp);
-    this.tweens.add({ targets: sp, x: this.cx(to), y: this.cy(to), scale: this.itemScale(sp), duration: 160, ease: 'Quad.easeOut',
-      onComplete: () => { this.glows[to]?.setVisible(true); } });
+    const base = this.itemScale(sp);
+    this.tweens.add({ targets: sp, x: this.cx(to), y: this.cy(to), scale: base, duration: 150, ease: 'Quad.easeOut',
+      onComplete: () => {
+        this.glows[to]?.setVisible(true);
+        if (!sp.active || this.sprites[to] !== sp) return;
+        // petit rebond à l'arrivée (écrasement puis retour)
+        sp.setScale(base * 1.1, base * 0.88);
+        this.tweens.add({ targets: sp, scaleX: base, scaleY: base, duration: 170, ease: 'Back.easeOut', easeParams: [2.5] });
+        if (this.prof().particleScale >= 1) this.dust(this.cx(to), this.cy(to) + this.cell * 0.3);
+      } });
     audio.play('drop');
+    haptic('drop');
+  }
+
+  /** Petit nuage de poussière à l'atterrissage. */
+  private dust(x: number, y: number): void {
+    for (let k = 0; k < 3; k++) {
+      const sp = this.spark('fx:dot', x + (k - 1) * 6, y, 0xffffff, 0.35, false);
+      if (!sp) return;
+      sp.p.setAlpha(0.5);
+      this.tweens.add({ targets: sp.p, x: sp.p.x + (k - 1) * 9, y: y - 3, alpha: 0, scale: 0.7 / texScale(), duration: 260, onComplete: sp.done });
+    }
   }
 
   private animMerge(e: Extract<BoardEvent, { t: 'merge' }>): void {
+    this.pending.get(e.to)?.fin();
     const a = this.sprites[e.from];
     const b = this.sprites[e.to];
     this.sprites[e.from] = null;
@@ -649,57 +800,102 @@ export class MergeScene extends BaseScene {
     this.glows[e.from] = null;
     this.glows[e.to]?.destroy();
     this.glows[e.to] = null;
+    this.shadow.setVisible(false);
     const x = this.cx(e.to);
     const y = this.cy(e.to);
-    const big = e.result.l >= 7 || e.result.c === 'special';
-    const dur = big ? 420 : e.result.l >= 4 ? 330 : 260;
-    this.lock(e.to, dur);
+    const tier = mergeTier(e.result, collMax(e.result.c));
+    const big = tier !== 'normal';
+    this.lock(e.to, POP_AT_MS + (big ? 420 : 140));
     const s0 = this.scaleFor(e.result);
-    // 1–3. anticipation, rapprochement, compression
+    // 1. anticipation (~70 ms) : les deux objets se compriment l'un vers l'autre
     if (b) {
       this.tweens.killTweensOf(b);
-      this.tweens.add({ targets: b, scaleX: s0 * 1.12, scaleY: s0 * 0.82, duration: dur * 0.22, ease: 'Quad.easeOut' });
+      this.boardLayer.bringToTop(b);
+      this.tweens.add({ targets: b, scaleX: this.itemScale(b) * 1.1, scaleY: this.itemScale(b) * 0.86, duration: WINDUP_MS, ease: 'Quad.easeOut' });
     }
     if (a) {
       this.tweens.killTweensOf(a);
       this.boardLayer.bringToTop(a);
-      this.tweens.add({ targets: a, x, y, scaleX: s0 * 0.9, scaleY: s0 * 0.9, duration: dur * 0.3, ease: 'Quad.easeIn' });
+      const wx = a.x + (x - a.x) * 0.12;
+      const wy = a.y + (y - a.y) * 0.12;
+      this.tweens.add({ targets: a, x: wx, y: wy, scaleX: this.itemScale(a) * 0.92, scaleY: this.itemScale(a) * 1.04, duration: WINDUP_MS, ease: 'Quad.easeOut',
+        // 2. impact : l'objet fonce sur l'autre
+        onComplete: () => { if (a.active) this.tweens.add({ targets: a, x, y, scaleX: s0 * 0.85, scaleY: s0 * 0.85, duration: SLAM_MS, ease: 'Quad.easeIn' }); } });
     }
+    audio.play('windup');
     const variant = Math.random();
-    // Le nouvel objet existe tout de suite dans la grille (invisible) : si une
-    // autre action arrive pendant l'animation, elle agit sur le bon sprite.
+    // Le nouvel objet existe tout de suite dans la grille (invisible) : une autre
+    // action pendant l'animation agit sur le bon sprite.
     const sp = this.makeSprite(e.to, e.result);
     sp.setVisible(false).setScale(s0 * 0.45);
     if (b) this.boardLayer.bringToTop(b);
     if (a) this.boardLayer.bringToTop(a);
-    this.time.delayedCall(dur * 0.32, () => {
-      a?.destroy();
-      b?.destroy();
-      // 4. flash doux
-      const fl = this.add.image(x, y, 'fx:flash').setBlendMode(Phaser.BlendModes.ADD).setScale((0.2 * (this.cell / 56)) / texScale());
-      this.fxLayer.add(fl);
-      this.tweens.add({ targets: fl, scale: ((big ? 1.6 : 1.0) * (this.cell / 56)) / texScale(), alpha: 0, duration: dur * 0.9, ease: 'Quad.easeOut', onComplete: () => fl.destroy() });
-      // 5. particules
-      this.burst(x, y, e.result, big ? 18 : e.result.l >= 4 ? 11 : 7, variant);
-      if (big) this.ring(x, y, 0xffe7a0);
-      // 6–7. nouvel objet, rebond élastique
-      if (sp.active) {
-        sp.setVisible(true);
-        this.tweens.add({ targets: sp, scale: s0, duration: dur * 0.9, ease: 'Back.easeOut', easeParams: [2.6] });
-        if (variant > 0.5 && !reducedFx()) this.tweens.add({ targets: sp, angle: { from: variant > 0.75 ? -8 : 8, to: 0 }, duration: dur, ease: 'Back.easeOut' });
-      }
-      // 8. score flottant
-      this.floatText(x, y - this.cell * 0.3, `+${e.points}`, e.combo >= 2 ? '#FFE7A0' : '#FFFFFF');
-      // 9. son
-      const pitch = 1 + Math.min(10, e.result.l) * 0.05 + Math.min(6, e.combo - 1) * 0.04;
-      if (big) { audio.play('rare'); audio.play('pop3', pitch * 0.8); }
-      else audio.play(e.result.l >= 4 ? 'pop2' : 'pop1', pitch);
-      if (big && !reducedFx()) this.cameras.main.shake(110, 0.0025);
-    });
+    let done = false;
+    const fin = () => {
+      if (done) return;
+      done = true;
+      this.pending.delete(e.to);
+      this.locked.delete(e.to);
+      if (a) { this.tweens.killTweensOf(a); a.destroy(); }
+      if (b) { this.tweens.killTweensOf(b); b.destroy(); }
+      if (!sp.active) return;
+      sp.setVisible(true);
+      this.popEffects(e, sp, tier, variant, s0, x, y);
+    };
+    this.pending.set(e.to, { fin, tier });
+    this.time.delayedCall(POP_AT_MS, fin);
+  }
+
+  /** Le « POP » : tout ce qui se passe à l'instant de l'apparition du nouvel objet. */
+  private popEffects(e: Extract<BoardEvent, { t: 'merge' }>, sp: Phaser.GameObjects.Image, tier: MergeTier, variant: number, s0: number, x: number, y: number): void {
+    const prof = this.prof();
+    const big = tier !== 'normal';
+    // 6–7. nouvel objet : squash & stretch puis rebond élastique
+    sp.setScale(s0 * 1.28, s0 * 0.68);
+    this.tweens.add({ targets: sp, scaleX: s0 * 0.88, scaleY: s0 * 1.2, duration: 90, ease: 'Quad.easeOut',
+      onComplete: () => { if (sp.active) this.tweens.add({ targets: sp, scaleX: s0, scaleY: s0, duration: big ? 420 : 300, ease: 'Back.easeOut', easeParams: [big ? 3.2 : 2.4] }); } });
+    if (variant > 0.5 && !reducedFx()) this.tweens.add({ targets: sp, angle: { from: variant > 0.75 ? -8 : 8, to: 0 }, duration: 360, ease: 'Back.easeOut' });
+    // 4. éclat + 5. particules
+    this.flashAt(x, y, big ? 1.7 : 1.0, big ? 420 : 280);
+    this.burst(x, y, e.result, tier === 'max' ? 26 : tier === 'rare' ? 18 : e.result.l >= 4 ? 11 : 7, variant);
+    // 8. score flottant
+    this.floatText(x, y - this.cell * 0.3, `+${e.points}`, e.combo >= 2 ? '#FFE7A0' : '#FFFFFF');
+    // 9. son + haptique
+    const pop = popSfx(tier, e.result.l, e.combo, Math.random(), this.lastPop);
+    this.lastPop = pop.name;
+    audio.play(pop.name, pop.pitch);
+    if (tier === 'normal') {
+      haptic('merge');
+      return;
+    }
+    if (tier === 'rare') {
+      haptic('rare');
+      // double POP : second anneau + étincelles dorées + rayons + court ralenti
+      this.ring(x, y, 0xffe7a0);
+      this.time.delayedCall(90, () => { this.ring(x, y, 0xffffff); this.sparkBurst(x, y, 10, 0xffe7a0); });
+      this.rays(x, y, 8, this.cell * 1.3);
+      this.slowmo(120, 0.35);
+      audio.play('sparkle', 1 + e.combo * 0.03);
+      if (prof.shake) this.cameras.main.shake(90, 0.0016);
+      return;
+    }
+    this.maxMergeFx(e.to, true);
+  }
+
+  /** Étincelles dorées qui jaillissent (budgétées). */
+  private sparkBurst(x: number, y: number, n: number, tint = 0xffe7a0): void {
+    const m = scaledCount(n, this.prof());
+    for (let k = 0; k < m; k++) {
+      const sp = this.spark('fx:sparkGold', x, y, tint, 0.6 + Math.random() * 0.6);
+      if (!sp) return;
+      const a = Math.random() * Math.PI * 2;
+      const d = this.cell * (0.5 + Math.random() * 0.8);
+      this.tweens.add({ targets: sp.p, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d - 8, alpha: 0, angle: Math.random() * 200, scale: 0, duration: 450 + Math.random() * 350, ease: 'Cubic.easeOut', onComplete: sp.done });
+    }
   }
 
   private burst(x: number, y: number, r: ItemRef, n: number, variant: number): void {
-    if (reducedFx()) n = Math.ceil(n / 3);
+    n = scaledCount(n, this.prof());
     const tints = COLLECTION_TINTS[r.c] ?? COLLECTION_TINTS.special;
     const style = this.host.fxStyle?.() ?? 'classic';
     const tex = style === 'fx-hearts' ? 'fx:heart' : style === 'fx-stars' ? 'fx:star' : style === 'fx-petals' ? 'p:petal'
@@ -707,17 +903,16 @@ export class MergeScene extends BaseScene {
     for (let k = 0; k < n; k++) {
       const a = (Math.PI * 2 * k) / n + Math.random() * 0.4;
       const d = this.cell * (0.45 + Math.random() * 0.45);
-      const p = this.add.image(x, y, k % 3 === 0 ? 'fx:sparkGold' : tex).setTint(tints[k % tints.length]).setScale((0.5 + Math.random() * 0.5) / texScale());
-      if (tex === 'fx:dot') p.setBlendMode(Phaser.BlendModes.ADD);
-      this.fxLayer.add(p);
-      this.tweens.add({ targets: p, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d - 6, alpha: 0, angle: Math.random() * 180, scale: 0, duration: 420 + Math.random() * 260, ease: 'Cubic.easeOut', onComplete: () => p.destroy() });
+      const sp = this.spark(k % 3 === 0 ? 'fx:sparkGold' : tex, x, y, tints[k % tints.length], 0.5 + Math.random() * 0.5, tex === 'fx:dot');
+      if (!sp) return;
+      this.tweens.add({ targets: sp.p, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d - 6, alpha: 0, angle: Math.random() * 180, scale: 0, duration: 420 + Math.random() * 260, ease: 'Cubic.easeOut', onComplete: sp.done });
     }
   }
 
-  private ring(x: number, y: number, tint: number): void {
-    const r = this.add.image(x, y, 'fx:ring').setTint(tint).setScale(0.2 / texScale()).setBlendMode(Phaser.BlendModes.ADD);
-    this.fxLayer.add(r);
-    this.tweens.add({ targets: r, scale: (this.cell * 2.4) / 96 / texScale(), alpha: 0, duration: 520, ease: 'Cubic.easeOut', onComplete: () => r.destroy() });
+  private ring(x: number, y: number, tint: number, size = 2.4, ms = 520): void {
+    const sp = this.spark('fx:ring', x, y, tint, 0.2, true);
+    if (!sp) return;
+    this.tweens.add({ targets: sp.p, scale: (this.cell * size) / 96 / texScale(), alpha: 0, duration: ms, ease: 'Cubic.easeOut', onComplete: sp.done });
   }
 
   private floatText(x: number, y: number, str: string, color = '#FFFFFF', size = 18): void {
@@ -790,7 +985,7 @@ export class MergeScene extends BaseScene {
       const sp = this.makeSprite(at, item);
       sp.setScale(0);
       this.tweens.add({ targets: sp, scale: this.itemScale(sp), duration: 360, ease: 'Back.easeOut' });
-      audio.play('chest');
+      this.chestFx(x, y);
     });
   }
 
@@ -844,10 +1039,12 @@ export class MergeScene extends BaseScene {
     const y = this.cy(at);
     this.burst(x, y, item, 14, 0.1);
     this.ring(x, y, 0xffe7a0);
+    this.sparkBurst(x, y, 8);
     const sp = this.makeSprite(at, item);
     sp.setScale(0);
     this.tweens.add({ targets: sp, scale: this.itemScale(sp), duration: 380, ease: 'Back.easeOut' });
-    audio.play('rare');
+    audio.play('popRare');
+    haptic('merge');
   }
 
   private animBox(at: number): void {
@@ -856,27 +1053,41 @@ export class MergeScene extends BaseScene {
     this.glows[at]?.destroy();
     this.glows[at] = null;
     if (sp) this.tweens.add({ targets: sp, scale: sp.scale * 1.4, alpha: 0, duration: 260, onComplete: () => sp.destroy() });
-    this.ring(this.cx(at), this.cy(at), 0xff9cc0);
-    audio.play('chest');
+    this.chestFx(this.cx(at), this.cy(at));
   }
 
   private animCombo(value: number): void {
+    // après le POP de la fusion qui vient d'avoir lieu (ordre sonore et haptique naturel)
+    this.time.delayedCall(POP_AT_MS + 20, () => this.comboFx(value, 1));
+  }
+
+  /**
+   * Compteur de combo discret et animé : petit texte en haut du plateau qui « pulse » à chaque
+   * incrément, son dont la hauteur monte, haptique `combo` aux paliers (3, 5, 8). `mult` = multiplicateur
+   * de récompense éventuel (affiché s'il dépasse 1).
+   */
+  comboFx(value: number, mult = 1): void {
+    if (value < 2 || !this.comboText?.active) return;
     const t = this.comboText;
-    t.setText(value >= 5 ? `COMBO ×${value} !` : `Combo ×${value}`);
-    t.setY(this.oy + this.cell * 1.1);
+    const big = value >= 5;
+    t.setText(comboLabel(value, mult));
+    t.setFontSize(big ? 26 : 22);
+    t.setY(this.oy + this.cell * 0.55);
     this.tweens.killTweensOf(t);
-    t.setAlpha(1).setScale(0.6);
-    this.tweens.add({ targets: t, scale: value >= 5 ? 1.25 : 1.05, duration: 220, ease: 'Back.easeOut' });
-    this.tweens.add({ targets: t, alpha: 0, delay: 1100, duration: 400 });
-    audio.play('combo', 1 + value * 0.1);
-    const bx = this.W / 2;
-    const by = this.oy + (this.cell * BOARD_H) / 2;
+    t.setAlpha(1).setScale(0.75);
+    this.tweens.add({ targets: t, scale: big ? 1.18 : 1.05, duration: 170, ease: 'Back.easeOut',
+      onComplete: () => this.tweens.add({ targets: t, scale: 1, duration: 140 }) });
+    this.tweens.add({ targets: t, alpha: 0, delay: 1300, duration: 400 });
+    audio.play('combo', 1 + Math.min(10, value) * 0.1);
+    audio.play('heart', comboPitch(value) + 0.1);
+    const m = comboMilestone(value);
+    if (m) haptic('combo');
     if (value >= 3) this.halo(value);
-    if (value >= 5) this.confetti(bx, this.oy, value >= 8 ? 60 : 36);
-    void by;
+    if (value === 5 || value === 8 || (value > 8 && value % 5 === 0)) this.confetti(this.W / 2, this.oy, value >= 8 ? 40 : 24);
   }
 
   private halo(value: number): void {
+    if (this.prof().particleScale < 0.35) return;
     const g = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
     const col = value >= 5 ? 0xf3c86b : 0xff75a8;
     g.lineStyle(6, col, 0.8);
@@ -885,16 +1096,145 @@ export class MergeScene extends BaseScene {
     this.tweens.add({ targets: g, alpha: 0, duration: 700, onComplete: () => g.destroy() });
   }
 
+  // ------------------------------------------------------- API publique (effets pour l'interface)
+
+  /** Plus grande distance du centre d'une case aux bords du plateau (portée des rayons plein plateau). */
+  private boardReach(x: number, y: number): number {
+    const bw = this.cell * BOARD_W; const bh = this.cell * BOARD_H;
+    return Math.hypot(Math.max(x - this.ox, this.ox + bw - x), Math.max(y - this.oy, this.oy + bh - y));
+  }
+
+  /** Effet spectaculaire du niveau maximal d'une collection, centré sur la case `cell`. */
+  maxMergeFx(cell: number, fromMerge = false): void {
+    const prof = this.prof();
+    const x = this.cx(cell);
+    const y = this.cy(cell);
+    if (!fromMerge) { audio.play('maxMerge'); haptic('maxMerge'); } else haptic('maxMerge');
+    audio.play('sparkle', 1.1);
+    // flash plein plateau
+    const bw = this.cell * BOARD_W; const bh = this.cell * BOARD_H;
+    const fl = this.add.rectangle(this.ox + bw / 2, this.oy + bh / 2, bw + 16, bh + 16, 0xffffff, prof.shake ? 0.55 : 0.28).setBlendMode(Phaser.BlendModes.ADD);
+    this.fxLayer.add(fl);
+    this.tweens.add({ targets: fl, alpha: 0, duration: 380, ease: 'Quad.easeOut', onComplete: () => fl.destroy() });
+    this.flashAt(x, y, 2.6, 520, 0xfff1c0);
+    // ondes de choc
+    this.ring(x, y, 0xffe7a0, 5, 620);
+    this.time.delayedCall(140, () => this.ring(x, y, 0xffffff, 4, 560));
+    this.time.delayedCall(280, () => this.ring(x, y, 0xff9cc0, 3, 520));
+    // rayons plein plateau
+    this.rays(x, y, 12, this.boardReach(x, y), 0xfff1c0, 900);
+    // éclat d'étincelles + pluie
+    this.sparkBurst(x, y, 24);
+    const rain = scaledCount(34, prof);
+    for (let k = 0; k < rain; k++) {
+      this.time.delayedCall(120 + Math.random() * 700, () => {
+        const sp = this.spark(k % 2 ? 'fx:sparkGold' : 'fx:spark', this.ox + Math.random() * bw, this.oy - 6, k % 3 === 0 ? 0xffffff : 0xffe7a0, 0.5 + Math.random() * 0.7);
+        if (!sp) return;
+        this.tweens.add({ targets: sp.p, y: this.oy + Math.random() * bh, x: sp.p.x + (Math.random() - 0.5) * 30, angle: 180 + Math.random() * 240, alpha: { from: 1, to: 0 }, duration: 600 + Math.random() * 500, ease: 'Quad.easeIn', onComplete: sp.done });
+      });
+    }
+    this.floatText(x, y - this.cell * 0.55, 'Niveau max !', '#FFE7A0', 20);
+    if (prof.shake) this.cameras.main.shake(170, 0.004);
+    this.slowmo(140, 0.3);
+  }
+
+  /** Arrivée d'un drop sur une case : lumière et étincelles à la couleur de sa rareté. */
+  dropFx(cell: number, rarity: Rarity | string = 'common'): void {
+    const x = this.cx(cell);
+    const y = this.cy(cell);
+    const col = hexInt((RARITY_COLOR as Record<string, string>)[rarity] ?? RARITY_COLOR.common);
+    const rank = ['common', 'uncommon', 'rare', 'epic', 'legendary'].indexOf(rarity);
+    const r = rank < 0 ? 0 : rank;
+    this.flashAt(x, y, 1 + r * 0.25, 360 + r * 60, col);
+    this.ring(x, y, col, 1.6 + r * 0.3, 460);
+    this.sparkBurst(x, y, 4 + r * 4, col);
+    if (r >= 3) this.time.delayedCall(120, () => this.ring(x, y, 0xffffff, 2.4, 480));
+    if (r >= 4) this.rays(x, y, 8, this.cell * 1.5, col, 700);
+    const sp = this.sprites[cell];
+    if (sp) {
+      const base = this.itemScale(sp);
+      this.tweens.add({ targets: sp, scaleX: base * 1.2, scaleY: base * 0.84, duration: 90, yoyo: true, ease: 'Quad.easeOut', onComplete: () => { if (sp.active) sp.setScale(base); } });
+    }
+    const snd: Sfx[] = ['drop', 'pop4', 'popRare', 'rare', 'rare'];
+    audio.play(snd[r] ?? 'drop', 1 + r * 0.04);
+    if (r >= 4) this.time.delayedCall(160, () => audio.play('sparkle', 1.2));
+    haptic(r >= 3 ? 'rare' : 'drop');
+  }
+
+  /** Ouverture d'un coffre en (x, y) : confettis dorés, rayons, son et haptique `chest`. */
+  chestFx(x: number, y: number): void {
+    this.flashAt(x, y, 1.8, 480, 0xffe7a0);
+    this.ring(x, y, 0xffe7a0, 3, 560);
+    this.rays(x, y, 10, this.cell * 1.8, 0xfff1c0, 750);
+    this.sparkBurst(x, y, 16);
+    this.confetti(x, y - this.cell * 0.2, 22);
+    audio.play('chestOpen');
+    haptic('chest');
+  }
+
+  /**
+   * Une icône vole de la case `fromCell` vers `toXY` (compteur de l'interface, en pixels CSS) ;
+   * `cb` est appelé à l'arrivée (mettre à jour le compteur à ce moment-là). Ne dépend jamais
+   * du budget de particules : le callback est toujours appelé.
+   */
+  flyTo(kind: string, fromCell: number, toXY: { x: number; y: number }, cb?: () => void): void {
+    const x0 = this.cx(fromCell);
+    const y0 = this.cy(fromCell);
+    const key = ensureFlyTexture(this, kind);
+    const img = this.add.image(x0, y0, key).setScale(0.2 / texScale());
+    this.fxLayer.add(img);
+    const k = (this.cell * 0.5) / 28 / texScale();
+    const ctrlX = (x0 + toXY.x) / 2 + (toXY.x < x0 ? -1 : 1) * this.cell * 0.9;
+    const ctrlY = Math.min(y0, toXY.y) - this.cell * 0.6;
+    const o = { t: 0 };
+    this.tweens.add({ targets: img, scale: k * 1.25, duration: 150, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: o, t: 1, duration: 520, delay: 80, ease: 'Cubic.easeIn',
+      onUpdate: () => {
+        const t = o.t;
+        img.setPosition((1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * ctrlX + t * t * toXY.x, (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * ctrlY + t * t * toXY.y);
+        img.setScale(k * (1.25 - 0.45 * t));
+      },
+      onComplete: () => {
+        img.destroy();
+        const ping = this.spark('fx:flash', toXY.x, toXY.y, 0xffe7a0, 0.3, true);
+        if (ping) this.tweens.add({ targets: ping.p, scale: 0.9 / texScale(), alpha: 0, duration: 260, onComplete: ping.done });
+        audio.play('heart', 1.1);
+        cb?.();
+      } });
+    this.time.delayedCall(80, () => audio.play('whoosh'));
+  }
+
+  /** Fait pulser des cases (commande, tutoriel, aide) pendant ~2 s. */
+  highlightCells(cells: number[]): void {
+    this.extraHi.forEach((h) => { this.tweens.killTweensOf(h); h.destroy(); });
+    this.extraHi = [];
+    const k = 1 / texScale();
+    for (const i of cells) {
+      if (i < 0 || i >= BOARD_SIZE) continue;
+      const hi = this.add.image(this.cx(i), this.cy(i), 'cell:ok').setScale(k).setAlpha(0.9);
+      this.boardLayer.addAt(hi, this.tiles.length);
+      this.tweens.add({ targets: hi, alpha: 0.25, yoyo: true, repeat: 3, duration: 380, ease: 'Sine.easeInOut',
+        onComplete: () => { hi.destroy(); this.extraHi = this.extraHi.filter((h) => h !== hi); } });
+      this.extraHi.push(hi);
+      const sp = this.sprites[i];
+      if (sp && !this.locked.has(i)) {
+        const base = this.itemScale(sp);
+        this.tweens.add({ targets: sp, scaleX: base * 1.12, scaleY: base * 1.12, yoyo: true, repeat: 2, duration: 260, ease: 'Sine.easeInOut', onComplete: () => { if (sp.active) sp.setScale(base); } });
+      }
+    }
+  }
+
   confetti(x: number, y: number, n: number): void {
-    if (reducedFx()) n = Math.ceil(n / 4);
+    n = scaledCount(n, this.prof());
     const cols = [0xff75a8, 0xf3c86b, 0xb9a5e8, 0xffc0a3, 0xffffff, 0x9fd8a8];
     for (let k = 0; k < n; k++) {
-      const c = this.add.image(x + (Math.random() - 0.5) * this.cell * 4, y, 'fx:confetti').setTint(cols[k % cols.length]).setScale(0.8 / texScale() * 1.5);
-      this.fxLayer.add(c);
+      const sp = this.spark('fx:confetti', x + (Math.random() - 0.5) * this.cell * 4, y, cols[k % cols.length], 1.2);
+      if (!sp) return; // plafond atteint : on s'arrête là
+      const c = sp.p;
       const dx = (Math.random() - 0.5) * this.W * 0.9;
       const up = 60 + Math.random() * 120;
       this.tweens.add({ targets: c, x: c.x + dx * 0.4, y: y - up, angle: Math.random() * 720, duration: 380, ease: 'Quad.easeOut',
-        onComplete: () => this.tweens.add({ targets: c, x: c.x + dx * 0.4, y: this.H + 20, angle: c.angle + 360, duration: 1400 + Math.random() * 900, ease: 'Quad.easeIn', onComplete: () => c.destroy() }) });
+        onComplete: () => this.tweens.add({ targets: c, x: c.x + dx * 0.4, y: this.H + 20, angle: c.angle + 360, duration: 1100 + Math.random() * 700, ease: 'Quad.easeIn', onComplete: sp.done }) });
     }
   }
 

@@ -35,7 +35,7 @@ export function showConclusion(body: HTMLElement, o: ConclusionOpts): Promise<vo
     const card = h('div.ev-concl',
       h('div.ev-concl-t', h('b', o.first ? 'Souvenir ajouté ♡' : 'Un souvenir de plus ♡'), h('small', o.def.memoryTitle)),
       ph,
-      chips.length ? h('div.ev-chips', ...chips) : h('p.ev-note', 'Tu avais déjà reçu cette récompense : le souvenir te reste, c’est l’essentiel ♡'),
+      chips.length ? h('div.ev-chips', ...chips) : h('p.ev-note', o.def.conclusionNote ?? 'Tu avais déjà reçu cette récompense : le souvenir te reste, c’est l’essentiel ♡'),
       items.length ? h('ul.ev-items', ...items) : null,
       o.repeat > 0 && chips.length ? h('p.ev-note', 'Les rejouables rapportent un peu moins : tu gardes surtout le plaisir de recommencer.') : null,
       h('button.btn.ev-btn.gold', { on: { click: tap(() => { card.classList.add('out'); window.setTimeout(resolve, 180); }) } }, 'Reprendre ma partie'));

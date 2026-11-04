@@ -1,0 +1,47 @@
+/* Tindeur : fausse appli de rencontres DANS le jeu (couleurs maison, aucune marque réelle). */
+.tdr-layer { position: absolute; inset: 0; z-index: 96; display: flex; flex-direction: column; gap: 12px; overflow: auto; background: linear-gradient(180deg, #fff2ea, #ffd9e6); padding: calc(var(--sat) + 10px) calc(var(--sar) + 16px) calc(var(--sab) + 12px) calc(var(--sal) + 16px); animation: screenIn 0.3s var(--ease-out); touch-action: manipulation; }
+.tdr-layer.out { animation: screenOut 0.26s ease forwards; pointer-events: none; }
+.tdr-head { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.tdr-x { font-size: 28px; line-height: 1; }
+.tdr-head .spacer { width: 44px; }
+.tdr-brand { display: flex; align-items: center; gap: 8px; }
+.tdr-brand b { font-size: 26px; letter-spacing: 0.5px; background: linear-gradient(90deg, #ff9a62, #ff4f8b); -webkit-background-clip: text; background-clip: text; color: transparent; font-family: var(--font-display, inherit); }
+.tdr-count { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; position: relative; text-align: center; }
+.tdr-count p { margin: 0; font-size: 20px; font-weight: 700; color: var(--choco); }
+.tdr-num { font-size: 84px; line-height: 1; color: #ff4f8b; text-shadow: 0 4px 0 #fff, 0 10px 20px rgba(255, 79, 139, 0.35); animation: evPop 0.6s var(--ease-pop); }
+.tdr-go { margin-top: 24px; }
+.tdr-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.tdr-hearts i { position: absolute; bottom: -20px; font-style: normal; color: #ff7aa6; font-size: 26px; opacity: 0; animation: tdrFloat 2.6s ease-in infinite; }
+@keyframes tdrFloat { 0% { transform: translateY(0) scale(0.7); opacity: 0; } 20% { opacity: 0.9; } 100% { transform: translateY(-420px) scale(1.2); opacity: 0; } }
+.tdr-card { background: #fff; border-radius: 26px; overflow: hidden; box-shadow: 0 10px 26px rgba(255, 79, 139, 0.25), 0 0 0 3px #ffd0de; flex-shrink: 0; }
+.tdr-pic { position: relative; height: 150px; background: linear-gradient(160deg, #ffb36b, #ff4f8b 70%, #b07cff); display: grid; place-items: end center; overflow: hidden; }
+.tdr-sil { position: relative; width: 120px; height: 120px; }
+.tdr-sil .head { position: absolute; left: 36px; top: 10px; width: 48px; height: 52px; border-radius: 50%; background: rgba(255, 255, 255, 0.55); }
+.tdr-sil .body { position: absolute; left: 8px; top: 66px; width: 104px; height: 80px; border-radius: 52px 52px 0 0; background: rgba(255, 255, 255, 0.55); }
+.tdr-ques { position: absolute; top: 14px; right: 18px; font-size: 40px; font-weight: 800; color: #fff; opacity: 0.8; animation: evPop 1.2s var(--ease-pop) infinite alternate; }
+.tdr-who { padding: 10px 14px 0; } .tdr-who b { display: block; font-size: 20px; color: var(--nuit); } .tdr-who small { color: var(--choco-soft); font-size: 13.5px; }
+.tdr-bio { margin: 4px 14px 8px; font-size: 14.5px; color: var(--choco); font-style: italic; line-height: 1.3; }
+.tdr-bubble { margin: 0 14px 14px; display: inline-block; background: #ffeaf1; color: var(--rose-deep); font-weight: 700; font-size: 15px; padding: 8px 14px; border-radius: 18px 18px 18px 4px; }
+.tdr-ask { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.tdr-ask h3 { margin: 2px 0 2px; text-align: center; font-size: 18px; color: var(--nuit); }
+.tdr-opt { min-height: 50px; line-height: 1.2; padding: 10px 14px; white-space: normal; }
+.tdr-fine { margin: 0; text-align: center; font-size: 12px; color: var(--choco-soft); flex-shrink: 0; }
+.tdr-bye { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
+.tdr-bigico svg { filter: drop-shadow(0 10px 14px rgba(255, 79, 139, 0.4)); display: block; }
+.tdr-bigico.poof { animation: tdrPoof 0.6s ease-in forwards; }
+.tdr-bigico.happy { animation: evPop 0.6s var(--ease-pop); }
+@keyframes tdrPoof { 0% { transform: scale(1) rotate(0); opacity: 1; } 30% { transform: scale(1.15) rotate(-8deg); } 100% { transform: scale(0) rotate(40deg); opacity: 0; filter: blur(6px); } }
+.tdr-say { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 20px; padding: 8px 14px 8px 8px; margin: 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); max-width: 320px; font-weight: 700; color: var(--choco); font-size: 15.5px; }
+.tdr-say img { width: 44px; height: 44px; border-radius: 50%; box-shadow: 0 0 0 2.5px #b9a5e8; flex: none; object-fit: cover; }
+.tdr-poof { animation: tdrPoof 0.5s ease-in forwards; pointer-events: none; }
+
+/* icône dans le téléphone du jeu */
+.ph-apps { display: flex; gap: 14px; padding: 4px 6px 10px; flex-wrap: wrap; }
+.ph-app { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 64px; font-size: 11.5px; font-weight: 700; color: var(--choco); background: none; border: 0; padding: 0; }
+.ph-app svg { display: block; filter: drop-shadow(0 3px 5px rgba(88, 67, 63, 0.3)); }
+.ph-app .ph-dot { position: absolute; top: -4px; right: 2px; }
+.ph-gear { width: 34px; height: 34px; }
+.ph-right { display: flex; align-items: center; gap: 2px; }
+.ph-set { background: #fff; border-radius: 18px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; box-shadow: inset 0 0 0 2px #f1dfe8; margin-bottom: 8px; }
+.ph-set > div { flex: 1; min-width: 0; } .ph-set b { display: block; font-size: 15px; color: var(--nuit); } .ph-set small { color: var(--choco-soft); font-size: 12.5px; }
+.reduced-motion .tdr-hearts i, .reduced-motion .tdr-ques { animation: none; }

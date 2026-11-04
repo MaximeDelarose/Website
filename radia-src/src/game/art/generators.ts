@@ -9,7 +9,10 @@ import {
 } from './kit';
 
 type C = CanvasRenderingContext2D;
-export type GenKind = 1 | 2 | 3 | 4;
+import { GENS2 } from './gens2';
+
+/** 1 à 4 : générateurs d'origine ; 5 à 11 : rare, choc, jewel, cloth, perfume, acc, castle (gens2.ts). */
+export type GenKind = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 
 const LW = (100 * OUTLINE_RATIO) / 0.9;
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
@@ -72,7 +75,7 @@ function baseGlow(c: C) {
 
 // ============================================================ générateurs
 
-const GENS: Record<GenKind, (c: C) => void> = {
+const GENS: Record<1 | 2 | 3 | 4, (c: C) => void> = {
   // 1. Pot de fleurs magique
   1: (c) => {
     baseGlow(c);
@@ -228,7 +231,7 @@ const GENS: Record<GenKind, (c: C) => void> = {
 };
 
 export function drawGenerator(ctx: CanvasRenderingContext2D, kind: GenKind, size: number): void {
-  const fn = GENS[kind];
+  const fn = kind <= 4 ? GENS[kind as 1 | 2 | 3 | 4] : GENS2[kind];
   if (!fn) return;
   ctx.save();
   ctx.scale(size / 100, size / 100);

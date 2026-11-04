@@ -9,6 +9,7 @@
  * Les niveaux élevés (8 à 10) gagnent un halo et des étincelles.
  */
 import type { ItemRef } from '../../data/items';
+import { EXTRA_ITEMS } from './items2';
 import {
   OUTLINE, OUTLINE_RATIO, PAL, ellipse, fillShaded, gloss, glow, groundShadow, heartPath, roundRect, shade, sparkle, starPath,
 } from './kit';
@@ -820,10 +821,10 @@ const SPECIALS: ((c: C) => void)[] = [
   },
 ];
 
-const TABLE: Record<string, ((c: C) => void)[]> = { flowers: FLOWERS, love: LOVE, paris: PARIS, chess: CHESS, special: SPECIALS };
+const TABLE: Record<string, ((c: C) => void)[] | undefined> = { flowers: FLOWERS, love: LOVE, paris: PARIS, chess: CHESS, special: SPECIALS };
 
 export function drawItem(ctx: CanvasRenderingContext2D, ref: ItemRef, size: number): void {
-  const fn = TABLE[ref.c]?.[ref.l - 1];
+  const fn = (TABLE[ref.c] ?? EXTRA_ITEMS[ref.c])?.[ref.l - 1];
   if (!fn) return;
   ctx.save();
   ctx.scale(size / 100, size / 100);

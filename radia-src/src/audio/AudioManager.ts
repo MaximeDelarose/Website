@@ -12,7 +12,13 @@
 export type Sfx =
   | 'pop1' | 'pop2' | 'pop3' | 'rare' | 'combo' | 'reward' | 'button' | 'chest' | 'achievement'
   | 'move' | 'capture' | 'victory' | 'invalid' | 'spawn' | 'deliver' | 'pickup' | 'drop' | 'whoosh'
-  | 'heart' | 'check' | 'sparkle' | 'page';
+  | 'heart' | 'check' | 'sparkle' | 'page'
+  // Game feel 2.0 : variantes de POP, fusion rare / maximale, coffre, sélection douce
+  | 'pop4' | 'pop5' | 'popRare' | 'maxMerge' | 'chestOpen' | 'select' | 'windup'
+  // Casino Royal et roue du jour
+  | 'chip' | 'chipWin' | 'rouletteTick' | 'ballDrop' | 'reelStop' | 'cardDeal' | 'cardFlip' | 'jackpot' | 'wheelTick'
+  // Scène du feu d'artifice et collier légendaire (synthétisés, doux)
+  | 'fwLaunch' | 'fwBurst' | 'fwCrackle' | 'crystal' | 'crystalSoft';
 
 /** Les morceaux s'enchaînent tour à tour (le niveau sonore de chacun est égalisé au chargement). */
 const TRACKS = [
@@ -460,7 +466,8 @@ export class AudioManager {
         this.tone(660, 0.05, { slide: 1.2, vol: 0.1 });
         break;
       case 'drop':
-        this.tone(420, 0.06, { slide: 0.8, vol: 0.12 });
+        this.tone(420 * p, 0.06, { slide: 0.8, vol: 0.12 });
+        this.noiseBurst(0.025, { freq: 900, q: 1.5, vol: 0.05 });
         break;
       case 'whoosh':
         this.noiseBurst(0.35, { freq: 1500, q: 0.6, vol: 0.12 });
@@ -471,6 +478,94 @@ export class AudioManager {
         break;
       case 'sparkle':
         [1568, 2093, 2637].forEach((f, i) => this.tone(f * p, 0.14, { type: 'sine', vol: 0.06, delay: i * 0.04 }));
+        break;
+      case 'pop4': // plus rond, légèrement « bulle »
+        this.tone(600 * p, 0.1, { slide: 1.5, vol: 0.3 });
+        this.tone(1200 * p, 0.07, { slide: 1.2, vol: 0.09, type: 'triangle', delay: 0.02 });
+        break;
+      case 'pop5': // petit « plop » grave
+        this.tone(300 * p, 0.14, { slide: 1.8, vol: 0.34 });
+        this.noiseBurst(0.03, { freq: 2600, vol: 0.07 });
+        break;
+      case 'popRare': // double POP : deux notes qui montent + scintillement
+        this.tone(440 * p, 0.14, { slide: 1.8, vol: 0.32 });
+        this.tone(660 * p, 0.2, { slide: 1.6, vol: 0.3, delay: 0.09 });
+        this.tone(1320 * p, 0.22, { type: 'triangle', vol: 0.1, delay: 0.12 });
+        this.noiseBurst(0.06, { freq: 3200, vol: 0.09, delay: 0.09 });
+        break;
+      case 'maxMerge': { // grand accord ascendant, onde grave puis pluie d'étincelles
+        this.tone(110, 0.5, { slide: 0.6, vol: 0.34, type: 'sine' });
+        this.noiseBurst(0.4, { freq: 700, q: 0.7, vol: 0.14, type: 'lowpass' });
+        [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => this.tone(f * p, 0.5, { type: 'triangle', vol: 0.13, delay: 0.08 + i * 0.07 }));
+        [2093, 2637, 3136, 2349].forEach((f, i) => this.tone(f * p, 0.16, { vol: 0.05, delay: 0.5 + i * 0.06 }));
+        break;
+      }
+      case 'chestOpen':
+        this.tone(180, 0.12, { slide: 0.7, vol: 0.2, type: 'triangle' });
+        this.noiseBurst(0.18, { freq: 1100, q: 0.8, vol: 0.12, type: 'lowpass', delay: 0.04 });
+        [659, 880, 1175, 1568].forEach((f, i) => this.tone(f * p, 0.26, { type: 'triangle', vol: 0.13, delay: 0.14 + i * 0.06 }));
+        this.tone(2349, 0.2, { vol: 0.05, delay: 0.42 });
+        break;
+      case 'select': // très doux
+        this.tone(740 * p, 0.05, { slide: 1.15, vol: 0.07 });
+        break;
+      case 'windup': // petite montée « on se prépare »
+        this.tone(300 * p, 0.07, { slide: 1.5, vol: 0.06, type: 'triangle' });
+        break;
+      // ---- Casino Royal et roue du jour (synthétiques, courts, jamais permanents)
+      case 'chip': // jeton posé : petit « clac » mat
+        this.tone(1250 * p, 0.05, { slide: 0.7, vol: 0.12, type: 'triangle' });
+        this.noiseBurst(0.025, { freq: 4200, q: 2, vol: 0.07 });
+        break;
+      case 'chipWin': // pièces qui tintent
+        [1568, 2093, 1760].forEach((f, i) => this.tone(f * p, 0.12, { type: 'triangle', vol: 0.07, delay: i * 0.05 }));
+        this.noiseBurst(0.05, { freq: 6500, q: 1.5, vol: 0.04, type: 'highpass' });
+        break;
+      case 'rouletteTick': // bille qui saute d'une case à l'autre
+        this.tone(2400 * p, 0.03, { slide: 0.8, vol: 0.05, type: 'square' });
+        break;
+      case 'ballDrop': // impact de la bille dans la case
+        this.tone(260, 0.1, { slide: 0.6, vol: 0.22, type: 'triangle' });
+        this.noiseBurst(0.05, { freq: 2800, q: 1.5, vol: 0.12 });
+        this.tone(1900, 0.06, { vol: 0.06, delay: 0.05 });
+        break;
+      case 'reelStop': // arrêt d'un rouleau : POP rond
+        this.tone(360 * p, 0.1, { slide: 1.7, vol: 0.28 });
+        this.noiseBurst(0.03, { freq: 2400, vol: 0.08 });
+        break;
+      case 'cardDeal': // carte qui glisse sur le tapis
+        this.noiseBurst(0.09, { freq: 3200, q: 0.7, vol: 0.07, type: 'highpass' });
+        break;
+      case 'cardFlip': // carte retournée
+        this.noiseBurst(0.05, { freq: 2600, q: 1, vol: 0.06 });
+        this.tone(900 * p, 0.04, { slide: 1.3, vol: 0.05, type: 'triangle', delay: 0.03 });
+        break;
+      case 'jackpot': // grande célébration (douce, jamais agressive)
+        [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => this.tone(f, 0.4, { type: 'triangle', vol: 0.1, delay: i * 0.07 }));
+        [2349, 2637, 3136, 3520].forEach((f, i) => this.tone(f, 0.15, { vol: 0.04, delay: 0.55 + i * 0.06 }));
+        break;
+      case 'wheelTick': // cliquetis de la roue
+        this.tone(1500 * p, 0.025, { slide: 0.75, vol: 0.05, type: 'triangle' });
+        break;
+      case 'fwLaunch': // fusée qui monte : sifflement doux et montant
+        this.tone(520 * p, 0.55, { type: 'sine', slide: 3.4, vol: 0.05, attack: 0.04 });
+        this.noiseBurst(0.5, { freq: 3200, q: 1.4, vol: 0.035, type: 'highpass' });
+        break;
+      case 'fwBurst': // explosion lointaine et ronde, jamais agressive
+        this.noiseBurst(0.5, { freq: 420, q: 0.5, vol: 0.2, type: 'lowpass' });
+        this.tone(95 * p, 0.35, { type: 'sine', slide: 0.5, vol: 0.14 });
+        this.tone(1760 * p, 0.3, { type: 'sine', vol: 0.03, delay: 0.05 });
+        break;
+      case 'fwCrackle': // petits crépitements dorés
+        for (let i = 0; i < 7; i++) this.noiseBurst(0.04, { freq: 5200 + i * 380, q: 3, vol: 0.05, delay: i * 0.05 + (i % 2) * 0.02 });
+        break;
+      case 'crystal': // arpège cristallin, longue résonance (révélation du collier)
+        [1568, 2093, 2637, 3136, 3951].forEach((f, i) => this.tone(f * p, 1.1, { type: 'sine', vol: 0.055, delay: i * 0.09, attack: 0.01 }));
+        this.tone(523, 1.6, { type: 'triangle', vol: 0.05, attack: 0.08 });
+        this.tone(784, 1.6, { type: 'triangle', vol: 0.04, attack: 0.1, delay: 0.1 });
+        break;
+      case 'crystalSoft': // tintement bref (équipement, étincelle)
+        [2637, 3520].forEach((f, i) => this.tone(f * p, 0.5, { type: 'sine', vol: 0.05, delay: i * 0.06 }));
         break;
       case 'page':
         this.noiseBurst(0.12, { freq: 2500, q: 0.5, vol: 0.07 });

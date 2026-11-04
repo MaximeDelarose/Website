@@ -3,12 +3,22 @@
  * Toutes les actions prennent l'état, le modifient et renvoient la liste des
  * événements à animer. Une action invalide ne modifie jamais l'état.
  */
-import { MAX_LEVEL, SPECIAL, itemKey, mergePoints, sameItem, COLLECTION_IDS, GENERATORS, genKindOf, type CollectionId, type ItemRef } from '../../data/items';
+import { SPECIAL, collMax, itemKey, mergePoints, sameItem, GENERATORS, genKindOf, type CollectionId, type ItemRef } from '../../data/items';
 import { Rng, hashString } from '../../utils/rng';
 import {
   BOARD_H, BOARD_SIZE, BOARD_W, COMBO_WINDOW_MS,
-  type BoardEvent, type Cell, type LevelDef, type Objective, type OrderState, type RunState, type Tuple,
+  type BoardEvent, type Cell, type LevelDef, type Loot, type Objective, type OrderState, type OrderTier, type RunState, type Tuple,
 } from './types';
+import { ENDLESS_CFG as EC } from '../endless/config';
+import { advance, bump, counter, endlessFun, subRng } from '../endless/ctx';
+import { addGenXp, genLevel, rollProduction } from '../endless/generators';
+import { grantReplaceOnDelivery, grantReplaces, makeOrder, orderReward as makeOrderReward, progressOf, tickActive, tierOfSlot } from '../endless/orders';
+import { activeColls, palier, unlockedColls } from '../endless/unlocks';
+import { addTreasure, pendingChests, settleLoot, treasurePoints as treasurePts } from '../endless/treasure';
+import { isAuto, rollDrop } from '../endless/drops';
+import { discover as albumDiscover } from '../endless/album';
+import { onEngineEvent, syncSecondary } from '../endless/secondary';
+import { orderGain } from '../world/fusionRewards';
 
 const ref = (t: Tuple): ItemRef => ({ c: t[0], l: t[1] });
 const isSpecial = (r: ItemRef | null) => !!r && (r.c === 'special' || r.c === 'gen');
@@ -36,7 +46,8 @@ export function createRun(def: LevelDef, mode: 'story' | 'endless' = 'story', se
   const cells: Cell[] = Array.from({ length: BOARD_SIZE }, () => ({ item: null, gift: null }));
   for (const p of def.start ?? []) cells[idx(p.x, p.y)].item = { c: p.c, l: p.l };
   for (const g of def.gifts ?? []) { const c = cells[idx(g.x, g.y)]; c.item = null; c.gift = { c: g.c, l: g.l }; }
-  const colls = mode === 'endless' ? endlessColls(0) : levelColls(def);
+  if (mode === 'endless') syncSecondary(endlessFun());
+  const colls = mode === 'endless' ? endlessColls() : levelColls(def);
   for (const c of colls) placeGenerator(cells, genKindOf(c));
   const s: RunState = {
     mode,
@@ -63,7 +74,7 @@ export function createRun(def: LevelDef, mode: 'story' | 'endless' = 'story', se
   const visible = def.ordersVisible ?? 2;
   for (let k = 0; k < visible; k++) s.orders.push(null);
   for (let k = 0; k < visible; k++) fillOrder(s, def, k);
-  if (mode === 'endless') s.challenge = makeChallenge(s);
+  if (mode === 'endless') { s.challenge = makeChallenge(s); refreshProgress(s); noteUnlocks(s); }
   return s;
 }
 
@@ -74,7 +85,7 @@ export const cloneRun = (s: RunState): RunState => JSON.parse(JSON.stringify({ .
 
 function fillOrder(s: RunState, def: LevelDef, slot: number): boolean {
   if (s.mode === 'endless') {
-    s.orders[slot] = makeEndlessOrder(s);
+    s.orders[slot] = makeEndlessOrder(s, slot);
     return true;
   }
   const list = def.orders ?? [];
@@ -104,22 +115,41 @@ export function orderCells(s: RunState, slot: number): number[] | null {
   return out;
 }
 
-export const orderHearts = (o: OrderState) => o.items.reduce((a, r) => a + r.l, 0) + 2;
+export const orderHearts = (o: OrderState) => o.reward?.hearts ?? o.items.reduce((a, r) => a + r.l, 0) + 2;
 export const orderPoints = (o: OrderState) => o.items.reduce((a, r) => a + mergePoints(r.l) * 2, 0);
 
-export function deliver(s: RunState, def: LevelDef, slot: number): BoardEvent[] {
+/** Livre une commande dont les objets sont sur le plateau. `now` (ms) sert au temps de jeu actif. */
+export function deliver(s: RunState, def: LevelDef, slot: number, now?: number): BoardEvent[] {
   if (s.won && s.mode === 'story') return [];
   const o = s.orders[slot];
   const cells = orderCells(s, slot);
   if (!o || !cells) return [];
   for (const i of cells) s.cells[i].item = null;
+  return completeOrder(s, def, slot, o, cells, false, now);
+}
+
+function completeOrder(s: RunState, def: LevelDef, slot: number, o: OrderState, cells: number[], forced: boolean, now?: number): BoardEvent[] {
+  const ev: BoardEvent[] = s.mode === 'endless' ? touch(s, now) : [];
   const hearts = orderHearts(o);
   const points = orderPoints(o);
   s.hearts += hearts;
   s.score += points;
   s.ordersDone++;
-  const ev: BoardEvent[] = [{ t: 'deliver', slot, cells, hearts, points, items: o.items.map((r) => ({ ...r })) }];
+  const d: BoardEvent = { t: 'deliver', slot, cells, hearts, points, items: o.items.map((r) => ({ ...r })) };
+  ev.push(d);
   s.orders[slot] = null;
+  if (s.mode === 'endless' && o.reward) {
+    const fun = endlessFun();
+    Object.assign(d, { tier: o.tier, reward: o.reward, gain: orderGain(o.reward), energy: o.reward.energy, forced });
+    bump(fun, 'orders');
+    bump(fun, `orders:${o.tier ?? 'easy'}`);
+    ev.push(...gainTreasure(fun, forced ? 0 : o.reward.treasure, 'order'));
+    const g = grantReplaceOnDelivery(fun);
+    if (g) ev.push({ t: 'replaceGain', n: g, total: fun.endless2.replaces });
+    if (fillOrder(s, def, slot)) ev.push({ t: 'orderNew', slot, tier: (s.orders[slot] as OrderState | null)?.tier });
+    ev.push(...secondaryFor(fun, d));
+    return ev.concat(afterAction(s, def));
+  }
   if (fillOrder(s, def, slot)) ev.push({ t: 'orderNew', slot });
   return ev.concat(afterAction(s, def));
 }
@@ -147,8 +177,29 @@ function placeGenerator(cells: Cell[], kind: number): number {
 
 /** Ajoute les générateurs manquants (sauvegardes d'avant les générateurs). */
 export function ensureGenerators(s: RunState, def: LevelDef): void {
-  const colls = s.mode === 'endless' ? endlessColls(endlessTier(s)) : levelColls(def);
+  const colls = s.mode === 'endless' ? endlessColls() : levelColls(def);
   for (const c of colls) placeGenerator(s.cells, genKindOf(c));
+  if (s.mode === 'endless') migrateEndless(s, def);
+}
+
+/**
+ * Migration tolérante d'une partie Endless d'avant 2.0 : paliers de commande, récompenses annoncées,
+ * 3 commandes, compteur de commandes livrées (palier de déblocage) repris de la partie en cours.
+ */
+export function migrateEndless(s: RunState, def: LevelDef = ENDLESS_DEF): void {
+  const fun = endlessFun();
+  fun.endless2.counters.orders = Math.max(counter(fun, 'orders'), s.ordersDone);
+  while (s.orders.length < 3) s.orders.push(null);
+  for (let k = 0; k < 3; k++) {
+    const o = s.orders[k];
+    if (!o) { s.orders[k] = makeEndlessOrder(s, k); continue; }
+    if (!o.tier) o.tier = tierOfSlot(k);
+    if (!o.reward) o.reward = orderRewardFor(o.items, o.tier);
+  }
+  syncSecondary(fun);
+  noteUnlocks(s, true);
+  refreshProgress(s);
+  void def;
 }
 
 export const generatorCells = (s: RunState) => s.cells.map((c, i) => (isGenItem(c.item) ? i : -1)).filter((i) => i >= 0);
@@ -156,20 +207,12 @@ export const generatorCells = (s: RunState) => s.cells.map((c, i) => (isGenItem(
 /** Prix en diamants pour terminer une commande tout de suite (accélérer). */
 export const rushPrice = (o: OrderState) => Math.max(5, o.items.reduce((a, r) => a + 2 * r.l, 0));
 
-/** Commande terminée sans les objets (payée en diamants). */
-export function forceDeliver(s: RunState, def: LevelDef, slot: number): BoardEvent[] {
+/** Commande terminée sans les objets (payée en diamants). Pas de points de trésor. */
+export function forceDeliver(s: RunState, def: LevelDef, slot: number, now?: number): BoardEvent[] {
   if (s.won && s.mode === 'story') return [];
   const o = s.orders[slot];
   if (!o) return [];
-  const hearts = orderHearts(o);
-  const points = orderPoints(o);
-  s.hearts += hearts;
-  s.score += points;
-  s.ordersDone++;
-  const ev: BoardEvent[] = [{ t: 'deliver', slot, cells: [], hearts, points, items: o.items.map((r) => ({ ...r })) }];
-  s.orders[slot] = null;
-  if (fillOrder(s, def, slot)) ev.push({ t: 'orderNew', slot });
-  return ev.concat(afterAction(s, def));
+  return completeOrder(s, def, slot, o, [], true, now);
 }
 
 // ------------------------------------------------------------- panier
@@ -197,13 +240,20 @@ const isFree = (c: Cell) => !c.item && !c.gift;
 export const emptyCount = (s: RunState) => s.cells.filter(isFree).length;
 
 /**
- * Tirage d'un objet. Avec `coll`, seul le générateur de cette collection
- * produit : ses objets + sa part des objets spéciaux + une petite chance
- * d'objet rare.
+ * Tirage d'un objet. Avec `coll`, seul le générateur de cette collection produit : ses objets + sa part
+ * des objets spéciaux + une petite chance d'objet rare. En mode infini, la table dépend du NIVEAU du
+ * générateur (fun.endless2.gens) — voir src/game/endless/generators.ts.
  */
 export function rollGen(s: RunState, def: LevelDef, coll?: CollectionId): ItemRef {
   const rng = new Rng(s.rng);
-  let pool = s.mode === 'endless' ? endlessPool(s) : def.gen;
+  if (s.mode === 'endless') {
+    const fun = endlessFun();
+    const c = coll ?? rng.pick(activeColls(fun));
+    const it = rollProduction(rng, c, genLevel(fun, c));
+    s.rng = rng.state;
+    return it;
+  }
+  let pool = def.gen;
   if (coll) {
     const mine = pool.filter(([c]) => c === coll);
     const total = pool.filter(([c]) => c !== 'special').reduce((a, [, , w]) => a + w, 0) || 1;
@@ -218,20 +268,62 @@ export function rollGen(s: RunState, def: LevelDef, coll?: CollectionId): ItemRe
 }
 
 /**
- * Toucher un générateur (case `gen`). Sans `gen`, on prend le premier
- * générateur du plateau (tests, anciennes sauvegardes).
+ * Énergie à dépenser pour toucher ce générateur : 1, ou 0 si le toucher est GRATUIT (un toucher sur N
+ * et chance liée au niveau du générateur). À appeler AVANT de dépenser l'énergie ; tapGenerator utilise
+ * la même règle (`spawn.free`). Déterministe : ne consomme rien.
  */
-export function tapGenerator(s: RunState, def: LevelDef, gen?: number): BoardEvent[] {
+export function tapCost(s: RunState, gen?: number): number {
+  if (s.mode !== 'endless') return 1;
+  const g = gen ?? generatorCells(s)[0];
+  const it = g !== undefined ? s.cells[g]?.item : null;
+  const coll = it && isGenItem(it) ? GENERATORS[it.l]?.coll : undefined;
+  if ((s.taps + 1) % EC.energy.freeTapEvery === 0) return 0;
+  const ch = coll ? EC.gens.freeChance[genLevel(endlessFun(), coll) - 1] ?? 0 : 0;
+  if (ch > 0 && new Rng((s.rng ^ 0xf4ee) >>> 0).next() < ch) return 0;
+  return EC.energy.tapCost;
+}
+
+/**
+ * Toucher un générateur (case `gen`). Sans `gen`, on prend le premier générateur du plateau (tests,
+ * anciennes sauvegardes). `now` (ms, optionnel) alimente le temps de jeu actif (remplacements gratuits).
+ */
+export function tapGenerator(s: RunState, def: LevelDef, gen?: number, now?: number): BoardEvent[] {
   if (s.won && s.mode === 'story') return [];
   const g = gen ?? generatorCells(s)[0];
   const it = g !== undefined ? s.cells[g]?.item : null;
   const coll = it && isGenItem(it) ? GENERATORS[it.l]?.coll : undefined;
+  const endless = s.mode === 'endless';
+  const lead: BoardEvent[] = endless ? touch(s, now) : [];
   const at = spawnCell(s, undefined, coll ? g : undefined);
-  if (at < 0) return [{ t: 'full' }];
+  if (at < 0) return [...lead, { t: 'full' }, ...(endless ? rescueIfStuck(s) : [])];
+  const free = endless ? tapCost(s, g) === 0 : false;
   const item = rollGen(s, def, coll);
   s.cells[at].item = item;
   s.taps++;
-  return [{ t: 'spawn', at, item, source: 'gen', from: coll ? g : undefined }, ...afterAction(s, def)];
+  const ev: BoardEvent[] = [...lead, { t: 'spawn', at, item, source: 'gen', from: coll ? g : undefined, ...(endless ? { free } : {}) }];
+  if (endless) {
+    const fun = endlessFun();
+    bump(fun, 'taps');
+    if (free) bump(fun, 'freeTaps');
+    if (coll) {
+      addGenXp(fun, coll, EC.gens.xpPerTap);
+      // production double (si une case est libre)
+      const dbl = EC.gens.doubleChance[genLevel(fun, coll) - 1] ?? 0;
+      const r = subRng(s.rng, 0xd0b1e);
+      if (dbl > 0 && r.next() < dbl) {
+        const at2 = spawnCell(s, undefined, g);
+        if (at2 >= 0) {
+          const it2 = rollGen(s, def, coll);
+          s.cells[at2].item = it2;
+          ev.push({ t: 'spawn', at: at2, item: it2, source: 'gen', from: g, double: true });
+          ev.push(...noteItem(s, it2));
+        }
+      }
+      s.rng = advance(s.rng);
+    }
+    ev.push(...noteItem(s, item));
+  }
+  return ev.concat(afterAction(s, def));
 }
 
 /** Retire un objet du plateau pour le ranger dans le sac (pas les générateurs). */
@@ -254,9 +346,9 @@ export function placeItem(s: RunState, def: LevelDef, r: ItemRef): BoardEvent[] 
 
 export function canMerge(a: ItemRef | null, b: ItemRef | null): boolean {
   if (!a || !b) return false;
-  if (a.c === 'special' && a.l === SPECIAL.STAR) return b.c !== 'special' && b.c !== 'gen' && b.l < MAX_LEVEL;
+  if (a.c === 'special' && a.l === SPECIAL.STAR) return b.c !== 'special' && b.c !== 'gen' && b.l < collMax(b.c);
   if (isSpecial(a) || isSpecial(b)) return false;
-  return sameItem(a, b) && a.l < MAX_LEVEL;
+  return sameItem(a, b) && a.l < collMax(a.c);
 }
 
 /**
@@ -265,6 +357,7 @@ export function canMerge(a: ItemRef | null, b: ItemRef | null): boolean {
  */
 export function move(s: RunState, def: LevelDef, from: number, to: number, now: number): BoardEvent[] {
   if (s.won && s.mode === 'story') return [];
+  if (s.mode === 'endless') s.clock = s.clock ?? now;
   if (from === to || from < 0 || to < 0 || from >= BOARD_SIZE || to >= BOARD_SIZE) return [];
   const a = s.cells[from];
   const b = s.cells[to];
@@ -283,7 +376,7 @@ export function move(s: RunState, def: LevelDef, from: number, to: number, now: 
     return [{ t: 'move', from, to }, ...afterAction(s, def)];
   }
   if (!canMerge(a.item, b.item)) {
-    const reason = sameItem(a.item, b.item) && a.item.l >= MAX_LEVEL ? 'max' : 'different';
+    const reason = sameItem(a.item, b.item) && a.item.l >= collMax(a.item.c) ? 'max' : 'different';
     return [{ t: 'invalid', from, to, reason }];
   }
   const joker = a.item.c === 'special';
@@ -294,21 +387,32 @@ export function move(s: RunState, def: LevelDef, from: number, to: number, now: 
 }
 
 function registerMerge(s: RunState, def: LevelDef, from: number, to: number, result: ItemRef, now: number, joker = false): BoardEvent[] {
-  s.combo = now - s.lastMergeAt <= COMBO_WINDOW_MS ? s.combo + 1 : 1;
+  const endless = s.mode === 'endless';
+  const lead: BoardEvent[] = endless ? touch(s, now) : [];
+  let base = now - s.lastMergeAt <= COMBO_WINDOW_MS ? s.combo : 0;
+  // retombée de combo (Endless) : après le plafond, la fusion suivante repart plus bas
+  if (endless && base >= EC.combo.cap) base = EC.combo.fallTo;
+  s.combo = base + 1;
   s.lastMergeAt = now;
   s.bestCombo = Math.max(s.bestCombo, s.combo);
   s.merges++;
   const key = itemKey(result);
   s.created[key] = (s.created[key] ?? 0) + 1;
-  const mult = Math.min(3, 1 + 0.25 * (s.combo - 1));
+  const mult = Math.min(endless ? EC.combo.multMax : 3, 1 + (endless ? EC.combo.multStep : 0.25) * (s.combo - 1));
   const points = Math.round(mergePoints(result.l) * mult);
   s.score += points;
-  const ev: BoardEvent[] = [{ t: 'merge', from, to, result, points, combo: s.combo, joker }];
+  const ev: BoardEvent[] = [...lead, { t: 'merge', from, to, result, points, combo: s.combo, joker }];
 
   // Les paquets cadeaux voisins s'ouvrent.
   for (const n of neighbors(to)) if (s.cells[n].gift) ev.push(...openGift(s, n));
 
-  // Récompenses de combo (règles explicites) :
+  if (endless) {
+    ev.push(...comboEndless(s, from, now, mult));
+    ev.push(...endlessMergeHooks(s, to, result, ev.slice()));
+    return ev.concat(afterAction(s, def));
+  }
+
+  // Récompenses de combo (règles explicites, mode histoire) :
   //  ×5 → une Étoile filante apparaît · ×8 → +1 Baguette · ×12 → +15 cœurs
   if (s.combo === 5) {
     const at = spawnCell(s, from);
@@ -342,19 +446,20 @@ function openGift(s: RunState, i: number): BoardEvent[] {
 }
 
 /** Toucher un objet : seul le Coffret surprise réagit (il s'ouvre). */
-export function tapItem(s: RunState, def: LevelDef, i: number): BoardEvent[] {
+export function tapItem(s: RunState, def: LevelDef, i: number, now?: number): BoardEvent[] {
   if (s.won && s.mode === 'story') return [];
   const it = s.cells[i]?.item;
   if (!it || it.c !== 'special' || it.l !== SPECIAL.BOX) return [];
   s.cells[i].item = null;
-  const ev: BoardEvent[] = [{ t: 'boxOpen', at: i }];
+  const ev: BoardEvent[] = [...(s.mode === 'endless' ? touch(s, now) : []), { t: 'boxOpen', at: i }];
   for (let k = 0; k < 3; k++) {
     const at = spawnCell(s, k === 0 ? i : undefined);
     if (at < 0) break;
     const r = rollGen(s, def);
-    const item: ItemRef = r.c === 'special' ? r : { c: r.c, l: Math.min(MAX_LEVEL, r.l + 1) };
+    const item: ItemRef = r.c === 'special' ? r : { c: r.c, l: Math.min(collMax(r.c), r.l + 1) };
     s.cells[at].item = item;
     ev.push({ t: 'spawn', at, item, source: 'box' });
+    if (s.mode === 'endless') ev.push(...noteItem(s, item));
   }
   return ev.concat(afterAction(s, def));
 }
@@ -363,14 +468,14 @@ export function tapItem(s: RunState, def: LevelDef, i: number): BoardEvent[] {
 
 export function useWand(s: RunState, def: LevelDef, i: number, now: number): BoardEvent[] {
   const it = s.cells[i]?.item;
-  if (!it || it.c === 'special' || it.c === 'gen' || it.l >= MAX_LEVEL) return [];
+  if (!it || it.c === 'special' || it.c === 'gen' || it.l >= collMax(it.c)) return [];
   const result = { c: it.c, l: it.l + 1 };
   s.cells[i].item = result;
   const key = itemKey(result);
   s.created[key] = (s.created[key] ?? 0) + 1;
   s.score += mergePoints(result.l);
   void now;
-  return [{ t: 'upgrade', at: i, item: result }, ...afterAction(s, def)];
+  return [{ t: 'upgrade', at: i, item: result }, ...(s.mode === 'endless' ? noteItem(s, result) : []), ...afterAction(s, def)];
 }
 
 export function useWind(s: RunState, def: LevelDef, i: number): BoardEvent[] {
@@ -460,13 +565,22 @@ export const objectiveDone = (s: RunState, o: Objective) => {
   return p.cur >= p.max;
 };
 
-function afterAction(s: RunState, def: LevelDef): BoardEvent[] {
+export function afterAction(s: RunState, def: LevelDef): BoardEvent[] {
   const ev: BoardEvent[] = [];
   if (s.mode === 'endless') {
-    for (const c of endlessColls(endlessTier(s))) {
+    const fun = endlessFun();
+    const act = activeColls(fun);
+    // nouvelles collections : générateur posé sur le plateau
+    for (const c of act) {
       const at = placeGenerator(s.cells, genKindOf(c));
       if (at >= 0) ev.push({ t: 'spawn', at, item: { c: 'gen', l: genKindOf(c) }, source: 'reward' });
     }
+    // générateurs « au repos » (au-delà du maximum posé en même temps)
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      const it = s.cells[i].item;
+      if (it && it.c === 'gen' && !act.includes(GENERATORS[it.l]?.coll)) { s.cells[i].item = null; ev.push({ t: 'remove', at: i, points: 0 }); }
+    }
+    ev.push(...noteUnlocks(s));
     const ch = s.challenge;
     if (ch && challengeDone(s, ch)) {
       s.hearts += ch.reward;
@@ -474,6 +588,10 @@ function afterAction(s: RunState, def: LevelDef): BoardEvent[] {
       ev.push({ t: 'challenge', reward: ch.reward });
       s.challenge = makeChallenge(s);
     }
+    // une commande manquante (ancienne sauvegarde) est recréée
+    for (let k = 0; k < s.orders.length; k++) if (!s.orders[k]) s.orders[k] = makeEndlessOrder(s, k);
+    ev.push(...rescueIfStuck(s));
+    refreshProgress(s);
     return ev;
   }
   if (!s.won && def.objectives.every((o) => objectiveDone(s, o))) {
@@ -491,35 +609,248 @@ export function stars(s: RunState, def: LevelDef): number {
 
 // ------------------------------------------------------- mode infini
 
-export function endlessTier(s: RunState) {
-  return Math.min(6, Math.floor(Math.sqrt(s.score / 400)));
-}
+/** « Palier » de progression (0..9) d'après les collections débloquées (voir endless/unlocks.ts). */
+export function endlessTier(_s?: RunState): number { return palier(endlessFun()); }
 
-export const endlessColls = (t: number): CollectionId[] => COLLECTION_IDS.slice(0, Math.min(4, 2 + Math.floor(t / 2)));
+/** Collections dont le générateur est posé sur le plateau (le paramètre est conservé pour compatibilité). */
+export const endlessColls = (_t?: number): CollectionId[] => activeColls(endlessFun());
 
-function endlessPool(s: RunState): [ItemRef['c'], number, number][] {
-  const t = endlessTier(s);
-  const pool: [ItemRef['c'], number, number][] = [];
-  const colls = endlessColls(t);
-  for (const c of colls) {
-    pool.push([c, 1, 10]);
-    pool.push([c, 2, 4 + t]);
-    if (t >= 3) pool.push([c, 3, t]);
+/** Temps de jeu actif + remplacements gratuits dus. */
+function touch(s: RunState, now?: number): BoardEvent[] {
+  const fun = endlessFun();
+  if (now !== undefined) {
+    if (s.clock !== undefined && now > s.clock) {
+      const d = Math.min(now - s.clock, EC.orders.activeGapMs);
+      s.activeMs = (s.activeMs ?? 0) + d;
+      tickActive(fun, d);
+    }
+    s.clock = Math.max(s.clock ?? now, now);
   }
-  pool.push(['special', SPECIAL.STAR, 0.6]);
-  if (t >= 2) pool.push(['special', SPECIAL.BOX, 0.5]);
-  return pool;
+  const g = grantReplaces(fun);
+  return g > 0 ? [{ t: 'replaceGain', n: g, total: fun.endless2.replaces }] : [];
 }
 
-function makeEndlessOrder(s: RunState): OrderState {
-  const rng = new Rng(s.rng ^ 0x5bd1e995);
-  const t = endlessTier(s);
-  const colls = COLLECTION_IDS.slice(0, Math.min(4, 2 + Math.floor(t / 2)));
-  const n = rng.next() < 0.35 + t * 0.05 ? 2 : 1;
-  const items: ItemRef[] = [];
-  for (let k = 0; k < n; k++) items.push({ c: rng.pick(colls), l: 3 + rng.int(2 + Math.min(3, t)) });
-  s.rng = (s.rng + rng.int(1 << 30)) >>> 0;
-  return { items, id: s.orderSerial++ };
+/** Annonce les collections nouvellement débloquées (silencieux à la première lecture). */
+function noteUnlocks(s: RunState, silent = false): BoardEvent[] {
+  const fun = endlessFun();
+  const u = unlockedColls(fun);
+  const prev = counter(fun, 'unlockedSeen');
+  fun.endless2.counters.unlockedSeen = u.length;
+  if (silent || prev <= 0 || u.length <= prev) return [];
+  void s;
+  return u.slice(prev).map((c) => ({ t: 'unlock' as const, coll: c, kind: genKindOf(c) }));
+}
+
+function refreshProgress(s: RunState): void {
+  for (const o of s.orders) if (o) o.progress = Math.round(progressOf(s.cells, o).ratio * 100) / 100;
+}
+
+/** Avancement détaillé d'une commande (objets présents, proximité 0..1, prête). */
+export function orderProgress(s: RunState, slot: number) {
+  const o = s.orders[slot];
+  return o ? progressOf(s.cells, o) : null;
+}
+
+/** Remplacements gratuits disponibles. */
+export const replacesLeft = (): number => endlessFun().endless2.replaces;
+
+/** Remplace gratuitement une commande (même palier, objets différents). */
+export function replaceOrder(s: RunState, def: LevelDef, slot: number): BoardEvent[] {
+  if (s.mode !== 'endless') return [];
+  const fun = endlessFun();
+  const old = s.orders[slot];
+  if (!old || fun.endless2.replaces <= 0) return [];
+  fun.endless2.replaces--;
+  const tier = old.tier ?? tierOfSlot(slot);
+  const avoid = new Set<string>(old.items.map(itemKey));
+  const others: ItemRef[] = [];
+  s.orders.forEach((o, k) => { if (o && k !== slot) for (const r of o.items) { avoid.add(itemKey(r)); others.push(r); } });
+  const rng = subRng(s.rng, 0x5ee7);
+  s.orders[slot] = makeOrder(fun, rng, tier, s.orderSerial++, avoid, others);
+  s.rng = advance(s.rng, rng.int(1 << 20) + 13);
+  bump(fun, 'replaced');
+  return [{ t: 'orderReplace', slot, tier, left: fun.endless2.replaces }, ...afterAction(s, def)];
+}
+
+function makeEndlessOrder(s: RunState, slot: number): OrderState {
+  const fun = endlessFun();
+  const rng = subRng(s.rng, 0x5bd1e995);
+  const avoid = new Set<string>();
+  const others: ItemRef[] = [];
+  s.orders.forEach((o, k) => { if (o && k !== slot) for (const r of o.items) { avoid.add(itemKey(r)); others.push(r); } });
+  const o = makeOrder(fun, rng, tierOfSlot(slot), s.orderSerial++, avoid, others);
+  s.rng = advance(s.rng, rng.int(1 << 30));
+  return o;
+}
+
+function orderRewardFor(items: ItemRef[], tier: OrderTier) {
+  return makeOrderReward(endlessFun(), items, tier);
+}
+
+/** Points de jauge + événements `treasure` / `chest`. */
+function gainTreasure(fun: ReturnType<typeof endlessFun>, pts: number, source: 'gauge' | 'order' | 'max'): BoardEvent[] {
+  if (pts <= 0) return [];
+  const won = addTreasure(fun, pts);
+  const t = fun.endless2.treasure;
+  const ev: BoardEvent[] = [{ t: 'treasure', points: Math.round(t.points * 10) / 10, goal: EC.treasure.goal, gained: pts }];
+  if (won > 0) { ev.push({ t: 'chest', pending: pendingChests(fun), source }); bump(fun, 'chestsEarned', won); }
+  return ev;
+}
+
+/** Fait avancer les événements secondaires d'après un événement du moteur. */
+function secondaryFor(fun: ReturnType<typeof endlessFun>, e: BoardEvent): BoardEvent[] {
+  const settle = (l: Loot[]) => settleLoot(fun, l, new Rng((fun.endless2.treasure.earned * 977 + fun.endless2.album.length) >>> 0));
+  return onEngineEvent(fun, e, settle);
+}
+
+/** Découverte d'un objet (album) → événement `discover` (seulement si nouveau) + récompense réglée. */
+function noteItem(s: RunState, item: ItemRef): BoardEvent[] {
+  const fun = endlessFun();
+  const d = albumDiscover(fun, item);
+  if (!d.isNew) return [];
+  const rng = subRng(s.rng, 0xa1b0);
+  const reward = settleLoot(fun, d.reward, rng);
+  const e: BoardEvent = { t: 'discover', item: { ...item }, isNew: true, reward, ...(d.completed ? { completed: d.completed } : {}), ...(d.milestone ? { milestone: d.milestone } : {}) };
+  return [e, ...secondaryFor(fun, e)];
+}
+
+/** Combos Endless : multiplicateur plafonné, paliers, anti-exploitation (budget par minute), événements enrichis. */
+function comboEndless(s: RunState, from: number, now: number, mult: number): BoardEvent[] {
+  const fun = endlessFun();
+  const ev: BoardEvent[] = [];
+  if (s.combo < 2) return ev;
+  const tiers = EC.combo.tiers;
+  const ti = tiers.findIndex((t) => t.at === s.combo);
+  const legacy = ti >= 0 ? tiers[ti].reward : undefined;
+  if (ti < 0) { ev.push({ t: 'combo', value: s.combo, mult }); return ev; }
+  const t = tiers[ti];
+  const win = s.comboWin && now - s.comboWin.t0 <= 60_000 ? s.comboWin : (s.comboWin = { t0: now, n: 0, e: 0 });
+  const capped = win.n >= EC.combo.maxRewardsPerMin;
+  let energy = 0;
+  let hearts = 0;
+  let reward: 'star' | 'wand' | 'hearts' | undefined;
+  if (!capped) {
+    win.n++;
+    energy = Math.max(0, Math.min(t.energy, EC.combo.maxEnergyPerMin - win.e));
+    win.e += energy;
+    hearts = t.hearts;
+    s.hearts += hearts;
+    reward = legacy;
+    if (legacy === 'wand') s.wandsEarned++;
+    if (legacy === 'star') {
+      const at = spawnCell(s, from);
+      if (at >= 0) {
+        const star: ItemRef = { c: 'special', l: SPECIAL.STAR };
+        s.cells[at].item = star;
+        ev.push({ t: 'spawn', at, item: star, source: 'combo' });
+      } else { s.hearts += 5; hearts += 5; reward = 'hearts'; }
+    }
+  }
+  const head: BoardEvent = { t: 'combo', value: s.combo, mult, ...(reward ? { reward } : {}), ...(capped ? { capped: true } : {}) };
+  const tierEv: BoardEvent = { t: 'comboTier', value: s.combo, tier: ti, mult, energy, hearts, ...(reward ? { reward } : {}), capped };
+  const out: BoardEvent[] = [head, tierEv, ...ev];
+  if (!capped) out.push(...gainTreasure(fun, EC.treasure.comboBonus, 'gauge'));
+  bump(fun, 'comboTiers');
+  return out;
+}
+
+/** Pose sur le plateau les objets d'un butin (`rareItem`, `star`) ; sans place, ils deviennent des pièces. */
+export function placeLoot(s: RunState, loots: Loot[], near?: number): { loot: Loot[]; events: BoardEvent[] } {
+  const events: BoardEvent[] = [];
+  const out: Loot[] = [];
+  for (const l of loots) {
+    if (l.kind !== 'rareItem' && l.kind !== 'star') { out.push(l); continue; }
+    const item: ItemRef = l.item ?? { c: 'special', l: SPECIAL.STAR };
+    const minFree = l.kind === 'star' ? 1 : EC.drops.minFreeCellsForItem;
+    let placed = 0;
+    for (let k = 0; k < Math.max(1, l.n); k++) {
+      if (emptyCount(s) < minFree) break;
+      const at = spawnCell(s, undefined, near);
+      if (at < 0) break;
+      s.cells[at].item = { ...item };
+      events.push({ t: 'spawn', at, item: { ...item }, source: 'drop' });
+      if (s.mode === 'endless') events.push(...noteItem(s, item));
+      placed++;
+    }
+    if (placed === 0) out.push({ kind: 'coins', n: EC.drops.coins[l.rarity ?? 'common'] * 2, rarity: l.rarity });
+    else out.push(l);
+  }
+  return { loot: out, events };
+}
+
+/** Effets d'une fusion Endless : statistiques, maîtrise, jauge de trésor, drops, fusion maximale, événements secondaires. */
+function endlessMergeHooks(s: RunState, to: number, result: ItemRef, sofar: BoardEvent[]): BoardEvent[] {
+  const fun = endlessFun();
+  const ev: BoardEvent[] = [];
+  bump(fun, 'merges');
+  if (result.c !== 'special' && result.c !== 'gen') {
+    addGenXp(fun, result.c, EC.gens.xpPerMerge);
+    bump(fun, `maxL:${result.c}`, 0);
+    if (result.l > counter(fun, `maxL:${result.c}`)) fun.endless2.counters[`maxL:${result.c}`] = result.l;
+  }
+  ev.push(...noteItem(s, result));
+  const rng = subRng(s.rng, 0xd20b);
+  const isMax = result.c !== 'special' && result.c !== 'gen' && result.l >= collMax(result.c);
+  // jauge de trésor
+  ev.push(...gainTreasure(fun, treasurePts(result.l) + (isMax ? EC.treasure.maxMergeBonus : 0), isMax ? 'max' : 'gauge'));
+  // drop ordinaire (écart minimal entre deux drops visibles)
+  const gapOk = s.merges - (s.lastDropMerge ?? -99) >= EC.drops.minMergesBetween;
+  if (gapOk && !isMax) {
+    const drop = rollDrop(fun, rng, result.l);
+    if (drop) {
+      s.lastDropMerge = s.merges;
+      const settled = settleLoot(fun, [drop], rng);
+      const { loot, events } = placeLoot(s, settled, to);
+      for (const l of loot) {
+        ev.push({ t: 'drop', at: to, loot: l, rarity: l.rarity ?? 'common', auto: isAuto(l.kind) });
+        if (l.kind === 'chest') ev.push({ t: 'chest', pending: pendingChests(fun), source: 'drop' });
+      }
+      ev.push(...events);
+    }
+  }
+  // fusion au niveau maximum : pièces + drop garanti rare ou mieux
+  if (isMax) {
+    s.lastDropMerge = s.merges;
+    const bonus = rollDrop(fun, rng, result.l, { force: true, min: 'rare' });
+    const base: Loot[] = [{ kind: 'coins', n: EC.drops.maxMergeCoins, rarity: 'rare' }, ...(bonus ? [bonus] : [])];
+    const { loot, events } = placeLoot(s, settleLoot(fun, base, rng), to);
+    ev.push({ t: 'maxMerge', at: to, item: { ...result }, loot });
+    if (loot.some((l) => l.kind === 'chest')) ev.push({ t: 'chest', pending: pendingChests(fun), source: 'max' });
+    ev.push(...events);
+    bump(fun, 'maxMerges');
+  }
+  s.rng = advance(s.rng, rng.int(1 << 20) + 101);
+  // événements secondaires : la fusion + les paliers de combo de ce lot
+  for (const e of [...sofar, ...ev]) if (e.t === 'merge' || e.t === 'comboTier') ev.push(...secondaryFor(fun, e));
+  return ev;
+}
+
+
+/**
+ * Garde-fou anti-blocage : plateau plein, aucune fusion, aucune commande livrable → l'objet le moins
+ * précieux devient une Étoile filante (qui permet une fusion). Jamais de blocage définitif.
+ */
+function rescueIfStuck(s: RunState): BoardEvent[] {
+  if (!EC.rescue.enabled || s.mode !== 'endless' || !isStuck(s)) return [];
+  // en premier : les restes de collections « au repos » (plus de générateur), puis les objets les plus bas
+  const act = activeColls(endlessFun());
+  const junk = (r: ItemRef) => (r.c !== 'special' && r.c !== 'gen' && !act.includes(r.c) ? 0 : 1);
+  const ranked = s.cells
+    .map((c, i) => ({ i, it: c.item }))
+    .filter((e): e is { i: number; it: ItemRef } => !!e.it && e.it.c !== 'gen')
+    .sort((a, b) => (a.it.c === 'special' ? 1 : 0) - (b.it.c === 'special' ? 1 : 0) || junk(a.it) - junk(b.it) || a.it.l - b.it.l || b.i - a.i);
+  const worst = ranked[0];
+  if (!worst) return [];
+  const others = ranked.some((e) => e.i !== worst.i && e.it.c !== 'special' && e.it.l < collMax(e.it.c));
+  if (others) {
+    const star: ItemRef = { c: 'special', l: SPECIAL.STAR };
+    s.cells[worst.i].item = star;
+    bump(endlessFun(), 'rescues');
+    return [{ t: 'rescue', at: worst.i, item: star, reason: 'stuck' }];
+  }
+  s.cells[worst.i].item = null;
+  bump(endlessFun(), 'rescues');
+  return [{ t: 'remove', at: worst.i, points: 0 }, { t: 'rescue', at: worst.i, item: worst.it, reason: 'stuck' }];
 }
 
 function challengeDone(s: RunState, ch: NonNullable<RunState['challenge']>) {
@@ -559,8 +890,8 @@ function makeChallenge(s: RunState): NonNullable<RunState['challenge']> {
   else if (kind === 2) { obj = { t: 'combo', value: 3 + rng.int(2) }; base = 0; }
   else if (kind === 3) { const v = 300 + t * 150 + rng.int(4) * 50; obj = { t: 'score', value: v }; base = s.score; }
   else {
-    const c = rng.pick(COLLECTION_IDS.slice(0, Math.min(4, 2 + Math.floor(t / 2))));
-    const l = 4 + rng.int(1 + Math.min(2, Math.floor(t / 2)));
+    const c = rng.pick(activeColls(endlessFun()));
+    const l = Math.min(collMax(c) - 1, 4 + rng.int(1 + Math.min(2, Math.floor(t / 2))));
     obj = { t: 'create', item: [c, l] }; base = s.created[`${c}:${l}`] ?? 0;
   }
   s.rng = (s.rng + 7919) >>> 0;

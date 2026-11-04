@@ -8,14 +8,25 @@
  */
 import type { ItemRef } from '../../data/items';
 import type { ResKind } from '../../data/world/ids';
+import type { OrderReward } from '../merge/types';
 
 export type Gain = Partial<Record<ResKind, number>>;
 
-export const MATERIAL_OF: Record<string, ResKind | undefined> = { flowers: 'flowers', paris: 'fabric', love: 'cocoa' };
+/**
+ * Collection → matériau du monde (Endless 2.0) :
+ *  fleurs / fleurs rares → fleurs · amour / chocolats → cacao · Paris / vêtements / accessoires → tissu ;
+ *  échecs, bijoux, parfums, château → pièces en bonus (voir COIN_BONUS).
+ */
+export const MATERIAL_OF: Record<string, ResKind | undefined> = {
+  flowers: 'flowers', rare: 'flowers', paris: 'fabric', cloth: 'fabric', acc: 'fabric', love: 'cocoa', choc: 'cocoa',
+};
+/** Pièces bonus par fusion pour les collections sans matériau dédié. */
+export const COIN_BONUS: Record<string, number> = { chess: 2, jewel: 2, perfume: 1, castle: 2 };
 
 export function mergeReward(result: ItemRef, combo = 1): Gain {
   const g: Gain = { coins: Math.max(1, result.l) };
-  if (result.c === 'chess') g.coins = (g.coins ?? 0) + 2;
+  const bonus = COIN_BONUS[result.c];
+  if (bonus) g.coins = (g.coins ?? 0) + bonus;
   const m = MATERIAL_OF[result.c];
   if (m && result.l >= 3) g[m] = 1 + (result.l >= 6 ? 1 : 0);
   if (combo >= 3) g.coins = (g.coins ?? 0) + combo;
@@ -28,6 +39,16 @@ export function deliverReward(items: ItemRef[], hearts: number): Gain {
     const m = MATERIAL_OF[it.c];
     if (m) g[m] = (g[m] ?? 0) + 2;
   }
+  return g;
+}
+
+/**
+ * Endless 2.0 : gains « monde » d'une commande, tels qu'annoncés par `order.reward`
+ * (pièces + matériau lié à la collection demandée).
+ */
+export function orderGain(r: OrderReward): Gain {
+  const g: Gain = { coins: Math.max(1, r.coins) };
+  if (r.mat && r.matN > 0) g[r.mat] = r.matN;
   return g;
 }
 

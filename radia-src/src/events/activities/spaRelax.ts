@@ -167,7 +167,7 @@ const activity: Activity = async (ctx) => {
   await endCard(ctx, {
     title: score >= 80 ? 'Détente absolue ♡' : 'Quel moment de douceur ♡',
     art: h('img', { src: oilUrl(oil), alt: '', style: 'width:72px;height:72px' }),
-    lines: [`Huile « ${oil.name} », ambiance ${LIGHTS.find((l) => l.id === amb.light)?.name.toLowerCase()}.`, 'Auguste : « Je pourrais rester ici toute la vie, galbi. »'],
+    lines: [`Huile « ${oil.name} », ambiance ${LIGHTS.find((l) => l.id === amb.light)?.name.toLowerCase()}.`, 'Auguste : « Je pourrais rester ici toute la vie. »'],
   });
   return { score, ok: true, data: { oil: oil.id, ambience: { ...amb } } };
 };

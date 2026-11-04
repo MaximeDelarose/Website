@@ -19,7 +19,7 @@ const VALID: StyleId[] = ['casual', 'chic', 'romantic', 'royal', 'stage'];
 const GOOD_R = ['Radia : « Cette tenue me ressemble ! »', 'Radia : « Je me sens vraiment bien dedans. »', 'Radia : « Oh, j’adore l’ensemble ! »'];
 const MID_R = ['Radia : « Pas mal, avec un accessoire ce serait parfait. »', 'Radia : « Jolie base, j’aime bien. »'];
 const LOW_R = ['Radia : « Original ! J’ai envie d’essayer autre chose un jour. »', 'Radia : « Une audace ! On n’est pas obligée de tout réussir. »'];
-const AUG = ['Auguste : « Ma reine, tout te va. »', 'Auguste : « Je ne suis pas objectif, mais… waouh. »', 'Auguste : « Je te suivrais partout dans cette tenue, galbi. »'];
+const AUG = ['Auguste : « Ma reine, tout te va. »', 'Auguste : « Je ne suis pas objectif, mais… waouh. »', 'Auguste : « Je te suivrais partout dans cette tenue. »'];
 
 const activity: Activity = async (ctx) => {
   injectCss();

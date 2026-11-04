@@ -9,6 +9,7 @@ import { h, tap } from '../../dom';
 import { ui } from '../../ui';
 import { icon } from '../../icons';
 import { save, audio, events, reducedFx } from '../../../core/app';
+import { haptic } from '../../../core/haptics';
 import { addHearts, stat } from '../../../core/progress';
 import { wallet, fmt, fmtTime } from '../../../core/wallet';
 import { addFans, addRes, firstTime } from '../../../core/world';
@@ -23,6 +24,7 @@ import { drawRoom, drawCastle, castleHotspots, roomLayout, roomZoneAt, type Room
 import { drawMagazine } from '../../../game/art/world/careers';
 import { canvasUrl, paint, heartPath, sparkle, PAL, shade } from '../../../game/art/kit';
 import { diamondUrl } from '../shop';
+import { sparkleBurst, revealItem, rarityForPrice } from '../../fx/sparkle';
 import { setBackdrop } from '../../../game/scenes/backdrop';
 
 const world = () => save.data.world;
@@ -131,7 +133,7 @@ function mapView(scr: HTMLElement, leave: () => void, goRoom: (r: RoomId) => voi
     commit();
     stat('world.castle.roomUnlocked');
     audio.play('chest'); window.setTimeout(() => audio.play('reward'), 160);
-    burstDom(el, 18);
+    void revealItem(el, { rarity: 'epic', kind: 'building' }); // révélation + confettis
     build();
     const nb = hots.querySelectorAll<HTMLElement>('button')[ROOM_IDS.indexOf(r)];
     nb?.classList.add('unlocked-pop');
@@ -170,22 +172,6 @@ function mapView(scr: HTMLElement, leave: () => void, goRoom: (r: RoomId) => voi
   if (firstTime('tip.castle')) window.setTimeout(() => ui.toast({ title: 'Ton château ♡', sub: 'Touche une fenêtre : débloque-la ou entre pour la décorer', icon: 'sparkle', ms: 4200 }), 500);
   maybeFinale();
   return [head, body, () => { cancelAnimationFrame(raf); ro.disconnect(); off(); }];
-}
-
-/** Petite pluie d'étincelles HTML autour d'un élément. */
-function burstDom(el: HTMLElement, n = 14): void {
-  if (reducedFx()) return;
-  const r = el.getBoundingClientRect();
-  const wrap = h('div.cs-dom-burst', { style: `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px` });
-  for (let i = 0; i < n; i++) {
-    const a = (Math.PI * 2 * i) / n + Math.random() * 0.4; const d = 40 + Math.random() * 70;
-    const s = h('i');
-    s.style.setProperty('--dx', `${Math.cos(a) * d}px`); s.style.setProperty('--dy', `${Math.sin(a) * d - 20}px`);
-    s.style.background = [PAL.roseVif, PAL.or, PAL.lavande, '#fff'][i % 4];
-    wrap.append(s);
-  }
-  ui.root.append(wrap);
-  window.setTimeout(() => wrap.remove(), 1000);
 }
 
 // ------------------------------------------------------------------ scène finale
@@ -410,6 +396,8 @@ function roomView(room: RoomId, back: () => void): [HTMLElement, HTMLElement, ()
     stat('world.castle.placed');
     addAnim(r.uid, 'drop');
     const c = centerOf(r.uid); burst(c.x, c.y);
+    { const cr = cv.getBoundingClientRect(); const fd = FURNITURE[id]; sparkleBurst(cr.left + c.x, cr.top + c.y, { rarity: rarityForPrice(fd.price, fd.gems ? 1 : 0), count: 12 }); }
+    haptic('select');
     audio.play('drop'); window.setTimeout(() => audio.play('sparkle'), 140);
     sel = r.uid;
     afterChange();

@@ -18,7 +18,7 @@ export function showNotification(def: EventDef, o: NotifyOpts): void {
   const el = h(`div.ev-notif${gold ? '.gold' : ''}`,
     h('div.ev-notif-ico', icon(gold ? 'mail' : 'phone', 20)),
     h('img.ev-notif-face', { src: senderFace(def.sender), alt: '' }),
-    h('div.ev-notif-tx', h('b', `${senderName(def.sender)} — ${label}`), h('span', o.kind === 'resume' ? `« ${def.title} » t’attend.` : `« ${def.teaser} »`)),
+    h('div.ev-notif-tx', h('b', `${def.senderLabel && def.senderLabel.includes('♡') ? def.senderLabel : senderName(def.sender)} — ${label}`), h('span', o.kind === 'resume' ? `« ${def.title} » t’attend.` : `« ${def.teaser} »`)),
     h('div.ev-notif-acts',
       h('button.btn.small', { on: { click: tap(() => done(o.onOpen), { sound: false }) } }, o.kind === 'resume' ? 'Reprendre' : 'Voir l’invitation'),
       h('button.btn.small.secondary', { on: { click: tap(() => done(o.onLater), { sound: false }) } }, 'Plus tard')));

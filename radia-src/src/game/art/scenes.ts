@@ -14,6 +14,7 @@ import {
 import { drawAugusteFull, type FullOpts } from './characters';
 import { drawRadiaNow, drawAugusteCutout } from './world/radiaNow';
 import { drawItem } from './items';
+import { drawEclatMemory } from '../../events/necklace/memoryArt';
 
 export type Theme = 'title' | 'garden' | 'paris' | 'souvenirs' | 'royaume' | 'monde';
 export type Layer = 'far' | 'mid' | 'near';
@@ -603,6 +604,8 @@ function vignette(c: C, w: number, h: number, col = '#3B3152', a = 0.35) {
 }
 
 const MEMS: Record<string, (c: C, w: number, h: number) => void> = {
+  // souvenir spécial « Le ciel portait ton prénom ♡ » (collier légendaire) : voir src/events/necklace
+  eclat: (c, w, h) => drawEclatMemory(c, w, h),
   flowers: (c, w, h) => {
     allLayers(c, 'garden', w, h);
     const ph = h * 0.6;

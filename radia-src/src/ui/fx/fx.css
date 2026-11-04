@@ -1,0 +1,9 @@
+/* Paillettes : couche fixe, jamais tactile. */
+.fx-layer { position: fixed; inset: 0; z-index: 300; pointer-events: none; overflow: hidden; }
+.fx-p { position: absolute; display: block; pointer-events: none; will-change: transform, opacity; background: var(--c, #fff); }
+.fx-star { clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); filter: drop-shadow(0 0 3px var(--c)); }
+.fx-dot { border-radius: 50%; box-shadow: 0 0 6px var(--c); }
+.fx-heart { background: none; color: var(--c); line-height: 1; font-style: normal; text-align: center; }
+.fx-petal { border-radius: 60% 0 60% 0; }
+.fx-conf { border-radius: 2px; }
+.fx-halo { position: absolute; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, var(--c) 0%, color-mix(in srgb, var(--c) 40%, transparent) 38%, transparent 70%); mix-blend-mode: normal; }

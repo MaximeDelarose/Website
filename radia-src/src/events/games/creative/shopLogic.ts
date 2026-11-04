@@ -14,7 +14,7 @@ export const isClothId = (x: unknown): x is ClothId => typeof x === 'string' && 
 /** Articles de luxe candidats quand `options` est vide (robes, vestes, sacs, chaussures, bijoux chers). */
 export function luxuryPool(): ClothId[] {
   const slots = new Set(['dress', 'jacket', 'bag', 'shoes', 'crown', 'acc']);
-  return CLOTH_IDS.filter((id) => slots.has(CLOTH_SLOTS[id]) && CLOTHES[id] && !CLOTHES[id].starter).sort((a, b) => (CLOTHES[b].coins - CLOTHES[a].coins) || (a < b ? -1 : 1));
+  return CLOTH_IDS.filter((id) => slots.has(CLOTH_SLOTS[id]) && CLOTHES[id] && !CLOTHES[id].starter && !CLOTHES[id].gift).sort((a, b) => (CLOTHES[b].coins - CLOTHES[a].coins) || (a < b ? -1 : 1));
 }
 
 /** Nettoie les options proposées : valides, sans doublon, 3 à 6 ; complète avec des articles existants si besoin. Jamais d'exception. */
@@ -44,9 +44,9 @@ export function assignBoutiques(items: readonly ClothId[], count: number): Cloth
 }
 
 const REACT: Record<string, string[]> = {
-  dress: ['Cette robe te va comme un rêve, ma reine.', 'Oh... tourne un peu, galbi !', 'Je crois que j\'ai oublié de respirer.'],
+  dress: ['Cette robe te va comme un rêve, ma reine.', 'Oh... tourne un peu !', 'Je crois que j\'ai oublié de respirer.'],
   jacket: ['Quelle allure, ma reine !', 'Cette veste, c\'est du caractère. J\'adore.'],
-  bag: ['Ce sac a l\'air fait pour toi.', 'Très chic, galbi.'],
+  bag: ['Ce sac a l\'air fait pour toi.', 'Très chic.'],
   shoes: ['Ces chaussures... tu vas faire tourner les têtes.', 'Je te suivrais n\'importe où avec ça.'],
   acc: ['Ça brille presque autant que toi.', 'Un détail, et tout change. Magnifique.'],
   crown: ['Une couronne ? Évidemment, ma reine.'],

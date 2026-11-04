@@ -10,6 +10,7 @@ import { icon } from '../../icons';
 import { save, audio, events, reducedFx } from '../../../core/app';
 import { addHearts, checkAchievements, stat } from '../../../core/progress';
 import { firstTime } from '../../../core/world';
+import { revealItem } from '../../fx/sparkle';
 import { fmt } from '../../../core/wallet';
 import { CHOC_IDS, CHOC_NAMES, RES_NAMES, type ChocId, type ResKind } from '../../../data/world/ids';
 import { BOX_SIZE, CHOCS, MAX_SHOP_LEVEL, STAR_QTY } from '../../../data/world/chocolate';
@@ -387,6 +388,7 @@ export function openChocolaterie(): Promise<void> {
       commit();
       audio.play('chest'); window.setTimeout(() => audio.play('victory'), 200);
       cv.parentElement!.classList.remove('pop'); void cv.parentElement!.offsetWidth; cv.parentElement!.classList.add('pop');
+      void revealItem(cv, { rarity: 'epic', kind: 'building' }); // la boutique s'agrandit : révélation + confettis
       ui.toast({ title: `Boutique niveau ${r.level} !`, sub: 'Plus de recettes disponibles', icon: 'star' });
       reactAuguste('chocolate', 0.4);
       render();

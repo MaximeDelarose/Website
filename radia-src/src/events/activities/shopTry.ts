@@ -170,7 +170,7 @@ const activity: Activity = async (ctx) => {
         if (i === shop) return;
         shop = i; seen.add(i); ctx.sound('page'); mode = 'single';
         renderTabs(); paintStage(); renderItems();
-        say(['Oh, celle-ci est magnifique.', 'Regarde ces merveilles, ma reine.', 'Tu as l\'œil, galbi.'][Math.floor(ctx.rng() * 3)]);
+        say(['Oh, celle-ci est magnifique.', 'Regarde ces merveilles, ma reine.', 'Tu as l\'œil.'][Math.floor(ctx.rng() * 3)]);
       });
       return t;
     }));
@@ -189,7 +189,7 @@ const activity: Activity = async (ctx) => {
   const pick = await picked;
   if (!ctx.isAlive()) return { score: 0, ok: false };
   ctx.sound('reward');
-  await ctx.say('auguste', ['Il est à toi, ma reine. Tu le portes mieux que n\'importe qui.', 'Parfait choix, galbi. Je règle tout, ne t\'inquiète de rien.'][Math.floor(ctx.rng() * 2)], 'love');
+  await ctx.say('auguste', ['Il est à toi, ma reine. Tu le portes mieux que n\'importe qui.', 'Parfait choix. Je règle tout, ne t\'inquiète de rien.'][Math.floor(ctx.rng() * 2)], 'love');
   if (!ctx.isAlive()) return { score: 0, ok: false };
   const look = previewLook(base, pick);
   const art = avatarFor(look, 130, 310);

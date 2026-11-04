@@ -7,7 +7,7 @@ import type { Activity } from '../types';
 
 const GOOD = ['Bravo !', 'Exact ♡', 'Bien vu, ma reine !', 'Parfait !', 'Quelle culture !'];
 const OOPS = ['Presque !', 'Pas tout à fait…', 'Oh, c’était piégeux !', 'Une autre fois !'];
-const AUG_GOOD = ['Auguste : « Tu m’impressionnes, galbi. »', 'Auguste : « Ma reine sait tout. »', 'Auguste : « Je te donne une bouchée de pop-corn. »'];
+const AUG_GOOD = ['Auguste : « Tu m’impressionnes. »', 'Auguste : « Ma reine sait tout. »', 'Auguste : « Je te donne une bouchée de pop-corn. »'];
 const AUG_OOPS = ['Auguste : « Même moi j’hésitais. »', 'Auguste : « On se rattrape à la prochaine. »', 'Auguste : « Un câlin de consolation ? »'];
 
 const activity: Activity = async (ctx) => {

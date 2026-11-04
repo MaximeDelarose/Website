@@ -8,7 +8,7 @@ import { claimOnce } from './manager';
 import { ev } from './api';
 import { rewardFor } from './rewardRules';
 import type { EventDef } from './types';
-import type { ClothId } from '../data/world/ids';
+import { NECKLACE_ID, type ClothId } from '../data/world/ids';
 
 export interface RewardOutcome {
   coins: number; diamonds: number; fabric: number; flowers: number; cocoa: number; fans: number;
@@ -28,7 +28,8 @@ export function grantReward(def: EventDef, runId: string, timesDone: number, ext
   if (!claimOnce(ev(), runId, Date.now())) return out; // déjà versée : jamais deux fois
   const spec = rewardFor(def, timesDone);
   const w = world();
-  const cloth = [...(spec.cloth ?? []), ...extraCloth];
+  // garde-fou : « L'Éclat Éternel ♡ » ne se donne jamais comme récompense (seule la fin de la scène l'attribue)
+  const cloth = [...(spec.cloth ?? []), ...extraCloth].filter((c) => c !== NECKLACE_ID);
   const res = applyReward(w, { ...spec, cloth });
   out.paid = true;
   out.coins = spec.coins ?? 0;

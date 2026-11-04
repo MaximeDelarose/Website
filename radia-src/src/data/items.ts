@@ -1,14 +1,22 @@
 /**
- * Objets fusionnables — 4 collections de 10 niveaux + 3 objets spéciaux.
+ * Objets fusionnables — 4 collections de 10 niveaux + 7 collections d'Endless 2.0 (8 niveaux)
+ * + 3 objets spéciaux. Utilise toujours `collMax(c)` (jamais MAX_LEVEL) pour le niveau maximal.
  * Ces chaînes sont les recettes de fusion fictives du jeu (elles ne suivent
  * pas les règles des échecs classiques pour la collection « Échecs »).
  */
-export type CollectionId = 'flowers' | 'love' | 'paris' | 'chess';
+export type CollectionId = 'flowers' | 'love' | 'paris' | 'chess' | 'rare' | 'choc' | 'jewel' | 'cloth' | 'perfume' | 'acc' | 'castle';
 export type ItemColl = CollectionId | 'special' | 'gen';
 
 export interface ItemRef { c: ItemColl; l: number }
 
+/** Niveau maximal des 4 collections d'origine (les nouvelles en ont 8 : voir `collMax`). */
 export const MAX_LEVEL = 10;
+
+/** Raretés (drops, coffres) et leurs couleurs. */
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+export const RARITIES: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+export const RARITY_COLOR: Record<Rarity, string> = { common: '#9FB4C7', uncommon: '#6FCF97', rare: '#5AA9FF', epic: '#B07CFF', legendary: '#FFC857' };
+export const RARITY_NAME: Record<Rarity, string> = { common: 'Commun', uncommon: 'Peu commun', rare: 'Rare', epic: 'Épique', legendary: 'Légendaire' };
 
 export const SPECIAL = {
   /** Étoile filante : posée sur n'importe quel objet (sauf niveau max), elle le fait monter d'un niveau. */
@@ -100,6 +108,118 @@ export const COLLECTIONS: Record<CollectionId, CollectionDef> = {
       'Dans ce royaume, il n\'y a qu\'une seule reine.',
     ],
   },
+  rare: {
+    id: 'rare',
+    name: 'Fleurs rares',
+    color: '#F29BD0',
+    items: ['Pétale d\'or', 'Orchidée', 'Pivoine', 'Lys', 'Lotus', 'Bouquet rare', 'Serre cristal', 'Fleur de lune'],
+    blurbs: [
+      'Un pétale qui brille un peu trop pour être honnête.',
+      'Capricieuse, élégante… ça te rappelle quelqu\'un ?',
+      'Elle a l\'air d\'un gros câlin rose.',
+      'Blanc, pur, et il sent divinement bon.',
+      'Il flotte sur l\'eau et sur tous tes soucis.',
+      'Un bouquet que même le fleuriste n\'ose pas vendre.',
+      'Une serre en cristal : les fleurs y sont aux petits soins.',
+      'Elle ne s\'ouvre que la nuit, pour les amoureux.',
+    ],
+  },
+  choc: {
+    id: 'choc',
+    name: 'Chocolats',
+    color: '#9A5B3A',
+    items: ['Fève', 'Truffe', 'Praliné', 'Bonbon', 'Boîte', 'Coffret', 'Fontaine', 'Chocolaterie royale'],
+    blurbs: [
+      'Petite fève, grand destin.',
+      'Elle fond dans la bouche… et dans le cœur.',
+      'Croquant dehors, tendre dedans. Comme Auguste.',
+      'Un bonbon emballé avec soin (et un peu de gourmandise).',
+      'Une boîte qu\'on ouvre en cachette.',
+      'Un coffret pour les grandes occasions. Ou les mardis.',
+      'Une fontaine de chocolat. Oui, c\'est légal.',
+      'Le palais du cacao, avec vue sur le bonheur.',
+    ],
+  },
+  jewel: {
+    id: 'jewel',
+    name: 'Bijoux',
+    color: '#7FD6E8',
+    items: ['Perle', 'Bague', 'Boucle', 'Collier', 'Bracelet', 'Diadème', 'Écrin', 'Parure royale'],
+    blurbs: [
+      'Une perle, pour commencer en douceur.',
+      'Un petit cercle, une grosse promesse.',
+      'Elle accroche la lumière (et les regards).',
+      'Il se fait discret, puis il éblouit.',
+      'Il tinte à chaque geste. Musique garantie.',
+      'Un diadème : pas besoin de raison pour le porter.',
+      'Un écrin de velours, rien que pour elle.',
+      'La parure complète. Le royaume retient son souffle.',
+    ],
+  },
+  cloth: {
+    id: 'cloth',
+    name: 'Vêtements',
+    color: '#E58FB6',
+    items: ['Ruban', 'Écharpe', 'Chemisier', 'Jupe', 'Veste', 'Robe', 'Robe de soirée', 'Tenue de gala'],
+    blurbs: [
+      'Un simple ruban, mais il fait tout le style.',
+      'Douce, longue, parfaite contre le vent de Paris.',
+      'Repassé avec amour (et un peu de panique).',
+      'Elle tourne bien. Très bien, même.',
+      'Pour les soirs où il fait un peu frais.',
+      'La robe. Celle dont on se souvient.',
+      'Elle brille, elle danse, elle fait taire la salle.',
+      'La tenue de gala : tout le monde se retourne.',
+    ],
+  },
+  perfume: {
+    id: 'perfume',
+    name: 'Parfums',
+    color: '#C79BE8',
+    items: ['Pétale parfumé', 'Fiole', 'Flacon', 'Brume', 'Eau de parfum', 'Coffret parfum', 'Cristal', 'Essence rare'],
+    blurbs: [
+      'Un pétale qui sent le printemps.',
+      'Une toute petite fiole, un grand souvenir.',
+      'Le flacon qu\'on ne prête à personne.',
+      'Un nuage léger, juste derrière l\'oreille.',
+      'Elle entre dans la pièce avant toi.',
+      'Trois parfums dans une boîte. Dur de choisir.',
+      'Un cristal taillé pour contenir un souvenir.',
+      'Une essence introuvable. Elle sent… toi.',
+    ],
+  },
+  acc: {
+    id: 'acc',
+    name: 'Accessoires',
+    color: '#E8A25A',
+    items: ['Épingle', 'Lunettes', 'Foulard', 'Gants', 'Sac', 'Chapeau', 'Malle', 'Sac iconique'],
+    blurbs: [
+      'Une épingle pour tenir les idées en place.',
+      'Elles font très sérieux. Jusqu\'au premier fou rire.',
+      'Noué avec un petit je-ne-sais-quoi.',
+      'Pour les mains froides (et les entrées remarquées).',
+      'Assez grand pour ranger un livre, un goûter, un secret.',
+      'Un chapeau qui change l\'allure, et un peu l\'humeur.',
+      'Une malle de voyage. Direction : n\'importe où, avec toi.',
+      'Le sac que tout le monde reconnaît.',
+    ],
+  },
+  castle: {
+    id: 'castle',
+    name: 'Objets du château',
+    color: '#8FA0D8',
+    items: ['Brique', 'Bougeoir', 'Coussin', 'Tapis', 'Fauteuil', 'Lustre', 'Canapé royal', 'Trône doré'],
+    blurbs: [
+      'La première brique du château. Solide.',
+      'Il éclaire les couloirs et les confidences.',
+      'Mou, moelleux, volé par le chat dans la minute.',
+      'Il étouffe le bruit des pas… et des surprises.',
+      'Le meilleur fauteuil pour ne rien faire.',
+      'Mille petites lumières au plafond.',
+      'Un canapé où l\'on tient à plusieurs. Surtout avec le chat.',
+      'Un trône en or, parce que ma reine le mérite.',
+    ],
+  },
 };
 
 export const SPECIAL_ITEMS: Record<number, { name: string; blurb: string }> = {
@@ -108,7 +228,16 @@ export const SPECIAL_ITEMS: Record<number, { name: string; blurb: string }> = {
   3: { name: 'Coffret surprise', blurb: 'Touche-le pour l\'ouvrir : trois objets en sortent.' },
 };
 
-export const COLLECTION_IDS: CollectionId[] = ['flowers', 'love', 'paris', 'chess'];
+/** Ordre = ordre des générateurs (kind = index + 1) et ordre de déblocage dans Endless 2.0. */
+export const COLLECTION_IDS: CollectionId[] = ['flowers', 'love', 'paris', 'chess', 'rare', 'choc', 'jewel', 'cloth', 'perfume', 'acc', 'castle'];
+/** Les 4 collections d'origine (10 niveaux, mode histoire). */
+export const LEGACY_COLLECTION_IDS: CollectionId[] = ['flowers', 'love', 'paris', 'chess'];
+
+/** Niveau maximal d'une collection (10 pour les anciennes, 8 pour les nouvelles ; 1 pour spécial/générateur). */
+export function collMax(c: ItemColl): number {
+  if (c === 'special' || c === 'gen') return 1;
+  return COLLECTIONS[c]?.items.length ?? MAX_LEVEL;
+}
 
 /**
  * Générateurs posés sur le plateau ({ c: 'gen', l: 1..4 }) : on les touche pour
@@ -119,6 +248,13 @@ export const GENERATORS: Record<number, { coll: CollectionId; name: string; blur
   2: { coll: 'love', name: 'Boîte aux lettres', blurb: 'Touche-la : elle offre des étincelles d\'amour (1 ⚡).' },
   3: { coll: 'paris', name: 'Appareil photo', blurb: 'Touche-le : il imprime des souvenirs de Paris (1 ⚡).' },
   4: { coll: 'chess', name: 'Coffret d\'échecs', blurb: 'Touche-le : il libère des pièces du royaume (1 ⚡).' },
+  5: { coll: 'rare', name: 'Serre miniature', blurb: 'Touche-la : elle fait éclore des fleurs rares (1 ⚡).' },
+  6: { coll: 'choc', name: 'Chocolatière', blurb: 'Touche-la : elle prépare des chocolats tout chauds (1 ⚡).' },
+  7: { coll: 'jewel', name: 'Coffre à bijoux', blurb: 'Touche-le : il laisse tomber des perles et des bagues (1 ⚡).' },
+  8: { coll: 'cloth', name: 'Machine à coudre', blurb: 'Touche-la : elle coud des rubans et des étoffes (1 ⚡).' },
+  9: { coll: 'perfume', name: 'Alambic parfumé', blurb: 'Touche-le : il distille des pétales parfumés (1 ⚡).' },
+  10: { coll: 'acc', name: 'Boîte à chapeaux', blurb: 'Touche-la : elle offre des accessoires chics (1 ⚡).' },
+  11: { coll: 'castle', name: 'Malle du château', blurb: 'Touche-la : elle livre des objets pour le château (1 ⚡).' },
 };
 export const genKindOf = (c: CollectionId): number => COLLECTION_IDS.indexOf(c) + 1;
 export const isGen = (r: ItemRef | null | undefined): boolean => !!r && r.c === 'gen';
@@ -146,7 +282,7 @@ export function itemBlurb(r: ItemRef): string {
 /** Tous les objets du jeu (pour les collections, les textures et les tests). */
 export function allItems(): ItemRef[] {
   const out: ItemRef[] = [];
-  for (const c of COLLECTION_IDS) for (let l = 1; l <= MAX_LEVEL; l++) out.push({ c, l });
+  for (const c of COLLECTION_IDS) for (let l = 1; l <= collMax(c); l++) out.push({ c, l });
   for (const l of [1, 2, 3]) out.push({ c: 'special', l });
   return out;
 }

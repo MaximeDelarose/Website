@@ -3,6 +3,7 @@
  * fourni (photos, phrases) sans inventer de détails personnels précis.
  */
 import type { DialogueLine } from './dialogue';
+import { DECLARATION, GIFT_LINES, MEMORY_DESC, MEMORY_ID, MEMORY_TITLE } from '../events/necklace/data';
 
 export interface MemoryDef {
   id: string;
@@ -73,3 +74,17 @@ export const MEMORIES: MemoryDef[] = [
 ];
 
 export const memoryById = (id: string) => MEMORIES.find((m) => m.id === id);
+
+/**
+ * Souvenirs spéciaux (hors des 8 souvenirs de l'histoire : ils ne comptent ni dans « x/8 » ni dans le succès des 8 souvenirs).
+ * Débloqué par `fun.necklace.memory` (jamais par `save.data.memories`).
+ */
+export const SPECIAL_MEMORIES: MemoryDef[] = [
+  {
+    id: MEMORY_ID,
+    title: MEMORY_TITLE,
+    desc: MEMORY_DESC,
+    how: 'Une soirée spéciale',
+    lines: [...DECLARATION, ...GIFT_LINES].map((text) => ({ who: 'auguste' as const, expr: 'love' as const, text })),
+  },
+];

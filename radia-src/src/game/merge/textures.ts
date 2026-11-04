@@ -1,7 +1,7 @@
 /** Textures du plateau de fusion (cases, paquets, panier, effets). */
 import Phaser from 'phaser';
 import { drawItem } from '../art/items';
-import { drawGenerator, type GenKind } from '../art/generators';
+import { drawGenerator, drawDiamond, drawEnergy, type GenKind } from '../art/generators';
 import { itemKey, type ItemRef } from '../../data/items';
 import {
   OUTLINE, PAL, ellipse, fillShaded, gloss, groundShadow, heartPath, paint, roundRect, shade, sparkle, starPath, texScale, canvasUrl,
@@ -211,7 +211,35 @@ export function ensureFxTextures(scene: Phaser.Scene): void {
   add('fx:ring', 96, 96, (c) => { c.beginPath(); c.arc(48, 48, 42, 0, Math.PI * 2); c.lineWidth = 5; c.strokeStyle = 'rgba(255,255,255,0.9)'; c.stroke(); });
   add('fx:confetti', 8, 12, (c) => { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, 8, 12); });
   add('fx:star', 26, 26, (c) => { starPath(c, 13, 13.5, 12, 5.5); c.fillStyle = PAL.or; c.fill(); c.lineWidth = 1.6; c.strokeStyle = OUTLINE; c.stroke(); });
+  // rayon lumineux (triangle allongé, base large au centre) et ombre de soulèvement
+  add('fx:ray', 24, 128, (c) => { const g = c.createLinearGradient(0, 128, 0, 0); g.addColorStop(0, 'rgba(255,244,200,0.9)'); g.addColorStop(1, 'rgba(255,244,200,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(12, 128); c.lineTo(0, 0); c.lineTo(24, 0); c.closePath(); c.fill(); });
+  add('fx:shadow', 64, 24, (c) => { const g = c.createRadialGradient(32, 12, 0, 32, 12, 32); g.addColorStop(0, 'rgba(81,68,109,0.5)'); g.addColorStop(1, 'rgba(81,68,109,0)'); c.save(); c.scale(1, 0.375); c.fillStyle = g; c.fillRect(0, 0, 64, 64); c.restore(); });
   add('fx:light', 40, 40, (c) => { const g = c.createRadialGradient(20, 20, 0, 20, 20, 20); g.addColorStop(0, 'rgba(255,250,230,1)'); g.addColorStop(0.3, 'rgba(255,220,170,0.7)'); g.addColorStop(1, 'rgba(255,200,160,0)'); c.fillStyle = g; c.fillRect(0, 0, 40, 40); });
+}
+
+/** Petites icônes pour `flyTo` (objet qui vole vers un compteur). */
+export const FLY_KINDS = ['coin', 'diamond', 'energy', 'heart', 'star', 'flowers', 'fabric', 'cocoa', 'ticket', 'chest'] as const;
+export type FlyKind = (typeof FLY_KINDS)[number] | string;
+
+export function ensureFlyTexture(scene: Phaser.Scene, kind: string): string {
+  const key = `fly:${kind}`;
+  if (scene.textures.exists(key)) return key;
+  const S = 28;
+  const draw = (fn: (c: CanvasRenderingContext2D) => void) => scene.textures.addCanvas(key, paint(S, S, texScale(), fn));
+  switch (kind) {
+    case 'coin': draw((c) => { ellipse(c, 14, 14, 11, 11); fillShaded(c, PAL.or, { x: 3, y: 3, w: 22, h: 22 }, 1.8); ellipse(c, 14, 14, 7, 7); c.lineWidth = 1.2; c.strokeStyle = PAL.orDeep; c.stroke(); gloss(c, 10, 9, 3, 1.6, 0.8); }); break;
+    case 'diamond': draw((c) => drawDiamond(c, S)); break;
+    case 'energy': draw((c) => drawEnergy(c, S)); break;
+    case 'heart': draw((c) => { heartPath(c, 14, 14.5, 22); c.fillStyle = PAL.roseVif; c.fill(); c.lineWidth = 1.6; c.strokeStyle = OUTLINE; c.stroke(); gloss(c, 9, 9, 3, 1.8, 0.8); }); break;
+    case 'star': draw((c) => { starPath(c, 14, 14.5, 12, 5.5); c.fillStyle = PAL.or; c.fill(); c.lineWidth = 1.6; c.strokeStyle = OUTLINE; c.stroke(); }); break;
+    case 'flowers': draw((c) => { for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 - Math.PI / 2; ellipse(c, 14 + Math.cos(a) * 6, 14 + Math.sin(a) * 6, 5, 3.6, a); c.fillStyle = PAL.roseVif; c.fill(); c.lineWidth = 1.2; c.strokeStyle = OUTLINE; c.stroke(); } ellipse(c, 14, 14, 3.4, 3.4); c.fillStyle = PAL.or; c.fill(); }); break;
+    case 'fabric': draw((c) => { roundRect(c, 4, 7, 20, 14, 3); fillShaded(c, PAL.lavande, { x: 4, y: 7, w: 20, h: 14 }, 1.6); c.beginPath(); c.moveTo(7, 12); c.lineTo(21, 12); c.moveTo(7, 16); c.lineTo(21, 16); c.lineWidth = 1; c.strokeStyle = 'rgba(255,255,255,0.7)'; c.stroke(); }); break;
+    case 'cocoa': draw((c) => { ellipse(c, 14, 14, 8, 11, 0.5); fillShaded(c, '#8B5A3C', { x: 6, y: 3, w: 16, h: 22 }, 1.6); c.beginPath(); c.moveTo(11, 7); c.quadraticCurveTo(16, 14, 17, 21); c.lineWidth = 1.2; c.strokeStyle = '#4A2A1C'; c.stroke(); }); break;
+    case 'ticket': draw((c) => { roundRect(c, 3, 8, 22, 12, 3); fillShaded(c, PAL.peche, { x: 3, y: 8, w: 22, h: 12 }, 1.6); starPath(c, 14, 14, 4, 1.8); c.fillStyle = '#FFFFFF'; c.fill(); }); break;
+    case 'chest': draw((c) => { roundRect(c, 3, 10, 22, 14, 3); fillShaded(c, '#C98B4F', { x: 3, y: 10, w: 22, h: 14 }, 1.6); roundRect(c, 3, 5, 22, 8, 4); fillShaded(c, PAL.or, { x: 3, y: 5, w: 22, h: 8 }, 1.6); }); break;
+    default: draw((c) => sparkle(c, 14, 14, 12, '#FFE7A0'));
+  }
+  return key;
 }
 
 export const COLLECTION_TINTS: Record<string, number[]> = {
@@ -219,5 +247,12 @@ export const COLLECTION_TINTS: Record<string, number[]> = {
   love: [0xff75a8, 0xffb3cb, 0xf3c86b, 0xffffff],
   paris: [0xb9a5e8, 0xffd59a, 0xffffff, 0xd9cdf5],
   chess: [0xf3c86b, 0xffe7a0, 0xffffff, 0xb9a5e8],
+  rare: [0xc79bff, 0xff9cc0, 0xffe7a0, 0xffffff],
+  choc: [0x8b5a3c, 0xd9a066, 0xffe7a0, 0xffd1e0],
+  jewel: [0x8fd3ff, 0xff75a8, 0xffe7a0, 0xffffff],
+  cloth: [0xff9cc0, 0xb9a5e8, 0xffe7a0, 0xffffff],
+  perfume: [0xffb3d1, 0xe7c9ff, 0xbfe9ff, 0xffffff],
+  acc: [0xe8558f, 0xf3c86b, 0xffffff, 0xffc0a3],
+  castle: [0xf3c86b, 0xb9a5e8, 0xe8558f, 0xffffff],
   special: [0xffe7a0, 0xffffff, 0xff9cc0, 0xb9a5e8],
 };

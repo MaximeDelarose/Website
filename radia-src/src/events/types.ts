@@ -21,7 +21,7 @@ export type PlaceId = (typeof PLACE_IDS)[number];
 export const ACTIVITY_IDS = [
   'menuPick', 'guessMenu', 'photoBooth', 'bouquet', 'chocolateBox', 'decorTable', 'shopTry',
   'rhythmDance', 'fireworksPhoto', 'spaRelax', 'cinemaQuiz', 'memoryChallenge', 'fashionThemes', 'careerGame',
-  'dressVerdict', 'photoShoot', 'braceletReveal',
+  'dressVerdict', 'photoShoot', 'braceletReveal', 'necklaceNight',
 ] as const;
 export type ActivityId = (typeof ACTIVITY_IDS)[number];
 
@@ -29,7 +29,7 @@ export type Speaker = 'radia' | 'auguste' | 'narrator' | KidId;
 export interface Line { who: Speaker; text: string; expr?: Expr }
 
 export type EventStep =
-  | { t: 'dress'; hint: string; style?: StyleId }
+  | { t: 'dress'; hint: string; style?: StyleId; /** ambiance « soirée exceptionnelle » du dressing */ mood?: 'gala' }
   | { t: 'travel'; place: PlaceId; label: string }
   | { t: 'scene'; lines: Line[] }
   | { t: 'activity'; id: ActivityId; params?: Record<string, unknown> }
@@ -72,6 +72,8 @@ export interface EventDef {
   phases?: { label: string; goal: string; from: number }[];
   /** Nom affiché de l'expéditeur si différent (ex. « A »). */
   senderLabel?: string;
+  /** Texte affiché à la conclusion quand aucune récompense chiffrée n'est versée. */
+  conclusionNote?: string;
   /** Scène à revoir : ni récompense, ni historique, ni souvenir (ex. revoir la remise du bracelet). */
   ephemeral?: boolean;
 }

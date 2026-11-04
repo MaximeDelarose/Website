@@ -255,15 +255,15 @@ export type BarkTrigger =
   | 'tapAuguste' | 'memory' | 'achievement' | 'rare' | 'idle';
 
 export const BARKS: Record<BarkTrigger, string[]> = {
-  combo3: ['Trop forte !', 'Galbi, tu gères !', 'Quelle reine !'],
-  combo5: ['MachaAllah, même les pixels sont impressionnés.', 'Bon, tu peux arrêter de m\'humilier devant tout le royaume ?'],
+  combo3: ['Trop forte !', 'Ah ouais, carrément !', 'Quelle reine !'],
+  combo5: ['Même les pixels sont impressionnés.', 'Bon, tu peux arrêter de m\'humilier devant tout le royaume ?'],
   discover: ['Oh non… elle a encore découvert un truc que j\'avais caché.'],
-  rare: ['MachaAllah, même les pixels sont impressionnés.', 'Quelle reine !'],
-  win: ['Trop forte !', 'Quelle reine !', 'Galbi, tu gères !'],
-  invalid: ['Ça va galbi, même les reines ont le droit de se tromper.'],
-  stuck: ['Ça va galbi, même les reines ont le droit de se tromper.'],
+  rare: ['Mais t\'as une chance de malade !', 'Quelle reine !'],
+  win: ['Trop forte !', 'Quelle reine !', 'Ah ouais, carrément ! Bien joué.'],
+  invalid: ['Ça arrive, même les reines ont le droit de se tromper.', 'Pas grave, essaie autrement.'],
+  stuck: ['Ça arrive, même les reines ont le droit de se tromper.', 'On respire, on regarde le plateau, et ça repart.'],
   chessWin: ['Même dans mon propre jeu, tu trouves le moyen de me battre…', 'Bon, tu peux arrêter de m\'humilier devant tout le royaume ?'],
-  chessLoss: ['Ça va galbi, même les reines ont le droit de se tromper.'],
+  chessLoss: ['Ça arrive, même les reines ont le droit de se tromper.', 'Une revanche ? Je te laisse les blancs.'],
   tapAuguste: [
     'Radia, je t\'aime bien, mais tu vas finir par casser mon personnage.',
     'Eh ! Ça chatouille.',

@@ -25,6 +25,9 @@ import { world } from '../../core/world';
 import { openShop, shopButton, diamondUrl, energyUrl } from './shop';
 import { openEnergyPanel } from '../components/energyPanel';
 import { hasPhotos } from '../../core/photos';
+import { dailyBadge } from '../../daily';
+import { modeButtonLabel, syncFreeMode, shouldAnnounceFree, markFreeAnnounced, isFreeModeUnlocked } from '../../core/freeMode';
+import { startDomain } from '../../domain';
 
 const hasProgress = () => save.data.story.step > 0 || Object.keys(save.data.levels).length > 0;
 
@@ -149,7 +152,12 @@ export function showTitle(): void {
   // Le mode chapitres ouvre la carte des niveaux : on voit tout de suite où on en est.
   const nextLevel = LEVELS.find((l) => !save.data.levels[l.id]?.done);
   const chapSub = !progress ? 'Fusionne et découvre l\'histoire' : nextLevel ? `Niveau ${nextLevel.id} · Chapitre ${nextLevel.chapter} · ${LEVELS.filter((l) => save.data.levels[l.id]?.done).length}/${LEVELS.length} faits` : 'Tous les niveaux · mode infini';
-  menu.append(mode('', 'heart', 'MODE CHAPITRES', chapSub, () => void go(() => (progress ? openMap() : story())), 100));
+  // Après les cinq chapitres : « MODE LIBRE » (l'Endless 2.0), définitivement ; les chapitres restent accessibles (« Mes chapitres »).
+  startDomain();
+  const justUnlocked = syncFreeMode(save.data);
+  if (justUnlocked) save.save();
+  const lab = modeButtonLabel(save.data, chapSub);
+  menu.append(mode(lab.free ? '.free' : '', lab.free ? 'infinity' : 'heart', lab.title, lab.sub, () => void go(() => (lab.free ? endless() : progress ? openMap() : story())), 100));
   const monde = mode('.gold', 'home', 'MON MONDE', 'Château · dressing · jardin · famille', () => void go(async () => { const d = await import('./world/hub'); await d.openWorldHub(); showTitle(); }), 160);
   // bulle de notification : le salaire est prêt, elle peut venir le récupérer
   const bubble = h('span.mode-bubble', icon('star', 14), ' Salaire prêt !');
@@ -161,7 +169,8 @@ export function showTitle(): void {
   const chessBtn = btn('ÉCHECS', '.lavande', () => void go(chess), 220, chessUnlocked() ? icon('chess', 20) : h('span.lock', icon('lock', 18)));
   if (!chessUnlocked()) chessBtn.classList.add('locked');
   menu.append(h('div.row', chessBtn, btn('SOUVENIRS', '.secondary', () => void go(() => openAlbum('memories').then(showTitle)), 260, icon('album', 20))));
-  menu.append(btn('SUCCÈS', '.secondary', () => void go(achievements), 300, icon('trophy', 20)));
+  if (lab.free) menu.append(h('div.row', btn('SUCCÈS', '.secondary', () => void go(achievements), 300, icon('trophy', 20)), btn('MES CHAPITRES', '.secondary', () => void go(() => openMap()), 340, icon('heart', 20))));
+  else menu.append(btn('SUCCÈS', '.secondary', () => void go(achievements), 300, icon('trophy', 20)));
 
   // barre du haut : réglages · énergie / diamants · carte d'Auguste
   const gems = h('button.res-chip', { 'aria-label': 'Diamants' }, h('img', { src: diamondUrl(52), alt: '' }), h('span', fmt(wallet.diamonds())), h('span.plus', '+'));
@@ -170,7 +179,7 @@ export function showTitle(): void {
   nrg.addEventListener('click', tap(() => void openEnergyPanel(false)));
   const offEco = events.on('economy', () => { (gems.children[1] as HTMLElement).textContent = fmt(wallet.diamonds()); (nrg.children[1] as HTMLElement).textContent = fmt(wallet.energy()); });
   const topBar = h('div.title-top',
-    h('div.title-left', h('button.icon-btn', { 'aria-label': 'Paramètres', on: { click: tap(() => void openSettings()) } }, icon('settings')), phoneButton()),
+    h('div.title-left', h('button.icon-btn', { 'aria-label': 'Paramètres', on: { click: tap(() => void openSettings()) } }, icon('settings')), phoneButton(), dailyBadge()),
     h('div.res-row', nrg, gems),
     shopButton());
 
@@ -181,6 +190,16 @@ export function showTitle(): void {
     menu);
   ui.showScreen(scr);
   setBarkSink((text) => ui.bubble(text, window.innerWidth * 0.5, window.innerHeight * 0.45, 3000));
+  if (shouldAnnounceFree(save.data)) {
+    // jamais par-dessus une autre fenêtre (Nouveautés, cadeau du jour…) : on attend qu'elle soit fermée
+    let tries = 0;
+    const attempt = () => {
+      if (!scr.isConnected || tries++ > 40) return;
+      if (document.querySelector('.modal-backdrop:not(.leaving), .dy-back')) { window.setTimeout(attempt, 1200); return; }
+      void announceFree();
+    };
+    window.setTimeout(attempt, 900);
+  }
   art.el.addEventListener('click', () => { audio.unlock(); audio.playMusic(); stat('augusteTaps'); bark('tapAuguste', true); checkAchievements(); });
 
   async function go(fn: () => Promise<void> | void) {
@@ -190,6 +209,21 @@ export function showTitle(): void {
     offEco();
     setBarkSink(null);
     await fn();
+  }
+}
+
+/** Annonce élégante, une seule fois : « L'aventure continue ♡ ». Rien n'est réinitialisé. */
+async function announceFree(): Promise<void> {
+  if (!shouldAnnounceFree(save.data)) return;
+  markFreeAnnounced(save.data);
+  save.save();
+  const body = h('div.free-note', h('p', 'Les cinq chapitres sont derrière nous… mais pas notre histoire.'), h('p', 'Le MODE LIBRE t\'attend : fusionne sans fin, livre des commandes et fais grandir ton domaine, lieu après lieu. Tout ce que tu as gagné reste à toi.'));
+  const v = await ui.modal({ title: 'L\'aventure continue ♡', body, actions: [{ label: 'Découvrir le domaine', value: 'map', style: 'gold' }, { label: 'Plus tard', value: 'later', style: 'secondary' }] });
+  if (v === 'map') {
+    const m = await import('../../domain');
+    ui.closeScreen();
+    await m.openDomainMap();
+    showTitle();
   }
 }
 
@@ -240,11 +274,12 @@ export function openMap(): void {
     b.addEventListener('click', tap(() => void story()));
     body.append(b);
   } else {
+    // en mode libre, l'entrée « Mode infini » est le grand bouton MODE LIBRE de l'écran titre : pas de doublon ici
     const b = h('button.btn.wide.gold', { style: 'margin-bottom:10px' }, icon('infinity', 20), `Mode infini · record ${save.data.endless.best}`);
     b.addEventListener('click', tap(() => void endless()));
     const e = h('button.btn.wide.secondary', { style: 'margin-bottom:14px' }, icon('heart', 20), 'Revoir la fin');
     e.addEventListener('click', tap(async () => { const f = await import('../../game/narrative/finale'); ui.closeScreen(); await f.runFinale(true); openMap(); }));
-    body.append(b, e);
+    if (isFreeModeUnlocked(save.data)) body.append(e); else body.append(b, e);
   }
   for (const ch of CHAPTERS) {
     const levels = LEVELS.filter((l) => l.chapter === ch.n);

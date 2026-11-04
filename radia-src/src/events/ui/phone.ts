@@ -14,8 +14,13 @@ import { SECRET_ID } from '../data';
 import { emitPhone } from '../bus';
 import { senderFace, senderName } from './people';
 import type { EventDef, Sender } from '../types';
+import '../tindeur/tindeur.css';
+import { tindeurLogo } from '../tindeur/icon';
+import { hasPending } from '../tindeur/logic';
+import { activeIncident, openActiveIncident } from '../incidents/runtime';
+import { incidentById } from '../incidents/data';
 
-type Tab = 'messages' | 'invites' | 'souvenirs' | 'history';
+type Tab = 'messages' | 'invites' | 'souvenirs' | 'history' | 'settings';
 let open = false;
 
 export function openPhone(tab: Tab = 'messages'): void {
@@ -28,7 +33,9 @@ export function openPhone(tab: Tab = 'messages'): void {
   const title = h('b', 'Mon téléphone');
   const closeBtn = h('button.icon-btn.ph-x', { 'aria-label': 'Fermer', on: { click: tap(() => closePhone(), { sound: false }) } }, icon('close', 20));
   const backBtn = h('button.icon-btn.ph-x', { 'aria-label': 'Retour', on: { click: tap(() => { thread = null; render(); }, { sound: false }) } }, icon('back', 20));
-  const top = h('div.ph-top', closeBtn, title, h('span.ph-time', new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })));
+  const gear = () => h('button.icon-btn.ph-gear', { 'aria-label': 'Réglages du téléphone', on: { click: tap(() => { cur = 'settings'; thread = null; render(); }, { sound: false }) } }, icon('settings', 20));
+  const topRight = () => h('span.ph-right', gear(), h('span.ph-time', new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })));
+  const top = h('div.ph-top', closeBtn, title, topRight());
   const phone = h('div.ph', h('div.ph-notch'), top, content, tabs);
   const back = h('div.ph-back', phone);
   ui.root.append(back);
@@ -61,6 +68,34 @@ export function openPhone(tab: Tab = 'messages'): void {
         h('button.btn.small', { on: { click: tap(() => { closePhone(); void openInvite(runId); }) } }, 'Voir l’invitation')));
     }
     return card;
+  }
+
+  function appsStrip(): HTMLElement {
+    const strip = h('div.ph-apps');
+    const t = save.data.fun.tindeur;
+    if (t.installed) {
+      const dot = hasPending(t) ? h('i.ph-dot', '1') : null;
+      const b = h('button.ph-app', { 'aria-label': 'Tindeur' }, tindeurLogo(52), h('span', 'Tindeur'), dot);
+      b.addEventListener('click', tap(() => { void import('../tindeur/ui').then((m) => m.openTindeur()); }, { sound: false }));
+      strip.append(b);
+    }
+    return strip;
+  }
+
+  function renderSettings() {
+    title.textContent = 'Réglages';
+    top.replaceChildren(h('button.icon-btn.ph-x', { 'aria-label': 'Retour', on: { click: tap(() => { cur = 'messages'; render(); }, { sound: false }) } }, icon('back', 20)), title, h('span.ph-time', ''));
+    const t = save.data.fun.tindeur;
+    const row = h('div.ph-set', tindeurLogo(44), h('div', h('b', 'Tindeur'), h('small', t.installed ? 'Installée sur le téléphone du jeu' : 'Désinstallée')));
+    const btn = h(`button.btn.small${t.installed ? '.secondary' : ''}`, t.installed ? 'Désinstaller' : 'Réinstaller');
+    btn.addEventListener('click', tap(() => {
+      void import('../tindeur/ui').then((m) => {
+        if (t.installed) { row.firstElementChild && m.poofIcon(row.firstElementChild as HTMLElement, () => { m.applyInstalled(false); render(); }); }
+        else { m.applyInstalled(true); render(); }
+      });
+    }, { sound: false }));
+    row.append(btn);
+    content.append(row, h('p.ph-empty', 'Ces réglages ne concernent que le téléphone du jeu : rien n’est lié à ton vrai téléphone ♡'));
   }
 
   function renderMessages() {
@@ -97,7 +132,7 @@ export function openPhone(tab: Tab = 'messages'): void {
       return;
     }
     title.textContent = 'Messages';
-    top.replaceChildren(closeBtn, title, h('span.ph-time', new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })));
+    top.replaceChildren(closeBtn, title, topRight());
     const senders: Sender[] = ['auguste', 'kid1', 'kid2', 'kid3', 'agency'];
     const rows = senders.map((s) => {
       const msgs = st.msgs.filter((m) => m.from === s);
@@ -108,6 +143,7 @@ export function openPhone(tab: Tab = 'messages'): void {
       const last = lastMsg ?? lastInv ?? (s === 'auguste' ? 'Un petit mot, quand tu veux ♡' : '');
       return { s, unread, last, has: msgs.length + invs.length > 0 || s === 'auguste' };
     }).filter((r) => r.has);
+    content.append(appsStrip());
     for (const r of rows) {
       const row = h('button.ph-row', h('img', { src: senderFace(r.s), alt: '' }), h('div', h('b', senderName(r.s)), h('small', r.last)), r.unread ? h('i.ph-dot', String(r.unread)) : null);
       row.addEventListener('click', tap(() => { thread = r.s; render(); }, { sound: false }));
@@ -127,8 +163,14 @@ export function openPhone(tab: Tab = 'messages'): void {
           h('button.btn.small', { on: { click: tap(() => { closePhone(); void resumeFlow(); }) } }, 'Reprendre'),
           h('button.btn.small.secondary', { on: { click: tap(async () => { if (await ui.confirm('Abandonner cette activité ?', 'Aucune récompense ne sera perdue ni versée.', 'Abandonner', 'Garder')) { abandonCurrent(); emitPhone(); render(); } }) } }, 'Abandonner'))));
     }
+    const inc = activeIncident();
+    const incDef = inc && incidentById(inc.id);
+    if (incDef) content.append(h('div.ph-inv.cur',
+      h('div.ph-inv-h', icon('home', 16), h('b', `Château : ${incDef.title}`)),
+      h('p', incDef.notif),
+      h('div.ph-inv-a', h('button.btn.small', { on: { click: tap(() => { closePhone(); openActiveIncident(); }) } }, 'Voir'))));
     const pend = pendingInvites(st);
-    if (!pend.length && !st.current) content.append(h('p.ph-empty', 'Aucune invitation pour le moment. Continue de jouer : une surprise peut arriver à tout moment ♡'));
+    if (!pend.length && !st.current && !incDef) content.append(h('p.ph-empty', 'Aucune invitation pour le moment. Continue de jouer : une surprise peut arriver à tout moment ♡'));
     for (const i of pend.slice().reverse()) { const d = eventById(i.eventId); if (d) content.append(inviteCard(i.runId, d, i.state)); }
     const replayable = EVENTS.filter((d) => d.repeatable && (st.done[d.id]?.count ?? 0) > 0);
     if (replayable.length) {
@@ -186,7 +228,8 @@ export function openPhone(tab: Tab = 'messages'): void {
     content.textContent = '';
     for (const t of tabs.children) t.classList.toggle('on', (t as HTMLElement).dataset.tab === cur);
     if (cur === 'messages') renderMessages();
-    else { top.replaceChildren(closeBtn, title, h('span.ph-time', new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))); if (cur === 'invites') renderInvites(); else if (cur === 'souvenirs') renderSouvenirs(); else renderHistory(); }
+    else if (cur === 'settings') renderSettings();
+    else { top.replaceChildren(closeBtn, title, topRight()); if (cur === 'invites') renderInvites(); else if (cur === 'souvenirs') renderSouvenirs(); else renderHistory(); }
     content.scrollTop = 0;
   }
   render();

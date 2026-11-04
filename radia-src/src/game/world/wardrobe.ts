@@ -15,7 +15,7 @@ import { spendMany, canAfford, res } from '../../core/world';
 import { wallet } from '../../core/wallet';
 import { stat } from '../../core/progress';
 import {
-  CLOTH_IDS, CLOTH_SLOTS, DEFAULT_LOOK, HAIR_IDS, STARTER_CLOTHES,
+  CLOTH_IDS, CLOTH_SLOTS, NECKLACE_ID, DEFAULT_LOOK, HAIR_IDS, STARTER_CLOTHES,
   type ClothId, type ClothSlot, type HairId, type Look, type StyleId,
 } from '../../data/world/ids';
 import { CLOTHES, ELEGANT_CLOTHES, HAIRS, type ClothDef } from '../../data/world/wardrobe';
@@ -85,7 +85,9 @@ const ownedSet = (w: WardrobeState = state()) => new Set<string>([...w.owned, ..
 export function ensureWardrobe(): void {
   const w = state();
   const free = (Object.keys(CLOTHES) as ClothId[]).filter((id) => CLOTHES[id].free); // options de visage gratuites : toujours possédées
-  const owned = [...new Set([...STARTER_CLOTHES, ...free, ...w.owned.filter(isCloth)])];
+  // « L'Éclat Éternel ♡ » : possédé seulement si la scène du feu d'artifice l'a attribué (jamais par un autre chemin)
+  const gifted = save.data.fun?.necklace?.owned === true;
+  const owned = [...new Set([...STARTER_CLOTHES, ...free, ...w.owned.filter((id) => isCloth(id) && (id !== NECKLACE_ID || gifted))])];
   w.owned = owned;
   w.hairOwned = [...new Set<string>(['hair-loose', 'hair-wavy', ...w.hairOwned.filter(isHair)])];
   const os = new Set<string>([...owned, ...w.hairOwned]);
@@ -120,7 +122,7 @@ export function canBuy(id: ClothId, payWith: PayWith = 'coins'): Result {
   if (!isCloth(id)) return { ok: false, reason: 'unknown' };
   ensureWardrobe();
   if (state().owned.includes(id)) return { ok: false, reason: 'owned' };
-  if (CLOTHES[id].gift) return { ok: false, reason: 'gift' }; // un cadeau ne s'achète jamais
+  if (CLOTHES[id].gift || id === NECKLACE_ID) return { ok: false, reason: 'gift' }; // un cadeau ne s'achète jamais
   const p = priceOf(id);
   if (payWith === 'diamonds') {
     if (!p.diamonds) return { ok: false, reason: 'no-diamond-price' };
@@ -157,7 +159,7 @@ export const isGift = (id: ClothId): boolean => !!CLOTHES[id]?.gift;
  */
 export function grantGift(id: ClothId): Result & { added?: boolean } {
   if (!isCloth(id)) return { ok: false, reason: 'unknown' };
-  if (!CLOTHES[id].gift) return { ok: false, reason: 'unknown' };
+  if (!CLOTHES[id].gift || id === NECKLACE_ID) return { ok: false, reason: 'unknown' }; // le collier légendaire n'a qu'une porte : la fin de la scène (src/events/necklace/grant.ts)
   ensureWardrobe();
   if (state().owned.includes(id)) return { ok: true, added: false };
   state().owned.push(id);

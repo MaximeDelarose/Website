@@ -22,7 +22,7 @@ export function openInviteSheet(eventId: string, opts: { resume?: boolean } = {}
     const gold = !!def.golden;
     const sheet = h(`div.ev-inv${gold ? '.gold' : ''}`,
       h('div.ev-inv-hero', art, gold ? h('div.ev-inv-env', '✉') : null),
-      h('div.ev-inv-from', h('img', { src: senderFace(def.sender), alt: '' }), h('div', h('b', senderName(def.sender)), h('small', gold ? 'Enveloppe dorée ♡' : def.category === 'family' ? 'Invitation' : def.category === 'career' ? 'Opportunité' : 'Nouvelle invitation'))),
+      h('div.ev-inv-from', h('img', { src: senderFace(def.sender), alt: '' }), h('div', h('b', def.senderLabel && def.senderLabel.includes('♡') ? def.senderLabel : senderName(def.sender)), h('small', gold ? 'Enveloppe dorée ♡' : def.category === 'family' ? 'Invitation' : def.category === 'career' ? 'Opportunité' : 'Nouvelle invitation'))),
       h('h3', def.title),
       h('div.ev-inv-bubble', def.invite),
       h('div.ev-inv-acts',

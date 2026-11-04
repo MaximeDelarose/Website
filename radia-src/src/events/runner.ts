@@ -122,7 +122,7 @@ export async function startEvent(def: EventDef, runId: string, resume?: ActiveRu
       const mkCtx = (params: Record<string, unknown>) => createCtx({ root: body, eventId: def.id, runId: run.runId, params, data: run.data, repeat: st.done[def.id]?.count ?? 0, alive: () => alive });
       if (s.t === 'dress') {
         const { openDressing } = await import('../ui/screens/world/dressing');
-        await openDressing({ title: 'Ta tenue ♡', hint: s.hint, cta: 'Je suis prête ♡' });
+        await openDressing({ title: 'Ta tenue ♡', hint: s.hint, cta: 'Je suis prête ♡', mood: s.mood });
         ui.closeScreen();
         audio.play('sparkle');
       } else if (s.t === 'travel') {

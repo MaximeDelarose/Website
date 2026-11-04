@@ -7,7 +7,7 @@ import { ui } from '../ui';
 import { icon } from '../icons';
 import { save, audio } from '../../core/app';
 import { MEMORIES } from '../../data/memories';
-import { COLLECTIONS, COLLECTION_IDS, SPECIAL_ITEMS, itemBlurb, itemName, type ItemRef } from '../../data/items';
+import { SPECIAL_ITEMS, itemBlurb, itemName, type ItemRef } from '../../data/items';
 import { DIALOGUES } from '../../data/dialogue';
 import { canvasUrl, paint } from '../../game/art/kit';
 import { drawMemory } from '../../game/art/scenes';
@@ -17,6 +17,11 @@ import { playLines } from '../components/Dialogue';
 import { PHOTOS } from '../../data/photos';
 import { hasPhotos, photoUrl } from '../../core/photos';
 import { syncPassedPhotos } from '../../game/narrative/Story';
+import { albumProgress, bump, syncLegacyAlbum } from '../../game/endless';
+import { albumClaims, albumCollViews, albumHeader, pct } from '../endless/logic';
+import { settleLoot } from '../endless/host';
+import { haptic } from '../../core/haptics';
+import '../endless/endless.css';
 
 export function memoryImageUrl(id: string): string {
   return canvasUrl(`mem:${id}:${lookKey()}:${augusteCutout() ? 1 : 0}`, () => paint(330, 440, 2, (ctx) => drawMemory(ctx, id, 330, 440)));
@@ -62,6 +67,10 @@ export function openAlbum(tab: Tab = 'memories', overlay = false): Promise<void>
         card.addEventListener('click', tap(() => void openMemory(m.id)));
         grid.append(card);
       });
+      // souvenir spécial (hors des 8 souvenirs de l'histoire) : « Le ciel portait ton prénom ♡ »
+      if (save.data.fun.necklace.memory) {
+        void import('../../events/necklace/memoryView').then((m) => grid.append(m.eclatMemoryCard(() => void m.openNecklaceMemory(), '-2deg'))).catch(() => undefined);
+      }
       body.append(grid);
     }
 
@@ -93,26 +102,65 @@ export function openAlbum(tab: Tab = 'memories', overlay = false): Promise<void>
     }
 
     function renderCollections() {
-      const d = new Set(save.data.discovered);
-      const total = 43;
-      body.append(h('p.center.muted', { style: 'margin:0 0 10px;font-size:14px' }, `${d.size}/${total} objets découverts`));
-      const row = (title: string, refs: ItemRef[]) => {
-        const n = refs.filter((r) => d.has(`${r.c}:${r.l}`)).length;
-        body.append(h('div.coll-row', h('header', h('span', title), h('small.muted', `${n}/${refs.length}`)),
-          h('div.coll-items', ...refs.map((r) => {
-            if (!d.has(`${r.c}:${r.l}`)) return h('div.coll-item.unknown', '?');
+      // Endless 2.0 : 11 collections (collMax), objets découverts conservés, silhouettes pour les autres
+      const fun = save.data.fun;
+      syncLegacyAlbum(fun, save.data.discovered);
+      const prog = albumProgress(fun);
+      body.append(h('p.center.muted', { style: 'margin:0 0 8px;font-size:14px' }, albumHeader(fun)));
+      body.append(h('i.en-bar.alb-total', h('b', { style: `width:${pct(prog.found, prog.total)}%` })));
+      if (prog.next) {
+        body.append(h('div.alb-next', h('small', 'Prochaine récompense'), h('b', prog.next.label),
+          h('i.en-bar.gold', h('b', { style: `width:${pct(prog.next.have, prog.next.need)}%` })),
+          h('span', `${prog.next.have}/${prog.next.need} · ${prog.next.reward}`)));
+      }
+      const claims = albumClaims(fun);
+      if (claims.length) {
+        const box = h('div.alb-claims', h('b', 'Récompenses à récupérer ♡'));
+        for (const c of claims) {
+          const btn = h('button.btn.gold.small', 'Récupérer');
+          btn.addEventListener('click', tap(() => {
+            fun.endless2.albumClaimed.push(c.key);
+            if (c.chain) bump(fun, 'chains');
+            const res = settleLoot(c.loot);
+            haptic('reward');
+            audio.play('reward');
+            ui.toast({ title: c.label, sub: res.text || 'Récompense ajoutée', icon: 'trophy' });
+            body.textContent = '';
+            renderCollections();
+          }));
+          box.append(h('div.alb-claim', h('span', c.label), btn));
+        }
+        body.append(box);
+      }
+      for (const v of albumCollViews(fun)) {
+        body.append(h(`div.coll-row${v.complete ? '.complete' : ''}`, h('header', h('span', (v.complete ? '★ ' : '') + v.name), h('small.muted', `${v.found}/${v.max}`)),
+          h('div.coll-items', ...v.cells.map(({ ref: r, found }) => {
+            if (!found) {
+              const u = h('button.coll-item.unknown', { 'aria-label': `Niveau ${r.l} de ${v.name} : à découvrir` }, h('img', { src: itemImageUrl(r, 96), alt: '' }));
+              u.addEventListener('click', tap(() => ui.toast({ title: 'À découvrir', sub: `Niveau ${r.l} de « ${v.name} » : continue de fusionner ♡`, icon: 'lock', ms: 2000 }), { sound: false }));
+              return u;
+            }
             const b = h('button.coll-item', { 'aria-label': itemName(r) }, h('img', { src: itemImageUrl(r, 96), alt: '' }));
             b.addEventListener('click', tap(() => void ui.modal({
               title: itemName(r),
               body: h('div', h('img', { src: itemImageUrl(r, 160), alt: '', style: 'width:120px;height:120px' }), h('p', itemBlurb(r)),
-                r.c !== 'special' && r.c !== 'gen' ? h('p.muted', { style: 'font-size:14px' }, `${COLLECTIONS[r.c].name} · niveau ${r.l}/10`) : null),
+                h('p.muted', { style: 'font-size:14px' }, `${v.name} · niveau ${r.l}/${v.max}`)),
               actions: [{ label: 'Joli !', value: 'ok' }],
             })));
             return b;
           }))));
-      };
-      for (const c of COLLECTION_IDS) row(COLLECTIONS[c].name, Array.from({ length: 10 }, (_, k) => ({ c, l: k + 1 })));
-      row('Objets magiques', Object.keys(SPECIAL_ITEMS).map((l) => ({ c: 'special' as const, l: Number(l) })));
+      }
+      // objets magiques (Étoile filante, Coffret…) : toujours dans l'ancien album
+      const d = new Set(save.data.discovered);
+      const specials: ItemRef[] = Object.keys(SPECIAL_ITEMS).map((l) => ({ c: 'special' as const, l: Number(l) }));
+      const n = specials.filter((r) => d.has(`${r.c}:${r.l}`)).length;
+      body.append(h('div.coll-row', h('header', h('span', 'Objets magiques'), h('small.muted', `${n}/${specials.length}`)),
+        h('div.coll-items', ...specials.map((r) => {
+          if (!d.has(`${r.c}:${r.l}`)) return h('div.coll-item.unknown', h('img', { src: itemImageUrl(r, 96), alt: '' }));
+          const b = h('button.coll-item', { 'aria-label': itemName(r) }, h('img', { src: itemImageUrl(r, 96), alt: '' }));
+          b.addEventListener('click', tap(() => void ui.modal({ title: itemName(r), body: h('div', h('img', { src: itemImageUrl(r, 160), alt: '', style: 'width:120px;height:120px' }), h('p', itemBlurb(r))), actions: [{ label: 'Joli !', value: 'ok' }] })));
+          return b;
+        }))));
     }
 
     function renderHistory() {

@@ -26,12 +26,12 @@ const chestUrl = (open: boolean, size = 120) => canvasUrl(`ico:chest:${open}:${s
 /** Répliques d'Auguste quand Radia utilise sa carte (sans répétition rapprochée). */
 const LINES = [
   'Encore un petit cadeau pour ma reine ?',
-  'Galbi… tu vas finir par me ruiner dans mon propre jeu.',
+  'Bon, je crois que tu vas encore vider ma boutique.',
   'Bon, celui-là c\'est pour ton sourire.',
   'C\'est cool d\'être dans le Nord de Paris bb, mais ça coûte cher apparemment.',
   'Même ici, j\'arrive pas à te dire non.',
-  'T\'inquiète, c\'est cadeau. Twahechtek.',
-  'MachaAllah, elle a encore vidé ma boutique !',
+  'T\'inquiète, c\'est cadeau.',
+  'Elle a encore vidé ma boutique !',
   'J\'aurais dû mettre un plafond à ma carte… mais bon, c\'est toi.',
   'Mon banquier m\'appelle. Je fais semblant de pas entendre.',
   'Prends, prends. De toute façon, tout ce qui est à moi est à toi.',

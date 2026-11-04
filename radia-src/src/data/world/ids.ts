@@ -106,6 +106,8 @@ export const CLOTH_SLOTS = {
   'el-wing': 'acc', 'el-soft': 'acc', 'el-none': 'acc', 'el-bold': 'acc',
   'es-rose': 'acc', 'es-lavender': 'acc', 'es-gold': 'acc', 'es-bronze': 'acc', 'es-smoky': 'acc', 'es-green': 'acc', 'es-blue': 'acc',
   'br-promise': 'acc', 'ac-chain-gold': 'acc', 'ac-choker': 'acc', 'ac-pendant': 'acc',
+  // cadeau unique et légendaire (jamais en vente, ni butin, ni récompense : voir src/events/necklace)
+  'ac-eclat': 'acc',
   'cr-gold': 'crown', 'cr-flowers': 'crown', 'cr-tiara': 'crown',
 } as const;
 export type ClothId = keyof typeof CLOTH_SLOTS;
@@ -141,6 +143,8 @@ export const SHADOW_COLOR: Record<string, string> = {
 export const LIP_COLOR: Record<string, string> = {
   'lp-red': '#C4202F', 'lp-rose': '#E0617E', 'lp-nude': '#C08F80', 'lp-berry': '#8C2A55', 'lp-coral': '#E8674F', 'lp-gloss': '#E2909A',
 };
+/** « L'Éclat Éternel ♡ » : cadeau unique, obtenu uniquement à la fin de la scène du feu d'artifice (src/events/necklace). */
+export const NECKLACE_ID = 'ac-eclat' as const;
 export const CLOTH_IDS = Object.keys(CLOTH_SLOTS) as ClothId[];
 
 /** Un look = ce que porte Radia. `dress` remplace `top` + `bottom`. */

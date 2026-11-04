@@ -5,7 +5,7 @@
  */
 import { SPECIAL, sameItem } from '../../data/items';
 import {
-  canMerge, deliver, generatorCells, isStuck, move, neighbors, orderCells, recover, tapGenerator, tapItem,
+  canMerge, deliver, emptyCount, generatorCells, isStuck, move, neighbors, orderCells, recover, tapGenerator, tapItem,
 } from './rules';
 import { GENERATORS } from '../../data/items';
 import { Rng } from '../../utils/rng';
@@ -52,6 +52,7 @@ export function suggestMerge(s: RunState, def?: LevelDef): Suggestion | null {
 
 /** Joue une action. Renvoie les événements (vide si plus rien à faire). */
 export function botStep(s: RunState, def: LevelDef, now: number): BoardEvent[] {
+  if (s.mode === 'endless') return endlessBotStep(s, def, now);
   for (let k = 0; k < s.orders.length; k++) if (orderCells(s, k)) return deliver(s, def, k);
   const box = s.cells.findIndex((c) => c.item?.c === 'special' && c.item.l === SPECIAL.BOX);
   if (box >= 0) return tapItem(s, def, box);
@@ -112,3 +113,75 @@ export function simulate(s: RunState, def: LevelDef, maxActions = 600, pace: 'fa
 
 export const hasSame = (s: RunState, i: number) =>
   s.cells.some((c, j) => j !== i && sameItem(c.item, s.cells[i].item));
+
+
+// ------------------------------------------------------------------ joueur Endless
+/** Ce que demandent les commandes : niveau maximal voulu et « déficit » (en unités niveau 1) par collection. */
+function wants(s: RunState) {
+  const maxWant: Record<string, number> = {};
+  const deficit: Record<string, number> = {};
+  const owned: Record<string, number> = {};
+  for (const c of s.cells) if (c.item && c.item.c !== 'special' && c.item.c !== 'gen') owned[c.item.c] = (owned[c.item.c] ?? 0) + 2 ** (c.item.l - 1);
+  for (const o of s.orders) {
+    if (!o) continue;
+    for (const r of o.items) {
+      maxWant[r.c] = Math.max(maxWant[r.c] ?? 0, r.l);
+      deficit[r.c] = (deficit[r.c] ?? 0) + 2 ** (r.l - 1);
+    }
+  }
+  for (const c of Object.keys(deficit)) deficit[c] = Math.max(0, deficit[c] - (owned[c] ?? 0));
+  return { maxWant, deficit };
+}
+
+/**
+ * Joueur « normal » du mode infini : livre dès qu'une commande est prête, ouvre les coffrets, utilise
+ * les Étoiles sur ce qui sert aux commandes, fusionne ce qui avance une commande (ou tout si le plateau
+ * se remplit), puis touche le générateur dont les commandes ont le plus besoin.
+ */
+export function endlessBotStep(s: RunState, def: LevelDef, now: number): BoardEvent[] {
+  for (let k = s.orders.length - 1; k >= 0; k--) if (orderCells(s, k)) return deliver(s, def, k, now);
+  const box = s.cells.findIndex((c) => c.item?.c === 'special' && c.item.l === SPECIAL.BOX);
+  if (box >= 0) return tapItem(s, def, box, now);
+  const { maxWant, deficit } = wants(s);
+  const occupied = s.cells.filter((c) => c.item || c.gift).length;
+  const crowded = occupied >= 22;
+  // meilleure fusion
+  let best: Suggestion | null = null;
+  let bestScore = -Infinity;
+  for (let i = 0; i < BOARD_SIZE; i++) {
+    const a = s.cells[i].item;
+    if (!a) continue;
+    for (let j = 0; j < BOARD_SIZE; j++) {
+      if (i === j) continue;
+      const b = s.cells[j].item;
+      if (!canMerge(a, b) || !b) continue;
+      if (a.c !== 'special' && j < i) continue;
+      const need = (maxWant[b.c] ?? 0) > b.l;
+      let score = need ? 50 : 0;
+      if (a.c === 'special') score = need ? 60 + b.l : 5;
+      else score += 20 - b.l;
+      if (!need && !crowded) continue; // inutile pour l'instant : on préfère produire ce qui sert
+      if (score > bestScore) { bestScore = score; best = { from: i, to: j }; }
+    }
+  }
+  if (best) return move(s, def, best.from, best.to, now);
+  // sinon : produire ce dont les commandes ont besoin
+  const gens = generatorCells(s);
+  if (gens.length && emptyCount(s) > 0) {
+    let g = gens[0];
+    let gs = -1;
+    gens.forEach((gi, k) => {
+      const coll = GENERATORS[s.cells[gi].item!.l].coll;
+      const sc = (deficit[coll] ?? 0) * 10 + (maxWant[coll] ? 5 : 0) + ((s.taps + k) % 3);
+      if (sc > gs) { gs = sc; g = gi; }
+    });
+    return tapGenerator(s, def, g, now);
+  }
+  // plateau plein : fusionner n'importe quoi, sinon rien (le garde-fou du moteur fait le reste)
+  for (let i = 0; i < BOARD_SIZE; i++) {
+    const a = s.cells[i].item;
+    if (!a) continue;
+    for (let j = 0; j < BOARD_SIZE; j++) if (i !== j && canMerge(a, s.cells[j].item) && (a.c === 'special' || j > i)) return move(s, def, i, j, now);
+  }
+  return tapGenerator(s, def, gens[0], now);
+}

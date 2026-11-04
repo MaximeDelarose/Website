@@ -11,6 +11,7 @@ import { addHearts, checkAchievements, stat } from '../../../core/progress';
 import { firstTime } from '../../../core/world';
 import { wallet, fmt, fmtTime } from '../../../core/wallet';
 import { FLOWER_NAMES, RES_NAMES, type FlowerId } from '../../../data/world/ids';
+import { bloom, bloomAt, sparkleBurst } from '../../fx/sparkle';
 import { BOUQUET_MAX, BOUQUET_MIN, FLOWERS, FUSION_COST, MAX_PLOTS, nextFlower } from '../../../data/world/garden';
 import * as G from '../../../game/world/garden';
 import { drawBouquet, drawFlower, drawFlowerSilhouette, drawGardenScene, plotLayout, type ScenePlot, type Stage } from '../../../game/art/world/garden';
@@ -168,7 +169,7 @@ function runGarden(): Promise<Exit> {
       window.setTimeout(() => floatText(x, y + 4, `+${res.flowers} fleurs`), 250);
       popAt.set(i, performance.now());
       for (const u of res.unlocked ?? []) {
-        window.setTimeout(() => { audio.play('rare'); ui.toast({ title: `Nouvelle variété : ${FLOWER_NAMES[u]}`, sub: 'Tu peux la planter !', img: flowerUrl(u, 3, 72) }); }, 500);
+        window.setTimeout(() => { const cr = cv.getBoundingClientRect(); bloomAt(cr.left + x, cr.top + y); sparkleBurst(cr.left + x, cr.top + y, { rarity: 'rare', count: 10 }); audio.play('rare'); ui.toast({ title: `Nouvelle variété : ${FLOWER_NAMES[u]}`, sub: 'Tu peux la planter !', img: flowerUrl(u, 3, 72) }); }, 500);
       }
       reactAuguste('flowers', 0.12);
       checkAchievements();
@@ -240,6 +241,7 @@ function runGarden(): Promise<Exit> {
         const r = G.unlockWithCoins(world(), id);
         if (!r.ok) { audio.play('invalid'); ui.toast({ title: r.reason ?? 'Impossible', icon: 'lock' }); return; }
         commit(); audio.play('rare');
+        bloomAt(window.innerWidth / 2, 110);
         ui.toast({ title: `${FLOWER_NAMES[id]} débloquée`, img: flowerUrl(id, 3, 72) });
         render();
       };
@@ -390,6 +392,7 @@ function runGarden(): Promise<Exit> {
         body.parentElement!.append(ov);
         const rc = ov.getBoundingClientRect();
         burst(rc.width / 2, rc.height * 0.3, 'petal', 18); burst(rc.width / 2, rc.height * 0.3, 'spark', 10);
+        const bigBq = ov.querySelector('.gd-bq-big'); if (bigBq) bloom(bigBq); // le bouquet éclot
         const done = (m: 'sell' | 'gift' | null) => {
           ov.remove();
           if (m) give(key, m);

@@ -5,6 +5,7 @@
  *    (relâcher hors du plateau annule) ; touch-action: none sur le plateau ;
  *  - repères : cases jouables, dernier coup, échec, cases attaquées…
  */
+import { haptic } from '../../core/haptics';
 import { h } from '../../ui/dom';
 
 export interface BoardPiece { cell: number; kind: string; html: string }
@@ -236,7 +237,7 @@ export class GridBoard {
     if (cell < 0) return;
     if (this.o.canSelect(cell)) {
       const wasSelected = this.selected === cell;
-      if (!wasSelected) this.select(cell);
+      if (!wasSelected) { this.select(cell); haptic('chessSelect'); }
       const pe = this.pieces.find((p) => p.cell === cell) ?? null;
       this.drag = { id: e.pointerId, from: cell, x: e.clientX, y: e.clientY, moved: false, pe, wasSelected };
       pe?.el.classList.add('lifted');

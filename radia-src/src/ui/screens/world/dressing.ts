@@ -9,7 +9,7 @@ import { icon } from '../../icons';
 import { audio, events, reducedFx } from '../../../core/app';
 import { firstTime, res } from '../../../core/world';
 import { wallet, fmt } from '../../../core/wallet';
-import { HAIR_IDS, accGroup, type AccGroup, type ClothId, type HairId, type Look, type StyleId } from '../../../data/world/ids';
+import { HAIR_IDS, NECKLACE_ID, accGroup, type AccGroup, type ClothId, type HairId, type Look, type StyleId } from '../../../data/world/ids';
 import { CLOTHES, HAIRS, STYLE_NAMES } from '../../../data/world/wardrobe';
 import type { Expr } from '../../../data/dialogue';
 import * as W from '../../../game/world/wardrobe';
@@ -19,6 +19,10 @@ import { resIconUrl } from '../../../game/art/world/resources';
 import { canvasUrl, makeCanvas } from '../../../game/art/kit';
 import { reactAuguste } from '../../../game/world/auguste';
 import { diamondUrl } from '../shop';
+import { sparkleBurst, revealItem, braceletTwinkle, rarityForPrice, type FxKind } from '../../fx/sparkle';
+import { haptic } from '../../../core/haptics';
+import { necklaceThumbUrl, openNecklaceShowcase } from '../../../events/necklace/showcase';
+import { SHOWCASE_PRICE } from '../../../events/necklace/data';
 
 type ItemId = ClothId | HairId;
 type CatKey = 'top' | 'bottom' | 'dress' | 'jacket' | 'shoes' | 'bag' | 'hair' | 'crown' | 'makeup' | AccGroup;
@@ -32,7 +36,8 @@ const CATS: { key: CatKey; label: string }[] = [
 const STYLES: StyleId[] = ['casual', 'chic', 'romantic', 'royal', 'stage'];
 const isHairId = (id: string): id is HairId => (HAIR_IDS as readonly string[]).includes(id);
 /** Un cadeau n'apparaît dans le dressing que s'il est possédé. */
-const visible = (id: ItemId): boolean => isHairId(id) || !CLOTHES[id].gift || W.owns(id);
+/** (« L'Éclat Éternel ♡ » est toujours présent en vitrine : visible mais verrouillé tant qu'il n'est pas offert.) */
+const visible = (id: ItemId): boolean => isHairId(id) || !CLOTHES[id].gift || W.owns(id) || id === NECKLACE_ID;
 const nameOf = (id: ItemId) => (isHairId(id) ? HAIRS[id].name : CLOTHES[id].name);
 
 // ------------------------------------------------------------------ vignettes dessinées
@@ -54,6 +59,7 @@ const PX = 192;
 
 /** Aperçu dessiné d'une pièce, porté par un mannequin neutre (mise en cache). */
 export function thumbUrl(id: ItemId): string {
+  if (id === NECKLACE_ID) return necklaceThumbUrl(PX);
   return canvasUrl(`dr:thumb:${id}`, () => {
     const look = isHairId(id) ? { ...W.cloneLook(THUMB_BASE), hair: id } : W.applyItem(THUMB_BASE, id);
     if (!isHairId(id) && (CLOTHES[id].slot !== 'crown' && CLOTHES[id].slot !== 'acc' || catOf(id) === 'wrist')) look.hair = 'hair-bun'; // dégage les épaules (et le poignet) pour bien voir la pièce
@@ -75,8 +81,9 @@ export function thumbUrl(id: ItemId): string {
 const dpr = () => Math.min(2, Math.max(1, window.devicePixelRatio || 1));
 
 let busy = false;
+let stopTwinkle: (() => void) | null = null; // scintillement de la vignette du bracelet d'Auguste (une seule à la fois)
 
-export interface DressingOpts { title?: string; hint?: string; cta?: string }
+export interface DressingOpts { title?: string; hint?: string; cta?: string; /** ambiance « soirée exceptionnelle » */ mood?: 'gala' }
 
 /** `opts` : mode « préparation d'événement » (titre, conseil, gros bouton « prête » qui ferme l'écran). */
 export function openDressing(opts: DressingOpts = {}): Promise<void> {
@@ -107,7 +114,7 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
     if (reducedFx()) wrap.classList.add('calm');
 
     /** Reflet périodique du bracelet (0 si effets réduits ou bracelet non porté). */
-    const curShine = (): number => (reducedFx() || !shown().acc.includes(BRACELET_ID) ? 0 : shineAt(performance.now() / 1000));
+    const curShine = (): number => (reducedFx() || !(shown().acc.includes(BRACELET_ID) || shown().acc.includes(NECKLACE_ID)) ? 0 : shineAt(performance.now() / 1000));
     let lastStep = 0;
     const shineLoop = () => {
       const st = shineStep(curShine());
@@ -258,7 +265,7 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
     readyBtn?.addEventListener('click', tap(() => { ui.closeScreen(); close(); }));
     const hintEl = opts.hint ? h('p.dr-evhint', opts.hint) : null;
     // en mode événement, le gros bouton « Je suis prête » prend la place de la barre quand rien n'est en essayage (rien ne se superpose)
-    const screen = h(`div.bg-soft.dr-screen${opts.cta ? '.dr-event' : ''}`, ui.header(opts.title ?? 'Le dressing de Radia ♡', () => { if (opts.cta) ui.closeScreen(); close(); }), hintEl, bal, stage, panel);
+    const screen = h(`div.bg-soft.dr-screen${opts.cta ? '.dr-event' : ''}${opts.mood === 'gala' ? '.dr-gala' : ''}`, ui.header(opts.title ?? 'Le dressing de Radia ♡', () => { if (opts.cta) ui.closeScreen(); close(); }), hintEl, bal, stage, panel);
     ui.showScreen(screen);
 
     // ---------------------------------------------------------- rendu
@@ -270,13 +277,15 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
 
     const items = (): ItemId[] => {
       if (tab === 'hair') return [...HAIR_IDS];
-      return (Object.keys(CLOTHES) as ClothId[]).filter((id) => visible(id) && catOf(id) === tab && (style === 'all' || CLOTHES[id].styles.includes(style)));
+      const list = (Object.keys(CLOTHES) as ClothId[]).filter((id) => visible(id) && catOf(id) === tab && (style === 'all' || CLOTHES[id].styles.includes(style)));
+      return tab === 'neck' ? [...list.filter((id) => id === NECKLACE_ID), ...list.filter((id) => id !== NECKLACE_ID)] : list; // la vitrine en premier
     };
 
     const ownedNow = (id: ItemId) => (isHairId(id) ? W.ownsHair(id) : W.owns(id));
     const wornNow = (id: ItemId) => (isHairId(id) ? W.getLook().hair === id : W.isEquipped(id));
 
     function card(id: ItemId): HTMLElement {
+      if (id === NECKLACE_ID && !W.owns(id)) return showcaseCard();
       const own = ownedNow(id);
       const worn = own && wornNow(id);
       const c = h(`button.dr-card${worn ? '.worn' : own ? '.own' : ''}${preview === id ? '.try' : ''}`, { 'aria-label': nameOf(id), 'aria-pressed': preview === id });
@@ -285,9 +294,20 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
       else if (own) status.append(h('span.dr-pill.own', icon('check', 12), 'Possédé'));
       else if (isHairId(id)) status.append(price(HAIRS[id].coins, 0, 0));
       else { const p = W.priceOf(id); status.append(price(p.coins, p.fabric, p.diamonds)); }
-      c.append(h('div.dr-thumb', h('img', { src: thumbUrl(id), alt: '', loading: 'lazy', decoding: 'async' })), h('div.dr-name', nameOf(id)), status);
+      const thumbImg = h('img', { src: thumbUrl(id), alt: '', loading: 'lazy', decoding: 'async' });
+      if (own && id === BRACELET_ID) { stopTwinkle?.(); stopTwinkle = braceletTwinkle(thumbImg, { x: 0.5, y: 0.5 }); }
+      c.append(h('div.dr-thumb', thumbImg), h('div.dr-name', nameOf(id)), status);
       if (!isHairId(id)) c.append(h('div.dr-dots', ...CLOTHES[id].styles.slice(0, 3).map((s) => h(`i.sd.${s}`, { title: STYLE_NAMES[s] }))));
       c.addEventListener('click', tap(() => pick(id), { sound: false }));
+      return c;
+    }
+
+    /** Vitrine du collier légendaire : visible, mais « Inestimable » (aucun prix chiffré, aucun bouton d'achat). */
+    function showcaseCard(): HTMLElement {
+      const c = h('button.dr-card.eclat-locked', { 'aria-label': `${nameOf(NECKLACE_ID)} : verrouillé` });
+      c.append(h('div.dr-thumb', h('img', { src: thumbUrl(NECKLACE_ID), alt: '' })), h('div.dr-name', nameOf(NECKLACE_ID)),
+        h('div.dr-status', h('span.dr-pill.priceless', icon('lock', 12), SHOWCASE_PRICE.replace('Prix : ', ''))));
+      c.addEventListener('click', tap(() => { void openNecklaceShowcase(); }, { sound: false }));
       return c;
     }
 
@@ -348,6 +368,7 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
 
     // ---------------------------------------------------------- actions
     function pick(id: ItemId) {
+      if (id === NECKLACE_ID && !W.owns(id)) { void openNecklaceShowcase(); return; } // jamais d'essayage ni d'achat : vitrine seulement
       if (preview === id) { preview = null; renderAll(); return; }
       if (ownedNow(id)) {
         preview = null;
@@ -383,11 +404,21 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
       }
       const r = W.equip(id);
       if (!r.ok) return fail(r.reason);
-      audio.play('heart');
+      haptic('select');
+      if (id === NECKLACE_ID) necklaceFx(); else audio.play('heart');
       twirl('love');
       showOff();
       const look = W.getLook();
       reactAuguste(W.isElegant(look) ? 'outfitElegant' : 'outfit', W.isElegant(look) ? 0.55 : 0.3);
+    }
+
+    /** Apparition du collier : étincelles autour du cou, tintement cristallin, retour tactile doux (si supporté). */
+    function necklaceFx() {
+      audio.play('crystalSoft');
+      haptic('reward');
+      const r = cvs.getBoundingClientRect();
+      sparkleBurst(r.left + r.width * 0.5, r.top + r.height * 0.36, { rarity: 'legendary', count: 18 });
+      later(() => audio.play('sparkle'), 180);
     }
 
     function fail(reason?: string) {
@@ -442,6 +473,7 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
           later(() => layer.remove(), 220);
           if (wearNow) {
             if (isHairId(id)) W.setHair(id); else W.equip(id);
+            { const r = stage.getBoundingClientRect(); sparkleBurst(r.left + r.width / 2, r.top + r.height * 0.4, { rarity: 'rare', count: 16 }); } // scintillement de la tenue portée
             preview = null;
             audio.play('heart');
             const l = W.getLook();
@@ -464,6 +496,11 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
               h('button.btn', { on: { click: tap(() => end(true)) } }, 'Porter maintenant'),
               h('button.btn.secondary.small', { on: { click: tap(() => end(false)) } }, 'Plus tard'))));
         screen.append(layer);
+        { // révélation de la nouvelle pièce : halo selon sa rareté, étoiles, rebond léger
+          const def = isHairId(id) ? null : CLOTHES[id];
+          const kind: FxKind = def?.slot === 'bag' ? 'bag' : def?.slot === 'dress' ? 'dress' : 'item';
+          later(() => void revealItem(big, { rarity: def ? rarityForPrice(def.coins, def.diamonds ?? 0, !!def.gift) : 'uncommon', kind }), 400); // après l'apparition de la carte
+        }
         burst(stars, 14, 'star');
         later(() => burst(stars, 10, 'heart'), 450);
         if (!reducedFx()) { mini.classList.add('jump'); }

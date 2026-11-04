@@ -166,7 +166,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 18, chapter: 3, title: 'Une promenade', difficulty: 3, dominant: 'love',
-    hint: 'Deux enveloppes et un combo ×5 : à toi de jouer, galbi.',
+    hint: 'Deux enveloppes et un combo ×5 : à toi de jouer.',
     gen: [['love', 1, 4], ['love', 2, 5], ['love', 3, 1]],
     start: [P(0, 0, 'love', 2), P(1, 0, 'love', 2), P(4, 0, 'love', 2), P(5, 0, 'love', 2)],
     objectives: [{ t: 'create', item: ['love', 5], count: 2 }, { t: 'combo', value: 5 }],

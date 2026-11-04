@@ -4,6 +4,7 @@
  * contre Auguste : son visage, ses humeurs, son temps de réflexion humain et
  * ses petites piques affectueuses. La dame de Radia porte le visage de Radia.
  */
+import { haptic } from '../../core/haptics';
 import { Chess } from 'chess.js';
 import { h, tap } from '../../ui/dom';
 import { icon } from '../../ui/icons';
@@ -23,11 +24,11 @@ import { hasPhotos, photoUrl, photoUrlNow } from '../../core/photos';
 
 /** Petites piques d'Auguste (choisies au hasard, sans répétition immédiate). */
 const TAUNTS = {
-  start: ['Prête à perdre, galbi ?', 'Je te préviens, je suis en forme aujourd\'hui.', 'Allez, montre-moi ce que la reine sait faire.'],
+  start: ['Prête à perdre ?', 'Je te préviens, je suis en forme aujourd\'hui.', 'Allez, montre-moi ce que la reine sait faire.'],
   startBlack: ['Je commence. C\'est de la galanterie, version échecs.', 'Les blancs pour moi, le premier coup aussi. Désolé, pas désolé.'],
   resume: ['Ah, tu reviens ! On reprend là où on s\'était arrêtés.', 'Je n\'ai pas touché au plateau, promis.'],
   augCapture: ['Merci pour le cadeau 😌', 'Celle-là, je la garde en souvenir.', 'Oups… elle était à toi ?', 'Je prends, je prends.', 'Tu me la laissais exprès, non ?'],
-  radiaCapture: ['Hé ! Je l\'aimais bien celle-là.', 'Ok… là tu m\'as eu.', 'Tu triches ou quoi ?', 'Doucement, galbi !', 'Je l\'avais pas vue venir, celle-là.'],
+  radiaCapture: ['Hé ! Je l\'aimais bien celle-là.', 'Ok… là tu m\'as eu.', 'Tu triches ou quoi ?', 'Eh, doucement !', 'Je l\'avais pas vue venir, celle-là.'],
   augCheck: ['Échec, ma reine 😏', 'Attention à ton roi… je suis tout près.', 'Échec ! Tu fais moins la maligne, hein ?'],
   radiaCheck: ['Doucement avec mon roi…', 'Hé, laisse mon roi tranquille !', 'Ok ok, je me cache.'],
   queenThreat: ['Ta tête est en danger… et ça me fait mal au cœur.', 'Je vise ta dame. Enfin… toi. 😘', 'Joli visage, ta dame. Ce serait dommage de la perdre.'],
@@ -199,9 +200,9 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
     };
 
     const afterMove = (captured: string | undefined, byAug: boolean) => {
-      if (chess.isCheckmate()) audio.play('victory');
-      else if (chess.inCheck()) audio.play('check');
-      else audio.play(captured ? 'capture' : 'move');
+      if (chess.isCheckmate()) { audio.play('victory'); haptic('chessMate'); }
+      else if (chess.inCheck()) { audio.play('check'); haptic('chessCheck'); }
+      else { audio.play(captured ? 'capture' : 'move'); if (captured) haptic('chessCapture'); else if (!byAug) haptic('chessMove'); }
       persist();
       render();
       const end = gameEnd(chess);

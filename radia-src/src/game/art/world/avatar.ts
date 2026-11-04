@@ -14,6 +14,7 @@ import { radiaParts as P } from '../characters';
 import { PAL, heartPath, roundRect, shade, gloss, starPath } from '../kit';
 import { makeCanvas } from '../kit';
 import { BRACELET_ID, SHINE_STEPS, shineStep } from './wristShine';
+import { NECKLACE_ID } from '../../../data/world/ids';
 
 export interface AvatarOpts { expr?: Expr; step?: number; arms?: 'down' | 'wave' | 'heart' | 'open'; blink?: boolean; /** reflet du bracelet 0–1 (animation douce) */ shine?: number }
 
@@ -1105,7 +1106,7 @@ export const EXTRA = {
   hairBack: {} as Record<string, (ctx: C, sway: number, crownOn: boolean) => void>,
   hairFront: {} as Record<string, (ctx: C, sway: number) => void>,
   /** bijoux de cou, repère avatar 240 × 600, dessinés avant la tête */
-  neck: {} as Record<string, (ctx: C) => void>,
+  neck: {} as Record<string, (ctx: C, shine: number) => void>,
   /** bracelets : dessinés sur chaque poignet (arms = géométrie des deux bras, angle = direction de la main), `shine` ∈ [0,1] = reflet animé */
   wrist: {} as Record<string, (ctx: C, arms: Arm[], angle: (a: Arm) => number, shine: number) => void>,
   /** accessoires de visage (boucles, lunettes, foulards…), repère avatar 240 × 600, après les cheveux de devant */
@@ -1756,7 +1757,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   // 7. accessoires du cou
   if (accs.includes('ac-scarf')) scarf(ctx);
   if (accs.includes('ac-pearls')) pearls(ctx);
-  for (const a of accs) EXTRA.neck[a]?.(ctx);
+  for (const a of accs) EXTRA.neck[a]?.(ctx, opts.shine ?? 0);
 
   // 8. tête
   ctx.save();
@@ -1827,8 +1828,8 @@ const cache = new Map<string, HTMLCanvasElement>();
 
 /** Avatar rendu une fois et mis en cache (clé = look + options + taille) pour l'interface. */
 export function avatarCanvas(look: Look, w: number, h: number, opts: AvatarOpts = {}): HTMLCanvasElement {
-  // le reflet du bracelet n'entre dans la clé que si le look le porte (6 pas)
-  const sh = look.acc.includes(BRACELET_ID) ? shineStep(opts.shine ?? 0) : 0;
+  // le reflet du bracelet / du collier n'entre dans la clé que si le look le porte (6 pas)
+  const sh = look.acc.includes(BRACELET_ID) || look.acc.includes(NECKLACE_ID) ? shineStep(opts.shine ?? 0) : 0;
   const key = `${w}x${h}|${look.hair}|${look.top}|${look.bottom}|${look.dress}|${look.jacket}|${look.shoes}|${look.bag}|${look.acc.join(',')}|${look.crown}|${opts.expr ?? ''}|${opts.step ?? 0}|${opts.arms ?? ''}|${opts.blink ? 1 : 0}|${sh}`;
   let c = cache.get(key);
   if (!c) {
