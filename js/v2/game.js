@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.4.0";
+  var VERSION = "2.5.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -248,6 +248,12 @@
   var players = [], me = null, picking = false, netMenuOpen = false;
   var p = null, r = null, CH, DIFF, MAP, enemies, projs, hostile, lobs, gems, fx, texts, grid, warns;
   var spawnAcc, nextSwarm, nextBoss, bossCount, shake, uid, achTick, pending, xp, xpNext, propTimer;
+  /* ---------- gamefeel (2.5) : arrêts sur image, ralenti, tremblement dosé, caméra qui anticipe ---------- */
+  var hitstop = 0, slowmo = 0, hsCd = 0, hurtV = 0, CAM = { x: 0, y: 0, lx: 0, ly: 0, kx: 0, ky: 0, t: 0, on: false };
+  function juiceOk() { return S.opts.shake && !(Net.on); }
+  function freezeFrame(t) { if (!juiceOk() || hsCd > 0) return; hitstop = Math.max(hitstop, t); hsCd = t + 0.12; }
+  function slowMo(t) { if (juiceOk()) slowmo = Math.max(slowmo, t); }
+  function kick(x, y, amt) { if (!S.opts.shake) return; var d = Math.hypot(x, y) || 1; CAM.kx += x / d * amt; CAM.ky += y / d * amt; }
 
   // l'XP est commune et chaque niveau donne un choix à CHAQUE joueur : en coop il en faut plus par niveau
   function teamXp() { return players && players.length ? 1 + 0.9 * (humans() - 1) : 1; }
@@ -364,7 +370,7 @@
     if (chestOpen) chestOpen.t.forEach(clearTimeout);
     chestOpen = null; chestQueue = []; chestHideMini();
     xp = 0; xpNext = need(1); pending = me.tree.f5 ? 1 : 0; picking = false; netMenuOpen = false;
-    spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; uid = 0; achTick = 1; propTimer = 0;
+    spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; hitstop = 0; slowmo = 0; hurtV = 0; CAM.on = false; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
     if (r.mode === "expedition") { r.bag = []; r.secure = []; r.exStats = {}; startExpe(1); }
     if ((!Net.on || Net.role === "host") && r.mode !== "dungeon") for (var i = 0; i < 4; i++) spawnProp(90 + Math.random() * 120);
@@ -715,6 +721,7 @@
     dmg = Math.max(1, Math.round(dmg));
     if (e.eshield > 0) { var ab = Math.min(e.eshield, dmg); e.eshield -= ab; dmg -= ab; if (dmg <= 0) { e.flash = 0.05; return; } }
     e.hp -= dmg; e.flash = 0.1;
+    if (crit && !e.d.prop && (e.d.boss || dmg >= 60) && S.opts.shake) { shake = Math.max(shake, 0.12); if (p === me) kick(e.x - p.x, e.y - p.y, 1.5); }
     if (!e.d.prop) {
       var kb = e.d.boss ? 0.12 : (e.elem === "terre" || hasA(e, "lourd")) ? 0 : 1;
       e.kx += (kx || 0) * kb; e.ky += (ky || 0) * kb;
@@ -761,6 +768,11 @@
   function kill(e) {
     e.dead = true;
     lootKill(e);
+    if (e.spr && e.spr[0] && fx.length < 160) { var gs0 = e.scale || (e.giant ? 2 : 1); if (e.spr.ns) gs0 = Math.max(1, gs0 / e.spr.ns); fx.push({ kind: "pop", x: e.x, y: e.y, s: e.spr[0], face: e.face, g: gs0, life: e.d.boss ? 0.3 : 0.14, max: e.d.boss ? 0.3 : 0.14 }); }
+    if (!e.d.prop) {
+      if (e.d.boss) { freezeFrame(0.12); slowMo(e.d.mega ? 0.9 : 0.5); if (S.opts.shake) shake = Math.max(shake, 0.6); r.flash = Math.max(r.flash || 0, 0.15); }
+      else if (e.aff || e.d.elite) { freezeFrame(0.05); if (S.opts.shake) shake = Math.max(shake, 0.22); }
+    }
     burst(e.x, e.y, e.d.color, e.d.boss ? 30 : 6);
     if (e.d.prop) {
       r.props++; SND.crack();
@@ -857,7 +869,7 @@
     if (p.char && p.char.id === "cendrine" && !p.twin) { p.debt = (p.debt || 0) + hit; p.debtRate = Math.max(p.debtRate || 0, p.debt / (p.mstate === "mouvement" && gv(p, "gra_b") ? 5 : 4)); }
     else p.hp -= hit;
     p.inv = DIFF.inv || 0.35;
-    if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = 0.25; SND.hurt(); }
+    if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = Math.max(shake, 0.32); SND.hurt(); freezeFrame(0.06); hurtV = 0.35; kick(Math.random() - 0.5, Math.random() - 0.5, 3); }
     burst(p.x, p.y, "#c8553d", 5);
   }
   function warn(x, y, rad, dur, dmg, owner, follow) {
@@ -1877,7 +1889,7 @@
   // flèches au bord de l'écran vers les sanctuaires proches
   function drawShrineMarkers() {
     if (isArena()) return;
-    var cx = me.x - W / 2, cy = me.y - H / 2;
+    var cx = CAM.cx !== undefined ? CAM.cx : me.x - W / 2, cy = CAM.cy !== undefined ? CAM.cy : me.y - H / 2;
     shrinesNear(me.x, me.y, itn(me, "oeil_corbeau") ? 1120 : 560).forEach(function (s) {
       var st = r.sh[s.id]; if ((st && st.used) || (s.k === "sacre" && r.devil)) return;
       var sx = s.x - cx, sy = s.y - cy;
@@ -1962,7 +1974,7 @@
   }
   function drawPortalMarker() {
     var po = r.portal; if (!po || isArena() || isDungeon()) return;
-    var sx = po.x - (me.x - W / 2), sy = po.y - (me.y - H / 2);
+    var sx = po.x - (CAM.cx !== undefined ? CAM.cx : me.x - W / 2), sy = po.y - (CAM.cy !== undefined ? CAM.cy : me.y - H / 2);
     if (sx > 4 && sx < W - 4 && sy > 4 && sy < H - 4) return;
     var px = Math.max(10, Math.min(W - 10, sx)), py = Math.max(20, Math.min(H - 10, sy));
     var c = po.st === 1 ? "#ff3a2a" : po.st === 2 ? "#6ad8ff" : "#b07cf0", pulse = Math.sin(r.time * 6) > 0;
@@ -6150,12 +6162,25 @@
   }
 
   function draw() {
-    var sx = shake > 0 ? (Math.random() * 4 - 2) : 0, sy = shake > 0 ? (Math.random() * 4 - 2) : 0;
+    // tremblement proportionnel à la force (trauma²), poussée de caméra qui retombe, regard en avant dans le sens de la course
+    var now = performance.now() / 1000, cdt = Math.min(0.05, Math.max(0, now - (CAM.t || now))); CAM.t = now;
+    var tr = Math.min(1, shake / 0.5), amp = tr * tr * 6;
+    var sx = shake > 0 ? Math.round((Math.sin(now * 97) + Math.sin(now * 61.3)) * 0.5 * amp) : 0, sy = shake > 0 ? Math.round((Math.sin(now * 83.7) + Math.sin(now * 53.1)) * 0.5 * amp) : 0;
+    CAM.kx *= Math.pow(0.0006, cdt); CAM.ky *= Math.pow(0.0006, cdt);
+    sx += Math.round(CAM.kx); sy += Math.round(CAM.ky);
     var cam = me.down ? (me.twinRef && !me.twinRef.down ? me.twinRef : alive()[0] || me) : me;
+    if (!isArena()) {
+      var mv = cam.moving && cam.vx !== undefined ? Math.hypot(cam.vx, cam.vy) : 0, tlx = mv > 1 ? cam.vx / mv * 18 : 0, tly = mv > 1 ? cam.vy / mv * 12 : 0;
+      if (!S.opts.shake) { tlx = 0; tly = 0; }
+      if (!CAM.on || Math.hypot(cam.x - CAM.x, cam.y - CAM.y) > 120) { CAM.lx = tlx; CAM.ly = tly; CAM.on = true; }
+      var kl = 1 - Math.pow(0.08, cdt); CAM.lx += (tlx - CAM.lx) * kl; CAM.ly += (tly - CAM.ly) * kl;
+      CAM.x = cam.x; CAM.y = cam.y;
+      cam = { x: cam.x + CAM.lx, y: cam.y + CAM.ly };
+    }
     if (isArena()) cam = { x: Math.max(-A.w + W / 2 - 24, Math.min(A.w - W / 2 + 24, cam.x)) || 0, y: Math.max(-A.h + H / 2 - 40, Math.min(A.h - H / 2 + 24, cam.y)) || 0 };
     if (isArena() && W / 2 - 24 > A.w) cam.x = 0;
     if (isArena() && H / 2 - 40 > A.h) cam.y = 0;
-    var cx = Math.round(cam.x - W / 2 + sx), cy = Math.round(cam.y - H / 2 + sy);
+    var cx = Math.round(cam.x - W / 2 + sx), cy = Math.round(cam.y - H / 2 + sy); CAM.cx = cx; CAM.cy = cy;
     if (isDungeon()) { ctx.fillStyle = "#120d0a"; ctx.fillRect(0, 0, W, H); } else drawGround(cx, cy, MAP);
     ctx.save();
     ctx.translate(-cx, -cy);
@@ -6270,7 +6295,7 @@
     });
     if (giants) drawGiantTops(giants);
     fx.forEach(drawFx);
-    texts.forEach(function (t) { ctx.globalAlpha = Math.min(1, t.life * 3) * (t.dmgN && !t.col && t.n < 15 ? 0.7 : 1); drawText(t.n, t.x, t.y, t.col || (t.dmgN ? "#e8e0d0" : "#fdf3de"), "c"); });
+    texts.forEach(function (t) { ctx.globalAlpha = Math.min(1, t.life * 3) * (t.dmgN && !t.col && t.n < 15 ? 0.7 : 1); drawText(t.n, t.x, t.y, t.col || (t.dmgN ? "#e8e0d0" : "#fdf3de"), "c", t.dmgN && (t.col === "#f6d36b" || t.big) && t.life > 0.5 ? 2 : undefined); });
     ctx.globalAlpha = 1;
     ctx.restore();
     if (isDungeon()) drawDungeonLight(cx, cy);
@@ -6536,6 +6561,10 @@
       var tb = f.life / f.max, bx = Math.cos(f.a) * f.len, by = Math.sin(f.a) * f.len;
       ctx.strokeStyle = "rgba(" + f.col + "," + (0.5 * tb) + ")"; ctx.lineWidth = f.w * 2; ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(f.x + bx, f.y + by); ctx.stroke();
       ctx.strokeStyle = "rgba(255,255,255," + tb + ")"; ctx.lineWidth = Math.max(1, f.w * 0.6); ctx.stroke(); ctx.lineWidth = 1;
+    } else if (f.kind === "pop") {
+      var kp = 1 - f.life / f.max, sc = f.g * (1 + kp * 0.45), fyp = f.y + f.s.h / 2 * f.g;
+      ctx.save(); ctx.globalAlpha = (1 - kp) * 0.85; ctx.translate(f.x, fyp); ctx.scale(sc, sc * (1 - kp * 0.25)); ctx.translate(-f.x, -fyp);
+      blit(f.s, f.x, f.y, f.face < 0, true); ctx.restore();
     } else if (f.kind === "ghost") {
       ctx.globalAlpha = 0.5 * f.life / f.max; blit(SPR[f.spr][0], f.x, f.y, f.face < 0, true); ctx.globalAlpha = 1;
     } else if (f.kind === "slash") {
@@ -6600,7 +6629,17 @@
     var t = ps.name.toUpperCase() + " · " + lab + (me.crew ? " · EQUIPAGE " + me.crew.length + "/" + crewMax(me) : "") + (me.arme && mastLevel(me.arme) >= 5 ? " · ULTIME " + Math.round((me.ultG || 0) * 100) + "%" : "") + charHud(me);
     drawText(t, W / 2, H - 9, me.mstate === "volte" ? "#f6ef7a" : me.anchored ? ps.color : "#fdf3de", "c");
   }
+  // voile rouge au bord de l'écran : coup reçu, et battement quand les PV sont bas
+  function drawVignette() {
+    var low = me && !me.down && me.maxHp ? me.hp / me.maxHp : 1, a = hurtV > 0 ? hurtV / 0.35 * 0.45 : 0;
+    if (low < 0.3) { var beat = Math.pow(Math.max(0, Math.sin(performance.now() / 1000 * (low < 0.15 ? 9 : 6))), 6); a = Math.max(a, (0.18 + 0.22 * beat) * (1 - low / 0.3 * 0.5)); }
+    if (a <= 0.01) return;
+    var g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
+    g.addColorStop(0, "rgba(200,30,20,0)"); g.addColorStop(1, "rgba(200,30,20," + a.toFixed(3) + ")");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
   function drawHud() {
+    drawVignette();
     drawStateHud();
     var bw = W - 4, ratio = Math.max(0, Math.min(1, xp / xpNext));
     box(2, 2, bw, 9, "#3a2618");
@@ -8088,7 +8127,14 @@
     var dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
     if (state === "error") return;
     try {
-      if (state === "play") { if (Net.on && Net.role === "guest") updateGuest(dt); else update(dt); }
+      if (state === "play") {
+        hsCd = Math.max(0, hsCd - dt); hurtV = Math.max(0, hurtV - dt);
+        if (hitstop > 0) { hitstop -= dt; shake = Math.max(0, shake - dt * 0.5); }
+        else {
+          var sdt = dt; if (slowmo > 0) { slowmo -= dt; sdt = dt * 0.4; }
+          if (Net.on && Net.role === "guest") updateGuest(sdt); else update(sdt);
+        }
+      }
       if (state === "menu" && camp.on) { campTick(dt); drawCamp(now); }
       else if (state === "menu" || !p) drawIdle(now); else draw();
     } catch (err) { showError(err); }
