@@ -29,7 +29,7 @@
    meilleur joueur (survie, course).
    ========================================================================= */
 window.PARTY_GAMES = [
-  { id: "survivor", name: "Écureuil Survivor", page: "jeu.html", icon: "🐿️", color: "#5b8a4a" },
+  { id: "survivor", name: "Écureuil Survivor", page: "jeu-classique.html", icon: "🐿️", color: "#5b8a4a" },
   { id: "merger", name: "Merger", page: "merger.html", icon: "🫧", color: "#e8873a" },
   { id: "dice", name: "Écureuil Dice", page: "dice.html", icon: "🎲", color: "#2f7f7a" },
   { id: "kingdice", name: "King Dice", page: "king-dice.html", icon: "👑", color: "#7a5ea8" },

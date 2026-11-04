@@ -1582,6 +1582,78 @@ window.ES_DATA = (function () {
     "Dégâts reçus +30 %.",
     "La difficulté démarre 5 paliers plus haut.",
   ];
+  /* =====================================================================
+     2.0 fin de phase 6 : 3 armes de plus, panoplies, runes, camp
+     ===================================================================== */
+  SPRITES.sling = { pal: { w: "#8a5a3b", W: "#c08a52", s: "#c8c0b0" }, frames: [["w.....w", ".w...w.", "..wWw..", "...w...", "...w...", "...W...", "...w..."]] };
+  SPRITES.fan = { pal: { f: "#d8e8ff", F: "#6ad8ff", k: "#2b1709" }, frames: [["fFfFfFf", ".fFfFf.", "..fFf..", "...k...", "...k..."]] };
+  SPRITES.trident = { pal: { s: "#c8d8e8", S: "#4aa8ff", w: "#6b4430" }, frames: [["s.s.s..", "sSsSs..", ".sss...", "..w....", ".w.....", "w......", "......."]] };
+  SPRITES.bubble = { pal: { b: "#4aa8ff", w: "#e8f8ff" }, frames: [[".bb.", "bwbb", "bbbb", ".bb."]] };
+  BASES.fronde_tir = WEAPONS.fronde_tir = { name: "Tir à la fronde", icon: "sling", type: "shooter", family: "tir", sprite: "stone", count: [1, 1, 2, 2, 3], dmg: [13, 17, 18, 22, 26], pierce: [1, 1, 1, 2, 2], cd: [0.75, 0.7, 0.7, 0.65, 0.55], spd: 180, range: 160,
+    desc: ["Un galet sur l'ennemi le plus proche.", "+dégâts.", "+1 galet.", "Transperce.", "+1 galet, plus rapide."] };
+  BASES.eventail_jet = WEAPONS.eventail_jet = { name: "Lancer d'éventail", icon: "fan", type: "boomerang", family: "retour", sprite: "windblade", n: [1, 1, 2, 2, 2], dmg: [11, 15, 15, 19, 23], range: [80, 85, 85, 100, 110], cd: [1.3, 1.2, 1.2, 1.05, 0.9], chain: 0,
+    desc: ["Une lame d'éventail part et revient.", "+dégâts.", "+1 lame.", "Plus loin.", "Plus rapide, +dégâts."] };
+  BASES.trident_coup = WEAPONS.trident_coup = { name: "Coup de trident", icon: "trident", type: "lunge", family: "melee", len: [44, 48, 52, 56, 64], w: [7, 8, 8, 9, 11], dmg: [18, 23, 26, 30, 36], cd: [1.0, 0.95, 0.9, 0.8, 0.7], color: "106,200,255",
+    desc: ["Un coup de trident droit devant toi.", "+dégâts.", "Plus long.", "Plus fréquent.", "Plus large, +dégâts."] };
+  ARMES.fronde = { name: "Fronde", icon: "sling", base: "fronde_tir", fam: "tir", element: "terre", desc: "Tir, Terre. Galets, éboulis et pièges de pierre.",
+    skin: { projection: ["Galet perçant", "stone"], rafale: ["Grêle de cailloux", "stone"], pluie: ["Éboulis"], mortier: ["Bloc lancé"], piege: ["Chausse-trappes de pierre"], ricochet: ["Galet rebondissant"],
+            orbite: ["Pierres en orbite", "stone"], onde: ["Onde de roche"], charge: ["Coup de bélier", "stone"], sentinelle: ["Catapulte"], grappin: ["Fronde-lasso"], nuee: ["Nuée de cailloux"] } };
+  ARMES.eventail = { name: "Éventail", icon: "fan", base: "eventail_jet", fam: "retour", element: "air", desc: "Retour, Air. Lames qui reviennent, bourrasques et plumes.",
+    skin: { boomerang: ["Lame d'éventail", "windblade"], ricochet: ["Rafale ricochet"], grappin: ["Vent attirant"], tourbillon: ["Danse des lames"], aura: ["Brise tranchante"], rayon: ["Courant d'air"],
+            projection: ["Plume tranchante", "feather"], rafale: ["Volée de plumes", "feather"], echo: ["Double de vent"], nuee: ["Nuée de plumes"], familier: ["Pie voleuse", "hawk"], onde: ["Souffle"] } };
+  ARMES.trident = { name: "Trident", icon: "trident", base: "trident_coup", fam: "melee", element: "eau", desc: "Mêlée, Eau. Estocs, vagues et tourbillons.",
+    skin: { fente: ["Estoc des marées"], tourbillon: ["Remous"], charge: ["Vague", "bubble"], riposte: ["Ressac"], onde: ["Raz"], aura: ["Brume salée"],
+            piege: ["Filets"], orbite: ["Bulles gardiennes", "bubble"], pluie: ["Averse"], grappin: ["Harpon"], familier: ["Loutre", "pethog"], echo: ["Reflet dans l'eau"] } };
+  // signatures : chaque type a un comportement générique (kind)
+  var SIGK = { sig_contre: "contre", sig_garde: "deflect", sig_pas: "voltePath", sig_charge: "anchorDmg", sig_ardente: "rain", sig_faucon: "critRange", sig_racine: "anchorThorns", sig_pierre: "orbitBlock", sig_seisme: "volteNova" };
+  Object.keys(SIGS).forEach(function (a) { SIGS[a].forEach(function (s) { s.kind = SIGK[s.id]; s.elem = s.id === "sig_ardente" ? "feu" : s.id === "sig_seisme" ? "terre" : null; }); });
+  SIGS.fronde = [{ id: "sig_lourd", kind: "anchorDmg", name: "Pierre lourde", icon: "stone", desc: "Ancré depuis 1 s : tes coups font x2 dégâts." },
+                 { id: "sig_eboulis", kind: "volteNova", elem: "terre", name: "Éboulis", icon: "stone", desc: "Chaque Volte fait tomber des pierres autour de toi." },
+                 { id: "sig_galet", kind: "critRange", name: "Œil du frondeur", icon: "sling", desc: "+15 % de coups critiques et +20 % de portée." }];
+  SIGS.eventail = [{ id: "sig_bourrasque", kind: "volteNova", elem: "air", name: "Bourrasque", icon: "fan", desc: "Chaque Volte libère un souffle d'Air." },
+                   { id: "sig_danse", kind: "deflect", name: "Danse des lames", icon: "windblade", desc: "Les tirs ennemis proches sont déviés." },
+                   { id: "sig_plumes", kind: "rain", elem: "air", name: "Pluie de plumes", icon: "feather", desc: "Toutes les 4 s, des plumes tombent autour de toi." }];
+  SIGS.trident = [{ id: "sig_maree", kind: "anchorThorns", elem: "eau", name: "Marée", icon: "bubble", desc: "Ancré : l'eau monte et blesse autour de toi." },
+                  { id: "sig_remous", kind: "orbitBlock", name: "Remous", icon: "bubble", desc: "Une bulle tourne autour de toi et arrête les tirs ennemis." },
+                  { id: "sig_ressac", kind: "contre", name: "Ressac", icon: "trident", desc: "Ancré : le prochain coup reçu est annulé et renvoyé (recharge 4 s)." }];
+  ULTS.katana.kind = "slash"; ULTS.arc.kind = "rain"; ULTS.arc.elem = "feu"; ULTS.baton.kind = "nova"; ULTS.baton.elem = "terre";
+  ULTS.fronde = { name: "Avalanche", kind: "nova", elem: "terre", desc: "Trois énormes ondes de Terre." };
+  ULTS.eventail = { name: "Cyclone", kind: "slash", elem: "air", desc: "Des lames d'Air frappent tout l'écran." };
+  ULTS.trident = { name: "Raz-de-marée", kind: "rain", elem: "eau", desc: "Une pluie de 24 vagues." };
+  // runes (forge de Charbon) : surtout en Arène
+  RES.rune = { name: "Rune", icon: "🔹", rune: 1 };
+  RES.rune_rare = { name: "Rune rare", icon: "🔷", rune: 1 };
+  // panoplies : 2 à 4 pièces ; 2 pièces = un bonus d'effet, 4 pièces = un bonus qui change une règle ; recettes trouvées en Donjon
+  var SETS = {
+    corsaire: { name: "Panoplie du Corsaire", who: "capitaine", b2: "+2 matelots max.", b4: "Les matelots tirent des boulets qui explosent." },
+    sylve:    { name: "Panoplie de la Sylve", b2: "Ancré : régénère 1 PV/s.", b4: "Ancré : une pousse d'arbre toutes les 4 s, qui attaque." },
+    orage:    { name: "Panoplie de l'Orage", b2: "La Volte se recharge 0,6 s plus vite.", b4: "Chaque Volte lance un éclair qui saute sur 5 ennemis." },
+    braise:   { name: "Panoplie de Braise", b2: "10 % de chance par coup d'enflammer.", b4: "Les ennemis brûlés explosent à leur mort." },
+  };
+  [["corsaire", "eau", [["coiffe", "Tricorne", "🏴‍☠️", "armure", 12, 24], ["bottes", "Bottes de pont", "🥾", "vitesse", 6, 12], ["cape", "Cape de corsaire", "🧥", "souffle", 8, 14], ["amulette", "Ancre porte-bonheur", "⚓", null, 0, 0, "tir"]]],
+   ["sylve", "terre", [["coiffe", "Couronne de lierre", "🌿", "regen", 0.8, 1.8], ["bottes", "Sabots d'écorce", "🪵", "pas", 10, 18], ["cape", "Cape de mousse", "🍃", "ronces", 6, 11], ["amulette", "Gland de la Sylve", "🌰", null, 0, 0, "zone"]]],
+   ["orage", "air", [["coiffe", "Heaume d'orage", "⛈️", "epines", 6, 12], ["bottes", "Bottes de foudre", "⚡", "vitesse", 8, 14], ["cape", "Cape-tonnerre", "🌩️", "eclair", 22, 38], ["amulette", "Œil de la tempête", "🌀", null, 0, 0, "compagnon"]]],
+   ["braise", "feu", [["coiffe", "Masque de braise", "🎭", "epines", 7, 13], ["bottes", "Bottes de lave", "🔥", "trainee", 5, 9], ["cape", "Cape de cendres", "🧣", "souffle", 9, 15], ["amulette", "Cœur de braise", "❤️‍🔥", null, 0, 0, "melee"]]]
+  ].forEach(function (st) {
+    st[2].forEach(function (pc) {
+      var id = "s_" + st[0] + "_" + pc[0], fx = pc[3];
+      GEAR[id] = { slot: pc[0], name: pc[1], elem: st[1], icon: pc[2], set: st[0], fx: fx || undefined, lo: fx ? pc[4] : undefined, hi: fx ? pc[5] : undefined, fam: pc[6] || undefined,
+        desc: fx ? GEAR[Object.keys(GEAR).filter(function (k) { return GEAR[k].fx === fx; })[0]].desc : "Tes techniques de " + { tir: "Tir", zone: "Zone", compagnon: "Compagnon et de Retour", melee: "Mêlée" }[pc[6]] + " deviennent " + { feu: "Feu", eau: "Eau", air: "Air", terre: "Terre" }[st[1]] + "." };
+      var m = { terre: "clairiere", eau: "marais", feu: "automne", air: "nuit" }[st[1]], rs = MAP_RES[m], cost = {};
+      cost[rs[0]] = 10; cost[rs[1]] = 8; cost[rs[2]] = 6; cost[{ clairiere: "t_colosse", marais: "t_mere", automne: "t_brasier", nuit: "t_tempete" }[m]] = 1;
+      GEAR[id].cost = cost;
+    });
+  });
+  // le camp : 7 lieux, un seul écran
+  var CAMP = [
+    { id: "sentier", name: "Le sentier", who: "", x: 160, y: 0.8, screen: "play", desc: "Partir : mode, région, contrats" },
+    { id: "terrier", name: "Le terrier", who: "", x: 56, y: 0.6, screen: "terrier", desc: "Attirail, posture, talents" },
+    { id: "atelier", name: "L'atelier", who: "Bûche", npc: "sq_bucheron", x: 104, y: 0.32, screen: "atelier", desc: "Craft et recyclage" },
+    { id: "forge", name: "La forge", who: "Charbon", npc: "sq_charbon", x: 210, y: 0.3, screen: "forge", desc: "Runes : relancer, ajouter un effet" },
+    { id: "comptoir", name: "Le comptoir", who: "le Marchand", npc: "sq_capitaine", x: 252, y: 0.66, screen: "comptoir", desc: "Glands d'or, conversion de ressources" },
+    { id: "chene", name: "Le vieux chêne", who: "Flocon", npc: "sq_flocon", x: 160, y: 0.3, screen: "quetes", desc: "Quêtes, codex, succès" },
+    { id: "arene", name: "L'arène", who: "Bastien", npc: "sq_chevalier", x: 266, y: 0.36, screen: "succes", desc: "Succès et records" },
+  ];
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
@@ -1589,6 +1661,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();

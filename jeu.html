@@ -12,9 +12,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Survivor">
-  <link rel="manifest" href="jeu.webmanifest">
+    <link rel="manifest" href="jeu.webmanifest">
   <link rel="apple-touch-icon" href="assets/squirrel.png">
   <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    // liens de coop et de versus : encore sur la version 1
+    if (/#(coop=|party)/.test(location.hash)) location.replace("jeu-classique.html" + location.hash);
+  </script>
   <script>
     (function () {
       var t = null;
@@ -63,8 +67,8 @@
     <div class="wrap">
       <div class="game-head">
         <div>
-          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison</span>
-          <h1>Écureuil Survivor</h1>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · <a href="jeu-classique.html">version 1 (coop)</a></span>
+          <h1>Écureuil Survivor <small class="beta-tag">2.0</small></h1>
         </div>
         <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
       </div>
@@ -93,15 +97,18 @@
         <div class="panel game-help">
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
-            <li><strong>Survis</strong> : les ennemis arrivent de partout, de plus en plus nombreux et costauds.</li>
-            <li><strong>Ramasse les noisettes</strong> qu'ils lâchent pour gagner de l'expérience.</li>
-            <li><strong>À chaque niveau</strong>, choisis une nouvelle arme ou un bonus (4 armes et 4 bonus max, niveau 5 max).</li>
-            <li>Toutes les minutes, une <strong>nuée</strong> t'encercle. Toutes les 3 minutes, un <strong>boss</strong> (Grand Sanglier, Hibou Ancien) : bats-le pour son coffre.</li>
-            <li>Jusqu'à <strong>6 armes et 6 objets</strong>. Monte deux ingrédients au niveau 5 pour débloquer une <strong>fusion</strong>.</li>
-            <li>Casse les <strong>objets du décor</strong> pour trouver aspirateur, pot d'XP, gland explosif, givre et or.</li>
-            <li>Gagne des <strong>glands d'or</strong> pour les <strong>améliorations permanentes</strong>, et remplis les <strong>succès</strong> pour débloquer 5 autres écureuils, 3 cartes, des armes et le mode Difficile.</li>
-            <li>Les <strong>baies</strong> soignent, l'<strong>aimant</strong> attire toutes les noisettes. <kbd>Échap</kbd> ou <kbd>P</kbd> pour la pause.</li>
-            <li><strong>Score</strong> = 10 points par seconde de survie + 1 par ennemi. En <strong>Arène</strong> : 1 000 points par manche gagnée + 1 par ennemi (+5 000 si tu gagnes les 20 manches).</li>
+            <li><strong>Le mouvement est ta seule commande</strong>, lu en 3 états : <strong>Ancré</strong> (immobile 0,4 s, un anneau se remplit au sol), <strong>Mouvement</strong>, et <strong>Volte</strong> (demi-tour brusque ou arrêt net après une course, recharge 3 s, un éclair signale qu'elle est prête).</li>
+            <li><strong>Choisis une posture</strong> avant la partie : elle donne une règle pour chacun des 3 états.</li>
+            <li><strong>10 écureuils, chacun change une règle du jeu</strong> : Noisette (4 cartes), le Capitaine (équipage), le Planeur (glisse), Pip &amp; Pop (deux corps), Cendrine (coups étalés, champ de force), Fougère (plante des arbres), Pataud (grossit), Myrtille (jauge de sève), Ombre (discrète, x3 dégâts), Trèfle (mise ses cartes). Les 7 derniers se débloquent par une quête.</li>
+            <li><strong>Au début de chaque partie, choisis ton arme</strong> : Katana, Arc ou Bâton. Elle donne ton attaque de base et accès à 12 des 20 techniques, chacune à sa façon.</li>
+            <li><strong>6 techniques et 6 objets de niveau</strong>. Une technique au niveau 5 <strong>évolue</strong> (2 choix) ; évoluée + son objet au max : <strong>fusion</strong> ; deux techniques évoluées : <strong>technique fusionnée</strong> ; deux fusions : <strong>légendaire</strong>. Tout est listé dans le menu Techniques.</li>
+            <li><strong>Ennemis à rôles</strong> qui arrivent en escouades (Chargeur, Tireur, Bouclier, Soutien, Rôdeur…) et <strong>4 éléments</strong> : résistances, faiblesses et 6 réactions. La Clairière reste neutre.</li>
+            <li><strong>Méga boss</strong> : en Clairière, le portail réveille le Colosse d'humus (Terre), 3 phases qui testent chacune un état.</li>
+            <li><strong>Le camp</strong> : au <strong>terrier</strong>, équipe ton attirail (coiffe = Ancré, bottes = Mouvement, cape = Volte, amulette = élément, 2 anneaux = contenu de la partie), choisis tes talents et suis la maîtrise de tes armes ; à l'<strong>atelier</strong>, fabrique et recycle avec les ressources des régions.</li>
+            <li>Chaque partie fait monter le niveau de l'écureuil (paliers de talents) et la maîtrise de l'arme (signatures, 2e évolution, ultime). Plus de prestige ni de stats à acheter.</li>
+            <li><strong>Expédition</strong> : une carte d'extraction à étages, avec brouillard, camps ennemis, gisements, tours de guet, nids de boss, et le repaire du méga boss au cœur. Remplis ton <strong>sac</strong> (12 emplacements), puis sors (sortie permanente, à clé, d'endurance, du passeur, du méga boss) ou descends par un passage gardé. La corruption part du cœur, la nuit tombe à la minute 8, les sorties se ferment dès la minute 12. Mourir fait perdre le sac, sauf ce qui est à l'abri. Contrats à prendre avant de partir.</li>
+            <li><strong>4 méga boss</strong>, un par élément et par carte (Colosse d'humus, Mère des Marais, Brasier ancestral, Roi-Tempête). Les battre débloque les <strong>paliers Cauchemar</strong> de leur carte : 10 paliers dont les règles se cumulent.</li>
+            <li>Ta progression de la version 1 est reprise (rang, succès, quêtes, records) ; les améliorations achetées et le prestige sont remboursés. La coop reste sur la <a href="jeu-classique.html">version 1</a> pour l'instant.</li>
           </ul>
         </div>
         <div class="panel game-lb">
@@ -128,7 +135,7 @@
 
   <script src="js/data.js?v=20261104ct10"></script>
   <script src="js/auth.js?v=20261104ct10"></script>
-  <script src="js/cloudsave.js?v=20261107vs2" data-game="ecureuil-survivor" data-key="es-save-v1"></script>
+  <script src="js/cloudsave.js?v=v2c" data-game="ecureuil-survivor" data-key="es2-save-v1"></script>
   <script src="js/leaderboard.js?v=20261104ct10"></script>
   <script src="js/main.js?v=20261110uch3"></script>
   <script src="js/gamekit.js?v=20261114gk2"></script>
@@ -138,17 +145,17 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "20261107vs2";
+      var FALLBACK = "v2a7";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
         if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261104mb2" + b);
-        ["js/game-data.js", "js/game.js"].forEach(function (src) {
+        ["js/v2/game-data.js", "js/v2/game.js"].forEach(function (src) {
           var s = document.createElement("script"); s.src = src + "?v=" + b; s.async = false; document.body.appendChild(s);
         });
       }
       var done = false, go = function (b) { if (!done) { done = true; load(b || FALLBACK); } };
       setTimeout(function () { go(FALLBACK); }, 2500);
-      try { fetch("js/version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { go(j.build); }, function () { go(FALLBACK); }); }
+      try { fetch("js/v2/version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { go(j.build); }, function () { go(FALLBACK); }); }
       catch (e) { go(FALLBACK); }
     })();
   </script>
