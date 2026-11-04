@@ -2151,6 +2151,108 @@ window.ES_DATA = (function () {
     { id: "q6_alchimiste", desc: "Obtiens 5 évolutions élémentaires au total.", check: function (r) { return ((r.tot && r.tot.evoC) || 0) >= 5; } },
     { id: "q6_collection", desc: "Découvre 50 objets différents au codex.", check: function (r) { return ((r.tot && r.tot.seen) || 0) >= 50; } }
   );
+  /* =====================================================================
+     Contenu étendu, lot 5 : 18 espèces, variantes élémentaires, élites, escouades, 9 boss
+     ===================================================================== */
+  [["ant", { pal: { a: "#8a3a2a", A: "#b85a3a", k: "#1b1226" }, frames: [["k......k", ".k....k.", "aa.aAa.a", "aAaaAaaa", ".k.k.k.."], ["k......k", ".k....k.", "aa.aAa.a", "aAaaAaaa", "..k.k.k."]] }],
+   ["mosquito", { flying: true, pal: { k: "#3a3a4a", w: "#e6f6fa", r: "#c8553d" }, frames: [["w.....w", ".w...w.", "..kkk..", "kkkrkkk", "..k.k.."], [".......", "wwwwwww", "..kkk..", "kkkrkkk", ".k...k."]] }],
+   ["stagbeetle", { pal: { b: "#5a3018", B: "#8a5a3b", k: "#1b1226" }, frames: [["k.....k..", "kk...kk..", ".kbbbk...", "bbBbbBbb.", "bBbbbbBb.", ".bbbbbb..", "..b..b..."], ["k.....k..", "kk...kk..", ".kbbbk...", "bbBbbBbb.", "bBbbbbBb.", ".bbbbbb..", ".b....b.."]] }],
+   ["boarlet", { pal: { b: "#a0703a", s: "#e8c890", k: "#1b1226", n: "#d89a80" }, frames: [[".bb.....", "bbbbbbb.", "bsbsbsbn", "bbbbbbbk", ".b.b.b.."], [".bb.....", "bbbbbbb.", "bsbsbsbn", "bbbbbbbk", "b.b.b.b."]] }],
+   ["woodpecker", { flying: true, pal: { k: "#1b1226", w: "#fdf3de", r: "#c8553d", y: "#c8a060" }, frames: [["..rr....", ".kkkk...", "kwkkkyy.", "kkwwkk..", ".kkkk...", "..k.k..."], ["..rr....", ".kkkk...", "kwkkkyy.", "kkwwkk..", "kkkkkk..", "..k.k..."]] }],
+   ["bombardier", { pal: { b: "#3a5aa8", r: "#e8603a", k: "#1b1226" }, frames: [["..kk....", ".rrrr...", "bbbbbbk.", "bbrrbbbk", ".b.b.b.."], ["..kk....", ".rrrr...", "bbbbbbk.", "bbrrbbbk", "b.b.b.b."]] }],
+   ["cockchafer", { flying: true, pal: { b: "#8a5a3b", B: "#c08a52", w: "#d8e8ff", k: "#1b1226" }, frames: [["w......w", ".w....w.", "..kkkk..", ".bBbbBb.", "bbBbbBbb", ".bbbbbb."], ["........", "wwwwwwww", "..kkkk..", ".bBbbBb.", "bbBbbBbb", ".bbbbbb."]] }],
+   ["beaver", { pal: { b: "#8a5a3b", B: "#a87040", w: "#fdf3de", t: "#5a3018", k: "#1b1226" }, frames: [[".bbbb.....", "bkbbbb....", "bbbbbbbttt", "wbbbbbbttt", ".bBBbbb...", ".b...b...."], [".bbbb.....", "bkbbbb....", "bbbbbbbttt", "wbbbbbbttt", ".bBBbbb...", "..b...b..."]] }],
+   ["jackdaw", { flying: true, pal: { k: "#2a2a3a", g: "#6a6a7a", e: "#d8e0ff", o: "#3a3a4a" }, frames: [[".....kk..", "....kekko", "kk.kkggk.", "kkkkggkk.", ".kkkkkk..", "...k.k..."], ["kk...kk..", ".kk.kekko", "..kkkggk.", "...kggkk.", "..kkkkk..", "...k.k..."]] }],
+   ["barnowl", { flying: true, pal: { w: "#fdf3de", b: "#c8a060", k: "#1b1226" }, frames: [["..bbbb..", ".bwwwwb.", "bwkwwkwb", "bwwbbwwb", ".bwwwwb.", "..b..b.."], ["b.bbbb.b", "bbwwwwbb", ".wkwwkw.", ".wwbbww.", ".bwwwwb.", "..b..b.."]] }],
+   ["woodlouse", { pal: { g: "#6a6a7a", G: "#9a9aa8", k: "#1b1226" }, frames: [[".gggggg.", "gGgGgGgg", "gggggggk", ".k.k.k.."], [".gggggg.", "gGgGgGgg", "gggggggk", "k.k.k.k."]] }],
+   ["woodball", { pal: { g: "#6a6a7a", G: "#9a9aa8" }, frames: [[".gg.", "gGgg", "ggGg", ".gg."]] }],
+   ["crayfish", { pal: { r: "#c8553d", R: "#e8806a", k: "#1b1226" }, frames: [["rr....rr", "r.r..r.r", ".rrRRrr.", "..rRRr..", "..rrrr..", ".r.rr.r."], ["rr....rr", ".rr..rr.", ".rrRRrr.", "..rRRr..", "..rrrr..", "r..rr..r"]] }],
+   ["ladybug", { flying: true, pal: { r: "#e83a2a", k: "#1b1226", w: "#fdf3de" }, frames: [["..kk..", ".rkkr.", "rkrrkr", "rrkkrr", ".rrrr."], ["w.kk.w", ".rkkr.", "rkrrkr", "rrkkrr", ".rrrr."]] }],
+   ["cricket", { pal: { g: "#6a9a3a", G: "#9cc56b", k: "#1b1226" }, frames: [["k.......", ".k..gg..", "..gGggg.", ".ggggggk", "g.g..g.g"], ["k.......", ".k..gg..", "..gGggg.", ".ggggggk", ".g.gg.g."]] }],
+   ["antlion", { pal: { b: "#6a4a2a", k: "#1b1226" }, frames: [["k......k", ".k.bb.k.", "..bbbb..", ".bbbbbb.", "..bbbb.."]] }],
+   ["caterpillar", { pal: { g: "#9cc56b", G: "#5a8a3a", k: "#1b1226", y: "#f6d36b" }, frames: [[".y.y.y..", "gGgGgGgk", "gGgGgGgg", ".k.k.k.."], [".y.y.y..", "gGgGgGgk", "gGgGgGgg", "k.k.k.k."]] }],
+   ["dungbeetle", { pal: { b: "#3a2a1a", B: "#5a4a2a", d: "#8a6a3a", D: "#a8885a" }, frames: [["..dDd....", ".dDddD.bb", "dDddDdbBb", ".ddddDbbb", "..ddd.b.b"], ["..ddD....", ".dDdDd.bb", "dddDddbBb", ".dDdddbbb", "..ddd..b."]] }],
+   ["horsefly", { flying: true, pal: { k: "#3a3020", y: "#c8a040", w: "#e6f6fa", r: "#c8553d" }, frames: [["ww...ww", ".w...w.", ".kykyk.", "rkykyky", ".kykyk."], ["wwwwwww", ".......", ".kykyk.", "rkykyky", ".kykyk."]] }],
+   ["heron", { pal: { g: "#8a929a", G: "#c0c8d0", k: "#1b1226", y: "#f2a030" }, frames: [["....GG...", "...GkGyyy", "...GG....", "...G.....", "..GGG....", ".GgggG...", "GggggGG..", ".GgggG...", "..y..y...", "..y..y..."], ["....GG...", "...GkGyyy", "...GG....", "...G.....", "..GGG....", ".GgggG...", "GggggGG..", ".GgggG...", "..y..y...", ".y....y.."]] }],
+   ["catfish", { pal: { b: "#4a5a5a", B: "#6a8a8a", w: "#c8d8d8", k: "#1b1226" }, frames: [["..bbbbbbb...", ".bBBBBBBbb..", "bkbbbbbbbbbb", "wbbbbbbbbbb.", "w.bBBBBb....", "....b..b...."], ["..bbbbbbb...", ".bBBBBBBbb.b", "bkbbbbbbbbb.", "wbbbbbbbbbbb", "w.bBBBBb....", "...b..b....."]] }],
+   ["bear", { pal: { b: "#5a3a2a", B: "#8a5a3a", f: "#ff7a2a", k: "#1b1226", n: "#2b1709" }, frames: [[".b..b.....", ".bbbb.f...", "bkbbkbbbf.", "bbnnbbbbbb", ".bbbbbbBbb", ".bBbbbbBb.", ".bb..bb..."], [".b..b.....", ".bbbb..f..", "bkbbkbbbf.", "bbnnbbbbbb", ".bbbbbbBbb", ".bBbbbbBb.", "bb....bb.."]] }],
+   ["centipede", { pal: { r: "#a03a2a", R: "#d8603a", k: "#1b1226", y: "#f2c230" }, frames: [["y.y.........", ".rRrRrRrRrR.", "krrrrrrrrrrr", ".k.k.k.k.k.k"], ["y.y.........", ".rRrRrRrRrR.", "krrrrrrrrrrr", "k.k.k.k.k.k."]] }]
+  ].forEach(function (s) { SPRITES[s[0]] = s[1]; });
+  // [id, sprite, rôle, PV, vitesse, dégâts, xp, couleur, comportement, nom]
+  [["ant", "ant", "nuee", 6, 40, 4, 1, "#b85a3a", "column", "Fourmi"],
+   ["mosquito", "mosquito", "nuee", 5, 60, 3, 1, "#c8553d", "sting", "Moustique"],
+   ["stagbeetle", "stagbeetle", "chargeur", 60, 22, 12, 4, "#8a5a3b", "arcCharger", "Lucane"],
+   ["boarlet", "boarlet", "chargeur", 30, 34, 8, 2, "#a0703a", "packCharger", "Marcassin"],
+   ["woodpecker", "woodpecker", "tireur", 20, 30, 7, 2, "#c8553d", "pecker", "Pic épeiche"],
+   ["bombardier", "bombardier", "tireur", 40, 20, 10, 3, "#3a5aa8", "flamer", "Bombardier"],
+   ["cockchafer", "cockchafer", "artilleur", 26, 36, 8, 3, "#c08a52", "egger", "Hanneton"],
+   ["beaver", "beaver", "artilleur", 90, 16, 12, 6, "#8a5a3b", "logger", "Castor"],
+   ["jackdaw", "jackdaw", "guetteur", 24, 44, 6, 2, "#6a6a7a", "thief", "Choucas"],
+   ["barnowl", "barnowl", "guetteur", 36, 40, 11, 3, "#c8a060", "ghostowl", "Effraie"],
+   ["woodlouse", "woodlouse", "bouclier", 50, 18, 8, 3, "#9a9aa8", "ball", "Cloporte"],
+   ["crayfish", "crayfish", "bouclier", 70, 20, 12, 4, "#c8553d", "crayfish", "Écrevisse"],
+   ["ladybug", "ladybug", "soutien", 14, 36, 4, 2, "#e83a2a", "shielder", "Coccinelle"],
+   ["cricket", "cricket", "soutien", 10, 40, 3, 2, "#6a9a3a", "singer", "Grillon"],
+   ["antlion", "antlion", "piegeur", 60, 0, 10, 4, "#6a4a2a", "antlion", "Fourmi-lion"],
+   ["caterpillar", "caterpillar", "piegeur", 30, 16, 6, 3, "#9cc56b", "procession", "Chenille processionnaire"],
+   ["dungbeetle", "dungbeetle", "kamikaze", 40, 24, 20, 3, "#8a6a3a", "dungball", "Bousier"],
+   ["horsefly", "horsefly", "kamikaze", 12, 70, 14, 2, "#c8a040", "horsefly", "Taon"]
+  ].forEach(function (a) {
+    ENEMIES[a[0]] = { sprite: a[1], role: a[2], hp: a[3], spd: a[4], dmg: a[5], r: 5, xp: a[6], color: a[7], ai: a[8], name: a[9], shot: a[5], blast: a[2] === "kamikaze" ? a[5] : undefined, blastR: a[2] === "kamikaze" ? 22 : undefined };
+  });
+  ENEMIES.beaver.r = 7; ENEMIES.crayfish.r = 6; ENEMIES.antlion.r = 6; ENEMIES.stagbeetle.r = 6;
+  ENEMIES.logprop = { sprite: "log", hp: 30, spd: 0, dmg: 0, r: 6, xp: 0, color: "#8a5a3b", prop: true };
+  // nouvelles espèces dans les biomes des 4 cartes actuelles (les autres arrivent avec leurs cartes)
+  var BIO5 = { clairiere: [["ant", 20, 3], ["ladybug", 120, 1], ["boarlet", 150, 2], ["jackdaw", 200, 1]], marais: [["mosquito", 0, 3], ["cricket", 100, 1], ["crayfish", 140, 2], ["antlion", 200, 1]],
+               automne: [["stagbeetle", 120, 2], ["boarlet", 60, 2], ["bombardier", 100, 2], ["caterpillar", 160, 1], ["jackdaw", 140, 1], ["ladybug", 180, 1], ["ant", 30, 2]],
+               nuit: [["barnowl", 120, 2], ["horsefly", 90, 2], ["woodlouse", 100, 2], ["cockchafer", 140, 2], ["mosquito", 20, 2]] };
+  MAPS.forEach(function (m) { (BIO5[m.id] || []).forEach(function (q, i) { var b = m.biomes[i % m.biomes.length]; b.enemies.push(q.slice()); }); });
+  // élites : 3 pouvoirs de plus
+  AFFIXES.push(
+    { id: "lourd", name: "Lourd", color: "#8a8278", desc: "insensible au recul et à l'attirance" },
+    { id: "vigilant", name: "Vigilant", color: "#6ad8ff", desc: "repère Ombre et les joueurs invisibles, ignore les leurres" },
+    { id: "instable", name: "Instable", color: "#ff5ad0", desc: "change d'élément toutes les 4 s" }
+  );
+  // escouades par carte (espèces précises) ; les escouades par rôle restent
+  var SQUADS_MAP = {
+    clairiere: [["Fourmis des prés", { ant: 12, ladybug: 2 }], ["Laie et petits", { boarlet: 3, bunny: 6 }], ["Garde du champ", { hedgehog: 2, wasp: 3, slug: 8 }], ["Piège du sous-bois", { spider: 2, jackdaw: 1, rat: 6 }]],
+    marais: [["Chorale", { cricket: 2, frog: 4, mosquito: 6 }], ["Bord de l'eau", { crayfish: 2, toad: 2, mosquito: 8 }], ["Embuscade", { snake: 2, weaver: 1, rat: 6 }], ["Fondrière", { antlion: 1, puffball: 3, slug: 6 }]],
+    automne: [["Harde", { stagbeetle: 1, boarlet: 3, ladybug: 2 }], ["Brûlis", { salamander: 2, bombardier: 2, ant: 8 }], ["Chasseurs des terriers", { mole: 2, fox: 2, jackdaw: 1 }], ["Procession", { caterpillar: 2, beetle: 4, cricket: 1 }]],
+    nuit: [["Chasse nocturne", { barnowl: 2, bat: 8 }], ["Lueurs trompeuses", { firefly: 2, bombshroom: 2, horsefly: 3 }], ["Vermoulu", { woodlouse: 2, cockchafer: 2, mosquito: 6 }], ["Clair de lune", { barnowl: 1, fox: 2, moth: 1, bat: 6 }]],
+    gouffre: [["Colonie", { ant: 16, antlion: 1 }], ["Terrier profond", { mole: 3, woodlouse: 2, ladybug: 1 }], ["Effondrement", { dungbeetle: 3, beaver: 2 }], ["Racines vivantes", { spider: 2, stagbeetle: 2, rat: 6 }]],
+    riviere: [["Digue", { beaver: 3, crayfish: 2 }], ["Berges", { jackdaw: 2, frog: 2, bunny: 6 }], ["Sous la glace", { snake: 2, woodpecker: 2, cricket: 1 }], ["Chute d'eau", { turtle: 1, toad: 3, mosquito: 6 }]],
+    calcinee: [["Fourneau", { salamander: 3, bombardier: 2, ladybug: 1 }], ["Retombées", { horsefly: 4, bombshroom: 3, ant: 8 }], ["Survivants", { badger: 2, boarlet: 3 }], ["Feux couvants", { cockchafer: 2, hedgehog: 2, rat: 6 }]],
+    cime: [["Envol noir", { woodpecker: 3, jackdaw: 2, bat: 8 }], ["Cimes bruyantes", { wasp: 2, cricket: 2, mosquito: 6 }], ["Funambules", { stagbeetle: 2, spider: 2, barnowl: 1 }], ["Sommet", { crow: 1, horsefly: 2, ladybug: 2, mosquito: 6 }]],
+  };
+  // 9 boss : chacun a une attaque à fuir, une à esquiver en Volte et une fenêtre où rester ancré paie
+  [["castor", "beaver", 1600, 18, 24, "eau", "Grand Castor", "#8a5a3b", 2.4],
+   ["heron", "heron", 1100, 30, 20, "eau", "Héron cendré", "#8a929a", 1.6],
+   ["silure", "catfish", 1400, 22, 22, "eau", "Silure", "#4a5a5a", 1.8],
+   ["ours", "bear", 2000, 24, 28, "feu", "Ours brûlé", "#5a3a2a", 1.9],
+   ["sala_g", "salamander", 1200, 26, 22, "feu", "Salamandre géante", "#d8572a", 2.6],
+   ["corbeau", "crow", 1500, 32, 20, "air", "Corbeau-roi", "#24243a", 2.2],
+   ["pivert", "woodpecker", 1100, 30, 18, "air", "Grand Pivert", "#c8553d", 2.4],
+   ["scolo", "centipede", 1300, 26, 22, "terre", "Scolopendre", "#a03a2a", 1.8],
+   ["reine_f", "ant", 2400, 18, 24, "terre", "Reine des fourmis", "#8a3a2a", 3.2]
+  ].forEach(function (b) { ENEMIES[b[0]] = { sprite: b[1], hp: b[2], spd: b[3], dmg: b[4], r: 11, xp: 55, boss: true, bossAi: "b5_" + b[0], elem: b[5], name: b[6], color: b[7], scale: b[8] }; });
+  [["castor", "Planche rongée", "🪵"], ["heron", "Aigrette grise", "🪶"], ["silure", "Écaille de silure", "🐟"], ["ours", "Fourrure roussie", "🐻"], ["sala_g", "Peau de salamandre", "🦎"],
+   ["corbeau", "Rémige du Corbeau-roi", "🐦‍⬛"], ["pivert", "Crête rouge", "🟥"], ["scolo", "Chitine", "🐛"], ["reine_f", "Œuf de reine", "🥚"]].forEach(function (t) { RES["t_" + t[0]] = { name: t[1], icon: t[2], trophy: t[0] }; });
+  // objets de boss : un par nouveau boss
+  [["dent_castor", "castor", "🦷", "Dent du Grand Castor", "Tes coups brisent le décor 3 fois plus vite ; chaque élément brisé lâche une noisette d'XP."],
+   ["plume_heron", "heron", "🪶", "Plume du Héron", "Tes projectiles visent là où l'ennemi va être."],
+   ["barbillon", "silure", "🐟", "Barbillon du Silure", "+30 % de dégâts contre les ennemis ralentis ou gelés."],
+   ["patte_ours", "ours", "🐾", "Patte de l'Ours brûlé", "+40 PV max ; sous 50 % de PV, +25 % de dégâts."],
+   ["ecaille_sala", "sala_g", "🦎", "Écaille de la Salamandre", "Immunité aux flammes au sol, et ce qui te touche s'enflamme."],
+   ["oeil_corbeau", "corbeau", "👁️", "Œil du Corbeau-roi", "Les sanctuaires sont signalés de 2 fois plus loin."],
+   ["bec_pivert", "pivert", "🪓", "Bec du Grand Pivert", "Tes projectiles traversent un ennemi de plus et brisent le décor sans s'arrêter."],
+   ["carapace_seg", "scolo", "🛡️", "Carapace segmentée", "+1 armure par boss vaincu dans la partie."],
+   ["colonne_fourmis", "reine_f", "🐜", "Colonne de fourmis", "Une colonne de fourmis suit ton chemin et mord (10 dégâts/s)."]
+  ].forEach(function (a) { ITEMS.push({ id: a[0], r: 2, pool: "boss", from: a[1], icon: a[2], name: a[3], desc: "BOSS · " + a[4] }); });
+  ITEMS.forEach(function (it, i) { it.idx = i; });
+  // gardiens des donjons : chaque boss non final garde exactement 2 donjons
+  var DG_GUARDS = { terriers: ["bigmole", "boar"], ruche: ["pivert", "owl"], crypte: ["silure", "scolo"], taniere: ["boar", "sala_g"] };
+  DUNGEONS.forEach(function (d) { if (DG_GUARDS[d.id]) d.guards = DG_GUARDS[d.id].concat([DG_GUARDS[d.id][0]]); });
+  var ARENA_BOSSES = ["boar", "queen", "owl", "stag", "mushking", "bigmole", "castor", "heron", "silure", "ours", "sala_g", "corbeau", "pivert", "scolo", "reine_f"];
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
@@ -2158,6 +2260,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();

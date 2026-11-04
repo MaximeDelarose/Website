@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.1.3";
+  var VERSION = "2.1.4";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -289,6 +289,7 @@
     p.speed *= 1 + 0.2 * (it.semelles || 0);
     p.might += 0.6 * (it.contrat_cendres || 0) + Math.min(0.5, 0.05 * Object.keys((r && r.shrineTypes) || {}).length) * (it.reliquaire ? 1 : 0) + (r && r.ex ? 0.1 * (r.ex.floor - 1) * (it.trophee_profondeur || 0) : 0);
     p.maxHp *= Math.pow(0.75, it.corne_malin || 0);
+    p.maxHp += 40 * (it.patte_ours || 0); p.armor += (it.carapace_seg || 0) * ((r && r.bosses) || 0);
     // contenu étendu : objets de niveau des états et des éléments
     if (p.epts0) { var ep = { terre: p.epts0.terre, feu: p.epts0.feu, eau: p.epts0.eau, air: p.epts0.air }; Object.keys(D.PASSIVES).forEach(function (k) { var pv = D.PASSIVES[k]; if (pv.elemPt && ps[k]) ep[pv.elemPt] += Math.ceil(ps[k] / 2); }); ep.feu += it.tison || 0; p.epts = ep; }
     if (p.anchorTh0) p.anchorTh = Math.max(0.1, p.anchorTh0 - 0.06 * (ps.patience || 0));
@@ -363,12 +364,14 @@
   function alive() { return players.filter(function (pl) { return !pl.down; }); }
   function randomAlive() { var a = alive(); return a.length ? a[(Math.random() * a.length) | 0] : me; }
   function targetOf(e) {
-    if (r && r.decoys && r.decoys.length && !e.d.boss) for (var di = 0; di < r.decoys.length; di++) { var dc = r.decoys[di]; if (dc.t > r.time && Math.abs(dc.x - e.x) < 140 && Math.abs(dc.y - e.y) < 140) return dc; }
+    if (e.follow) { if (e.follow.dead) e.follow = e.follow.follow || null; else if (Math.hypot(e.follow.x - e.x, e.follow.y - e.y) > 9) return e.follow; }
+    var vig = e.aff && hasA(e, "vigilant");
+    if (r && r.decoys && r.decoys.length && !e.d.boss && !vig) for (var di = 0; di < r.decoys.length; di++) { var dc = r.decoys[di]; if (dc.t > r.time && Math.abs(dc.x - e.x) < 140 && Math.abs(dc.y - e.y) < 140) return dc; }
     var best = null, bd = 1e18, any = null, ad = 1e18;
     for (var i = 0; i < players.length; i++) {
       var pl = players[i]; if (pl.down) continue;
       var d2 = (pl.x - e.x) * (pl.x - e.x) + (pl.y - e.y) * (pl.y - e.y);
-      if (stealthy(pl)) { if (pl.invis || pl.ghostT > 0) continue; var sr = 70 * (pl.anchored ? 1 - gv(pl, "shi_c") / 100 : 1); if (d2 < sr * sr) { e.spotted = true; e.spotT = r.time; } else if (e.spotted && gv(pl, "shi_b") && r.time - (e.spotT || 0) > 3) e.spotted = false; if (!e.spotted) continue; }
+      if (stealthy(pl) && !vig) { if (pl.invis || pl.ghostT > 0) continue; var sr = 70 * (pl.anchored ? 1 - gv(pl, "shi_c") / 100 : 1); if (d2 < sr * sr) { e.spotted = true; e.spotT = r.time; } else if (e.spotted && gv(pl, "shi_b") && r.time - (e.spotT || 0) > 3) e.spotted = false; if (!e.spotted) continue; }
       if (!pl.choosing && d2 < bd) { bd = d2; best = pl; }
       if (d2 < ad) { ad = d2; any = pl; }
     }
@@ -552,6 +555,8 @@
     if (rm0 > 0 && !d.prop) { e.spd *= rageSpd(); if (!d.boss) { e.hp *= 1 + RAGE.hpPerMin * rm0; e.maxHp = e.hp; } e.rage = Math.min(1, rm0 / 5); }
     enemies.push(e);
     giveElement(e);
+    if (d.scale && !d.mega) e.scale = d.scale;
+    if (e.elem && !d.boss && !d.prop) { if (e.elem === "terre") { e.hp *= 1.3; e.maxHp = e.hp; } else if (e.elem === "air") e.spd *= 1.2; }
     if (e.needAff) { e.needAff = false; giveAffixes(e, 1); }
     if (isExpe() && r.ex && !d.prop && Math.hypot(x, y) < corrR()) { e.corrupt = true; e.hp *= 1.5; e.maxHp = e.hp; e.dmgMul = (e.dmgMul || 1) * 1.3; }
     return e;
@@ -676,10 +681,18 @@
     if (itn(p, "dague_ombre") && Math.random() < Math.min(0.5, 0.15 * itn(p, "dague_ombre"))) dmg *= 4;
     if ((e.d.boss || e.aff) && itn(p, "pleinelune") && humans() === 1) dmg *= 1 + 0.25 * itn(p, "pleinelune");
     if (e.aff || e.shellT > 0) dmg = affixDamage(e, dmg);
+    if (e.ballT > r.time) dmg *= 0.05;
+    if (e.vulnT > r.time) dmg *= p.anchored ? 2 : 1.3;
+    if (p.items) {
+      if (itn(p, "barbillon") && e.slowT > 0) dmg *= 1 + 0.3 * itn(p, "barbillon");
+      if (itn(p, "patte_ours") && p.hp < p.maxHp * 0.5) dmg *= 1.25;
+      if (e.d.prop && itn(p, "dent_castor")) dmg *= 3;
+    }
     dmg = Math.max(1, Math.round(dmg));
+    if (e.eshield > 0) { var ab = Math.min(e.eshield, dmg); e.eshield -= ab; dmg -= ab; if (dmg <= 0) { e.flash = 0.05; return; } }
     e.hp -= dmg; e.flash = 0.1;
     if (!e.d.prop) {
-      var kb = e.d.boss ? 0.12 : 1;
+      var kb = e.d.boss ? 0.12 : (e.elem === "terre" || hasA(e, "lourd")) ? 0 : 1;
       e.kx += (kx || 0) * kb; e.ky += (ky || 0) * kb;
     }
     if (S.opts.numbers && texts.length < 60) texts.push({ x: e.x + (Math.random() * 6 - 3), y: e.y - e.d.r - 6, n: dmg, life: 0.6 });
@@ -723,6 +736,7 @@
     burst(e.x, e.y, e.d.color, e.d.boss ? 30 : 6);
     if (e.d.prop) {
       r.props++; SND.crack();
+      if (itn(p, "dent_castor")) drop("xp", e.x, e.y, 2);
       if (p.sigK && p.sigK.lumber) { ring(e.x, e.y, 34, false); near(e.x, e.y, 44, function (o) { if (!o.d.prop && !o.dead) { o.burnT = 3; o.burnD = 3 * gpw(); o.burnBy = p; } }); p.hp = Math.min(p.maxHp, p.hp + 2); }
       if (Math.random() < 0.03) dropItem(e.x, e.y, 0); else drop(rollLoot(), e.x, e.y);
       return;
@@ -735,7 +749,10 @@
     if (stealthy(p) && !e.spotted && setCount(p, "shinobi") >= 3) p.ghostT = Math.max(p.ghostT || 0, 1);
     if (p.sigK && p.sigK.ash && Math.hypot(e.x - p.x, e.y - p.y) < 50) pZone({ x: e.x, y: e.y, r: 14, dur: 3, kind: "thorn", dmg: 1, owner: p });
     onKillProcs(e);
-    if (e.d.boss) { if (Math.random() < 0.5) drop("item", e.x + 10, e.y, rollItem(0, 1, "boss").idx); else dropItem(e.x + 10, e.y, Math.random() < 0.25 ? 2 : 1); }
+    if (e.elem === "feu" && !e.d.boss && enemies.length < 260) addZone(e.x, e.y, 11, 2, "fire", 4);
+    var own = e.d.boss ? D.ITEMS.filter(function (it) { return it.from === e.type; })[0] : null;
+    if (own && Math.random() < 0.6) drop("item", e.x + 10, e.y, own.idx);
+    else if (e.d.boss) { if (Math.random() < 0.5) drop("item", e.x + 10, e.y, rollItem(0, 1, "boss").idx); else dropItem(e.x + 10, e.y, Math.random() < 0.25 ? 2 : 1); }
     if (e.quest) { trialKill(e); if (itn(p, "lettre_defi")) { dropItem(e.x - 6, e.y, 0); dropItem(e.x + 6, e.y, 0); } }
     else if (e.aff && Math.random() < 0.3) dropItem(e.x, e.y + 4, 0);
     if (e.type === "puffball") addZone(e.x, e.y, 24, 3.5, "spore", 4);
@@ -927,7 +944,7 @@
       if (z.kind === "web" || !z.dmg) continue;
       for (var j = 0; j < players.length; j++) {
         var pl = players[j];
-        if (z.kind === "fire" && gv(pl, "bra_b")) continue;
+        if (z.kind === "fire" && (gv(pl, "bra_b") || itn(pl, "ecaille_sala"))) continue;
         if (!pl.down && Math.hypot(pl.x - z.x, (pl.y - z.y) * 1.25) < z.r && cooled(pl, "z" + z.kind, 0.5)) damagePlayer(z.dmg * footMul(pl), pl);
       }
     }
@@ -957,6 +974,7 @@
     return dmg;
   }
   function affixTick(e, dt, d) {
+    if (hasA(e, "instable") && cooled(e, "instab", 4)) { var ne = ELEM_K.filter(function (x) { return x !== e.elem; }); e.elem = ne[(Math.random() * ne.length) | 0]; burst(e.x, e.y, D.ELEMENTS[e.elem].color, 6); }
     if (r.freeze > 0) return;
     for (var i = 0; i < e.aff.length; i++) {
       var id = e.aff[i];
@@ -983,6 +1001,7 @@
     var p2 = e.hp < e.maxHp * 0.5, k, ang = Math.atan2(dy, dx), tg;
     if (r.freeze > 0) return [mx, my, sp];
     if (e.d.bossAi === "mega_terre") return megaAI(e, d, dx, dy, dt, mx, my, sp);
+    if (BOSS5[e.d.bossAi]) return BOSS5[e.d.bossAi](e, d, dx, dy, dt, mx, my, sp, p2, ang);
     switch (e.d.bossAi) {
       case "queen":
         if (d < 90) { var t = -my, u = mx; mx = t * 0.9 - mx * 0.25; my = u * 0.9 - my * 0.25; }
@@ -1035,6 +1054,101 @@
     }
     return [mx, my, sp];
   }
+  // contenu étendu : 9 boss ; chacun une attaque à fuir, une à esquiver en Volte et une fenêtre où rester ancré paie (vulnT)
+  function opening(e, t, label) { e.vulnT = r.time + t; texts.push({ x: e.x, y: e.y - 24 * (e.scale || 1), n: label || "FAILLE !", life: 1, col: "#f6d36b" }); }
+  function bossLine(e, a, n, step, rad, dmg, delay) { for (var k = 1; k <= n; k++) warn(e.x + Math.cos(a) * k * step, e.y + Math.sin(a) * k * step, rad, delay + k * 0.06, dmg); }
+  function bossDash(e, dt, spd) { if (e.charge > 0) { e.charge -= dt; e.x += e.cx * spd * dt; e.y += e.cy * spd * dt; return true; } return false; }
+  var BOSS5 = {
+    b5_castor: function (e, d, dx, dy, dt, mx, my, sp, p2, ang) {
+      if (e.vulnT > r.time) return [mx, my, 0];
+      if (bossDash(e, dt, 170)) return [mx, my, 0];
+      if (e.windup > 0) { e.windup -= dt; e.flash = Math.sin(e.windup * 40) > 0 ? 0.05 : 0; if (e.windup <= 0) { e.charge = 0.8; e.cx = dx / d; e.cy = dy / d; SND.boom(); } return [mx, my, 0]; }
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt; e.cd2 = (e.cd2 === undefined ? 4 : e.cd2) - dt; e.cd3 = (e.cd3 === undefined ? 9 : e.cd3) - dt;
+      if (e.cd <= 0) { e.cd = p2 ? 2.2 : 3; for (var k = -1; k <= 1; k++) hostile.push({ x: e.x, y: e.y, vx: Math.cos(ang + k * 0.35) * 60, vy: Math.sin(ang + k * 0.35) * 60, life: 3, dmg: 14, log: 1 }); SND.crack(); }
+      if (e.cd2 <= 0 && d < 200) { e.cd2 = p2 ? 3.5 : 5; e.windup = 0.7; fx.push({ kind: "beam", x: e.x, y: e.y, a: ang, len: 160, w: 3, life: 0.7, max: 0.7, col: "255,90,60" }); }
+      if (e.cd3 <= 0) { e.cd3 = 10; opening(e, 3, "BARRAGE : FAILLE !"); }
+      return [mx, my, sp];
+    },
+    b5_heron: function (e, d, dx, dy, dt, mx, my, sp, p2, ang) {
+      var tg = targetOf(e);
+      if (e.vulnT > r.time) return [mx, my, 0];
+      e.calmT = tg.anchored ? (e.calmT || 0) + dt : 0;
+      if (e.calmT > 1.5) { e.calmT = -4; opening(e, 3, "IL SE POSE !"); return [mx, my, 0]; }
+      if (bossDash(e, dt, 200)) { if (e.charge <= 0) warn(e.x, e.y, 26, 0.3, 18, e); return [mx, my, 0]; }
+      e.cd = (e.cd === undefined ? 1.5 : e.cd) - dt; e.cd2 = (e.cd2 === undefined ? 4 : e.cd2) - dt;
+      if (e.cd <= 0 && d < 200) { e.cd = p2 ? 1.4 : 2.2; var vx = tg.dir && tg.moving ? tg.dir.x * (tg.speed || 60) : 0, vy = tg.dir && tg.moving ? tg.dir.y * (tg.speed || 60) : 0, t = d / 110; hostileShot(e.x, e.y, Math.atan2(tg.y + vy * t - e.y, tg.x + vx * t - e.x), 110, 14); }
+      if (e.cd2 <= 0 && d < 180) { e.cd2 = p2 ? 3 : 4.5; e.charge = 0.6; e.cx = dx / d; e.cy = dy / d; warn(tg.x, tg.y, 22, 0.6, 18); }
+      if (d < 70) return [-mx, -my, sp];
+      return [mx, my, sp];
+    },
+    b5_silure: function (e, d, dx, dy, dt, mx, my, sp, p2, ang) {
+      var tg = targetOf(e);
+      if (e.vulnT > r.time) return [mx, my, 0];
+      if (e.suckT > 0) { e.suckT -= dt; players.forEach(function (pl) { if (pl.down || pl.anchored) return; var ex = e.x - pl.x, ey = e.y - pl.y, dd = Math.hypot(ex, ey) || 1; if (dd < 160) { pl.x += ex / dd * 45 * dt; pl.y += ey / dd * 45 * dt; } }); if (e.suckT <= 0) { if (players.some(function (pl) { return pl.anchored && !pl.down; })) opening(e, 3, "EXPOSÉ !"); } return [mx, my, 0]; }
+      if (e.dive > 0) { e.dive -= dt; e.under = true; if (e.dive <= 0) { e.under = false; e.x = e.ax; e.y = e.ay; burst(e.x, e.y, "#4aa8ff", 14); } return [mx, my, 0]; }
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt; e.cd2 = (e.cd2 === undefined ? 5 : e.cd2) - dt; e.cd3 = (e.cd3 === undefined ? 9 : e.cd3) - dt;
+      if (e.cd <= 0) { e.cd = p2 ? 2.4 : 3.2; var o = Math.random(); for (var k = 0; k < 10; k++) hostileShot(e.x, e.y, o + k / 10 * TAU, 55, 10); }
+      if (e.cd2 <= 0) { e.cd2 = p2 ? 4 : 5.5; e.dive = 1; e.ax = tg.x; e.ay = tg.y; warn(tg.x, tg.y, 28, 1, 20); for (var b = 0; b < 4; b++) fx.push({ kind: "ring", x: tg.x + Math.random() * 16 - 8, y: tg.y + Math.random() * 12 - 6, r: 5, life: 0.8, max: 0.8, col: "160,220,255" }); }
+      if (e.cd3 <= 0) { e.cd3 = 11; e.suckT = 2.5; bannerAll("Le Silure aspire : reste ancré !"); }
+      return [mx, my, sp * 0.8];
+    },
+    b5_ours: function (e, d, dx, dy, dt, mx, my, sp, p2, ang) {
+      if (e.vulnT > r.time) return [mx, my, 0];
+      if (bossDash(e, dt, 165)) { if (cooled(e, "fireTrail", 0.08)) addZone(e.x, e.y + 3, 9, 2.4, "fire", 6); if (e.charge <= 0 && p2) opening(e, 4, "ÉPUISÉ !"); return [mx, my, 0]; }
+      if (e.windup > 0) { e.windup -= dt; e.flash = Math.sin(e.windup * 40) > 0 ? 0.05 : 0; if (e.windup <= 0) { e.charge = 0.9; e.cx = dx / d; e.cy = dy / d; SND.boom(); } return [mx, my, 0]; }
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt; e.cd2 = (e.cd2 === undefined ? 5 : e.cd2) - dt;
+      if (e.cd <= 0 && d < 90) { e.cd = p2 ? 1.8 : 2.6; for (var k = -1; k <= 1; k++) warn(e.x + Math.cos(ang + k * 0.5) * 34, e.y + Math.sin(ang + k * 0.5) * 30, 18, 0.6, 18); }
+      if (e.cd2 <= 0 && d < 200) { e.cd2 = p2 ? 4 : 5.5; e.windup = 0.7; fx.push({ kind: "beam", x: e.x, y: e.y, a: ang, len: 150, w: 3, life: 0.7, max: 0.7, col: "255,110,40" }); }
+      return [mx, my, sp];
+    },
+    b5_sala_g: function (e, d, dx, dy, dt, mx, my, sp, p2, ang) {
+      var tg = targetOf(e);
+      if (e.vulnT > r.time) return [mx, my, 0];
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt; e.cd2 = (e.cd2 === undefined ? 4 : e.cd2) - dt; e.cd3 = (e.cd3 === undefined ? 10 : e.cd3) - dt;
+      if (e.cd <= 0) { e.cd = p2 ? 2.5 : 3.5; for (var k = 0; k < (p2 ? 4 : 3); k++) { var px = tg.x + (Math.random() - 0.5) * 70, py = tg.y + (Math.random() - 0.5) * 50; warn(px, py, 16, 1.2, 12); addZone(px, py, 16, 4, "fire", 6); } }
+      if (e.cd2 <= 0 && d < 200) { e.cd2 = p2 ? 3 : 4.5; bossLine(e, ang, 7, 20, 13, 18, 0.6); e.flash = 0.1; }
+      if (e.cd3 <= 0) { e.cd3 = 11; opening(e, 3, "ELLE MUE !"); burst(e.x, e.y, "#ff9a3a", 16); }
+      return [mx, my, sp];
+    },
+    b5_corbeau: function (e, d, dx, dy, dt, mx, my, sp, p2, ang) {
+      var tg = targetOf(e);
+      if (e.vulnT > r.time) return [mx, my, 0];
+      if (e.dive > 0) { e.dive -= dt; e.under = true; if (e.dive <= 0) { e.under = false; e.x = e.ax; e.y = e.ay; burst(e.x, e.y, "#24243a", 14); } return [mx, my, 0]; }
+      e.cd = (e.cd === undefined ? 3 : e.cd) - dt; e.cd2 = (e.cd2 === undefined ? 4 : e.cd2) - dt; e.cd3 = (e.cd3 === undefined ? 9 : e.cd3) - dt;
+      if (e.cd <= 0 && enemies.length < 220) { e.cd = p2 ? 4 : 6; for (var k = 0; k < (p2 ? 4 : 3); k++) { var j = spawnAt("jackdaw", e.x + Math.random() * 30 - 15, e.y + Math.random() * 20 - 10); j.awake = true; j.room = e.room; } }
+      if (e.cd2 <= 0) { e.cd2 = p2 ? 3 : 4.5; e.dive = 1; e.ax = tg.x; e.ay = tg.y; warn(tg.x, tg.y, 24, 1, 22); }
+      if (e.cd3 <= 0) { e.cd3 = 10; opening(e, 3, "IL CROASSE : FAILLE !"); }
+      return [mx, my, sp];
+    },
+    b5_pivert: function (e, d, dx, dy, dt, mx, my, sp, p2, ang) {
+      if (e.vulnT > r.time) return [mx, my, 0];
+      if (bossDash(e, dt, 190)) { if (cooled(e, "peck", 0.12)) warn(e.x, e.y, 14, 0.25, 14); if (e.charge <= 0) opening(e, 3, "COINCÉ !"); return [mx, my, 0]; }
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt; e.cd2 = (e.cd2 === undefined ? 5 : e.cd2) - dt;
+      if (e.cd <= 0) { e.cd = p2 ? 2 : 3; var ox = e.x + (Math.random() - 0.5) * 80, oy = e.y + (Math.random() - 0.5) * 60, o = Math.random(); for (var k = 0; k < 8; k++) hostileShot(ox, oy, o + k / 8 * TAU, 65, 10); burst(ox, oy, "#8a5a3b", 8); }
+      if (e.cd2 <= 0 && d < 200) { e.cd2 = p2 ? 4 : 6; e.charge = 0.8; e.cx = dx / d; e.cy = dy / d; fx.push({ kind: "beam", x: e.x, y: e.y, a: ang, len: 150, w: 2, life: 0.4, max: 0.4, col: "255,90,60" }); }
+      return [mx, my, sp];
+    },
+    b5_scolo: function (e, d, dx, dy, dt, mx, my, sp, p2, ang) {
+      if (e.vulnT > r.time) return [mx, my, 0];
+      var lost = 1 - e.hp / e.maxHp, segN = Math.floor(lost * 5);
+      if (segN > (e.segs || 0) && enemies.length < 240) { e.segs = segN; for (var k = 0; k < 3; k++) { var sg = spawnAt("caterpillar", e.x + Math.random() * 24 - 12, e.y + Math.random() * 16 - 8); sg.awake = true; sg.room = e.room; } bannerAll("Un segment se détache !"); }
+      if (bossDash(e, dt, 180)) return [mx, my, 0];
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt; e.cd2 = (e.cd2 === undefined ? 4 : e.cd2) - dt; e.cd3 = (e.cd3 === undefined ? 9 : e.cd3) - dt;
+      if (e.cd <= 0) { e.cd = p2 ? 2.4 : 3.2; var px = -dy / d, py = dx / d; for (var j = -3; j <= 3; j++) warn(e.x + px * j * 18, e.y + py * j * 18, 12, 0.9, 12); }
+      if (e.cd2 <= 0 && d < 110) { e.cd2 = p2 ? 2.5 : 3.5; e.charge = 0.35; e.cx = dx / d; e.cy = dy / d; warn(e.x + e.cx * 50, e.y + e.cy * 50, 20, 0.35, 20); }
+      if (e.cd3 <= 0) { e.cd3 = 10; opening(e, 3, "ENROULÉE : FAILLE !"); }
+      return [mx, my, sp];
+    },
+    b5_reine_f: function (e, d, dx, dy, dt, mx, my, sp, p2, ang) {
+      var tg = targetOf(e);
+      if (e.vulnT > r.time) return [mx, my, 0];
+      e.cd = (e.cd === undefined ? 3 : e.cd) - dt; e.cd2 = (e.cd2 === undefined ? 2.5 : e.cd2) - dt; e.cd3 = (e.cd3 === undefined ? 10 : e.cd3) - dt;
+      if (e.cd <= 0 && enemies.length < 230) { e.cd = p2 ? 4 : 6; var a = Math.random() * TAU, sx = tg.x + Math.cos(a) * 160, sy = tg.y + Math.sin(a) * 120, prev = null; for (var k = 0; k < 10; k++) { var an = spawnAt("ant", sx + k * 4, sy); an.awake = true; an.room = e.room; if (prev) an.follow = prev; prev = an; } }
+      if (e.cd2 <= 0 && d < 180) { e.cd2 = p2 ? 2 : 2.8; for (var j = 0; j < 7; j++) hostileShot(e.x, e.y, ang + (j - 3) * 0.2, 80, 12); }
+      if (e.cd3 <= 0) { e.cd3 = 11; opening(e, 3, "ELLE POND : FAILLE !"); for (var o = 0; o < 4 && enemies.length < 240; o++) { var ae = spawnAt("ant", e.x + Math.random() * 30 - 15, e.y + Math.random() * 20); ae.awake = true; } }
+      return [mx, my, sp * 0.7];
+    },
+  };
   // silhouette teintée (contour des élites)
   function tinted(s, col, flip) {
     var key = col + (flip ? "f" : ""); s.tints = s.tints || {};
@@ -1095,6 +1209,7 @@
   // ralentissements au sol pour le joueur local (toiles, aura glaciale)
   function slowMul(pl) {
     var m = 1;
+    if (pl.wetT > 0) { pl.wetT -= 1 / 60; m *= 0.8; }
     var wz = zones.length ? zoneAt(pl.x, pl.y + 3, "web") : null;
     if (wz && itn(pl, "ciseaux")) { zones.splice(zones.indexOf(wz), 1); pl.hp = Math.min(pl.maxHp, pl.hp + itn(pl, "ciseaux")); burst(pl.x, pl.y, "#ebe6f5", 5); wz = null; }
     if (wz && !(itn(pl, "patin") && pl.mstate === "mouvement")) m *= 0.5;
@@ -1108,7 +1223,7 @@
   D.ITEMS.forEach(function (it, i) { ITM[it.id] = it; it.idx = i; });
   function itn(pl, id) { return (pl.items && pl.items[id]) || 0; }
   function rollItem(minR, luck, pool0) {
-    if (pool0) { var pl0 = D.ITEMS.filter(function (it) { return it.pool === pool0; }); return pl0[(Math.random() * pl0.length) | 0]; }
+    if (pool0) { var pl0 = D.ITEMS.filter(function (it) { return it.pool === pool0 && (!it.from || D.ENEMIES[it.from]); }); return pl0[(Math.random() * pl0.length) | 0]; }
     var L = luck || 1, pool = [], tot = 0;
     var dk = me && me.ring && me.ring.tenebres ? 2 : 1;
     D.RARITIES.forEach(function (ra, i) { if (i < (minR || 0)) return; var w = ra.weight * (i ? L : 1) * (i >= 2 ? dk : 1); pool.push([i, w]); tot += w; });
@@ -1208,6 +1323,8 @@
     if ((n = itn(pl, "banniere")) && pl.anchored) players.forEach(function (o) { if (o !== pl && !o.down && Math.hypot(o.x - pl.x, o.y - pl.y) < 60) o.banT = 0.3; });
     if ((n = itn(pl, "sauna")) && zones.some(function (z) { return z.steam && z.owner === pl && Math.hypot(pl.x - z.x, (pl.y - z.y) * 1.25) < z.r; })) pl.hp = Math.min(pl.maxHp, pl.hp + 2 * n * dt);
     if ((n = itn(pl, "perle_marais"))) { var wz = zoneAt(pl.x, pl.y + 3, "mark"); if ((wz && wz.elem === "eau") || zoneAt(pl.x, pl.y + 3, "mud") || (isDungeon() && puddleAt(pl.x, pl.y + 3))) pl.hp = Math.min(pl.maxHp, pl.hp + 3 * n * dt); }
+    if ((n = itn(pl, "colonne_fourmis"))) { pl.antTrail = pl.antTrail || []; if (cooled(pl, "antT", 0.15)) pl.antTrail.push({ x: pl.x, y: pl.y + 3, t: r.time }); while (pl.antTrail.length && r.time - pl.antTrail[0].t > 1.5) pl.antTrail.shift();
+      if (cooled(pl, "antB", 0.5)) pl.antTrail.forEach(function (q, qi) { if (qi % 2) return; near(q.x, q.y, 14, function (e) { if (!e.d.prop && Math.hypot(e.x - q.x, e.y - q.y) < 7 + e.d.r && cooled(e, "antbite", 0.5)) hurt(e, 5 * n * gpw(), 0, 0); }); }); }
     if ((n = itn(pl, "couronne_eclairs")) && timer("__eclairs", 2, dt)) { var big = null; enemies.forEach(function (e) { if (!e.dead && !e.d.prop && !e.under && inView(e, 0) && (!big || e.hp > big.hp)) big = e; }); if (big) { var hk = HIT_ELEM; HIT_ELEM = "air"; zapChain(big, 1, 60 * n * gpw(), { x: big.x, y: big.y - 90 }); HIT_ELEM = hk; SND.zap(); } }
     if ((n = itn(pl, "corde_rappel")) && isExpe() && !r.cordeUsed && !r.ended) { if (pl.anchored) { pl.cordeT = (pl.cordeT || 0) + dt; if (pl.cordeT >= 10) { r.cordeUsed = 1; extract({ k: "x_perm" }); } } else pl.cordeT = 0; }
     var al = pl.comp && pl.comp.__corne;
@@ -1573,7 +1690,7 @@
   function drawShrineMarkers() {
     if (isArena()) return;
     var cx = me.x - W / 2, cy = me.y - H / 2;
-    shrinesNear(me.x, me.y, 560).forEach(function (s) {
+    shrinesNear(me.x, me.y, itn(me, "oeil_corbeau") ? 1120 : 560).forEach(function (s) {
       var st = r.sh[s.id]; if ((st && st.used) || (s.k === "sacre" && r.devil)) return;
       var sx = s.x - cx, sy = s.y - cy;
       if (sx > 4 && sx < W - 4 && sy > 4 && sy < H - 4) return;
@@ -1830,6 +1947,7 @@
       for (var i = 0; i < count; i++) {
         var tg = t[i % Math.max(1, t.length)];
         var a = tg ? Math.atan2(tg.y - p.y, tg.x - p.x) : (p.face > 0 ? 0 : Math.PI);
+        if (tg && p.items && itn(p, "plume_heron") && tg.mvx !== undefined) { var lt = Math.hypot(tg.x - p.x, tg.y - p.y) / spd; a = Math.atan2(tg.y + tg.mvy * lt - p.y, tg.x + tg.mvx * lt - p.x); }
         if (!tg || i >= t.length) a += (i - (count - 1) / 2) * 0.25;
         a += (Math.random() - 0.5) * (w.spread || 0);
         if (w.spiral) a = (p.st[id + "#sp"] = (p.st[id + "#sp"] || 0) + 0.5);
@@ -2004,6 +2122,7 @@
       var el = foyer && e.key === baseId ? "feu" : (p.amu && p.amu[e.def.family]) || wel, n0 = projs.length, l0 = lobs.length, z0 = zones.length, hf = e.def.hfx || null;
       HIT_ELEM = el; HIT_FX = hf; fn(e.key, e.def, e.l, dt); HIT_ELEM = undefined; HIT_FX = null; CUR_FAM = null;
       if (rmA !== 1) p.area /= rmA;
+      if (e.def.family === "tir" && itn(p, "bec_pivert")) for (var bp = n0; bp < projs.length; bp++) if (!projs[bp].bec) { projs[bp].bec = 1; projs[bp].pierce = (projs[bp].pierce || 1) + 1; }
       var whis = p.sigK.whistle && e.def.family === "tir", sil = itn(p, "sillon") && p.mstate === "mouvement" && e.def.family === "tir", nEnd = projs.length;
       if (sil) for (var si = n0; si < nEnd; si++) { var sq = projs[si]; if (sq.kind === "bullet" && !sq.back2) projs.push({ owner: p, kind: "bullet", x: sq.x, y: sq.y, vx: -sq.vx, vy: -sq.vy, dmg: sq.dmg * 0.4 * itn(p, "sillon"), pierce: sq.pierce, sprite: sq.sprite, anim: sq.anim, life: sq.life, hit: [], r: sq.r, explode: 0, back2: 1 }); }
       for (var i = n0; i < projs.length; i++) { var pq = projs[i]; if (pq.elem === undefined) pq.elem = el; if (pq.hfx === undefined) pq.hfx = hf; if (pq.fam === undefined) pq.fam = e.def.family; if (whis && !pq.whis) { pq.whis = 1; pq.pierce = (pq.pierce || 1) + 2; var wh = { mark: "air" }; if (pq.hfx) for (var hk0 in pq.hfx) wh[hk0] = pq.hfx[hk0]; pq.hfx = wh; } }
@@ -2838,7 +2957,7 @@
   }
   BEHAVIOR.grapple = function (id, w, l, dt) {
     if (!timer(id, V(w, "cd", l), dt)) return;
-    var sk = p.sigK || {}, range = V(w, "range", l), all = nearest(12, range), list = all.filter(function (e) { return !e.d.boss; });
+    var sk = p.sigK || {}, range = V(w, "range", l), all = nearest(12, range), list = all.filter(function (e) { return !e.d.boss && !hasA(e, "lourd"); });
     if (sk.bigFish) all.forEach(function (e) { if ((e.d.boss || e.aff) && !(e.fateT > 0)) { e.fateT = 3; e.fateBy = p; e.fateD = Math.max(3, V(w, "dmg", l) * 0.35); fx.push({ kind: "beam", x: p.x, y: p.y, a: Math.atan2(e.y - p.y, e.x - p.x), len: Math.hypot(e.x - p.x, e.y - p.y), w: 1, life: 0.3, max: 0.3, col: "200,230,255" }); } });
     var reel = sk.reel && p.anchored;
     list.sort(function (a, b) { return Math.hypot(b.x - p.x, b.y - p.y) - Math.hypot(a.x - p.x, a.y - p.y); });
@@ -2992,7 +3111,7 @@
   function markZone(x, y, rad, dur, el) { if (el) pZone({ x: x, y: y, r: rad, dur: dur, kind: "mark", elem: el, owner: p }); }
   // règles spéciales d'un coup (évolutions élémentaires, fusions de techniques)
   function hitFx(e, hf, dmg, hadMark) {
-    if (hf.pull && !e.d.boss && !e.dead) { var dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1; if (d > 18) { var k = Math.min(hf.pull, d - 16); e.x += dx / d * k; e.y += dy / d * k; } }
+    if (hf.pull && !e.d.boss && !e.dead && !hasA(e, "lourd")) { var dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1; if (d > 18) { var k = Math.min(hf.pull, d - 16); e.x += dx / d * k; e.y += dy / d * k; } }
     if (hf.stun && !e.d.boss) { e.stunT = Math.max(e.stunT || 0, hf.stun); e.slowT = Math.max(e.slowT || 0, hf.stun); e.slow = 1; }
     if (hf.markR) { var el = atkElem(p); if (el) near(e.x, e.y, hf.markR + 10, function (o) { if (o !== e && !o.d.prop && Math.hypot(o.x - e.x, o.y - e.y) < hf.markR + o.d.r) applyMark(o, el); }); }
     if (hf.fate && !e.dead) { e.fateT = 6; e.fateBy = p; e.fateD = Math.max(4, dmg * 0.4); }
@@ -3025,6 +3144,7 @@
   /* ---- les rôles ---- */
   function roleAI(e, ai, d, dx, dy, dt) {
     var tg = targetOf(e), ang = Math.atan2(dy, dx);
+    if (AI5[ai]) return AI5[ai](e, d, dx, dy, dt, tg, ang);
     if (ai === "charger") {
       if (e.dash > 0) { e.dash -= dt; e.x += e.cx * 175 * dt; e.y += e.cy * 175 * dt; if (e.dash <= 0) { if (!e.hitDash && tg && !tg.decoy && itn(tg, "muleta") && Math.hypot(tg.x - e.x, tg.y - e.y) < 70) { e.stunT = 2; e.slowT = 2; e.slow = 1; e.mulT = r.time + 2; texts.push({ x: e.x, y: e.y - 14, n: "OLÉ !", life: 0.7 }); } e.hitDash = 0; } return 0; }
       if (e.windup > 0) { e.windup -= dt; e.flash = Math.sin(e.windup * 40) > 0 ? 0.05 : 0; if (e.windup <= 0) { e.dash = 0.5; } return 0; }
@@ -3059,24 +3179,111 @@
     }
     return null;
   }
+  // contenu étendu : comportements des 18 nouvelles espèces (valeur rendue = vitesse vers la cible, négative = fuite)
+  function nearPl(e, rad) { for (var i = 0; i < players.length; i++) { var pl = players[i]; if (!pl.down && Math.hypot(pl.x - e.x, pl.y - e.y) < rad) return pl; } return null; }
+  var AI5 = {
+    column: function () { return 1; },
+    sting: function (e) { if (e.hitDash) { e.hitDash = 0; e.fleeT = r.time + 0.8; } return e.fleeT > r.time ? -1.3 : 1.1; },
+    arcCharger: function (e, d, dx, dy, dt) {
+      if (e.dash > 0) { e.dash -= dt; var a = Math.atan2(e.cy, e.cx) + e.arc * dt; e.cx = Math.cos(a); e.cy = Math.sin(a); e.x += e.cx * 160 * dt; e.y += e.cy * 160 * dt; return 0; }
+      if (e.windup > 0) { e.windup -= dt; e.flash = Math.sin(e.windup * 40) > 0 ? 0.05 : 0; if (e.windup <= 0) e.dash = 0.8; return 0; }
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt;
+      if (e.cd <= 0 && d < 120) { e.windup = 0.7; e.cd = 3.4; e.arc = (Math.random() < 0.5 ? -1 : 1) * 2.2; var a0 = Math.atan2(dy, dx) - e.arc * 0.4; e.cx = Math.cos(a0); e.cy = Math.sin(a0); fx.push({ kind: "ring", x: e.x, y: e.y, r: 14, life: 0.7, max: 0.7, red: true }); return 0; }
+      return 1;
+    },
+    packCharger: function (e, d, dx, dy, dt) {
+      if (e.dash > 0) { e.dash -= dt; e.x += e.cx * 170 * dt; e.y += e.cy * 170 * dt; return 0; }
+      if (e.windup > 0) { e.windup -= dt; e.flash = Math.sin(e.windup * 40) > 0 ? 0.05 : 0; if (e.windup <= 0) e.dash = 0.5; return 0; }
+      e.cd = (e.cd === undefined ? 2 + Math.random() : e.cd) - dt;
+      if (e.cd <= 0 && d < 130) { var cx = dx / d, cy = dy / d; near(e.x, e.y, 70, function (o) { if (o.type === "boarlet" && !(o.windup > 0) && !(o.dash > 0)) { o.windup = 0.6; o.cd = 3.5; o.cx = cx; o.cy = cy; fx.push({ kind: "beam", x: o.x, y: o.y, a: Math.atan2(cy, cx), len: 80, w: 2, life: 0.6, max: 0.6, col: "255,90,60" }); } }); return 0; }
+      return 1;
+    },
+    pecker: function (e, d, dx, dy, dt, tg, ang) {
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt;
+      if (e.burstN > 0) { e.burstT -= dt; if (e.burstT <= 0) { e.burstN--; e.burstT = 0.15; hostileShot(e.x, e.y - 2, ang, 95, e.d.dmg); } return 0; }
+      if (e.cd <= 0 && d < 140) { e.cd = 3; e.burstN = 3; e.burstT = 0.2; return 0; }
+      return d < 110 ? 0 : 1;
+    },
+    flamer: function (e, d, dx, dy, dt, tg, ang) {
+      e.cd = (e.cd === undefined ? 1.5 : e.cd) - dt;
+      if (e.cd <= 0 && d < 60) { e.cd = 2.4; for (var k = 0; k < 5; k++) hostile.push({ x: e.x, y: e.y, vx: Math.cos(ang + (k - 2) * 0.22) * 90, vy: Math.sin(ang + (k - 2) * 0.22) * 90, life: 0.55, dmg: e.d.dmg }); SND.whip(); }
+      return d < 40 ? 0 : 1;
+    },
+    egger: function (e, d, dx, dy, dt, tg) {
+      e.cd = (e.cd === undefined ? 1.5 : e.cd) - dt;
+      if (e.cd <= 0 && d < 90) { e.cd = 1.3; warn(e.x, e.y + 4, 16, 1, e.d.dmg + 3, e); }
+      if (d < 50) { e.orb = (e.orb || 0) + dt; return 0.5; } return 1;
+    },
+    logger: function (e, d, dx, dy, dt, tg, ang) {
+      e.cd = (e.cd === undefined ? 3 : e.cd) - dt;
+      if (e.cd <= 0 && d < 170) { e.cd = 4.5; hostile.push({ x: e.x, y: e.y, vx: Math.cos(ang) * 55, vy: Math.sin(ang) * 55, life: Math.min(3, d / 55 + 0.6), dmg: e.d.dmg, log: 1 }); SND.crack(); }
+      if (d < 90) return -0.5; return d < 140 ? 0 : 1;
+    },
+    thief: function (e, d, dx, dy, dt, tg) {
+      for (var i = 0; i < gems.length; i++) { var g = gems[i]; if (g.kind === "xp" && Math.abs(g.x - e.x) < 10 && Math.abs(g.y - e.y) < 10) { gems.splice(i, 1); e.stole = (e.stole || 0) + g.v; break; } }
+      return AI5.predictShot(e, d, dt, tg);
+    },
+    ghostowl: function (e, d, dx, dy, dt, tg) { var o = AI5.predictShot(e, d, dt, tg); return o; },
+    predictShot: function (e, d, dt, tg) {
+      e.cd = (e.cd === undefined ? 1.5 + Math.random() * 2 : e.cd) - dt;
+      if (e.cd <= 0 && d < 160 && !tg.decoy) { e.cd = 2.6; e.seenT = r.time + 1; var fm = itn(tg, "feuilles_mortes"), vx = tg.dir && tg.moving && !fm ? tg.dir.x * (tg.speed || 60) : 0, vy = tg.dir && tg.moving && !fm ? tg.dir.y * (tg.speed || 60) : 0, t = d / 95; hostileShot(e.x, e.y, Math.atan2(tg.y + vy * t - e.y, tg.x + vx * t - e.x), 95, e.d.dmg); SND.whip(); }
+      if (d < 70) return -0.6; if (d < 110) return 0.3; return 1;
+    },
+    ball: function (e, d, dx, dy, dt) {
+      if (e.ballT > r.time) return 0;
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt;
+      if (e.cd <= 0 && d < 90) { e.cd = 4.5; e.ballT = r.time + 2; SND.crack(); return 0; }
+      return 1;
+    },
+    crayfish: function () { return 1; },
+    shielder: function (e, d, dx, dy, dt) {
+      e.cd = (e.cd === undefined ? 1.5 : e.cd) - dt;
+      if (e.cd <= 0) { e.cd = 4; var any = false; near(e.x, e.y, 60, function (o) { if (o !== e && !o.d.prop && !o.d.boss && !(o.eshield > 0)) { o.eshield = 20; any = true; } }); if (any) fx.push({ kind: "ring", x: e.x, y: e.y, r: 50, life: 0.4, max: 0.4, col: "232,58,42" }); }
+      return d < 90 ? -0.6 : 0.8;
+    },
+    singer: function (e, d, dx, dy, dt) {
+      e.cd = (e.cd === undefined ? 1 : e.cd) - dt;
+      if (e.cd <= 0) { e.cd = 3; near(e.x, e.y, 70, function (o) { if (o !== e && !o.d.prop) o.hasteT = r.time + 3; }); fx.push({ kind: "ring", x: e.x, y: e.y, r: 60, life: 0.4, max: 0.4, col: "156,197,107" }); }
+      return d < 90 ? -0.6 : 0.8;
+    },
+    antlion: function (e, d, dx, dy, dt) {
+      players.forEach(function (pl) { if (pl.down || pl.anchored && itn(pl, "ancre_pierre")) return; var ex = e.x - pl.x, ey = e.y - pl.y, dd = Math.hypot(ex, ey); if (dd < 70 && dd > 4) { pl.x += ex / dd * 22 * dt; pl.y += ey / dd * 22 * dt; } });
+      return 0;
+    },
+    procession: function (e, d, dx, dy, dt) { if (cooled(e, "urt", 0.45)) addZone(e.x, e.y + 2, 8, 2.5, "spore", 3); return 1; },
+    dungball: function (e, d, dx, dy, dt) {
+      e.trav = (e.trav || 0) + e.spd * dt; e.scale = 1 + Math.min(1, e.trav / 300);
+      if (d < 16 + 6 * e.scale) { e.dead = true; e.exploded = true; warn(e.x, e.y, 18 + 14 * e.scale, 0.15, e.d.dmg * e.scale, e); burst(e.x, e.y, "#8a6a3a", 10); SND.boom(); return 0; }
+      return 1;
+    },
+    horsefly: function (e, d, dx, dy, dt) {
+      if (e.dash > 0) { e.dash -= dt; e.x += e.cx * 230 * dt; e.y += e.cy * 230 * dt; if (d < 14) { e.dead = true; e.exploded = true; warn(e.x, e.y, 18, 0.12, e.d.dmg, e); burst(e.x, e.y, "#c8a040", 8); } return 0; }
+      if (e.windup > 0) { e.windup -= dt; if (cooled(e, "buzz", 0.3)) texts.push({ x: e.x, y: e.y - 10, n: "BZZ", life: 0.3, col: "#c8a040" }); if (e.windup <= 0) { e.dash = 1.2; e.cx = dx / d; e.cy = dy / d; } return 0; }
+      e.cd = (e.cd === undefined ? 0.5 : e.cd) - dt;
+      if (e.cd <= 0 && d < 220) { e.cd = 5; e.windup = 0.8; fx.push({ kind: "beam", x: e.x, y: e.y, a: Math.atan2(dy, dx), len: Math.min(d, 220), w: 1, life: 0.8, max: 0.8, col: "200,160,64" }); return 0; }
+      return 0.8;
+    },
+  };
   // Bouclier : les tirs de face sont bloqués (zones, pluie et boomerangs passent)
-  function shieldBlock(e, vx, vy) { return e.d.role === "bouclier" && !e.d.boss && (vx * (e.face || 1) < 0) ? (CUR_FAM === "tir" && itn(p, "pince") ? 0.5 : 0.2) : 1; }
+  function shieldBlock(e, vx, vy) { if (e.type === "crayfish" && vx * (e.face || 1) > 0) return 2; return e.d.role === "bouclier" && !e.d.boss && (vx * (e.face || 1) < 0) ? (CUR_FAM === "tir" && itn(p, "pince") ? 0.5 : 0.2) : 1; }
   /* ---- directeur à budget : escouades ---- */
   function speciesFor(role, x, y) {
     var b = biomeAt(x, y), list = b.enemies.map(function (q) { return q[0]; }).filter(function (k) { return D.ENEMIES[k] && D.ENEMIES[k].role === role; });
     if (!list.length) MAP.biomes.forEach(function (bb) { bb.enemies.forEach(function (q) { if (D.ENEMIES[q[0]] && D.ENEMIES[q[0]].role === role) list.push(q[0]); }); });
     return list.length ? list[(Math.random() * list.length) | 0] : null;
   }
-  function squadCost(sq) { var c = 0; Object.keys(sq).forEach(function (ro) { c += D.ROLES[ro].cost * sq[ro]; }); return c; }
+  function squadCost(sq) { var c = 0; Object.keys(sq).forEach(function (ro) { var rr = D.ROLES[ro] || (D.ENEMIES[ro] && D.ROLES[D.ENEMIES[ro].role]); c += (rr ? rr.cost : 1) * sq[ro]; }); return c; }
   function spawnSquad(sq, around, dist) {
     if (me && me.ring && me.ring.horde) { var sq2 = {}; Object.keys(sq).forEach(function (k) { sq2[k] = Math.ceil(sq[k] * (me.ring2x ? 2 : 1.5)); }); sq = sq2; }
     around = around || randomAlive();
     var a = Math.random() * TAU, R = dist || Math.hypot(W, H) / 2 + 12, cx = around.x + Math.cos(a) * R, cy = around.y + Math.sin(a) * R, out = [];
+    var prevOf = {};
     Object.keys(sq).forEach(function (ro) {
       for (var i = 0; i < sq[ro]; i++) {
         if (enemies.length >= 290) return;
-        var t = speciesFor(ro, cx, cy) || speciesFor("nuee", cx, cy) || "slug";
+        var t = D.ROLES[ro] ? speciesFor(ro, cx, cy) || speciesFor("nuee", cx, cy) || "slug" : D.ENEMIES[ro] ? ro : "slug";
         var e = spawnAt(t, cx + (Math.random() - 0.5) * 40, cy + (Math.random() - 0.5) * 30);
+        if (e && (e.d.ai === "column" || e.d.ai === "procession")) { if (prevOf[t]) e.follow = prevOf[t]; prevOf[t] = e; }
         if (e && r.time > 90 && Math.random() < (Math.min(0.035, 0.004 + r.time / 18000) + TIER.elite * tierN()) * (me.ring && me.ring.chasse ? 2 : 1) * (nm(1) ? 2 : 1)) giveAffixes(e, r.time > 480 || tierN() >= 5 ? 2 : 1);
         if (e) out.push(e);
       }
@@ -3088,7 +3295,7 @@
   function squadDirector(dt, rate) {
     r.credit = (r.credit || 0) + rate * dt;
     if (!r.nextSquad) {
-      var cap = 6 + tierN() * 4 + stageTime() / 30, ok = D.SQUADS.filter(function (s) { return squadCost(s) <= cap; });
+      var cap = 6 + tierN() * 4 + stageTime() / 30, mine = (D.SQUADS_MAP[MAP.id] || []).map(function (q) { return q[1]; }), ok = D.SQUADS.concat(mine, mine).filter(function (s) { return squadCost(s) <= cap; });
       r.nextSquad = (ok.length ? ok : [D.SQUADS[0]])[(Math.random() * (ok.length || 1)) | 0];
     }
     var c = squadCost(r.nextSquad);
@@ -4122,7 +4329,7 @@
       var dx = tg.x - e.x, dy = tg.y - e.y, d = Math.hypot(dx, dy) || 1;
       e.flash -= dt;
       if (e.d.prop) { if (!nearAnyPlayer(e, 480)) e.dead = true; continue; }
-      var sp = e.spd * (e.slowT > 0 ? 1 - e.slow : 1) * (e.buffT > 0 ? 1.3 : 1);
+      var sp = e.spd * (e.slowT > 0 ? 1 - e.slow : 1) * (e.buffT > 0 ? 1.3 : 1) * (e.hasteT > r.time ? 1.3 : 1);
       if (e.buffT > 0) e.buffT -= dt; if (e.markT > 0) e.markT -= dt; if (e.stunT > 0) e.stunT -= dt;
       burnTick(e, dt); if (e.fateT > 0 && !e.dead) fateTick(e, dt); if (e.dead) continue;
       if (r.freeze > 0) sp *= e.d.boss ? 0.5 : 0;
@@ -4164,6 +4371,7 @@
         e.x = zp.x + zx / zd * lim; e.y = zp.y + zy / zd * lim;
         if (e.charge > 0) e.charge = 0;
       }
+      if (dt > 0) { e.mvx = (e.x - ox) / dt; e.mvy = (e.y - oy) / dt; }
       if (Math.abs(mx) > 0.1) e.face = mx > 0 ? 1 : -1;
       if (isArena()) clampArena(e, e.d.r);
       if (isDungeon()) enemyConstrain(e, ox, oy);
@@ -4174,6 +4382,9 @@
         if (Math.abs(pl.x - e.x) < e.d.r + hbx && Math.abs(pl.y - e.y) < e.d.r + hbx) {
           if (!contactOk(e, pl)) continue;
           var hb = pl.hp; damagePlayer(e.d.dmg * (e.dmgMul || 1) * (e.buffT > 0 ? 1.3 : 1), pl);
+          if (pl.hp < hb && e.elem === "eau" && !e.d.boss) pl.wetT = 1;
+          if (pl.hp < hb && e.elem === "air" && !e.d.boss) { var ad = Math.hypot(e.x - pl.x, e.y - pl.y) || 1; e.kx += (e.x - pl.x) / ad * 220; e.ky += (e.y - pl.y) / ad * 220; }
+          if (pl.hp < hb && itn(pl, "ecaille_sala") && !e.d.prop) { e.burnT = 3; e.burnD = 3 * gpw(); e.burnBy = pl; }
           if (pl.hp < hb) { e.hitDash = 1; if (itn(pl, "bogue") && pl.anchored) { var kpb = p; p = pl; hurt(e, 15 * itn(pl, "bogue") * gpw(), 0, 0); p = kpb; } }
           if (e.aff && pl.hp < hb && hasA(e, "vampire") && !itn(pl, "sceau_purete")) { e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.08); burst(e.x, e.y, AFX.vampire.color, 6); }
         }
@@ -4208,7 +4419,7 @@
         var hp = players[h2];
         if (!hp.down && Math.abs(hq.x - hp.x) < 5 && Math.abs(hq.y - hp.y) < 6) { if (!hq.trav && hp.mstate === "mouvement" && gv(hp, "traverse")) { hq.trav = 1; if (Math.random() < gv(hp, "traverse") / 100) continue; } damagePlayer(hq.dmg, hp); hq.life = 0; break; }
       }
-      if (hq.life <= 0) { if (hq.web) addZone(hq.x, hq.y, 16, 4, "web", 0); hostile.splice(i, 1); }
+      if (hq.life <= 0) { if (hq.web) addZone(hq.x, hq.y, 16, 4, "web", 0); if (hq.log && enemies.length < 280) spawnAt("logprop", hq.x, hq.y); hostile.splice(i, 1); }
     }
     // joueurs à terre, renaissance, relève par un coéquipier
     for (i = 0; i < players.length; i++) {
@@ -4537,7 +4748,7 @@
     e.x = ox; e.y = oy;
     if (!enemyOk(e, ox, oy) && e.room !== undefined) { var rc = r.dg.rooms[e.room].core; e.x = Math.max(rc.x + 12, Math.min(rc.x + rc.w - 12, e.x)); e.y = Math.max(rc.y + 12, Math.min(rc.y + rc.h - 12, e.y)); }
   }
-  var FLYERS = { wasp: 1, moth: 1, crow: 1, owl: 1, bat: 1, firefly: 1, queen: 1 };
+  var FLYERS = { wasp: 1, moth: 1, crow: 1, owl: 1, bat: 1, firefly: 1, queen: 1, mosquito: 1, woodpecker: 1, cockchafer: 1, jackdaw: 1, barnowl: 1, ladybug: 1, horsefly: 1, heron: 1, corbeau: 1, pivert: 1 };
   function pitAt(x, y) { var ps = r.dg.pits; for (var i = 0; i < ps.length; i++) if (inRect(x, y, ps[i], 3)) return ps[i]; return null; }
   function puddleAt(x, y) { var ps = r.dg.puddles; for (var i = 0; i < ps.length; i++) { var u = ps[i], ax = (x - u.x) / u.rx, ay = (y - u.y) / u.ry; if (ax * ax + ay * ay < 1) return u; } return null; }
   function spikeState(s) { var t = (r.time + s.off) % 2.6; return t >= 2.0 ? 2 : t >= 1.5 ? 1 : 0; }
@@ -4760,7 +4971,7 @@
     spawnAcc = 2;
     var label = "Manche " + r.round + (r.mod ? " · " + r.mod.name : "");
     if (r.round % A.bossEvery === 0) {
-      var bt = MAP.bosses[bossCount % MAP.bosses.length];
+      var abl = D.ARENA_BOSSES || MAP.bosses, bt = abl[(Math.random() * abl.length) | 0];
       var pt = arenaEdgePoint(), be = spawnAt(bt, pt.x, pt.y); if (r.round >= 10) giveAffixes(be, r.round >= 20 ? 2 : 1); bossCount++;
       label += " · " + D.ENEMIES[bt].name + " !";
     }
@@ -5090,7 +5301,7 @@
     near(q.x, q.y, 16, function (en) {
       if (q.pierce <= 0 || q.hit.indexOf(en.id) >= 0) return;
       if (Math.abs(en.x - q.x) > en.d.r + q.r || Math.abs(en.y - q.y) > en.d.r + q.r) return;
-      q.hit.push(en.id); q.pierce--;
+      q.hit.push(en.id); if (!(q.bec && en.d.prop)) q.pierce--;
       hurt(en, q.dmg * shieldBlock(en, q.vx, q.vy), q.vx * 0.5, q.vy * 0.5);
       if (q.hfx) bulletFx(q, en);
       if (q.explode) { explode(q.x, q.y, q.explode, q.dmg * 0.6, 0); q.pierce = 0; }
@@ -5386,7 +5597,10 @@
       while (pi < plist.length && plist[pi].y <= e.y) drawPlayer(plist[pi++]);
       if (e.x < cx - 60 || e.x > cx + W + 60 || e.y < cy - 60 || e.y > cy + H + 60) continue;
       if (e.under) { blit(SPR.mound[((r.time * 8) | 0) % 2], e.x, e.y + 2); continue; }
-      var spr = (e.shellT > 0 || e.spin > 0 || e.shelled) ? SPR.turtleshell[0] : e.spr[(e.anim | 0) % e.spr.length];
+      var spr = (e.shellT > 0 || e.spin > 0 || e.shelled) ? SPR.turtleshell[0] : e.ballT > r.time ? SPR.woodball[0] : e.spr[(e.anim | 0) % e.spr.length];
+      if (e.d.ai === "antlion") { ctx.fillStyle = "rgba(200,168,120,.35)"; ctx.beginPath(); ctx.ellipse(e.x, e.y + 3, 30, 22, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = "rgba(140,110,70,.5)"; ctx.beginPath(); ctx.ellipse(e.x, e.y + 3, 18 + 6 * Math.sin(r.time * 3), 13, 0, 0, TAU); ctx.stroke(); }
+      if (e.d.ai === "ghostowl" && !(e.seenT > r.time) && Math.hypot(e.x - me.x, e.y - me.y) > 70) ctx.globalAlpha = 0.1;
+      if (e.vulnT > r.time) { ctx.strokeStyle = "rgba(246,211,107," + (0.5 + 0.5 * Math.sin(r.time * 12)) + ")"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y + 4, 20 * (e.scale || 1), 12 * (e.scale || 1), 0, 0, TAU); ctx.stroke(); ctx.lineWidth = 1; }
       var gs = e.scale || (e.giant ? 2 : 1);
       if (gs > 1) { ctx.save(); var fy = e.y + spr.h / 2; ctx.translate(e.x, fy); ctx.scale(gs, gs); ctx.translate(-e.x, -fy); }
       if (!e.spr.flying) shadow(e.x, e.y + spr.h / 2 - 2, spr.w * 0.7);
@@ -5404,6 +5618,7 @@
       if (e.aff && e.aff.length) drawEliteTag(e, spr);
       if (e.slowT > 0 && !e.d.boss && !e.d.prop) { ctx.fillStyle = "rgba(160,130,230,.7)"; ctx.fillRect(Math.round(e.x - 1), Math.round(e.y - spr.h / 2 - 2), 2, 2); }
       if (gs > 1) ctx.restore();
+      ctx.globalAlpha = 1;
     }
     while (pi < plist.length) drawPlayer(plist[pi++]);
 
