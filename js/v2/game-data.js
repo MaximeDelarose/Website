@@ -568,7 +568,7 @@ window.ES_DATA = (function () {
     savoir: { name: "Vieux grimoire", sprite: "book", desc: "+12 % d'expérience." },
     poches: { name: "Poches profondes", sprite: "pocket", desc: "+1 projectile pour toutes les armes (niv. 1, 3 et 5)." },
     loupe: { name: "Loupe", sprite: "loupe", desc: "+10 % de zone d'effet." },
-    trefle: { name: "Trèfle", sprite: "clover", desc: "+20 % de chance de butin." },
+    trefle: { name: "Flair", sprite: "clover", desc: "+20 % de chance de butin." },
     meute: { name: "Esprit de meute", sprite: "paws2", coop: true, desc: "COOP · Avec un allié à moins de 80 px : +8 % de dégâts et -1 dégât reçu." },
     entraide: { name: "Main tendue", sprite: "hand", coop: true, quest: "q_releve1", desc: "COOP · Soigne tes alliés proches (0,3 PV/s) et relève 25 % plus vite." },
     ermite: { name: "Lanterne de l'ermite", sprite: "lantern", solo: true, desc: "SOLO · +12 % de dégâts et +8 % d'expérience." },
@@ -747,7 +747,7 @@ window.ES_DATA = (function () {
   var RELICS = [
     { id: "croc", name: "Croc de loup", icon: "🦷", desc: "+15 % de dégâts" },
     { id: "plume", name: "Plume de geai", icon: "🪶", desc: "+12 % de vitesse" },
-    { id: "coeur", name: "Cœur de chêne", icon: "❤️", desc: "+30 PV max" },
+    { id: "coeur", name: "Sève de chêne", icon: "❤️", desc: "+30 PV max" },
     { id: "oeil", name: "Œil de chouette", icon: "👁️", desc: "+10 % de coups critiques" },
     { id: "trefle", name: "Gland porte-bonheur", icon: "🍀", desc: "+30 % de chance de butin" },
     { id: "mousse", name: "Mousse éternelle", icon: "💧", desc: "+0,8 PV par seconde" },
@@ -859,7 +859,7 @@ window.ES_DATA = (function () {
     { id: "niveau_20", name: "Écureuil aguerri", desc: "Atteins le niveau 20.", gold: 80, check: function (r) { return r.level >= 20; } },
     { id: "niveau_35", name: "Maître du terrier", desc: "Atteins le niveau 35.", gold: 200, check: function (r) { return r.level >= 35; } },
     { id: "boss_1", name: "Chasseur de sanglier", desc: "Bats un boss.", gold: 100, check: function (r) { return r.bosses >= 1; } },
-    { id: "boss_3", name: "Trophée de chasse", desc: "Bats 3 boss en une partie.", gold: 300, check: function (r) { return r.bosses >= 3; } },
+    { id: "boss_3", name: "Tableau de chasse", desc: "Bats 3 boss en une partie.", gold: 300, check: function (r) { return r.bosses >= 3; } },
     { id: "max_arme", name: "Arme ultime", desc: "Monte une arme au niveau 5.", gold: 50, check: function (r) { return r.maxedWeapon; } },
     { id: "fusion_1", name: "Alchimiste", desc: "Crée ta première fusion.", gold: 100, check: function (r) { return r.fusions >= 1; } },
     { id: "fusion_3", name: "Grand alchimiste", desc: "Crée 3 fusions en une partie.", gold: 300, check: function (r) { return r.fusions >= 3; } },
@@ -880,7 +880,7 @@ window.ES_DATA = (function () {
     { id: "donjon_2", name: "Spéléologue", desc: "Atteins le 2e étage du Donjon.", gold: 150, check: function (r) { return r.mode === "dungeon" && r.dg && r.dg.floor >= 2; } },
     { id: "donjon_win", name: "Pourfendeur de donjon", desc: "Bats le boss final du Donjon.", gold: 500, check: function (r) { return r.mode === "dungeon" && r.won; } },
     { id: "prevoyant", name: "Prévoyant", desc: "Achète 10 améliorations dans la boutique.", gold: 50, check: function (r, s) { return s.bought >= 10; } },
-    { id: "coeur_chene", name: "Cœur de chêne", desc: "Survis 5 minutes en mode Difficile.", gold: 300, check: function (r) { return r.hard && r.time >= 300; } },
+    { id: "coeur_chene", name: "Racines solides", desc: "Survis 5 minutes en mode Difficile.", gold: 300, check: function (r) { return r.hard && r.time >= 300; } },
   ];
 
   /* =====================================================================
@@ -932,7 +932,7 @@ window.ES_DATA = (function () {
   ];
   var ITEMS = [
     { id: "bonheur",  r: 0, icon: "🌰", name: "Gland porte-bonheur", desc: "6 % de chance par coup de gagner 1 gland d'or (+1 par exemplaire)." },
-    { id: "griffes",  r: 0, icon: "🗡️", name: "Griffes aiguisées", desc: "+7 % de coups critiques." },
+    { id: "griffes",  r: 0, icon: "🗡️", name: "Ergot tranchant", desc: "+7 % de coups critiques." },
     { id: "plume",    r: 0, icon: "🪶", name: "Plume de vent", desc: "+8 % de vitesse." },
     { id: "baies",    r: 0, icon: "🍇", name: "Baies séchées", desc: "Chaque ennemi tué rend 1 PV." },
     { id: "fourche",  r: 0, icon: "🪵", name: "Bâton fourchu", desc: "+50 % de dégâts aux ennemis presque intacts." },
@@ -962,7 +962,7 @@ window.ES_DATA = (function () {
     { id: "lievre",    r: 2, icon: "🐇", name: "Lièvre de course", desc: "MONTURE · +35 % de vitesse et +8 % d'esquive." },
     { id: "laie",      r: 3, icon: "🐗", name: "Laie de guerre", desc: "MONTURE · +25 % de vitesse, +2 d'armure, charge et renverse tout sur son passage." },
     { id: "carnet", r: 0, solo: true, icon: "📓", name: "Carnet de survie", desc: "SOLO · +0,5 PV/s et +5 % d'XP." },
-    { id: "lanterne", r: 1, solo: true, icon: "🏮", name: "Lanterne de l'ermite", desc: "SOLO · -15 % de recharge quand tes PV sont au-dessus de 80 %." },
+    { id: "lanterne", r: 1, solo: true, icon: "🏮", name: "Bougie de l'ermite", desc: "SOLO · -15 % de recharge quand tes PV sont au-dessus de 80 %." },
     { id: "pleinelune", r: 2, solo: true, icon: "🌕", name: "Pleine lune", desc: "SOLO · +25 % de dégâts contre les élites et les boss." },
     // ---- objets à débloquer par des quêtes (re-verrouillés à chaque prestige)
     { id: "trefle4", r: 2, quest: "q_coffres", icon: "🍀", name: "Trèfle à quatre feuilles", desc: "+40 % de chance de butin." },
@@ -1149,7 +1149,7 @@ window.ES_DATA = (function () {
       evos: [{ id: "a", name: "Arrosage", desc: "+2 tirs par rafale, plus dispersés.", add: { count: 2, spread: 0.3 } },
              { id: "b", name: "Précision", desc: "Tirs droits, +70 % de dégâts, transpercent.", mul: { dmg: 1.7 }, add: { pierce: 1 }, set: { spread: 0.05 } }] },
     rayon: { fam: "tir", type: "beam", name: "Rayon", icon: "bolt", dmg: [10, 13, 16, 19, 24], len: [110, 120, 130, 140, 160], w: [6, 6, 7, 8, 9], cd: [1.6, 1.5, 1.4, 1.3, 1.1], color: "246,239,122",
-      evos: [{ id: "a", name: "Prisme", desc: "Le rayon se divise en 3.", set: { split: 3 } },
+      evos: [{ id: "a", name: "Diffraction", desc: "Le rayon se divise en 3.", set: { split: 3 } },
              { id: "b", name: "Faisceau", desc: "Rayon deux fois plus long et plus large.", mul: { len: 1.8, w: 1.6 } }] },
     fente: { fam: "melee", type: "lunge", name: "Fente", icon: "claw", dmg: [20, 26, 30, 36, 44], len: [46, 50, 56, 60, 70], w: [8, 8, 9, 10, 12], cd: [1.3, 1.2, 1.1, 1.0, 0.85], color: "253,243,222",
       evos: [{ id: "a", name: "Trait éclair", desc: "Deux fois plus fréquente.", mul: { cd: 0.5 } },
@@ -1159,12 +1159,12 @@ window.ES_DATA = (function () {
              { id: "b", name: "Grand cercle", desc: "Rayon x1,6 et repousse fort.", mul: { r: 1.6, dmg: 1.2 } }] },
     charge: { fam: "melee", type: "wave", name: "Charge", icon: "paw", sprite: "windblade", dmg: [14, 18, 22, 26, 32], r: [9, 10, 11, 12, 14], range: [70, 80, 90, 100, 110], cd: [2, 1.9, 1.8, 1.7, 1.5], spd: 150,
       evos: [{ id: "a", name: "Ruée", desc: "Part dans 3 directions.", set: { fan: 3 } },
-             { id: "b", name: "Bélier", desc: "Onde énorme qui renverse tout.", mul: { r: 1.8, dmg: 1.4, range: 1.3 } }] },
+             { id: "b", name: "Défonceur", desc: "Onde énorme qui renverse tout.", mul: { r: 1.8, dmg: 1.4, range: 1.3 } }] },
     riposte: { fam: "melee", type: "riposte", name: "Riposte", icon: "shield", dmg: [20, 26, 32, 38, 48], R: [32, 36, 40, 44, 50], cd: [3, 2.8, 2.6, 2.4, 2],
       evos: [{ id: "a", name: "Parade", desc: "Le coup reçu est entièrement annulé.", set: { parry: 1 } },
              { id: "b", name: "Vengeance", desc: "Riposte aussi toute seule toutes les 4 s.", set: { auto: 4 } }] },
     onde: { fam: "zone", type: "nova", name: "Onde", icon: "orb", R: [40, 48, 50, 54, 62], dmg: [14, 16, 22, 24, 28], cd: [2.4, 2.4, 2.2, 1.9, 1.7], twice: [0, 0, 0, 0, 0],
-      evos: [{ id: "a", name: "Écho", desc: "Une 2e onde suit la première.", set: { twice: [1, 1, 1, 1, 1] } },
+      evos: [{ id: "a", name: "Contre-onde", desc: "Une 2e onde suit la première.", set: { twice: [1, 1, 1, 1, 1] } },
              { id: "b", name: "Tremblement", desc: "Onde x1,5 plus large.", mul: { R: 1.5, dmg: 1.15 } }] },
     pluie: { fam: "zone", type: "meteor", name: "Pluie", icon: "meteore", lob: "meteore", n: [2, 2, 3, 3, 4], dmg: [16, 20, 20, 24, 28], rad: [16, 16, 18, 18, 22], cd: [3, 2.8, 2.6, 2.4, 2.1], frag: 0,
       evos: [{ id: "a", name: "Averse", desc: "+3 impacts.", add: { n: 3 } },
@@ -1176,25 +1176,25 @@ window.ES_DATA = (function () {
       evos: [{ id: "a", name: "Couronne", desc: "+3 objets en orbite.", add: { n: 3 } },
              { id: "b", name: "Large orbite", desc: "Rayon x1,6, tourne plus vite.", mul: { R: 1.6, spd: 1.4, dmg: 1.2 } }] },
     aura: { fam: "zone", type: "aura", name: "Aura", icon: "shield", color: "force", R: [22, 26, 28, 30, 34], dmg: [3, 4, 5, 6, 7], tick: 0.4, slow: 0, push: [30, 35, 40, 50, 60],
-      evos: [{ id: "a", name: "Brasier", desc: "Dégâts x2,2.", mul: { dmg: 2.2 } },
+      evos: [{ id: "a", name: "Incandescence", desc: "Dégâts x2,2.", mul: { dmg: 2.2 } },
              { id: "b", name: "Bourbier", desc: "Plus grande et ralentit de 40 %.", mul: { R: 1.4 }, set: { slow: 0.4, color: "mist" } }] },
     mortier: { fam: "zone", type: "lob", name: "Mortier", icon: "pinecone", n: [1, 1, 2, 2, 3], dmg: [24, 28, 28, 34, 38], rad: [18, 22, 22, 24, 27], cd: [2.4, 2.4, 2.3, 2.2, 1.9], frag: 0,
       evos: [{ id: "a", name: "Obus à fragments", desc: "Chaque obus éclate en 6 fragments.", set: { frag: 6 } },
              { id: "b", name: "Gros calibre", desc: "Explosion x1,6, dégâts x1,5.", mul: { rad: 1.6, dmg: 1.5 } }] },
     boomerang: { fam: "retour", type: "boomerang", name: "Boomerang", icon: "feather", sprite: "feather", n: [1, 1, 2, 2, 3], dmg: [12, 16, 16, 21, 24], range: [85, 85, 90, 110, 115], cd: [1.7, 1.7, 1.6, 1.5, 1.2], chain: 0,
-      evos: [{ id: "a", name: "Volée", desc: "+2 projectiles.", add: { n: 2 } },
+      evos: [{ id: "a", name: "Retours multiples", desc: "+2 projectiles.", add: { n: 2 } },
              { id: "b", name: "Long retour", desc: "Portée x1,6, dégâts x1,4.", mul: { range: 1.6, dmg: 1.4 } }] },
     ricochet: { fam: "retour", type: "chain", name: "Ricochet", icon: "firefly", bolts: [1, 1, 2, 2, 2], chain: [3, 4, 4, 5, 6], dmg: [11, 11, 13, 15, 17], cd: [1.8, 1.7, 1.6, 1.5, 1.2],
       evos: [{ id: "a", name: "Chaîne sans fin", desc: "+5 rebonds.", add: { chain: 5 } },
              { id: "b", name: "Double départ", desc: "+2 départs, +20 % de dégâts.", add: { bolts: 2 }, mul: { dmg: 1.2 } }] },
     grappin: { fam: "retour", type: "grapple", name: "Grappin", icon: "needle", n: [1, 1, 1, 2, 2], dmg: [16, 20, 24, 26, 30], range: [130, 140, 150, 160, 170], cd: [2.2, 2.1, 2, 1.8, 1.6],
-      evos: [{ id: "a", name: "Filet", desc: "Attire 3 ennemis à la fois.", add: { n: 2 } },
+      evos: [{ id: "a", name: "Rafle", desc: "Attire 3 ennemis à la fois.", add: { n: 2 } },
              { id: "b", name: "Hameçon", desc: "L'ennemi attiré explose à l'arrivée.", set: { boom: 26 }, mul: { dmg: 1.3 } }] },
     echo: { fam: "compagnon", type: "echo", name: "Écho", icon: "ghost", mul: [0.5, 0.55, 0.6, 0.7, 0.8], cd: [2.2, 2, 1.8, 1.6, 1.3],
       evos: [{ id: "a", name: "Double", desc: "Deux échos, de chaque côté.", set: { twins: 1 } },
              { id: "b", name: "Reflet parfait", desc: "L'écho frappe à 100 %.", set: { mul: [1, 1, 1, 1, 1] } }] },
     sentinelle: { fam: "compagnon", type: "turret", name: "Sentinelle", icon: "turret", turret: "turret", sprite: "acorn", n: [1, 1, 2, 2, 3], dmg: [8, 8, 10, 13, 15], rate: [0.6, 0.45, 0.45, 0.4, 0.35], cd: [6, 6, 5.5, 5, 4.5], dur: [9, 9, 10, 13, 14], pierce: [1, 1, 1, 1, 2], range: 160,
-      evos: [{ id: "a", name: "Garnison", desc: "+2 sentinelles en même temps.", add: { n: 2 } },
+      evos: [{ id: "a", name: "Renforts", desc: "+2 sentinelles en même temps.", add: { n: 2 } },
              { id: "b", name: "Lourde", desc: "Tire des roquettes.", set: { rocket: 1, rad: [22, 22, 22, 22, 26] }, mul: { dmg: 1.8, rate: 1.4 } }] },
     familier: { fam: "compagnon", type: "pet", name: "Familier", icon: "pethog", pet: "pethog", n: [1, 1, 2, 2, 3], dmg: [9, 13, 13, 16, 21], rate: [0.6, 0.6, 0.55, 0.42, 0.38], spd: [95, 95, 100, 125, 130], range: 150,
       evos: [{ id: "a", name: "Meute", desc: "+2 familiers.", add: { n: 2 } },
@@ -1225,27 +1225,27 @@ window.ES_DATA = (function () {
               rayon: ["Fil du vent"], onde: ["Souffle tranchant"] } },
     arc: { name: "Arc", icon: "bow", base: "arc_tir", fam: "tir", element: "feu", desc: "Tir, Feu. Flèches perçantes, pluies de flèches et un faucon.",
       skin: { projection: ["Flèche perçante", "arrow"], rafale: ["Volée", "arrow"], rayon: ["Flèche solaire"], pluie: ["Pluie de flèches"], piege: ["Chausse-trappes"],
-              mortier: ["Flèche-obus"], boomerang: ["Plume-retour"], ricochet: ["Flèche rebondissante"], grappin: ["Flèche-harpon"], sentinelle: ["Arbalète posée"],
+              mortier: ["Flèche-obus"], boomerang: ["Plume-retour"], ricochet: ["Flèche rebondissante"], grappin: ["Flèche-harpon"], sentinelle: ["Archer de paille"],
               familier: ["Faucon", "hawk"], nuee: ["Essaim de plumes"] } },
     baton: { name: "Bâton", icon: "staff", base: "baton_coup", fam: "zone", element: "terre", desc: "Zone, Terre. Ondes, pierres, racines et un golem de mousse.",
-      skin: { onde: ["Onde tellurique"], pluie: ["Pluie de cailloux"], piege: ["Racines"], orbite: ["Pierres gravitantes", "stone"], aura: ["Cercle de mousse"],
+      skin: { onde: ["Onde tellurique"], pluie: ["Pluie de cailloux"], piege: ["Racines piégeuses"], orbite: ["Pierres gravitantes", "stone"], aura: ["Cercle de mousse"],
               mortier: ["Rocher lancé"], tourbillon: ["Moulinet"], fente: ["Estoc"], riposte: ["Rempart de terre"], sentinelle: ["Totem de pierre"],
               familier: ["Golem de mousse", "mossgolem"], boomerang: ["Bâton tournoyant", "staff"] } },
   };
   // 1) technique évoluée + son objet de niveau au max : la technique se renforce (garde son évolution)
   var TFUS = {
     projection: { p: "poches", name: "Salve", desc: "+2 projectiles, +25 % de dégâts.", add: { count: 2 }, mul: { dmg: 1.25 } },
-    rafale: { p: "vivacite", name: "Déluge", desc: "Cadence x1,5.", mul: { cd: 0.66 } },
+    rafale: { p: "vivacite", name: "Mitraille", desc: "Cadence x1,5.", mul: { cd: 0.66 } },
     rayon: { p: "loupe", name: "Soleil", desc: "Rayon 50 % plus large, +40 % de dégâts.", mul: { w: 1.5, dmg: 1.4 } },
     fente: { p: "crocs", name: "Coup mortel", desc: "Dégâts x1,6.", mul: { dmg: 1.6 } },
-    tourbillon: { p: "pattes", name: "Cyclone", desc: "Rayon x1,3, dégâts x1,4.", mul: { r: 1.3, dmg: 1.4 } },
+    tourbillon: { p: "pattes", name: "Vortex", desc: "Rayon x1,3, dégâts x1,4.", mul: { r: 1.3, dmg: 1.4 } },
     charge: { p: "ecorce", name: "Rempart roulant", desc: "Onde plus grosse, dégâts x1,5.", mul: { r: 1.4, dmg: 1.5 } },
     riposte: { p: "mousse", name: "Contre absolu", desc: "Recharge 2 fois plus vite, dégâts x1,5.", mul: { cd: 0.5, dmg: 1.5 } },
     onde: { p: "savoir", name: "Grande onde", desc: "Dégâts x1,6.", mul: { dmg: 1.6 } },
-    pluie: { p: "trefle", name: "Tempête", desc: "+3 impacts, dégâts x1,3.", add: { n: 3 }, mul: { dmg: 1.3 } },
-    piege: { p: "seve", name: "Ronceraie", desc: "+2 pièges, durent 2 fois plus.", add: { n: 2 }, mul: { dur: 2 } },
+    pluie: { p: "trefle", name: "Trombe", desc: "+3 impacts, dégâts x1,3.", add: { n: 3 }, mul: { dmg: 1.3 } },
+    piege: { p: "seve", name: "Piège vivace", desc: "+2 pièges, durent 2 fois plus.", add: { n: 2 }, mul: { dur: 2 } },
     orbite: { p: "appetit", name: "Ceinture", desc: "+2 en orbite, dégâts x1,4.", add: { n: 2 }, mul: { dmg: 1.4 } },
-    aura: { p: "queuetouffue", name: "Sanctuaire", desc: "Aura x1,4, dégâts x1,6.", mul: { R: 1.4, dmg: 1.6 } },
+    aura: { p: "queuetouffue", name: "Aura vive", desc: "Aura x1,4, dégâts x1,6.", mul: { R: 1.4, dmg: 1.6 } },
     mortier: { p: "griffes", name: "Artillerie", desc: "+2 obus.", add: { n: 2 } },
     boomerang: { p: "joues", name: "Moisson", desc: "+2 projectiles, dégâts x1,3.", add: { n: 2 }, mul: { dmg: 1.3 } },
     ricochet: { p: "ermite", name: "Foudre", desc: "Dégâts x1,7.", mul: { dmg: 1.7 } },
@@ -1268,7 +1268,7 @@ window.ES_DATA = (function () {
     retour_eclair: { name: "Retour éclair", icon: "feather", parts: ["boomerang", "rafale"], mul: 1.35, desc: "Rafales et projectiles qui reviennent." },
     garnison: { name: "Garnison", icon: "turret", parts: ["sentinelle", "nuee"], mul: 1.35, desc: "Sentinelles et nuée défendent ta position." },
     meute_echo: { name: "Meute fantôme", icon: "ghost", parts: ["familier", "echo"], mul: 1.35, desc: "Familiers et doubles frappent avec toi." },
-    seisme: { name: "Séisme", icon: "orb", parts: ["onde", "mortier"], mul: 1.35, desc: "Ondes et obus font trembler la terre." },
+    seisme: { name: "Secousse", icon: "orb", parts: ["onde", "mortier"], mul: 1.35, desc: "Ondes et obus font trembler la terre." },
     tornade: { name: "Tornade", icon: "tail", parts: ["tourbillon", "boomerang"], mul: 1.35, desc: "Tout tourne et tout revient." },
   };
   var LEGENDS = {
@@ -1363,7 +1363,7 @@ window.ES_DATA = (function () {
     feuille_rousse: { name: "Feuille rousse", icon: "🍁", map: "automne" }, gland_dore: { name: "Gland doré", icon: "🌰", map: "automne" }, silex: { name: "Silex", icon: "🪨", map: "automne" },
     mousse_noire: { name: "Mousse noire", icon: "🌑", map: "nuit" }, poussiere_lune: { name: "Poussière de lune", icon: "✨", map: "nuit" }, bois_mort: { name: "Bois mort", icon: "🥀", map: "nuit" },
     t_boar: { name: "Défense de sanglier", icon: "🦷", trophy: "boar" }, t_owl: { name: "Plume d'hibou ancien", icon: "🪶", trophy: "owl" }, t_queen: { name: "Dard royal", icon: "🐝", trophy: "queen" },
-    t_stag: { name: "Bois de cerf", icon: "🦌", trophy: "stag" }, t_mushking: { name: "Spore royale", icon: "🍄", trophy: "mushking" }, t_bigmole: { name: "Griffe de taupe", icon: "🐾", trophy: "bigmole" },
+    t_stag: { name: "Ramure du Grand Cerf", icon: "🦌", trophy: "stag" }, t_mushking: { name: "Spore royale", icon: "🍄", trophy: "mushking" }, t_bigmole: { name: "Griffe de taupe", icon: "🐾", trophy: "bigmole" },
     t_golem: { name: "Cœur de racine", icon: "🌳", trophy: "golem" }, t_colosse: { name: "Humus ancien", icon: "🟫", trophy: "colosse" },
   };
   var MAP_RES = { clairiere: ["herbe", "ecorce", "chapeau"], marais: ["tourbe", "roseau", "nenuphar"], automne: ["feuille_rousse", "gland_dore", "silex"], nuit: ["mousse_noire", "poussiere_lune", "bois_mort"] };
@@ -1415,7 +1415,7 @@ window.ES_DATA = (function () {
   };
   // talents : 4 paliers par posture, 2 choix exclusifs par palier ; le niveau de l'écureuil ouvre les paliers
   var TAL_COMMON = [
-    [{ id: "racines", name: "Racines", desc: "Tu t'ancres en 0,25 s au lieu de 0,4." }, { id: "ressort", name: "Ressort", desc: "La Volte se recharge en 2,2 s au lieu de 3." }],
+    [{ id: "racines", name: "Ancrage vif", desc: "Tu t'ancres en 0,25 s au lieu de 0,4." }, { id: "ressort", name: "Détente", desc: "La Volte se recharge en 2,2 s au lieu de 3." }],
     [{ id: "piedferme", name: "Pied ferme", desc: "Ancré : -20 % de dégâts reçus." }, { id: "sillage", name: "Sillage", desc: "Après une Volte : +30 % de vitesse pendant 1,5 s." }],
   ];
   var TAL = {
@@ -1424,17 +1424,17 @@ window.ES_DATA = (function () {
     acrobate: [[{ id: "longroulade", name: "Longue roulade", desc: "Roulade 2 fois plus longue." }, { id: "roulade_lame", name: "Roulade tranchante", desc: "La roulade blesse les ennemis traversés." }],
                [{ id: "voltigeuse", name: "Voltigeuse", desc: "Clé : la Volte se recharge en 1,5 s." }, { id: "intouchable", name: "Intouchable", desc: "Clé : invulnérable 1 s de plus après une roulade." }]],
     glaneuse: [[{ id: "pochespleines", name: "Poches pleines", desc: "En mouvement : +15 % d'expérience." }, { id: "aspiration", name: "Aspiration", desc: "La Volte aspire aussi l'or et les objets." }],
-               [{ id: "moisson", name: "Moisson", desc: "Clé : ramassage x3 en mouvement." }, { id: "avarice", name: "Avarice", desc: "Clé : toutes les 30 noisettes, une onde part autour de toi." }]],
+               [{ id: "moisson", name: "Grande glane", desc: "Clé : ramassage x3 en mouvement." }, { id: "avarice", name: "Avarice", desc: "Clé : toutes les 30 noisettes, une onde part autour de toi." }]],
     bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+2 matelots max." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
-               [{ id: "batterie", name: "Batterie", desc: "Clé : ancré, la salve part toutes les 0,3 s." }, { id: "couverture", name: "Tir de couverture", desc: "Clé : la salve marche aussi en mouvement, 2 fois plus lente." }]],
+               [{ id: "batterie", name: "Canonnade", desc: "Clé : ancré, la salve part toutes les 0,3 s." }, { id: "couverture", name: "Tir de couverture", desc: "Clé : la salve marche aussi en mouvement, 2 fois plus lente." }]],
     abordage: [[{ id: "sabres", name: "Sabres", desc: "La charge fait +50 % de dégâts." }, { id: "recrue", name: "Recrue d'abordage", desc: "Un ennemi tué pendant une charge a 25 % de chance de recruter." }],
                [{ id: "mutinerie", name: "Mutinerie", desc: "Clé : la charge dure 2 fois plus longtemps." }, { id: "bouclierh", name: "Mur de matelots", desc: "Clé : en cercle, les matelots arrêtent les tirs ennemis." }]],
     convoi:   [[{ id: "longuefile", name: "Longue file", desc: "+3 matelots max." }, { id: "ravitaillement", name: "Ravitaillement", desc: "Chaque recrue soigne 3 PV." }],
                [{ id: "train", name: "Train", desc: "Clé : en mouvement, les matelots blessent au contact." }, { id: "lignetir", name: "Ligne de tir", desc: "Clé : tout l'équipage tire ensemble toutes les 1,5 s." }]],
-    pique:    [[{ id: "grandplongeon", name: "Grand plongeon", desc: "Dégâts du plongeon x1,6." }, { id: "remontee", name: "Remontée", desc: "Après un plongeon, la Volte se recharge 2 fois plus vite." }],
-               [{ id: "faucon_t", name: "Faucon", desc: "Clé : le plongeon fonce sur l'ennemi le plus proche." }, { id: "meteore_t", name: "Météore", desc: "Clé : le plongeon laisse une zone qui brûle 3 s." }]],
-    courant:  [[{ id: "ventarriere", name: "Vent arrière", desc: "+20 % de vitesse max." }, { id: "lameair", name: "Lame d'air", desc: "Au-delà de 80 % de vitesse, une lame part devant toutes les 0,8 s." }],
-               [{ id: "ouragan_t", name: "Ouragan", desc: "Clé : bonus de dégâts jusqu'à +120 %." }, { id: "sillagetr", name: "Sillage tranchant", desc: "Clé : en vol rapide, tu blesses au contact." }]],
+    pique:    [[{ id: "grandplongeon", name: "Grand plongeon", desc: "Dégâts du plongeon x1,6." }, { id: "remontee", name: "Reprise d'altitude", desc: "Après un plongeon, la Volte se recharge 2 fois plus vite." }],
+               [{ id: "faucon_t", name: "Serres plongeantes", desc: "Clé : le plongeon fonce sur l'ennemi le plus proche." }, { id: "meteore_t", name: "Météore", desc: "Clé : le plongeon laisse une zone qui brûle 3 s." }]],
+    courant:  [[{ id: "ventarriere", name: "Vent porteur", desc: "+20 % de vitesse max." }, { id: "lameair", name: "Lame d'air", desc: "Au-delà de 80 % de vitesse, une lame part devant toutes les 0,8 s." }],
+               [{ id: "ouragan_t", name: "Tempête intérieure", desc: "Clé : bonus de dégâts jusqu'à +120 %." }, { id: "sillagetr", name: "Sillage tranchant", desc: "Clé : en vol rapide, tu blesses au contact." }]],
     perchoir: [[{ id: "longuevue", name: "Longue-vue", desc: "Accroché : portée x2 au lieu de x1,6." }, { id: "nid_t", name: "Nid", desc: "Accroché : régénère 2 PV/s." }],
                [{ id: "sniper", name: "Tireur d'élite", desc: "Clé : accroché depuis 2 s, tous tes coups sont critiques." }, { id: "grappe", name: "Agrippe-tout", desc: "Clé : tu peux t'accrocher n'importe où en ralentissant." }]],
   };
@@ -1537,9 +1537,9 @@ window.ES_DATA = (function () {
     formation: [["Garde serrée", "Collés, -20 % de dégâts reçus."], ["Grand écart", "Formation compte jusqu'à 40 px."], ["Tir croisé", "Clé : collés, +60 % au lieu de +35 %."], ["Escorte", "Clé : Pop relève Pip 2 fois plus vite."]],
     miroir: [["Rayon fort", "Le rayon de Volte fait x1,6."], ["Reflets", "Pop a +30 % de PV."], ["Double miroir", "Clé : le rayon reste 1 s."], ["Symétrie", "Clé : chaque coup de Pop ralentit."]],
     relais: [["Relais rapide", "La Volte se recharge 30 % plus vite."], ["Onde forte", "Onde d'arrivée x1,6."], ["Chassé-croisé", "Clé : l'échange rend invulnérable 1 s."], ["Passe-passe", "Clé : l'échange soigne les deux de 10 %."]],
-    rempart: [["Racines", "Ancrée depuis 2 s, le champ grossit deux fois plus vite."], ["Pas de côté", "Le champ ne rétrécit pas pendant la 1re seconde de mouvement."], ["Forteresse", "Clé : le champ reste posé 10 s là où tu l'as quitté."], ["Bastion mobile", "Clé : le champ garde sa taille en mouvement, mais plus de Volte."]],
-    belier: [["Élan durable", "L'élan retombe 2 fois moins vite."], ["Corne", "Contact +50 %."], ["Avalanche", "Clé : élan max x2."], ["Onde de choc", "Clé : le choc de Volte est 2 fois plus large."]],
-    carapace: [["Coquille épaisse", "En boule : -65 % au lieu de -50 %."], ["Retour à l'envoyeur", "Coups renvoyés x2."], ["Hérisson", "Clé : en boule, piquants toutes les 1,5 s."], ["Toupie", "Clé : la Volte fait rouler la boule et écrase."]],
+    rempart: [["Pied de granit", "Ancrée depuis 2 s, le champ grossit deux fois plus vite."], ["Pas de côté", "Le champ ne rétrécit pas pendant la 1re seconde de mouvement."], ["Champ ancré", "Clé : le champ reste posé 10 s là où tu l'as quitté."], ["Bastion mobile", "Clé : le champ garde sa taille en mouvement, mais plus de Volte."]],
+    belier: [["Élan durable", "L'élan retombe 2 fois moins vite."], ["Corne", "Contact +50 %."], ["Coulée", "Clé : élan max x2."], ["Onde de choc", "Clé : le choc de Volte est 2 fois plus large."]],
+    carapace: [["Coquille épaisse", "En boule : -65 % au lieu de -50 %."], ["Retour à l'envoyeur", "Coups renvoyés x2."], ["Piquants", "Clé : en boule, piquants toutes les 1,5 s."], ["Boule roulante", "Clé : la Volte fait rouler la boule et écrase."]],
     jardiniere: [["Bon terreau", "Les pousses grandissent 2 fois plus vite."], ["Sève douce", "Soins des arbres x2."], ["Verger", "Clé : +3 arbres max."], ["Grand chêne", "Clé : les arbres ont 2 fois plus de portée."]],
     ronceraie: [["Épines longues", "Épines +50 % de dégâts."], ["Fourré", "Les arbres posent des ronces au sol."], ["Forêt hostile", "Clé : +3 arbres max."], ["Tireur des bois", "Clé : les arbres tirent 2 fois plus vite."]],
     semeuse: [["Pas vert", "Plante tous les 45 px au lieu de 70."], ["Graines robustes", "Arbres de semeuse +50 % de dégâts."], ["Prairie", "Clé : +6 arbres max."], ["Germination", "Clé : les pousses deviennent arbres en 1 s."]],
@@ -1596,13 +1596,13 @@ window.ES_DATA = (function () {
   BASES.trident_coup = WEAPONS.trident_coup = { name: "Coup de trident", icon: "trident", type: "lunge", family: "melee", len: [44, 48, 52, 56, 64], w: [7, 8, 8, 9, 11], dmg: [18, 23, 26, 30, 36], cd: [1.0, 0.95, 0.9, 0.8, 0.7], color: "106,200,255",
     desc: ["Un coup de trident droit devant toi.", "+dégâts.", "Plus long.", "Plus fréquent.", "Plus large, +dégâts."] };
   ARMES.fronde = { name: "Fronde", icon: "sling", base: "fronde_tir", fam: "tir", element: "terre", desc: "Tir, Terre. Galets, éboulis et pièges de pierre.",
-    skin: { projection: ["Galet perçant", "stone"], rafale: ["Grêle de cailloux", "stone"], pluie: ["Éboulis"], mortier: ["Bloc lancé"], piege: ["Chausse-trappes de pierre"], ricochet: ["Galet rebondissant"],
+    skin: { projection: ["Galet perçant", "stone"], rafale: ["Grêle de cailloux", "stone"], pluie: ["Chute de pierres"], mortier: ["Bloc lancé"], piege: ["Chausse-trappes de pierre"], ricochet: ["Galet rebondissant"],
             orbite: ["Pierres en orbite", "stone"], onde: ["Onde de roche"], charge: ["Coup de bélier", "stone"], sentinelle: ["Catapulte"], grappin: ["Fronde-lasso"], nuee: ["Nuée de cailloux"] } };
   ARMES.eventail = { name: "Éventail", icon: "fan", base: "eventail_jet", fam: "retour", element: "air", desc: "Retour, Air. Lames qui reviennent, bourrasques et plumes.",
-    skin: { boomerang: ["Lame d'éventail", "windblade"], ricochet: ["Rafale ricochet"], grappin: ["Vent attirant"], tourbillon: ["Danse des lames"], aura: ["Brise tranchante"], rayon: ["Courant d'air"],
+    skin: { boomerang: ["Lame d'éventail", "windblade"], ricochet: ["Rafale ricochet"], grappin: ["Vent attirant"], tourbillon: ["Ronde des plumes"], aura: ["Brise tranchante"], rayon: ["Courant d'air"],
             projection: ["Plume tranchante", "feather"], rafale: ["Volée de plumes", "feather"], echo: ["Double de vent"], nuee: ["Nuée de plumes"], familier: ["Pie voleuse", "hawk"], onde: ["Souffle"] } };
   ARMES.trident = { name: "Trident", icon: "trident", base: "trident_coup", fam: "melee", element: "eau", desc: "Mêlée, Eau. Estocs, vagues et tourbillons.",
-    skin: { fente: ["Estoc des marées"], tourbillon: ["Remous"], charge: ["Vague", "bubble"], riposte: ["Ressac"], onde: ["Raz"], aura: ["Brume salée"],
+    skin: { fente: ["Estoc des marées"], tourbillon: ["Tourbillon d'écume"], charge: ["Vague", "bubble"], riposte: ["Brise-lame"], onde: ["Raz"], aura: ["Brume salée"],
             piege: ["Filets"], orbite: ["Bulles gardiennes", "bubble"], pluie: ["Averse"], grappin: ["Harpon"], familier: ["Loutre", "pethog"], echo: ["Reflet dans l'eau"] } };
   // signatures : chaque type a un comportement générique (kind)
   var SIGK = { sig_contre: "contre", sig_garde: "deflect", sig_pas: "voltePath", sig_charge: "anchorDmg", sig_ardente: "rain", sig_faucon: "critRange", sig_racine: "anchorThorns", sig_pierre: "orbitBlock", sig_seisme: "volteNova" };
@@ -1654,6 +1654,115 @@ window.ES_DATA = (function () {
     { id: "chene", name: "Le vieux chêne", who: "Flocon", npc: "sq_flocon", x: 160, y: 0.3, screen: "quetes", desc: "Quêtes, codex, succès" },
     { id: "arene", name: "L'arène", who: "Bastien", npc: "sq_chevalier", x: 266, y: 0.36, screen: "succes", desc: "Succès et records" },
   ];
+  /* =====================================================================
+     Contenu étendu, lot 1 : objets de niveau, 3e évolution, fusions
+     ===================================================================== */
+  [["spring", { pal: { s: "#c8c0b0", S: "#fdf3de" }, frames: [[".ssss..", "....s..", ".sSss..", ".s.....", ".ssSs..", "....s..", ".ssss.."]] }],
+   ["roots", { pal: { g: "#5ac85a", b: "#8a5a3b", B: "#c08a52" }, frames: [["...g...", "..ggg..", "...b...", "..bBb..", ".b.b.b.", "b..B..b"]] }],
+   ["hourglass", { pal: { w: "#a06a3e", s: "#f6d36b" }, frames: [["wwwww", ".sss.", "..s..", ".s.s.", "wwwww"]] }],
+   ["dash", { pal: { y: "#f6d36b", Y: "#fdf3de" }, frames: [["...y...", "....y..", "yyYYyy.", "....y..", "...y..."]] }],
+   ["leafstep", { pal: { g: "#9cc56b", G: "#5a8a3a" }, frames: [["...gg", "..gGg", ".gGg.", "gGg..", "Gg..."]] }],
+   ["counter", { pal: { y: "#6ad8ff", Y: "#fdf3de" }, frames: [["y...y", ".y.y.", "..Y..", ".y.y.", "y...y"]] }],
+   ["flint", { pal: { f: "#ff7a2a", F: "#f6d36b", s: "#6a625a", S: "#8a8278" }, frames: [["..f..", ".fFf.", ".sss.", "sSsss", ".sss."]] }],
+   ["shell", { pal: { c: "#f2c8b0", C: "#d89a80" }, frames: [["..ccc..", ".cCcCc.", "cCcCcCc", ".ccccc.", "...c..."]] }],
+   ["ochre", { pal: { s: "#c8783a", S: "#e8a060", k: "#5a3018" }, frames: [[".ss.", "sSss", "ssks", ".ss."]] }],
+   ["jayfeather", { pal: { b: "#2a78c8", B: "#6ad8ff", k: "#1b1226" }, frames: [["....bB", "...bBb", "..bBb.", ".bBb..", "kb...."]] }]
+  ].forEach(function (s) { SPRITES[s[0]] = s[1]; });
+  // 10 objets de niveau : les 3 états et les points d'élément (chacun sert au moins à une fusion)
+  PASSIVES.racines = { name: "Racines", sprite: "roots", quest: "q3_racines", desc: "Ancré : +6 % de dégâts." };
+  PASSIVES.patience = { name: "Patience", sprite: "hourglass", desc: "L'Ancré s'active 0,06 s plus tôt (0,4 s → 0,1 s au niveau 5)." };
+  PASSIVES.elan = { name: "Élan", sprite: "dash", quest: "q3_elan", desc: "Après 2 s de course sans t'arrêter : +5 % de dégâts." };
+  PASSIVES.foulee = { name: "Foulée légère", sprite: "leafstep", desc: "En mouvement : -12 % de dégâts des zones au sol et des pièges." };
+  PASSIVES.ressort = { name: "Ressort", sprite: "spring", quest: "q3_ressort", desc: "La Volte se recharge 0,3 s plus vite (3 s → 1,5 s)." };
+  PASSIVES.contrepied = { name: "Contre-pied", sprite: "counter", desc: "Après une Volte : +12 % de dégâts pendant 1,5 s." };
+  PASSIVES.pierre_feu = { name: "Pierre à feu", sprite: "flint", quest: "q3_feu", elemPt: "feu", desc: "+1 point de Feu aux niveaux 1, 3 et 5." };
+  PASSIVES.coquillage = { name: "Coquillage", sprite: "shell", quest: "q3_eau", elemPt: "eau", desc: "+1 point d'Eau aux niveaux 1, 3 et 5." };
+  PASSIVES.ocre = { name: "Ocre", sprite: "ochre", quest: "q3_terre", elemPt: "terre", desc: "+1 point de Terre aux niveaux 1, 3 et 5." };
+  PASSIVES.plume_geai = { name: "Plume de geai", sprite: "jayfeather", quest: "q3_air", elemPt: "air", desc: "+1 point d'Air aux niveaux 1, 3 et 5." };
+  // ingrédients : Vivacité ne sert plus qu'à la Rafale, Petit mécano qu'à la Sentinelle
+  TFUS.echo.p = "ressort"; TFUS.nuee.p = "plume_geai"; TFUS.ricochet.p = "contrepied";
+  // recettes secondaires : une technique ne prend qu'une seule fusion d'objet, la principale ou celle-ci
+  var TFUS2 = {
+    ricochet: { p: "ermite", name: "Chaîne de l'ermite", desc: "+3 rebonds, chaque rebond fait +10 %.", add: { chain: 3 }, set: { chainUp: 0.1 } },
+    echo: { p: "meute", name: "Écho de meute", desc: "L'écho copie aussi l'attaque de l'allié le plus proche.", set: { pack: 1 } },
+    familier: { p: "entraide", name: "Gardien bienveillant", desc: "Tes familiers relèvent les alliés à terre.", set: { medic: 1 } },
+    fente: { p: "racines", name: "Coup de racine", desc: "Ancré, la Fente part dans 3 directions.", set: { root3: 1 } },
+    riposte: { p: "patience", name: "Garde patiente", desc: "Ancré depuis 2 s, la riposte frappe en grand cercle et fait +50 %.", set: { patient: 1 } },
+    charge: { p: "elan", name: "Charge lancée", desc: "Plus tu cours longtemps, plus l'onde est large, jusqu'au double.", set: { runWide: 1 } },
+    piege: { p: "foulee", name: "Semis", desc: "En mouvement, un piège tombe tous les 80 px.", set: { sow: 80 } },
+    boomerang: { p: "ressort", name: "Rappel", desc: "Chaque Volte relance tous tes boomerangs.", set: { recall: 1 } },
+    projection: { p: "pierre_feu", name: "Salve de braises", desc: "Chaque projectile laisse une petite flamme au sol.", set: { hfx: { flame: 1 } } },
+    onde: { p: "coquillage", name: "Marée montante", desc: "Chaque onde laisse une flaque qui marque Eau.", set: { puddle: "eau" } },
+    orbite: { p: "ocre", name: "Anneau de roche", desc: "Les objets en orbite étourdissent 0,3 s.", set: { hfx: { stun: 0.3 } } },
+    rayon: { p: "plume_geai", name: "Fil d'orage", desc: "Le rayon marque Air et repousse.", set: { elemX: "air", push: 1 } },
+  };
+  // 3e évolution, élémentaire : niveau 5, arme en maîtrise 3 et au moins 6 points de l'élément de l'arme
+  var EVOC = {
+    projection: ["Empreinte", "Chaque projectile marque ton élément à coup sûr ; les réactions qu'il déclenche font +50 %.", { hfx: { react: 1.5 } }],
+    rafale: ["Saturation", "5 tirs sur la même cible déclenchent une explosion de ton élément.", { hfx: { sat: 5 } }],
+    rayon: ["Fil élémentaire", "Le rayon laisse une traînée de ton élément qui marque tout ce qui la traverse.", { trail: 1 }],
+    fente: ["Lame chargée", "Un ennemi tué par la Fente explose en réaction avec la marque qu'il portait.", { hfx: { killBoom: 1 } }],
+    tourbillon: ["Œil élémentaire", "Chaque ennemi marqué d'un autre élément touché par le tourbillon déclenche sa réaction.", { hfx: { force: 1 } }],
+    charge: ["Front élémentaire", "L'onde de choc marque tous les ennemis touchés et ceux qui les entourent.", { hfx: { markR: 24 } }],
+    riposte: ["Retour d'élément", "Chaque riposte marque l'attaquant et les ennemis autour de lui.", { markRing: 1 }],
+    onde: ["Onde chargée", "Chaque onde applique ton élément et prolonge de 2 s les marques déjà posées.", { hfx: { ext: 2 } }],
+    pluie: ["Pluie élémentaire", "Chaque impact laisse une petite zone de ton élément pendant 3 s.", { crater: 3 }],
+    piege: ["Piège réactif", "Un piège déclenché fait réagir ton élément avec tous les ennemis marqués à moins de 60 px.", { reactive: 60 }],
+    orbite: ["Anneau élémentaire", "Les objets en orbite marquent et font le double sur une cible marquée d'un autre élément.", { hfx: { vsMark: 2 } }],
+    aura: ["Climat", "Les ennemis qui restent 2 s dans ton aura gardent ta marque jusqu'à leur mort.", { climat: 1 }],
+    mortier: ["Obus élémentaire", "L'explosion laisse un cratère de ton élément qui marque pendant 4 s.", { crater: 4 }],
+    boomerang: ["Aller-retour", "Marque à l'aller, déclenche la réaction au retour.", { allerRetour: 1 }],
+    ricochet: ["Chaîne alternée", "Chaque rebond alterne entre ton élément et le dernier élément touché.", { hfx: { alt: 1 } }],
+    grappin: ["Prise élémentaire", "L'ennemi attiré est marqué et réagit en arrivant près de toi.", { grabReact: 1 }],
+    echo: ["Écho inversé", "L'écho frappe avec l'élément qui suit le tien dans le cycle : il crée des réactions seul.", { inverse: 1 }],
+    sentinelle: ["Totem élémentaire", "La sentinelle crée autour d'elle une zone de ton élément.", { totem: 1 }],
+    familier: ["Familier élémentaire", "Il prend ton élément et déclenche une réaction en mordant une cible marquée.", { hfx: { force: 1, react: 1.25 } }],
+    nuee: ["Nuée chargée", "Chaque membre de la nuée explose en ton élément quand il disparaît, puis revient.", { charged: 6 }],
+  };
+  Object.keys(EVOC).forEach(function (k) { var c = EVOC[k]; TECH[k].evos.push({ id: "c", elemC: true, name: c[0], desc: c[1], set: c[2] }); });
+  // 18 fusions de techniques de plus : chaque composant garde son comportement et gagne une règle (fx)
+  var COMBOS2 = {
+    tir_crochet: ["Tir-crochet", "needle", ["projection", "grappin"], "Les projectiles attirent vers toi ce qu'ils touchent.", { projection: { set: { hfx: { pull: 18 } } } }],
+    poste_tir: ["Poste de tir", "turret", ["rafale", "sentinelle"], "Les sentinelles tirent tes rafales.", { sentinelle: { set: { spray: [3, 3, 3, 3, 4] }, mul: { rate: 0.6 } } }],
+    phare: ["Phare", "bolt", ["rayon", "orbite"], "Un rayon tourne autour de toi en permanence.", { rayon: { set: { sweep: 1 }, mul: { cd: 0.3, dmg: 0.6 } } }],
+    taille_jumelle: ["Taille jumelle", "claw", ["fente", "echo"], "Chaque Fente est répétée en miroir par un écho.", { fente: { set: { mirror: 1 } } }],
+    ronde_betes: ["Ronde des bêtes", "pethog", ["tourbillon", "familier"], "Tes familiers tournent autour de toi en attaquant.", { familier: { set: { circle: 1 } } }],
+    ruee_minee: ["Ruée minée", "paw", ["charge", "piege"], "Chaque charge sème des pièges sur sa ligne.", { charge: { set: { mines: 1 } } }],
+    ecorce_vive: ["Écorce vive", "shield", ["riposte", "aura"], "Un coup reçu fait pulser ton aura à double puissance.", { riposte: { set: { auraPulse: 1 } } }],
+    essor: ["Essor", "drone", ["onde", "nuee"], "Chaque onde projette ta nuée vers l'extérieur.", { onde: { set: { essor: 1 } } }],
+    pluie_folle: ["Pluie folle", "meteore", ["pluie", "ricochet"], "Chaque impact rebondit sur 2 ennemis.", { pluie: { set: { hfx: { bounce: 2 } } } }],
+    champ_mines: ["Champ de mines", "thorn", ["piege", "mortier"], "Les obus deviennent des pièges au sol.", { mortier: { set: { mine: 1 } } }],
+    egide: ["Égide", "shield", ["orbite", "riposte"], "Les objets en orbite bloquent les tirs et ripostent.", { orbite: { set: { block: 1 } } }],
+    nuage_vivant: ["Nuage vivant", "orb", ["aura", "nuee"], "La nuée reste dans ton aura et l'agrandit.", { aura: { mul: { R: 1.4 } }, nuee: { set: { stay: 1 } } }],
+    batterie: ["Batterie", "turret", ["mortier", "sentinelle"], "Les sentinelles tirent des obus.", { sentinelle: { set: { lobber: 1 } } }],
+    rabatteur: ["Rabatteur", "feather", ["boomerang", "grappin"], "Les boomerangs ramènent les ennemis vers toi.", { boomerang: { set: { hfx: { pull: 14 } } } }],
+    bond_chaine: ["Bond en chaîne", "firefly", ["ricochet", "familier"], "Tes familiers bondissent d'ennemi en ennemi.", { familier: { set: { hop: 2 } } }],
+    rayons_croises: ["Rayons croisés", "ghost", ["echo", "rayon"], "L'écho tire ton rayon en miroir.", { rayon: { set: { mirror: 1 } } }],
+    spirale: ["Spirale", "smg", ["rafale", "tourbillon"], "Tes rafales partent en spirale autour de toi.", { rafale: { set: { spiral: 1 } } }],
+    harponnage: ["Harponnage", "needle", ["grappin", "charge"], "Tu fonces vers l'ennemi attrapé et l'onde le pulvérise.", { grappin: { set: { dash: 1 } } }],
+  };
+  var LEGENDS2 = {
+    aurore: ["Aurore", "bolt", ["phare", "rayons_croises"], "Légendaire : des rayons tournent et se croisent dans tout l'écran.", { rayon: { set: { split: 4 } } }],
+    siege: ["Siège", "meteore", ["champ_mines", "batterie"], "Légendaire : obus et mines couvrent le terrain sans arrêt.", { mortier: { add: { n: 2 } }, sentinelle: { add: { n: 1 } } }],
+    inebranlable: ["Inébranlable", "shield", ["egide", "ecorce_vive"], "Légendaire : chaque coup reçu est bloqué ou renvoyé.", { riposte: { set: { parry: 1 }, mul: { cd: 0.5 } } }],
+    horde: ["Horde", "pethog", ["ronde_betes", "bond_chaine"], "Légendaire : des familiers sans nombre bondissent partout.", { familier: { add: { n: 3 } } }],
+    fil_destin: ["Fil du destin", "claw", ["taille_jumelle", "harponnage"], "Légendaire : un ennemi attrapé subit des tailles en miroir jusqu'à sa mort.", { grappin: { set: { hfx: { fate: 1 } } } }],
+    nuee_mille: ["Nuée des mille", "drone", ["essor", "nuage_vivant"], "Légendaire : un essaim permanent suit chacune de tes ondes.", { nuee: { add: { n: 4 } } }],
+    filet_celeste: ["Filet céleste", "needle", ["tir_crochet", "rabatteur"], "Légendaire : tout ce que tu touches revient vers toi.", { "*": { set: { hfx: { pull: 16 } } } }],
+    tourmente: ["Tourmente", "tail", ["spirale", "pluie_folle"], "Légendaire : une spirale de projectiles qui rebondissent partout.", { rafale: { set: { hfx: { bounce: 1 } } } }],
+  };
+  Object.keys(COMBOS2).forEach(function (k) { var c = COMBOS2[k]; COMBOS[k] = { name: c[0], icon: c[1], parts: c[2], mul: 1.35, desc: [c[3]], fx: c[4], type: "combo", fusion: true }; WEAPONS[k] = COMBOS[k]; });
+  Object.keys(LEGENDS2).forEach(function (k) { var c = LEGENDS2[k]; LEGENDS[k] = { name: c[0], icon: c[1], parts: c[2], mul: 1.7, desc: [c[3]], fx: c[4], type: "combo", fusion: true, legend: true }; WEAPONS[k] = LEGENDS[k]; });
+  // quêtes des objets de niveau
+  QUESTS.push(
+    { id: "q3_racines", desc: "Reste ancré 2 minutes au total dans une partie.", check: function (r) { return (r.anchorTot || 0) >= 120; } },
+    { id: "q3_elan", desc: "Cours 30 secondes sans t'arrêter.", check: function (r) { return (r.runMax || 0) >= 30; } },
+    { id: "q3_ressort", desc: "Fais 300 Voltes au total.", check: function (r) { return ((r.tot && r.tot.voltes) || 0) >= 300; } },
+    { id: "q3_feu", desc: "Porte 6 points de Feu.", check: function (r) { return ((r.eptMax || {}).feu || 0) >= 6; } },
+    { id: "q3_eau", desc: "Porte 6 points d'Eau.", check: function (r) { return ((r.eptMax || {}).eau || 0) >= 6; } },
+    { id: "q3_terre", desc: "Porte 6 points de Terre.", check: function (r) { return ((r.eptMax || {}).terre || 0) >= 6; } },
+    { id: "q3_air", desc: "Porte 6 points d'Air.", check: function (r) { return ((r.eptMax || {}).air || 0) >= 6; } }
+  );
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
@@ -1661,6 +1770,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
