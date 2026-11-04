@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Golfaventure · AkarisuMD</title>
+  <meta name="description" content="Golfaventure : une aventure de golf en pixel art. Tes coups sont ta vie : explore le monde, sauvegarde aux drapeaux et rapporte les 4 Morceaux de Tee au temple.">
+  <meta property="og:title" content="Golfaventure · AkarisuMD">
+  <meta property="og:description" content="Golfaventure : une aventure de golf en pixel art. Tes coups sont ta vie : explore le monde, sauvegarde aux drapeaux et rapporte les 4 Morceaux de Tee au temple.">
+  <meta name="theme-color" content="#3f6b3a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Golfaventure">
+  <link rel="apple-touch-icon" href="assets/squirrel.png">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261104mb2">
+  <link rel="stylesheet" href="css/golfaventure.css?v=20261110ga1">
+  <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
+</head>
+<body data-page="golfaventure">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="versus.html" data-page="versus">Versus</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="section game-section">
+    <div class="wrap">
+      <div class="game-head">
+        <div>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · aventure solo</span>
+          <h1>Golfaventure</h1>
+        </div>
+        <button class="btn btn-ghost btn-small" type="button" data-ga-menu>☰ Menu</button>
+      </div>
+
+      <div data-ga>
+        <div class="game-stage ga-stage" data-stage>
+          <canvas class="game-canvas ga-canvas" data-canvas aria-label="Monde de Golfaventure"></canvas>
+          <div class="ga-hud" data-hud hidden>
+            <div class="ga-side">
+              <svg class="ga-club" viewBox="0 0 12 12" width="30" height="30" shape-rendering="crispEdges" aria-hidden="true"><rect width="12" height="12" fill="#6fd13f"/><g fill="#14141e"><rect x="8" y="1" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="4" y="5" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="2" y="7" width="3" height="2"/></g><rect x="8" y="8" width="2" height="2" fill="#fff"/></svg>
+              <p class="ga-strokes"><b data-strokes>20</b><span data-max>/20</span></p>
+              <div class="ga-items" aria-label="Objets"><i data-item="brake" title="Frein"></i><i data-item="power" title="Club puissant"></i></div>
+              <div class="ga-pieces" aria-label="Morceaux de Tee"><i data-piece></i><i data-piece></i><i data-piece></i><i data-piece></i></div>
+              <div class="ga-power" aria-hidden="true"><i data-power></i></div>
+            </div>
+          </div>
+          <button class="ga-brake" type="button" data-brake hidden>FREIN</button>
+          <div class="ga-joy" data-joy hidden><i></i></div>
+          <div class="ga-msg" data-msg hidden></div>
+          <div class="ga-dialog" data-dialog hidden></div>
+          <div class="game-overlay ga-overlay" data-overlay>
+            <div class="panel game-card ga-card" data-card>
+              <p>Chargement du jeu…</p>
+              <noscript><p>Ce jeu a besoin de JavaScript.</p></noscript>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="game-info">
+        <div class="panel game-help">
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li><strong>Marcher</strong> : flèches ou <kbd>Z</kbd> <kbd>Q</kbd> <kbd>S</kbd> <kbd>D</kbd> au clavier ; sur téléphone, pose le pouce sur la moitié gauche de l'écran (joystick).</li>
+            <li><strong>Tirer</strong> : va à côté de ta balle (une flèche apparaît au-dessus), puis tire en arrière comme un lance-pierre avec la souris ou le doigt. Au clavier : <kbd>Espace</kbd> pour viser, <kbd>←</kbd> <kbd>→</kbd> la direction, <kbd>↑</kbd> <kbd>↓</kbd> la puissance, <kbd>Espace</kbd> pour frapper.</li>
+            <li><strong>Les coups sont ta vie</strong> : tu en as 20 au début (le compteur <em>17/20</em>), chaque tir en coûte un. À zéro, tu retournes au dernier drapeau.</li>
+            <li><strong>Drapeaux</strong> : touche-en un avec ta balle pour sauvegarder et retrouver tous tes coups. <strong>Trous</strong> : chaque trou gagné ajoute 3 coups au maximum. <strong>Slimes</strong> (+4), <strong>oiseaux</strong> cachés dans les buissons (+5) et <strong>aigles</strong> (+10) te rendent des coups quand ta balle les touche. Les slimes qui te touchent t'en font perdre.</li>
+            <li><strong>Terrain</strong> : le rough et le sable freinent la balle, l'eau te coûte 1 coup, les flèches au sol l'entraînent, les arbres et les rails la font rebondir.</li>
+            <li><strong>But</strong> : trouve les 4 trous dorés (Morceaux de Tee), puis rapporte-les au temple, tout au nord. Objets à trouver : le <em>frein</em> (touche <kbd>B</kbd> ou bouton FREIN pendant que la balle roule) et le <em>club puissant</em>. La partie est sauvegardée sur ton appareil.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261103re4"></script>
+  <script src="js/auth.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261110ga1"></script>
+  <script src="js/gamekit.js?v=20261114gk2"></script>
+  <script src="js/vendor/supabase-2.45.4.min.js"></script>
+  <script src="js/golfaventure.js?v=20261110ga1"></script>
+</body>
+</html>
