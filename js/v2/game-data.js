@@ -1283,6 +1283,75 @@ window.ES_DATA = (function () {
   Object.keys(COMBOS).forEach(function (k) { var c = COMBOS[k]; c.type = "combo"; c.fusion = true; c.desc = [c.desc]; WEAPONS[k] = c; });
   Object.keys(LEGENDS).forEach(function (k) { var c = LEGENDS[k]; c.type = "combo"; c.fusion = true; c.legend = true; c.desc = [c.desc]; WEAPONS[k] = c; });
   FUSIONS = {};   // l'ancien système de fusion est remplacé
+  /* =====================================================================
+     2.0 phase 3 : rôles des ennemis, escouades, éléments, méga boss
+     ===================================================================== */
+  // chaque espèce a un rôle qui demande une réponse par le mouvement
+  var ROLES = {
+    nuee:      { name: "Nuée",      cost: 1,   desc: "Faibles et nombreux" },
+    chargeur:  { name: "Chargeur",  cost: 3,   desc: "Un signal, puis une charge en ligne" },
+    tireur:    { name: "Tireur",    cost: 2.5, desc: "Tire de loin" },
+    artilleur: { name: "Artilleur", cost: 3,   desc: "Zones au sol à retardement" },
+    guetteur:  { name: "Guetteur",  cost: 3,   desc: "Tire là où tu vas être" },
+    bouclier:  { name: "Bouclier",  cost: 4,   desc: "Bloque les tirs de face" },
+    soutien:   { name: "Soutien",   cost: 4,   desc: "Soigne ses alliés" },
+    piegeur:   { name: "Piégeur",   cost: 3,   desc: "Toiles qui ralentissent" },
+    rodeur:    { name: "Rôdeur",    cost: 3,   desc: "Surgit sous toi si tu restes ancré" },
+    kamikaze:  { name: "Kamikaze",  cost: 2,   desc: "Explose au contact" },
+  };
+  var ROLE_OF = { slug: "nuee", rat: "nuee", bat: "nuee", bunny: "nuee", beetle: "chargeur", badger: "chargeur", frog: "chargeur",
+                  wasp: "tireur", toad: "tireur", salamander: "artilleur", puffball: "artilleur", crow: "guetteur", turtle: "bouclier", hedgehog: "bouclier",
+                  firefly: "soutien", moth: "soutien", spider: "piegeur", weaver: "piegeur", mole: "rodeur", snake: "rodeur", fox: "rodeur", bombshroom: "kamikaze" };
+  var ROLE_AI = { chargeur: "charger", tireur: "spitter", artilleur: "artillery", guetteur: "predict", soutien: "healer", piegeur: "webber", rodeur: "ambush", kamikaze: "bomber" };
+  Object.keys(ROLE_OF).forEach(function (k) {
+    var e = ENEMIES[k]; if (!e) return; var ro = ROLE_OF[k]; e.role = ro;
+    if (ro === "rodeur" && e.ai === "mole") return;              // la taupe garde son terrier
+    if (ro === "bouclier") return;                                 // tortue et hérisson gardent leur attaque, plus le bouclier
+    if (ROLE_AI[ro]) e.ai = ROLE_AI[ro];
+    if (ro === "tireur" && !e.shot) e.shot = e.dmg;
+    if (ro === "kamikaze") { e.blastR = e.blastR || 22; e.blast = e.blast || 16; }
+  });
+  // escouades prédéfinies : le directeur reçoit des points selon le palier et les dépense (façon Risk of Rain)
+  var SQUADS = [
+    { nuee: 6 }, { nuee: 10, soutien: 1 }, { tireur: 3, bouclier: 2 }, { chargeur: 2, nuee: 4 }, { soutien: 1, bouclier: 2, tireur: 3, nuee: 10 },
+    { piegeur: 2, rodeur: 2 }, { artilleur: 2, nuee: 6 }, { guetteur: 2, kamikaze: 3 }, { bouclier: 3, artilleur: 1 }, { chargeur: 3, soutien: 1 },
+  ];
+  // 4 éléments : chacun craint le suivant du cycle (Eau > Feu > Air > Terre > Eau)
+  var ELEMENTS = {
+    terre: { name: "Terre", color: "#c8a060", weak: "air" },
+    feu:   { name: "Feu",   color: "#ff7a2a", weak: "eau" },
+    eau:   { name: "Eau",   color: "#4aa8ff", weak: "terre" },
+    air:   { name: "Air",   color: "#c8f8e8", weak: "feu" },
+  };
+  // deux éléments sur une même cible : une réaction
+  var REACTIONS = {
+    "air+eau":   { name: "Gel",          color: "#9ee8ff", desc: "gèle l'ennemi 1,6 s" },
+    "air+feu":   { name: "Embrasement",  color: "#ff9a3a", desc: "explosion de flammes" },
+    "eau+terre": { name: "Boue",         color: "#8a6a3a", desc: "ralentit tout autour" },
+    "eau+feu":   { name: "Vapeur",       color: "#e8e8f0", desc: "nuage brûlant qui reste" },
+    "feu+terre": { name: "Magma",        color: "#ff4a1a", desc: "énormes dégâts sur la cible" },
+    "air+terre": { name: "Tempête de sable", color: "#e8d090", desc: "repousse et blesse tout autour" },
+  };
+  // biomes : la Clairière reste neutre (premières parties sans éléments)
+  var MAP_ELEM = { clairiere: null, marais: "eau", automne: "feu", nuit: "air" };
+  MAPS.forEach(function (m) { m.element = MAP_ELEM[m.id] || null; });
+  MAPS.filter(function (m) { return m.id === "clairiere"; }).forEach(function (m) { m.mega = "colosse"; });
+  // objets qui marquent un 2e élément (le style multi-élément)
+  ITEMS.push(
+    { id: "braise", r: 0, icon: "🔥", name: "Braise", elem: "feu", desc: "20 % de chance par coup de marquer Feu : permet les réactions." },
+    { id: "goutte", r: 0, icon: "💧", name: "Goutte de rosée", elem: "eau", desc: "20 % de chance par coup de marquer Eau : permet les réactions." },
+    { id: "galet", r: 0, icon: "🪨", name: "Galet", elem: "terre", desc: "20 % de chance par coup de marquer Terre : permet les réactions." },
+    { id: "brise", r: 0, icon: "🌬️", name: "Plume de brise", elem: "air", desc: "20 % de chance par coup de marquer Air : permet les réactions." },
+    { id: "coeur_humus", r: 3, pool: "boss", icon: "🟫", name: "Cœur d'humus", desc: "Trophée du Colosse : +25 % de PV max, tes coups marquent Terre." }
+  );
+  ITEMS.forEach(function (it, i) { it.idx = i; });
+  // élites : 7 pouvoirs (Ardent, Glacial, Électrique et Invocateur font doublon avec les éléments)
+  AFFIXES = AFFIXES.filter(function (a) { return ["ardent", "glacial", "electrique", "invocateur"].indexOf(a.id) < 0; }).concat([
+    { id: "elementaire", name: "Élémentaire", color: "#ffd84a", desc: "aura de son élément" },
+    { id: "meneur", name: "Meneur", color: "#ff5ad0", desc: "renforce son escouade" },
+  ]);
+  // méga boss Terre : repaire en Clairière (portail) ; 3 phases, chacune teste un état
+  ENEMIES.colosse = { sprite: "golem", hp: 5200, spd: 17, dmg: 30, r: 13, xp: 200, boss: true, name: "Colosse d'humus", color: "#c8a060", bossAi: "mega_terre", elem: "terre", mega: true };
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
@@ -1290,6 +1359,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
