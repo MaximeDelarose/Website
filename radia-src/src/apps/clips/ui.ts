@@ -1,5 +1,5 @@
 /**
- * RADIA Clips — l'application de petites vidéos du téléphone du jeu : fil vertical plein écran (défilement par
+ * TikTak — l'application de petites vidéos du téléphone du jeu : fil vertical plein écran (défilement par
  * glissé / scroll-snap), clips générés et animés en Canvas 2D, likes, favoris, commentaires fictifs, partage vers
  * l'album interne, publications de Radia et fans fictifs. Rien ne sort du jeu.
  */
@@ -228,7 +228,7 @@ export function openClips(startTab: Tab = 'foryou', opts: { moment?: string } = 
     const s = sheet('Partager', h('div.clp-sheet-b',
       h('p.clp-note', 'Tout reste dans le jeu : rien n’est envoyé sur de vrais réseaux.'),
       h('button.clp-opt', { on: { click: tap(() => { const rec = shareClipToAlbum(clip); s.close(); toast({ title: 'Enregistré dans l’album ♡', sub: `« ${rec.title} » est dans Photos souvenirs.` }); }, { sound: false }) } }, ico('image', 22), h('span', h('b', 'Enregistrer dans l’album'), h('small', 'Une photo souvenir, visible dans le téléphone'))),
-      h('button.clp-opt', { on: { click: tap(() => { const rec = shareClipToAlbum(clip); postStory([rec.id], clip.caption.slice(0, 60), 'clip'); s.close(); toast({ title: 'Story publiée ♡', sub: 'Retrouve-la dans RADIA Snap.' }); }, { sound: false }) } }, ico('camera', 22), h('span', h('b', 'Raconter en story'), h('small', 'Dans RADIA Snap, avec réactions'))),
+      h('button.clp-opt', { on: { click: tap(() => { const rec = shareClipToAlbum(clip); postStory([rec.id], clip.caption.slice(0, 60), 'clip'); s.close(); toast({ title: 'Story publiée ♡', sub: 'Retrouve-la dans Snapchien.' }); }, { sound: false }) } }, ico('camera', 22), h('span', h('b', 'Raconter en story'), h('small', 'Dans Snapchien, avec réactions'))),
       h('button.clp-opt.ghost', { on: { click: tap(() => s.close(), { sound: false }) } }, h('span', h('b', 'Annuler')))));
   }
 
@@ -242,7 +242,7 @@ export function openClips(startTab: Tab = 'foryou', opts: { moment?: string } = 
     tick('reward'); haptic('reward');
     const r = root.getBoundingClientRect();
     heartBurst(heartHost, r.width / 2, r.height * 0.45, 12);
-    toast({ title: 'Publié dans RADIA Clips ♡', sub: fans > 0 ? `+${fans} fans (fictifs)` : 'Tes fans du jour sont déjà au rendez-vous, reviens demain ♡' });
+    toast({ title: 'Publié dans TikTak ♡', sub: fans > 0 ? `+${fans} fans (fictifs)` : 'Tes fans du jour sont déjà au rendez-vous, reviens demain ♡' });
     if (invited) window.setTimeout(() => toast({ title: 'Message d’Auguste', sub: 'Il a vu ta vidéo… regarde ton téléphone ♡', ms: 3200 }), 1400);
   }
   function openComposer(): void {
@@ -252,7 +252,7 @@ export function openClips(startTab: Tab = 'foryou', opts: { moment?: string } = 
     const grid = h('div.clp-pgrid');
     const cap = h('input.clp-input', { type: 'text', maxLength: 100, placeholder: 'Une légende (facultatif)', 'aria-label': 'Légende' }) as HTMLInputElement;
     cap.value = caption;
-    const go = h('button.btn.clp-go', 'Publier dans Clips') as HTMLButtonElement;
+    const go = h('button.btn.clp-go', 'Publier dans TikTak') as HTMLButtonElement;
     const sync = () => { go.disabled = !chosen; for (const b of grid.querySelectorAll('button')) b.classList.toggle('on', (b as HTMLElement).dataset.id === chosen); };
     for (const p of snaps.slice(0, 18)) {
       const rec = photoById(p.id); if (!rec) continue;
@@ -261,8 +261,8 @@ export function openClips(startTab: Tab = 'foryou', opts: { moment?: string } = 
       grid.append(b);
     }
     const chips = h('div.clp-chips', ...['Un petit souvenir ♡', 'Ma soirée préférée', 'Look du jour', 'Coucou vous !'].map((t) => h('button.clp-chip', { on: { click: tap(() => { cap.value = t; }, { sound: false }) } }, t)));
-    const empty = h('div.clp-empty', h('p', 'Pas encore de photo ! Prends-en une dans RADIA Snap, puis reviens la publier ici.'), h('button.btn.secondary', { on: { click: tap(() => { s.close(); close(); void import('../snap/ui').then((m) => m.openSnap('camera')); }, { sound: false }) } }, 'Ouvrir RADIA Snap'));
-    const s = sheet('Publier un souvenir', h('div.clp-sheet-b', ...(snaps.length ? [h('p.clp-note', 'Choisis une photo de ton album Snap :'), grid, cap, chips, go] : [empty])), () => {
+    const empty = h('div.clp-empty', h('p', 'Pas encore de photo ! Prends-en une dans Snapchien, puis reviens la publier ici.'), h('button.btn.secondary', { on: { click: tap(() => { s.close(); close(); void import('../snap/ui').then((m) => m.openSnap('camera')); }, { sound: false }) } }, 'Ouvrir Snapchien'));
+    const s = sheet('Publier un souvenir', h('div.clp-sheet-b', ...(snaps.length ? [h('p.clp-note', 'Choisis une photo de ton album Snapchien :'), grid, cap, chips, go] : [empty])), () => {
       if (chosen && !published) { st.drafts = [{ photo: chosen, caption: cap.value.slice(0, 100), at: Date.now() }]; persist(); }
     });
     let published = false;
@@ -295,7 +295,7 @@ export function openClips(startTab: Tab = 'foryou', opts: { moment?: string } = 
       const clip = genLike(p, i);
       const pv = new PostView(clip, cell, cv); prevs.push(pv);
     });
-    const go = h('button.btn.clp-go', `Publier dans RADIA Clips`);
+    const go = h('button.btn.clp-go', `Publier dans TikTak`);
     const s = sheet(m.title, h('div.clp-sheet-b', h('p.clp-note', 'Choisis la version que tu préfères :'), wrap, cap, go), () => { cancelAnimationFrame(pr); });
     let pr = 0; const t0 = performance.now();
     const animate = (now: number) => { pr = requestAnimationFrame(animate); if (reduced()) { if (now - t0 < 200) prevs.forEach((v) => v.paint(1.2)); return; } prevs.forEach((v) => v.paint((now - t0) / 1000)); };

@@ -1,4 +1,4 @@
-/* Éléments communs de RADIA Clips / RADIA Snap (préfixe apx-). */
+/* Éléments communs de TikTak / Snapchien (préfixe apx-). */
 .apx-heart { position: absolute; z-index: 30; pointer-events: none; color: #ff4f8b; line-height: 1; transform: translate(-50%, -50%); text-shadow: 0 3px 10px rgba(255, 79, 139, 0.55); animation: apxHeart 0.9s var(--ease-out, ease-out) forwards; }
 @keyframes apxHeart { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(0); } 18% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(var(--r)); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.9) rotate(var(--r)); } }
 @media (prefers-reduced-motion: reduce) { .apx-heart { animation-duration: 0.01s; } }

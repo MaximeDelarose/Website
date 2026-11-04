@@ -1,4 +1,4 @@
-/** RADIA Snap : composition d'une photo (décor, Radia, Auguste, chat, filtre, cadre — via la photo souvenir du jeu) + autocollants. */
+/** Snapchien : composition d'une photo (décor, Radia, Auguste, chat, filtre, cadre — via la photo souvenir du jeu) + autocollants. */
 import type { PhotoRec } from '../../events/types';
 import { drawPhoto, renderPhoto } from '../../events/photo/render';
 import { frameAt } from '../../events/photo/data';

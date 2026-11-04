@@ -1,4 +1,4 @@
-/** Petits utilitaires purs partagés par RADIA Clips et RADIA Snap (aucun DOM). */
+/** Petits utilitaires purs partagés par TikTak et Snapchien (aucun DOM). */
 
 /** Hash de chaîne → entier 32 bits non signé (FNV-1a). */
 export function hash(s: string): number {

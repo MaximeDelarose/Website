@@ -41,7 +41,7 @@ describe('empilement : table des z-index', () => {
     expect(Z.uiMax).toBeLessThan(Z.updateBar);
     expect(Z.updateBar).toBeLessThan(Z.reward);
     // les z-index internes à #ui restent <= uiMax, hors barre de mise à jour
-    const inUi = decl.filter((d) => d.z > Z.uiMax && !/updateWatch|rewards\.css/.test(d.file));
+    const inUi = decl.filter((d) => d.z > Z.uiMax && !/updateWatch|updates\.ts|rewards\.css/.test(d.file));
     expect(inUi).toEqual([]);
   });
   it('#app et body ne créent pas de contexte d\'empilement parasite (transform/filter/will-change/isolation)', () => {

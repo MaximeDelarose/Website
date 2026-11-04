@@ -33,6 +33,8 @@ export class SaveManager {
   private store = storage();
   private timer: number | undefined;
   private lastBackup = 0;
+  /** Écritures suspendues (import d'une sauvegarde : l'état en mémoire ne doit PAS écraser ce qui vient d'être importé). */
+  private frozen = false;
   private listeners = new Set<() => void>();
 
   load(): LoadStatus {
@@ -93,9 +95,13 @@ export class SaveManager {
     this.timer = window.setTimeout(() => this.writeNow(), 400);
   }
 
+  /** Suspend toute écriture (puis `resumeWrites()` si l'opération échoue). */
+  suspendWrites(): void { this.frozen = true; if (this.timer !== undefined) { clearTimeout(this.timer); this.timer = undefined; } }
+  resumeWrites(): void { this.frozen = false; }
+
   writeNow(): void {
     if (this.timer !== undefined) { clearTimeout(this.timer); this.timer = undefined; }
-    if (!this.store) return;
+    if (!this.store || this.frozen) return;
     this.data.updatedAt = Date.now();
     try {
       const json = JSON.stringify(this.data);

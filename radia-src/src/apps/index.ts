@@ -1,5 +1,5 @@
 /**
- * Point d'entrée des applications du téléphone du jeu : RADIA Clips et RADIA Snap s'enregistrent ici
+ * Point d'entrée des applications du téléphone du jeu : TikTak et Snapchien s'enregistrent ici
  * (registerPhoneApp), écoutent les « moments » des activités et exposent `RADIA.apps` en mode ?debug.
  */
 import { registerPhoneApp } from '../events/ui/phoneApps';
@@ -15,12 +15,12 @@ import { emitMoment, type MomentKind } from './moments';
 import { installMomentPrompt, KIND_TITLES } from './prompt';
 
 registerPhoneApp({
-  id: 'clips', name: 'RADIA Clips', icon: clipsIcon,
+  id: 'clips', name: 'TikTak', icon: clipsIcon,
   open: () => { void import('./clips/ui').then((m) => m.openClips()); },
   badge: () => clipsBadge(snapState()) || null,
 });
 registerPhoneApp({
-  id: 'snap', name: 'RADIA Snap', icon: snapIcon,
+  id: 'snap', name: 'Snapchien', icon: snapIcon,
   open: () => { void import('./snap/ui').then((m) => m.openSnap()); },
   badge: () => snapBadge(snapState()) || null,
 });

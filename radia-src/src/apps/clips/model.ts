@@ -1,5 +1,5 @@
 /**
- * RADIA Clips : état sauvegardé (`fun.apps.clips`), publications de Radia, favoris, likes, commentaires,
+ * TikTak : état sauvegardé (`fun.apps.clips`), publications de Radia, favoris, likes, commentaires,
  * fans fictifs plafonnés par jour. Pur et testable (aucun DOM) ; la sanitisation est tolérante.
  */
 import { assignInPlace, cleanText, dayKey, hash, isObj, mentionsChild, num, rng, pick, str, strArr } from '../util';

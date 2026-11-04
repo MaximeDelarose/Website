@@ -1,5 +1,5 @@
 /**
- * RADIA Clips : générateur DÉTERMINISTE de petites vidéos fictives (aucun DOM, aucune vraie vidéo, aucune marque).
+ * TikTak : générateur DÉTERMINISTE de petites vidéos fictives (aucun DOM, aucune vraie vidéo, aucune marque).
  * Un « clip » = un modèle de scène (dessinée en Canvas 2D par scenes.ts) + des variantes tirées d'une graine :
  * légende, hashtags, son visuel, auteur fictif adulte, teinte, durée de boucle, compteurs fictifs, commentaires.
  * Le fil est une suite infinie de blocs mélangés : jamais deux fois le même modèle ni la même scène d'affilée.

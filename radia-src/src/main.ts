@@ -7,6 +7,7 @@ import './ui/styles/base.css';
 import './ui/styles/game.css';
 import { debugApis } from './core/debug';
 import { startUpdateWatch } from './core/updateWatch';
+import { startUpdates } from './core/updates';
 import { save, setGame, applySettings, audio, events, game as getGame } from './core/app';
 import { ACHIEVEMENT_DIAMONDS } from './core/progress';
 import { createGame } from './game/GameConfig';
@@ -174,10 +175,14 @@ async function boot(): Promise<void> {
   await showWhatsNewV4();
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    navigator.serviceWorker.register('./sw.js').catch(() => undefined);
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => undefined);
   }
+  // vérification des mises à jour (lancement, retour au premier plan, retour du réseau, toutes les 10 min)
+  if (import.meta.env.PROD) startUpdates(() => save.writeNow());
 }
 
+// application installée sur l'écran d'accueil (iOS : navigator.standalone) : voir base.css
+try { if ((navigator as { standalone?: boolean }).standalone === true) document.documentElement.classList.add('standalone'); } catch { /* ignore */ }
 window.addEventListener('error', (e) => console.error('[radia]', e.error ?? e.message));
 boot().catch((e) => {
   console.error(e);

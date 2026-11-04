@@ -4,6 +4,9 @@ import { ui } from '../ui';
 import { save, applySettings, audio } from '../../core/app';
 import { setLowFx } from '../../game/layout';
 import { haptic, hapticMaybeSupported } from '../../core/haptics';
+import { checkForUpdate, versionLabel } from '../../core/updates';
+import { photoKey } from '../../core/photos';
+import { applyTransfer, decodeTransfer, encodeTransfer } from '../../save/transfer';
 
 export function openSettings(): Promise<void> {
   return new Promise((resolve) => {
@@ -30,6 +33,39 @@ export function openSettings(): Promise<void> {
       return wrap;
     };
     const commit = () => { save.save(); applySettings(); };
+    // ---- version installée + mises à jour
+    const checkBtn = h('button.btn.small.secondary', 'Vérifier');
+    checkBtn.addEventListener('click', tap(async () => {
+      checkBtn.setAttribute('disabled', 'true'); checkBtn.textContent = '…';
+      const r = await checkForUpdate(true);
+      checkBtn.removeAttribute('disabled');
+      checkBtn.textContent = r === 'uptodate' ? 'À jour ♡' : r === 'available' ? 'Mise à jour prête' : 'Pas de réseau';
+    }, { sound: false }));
+    // ---- transfert de la partie (Safari ⇄ application de l'écran d'accueil : deux stockages distincts sur iPhone)
+    const showCode = (code: string) => {
+      const ta = h('textarea', { readonly: 'true', rows: '5', style: 'width:100%;font-size:12px;border-radius:12px;padding:8px;border:2px solid #e5d3f5;background:#fff' }) as HTMLTextAreaElement;
+      ta.value = code;
+      void ui.modal({ title: 'Ton code de sauvegarde', body: h('div', h('p.muted', { style: 'font-size:13px' }, 'Copie tout le code (appui long → Tout sélectionner → Copier), puis colle-le dans « Importer une sauvegarde » de l\'autre RADIA.'), ta), actions: [{ label: 'Fermer', value: 'ok', style: 'primary' }] });
+      window.setTimeout(() => { ta.focus(); ta.select(); }, 250);
+    };
+    const copyBtn = h('button.btn.small.secondary', { on: { click: tap(async () => {
+      save.writeNow();
+      const code = encodeTransfer(save.data, photoKey());
+      try { await navigator.clipboard.writeText(code); ui.toast({ title: 'Code copié ♡', sub: 'Colle-le dans l\'autre RADIA', icon: 'info', ms: 2600 }); } catch { showCode(code); }
+    }, { sound: false }) } }, 'Copier');
+    const importBtn = h('button.btn.small.secondary', { on: { click: tap(async () => {
+      const ta = h('textarea', { rows: '5', placeholder: 'Colle ici le code RADIA1:…', style: 'width:100%;font-size:12px;border-radius:12px;padding:8px;border:2px solid #e5d3f5;background:#fff' }) as HTMLTextAreaElement;
+      const err = h('p', { style: 'color:#c2410c;font-size:13px;margin:6px 0 0;min-height:1em' });
+      const r = await ui.modal({ title: 'Importer une sauvegarde', body: h('div', h('p.muted', { style: 'font-size:13px' }, 'Ta partie actuelle est gardée de côté avant le remplacement.'), ta, err), actions: [{ label: 'Importer', value: 'go', style: 'primary' }, { label: 'Annuler', value: 'no', style: 'secondary' }] });
+      if (r !== 'go') return;
+      const d = decodeTransfer(ta.value);
+      if (!d.ok) { ui.toast({ title: 'Import impossible', sub: d.reason, icon: 'info', ms: 3600 }); return; }
+      const ok = await ui.confirm('Remplacer la partie ?', `${d.summary}. La partie de ce RADIA sera remplacée (une copie est gardée).`, 'Remplacer', 'Annuler');
+      if (!ok) return;
+      save.suspendWrites(); // l'état en mémoire ne doit pas écraser la partie importée pendant le rechargement
+      if (!applyTransfer(d.payload)) { save.resumeWrites(); ui.toast({ title: 'Écriture impossible', sub: 'Rien n\'a été modifié', icon: 'info', ms: 3600 }); return; }
+      location.reload();
+    }, { sound: false }) } }, 'Importer');
     const body = h('div.panel', { style: 'text-align:left' },
       h('div.setting-row', h('label', 'Musique'), toggle(s.musicOn, (v) => { s.musicOn = v; commit(); if (v) audio.playMusic(); })),
       h('div.setting-row', h('label', 'Volume musique'), slider(s.music, (v) => { s.music = v; commit(); })),
@@ -39,6 +75,9 @@ export function openSettings(): Promise<void> {
       h('div.setting-row', h('label', 'Retours haptiques', h('small', hapticMaybeSupported() ? 'Petites vibrations, si ton téléphone les accepte' : 'Non disponibles ici : le son et l\'image restent')), toggle(s.haptics !== false, (v) => { s.haptics = v; commit(); if (v) haptic('merge'); })),
       h('div.setting-row', h('label', 'Animations réduites'), toggle(s.reducedMotion, (v) => { s.reducedMotion = v; commit(); })),
       h('div.setting-row', h('label', 'Vitesse du texte'), seg([['normal', 'Normale'], ['fast', 'Rapide'], ['instant', 'Immédiate']], s.textSpeed, (v) => { s.textSpeed = v; commit(); })),
+      h('div.setting-row', h('label', 'Version', h('small', versionLabel())), checkBtn),
+      h('div.setting-row', h('label', 'Copier ma sauvegarde', h('small', 'Pour la mettre dans l\'application de l\'écran d\'accueil (ou l\'inverse)')), copyBtn),
+      h('div.setting-row', h('label', 'Importer une sauvegarde', h('small', 'Colle le code copié ailleurs')), importBtn),
       h('div.setting-row', h('label', 'Recommencer depuis le début', h('small', 'Efface toute la progression')),
         h('button.btn.small.secondary', { on: { click: tap(async () => {
           const ok = await ui.confirm('Tout effacer ?', 'Toute la progression (niveaux, souvenirs, succès, échecs) sera effacée. Cette action est définitive.', 'Tout effacer', 'Annuler');
