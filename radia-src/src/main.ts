@@ -8,6 +8,7 @@ import './ui/styles/game.css';
 import { debugApis } from './core/debug';
 import { startUpdateWatch } from './core/updateWatch';
 import { startUpdates } from './core/updates';
+import { maybeShowStandaloneWelcome } from './ui/screens/standaloneWelcome';
 import { save, setGame, applySettings, audio, events, game as getGame } from './core/app';
 import { ACHIEVEMENT_DIAMONDS } from './core/progress';
 import { createGame } from './game/GameConfig';
@@ -170,6 +171,7 @@ async function boot(): Promise<void> {
   hideSplash();
   showTitle();
   await handleSaveProblems();
+  await maybeShowStandaloneWelcome();
   await showWhatsNew();
   await showWhatsNewV3();
   await showWhatsNewV4();
