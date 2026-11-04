@@ -2253,6 +2253,130 @@ window.ES_DATA = (function () {
   var DG_GUARDS = { terriers: ["bigmole", "boar"], ruche: ["pivert", "owl"], crypte: ["silure", "scolo"], taniere: ["boar", "sala_g"] };
   DUNGEONS.forEach(function (d) { if (DG_GUARDS[d.id]) d.guards = DG_GUARDS[d.id].concat([DG_GUARDS[d.id][0]]); });
   var ARENA_BOSSES = ["boar", "queen", "owl", "stag", "mushking", "bigmole", "castor", "heron", "silure", "ours", "sala_g", "corbeau", "pivert", "scolo", "reine_f"];
+  /* =====================================================================
+     Contenu étendu, lot 6 : 4 cartes, mécaniques de terrain, 4 donjons, strates, ressources, 4 méga boss
+     ===================================================================== */
+  SPRITES.crystal = { pal: { c: "#9ee8ff", C: "#e8f8ff", k: "#3a6a8a" }, frames: [[".c.", "cCc", "cCk", "cck", ".k."]] };
+  // mécaniques de terrain des 4 cartes actuelles
+  MAPS.forEach(function (m) { m.mech = { clairiere: null, marais: "water", automne: "leaves", nuit: "dark" }[m.id]; });
+  var GR = function (base, patch, tuft, hi, flowers, pebble, pebbleDk, extra) { var g = { base: base, patch: patch, tuft: tuft, hi: hi, flowers: flowers, pebble: pebble, pebbleDk: pebbleDk, shroom: flowers[0] }; Object.keys(extra || {}).forEach(function (k) { g[k] = extra[k]; }); return g; };
+  MAPS.push(
+    { id: "gouffre", name: "Gouffre de racines", desc: "Racines suspendues, grotte d'argile et puits de lumière. Toutes les 2 min, les racines ferment des passages et en ouvrent d'autres.", hp: 1.7, gold: 2.3, unlock: "ach_colosse", element: "terre", mech: "roots",
+      swarm: ["ant", "rat", "mole", "spider"], bosses: ["scolo", "reine_f", "bigmole"], mega: "racines_m",
+      biomes: [
+        { name: "Racines suspendues", giant: "roots", giantD: 0.5, prop: "stump", decor: "rock", ground: GR("#5a4230", "#523b2a", "#3a2a1e", "#7a5a40", ["#c8a060", "#8a5a3b", "#9cc56b", "#e8d090"], "#8a7a68", "#5a4a3a", { rock: "#6a5a4a", rockHi: "#8a7a68" }),
+          enemies: [["ant", 0, 4], ["spider", 20, 3], ["stagbeetle", 90, 2], ["rat", 30, 3], ["dungbeetle", 120, 2]] },
+        { name: "Grotte d'argile", giant: "rock", giantD: 0.45, prop: "stump", decor: "rock", ground: GR("#8a5a3a", "#7d5234", "#5a3a26", "#b07a50", ["#e8a060", "#c8783a", "#fdf3de", "#8a5a3b"], "#a07a5a", "#6f5040", { rock: "#a0603a", rockHi: "#c88a5a" }),
+          enemies: [["mole", 0, 4], ["woodlouse", 40, 3], ["beaver", 120, 2], ["ladybug", 80, 1], ["antlion", 150, 1]] },
+        { name: "Puits de lumière", giant: "roots", giantD: 0.25, prop: "lantern", ground: GR("#7a8a5a", "#708052", "#56643e", "#a8b87a", ["#f6d36b", "#fdf3de", "#9cc56b", "#e8d090"], "#9a9a7a", "#6a6a52"),
+          enemies: [["ant", 0, 3], ["ladybug", 30, 2], ["cricket", 60, 2], ["badger", 180, 2], ["dungbeetle", 90, 2]] },
+      ] },
+    { id: "riviere", name: "Rivière gelée", desc: "Rives enneigées, lac gelé et cascade figée. La glace fait glisser tout le monde et se brise sous les gros impacts.", hp: 1.7, gold: 2.3, unlock: "ach_mere", element: "eau", mech: "ice",
+      swarm: ["mosquito", "bunny", "frog", "jackdaw"], bosses: ["castor", "heron", "silure"], mega: "brochet",
+      biomes: [
+        { name: "Rives enneigées", giant: "tree", giantD: 0.3, prop: "stump", decor: "bush", ground: GR("#d8e4ea", "#ccd8e0", "#a8b8c4", "#f4fafc", ["#9ee8ff", "#fdf3de", "#c8d8e8", "#e6f6fa"], "#a8b0b8", "#7a848c", { bush: "#7a9aa8", bushHi: "#c8dce4" }),
+          enemies: [["bunny", 0, 4], ["jackdaw", 30, 3], ["frog", 50, 3], ["beaver", 100, 2], ["woodpecker", 140, 2]] },
+        { name: "Lac gelé", ice: true, prop: "stump", decor: "water", ground: GR("#a8d0e8", "#9cc4dc", "#80aac4", "#dceef8", ["#e8f8ff", "#9ee8ff", "#fdf3de", "#c8e8f8"], "#8ab0c8", "#6890a8", { water: "#6aa8c8", waterHi: "#c8ecfa" }),
+          enemies: [["mosquito", 0, 3], ["crayfish", 30, 3], ["turtle", 100, 2], ["snake", 60, 2], ["toad", 150, 2]] },
+        { name: "Cascade figée", ice: true, giant: "rock", giantD: 0.35, prop: "stump", decor: "rock", ground: GR("#8ab0c8", "#80a6be", "#6a8ca4", "#c0dcec", ["#e8f8ff", "#9ee8ff", "#c8d8e8", "#fdf3de"], "#8aa0b0", "#5a7080", { rock: "#7a98ac", rockHi: "#b0ccdc" }),
+          enemies: [["woodpecker", 0, 3], ["cricket", 40, 2], ["beaver", 80, 2], ["crayfish", 60, 2], ["mosquito", 0, 3]] },
+      ] },
+    { id: "calcinee", name: "Forêt calcinée", desc: "Futaie brûlée, champ de cendres et cœur du feu. Des incendies se déclarent et se propagent ; ils brûlent aussi les ennemis.", hp: 1.8, gold: 2.4, unlock: "ach_brasier", element: "feu", mech: "wildfire",
+      swarm: ["ant", "salamander", "horsefly", "rat"], bosses: ["ours", "sala_g", "stag"], mega: "phenix",
+      biomes: [
+        { name: "Futaie brûlée", giant: "tree", giantD: 0.4, prop: "stump", decor: "rock", ground: GR("#3a2e28", "#342822", "#241c18", "#5a463a", ["#ff7a2a", "#c8553d", "#6a5a4a", "#f6d36b"], "#5a4e46", "#3a322c", { bush: "#2a201a", bushHi: "#4a3a2e", rock: "#4a3e36", rockHi: "#6a5a4e" }),
+          enemies: [["salamander", 0, 3], ["boarlet", 30, 3], ["badger", 120, 2], ["horsefly", 60, 2], ["hedgehog", 90, 2]] },
+        { name: "Champ de cendres", giant: "rock", giantD: 0.2, prop: "stump", ground: GR("#7a7068", "#706660", "#5a524c", "#a09890", ["#c8c0b8", "#ff7a2a", "#e8e0d8", "#8a8278"], "#8a8278", "#5a524c", { rock: "#6a625a", rockHi: "#8a827a" }),
+          enemies: [["ant", 0, 4], ["bombardier", 40, 3], ["cockchafer", 80, 2], ["bombshroom", 50, 2], ["rat", 0, 3]] },
+        { name: "Cœur du feu", giant: "rock", giantD: 0.3, prop: "lantern", decor: "rock", ground: GR("#5a2a1a", "#522618", "#3a1a10", "#8a3a20", ["#ff9a3a", "#ffd84a", "#ff5a2a", "#c8553d"], "#6a3a2a", "#4a2418", { rock: "#4a2418", rockHi: "#7a3a24" }),
+          enemies: [["salamander", 0, 4], ["bombardier", 30, 3], ["horsefly", 50, 3], ["firefly", 80, 2], ["badger", 160, 2]] },
+      ] },
+    { id: "cime", name: "Cime des chênes", desc: "Canopée, pont de branches et nid d'orage. Le vent souffle par rafales et pousse joueurs, ennemis et projectiles.", hp: 1.8, gold: 2.4, unlock: "ach_tempete", element: "air", mech: "wind",
+      swarm: ["mosquito", "wasp", "jackdaw", "bat"], bosses: ["corbeau", "pivert", "owl"], mega: "aigle",
+      biomes: [
+        { name: "Canopée", giant: "tree", giantD: 0.6, prop: "stump", decor: "bush", ground: GR("#4a7a3a", "#447034", "#30562a", "#7aa85a", ["#9cc56b", "#f6d36b", "#fdf3de", "#c8e8a0"], "#7a8a5a", "#56643e", { bush: "#2a4a22", bushHi: "#4a7a3a" }),
+          enemies: [["woodpecker", 0, 3], ["wasp", 0, 3], ["spider", 40, 3], ["jackdaw", 60, 2], ["stagbeetle", 110, 2]] },
+        { name: "Pont de branches", giant: "tree", giantD: 0.25, prop: "stump", ground: GR("#8a6a44", "#7d603e", "#5a442a", "#b08a5a", ["#9cc56b", "#d39a52", "#fdf3de", "#f6d36b"], "#a08a6a", "#6f5a44"),
+          enemies: [["mosquito", 0, 3], ["cricket", 30, 2], ["crow", 60, 2], ["horsefly", 80, 2], ["ladybug", 100, 2]] },
+        { name: "Nid d'orage", giant: "rock", giantD: 0.3, prop: "lantern", decor: "rock", ground: GR("#5a6a7a", "#526270", "#3a4856", "#8a9aaa", ["#c8f8e8", "#f6e06b", "#e6f6fa", "#9ad0c4"], "#7a8a9a", "#4a5868", { rock: "#4a5a6a", rockHi: "#7a8a9a" }),
+          enemies: [["bat", 0, 4], ["barnowl", 40, 2], ["woodpecker", 60, 3], ["crow", 90, 2], ["moth", 0, 2]] },
+      ] }
+  );
+  // ressources des 4 nouvelles régions
+  [["gouffre", [["argile", "Argile", "🧱"], ["racine_creuse", "Racine creuse", "🪵"], ["cristal_terre", "Cristal de terre", "💎"]]],
+   ["riviere", [["neige", "Neige tassée", "❄️"], ["galet_poli", "Galet poli", "🪨"], ["mousse_givree", "Mousse givrée", "🧊"]]],
+   ["calcinee", [["charbon", "Charbon de bois", "⚫"], ["cendre_fine", "Cendre fine", "🌫️"], ["resine", "Résine ardente", "🟠"]]],
+   ["cime", [["brindille", "Brindille d'altitude", "🌿"], ["duvet", "Duvet", "🪶"], ["lichen", "Lichen", "🍃"]]]].forEach(function (mr) {
+    MAP_RES[mr[0]] = mr[1].map(function (x) { RES[x[0]] = { name: x[1], icon: x[2], map: mr[0] }; return x[0]; });
+  });
+  // 4 méga boss de plus : un par nouvelle carte, chacun avec ses 3 phases à lui
+  ENEMIES.racines_m = { sprite: "golem", hp: 5600, spd: 15, dmg: 30, r: 13, xp: 200, boss: true, mega: true, name: "Mille-Racines", color: "#6b4430", bossAi: "mega_terre", elem: "terre", scale: 2.8, tint: "#5a8a3a" };
+  ENEMIES.brochet = { sprite: "catfish", hp: 5400, spd: 20, dmg: 28, r: 13, xp: 200, boss: true, mega: true, name: "Grand Brochet des glaces", color: "#9ee8ff", bossAi: "mega_terre", elem: "eau", scale: 2.8, tint: "#c8ecfa" };
+  ENEMIES.phenix = { sprite: "hawk", hp: 5000, spd: 26, dmg: 28, r: 12, xp: 200, boss: true, mega: true, name: "Phénix des cendres", color: "#ff7a2a", bossAi: "mega_terre", elem: "feu", scale: 3.2, tint: "#ff7a2a" };
+  ENEMIES.aigle = { sprite: "hawk", hp: 5200, spd: 28, dmg: 26, r: 12, xp: 200, boss: true, mega: true, name: "Aigle des cimes", color: "#d8e8ff", bossAi: "mega_terre", elem: "air", scale: 3, tint: "#e8e0d0" };
+  [["racines_m", "Rhizome ancien", "🌱"], ["brochet", "Mâchoire de glace", "🦈"], ["phenix", "Cendre vive", "🔥"], ["aigle", "Œuf d'aigle", "🥚"]].forEach(function (t) { RES["t_" + t[0]] = { name: t[1], icon: t[2], trophy: t[0] }; });
+  // objets des 4 nouveaux méga boss
+  ITEMS.push(
+    { id: "racine_ancestrale", r: 3, pool: "mega", mega: "racines_m", icon: "🌱", name: "Racine ancestrale", desc: "Trophée de Mille-Racines : ancré, tu regagnes 2 % de PV max par seconde." },
+    { id: "oeil_brochet", r: 3, pool: "mega", mega: "brochet", icon: "🐟", name: "Œil du brochet", desc: "Trophée du Grand Brochet : tes gels durent 2 fois plus, et un ennemi gelé prend +40 %." },
+    { id: "coeur_phenix", r: 3, pool: "mega", mega: "phenix", icon: "❤️‍🔥", name: "Cœur de phénix", desc: "Trophée du Phénix : chaque renaissance déclenche une explosion géante (300) et 5 s d'invulnérabilité." },
+    { id: "serre_aigle", r: 3, pool: "mega", mega: "aigle", icon: "🦅", name: "Serre de l'aigle", desc: "Trophée de l'Aigle : +30 % de vitesse ; chaque Volte fond sur l'ennemi le plus proche (80)." }
+  );
+  ITEMS.forEach(function (it, i) { it.idx = i; });
+  // panoplies des 4 nouveaux méga boss
+  [["racines_m", "Panoplie de Mille-Racines", "terre", "+2 points de Terre ; tes Pièges et Sentinelles durent 2 fois plus.", "Un ennemi immobilisé par une racine prend +40 %.",
+     [["coiffe", "Couronne de rhizomes", "🌱", "mil_c", "Ancré : toutes les 3 s, une racine immobilise le premier ennemi au contact."], ["bottes", "Bottes-radicelles", "🥾", "mil_b", "En mouvement : tes radicelles marquent Terre ceux qui les franchissent."], ["cape", "Cape de lianes", "🧥", "mil_k", "Volte : 3 racines jaillissent dans la direction prise (40)."]]],
+   ["brochet", "Panoplie du Grand Brochet", "eau", "+2 points d'Eau.", "Sur la glace, un ennemi que tu frappes peut glisser et geler 1 s.",
+     [["coiffe", "Casque d'écailles", "🐟", "bro_c", "Ancré : toutes les 4 s, un brochet surgit sous l'ennemi le plus proche (40)."], ["bottes", "Bottes cramponnées", "🥾", "bro_b", "Tu ne glisses plus sur la glace."], ["cape", "Cape de givre", "🧥", "bro_k", "Volte : le sol gèle en ligne derrière toi."]]],
+   ["phenix", "Panoplie du Phénix", "feu", "+2 points de Feu.", "Chaque élite tuée te rend 5 % de PV.",
+     [["coiffe", "Plumet de feu", "🪶", "phe_c", "Ancré : tu brûles (1 PV/s) mais +25 % de dégâts."], ["bottes", "Serres ardentes", "🥾", "phe_b", "En mouvement : tu sèmes des plumes qui explosent après 2 s (15)."], ["cape", "Ailes de cendre", "🧥", "phe_k", "Sous 30 % de PV, la Volte rend 15 % de PV (toutes les 20 s)."]]],
+   ["aigle", "Panoplie de l'Aigle", "air", "+2 points d'Air.", "Tes techniques de Retour reviennent en piqué et frappent 2 fois plus fort au retour.",
+     [["coiffe", "Casque d'aigle", "🦅", "aig_c", "Ancré : +25 % de dégâts sur les cibles à plus de 150 px."], ["bottes", "Bottes d'altitude", "🥾", "aig_b", "En mouvement : les ennemis que tu dépasses sont projetés."], ["cape", "Grandes rémiges", "🧥", "aig_k", "Volte : tu prends de la hauteur 1 s et les attaques te ratent."]]]
+  ].forEach(function (st) {
+    SETS[st[0]] = { name: st[1], elem: st[2], mega: st[0], b2: st[3], b4: st[4], full: 3 };
+    st[5].forEach(function (pc) {
+      var rs = MAP_RES[{ terre: "gouffre", eau: "riviere", feu: "calcinee", air: "cime" }[st[2]]], cost = {}; cost[rs[0]] = 10; cost[rs[1]] = 8; cost[rs[2]] = 6; cost["t_" + st[0]] = 2;
+      GEAR["s_" + st[0] + "_" + pc[0]] = { slot: pc[0], name: pc[1], elem: st[2], icon: pc[2], set: st[0], fx: pc[3], desc: pc[4], cost: cost };
+    });
+  });
+  // 4 donjons de plus
+  DUNGEONS.push(
+    { id: "fourmiliere", name: "Fourmilière géante", icon: "ant", desc: "Couloirs étroits traversés par des colonnes de fourmis. La Reine au fond.", unlock: "ach_golem", mech: "ants",
+      hp: 1.4, gold: 1.8, final: "reine_f", finalHp: 1.6, guards: ["scolo", "bigmole", "scolo"], poison: 0, pits: 0.6,
+      themes: [{ name: "Galeries", floor: "#5a3a26", grid: "#50331f", wall: "#24160c", top: "#7a5030", dark: 0.55, accent: "#b85a3a" }, { name: "Couvain", floor: "#6a4228", grid: "#5e3a22", wall: "#2a1a0e", top: "#8a5a34", dark: 0.6, accent: "#e8c890" }, { name: "Salle de la Reine", floor: "#4a2a1a", grid: "#422416", wall: "#1e100a", top: "#6a3a24", dark: 0.7, accent: "#c8553d" }],
+      pools: [["ant", "ant", "rat", "ladybug", "spider"], ["ant", "antlion", "woodlouse", "dungbeetle", "stagbeetle"], ["ant", "dungbeetle", "stagbeetle", "antlion", "badger", "woodlouse"]] },
+    { id: "nid", name: "Nid des corbeaux", icon: "crow", desc: "Salles suspendues reliées par des branches : une chute te renvoie au début de la salle.", unlock: "ach_reine", mech: "nest",
+      hp: 1.45, gold: 1.9, final: "corbeau", finalHp: 1.6, guards: ["owl", "heron", "owl"], poison: 0, pits: 2.6,
+      themes: [{ name: "Branches", floor: "#5a4a34", grid: "#50422e", wall: "#1e1a12", top: "#7a6448", dark: 0.5, accent: "#9cc56b" }, { name: "Nids", floor: "#4a3e30", grid: "#42372a", wall: "#1a1610", top: "#6a5a44", dark: 0.6, accent: "#c8a060" }, { name: "Perchoir du roi", floor: "#3a3440", grid: "#322c38", wall: "#14121a", top: "#5a4e64", dark: 0.7, accent: "#8a8aa8" }],
+      pools: [["jackdaw", "crow", "bat", "moth"], ["jackdaw", "barnowl", "woodpecker", "crow", "bat"], ["barnowl", "woodpecker", "crow", "horsefly", "jackdaw", "bat"]] },
+    { id: "barrage", name: "Barrage des castors", icon: "beaver", desc: "L'eau monte à chaque étage ; certaines salles sont inondées. Le Grand Castor tient le barrage.", unlock: "ach_roi", mech: "flood",
+      hp: 1.5, gold: 2, final: "castor", finalHp: 1.6, guards: ["heron", "silure", "heron"], poison: 0, pits: 0.4, puddles: 3,
+      themes: [{ name: "Digue", floor: "#4a5a5a", grid: "#425050", wall: "#1a2222", top: "#6a7a7a", dark: 0.5, accent: "#8a5a3b" }, { name: "Huttes", floor: "#5a4a3a", grid: "#504234", wall: "#221a14", top: "#7a6450", dark: 0.6, accent: "#6aa8c8" }, { name: "Cœur du barrage", floor: "#3a4a5a", grid: "#324250", wall: "#121a22", top: "#5a6a7a", dark: 0.7, accent: "#9ee8ff" }],
+      pools: [["frog", "mosquito", "crayfish", "slug"], ["beaver", "crayfish", "mosquito", "snake", "toad"], ["beaver", "crayfish", "turtle", "toad", "snake", "cricket"]] },
+    { id: "charbonniere", name: "Charbonnière", icon: "bear", desc: "Des wagonnets traversent les salles sur des rails, des fours crachent du feu. L'Ours brûlé règne.", unlock: "ach_cerf", mech: "mine",
+      hp: 1.55, gold: 2.1, final: "ours", finalHp: 1.6, guards: ["sala_g", "pivert", "sala_g"], poison: 0, pits: 0.8,
+      themes: [{ name: "Galeries de charbon", floor: "#2e2a28", grid: "#282422", wall: "#100e0c", top: "#4a4440", dark: 0.6, accent: "#ff7a2a" }, { name: "Fours", floor: "#3a241a", grid: "#321e16", wall: "#140c08", top: "#5a3424", dark: 0.65, accent: "#ffd84a" }, { name: "Fournaise", floor: "#4a1e12", grid: "#401a10", wall: "#1a0a06", top: "#6a2a18", dark: 0.7, accent: "#ff5a2a" }],
+      pools: [["salamander", "rat", "ant", "bombshroom"], ["salamander", "bombardier", "horsefly", "boarlet", "badger"], ["bombardier", "salamander", "horsefly", "cockchafer", "badger", "hedgehog"]] }
+  );
+  // succès qui ouvrent les nouvelles cartes et les nouveaux donjons
+  ACHIEVEMENTS.push(
+    { id: "ach_colosse", name: "Colosse terrassé", desc: "Bats le Colosse d'humus (ouvre le Gouffre de racines).", gold: 200, check: function (r) { return !!(r.bossT && r.bossT.colosse); } },
+    { id: "ach_mere", name: "Mère vaincue", desc: "Bats la Mère des Marais (ouvre la Rivière gelée).", gold: 200, check: function (r) { return !!(r.bossT && r.bossT.mere); } },
+    { id: "ach_brasier", name: "Brasier éteint", desc: "Bats le Brasier ancestral (ouvre la Forêt calcinée).", gold: 200, check: function (r) { return !!(r.bossT && r.bossT.brasier); } },
+    { id: "ach_tempete", name: "Tempête apaisée", desc: "Bats le Roi-Tempête (ouvre la Cime des chênes).", gold: 200, check: function (r) { return !!(r.bossT && r.bossT.tempete); } },
+    { id: "ach_golem", name: "Golem abattu", desc: "Bats le Golem de racines (ouvre la Fourmilière géante).", gold: 200, check: function (r) { return !!(r.bossT && r.bossT.golem); } },
+    { id: "ach_reine", name: "Reine chassée", desc: "Bats la Reine des guêpes en finale de donjon (ouvre le Nid des corbeaux).", gold: 200, check: function (r) { return !!(r.finalT && r.finalT.queen); } },
+    { id: "ach_roi", name: "Roi déchu", desc: "Bats le Roi Champignon en finale de donjon (ouvre le Barrage des castors).", gold: 200, check: function (r) { return !!(r.finalT && r.finalT.mushking); } },
+    { id: "ach_cerf", name: "Cerf vaincu", desc: "Bats le Grand Cerf en finale de donjon (ouvre la Charbonnière).", gold: 200, check: function (r) { return !!(r.finalT && r.finalT.stag); } }
+  );
+  // strates d'Expédition : chaque strate commence à un étage du repaire et ajoute une règle
+  var STRATA = [
+    { from: 1, name: "Surface", desc: "Règles normales." },
+    { from: 3, name: "Sous-bois profond", desc: "Brouillard permanent : vision -20 %, Rôdeurs plus nombreux." },
+    { from: 6, name: "Racines", desc: "Des galeries de racines s'ouvrent et se ferment toutes les 90 s." },
+    { from: 9, name: "Grottes", desc: "Obscurité hors de ta lueur ; les cristaux au sol éclairent et soignent quand on les casse." },
+    { from: 12, name: "Cœur ancien", desc: "La corruption avance 2 fois plus vite, mais chaque élite lâche un objet rare." },
+  ];
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
@@ -2260,6 +2384,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
