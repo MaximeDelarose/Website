@@ -2585,6 +2585,477 @@ window.ES_DATA = (function () {
   ACH8.forEach(function (a) { ACHIEVEMENTS.push({ id: a[0], name: a[1], desc: a[2], gold: a[3], check: a[4] }); });
   QUESTS.push({ id: "q8_verre", desc: "Bats un méga boss en Cauchemar 3 ou plus.", check: function (r) { return (r.cauch || 0) >= 3 && !!r.megaWon; } });
   GEAR.r_verre.quest = "q8_verre";
+  /* =====================================================================
+     Graphismes 2.3, lot 2 : boss et méga boss dessinés à leur vraie taille.
+     Chaque boss est décrit par des formes (ellipses, tubes, polygones) qui
+     sont pixelisées en 3 ou 4 tons au chargement, avec traits intérieurs.
+     Le contour sombre est ajouté ensuite par le moteur, comme partout.
+     « ns » : l'échelle de jeu pour laquelle le sprite est dessiné (il n'est
+     plus agrandi à l'écran).
+     ===================================================================== */
+  var RIG_L = [-0.45, -0.62, 0.64];
+  function rgE(cx, cy, rx, ry, rot, m, o) { var s = { t: "e", cx: cx, cy: cy, rx: rx, ry: ry, rot: rot || 0, m: m }; if (o) for (var k in o) s[k] = o[k]; return s; }
+  function rgC(x1, y1, x2, y2, r1, r2, m, o) { var s = { t: "c", x1: x1, y1: y1, x2: x2, y2: y2, r1: r1, r2: r2, m: m }; if (o) for (var k in o) s[k] = o[k]; return s; }
+  function rgP(pts, m, o) {
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    pts.forEach(function (p) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); });
+    var s = { t: "p", pts: pts, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, hw: Math.max(0.5, (x1 - x0) / 2), hh: Math.max(0.5, (y1 - y0) / 2), m: m };
+    if (o) for (var k in o) s[k] = o[k]; return s;
+  }
+  function rgHit(o, x, y) {
+    var nx, ny, q;
+    if (o.t === "e") {
+      var cr = Math.cos(o.rot), sr = Math.sin(o.rot), dx = x - o.cx, dy = y - o.cy;
+      var u = (dx * cr + dy * sr) / o.rx, v = (-dx * sr + dy * cr) / o.ry; q = u * u + v * v;
+      if (q > 1) return null;
+      return [u * cr - v * sr, u * sr + v * cr, q];
+    }
+    if (o.t === "c") {
+      var vx = o.x2 - o.x1, vy = o.y2 - o.y1, L2 = vx * vx + vy * vy || 1;
+      var t = Math.max(0, Math.min(1, ((x - o.x1) * vx + (y - o.y1) * vy) / L2));
+      var px = o.x1 + vx * t, py = o.y1 + vy * t, r = o.r1 + (o.r2 - o.r1) * t;
+      nx = (x - px) / r; ny = (y - py) / r; q = nx * nx + ny * ny;
+      return q > 1 ? null : [nx, ny, q];
+    }
+    var inside = false, P = o.pts;
+    for (var i = 0, j = P.length - 1; i < P.length; j = i++) {
+      if (((P[i][1] > y) !== (P[j][1] > y)) && (x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0])) inside = !inside;
+    }
+    if (!inside) return null;
+    nx = (x - o.cx) / o.hw * 0.8; ny = (y - o.cy) / o.hh * 0.8; q = Math.min(0.95, nx * nx + ny * ny);
+    return [nx, ny, q];
+  }
+  // shapes -> { rows, pal } ; mats : { nom: [clair, base, ombre, sombre] } (1 couleur = plat)
+  function rigRaster(W, H, shapes, mats) {
+    var idx = new Int16Array(W * H).fill(-1), col = new Array(W * H), x, y, i;
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      for (i = shapes.length - 1; i >= 0; i--) {
+        var o = shapes[i], n = rgHit(o, x + 0.5, y + 0.5); if (!n) continue;
+        var m = mats[o.m], tone = 0;
+        if (m.length > 1 && !o.flat) {
+          var nz = Math.sqrt(Math.max(0, 1 - n[2])), d = n[0] * RIG_L[0] + n[1] * RIG_L[1] + nz * RIG_L[2];
+          tone = d > 0.8 ? 0 : d > 0.34 ? 1 : d > -0.1 || m.length < 4 ? 2 : 3;
+        }
+        var p = y * W + x; idx[p] = i; col[p] = m[Math.min(tone, m.length - 1)];
+        break;
+      }
+    }
+    // traits intérieurs : la pièce de derrière s'assombrit au contact d'une pièce « line » posée devant
+    var out = col.slice();
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      var p0 = y * W + x, a = idx[p0]; if (a < 0 || shapes[a].flat) continue;
+      var nb = [x > 0 ? p0 - 1 : -1, x < W - 1 ? p0 + 1 : -1, y < H - 1 ? p0 + W : -1, y > 0 ? p0 - W : -1];
+      for (var k = 0; k < 4; k++) {
+        var b = nb[k] < 0 ? -1 : idx[nb[k]];
+        if (b > a && shapes[b].line && shapes[b].m !== shapes[a].m) { var mm = mats[shapes[a].m]; out[p0] = mm[mm.length - 1]; break; }
+      }
+    }
+    var CH = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+=?!", pal = {}, back = {}, ci = 0, rows = [];
+    for (y = 0; y < H; y++) {
+      var row = "";
+      for (x = 0; x < W; x++) {
+        var c = idx[y * W + x] < 0 ? null : out[y * W + x];
+        if (!c) { row += "."; continue; }
+        if (!back[c]) { back[c] = CH[ci++]; pal[back[c]] = c; }
+        row += back[c];
+      }
+      rows.push(row);
+    }
+    return { rows: rows, pal: pal };
+  }
+  // un boss : rig(ph) -> shapes, nf images ; toutes les images partagent une palette
+  function rigSprite(W, H, mats, rig, nf, extra) {
+    var pal = {}, frames = [], CH = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+=?!", back = {}, ci = 0;
+    for (var f = 0; f < (nf || 4); f++) {
+      var R = rigRaster(W, H, rig(f / (nf || 4)), mats);
+      frames.push(R.rows.map(function (row) {
+        return row.split("").map(function (ch) {
+          if (ch === ".") return ".";
+          var c = R.pal[ch]; if (!back[c]) { back[c] = CH[ci++]; pal[back[c]] = c; } return back[c];
+        }).join("");
+      }));
+    }
+    var d = { pal: pal, frames: frames };
+    if (extra) for (var k in extra) d[k] = extra[k];
+    return d;
+  }
+  var TAU2 = Math.PI * 2, sin = Math.sin, cos = Math.cos;
+  var INK = ["#2b1709"], WHITE = ["#fdf3de"];
+
+  /* --- 9 boss --- */
+  SPRITES.bs_castor = rigSprite(34, 22, {
+    fur: ["#b88250", "#8a5a3b", "#6b4430", "#4a2e1c"], tail: ["#8a7868", "#5e4e40", "#45382c", "#2e241a"], belly: ["#d8b080", "#b8905e", "#8a6a48"],
+    teeth: ["#f6c84a"], ink: INK, white: WHITE, scale: ["#3a2e22"]
+  }, function (ph) {
+    var s = sin(ph * TAU2), b = Math.abs(s) * 0.8;
+    return [
+      rgE(6.5, 14 - s * 1.5, 6.2, 3.2, -0.25 - s * 0.25, "tail", { line: true }),
+      rgC(4, 13.5 - s * 1.4, 9, 15 - s * 1.2, 0.35, 0.35, "scale", { flat: true }), rgC(5, 16 - s, 8, 12 - s * 1.6, 0.35, 0.35, "scale", { flat: true }),
+      rgE(12, 19.5, 3.4, 1.8, 0, "fur"),
+      rgE(16, 13 - b, 9.5, 7.2, 0, "fur", { line: true }),
+      rgE(20, 15.5 - b, 4.5, 4.2, 0, "belly"),
+      rgE(22.5, 19.8, 2.8, 1.5, 0, "fur", { line: true }),
+      rgE(25, 9.2 - b, 6.3, 5.6, 0, "fur", { line: true }),
+      rgE(22, 4.4 - b, 1.7, 1.7, 0, "fur"),
+      rgE(29, 11.5 - b, 3.8, 3.1, 0, "belly", { line: true }),
+      rgP([[28.2, 12.6 - b], [30.4, 12.6 - b], [30.4, 16 - b], [28.2, 16 - b]], "teeth", { flat: true }),
+      rgC(29.3, 12.6 - b, 29.3, 16 - b, 0.25, 0.25, "scale", { flat: true }),
+      rgE(31.7, 9.6 - b, 1.3, 1, 0, "ink", { flat: true }),
+      rgE(26.4, 7.5 - b, 1, 1.3, 0, "ink", { flat: true }), rgE(26.6, 7 - b, 0.45, 0.45, 0, "white", { flat: true })
+    ];
+  });
+  SPRITES.bs_heron = rigSprite(26, 34, {
+    grey: ["#d8dee4", "#a8b2bc", "#7a8692", "#545e6a"], wing: ["#a8b2bc", "#7a8692", "#5a6672", "#3e4852"], neck: ["#ffffff", "#eef2f4", "#c8d0d8", "#9aa4ae"],
+    beak: ["#ffe07a", "#f2c230", "#c8941a"], leg: ["#c8941a"], ink: ["#1b1226"], eye: ["#f6d36b"]
+  }, function (ph) {
+    var s = sin(ph * TAU2), lift = Math.max(0, s) * 4, nb = s * 0.6;
+    return [
+      rgC(10, 23, 9, 33, 0.8, 0.7, "leg"),
+      rgC(13, 23, 14 + lift * 0.4, 33 - lift, 0.8, 0.7, "leg", { line: true }),
+      rgP([[1.5, 21], [6, 17.5], [6.5, 22.5]], "wing"),
+      rgE(10.5, 19, 7.2, 5.2, -0.35, "grey", { line: true }),
+      rgE(9, 18, 5.6, 3.6, -0.35, "wing", { line: true }),
+      rgC(14.5, 16, 15.5 + nb, 10, 2.3, 1.8, "neck", { line: true }),
+      rgC(15.5 + nb, 10, 18.5 + nb, 5.5, 1.8, 2, "neck"),
+      rgC(16 + nb, 9, 17 + nb, 14, 0.4, 0.4, "ink", { flat: true }),
+      rgC(18 + nb, 4, 12 + nb, 2.5 + s, 0.8, 0.35, "ink", { flat: true }),
+      rgE(19 + nb, 5, 2.7, 2.3, 0, "neck", { line: true }),
+      rgP([[21 + nb, 4.3], [25.5 + nb, 5.6], [21 + nb, 6.4]], "beak", { line: true }),
+      rgE(19.8 + nb, 4.5, 0.9, 0.9, 0, "eye", { flat: true }), rgE(20 + nb, 4.5, 0.45, 0.5, 0, "ink", { flat: true })
+    ];
+  });
+  SPRITES.bs_silure = rigSprite(38, 20, {
+    body: ["#7e8e80", "#4e5e5a", "#38463f", "#26312c"], belly: ["#d0d0b0", "#a8a888", "#86866a"], fin: ["#62726a", "#45534e", "#313e3a", "#212a27"],
+    ink: ["#1e2422"], eye: ["#e8e0a0"], spot: ["#2e3a36"]
+  }, function (ph) {
+    var s = sin(ph * TAU2), w = s * 1.6;
+    return [
+      rgP([[1, 4 + w], [9, 9], [9, 12.5], [1, 17 + w]], "fin", { line: true }),
+      rgP([[12, 6], [17, 2], [21, 6]], "fin"),
+      rgE(17, 11, 12.5, 6, 0, "body", { line: true }),
+      rgE(21, 14.2, 9.5, 2.6, 0, "belly"),
+      rgE(12, 9, 1.2, 0.8, 0, "spot", { flat: true }), rgE(16, 8, 1, 0.7, 0, "spot", { flat: true }), rgE(9, 11, 0.9, 0.7, 0, "spot", { flat: true }),
+      rgP([[22, 14], [19.5, 18.5 + s * 0.5], [25.5, 16]], "fin", { line: true }),
+      rgE(28.5, 10.5, 8, 6, 0, "body", { line: true }),
+      rgC(31, 13.2, 37, 12.8, 0.6, 0.6, "ink", { flat: true }),
+      rgC(34, 12, 37.6, 17.5 + w * 0.6, 0.45, 0.3, "ink", { flat: true }),
+      rgC(33.5, 11, 37.6, 6.5 - w * 0.5, 0.4, 0.3, "ink", { flat: true }),
+      rgC(31, 14.5, 32.5, 19.5, 0.4, 0.3, "ink", { flat: true }),
+      rgE(31.5, 8, 1.2, 1.2, 0, "eye", { flat: true }), rgE(31.8, 8.1, 0.6, 0.65, 0, "ink", { flat: true })
+    ];
+  });
+  SPRITES.bs_ours = rigSprite(36, 28, {
+    fur: ["#7e5444", "#5a3a2a", "#40281c", "#2a1810"], muzzle: ["#b09278", "#8a6a54", "#6b5040"], ember: ["#ff8a2a"], ember2: ["#ffc04a"],
+    ash: ["#a8988c"], ink: ["#1e120c"]
+  }, function (ph) {
+    var s = sin(ph * TAU2), lk = s * 2, eb = ph < 0.5 ? "ember" : "ember2";
+    return [
+      rgC(9, 18, 8 + lk, 26.5, 3, 2.6, "fur"),
+      rgC(23, 18, 22 - lk, 26.5, 2.8, 2.5, "fur"),
+      rgE(16, 15, 11.5, 8.3, 0, "fur", { line: true }),
+      rgE(13, 9.5, 6.5, 4.5, -0.1, "fur"),
+      rgC(12.5, 18, 13.5 - lk, 26.5, 3, 2.6, "fur", { line: true }),
+      rgC(26, 18, 27 + lk, 26.5, 2.8, 2.5, "fur", { line: true }),
+      rgE(28, 12, 5.8, 5.2, 0, "fur", { line: true }),
+      rgE(25.5, 7, 1.9, 1.9, 0, "fur"),
+      rgE(32, 14, 3, 2.3, 0, "muzzle", { line: true }),
+      rgE(34.6, 13, 1.1, 0.9, 0, "ink", { flat: true }),
+      rgE(29, 10.5, 0.9, 0.9, 0, eb, { flat: true }),
+      rgC(10, 11, 14, 14, 0.5, 0.45, eb, { flat: true }), rgC(16, 8.5, 17.5, 13, 0.5, 0.4, eb, { flat: true }), rgC(19, 16, 22, 13.5, 0.45, 0.4, eb, { flat: true }),
+      rgC(7, 15, 9, 18, 0.45, 0.4, eb, { flat: true }),
+      rgE(12, 6.5, 2.2, 1, 0, "ash", { flat: true }), rgE(20, 8.5, 1.8, 0.8, 0, "ash", { flat: true })
+    ];
+  });
+  SPRITES.bs_sala_g = rigSprite(42, 18, {
+    body: ["#5a4646", "#342828", "#241a1a", "#160e0e"], belly: ["#e87a3a", "#d8572a", "#a8401e"], spot: ["#ffb02a"], spot2: ["#ff6a1a"],
+    flame: ["#ff8a2a"], flame2: ["#ffd05a"], eye: ["#ffe07a"], ink: ["#120a0a"]
+  }, function (ph) {
+    var S = [], i, a = ph * TAU2, lk = sin(a) * 2;
+    var tail = []; for (i = 0; i < 8; i++) tail.push([2 + i * 1.8, 10 + sin(a + i * 0.8) * 1.6 * (1 - i / 8)]);
+    for (i = 0; i < 7; i++) S.push(rgC(tail[i][0], tail[i][1], tail[i + 1][0], tail[i + 1][1], 0.8 + i * 0.35, 1.15 + i * 0.35, "body"));
+    S.push(rgC(16, 12, 14 + lk, 16.5, 1.1, 0.9, "body"), rgC(26, 12, 28 - lk, 16.5, 1.1, 0.9, "body"));
+    S.push(rgE(22, 10.5, 9.5, 4.6, 0, "body", { line: true }), rgE(23, 12.8, 7, 1.6, 0, "belly"));
+    S.push(rgC(18, 12, 19 - lk, 16.5, 1.1, 0.9, "body", { line: true }), rgC(28, 12, 27 + lk, 16.5, 1.1, 0.9, "body", { line: true }));
+    S.push(rgE(33.5, 9.5, 5.8, 4, 0, "body", { line: true }));
+    [[10, 9.5], [16, 8], [20, 11], [24, 8], [28, 10.5], [32, 7.5], [6, 10]].forEach(function (p, k) { S.push(rgE(p[0], p[1], 1.1, 0.9, 0, k % 2 ? "spot2" : "spot", { flat: true })); });
+    for (i = 0; i < 6; i++) { var fx = 14 + i * 3.4, fh = 3 + ((i + (ph * 4 | 0)) % 3); S.push(rgP([[fx - 1.4, 7], [fx + 0.4, 6.5 - fh], [fx + 1.6, 7]], (i + (ph * 4 | 0)) % 2 ? "flame" : "flame2", { flat: true })); }
+    S.push(rgC(35, 11.3, 39, 11, 0.4, 0.4, "ink", { flat: true }));
+    S.push(rgE(35.5, 8, 1.1, 1.1, 0, "eye", { flat: true }), rgE(35.8, 8, 0.5, 0.6, 0, "ink", { flat: true }));
+    return S;
+  });
+  SPRITES.bs_corbeau = rigSprite(32, 26, {
+    black: ["#50507a", "#30304a", "#1e1e30", "#12121c"], wing: ["#3e3e5e", "#26263c", "#18182a", "#0e0e18"], beak: ["#6a6a7a", "#44444e", "#2e2e36"],
+    crown: ["#ffe88a", "#f6c23a", "#c8941a"], red: ["#e02a2a"], leg: ["#3a3a44"]
+  }, function (ph) {
+    var f = sin(ph * TAU2) * 0.25;
+    return [
+      rgC(13, 19, 12, 25.5, 0.7, 0.6, "leg"), rgC(16, 19, 17, 25.5, 0.7, 0.6, "leg", { line: true }),
+      rgP([[1.5, 17], [9.5, 13], [9.5, 19]], "wing", { line: true }),
+      rgE(14.5, 15.5, 8.3, 6.2, -0.2, "black", { line: true }),
+      rgE(12.5, 13.5 - f * 6, 7.5, 4.2, -0.45 + f, "wing", { line: true }),
+      rgE(22, 9.5, 4.8, 4.2, 0, "black", { line: true }),
+      rgP([[25.5, 8.8], [31, 10.4], [25.5, 12]], "beak", { line: true }),
+      rgE(23.5, 8.4, 0.95, 0.95, 0, "red", { flat: true }),
+      rgP([[18.5, 5.8], [19, 1.6], [20.6, 3.8], [21.8, 0.6], [23, 3.8], [24.5, 1.6], [25, 5.8]], "crown", { line: true }),
+      rgE(21.8, 4.2, 0.65, 0.65, 0, "red", { flat: true })
+    ];
+  }, 4, { flying: true });
+  SPRITES.bs_pivert = rigSprite(28, 30, {
+    green: ["#a8d468", "#6a9a3a", "#4a7a2a", "#30561c"], wing: ["#7aa84a", "#4f7a2c", "#3a5e20", "#264014"], red: ["#ff7060", "#d8483a", "#9a2a20"],
+    face: ["#ffffff", "#eef0e0", "#c8ccb8"], beak: ["#e0e0d0", "#a8a898", "#78786a"], ink: ["#1b1226"], bar: ["#f6e08a"], leg: ["#8a8a7a"]
+  }, function (ph) {
+    var st = ph < 0.25 ? 2.5 : ph < 0.5 ? 1 : 0, hx = st * 0.6;
+    return [
+      rgP([[4, 19], [6.5, 29], [10.5, 21]], "wing", { line: true }),
+      rgC(12, 23, 14, 26, 0.7, 0.6, "leg"), rgC(10, 23, 11, 26.5, 0.7, 0.6, "leg"),
+      rgE(11.5, 17, 6.3, 7.8, -0.25, "green", { line: true }),
+      rgE(9.5, 16, 4.6, 6.2, -0.25, "wing", { line: true }),
+      rgE(8.5, 14, 0.7, 0.6, 0, "bar", { flat: true }), rgE(10, 17, 0.7, 0.6, 0, "bar", { flat: true }), rgE(8.6, 19.5, 0.7, 0.6, 0, "bar", { flat: true }),
+      rgE(15 + hx, 7.5, 4.6, 4.3, 0, "green", { line: true }),
+      rgE(14 + hx, 4.3, 4, 2.6, 0, "red", { line: true }),
+      rgE(17 + hx, 8.6, 2.7, 2, 0, "face"),
+      rgC(15.5 + hx, 10, 18.8 + hx, 10.6, 0.45, 0.4, "ink", { flat: true }),
+      rgP([[18.6 + hx, 6.8], [22 + st * 2 + hx, 7.9], [18.6 + hx, 9.3]], "beak", { line: true }),
+      rgE(16.2 + hx, 7, 0.85, 0.85, 0, "ink", { flat: true })
+    ];
+  }, 4, { flying: true });
+  SPRITES.bs_scolo = rigSprite(44, 14, {
+    seg: ["#e8785a", "#a83e2c", "#7a2a1e", "#541a12"], leg: ["#f2b05e"], ink: ["#1e0e0a"], head: ["#c85a3a", "#8a2e20", "#641e14", "#44120c"]
+  }, function (ph) {
+    var S = [], a = ph * TAU2, i;
+    for (i = 0; i < 10; i++) {
+      var x = 3.5 + i * 3.5, y = 6.5 + sin(a + i * 0.7) * 1.1, lk = sin(a * 2 + i) * 1.2;
+      S.push(rgC(x, y + 1.5, x - 1 + lk, y + 6.2, 0.4, 0.3, "leg", { flat: true }));
+      S.push(rgC(x + 0.6, y + 1.2, x + 1.4 - lk, y + 6, 0.4, 0.3, "leg", { flat: true }));
+    }
+    for (i = 0; i < 10; i++) S.push(rgE(3.5 + i * 3.5, 6.5 + sin(a + i * 0.7) * 1.1, 2.4 + i * 0.05, 2.7, 0, "seg", { line: true }));
+    var hy = 6 + sin(a + 7) * 1.1;
+    S.push(rgC(39, hy - 1.2, 43.5, hy - 4.5, 0.35, 0.25, "ink", { flat: true }), rgC(38.5, hy - 1.4, 41, hy - 5.5, 0.35, 0.25, "ink", { flat: true }));
+    S.push(rgE(39.5, hy, 3.1, 2.7, 0, "head", { line: true }));
+    S.push(rgC(41, hy + 1.5, 43.5, hy + 3 + sin(a) * 0.8, 0.6, 0.3, "ink", { flat: true }));
+    S.push(rgE(40.5, hy - 0.8, 0.6, 0.6, 0, "leg", { flat: true }));
+    return S;
+  });
+  SPRITES.bs_reine_f = rigSprite(38, 24, {
+    chitin: ["#d87a5a", "#963e2c", "#6e2a1e", "#4a1a12"], stripe: ["#4a1a12"], wing: ["#f0f6f6", "#d0e0e4", "#a8c0c8"], ink: ["#1e0e0a"],
+    crown: ["#ffe88a", "#f6c23a", "#c8941a"], eye: ["#f6d36b"]
+  }, function (ph) {
+    var a = ph * TAU2, lk = sin(a) * 1.6, S = [];
+    S.push(rgE(17, 5.5, 7, 2.6, -0.35 + sin(a * 2) * 0.08, "wing"));
+    S.push(rgC(18, 13, 15 + lk, 21.5, 0.6, 0.45, "chitin"), rgC(21, 13, 21 - lk, 22, 0.6, 0.45, "chitin"), rgC(23, 12, 26 + lk, 21.5, 0.6, 0.45, "chitin"));
+    S.push(rgE(10.5, 12, 9.5, 7.5, -0.1, "chitin", { line: true }));
+    [6, 9.5, 13].forEach(function (x) { S.push(rgC(x, 5.5, x + 1, 18.5, 0.45, 0.45, "stripe", { flat: true })); });
+    S.push(rgE(21, 11, 4.2, 3.4, 0, "chitin", { line: true }));
+    S.push(rgC(19.5, 13, 17 - lk, 21.5, 0.6, 0.45, "chitin", { line: true }), rgC(22.5, 13, 24 + lk, 22, 0.6, 0.45, "chitin", { line: true }), rgC(24, 12.5, 28 - lk, 21, 0.6, 0.45, "chitin", { line: true }));
+    S.push(rgC(28, 6, 34, 1, 0.35, 0.3, "ink", { flat: true }), rgC(27, 6, 30, 0.8, 0.35, 0.3, "ink", { flat: true }));
+    S.push(rgE(28.5, 8.5, 4.8, 4.2, 0, "chitin", { line: true }));
+    S.push(rgC(31.5, 10.5, 35.5, 12.5 + sin(a) * 0.6, 0.7, 0.4, "ink", { flat: true }));
+    S.push(rgE(30, 7.5, 1, 1, 0, "eye", { flat: true }));
+    S.push(rgP([[25.5, 4.8], [26, 2], [27.3, 3.6], [28.3, 1.2], [29.3, 3.6], [30.6, 2], [31, 4.8]], "crown", { line: true }));
+    return S;
+  });
+
+  /* --- 8 méga boss --- */
+  var MOSS = ["#a8d468", "#6a9a3a", "#4a7a2a", "#30561c"];
+  SPRITES.mg_colosse = rigSprite(60, 48, {
+    rock: ["#c0a87e", "#8e7856", "#6a5840", "#4a3c2a"], soil: ["#8e6c48", "#6b4c30", "#4f3620", "#352414"], moss: MOSS,
+    eye: ["#f6e06b"], core: ["#ffd85a"], crack: ["#352414"], cap: ["#c8553d"], stem: ["#f3e1c0"], ink: ["#2b1709"]
+  }, function (ph) {
+    var a = ph * TAU2, sw = sin(a) * 2.2, b = Math.abs(sin(a)) * 1;
+    return [
+      rgC(14, 19 - b, 8, 34 + sw, 5, 6, "rock"), rgE(8, 37 + sw, 5.3, 4.6, 0, "rock", { line: true }),
+      rgC(21, 34, 20, 45.5, 6.2, 5.6, "soil"),
+      rgE(30, 25 - b, 15.5, 12.5, 0, "rock", { line: true }),
+      rgC(37, 34, 38 - sw * 0.5, 45.5, 6.2, 5.6, "soil", { line: true }),
+      rgE(22, 22 - b, 2.8, 2, 0.4, "crack", { flat: true }), rgE(37, 31 - b, 2.4, 1.6, -0.3, "crack", { flat: true }),
+      rgE(30, 26 - b, 3.8, 3.8, 0, "core", { flat: true }),
+      rgC(30, 22 - b, 28, 18 - b, 0.5, 0.4, "core", { flat: true }), rgC(31, 29.5 - b, 33.5, 33 - b, 0.5, 0.4, "core", { flat: true }),
+      rgE(17, 15.5 - b, 5.5, 3.3, -0.2, "moss", { line: true }), rgE(43, 15 - b, 5.5, 3.3, 0.2, "moss", { line: true }),
+      rgE(30, 10.5 - b, 8.5, 7.3, 0, "rock", { line: true }),
+      rgE(29, 4.3 - b, 7.5, 3.1, 0, "moss", { line: true }),
+      rgE(27, 10.5 - b, 1.7, 1.3, 0, "eye", { flat: true }), rgE(33, 10.5 - b, 1.7, 1.3, 0, "eye", { flat: true }),
+      rgC(27, 14.8 - b, 33, 15.2 - b, 0.6, 0.6, "ink", { flat: true }),
+      rgC(47, 19 - b, 51, 33 - sw, 5, 6.5, "rock", { line: true }), rgE(51, 36 - sw, 5.8, 5.2, 0, "rock", { line: true }),
+      rgC(45, 10.5 - b, 45, 13.5 - b, 0.7, 0.7, "stem", { flat: true }), rgE(45, 10 - b, 2.8, 1.7, 0, "cap", { line: true }),
+      rgE(44.3, 9.4 - b, 0.6, 0.5, 0, "stem", { flat: true })
+    ];
+  }, 4, { ns: 2.6 });
+  SPRITES.mg_mere = rigSprite(52, 36, {
+    skin: ["#86ccb4", "#4e9e8a", "#36786a", "#245a50"], belly: ["#ece4b8", "#c8c090", "#a8a070"], spot: ["#2e6a5e"], pad: ["#9ad468", "#5a9a3a", "#3f7a2a"],
+    eye: ["#ffe07a"], ink: ["#14302a"], sac: ["#d8f0f8", "#a8d0e0", "#80b0c8"], flower: ["#f29ad8"], drop: ["#bfefff"]
+  }, function (ph) {
+    var a = ph * TAU2, pu = (sin(a) + 1) * 0.9, b = Math.abs(sin(a)) * 0.6;
+    return [
+      rgE(13, 27, 9.5, 6.5, -0.3, "skin", { line: true }), rgE(10, 33.5, 6.5, 2, 0, "skin"),
+      rgE(23, 22 - b, 16.5, 11.5, 0, "skin", { line: true }),
+      rgE(29, 26 - b, 10.5, 6, 0, "belly"),
+      rgE(16, 17 - b, 1.8, 1.4, 0, "spot", { flat: true }), rgE(21, 14.5 - b, 1.5, 1.2, 0, "spot", { flat: true }), rgE(11, 22 - b, 1.4, 1.1, 0, "spot", { flat: true }),
+      rgC(36, 25, 39, 33.5, 3.2, 2.6, "skin", { line: true }), rgE(40.5, 34, 4.3, 1.7, 0, "skin", { line: true }),
+      rgE(36, 15 - b, 10.5, 8.3, 0, "skin", { line: true }),
+      rgE(41, 22 - b, 5 + pu, 3.8 + pu * 0.8, 0, "sac", { line: true }),
+      rgE(33.5, 8 - b, 3.7, 3.4, 0, "skin", { line: true }), rgE(41, 8.8 - b, 3.2, 3, 0, "skin", { line: true }),
+      rgE(34, 7.6 - b, 2.2, 2.2, 0, "eye", { flat: true }), rgE(34.3, 7.7 - b, 1.7, 0.6, 0, "ink", { flat: true }),
+      rgE(41.4, 8.4 - b, 1.9, 1.9, 0, "eye", { flat: true }), rgE(41.7, 8.5 - b, 1.5, 0.55, 0, "ink", { flat: true }),
+      rgC(38, 17.5 - b, 46.5, 16.2 - b, 0.6, 0.6, "ink", { flat: true }),
+      rgP([[12, 10.5 - b], [24, 10.5 - b], [22, 13 - b], [14, 13 - b]], "pad", { line: true }),
+      rgE(18, 10.8 - b, 6.5, 2, 0, "pad", { line: true }),
+      rgE(19, 8.8 - b, 1.8, 1.5, 0, "flower", { line: true }),
+      rgE(47, 26 + ph * 6, 0.6, 0.9, 0, "drop", { flat: true })
+    ];
+  }, 4, { ns: 3 });
+  SPRITES.mg_brasier = rigSprite(56, 30, {
+    rock: ["#76523e", "#4a3028", "#33201a", "#22140e"], lava: ["#ff8a2a"], lava2: ["#ffd05a"], flame: ["#ff6a1a"], ink: ["#120806"]
+  }, function (ph) {
+    var S = [], i, a = ph * TAU2, lk = sin(a) * 2.4, fi = ph * 4 | 0;
+    var tail = []; for (i = 0; i < 8; i++) tail.push([2 + i * 2.4, 17 + sin(a + i * 0.8) * 2 * (1 - i / 8)]);
+    for (i = 0; i < 7; i++) S.push(rgC(tail[i][0], tail[i][1], tail[i + 1][0], tail[i + 1][1], 1 + i * 0.5, 1.5 + i * 0.5, "rock"));
+    S.push(rgC(20, 20, 17 + lk, 27.5, 1.7, 1.4, "rock"), rgC(33, 20, 36 - lk, 27.5, 1.7, 1.4, "rock"));
+    S.push(rgE(28, 18.5, 12.5, 6.5, 0, "rock", { line: true }));
+    S.push(rgC(22, 20, 23 - lk, 27.5, 1.7, 1.4, "rock", { line: true }), rgC(36, 20, 35 + lk, 27.5, 1.7, 1.4, "rock", { line: true }));
+    S.push(rgE(44, 15.5, 7.5, 5.8, 0, "rock", { line: true }));
+    [[18, 17, 23, 20], [26, 15, 30, 19], [32, 21, 36, 17.5], [12, 18, 15, 16], [41, 17, 44, 19.5], [8, 17.5, 10, 19.5]].forEach(function (c, k) { S.push(rgC(c[0], c[1], c[2], c[3], 0.55, 0.45, (k + fi) % 3 ? "lava" : "lava2", { flat: true })); });
+    for (i = 0; i < 9; i++) {
+      var fx = 15 + i * 3.4, fh = 3.5 + ((i * 7 + fi * 3) % 5);
+      S.push(rgP([[fx - 1.8, 13.5], [fx + 0.3 + sin(a + i) * 0.8, 13 - fh], [fx + 1.8, 13.5]], (i + fi) % 2 ? "flame" : "lava2", { flat: true }));
+    }
+    S.push(rgP([[40, 10.5], [42, 6 - (fi % 2) * 2], [44, 10]], "lava", { flat: true }));
+    S.push(rgC(46, 18, 51, 17.6, 0.5, 0.5, "ink", { flat: true }), rgC(47, 18.5, 50, 18.4, 0.3, 0.3, "lava", { flat: true }));
+    S.push(rgE(46.5, 13.5, 1.5, 1.3, 0, "lava2", { flat: true }));
+    return S;
+  }, 4, { ns: 3.4 });
+  SPRITES.mg_tempete = rigSprite(46, 38, {
+    feather: ["#f0fcf6", "#bcdcd4", "#88aaa8", "#5a7a7a"], dark: ["#6e9098", "#4a6a72", "#34525a", "#223c44"], disc: ["#ffffff"],
+    eye: ["#fff47a"], ink: ["#1b1226"], beak: ["#e0a82a"], bolt: ["#fff47a"], cloud: ["#ffffff", "#e6f2f4", "#c0d4d8"]
+  }, function (ph) {
+    var a = ph * TAU2, f = sin(a) * 2.5, bo = (ph * 4 | 0) % 2;
+    var S = [
+      rgP([[3, 11 + f], [15, 15], [15, 28], [1, 24 + f]], "dark", { line: true }),
+      rgP([[43, 11 + f], [31, 15], [31, 28], [45, 24 + f]], "dark", { line: true }),
+      rgC(19, 31, 18, 36, 0.9, 0.8, "beak"), rgC(27, 31, 28, 36, 0.9, 0.8, "beak"),
+      rgE(23, 22.5, 10.5, 11.5, 0, "feather", { line: true })
+    ];
+    [[20, 21], [26, 21], [23, 25], [19.5, 28], [26.5, 28]].forEach(function (p) { S.push(rgP([[p[0] - 1, p[1]], [p[0], p[1] + 1.5], [p[0] + 1, p[1]]], "dark", { flat: true })); });
+    S.push(rgE(23, 11, 9.5, 7.5, 0, "feather", { line: true }));
+    S.push(rgP([[14, 6.5], [14.5, 0.5], [18.5, 5]], "feather", { line: true }), rgP([[32, 6.5], [31.5, 0.5], [27.5, 5]], "feather", { line: true }));
+    S.push(rgE(19.3, 11.3, 3.8, 3.6, 0, "disc", { flat: true }), rgE(26.7, 11.3, 3.8, 3.6, 0, "disc", { flat: true }));
+    S.push(rgE(19.5, 11.3, 2.1, 2.1, 0, "eye", { flat: true }), rgE(19.7, 11.4, 1.1, 1.1, 0, "ink", { flat: true }));
+    S.push(rgE(26.5, 11.3, 2.1, 2.1, 0, "eye", { flat: true }), rgE(26.7, 11.4, 1.1, 1.1, 0, "ink", { flat: true }));
+    S.push(rgP([[22, 13], [24, 13], [23, 16.5]], "beak", { line: true }));
+    S.push(rgP([[5 + bo, 14], [9, 17.5], [7, 18], [11, 23], [6, 18.5], [8, 18]], "bolt", { flat: true }));
+    S.push(rgP([[41 - bo, 14], [37, 17.5], [39, 18], [35, 23], [40, 18.5], [38, 18]], "bolt", { flat: true }));
+    S.push(rgE(17, 3.2 + f * 0.2, 3.2, 1.8, 0, "cloud"), rgE(23, 2.4, 3.8, 2.2, 0, "cloud"), rgE(29, 3.2 - f * 0.2, 3.2, 1.8, 0, "cloud"));
+    return S;
+  }, 4, { ns: 2.2 });
+  SPRITES.mg_racines = rigSprite(60, 48, {
+    bark: ["#a4825a", "#6b4c30", "#4f3620", "#352414"], root: ["#94724c", "#5e4228", "#44301c", "#2c2012"], moss: MOSS,
+    hollow: ["#1e1612"], eye: ["#9cf06a"], groove: ["#352414"]
+  }, function (ph) {
+    var a = ph * TAU2, sw = sin(a) * 2, S = [];
+    [[22, 34, 6, 46], [26, 36, 15, 47], [30, 37, 28, 47.5], [34, 36, 42, 47], [38, 34, 54, 46], [30, 33, 33 + sw, 47]].forEach(function (r, i) {
+      var mx = (r[0] + r[2]) / 2 + sin(a + i) * 1.5, my = (r[1] + r[3]) / 2 + 2;
+      S.push(rgC(r[0], r[1], mx, my, 3.2, 2.4, "root", { line: i > 3 }), rgC(mx, my, r[2], r[3], 2.4, 1.2, "root"));
+    });
+    S.push(rgC(20, 15, 10, 4 + sw, 2.6, 1.2, "bark"), rgC(13, 8 + sw * 0.6, 6, 9 + sw, 1.2, 0.8, "bark"));
+    S.push(rgE(30, 24, 13.5, 15, 0, "bark", { line: true }));
+    [[23, 13, 22, 34], [37, 12, 38, 33], [30, 28, 30, 37]].forEach(function (g) { S.push(rgC(g[0], g[1], g[2], g[3], 0.5, 0.5, "groove", { flat: true })); });
+    S.push(rgC(40, 15, 50, 3 - sw, 2.6, 1.2, "bark", { line: true }), rgC(47, 7 - sw * 0.6, 54, 7.5 - sw, 1.2, 0.8, "bark"));
+    S.push(rgE(30, 19, 6.3, 5.3, 0, "hollow", { flat: true }));
+    S.push(rgE(27.5, 18, 1.5, 1.3, 0, "eye", { flat: true }), rgE(32.5, 18, 1.5, 1.3, 0, "eye", { flat: true }));
+    S.push(rgC(28, 21.8, 32, 21.8, 0.5, 0.5, "eye", { flat: true }));
+    S.push(rgE(30, 8.5, 10, 4.3, 0, "moss", { line: true }), rgE(9.5, 4 + sw, 4, 2.5, 0, "moss", { line: true }), rgE(50.5, 3 - sw, 4, 2.5, 0, "moss", { line: true }));
+    S.push(rgE(25, 6.5, 1, 0.8, 0, "eye", { flat: true }), rgE(35, 7, 1, 0.8, 0, "eye", { flat: true }));
+    return S;
+  }, 4, { ns: 2.8 });
+  SPRITES.mg_brochet = rigSprite(58, 26, {
+    body: ["#eefaff", "#a8d8f0", "#78a8c8", "#4a7898"], belly: ["#ffffff", "#eef6fa", "#c8dce8"], fin: ["#bfe6f6", "#8ac0dc", "#5e94b4", "#3e6a88"],
+    ice: ["#e8fbff"], ice2: ["#bfefff"], bar: ["#5e8eae"], eye: ["#ffe07a"], ink: ["#14283a"], teeth: ["#ffffff"]
+  }, function (ph) {
+    var a = ph * TAU2, w = sin(a) * 2, jaw = (sin(a) + 1) * 1.1, S = [];
+    S.push(rgP([[1, 5 + w], [10, 11], [10, 14.5], [1, 21 + w]], "fin", { line: true }));
+    S.push(rgP([[13, 16], [10, 22], [17, 17.5]], "fin"));
+    S.push(rgE(27, 13, 18.5, 6.8, 0, "body", { line: true }));
+    S.push(rgE(31, 16.5, 13.5, 2.8, 0, "belly"));
+    [16, 21, 26, 31].forEach(function (x) { S.push(rgC(x, 8, x - 1, 16, 0.55, 0.45, "bar", { flat: true })); });
+    for (var i = 0; i < 6; i++) { var x = 14 + i * 4.2, h = 4 + (i % 3); S.push(rgP([[x - 1.8, 7.2], [x + 0.6, 7 - h], [x + 1.8, 7]], i % 2 ? "ice" : "ice2", { flat: true })); }
+    S.push(rgP([[30, 17], [27, 23.5], [34, 18.5]], "fin", { line: true }));
+    S.push(rgC(43, 16, 55, 15.5 + jaw, 2, 1, "body", { line: true }));
+    S.push(rgE(46, 12, 8.5, 5, 0, "body", { line: true }));
+    S.push(rgC(46, 13.5, 57, 13.2, 1.8, 0.9, "body"));
+    for (i = 0; i < 4; i++) S.push(rgP([[47 + i * 2.4, 14.3], [48 + i * 2.4, 15.8 + jaw * 0.4], [49 + i * 2.4, 14.3]], "teeth", { flat: true }));
+    S.push(rgE(46.5, 10, 1.6, 1.6, 0, "eye", { flat: true }), rgE(46.9, 10.1, 0.8, 0.9, 0, "ink", { flat: true }));
+    return S;
+  }, 4, { ns: 2.8 });
+  SPRITES.mg_phenix = rigSprite(48, 38, {
+    body: ["#ffe07a", "#ff9a3a", "#d8572a", "#a8301a"], wing: ["#ffc04a", "#ff7a2a", "#c8401e", "#8a2414"], flame: ["#ffe88a"], flame2: ["#ff5a1a"],
+    beak: ["#f6c23a", "#c8941a"], eye: ["#ffffff"], ink: ["#2a0a04"]
+  }, function (ph) {
+    var a = ph * TAU2, f = sin(a) * 4, fi = ph * 4 | 0, S = [];
+    for (var i = 0; i < 3; i++) S.push(rgC(16, 24, 2 + i * 2, 32 + i * 2 - sin(a + i) * 2, 1.8, 0.6, i % 2 ? "flame2" : "wing", { flat: i === 1 }));
+    S.push(rgP([[20, 18], [6, 4 - f], [10, 12 - f * 0.5], [3, 14 - f * 0.4], [12, 20], [18, 24]], "wing", { line: true }));
+    S.push(rgE(23, 21, 8.5, 7.5, -0.15, "body", { line: true }));
+    S.push(rgC(21, 27, 20, 33, 0.8, 0.6, "beak"), rgC(25, 27, 26, 33, 0.8, 0.6, "beak"));
+    S.push(rgP([[25, 17], [42, 3 - f], [38, 11 - f * 0.5], [46, 12 - f * 0.4], [36, 20], [28, 24]], "wing", { line: true }));
+    S.push(rgE(30, 12, 5.2, 4.6, 0, "body", { line: true }));
+    for (i = 0; i < 3; i++) S.push(rgP([[27 + i * 2, 8.5], [26 + i * 2.6, 2 - ((i + fi) % 2) * 1.5], [29 + i * 2, 8]], (i + fi) % 2 ? "flame" : "flame2", { flat: true }));
+    S.push(rgP([[34, 11.2], [39, 12.6], [34, 14.2]], "beak", { line: true }));
+    S.push(rgE(31.5, 11, 1.1, 1.1, 0, "eye", { flat: true }), rgE(31.8, 11.1, 0.55, 0.6, 0, "ink", { flat: true }));
+    [[10, 8], [40, 8], [8, 16], [43, 15]].forEach(function (p, k) { if ((k + fi) % 2) S.push(rgE(p[0], p[1] - f * 0.5, 0.8, 0.8, 0, "flame", { flat: true })); });
+    return S;
+  }, 4, { ns: 3.2, flying: true });
+  SPRITES.mg_aigle = rigSprite(48, 34, {
+    brown: ["#a8784a", "#7a5232", "#5a3a22", "#3e2614"], wing: ["#8e623c", "#664428", "#4a301a", "#321e10"], head: ["#ffffff", "#f0ece4", "#d0c8bc", "#a8a094"],
+    beak: ["#ffe07a", "#f2c230", "#c8941a"], ink: ["#1b1226"], eye: ["#ffd05a"], tip: ["#2a1a10"]
+  }, function (ph) {
+    var a = ph * TAU2, f = sin(a) * 4, S = [];
+    S.push(rgP([[9, 22], [15, 24], [14, 31], [8, 30]], "wing"));
+    S.push(rgP([[20, 15], [2, 6 - f], [4, 12 - f * 0.6], [1, 15 - f * 0.4], [6, 19], [17, 23]], "wing", { line: true }));
+    S.push(rgC(4, 9 - f * 0.8, 1.5, 15 - f * 0.4, 0.7, 0.7, "tip", { flat: true }));
+    S.push(rgE(22, 19, 8.5, 7, -0.2, "brown", { line: true }));
+    S.push(rgC(20, 25, 19, 31, 1, 0.8, "beak"), rgC(24, 25, 25, 31, 1, 0.8, "beak", { line: true }));
+    S.push(rgP([[25, 14], [44, 4 - f], [42, 11 - f * 0.6], [47, 13 - f * 0.4], [40, 18], [28, 22]], "wing", { line: true }));
+    S.push(rgC(44, 6 - f * 0.8, 47, 12.5 - f * 0.4, 0.7, 0.7, "tip", { flat: true }));
+    S.push(rgE(30, 10.5, 5.5, 4.8, 0, "head", { line: true }));
+    S.push(rgP([[33.5, 9], [38.5, 10], [38, 13], [35.5, 12.6], [33.5, 12.5]], "beak", { line: true }));
+    S.push(rgE(31.8, 9.3, 1, 0.9, 0, "eye", { flat: true }), rgE(32.1, 9.4, 0.5, 0.5, 0, "ink", { flat: true }));
+    S.push(rgC(29.5, 8.2, 33, 8.4, 0.35, 0.35, "ink", { flat: true }));
+    return S;
+  }, 4, { ns: 3, flying: true });
+
+  // les boss pointent sur leurs sprites dessinés
+  [["castor", "bs_castor"], ["heron", "bs_heron"], ["silure", "bs_silure"], ["ours", "bs_ours"], ["sala_g", "bs_sala_g"], ["corbeau", "bs_corbeau"],
+   ["pivert", "bs_pivert"], ["scolo", "bs_scolo"], ["reine_f", "bs_reine_f"], ["colosse", "mg_colosse"], ["mere", "mg_mere"], ["brasier", "mg_brasier"],
+   ["tempete", "mg_tempete"], ["racines_m", "mg_racines"], ["brochet", "mg_brochet"], ["phenix", "mg_phenix"], ["aigle", "mg_aigle"]].forEach(function (p) {
+    var e = ENEMIES[p[0]]; if (!e) return;
+    var sp = SPRITES[p[1]]; if (!sp.ns) sp.ns = e.scale || 1;
+    e.sprite = p[1]; delete e.tint;
+  });
+
+  // les 7 boss d'origine : volume en 3 tons (bord haut éclairci, bord bas assombri)
+  function autoShade(def) {
+    var pal = {}, k, map = {}, CH = "0123456789@#$%&*+=?!";
+    for (k in def.pal) pal[k] = def.pal[k];
+    var ci = 0;
+    function lum(c) { var v = hx(c); return (v[0] * 0.3 + v[1] * 0.59 + v[2] * 0.11) / 255; }
+    function variant(ch, up) {
+      var key = ch + (up ? "+" : "-");
+      if (!map[key]) { var c = def.pal[ch]; map[key] = CH[ci++]; pal[map[key]] = up ? mixc(c, "#ffffff", 0.22) : mixc(c, "#000000", 0.24); }
+      return map[key];
+    }
+    def.frames = def.frames.map(function (rows) {
+      return rows.map(function (row, y) {
+        return row.split("").map(function (ch, x) {
+          if (ch === "." || !def.pal[ch] || lum(def.pal[ch]) < 0.18 || ci > CH.length - 2) return ch;
+          var up = y === 0 || (rows[y - 1][x] || ".") === ".", dn = y === rows.length - 1 || (rows[y + 1][x] || ".") === ".";
+          if (up && !dn) return variant(ch, true);
+          if (dn && !up) return variant(ch, false);
+          return ch;
+        }).join("");
+      });
+    });
+    def.pal = pal;
+  }
+  ["boar", "owl", "queen", "stag", "mushking", "bigmole", "golem"].forEach(function (n) { if (SPRITES[n]) autoShade(SPRITES[n]); });
+
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
