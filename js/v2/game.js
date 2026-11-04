@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.0.0-a2";
+  var VERSION = "2.0.0-a3";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -239,6 +239,7 @@
     p.might += 0.1 * (p.devil || 0) * (it.masque || 0);
     p.regen += Math.min(5, (r && r.shrinesUsed) || 0) * 0.5 * (it.halo || 0) + 0.2 * (it.graine || 0);
     p.speed *= 1 + 0.1 * (it.boussole || 0);
+    p.maxHp *= 1 + 0.25 * (it.coeur_humus || 0);
     p.mount = it.laie ? "mount_boar" : it.lievre ? "mount_hare" : it.selle ? "mount_scarab" : null;
     if (p.mount) { p.speed *= p.mount === "mount_hare" ? 1.35 : p.mount === "mount_boar" ? 1.25 : 1.2; if (p.mount === "mount_hare") p.dodge += 0.08; if (p.mount === "mount_boar") p.armor += 2; }
     p.xpMul += 0.2 * (it.plume_solo || 0);
@@ -493,6 +494,7 @@
     var rm0 = rageMin();
     if (rm0 > 0 && !d.prop) { e.spd *= rageSpd(); if (!d.boss) { e.hp *= 1 + RAGE.hpPerMin * rm0; e.maxHp = e.hp; } e.rage = Math.min(1, rm0 / 5); }
     enemies.push(e);
+    giveElement(e);
     return e;
   }
   function spawn(type, ang, dist, around) {
@@ -543,8 +545,8 @@
   }
   function director(dt) {
     var st0 = stageTime(), rate = Math.min(14, 1.7 + st0 / 30 + (r.stage || 0) * 2) * DIFF.spawn * (1 + 0.6 * (humans() - 1)) * (1 + TIER.spawn * tierN());
-    spawnAcc += rate * dt;
-    while (spawnAcc >= 1) { spawnAcc--; if (enemies.length < 290) spawn(); }
+    if (D.SQUADS) squadDirector(dt, rate);
+    else { spawnAcc += rate * dt; while (spawnAcc >= 1) { spawnAcc--; if (enemies.length < 290) spawn(); } }
     if (r.time >= nextSwarm) {
       nextSwarm += 60;
       var n = 18 + Math.floor(r.time / 60) * 6;
@@ -580,6 +582,8 @@
     dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? (itn(p, "corne") ? 3 : 2) : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
     if (crit && r) r.crits = (r.crits || 0) + 1;
     dmg *= p.dmgX || 1;
+    dmg = elemHit(e, dmg);
+    if (e.d.mega && e.phase3 === 3 && p.anchored) dmg *= 1.5;
     if (p.items) dmg = itemDmg(e, dmg);
     if (p.packN && p.passives.meute) dmg *= 1 + 0.08 * p.passives.meute;
     if (p.rallyT > 0) dmg *= 1.4;
@@ -689,6 +693,7 @@
   }
   function enemyAI(e, d, dx, dy, dt) {
     var ai = e.d.ai, ang = Math.atan2(dy, dx);
+    if (r.freeze <= 0) { var ro = roleAI(e, ai, d, dx, dy, dt); if (ro !== null) return ro; }
     if (ai === "bomber") {
       if (e.fuse > 0) {
         e.fuse -= dt; e.flash = Math.sin(e.fuse * 40) > 0 ? 0.05 : 0;
@@ -810,6 +815,8 @@
       if (id === "ardent") { if (cooled(e, "ardent", 0.22)) addZone(e.x, e.y + 2, 8, 2.4, "fire", 5); }
       else if (id === "electrique") { e.ecd = (e.ecd === undefined ? 2 : e.ecd) - dt; if (e.ecd <= 0 && d < 120) { e.ecd = 4; warn(e.x, e.y, 44, 0.8, 12, e, true); SND.zap(); } }
       else if (id === "vampire") e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.01 * dt);
+      else if (id === "elementaire") { if (!e.elem) e.elem = ELEM_K[(Math.random() * 4) | 0]; if (cooled(e, "eaura", 0.6)) players.forEach(function (pl) { if (!pl.down && Math.hypot(pl.x - e.x, pl.y - e.y) < 30) damagePlayer(5, pl); }); }
+      else if (id === "meneur") { if (cooled(e, "lead", 0.5)) near(e.x, e.y, 80, function (o) { if (o !== e && !o.d.prop) o.buffT = 0.7; }); }
       else if (id === "invocateur") {
         e.icd = (e.icd === undefined ? 3 : e.icd) - dt;
         if (e.icd <= 0 && d < 200 && enemies.length < 200) {
@@ -827,6 +834,7 @@
   function bossAI(e, d, dx, dy, dt, mx, my, sp) {
     var p2 = e.hp < e.maxHp * 0.5, k, ang = Math.atan2(dy, dx), tg;
     if (r.freeze > 0) return [mx, my, sp];
+    if (e.d.bossAi === "mega_terre") return megaAI(e, d, dx, dy, dt, mx, my, sp);
     switch (e.d.bossAi) {
       case "queen":
         if (d < 90) { var t = -my, u = mx; mx = t * 0.9 - mx * 0.25; my = u * 0.9 - my * 0.25; }
@@ -1378,7 +1386,7 @@
     var po = r.portal, inside = alive().filter(function (pl) { return Math.hypot(pl.x - po.x, (pl.y - po.y) * 1.25) < PORTAL.rad; });
     if (po.st === 0) {
       po.p = inside.length ? Math.min(1, po.p + dt / PORTAL.wake) : Math.max(0, po.p - dt * 0.5);
-      if (po.p >= 1) wakeGuardian(po);
+      if (po.p >= 1) { if (MAP.mega && D.ENEMIES[MAP.mega]) wakeMega(po); else wakeGuardian(po); }
     } else if (po.st === 1) {
       if (!po.boss || po.boss.dead) { po.st = 2; po.p = 0; drop("chest", po.x - 14, po.y + 20, 2); dropItem(po.x + 14, po.y + 20, 2); bannerAll("Le Gardien est tombé : le portail est ouvert !"); SND.level(); }
     } else if (po.st === 2) {
@@ -2481,6 +2489,178 @@
     p.x = ox; p.y = oy;
   };
   BEHAVIOR.combo = function () {};
+  /* ---------- 2.0 phase 3 : éléments, réactions, rôles, escouades, méga boss ---------- */
+  var ELEM_K = ["terre", "feu", "eau", "air"];
+  function atkElem(pl) { return pl && pl.arme ? armeOf(pl).element : null; }
+  function giveElement(e) {
+    if (e.d.prop || isArena()) return;
+    if (e.d.elem) { e.elem = e.d.elem; return; }
+    if (!MAP.element) return;
+    e.elem = Math.random() < 0.2 ? ELEM_K[(Math.random() * 4) | 0] : MAP.element;
+  }
+  // résistance à son propre élément (jamais d'immunité : 75 % max), faiblesse à l'élément qui le bat
+  function elemMul(e, el) {
+    if (!el || !e.elem) return 1;
+    if (el === e.elem) return e.d.boss || e.d.elite ? 0.4 : 0.6;
+    if (D.ELEMENTS[e.elem].weak === el) return 1.4;
+    return 1;
+  }
+  function elemHit(e, dmg) {
+    var el = atkElem(p); dmg *= elemMul(e, el);
+    if (e.d.prop || e.dead) return dmg;
+    var marks = [];
+    if (el) marks.push(el);
+    if (p.items) D.ITEMS.forEach(function (it) { if (it.elem && itn(p, it.id) && Math.random() < 0.2 * itn(p, it.id)) marks.push(it.elem); });
+    if (itn(p, "coeur_humus")) marks.push("terre");
+    for (var i = 0; i < marks.length; i++) {
+      var m = marks[i];
+      if (e.mark && e.mark !== m && e.markT > 0) { react(e, e.mark, m); e.mark = null; e.markT = 0; }
+      else if (!e.mark || e.markT <= 0 || e.mark === m) { if (m !== el || !e.mark) { e.mark = m; e.markT = 3; } }
+    }
+    return dmg;
+  }
+  function react(e, a, b) {
+    var key = [a, b].sort().join("+"), rc = D.REACTIONS[key]; if (!rc) return;
+    if ((e.reactT || 0) > r.time) return;                 // une réaction par ennemi toutes les 1,5 s
+    e.reactT = r.time + 1.5;
+    r.reactions = (r.reactions || 0) + 1;
+    if (r.time - (r.reactTxt || 0) > 0.25) { r.reactTxt = r.time; texts.push({ x: e.x, y: e.y - 14, n: rc.name.toUpperCase() + " !", life: 0.9, col: rc.color }); }
+    var pw = 1 + 0.04 * (r.level || 1);
+    if (key === "air+eau") { e.slowT = 1.6; e.slow = 1; hurt2(e, 10 * pw); burst(e.x, e.y, rc.color, 10); }
+    else if (key === "air+feu") { explode(e.x, e.y, 30, 25 * pw, 0); addZone(e.x, e.y, 18, 2, "thorn", 0); }
+    else if (key === "eau+terre") { near(e.x, e.y, 46, function (o) { o.slowT = 3; o.slow = 0.6; }); ring(e.x, e.y, 40, false); hurt2(e, 8 * pw); }
+    else if (key === "eau+feu") { zones.push({ x: e.x, y: e.y, r: 30, t: 0, dur: 2.6, kind: "thorn", dmg: 5 * pw, owner: p }); ring(e.x, e.y, 30, false); }
+    else if (key === "feu+terre") { hurt2(e, 38 * pw); burst(e.x, e.y, rc.color, 16); if (S.opts.shake) shake = Math.max(shake, 0.1); }
+    else if (key === "air+terre") { near(e.x, e.y, 54, function (o) { var d = Math.hypot(o.x - e.x, o.y - e.y) || 1; if (!o.d.prop) { o.kx += (o.x - e.x) / d * 180; o.ky += (o.y - e.y) / d * 180; hurt2(o, 12 * pw); } }); ring(e.x, e.y, 50, false); }
+    SND.zap();
+  }
+  // dégâts de réaction : sans relancer les éléments (pas de chaîne infinie)
+  function hurt2(e, dmg) { if (e.dead) return; var keep = p.arme; p.arme = null; hurt(e, dmg, 0, 0); p.arme = keep; }
+  /* ---- les rôles ---- */
+  function roleAI(e, ai, d, dx, dy, dt) {
+    var tg = targetOf(e), ang = Math.atan2(dy, dx);
+    if (ai === "charger") {
+      if (e.dash > 0) { e.dash -= dt; e.x += e.cx * 175 * dt; e.y += e.cy * 175 * dt; return 0; }
+      if (e.windup > 0) { e.windup -= dt; e.flash = Math.sin(e.windup * 40) > 0 ? 0.05 : 0; if (e.windup <= 0) { e.dash = 0.5; } return 0; }
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt;
+      if (e.cd <= 0 && d < 130) { e.windup = 0.6; e.cd = 3; e.cx = dx / d; e.cy = dy / d; fx.push({ kind: "beam", x: e.x, y: e.y, a: ang, len: 90, w: 2, life: 0.6, max: 0.6, col: "255,90,60" }); return 0; }
+      return 1;
+    }
+    if (ai === "artillery") {
+      e.cd = (e.cd === undefined ? 2 + Math.random() * 2 : e.cd) - dt;
+      if (e.cd <= 0 && d < 170) { e.cd = 3.6; warn(tg.x, tg.y, 20, 1.1, e.d.dmg + 4); }
+      if (d < 80) return -0.7; if (d < 120) return 0.2; return 1;
+    }
+    if (ai === "predict") {
+      e.cd = (e.cd === undefined ? 1.5 + Math.random() * 2 : e.cd) - dt;
+      if (e.cd <= 0 && d < 160) {
+        e.cd = 2.6; var vx = tg.dir && tg.moving ? tg.dir.x * (tg.speed || 60) : 0, vy = tg.dir && tg.moving ? tg.dir.y * (tg.speed || 60) : 0, t = d / 95;
+        hostileShot(e.x, e.y, Math.atan2(tg.y + vy * t - e.y, tg.x + vx * t - e.x), 95, e.d.dmg); SND.whip();
+      }
+      if (d < 70) return -0.6; if (d < 110) return 0.3; return 1;
+    }
+    if (ai === "healer") {
+      e.cd = (e.cd === undefined ? 2 : e.cd) - dt;
+      if (e.cd <= 0) { e.cd = 3; var any = false; near(e.x, e.y, 60, function (o) { if (o !== e && !o.d.prop && o.hp < o.maxHp) { o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.15); any = true; } }); if (any) fx.push({ kind: "ring", x: e.x, y: e.y, r: 50, life: 0.4, max: 0.4, col: "110,230,120" }); }
+      if (d < 90) return -0.6; return 0.8;
+    }
+    if (ai === "ambush") {
+      if (e.burrowT > 0) { e.burrowT -= dt; if (e.burrowT <= 0) { e.x = e.ax; e.y = e.ay; e.under = false; burst(e.x, e.y, "#8a5a3b", 10); } return 0; }
+      e.cd = (e.cd === undefined ? 3 : e.cd) - dt;
+      if (e.cd <= 0 && tg.anchorT > 1.2 && d < 220) { e.cd = 5; e.burrowT = 0.7; e.ax = tg.x; e.ay = tg.y; e.under = true; warn(tg.x, tg.y, 16, 0.7, e.d.dmg + 6); return 0; }
+      return 1;
+    }
+    return null;
+  }
+  // Bouclier : les tirs de face sont bloqués (zones, pluie et boomerangs passent)
+  function shieldBlock(e, vx, vy) { return e.d.role === "bouclier" && !e.d.boss && (vx * (e.face || 1) < 0) ? 0.2 : 1; }
+  /* ---- directeur à budget : escouades ---- */
+  function speciesFor(role, x, y) {
+    var b = biomeAt(x, y), list = b.enemies.map(function (q) { return q[0]; }).filter(function (k) { return D.ENEMIES[k] && D.ENEMIES[k].role === role; });
+    if (!list.length) MAP.biomes.forEach(function (bb) { bb.enemies.forEach(function (q) { if (D.ENEMIES[q[0]] && D.ENEMIES[q[0]].role === role) list.push(q[0]); }); });
+    return list.length ? list[(Math.random() * list.length) | 0] : null;
+  }
+  function squadCost(sq) { var c = 0; Object.keys(sq).forEach(function (ro) { c += D.ROLES[ro].cost * sq[ro]; }); return c; }
+  function spawnSquad(sq, around, dist) {
+    around = around || randomAlive();
+    var a = Math.random() * TAU, R = dist || Math.hypot(W, H) / 2 + 12, cx = around.x + Math.cos(a) * R, cy = around.y + Math.sin(a) * R, out = [];
+    Object.keys(sq).forEach(function (ro) {
+      for (var i = 0; i < sq[ro]; i++) {
+        if (enemies.length >= 290) return;
+        var t = speciesFor(ro, cx, cy) || speciesFor("nuee", cx, cy) || "slug";
+        var e = spawnAt(t, cx + (Math.random() - 0.5) * 40, cy + (Math.random() - 0.5) * 30);
+        if (e) out.push(e);
+      }
+    });
+    // le Meneur : un élite qui renforce son escouade
+    if (out.length >= 6 && Math.random() < Math.min(0.5, 0.08 + tierN() * 0.04)) { var m = out[(Math.random() * out.length) | 0]; giveAffixes(m, 0); m.aff = m.aff || []; if (m.aff.indexOf("meneur") < 0) { m.aff.push("meneur"); m.d = Object.assign({}, m.d, { elite: true }); m.hp *= 2.2; m.maxHp = m.hp; } }
+    return out;
+  }
+  function squadDirector(dt, rate) {
+    r.credit = (r.credit || 0) + rate * dt;
+    if (!r.nextSquad) {
+      var cap = 6 + tierN() * 4 + stageTime() / 30, ok = D.SQUADS.filter(function (s) { return squadCost(s) <= cap; });
+      r.nextSquad = (ok.length ? ok : [D.SQUADS[0]])[(Math.random() * (ok.length || 1)) | 0];
+    }
+    var c = squadCost(r.nextSquad);
+    if (r.credit >= c && enemies.length < 260) { r.credit -= c; spawnSquad(r.nextSquad); r.nextSquad = null; }
+  }
+  /* ---- méga boss Terre : le Colosse d'humus ---- */
+  function wakeMega(po) {
+    var d = D.ENEMIES[MAP.mega];
+    var hp = d.hp * (1 + r.time / 300) * DIFF.hp * tierHp() * (1 + 0.5 * (players.length - 1));
+    var e = makeEnemy(MAP.mega, d, po.x, po.y - 80, hp);
+    e.scale = 2.6; e.giant = true; e.wander = true; e.awake = true; e.title = d.name + " · Terre"; e.elem = "terre"; e.phase3 = 1; e.cd = 1.5;
+    r.mega = { x: po.x, y: po.y - 30, R: 230, boss: e, t: 0 };
+    po.st = 1; po.boss = e; po.p = 1;
+    r.flash = 0.4; if (S.opts.shake) shake = 0.8;
+    bannerAll("Le ciel s'assombrit… le Colosse d'humus se réveille !"); SND.boom();
+    spawnSquad({ rodeur: 3, nuee: 6 }, e, 120);
+  }
+  function megaAI(e, d, dx, dy, dt, mx, my, sp) {
+    var f = e.hp / e.maxHp, ph = f > 0.66 ? 1 : f > 0.33 ? 2 : 3;
+    if (ph !== e.phase3) {
+      e.phase3 = ph; e.cd = 1.5;
+      if (ph === 2) { bannerAll("Phase 2 : il charge ! Esquive sur le côté (Volte)"); spawnSquad({ piegeur: 3, nuee: 6 }, e, 120); }
+      if (ph === 3) { bannerAll("Phase 3 : le sol tremble… ANCRE-TOI pour tenir et frapper !"); spawnSquad({ tireur: 4, bouclier: 1 }, e, 140); }
+      SND.boom(); if (S.opts.shake) shake = 0.5;
+    }
+    e.cd -= dt;
+    if (ph === 1) {
+      // le sol s'effondre sous tes pieds : bouge sans arrêt
+      if (e.cd <= 0) { e.cd = 1.1; players.forEach(function (pl) { if (!pl.down) warn(pl.x, pl.y, 22, 1.0, 22); }); }
+      sp *= 0.8;
+    } else if (ph === 2) {
+      if (e.roll > 0) { e.roll -= dt; mx = e.cx; my = e.cy; sp = 210; if (e.roll <= 0) { warn(e.x, e.y, 40, 0.4, 22, e); e.cd = 1.4; } }
+      else if (e.windup > 0) { e.windup -= dt; sp = 0; e.flash = Math.sin(e.windup * 30) > 0 ? 0.05 : 0; if (e.windup <= 0) { e.roll = 0.9; SND.boom(); } }
+      else if (e.cd <= 0) { e.windup = 1.0; e.cx = dx / d; e.cy = dy / d; fx.push({ kind: "beam", x: e.x, y: e.y, a: Math.atan2(dy, dx), len: 220, w: 9, life: 1.0, max: 1.0, col: "255,80,40" }); }
+    } else {
+      // séisme : ceux qui ne sont pas ancrés prennent le choc
+      sp *= 0.5;
+      if (e.cd <= 0 && !e.quakeT) { e.quakeT = 0.9; fx.push({ kind: "ring", x: e.x, y: e.y, r: 120, life: 0.9, max: 0.9, col: "200,160,96" }); banner("ANCRE-TOI !"); }
+      if (e.quakeT) {
+        e.quakeT -= dt;
+        if (e.quakeT <= 0) {
+          e.quakeT = 0; e.cd = 2.4; if (S.opts.shake) shake = 0.35; SND.boom();
+          players.forEach(function (pl) { if (pl.down || Math.hypot(pl.x - e.x, pl.y - e.y) > 300) return; if (pl.anchored) { texts.push({ x: pl.x, y: pl.y - 16, n: "TENU !", life: 0.8 }); } else damagePlayer(26, pl); });
+        }
+      }
+    }
+    return [mx, my, sp];
+  }
+  // l'arène du méga boss se ferme : on ne peut pas s'enfuir
+  function megaArena(pl) {
+    var m = r.mega; if (!m) return;
+    if (m.boss.dead) { r.mega = null; S.mega = S.mega || {}; if (!S.mega.terre) { S.mega.terre = Date.now(); save(); bannerAll("Colosse vaincu ! (1re victoire : le palier Cauchemar de la Clairière est débloqué)"); } drop("item", m.boss.x, m.boss.y, ITM.coeur_humus.idx); return; }
+    var dx = pl.x - m.x, dy = (pl.y - m.y) * 1.25, d = Math.hypot(dx, dy);
+    if (d > m.R) { pl.x = m.x + dx / d * m.R; pl.y = m.y + dy / d * m.R / 1.25; }
+  }
+  function drawMega(cx, cy) {
+    var m = r.mega; if (!m) return;
+    ctx.fillStyle = "rgba(10,6,20,.28)"; ctx.fillRect(cx, cy, W, H);
+    ctx.strokeStyle = "rgba(200,160,96," + (0.55 + 0.25 * Math.sin(r.time * 4)) + ")"; ctx.lineWidth = 2; ctx.setLineDash([6, 5]); ctx.lineDashOffset = -r.time * 20;
+    ctx.beginPath(); ctx.ellipse(m.x, m.y, m.R, m.R / 1.25, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+  }
   function moveMe(dt) {
     var v = (me.down || me.choosing || netMenuOpen) ? { x: 0, y: 0 } : inputVector();
     stateTick(me, v, dt);
@@ -2521,6 +2701,7 @@
       if (r.roundT >= r.roundLen) { endRound(); return; }
     }
     moveMe(dt);
+    if (r.mega) players.forEach(megaArena);
     tickPlayers(dt);
     r.freeze = Math.max(0, r.freeze - dt); r.flash = Math.max(0, r.flash - dt);
 
@@ -2542,7 +2723,8 @@
       var dx = tg.x - e.x, dy = tg.y - e.y, d = Math.hypot(dx, dy) || 1;
       e.flash -= dt;
       if (e.d.prop) { if (!nearAnyPlayer(e, 480)) e.dead = true; continue; }
-      var sp = e.spd * (e.slowT > 0 ? 1 - e.slow : 1);
+      var sp = e.spd * (e.slowT > 0 ? 1 - e.slow : 1) * (e.buffT > 0 ? 1.3 : 1);
+      if (e.buffT > 0) e.buffT -= dt; if (e.markT > 0) e.markT -= dt;
       if (r.freeze > 0) sp *= e.d.boss ? 0.5 : 0;
       e.slowT -= dt; e.anim += dt * (e.type === "wasp" || e.type === "moth" ? 14 : 5) * (r.freeze > 0 && !e.d.boss ? 0 : 1);
       var mx = dx / d, my = dy / d, ox = e.x, oy = e.y;
@@ -2589,7 +2771,7 @@
       if (!e.under) for (var j = 0; j < players.length; j++) {
         var pl = players[j];
         if (Math.abs(pl.x - e.x) < e.d.r + 5 && Math.abs(pl.y - e.y) < e.d.r + 5) {
-          var hb = pl.hp; damagePlayer(e.d.dmg * (e.dmgMul || 1), pl);
+          var hb = pl.hp; damagePlayer(e.d.dmg * (e.dmgMul || 1) * (e.buffT > 0 ? 1.3 : 1), pl);
           if (e.aff && pl.hp < hb && hasA(e, "vampire")) { e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.08); burst(e.x, e.y, AFX.vampire.color, 6); }
         }
       }
@@ -3485,7 +3667,7 @@
       if (q.pierce <= 0 || q.hit.indexOf(en.id) >= 0) return;
       if (Math.abs(en.x - q.x) > en.d.r + q.r || Math.abs(en.y - q.y) > en.d.r + q.r) return;
       q.hit.push(en.id); q.pierce--;
-      hurt(en, q.dmg, q.vx * 0.5, q.vy * 0.5);
+      hurt(en, q.dmg * shieldBlock(en, q.vx, q.vy), q.vx * 0.5, q.vy * 0.5);
       if (q.explode) { explode(q.x, q.y, q.explode, q.dmg * 0.6, 0); q.pierce = 0; }
       if (q.pierce <= 0) return false;
     });
@@ -3729,6 +3911,7 @@
     if (giants) drawGiantBases(giants);
     if (!isArena()) drawShrines(cx, cy);
     if (!isArena() && !isDungeon()) drawPortal();
+    drawMega(cx, cy);
 
     var bob = Math.sin(r.time * 4);
     gems.forEach(function (g) {
@@ -3766,13 +3949,17 @@
       if (e.x < cx - 60 || e.x > cx + W + 60 || e.y < cy - 60 || e.y > cy + H + 60) continue;
       if (e.under) { blit(SPR.mound[((r.time * 8) | 0) % 2], e.x, e.y + 2); continue; }
       var spr = (e.shellT > 0 || e.spin > 0 || e.shelled) ? SPR.turtleshell[0] : e.spr[(e.anim | 0) % e.spr.length];
-      var gs = e.giant ? 2 : 1;
+      var gs = e.scale || (e.giant ? 2 : 1);
       if (gs > 1) { ctx.save(); var fy = e.y + spr.h / 2; ctx.translate(e.x, fy); ctx.scale(gs, gs); ctx.translate(-e.x, -fy); }
       if (!e.spr.flying) shadow(e.x, e.y + spr.h / 2 - 2, spr.w * 0.7);
       else shadow(e.x, e.y + spr.h / 2 + 3, spr.w * 0.5);
       if (e.aff && e.aff.length) drawEliteFx(e, spr, e.face < 0);
       else if (e.d.elite && !e.d.prop) { ctx.strokeStyle = "rgba(246,211,107," + (0.55 + 0.35 * Math.sin(r.time * 6 + e.id)) + ")"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(Math.round(e.x), Math.round(e.y), Math.max(spr.w, spr.h) / 2 + 3 + Math.sin(r.time * 6 + e.id), 0, TAU); ctx.stroke(); }
       blit(spr, e.x, e.y, !e.d.prop && e.face < 0, e.flash > 0);
+      // élément : palette teintée, marque d'élément posée par tes coups
+      if (e.elem && !e.d.prop) { ctx.globalAlpha = e.d.mega ? 0.2 : 0.32; ctx.drawImage(tinted(spr, D.ELEMENTS[e.elem].color, e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1;
+        if (e.d.elite || e.d.boss) { ctx.fillStyle = "#1a120c"; ctx.fillRect(Math.round(e.x + spr.w / 2 - 1), Math.round(e.y - spr.h / 2 - 4), 5, 5); ctx.fillStyle = D.ELEMENTS[e.elem].color; ctx.fillRect(Math.round(e.x + spr.w / 2), Math.round(e.y - spr.h / 2 - 3), 3, 3); } }
+      if (e.mark && e.markT > 0) { ctx.fillStyle = D.ELEMENTS[e.mark].color; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(r.time * 10); ctx.fillRect(Math.round(e.x - 1), Math.round(e.y + spr.h / 2 + 1), 3, 2); ctx.globalAlpha = 1; }
       // bêtes enragées : voile rouge qui pulse de plus en plus fort
       if (rgA > 0 && !e.d.prop) { ctx.globalAlpha = rgA * (0.55 + 0.45 * Math.sin(r.time * 9 + e.id)); ctx.drawImage(tinted(spr, "#ff1a10", e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1; }
       if (e.aff && e.aff.length) drawEliteTag(e, spr);
@@ -3810,7 +3997,7 @@
     });
     if (giants) drawGiantTops(giants);
     fx.forEach(drawFx);
-    texts.forEach(function (t) { ctx.globalAlpha = Math.min(1, t.life * 3); drawText(t.n, t.x, t.y, "#fdf3de", "c"); });
+    texts.forEach(function (t) { ctx.globalAlpha = Math.min(1, t.life * 3); drawText(t.n, t.x, t.y, t.col || "#fdf3de", "c"); });
     ctx.globalAlpha = 1;
     ctx.restore();
     if (isDungeon()) drawDungeonLight(cx, cy);
@@ -4607,6 +4794,10 @@
           "<span>" + t.evos.map(function (e) { return "<b>" + esc(e.name) + "</b> : " + esc(e.desc); }).join("<br>") + "</span>" +
           (tf ? '<span class="fusion-recipe">+ ' + esc(D.PASSIVES[tf.p].name) + " → " + esc(tf.name) + " : " + esc(tf.desc) + "</span>" : "") + "</div></div>";
       });
+      html += '</div><h3 class="pick-title">Éléments</h3><p class="game-small">Chaque arme a un élément (Katana : Air, Arc : Feu, Bâton : Terre). Les ennemis résistent au leur (-40 %, -60 % pour élites et boss) et craignent celui qui le bat (+40 %) : Eau &gt; Feu &gt; Air &gt; Terre &gt; Eau. La Clairière est neutre. Deux éléments sur une même cible déclenchent une réaction : il faut un 2e élément (Braise, Goutte de rosée, Galet, Plume de brise).</p><div class="shop-list">';
+      Object.keys(D.REACTIONS).forEach(function (k) { var rc = D.REACTIONS[k]; html += '<div class="shop-item"><span class="shop-ic" style="background:' + rc.color + '"></span><div class="shop-text"><strong>' + esc(rc.name) + "</strong><span>" + k.split("+").map(function (x) { return D.ELEMENTS[x].name; }).join(" + ") + " : " + esc(rc.desc) + "</span></div></div>"; });
+      html += '</div><h3 class="pick-title">Rôles des ennemis</h3><div class="shop-list">';
+      Object.keys(D.ROLES).forEach(function (k) { var ro = D.ROLES[k], sp = Object.keys(D.ENEMIES).filter(function (e) { return D.ENEMIES[e].role === k; }); html += '<div class="shop-item"><span class="shop-ic">' + (sp[0] ? '<img src="' + spriteUrl(D.ENEMIES[sp[0]].sprite) + '" alt="">' : "") + '</span><div class="shop-text"><strong>' + esc(ro.name) + "</strong><span>" + esc(ro.desc) + "</span></div></div>"; });
       html += '</div><h3 class="pick-title">Fusions de techniques</h3><div class="shop-list">';
       [D.COMBOS, D.LEGENDS].forEach(function (set) {
         Object.keys(set).forEach(function (id) {
@@ -5558,6 +5749,13 @@
       return r.portal ? { x: r.portal.x, y: r.portal.y, st: r.portal.st, p: r.portal.p, stage: r.stage || 0, map: MAP.id, boss: r.portal.boss ? r.portal.boss.title : null } : { stage: r.stage || 0, map: MAP.id, stageT: stageTime() };
     },
     god: function (on) { me.god = on !== false; return me.god; },
+    mega: function (step) {
+      if (step === "spawn") { if (!r.portal) { r.stageT0 = r.time - PORTAL.at - 1; portalTick(0); } wakeMega(r.portal); }
+      if (step === "hp" && r.mega) r.mega.boss.hp = r.mega.boss.maxHp * arguments[1];
+      return r.mega ? { hp: Math.round(r.mega.boss.hp), max: Math.round(r.mega.boss.maxHp), ph: r.mega.boss.phase3, x: Math.round(r.mega.boss.x), anchored: me.anchored, me: Math.round(me.hp) } : { done: true, won: !!(S.mega && S.mega.terre), portal: r.portal && r.portal.st };
+    },
+    roles: function () { var c = {}; enemies.forEach(function (e) { var k = (e.d.role || "?") + (e.elem ? "/" + e.elem : ""); c[k] = (c[k] || 0) + 1; }); return c; },
+    react: function () { return r.reactions || 0; },
     rage: function (min) { r.stageT0 = r.time - RAGE.start - min * 60; return { rage: rageMin(), dmg: rageDmg(), spd: rageSpd() }; },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },

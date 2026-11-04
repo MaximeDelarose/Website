@@ -97,7 +97,9 @@
             <li><strong>Chaque écureuil change une règle du jeu</strong> : Noisette choisit parmi 4 cartes, le Capitaine a un équipage, le Planeur glisse sans cesse.</li>
             <li><strong>Au début de chaque partie, choisis ton arme</strong> : Katana, Arc ou Bâton. Elle donne ton attaque de base et accès à 12 des 20 techniques, chacune à sa façon.</li>
             <li><strong>6 techniques et 6 objets de niveau</strong>. Une technique au niveau 5 <strong>évolue</strong> (2 choix) ; évoluée + son objet au max : <strong>fusion</strong> ; deux techniques évoluées : <strong>technique fusionnée</strong> ; deux fusions : <strong>légendaire</strong>. Tout est listé dans le menu Techniques.</li>
-            <li>À venir : éléments et ennemis à rôles, équipement, talents, camp, Expédition.</li>
+            <li><strong>Ennemis à rôles</strong> qui arrivent en escouades (Chargeur, Tireur, Bouclier, Soutien, Rôdeur…) et <strong>4 éléments</strong> : résistances, faiblesses et 6 réactions. La Clairière reste neutre.</li>
+            <li><strong>Méga boss</strong> : en Clairière, le portail réveille le Colosse d'humus (Terre), 3 phases qui testent chacune un état.</li>
+            <li>À venir : équipement, talents, camp, Expédition.</li>
             <li>Sauvegarde séparée de la version 1, sans classement pendant la bêta.</li>
           </ul>
         </div>
@@ -130,7 +132,7 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v2a2";
+      var FALLBACK = "v2a3";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
         if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261104mb2" + b);
