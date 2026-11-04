@@ -102,7 +102,7 @@ function getLayer(): HTMLElement | null {
   if (!hasDom()) return null;
   if (layer && layer.isConnected) return layer;
   layer = document.createElement('div');
-  layer.className = 'fx-layer';
+  layer.className = 'rd-sparkle-layer';
   layer.setAttribute('aria-hidden', 'true');
   (document.getElementById('ui') ?? document.body).append(layer);
   return layer;
