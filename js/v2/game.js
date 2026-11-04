@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.2.0";
+  var VERSION = "2.2.1";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -605,11 +605,16 @@
     return list[0][0];
   }
   function bannerAll(text) { banner(text); netEv(["bn", text]); }
+  var bannerQ = [], bannerAt = 0;
   function banner(text) {
+    var now = performance.now();
+    if (now - bannerAt < 1100) { if (bannerQ.indexOf(text) < 0 && bannerQ.length < 3) bannerQ.push(text); if (!banner.qt) banner.qt = setTimeout(function () { banner.qt = 0; var nx = bannerQ.shift(); if (nx) { bannerAt = 0; banner(nx); } }, 1150 - (now - bannerAt)); return; }
+    bannerAt = now;
     var b = $("[data-banner]");
     b.textContent = text; b.hidden = false;
     b.classList.remove("show"); void b.offsetWidth; b.classList.add("show");
     clearTimeout(banner.t); banner.t = setTimeout(function () { b.hidden = true; }, 2600);
+    if (bannerQ.length && !banner.qt) banner.qt = setTimeout(function () { banner.qt = 0; var nx = bannerQ.shift(); if (nx) { bannerAt = 0; banner(nx); } }, 1150);
   }
   function director(dt) {
     var st0 = stageTime(), rate = Math.min(14, 1.7 + st0 / 30 + (r.stage || 0) * 2) * DIFF.spawn * (1 + 0.6 * (humans() - 1)) * (1 + TIER.spawn * tierN());
@@ -704,7 +709,11 @@
       var kb = e.d.boss ? 0.12 : (e.elem === "terre" || hasA(e, "lourd")) ? 0 : 1;
       e.kx += (kx || 0) * kb; e.ky += (ky || 0) * kb;
     }
-    if (S.opts.numbers && texts.length < 60) texts.push({ x: e.x + (Math.random() * 6 - 3), y: e.y - e.d.r - 6, n: dmg, life: 0.6 });
+    if (S.opts.numbers && !e.d.prop) {
+      var tn = e.dmgTxt;
+      if (tn && tn.life > 0.25 && texts.indexOf(tn) >= 0) { tn.n += dmg; tn.life = 0.6; tn.big = tn.n >= 100; if (crit) tn.col = "#f6d36b"; }
+      else if (texts.length < 50) { tn = { x: e.x + (Math.random() * 6 - 3), y: e.y - e.d.r - 6, n: dmg, life: 0.6, col: crit ? "#f6d36b" : null, dmgN: 1 }; texts.push(tn); e.dmgTxt = tn; }
+    }
     if (Net.dmgN < 30) { Net.dmgN++; netEv(["d", Math.round(e.x), Math.round(e.y - e.d.r - 6), dmg]); }
     if (p.items) onHitProcs(e);
     if (hf && !e.d.prop) hitFx(e, hf, dmg, hadMark);
@@ -1203,7 +1212,9 @@
   }
   function drawEliteTag(e, spr) {
     if (e.d.boss) return;
-    e.aff.forEach(function (id, i) { drawText(AFX[id].tag, e.x, e.y - spr.h / 2 - 7 - i * 7, AFX[id].color, "c"); });
+    var close = me && Math.abs(e.x - me.x) < 50 && Math.abs(e.y - me.y) < 40, n = e.aff.length, y0 = e.y - spr.h / 2 - 6;
+    if (close) e.aff.forEach(function (id, i) { drawText(AFX[id].tag, e.x, y0 - 1 - i * 7, AFX[id].color, "c"); });
+    else e.aff.forEach(function (id, i) { var px = Math.round(e.x - n * 2.5 + i * 5); ctx.fillStyle = "#1a120c"; ctx.fillRect(px - 1, y0 - 1, 5, 5); ctx.fillStyle = AFX[id].color; ctx.fillRect(px, y0, 3, 3); });
   }
   function drawZones() {
     zones.forEach(function (z) {
@@ -1914,10 +1925,12 @@
       ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(sx, by + 1, SEG, 2);                    // reflet
       for (var hx = 6; hx < SEG; hx += 6) { ctx.fillStyle = "rgba(0,0,0,.12)"; ctx.fillRect(sx + hx, by + bh - 4, 1, 2); }   // graduations
       // nom « collant » : reste lisible au bord gauche tant que le palier est visible, poussé par le suivant
-      var nm = tierName(k), tw = textWidth(nm), lx = Math.max(sx + 3, bx + 3);
-      if (lx + tw > sx + SEG - 3) lx = sx + SEG - 3 - tw;
-      drawText(nm, lx, by + 3, k >= 8 && k === t && Math.sin(r.time * 10) > 0 ? "#ff5a3a" : "#fdf3de");
+      if (k === t + 1) { var nl = sx + 3; if (nl < bx + bw - 10) { ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(sx, by + 1, 2, bh - 2); } }
     }
+    // le nom du palier en cours, lisible, à droite du curseur
+    var cn = tierName(t), cw = textWidth(cn);
+    ctx.fillStyle = "rgba(26,18,12,.55)"; ctx.fillRect(bx + mark + 3, by + 2, Math.min(bw - mark - 5, cw + 4), bh - 4);
+    drawText(cn, bx + mark + 5, by + 3, t >= 8 && Math.sin(r.time * 10) > 0 ? "#ff5a3a" : "#fdf3de", "l");
     ctx.restore();
     // curseur fixe : la difficulté défile dessous
     var mx = bx + 1 + mark;
@@ -4659,7 +4672,7 @@
         if (l.id === "forge") for (var s0 = 0; s0 < 3; s0++) { ctx.fillStyle = "rgba(200,200,200," + (0.3 - s0 * 0.08) + ")"; ctx.fillRect(Math.round(q.x + 6 + Math.sin(t * 2 + s0) * 2), Math.round(q.y - bh - 12 - s0 * 5 - (t * 6 % 5)), 3, 3); }
       }
       if (l.npc && SPR[l.npc]) drawHero(l.npc, q.x + (W < 300 ? 11 : 16), q.y + 4, -1, false, t * 4, 0);
-      if (hot || camp.near === null && Math.hypot(q.x - camp.x, q.y - camp.y) < 60) drawText(l.name, q.x, q.y - 34, hot ? "#f6d36b" : "#fdf3de", "c");
+      if (l.id !== "sentier" && (W >= 300 || hot || Math.hypot(q.x - camp.x, q.y - camp.y) < 50)) { var lb = l.name.replace(/^(Le |La |L')/i, ""); ctx.globalAlpha = hot ? 1 : 0.85; drawText(lb, q.x, q.y + 10, hot ? "#f6d36b" : "#fdf3de", "c"); ctx.globalAlpha = 1; }
       if (hot) drawText(isTouch ? "TOUCHE POUR ENTRER" : "ENTREE POUR ENTRER", q.x, q.y - 26, "#fdf3de", "c");
     });
     drawHero(charById(S.char).sprite, camp.x, camp.y, camp.face || 1, camp.moving, t * 8, 0);
@@ -6070,7 +6083,7 @@
     });
     if (giants) drawGiantTops(giants);
     fx.forEach(drawFx);
-    texts.forEach(function (t) { ctx.globalAlpha = Math.min(1, t.life * 3); drawText(t.n, t.x, t.y, t.col || "#fdf3de", "c"); });
+    texts.forEach(function (t) { ctx.globalAlpha = Math.min(1, t.life * 3) * (t.dmgN && !t.col && t.n < 15 ? 0.7 : 1); drawText(t.n, t.x, t.y, t.col || (t.dmgN ? "#e8e0d0" : "#fdf3de"), "c"); });
     ctx.globalAlpha = 1;
     ctx.restore();
     if (isDungeon()) drawDungeonLight(cx, cy);
@@ -6457,7 +6470,7 @@
     drawText(g, W - 4, 37, "#ffe27a", "r"); icon("gold", W - 4 - textWidth(g) - 5, 39);
     // boss
     if (curBoss) {
-      var bb = Math.min(160, W - 16), bx = Math.round(W / 2 - bb / 2), by = 56;
+      var bb = Math.min(160, W - 16), bx = Math.round(W / 2 - bb / 2), by = W < 300 ? H - 34 : 56;
       drawText(curBoss.title || (curBoss.aff ? bossTitle(curBoss) : curBoss.d.name), W / 2, by - 7, curBoss.aff && curBoss.aff.length ? AFX[curBoss.aff[0]].color : "#f6d36b", "c");
       box(bx, by, bb, 7, "#3a2618");
       ctx.fillStyle = "#c8553d"; ctx.fillRect(bx + 1, by + 1, Math.round((bb - 2) * Math.max(0, curBoss.hp / curBoss.maxHp)), 5);
