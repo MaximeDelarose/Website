@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.0.0";
+  var VERSION = "2.1.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -283,6 +283,10 @@
     p.xpMul += 0.2 * (it.plume_solo || 0);
     p.area += 0.2 * (it.eclat || 0);
     if (p.char && p.char.twin) p.might *= p.char.twin.dmg || 0.6;
+    // contenu étendu : objets de niveau des états et des éléments
+    if (p.epts0) { var ep = { terre: p.epts0.terre, feu: p.epts0.feu, eau: p.epts0.eau, air: p.epts0.air }; Object.keys(D.PASSIVES).forEach(function (k) { var pv = D.PASSIVES[k]; if (pv.elemPt && ps[k]) ep[pv.elemPt] += Math.ceil(ps[k] / 2); }); p.epts = ep; }
+    if (p.anchorTh0) p.anchorTh = Math.max(0.1, p.anchorTh0 - 0.06 * (ps.patience || 0));
+    if (p.volteBase0) p.volteBase = Math.max(1, p.volteBase0 - 0.3 * (ps.ressort || 0));
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.hp = Math.min(p.hp, p.maxHp);
   }
@@ -630,6 +634,8 @@
     dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? (itn(p, "corne") ? 3 : 2) : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
     if (crit && r) r.crits = (r.crits || 0) + 1;
     dmg *= p.dmgX || 1;
+    var hf = HIT_FX, hadMark = e.mark && e.markT > 0 ? e.mark : null;
+    if (hf && hf.vsMark && hadMark && hadMark !== atkElem(p)) dmg *= hf.vsMark;
     dmg = elemHit(e, dmg);
     if (stealthy(p) && !e.spotted && !e.d.prop) dmg *= tal(p, "affut_t3") && p.invis ? 4 : 3;
     if (p.critNext && !e.d.prop) { dmg *= tal(p, "affut_t2") ? 3 : 2; p.critNext = false; }
@@ -653,6 +659,7 @@
     if (S.opts.numbers && texts.length < 60) texts.push({ x: e.x + (Math.random() * 6 - 3), y: e.y - e.d.r - 6, n: dmg, life: 0.6 });
     if (Net.dmgN < 30) { Net.dmgN++; netEv(["d", Math.round(e.x), Math.round(e.y - e.d.r - 6), dmg]); }
     if (p.items) onHitProcs(e);
+    if (hf && !e.d.prop) hitFx(e, hf, dmg, hadMark);
     if (crit && itn(p, "dard_reine") && !procLock && !e.d.prop) { procLock = true; explode(e.x, e.y, 18, 15 * itn(p, "dard_reine")); procLock = false; }
     if (e.hp <= 0 && !e.dead) kill(e);
   }
@@ -833,9 +840,18 @@
     for (var i = zones.length - 1; i >= 0; i--) {
       var z = zones[i]; z.t += dt;
       if (z.t >= z.dur) { zones.splice(i, 1); continue; }
+      if (z.kind === "mark") {
+        z.tick = (z.tick || 0) - dt;
+        if (z.tick <= 0 && z.owner) { z.tick = 0.5; var kp = p; p = z.owner; near(z.x, z.y, z.r + 10, function (e) { if (!e.d.prop && !e.under && Math.hypot(e.x - z.x, (e.y - z.y) * 1.25) <= z.r + e.d.r) applyMark(e, z.elem); }); p = kp; }
+        continue;
+      }
       if (z.kind === "thorn" || (z.owner && z.pdmg)) {
         if (!z.owner) continue;
         z.tick = (z.tick || 0) - dt;
+        if (z.cfg && z.cfg.reactive && !z.rDone && z.elem) {
+          var trig = false; near(z.x, z.y, z.r + 10, function (e) { if (!e.d.prop && Math.hypot(e.x - z.x, (e.y - z.y) * 1.25) <= z.r + e.d.r) trig = true; });
+          if (trig) { z.rDone = 1; var kr = p; p = z.owner; ring(z.x, z.y, z.cfg.reactive, false); near(z.x, z.y, z.cfg.reactive + 10, function (e) { if (e.mark && e.markT > 0 && e.mark !== z.elem && Math.hypot(e.x - z.x, e.y - z.y) < z.cfg.reactive + e.d.r) react(e, e.mark, z.elem, true); }); p = kr; }
+        }
         if (z.tick <= 0) {
           z.tick = 0.4; var keep = p; p = z.owner;
           near(z.x, z.y, z.r + 10, function (e) { if (e.d.prop || e.under || Math.hypot(e.x - z.x, (e.y - z.y) * 1.25) > z.r + e.d.r) return; hurt(e, z.pdmg || z.dmg, 0, 0); e.slowT = Math.max(e.slowT, 0.6); e.slow = Math.max(e.slow || 0, e.d.boss ? 0.25 : 0.55); });
@@ -846,7 +862,7 @@
       if (z.kind === "web" || !z.dmg) continue;
       for (var j = 0; j < players.length; j++) {
         var pl = players[j];
-        if (!pl.down && Math.hypot(pl.x - z.x, (pl.y - z.y) * 1.25) < z.r && cooled(pl, "z" + z.kind, 0.5)) damagePlayer(z.dmg, pl);
+        if (!pl.down && Math.hypot(pl.x - z.x, (pl.y - z.y) * 1.25) < z.r && cooled(pl, "z" + z.kind, 0.5)) damagePlayer(z.dmg * footMul(pl), pl);
       }
     }
   }
@@ -994,6 +1010,9 @@
         ctx.fillStyle = "rgba(60,90,40," + (0.35 * k) + ")"; ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.fill();
         for (var tn = 0; tn < 7; tn++) { var th = hash(x + tn * 7, y), tx = x - z.r * 0.7 + th % Math.max(1, Math.round(z.r * 1.4)), ty2 = y - z.r * 0.4 + (th >>> 4) % Math.max(1, Math.round(z.r * 0.8)), hh = Math.round((4 + (th >>> 8) % 5) * gk);
           ctx.fillStyle = "#3a5a2a"; ctx.fillRect(tx, ty2 - hh, 2, hh); ctx.fillStyle = "#8aba5a"; ctx.fillRect(tx, ty2 - hh, 1, 1); ctx.fillStyle = "#d0281a"; if (tn % 3 === 0) ctx.fillRect(tx + 1, ty2 - hh + 1, 1, 1); }
+      } else if (z.kind === "mark") {
+        ctx.globalAlpha = 0.2 * k + 0.08; ctx.fillStyle = (D.ELEMENTS[z.elem] || {}).color || "#fdf3de"; ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 0.5 * k; ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 1; ctx.stroke(); ctx.globalAlpha = 1;
       } else if (z.kind === "web") {
         ctx.strokeStyle = "rgba(235,230,245," + (0.5 * k + 0.2) + ")"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.ellipse(x, y, z.r * 0.55, z.r * 0.45, 0, 0, TAU); ctx.stroke();
@@ -1557,10 +1576,11 @@
       if (w.t >= w.dur) {
         warns.splice(i, 1);
         ring(w.x, w.y, w.r, true);
-        players.forEach(function (pl) { if (Math.hypot(pl.x - w.x, (pl.y - w.y) * 1.25) <= w.r + 3) damagePlayer(w.dmg, pl); });
+        players.forEach(function (pl) { if (Math.hypot(pl.x - w.x, (pl.y - w.y) * 1.25) <= w.r + 3) damagePlayer(w.dmg * footMul(pl), pl); });
       }
     }
   }
+  function footMul(pl) { var f = (pl.passives && pl.passives.foulee) || 0; return f && pl.mstate === "mouvement" ? Math.max(0.4, 1 - 0.12 * f) : 1; }
   function inView(e, m) { return Math.abs(e.x - p.x) < W / 2 + (m || 0) && Math.abs(e.y - p.y) < H / 2 + (m || 0); }
   function nearAnyPlayer(e, rad) { return players.some(function (pl) { return Math.abs(e.x - pl.x) < rad && Math.abs(e.y - pl.y) < rad; }); }
   function nuke() {
@@ -1610,13 +1630,18 @@
     }
     SND.boom();
   }
-  function zapChain(start, count, dmg, origin) {
+  function zapChain(start, count, dmg, origin, up) {
     var pts = [[origin ? origin.x : p.x, origin ? origin.y : p.y - 4]], hit = [], cur = start;
+    var alt = HIT_FX && HIT_FX.alt, base = HIT_ELEM, last = null;
     for (var c = 0; c < count && cur; c++) {
       pts.push([cur.x, cur.y]); hit.push(cur.id);
+      if (alt && base && c > 0) HIT_ELEM = c % 2 ? (last && last !== base ? last : nextElem(base)) : base;
+      last = cur.elem || last;
       hurt(cur, dmg, 0, 0);
+      if (up) dmg *= 1 + up;
       cur = chainNext(cur, hit);
     }
+    if (alt) HIT_ELEM = base;
     fx.push({ kind: "bolt", pts: pts, life: 0.16, max: 0.16 });
     netEv(["bo", pts.map(function (q) { return [Math.round(q[0]), Math.round(q[1])]; })]);
   }
@@ -1651,8 +1676,16 @@
       var R = V(w, "R", l) * p.area, dm = V(w, "dmg", l);
       fireNova(R, dm);
       if (V(w, "twice", l)) fireNova(R * 0.55, dm);
+      if (w.puddle) markZone(p.x, p.y, R * 0.6, 4, w.puddle);
+      if (w.essor) for (var es = 0; es < 8; es++) { var ea = es / 8 * TAU; projs.push({ owner: p, kind: "bullet", x: p.x, y: p.y - 4, vx: Math.cos(ea) * 150, vy: Math.sin(ea) * 150, dmg: dm * 0.6, pierce: 2, sprite: "spark", anim: true, life: R / 150 * 1.6, hit: [], r: 3, explode: 0 }); }
     },
     thorns: function (id, w, l, dt) {
+      if (w.sow) {
+        var sx = p.st[id + "#x"], sy = p.st[id + "#y"];
+        if (sx !== undefined && p.mstate === "mouvement") p.st[id + "#d"] = (p.st[id + "#d"] || 0) + Math.hypot(p.x - sx, p.y - sy);
+        p.st[id + "#x"] = p.x; p.st[id + "#y"] = p.y;
+        if ((p.st[id + "#d"] || 0) >= w.sow) { p.st[id + "#d"] = 0; zones.push({ x: p.x, y: p.y + 2, r: V(w, "rad", l) * p.area, t: 0, dur: V(w, "dur", l), kind: "thorn", dmg: V(w, "dmg", l), owner: p }); }
+      }
       if (!timer(id, V(w, "cd", l), dt)) return;
       var t = nearest(8, 150), n = V(w, "n", l) + Math.floor(p.amount / 2);
       for (var k = 0; k < n; k++) {
@@ -1671,6 +1704,7 @@
         var a = tg ? Math.atan2(tg.y - p.y, tg.x - p.x) : (p.face > 0 ? 0 : Math.PI);
         if (!tg || i >= t.length) a += (i - (count - 1) / 2) * 0.25;
         a += (Math.random() - 0.5) * (w.spread || 0);
+        if (w.spiral) a = (p.st[id + "#sp"] = (p.st[id + "#sp"] || 0) + 0.5);
         projs.push({ owner: p, kind: "bullet", x: p.x, y: p.y - 2, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, dmg: V(w, "dmg", l), pierce: V(w, "pierce", l),
                      sprite: w.sprite, anim: w.anim, life: range / spd * 1.4, hit: [], r: 4, explode: w.explodeR ? V(w, "explodeR", l) * p.area : 0 });
       }
@@ -1726,6 +1760,7 @@
       for (var j = 0; j < n; j++) {
         var oa = p.st[id] + j / n * TAU;
         var ox = c.x + Math.cos(oa) * R, oy = c.y + Math.sin(oa) * R * 0.8;
+        if (w.block) for (var hb = hostile.length - 1; hb >= 0; hb--) if (Math.abs(hostile[hb].x - ox) < 8 && Math.abs(hostile[hb].y - oy) < 8) { hostile.splice(hb, 1); burst(ox, oy, "#fdf3de", 3); var rt = nearest(1, 90)[0]; if (rt) hurt(rt, dmg * 1.5, 0, 0); }
         near(ox, oy, 14, function (e) {
           if (Math.hypot(e.x - ox, e.y - oy) > 5 + e.d.r || !cooled(e, id, 0.45)) return;
           hurt(e, dmg, (e.x - c.x) * 1.2, (e.y - c.y) * 1.2);
@@ -1770,6 +1805,7 @@
         var dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy * 1.25) || 1;
         if (d > R + e.d.r) return;
         if (!e.d.prop) {
+          if (w.climat && HIT_ELEM) { e.climT = (e.climT || 0) + dt; if (e.climT >= 2 && (!e.mark || e.mark === HIT_ELEM)) { e.mark = HIT_ELEM; e.markT = 999; } }
           if (slow) { e.slowT = 0.3; e.slow = e.d.boss ? slow / 3 : slow; }
           if (push) { var k = (e.d.boss ? 0.15 : 1) * push * dt; e.x += dx / d * k; e.y += dy / d * k; }
         }
@@ -1789,13 +1825,13 @@
         var fe = ft[i];
         var fa = fe ? Math.atan2(fe.y - p.y, fe.x - p.x) : (p.face > 0 ? 0 : Math.PI) + (i - (n - 1) / 2) * 0.6;
         projs.push({ owner: p, kind: "boomerang", x: p.x, y: p.y, vx: Math.cos(fa), vy: Math.sin(fa), dmg: V(w, "dmg", l), pierce: 999, sprite: w.sprite,
-                     life: 4, range: V(w, "range", l) * p.area, dist: 0, back: false, chain: V(w, "chain", l) || 0, zapT: 0 });
+                     life: 4, range: V(w, "range", l) * p.area, dist: 0, back: false, chain: V(w, "chain", l) || 0, zapT: 0, ar: w.allerRetour || 0 });
       }
     },
     chain: function (id, w, l, dt) {
       if (!timer(id, V(w, "cd", l), dt)) return;
       var starts = nearest(12, 150), bolts = V(w, "bolts", l) + p.amount;
-      for (var b = 0; b < bolts && starts.length; b++) zapChain(starts.splice((Math.random() * starts.length) | 0, 1)[0], V(w, "chain", l), V(w, "dmg", l));
+      for (var b = 0; b < bolts && starts.length; b++) zapChain(starts.splice((Math.random() * starts.length) | 0, 1)[0], V(w, "chain", l), V(w, "dmg", l), null, w.chainUp);
       SND.zap();
     },
     storm: function (id, w, l, dt) {
@@ -1834,10 +1870,11 @@
     var wel = p.arme ? armeOf(p).element : null;
     techEntries(p).forEach(function (e) {
       var fn = BEHAVIOR[e.def.type]; if (!fn) return;
-      var el = (p.amu && p.amu[e.def.family]) || wel, n0 = projs.length, l0 = lobs.length;
-      HIT_ELEM = el; fn(e.key, e.def, e.l, dt); HIT_ELEM = undefined;
-      for (var i = n0; i < projs.length; i++) if (projs[i].elem === undefined) projs[i].elem = el;
-      for (var j = l0; j < lobs.length; j++) if (lobs[j].elem === undefined) lobs[j].elem = el;
+      var el = (p.amu && p.amu[e.def.family]) || wel, n0 = projs.length, l0 = lobs.length, z0 = zones.length, hf = e.def.hfx || null;
+      HIT_ELEM = el; HIT_FX = hf; fn(e.key, e.def, e.l, dt); HIT_ELEM = undefined; HIT_FX = null;
+      for (var i = n0; i < projs.length; i++) { if (projs[i].elem === undefined) projs[i].elem = el; if (projs[i].hfx === undefined) projs[i].hfx = hf; }
+      for (var j = l0; j < lobs.length; j++) { if (lobs[j].elem === undefined) lobs[j].elem = el; if (lobs[j].hfx === undefined) lobs[j].hfx = hf; if (lobs[j].cfg === undefined) lobs[j].cfg = e.def; }
+      for (var z = z0; z < zones.length; z++) if (zones[z].owner === p) { if (zones[z].elem === undefined) zones[z].elem = el; if (zones[z].cfg === undefined) zones[z].cfg = e.def; }
     });
     ultTick(p);
     itemComps(dt);
@@ -1861,7 +1898,16 @@
   BEHAVIOR.pet = function (id, w, l, dt) {
     var arr = compList(id), n = V(w, "n", l), spd = V(w, "spd", l) || 110, range = w.range || 150;
     syncCount(arr, n, function (i) { return { k: w.pet, x: p.x - p.face * 10, y: p.y + 4 + i * 3, cd: 0.5, face: p.face, anim: Math.random() * 2, fly: !!w.fly }; });
-    arr.forEach(function (c, i) { petMove(c, i, arr.length, spd, range, dt); petBite(c, compDmg(w, l), compRate(w, l), V(w, "splash", l) || 0, dt, w.roll); });
+    var down = w.medic ? players.filter(function (o) { return o !== p && o.down; })[0] : null;
+    arr.forEach(function (c, i) {
+      if (down) { c.tgt = null; c.anim += dt * 8; var mx = down.x - c.x, my = down.y - c.y, md = Math.hypot(mx, my); if (md > 8) { c.x += mx / md * Math.min(md, spd * dt); c.y += my / md * Math.min(md, spd * dt); c.face = mx > 0 ? 1 : -1; } else down.medicT = 0.25; return; }
+      if (w.circle) {
+        var ca = r.time * 2.4 + i / arr.length * TAU; c.x = p.x + Math.cos(ca) * 26; c.y = p.y + Math.sin(ca) * 18; c.anim += dt * 8; c.face = -Math.sin(ca) >= 0 ? 1 : -1;
+        near(c.x, c.y, 16, function (e) { if (!e.d.prop && !e.under && Math.hypot(e.x - c.x, e.y - c.y) < 8 + e.d.r && cooled(e, id + "c" + i, compRate(w, l))) compHit(c, e, compDmg(w, l), V(w, "splash", l) || 0); });
+        return;
+      }
+      petMove(c, i, arr.length, spd, range, dt); petBite(c, compDmg(w, l), compRate(w, l), V(w, "splash", l) || 0, dt, w.roll, w.hop);
+    });
   };
   function petMove(c, i, n, spd, range, dt) {
     c.anim += dt * 8; c.cd -= dt;
@@ -1874,10 +1920,11 @@
     if (d > 1) { var sp = Math.min(d, spd * dt * (c.tgt ? 1 : Math.min(2.2, 0.6 + d / 40))); c.x += dx / d * sp; c.y += dy / d * sp; if (Math.abs(dx) > 1) c.face = dx > 0 ? 1 : -1; }
     if (Math.hypot(c.x - p.x, c.y - p.y) > 420) { c.x = p.x; c.y = p.y; c.tgt = null; }
   }
-  function petBite(c, dmg, rate, splash, dt, roll) {
+  function petBite(c, dmg, rate, splash, dt, roll, hop) {
     var t = c.tgt; if (!t || c.cd > 0) return;
     if (Math.hypot(t.x - c.x, t.y - c.y) > (t.d.r || 6) + (roll ? 8 : 5)) return;
     compHit(c, t, dmg, splash); c.cd = rate;
+    if (hop && !procLock) { var hn = chainNext(t, [t.id]); if (hn) { c.x = hn.x; c.y = hn.y; c.tgt = hn; zapChain(hn, hop, dmg * 0.6, t); } }
     if (roll) { c.x -= (t.x - c.x) * 0.6; c.y -= (t.y - c.y) * 0.6; }   // rebondit après l'impact
   }
   BEHAVIOR.turret = function (id, w, l, dt) {
@@ -1889,7 +1936,9 @@
       var t = nearest(1, w.range || 160, c)[0]; if (!t) continue;
       var a = Math.atan2(t.y - c.y, t.x - c.x); c.face = Math.cos(a) >= 0 ? 1 : -1; c.cd = compRate(w, l);
       var dmg = compDmg(w, l);
-      if (w.rocket) projs.push({ owner: p, kind: "rocket", x: c.x, y: c.y - 6, ang: a, spd: 60, max: 150, target: t, dmg: dmg, rad: V(w, "rad", l) * p.area, life: 3, pierce: 1 });
+      if (w.totem && HIT_ELEM && cooled(c, "totem", 1)) markZone(c.x, c.y, 30 * p.area, 1.3, HIT_ELEM);
+      if (w.lobber) lobs.push({ owner: p, sx: c.x, sy: c.y - 6, tx: t.x, ty: t.y, t: 0, dur: 0.5, dmg: dmg * 1.5, rad: 16 * p.area, frag: 0, sprite: "pinecone" });
+      else if (w.rocket) projs.push({ owner: p, kind: "rocket", x: c.x, y: c.y - 6, ang: a, spd: 60, max: 150, target: t, dmg: dmg, rad: V(w, "rad", l) * p.area, life: 3, pierce: 1 });
       else {
         var k = V(w, "spray", l) || 1;
         for (var j = 0; j < k; j++) {
@@ -1909,6 +1958,7 @@
   BEHAVIOR.drone = function (id, w, l, dt) {
     var arr = compList(id), n = V(w, "n", l);
     syncCount(arr, n, function () { return { k: w.drone, x: p.x, y: p.y - 12, cd: Math.random() * 0.5, face: 1, anim: Math.random() * 2, fly: true }; });
+    if (w.charged && timer(id + "#ch", w.charged, dt)) arr.forEach(function (c) { burst(c.x, c.y, (D.ELEMENTS[HIT_ELEM] || {}).color || "#fdf3de", 8); explode(c.x, c.y + 8, 22 * p.area, compDmg(w, l) * 2.5, 0); c.x = p.x; c.y = p.y - 12; });
     arr.forEach(function (c, i) {
       var a = r.time * 1.7 + i / arr.length * TAU, tx = p.x + Math.cos(a) * 22, ty = p.y - 10 + Math.sin(a) * 11;
       c.x += (tx - c.x) * Math.min(1, dt * 7); c.y += (ty - c.y) * Math.min(1, dt * 7); c.anim += dt * 12; c.cd -= dt;
@@ -2136,6 +2186,7 @@
   function checkQuests(run) {
     if (!run || !r) return;
     S.quests = S.quests || {};
+    run.tot = { voltes: (S.stats.voltes || 0) + (run.committed ? 0 : (run.voltes || 0)) };
     D.QUESTS.forEach(function (q) {
       if (S.quests[q.id]) return;
       var ok = false; try { ok = q.check(run); } catch (e) {}
@@ -2238,6 +2289,12 @@
     if (pl.char.id === "planeur" && !mv && !pl.hooked) tryHook(pl);
     pl.anchored = !mv && pl.idleT >= (pl.anchorTh || V2.anchorT) && (pl.char.id !== "planeur" || pl.hooked);
     pl.anchorT = pl.anchored ? (pl.anchorT || 0) + dt : 0;
+    pl.cpT = Math.max(0, (pl.cpT || 0) - dt);
+    if (r && pl === me) {                                   // suivi pour les quêtes
+      if (pl.anchored) r.anchorTot = (r.anchorTot || 0) + dt;
+      if ((pl.runT || 0) > (r.runMax || 0)) r.runMax = pl.runT;
+      if (pl.epts) { r.eptMax = r.eptMax || {}; for (var ek in pl.epts) if (pl.epts[ek] > (r.eptMax[ek] || 0)) r.eptMax[ek] = pl.epts[ek]; }
+    }
     pl.mstate = pl.volteT > 0 ? "volte" : pl.anchored ? "ancre" : mv ? "mouvement" : "pause";
     postureStats(pl);
   }
@@ -2260,6 +2317,10 @@
     if (pl.sillT > 0) pl.spdX *= 1.3;
     if (pl.size > 1) pl.spdX /= 1 + (tal(pl, "rouleau_t2") ? 0.17 : 0.35) * (pl.size - 1);
     var gv = gearHas(pl, "vitesse"); if (gv && m) pl.spdX *= 1 + gv.v / 100;
+    var pz = pl.passives || {};
+    if (pz.racines && a) pl.dmgX *= 1 + 0.06 * pz.racines;
+    if (pz.elan && m && (pl.runT || 0) >= 2) pl.dmgX *= 1 + 0.05 * pz.elan;
+    if (pz.contrepied && pl.cpT > 0) pl.dmgX *= 1 + 0.12 * pz.contrepied;
   }
   function volte(pl, dx, dy) {
     if (pl.volteCd > 0 || pl.down) return;
@@ -2284,6 +2345,8 @@
     }
     charVolte(pl, dx, dy);
     gearVolte(pl, dx, dy);
+    pl.cpT = 1.5;
+    techEntries(pl).forEach(function (en) { if (en.def.recall) pl.timers[en.key] = 0; });
     p = pp;
   }
   // déplacements propres à la 2.0 ; renvoie true si le déplacement normal ne doit pas s'appliquer
@@ -2399,22 +2462,26 @@
     if (!m) return;
     Object.keys(m.mul || {}).forEach(function (k) { if (d[k] !== undefined) d[k] = mapv(d[k], function (x) { return x * m.mul[k]; }); });
     Object.keys(m.add || {}).forEach(function (k) { d[k] = d[k] === undefined ? m.add[k] : mapv(d[k], function (x) { return x + m.add[k]; }); });
-    Object.keys(m.set || {}).forEach(function (k) { d[k] = m.set[k]; });
+    Object.keys(m.set || {}).forEach(function (k) {
+      if (k === "hfx" && d.hfx) { var o = {}; Object.keys(d.hfx).forEach(function (q) { o[q] = d.hfx[q]; }); Object.keys(m.set.hfx).forEach(function (q) { o[q] = m.set.hfx[q]; }); d.hfx = o; }
+      else d[k] = m.set[k];
+    });
   }
   function armeOf(pl) { return D.ARMES[pl.arme] || D.ARMES.katana; }
   // définition effective d'une technique pour ce joueur (habillage + évolution + fusion d'objet)
   function techDef(pl, id, evo, fus) {
     var base = ALLW[id]; if (!base) return null;
     if (base.type === "combo") return base;
-    evo = evo === undefined ? (pl.evo || {})[id] : evo; fus = fus === undefined ? !!(pl.tfus || {})[id] : fus;
-    var key = id + "|" + (evo || "") + "|" + (fus ? 1 : 0) + "|" + (pl.arme || "");
+    evo = evo === undefined ? (pl.evo || {})[id] : evo; fus = fus === undefined ? (pl.tfus || {})[id] : fus; fus = fus === true ? 1 : fus || 0;
+    var key = id + "|" + (evo || "") + "|" + fus + "|" + (pl.arme || "");
     pl.tdef = pl.tdef || {};
     if (pl.tdef[key]) return pl.tdef[key];
     var d = {}; Object.keys(base).forEach(function (k) { d[k] = base[k]; });
     var sk = D.TECH[id] && armeOf(pl).skin[id];
     if (sk) { d.name = sk[0]; if (sk[1]) { d.icon = sk[1]; if (d.type === "pet") d.pet = sk[1]; else if (d.type === "turret") d.turret = d.turret; else d.sprite = sk[1]; } d.generic = base.name; }
     if (evo && base.evos) { var ev = base.evos.filter(function (e) { return e.id === evo; })[0]; if (ev) { applyMods(d, ev); d.evoName = ev.name; } }
-    if (fus && D.TFUS[id]) { applyMods(d, D.TFUS[id]); d.fusName = D.TFUS[id].name; d.fusion = true; }
+    var tf = fus === 2 ? D.TFUS2[id] : fus ? D.TFUS[id] : null;
+    if (tf) { applyMods(d, tf); d.fusName = tf.name; d.fusion = true; }
     pl.tdef[key] = d;
     return d;
   }
@@ -2427,7 +2494,9 @@
       var d = ALLW[id]; if (!d) return;
       if (d.type === "combo") {
         (pl.cparts && pl.cparts[id] || []).forEach(function (pt, i) {
-          var pd = techDef(pl, pt.id, pt.evo, pt.fus); if (pd) out.push({ key: id + "/" + i, def: scaleDmg(pd, d.mul || 1.35), l: 4 });
+          var pd = techDef(pl, pt.id, pt.evo, pt.fus); if (!pd) return;
+          pd = scaleDmg(pd, d.mul || 1.35); (pt.fx || []).forEach(function (m) { applyMods(pd, m); });
+          out.push({ key: id + "/" + i, def: pd, l: 4 });
         });
       } else out.push({ key: id, def: techDef(pl, id), l: pl.weapons[id] - 1 });
     });
@@ -2437,21 +2506,24 @@
   // composants d'une fusion de techniques : leurs évolutions et fusions d'objet sont gardées
   function partsOf(pl, id) {
     if (pl.cparts && pl.cparts[id]) return pl.cparts[id];
-    return [{ id: id, evo: (pl.evo || {})[id], fus: !!(pl.tfus || {})[id] }];
+    return [{ id: id, evo: (pl.evo || {})[id], fus: (pl.tfus || {})[id] || 0 }];
   }
   function comboReady(pl, cid) {
     var c = ALLW[cid];
     return c.parts.every(function (q) { return pl.weapons[q] && (ALLW[q].type === "combo" || (pl.weapons[q] >= MAX_LVL && (pl.evo || {})[q])); }) && !pl.weapons[cid];
   }
+  // 3e évolution : arme en maîtrise 3 et 6 points de son élément (attirail et objets de niveau compris)
+  function elemCOk(pl) { return !!(pl.ring && pl.ring.alchimiste) || ept(pl, armeOf(pl).element, 6); }
+  function evoOk(pl, e, ei, ml) { return ei === 0 || (ml >= 3 && (!e.elemC || elemCOk(pl))); }
   function v2Choices(n) {
     var out = [], pool = [], pl = p, ar = armeOf(pl);
     var techs = Object.keys(pl.weapons).filter(function (k) { return ALLW[k]; });
     // évolutions d'abord : on choisit l'une des deux
     var ml = pl.arme ? mastLevel(pl.arme) : 1;
-    techs.forEach(function (k) { var d = ALLW[k]; if (d.evos && pl.weapons[k] >= MAX_LVL && !(pl.evo || {})[k]) d.evos.forEach(function (e, ei) { if (ei === 0 || ml >= 3) out.push({ type: "evo", id: k, evo: e.id }); }); });
+    techs.forEach(function (k) { var d = ALLW[k]; if (d.evos && pl.weapons[k] >= MAX_LVL && !(pl.evo || {})[k]) d.evos.forEach(function (e, ei) { if (evoOk(pl, e, ei, ml)) out.push({ type: "evo", id: k, evo: e.id }); }); });
     // fusions prêtes (technique + objet, technique + technique, légendaires)
     Object.keys(D.COMBOS).concat(Object.keys(D.LEGENDS)).forEach(function (cid) { if (comboReady(pl, cid)) out.push({ type: "cb", id: cid }); });
-    techs.forEach(function (k) { var tf = D.TFUS[k]; if (tf && (pl.evo || {})[k] && !(pl.tfus || {})[k] && (pl.passives[tf.p] || 0) >= MAX_LVL) out.push({ type: "pf", id: k }); });
+    techs.forEach(function (k) { if (!(pl.evo || {})[k] || (pl.tfus || {})[k]) return; [[D.TFUS[k], 1], [D.TFUS2[k], 2]].forEach(function (x) { if (x[0] && (pl.passives[x[0].p] || 0) >= MAX_LVL) out.push({ type: "pf", id: k, rec: x[1] }); }); });
     out = out.slice(0, Math.max(2, n - 1));
     techs.forEach(function (k) { if (ALLW[k].type !== "combo" && pl.weapons[k] < MAX_LVL) pool.push({ type: "w", id: k, lvl: pl.weapons[k] + 1, weight: 3 }); });
     if (techs.length < MAX_W) {
@@ -2463,7 +2535,7 @@
       var l = pl.passives[k] || 0;
       if (l >= MAX_LVL || (!l && nP >= MAX_P) || (!l && (!allowed(D.PASSIVES[k]) || !questOk(D.PASSIVES[k])))) return;
       var w = l ? 2 : 1.4;
-      if (!l && Object.keys(D.TFUS).some(function (t) { return pl.weapons[t] && D.TFUS[t].p === k; })) w += 1;   // l'objet d'une recette en cours
+      if (!l && Object.keys(D.TFUS).some(function (t) { return pl.weapons[t] && (D.TFUS[t].p === k || (D.TFUS2[t] && D.TFUS2[t].p === k)); })) w += 1;   // l'objet d'une recette en cours
       pool.push({ type: "p", id: k, lvl: l + 1, weight: w });
     });
     while (out.length < n && pool.length) {
@@ -2476,10 +2548,11 @@
   function v2Apply(c) {
     var pl = p;
     if (c.type === "evo") { pl.evo = pl.evo || {}; pl.evo[c.id] = c.evo; burst(pl.x, pl.y, "#6ad8ff", 16); if (pl === me) banner("Évolution : " + techName(pl, c.id)); return true; }
-    if (c.type === "pf") { pl.tfus = pl.tfus || {}; pl.tfus[c.id] = true; burst(pl.x, pl.y, "#f6d36b", 22); if (pl === me) { r.fusions++; banner("Fusion : " + techName(pl, c.id)); SND.fusion(); } return true; }
+    if (c.type === "pf") { pl.tfus = pl.tfus || {}; pl.tfus[c.id] = c.rec || 1; burst(pl.x, pl.y, "#f6d36b", 22); if (pl === me) { r.fusions++; banner("Fusion : " + techName(pl, c.id)); SND.fusion(); } return true; }
     if (c.type === "cb") {
       var cd = ALLW[c.id], parts = [];
-      cd.parts.forEach(function (q) { parts = parts.concat(partsOf(pl, q)); delete pl.weapons[q]; pl.consumed[q] = true; if (pl.cparts) delete pl.cparts[q]; delete pl.timers[q]; });
+      cd.parts.forEach(function (q) { partsOf(pl, q).forEach(function (pt) { parts.push({ id: pt.id, evo: pt.evo, fus: pt.fus, fx: (pt.fx || []).slice() }); }); delete pl.weapons[q]; pl.consumed[q] = true; if (pl.cparts) delete pl.cparts[q]; delete pl.timers[q]; });
+      if (cd.fx) parts.forEach(function (pt) { if (cd.fx[pt.id]) pt.fx.push(cd.fx[pt.id]); if (cd.fx["*"]) pt.fx.push(cd.fx["*"]); });
       pl.cparts = pl.cparts || {}; pl.cparts[c.id] = parts; pl.weapons[c.id] = MAX_LVL;
       burst(pl.x, pl.y, cd.legend ? "#ff9a3a" : "#f6d36b", 30);
       if (pl === me) { r.fusions++; if (cd.legend) r.legend++; banner((cd.legend ? "Légendaire : " : "Fusion : ") + cd.name + " !"); SND.fusion(); }
@@ -2489,14 +2562,14 @@
   }
   function v2Card(c) {
     var pl = me, d;
-    if (c.type === "evo") { var ev = ALLW[c.id].evos.filter(function (e) { return e.id === c.evo; })[0]; d = techDef(pl, c.id); return { icon: d.icon, name: d.name + " → " + ev.name, lvl: "Évolution", desc: ev.desc, cls: " is-fusion" }; }
-    if (c.type === "pf") { var tf = D.TFUS[c.id]; d = techDef(pl, c.id); return { icon: d.icon, name: d.name + " + " + D.PASSIVES[tf.p].name, lvl: "Fusion : " + tf.name, desc: tf.desc, cls: " is-fusion" }; }
+    if (c.type === "evo") { var ev = ALLW[c.id].evos.filter(function (e) { return e.id === c.evo; })[0]; d = techDef(pl, c.id); var eel = D.ELEMENTS[armeOf(pl).element]; return { icon: d.icon, name: d.name + " → " + ev.name, lvl: ev.elemC ? "Évolution élémentaire · " + (eel ? eel.name : "") : "Évolution", desc: ev.desc, cls: ev.elemC ? " is-fusion is-legend" : " is-fusion" }; }
+    if (c.type === "pf") { var tf = c.rec === 2 ? D.TFUS2[c.id] : D.TFUS[c.id]; d = techDef(pl, c.id); return { icon: d.icon, name: d.name + " + " + D.PASSIVES[tf.p].name, lvl: "Fusion : " + tf.name, desc: tf.desc, cls: " is-fusion" }; }
     if (c.type === "cb") { var cb = ALLW[c.id]; return { icon: cb.icon, name: cb.name, lvl: cb.legend ? "Fusion légendaire !" : "Fusion de techniques", desc: cb.desc[0] + " Recette : " + cb.parts.map(function (q) { return ALLW[q].type === "combo" ? ALLW[q].name : techDef(pl, q).name; }).join(" + ") + ". Libère un emplacement.", cls: cb.legend ? " is-fusion is-legend" : " is-fusion" }; }
     if (c.type === "w") {
       d = techDef(pl, c.id);
       var fam = { tir: "Tir", melee: "Mêlée", zone: "Zone", retour: "Retour", compagnon: "Compagnon" }[d.family] || "";
       var hint = d.type === "sig" ? "Signature" + (c.lvl > 1 ? " · niv. " + c.lvl : "") : isTech(c.id) ? (c.lvl === 1 ? "Technique " + fam + " (" + d.generic + ")" : "Niv. " + c.lvl) : "Attaque de base · niv. " + c.lvl;
-      var desc = c.lvl === 1 && isTech(c.id) ? "Nouvelle technique. Au niveau 5 : " + ALLW[c.id].evos.filter(function (e, ei) { return ei === 0 || (me.arme && mastLevel(me.arme) >= 3); }).map(function (e) { return e.name; }).join(" ou ") + "." : (d.desc && d.desc[c.lvl - 1]) || "Amélioration.";
+      var desc = c.lvl === 1 && isTech(c.id) ? "Nouvelle technique. Au niveau 5 : " + ALLW[c.id].evos.filter(function (e, ei) { return evoOk(me, e, ei, me.arme ? mastLevel(me.arme) : 1); }).map(function (e) { return e.name; }).join(" ou ") + "." : (d.desc && d.desc[c.lvl - 1]) || "Amélioration.";
       return { icon: d.icon, name: d.name, lvl: hint, desc: desc, cls: "" };
     }
     return null;
@@ -2530,27 +2603,37 @@
   function aimAngle(range) { var t = nearest(1, range)[0]; return t ? Math.atan2(t.y - p.y, t.x - p.x) : (p.dir ? Math.atan2(p.dir.y, p.dir.x) : (p.face > 0 ? 0 : Math.PI)); }
   BEHAVIOR.beam = function (id, w, l, dt) {
     if (!timer(id, V(w, "cd", l), dt)) return;
-    var len = V(w, "len", l) * p.area, wd = V(w, "w", l), dmg = V(w, "dmg", l), a0 = aimAngle(len), k = w.split || 1;
-    for (var i = 0; i < k; i++) {
-      var ag = a0 + (i - (k - 1) / 2) * 0.35;
-      fx.push({ kind: "beam", x: p.x, y: p.y - 2, a: ag, len: len, w: wd, life: 0.2, max: 0.2, col: w.color || "246,239,122" });
-      lineHit(p.x, p.y, ag, len, wd, function (e) { hurt(e, dmg, 0, 0); });
-    }
-    SND.zap();
+    var len = V(w, "len", l) * p.area, wd = V(w, "w", l), dmg = V(w, "dmg", l), k = w.split || 1;
+    var a0 = w.sweep ? (p.st[id + "#sw"] = (p.st[id + "#sw"] || 0) + 0.75) : aimAngle(len), angs = [];
+    for (var i = 0; i < k; i++) angs.push(a0 + (i - (k - 1) / 2) * (w.sweep && k > 1 ? TAU / k : 0.35));
+    if (w.mirror) angs = angs.concat(angs.map(function (a) { return a + Math.PI; }));
+    var hk = HIT_ELEM; if (w.elemX) HIT_ELEM = w.elemX;
+    angs.forEach(function (ag) {
+      fx.push({ kind: "beam", x: p.x, y: p.y - 2, a: ag, len: len, w: wd, life: 0.2, max: 0.2, col: w.elemX ? "200,248,232" : w.color || "246,239,122" });
+      lineHit(p.x, p.y, ag, len, wd, function (e, cx, cy) { hurt(e, dmg, w.push ? cx * 160 : 0, w.push ? cy * 160 : 0); });
+      if (w.trail && HIT_ELEM) for (var t = 1; t <= 3; t++) markZone(p.x + Math.cos(ag) * len * t / 3.4, p.y + Math.sin(ag) * len * t / 3.4, 11, 2.5, HIT_ELEM);
+    });
+    HIT_ELEM = hk;
+    if (!w.sweep || Math.random() < 0.3) SND.zap();
   };
   BEHAVIOR.lunge = function (id, w, l, dt) {
     if (!timer(id, V(w, "cd", l), dt)) return;
-    var len = V(w, "len", l) * p.area, wd = V(w, "w", l), dmg = V(w, "dmg", l), ag = aimAngle(len + 20);
-    fx.push({ kind: "beam", x: p.x, y: p.y, a: ag, len: len, w: wd * 0.6, life: 0.14, max: 0.14, col: w.color || "253,243,222" });
-    lineHit(p.x, p.y, ag, len, wd, function (e, cx, cy) { hurt(e, dmg * (w.execute && e.hp < e.maxHp * 0.3 ? 2 : 1), cx * 120, cy * 120); });
+    var len = V(w, "len", l) * p.area, wd = V(w, "w", l), dmg = V(w, "dmg", l), ag0 = aimAngle(len + 20), angs = [ag0];
+    if (w.root3 && p.anchored) angs.push(ag0 - 0.55, ag0 + 0.55);
+    if (w.mirror) angs = angs.concat(angs.map(function (a) { return a + Math.PI; }));
+    angs.forEach(function (ag) {
+      fx.push({ kind: "beam", x: p.x, y: p.y, a: ag, len: len, w: wd * 0.6, life: 0.14, max: 0.14, col: w.color || "253,243,222" });
+      lineHit(p.x, p.y, ag, len, wd, function (e, cx, cy) { hurt(e, dmg * (w.execute && e.hp < e.maxHp * 0.3 ? 2 : 1), cx * 120, cy * 120); });
+    });
     SND.whip();
   };
   BEHAVIOR.wave = function (id, w, l, dt) {
     if (!timer(id, V(w, "cd", l), dt)) return;
-    var a0 = aimAngle(V(w, "range", l) + 30), k = w.fan || 1, spd = w.spd || 150, rr = V(w, "r", l) * p.area;
+    var a0 = aimAngle(V(w, "range", l) + 30), k = w.fan || 1, spd = w.spd || 150, rr = V(w, "r", l) * p.area * (w.runWide ? 1 + Math.min(1, (p.runT || 0) / 3) : 1);
     for (var i = 0; i < k; i++) {
       var ag = a0 + (i - (k - 1) / 2) * 0.6;
       projs.push({ owner: p, kind: "bullet", x: p.x, y: p.y - 2, vx: Math.cos(ag) * spd, vy: Math.sin(ag) * spd, dmg: V(w, "dmg", l), pierce: 99, sprite: w.sprite || "windblade", life: V(w, "range", l) / spd, hit: [], r: rr, explode: 0 });
+      if (w.mines) for (var mi = 1; mi <= 3; mi++) pZone({ x: p.x + Math.cos(ag) * V(w, "range", l) * mi / 3, y: p.y + Math.sin(ag) * V(w, "range", l) * mi / 3, r: 12 * p.area, dur: 3, kind: "thorn", dmg: V(w, "dmg", l) * 0.25, owner: p });
     }
     SND.whip();
   };
@@ -2560,9 +2643,12 @@
     if (w.auto) { st.autoT = (st.autoT || 0) + dt; if (st.autoT >= w.auto) { st.autoT = 0; riposteBlast(p, w, l); } }
   };
   function riposteBlast(pl, w, l) {
-    var pp = p; p = pl; var R = V(w, "R", l) * pl.area;
+    var pp = p; p = pl; var R = V(w, "R", l) * pl.area, dm = V(w, "dmg", l);
+    if (w.patient && pl.anchored && (pl.anchorT || 0) >= 2) { R *= 1.8; dm *= 1.5; }
+    if (w.auraPulse) { R *= 1.5; dm *= 2; }
     fx.push({ kind: "ring", x: pl.x, y: pl.y, r: R, life: 0.3, max: 0.3, col: "253,243,222" });
-    near(pl.x, pl.y, R + 12, function (e) { var d = Math.hypot(e.x - pl.x, e.y - pl.y) || 1; if (d < R + e.d.r) hurt(e, V(w, "dmg", l), (e.x - pl.x) / d * 140, (e.y - pl.y) / d * 140); });
+    near(pl.x, pl.y, R + 12, function (e) { var d = Math.hypot(e.x - pl.x, e.y - pl.y) || 1; if (d < R + e.d.r) hurt(e, dm, (e.x - pl.x) / d * 140, (e.y - pl.y) / d * 140); });
+    if (w.markRing) { var mel = atkElem(pl); if (mel) near(pl.x, pl.y, R * 1.6 + 12, function (e) { if (!e.d.prop && Math.hypot(e.x - pl.x, e.y - pl.y) < R * 1.6 + e.d.r) applyMark(e, mel); }); }
     SND.crack(); p = pp;
   }
   // appelé quand le joueur prend un coup : renvoie true si le coup est annulé
@@ -2576,25 +2662,37 @@
     if (!timer(id, V(w, "cd", l), dt)) return;
     var range = V(w, "range", l), list = nearest(12, range).filter(function (e) { return !e.d.boss; });
     list.sort(function (a, b) { return Math.hypot(b.x - p.x, b.y - p.y) - Math.hypot(a.x - p.x, a.y - p.y); });
-    list.slice(0, V(w, "n", l)).forEach(function (e) {
+    var grabbed = list.slice(0, V(w, "n", l));
+    grabbed.forEach(function (e) {
       var dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
       fx.push({ kind: "beam", x: p.x, y: p.y, a: Math.atan2(-dy, -dx), len: d, w: 1, life: 0.25, max: 0.25, col: "200,190,170" });
-      e.x += dx / d * Math.max(0, d - 18) * 0.85; e.y += dy / d * Math.max(0, d - 18) * 0.85;
+      if (!w.dash) { e.x += dx / d * Math.max(0, d - 18) * 0.85; e.y += dy / d * Math.max(0, d - 18) * 0.85; }
       hurt(e, V(w, "dmg", l), 0, 0);
       if (w.boom && !e.dead) explode(e.x, e.y, w.boom, V(w, "dmg", l) * 0.8, 0);
+      if (w.grabReact && HIT_ELEM && !e.dead) { if (e.mark && e.markT > 0 && e.mark !== HIT_ELEM) react(e, e.mark, HIT_ELEM, true); else react(e, HIT_ELEM, nextElem(HIT_ELEM), true); }
     });
+    if (w.dash && grabbed.length) {
+      var g = grabbed[0], gx = g.x - p.x, gy = g.y - p.y, gd = Math.hypot(gx, gy) || 1, st = Math.max(0, Math.min(60, gd - 12));
+      if (!isDungeon()) { p.x += gx / gd * st; p.y += gy / gd * st; pushOutGiants(p, 5); }
+      p.inv = Math.max(p.inv || 0, 0.3); fx.push({ kind: "ring", x: p.x, y: p.y, r: 26, life: 0.25, max: 0.25, col: "253,243,222" });
+      explode(g.x, g.y, 28 * p.area, V(w, "dmg", l) * 1.2, 0);
+    }
     SND.whip();
   };
   BEHAVIOR.echo = function (id, w, l, dt) {
     if (!timer(id, V(w, "cd", l), dt)) return;
     var b = armeOf(p).base, bd = techDef(p, b); if (!bd || !BEHAVIOR[bd.type]) return;
     var sides = w.twins ? [-1, 1] : [-(p.face || 1)], ox = p.x, oy = p.y, k = V(w, "mul", l);
+    var hk = HIT_ELEM, n0 = projs.length, l0 = lobs.length; if (w.inverse && HIT_ELEM) HIT_ELEM = nextElem(HIT_ELEM);
     sides.forEach(function (sd) {
       p.x = ox + sd * 18; p.y = oy - 4;
       fx.push({ kind: "ghost", x: p.x, y: p.y, life: 0.35, max: 0.35, spr: p.sprite, face: p.face });
       var tk = "__echo" + sd; p.timers[tk] = 0; BEHAVIOR[bd.type](tk, scaleDmg(bd, k), (p.weapons[b] || 1) - 1, 0);
     });
+    if (w.pack) { var al = partnerOf(p); if (al && al.arme) { var ab = techDef(al, armeOf(al).base); if (ab && BEHAVIOR[ab.type]) { p.x = al.x; p.y = al.y - 4; fx.push({ kind: "ghost", x: p.x, y: p.y, life: 0.35, max: 0.35, spr: al.sprite, face: al.face }); p.timers.__echoP = 0; BEHAVIOR[ab.type]("__echoP", scaleDmg(ab, k), 0, 0); } } }
     p.x = ox; p.y = oy;
+    if (w.inverse) { for (var ii = n0; ii < projs.length; ii++) projs[ii].elem = HIT_ELEM; for (var jj = l0; jj < lobs.length; jj++) lobs[jj].elem = HIT_ELEM; }
+    HIT_ELEM = hk;
   };
   BEHAVIOR.combo = function () {};
   /* ---------- 2.0 phase 3 : éléments, réactions, rôles, escouades, méga boss ---------- */
@@ -2618,24 +2716,25 @@
     if (e.stunT > 0 && ept(p, "terre", 6)) dmg *= 1.3;
     if (e.d.prop || e.dead) return dmg;
     elemTierHit(e);
-    var marks = [];
+    var marks = [], hfx = HIT_FX;
+    if (hfx && hfx.ext && e.mark && e.markT > 0) e.markT += hfx.ext;
     if (el) marks.push(el);
     if (p.items) D.ITEMS.forEach(function (it) { if (it.elem && itn(p, it.id) && Math.random() < 0.2 * itn(p, it.id)) marks.push(it.elem); });
     if (itn(p, "coeur_humus")) marks.push("terre");
     for (var i = 0; i < marks.length; i++) {
       var m = marks[i];
-      if (e.mark && e.mark !== m && e.markT > 0) { react(e, e.mark, m); e.mark = null; e.markT = 0; }
+      if (e.mark && e.mark !== m && e.markT > 0) { react(e, e.mark, m, hfx && hfx.force); e.mark = null; e.markT = 0; }
       else if (!e.mark || e.markT <= 0 || e.mark === m) { if (m !== el || !e.mark) { e.mark = m; e.markT = 3; } }
     }
     return dmg;
   }
-  function react(e, a, b) {
+  function react(e, a, b, force) {
     var key = [a, b].sort().join("+"), rc = D.REACTIONS[key]; if (!rc) return;
-    if ((e.reactT || 0) > r.time) return;                 // une réaction par ennemi toutes les 1,5 s
+    if (!force && (e.reactT || 0) > r.time) return;       // une réaction par ennemi toutes les 1,5 s
     e.reactT = r.time + 1.5;
     r.reactions = (r.reactions || 0) + 1;
     if (r.time - (r.reactTxt || 0) > 0.25) { r.reactTxt = r.time; texts.push({ x: e.x, y: e.y - 14, n: rc.name.toUpperCase() + " !", life: 0.9, col: rc.color }); }
-    var pw = 1 + 0.04 * (r.level || 1);
+    var pw = (1 + 0.04 * (r.level || 1)) * ((HIT_FX && HIT_FX.react) || 1);
     if (key === "air+eau") { e.slowT = 1.6; e.slow = 1; hurt2(e, 10 * pw); burst(e.x, e.y, rc.color, 10); }
     else if (key === "air+feu") { explode(e.x, e.y, 30, 25 * pw, 0); addZone(e.x, e.y, 18, 2, "thorn", 0); }
     else if (key === "eau+terre") { near(e.x, e.y, 46, function (o) { o.slowT = 3; o.slow = 0.6; }); ring(e.x, e.y, 40, false); hurt2(e, 8 * pw); }
@@ -2645,7 +2744,47 @@
     SND.zap();
   }
   // dégâts de réaction : sans relancer les éléments (pas de chaîne infinie)
-  function hurt2(e, dmg) { if (e.dead) return; var keep = p.arme, kh = HIT_ELEM, ke = p.epts; p.arme = null; HIT_ELEM = null; p.epts = null; hurt(e, dmg, 0, 0); p.arme = keep; HIT_ELEM = kh; p.epts = ke; }
+  function hurt2(e, dmg) { if (e.dead) return; var keep = p.arme, kh = HIT_ELEM, ke = p.epts, kf = HIT_FX; p.arme = null; HIT_ELEM = null; p.epts = null; HIT_FX = null; hurt(e, dmg, 0, 0); p.arme = keep; HIT_ELEM = kh; p.epts = ke; HIT_FX = kf; }
+  // contenu étendu : l'élément suivant dans le cycle (Eau > Feu > Air > Terre > Eau)
+  var ELEM_CYCLE = ["eau", "feu", "air", "terre"];
+  function nextElem(el) { var i = ELEM_CYCLE.indexOf(el); return i < 0 ? "eau" : ELEM_CYCLE[(i + 1) % 4]; }
+  // pose une marque (ou déclenche la réaction si une autre marque est là)
+  function applyMark(e, m, force) {
+    if (!m || e.d.prop || e.dead) return;
+    if (e.mark && e.mark !== m && e.markT > 0) { react(e, e.mark, m, force); e.mark = null; e.markT = 0; }
+    else { e.mark = m; e.markT = Math.max(e.markT || 0, 3); }
+  }
+  function pZone(z) { if (zones.length < 120) { z.t = 0; zones.push(z); } }
+  function markZone(x, y, rad, dur, el) { if (el) pZone({ x: x, y: y, r: rad, dur: dur, kind: "mark", elem: el, owner: p }); }
+  // règles spéciales d'un coup (évolutions élémentaires, fusions de techniques)
+  function hitFx(e, hf, dmg, hadMark) {
+    if (hf.pull && !e.d.boss && !e.dead) { var dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1; if (d > 18) { var k = Math.min(hf.pull, d - 16); e.x += dx / d * k; e.y += dy / d * k; } }
+    if (hf.stun && !e.d.boss) { e.stunT = Math.max(e.stunT || 0, hf.stun); e.slowT = Math.max(e.slowT || 0, hf.stun); e.slow = 1; }
+    if (hf.markR) { var el = atkElem(p); if (el) near(e.x, e.y, hf.markR + 10, function (o) { if (o !== e && !o.d.prop && Math.hypot(o.x - e.x, o.y - e.y) < hf.markR + o.d.r) applyMark(o, el); }); }
+    if (hf.fate && !e.dead) { e.fateT = 6; e.fateBy = p; e.fateD = Math.max(4, dmg * 0.4); }
+    if (procLock) return;
+    var kf = HIT_FX;
+    if (hf.sat) { e.satN = (e.satN || 0) + 1; if (e.satN >= hf.sat) { e.satN = 0; procLock = true; HIT_FX = null; explode(e.x, e.y, 26 * p.area, dmg * 2.5, 0); HIT_FX = kf; procLock = false; } }
+    if (hf.killBoom && e.hp <= 0 && hadMark) {
+      procLock = true; HIT_FX = null; explode(e.x, e.y, 34 * p.area, Math.max(14, dmg), 0); HIT_FX = kf; procLock = false;
+      if (r.time - (r.reactTxt || 0) > 0.25) { r.reactTxt = r.time; texts.push({ x: e.x, y: e.y - 14, n: "LAME CHARGÉE !", life: 0.8, col: D.ELEMENTS[hadMark].color }); }
+    }
+  }
+  function bulletFx(q, en) {
+    var hf = q.hfx;
+    if (hf.flame) pZone({ x: q.x, y: q.y + 2, r: 8, dur: 1.6, kind: "fire", owner: p, pdmg: Math.max(2, q.dmg * 0.15), elem: "feu" });
+    if (hf.bounce && !procLock) { var nx = chainNext(en, [en.id]); if (nx) { procLock = true; zapChain(nx, hf.bounce, q.dmg * 0.5, en); procLock = false; } }
+  }
+  function lobLand(l) {
+    var c = l.cfg, el = l.elem;
+    if (c && c.crater && el && !l.small) markZone(l.tx, l.ty, l.rad * 0.9, c.crater, el);
+    if (c && c.mine && !l.small) pZone({ x: l.tx, y: l.ty, r: l.rad * 0.7, dur: 4, kind: "thorn", dmg: l.dmg * 0.25, owner: p, elem: el });
+    if (l.hfx && l.hfx.bounce && !l.small) { var t = nearest(1, 70, { x: l.tx, y: l.ty })[0]; if (t) zapChain(t, l.hfx.bounce, l.dmg * 0.5, { x: l.tx, y: l.ty }); }
+  }
+  function fateTick(e, dt) {
+    e.fateT -= dt; e.fateAcc = (e.fateAcc || 0) + dt; if (e.fateAcc < 0.4) return; e.fateAcc = 0;
+    var pp = p; p = e.fateBy || me; fx.push({ kind: "ring", x: e.x, y: e.y, r: 10, life: 0.15, max: 0.15, col: "253,243,222" }); hurt2(e, e.fateD); p = pp;
+  }
   /* ---- les rôles ---- */
   function roleAI(e, ai, d, dx, dy, dt) {
     var tg = targetOf(e), ang = Math.atan2(dy, dx);
@@ -2783,6 +2922,7 @@
   }
   /* ---------- 2.0 phase 4 : attirail, ressources, talents, maîtrise ---------- */
   var HIT_ELEM;                           // élément du coup en cours (amulette)
+  var HIT_FX = null;                      // règles spéciales du coup en cours (évolutions C, fusions)
   function eqS() { S.eq = S.eq || { inv: [], worn: {}, uid: 1 }; S.res = S.res || {}; S.clvl = S.clvl || {}; S.tal = S.tal || {}; S.mast = S.mast || {}; return S.eq; }
   function charLevel(cid) { return Math.min(12, 1 + Math.floor(Math.sqrt(((S.clvl || {})[cid] || 0) / 40))); }
   function charXpFor(l) { return (l - 1) * (l - 1) * 40; }
@@ -2839,8 +2979,9 @@
       var pair = t < 2 ? D.TAL_COMMON[t] : (D.TAL[pl.posture] || [])[t - 2]; if (!pair) continue;
       var node = pair[pick[t + 1] === "b" ? 1 : 0]; pl.tal[node.id] = true;
     }
-    pl.anchorTh = pl.tal.racines ? 0.25 : V2.anchorT;
-    pl.volteBase = (pl.tal.voltigeuse ? 1.5 : pl.tal.ressort ? 2.2 : V2.volteCd) - (setCount(pl, "orage") >= 2 ? 0.6 : 0);
+    pl.anchorTh = pl.anchorTh0 = pl.tal.racines ? 0.25 : V2.anchorT;
+    pl.volteBase = pl.volteBase0 = (pl.tal.voltigeuse ? 1.5 : pl.tal.ressort ? 2.2 : V2.volteCd) - (setCount(pl, "orage") >= 2 ? 0.6 : 0);
+    pl.epts0 = { terre: pl.epts.terre, feu: pl.epts.feu, eau: pl.epts.eau, air: pl.epts.air };
   }
   function tal(pl, id) { return !!(pl.tal && pl.tal[id]); }
   function gearHas(pl, fx) { for (var i = 0; pl.gear && i < pl.gear.length; i++) if (pl.gear[i].g.fx === fx) return pl.gear[i]; return null; }
@@ -3571,7 +3712,7 @@
       if (e.d.prop) { if (!nearAnyPlayer(e, 480)) e.dead = true; continue; }
       var sp = e.spd * (e.slowT > 0 ? 1 - e.slow : 1) * (e.buffT > 0 ? 1.3 : 1);
       if (e.buffT > 0) e.buffT -= dt; if (e.markT > 0) e.markT -= dt; if (e.stunT > 0) e.stunT -= dt;
-      burnTick(e, dt); if (e.dead) continue;
+      burnTick(e, dt); if (e.fateT > 0 && !e.dead) fateTick(e, dt); if (e.dead) continue;
       if (r.freeze > 0) sp *= e.d.boss ? 0.5 : 0;
       e.slowT -= dt; e.anim += dt * (e.type === "wasp" || e.type === "moth" ? 14 : 5) * (r.freeze > 0 && !e.d.boss ? 0 : 1);
       var mx = dx / d, my = dy / d, ox = e.x, oy = e.y;
@@ -3656,6 +3797,7 @@
       if (pd.down) {
         if (party && party.ctx.opts.noRevive) continue;   // party « Dernier debout » : pas de relève
         var rate = 0;
+        if (pd.medicT > 0) { pd.medicT -= dt; rate = 1; }
         players.forEach(function (o) { if (o !== pd && !o.down && Math.hypot(o.x - pd.x, o.y - pd.y) < 22) rate = Math.max(rate, (1 + 0.25 * ((o.passives && o.passives.entraide) || 0) + 0.5 * itn(o, "ralliement")) * (itn(o, "nid") ? 2 : 1) * (o.twin && o.owner === pd && tal(pd, "formation_t4") ? 2 : 1)); });
         pd.reviveT = rate ? pd.reviveT + dt * rate : Math.max(0, pd.reviveT - dt * 0.5);
         if (pd.reviveT >= 3) { r.revivesDone = (r.revivesDone || 0) + 1; pd.down = false; pd.hp = pd.maxHp * 0.4; pd.inv = 2; pd.reviveT = 0; bannerAll(pd.name + " est relevé !"); }
@@ -3679,7 +3821,7 @@
 
     for (i = projs.length - 1; i >= 0; i--) {
       var q = projs[i];
-      p = q.owner || me; HIT_ELEM = q.elem;
+      p = q.owner || me; HIT_ELEM = q.elem; HIT_FX = q.hfx || null;
       if (q.kind === "boomerang") updateBoomerang(q, dt);
       else if (q.kind === "rocket") updateRocket(q, dt);
       else updateBullet(q, dt);
@@ -3687,9 +3829,9 @@
     }
     for (i = lobs.length - 1; i >= 0; i--) {
       var l = lobs[i]; l.t += dt;
-      if (l.t >= l.dur) { lobs.splice(i, 1); p = l.owner || me; HIT_ELEM = l.elem; explode(l.tx, l.ty, l.rad, l.dmg, l.frag); }
+      if (l.t >= l.dur) { lobs.splice(i, 1); p = l.owner || me; HIT_ELEM = l.elem; HIT_FX = l.hfx || null; explode(l.tx, l.ty, l.rad, l.dmg, l.frag); lobLand(l); }
     }
-    HIT_ELEM = undefined;
+    HIT_ELEM = undefined; HIT_FX = null;
     p = me;
     enemies = enemies.filter(function (en) { return !en.dead; });
     curBoss = boss && !boss.dead ? boss : null;
@@ -4292,7 +4434,7 @@
     if (!o || o.sold || me.coins < o.price || r.ready[me.id]) return;
     me.coins -= o.price; o.sold = true;
     p = me;
-    var c = o.type === "fullheal" ? { type: "fullheal" } : o.type === "maxhp" ? { type: "maxhp" } : { type: o.type, id: o.id, lvl: o.lvl, evo: o.evo };
+    var c = o.type === "fullheal" ? { type: "fullheal" } : o.type === "maxhp" ? { type: "maxhp" } : { type: o.type, id: o.id, lvl: o.lvl, evo: o.evo, rec: o.rec };
     applyCore(c); refreshCounts();
     if (Net.on && Net.role === "guest") netSend("pick", { id: me.id, c: c });
     // les offres restantes qui ne sont plus valables (déjà au niveau, fusion faite) sont marquées vendues
@@ -4525,6 +4667,7 @@
       if (Math.abs(en.x - q.x) > en.d.r + q.r || Math.abs(en.y - q.y) > en.d.r + q.r) return;
       q.hit.push(en.id); q.pierce--;
       hurt(en, q.dmg * shieldBlock(en, q.vx, q.vy), q.vx * 0.5, q.vy * 0.5);
+      if (q.hfx) bulletFx(q, en);
       if (q.explode) { explode(q.x, q.y, q.explode, q.dmg * 0.6, 0); q.pierce = 0; }
       if (q.pierce <= 0) return false;
     });
@@ -4545,6 +4688,7 @@
     near(q.x, q.y, 16, function (en) {
       if (Math.abs(en.x - q.x) > en.d.r + 4 || Math.abs(en.y - q.y) > en.d.r + 4) return;
       if (!cooled(en, "b" + q.sprite, 0.35)) return;
+      if (q.ar && q.back && q.elem && en.mark && en.markT > 0 && !en.d.prop) react(en, en.mark, en.mark === q.elem ? nextElem(q.elem) : q.elem, true);
       hurt(en, q.dmg, q.vx * 40, q.vy * 40);
       if (q.chain && q.zapT <= 0 && !en.d.prop) { q.zapT = 0.25; zapChain(chainNext(en, [en.id]), q.chain, q.dmg * 0.5, en); SND.zap(); }
     });
@@ -5452,7 +5596,7 @@
         tile("atelier", "🔨", "L'atelier", "Craft et recyclage") +
         tile("succes", "🏆", "Succès", nAch + " / " + D.ACHIEVEMENTS.length) +
         tile("quetes", "🗝️", "Quêtes", nQ + " / " + D.QUESTS.length) +
-        tile("codex", "📜", "Techniques", "20 techniques · " + (Object.keys(D.TFUS).length + Object.keys(D.COMBOS).length + Object.keys(D.LEGENDS).length) + " fusions") +
+        tile("codex", "📜", "Techniques", "20 techniques · " + (Object.keys(D.TFUS).length + Object.keys(D.TFUS2).length + Object.keys(D.COMBOS).length + Object.keys(D.LEGENDS).length) + " fusions") +
         tile("help", "❓", "Aide", "Comment jouer") +
         tile("options", "⚙️", "Options", "Son, effets") +
         "</div>" +
@@ -5810,10 +5954,10 @@
       });
       html += '</div><h3 class="pick-title">Les 20 techniques et leurs évolutions</h3><div class="shop-list">';
       Object.keys(D.TECH).forEach(function (id) {
-        var t = D.TECH[id], tf = D.TFUS[id];
+        var t = D.TECH[id], tf = D.TFUS[id], tf2 = D.TFUS2[id];
         html += '<div class="shop-item"><span class="shop-ic"><img src="' + spriteUrl(t.icon) + '" alt=""></span><div class="shop-text"><strong>' + esc(t.name) + " <small>" + esc({ tir: "Tir", melee: "Mêlée", zone: "Zone", retour: "Retour", compagnon: "Compagnon" }[t.fam]) + "</small></strong>" +
-          "<span>" + t.evos.map(function (e) { return "<b>" + esc(e.name) + "</b> : " + esc(e.desc); }).join("<br>") + "</span>" +
-          (tf ? '<span class="fusion-recipe">+ ' + esc(D.PASSIVES[tf.p].name) + " → " + esc(tf.name) + " : " + esc(tf.desc) + "</span>" : "") + "</div></div>";
+          "<span>" + t.evos.map(function (e) { return "<b>" + esc(e.name) + "</b>" + (e.elemC ? " (élémentaire)" : "") + " : " + esc(e.desc); }).join("<br>") + "</span>" +
+          [tf, tf2].map(function (x) { return x ? '<span class="fusion-recipe">+ ' + esc(D.PASSIVES[x.p].name) + " → " + esc(x.name) + " : " + esc(x.desc) + "</span>" : ""; }).join("") + "</div></div>";
       });
       html += '</div><h3 class="pick-title">Éléments</h3><p class="game-small">Chaque arme a un élément (Katana : Air, Arc : Feu, Bâton : Terre). Les ennemis résistent au leur (-40 %, -60 % pour élites et boss) et craignent celui qui le bat (+40 %) : Eau &gt; Feu &gt; Air &gt; Terre &gt; Eau. La Clairière est neutre. Deux éléments sur une même cible déclenchent une réaction : il faut un 2e élément (Braise, Goutte de rosée, Galet, Plume de brise).</p><div class="shop-list">';
       Object.keys(D.REACTIONS).forEach(function (k) { var rc = D.REACTIONS[k]; html += '<div class="shop-item"><span class="shop-ic" style="background:' + rc.color + '"></span><div class="shop-text"><strong>' + esc(rc.name) + "</strong><span>" + k.split("+").map(function (x) { return D.ELEMENTS[x].name; }).join(" + ") + " : " + esc(rc.desc) + "</span></div></div>"; });
@@ -6550,7 +6694,7 @@
     r.ended = true;
     var sc = score(), gold = runGold();
     if (party) partyEnded(quit);
-    S.stats.kills += r.kills; r.committed = true;
+    S.stats.kills += r.kills; S.stats.voltes = (S.stats.voltes || 0) + (r.voltes || 0); r.committed = true;
     S.stats.runs++;
     earnGold(gold);
     var rankGain = Math.floor((r.time / 10 + r.kills / 20 + r.bosses * 20 + r.level * 2) * (1 + 0.2 * pu("rang"))), ranksUp = 0;
@@ -6791,7 +6935,7 @@
     tp: function (x, y) { me.x = x; me.y = y; },
     pool: function () { p = me; var seen = {}; for (var i = 0; i < 300; i++) choices(6).forEach(function (c) { if (c.id) seen[c.id] = 1; }); var its = {}; for (i = 0; i < 400; i++) its[rollItem(0).id] = 1; return { choix: Object.keys(seen), objets: Object.keys(its) }; },
     evo: function (id, e) { p = me; me.evo = me.evo || {}; me.evo[id] = e || "a"; return techName(me, id); },
-    tfus: function (id) { me.tfus = me.tfus || {}; me.tfus[id] = true; return techName(me, id); },
+    tfus: function (id, rec) { me.tfus = me.tfus || {}; me.tfus[id] = rec || 1; me.tdef = {}; return techName(me, id); },
     combo: function (id) { p = me; v2Apply({ type: "cb", id: id }); calc(me); return Object.keys(me.weapons); },
     entries: function () { return techEntries(me).map(function (e) { return e.key + ":" + e.def.type + ":" + Math.round(V(e.def, "dmg", e.l) || 0); }); },
     arme: function (id) { pickArme(id); return me.weapons; },
@@ -6817,6 +6961,7 @@
     wear: function (id, slot) { wornBy(S.char)[slot] = id; save(); },
     talent: function (tier, ab) { var ps = postureOf(S.char, (S.posture || {})[S.char]).id; eqS(); S.clvl[S.char] = 5000; S.tal[S.char] = S.tal[S.char] || {}; S.tal[S.char][ps] = S.tal[S.char][ps] || {}; S.tal[S.char][ps][tier] = ab; save(); },
     mast: function (aid, x) { eqS(); S.mast[aid] = x; save(); },
+    ept: function (el, n) { me.epts0 = me.epts0 || { terre: 0, feu: 0, eau: 0, air: 0 }; me.epts0[el] += n; calc(me); return me.epts; },
     load: function () { return { gear: (me.gear || []).map(function (g) { return g.g.name + ":" + Math.round(g.v); }), epts: me.epts, ring: me.ring, amu: me.amu, tal: me.tal, anchorTh: me.anchorTh, volteBase: me.volteBase, ult: me.ultG }; },
     over: function () { gameOver(true); return document.querySelector(".v2-run") ? document.querySelector(".v2-run").innerText : null; },
     mega: function (step) {
