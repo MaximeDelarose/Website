@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.0.0-a4";
+  var VERSION = "2.0.0-a5";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -91,7 +91,7 @@
     if (!D.MAPS.some(function (m) { return m.id === S.map; }) || !has(mapById(S.map).unlock)) S.map = "clairiere";
     if (!D.DIFFICULTIES[S.diff] || !has(D.DIFFICULTIES[S.diff].unlock)) S.diff = "normal";
     if (!S.dungeon || !has(dungeonById(S.dungeon).unlock)) S.dungeon = "terriers";
-    S.mode = "survie"; S.posture = S.posture || {};   // 2.0 bêta : Survie seulement
+    if (S.mode !== "expedition") S.mode = "survie"; S.posture = S.posture || {};   // 2.0 bêta : Survie et Expédition
     eqS();
   }
   sanitize();
@@ -309,6 +309,7 @@
     xp = 0; xpNext = need(1); pending = me.tree.f5 ? 1 : 0; picking = false; netMenuOpen = false;
     spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
+    if (r.mode === "expedition") { r.bag = []; r.secure = []; r.exStats = {}; startExpe(1); }
     if ((!Net.on || Net.role === "host") && r.mode !== "dungeon") for (var i = 0; i < 4; i++) spawnProp(90 + Math.random() * 120);
     if (r.mode === "dungeon") { nextSwarm = 1e9; nextBoss = 1e9; spawnAcc = 0; if (!Net.on || Net.role === "host") populateFloor(); }
     if (r.mode === "arena") { nextSwarm = 1e9; nextBoss = 1e9; spawnAcc = 2; }
@@ -498,6 +499,7 @@
     if (rm0 > 0 && !d.prop) { e.spd *= rageSpd(); if (!d.boss) { e.hp *= 1 + RAGE.hpPerMin * rm0; e.maxHp = e.hp; } e.rage = Math.min(1, rm0 / 5); }
     enemies.push(e);
     giveElement(e);
+    if (isExpe() && r.ex && !d.prop && Math.hypot(x, y) < corrR()) { e.corrupt = true; e.hp *= 1.5; e.maxHp = e.hp; e.dmgMul = (e.dmgMul || 1) * 1.3; }
     return e;
   }
   function spawn(type, ang, dist, around) {
@@ -1185,14 +1187,14 @@
     if (!r) return 0;
     if (isArena()) return Math.max(0, (r.round - 1) / 2.4);
     var m = r.time / 60 + (isDungeon() && r.dg ? (r.dg.floor - 1) * 3 : 0);
-    return m / tcfg().minutes;
+    return m / tcfg().minutes + (r.ex ? 2 * (r.ex.floor - 1) : 0);   // Expédition : +2 paliers par descente
   }
   function tierN() { return Math.floor(tierPos()); }                       // continue de monter après le dernier palier
   function tierName(t) { return TIERS[Math.min(TIERS.length - 1, t)].name + (t >= TIERS.length ? " +" + (t - TIERS.length + 1) : ""); }
   // rage : temps passé sur la carte actuelle (le portail le remet à zéro, pas la difficulté)
   var RAGE = D.RAGE;
   function stageTime() { return r ? r.time - (r.stageT0 || 0) : 0; }
-  function rageMin() { return !r || isArena() ? 0 : Math.max(0, stageTime() - RAGE.start + (me && me.ring && me.ring.furie ? 180 : 0)) / 60; }
+  function rageMin() { return !r || isArena() || isExpe() ? 0 : Math.max(0, stageTime() - RAGE.start + (me && me.ring && me.ring.furie ? 180 : 0)) / 60; }
   function rageDmg() { var m = rageMin(); return 1 + RAGE.dmgK * Math.pow(m, RAGE.dmgPow); }
   function rageSpd() { return Math.min(RAGE.spdMax, 1 + RAGE.spdPerMin * rageMin()); }
   function tierTick() {
@@ -2694,7 +2696,7 @@
   // l'arène du méga boss se ferme : on ne peut pas s'enfuir
   function megaArena(pl) {
     var m = r.mega; if (!m) return;
-    if (m.boss.dead) { r.mega = null; S.mega = S.mega || {}; if (!S.mega.terre) { S.mega.terre = Date.now(); save(); bannerAll("Colosse vaincu ! (1re victoire : le palier Cauchemar de la Clairière est débloqué)"); } drop("item", m.boss.x, m.boss.y, ITM.coeur_humus.idx); return; }
+    if (m.boss.dead) { r.mega = null; if (isExpe() && r.ex) { r.ex.megaWon = true; r.ex.st.forEach(function (st) { if (st.k === "x_mega") st.hidden = 0; }); bannerAll("La sortie du méga boss s'ouvre au cœur"); } S.mega = S.mega || {}; if (!S.mega.terre) { S.mega.terre = Date.now(); save(); bannerAll("Colosse vaincu ! (1re victoire : le palier Cauchemar de la Clairière est débloqué)"); } drop("item", m.boss.x, m.boss.y, ITM.coeur_humus.idx); return; }
     var dx = pl.x - m.x, dy = (pl.y - m.y) * 1.25, d = Math.hypot(dx, dy);
     if (d > m.R) { pl.x = m.x + dx / d * m.R; pl.y = m.y + dy / d * m.R / 1.25; }
   }
@@ -2864,13 +2866,15 @@
   function lootKill(e) {
     if (e.d.prop || !r.res || isArena()) return;
     var bi = biomeAtTile(Math.floor(e.x / 16), Math.floor(e.y / 16)), list = D.MAP_RES[MAP.id] || D.MAP_RES.clairiere, res = list[bi % list.length];
-    var add = function (id, n) { r.res[id] = (r.res[id] || 0) + n; };
+    var add = function (id, n) { if (isExpe()) bagAddRes(id, n); else r.res[id] = (r.res[id] || 0) + n; };
+    if (isExpe() && e.aff && e.aff.indexOf("meneur") >= 0) r.exStats.meneur = true;
+    if (isExpe() && e.d.elite && Math.random() < 0.08) { r.ex.keys++; texts.push({ x: e.x, y: e.y - 18, n: "+ CLE", life: 1.2, col: "#f6d36b" }); }
     if (e.d.boss) {
       add(res, 3); var tr = "t_" + (e.type === "colosse" ? "colosse" : e.type); if (D.RES[tr]) { add(tr, e.d.mega ? 2 : 1); texts.push({ x: e.x, y: e.y - 24, n: "+ " + D.RES[tr].name.toUpperCase(), life: 1.6, col: "#f6d36b" }); }
-      if (e.d.mega || Math.random() < 0.35) { var q = genPiece(1 + (tierN() >= 4 ? 1 : 0) + (e.d.mega ? 1 : 0)); r.loot.push(q); texts.push({ x: e.x, y: e.y - 32, n: "ATTIRAIL : " + D.GEAR[q.t].name.toUpperCase(), life: 2, col: "#b07cf0" }); }
+      if (e.d.mega || Math.random() < 0.35) { var q = genPiece(1 + (tierN() >= 4 ? 1 : 0) + (e.d.mega ? 1 : 0)); if (isExpe()) bagAddGear(q); else r.loot.push(q); texts.push({ x: e.x, y: e.y - 32, n: "ATTIRAIL : " + D.GEAR[q.t].name.toUpperCase(), life: 2, col: "#b07cf0" }); }
       if (me.ring && me.ring.danger) drop("chest", e.x, e.y + 14, 1);
       if (me.ring && me.ring.source) players.forEach(function (o) { if (!o.down) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.4); });
-    } else if (e.d.elite) { if (Math.random() < 0.4) add(res, 1); if (Math.random() < 0.03) r.loot.push(genPiece(1)); if (me.ring && me.ring.chasse) dropItem(e.x, e.y, 0); }
+    } else if (e.d.elite) { if (Math.random() < 0.4) add(res, 1); if (Math.random() < (isExpe() && ringOf(e.x, e.y) !== "peri" ? 0.08 : 0.03)) { var q2 = genPiece(isExpe() && ringOf(e.x, e.y) === "coeur" ? 2 : 1); if (isExpe()) bagAddGear(q2); else r.loot.push(q2); } if (me.ring && me.ring.chasse) dropItem(e.x, e.y, 0); }
     else if (Math.random() < 0.06) add(res, 1);
     if (e.burnT > 0 && e.burnBy && ept(e.burnBy, "feu", 9)) { var pp = p; p = e.burnBy; explode(e.x, e.y, 26, 18 * gpw(), 0); p = pp; }
   }
@@ -2898,6 +2902,262 @@
     return '<div class="v2-run">' + bar(esc(charById(g.cid).name) + " · niveau", cl, c0, c1, g.l1 > g.l0) + bar("Maîtrise " + esc(D.ARMES[g.aid].name), ml, m0, m1, g.m1 > g.m0) +
       (res.length ? '<p class="game-small">Ressources : ' + res.map(function (k) { return D.RES[k].icon + " " + esc(D.RES[k].name) + " x" + g.res[k]; }).join(" · ") + "</p>" : "") +
       (g.loot.length ? '<p class="game-small">Attirail trouvé : ' + g.loot.map(function (q) { return "<b>" + esc(D.GEAR[q.t].name) + "</b>"; }).join(", ") + " (au terrier)</p>" : "") + "</div>";
+  }
+  /* =====================================================================
+     2.0 phase 5 : l'Expédition (carte d'extraction à étages)
+     ===================================================================== */
+  var EX = { R: 3000, core: 850, mid: 2000, bag: 12, stack: 20, cell: 200 };
+  function isExpe() { return r && r.mode === "expedition"; }
+  function exF() { return Math.max(0.55, 1 - 0.1 * ((r.ex ? r.ex.floor : 1) - 1)); }   // 20, 18, 16… minutes
+  function exT() { return stageTime() / 60 / exF(); }                                    // minutes « étage 1 »
+  function ringOf(x, y) { var d = Math.hypot(x, y); return d < EX.core ? "coeur" : d < EX.mid ? "median" : "peri"; }
+  function corrR() { return Math.min(EX.R + 200, 250 + (EX.R - 250) * Math.max(0, exT() / 20)); }
+  function genExpe(seed, floor) {
+    var rnd = mulberry(seed * 13 + floor * 7919 + 3), A = function () { return rnd() * TAU; }, at = function (a, d) { return { x: Math.round(Math.cos(a) * d), y: Math.round(Math.sin(a) * d) }; };
+    var a0 = A(), sp = at(a0, EX.R - 160), list = [];
+    function add(k, a, d, extra) { var o = at(a, d); o.k = k; o.p = 0; o.done = false; o.id = k + list.length; Object.keys(extra || {}).forEach(function (q) { o[q] = extra[q]; }); list.push(o); return o; }
+    // sorties : toujours visibles ; chaque départ mène à au moins 2 sorties
+    add("x_perm", a0 + Math.PI + (rnd() - 0.5) * 0.8, EX.R - 220, { exit: 1 });
+    add("x_cle", a0 + 0.9 + rnd() * 0.6, 1900 + rnd() * 700, { exit: 1 });
+    add("x_endu", a0 - 0.9 - rnd() * 0.6, 1500 + rnd() * 900, { exit: 1, need: 60 });
+    add("x_passeur", a0 + Math.PI * (0.5 + rnd()), 2100 + rnd() * 700, { exit: 1 });
+    add("x_mega", A(), 260, { exit: 1, hidden: 1 });
+    add("repaire", A(), 0, {});
+    for (var i = 0; i < 6; i++) add("camp", A(), EX.core + 150 + rnd() * (EX.mid - EX.core - 200), {});
+    for (i = 0; i < 9; i++) add("gisement", A(), EX.core + rnd() * (EX.R - EX.core - 200), {});
+    for (i = 0; i < 3; i++) add("tour", a0 + (i - 1) * 1.6 + (rnd() - 0.5) * 0.4, 1300 + rnd() * 1300, {});
+    for (i = 0; i < 2; i++) add("nid", A(), EX.core + 200 + rnd() * 800, {});
+    for (i = 0; i < 2; i++) add("autelcle", A(), 1200 + rnd() * 1500, {});
+    for (i = 0; i < 3; i++) add("source", a0 + i * TAU / 3 + rnd(), 600 + rnd() * 2000, {});
+    return { seed: seed, floor: floor, spawn: sp, st: list, seen: {}, passages: [], closed: 0, night: false, keys: 0, megaWon: false, camps: 0, gis: 0 };
+  }
+  var EXDEF = {
+    x_perm:    { name: "Sortie permanente", col: "#9cc56b", t: 2 },
+    x_cle:     { name: "Sortie à clé", col: "#f6d36b", t: 1.5 },
+    x_endu:    { name: "Sortie d'endurance", col: "#ff8a5a", t: 0 },
+    x_passeur: { name: "Sortie du passeur", col: "#6ad8ff", t: 1.5 },
+    x_mega:    { name: "Sortie du méga boss", col: "#ff40c0", t: 1.5 },
+    repaire:   { name: "Repaire du méga boss", col: "#c8a060", t: 3 },
+    camp:      { name: "Camp ennemi", col: "#c8553d", t: 0 },
+    gisement:  { name: "Gisement (reste ancré)", col: "#b8a888", t: 3 },
+    tour:      { name: "Tour de guet", col: "#e8e0d0", t: 2 },
+    nid:       { name: "Nid de boss", col: "#b07cf0", t: 2.5 },
+    autelcle:  { name: "Autel de clé", col: "#f6d36b", t: 3 },
+    source:    { name: "Source de soin", col: "#6ad8ff", t: 1.2 },
+    passage:   { name: "Passage vers l'étage suivant", col: "#b07cf0", t: 3 },
+  };
+  function passeurCost() { return Math.round(60 + 40 * r.ex.floor); }
+  /* ---- le sac ---- */
+  function bagSlots() { return r.bag.length; }
+  function bagAddRes(id, n) {
+    var left = n;
+    r.bag.forEach(function (b) { if (left > 0 && b.k === "res" && b.id === id && b.n < EX.stack) { var a = Math.min(left, EX.stack - b.n); b.n += a; left -= a; } });
+    while (left > 0 && r.bag.length < EX.bag) { var a2 = Math.min(left, EX.stack); r.bag.push({ k: "res", id: id, n: a2 }); left -= a2; }
+    if (left > 0 && cooledG("bagfull", 3)) banner("Sac plein !");
+    return n - left;
+  }
+  function bagAddGear(q) { if (r.bag.length >= EX.bag) { if (cooledG("bagfull", 3)) banner("Sac plein !"); return false; } r.bag.push({ k: "gear", q: q }); return true; }
+  var gcool = {};
+  function cooledG(k, t) { if ((gcool[k] || 0) > r.time) return false; gcool[k] = r.time + t; return true; }
+  function bagValue(list) { var v = 0; (list || r.bag).forEach(function (b) { v += b.k === "gear" ? 25 * (b.q.tier || 1) : (D.RES[b.id] && D.RES[b.id].trophy ? 10 : 1) * b.n; }); return v; }
+  function entryName(b) { return b.k === "gear" ? D.GEAR[b.q.t].name : D.RES[b.id].name + " x" + b.n; }
+  /* ---- début, étages, descente ---- */
+  function startExpe(floor, seed) {
+    var keys = r.ex ? r.ex.keys : 0;
+    r.ex = genExpe(seed || ((Math.random() * 1e9) | 0), floor || 1); r.ex.keys = keys;
+    r.stageT0 = r.time; r.portal = null; r.mega = null;
+    var sp = r.ex.spawn;
+    players.forEach(function (pl, k) { pl.x = pl.tx = sp.x + k * 16; pl.y = pl.ty = sp.y; });
+    enemies = []; projs = []; hostile = []; lobs = []; warns = []; gems = []; zones = [];
+    shrineCache = {}; r.sh = {};
+    bannerAll("Étage " + r.ex.floor + " : explore, remplis ton sac, puis sors ou descends");
+  }
+  function expeTick(dt) {
+    var ex = r.ex, t = exT(), f = exF();
+    // brouillard de guerre
+    if (cooledG("fog", 0.25)) revealAt(me.x, me.y, 260);
+    // nuit à la minute 8
+    if (!ex.night && t >= 8) { ex.night = true; bannerAll("La nuit tombe : on voit moins loin, les Rôdeurs sortent"); SND.boom(); }
+    // les passages apparaissent vers la minute 10 (au repaire, il faut battre le méga boss)
+    var lair = ex.floor % 3 === 0;
+    if (!ex.passages.length && t >= 10 && (!lair || ex.megaWon)) {
+      var keys = D.MAPS.map(function (m) { return m.id; }).sort(function () { return Math.random() - 0.5; });
+      for (var i = 0; i < 2; i++) { var a = Math.random() * TAU, d = EX.core + 300 + Math.random() * 600; ex.passages.push({ k: "passage", x: Math.round(Math.cos(a) * d), y: Math.round(Math.sin(a) * d), p: 0, st: 0, region: keys[i], loot: i ? "attirail" : "ressources", id: "pass" + i }); }
+      bannerAll("Deux passages vers l'étage " + (ex.floor + 1) + " sont apparus !"); SND.fusion();
+    }
+    if (lair && !ex.passages.length && t >= 10 && cooledG("lairmsg", 60)) banner("Étage du repaire : bats le méga boss au cœur pour descendre");
+    // à partir de la minute 12, une sortie se ferme toutes les 2 minutes
+    var shouldClose = t < 12 ? 0 : 1 + Math.floor((t - 12) / 2);
+    while (shouldClose > ex.closed) {
+      var open = ex.st.filter(function (s) { return s.exit && !s.closedX && s.k !== "x_perm" && !s.hidden; });
+      if (open.length) { var c = open[(Math.random() * open.length) | 0]; c.closedX = true; bannerAll(EXDEF[c.k].name + " se ferme !"); SND.crack(); }
+      ex.closed++;
+    }
+    // structures
+    ex.st.concat(ex.passages).forEach(function (s) { structTick(s, dt); });
+    // limite de la carte
+    players.forEach(function (pl) { var d = Math.hypot(pl.x, pl.y); if (d > EX.R) { pl.x *= EX.R / d; pl.y *= EX.R / d; } });
+    expeDirector(dt);
+  }
+  function revealAt(x, y, rad) {
+    var c = EX.cell, n = Math.ceil(rad / c);
+    for (var i = -n; i <= n; i++) for (var j = -n; j <= n; j++) { var gx = Math.floor(x / c) + i, gy = Math.floor(y / c) + j; if (Math.hypot((gx + 0.5) * c - x, (gy + 0.5) * c - y) < rad + c * 0.5) r.ex.seen[gx + "," + gy] = 1; }
+  }
+  function seenAt(x, y) { return !!r.ex.seen[Math.floor(x / EX.cell) + "," + Math.floor(y / EX.cell)]; }
+  function structTick(s, dt) {
+    if (s.done || s.closedX || s.hidden) return;
+    var pl = me, d = Math.hypot(pl.x - s.x, (pl.y - s.y) * 1.25), inside = !pl.down && d < 26, def = EXDEF[s.k];
+    if (s.k === "camp") {
+      if (!s.woke && d < 260) { s.woke = true; s.ids = spawnCamp(s); }
+      if (s.woke && s.ids && s.ids.every(function (e) { return e.dead; })) { s.done = true; r.ex.camps++; r.exStats.camps = (r.exStats.camps || 0) + 1; drop("chest", s.x, s.y, 1); dropItem(s.x + 12, s.y, 0); if (Math.random() < 0.6) bagAddGear(genPiece(1 + (ringOf(s.x, s.y) === "coeur" ? 1 : 0))); bannerAll("Camp nettoyé !"); SND.fusion(); }
+      return;
+    }
+    if (s.k === "x_endu") {
+      if (inside) { if (!s.run) { s.run = true; bannerAll("Tiens 60 s dans la zone !"); } s.p = Math.min(1, s.p + dt / s.need); if (cooledG("endu", 3.5)) spawnSquad({ nuee: 8, chargeur: 1, tireur: 1 }, me); if (s.p >= 1) extract(s); }
+      return;
+    }
+    if (s.k === "gisement" && !pl.anchored) inside = false;
+    if (s.k === "passage" && s.st === 1) { if (!s.boss || s.boss.dead) { s.st = 2; s.p = 0; bannerAll("Le passage est ouvert : entre pour descendre"); } return; }
+    s.p = inside ? Math.min(1, s.p + dt / (def.t || 1)) : Math.max(0, s.p - dt * 0.6);
+    if (s.p < 1) return;
+    s.p = 0;
+    if (s.k === "x_perm") extract(s);
+    else if (s.k === "x_cle") { if (r.ex.keys > 0) { r.ex.keys--; extract(s); } else if (cooledG("nokey", 2)) banner("Il faut une clé (élites, autels de clé)"); }
+    else if (s.k === "x_passeur") { var c = passeurCost(); if (r.gold >= c) { r.gold -= c; r.exStats.passeur = true; extract(s); } else if (cooledG("pass", 2)) banner("Le passeur veut " + c + " glands"); }
+    else if (s.k === "x_mega") extract(s);
+    else if (s.k === "repaire") { s.done = true; var po = { x: s.x, y: s.y + 80 }; wakeMega(po); r.ex.megaBoss = r.mega && r.mega.boss; }
+    else if (s.k === "gisement") { s.done = true; var list = D.MAP_RES[MAP.id] || D.MAP_RES.clairiere, n = 3 + ((Math.random() * 3) | 0); bagAddRes(list[(Math.random() * list.length) | 0], n); r.ex.gis++; r.exStats.gis = (r.exStats.gis || 0) + 1; texts.push({ x: s.x, y: s.y - 20, n: "+" + n + " RESSOURCES", life: 1.2, col: "#e8d090" }); SND.gold(); }
+    else if (s.k === "tour") { s.done = true; revealAt(s.x, s.y, 1400); bannerAll("Tour de guet : la région se dévoile"); SND.level(); }
+    else if (s.k === "nid") { s.done = true; var bt = MAP.bosses[(Math.random() * MAP.bosses.length) | 0], b = spawnAt(bt, s.x, s.y - 50); b.awake = true; bossCount++; bannerAll(D.ENEMIES[bt].name + " sort de son nid !"); SND.boom(); }
+    else if (s.k === "autelcle") { s.done = true; r.ex.keys++; spawnSquad({ chargeur: 2, tireur: 2, nuee: 6 }, me); bannerAll("Clé obtenue ! (" + r.ex.keys + ")"); SND.fusion(); }
+    else if (s.k === "source") { s.done = true; players.forEach(function (o) { if (!o.down) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.5); }); bannerAll("L'eau claire te soigne"); SND.level(); }
+    else if (s.k === "passage") {
+      if (s.st === 0) { s.st = 1; var po2 = { x: s.x, y: s.y }; wakeGuardian(po2); s.boss = po2.boss; r.portal = null; }
+      else if (s.st === 2) securePrompt(s);
+    }
+  }
+  function spawnCamp(s) {
+    var ring = ringOf(s.x, s.y), sq = ring === "coeur" ? { bouclier: 2, tireur: 3, soutien: 1, nuee: 6 } : { chargeur: 2, tireur: 2, nuee: 5 };
+    var out = spawnSquad(sq, { x: s.x, y: s.y }, 1);
+    out.forEach(function (e) { e.camp = true; e.awake = true; });
+    if (out.length) giveAffixes(out[0], ring === "coeur" ? 2 : 1);
+    return out;
+  }
+  function expeDirector(dt) {
+    var ring = ringOf(me.x, me.y), base = { peri: 0.9, median: 1.8, coeur: 3 }[ring];
+    var corr = Math.hypot(me.x, me.y) < corrR() ? 1.6 : 1;
+    var rate = base * corr * (1 + 0.15 * tierN()) * DIFF.spawn;
+    squadDirector(dt, rate);
+    if (r.ex.night && Math.random() < dt * 0.15) spawnSquad({ rodeur: 2 });
+  }
+  // un objet mis à l'abri par descente, sur l'autel du passage
+  function securePrompt(s) {
+    r.ex.pend = s; state = "levelup"; clearInput();
+    var cap = 1 + ((S.secureSlots) || 0), free = cap - r.secure.length;
+    var html = '<span class="kicker">Autel du passage</span><h2>Mettre un objet à l\'abri ?</h2><p class="game-small">Ce qui est à l\'abri n\'est jamais perdu, même si tu meurs. Emplacements : ' + r.secure.length + " / " + cap + '.</p><div class="choices">';
+    if (free > 0) r.bag.forEach(function (b, i) { html += '<button type="button" class="choice" data-action="xsecure" data-arg="' + i + '"><span class="choice-key">' + (i + 1) + '</span><span class="choice-text"><strong>' + esc(entryName(b)) + "</strong><span>" + (b.k === "gear" ? esc(pieceDesc(b.q)) : esc(D.RES[b.id].icon)) + "</span></span></button>"; });
+    html += '</div><div class="btn-row center"><button class="btn" type="button" data-action="xsecure" data-arg="-1">Descendre sans rien mettre</button></div>';
+    showCard(html, "secure");
+  }
+  function descend(region) {
+    var ex = r.ex;
+    r.exStats.depth = ex.floor + 1;
+    enterMap(region, (r.stage || 0) + 1, r.time);
+    startExpe(ex.floor + 1);
+    players.forEach(function (pl) { if (pl.down) { pl.down = false; pl.hp = pl.maxHp * 0.5; } });
+    S.stats.bestDepth = Math.max(S.stats.bestDepth || 1, r.ex.floor); save();
+  }
+  // extraction : on garde tout le sac
+  function extract(s) {
+    if (r.ended) return;
+    var mul = s.k === "x_mega" ? 1.5 : 1;
+    r.extracted = { how: EXDEF[s.k].name, mul: mul };
+    r.won = true;
+    gameOver(false, "Extraction réussie : " + EXDEF[s.k].name + " !");
+  }
+  // fin d'expédition : le sac passe au camp (extraction) ou est perdu (mort), sauf ce qui est à l'abri
+  function expeSettle() {
+    if (!isExpe() || r.settled) return null; r.settled = true;
+    var keep = (r.extracted ? r.bag : []).concat(r.secure), mul = r.extracted ? r.extracted.mul : 1;
+    keep.forEach(function (b) { if (b.k === "gear") r.loot.push(b.q); else r.res[b.id] = (r.res[b.id] || 0) + Math.round(b.n * mul); });
+    var done = [];
+    if (r.extracted) (S.contracts && S.contracts.taken || []).forEach(function (c) { if (contractOk(c)) { done.push(c); Object.keys(c.rew.res || {}).forEach(function (k) { r.res[k] = (r.res[k] || 0) + c.rew.res[k]; }); earnGold(c.rew.gold || 0); } });
+    if (S.contracts) { S.contracts.taken = []; S.contracts.offers = []; }
+    return { extracted: !!r.extracted, lost: r.extracted ? 0 : r.bag.length, value: bagValue(keep), done: done, depth: r.ex.floor };
+  }
+  /* ---- contrats (tableau du sentier) ---- */
+  function genContracts() {
+    S.contracts = S.contracts || { offers: [], taken: [] };
+    if (S.contracts.offers.length) return;
+    var resK = Object.keys(D.RES).filter(function (k) { return !D.RES[k].trophy; }), out = [];
+    var pool = [
+      function () { var k = resK[(Math.random() * resK.length) | 0]; return { k: "bring", res: k, n: 6, txt: "Rapporte 6 " + D.RES[k].name + " (" + mapById(D.RES[k].map).name + ")" }; },
+      function () { return { k: "camps", n: 2, txt: "Nettoie 2 camps ennemis" }; },
+      function () { return { k: "gis", n: 3, txt: "Vide 3 gisements" }; },
+      function () { return { k: "passeur", txt: "Sors par le passeur" }; },
+      function () { return { k: "depth", n: 2, txt: "Atteins l'étage 2" }; },
+      function () { return { k: "meneur", txt: "Tue une élite Meneur" }; },
+    ];
+    pool.sort(function () { return Math.random() - 0.5; }).slice(0, 4).forEach(function (f, i) {
+      var c = f(); c.id = "c" + Date.now() + i; var rk = resK[(Math.random() * resK.length) | 0], rew = {}; rew[rk] = 5;
+      c.rew = { res: rew, gold: 150 + 50 * i }; c.from = ["Bûche", "Charbon", "Flocon", "le Marchand"][i % 4]; out.push(c);
+    });
+    S.contracts.offers = out; save();
+  }
+  function contractOk(c) {
+    var st = r.exStats || {};
+    if (c.k === "bring") { var n = 0; r.bag.forEach(function (b) { if (b.k === "res" && b.id === c.res) n += b.n; }); return n >= c.n; }
+    if (c.k === "camps") return (st.camps || 0) >= c.n;
+    if (c.k === "gis") return (st.gis || 0) >= c.n;
+    if (c.k === "passeur") return !!st.passeur;
+    if (c.k === "depth") return (r.ex.floor || 1) >= c.n;
+    if (c.k === "meneur") return !!st.meneur;
+    return false;
+  }
+  /* ---- rendu ---- */
+  function drawExpe(cx, cy) {
+    var ex = r.ex; if (!ex) return;
+    // corruption : part du cœur et gagne les bords
+    var cr = corrR();
+    ctx.fillStyle = "rgba(120,30,140,.12)"; ctx.beginPath(); ctx.arc(0, 0, cr, 0, TAU); ctx.fill();
+    ctx.strokeStyle = "rgba(180,60,200,.5)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, cr, 0, TAU); ctx.stroke(); ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(20,10,10,.55)"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, EX.R + 3, 0, TAU); ctx.stroke(); ctx.lineWidth = 1;
+    ex.st.concat(ex.passages).forEach(function (s) {
+      if (s.hidden || Math.abs(s.x - me.x) > W || Math.abs(s.y - me.y) > H) return;
+      var def = EXDEF[s.k], x = s.x, y = s.y, dead = s.done || s.closedX, col = dead ? "#6a625a" : def.col;
+      ctx.fillStyle = "rgba(20,14,10,.3)"; ctx.beginPath(); ctx.ellipse(x, y, 26, 21, 0, 0, TAU); ctx.fill();
+      if (!dead && s.p > 0) { ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y, 26, 21, 0, -Math.PI / 2, -Math.PI / 2 + s.p * TAU); ctx.stroke(); ctx.lineWidth = 1; }
+      ctx.fillStyle = "#2b1709"; ctx.fillRect(x - 6, y - 22, 12, 22); ctx.fillStyle = col; ctx.fillRect(x - 5, y - 21, 10, 20);
+      if (s.exit || s.k === "passage") { ctx.fillStyle = "#1a120c"; ctx.fillRect(x - 3, y - 16, 6, 15); ctx.fillStyle = col; ctx.globalAlpha = 0.5 + 0.4 * Math.sin(r.time * 5); ctx.fillRect(x - 2, y - 15, 4, 13); ctx.globalAlpha = 1; }
+      if (Math.hypot(me.x - x, me.y - y) < 90) {
+        var lab = def.name + (s.k === "x_passeur" ? " " + passeurCost() : s.k === "passage" ? " · " + mapById(s.region).name + " · " + s.loot : "") + (s.closedX ? " (fermée)" : s.done ? " (fait)" : "");
+        drawText(lab, x, y - 34, col, "c");
+      }
+    });
+  }
+  function drawFog(cx, cy) {
+    if (!r.ex) return;
+    var c = EX.cell;
+    ctx.fillStyle = "rgba(8,6,12,.62)";
+    for (var gx = Math.floor(cx / c); gx * c < cx + W; gx++) for (var gy = Math.floor(cy / c); gy * c < cy + H; gy++) if (!r.ex.seen[gx + "," + gy]) ctx.fillRect(gx * c - cx, gy * c - cy, c, c);
+    if (r.ex.night) {
+      var g = ctx.createRadialGradient(me.x - cx, me.y - cy, 40, me.x - cx, me.y - cy, 150);
+      g.addColorStop(0, "rgba(5,5,20,0)"); g.addColorStop(1, "rgba(5,5,20,.6)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+  }
+  function drawExpeHud() {
+    var ex = r.ex, x0 = 4, y0 = H - 52, S0 = 46, k = S0 / 2 / EX.R, mx = x0 + S0 / 2, my = y0 + S0 / 2;
+    ctx.fillStyle = "rgba(20,14,10,.75)"; ctx.beginPath(); ctx.arc(mx, my, S0 / 2 + 1, 0, TAU); ctx.fill();
+    ctx.strokeStyle = "rgba(180,60,200,.7)"; ctx.beginPath(); ctx.arc(mx, my, Math.min(S0 / 2, corrR() * k), 0, TAU); ctx.stroke();
+    ctx.strokeStyle = "rgba(253,243,222,.25)"; ctx.beginPath(); ctx.arc(mx, my, EX.core * k, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(mx, my, EX.mid * k, 0, TAU); ctx.stroke();
+    ex.st.concat(ex.passages).forEach(function (s) {
+      if (s.hidden || (!s.exit && s.k !== "passage" && !seenAt(s.x, s.y))) return;
+      ctx.fillStyle = s.done || s.closedX ? "#6a625a" : EXDEF[s.k].col; ctx.fillRect(Math.round(mx + s.x * k) - 1, Math.round(my + s.y * k) - 1, s.exit || s.k === "passage" ? 3 : 2, s.exit || s.k === "passage" ? 3 : 2);
+    });
+    if (((r.time * 4) | 0) % 2) { ctx.fillStyle = "#fdf3de"; ctx.fillRect(Math.round(mx + me.x * k) - 1, Math.round(my + me.y * k) - 1, 3, 3); }
+    var t = exT(), nxt = t < 8 ? "NUIT " + fmtTime((8 - t) * 60 * exF()) : t < 10 ? "PASSAGE " + fmtTime((10 - t) * 60 * exF()) : t < 12 ? "SORTIES " + fmtTime((12 - t) * 60 * exF()) : "SORTIES SE FERMENT";
+    drawText("ETAGE " + ex.floor + " · SAC " + r.bag.length + "/" + EX.bag + " · VALEUR " + bagValue() + (ex.keys ? " · CLES " + ex.keys : "") + (r.secure.length ? " · ABRI " + r.secure.length : ""), x0, y0 - 17, "#f6d36b", "l");
+    drawText(nxt, x0, y0 - 9, t >= 12 ? "#ff5a3a" : "#fdf3de", "l");
   }
   function moveMe(dt) {
     var v = (me.down || me.choosing || netMenuOpen) ? { x: 0, y: 0 } : inputVector();
@@ -2949,7 +3209,7 @@
 
     tierTick();
     if (!isArena()) shrineTick(dt);
-    if (isArena()) arenaDirector(dt); else if (isDungeon()) { dungeonTick(dt); if (state !== "play") return; } else { director(dt); portalTick(dt); }
+    if (isArena()) arenaDirector(dt); else if (isDungeon()) { dungeonTick(dt); if (state !== "play") return; } else if (isExpe()) { expeTick(dt); if (state !== "play") return; } else { director(dt); portalTick(dt); }
     buildGrid();
     players.forEach(function (pl) { if (pl.down) return; p = pl; crewTick(pl, dt); teamTick(pl, dt); if (isDungeon() && !inCombat(pl)) return; itemTick(pl, dt); weapons(dt); });
     p = me;
@@ -3015,7 +3275,8 @@
           if (e.aff && pl.hp < hb && hasA(e, "vampire")) { e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.08); burst(e.x, e.y, AFX.vampire.color, 6); }
         }
       }
-      if (d > 420 && !e.d.boss && !isArena() && !isDungeon()) { var ra = Math.atan2(dy, dx) + (Math.random() - 0.5), R = Math.hypot(W, H) / 2 + 10; e.x = tg.x + Math.cos(ra) * R; e.y = tg.y + Math.sin(ra) * R; }
+      if (isExpe() && d > 900 && !e.camp && !e.d.boss) { e.dead = true; continue; }
+      if (d > 420 && !e.d.boss && !isArena() && !isDungeon() && !isExpe()) { var ra = Math.atan2(dy, dx) + (Math.random() - 0.5), R = Math.hypot(W, H) / 2 + 10; e.x = tg.x + Math.cos(ra) * R; e.y = tg.y + Math.sin(ra) * R; }
     }
     // séparation légère (les objets et les boss ne bougent pas)
     grid.forEach(function (cell) {
@@ -4155,6 +4416,7 @@
     if (!isArena()) drawShrines(cx, cy);
     if (!isArena() && !isDungeon()) drawPortal();
     drawMega(cx, cy);
+    if (isExpe()) drawExpe(cx, cy);
 
     var bob = Math.sin(r.time * 4);
     gems.forEach(function (g) {
@@ -4202,6 +4464,7 @@
       // élément : palette teintée, marque d'élément posée par tes coups
       if (e.elem && !e.d.prop) { ctx.globalAlpha = e.d.mega ? 0.2 : 0.32; ctx.drawImage(tinted(spr, D.ELEMENTS[e.elem].color, e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1;
         if (e.d.elite || e.d.boss) { ctx.fillStyle = "#1a120c"; ctx.fillRect(Math.round(e.x + spr.w / 2 - 1), Math.round(e.y - spr.h / 2 - 4), 5, 5); ctx.fillStyle = D.ELEMENTS[e.elem].color; ctx.fillRect(Math.round(e.x + spr.w / 2), Math.round(e.y - spr.h / 2 - 3), 3, 3); } }
+      if (e.corrupt) { ctx.globalAlpha = 0.3; ctx.drawImage(tinted(spr, "#a030c0", e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1; }
       if (e.mark && e.markT > 0) { ctx.fillStyle = D.ELEMENTS[e.mark].color; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(r.time * 10); ctx.fillRect(Math.round(e.x - 1), Math.round(e.y + spr.h / 2 + 1), 3, 2); ctx.globalAlpha = 1; }
       // bêtes enragées : voile rouge qui pulse de plus en plus fort
       if (rgA > 0 && !e.d.prop) { ctx.globalAlpha = rgA * (0.55 + 0.45 * Math.sin(r.time * 9 + e.id)); ctx.drawImage(tinted(spr, "#ff1a10", e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1; }
@@ -4244,6 +4507,7 @@
     ctx.globalAlpha = 1;
     ctx.restore();
     if (isDungeon()) drawDungeonLight(cx, cy);
+    if (isExpe()) drawFog(cx, cy);
 
     var dusk = isDungeon() ? 0 : Math.min(MAP.night ? 0.2 : 0.28, r.time / 1500) + (MAP.night ? 0.12 : 0);
     if (dusk > 0.01) { ctx.fillStyle = "rgba(20,15,50," + dusk + ")"; ctx.fillRect(0, 0, W, H); }
@@ -4537,6 +4801,7 @@
   }
   function drawStateHud() {
     if (!me || !me.posture) return;
+    if (isExpe() && r.ex) drawExpeHud();
     var ps = postureDef(me), lab = { ancre: "ANCRE", mouvement: "MOUVEMENT", volte: "VOLTE !", pause: me.char.id === "planeur" ? "GLISSE" : "..." }[me.mstate] || "";
     var t = ps.name.toUpperCase() + " · " + lab + (me.crew ? " · EQUIPAGE " + me.crew.length + "/" + crewMax(me) : "") + (me.arme && mastLevel(me.arme) >= 5 ? " · ULTIME " + Math.round((me.ultG || 0) * 100) + "%" : "");
     drawText(t, W / 2, H - 9, me.mstate === "volte" ? "#f6ef7a" : me.anchored ? ps.color : "#fdf3de", "c");
@@ -4587,7 +4852,7 @@
     } else {
       drawText(fmtTime(stageTime()), W - 4, 15, rageMin() > 0 ? "#ff5a3a" : "#fdf3de", "r", 2);
       var tm = drawTierBar(45);
-      if (r.stage) drawText("CARTE " + (r.stage + 1) + " · " + fmtTime(r.time), W - 4, tm, "#f6d36b", "r");
+      if (r.stage && !isExpe()) drawText("CARTE " + (r.stage + 1) + " · " + fmtTime(r.time), W - 4, tm, "#f6d36b", "r");
     }
     // reliques et objets sous les cases
     var rk = Object.keys(me.relics || {});
@@ -4841,6 +5106,11 @@
       var ic = charById(inspect.char || S.char), im = mapById(inspect.map || S.map);
       S.posture = S.posture || {};
       var html = '<div class="screen-head">' + back() + "<h2>Nouvelle partie</h2>" + goldBadge() + "</div><div class=\"np\">";
+      var ex = S.mode === "expedition";
+      html += '<section class="np-sec"><h3>Mode</h3><div class="np-seg">' +
+        '<button type="button" class="np-opt' + (!ex ? " is-on" : "") + '" data-action="mode2" data-arg="survie"><span class="np-oi">🌲</span>Survie</button>' +
+        '<button type="button" class="np-opt' + (ex ? " is-on" : "") + '" data-action="mode2" data-arg="expedition"><span class="np-oi">🎒</span>Expédition</button></div>' +
+        '<p class="np-hint">' + (ex ? "Carte d'extraction à étages : explore, remplis ton sac, puis sors ou descends. Mourir fait perdre le sac (sauf ce qui est à l'abri)." + (S.stats.bestDepth ? " Record : étage " + S.stats.bestDepth + "." : "") : "Monde ouvert sans fin, portail vers la carte suivante.") + "</p></section>";
       // 1. écureuil et sa règle unique
       html += '<section class="np-sec"><h3><span class="np-n">1</span>Écureuil</h3><div class="np-chars">';
       D.CHARACTERS.forEach(function (c) {
@@ -4861,7 +5131,7 @@
       if (locked.length) html += '<p class="np-hint">' + locked.map(function (ps) { return "🔒 <b>" + esc(ps.name) + "</b> : " + esc(questById(ps.quest).desc); }).join("<br>") + "</p>";
       html += "</section>";
       // 3. carte
-      html += '<section class="np-sec"><h3><span class="np-n">3</span>Carte <small>' + D.MAPS.filter(function (m) { return has(m.unlock); }).length + " / " + D.MAPS.length + '</small></h3><div class="np-slider">';
+      html += '<section class="np-sec"><h3><span class="np-n">3</span>' + (ex ? "Région" : "Carte") + ' <small>' + D.MAPS.filter(function (m) { return has(m.unlock); }).length + " / " + D.MAPS.length + '</small></h3><div class="np-slider">';
       D.MAPS.forEach(function (m) {
         var ok = has(m.unlock), bands = m.biomes.map(function (b, k) { var a = Math.round(k / m.biomes.length * 100), z = Math.round((k + 1) / m.biomes.length * 100); return b.ground.base + " " + a + "% " + z + "%"; }).join(",");
         html += '<button type="button" class="np-map' + (S.map === m.id ? " is-selected" : "") + (ok ? "" : " is-locked") + (im.id === m.id ? " is-inspected" : "") + '" data-action="tmap" data-arg="' + m.id + '">' +
@@ -4871,6 +5141,17 @@
           '<span class="np-mapdesc">' + esc(m.biomes.map(function (b) { return b.name; }).join(" · ")) + "</span></button>";
       });
       html += '</div><p class="np-hint"><b>' + esc(im.name) + "</b> · " + esc(im.desc) + (has(im.unlock) ? "" : ' <span class="np-lock">🔒 ' + esc(lockText(im.unlock)) + "</span>") + "</p></section>";
+      if (ex) {
+        genContracts();
+        var C = S.contracts;
+        html += '<section class="np-sec"><h3>Contrats <small>' + C.taken.length + ' / 3</small></h3><div class="shop-list">';
+        C.offers.forEach(function (c) {
+          var on = C.taken.some(function (x) { return x.id === c.id; }), rw = Object.keys(c.rew.res).map(function (k) { return c.rew.res[k] + " " + D.RES[k].name; }).join(", ");
+          html += '<div class="shop-item"><div class="shop-text"><strong>' + esc(c.txt) + "</strong><small>De " + esc(c.from) + " · " + esc(rw) + " + " + c.rew.gold + " glands d'or</small></div>" +
+            '<button class="btn btn-small' + (on ? "" : " btn-alt") + '" type="button" data-action="ctake" data-arg="' + c.id + '">' + (on ? "Pris ✓" : "Prendre") + "</button></div>";
+        });
+        html += '</div><p class="np-hint">Récompensés à l\'extraction. De nouveaux contrats arrivent après chaque expédition.</p></section>';
+      }
       // 4. difficulté
       html += '<section class="np-sec"><h3><span class="np-n">4</span>Difficulté</h3><div class="np-seg">';
       Object.keys(D.DIFFICULTIES).forEach(function (k) {
@@ -4879,7 +5160,7 @@
           (ok ? "" : "🔒 ") + esc(df.name) + "<small>or ×" + fr(df.gold) + "</small>" + "</button>";
       });
       html += "</div></section></div>";
-      html += '<div class="play-bar"><button class="btn np-go" type="button" data-action="start" data-autofocus><span>▶ Lancer</span><small>' + esc(charById(S.char).name) + " · " + esc(cur.name) + " · " + esc(mapById(S.map).name) + " · Katana</small></button></div>";
+      html += '<div class="play-bar"><button class="btn np-go" type="button" data-action="start" data-autofocus><span>▶ Lancer</span><small>' + esc(charById(S.char).name) + " · " + esc(cur.name) + " · " + esc(mapById(S.map).name) + " · " + (ex ? "Expédition" : "Survie") + "</small></button></div>";
       return html;
     },
     coop: function () {
@@ -5041,6 +5322,8 @@
       html += "</div>";
       var tiers = []; Object.keys(pts).forEach(function (el) { D.ELEM_TIERS[el].forEach(function (t) { if (pts[el] >= t[0]) tiers.push("<b>" + D.ELEMENTS[el].name + " " + t[0] + "</b> : " + esc(t[1])); }); });
       html += '<p class="np-hint">Points d\'élément : ' + Object.keys(pts).map(function (el) { return '<span style="color:' + (D.ELEMENTS[el].ui || D.ELEMENTS[el].color) + '">' + D.ELEMENTS[el].name + " " + pts[el] + "</span>"; }).join(" · ") + " (paliers à 3, 6 et 9)" + (tiers.length ? "<br>" + tiers.join("<br>") : "") + "</p>";
+      var sn = S.secureSlots || 0, scost = [1500, 4000][sn];
+      html += '<p class="np-hint">🎒 Emplacements sécurisés d\'expédition : <b>' + (1 + sn) + "</b> / 3" + (scost ? ' <button class="btn btn-small" type="button" data-action="buysecure"' + (S.gold < scost ? " disabled" : "") + ">+1 pour " + scost + " " + goldIc() + "</button>" : "") + "</p>";
       // talents de la posture
       html += '<h3 class="pick-title">Talents · posture ' + esc(ps.name) + ' <small><button class="link-btn" type="button" data-action="go" data-arg="play">changer de posture</button></small></h3><div class="v2-tal">';
       var pick = ((S.tal[c.id] || {})[ps.id]) || {};
@@ -5179,6 +5462,14 @@
     },
     craft: function (t) { var q = craft(t); if (q) SND.fusion(); go("atelier"); },
     recy: function (id) { var q = pieceById(+id); if (q && !whoWears(q.id)) { recycle(q); SND.crack(); } go("atelier"); },
+    xsecure: function (i) {
+      if (screen !== "secure" || !r.ex || !r.ex.pend) return;
+      i = +i; if (i >= 0 && r.bag[i] && r.secure.length < 1 + (S.secureSlots || 0)) r.secure.push(r.bag.splice(i, 1)[0]);
+      var reg = r.ex.pend.region; r.ex.pend = null; state = "play"; hideCard(); last = performance.now(); SND.fusion(); descend(reg);
+    },
+    mode2: function (k) { S.mode = k === "expedition" ? "expedition" : "survie"; save(); SND.click(); go("play"); },
+    ctake: function (id) { genContracts(); var c = S.contracts, o = c.offers.filter(function (x) { return x.id === id; })[0]; if (!o) return; var i = c.taken.map(function (x) { return x.id; }).indexOf(id); if (i >= 0) c.taken.splice(i, 1); else if (c.taken.length < 3) c.taken.push(o); save(); SND.click(); go("play"); },
+    buysecure: function () { var n = S.secureSlots || 0, cost = [1500, 4000][n]; if (!cost || S.gold < cost) return; S.gold -= cost; S.secureSlots = n + 1; save(); SND.gold(); go("terrier"); },
     parme: function (id) { if (screen === "draft") { SND.level(); pickArme(id); } },
     tpos: function (id) { var ps = posturesOf(S.char).filter(function (x) { return x.id === id; })[0]; if (!ps || !postureOk(ps)) return; S.posture = S.posture || {}; S.posture[S.char] = id; save(); SND.click(); go("play"); },
     tchar: function (id) { inspect.char = id; if (charAvailable(charById(id))) S.char = id; save(); SND.click(); go("play"); },
@@ -5851,13 +6142,14 @@
       var un = unlocksOf(a.id);
       return "<li>🏆 <strong>" + esc(a.name) + "</strong> +" + a.gold + " " + goldIc() + (un.length ? "<span>Débloque " + esc(un.join(", ")) + "</span>" : "") + "</li>";
     }).join("") + "</ul></div>" : "";
+    var exG = expeSettle();
     var runG = grantRun();
     var lbOk = false;   // 2.0 bêta : pas de classement
     var html = '<span class="kicker">' + esc(reason || (quit ? "Partie abandonnée" : "Les bestioles ont gagné…")) + "</span><h2>Fin de partie" + (r.coop ? " (coop)" : "") + "</h2>" +
       '<ul class="over-stats"><li><span>' + (isDungeon() ? "Étage" : isArena() ? "Manche" : "Survie") + "</span><strong>" + (isDungeon() ? r.dg.floor + " / " + DG.floors : isArena() ? (r.won ? A.rounds : r.round) + " / " + A.rounds : fmtTime(r.time)) + "</strong></li><li><span>Ennemis</span><strong>" + r.kills + "</strong></li><li><span>Niveau</span><strong>" + r.level + "</strong></li>" +
       '<li class="total"><span>Score' + (DIFF.score > 1 ? " (×" + fr(DIFF.score) + ")" : "") + "</span><strong>" + sc.toLocaleString("fr-FR") + "</strong></li>" +
       '<li class="gold"><span>Glands d\'or gagnés</span><strong>+' + gold + " " + goldIc() + "</strong></li></ul>" +
-      '<p class="rank-line">+' + rankGain + " XP de rang de compte · <b>Rang " + S.rank + "</b>" + (ranksUp ? ' <span class="rank-up">Rang supérieur !</span>' : "") + "</p>" + runSummaryHtml(runG) +
+      '<p class="rank-line">+' + rankGain + " XP de rang de compte · <b>Rang " + S.rank + "</b>" + (ranksUp ? ' <span class="rank-up">Rang supérieur !</span>' : "") + "</p>" + (exG ? '<p class="v2-run">' + (exG.extracted ? "🎒 Extraction : le sac (valeur " + exG.value + ") est au camp." : "💀 Sac perdu (" + exG.lost + " emplacement" + (exG.lost > 1 ? "s" : "") + ")" + (r.secure.length ? ", sauf ce qui était à l'abri." : ".")) + " Étage atteint : " + exG.depth + (exG.done.length ? "<br>Contrats remplis : " + exG.done.map(function (c) { return esc(c.txt); }).join(", ") : "") + "</p>" : "") + runSummaryHtml(runG) +
       '<p class="game-small">' + (isBest ? "🏆 Nouveau record perso !" : "Ton record : " + S.stats.bestScore.toLocaleString("fr-FR")) + "</p>" + achHtml +
       (lbOk ? '<form class="submit-score" data-submit><label for="es-name">Ton pseudo pour le classement</label><div class="submit-row">' +
         '<input id="es-name" type="text" maxlength="20" autocomplete="nickname" placeholder="Pseudo" value="' + esc(S.name || "") + '">' +
@@ -6092,6 +6384,10 @@
       return r.portal ? { x: r.portal.x, y: r.portal.y, st: r.portal.st, p: r.portal.p, stage: r.stage || 0, map: MAP.id, boss: r.portal.boss ? r.portal.boss.title : null } : { stage: r.stage || 0, map: MAP.id, stageT: stageTime() };
     },
     god: function (on) { me.god = on !== false; return me.god; },
+    ex: function () { if (!r || !r.ex) return null; return { floor: r.ex.floor, t: Math.round(exT() * 10) / 10, ring: ringOf(me.x, me.y), corr: Math.round(corrR()), bag: r.bag.map(entryName), secure: r.secure.map(entryName), keys: r.ex.keys, passages: r.ex.passages.map(function (q) { return q.region + ":" + q.st; }), closed: r.ex.st.filter(function (q) { return q.closedX; }).map(function (q) { return q.k; }), night: r.ex.night, x: Math.round(me.x), y: Math.round(me.y), state: state, tier: tierN() }; },
+    exGo: function (k, i) { var list = r.ex.st.concat(r.ex.passages).filter(function (q) { return q.k === k; }), q = list[i || 0]; if (!q) return null; me.x = q.x; me.y = q.y + 4; return { x: q.x, y: q.y }; },
+    exTime: function (min) { r.stageT0 = r.time - min * 60 * exF(); return exT(); },
+    exKill: function () { enemies.forEach(function (e) { if (!e.d.prop && !e.dead) { e.hp = 0; p = me; kill(e); } }); },
     res: function (n) { eqS(); Object.keys(D.RES).forEach(function (k) { S.res[k] = (S.res[k] || 0) + (n || 20); }); save(); return S.res; },
     gear: function (t, roll) { var q = genPiece(2, t); if (roll !== undefined) q.roll = roll; addPiece(q); save(); return q; },
     wear: function (id, slot) { wornBy(S.char)[slot] = id; save(); },
