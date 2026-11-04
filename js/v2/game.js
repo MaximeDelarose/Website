@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.6.0";
+  var VERSION = "2.7.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -421,7 +421,7 @@
     xp = 0; xpNext = need(1); pending = me.tree.f5 ? 1 : 0; picking = false; netMenuOpen = false;
     spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; hitstop = 0; slowmo = 0; hurtV = 0; CAM.on = false; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
-    if (r.mode === "expedition") { r.bag = []; r.secure = []; r.exStats = {}; startExpe(1); }
+    if (r.mode === "expedition") { r.bag = []; r.secure = []; r.exStats = {}; startExpe(1, Net.on ? (seed || 0) + 7 : 0); }
     if ((!Net.on || Net.role === "host") && r.mode !== "dungeon") for (var i = 0; i < 4; i++) spawnProp(90 + Math.random() * 120);
     if (r.mode === "dungeon") { nextSwarm = 1e9; nextBoss = 1e9; spawnAcc = 0; if (!Net.on || Net.role === "host") populateFloor(); }
     if (r.mode === "arena") { nextSwarm = 1e9; nextBoss = 1e9; spawnAcc = 2; }
@@ -4260,7 +4260,8 @@
   /* ---- début, étages, descente ---- */
   function startExpe(floor, seed) {
     var keys = r.ex ? r.ex.keys : 0;
-    r.ex = genExpe(seed || ((Math.random() * 1e9) | 0), floor || 1); r.ex.keys = keys;
+    var sd = seed || ((Math.random() * 1e9) | 0);
+    r.ex = genExpe(sd, floor || 1); r.ex.keys = keys; r.ex.seed = sd;
     r.stageT0 = r.time; r.portal = null; r.mega = null;
     var sp = r.ex.spawn;
     players.forEach(function (pl, k) { pl.x = pl.tx = sp.x + k * 16; pl.y = pl.ty = sp.y; });
@@ -4767,7 +4768,7 @@
     if (!bar) { bar = document.createElement("div"); bar.className = "camp-bar"; bar.setAttribute("data-campbar", ""); stage.appendChild(bar); bar.addEventListener("click", function (e) { var b = e.target.closest("[data-camp]"); if (b) campOpen(b.getAttribute("data-camp")); }); }
     bar.hidden = false;
     bar.innerHTML = '<button type="button" class="camp-go" data-camp="sentier">▶ Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" data-camp="' + l.id + '">' + esc(l.name.replace(/^(Le |La |L')/, "")) + "</button>"; }).join("") +
-      '<button type="button" data-camp="codex">📜</button><button type="button" data-camp="help">❓</button><button type="button" data-camp="options">⚙️</button>';
+      '<button type="button" class="camp-coop" data-camp="coop">👥 Coop</button><button type="button" data-camp="codex">📜</button><button type="button" data-camp="help">❓</button><button type="button" data-camp="options">⚙️</button>';
   }
   // « Nouveautés » : ce qui a changé pour un joueur de la version 1
   function newsCard() {
@@ -4788,6 +4789,7 @@
     var l = D.CAMP.filter(function (q) { return q.id === id; })[0];
     closeCamp(); SND.click();
     if (id === "options" || id === "codex" || id === "help") { go(id); return; }
+    if (id === "coop") { go(Net.on ? "lobby" : "coop"); return; }
     if (l && l.screen === "play") { inspect.char = S.char; inspect.map = S.map; }
     go(l ? l.screen : "menu");
   }
@@ -6938,11 +6940,14 @@
     return '<div class="diff-row mode-row"><span>Mode :</span>' +
       '<button type="button" class="chip' + (mo === "survie" ? " is-on" : "") + '" data-action="' + action + '" data-arg="survie">🌲 Survie</button>' +
       '<button type="button" class="chip' + (mo === "arena" ? " is-on" : "") + '" data-action="' + action + '" data-arg="arena">🏟️ Arène</button>' +
-      '<button type="button" class="chip' + (mo === "dungeon" ? " is-on" : "") + '" data-action="' + action + '" data-arg="dungeon">🗝️ Donjon</button></div>' +
+      '<button type="button" class="chip' + (mo === "dungeon" ? " is-on" : "") + '" data-action="' + action + '" data-arg="dungeon">🗝️ Donjon</button>' +
+      (action === "lmode" ? '<button type="button" class="chip' + (mo === "expedition" ? " is-on" : "") + '" data-action="' + action + '" data-arg="expedition">🎒 Expédition</button>' : "") + "</div>" +
       '<p class="game-small mode-desc">' + (mo === "dungeon"
         ? DG.floors + " étages générés au hasard : salles à nettoyer, élites, trésors, reliques, un gardien par étage et un boss final."
         : mo === "arena"
         ? "Arène fermée, " + A.rounds + " manches. Boutique entre les manches, manche d'élite toutes les " + A.eliteEvery + ", boss toutes les " + A.bossEvery + "."
+        : mo === "expedition"
+        ? "Carte ronde à explorer en équipe : un sac commun, des structures, des sorties, des passages vers l'étage suivant. Si l'équipe tombe, le sac est perdu."
         : "Monde ouvert sans fin : survis le plus longtemps possible.") + "</p>";
   }
   function swatch(m, cls) {
@@ -7491,7 +7496,7 @@
     tmap: function (id) { inspect.map = id; if (has(mapById(id).unlock)) S.map = id; save(); SND.click(); go("play"); },
     diff: function (k) { S.diff = k; save(); SND.click(); go("play"); },
     mode: function (k) { S.mode = ["arena", "dungeon"].indexOf(k) >= 0 ? k : "survie"; save(); SND.click(); go("play"); },
-    lmode: function (k) { if (Net.role !== "host") return; S.mode = ["arena", "dungeon"].indexOf(k) >= 0 ? k : "survie"; save(); trackMe(); SND.click(); go("lobby"); },
+    lmode: function (k) { if (Net.role !== "host") return; S.mode = ["arena", "dungeon", "expedition"].indexOf(k) >= 0 ? k : "survie"; save(); trackMe(); SND.click(); go("lobby"); },
     buychar: function (id) {
       var c = charById(id);
       if (S.gold < c.price || charAvailable(c) || !questOk(c)) return;
@@ -7862,9 +7867,21 @@
     if (ev === "floor" && Net.role === "guest" && isDungeon() && d.n !== r.dg.floor) { guestFloor(d.n); return; }
     if (ev === "end" && Net.role === "guest" && state !== "over") {
       if (d.won) r.won = true;
+      if (d.ex && isExpe()) { r.extracted = d.ex.x || null; r.bag = d.ex.bag || []; r.secure = d.ex.sec || []; }
       if (d.r) { r.time = d.r[0]; r.kills = d.r[1]; r.level = d.r[2]; r.bosses = d.r[3]; r.gold = d.r[4]; }
-      gameOver(!!d.q, d.q ? "L'hôte a mis fin à la partie." : "");
+      gameOver(!!d.q, d.q ? "L'hôte a mis fin à la partie." : (d.why || ""));
     }
+  }
+  // invité en Expédition : même carte (même graine), état des structures, clés et sac commun de l'équipe
+  function guestExpe(x) {
+    if (!r.ex || r.ex.seed !== x[0] || r.ex.floor !== x[1]) {
+      var nf = r.ex && r.ex.floor !== x[1];
+      r.ex = genExpe(x[0], x[1]); r.ex.seed = x[0];
+      if (nf || !me.exPlaced) { me.x = me.tx = r.ex.spawn.x + 16 * Math.max(0, players.indexOf(me)); me.y = me.ty = r.ex.spawn.y; me.exPlaced = true; if (nf) bannerAll("Étage " + r.ex.floor + " : explore, remplis ton sac, puis sors ou descends"); }
+    }
+    r.ex.keys = x[2];
+    (x[3] || []).forEach(function (v, i) { var q = r.ex.st[i]; if (!q) return; q.done = !!v[0]; q.p = v[1] / 100; q.hidden = v[2]; });
+    r.bag = x[4] || []; r.secure = x[5] || []; r.ex.megaWon = !!x[6];
   }
   function guestMap(id, stage, t0) {
     enterMap(id, stage, t0);
@@ -7948,6 +7965,7 @@
              cp: allComps().slice(0, 60).reduce(function (a, c) { a.push(SPRI[c.k] || 0, R1(c.x), R1(c.y), (c.face < 0 ? 1 : 0) | (c.fly ? 2 : 0) | (c.max && c.life < c.max * 0.3 ? 4 : 0)); return a; }, []),
              po: r.portal ? [r.portal.x, r.portal.y, r.portal.st, Math.round(r.portal.p * 100), r.portal.boss && !r.portal.boss.dead ? r.portal.boss.id : 0] : 0, stg: [r.stage || 0, Math.round((r.stageT0 || 0) * 10), MAP.id],
              sh: [Object.keys(r.sh).filter(function (k) { return r.sh[k].used || r.sh[k].p > 0; }).map(function (k) { return [k, Math.round(r.sh[k].p * 100), r.sh[k].used ? 1 : 0]; }), r.madness || 0, r.devil || 0],
+             ex: isExpe() && r.ex ? [r.ex.seed, r.ex.floor, r.ex.keys || 0, r.ex.st.map(function (q) { return [q.done ? 1 : 0, Math.round((q.p || 0) * 100), q.hidden ? 1 : 0]; }), r.bag, r.secure, r.ex.megaWon ? 1 : 0] : 0,
              z: zones.length ? zones.reduce(function (a, z) { a.push(R1(z.x), R1(z.y), R1(z.r), ZONE_K.indexOf(z.kind), Math.round((z.dur - z.t) * 10)); return a; }, []) : 0 };
   }
   // ---------- invité : réception et lissage ----------
@@ -7956,6 +7974,7 @@
     Net.prev = Net.cur; Net.cur = { s: d, at: performance.now() };
     var rr = d.r;
     if (d.stg && (d.stg[0] !== (r.stage || 0) || d.stg[2] !== MAP.id) && !isDungeon() && !isArena()) guestMap(d.stg[2], d.stg[0], d.stg[1] / 10);
+    if (d.ex && isExpe()) { guestExpe(d.ex); if (d.stg) r.stageT0 = d.stg[1] / 10; }
     Net.cps = [];
     if (d.cp) for (var ci = 0; ci < d.cp.length; ci += 4) Net.cps.push({ k: SPRN[d.cp[ci]], x: d.cp[ci + 1], y: d.cp[ci + 2], face: d.cp[ci + 3] & 1 ? -1 : 1, fly: !!(d.cp[ci + 3] & 2), anim: r.time * 8 + ci, max: d.cp[ci + 3] & 4 ? 1 : 0, life: 0 });
     r.portal = d.po ? { x: d.po[0], y: d.po[1], st: d.po[2], p: d.po[3] / 100, gb: d.po[4] } : null;
@@ -8015,6 +8034,7 @@
   }
   function updateGuest(dt) {
     var now = performance.now();
+    if (isExpe() && r.ex && cooledG("fog", 0.25)) revealAt(me.x, me.y, 260);
     if (isArena() && r.phase === "shop") { tickFx(dt); return; }
     if (isArena()) r.roundT = Math.min(r.roundLen, r.roundT + dt);
     moveMe(dt);
@@ -8148,7 +8168,7 @@
     chestHideMini();
     if (state === "over") return;
     var online = Net.on && Net.started;
-    if (online && Net.role === "host") netSend("end", { q: quit ? 1 : 0, won: r.won ? 1 : 0, r: [r.time, r.kills, r.level, r.bosses, r.gold] });
+    if (online && Net.role === "host") netSend("end", { q: quit ? 1 : 0, won: r.won ? 1 : 0, r: [r.time, r.kills, r.level, r.bosses, r.gold], ex: isExpe() ? { x: r.extracted || 0, bag: r.bag, sec: r.secure } : 0, why: reason || "" });
     if (online) { Net.started = false; if (Net.role === "guest" && quit && !reason) netLeave(); else trackMe(); }
     picking = false; netMenuOpen = false;
     state = "over"; SND.over();
@@ -8553,7 +8573,7 @@
   go("menu");
   if (PT) showCard('<h2>Manche de party</h2><p>' + esc(PT.mode.name) + ' : la partie démarre toute seule dans un instant.</p>', "party");
   function joinFromHash() {
-    if (/#(coop=|party)/.test(location.hash || "")) { location.replace("jeu-classique.html" + location.hash); return; }   // la coop reste sur la version 1
+    if (/#party/.test(location.hash || "")) { location.replace("jeu-classique.html" + location.hash); return; }   // le Versus reste sur la version 1
     var m = /#coop=([A-Za-z]{4})/.exec(location.hash || "");
     if (!m || (Net.on && Net.code === m[1].toUpperCase())) return;
     if (state === "play") return;

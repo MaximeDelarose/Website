@@ -16,8 +16,8 @@
   <link rel="apple-touch-icon" href="assets/squirrel.png">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <script>
-    // liens de coop et de versus : encore sur la version 1
-    if (/#(coop=|party)/.test(location.hash)) location.replace("jeu-classique.html" + location.hash);
+    // liens du Versus : encore sur la version 1 (la coop est dans la 2.0 depuis la 2.7)
+    if (/#party/.test(location.hash)) location.replace("jeu-classique.html" + location.hash);
   </script>
   <script>
     (function () {
@@ -67,7 +67,7 @@
     <div class="wrap">
       <div class="game-head">
         <div>
-          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · <a href="jeu-classique.html">version 1 (coop)</a></span>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · <a href="jeu-classique.html">version 1 (Versus)</a></span>
           <h1>Écureuil Survivor <small class="beta-tag">2.0</small></h1>
         </div>
         <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
@@ -108,7 +108,7 @@
             <li>Chaque partie fait monter le niveau de l'écureuil (paliers de talents) et la maîtrise de l'arme (signatures, 2e évolution, ultime). Plus de prestige ni de stats à acheter.</li>
             <li><strong>Expédition</strong> : une carte d'extraction à étages, avec brouillard, camps ennemis, gisements, tours de guet, nids de boss, et le repaire du méga boss au cœur. Remplis ton <strong>sac</strong> (12 emplacements), puis sors (sortie permanente, à clé, d'endurance, du passeur, du méga boss) ou descends par un passage gardé. La corruption part du cœur, la nuit tombe à la minute 8, les sorties se ferment dès la minute 12. Mourir fait perdre le sac, sauf ce qui est à l'abri. Contrats à prendre avant de partir.</li>
             <li><strong>4 méga boss</strong>, un par élément et par carte (Colosse d'humus, Mère des Marais, Brasier ancestral, Roi-Tempête). Les battre débloque les <strong>paliers Cauchemar</strong> de leur carte : 10 paliers dont les règles se cumulent.</li>
-            <li>Ta progression de la version 1 est reprise (rang, succès, quêtes, records) ; les améliorations achetées et le prestige sont remboursés. La coop reste sur la <a href="jeu-classique.html">version 1</a> pour l'instant.</li>
+            <li>Ta progression de la version 1 est reprise (rang, succès, quêtes, records) ; les améliorations achetées et le prestige sont remboursés. La coop en ligne est dans le camp (bouton 👥 Coop), Expédition comprise.</li>
           </ul>
         </div>
         <div class="panel game-lb">
@@ -145,7 +145,7 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v26a";
+      var FALLBACK = "v27a";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
         if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261105bl1" + b);
