@@ -1921,6 +1921,126 @@ window.ES_DATA = (function () {
     flute: ["Grande migration", "flock", "air", "Un vol d'oiseaux traverse l'écran 3 fois."],
   };
   Object.keys(ULT2).forEach(function (a) { var u = ULT2[a]; ULTS[a] = { name: u[0], kind: u[1], elem: u[2], desc: u[3] }; });
+  /* =====================================================================
+     Contenu étendu, lot 3 : objets à effets (états, réactions, rôles, sanctuaires, Expédition, coop)
+     ===================================================================== */
+  // [id, rareté 0-3, icône, nom, effet, options]
+  [
+    // Ancré
+    ["pierre_patience", 0, "🪨", "Pierre de patience", "Ancré depuis 2 s : ta prochaine technique fait +50 %.", { quest: "q5_patience" }],
+    ["souche", 0, "🪵", "Souche", "Ancré : les tirs ennemis ralentissent de moitié à moins de 60 px de toi."],
+    ["nid_mousse", 0, "🪺", "Nid de mousse", "Ancré depuis 3 s : les noisettes d'XP viennent à toi de 2 fois plus loin."],
+    ["bogue", 1, "🌰", "Bogue de châtaigne", "Ancré : un ennemi qui te frappe au contact prend 15 dégâts."],
+    ["ancre_pierre", 1, "⚓", "Ancre de pierre", "Ancré : on ne peut plus te repousser ; un Chargeur qui te percute est étourdi 1 s."],
+    ["cadran", 1, "🕰️", "Cadran solaire", "Ancré : les recharges défilent 25 % plus vite."],
+    ["meditation", 2, "🧘", "Méditation", "Ancré depuis 3 s : +4 % de dégâts par seconde ancrée, jusqu'au prochain mouvement (max +40 %).", { quest: "q5_meditation" }],
+    ["cloche_pierre", 2, "🔔", "Cloche de pierre", "Ancré : toutes les 5 s, une onde étourdit les ennemis proches 0,5 s."],
+    ["statuette", 2, "🐿️", "Statuette d'écureuil", "Ancré : tes objets « au coup » se déclenchent 50 % plus souvent."],
+    ["racine_mere", 3, "🌳", "Racine-mère", "Ancré : chaque seconde réduit de 10 % le prochain coup reçu (max 60 %), et tes techniques de Zone sont 30 % plus larges.", { quest: "q5_racinemere" }],
+    // Mouvement
+    ["fil_ariane", 0, "🧶", "Fil d'Ariane", "En mouvement, ta traînée ramasse les noisettes d'XP pendant 2 s."],
+    ["ecorce_glissante", 0, "🍂", "Écorce glissante", "En mouvement : 10 % de chance d'ignorer un coup au contact."],
+    ["gland_roulant", 0, "🌰", "Gland roulant", "Tous les 200 px parcourus, un gland roule vers l'ennemi le plus proche (20 dégâts)."],
+    ["patin", 1, "🍃", "Patin de feuille", "En mouvement, flaques et toiles ennemies ne te ralentissent plus."],
+    ["sillon", 1, "↩️", "Sillon", "En mouvement, tes projectiles partent aussi derrière toi, à 40 %."],
+    ["vent_arriere", 1, "💨", "Vent arrière", "Après 3 s de course : +25 % de vitesse et de portée des projectiles."],
+    ["comete_poche", 2, "☄️", "Comète de poche", "En mouvement, toutes les 4 s, une traînée d'étoiles explose derrière toi (40 dégâts)."],
+    ["dynamo", 2, "⚙️", "Dynamo", "Tous les 500 px parcourus, ta technique la plus lente se recharge d'un coup."],
+    ["vent_dos", 2, "🌬️", "Vent du dos", "En mouvement, les tirs ennemis qui arrivent par derrière sont déviés."],
+    ["semelles", 3, "👟", "Semelles des sept lieues", "+20 % de vitesse ; à pleine course, tu traverses les ennemis de Nuée en les tuant.", { quest: "q5_semelles" }],
+    // Volte
+    ["pirouette", 0, "🌀", "Pirouette", "Chaque Volte rend 3 PV."],
+    ["feinte", 0, "🎭", "Feinte", "Après une Volte, les ennemis au contact frappent à côté pendant 1 s."],
+    ["eclats_bois", 0, "🪓", "Éclats de bois", "Chaque Volte lance 4 éclats de bois en croix (12 dégâts)."],
+    ["contre_courant", 1, "🔄", "Contre-courant", "Chaque Volte inverse le sens de tes orbites et boomerangs, qui font +30 % pendant 2 s."],
+    ["leurre", 1, "🍁", "Leurre de feuilles", "Chaque Volte laisse un leurre qui attire les ennemis 2 s."],
+    ["frisson", 1, "🥶", "Frisson", "Après une Volte, ta prochaine attaque gèle 0,5 s."],
+    ["double_detente", 2, "⏩", "Double détente", "La Volte se stocke 2 fois.", { quest: "q5_double" }],
+    ["pivot", 2, "📍", "Pivot", "Chaque Volte termine la recharge de ta technique la plus proche d'être prête."],
+    ["girouette", 2, "🌪️", "Girouette", "Chaque Volte crée un petit cyclone qui file dans la direction prise (30 dégâts/s pendant 2 s)."],
+    ["pas_ecureuil", 3, "🐾", "Pas de l'écureuil", "Tuer une élite recharge la Volte, et chaque Volte déclenche une fois tes effets « au coup ».", { quest: "q5_pas" }],
+    // Réactions élémentaires
+    ["givre_persistant", 0, "❄️", "Givre persistant", "Les gels durent 0,6 s de plus."],
+    ["soufflet", 0, "🪗", "Soufflet", "Les embrasements sont 30 % plus larges."],
+    ["glaise", 0, "🟫", "Glaise", "La boue dure 2 s de plus."],
+    ["bouilloire", 0, "🫖", "Bouilloire", "Le nuage de vapeur dure 2 s de plus."],
+    ["dune", 0, "🏜️", "Dune", "La tempête de sable repousse 40 % plus loin."],
+    ["feu_foret", 1, "🔥", "Feu de forêt", "Un embrasement a 30 % de chance d'en déclencher un 2e sur un ennemi proche."],
+    ["sables_mouvants", 1, "⏳", "Sables mouvants", "Les ennemis pris dans la boue prennent +25 % de dégâts."],
+    ["sauna", 1, "♨️", "Sauna", "Dans ta propre vapeur, tu régénères 2 PV/s."],
+    ["obsidienne", 1, "🖤", "Obsidienne", "Le magma laisse une flaque de lave pendant 3 s (10 dégâts/s)."],
+    ["statue_glace", 2, "🧊", "Statue de glace", "Un ennemi gelé devient un obstacle qui bloque les tirs ennemis pendant 2 s.", { quest: "q5_statue" }],
+    ["eruption", 2, "🌋", "Éruption", "Tous les 10 magmas, une éruption frappe tout l'écran (80 dégâts).", { quest: "q5_eruption" }],
+    ["mirage", 2, "🏝️", "Mirage", "Les ennemis pris dans une tempête de sable ratent leurs attaques pendant 2 s.", { quest: "q5_mirage" }],
+    // Rôles d'ennemis
+    ["filet_papillons", 0, "🦋", "Filet à papillons", "Tuer 3 ennemis de Nuée en 1 s rend 2 PV."],
+    ["miroir_poche", 0, "🪞", "Miroir de poche", "Les Tireurs à moins de 100 px de toi tirent 40 % moins vite."],
+    ["feuilles_mortes", 0, "🍂", "Feuilles mortes", "Les Guetteurs tirent là où tu es, et plus là où tu vas."],
+    ["ciseaux", 0, "✂️", "Ciseaux", "Tu coupes les toiles en les traversant ; chaque toile coupée rend 1 PV."],
+    ["antenne", 0, "📡", "Antenne", "Un Rôdeur qui surgit sous toi est étourdi 1,5 s."],
+    ["allumette", 0, "🧯", "Allumette mouillée", "Les Kamikazes ne te blessent plus, et leur explosion blesse les ennemis 2 fois plus."],
+    ["muleta", 1, "🚩", "Muleta", "Un Chargeur qui te rate est étourdi 2 s et prend +50 %."],
+    ["bouclier_boue", 1, "🛡️", "Bouclier de boue", "Tuer un Artilleur fait exploser ses zones en cours contre les ennemis."],
+    ["pince", 1, "🔧", "Pince-monseigneur", "Tes techniques de Tir traversent les boucliers de face, à 50 %.", { quest: "q5_pince" }],
+    ["sifflet_strident", 1, "📯", "Sifflet strident", "Les Soutiens deviennent la cible prioritaire de tes techniques.", { quest: "q5_sifflet" }],
+    // Sanctuaires
+    ["chapelet", 0, "📿", "Chapelet de glands", "Chaque sanctuaire activé donne 10 glands."],
+    ["cle_rouillee", 1, "🗝️", "Clé rouillée", "Un coffre scellé sur trois s'ouvre gratuitement."],
+    ["de_pipe", 1, "🎲", "Dé pipé", "Au Totem de fortune, tu ne perds ta mise qu'une fois sur 4."],
+    ["offrande", 1, "🕯️", "Offrande", "À l'Autel du sacrifice, tu gardes l'objet sacrifié une fois sur trois."],
+    ["lettre_defi", 2, "✉️", "Lettre de défi", "Les élites du Totem de défi lâchent 2 objets.", { quest: "q5_lettre" }],
+    ["reliquaire", 3, "⛩️", "Reliquaire", "+5 % de dégâts par type de sanctuaire activé dans la partie (max +50 %).", { quest: "q5_reliquaire" }],
+    // Expédition (ne tombent qu'en Expédition)
+    ["lampe_huile", 0, "🪔", "Lampe à huile", "La nuit ne réduit plus ta vision.", { expe: true }],
+    ["pelle", 0, "⛏️", "Pelle", "Les gisements se récoltent 2 fois plus vite.", { expe: true }],
+    ["sceau_passeur", 1, "🔖", "Sceau du passeur", "Le passeur ne prend que la moitié de tes glands.", { expe: true }],
+    ["trousseau", 1, "🔑", "Trousseau", "Chaque élite a 25 % de chance de lâcher une clé de sortie.", { expe: true }],
+    ["corde_rappel", 2, "🪢", "Corde de rappel", "Une fois par expédition, tu extrais sur place en restant ancré 10 s.", { expe: true, quest: "q5_corde" }],
+    ["sacoche", 2, "👜", "Sacoche cousue", "+2 emplacements de sac pour cette expédition.", { expe: true, quest: "q5_sacoche" }],
+    ["seve_pure", 2, "💧", "Sève pure", "La corruption avance 25 % moins vite sur cet étage et le suivant.", { expe: true, quest: "q5_seve" }],
+    ["sablier_inverse", 2, "⌛", "Sablier inversé", "À chaque descente, un objet de plus est mis à l'abri.", { expe: true }],
+    ["trophee_profondeur", 3, "🏅", "Trophée de profondeur", "+10 % de dégâts par étage descendu dans cette expédition.", { expe: true, quest: "q5_profondeur" }],
+    // Coop (un allié, Pop compris)
+    ["bracelet", 0, "📿", "Bracelet tressé", "COOP · Près d'un allié, les noisettes d'XP rapportent 10 % de plus.", { coop: true }],
+    ["echarpe", 0, "🧣", "Écharpe partagée", "COOP · Quand un allié ramasse un objet à effets, tu gagnes 5 PV.", { coop: true }],
+    ["relais_volte", 1, "🏃", "Relais de Volte", "COOP · Ta Volte recharge aussi de 1 s celle de l'allié le plus proche.", { coop: true }],
+    ["tambour", 2, "🥁", "Tambour", "COOP · Toutes les 10 s, les alliés à moins de 120 px gagnent +20 % de cadence pendant 3 s.", { coop: true, quest: "q5_tambour" }],
+    ["banniere", 2, "🚩", "Bannière", "COOP · Ancré, tu plantes une bannière : les alliés autour gagnent +2 armure.", { coop: true }],
+    ["ame_soeur", 3, "💞", "Âme sœur", "COOP · Un allié que tu relèves revient à 100 % de PV, une fois par carte ou par étage.", { coop: true, quest: "q5_ame" }],
+    // méga boss (les 3 déjà là ; le Colosse garde son Cœur d'humus)
+    ["perle_marais", 3, "🦪", "Perle des marais", "Trophée de la Mère des Marais : dans l'eau et la boue, tu régénères 3 PV/s.", { pool: "mega", mega: "mere" }],
+    ["tison", 3, "🔥", "Tison éternel", "Trophée du Brasier ancestral : +1 point de Feu, et tes brûlures font +50 %.", { pool: "mega", mega: "brasier" }],
+    ["couronne_eclairs", 3, "👑", "Couronne d'éclairs", "Trophée du Roi-Tempête : toutes les 2 s, un éclair frappe l'ennemi qui a le plus de PV (60 dégâts).", { pool: "mega", mega: "tempete" }],
+    // diable et sacré
+    ["contrat_cendres", 3, "📜", "Contrat de cendres", "DIABLE · +60 % de dégâts, mais plus aucun soin.", { pool: "diable" }],
+    ["de_demon", 3, "🎲", "Dé du démon", "DIABLE · Chaque coffre donne 2 objets, mais chaque boss arrive en double.", { pool: "diable" }],
+    ["corne_malin", 3, "😈", "Corne du malin", "DIABLE · Un ennemi tué a 10 % de chance de revenir en allié 10 s ; -25 % de PV max.", { pool: "diable" }],
+    ["cloche_benie", 3, "🔔", "Cloche bénie", "SACRÉ · La 1re fois que tu touches une élite, elle perd ses pouvoirs pendant 5 s.", { pool: "sacre" }],
+    ["pain_beni", 3, "🍞", "Pain béni", "SACRÉ · Les sources claires apparaissent 2 fois plus souvent et soignent entièrement.", { pool: "sacre" }],
+    ["sceau_purete", 3, "🕊️", "Sceau de pureté", "SACRÉ · Immunité aux pouvoirs Vampire, Explosif et Épineux des élites.", { pool: "sacre" }],
+  ].forEach(function (a) { var it = { id: a[0], r: a[1], icon: a[2], name: a[3], desc: a[4] }; var o = a[5] || {}; Object.keys(o).forEach(function (k) { it[k] = o[k]; }); ITEMS.push(it); });
+  ITEMS.forEach(function (it, i) { it.idx = i; });
+  QUESTS.push(
+    { id: "q5_patience", desc: "Reste ancré 5 s d'affilée, 20 fois dans une partie.", check: function (r) { return (r.anchor5N || 0) >= 20; } },
+    { id: "q5_meditation", desc: "Reste ancré 10 s d'affilée.", check: function (r) { return (r.anchorMax || 0) >= 10; } },
+    { id: "q5_racinemere", desc: "Reste ancré 60 s d'affilée.", check: function (r) { return (r.anchorMax || 0) >= 60; } },
+    { id: "q5_semelles", desc: "Parcours 20 000 px dans une partie.", check: function (r) { return (r.dist || 0) >= 20000; } },
+    { id: "q5_double", desc: "Fais 2 Voltes en moins de 1 s, 10 fois dans une partie.", check: function (r) { return (r.dblVolte || 0) >= 10; } },
+    { id: "q5_pas", desc: "Fais 50 Voltes sans être touché dans une partie.", check: function (r) { return (r.vcMax || 0) >= 50; } },
+    { id: "q5_eruption", desc: "Déclenche 10 Magma dans une partie.", check: function (r) { return ((r.reactK || {})["feu+terre"] || 0) >= 10; } },
+    { id: "q5_mirage", desc: "Déclenche 15 Tempêtes de sable dans une partie.", check: function (r) { return ((r.reactK || {})["air+terre"] || 0) >= 15; } },
+    { id: "q5_statue", desc: "Gèle un boss.", check: function (r) { return !!r.bossFrozen; } },
+    { id: "q5_sifflet", desc: "Tue 20 Soutiens dans une partie.", check: function (r) { return ((r.roleK || {}).soutien || 0) >= 20; } },
+    { id: "q5_pince", desc: "Tue 30 Boucliers dans une partie.", check: function (r) { return ((r.roleK || {}).bouclier || 0) >= 30; } },
+    { id: "q5_reliquaire", desc: "Active 6 types de sanctuaires dans une partie.", check: function (r) { return Object.keys(r.shrineTypes || {}).length >= 6; } },
+    { id: "q5_lettre", desc: "Réussis 5 Totems de défi au total.", check: function (r) { return ((r.tot && r.tot.trials) || 0) >= 5; } },
+    { id: "q5_corde", desc: "Réussis une extraction en Cauchemar 1 ou plus.", check: function (r) { return !!r.extracted && (r.cauch || 0) >= 1; } },
+    { id: "q5_sacoche", desc: "Réussis une extraction avec le sac plein.", check: function (r) { return !!r.extracted && !!r.bagFull; } },
+    { id: "q5_profondeur", desc: "Atteins l'étage 6 en Expédition.", check: function (r) { return !!r.ex && r.ex.floor >= 6; } },
+    { id: "q5_seve", desc: "Reste jusqu'à la minute 18 d'un étage d'Expédition.", check: function (r) { return !!r.min18; } },
+    { id: "q5_tambour", desc: "Bats 10 méga boss en coop.", check: function (r) { return ((r.tot && r.tot.coopMega) || 0) >= 10; } },
+    { id: "q5_ame", desc: "Relève 20 alliés au total.", check: function (r) { return ((r.tot && r.tot.revives) || 0) >= 20; } }
+  );
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
