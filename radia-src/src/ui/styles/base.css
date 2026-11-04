@@ -83,6 +83,11 @@ body { position: fixed; inset: 0; }
   background: radial-gradient(120% 80% at 50% 0%, #6b5a8c 0%, var(--nuit) 60%, var(--nuit-2) 100%);
 }
 
+/* Application installée sur l'écran d'accueil (iPhone) : 100dvh n'inclut pas la zone de la barre d'accueil, d'où une bande sombre
+   en bas. On laisse `inset: 0` (bords de l'écran, zones sûres comprises) décider de la hauteur. Les marges internes utilisent --sab. */
+html.standalone #app { height: auto; }
+@media all and (display-mode: standalone) { #app { height: auto; } }
+
 #game {
   position: absolute;
   inset: 0;

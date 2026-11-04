@@ -121,9 +121,9 @@ export interface FreeState { unlocked: boolean; at: number; announced: boolean }
 export interface AppsState {
   /** Tindeur jouable : profils vus, likes, matchs, conversations (v6 interne ; sanitisé par src/events/tindeur). */
   swipe: Record<string, unknown>;
-  /** RADIA Clips : publications, favoris, likes. */
+  /** TikTak : publications, favoris, likes. */
   clips: Record<string, unknown>;
-  /** RADIA Snap : stories, photos, brouillons. */
+  /** Snapchien : stories, photos, brouillons. */
   snap: Record<string, unknown>;
   /** Carrière : récompenses et activités (compteurs libres). */
   career: Record<string, number>;
