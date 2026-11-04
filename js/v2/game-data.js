@@ -1318,7 +1318,7 @@ window.ES_DATA = (function () {
   ];
   // 4 éléments : chacun craint le suivant du cycle (Eau > Feu > Air > Terre > Eau)
   var ELEMENTS = {
-    terre: { name: "Terre", color: "#c8a060", ui: "#9a7030", ui: "#9a7030", weak: "air" },
+    terre: { name: "Terre", color: "#c8a060", ui: "#9a7030", weak: "air" },
     feu:   { name: "Feu",   color: "#ff7a2a", ui: "#d8551a", weak: "eau" },
     eau:   { name: "Eau",   color: "#4aa8ff", ui: "#2a78c8", weak: "terre" },
     air:   { name: "Air",   color: "#c8f8e8", ui: "#2f9a7e", weak: "feu" },
