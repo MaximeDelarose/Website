@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.3.1";
+  var VERSION = "2.3.2";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -554,7 +554,7 @@
   function hpMul0() { if (isDungeon()) return (1 + 0.9 * (r.dg.floor - 1)) * (1 + r.time / 400) * DIFF.hp * zoneHp() * (1 + 0.25 * (players.length - 1)); return (isArena() ? 1 + 0.07 * (r.round - 1) : 1) * (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
   function makeEnemy(type, d, x, y, hp) {
     var e = { id: ++uid, type: type, d: d, spr: SPR[d.sprite], x: x, y: y, hp: hp, maxHp: hp, kx: 0, ky: 0, flash: 0, slowT: 0, slow: 0,
-              anim: Math.random() * 2, phase: Math.random() * 6, face: 1, charge: 0, windup: 0, cd: 3, spd: (d.spd || 0) * DIFF.spd, cool: null };
+              anim: Math.random() * 2, phase: Math.random() * 6, face: 1, born: r ? r.time : 0, charge: 0, windup: 0, cd: 3, spd: (d.spd || 0) * DIFF.spd, cool: null };
     if (nm(6) && !d.prop) e.spd *= 1.2;
     if (nm(2) && d.boss && !d.mega && !d.giant) e.needAff = true;
     var rm0 = rageMin();
@@ -6061,7 +6061,15 @@
       if (e.d.ai === "ghostowl" && !(e.seenT > r.time) && Math.hypot(e.x - me.x, e.y - me.y) > 70) ctx.globalAlpha = 0.1;
       if (e.vulnT > r.time) { ctx.strokeStyle = "rgba(246,211,107," + (0.5 + 0.5 * Math.sin(r.time * 12)) + ")"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y + 4, 20 * (e.scale || 1), 12 * (e.scale || 1), 0, 0, TAU); ctx.stroke(); ctx.lineWidth = 1; }
       var gs = e.scale || (e.giant ? 2 : 1); if (e.spr.ns) gs = Math.max(1, gs / e.spr.ns);
-      if (gs > 1) { ctx.save(); var fy = e.y + spr.h / 2; ctx.translate(e.x, fy); ctx.scale(gs, gs); ctx.translate(-e.x, -fy); }
+      // animation (graphismes lot 3) : rebond de marche, écrasement quand il est touché, apparition qui gonfle
+      var esx = 1, esy = 1, ebob = 0, age = r.time - (e.born || 0);
+      if (!e.d.prop) {
+        if (!e.spr.flying && !e.spr.ns && ((e.anim | 0) % 2)) ebob = 1;
+        if (e.flash > 0) { esx = 1.14; esy = 0.86; }
+        if (age < 0.28) { var pk = age / 0.28, pop = 0.55 + 0.45 * pk + Math.sin(pk * Math.PI) * 0.18; esx *= pop; esy *= pop; }
+      }
+      var etr = gs > 1 || esx !== 1 || esy !== 1 || ebob;
+      if (etr) { ctx.save(); var fy = e.y + spr.h / 2; ctx.translate(e.x, fy - ebob); ctx.scale(gs * esx, gs * esy); ctx.translate(-e.x, -fy); }
       if (!e.spr.flying) shadow(e.x, e.y + spr.h / 2 - 2, spr.w * 0.7);
       else shadow(e.x, e.y + spr.h / 2 + 3, spr.w * 0.5);
       if (e.aff && e.aff.length) drawEliteFx(e, spr, e.face < 0);
@@ -6079,7 +6087,7 @@
       if (rgA > 0 && !e.d.prop) { ctx.globalAlpha = rgA * (0.55 + 0.45 * Math.sin(r.time * 9 + e.id)); ctx.drawImage(tinted(spr, "#ff1a10", e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1; }
       if (e.aff && e.aff.length) drawEliteTag(e, spr);
       if (e.slowT > 0 && !e.d.boss && !e.d.prop) { ctx.fillStyle = "rgba(160,130,230,.7)"; ctx.fillRect(Math.round(e.x - 1), Math.round(e.y - spr.h / 2 - 2), 2, 2); }
-      if (gs > 1) ctx.restore();
+      if (etr) ctx.restore();
       ctx.globalAlpha = 1;
     }
     while (pi < plist.length) drawPlayer(plist[pi++]);

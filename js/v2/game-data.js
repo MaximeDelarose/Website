@@ -3032,7 +3032,8 @@ window.ES_DATA = (function () {
 
   // les 7 boss d'origine : volume en 3 tons (bord haut éclairci, bord bas assombri)
   function autoShade(def) {
-    var pal = {}, k, map = {}, CH = "0123456789@#$%&*+=?!";
+    if (def.shaded) return; def.shaded = true;
+    var pal = {}, k, map = {}, CH = "0123456789@#$%&*+=?!~^".split("").filter(function (c) { return !def.pal[c]; }).join("");
     for (k in def.pal) pal[k] = def.pal[k];
     var ci = 0;
     function lum(c) { var v = hx(c); return (v[0] * 0.3 + v[1] * 0.59 + v[2] * 0.11) / 255; }
@@ -3044,10 +3045,11 @@ window.ES_DATA = (function () {
     def.frames = def.frames.map(function (rows) {
       return rows.map(function (row, y) {
         return row.split("").map(function (ch, x) {
-          if (ch === "." || !def.pal[ch] || lum(def.pal[ch]) < 0.18 || ci > CH.length - 2) return ch;
+          if (ch === "." || !def.pal[ch] || ci > CH.length - 2) return ch;
+          var L = lum(def.pal[ch]); if (L < 0.07) return ch;
           var up = y === 0 || (rows[y - 1][x] || ".") === ".", dn = y === rows.length - 1 || (rows[y + 1][x] || ".") === ".";
           if (up && !dn) return variant(ch, true);
-          if (dn && !up) return variant(ch, false);
+          if (dn && !up && L >= 0.18) return variant(ch, false);
           return ch;
         }).join("");
       });
@@ -3055,6 +3057,8 @@ window.ES_DATA = (function () {
     def.pal = pal;
   }
   ["boar", "owl", "queen", "stag", "mushking", "bigmole", "golem"].forEach(function (n) { if (SPRITES[n]) autoShade(SPRITES[n]); });
+  // graphismes lot 3 : le même volume sur tous les ennemis courants
+  Object.keys(ENEMIES).forEach(function (k) { var e = ENEMIES[k], sp = SPRITES[e.sprite]; if (!e.prop && sp && !sp.ns) autoShade(sp); });
 
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
