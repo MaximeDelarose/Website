@@ -2041,6 +2041,116 @@ window.ES_DATA = (function () {
     { id: "q5_tambour", desc: "Bats 10 méga boss en coop.", check: function (r) { return ((r.tot && r.tot.coopMega) || 0) >= 10; } },
     { id: "q5_ame", desc: "Relève 20 alliés au total.", check: function (r) { return ((r.tot && r.tot.revives) || 0) >= 20; } }
   );
+  /* =====================================================================
+     Contenu étendu, lot 4 : attirail (pièces de base, anneaux, pièces uniques, panoplies réécrites)
+     ===================================================================== */
+  var G4 = function (slot, name, elem, icon, fx, lo, hi, desc, o) { var g = { slot: slot, name: name, elem: elem || undefined, icon: icon, fx: fx, lo: lo === null ? undefined : lo, hi: hi === null ? undefined : hi, desc: desc }; Object.keys(o || {}).forEach(function (k) { g[k] = o[k]; }); return g; };
+  var GEAR4 = {
+    c_givre: G4("coiffe", "Toque de givre", "eau", "❄️", "givreA", 30, 50, "Ancré : un anneau de givre ralentit les ennemis proches de {v} %."),
+    c_braiseb: G4("coiffe", "Bonnet de braise", "feu", "🔥", "flammeA", 15, 30, "Ancré : toutes les 3 s, une flamme part vers l'ennemi le plus proche ({v} dégâts)."),
+    c_plumes: G4("coiffe", "Casque à plumes", "air", "🪶", "deviA", 10, 25, "Ancré : {v} % des tirs ennemis sont déviés autour de toi."),
+    c_vigie: G4("coiffe", "Bonnet de vigie", "air", "🔭", "vigie", 10, 20, "Ancré : tu vois plus loin en Expédition, et la portée des techniques de Tir gagne +{v} %."),
+    b_galoches: G4("bottes", "Galoches", "eau", "🥿", "galoche", 2, 4, "En mouvement : tu laisses des flaques qui marquent Eau ({v} s)."),
+    b_cendre: G4("bottes", "Mocassins de cendre", "feu", "🩰", "frole", 10, 20, "En mouvement : {v} % de chance d'enflammer les ennemis que tu frôles."),
+    b_moussep: G4("bottes", "Chaussons de mousse", "terre", "🧦", "pasSoin", 0.3, 0.6, "En mouvement : rend {v} PV tous les 50 px."),
+    b_nuage: G4("bottes", "Bottes de nuage", "air", "☁️", "traverse", 8, 15, "En mouvement : {v} % des tirs ennemis te traversent."),
+    k_flammes: G4("cape", "Cape de flammes", "feu", "🔥", "anneauFeu", 10, 20, "Volte : un anneau de feu reste 2 s ({v} dégâts/s)."),
+    k_etincelles: G4("cape", "Cape d'étincelles", "feu", "✨", "etincelles", null, null, "Volte : tes 3 prochains coups enflamment à coup sûr."),
+    k_maree: G4("cape", "Cape de marée", "eau", "🌊", "vagueV", 15, 25, "Volte : une vague part dans la direction prise et repousse ({v} dégâts)."),
+    k_pierre: G4("cape", "Cape de pierre", "terre", "🪨", "capePierre", 3, 6, "Volte : +{v} d'armure pendant 2 s."),
+    a_ambre: G4("amulette", "Collier d'ambre", "terre", "🟠", "ambre", null, null, "+2 points de Terre et +1 point de Feu."),
+    a_larme: G4("amulette", "Larme de pluie", "eau", "💧", "larme", null, null, "Tes marques Eau durent 2 fois plus longtemps."),
+    a_orage: G4("amulette", "Pendentif d'orage", "air", "⚡", "pendOrage", 30, 50, "Les réactions qui contiennent de l'Air font +{v} %."),
+    a_foyer: G4("amulette", "Pierre de foyer", "feu", "🏮", "foyer", null, null, "L'attaque de base de ton arme devient Feu, quel que soit son élément."),
+    // anneaux (l'Anneau de l'orage arrive avec les événements)
+    r_horde: G4("anneau", "Anneau de la horde", null, "🐜", null, null, null, "Pacte : escouades 50 % plus grosses, XP x1,5.", { ring: "horde" }),
+    r_verre: G4("anneau", "Anneau de verre", null, "🔮", null, null, null, "Pacte : -30 % de PV max, +40 % de glands d'or et de chance de butin.", { ring: "verre" }),
+    r_tenebres: G4("anneau", "Anneau des ténèbres", null, "🌑", null, null, null, "Pacte : vision réduite toute la partie, objets rares 2 fois plus fréquents.", { ring: "tenebres", quest: "q6_tenebres" }),
+    r_forgeron: G4("anneau", "Anneau du forgeron", null, "🔨", null, null, null, "Déblocage : les fusions entre techniques peuvent être proposées dès le niveau 4.", { ring: "forgeron" }),
+    r_alchimiste: G4("anneau", "Anneau de l'alchimiste", null, "⚗️", null, null, null, "Déblocage : l'évolution élémentaire est proposée sans les 6 points d'élément.", { ring: "alchimiste", quest: "q6_alchimiste" }),
+    r_menagerie: G4("anneau", "Anneau de la ménagerie", null, "🐾", null, null, null, "Déblocage : les techniques de Compagnon apparaissent 2 fois plus souvent.", { ring: "menagerie" }),
+    r_collection: G4("anneau", "Anneau du collectionneur", null, "🗃️", null, null, null, "Déblocage : chaque choix de niveau propose aussi un objet à effets commun.", { ring: "collection", quest: "q6_collection" }),
+    r_pelerin: G4("anneau", "Anneau du pèlerin", null, "🥾", null, null, null, "Sanctuaires : un sanctuaire de plus par zone ou par salle.", { ring: "pelerin" }),
+    r_defi: G4("anneau", "Anneau de défi", null, "⚔️", null, null, null, "Sanctuaires : chaque Totem de défi invoque aussi un boss, qui lâche un coffre violet.", { ring: "defi" }),
+    r_relance: G4("anneau", "Anneau de relance", null, "🔁", null, null, null, "Économie : 2 relances de cartes gratuites par partie.", { ring: "relance" }),
+    r_avare: G4("anneau", "Anneau de l'avare", null, "💰", null, null, null, "Économie : à chaque boss tué, tes glands non dépensés rapportent 10 %.", { ring: "avare" }),
+    r_troc: G4("anneau", "Anneau du troc", null, "🤝", null, null, null, "Économie : l'Autel du sacrifice accepte des glands à la place d'un objet.", { ring: "troc" }),
+    // pièces uniques : 2 effets, au cœur d'une expédition ou sur un méga boss ; une seule portée à la fois
+    u_veilleur: G4("coiffe", "Heaume du veilleur", "air", "🪖", "u_veilleur", null, null, "Ancré : tes techniques de Tir visent l'ennemi le plus fort et lui font +20 %.", { unique: true }),
+    u_diademe: G4("coiffe", "Diadème de racines", "terre", "👑", "u_diademe", null, null, "Ancré : toutes les 6 s, les ennemis au contact sont enracinés 1,5 s ; après chaque enracinement, +10 % de vitesse 2 s.", { unique: true }),
+    u_capuche: G4("coiffe", "Capuche du sorcier", "eau", "🧙", "u_capuche", null, null, "Ancré : toutes les 4 s, une réaction au hasard éclate autour de toi ; à la Volte, la dernière réaction se répète.", { unique: true }),
+    u_renard: G4("bottes", "Bottes du renard", "air", "🦊", "u_renard", null, null, "Mouvement : tu traverses les ennemis sans les toucher, et chaque ennemi traversé est marqué Air.", { unique: true }),
+    u_ours: G4("bottes", "Sabots de l'Ours", "feu", "🐻", "u_ours", null, null, "Mouvement : tes empreintes brûlent ; un ennemi qui marche dessus est marqué Feu et ralenti de 30 %.", { unique: true }),
+    u_patins: G4("bottes", "Patins de givre", "eau", "⛸️", "u_patins", null, null, "Mouvement : tu vas 30 % plus vite, et ton sillage gèle.", { unique: true }),
+    u_derniere: G4("cape", "Cape de la dernière chance", "feu", "🧥", "u_derniere", null, null, "Volte : une gerbe de feu (30) ; sous 25 % de PV, la Volte se recharge aussitôt.", { unique: true }),
+    u_eclipse: G4("cape", "Manteau d'éclipse", "air", "🌘", "u_eclipse", null, null, "Volte : le temps ralentit de moitié autour de toi pendant 1 s, puis +20 % de vitesse 1 s.", { unique: true }),
+    u_racines: G4("cape", "Cape des racines", "terre", "🌿", "u_racines", null, null, "Volte : tu échanges ta place avec un compagnon, une sentinelle ou un arbre.", { unique: true }),
+    u_vents: G4("amulette", "Cœur des quatre vents", null, "🧭", "u_vents", null, null, "Compte comme 3 points de chaque élément.", { unique: true }),
+    u_cycle: G4("amulette", "Œil du cycle", null, "👁️", "u_cycle", null, null, "L'élément de ton arme avance d'un cran dans le cycle à chaque boss vaincu ; tes réactions font +20 %.", { unique: true }),
+    u_sceau: G4("anneau", "Sceau royal", null, "💍", "u_sceau", null, null, "L'effet de ton autre anneau est doublé.", { unique: true, ring: "sceau" }),
+  };
+  Object.keys(GEAR4).forEach(function (k) {
+    var g = GEAR4[k]; GEAR[k] = g;
+    var m = ELEM_MAP[g.elem] || "clairiere", rs = MAP_RES[m], cost = {};
+    if (g.unique) { cost.rune_rare = 2; g.cost = cost; return; }
+    cost[rs[0]] = 8; cost[rs[1]] = 6; cost[rs[2]] = 3;
+    if (g.slot === "cape" || g.slot === "amulette" || g.slot === "anneau") cost[{ clairiere: "t_boar", marais: "t_mushking", automne: "t_stag", nuit: "t_owl" }[m]] = 1;
+    g.cost = cost;
+  });
+  // l'Ancre porte-bonheur et le Gland de la Sylve deviennent des amulettes de base
+  ["s_corsaire_amulette", "s_sylve_amulette"].forEach(function (k) { var g = GEAR[k]; delete g.set; var rs = MAP_RES[ELEM_MAP[g.elem]], c = {}; c[rs[0]] = 8; c[rs[1]] = 6; c[rs[2]] = 3; c[{ eau: "t_mushking", terre: "t_boar" }[g.elem]] = 1; g.cost = c; });
+  // panoplies : 3 pièces (d'écureuil ou de méga boss), Orage et Braise gardent 4 pièces ; chaque pièce a son effet propre
+  // [id, nom, élément, écureuil, méga boss, bonus 2, bonus 3 ou 4, pièces [emplacement, nom, icône, effet, min, max, description]]
+  var SETS4 = [
+    ["apprentie", "Panoplie de l'Apprentie", "terre", "noisette", null, "1 relance de cartes gratuite par palier de difficulté.", "Chaque choix propose au moins une amélioration d'une technique que tu as.",
+      [["coiffe", "Bonnet roux", "🧢", "app_c", 15, 30, "Ancrée : l'XP ramassée compte +{v} %."], ["bottes", "Sandales de noisetier", "🩴", "app_b", 5, 10, "En mouvement : {v} % des noisettes comptent double."], ["cape", "Écharpe d'automne", "🧣", "app_k", null, null, "Volte : attire toutes les noisettes de l'écran."]]],
+    ["corsaire", "Panoplie du Corsaire", "eau", "capitaine", null, "+2 matelots max.", "Les matelots tirent des boulets qui explosent.",
+      [["coiffe", "Tricorne", "🏴‍☠️", "cor_c", null, null, "Ancré : les matelots se mettent en carré et bloquent les tirs."], ["bottes", "Bottes de pont", "🥾", "cor_b", 6, 12, "En mouvement : la file piétine les ennemis ({v} dégâts)."], ["cape", "Cape de corsaire", "🧥", "cor_k", null, null, "Volte : les matelots tirent une bordée."]]],
+    ["sylve", "Panoplie de la Sylve", "terre", "druide", null, "Tes arbres te rendent 1 PV quand ils tuent.", "Ancrée, une pousse apparaît toutes les 4 s.",
+      [["coiffe", "Couronne de lierre", "🌿", "syl_c", 30, 50, "Ancrée : tes pousses grandissent {v} % plus vite."], ["bottes", "Sabots d'écorce", "🪵", "syl_b", null, null, "Passer près de tes arbres les fait tirer 2 fois."], ["cape", "Cape de mousse", "🍃", "syl_k", null, null, "Volte : une pousse apparaît là où tu étais."]]],
+    ["jumeaux", "Panoplie des Jumeaux", "air", "jumeaux", null, "Pop reprend tes armes à 75 % au lieu de 60 %.", "Quand l'un tombe, l'autre est invulnérable 2 s et le relève 2 fois plus vite.",
+      [["coiffe", "Bonnets assortis", "🎩", "jum_c", 20, 35, "Ancrés côte à côte : +{v} % de dégâts."], ["bottes", "Chaussettes dépareillées", "🧦", "jum_b", null, null, "En mouvement : Pop se place toujours derrière Pip."], ["cape", "Cape partagée", "🧣", "jum_k", null, null, "Volte : les jumeaux égalisent leurs PV."]]],
+    ["granit", "Panoplie de Granit", "terre", "cendrine", null, "Frapper pendant le délai efface 25 % de plus.", "Quand les dégâts différés retombent à zéro, une onde de choc repousse tout.",
+      [["coiffe", "Heaume de granit", "🪖", "gra_c", 15, 30, "Ancrée : champ de force +{v} % de rayon."], ["bottes", "Grèves de granit", "🥾", "gra_b", null, null, "En mouvement : les dégâts différés s'écoulent sur 5 s."], ["cape", "Cape de granit", "🧥", "gra_k", 20, 35, "Volte : efface {v} % des dégâts différés."]]],
+    ["volplane", "Panoplie du Vol plané", "air", "planeur", null, "Tu peux aussi t'accrocher aux rochers et aux murs.", "Après 3 s sans t'accrocher, +25 % de dégâts jusqu'à la prochaine accroche.",
+      [["coiffe", "Lunettes d'aviateur", "🥽", "vol_c", 20, 40, "Accroché : portée +{v} %."], ["bottes", "Chaussons d'envol", "🩰", "vol_b", 20, 40, "Virages {v} % plus serrés."], ["cape", "Voilure", "🪁", "vol_k", null, null, "La Volte te propulse 2 fois plus loin."]]],
+    ["glouton", "Panoplie du Glouton", "feu", "pataud", null, "Grossir ne ralentit plus.", "Ce que tu recraches soigne les alliés touchés et toi (2 PV par noisette).",
+      [["coiffe", "Bavoir", "🍽️", "glo_c", null, null, "Ancré : tu digères (-1 % de taille par seconde contre 2 PV/s)."], ["bottes", "Gros chaussons", "🧦", "glo_b", null, null, "En mouvement : ta taille repousse les ennemis touchés."], ["cape", "Nappe", "🧺", "glo_k", null, null, "Volte : ce que tu recraches marque Feu."]]],
+    ["sevevive", "Panoplie de la Sève vive", "eau", "mage", null, "La surcharge déclenche les réactions sans délai.", "La fin d'une surcharge déclenche une explosion de sève (100).",
+      [["coiffe", "Chapeau de mage", "🎩", "sev_c", 20, 40, "Ancrée : recharge de sève +{v} %."], ["bottes", "Bottes d'alambic", "🥾", "sev_b", null, null, "À sec, tes armes ne ralentissent plus que de 30 %."], ["cape", "Cape de lune", "🌙", "sev_k", null, null, "Chaque Volte prolonge la surcharge de 1 s."]]],
+    ["shinobi", "Panoplie du Shinobi", "air", "ninja", null, "Dégâts x3,5 au lieu de x3 sur ceux qui ne t'ont pas vue.", "Tuer un ennemi qui ne t'a pas vue te rend invisible 1 s.",
+      [["coiffe", "Masque de nuit", "🥷", "shi_c", 20, 35, "Ancrée : les ennemis te repèrent {v} % moins loin."], ["bottes", "Tabi", "🧦", "shi_b", null, null, "Un ennemi qui t'a repérée te perd après 3 s loin de toi."], ["cape", "Cape de nuit", "🌌", "shi_k", null, null, "Volte : tu disparais de la vue des ennemis proches."]]],
+    ["vatout", "Panoplie du Va-tout", "feu", "trefle", null, "Une mise ratée donne quand même une carte, une fois sur 4.", "Une mise gagnée donne 3 cartes au lieu de 2.",
+      [["coiffe", "Chapeau de joueur", "🎩", "vat_c", 5, 10, "Ancrée : +{v} % de critiques par mise en cours."], ["bottes", "Bottes porte-veine", "👢", "vat_b", 3, 6, "En mouvement : +{v} % de vitesse par mise en cours."], ["cape", "Cape de tapis vert", "🟩", "vat_k", null, null, "Une Volte pendant une mise rapporte 10 glands, une fois par niveau."]]],
+    ["colosse", "Panoplie du Colosse", "terre", null, "colosse", "+2 points de Terre.", "Ancré 3 s : tu deviens un colosse (+4 armure) jusqu'au prochain mouvement.",
+      [["coiffe", "Heaume d'humus", "🪖", "clo_c", null, null, "Ancré : les ennemis au contact sont ralentis de 40 %."], ["bottes", "Pieds d'argile", "🦶", "clo_b", null, null, "En mouvement : tes pas font trébucher les Nuées proches 0,5 s."], ["cape", "Manteau de terreau", "🧥", "clo_k", null, null, "Volte : un mur de terre surgit derrière toi 3 s."]]],
+    ["mere", "Panoplie de la Mère des Marais", "eau", null, "mere", "+2 points d'Eau.", "Tes réactions Boue et Gel se propagent à un ennemi proche.",
+      [["coiffe", "Diadème de nénuphar", "🪷", "mer_c", null, null, "Ancré : une flaque grandit sous toi et marque Eau."], ["bottes", "Bottes de tourbe", "🥾", "mer_b", null, null, "Traverser l'eau ou la boue donne +20 % de dégâts 3 s."], ["cape", "Cape de vase", "🧥", "mer_k", null, null, "Volte : tu plonges et réapparais 1 s plus tard en éclaboussant (20)."]]],
+    ["brasier", "Panoplie du Brasier", "feu", null, "brasier", "+2 points de Feu.", "Vapeur et Magma font +50 %.",
+      [["coiffe", "Couronne de braise", "👑", "bra_c", null, null, "Ancré : +5 % de dégâts par seconde (max +25 %)."], ["bottes", "Semelles de lave", "🥾", "bra_b", null, null, "Tu marches sans dégâts sur les flaques de feu."], ["cape", "Cape d'incendie", "🧥", "bra_k", null, null, "Volte : toutes tes brûlures éclatent d'un coup."]]],
+    ["tempete", "Panoplie du Roi-Tempête", "air", null, "tempete", "+2 points d'Air.", "Embrasement et Tempête de sable font +50 %.",
+      [["coiffe", "Couronne de nuages", "⛅", "tem_c", null, null, "Ancré : un nuage détruit un tir ennemi toutes les 2 s."], ["bottes", "Bottes-girouettes", "👢", "tem_b", null, null, "Chaque changement de direction lance un petit éclair."], ["cape", "Cape de rafale", "🧥", "tem_k", null, null, "La Volte t'emporte 2 fois plus loin."]]],
+    ["orage", "Panoplie de l'Orage", "air", null, null, "Chaque éclair que tu lances marque Air.", "Chaque Volte lance un éclair sur 5 ennemis.",
+      [["coiffe", "Heaume d'orage", "⛈️", "ora_c", null, null, "Ancré : un paratonnerre attire les tirs ennemis proches et les renvoie en éclair."], ["bottes", "Bottes de foudre", "⚡", "ora_b", null, null, "Tous les 100 px, tu charges un éclair, lâché à l'arrêt."], ["cape", "Cape-tonnerre", "🌩️", "ora_k", null, null, "Volte : laisse une ligne électrique 2 s."], ["amulette", "Œil de la tempête", "🌀", "ora_a", null, null, "Tes éclairs rebondissent sur 1 ennemi de plus."]]],
+    ["braise", "Panoplie de Braise", "feu", null, null, "10 % de chance par coup d'enflammer.", "Tes brûlures font 2 fois plus aux élites et aux boss.",
+      [["coiffe", "Masque de braise", "🎭", "brs_c", null, null, "Ancré : chaque ennemi brûlé proche te rend 0,5 PV/s."], ["bottes", "Bottes de lave", "🔥", "brs_b", null, null, "Les ennemis brûlés que tu frôles explosent (15)."], ["cape", "Cape de cendres", "🧣", "brs_k", null, null, "Volte : les cendres aveuglent les ennemis proches 1 s."], ["amulette", "Cœur de braise", "❤️‍🔥", "brs_a", null, null, "Tes techniques de Mêlée deviennent Feu."]]],
+  ];
+  Object.keys(SETS).forEach(function (k) { delete SETS[k]; });
+  var MEGA_T = { colosse: "t_colosse", mere: "t_mere", brasier: "t_brasier", tempete: "t_tempete" }, REG_T = { clairiere: "t_boar", marais: "t_mushking", automne: "t_stag", nuit: "t_owl" };
+  SETS4.forEach(function (st) {
+    SETS[st[0]] = { name: st[1], elem: st[2], who: st[3] || undefined, mega: st[4] || undefined, b2: st[5], b4: st[6], full: st[7].length };
+    st[7].forEach(function (pc) {
+      var id = "s_" + st[0] + "_" + pc[0], m = ELEM_MAP[st[2]], rs = MAP_RES[m], cost = {};
+      cost[rs[0]] = 10; cost[rs[1]] = 8; cost[rs[2]] = 6;
+      if (st[4]) cost[MEGA_T[st[4]]] = 2; else cost[REG_T[m]] = 2;
+      GEAR[id] = { slot: pc[0], name: pc[1], elem: st[2], icon: pc[2], set: st[0], who: st[3] || undefined, fx: pc[3], lo: pc[4] === null ? undefined : pc[4], hi: pc[5] === null ? undefined : pc[5], desc: pc[6], cost: cost, fam: pc[3] === "brs_a" ? "melee" : undefined };
+    });
+  });
+  QUESTS.push(
+    { id: "q6_tenebres", desc: "Traverse 3 nuits d'Expédition au total.", check: function (r) { return ((r.tot && r.tot.nights) || 0) >= 3; } },
+    { id: "q6_alchimiste", desc: "Obtiens 5 évolutions élémentaires au total.", check: function (r) { return ((r.tot && r.tot.evoC) || 0) >= 5; } },
+    { id: "q6_collection", desc: "Découvre 50 objets différents au codex.", check: function (r) { return ((r.tot && r.tot.seen) || 0) >= 50; } }
+  );
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
