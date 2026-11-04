@@ -51,6 +51,7 @@ async function run(H) {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/404/.test(m.text())) errors.push(m.text()); });
   await page.addInitScript((s) => { if (!sessionStorage.getItem('k-seeded')) { localStorage.setItem('radia-save-v1', s); sessionStorage.setItem('k-seeded', '1'); } }, JSON.stringify(baseSave()));
+  await page.addInitScript(() => { try { const k = 'radia-save-v1'; const s = localStorage.getItem(k); if (s) { const j = JSON.parse(s); j.world = j.world || {}; j.world.flags = { ...(j.world.flags || {}), 'rw:start-gift-v1': true }; const d = new Date(), q = (x) => String(x).padStart(2, '0'), key = `${d.getFullYear()}-${q(d.getMonth() + 1)}-${q(d.getDate())}`; j.fun = j.fun || {}; j.fun.daily = { cycle: 0, day: 1, claimed: [0], total: 1, ...(j.fun.daily || {}), lastKey: key }; j.fun.free = { ...(j.fun.free || {}), announced: true }; localStorage.setItem(k, JSON.stringify(j)); } } catch { /* ignore */ } }); // écarte le « Bonus de départ » pour les anciennes sauvegardes de test
   await page.goto(URL, { waitUntil: 'networkidle' });
   const sleep = (ms) => page.waitForTimeout(ms);
   await sleep(1800);

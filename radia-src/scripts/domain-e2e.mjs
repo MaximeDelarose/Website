@@ -13,6 +13,9 @@ const out = [];
 const check = (n, ok) => { out.push(`${ok ? 'OK ' : 'KO '} ${n}`); if (process.env.VERBOSE) console.log(out[out.length - 1]); };
 const seed = { v: 2, seenUpdates: ['v2'], story: { step: 200, endingSeen: true }, levels: {}, hearts: 500 };
 await page.addInitScript((s) => { if (!localStorage.getItem('radia-save-v1')) localStorage.setItem('radia-save-v1', s); }, JSON.stringify(seed));
+await page.addInitScript(() => { try { const k = 'radia-save-v1'; const s = localStorage.getItem(k); if (s) { const j = JSON.parse(s); j.world = j.world || {}; j.world.flags = { ...(j.world.flags || {}), 'rw:start-gift-v1': true }; const d = new Date(), q = (x) => String(x).padStart(2, '0'), key = `${d.getFullYear()}-${q(d.getMonth() + 1)}-${q(d.getDate())}`; j.fun = j.fun || {}; j.fun.daily = { cycle: 0, day: 1, claimed: [0], total: 1, ...(j.fun.daily || {}), lastKey: key }; j.fun.free = { ...(j.fun.free || {}), announced: true }; localStorage.setItem(k, JSON.stringify(j)); } } catch { /* ignore */ } }); // écarte le « Bonus de départ » pour les anciennes sauvegardes de test
+await page.addLocatorHandler(page.locator('#reward-overlay .rw-root'), async () => { for (let i = 0; i < 30; i++) { const r = await page.evaluate(() => { const ov = document.querySelector('#reward-overlay'); if (!ov) return 0; for (const sel of ['.rw-primary', '.rw-skip', '.rw-art']) { const e = ov.querySelector(sel); if (e && e.getBoundingClientRect().width && getComputedStyle(e).visibility !== 'hidden') { e.click(); return 1; } } return 1; }).catch(() => 0); if (!r) break; await page.waitForTimeout(500); } }); // ferme un cadeau qui s'ouvre en cours de parcours
+await page.addInitScript(() => { const t = setInterval(() => { try { const w = window.RADIA && window.RADIA.save && window.RADIA.save.data && window.RADIA.save.data.world; if (w) { w.flags = w.flags || {}; w.flags['rw:start-gift-v1'] = true; const fu = window.RADIA.save.data.fun; if (fu) { const d = new Date(), q = (x) => String(x).padStart(2, '0'); fu.daily = { cycle: 0, day: 1, claimed: [0], total: 1, ...(fu.daily || {}), lastKey: `${d.getFullYear()}-${q(d.getMonth() + 1)}-${q(d.getDate())}` }; clearInterval(t); } } } catch { /* ignore */ } }, 20); }); // pas de « Bonus de démarrage » dans les parcours de test
 await page.goto(`http://localhost:${process.env.PORT ?? 4189}/?debug`, { waitUntil: 'networkidle' });
 await sleep(2500);
 // fenêtres d'accueil : on ferme tout sauf l'annonce du mode libre (vérifiée avant)
@@ -72,8 +75,10 @@ for (let s = 0; s < 4; s++) {
   check(`étape ${s + 1} : bouton prêt`, (await go.getAttribute('class')).includes('ready'));
   await go.click({ force: true }); await sleep(1500);
   await page.screenshot({ path: `shots/h-tea-${s + 1}-reveal-${H}.png` });
-  check(`étape ${s + 1} : fenêtre de récompenses`, (await page.locator('.dm-reveal').count()) === 1);
-  await page.locator('.dm-reveal .actions button').click(); await sleep(700);
+  check(`étape ${s + 1} : récompenses affichées (couche récompense au premier plan)`, (await page.locator('#reward-overlay .rw-root, .dm-reveal').count()) >= 1);
+  if (await page.locator('#reward-overlay .rw-root').count()) { await page.locator('#reward-overlay .rw-primary').click({ timeout: 20000 }).catch(() => {}); await sleep(900); }
+  else await page.locator('.dm-reveal .actions button').click();
+  await sleep(500);
   await page.locator('.dm-body').evaluate((b) => { b.scrollTop = 0; }); await sleep(200);
   await page.screenshot({ path: `shots/h-tea-${s + 1}-${H}.png` });
 }

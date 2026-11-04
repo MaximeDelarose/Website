@@ -13,6 +13,9 @@ const errs = [];
 p.on('pageerror', (e) => errs.push('page: ' + e.message));
 p.on('console', (m) => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push('console: ' + m.text().slice(0, 160)); });
 await p.addInitScript(() => { if (!localStorage.getItem('radia-save-v1')) localStorage.setItem('radia-save-v1', JSON.stringify({ v: 3, seenUpdates: ['v2', 'v3', 'v4'], story: { step: 80 }, levels: {}, hearts: 5 })); });
+await p.addInitScript(() => { try { const k = 'radia-save-v1'; const s = localStorage.getItem(k); if (s) { const j = JSON.parse(s); j.world = j.world || {}; j.world.flags = { ...(j.world.flags || {}), 'rw:start-gift-v1': true }; const d = new Date(), q = (x) => String(x).padStart(2, '0'), key = `${d.getFullYear()}-${q(d.getMonth() + 1)}-${q(d.getDate())}`; j.fun = j.fun || {}; j.fun.daily = { cycle: 0, day: 1, claimed: [0], total: 1, ...(j.fun.daily || {}), lastKey: key }; j.fun.free = { ...(j.fun.free || {}), announced: true }; localStorage.setItem(k, JSON.stringify(j)); } } catch { /* ignore */ } }); // écarte le « Bonus de départ » pour les anciennes sauvegardes de test
+await p.addLocatorHandler(p.locator('#reward-overlay .rw-root'), async () => { for (let i = 0; i < 30; i++) { const r = await p.evaluate(() => { const ov = document.querySelector('#reward-overlay'); if (!ov) return 0; for (const sel of ['.rw-primary', '.rw-skip', '.rw-art']) { const e = ov.querySelector(sel); if (e && e.getBoundingClientRect().width && getComputedStyle(e).visibility !== 'hidden') { e.click(); return 1; } } return 1; }).catch(() => 0); if (!r) break; await p.waitForTimeout(500); } }); // ferme un cadeau qui s'ouvre en cours de parcours
+await p.addInitScript(() => { const t = setInterval(() => { try { const w = window.RADIA && window.RADIA.save && window.RADIA.save.data && window.RADIA.save.data.world; if (w) { w.flags = w.flags || {}; w.flags['rw:start-gift-v1'] = true; const fu = window.RADIA.save.data.fun; if (fu) { const d = new Date(), q = (x) => String(x).padStart(2, '0'); fu.daily = { cycle: 0, day: 1, claimed: [0], total: 1, ...(fu.daily || {}), lastKey: `${d.getFullYear()}-${q(d.getMonth() + 1)}-${q(d.getDate())}` }; fu.free = { ...(fu.free || {}), announced: true }; clearInterval(t); } } } catch { /* ignore */ } }, 20); }); // pas de « Bonus de démarrage » dans les parcours de test
 let fails = 0;
 const check = (n, ok, x = '') => { if (!ok) fails++; console.log(`${ok ? 'OK ' : 'KO '} ${n}${x ? ' — ' + x : ''}`); };
 const sh = (n) => p.screenshot({ path: `shots/m-${n}${T}.png` });
@@ -43,6 +46,7 @@ async function swipeCard(dir) {
 }
 async function openApp() {
   await p.locator('.title-left .ph-btn').first().click(); await p.waitForSelector('.ph-back'); await wait(400);
+  if (!(await p.locator('.ph-app[aria-label="Tindeur"]').count())) { await p.locator('.ph-tabs [data-tab="messages"]').click(); await wait(400); } // le téléphone s'ouvre sur « Invitations » s'il y en a une en attente
   await p.locator('.ph-app[aria-label="Tindeur"]').click();
   await p.waitForSelector('.sw-app'); await wait(500);
 }
@@ -150,7 +154,14 @@ await p.locator('.sw-end .btn', { hasText: 'Garder' }).click(); await wait(500);
 // ------------------------------------------------------------------ 5. une autre conversation : poser des questions, arrêter, reprendre, supprimer
 await p.locator('.sw-row').first().click(); await p.waitForSelector('.sw-ch');
 const pid2 = await p.evaluate(() => document.querySelector('.sw-cname b').textContent);
-const askN = await p.locator('.sw-ch.ask').count();
+let askN = await p.locator('.sw-ch.ask').count();
+// certains profils ne proposent une question qu'au 2e ou 3e tour : on avance avec une réponse simple
+for (let k = 0; k < 3 && askN < 1; k++) {
+  const plain = p.locator('.sw-ch:not(.ask)').first();
+  if (!(await plain.count())) break;
+  await plain.click(); await p.waitForSelector('.sw-ch, .sw-end', { timeout: 9000 }); await wait(600);
+  askN = await p.locator('.sw-ch.ask').count();
+}
 check('des choix « poser une question » existent', askN >= 1, `${pid2}: ${askN}`);
 await p.locator('.sw-more').click(); await wait(200); await sh('10-menu');
 await p.locator('.sw-menu button', { hasText: 'Arrêter la conversation' }).click(); await wait(400);
@@ -159,7 +170,7 @@ await p.locator('.sw-end .btn', { hasText: 'Reprendre' }).click(); await p.waitF
 check('reprendre : les choix reviennent', (await p.locator('.sw-ch').count()) >= 2);
 await p.locator('.sw-more').click();
 await p.locator('.sw-menu button.danger').click(); await wait(300);
-await p.locator('.sw-end .btn', { hasText: 'Supprimer' }).click(); await wait(600);
+await p.locator('.sw-end .btn', { hasText: 'Supprimer' }).click(); await p.waitForSelector('.sw-chat', { state: 'detached', timeout: 5000 }).catch(() => undefined); await wait(300);
 const s4 = await sw();
 check('supprimer le match : conversation retirée', !s4.convos.clement && !s4.matches.includes('clement') && (await p.locator('.sw-chat').count()) === 0, `matchs restants ${s4.matches.length}`);
 
@@ -203,8 +214,9 @@ await closeApp();
 const before = await sw();
 await p.locator('.title-left .ph-btn').first().click(); await p.waitForSelector('.ph-back'); await wait(300);
 await p.locator('.ph-gear').click(); await wait(400);
+for (let k = 1; k <= 2; k++) { await p.locator('.ph-set .btn', { hasText: 'Désinstaller' }).click(); await wait(700); check(`désinstallation : essai ${k}/3 refusé, l'appli reste installée`, (await fun()).installed === true && (await p.locator('.ph-aug-say').count()) >= 1); }
 await p.locator('.ph-set .btn', { hasText: 'Désinstaller' }).click(); await wait(900);
-check('désinstallation : installed=false, aucune réaction négative (aucun message d’Auguste)', (await fun()).installed === false && (await p.locator('.aug-says').count()) === 0);
+check('désinstallation au 3e essai : installed=false', (await fun()).installed === false);
 await sh('14-desinstalle');
 await p.locator('.ph-back .ph-x').first().click(); await wait(400); await p.locator('.ph-back .ph-x').first().click(); await wait(400);
 await p.evaluate(() => { window.RADIA.save.data.fun.apps.swipe.clock += 60 * 60_000; for (const c of Object.values(window.RADIA.save.data.fun.apps.swipe.convos)) { c.unread = true; c.notified = false; c.pingAt = 1; } });
