@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.3.0";
+  var VERSION = "2.3.1";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -167,6 +167,7 @@
     if (d.idle) SPR[k].idle = d.idle.map(function (f) { return sprite(f, d.pal); });
     if (d.volte) SPR[k].volte = sprite(d.volte, d.pal);
     if (d.bob) SPR[k].bob = d.bob;
+    if (d.ns) SPR[k].ns = d.ns;  // sprite dessiné pour cette échelle de jeu : pas agrandi à l'écran
   });
   var urlCache = {};
   function spriteUrl(name) { return urlCache[name] || (urlCache[name] = (SPR[name] || SPR.nut)[0].c.toDataURL()); }
@@ -6059,7 +6060,7 @@
       if (e.d.ai === "antlion") { ctx.fillStyle = "rgba(200,168,120,.35)"; ctx.beginPath(); ctx.ellipse(e.x, e.y + 3, 30, 22, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = "rgba(140,110,70,.5)"; ctx.beginPath(); ctx.ellipse(e.x, e.y + 3, 18 + 6 * Math.sin(r.time * 3), 13, 0, 0, TAU); ctx.stroke(); }
       if (e.d.ai === "ghostowl" && !(e.seenT > r.time) && Math.hypot(e.x - me.x, e.y - me.y) > 70) ctx.globalAlpha = 0.1;
       if (e.vulnT > r.time) { ctx.strokeStyle = "rgba(246,211,107," + (0.5 + 0.5 * Math.sin(r.time * 12)) + ")"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y + 4, 20 * (e.scale || 1), 12 * (e.scale || 1), 0, 0, TAU); ctx.stroke(); ctx.lineWidth = 1; }
-      var gs = e.scale || (e.giant ? 2 : 1);
+      var gs = e.scale || (e.giant ? 2 : 1); if (e.spr.ns) gs = Math.max(1, gs / e.spr.ns);
       if (gs > 1) { ctx.save(); var fy = e.y + spr.h / 2; ctx.translate(e.x, fy); ctx.scale(gs, gs); ctx.translate(-e.x, -fy); }
       if (!e.spr.flying) shadow(e.x, e.y + spr.h / 2 - 2, spr.w * 0.7);
       else shadow(e.x, e.y + spr.h / 2 + 3, spr.w * 0.5);
