@@ -1318,10 +1318,10 @@ window.ES_DATA = (function () {
   ];
   // 4 éléments : chacun craint le suivant du cycle (Eau > Feu > Air > Terre > Eau)
   var ELEMENTS = {
-    terre: { name: "Terre", color: "#c8a060", weak: "air" },
-    feu:   { name: "Feu",   color: "#ff7a2a", weak: "eau" },
-    eau:   { name: "Eau",   color: "#4aa8ff", weak: "terre" },
-    air:   { name: "Air",   color: "#c8f8e8", weak: "feu" },
+    terre: { name: "Terre", color: "#c8a060", ui: "#9a7030", weak: "air" },
+    feu:   { name: "Feu",   color: "#ff7a2a", ui: "#d8551a", weak: "eau" },
+    eau:   { name: "Eau",   color: "#4aa8ff", ui: "#2a78c8", weak: "terre" },
+    air:   { name: "Air",   color: "#c8f8e8", ui: "#2f9a7e", weak: "feu" },
   };
   // deux éléments sur une même cible : une réaction
   var REACTIONS = {
@@ -1352,6 +1352,107 @@ window.ES_DATA = (function () {
   ]);
   // méga boss Terre : repaire en Clairière (portail) ; 3 phases, chacune teste un état
   ENEMIES.colosse = { sprite: "golem", hp: 5200, spd: 17, dmg: 30, r: 13, xp: 200, boss: true, name: "Colosse d'humus", color: "#c8a060", bossAi: "mega_terre", elem: "terre", mega: true };
+  /* =====================================================================
+     2.0 phase 4 : attirail (équipement permanent), ressources, talents, maîtrise
+     ===================================================================== */
+  // ressources : une par biome, plus un trophée par boss
+  var RES = {
+    herbe: { name: "Herbe tendre", icon: "🌿", map: "clairiere" }, ecorce: { name: "Écorce", icon: "🪵", map: "clairiere" }, chapeau: { name: "Chapeau de champi", icon: "🍄", map: "clairiere" },
+    tourbe: { name: "Tourbe", icon: "🟤", map: "marais" }, roseau: { name: "Roseau", icon: "🎋", map: "marais" }, nenuphar: { name: "Nénuphar", icon: "🪷", map: "marais" },
+    feuille_rousse: { name: "Feuille rousse", icon: "🍁", map: "automne" }, gland_dore: { name: "Gland doré", icon: "🌰", map: "automne" }, silex: { name: "Silex", icon: "🪨", map: "automne" },
+    mousse_noire: { name: "Mousse noire", icon: "🌑", map: "nuit" }, poussiere_lune: { name: "Poussière de lune", icon: "✨", map: "nuit" }, bois_mort: { name: "Bois mort", icon: "🥀", map: "nuit" },
+    t_boar: { name: "Défense de sanglier", icon: "🦷", trophy: "boar" }, t_owl: { name: "Plume d'hibou ancien", icon: "🪶", trophy: "owl" }, t_queen: { name: "Dard royal", icon: "🐝", trophy: "queen" },
+    t_stag: { name: "Bois de cerf", icon: "🦌", trophy: "stag" }, t_mushking: { name: "Spore royale", icon: "🍄", trophy: "mushking" }, t_bigmole: { name: "Griffe de taupe", icon: "🐾", trophy: "bigmole" },
+    t_golem: { name: "Cœur de racine", icon: "🌳", trophy: "golem" }, t_colosse: { name: "Humus ancien", icon: "🟫", trophy: "colosse" },
+  };
+  var MAP_RES = { clairiere: ["herbe", "ecorce", "chapeau"], marais: ["tourbe", "roseau", "nenuphar"], automne: ["feuille_rousse", "gland_dore", "silex"], nuit: ["mousse_noire", "poussiere_lune", "bois_mort"] };
+  var ELEM_MAP = { terre: "clairiere", eau: "marais", feu: "automne", air: "nuit" };
+  // un rôle par emplacement : coiffe = Ancré, bottes = Mouvement, cape = Volte, amulette = élément, anneaux = contenu de la partie
+  var SLOTS = [
+    { id: "coiffe", name: "Coiffe", state: "Ancré" }, { id: "bottes", name: "Bottes", state: "Mouvement" }, { id: "cape", name: "Cape", state: "Volte" },
+    { id: "amulette", name: "Amulette", state: "Élément" }, { id: "anneau1", name: "Anneau", state: "Partie", kind: "anneau" }, { id: "anneau2", name: "Anneau", state: "Partie", kind: "anneau" },
+  ];
+  // modèles : effets fixes, seule la force varie dans une fourchette [min, max] ; les effets grandissent avec le niveau de partie
+  var GEAR = {
+    c_champi:  { slot: "coiffe", name: "Coiffe-champignon", elem: "terre", icon: "🍄", fx: "spores", lo: 3, hi: 6, desc: "Ancré : une flaque de spores pousse sous toi ({v} dégâts)." },
+    c_gland:   { slot: "coiffe", name: "Casque de gland", elem: "terre", icon: "🪖", fx: "armure", lo: 10, hi: 25, desc: "Ancré : -{v} % de dégâts reçus." },
+    c_mousse:  { slot: "coiffe", name: "Bonnet de mousse", elem: "eau", icon: "🧢", fx: "regen", lo: 0.8, hi: 2, desc: "Ancré : régénère {v} PV/s." },
+    c_epines:  { slot: "coiffe", name: "Chapeau d'épines", elem: "feu", icon: "🎩", fx: "epines", lo: 6, hi: 12, desc: "Ancré : des épines blessent autour de toi ({v} dégâts)." },
+    b_braise:  { slot: "bottes", name: "Bottes de braise", elem: "feu", icon: "🥾", fx: "trainee", lo: 4, hi: 8, desc: "En mouvement : traînée de feu ({v} dégâts)." },
+    b_feuille: { slot: "bottes", name: "Bottes-feuilles", elem: "air", icon: "👢", fx: "vitesse", lo: 6, hi: 14, desc: "En mouvement : +{v} % de vitesse." },
+    b_pierre:  { slot: "bottes", name: "Sabots de pierre", elem: "terre", icon: "🦶", fx: "pas", lo: 10, hi: 20, desc: "En mouvement : une onde tous les 50 px ({v} dégâts)." },
+    b_rosee:   { slot: "bottes", name: "Bottes de rosée", elem: "eau", icon: "🩴", fx: "ralenti", lo: 25, hi: 45, desc: "En mouvement : les ennemis frôlés sont ralentis de {v} %." },
+    k_eclair:  { slot: "cape", name: "Cape-éclair", elem: "air", icon: "⚡", fx: "eclair", lo: 20, hi: 40, desc: "Volte : un éclair saute sur 4 ennemis ({v} dégâts)." },
+    k_brume:   { slot: "cape", name: "Cape de brume", elem: "eau", icon: "🌫️", fx: "brume", lo: 0.5, hi: 1.1, desc: "Volte : invulnérable {v} s." },
+    k_ronces:  { slot: "cape", name: "Cape de ronces", elem: "terre", icon: "🌿", fx: "ronces", lo: 6, hi: 12, desc: "Volte : un cercle de ronces reste au sol ({v} dégâts)." },
+    k_vent:    { slot: "cape", name: "Cape de vent", elem: "air", icon: "🧣", fx: "souffle", lo: 8, hi: 16, desc: "Volte : repousse tout autour ({v} dégâts)." },
+    a_flamme:  { slot: "amulette", name: "Amulette de flamme", elem: "feu", icon: "🔥", fam: "tir", desc: "Tes techniques de Tir deviennent Feu." },
+    a_maree:   { slot: "amulette", name: "Amulette des marées", elem: "eau", icon: "🌊", fam: "zone", desc: "Tes techniques de Zone deviennent Eau." },
+    a_roche:   { slot: "amulette", name: "Amulette de roche", elem: "terre", icon: "🪨", fam: "melee", desc: "Tes techniques de Mêlée deviennent Terre." },
+    a_zephyr:  { slot: "amulette", name: "Amulette du zéphyr", elem: "air", icon: "🌬️", fam: "compagnon", desc: "Tes techniques de Compagnon et de Retour deviennent Air." },
+    r_pacte:   { slot: "anneau", name: "Anneau du pacte", icon: "💍", ring: "pacte", desc: "Pacte : les autels de sang donnent 2 objets." },
+    r_danger:  { slot: "anneau", name: "Anneau du danger", icon: "💀", ring: "danger", desc: "Pacte : +1 boss à chaque apparition, chaque boss lâche un coffre." },
+    r_chasse:  { slot: "anneau", name: "Anneau de chasse", icon: "🎯", ring: "chasse", desc: "Pacte : élites 2 fois plus fréquentes, chacune lâche un objet." },
+    r_furie:   { slot: "anneau", name: "Anneau de furie", icon: "😡", ring: "furie", desc: "Pacte : la rage arrive 3 min plus tôt, glands d'or x2." },
+    r_source:  { slot: "anneau", name: "Anneau de source", icon: "💧", ring: "source", desc: "Événement : chaque boss vaincu soigne toute l'équipe de 40 %." },
+    r_marchand:{ slot: "anneau", name: "Anneau du marchand", icon: "🪙", ring: "marchand", desc: "Économie : coffres et marchand 30 % moins chers." },
+    r_apprenti:{ slot: "anneau", name: "Anneau d'apprenti", icon: "📖", ring: "apprenti", desc: "Déblocage : 2 techniques hors de ton arme peuvent apparaître ({t})." },
+  };
+  // recettes : ressources de la région de l'élément (+ un trophée pour capes, amulettes et anneaux)
+  Object.keys(GEAR).forEach(function (k) {
+    var g = GEAR[k], m = ELEM_MAP[g.elem] || "clairiere", rs = MAP_RES[m], cost = {};
+    cost[rs[0]] = 8; cost[rs[1]] = 6; cost[rs[2]] = 3;
+    if (g.slot === "cape" || g.slot === "amulette" || g.slot === "anneau") cost[{ clairiere: "t_boar", marais: "t_mushking", automne: "t_stag", nuit: "t_owl" }[m]] = 1;
+    g.cost = cost;
+  });
+  // points d'élément de l'attirail : paliers de passifs, comme les synergies d'un auto-battler
+  var ELEM_TIERS = {
+    feu:   [[3, "Tes coups peuvent enflammer (brûlure)."], [6, "La brûlure se propage aux voisins."], [9, "Les ennemis brûlés explosent à leur mort."]],
+    terre: [[3, "Tes coups peuvent étourdir 0,5 s."], [6, "Les étourdis prennent +30 % de dégâts."], [9, "Un étourdi projette des éclats de roche."]],
+    eau:   [[3, "Tes coups ralentissent de 20 %."], [6, "Les ralentis peuvent geler."], [9, "Un gelé éclate en glace autour de lui."]],
+    air:   [[3, "10 % de chance d'un mini-éclair par coup."], [6, "Les éclairs rebondissent sur 3 ennemis."], [9, "Tes coups repoussent beaucoup plus fort, éclairs x2."]],
+  };
+  // talents : 4 paliers par posture, 2 choix exclusifs par palier ; le niveau de l'écureuil ouvre les paliers
+  var TAL_COMMON = [
+    [{ id: "racines", name: "Racines", desc: "Tu t'ancres en 0,25 s au lieu de 0,4." }, { id: "ressort", name: "Ressort", desc: "La Volte se recharge en 2,2 s au lieu de 3." }],
+    [{ id: "piedferme", name: "Pied ferme", desc: "Ancré : -20 % de dégâts reçus." }, { id: "sillage", name: "Sillage", desc: "Après une Volte : +30 % de vitesse pendant 1,5 s." }],
+  ];
+  var TAL = {
+    tireuse:  [[{ id: "gachette", name: "Gâchette", desc: "Cadence ancrée jusqu'à +100 % (au lieu de +60 %)." }, { id: "grandecouronne", name: "Grande couronne", desc: "La couronne de la Volte tire 20 glands." }],
+               [{ id: "tourelle_v", name: "Tourelle vivante", desc: "Clé : ancrée depuis 2 s, une couronne part toute seule toutes les 3 s." }, { id: "tircourse", name: "Tir de course", desc: "Clé : la cadence gagnée reste 2 s quand tu repars." }]],
+    acrobate: [[{ id: "longroulade", name: "Longue roulade", desc: "Roulade 2 fois plus longue." }, { id: "roulade_lame", name: "Roulade tranchante", desc: "La roulade blesse les ennemis traversés." }],
+               [{ id: "voltigeuse", name: "Voltigeuse", desc: "Clé : la Volte se recharge en 1,5 s." }, { id: "intouchable", name: "Intouchable", desc: "Clé : invulnérable 1 s de plus après une roulade." }]],
+    glaneuse: [[{ id: "pochespleines", name: "Poches pleines", desc: "En mouvement : +15 % d'expérience." }, { id: "aspiration", name: "Aspiration", desc: "La Volte aspire aussi l'or et les objets." }],
+               [{ id: "moisson", name: "Moisson", desc: "Clé : ramassage x3 en mouvement." }, { id: "avarice", name: "Avarice", desc: "Clé : toutes les 30 noisettes, une onde part autour de toi." }]],
+    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+2 matelots max." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
+               [{ id: "batterie", name: "Batterie", desc: "Clé : ancré, la salve part toutes les 0,3 s." }, { id: "couverture", name: "Tir de couverture", desc: "Clé : la salve marche aussi en mouvement, 2 fois plus lente." }]],
+    abordage: [[{ id: "sabres", name: "Sabres", desc: "La charge fait +50 % de dégâts." }, { id: "recrue", name: "Recrue d'abordage", desc: "Un ennemi tué pendant une charge a 25 % de chance de recruter." }],
+               [{ id: "mutinerie", name: "Mutinerie", desc: "Clé : la charge dure 2 fois plus longtemps." }, { id: "bouclierh", name: "Mur de matelots", desc: "Clé : en cercle, les matelots arrêtent les tirs ennemis." }]],
+    convoi:   [[{ id: "longuefile", name: "Longue file", desc: "+3 matelots max." }, { id: "ravitaillement", name: "Ravitaillement", desc: "Chaque recrue soigne 3 PV." }],
+               [{ id: "train", name: "Train", desc: "Clé : en mouvement, les matelots blessent au contact." }, { id: "lignetir", name: "Ligne de tir", desc: "Clé : tout l'équipage tire ensemble toutes les 1,5 s." }]],
+    pique:    [[{ id: "grandplongeon", name: "Grand plongeon", desc: "Dégâts du plongeon x1,6." }, { id: "remontee", name: "Remontée", desc: "Après un plongeon, la Volte se recharge 2 fois plus vite." }],
+               [{ id: "faucon_t", name: "Faucon", desc: "Clé : le plongeon fonce sur l'ennemi le plus proche." }, { id: "meteore_t", name: "Météore", desc: "Clé : le plongeon laisse une zone qui brûle 3 s." }]],
+    courant:  [[{ id: "ventarriere", name: "Vent arrière", desc: "+20 % de vitesse max." }, { id: "lameair", name: "Lame d'air", desc: "Au-delà de 80 % de vitesse, une lame part devant toutes les 0,8 s." }],
+               [{ id: "ouragan_t", name: "Ouragan", desc: "Clé : bonus de dégâts jusqu'à +120 %." }, { id: "sillagetr", name: "Sillage tranchant", desc: "Clé : en vol rapide, tu blesses au contact." }]],
+    perchoir: [[{ id: "longuevue", name: "Longue-vue", desc: "Accroché : portée x2 au lieu de x1,6." }, { id: "nid_t", name: "Nid", desc: "Accroché : régénère 2 PV/s." }],
+               [{ id: "sniper", name: "Tireur d'élite", desc: "Clé : accroché depuis 2 s, tous tes coups sont critiques." }, { id: "grappe", name: "Agrippe-tout", desc: "Clé : tu peux t'accrocher n'importe où en ralentissant." }]],
+  };
+  var TAL_LVL = [2, 4, 6, 8];   // niveau d'écureuil qui ouvre chaque palier
+  // maîtrise des armes : des options, pas de puissance (1 : techniques et 1re évolution · 2 : 1re signature · 3 : 2e évolution · 4 : signatures 2 et 3 · 5 : éveil)
+  var MASTERY = [0, 120, 350, 700, 1200];
+  var SIGS = {
+    katana: [{ id: "sig_contre", name: "Contre", icon: "katana", desc: "Ancré : le prochain coup reçu est annulé et renvoyé (recharge 4 s)." },
+             { id: "sig_garde", name: "Garde du vent", icon: "windblade", desc: "Les tirs ennemis proches sont déviés." },
+             { id: "sig_pas", name: "Pas du vent", icon: "windblade", desc: "Chaque Volte laisse une traînée de lames d'air." }],
+    arc:    [{ id: "sig_charge", name: "Tir chargé", icon: "arrow", desc: "Ancré depuis 1 s : tes coups font x2 dégâts." },
+             { id: "sig_ardente", name: "Pluie ardente", icon: "arrow", desc: "Toutes les 4 s, une pluie de flèches de feu tombe autour de toi." },
+             { id: "sig_faucon", name: "Œil de faucon", icon: "hawk", desc: "+15 % de coups critiques et +20 % de portée." }],
+    baton:  [{ id: "sig_racine", name: "Enracinement", icon: "staff", desc: "Ancré : des racines poussent autour de toi." },
+             { id: "sig_pierre", name: "Pierre de garde", icon: "stone", desc: "Une pierre tourne autour de toi et arrête les tirs ennemis." },
+             { id: "sig_seisme", name: "Séisme", icon: "stone", desc: "Chaque Volte frappe le sol (onde de Terre)." }],
+  };
+  var ULTS = { katana: { name: "Mille coupes", desc: "Des dizaines d'entailles frappent tout l'écran." },
+               arc: { name: "Soleil ardent", desc: "Une pluie de 24 flèches de feu." }, baton: { name: "Colère de la terre", desc: "Trois énormes ondes de Terre." } };
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
@@ -1359,6 +1460,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
