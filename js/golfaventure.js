@@ -11,7 +11,7 @@
    Deux niveaux : le monde (96 × 64 tuiles de 16 px, buildOverworld) et un
    souterrain (56 × 36, buildCave), reliés par des passages (PORTAL). Image en
    pixel art (1 pixel = 1 unité du monde), agrandie sans lissage.
-   Sauvegarde : localStorage « golfaventure-v2 ».
+   Sauvegarde : localStorage « golfaventure-v3 ».
    ========================================================================= */
 (function () {
   "use strict";
@@ -35,15 +35,20 @@
   var BALL_R = 4, CUP_R = 6;
   var BASE_STROKES = 20, CLUB_BONUS = 3;
   var VMAX = 330, DEC = 150, SLOPE = 120, STEP = 1 / 240;
-  var TY = { GRASS: 0, ROUGH: 1, SAND: 2, WATER: 3, TREE: 4, RAIL: 5, BUSH: 6, UP: 7, DOWN: 8, LEFT: 9, RIGHT: 10, PLATEAU: 11, BRIDGE: 12, FLAG: 13, CUP: 14, HOLY: 15, TEMPLE: 16, GATE: 17, CFLOOR: 18, CWALL: 19, PORTAL: 20 };
+  var TY = { GRASS: 0, ROUGH: 1, SAND: 2, WATER: 3, TREE: 4, RAIL: 5, BUSH: 6, UP: 7, DOWN: 8, LEFT: 9, RIGHT: 10, PLATEAU: 11, BRIDGE: 12, FLAG: 13, CUP: 14, HOLY: 15, TEMPLE: 16, GATE: 17, CFLOOR: 18, CWALL: 19, PORTAL: 20, SW0: 21, SW1: 22, SW2: 23, DR0: 24, DR1: 25, DR2: 26, KDOOR: 27, CRACK: 28, ICE: 29, BUMP: 30 };
   var BALL_SOLID = {}; BALL_SOLID[TY.TREE] = 1; BALL_SOLID[TY.RAIL] = 1; BALL_SOLID[TY.BUSH] = 1; BALL_SOLID[TY.GATE] = 1; BALL_SOLID[TY.CWALL] = 1;
   var BOUNCE = {}; BOUNCE[TY.TREE] = 0.5; BOUNCE[TY.RAIL] = 0.85; BOUNCE[TY.BUSH] = 0.5; BOUNCE[TY.GATE] = 0.85; BOUNCE[TY.CWALL] = 0.7;
+  [TY.DR0, TY.DR1, TY.DR2, TY.KDOOR, TY.CRACK].forEach(function (t) { BALL_SOLID[t] = 1; BOUNCE[t] = 0.8; });
+  var SW_COL = ["#d8322b", "#3a74e0", "#3fd05a"];
   var DIALOGS = [
     "Bienvenue, boule ! Tire en arrière comme un lance-pierre, puis lâche. Chaque tir coûte 1 coup.",
     "Touche un drapeau en roulant : il sauvegarde ta position et te rend tous tes coups.",
     "Quatre Morceaux de Tee dorment dans des trous dorés. Rapporte-les au temple, tout au nord.",
     "Les slimes et les oiseaux te rendent des coups si tu les percutes en roulant. Les buissons cachent des oiseaux !",
     "Le souterrain cache des trous, des chauves-souris et une bouée. Roule doucement dans le passage sombre pour descendre.",
+    "Une roche fissurée ne cède qu'à un tir puissant… et il faut le bon club pour ça. Cherche-le dans le donjon de la forêt.",
+    "Frappe l'interrupteur coloré avec ta balle : toutes les portes de la même couleur s'ouvrent. Les clés ouvrent les portes à serrure.",
+    "Deux courants contraires se rejoignent au milieu du champ de flèches… laisse-toi porter.",
   ];
 
   /* =====================================================================
@@ -70,16 +75,17 @@
     var b = Builder(96, 64, TY.GRASS), W = 96, HH = 64;
     var feat = {
       flags: [[8, 52], [18, 30], [48, 50], [68, 44], [60, 20], [47, 21]],
-      cups: [[24, 46], [40, 57], [28, 14], [72, 30], [64, 9]],
-      holy: [[12, 8], [48, 30], [86, 54], [86, 8]],
+      cups: [[24, 46], [40, 57], [28, 14], [72, 30], [64, 9], [12, 8]],
+      holy: [[48, 30, 1], [86, 54, 2], [86, 8, 3]],
       temple: [47, 8],
       gates: [[46, 18], [47, 18], [48, 18]],
-      npcs: [[11, 52, 0], [19, 31, 1], [50, 49, 2], [67, 45, 3], [29, 41, 4]],
-      items: [[36, 50, "brake"], [60, 14, "power"]],
+      npcs: [[11, 52, 0], [19, 31, 1], [50, 49, 2], [67, 45, 5], [29, 41, 4], [62, 10, 7], [41, 16, 6]],
+      items: [[36, 50, "brake"]],
       slimes: [[14, 46], [22, 42], [26, 54], [10, 36], [18, 26], [26, 22], [40, 48], [56, 56], [52, 44], [70, 40], [78, 34], [74, 50], [64, 15], [88, 21], [20, 12], [30, 38]],
       eagles: [{ y: 27, x1: 36, x2: 60, sp: 34 }, { y: 38, x1: 66, x2: 90, sp: 40 }, { y: 5, x1: 58, x2: 90, sp: 36 }],
       bats: [],
-      portals: [{ x: 30, y: 44, to: 1, tx: 4, ty: 19 }, { x: 63, y: 52, to: 1, tx: 51, ty: 19 }],
+      portals: [{ x: 30, y: 44, to: 1, tx: 4, ty: 19 }, { x: 63, y: 52, to: 1, tx: 51, ty: 19 }, { x: 22, y: 9, to: 2, tx: 4, ty: 19 }],
+      puz: [[71, 15, "SW2"], [41, 14, "SW0"]],
     };
     // forêt (nord-ouest)
     b.scatter(2, 2, 32, 36, TY.TREE, 0.5, 1, TY.GRASS);
@@ -91,12 +97,14 @@
     b.scatter(64, 24, 92, 60, TY.ROUGH, 0.07, 3, TY.SAND);
     b.scatter(64, 24, 92, 60, TY.TREE, 0.025, 4, TY.SAND);
     b.rect(66, 42, 70, 46, TY.GRASS); b.rect(70, 28, 74, 32, TY.GRASS);
-    b.frame(79, 49, 91, 59, TY.RAIL); b.rect(80, 50, 90, 58, TY.SAND); b.set(79, 53, TY.SAND); b.set(79, 54, TY.SAND);
-    // montagne (nord-est)
+    b.frame(79, 49, 91, 59, TY.RAIL); b.rect(80, 50, 90, 58, TY.SAND);
+    // montagne (nord-est) : le champ de courants et la salle du trou doré
     b.scatter(56, 4, 92, 22, TY.TREE, 0.05, 5, TY.GRASS);
     b.rect(62, 7, 90, 9, TY.GRASS);
-    b.rect(66, 12, 70, 18, TY.RIGHT); b.rect(72, 12, 76, 18, TY.LEFT); b.rect(78, 12, 82, 18, TY.DOWN); b.rect(84, 12, 90, 18, TY.PLATEAU);
-    b.rect(66, 19, 82, 19, TY.RAIL); b.rect(65, 11, 65, 19, TY.RAIL); b.set(83, 11, TY.RAIL);
+    b.frame(80, 4, 90, 10, TY.RAIL); b.rect(81, 5, 89, 9, TY.GRASS);
+    b.rect(66, 12, 70, 18, TY.RIGHT); b.rect(72, 12, 76, 18, TY.LEFT); b.rect(71, 12, 71, 18, TY.GRASS);
+    b.frame(65, 11, 77, 19, TY.RAIL); b.set(66, 19, TY.GRASS); b.set(67, 19, TY.GRASS);
+    b.rect(84, 12, 90, 18, TY.PLATEAU);
     // bande centrale (est-ouest)
     b.rect(2, 20, 92, 22, TY.GRASS);
     // lac, île et pont
@@ -105,7 +113,7 @@
     for (var bx = 33; bx <= 63; bx++) for (var by = 32; by <= 33; by++) if (b.get(bx, by) === TY.WATER) b.set(bx, by, TY.BRIDGE);
     // temple
     b.frame(38, 4, 56, 18, TY.RAIL); b.rect(39, 5, 55, 17, TY.PLATEAU); b.rect(44, 19, 50, 22, TY.GRASS);
-    b.frame(43, 6, 51, 12, TY.RAIL); b.rect(44, 7, 50, 11, TY.GRASS); b.set(46, 12, TY.GRASS); b.set(47, 12, TY.GRASS); b.set(48, 12, TY.GRASS);
+    b.frame(43, 6, 51, 12, TY.RAIL); b.rect(44, 7, 50, 11, TY.GRASS);
     // pré de départ et rive sud
     b.scatter(3, 40, 31, 61, TY.TREE, 0.02, 6, TY.GRASS); b.scatter(3, 40, 31, 61, TY.BUSH, 0.025, 7, TY.GRASS);
     b.scatter(33, 42, 63, 60, TY.TREE, 0.02, 8, TY.GRASS); b.scatter(33, 42, 63, 60, TY.BUSH, 0.025, 9, TY.GRASS);
@@ -120,6 +128,12 @@
     b.set(feat.temple[0], feat.temple[1], TY.TEMPLE);
     feat.gates.forEach(function (f) { b.set(f[0], f[1], TY.GATE); });
     [feat.npcs, feat.items, feat.slimes].forEach(function (l) { l.forEach(function (f) { clear(f[0], f[1], 1); }); });
+    // puzzles : fissures du désert, porte verte de la montagne, porte rouge du temple, bumpers
+    b.set(79, 53, TY.CRACK); b.set(79, 54, TY.CRACK);
+    b.set(80, 7, TY.DR2); b.set(80, 8, TY.DR2);
+    b.set(46, 12, TY.DR0); b.set(47, 12, TY.DR0); b.set(48, 12, TY.DR0);
+    feat.puz.forEach(function (p) { b.set(p[0], p[1], TY[p[2]]); });
+    [[68, 14], [74, 17], [45, 15], [49, 15], [68, 17]].forEach(function (p) { b.set(p[0], p[1], TY.BUMP); });
     return { W: W, H: HH, grid: b.g, feat: feat, out: TY.TREE, dark: false };
   }
 
@@ -159,23 +173,65 @@
     return { W: 56, H: 36, grid: b.g, feat: feat, out: TY.CWALL, dark: true };
   }
 
+  // Donjon des Racines : interrupteur rouge, salle de glace (bleu), clé, Roi Slime (vert)
+  function buildDungeon() {
+    var b = Builder(48, 40, TY.CWALL);
+    var feat = {
+      flags: [[8, 19], [36, 22], [44, 4]],
+      cups: [[4, 22], [29, 22], [42, 16]],
+      holy: [[24, 4, 0]], temple: null, gates: [],
+      npcs: [[6, 22, 6]],
+      items: [[39, 19, "key"], [25, 6, "power"]],
+      slimes: [[6, 16], [35, 23]],
+      eagles: [],
+      bats: [[36, 16], [42, 22]],
+      boss: { x: 38, y: 4 },
+      portals: [{ x: 4, y: 19, to: 0, tx: 22, ty: 10 }],
+      puz: [[10, 9, "SW0"], [22, 12, "SW1"]],
+    };
+    var F = TY.CFLOOR;
+    b.rect(2, 14, 12, 24, F);                                   // entrée
+    b.rect(8, 8, 12, 12, F); b.rect(10, 13, 10, 13, F);         // alcôve de l'interrupteur rouge
+    b.rect(13, 18, 14, 19, F);                                  // couloir (porte rouge)
+    b.rect(15, 14, 30, 24, TY.ICE); b.rect(22, 12, 22, 13, F);  // salle de glace + alcôve bleue
+    b.rect(31, 18, 32, 19, F);                                  // couloir (porte bleue)
+    b.rect(33, 14, 45, 24, F);                                  // salle des clés
+    b.rect(39, 8, 39, 13, F);                                   // couloir à serrure
+    b.rect(30, 2, 46, 7, F);                                    // salle du boss
+    b.rect(28, 4, 29, 5, F); b.rect(22, 3, 27, 6, F);           // trésor (porte verte)
+    // roches de la glace : elles servent d'arrêts et de rebonds
+    [[19, 17], [19, 21], [24, 16], [24, 22], [27, 19], [17, 15]].forEach(function (p) { b.set(p[0], p[1], TY.CWALL); });
+    function clear(x, y, r) { for (var yy = y - r; yy <= y + r; yy++) for (var xx = x - r; xx <= x + r; xx++) { var t = b.get(xx, yy); if (t === TY.CWALL) b.set(xx, yy, F); } }
+    feat.flags.forEach(function (f) { clear(f[0], f[1], 1); b.set(f[0], f[1], TY.FLAG); });
+    feat.cups.forEach(function (f) { clear(f[0], f[1], 1); b.set(f[0], f[1], TY.CUP); });
+    feat.holy.forEach(function (f) { b.set(f[0], f[1], TY.HOLY); });
+    feat.portals.forEach(function (f) { b.set(f.x, f.y, TY.PORTAL); });
+    feat.puz.forEach(function (p) { b.set(p[0], p[1], TY[p[2]]); });
+    b.set(13, 18, TY.DR0); b.set(13, 19, TY.DR0);               // porte rouge
+    b.set(31, 18, TY.DR1); b.set(31, 19, TY.DR1);               // porte bleue
+    b.set(39, 11, TY.KDOOR);                                    // serrure
+    b.set(29, 4, TY.DR2); b.set(29, 5, TY.DR2);                 // porte verte (ouverte par le boss)
+    b.set(10, 17, TY.BUMP); b.set(39, 16, TY.BUMP); b.set(35, 20, TY.BUMP);
+    return { W: 48, H: 40, grid: b.g, feat: feat, out: TY.CWALL, dark: true };
+  }
+
   /* =====================================================================
      ÉTAT ET SAUVEGARDE
      ===================================================================== */
-  var SAVE_KEY = "golfaventure-v2";
+  var SAVE_KEY = "golfaventure-v3";
   var S = null;           // progression (sauvegardée)
-  function newSave() { return { clubs: 0, pieces: [0, 0, 0, 0], cups: {}, cp: { l: 0, i: 0 }, items: { brake: 0, power: 0, float: 0 }, bushes: {}, taken: {}, deaths: 0, shots: 0, ms: 0, won: false }; }
+  function newSave() { return { clubs: 0, pieces: [0, 0, 0, 0], cups: {}, cp: { l: 0, i: 0 }, items: { brake: 0, power: 0, float: 0 }, bushes: {}, taken: {}, sw: {}, opened: {}, boss: {}, keys: 0, deaths: 0, shots: 0, ms: 0, won: false }; }
   function loadSave() { var s = load(SAVE_KEY, null); if (!s || !s.pieces || !s.cp || typeof s.cp !== "object") return null; var d = newSave(); for (var k in d) if (s[k] == null) s[k] = d[k]; return s; }
   function persist() { if (S) save(SAVE_KEY, S); }
   function maxStrokes() { return BASE_STROKES + CLUB_BONUS * S.clubs; }
 
-  var LV = [], L = null, lvIdx = 0, grid = null;
+  var LV = [], L = null, lvIdx = 0, grid = null, boss = null;
   var B = { x: 0, y: 0, vx: 0, vy: 0, rolling: false, rest: { x: 0, y: 0 }, brake: 0, pcool: 0, hurt: 0, fx: 1, fy: 0 };
   var strokes = 20, mode = "menu";   // menu | play | won
   var slimes = [], bats = [], birds = [], eagles = [], npcs = [], items = [], fx = [], floaters = [];
   var cam = { x: 0, y: 0 };
   var aim = { on: false, ang: 0, pow: 0.55, drag: null };
-  var outTimer = 0, msgText = "", msgT = 0, dlgT = 0, lastNpc = -1;
+  var keyMsgT = 0, outTimer = 0, msgText = "", msgT = 0, dlgT = 0, lastNpc = -1;
 
   var stage = $("[data-stage]", root), canvas = $("[data-canvas]", root), cx = canvas.getContext("2d");
   var overlay = $("[data-overlay]", root), cardEl = $("[data-card]", root);
@@ -194,6 +250,27 @@
   function addStrokes(n) { strokes = Math.min(maxStrokes(), strokes + n); hudUpdate(); }
   function allPieces() { return S.pieces[0] && S.pieces[1] && S.pieces[2] && S.pieces[3]; }
 
+  // applique la progression (interrupteurs pressés, serrures et fissures ouvertes) au décor
+  function applyLevelState(i) {
+    var l = LV[i], fl = l.dark ? TY.CFLOOR : TY.GRASS;
+    for (var k = 0; k < l.grid.length; k++) {
+      var t = l.grid[k];
+      if (t >= TY.DR0 && t <= TY.DR2 && S.sw[i + ":" + (t - TY.DR0)]) l.grid[k] = fl;
+      else if ((t === TY.KDOOR || t === TY.CRACK) && S.opened[i + ":" + k]) l.grid[k] = fl;
+    }
+  }
+  function pressSwitch(color, x, y) {
+    var key = lvIdx + ":" + color;
+    if (S.sw[key]) return;
+    S.sw[key] = 1; applyLevelState(lvIdx); sfx("switch"); persist();
+    fx.push({ k: "puff", x: x, y: y, t: 0 });
+    setMsg("Un mécanisme s'active ! Une porte s'ouvre quelque part…", 3000);
+  }
+  function openTile(tx, ty, why) {
+    var i = ty * L.W + tx; grid[i] = L.dark ? TY.CFLOOR : TY.GRASS; S.opened[lvIdx + ":" + i] = 1; persist();
+    fx.push({ k: "puff", x: tx * TILE + 8, y: ty * TILE + 8, t: 0 });
+    sfx(why === "key" ? "key" : "crack");
+  }
   // entre dans un niveau : décor, ennemis, objets
   function enterLevel(i) {
     lvIdx = i; L = LV[i]; grid = L.grid;
@@ -202,15 +279,18 @@
     bats = f.bats.map(function (s, k) { var c = center(s); return { x: c.x, y: c.y, vx: 0, vy: 0, t: 0, alive: true, cd: 0, ph: k * 1.7, back: 0 }; });
     eagles = f.eagles.map(function (e, k) { return { x: e.x1 * TILE + (k * 90) % ((e.x2 - e.x1) * TILE), y: e.y * TILE + 8, dir: 1, x1: e.x1 * TILE, x2: e.x2 * TILE, sp: e.sp, alive: true, back: 0 }; });
     npcs = f.npcs.map(function (n) { var c = center(n); return { x: c.x, y: c.y, d: n[2] }; });
-    items = f.items.filter(function (it) { return !S.taken[it[2]]; }).map(function (it) { var c = center(it); return { x: c.x, y: c.y, kind: it[2] }; });
+    items = f.items.filter(function (it) { return !S.taken[takeKey(it)]; }).map(function (it) { var c = center(it); return { x: c.x, y: c.y, kind: it[2], tk: takeKey(it) }; });
+    boss = f.boss && !S.boss[i] ? { x: f.boss.x * TILE + 8, y: f.boss.y * TILE + 8, hp: 3, flash: 0, cd: 0, t: 0, dx: 0, dy: 0, bob: 0 } : null;
     birds = []; fx = []; floaters = []; lastNpc = -1; aim.on = false; aim.drag = null;
   }
+  function takeKey(it) { return it[2] === "key" ? lvIdx + ":" + it[0] + "," + it[1] : it[2]; }
   function placeBall(x, y) { B.x = x; B.y = y; B.vx = B.vy = 0; B.rolling = false; B.brake = 0; B.rest = { x: x, y: y }; faceTarget(); }
   function startGame(fresh) {
     S = fresh ? newSave() : (loadSave() || newSave());
-    LV = [buildOverworld(), buildCave()];
+    LV = [buildOverworld(), buildCave(), buildDungeon()];
     Object.keys(S.bushes).forEach(function (k) { var p = k.split(":"); if (LV[+p[0]]) LV[+p[0]].grid[+p[1]] = TY.GRASS; });
     if (allPieces()) LV[0].feat.gates.forEach(function (f) { LV[0].grid[f[1] * LV[0].W + f[0]] = TY.GRASS; });
+    LV.forEach(function (l, i) { applyLevelState(i); });
     enterLevel(S.cp.l);
     var f = center(L.feat.flags[S.cp.i]);
     strokes = maxStrokes(); outTimer = 0; B.pcool = 0; B.hurt = 0;
@@ -254,6 +334,11 @@
     else if (n === "flag") { tone(0, 392, 0.1, 0.14, "triangle"); tone(0.1, 523, 0.1, 0.14, "triangle"); tone(0.2, 784, 0.2, 0.14, "triangle"); }
     else if (n === "hurt") tone(0, 180, 0.2, 0.18, "sawtooth", 60);
     else if (n === "bush") tone(0, 260, 0.1, 0.1, "triangle", 120);
+    else if (n === "switch") { tone(0, 330, 0.1, 0.16, "square"); tone(0.1, 440, 0.1, 0.16, "square"); tone(0.2, 660, 0.25, 0.16, "square"); }
+    else if (n === "key") { tone(0, 880, 0.08, 0.14, "triangle"); tone(0.08, 1320, 0.2, 0.14, "triangle"); }
+    else if (n === "crack") { tone(0, 120, 0.25, 0.2, "sawtooth", 40); tone(0.02, 300, 0.1, 0.12, "square", 80); }
+    else if (n === "bump") tone(0, 420, 0.1, 0.14, "sine", 760);
+    else if (n === "boss") { tone(0, 160, 0.3, 0.2, "sawtooth", 50); tone(0.15, 240, 0.2, 0.16, "square", 90); }
     else if (n === "portal") { tone(0, 500, 0.3, 0.14, "triangle", 120); tone(0.12, 300, 0.3, 0.1, "triangle", 90); }
   }
 
@@ -271,10 +356,26 @@
     var tx0 = Math.floor((b.x - BALL_R) / TILE), tx1 = Math.floor((b.x + BALL_R) / TILE), ty0 = Math.floor((b.y - BALL_R) / TILE), ty1 = Math.floor((b.y + BALL_R) / TILE), hit = 0;
     for (var ty = ty0; ty <= ty1; ty++) for (var tx = tx0; tx <= tx1; tx++) {
       var t = get(tx, ty);
+      if (t === TY.BUMP) {   // bumper rond : renvoie la balle avec un coup de pouce
+        var bcx = tx * TILE + 8, bcy = ty * TILE + 8, bdx = b.x - bcx, bdy = b.y - bcy, bd = Math.sqrt(bdx * bdx + bdy * bdy);
+        if (bd < 7 + BALL_R) {
+          bd = bd || 0.01; var bnx = bdx / bd, bny = bdy / bd; b.x = bcx + bnx * (7 + BALL_R);
+          b.y = bcy + bny * (7 + BALL_R); var bvn = b.vx * bnx + b.vy * bny;
+          if (bvn < 0) { b.vx -= 2.2 * bvn * bnx; b.vy -= 2.2 * bvn * bny; } var bsp = speedOf(b); if (bsp < 90) { b.vx = bnx * 90; b.vy = bny * 90; }
+          sfx("bump"); fx.push({ k: "puff", x: bcx, y: bcy, t: 0 }); hit = Math.max(hit, 60);
+        }
+        continue;
+      }
       if (!BALL_SOLID[t]) continue;
       var rx = tx * TILE, ry = ty * TILE, px = clamp(b.x, rx, rx + TILE), py = clamp(b.y, ry, ry + TILE), dx = b.x - px, dy = b.y - py, d2 = dx * dx + dy * dy;
       if (d2 >= BALL_R * BALL_R) continue;
       if (t === TY.BUSH && speedOf(b) > 25) { breakBush(tx, ty); b.vx *= 0.6; b.vy *= 0.6; continue; }
+      if (t === TY.KDOOR && S.keys > 0) { S.keys--; openTile(tx, ty, "key"); setMsg("Clé utilisée : la porte s'ouvre !", 2400); hudUpdate(); continue; }
+      if (t === TY.KDOOR && now() > keyMsgT) { keyMsgT = now() + 2500; setMsg("Verrouillé : il faut une clé.", 2000); }
+      if (t === TY.CRACK) {
+        if (S.items.power && speedOf(b) > 160) { openTile(tx, ty, "crack"); setMsg("La roche vole en éclats !", 2200); b.vx *= 0.8; b.vy *= 0.8; continue; }
+        if (now() > keyMsgT) { keyMsgT = now() + 2500; setMsg(S.items.power ? "Plus fort ! Il faut tirer à pleine puissance." : "Une roche fissurée… il faut un club puissant.", 2400); }
+      }
       var nx, ny;
       if (d2 === 0) {   // centre dans la tuile : on sort par le bord le plus proche
         var l = b.x - rx, r = rx + TILE - b.x, u = b.y - ry, d = ry + TILE - b.y, m = Math.min(l, r, u, d);
@@ -291,7 +392,7 @@
     b.vx += ax * dt; b.vy += ay * dt;
     var sp = speedOf(b);
     if (sp > 0) {
-      var dec = t === TY.ROUGH ? DEC * 2.3 : t === TY.SAND ? DEC * 6 : (t === TY.WATER ? DEC * 3.5 : DEC);
+      var dec = t === TY.ROUGH ? DEC * 2.3 : t === TY.SAND ? DEC * 6 : (t === TY.WATER ? DEC * 3.5 : (t === TY.ICE ? DEC * 0.05 : DEC));
       if (b.brake > 0) { dec *= 9; b.brake -= dt; }
       var ns = Math.max(0, sp - dec * dt) * (1 - 0.2 * dt);
       b.vx *= ns / sp; b.vy *= ns / sp; sp = ns;
@@ -302,6 +403,7 @@
     var hit = collideTiles(b);
     if (hit > 40) sfx("wall", hit / VMAX);
     var tn = tileAt(b.x, b.y);
+    if (tn >= TY.SW0 && tn <= TY.SW2) { var sx0 = Math.floor(b.x / TILE) * TILE + 8, sy0 = Math.floor(b.y / TILE) * TILE + 8; if (dist(b.x, b.y, sx0, sy0) < 7) pressSwitch(tn - TY.SW0, sx0, sy0); }
     if (tn === TY.WATER && !S.items.float) {
       fx.push({ k: "splash", x: b.x, y: b.y, t: 0 }); sfx("splash");
       b.x = b.rest.x; b.y = b.rest.y; b.vx = b.vy = 0; b.rolling = false;
@@ -345,7 +447,7 @@
     }
     S.cups[key] = 1; S.clubs++;
     if (tn === TY.HOLY) {
-      var idx = -1; L.feat.holy.forEach(function (h, i) { if (h[0] === tx && h[1] === ty) idx = i; });
+      var idx = -1; L.feat.holy.forEach(function (h) { if (h[0] === tx && h[1] === ty) idx = h[2]; });
       if (idx >= 0) S.pieces[idx] = 1;
       var n = S.pieces.reduce(function (a, b2) { return a + b2; }, 0);
       setMsg("Morceau de Tee " + n + "/4 ! (+3 coups max)", 3000);
@@ -370,7 +472,7 @@
   /* =====================================================================
      ENNEMIS, OBJETS, DRAPEAUX
      ===================================================================== */
-  function monsterSolid(t) { return t === TY.TREE || t === TY.RAIL || t === TY.BUSH || t === TY.WATER || t === TY.GATE || t === TY.CWALL; }
+  function monsterSolid(t) { return t === TY.TREE || t === TY.RAIL || t === TY.BUSH || t === TY.WATER || t === TY.GATE || t === TY.CWALL || t === TY.BUMP || BALL_SOLID[t] === 1 && t >= TY.DR0; }
   function blockedAt(x, y, r) {
     var tx0 = Math.floor((x - r) / TILE), tx1 = Math.floor((x + r) / TILE), ty0 = Math.floor((y - r) / TILE), ty1 = Math.floor((y + r) / TILE);
     for (var ty = ty0; ty <= ty1; ty++) for (var tx = tx0; tx <= tx1; tx++) if (monsterSolid(get(tx, ty))) {
@@ -408,6 +510,22 @@
         else if (o.cd <= 0) { o.cd = 1.2; hurtBall(o.x, o.y); }
       }
     });
+    // Roi Slime : 3 coups bien sentis pour le vaincre
+    if (boss) {
+      boss.t -= dt; boss.bob += dt * 4; boss.flash = Math.max(0, boss.flash - dt); boss.cd = Math.max(0, boss.cd - dt);
+      if (boss.t <= 0) { boss.t = 0.6 + Math.random() * 0.8; var ba = Math.atan2(B.y - boss.y, B.x - boss.x) + (Math.random() - 0.5) * 0.8, bs = dist(boss.x, boss.y, B.x, B.y) < 150 ? 22 : 0; boss.dx = Math.cos(ba) * bs; boss.dy = Math.sin(ba) * bs; }
+      var bnx = boss.x + boss.dx * dt, bny = boss.y + boss.dy * dt;
+      if (!blockedAt(bnx, boss.y, 9)) boss.x = bnx; else boss.dx = -boss.dx;
+      if (!blockedAt(boss.x, bny, 9)) boss.y = bny; else boss.dy = -boss.dy;
+      if (dist(boss.x, boss.y, B.x, B.y) < 15) {
+        var kx = Math.atan2(B.y - boss.y, B.x - boss.x);
+        if (sp > 60 && boss.flash <= 0) {
+          boss.hp--; boss.flash = 1; sfx("boss"); fx.push({ k: "puff", x: boss.x, y: boss.y, t: 0 });
+          B.vx = Math.cos(kx) * 150; B.vy = Math.sin(kx) * 150; B.rolling = true; B.brake = 0;
+          if (boss.hp <= 0) killBoss(); else { boss.x -= Math.cos(kx) * 6; boss.y -= Math.sin(kx) * 6; setMsg("Touché ! Encore " + boss.hp + " coup" + (boss.hp > 1 ? "s" : "") + "…", 1400); }
+        } else if (sp <= 60 && boss.cd <= 0 && boss.flash <= 0) { boss.cd = 1.4; hurtBall(boss.x, boss.y); strokes = Math.max(1, strokes - 1); hudUpdate(); }
+      }
+    }
     // oiseaux sortis des buissons (+5)
     birds = birds.filter(function (o) {
       o.t += dt; o.tt -= dt; if (o.tt <= 0) { o.tt = 0.4 + Math.random() * 0.6; var a = Math.random() * 6.283; o.vx = Math.cos(a) * 26; o.vy = Math.sin(a) * 26; }
@@ -424,8 +542,13 @@
     // objets
     items = items.filter(function (it) {
       if (dist(it.x, it.y, B.x, B.y) > 10) return true;
-      S.items[it.kind] = 1; S.taken[it.kind] = 1; sfx("get"); persist(); hudUpdate();
-      setMsg(it.kind === "brake" ? "FREIN ! Touche l'écran (ou B) pendant que tu roules." : it.kind === "power" ? "Club puissant ! Tes tirs partent 30 % plus fort." : "Bouée ! Tu flottes sur l'eau (mais lentement).", 3600);
+      S.taken[it.tk] = 1; sfx("get");
+      if (it.kind === "key") { S.keys++; setMsg("Une clé ! Elle ouvre une porte à serrure.", 3000); }
+      else {
+        S.items[it.kind] = 1;
+        setMsg(it.kind === "brake" ? "FREIN ! Touche l'écran (ou B) pendant que tu roules." : it.kind === "power" ? "Club puissant ! +30 % de puissance, et tu peux briser les roches fissurées." : "Bouée ! Tu flottes sur l'eau (mais lentement).", 3800);
+      }
+      persist(); hudUpdate();
       return false;
     });
     // drapeaux
@@ -449,6 +572,13 @@
     fx = fx.filter(function (f) { f.t += dt; return f.t < (f.k === "splash" ? 0.6 : 0.4); });
     floaters = floaters.filter(function (f) { f.t += dt; f.y -= dt * 10; return f.t < 1.2; });
     brakeBtn.hidden = !(S.items.brake && B.rolling);
+  }
+  function killBoss() {
+    S.boss[lvIdx] = 1; var bx = boss.x, by = boss.y; boss = null;
+    addStrokes(10); floatText(bx, by - 10, "+10", "#f6c445"); sfx("boss");
+    for (var i = 0; i < 6; i++) fx.push({ k: "puff", x: bx + (i - 3) * 4, y: by + (i % 2) * 5, t: -i * 0.05 });
+    S.sw[lvIdx + ":2"] = 1; applyLevelState(lvIdx); persist();
+    setMsg("Le Roi Slime est vaincu ! Une porte s'ouvre.", 3600);
   }
   function respawn() {
     S.deaths++; setMsg("Plus de coups ! Retour au drapeau.", 2600); sfx("hurt");
@@ -517,6 +647,25 @@
       }
       else if (t === TY.PLATEAU) { fr(g, 0, 0, 16, 16, C.fair); for (var d = -16; d < 16; d += 6) for (var e = 0; e < 16; e++) { var px = d + e; if (px >= 0 && px < 16) fr(g, px, e, 2, 1, C.stripe); } }
       else if (t === TY.BRIDGE) { fr(g, 0, 0, 16, 16, C.wood2); for (var p = 0; p < 16; p += 4) { fr(g, p, 1, 3, 14, C.wood); fr(g, p, 1, 3, 1, "#d99a58"); } fr(g, 0, 0, 16, 1, C.black); fr(g, 0, 15, 16, 1, C.black); }
+      else if (t >= TY.SW0 && t <= TY.SW2) {
+        base(g, v); var sc = SW_COL[t - TY.SW0]; blob(g, 8, 8, 7, C.black);
+        if (f) { blob(g, 8, 8, 6, "#3a3a4a"); blob(g, 8, 8, 3, sc); } else { blob(g, 8, 8, 6, sc); blob(g, 8, 8, 4, C.white); blob(g, 8, 8, 3, sc); fr(g, 5, 5, 2, 1, C.white); }
+      }
+      else if (t >= TY.DR0 && t <= TY.DR2) {
+        var dc = [["#d8322b", "#8a1d18"], ["#3a74e0", "#244a96"], ["#3fd05a", "#23903a"]][t - TY.DR0];
+        fr(g, 0, 0, 16, 16, C.black); for (var d2 = 0; d2 < 3; d2++) for (var e2 = 0; e2 < 3; e2++) fr(g, 1 + e2 * 5, 1 + d2 * 5, 4, 4, (d2 + e2) & 1 ? dc[1] : dc[0]);
+        fr(g, 6, 6, 4, 4, C.black); fr(g, 7, 7, 2, 2, C.white);
+      }
+      else if (t === TY.KDOOR) { fr(g, 0, 0, 16, 16, C.black); fr(g, 1, 1, 14, 14, "#c98a1a"); fr(g, 2, 2, 12, 12, C.yellow); blob(g, 8, 7, 2, C.black); fr(g, 7, 8, 2, 4, C.black); }
+      else if (t === TY.CRACK) {
+        fr(g, 0, 0, 16, 16, C.black); fr(g, 1, 1, 14, 14, "#8a6a4a"); fr(g, 1, 1, 14, 2, "#b08c62"); fr(g, 3, 9, 4, 3, "#775a3c"); fr(g, 10, 4, 3, 3, "#775a3c");
+        fr(g, 7, 1, 1, 4, C.black); fr(g, 6, 5, 1, 3, C.black); fr(g, 7, 8, 1, 3, C.black); fr(g, 8, 11, 1, 4, C.black); fr(g, 9, 6, 2, 1, C.black);
+      }
+      else if (t === TY.ICE) {
+        fr(g, 0, 0, 16, 16, "#bfe9ff"); for (var i3 = 0; i3 < 5; i3++) fr(g, Math.floor(hash(i3, v, 61) * 14), Math.floor(hash(i3, v, 62) * 14), 2, 1, "#8ccdf0");
+        for (var k3 = 0; k3 < 3; k3++) { fr(g, 2 + k3 * 5 + (v & 1), 3 + k3 * 3, 3, 1, "#f2fbff"); fr(g, 3 + k3 * 5 + (v & 1), 4 + k3 * 3, 2, 1, "#f2fbff"); }
+      }
+      else if (t === TY.BUMP) { base(g, v); blob(g, 8, 9, 7, "rgba(0,0,0,.25)"); blob(g, 8, 8, 7, C.black); blob(g, 8, 8, 6, "#ff6a3a"); blob(g, 7, 7, 4, "#ffa070"); fr(g, 7, 4, 2, 8, C.white); fr(g, 4, 7, 8, 2, C.white); fr(g, 5, 5, 1, 1, C.white); }
       else if (t === TY.CWALL) {
         fr(g, 0, 0, 16, 16, C.cwall);
         for (var r = 0; r < 4; r++) { var off = (r & 1) * 4; for (var c = -1; c < 3; c++) { var bx = c * 8 + off, x0 = Math.max(0, bx), x1 = Math.min(16, bx + 7); if (x1 > x0) { fr(g, x0, r * 4, x1 - x0, 3, C.cwall2); fr(g, x0, r * 4, x1 - x0, 1, C.cwallHi); } } }
@@ -533,7 +682,7 @@
   }
   function tileImg(t, tx, ty) {
     var v = t === TY.TREE || t === TY.WATER ? (hash(tx, ty, 5) < 0.5 ? 0 : 1) : Math.floor(hash(tx, ty, 6) * 4);
-    var f = t === TY.WATER ? ((now() / 600 | 0) + tx + ty) & 1 : 0, lv = lvIdx;
+    var f = t === TY.WATER ? ((now() / 600 | 0) + tx + ty) & 1 : (t >= TY.SW0 && t <= TY.SW2 ? (S.sw[lvIdx + ":" + (t - TY.SW0)] ? 1 : 0) : 0), lv = lvIdx;
     var key = t + "_" + v + "_" + f + "_" + lv;
     return atlas[key] || (atlas[key] = drawTile(t, v, f, lv));
   }
@@ -576,6 +725,15 @@
       rc(sx - 3, sy - 3, 6, 6, C.black); rc(sx - 2, sy - 2, 4, 4, C.yellow); rc(sx - 4, sy - 2 + (w ? -1 : 1), 2, 2, C.yellow); rc(sx + 2, sy - 2 + (w ? -1 : 1), 2, 2, C.yellow); rc(sx + 1, sy - 1, 1, 1, C.black); rc(sx + 3, sy, 2, 1, C.orange);
     }
   }
+  function drawBoss(o, sx, sy) {
+    var sq = Math.round(Math.sin(o.bob) * 1.5), fl = o.flash > 0 && ((now() / 70 | 0) % 2);
+    disc(sx, sy + 9, 11, "rgba(0,0,0,.25)");
+    rc(sx - 12, sy - 8 - sq, 24, 18 + sq, C.black); rc(sx - 11, sy - 7 - sq, 22, 16 + sq, fl ? C.white : "#3fd05a"); rc(sx - 11, sy - 7 - sq, 22, 4, fl ? C.white : "#8cf08a");
+    rc(sx - 7, sy - 2 - sq, 4, 5, C.black); rc(sx + 3, sy - 2 - sq, 4, 5, C.black); rc(sx - 7, sy - 2 - sq, 2, 2, C.white); rc(sx + 3, sy - 2 - sq, 2, 2, C.white);
+    rc(sx - 5, sy + 5 - sq, 10, 2, C.black);
+    rc(sx - 8, sy - 13 - sq, 16, 6, C.black); rc(sx - 7, sy - 12 - sq, 14, 4, C.yellow); rc(sx - 7, sy - 15 - sq, 3, 3, C.yellow); rc(sx - 1, sy - 16 - sq, 3, 4, C.yellow); rc(sx + 4, sy - 15 - sq, 3, 3, C.yellow);
+    for (var i = 0; i < 3; i++) rc(sx - 9 + i * 7, sy + 12, 5, 2, i < o.hp ? C.red : "#3a3a4a");
+  }
   function drawNpc(n, sx, sy) {
     var cols = ["#6a4bd0", "#d0842a", "#2a8a6a", "#c0407a"], c = cols[n.d % 4];
     disc(sx, sy + 7, 4, "rgba(0,0,0,.25)");
@@ -587,6 +745,7 @@
     var bob = Math.round(Math.sin(now() / 250 + it.x) * 1.5);
     disc(sx, sy + 5, 3, "rgba(0,0,0,.25)");
     if (it.kind === "brake") { disc(sx, sy - 2 + bob, 5, C.black); disc(sx, sy - 2 + bob, 4, C.red); rc(sx - 3, sy - 3 + bob, 6, 2, C.white); }
+    else if (it.kind === "key") { disc(sx, sy - 3 + bob, 3, C.black); disc(sx, sy - 3 + bob, 2, C.yellow); rc(sx - 1, sy - 1 + bob, 2, 6, C.black); rc(sx, sy - 1 + bob, 1, 5, C.yellow); rc(sx, sy + 3 + bob, 3, 1, C.yellow); rc(sx, sy + 1 + bob, 2, 1, C.yellow); }
     else if (it.kind === "float") { disc(sx, sy - 2 + bob, 6, C.black); disc(sx, sy - 2 + bob, 5, C.red); disc(sx, sy - 2 + bob, 2, C.black); rc(sx - 5, sy - 2 + bob, 2, 1, C.white); rc(sx + 3, sy - 2 + bob, 2, 1, C.white); rc(sx - 1, sy - 7 + bob, 2, 1, C.white); }
     else { disc(sx, sy - 2 + bob, 5, C.black); disc(sx, sy - 2 + bob, 4, C.yellow); rc(sx - 1, sy - 5 + bob, 2, 6, C.brown); rc(sx - 3, sy - 3 + bob, 6, 2, C.brown); }
   }
@@ -639,6 +798,7 @@
     slimes.forEach(function (s) { if (s.alive) list.push({ y: s.y, f: function () { drawSlime(s, Math.round(s.x - camx), Math.round(s.y - camy)); } }); });
     npcs.forEach(function (n) { list.push({ y: n.y, f: function () { drawNpc(n, Math.round(n.x - camx), Math.round(n.y - camy)); } }); });
     items.forEach(function (it) { list.push({ y: it.y, f: function () { drawItem(it, Math.round(it.x - camx), Math.round(it.y - camy)); } }); });
+    if (boss) list.push({ y: boss.y, f: function () { drawBoss(boss, Math.round(boss.x - camx), Math.round(boss.y - camy)); } });
     if (mode !== "menu") list.push({ y: B.y, f: drawHero });
     list.sort(function (a, b) { return a.y - b.y; });
     list.forEach(function (o) { o.f(); });
@@ -746,6 +906,7 @@
     hudStrokes.parentNode.classList.toggle("low", strokes <= 5);
     $$("[data-item]", root).forEach(function (el) { el.classList.toggle("on", !!S.items[el.dataset.item]); });
     $$("[data-piece]", root).forEach(function (el, i) { el.classList.toggle("on", !!S.pieces[i]); });
+    var kEl = $("[data-keys]", root); if (kEl) { kEl.textContent = "Clés " + S.keys; kEl.hidden = !S.keys; }
   }
   function showCard(html, cls) { cardEl.className = "panel game-card ga-card" + (cls ? " " + cls : ""); cardEl.innerHTML = html; overlay.hidden = false; }
   function closeCard() { overlay.hidden = true; }
@@ -776,7 +937,7 @@
      DÉMARRAGE
      ===================================================================== */
   resize();
-  S = loadSave() || newSave(); LV = [buildOverworld(), buildCave()]; enterLevel(0);   // décor du menu
+  S = loadSave() || newSave(); LV = [buildOverworld(), buildCave(), buildDungeon()]; LV.forEach(function (l, i) { applyLevelState(i); }); enterLevel(0);   // décor du menu
   B.x = LV[0].feat.flags[0][0] * TILE; B.y = LV[0].feat.flags[0][1] * TILE;
   cam.x = B.x - view.aw / 2; cam.y = B.y - view.ah / 2;
   requestAnimationFrame(frame);
@@ -784,6 +945,6 @@
   if (/[?&]debug/.test(location.search)) window.GA_DEBUG = {
     S: function () { return S; }, B: B, levels: function () { return LV; }, level: function () { return lvIdx; }, TY: TY, start: startGame, shoot: shoot, strokes: function () { return strokes; },
     step: function (n) { for (var i = 0; i < n; i++) if (B.rolling) stepBall(STEP); }, setStrokes: function (n) { strokes = n; hudUpdate(); }, update: updateAll, mode: function () { return mode; },
-    enter: function (i) { enterLevel(i); }, place: placeBall, slimes: function () { return slimes; }, bats: function () { return bats; }, cam: cam,
+    enter: function (i) { enterLevel(i); }, place: placeBall, setS: function (o) { S = JSON.parse(JSON.stringify(o)); }, boss: function () { return boss; }, rebuild: function () { LV = [buildOverworld(), buildCave(), buildDungeon()]; if (allPieces()) LV[0].feat.gates.forEach(function (f) { LV[0].grid[f[1] * LV[0].W + f[0]] = TY.GRASS; }); LV.forEach(function (l, i) { applyLevelState(i); }); enterLevel(lvIdx); }, kill: function () { slimes = []; bats = []; birds = []; eagles = []; }, slimes: function () { return slimes; }, bats: function () { return bats; }, cam: cam,
   };
 })();

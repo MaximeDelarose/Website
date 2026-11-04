@@ -15,6 +15,7 @@
 .ga-strokes span { font-size: 1rem; color: #a8e63a; letter-spacing: .06em; }
 .ga-strokes.low b { color: #ef6a52; animation: ga-blink .6s steps(2) infinite; }
 @keyframes ga-blink { 50% { opacity: .35; } }
+.ga-keys { margin: 0; font: 900 .9rem "Londrina", "Courier New", monospace; color: #f6c445; letter-spacing: .04em; text-align: center; }
 .ga-items { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .ga-items i { display: block; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #5a5a70; background: transparent; position: relative; }
 .ga-items i[data-item="brake"].on { background: #d8322b; border-color: #fff; }
