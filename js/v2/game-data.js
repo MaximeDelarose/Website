@@ -91,15 +91,85 @@ window.ES_DATA = (function () {
     "gGGGGGGGGkkwwwwk.", "gGGGGGGGGGkkkk...", ".gGGGGGGGGGGgg...", "..gggggggggggg...",
   ];
 
+  /* ---------------------------------------------------------------------
+     Style A (graphismes 2.3) : écureuils en 3 tons, marche en 4 images,
+     respiration au repos et pose de Volte. Les tenues (chapeaux, foulards…)
+     sont reprises des anciens sprites et posées sur le nouveau corps.
+     --------------------------------------------------------------------- */
+  var A_TOP = [
+    "....su..........",
+    "..sstuu.........",
+    ".sttvvtu...d..d.",
+    ".stv..tuu.ohhho.",
+    ".stv...uu.ohwooo",
+    ".stv.....oookoon",
+    ".stuv....ooccc..",
+    "..stuv..Ooocc...",
+    "...stuvOOoocc...",
+    "....suvOOooc....",
+    ".....vOOoooo....",
+  ];
+  var A_LEGS = ["......vv..vv....", ".....vv....vv...", "......vv..vv....", ".......vvvv....."];
+  var A_FUR = "tdockn", A_EXTRA = "123456789+*=%&$#@";
+  function hx(c) { c = c.replace("#", ""); if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]; return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)]; }
+  function mixc(a, b, t) { var A = hx(a), B = hx(b); return "#" + [0, 1, 2].map(function (i) { var v = Math.round(A[i] + (B[i] - A[i]) * t); return (v < 16 ? "0" : "") + v.toString(16); }).join(""); }
+  function shRows(rows, idx, dx) {
+    return rows.map(function (r, i) {
+      if (idx.indexOf(i) < 0 || !dx) return r;
+      return dx > 0 ? (".".repeat(dx) + r).slice(0, r.length) : (r + ".".repeat(-dx)).slice(-dx);
+    });
+  }
+  function shearRows(rows, k) {
+    var n = rows.length;
+    return rows.map(function (r, i) { var d = Math.round((n - 1 - i) * k); return d ? ".".repeat(d) + r : r; });
+  }
+  // top : variante de SQ_TOP (11 lignes) ; renvoie les lignes du corps A + la palette complète
+  function aBody(top, pal) {
+    var P = {
+      s: mixc(pal.t, "#ffffff", 0.35), t: pal.t, u: mixc(pal.t, pal.d, 0.45), v: mixc(pal.d, "#000000", 0.12),
+      o: pal.o, O: pal.d, h: mixc(mixc(pal.o, pal.t, 0.5), "#ffffff", 0.14), c: pal.c, k: pal.k, w: "#ffffff", n: pal.n, d: pal.d
+    };
+    var map = {}, ni = 0;
+    Object.keys(pal).forEach(function (ch) { if (A_FUR.indexOf(ch) < 0) { var nc = A_EXTRA[ni++]; map[ch] = nc; P[nc] = pal[ch]; } });
+    var rows = A_TOP.map(function (r) { return r.split(""); });
+    for (var y = 0; y < 11; y++) for (var x = 0; x < 16; x++) {
+      var b = SQ_TOP[y][x], v = (top[y] || "")[x] || ".";
+      if (v === b) continue;
+      rows[y][x] = v === "." ? "." : A_FUR.indexOf(v) >= 0 ? v : map[v];
+    }
+    // œil couvert (bandeau, visière, masque) : on retire l'œil A de la ligne du dessous
+    if (top[4][12] !== "k" && top[5][12] === SQ_TOP[5][12] && rows[5][12] === "k") rows[5][12] = "o";
+    return { rows: rows.map(function (r) { return r.join(""); }), pal: P, map: map };
+  }
+  function squirrelA(pal, top) {
+    var B = aBody(top || SQ_TOP, pal), T = B.rows;
+    return {
+      pal: B.pal,
+      frames: [T.concat([A_LEGS[0]]), shRows(T, [0, 1, 2], 1).concat([A_LEGS[1]]), T.concat([A_LEGS[2]]), shRows(T, [0, 1, 2], -1).concat([A_LEGS[3]])],
+      bob: [0, 1, 0, 1],
+      idle: [T.concat([A_LEGS[0]]), ["................"].concat(shRows(T.slice(0, 9), [0, 1], 1), T.slice(10), [A_LEGS[0]])],
+      volte: shearRows(shRows(T, [0, 1], -1), 0.22).concat(["...vvv....vvv..."])
+    };
+  }
+  // planeur : deux images de vol, même corps A, membrane conservée
+  function glideA(pal, frames) {
+    var out = null;
+    var fr = frames.map(function (F) {
+      var B = aBody(F.slice(0, 11), pal), last = F[11].split("").map(function (ch) { return ch === "." ? "." : A_FUR.indexOf(ch) >= 0 ? (ch === "d" ? "v" : ch) : B.map[ch]; }).join("");
+      out = B; return B.rows.concat([last]);
+    });
+    return { pal: out.pal, frames: fr, flying: true, volte: shearRows(fr[0].slice(0, 11), 0.22).concat([fr[0][11]]) };
+  }
+
   var SPRITES = {
     /* --- écureuils jouables --- */
-    sq_pip: { pal: { t: "#f2b05e", d: "#b85e2a", o: "#e8873a", c: "#fdf3de", k: "#2b1709", n: "#6b4430", s: "#3a7ad8", S: "#8ac0ff" }, frames: [PIP_TOP.concat([LEGS_A]), PIP_TOP.concat([LEGS_B])] },
-    sq_pop: { pal: { t: "#f6c27a", d: "#c0703a", o: "#f0a060", c: "#fdf3de", k: "#2b1709", n: "#6b4430", b: "#e84a8a", B: "#ffb0d0" }, frames: [POP_TOP.concat([LEGS_A]), POP_TOP.concat([LEGS_B])] },
-    sq_chevalier: { pal: { t: "#e0c49a", d: "#8a6a48", o: "#c49a6a", c: "#fdf3de", k: "#1b1226", n: "#5a4030", h: "#8a929a", H: "#c0c8d0", S: "#3a5aa8", Y: "#f6d36b" }, frames: [KNIGHT_TOP.concat([LEGS_A]), KNIGHT_TOP.concat([LEGS_B])] },
-    sq_mage: { pal: { t: "#b0a0c8", d: "#5a4a78", o: "#8a7aa8", c: "#efe6ff", k: "#1b1226", n: "#3a2a58", p: "#4a3a9a", y: "#f6d36b", w: "#8a5a3b" }, frames: [WIZ_TOP.concat([LEGS_A]), WIZ_TOP.concat([LEGS_B])] },
-    sq_bucheron: { pal: { t: "#d88a4a", d: "#8a4a20", o: "#c06a30", c: "#fdf3de", k: "#2b1709", n: "#5a3018", r: "#c8282a", R: "#2b1709", a: "#c0c8d0", h: "#8a5a3b" }, frames: [LUMB_TOP.concat([LEGS_A]), LUMB_TOP.concat([LEGS_B])] },
-    sq_ninja: { pal: { t: "#4a4a5a", d: "#1e1b26", o: "#38384a", c: "#6a6a7a", k: "#1e1b26", w: "#fdf3de", n: "#1e1b26", r: "#d0281a" }, frames: [NIN_TOP.concat([LEGS_A]), NIN_TOP.concat([LEGS_B])] },
-    sq_druide: { pal: { t: "#c8a070", d: "#6b4a28", o: "#a07848", c: "#f3e1c0", k: "#2b1709", n: "#4a3018", l: "#4f8a40", f: "#f29ad8", y: "#f6d36b" }, frames: [DRU_TOP.concat([LEGS_A]), DRU_TOP.concat([LEGS_B])] },
+    sq_pip: squirrelA({ t: "#f2b05e", d: "#b85e2a", o: "#e8873a", c: "#fdf3de", k: "#2b1709", n: "#6b4430", s: "#3a7ad8", S: "#8ac0ff" }, PIP_TOP),
+    sq_pop: squirrelA({ t: "#f6c27a", d: "#c0703a", o: "#f0a060", c: "#fdf3de", k: "#2b1709", n: "#6b4430", b: "#e84a8a", B: "#ffb0d0" }, POP_TOP),
+    sq_chevalier: squirrelA({ t: "#e0c49a", d: "#8a6a48", o: "#c49a6a", c: "#fdf3de", k: "#1b1226", n: "#5a4030", h: "#8a929a", H: "#c0c8d0", S: "#3a5aa8", Y: "#f6d36b" }, KNIGHT_TOP),
+    sq_mage: squirrelA({ t: "#b0a0c8", d: "#5a4a78", o: "#8a7aa8", c: "#efe6ff", k: "#1b1226", n: "#3a2a58", p: "#4a3a9a", y: "#f6d36b", w: "#8a5a3b" }, WIZ_TOP),
+    sq_bucheron: squirrelA({ t: "#d88a4a", d: "#8a4a20", o: "#c06a30", c: "#fdf3de", k: "#2b1709", n: "#5a3018", r: "#c8282a", R: "#2b1709", a: "#c0c8d0", h: "#8a5a3b" }, LUMB_TOP),
+    sq_ninja: squirrelA({ t: "#4a4a5a", d: "#1e1b26", o: "#38384a", c: "#6a6a7a", k: "#1e1b26", w: "#fdf3de", n: "#1e1b26", r: "#d0281a" }, NIN_TOP),
+    sq_druide: squirrelA({ t: "#c8a070", d: "#6b4a28", o: "#a07848", c: "#f3e1c0", k: "#2b1709", n: "#4a3018", l: "#4f8a40", f: "#f29ad8", y: "#f6d36b" }, DRU_TOP),
     lienicon: { pal: { y: "#6ad8ff", w: "#e8fbff" }, frames: [["......y.", ".....yy.", "....yw..", "...yyyy.", "..ywyy..", "...yy...", "..yy....", ".y......"]] },
     ronde: { pal: { c: "#f2b05e", k: "#6ad8ff" }, frames: [["...cc...", ".c....c.", "c..kk..c", "c.kkkk.c", "c.kkkk.c", "c..kk..c", ".c....c.", "...cc..."]] },
     paws2: { pal: { k: "#8a5a3b" }, frames: [[".k.k....", "kkkkk.k.", ".kkk.kkk", "......k.", "..k.k...", ".kkkkk..", "..kkk..."]] },
@@ -113,13 +183,12 @@ window.ES_DATA = (function () {
     fang: { pal: { w: "#f3efe6", k: "#8a806c" }, frames: [["..ww..", ".wwww.", ".wwww.", "..ww..", "..wk..", "...w.."]] },
     tailpuff: { pal: { o: "#b85e2a", O: "#f2b05e" }, frames: [["..oo..", ".oOOo.", "oOOOOo", "oOOOo.", ".oOo..", "..o..."]] },
     sack: { pal: { b: "#8a5a3b", B: "#c9a070", y: "#f6d36b", k: "#6b4430" }, frames: [["..kk..", ".bkkb.", "bBBBBb", "bByBBb", "bBBBBb", ".bbbb."]] },
-    sq_noisette: squirrel({ t: "#f2b05e", d: "#b85e2a", o: "#e8873a", c: "#fdf3de", k: "#2b1709", n: "#6b4430" }),
-    sq_cendrine: squirrel({ t: "#d6d1ca", d: "#6f6a64", o: "#9a958e", c: "#f3efe6", k: "#2b1709", n: "#4a4540" }),
-    sq_charbon: squirrel({ t: "#57506a", d: "#1e1b26", o: "#38334a", c: "#8a8496", k: "#f6d36b", n: "#1e1b26" }),
-    sq_flocon: squirrel({ t: "#ffffff", d: "#b8c8d8", o: "#e8eef5", c: "#ffffff", k: "#c8553d", n: "#f29a85" }),
-    sq_planeur: { pal: { t: "#c9ae88", d: "#6b5a48", o: "#a08868", c: "#f3e1c0", k: "#2b1709", n: "#4a3a2a", m: "#8a7660" }, frames: [GLIDE_A, GLIDE_B], flying: true },
-    sq_capitaine: { pal: { t: "#f2b05e", d: "#b85e2a", o: "#e06a2c", c: "#fdf3de", k: "#2b1709", n: "#6b4430", r: "#c8553d", w: "#fdf3de" },
-                    frames: [CAP_TOP.concat([LEGS_A]), CAP_TOP.concat([LEGS_B])] },
+    sq_noisette: squirrelA({ t: "#f2b05e", d: "#b85e2a", o: "#e8873a", c: "#fdf3de", k: "#2b1709", n: "#6b4430" }),
+    sq_cendrine: squirrelA({ t: "#d6d1ca", d: "#6f6a64", o: "#9a958e", c: "#f3efe6", k: "#2b1709", n: "#4a4540" }),
+    sq_charbon: squirrelA({ t: "#57506a", d: "#1e1b26", o: "#38334a", c: "#8a8496", k: "#f6d36b", n: "#1e1b26" }),
+    sq_flocon: squirrelA({ t: "#ffffff", d: "#b8c8d8", o: "#e8eef5", c: "#ffffff", k: "#c8553d", n: "#f29a85" }),
+    sq_planeur: glideA({ t: "#c9ae88", d: "#6b5a48", o: "#a08868", c: "#f3e1c0", k: "#2b1709", n: "#4a3a2a", m: "#8a7660" }, [GLIDE_A, GLIDE_B]),
+    sq_capitaine: squirrelA({ t: "#f2b05e", d: "#b85e2a", o: "#e06a2c", c: "#fdf3de", k: "#2b1709", n: "#6b4430", r: "#c8553d", w: "#fdf3de" }, CAP_TOP),
 
     /* --- ennemis --- */
     slug: { pal: { g: "#d9cf63", h: "#a39a3c", k: "#1f3a2b", e: "#1f3a2b" }, frames: [
@@ -1457,8 +1526,8 @@ window.ES_DATA = (function () {
   /* =====================================================================
      2.0 phase 6 : les 7 autres écureuils, les 3 autres méga boss, les paliers Cauchemar
      ===================================================================== */
-  SPRITES.sq_pataud = squirrel({ t: "#c89058", d: "#7a4a20", o: "#a86a38", c: "#fdecd0", k: "#2b1709", n: "#5a3018" });
-  SPRITES.sq_trefle = { pal: { t: "#9cd070", d: "#3f7a3a", o: "#6aa850", c: "#f3f8e0", k: "#1b2a12", n: "#2a4a1a", b: "#3fa040", B: "#7ad86a" }, frames: [POP_TOP.concat([LEGS_A]), POP_TOP.concat([LEGS_B])] };
+  SPRITES.sq_pataud = squirrelA({ t: "#c89058", d: "#7a4a20", o: "#a86a38", c: "#fdecd0", k: "#2b1709", n: "#5a3018" });
+  SPRITES.sq_trefle = squirrelA({ t: "#9cd070", d: "#3f7a3a", o: "#6aa850", c: "#f3f8e0", k: "#1b2a12", n: "#2a4a1a", b: "#3fa040", B: "#7ad86a" }, POP_TOP);
   SPRITES.sapling = { pal: { g: "#5ac85a", G: "#9cd04a", b: "#6b4430" }, frames: [["..G..", ".gGg.", "..b..", "..b.."]] };
   SPRITES.minitree = { pal: { g: "#3f8a3a", G: "#6ac85a", L: "#9cd04a", b: "#6b4430", k: "#2b1709" }, frames: [["..gGg..", ".gGLGg.", "gGLgLGg", ".gGgGg.", "..kbk..", "...b...", "..bbb.."]] };
   CHAR_ALL.push(
