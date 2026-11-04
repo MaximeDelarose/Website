@@ -6,6 +6,7 @@
 import './ui/styles/base.css';
 import './ui/styles/game.css';
 import { debugApis } from './core/debug';
+import { startUpdateWatch } from './core/updateWatch';
 import { save, setGame, applySettings, audio, events, game as getGame } from './core/app';
 import { ACHIEVEMENT_DIAMONDS } from './core/progress';
 import { createGame } from './game/GameConfig';
@@ -183,6 +184,8 @@ boot().catch((e) => {
   hideSplash();
   ui.root.append(h('div.modal-backdrop', h('div.modal.panel', h('h2', 'Oups…'), h('p', 'Le jeu n\'a pas pu démarrer. Recharge la page pour réessayer.'), h('button.btn', { on: { click: () => location.reload() } }, 'Recharger'))));
 });
+
+startUpdateWatch();
 
 // Accès debug en développement : window.RADIA
 if (new URLSearchParams(location.search).has('debug')) { void import('./casino'); void import('./wheel'); }
