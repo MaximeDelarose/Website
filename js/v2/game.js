@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.5.0";
+  var VERSION = "2.5.1";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -216,8 +216,29 @@
       if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t + dur);
       g.gain.setValueAtTime(vol || 0.05, t);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(g); g.connect(actx.destination);
+      o.connect(g); g.connect(bus());
       o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  /* son 2.5 : tout passe par un bus compressé (plus de saturation quand ça s'empile), bruit filtré pour les impacts */
+  var MASTER = null, NBUF = null;
+  function bus() {
+    if (!MASTER) { var comp = actx.createDynamicsCompressor(); comp.threshold.value = -20; comp.knee.value = 12; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.15; MASTER = actx.createGain(); MASTER.gain.value = 0.95; MASTER.connect(comp); comp.connect(actx.destination); }
+    return MASTER;
+  }
+  function jit(f, k) { return f * (1 + (Math.random() - 0.5) * (k || 0.1)); }
+  function noise(dur, vol, freq, q, type, slide) {
+    if (!S.opts.sound) return;
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === "suspended") actx.resume();
+      if (!NBUF) { NBUF = actx.createBuffer(1, Math.floor(actx.sampleRate * 0.6), actx.sampleRate); var dd = NBUF.getChannelData(0); for (var i = 0; i < dd.length; i++) dd[i] = Math.random() * 2 - 1; }
+      var t = actx.currentTime, src = actx.createBufferSource(), fl = actx.createBiquadFilter(), g = actx.createGain();
+      src.buffer = NBUF; fl.type = type || "bandpass"; fl.frequency.setValueAtTime(freq, t); fl.Q.value = q || 1;
+      if (slide) fl.frequency.exponentialRampToValueAtTime(Math.max(40, freq * slide), t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(fl); fl.connect(g); g.connect(bus());
+      src.start(t, Math.random() * 0.4); src.stop(t + dur + 0.02);
     } catch (e) {}
   }
   function arp(notes, step, type, vol) { notes.forEach(function (f, i) { setTimeout(function () { sfx(f, 0.12, type || "square", vol || 0.04); }, i * step); }); }
@@ -226,10 +247,34 @@
   var SND = {
     pick: function () { var n = performance.now(); if (n - lastBlip < 45) return; lastBlip = n; sfx(880 + Math.random() * 200, 0.06, "square", 0.022, 1.5); },
     gold: function () { sfx(1320, 0.08, "square", 0.03, 1.3); },
-    hurt: function () { sfx(200, 0.18, "sawtooth", 0.06, 0.4); },
-    boom: function () { throttled("boom", 80, function () { sfx(120, 0.25, "triangle", 0.08, 0.3); }); },
-    zap: function () { throttled("zap", 60, function () { sfx(1400, 0.07, "sawtooth", 0.025, 0.4); }); },
-    shot: function () { throttled("shot", 70, function () { sfx(900, 0.03, "square", 0.012, 0.6); }); },
+    hurt: function () { sfx(jit(200), 0.18, "sawtooth", 0.05, 0.4); noise(0.14, 0.07, 700, 0.8, "lowpass", 0.4); },
+    boom: function () { throttled("boom", 80, function () { noise(0.4, 0.13, 1100, 0.7, "lowpass", 0.2); sfx(jit(95), 0.32, "sine", 0.11, 0.45); }); },
+    zap: function () { throttled("zap", 60, function () { sfx(jit(1400), 0.07, "sawtooth", 0.022, 0.4); noise(0.05, 0.025, 5000, 2, "highpass"); }); },
+    shot: function () { throttled("shot", 70, function () { sfx(jit(900, 0.15), 0.03, "square", 0.011, 0.6); }); },
+    // coup porté : petit claquement + couleur de l'élément de l'arme
+    hit: function (el, crit) {
+      throttled("hit", 38, function () {
+        noise(0.035, 0.045, jit(2400, 0.3), 1.6);
+        if (el === "feu") noise(0.09, 0.035, jit(1200), 0.7, "lowpass", 0.5);
+        else if (el === "eau") sfx(jit(760, 0.2), 0.07, "sine", 0.035, 0.5);
+        else if (el === "air") noise(0.07, 0.03, jit(5200), 1.2, "highpass");
+        else if (el === "terre") sfx(jit(120, 0.15), 0.08, "triangle", 0.06, 0.6);
+      });
+      if (crit) throttled("crit", 90, function () { sfx(jit(1700), 0.06, "square", 0.02, 1.5); });
+    },
+    pop: function (big) { throttled("pop", 32, function () { sfx(jit(big ? 320 : 560, 0.3), big ? 0.12 : 0.05, "triangle", big ? 0.06 : 0.032, 2.2); }); },
+    whoosh: function () { throttled("whoosh", 120, function () { noise(0.2, 0.06, 500, 0.9, "bandpass", 5); }); },
+    react: function (key) {
+      throttled("react", 90, function () {
+        if (key === "air+eau") { sfx(jit(1900), 0.22, "sine", 0.035, 0.5); noise(0.18, 0.03, 6000, 1.5, "highpass", 0.6); }
+        else if (key === "air+feu") { noise(0.3, 0.09, 1800, 0.6, "lowpass", 0.3); sfx(jit(160), 0.2, "sawtooth", 0.03, 0.5); }
+        else if (key === "eau+terre") { sfx(jit(90), 0.28, "sine", 0.07, 0.6); noise(0.2, 0.03, 300, 1, "lowpass"); }
+        else if (key === "eau+feu") noise(0.4, 0.06, 3500, 0.7, "highpass", 0.4);
+        else if (key === "feu+terre") { sfx(jit(70), 0.35, "sawtooth", 0.05, 0.5); noise(0.3, 0.08, 500, 0.8, "lowpass", 0.4); }
+        else noise(0.32, 0.07, 1400, 0.6, "bandpass", 0.35);
+      });
+    },
+    bossDown: function () { noise(0.7, 0.14, 900, 0.6, "lowpass", 0.15); sfx(70, 0.6, "sine", 0.12, 0.4); setTimeout(function () { arp([523, 659, 784, 1047, 1319], 80, "triangle", 0.05); }, 250); },
     level: function () { arp([523, 659, 784, 1047], 70); },
     fusion: function () { arp([392, 523, 659, 784, 1047, 1319], 70, "triangle", 0.06); },
     ach: function () { arp([784, 988, 1175, 1568], 90, "triangle", 0.05); },
@@ -721,6 +766,7 @@
     dmg = Math.max(1, Math.round(dmg));
     if (e.eshield > 0) { var ab = Math.min(e.eshield, dmg); e.eshield -= ab; dmg -= ab; if (dmg <= 0) { e.flash = 0.05; return; } }
     e.hp -= dmg; e.flash = 0.1;
+    if (!e.d.prop) { var hel = atkElem(p); SND.hit(hel, crit); spark(e.x + (p.x - e.x) * 0.25 + (Math.random() * 4 - 2), e.y - 2 + (p.y - e.y) * 0.25, hel, crit); }
     if (crit && !e.d.prop && (e.d.boss || dmg >= 60) && S.opts.shake) { shake = Math.max(shake, 0.12); if (p === me) kick(e.x - p.x, e.y - p.y, 1.5); }
     if (!e.d.prop) {
       var kb = e.d.boss ? 0.12 : (e.elem === "terre" || hasA(e, "lourd")) ? 0 : 1;
@@ -770,6 +816,7 @@
     lootKill(e);
     if (e.spr && e.spr[0] && fx.length < 160) { var gs0 = e.scale || (e.giant ? 2 : 1); if (e.spr.ns) gs0 = Math.max(1, gs0 / e.spr.ns); fx.push({ kind: "pop", x: e.x, y: e.y, s: e.spr[0], face: e.face, g: gs0, life: e.d.boss ? 0.3 : 0.14, max: e.d.boss ? 0.3 : 0.14 }); }
     if (!e.d.prop) {
+      if (e.d.boss) SND.bossDown(); else SND.pop(!!(e.aff || e.d.elite));
       if (e.d.boss) { freezeFrame(0.12); slowMo(e.d.mega ? 0.9 : 0.5); if (S.opts.shake) shake = Math.max(shake, 0.6); r.flash = Math.max(r.flash || 0, 0.15); }
       else if (e.aff || e.d.elite) { freezeFrame(0.05); if (S.opts.shake) shake = Math.max(shake, 0.22); }
     }
@@ -836,7 +883,23 @@
     if (n >= 5) netEv(["k", Math.round(x), Math.round(y), color, n]);
     for (var i = 0; i < n; i++) {
       var a = Math.random() * TAU, s = 20 + Math.random() * 50;
-      fx.push({ kind: "dot", x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.3 + Math.random() * 0.3, color: color });
+      fx.push({ kind: "dot", x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 20, life: 0.3 + Math.random() * 0.3, max: 0.6, color: i % 3 ? color : "#fdf3de", sz: i % 4 ? 2 : 1, g: 90 });
+    }
+  }
+  // étincelles d'impact selon l'élément de l'arme (graphismes 2.5)
+  var SPARK_C = { feu: ["#ffd05a", "#ff8a2a", "#ff5a1a"], eau: ["#bfefff", "#6ad8ff", "#3a9ad8"], air: ["#ffffff", "#e6f6fa", "#c8f8e8"], terre: ["#c8a060", "#8a6a48", "#6b4430"] };
+  function hx2rgb(c) { c = String(c).replace("#", ""); if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]; return parseInt(c.slice(0, 2), 16) + "," + parseInt(c.slice(2, 4), 16) + "," + parseInt(c.slice(4, 6), 16); }
+  function spark(x, y, el, crit) {
+    if (fx.length > 260) return;
+    fx.push({ kind: "hitstar", x: x, y: y, life: crit ? 0.1 : 0.07, max: crit ? 0.1 : 0.07, col: crit ? "#f6d36b" : "#ffffff", big: crit });
+    var C = SPARK_C[el], n = crit ? 4 : 2, i, a;
+    for (i = 0; i < n; i++) {
+      a = Math.random() * TAU;
+      if (el === "feu") fx.push({ kind: "dot", x: x, y: y, vx: Math.cos(a) * 20, vy: -30 - Math.random() * 30, life: 0.35, max: 0.35, color: C[i % 3], sz: 1, g: -20 });
+      else if (el === "eau") fx.push({ kind: "dot", x: x, y: y, vx: Math.cos(a) * 35, vy: -40 - Math.random() * 30, life: 0.4, max: 0.4, color: C[i % 3], sz: 1, g: 220 });
+      else if (el === "air") fx.push({ kind: "dot", x: x, y: y, vx: Math.cos(a) * 90, vy: Math.sin(a) * 60, life: 0.16, max: 0.16, color: C[i % 3], sz: 1, g: 0, streak: 1 });
+      else if (el === "terre") fx.push({ kind: "dot", x: x, y: y, vx: Math.cos(a) * 40, vy: -50 - Math.random() * 30, life: 0.45, max: 0.45, color: C[i % 3], sz: 2, g: 260 });
+      else fx.push({ kind: "dot", x: x, y: y, vx: Math.cos(a) * 50, vy: Math.sin(a) * 50, life: 0.15, max: 0.15, color: "#fdf3de", sz: 1, g: 0 });
     }
   }
   function damagePlayer(dmg, pl) {
@@ -2928,6 +2991,7 @@
     if (pl.volteCd > 0) { if (!(pl.vCh > 0)) return; pl.vCh--; }
     else pl.volteCd = pl.volteBase || V2.volteCd; pl.volteT = 0.35; r.voltes = (r.voltes || 0) + 1;
     fx.push({ kind: "ring", x: pl.x, y: pl.y, r: 18, life: 0.3, max: 0.3, col: "246,239,122" });
+    SND.whoosh(); for (var dsi = 0; dsi < 6; dsi++) fx.push({ kind: "dot", x: pl.x + (Math.random() * 8 - 4), y: pl.y + 6, vx: -(dx || 0) * 30 + (Math.random() * 30 - 15), vy: -Math.random() * 12, life: 0.35, max: 0.35, color: dsi % 2 ? "#d8cdb4" : "#b0a488", sz: 2, g: 0 });
     var ps = pl.posture, pp = p; p = pl;
     if (ps === "tireuse") crown(pl);
     else if (ps === "acrobate") { pl.rollT = tal(pl, "longroulade") ? 0.56 : 0.28; pl.rollX = dx; pl.rollY = dy; pl.inv = Math.max(pl.inv, (tal(pl, "longroulade") ? 0.7 : 0.45) + (tal(pl, "intouchable") ? 1 : 0)); SND.whip(); }
@@ -3405,6 +3469,8 @@
     if (key === "air+eau") r.freezes = (r.freezes || 0) + 1;
     if (p.sigK && p.sigK.rainbow && Math.hypot(e.x - p.x, e.y - p.y) < 80 && !e.d.prop) drop("xp", e.x, e.y, 3);
     if (r.time - (r.reactTxt || 0) > 0.25) { r.reactTxt = r.time; texts.push({ x: e.x, y: e.y - 14, n: rc.name.toUpperCase() + " !", life: 0.9, col: rc.color }); }
+    SND.react(key);
+    if (fx.length < 240) { var rgb = hx2rgb(rc.color); fx.push({ kind: "ring", x: e.x, y: e.y, r: 22, life: 0.3, max: 0.3, col: rgb }); for (var rpi = 0; rpi < 8; rpi++) { var ra2 = rpi / 8 * TAU; fx.push({ kind: "dot", x: e.x, y: e.y, vx: Math.cos(ra2) * 70, vy: Math.sin(ra2) * 55, life: 0.35, max: 0.35, color: rpi % 2 ? rc.color : "#fdf3de", sz: 2, g: 0 }); } }
     var pw = (1 + 0.04 * (r.level || 1)) * ((HIT_FX && HIT_FX.react) || 1) * (r.ev && r.ev.id === "averse" && key.indexOf("eau") >= 0 ? 1.3 : 1);
     if (p.gear) { var po = gv(p, "pendOrage"); if (po && key.indexOf("air") >= 0) pw *= 1 + po / 100; if (gearHas(p, "u_cycle")) pw *= 1.2;
       if (setCount(p, "brasier") >= 3 && (key === "eau+feu" || key === "feu+terre")) pw *= 1.5;
@@ -5590,7 +5656,7 @@
   function tickFx(dt) {
     for (var i = fx.length - 1; i >= 0; i--) {
       var f = fx[i]; f.life -= dt;
-      if (f.kind === "dot") { f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.9; f.vy *= 0.9; }
+      if (f.kind === "dot") { f.x += f.vx * dt; f.y += f.vy * dt; var dr = Math.pow(0.002, dt); f.vx *= dr; f.vy = f.vy * dr + (f.g || 0) * dt; }
       if (f.life <= 0) fx.splice(i, 1);
     }
     for (i = texts.length - 1; i >= 0; i--) { texts[i].life -= dt; texts[i].y -= 18 * dt; if (texts[i].life <= 0) texts.splice(i, 1); }
@@ -6276,6 +6342,7 @@
         return;
       }
       var s = SPR[q.sprite] || SPR.acorn;
+      if (fx.length < 220 && flick && (q.vx * q.vx + q.vy * q.vy) > 3600) fx.push({ kind: "trail", x: q.x - q.vx * 0.012, y: q.y - q.vy * 0.012, life: 0.14, max: 0.14, color: q.elem && SPARK_C[q.elem] ? SPARK_C[q.elem][0] : "#fdf3de" });
       blit(s[(q.anim || q.kind === "boomerang") ? flick % s.length : 0], q.x, q.y, q.vx < 0);
     });
     hostile.forEach(function (q) {
@@ -6551,7 +6618,18 @@
     }
   }
   function drawFx(f) {
-    if (f.kind === "dot") { ctx.fillStyle = f.color; ctx.fillRect(Math.round(f.x), Math.round(f.y), 2, 2); }
+    if (f.kind === "dot") {
+      var da = f.max ? Math.min(1, f.life / f.max * 2.5) : 1, z = f.sz || 2; ctx.globalAlpha = da; ctx.fillStyle = f.color;
+      if (f.streak) ctx.fillRect(Math.round(f.x - Math.sign(f.vx) * 2), Math.round(f.y), 3, 1); else ctx.fillRect(Math.round(f.x), Math.round(f.y), z, z);
+      ctx.globalAlpha = 1;
+    }
+    else if (f.kind === "hitstar") {
+      var hk = f.life / f.max, hr = f.big ? 3 : 2; ctx.globalAlpha = Math.min(1, hk * 1.5); ctx.fillStyle = f.col;
+      ctx.fillRect(Math.round(f.x) - hr, Math.round(f.y), hr * 2 + 1, 1); ctx.fillRect(Math.round(f.x), Math.round(f.y) - hr, 1, hr * 2 + 1);
+      if (f.big) { ctx.fillRect(Math.round(f.x) - 1, Math.round(f.y) - 1, 3, 3); }
+      ctx.globalAlpha = 1;
+    }
+    else if (f.kind === "trail") { ctx.globalAlpha = f.life / f.max * 0.6; ctx.fillStyle = f.color; ctx.fillRect(Math.round(f.x), Math.round(f.y), 1, 1); ctx.globalAlpha = 1; }
     else if (f.kind === "ring") {
       var k = 1 - f.life / f.max;
       ctx.strokeStyle = f.col ? "rgba(" + f.col + "," + (1 - k) + ")" : f.red ? "rgba(255,70,40," + (1 - k) + ")" : "rgba(242,176,94," + (1 - k) + ")"; ctx.lineWidth = 2;
