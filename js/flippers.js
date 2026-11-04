@@ -120,7 +120,6 @@
   var WORLD_H = H, LANE_MINY = 360;
   var M = { climb: false };
   var CLASSIC = { segs: segs, flippers: flippers, BUMPERS: BUMPERS, TARGETS: TARGETS, DROPS: DROPS, SLINGS: SLINGS };
-  var CLIMB = null;
 
   /* ---------- état ---------- */
   var S = {
@@ -135,6 +134,7 @@
     spin: { a: 0, w: 0, n: 0 }, dropReset: 0,
     draining: false, drainTimer: 0, saucerCool: 0, t: 0, shake: 0,
     msg: "", msgT: 0, newBest: false, nextId: 1,
+    stageK: 0, prevK: -1, fall: null, drama: 0, timeScale: 1, starT: 0, featherT: 0, net: false, tcool: 0, banner: "", banner2: "", bannerT: 0, bannerCol: "#ffffff",
     pref: store(MODE_KEY) === "climb" ? "climb" : "classic", room: 0, topY: 0, climbTime: 0, camY: 0, won: false, bestTime: parseFloat(store(CTIME_KEY)) || 0, newBestTime: false,
   };
   var particles = [], popups = [];
@@ -150,6 +150,7 @@
     S.lamps = [false, false, false, false]; S.lanes = [false, false, false];
     DROPS.forEach(function (d) { d.down = false; });
     S.dropReset = 0; S.saucerCool = 0;
+    S.prevK = -1; S.fall = null; S.drama = 0; S.timeScale = 1; S.tcool = 0; S.stageK = 0;
     serve(0);
   }
 
@@ -192,6 +193,8 @@
     jackpot: function () { [523, 659, 784, 1047, 1319].forEach(function (f, i) { tone(f, f, 0.16, "square", 0.06, i * 0.07); }); },
     tilt: function () { tone(110, 80, 0.5, "sawtooth", 0.09); },
     bonus: function () { tone(740, 740, 0.05, "square", 0.05); },
+    fall: function () { tone(520, 90, 1.2, "sine", 0.07); tone(390, 70, 1.4, "triangle", 0.05, 0.15); },
+    crash: function () { tone(160, 40, 0.6, "sawtooth", 0.1); tone(80, 35, 0.7, "square", 0.07); tone(300, 60, 0.4, "triangle", 0.05, 0.1); },
   };
 
   /* ---------- score et messages ---------- */
@@ -211,7 +214,7 @@
     setHud("mult", "×" + S.mult);
     if (M.climb) {
       setHud("bonus", Math.max(0, Math.round((PLUNGER_Y - S.topY) / 20)) + " m");
-      setHud("lock", (S.room + 1) + "/5 · " + fmtTime(S.climbTime));
+      setHud("lock", (S.stageK + 1) + "/" + (CW ? CW.N : 50) + " · " + fmtTime(S.climbTime));
     } else {
       setHud("bonus", "×" + S.bonusX);
       setHud("lock", S.multi ? "MULTI" : S.locked + "/3" + (S.lockLit ? " ★" : ""));
@@ -224,7 +227,7 @@
   function say(text, secs) { S.msg = text; S.msgT = secs || 2.5; }
   function popup(x, y, text, col) { popups.push({ x: x, y: y, text: text, life: 1, col: col || "#fff3c4" }); }
   function addScore(n, x, y, noMult) {
-    var v = noMult ? n : n * S.mult;
+    var v = (noMult ? n : n * S.mult) * (S.starT > 0 ? 2 : 1);
     S.score += v;
     if (x != null) popup(x, y, "+" + fmt(v));
     if (!S.extraGiven && S.score >= EXTRA_BALL_AT) {
@@ -311,11 +314,10 @@
       if (d2 >= rr * rr) continue;
       var dd = Math.sqrt(d2) || 0.001; nx /= dd; ny /= dd;
       b.x = p.x + nx * rr; b.y = p.y + ny * rr;
-      var sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-      var out = Math.max(670, sp * 0.9);
-      b.vx = nx * out; b.vy = ny * out;
-      bumpFlash[i] = 1; S.bonusHits++;
-      addScore(100, p.x, p.y - p.r); SND.bumper(); S.shake = Math.max(S.shake, 2);
+      if (p.kind === "pad" && ny < -0.3 && b.vy > 0) { b.vy = -1180; b.vx *= 0.5; }
+      else { var sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy); var out = p.kind === "peg" ? Math.max(480, sp * 0.85) : Math.max(670, sp * 0.9); b.vx = nx * out; b.vy = ny * out; }
+      bumpFlash[i] = 1; p.flash = 1; S.bonusHits++;
+      addScore(p.kind === "pad" ? 50 : 100, p.x, p.y - p.r); SND.bumper(); S.shake = Math.max(S.shake, 2);
       burst(p.x + nx * p.r, p.y + ny * p.r, "#ffd257", 8, 220);
       if (S.bonusHits % 10 === 0) say("Bonus de bille : " + fmt(S.bonusHits * 100 + S.bonusExtra) + " ×" + S.bonusX, 1.8);
     }
@@ -347,6 +349,7 @@
         if (DROPS.every(function (x) { return x.down; })) completeDrops();
       }
     }
+    if (M.climb) climbCollide(b);
   }
 
   function completeLetters() {
@@ -430,7 +433,7 @@
       if (f.a > target) f.a = Math.max(target, f.a - (on ? FLIPPER.wUp : FLIPPER.wDown) * dt);
       else if (f.a < target) f.a = Math.min(target, f.a + (on ? FLIPPER.wUp : FLIPPER.wDown) * dt);
       f.w = (f.a - old) / dt;
-      if (on && !f.was) { SND.flip(); rotateLamps(f.s > 0 ? -1 : 1); }
+      if (on && !f.was) { if (!M.climb || f.k === S.stageK) SND.flip(); rotateLamps(f.s > 0 ? -1 : 1); }
       f.was = on;
     }
   }
@@ -479,6 +482,16 @@
 
   function stepBall(b, dt) {
     if (b.mode === "saucer") { b.timer -= dt; if (b.timer <= 0) saucerEnd(b); return; }
+    if (b.mode === "cannon") {
+      b.timer -= dt;
+      if (b.timer <= 0) { b.mode = "live"; b.vx = b.cannon.vx; b.vy = b.cannon.vy; b.trail = []; SND.kick(); S.shake = 6; burst(b.x, b.y, "#f6c445", 16, 300); }
+      return;
+    }
+    if (b.mode === "warp") {
+      b.timer -= dt;
+      if (b.timer <= 0) { b.mode = "live"; b.x = b.exit.x; b.y = b.exit.y; b.vx = 0; b.vy = 80; b.trail = []; SND.eject(); burst(b.x, b.y, "#ff9ec7", 16, 220); }
+      return;
+    }
     if (b.mode === "ramp") {
       b.pt += b.ramp.speed * dt;
       var rp2 = rampPoint(b.ramp, b.pt); b.x = rp2.x; b.y = rp2.y;
@@ -489,7 +502,7 @@
       b.auto -= dt;
       if (b.auto <= 0 && b.y > PLUNGER_Y - R - 8 && Math.abs(b.vy) < 80) launchBall(b, 0.85);
     }
-    b.vy += G * dt;
+    b.vy += G * dt * (S.featherT > 0 ? 0.62 : 1);
     b.x += b.vx * dt; b.y += b.vy * dt;
     for (var k = 0; k < 2; k++) collideStatics(b);
     contain(b);
@@ -562,76 +575,134 @@
     if (b.y > WORLD_H + 16) b.lost = "drain";
   }
 
-  /* ---------- mode Ascension : table haute de 5 étages ---------- */
-  var CLIMB_FLOORS = 5, CLIMB_GAP = 700, CLIMB_PY0 = 3500;
-  function buildClimb() {
-    var K = { segs: [], flippers: [], bumpers: [], ramps: [], worldH: 3640, plungerY: 3560, laneMinY: 3060, pys: [] };
-    function add(x1, y1, x2, y2, o) { o = o || {}; K.segs.push({ x1: x1, y1: y1, x2: x2, y2: y2, e: o.e != null ? o.e : 0.35, r: o.r != null ? o.r : 2.5, oneWay: !!o.oneWay, sling: null, kind: o.kind || "wall" }); }
-    // arche du sommet
-    var ac = { x: 222, y: 218, r: 198 }, n = 40, i, k;
-    for (i = 0; i < n; i++) {
-      var a1 = Math.PI + Math.PI * i / n, a2 = Math.PI + Math.PI * (i + 1) / n;
-      add(ac.x + Math.cos(a1) * ac.r, ac.y + Math.sin(a1) * ac.r, ac.x + Math.cos(a2) * ac.r, ac.y + Math.sin(a2) * ac.r, { kind: "arc" });
+  /* ---------- mode Ascension : 50 étages (monde dans js/flippers-climb.js) ---------- */
+  var CW = null, ACT = { stages: [], mobs: [], arms: [], sliders: [], bonuses: [] }, WIN_K = -1;
+  var STAGES = (function () { var m = /[?&]stages=(\d+)/.exec(location.search); return m ? Math.max(3, Math.min(50, +m[1])) : 50; })();
+  function stageOf(y) { return Math.max(0, Math.min(CW.N - 1, Math.floor((CW.py0 - y) / CW.SH))); }
+  function setWindow(k) {
+    if (WIN_K === k) return;
+    WIN_K = k;
+    var lo = Math.max(0, k - 1), hi = Math.min(CW.N - 1, k + 1), i;
+    segs = []; flippers = []; BUMPERS = []; ACT = { stages: [], mobs: [], arms: [], sliders: [], bonuses: [] };
+    for (i = lo; i <= hi; i++) {
+      var st = CW.stages[i];
+      segs = segs.concat(st.segs); flippers = flippers.concat(st.flippers); BUMPERS = BUMPERS.concat(st.bumpers);
+      ACT.stages.push(st); ACT.mobs = ACT.mobs.concat(st.mobs); ACT.arms = ACT.arms.concat(st.arms); ACT.sliders = ACT.sliders.concat(st.sliders); ACT.bonuses = ACT.bonuses.concat(st.bonuses);
     }
-    K.arch = ac;
-    var py0 = CLIMB_PY0;
-    add(24, 218, 24, py0 - 90);                                   // mur gauche
-    add(LANE_X0, 218, LANE_X0, 3040);                             // mur droit de la table
-    add(LANE_X0, 3040, LANE_X0, 3120, { oneWay: true });          // clapet en haut du couloir
-    add(LANE_X0, 3120, LANE_X0, 3590);                            // paroi du couloir
-    add(LANE_X1, 3120, LANE_X1, 3590);                            // mur extérieur du couloir
-    add(LANE_X0, 3590, LANE_X1, 3590);                            // fond du couloir
-    var qn = 12, qc = { x: LANE_X1 - 80, y: 3120 };               // quart de cercle qui renvoie la bille vers la table
-    for (i = 0; i < qn; i++) {
-      var b1 = -Math.PI / 2 * i / qn, b2 = -Math.PI / 2 * (i + 1) / qn;
-      add(qc.x + Math.cos(b1) * 80, qc.y + Math.sin(b1) * 80, qc.x + Math.cos(b2) * 80, qc.y + Math.sin(b2) * 80, { kind: "arc" });
-    }
-    for (k = 0; k < CLIMB_FLOORS; k++) {
-      var py = py0 - CLIMB_GAP * k; K.pys.push(py);
-      add(24, py - 90, 104, py, { e: 0.2, kind: "slope" });       // cuvette : rampes vers les flippers
-      add(LANE_X0, py - 90, 340, py, { e: 0.2, kind: "slope" });
-      K.flippers.push({ px: 104, py: py, s: 1, a: FLIPPER.rest, w: 0, key: "left" }, { px: 340, py: py, s: -1, a: FLIPPER.rest, w: 0, key: "right" });
-      // champignons de l'étage (au-dessus de la cuvette)
-      var lay = [
-        [[140, -300], [304, -300], [222, -430]],
-        [[110, -270], [222, -350], [334, -270]],
-        [[170, -430], [274, -430], [222, -300]],
-      ][k % 3];
-      lay.forEach(function (q) { K.bumpers.push({ x: q[0], y: py + q[1], r: 24 }); });
-      // rampe vers l'étage du dessus (ou vers le sommet)
-      var mx = k % 2 === 0 ? 72 : 372, my = py - 480, r;
-      if (k < CLIMB_FLOORS - 1) {
-        var ex = k % 2 === 0 ? 294 : 150, ey = py - CLIMB_GAP - 260;
-        r = { mouth: { x: mx, y: my, r: 22 }, pts: [[mx, my], [mx, my - 110], [(mx + ex) / 2, (my + ey) / 2], [ex, ey]], speed: 600, room: k, top: false };
-      } else {
-        r = { mouth: { x: mx, y: my, r: 22 }, pts: [[mx, my], [mx, my - 90], [300, 120], [222, 86]], speed: 520, room: k, top: true };
-      }
-      K.ramps.push(prepRamp(r));
-    }
-    return K;
+    bumpFlash = BUMPERS.map(function () { return 0; });
   }
   function setMode(climb) {
     M.climb = !!climb;
     if (!climb) {
       segs = CLASSIC.segs; flippers = CLASSIC.flippers; BUMPERS = CLASSIC.BUMPERS; TARGETS = CLASSIC.TARGETS; DROPS = CLASSIC.DROPS; SLINGS = CLASSIC.SLINGS;
       RAMPS = [RAMP]; PLUNGER_Y = 800; WORLD_H = H; LANE_MINY = 360;
+      bumpFlash = BUMPERS.map(function () { return 0; }); targetFlash = TARGETS.map(function () { return 0; });
     } else {
-      if (!CLIMB) CLIMB = buildClimb();
-      segs = CLIMB.segs; flippers = CLIMB.flippers; BUMPERS = CLIMB.bumpers; TARGETS = []; DROPS = []; SLINGS = [];
-      RAMPS = CLIMB.ramps; PLUNGER_Y = CLIMB.plungerY; WORLD_H = CLIMB.worldH; LANE_MINY = CLIMB.laneMinY;
+      CW = window.FlippersClimb.build({ stages: STAGES });
+      CW.stages.forEach(function (st) { if (st.transport && st.transport.type === "ramp") { prepRamp(st.transport); st.transport.room = st.k; } });
+      TARGETS = []; DROPS = []; SLINGS = []; RAMPS = [];
+      PLUNGER_Y = CW.plungerY; WORLD_H = CW.worldH; LANE_MINY = CW.laneMinY; WIN_K = -1; setWindow(0);
     }
-    bumpFlash = BUMPERS.map(function () { return 0; }); targetFlash = TARGETS.map(function () { return 0; });
     S.plungerY = PLUNGER_Y; S.best = parseInt(store(climb ? CBEST_KEY : BEST_KEY), 10) || 0; bg = null;
+    stage.classList.toggle("fl-pixel", !!climb); resize();
   }
-  function roomOf(y) { return Math.max(0, Math.min(CLIMB_FLOORS - 1, Math.floor((CLIMB_PY0 - y) / CLIMB_GAP))); }
-  function climbBall(b, dt, sp) {
-    for (var i = 0; i < RAMPS.length; i++) {
-      var r = RAMPS[i], dx = b.x - r.mouth.x, dy = b.y - r.mouth.y;
-      if (b.vy < -320 && dx * dx + dy * dy < r.mouth.r * r.mouth.r) { startRamp(b, r); return; }
+  function stageBanner(st) {
+    S.banner = st.camp ? "CAMP DE BASE" : st.summit ? "LE SOMMET" : "ÉTAGE " + (st.k + 1); S.banner2 = st.name; S.bannerT = 3; S.bannerCol = st.camp ? "#f6c445" : "#ffffff";
+  }
+  function startFall(lost) {
+    S.fall = { t: 0, lost: lost, from: S.room };
+    S.banner = lost >= 4 ? "NON… NON… NON !" : "ÇA GLISSE !"; S.banner2 = "tu perds de la hauteur…"; S.bannerT = 2.2; S.bannerCol = "#ef6a52";
+    SND.fall();
+  }
+  function endFall(b) {
+    var f = S.fall; if (!f) return; S.fall = null;
+    var lost = Math.max(0, S.room - stageOf(b.y));
+    S.drama = 0; S.timeScale = 1;
+    if (lost >= 2) {
+      S.shake = 9; if (lost >= 3) { S.mult = 1; S.starT = 0; }
+      S.banner = lost >= 4 ? "QUELLE CHUTE !" : "AÏE !"; S.banner2 = "−" + lost + " étages" + (lost >= 3 ? " · multiplicateur perdu" : ""); S.bannerT = 3; S.bannerCol = "#ef6a52";
+      SND.crash(); burst(b.x, b.y, "#cdd2dc", 16, 260); say("Retour au charbon : " + lost + " étages à regrimper", 3);
     }
-    if (b.y < S.topY || S.topY === 0) S.topY = b.y;
-    var rm = roomOf(b.y);
-    if (rm > S.room) { S.room = rm; addScore(2500 * rm, b.x, b.y - 30, true); say("Étage " + (rm + 1) + " !", 2.5); SND.jackpot(); }
+  }
+  function collectBonus(bo) {
+    bo.got = true; SND.target();
+    if (bo.type === "acorn") { addScore(300, bo.x, bo.y - 20); }
+    else if (bo.type === "star") { S.starT = 20; say("Étoile ! Points ×2 pendant 20 s", 3); popup(bo.x, bo.y - 20, "×2", "#f6c445"); }
+    else if (bo.type === "net") { S.net = true; say("Filet de sécurité : il te rattrape à la prochaine grosse chute", 3.5); }
+    else if (bo.type === "feather") { S.featherT = 12; say("Plume ! Gravité réduite 12 s", 3); }
+    else if (bo.type === "heart") { S.lives = Math.min(5, S.lives + 1); say("Bille bonus !", 3); SND.jackpot(); }
+    burst(bo.x, bo.y, "#f6c445", 10, 180);
+  }
+  function climbCollide(b) {
+    var i, t = S.t, FC = window.FlippersClimb;
+    for (i = 0; i < ACT.arms.length; i++) {
+      var a = ACT.arms[i], an = FC.armAngle(a, t), ex = Math.cos(an) * a.len, ey = Math.sin(an) * a.len;
+      if (Math.abs(b.y - a.y) > a.len + 30) continue;
+      if (circleSeg(b, a.x - ex, a.y - ey, a.x + ex, a.y + ey, 6)) bounce(b, hit.nx, hit.ny, 0.6, -a.w * (hit.cy - a.y), a.w * (hit.cx - a.x));
+    }
+    for (i = 0; i < ACT.sliders.length; i++) {
+      var sl = ACT.sliders[i];
+      if (Math.abs(b.y - sl.y) > 40) continue;
+      var sx = FC.sliderX(sl, t), svx = (sl.x1 - sl.x0) / 2 * sl.speed * Math.cos(sl.phase + sl.speed * t);
+      if (circleSeg(b, sx - sl.hw, sl.y, sx + sl.hw, sl.y, sl.r)) { var v = bounce(b, hit.nx, hit.ny, 0.5, svx, 0); if (v > 120) { addScore(50); SND.wall(); } }
+    }
+    for (i = 0; i < ACT.mobs.length; i++) {
+      var m = ACT.mobs[i]; if (!m.alive) continue;
+      var p = FC.mobPos(m, t); if (!p.up) continue;
+      var dx = b.x - p.x, dy = b.y - p.y, rr = R + m.r, d2 = dx * dx + dy * dy;
+      if (d2 >= rr * rr) continue;
+      var d = Math.sqrt(d2) || 0.001, nx = dx / d, ny = dy / d;
+      b.x = p.x + nx * rr; b.y = p.y + ny * rr;
+      if (b.vy > 300 && ny < -0.3) {
+        m.alive = false; m.dead = 9; b.vy = -860; b.vx *= 0.6; addScore(500, p.x, p.y - 24); SND.jackpot(); burst(p.x, p.y, "#f6c445", 14, 240); S.shake = Math.max(S.shake, 3);
+        say("Mob écrasé ! +500", 1.8);
+      } else {
+        b.vx = nx * 640; b.vy = ny * 640; m.flash = 1; addScore(100, p.x, p.y - 24); SND.bumper(); S.shake = Math.max(S.shake, 2); burst(p.x, p.y, "#ef6a52", 6, 160);
+      }
+    }
+  }
+  function climbBall(b, dt, sp) {
+    var st = CW.stages[stageOf(b.y)], k = st.k, i;
+    S.stageK = k;
+    if (k > S.room) { S.room = k; addScore(500 * k, null, null, true); stageBanner(st); SND.jackpot(); if (st.camp) say("Camp de base ! Une chute ne te fera plus descendre plus bas qu'ici", 4); }
+    if (b.y < S.topY) S.topY = b.y;
+    if (S.prevK >= 0 && k < S.prevK && S.room - k >= 2 && !S.fall) {
+      if (S.net && S.room - k >= 2) {
+        S.net = false; var top = CW.stages[S.room];
+        b.x = 222; b.y = top.py - 240; b.vx = 0; b.vy = 40; b.trail = []; burst(222, top.py - 240, "#ffffff", 20, 260);
+        S.banner = "FILET !"; S.banner2 = "tu as été rattrapé"; S.bannerT = 2.5; S.bannerCol = "#9ad8ff"; SND.eject(); S.shake = 4; S.prevK = S.room; return;
+      }
+      startFall(S.room - k);
+    }
+    S.prevK = k;
+    var tr = st.transport;
+    if (tr && S.tcool <= 0) {
+      var dx = b.x - (tr.mouth ? tr.mouth.x : 0), dy = b.y - (tr.mouth ? tr.mouth.y : 0);
+      if (tr.type === "ramp") {
+        if (b.vy < -320 && dx * dx + dy * dy < tr.mouth.r * tr.mouth.r) { startRamp(b, tr); return; }
+      } else if (tr.type === "cannon") {
+        if (dx * dx + dy * dy < (tr.mouth.r) * (tr.mouth.r)) {
+          b.mode = "cannon"; b.cannon = tr; b.timer = 0.7; b.x = tr.mouth.x; b.y = tr.mouth.y; b.vx = b.vy = 0; S.tcool = 1; SND.saucer(); S.shake = 3;
+          addScore(500, tr.mouth.x, tr.mouth.y - 30); say("Canon ! Accroche-toi…", 1.8); return;
+        }
+      } else if (tr.type === "portal") {
+        if (dx * dx + dy * dy < tr.mouth.r * tr.mouth.r) {
+          b.mode = "warp"; b.exit = tr.exit; b.timer = 0.55; b.vx = b.vy = 0; S.tcool = 1; SND.ramp(); addScore(500, tr.mouth.x, tr.mouth.y - 30); burst(b.x, b.y, "#ff9ec7", 14, 200); return;
+        }
+      } else if (tr.type === "updraft") {
+        if (b.x > tr.x0 - 6 && b.x < tr.x1 + 6 && b.y < tr.y0 && b.y > tr.y1 - 10) {
+          if (b.vy < 140) b.vy -= 2900 * dt;
+          if (b.vy < -640) b.vy = -640;
+          b.vx += ((tr.x0 + tr.x1) / 2 - b.x) * 14 * dt; b.vx *= 0.985;
+          if (b.y < tr.y1 + 150) b.vx += tr.dir * 2500 * dt;
+        }
+      }
+    }
+    for (i = 0; i < ACT.bonuses.length; i++) {
+      var bo = ACT.bonuses[i]; if (bo.got) continue;
+      var ddx = b.x - bo.x, ddy = b.y - bo.y;
+      if (ddx * ddx + ddy * ddy < (R + 14) * (R + 14)) collectBonus(bo);
+    }
     if (sp < 30 && !(b.x > LANE_X0 && b.y > LANE_MINY)) {
       b.still += dt;
       if (b.still > 3) { b.still = 0; b.vx += (Math.random() - 0.5) * 240; b.vy -= 200; }
@@ -659,6 +730,7 @@
 
   function step(dt) {
     S.t += dt;
+    if (M.climb && S.balls[0]) setWindow(stageOf(S.balls[0].y));
     stepFlippers(dt);
     // spinner
     var sp = S.spin;
@@ -705,6 +777,7 @@
     else say(S.tilt ? "TILT : pas de bonus" : "Bille perdue", 2.4);
     S.lives--;
     S.draining = true; S.drainTimer = 2.4;
+    if (M.climb) { S.banner = S.lives > 0 ? "BILLE PERDUE" : "FIN DE PARTIE"; S.banner2 = "la tour t'a eu…"; S.bannerT = 2.4; S.bannerCol = "#ef6a52"; S.shake = 8; }
   }
   function afterDrain() {
     if (S.lives <= 0) { gameOver(); return; }
@@ -738,7 +811,7 @@
   /* ---------- flux de partie ---------- */
   function startGame() {
     setMode(S.pref === "climb");
-    S.score = 0; S.room = 0; S.topY = 0; S.climbTime = 0; S.won = false; S.lives = LIVES; S.ballNo = 1; S.mult = 1; S.extraGiven = false; S.newBest = false;
+    S.score = 0; S.room = 0; S.topY = 0; S.starT = 0; S.featherT = 0; S.net = false; S.bannerT = 0; S.climbTime = 0; S.won = false; S.lives = LIVES; S.ballNo = 1; S.mult = 1; S.extraGiven = false; S.newBest = false;
     S.letters = [false, false, false, false, false];
     S.locked = 0; S.lockLit = false; S.draining = false;
     S.hold = { left: {}, right: {}, plunger: {} };
@@ -746,7 +819,7 @@
     flippers.forEach(function (f) { f.a = FLIPPER.rest; f.w = 0; });
     particles.length = 0; popups.length = 0;
     newBall();
-    S.camY = Math.max(0, WORLD_H - H);
+    S.camY = Math.max(0, WORLD_H - H); S.topY = PLUNGER_Y;
     S.mode = "play";
     setOverlay(null);
     say(M.climb ? "Monte étage par étage : vise les rampes ! Espace pour armer le ressort" : "Maintiens Espace (ou « Lancer ») pour armer, relâche pour tirer", 6);
@@ -917,6 +990,7 @@
     var r = stage.getBoundingClientRect();
     dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     var cw = Math.max(240, Math.round(r.width * dpr)), ch = Math.round(cw * H / W);
+    if (M.climb) { cw = 240; ch = 420; }
     if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
     scale = canvas.width / W;
     bg = null;
@@ -1078,126 +1152,14 @@
     c.fillStyle = "#c9d3d1"; c.beginPath(); c.arc(last[0], last[1], 6, 0, 7); c.fill();
   }
 
-  /* ---------- rendu du mode Ascension ---------- */
-  var SKY = [[14, 34, 22], [26, 66, 46], [40, 84, 112], [104, 164, 214], [156, 218, 255]];
-  function skyAt(a) {
-    a = Math.max(0, Math.min(1, a)) * (SKY.length - 1);
-    var i = Math.min(SKY.length - 2, Math.floor(a)), t = a - i, p = SKY[i], q = SKY[i + 1];
-    return "rgb(" + Math.round(p[0] + (q[0] - p[0]) * t) + "," + Math.round(p[1] + (q[1] - p[1]) * t) + "," + Math.round(p[2] + (q[2] - p[2]) * t) + ")";
-  }
-  function hash2(a, b) { var h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
   function drawClimb() {
-    var c = ctx, K = CLIMB, cam = S.camY, t = S.t, i, k;
-    c.setTransform(1, 0, 0, 1, 0, 0);
-    var g = c.createLinearGradient(0, 0, 0, canvas.height);
-    g.addColorStop(0, skyAt(1 - cam / K.worldH)); g.addColorStop(1, skyAt(1 - (cam + H) / K.worldH));
-    c.fillStyle = g; c.fillRect(0, 0, canvas.width, canvas.height);
-    var sx = 0, sy = 0;
-    if (S.shake > 0.05) { sx = (Math.random() - 0.5) * S.shake; sy = (Math.random() - 0.5) * S.shake; }
-    c.setTransform(scale, 0, 0, scale, sx * scale, (sy - cam) * scale);
-    // décor : nuages en altitude, feuillages en bas
-    var y0 = Math.floor(cam / 90) - 1;
-    for (var cy = y0; cy < y0 + 12; cy++) {
-      var wy = cy * 90, alt = 1 - wy / K.worldH;
-      for (i = 0; i < 3; i++) {
-        var hx = 40 + hash2(cy, i) * 340, hy = wy + hash2(i, cy + 50) * 80;
-        if (alt > 0.5) { c.fillStyle = "rgba(255,255,255,.5)"; c.fillRect(hx, hy, 46, 8); c.fillRect(hx + 8, hy - 6, 28, 7); c.fillRect(hx + 14, hy + 7, 22, 4); }
-        else { c.fillStyle = "rgba(" + (alt < 0.25 ? "50,110,66" : "80,140,96") + ",.22)"; c.fillRect(hx, hy, 18, 7); c.fillRect(hx + 4, hy - 4, 10, 5); }
-      }
-    }
-    // couloir du ressort
-    c.fillStyle = "rgba(0,0,0,.28)"; c.fillRect(LANE_X0, 3050, LANE_X1 - LANE_X0, 540);
-    // rails
-    c.lineCap = "round"; c.lineJoin = "round";
-    function rails(lw, col) {
-      c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
-      for (var j = 0; j < K.segs.length; j++) {
-        var sg = K.segs[j];
-        if (Math.max(sg.y1, sg.y2) < cam - 20 || Math.min(sg.y1, sg.y2) > cam + H + 20) continue;
-        c.moveTo(sg.x1, sg.y1); c.lineTo(sg.x2, sg.y2);
-      }
-      c.stroke();
-    }
-    rails(10, "#2a170b"); rails(6, "#8a5a2b");
-    // étiquettes d'étage et repères d'altitude
-    c.textAlign = "center"; c.textBaseline = "middle";
-    for (k = 0; k < CLIMB_FLOORS; k++) {
-      var py = K.pys[k];
-      if (py < cam - 700 || py - 700 > cam + H) continue;
-      c.fillStyle = "rgba(255,255,255,.13)"; c.font = "900 34px Nunito, system-ui, sans-serif";
-      c.fillText("ÉTAGE " + (k + 1), 222, py - 590);
-      c.fillStyle = "rgba(242,212,138,.22)"; c.font = "800 12px Nunito, system-ui, sans-serif";
-      c.fillText(Math.round((PLUNGER_Y - py) / 20) + " m", 222, py - 548);
-    }
-    // sommet : gland doré
-    var gy = 86 + Math.sin(t * 3) * 3;
-    if (cam < 400) {
-      c.fillStyle = "rgba(255, 220, 100, " + (0.25 + 0.12 * Math.sin(t * 4)) + ")"; c.beginPath(); c.arc(222, gy, 34, 0, 7); c.fill();
-      c.fillStyle = "#c98a1e"; c.fillRect(210, gy - 16, 24, 9);
-      c.fillStyle = "#ffd257"; c.beginPath(); c.ellipse(222, gy + 2, 13, 16, 0, 0, 7); c.fill();
-      c.fillStyle = "#fff3c4"; c.fillRect(216, gy - 6, 4, 9);
-    }
-    // rampes
-    K.ramps.forEach(function (r) {
-      var lo = Math.min.apply(null, r.pts.map(function (p) { return p[1]; })), hi = Math.max.apply(null, r.pts.map(function (p) { return p[1]; }));
-      if (hi < cam - 30 || lo > cam + H + 30) return;
-      c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.arc(r.mouth.x, r.mouth.y + 2, r.mouth.r + 6, Math.PI, 0); c.lineTo(r.mouth.x + r.mouth.r + 6, r.mouth.y + 36); c.lineTo(r.mouth.x - r.mouth.r - 6, r.mouth.y + 36); c.closePath(); c.fill();
-      drawRamp(c, r);
-      lamp(c, r.mouth.x, r.mouth.y + 28, 7, true, r.top ? "#ffd257" : "#7fd1ff", true);
-    });
-    for (i = 0; i < BUMPERS.length; i++) { if (BUMPERS[i].y > cam - 40 && BUMPERS[i].y < cam + H + 40) drawBumper(c, BUMPERS[i], bumpFlash[i]); }
-    // ressort
-    var py2 = S.plungerY;
-    c.strokeStyle = "#cfd6d4"; c.lineWidth = 2; c.beginPath();
-    var y1 = 3586; c.moveTo(LANE_C, py2 + 3);
-    for (var z = 1; z <= 9; z++) c.lineTo(LANE_C + (z % 2 ? 9 : -9), py2 + 3 + (y1 - py2 - 3) * z / 9);
-    c.stroke();
-    c.fillStyle = "#b5bbb8"; c.fillRect(LANE_X0 + 4, py2 - 1, LANE_X1 - LANE_X0 - 8, 6);
-    c.fillStyle = "#e8873a"; c.fillRect(LANE_X0 + 4, py2 - 1, LANE_X1 - LANE_X0 - 8, 2);
-    flippers.forEach(function (f) { if (f.py > cam - 120 && f.py < cam + H + 120) drawFlipper(c, f); });
-    // billes
-    S.balls.forEach(function (b) {
-      if (b.mode === "ramp") return;
-      for (var ti = 0; ti < b.trail.length - 1; ti++) {
-        c.fillStyle = "rgba(220, 235, 230, " + (ti / b.trail.length * 0.22) + ")";
-        c.beginPath(); c.arc(b.trail[ti].x, b.trail[ti].y, R * (0.4 + ti / b.trail.length * 0.5), 0, 7); c.fill();
-      }
-      drawBall(c, b, false);
-    });
-    S.balls.forEach(function (b) { if (b.mode === "ramp") drawBall(c, b, true); });
-    particles.forEach(function (p) { c.globalAlpha = Math.max(0, p.life); c.fillStyle = p.col; c.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); });
-    c.globalAlpha = 1;
-    c.font = "900 15px Nunito, system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
-    popups.forEach(function (p) {
-      c.globalAlpha = Math.max(0, Math.min(1, p.life * 1.5));
-      c.lineWidth = 3.5; c.strokeStyle = "rgba(20,10,0,.8)"; c.strokeText(p.text, p.x, p.y);
-      c.fillStyle = p.col; c.fillText(p.text, p.x, p.y);
-    });
-    c.globalAlpha = 1;
-    var waiting = S.mode === "play" && S.balls.some(function (b) { return b.mode === "lane" && b.auto === 0 && b.y > PLUNGER_Y - 40; });
-    if (waiting && S.charge === 0) {
-      c.fillStyle = "rgba(255, 243, 196, " + (0.55 + 0.35 * Math.sin(t * 6)) + ")";
-      c.font = "800 11px Nunito, system-ui, sans-serif"; c.textBaseline = "alphabetic";
-      c.fillText("ESPACE", LANE_C, PLUNGER_Y - 55); c.fillText("▼", LANE_C, PLUNGER_Y - 39);
-    }
-    if (S.charge > 0) {
-      c.fillStyle = "rgba(0,0,0,.45)"; c.fillRect(LANE_X0 + 4, PLUNGER_Y - 140, 6, 84);
-      c.fillStyle = S.charge > 0.8 ? "#ff7a5a" : "#ffd257"; c.fillRect(LANE_X0 + 4, PLUNGER_Y - 56 - 84 * S.charge, 6, 84 * S.charge);
-    }
-    // éléments d'interface (fixes à l'écran)
-    c.setTransform(scale, 0, 0, scale, 0, 0);
-    if (S.saver > 0 && S.mode === "play" && !S.saverArm) lamp(c, 450, 24, 8, true, "#ffd257", true);
-    if (S.tilt) {
-      c.fillStyle = "rgba(220, 40, 40, " + (0.5 + 0.4 * Math.sin(t * 14)) + ")";
-      c.font = "900 40px Nunito, system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
-      c.fillText("TILT", 222, 180);
-    }
-    // jauge d'altitude
-    var frac = Math.max(0, Math.min(1, (PLUNGER_Y - S.topY) / (PLUNGER_Y - 86)));
-    c.fillStyle = "rgba(0,0,0,.35)"; c.fillRect(8, 60, 6, 200);
-    c.fillStyle = "#ffd257"; c.fillRect(8, 260 - 200 * frac, 6, 200 * frac);
+    var FC = window.FlippersClimb, view = {
+      world: CW, H: H, pxW: canvas.width, pxH: canvas.height, camY: S.camY, t: S.t, balls: S.balls, particles: particles, popups: popups,
+      plungerY: S.plungerY, charge: S.charge, drama: S.drama, banner: S.banner, banner2: S.banner2, bannerT: S.bannerT, bannerCol: S.bannerCol, topY: S.topY,
+      waiting: S.mode === "play" && S.balls.some(function (b) { return b.mode === "lane" && b.auto === 0 && b.y > PLUNGER_Y - 40; }),
+    };
+    FC.render(ctx, view);
   }
-
   function drawFrame() {
     if (M.climb) { drawClimb(); return; }
     var c = ctx;
@@ -1328,11 +1290,11 @@
   function updateCamera(dt) {
     var b = null;
     for (var i = 0; i < S.balls.length; i++) { var q = S.balls[i]; if (!b || q.y < b.y) b = q; }
-    var maxCam = Math.max(0, WORLD_H - H), target = b ? b.y - 500 + Math.max(-300, Math.min(300, b.vy * 0.12)) : maxCam;
+    var maxCam = Math.max(0, WORLD_H - H), lead = S.fall ? Math.max(-300, Math.min(420, b ? b.vy * 0.28 : 0)) : Math.max(-300, Math.min(300, b ? b.vy * 0.12 : 0));
+    var target = b ? b.y - 500 + lead : maxCam;
     target = Math.max(0, Math.min(maxCam, target));
-    S.camY += (target - S.camY) * Math.min(1, dt * 6);
+    S.camY += (target - S.camY) * Math.min(1, dt * (S.fall ? 3 : 6));
   }
-
   function update(dt) {
     var i;
     for (i = 0; i < bumpFlash.length; i++) bumpFlash[i] = Math.max(0, bumpFlash[i] - dt * 5);
@@ -1351,8 +1313,22 @@
     }
     if (S.msgT > 0) { S.msgT -= dt; if (S.msgT <= 0) S.msg = ""; }
 
+    if (S.bannerT > 0) S.bannerT -= dt;
     if (S.mode !== "play") return;
-    if (M.climb) { S.climbTime += dt; updateCamera(dt); }
+    if (M.climb) {
+      S.climbTime += dt; updateCamera(dt);
+      if (S.starT > 0) S.starT -= dt; if (S.featherT > 0) S.featherT -= dt; if (S.tcool > 0) S.tcool -= dt;
+      ACT.stages.forEach(function (st) {
+        st.bumpers.forEach(function (bm) { if (bm.flash > 0) bm.flash = Math.max(0, bm.flash - dt * 5); });
+        st.mobs.forEach(function (mb) { if (mb.flash > 0) mb.flash -= dt * 4; if (!mb.alive) { mb.dead -= dt; if (mb.dead <= 0) mb.alive = true; } });
+      });
+      if (S.fall) {
+        var fb = S.balls[0]; S.fall.t += dt;
+        S.timeScale = S.fall.t < 1.5 ? 0.36 : Math.min(1, 0.36 + (S.fall.t - 1.5) * 0.8); S.drama = S.fall.t < 1.8 ? 0.9 : 0.4;
+        if (!fb || fb.mode !== "live" || fb.vy < -60 || (S.fall.t > 0.8 && Math.abs(fb.vx) + Math.abs(fb.vy) < 140) || S.fall.t > 3.4) endFall(fb || { x: 222, y: 0 });
+      } else { S.timeScale = 1; S.drama = Math.max(0, S.drama - dt); }
+      dt *= S.timeScale;
+    }
     var pl = anyHold(S.hold.plunger);
     var waiting = S.balls.some(function (b) { return b.mode === "lane" && b.auto === 0; });
     if (pl && waiting) S.charge = Math.min(1, S.charge + dt * 1.2);
@@ -1393,7 +1369,7 @@
   if (/[?&]debug\b/.test(location.search)) {
     window.FLIPPERS_DEBUG = {
       S: S, step: function (n) { for (var i = 0; i < n; i++) step(DT); }, startGame: startGame,
-      hold: setHold, launch: launch, flippers: function () { return flippers; }, nudge: nudge, tick: update, M: M, setPref: function (m) { S.pref = m; }, climb: function () { return CLIMB; },
+      hold: setHold, launch: launch, flippers: function () { return flippers; }, nudge: nudge, tick: update, M: M, setPref: function (m) { S.pref = m; }, climb: function () { return CW; }, stageOf: function (y) { return stageOf(y); },
     };
   }
 })();
