@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.3.3";
+  var VERSION = "2.4.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -170,6 +170,11 @@
     if (d.ns) SPR[k].ns = d.ns;  // sprite dessiné pour cette échelle de jeu : pas agrandi à l'écran
   });
   var urlCache = {};
+  // icônes pixel à la place des emojis (graphismes lot 5)
+  var EPX = D.EMOJI_PX || {};
+  function pxName(e) { if (!e) return null; var n = EPX[e] || EPX[String(e).replace(/\uFE0F/g, "")]; return n && SPR[n] ? n : null; }
+  function ic(e) { var n = pxName(e); return n ? '<img class="px-ic" src="' + spriteUrl(n) + '" alt="">' : (e || ""); }
+  function icDraw(e, x, y) { var n = pxName(e); if (!n) return false; var s = SPR[n][0]; ctx.drawImage(s.c, Math.round(x - s.w / 2), Math.round(y - s.h / 2)); return true; }
   function spriteUrl(name) { return urlCache[name] || (urlCache[name] = (SPR[name] || SPR.nut)[0].c.toDataURL()); }
   function goldIc() { return '<img class="gold-ic" src="' + spriteUrl("gold") + '" alt="glands d\'or">'; }
 
@@ -1296,7 +1301,7 @@
     if (!box) return;
     var el = document.createElement("div");
     el.className = "game-toast item-toast r" + it.r; el.style.setProperty("--rc", ra.color);
-    el.innerHTML = "<strong>" + it.icon + " " + esc(it.name) + (n > 1 ? " ×" + n : "") + "</strong><span><em>" + ra.name + "</em> · " + esc(it.desc) + "</span>";
+    el.innerHTML = "<strong>" + ic(it.icon) + " " + esc(it.name) + (n > 1 ? " ×" + n : "") + "</strong><span><em>" + ra.name + "</em> · " + esc(it.desc) + "</span>";
     box.appendChild(el);
     setTimeout(function () { el.classList.add("out"); }, 3200);
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3800);
@@ -1431,17 +1436,17 @@
   }
   function drawItemsHud(y0) {
     var it = me.items; if (!it) return;
-    var x = 2, per = Math.max(6, Math.floor((W * 0.55) / 11)), cnt = 0;
+    var x = 2, per = Math.max(6, Math.floor((W * 0.55) / 15)), cnt = 0;
     ctx.font = "7px sans-serif"; ctx.textBaseline = "top";
     Object.keys(it).forEach(function (id) {
       var d = ITM[id]; if (!d) return;
-      if (cnt && cnt % per === 0) { x = 2; y0 += 11; }
+      if (cnt && cnt % per === 0) { x = 2; y0 += 15; }
       cnt++;
-      ctx.fillStyle = "rgba(20,14,10,.55)"; ctx.fillRect(x, y0, 10, 10);
-      ctx.fillStyle = D.RARITIES[d.r].color; ctx.fillRect(x, y0 + 9, 10, 1);
-      ctx.fillText(d.icon, x + 1, y0 + 1);
-      if (it[id] > 1) drawText(String(it[id]), x + 10, y0 + 6, "#fdf3de", "r");
-      x += 11;
+      ctx.fillStyle = "rgba(20,14,10,.55)"; ctx.fillRect(x, y0, 14, 14);
+      ctx.fillStyle = D.RARITIES[d.r].color; ctx.fillRect(x, y0 + 13, 14, 1);
+      if (!icDraw(d.icon, x + 7, y0 + 7)) ctx.fillText(d.icon, x + 3, y0 + 3);
+      if (it[id] > 1) drawText(String(it[id]), x + 14, y0 + 9, "#fdf3de", "r");
+      x += 15;
     });
     ctx.textBaseline = "alphabetic";
   }
@@ -2757,9 +2762,9 @@
   function questById(id) { return D.QUESTS.filter(function (q) { return q.id === id; })[0] || { desc: "" }; }
   function questReward(qid) {
     var it = D.ITEMS.filter(function (x) { return x.quest === qid; })[0];
-    if (it) { var ra = D.RARITIES[it.r]; return { kind: "l'objet", name: it.name, desc: "(" + ra.name.toLowerCase() + ") " + it.desc, icon: it.icon, color: ra.color }; }
+    if (it) { var ra = D.RARITIES[it.r]; return { kind: "l'objet", name: it.name, desc: "(" + ra.name.toLowerCase() + ") " + it.desc, icon: ic(it.icon), color: ra.color }; }
     var k, d;
-    for (k in D.GEAR) { d = D.GEAR[k]; if (d.quest === qid) return { kind: "l'attirail", name: d.name, desc: d.desc, icon: d.icon, color: "#b07cf0" }; }
+    for (k in D.GEAR) { d = D.GEAR[k]; if (d.quest === qid) return { kind: "l'attirail", name: d.name, desc: d.desc, icon: ic(d.icon), color: "#b07cf0" }; }
     for (k in D.SHRINES) { d = D.SHRINES[k]; if (d.quest === qid) return { kind: "le sanctuaire", name: d.name, desc: d.desc, icon: "⛩️", color: "#f6d36b" }; }
     for (k in D.ARMES) { d = D.ARMES[k]; if (d.quest === qid) return { kind: "l'arme", name: d.name, desc: d.desc, icon: img(d.icon), color: "#f2b05e" }; }
     for (k in D.WEAPONS) { d = D.WEAPONS[k]; if (d.quest === qid) return { kind: "l'arme", name: d.name, desc: d.desc[0], icon: img(d.icon), color: "#f2b05e" }; }
@@ -3155,7 +3160,7 @@
   }
   function v2Card(c) {
     var pl = me, d;
-    if (c.type === "itm") { var it = ITM[c.id]; return { icon: "ITEMICON", iconTxt: it.icon, name: it.name, lvl: "Objet commun (anneau du collectionneur)", desc: it.desc, cls: "" }; }
+    if (c.type === "itm") { var it = ITM[c.id]; return { icon: "ITEMICON", iconTxt: ic(it.icon), name: it.name, lvl: "Objet commun (anneau du collectionneur)", desc: it.desc, cls: "" }; }
     if (c.type === "evo") { var ev = ALLW[c.id].evos.filter(function (e) { return e.id === c.evo; })[0]; d = techDef(pl, c.id); var eel = D.ELEMENTS[armeOf(pl).element]; return { icon: d.icon, name: d.name + " → " + ev.name, lvl: ev.elemC ? "Évolution élémentaire · " + (eel ? eel.name : "") : "Évolution", desc: ev.desc, cls: ev.elemC ? " is-fusion is-legend" : " is-fusion" }; }
     if (c.type === "pf") { var tf = c.rec === 2 ? D.TFUS2[c.id] : D.TFUS[c.id]; d = techDef(pl, c.id); return { icon: d.icon, name: d.name + " + " + D.PASSIVES[tf.p].name, lvl: "Fusion : " + tf.name, desc: tf.desc, cls: " is-fusion" }; }
     if (c.type === "cb") { var cb = ALLW[c.id]; return { icon: cb.icon, name: cb.name, lvl: cb.legend ? "Fusion légendaire !" : "Fusion de techniques", desc: cb.desc[0] + " Recette : " + cb.parts.map(function (q) { return ALLW[q].type === "combo" ? ALLW[q].name : techDef(pl, q).name; }).join(" + ") + ". Libère un emplacement.", cls: cb.legend ? " is-fusion is-legend" : " is-fusion" }; }
@@ -4076,7 +4081,7 @@
     var bar = function (lab, l, a, b, up) { var k = b > a ? Math.min(100, Math.round((cxOrM(lab) - a) / (b - a) * 100)) : 100; return '<p class="v2-bar"><span>' + lab + " <b>" + l + "</b>" + (up ? " ⬆" : "") + '</span><span class="rank-bar"><i style="width:' + k + '%"></i></span></p>'; };
     function cxOrM(lab) { return lab.indexOf("Maîtrise") === 0 ? mx : cx; }
     return '<div class="v2-run">' + bar(esc(charById(g.cid).name) + " · niveau", cl, c0, c1, g.l1 > g.l0) + bar("Maîtrise " + esc(D.ARMES[g.aid].name), ml, m0, m1, g.m1 > g.m0) +
-      (res.length ? '<p class="game-small">Ressources : ' + res.map(function (k) { return D.RES[k].icon + " " + esc(D.RES[k].name) + " x" + g.res[k]; }).join(" · ") + "</p>" : "") +
+      (res.length ? '<p class="game-small">Ressources : ' + res.map(function (k) { return ic(D.RES[k].icon) + " " + esc(D.RES[k].name) + " x" + g.res[k]; }).join(" · ") + "</p>" : "") +
       (g.loot.length ? '<p class="game-small">Attirail trouvé : ' + g.loot.map(function (q) { return "<b>" + esc(D.GEAR[q.t].name) + "</b>"; }).join(", ") + " (au terrier)</p>" : "") + "</div>";
   }
   /* =====================================================================
@@ -4291,7 +4296,7 @@
     r.ex.pend = s; state = "levelup"; clearInput();
     var cap = 1 + ((S.secureSlots) || 0), free = cap - r.secure.length;
     var html = '<span class="kicker">Autel du passage</span><h2>Mettre un objet à l\'abri ?</h2><p class="game-small">Ce qui est à l\'abri n\'est jamais perdu, même si tu meurs. Emplacements : ' + r.secure.length + " / " + cap + '.</p><div class="choices">';
-    if (free > 0) r.bag.forEach(function (b, i) { html += '<button type="button" class="choice" data-action="xsecure" data-arg="' + i + '"><span class="choice-key">' + (i + 1) + '</span><span class="choice-text"><strong>' + esc(entryName(b)) + "</strong><span>" + (b.k === "gear" ? esc(pieceDesc(b.q)) : esc(D.RES[b.id].icon)) + "</span></span></button>"; });
+    if (free > 0) r.bag.forEach(function (b, i) { html += '<button type="button" class="choice" data-action="xsecure" data-arg="' + i + '"><span class="choice-key">' + (i + 1) + '</span><span class="choice-text"><strong>' + esc(entryName(b)) + "</strong><span>" + (b.k === "gear" ? esc(pieceDesc(b.q)) : ic(D.RES[b.id].icon)) + "</span></span></button>"; });
     html += '</div><div class="btn-row center"><button class="btn" type="button" data-action="xsecure" data-arg="-1">Descendre sans rien mettre</button></div>';
     showCard(html, "secure");
   }
@@ -6168,8 +6173,8 @@
       if (g.kind === "item") {
         var di = D.ITEMS[g.v] || D.ITEMS[0], rc = D.RARITIES[di.r].color, gx = Math.round(g.x), gy = Math.round(g.y + bob * 1.5);
         ctx.globalAlpha = 0.25 + 0.1 * Math.sin(r.time * 4); ctx.fillStyle = rc; ctx.fillRect(gx - 2, gy - 40, 4, 40); ctx.globalAlpha = 0.5; ctx.fillRect(gx - 1, gy - 40, 2, 40); ctx.globalAlpha = 1;
-        ctx.fillStyle = "rgba(20,14,10,.75)"; ctx.fillRect(gx - 6, gy - 6, 12, 12); ctx.strokeStyle = rc; ctx.lineWidth = 1; ctx.strokeRect(gx - 5.5, gy - 5.5, 11, 11);
-        ctx.font = "8px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center"; ctx.fillText(di.icon, gx, gy + 1); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "rgba(20,14,10,.75)"; ctx.fillRect(gx - 8, gy - 8, 16, 16); ctx.strokeStyle = rc; ctx.lineWidth = 1; ctx.strokeRect(gx - 7.5, gy - 7.5, 15, 15);
+        if (!icDraw(di.icon, gx, gy)) { ctx.font = "8px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center"; ctx.fillText(di.icon, gx, gy + 1); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; }
         return;
       }
       var s = g.kind === "xp" ? (g.v >= 3 ? SPR.bignut[0] : SPR.nut[0]) : (SPR[g.kind === "relic" ? "relic" : g.kind] || SPR.nut)[0];
@@ -6645,7 +6650,7 @@
     }
     // reliques et objets sous les cases
     var rk = Object.keys(me.relics || {});
-    rk.forEach(function (id, i) { var rl = D.RELICS.filter(function (x) { return x.id === id; })[0]; if (rl) { ctx.font = "8px sans-serif"; ctx.fillText(rl.icon, 2 + i * 10, yy + 6); } });
+    rk.forEach(function (id, i) { var rl = D.RELICS.filter(function (x) { return x.id === id; })[0]; if (rl && !icDraw(rl.icon, 9 + i * 15, yy + 3)) { ctx.font = "8px sans-serif"; ctx.fillText(rl.icon, 2 + i * 15, yy + 6); } });
     drawItemsHud(yy - 1 + (rk.length ? 10 : 0));
     var k = String(r.kills), g = String(Math.floor(r.gold));
     drawText(k, W - 4, 29, "#fdf3de", "r"); icon("skull", W - 4 - textWidth(k) - 5, 31);
@@ -7068,7 +7073,7 @@
       D.PRESTIGE_SHOP.forEach(function (it) {
         var lvl = pu(it.id), max = lvl >= it.max, c = pupCost(it, lvl), pips = "";
         for (var i = 0; i < it.max; i++) pips += '<i class="' + (i < lvl ? "on" : "") + '"></i>';
-        html += '<div class="shop-item pshop-item"><span class="shop-ic">' + it.icon + '</span><div class="shop-text"><strong>' + esc(it.name) + "</strong><span>" + esc(it.desc) + (it.max > 1 ? " par niveau" : "") + '</span><span class="pips">' + pips + "</span></div>" +
+        html += '<div class="shop-item pshop-item"><span class="shop-ic">' + ic(it.icon) + '</span><div class="shop-text"><strong>' + esc(it.name) + "</strong><span>" + esc(it.desc) + (it.max > 1 ? " par niveau" : "") + '</span><span class="pips">' + pips + "</span></div>" +
           (max ? '<span class="shop-max">MAX</span>' : '<button class="btn btn-small" type="button" data-action="pbuy" data-arg="' + it.id + '"' + (S.ppts < c ? " disabled" : "") + ">" + c.toLocaleString("fr-FR") + " ✨</button>") + "</div>";
       });
       return html + "</div>";
@@ -7079,7 +7084,7 @@
         var lvl = S.shop[it.id] || 0, max = lvl >= it.max, ok = has(it.unlock), cost = shopCost(it, lvl);
         var pips = "";
         for (var i = 0; i < it.max; i++) pips += '<i class="' + (i < lvl ? "on" : "") + '"></i>';
-        html += '<div class="shop-item' + (ok ? "" : " is-locked") + '"><span class="shop-ic">' + (ok ? it.icon : "🔒") + "</span>" +
+        html += '<div class="shop-item' + (ok ? "" : " is-locked") + '"><span class="shop-ic">' + (ok ? ic(it.icon) : "🔒") + "</span>" +
           '<div class="shop-text"><strong>' + esc(it.name) + "</strong><span>" + esc(ok ? it.desc : lockText(it.unlock)) + '</span><span class="pips">' + pips + "</span></div>" +
           (max ? '<span class="shop-max">MAX</span>' : '<button class="btn btn-small" type="button" data-action="buy" data-arg="' + it.id + '"' + (!ok || S.gold < cost ? " disabled" : "") + ">" + cost + " " + goldIc() + "</button>") +
           "</div>";
@@ -7093,7 +7098,7 @@
         '<p class="game-small">Chaque quête réussie ajoute un nouvel objet au butin. Elles se re-verrouillent à chaque prestige.</p><div class="ach-list">';
       D.QUESTS.forEach(function (qq) {
         var ok = !!q[qq.id], rw = questReward(qq.id);
-        html += '<div class="ach quest' + (ok ? " is-done" : "") + '" style="--rc:' + rw.color + '"><span class="ach-ic">' + (ok ? rw.icon : "🔒") + "</span>" +
+        html += '<div class="ach quest' + (ok ? " is-done" : "") + '" style="--rc:' + rw.color + '"><span class="ach-ic">' + (ok ? (String(rw.icon).indexOf("<") === 0 ? rw.icon : ic(rw.icon)) : "🔒") + "</span>" +
           "<div><strong>" + esc(qq.desc) + "</strong><span>Débloque " + rw.kind + ' <b class="q-item">' + esc(rw.name) + "</b>" + (rw.desc ? " : " + esc(rw.desc) : "") + "</span></div>" +
           '<span class="ach-gold">' + (ok ? "✓" : "") + "</span></div>";
       });
@@ -7127,7 +7132,7 @@
         var q = pieceById(w[sl.id]), g = q && D.GEAR[q.t];
         if (g && g.elem) pts[g.elem] += q.pts;
         html += '<button type="button" class="v2-slot' + (q ? " is-full" : "") + '" data-action="eqpick" data-arg="' + sl.id + '"><span class="v2-slot-h">' + esc(sl.name) + " <small>" + esc(sl.state) + "</small></span>" +
-          (q ? "<b>" + g.icon + " " + esc(g.name) + "</b><small>" + esc(pieceDesc(q)) + (g.elem ? ' · <span style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + "●".repeat(q.pts) + " " + D.ELEMENTS[g.elem].name + "</span>" : "") + "</small>" : "<small>Vide</small>") + "</button>";
+          (q ? "<b>" + ic(g.icon) + " " + esc(g.name) + "</b><small>" + esc(pieceDesc(q)) + (g.elem ? ' · <span style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + "●".repeat(q.pts) + " " + D.ELEMENTS[g.elem].name + "</span>" : "") + "</small>" : "<small>Vide</small>") + "</button>";
       });
       html += "</div>";
       var tiers = []; Object.keys(pts).forEach(function (el) { D.ELEM_TIERS[el].forEach(function (t) { if (pts[el] >= t[0]) tiers.push("<b>" + D.ELEMENTS[el].name + " " + t[0] + "</b> : " + esc(t[1])); }); });
@@ -7168,7 +7173,7 @@
       if (!list.length) html += '<p class="game-small">Aucune pièce. Les boss en lâchent, et l\'atelier en fabrique.</p>';
       list.forEach(function (q) {
         var g = D.GEAR[q.t], who = whoWears(q.id);
-        html += '<div class="shop-item' + (g.who && g.who !== S.char ? " is-locked" : "") + '"><span class="shop-ic">' + g.icon + '</span><div class="shop-text"><strong>' + esc(g.name) + (q.tier > 1 ? " <small>palier " + q.tier + "</small>" : "") + (g.unique ? ' <small class="set-tag">unique</small>' : "") + (g.set ? ' <small class="set-tag">' + esc(D.SETS[g.set].name) + "</small>" : "") + "</strong><span>" + esc(pieceDesc(q)) + "</span>" + (g.who && g.who !== S.char ? "<small>Seulement pour " + esc(charById(g.who).name) + "</small>" : "") +
+        html += '<div class="shop-item' + (g.who && g.who !== S.char ? " is-locked" : "") + '"><span class="shop-ic">' + ic(g.icon) + '</span><div class="shop-text"><strong>' + esc(g.name) + (q.tier > 1 ? " <small>palier " + q.tier + "</small>" : "") + (g.unique ? ' <small class="set-tag">unique</small>' : "") + (g.set ? ' <small class="set-tag">' + esc(D.SETS[g.set].name) + "</small>" : "") + "</strong><span>" + esc(pieceDesc(q)) + "</span>" + (g.who && g.who !== S.char ? "<small>Seulement pour " + esc(charById(g.who).name) + "</small>" : "") +
           (g.lo !== undefined ? "<small>Jet : " + Math.round(q.roll * 100) + " % de la fourchette (" + fmtV(g.lo) + " à " + fmtV(g.hi) + ")</small>" : "") +
           (g.elem ? '<small style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + q.pts + " point" + (q.pts > 1 ? "s" : "") + " de " + D.ELEMENTS[g.elem].name + "</small>" : "") + "</div>" +
           (who === S.char && w[sl.id] === q.id ? '<span class="pill">porté</span>' : '<button class="btn btn-small" type="button" data-action="eqwear" data-arg="' + q.id + '">' + (who ? "Prendre à " + esc(charById(who).name) : "Équiper") + "</button>") + "</div>";
@@ -7179,7 +7184,7 @@
       eqS();
       var html = '<div class="screen-head">' + back() + "<h2>L'atelier de Bûche</h2></div>";
       var have = Object.keys(D.RES).filter(function (k) { return S.res[k] > 0; });
-      html += '<p class="game-small">Ressources : ' + (have.length ? have.map(function (k) { return D.RES[k].icon + " " + esc(D.RES[k].name) + " <b>" + S.res[k] + "</b>"; }).join(" · ") : "aucune pour l'instant (les ennemis en lâchent, chaque région a les siennes)") + "</p>";
+      html += '<p class="game-small">Ressources : ' + (have.length ? have.map(function (k) { return ic(D.RES[k].icon) + " " + esc(D.RES[k].name) + " <b>" + S.res[k] + "</b>"; }).join(" · ") : "aucune pour l'instant (les ennemis en lâchent, chaque région a les siennes)") + "</p>";
       html += '<p class="game-small">Le craft donne un jet moyen garanti ; un objet trouvé couvre toute la fourchette. Coffre : ' + eqS().inv.length + " / 40.</p>";
       D.SLOTS.filter(function (s0, i) { return i < 5; }).forEach(function (sl) {
         var kind = sl.kind || sl.id;
@@ -7188,8 +7193,8 @@
           var g = D.GEAR[t]; if (g.slot !== kind || g.unique) return;
           var lockedR = (g.set && !D.SETS[g.set].mega && !(S.recipes || {})[g.set]) || !questOk(g);
           var ok = canCraft(t) && !lockedR;
-          html += '<div class="shop-item' + (lockedR ? " is-locked" : "") + '"><span class="shop-ic">' + g.icon + '</span><div class="shop-text"><strong>' + esc(g.name) + (g.set ? ' <small class="set-tag">' + esc(D.SETS[g.set].name) + (g.who ? " · " + esc(charById(g.who).name) : "") + (lockedR ? " · recette à trouver en Donjon" : "") + "</small>" : "") + (!questOk(g) ? ' <small class="set-tag">🔒 ' + esc(questById(g.quest).desc) + "</small>" : "") + (g.elem ? ' <small style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + D.ELEMENTS[g.elem].name + "</small>" : "") + "</strong><span>" + esc(g.desc.replace("{v}", g.lo !== undefined ? fmtV(g.lo) + "-" + fmtV(g.hi) : "").replace("{t}", "au hasard")) + "</span><small>" +
-            Object.keys(g.cost).map(function (k) { return D.RES[k].icon + " " + (S.res[k] || 0) + "/" + g.cost[k]; }).join(" · ") + "</small></div>" +
+          html += '<div class="shop-item' + (lockedR ? " is-locked" : "") + '"><span class="shop-ic">' + ic(g.icon) + '</span><div class="shop-text"><strong>' + esc(g.name) + (g.set ? ' <small class="set-tag">' + esc(D.SETS[g.set].name) + (g.who ? " · " + esc(charById(g.who).name) : "") + (lockedR ? " · recette à trouver en Donjon" : "") + "</small>" : "") + (!questOk(g) ? ' <small class="set-tag">🔒 ' + esc(questById(g.quest).desc) + "</small>" : "") + (g.elem ? ' <small style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + D.ELEMENTS[g.elem].name + "</small>" : "") + "</strong><span>" + esc(g.desc.replace("{v}", g.lo !== undefined ? fmtV(g.lo) + "-" + fmtV(g.hi) : "").replace("{t}", "au hasard")) + "</span><small>" +
+            Object.keys(g.cost).map(function (k) { return ic(D.RES[k].icon) + " " + (S.res[k] || 0) + "/" + g.cost[k]; }).join(" · ") + "</small></div>" +
             '<button class="btn btn-small" type="button" data-action="craft" data-arg="' + t + '"' + (ok ? "" : " disabled") + ">Fabriquer</button></div>";
         });
         html += "</div>";
@@ -7197,7 +7202,7 @@
       var spare = eqS().inv.filter(function (q) { return !whoWears(q.id); });
       if (spare.length) {
         html += '<h3 class="pick-title">Recyclage</h3><p class="game-small">Rend la moitié des ressources de la recette.</p><div class="shop-list">';
-        spare.forEach(function (q) { var g = D.GEAR[q.t]; html += '<div class="shop-item"><span class="shop-ic">' + g.icon + '</span><div class="shop-text"><strong>' + esc(g.name) + "</strong><span>" + esc(pieceDesc(q)) + '</span></div><button class="btn btn-ghost btn-small" type="button" data-action="recy" data-arg="' + q.id + '">Recycler</button></div>'; });
+        spare.forEach(function (q) { var g = D.GEAR[q.t]; html += '<div class="shop-item"><span class="shop-ic">' + ic(g.icon) + '</span><div class="shop-text"><strong>' + esc(g.name) + "</strong><span>" + esc(pieceDesc(q)) + '</span></div><button class="btn btn-ghost btn-small" type="button" data-action="recy" data-arg="' + q.id + '">Recycler</button></div>'; });
         html += "</div>";
       }
       return html;
@@ -7210,7 +7215,7 @@
       if (!list.length) html += '<p class="game-small">Aucune pièce à forger.</p>';
       list.forEach(function (q) {
         var g = D.GEAR[q.t], who = whoWears(q.id);
-        html += '<div class="shop-item"><span class="shop-ic">' + g.icon + '</span><div class="shop-text"><strong>' + esc(g.name) + (who ? " <small>(" + esc(charById(who).name) + ")</small>" : "") + "</strong><span>" + esc(pieceDesc(q)) + (q.extra ? " + " + esc(D.GEAR[q.extra].name) : "") + "</span><small>Jet " + Math.round(q.roll * 100) + " %</small></div>" +
+        html += '<div class="shop-item"><span class="shop-ic">' + ic(g.icon) + '</span><div class="shop-text"><strong>' + esc(g.name) + (who ? " <small>(" + esc(charById(who).name) + ")</small>" : "") + "</strong><span>" + esc(pieceDesc(q)) + (q.extra ? " + " + esc(D.GEAR[q.extra].name) : "") + "</span><small>Jet " + Math.round(q.roll * 100) + " %</small></div>" +
           '<button class="btn btn-small" type="button" data-action="rune" data-arg="' + q.id + '"' + ((S.res.rune || 0) < 1 ? " disabled" : "") + '>Relancer 🔹</button>' +
           (["coiffe", "bottes", "cape"].indexOf(g.slot) >= 0 ? '<button class="btn btn-small btn-alt" type="button" data-action="runer" data-arg="' + q.id + '"' + ((S.res.rune_rare || 0) < 1 ? " disabled" : "") + ">+ effet 🔷</button>" : "") + "</div>";
       });
@@ -7227,7 +7232,7 @@
       var have = Object.keys(D.RES).filter(function (k) { return !D.RES[k].trophy && !D.RES[k].rune && (S.res[k] || 0) >= 3; });
       Object.keys(D.RES).filter(function (k) { return !D.RES[k].trophy && !D.RES[k].rune; }).forEach(function (k) {
         var src = have.filter(function (x) { return x !== k; }).sort(function (a, b) { return (S.res[b] || 0) - (S.res[a] || 0); })[0];
-        html += '<div class="shop-item"><span class="shop-ic">' + D.RES[k].icon + '</span><div class="shop-text"><strong>' + esc(D.RES[k].name) + " <small>x" + (S.res[k] || 0) + "</small></strong>" + (src ? "<small>contre 3 " + esc(D.RES[src].name) + "</small>" : "<small>il te faut 3 d'une autre ressource</small>") + "</div>" + (src ? '<button class="btn btn-small" type="button" data-action="conv" data-arg="' + src + ">" + k + '">Échanger</button>' : "") + "</div>";
+        html += '<div class="shop-item"><span class="shop-ic">' + ic(D.RES[k].icon) + '</span><div class="shop-text"><strong>' + esc(D.RES[k].name) + " <small>x" + (S.res[k] || 0) + "</small></strong>" + (src ? "<small>contre 3 " + esc(D.RES[src].name) + "</small>" : "<small>il te faut 3 d'une autre ressource</small>") + "</div>" + (src ? '<button class="btn btn-small" type="button" data-action="conv" data-arg="' + src + ">" + k + '">Échanger</button>' : "") + "</div>";
       });
       return html + "</div>";
     },
