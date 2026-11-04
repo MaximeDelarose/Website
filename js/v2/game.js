@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.1.6";
+  var VERSION = "2.2.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -554,7 +554,7 @@
     if (nm(2) && d.boss && !d.mega && !d.giant) e.needAff = true;
     var rm0 = rageMin();
     if (rm0 > 0 && !d.prop) { e.spd *= rageSpd(); if (!d.boss) { e.hp *= 1 + RAGE.hpPerMin * rm0; e.maxHp = e.hp; } e.rage = Math.min(1, rm0 / 5); }
-    enemies.push(e);
+    enemies.push(e); e.bornT = r ? r.time : 0;
     giveElement(e);
     if (d.scale && !d.mega) e.scale = d.scale;
     if (hasMod("petit") && !d.prop) e.scale = (e.scale || 1) * 0.7;
@@ -754,6 +754,7 @@
     r.kills++; r.roundKills++;
     if (CUR_FAM === "tir") r.tirKills = (r.tirKills || 0) + 1;
     if (e.d.role) { r.roleK = r.roleK || {}; r.roleK[e.d.role] = (r.roleK[e.d.role] || 0) + 1; }
+    if (e.d.role === "bouclier" && e.backHit) r.behindK = (r.behindK || 0) + 1;
     if (p.items) killItems(e);
     if (HIT_TREE && setCount(p, "sylve") >= 2) p.hp = Math.min(p.maxHp, p.hp + 1);
     if (stealthy(p) && !e.spotted && setCount(p, "shinobi") >= 3) p.ghostT = Math.max(p.ghostT || 0, 1);
@@ -779,7 +780,8 @@
     }
     if (e.d.ai === "bomber") { e.byPlayer = true; explodeEnemy(e.x, e.y, e.d.blastR, 30); }
     if (e.d.boss) {
-      r.bosses++; S.stats.bosses++; r.bossT = r.bossT || {}; r.bossT[e.type] = 1; if (e.dgFinal) { r.finalT = r.finalT || {}; r.finalT[e.type] = 1; }
+      r.bosses++; S.stats.bosses++; r.bossT = r.bossT || {}; r.bossT[e.type] = 1;
+      if (e.bornT !== undefined && r.time - e.bornT < 60) r.fastBoss = 1; if (e.guardian) r.guardWon = 1; if (e.terrier) r.terrierWon = 1; if (e.dgFinal) { r.finalT = r.finalT || {}; r.finalT[e.type] = 1; }
       players.forEach(function (o) { if (o.gear && gearHas(o, "u_cycle")) { o.cycleN = (o.cycleN || 0) + 1; bannerAll("L'Œil du cycle : ton arme devient " + D.ELEMENTS[armElem(o)].name); } if (o.ring && o.ring.avare) r.gold += Math.floor(r.gold * (o.ring2x ? 0.2 : 0.1)); });
       if (e.defiBoss) drop("chest", e.x + 12, e.y, 3);
       drop("chest", e.x, e.y, 2);
@@ -1586,7 +1588,7 @@
   function merchantCost() { return Math.round(chestCost() * 2.2); }
   function betCost() { return Math.round(chestCost() * 1.2); }
   function payGold(cost, st, what) {
-    if (r.gold >= cost) { r.gold -= cost; r.goldSpent = (r.goldSpent || 0) + cost; return true; }
+    if (r.gold >= cost) { r.gold -= cost; r.goldSpent = (r.goldSpent || 0) + cost; if (!r.bosses && cost > 0) r.spentEarly = 1; return true; }
     st.p = 0; st.cd = 2; bannerAll("Il faut " + cost + " glands " + what); return false;
   }
   var SHR_EV = { cage: { id: "cage", name: "Cage", color: "#f2b05e", time: 1.5 }, tresor: { id: "tresor", name: "Croix du trésor (reste ancré)", color: "#f6d36b", time: 3 } };
@@ -1685,7 +1687,7 @@
       var roll = Math.random() * (1 + 0.15 * itn(pl, "trefle"));
       if (roll < 0.4 && itn(pl, "de_pipe") && Math.random() < 0.75) { r.gold += bet; bannerAll("Le dé pipé vous rend la mise"); }
       else if (roll < 0.4) { bannerAll("Perdu ! La fortune se moque de vous"); burst(s.x, s.y - 20, "#6a625a", 12); SND.hurt(); }
-      else if (roll < 0.8) { r.gold += bet * 2; bannerAll("Mise doublée : +" + bet * 2 + " glands !"); burst(s.x, s.y - 20, "#ffd84a", 16); SND.gold(); }
+      else if (roll < 0.8) { r.gold += bet * 2; r.fortuneWin = (r.fortuneWin || 0) + bet; bannerAll("Mise doublée : +" + bet * 2 + " glands !"); burst(s.x, s.y - 20, "#ffd84a", 16); SND.gold(); }
       else { dropItem(s.x, s.y - 16, 1); bannerAll("Jackpot : un objet !"); burst(s.x, s.y - 20, "#ffd84a", 24); SND.fusion(); }
       // la fortune se recharge : on peut rejouer plusieurs fois (3 mises max)
       st.bets = (st.bets || 0) + 1;
@@ -1710,6 +1712,7 @@
       else { drop("item", s.x, s.y - 14, rollItem(0, 1, "sacre").idx); bannerAll("Bénédiction !"); SND.fusion(); }
     }
     st.used = 1; st.p = 1; r.shrinesUsed = (r.shrinesUsed || 0) + 1; r.shrineTypes = r.shrineTypes || {}; r.shrineTypes[s.k] = 1;
+    if (D.SHRINES.some(function (q) { return q.id === s.k; })) { S.stats.shrineK = S.stats.shrineK || {}; S.stats.shrineK[s.k] = 1; }
     players.forEach(function (o) { if (itn(o, "chapelet")) r.gold += 10 * itn(o, "chapelet"); if (itn(o, "reliquaire")) calc(o); });
     players.forEach(function (o) { if (itn(o, "halo")) calc(o); });
     ring(s.x, s.y, 26, false);
@@ -1844,7 +1847,7 @@
     d.r = (base.r || 8) * 2; d.dmg = (base.dmg || 10) * 1.6; d.name = "Gardien : " + base.name; d.boss = true; d.giant = true; d.xp = (base.xp || 10) * 4;
     var hp = base.hp * 9 * (1 + r.time / 200) * DIFF.hp * (MAP.hp || 1) * tierHp() * (1 + 0.5 * (players.length - 1));
     var e = makeEnemy(bt, d, po.x, po.y - 70, hp);
-    e.giant = true; e.wander = true; e.awake = true; e.spd *= 0.85; e.title = d.name;
+    e.giant = true; e.wander = true; e.awake = true; e.spd *= 0.85; e.title = d.name; e.guardian = true;
     if (base.ai === "mole") { e.under = false; }
     giveAffixes(e, tierN() >= 6 ? 2 : 1);
     po.st = 1; po.boss = e; po.p = 1;
@@ -2664,8 +2667,15 @@
   var EMPTY_RUN = { time: 0, kills: 0, level: 0, bosses: 0, berries: 0, lastHit: 0, fusions: 0, props: 0 };
   function totals(run) {
     var s = S.stats;
+    var awake = Object.keys(D.ARMES).filter(function (a) { return mastLevel(a) >= 5; }).length, rings = {}, fullTal = false, charMax = 1;
+    (S.eq && S.eq.inv || []).forEach(function (q) { var g = D.GEAR[q.t]; if (g && g.slot === "anneau") rings[q.t] = 1; });
+    Object.keys(S.tal || {}).forEach(function (cid) { Object.keys(S.tal[cid] || {}).forEach(function (ps) { var t = S.tal[cid][ps] || {}; if (t[1] && t[2] && t[3] && t[4]) fullTal = true; }); });
+    D.CHARACTERS.forEach(function (c) { charMax = Math.max(charMax, charLevel(c.id)); });
     return { kills: s.kills + (run && !run.committed ? run.kills : 0), goldEarned: s.goldEarned, played: s.played, maps: s.maps, bought: s.bought,
-             rank: S.rank, prestige: S.prestige, spent: spentPoints() };
+             rank: S.rank, prestige: S.prestige, spent: spentPoints(),
+             awake: awake, fullTal: fullTal, campUps: (S.secureSlots || 0) + (S.chestSize || 0), cauch: S.cauch || {}, crafted: s.crafted || 0, rings: Object.keys(rings).length, runes: s.runes || 0,
+             armes: Object.keys(s.armesP || {}).length, evoC: s.evoC || 0, fullChar: D.CHARACTERS.filter(function (c) { return posturesOf(c.id).length && posturesOf(c.id).every(postureOk); }).length,
+             charMax: charMax, events: s.events || 0, freed: Object.keys(s.freed || {}).length, treasures: s.treasures || 0, shrineK: Object.keys(s.shrineK || {}).length, revives: s.revives || 0 };
   }
   function checkQuests(run) {
     if (!run || !r) return;
@@ -2684,6 +2694,8 @@
     var it = D.ITEMS.filter(function (x) { return x.quest === qid; })[0];
     if (it) { var ra = D.RARITIES[it.r]; return { kind: "l'objet", name: it.name, desc: "(" + ra.name.toLowerCase() + ") " + it.desc, icon: it.icon, color: ra.color }; }
     var k, d;
+    for (k in D.GEAR) { d = D.GEAR[k]; if (d.quest === qid) return { kind: "l'attirail", name: d.name, desc: d.desc, icon: d.icon, color: "#b07cf0" }; }
+    for (k in D.SHRINES) { d = D.SHRINES[k]; if (d.quest === qid) return { kind: "le sanctuaire", name: d.name, desc: d.desc, icon: "⛩️", color: "#f6d36b" }; }
     for (k in D.ARMES) { d = D.ARMES[k]; if (d.quest === qid) return { kind: "l'arme", name: d.name, desc: d.desc, icon: img(d.icon), color: "#f2b05e" }; }
     for (k in D.WEAPONS) { d = D.WEAPONS[k]; if (d.quest === qid) return { kind: "l'arme", name: d.name, desc: d.desc[0], icon: img(d.icon), color: "#f2b05e" }; }
     for (k in D.PASSIVES) { d = D.PASSIVES[k]; if (d.quest === qid) return { kind: "l'amélioration", name: d.name, desc: d.desc, icon: img(d.sprite), color: "#9cc56b" }; }
@@ -2781,6 +2793,7 @@
     }
     if (r && pl === me) {                                   // suivi pour les quêtes
       if (pl.anchored) { r.anchorTot = (r.anchorTot || 0) + dt; if (pl.anchorT > (r.anchorMax || 0)) r.anchorMax = pl.anchorT; if (pl.anchorT >= 5 && !pl.a5) { pl.a5 = 1; r.anchor5N = (r.anchor5N || 0) + 1; } } else pl.a5 = 0;
+      if (isExpe() && r.ex && r.ex.night) { if (pl.nhp !== undefined && pl.hp > pl.nhp + 0.01) r.nightHeal = 1; pl.nhp = pl.hp; }
       if (pl.dx0 !== undefined) r.dist = (r.dist || 0) + Math.min(20, Math.hypot(pl.x - pl.dx0, pl.y - pl.dy0)); pl.dx0 = pl.x; pl.dy0 = pl.y;
       if ((pl.runT || 0) > (r.runMax || 0)) r.runMax = pl.runT;
       if (pl.epts) { r.eptMax = r.eptMax || {}; for (var ek in pl.epts) if (pl.epts[ek] > (r.eptMax[ek] || 0)) r.eptMax[ek] = pl.epts[ek]; }
@@ -3062,7 +3075,7 @@
   function v2Apply(c) {
     var pl = p;
     if (c.type === "itm") { giveItem(pl, c.id); return true; }
-    if (c.type === "evo") { pl.evo = pl.evo || {}; pl.evo[c.id] = c.evo; if (pl === me && ALLW[c.id].evos.some(function (e) { return e.id === c.evo && e.elemC; })) S.stats.evoC = (S.stats.evoC || 0) + 1; burst(pl.x, pl.y, "#6ad8ff", 16); if (pl === me) banner("Évolution : " + techName(pl, c.id)); return true; }
+    if (c.type === "evo") { pl.evo = pl.evo || {}; pl.evo[c.id] = c.evo; if (pl === me) r.evos = (r.evos || 0) + 1; if (pl === me && ALLW[c.id].evos.some(function (e) { return e.id === c.evo && e.elemC; })) S.stats.evoC = (S.stats.evoC || 0) + 1; burst(pl.x, pl.y, "#6ad8ff", 16); if (pl === me) banner("Évolution : " + techName(pl, c.id)); return true; }
     if (c.type === "pf") { pl.tfus = pl.tfus || {}; pl.tfus[c.id] = c.rec || 1; burst(pl.x, pl.y, "#f6d36b", 22); if (pl === me) { r.fusions++; banner("Fusion : " + techName(pl, c.id)); SND.fusion(); } return true; }
     if (c.type === "cb") {
       var cd = ALLW[c.id], parts = [];
@@ -3070,7 +3083,7 @@
       if (cd.fx) parts.forEach(function (pt) { if (cd.fx[pt.id]) pt.fx.push(cd.fx[pt.id]); if (cd.fx["*"]) pt.fx.push(cd.fx["*"]); });
       pl.cparts = pl.cparts || {}; pl.cparts[c.id] = parts; pl.weapons[c.id] = MAX_LVL;
       burst(pl.x, pl.y, cd.legend ? "#ff9a3a" : "#f6d36b", 30);
-      if (pl === me) { r.fusions++; if (cd.legend) r.legend++; banner((cd.legend ? "Légendaire : " : "Fusion : ") + cd.name + " !"); SND.fusion(); }
+      if (pl === me) { r.fusions++; r.cbN = (r.cbN || 0) + 1; if (cd.legend) r.legend++; banner((cd.legend ? "Légendaire : " : "Fusion : ") + cd.name + " !"); SND.fusion(); }
       return true;
     }
     return false;
@@ -3109,6 +3122,7 @@
   }
   function pickArme(id) {
     var a = D.ARMES[id]; if (!a) return;
+    S.stats.armesP = S.stats.armesP || {}; S.stats.armesP[id] = 1;
     me.arme = id; me.ultG = 0; me.ultK = undefined; me.weapons = {}; me.weapons[a.base] = 1; me.evo = {}; me.tfus = {}; me.cparts = {}; me.tdef = {}; me.timers = {};
     r.arme = id; calc(me); refreshCounts();
     state = "play"; hideCard(); last = performance.now();
@@ -3492,7 +3506,7 @@
     },
   };
   // Bouclier : les tirs de face sont bloqués (zones, pluie et boomerangs passent)
-  function shieldBlock(e, vx, vy) { if (e.type === "crayfish" && vx * (e.face || 1) > 0) return 2; return e.d.role === "bouclier" && !e.d.boss && (vx * (e.face || 1) < 0) ? (CUR_FAM === "tir" && itn(p, "pince") ? 0.5 : 0.2) : 1; }
+  function shieldBlock(e, vx, vy) { if (e.d.role === "bouclier" && vx * (e.face || 1) > 0) e.backHit = true; if (e.type === "crayfish" && vx * (e.face || 1) > 0) return 2; return e.d.role === "bouclier" && !e.d.boss && (vx * (e.face || 1) < 0) ? (CUR_FAM === "tir" && itn(p, "pince") ? 0.5 : 0.2) : 1; }
   /* ---- directeur à budget : escouades ---- */
   function speciesFor(role, x, y) {
     var b = biomeAt(x, y), list = b.enemies.map(function (q) { return q[0]; }).filter(function (k) { return D.ENEMIES[k] && D.ENEMIES[k].role === role; });
@@ -3603,6 +3617,7 @@
   function megaArena(pl) {
     var m = r.mega; if (!m) return;
     if (m.boss.dead) {
+      r.megaWon = true; if (duo()) S.stats.coopMega = (S.stats.coopMega || 0) + 1;
       var mel = m.boss.d.elem || "terre"; S.cauch = S.cauch || {}; S.cauch[MAP.id] = Math.min(10, Math.max(S.cauch[MAP.id] || 0, cN() + 1)); S.mega = S.mega || {};
       if (!S.mega[mel]) { S.mega[mel] = Date.now(); bannerAll(m.boss.d.name + " vaincu ! Palier Cauchemar " + S.cauch[MAP.id] + " débloqué sur " + MAP.name); }
       r.mega = null; if (isExpe() && r.ex) { r.ex.megaWon = true; r.ex.st.forEach(function (st) { if (st.k === "x_mega") st.hidden = 0; }); bannerAll("La sortie du méga boss s'ouvre au cœur"); } save(); var mit = m.boss.type === "colosse" ? ITM.coeur_humus : D.ITEMS.filter(function (it) { return it.mega === m.boss.type; })[0]; if (mit) drop("item", m.boss.x, m.boss.y, mit.idx); else dropItem(m.boss.x, m.boss.y, 3); return; }
@@ -3634,7 +3649,7 @@
     return g.desc.replace("{v}", fmtV(gearVal(q))).replace("{t}", (q.tech || []).map(function (t) { return D.TECH[t] ? D.TECH[t].name : t; }).join(", "));
   }
   function genPiece(tier, tpl) {
-    var keys = Object.keys(D.GEAR).filter(function (k) { return !D.GEAR[k].unique; }), t = tpl || keys[(Math.random() * keys.length) | 0], g = D.GEAR[t];
+    var keys = Object.keys(D.GEAR).filter(function (k) { return !D.GEAR[k].unique && questOk(D.GEAR[k]); }), t = tpl || keys[(Math.random() * keys.length) | 0], g = D.GEAR[t];
     var q = { id: eqS().uid++, t: t, roll: tpl ? 0.5 : Math.random(), tier: tier || 1, pts: 0 };
     if (g.elem) q.pts = Math.min(3, 1 + (Math.random() < 0.4 ? 1 : 0) + (q.tier - 1));
     if (g.ring === "apprenti") { var all = Object.keys(D.TECH).sort(function () { return Math.random() - 0.5; }); q.tech = all.slice(0, 2); }
@@ -3650,6 +3665,7 @@
   }
   function canCraft(t) { var g = D.GEAR[t]; return Object.keys(g.cost).every(function (k) { return (S.res[k] || 0) >= g.cost[k]; }); }
   function craft(t) {
+    S.stats.crafted = (S.stats.crafted || 0) + 1;
     if (!canCraft(t)) return null; var g = D.GEAR[t];
     Object.keys(g.cost).forEach(function (k) { S.res[k] -= g.cost[k]; });
     var q = genPiece(1, t); addPiece(q); save(); return q;
@@ -3675,7 +3691,8 @@
       if (g.fx === "u_vents") ["terre", "feu", "eau", "air"].forEach(function (el) { pl.epts[el] += 3; });
       if (g.fx === "u_sceau") pl.ring2x = true;
     });
-    Object.keys(pl.set).forEach(function (sid) { var st = D.SETS[sid]; if (st && st.mega && pl.set[sid] >= 2) pl.epts[st.elem] += 2; });
+    Object.keys(pl.set).forEach(function (sid) { var st = D.SETS[sid]; if (st && st.mega && pl.set[sid] >= 2) pl.epts[st.elem] += 2; if (r && pl === me && st && pl.set[sid] >= (st.full || 4)) r.fullSet = true; });
+    if (r && pl === me && uniq) r.uniqueWorn = true;
     pl.rerolls = (pl.rerolls || 0) + (pl.ring.relance ? (pl.ring2x ? 4 : 2) : 0);
     // talents : seulement les paliers ouverts par le niveau de l'écureuil, pour la posture jouée
     var lv = charLevel(cid), pick = ((S.tal[cid] || {})[pl.posture]) || {};
@@ -4136,7 +4153,7 @@
     else if (s.k === "x_mega") extract(s);
     else if (s.k === "repaire") { s.done = true; var po = { x: s.x, y: s.y + 80 }; wakeMega(po); r.ex.megaBoss = r.mega && r.mega.boss; }
     else if (s.k === "gisement") { s.done = true; var list = D.MAP_RES[MAP.id] || D.MAP_RES.clairiere, n = 3 + ((Math.random() * 3) | 0); bagAddRes(list[(Math.random() * list.length) | 0], n); r.ex.gis++; r.exStats.gis = (r.exStats.gis || 0) + 1; texts.push({ x: s.x, y: s.y - 20, n: "+" + n + " RESSOURCES", life: 1.2, col: "#e8d090" }); SND.gold(); }
-    else if (s.k === "tour") { s.done = true; revealAt(s.x, s.y, 1400); r.ex.st.forEach(function (q) { if (q.k === "cache" && Math.hypot(q.x - s.x, q.y - s.y) < 1400) q.hidden = 0; }); bannerAll("Tour de guet : la région se dévoile"); SND.level(); }
+    else if (s.k === "tour") { s.done = true; r.towers = (r.towers || 0) + 1; revealAt(s.x, s.y, 1400); r.ex.st.forEach(function (q) { if (q.k === "cache" && Math.hypot(q.x - s.x, q.y - s.y) < 1400) q.hidden = 0; }); bannerAll("Tour de guet : la région se dévoile"); SND.level(); }
     else if (s.k === "nid") { s.done = true; var bt = MAP.bosses[(Math.random() * MAP.bosses.length) | 0], b = spawnAt(bt, s.x, s.y - 50); b.awake = true; bossCount++; bannerAll(D.ENEMIES[bt].name + " sort de son nid !"); SND.boom(); }
     else if (s.k === "autelcle") { s.done = true; r.ex.keys++; spawnSquad({ chargeur: 2, tireur: 2, nuee: 6 }, me); bannerAll("Clé obtenue ! (" + r.ex.keys + ")"); SND.fusion(); }
     else if (s.k === "source") { s.done = true; players.forEach(function (o) { if (!o.down) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.5); }); bannerAll("L'eau claire te soigne"); SND.level(); }
@@ -4168,7 +4185,7 @@
       if (up && Math.abs(pl.x - s.x) < 260 && pl.py0 !== undefined && (pl.py0 - s.y) * (pl.y - s.y) < 0) pl.y = pl.py0;
       pl.py0 = pl.y; return true;
     }
-    if (k === "terrier_b") { if (!s.woke && d < 60) { s.woke = true; var bt = MAP.bosses[(Math.random() * MAP.bosses.length) | 0], b = spawnAt(bt, s.x, s.y - 30); b.awake = true; bannerAll(D.ENEMIES[bt].name + " dormait dans le terrier !"); } if (s.woke) s.done = true; return true; }
+    if (k === "terrier_b") { if (!s.woke && d < 60) { s.woke = true; var bt = MAP.bosses[(Math.random() * MAP.bosses.length) | 0], b = spawnAt(bt, s.x, s.y - 30); b.awake = true; b.terrier = true; bannerAll(D.ENEMIES[bt].name + " dormait dans le terrier !"); } if (s.woke) s.done = true; return true; }
     if (k === "source_ch") { if (Math.hypot(pl.x - s.x, pl.y - s.y) < 48) pl.hp = Math.min(pl.maxHp, pl.hp + 3 * dt); return true; }
     if (k === "prison") {
       if (!s.woke && d < 220) { s.woke = true; s.ids = spawnSquad({ chargeur: 2, tireur: 2, bouclier: 1, nuee: 6 }, s, 40); s.npc = ["bucheron", "charbon", "flocon", "chevalier"][(Math.random() * 4) | 0]; }
@@ -4238,14 +4255,81 @@
     var keep = (r.extracted ? r.bag : []).concat(r.secure), mul = r.extracted ? r.extracted.mul : 1;
     keep.forEach(function (b) { if (b.k === "gear") r.loot.push(b.q); else r.res[b.id] = (r.res[b.id] || 0) + Math.round(b.n * mul); });
     var done = [];
-    if (r.extracted) (S.contracts && S.contracts.taken || []).forEach(function (c) { if (contractOk(c)) { done.push(c); Object.keys(c.rew.res || {}).forEach(function (k) { r.res[k] = (r.res[k] || 0) + c.rew.res[k]; }); earnGold(c.rew.gold || 0); } });
+    if (r.extracted) (S.contracts && S.contracts.taken || []).forEach(function (c) { if (contractOk(c)) { done.push(c); if (CDEF[c.k]) payContract(c); else { Object.keys(c.rew.res || {}).forEach(function (k) { r.res[k] = (r.res[k] || 0) + c.rew.res[k]; }); earnGold(c.rew.gold || 0); } } });
     if (S.contracts) { S.contracts.taken = []; S.contracts.offers = []; }
     return { extracted: !!r.extracted, lost: r.extracted ? 0 : r.bag.length, value: bagValue(keep), done: done, depth: r.ex.floor };
   }
   /* ---- contrats (tableau du sentier) ---- */
+  // [personnage, id, texte, objectif réussi ?, récompense]
+  var CONTRACTS = [
+    ["Bûche", "bois", "Rapporte 10 ressources de la région", function (c) { return bagRes(true) >= 10; }, { recipe: 1 }],
+    ["Bûche", "recolte", "Récolte 3 gisements", function () { return (r.exStats.gis || 0) >= 3; }, { trophy: 2 }],
+    ["Bûche", "occasion", "Rapporte une pièce d'attirail de la région", function () { return r.bag.some(function (b) { return b.k === "gear" && D.GEAR[b.q.t].elem === MAP.element; }) || r.bag.some(function (b) { return b.k === "gear"; }) && !MAP.element; }, { res: 6 }],
+    ["Bûche", "abattage", "Détruis 30 éléments du décor", function () { return (r.props || 0) >= 30; }, { recipe: 1 }],
+    ["Bûche", "trophee", "Extrais avec un trophée de boss", function () { return r.bag.some(function (b) { return b.k === "res" && D.RES[b.id] && D.RES[b.id].trophy; }); }, { recipe: 1 }],
+    ["Bûche", "fouille", "Vide un terrier abandonné (boss vaincu)", function () { return !!r.terrierWon; }, { trophy: 1, res: 4 }],
+    ["Bûche", "descente", "Atteins l'étage 3", function () { return r.ex.floor >= 3; }, { recipe: 1, trophy: 1 }],
+    ["Bûche", "relique", "Rapporte une pièce unique", function () { return r.bag.some(function (b) { return b.k === "gear" && D.GEAR[b.q.t].unique; }); }, { chest: 1 }],
+    ["Bûche", "traverse", "Extrais sans utiliser la sortie permanente", function () { return r.extracted && r.extracted.how !== EXDEF.x_perm.name; }, { recipe: 1 }],
+    ["Bûche", "oeuvre", "Bats le méga boss de la région", function () { return !!r.ex.megaWon || !!r.megaWon; }, { megaT: 2 }],
+    ["Charbon", "elites", "Tue 10 élites", function () { return (r.elites || 0) >= 10; }, { rune: 2 }],
+    ["Charbon", "rapide", "Tue un boss en moins de 60 s", function () { return !!r.fastBoss; }, { rune_rare: 1 }],
+    ["Charbon", "alchimie", "Déclenche 20 réactions", function () { return (r.reactions || 0) >= 20; }, { rune: 3 }],
+    ["Charbon", "appr", "Fais évoluer 3 techniques", function () { return (r.evos || 0) >= 3; }, { rune: 2 }],
+    ["Charbon", "oeuvre2", "Réussis une fusion entre techniques", function () { return (r.cbN || 0) >= 1; }, { rune_rare: 1 }],
+    ["Charbon", "derriere", "Tue 3 Boucliers en les prenant de dos", function () { return (r.behindK || 0) >= 3; }, { rune: 2 }],
+    ["Charbon", "coffres", "Ouvre 2 coffres scellés", function () { return (r.chestsOpened || 0) >= 2; }, { rune: 2 }],
+    ["Charbon", "ligne", "Extrais par la sortie d'endurance", function () { return r.extracted && r.extracted.how === EXDEF.x_endu.name; }, { rune_rare: 1 }],
+    ["Charbon", "decap", "Tue l'élite Meneur d'un camp", function () { return !!r.exStats.meneur; }, { rune: 2 }],
+    ["Charbon", "gardien", "Bats le gardien d'un passage", function () { return !!r.guardWon; }, { rune: 3 }],
+    ["Flocon", "danse", "Fais 30 Voltes", function () { return (r.voltes || 0) >= 30; }, { clvl: 80 }],
+    ["Flocon", "immobile", "Reste ancré 60 s au total", function () { return (r.anchorTot || 0) >= 60; }, { clvl: 80 }],
+    ["Flocon", "pelerin", "Active 3 sanctuaires", function () { return (r.shrinesUsed || 0) >= 3; }, { clvl: 120 }],
+    ["Flocon", "sauvetage", "Libère un écureuil prisonnier", function () { return (r.freed || 0) >= 1; }, { clvl: 160 }],
+    ["Flocon", "vigie", "Visite 2 tours de guet", function () { return (r.towers || 0) >= 2; }, { clvl: 120 }],
+    ["Flocon", "nuitblanche", "Traverse la nuit sans te soigner", function () { return !!r.nightDone && !r.nightHeal; }, { clvl: 140 }],
+    ["Flocon", "tresor", "Termine une chasse au trésor", function () { return (r.treasures || 0) >= 1; }, { clvl: 120 }],
+    ["Flocon", "ensemble", "En coop, extrais avec un allié (Pop compte)", function () { return players.length > 1 && players.some(function (o) { return o !== me && !o.down; }); }, { clvl: 120 }],
+    ["Flocon", "priorites", "Tue 5 Soutiens", function () { return ((r.roleK || {}).soutien || 0) >= 5; }, { clvl: 100 }],
+    ["Flocon", "montee", "Atteins le palier « Infernal »", function () { return tierN() >= 6; }, { clvl: 160 }],
+    ["le Marchand", "baslaine", "Extrais avec 300 glands", function () { return r.gold >= 300; }, { gold: 150 }],
+    ["le Marchand", "client", "Paie le passeur", function () { return !!r.exStats.passeur; }, { gold: "passeur" }],
+    ["le Marchand", "collection", "Extrais avec 3 objets à effets rares ou mieux", function () { return Object.keys(me.items || {}).filter(function (k) { return ITM[k] && ITM[k].r >= 2; }).length >= 3; }, { gold: 200 }],
+    ["le Marchand", "sacplein", "Extrais avec le sac plein", function () { return !!r.bagFull; }, { gold: 150 }],
+    ["le Marchand", "poker", "Gagne au Totem de fortune", function () { return (r.fortuneWin || 0) > 0; }, { gold: "poker" }],
+    ["le Marchand", "ramassage", "Ramasse 500 glands en un étage", function () { return (r.floorGoldMax || 0) >= 500; }, { gold: 200 }],
+    ["le Marchand", "econome", "Ne dépense rien avant le premier boss", function () { return !r.spentEarly && (r.bosses || 0) >= 1; }, { gold: 100 }],
+    ["le Marchand", "express", "Extrais en moins de 8 minutes", function () { return r.time < 480; }, { gold: 100 }],
+    ["le Marchand", "profondeurs", "Descends 2 étages", function () { return r.ex.floor >= 3; }, { gold: 300 }],
+    ["le Marchand", "antiquaire", "Rapporte une pièce unique", function () { return r.bag.some(function (b) { return b.k === "gear" && D.GEAR[b.q.t].unique; }); }, { gold: 400 }],
+  ];
+  var CDEF = {}; CONTRACTS.forEach(function (c) { CDEF[c[1]] = c; });
+  function bagRes(region) { var n = 0, own = D.MAP_RES[MAP.id] || []; r.bag.forEach(function (b) { if (b.k === "res" && (!region || own.indexOf(b.id) >= 0)) n += b.n; }); return n; }
+  function rewTxt(w) {
+    var out = [];
+    if (w.recipe) out.push("une recette de panoplie"); if (w.trophy) out.push(w.trophy + " trophée" + (w.trophy > 1 ? "s" : "") + " de boss"); if (w.megaT) out.push(w.megaT + " trophées du méga boss");
+    if (w.res) out.push(w.res + " ressources"); if (w.chest) out.push("+10 places de coffre"); if (w.rune) out.push(w.rune + " rune" + (w.rune > 1 ? "s" : "")); if (w.rune_rare) out.push("une rune rare");
+    if (w.clvl) out.push(w.clvl + " XP d'écureuil"); if (w.gold === "passeur") out.push("le prix du passeur remboursé 2 fois"); else if (w.gold === "poker") out.push("ta mise x3"); else if (w.gold) out.push("+" + w.gold + " glands d'or");
+    return out.join(", ");
+  }
+  function payContract(c) {
+    var w = c.rew || {}, k;
+    var add = function (id, n) { r.res[id] = (r.res[id] || 0) + n; };
+    if (w.recipe) { var locked = Object.keys(D.SETS).filter(function (sid) { return !D.SETS[sid].mega && !(S.recipes || {})[sid]; }); S.recipes = S.recipes || {}; if (locked.length) S.recipes[locked[(Math.random() * locked.length) | 0]] = Date.now(); else runeAdd(2); }
+    if (w.trophy) { var tr = (MAP.bosses || []).map(function (b) { return "t_" + b; }).filter(function (q) { return D.RES[q]; }); for (k = 0; k < w.trophy; k++) if (tr.length) add(tr[(Math.random() * tr.length) | 0], 1); }
+    if (w.megaT && MAP.mega && D.RES["t_" + MAP.mega]) add("t_" + MAP.mega, w.megaT);
+    if (w.res) { var rs = D.MAP_RES[MAP.id] || D.MAP_RES.clairiere; for (k = 0; k < w.res; k++) add(rs[k % rs.length], 1); }
+    if (w.chest) S.chestSize = Math.min(3, (S.chestSize || 0) + 1);
+    if (w.rune) add("rune", w.rune); if (w.rune_rare) add("rune_rare", w.rune_rare);
+    if (w.clvl) { S.clvl = S.clvl || {}; S.clvl[S.char] = (S.clvl[S.char] || 0) + w.clvl; }
+    if (w.gold === "passeur") earnGold(passeurCost() * 2); else if (w.gold === "poker") earnGold((r.fortuneWin || 0) * 3); else if (w.gold) earnGold(w.gold);
+  }
   function genContracts() {
     S.contracts = S.contracts || { offers: [], taken: [] };
-    if (S.contracts.offers.length) return;
+    if (S.contracts.offers.length && S.contracts.offers.every(function (c) { return CDEF[c.k]; })) return;
+    var outC = [];
+    ["Bûche", "Charbon", "Flocon", "le Marchand"].forEach(function (who, i) { var list = CONTRACTS.filter(function (c) { return c[0] === who; }), c = list[(Math.random() * list.length) | 0]; outC.push({ id: "c" + Date.now() + i, k: c[1], txt: c[2], from: who, rew: c[4] }); });
+    S.contracts.offers = outC; S.contracts.taken = []; save(); return;
     var resK = Object.keys(D.RES).filter(function (k) { return !D.RES[k].trophy; }), out = [];
     var pool = [
       function () { var k = resK[(Math.random() * resK.length) | 0]; return { k: "bring", res: k, n: 6, txt: "Rapporte 6 " + D.RES[k].name + " (" + mapById(D.RES[k].map).name + ")" }; },
@@ -4263,6 +4347,7 @@
   }
   function contractOk(c) {
     var st = r.exStats || {};
+    if (CDEF[c.k]) { try { return !!CDEF[c.k][3](c); } catch (e) { return false; } }
     if (c.k === "bring") { var n = 0; r.bag.forEach(function (b) { if (b.k === "res" && b.id === c.res) n += b.n; }); return n >= c.n; }
     if (c.k === "camps") return (st.camps || 0) >= c.n;
     if (c.k === "gis") return (st.gis || 0) >= c.n;
@@ -5596,7 +5681,7 @@
         xp += g.v * pl.xpMul * (tal(pl, "pochespleines") && pl.mstate === "mouvement" ? 1.15 : 1); if (pl === me) SND.pick(); recruit(pl, g.v);
         if (tal(pl, "avarice")) { pl.avar = (pl.avar || 0) + 1; if (pl.avar >= 30) { pl.avar = 0; var ppa = p; p = pl; fireNova(55 * pl.area, 30 * gpw()); p = ppa; } }
         break;
-      case "gold": addGold(g.v * (pl.goldX || 1)); if (pl === me) SND.gold(); break;
+      case "gold": if (isExpe() && r.ex) { r.floorGold = r.floorGold || {}; r.floorGold[r.ex.floor] = (r.floorGold[r.ex.floor] || 0) + g.v; r.floorGoldMax = Math.max(r.floorGoldMax || 0, r.floorGold[r.ex.floor]); } addGold(g.v * (pl.goldX || 1)); if (pl === me) SND.gold(); break;
       case "berry": pl.hp = Math.min(pl.maxHp, pl.hp + 25); if (pl === me) { r.berries++; SND.level(); } break;
       case "magnet": gems.forEach(function (o) { if (o.kind === "xp" || o.kind === "gold") o.pull = 120; }); bannerAll("Aspirateur à noisettes !"); SND.level(); break;
       case "xpjar": xp += xpNext * 0.75; bannerAll("Pot d'expérience !"); SND.level(); break;
@@ -6669,8 +6754,8 @@
         var C = S.contracts;
         html += '<section class="np-sec"><h3>Contrats <small>' + C.taken.length + ' / 3</small></h3><div class="shop-list">';
         C.offers.forEach(function (c) {
-          var on = C.taken.some(function (x) { return x.id === c.id; }), rw = Object.keys(c.rew.res).map(function (k) { return c.rew.res[k] + " " + D.RES[k].name; }).join(", ");
-          html += '<div class="shop-item"><div class="shop-text"><strong>' + esc(c.txt) + "</strong><small>De " + esc(c.from) + " · " + esc(rw) + " + " + c.rew.gold + " glands d'or</small></div>" +
+          var on = C.taken.some(function (x) { return x.id === c.id; }), rw = rewTxt(c.rew || {});
+          html += '<div class="shop-item"><div class="shop-text"><strong>' + esc(c.txt) + "</strong><small>" + (c.from === "le Marchand" ? "Du Marchand" : "De " + esc(c.from)) + " · " + esc(rw) + "</small></div>" +
             '<button class="btn btn-small' + (on ? "" : " btn-alt") + '" type="button" data-action="ctake" data-arg="' + c.id + '">' + (on ? "Pris ✓" : "Prendre") + "</button></div>";
         });
         html += '</div><p class="np-hint">Récompensés à l\'extraction. De nouveaux contrats arrivent après chaque expédition.</p></section>';
@@ -6906,9 +6991,9 @@
         html += '<h3 class="pick-title">' + esc(sl.kind ? "Anneaux" : sl.name) + '</h3><div class="shop-list">';
         Object.keys(D.GEAR).forEach(function (t) {
           var g = D.GEAR[t]; if (g.slot !== kind || g.unique) return;
-          var lockedR = g.set && !D.SETS[g.set].mega && !(S.recipes || {})[g.set];
+          var lockedR = (g.set && !D.SETS[g.set].mega && !(S.recipes || {})[g.set]) || !questOk(g);
           var ok = canCraft(t) && !lockedR;
-          html += '<div class="shop-item' + (lockedR ? " is-locked" : "") + '"><span class="shop-ic">' + g.icon + '</span><div class="shop-text"><strong>' + esc(g.name) + (g.set ? ' <small class="set-tag">' + esc(D.SETS[g.set].name) + (g.who ? " · " + esc(charById(g.who).name) : "") + (lockedR ? " · recette à trouver en Donjon" : "") + "</small>" : "") + (g.elem ? ' <small style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + D.ELEMENTS[g.elem].name + "</small>" : "") + "</strong><span>" + esc(g.desc.replace("{v}", g.lo !== undefined ? fmtV(g.lo) + "-" + fmtV(g.hi) : "").replace("{t}", "au hasard")) + "</span><small>" +
+          html += '<div class="shop-item' + (lockedR ? " is-locked" : "") + '"><span class="shop-ic">' + g.icon + '</span><div class="shop-text"><strong>' + esc(g.name) + (g.set ? ' <small class="set-tag">' + esc(D.SETS[g.set].name) + (g.who ? " · " + esc(charById(g.who).name) : "") + (lockedR ? " · recette à trouver en Donjon" : "") + "</small>" : "") + (!questOk(g) ? ' <small class="set-tag">🔒 ' + esc(questById(g.quest).desc) + "</small>" : "") + (g.elem ? ' <small style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + D.ELEMENTS[g.elem].name + "</small>" : "") + "</strong><span>" + esc(g.desc.replace("{v}", g.lo !== undefined ? fmtV(g.lo) + "-" + fmtV(g.hi) : "").replace("{t}", "au hasard")) + "</span><small>" +
             Object.keys(g.cost).map(function (k) { return D.RES[k].icon + " " + (S.res[k] || 0) + "/" + g.cost[k]; }).join(" · ") + "</small></div>" +
             '<button class="btn btn-small" type="button" data-action="craft" data-arg="' + t + '"' + (ok ? "" : " disabled") + ">Fabriquer</button></div>";
         });
@@ -7028,9 +7113,9 @@
     craft: function (t) { var q = craft(t); if (q) SND.fusion(); go("atelier"); },
     recy: function (id) { var q = pieceById(+id); if (q && !whoWears(q.id)) { recycle(q); SND.crack(); } go("atelier"); },
     newsok: function () { S.news = 0; save(); SND.level(); openCamp(); },
-    rune: function (id) { var q = pieceById(+id); if (!q || (S.res.rune || 0) < 1) return; S.res.rune--; q.roll = Math.random(); save(); SND.fusion(); go("forge"); },
+    rune: function (id) { var q = pieceById(+id); if (!q || (S.res.rune || 0) < 1) return; S.res.rune--; S.stats.runes = (S.stats.runes || 0) + 1; checkAchievements(null); q.roll = Math.random(); save(); SND.fusion(); go("forge"); },
     runer: function (id) {
-      var q = pieceById(+id); if (!q || (S.res.rune_rare || 0) < 1) return; S.res.rune_rare--;
+      var q = pieceById(+id); if (!q || (S.res.rune_rare || 0) < 1) return; S.res.rune_rare--; S.stats.runes = (S.stats.runes || 0) + 1;
       var g = D.GEAR[q.t], pool = Object.keys(D.GEAR).filter(function (k) { return D.GEAR[k].slot === g.slot && D.GEAR[k].fx && D.GEAR[k].fx !== g.fx; });
       if (Math.random() < 0.25) { if (q.extra) { delete q.extra; banner("Raté : l'effet ajouté est perdu"); } else banner("Raté : la rune se brise"); SND.crack(); }
       else { q.extra = pool[(Math.random() * pool.length) | 0]; banner("Nouvel effet : " + D.GEAR[q.extra].name); SND.fusion(); }
@@ -7641,6 +7726,7 @@
     if (Net.on) { if (Net.role === "host") hostStart(); return; }
     sanitize();
     reset(null, null, null, S.mode || "survie");
+    r.humans = humans();
     if (r_weekly) { r_weekly = false; r.mods = weeklyMods(); r.weekly = isoWeek(); bannerAll("Défi de la semaine : " + r.mods.map(function (m) { return m.name; }).join(", ")); }
     S.stats.played[CH.id] = true; S.stats.maps[MAP.id] = true; save();
     beginPlay();
@@ -7975,6 +8061,7 @@
     ex: function () { if (!r || !r.ex) return null; return { floor: r.ex.floor, t: Math.round(exT() * 10) / 10, ring: ringOf(me.x, me.y), corr: Math.round(corrR()), bag: r.bag.map(entryName), secure: r.secure.map(entryName), keys: r.ex.keys, passages: r.ex.passages.map(function (q) { return q.region + ":" + q.st; }), closed: r.ex.st.filter(function (q) { return q.closedX; }).map(function (q) { return q.k; }), night: r.ex.night, x: Math.round(me.x), y: Math.round(me.y), state: state, tier: tierN() }; },
     exGo: function (k, i) { var list = r.ex.st.concat(r.ex.passages).filter(function (q) { return q.k === k; }), q = list[i || 0]; if (!q) return null; me.x = q.x; me.y = q.y + 4; return { x: q.x, y: q.y }; },
     exTime: function (min) { r.stageT0 = r.time - min * 60 * exF(); return exT(); },
+    contracts: function () { return CONTRACTS.map(function (c) { var ok; try { ok = c[3]({}); } catch (e) { ok = "ERR " + e.message; } var cc = { rew: c[4], k: c[1] }; try { payContract(cc); } catch (e2) { ok = "PAYERR " + e2.message; } return c[1] + ":" + ok; }); },
     exFloor: function (n) { if (!r || !isExpe()) return null; startExpe(n); return r.ex.floor; },
     exKill: function () { enemies.forEach(function (e) { if (!e.d.prop && !e.dead) { e.hp = 0; p = me; kill(e); } }); },
     res: function (n) { eqS(); Object.keys(D.RES).forEach(function (k) { S.res[k] = (S.res[k] || 0) + (n || 20); }); save(); return S.res; },

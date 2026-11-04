@@ -2465,6 +2465,57 @@ window.ES_DATA = (function () {
     { id: "q7_escouade", desc: "Tue 100 élites au total.", check: function (r) { return ((r.tot && r.tot.elites) || 0) >= 100; } },
     { id: "q7_ciel", desc: "Vis 10 événements au total.", check: function (r) { return ((r.tot && r.tot.events) || 0) >= 10; } }
   );
+  /* =====================================================================
+     Contenu étendu, lot 8 : succès (les 3 hérités de la v1 remplacés, 46 nouveaux), dernière quête
+     ===================================================================== */
+  ACHIEVEMENTS = ACHIEVEMENTS.filter(function (a) { return ["prestige_1", "arbre", "prevoyant"].indexOf(a.id) < 0; });
+  var XP_ = function (r) { return r && r.ex ? r.ex.floor : 0; };
+  var ACH8 = [
+    ["eveil", "Éveil", "Éveille une arme (maîtrise 5).", 300, function (r, s) { return (s.awake || 0) >= 1; }],
+    ["arbre_complet", "Arbre complet", "Ouvre tous les paliers de talents d'une posture.", 200, function (r, s) { return !!s.fullTal; }],
+    ["batisseur", "Bâtisseur", "Achète 5 améliorations du camp.", 100, function (r, s) { return (s.campUps || 0) >= 5; }],
+    ["x_premiere", "Première extraction", "Réussis une extraction.", 50, function (r) { return !!r.extracted; }],
+    ["x_hotte", "Hotte pleine", "Extrais avec le sac plein.", 100, function (r) { return !!r.extracted && !!r.bagFull; }],
+    ["x_sousbois", "Sous-bois", "Atteins l'étage 3 en Expédition.", 150, function (r) { return XP_(r) >= 3; }],
+    ["x_plongee", "Plongée", "Atteins l'étage 6 en Expédition.", 300, function (r) { return XP_(r) >= 6; }],
+    ["x_sansfond", "Sans fond", "Atteins l'étage 12 en Expédition.", 800, function (r) { return XP_(r) >= 12; }],
+    ["x_passeur", "Passeur payé", "Extrais par le passeur.", 50, function (r) { return !!r.extracted && !!(r.exStats && r.exStats.passeur); }],
+    ["x_nuit", "Survivant de la nuit", "Traverse une nuit d'Expédition sans mourir.", 100, function (r) { return !!r.nightDone; }],
+    ["x_sauveteur", "Sauveteur", "En coop, extrais le sac d'un allié tombé.", 150, function (r) { return !!r.rescued; }],
+    ["m_racines", "Racines tranchées", "Bats Mille-Racines.", 300, function (r) { return !!(r.bossT && r.bossT.racines_m); }],
+    ["m_glace", "Glace brisée", "Bats le Grand Brochet des glaces.", 300, function (r) { return !!(r.bossT && r.bossT.brochet); }],
+    ["m_cendres", "Cendres froides", "Bats le Phénix des cendres.", 300, function (r) { return !!(r.bossT && r.bossT.phenix); }],
+    ["m_ciel", "Ciel conquis", "Bats l'Aigle des cimes.", 300, function (r) { return !!(r.bossT && r.bossT.aigle); }],
+    ["n_premier", "Premier cauchemar", "Bats le méga boss d'une carte en Cauchemar 1.", 100, function (r) { return (r.cauch || 0) >= 1 && !!r.megaWon; }],
+    ["n_cinq", "Cauchemar 5", "Bats le méga boss d'une carte en Cauchemar 5.", 300, function (r) { return (r.cauch || 0) >= 5 && !!r.megaWon; }],
+    ["n_fond", "Fond du cauchemar", "Bats un méga boss en Cauchemar 10.", 800, function (r) { return (r.cauch || 0) >= 10 && !!r.megaWon; }],
+    ["n_maitre", "Maître des cauchemars", "Bats le méga boss de toutes les cartes en Cauchemar 10.", 2000, function (r, s) { return MAPS.every(function (m) { return ((s.cauch || {})[m.id] || 0) >= 10; }); }],
+    ["g_faitmain", "Fait main", "Fabrique une première pièce d'attirail.", 50, function (r, s) { return (s.crafted || 0) >= 1; }],
+    ["g_tenue", "Tenue complète", "Porte une panoplie complète en partie.", 150, function (r) { return !!r.fullSet; }],
+    ["g_unique", "Pièce unique", "Porte une pièce unique en partie.", 200, function (r) { return !!r.uniqueWorn; }],
+    ["g_anneaux", "Collection d'anneaux", "Possède 10 anneaux différents.", 200, function (r, s) { return (s.rings || 0) >= 10; }],
+    ["g_forge", "Forgemagie", "Applique 10 runes.", 100, function (r, s) { return (s.runes || 0) >= 10; }],
+    ["w_poly", "Polyvalent", "Joue avec 10 armes différentes.", 150, function (r, s) { return (s.armes || 0) >= 10; }],
+    ["w_armurerie", "Armurerie", "Joue avec les 20 armes.", 400, function (r, s) { return (s.armes || 0) >= 20; }],
+    ["w_maitre", "Maître d'armes", "Éveille 5 armes.", 500, function (r, s) { return (s.awake || 0) >= 5; }],
+    ["e_evoc", "Évolution élémentaire", "Obtiens une première évolution élémentaire.", 100, function (r, s) { return (s.evoC || 0) >= 1; }],
+    ["e_six", "Six réactions", "Déclenche les 6 réactions dans une partie.", 200, function (r) { return Object.keys(r.reactK || {}).length >= 6; }],
+    ["e_chaine", "Réaction en chaîne", "Déclenche 50 réactions dans une partie.", 150, function (r) { return (r.reactions || 0) >= 50; }],
+    ["e_pur", "Élément pur", "Porte 9 points d'un élément.", 100, function (r) { var m = r.eptMax || {}; return Object.keys(m).some(function (k) { return m[k] >= 9; }); }],
+    ["p_trois", "Trois styles", "Débloque les 3 postures d'un écureuil.", 100, function (r, s) { return (s.fullChar || 0) >= 1; }],
+    ["p_toutes", "Toutes les postures", "Débloque les 30 postures.", 600, function (r, s) { return (s.fullChar || 0) >= 10; }],
+    ["p_accompli", "Écureuil accompli", "Monte un écureuil au niveau 8.", 100, function (r, s) { return (s.charMax || 0) >= 8; }],
+    ["v_temoin", "Témoin", "Vis 10 événements de partie.", 100, function (r, s) { return (s.events || 0) >= 10; }],
+    ["v_liberateur", "Libérateur", "Libère chacun des 4 prisonniers.", 200, function (r, s) { return (s.freed || 0) >= 4; }],
+    ["v_tresor", "Chercheur d'or", "Termine une chasse au trésor.", 80, function (r, s) { return (s.treasures || 0) >= 1; }],
+    ["v_autels", "Tous les autels", "Active les 18 sanctuaires au moins une fois.", 300, function (r, s) { return (s.shrineK || 0) >= 18; }],
+    ["c_quatre", "Expédition à quatre", "Extrais à 4 joueurs.", 200, function (r) { return !!r.extracted && (r.humans || 1) >= 4; }],
+    ["c_toujours", "Toujours là", "Relève 50 alliés.", 150, function (r, s) { return (s.revives || 0) >= 50; }],
+    ["c_bande", "Bande au complet", "Joue une partie à 6.", 100, function (r) { return (r.humans || 1) >= 6; }],
+  ];
+  ACH8.forEach(function (a) { ACHIEVEMENTS.push({ id: a[0], name: a[1], desc: a[2], gold: a[3], check: a[4] }); });
+  QUESTS.push({ id: "q8_verre", desc: "Bats un méga boss en Cauchemar 3 ou plus.", check: function (r) { return (r.cauch || 0) >= 3 && !!r.megaWon; } });
+  GEAR.r_verre.quest = "q8_verre";
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
