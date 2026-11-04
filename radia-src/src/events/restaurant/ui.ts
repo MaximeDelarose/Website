@@ -50,7 +50,7 @@ const CSS = `
 .rs-prog i.on{opacity:1;background:var(--c-acc)}
 .rs-prog i.cur{opacity:1;background:var(--c-ink)}
 /* scène de révélation */
-.rv{position:relative;width:100%;max-width:392px;margin:0 auto;aspect-ratio:360/340;border-radius:20px;overflow:hidden;box-shadow:0 0 0 2.5px #f3c86b,0 10px 24px rgba(59,49,82,.35);flex-shrink:0;background:#3f2d55}
+.rv{position:relative;width:min(100%,calc(36dvh * 360 / 340));max-width:392px;margin:0 auto;aspect-ratio:360/340;border-radius:20px;overflow:hidden;box-shadow:0 0 0 2.5px #f3c86b,0 10px 24px rgba(59,49,82,.35);flex-shrink:0;background:#3f2d55}
 .rv>*{position:absolute;pointer-events:none}
 .rv canvas,.rv img{display:block}
 .rv .rv-bg,.rv .rv-table{left:0;top:0;width:100%;height:100%}
@@ -70,7 +70,7 @@ const CSS = `
 @keyframes rvHappy{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(1deg)}}
 @keyframes rvFlame{from{transform:translate(-50%,-100%) scale(1,1)}to{transform:translate(-50%,-100%) scale(.9,1.12) rotate(3deg)}}
 @keyframes rvHeart{0%{opacity:0;transform:translate(-50%,-30%) scale(.5)}20%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),-420%) scale(1.3)}}
-.rv-lower{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:6px;position:relative;padding-top:8px}.rv-lower .btn{margin-top:auto}
+.rv-lower{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:6px;position:relative;padding-top:8px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.rv-lower>*{flex-shrink:0}.rv-lower .btn{margin-top:auto;position:sticky;bottom:0;z-index:3;box-shadow:0 -10px 14px rgba(251,228,239,.95)}
 .rv-dishes{display:grid;grid-template-columns:auto 1fr 1fr;gap:3px 8px;font-size:12.5px;align-items:center;background:rgba(255,250,245,.92);border-radius:16px;padding:7px 10px;box-shadow:0 0 0 1.5px #f5a0bb;color:#58433f}
 .rv-dishes b{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#8a6f69}
 .rv-dishes .h{color:#2f9e5f;font-weight:700}.rv-dishes .m{color:#c3405a;font-weight:700}
