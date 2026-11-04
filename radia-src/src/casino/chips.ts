@@ -1,5 +1,5 @@
 /**
- * Portefeuille de JETONS FICTIFS et gratuits du Casino Royal (logique pure sur `CasinoState`).
+ * Portefeuille de TICKETS FICTIFS et gratuits du Casino Royal (logique pure sur `CasinoState`).
  *  - `chips` : en poche ; `bring` : sur la table (choisi sur la carte d'Auguste) — seul `bring` est misé.
  *  - Jamais de solde négatif : toute mise est validée AVANT la manche.
  *  - Mini-recharge gratuite quand le total est presque vide (toutes les ~3 min), toujours disponible.
@@ -34,7 +34,7 @@ export function welcome(s: CasinoState): number {
   return WELCOME_CHIPS;
 }
 
-/** Ajoute des jetons gratuits en poche (missions, événements, cadeaux). */
+/** Ajoute des tickets gratuits en poche (missions, événements, cadeaux). */
 export function grant(s: CasinoState, n: number): number {
   const k = Math.max(0, int(n));
   if (k <= 0) return 0;
@@ -50,7 +50,7 @@ export function refillIn(s: CasinoState, now: number): number {
 }
 export const refillReady = (s: CasinoState, now: number): boolean => refillIn(s, now) === 0;
 
-/** Mini-recharge gratuite : remonte le total au solde de base. Renvoie les jetons versés (0 si pas prête). */
+/** Mini-recharge gratuite : remonte le total au solde de base. Renvoie les tickets versés (0 si pas prête). */
 export function refill(s: CasinoState, now: number): number {
   if (!refillReady(s, now)) return 0;
   const add = Math.max(0, REFILL_TO - total(s));

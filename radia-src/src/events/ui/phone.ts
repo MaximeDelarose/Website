@@ -4,6 +4,7 @@ import { h, tap } from '../../ui/dom';
 import { ui } from '../../ui/ui';
 import { icon } from '../../ui/icons';
 import { audio, save } from '../../core/app';
+import { haptic } from '../../core/haptics';
 import { ACHIEVEMENTS } from '../../data/achievements';
 import { EVENTS, eventById } from '../data';
 import { ev } from '../api';
@@ -15,18 +16,28 @@ import { emitPhone } from '../bus';
 import { senderFace, senderName } from './people';
 import type { EventDef, Sender } from '../types';
 import '../tindeur/tindeur.css';
+import { phoneApps } from './phoneApps';
+import '../../apps';
 import { tindeurLogo } from '../tindeur/icon';
 import { hasPending } from '../tindeur/logic';
+import { rawUnread } from '../tindeur/swipe/badge';
 import { activeIncident, openActiveIncident } from '../incidents/runtime';
 import { incidentById } from '../incidents/data';
 
 type Tab = 'messages' | 'invites' | 'souvenirs' | 'history' | 'settings';
 let open = false;
 
-export function openPhone(tab: Tab = 'messages'): void {
+/** Onglet qui contient réellement une notification : invitations si une attend, sinon messages. */
+function defaultTab(): Tab {
+  const st = ev();
+  const inv = pendingInvites(st).some((i) => !!eventById(i.eventId)) || !!(st.current && eventById(st.current.eventId)) || !!activeIncident();
+  return inv ? 'invites' : 'messages';
+}
+
+export function openPhone(tab?: Tab): void {
   if (open) return;
   open = true;
-  let cur: Tab = tab;
+  let cur: Tab = tab ?? defaultTab();
   let thread: Sender | null = null;
   const content = h('div.ph-content');
   const tabs = h('div.ph-tabs');
@@ -50,7 +61,7 @@ export function openPhone(tab: Tab = 'messages'): void {
 
   const TABS: [Tab, string, string][] = [['messages', 'Messages', 'chat'], ['invites', 'Invitations', 'mail'], ['souvenirs', 'Souvenirs', 'camera'], ['history', 'Historique', 'album']];
   for (const [k, label, ic] of TABS) {
-    const b = h('button.ph-tab', { 'data-tab': k }, icon(ic, 22), h('span', label));
+    const b = h('button.ph-tab', { 'data-tab': k }, icon(ic, 22), h('span', label), h('i.ph-tabdot'));
     b.addEventListener('click', tap(() => { cur = k; thread = null; render(); }, { sound: false }));
     tabs.append(b);
   }
@@ -74,9 +85,17 @@ export function openPhone(tab: Tab = 'messages'): void {
     const strip = h('div.ph-apps');
     const t = save.data.fun.tindeur;
     if (t.installed) {
-      const dot = hasPending(t) ? h('i.ph-dot', '1') : null;
+      const n = rawUnread() + (t.shown && t.choice === 'none' ? 1 : 0);
+      const dot = hasPending(t) || n ? h('i.ph-dot', String(Math.max(1, n))) : null;
       const b = h('button.ph-app', { 'aria-label': 'Tindeur' }, tindeurLogo(52), h('span', 'Tindeur'), dot);
-      b.addEventListener('click', tap(() => { void import('../tindeur/ui').then((m) => m.openTindeur()); }, { sound: false }));
+      b.addEventListener('click', tap(() => { closePhone(); void import('../tindeur/ui').then((m) => m.openTindeur()); }, { sound: false }));
+      strip.append(b);
+    }
+    for (const a of phoneApps()) {
+      const bd = a.badge?.() ?? null;
+      const dot = bd ? h('i.ph-dot', String(bd)) : null;
+      const b = h('button.ph-app', { 'aria-label': a.name }, a.icon(52), h('span', a.name), dot);
+      b.addEventListener('click', tap(() => { closePhone(); void a.open(); }, { sound: false }));
       strip.append(b);
     }
     return strip;
@@ -90,8 +109,14 @@ export function openPhone(tab: Tab = 'messages'): void {
     const btn = h(`button.btn.small${t.installed ? '.secondary' : ''}`, t.installed ? 'Désinstaller' : 'Réinstaller');
     btn.addEventListener('click', tap(() => {
       void import('../tindeur/ui').then((m) => {
-        if (t.installed) { row.firstElementChild && m.poofIcon(row.firstElementChild as HTMLElement, () => { m.applyInstalled(false); render(); }); }
-        else { m.applyInstalled(true); render(); }
+        if (t.installed) {
+          if (!m.attemptUninstall()) {
+            // refusé (les deux premiers essais) : l'appli reste, Auguste dit un petit mot
+            content.querySelector('.ph-aug-say')?.remove();
+            content.append(h('p.ph-aug-say', h('b', 'Auguste : '), '« Pas utile de désinstaller celle d’ici ♡ »'));
+            haptic('select');
+          } else row.firstElementChild && m.poofIcon(row.firstElementChild as HTMLElement, () => { render(); });
+        } else { m.applyInstalled(true); render(); }
       });
     }, { sound: false }));
     row.append(btn);
@@ -227,6 +252,13 @@ export function openPhone(tab: Tab = 'messages'): void {
   function render() {
     content.textContent = '';
     for (const t of tabs.children) t.classList.toggle('on', (t as HTMLElement).dataset.tab === cur);
+    { // pastilles d'onglets : montrent où se trouve la notification
+      const st = ev();
+      const inv = pendingInvites(st).some((i) => i.state === 'new' && !!eventById(i.eventId)) || !!(st.current && eventById(st.current.eventId)) || !!activeIncident();
+      const msg = st.msgs.some((m) => !m.read) || hasPending(save.data.fun.tindeur);
+      tabs.querySelector('[data-tab="invites"] .ph-tabdot')?.classList.toggle('on', inv && cur !== 'invites');
+      tabs.querySelector('[data-tab="messages"] .ph-tabdot')?.classList.toggle('on', msg && cur !== 'messages');
+    }
     if (cur === 'messages') renderMessages();
     else if (cur === 'settings') renderSettings();
     else { top.replaceChildren(closeBtn, title, topRight()); if (cur === 'invites') renderInvites(); else if (cur === 'souvenirs') renderSouvenirs(); else renderHistory(); }

@@ -18,6 +18,8 @@ export const VERDICT_EXTRAS = [
   'Quoi que tu aies choisi, ça te va comme si ça avait été inventé pour toi.',
   'Mon cœur vient de faire un petit bruit bizarre. C’est normal, ne t’inquiète pas.',
   'Tu veux bien me prévenir la prochaine fois que tu es aussi belle ? Je me préparerais.',
+  'Mashallah, tu vas faire des jaloux.',
+  'Bsahték, cette tenue, vraiment.',
 ] as const;
 
 /** Compliments adaptés à ce qu'elle porte (jamais de critique, jamais d'absence de compliment). */

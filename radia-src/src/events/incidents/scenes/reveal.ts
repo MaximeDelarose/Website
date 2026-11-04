@@ -25,33 +25,20 @@ export function rewardImage(rw: Reward, size = 84): HTMLElement {
   return box;
 }
 
-/** Un coffret à ouvrir en le touchant ; `rewards` s'affichent ensuite. Résout vrai quand le joueur a tout vu. */
-export function runReveal(o: { title: string; hint: string; emoji: string; openLabel: string; rewards: Reward[]; intro?: HTMLElement; footer?: string }): Promise<boolean> {
-  const f = openFrame(o.title, o.hint, 'rv');
-  let taps = 0;
-  let opened = false;
-  const box = h('button.rv-box', { 'aria-label': o.openLabel }, h('span.rv-emoji', o.emoji), h('small', o.openLabel));
-  const stage = h('div.rv-stage', o.intro ?? null, box);
-  f.body.append(stage);
-  box.addEventListener('click', () => {
-    if (opened) return;
-    taps++;
-    box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
-    audio.play('pop3'); haptic('select');
-    if (taps < 3) { f.setHint(taps === 1 ? 'Ça bouge là-dedans…' : 'Encore un petit coup !'); return; }
-    opened = true;
-    box.classList.add('open');
-    audio.play('chest'); haptic('chest');
-    f.later(() => {
-      box.remove();
-      const cards = o.rewards.map((rw, i) => h('div.rv-card', { style: `animation-delay:${i * 160}ms` }, rewardImage(rw), h('b', rw.label)));
-      stage.append(h('div.rv-cards', ...cards), h('p.inc-foot', o.footer ?? 'Ajouté à tes affaires ♡'),
-        h('button.btn.rv-ok', { on: { click: tap(() => f.finish(true), { sound: false }) } }, 'Merci ♡'));
-      audio.play('reward'); haptic('reward'); confettiBurst(f.layer, 30);
-      f.setHint('');
-    }, 520);
-  });
-  return f.result;
+/**
+ * Colis / sac de bienvenue : ouverture mise en scène (src/ui/rewards). Les récompenses sont versées par `complete()` de
+ * l'incident APRÈS cette scène (jamais deux fois) : ici, affichage seulement. Résout vrai quand tout a été vu.
+ */
+export async function runReveal(o: { title: string; hint: string; emoji: string; openLabel: string; rewards: Reward[]; intro?: HTMLElement; footer?: string }): Promise<boolean> {
+  try {
+    const [rw, ad] = await Promise.all([import('../../../ui/rewards'), import('../../../ui/rewards/adapters')]);
+    const spec = ad.parcelSpec({
+      title: o.title, subtitle: o.footer ?? 'Ajouté à tes affaires ♡',
+      rewards: o.rewards.map((r) => (r.kind === 'coins' ? { kind: 'coins' as const, coins: r.coins, label: r.label } : { kind: r.kind, id: r.id, label: r.label })),
+    });
+    await rw.openGift(spec);
+  } catch (e) { console.error('[incidents] cadeau', e); }
+  return true;
 }
 
 /** La fleur rare : un bourgeon qui brille ; on le touche pour le découvrir. */

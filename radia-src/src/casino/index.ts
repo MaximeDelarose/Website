@@ -1,9 +1,9 @@
 /**
  * Casino Royal ♛ — points d'entrée pour le reste du jeu (voir README.md).
  *  - `openCasino()` : ouvre l'écran (promesse résolue à la fermeture) ;
- *  - `grantChips(n, reason)` : donne des jetons gratuits (récompenses, événements) ;
+ *  - `grantChips(n, reason)` : donne des tickets gratuits (récompenses, événements) ;
  *  - `casinoStatus()` : solde et nouveautés (badges).
- * Jetons fictifs et gratuits ; les écrans sont chargés à la demande.
+ * Tickets du Casino Royal : gratuits, jamais achetables ; les écrans sont chargés à la demande.
  */
 import './casino.css';
 import { dbg } from '../core/debug';
@@ -33,7 +33,7 @@ dbg('casino', {
   state: () => ({ ...cs(), total: total(cs()), status: casinoStatus(), claimable: claimableCount(cs()) }),
   /** Un nombre 0..36 impose la prochaine case ; une autre valeur (graine) rend le RNG reproductible. */
   roulette: (x: number) => { if (Number.isInteger(x) && x >= 0 && x <= 36) { hooks.roulette = x; return `prochaine case : ${x}`; } hooks.rng = seededRng(x); return `RNG graine ${x}`; },
-  /** Simule n tirages purs (aucun jeton touché) : { rtp, hit, theorique }. */
+  /** Simule n tirages purs (aucun ticket touché) : { rtp, hit, theorique }. */
   slots: (n = 100000, seed?: number) => {
     const rng = seed === undefined ? defaultRng : seededRng(seed);
     let sum = 0, hit = 0;
@@ -52,4 +52,8 @@ dbg('casino', {
   },
   reset: () => { const s = cs(); s.chips = 0; s.bring = 0; s.welcomed = false; s.refillTs = 0; s.stats = {}; s.history = []; s.missions = []; persist(); notifyCasino(); return 'casino remis à zéro'; },
   take: (n: number) => setBring(cs(), n),
+  /** Aperçu de la bannière « grosse victoire » (aucun ticket versé). */
+  bigWin: async (n = 1750, jackpot = false) => { const m = await import('./fx'); await m.bigWinBanner(n, jackpot ? 'jackpot' : 'big'); return 'ok'; },
+  /** Remet les mini-défis du jour à zéro. */
+  resetTasks: () => { const st = cs().stats; for (const k of Object.keys(st)) if (k.startsWith('dq.') || k.startsWith('cap.')) delete st[k]; persist(); notifyCasino(); return 'défis remis à zéro'; },
 });

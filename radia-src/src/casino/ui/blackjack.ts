@@ -24,7 +24,7 @@ export function helpBlackjack(): HTMLElement {
       'Si tu dépasses 21, tu perds tout de suite.',
       'Le croupier tire jusqu\'à 17 et reste sur 17 (même avec un As).',
       'Blackjack naturel (As + figure ou 10 en deux cartes) : payé 3 pour 2. Victoire : 1 pour 1 (mise rendue en plus). Égalité : ta mise est rendue. Défaite : la mise est perdue.',
-      `Mises de ${LIMITS.blackjack.min} à ${LIMITS.blackjack.max} jetons, par pas de ${LIMITS.blackjack.step}.`,
+      `Mises de ${LIMITS.blackjack.min} à ${LIMITS.blackjack.max} tickets, par pas de ${LIMITS.blackjack.step}.`,
       'À chaque donne, un paquet de 52 cartes neuf est mélangé honnêtement (Fisher–Yates) : aucune carte n\'est truquée et rien ne dépend de tes parties précédentes.',
     ].map((t) => h('li', t))),
     h('p', 'Pas d\'assurance ni de séparation des paires : c\'est un blackjack simplifié.'));

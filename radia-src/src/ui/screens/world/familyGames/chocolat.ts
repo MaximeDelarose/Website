@@ -26,9 +26,9 @@ export function playChocolat(): Promise<void> {
       const title = h('div.ch-title');
       const steps = h('div.ch-steps');
       const bowl = h('div.ch-bowl', h('div.ch-bowl-in'), h('small', 'Dépose ici'));
-      const box = h('div.ch-box', ...CHOC_RECIPES.map(() => h('div.ch-slot')));
+      const box = h('div.fam-ch-box', ...CHOC_RECIPES.map(() => h('div.ch-slot')));
       const msg = h('div.ch-msg');
-      const tray = h('div.ch-tray');
+      const tray = h('div.fam-ch-tray');
       info.append(title);
       stage.append(steps, h('div.ch-mid', bowl, box), msg, tray);
       let busy = false;

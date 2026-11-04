@@ -58,7 +58,7 @@ export const ROMANTIC: EventDef[] = [
   {
     id: 'r-spa', title: 'Week-end spa & massage', sender: 'auguste', category: 'romantic', big: true, repeatable: true, weight: 6, minPlayMin: 8,
     teaser: 'Ce week-end, je veux que tu prennes du temps pour toi…',
-    invite: 'Ce week-end, je veux que tu prennes du temps pour toi. Spa, massage, détente… J’ai tout prévu.',
+    invite: 'Ya rouhi, ce week-end, je veux que tu prennes du temps pour toi. Spa, massage, détente… J’ai tout prévu.',
     steps: [
       { t: 'dress', hint: 'Une tenue bien confortable', style: 'casual' },
       { t: 'travel', place: 'spa', label: 'Direction le spa' },
@@ -130,7 +130,7 @@ export const ROMANTIC: EventDef[] = [
   {
     id: 'r-shopping', title: 'Shopping de luxe', sender: 'auguste', category: 'romantic', big: true, repeatable: true, weight: 6, minPlayMin: 10,
     teaser: 'Aujourd’hui, je t’emmène faire du shopping. Fais-toi plaisir, ma reine.',
-    invite: 'Aujourd’hui, je t’emmène faire du shopping. Fais-toi plaisir, ma reine.',
+    invite: 'Aujourd’hui, je t’emmène faire du shopping. Bsahték d’avance : fais-toi plaisir, ma reine.',
     steps: [
       { t: 'dress', hint: 'Une tenue pratique pour essayer plein de choses', style: 'chic' },
       { t: 'travel', place: 'boutique', label: 'Direction les boutiques' },
@@ -144,7 +144,7 @@ export const ROMANTIC: EventDef[] = [
   {
     id: 'r-rooftop', title: 'Dîner sur les toits de Paris', sender: 'auguste', category: 'romantic', big: true, repeatable: true, weight: 6, minPlayMin: 8,
     teaser: 'J’ai trouvé un endroit avec une vue incroyable. Tu viens avec moi ?',
-    invite: 'J’ai trouvé un endroit avec une vue incroyable. Tu viens avec moi ?',
+    invite: 'Wallah, j’ai trouvé un endroit avec une vue incroyable. Tu viens avec moi ?',
     steps: [
       { t: 'dress', hint: 'Une tenue pour le coucher du soleil', style: 'chic' },
       { t: 'travel', place: 'rooftop', label: 'On monte sur le toit' },

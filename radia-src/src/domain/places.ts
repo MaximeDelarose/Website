@@ -327,8 +327,8 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
 
   casino: {
     id: 'casino', name: 'Le Casino Royal ♛', short: 'Casino Royal ♛', tone: '#F3C86B', accent: '#B5862C', reqs: [need('hotel', 4), need('terrace', 4)],
-    blurb: 'Le joyau du domaine : un casino de rêve, tapis rouge, lustres de cristal… avec des jetons gratuits, pour jouer en douceur.',
-    openLine: 'Le Casino Royal est à toi. Des jetons pour rire, rien que pour s\'amuser, ma reine.',
+    blurb: 'Le joyau du domaine : un casino de rêve, tapis rouge, lustres de cristal… avec des tickets gratuits, pour jouer en douceur.',
+    openLine: 'Le Casino Royal est à toi. Des tickets pour rire, rien que pour s\'amuser, ma reine.',
     link: { to: 'casino', label: 'Entrer au Casino Royal' },
     choices: [
       CH('wall', 0, 'Quelle couleur pour le grand salon ?', 'noir', 'noir', 'violet', 'rose', 'sage'),

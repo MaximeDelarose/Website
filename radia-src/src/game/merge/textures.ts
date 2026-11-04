@@ -1,7 +1,7 @@
 /** Textures du plateau de fusion (cases, paquets, panier, effets). */
 import Phaser from 'phaser';
 import { drawItem } from '../art/items';
-import { drawGenerator, drawDiamond, drawEnergy, type GenKind } from '../art/generators';
+import { drawGenerator, drawDiamond, drawEnergy, drawChest, type GenKind } from '../art/generators';
 import { itemKey, type ItemRef } from '../../data/items';
 import {
   OUTLINE, PAL, ellipse, fillShaded, gloss, groundShadow, heartPath, paint, roundRect, shade, sparkle, starPath, texScale, canvasUrl,
@@ -97,6 +97,194 @@ export function ensureBoardTextures(scene: Phaser.Scene, cell: number, skin = 'c
   });
   // paquet cadeau
   add('gift', c, c, (ctx) => drawGift(ctx, c));
+  // cases verrouillées (toile, sable, cadenas doux, lueur des récompenses visibles)
+  add('lock:web', c, c, (ctx) => drawWeb(ctx, c));
+  add('lock:sand', c, c, (ctx) => drawSand(ctx, c, false));
+  add('lock:sandCrack', c, c, (ctx) => drawSand(ctx, c, true));
+  add('lock:pad', c, c, (ctx) => drawPadlock(ctx, c));
+  add('lock:glow', c, c, (ctx) => {
+    const g = ctx.createRadialGradient(c / 2, c / 2, 0, c / 2, c / 2, c * 0.52);
+    g.addColorStop(0, 'rgba(255,236,160,0.95)'); g.addColorStop(0.55, 'rgba(255,214,120,0.45)'); g.addColorStop(1, 'rgba(255,214,120,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, c, c);
+  });
+  add('lock:target', c, c, (ctx) => {
+    roundRect(ctx, 2.5, 2.5, c - 5, c - 5, c * 0.22);
+    ctx.setLineDash([5, 4]); ctx.lineWidth = 3; ctx.strokeStyle = '#8E7BC4'; ctx.stroke();
+    ctx.fillStyle = 'rgba(185,165,232,0.18)'; ctx.fill();
+  });
+}
+
+/** Toile d'araignée posée sur une case : fils transparents, rosée, nœuds aux coins. */
+export function drawWeb(ctx: CanvasRenderingContext2D, c: number): void {
+  roundRect(ctx, 2, 2, c - 4, c - 4, c * 0.22);
+  ctx.fillStyle = 'rgba(236,240,255,0.30)';
+  ctx.fill();
+  const cx = c / 2;
+  const cy = c / 2;
+  ctx.save();
+  roundRect(ctx, 2, 2, c - 4, c - 4, c * 0.22);
+  ctx.clip();
+  ctx.lineCap = 'round';
+  const thread = (w: number, a: number) => { ctx.lineWidth = w; ctx.strokeStyle = `rgba(110,100,150,${a})`; };
+  // fils radiaux
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+    thread(1.4, 0.55);
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * c * 0.8, cy + Math.sin(a) * c * 0.8); ctx.stroke();
+  }
+  // spirales : arcs qui s'affaissent entre deux fils
+  for (const r of [0.2, 0.34, 0.48, 0.64]) {
+    thread(1.2, 0.5);
+    ctx.beginPath();
+    for (let k = 0; k <= 8; k++) {
+      const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+      const a2 = ((k + 0.5) / 8) * Math.PI * 2 + Math.PI / 8;
+      const px = cx + Math.cos(a) * c * r;
+      const py = cy + Math.sin(a) * c * r;
+      if (k === 0) ctx.moveTo(px, py);
+      else ctx.quadraticCurveTo(cx + Math.cos(a2 - Math.PI / 8) * c * r * 0.9, cy + Math.sin(a2 - Math.PI / 8) * c * r * 0.9, px, py);
+    }
+    ctx.stroke();
+  }
+  // reflet blanc (fils clairs par-dessus)
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+    ctx.lineWidth = 0.7; ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * c * 0.8, cy + Math.sin(a) * c * 0.8); ctx.stroke();
+  }
+  // gouttes de rosée
+  for (const [x, y] of [[0.3, 0.32], [0.68, 0.4], [0.42, 0.7], [0.74, 0.74]] as const) {
+    ctx.beginPath(); ctx.arc(c * x, c * y, c * 0.022, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fill();
+    ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(110,100,150,0.5)'; ctx.stroke();
+  }
+  ctx.restore();
+  // contour de la case : fil tendu
+  roundRect(ctx, 2.5, 2.5, c - 5, c - 5, c * 0.22);
+  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(110,100,150,0.55)'; ctx.stroke();
+  for (const [x, y] of [[0.14, 0.14], [0.86, 0.14], [0.14, 0.86], [0.86, 0.86]] as const) {
+    ctx.beginPath(); ctx.arc(c * x, c * y, c * 0.03, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(110,100,150,0.6)'; ctx.stroke();
+  }
+}
+
+/** Case ensablée : dune douce, rides, grains, petit coquillage ; `crack` = déjà fissurée par une fusion voisine. */
+export function drawSand(ctx: CanvasRenderingContext2D, c: number, crack: boolean): void {
+  roundRect(ctx, 2, 3, c - 4, c - 4, c * 0.22);
+  ctx.fillStyle = 'rgba(120,90,50,0.22)';
+  ctx.fill();
+  roundRect(ctx, 2, 1.5, c - 4, c - 5, c * 0.22);
+  const g = ctx.createLinearGradient(0, 0, c * 0.4, c);
+  g.addColorStop(0, '#F8E6BC'); g.addColorStop(0.55, '#EBCB90'); g.addColorStop(1, '#D9B070');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(150,105,50,0.55)'; ctx.stroke();
+  ctx.save();
+  roundRect(ctx, 2, 1.5, c - 4, c - 5, c * 0.22); ctx.clip();
+  // rides du sable
+  ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(160,110,50,0.35)';
+  for (let k = 0; k < 4; k++) {
+    const y = c * (0.22 + k * 0.2);
+    ctx.beginPath(); ctx.moveTo(c * 0.06, y); ctx.quadraticCurveTo(c * 0.3, y - c * 0.08, c * 0.5, y); ctx.quadraticCurveTo(c * 0.72, y + c * 0.08, c * 0.94, y); ctx.stroke();
+  }
+  // grains
+  let s = 12345;
+  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  for (let k = 0; k < 26; k++) {
+    ctx.beginPath(); ctx.arc(c * (0.08 + rnd() * 0.84), c * (0.08 + rnd() * 0.84), 0.7 + rnd() * 1.1, 0, Math.PI * 2);
+    ctx.fillStyle = rnd() < 0.5 ? 'rgba(255,250,230,0.85)' : 'rgba(150,100,50,0.4)'; ctx.fill();
+  }
+  // coquillage
+  ctx.save(); ctx.translate(c * 0.72, c * 0.7); ctx.rotate(-0.4);
+  ctx.beginPath(); ctx.moveTo(0, c * 0.07); ctx.quadraticCurveTo(-c * 0.12, -c * 0.02, -c * 0.05, -c * 0.08); ctx.quadraticCurveTo(0, -c * 0.12, c * 0.05, -c * 0.08); ctx.quadraticCurveTo(c * 0.12, -c * 0.02, 0, c * 0.07); ctx.closePath();
+  ctx.fillStyle = '#FFD3DA'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(150,80,90,0.6)'; ctx.stroke();
+  for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(0, c * 0.06); ctx.lineTo(k * c * 0.025, -c * 0.07); ctx.strokeStyle = 'rgba(150,80,90,0.4)'; ctx.stroke(); }
+  ctx.restore();
+  if (crack) {
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(110,70,30,0.7)';
+    ctx.beginPath(); ctx.moveTo(c * 0.3, c * 0.18); ctx.lineTo(c * 0.42, c * 0.36); ctx.lineTo(c * 0.36, c * 0.5); ctx.lineTo(c * 0.52, c * 0.66); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(c * 0.42, c * 0.36); ctx.lineTo(c * 0.6, c * 0.32); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Cadenas doux : voile lavande et petit cadenas rose et or avec une serrure en cœur. */
+export function drawPadlock(ctx: CanvasRenderingContext2D, c: number): void {
+  roundRect(ctx, 2, 2, c - 4, c - 4, c * 0.22);
+  ctx.fillStyle = 'rgba(185,165,232,0.30)'; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(142,123,196,0.75)'; ctx.stroke();
+  const w = c * 0.34;
+  const h = c * 0.27;
+  const x = c * 0.5 - w / 2;
+  const y = c * 0.56;
+  // anse
+  ctx.beginPath(); ctx.arc(c * 0.5, y, w * 0.34, Math.PI, 0); ctx.lineWidth = c * 0.065; ctx.strokeStyle = OUTLINE; ctx.stroke();
+  ctx.lineWidth = c * 0.04; ctx.strokeStyle = '#E9D9A0'; ctx.stroke();
+  // corps
+  groundShadow(ctx, c * 0.5, y + h + c * 0.02, w * 0.55, c * 0.03);
+  roundRect(ctx, x, y, w, h, c * 0.07);
+  fillShaded(ctx, PAL.roseVif, { x, y, w, h }, c * 0.03);
+  heartPath(ctx, c * 0.5, y + h * 0.5, c * 0.12);
+  ctx.fillStyle = '#FFF6D0'; ctx.fill(); ctx.lineWidth = c * 0.015; ctx.strokeStyle = OUTLINE; ctx.stroke();
+  gloss(ctx, x + w * 0.22, y + h * 0.24, w * 0.12, h * 0.07, 0.8);
+}
+
+/** Vignette d'un type de verrou pour l'interface HTML (panneau, fiche). */
+export function lockIconUrl(kind: string, size = 64): string {
+  return canvasUrl(`ui-lock:${kind}:${size}`, () => paint(size, size, 2, (ctx) => {
+    if (kind === 'sand') drawSand(ctx, size, false);
+    else {
+      roundRect(ctx, 2, 2, size - 4, size - 4, size * 0.22); ctx.fillStyle = '#EFE9FB'; ctx.fill();
+      if (kind === 'energy') drawPadlock(ctx, size); else drawWeb(ctx, size);
+    }
+  }));
+}
+
+/** Icône d'une récompense visible (diamants, énergie, coffre, fragment de tenue, décoration, pièces, ticket). */
+export function ensureLockRewardTexture(scene: Phaser.Scene, kind: string): string {
+  const key = `lockrw:${kind}`;
+  if (scene.textures.exists(key)) return key;
+  const S = ITEM_TEX;
+  scene.textures.addCanvas(key, paint(S, S, texScale(), (ctx) => {
+    ctx.save();
+    switch (kind) {
+      case 'diamonds': drawDiamond(ctx, S); break;
+      case 'energy': drawEnergy(ctx, S); break;
+      case 'chest': drawChest(ctx, S, false); break;
+      case 'fragment': {
+        // morceau de tissu épinglé
+        groundShadow(ctx, S / 2, S * 0.84, S * 0.3, S * 0.05);
+        ctx.beginPath(); ctx.moveTo(S * 0.18, S * 0.3); ctx.quadraticCurveTo(S * 0.5, S * 0.18, S * 0.82, S * 0.3); ctx.lineTo(S * 0.78, S * 0.8); ctx.quadraticCurveTo(S * 0.5, S * 0.9, S * 0.22, S * 0.8); ctx.closePath();
+        fillShaded(ctx, '#E58FB6', { x: S * 0.18, y: S * 0.2, w: S * 0.64, h: S * 0.7 }, S * 0.03);
+        ctx.setLineDash([S * 0.04, S * 0.04]); ctx.lineWidth = 1.3; ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath(); ctx.moveTo(S * 0.26, S * 0.38); ctx.lineTo(S * 0.74, S * 0.38); ctx.moveTo(S * 0.26, S * 0.52); ctx.lineTo(S * 0.74, S * 0.52); ctx.stroke(); ctx.setLineDash([]);
+        heartPath(ctx, S * 0.5, S * 0.68, S * 0.2); ctx.fillStyle = '#FFF6D0'; ctx.fill(); ctx.lineWidth = S * 0.02; ctx.strokeStyle = OUTLINE; ctx.stroke();
+        break;
+      }
+      case 'deco': {
+        // fauteuil doré : décoration exclusive
+        groundShadow(ctx, S / 2, S * 0.88, S * 0.32, S * 0.05);
+        roundRect(ctx, S * 0.26, S * 0.2, S * 0.48, S * 0.42, S * 0.12); fillShaded(ctx, '#B07CFF', { x: S * 0.26, y: S * 0.2, w: S * 0.48, h: S * 0.42 }, S * 0.03);
+        roundRect(ctx, S * 0.14, S * 0.42, S * 0.72, S * 0.28, S * 0.1); fillShaded(ctx, '#C9A0FF', { x: S * 0.14, y: S * 0.42, w: S * 0.72, h: S * 0.28 }, S * 0.03);
+        for (const x of [0.24, 0.72]) { ctx.beginPath(); ctx.rect(S * x, S * 0.68, S * 0.05, S * 0.17); ctx.fillStyle = PAL.or; ctx.fill(); ctx.lineWidth = S * 0.02; ctx.strokeStyle = OUTLINE; ctx.stroke(); }
+        starPath(ctx, S * 0.5, S * 0.31, S * 0.09, S * 0.04); ctx.fillStyle = PAL.or; ctx.fill();
+        break;
+      }
+      case 'ticket': {
+        roundRect(ctx, S * 0.12, S * 0.28, S * 0.76, S * 0.44, S * 0.07); fillShaded(ctx, PAL.peche, { x: S * 0.12, y: S * 0.28, w: S * 0.76, h: S * 0.44 }, S * 0.03);
+        starPath(ctx, S * 0.5, S * 0.5, S * 0.13, S * 0.06); ctx.fillStyle = '#FFFFFF'; ctx.fill();
+        break;
+      }
+      default: {
+        // pièces
+        for (const [x, y] of [[0.4, 0.58], [0.62, 0.5], [0.5, 0.36]] as const) {
+          ellipse(ctx, S * x, S * y, S * 0.22, S * 0.22);
+          fillShaded(ctx, PAL.or, { x: S * (x - 0.22), y: S * (y - 0.22), w: S * 0.44, h: S * 0.44 }, S * 0.03);
+          ellipse(ctx, S * x, S * y, S * 0.13, S * 0.13); ctx.lineWidth = S * 0.015; ctx.strokeStyle = PAL.orDeep; ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+  }));
+  return key;
 }
 
 export function drawGift(ctx: CanvasRenderingContext2D, c: number): void {
@@ -254,5 +442,8 @@ export const COLLECTION_TINTS: Record<string, number[]> = {
   perfume: [0xffb3d1, 0xe7c9ff, 0xbfe9ff, 0xffffff],
   acc: [0xe8558f, 0xf3c86b, 0xffffff, 0xffc0a3],
   castle: [0xf3c86b, 0xb9a5e8, 0xe8558f, 0xffffff],
+  pastry: [0xff9cc0, 0xffe7a0, 0xfff4da, 0xc9b8f0],
+  bag: [0xc0507a, 0xf3c86b, 0xe7c9ff, 0xffffff],
+  gift: [0xe8558f, 0xf3c86b, 0xb9a5e8, 0xffffff],
   special: [0xffe7a0, 0xffffff, 0xff9cc0, 0xb9a5e8],
 };

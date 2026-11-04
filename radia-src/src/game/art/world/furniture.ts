@@ -5,7 +5,8 @@
  * ou en bois via `shade`. Le tableau accepte la variante « mag:<id> ».
  */
 import type { FurnitureId, MagazineId } from '../../../data/world/ids';
-import { FURNITURE } from '../../../data/world/furniture';
+import { FURNITURE_ALL, type AnyFurnitureId } from '../../../data/world/furniture';
+import { drawExtra, drawView, drawWallPainting, hasView } from './furnitureViews';
 import { colorOf } from '../../../data/world/ids';
 import { PAL, OUTLINE, ellipse, fillShaded, gloss, glow, groundShadow, heartPath, roundRect, shade as kitShade, sparkle, starPath } from '../kit';
 import { drawMagazine } from './careers';
@@ -540,13 +541,31 @@ const DRAW: Record<FurnitureId, (c: C, col: string) => void> = {
 
 // ------------------------------------------------------------------ API
 
-/** Dessine le meuble `id` dans la boîte w×h (origine en haut à gauche). `color` : hex, ou « mag:<id> » pour un tableau. */
-export function drawFurniture(ctx: CanvasRenderingContext2D, id: FurnitureId, w: number, h: number, color?: string): void {
-  const f = FURNITURE[id];
+export interface DrawOpts {
+  /** Orientation 0-3 : 0 face, 2 dos, 1 côté droit, 3 côté gauche (miroir du côté droit). */
+  rot?: number;
+  /** Style (tableau, coussin, miroir…). */
+  variant?: string;
+}
+
+/**
+ * Dessine le meuble `id` dans la boîte w×h (origine en haut à gauche). `color` : hex, ou « mag:<id> » pour un tableau.
+ * `opts.rot` : vues de dos / de côté dessinées en perspective (pas de simple rotation) pour les meubles qui en ont ;
+ * les autres gardent leur vue de face (le retournement se fait côté appelant, en miroir).
+ * Le tableau est toujours dessiné en version murale (cadre sans pieds).
+ */
+export function drawFurniture(ctx: CanvasRenderingContext2D, id: AnyFurnitureId, w: number, h: number, color?: string, opts: DrawOpts = {}): void {
+  const f = FURNITURE_ALL[id];
   const col = color && (color.startsWith('#') || color.startsWith('mag:') || color.startsWith('rgb')) ? color : colorOf(color ?? f.color);
   W = w; H = h; LW = Math.max(1.3, (w + h) * 0.012);
   ctx.save();
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  DRAW[id](ctx, col);
+  const rot = ((Math.round(opts.rot ?? 0) % 4) + 4) % 4;
+  if (id === 'painting') drawWallPainting(ctx, w, h, col, opts.variant || 'paysage');
+  else if (drawExtra(ctx, id, w, h, col, opts.variant ?? '')) { /* objet ajouté */ }
+  else if (rot !== 0 && hasView(id)) {
+    if (rot === 3) { ctx.translate(w, 0); ctx.scale(-1, 1); }
+    drawView(ctx, id, rot === 2 ? 'back' : 'side', w, h, col);
+  } else DRAW[id as FurnitureId](ctx, col);
   ctx.restore();
 }

@@ -14,14 +14,14 @@ export type Gain = Partial<Record<ResKind, number>>;
 
 /**
  * Collection → matériau du monde (Endless 2.0) :
- *  fleurs / fleurs rares → fleurs · amour / chocolats → cacao · Paris / vêtements / accessoires → tissu ;
- *  échecs, bijoux, parfums, château → pièces en bonus (voir COIN_BONUS).
+ *  fleurs / fleurs rares → fleurs · amour / chocolats → cacao · Paris / vêtements / accessoires / sacs → tissu · pâtisseries → cacao ;
+ *  échecs, bijoux, parfums, château, cadeaux → pièces en bonus (voir COIN_BONUS).
  */
 export const MATERIAL_OF: Record<string, ResKind | undefined> = {
-  flowers: 'flowers', rare: 'flowers', paris: 'fabric', cloth: 'fabric', acc: 'fabric', love: 'cocoa', choc: 'cocoa',
+  flowers: 'flowers', rare: 'flowers', paris: 'fabric', cloth: 'fabric', acc: 'fabric', bag: 'fabric', love: 'cocoa', choc: 'cocoa', pastry: 'cocoa',
 };
 /** Pièces bonus par fusion pour les collections sans matériau dédié. */
-export const COIN_BONUS: Record<string, number> = { chess: 2, jewel: 2, perfume: 1, castle: 2 };
+export const COIN_BONUS: Record<string, number> = { chess: 2, jewel: 2, perfume: 1, castle: 2, gift: 2 };
 
 export function mergeReward(result: ItemRef, combo = 1): Gain {
   const g: Gain = { coins: Math.max(1, result.l) };

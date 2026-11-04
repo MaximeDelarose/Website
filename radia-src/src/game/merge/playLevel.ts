@@ -24,7 +24,7 @@ import { RES_NAMES, type ResKind } from '../../data/world/ids';
 import { resIconUrl } from '../art/world/resources';
 import { hasPhotos, photoUrl, photoUrlNow } from '../../core/photos';
 import { wallet, fmt, fmtTime } from '../../core/wallet';
-import { openShop, shopButton, diamondUrl, energyUrl, bagIconUrl } from '../../ui/screens/shop';
+import { openShop, diamondUrl, energyUrl, bagIconUrl } from '../../ui/screens/shop';
 import { openEnergyPanel } from '../../ui/components/energyPanel';
 import { drawRequester } from '../art/generators';
 import { paint } from '../art/kit';
@@ -162,6 +162,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
         refreshRes: () => renderRes(), openWorld: (w) => openWorldFromGame(w),
         challengeText: () => (state.challenge ? `${objectiveText(state.challenge.obj)} · ${R.challengeProgress(state)?.cur ?? 0}/${R.challengeProgress(state)?.max ?? 0}` : ''),
         busy: () => !(scene?.isIdle() ?? true),
+        openEnergy: () => void openEnergyPanel(true, energyOpts()),
         anchor: (k) => anchorOf(k === 'coins' ? coinsEl : k === 'energy' ? energyEl : k === 'hearts' ? heartsEl : k === 'diamonds' ? diamondEl : k === 'world' ? (worldBtn ?? coinsEl) : k === 'bag' ? (bagBtnRef ?? coinsEl) : (hud.querySelector('.en-tre') as HTMLElement | null) ?? coinsEl),
       });
     }
@@ -184,10 +185,42 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     const bagBtn = h('button.booster.bag-btn', { 'aria-label': 'Sac' }, h('img', { src: bagIconUrl(), alt: '', style: 'width:30px;height:30px' }), h('small', 'Sac'), h('span.count', ''));
     const renderBag = () => { (bagBtn.querySelector('.count') as HTMLElement).textContent = `${wallet.bag().length}/${wallet.bagSlots()}`; };
     bagBtn.addEventListener('click', tap(() => void openBag()));
-    const bottom = h('div.mh-bottom', h('div.mh-side', wandBtn, hintBtn), h('div.mh-side', bagBtn, windBtn, shopButton()));
+    // Boutique : un bouton comme les autres de la barre d'actions (jamais flottant par-dessus les boosters)
+    const shopBtn = h('button.booster.mh-shop.shop-btn', { 'aria-label': 'La carte d\'Auguste : boutique' }, h('span.sb-card', h('span.sb-heart', '♥')), h('small', 'Boutique'));
+    shopBtn.addEventListener('click', tap(() => void openShop()));
+    // Bas d'écran ANCRÉ : un seul conteneur flex ; les notices passagères (infos, bulle d'Auguste, gains, notifications) s'empilent
+    // dans `dock`, juste au-dessus de la rangée d'actions, sans position arbitraire ni recouvrement entre elles.
+    const dock = h('div.mh-dock');
+    if (eh) dock.append(eh.feedEl);
+    // panneau de l'objet sélectionné : SOUS le plateau, au-dessus de la barre d'actions (jamais par-dessus un sprite)
+    const bottom = h('div.mh-bottom', h('div.mh-float', dock), eh ? eh.sel : null, h('div.mh-actions', wandBtn, hintBtn, bagBtn, windBtn, shopBtn));
     bagBtnRef = bagBtn;
     const hud = h(`div.merge-hud${endlessMode ? '.endless' : ''}`, top, bottom, eh ? eh.layer : null);
+    ui.flushScreens(); // un écran en fondu (titre, MON MONDE…) ne doit jamais transparaître derrière le plateau
     ui.root.append(hud);
+    ui.setToastDock(dock);
+    // la zone libre du plateau suit la hauteur réelle de l'en-tête et de la barre du bas (carte qui apparaît, ligne repliée…)
+    // (layout() reconstruit le plateau : on ne le déclenche que si l'en-tête déborderait sur le plateau, ou a beaucoup rétréci)
+    let areaTop = -1;
+    let areaBottom = -1;
+    let relayoutTimer: number | undefined;
+    const relayout = () => {
+      window.clearTimeout(relayoutTimer);
+      relayoutTimer = window.setTimeout(() => {
+        if (finished || !scene || areaTop < 0 || hud.style.display === 'none') return;
+        const a = host.area();
+        const grew = a.top > areaTop + 2 || a.bottom < areaBottom - 2; // l'interface empiète sur le plateau
+        const shrank = a.top < areaTop - 28 || a.bottom > areaBottom + 28; // beaucoup de place libérée
+        if (!grew && !shrank) return;
+        if (!scene.isIdle()) { relayout(); return; }
+        areaTop = a.top;
+        areaBottom = a.bottom;
+        scene.layout();
+      }, 220);
+    };
+    const resizeObs = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(relayout) : null;
+    resizeObs?.observe(top);
+    resizeObs?.observe(bottom);
     refreshBoosters();
     renderRes();
     renderBag();
@@ -204,7 +237,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       hud.querySelector('.mh-info')?.remove();
       window.clearTimeout(infoTimer);
       const el = h('div.mh-info', html);
-      hud.append(el);
+      dock.insertBefore(el, eh ? eh.feedEl : null);
       if (ms > 0) infoTimer = window.setTimeout(() => el.remove(), ms);
     };
     const clearInfo = () => { hud.querySelector('.mh-info')?.remove(); };
@@ -277,7 +310,10 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       area: () => ({ top: top.getBoundingClientRect().bottom + 8, bottom: bottom.getBoundingClientRect().top - 4 }),
       onEvents: (ev: BoardEvent[], s: RunState) => onEvents(ev, s),
       onWin: () => void win(),
+      onSelect: endlessMode ? (cell: number) => eh?.select(cell) : undefined,
+      onLongPress: endlessMode ? (cell: number) => eh?.longPress(cell) : undefined,
       onInspect: (r: ItemRef | null) => {
+        if (endlessMode) return; // Endless : le panneau sous le plateau remplace la bulle
         if (!r) { clearInfo(); return; }
         const coll = r.c === 'special' ? 'Objet spécial' : r.c === 'gen' ? 'Générateur · touche-le pour produire' : `${COLLECTIONS[r.c].name} · niveau ${r.l}`;
         info(h('div', h('b', itemName(r)), h('small', ` — ${coll}`), h('div', itemBlurb(r))), 3200);
@@ -513,6 +549,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       g.scene.getScene(MergeScene.KEY)?.scene.setVisible(false);
       try { await fn(); } finally {
         ui.closeScreen();
+        ui.flushScreens(); // l'écran quitté est retiré tout de suite : rien ne transparaît sous le plateau qui revient
         setBackdrop(backdropTheme === 'royaume' ? 'monde' : backdropTheme);
         g.scene.getScene(MergeScene.KEY)?.scene.setVisible(true);
         g.scene.resume(MergeScene.KEY);
@@ -590,6 +627,9 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       if (!g.scene.getScene(MergeScene.KEY)) g.scene.add(MergeScene.KEY, MergeScene, false);
       g.scene.start(MergeScene.KEY, { def, state, host });
       scene = g.scene.getScene(MergeScene.KEY) as MergeScene;
+      const a = host.area();
+      areaTop = a.top;
+      areaBottom = a.bottom;
     };
     const restartScene = () => {
       g.scene.stop(MergeScene.KEY);
@@ -618,6 +658,10 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       window.clearInterval(resTimer);
       setBarkSink(null);
       window.clearTimeout(infoTimer);
+      resizeObs?.disconnect();
+      window.clearTimeout(relayoutTimer);
+      ui.setToastDock(null);
+      hud.classList.add('leaving'); // ne capte plus rien pendant le fondu
       hud.style.transition = 'opacity 0.3s';
       hud.style.opacity = '0';
       window.setTimeout(() => hud.remove(), 320);

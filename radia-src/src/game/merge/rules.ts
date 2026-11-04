@@ -19,6 +19,7 @@ import { isAuto, rollDrop } from '../endless/drops';
 import { discover as albumDiscover } from '../endless/album';
 import { onEngineEvent, syncSecondary } from '../endless/secondary';
 import { orderGain } from '../world/fusionRewards';
+import { addSurprise, boardOf, boardTick, layoutBoard, mergeUnlocks, migrateBoard, orderUnlocks, releaseCell, type UnlockHooks } from './locks';
 
 const ref = (t: Tuple): ItemRef => ({ c: t[0], l: t[1] });
 const isSpecial = (r: ItemRef | null) => !!r && (r.c === 'special' || r.c === 'gen');
@@ -71,6 +72,7 @@ export function createRun(def: LevelDef, mode: 'story' | 'endless' = 'story', se
     challengesDone: 0,
     orderSerial: 0,
   };
+  if (mode === 'endless') { layoutBoard(cells, endlessFun(), endlessColls(), s.rng); s.board = { v: 1 }; }
   const visible = def.ordersVisible ?? 2;
   for (let k = 0; k < visible; k++) s.orders.push(null);
   for (let k = 0; k < visible; k++) fillOrder(s, def, k);
@@ -144,6 +146,14 @@ function completeOrder(s: RunState, def: LevelDef, slot: number, o: OrderState, 
     bump(fun, 'orders');
     bump(fun, `orders:${o.tier ?? 'easy'}`);
     ev.push(...gainTreasure(fun, forced ? 0 : o.reward.treasure, 'order'));
+    if (!forced) {
+      // une livraison libère une ou deux cases verrouillées ; de temps en temps une nouvelle surprise apparaît
+      ev.push(...orderUnlocks(s.cells, fun, EC.board.orderFrees[o.tier ?? 'easy'], subRng(s.rng, 0x10c4), unlockHooks(s)));
+      if (counter(fun, 'orders') % EC.board.surpriseEveryOrders === 0) {
+        const at = addSurprise(s.cells, fun, endlessColls(), subRng(s.rng, 0x5e11), s.merges);
+        if (at >= 0) ev.push({ t: 'lockNew', at });
+      }
+    }
     const g = grantReplaceOnDelivery(fun);
     if (g) ev.push({ t: 'replaceGain', n: g, total: fun.endless2.replaces });
     if (fillOrder(s, def, slot)) ev.push({ t: 'orderNew', slot, tier: (s.orders[slot] as OrderState | null)?.tier });
@@ -169,9 +179,9 @@ function placeGenerator(cells: Cell[], kind: number): number {
   if (cells.some((c) => c.item?.c === 'gen' && c.item.l === kind)) return -1;
   for (const [x, y] of GEN_SPOTS) {
     const i = idx(x, y);
-    if (!cells[i].item && !cells[i].gift) { cells[i].item = { c: 'gen', l: kind }; return i; }
+    if (!cells[i].item && !cells[i].gift && !cells[i].lock) { cells[i].item = { c: 'gen', l: kind }; return i; }
   }
-  for (let i = BOARD_SIZE - 1; i >= 0; i--) if (!cells[i].item && !cells[i].gift) { cells[i].item = { c: 'gen', l: kind }; return i; }
+  for (let i = BOARD_SIZE - 1; i >= 0; i--) if (!cells[i].item && !cells[i].gift && !cells[i].lock) { cells[i].item = { c: 'gen', l: kind }; return i; }
   return -1;
 }
 
@@ -198,6 +208,8 @@ export function migrateEndless(s: RunState, def: LevelDef = ENDLESS_DEF): void {
   }
   syncSecondary(fun);
   noteUnlocks(s, true);
+  // ancienne partie sans verrous : tout reste ouvert, quelques surprises sur des cases vides
+  if (!s.board) { s.board = { v: 1 }; migrateBoard(s.cells, fun, endlessColls(), s.rng); }
   refreshProgress(s);
   void def;
 }
@@ -236,7 +248,7 @@ export function spawnCell(s: RunState, prefer?: number, near?: number): number {
   return best;
 }
 
-const isFree = (c: Cell) => !c.item && !c.gift;
+const isFree = (c: Cell) => !c.item && !c.gift && !c.lock;
 export const emptyCount = (s: RunState) => s.cells.filter(isFree).length;
 
 /**
@@ -361,6 +373,7 @@ export function move(s: RunState, def: LevelDef, from: number, to: number, now: 
   if (from === to || from < 0 || to < 0 || from >= BOARD_SIZE || to >= BOARD_SIZE) return [];
   const a = s.cells[from];
   const b = s.cells[to];
+  if (a.lock || b.lock) return [{ t: 'invalid', from, to, reason: 'locked' }];
   if (!a.item) return [{ t: 'invalid', from, to, reason: 'empty' }];
 
   if (b.gift) {
@@ -407,6 +420,7 @@ function registerMerge(s: RunState, def: LevelDef, from: number, to: number, res
   for (const n of neighbors(to)) if (s.cells[n].gift) ev.push(...openGift(s, n));
 
   if (endless) {
+    ev.push(...mergeUnlocks(s.cells, endlessFun(), from, to, result, unlockHooks(s)));
     ev.push(...comboEndless(s, from, now, mult));
     ev.push(...endlessMergeHooks(s, to, result, ev.slice()));
     return ev.concat(afterAction(s, def));
@@ -581,6 +595,7 @@ export function afterAction(s: RunState, def: LevelDef): BoardEvent[] {
       if (it && it.c === 'gen' && !act.includes(GENERATORS[it.l]?.coll)) { s.cells[i].item = null; ev.push({ t: 'remove', at: i, points: 0 }); }
     }
     ev.push(...noteUnlocks(s));
+    ev.push(...boardTick(s.cells, fun, s.merges, act, unlockHooks(s)));
     const ch = s.challenge;
     if (ch && challengeDone(s, ch)) {
       s.hearts += ch.reward;
@@ -636,10 +651,45 @@ function noteUnlocks(s: RunState, silent = false): BoardEvent[] {
   const u = unlockedColls(fun);
   const prev = counter(fun, 'unlockedSeen');
   fun.endless2.counters.unlockedSeen = u.length;
-  if (silent || prev <= 0 || u.length <= prev) return [];
+  // une collection peut être débloquée par un lieu AVANT une plus ancienne : on suit chaque collection vue
+  const fresh = u.filter((c) => !counter(fun, `seen:${c}`));
+  for (const c of u) fun.endless2.counters[`seen:${c}`] = 1;
+  if (silent || prev <= 0 || !fresh.length) return [];
   void s;
-  return u.slice(prev).map((c) => ({ t: 'unlock' as const, coll: c, kind: genKindOf(c) }));
+  return fresh.map((c) => ({ t: 'unlock' as const, coll: c, kind: genKindOf(c) }));
 }
+
+/** Crochets du moteur pour les libérations de cases (album, butin réglé, coffres). */
+function unlockHooks(s: RunState): UnlockHooks {
+  const fun = endlessFun();
+  return {
+    noteItem: (item) => noteItem(s, item),
+    settle: (l) => settleLoot(fun, l, subRng(s.rng, 0x10c4)),
+    chestPending: () => pendingChests(fun),
+  };
+}
+
+// ------------------------------------------------------- cases verrouillées
+
+/** Prix en énergie pour libérer la case `i` (null si elle n'est pas verrouillée). */
+export const unlockPrice = (s: RunState, i: number): number | null => s.cells[i]?.lock?.price ?? null;
+
+/**
+ * Libère une case en dépensant de l'énergie. `pay(n)` dépense réellement (portefeuille) et renvoie vrai s'il a pu ;
+ * sans paiement accepté, rien ne change. Les objets restent déplaçables immédiatement.
+ */
+export function buyUnlock(s: RunState, def: LevelDef, i: number, pay: (n: number) => boolean, now?: number): BoardEvent[] {
+  const lock = s.cells[i]?.lock;
+  if (s.mode !== 'endless' || !lock) return [];
+  if (lock.price > 0 && !pay(lock.price)) return [];
+  const fun = endlessFun();
+  bump(fun, 'locksBought');
+  const ev = [...touch(s, now), ...releaseCell(s.cells, i, 'energy', fun, unlockHooks(s))];
+  return ev.concat(afterAction(s, def));
+}
+
+/** Zone atteinte (durable). */
+export const boardZone = (): number => boardOf(endlessFun()).zone;
 
 function refreshProgress(s: RunState): void {
   for (const o of s.orders) if (o) o.progress = Math.round(progressOf(s.cells, o).ratio * 100) / 100;

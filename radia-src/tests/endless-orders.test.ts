@@ -84,7 +84,7 @@ describe('commandes atteignables', () => {
     fun.endless2.counters.chains = 2;
     expect(tierPoints(fun)).toBe(ENDLESS_CFG.unlock.at.paris + ENDLESS_CFG.unlock.chainBonus * 2);
     fun.endless2.counters.orders = 10000;
-    expect(unlockedColls(fun).length).toBe(11);
+    expect(unlockedColls(fun).length).toBe(14);
     expect(activeColls(fun).length).toBe(ENDLESS_CFG.unlock.maxBoardGens);
   });
   it('3 commandes simultanées (facile / moyenne / difficile) et nouvelle commande du même palier après livraison', () => {

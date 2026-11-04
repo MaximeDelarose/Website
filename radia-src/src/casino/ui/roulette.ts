@@ -4,7 +4,7 @@ import { audio } from '../../core/app';
 import { haptic } from '../../core/haptics';
 import { fmt } from '../../core/wallet';
 import { chipUrl } from '../../game/art/casino';
-import { bounce, celebrate, centerOf, levelFor, shake, soft } from '../fx';
+import { bigWinBanner, bounce, celebrate, centerOf, levelFor, shake, soft } from '../fx';
 import { cs, hooks, notifyCasino, persist } from '../store';
 import { LIMITS, canBet, credit, debit, recordRound } from '../chips';
 import { BetBook, CHIP_VALUES, GROUP_SIZES, colorOf, covered, payoutRatio, settle, spin, type Bet, type Color } from '../roulette';
@@ -27,11 +27,11 @@ export function helpRoulette(): HTMLElement {
   ];
   return h('div',
     h('p', 'La roue européenne a 37 cases : de 1 à 36 (18 rouges, 18 noires) et le 0 vert.'),
-    h('p', 'Pose des jetons sur le tapis : plusieurs mises en même temps sont possibles. Appuie sur « Lancer » quand tu es prête : la case gagnante est tirée au hasard à cet instant, puis la bille ne fait que la rejoindre.'),
+    h('p', 'Pose des tickets sur le tapis : plusieurs mises en même temps sont possibles. Appuie sur « Lancer » quand tu es prête : la case gagnante est tirée au hasard à cet instant, puis la bille ne fait que la rejoindre.'),
     h('table.cz-table', h('thead', h('tr', h('th', 'Mise'), h('th', 'Chance'), h('th', 'Gain'))), h('tbody', ...rows.map((r) => h('tr', ...r.map((c) => h('td', c)))))),
-    h('p', 'Le 0 fait perdre Rouge, Noir, Pair et Impair. Le gain « 1 pour 1 » rend ta mise en plus : 10 jetons gagnants deviennent 20.'),
+    h('p', 'Le 0 fait perdre Rouge, Noir, Pair et Impair. Le gain « 1 pour 1 » rend ta mise en plus : 10 tickets gagnants deviennent 20.'),
     h('p', 'Pour miser sur plusieurs numéros : active « Plusieurs numéros », touche 2, 3, 4 ou 6 cases, puis valide le groupe.'),
-    h('p', `Mises : de ${LIMITS.roulette.min} à ${fmt(LIMITS.roulette.max)} jetons par lancer en tout. Retour théorique : 36/37, soit environ 97,3 %.`));
+    h('p', `Mises : de ${LIMITS.roulette.min} à ${fmt(LIMITS.roulette.max)} tickets par lancer en tout. Retour théorique : 36/37, soit environ 97,3 %.`));
 }
 
 export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }): Scene {
@@ -52,20 +52,20 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
   const zero = mk('n0', '0', 'green', { kind: 'num', nums: [0] }, 'Numéro 0');
   zero.classList.add('rl-zero');
   const nums = Array.from({ length: 36 }, (_, i) => mk(`n${i + 1}`, String(i + 1), colorOf(i + 1), { kind: 'num', nums: [i + 1] }, `Numéro ${i + 1}`));
-  const outside = [mk('red', 'Rouge', 'red', { kind: 'red' }, 'Rouge'), mk('black', 'Noir', 'black', { kind: 'black' }, 'Noir'), mk('even', 'Pair', 'out', { kind: 'even' }, 'Pair'), mk('odd', 'Impair', 'out', { kind: 'odd' }, 'Impair')];
+  const outside = [mk('red', 'Rouge', 'red', { kind: 'red' }, 'Rouge'), mk('black', 'Noir', 'black', { kind: 'black' }, 'Noir'), mk('even', 'Pair', 'outs', { kind: 'even' }, 'Pair'), mk('odd', 'Impair', 'outs', { kind: 'odd' }, 'Impair')];
 
   const totalEl = h('b', '0');
   const hint = h('p.rl-hint', '');
   const strip = h('div.rl-strip');
   const chipRow = h('div.rl-chips', ...CHIP_VALUES.map((v) => {
-    const b = h('button.rl-chip', { 'aria-label': `Jeton de ${v}`, 'data-v': String(v) }, h('img', { src: chipUrl(v, 52), alt: '', draggable: false }));
+    const b = h('button.rl-chip', { 'aria-label': `Ticket de ${v}`, 'data-v': String(v) }, h('img', { src: chipUrl(v, 52), alt: '', draggable: false }));
     b.addEventListener('click', () => { chip = v; audio.play('select'); haptic('select'); refresh(); });
     return b;
   }));
   const undo = h('button.cz-mini', { 'aria-label': 'Annuler la dernière mise' }, '↶ Annuler');
   const redo = h('button.cz-mini', { 'aria-label': 'Refaire' }, '↷ Refaire');
   const clr = h('button.cz-mini', { 'aria-label': 'Tout effacer' }, 'Effacer');
-  const again = h('button.cz-mini', { 'aria-label': 'Reprendre la mise précédente' }, '⟲ Même mise');
+  const again = h('button.cz-mini', { 'aria-label': 'Reprendre la mise précédente' }, 'Même mise');
   const grpBtn = h('button.cz-mini.rl-grp', { 'aria-pressed': 'false' }, '▦ Plusieurs n°');
   const grpOk = h('button.btn.small.lavande.rl-grpok', 'Valider le groupe') as HTMLButtonElement;
   const go = h('button.btn.gold.wide.rl-go') as HTMLButtonElement;
@@ -92,7 +92,7 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
       if (sel.has(n)) sel.delete(n); else if (sel.size < 6) sel.add(n); else { shake(c); haptic('error'); return; }
       audio.play('select'); haptic('select'); refresh(); return;
     }
-    if (!book.place(spec, chip)) { shake(c); haptic('error'); audio.play('invalid'); hint.textContent = book.total() + chip > cap() ? 'Plus assez de jetons à la table pour ce jeton.' : 'Mise impossible.'; window.setTimeout(() => { if (!group) hint.textContent = ''; }, 2200); return; }
+    if (!book.place(spec, chip)) { shake(c); haptic('error'); audio.play('invalid'); hint.textContent = book.total() + chip > cap() ? 'Plus assez de tickets à la table pour ce ticket.' : 'Mise impossible.'; window.setTimeout(() => { if (!group) hint.textContent = ''; }, 2200); return; }
     audio.play('chip', 0.9 + Math.random() * 0.25); haptic('bet'); bounce(c.querySelector('.rl-mark') ?? c, 1.25);
     refresh();
   }
@@ -169,7 +169,7 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
     const winners = lines.filter((l) => l.won);
     resultBox.replaceChildren(
       badge, h('div.rl-rtxt', h('b', `${n} · ${parts.join(' · ')}`),
-        h(`div.rl-net.${net > 0 ? 'win' : net === 0 ? 'even' : 'lose'}`, net > 0 ? `+${fmt(net)} jetons !` : net === 0 ? 'Mise rendue' : `−${fmt(-net)} jeton${-net > 1 ? 's' : ''}`),
+        h(`div.rl-net.${net > 0 ? 'win' : net === 0 ? 'even' : 'lose'}`, net > 0 ? `+${fmt(net)} tickets !` : net === 0 ? 'Mise rendue' : `−${fmt(-net)} ticket${-net > 1 ? 's' : ''}`),
         h('small', winners.length ? `Gagné : ${winners.map((l) => betText(l.bet)).join(', ')}` : 'Aucune mise gagnante cette fois, merci d\'avoir joué ♡')),
       h('div.rl-after', h('button.btn.gold', { on: { click: () => newRound(true) } }, 'Même mise'), h('button.btn.secondary', { on: { click: () => newRound(false) } }, 'Nouvelle mise')));
     resultBox.classList.add('show');
@@ -180,6 +180,7 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
       const lv = levelFor(returned, stake) ?? (net >= 0 ? 'small' : null);
       const at = centerOf(badge);
       if (net > 0 && lv) celebrate(lv, at);
+      if (net > 0 && (lv === 'big' || lv === 'jackpot')) await bigWinBanner(net, lv);
       await sh.fly(at, Math.min(10, 2 + Math.ceil((returned / stake) * 1.2)), 25);
     } else { audio.play('invalid'); }
     if (sh.alive()) await sh.sync(true);

@@ -180,9 +180,11 @@ await p.locator('.dr-tab', { hasText: 'Colliers' }).click(); await wait(600);
 check('dressing : la vitrine devient une pièce portée (plus verrouillée)', (await p.locator('.dr-card.eclat-locked').count()) === 0 && (await p.locator('.dr-card.worn').count()) >= 1);
 await sh('27-dressing-porte');
 // retirer puis remettre (choix libre)
-await p.locator('.dr-card', { hasText: 'L’Éclat Éternel' }).first().click(); await wait(600);
+await p.locator('.dr-card', { hasText: 'L’Éclat Éternel' }).first().click(); await wait(500);
+await p.locator('.dr2-act', { hasText: 'Retirer' }).click(); await wait(600); // refonte du dressing : un toucher sélectionne, le bouton de la barre retire
 st = await S(); check('dressing : on peut le retirer', !st.world.wardrobe.look.acc.includes('ac-eclat') && st.world.wardrobe.owned.includes('ac-eclat'));
-await p.locator('.dr-card', { hasText: 'L’Éclat Éternel' }).first().click(); await wait(900);
+await p.locator('.dr-card', { hasText: 'L’Éclat Éternel' }).first().click(); await wait(500);
+await p.locator('.dr2-act', { hasText: 'Équiper' }).click(); await wait(900);
 await sh('28-dressing-remis');
 st = await S(); check('dressing : on peut le remettre', st.world.wardrobe.look.acc.includes('ac-eclat'));
 await p.locator('.screen-head .icon-btn').first().click(); await wait(800);

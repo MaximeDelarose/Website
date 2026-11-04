@@ -32,10 +32,44 @@ export const ENDLESS_CFG = {
    * et son générateur apparaissent.
    */
   unlock: {
-    at: { flowers: 0, love: 0, paris: 5, chess: 12, rare: 20, choc: 30, jewel: 42, cloth: 56, perfume: 72, acc: 92, castle: 115 } as Record<CollectionId, number>,
+    at: { flowers: 0, love: 0, paris: 5, chess: 12, rare: 20, choc: 30, jewel: 42, cloth: 56, perfume: 72, acc: 92, castle: 115, pastry: 135, bag: 158, gift: 182 } as Record<CollectionId, number>,
+    /**
+     * Déblocage ANTICIPÉ par un lieu rénové : la collection arrive dès que le lieu atteint l'étape voulue (0 = à rénover … 4 = ouvert)
+     * ET que `minPoints` points de palier sont atteints. Sans le lieu, le seuil `at` s'applique : jamais de blocage.
+     */
+    byPlace: {
+      pastry: { place: 'tea', stage: 3, minPoints: 28 },
+      bag: { place: 'boutique', stage: 3, minPoints: 40 },
+      gift: { place: 'hotel', stage: 2, minPoints: 55 },
+    } as Partial<Record<CollectionId, { place: string; stage: number; minPoints: number }>>,
     chainBonus: 3,
     /** Générateurs posés en même temps sur le plateau (les plus anciens se « reposent » au-delà). */
     maxBoardGens: 6,
+  },
+
+  // ------------------------------------------------------------------ plateau : zones et cases verrouillées
+  board: {
+    /** Points de progression (palier + 4 par lieu ouvert) pour développer la zone 1, puis la zone 2, puis la zone 3. */
+    zoneAt: [0, 6, 16, 34] as number[],
+    placeBonus: 4,
+    /** Garantie : jamais plus de `maxLocked` cases verrouillées en même temps (≥ 36 − maxLocked = 16 cases ouvertes). */
+    maxLocked: 20,
+    /** Surprises posées au départ d'une partie : base + zone, plafonnées. */
+    surprisesBase: 4,
+    surprisesMax: 7,
+    /** Une surprise de plus tous les N livraisons, tant que la limite de surprises simultanées n'est pas atteinte. */
+    surpriseEveryOrders: 3,
+    maxSurprises: 8,
+    /** Prix en énergie (gagnée en jouant) pour libérer une case tout de suite. Toujours ≤ plancher d'énergie (6). */
+    price: { web: 4, chest: 6, reward: 5, sand: 3, deepSand: 6, energy: 5 } as Record<string, number>,
+    /** Fusions adjacentes nécessaires pour dissiper du sable. */
+    sandHits: 2,
+    /** Cadenas doux : fusions à réaliser depuis la pose. */
+    goalMerges: 12,
+    /** Cases libérées par une livraison (verrous à récompense visible d'abord) : rien pour une commande facile, une pour moyenne / difficile. */
+    orderFrees: { easy: 0, mid: 1, hard: 1 } as Record<'easy' | 'mid' | 'hard', number>,
+    /** Récompenses visibles : montants. */
+    rewards: { diamonds: [2, 5], energy: [8, 14], fragments: [2, 3], coins: [30, 80] } as Record<string, [number, number]>,
   },
 
   // ------------------------------------------------------------------ générateurs

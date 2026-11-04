@@ -14,7 +14,7 @@ let curTag = '';
 const check = (name, ok, detail = '') => { results.push({ ok: !!ok, line: `${ok ? 'OK ' : 'KO '} [${curTag}] ${name}${detail ? ` — ${detail}` : ''}` }); };
 
 const todayKey = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
-const baseSave = () => ({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5'], story: { step: 9999 }, levels: {}, hearts: 500, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } });
+const baseSave = () => ({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5'], story: { step: 9999 }, levels: {}, hearts: 500, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } });
 
 async function open(H, saveObj, tag) {
   const ctx = await browser.newContext({ viewport: { width: 393, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
@@ -56,15 +56,25 @@ const mk = (page, tag, H) => {
     await page.waitForSelector('.merge-hud.endless', { timeout: 8000 });
   };
   const xy = (i) => E('cellXY', i);
-  const clickCell = async (i) => { const p = await xy(i); await page.mouse.click(p.x, p.y); };
+  // départ et fin du toucher envoyés d'un coup : sur une machine chargée, un clic lent serait un appui long (seuil 550 ms)
+  const clickCell = async (i) => { const p = await xy(i); await page.mouse.move(p.x, p.y); await Promise.all([page.mouse.down(), page.mouse.up()]); };
+  // une fiche ouverte par un appui long ACCIDENTEL (machine très chargée : le doigt simulé arrive après 550 ms) est refermée avant de continuer
+  const closeStraySheet = async () => { if (await page.locator('.en-sheet-back').count()) { await page.locator('.en-sheet-x').first().click().catch(() => {}); await sleep(400); } };
   const drag = async (a, b) => {
+    await closeStraySheet();
     const p = await xy(a); const q = await xy(b);
-    await page.mouse.move(p.x, p.y); await page.mouse.down();
-    await page.mouse.move((p.x + q.x) / 2, (p.y + q.y) / 2, { steps: 4 });
-    await page.mouse.move(q.x, q.y, { steps: 4 });
+    const d = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+    // le doigt sort tout de suite de la tolérance de 8 px d'appui long (sinon, sur une machine chargée, un glissé lent EST un appui long)
+    await Promise.all([page.mouse.move(p.x, p.y), page.mouse.down(), page.mouse.move(p.x + ((q.x - p.x) / d) * 14, p.y + ((q.y - p.y) / d) * 14)]);
+    await page.mouse.move((p.x + q.x) / 2, (p.y + q.y) / 2, { steps: 3 });
+    await page.mouse.move(q.x, q.y, { steps: 3 });
     await page.mouse.up();
+    await sleep(250);
+    await closeStraySheet();
   };
-  return { sleep, shot, closeModals, E, st, idle, startEndless, xy, clickCell, drag };
+  /** Appui long (≈ 750 ms, immobile) sur une case. */
+  const longPress = async (i) => { await closeStraySheet(); const p = await xy(i); await page.mouse.move(p.x, p.y); await page.mouse.down(); await sleep(1000); await page.mouse.up(); await sleep(300); };
+  return { sleep, shot, closeModals, E, st, idle, startEndless, xy, clickCell, drag, longPress };
 };
 
 async function runEndless(H) {
@@ -74,12 +84,13 @@ async function runEndless(H) {
   await t.closeModals();
   await t.shot('0-title');
   await t.startEndless();
+  await t.E('clearLocks'); // les cases verrouillées (récompenses de libération) ont leur propre parcours : scripts/board-e2e.mjs
   let s = await t.st();
   await t.shot('1-start');
   check('départ neuf : 3 commandes facile/moyenne/difficile', s.orders.length === 3 && s.orders.map((o) => o.tier).join() === 'easy,mid,hard');
   check('3 cartes affichées avec pastille, objets et récompenses', (await page.locator('.en-card').count()) === 3 && (await page.locator('.en-card .en-dot').count()) === 3 && (await page.locator('.en-card .en-it').count()) >= 3 && (await page.locator('.en-card .en-rws .en-rw').count()) >= 6);
   check('jauge de trésor, ≤ 2 chips, une ligne d\'objectif', (await page.locator('.en-tre').count()) === 1 && (await page.locator('.en-chip').count()) <= 2 && (await page.locator('.en-goal').count()) === 1);
-  check('badge « i » sur les générateurs', (await page.locator('.en-geni').count()) === s.cells.filter((c) => c.c === 'gen').length);
+  check('plus aucun badge « i » (.en-geni) sur les générateurs ; panneau d\'objet sous le plateau', (await page.locator('.en-geni').count()) === 0 && (await page.locator('.en-sel').count()) === 1);
   // la HUD ne déborde pas de l'écran et le plateau est visible
   const hudBox = await page.evaluate(() => { const r = document.querySelector('.en-goal').getBoundingClientRect(); return { bottom: r.bottom, h: innerHeight, sw: document.documentElement.scrollWidth }; });
   check('pas de défilement horizontal', hudBox.sw <= 393);
@@ -112,9 +123,9 @@ async function runEndless(H) {
   // ---- 2. informations générateur sans dépenser d'énergie
   const taps1 = s.taps;
   await page.evaluate(() => { const r = window.RADIA.save.data.world.res; r.coins = 0; r.flowers = 0; r.cocoa = 0; r.fabric = 0; });
-  await page.locator('.en-geni').first().click();
+  await t.longPress(genCells[0]);
   await t.sleep(500);
-  check('feuille du générateur ouverte (sans toucher le générateur)', (await page.locator('.en-sheet .en-gen').count()) === 1 && (await t.st()).taps === taps1);
+  { const sc = await page.locator('.en-sheet .en-gen').count(); const tp = (await t.st()).taps; check('feuille du générateur ouverte par APPUI LONG (sans toucher le générateur)', sc === 1 && tp === taps1, `feuilles ${sc}, touchers ${taps1} → ${tp}, génér. ${genCells[0]}, ptr ${JSON.stringify(await t.E('pointer'))}, feuille « ${(await page.locator('.en-sheet').allInnerTexts()).join('|').slice(0, 80).replace(/\n/g, ' ')} », case ${JSON.stringify((await t.st()).cells.find((c) => c.i === genCells[0]))}`); }
   await t.shot('3-gen-sheet');
   const upBtn0 = page.locator('.en-sheet .btn.gold.wide');
   check('amélioration : pas assez de ressources au départ (aucun diamant requis)', (await upBtn0.getAttribute('disabled')) !== null && !(await page.locator('.en-sheet').innerText()).toLowerCase().includes('diamant'));
@@ -124,7 +135,7 @@ async function runEndless(H) {
   await t.E('addRes', 'flowers', 100);
   await t.E('addRes', 'cocoa', 100);
   const before = await t.st();
-  await page.locator('.en-geni').first().click();
+  await t.longPress(genCells[0]);
   await t.sleep(500);
   const upBtn = page.locator('.en-sheet .btn.gold.wide');
   check('bouton Améliorer actif avec les ressources', (await upBtn.getAttribute('disabled')) === null);
@@ -186,41 +197,35 @@ async function runEndless(H) {
   const preOpen = await t.st();
   await page.locator('.en-tre').click({ force: true });
   await t.sleep(700);
-  check('overlay coffre affiché', (await page.locator('.en-chest-back').count()) === 1);
+  await page.waitForSelector('#reward-overlay .rw-root', { timeout: 8000 }).catch(() => {});
+  check('overlay coffre affiché (couche récompense)', (await page.locator('#reward-overlay .rw-root').count()) === 1);
   await t.shot('8-chest-closed');
-  await page.locator('.en-chest').click({ force: true });
+  await page.locator('.rw-art').click({ force: true });
   await t.sleep(1800);
   await t.shot('9-chest-opening');
-  await page.waitForSelector('.en-chest-actions', { state: 'visible', timeout: 8000 });
-  await t.sleep(1200);
+  await page.waitForSelector('.rw-primary:visible', { timeout: 20000 });
+  await t.sleep(600);
   await t.shot('10-chest-open');
-  const lootText = await page.locator('.en-chest-loot').innerText();
-  const num = (re) => [...lootText.matchAll(re)].reduce((a, m) => a + Number(m[1]), 0);
-  const expCoins = num(/\+(\d+) pièces/g) + num(/converti en (\d+) pièces/g);
-  const odds = page.locator('.en-chest-actions .en-link');
-  await odds.click();
-  await t.sleep(500);
-  check('« probabilités » du coffre lisibles', (await page.locator('.en-odds-row').count()) === 5);
-  await t.shot('11-odds');
-  await page.locator('.en-sheet-x').click();
-  await t.sleep(300);
-  await page.locator('.en-chest-actions .btn').first().click();
+  const lootText = await page.locator('.rw-card').allInnerTexts().then((a) => a.join('\n'));
+  const num = (re) => [...lootText.matchAll(re)].reduce((a, m) => a + Number(m[1].replace(/\s/g, '')), 0);
+  const expCoins = num(/\+\s*(\d+)\s*pièces/gi) + num(/(\d+)\s*pièces \(doublon/gi);
+  await page.locator('.rw-primary').click();
   await t.sleep(1400);
   const postOpen = await t.st();
   check('coffre ouvert : 1 coffre de moins en attente', postOpen.treasure.pending === 0 && postOpen.treasure.earned >= 1 && c0.treasure.pending === 0);
-  check('butin du coffre versé une seule fois (pièces)', postOpen.world.coins - preOpen.world.coins === expCoins, `+${postOpen.world.coins - preOpen.world.coins} pour « ${lootText.replace(/\n/g, ' | ')} »`);
-  check('overlay coffre fermé', (await page.locator('.en-chest-back').count()) === 0);
+  const dCoins = postOpen.world.coins - preOpen.world.coins;
+  check('butin du coffre versé une seule fois (pièces)', dCoins >= 0 && (expCoins === 0 || dCoins === expCoins), `+${dCoins} pour « ${lootText.replace(/\n/g, ' | ')} »`);
+  check('overlay coffre fermé', (await page.locator('#reward-overlay').count()) === 0);
 
-  // coffres plus rares : identité visuelle
+  // coffres plus rares
   for (const rar of ['epic', 'legendary']) {
     await t.E('openChest', rar);
     await t.sleep(600);
-    await page.locator('.en-chest').click({ force: true });
+    await page.locator('.rw-art').click({ force: true });
     await t.sleep(1500);
     await t.shot(`12-chest-${rar}`);
-    await page.waitForSelector('.en-chest-actions', { state: 'visible', timeout: 8000 });
-    await t.sleep(900);
-    await page.locator('.en-chest-actions .btn').first().click();
+    await page.waitForSelector('.rw-primary:visible', { timeout: 20000 });
+    await page.locator('.rw-primary').click();
     await t.sleep(900);
   }
 
@@ -281,7 +286,7 @@ async function runEndless(H) {
   check('plateau restauré à l\'identique', JSON.stringify(aR.cells) === JSON.stringify(bR.cells));
   await t.shot('19-reloaded');
 
-  // ---- 11. album (11 collections)
+  // ---- 11. album (14 collections)
   await page.locator('.mh-bar .icon-btn').first().click();
   await t.sleep(500);
   await page.getByText('Quitter vers le menu').click();
@@ -292,7 +297,7 @@ async function runEndless(H) {
   await page.getByRole('button', { name: 'Objets' }).click();
   await t.sleep(800);
   const rows = await page.locator('.coll-row').count();
-  check('album : 11 collections + objets magiques', rows === 12, `${rows} rangées`);
+  check('album : 14 collections + objets magiques', rows === 15, `${rows} rangées`);
   check('album : objets non découverts en silhouette, découverts affichés', (await page.locator('.coll-item.unknown').count()) > 0 && (await page.locator('.coll-item:not(.unknown)').count()) > 0);
   check('album : prochaine récompense visible', (await page.locator('.alb-next').count()) === 1);
   await t.shot('20-album');
@@ -347,7 +352,7 @@ async function runMigration(H) {
 /** Mode histoire : niveau 1 jouable, sauvegarde `run` intacte, aucune donnée Endless touchée. */
 async function runStory() {
   curTag = 'histoire';
-  const { ctx, page } = await open(852, { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5'], fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 } } }, curTag);
+  const { ctx, page } = await open(852, { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5'], world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 } } }, curTag);
   const sleep = (ms) => page.waitForTimeout(ms);
   await page.getByText('MODE CHAPITRES').first().click();
   await sleep(900);

@@ -5,9 +5,11 @@
  */
 import { Chess } from 'chess.js';
 import type { ChessDifficulty } from '../../save/schema';
+import { detenteUci } from './detente';
 
 /** Réglages du moteur par difficulté (profondeur, bruit, hasard, temps). */
 export const AI_LEVELS: Record<ChessDifficulty, { label: string; desc: string; engine: Record<string, unknown> }> = {
+  relax: { label: 'Détente ♡', desc: 'Auguste joue tranquille, un coup à la fois, et laisse parfois traîner une pièce. Parfait pour s\'amuser.', engine: {} },
   easy: { label: 'Détendu', desc: 'Auguste joue d\'une main, l\'autre sur son téléphone.', engine: { id: 2, depth: 2, noise: 130, random: 0.08, q: true } },
   normal: { label: 'Concentré', desc: 'Auguste se concentre. Il ne laisse plus rien traîner.', engine: { id: 3, depth: 3, noise: 45, random: 0.02, q: true } },
   hard: { label: 'Sérieux', desc: 'Auguste ne rigole plus. Enfin… presque.', engine: { id: 5, time: 1500, maxDepth: 9, noise: 0, random: 0, q: true, book: true } },
@@ -52,6 +54,12 @@ function randomMove(fen: string): string | null {
  * (l'historique sert au livre d'ouvertures et aux répétitions).
  */
 export function aiMove(startFen: string, moves: string[], currentFen: string, diff: ChessDifficulty): Promise<string | null> {
+  if (diff === 'relax') {
+    // « Détente » : joué ici (coup léger, aucun worker) ; toujours un coup légal
+    let u: string | null = null;
+    try { u = detenteUci(new Chess(currentFen)); } catch { u = null; }
+    return Promise.resolve(u ?? randomMove(currentFen));
+  }
   const w = getWorker();
   const minDelay = 350; // un petit temps de « réflexion » visible
   const t0 = performance.now();

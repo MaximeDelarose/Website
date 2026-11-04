@@ -310,3 +310,40 @@
 .chess-aug img { border-radius: 50%; object-fit: cover; }
 .chess-status.thinking::after { content: '…'; display: inline-block; width: 1.2em; text-align: left; animation: thinkDots 1.2s steps(4) infinite; overflow: hidden; vertical-align: bottom; }
 @keyframes thinkDots { from { width: 0; } to { width: 1.2em; } }
+
+/* ----------------------------------------------- aides (échecs, partie contre Auguste) */
+.seg.wrap { flex-wrap: wrap; justify-content: center; border-radius: 22px; max-width: 100%; }
+.seg.wrap button { padding: 7px 8px; font-size: 13.5px; }
+.setup-aids { width: 100%; display: flex; flex-direction: column; gap: 0; }
+.setup-aids > small { text-align: center; margin-bottom: 2px; }
+.setup-aids .setting-row { padding: 6px 4px; }
+.setup-aids .setting-row label { font-size: 15px; }
+.setup-aids .setting-row small, .chess-menu .setting-row small { font-size: 12px; }
+.chess-menu { text-align: left; margin-bottom: 8px; }
+.chess-menu .setting-row label { font-size: 16px; }
+
+/* liseré doux sur une pièce menacée (non défendue) */
+.gb-threat { box-shadow: inset 0 0 0 3px rgba(240, 90, 120, 0.8); background: rgba(240, 90, 120, 0.14); animation: gbThreat 2.2s ease-in-out infinite; }
+@keyframes gbThreat { 50% { box-shadow: inset 0 0 0 5px rgba(240, 90, 120, 0.4); background: rgba(240, 90, 120, 0.05); } }
+/* anneau doré sur une pièce adverse que l'on peut capturer */
+.gb-capring::after { content: ''; position: absolute; inset: 3%; border-radius: 50%; border: 3px dashed rgba(214, 150, 30, 0.95); }
+.gb.has-sel .gb-capring { display: none; }
+/* indice : case(s) en bleu doux */
+.gb-hint { box-shadow: inset 0 0 0 4px rgba(70, 150, 245, 0.95); background: rgba(90, 169, 255, 0.28); animation: gbHint 1.4s ease-in-out infinite; }
+@keyframes gbHint { 50% { background: rgba(90, 169, 255, 0.12); } }
+.gb.calm .gb-threat, .gb.calm .gb-hint { animation: none; }
+.reduced-motion .gb-threat, .reduced-motion .gb-hint { animation: none; }
+@media (prefers-reduced-motion: reduce) { .gb-threat, .gb-hint { animation: none; } }
+
+/* bulle de tutoriel : remplace le nom/statut d'Auguste (même hauteur, pas de saut de mise en page) */
+.chess-top { min-height: 56px; }
+.chess-tip {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 46px; max-height: 52px; padding: 5px 8px 5px 10px;
+  border-radius: 14px; background: #fff; box-shadow: 0 2px 8px rgba(88, 67, 63, 0.2), inset 0 0 0 2px rgba(255, 117, 168, 0.5);
+  font-size: 12.5px; line-height: 1.22; color: var(--nuit); text-align: left; cursor: pointer;
+}
+.chess-tip[hidden] { display: none; }
+.chess-tip .tip-text { flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.chess-tip .tip-skip { flex: none; font-size: 12px; font-weight: 700; color: var(--rose-deep); padding: 6px 4px; }
+.chess-status.hint { font-size: 14px; line-height: 1.25; }

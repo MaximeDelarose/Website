@@ -1,3 +1,13 @@
+/*
+ * ARCHITECTURE D'EMPILEMENT (z-index) — table complète : src/ui/rewards/zlayers.ts et src/ui/rewards/README.md.
+ *  - <body> > #app (position:fixed = contexte d'empilement) > #game (Phaser) + #ui (z 10).
+ *  - TOUT ce qui est dans #ui (écrans, modales .modal-backdrop 90–130, événements .ev-layer 91, téléphone .ph-back, casino 120/310,
+ *    sheets Endless 56–60, paillettes 300, anciens calques 400…) reste PRISONNIER de #ui : ses z-index ne se comparent qu'entre eux.
+ *  - <body> > #reward-overlay (z 5000, hors de #app) : la couche récompense (cadeaux, coffres, particules, envols, compteurs). Rien ne
+ *    doit déclarer un z-index >= 5000 ; pour afficher quelque chose AU-DESSUS d'un cadeau, ne pas le faire.
+ *  - NE JAMAIS donner transform/filter/will-change/isolation à #app ou body (cela ferait passer les enfants en contexte propre).
+ *  - Barre « mise à jour » (updateWatch) : z 2000 sur <body>, volontairement sous la couche récompense.
+ */
 /* =====================================================================
    RADIA — Design system « Romantic Cozy Pop »
    ===================================================================== */
@@ -312,13 +322,15 @@ button:focus-visible { outline: 3px solid var(--or); outline-offset: 3px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(var(--sat) + 16px) 18px calc(var(--sab) + 16px);
+  padding: calc(var(--sat) + 16px) 18px calc(var(--sab) + 16px + var(--kb, 0px));
   background: rgba(59, 49, 82, 0.55);
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   animation: fadeIn 0.2s ease;
 }
 .modal-backdrop.leaving { animation: fadeOut 0.18s ease forwards; }
+/* Un calque qui part ne capte plus rien dès le premier instant (jamais d'écran « fantôme » qui bloque le toucher). */
+#ui .leaving, #ui .out { pointer-events: none !important; }
 .modal {
   width: 100%;
   max-width: 380px;

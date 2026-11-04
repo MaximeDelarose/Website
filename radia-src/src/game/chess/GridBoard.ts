@@ -20,6 +20,8 @@ export interface GridBoardOpts {
   onMove: (from: number, to: number) => void;
   onInvalid?: (from: number, to: number) => void;
   onSelect?: (cell: number | null) => void;
+  /** Afficher les points des déplacements légaux ? (aide facultative, vrai par défaut) */
+  showDots?: () => boolean;
   /** Étiquettes de coordonnées (a–h / 1–8) pour les échecs. */
   coords?: boolean;
 }
@@ -31,6 +33,7 @@ export class GridBoard {
   private squares: HTMLElement[] = [];
   private decor: HTMLElement;
   private marks: HTMLElement;
+  private selBox: HTMLElement;
   private layer: HTMLElement;
   private pieces: PieceEl[] = [];
   private selected: number | null = null;
@@ -48,8 +51,9 @@ export class GridBoard {
     }
     this.decor = h('div.gb-layer.gb-decor');
     this.marks = h('div.gb-layer.gb-marks');
+    this.selBox = h('div.gb-layer.gb-sel');
     this.layer = h('div.gb-layer.gb-pieces');
-    this.el.append(grid, this.decor, this.marks, this.layer);
+    this.el.append(grid, this.decor, this.marks, this.selBox, this.layer);
     this.paintSquares();
     this.el.addEventListener('pointerdown', (e) => this.down(e));
     // Déplacement et relâcher écoutés sur la fenêtre : le doigt peut sortir du
@@ -131,24 +135,26 @@ export class GridBoard {
   setMarks(items: [number, string][]): void {
     this.marks.textContent = '';
     for (const [cell, cls] of items) this.marks.append(this.cellEl(cls, cell));
-    this.renderSelection();
   }
 
-  private selLayer: HTMLElement[] = [];
+  /** Sélection et points : couche à part, jamais recréée par setMarks (points stables). */
   private renderSelection(): void {
-    for (const e of this.selLayer) e.remove();
-    this.selLayer = [];
+    this.selBox.textContent = '';
+    this.el.classList.toggle('has-sel', this.selected !== null);
     if (this.selected === null) return;
-    const sel = this.cellEl('gb-selected', this.selected);
-    this.marks.append(sel);
-    this.selLayer.push(sel);
+    this.selBox.append(this.cellEl('gb-selected', this.selected));
+    if (this.o.showDots && !this.o.showDots()) return;
     for (const t of this.targetsNow) {
       const occupied = this.pieces.some((p) => p.cell === t);
-      const m = this.cellEl(occupied ? 'gb-capture' : 'gb-dot', t);
-      this.marks.append(m);
-      this.selLayer.push(m);
+      this.selBox.append(this.cellEl(occupied ? 'gb-capture' : 'gb-dot', t));
     }
   }
+
+  /** Redessine la sélection (après un changement d'option). */
+  refreshSelection(): void { this.renderSelection(); }
+
+  /** Cellule actuellement sélectionnée. */
+  get selectedCell(): number | null { return this.selected; }
 
   /**
    * Met à jour les pièces. Les pièces identiques restées en place sont

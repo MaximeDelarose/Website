@@ -76,36 +76,51 @@
 .order .reward { font-size: 11px; font-weight: 600; color: var(--rose-deep); }
 @keyframes readyPulse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 
+/* Bas d'écran ANCRÉ : une pile de notices passagères (dock) posée juste au-dessus d'une rangée d'actions de même largeur.
+   Rien n'est en position absolue arbitraire : tout suit la hauteur réelle de la rangée et la zone sûre de l'iPhone. */
 .mh-bottom {
   position: absolute;
   left: calc(var(--sal) + 10px);
   right: calc(var(--sar) + 10px);
-  bottom: calc(var(--sab) + 24px);
+  bottom: calc(var(--sab) + 12px);
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
+  pointer-events: none;
 }
-.mh-side { display: flex; gap: 8px; }
+.mh-float { position: relative; height: 0; pointer-events: none; }
+.mh-dock {
+  position: absolute; left: 0; right: 0; bottom: 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  pointer-events: none;
+}
+.mh-actions { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; }
 .booster {
   position: relative;
-  width: 54px; height: 54px; border-radius: 18px;
-  display: grid; place-items: center;
+  flex: 1 1 0; min-width: 44px; max-width: 68px; height: 58px; border-radius: 18px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   background: linear-gradient(180deg, #fffaf4, var(--creme));
   box-shadow: 0 4px 0 #e3c7b0, 0 8px 14px rgba(81, 68, 109, 0.25), inset 0 2px 0 #fff;
   color: var(--nuit);
   transition: transform 0.12s var(--ease-pop);
 }
 .booster:active { transform: translateY(3px) scale(0.95); }
-.booster svg { width: 26px; height: 26px; }
+.booster svg { width: 26px; height: 26px; flex: 0 0 auto; }
 .booster .count {
-  position: absolute; top: -6px; right: -6px;
+  position: absolute; top: -7px; right: -5px;
   min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px;
   background: var(--rose-vif); color: #fff; font-size: 13px; font-weight: 700;
   display: grid; place-items: center; box-shadow: 0 2px 0 #c4407a;
 }
 .booster .count.buy { background: var(--or); color: var(--choco); box-shadow: 0 2px 0 #b5862c; font-size: 11px; }
 .booster.active { background: linear-gradient(180deg, #ffd9e5, var(--rose)); box-shadow: 0 0 0 3px var(--rose-vif), 0 8px 14px rgba(255, 117, 168, 0.4); animation: nudge 0.9s ease-in-out infinite; }
-.booster small { position: absolute; bottom: -16px; font-size: 11px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(59, 49, 82, 0.8); white-space: nowrap; }
+.booster small { font-size: 11px; line-height: 1; font-weight: 700; color: var(--choco); white-space: nowrap; }
+/* le bouton Boutique est une tuile comme les autres (carte miniature + libellé) */
+.booster.mh-shop { gap: 3px; }
+.booster.mh-shop .sb-card { width: 34px; height: 23px; border-radius: 6px; box-shadow: 0 2px 0 #2b2340, inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+.booster.mh-shop .sb-card::before { left: 5px; top: 6px; width: 8px; height: 6px; }
+.booster.mh-shop .sb-heart { right: 4px; bottom: 1px; font-size: 12px; }
+.booster.mh-shop small { color: var(--choco); text-shadow: none; }
 .mh-info {
   position: absolute;
   left: 50%;
@@ -121,6 +136,14 @@
   animation: popIn 0.25s var(--ease-pop);
   pointer-events: none;
 }
+/* dans la pile ancrée : en flux normal, sans décalage arbitraire */
+.mh-dock .mh-info { position: static; transform: none; left: auto; bottom: auto; }
+.mh-dock .aug-says, .mh-dock .aug-says.en-aug { position: static; transform: none; left: auto; top: auto; bottom: auto; animation: popIn 0.3s var(--ease-pop); }
+.mh-dock .aug-says.out { animation: fadeOut 0.3s ease forwards; }
+.mh-dock .toasts { position: static; top: auto; bottom: auto; left: auto; right: auto; width: 100%; z-index: auto; order: -2; }
+.mh-dock .aug-says { order: -1; }
+.mh-dock .mh-info { order: 0; }
+.mh-dock .en-feed { order: 1; }
 .mh-info b { color: var(--nuit); }
 .mh-score { font-weight: 700; font-size: 15px; color: var(--nuit); }
 
@@ -299,7 +322,7 @@
 .mh-orders { position: relative; z-index: 1; }
 
 .title-left { display: flex; align-items: center; gap: 8px; }
-.mh-phone { width: 40px; height: 40px; }
+.mh-phone { width: 40px; height: 40px; min-width: 0; }
 
 /* bulle « Salaire prêt ! » sur le bouton Mon monde */
 .title-menu .btn.mode { position: relative; }
@@ -324,3 +347,15 @@
 .gb-spark { position: absolute; z-index: 67; width: 8px; height: 8px; margin: -4px; border-radius: 50%; background: #ffd86b; pointer-events: none; animation: gbSpark 0.8s ease-out forwards; }
 @keyframes gbRise { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.7); } 18% { opacity: 1; transform: translate(-50%, -6px) scale(1.08); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -48px); } }
 @keyframes gbSpark { to { transform: rotate(var(--a)) translateX(54px) scale(0.2); opacity: 0; } }
+
+/* écrans courts (iPhone avec barres Safari : 393×660 et moins) : rangée d'actions plus basse, libellés masqués (aria-label conservés) */
+@media (max-height: 720px) {
+  .mh-bottom { bottom: calc(var(--sab) + 8px); }
+  .booster { height: 50px; border-radius: 16px; }
+  .booster small { display: none; }
+  .booster svg { width: 24px; height: 24px; }
+  .booster.mh-shop .sb-card { width: 32px; height: 22px; }
+}
+@media (max-height: 620px) {
+  .booster { height: 46px; }
+}

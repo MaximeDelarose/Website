@@ -13,6 +13,8 @@ const C = ENDLESS_CFG.combo;
 function fresh(seed = 1) {
   const fun = resetEndless();
   const s = createRun(ENDLESS_DEF, 'endless', seed);
+  // ces tests posent des objets où ils veulent : plateau sans cases verrouillées (les verrous ont leurs propres tests : endless-locks.test.ts)
+  for (const c of s.cells) c.lock = undefined;
   return { fun, s };
 }
 /** Enchaîne `n` fusions rapides (toutes les 400 ms) : renvoie tous les événements. */
@@ -100,7 +102,7 @@ describe('album', () => {
     expect(p.perColl.find((x) => x.coll === 'castle')!.complete).toBe(true);
     expect(p.next).not.toBeNull();
     for (const c of COLLECTION_IDS) for (let l = 1; l <= collMax(c); l++) discover(fun, { c, l });
-    expect(albumProgress(fun).chainsDone).toBe(11);
+    expect(albumProgress(fun).chainsDone).toBe(COLLECTION_IDS.length);
     expect(albumProgress(fun).found).toBe(albumTotal());
   });
   it('import de l\'ancien album sans récompense', () => {

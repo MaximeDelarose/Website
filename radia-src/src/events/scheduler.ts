@@ -10,7 +10,7 @@ import { world } from '../core/world';
 import { LEVELS } from '../data/levels';
 import { chessUnlocked } from '../game/narrative/Story';
 import { EVENTS, SMALL_MESSAGES, eventById } from './data';
-import { canOfferBig, canSendSmall, offerInvite, pickEvent, pushMessage, settleStale, setInviteState, unreadCount, type Progress } from './manager';
+import { canOfferBig, canSendSmall, offerInvite, pickEvent, pushMessage, settleStale, setInviteState, type Progress } from './manager';
 import { ev, nextId } from './api';
 import { showNotification, notificationVisible } from './ui/notify';
 import { isEventRunning } from './runner';
@@ -39,7 +39,7 @@ export function progress(): Progress {
 /** Moment sûr pour afficher une notification (aucune interaction ni animation critique en cours). */
 export function safeToNotify(): boolean {
   if (document.hidden || isEventRunning() || notificationVisible() || funBusy()) return false;
-  if (document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .cg-screen, .fam-scene, .fam-body, .kc, .aug-says, .splash, .ev-layer, .ev-inv-back, .ph-back, .call-layer, .inc-layer, .tdr-layer')) return false;
+  if (document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .cg-screen, .fam-scene, .fam-body, .kc, .aug-says, .splash, .ev-layer, .ev-inv-back, .ph-back, .call-layer, .rw-root, .inc-layer, .tdr-layer')) return false;
   try {
     const g = getGame();
     if (g.scene.getScenes(true).some((s) => !['backdrop', 'merge'].includes(s.sys.settings.key))) return false; // billard, chemin, puzzle…
@@ -111,11 +111,21 @@ function tick(dt: number): void {
   }
   maybeNotify();
   if (!notificationVisible()) funMaybe(safeToNotify());
+  swipeTick(dt, active, safeToNotify() && !notificationVisible());
+}
+
+/** Tindeur jouable : les matchs écrivent parfois (horloge de jeu ACTIF, notification espacée, jamais à un moment critique). */
+function swipeTick(dt: number, active: boolean, safe: boolean): void {
+  const raw = save.data.fun.apps.swipe as { convos?: object };
+  if (!save.data.fun.tindeur.installed || !raw.convos || !Object.keys(raw.convos).length) return;
+  void import('./tindeur/swipe/runtime').then((m) => m.swipeTick(dt, active, safe));
 }
 
 export function startInvitations(): void {
   if (started) return;
   started = true;
+  // invitations dont l'événement n'existe plus : on les range (elles ne peuvent plus s'ouvrir, la pastille ne doit pas les compter)
+  for (const i of ev().inbox) if (i.state !== 'done' && !eventById(i.eventId)) i.state = 'done';
   necklaceLaunch();
   installNecklaceDebug((id) => { shown.delete(id); }, () => safeToNotify() && !notificationVisible());
   window.addEventListener('pointerdown', () => { lastInput = Date.now(); }, { passive: true });
@@ -128,12 +138,20 @@ export function startInvitations(): void {
   }, 4000);
 }
 
+const KNOWN_SENDERS = new Set<string>(['auguste', 'kid1', 'kid2', 'kid3', 'agency']);
+/** Non lus RÉELLEMENT visibles dans le téléphone (la pastille ne compte jamais un élément qu'on ne pourrait pas ouvrir). */
+export function visibleUnread(): number {
+  const st = ev();
+  return st.msgs.filter((m) => !m.read && KNOWN_SENDERS.has(m.from)).length + st.inbox.filter((i) => i.state === 'new' && !!eventById(i.eventId)).length;
+}
+
 /** Bouton « téléphone » avec pastille ; à placer dans la fusion, l'accueil et Mon monde. */
 export function phoneButton(extraClass = ''): HTMLElement {
   const badge = h('i.ph-badge');
   const b = h(`button.icon-btn.ph-btn${extraClass ? '.' + extraClass : ''}`, { 'aria-label': 'Mon téléphone' }, icon('phone', 24), badge);
   const refresh = () => {
-    const n = unreadCount(ev()) + (ev().current ? 1 : 0) + funBadge();
+    const cur = ev().current;
+    const n = visibleUnread() + (cur && eventById(cur.eventId) ? 1 : 0) + funBadge();
     badge.textContent = n > 9 ? '9+' : String(n);
     b.classList.toggle('has', n > 0);
     if (!b.isConnected) off();

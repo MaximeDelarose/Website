@@ -4,16 +4,59 @@
  */
 import { h, tap } from './dom';
 import { icon } from './icons';
+import { initViewport } from './viewport';
 
 const root = () => document.getElementById('ui')!;
 
 let currentScreen: HTMLElement | null = null;
 let toastWrap: HTMLElement | null = null;
+let toastDock: HTMLElement | null = null;
+
+/**
+ * Filet de sécurité durable : un enfant direct de #ui qui garde `leaving`/`out` plus de 1,6 s (minuteur perdu, onglet mis en veille,
+ * exception pendant la fermeture) est retiré. Sans cela, un calque invisible ou assombri pourrait rester au-dessus de l'interface.
+ */
+let janitor: MutationObserver | null = null;
+const STALE_MS = 1600;
+const isLeaving = (e: Element) => e.classList.contains('leaving') || e.classList.contains('out');
+function watchStale(el: Element): void {
+  if (!isLeaving(el)) return;
+  window.setTimeout(() => { if (el.isConnected && el.parentElement === root() && isLeaving(el)) el.remove(); }, STALE_MS);
+}
+function ensureJanitor(): void {
+  if (janitor || typeof MutationObserver === 'undefined') return;
+  const r = document.getElementById('ui');
+  if (!r) return;
+  initViewport();
+  janitor = new MutationObserver((muts) => {
+    for (const m of muts) {
+      if (m.type === 'attributes' && m.target.parentElement === r) watchStale(m.target as Element);
+      else if (m.type === 'childList') m.addedNodes.forEach((n) => { if (n instanceof Element) watchStale(n); });
+    }
+  });
+  janitor.observe(r, { childList: true, attributes: true, attributeFilter: ['class'], subtree: true });
+}
 
 export interface ModalAction { label: string; value: string; style?: 'primary' | 'secondary' | 'lavande' | 'gold' }
 
 export const ui = {
-  get root() { return root(); },
+  get root() { ensureJanitor(); return root(); },
+
+  /**
+   * Retire TOUT de suite les écrans qui sont déjà en train de partir (ou tous sauf l'écran courant) : à appeler quand un calque de jeu
+   * (HUD du plateau…) s'affiche, pour qu'un écran en fondu ne transparaisse pas derrière lui.
+   */
+  flushScreens(): void {
+    for (const e of Array.from(root().children)) {
+      if (e.classList.contains('screen') && e !== currentScreen) e.remove();
+    }
+  },
+
+  /** Les notifications de `toast` s'empilent dans ce conteneur (au-dessus des boutons, pas sur eux) ; `null` : retour au calque général. */
+  setToastDock(el: HTMLElement | null): void {
+    toastDock = el;
+    if (toastWrap && toastWrap.isConnected) { (el && el.isConnected ? el : root()).append(toastWrap); }
+  },
 
   /** Remplace l'écran courant (animation de sortie/entrée). */
   showScreen(el: HTMLElement): HTMLElement {
@@ -25,6 +68,7 @@ export const ui = {
     }
     currentScreen = el;
     el.classList.add('screen');
+    ensureJanitor();
     root().prepend(el);
     return el;
   },
@@ -70,6 +114,7 @@ export const ui = {
       if (opts.className) card.classList.add(opts.className);
       const back = h('div.modal-backdrop', card);
       back.addEventListener('click', (e) => { if (e.target === back && opts.dismissible !== false) close(null); });
+      ensureJanitor();
       root().append(back);
     });
   },
@@ -83,8 +128,10 @@ export const ui = {
   toast(o: { title: string; sub?: string; icon?: string; img?: string; ms?: number }): void {
     if (!toastWrap || !toastWrap.isConnected) {
       toastWrap = h('div.toasts.passthrough');
-      root().append(toastWrap);
-    }
+      ensureJanitor();
+      (toastDock && toastDock.isConnected ? toastDock : root()).append(toastWrap);
+    } else if (toastDock && toastDock.isConnected && toastWrap.parentElement !== toastDock) toastDock.append(toastWrap);
+    else if (!toastDock && toastWrap.parentElement !== root()) root().append(toastWrap);
     const ic = o.img
       ? h('img', { src: o.img, alt: '', style: 'width:38px;height:38px;object-fit:contain' })
       : h('span.t-icon', icon(o.icon ?? 'star', 20));

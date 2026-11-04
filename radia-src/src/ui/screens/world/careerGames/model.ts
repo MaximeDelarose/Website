@@ -1,5 +1,7 @@
 /** Interface du mini-jeu « Mannequin » : tenue imposée, composition avec les vêtements possédés, défilé. */
 import { h, tap } from '../../../dom';
+import { haptic } from '../../../../core/haptics';
+import { sparkleBurst } from '../../../fx/sparkle';
 import { audio } from '../../../../core/app';
 import { icon } from '../../../icons';
 import { CLOTHES, STYLE_NAMES } from '../../../../data/world/wardrobe';
@@ -123,6 +125,8 @@ export function playModel(g: GameCtx): Promise<GameResult | null> {
       });
       if (finished) return;
       audio.play(a.stars >= 2 ? 'victory' : 'reward');
+      haptic('reward');
+      if (a.stars >= 2) sparkleBurst(innerWidth / 2, innerHeight * 0.4, { rarity: 'epic' });
       const verdict = a.score >= 90 ? 'Le jury est conquis !' : a.score >= 70 ? 'Très beau passage !' : a.score >= 40 ? 'Joli, avec quelques ajustements.' : 'Une autre tenue ira mieux au thème, retente ♡';
       sh.body.append(h('div.md-verdict', stars(a.stars), h('b', verdict), h('small', `Thème ${STYLE_NAMES[theme]} · harmonie ${a.score} %`), bigButton('Continuer', () => end({
         score: a.score, tags: a.score >= 60 ? modelTags(theme) : [],

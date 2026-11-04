@@ -1,0 +1,9 @@
+/* Éléments communs de RADIA Clips / RADIA Snap (préfixe apx-). */
+.apx-heart { position: absolute; z-index: 30; pointer-events: none; color: #ff4f8b; line-height: 1; transform: translate(-50%, -50%); text-shadow: 0 3px 10px rgba(255, 79, 139, 0.55); animation: apxHeart 0.9s var(--ease-out, ease-out) forwards; }
+@keyframes apxHeart { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(0); } 18% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(var(--r)); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.9) rotate(var(--r)); } }
+@media (prefers-reduced-motion: reduce) { .apx-heart { animation-duration: 0.01s; } }
+.apx-note { position: absolute; z-index: 70; left: 50%; top: calc(var(--sat) + 64px); transform: translateX(-50%); max-width: min(92%, 360px); display: flex; flex-direction: column; gap: 1px; padding: 10px 16px; border-radius: 16px; background: rgba(255, 250, 245, 0.97); color: var(--choco); box-shadow: 0 6px 20px rgba(40, 16, 70, 0.4), 0 0 0 2px #f5a0bb; font: 700 14.5px/1.2 var(--font); text-align: center; pointer-events: none; animation: apxNote 0.3s var(--ease-pop); }
+.apx-note small { font-weight: 500; font-size: 12.5px; color: var(--choco-soft); }
+.apx-note + .apx-note { top: calc(var(--sat) + 124px); }
+.apx-note.out { opacity: 0; transition: opacity 0.3s; }
+@keyframes apxNote { from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.92); } }

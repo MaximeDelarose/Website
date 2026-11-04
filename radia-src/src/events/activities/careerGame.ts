@@ -12,6 +12,7 @@ import { currentLook } from '../../game/world/look';
 import { difficultyFor, levelOf, recordSession, wantedTag } from '../../game/world/careers';
 import { lookIsOwned } from '../../game/world/careerGames/model';
 import { grantFans } from '../../ui/screens/world/fans';
+import { announceMoment } from '../../ui/screens/world/career/session';
 import { playPhoto } from '../../ui/screens/world/careerGames/photo';
 import { playModel } from '../../ui/screens/world/careerGames/model';
 import { playActress } from '../../ui/screens/world/careerGames/actress';
@@ -38,6 +39,7 @@ const activity: Activity = async (ctx) => {
   stat('world.career.session');
   if (out.levelUp) stat('world.career.levelUp');
   grantFans(out.outside.fans);
+  announceMoment(id, out.score, out.outside.fans);
   save.save();
   events.emit('economy', undefined);
   audio.play('reward');

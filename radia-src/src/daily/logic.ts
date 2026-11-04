@@ -51,3 +51,18 @@ export function setDay(d: DailyState, n: number, cycle?: number): void {
 export function resetDaily(d: DailyState): void {
   d.cycle = 0; d.day = 0; d.lastKey = ''; d.claimed = []; d.total = 0;
 }
+
+/**
+ * Migration de calendrier : rend un état `fun.daily` ancien (cycle 1 d'avant les tickets) cohérent sans rien perdre.
+ * Jamais de remise à zéro : le cycle, le jour et le total sont conservés ; seuls les champs invalides sont corrigés.
+ * Les jours cochés doivent être des jours distincts strictement avant le jour courant (ceux du cycle en cours).
+ */
+export function migrateDaily(d: DailyState): DailyState {
+  d.cycle = Math.max(0, Math.floor(Number.isFinite(d.cycle) ? d.cycle : 0));
+  d.day = Math.min(DAYS - 1, Math.max(0, Math.floor(Number.isFinite(d.day) ? d.day : 0)));
+  d.total = Math.max(0, Math.floor(Number.isFinite(d.total) ? d.total : 0));
+  if (!isDayKey(d.lastKey)) d.lastKey = '';
+  const seen = new Set<number>();
+  d.claimed = (Array.isArray(d.claimed) ? d.claimed : []).filter((n) => Number.isInteger(n) && n >= 0 && n < d.day && !seen.has(n) && !!seen.add(n)).sort((a, b) => a - b);
+  return d;
+}

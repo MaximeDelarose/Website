@@ -4,6 +4,7 @@
  */
 import type { SaveData } from '../save/schema';
 import { LEVELS } from './levels';
+import { awardAchievement } from '../casino/tickets';
 
 export interface AchievementDef {
   id: string;
@@ -28,7 +29,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'nord_paris', name: 'Le Nord de Paris bb', desc: 'Terminer le chapitre 2.', icon: 'arc', check: (s) => chapterDone(s, 2) },
   { id: 'first_crown', name: 'Ma première couronne', desc: 'Créer une Couronne.', icon: 'crown', check: (s) => has(s, 'chess:6') },
   { id: 'queen_right', name: 'La reine a toujours raison', desc: 'Résoudre tous les puzzles du Mode Reine.', icon: 'queen', check: (s) => stat(s, 'queenPuzzlesTotal') > 0 && s.chess.queen.length >= stat(s, 'queenPuzzlesTotal') },
-  { id: 'checkmate', name: 'Échec et mat !', desc: 'Battre Auguste aux échecs.', icon: 'chess', check: (s) => s.chess.wins.easy + s.chess.wins.normal + s.chess.wins.hard >= 1 },
+  { id: 'checkmate', name: 'Échec et mat !', desc: 'Battre Auguste aux échecs.', icon: 'chess', check: (s) => s.chess.wins.relax + s.chess.wins.easy + s.chess.wins.normal + s.chess.wins.hard >= 1 },
   { id: 'memory_collector', name: 'Collectionneuse de souvenirs', desc: 'Débloquer les 8 souvenirs.', icon: 'album', check: (s) => s.memories.length >= 8 },
   { id: 'precious_heart', name: 'Le cœur précieux', desc: 'Créer un Cœur précieux.', icon: 'heart', check: (s) => has(s, 'love:9') },
   { id: 'world_for_you', name: 'Un monde pour toi', desc: 'Découvrir la fin de l\'histoire.', icon: 'globe', check: (s) => s.story.endingSeen },
@@ -64,3 +65,14 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'ev_ten', name: 'Une vie bien remplie', desc: 'Terminer 10 invitations.', icon: 'star', check: (s) => (s.stats['events.done'] ?? 0) >= 10 },
   { id: 'w_covers', name: 'À la une !', desc: 'Collectionner les 5 couvertures de magazine.', icon: 'album', check: (s) => s.world.magazines.length >= 5 },
 ];
+
+// Tickets du Casino Royal offerts (gratuitement) au déblocage d'un succès : on enveloppe `check` sans toucher aux conditions.
+// `awardAchievement` pose une marque durable : jamais deux fois, même si la vérification est rejouée.
+for (const a of ACHIEVEMENTS) {
+  const cond = a.check;
+  a.check = (s) => {
+    const ok = cond(s);
+    if (ok) { try { awardAchievement(s.fun?.casino, a.id); } catch { /* jamais bloquant */ } }
+    return ok;
+  };
+}

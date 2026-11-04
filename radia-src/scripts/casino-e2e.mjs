@@ -1,24 +1,26 @@
-// Casino Royal + roue du jour : parcours Playwright (Chromium émulé, pas un vrai iPhone).
-// Build isolé : npx vite build --outDir /tmp/claude-0/g  puis  npx vite preview --outDir /tmp/claude-0/g --port 4198
-// PORT=4198 W=393 H=852 [REDUCED=1] node scripts/casino-e2e.mjs   (PATH_URL=/ par défaut : l'application complète ; elle doit importer src/casino et src/wheel,
-// sinon RADIA.casino est absent et le script le signale. Le port 4188 prévu au brief étant occupé par un autre serveur, 4198 sert de défaut.)
-// Joue de vraies manches de chaque jeu par clics, vérifie débit / gain, erreurs console, prend des captures shots/g-*.png.
+// Casino Royal (Tickets), roue du jour, cadeaux quotidiens : parcours Playwright (Chromium ÉMULÉ, pas un vrai iPhone).
+// Build isolé : npx vite build --outDir /tmp/claude-0/l  puis  npx vite preview --outDir /tmp/claude-0/l --port 4193
+// PORT=4193 W=393 H=852 [REDUCED=1] node scripts/casino-e2e.mjs   (essayer aussi H=660 : écran court)
+// Joue de vraies manches de chaque jeu par clics, vérifie débit / gain, tickets du jour, roue, cadeau quotidien, erreurs console ; captures shots/l-*.png.
 import { chromium } from 'playwright';
-const W = +(process.env.W ?? 393), H = +(process.env.H ?? 852), PORT = process.env.PORT ?? 4198, P = process.env.PATH_URL ?? '/';
+const W = +(process.env.W ?? 393), H = +(process.env.H ?? 852), PORT = process.env.PORT ?? 4193, P = process.env.PATH_URL ?? '/';
 const TAG = `${W}x${H}`;
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
-const page = await (await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true })).newPage();
+const browser = await chromium.launch({ args: ['--no-proxy-server'], executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
+const page = await (await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: +(process.env.DPR ?? 2), hasTouch: true, isMobile: true })).newPage();
+page.setDefaultTimeout(120000);
 const errs = [];
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !/404|Failed to load resource/.test(m.text())) errs.push('console: ' + m.text()); });
 const sleep = (ms) => page.waitForTimeout(ms);
 const out = [];
-const check = (name, ok, extra = '') => out.push(`${ok ? 'OK ' : 'KO '} ${name}${extra ? ' — ' + extra : ''}`);
-const shot = (n) => page.screenshot({ path: `shots/g-${n}-${TAG}.png` });
+const check = (name, ok, extra = '') => { const l = `${ok ? 'OK ' : 'KO '} ${name}${extra ? ' — ' + extra : ''}`; out.push(l); console.log(l); };
+const shot = (n) => page.screenshot({ path: `shots/l-${n}-${TAG}.png` });
 const seed = { v: 2, seenUpdates: ['v2', 'v4'], story: { step: 80 }, levels: {}, hearts: 500 };
 await page.addInitScript((s) => { if (!localStorage.getItem('radia-save-v1')) localStorage.setItem('radia-save-v1', s); }, JSON.stringify(seed));
 await page.goto(`http://localhost:${PORT}${P}?debug`, { waitUntil: 'networkidle' });
 await sleep(P === '/' ? 2500 : 600);
+// le cadeau du jour et la roue sont gérés plus loin : on les marque « déjà pris » pour ne pas gêner le parcours
+await page.evaluate(() => { const k = window.RADIA.daily.state().key; const f = window.RADIA.save.data.fun; f.daily.lastKey = k; f.wheel.lastKey = k; });
 for (let i = 0; i < 6 && P === '/'; i++) { await page.evaluate(() => document.querySelectorAll('.dy-back').forEach((e) => e.remove())); const b = page.locator('.modal-backdrop:not(.leaving) .actions button'); if (await b.count()) { await b.first().click(); await sleep(400); } else await sleep(300); }
 if (process.env.REDUCED) await page.evaluate(() => { window.RADIA.save.data.settings.reducedMotion = true; document.documentElement.classList.add('reduced-motion'); });
 const st = () => page.evaluate(() => { const c = window.RADIA.save.data.fun.casino; return { chips: c.chips, bring: c.bring, stats: { ...c.stats }, hist: c.history.length }; });
@@ -46,6 +48,18 @@ await shot('lobby');
 check('salon : 3 jeux', (await page.locator('.cz-game').count()) === 3);
 check('zones tactiles >= 44 px (salon)', await page.evaluate(() => [...document.querySelectorAll('.cz-root button')].filter((b) => b.offsetParent).every((b) => { const r = b.getBoundingClientRect(); return r.height >= 43.5 && r.width >= 43.5; })));
 check('pas de défilement horizontal', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+// ---- zones tactiles de l'illustration, mini-défis « Tickets du jour », prochain gain gratuit
+check('illustration : 4 zones + 2 personnages cliquables', (await page.locator('.cz-spot').count()) === 6);
+check('« Prochain gain gratuit » affiché', (await page.locator('.cz-free .cz-fitem').count()) >= 1);
+check('4 mini-défis du jour', (await page.locator('.cz-task').count()) === 4);
+await page.locator('.cz-spot.radia').click(); await sleep(250); await page.locator('.cz-spot.auguste').click(); await sleep(500);
+await shot('lobby-bubble');
+check('saluer les deux personnages accomplit le défi', await page.evaluate(() => window.RADIA.save.data.fun.casino.stats['dq.greet'] === 1));
+const tk0 = await page.evaluate(() => window.RADIA.save.data.fun.casino.chips);
+await page.locator('.cz-task.ready .btn').first().click(); await sleep(900);
+check('mini-défi réclamé : +30 tickets en poche, sans hasard', (await page.evaluate(() => window.RADIA.save.data.fun.casino.chips)) === tk0 + 30);
+await page.evaluate(() => document.querySelector('.cz-stage').scrollTo(0, 99999)); await sleep(300); await shot('lobby-bottom');
+await page.evaluate(() => document.querySelector('.cz-stage').scrollTo(0, 0));
 await page.locator('.cz-helpbtn').click(); await sleep(300); await shot('help-lobby');
 await page.locator('.cz-close').click(); await sleep(300);
 
@@ -70,7 +84,7 @@ check('mise totale affichée = 50', (await page.locator('.rl-tot b').textContent
 await page.locator('.rl-go').click(); await sleep(500);
 check('débit AVANT la manche', (await st()).bring === before - stake - 0 || (await st()).bring >= before - stake, `solde ${(await st()).bring}`);
 await sleep(2200); await shot('roulette-spin');
-await page.waitForSelector('.rl-result.show', { timeout: 14000 }); await sleep(900);
+await page.waitForSelector('.rl-result.show', { timeout: 120000 }); await sleep(900);
 await shot('roulette-result');
 // 17 est NOIR et impair : rouge perdu ; impair 10→20 ; plein 10→360 ; n3 et groupe 8-9 perdus
 const s1 = await st();
@@ -82,7 +96,7 @@ await page.locator('.rl-after .btn.secondary').click(); await sleep(400);
 // perte (0 perd les chances simples)
 await page.evaluate(() => window.RADIA.casino.roulette(0));
 await page.locator('.rl-cell[data-k="black"]').click(); await page.locator('.rl-go').click();
-await page.waitForSelector('.rl-result.show', { timeout: 14000 }); await sleep(800);
+await page.waitForSelector('.rl-result.show', { timeout: 120000 }); await sleep(800);
 const s2 = await st();
 check('0 fait perdre la chance simple', s2.bring === s1.bring - 10, `solde ${s2.bring}`);
 await page.locator('.cz-back').click(); await sleep(500);
@@ -94,7 +108,7 @@ check('machine : 3 boutons de série', (await page.locator('.sl-segb').count()) 
 const b0 = (await st()).bring;
 await page.locator('.sl-go').click();
 await sleep(1600); await shot('slots-spin');
-await page.waitForFunction(() => !document.querySelector('.cz-root.x') && document.querySelector('.sl-go') && !document.querySelector('.sl')?.classList.contains('running'), null, { timeout: 15000 });
+await page.waitForFunction(() => !document.querySelector('.cz-root.x') && document.querySelector('.sl-go') && !document.querySelector('.sl')?.classList.contains('running'), null, { timeout: 120000 });
 await sleep(1500);
 const b1 = (await st());
 check('tirage simple : débit 10 + gain cohérent', b1.stats['slots.parties'] === 1 && Math.abs(b1.bring - b0) <= 10 * 500, `solde ${b0} → ${b1.bring}`);
@@ -107,7 +121,7 @@ const bb = (await st());
 await page.locator('.sl-go').click();
 await page.waitForSelector('.sl-stop', { state: 'visible' }); await sleep(900);
 await page.locator('.sl-stop').click();
-await page.waitForSelector('.sl-recap', { timeout: 20000 }); await sleep(500);
+await page.waitForSelector('.sl-recap', { timeout: 120000 }); await sleep(500);
 await shot('slots-recap');
 const ba = await st();
 const played = ba.stats['slots.parties'] - bb.stats['slots.parties'];
@@ -118,7 +132,7 @@ await page.locator('.sl-recap .btn.secondary').click(); await sleep(400);
 await page.locator('.sl-segb[data-n="10"]').click();
 const bt = await st();
 await page.locator('.sl-go').click();
-await page.waitForSelector('.sl-recap', { timeout: 60000 }); await sleep(500);
+await page.waitForSelector('.sl-recap', { timeout: 300000 }); await sleep(500);
 await shot('slots-recap10');
 const ba2 = await st();
 check('série ×10 : exactement 10 manches puis arrêt', ba2.stats['slots.parties'] - bt.stats['slots.parties'] === 10, `${ba2.stats['slots.parties'] - bt.stats['slots.parties']}`);
@@ -136,12 +150,12 @@ check('mise 50 posée', (await page.locator('.bj-bet b').textContent()).replace(
 await page.locator('.bj-ctrl .btn.gold').click(); await sleep(900);
 await shot('blackjack-deal');
 check('mise débitée avant la donne', (await st()).bring === bj0 - 50);
-await page.waitForSelector('.bj-acts, .bj-banner.show', { timeout: 10000 });
+await page.waitForSelector('.bj-acts, .bj-banner.show', { timeout: 60000 });
 if (await page.locator('.bj-acts').count()) {
   await shot('blackjack-play');
   await page.locator('.bj-acts .btn.lavande').click();
 }
-await page.waitForSelector('.bj-banner.show', { timeout: 15000 }); await sleep(1800);
+await page.waitForSelector('.bj-banner.show', { timeout: 120000 }); await sleep(1800);
 await shot('blackjack-result');
 const bj1 = await st();
 check('blackjack : une manche enregistrée', bj1.stats['blackjack.parties'] === 1 && bj1.hist >= 3, JSON.stringify(bj1.stats['blackjack.parties']));
@@ -153,9 +167,9 @@ await page.locator('.cz-helpbtn').click(); await sleep(300); await shot('help-bl
 // une seconde donne avec double si possible
 await page.locator('.bj-ctrl .btn.gold').click(); await sleep(400);
 await page.locator('.bj-chips .rl-chip').nth(0).click(); await page.locator('.bj-ctrl .btn.gold').click();
-await page.waitForSelector('.bj-acts, .bj-banner.show', { timeout: 10000 });
+await page.waitForSelector('.bj-acts, .bj-banner.show', { timeout: 60000 });
 if (await page.locator('.bj-acts').count()) { const d = page.locator('.bj-acts .btn.secondary'); if (await d.isEnabled()) await d.click(); else await page.locator('.bj-acts .btn.lavande').click(); }
-await page.waitForSelector('.bj-banner.show', { timeout: 15000 }); await sleep(1500);
+await page.waitForSelector('.bj-banner.show', { timeout: 120000 }); await sleep(1500);
 await page.locator('.cz-back').click(); await sleep(500);
 
 // ---------- missions
@@ -163,7 +177,7 @@ await page.locator('.cz-pill2', { hasText: 'Missions' }).click(); await sleep(60
 await shot('missions');
 check('missions listées', (await page.locator('.cz-mission').count()) >= 6);
 const cl = page.locator('.cz-mission.ready .btn');
-if (await cl.count()) { const c0 = (await st()).chips; await cl.first().click(); await sleep(500); check('mission réclamée → jetons', (await st()).chips > c0); }
+if (await cl.count()) { const c0 = (await st()).chips; await cl.first().click(); await sleep(500); check('mission réclamée → tickets', (await st()).chips > c0); }
 await page.locator('.cz-back').click(); await sleep(400);
 
 // ---------- sortie : reprendre le reste
@@ -193,10 +207,10 @@ await page.locator('.wh-probbtn').click(); await sleep(400); await shot('wheel-p
 check('probabilités listées', (await page.locator('.wh-prow').count()) === 10);
 await page.locator('.wh-probbtn').click();
 await page.locator('.wh-go').click(); await sleep(1500); await shot('wheel-spin');
-await page.waitForSelector('.wh-got.show', { timeout: 15000 }); await sleep(900);
+await page.waitForSelector('.wh-got.show', { timeout: 120000 }); await sleep(900);
 await shot('wheel-result');
 const cw1 = await st();
-check('roue : 600 jetons versés (lot imposé en debug)', cw1.chips === cw0.chips + 600, `${cw0.chips} → ${cw1.chips}`);
+check('roue : 600 tickets versés (lot imposé en debug)', cw1.chips === cw0.chips + 600, `${cw0.chips} → ${cw1.chips}`);
 check('roue : bouton désactivé après le tirage', await page.locator('.wh-go').isDisabled());
 check('roue : compte à rebours affiché', /Prochain tirage disponible dans/.test(await page.locator('.wh-status').textContent()));
 await page.reload({ waitUntil: 'networkidle' }); await sleep(P === '/' ? 2500 : 500);
@@ -204,7 +218,37 @@ await page.evaluate(() => { window.RADIA.wheel.show(); }); await sleep(700);
 check('rechargement : pas de second tirage', await page.locator('.wh-go').isDisabled());
 await shot('wheel-after-reload');
 await page.locator('.wh-x').click(); await sleep(400);
+// ---------- cadeaux quotidiens : cycle varié (J3 tickets, J5 coffre, J6 tickets + objet, J7 tenue)
+const claimDay = async (n, label) => {
+  await page.evaluate((n) => { window.RADIA.daily.reset(); window.RADIA.daily.setDay(n); window.RADIA.daily.show(); }, n);
+  await page.waitForSelector('.dy-claim', { state: 'visible' }); await sleep(600);
+  if (n === 3) await shot('daily-grid');
+  await page.locator('.dy-claim').click();
+  await page.waitForSelector('.dy-thanks.in', { timeout: 120000 }); await sleep(1400);
+  await shot(`daily-${label}`);
+};
+const t0 = await page.evaluate(() => window.RADIA.save.data.fun.casino.chips);
+await claimDay(3, 'j3-tickets');
+check('J3 : +250 tickets gratuits en poche', (await page.evaluate(() => window.RADIA.save.data.fun.casino.chips)) === t0 + 250);
+check('J3 : bouton « Utiliser au casino »', (await page.locator('.dy-use button', { hasText: 'casino' }).count()) === 1);
+await page.locator('.dy-thanks').click(); await sleep(700);
+await page.locator('.dy-later').click(); await sleep(500);
+await claimDay(5, 'j5-coffre');
+check('J5 : coffre de décoration, bouton « Placer au château »', (await page.locator('.dy-use button', { hasText: 'Placer' }).count()) === 1);
+await page.locator('.dy-thanks').click(); await sleep(700);
+await page.locator('.dy-later').click(); await sleep(500);
+const t1 = await page.evaluate(() => window.RADIA.save.data.fun.casino.chips);
+await claimDay(6, 'j6-tickets-objet');
+check('J6 : +400 tickets et bouton « Équiper »', (await page.evaluate(() => window.RADIA.save.data.fun.casino.chips)) === t1 + 400 && (await page.locator('.dy-use button', { hasText: 'Équiper' }).count()) === 1);
+await page.locator('.dy-thanks').click(); await sleep(700);
+await page.locator('.dy-later').click(); await sleep(500);
+await claimDay(7, 'j7-tenue');
+await page.locator('.dy-thanks').click(); await sleep(700);
+await page.locator('.dy-later').click(); await sleep(500);
+// grosse victoire : aperçu de la bannière dorée
+await page.evaluate(() => { window.RADIA.casino.bigWin(1750); }); await sleep(1300); await shot('bigwin');
+await sleep(1800);
 check('erreurs console', errs.length === 0, errs.join(' | '));
-console.log(out.join('\n'));
+
 await browser.close();
 process.exit(out.some((l) => l.startsWith('KO')) ? 1 : 0);

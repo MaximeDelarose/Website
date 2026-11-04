@@ -135,3 +135,18 @@ Jauge inchangée (100, 45 s/énergie) **plus** : plancher (sous 6 énergie → 1
 Voir la sortie console du test (8 parties × 1800 actions, deux rythmes) : les durées visées sont des **hypothèses mesurées**, pas des garanties.
 Ordres de grandeur (rythme « tranquille », fusion 2,5 s / toucher 5 s) : 1ʳᵉ récompense ≈ 0,8 min ; commande facile ≈ 1 / 2,7 min ; 1 coffre / ≈ 30 fusions ;
 progrès secondaire ≈ 1 / 3,8 min (visé 5–8) ; récompense majeure ≈ 1 / 6,7 min (visée 10–15) ; énergie : 0 % du temps à attendre.
+
+## 7. Plateau à zones et cases verrouillées (`src/game/merge/locks.ts`, `pointerFsm.ts`)
+
+- `Cell.lock?: CellLock` : `kind` = `web` (objet sous toile), `sand` (case ensablée), `chest` (coffre derrière une toile), `reward` (diamants, énergie,
+  fragment de tenue, décoration exclusive derrière une toile), `energy` (cadenas doux : N fusions). Un verrou ne contient JAMAIS d'objet vivant : l'objet visible est
+  `lock.item`, il n'entre dans `cell.item` qu'à la libération. `isFree`/`spawnCell`/`placeGenerator` ignorent les cases verrouillées.
+- Libération (événement `cellUnlock {at, kind, how: merge|order|energy|goal|zone, item?, reward[]}`) : fusion adjacente compatible (`lock.need`), sable = 2 fusions
+  voisines (`lockHit` à la première), livraison de commande moyenne / difficile (1 case, celles qui cachent quelque chose d'abord), énergie
+  (`R.buyUnlock(s, def, i, pay)` ; prix 3 à 6 ⚡, toujours ≤ plancher d'énergie), objectif (cadenas : N fusions ; zone atteinte).
+- Zones (`ZONE_OF`, `EC.board.zoneAt`) : zone 0 = 28 cases ; les zones 1 à 3 sont ensablées puis dissipées (`zone`) quand `boardPoints` (palier + 4 par lieu ouvert) atteint le seuil.
+  Persistance : `fun.endless2.board = { zone, serial, opened, claimed }` (optionnel, sanitisé). Une nouvelle partie ne reverrouille pas les zones atteintes et pose de NOUVELLES surprises.
+- Garantie : jamais plus de `EC.board.maxLocked` (20) cases verrouillées → au moins 16 cases ouvertes (test : ≥ 14).
+- UI : `hud.sel` (panneau sous le plateau), `openInfoFor` / `openLockSheet` (`src/ui/endless/itemSheet.ts`), appui long (550 ms, tolérance 8 px) = `MergeScene → host.onLongPress`.
+- Nouvelles chaînes : `pastry` (12 · Four du pâtissier), `bag` (13 · Vitrine à sacs), `gift` (14 · Atelier d'emballage) ; débloquées au palier `unlock.at` OU plus tôt par un lieu
+  (`unlock.byPlace` : salon de thé, boutique de mode, hôtel) une fois `minPoints` atteints.

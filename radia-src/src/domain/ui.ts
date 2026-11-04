@@ -77,6 +77,32 @@ async function equipCloth(id: ClothId): Promise<boolean> {
 
 /** Fenêtre « Tu as débloqué… » : apparition + rebond + paillettes + son + haptique, puis Équiper / Placer. */
 function revealWindow(id: PlaceId, res: Extract<L.AdvanceResult, { ok: true }>): Promise<void> {
+  // lieu terminé (dernière étape) : grande ouverture de cadeau, récompenses déjà versées (affichage + Équiper / Placer)
+  if (res.opened) return finalGift(id, res).catch((e) => { console.error('[domain] cadeau', e); return legacyReveal(id, res); });
+  return legacyReveal(id, res);
+}
+
+async function finalGift(id: PlaceId, res: Extract<L.AdvanceResult, { ok: true }>): Promise<void> {
+  const def = PLACES[id];
+  const list = def.stages[res.stage - 1].rewards;
+  const rw = await import('../ui/rewards');
+  const rewards: import('../ui/rewards').Reward[] = [];
+  const actions: { label: string; run: () => void }[] = [];
+  list.forEach((r, i) => {
+    const g = res.granted[i];
+    if (g?.dup) { rewards.push({ type: 'coins', qty: Math.max(1, g.coins ?? 0), label: `${g.name} : déjà à toi`, granted: true }); return; }
+    switch (r.t) {
+      case 'furn': rewards.push({ type: 'furniture', id: r.id, qty: 1, granted: true }); if (actions.length < 2 && !actions.some((a) => a.label.startsWith('Placer'))) actions.push({ label: 'Placer au château', run: () => { void placeFurniture(r.id); } }); break;
+      case 'cloth': rewards.push({ type: 'cloth', id: r.id, qty: 1, granted: true }); if (actions.length < 2 && !actions.some((a) => a.label === 'Équiper')) actions.push({ label: 'Équiper', run: () => { void equipCloth(r.id); } }); break;
+      case 'diamonds': rewards.push({ type: 'diamonds', qty: r.n, granted: true }); break;
+      case 'res': for (const [k, n] of Object.entries(r.res)) if (n) rewards.push(k === 'coins' ? { type: 'coins', qty: n, granted: true } : { type: 'res', id: k, qty: n, granted: true }); break;
+      default: rewards.push({ type: 'item', id: r.t, qty: 1, label: g?.name ?? L.describeReward(r), granted: true });
+    }
+  });
+  await rw.openGift({ kind: 'event', rarity: 'epic', title: `${def.name} : ouvert !`, subtitle: def.openLine, rewards }, { actions });
+}
+
+function legacyReveal(id: PlaceId, res: Extract<L.AdvanceResult, { ok: true }>): Promise<void> {
   return new Promise((resolve) => {
     const def = PLACES[id];
     const stageDef = def.stages[res.stage - 1];

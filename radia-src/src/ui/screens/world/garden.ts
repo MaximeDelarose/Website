@@ -20,6 +20,7 @@ import { reactAuguste } from '../../../game/world/auguste';
 import { playLines } from '../../components/Dialogue';
 import { diamondUrl } from '../shop';
 import { setBackdrop } from '../../../game/scenes/backdrop';
+import { softMoment } from '../../../apps/eventMoments';
 
 const world = () => save.data.world;
 const commit = () => { save.save(); events.emit('economy', undefined); };
@@ -367,7 +368,7 @@ function runGarden(): Promise<Exit> {
       make.addEventListener('click', tap(() => {
         const r = G.makeBouquet(world(), chosen);
         if (!r.ok || !r.key) { audio.play('invalid'); ui.toast({ title: r.reason ?? 'Impossible', icon: 'lock' }); return; }
-        commit(); stat('world.garden.bouquet');
+        commit(); stat('world.garden.bouquet'); softMoment('garden', 'Un beau bouquet du jardin', 300_000);
         const key = r.key, first = r.first;
         chosen = [];
         audio.play('chest'); window.setTimeout(() => audio.play('reward'), 200);

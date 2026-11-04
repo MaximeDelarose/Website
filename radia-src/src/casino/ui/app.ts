@@ -1,5 +1,6 @@
 /** Orchestre le casino : carte d'Auguste → salon → jeux / missions. Chargé à la demande par `openCasino()`. */
 import { welcome, returnBring } from '../chips';
+import { markTask } from '../tickets';
 import { cs, notifyCasino, persist } from '../store';
 import { createShell } from './shell';
 import { cardScene, lobbyScene, missionsScene } from './lobby';
@@ -13,7 +14,8 @@ export function runCasino(): Promise<void> {
     const s = cs();
     const welcomed = welcome(s) > 0;
     s.stats.visites = (s.stats.visites ?? 0) + 1;
-    returnBring(s); // d'éventuels jetons restés sur la table (fermeture brutale) reviennent en poche
+    markTask(s, 'visit'); // mini-défi du jour « passer au salon » (sans hasard)
+    returnBring(s); // d'éventuels tickets restés sur la table (fermeture brutale) reviennent en poche
     persist(); notifyCasino();
     void warmAuguste();
     const sh = createShell(() => resolve());
@@ -21,6 +23,8 @@ export function runCasino(): Promise<void> {
       onBack: () => sh.exit(),
       go: (g) => {
         const back = () => lobby();
+        if (g === 'wheel') { void import('../../wheel').then((m) => m.openWheel()).then(back, back); return; }
+        if (g === 'daily') { void import('../../daily/ui').then((m) => m.openDaily()).then(back, back); return; }
         const ctx = { onBack: back, goCard: () => card(false) };
         if (g === 'roulette') sh.show(rouletteScene(sh, ctx));
         else if (g === 'slots') sh.show(slotsScene(sh, ctx));

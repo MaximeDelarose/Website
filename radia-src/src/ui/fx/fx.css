@@ -1,5 +1,5 @@
 /* Paillettes : couche fixe, jamais tactile. */
-.fx-layer { position: fixed; inset: 0; z-index: 300; pointer-events: none; overflow: hidden; }
+.rd-sparkle-layer { position: fixed; inset: 0; z-index: 300; pointer-events: none; overflow: hidden; }
 .fx-p { position: absolute; display: block; pointer-events: none; will-change: transform, opacity; background: var(--c, #fff); }
 .fx-star { clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); filter: drop-shadow(0 0 3px var(--c)); }
 .fx-dot { border-radius: 50%; box-shadow: 0 0 6px var(--c); }

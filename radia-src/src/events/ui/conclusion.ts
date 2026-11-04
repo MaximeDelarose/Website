@@ -9,10 +9,21 @@ import { FURNITURE } from '../../data/world/furniture';
 import type { ClothId, FurnitureId } from '../../data/world/ids';
 import type { EventDef, PhotoRec } from '../types';
 import type { RewardOutcome } from '../rewards';
+import { announceEventMoment } from '../../apps/eventMoments';
 
 export interface ConclusionOpts { def: EventDef; reward: RewardOutcome; first: boolean; photo?: PhotoRec; repeat: number }
 
-export function showConclusion(body: HTMLElement, o: ConclusionOpts): Promise<void> {
+/** Cadeau d'événement : ouverture mise en scène des récompenses (déjà versées), puis le récapitulatif habituel. */
+export async function showConclusion(body: HTMLElement, o: ConclusionOpts): Promise<void> {
+  try {
+    const [rw, ad] = await Promise.all([import('../../ui/rewards'), import('../../ui/rewards/adapters')]);
+    const spec = ad.eventGiftSpec({ title: o.def.memoryTitle, outcome: o.reward, first: o.first });
+    if (spec && o.reward.paid) await rw.openGift(spec);
+  } catch (e) { console.error('[events] cadeau', e); }
+  return renderConclusion(body, o);
+}
+
+function renderConclusion(body: HTMLElement, o: ConclusionOpts): Promise<void> {
   return new Promise((resolve) => {
     body.textContent = '';
     const chips: HTMLElement[] = [];
@@ -38,7 +49,7 @@ export function showConclusion(body: HTMLElement, o: ConclusionOpts): Promise<vo
       chips.length ? h('div.ev-chips', ...chips) : h('p.ev-note', o.def.conclusionNote ?? 'Tu avais déjà reçu cette récompense : le souvenir te reste, c’est l’essentiel ♡'),
       items.length ? h('ul.ev-items', ...items) : null,
       o.repeat > 0 && chips.length ? h('p.ev-note', 'Les rejouables rapportent un peu moins : tu gardes surtout le plaisir de recommencer.') : null,
-      h('button.btn.ev-btn.gold', { on: { click: tap(() => { card.classList.add('out'); window.setTimeout(resolve, 180); }) } }, 'Reprendre ma partie'));
+      h('button.btn.ev-btn.gold', { on: { click: tap(() => { card.classList.add('out'); window.setTimeout(resolve, 180); announceEventMoment(o.def); }) } }, 'Reprendre ma partie'));
     body.append(card);
     audio.play('reward');
     audio.play('sparkle');

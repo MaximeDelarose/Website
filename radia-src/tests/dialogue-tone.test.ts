@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { LINES, pickLine, augusteLineStats, hasGalbi, type Situation, type ToneMemory } from '../src/data/augusteTone';
+import { AUGUSTE_REACTIONS, pickReaction, resetReactionMemory, type ReactionKey } from '../src/game/fx/reactions';
+import { hasDarija, DARIJA } from '../src/data/darija';
 import { AUG_LINES } from '../src/data/world/augusteLines';
 import { BARKS } from '../src/data/dialogue';
 import { LINE_ALL } from '../src/events/restaurant/logic';
@@ -12,8 +14,8 @@ const rngSeed = (seed: number) => () => { seed = (seed * 1664525 + 1013904223) >
 const mem = (): ToneMemory => ({ recent: [], galbiHistory: [] });
 
 describe('ton d\'Auguste : « galbi » rare', () => {
-  it('les banques ne sont jamais vides (≥ 5 variantes) et le mot reste rare', () => {
-    for (const [k, v] of Object.entries(LINES)) expect(v.length, k).toBeGreaterThanOrEqual(5);
+  it('les banques ne sont jamais vides (≥ 6 variantes) et le mot reste rare', () => {
+    for (const [k, v] of Object.entries(LINES)) expect(v.length, k).toBeGreaterThanOrEqual(6);
     const st = augusteLineStats();
     expect(st.ratio).toBeLessThan(0.1);
     expect(st.galbi).toBeGreaterThan(0);
@@ -68,6 +70,71 @@ describe('ton d\'Auguste : « galbi » rare', () => {
     const decl = [LINE_ALL, PROMISE_INTRO, VERDICT_FIRST].join('|');
     expect(decl).toContain('galbi');
     expect(fnv(decl)).toBe(EXPECTED);
+  });
+});
+
+describe('ton d\'Auguste : expressions arabes / darija bien dosées', () => {
+  const VULGAR = /\b(merde|putain|connard|salope|encul|bordel|nique)/i;
+  it('banques : 20–45 % de répliques avec une expression, jamais toutes', () => {
+    const all = [...Object.values(LINES).flat(), ...Object.values(AUGUSTE_REACTIONS).flat()];
+    const r = all.filter(hasDarija).length / all.length;
+    expect(r).toBeGreaterThanOrEqual(0.2);
+    expect(r).toBeLessThanOrEqual(0.45);
+    expect(augusteLineStats().darijaRatio).toBeLessThanOrEqual(0.45);
+    for (const [k, v] of Object.entries(LINES)) expect(v.filter(hasDarija).length, k).toBeLessThan(v.length);
+  });
+
+  it('réactions de fusion : toutes les clés (dont classic) ≥ 6 variantes, pas toutes darija', () => {
+    const keys = ['classic', 'rare', 'maxMerge', 'combo3', 'combo5', 'chest', 'drop'] as ReactionKey[];
+    for (const k of keys) {
+      expect(AUGUSTE_REACTIONS[k].length, k).toBeGreaterThanOrEqual(6);
+      expect(AUGUSTE_REACTIONS[k].filter(hasDarija).length, k).toBeLessThan(AUGUSTE_REACTIONS[k].length);
+    }
+    expect(AUGUSTE_REACTIONS.classic).toContain('Saha, propre !');
+  });
+
+  it('situations clés demandées présentes avec leurs exemples', () => {
+    expect(LINES.coins).toContain('Bsahték, ça régale !');
+    expect(LINES.bigReward).toContain('Ya latif, le jackpot !');
+    expect(LINES.outfitUnlocked).toContain('Mashallah, elle te va trop bien !');
+    expect(LINES.romanticMoment).toContain('Twahechtek, viens on passe un moment ensemble.');
+    expect(AUGUSTE_REACTIONS.rare).toContain('Mashallah, regarde-moi ça !');
+    expect(AUGUSTE_REACTIONS.maxMerge).toContain('Bsahték, ça c\'est du lourd !');
+  });
+
+  it('pickLine : jamais deux identiques d\'affilée ni plus de 2 expressions d\'affilée (1000 tirages)', () => {
+    const m = mem();
+    const rng = rngSeed(99);
+    const sits = Object.keys(LINES) as Situation[];
+    for (const sit of [...sits, ...sits]) {
+      let prev = ''; const flags: boolean[] = [];
+      for (let i = 0; i < 25; i++) { const l = pickLine(sit, rng, { memory: m }); expect(l).not.toBe(prev); prev = l; flags.push(hasDarija(l)); }
+      for (let i = 2; i < flags.length; i++) expect(flags[i] && flags[i - 1] && flags[i - 2], sit).toBe(false);
+    }
+  });
+
+  it('pickReaction : jamais deux identiques d\'affilée, ratio darija raisonnable', () => {
+    resetReactionMemory();
+    const rng = rngSeed(5);
+    const keys = Object.keys(AUGUSTE_REACTIONS) as ReactionKey[];
+    let n = 0, d = 0;
+    for (const k of keys) {
+      let prev = '';
+      for (let i = 0; i < 150; i++) { const l = pickReaction(k, rng); expect(l).not.toBe(prev); prev = l; n++; if (hasDarija(l)) d++; }
+    }
+    expect(d / n).toBeGreaterThan(0.1);
+    expect(d / n).toBeLessThan(0.5);
+  });
+
+  it('glossaire : sens et contexte documentés, aucun mot vulgaire dans les répliques', () => {
+    for (const e of DARIJA) { expect(e.meaning.length).toBeGreaterThan(3); expect(e.context.length).toBeGreaterThan(3); }
+    const texts = [...Object.values(LINES).flat(), ...Object.values(AUGUSTE_REACTIONS).flat(), ...Object.values(AUG_LINES).flat(), ...Object.values(BARKS).flat()];
+    for (const t of texts) expect(VULGAR.test(t), t).toBe(false);
+  });
+
+  it('proportion d\'expressions dans les répliques contextuelles (AUG_LINES + BARKS) ≤ 45 %', () => {
+    const t = [...Object.values(AUG_LINES).flat(), ...Object.values(BARKS).flat()];
+    expect(t.filter(hasDarija).length / t.length).toBeLessThanOrEqual(0.45);
   });
 });
 const EXPECTED = 540938051;

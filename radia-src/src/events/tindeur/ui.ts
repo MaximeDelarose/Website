@@ -11,7 +11,7 @@ import { haptic } from '../../core/haptics';
 import { emitPhone, registerBusy } from '../bus';
 import { showNotice } from '../incidents/notice';
 import { tindeurLogo } from './icon';
-import { choose, setInstalled, TEXTS } from './logic';
+import { choose, setInstalled, TEXTS, tryUninstall, UNINSTALL_REFUSAL } from './logic';
 import { speakerFace } from '../ctx';
 
 let layer: HTMLElement | null = null;
@@ -28,7 +28,16 @@ export function announceTindeur(): void {
   }, 2600);
 }
 
+/** Ouvre Tindeur : la scène « 2 500 matchs » tant que la joueuse n'a pas répondu, sinon l'appli jouable (pile de cartes + messages). */
 export function openTindeur(): void {
+  const t = save.data.fun.tindeur;
+  if (layer || document.querySelector('.sw-app')) return;
+  if (t.installed && t.shown && t.choice === 'none') { openTindeurScene(); return; }
+  void import('./swipe/ui').then((m) => m.openSwipeApp());
+}
+
+/** Scène secrète : compteur de matchs, nouveau match, choix garder / désinstaller. */
+export function openTindeurScene(): void {
   if (layer) return;
   const t = save.data.fun.tindeur;
   let step: 'count' | 'match' = 'count';
@@ -63,14 +72,19 @@ export function openTindeur(): void {
     root.append(head, card, q, foot);
   };
 
-  function answer(c: 'keep' | 'uninstall') {
-    choose(t, c, Date.now());
+  function answer(c0: 'keep' | 'uninstall') {
+    let c = c0;
+    let refused = false;
+    if (c0 === 'uninstall') {
+      const r = tryUninstall(t, Date.now());
+      if (!r.ok) { refused = true; c = 'keep'; }
+    } else choose(t, c0, Date.now());
     save.save();
     audio.play(c === 'keep' ? 'pop2' : 'whoosh');
     haptic('select');
     root.replaceChildren();
     const logo = h('div.tdr-bigico', tindeurLogo(96));
-    const say = c === 'keep' ? 'Gardée ! Aucun souci, c’est ton téléphone ♡' : 'Désinstallée. Comme tu veux, ma reine ♡';
+    const say = refused ? UNINSTALL_REFUSAL : c === 'keep' ? 'Gardée ! Aucun souci, c’est ton téléphone ♡' : 'Désinstallée. Comme tu veux, ma reine ♡';
     root.append(h('div.tdr-bye', logo, h('p.tdr-say', h('img', { src: speakerFace('auguste'), alt: '' }), h('span', say))));
     if (c === 'uninstall') { window.setTimeout(() => logo.classList.add('poof'), 350); window.setTimeout(() => audio.play('pop3'), 700); }
     else logo.classList.add('happy');
@@ -91,4 +105,15 @@ export function applyInstalled(installed: boolean): void {
   setInstalled(save.data.fun.tindeur, installed, Date.now());
   save.save();
   emitPhone();
+}
+
+/**
+ * Désinstallation demandée depuis les réglages du téléphone : les deux premiers essais sont refusés
+ * (renvoie false, l'appli reste), le troisième désinstalle (renvoie true).
+ */
+export function attemptUninstall(): boolean {
+  const r = tryUninstall(save.data.fun.tindeur, Date.now());
+  save.save();
+  emitPhone();
+  return r.ok;
 }

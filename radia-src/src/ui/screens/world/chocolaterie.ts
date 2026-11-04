@@ -20,6 +20,7 @@ import { canvasUrl, paint } from '../../../game/art/kit';
 import { reactAuguste } from '../../../game/world/auguste';
 import { playLines } from '../../components/Dialogue';
 import { setBackdrop } from '../../../game/scenes/backdrop';
+import { softMoment } from '../../../apps/eventMoments';
 
 const world = () => save.data.world;
 const commit = () => { save.save(); events.emit('economy', undefined); };
@@ -348,7 +349,7 @@ export function openChocolaterie(): Promise<void> {
         const r = K.assembleBox(world(), contents);
         if (!r.ok) { audio.play('invalid'); ui.toast({ title: r.reason ?? 'Impossible', icon: 'lock' }); return; }
         if (r.hearts) addHearts(r.hearts);
-        commit(); stat('world.choc.box');
+        commit(); stat('world.choc.box'); softMoment('chocolate', 'Un coffret de chocolats', 300_000);
         audio.play('chest'); window.setTimeout(() => audio.play('reward'), 200);
         chosen = [];
         showBox(contents, r);
