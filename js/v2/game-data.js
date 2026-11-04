@@ -1111,6 +1111,7 @@ window.ES_DATA = (function () {
     capitaine: { order: 1, rule: "Une file de matelots le suit et tire. Un coup reçu coûte le dernier matelot au lieu de PV ; les noisettes d'XP recrutent." },
     planeur:   { order: 2, rule: "Glisse sans cesse (inertie) et survole les obstacles. Ne s'ancre qu'accroché à un arbre ou à une souche." },
   };
+  var CHAR_ALL = CHARACTERS.slice();
   CHARACTERS = CHARACTERS.filter(function (c) { return V2CH[c.id]; }).map(function (c) {
     var v = V2CH[c.id]; c.rule = v.rule; c.order = v.order; c.weapon = "katana"; c.unlock = null; c.quest = null; c.price = 0; c.mods = {}; c.desc = v.rule; return c;
   }).sort(function (a, b) { return a.order - b.order; });
@@ -1453,6 +1454,134 @@ window.ES_DATA = (function () {
   };
   var ULTS = { katana: { name: "Mille coupes", desc: "Des dizaines d'entailles frappent tout l'écran." },
                arc: { name: "Soleil ardent", desc: "Une pluie de 24 flèches de feu." }, baton: { name: "Colère de la terre", desc: "Trois énormes ondes de Terre." } };
+  /* =====================================================================
+     2.0 phase 6 : les 7 autres écureuils, les 3 autres méga boss, les paliers Cauchemar
+     ===================================================================== */
+  SPRITES.sq_pataud = squirrel({ t: "#c89058", d: "#7a4a20", o: "#a86a38", c: "#fdecd0", k: "#2b1709", n: "#5a3018" });
+  SPRITES.sq_trefle = { pal: { t: "#9cd070", d: "#3f7a3a", o: "#6aa850", c: "#f3f8e0", k: "#1b2a12", n: "#2a4a1a", b: "#3fa040", B: "#7ad86a" }, frames: [POP_TOP.concat([LEGS_A]), POP_TOP.concat([LEGS_B])] };
+  SPRITES.sapling = { pal: { g: "#5ac85a", G: "#9cd04a", b: "#6b4430" }, frames: [["..G..", ".gGg.", "..b..", "..b.."]] };
+  SPRITES.minitree = { pal: { g: "#3f8a3a", G: "#6ac85a", L: "#9cd04a", b: "#6b4430", k: "#2b1709" }, frames: [["..gGg..", ".gGLGg.", "gGLgLGg", ".gGgGg.", "..kbk..", "...b...", "..bbb.."]] };
+  CHAR_ALL.push(
+    { id: "pataud", name: "Pataud", title: "Écureuil glouton", sprite: "sq_pataud", weapon: "katana", desc: "" },
+    { id: "trefle", name: "Trèfle", title: "Écureuil joueur", sprite: "sq_trefle", weapon: "katana", desc: "" }
+  );
+  var V2CH2 = {
+    jumeaux: { order: 3, quest: "q2_jumeaux", rule: "Deux corps sur les mêmes commandes, vies séparées. Pop reprend tes armes à 60 % ; si l'un tombe, l'autre peut le relever." },
+    cendrine: { order: 4, quest: "q2_cendrine", rule: "Les coups reçus s'écoulent sur 4 s ; frapper pendant ce délai en efface une partie. Un champ de force l'entoure." },
+    druide: { order: 5, quest: "q2_fougere", rule: "Ancrée, elle enterre une noisette qui devient pousse, puis arbre qui attaque." },
+    pataud: { order: 6, quest: "q2_pataud", rule: "Grossit en mangeant l'XP : plus de PV et de dégâts au contact, mais plus lent et plus facile à toucher. La Volte recrache tout." },
+    mage: { order: 7, quest: "q2_mage", rule: "Ses armes puisent dans une jauge de sève ; à sec, elles tirent 2 fois moins vite. Ancrée, elle recharge ; jauge pleine = surcharge." },
+    ninja: { order: 8, quest: "q2_ninja", rule: "Les ennemis ne la repèrent qu'à courte portée. Dégâts x3 sur ceux qui ne l'ont pas vue." },
+    trefle: { order: 9, quest: "q2_trefle", rule: "À chaque niveau, elle prend sa carte ou la mise : deux cartes au niveau suivant, ou rien." },
+  };
+  Object.keys(V2CH2).forEach(function (k) { V2CH[k] = V2CH2[k]; });
+  var ALLCH = CHAR_ALL;
+  CHARACTERS = ALLCH.filter(function (c) { return V2CH[c.id]; }).map(function (c) {
+    var v = V2CH[c.id]; c.rule = v.rule; c.order = v.order; c.weapon = "katana"; c.unlock = null; c.quest = v.quest || null; c.price = 0; c.mods = {}; c.desc = v.rule; return c;
+  }).sort(function (a, b) { return a.order - b.order; });
+  var P6 = {
+    jumeaux: [
+      { id: "formation", name: "Formation", color: "#f2b05e", a: "Collés et ancrés : leurs coups font +35 %.", m: "Pop te suit de près.", v: "Tirs croisés : chacun lance une salve vers l'autre." },
+      { id: "miroir", name: "Miroir", color: "#6ad8ff", a: "Ancrés : Pop se recentre sur toi.", m: "Pop bouge à l'opposé de Pip.", v: "Un rayon relie Pip et Pop et blesse tout entre eux." },
+      { id: "relais", name: "Relais", color: "#9cc56b", a: "Ancrés : chacun régénère 1 PV/s.", m: "Pop te suit.", v: "Pip et Pop échangent leurs places, avec une onde à l'arrivée." },
+    ],
+    cendrine: [
+      { id: "rempart", name: "Rempart", color: "#7fd1c7", a: "Le champ grossit et bloque les tirs.", m: "Champ réduit.", v: "Onde qui repousse tout." },
+      { id: "belier", name: "Bélier", color: "#f2b05e", a: "Recharge l'élan.", m: "L'élan monte, le contact blesse.", v: "Choc qui étourdit autour de toi." },
+      { id: "carapace", name: "Carapace", color: "#c8c0b0", a: "En boule : -50 % de dégâts, renvoie les coups.", m: "Normal.", v: "Piquants en cercle." },
+    ],
+    druide: [
+      { id: "jardiniere", name: "Jardinière", color: "#9cc56b", a: "Plante une noisette ; ses arbres soignent autour d'eux.", m: "Normal.", v: "Tous tes arbres te soignent d'un coup." },
+      { id: "ronceraie", name: "Ronceraie", color: "#5a8a3a", a: "Plante une noisette ; ses arbres lancent des épines.", m: "Normal.", v: "Chaque arbre lance une salve d'épines." },
+      { id: "semeuse", name: "Semeuse", color: "#f6d36b", a: "Plante plus vite.", m: "Plante en marchant : arbres plus faibles, mais partout.", v: "Les pousses deviennent arbres d'un coup." },
+    ],
+    pataud: [
+      { id: "goinfre", name: "Goinfre", color: "#f2b05e", a: "Digère : regagne 1 PV/s.", m: "Grossit deux fois plus vite.", v: "Recrache tout autour de lui." },
+      { id: "canon", name: "Canon", color: "#c8553d", a: "Normal.", m: "Normal.", v: "Recrache en rafale dirigée, dégâts x1,5." },
+      { id: "rouleau", name: "Rouleau", color: "#a06a3e", a: "Normal.", m: "Gros et en mouvement : écrase tout (contact x2).", v: "Recrache tout autour de lui." },
+    ],
+    mage: [
+      { id: "canalisatrice", name: "Canalisatrice", color: "#b07cf0", a: "Recharge la sève ; surcharges 2 fois plus longues.", m: "Consomme la sève.", v: "Rend 20 de sève." },
+      { id: "vagabonde", name: "Vagabonde", color: "#6ad8ff", a: "Recharge la sève.", m: "Recharge aussi en marchant, plus lentement.", v: "Rend 15 de sève." },
+      { id: "instable", name: "Instable", color: "#ff5ad0", a: "Recharge la sève.", m: "Consomme la sève.", v: "Déclenche une surcharge si la jauge dépasse 60 ; les surcharges explosent." },
+    ],
+    ninja: [
+      { id: "affut", name: "Affût", color: "#8a8aa8", a: "Après 1 s : invisible, le prochain coup est critique.", m: "Normal.", v: "Disparaît 1 s." },
+      { id: "lamevent", name: "Lame-vent", color: "#d8e8ff", a: "Normal.", m: "Des shurikens restent dans son sillage.", v: "Une gerbe de 6 shurikens." },
+      { id: "danseuse", name: "Danseuse", color: "#ff7a9a", a: "Normal.", m: "Normal.", v: "Chaque Volte sans prendre de coup : +8 % de cadence (5 fois max)." },
+    ],
+    trefle: [
+      { id: "portebonheur", name: "Porte-bonheur", color: "#9cd070", a: "Ancrée, sa chance monte (butin).", m: "Normal.", v: "Une pièce : un objet tombe 1 fois sur 4." },
+      { id: "toutourien", name: "Tout-ou-rien", color: "#f6d36b", a: "Normal.", m: "Normal.", v: "Lance une pièce : salve doublée, ou rien." },
+      { id: "flambeuse", name: "Flambeuse", color: "#ff5a3a", a: "Normal.", m: "Normal (-25 % de PV max).", v: "Mises gagnées 6 fois sur 10." },
+    ],
+  };
+  Object.keys(P6).forEach(function (cid) {
+    var nm = (ALLCH.filter(function (c) { return c.id === cid; })[0] || {}).name;
+    P6[cid][1].quest = "p_" + cid + "2"; P6[cid][2].quest = "p_" + cid + "3";
+    QUESTS.push({ id: "p_" + cid + "2", desc: "Survis 5 minutes avec " + nm + ".", check: function (r) { return r.char === cid && r.time >= 300; } },
+                { id: "p_" + cid + "3", desc: "Survis 8 minutes avec " + nm + ".", check: function (r) { return r.char === cid && r.time >= 480; } });
+    POSTURES[cid] = P6[cid];
+  });
+  QUESTS.push(
+    { id: "q2_cendrine", desc: "Survis 6 minutes (débloque Cendrine).", check: function (r) { return r.time >= 360; } },
+    { id: "q2_jumeaux", desc: "Réussis une extraction en Expédition (débloque Pip & Pop).", check: function (r) { return !!r.extracted; } },
+    { id: "q2_fougere", desc: "Active 4 sanctuaires dans une partie (débloque Fougère).", check: function (r) { return (r.shrinesUsed || 0) >= 4; } },
+    { id: "q2_pataud", desc: "Ramasse 400 noisettes dans une partie (débloque Pataud).", check: function (r) { return (r.nuts || 0) >= 400; } },
+    { id: "q2_mage", desc: "Déclenche 30 réactions élémentaires dans une partie (débloque Myrtille).", check: function (r) { return (r.reactions || 0) >= 30; } },
+    { id: "q2_ninja", desc: "Fais 30 Voltes dans une partie (débloque Ombre).", check: function (r) { return (r.voltes || 0) >= 30; } },
+    { id: "q2_trefle", desc: "Ouvre 3 coffres scellés dans une partie (débloque Trèfle).", check: function (r) { return (r.chestsOpened || 0) >= 3; } }
+  );
+  // talents des 21 nouvelles postures : palier 3 et clé de voûte (paliers 1 et 2 communs)
+  var T6 = {
+    formation: [["Garde serrée", "Collés, -20 % de dégâts reçus."], ["Grand écart", "Formation compte jusqu'à 40 px."], ["Tir croisé", "Clé : collés, +60 % au lieu de +35 %."], ["Escorte", "Clé : Pop relève Pip 2 fois plus vite."]],
+    miroir: [["Rayon fort", "Le rayon de Volte fait x1,6."], ["Reflets", "Pop a +30 % de PV."], ["Double miroir", "Clé : le rayon reste 1 s."], ["Symétrie", "Clé : chaque coup de Pop ralentit."]],
+    relais: [["Relais rapide", "La Volte se recharge 30 % plus vite."], ["Onde forte", "Onde d'arrivée x1,6."], ["Chassé-croisé", "Clé : l'échange rend invulnérable 1 s."], ["Passe-passe", "Clé : l'échange soigne les deux de 10 %."]],
+    rempart: [["Racines", "Ancrée depuis 2 s, le champ grossit deux fois plus vite."], ["Pas de côté", "Le champ ne rétrécit pas pendant la 1re seconde de mouvement."], ["Forteresse", "Clé : le champ reste posé 10 s là où tu l'as quitté."], ["Bastion mobile", "Clé : le champ garde sa taille en mouvement, mais plus de Volte."]],
+    belier: [["Élan durable", "L'élan retombe 2 fois moins vite."], ["Corne", "Contact +50 %."], ["Avalanche", "Clé : élan max x2."], ["Onde de choc", "Clé : le choc de Volte est 2 fois plus large."]],
+    carapace: [["Coquille épaisse", "En boule : -65 % au lieu de -50 %."], ["Retour à l'envoyeur", "Coups renvoyés x2."], ["Hérisson", "Clé : en boule, piquants toutes les 1,5 s."], ["Toupie", "Clé : la Volte fait rouler la boule et écrase."]],
+    jardiniere: [["Bon terreau", "Les pousses grandissent 2 fois plus vite."], ["Sève douce", "Soins des arbres x2."], ["Verger", "Clé : +3 arbres max."], ["Grand chêne", "Clé : les arbres ont 2 fois plus de portée."]],
+    ronceraie: [["Épines longues", "Épines +50 % de dégâts."], ["Fourré", "Les arbres posent des ronces au sol."], ["Forêt hostile", "Clé : +3 arbres max."], ["Tireur des bois", "Clé : les arbres tirent 2 fois plus vite."]],
+    semeuse: [["Pas vert", "Plante tous les 45 px au lieu de 70."], ["Graines robustes", "Arbres de semeuse +50 % de dégâts."], ["Prairie", "Clé : +6 arbres max."], ["Germination", "Clé : les pousses deviennent arbres en 1 s."]],
+    goinfre: [["Panse", "+50 % de PV par taille."], ["Digestion", "Regain 2 PV/s ancré."], ["Ogre", "Clé : taille max x1,5."], ["Buffet", "Clé : chaque ennemi tué au contact fait grossir."]],
+    canon: [["Mitraille", "Recrache 2 fois plus de projectiles."], ["Boulets", "Projectiles qui transpercent."], ["Bombardier", "Clé : les projectiles explosent."], ["Rechargement", "Clé : garde la moitié de sa taille après la Volte."]],
+    rouleau: [["Masse", "Contact x1,5."], ["Élan lourd", "Ralentit 2 fois moins en grossissant."], ["Rouleau compresseur", "Clé : les ennemis écrasés sont étourdis."], ["Boule de neige", "Clé : grossit aussi en écrasant."]],
+    canalisatrice: [["Grand réservoir", "Jauge rechargée 2 fois plus vite."], ["Sobriété", "Consomme 30 % de sève en moins."], ["Transe", "Clé : surcharge x1,8 au lieu de x1,4."], ["Flux continu", "Clé : à sec, tire seulement 30 % moins vite."]],
+    vagabonde: [["Sève vive", "Recharge en marchant 2 fois plus vite."], ["Sobriété", "Consomme 30 % de sève en moins."], ["Pèlerine", "Clé : en mouvement, surcharge douce permanente (+15 %)."], ["Source", "Clé : la Volte rend 40 de sève."]],
+    instable: [["Mèche courte", "Surcharge dès 80 de sève."], ["Détonation", "Explosions de surcharge x1,6."], ["Réaction en chaîne", "Clé : chaque explosion recharge 5 de sève."], ["Chaos", "Clé : explosions 2 fois plus fréquentes."]],
+    affut: [["Œil de lynx", "Invisible après 0,6 s ancrée."], ["Coup sûr", "Le coup critique fait x3."], ["Prédatrice", "Clé : invisible, x4 sur les ennemis qui ne l'ont pas vue."], ["Fantôme", "Clé : invisible 1 s de plus en repartant."]],
+    lamevent: [["Sillage dense", "2 fois plus de shurikens dans le sillage."], ["Lames longues", "Shurikens du sillage x1,5."], ["Tempête d'acier", "Clé : le sillage blesse 2 fois plus vite."], ["Vent coupant", "Clé : la gerbe de Volte fait 12 shurikens."]],
+    danseuse: [["Grâce", "+10 % de cadence par Volte au lieu de 8 %."], ["Souplesse", "Les charges ne sautent qu'une fois sur deux."], ["Ballet", "Clé : 8 charges max."], ["Révérence", "Clé : à 5 charges, chaque Volte libère une onde."]],
+    portebonheur: [["Fer à cheval", "Chance ancrée x2."], ["Pièce porte-bonheur", "La pièce de Volte réussit 1 fois sur 3."], ["Jackpot", "Clé : la pièce peut lâcher un objet rare."], ["Bonne étoile", "Clé : -20 % de dégâts reçus tant que ta chance est montée."]],
+    toutourien: [["Double ou rien", "La salve gagnée fait 32 glands."], ["Lancer sûr", "La pièce réussit 6 fois sur 10."], ["Banco", "Clé : salve gagnée explosive."], ["Consolation", "Clé : une pièce ratée te soigne 10 PV."]],
+    flambeuse: [["Gros joueur", "Mise gagnée : 3 cartes au lieu de 2."], ["Assurance", "Mise perdue : +20 glands."], ["All-in", "Clé : mises gagnées 7 fois sur 10."], ["Sang-froid", "Clé : plus de malus de PV."]],
+  };
+  Object.keys(T6).forEach(function (ps) {
+    var t = T6[ps], id = function (i) { return ps + "_t" + i; };
+    TAL[ps] = [[{ id: id(1), name: t[0][0], desc: t[0][1] }, { id: id(2), name: t[1][0], desc: t[1][1] }], [{ id: id(3), name: t[2][0], desc: t[2][1] }, { id: id(4), name: t[3][0], desc: t[3][1] }]];
+  });
+  // 3 autres méga boss, un par élément ; leur repaire : la carte de Survie (et la région en Expédition) de leur élément
+  ENEMIES.mere = { sprite: "toad", hp: 5400, spd: 18, dmg: 28, r: 13, xp: 200, boss: true, mega: true, name: "Mère des Marais", color: "#4aa8ff", bossAi: "mega_terre", elem: "eau", scale: 3 };
+  ENEMIES.brasier = { sprite: "salamander", hp: 5000, spd: 22, dmg: 30, r: 12, xp: 200, boss: true, mega: true, name: "Brasier ancestral", color: "#ff7a2a", bossAi: "mega_terre", elem: "feu", scale: 3.4 };
+  ENEMIES.tempete = { sprite: "owl", hp: 5200, spd: 24, dmg: 26, r: 12, xp: 200, boss: true, mega: true, name: "Roi-Tempête", color: "#c8f8e8", bossAi: "mega_terre", elem: "air", scale: 2.2 };
+  ENEMIES.colosse.scale = 2.6;
+  MAPS.forEach(function (m) { m.mega = { clairiere: "colosse", marais: "mere", automne: "brasier", nuit: "tempete" }[m.id]; });
+  RES.t_mere = { name: "Écaille de la Mère", icon: "🐸", trophy: "mere" };
+  RES.t_brasier = { name: "Braise ancestrale", icon: "🔥", trophy: "brasier" };
+  RES.t_tempete = { name: "Plume d'orage", icon: "🌩️", trophy: "tempete" };
+  // paliers Cauchemar : chacun ajoute une règle, et elles se cumulent ; battre le méga boss d'une carte en Cauchemar N débloque N+1
+  var NIGHTMARE = [
+    "Les élites arrivent deux fois plus souvent.",
+    "Les boss ont un pouvoir d'élite.",
+    "La rage (ou la corruption) arrive 2 minutes plus tôt.",
+    "Les méga boss changent d'élément en dernière phase.",
+    "Les soins sont réduits de moitié.",
+    "Les ennemis sont 20 % plus rapides.",
+    "Coffres, marchand et passeur coûtent 2 fois plus.",
+    "Les élites ont toujours 2 pouvoirs.",
+    "Dégâts reçus +30 %.",
+    "La difficulté démarre 5 paliers plus haut.",
+  ];
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
@@ -1460,6 +1589,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
