@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.5.2";
+  var VERSION = "2.6.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -117,6 +117,8 @@
   function mapById(id) { return D.MAPS.filter(function (m) { return m.id === id; })[0] || D.MAPS[0]; }
   function questOk(def) { return !def || !def.quest || !!(S.quests && S.quests[def.quest]); }
   function charAvailable(c) { return questOk(c) && (!!S.owned[c.id] || !c.unlock || has(c.unlock)); }
+  function achTotal() { return D.ACHIEVEMENTS.filter(function (a) { return !a.soon; }).length; }
+  function achDone() { return D.ACHIEVEMENTS.filter(function (a) { return !a.soon && S.ach[a.id]; }).length; }
   function achById(id) { return D.ACHIEVEMENTS.filter(function (a) { return a.id === id; })[0]; }
   function sanitize() {
     if (!D.CHARACTERS.some(function (c) { return c.id === S.char; }) || !charAvailable(charById(S.char))) S.char = "noisette";
@@ -503,7 +505,29 @@
   canvas.addEventListener("pointercancel", release);
   canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
+  // tests d'équilibrage : un pilote automatique qui fuit les ennemis et les zones rouges, ramasse l'XP
+  var BOT = null, FAST = 1;
+  function botVector() {
+    var vx = 0, vy = 0, near0 = null, nd = 1e9, threat = 0, fam = (D.ARMES[me.arme] || {}).fam, want = fam === "melee" ? 26 : 70;
+    enemies.forEach(function (e) {
+      if (e.d.prop) return; var dx = me.x - e.x, dy = me.y - e.y, d = Math.hypot(dx, dy) || 1;
+      if (d < nd) { nd = d; near0 = e; }
+      var lim = (e.d.boss ? 55 : 22) + (e.d.r || 6);
+      if (d < lim) { var w = (lim - d) / lim; vx += dx / d * w * 3; vy += dy / d * w * 3; threat++; }
+    });
+    warns.forEach(function (w) { var dx = me.x - w.x, dy = me.y - w.y, d = Math.hypot(dx, dy) || 1; if (d < w.r + 12) { vx += dx / d * 4; vy += dy / d * 4; threat++; } });
+    hostile.forEach(function (q) { var dx = me.x - q.x, dy = me.y - q.y, d = Math.hypot(dx, dy) || 1; if (d < 40) { vx += -q.vy / (Math.hypot(q.vx, q.vy) || 1) * 2; vy += q.vx / (Math.hypot(q.vx, q.vy) || 1) * 2; threat++; } });
+    if (!threat) {
+      var g = null, gd = 1e9; gems.forEach(function (q) { var d = Math.hypot(q.x - me.x, q.y - me.y); if (d < gd && d < 110) { gd = d; g = q; } });
+      if (g) { vx = g.x - me.x; vy = g.y - me.y; }
+      else if (near0) { var dx2 = near0.x - me.x, dy2 = near0.y - me.y; if (nd > want + 15) { vx = dx2; vy = dy2; } else { vx = -dy2; vy = dx2; if (nd < want - 10) { vx -= dx2; vy -= dy2; } } }
+      else { var a = r.time * 0.4; vx = Math.cos(a); vy = Math.sin(a); }
+    }
+    var mag = Math.hypot(vx, vy); if (mag < 0.001) return { x: 0, y: 0 };
+    return { x: vx / mag, y: vy / mag };
+  }
   function inputVector() {
+    if (BOT && state === "play" && me && enemies) return botVector();
     var x = (keys.r ? 1 : 0) - (keys.l ? 1 : 0), y = (keys.d ? 1 : 0) - (keys.u ? 1 : 0);
     if (x || y) { var l = Math.hypot(x, y); return { x: x / l, y: y / l }; }
     if (joy.active) {
@@ -767,7 +791,7 @@
     }
     dmg = Math.max(1, Math.round(dmg));
     if (e.eshield > 0) { var ab = Math.min(e.eshield, dmg); e.eshield -= ab; dmg -= ab; if (dmg <= 0) { e.flash = 0.05; return; } }
-    e.hp -= dmg; e.flash = 0.1;
+    e.hp -= dmg; e.flash = 0.1; if (r && !e.d.prop) r.dmgTot = (r.dmgTot || 0) + Math.min(dmg, e.hp + dmg);
     if (!e.d.prop) { var hel = atkElem(p); SND.hit(hel, crit); spark(e.x + (p.x - e.x) * 0.25 + (Math.random() * 4 - 2), e.y - 2 + (p.y - e.y) * 0.25, hel, crit); }
     if (crit && !e.d.prop && (e.d.boss || dmg >= 60) && S.opts.shake) { shake = Math.max(shake, 0.12); if (p === me) kick(e.x - p.x, e.y - p.y, 1.5); }
     if (!e.d.prop) {
@@ -6986,7 +7010,7 @@
 
   var SCREENS = {
     menu: function () {
-      var nAch = Object.keys(S.ach).length, nQ = Object.keys(S.quests || {}).length, fp = freePoints();
+      var nAch = achDone(), nQ = Object.keys(S.quests || {}).length, fp = freePoints();
       var need = D.rankNeed(S.rank), k = Math.min(100, Math.round(S.rankXp / need * 100));
       var mode = { arena: "Arène", dungeon: "Donjon" }[S.mode] || "Survie";
       function tile(arg, ic, label, sub, badge, hot) {
@@ -7004,7 +7028,7 @@
         '<div class="mm-grid">' +
         tile("terrier", "🕳️", "Le terrier", "Attirail, talents, maîtrise") +
         tile("atelier", "🔨", "L'atelier", "Craft et recyclage") +
-        tile("succes", "🏆", "Succès", nAch + " / " + D.ACHIEVEMENTS.length) +
+        tile("succes", "🏆", "Succès", nAch + " / " + achTotal()) +
         tile("quetes", "🗝️", "Quêtes", nQ + " / " + D.QUESTS.length) +
         tile("codex", "📜", "Techniques", "20 techniques · " + (Object.keys(D.TFUS).length + Object.keys(D.TFUS2).length + Object.keys(D.COMBOS).length + Object.keys(D.LEGENDS).length) + " fusions") +
         tile("help", "❓", "Aide", "Comment jouer") +
@@ -7224,9 +7248,10 @@
       return html + "</div>";
     },
     succes: function () {
-      var n = Object.keys(S.ach).length;
-      var html = '<div class="screen-head">' + back() + '<h2>Succès</h2><p class="gold-badge">🏆 <b>' + n + " / " + D.ACHIEVEMENTS.length + '</b></p></div><div class="ach-list">';
-      D.ACHIEVEMENTS.forEach(function (a) {
+      var n = achDone();
+      var html = '<div class="screen-head">' + back() + '<h2>Succès</h2><p class="gold-badge">🏆 <b>' + n + " / " + achTotal() + '</b></p></div><div class="ach-list">';
+      D.ACHIEVEMENTS.filter(function (a) { return !a.soon; }).concat(D.ACHIEVEMENTS.filter(function (a) { return a.soon; })).forEach(function (a) {
+        if (a.soon) { html += '<div class="ach is-soon"><span class="ach-ic">🌐</span><div><strong>' + esc(a.name) + "</strong><span>" + esc(a.desc) + '</span><span class="ach-unlock">Coop en ligne : bientôt en 2.0</span></div></div>'; return; }
         var ok = !!S.ach[a.id], un = unlocksOf(a.id);
         html += '<div class="ach' + (ok ? " is-done" : "") + '"><span class="ach-ic">' + (ok ? "🏆" : "🔒") + "</span>" +
           "<div><strong>" + esc(a.name) + "</strong><span>" + esc(a.desc) + "</span>" +
@@ -8230,6 +8255,7 @@
         else {
           var sdt = dt; if (slowmo > 0) { slowmo -= dt; sdt = dt * 0.4; }
           if (Net.on && Net.role === "guest") updateGuest(sdt); else update(sdt);
+          for (var ff = 1; ff < FAST && state === "play"; ff++) update(sdt);
         }
       }
       if (state === "menu" && camp.on) { campTick(dt); drawCamp(now); }
@@ -8388,6 +8414,9 @@
     combo: function (id) { p = me; v2Apply({ type: "cb", id: id }); calc(me); return Object.keys(me.weapons); },
     entries: function () { return techEntries(me).map(function (e) { return e.key + ":" + e.def.type + ":" + Math.round(V(e.def, "dmg", e.l) || 0); }); },
     arme: function (id) { pickArme(id); return me.weapons; },
+    bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
+    run: function () { return { t: r ? Math.round(r.time) : 0, lvl: r && r.level, kills: r && r.kills, hp: me && Math.round(me.hp), state: state, tier: tierN(), boss: r && r.bossKills }; },
+    dmgTot: function () { return [Math.round(r && r.dmgTot || 0), r ? r.time : 0]; },
     choicesNow: function (n) { p = me; return v2Choices(n || 4).map(function (c) { var v = v2Card(c); return c.type + ":" + (v ? v.name : c.id); }); },
     give: function (type, id, lvl) { p = me; if (type === "w") me.weapons[id] = lvl || 5; else me.passives[id] = lvl || 5; calc(me); refreshCounts(); return readyFusions(); },
     twin: function () { var t = me.twinRef; return t ? { x: Math.round(t.x), y: Math.round(t.y), hp: Math.round(t.hp), max: Math.round(t.maxHp), down: t.down, might: Math.round(t.might * 100) / 100, meMight: Math.round(me.might * 100) / 100, w: t.weapons === me.weapons, meDown: me.down, n: players.length } : null; },
