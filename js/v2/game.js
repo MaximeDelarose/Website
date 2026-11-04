@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.0.0-a6";
+  var VERSION = "2.0.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -34,7 +34,7 @@
   function defaults() {
     return { gold: 0, shop: {}, ach: {}, quests: {}, owned: { noisette: true }, rank: 1, rankXp: 0, tree: {}, prestige: 0, ppts: 0, pshop: {}, char: "noisette", map: "clairiere", diff: "normal", name: "",
              opts: { sound: true, shake: true, numbers: true },
-             mode: "survie", posture: {}, eq: { inv: [], worn: {}, uid: 1 }, res: {}, clvl: {}, tal: {}, mast: {}, contracts: { offers: [], taken: [] }, cauch: {}, cn: 0, mega: {}, secureSlots: 0, eqSlot: "coiffe", stats: { kills: 0, goldEarned: 0, goldSince: 0, runs: 0, bestTime: 0, bestScore: 0, bosses: 0, played: {}, maps: {}, bought: 0 } };
+             mode: "survie", posture: {}, eq: { inv: [], worn: {}, uid: 1 }, res: {}, clvl: {}, tal: {}, mast: {}, contracts: { offers: [], taken: [] }, cauch: {}, cn: 0, mega: {}, secureSlots: 0, eqSlot: "coiffe", v2: 0, news: 0, recipes: {}, chestSize: 0, stats: { kills: 0, goldEarned: 0, goldSince: 0, runs: 0, bestTime: 0, bestScore: 0, bosses: 0, played: {}, maps: {}, bought: 0 } };
   }
   function load() {
     var s = defaults(), raw = null;
@@ -52,6 +52,38 @@
     return s;
   }
   var S = load();
+  /* ---- 2.0 phase 7 : migration d'une sauvegarde de la version 1 (aucune remise à zéro) ---- */
+  var MIGRATED = null;
+  function migrateV1() {
+    if (S.v2) return;
+    var src = null;
+    if ((S.stats && S.stats.runs) || S.rank > 1 || S.gold > 0) src = S;                       // données de la v1 arrivées par la sauvegarde en ligne
+    else { try { var raw = JSON.parse(localStorage.getItem("es-save-v1") || "null"); if (raw && typeof raw === "object") { var keep = S; S = load.call(null); Object.keys(raw).forEach(function (k) { if (k in S) S[k] = raw[k]; }); src = S; } } catch (e) {} }
+    S.v2 = 1;
+    if (!src) { save(); return; }
+    var refund = 0, k, l;
+    (D.SHOP || []).forEach(function (it) { for (l = 0; l < ((S.shop || {})[it.id] || 0); l++) refund += Math.round(it.cost * (1 + l) * (1 + l * 0.25)); });
+    var pts = 0; Object.keys(S.tree || {}).forEach(function (id) { var sk = (D.SKILLS || []).filter(function (q) { return q.id === id; })[0]; if (sk) pts += (S.tree[id] || 0) * sk.cost; });
+    refund += pts * 150 + Math.round((S.ppts || 0) * 2);
+    var retired = ["charbon", "flocon", "chevalier", "bucheron"].filter(function (c) { return (S.owned || {})[c]; });
+    refund += retired.length * 500;
+    var cap = Math.max(0, ((S.stats && S.stats.goldEarned) || 0) + 20000 - S.gold);
+    refund = Math.min(refund, cap);
+    S.gold += refund;
+    S.res = S.res || {}; var pr = S.prestige || 0;
+    if (pr) ["herbe", "ecorce", "chapeau"].forEach(function (r0) { S.res[r0] = (S.res[r0] || 0) + 10 * pr; });
+    if (pr) S.res.rune = (S.res.rune || 0) + 2 * pr;
+    // écureuils déjà débloqués en v1 : leur quête de 2.0 est donnée
+    var map = { cendrine: "q2_cendrine", jumeaux: "q2_jumeaux", druide: "q2_fougere", mage: "q2_mage", ninja: "q2_ninja" };
+    S.quests = S.quests || {};
+    Object.keys(map).forEach(function (c) { if ((S.owned || {})[c] || (S.stats && S.stats.played && S.stats.played[c])) S.quests[map[c]] = Date.now(); });
+    // on garde rang, succès, quêtes, records ; les stats achetées, l'arbre et les points de prestige sont remboursés
+    S.shop = {}; S.tree = {}; S.pshop = {}; S.ppts = 0;
+    if (D.CHARACTERS.every(function (c) { return c.id !== S.char; })) S.char = "noisette";
+    MIGRATED = { refund: refund, retired: retired, prestige: pr };
+    S.news = 1; save();
+  }
+  migrateV1();
   var MAX_PLAYERS = 6;
   var ACTIONS_LATE = {};
   var Net = { peers: {}, hostId: null, on: false, role: null, id: Math.random().toString(36).slice(2, 10), code: null, client: null, ch: null, status: "",
@@ -91,7 +123,7 @@
     if (!D.MAPS.some(function (m) { return m.id === S.map; }) || !has(mapById(S.map).unlock)) S.map = "clairiere";
     if (!D.DIFFICULTIES[S.diff] || !has(D.DIFFICULTIES[S.diff].unlock)) S.diff = "normal";
     if (!S.dungeon || !has(dungeonById(S.dungeon).unlock)) S.dungeon = "terriers";
-    if (S.mode !== "expedition") S.mode = "survie"; S.posture = S.posture || {};   // 2.0 bêta : Survie et Expédition
+    if (["expedition", "arena", "dungeon"].indexOf(S.mode) < 0) S.mode = "survie"; S.posture = S.posture || {};   // 2.0 bêta : Survie et Expédition
     eqS();
   }
   sanitize();
@@ -350,12 +382,13 @@
   var KEYMAP = { KeyW: "u", ArrowUp: "u", KeyS: "d", ArrowDown: "d", KeyA: "l", ArrowLeft: "l", KeyD: "r", ArrowRight: "r" };
   window.addEventListener("keydown", function (e) {
     if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
-    if (state === "play" && KEYMAP[e.code]) { keys[KEYMAP[e.code]] = true; e.preventDefault(); }
+    if ((state === "play" || (state === "menu" && camp.on)) && KEYMAP[e.code]) { keys[KEYMAP[e.code]] = true; e.preventDefault(); }
+    if (state === "menu" && camp.on && (e.code === "Enter" || e.code === "Space") && camp.near) { e.preventDefault(); campOpen(camp.near.id); return; }
     if (state === "play" && e.code === "Space") e.preventDefault();
     if (e.code === "Escape" || e.code === "KeyP") {
       if (state === "play") { pause(); e.preventDefault(); }
       else if (state === "pause") { resume(); e.preventDefault(); }
-      else if (state === "menu" && screen !== "menu" && e.code === "Escape") { go("menu"); e.preventDefault(); }
+      else if (state === "menu" && screen !== "menu" && screen !== "camp" && e.code === "Escape") { go("menu"); e.preventDefault(); }
     }
     if (screen === "chest" && chestOpen && (e.code === "Space" || e.code === "Enter") && !(document.activeElement && document.activeElement.tagName === "BUTTON")) { e.preventDefault(); ACTIONS.chestok(); }
     if (state === "levelup" || picking) {
@@ -368,6 +401,7 @@
   document.addEventListener("visibilitychange", function () { if (document.hidden && state === "play" && !Net.on) pause(); });
 
   canvas.addEventListener("pointerdown", function (e) {
+    if (state === "menu" && camp.on) { var cq = toInternal(e.clientX, e.clientY); campTap(cq.x, cq.y); e.preventDefault(); return; }
     if (state !== "play") return;
     var q = toInternal(e.clientX, e.clientY);
     if (e.pointerType === "mouse") {
@@ -675,7 +709,8 @@
     var p = pl || me;
     if (p.inv > 0 || p.down || p.choosing || p.god) return;
     if (riposteOnHit(p)) { p.inv = 0.3; return; }
-    if (p.weapons && p.weapons.sig_contre && p.anchored && !(p.contreCd > 0)) { p.contreCd = 4; p.inv = 0.4; var ppc = p; riposteBlast(p, { R: [36], dmg: [25 * (1 + 0.25 * (p.weapons.sig_contre - 1))] }, 0); p = ppc; texts.push({ x: p.x, y: p.y - 16, n: "CONTRE !", life: 0.7 }); return; }
+    var sgc = hasSig(p, "contre");
+    if (sgc && p.anchored && !(p.contreCd > 0)) { p.contreCd = 4; p.inv = 0.4; var ppc = p; riposteBlast(p, { R: [36], dmg: [25 * (1 + 0.25 * (sgc.l - 1))] }, 0); p = ppc; texts.push({ x: p.x, y: p.y - 16, n: "CONTRE !", life: 0.7 }); return; }
     if (p.anchored) dmg *= (1 - (p.gearArm || 0)) * (tal(p, "piedferme") ? 0.8 : 1);
     if (p.shield) {
       p.shield = false; p.shieldT = p.shieldCd; p.inv = 0.5;
@@ -2220,9 +2255,8 @@
     if (ps === "pique" && a) pl.cadX = 0.5;
     if (ps === "courant") { var sp = Math.hypot(pl.vx || 0, pl.vy || 0) / (pl.speed || 60); pl.dmgX = 1 + (tal(pl, "ouragan_t") ? 1.2 : 0.6) * Math.min(1, sp); }
     if (ps === "perchoir" && a) { pl.rangeMul = tal(pl, "longuevue") ? 2 : 1.6; pl.dmgX = 1.3 * (tal(pl, "sniper") && pl.anchorT > 2 ? 2 : 1); }
-    var wp = pl.weapons || {};
-    if (wp.sig_charge && a && pl.anchorT > 1) pl.dmgX *= 2;
-    if (wp.sig_faucon) pl.rangeMul *= 1.2;
+    if (hasSig(pl, "anchorDmg") && a && pl.anchorT > 1) pl.dmgX *= 2;
+    if (hasSig(pl, "critRange")) pl.rangeMul *= 1.2;
     if (pl.sillT > 0) pl.spdX *= 1.3;
     if (pl.size > 1) pl.spdX /= 1 + (tal(pl, "rouleau_t2") ? 0.17 : 0.35) * (pl.size - 1);
     var gv = gearHas(pl, "vitesse"); if (gv && m) pl.spdX *= 1 + gv.v / 100;
@@ -2299,7 +2333,7 @@
   }
   /* ---- Capitaine : l'équipage ---- */
   function newMatelot(pl) { return { k: "matelot", x: pl.x, y: pl.y, face: 1, anim: Math.random() * 2, cd: 0.5 + Math.random() * 0.5, chargeT: 0, hitCd: 0 }; }
-  function crewMax(pl) { return (pl.posture === "convoi" ? 10 : 6) + (tal(pl, "canonniers") ? 2 : 0) + (tal(pl, "longuefile") ? 3 : 0); }
+  function crewMax(pl) { return (pl.posture === "convoi" ? 10 : 6) + (setCount(pl, "corsaire") >= 2 ? 2 : 0) + (tal(pl, "canonniers") ? 2 : 0) + (tal(pl, "longuefile") ? 3 : 0); }
   function recruit(pl, v) {
     if (!pl.crew) return;
     pl.recruitAcc += v * (pl.posture === "convoi" && pl.mstate === "mouvement" ? 2 : 1);
@@ -2312,7 +2346,7 @@
   function crewShoot(pl, mt, mul) {
     var t = nearest(1, 130, mt)[0]; if (!t) return false;
     var a = Math.atan2(t.y - mt.y, t.x - mt.x); mt.face = Math.cos(a) >= 0 ? 1 : -1;
-    projs.push({ owner: pl, kind: "bullet", x: mt.x, y: mt.y - 2, vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, dmg: 6 * (mul || 1) * (tal(pl, "salvelourde") && pl.anchored ? 1.5 : 1) * gpw() * 1.6, pierce: 1, sprite: "miniacorn", life: 0.95, hit: [], r: 3, explode: 0 });
+    projs.push({ owner: pl, kind: "bullet", x: mt.x, y: mt.y - 2, vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, dmg: 6 * (mul || 1) * (tal(pl, "salvelourde") && pl.anchored ? 1.5 : 1) * gpw() * 1.6, pierce: 1, sprite: "miniacorn", life: 0.95, hit: [], r: 3, explode: setCount(pl, "corsaire") >= 4 ? 14 : 0 });
     return true;
   }
   function crewTick(pl, dt) {
@@ -2769,7 +2803,7 @@
     if (g.ring === "apprenti") { var all = Object.keys(D.TECH).sort(function () { return Math.random() - 0.5; }); q.tech = all.slice(0, 2); }
     return q;
   }
-  function addPiece(q) { var e = eqS(); if (e.inv.length >= 40) { recycle(q, true); return false; } e.inv.push(q); return true; }
+  function addPiece(q) { var e = eqS(); if (e.inv.length >= 40 + 10 * (S.chestSize || 0)) { recycle(q, true); return false; } e.inv.push(q); return true; }
   function recycle(q, silent) {
     var g = D.GEAR[q.t]; Object.keys(g.cost).forEach(function (k) { S.res[k] = (S.res[k] || 0) + Math.ceil(g.cost[k] * 0.5); });
     var e = eqS(); e.inv = e.inv.filter(function (x) { return x.id !== q.id; });
@@ -2786,10 +2820,12 @@
   function v2Loadout(pl) {
     eqS();
     var cid = pl.char.id, w = wornBy(cid);
-    pl.gear = []; pl.ring = {}; pl.amu = {}; pl.epts = { terre: 0, feu: 0, eau: 0, air: 0 }; pl.extraTech = [];
+    pl.gear = []; pl.ring = {}; pl.amu = {}; pl.epts = { terre: 0, feu: 0, eau: 0, air: 0 }; pl.extraTech = []; pl.set = {};
     Object.keys(w).forEach(function (s) {
       var q = pieceById(w[s]); if (!q) return; var g = D.GEAR[q.t];
       pl.gear.push({ q: q, g: g, v: gearVal(q) });
+      if (q.extra && D.GEAR[q.extra]) { var gx = D.GEAR[q.extra]; pl.gear.push({ q: q, g: gx, v: gx.lo === undefined ? 0 : (gx.lo + gx.hi) / 2 }); }
+      if (g.set) pl.set[g.set] = (pl.set[g.set] || 0) + 1;
       if (g.elem && q.pts) pl.epts[g.elem] += q.pts;
       if (g.ring) pl.ring[g.ring] = true;
       if (g.ring === "apprenti") pl.extraTech = pl.extraTech.concat(q.tech || []);
@@ -2804,7 +2840,7 @@
       var node = pair[pick[t + 1] === "b" ? 1 : 0]; pl.tal[node.id] = true;
     }
     pl.anchorTh = pl.tal.racines ? 0.25 : V2.anchorT;
-    pl.volteBase = pl.tal.voltigeuse ? 1.5 : pl.tal.ressort ? 2.2 : V2.volteCd;
+    pl.volteBase = (pl.tal.voltigeuse ? 1.5 : pl.tal.ressort ? 2.2 : V2.volteCd) - (setCount(pl, "orage") >= 2 ? 0.6 : 0);
   }
   function tal(pl, id) { return !!(pl.tal && pl.tal[id]); }
   function gearHas(pl, fx) { for (var i = 0; pl.gear && i < pl.gear.length; i++) if (pl.gear[i].g.fx === fx) return pl.gear[i]; return null; }
@@ -2831,6 +2867,8 @@
     pl.lx = pl.x; pl.ly = pl.y;
     // talents continus
     if (tal(pl, "nid_t") && pl.hooked) pl.hp = Math.min(pl.maxHp, pl.hp + 2 * dt);
+    if (setCount(pl, "sylve") >= 2 && pl.anchored) pl.hp = Math.min(pl.maxHp, pl.hp + dt);
+    if (setCount(pl, "sylve") >= 4 && pl.char.id !== "druide") { if (pl.anchored && cooled(pl, "sylveP", 4)) plant(pl, true); if (pl.trees) druideTick(pl, dt, k); }
     if (tal(pl, "tourelle_v") && pl.anchored && pl.anchorT > 2 && cooled(pl, "t_tour", 3)) crown(pl);
     if (pl.posture === "courant" && pl.char.id === "planeur") {
       var spf = Math.hypot(pl.vx || 0, pl.vy || 0) / ((pl.speed || 60) * 1.15);
@@ -2850,9 +2888,10 @@
       if (fx === "ronces") zones.push({ x: pl.x, y: pl.y, r: 30, t: 0, dur: 3, kind: "thorn", dmg: v * k * 0.5, owner: pl });
       if (fx === "souffle") { ring(pl.x, pl.y, 50, false); near(pl.x, pl.y, 60, function (e) { var d = Math.hypot(e.x - pl.x, e.y - pl.y) || 1; if (d < 50 + e.d.r) hurt(e, v * k, (e.x - pl.x) / d * 200, (e.y - pl.y) / d * 200); }); }
     });
-    var sl = pl.weapons || {};
-    if (sl.sig_pas) for (var i = 1; i <= 3; i++) zones.push({ x: pl.x - dx * i * 12, y: pl.y - dy * i * 12, r: 12, t: 0, dur: 2, kind: "thorn", dmg: 5 * (1 + 0.25 * (sl.sig_pas - 1)), owner: pl });
-    if (sl.sig_seisme) { var hk2 = HIT_ELEM; HIT_ELEM = "terre"; fireNova(50 * pl.area, 22 * (1 + 0.25 * (sl.sig_seisme - 1))); HIT_ELEM = hk2; }
+    var sp0 = hasSig(pl, "voltePath"), sn0 = hasSig(pl, "volteNova");
+    if (sp0) for (var i = 1; i <= 3; i++) zones.push({ x: pl.x - dx * i * 12, y: pl.y - dy * i * 12, r: 12, t: 0, dur: 2, kind: "thorn", dmg: 5 * (1 + 0.25 * (sp0.l - 1)), owner: pl });
+    if (sn0) { var hk2 = HIT_ELEM; HIT_ELEM = sn0.sg.elem; fireNova(50 * pl.area, 22 * (1 + 0.25 * (sn0.l - 1))); HIT_ELEM = hk2; }
+    if (setCount(pl, "orage") >= 4) { var tz = nearest(1, 140)[0]; if (tz) { var hk4 = HIT_ELEM; HIT_ELEM = "air"; zapChain(tz, 5, 20 * gpw(), { x: pl.x, y: pl.y }); HIT_ELEM = hk4; } }
     if (tal(pl, "sillage")) pl.sillT = 1.5;
   }
   function crown(pl) { var n = tal(pl, "grandecouronne") ? 20 : 12; for (var i = 0; i < n; i++) { var a = i / n * TAU; projs.push({ owner: pl, kind: "bullet", x: pl.x, y: pl.y - 2, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160, dmg: 9, pierce: 1, sprite: "acorn", life: 0.7, hit: [], r: 4, explode: 0 }); } SND.shot(); }
@@ -2860,7 +2899,7 @@
   function elemTierHit(e) {
     if (!p.epts || e.dead || e.d.prop) return;
     var k = gpw();
-    if (ept(p, "feu", 3) && Math.random() < 0.15) { e.burnT = 3; e.burnD = 3 * k; e.burnBy = p; }
+    if ((ept(p, "feu", 3) && Math.random() < 0.15) || (setCount(p, "braise") >= 2 && Math.random() < 0.1)) { e.burnT = 3; e.burnD = 3 * k; e.burnBy = p; }
     if (ept(p, "terre", 3) && Math.random() < 0.1 && !e.d.boss) { e.stunT = 0.5; e.slowT = 0.5; e.slow = 1; if (ept(p, "terre", 9)) for (var i = 0; i < 4; i++) { var a = i / 4 * TAU + Math.random(); projs.push({ owner: p, kind: "bullet", x: e.x, y: e.y, vx: Math.cos(a) * 140, vy: Math.sin(a) * 140, dmg: 8 * k, pierce: 1, sprite: "stone", life: 0.4, hit: [e], r: 3, explode: 0 }); } }
     if (ept(p, "eau", 3)) { e.slowT = Math.max(e.slowT, 1); e.slow = Math.max(e.slow || 0, 0.2); if (ept(p, "eau", 6) && Math.random() < 0.08 && !e.d.boss) { e.slowT = 1.2; e.slow = 1; if (ept(p, "eau", 9)) { ring(e.x, e.y, 30, false); near(e.x, e.y, 36, function (o) { if (o !== e && !o.d.prop && Math.hypot(o.x - e.x, o.y - e.y) < 30) hurt2(o, 12 * k); }); } } }
     if (ept(p, "air", 3) && Math.random() < (ept(p, "air", 9) ? 0.2 : 0.1)) { var hk = HIT_ELEM; HIT_ELEM = "air"; zapChain(e, ept(p, "air", 6) ? 3 : 1, 8 * k, { x: e.x, y: e.y - 20 }); HIT_ELEM = hk; }
@@ -2879,14 +2918,14 @@
     D.SIGS[aid].forEach(function (sg) { ALLW[sg.id] = { name: sg.name, icon: sg.icon, type: "sig", sig: sg.id, family: "melee", desc: [sg.desc, "Plus fort.", "Plus fort.", "Plus fort.", "Au max."] }; });
   });
   BEHAVIOR.sig = function (id, w, l, dt) {
-    var k = 1 + 0.25 * l;
-    if (id === "sig_contre") { p.contreCd = Math.max(0, (p.contreCd || 0) - dt); }
-    else if (id === "sig_garde") { for (var i = hostile.length - 1; i >= 0; i--) { var h = hostile[i]; if (Math.abs(h.x - p.x) < 28 && Math.abs(h.y - p.y) < 28 && Math.hypot(h.x - p.x, h.y - p.y) < 26 && cooled(p, "garde", Math.max(0.15, 0.5 - 0.08 * l))) { burst(h.x, h.y, "#d8e8ff", 3); hostile.splice(i, 1); } } }
-    else if (id === "sig_ardente") { if (timer(id, 4, dt)) { var hk = HIT_ELEM; HIT_ELEM = "feu"; var vis = nearest(8, 150); for (var j = 0; j < 5; j++) { var t = vis[j % Math.max(1, vis.length)]; var tx = t ? t.x : p.x + (Math.random() - 0.5) * 120, ty = t ? t.y : p.y + (Math.random() - 0.5) * 90; lobs.push({ owner: p, sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.5 + j * 0.08, dmg: 18 * k, rad: 16 * p.area, frag: 0, sprite: "arrow", sky: true, elem: "feu" }); } HIT_ELEM = hk; } }
-    else if (id === "sig_racine") { if (p.anchored && cooled(p, "racine", 1.2)) zones.push({ x: p.x, y: p.y, r: 28, t: 0, dur: 1.4, kind: "thorn", dmg: 5 * k, owner: p }); }
-    else if (id === "sig_pierre") {
+    var k = 1 + 0.25 * l, sg = SIGDEF[id] || {}, kind = sg.kind, el = sg.elem;
+    if (kind === "contre") { p.contreCd = Math.max(0, (p.contreCd || 0) - dt); }
+    else if (kind === "deflect") { for (var i = hostile.length - 1; i >= 0; i--) { var h = hostile[i]; if (Math.abs(h.x - p.x) < 28 && Math.abs(h.y - p.y) < 28 && Math.hypot(h.x - p.x, h.y - p.y) < 26 && cooled(p, "garde", Math.max(0.15, 0.5 - 0.08 * l))) { burst(h.x, h.y, "#d8e8ff", 3); hostile.splice(i, 1); } } }
+    else if (kind === "rain") { if (timer(id, 4, dt)) { var hk = HIT_ELEM; HIT_ELEM = el; var vis = nearest(8, 150); for (var j = 0; j < 5; j++) { var t = vis[j % Math.max(1, vis.length)]; var tx = t ? t.x : p.x + (Math.random() - 0.5) * 120, ty = t ? t.y : p.y + (Math.random() - 0.5) * 90; lobs.push({ owner: p, sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.5 + j * 0.08, dmg: 18 * k, rad: 16 * p.area, frag: 0, sprite: el === "air" ? "feather" : el === "eau" ? "bubble" : "arrow", sky: true, elem: el }); } HIT_ELEM = hk; } }
+    else if (kind === "anchorThorns") { if (p.anchored && cooled(p, "racine", 1.2)) zones.push({ x: p.x, y: p.y, r: 28, t: 0, dur: 1.4, kind: "thorn", dmg: 5 * k, owner: p }); }
+    else if (kind === "orbitBlock") {
       p.st[id] = (p.st[id] || 0) + 3 * dt; var ox = p.x + Math.cos(p.st[id]) * 18, oy = p.y + Math.sin(p.st[id]) * 14;
-      fx.push({ kind: "dot", x: ox, y: oy, vx: 0, vy: 0, life: 0.05, color: "#c8c0b0" });
+      fx.push({ kind: "dot", x: ox, y: oy, vx: 0, vy: 0, life: 0.05, color: el === "eau" || id === "sig_remous" ? "#4aa8ff" : "#c8c0b0" });
       for (var q = hostile.length - 1; q >= 0; q--) if (Math.hypot(hostile[q].x - ox, hostile[q].y - oy) < 7) hostile.splice(q, 1);
       near(ox, oy, 12, function (e) { if (Math.hypot(e.x - ox, e.y - oy) < 6 + e.d.r && cooled(e, "pierre", 0.5)) hurt(e, 8 * k, (e.x - p.x), (e.y - p.y)); });
     }
@@ -2896,11 +2935,12 @@
     var k0 = pl.ultK === undefined ? r.kills : pl.ultK; pl.ultK = r.kills;
     pl.ultG = Math.min(1, (pl.ultG || 0) + (r.kills - k0) / 120);
     if (pl.ultG < 1) return;
-    pl.ultG = 0; var pp = p; p = pl; var k = gpw() * 2;
-    bannerAll("Ultime : " + D.ULTS[pl.arme].name + " !"); r.flash = 0.3; if (S.opts.shake) shake = 0.4; SND.fusion();
-    if (pl.arme === "katana") { enemies.forEach(function (e) { if (!e.dead && !e.d.prop && inView(e, 0)) { fx.push({ kind: "slash", a: Math.random() * TAU, arc: 2, r: 16, life: 0.25, max: 0.25, pl: { x: e.x, y: e.y } }); hurt(e, 40 * k, 0, 0); } }); }
-    else if (pl.arme === "arc") { var hk = HIT_ELEM; HIT_ELEM = "feu"; for (var i = 0; i < 24; i++) { var tx = pl.x + (Math.random() - 0.5) * W * 0.9, ty = pl.y + (Math.random() - 0.5) * H * 0.9; lobs.push({ owner: pl, sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.4 + i * 0.04, dmg: 30 * k, rad: 22, frag: 0, sprite: "arrow", sky: true, elem: "feu" }); } HIT_ELEM = hk; }
-    else { var hk3 = HIT_ELEM; HIT_ELEM = "terre"; [70, 110, 150].forEach(function (R) { fireNova(R, 34 * k); }); HIT_ELEM = hk3; }
+    pl.ultG = 0; var pp = p; p = pl; var k = gpw() * 2, U = D.ULTS[pl.arme], hk = HIT_ELEM; HIT_ELEM = U.elem || HIT_ELEM;
+    bannerAll("Ultime : " + U.name + " !"); r.flash = 0.3; if (S.opts.shake) shake = 0.4; SND.fusion();
+    if (U.kind === "slash") { enemies.forEach(function (e) { if (!e.dead && !e.d.prop && inView(e, 0)) { fx.push({ kind: "slash", a: Math.random() * TAU, arc: 2, r: 16, life: 0.25, max: 0.25, pl: { x: e.x, y: e.y } }); hurt(e, 40 * k, 0, 0); } }); }
+    else if (U.kind === "rain") { for (var i = 0; i < 24; i++) { var tx = pl.x + (Math.random() - 0.5) * W * 0.9, ty = pl.y + (Math.random() - 0.5) * H * 0.9; lobs.push({ owner: pl, sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.4 + i * 0.04, dmg: 30 * k, rad: 22, frag: 0, sprite: U.elem === "eau" ? "bubble" : "arrow", sky: true, elem: U.elem }); } }
+    else { [70, 110, 150].forEach(function (R) { fireNova(R, 34 * k); }); }
+    HIT_ELEM = hk;
     p = pp;
   }
   /* ---- butin de partie : ressources et attirail ---- */
@@ -2914,10 +2954,12 @@
       add(res, 3); var tr = "t_" + (e.type === "colosse" ? "colosse" : e.type); if (D.RES[tr]) { add(tr, e.d.mega ? 2 : 1); texts.push({ x: e.x, y: e.y - 24, n: "+ " + D.RES[tr].name.toUpperCase(), life: 1.6, col: "#f6d36b" }); }
       if (e.d.mega || Math.random() < 0.35) { var q = genPiece(1 + (tierN() >= 4 ? 1 : 0) + (e.d.mega ? 1 : 0)); if (isExpe()) bagAddGear(q); else r.loot.push(q); texts.push({ x: e.x, y: e.y - 32, n: "ATTIRAIL : " + D.GEAR[q.t].name.toUpperCase(), life: 2, col: "#b07cf0" }); }
       if (me.ring && me.ring.danger) drop("chest", e.x, e.y + 14, 1);
+      if (e.d.mega) { runeAdd(3); runeAdd(1, true); } else if (Math.random() < 0.3) runeAdd(1);
+      if (isDungeon() && Math.random() < (e.d.bossAi || e.type === "golem" ? 1 : 0.5)) { var locked = Object.keys(D.SETS).filter(function (k2) { return !(S.recipes || {})[k2]; }); if (locked.length) { var rc = locked[(Math.random() * locked.length) | 0]; S.recipes = S.recipes || {}; S.recipes[rc] = 1; save(); bannerAll("Recette trouvée : " + D.SETS[rc].name + " !"); } }
       if (me.ring && me.ring.source) players.forEach(function (o) { if (!o.down) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.4); });
     } else if (e.d.elite) { if (Math.random() < 0.4) add(res, 1); if (Math.random() < (isExpe() && ringOf(e.x, e.y) !== "peri" ? 0.08 : 0.03)) { var q2 = genPiece(isExpe() && ringOf(e.x, e.y) === "coeur" ? 2 : 1); if (isExpe()) bagAddGear(q2); else r.loot.push(q2); } if (me.ring && me.ring.chasse) dropItem(e.x, e.y, 0); }
     else if (Math.random() < 0.06) add(res, 1);
-    if (e.burnT > 0 && e.burnBy && ept(e.burnBy, "feu", 9)) { var pp = p; p = e.burnBy; explode(e.x, e.y, 26, 18 * gpw(), 0); p = pp; }
+    if (e.burnT > 0 && e.burnBy && (ept(e.burnBy, "feu", 9) || setCount(e.burnBy, "braise") >= 4)) { var pp = p; p = e.burnBy; explode(e.x, e.y, 26, 18 * gpw(), 0); p = pp; }
   }
   function grantRun() {
     if (!r || r.granted) return null; r.granted = true; eqS();
@@ -2926,8 +2968,9 @@
     (r.loot || []).forEach(function (q) { if (addPiece(q)) out.loot.push(q); });
     var lvMax = 1; D.CHARACTERS.forEach(function (c) { lvMax = Math.max(lvMax, charLevel(c.id)); });
     var bonus = charLevel(cid) < lvMax ? 1.5 : 1;            // les écureuils moins joués rattrapent les autres
+    if (isArena()) { out.res.rune = (out.res.rune || 0) + Math.max(0, r.round - 1); S.res.rune = (S.res.rune || 0) + Math.max(0, r.round - 1); out.res.rune_rare = (out.res.rune_rare || 0) + Math.floor(r.round / 5); S.res.rune_rare = (S.res.rune_rare || 0) + Math.floor(r.round / 5); }
     out.cxp = Math.round((r.kills * 0.3 + r.time / 4 + r.bosses * 20) * bonus);
-    out.mxp = Math.round(r.kills * 0.25 + r.time / 5 + r.bosses * 15);
+    out.mxp = Math.round((r.kills * 0.25 + r.time / 5 + r.bosses * 15) * (isArena() ? 1.6 : 1));   // l'Arène : spécialité runes et maîtrise
     out.l0 = charLevel(cid); out.m0 = mastLevel(aid);
     S.clvl[cid] = (S.clvl[cid] || 0) + out.cxp; S.mast[aid] = (S.mast[aid] || 0) + out.mxp;
     out.l1 = charLevel(cid); out.m1 = mastLevel(aid); out.aid = aid; out.cid = cid;
@@ -3367,6 +3410,99 @@
   /* ---- Trèfle : miser sa carte ---- */
   function trefleBetOk(pl) { return pl.char.id === "trefle"; }
   function betWin(pl) { var c = pl.posture === "flambeuse" ? (tal(pl, "flambeuse_t3") ? 0.7 : 0.6) : 0.5; return Math.random() < c; }
+  /* ---------- 2.0 fin de phase 6 : signatures génériques, panoplies, forge, camp ---------- */
+  var SIGDEF = {}; Object.keys(D.SIGS).forEach(function (a) { D.SIGS[a].forEach(function (s) { SIGDEF[s.id] = s; }); });
+  function hasSig(pl, kind) { var w = pl.weapons || {}; for (var id in w) { var sg = SIGDEF[id]; if (sg && sg.kind === kind) return { id: id, l: w[id], sg: sg }; } return null; }
+  function setCount(pl, sid) { return (pl.set && pl.set[sid]) || 0; }
+  function runeAdd(n, rare) { if (!r) return; var id = rare ? "rune_rare" : "rune"; if (isExpe()) bagAddRes(id, n); else r.res[id] = (r.res[id] || 0) + n; }
+  /* ---- le camp : un écran-diorama où l'écureuil se déplace jusqu'aux lieux ---- */
+  var camp = { x: 160, y: 0, tx: null, ty: null, near: null, on: false, t: 0 };
+  // positions prévues pour 320 px de large : en portrait (écran plus étroit), tout se resserre
+  function campPos(l) { var nar = W < 300; return { x: Math.round(l.x / 320 * W), y: Math.round((nar ? 0.08 + l.y * 0.84 : l.y) * H) }; }
+  function openCamp() {
+    if (S.news) { newsCard(); return; }
+    state = "menu"; screen = "camp"; overlay.hidden = true; camp.on = true;
+    if (!camp.y) { camp.x = Math.round(W / 2); camp.y = Math.round(H * 0.7); }
+    var bar = document.querySelector("[data-campbar]");
+    if (!bar) { bar = document.createElement("div"); bar.className = "camp-bar"; bar.setAttribute("data-campbar", ""); stage.appendChild(bar); bar.addEventListener("click", function (e) { var b = e.target.closest("[data-camp]"); if (b) campOpen(b.getAttribute("data-camp")); }); }
+    bar.hidden = false;
+    bar.innerHTML = '<button type="button" class="camp-go" data-camp="sentier">▶ Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" data-camp="' + l.id + '">' + esc(l.name.replace(/^(Le |La |L')/, "")) + "</button>"; }).join("") +
+      '<button type="button" data-camp="codex">📜</button><button type="button" data-camp="help">❓</button><button type="button" data-camp="options">⚙️</button>';
+  }
+  // « Nouveautés » : ce qui a changé pour un joueur de la version 1
+  function newsCard() {
+    closeCamp(); state = "menu";
+    var m = MIGRATED, html = '<span class="kicker">Mise à jour majeure</span><h2>Bienvenue dans la 2.0</h2>' +
+      (m ? '<p>Ta progression est gardée : rang, succès, quêtes et records. Les améliorations achetées, l\'arbre et les points de prestige sont remboursés : <b>+' + m.refund.toLocaleString("fr-FR") + " " + goldIc() + "</b>" + (m.prestige ? " et des ressources pour tes " + m.prestige + " prestiges" : "") + ".</p>" : "") +
+      '<ul class="help-list"><li><b>Le mouvement est ta seule commande</b>, lu en 3 états : Ancré, Mouvement, Volte. Ta <b>posture</b> donne une règle à chacun.</li>' +
+      "<li><b>Au début de chaque partie, tu choisis ton arme</b> ; tout se construit autour d'elle : techniques, évolutions, fusions.</li>" +
+      "<li><b>Le camp</b> remplace le menu : attirail et talents au terrier, craft à l'atelier, runes à la forge.</li>" +
+      "<li><b>4 modes</b> : Survie, Arène, Donjon et la nouvelle <b>Expédition</b>. Plus de prestige : les paliers Cauchemar le remplacent.</li>" +
+      (m && m.retired.length ? "<li>Bûche, Charbon, Bastien et Flocon ne sont plus jouables : ils tiennent les lieux du camp.</li>" : "") +
+      '<li>La coop n\'est pas encore en 2.0 : la <a href="jeu-classique.html">version 1</a> reste jouable pour la coop.</li></ul>' +
+      '<div class="btn-row center"><button class="btn" type="button" data-action="newsok" data-autofocus>Au camp !</button></div>';
+    showCard(html, "news");
+  }
+  function closeCamp() { camp.on = false; var bar = document.querySelector("[data-campbar]"); if (bar) bar.hidden = true; }
+  function campOpen(id) {
+    var l = D.CAMP.filter(function (q) { return q.id === id; })[0];
+    closeCamp(); SND.click();
+    if (id === "options" || id === "codex" || id === "help") { go(id); return; }
+    if (l && l.screen === "play") { inspect.char = S.char; inspect.map = S.map; }
+    go(l ? l.screen : "menu");
+  }
+  function campTick(dt) {
+    if (!camp.on) return;
+    camp.t += dt;
+    var v = inputVector(), sp = 70;
+    if (Math.hypot(v.x, v.y) > 0.1) { camp.tx = null; camp.x += v.x * sp * dt; camp.y += v.y * sp * dt; camp.face = v.x < -0.1 ? -1 : v.x > 0.1 ? 1 : camp.face; camp.moving = true; }
+    else if (camp.tx !== null) {
+      var dx = camp.tx - camp.x, dy = camp.ty - camp.y, d = Math.hypot(dx, dy);
+      if (d < 3) { camp.tx = null; if (camp.goal) { var g = camp.goal; camp.goal = null; campOpen(g); return; } }
+      else { camp.x += dx / d * Math.min(d, sp * 1.4 * dt); camp.y += dy / d * Math.min(d, sp * 1.4 * dt); camp.face = dx < 0 ? -1 : 1; camp.moving = true; }
+    } else camp.moving = false;
+    camp.x = Math.max(10, Math.min(W - 10, camp.x)); camp.y = Math.max(20, Math.min(H - 14, camp.y));
+    camp.near = null;
+    D.CAMP.forEach(function (l) { var q = campPos(l); if (Math.hypot(q.x - camp.x, q.y + 10 - camp.y) < 22) camp.near = l; });
+  }
+  function drawCamp(now) {
+    var t = now / 1000, m = mapById("clairiere");
+    drawGround(0, 0, m);
+    ctx.fillStyle = "rgba(30,40,20,.15)"; ctx.fillRect(0, 0, W, H);
+    // chemins entre les lieux
+    ctx.strokeStyle = "rgba(160,120,70,.55)"; ctx.lineWidth = 7; ctx.lineCap = "round";
+    var c0 = campPos(D.CAMP[0]);
+    D.CAMP.forEach(function (l) { if (l.id === "sentier") return; var q = campPos(l); ctx.beginPath(); ctx.moveTo(c0.x, c0.y); ctx.lineTo(q.x, q.y + 8); ctx.stroke(); });
+    ctx.lineWidth = 1; ctx.lineCap = "butt";
+    // feu de camp
+    var fx0 = Math.round(W / 2), fy0 = Math.round(H * 0.55);
+    ctx.fillStyle = "#6b4430"; ctx.fillRect(fx0 - 7, fy0 + 2, 14, 3);
+    for (var i = 0; i < 5; i++) { ctx.fillStyle = ["#ff9a3a", "#f6d36b", "#ff5a2a"][i % 3]; var fh = 4 + Math.sin(t * 9 + i) * 2; ctx.fillRect(fx0 - 5 + i * 2, Math.round(fy0 - fh), 2, Math.round(fh) + 2); }
+    D.CAMP.forEach(function (l) {
+      var q = campPos(l), lv = 1 + Math.min(2, Math.floor((S.rank || 1) / 6)), hot = camp.near === l;
+      // bâtiment (3 états visuels selon le rang)
+      if (l.id === "chene") { ctx.fillStyle = "#3f6a2a"; ctx.beginPath(); ctx.arc(q.x, q.y - 14, 18 + lv * 2, 0, TAU); ctx.fill(); ctx.fillStyle = "#6b4430"; ctx.fillRect(q.x - 4, q.y - 6, 8, 14); }
+      else if (l.id === "sentier") { ctx.fillStyle = "#a07848"; ctx.fillRect(q.x - 2, q.y - 14, 4, 16); ctx.fillStyle = "#f6d36b"; ctx.fillRect(q.x - 12, q.y - 16, 24, 7); drawText("SENTIER", q.x, q.y - 15, "#2b1709", "c"); }
+      else {
+        var bw = (24 + lv * 4) * Math.min(1, W / 320 + 0.25), bh = 14 + lv * 2, col = { terrier: "#6b4430", atelier: "#8a5a3b", forge: "#5a524a", comptoir: "#8a6a3a", arene: "#9a8a7a" }[l.id] || "#8a5a3b";
+        ctx.fillStyle = "#2b1709"; ctx.fillRect(q.x - bw / 2 - 1, q.y - bh - 1, bw + 2, bh + 2);
+        ctx.fillStyle = col; ctx.fillRect(q.x - bw / 2, q.y - bh, bw, bh);
+        ctx.fillStyle = l.id === "forge" ? "#ff7a2a" : "#2b1709"; ctx.fillRect(q.x - 3, q.y - 8, 6, 8);
+        ctx.fillStyle = { terrier: "#3f6a2a", atelier: "#c8553d", forge: "#3a322c", comptoir: "#3f9a4a", arene: "#c8c0b0" }[l.id] || "#c8553d";
+        ctx.beginPath(); ctx.moveTo(q.x - bw / 2 - 3, q.y - bh); ctx.lineTo(q.x, q.y - bh - 9 - lv); ctx.lineTo(q.x + bw / 2 + 3, q.y - bh); ctx.fill();
+        if (l.id === "forge") for (var s0 = 0; s0 < 3; s0++) { ctx.fillStyle = "rgba(200,200,200," + (0.3 - s0 * 0.08) + ")"; ctx.fillRect(Math.round(q.x + 6 + Math.sin(t * 2 + s0) * 2), Math.round(q.y - bh - 12 - s0 * 5 - (t * 6 % 5)), 3, 3); }
+      }
+      if (l.npc && SPR[l.npc]) drawHero(l.npc, q.x + (W < 300 ? 11 : 16), q.y + 4, -1, false, t * 4, 0);
+      if (hot || camp.near === null && Math.hypot(q.x - camp.x, q.y - camp.y) < 60) drawText(l.name, q.x, q.y - 34, hot ? "#f6d36b" : "#fdf3de", "c");
+      if (hot) drawText(isTouch ? "TOUCHE POUR ENTRER" : "ENTREE POUR ENTRER", q.x, q.y - 26, "#fdf3de", "c");
+    });
+    drawHero(charById(S.char).sprite, camp.x, camp.y, camp.face || 1, camp.moving, t * 8, 0);
+  }
+  function campTap(x, y) {
+    var best = null, bd = 1e9;
+    D.CAMP.forEach(function (l) { var q = campPos(l), d = Math.hypot(q.x - x, q.y - 8 - y); if (d < 30 && d < bd) { bd = d; best = l; } });
+    camp.tx = best ? campPos(best).x : x; camp.ty = best ? campPos(best).y + 10 : y; camp.goal = best ? best.id : null;
+  }
   function moveMe(dt) {
     var v = (me.down || me.choosing || netMenuOpen) ? { x: 0, y: 0 } : inputVector();
     stateTick(me, v, dt);
@@ -4103,7 +4239,7 @@
   }
   function shopPrice(o) {
     var P = A.prices, g = 1 + A.priceGrowth * (r.round - 1), base;
-    if (o.type === "f") base = P.fusion;
+    if (o.type === "f" || o.type === "pf" || o.type === "cb" || o.type === "evo") base = P.fusion;
     else if (o.type === "w") base = o.lvl === 1 ? P.newWeapon : P.upgrade + P.perLevel * o.lvl;
     else if (o.type === "p") base = P.item + P.perLevel * (o.lvl - 1);
     else if (o.type === "fullheal") base = P.heal;
@@ -4112,7 +4248,7 @@
   }
   function rollOffers() {
     p = me;
-    var list = choices(4).filter(function (c) { return c.type === "f" || c.type === "w" || c.type === "p"; });
+    var list = choices(4).filter(function (c) { return ["f", "w", "p", "evo", "pf", "cb"].indexOf(c.type) >= 0; });
     list.push(Math.random() < 0.5 ? { type: "fullheal" } : { type: "maxhp" });
     list.forEach(function (o) { o.price = shopPrice(o); o.sold = false; });
     r.offers = list;
@@ -4127,8 +4263,9 @@
         (r.lastExtra ? " · +" + r.lastExtra * A.extraLevelCoins + " pour " + r.lastExtra + " niveau" + (r.lastExtra > 1 ? "x" : "") + " en trop" : "") + "</small></p>" +
       '<div class="choices ashop">';
     r.offers.forEach(function (o, i) {
-      var icon, name, desc, tag = "", cls = "choice offer";
-      if (o.type === "f") { var f = D.FUSIONS[o.id]; icon = img(f.icon); name = f.name; tag = f.tier === 2 ? "Fusion légendaire" : "Fusion"; desc = f.desc[0]; cls += " is-fusion"; }
+      var icon, name, desc, tag = "", cls = "choice offer", vo = v2Card(o);
+      if (vo) { icon = img(vo.icon); name = vo.name; tag = vo.lvl; desc = vo.desc; cls += vo.cls; }
+      else if (o.type === "f") { var f = D.FUSIONS[o.id]; icon = img(f.icon); name = f.name; tag = f.tier === 2 ? "Fusion légendaire" : "Fusion"; desc = f.desc[0]; cls += " is-fusion"; }
       else if (o.type === "w") { var w = ALLW[o.id]; icon = img(w.icon); name = w.name; tag = o.lvl === 1 ? "Nouvelle arme" : "Niv. " + o.lvl; desc = w.desc[o.lvl - 1]; }
       else if (o.type === "p") { icon = img(D.PASSIVES[o.id].sprite); name = D.PASSIVES[o.id].name; tag = o.lvl === 1 ? "Nouvel objet" : "Niv. " + o.lvl; desc = D.PASSIVES[o.id].desc; }
       else if (o.type === "fullheal") { icon = img("berry"); name = "Grand panier de baies"; desc = "Soigne tous tes PV."; tag = "Soin"; }
@@ -4155,7 +4292,7 @@
     if (!o || o.sold || me.coins < o.price || r.ready[me.id]) return;
     me.coins -= o.price; o.sold = true;
     p = me;
-    var c = o.type === "fullheal" ? { type: "fullheal" } : o.type === "maxhp" ? { type: "maxhp" } : { type: o.type, id: o.id, lvl: o.lvl };
+    var c = o.type === "fullheal" ? { type: "fullheal" } : o.type === "maxhp" ? { type: "maxhp" } : { type: o.type, id: o.id, lvl: o.lvl, evo: o.evo };
     applyCore(c); refreshCounts();
     if (Net.on && Net.role === "guest") netSend("pick", { id: me.id, c: c });
     // les offres restantes qui ne sont plus valables (déjà au niveau, fusion faite) sont marquées vendues
@@ -4164,6 +4301,9 @@
       if (x.type === "w" && ((p.weapons[x.id] || 0) >= x.lvl || p.consumed[x.id])) x.sold = true;
       if (x.type === "p" && (p.passives[x.id] || 0) >= x.lvl) x.sold = true;
       if (x.type === "f" && p.weapons[x.id]) x.sold = true;
+      if (x.type === "evo" && (p.evo || {})[x.id]) x.sold = true;
+      if (x.type === "pf" && (p.tfus || {})[x.id]) x.sold = true;
+      if (x.type === "cb" && (p.weapons[x.id] || !comboReady(p, x.id))) x.sold = true;
     });
     SND.gold(); openShop();
   };
@@ -5306,7 +5446,7 @@
         '<span class="mm-rank"><span>Rang <b>' + S.rank + "</b>" + (S.prestige ? ' <span class="stars">' + stars(S.prestige) + "</span>" : "") + '</span><span class="rank-bar"><i style="width:' + k + '%"></i></span><small>' + S.rankXp + "/" + need + "</small></span></div>" +
         '<div class="mm-main">' +
         '<button class="btn mm-play" type="button" data-action="go" data-arg="play" data-autofocus><span>▶ Le sentier : partir</span><small>' + esc(charById(S.char).name) + " · " + esc(postureOf(S.char, (S.posture || {})[S.char]).name) + " · " + esc(mapById(S.map).name) + "</small></button>" +
-        '<a class="btn btn-ghost mm-coop" href="jeu.html"><span>↩ Version 1</span><small>coop, arène, donjon</small></a></div>' +
+        '<a class="btn btn-ghost mm-coop" href="jeu-classique.html"><span>↩ Version 1</span><small>coop</small></a></div>' +
         '<div class="mm-grid">' +
         tile("terrier", "🕳️", "Le terrier", "Attirail, talents, maîtrise") +
         tile("atelier", "🔨", "L'atelier", "Craft et recyclage") +
@@ -5325,11 +5465,13 @@
       var ic = charById(inspect.char || S.char), im = mapById(inspect.map || S.map);
       S.posture = S.posture || {};
       var html = '<div class="screen-head">' + back() + "<h2>Nouvelle partie</h2>" + goldBadge() + "</div><div class=\"np\">";
-      var ex = S.mode === "expedition";
-      html += '<section class="np-sec"><h3>Mode</h3><div class="np-seg">' +
-        '<button type="button" class="np-opt' + (!ex ? " is-on" : "") + '" data-action="mode2" data-arg="survie"><span class="np-oi">🌲</span>Survie</button>' +
-        '<button type="button" class="np-opt' + (ex ? " is-on" : "") + '" data-action="mode2" data-arg="expedition"><span class="np-oi">🎒</span>Expédition</button></div>' +
-        '<p class="np-hint">' + (ex ? "Carte d'extraction à étages : explore, remplis ton sac, puis sors ou descends. Mourir fait perdre le sac (sauf ce qui est à l'abri)." + (S.stats.bestDepth ? " Record : étage " + S.stats.bestDepth + "." : "") : "Monde ouvert sans fin, portail vers la carte suivante.") + "</p></section>";
+      var ex = S.mode === "expedition", mo = S.mode || "survie";
+      var MODES2 = [["survie", "🌲", "Survie", "Monde ouvert sans fin, portail et méga boss. Spécialité : ressources en masse."],
+                    ["arena", "🏟️", "Arène", A.rounds + " manches avec boutique. Spécialité : runes et maîtrise des armes."],
+                    ["dungeon", "🗝️", "Donjon", DG.floors + " étages de salles, gardiens et boss final. Spécialité : trophées et recettes de panoplies."],
+                    ["expedition", "🎒", "Expédition", "Carte d'extraction à étages : explore, remplis ton sac, puis sors ou descends. Mourir fait perdre le sac (sauf l'abri)." + (S.stats.bestDepth ? " Record : étage " + S.stats.bestDepth + "." : "")]];
+      html += '<section class="np-sec"><h3>Mode</h3><div class="np-seg">' + MODES2.map(function (m) { return '<button type="button" class="np-opt' + (mo === m[0] ? " is-on" : "") + '" data-action="mode2" data-arg="' + m[0] + '"><span class="np-oi">' + m[1] + "</span>" + m[2] + "</button>"; }).join("") +
+        '</div><p class="np-hint">' + esc(MODES2.filter(function (m) { return m[0] === mo; })[0][3]) + "</p></section>";
       // 1. écureuil et sa règle unique
       html += '<section class="np-sec"><h3><span class="np-n">1</span>Écureuil</h3><div class="np-chars">';
       D.CHARACTERS.forEach(function (c) {
@@ -5350,6 +5492,14 @@
       var locked = posturesOf(S.char).filter(function (ps) { return !postureOk(ps); });
       if (locked.length) html += '<p class="np-hint">' + locked.map(function (ps) { return "🔒 <b>" + esc(ps.name) + "</b> : " + esc(questById(ps.quest).desc); }).join("<br>") + "</p>";
       html += "</section>";
+      if (mo === "dungeon") {
+        html += '<section class="np-sec"><h3><span class="np-n">3</span>Type de donjon</h3><div class="np-slider">';
+        D.DUNGEONS.forEach(function (d) {
+          var okd = has(d.unlock), bands = d.themes.map(function (t, k) { return t.floor + " " + Math.round(k / 3 * 100) + "% " + Math.round((k + 1) / 3 * 100) + "%"; }).join(",");
+          html += '<button type="button" class="np-map' + ((S.dungeon || "terriers") === d.id ? " is-selected" : "") + (okd ? "" : " is-locked") + '" data-action="tdun" data-arg="' + d.id + '"><span class="np-mapart" style="background:linear-gradient(90deg,' + bands + ')"><img class="np-boss" src="' + spriteUrl(D.ENEMIES[d.final].sprite) + '" alt="">' + (okd ? "" : "<i>🔒</i>") + '</span><span class="np-mapname">' + esc(d.name) + '</span><span class="np-mapdesc">' + esc(d.desc) + "</span></button>";
+        });
+        html += "</div></section>";
+      } else {
       // 3. carte
       html += '<section class="np-sec"><h3><span class="np-n">3</span>' + (ex ? "Région" : "Carte") + ' <small>' + D.MAPS.filter(function (m) { return has(m.unlock); }).length + " / " + D.MAPS.length + '</small></h3><div class="np-slider">';
       D.MAPS.forEach(function (m) {
@@ -5361,6 +5511,7 @@
           '<span class="np-mapdesc">' + esc(m.biomes.map(function (b) { return b.name; }).join(" · ")) + "</span></button>";
       });
       html += '</div><p class="np-hint"><b>' + esc(im.name) + "</b> · " + esc(im.desc) + (has(im.unlock) ? "" : ' <span class="np-lock">🔒 ' + esc(lockText(im.unlock)) + "</span>") + "</p></section>";
+      }
       if (ex) {
         genContracts();
         var C = S.contracts;
@@ -5387,7 +5538,7 @@
         html += "</div>" + (cn0 ? '<p class="np-hint"><b>Cauchemar ' + cn0 + "</b> (glands d'or +" + cn0 * 15 + " %) :<br>" + D.NIGHTMARE.slice(0, cn0).map(function (t, i) { return (i + 1) + ". " + esc(t); }).join("<br>") + "</p>" : "");
       } else html += '<p class="np-hint">Bats le méga boss de cette carte pour débloquer les paliers Cauchemar.</p>';
       html += "</section></div>";
-      html += '<div class="play-bar"><button class="btn np-go" type="button" data-action="start" data-autofocus><span>▶ Lancer</span><small>' + esc(charById(S.char).name) + " · " + esc(cur.name) + " · " + esc(mapById(S.map).name) + " · " + (ex ? "Expédition" : "Survie") + "</small></button></div>";
+      html += '<div class="play-bar"><button class="btn np-go" type="button" data-action="start" data-autofocus><span>▶ Lancer</span><small>' + esc(charById(S.char).name) + " · " + esc(cur.name) + " · " + esc(mapById(S.map).name) + " · " + MODES2.filter(function (m) { return m[0] === mo; })[0][2] + "</small></button></div>";
       return html;
     },
     coop: function () {
@@ -5551,6 +5702,8 @@
       html += '<p class="np-hint">Points d\'élément : ' + Object.keys(pts).map(function (el) { return '<span style="color:' + (D.ELEMENTS[el].ui || D.ELEMENTS[el].color) + '">' + D.ELEMENTS[el].name + " " + pts[el] + "</span>"; }).join(" · ") + " (paliers à 3, 6 et 9)" + (tiers.length ? "<br>" + tiers.join("<br>") : "") + "</p>";
       var sn = S.secureSlots || 0, scost = [1500, 4000][sn];
       html += '<p class="np-hint">🎒 Emplacements sécurisés d\'expédition : <b>' + (1 + sn) + "</b> / 3" + (scost ? ' <button class="btn btn-small" type="button" data-action="buysecure"' + (S.gold < scost ? " disabled" : "") + ">+1 pour " + scost + " " + goldIc() + "</button>" : "") + "</p>";
+      var setsW = {}; D.SLOTS.forEach(function (sl) { var q = pieceById(w[sl.id]); if (q && D.GEAR[q.t].set) setsW[D.GEAR[q.t].set] = (setsW[D.GEAR[q.t].set] || 0) + 1; });
+      Object.keys(setsW).forEach(function (sid) { var st = D.SETS[sid], n = setsW[sid]; html += '<p class="np-hint"><b>' + esc(st.name) + " " + n + "/4</b> · " + (n >= 2 ? "✅" : "⬜") + " 2 : " + esc(st.b2) + " · " + (n >= 4 ? "✅" : "⬜") + " 4 : " + esc(st.b4) + "</p>"; });
       // talents de la posture
       html += '<h3 class="pick-title">Talents · posture ' + esc(ps.name) + ' <small><button class="link-btn" type="button" data-action="go" data-arg="play">changer de posture</button></small></h3><div class="v2-tal">';
       var pick = ((S.tal[c.id] || {})[ps.id]) || {};
@@ -5600,8 +5753,9 @@
         html += '<h3 class="pick-title">' + esc(sl.kind ? "Anneaux" : sl.name) + '</h3><div class="shop-list">';
         Object.keys(D.GEAR).forEach(function (t) {
           var g = D.GEAR[t]; if (g.slot !== kind) return;
-          var ok = canCraft(t);
-          html += '<div class="shop-item"><span class="shop-ic">' + g.icon + '</span><div class="shop-text"><strong>' + esc(g.name) + (g.elem ? ' <small style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + D.ELEMENTS[g.elem].name + "</small>" : "") + "</strong><span>" + esc(g.desc.replace("{v}", g.lo !== undefined ? fmtV(g.lo) + "-" + fmtV(g.hi) : "").replace("{t}", "au hasard")) + "</span><small>" +
+          var lockedR = g.set && !(S.recipes || {})[g.set];
+          var ok = canCraft(t) && !lockedR;
+          html += '<div class="shop-item' + (lockedR ? " is-locked" : "") + '"><span class="shop-ic">' + g.icon + '</span><div class="shop-text"><strong>' + esc(g.name) + (g.set ? ' <small class="set-tag">' + esc(D.SETS[g.set].name) + (lockedR ? " · recette à trouver en Donjon" : "") + "</small>" : "") + (g.elem ? ' <small style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + D.ELEMENTS[g.elem].name + "</small>" : "") + "</strong><span>" + esc(g.desc.replace("{v}", g.lo !== undefined ? fmtV(g.lo) + "-" + fmtV(g.hi) : "").replace("{t}", "au hasard")) + "</span><small>" +
             Object.keys(g.cost).map(function (k) { return D.RES[k].icon + " " + (S.res[k] || 0) + "/" + g.cost[k]; }).join(" · ") + "</small></div>" +
             '<button class="btn btn-small" type="button" data-action="craft" data-arg="' + t + '"' + (ok ? "" : " disabled") + ">Fabriquer</button></div>";
         });
@@ -5614,6 +5768,35 @@
         html += "</div>";
       }
       return html;
+    },
+    forge: function () {
+      eqS();
+      var html = '<div class="screen-head">' + back() + "<h2>La forge de Charbon</h2></div>";
+      html += '<p class="game-small">🔹 Runes : <b>' + (S.res.rune || 0) + "</b> · 🔷 Runes rares : <b>" + (S.res.rune_rare || 0) + "</b>. Une rune relance la force d'un effet dans sa fourchette. Une rune rare ajoute un 2e effet (1 fois sur 4, ça rate et l'effet ajouté est perdu). L'Arène en donne beaucoup.</p><div class=\"shop-list\">";
+      var list = eqS().inv.filter(function (q) { return D.GEAR[q.t].lo !== undefined; });
+      if (!list.length) html += '<p class="game-small">Aucune pièce à forger.</p>';
+      list.forEach(function (q) {
+        var g = D.GEAR[q.t], who = whoWears(q.id);
+        html += '<div class="shop-item"><span class="shop-ic">' + g.icon + '</span><div class="shop-text"><strong>' + esc(g.name) + (who ? " <small>(" + esc(charById(who).name) + ")</small>" : "") + "</strong><span>" + esc(pieceDesc(q)) + (q.extra ? " + " + esc(D.GEAR[q.extra].name) : "") + "</span><small>Jet " + Math.round(q.roll * 100) + " %</small></div>" +
+          '<button class="btn btn-small" type="button" data-action="rune" data-arg="' + q.id + '"' + ((S.res.rune || 0) < 1 ? " disabled" : "") + '>Relancer 🔹</button>' +
+          (["coiffe", "bottes", "cape"].indexOf(g.slot) >= 0 ? '<button class="btn btn-small btn-alt" type="button" data-action="runer" data-arg="' + q.id + '"' + ((S.res.rune_rare || 0) < 1 ? " disabled" : "") + ">+ effet 🔷</button>" : "") + "</div>";
+      });
+      return html + "</div>";
+    },
+    comptoir: function () {
+      eqS();
+      var html = '<div class="screen-head">' + back() + "<h2>Le comptoir</h2>" + goldBadge() + "</div>";
+      var sn = S.secureSlots || 0, scost = [1500, 4000][sn];
+      html += '<h3 class="pick-title">Améliorations du camp</h3><div class="shop-list"><div class="shop-item"><span class="shop-ic">🎒</span><div class="shop-text"><strong>Emplacement sécurisé d\'expédition</strong><span>' + (1 + sn) + " / 3</span></div>" + (scost ? '<button class="btn btn-small" type="button" data-action="buysecure"' + (S.gold < scost ? " disabled" : "") + ">" + scost + " " + goldIc() + "</button>" : '<span class="pill">max</span>') + "</div>";
+      var cs = S.chestSize || 0, ccost = [800, 2000, 5000][cs];
+      html += '<div class="shop-item"><span class="shop-ic">🧰</span><div class="shop-text"><strong>Coffre agrandi</strong><span>' + (40 + 10 * cs) + " places</span></div>" + (ccost ? '<button class="btn btn-small" type="button" data-action="buychest"' + (S.gold < ccost ? " disabled" : "") + ">" + ccost + " " + goldIc() + "</button>" : '<span class="pill">max</span>') + "</div></div>";
+      html += '<h3 class="pick-title">Conversion (3 pour 1)</h3><p class="game-small">Échange 3 ressources contre 1 d\'une autre région : un seul mode suffit pour tout obtenir, mais pas efficacement.</p><div class="shop-list">';
+      var have = Object.keys(D.RES).filter(function (k) { return !D.RES[k].trophy && !D.RES[k].rune && (S.res[k] || 0) >= 3; });
+      Object.keys(D.RES).filter(function (k) { return !D.RES[k].trophy && !D.RES[k].rune; }).forEach(function (k) {
+        var src = have.filter(function (x) { return x !== k; }).sort(function (a, b) { return (S.res[b] || 0) - (S.res[a] || 0); })[0];
+        html += '<div class="shop-item"><span class="shop-ic">' + D.RES[k].icon + '</span><div class="shop-text"><strong>' + esc(D.RES[k].name) + " <small>x" + (S.res[k] || 0) + "</small></strong>" + (src ? "<small>contre 3 " + esc(D.RES[src].name) + "</small>" : "<small>il te faut 3 d'une autre ressource</small>") + "</div>" + (src ? '<button class="btn btn-small" type="button" data-action="conv" data-arg="' + src + ">" + k + '">Échanger</button>' : "") + "</div>";
+      });
+      return html + "</div>";
     },
     codex: function () {
       // 2.0 : la chaîne d'une technique (évolution → fusion avec un objet → fusion de techniques → légendaire)
@@ -5666,7 +5849,7 @@
         "<li><kbd>Échap</kbd> ou <kbd>P</kbd> : pause.</li></ul>";
     },
   };
-  function go(name) { state = "menu"; showCard(SCREENS[name](), name); }
+  function go(name) { if (name === "menu" && D.CAMP) { openCamp(); return; } closeCamp(); state = "menu"; showCard(SCREENS[name](), name); }
   function readCoopName() {
     var inp = card.querySelector("[data-coop-name]"), name = (inp ? inp.value : S.name || "").trim();
     if (name.length < 2) { Net.err = "Choisis un pseudo d'au moins 2 caractères."; go("coop"); return false; }
@@ -5689,12 +5872,23 @@
     },
     craft: function (t) { var q = craft(t); if (q) SND.fusion(); go("atelier"); },
     recy: function (id) { var q = pieceById(+id); if (q && !whoWears(q.id)) { recycle(q); SND.crack(); } go("atelier"); },
+    newsok: function () { S.news = 0; save(); SND.level(); openCamp(); },
+    rune: function (id) { var q = pieceById(+id); if (!q || (S.res.rune || 0) < 1) return; S.res.rune--; q.roll = Math.random(); save(); SND.fusion(); go("forge"); },
+    runer: function (id) {
+      var q = pieceById(+id); if (!q || (S.res.rune_rare || 0) < 1) return; S.res.rune_rare--;
+      var g = D.GEAR[q.t], pool = Object.keys(D.GEAR).filter(function (k) { return D.GEAR[k].slot === g.slot && D.GEAR[k].fx && D.GEAR[k].fx !== g.fx; });
+      if (Math.random() < 0.25) { if (q.extra) { delete q.extra; banner("Raté : l'effet ajouté est perdu"); } else banner("Raté : la rune se brise"); SND.crack(); }
+      else { q.extra = pool[(Math.random() * pool.length) | 0]; banner("Nouvel effet : " + D.GEAR[q.extra].name); SND.fusion(); }
+      save(); go("forge");
+    },
+    buychest: function () { var n = S.chestSize || 0, c = [800, 2000, 5000][n]; if (!c || S.gold < c) return; S.gold -= c; S.chestSize = n + 1; save(); SND.gold(); go("comptoir"); },
+    conv: function (a) { var t = a.split(">"); if ((S.res[t[0]] || 0) < 3) return; S.res[t[0]] -= 3; S.res[t[1]] = (S.res[t[1]] || 0) + 1; save(); SND.click(); go("comptoir"); },
     xsecure: function (i) {
       if (screen !== "secure" || !r.ex || !r.ex.pend) return;
       i = +i; if (i >= 0 && r.bag[i] && r.secure.length < 1 + (S.secureSlots || 0)) r.secure.push(r.bag.splice(i, 1)[0]);
       var reg = r.ex.pend.region; r.ex.pend = null; state = "play"; hideCard(); last = performance.now(); SND.fusion(); descend(reg);
     },
-    mode2: function (k) { S.mode = k === "expedition" ? "expedition" : "survie"; save(); SND.click(); go("play"); },
+    mode2: function (k) { S.mode = ["expedition", "arena", "dungeon"].indexOf(k) >= 0 ? k : "survie"; save(); SND.click(); go("play"); },
     ctake: function (id) { genContracts(); var c = S.contracts, o = c.offers.filter(function (x) { return x.id === id; })[0]; if (!o) return; var i = c.taken.map(function (x) { return x.id; }).indexOf(id); if (i >= 0) c.taken.splice(i, 1); else if (c.taken.length < 3) c.taken.push(o); save(); SND.click(); go("play"); },
     buysecure: function () { var n = S.secureSlots || 0, cost = [1500, 4000][n]; if (!cost || S.gold < cost) return; S.gold -= cost; S.secureSlots = n + 1; save(); SND.gold(); go("terrier"); },
     cn: function (n) { S.cn = +n || 0; save(); SND.click(); go("play"); },
@@ -6373,7 +6567,7 @@
     }).join("") + "</ul></div>" : "";
     var exG = expeSettle();
     var runG = grantRun();
-    var lbOk = false;   // 2.0 bêta : pas de classement
+    var lbOk = window.Leaderboard && Leaderboard.configured() && !r.coop && !r.cauch && !isExpe();
     var html = '<span class="kicker">' + esc(reason || (quit ? "Partie abandonnée" : "Les bestioles ont gagné…")) + "</span><h2>Fin de partie" + (r.coop ? " (coop)" : "") + "</h2>" +
       '<ul class="over-stats"><li><span>' + (isDungeon() ? "Étage" : isArena() ? "Manche" : "Survie") + "</span><strong>" + (isDungeon() ? r.dg.floor + " / " + DG.floors : isArena() ? (r.won ? A.rounds : r.round) + " / " + A.rounds : fmtTime(r.time)) + "</strong></li><li><span>Ennemis</span><strong>" + r.kills + "</strong></li><li><span>Niveau</span><strong>" + r.level + "</strong></li>" +
       '<li class="total"><span>Score' + (DIFF.score > 1 ? " (×" + fr(DIFF.score) + ")" : "") + "</span><strong>" + sc.toLocaleString("fr-FR") + "</strong></li>" +
@@ -6450,7 +6644,8 @@
     if (state === "error") return;
     try {
       if (state === "play") { if (Net.on && Net.role === "guest") updateGuest(dt); else update(dt); }
-      if (state === "menu" || !p) drawIdle(now); else draw();
+      if (state === "menu" && camp.on) { campTick(dt); drawCamp(now); }
+      else if (state === "menu" || !p) drawIdle(now); else draw();
     } catch (err) { showError(err); }
   }
 
@@ -6731,6 +6926,7 @@
   go("menu");
   if (PT) showCard('<h2>Manche de party</h2><p>' + esc(PT.mode.name) + ' : la partie démarre toute seule dans un instant.</p>', "party");
   function joinFromHash() {
+    if (/#(coop=|party)/.test(location.hash || "")) { location.replace("jeu-classique.html" + location.hash); return; }   // la coop reste sur la version 1
     var m = /#coop=([A-Za-z]{4})/.exec(location.hash || "");
     if (!m || (Net.on && Net.code === m[1].toUpperCase())) return;
     if (state === "play") return;
