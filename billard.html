@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261104mb2">
-  <link rel="stylesheet" href="css/billard.css?v=20261115bi2">
+  <link rel="stylesheet" href="css/billard.css?v=20261116bi3">
   <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
 </head>
 <body data-page="pool">
@@ -80,10 +80,11 @@
           <p class="pool-status" data-status aria-live="polite">Chargement…</p>
           <div class="pool-pot" data-pot></div>
           <div class="pool-shoot" data-shoot hidden>
-            <label class="pool-power">Puissance <input type="range" min="3" max="100" value="55" data-power><output data-power-out>55</output></label>
+            <div class="pool-spin"><canvas data-spin width="132" height="132" aria-label="Effet : point de frappe sur la blanche"></canvas><span class="pool-spin-t" data-spin-t>Effet : centre</span></div>
+            <label class="pool-power"><span class="lbl">Puissance</span> <input type="range" min="3" max="100" value="55" data-power><output data-power-out>55</output></label>
             <div class="pool-fine">
               <button class="btn btn-ghost btn-small" type="button" data-fine="-1" aria-label="Viser un peu plus à gauche">◀</button>
-              <button class="btn btn-small" type="button" data-shot>🎱 Tirer</button>
+              <button class="btn btn-small" type="button" data-shot><span class="emo">🎱</span> Tirer</button>
               <button class="btn btn-ghost btn-small" type="button" data-fine="1" aria-label="Viser un peu plus à droite">▶</button>
             </div>
           </div>
@@ -96,6 +97,7 @@
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
             <li><strong>Viser</strong> : déplace la souris (ou glisse le doigt) sur la table, la queue se tourne vers le pointeur. Les boutons ◀ ▶ (ou les flèches <kbd>←</kbd> <kbd>→</kbd>) affinent. Le trait montre où la blanche va taper.</li>
+            <li><strong>Effet</strong> : touche la petite boule blanche pour choisir où la queue frappe la blanche. <em>En haut</em> = coulé (la blanche suit la bille touchée), <em>en bas</em> = rétro (elle revient en arrière), <em>à gauche / à droite</em> = effet latéral (elle part dans l'autre sens en touchant une bande). Près du centre, le coup est droit. Le point revient au centre après chaque tir.</li>
             <li><strong>Tirer</strong> : règle la puissance avec la jauge puis appuie sur « Tirer » (ou <kbd>Espace</kbd>). <kbd>↑</kbd> <kbd>↓</kbd> changent la puissance.</li>
             <li><strong>Règles (8-ball)</strong> : 15 billes, les pleines (1–7) contre les rayées (9–15). Le premier qui empoche une bille choisit son groupe. Tant que tu empoches, tu rejoues. Empoche toutes tes billes puis la noire (8) pour gagner ; la noire trop tôt, ou avec une faute, fait perdre.</li>
             <li><strong>Fautes</strong> : blanche empochée, aucune bille touchée, mauvaise bille touchée en premier, ou aucune bille qui touche une bande après le contact. L'adversaire a alors la <strong>blanche en main</strong> : glisse-la où tu veux.</li>
@@ -124,6 +126,6 @@
   <script src="js/main.js?v=20261110uch3"></script>
   <script src="js/gamekit.js?v=20261114gk2"></script>
   <script src="js/vendor/supabase-2.45.4.min.js"></script>
-  <script src="js/billard.js?v=20261115bi2"></script>
+  <script src="js/billard.js?v=20261116bi3"></script>
 </body>
 </html>

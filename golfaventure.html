@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261104mb2">
-  <link rel="stylesheet" href="css/golfaventure.css?v=20261110ga1">
+  <link rel="stylesheet" href="css/golfaventure.css?v=20261110ga2">
   <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
 </head>
 <body data-page="golfaventure">
@@ -75,13 +75,12 @@
             <div class="ga-side">
               <svg class="ga-club" viewBox="0 0 12 12" width="30" height="30" shape-rendering="crispEdges" aria-hidden="true"><rect width="12" height="12" fill="#6fd13f"/><g fill="#14141e"><rect x="8" y="1" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="4" y="5" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="2" y="7" width="3" height="2"/></g><rect x="8" y="8" width="2" height="2" fill="#fff"/></svg>
               <p class="ga-strokes"><b data-strokes>20</b><span data-max>/20</span></p>
-              <div class="ga-items" aria-label="Objets"><i data-item="brake" title="Frein"></i><i data-item="power" title="Club puissant"></i></div>
+              <div class="ga-items" aria-label="Objets"><i data-item="brake" title="Frein"></i><i data-item="power" title="Club puissant"></i><i data-item="float" title="Bouée"></i></div>
               <div class="ga-pieces" aria-label="Morceaux de Tee"><i data-piece></i><i data-piece></i><i data-piece></i><i data-piece></i></div>
               <div class="ga-power" aria-hidden="true"><i data-power></i></div>
             </div>
           </div>
           <button class="ga-brake" type="button" data-brake hidden>FREIN</button>
-          <div class="ga-joy" data-joy hidden><i></i></div>
           <div class="ga-msg" data-msg hidden></div>
           <div class="ga-dialog" data-dialog hidden></div>
           <div class="game-overlay ga-overlay" data-overlay>
@@ -97,12 +96,11 @@
         <div class="panel game-help">
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
-            <li><strong>Marcher</strong> : flèches ou <kbd>Z</kbd> <kbd>Q</kbd> <kbd>S</kbd> <kbd>D</kbd> au clavier ; sur téléphone, pose le pouce sur la moitié gauche de l'écran (joystick).</li>
-            <li><strong>Tirer</strong> : va à côté de ta balle (une flèche apparaît au-dessus), puis tire en arrière comme un lance-pierre avec la souris ou le doigt. Au clavier : <kbd>Espace</kbd> pour viser, <kbd>←</kbd> <kbd>→</kbd> la direction, <kbd>↑</kbd> <kbd>↓</kbd> la puissance, <kbd>Espace</kbd> pour frapper.</li>
+            <li><strong>Tu es la balle</strong> : tire en arrière n'importe où sur l'écran, comme un lance-pierre, avec la souris ou le doigt ; plus tu tires loin, plus tu pars fort. Au clavier : <kbd>Espace</kbd> pour viser, <kbd>←</kbd> <kbd>→</kbd> la direction, <kbd>↑</kbd> <kbd>↓</kbd> la puissance (<kbd>Maj</kbd> pour affiner), puis <kbd>Espace</kbd> pour tirer.</li>
             <li><strong>Les coups sont ta vie</strong> : tu en as 20 au début (le compteur <em>17/20</em>), chaque tir en coûte un. À zéro, tu retournes au dernier drapeau.</li>
-            <li><strong>Drapeaux</strong> : touche-en un avec ta balle pour sauvegarder et retrouver tous tes coups. <strong>Trous</strong> : chaque trou gagné ajoute 3 coups au maximum. <strong>Slimes</strong> (+4), <strong>oiseaux</strong> cachés dans les buissons (+5) et <strong>aigles</strong> (+10) te rendent des coups quand ta balle les touche. Les slimes qui te touchent t'en font perdre.</li>
-            <li><strong>Terrain</strong> : le rough et le sable freinent la balle, l'eau te coûte 1 coup, les flèches au sol l'entraînent, les arbres et les rails la font rebondir.</li>
-            <li><strong>But</strong> : trouve les 4 trous dorés (Morceaux de Tee), puis rapporte-les au temple, tout au nord. Objets à trouver : le <em>frein</em> (touche <kbd>B</kbd> ou bouton FREIN pendant que la balle roule) et le <em>club puissant</em>. La partie est sauvegardée sur ton appareil.</li>
+            <li><strong>Drapeaux</strong> : roule dessus pour sauvegarder et retrouver tous tes coups. <strong>Trous</strong> : chaque trou gagné ajoute 3 coups au maximum. <strong>Slimes</strong> (+4), <strong>oiseaux</strong> cachés dans les buissons (+5), <strong>chauves-souris</strong> du souterrain (+6) et <strong>aigles</strong> (+10) te rendent des coups si tu les percutes en roulant. À l'arrêt, ils t'en font perdre.</li>
+            <li><strong>Terrain</strong> : le rough et le sable te freinent, l'eau te coûte 1 coup, les flèches au sol t'entraînent, les arbres et les rails te font rebondir, les buissons se cassent. Roule doucement dans un passage sombre (marches de pierre) pour descendre au <strong>souterrain</strong>.</li>
+            <li><strong>But</strong> : trouve les 4 trous dorés (Morceaux de Tee), puis rapporte-les au temple, tout au nord. Objets : le <em>frein</em> (touche <kbd>B</kbd>, bouton FREIN ou un tap pendant que tu roules), le <em>club puissant</em> et la <em>bouée</em> (flotter sur l'eau). La partie est sauvegardée sur ton appareil.</li>
           </ul>
         </div>
       </div>
@@ -124,9 +122,9 @@
 
   <script src="js/data.js?v=20261103re4"></script>
   <script src="js/auth.js?v=20261103re4"></script>
-  <script src="js/main.js?v=20261110ga1"></script>
+  <script src="js/main.js?v=20261110ga2"></script>
   <script src="js/gamekit.js?v=20261114gk2"></script>
   <script src="js/vendor/supabase-2.45.4.min.js"></script>
-  <script src="js/golfaventure.js?v=20261110ga1"></script>
+  <script src="js/golfaventure.js?v=20261110ga2"></script>
 </body>
 </html>

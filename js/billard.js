@@ -10,7 +10,7 @@
    ========================================================================= */
 (function () {
   "use strict";
-  var VERSION = "1.1.0";
+  var VERSION = "1.2.0";
 
   /* ---------- table et physique ---------- */
   var W = 1000, H = 500, R = 18, FRAME = 52;
@@ -19,6 +19,9 @@
   var VMIN = 8;                          // en dessous, la bille s'arrête
   var E_BALL = 0.95, E_CUSH = 0.78;      // rebonds bille/bille, bille/bande
   var VMAX = 2200;
+  var FOLLOW = 0.55, DRAW = 0.8, RAILK = 0.3;   // effet : coulé / rétro (transmis à la blanche au premier contact), effet latéral sur les bandes
+  var SP = { ts: 0, ss: 0 };                    // effet de la blanche pendant le tir (ts : haut > 0 / bas < 0, ss : droite > 0 / gauche < 0)
+  var strike = { x: 0, y: 0 };                  // point de frappe choisi sur la boule d'effet
   var HEAD_X = W * 0.25;                 // ligne de départ de la blanche
   var APEX = { x: W * 0.72, y: H / 2 };  // pointe du triangle
   var POCKETS = [
@@ -46,6 +49,7 @@
   var elPlayers = $("[data-players]", root), elStatus = $("[data-status]", root), elPot = $("[data-pot]", root);
   var elShoot = $("[data-shoot]", root), elPower = $("[data-power]", root), elPowerOut = $("[data-power-out]", root);
   var elActions = $("[data-actions]", root);
+  var elSpin = $("[data-spin]", root), elSpinT = $("[data-spin-t]", root);
 
   /* ---------- état ---------- */
   var myName = String(lget("billard-name", "") || "").slice(0, 16);
@@ -193,8 +197,15 @@
     for (var i = 0; i < 6; i++) { var p = POCKETS[i], dx = b.x - p.x, dy = b.y - p.y; if (dx * dx + dy * dy < (p.r + extra) * (p.r + extra)) return i; }
     return -1;
   }
+  function railKick(b, nx, ny, vnPre) {   // effet latéral : la bande « accroche » la blanche
+    if (SP.ss === 0) return;
+    var k = SP.ss * RAILK * vnPre;
+    b.vx += -ny * k; b.vy += nx * k;
+    SP.ss *= 0.65;
+  }
   function step(T) {
     var B = G.balls, i, j, b, sp;
+    SP.ts *= 1 - 0.2 * DT; SP.ss *= 1 - 0.35 * DT;
     for (i = 0; i < 16; i++) {
       b = B[i];
       if (!b.in || (b.vx === 0 && b.vy === 0)) continue;
@@ -206,11 +217,11 @@
       if (nearPocket(b, 0) >= 0) { b.in = false; b.vx = 0; b.vy = 0; T.pk.push(i); T.snd.push(["pocket", sp]); continue; }
       // bandes (sauf devant une poche)
       if (nearPocket(b, 2) < 0) {
-        var hit = 0;
-        if (b.x < R) { b.x = R; if (b.vx < 0) { b.vx = -b.vx * E_CUSH; b.vy *= 0.985; hit = 1; } }
-        else if (b.x > W - R) { b.x = W - R; if (b.vx > 0) { b.vx = -b.vx * E_CUSH; b.vy *= 0.985; hit = 1; } }
-        if (b.y < R) { b.y = R; if (b.vy < 0) { b.vy = -b.vy * E_CUSH; b.vx *= 0.985; hit = 1; } }
-        else if (b.y > H - R) { b.y = H - R; if (b.vy > 0) { b.vy = -b.vy * E_CUSH; b.vx *= 0.985; hit = 1; } }
+        var hit = 0, vn;
+        if (b.x < R) { b.x = R; if (b.vx < 0) { vn = -b.vx; b.vx = vn * E_CUSH; b.vy *= 0.985; hit = 1; if (i === 0) railKick(b, -1, 0, vn); } }
+        else if (b.x > W - R) { b.x = W - R; if (b.vx > 0) { vn = b.vx; b.vx = -vn * E_CUSH; b.vy *= 0.985; hit = 1; if (i === 0) railKick(b, 1, 0, vn); } }
+        if (b.y < R) { b.y = R; if (b.vy < 0) { vn = -b.vy; b.vy = vn * E_CUSH; b.vx *= 0.985; hit = 1; if (i === 0) railKick(b, 0, -1, vn); } }
+        else if (b.y > H - R) { b.y = H - R; if (b.vy > 0) { vn = b.vy; b.vy = -vn * E_CUSH; b.vx *= 0.985; hit = 1; if (i === 0) railKick(b, 0, 1, vn); } }
         if (hit) { if (T.first >= 0) T.rail = true; T.snd.push(["rail", sp]); }
       }
     }
@@ -225,8 +236,12 @@
         a.x -= nx * ov; a.y -= ny * ov; b.x += nx * ov; b.y += ny * ov;
         var rel = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
         if (rel > 0) {
-          var jm = (1 + E_BALL) / 2 * rel;
+          var jm = (1 + E_BALL) / 2 * rel, cb = i === 0 ? a : j === 0 ? b : null, cs = cb ? Math.sqrt(cb.vx * cb.vx + cb.vy * cb.vy) : 0, cdx = cs > 0 ? cb.vx / cs : 0, cdy = cs > 0 ? cb.vy / cs : 0;
           a.vx -= jm * nx; a.vy -= jm * ny; b.vx += jm * nx; b.vy += jm * ny;
+          if (cb && SP.ts !== 0) {   // coulé (suit la bille) ou rétro (revient), proportionnel à la part de vitesse transmise
+            var sk = SP.ts * (SP.ts > 0 ? FOLLOW : DRAW) * rel;
+            cb.vx += cdx * sk; cb.vy += cdy * sk; SP.ts = 0;
+          }
           if (T.first < 0 && (i === 0 || j === 0)) T.first = i === 0 ? j : i;
           T.snd.push(["ball", rel]);
         }
@@ -236,9 +251,10 @@
   function moving() { for (var i = 0; i < 16; i++) { var b = G.balls[i]; if (b.in && (b.vx !== 0 || b.vy !== 0)) return true; } return false; }
 
   /* tir : le tireur (ou un spectateur qui rejoue) lance la simulation */
-  function launch(cx, cy, dx, dy, speed, mine) {
+  function launch(cx, cy, dx, dy, speed, mine, sx, sy) {
     var c = G.balls[0];
     c.in = true; c.x = cx; c.y = cy; c.vx = dx * speed; c.vy = dy * speed;
+    SP.ts = Math.max(-1, Math.min(1, +sy || 0)); SP.ss = Math.max(-1, Math.min(1, +sx || 0));
     var pre = {};
     if (mine) pre = { left: G.turn >= 0 ? ballsLeft(G.groups[G.turn]) : 0 };
     run = { acc: 0, track: newTrack(), mine: mine, pending: null, doneAt: 0, pre: pre, asked: false };
@@ -246,13 +262,14 @@
     sfx("cue", speed / VMAX);
     render();
   }
-  function shoot() {
+  function shoot() {   // lit le point de frappe (strike)
     if (!isMyTurn()) return;
     var c = G.balls[0], speed = Math.min(VMAX, 120 + 2080 * Math.pow(power / 100, 1.4));
-    var msg = { gid: G.gid, n: G.n, cx: round2(c.x), cy: round2(c.y), dx: aim.x, dy: aim.y, v: speed };
+    var msg = { gid: G.gid, n: G.n, cx: round2(c.x), cy: round2(c.y), dx: aim.x, dy: aim.y, v: speed, sx: round2(strike.x), sy: round2(strike.y) };
     if (G.hand) G.hand = false;
     if (!G.local) netSend("shot", msg);
-    launch(msg.cx, msg.cy, aim.x, aim.y, speed, true);
+    launch(msg.cx, msg.cy, aim.x, aim.y, speed, true, msg.sx, msg.sy);
+    strike.x = strike.y = 0; drawSpin();
   }
   function round2(v) { return Math.round(v * 100) / 100; }
 
@@ -413,7 +430,7 @@
       if (!G || G.gid !== p.gid || run || p.n !== G.n) return;
       if (G.ids && G.ids[G.turn] === NET.id) return;   // c'est moi qui tire
       G.hand = false;
-      launch(p.cx, p.cy, p.dx, p.dy, p.v, false);
+      launch(p.cx, p.cy, p.dx, p.dy, p.v, false, p.sx, p.sy);
       return;
     }
     if (ev === "settle") {
@@ -652,6 +669,43 @@
     fineT = setInterval(function () { fine(d * (now() - t0 > 600 ? 2 : 0.6)); }, 40);
   });
   window.addEventListener("pointerup", function () { clearInterval(fineT); });
+  /* boule d'effet : on touche l'endroit où la queue frappe la blanche */
+  function drawSpin() {
+    if (!elSpin) return;
+    var g = elSpin.getContext("2d"), S = elSpin.width, c = S / 2, r = S / 2 - 6;
+    g.clearRect(0, 0, S, S);
+    var gr = g.createRadialGradient(c - r * 0.35, c - r * 0.4, r * 0.1, c, c, r);
+    gr.addColorStop(0, "#ffffff"); gr.addColorStop(1, "#cfcabd");
+    g.fillStyle = gr; g.beginPath(); g.arc(c, c, r, 0, 6.2832); g.fill();
+    g.lineWidth = 3; g.strokeStyle = "#3d2a1e"; g.stroke();
+    g.strokeStyle = "rgba(61,42,30,.35)"; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(c - r, c); g.lineTo(c + r, c); g.moveTo(c, c - r); g.lineTo(c, c + r); g.stroke();
+    g.setLineDash([3, 4]); g.beginPath(); g.arc(c, c, r * 0.85, 0, 6.2832); g.stroke(); g.setLineDash([]);
+    var x = c + strike.x * r, y = c - strike.y * r;
+    g.fillStyle = "#d62b2b"; g.beginPath(); g.arc(x, y, 8, 0, 6.2832); g.fill();
+    g.lineWidth = 2.5; g.strokeStyle = "#fff"; g.stroke();
+    if (elSpinT) {
+      var parts = [];
+      if (strike.y > 0.12) parts.push("coulé"); else if (strike.y < -0.12) parts.push("rétro");
+      if (strike.x > 0.12) parts.push("droite"); else if (strike.x < -0.12) parts.push("gauche");
+      elSpinT.textContent = "Effet : " + (parts.length ? parts.join(" · ") : "centre");
+    }
+  }
+  function spinFrom(ev) {
+    var r = elSpin.getBoundingClientRect(), S = elSpin.width, rad = S / 2 - 6, k = S / r.width;
+    var x = ((ev.clientX - r.left) * k - S / 2) / rad, y = -((ev.clientY - r.top) * k - S / 2) / rad, l = Math.sqrt(x * x + y * y);
+    if (l > 0.85) { x *= 0.85 / l; y *= 0.85 / l; }
+    if (l < 0.12) { x = 0; y = 0; }   // près du centre : coup droit
+    strike.x = x; strike.y = y; drawSpin();
+  }
+  if (elSpin) {
+    var spinDrag = false;
+    elSpin.addEventListener("pointerdown", function (ev) { if (!isMyTurn()) return; spinDrag = true; try { elSpin.setPointerCapture(ev.pointerId); } catch (e) {} spinFrom(ev); ev.preventDefault(); });
+    elSpin.addEventListener("pointermove", function (ev) { if (spinDrag) spinFrom(ev); });
+    elSpin.addEventListener("pointerup", function () { spinDrag = false; });
+    elSpin.addEventListener("pointercancel", function () { spinDrag = false; });
+    drawSpin();
+  }
   elPower.addEventListener("input", function () { power = Number(elPower.value); elPowerOut.textContent = power; });
   $("[data-shot]", root).addEventListener("click", function () { audioInit(); shoot(); });
   document.addEventListener("keydown", function (ev) {
@@ -727,7 +781,6 @@
     var h = '<button class="btn btn-ghost btn-small" type="button" data-act="menu" aria-label="Menu">☰<span class="lbl"> Menu</span></button>';
     h += '<button class="btn btn-ghost btn-small" type="button" data-act="sound" aria-label="Son">' + (soundOn ? "🔊" : "🔇") + "</button>";
     if (G && !G.over && !G.local && myIdx() >= 0) h += '<button class="btn btn-ghost btn-small" type="button" data-act="resign" aria-label="Abandonner">🏳️<span class="lbl"> Abandonner</span></button>';
-    if (!isFull()) h += '<button class="btn btn-ghost btn-small" type="button" data-act="full" aria-label="Plein écran">⛶<span class="lbl"> Plein écran</span></button>';
     elActions.innerHTML = h;
   }
   root.addEventListener("click", function (ev) {
@@ -860,5 +913,5 @@
   render();
   showMenu("home");
   requestAnimationFrame(frame);
-  if (window.BILLARD_DEBUG === undefined && /[?&]debug\b/.test(location.search)) window.BILLARD_DEBUG = { get G() { return G; }, step: step, newTrack: newTrack, evaluate: evaluate, newGame: newGame, shoot: shoot, setG: function (g) { G = g; }, aim: aim };
+  if (window.BILLARD_DEBUG === undefined && /[?&]debug\b/.test(location.search)) window.BILLARD_DEBUG = { SP: SP, get G() { return G; }, step: step, newTrack: newTrack, evaluate: evaluate, newGame: newGame, shoot: shoot, setG: function (g) { G = g; }, aim: aim };
 })();
