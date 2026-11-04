@@ -24,9 +24,9 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261104mb2">
-  <link rel="stylesheet" href="css/grimpe.css?v=20261111gr1">
+  <link rel="stylesheet" href="css/grimpe.css?v=20261120gr2">
   <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
 </head>
 <body data-page="grimpe">
@@ -66,7 +66,9 @@
           <h1>Grimpe-Chêne</h1>
         </div>
         <div class="gr-head-btns">
-          <button class="btn btn-ghost btn-small" type="button" data-gr-sound aria-pressed="true">🔊 Son</button>
+          <button class="btn btn-ghost btn-small" type="button" data-gr-sound aria-pressed="true">🔊 Sons</button>
+          <button class="btn btn-ghost btn-small" type="button" data-gr-music aria-pressed="true">🎵 Musique</button>
+          <button class="btn btn-ghost btn-small" type="button" data-gr-crt aria-pressed="true">📺 CRT</button>
           <button class="btn btn-ghost btn-small" type="button" data-gr-pause>⏸ Pause</button>
         </div>
       </div>
@@ -81,8 +83,9 @@
         <aside class="panel gr-side" aria-label="Partie">
           <dl class="gr-stats">
             <div class="gr-wide"><dt>Hauteur</dt><dd data-gr-height>0 m</dd></div>
+            <div class="gr-wide"><dt>Zone</dt><dd class="gr-zone" data-gr-zone>1/7</dd></div>
             <div><dt>Record</dt><dd data-gr-best>0 m</dd></div>
-            <div><dt>Écran</dt><dd data-gr-screen>1 / 11</dd></div>
+            <div><dt>Écran</dt><dd data-gr-screen>1 / 48</dd></div>
             <div><dt>Sauts</dt><dd data-gr-jumps>0</dd></div>
             <div><dt>Chutes</dt><dd data-gr-falls>0</dd></div>
             <div class="gr-wide"><dt>Temps</dt><dd data-gr-time>0:00</dd></div>
@@ -104,7 +107,8 @@
             <li><strong>Direction</strong> : <kbd>←</kbd> / <kbd>→</kbd> (ou <kbd>Q</kbd> / <kbd>D</kbd>) au moment du saut. Sans direction, tu sautes droit. Hors saut, tu marches doucement.</li>
             <li><strong>Pas de contrôle en l'air.</strong> Une fois parti, tu ne peux plus rien changer : les murs te font rebondir, les plafonds te cognent la tête.</li>
             <li><strong>Attention aux chutes</strong> : tomber de très haut t'écrase (un instant d'étourdissement), et tu peux perdre beaucoup de hauteur.</li>
-            <li><strong>Glace</strong> : l’écureuil glisse et ne s'arrête pas tout de suite. <strong>Nuages</strong> : on les traverse par le dessous. <strong>Vent</strong> dans les derniers écrans.</li>
+            <li><strong>Glace</strong> : l’écureuil glisse et ne s'arrête pas tout de suite. <strong>Nuages</strong> : on les traverse par le dessous. <strong>Vent</strong> dans l'orage, les nuages et au sommet. Les boutons <em>Musique</em> et <em>CRT</em> règlent l'ambiance 8 bits.</li>
+            <li><strong>7 zones</strong> sur 48 écrans : les Racines, le Tronc, la Canopée, le Nid d'Orage (vent, pluie, éclairs), les Cimes Glacées, la Mer de Nuages et le Sommet Doré. Même une montée parfaite dure plus de 5 minutes : compte plutôt 20 à 40 minutes la première fois.</li>
             <li>L'écran change quand tu passes d'un étage à l'autre. Ta position est gardée si tu fermes la page. Atteins le <strong>gland doré</strong> tout en haut !</li>
             <li>Au doigt : maintiens « Saut » et appuie sur ◀ ou ▶ au moment de relâcher.</li>
           </ul>
@@ -131,7 +135,7 @@
   <script src="js/main.js?v=20261110uch3"></script>
   <script src="js/gamekit.js?v=20261114gk2"></script>
   <script src="js/grimpe-core.js?v=20261111gr1"></script>
-  <script src="js/grimpe-data.js?v=20261111gr1"></script>
-  <script src="js/grimpe.js?v=20261111gr1"></script>
+  <script src="js/grimpe-data.js?v=20261120gr2"></script>
+  <script src="js/grimpe.js?v=20261120gr2"></script>
 </body>
 </html>

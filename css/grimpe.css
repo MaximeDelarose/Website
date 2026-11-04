@@ -39,3 +39,58 @@
   .gr-msg { min-height: 1.4em; }
   .gr-head-btns .btn { font-size: .85rem; padding: 6px 10px; }
 }
+
+/* ---------- direction artistique « console 8 bits de 1985 » ---------- */
+.gr-stage {
+  border: 6px solid #000; border-radius: 0; background: #000;
+  box-shadow: 0 0 0 3px #7c7c7c, 0 0 0 6px #000, 0 8px 0 6px rgba(0, 0, 0, .35);
+}
+.gr-canvas { image-rendering: pixelated; }
+/* scanlines + léger masque de tube cathodique (activables) */
+.gr-crt::after {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, .22) 0, rgba(0, 0, 0, .22) 1px, transparent 1px, transparent 3px),
+    radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, .38) 100%);
+}
+.gr-overlay .game-card, .gr-side {
+  border-radius: 0; border: 4px solid #fcfcfc; background: #000; color: #fcfcfc;
+  box-shadow: 0 0 0 4px #000; font-family: "Press Start 2P", ui-monospace, monospace;
+}
+.gr-overlay .game-card { text-align: center; font-size: .62rem; line-height: 1.7; }
+.gr-overlay .game-card p { color: #fcfcfc; margin: .5em 0; }
+.gr-overlay h2, .gr-overlay .gr-title {
+  font-family: "Press Start 2P", ui-monospace, monospace; color: #f8d878; text-shadow: 3px 3px 0 #e45c10, 5px 5px 0 #000;
+  line-height: 1.3; letter-spacing: .04em; margin: 0 0 .5em;
+}
+.gr-overlay .gr-title { font-size: 1.7rem; }
+.gr-overlay h2 { font-size: 1rem; }
+.gr-overlay .gr-sub { color: #a4e4fc; }
+.gr-overlay .gr-big { font-family: "Press Start 2P", monospace; font-size: 1.5rem; color: #58d854; }
+.gr-overlay strong { color: #f8d878; }
+.gr-overlay .btn {
+  border-radius: 0; border: 3px solid #fcfcfc; background: #0058f8; color: #fcfcfc; box-shadow: 3px 3px 0 #000;
+  font-family: "Press Start 2P", ui-monospace, monospace; font-size: .62rem; padding: 10px 12px;
+}
+.gr-overlay .btn.btn-ghost { background: #000; }
+.gr-overlay .btn:hover, .gr-overlay .btn:focus-visible { background: #f83800; outline: 3px solid #f8d878; outline-offset: 2px; }
+.gr-overlay kbd { background: #fcfcfc; color: #000; border: 2px solid #7c7c7c; border-radius: 0; font-family: "Press Start 2P", monospace; font-size: .6rem; padding: 2px 4px; }
+.gr-blink { animation: gr-blink 1s steps(2, jump-none) infinite; }
+@keyframes gr-blink { 50% { background: #f83800; } }
+.gr-stats > div { background: #0b0b1e; border-radius: 0; border: 2px solid #5c5c5c; }
+.gr-stats dt { color: #a4e4fc; font-family: "Press Start 2P", monospace; font-size: .5rem; letter-spacing: .02em; line-height: 1.5; }
+.gr-stats dd { color: #fcfcfc; font-family: "Press Start 2P", monospace; font-size: 1rem; }
+.gr-stats .gr-wide:first-child dd { font-size: 1.15rem; color: #f8d878; }
+.gr-stats dd.gr-zone { font-size: .62rem; line-height: 1.5; color: #58d854; }
+.gr-msg { color: #fcfcfc; font-family: "Press Start 2P", monospace; font-size: .55rem; line-height: 1.6; min-height: 3.4em; }
+.gr-btn { border-radius: 0; border: 3px solid #fcfcfc; background: #0058f8; color: #fcfcfc; box-shadow: 3px 3px 0 #000; font-family: "Press Start 2P", monospace; font-size: .8rem; }
+.gr-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
+.gr-btn-jump { background: #f83800; }
+.gr-head-btns { flex-wrap: wrap; justify-content: flex-end; }
+@media (prefers-reduced-motion: reduce) { .gr-blink { animation: none; } }
+@media (max-width: 760px) {
+  .gr-stats dd, .gr-stats .gr-wide:first-child dd { font-size: .8rem; }
+  .gr-stats dt { font-size: .42rem; }
+  .gr-overlay .gr-title { font-size: 1.2rem; }
+  .gr-overlay .game-card { font-size: .52rem; }
+}
