@@ -92,5 +92,14 @@ export function comboLabel(value: number, mult = 1): string {
   return `Combo ${value}${m}`;
 }
 
+/** Libellé du petit texte de combo posé près de la fusion : « Combo ×5 ! » (+ multiplicateur s'il dépasse 1). */
+export function comboPopLabel(value: number, mult = 1): string {
+  const m = mult > 1 ? ` · ×${Number.isInteger(mult) ? mult : mult.toFixed(1)}` : '';
+  return `Combo ×${value} !${m}`;
+}
+
+/** Durée totale visible du texte de combo (ms) : 400–600 ms, un peu plus pour un combo exceptionnel. */
+export const comboPopMs = (value: number): number => (value >= 8 ? 600 : value >= 5 ? 520 : 440);
+
 /** Hexadécimal « #RRGGBB » → entier Phaser. */
 export function hexInt(hex: string): number { return parseInt(hex.replace('#', ''), 16); }

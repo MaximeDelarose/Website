@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LONG_PRESS_MS, MOVE_TOL, PointerFsm } from '../src/game/merge/pointerFsm';
+import { MAX_GESTURE_MS, staleGesture, LONG_PRESS_MS, MOVE_TOL, PointerFsm } from '../src/game/merge/pointerFsm';
 
 describe('machine à états du pointeur : appui court / appui long / glissé', () => {
   it('seuil d\'appui long élevé (≈ 500–600 ms) et tolérance de mouvement ≈ 8 px', () => {
@@ -101,5 +101,22 @@ describe('machine à états du pointeur : appui court / appui long / glissé', (
       if (iLong >= 0) { expect(out.slice(iLong + 1).includes('tap')).toBe(false); expect(out.slice(iLong + 1).includes('drop')).toBe(false); expect(out.slice(iLong + 1).includes('dragStart')).toBe(false); }
       expect(f.phase).toBe('idle');
     }
+  });
+});
+
+describe('geste coincé (toucher annulé, relâchement perdu)', () => {
+  it('un doigt qui n\'appuie plus rend le geste périmé', () => {
+    expect(staleGesture({ samePointer: false, pointerDown: false, ageMs: 50 })).toBe(true);
+  });
+  it('un nouvel appui avec le même identifiant de doigt rend le précédent périmé', () => {
+    expect(staleGesture({ samePointer: true, pointerDown: true, ageMs: 50 })).toBe(true);
+  });
+  it('un geste en cours normal (doigt appuyé, récent) n\'est jamais périmé : le multi-touch reste possible', () => {
+    expect(staleGesture({ samePointer: false, pointerDown: true, ageMs: 1500 })).toBe(false);
+    expect(staleGesture({ samePointer: false, pointerDown: undefined, ageMs: 1500 })).toBe(false);
+  });
+  it('un contact de plus de 20 s est forcément perdu', () => {
+    expect(staleGesture({ samePointer: false, pointerDown: true, ageMs: MAX_GESTURE_MS + 1 })).toBe(true);
+    expect(staleGesture({ samePointer: false, pointerDown: true, ageMs: MAX_GESTURE_MS - 1 })).toBe(false);
   });
 });

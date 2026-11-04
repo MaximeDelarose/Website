@@ -195,7 +195,8 @@ if (ONLY.includes('4')) {
   await page.waitForTimeout(500);
   await page.evaluate(() => window.RADIA.rewards.closeAll());
   await page.evaluate(() => window.__p);
-  check('démontage en plein milieu : aucun élément rw-* ni calque plein écran', (await leftovers(page)).length === 0 && JSON.stringify(await fullLayers(page)) === JSON.stringify(layers0));
+  await waitGone(page, 2000); // la levée de la suspension est différée de 80 ms (deux cadeaux enchaînés ne font pas scintiller l'interface)
+  { const lo = await leftovers(page); const fl = await fullLayers(page); check('démontage en plein milieu : aucun élément rw-* ni calque plein écran', lo.length === 0 && JSON.stringify(fl) === JSON.stringify(layers0), JSON.stringify({ lo, fl, layers0 })); }
   // l'élément retiré de l'extérieur : le garde-fou termine proprement
   await page.evaluate(() => { window.__p = window.RADIA.rewards.demo('chest', 'rare'); });
   await page.waitForSelector('.rw-root');

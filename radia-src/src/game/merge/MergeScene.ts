@@ -31,7 +31,7 @@ import { BaseScene } from '../scenes/BaseScene';
 import { BOARD_H, BOARD_SIZE, BOARD_W, type BoardEvent, type LevelDef, type RunState } from './types';
 import * as R from './rules';
 import { suggestMerge, botStep } from './bot';
-import { LONG_PRESS_MS, PointerFsm } from './pointerFsm';
+import { LONG_PRESS_MS, PointerFsm, staleGesture } from './pointerFsm';
 import { ENDLESS_CFG } from '../endless/config';
 import { MAX_LEVEL, RARITY_COLOR, SPECIAL, collMax, type ItemRef, type Rarity } from '../../data/items';
 import {
@@ -41,7 +41,7 @@ import { audio, reducedFx, save } from '../../core/app';
 import { haptic } from '../../core/haptics';
 import { texScale } from '../art/kit';
 import {
-  POP_AT_MS, SLAM_MS, WINDUP_MS, ParticleBudget, comboLabel, comboMilestone, comboPitch, fxProfile, hexInt, mergeTier, popSfx, scaledCount,
+  POP_AT_MS, SLAM_MS, WINDUP_MS, ParticleBudget, comboMilestone, comboPopLabel, comboPopMs, comboPitch, fxProfile, hexInt, mergeTier, popSfx, scaledCount,
   type FxProfile, type MergeTier,
 } from '../fx/feel';
 import type { Sfx } from '../../audio/AudioManager';
@@ -81,7 +81,7 @@ export interface MergeHost {
 
 export interface MergeSceneData { def: LevelDef; state: RunState; host: MergeHost }
 
-interface Drag { from: number; sprite: Phaser.GameObjects.Image | null; startX: number; startY: number; moved: boolean; pointerId: number; long?: boolean }
+interface Drag { from: number; sprite: Phaser.GameObjects.Image | null; startX: number; startY: number; moved: boolean; pointerId: number; long?: boolean; t0: number; lostAt?: number }
 /** Éléments dessinés sur une case verrouillée (toile / sable / cadenas, objet ou récompense visible, lueur). */
 interface LockVis { objs: Phaser.GameObjects.Image[]; ov: Phaser.GameObjects.Image | null; under: Phaser.GameObjects.Image | null; twinkle: Phaser.Time.TimerEvent | null }
 
@@ -106,6 +106,9 @@ export class MergeScene extends BaseScene {
   private matchHi: Phaser.GameObjects.Image[] = [];
   private matchCells: number[] = [];
   private comboText!: Phaser.GameObjects.Text;
+  private lastMergeAt = -1;
+  /** Case de la dernière fusion (ancre des effets de récompense proches de la fusion). */
+  get lastMerge(): number { return this.lastMergeAt >= 0 ? this.lastMergeAt : 14; }
   private drag: Drag | null = null;
   private fsm = new PointerFsm();
   private pressTimer: number | undefined;
@@ -181,11 +184,21 @@ export class MergeScene extends BaseScene {
         window.setTimeout(() => { if (this.drag) this.finishDragAt(e.clientX, e.clientY); }, 0);
       }
     };
+    // Toucher annulé (geste système, appel, défilement repris par Safari) ou page quittée : Phaser ne reçoit alors aucun
+    // « pointerup ». Sans ça le geste restait « en cours » et plus aucun objet ne se sélectionnait.
+    const onAbort = () => { if (this.drag) this.cancelDrag(); };
+    const onHidden = () => { if (document.visibilityState === 'hidden') onAbort(); };
     window.addEventListener('pointermove', onWinMove);
     window.addEventListener('pointerup', onWinUp);
+    window.addEventListener('pointercancel', onAbort);
+    window.addEventListener('touchcancel', onAbort);
+    window.addEventListener('blur', onAbort);
+    document.addEventListener('visibilitychange', onHidden);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       window.clearTimeout(this.pressTimer);
       window.removeEventListener('pointermove', onWinMove); window.removeEventListener('pointerup', onWinUp);
+      window.removeEventListener('pointercancel', onAbort); window.removeEventListener('touchcancel', onAbort);
+      window.removeEventListener('blur', onAbort); document.removeEventListener('visibilitychange', onHidden);
       this.slowDepth = 0; this.time.timeScale = 1; this.tweens.timeScale = 1;
     });
     this.lastAction = this.time.now;
@@ -334,7 +347,9 @@ export class MergeScene extends BaseScene {
   // ------------------------------------------------------------ entrées
 
   private onDown(p: Phaser.Input.Pointer): void {
-    if (this.ended || this.drag) return;
+    if (this.ended) return;
+    // un geste précédent jamais terminé (toucher annulé, relâchement perdu) ne doit JAMAIS bloquer la sélection
+    if (this.drag) { if (this.gestureStale(p)) this.cancelDrag(); else return; }
     this.host.onActivity();
     this.lastAction = this.time.now;
     this.clearHint();
@@ -350,7 +365,7 @@ export class MergeScene extends BaseScene {
     if (this.selected >= 0 && this.state.cells[this.selected]?.lock && this.selected !== i) this.setSelected(-1);
     // case verrouillée : toucher court = objectif / sélection, appui long = fiche (aucun glissé)
     if (cell.lock && !cell.item) {
-      this.drag = { from: i, sprite: null, startX: x, startY: y, moved: false, pointerId: p.id };
+      this.drag = { from: i, sprite: null, startX: x, startY: y, moved: false, pointerId: p.id, t0: performance.now() };
       this.fsm.down(performance.now(), x, y, true);
       this.armLong();
       return;
@@ -369,7 +384,7 @@ export class MergeScene extends BaseScene {
     }
     const sp = this.sprites[i];
     if (!sp) return;
-    this.drag = { from: i, sprite: sp, startX: x, startY: y, moved: false, pointerId: p.id };
+    this.drag = { from: i, sprite: sp, startX: x, startY: y, moved: false, pointerId: p.id, t0: performance.now() };
     this.fsm.down(performance.now(), x, y, true);
     this.armLong();
     // Dès que le doigt se pose : l'objet grossit et ses partenaires de fusion s'allument.
@@ -380,6 +395,17 @@ export class MergeScene extends BaseScene {
       this.showMatches(i);
       this.selHi.setPosition(this.cx(i), this.cy(i)).setScale(1 / texScale()).setVisible(true);
     }
+  }
+
+  private pointerById(id: number): Phaser.Input.Pointer | undefined {
+    const m = this.input.manager;
+    return [this.input.mousePointer, ...m.pointers].find((q) => q && q.id === id);
+  }
+
+  private gestureStale(p: Phaser.Input.Pointer): boolean {
+    const d = this.drag;
+    if (!d) return false;
+    return staleGesture({ samePointer: d.pointerId === p.id, pointerDown: this.pointerById(d.pointerId)?.isDown, ageMs: performance.now() - d.t0 });
   }
 
   /** Arme le minuteur d'appui long (minuteur réel : insensible au ralenti visuel). */
@@ -628,7 +654,7 @@ export class MergeScene extends BaseScene {
     this.shadow.setVisible(false);
     this.clearMatches();
     this.selHi.setVisible(false);
-    if (d.sprite) this.returnSprite(d.from, d.sprite);
+    if (d.sprite && !d.long) this.returnSprite(d.from, d.sprite);
   }
 
   private returnSprite(i: number, sp: Phaser.GameObjects.Image): void {
@@ -638,6 +664,9 @@ export class MergeScene extends BaseScene {
     this.glows[i]?.setVisible(true);
     audio.play('drop');
   }
+
+  /** Désélectionne l'objet courant (toucher sur la fiche d'objet). */
+  deselect(): void { if (this.selected >= 0) { this.setSelected(-1); this.host.onInspect(null); } }
 
   private setSelected(i: number): void {
     const prev = this.selected;
@@ -1053,6 +1082,7 @@ export class MergeScene extends BaseScene {
   }
 
   private animMerge(e: Extract<BoardEvent, { t: 'merge' }>): void {
+    this.lastMergeAt = e.to;
     this.pending.get(e.to)?.fin();
     const a = this.sprites[e.from];
     const b = this.sprites[e.to];
@@ -1331,30 +1361,35 @@ export class MergeScene extends BaseScene {
     if (value < 2 || !this.comboText?.active) return;
     const t = this.comboText;
     const big = value >= 5;
-    t.setText(comboLabel(value, mult));
-    t.setFontSize(big ? 26 : 22);
-    t.setY(this.oy + this.cell * 0.55);
+    const huge = value >= 8;
+    // petit texte posé PRÈS de la fusion (jamais au milieu du plateau), qui monte et disparaît vite ; un seul à la fois
+    const at = this.lastMerge;
+    const bw = this.cell * BOARD_W;
+    const x = Math.max(this.ox + this.cell * 1.2, Math.min(this.ox + bw - this.cell * 1.2, this.cx(at)));
+    const y0 = Math.max(this.oy + this.cell * 0.35, this.cy(at) - this.cell * 0.62);
+    const ms = comboPopMs(value);
+    t.setText(comboPopLabel(value, mult));
+    t.setFontSize(huge ? 19 : big ? 17 : 15);
+    t.setPosition(x, y0);
     this.tweens.killTweensOf(t);
-    t.setAlpha(1).setScale(0.75);
-    this.tweens.add({ targets: t, scale: big ? 1.18 : 1.05, duration: 170, ease: 'Back.easeOut',
-      onComplete: () => this.tweens.add({ targets: t, scale: 1, duration: 140 }) });
-    this.tweens.add({ targets: t, alpha: 0, delay: 1300, duration: 400 });
+    t.setAlpha(1).setScale(0.55);
+    this.tweens.add({ targets: t, scale: huge ? 1.2 : 1.1, duration: 130, ease: 'Back.easeOut',
+      onComplete: () => this.tweens.add({ targets: t, scale: 1, duration: 90 }) });
+    this.tweens.add({ targets: t, y: y0 - this.cell * 0.45, duration: ms, ease: 'Quad.easeOut' });
+    this.tweens.add({ targets: t, alpha: 0, delay: Math.round(ms * 0.55), duration: Math.round(ms * 0.45) });
     audio.play('combo', 1 + Math.min(10, value) * 0.1);
     audio.play('heart', comboPitch(value) + 0.1);
     const m = comboMilestone(value);
     if (m) haptic('combo');
+    // particules concentrées autour de l'objet fusionné
     if (value >= 3) this.halo(value);
-    if (value === 5 || value === 8 || (value > 8 && value % 5 === 0)) this.confetti(this.W / 2, this.oy, value >= 8 ? 40 : 24);
+    if (value === 5 || value === 8 || (value > 8 && value % 5 === 0)) this.confetti(this.cx(at), this.cy(at) - this.cell * 0.3, huge ? 26 : 16);
   }
 
   private halo(value: number): void {
     if (this.prof().particleScale < 0.35) return;
-    const g = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
-    const col = value >= 5 ? 0xf3c86b : 0xff75a8;
-    g.lineStyle(6, col, 0.8);
-    g.strokeRoundedRect(this.ox - 6, this.oy - 6, this.cell * BOARD_W + 12, this.cell * BOARD_H + 12, 20);
-    this.fxLayer.add(g);
-    this.tweens.add({ targets: g, alpha: 0, duration: 700, onComplete: () => g.destroy() });
+    // un anneau autour de la fusion (et non un cadre sur tout le plateau)
+    this.ring(this.cx(this.lastMerge), this.cy(this.lastMerge), value >= 5 ? 0xf3c86b : 0xff75a8);
   }
 
   // ------------------------------------------------------- API publique (effets pour l'interface)
@@ -1586,6 +1621,13 @@ export class MergeScene extends BaseScene {
 
   override update(time: number): void {
     this.breathe(time / 1000);
+    // Chien de garde : si le doigt suivi n'appuie plus depuis un instant mais que le geste est toujours « en cours », on le libère.
+    const d = this.drag;
+    if (d) {
+      const pt = this.pointerById(d.pointerId);
+      if (pt && !pt.isDown) { d.lostAt ??= time; if (time - d.lostAt > 200) this.cancelDrag(); } else d.lostAt = undefined;
+      if (this.drag && performance.now() - d.t0 > 20_000) this.cancelDrag();
+    }
     // Indice automatique après un long moment sans action.
     if (!this.ended && !this.drag && time - this.lastAction > 14_000 && time - this.lastHint > 14_000) {
       this.lastHint = time;

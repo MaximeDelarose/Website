@@ -253,12 +253,12 @@
 
 /* panneau de l'objet sélectionné : sous le plateau, au-dessus de la barre d'actions (jamais par-dessus un sprite) */
 .en-sel {
-  display: flex; align-items: center; gap: 8px; height: 54px; margin-bottom: 6px; padding: 5px 6px 5px 8px; border-radius: 16px;
-  background: rgba(255, 250, 245, 0.94); box-shadow: 0 0 0 2px rgba(88, 67, 63, 0.08), 0 4px 10px rgba(59, 49, 82, 0.2);
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; /* se superpose à la rangée d'actions (même hauteur) : aucune case n'est recouverte, rien ne saute */
+  display: flex; align-items: center; gap: 8px; height: 60px; margin: 0; padding: 5px 6px 5px 8px; border-radius: 16px;
+  background: #fffaf5; box-shadow: 0 0 0 2px rgba(88, 67, 63, 0.08), 0 4px 10px rgba(59, 49, 82, 0.2);
   pointer-events: auto; overflow: hidden; animation: popIn 0.22s var(--ease-pop);
 }
-.en-sel.empty { justify-content: center; background: rgba(255, 250, 245, 0.6); box-shadow: none; animation: none; pointer-events: none; }
-.en-sel-hint { font-size: 12px; font-weight: 600; color: var(--choco-soft); text-align: center; line-height: 1.25; }
+.en-sel.empty { display: none; }
 .en-sel-ic { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 12px; }
 .en-sel-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; text-align: left; }
 .en-sel-tx b { font-size: 14px; line-height: 1.15; color: var(--nuit); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -289,5 +289,20 @@
 }
 @media (max-height: 620px) {
   .en-sel { height: 48px; margin-bottom: 3px; }
-  .en-sel-hint { font-size: 11px; }
 }
+
+/* Réaction d'Auguste pendant une partie : une petite pastille d'une ligne dans la zone du bas — jamais sur le plateau, jamais interactive */
+.aug-says.en-aug { position: static; transform: none; left: auto; top: auto; width: auto; max-width: calc(100% - 28px); padding: 3px 12px 3px 4px; gap: 7px; border-radius: 99px; pointer-events: none; animation: enPillIn 0.3s var(--ease-pop); }
+.aug-says.en-aug img { width: 26px; height: 26px; box-shadow: 0 0 0 2px #b9a5e8; }
+.aug-says.en-aug b { display: none; }
+.aug-says.en-aug span { font-size: 13px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+
+/* « +N » près d'un compteur : monte et s'efface en moins d'une seconde, sans capter aucun toucher */
+.en-gain { position: absolute; transform: translateX(-50%); font-size: 14px; font-weight: 800; color: #fff; text-shadow: 0 1px 0 #E8558F, 0 0 6px #E8558F; white-space: nowrap; pointer-events: none; animation: enGain 0.95s ease-out forwards; }
+@keyframes enGain { 0% { opacity: 0; transform: translate(-50%, 4px) scale(0.7); } 18% { opacity: 1; transform: translate(-50%, 0) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -16px) scale(1); } }
+
+/* Voie des notices sous le plateau : réservée (le plateau s'arrête au-dessus), donc une pastille ne recouvre jamais une case */
+.merge-hud.endless .mh-float { height: 34px; }
+.merge-hud.endless .mh-dock { bottom: 2px; }
+
+.mh-bottom.sel-open .mh-actions { visibility: hidden; }
