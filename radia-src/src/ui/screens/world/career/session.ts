@@ -40,7 +40,7 @@ export function gameContext(id: CareerId): GameCtx {
   return { career: id, difficulty: difficultyFor(levelOf(w, id)), look, owned, wanted: wantedTag(w, id) };
 }
 
-/** Annonce le souvenir à RADIA Snap / Clips (rien n'est publié sans la joueuse). */
+/** Annonce le souvenir à Snapchien / Clips (rien n'est publié sans la joueuse). */
 export function announceMoment(id: CareerId, score: number, fans: number): void {
   try {
     emitMoment(momentFor(id, score, fans));

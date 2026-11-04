@@ -1,6 +1,6 @@
 /**
  * Registre des applications du téléphone du jeu (hors Tindeur, qui a son propre branchement).
- * Chaque module (RADIA Clips, RADIA Snap…) s'enregistre depuis src/apps/index.ts ; phone.ts les affiche
+ * Chaque module (TikTak, Snapchien…) s'enregistre depuis src/apps/index.ts ; phone.ts les affiche
  * dans la bande d'applications et les ouvre au toucher.
  */
 export interface PhoneApp {

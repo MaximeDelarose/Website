@@ -42,8 +42,8 @@ function show(p: Pending): void {
   const timer = window.setTimeout(dismiss, 9000);
   const end = (fn?: () => void) => { window.clearTimeout(timer); fn?.(); dismiss(); };
   const acts = h('div.snp-prop-a',
-    h('button.btn.small', { on: { click: tap(() => end(() => { const r = publishPendingStory(p); audio.play('sparkle'); haptic('reward'); sparkleBurst(window.innerWidth / 2, 60, { rarity: 'rare' }); ui.toast({ title: r.story ? 'Story publiée ♡' : 'Photo enregistrée ♡', sub: 'Retrouve-la dans RADIA Snap.' }); }), { sound: false }) } }, 'Publier'),
-    career ? h('button.btn.small.secondary', { on: { click: tap(() => end(() => { void import('./clips/ui').then((m) => m.openClips('foryou', { moment: p.id })); }), { sound: false }) } }, 'Dans Clips') : null,
+    h('button.btn.small', { on: { click: tap(() => end(() => { const r = publishPendingStory(p); audio.play('sparkle'); haptic('reward'); sparkleBurst(window.innerWidth / 2, 60, { rarity: 'rare' }); ui.toast({ title: r.story ? 'Story publiée ♡' : 'Photo enregistrée ♡', sub: 'Retrouve-la dans Snapchien.' }); }), { sound: false }) } }, 'Publier'),
+    career ? h('button.btn.small.secondary', { on: { click: tap(() => end(() => { void import('./clips/ui').then((m) => m.openClips('foryou', { moment: p.id })); }), { sound: false }) } }, 'Dans TikTak') : null,
     h('button.btn.small.secondary', { on: { click: tap(() => end(), { sound: false }) } }, 'Plus tard'),
     h('button.snp-link', { on: { click: tap(() => end(() => ignorePending(p.id)), { sound: false }) } }, 'Ignorer'));
   card = h('div.snp-prop', { role: 'status' }, h('div.snp-prop-h', snapIcon(40), h('div', h('b', p.title || KIND_TITLES[p.kind] || 'Un joli moment'), h('small', career ? 'Publier cette story, ou une vidéo dans Clips ?' : 'Publier cette story ?'))), acts);

@@ -1,6 +1,6 @@
 /**
- * « Moments » du jeu : les activités annoncent ici qu'un souvenir vient d'avoir lieu ; RADIA Snap (stories) et
- * RADIA Clips (publications) s'y abonnent pour PROPOSER à Radia de publier. Rien n'est publié sans son action.
+ * « Moments » du jeu : les activités annoncent ici qu'un souvenir vient d'avoir lieu ; Snapchien (stories) et
+ * TikTak (publications) s'y abonnent pour PROPOSER à Radia de publier. Rien n'est publié sans son action.
  * Données pures, aucun DOM. Une activité appelle `emitMoment({ kind, title, ... })`.
  */
 export type MomentKind =

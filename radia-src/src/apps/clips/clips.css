@@ -1,4 +1,4 @@
-/* RADIA Clips : fil vertical plein écran (préfixe clp-). */
+/* TikTak : fil vertical plein écran (préfixe clp-). */
 .clp-layer { position: absolute; inset: 0; z-index: 95; background: #1a1229; color: #fff; overflow: hidden; animation: screenIn 0.3s var(--ease-out); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .clp-layer.out { animation: screenOut 0.24s ease forwards; pointer-events: none; }
 .clp-body { position: absolute; inset: 0; }

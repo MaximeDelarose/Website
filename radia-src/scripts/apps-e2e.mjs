@@ -1,4 +1,4 @@
-// RADIA Clips + RADIA Snap : parcours Playwright (Chromium ÉMULÉ, pas un vrai iPhone).
+// TikTak + Snapchien : parcours Playwright (Chromium ÉMULÉ, pas un vrai iPhone).
 // Build isolé : npx vite build --outDir /tmp/claude-0/n  puis  npx vite preview --outDir /tmp/claude-0/n --port 4195
 // PORT=4195 W=393 H=852 node scripts/apps-e2e.mjs      (captures : shots/n-*.png)
 import { chromium } from 'playwright';
@@ -47,10 +47,10 @@ await sleep(400);
 await page.evaluate(() => window.RADIA.phone());
 await sleep(700);
 const apps = await page.locator('.ph-app').allTextContents();
-check('téléphone : RADIA Clips et RADIA Snap dans la bande d’applications', apps.some((t) => /Clips/.test(t)) && apps.some((t) => /Snap/.test(t)), apps.join(' | '));
+check('téléphone : TikTak et Snapchien dans la bande d’applications', apps.some((t) => /TikTak/.test(t)) && apps.some((t) => /Snapchien/.test(t)), apps.join(' | '));
 await shot('phone');
 // ---------- Clips
-await page.locator('.ph-app', { hasText: 'Clips' }).click();
+await page.locator('.ph-app', { hasText: 'TikTak' }).click();
 await sleep(1800);
 check('Clips ouvert', (await page.locator('.clp-layer').count()) === 1);
 check('Clips : ≥ 2 publications dans le fil, canvas dessiné', (await page.locator('.clp-post').count()) >= 2);
@@ -101,7 +101,7 @@ await page.locator('.clp-x').first().click(); await sleep(500);
 
 // ---------- Snap
 await page.evaluate(() => window.RADIA.phone()); await sleep(600);
-await page.locator('.ph-app', { hasText: 'Snap' }).click(); await sleep(1200);
+await page.locator('.ph-app', { hasText: 'Snapchien' }).click(); await sleep(1200);
 check('Snap ouvert', (await page.locator('.snp-layer').count()) === 1);
 await shot('snap-home');
 await page.locator('.snp-fab').click(); await sleep(1400);
@@ -163,7 +163,7 @@ await shot('prop-card');
 let s3 = await st();
 check('moment en attente (badge) — aucune publication automatique', s3.snap.pending.length === 1 && s3.snap.stories.length === 1 && s3.clips.mine.length === 0);
 const fans0 = s3.fans;
-await page.locator('.snp-prop .btn', { hasText: 'Dans Clips' }).click(); await sleep(1800);
+await page.locator('.snp-prop .btn', { hasText: 'Dans TikTak' }).click(); await sleep(1800);
 check('Clips : choix entre 3 versions du moment', (await page.locator('.clp-choice').count()) === 3);
 await shot('clips-chooser');
 await page.locator('.clp-choice').nth(1).click(); await sleep(200);

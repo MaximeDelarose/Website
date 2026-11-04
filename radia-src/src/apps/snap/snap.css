@@ -1,4 +1,4 @@
-/* RADIA Snap : photos et stories (préfixe snp-). */
+/* Snapchien : photos et stories (préfixe snp-). */
 .snp-layer { position: absolute; inset: 0; z-index: 95; overflow: hidden; background: linear-gradient(180deg, #fff1f6, #efe4ff); color: var(--choco); animation: screenIn 0.3s var(--ease-out); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .snp-layer.out { animation: screenOut 0.24s ease forwards; pointer-events: none; }
 .snp-view { position: absolute; inset: 0; display: flex; flex-direction: column; padding: calc(var(--sat) + 8px) calc(var(--sar) + 12px) calc(var(--sab) + 8px) calc(var(--sal) + 12px); }
@@ -128,3 +128,25 @@
 .snp-prop-a { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
 .snp-prop-a .btn.small { min-height: 40px; }
 @media (prefers-reduced-motion: reduce) { .snp-ring.dash i, .snp-rec i { animation: none; } }
+
+/* ---- Habillage « messagerie sombre » façon réseau social de photos : fond noir, accent jaune, anneaux de stories, liste aérée.
+   (couleurs seulement : aucune ressource de marque réelle) */
+.snp-layer { background: #0d0d0f; color: #fff; }
+.snp-x { background: #26272b; color: #fff; box-shadow: none; }
+.snp-x.dark { background: #26272b; }
+.snp-cam { background: #ffd400; color: #111; }
+.snp-brand i { background: #ffd400; border-radius: 9px 9px 9px 3px; }
+.snp-brand b { background: none; -webkit-text-fill-color: #fff; color: #fff; font-size: 21px; letter-spacing: 0.2px; }
+.snp-story { color: #fff; }
+.snp-ring { background: conic-gradient(from 200deg, #ffd400, #ff5f9b, #b07cff, #ffd400); }
+.snp-ring canvas { border-color: #0d0d0f; background: #26272b; }
+.snp-story.seen .snp-ring { background: #3a3b41; }
+.snp-ring.plain { background: #26272b; box-shadow: none; }
+.snp-ring.plain i { color: #ffd400; }
+.snp-h { color: #fff; font-size: 15px; letter-spacing: 0.3px; }
+.snp-cell { background: #1b1c1f; border-color: #0d0d0f; box-shadow: none; }
+.snp-cell.on { border-color: #ffd400; box-shadow: none; }
+.snp-empty, .snp-fine { color: #9a9ba3; }
+.snp-fab { background: #ffd400; color: #111; box-shadow: 0 4px 0 #b39500, 0 8px 18px rgba(0, 0, 0, 0.5); }
+.snp-fab:active { box-shadow: 0 2px 0 #b39500; }
+.snp-pcard { background: #1b1c1f; color: #fff; box-shadow: none; }

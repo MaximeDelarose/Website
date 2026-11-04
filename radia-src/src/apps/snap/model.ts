@@ -1,5 +1,5 @@
 /**
- * RADIA Snap : état sauvegardé (`fun.apps.snap`) — photos retouchées (autocollants), stories, moments proposés,
+ * Snapchien : état sauvegardé (`fun.apps.snap`) — photos retouchées (autocollants), stories, moments proposés,
  * brouillons. Pur (aucun DOM). Jamais d'enfant : les photos Snap n'ont aucun enfant (`kids` vide) et tout
  * texte évoquant un enfant est refusé. Sanitisation tolérante, bornes strictes (40 photos, 60 stories).
  */

@@ -1,5 +1,5 @@
 /**
- * RADIA Snap — photos virtuelles et stories dans le téléphone du jeu : décors, poses, cadres, filtres,
+ * Snapchien — photos virtuelles et stories dans le téléphone du jeu : décors, poses, cadres, filtres,
  * autocollants déplaçables, obturateur + flash, enregistrement dans l'album interne (Photos souvenirs), stories de
  * 1 à 5 images avec réactions fictives, stories proposées par les activités. Rien ne sort du jeu sans action explicite.
  */
@@ -65,7 +65,7 @@ export function openSnap(view: View = 'home', opts: { pending?: Pending } = {}):
     const v = h('div.snp-view.snp-home');
     const head = h('div.snp-head',
       h('button.snp-x', { 'aria-label': 'Fermer', on: { click: tap(close, { sound: false }) } }, ico('close', 22)),
-      h('div.snp-brand', h('i'), h('b', 'RADIA Snap')),
+      h('div.snp-brand', h('i'), h('b', 'Snapchien')),
       h('button.snp-x.snp-cam', { 'aria-label': 'Prendre une photo', on: { click: tap(() => go('camera'), { sound: false }) } }, ico('camera', 22)));
     const bar = h('div.snp-stories');
     const addBtn = h('button.snp-story.add', { on: { click: tap(() => openStoryComposer(), { sound: false }) } }, h('span.snp-ring.plain', h('i', '+')), h('small', 'Ma story'));
@@ -302,9 +302,9 @@ export function openSnap(view: View = 'home', opts: { pending?: Pending } = {}):
     const act = (label: string, ic: string, fn: () => void, cls = '') => h(`button.snp-act${cls}`, { on: { click: tap(fn, { sound: false }) } }, ico(ic, 20), h('span', label));
     const actions = h('div.snp-acts',
       act('Story', 'camera', () => { stop(); back.remove(); openStoryComposer([id]); }),
-      act('Clips', 'play', () => {
+      act('TikTak', 'play', () => {
         const res = publishPhotoClip(id, '', r.title); tick('reward'); haptic('reward');
-        toast('Publié dans RADIA Clips ♡', addFansNote(res.fans), 3000);
+        toast('Publié dans TikTak ♡', addFansNote(res.fans), 3000);
       }),
       act('PNG', 'image', () => { void exportSnap(r, { cat: m.cat, stickers: m.stickers, catOpts: catOpts() }); }),
       act('Suppr.', 'trash', () => { void ui.confirm('Supprimer cette photo ?', 'Elle disparaît aussi de Photos souvenirs.', 'Supprimer', 'Garder').then((ok) => { if (ok) { deleteSnapPhoto(id); thumbCache.clear(); done(); } }); }));

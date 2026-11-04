@@ -1,5 +1,5 @@
 /**
- * RADIA Clips : scènes ANIMÉES en Canvas 2D (boucles de 3 à 6 s) générées à partir des dessins du jeu
+ * TikTak : scènes ANIMÉES en Canvas 2D (boucles de 3 à 6 s) générées à partir des dessins du jeu
  * (décors, Radia, Auguste, chat, fleurs, chocolats, meubles). Aucune vidéo, aucun média externe.
  * `makeScene(spec, env)` renvoie une fonction `draw(g, W, H, t)` (t en secondes, boucle gérée par l'appelant).
  */
