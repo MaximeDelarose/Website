@@ -39,7 +39,7 @@ export function progress(): Progress {
 /** Moment sûr pour afficher une notification (aucune interaction ni animation critique en cours). */
 export function safeToNotify(): boolean {
   if (document.hidden || isEventRunning() || notificationVisible() || funBusy()) return false;
-  if (document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .cg-screen, .fam-scene, .fam-body, .kc, .aug-says, .splash, .ev-layer, .ev-inv-back, .ph-back, .call-layer, .inc-layer, .tdr-layer')) return false;
+  if (document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .cg-screen, .fam-scene, .fam-body, .kc, .aug-says, .splash, .ev-layer, .ev-inv-back, .ph-back, .call-layer, .rw-root, .inc-layer, .tdr-layer')) return false;
   try {
     const g = getGame();
     if (g.scene.getScenes(true).some((s) => !['backdrop', 'merge'].includes(s.sys.settings.key))) return false; // billard, chemin, puzzle…
@@ -111,12 +111,20 @@ function tick(dt: number): void {
   }
   maybeNotify();
   if (!notificationVisible()) funMaybe(safeToNotify());
+  swipeTick(dt, active, safeToNotify() && !notificationVisible());
+}
+
+/** Tindeur jouable : les matchs écrivent parfois (horloge de jeu ACTIF, notification espacée, jamais à un moment critique). */
+function swipeTick(dt: number, active: boolean, safe: boolean): void {
+  const raw = save.data.fun.apps.swipe as { convos?: object };
+  if (!save.data.fun.tindeur.installed || !raw.convos || !Object.keys(raw.convos).length) return;
+  void import('./tindeur/swipe/runtime').then((m) => m.swipeTick(dt, active, safe));
 }
 
 export function startInvitations(): void {
   if (started) return;
   started = true;
-  // invitations dont l'événement n'existe plus : on les range (la pastille ne doit pas les compter)
+  // invitations dont l'événement n'existe plus : on les range (elles ne peuvent plus s'ouvrir, la pastille ne doit pas les compter)
   for (const i of ev().inbox) if (i.state !== 'done' && !eventById(i.eventId)) i.state = 'done';
   necklaceLaunch();
   installNecklaceDebug((id) => { shown.delete(id); }, () => safeToNotify() && !notificationVisible());

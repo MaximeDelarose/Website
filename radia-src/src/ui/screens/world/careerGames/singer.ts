@@ -1,5 +1,6 @@
 /** Interface du mini-jeu « Chanteuse » : jeu de rythme tactile (3–4 pistes, notes qui tombent). */
 import { h, tap } from '../../../dom';
+import { haptic } from '../../../../core/haptics';
 import { audio, reducedFx, save } from '../../../../core/app';
 import { SONGS, type SongDef } from '../../../../data/world/careers';
 import { drawConcertStage } from '../../../../game/art/world/careers';
@@ -96,7 +97,7 @@ export function playSinger(g: GameCtx): Promise<GameResult | null> {
         flash[lane] = t;
         const res = eng.hit(lane, t);
         if (ac) tone(song.notes[lane] * (res ? 1 : 0.5), ac.currentTime, res ? 0.45 : 0.08, res ? 'triangle' : 'sine', res ? 0.34 : 0.05);
-        if (res) { pops.push({ text: JUDGE_TXT[res.judgement], x: (lane + 0.5) * laneW, t, c: JUDGE_COL[res.judgement] }); lastJudge = res.judgement; if (res.judgement === 'perfect') audio.play('sparkle', 1 + lane * 0.1); }
+        if (res) { pops.push({ text: JUDGE_TXT[res.judgement], x: (lane + 0.5) * laneW, t, c: JUDGE_COL[res.judgement] }); lastJudge = res.judgement; if (res.judgement === 'perfect') { audio.play('sparkle', 1 + lane * 0.1); haptic('select'); } }
       };
       cv.addEventListener('pointerdown', press);
 
@@ -181,6 +182,7 @@ export function playSinger(g: GameCtx): Promise<GameResult | null> {
         stopAudio();
         const score = eng.score();
         audio.play(score >= 60 ? 'victory' : 'reward');
+        haptic('reward');
         sh.sub.textContent = 'Merci, Paris !';
         sh.body.replaceChildren(h('div.ac-intro', h('h3', score >= 90 ? 'Standing ovation !' : score >= 60 ? 'Le public chante avec toi !' : 'Belle répétition !'),
           stars(score >= 90 ? 3 : score >= 70 ? 2 : score >= 40 ? 1 : 0),

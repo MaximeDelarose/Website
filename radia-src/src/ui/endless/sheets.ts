@@ -16,8 +16,8 @@ export function openTreasureSheet(env: EndlessEnv): void {
   const fun = save.data.fun;
   const v = treasureView(fun);
   const pend = pendingChests(fun);
-  const body = h('div.en-tre',
-    h('div.en-tre-top', h('span.en-tre-ic', { html: chestSvg('#FFC857', 54) }), h('div', h('b', pend > 0 ? `${pend} coffre${pend > 1 ? 's' : ''} à ouvrir` : 'Jauge de trésor'), h('small', `${Math.floor(v.points)}/${v.goal} · environ 1 coffre toutes les 30 fusions`))),
+  const body = h('div.en-tre-body',
+    h('div.en-tre-top', h('span.en-tre-big', { html: chestSvg('#FFC857', 54) }), h('div', h('b', pend > 0 ? `${pend} coffre${pend > 1 ? 's' : ''} à ouvrir` : 'Jauge de trésor'), h('small', `${Math.floor(v.points)}/${v.goal} · environ 1 coffre toutes les 30 fusions`))),
     bar(pct(v.points, v.goal)),
     h('p.muted.en-small', 'Chaque fusion remplit la jauge (plus pour les gros objets). Les commandes et les niveaux maximum aussi.'));
   let sheet: ReturnType<typeof openSheet>;

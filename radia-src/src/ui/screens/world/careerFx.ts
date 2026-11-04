@@ -16,6 +16,16 @@ import { CLOTHES } from '../../../data/world/wardrobe';
 import { diamondUrl, energyUrl } from '../shop';
 import type { FanTierClaim, GrantedItems } from '../../../game/world/careers';
 
+// ------------------------------------------------------------------ calques vivants
+/** Tous les calques d'effets de carrière encore à l'écran (pour les détruire en quittant). */
+const live = new Map<HTMLElement, () => void>();
+/** Détruit immédiatement tout calque de célébration ou de confettis restant. */
+export function clearCareerFx(): void {
+  for (const [el, done] of [...live]) { el.remove(); done(); }
+  live.clear();
+  document.querySelectorAll('.car-fx-layer, .car-fx-confetti').forEach((e) => e.remove());
+}
+
 // ------------------------------------------------------------------ utilitaires
 export const careerIconUrl = (id: CareerId, size = 96): string => canvasUrl(`career:${id}:${size}`, () => paint(size, size, 2, (c) => drawCareerIcon(c, id, size)));
 
@@ -37,7 +47,8 @@ export function countUp(el: HTMLElement, from: number, to: number, ms = 1200, fo
 /** Confettis (canvas plein écran, ~24 images/s, désactivé en effets réduits). */
 export function confetti(ms = 2400, amount = 90): void {
   if (reducedFx()) return;
-  const cv = h('canvas.fx-confetti');
+  const cv = h('canvas.car-fx-confetti');
+  live.set(cv, () => undefined);
   const W = ui.root.clientWidth || 393, H = ui.root.clientHeight || 852;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = W * dpr; cv.height = H * dpr;
@@ -53,7 +64,7 @@ export function confetti(ms = 2400, amount = 90): void {
   let last = 0;
   const frame = (now: number) => {
     const t = now - t0;
-    if (t > ms || !cv.isConnected) { cv.remove(); return; }
+    if (t > ms || !cv.isConnected) { cv.remove(); live.delete(cv); return; }
     if (now - last > 40) {
       last = now;
       ctx.clearRect(0, 0, W, H);
@@ -95,8 +106,9 @@ export function rewardChips(r: Reward, items?: GrantedItems): HTMLElement[] {
 function layer(inner: Node[], cls = ''): { el: HTMLElement; closed: Promise<void>; close: () => void } {
   let done: () => void = () => undefined;
   const closed = new Promise<void>((r) => { done = r; });
-  const el = h(`div.fx-layer${cls ? '.' + cls : ''}`, h('div.fx-rays'), h('div.fx-glow'), ...inner);
-  const close = () => { el.classList.add('leaving'); window.setTimeout(() => { el.remove(); done(); }, 240); };
+  const el = h(`div.car-fx-layer${cls ? '.' + cls : ''}`, h('div.car-fx-rays'), h('div.car-fx-glow'), ...inner);
+  const close = () => { el.classList.add('leaving'); window.setTimeout(() => { el.remove(); live.delete(el); done(); }, 240); };
+  live.set(el, done);
   ui.root.append(el);
   return { el, closed, close };
 }
@@ -104,11 +116,11 @@ function layer(inner: Node[], cls = ''): { el: HTMLElement; closed: Promise<void
 /** Palier de carrière franchi. */
 export function showLevelUp(id: CareerId, to: number, tier: TierDef, items: GrantedItems): Promise<void> {
   const btn = h('button.btn.wide', 'Merci ♡');
-  const card = h('div.fx-card.panel',
-    h('img.fx-badge', { src: careerIconUrl(id, 120), alt: '' }),
-    h('small.fx-kicker', `${CAREER_NAMES[id]} · palier ${to} sur 5`),
-    h('h2.fx-title', tier.title),
-    h('p.fx-sub', tier.goal + ' : réussi !'),
+  const card = h('div.car-fx-card.panel',
+    h('img.car-fx-badge', { src: careerIconUrl(id, 120), alt: '' }),
+    h('small.car-fx-kicker', `${CAREER_NAMES[id]} · palier ${to} sur 5`),
+    h('h2.car-fx-title', tier.title),
+    h('p.car-fx-sub', tier.goal + ' : réussi !'),
     h('div.rc-row', ...rewardChips(tier.reward, items)),
     btn);
   const L = layer([card]);
@@ -121,19 +133,19 @@ export function showLevelUp(id: CareerId, to: number, tier: TierDef, items: Gran
 /** Palier de fans franchi : compteur animé, lumière, confettis, récompense. */
 export function showFanTier(c: FanTierClaim): Promise<void> {
   const prev = c.tier > 0 ? FAN_TIER_DEFS[c.tier - 1].n : 0;
-  const count = h('b.fx-count', fmt(prev));
+  const count = h('b.car-fx-count', fmt(prev));
   const btn = h('button.btn.gold.wide', 'Génial ♡');
-  const card = h('div.fx-card.panel.fx-fans',
-    h('small.fx-kicker', 'Nouveau palier de fans'),
-    h('div.fx-heart', icon('heart', 34)),
-    h('div.fx-counter', count, h('span', 'fans')),
-    h('h2.fx-title', c.def.title),
-    h('p.fx-sub', c.def.note),
-    c.def.event ? h('p.fx-event', `Événement : ${c.def.event}`) : null,
+  const card = h('div.car-fx-card.panel.car-fx-fans',
+    h('small.car-fx-kicker', 'Nouveau palier de fans'),
+    h('div.car-fx-heart', icon('heart', 34)),
+    h('div.car-fx-counter', count, h('span', 'fans')),
+    h('h2.car-fx-title', c.def.title),
+    h('p.car-fx-sub', c.def.note),
+    c.def.event ? h('p.car-fx-event', `Événement : ${c.def.event}`) : null,
     h('div.rc-row', ...rewardChips(c.def.reward, c.items)),
-    h('small.fx-fict', 'popularité'),
+    h('small.car-fx-fict', 'popularité'),
     btn);
-  const L = layer([card], 'fx-big');
+  const L = layer([card], 'car-fx-big');
   btn.addEventListener('click', tap(L.close));
   audio.play('victory');
   window.setTimeout(() => { countUp(count, prev, c.def.n, 1500); audio.play('reward'); confetti(3200, 130); }, 350);
@@ -146,13 +158,13 @@ export function showMagazineReveal(id: MagazineId): Promise<void> {
   const cover = h('img.mag-cover', { src: paint(300, 400, 2, (c) => drawMagazine(c, id, 300, 400)).toDataURL('image/png'), alt: MAGAZINE_NAMES[id] });
   const sparks = Array.from({ length: 14 }, (_, i) => h('i.mag-spark', { style: `--a:${(i / 14) * 360}deg;--d:${90 + (i % 3) * 30}px;--t:${0.55 + (i % 4) * 0.05}s` }));
   const btn = h('button.btn.wide', 'Superbe ♡');
-  const card = h('div.fx-card.fx-mag',
-    h('small.fx-kicker.light', 'Nouvelle couverture !'),
+  const card = h('div.car-fx-card.car-fx-mag',
+    h('small.car-fx-kicker.light', 'Nouvelle couverture !'),
     h('div.mag-stage', cover, ...sparks),
-    h('h2.fx-title.light', MAGAZINE_NAMES[id]),
-    h('p.fx-sub.light', 'Ajoutée à ton album. Tu peux l\'accrocher dans ton château.'),
+    h('h2.car-fx-title.light', MAGAZINE_NAMES[id]),
+    h('p.car-fx-sub.light', 'Ajoutée à ton album. Tu peux l\'accrocher dans ton château.'),
     btn);
-  const L = layer([card], 'fx-mag-layer');
+  const L = layer([card], 'car-fx-mag-layer');
   btn.addEventListener('click', tap(L.close));
   audio.play('page');
   window.setTimeout(() => { audio.play('sparkle'); confetti(1800, 50); }, 700);

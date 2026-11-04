@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { defaultFun, sanitizeFun, type DailyState } from '../src/save/fun';
-import { claim, isEligible, peek, resetDaily, setDay, todayKey } from '../src/daily/logic';
+import { claim, isEligible, migrateDaily, peek, resetDaily, setDay, todayKey } from '../src/daily/logic';
 import { DAYS, THEMES, dayDef, describe as desc, resolveDay, type Part, themeOf, type Ownership } from '../src/daily/calendar';
 import { applyResolved, ownershipOf } from '../src/daily/grant';
 import { defaultWorld } from '../src/save/schema';
@@ -89,23 +89,37 @@ describe('réclamation', () => {
 });
 
 describe('calendrier', () => {
-  it('cycle 1 : J1..J7 exacts', () => {
+  it('cycle 1 : J1..J7 exacts (structure variée avec tickets J3 et J6)', () => {
     expect(THEMES[0].name).toBe('Princesse du château');
     const t = (n: number) => dayDef(0, n).parts;
-    expect(t(0)).toEqual([{ t: 'coins', n: 250 }]);
-    expect(t(1)).toEqual([{ t: 'diamonds', n: 100 }]);
-    expect(t(2)).toHaveLength(1);
-    expect(t(2)[0]).toMatchObject({ t: 'cloth' });
-    expect(CLOTHES[picks(t(2)[0])[0]].slot).toBe('bag');
-    expect(t(3)[0]).toMatchObject({ t: 'bouquet' });
-    expect(t(4)[0]).toMatchObject({ t: 'cloth' });
-    expect(t(5)[0]).toMatchObject({ t: 'furn' });
-    expect(t(6)).toHaveLength(2);
+    expect(t(0)).toEqual([{ t: 'coins', n: 250 }]);            // J1 pièces
+    expect(t(1)).toEqual([{ t: 'diamonds', n: 100 }]);         // J2 diamants
+    expect(t(2)).toEqual([{ t: 'tickets', n: 250 }]);          // J3 tickets du casino
+    expect(t(3)).toHaveLength(1);                              // J4 accessoire de mode (sac)
+    expect(t(3)[0]).toMatchObject({ t: 'cloth' });
+    expect(CLOTHES[picks(t(3)[0])[0]].slot).toBe('bag');
+    expect(t(4).filter((p) => p.t === 'furn')).toHaveLength(2); // J5 coffre de décoration
+    expect(t(5)[0]).toEqual({ t: 'tickets', n: 400 });         // J6 tickets + cosmétique
+    expect(t(5)[1]).toMatchObject({ t: 'cloth' });
+    expect(t(6)).toHaveLength(2);                              // J7 tenue exclusive
     const dress = picks(t(6)[0])[0];
     expect(CLOTHES[dress].slot).toBe('dress');
     expect(CLOTHES[dress].name).toMatch(/soirée/);
     expect(['crown', 'acc', 'ears']).toContain(CLOTHES[picks(t(6)[1])[0]].slot);
     expect(dayDef(0, 6).rarity).toBe('legendary');
+  });
+  it('tous les cycles : tickets en J3 et J6 uniquement, J2 diamants, J5 coffre de 2 décorations ou plus', () => {
+    for (let c = 0; c < THEMES.length; c++) {
+      const hasTix = (d: number) => dayDef(c, d).parts.some((p) => p.t === 'tickets');
+      expect([0, 1, 2, 3, 4, 5, 6].filter(hasTix), THEMES[c].id).toEqual([2, 5]);
+      expect(dayDef(c, 1).parts[0].t).toBe('diamonds');
+      expect(dayDef(c, 4).parts.filter((p) => p.t === 'furn').length).toBeGreaterThanOrEqual(2);
+      expect(['cloth', 'furn']).toContain(dayDef(c, 6).parts[0].t);
+    }
+  });
+  it('les cycles se distinguent (au moins un lot de mode ou de décoration différent à J4/J5/J7)', () => {
+    const sig = (c: number) => JSON.stringify([3, 4, 6].map((d) => dayDef(c, d).parts));
+    expect(new Set(THEMES.map((_, c) => sig(c))).size).toBe(THEMES.length);
   });
   it('6 thèmes de 7 jours, noms attendus', () => {
     expect(THEMES.map((x) => x.name)).toEqual(['Princesse du château', 'Mode parisienne', 'Jardin de rêve', 'Soirée romantique', 'Chocolaterie royale', 'Tenues de célébrité']);
@@ -116,13 +130,15 @@ describe('calendrier', () => {
       if (p.t === 'cloth') for (const id of p.pick) { expect(CLOTH_SLOTS[id], id).toBeTruthy(); expect(CLOTHES[id].gift, id).toBeFalsy(); expect(CLOTHES[id].free, id).toBeFalsy(); }
       if (p.t === 'furn') for (const id of p.pick) { expect(isFurnitureId(id), id).toBe(true); expect(FURNITURE[id]).toBeTruthy(); }
       if (p.t === 'bouquet') { expect(p.flowers.length).toBeGreaterThanOrEqual(3); expect(p.flowers.length).toBeLessThanOrEqual(5); for (const f of p.flowers) expect(FLOWERS[f], f).toBeTruthy(); }
-      if (p.t === 'coins' || p.t === 'diamonds' || p.t === 'res') expect(p.n).toBeGreaterThan(0);
+      if (p.t === 'coins' || p.t === 'diamonds' || p.t === 'tickets' || p.t === 'res') expect(p.n).toBeGreaterThan(0);
     }
   });
   it('cycles suivants : montants plus généreux après un tour complet, thèmes qui bouclent', () => {
     expect(themeOf(6).id).toBe(themeOf(0).id);
     expect(dayDef(6, 0).parts[0]).toEqual({ t: 'coins', n: 290 }); // 250 × 1,15 arrondi à 10
     expect(dayDef(102, 1).parts[0]).toEqual({ t: 'diamonds', n: 200 });
+    expect(dayDef(6, 2).parts[0]).toEqual({ t: 'tickets', n: 290 }); // 250 × 1,15 arrondi à 10
+    expect(dayDef(102, 5).parts[0]).toEqual({ t: 'tickets', n: 800 }); // plafond ×2
     expect((dayDef(102, 0).parts[0] as { n: number }).n).toBe(500);
   });
 });
@@ -131,30 +147,31 @@ describe('résolution et attribution', () => {
   it('offre le premier candidat non possédé, sinon des pièces', () => {
     const w = defaultWorld();
     const own = ownershipOf(w);
-    const first = resolveDay(0, 2, own)[0];
+    const first = resolveDay(0, 3, own)[0];
     expect(first.t).toBe('cloth');
     if (first.t === 'cloth') w.wardrobe.owned.push(first.id);
-    const second = resolveDay(0, 2, ownershipOf(w))[0];
+    const second = resolveDay(0, 3, ownershipOf(w))[0];
     expect(second.t).toBe('cloth');
     expect(second).not.toEqual(first);
     for (const id of ['bg-mini-gold', 'bg-silver', 'bg-shoulder-black', 'bg-tote-beige'] as const) if (!w.wardrobe.owned.includes(id)) w.wardrobe.owned.push(id);
-    const dup = resolveDay(0, 2, ownershipOf(w))[0];
+    const dup = resolveDay(0, 3, ownershipOf(w))[0];
     expect(dup.t).toBe('dup');
     expect((dup as { n: number }).n).toBeGreaterThan(0);
     expect(desc(dup).sub).toMatch(/déjà/);
   });
   it('chaque lot arrive dans le bon inventaire (cycle 1 complet)', () => {
     const w = defaultWorld();
-    let dia = 0;
+    let dia = 0, tix = 0;
     for (let day = 0; day < DAYS; day++) {
       const parts = resolveDay(0, day, ownershipOf(w));
-      dia += applyResolved(w, parts).diamonds;
+      const r = applyResolved(w, parts);
+      dia += r.diamonds; tix += r.tickets;
     }
-    expect(w.res.coins).toBe(60 + 250);
+    expect(w.res.coins).toBe(60 + 250 + 80);
     expect(dia).toBe(100);
+    expect(tix).toBe(650); // J3 + J6 : les tickets sortent du World (versés au casino)
     expect(w.wardrobe.owned.length).toBeGreaterThanOrEqual(4 + 3 + 1); // sac + tenue + robe + accessoire (+ départ)
-    expect(Object.values(w.castle.owned).reduce((a, b) => a + b, 0)).toBe(1);
-    expect(Object.values(w.garden.bouquets).reduce((a, b) => a + b, 0)).toBe(1);
+    expect(Object.values(w.castle.owned).reduce((a, b) => a + b, 0)).toBe(2);
     expect(w.wardrobe.owned).toContain('dr-emerald-evening');
     expect(w.castle.owned['chandelier']).toBe(1);
   });
@@ -167,5 +184,36 @@ describe('résolution et attribution', () => {
   });
   it('libellés lisibles pour chaque lot de chaque thème', () => {
     for (let c = 0; c < THEMES.length; c++) for (let day = 0; day < DAYS; day++) for (const r of resolveDay(c, day, NONE)) expect(desc(r).title.length).toBeGreaterThan(2);
+  });
+});
+
+describe('migration de calendrier (cycle 1 d\'avant les tickets)', () => {
+  it('une joueuse au milieu d\'un cycle continue au même jour, sans rien perdre', () => {
+    const old: DailyState = { cycle: 0, day: 3, lastKey: '2026-10-30', claimed: [0, 1, 2], total: 3 };
+    const m = migrateDaily({ ...old, claimed: [...old.claimed] });
+    expect(m).toEqual(old);
+    expect(peek(m)).toEqual({ cycle: 0, day: 3 });
+    expect(dayDef(0, 3).parts[0]).toMatchObject({ t: 'cloth' }); // J4 : accessoire
+    const t = claim(m, '2026-11-04')!;
+    expect(t.day).toBe(3); expect(m.day).toBe(4); expect(m.total).toBe(4);
+  });
+  it('états abîmés : jour/cycle bornés, jours cochés distincts et antérieurs au jour courant', () => {
+    const m = migrateDaily({ cycle: -2, day: 99, lastKey: 'hier', claimed: [5, 5, 2, 9, -1, 1.5 as number], total: -8 });
+    expect(m).toEqual({ cycle: 0, day: 6, lastKey: '', claimed: [2, 5], total: 0 });
+  });
+  it('jamais de remise à zéro si des journées sont manquées : on reprend où on s\'était arrêtée', () => {
+    const m = migrateDaily({ cycle: 2, day: 4, lastKey: '2026-01-02', claimed: [0, 1, 2, 3], total: 17 });
+    const t = claim(m, '2026-11-04')!;
+    expect([t.cycle, t.day]).toEqual([2, 4]);
+    expect(m.total).toBe(18);
+  });
+  it('un cycle complet de 7 réclamations puis le cycle suivant (tickets J3 et J6 à chaque cycle)', () => {
+    const st = defaultFun().daily; const seen: number[] = [];
+    for (let i = 0; i < 14; i++) {
+      const t = claim(st, `2026-11-${String(i + 1).padStart(2, '0')}`)!;
+      if (dayDef(t.cycle, t.day).parts.some((p) => p.t === 'tickets')) seen.push(t.cycle * 10 + t.day);
+    }
+    expect(seen).toEqual([2, 5, 12, 15]);
+    expect(st.cycle).toBe(2); expect(st.day).toBe(0);
   });
 });

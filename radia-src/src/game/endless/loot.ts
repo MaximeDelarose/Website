@@ -159,6 +159,7 @@ export function applyEvents(host: LootHost, events: BoardEvent[]): LootResult {
       case 'drop': merge(applyLoot(host, e.loot)); break;
       case 'discover': merge(applyLoot(host, e.reward)); break;
       case 'maxMerge': merge(applyLoot(host, e.loot)); break;
+      case 'cellUnlock': merge(applyLoot(host, e.reward)); break;
       case 'secondary': if (e.reward) merge(applyLoot(host, e.reward)); break;
       case 'comboTier': {
         const l: Loot[] = [];

@@ -7,12 +7,16 @@ import { defaultEvents, sanitizeEvents } from '../events/state';
 import { defaultFun, sanitizeFun, type FunState } from './fun';
 import type { EventsState } from '../events/types';
 import type { OrderState, RunState } from '../game/merge/types';
+import { capLocks, validLock } from '../game/merge/locks';
 import { COLLECTION_IDS, GENERATORS, collMax, type ItemColl, type ItemRef } from '../data/items';
 import { DEFAULT_LOOK, STARTER_CLOTHES, KID_IDS, ROOM_IDS, type Look, type KidId, type RoomId } from '../data/world/ids';
 
 export const SAVE_VERSION = 5;
 
-export type ChessDifficulty = 'easy' | 'normal' | 'hard';
+export type ChessDifficulty = 'relax' | 'easy' | 'normal' | 'hard';
+
+/** Aides facultatives des échecs (mémorisées). */
+export interface ChessOpts { legal: boolean; threats: boolean; captures: boolean; tutorial: boolean }
 
 export interface Settings {
   music: number; // 0..1
@@ -62,6 +66,12 @@ export interface SaveData {
     queen: string[];
     /** Partie en cours contre l'IA. */
     game: { pgn: string; difficulty: ChessDifficulty; color: 'w' | 'b' } | null;
+    /** Dernière humeur choisie (« Détente ♡ » par défaut). */
+    pref?: ChessDifficulty;
+    /** Aides activées. */
+    opts?: ChessOpts;
+    /** Bulles du tutoriel déjà vues. */
+    tut?: string[];
   };
   endless: { best: number; runs: number; run: RunState | null; challenges: number };
   /** Message d'Auguste déjà affichés (anti-répétition). */
@@ -82,7 +92,12 @@ export interface SaveData {
   fun: FunState;
 }
 
-export interface PlacedItem { uid: number; id: string; x: number; y: number; color: string; flip?: boolean }
+/**
+ * Meuble posé. x, y en cases (multiples de 0,5 depuis la refonte de la décoration ; anciens entiers conservés).
+ * rot : orientation 0-3 ; variant : style (ex. tableau) ; on : uid du meuble qui le porte (objet posé sur une table, un canapé…).
+ * Mur : x le long du mur, y la hauteur depuis le haut. Plafond : x seulement. Tous les champs ajoutés sont optionnels.
+ */
+export interface PlacedItem { uid: number; id: string; x: number; y: number; color: string; flip?: boolean; rot?: number; variant?: string; on?: number }
 export interface RoomState { wall: string; floor: string; curtain: string; items: PlacedItem[] }
 export interface KidState { bond: number; games: Record<string, { best: number; plays: number }>; seenScenes: string[] }
 export interface GardenPlot { flower: string | null; plantedAt: number; stage: number }
@@ -211,7 +226,7 @@ export function defaultSave(): SaveData {
     achievements: {},
     stats: {},
     minigames: {},
-    chess: { wins: { easy: 0, normal: 0, hard: 0 }, losses: 0, draws: 0, puzzles: [], queen: [], game: null },
+    chess: { wins: { relax: 0, easy: 0, normal: 0, hard: 0 }, losses: 0, draws: 0, puzzles: [], queen: [], game: null, pref: 'relax', opts: { legal: true, threats: true, captures: true, tutorial: true }, tut: [] },
     endless: { best: 0, runs: 0, run: null, challenges: 0 },
     barks: {},
     economy: defaultEconomy(),
@@ -229,6 +244,16 @@ export function defaultSave(): SaveData {
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v: unknown, d: number, min = -Infinity, max = Infinity) =>
   typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : d;
+/** Position en demi-cases (les anciennes sauvegardes, entières, ne changent pas). */
+const half = (v: number) => Math.round(v * 2) / 2;
+/** Champs optionnels d'un meuble posé (orientation, style, support) : n'écrit rien s'ils sont absents ou invalides. */
+function placedExtras(i: Record<string, unknown>): { rot?: number; variant?: string; on?: number } {
+  const o: { rot?: number; variant?: string; on?: number } = {};
+  if (typeof i.rot === 'number' && Number.isFinite(i.rot)) { const r = ((Math.round(i.rot) % 4) + 4) % 4; if (r) o.rot = r; }
+  if (typeof i.variant === 'string' && /^[a-z0-9-]{1,24}$/.test(i.variant)) o.variant = i.variant;
+  if (typeof i.on === 'number' && Number.isFinite(i.on) && i.on > 0) o.on = Math.floor(i.on);
+  return o;
+}
 const bool = (v: unknown, d: boolean) => (typeof v === 'boolean' ? v : d);
 const str = (v: unknown, d: string) => (typeof v === 'string' ? v : d);
 const strArr = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
@@ -277,7 +302,12 @@ function validRun(v: unknown): RunState | null {
   r.lastMergeAt = 0;
   r.combo = num(r.combo, 0);
   // objets inconnus (version future, corruption) → case vide plutôt que perdre toute la partie
-  r.cells = (v.cells as Record<string, unknown>[]).map((c) => ({ item: validItem(c.item), gift: validItem(c.gift) }));
+  r.cells = (v.cells as Record<string, unknown>[]).map((c) => {
+    const lock = validLock(c.lock);
+    return lock ? { item: validItem(c.item), gift: validItem(c.gift), lock } : { item: validItem(c.item), gift: validItem(c.gift) };
+  });
+  capLocks(r.cells);
+  if (isObj(r.board) && r.mode === 'endless') r.board = { v: 1 }; else delete r.board;
   r.orders = (v.orders as unknown[]).slice(0, 4).map(validOrder);
   r.created = numRecord(r.created);
   for (const k of ['score', 'taps', 'merges', 'bestCombo', 'orderCursor', 'ordersDone', 'hearts', 'wandsEarned', 'rng', 'orderSerial', 'levelId'] as const) {
@@ -347,15 +377,20 @@ export function sanitize(raw: unknown): SaveData {
   if (isObj(s.chess)) {
     const c = s.chess;
     const w = isObj(c.wins) ? c.wins : {};
-    d.chess.wins = { easy: num(w.easy, 0, 0), normal: num(w.normal, 0, 0), hard: num(w.hard, 0, 0) };
+    d.chess.wins = { relax: num(w.relax, 0, 0), easy: num(w.easy, 0, 0), normal: num(w.normal, 0, 0), hard: num(w.hard, 0, 0) };
     d.chess.losses = num(c.losses, 0, 0);
     d.chess.draws = num(c.draws, 0, 0);
     d.chess.puzzles = strArr(c.puzzles);
     d.chess.queen = strArr(c.queen);
+    // anciennes sauvegardes : pas de préférence → « Détente » (parties en cours conservées telles quelles)
+    d.chess.pref = oneOf(c.pref, ['relax', 'easy', 'normal', 'hard'] as const, 'relax');
+    const o = isObj(c.opts) ? c.opts : {};
+    d.chess.opts = { legal: bool(o.legal, true), threats: bool(o.threats, true), captures: bool(o.captures, true), tutorial: bool(o.tutorial, true) };
+    d.chess.tut = strArr(c.tut).slice(0, 30);
     if (isObj(c.game) && typeof c.game.pgn === 'string') {
       d.chess.game = {
         pgn: c.game.pgn,
-        difficulty: oneOf(c.game.difficulty, ['easy', 'normal', 'hard'] as const, 'normal'),
+        difficulty: oneOf(c.game.difficulty, ['relax', 'easy', 'normal', 'hard'] as const, 'normal'),
         color: oneOf(c.game.color, ['w', 'b'] as const, 'w'),
       };
     }
@@ -470,7 +505,7 @@ export function sanitizeWorld(raw: unknown): World {
         const rs = c.rooms[r];
         if (!isObj(rs)) continue;
         const items = Array.isArray(rs.items)
-          ? rs.items.filter(isObj).map((i) => ({ uid: Math.floor(num(i.uid, 0, 0)), id: str(i.id, ''), x: Math.floor(num(i.x, 0, 0, 99)), y: Math.floor(num(i.y, 0, 0, 99)), color: str(i.color, 'cream'), flip: i.flip === true })).filter((i) => i.id)
+          ? rs.items.filter(isObj).map((i) => ({ uid: Math.floor(num(i.uid, 0, 0)), id: str(i.id, ''), x: half(num(i.x, 0, 0, 99)), y: half(num(i.y, 0, 0, 99)), color: str(i.color, 'cream'), flip: i.flip === true, ...placedExtras(i) })).filter((i) => i.id)
           : [];
         d.castle.rooms[r] = { wall: str(rs.wall, d.castle.rooms[r].wall), floor: str(rs.floor, d.castle.rooms[r].floor), curtain: str(rs.curtain, d.castle.rooms[r].curtain), items };
       }

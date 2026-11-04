@@ -89,7 +89,7 @@ export class BetBook {
   get bets(): Bet[] { return this.stack[this.at]; }
   total(): number { return this.bets.reduce((a, b) => a + b.amount, 0); }
   amountOn(spec: Pick<Bet, 'kind' | 'nums'>): number { return this.bets.find((b) => keyOf(b) === keyOf(spec))?.amount ?? 0; }
-  /** Ajoute un jeton sur une zone. Faux (rien ne change) si ça dépasse le plafond ou si la mise est invalide. */
+  /** Ajoute un ticket sur une zone. Faux (rien ne change) si ça dépasse le plafond ou si la mise est invalide. */
   place(spec: Pick<Bet, 'kind' | 'nums'>, chip: number): boolean {
     const nb: Bet = { kind: spec.kind, nums: spec.kind === 'num' || spec.kind === 'nums' ? covered(spec) : undefined, amount: chip };
     if (!validBet(nb) || this.total() + chip > this.cap) return false;

@@ -3,9 +3,21 @@
  * `augusteSays`). Naturelles, courtes, variées : humour, surprise, admiration,
  * tendresse. Jamais théâtral ; « galbi » reste rarissime (1 réplique sur ~12 au plus).
  */
-export type ReactionKey = 'rare' | 'maxMerge' | 'combo3' | 'combo5' | 'chest' | 'drop';
+import { hasDarija } from '../../data/darija';
+
+export type ReactionKey = 'classic' | 'rare' | 'maxMerge' | 'combo3' | 'combo5' | 'chest' | 'drop';
 
 export const AUGUSTE_REACTIONS: Record<ReactionKey, string[]> = {
+  classic: [
+    'Saha, propre !',
+    'Bien joué ça !',
+    'Ah ouais, joli !',
+    'Nickel.',
+    'Ça glisse tout seul.',
+    'Pas mal du tout.',
+    'Sahha, continue.',
+    'Joli geste.',
+  ],
   rare: [
     'Mais t\'as une chance de malade !',
     'Ah ouais, carrément ! Bien joué.',
@@ -16,6 +28,8 @@ export const AUGUSTE_REACTIONS: Record<ReactionKey, string[]> = {
     'Tu fais ça comme si c\'était facile.',
     'Rare, en plus. Tu m\'impressionnes.',
     'Ça, c\'est du beau travail.',
+    'Mashallah, regarde-moi ça !',
+    'Ya latif, t\'as trouvé quoi là ?!',
     'Mon cœur a fait un petit bond. Galbi.',
     'Attends, je la regarde encore un peu.',
     'Elle est vraiment jolie, celle-là.',
@@ -31,6 +45,8 @@ export const AUGUSTE_REACTIONS: Record<ReactionKey, string[]> = {
     'Ça mérite de s\'asseoir deux secondes pour l\'admirer.',
     'Pas mal, pour une fusion du mardi.',
     'Waouh. Là, j\'applaudis tout seul.',
+    'Bsahték, ça c\'est du lourd !',
+    'Mashallah, le niveau max !',
     'C\'est le plus bel objet du plateau, sans discuter.',
     'Tu me surprends encore. J\'adore.',
   ],
@@ -43,6 +59,8 @@ export const AUGUSTE_REACTIONS: Record<ReactionKey, string[]> = {
     'Tu as les doigts qui dansent.',
     'Pas mal, pas mal du tout.',
     'Ça devient presque trop facile pour toi.',
+    'Sahha, ça enchaîne !',
+    'Mashallah, tu as des doigts de fée.',
   ],
   combo5: [
     'Cinq ! Tu es complètement dans ta bulle.',
@@ -53,6 +71,8 @@ export const AUGUSTE_REACTIONS: Record<ReactionKey, string[]> = {
     'Là, tu m\'épates vraiment.',
     'Ça vole, je ne sais pas comment tu fais.',
     'Si ça continue, je vais devoir t\'applaudir debout.',
+    'Wallah, tu es en feu !',
+    'Ya latif, quelle série !',
   ],
   chest: [
     'Tiens, ça c\'est pour toi.',
@@ -63,6 +83,8 @@ export const AUGUSTE_REACTIONS: Record<ReactionKey, string[]> = {
     'Oh, ça sent la bonne surprise.',
     'Je le gardais pour toi, celui-là. Enfin, presque.',
     'Alors, qu\'est-ce que ça donne ?',
+    'Bsahték, c\'est pour toi !',
+    'Ya latif, il est lourd, celui-là.',
   ],
   drop: [
     'Oh, un petit cadeau est tombé.',
@@ -73,8 +95,13 @@ export const AUGUSTE_REACTIONS: Record<ReactionKey, string[]> = {
     'Hé, une trouvaille !',
     'Ça tombe bien, j\'en avais besoin. Enfin, toi.',
     'Quelle belle surprise.',
+    'Sahha, un bonus !',
+    'Wallah, il tombait bien, celui-là.',
   ],
 };
+
+/** Dernières réactions arabes/darija (au plus 2 d'affilée, toutes clés confondues). */
+const darijaRun: boolean[] = [];
 
 /** Mémoire anti-répétition : dernières répliques par clé. */
 const recent = new Map<ReactionKey, string[]>();
@@ -87,12 +114,16 @@ const MEMORY = 3;
 export function pickReaction(key: ReactionKey, rng: () => number = Math.random): string {
   const all = AUGUSTE_REACTIONS[key];
   const mem = recent.get(key) ?? [];
-  const pool = all.filter((l) => !mem.includes(l));
+  const streak = darijaRun.length >= 2 && darijaRun.slice(-2).every(Boolean);
+  let pool = all.filter((l) => !mem.includes(l) && !(streak && hasDarija(l)));
+  if (!pool.length) pool = all.filter((l) => !mem.includes(l));
   const from = pool.length ? pool : all.filter((l) => l !== mem[mem.length - 1]);
   const line = from[Math.min(from.length - 1, Math.floor(rng() * from.length))];
   recent.set(key, [...mem, line].slice(-MEMORY));
+  darijaRun.push(hasDarija(line));
+  if (darijaRun.length > 10) darijaRun.shift();
   return line;
 }
 
 /** Tests : oublie les répliques récentes. */
-export function resetReactionMemory(): void { recent.clear(); }
+export function resetReactionMemory(): void { recent.clear(); darijaRun.length = 0; }

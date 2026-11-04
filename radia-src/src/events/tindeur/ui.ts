@@ -28,7 +28,16 @@ export function announceTindeur(): void {
   }, 2600);
 }
 
+/** Ouvre Tindeur : la scène « 2 500 matchs » tant que la joueuse n'a pas répondu, sinon l'appli jouable (pile de cartes + messages). */
 export function openTindeur(): void {
+  const t = save.data.fun.tindeur;
+  if (layer || document.querySelector('.sw-app')) return;
+  if (t.installed && t.shown && t.choice === 'none') { openTindeurScene(); return; }
+  void import('./swipe/ui').then((m) => m.openSwipeApp());
+}
+
+/** Scène secrète : compteur de matchs, nouveau match, choix garder / désinstaller. */
+export function openTindeurScene(): void {
   if (layer) return;
   const t = save.data.fun.tindeur;
   let step: 'count' | 'match' = 'count';
@@ -98,7 +107,10 @@ export function applyInstalled(installed: boolean): void {
   emitPhone();
 }
 
-/** Désinstallation demandée depuis les réglages du téléphone : refusée aux deux premiers essais, acceptée au troisième. */
+/**
+ * Désinstallation demandée depuis les réglages du téléphone : les deux premiers essais sont refusés
+ * (renvoie false, l'appli reste), le troisième désinstalle (renvoie true).
+ */
 export function attemptUninstall(): boolean {
   const r = tryUninstall(save.data.fun.tindeur, Date.now());
   save.save();

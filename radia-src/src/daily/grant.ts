@@ -10,19 +10,20 @@ export const ownershipOf = (w: World): Ownership => ({
   furn: (id) => w.castle.owned[id] ?? 0,
 });
 
-/** Verse les lots dans l'inventaire respectif (garde-robe, meubles possédés, bouquets, ressources). Renvoie les diamants à créditer. */
-export function applyResolved(w: World, parts: readonly Resolved[]): { diamonds: number } {
-  let diamonds = 0;
+/** Verse les lots dans l'inventaire respectif (garde-robe, meubles possédés, bouquets, ressources). Renvoie les diamants et les tickets de casino à créditer (ils ne vivent pas dans le World). */
+export function applyResolved(w: World, parts: readonly Resolved[]): { diamonds: number; tickets: number } {
+  let diamonds = 0, tickets = 0;
   const add = (k: 'coins' | 'fabric' | 'flowers' | 'cocoa', n: number) => { if (n > 0) w.res[k] = Math.min(CAP, w.res[k] + Math.floor(n)); };
   for (const p of parts) {
     switch (p.t) {
       case 'coins': case 'dup': add('coins', p.n); break;
       case 'res': add(p.k, p.n); break;
       case 'diamonds': diamonds += Math.max(0, Math.floor(p.n)); break;
+      case 'tickets': tickets += Math.max(0, Math.floor(p.n)); break;
       case 'cloth': if (!w.wardrobe.owned.includes(p.id)) w.wardrobe.owned.push(p.id); break;
       case 'furn': w.castle.owned[p.id] = (w.castle.owned[p.id] ?? 0) + 1; break;
       case 'bouquet': w.garden.bouquets[p.key] = (w.garden.bouquets[p.key] ?? 0) + 1; break;
     }
   }
-  return { diamonds };
+  return { diamonds, tickets };
 }

@@ -86,7 +86,7 @@ describe('un tirage par jour', () => {
 
 describe('attribution', () => {
   const lot = (id: string) => LOTS.find((l) => l.id === id)!;
-  it('pièces, diamants, énergie, jetons, fragment', () => {
+  it('pièces, diamants, énergie, tickets, fragment', () => {
     const { c, log } = ctx(); const rng = seededRng(1);
     applyLot(lot('coins300'), c, rng); applyLot(lot('diamonds6'), c, rng); applyLot(lot('energy3'), c, rng); applyLot(lot('chips600'), c, rng); applyLot(lot('fragment'), c, rng);
     expect(log).toEqual({ coins: 300, diamonds: 6, energy: 3, chips: 600, 'frag:cloth': 1 });

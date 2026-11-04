@@ -31,9 +31,11 @@ import { BaseScene } from '../scenes/BaseScene';
 import { BOARD_H, BOARD_SIZE, BOARD_W, type BoardEvent, type LevelDef, type RunState } from './types';
 import * as R from './rules';
 import { suggestMerge, botStep } from './bot';
+import { LONG_PRESS_MS, PointerFsm } from './pointerFsm';
+import { ENDLESS_CFG } from '../endless/config';
 import { MAX_LEVEL, RARITY_COLOR, SPECIAL, collMax, type ItemRef, type Rarity } from '../../data/items';
 import {
-  COLLECTION_TINTS, ITEM_TEX, ensureBoardTextures, ensureFlyTexture, ensureFxTextures, ensureItemTexture,
+  COLLECTION_TINTS, ITEM_TEX, ensureBoardTextures, ensureFlyTexture, ensureFxTextures, ensureItemTexture, ensureLockRewardTexture,
 } from './textures';
 import { audio, reducedFx, save } from '../../core/app';
 import { haptic } from '../../core/haptics';
@@ -68,6 +70,10 @@ export interface MergeHost {
   bagPut?(r: ItemRef): void;
   bagAnchor?(): { x: number; y: number } | null;
   onBagFull?(): void;
+  /** Objet mis en avant (sélection, générateur touché, case verrouillée) : alimente le panneau sous le plateau. -1 = aucun. */
+  onSelect?(cell: number): void;
+  /** Appui long (≥ 550 ms, immobile) sur un objet, un générateur ou une case verrouillée : ouvre sa fiche. */
+  onLongPress?(cell: number): void;
   /** Apparence achetée : cases et style d'éclats. */
   skin?(): string;
   fxStyle?(): string;
@@ -75,7 +81,9 @@ export interface MergeHost {
 
 export interface MergeSceneData { def: LevelDef; state: RunState; host: MergeHost }
 
-interface Drag { from: number; sprite: Phaser.GameObjects.Image; startX: number; startY: number; moved: boolean; pointerId: number }
+interface Drag { from: number; sprite: Phaser.GameObjects.Image | null; startX: number; startY: number; moved: boolean; pointerId: number; long?: boolean }
+/** Éléments dessinés sur une case verrouillée (toile / sable / cadenas, objet ou récompense visible, lueur). */
+interface LockVis { objs: Phaser.GameObjects.Image[]; ov: Phaser.GameObjects.Image | null; under: Phaser.GameObjects.Image | null; twinkle: Phaser.Time.TimerEvent | null }
 
 export class MergeScene extends BaseScene {
   static KEY = 'merge';
@@ -99,6 +107,9 @@ export class MergeScene extends BaseScene {
   private matchCells: number[] = [];
   private comboText!: Phaser.GameObjects.Text;
   private drag: Drag | null = null;
+  private fsm = new PointerFsm();
+  private pressTimer: number | undefined;
+  private lockVis: (LockVis | null)[] = [];
   private selected = -1;
   private locked = new Set<number>();
   /** Vrai quand aucune animation de fusion ni glisser en cours (invitations : moment sûr pour notifier). */
@@ -127,6 +138,7 @@ export class MergeScene extends BaseScene {
     this.sprites = new Array(BOARD_SIZE).fill(null);
     this.gifts = new Array(BOARD_SIZE).fill(null);
     this.glows = new Array(BOARD_SIZE).fill(null);
+    this.lockVis = new Array(BOARD_SIZE).fill(null);
     this.tiles = [];
     this.locked.clear();
     this.pending.clear();
@@ -156,7 +168,7 @@ export class MergeScene extends BaseScene {
     const onWinMove = (e: PointerEvent) => {
       this.lastClient = { x: e.clientX, y: e.clientY, id: e.pointerId };
       const d = this.drag;
-      if (d?.moved && (e.target as Element | null)?.tagName !== 'CANVAS') {
+      if (d?.moved && d.sprite && (e.target as Element | null)?.tagName !== 'CANVAS') {
         d.sprite.setPosition(e.clientX, e.clientY - this.cell * 0.28);
         this.placeShadow(e.clientX, e.clientY - this.cell * 0.28, 1.15);
         this.targetHi.setVisible(false);
@@ -172,6 +184,7 @@ export class MergeScene extends BaseScene {
     window.addEventListener('pointermove', onWinMove);
     window.addEventListener('pointerup', onWinUp);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.clearTimeout(this.pressTimer);
       window.removeEventListener('pointermove', onWinMove); window.removeEventListener('pointerup', onWinUp);
       this.slowDepth = 0; this.time.timeScale = 1; this.tweens.timeScale = 1;
     });
@@ -263,6 +276,8 @@ export class MergeScene extends BaseScene {
       const cell = this.state.cells[i];
       if (cell.gift) this.makeGift(i);
       if (cell.item) this.makeSprite(i, cell.item);
+      this.clearLockVis(i);
+      if (cell.lock) this.makeLockVis(i);
     }
 
     this.comboText?.destroy();
@@ -331,6 +346,15 @@ export class MergeScene extends BaseScene {
     const booster = this.host.booster();
     if (booster) { this.applyBooster(booster, i); return; }
     const cell = this.state.cells[i];
+    // une case verrouillée sélectionnée ne sert pas de départ à un déplacement : la nouvelle pression repart de zéro
+    if (this.selected >= 0 && this.state.cells[this.selected]?.lock && this.selected !== i) this.setSelected(-1);
+    // case verrouillée : toucher court = objectif / sélection, appui long = fiche (aucun glissé)
+    if (cell.lock && !cell.item) {
+      this.drag = { from: i, sprite: null, startX: x, startY: y, moved: false, pointerId: p.id };
+      this.fsm.down(performance.now(), x, y, true);
+      this.armLong();
+      return;
+    }
     if (!cell.item || this.locked.has(i)) {
       // Toucher une case vide (ou un paquet) avec un objet sélectionné → tentative de déplacement
       if (this.selected >= 0 && this.selected !== i) {
@@ -340,12 +364,14 @@ export class MergeScene extends BaseScene {
       } else if (cell.gift) {
         this.wiggle(this.gifts[i]);
         audio.play('invalid');
-      }
+      } else if (!cell.item) this.host.onSelect?.(-1);
       return;
     }
     const sp = this.sprites[i];
     if (!sp) return;
     this.drag = { from: i, sprite: sp, startX: x, startY: y, moved: false, pointerId: p.id };
+    this.fsm.down(performance.now(), x, y, true);
+    this.armLong();
     // Dès que le doigt se pose : l'objet grossit et ses partenaires de fusion s'allument.
     if (this.selected < 0 || this.selected === i) {
       this.lift(sp);
@@ -354,6 +380,32 @@ export class MergeScene extends BaseScene {
       this.showMatches(i);
       this.selHi.setPosition(this.cx(i), this.cy(i)).setScale(1 / texScale()).setVisible(true);
     }
+  }
+
+  /** Arme le minuteur d'appui long (minuteur réel : insensible au ralenti visuel). */
+  private armLong(): void {
+    window.clearTimeout(this.pressTimer);
+    this.pressTimer = window.setTimeout(() => {
+      const d = this.drag;
+      if (d && this.fsm.tick(performance.now()) === 'long') this.fireLong(d);
+    }, LONG_PRESS_MS + 8);
+  }
+
+  /** Appui long déclenché : retour haptique léger, l'objet reprend sa place, la fiche s'ouvre ; le relâchement sera avalé. */
+  private fireLong(d: Drag): void {
+    if (d.long || d.moved || this.drag !== d) return;
+    d.long = true;
+    window.clearTimeout(this.pressTimer);
+    haptic('drop');
+    this.clearMatches();
+    this.selHi.setVisible(false);
+    this.shadow.setVisible(false);
+    if (d.sprite) {
+      this.tweens.killTweensOf(d.sprite);
+      this.tweens.add({ targets: d.sprite, x: this.cx(d.from), y: this.cy(d.from), scale: this.itemScale(d.sprite), duration: 140, ease: 'Quad.easeOut' });
+    }
+    if (this.selected >= 0) { const prev = this.selected; this.selected = -1; this.unlift(prev); }
+    this.host.onLongPress?.(d.from);
   }
 
   /** Soulèvement : l'objet grossit, monte un peu et projette une petite ombre. */
@@ -418,8 +470,13 @@ export class MergeScene extends BaseScene {
     if (!d || p.id !== d.pointerId) return;
     const x = p.worldX;
     const y = p.worldY;
+    if (d.long) return; // après un appui long, le doigt peut bouger sans rien provoquer
     if (!d.moved) {
-      if (Math.hypot(x - d.startX, y - d.startY) < 8) return;
+      const out = this.fsm.move(performance.now(), x, y);
+      if (out === 'long') { this.fireLong(d); return; }
+      if (out !== 'dragStart') return;
+      window.clearTimeout(this.pressTimer);
+      if (!d.sprite) { this.drag = null; this.fsm.cancel(); return; } // case verrouillée : pas de glissé
       d.moved = true;
       // on garde la surbrillance des partenaires pendant le glisser
       this.selected = -1;
@@ -429,6 +486,7 @@ export class MergeScene extends BaseScene {
       this.tweens.add({ targets: d.sprite, scale: this.itemScale(d.sprite) * 1.18, duration: 120, ease: 'Quad.easeOut' });
       this.glows[d.from]?.setVisible(false);
     }
+    if (!d.sprite) return;
     // l'objet suit le doigt, légèrement au-dessus pour rester visible
     d.sprite.setPosition(x, y - this.cell * 0.28);
     this.placeShadow(x, y - this.cell * 0.28, 1.15);
@@ -463,7 +521,12 @@ export class MergeScene extends BaseScene {
   private onUpAt(d: Drag, x: number, y: number): void {
     if (this.drag !== d) return;
     this.drag = null;
+    window.clearTimeout(this.pressTimer);
+    const out = this.fsm.up(performance.now());
     this.targetHi.setVisible(false);
+    if (d.long) return; // relâchement après un appui long : avalé (ni fusion, ni déplacement, ni toucher)
+    if (out === 'long') { this.drag = d; this.fireLong(d); this.drag = null; return; }
+    if (!d.sprite) { this.selectLock(d.from); return; }
     if (d.moved) this.shadow.setVisible(false);
     if (!d.moved) {
       // simple toucher
@@ -518,6 +581,7 @@ export class MergeScene extends BaseScene {
       audio.play('invalid');
       return;
     }
+    this.host.onSelect?.(i);
     // squash & stretch du générateur
     sp.setScale(base * 1.18, base * 0.82);
     this.tweens.add({ targets: sp, scaleX: base, scaleY: base, duration: 260, ease: 'Back.easeOut', easeParams: [3] });
@@ -558,11 +622,13 @@ export class MergeScene extends BaseScene {
     const d = this.drag;
     if (!d) return;
     this.drag = null;
+    window.clearTimeout(this.pressTimer);
+    this.fsm.cancel();
     this.targetHi.setVisible(false);
     this.shadow.setVisible(false);
     this.clearMatches();
     this.selHi.setVisible(false);
-    this.returnSprite(d.from, d.sprite);
+    if (d.sprite) this.returnSprite(d.from, d.sprite);
   }
 
   private returnSprite(i: number, sp: Phaser.GameObjects.Image): void {
@@ -580,8 +646,10 @@ export class MergeScene extends BaseScene {
       this.selHi.setVisible(false);
       this.clearMatches();
       if (prev >= 0) this.unlift(prev);
+      this.host.onSelect?.(-1);
       return;
     }
+    this.host.onSelect?.(i);
     this.selHi.setPosition(this.cx(i), this.cy(i)).setVisible(true);
     this.selHi.setScale(1 / texScale());
     const sp = this.sprites[i];
@@ -677,6 +745,10 @@ export class MergeScene extends BaseScene {
         case 'boxOpen': this.animBox(e.at); break;
         case 'combo': this.animCombo(e.value); break;
         case 'full': this.animFull(); break;
+        case 'cellUnlock': this.animCellUnlock(e, events.some((x) => x.t === 'merge') ? POP_AT_MS + 70 : 0); break;
+        case 'lockHit': this.animLockHit(e); break;
+        case 'lockNew': this.makeLockVis(e.at, true); break;
+        case 'zone': this.animZone(); break;
         case 'win': delayWin = true; break;
         default: break;
       }
@@ -755,6 +827,195 @@ export class MergeScene extends BaseScene {
     const sp = this.spark('fx:flash', x, y, tint, 0.2 * (this.cell / 56), true);
     if (!sp) return;
     this.tweens.add({ targets: sp.p, scale: (size * (this.cell / 56)) / texScale(), alpha: 0, duration: ms, ease: 'Quad.easeOut', onComplete: sp.done });
+  }
+
+  // ------------------------------------------------------- cases verrouillées
+
+  /** Toucher court sur une case verrouillée : elle est mise en avant (objectif dans le panneau), les objets utiles s'allument. */
+  private selectLock(i: number): void {
+    if (!this.state.cells[i]?.lock) return;
+    haptic('select');
+    audio.play('select');
+    if (this.selected === i) { this.setSelected(-1); return; }
+    this.setSelected(i);
+    this.boardLayer.bringToTop(this.selHi);
+    this.showLockHelp(i);
+  }
+
+  /** Allume les objets du plateau qui pourraient libérer la case (même collection que celle demandée). */
+  private showLockHelp(i: number): void {
+    const L = this.state.cells[i]?.lock;
+    if (!L || L.need.t !== 'adj') return;
+    const k = 1 / texScale();
+    for (let j = 0; j < BOARD_SIZE; j++) {
+      const it = this.state.cells[j].item;
+      if (!it || it.c !== L.need.coll) continue;
+      const hi = this.add.image(this.cx(j), this.cy(j), 'cell:ok').setScale(k).setAlpha(0.8);
+      this.boardLayer.addAt(hi, this.tiles.length);
+      this.tweens.add({ targets: hi, alpha: 0.3, yoyo: true, repeat: -1, duration: 520, ease: 'Sine.easeInOut' });
+      this.matchHi.push(hi);
+    }
+  }
+
+  private clearLockVis(i: number): void {
+    const v = this.lockVis[i];
+    if (!v) return;
+    v.twinkle?.remove();
+    for (const o of v.objs) { this.tweens.killTweensOf(o); o.destroy(); }
+    this.lockVis[i] = null;
+  }
+
+  /** Dessine le verrou de la case : toile / sable / cadenas, objet ou récompense visible dessous, lueur et paillettes. */
+  private makeLockVis(i: number, intro = false): void {
+    const L = this.state.cells[i]?.lock;
+    if (!L) return;
+    this.clearLockVis(i);
+    const k = 1 / texScale();
+    const x = this.cx(i);
+    const y = this.cy(i);
+    const vis: LockVis = { objs: [], ov: null, under: null, twinkle: null };
+    const put = (img: Phaser.GameObjects.Image) => { this.boardLayer.add(img); vis.objs.push(img); return img; };
+    const iconScale = (frac: number) => (this.cell * frac) / (ITEM_TEX * texScale());
+    const calm = reducedFx();
+    const shiny = !!L.reward || L.rarity === 'rare' || L.rarity === 'epic' || L.rarity === 'legendary';
+    if (shiny) {
+      const g = put(this.add.image(x, y, 'lock:glow').setScale(k * 1.08).setBlendMode(Phaser.BlendModes.ADD).setAlpha(L.kind === 'sand' ? 0.35 : 0.55));
+      if (!calm) this.tweens.add({ targets: g, alpha: 0.2, yoyo: true, repeat: -1, duration: 1100 + (i % 4) * 140, ease: 'Sine.easeInOut' });
+    }
+    if (L.kind === 'sand') {
+      const hit = L.need.t === 'sand' && L.need.left < ENDLESS_CFG.board.sandHits;
+      vis.ov = put(this.add.image(x, y, hit ? 'lock:sandCrack' : 'lock:sand').setScale(k));
+      if (L.reward) {
+        // la récompense dépasse du sable : on la voit avant de pouvoir la prendre
+        vis.under = put(this.add.image(x + this.cell * 0.1, y - this.cell * 0.02, ensureLockRewardTexture(this, L.reward.kind)).setScale(iconScale(0.6)).setAngle(-8));
+        if (!calm) this.tweens.add({ targets: vis.under, y: y - this.cell * 0.06, yoyo: true, repeat: -1, duration: 1300 + (i % 3) * 200, ease: 'Sine.easeInOut' });
+      }
+    } else {
+      if (L.item) {
+        const ref = L.item;
+        vis.under = put(this.add.image(x, y, ensureItemTexture(this, ref)).setScale(this.scaleFor(ref) * 0.86).setTint(0xdcd5ee));
+      } else if (L.reward) {
+        vis.under = put(this.add.image(x, y, ensureLockRewardTexture(this, L.reward.kind)).setScale(iconScale(0.66)));
+        if (!calm) this.tweens.add({ targets: vis.under, scale: iconScale(0.7), yoyo: true, repeat: -1, duration: 1000 + (i % 3) * 160, ease: 'Sine.easeInOut' });
+      }
+      vis.ov = put(this.add.image(x, y, L.kind === 'energy' ? 'lock:pad' : 'lock:web').setScale(k));
+    }
+    // paillettes sur les objets rares
+    if (!calm && (L.rarity === 'rare' || L.rarity === 'epic' || L.rarity === 'legendary')) {
+      vis.twinkle = this.time.addEvent({ delay: 1000 + (i % 5) * 170, loop: true, callback: () => {
+        const sp = this.spark('fx:sparkGold', x + (Math.random() - 0.5) * this.cell * 0.7, y + (Math.random() - 0.5) * this.cell * 0.7, undefined, 0.4 + Math.random() * 0.4);
+        if (!sp) return;
+        sp.p.setAlpha(0).setAngle(Math.random() * 60);
+        this.tweens.add({ targets: sp.p, alpha: 1, scale: sp.p.scale * 1.6, duration: 300, yoyo: true, onComplete: sp.done });
+      } });
+    }
+    this.lockVis[i] = vis;
+    if (intro && vis.ov) {
+      const ov = vis.ov;
+      ov.setAlpha(0).setScale(k * 1.5);
+      this.tweens.add({ targets: ov, alpha: 1, scale: k, duration: 380, ease: 'Back.easeOut' });
+    }
+  }
+
+  /** Une case se libère : toile qui disparaît, sable qui se dissipe, POP, objet ou récompense qui apparaît avec rebond. */
+  private animCellUnlock(e: Extract<BoardEvent, { t: 'cellUnlock' }>, delay: number): void {
+    const at = e.at;
+    const x = this.cx(at);
+    const y = this.cy(at);
+    const calm = reducedFx();
+    const vis = this.lockVis[at];
+    this.lockVis[at] = null;
+    vis?.twinkle?.remove();
+    const prof = this.prof();
+    const special = e.kind !== 'sand' && e.kind !== 'web' ? true : !!e.rarity;
+    const go = () => {
+      if (!this.sys?.isActive()) return;
+      const k = 1 / texScale();
+      if (vis) {
+        for (const o of vis.objs) {
+          this.tweens.killTweensOf(o);
+          if (o === vis.ov) {
+            if (calm) this.tweens.add({ targets: o, alpha: 0, duration: 200, onComplete: () => o.destroy() });
+            else this.tweens.add({ targets: o, scale: o.scale * 1.32, alpha: 0, angle: e.kind === 'sand' ? 0 : 9, y: e.kind === 'sand' ? o.y + this.cell * 0.12 : o.y, duration: e.kind === 'sand' ? 340 : 280, ease: 'Quad.easeOut', onComplete: () => o.destroy() });
+          } else if (o === vis.under) {
+            // la récompense (sans objet) s'élève puis se dissipe ; l'objet est remplacé par le vrai sprite
+            if (e.item) o.destroy();
+            else this.tweens.add({ targets: o, y: o.y - this.cell * 0.4, scale: o.scale * 1.35, alpha: 0, duration: 520, ease: 'Cubic.easeOut', onComplete: () => o.destroy() });
+          } else this.tweens.add({ targets: o, alpha: 0, duration: 300, onComplete: () => o.destroy() });
+        }
+      }
+      // sable : nuage de grains
+      if (e.kind === 'sand' && !calm) {
+        const n = scaledCount(12, prof);
+        for (let j = 0; j < n; j++) {
+          const sp = this.spark('fx:dot', x + (Math.random() - 0.5) * this.cell * 0.5, y + (Math.random() - 0.3) * this.cell * 0.4, 0xe8c98a, 0.5 + Math.random() * 0.5);
+          if (!sp) break;
+          const a = Math.random() * Math.PI * 2;
+          this.tweens.add({ targets: sp.p, x: sp.p.x + Math.cos(a) * this.cell * 0.55, y: sp.p.y + Math.sin(a) * this.cell * 0.4 - this.cell * 0.25, alpha: 0, duration: 420 + Math.random() * 300, ease: 'Cubic.easeOut', onComplete: sp.done });
+        }
+      }
+      // fils de toile qui partent en étincelles
+      if (e.kind !== 'sand' && !calm) this.sparkBurst(x, y, 7, 0xe6e9ff);
+      // l'objet révélé : apparition avec rebond (il est déplaçable tout de suite)
+      if (e.item && !this.sprites[at]) {
+        const sp = this.makeSprite(at, e.item);
+        const s0 = this.itemScale(sp);
+        if (calm) { sp.setAlpha(0); this.tweens.add({ targets: sp, alpha: 1, duration: 220 }); }
+        else {
+          sp.setScale(0);
+          this.tweens.add({ targets: sp, scaleX: s0 * 1.22, scaleY: s0 * 0.84, duration: 130, ease: 'Quad.easeOut',
+            onComplete: () => { if (sp.active) this.tweens.add({ targets: sp, scaleX: s0, scaleY: s0, duration: 360, ease: 'Back.easeOut', easeParams: [3] }); } });
+        }
+      }
+      if (calm) { haptic(special ? 'reward' : 'drop'); audio.play('sparkle'); return; }
+      // POP : onde, éclat, étoiles qui scintillent
+      this.ring(x, y, special ? 0xffe7a0 : 0xffffff, 1.7, 420);
+      this.flashAt(x, y, special ? 1.5 : 1.0, 320, special ? 0xfff1c0 : undefined);
+      this.sparkBurst(x, y, special ? 12 : 6);
+      const stars = scaledCount(special ? 5 : 3, prof);
+      for (let j = 0; j < stars; j++) {
+        const sp = this.spark('fx:star', x + (j - (stars - 1) / 2) * this.cell * 0.22, y - this.cell * 0.2, 0xfff1c0, 0.2);
+        if (!sp) break;
+        sp.p.setAlpha(0).setScale(0.2 / texScale());
+        this.tweens.add({ targets: sp.p, alpha: 1, scale: (0.5 + Math.random() * 0.35) / texScale(), y: sp.p.y - this.cell * (0.25 + Math.random() * 0.3), angle: 40 * (j % 2 ? 1 : -1), duration: 260, delay: j * 70, ease: 'Back.easeOut',
+          onComplete: () => this.tweens.add({ targets: sp.p, alpha: 0, scale: 0, duration: 380, onComplete: sp.done }) });
+      }
+      audio.play('sparkle', special ? 1.15 : 1);
+      audio.play('pop2', 1.25);
+      haptic(special ? 'reward' : 'drop');
+      void k;
+    };
+    if (delay > 0) this.time.delayedCall(delay, go); else go();
+  }
+
+  /** Sable fissuré par une fusion voisine. */
+  private animLockHit(e: Extract<BoardEvent, { t: 'lockHit' }>): void {
+    const v = this.lockVis[e.at];
+    const ov = v?.ov;
+    if (!ov) return;
+    ov.setTexture('lock:sandCrack');
+    const x = this.cx(e.at);
+    if (!reducedFx()) {
+      this.tweens.add({ targets: ov, x: { from: x - 3, to: x + 3 }, duration: 50, yoyo: true, repeat: 2, onComplete: () => ov.setX(x) });
+      for (let j = 0; j < scaledCount(5, this.prof()); j++) {
+        const sp = this.spark('fx:dot', x + (Math.random() - 0.5) * this.cell * 0.5, this.cy(e.at), 0xe8c98a, 0.5);
+        if (!sp) break;
+        this.tweens.add({ targets: sp.p, x: sp.p.x + (Math.random() - 0.5) * this.cell * 0.6, y: sp.p.y - this.cell * 0.35, alpha: 0, duration: 400, ease: 'Cubic.easeOut', onComplete: sp.done });
+      }
+    }
+    audio.play('drop', 0.8);
+  }
+
+  /** Le plateau se développe : une onde parcourt le plateau. */
+  private animZone(): void {
+    if (reducedFx()) return;
+    const cx = this.ox + (BOARD_W * this.cell) / 2;
+    const cy = this.oy + (BOARD_H * this.cell) / 2;
+    this.ring(cx, cy, 0xffe7a0, BOARD_W * 0.9, 700);
+    this.time.delayedCall(120, () => this.ring(cx, cy, 0xffffff, BOARD_W * 0.6, 600));
+    this.sparkBurst(cx, this.oy + this.cell, 10);
+    audio.play('reward');
+    haptic('reward');
   }
 
   // ------------------------------------------------------- animations

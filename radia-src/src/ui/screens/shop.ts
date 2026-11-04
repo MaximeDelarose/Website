@@ -8,6 +8,7 @@
 import '../styles/shop.css';
 import { h, tap } from '../dom';
 import { ui } from '../ui';
+import { fxMount } from '../rewards/layer';
 import { icon } from '../icons';
 import { save, audio, events } from '../../core/app';
 import { addHearts, checkAchievements, stat } from '../../core/progress';
@@ -37,6 +38,9 @@ const LINES = [
   'Prends, prends. De toute façon, tout ce qui est à moi est à toi.',
   'Tu sais que cette carte n\'a pas de limite quand c\'est pour toi ?',
   'Encore ? …Bon. Parce que c\'est toi.',
+  'Bsahték, tu l\'as bien mérité.',
+  'Sahha, profite !',
+  'Mashallah, quel goût.',
 ];
 let lineBag: number[] = [];
 function nextLine(): string {
@@ -193,6 +197,7 @@ export function openShop(tab: Tab = 'diamonds'): Promise<void> {
         return;
       }
       if (id === 'royalChest') {
+        if (chestBusy) return; // double toucher : pas de second achat pendant l'ouverture
         if (!wallet.spendDiamonds(price)) return;
         await openChest('royal');
         render('spend');
@@ -302,7 +307,7 @@ export function diamondBurst(x: number, y: number, n = 26): void {
     g.style.animationDelay = `${Math.random() * 120}ms`;
     wrap.append(g);
   }
-  ui.root.append(wrap);
+  fxMount(ui.root).append(wrap);
   window.setTimeout(() => wrap.remove(), 1600);
 }
 
@@ -349,7 +354,13 @@ function payAnimation(diamonds: number, euros: number): Promise<void> {
 }
 
 /** Coffre : secousse, ouverture, récompenses appliquées. */
+let chestBusy = false;
 async function openChest(kind: 'free' | 'royal'): Promise<void> {
+  if (chestBusy) return; // double toucher : un seul coffre à la fois
+  chestBusy = true;
+  try { await openChestNow(kind); } finally { chestBusy = false; }
+}
+async function openChestNow(kind: 'free' | 'royal'): Promise<void> {
   const e = save.data.economy;
   if (kind === 'free') {
     if (Date.now() < e.freeChestTs + E.FREE_CHEST_MS) return;
@@ -369,33 +380,11 @@ async function openChest(kind: 'free' | 'royal'): Promise<void> {
   save.save();
   events.emit('boosters', undefined);
 
-  const img = h('img.chest-img', { src: chestUrl(false, 160), alt: '' });
-  const list = h('div.loot', { style: 'visibility:hidden' },
-    lootChip(energyUrl(48), `+${loot.energy}`),
-    lootChip(null, `+${loot.hearts} ♡`),
-    loot.diamonds ? lootChip(diamondUrl(48), `+${loot.diamonds}`) : null,
-    loot.wands ? lootChip(null, `+${loot.wands} baguette${loot.wands > 1 ? 's' : ''}`) : null,
-    loot.winds ? lootChip(null, `+${loot.winds} souffle${loot.winds > 1 ? 's' : ''}`) : null,
-    ...stored.map((it) => lootChip(itemImageUrl(it, 72), itemName(it))),
-  );
-  const body = h('div.chest-open', img, list, stored.length ? h('small.muted', 'Les objets sont rangés dans ton sac.') : null);
-  img.classList.add('shake');
-  audio.play('chest');
-  window.setTimeout(() => {
-    img.src = chestUrl(true, 160);
-    img.classList.remove('shake');
-    img.classList.add('opened');
-    list.style.visibility = 'visible';
-    audio.play('reward');
-    const r = img.getBoundingClientRect();
-    diamondBurst(r.left + r.width / 2, r.top + r.height / 3, 14);
-  }, 900);
-  await ui.modal({ title: kind === 'free' ? 'Coffre d\'Auguste' : 'Coffre du royaume', body, actions: [{ label: 'Super ♡', value: 'ok' }] });
+  // mise en scène commune (calque global au premier plan) : le butin est déjà versé, elle ne fait qu'afficher
+  const { openGift } = await import('../rewards');
+  const { shopChestSpec } = await import('../rewards/shopChest');
+  await openGift(shopChestSpec(kind, loot, stored.map((it) => ({ name: itemName(it), icon: itemImageUrl(it, 72) })), lost.length * 15));
   checkAchievements();
-}
-
-function lootChip(img: string | null, text: string): HTMLElement {
-  return h('span.loot-chip', img ? h('img', { src: img, alt: '' }) : null, text);
 }
 
 export const bagIconUrl = () => canvasUrl('ico:bag', () => paint(64, 64, 2, (c) => {

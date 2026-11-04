@@ -86,7 +86,7 @@ describe('migration et sérialisation', () => {
     const sim = playEndless({ seed: 21, actions: 500, gapMs: 3000 });
     const json = JSON.stringify({ run: sim.s, fun: sim.fun });
     const back = JSON.parse(json) as { run: typeof sim.s; fun: typeof sim.fun };
-    expect(sanitizeFun(back.fun)).toEqual(sim.fun);
+    expect(sanitizeFun(back.fun)).toEqual(sanitizeFun(sim.fun));
     const save = sanitize({ v: 5, endless: { best: 1, runs: 1, run: back.run, challenges: 0 }, fun: back.fun });
     const run = save.endless.run!;
     expect(run.cells).toEqual(sim.s.cells);
@@ -121,6 +121,7 @@ describe('divers du moteur', () => {
   it('coffrets, étoiles et baguettes respectent le niveau maximal des collections de 8 niveaux', () => {
     resetEndless();
     const s = createRun(ENDLESS_DEF, 'endless', 5);
+    for (const c of s.cells) c.lock = undefined;
     s.cells[10].item = { c: 'cloth', l: 7 };
     const up = useWand(s, ENDLESS_DEF, 10, 0);
     expect(up[0]).toMatchObject({ t: 'upgrade', item: { c: 'cloth', l: 8 } });
@@ -132,6 +133,7 @@ describe('divers du moteur', () => {
   it('fusion au niveau maximum : événement maxMerge avec récompense', () => {
     resetEndless();
     const s = createRun(ENDLESS_DEF, 'endless', 6);
+    for (const c of s.cells) c.lock = undefined;
     s.cells[10].item = { c: 'rare', l: 7 };
     s.cells[11].item = { c: 'rare', l: 7 };
     const ev = move(s, ENDLESS_DEF, 10, 11, 1000);

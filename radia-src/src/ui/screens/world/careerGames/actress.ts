@@ -1,5 +1,7 @@
 /** Interface du mini-jeu « Actrice » : une scène en 5 répliques, on choisit l'émotion juste. */
 import { h, tap } from '../../../dom';
+import { haptic } from '../../../../core/haptics';
+import { sparkleBurst } from '../../../fx/sparkle';
 import { audio } from '../../../../core/app';
 import { canvasUrl } from '../../../../game/art/kit';
 import { radiaFaceCanvas, lookKey } from '../../../../game/art/world/radiaNow';
@@ -45,6 +47,8 @@ export function playActress(g: GameCtx): Promise<GameResult | null> {
           fb.textContent = t.q === 2 ? 'Juste !' : t.q === 1 ? 'Presque…' : 'À côté, ce n\'était pas ça.';
           fb.className = `ac-fb show ${t.q === 2 ? 'good' : 'soft'}`;
           audio.play(t.q === 2 ? 'sparkle' : t.q === 1 ? 'pop2' : 'pop1');
+          haptic(t.q === 2 ? 'reward' : 'select');
+          if (t.q === 2) { const r = img.getBoundingClientRect(); sparkleBurst(r.left + r.width / 2, r.top + r.height * 0.4, { rarity: 'rare' }); }
           void (async () => { await wait(t.q === 2 ? 900 : 1500); if (i >= 4) after(); else beat(i + 1); })();
         }, { sound: false }));
         return o;

@@ -16,9 +16,11 @@ export type Sfx =
   // Game feel 2.0 : variantes de POP, fusion rare / maximale, coffre, sélection douce
   | 'pop4' | 'pop5' | 'popRare' | 'maxMerge' | 'chestOpen' | 'select' | 'windup'
   // Casino Royal et roue du jour
-  | 'chip' | 'chipWin' | 'rouletteTick' | 'ballDrop' | 'reelStop' | 'cardDeal' | 'cardFlip' | 'jackpot' | 'wheelTick'
+  | 'chip' | 'chipWin' | 'rouletteTick' | 'ballDrop' | 'reelStop' | 'cardDeal' | 'cardFlip' | 'jackpot' | 'wheelTick' | 'bigWin' | 'ticketGet'
   // Scène du feu d'artifice et collier légendaire (synthétisés, doux)
-  | 'fwLaunch' | 'fwBurst' | 'fwCrackle' | 'crystal' | 'crystalSoft';
+  | 'fwLaunch' | 'fwBurst' | 'fwCrackle' | 'crystal' | 'crystalSoft'
+  // Ouverture de cadeaux et de coffres (src/ui/rewards)
+  | 'giftTension' | 'giftBurst' | 'giftEpic' | 'giftLove';
 
 /** Les morceaux s'enchaînent tour à tour (le niveau sonore de chacun est égalisé au chargement). */
 const TRACKS = [
@@ -544,6 +546,15 @@ export class AudioManager {
         [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => this.tone(f, 0.4, { type: 'triangle', vol: 0.1, delay: i * 0.07 }));
         [2349, 2637, 3136, 3520].forEach((f, i) => this.tone(f, 0.15, { vol: 0.04, delay: 0.55 + i * 0.06 }));
         break;
+      case 'bigWin': // GROSSE VICTOIRE : petite fanfare dorée (accord qui s'ouvre + pluie de clochettes), distincte du jackpot
+        [392, 523, 659].forEach((f, i) => this.tone(f * p, 0.5, { type: 'triangle', vol: 0.11, delay: i * 0.11 }));
+        [784, 988, 1175].forEach((f) => this.tone(f * p, 0.9, { type: 'sine', vol: 0.06, delay: 0.38, attack: 0.02 }));
+        [2093, 2637, 3136, 3951, 3136, 4186].forEach((f, i) => this.tone(f * p, 0.18, { type: 'sine', vol: 0.04, delay: 0.5 + i * 0.07 }));
+        break;
+      case 'ticketGet': // un ticket arrive au compteur : petit « ding »
+        this.tone(1976 * p, 0.09, { type: 'sine', vol: 0.06 });
+        this.tone(2637 * p, 0.12, { type: 'sine', vol: 0.045, delay: 0.05 });
+        break;
       case 'wheelTick': // cliquetis de la roue
         this.tone(1500 * p, 0.025, { slide: 0.75, vol: 0.05, type: 'triangle' });
         break;
@@ -566,6 +577,23 @@ export class AudioManager {
         break;
       case 'crystalSoft': // tintement bref (équipement, étincelle)
         [2637, 3520].forEach((f, i) => this.tone(f * p, 0.5, { type: 'sine', vol: 0.05, delay: i * 0.06 }));
+        break;
+      case 'giftTension': // le cadeau tremble : trémolo qui monte vers l'éclat (~0,8 s)
+        for (let i = 0; i < 9; i++) this.tone((260 + i * 38) * p, 0.07, { type: 'triangle', vol: 0.05 + i * 0.006, delay: i * 0.085 });
+        this.tone(220 * p, 0.8, { type: 'sine', slide: 2.6, vol: 0.05, attack: 0.1 });
+        break;
+      case 'giftBurst': // éclat d'ouverture : pop rond + souffle + pluie de clochettes
+        this.tone(300 * p, 0.14, { slide: 1.9, vol: 0.28 });
+        this.noiseBurst(0.22, { freq: 2200, q: 0.8, vol: 0.12, type: 'bandpass' });
+        [880, 1175, 1568, 2093].forEach((f, i) => this.tone(f * p, 0.3, { type: 'triangle', vol: 0.08, delay: 0.06 + i * 0.05 }));
+        break;
+      case 'giftEpic': // accord doré qui s'ouvre (épique et au-delà)
+        [392, 494, 587, 784].forEach((f, i) => this.tone(f * p, 0.8, { type: 'triangle', vol: 0.09, delay: i * 0.06, attack: 0.02 }));
+        [1568, 1976, 2349].forEach((f, i) => this.tone(f * p, 0.5, { type: 'sine', vol: 0.045, delay: 0.3 + i * 0.07 }));
+        break;
+      case 'giftLove': // douceur romantique : deux notes tendres et un tintement
+        [659, 784, 988].forEach((f, i) => this.tone(f * p, 0.9, { type: 'sine', vol: 0.07, delay: i * 0.12, attack: 0.03 }));
+        this.tone(1976 * p, 0.5, { type: 'sine', vol: 0.03, delay: 0.4 });
         break;
       case 'page':
         this.noiseBurst(0.12, { freq: 2500, q: 0.5, vol: 0.07 });

@@ -1,10 +1,10 @@
 /**
- * Objets fusionnables — 4 collections de 10 niveaux + 7 collections d'Endless 2.0 (8 niveaux)
- * + 3 objets spéciaux. Utilise toujours `collMax(c)` (jamais MAX_LEVEL) pour le niveau maximal.
+ * Objets fusionnables — 4 collections de 10 niveaux + 10 collections d'Endless 2.0 (8 niveaux,
+ * dont Pâtisseries, Sacs et Cadeaux) + 3 objets spéciaux. Utilise toujours `collMax(c)` (jamais MAX_LEVEL) pour le niveau maximal.
  * Ces chaînes sont les recettes de fusion fictives du jeu (elles ne suivent
  * pas les règles des échecs classiques pour la collection « Échecs »).
  */
-export type CollectionId = 'flowers' | 'love' | 'paris' | 'chess' | 'rare' | 'choc' | 'jewel' | 'cloth' | 'perfume' | 'acc' | 'castle';
+export type CollectionId = 'flowers' | 'love' | 'paris' | 'chess' | 'rare' | 'choc' | 'jewel' | 'cloth' | 'perfume' | 'acc' | 'castle' | 'pastry' | 'bag' | 'gift';
 export type ItemColl = CollectionId | 'special' | 'gen';
 
 export interface ItemRef { c: ItemColl; l: number }
@@ -220,6 +220,54 @@ export const COLLECTIONS: Record<CollectionId, CollectionDef> = {
       'Un trône en or, parce que ma reine le mérite.',
     ],
   },
+  pastry: {
+    id: 'pastry',
+    name: 'Pâtisseries',
+    color: '#F6A5BE',
+    items: ['Macaron', 'Éclair', 'Tartelette', 'Cupcake', 'Gâteau', 'Entremets', 'Pièce montée', 'Pâtisserie royale'],
+    blurbs: [
+      'Un macaron rose : il ne dure jamais plus de dix secondes.',
+      'Long, brillant, glacé. Auguste en a déjà volé un.',
+      'Une tartelette aux fruits rouges, posée avec amour.',
+      'Une cerise sur le dessus, comme sur le reste.',
+      'Un vrai gâteau, avec des bougies et des vœux.',
+      'Des couches de crème, de biscuit et de patience.',
+      'Un édifice de choux dorés. Ça se mange avec les yeux d\'abord.',
+      'La plus belle vitrine du royaume, entièrement comestible.',
+    ],
+  },
+  bag: {
+    id: 'bag',
+    name: 'Sacs',
+    color: '#C98B6B',
+    items: ['Pochette', 'Tote bag', 'Besace', 'Cabas', 'Sac à main', 'Sac du soir', 'Sac de créateur', 'Sac légendaire'],
+    blurbs: [
+      'Juste assez grande pour un rouge à lèvres et un secret.',
+      'Léger, pratique, déjà plein de livres.',
+      'Pour les balades à Paris, les mains libres.',
+      'On y met tout. Même ce qui n\'est pas à nous.',
+      'Un classique : il va avec absolument tout.',
+      'Petit, brillant, il ne contient que le nécessaire.',
+      'Une pièce signée, cousue main, rare comme un sourire.',
+      'On le reconnaît de loin. Les regards aussi.',
+    ],
+  },
+  gift: {
+    id: 'gift',
+    name: 'Cadeaux',
+    color: '#E86F9B',
+    items: ['Nœud', 'Petit mot', 'Paquet', 'Boîte à ruban', 'Coffret cadeau', 'Grand coffret', 'Surprise étoilée', 'Cadeau royal'],
+    blurbs: [
+      'Un petit nœud. Le début de toute surprise.',
+      'Quelques mots doux glissés sous le ruban.',
+      'Emballé avec soin (et beaucoup trop de scotch).',
+      'Un ruban si bien noué qu\'on n\'ose plus l\'ouvrir.',
+      'Un coffret garni, avec une carte écrite à la main.',
+      'Plus grand qu\'il n\'en a l\'air. Beaucoup plus.',
+      'Des étoiles s\'en échappent dès qu\'on le regarde.',
+      'Le cadeau parfait : celui qui dit « je pense à toi ».',
+    ],
+  },
 };
 
 export const SPECIAL_ITEMS: Record<number, { name: string; blurb: string }> = {
@@ -229,7 +277,7 @@ export const SPECIAL_ITEMS: Record<number, { name: string; blurb: string }> = {
 };
 
 /** Ordre = ordre des générateurs (kind = index + 1) et ordre de déblocage dans Endless 2.0. */
-export const COLLECTION_IDS: CollectionId[] = ['flowers', 'love', 'paris', 'chess', 'rare', 'choc', 'jewel', 'cloth', 'perfume', 'acc', 'castle'];
+export const COLLECTION_IDS: CollectionId[] = ['flowers', 'love', 'paris', 'chess', 'rare', 'choc', 'jewel', 'cloth', 'perfume', 'acc', 'castle', 'pastry', 'bag', 'gift'];
 /** Les 4 collections d'origine (10 niveaux, mode histoire). */
 export const LEGACY_COLLECTION_IDS: CollectionId[] = ['flowers', 'love', 'paris', 'chess'];
 
@@ -255,6 +303,9 @@ export const GENERATORS: Record<number, { coll: CollectionId; name: string; blur
   9: { coll: 'perfume', name: 'Alambic parfumé', blurb: 'Touche-le : il distille des pétales parfumés (1 ⚡).' },
   10: { coll: 'acc', name: 'Boîte à chapeaux', blurb: 'Touche-la : elle offre des accessoires chics (1 ⚡).' },
   11: { coll: 'castle', name: 'Malle du château', blurb: 'Touche-la : elle livre des objets pour le château (1 ⚡).' },
+  12: { coll: 'pastry', name: 'Four du pâtissier', blurb: 'Touche-le : il sort des macarons tout chauds (1 ⚡).' },
+  13: { coll: 'bag', name: 'Vitrine à sacs', blurb: 'Touche-la : elle présente des sacs de saison (1 ⚡).' },
+  14: { coll: 'gift', name: 'Atelier d\'emballage', blurb: 'Touche-le : il noue des rubans et des surprises (1 ⚡).' },
 };
 export const genKindOf = (c: CollectionId): number => COLLECTION_IDS.indexOf(c) + 1;
 export const isGen = (r: ItemRef | null | undefined): boolean => !!r && r.c === 'gen';

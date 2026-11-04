@@ -38,9 +38,10 @@ export function roomLayout(room: RoomId, w: number, h: number): RoomLayout {
   const gh = cell * g.rows;
   const grid = { x: (w - gw) / 2, y: h - gh - h * 0.025, w: gw, h: gh };
   const floorTop = Math.max(h * 0.18, grid.y - cell * 0.85);
-  const ww = Math.min(w * 0.36, floorTop * 0.9);
-  const wh = floorTop * 0.58;
-  const win = { x: (w - ww) / 2, y: floorTop * 0.16, w: ww, h: wh };
+  // fenêtre plus étroite et haut placée : il reste de la place sur le mur pour les tableaux, miroirs et étagères
+  const ww = Math.min(w * 0.3, floorTop * 0.8);
+  const wh = Math.min(floorTop * 0.55, ww * 1.2);
+  const win = { x: (w - ww) / 2, y: Math.max(26, floorTop * 0.14), w: ww, h: wh };
   const cw = ww * 0.36;
   return {
     grid, cell, floorTop, win,
@@ -419,7 +420,8 @@ function drawDynamic(c: C, room: RoomId, w: number, h: number, curtain: string, 
 /** Dessine la pièce `room` (mur, sol, fenêtre, rideaux…) dans un canvas w×h (px CSS). `t` : temps en secondes. */
 export function drawRoom(ctx: CanvasRenderingContext2D, room: RoomId, w: number, h: number, style: RoomStyle, t: number): void {
   const m = ctx.getTransform();
-  const sc = Math.max(1, Math.round(Math.hypot(m.a, m.b) * 2) / 2);
+  // échelle du calque statique plafonnée (zoom de la caméra × densité) : iOS limite la taille des canvas
+  const sc = Math.min(2.5, Math.max(1, Math.round(Math.hypot(m.a, m.b) * 2) / 2));
   const st = getStatic(room, w, h, hex(style.wall), hex(style.floor), sc);
   ctx.save();
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
@@ -538,7 +540,8 @@ function drawWindows(c: C, w: number, h: number, unlocked: ReadonlySet<string>, 
 /** Carte illustrée du château : palais pastel fleuri, une fenêtre par pièce (éclairée si débloquée). */
 export function drawCastle(ctx: CanvasRenderingContext2D, w: number, h: number, unlocked: ReadonlySet<string>, t: number): void {
   const m = ctx.getTransform();
-  const sc = Math.max(1, Math.round(Math.hypot(m.a, m.b) * 2) / 2);
+  // échelle du calque statique plafonnée (zoom de la caméra × densité) : iOS limite la taille des canvas
+  const sc = Math.min(2.5, Math.max(1, Math.round(Math.hypot(m.a, m.b) * 2) / 2));
   const key = `${Math.round(w)}x${Math.round(h)}|${sc}`;
   let st = castleCache.get(key);
   if (!st) {

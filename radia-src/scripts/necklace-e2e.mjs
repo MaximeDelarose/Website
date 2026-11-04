@@ -12,6 +12,7 @@ const errs = [];
 p.on('pageerror', (e) => errs.push('page: ' + e.message));
 p.on('console', (m) => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push('console: ' + m.text().slice(0, 160)); });
 await p.addInitScript(() => { if (!localStorage.getItem('radia-save-v1')) localStorage.setItem('radia-save-v1', JSON.stringify({ v: 3, seenUpdates: ['v2', 'v3', 'v4'], story: { step: 80 }, levels: {}, hearts: 5 })); });
+await p.addInitScript(() => { try { const k = 'radia-save-v1'; const s = localStorage.getItem(k); if (s) { const j = JSON.parse(s); j.world = j.world || {}; j.world.flags = { ...(j.world.flags || {}), 'rw:start-gift-v1': true }; const d = new Date(), q = (x) => String(x).padStart(2, '0'), key = `${d.getFullYear()}-${q(d.getMonth() + 1)}-${q(d.getDate())}`; j.fun = j.fun || {}; j.fun.daily = { cycle: 0, day: 1, claimed: [0], total: 1, ...(j.fun.daily || {}), lastKey: key }; j.fun.free = { ...(j.fun.free || {}), announced: true }; localStorage.setItem(k, JSON.stringify(j)); } } catch { /* ignore */ } }); // écarte le « Bonus de départ » pour les anciennes sauvegardes de test
 const out = [];
 const check = (n, ok, x = '') => { out.push(`${ok ? 'OK ' : 'KO '} ${n}${x ? ' — ' + x : ''}`); console.log(out[out.length - 1]); };
 const sh = (n) => p.screenshot({ path: `shots/i-${n}${T}.png` });
@@ -180,9 +181,11 @@ await p.locator('.dr-tab', { hasText: 'Colliers' }).click(); await wait(600);
 check('dressing : la vitrine devient une pièce portée (plus verrouillée)', (await p.locator('.dr-card.eclat-locked').count()) === 0 && (await p.locator('.dr-card.worn').count()) >= 1);
 await sh('27-dressing-porte');
 // retirer puis remettre (choix libre)
-await p.locator('.dr-card', { hasText: 'L’Éclat Éternel' }).first().click(); await wait(600);
+await p.locator('.dr-card', { hasText: 'L’Éclat Éternel' }).first().click(); await wait(500);
+await p.locator('.dr2-act', { hasText: 'Retirer' }).click(); await wait(600); // refonte du dressing : un toucher sélectionne, le bouton de la barre retire
 st = await S(); check('dressing : on peut le retirer', !st.world.wardrobe.look.acc.includes('ac-eclat') && st.world.wardrobe.owned.includes('ac-eclat'));
-await p.locator('.dr-card', { hasText: 'L’Éclat Éternel' }).first().click(); await wait(900);
+await p.locator('.dr-card', { hasText: 'L’Éclat Éternel' }).first().click(); await wait(500);
+await p.locator('.dr2-act', { hasText: 'Équiper' }).click(); await wait(900);
 await sh('28-dressing-remis');
 st = await S(); check('dressing : on peut le remettre', st.world.wardrobe.look.acc.includes('ac-eclat'));
 await p.locator('.screen-head .icon-btn').first().click(); await wait(800);

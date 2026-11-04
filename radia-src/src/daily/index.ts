@@ -7,7 +7,9 @@ import { save } from '../core/app';
 import { dbg } from '../core/debug';
 import { safeToNotify } from '../events/scheduler';
 import { canClaimToday, claimToday, currentKey, dailyState, dayOffset, notifyDaily, setDayOffset } from './state';
-import { resetDaily, setDay } from './logic';
+import { migrateDaily, resetDaily, setDay } from './logic';
+import { installCasinoEndlessHook } from '../casino/endlessHook';
+import { startStartGift } from '../core/startGift';
 
 export { dailyBadge } from './badge';
 export { canClaimToday } from './state';
@@ -32,6 +34,10 @@ function tick(): void {
 export function startDaily(): void {
   if (started) return;
   started = true;
+  try { migrateDaily(dailyState()); } catch (e) { console.error('daily migration', e); }
+  // Crochet « événements secondaires Endless → tickets du casino » (idempotent ; installé ici car startDaily() tourne au lancement)
+  try { installCasinoEndlessHook(); } catch (e) { console.error('casino hook', e); }
+  startStartGift(); // cadeau de démarrage (une seule fois par sauvegarde) + outils `RADIA.rewards`
   window.setInterval(() => { try { tick(); } catch (e) { console.error('daily', e); } }, 1500);
   dbg('daily', {
     show: () => { void showDaily(); },

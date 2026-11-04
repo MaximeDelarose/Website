@@ -20,7 +20,8 @@
 .cz-stage button:focus-visible, .cz-root button:focus-visible { outline: 3px solid var(--cz-gold-l); outline-offset: 2px; }
 .cz-root p { margin: 0; }
 .cz-lead { font-size: 14px; line-height: 1.3; color: rgba(255, 255, 255, 0.82); text-align: center; margin: 4px 6px 10px !important; }
-.cz-small { font-size: 13px; line-height: 1.25; text-align: center; color: rgba(255, 255, 255, 0.8); margin: 4px 0 !important; }
+/* texte d'appoint (aligné à gauche) */
+.cz-small { text-align: left; font-size: 13px; line-height: 1.25; text-align: center; color: rgba(255, 255, 255, 0.8); margin: 4px 0 !important; }
 .cz-mini { min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 14px; font-size: 15px; font-weight: 600; color: #fff; background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 0 0 1.5px rgba(255, 233, 168, 0.55), 0 3px 0 rgba(0, 0, 0, 0.25); white-space: nowrap; }
 .cz-mini.big { min-width: 52px; font-size: 28px; padding: 0; }
 .cz-mini:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 0 0 1.5px rgba(255, 233, 168, 0.55); }
@@ -141,7 +142,7 @@
 .rl-nums { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .rl-out { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .rl-cell { position: relative; min-height: 44px; border-radius: 10px; font-size: 17px; font-weight: 700; color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255, 233, 168, 0.55), 0 2px 0 rgba(0, 0, 0, 0.3); display: flex; align-items: center; justify-content: center; }
-.rl-cell.out { background: rgba(255, 255, 255, 0.14); font-size: 14.5px; }
+.rl-cell.outs { background: rgba(255, 255, 255, 0.14); font-size: 14.5px; }
 .rl-zero { width: 100%; }
 .rl-cell:active { transform: scale(0.95); }
 .rl-cell.has { box-shadow: inset 0 0 0 3px var(--cz-gold), 0 0 10px rgba(255, 220, 120, 0.5); }
@@ -278,3 +279,56 @@ html.reduced-motion .cz-root *, html.reduced-motion .cz-root *::before, html.red
   .rl { gap: 6px; }
 }
 .cz-helpbody > div { display: flex; flex-direction: column; gap: 8px; }
+
+/* ===== salon : illustration vivante, zones tactiles, bulles, prochain gain gratuit, tickets du jour ===== */
+.cz-halbox { isolation: isolate; }
+.cz-lights { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; background: radial-gradient(60% 40% at 50% 8%, rgba(255, 226, 140, 0.28), transparent 70%); animation: czGlow 5.5s ease-in-out infinite; }
+@keyframes czGlow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.cz-tw { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; pointer-events: none; opacity: 0; background: radial-gradient(circle, #fff 0 18%, rgba(255, 233, 168, 0.9) 22%, transparent 62%); clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: czTw 3.4s ease-in-out infinite; }
+@keyframes czTw { 0%, 100% { opacity: 0; transform: scale(0.4) rotate(0); } 45% { opacity: 1; transform: scale(1.1) rotate(25deg); } 70% { opacity: 0.2; } }
+.cz-spot { position: absolute; display: flex; align-items: flex-end; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 0 4px; background: transparent; z-index: 2; -webkit-tap-highlight-color: transparent; }
+.cz-spot span { display: block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; line-height: 1.25; color: #fff; background: rgba(30, 18, 56, 0.78); box-shadow: inset 0 0 0 1.5px var(--cz-gold); white-space: nowrap; }
+.cz-spot:active span { transform: scale(0.94); }
+.cz-spot.wheel { align-items: flex-end; }
+.cz-spot.radia, .cz-spot.auguste { z-index: 3; }
+.cz-bubble { position: absolute; left: 50%; top: 14%; max-width: 62%; padding: 7px 12px; border-radius: 16px; font-size: 12.5px; line-height: 1.25; font-weight: 600; text-align: center; color: var(--choco, #58433f); background: #fff9ee; box-shadow: 0 0 0 2px var(--cz-gold), 0 4px 10px rgba(0, 0, 0, 0.35); opacity: 0; transform: translate(-50%, 6px) scale(0.9); transition: opacity 0.25s ease, transform 0.3s var(--ease-pop, ease); pointer-events: none; z-index: 4; }
+.cz-bubble.on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.cz-bubble.radia { left: 36%; }
+.cz-bubble.auguste { left: 64%; }
+.cz-bubble::after { content: ''; position: absolute; left: 50%; bottom: -6px; width: 12px; height: 12px; margin-left: -6px; background: #fff9ee; transform: rotate(45deg); box-shadow: 2px 2px 0 -0.5px var(--cz-gold); }
+.cz-free, .cz-tasks { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 20px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05)); box-shadow: inset 0 0 0 2px rgba(243, 200, 107, 0.55); }
+.cz-free h3, .cz-tasks h3 { margin: 0; font-size: 16px; color: var(--cz-gold-l); }
+.cz-fitem { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+.cz-fico { flex: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 22px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); }
+.cz-ftxt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cz-ftxt b { font-size: 15px; color: #fff; line-height: 1.2; }
+.cz-ftxt small { font-size: 12.5px; color: rgba(255, 255, 255, 0.8); line-height: 1.25; }
+/* texte d'appoint des tickets du jour */
+.cz-tsub { text-align: left; font-size: 12.5px; color: rgba(255, 255, 255, 0.78); line-height: 1.3; }
+.cz-fitem .btn, .cz-task .btn { flex: none; min-height: 44px; min-width: 84px; }
+.cz-task { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 4px 4px 4px 2px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.cz-ttxt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cz-ttxt b { font-size: 14.5px; line-height: 1.2; }
+.cz-ttxt small { font-size: 12px; color: rgba(255, 255, 255, 0.75); }
+.cz-treward { flex: none; font-weight: 700; color: var(--cz-gold-l); font-size: 14px; }
+.cz-tstate { flex: none; min-width: 84px; text-align: center; font-size: 13px; color: rgba(255, 255, 255, 0.65); }
+.cz-tstate.ok { color: #7fe3b0; font-size: 20px; }
+.cz-task.done .cz-ttxt { opacity: 0.6; }
+.cz-sub { flex-wrap: wrap; }
+.cz-pill2 { font-size: 14.5px; min-width: 104px; }
+html.reduced-motion .cz-tw, html.reduced-motion .cz-lights { animation: none !important; opacity: 0.5; }
+
+/* ---- grosse victoire : bannière dorée courte (un fondu, pas de clignotement) */
+.cz-bw { position: absolute; inset: 0; z-index: 310; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(20, 10, 40, 0.55); animation: czIn 0.25s ease both; cursor: pointer; }
+.cz-bw.out { opacity: 0; transition: opacity 0.25s ease; }
+.cz-bw-card { position: relative; overflow: hidden; width: min(340px, 100%); padding: 22px 16px 18px; border-radius: 28px; text-align: center; color: #3b2330; background: linear-gradient(180deg, #fff3c4, #f3c86b 58%, #d9a43c); box-shadow: 0 0 0 4px #fff6d0, 0 0 0 7px #b07b1c, 0 0 46px 10px rgba(255, 214, 120, 0.7), 0 18px 30px rgba(0, 0, 0, 0.5); animation: czBwPop 0.55s var(--ease-pop, cubic-bezier(.34,1.56,.64,1)) both; }
+.cz-bw-card > *:not(.cz-bw-rays) { position: relative; z-index: 1; }
+.cz-bw-rays { position: absolute; left: 50%; top: 50%; width: 560px; height: 560px; margin: -280px 0 0 -280px; z-index: 0; background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.34) 0 9deg, transparent 9deg 24deg); -webkit-mask-image: radial-gradient(circle, #000 8%, transparent 62%); mask-image: radial-gradient(circle, #000 8%, transparent 62%); animation: czBwSpin 18s linear infinite; }
+.cz-bw.soft .cz-bw-rays { animation: none; }
+.cz-bw-title { font-size: 21px; font-weight: 700; letter-spacing: 1px; color: #7a4a12; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7); }
+.cz-bw-card.jackpot .cz-bw-title { font-size: 24px; }
+.cz-bw-num { display: block; margin: 6px 0 0; font-size: 46px; line-height: 1.05; font-variant-numeric: tabular-nums; color: #fff; -webkit-text-stroke: 2px #7a4a12; paint-order: stroke fill; text-shadow: 0 3px 0 #b07b1c; }
+.cz-bw-card small { display: block; font-size: 15px; font-weight: 700; color: #7a4a12; }
+.cz-bw-sub { margin-top: 8px; font-size: 14.5px; font-weight: 600; color: #58433f; }
+@keyframes czBwPop { from { opacity: 0; transform: scale(0.6) translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes czBwSpin { to { transform: rotate(360deg); } }

@@ -16,8 +16,11 @@ import { emitPhone } from '../bus';
 import { senderFace, senderName } from './people';
 import type { EventDef, Sender } from '../types';
 import '../tindeur/tindeur.css';
+import { phoneApps } from './phoneApps';
+import '../../apps';
 import { tindeurLogo } from '../tindeur/icon';
 import { hasPending } from '../tindeur/logic';
+import { rawUnread } from '../tindeur/swipe/badge';
 import { activeIncident, openActiveIncident } from '../incidents/runtime';
 import { incidentById } from '../incidents/data';
 
@@ -82,9 +85,17 @@ export function openPhone(tab?: Tab): void {
     const strip = h('div.ph-apps');
     const t = save.data.fun.tindeur;
     if (t.installed) {
-      const dot = hasPending(t) ? h('i.ph-dot', '1') : null;
+      const n = rawUnread() + (t.shown && t.choice === 'none' ? 1 : 0);
+      const dot = hasPending(t) || n ? h('i.ph-dot', String(Math.max(1, n))) : null;
       const b = h('button.ph-app', { 'aria-label': 'Tindeur' }, tindeurLogo(52), h('span', 'Tindeur'), dot);
-      b.addEventListener('click', tap(() => { void import('../tindeur/ui').then((m) => m.openTindeur()); }, { sound: false }));
+      b.addEventListener('click', tap(() => { closePhone(); void import('../tindeur/ui').then((m) => m.openTindeur()); }, { sound: false }));
+      strip.append(b);
+    }
+    for (const a of phoneApps()) {
+      const bd = a.badge?.() ?? null;
+      const dot = bd ? h('i.ph-dot', String(bd)) : null;
+      const b = h('button.ph-app', { 'aria-label': a.name }, a.icon(52), h('span', a.name), dot);
+      b.addEventListener('click', tap(() => { closePhone(); void a.open(); }, { sound: false }));
       strip.append(b);
     }
     return strip;
@@ -100,6 +111,7 @@ export function openPhone(tab?: Tab): void {
       void import('../tindeur/ui').then((m) => {
         if (t.installed) {
           if (!m.attemptUninstall()) {
+            // refusé (les deux premiers essais) : l'appli reste, Auguste dit un petit mot
             content.querySelector('.ph-aug-say')?.remove();
             content.append(h('p.ph-aug-say', h('b', 'Auguste : '), '« Pas utile de désinstaller celle d’ici ♡ »'));
             haptic('select');

@@ -52,7 +52,7 @@ export const pPair = (s: SymDef): number => 3 * (s.weight / TOTAL_WEIGHT) ** 2 *
 
 // ------------------------------------------------------------------ multi-tirage
 
-/** Le « porte-jetons » : débit/crédit de la table. */
+/** Le « porte-tickets » : débit/crédit de la table. */
 export interface Ledger { balance(): number; debit(n: number): boolean; credit(n: number): void }
 
 export interface RunSummary { planned: number; played: number; stoppedEarly: boolean; staked: number; won: number; net: number; spins: SpinResult[]; balance: number }

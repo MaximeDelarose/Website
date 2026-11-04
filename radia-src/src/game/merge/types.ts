@@ -1,4 +1,4 @@
-import type { ItemColl, ItemRef, Rarity } from '../../data/items';
+import type { CollectionId, ItemColl, ItemRef, Rarity } from '../../data/items';
 
 export const BOARD_W = 6;
 export const BOARD_H = 6;
@@ -41,7 +41,34 @@ export interface LevelDef {
   tutorial?: boolean;
 }
 
-export interface Cell { item: ItemRef | null; gift: ItemRef | null }
+/** Types de cases verrouillées d'Endless : toile (objet piégé), sable (case ensablée), coffre / récompense derrière une toile, cadenas doux. */
+export type LockKind = 'web' | 'sand' | 'chest' | 'reward' | 'energy';
+/**
+ * Condition PRINCIPALE de libération (l'énergie, une commande livrée ou la progression de zone libèrent aussi) :
+ *  adj  : fusionner à côté un objet de la collection `coll` (résultat de niveau ≥ `minLevel`) ;
+ *  sand : `left` fusions quelconques à côté ;
+ *  goal : `n` fusions réalisées depuis la pose (`base` = s.merges à la pose).
+ */
+export type LockNeed =
+  | { t: 'adj'; coll: CollectionId; minLevel: number }
+  | { t: 'sand'; left: number }
+  | { t: 'goal'; n: number; base: number };
+export interface CellLock {
+  kind: LockKind;
+  need: LockNeed;
+  /** Prix en énergie (gagnée en jouant) pour libérer la case tout de suite : toujours affiché. */
+  price: number;
+  /** Case de terrain d'une zone pas encore développée (0 = jamais pour une zone ouverte). */
+  zone?: number;
+  /** Objet visible sous la toile : il apparaît dans la case à la libération. */
+  item?: ItemRef;
+  /** Récompense visible (diamants, énergie, coffre, fragment de tenue, décoration exclusive…), versée à la libération. */
+  reward?: Loot;
+  rarity?: Rarity;
+}
+export type UnlockHow = 'merge' | 'order' | 'energy' | 'goal' | 'zone';
+
+export interface Cell { item: ItemRef | null; gift: ItemRef | null; lock?: CellLock }
 
 /** Difficulté d'une commande Endless 2.0 : un emplacement par palier (0 facile, 1 moyenne, 2 difficile). */
 export type OrderTier = 'easy' | 'mid' | 'hard';
@@ -117,12 +144,14 @@ export interface RunState {
   lastDropMerge?: number;
   /** Nombre de livraisons de cette partie ayant donné un remplacement gratuit. */
   replaceGrantedAt?: number;
+  /** Plateau à cases verrouillées : posé (v = 1) ; absent sur une ancienne partie (migration tolérante). */
+  board?: { v: 1; surprises?: number };
 }
 
 export type BoardEvent =
   | { t: 'move'; from: number; to: number }
   | { t: 'merge'; from: number; to: number; result: ItemRef; points: number; combo: number; joker?: boolean }
-  | { t: 'invalid'; from: number; to: number; reason: 'different' | 'max' | 'gift' | 'empty' }
+  | { t: 'invalid'; from: number; to: number; reason: 'different' | 'max' | 'gift' | 'empty' | 'locked' }
   | { t: 'spawn'; at: number; item: ItemRef; source: 'gen' | 'box' | 'combo' | 'reward' | 'drop' | 'rescue'; from?: number; free?: boolean; double?: boolean }
   | { t: 'giftOpen'; at: number; item: ItemRef }
   | {
@@ -136,7 +165,15 @@ export type BoardEvent =
   | { t: 'combo'; value: number; reward?: 'star' | 'wand' | 'hearts'; mult?: number; capped?: boolean }
   | { t: 'comboTier'; value: number; tier: number; mult: number; energy: number; hearts: number; reward?: 'star' | 'wand' | 'hearts'; capped: boolean }
   | { t: 'drop'; at: number; loot: Loot; rarity: Rarity; /** vrai = versé automatiquement (monnaies) */ auto: boolean }
-  | { t: 'chest'; pending: number; source: 'gauge' | 'drop' | 'max' | 'order' }
+  | { t: 'chest'; pending: number; source: 'gauge' | 'drop' | 'max' | 'order' | 'lock' }
+  /** Une case verrouillée se libère : toile qui disparaît, sable qui se dissipe, objet / récompense révélé. */
+  | { t: 'cellUnlock'; at: number; kind: LockKind; how: UnlockHow; item?: ItemRef; rarity?: Rarity; reward: Loot[] }
+  /** Une nouvelle surprise (case verrouillée) apparaît pendant la partie. */
+  | { t: 'lockNew'; at: number }
+  /** Progrès d'un verrou (sable fissuré…) sans libération. */
+  | { t: 'lockHit'; at: number; left: number }
+  /** Le plateau s'agrandit : nouvelle zone développée. */
+  | { t: 'zone'; zone: number; cells: number[] }
   | { t: 'treasure'; points: number; goal: number; gained: number }
   | { t: 'discover'; item: ItemRef; isNew: boolean; reward: Loot[]; completed?: ItemColl; milestone?: string }
   | { t: 'maxMerge'; at: number; item: ItemRef; loot: Loot[] }

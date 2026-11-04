@@ -144,7 +144,8 @@ export function endlessBotStep(s: RunState, def: LevelDef, now: number): BoardEv
   if (box >= 0) return tapItem(s, def, box, now);
   const { maxWant, deficit } = wants(s);
   const occupied = s.cells.filter((c) => c.item || c.gift).length;
-  const crowded = occupied >= 22;
+  // « encombré » = environ 61 % des cases OUVERTES occupées (22 sur 36 quand rien n'est verrouillé)
+  const crowded = occupied >= Math.round(s.cells.filter((c) => !c.lock).length * 0.61);
   // meilleure fusion
   let best: Suggestion | null = null;
   let bestScore = -Infinity;

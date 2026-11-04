@@ -31,6 +31,20 @@ export interface Endless2 {
   counters: Record<string, number>;
   /** Dernier niveau de « palier » de session affiché (objectifs court/moyen/long terme). */
   goalsSeen: string[];
+  /** Plateau à zones et cases verrouillées : progression durable (facultatif ; sanitisé). */
+  board?: BoardProgress;
+}
+
+/** Progression du plateau : zone atteinte, surprises posées / libérées par motif ; ne se réinitialise jamais avec une nouvelle partie. */
+export interface BoardProgress {
+  /** Zone développée (0 = départ). */
+  zone: number;
+  /** Nombre de séries de surprises déjà posées (graine des suivantes : une nouvelle partie reçoit de NOUVELLES surprises). */
+  serial: number;
+  /** Cases libérées par motif ('web', 'sand', 'chest', 'reward', 'energy', 'how:merge', 'how:order'…). */
+  opened: Record<string, number>;
+  /** Récompenses exclusives déjà obtenues (ids) : jamais reproposées. */
+  claimed: string[];
 }
 
 export interface DailyState {
@@ -73,7 +87,7 @@ export interface TindeurState {
   at: number;
   /** Minutes de jeu actif consécutives (ms), remises à zéro à chaque pause longue. */
   streakMs: number;
-  /** Essais de désinstallation : les deux premiers sont refusés par Auguste, le 3e désinstalle. */
+  /** Essais de désinstallation refusés/acceptés : les deux premiers sont refusés par Auguste, le 3e désinstalle. */
   uninstallTries?: number;
 }
 
@@ -103,6 +117,18 @@ export interface PlaceState { stage: number; progress: Record<string, number>; d
 /** Mode Libre : débloqué à la fin des cinq chapitres. */
 export interface FreeState { unlocked: boolean; at: number; announced: boolean }
 
+/** Applications du téléphone (données libres des modules ; chaque module nettoie les siennes). */
+export interface AppsState {
+  /** Tindeur jouable : profils vus, likes, matchs, conversations (v6 interne ; sanitisé par src/events/tindeur). */
+  swipe: Record<string, unknown>;
+  /** RADIA Clips : publications, favoris, likes. */
+  clips: Record<string, unknown>;
+  /** RADIA Snap : stories, photos, brouillons. */
+  snap: Record<string, unknown>;
+  /** Carrière : récompenses et activités (compteurs libres). */
+  career: Record<string, number>;
+}
+
 export interface FunState {
   endless2: Endless2;
   daily: DailyState;
@@ -112,6 +138,7 @@ export interface FunState {
   wheel: WheelState;
   places: Record<string, PlaceState>;
   free: FreeState;
+  apps: AppsState;
   /** « L'Éclat Éternel ♡ » : lancements, minuteur, invitation, progression de la scène, collier obtenu (sauvegarde locale). */
   necklace: NecklaceState;
   /** Notifications reçues (identifiants), pour ne pas les répéter. */
@@ -130,6 +157,7 @@ export const defaultFun = (): FunState => ({
   wheel: { lastKey: '', spins: 0, last: '' },
   places: {},
   free: { unlocked: false, at: 0, announced: false },
+  apps: { swipe: {}, clips: {}, snap: {}, career: {} },
   necklace: defaultNecklace(),
   notifs: [],
 });
@@ -164,6 +192,7 @@ export function sanitizeFun(raw: unknown): FunState {
   d.endless2.fragments = numRec(e.fragments);
   d.endless2.counters = numRec(e.counters);
   d.endless2.goalsSeen = strArr(e.goalsSeen, 200);
+  if (isObj(e.board)) d.endless2.board = { zone: Math.floor(num(e.board.zone, 0, 0, 9)), serial: Math.floor(num(e.board.serial, 0, 0, 1e6)), opened: numRec(e.board.opened, 40), claimed: strArr(e.board.claimed, 100) };
 
   if (isObj(raw.daily)) {
     const y = raw.daily;
@@ -204,6 +233,10 @@ export function sanitizeFun(raw: unknown): FunState {
   }
   if (isObj(raw.free)) d.free = { unlocked: raw.free.unlocked === true, at: num(raw.free.at, 0, 0, 1e14), announced: raw.free.announced === true };
   d.necklace = sanitizeNecklace(raw.necklace);
+  if (isObj(raw.apps)) {
+    const o = (v: unknown): Record<string, unknown> => { try { return isObj(v) && JSON.stringify(v).length < 400_000 ? (JSON.parse(JSON.stringify(v)) as Record<string, unknown>) : {}; } catch { return {}; } };
+    d.apps = { swipe: o(raw.apps.swipe), clips: o(raw.apps.clips), snap: o(raw.apps.snap), career: numRec(raw.apps.career) };
+  }
   d.notifs = strArr(raw.notifs, 300);
   return d;
 }

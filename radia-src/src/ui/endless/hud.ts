@@ -1,6 +1,7 @@
 /**
  * Interface du mode infini (Endless 2.0) : commandes, jauge de trésor, événements secondaires,
- * objectif immédiat, badges « i » des générateurs, bulles d'informations, réactions d'Auguste.
+ * objectif immédiat, panneau de l'objet sélectionné (sous le plateau), bulles d'informations, réactions d'Auguste.
+ * Aucun bouton d'information ne recouvre un sprite : appui long = fiche, panneau « Infos » sous le plateau.
  * playLevel.ts la crée une fois ; le moteur est câblé là-bas (bindEndless, applyEvents…).
  */
 import './endless.css';
@@ -10,23 +11,24 @@ import { ui } from '../ui';
 import { audio, reducedFx, save } from '../../core/app';
 import { haptic } from '../../core/haptics';
 import { fmt, wallet } from '../../core/wallet';
-import { COLLECTIONS, itemName, type CollectionId } from '../../data/items';
+import { COLLECTIONS, collMax, itemName, itemBlurb, SPECIAL_ITEMS, type CollectionId, type ItemRef } from '../../data/items';
 import { RES_NAMES } from '../../data/world/ids';
 import { diamondUrl, openShop } from '../screens/shop';
 import { resIconUrl } from '../../game/art/world/resources';
-import { itemImageUrl } from '../../game/merge/textures';
+import { itemImageUrl, lockIconUrl } from '../../game/merge/textures';
+import { describeLock } from '../../game/merge/locks';
 import type { MergeScene } from '../../game/merge/MergeScene';
 import * as R from '../../game/merge/rules';
 import type { BoardEvent, LevelDef, RunState } from '../../game/merge/types';
 import { getSpecialOrder, deliverSpecialItem, completeSpecialOrder } from '../../events/incidents/chocOrder';
-import { goals, secondaryView, treasureView, pendingChests, type LootResult } from '../../game/endless';
+import { goals, secondaryView, treasureView, pendingChests, genLevel, generatorInfo, collOfKind, type LootResult } from '../../game/endless';
 import { pickReaction } from '../../game/fx/reactions';
 import { pickLine } from '../../data/augusteTone';
 import { augusteSays } from '../components/augusteSays';
 import { sparkleBurst } from '../fx/sparkle';
 import { chestSvg } from './art';
 import { openChestFlow } from './chestFlow';
-import { openGenSheet } from './genSheet';
+import { openInfoFor, openLockSheet } from './itemSheet';
 import { openGoalsSheet, openSecondarySheet, openTreasureSheet } from './sheets';
 import { clothName, furnitureName } from './host';
 import {
@@ -51,14 +53,24 @@ export interface EndlessEnv {
   feed(text: string, o?: FeedOpts): void;
   inventoryToast(cloth: string[], furniture: string[]): void;
   refresh(): void;
+  /** Libère une case verrouillée en dépensant l'énergie affichée (jamais d'argent réel). */
+  buyLock(cell: number): void;
 }
 
 export interface EndlessHud {
   env: EndlessEnv;
   /** Zone des commandes (3 cartes + commande spéciale). */
   top: HTMLElement;
-  /** Calque des bulles et des badges de générateurs. */
+  /** Calque transparent (ne capte pas le toucher). */
   layer: HTMLElement;
+  /** Panneau de l'objet sélectionné, à placer SOUS le plateau (au-dessus de la barre d'actions). */
+  sel: HTMLElement;
+  /** Objet mis en avant (touché, sélectionné) : -1 = aucun. */
+  select(cell: number): void;
+  /** Appui long : ouvre la fiche de l'objet, du générateur ou de la case verrouillée. */
+  longPress(cell: number): void;
+  /** Pile des gains passagers : playLevel la place dans le conteneur ancré au-dessus des actions. */
+  feedEl: HTMLElement;
   onEvents(ev: BoardEvent[], got: LootResult): void;
   refresh(): void;
   openChest(force?: Parameters<typeof openChestFlow>[1]): Promise<boolean>;
@@ -78,6 +90,8 @@ export interface HudCfg {
   challengeText: () => string;
   /** Vrai tant qu'une fusion s'anime (aucune réaction d'Auguste à ce moment). */
   busy: () => boolean;
+  /** Panneau d'énergie (quand il manque de l'énergie pour libérer une case). */
+  openEnergy?: () => void;
 }
 
 const RES_ICON: Record<RewardKind, (s: number) => string> = {
@@ -93,8 +107,9 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
   const goalEl = h('button.en-goal', { 'aria-label': 'Mes objectifs' });
   const top = h('div.en-top', ordersEl, chocEl, statusEl, goalEl);
   const feedEl = h('div.en-feed');
-  const gensEl = h('div.en-gens');
-  const layer = h('div.en-layer', gensEl, feedEl);
+  const layer = h('div.en-layer');
+  const selEl = h('div.en-sel.empty', { 'aria-live': 'polite' });
+  let focus = -1;
   const gate = new ReactionGate(20_000);
   let prevReady: boolean[] = [false, false, false];
   let lastOrderIds: (number | undefined)[] = [];
@@ -140,6 +155,7 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     feed,
     inventoryToast,
     refresh: () => refresh(),
+    buyLock: (cell) => buyLock(cell),
   };
 
   // ---------------------------------------------------------------- réactions d'Auguste (parcimonie)
@@ -156,7 +172,9 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
       gate.mark(now);
       const text = best.key === 'orderDone' ? pickLine('orderDone') : best.key === 'energyLow' ? pickLine('energyLow') : pickReaction(best.key);
       augusteSays(text, 3000);
-      (ui.root.lastElementChild as HTMLElement | null)?.classList.add('en-aug');
+      // la bulle d'Auguste rejoint la pile ancrée au-dessus des actions (jamais posée par-dessus un bouton)
+      const bub = ui.root.lastElementChild as HTMLElement | null;
+      if (bub?.classList.contains('aug-says')) { bub.classList.add('en-aug'); const dock = feedEl.parentElement; if (dock) dock.insertBefore(bub, feedEl); }
     }, 1500);
   }
 
@@ -299,36 +317,82 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
   }
   goalEl.addEventListener('click', tap(() => openGoalsSheet(env), { sound: false }));
 
-  // ---------------------------------------------------------------- badges « i » des générateurs
-  const badges = new Map<number, HTMLElement>();
-  function placeBadges() {
-    const sc = cfg.getScene();
-    if (!alive || !sc) return;
+  // ---------------------------------------------------------------- panneau de l'objet sélectionné (sous le plateau)
+  /** Libère une case verrouillée contre de l'énergie gagnée en jouant. */
+  function buyLock(cell: number) {
     const st = cfg.getState();
-    const cells = R.generatorCells(st);
-    const size = sc.cellSize;
-    if (!size) return;
-    const seen = new Set<number>();
-    for (const i of cells) {
-      const kind = st.cells[i].item!.l;
-      seen.add(i);
-      let b = badges.get(i);
-      if (!b || b.dataset.kind !== String(kind)) {
-        b?.remove();
-        b = h('button.en-geni', { 'aria-label': 'Infos du générateur', 'data-kind': String(kind) }, 'i');
-        const k = kind;
-        b.addEventListener('click', tap(() => openGenSheet(env, k), { sound: false }));
-        b.addEventListener('pointerdown', (e) => e.stopPropagation());
-        gensEl.append(b);
-        badges.set(i, b);
-      }
-      const c = sc.cellCenter(i);
-      b.style.left = `${Math.round(c.x + size / 2 - 20)}px`;
-      b.style.top = `${Math.round(c.y - size / 2 + 1)}px`;
+    const lock = st.cells[cell]?.lock;
+    if (!lock) return;
+    const ev = R.buyUnlock(st, cfg.def, cell, (n) => wallet.useEnergy(n), Date.now());
+    if (!ev.length) {
+      haptic('error');
+      feed(`Il te faut ${lock.price} ⚡ pour libérer cette case · tu en gagnes en jouant`, { kind: 'info', ms: 3600, btn: cfg.openEnergy ? { label: 'Options', fn: () => cfg.openEnergy!() } : undefined });
+      return;
     }
-    for (const [i, b] of badges) if (!seen.has(i)) { b.remove(); badges.delete(i); }
+    cfg.refreshRes();
+    cfg.push(ev);
   }
-  const badgeTimer = window.setInterval(placeBadges, 800);
+
+  const imgOf = (src: string, cls = ''): HTMLImageElement => { const i = h('img', { src, alt: '' }); if (cls) i.className = cls.replace('.', ''); return i; };
+
+  function renderSel() {
+    const st = cfg.getState();
+    const cell = focus >= 0 ? st.cells[focus] : null;
+    const it: ItemRef | null = cell?.item ?? null;
+    const lock = cell?.lock ?? null;
+    selEl.textContent = '';
+    if (!it && !lock) {
+      focus = -1;
+      selEl.className = 'en-sel empty';
+      selEl.append(h('span.en-sel-hint', 'Touche un objet pour le sélectionner · appui long pour ses infos'));
+      return;
+    }
+    const fn = focus;
+    const info = h('button.en-sel-info', { 'aria-label': 'Infos sur cet objet' }, 'Infos');
+    info.addEventListener('click', tap(() => { if (lock) openLockSheet(env, fn); else if (it) openInfoFor(env, it); }, { sound: false }));
+    if (lock) {
+      const v = describeLock(lock, { merges: st.merges, fun: fun() });
+      selEl.className = `en-sel lock k-${lock.kind}`;
+      const buy = h('button.en-sel-buy', { 'aria-label': `Libérer pour ${lock.price} énergie` }, h('span', '⚡'), h('b', String(lock.price)));
+      buy.addEventListener('click', tap(() => buyLock(fn), { sound: false }));
+      selEl.append(
+        imgOf(lock.item ? itemImageUrl(lock.item, 64) : lockIconUrl(lock.kind, 64), '.en-sel-ic'),
+        h('div.en-sel-tx', h('b', v.prize ? `${v.title} · ${v.prize.replace('Dessous : ', '')}` : v.title), h('small', v.progress ? `${v.objective} (${v.progress})` : v.objective)),
+        info, buy,
+      );
+      return;
+    }
+    const r = it!;
+    selEl.className = `en-sel ${r.c === 'gen' ? 'gen' : r.c === 'special' ? 'special' : 'item'}`;
+    let name = itemName(r);
+    let sub = '';
+    let next: ItemRef | null = null;
+    if (r.c === 'gen') {
+      const gi = generatorInfo(r.l, genLevel(fun(), collOfKind(r.l) ?? 'flowers'));
+      sub = `Niveau ${gi.level}/${gi.maxLevel} · produit « ${COLLECTIONS[gi.coll].name} » (jusqu'à ${itemName({ c: gi.coll, l: gi.maxProduced })})`;
+      name = gi.name;
+    } else if (r.c === 'special') {
+      sub = SPECIAL_ITEMS[r.l]?.blurb ?? itemBlurb(r);
+    } else {
+      const max = collMax(r.c);
+      sub = `${COLLECTIONS[r.c].name} · niveau ${r.l}/${max}${r.l < max ? '' : ' (maximum)'}`;
+      if (r.l < max) next = { c: r.c, l: r.l + 1 };
+    }
+    selEl.append(imgOf(itemImageUrl(r, 64), '.en-sel-ic'), h('div.en-sel-tx', h('b', name), h('small', sub)));
+    if (next) selEl.append(h('div.en-sel-next', { 'aria-label': `Niveau suivant : ${itemName(next)}`, title: itemName(next) }, h('i', '→'), imgOf(itemImageUrl(next, 48)), h('small', itemName(next))));
+    selEl.append(info);
+  }
+
+  function select(cell: number) { focus = cell; renderSel(); }
+  function longPress(cell: number) {
+    const st = cfg.getState();
+    const c = st.cells[cell];
+    if (!c) return;
+    focus = cell;
+    renderSel();
+    if (c.lock && !c.item) openLockSheet(env, cell);
+    else if (c.item) openInfoFor(env, c.item);
+  }
 
   // ---------------------------------------------------------------- tout rafraîchir
   function refresh() {
@@ -336,7 +400,7 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     renderOrders();
     renderChoc();
     renderStatus();
-    placeBadges();
+    renderSel();
     cfg.refreshRes();
   }
 
@@ -433,6 +497,33 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
         case 'rescue':
           feed('Une Étoile filante t\'a débloqué ✨', { kind: 'info', ms: 2800 });
           break;
+        case 'cellUnlock': {
+          const rewards = e.reward.filter((l) => l.kind !== 'chest' || true);
+          const txt = e.item ? itemName(e.item) : rewards.map(lootText).slice(0, 2).join(' · ');
+          const how = e.how === 'merge' ? '' : e.how === 'order' ? ' (commande livrée)' : e.how === 'energy' ? ' (énergie)' : e.how === 'zone' ? ' (plateau agrandi)' : '';
+          if (e.how !== 'zone') feed(`${e.kind === 'sand' ? 'Sable dissipé' : 'Libéré'}${txt ? ` : ${txt}` : ''}${how}`, { kind: 'good', img: e.item ? itemImageUrl(e.item, 48) : undefined, ms: 2600 });
+          let k = 0;
+          for (const l of rewards) {
+            if (l.kind === 'diamonds') fly('diamond', e.at, 'diamonds', k++);
+            else if (l.kind === 'energy') fly('energy', e.at, 'energy', k++);
+            else if (l.kind === 'coins') fly('coin', e.at, 'coins', k++);
+            else if (l.kind === 'chest') fly('chest', e.at, 'chest', k++);
+          }
+          if (e.rarity === 'epic' || e.rarity === 'legendary') wish('rare'); else if (e.rarity === 'rare') wish('drop');
+          break;
+        }
+        case 'zone':
+          feed('Le plateau s\'agrandit ! Une nouvelle zone s\'ouvre ✨', { kind: 'good', ms: 3600 });
+          break;
+        case 'lockNew':
+          feed('Une surprise est apparue sur le plateau', { kind: 'info', ms: 2200 });
+          break;
+        case 'invalid':
+          if (e.reason === 'locked') {
+            const lk = cfg.getState().cells[e.to]?.lock ?? cfg.getState().cells[e.from]?.lock;
+            if (lk) feed(describeLock(lk, { merges: cfg.getState().merges, fun: fun() }).objective, { kind: 'info', ms: 3200 });
+          }
+          break;
         case 'secondary':
           if (e.done) {
             haptic('reward');
@@ -457,13 +548,13 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
   refresh();
 
   return {
-    env, top, layer, onEvents, refresh, feed,
+    env, top, layer, sel: selEl, select, longPress, feedEl, onEvents, refresh, feed,
     openChest: (force) => openChestFlow(env, force),
     destroy() {
       alive = false;
-      window.clearInterval(badgeTimer);
       window.clearTimeout(wishTimer);
       layer.remove();
+      selEl.remove();
     },
   };
 }

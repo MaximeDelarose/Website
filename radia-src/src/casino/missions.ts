@@ -1,12 +1,12 @@
 /**
  * Missions du Casino Royal : SANS HASARD (on les accomplit en jouant ou en visitant, gagner n'est jamais requis).
- * Récompenses : jetons gratuits et objets exclusifs RÉELS du monde (garde-robe / château). Données + logique pures.
+ * Récompenses : tickets gratuits et objets exclusifs RÉELS du monde (garde-robe / château). Données + logique pures.
  */
 import type { CasinoState } from '../save/fun';
 import type { World } from '../save/schema';
 import { CLOTHES } from '../data/world/wardrobe';
 import { FURNITURE } from '../data/world/furniture';
-import { grant } from './chips';
+import { earn } from './tickets';
 
 export type Reward = { t: 'cloth'; id: string } | { t: 'furn'; id: string };
 export interface MissionDef {
@@ -41,7 +41,7 @@ export const isDone = (s: CasinoState, id: string): boolean => s.missions.includ
 export const isClaimable = (s: CasinoState, m: MissionDef): boolean => !isDone(s, m.id) && statValue(s, m.stat) >= m.goal;
 export const claimableCount = (s: CasinoState): number => MISSIONS.filter((m) => isClaimable(s, m)).length;
 
-/** Compensation en jetons si l'objet exclusif est déjà possédé. */
+/** Compensation en tickets si l'objet exclusif est déjà possédé. */
 export const DUP_CHIPS = 200;
 
 export interface ClaimResult { ok: boolean; chips: number; item?: Reward; duplicate?: boolean }
@@ -50,8 +50,8 @@ export interface ClaimResult { ok: boolean; chips: number; item?: Reward; duplic
 export const rewardExists = (r: Reward): boolean => (r.t === 'cloth' ? r.id in CLOTHES : r.id in FURNITURE);
 
 /**
- * Réclame une mission : la marque ACCOMPLIE d'abord (jamais deux fois), puis verse les jetons et l'objet.
- * Un objet déjà possédé est remplacé par des jetons.
+ * Réclame une mission : la marque ACCOMPLIE d'abord (jamais deux fois), puis verse les tickets et l'objet.
+ * Un objet déjà possédé est remplacé par des tickets.
  */
 export function claimMission(s: CasinoState, w: World, id: string): ClaimResult {
   const m = missionById(id);
@@ -66,6 +66,6 @@ export function claimMission(s: CasinoState, w: World, id: string): ClaimResult 
     else w.castle.owned[m.item.id] = 1;
     if (duplicate) chips += DUP_CHIPS;
   }
-  grant(s, chips);
+  earn(s, 'mission', chips);
   return { ok: true, chips, item: m.item, duplicate };
 }

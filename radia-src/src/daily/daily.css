@@ -1,5 +1,5 @@
 /* ===== Cadeaux quotidiens : fenêtre pastel, cartes, animation du paquet ===== */
-.dy-back { z-index: 55; }
+.dy-back { z-index: 130; }
 .dy-card {
   max-width: 372px; padding: 16px 12px calc(14px + var(--sab) * 0); overflow-x: hidden; position: relative;
   background: linear-gradient(170deg, #fff4f8 0%, #f4ecff 55%, #fff4e8 100%);
@@ -71,6 +71,8 @@
 .dy-line small { display: block; font-size: 14px; margin-top: 2px; font-weight: 500; }
 .dy-line.cycle { margin-top: 10px; }
 .dy-thanks { position: absolute; bottom: calc(var(--sab) + 28px); left: 50%; transform: translateX(-50%); min-width: 220px; min-height: 54px; }
+.dy-use { position: absolute; left: 14px; right: 14px; bottom: calc(var(--sab) + 94px); display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.dy-use .btn { min-height: 44px; }
 .dy-thanks.in { animation: dyPopBtn .45s var(--ease-pop) both; }
 .dy-stage.soft .dy-box, .dy-stage.soft .dy-item { animation: fadeIn .3s ease both; }
 .dy-stage.soft .dy-rays { opacity: .5; animation: none !important; }

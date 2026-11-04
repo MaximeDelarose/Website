@@ -1,5 +1,7 @@
 /** Interface du mini-jeu « Modèle photo » : choix de pose + décor, puis défi de timing. */
 import { h, tap } from '../../../dom';
+import { haptic } from '../../../../core/haptics';
+import { sparkleBurst } from '../../../fx/sparkle';
 import { audio, reducedFx } from '../../../../core/app';
 import { icon } from '../../../icons';
 import { drawPhotoDecor } from '../../../../game/art/world/careers';
@@ -96,6 +98,8 @@ export function playPhoto(g: GameCtx): Promise<GameResult | null> {
         const fl = stage.querySelector('.ph-flash') as HTMLElement;
         if (!reducedFx()) { fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go'); }
         audio.play(sc >= 95 ? 'sparkle' : sc >= 70 ? 'pop2' : 'pop1', 1 + idx * 0.1);
+        haptic(sc >= 95 ? 'reward' : 'select');
+        if (sc >= 70) { const r = stage.getBoundingClientRect(); sparkleBurst(r.left + r.width / 2, r.top + r.height * 0.4, { rarity: sc >= 95 ? 'epic' : 'uncommon' }); }
         dots.children[idx].classList.add(sc >= 70 ? 'good' : 'soft');
         idx++;
         void (async () => {

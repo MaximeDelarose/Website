@@ -9,6 +9,8 @@ import * as R from '../../game/merge/rules';
 import type { BoardEvent, LevelDef, Loot, LootKind, RunState } from '../../game/merge/types';
 import type { ItemColl, Rarity } from '../../data/items';
 import type { MergeScene } from '../../game/merge/MergeScene';
+import { boardOf, describeLock, lockedCount, makeLock, openCount, type SurpriseVariant } from '../../game/merge/locks';
+import { Rng } from '../../utils/rng';
 import type { EndlessHud } from './hud';
 
 export interface DevCtx {
@@ -61,13 +63,34 @@ export function installEndlessDebug(c: DevCtx): void {
         album: albumProgress(f).found, gens: { ...f.endless2.gens }, tickets: f.endless2.tickets, fragments: { ...f.endless2.fragments },
         clothOwned: save.data.world.wardrobe.owned.length, furnitureOwned: Object.keys(save.data.world.castle.owned).length,
         active: activeColls(f), runSaved: !!save.data.endless.run,
+        locks: st.cells.map((x, i) => (x.lock ? { i, kind: x.lock.kind, price: x.lock.price, need: x.lock.need, zone: x.lock.zone, item: x.lock.item, reward: x.lock.reward } : null)).filter(Boolean),
+        locked: lockedCount(st.cells), open: openCount(st.cells), board: { ...boardOf(f) },
       };
     },
+    /** Pose / vide un objet dans une case (tests visuels). */
+    setItem: (cell: number, coll: ItemColl | null, level = 1) => {
+      const st = c.getState();
+      st.cells[cell].lock = undefined;
+      st.cells[cell].item = coll ? { c: coll, l: level } : null;
+      c.restart();
+    },
+    /** Pose un verrou précis (variante : webItem, webRare, chest, diamonds, energy, fragment, deco, sandDiamonds, sandCoins, padlock). */
+    setLock: (cell: number, variant: SurpriseVariant, coll: ItemColl = 'flowers') => {
+      const st = c.getState();
+      st.cells[cell].item = null;
+      st.cells[cell].lock = makeLock(new Rng(cell * 7919 + 13), [coll as never], variant, st.merges);
+      c.restart();
+    },
+    clearLocks: () => { for (const x of c.getState().cells) x.lock = undefined; c.restart(); },
+    lockInfo: (cell: number) => { const l = c.getState().cells[cell]?.lock; return l ? describeLock(l, { merges: c.getState().merges, fun: fun() }) : null; },
+    sel: () => ({ text: (document.querySelector('.en-sel') as HTMLElement | null)?.innerText ?? '', cls: (document.querySelector('.en-sel') as HTMLElement | null)?.className ?? '' }),
     sec: () => secondaryView(fun()),
     completeOrder: (slot: number) => c.getScene()?.rushOrder(slot),
     combo: (n = 5) => c.getScene()?.comboFx(n, Math.min(3, 1 + 0.25 * (n - 1))),
     cellXY: (i: number) => c.getScene()?.cellCenter(i) ?? null,
     cellSize: () => c.getScene()?.cellSize ?? 0,
     idle: () => c.getScene()?.isIdle() ?? true,
+    /** Diagnostic du pointeur (tests tactiles). */
+    pointer: () => { const sc = c.getScene() as unknown as { drag: unknown; fsm: { phase: string }; selected: number; locked: Set<number> } | null; return sc ? { drag: !!sc.drag, phase: sc.fsm.phase, selected: sc.selected, locked: [...sc.locked] } : null; },
   });
 }

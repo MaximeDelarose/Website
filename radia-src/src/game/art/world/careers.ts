@@ -7,7 +7,7 @@
  */
 import type { CareerId, Look, MagazineId } from '../../../data/world/ids';
 import { MAGAZINES } from '../../../data/world/careers';
-import { PAL, OUTLINE, fillShaded, gloss, glow, heartPath, roundRect, rgba, seeded, shade, sparkle, starPath } from '../kit';
+import { PAL, OUTLINE, fillShaded, gloss, glow, groundShadow, heartPath, roundRect, rgba, seeded, shade, sparkle, starPath } from '../kit';
 import { drawAvatar } from './avatar';
 import { currentLook } from '../../world/look';
 
@@ -321,4 +321,69 @@ export function drawConcertStage(ctx: CanvasRenderingContext2D, w: number, h: nu
   ctx.beginPath(); ctx.moveTo(w, 0); ctx.quadraticCurveTo(w * 0.84, h * 0.4, w, h); ctx.lineTo(w, 0); ctx.fill();
   ctx.fillStyle = '#58433F'; ctx.fillRect(0, h * 0.9, w, h * 0.1);
   for (let i = 0; i < 16; i++) sparkle(ctx, (i * 97 % 100) / 100 * w, (i * 53 % 70) / 100 * h, 2 + (i % 3) * 1.5, '#FFFFFF', 0.3 + 0.5 * Math.abs(Math.sin(t * 2 + i)));
+}
+
+// ------------------------------------------------------------------ grandes cartes d'activité (page Carrière)
+/** Studio photo : fond coloré en papier, softbox, trépied et appareil. */
+export function drawStudio(ctx: CanvasRenderingContext2D, w: number, h: number, t = 0): void {
+  const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#FFE4EE'); g.addColorStop(1, '#F3B7CB');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  glow(ctx, w * 0.5, h * 0.4, w * 0.5, '#FFFFFF', 0.7);
+  ctx.fillStyle = '#E9C7D6'; ctx.fillRect(0, h * 0.84, w, h * 0.16);
+  // softboxes
+  for (const [x, flip] of [[w * 0.1, 1], [w * 0.9, -1]] as const) {
+    ctx.fillStyle = '#58433F'; ctx.fillRect(x - 2, h * 0.5, 4, h * 0.36);
+    ctx.save(); ctx.translate(x, h * 0.36); ctx.rotate(0.2 * flip);
+    ctx.fillStyle = '#FFFDF6'; roundRect(ctx, -18, -26, 36, 52, 6); ctx.fill(); ctx.strokeStyle = OUTLINE; ctx.lineWidth = 2.2; ctx.stroke();
+    ctx.restore();
+    glow(ctx, x, h * 0.36, 34, '#FFF3B8', 0.45 + 0.2 * Math.sin(t * 2));
+  }
+  // trépied + appareil au premier plan, côté droit
+  ctx.strokeStyle = '#58433F'; ctx.lineWidth = 3;
+  const cx = w * 0.82, cy = h * 0.66;
+  for (const d of [-16, 0, 16]) { ctx.beginPath(); ctx.moveTo(cx, cy + 14); ctx.lineTo(cx + d, h * 0.9); ctx.stroke(); }
+  ctx.fillStyle = '#7A66B8'; roundRect(ctx, cx - 18, cy - 12, 36, 26, 6); ctx.fill(); ctx.strokeStyle = OUTLINE; ctx.lineWidth = 2.2; ctx.stroke();
+  ctx.fillStyle = '#FFF4E8'; ctx.beginPath(); ctx.arc(cx - 6, cy + 1, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  const fl = Math.max(0, Math.sin(t * 3.1));
+  if (fl > 0.9) glow(ctx, cx - 6, cy + 1, 36, '#FFFFFF', 0.9);
+  for (let i = 0; i < 8; i++) sparkle(ctx, (i * 61 % 100) / 100 * w, (i * 37 % 60) / 100 * h, 2 + (i % 3), '#FFFFFF', 0.35 + 0.4 * Math.abs(Math.sin(t * 2 + i)));
+}
+
+/** Plateau de cinéma : projecteur, clap, fauteuil de réalisateur. */
+export function drawFilmSet(ctx: CanvasRenderingContext2D, w: number, h: number, t = 0): void {
+  const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#3B3152'); g.addColorStop(1, '#7A4F6E');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = rgba('#FFE9A8', 0.14 + 0.04 * Math.sin(t * 2));
+  ctx.beginPath(); ctx.moveTo(w * 0.12, h * 0.08); ctx.lineTo(w * 0.28, h * 0.9); ctx.lineTo(w * 0.72, h * 0.9); ctx.lineTo(w * 0.88, h * 0.08); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#58433F'; ctx.fillRect(0, h * 0.88, w, h * 0.12);
+  // clap
+  const cx = w * 0.8, cy = h * 0.6;
+  const open = 0.35 + 0.3 * Math.max(0, Math.sin(t * 2.4));
+  ctx.fillStyle = '#2c2440'; roundRect(ctx, cx - 28, cy, 56, 32, 4); ctx.fill(); ctx.strokeStyle = '#FFF4E8'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.save(); ctx.translate(cx - 28, cy); ctx.rotate(-open);
+  ctx.fillStyle = '#FFF4E8'; ctx.fillRect(0, -10, 56, 10);
+  ctx.fillStyle = '#2c2440'; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(i * 14 + 4, -10); ctx.lineTo(i * 14 + 12, -10); ctx.lineTo(i * 14 + 8, 0); ctx.lineTo(i * 14, 0); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+  // projecteur de plateau
+  ctx.fillStyle = '#58433F'; ctx.fillRect(w * 0.1, h * 0.12, w * 0.12, 6);
+  glow(ctx, w * 0.16, h * 0.18, 30, '#FFE9A8', 0.7);
+  for (let i = 0; i < 10; i++) sparkle(ctx, (i * 71 % 100) / 100 * w, (i * 29 % 50) / 100 * h, 2 + (i % 3), '#FFFFFF', 0.3 + 0.4 * Math.abs(Math.sin(t * 2 + i)));
+}
+
+/** Scène complète d'une carrière avec Radia, tenue équipée. `t` en secondes. */
+export function drawCareerScene(ctx: CanvasRenderingContext2D, id: CareerId, w: number, h: number, t = 0, look: Look = currentLook()): void {
+  ctx.save();
+  if (id === 'model') drawRunway(ctx, w, h, t);
+  else if (id === 'singer') drawConcertStage(ctx, w, h, t, 0.5 + 0.5 * Math.sin(t * 5));
+  else if (id === 'actress') drawFilmSet(ctx, w, h, t);
+  else drawStudio(ctx, w, h, t);
+  const bob = Math.sin(t * 2.2) * 2;
+  const ah = h * 0.94, aw = ah * 0.4;
+  groundShadow(ctx, w * 0.5, h * 0.95, aw * 0.5, 6, 0.35);
+  ctx.save(); ctx.translate(w * 0.5 - aw / 2, h * 0.03 + bob);
+  const arms = id === 'photo' ? 'heart' : id === 'singer' ? 'open' : id === 'actress' ? 'wave' : 'down';
+  const expr = id === 'actress' ? 'love' : 'smile';
+  drawAvatar(ctx, look, aw, ah, { expr, arms, step: id === 'model' ? Math.round(Math.sin(t * 2)) : 0 });
+  ctx.restore();
+  ctx.restore();
 }

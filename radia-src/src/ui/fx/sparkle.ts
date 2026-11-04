@@ -7,6 +7,7 @@
  */
 import './fx.css';
 import { reducedFx } from '../../core/app';
+import { fxMount, rewardOpen } from '../rewards/layer';
 import { shineAt, SHINE_PERIOD } from '../../game/art/world/wristShine';
 
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
@@ -94,12 +95,22 @@ export function nextGlintDelay(t: number): number {
 // ------------------------------------------------------------------ DOM
 
 let layer: HTMLElement | null = null;
+/** Deuxième calque, dans la couche récompense globale (au-dessus de tout) : utilisé tant qu'une ouverture est en cours. */
+let topLayer: HTMLElement | null = null;
 let live = 0;
 const hasDom = (): boolean => typeof document !== 'undefined' && typeof Element !== 'undefined' && typeof Element.prototype.animate === 'function';
 const reduced = (): boolean => { try { return reducedFx(); } catch { return false; } };
 
 function getLayer(): HTMLElement | null {
   if (!hasDom()) return null;
+  if (rewardOpen()) {
+    if (topLayer && topLayer.isConnected) return topLayer;
+    topLayer = document.createElement('div');
+    topLayer.className = 'rd-sparkle-layer';
+    topLayer.setAttribute('aria-hidden', 'true');
+    fxMount(null).append(topLayer);
+    return topLayer;
+  }
   if (layer && layer.isConnected) return layer;
   layer = document.createElement('div');
   layer.className = 'rd-sparkle-layer';

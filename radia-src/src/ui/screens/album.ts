@@ -119,12 +119,17 @@ export function openAlbum(tab: Tab = 'memories', overlay = false): Promise<void>
         for (const c of claims) {
           const btn = h('button.btn.gold.small', 'Récupérer');
           btn.addEventListener('click', tap(() => {
+            if (fun.endless2.albumClaimed.includes(c.key)) return; // double toucher : une seule fois
             fun.endless2.albumClaimed.push(c.key);
             if (c.chain) bump(fun, 'chains');
             const res = settleLoot(c.loot);
             haptic('reward');
             audio.play('reward');
-            ui.toast({ title: c.label, sub: res.text || 'Récompense ajoutée', icon: 'trophy' });
+            // récompense déjà versée : mise en scène au premier plan (calque global)
+            void import('../rewards').then(async (rw) => {
+              const { endlessChestSpec } = await import('../rewards/endless');
+              await rw.openGift(endlessChestSpec({ rarity: 'rare', loot: c.loot, cloth: res.cloth, furniture: res.furniture, dupCoins: res.dupCoins, title: c.label }));
+            });
             body.textContent = '';
             renderCollections();
           }));

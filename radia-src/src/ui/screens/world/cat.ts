@@ -6,6 +6,7 @@
 import '../../styles/world-cat.css';
 import { h, tap } from '../../dom';
 import { ui } from '../../ui';
+import { softMoment } from '../../../apps/eventMoments';
 import { save, audio, events, reducedFx } from '../../../core/app';
 import { addHearts, stat } from '../../../core/progress';
 import { world, firstTime } from '../../../core/world';
@@ -105,7 +106,7 @@ export function openCat(): Promise<void> {
               const r = adoptCat(world(), name, Date.now());
               if (!r.ok) { ui.toast({ title: r.reason, icon: 'info' }); return; }
               commit();
-              stat('world.cat.adopted');
+              stat('world.cat.adopted'); softMoment('cat', 'Un nouveau chat au château', 60_000);
               audio.play('heart'); window.setTimeout(() => audio.play('sparkle'), 160);
               reactAuguste('cat', 1, true);
               cancelAnimationFrame(raf);
@@ -239,7 +240,7 @@ export function openCat(): Promise<void> {
         commit();
         audio.play(kind === 'play' ? 'pop1' : kind === 'treat' ? 'sparkle' : 'heart', kind === 'sleep' ? 0.8 : 1);
         if (kind === 'pet') stat('world.cat.pet');
-        if (kind === 'play') stat('world.cat.play');
+        if (kind === 'play') { stat('world.cat.play'); softMoment('cat', 'Un moment avec le chat', 480_000); }
         if (kind === 'treat') stat('world.cat.treat');
         if (!reducedFx() || kind === 'pet') {
           float(stage, '♥', 'heart', px, py);

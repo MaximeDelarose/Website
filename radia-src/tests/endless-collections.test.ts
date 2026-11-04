@@ -5,8 +5,8 @@ import { ENDLESS_CFG } from '../src/game/endless';
 import { materialOfCheck } from './endless-materials';
 
 describe('collections Endless 2.0', () => {
-  it('11 collections, kinds 1..11 dans l\'ordre du brief', () => {
-    expect(COLLECTION_IDS).toEqual(['flowers', 'love', 'paris', 'chess', 'rare', 'choc', 'jewel', 'cloth', 'perfume', 'acc', 'castle']);
+  it('14 collections, kinds 1..14 dans l\'ordre du brief (+ Pâtisseries, Sacs, Cadeaux)', () => {
+    expect(COLLECTION_IDS).toEqual(['flowers', 'love', 'paris', 'chess', 'rare', 'choc', 'jewel', 'cloth', 'perfume', 'acc', 'castle', 'pastry', 'bag', 'gift']);
     COLLECTION_IDS.forEach((c, i) => { expect(genKindOf(c)).toBe(i + 1); expect(GENERATORS[i + 1].coll).toBe(c); });
   });
   it('anciennes : 10 niveaux ; nouvelles : 8 niveaux, noms et blurbs complets', () => {
@@ -26,7 +26,7 @@ describe('collections Endless 2.0', () => {
   it('allItems : tous les niveaux, clés uniques', () => {
     const all = allItems();
     expect(new Set(all.map(itemKey)).size).toBe(all.length);
-    expect(all.filter((i) => i.c !== 'special').length).toBe(4 * 10 + 7 * 8);
+    expect(all.filter((i) => i.c !== 'special').length).toBe(4 * 10 + 10 * 8);
   });
   it('le niveau maximal d\'une collection de 8 niveaux est respecté par canMerge', () => {
     expect(canMerge({ c: 'rare', l: 7 }, { c: 'rare', l: 7 })).toBe(true);

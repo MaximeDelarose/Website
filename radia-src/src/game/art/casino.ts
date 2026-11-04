@@ -326,43 +326,120 @@ function miniSlot(ctx: C, x: number, y: number, s: number): void {
   ctx.restore();
 }
 
-/** Grande illustration d'accueil (repère 400×300) : salon, lustre, rideaux, tapis, machines — et Radia & Auguste. */
-export function drawCasinoHall(ctx: C, W = 400, H = 300, t = 0): void {
+/** Proportion de l'illustration d'accueil (hauteur / largeur) et zones tactiles (en fraction de la largeur / hauteur). */
+export const HALL_ASPECT = 0.78;
+export interface Spot { x: number; y: number; w: number; h: number }
+export const HALL_SPOTS: Record<'slots' | 'wheel' | 'roulette' | 'blackjack' | 'radia' | 'auguste', Spot> = {
+  slots: { x: 0.08, y: 0.5, w: 0.26, h: 0.3 },
+  wheel: { x: 0.7, y: 0.25, w: 0.24, h: 0.4 },
+  roulette: { x: 0.0, y: 0.78, w: 0.36, h: 0.22 },
+  blackjack: { x: 0.64, y: 0.78, w: 0.36, h: 0.22 },
+  radia: { x: 0.3, y: 0.18, w: 0.2, h: 0.62 },
+  auguste: { x: 0.5, y: 0.18, w: 0.2, h: 0.62 },
+};
+
+/** Grande roue du jour (décor) : anneau doré à ampoules, huit parts pastel, cœur au centre, piédestal. */
+function drawBigWheel(ctx: C, cx: number, cy: number, R: number, floorY: number, t: number): void {
+  // piédestal
+  ctx.fillStyle = '#5B2D8C'; roundRect(ctx, cx - 7, cy + R * 0.7, 14, floorY - cy - R * 0.7, 3); ctx.fill();
+  roundRect(ctx, cx - 26, floorY - 10, 52, 12, 5); fillShaded(ctx, '#7B2D8C', { x: cx - 26, y: floorY - 10, w: 52, h: 12 }, 2);
+  glow(ctx, cx, cy, R * 1.5, '#FFD9E8', 0.35);
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  const og = ctx.createLinearGradient(cx - R, cy - R, cx + R, cy + R); og.addColorStop(0, '#FFE9A8'); og.addColorStop(0.5, '#F3C86B'); og.addColorStop(1, '#C9922B');
+  ctx.fillStyle = og; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = CZ.ink; ctx.stroke();
+  const cols = ['#FFC6DA', '#E3D3FF', '#FFE08A', '#C9F0DD', '#CFE8FF', '#FFD0A8', '#F5C2E7', '#D2BEFF'];
+  for (let i = 0; i < 8; i++) {
+    const a0 = (i / 8) * Math.PI * 2 - Math.PI / 2, a1 = ((i + 1) / 8) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R * 0.84, a0, a1); ctx.closePath(); ctx.fillStyle = cols[i]; ctx.fill();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke();
+  }
+  for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * R * 0.92, cy + Math.sin(a) * R * 0.92, 2, 0, Math.PI * 2); ctx.fillStyle = (i + Math.floor(t * 2)) % 2 ? '#fff' : '#FF75A8'; ctx.fill(); }
+  ctx.beginPath(); ctx.arc(cx, cy, R * 0.2, 0, Math.PI * 2); ctx.fillStyle = CZ.gold; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = CZ.ink; ctx.stroke();
+  heartPath(ctx, cx, cy, R * 0.2); ctx.fillStyle = PAL.roseVif; ctx.fill();
+  // flèche
+  ctx.beginPath(); ctx.moveTo(cx - 7, cy - R - 7); ctx.lineTo(cx + 7, cy - R - 7); ctx.lineTo(cx, cy - R + 9); ctx.closePath(); ctx.fillStyle = '#E8387F'; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = CZ.ink; ctx.stroke();
+}
+
+/** Table de roulette (vue de dessus inclinée) : feutre, bord doré, petite roue, piles de tickets. */
+function drawRouletteTable(ctx: C, cx: number, cy: number): void {
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(cx, cy + 6, 62, 24, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(20,10,40,.45)'; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, cy, 60, 23, 0, 0, Math.PI * 2); const g = ctx.createLinearGradient(0, cy - 23, 0, cy + 23); g.addColorStop(0, '#E8387F'); g.addColorStop(1, '#9B1F5C'); ctx.fillStyle = g; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = CZ.gold; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cx, cy, 52, 18, 0, 0, Math.PI * 2); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,233,168,.55)'; ctx.stroke();
+  // petite roue
+  ctx.save(); ctx.translate(cx - 14, cy - 2); ctx.scale(1, 0.46);
+  ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fillStyle = '#D9A43C'; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = CZ.ink; ctx.stroke();
+  for (let i = 0; i < 12; i++) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 13.5, (i / 12) * Math.PI * 2, ((i + 1) / 12) * Math.PI * 2); ctx.closePath(); ctx.fillStyle = i % 2 ? '#241636' : '#D6336C'; ctx.fill(); }
+  ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI * 2); ctx.fillStyle = CZ.goldLight; ctx.fill(); ctx.restore();
+  // tapis des mises (cases)
+  for (let i = 0; i < 4; i++) { roundRect(ctx, cx + 8 + i * 11, cy - 9, 9, 13, 2); ctx.fillStyle = i % 2 ? '#241636' : '#D6336C'; ctx.fill(); ctx.lineWidth = 0.8; ctx.strokeStyle = CZ.gold; ctx.stroke(); }
+  // piles de tickets
+  for (const [dx, n, col] of [[-44, 4, '#F3C86B'], [-37, 3, '#9A7AE0'], [38, 3, '#4FB98A']] as const) for (let k = 0; k < n; k++) { ctx.beginPath(); ctx.ellipse(cx + dx, cy + 8 - k * 2.6, 6, 2.6, 0, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 0.8; ctx.strokeStyle = CZ.ink; ctx.stroke(); }
+  ctx.restore();
+}
+
+/** Table de blackjack : demi-lune de feutre violet, cartes étalées, tickets. */
+function drawBlackjackTable(ctx: C, cx: number, cy: number): void {
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(cx, cy + 6, 62, 24, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(20,10,40,.45)'; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, cy, 60, 23, 0, 0, Math.PI * 2); const g = ctx.createLinearGradient(0, cy - 23, 0, cy + 23); g.addColorStop(0, '#7B5BC4'); g.addColorStop(1, '#3A2170'); ctx.fillStyle = g; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = CZ.gold; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cx, cy + 2, 46, 13, 0, 0.1 * Math.PI, 0.9 * Math.PI); ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(255,233,168,.6)'; ctx.stroke();
+  const card = (x: number, y: number, rot: number, suit: string, red: boolean) => {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); roundRect(ctx, -7, -10, 14, 20, 2.5); ctx.fillStyle = CZ.ivory; ctx.fill(); ctx.lineWidth = 0.9; ctx.strokeStyle = CZ.ink; ctx.stroke();
+    ctx.fillStyle = red ? '#D6336C' : '#241636'; ctx.font = font(10); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(suit, 0, 1); ctx.restore();
+  };
+  card(cx - 22, cy - 4, -0.25, '♥', true); card(cx - 12, cy - 3, -0.08, '♛', false); card(cx + 16, cy - 3, 0.12, '♦', true); card(cx + 27, cy - 2, 0.3, 'A', false);
+  for (const [dx, n, col] of [[-46, 3, '#FF75A8'], [42, 4, '#F3C86B']] as const) for (let k = 0; k < n; k++) { ctx.beginPath(); ctx.ellipse(cx + dx, cy + 8 - k * 2.6, 6, 2.6, 0, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 0.8; ctx.strokeStyle = CZ.ink; ctx.stroke(); }
+  ctx.restore();
+}
+
+/** Grande illustration d'accueil (repère 400×312) : salon, lustres, tapis, machines, roue du jour, tables — et Radia & Auguste. */
+export function drawCasinoHall(ctx: C, W = 400, H = 312, t = 0): void {
   const k = W / 400;
   ctx.save(); ctx.scale(k, k);
   H = H / k; W = 400;
   const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#1E1238'); bg.addColorStop(0.55, '#3A2170'); bg.addColorStop(1, '#6A2F86'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  // panneaux dorés au mur
-  for (let i = 0; i < 4; i++) { const x = 40 + i * 100; roundRect(ctx, x, 40, 70, 150, 8); ctx.strokeStyle = 'rgba(243,200,107,.35)'; ctx.lineWidth = 1.6; ctx.stroke(); }
-  // étoiles / paillettes
+  // panneaux dorés au mur + moulures
+  for (let i = 0; i < 4; i++) { const x = 40 + i * 100; roundRect(ctx, x, 40, 70, 150, 8); ctx.strokeStyle = 'rgba(243,200,107,.35)'; ctx.lineWidth = 1.6; ctx.stroke(); roundRect(ctx, x + 6, 46, 58, 138, 5); ctx.strokeStyle = 'rgba(243,200,107,.16)'; ctx.stroke(); }
+  ctx.fillStyle = 'rgba(243,200,107,.5)'; ctx.fillRect(0, H - 76, W, 3);
   const r = seeded(11);
-  for (let i = 0; i < 26; i++) sparkle(ctx, r() * W, r() * H * 0.7, 1.5 + r() * 3, '#FFE9A8', 0.35 + 0.5 * (0.5 + 0.5 * Math.sin(t * 2 + i)));
+  for (let i = 0; i < 26; i++) sparkle(ctx, r() * W, r() * H * 0.62, 1.5 + r() * 3, '#FFE9A8', 0.35 + 0.5 * (0.5 + 0.5 * Math.sin(t * 2 + i)));
   glow(ctx, W / 2, 40, 190, '#FFB6D9', 0.28);
-  // machines à sous en fond
-  miniSlot(ctx, 22, H - 150, 1.0); miniSlot(ctx, W - 78, H - 150, 1.0);
+  const floor = H - 70;
+  // machines à sous alignées contre le mur de gauche
+  miniSlot(ctx, 40, floor - 76, 0.85); miniSlot(ctx, 86, floor - 76, 0.85);
+  // grande roue du jour à droite
+  drawBigWheel(ctx, 328, floor - 100, 36, floor + 6, t);
   // rideaux
   for (const side of [-1, 1] as const) {
     ctx.save(); if (side === 1) { ctx.translate(W, 0); ctx.scale(-1, 1); }
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(62, 0); ctx.bezierCurveTo(46, 60, 66, 120, 40, H * 0.72); ctx.bezierCurveTo(30, H * 0.85, 22, H * 0.9, 0, H); ctx.closePath();
-    const cg = ctx.createLinearGradient(0, 0, 66, 0); cg.addColorStop(0, '#7A1A4A'); cg.addColorStop(0.5, '#C23A73'); cg.addColorStop(1, '#8F2456'); ctx.fillStyle = cg; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(34, 0); ctx.bezierCurveTo(26, 60, 36, 120, 22, H * 0.72); ctx.bezierCurveTo(16, H * 0.85, 12, H * 0.9, 0, H); ctx.closePath();
+    const cg = ctx.createLinearGradient(0, 0, 36, 0); cg.addColorStop(0, '#7A1A4A'); cg.addColorStop(0.5, '#C23A73'); cg.addColorStop(1, '#8F2456'); ctx.fillStyle = cg; ctx.fill();
     ctx.strokeStyle = 'rgba(255,200,225,.25)'; ctx.lineWidth = 2;
-    for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(i * 13, 0); ctx.bezierCurveTo(i * 10, 70, i * 14, 140, i * 9, H); ctx.stroke(); }
-    ctx.fillStyle = CZ.gold; ctx.fillRect(0, 0, 66, 8);
-    ctx.beginPath(); ctx.arc(40, H * 0.5, 6, 0, Math.PI * 2); ctx.fillStyle = CZ.gold; ctx.fill();
+    for (let i = 1; i < 3; i++) { ctx.beginPath(); ctx.moveTo(i * 11, 0); ctx.bezierCurveTo(i * 8, 70, i * 12, 140, i * 6, H); ctx.stroke(); }
+    ctx.fillStyle = CZ.gold; ctx.fillRect(0, 0, 36, 7);
+    ctx.beginPath(); ctx.arc(22, H * 0.5, 5, 0, Math.PI * 2); ctx.fillStyle = CZ.gold; ctx.fill();
     ctx.restore();
   }
-  chandelier(ctx, W / 2, 0, 1);
-  // tapis
-  const cy = H - 54;
-  ctx.beginPath(); ctx.moveTo(60, cy); ctx.lineTo(W - 60, cy); ctx.lineTo(W + 20, H); ctx.lineTo(-20, H); ctx.closePath();
+  chandelier(ctx, W / 2, 0, 1); chandelier(ctx, 92, 0, 0.5); chandelier(ctx, 308, 0, 0.5);
+  // tapis raffiné : bordure or, liseré, losanges
+  const cy = floor;
+  ctx.beginPath(); ctx.moveTo(40, cy); ctx.lineTo(W - 40, cy); ctx.lineTo(W + 20, H); ctx.lineTo(-20, H); ctx.closePath();
   const rg = ctx.createLinearGradient(0, cy, 0, H); rg.addColorStop(0, '#E8387F'); rg.addColorStop(1, '#9B1F5C'); ctx.fillStyle = rg; ctx.fill();
   ctx.lineWidth = 3; ctx.strokeStyle = CZ.gold; ctx.stroke();
   ctx.save(); ctx.clip();
-  ctx.strokeStyle = 'rgba(255,233,168,.28)'; ctx.lineWidth = 1.4;
+  ctx.strokeStyle = 'rgba(255,233,168,.22)'; ctx.lineWidth = 1.2;
   for (let i = -10; i < 20; i++) { ctx.beginPath(); ctx.moveTo(W / 2 + i * 30, cy); ctx.lineTo(W / 2 + i * 62, H); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(255,233,168,.2)';
+  for (let i = 0; i < 9; i++) { const x = 20 + i * 45; ctx.beginPath(); ctx.moveTo(x, H - 8); ctx.lineTo(x + 7, H - 14); ctx.lineTo(x + 14, H - 8); ctx.lineTo(x + 7, H - 2); ctx.closePath(); ctx.fill(); }
   ctx.restore();
+  ctx.beginPath(); ctx.moveTo(52, cy + 7); ctx.lineTo(W - 52, cy + 7); ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(255,233,168,.5)'; ctx.stroke();
+  // tables de jeu (avant-plan, aux coins)
+  drawRouletteTable(ctx, 62, H - 30); drawBlackjackTable(ctx, 338, H - 30);
   // personnages
-  const figH = H - 78;
+  const figH = H - 96;
   const draw = (who: 'radia' | 'auguste', x: number, flip: boolean) => {
     ctx.save();
     const w = figH * 0.4;
@@ -381,12 +458,11 @@ export function drawCasinoHall(ctx: C, W = 400, H = 300, t = 0): void {
   };
   draw('radia', W / 2 - figH * 0.4 - 4, false);
   draw('auguste', W / 2 + 4, false);
-  // jetons / diamants flottants
-  sparkle(ctx, W / 2, H * 0.3, 7, '#fff', 0.9); sparkle(ctx, W / 2 - 90, H * 0.42, 5, '#FFE9A8', 0.8); sparkle(ctx, W / 2 + 96, H * 0.36, 6, '#FFD0E6', 0.8);
+  sparkle(ctx, W / 2, H * 0.28, 7, '#fff', 0.9); sparkle(ctx, W / 2 - 80, H * 0.4, 5, '#FFE9A8', 0.8); sparkle(ctx, W / 2 + 84, H * 0.34, 6, '#FFD0E6', 0.8);
   ctx.restore();
 }
 
-export function casinoHallCanvas(w = 393, h = 270, t = 0): HTMLCanvasElement {
+export function casinoHallCanvas(w = 393, h = Math.round(w * HALL_ASPECT), t = 0): HTMLCanvasElement {
   const k = texScale();
   const c = paint(w, h, k, (ctx) => drawCasinoHall(ctx, w, h, t));
   return c;

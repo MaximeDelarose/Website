@@ -62,7 +62,7 @@ export function applyLot(lot: LotDef, ctx: WheelCtx, rng: Rng): Granted {
     case 'coins': ctx.addCoins(lot.n); return { lot, text: `${lot.n} pièces`, coins: lot.n };
     case 'diamonds': ctx.giveDiamonds(lot.n); return { lot, text: `${lot.n} diamants` };
     case 'energy': ctx.giveEnergy(lot.n); return { lot, text: `${lot.n} énergies` };
-    case 'chips': ctx.grantChips(lot.n); return { lot, text: `${lot.n} jetons de casino` };
+    case 'chips': ctx.grantChips(lot.n); return { lot, text: `${lot.n} tickets du Casino Royal` };
     case 'fragment': ctx.addFragment('cloth', lot.n); return { lot, text: 'Un fragment de vêtement' };
     case 'fashion':
     case 'deco': {

@@ -255,13 +255,13 @@ export type BarkTrigger =
   | 'tapAuguste' | 'memory' | 'achievement' | 'rare' | 'idle';
 
 export const BARKS: Record<BarkTrigger, string[]> = {
-  combo3: ['Trop forte !', 'Ah ouais, carrément !', 'Quelle reine !'],
-  combo5: ['Même les pixels sont impressionnés.', 'Bon, tu peux arrêter de m\'humilier devant tout le royaume ?'],
+  combo3: ['Trop forte !', 'Ah ouais, carrément !', 'Quelle reine !', 'Sahha, ça enchaîne !', 'Joli rythme.', 'Tu es lancée.'],
+  combo5: ['Même les pixels sont impressionnés.', 'Bon, tu peux arrêter de m\'humilier devant tout le royaume ?', 'Ya latif, quelle série !', 'Wallah, tu es en feu.', 'Je n\'ose plus respirer.', 'Tu m\'épates, là.'],
   discover: ['Oh non… elle a encore découvert un truc que j\'avais caché.'],
-  rare: ['Mais t\'as une chance de malade !', 'Quelle reine !'],
-  win: ['Trop forte !', 'Quelle reine !', 'Ah ouais, carrément ! Bien joué.'],
-  invalid: ['Ça arrive, même les reines ont le droit de se tromper.', 'Pas grave, essaie autrement.'],
-  stuck: ['Ça arrive, même les reines ont le droit de se tromper.', 'On respire, on regarde le plateau, et ça repart.'],
+  rare: ['Mais t\'as une chance de malade !', 'Quelle reine !', 'Mashallah, regarde-moi ça !', 'Ya latif, t\'as trouvé quoi là ?!', 'Celle-là, on la garde.', 'Elle brille, celle-là.'],
+  win: ['Trop forte !', 'Quelle reine !', 'Ah ouais, carrément ! Bien joué.', 'Bsahték, bien mérité !', 'Sahha, propre !', 'Pas mal du tout.'],
+  invalid: ['Ça arrive, même les reines ont le droit de se tromper.', 'Pas grave, essaie autrement.', 'Ce coup-là ne passe pas, mais le suivant oui.', 'Wallah, ça m\'arrive aussi.', 'Essaie de l\'autre côté.', 'Tout doux, on a le temps.'],
+  stuck: ['Ça arrive, même les reines ont le droit de se tromper.', 'On respire, on regarde le plateau, et ça repart.', 'Un petit regard sur les coins, ça aide.', 'Rabi yahfdek, pas de panique.', 'Fais une pause, la solution arrive toute seule.', 'Regarde les petits en bas, ils se cachent.'],
   chessWin: ['Même dans mon propre jeu, tu trouves le moyen de me battre…', 'Bon, tu peux arrêter de m\'humilier devant tout le royaume ?'],
   chessLoss: ['Ça arrive, même les reines ont le droit de se tromper.', 'Une revanche ? Je te laisse les blancs.'],
   tapAuguste: [
@@ -272,7 +272,7 @@ export const BARKS: Record<BarkTrigger, string[]> = {
   ],
   memory: ['Twahechtek… même quand t\'es juste de l\'autre côté de l\'écran.'],
   achievement: ['Oh non… elle a encore découvert un truc que j\'avais caché.'],
-  idle: ['Tu réfléchis ou tu admires le paysage ?', 'Je peux te donner un indice, si tu veux. Touche l\'ampoule.'],
+  idle: ['Tu réfléchis ou tu admires le paysage ?', 'Je peux te donner un indice, si tu veux. Touche l\'ampoule.', 'Je ne dis rien, mais je regarde.', 'Prends ton temps, il n\'y a pas de chrono.', 'Mashallah, tu as l\'air concentrée.', 'Un petit thé pendant que tu réfléchis ?'],
 };
 
 /** Délai minimum (ms) avant de répéter une réplique d'un même déclencheur. */

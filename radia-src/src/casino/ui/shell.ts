@@ -3,10 +3,11 @@ import { h } from '../../ui/dom';
 import { audio } from '../../core/app';
 import { haptic } from '../../core/haptics';
 import { fmt } from '../../core/wallet';
-import { chipUrl } from '../../game/art/casino';
+import { ticketUrl } from '../../game/art/world/giftArt';
 import { bounce, rollNumber, shake, flyChips, centerOf, type Pt } from '../fx';
 import { cs, persist, notifyCasino } from '../store';
 import { returnBring } from '../chips';
+import { markTask } from '../tickets';
 
 export interface Scene {
   el: HTMLElement; title: string;
@@ -41,7 +42,7 @@ export function createShell(onClose: () => void): Shell {
   let scene: Scene | null = null;
   let dead = false;
   const balEl = h('b.cz-bal', fmt(cs().bring));
-  const pill = h('div.cz-pill', { 'aria-label': 'Jetons à la table' }, h('img', { src: chipUrl(25, 32), alt: '', draggable: false }), balEl);
+  const pill = h('div.cz-pill', { 'aria-label': 'Tickets à la table' }, h('img', { src: ticketUrl(36), alt: '', draggable: false }), balEl);
   const title = h('h1.cz-title', '');
   const back = h('button.cz-ibtn.cz-back', { 'aria-label': 'Retour' }, '‹');
   const help = h('button.cz-ibtn.cz-helpbtn', { 'aria-label': 'Aide : règles et probabilités' }, '?');
@@ -80,6 +81,7 @@ export function createShell(onClose: () => void): Shell {
     openHelp() {
       if (!scene) return;
       audio.play('select');
+      try { markTask(cs(), 'rules'); persist(); } catch { /* mini-défi : jamais bloquant */ }
       const card = h('div.cz-helpcard', { role: 'dialog', 'aria-modal': 'true' }, h('h2', `Aide · ${scene.title}`), h('div.cz-helpbody', scene.help()), h('button.btn.gold.cz-close', 'J\'ai compris ♡'));
       const bd = h('div.cz-helpback', card);
       const close = () => { bd.classList.add('leaving'); window.setTimeout(() => bd.remove(), 180); };
