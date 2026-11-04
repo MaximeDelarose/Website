@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.3.2";
+  var VERSION = "2.3.3";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -1481,6 +1481,79 @@
       for (var cy = Math.floor((cy0 - 40) / GC); cy <= Math.floor((cy0 + H + 90) / GC); cy++) { var g = giantAt(cx, cy); if (g) out.push(g); }
     return out;
   }
+  /* ---------- graphismes lot 4 : arbres, champignons et rochers géants en pixel (3 tons) ---------- */
+  var RG = D.RIG, GIANT_C = {};
+  function ramp(c) { return [RG.mix(c, "#ffffff", 0.28), c, RG.mix(c, "#000000", 0.22), RG.mix(c, "#000000", 0.42)]; }
+  function giantTheme() { return MAP && !isDungeon() ? MAP.theme || "" : ""; }
+  function giantSpr(g, part) {
+    var gr = g.gr || {}, th = giantTheme(), key = g.k + part + g.v + th + (gr.base || "");
+    if (GIANT_C[key]) return GIANT_C[key];
+    var E = RG.E, C = RG.C, P = RG.P, S = [], W, H, ax, ay, mats, i;
+    var seed = function (n) { return hash(g.v * 31 + n, n * 7 + 3); };
+    if (g.k === "tree" && part === "base") {
+      W = 18; H = 28; ax = 9; ay = 26;
+      mats = { bark: th === "burnt" ? ["#4e3e38", "#2e2420", "#1e1714", "#120d0b"] : ["#9a6844", "#6b4430", "#4a2e1e", "#33200f"],
+        line: [th === "burnt" ? "#120d0b" : "#33200f"], ember: ["#ff8a2a"], snow: ["#ffffff", "#eef6fa", "#c8dce8"] };
+      S.push(C(9, 26, 2.5, 27.5, 2, 0.9, "bark"), C(9, 26, 15.5, 27.5, 2, 0.9, "bark"));
+      S.push(C(9, 1, 9, 26, 4.4, 5.4, "bark", { line: true }));
+      S.push(C(7, 4, 7.5, 22, 0.4, 0.4, "line", { flat: true }), C(11, 8, 10.5, 24, 0.4, 0.4, "line", { flat: true }));
+      S.push(E(10, 14, 1.3, 1.6, 0, "line", { flat: true }));
+      if (th === "burnt") S.push(E(7.5, 18, 0.6, 0.6, 0, "ember", { flat: true }), E(10.5, 9, 0.5, 0.5, 0, "ember", { flat: true }));
+      if (th === "snow") S.push(E(4, 27, 3, 1.2, 0, "snow"), E(14, 27.2, 3, 1.1, 0, "snow"));
+    } else if (g.k === "tree") {
+      var R = 22 + g.v * 3;
+      W = Math.ceil(R * 2.8) + 2; H = Math.ceil(R * 2.3) + 2; ax = W / 2; ay = Math.ceil(R * 1.25) + 1;
+      if (th === "burnt") {
+        W = 56; H = 48; ax = 28; ay = 34;
+        mats = { bark: ["#4e3e38", "#2e2420", "#1e1714", "#120d0b"], ember: ["#ff8a2a"], ember2: ["#ffd05a"] };
+        S.push(C(28, 48, 28, 18, 4.4, 3.4, "bark", { line: true }));
+        [[28, 22, 12, 6, 2.4], [28, 26, 46, 8, 2.4], [28, 18, 24, 2, 2], [14, 10, 6, 4, 1.2], [42, 12, 52, 6, 1.2], [20, 14, 18, 8, 1]].forEach(function (b) { S.push(C(b[0], b[1], b[2], b[3], b[4], b[4] * 0.45, "bark", { line: true })); });
+        [[12, 6], [46, 8], [24, 2], [52, 6]].forEach(function (p, k) { if ((g.v + k) % 2) S.push(E(p[0], p[1], 0.7, 0.7, 0, k % 2 ? "ember" : "ember2", { flat: true })); });
+      } else {
+        var leaf = th === "snow" ? ["#6e9a7a", "#46705a", "#325444", "#223c30"] : [gr.hi || "#86b56c", gr.bushHi || gr.patch || "#5b8a4a", gr.bush || gr.tuft || "#3f6b3a", RG.mix(gr.bush || gr.tuft || "#3f6b3a", "#000000", 0.35)];
+        mats = { leaf: leaf, dot: [leaf[0]], dark: [leaf[3]], snow: ["#ffffff", "#eef6fa", "#c8dce8"], fruit: [th === "autumn" ? "#c8553d" : "#f29ad8"] };
+        var cx = ax, cy = ay;
+        [[-R * 0.72, 6, R * 0.6], [R * 0.72, 5, R * 0.62], [0, 0, R], [0, -R * 0.55, R * 0.66], [-R * 0.42, -R * 0.2, R * 0.5]].forEach(function (c, k) {
+          S.push(E(cx + c[0], cy + c[1], c[2], c[2] * 0.9, 0, "leaf", { line: k > 1 }));
+        });
+        for (i = 0; i < 22; i++) { var h = seed(i), px = cx - R * 1.1 + h % Math.round(R * 2.2), py = cy - R * 0.9 + (h >>> 6) % Math.round(R * 1.7); S.push(E(px, py, 1.3, 0.9, 0, py < cy ? "dot" : "dark", { flat: true })); }
+        if (th === "snow") [[0, -R * 0.55, R * 0.62], [-R * 0.72, 6, R * 0.55], [R * 0.72, 5, R * 0.56], [-R * 0.42, -R * 0.2, R * 0.45]].forEach(function (c) {
+          S.push(E(cx + c[0], cy + c[1] - c[2] * 0.55, c[2] * 0.82, c[2] * 0.38, 0, "snow", { line: true }));
+        });
+        if ((th === "autumn" || g.v === 2) && th !== "snow") for (i = 0; i < 4; i++) { var hf = seed(40 + i); S.push(E(cx - R * 0.6 + hf % Math.round(R * 1.2), cy - R * 0.3 + (hf >>> 5) % Math.round(R * 0.9), 1, 1, 0, "fruit", { flat: true })); }
+      }
+    } else if (g.k === "shroom" && part === "base") {
+      W = 14; H = 22; ax = 7; ay = 20;
+      mats = { stem: ["#fff6e0", "#e8dcb4", "#c9b88a", "#a8966a"] };
+      S.push(E(7, 20.5, 6.5, 1.6, 0, "stem"), C(7, 2, 7, 20, 4.4, 5.2, "stem", { line: true }));
+    } else if (g.k === "shroom") {
+      W = 50; H = 22; ax = 25; ay = 21;
+      var cap = gr.shroom || "#c8553d";
+      mats = { cap: ramp(cap), gill: [RG.mix(cap, "#2b1709", 0.55)], spot: ["#fdf3de"], glow: ["#9cf06a"] };
+      S.push(E(25, 18, 23.5, 3, 0, "gill", { flat: true }));
+      S.push(E(25, 17, 23.5, 15, 0, "cap", { maxY: 17.5, line: true }));
+      [[-12, 8, 3.2], [2, 4.5, 4], [12, 10, 2.6], [-4, 11, 1.8], [-18, 13, 1.6], [17, 14, 1.5]].forEach(function (p) { S.push(E(25 + p[0], p[1], p[2], p[2] * 0.75, 0, "spot", { flat: true })); });
+    } else {
+      W = 32; H = 24; ax = 16; ay = 22;
+      var rc = gr.rock || gr.pebbleDk || "#7a7068";
+      if (th === "snow") rc = "#9cc4dc";
+      if (th === "burnt") rc = "#4a3e3a";
+      mats = { rock: ramp(rc), facet: ramp(RG.mix(rc, "#ffffff", 0.12)), crack: [RG.mix(rc, "#000000", 0.5)], moss: ["#86b56c", "#5f8a44", "#46703a"],
+        ice: ["#ffffff", "#d8f4ff", "#9ee8ff", "#6ab8d8"], ember: ["#ff8a2a"], snow: ["#ffffff", "#eef6fa", "#c8dce8"], crystal: ["#e8c8ff", "#c9b3ff", "#9a7fd1", "#6a50a0"] };
+      S.push(E(16, 14.5, 14, 8.5, 0, "rock", { line: true }));
+      S.push(E(10.5, 11, 7, 5.5, -0.2, "facet", { line: true }));
+      S.push(E(22, 12, 6, 4.5, 0.25, "rock", { line: true }));
+      S.push(C(18, 9, 19.5, 15, 0.45, 0.4, "crack", { flat: true }), C(19.5, 15, 23, 17, 0.4, 0.4, "crack", { flat: true }));
+      if (th === "snow") { S.push(E(13, 7.5, 9, 3, 0, "snow", { line: true })); S.push(P([[24, 11], [27, 2], [29, 12]], "ice", { line: true }), P([[27, 13], [31, 6], [31, 15]], "ice")); }
+      else if (th === "burnt") S.push(C(9, 13, 13, 16, 0.5, 0.45, "ember", { flat: true }), C(20, 10, 22, 13, 0.45, 0.4, "ember", { flat: true }));
+      else if (th === "cave" && g.v === 1) S.push(P([[22, 9], [24, 0], [26, 9]], "crystal", { line: true }), P([[25, 10], [29, 3], [29, 11]], "crystal"), P([[19, 9], [20, 4], [22, 9]], "crystal"));
+      else if (g.v === 0) S.push(E(11, 6.8, 6, 2.2, 0, "moss", { line: true }));
+    }
+    var R0 = RG.raster(W, H, S, mats), spr = sprite(R0.rows, R0.pal);
+    spr.ax = ax + 1; spr.ay = ay + 1;
+    return (GIANT_C[key] = spr);
+  }
+  function blitAnchor(s, x, y) { ctx.drawImage(s.c, Math.round(x - s.ax), Math.round(y - s.ay)); }
   function drawGiantBases(list) {
     list.forEach(function (g) {
       var x = Math.round(g.x), y = Math.round(g.y), gr = g.gr || {};
@@ -1491,22 +1564,8 @@
         ctx.fillStyle = "#3a2418"; ctx.beginPath(); ctx.ellipse(x, y - 2, 13, 6, 0, 0, TAU); ctx.fill();
         for (var ri = 0; ri < 6; ri++) { var rx = x - 11 + ri * 4 + (hash(x + ri, y) % 3), rh = hh - (ri % 3) * (on ? 3 : 1); ctx.fillStyle = ri % 2 ? "#6b4430" : "#8a5a3b"; ctx.fillRect(rx, y - rh, 3, rh); if (on) { ctx.fillStyle = "#5a8a3a"; ctx.fillRect(rx, y - rh, 2, 1); } }
         if (on) { ctx.strokeStyle = "#4a2e1e"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 12, y - 8); ctx.quadraticCurveTo(x, y - 20, x + 12, y - 8); ctx.stroke(); ctx.lineWidth = 1; }
-      } else if (g.k === "tree") {
-        ctx.fillStyle = "#4a2e1e"; ctx.fillRect(x - 5, y - 22, 10, 24);
-        ctx.fillStyle = "#6b4430"; ctx.fillRect(x - 4, y - 22, 6, 24);
-        ctx.fillStyle = "#8a5a3b"; ctx.fillRect(x - 3, y - 20, 1, 18);
-        ctx.fillStyle = "#4a2e1e"; ctx.fillRect(x - 8, y, 4, 2); ctx.fillRect(x + 4, y, 4, 2); ctx.fillRect(x - 1, y - 12, 2, 3);
-      } else if (g.k === "shroom") {
-        ctx.fillStyle = "#c9b88a"; ctx.fillRect(x - 5, y - 18, 10, 20);
-        ctx.fillStyle = "#e8dcb4"; ctx.fillRect(x - 4, y - 18, 6, 20);
-        ctx.fillStyle = "#c9b88a"; ctx.fillRect(x - 6, y, 12, 2);
       } else {
-        var c1 = gr.rock || "#7a7068", c2 = gr.rockHi || "#a89e94";
-        ctx.fillStyle = "#3a3430"; ctx.beginPath(); ctx.ellipse(x, y - 4, 14, 10, 0, 0, TAU); ctx.fill();
-        ctx.fillStyle = c1; ctx.beginPath(); ctx.ellipse(x, y - 5, 13, 9, 0, 0, TAU); ctx.fill();
-        ctx.fillStyle = c2; ctx.fillRect(x - 7, y - 11, 6, 2); ctx.fillRect(x - 9, y - 9, 3, 3);
-        ctx.fillStyle = "#3a3430"; ctx.fillRect(x + 2, y - 6, 1, 4); ctx.fillRect(x + 3, y - 3, 3, 1);
-        if (g.v === 0) { ctx.fillStyle = "#5f8a44"; ctx.fillRect(x - 4, y - 13, 5, 2); }
+        blitAnchor(giantSpr(g, "base"), x, y + (g.k === "rock" ? 2 : 1));
       }
     });
   }
@@ -1516,22 +1575,10 @@
       var x = Math.round(g.x), y = Math.round(g.y), gr = g.gr || {};
       var under = players.some(function (pl) { return Math.abs(pl.x - x) < 26 && pl.y < y + 2 && pl.y > y - (g.k === "tree" ? 56 : 34); });
       ctx.globalAlpha = under ? 0.45 : 1;
-      if (g.k === "tree") {
-        var dk = gr.bush || gr.tuft || "#3f6b3a", md = gr.bushHi || gr.patch || "#5b8a4a", hi = gr.hi || "#86b56c", R = 22 + g.v * 3, ty = y - 34;
-        ctx.fillStyle = dk;
-        [[0, 0, R], [-R * 0.7, 6, R * 0.6], [R * 0.7, 5, R * 0.62], [0, -R * 0.55, R * 0.65]].forEach(function (c) { ctx.beginPath(); ctx.arc(x + c[0], ty + c[1], c[2], 0, TAU); ctx.fill(); });
-        ctx.fillStyle = md;
-        [[-3, -3, R * 0.75], [-R * 0.55, 2, R * 0.45], [R * 0.5, 0, R * 0.45]].forEach(function (c) { ctx.beginPath(); ctx.arc(x + c[0], ty + c[1], c[2], 0, TAU); ctx.fill(); });
-        ctx.fillStyle = hi;
-        for (var i = 0; i < 14; i++) { var h = hash(x + i * 3, y - i); ctx.fillRect(x - R * 0.7 + h % Math.round(R * 1.2), ty - R * 0.7 + (h >>> 5) % Math.round(R * 0.9), 2, 2); }
-        ctx.fillStyle = dk; for (i = 0; i < 10; i++) { var h2 = hash(y + i * 5, x); ctx.fillRect(x - R + h2 % Math.round(R * 2), ty + (h2 >>> 6) % Math.round(R * 0.9), 1, 2); }
-      } else {
-        var cap = gr.shroom || "#c8553d", glow = MAP.night;
-        if (glow) { ctx.fillStyle = "rgba(127,209,199,.18)"; ctx.beginPath(); ctx.ellipse(x, y - 20, 34, 22, 0, 0, TAU); ctx.fill(); }
-        ctx.fillStyle = "#2b1709"; ctx.beginPath(); ctx.ellipse(x, y - 21, 23, 13, 0, Math.PI, 0); ctx.fill(); ctx.fillRect(x - 23, y - 22, 46, 4);
-        ctx.fillStyle = cap; ctx.beginPath(); ctx.ellipse(x, y - 21, 22, 12, 0, Math.PI, 0); ctx.fill(); ctx.fillRect(x - 22, y - 22, 44, 3);
-        ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(x - 22, y - 20, 44, 2);
-        ctx.fillStyle = "#fdf3de"; [[-12, -27, 4], [2, -31, 5], [12, -25, 3], [-4, -24, 2]].forEach(function (s) { ctx.fillRect(x + s[0], y + s[1], s[2], s[2] - 1); });
+      if (g.k === "tree") blitAnchor(giantSpr(g, "top"), x, y - 34);
+      else {
+        if (MAP.night) { ctx.fillStyle = "rgba(127,209,199,.18)"; ctx.beginPath(); ctx.ellipse(x, y - 20, 34, 22, 0, 0, TAU); ctx.fill(); }
+        blitAnchor(giantSpr(g, "top"), x, y - 16);
       }
       ctx.globalAlpha = 1;
     });
@@ -5818,13 +5865,109 @@
     var A = p(a), B = p(b);
     return "#" + [0, 1, 2].map(function (i) { var v = Math.round(A[i] + (B[i] - A[i]) * t); return (v < 16 ? "0" : "") + v.toString(16); }).join("");
   }
+  /* ---------- graphismes lot 4 : sols particuliers et petits détails par thème de carte ---------- */
+  function drawFloor(kind, G, sx, sy, tx, ty, TT) {
+    var h = hash(tx * 3 + 1, ty * 5 + 2), dk = G._fdk || (G._fdk = mixHex(G.base, "#000000", 0.22)), hi = G._fhi || (G._fhi = mixHex(G.base, "#ffffff", 0.16));
+    if (kind === "planks") {
+      ctx.fillStyle = dk; ctx.fillRect(sx, sy, 16, 1); ctx.fillRect(sx, sy + 8, 16, 1);
+      ctx.fillRect(sx + (h % 12) + 2, sy + 1, 1, 7); ctx.fillRect(sx + ((h >>> 4) % 12) + 2, sy + 9, 1, 7);
+      ctx.fillStyle = hi; ctx.fillRect(sx + ((h >>> 8) % 10) + 1, sy + 3, 4, 1); ctx.fillRect(sx + ((h >>> 12) % 10) + 2, sy + 12, 3, 1);
+    } else if (kind === "ice") {
+      if (h % 4 === 0) { ctx.fillStyle = "rgba(255,255,255,.35)"; for (var i = 0; i < 4; i++) ctx.fillRect(sx + 3 + i, sy + 9 - i, 1, 1); ctx.fillRect(sx + 9, sy + 12, 3, 1); }
+      if (h % 5 === 1) { ctx.fillStyle = dk; var x0 = sx + (h >>> 6) % 10, y0 = sy + (h >>> 10) % 10; ctx.fillRect(x0, y0, 3, 1); ctx.fillRect(x0 + 3, y0 + 1, 2, 1); ctx.fillRect(x0 + 5, y0 + 2, 1, 2); ctx.fillRect(x0 + 2, y0 + 1, 1, 2); }
+    } else if (kind === "ash") {
+      ctx.fillStyle = hi; ctx.fillRect(sx + (h % 14), sy + ((h >>> 4) % 14), 1, 1); ctx.fillRect(sx + ((h >>> 8) % 14), sy + ((h >>> 12) % 14), 1, 1);
+      ctx.fillStyle = dk; ctx.fillRect(sx + ((h >>> 16) % 14), sy + ((h >>> 20) % 14), 2, 1);
+    } else if (kind === "lava") {
+      if (h % 3 === 0) {
+        var a = 0.45 + 0.35 * Math.sin(TT * 2.5 + (h % 7));
+        ctx.fillStyle = "rgba(255,120,40," + a.toFixed(2) + ")";
+        var lx = sx + (h >>> 5) % 8, ly = sy + (h >>> 9) % 10;
+        ctx.fillRect(lx, ly, 3, 1); ctx.fillRect(lx + 3, ly + 1, 3, 1); ctx.fillRect(lx + 6, ly, 2, 1); ctx.fillRect(lx + 2, ly - 1, 1, 1);
+        ctx.fillStyle = "rgba(255,216,90," + (a * 0.8).toFixed(2) + ")"; ctx.fillRect(lx + 3, ly + 1, 1, 1);
+      }
+    } else if (kind === "clay") {
+      if (h % 3 === 0) { ctx.fillStyle = dk; var cx0 = sx + (h >>> 5) % 9, cy0 = sy + (h >>> 9) % 9; ctx.fillRect(cx0, cy0, 4, 1); ctx.fillRect(cx0 + 4, cy0 + 1, 1, 3); ctx.fillRect(cx0 + 2, cy0 + 1, 1, 2); ctx.fillRect(cx0 + 5, cy0 + 3, 2, 1); }
+    }
+  }
+  // renvoie true si le détail a été dessiné à la place de l'herbe classique
+  function themeDetail(th, G, X, Y, k, h, TT) {
+    if (k >= 9) return false;
+    var mid = G._mid || (G._mid = mixHex(G.tuft, G.hi, 0.45));
+    if (th === "snow") {
+      if (k < 5) {
+        ctx.fillStyle = GSHADE; ctx.fillRect(X - 1, Y + 2, 7, 1);
+        ctx.fillStyle = G.tuft; ctx.fillRect(X, Y, 1, 2); ctx.fillRect(X + 2, Y - 1, 1, 3); ctx.fillRect(X + 4, Y, 1, 2);
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(X, Y, 1, 1); ctx.fillRect(X + 2, Y - 1, 1, 1); ctx.fillRect(X + 4, Y, 1, 1);
+      } else if (k < 7) {
+        var tw = ((TT * 2 + (h % 13) * 0.37) % 3) < 0.25;
+        ctx.fillStyle = "#9ee8ff"; ctx.fillRect(X + 1, Y, 1, 3); ctx.fillRect(X, Y + 1, 3, 1);
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(X + 1, Y + 1, 1, 1);
+        if (tw) { ctx.fillRect(X + 1, Y - 2, 1, 1); ctx.fillRect(X + 1, Y + 4, 1, 1); ctx.fillRect(X - 2, Y + 1, 1, 1); ctx.fillRect(X + 4, Y + 1, 1, 1); }
+      } else {
+        ctx.fillStyle = GSHADE; ctx.fillRect(X - 1, Y + 3, 8, 1);
+        ctx.fillStyle = "#e6f2f8"; ctx.fillRect(X - 1, Y + 1, 8, 2); ctx.fillStyle = "#ffffff"; ctx.fillRect(X, Y, 5, 2);
+        ctx.fillStyle = "#c8dce8"; ctx.fillRect(X + 4, Y + 2, 3, 1);
+      }
+      return true;
+    }
+    if (th === "burnt") {
+      if (k < 5) {
+        ctx.fillStyle = GSHADE; ctx.fillRect(X - 1, Y + 3, 7, 1);
+        ctx.fillStyle = "#1a1412"; ctx.fillRect(X, Y + 2, 2, 1); ctx.fillRect(X + 2, Y + 1, 2, 1); ctx.fillRect(X + 4, Y, 2, 1); ctx.fillRect(X + 3, Y - 1, 1, 1);
+        if (h & 32) { ctx.fillStyle = (TT * 3 + h) % 2 < 1 ? "#ff8a2a" : "#c8553d"; ctx.fillRect(X + 5, Y, 1, 1); }
+      } else if (k < 7) {
+        var fl = 0.5 + 0.5 * Math.sin(TT * 4 + (h % 11));
+        ctx.fillStyle = "rgba(255,120,40," + (0.25 * fl).toFixed(2) + ")"; ctx.fillRect(X - 1, Y - 1, 5, 4);
+        ctx.fillStyle = fl > 0.5 ? "#ffd05a" : "#ff8a2a"; ctx.fillRect(X + 1, Y, 1, 1); ctx.fillStyle = "#ff6a1a"; ctx.fillRect(X, Y + 1, 3, 1);
+      } else {
+        ctx.fillStyle = GSHADE; ctx.fillRect(X - 1, Y + 3, 8, 1);
+        ctx.fillStyle = "#6a625c"; ctx.fillRect(X - 1, Y + 1, 8, 2); ctx.fillStyle = "#8a827a"; ctx.fillRect(X, Y, 5, 2); ctx.fillStyle = "#a8a098"; ctx.fillRect(X + 1, Y, 2, 1);
+      }
+      return true;
+    }
+    if (th === "cave") {
+      if (k < 5) {
+        ctx.fillStyle = GSHADE; ctx.fillRect(X - 1, Y + 2, 8, 1);
+        ctx.fillStyle = "#4a2e1e"; ctx.fillRect(X, Y + 1, 1, 1); ctx.fillRect(X + 1, Y, 1, 1); ctx.fillRect(X + 2, Y - 1, 2, 1); ctx.fillRect(X + 4, Y, 1, 1); ctx.fillRect(X + 5, Y + 1, 1, 1);
+        ctx.fillStyle = "#8a5a3b"; ctx.fillRect(X + 2, Y - 1, 1, 1);
+      } else if (k < 7) {
+        var cc = (h >>> 16) % 2 ? ["#9ee8ff", "#e8fbff"] : ["#c9b3ff", "#f0e6ff"], gl = 0.18 + 0.12 * Math.sin(TT * 2 + (h % 9));
+        ctx.fillStyle = "rgba(200,230,255," + gl.toFixed(2) + ")"; ctx.fillRect(X - 2, Y - 2, 7, 7);
+        ctx.fillStyle = cc[0]; ctx.fillRect(X, Y, 1, 3); ctx.fillRect(X + 2, Y - 1, 1, 4); ctx.fillStyle = cc[1]; ctx.fillRect(X + 2, Y - 1, 1, 1);
+        ctx.fillStyle = OUT; ctx.fillRect(X - 1, Y + 3, 5, 1);
+      } else if (k === 8) {
+        ctx.fillStyle = "rgba(156,240,106,.2)"; ctx.fillRect(X - 2, Y - 2, 7, 6);
+        ctx.fillStyle = "#9cf06a"; ctx.fillRect(X, Y, 3, 1); ctx.fillStyle = "#d8ffb0"; ctx.fillRect(X + 1, Y, 1, 1);
+        ctx.fillStyle = "#e8dcb4"; ctx.fillRect(X + 1, Y + 1, 1, 2);
+      } else return false;
+      return true;
+    }
+    if (th === "wind") {
+      if (k < 5) {
+        var sw = Math.round(Math.sin(TT * 3 + X * 0.07) * 1);
+        ctx.fillStyle = GSHADE; ctx.fillRect(X - 1, Y + 2, 7, 1);
+        ctx.fillStyle = G.tuft; ctx.fillRect(X, Y + 1, 1, 1); ctx.fillRect(X + 2, Y + 1, 1, 1); ctx.fillRect(X + 4, Y + 1, 1, 1);
+        ctx.fillStyle = mid; ctx.fillRect(X + sw, Y, 1, 1); ctx.fillRect(X + 2 + sw, Y, 1, 1); ctx.fillRect(X + 4 + sw, Y, 1, 1);
+        ctx.fillStyle = G.hi; ctx.fillRect(X + 2 + sw * 2, Y - 1, 1, 1);
+      } else if (k < 7) {
+        var lf = (h >>> 16) % 2, dx = Math.round(Math.sin(TT * 1.7 + h) * 1.5);
+        ctx.fillStyle = GSHADE; ctx.fillRect(X, Y + 3, 4, 1);
+        if (lf) { ctx.fillStyle = "#fdf3de"; ctx.fillRect(X + dx, Y + 1, 4, 1); ctx.fillRect(X + 1 + dx, Y, 2, 1); ctx.fillStyle = "#c8c0b0"; ctx.fillRect(X + dx, Y + 1, 1, 1); }
+        else { ctx.fillStyle = "#9cc56b"; ctx.fillRect(X + dx, Y, 2, 2); ctx.fillRect(X + 2 + dx, Y + 1, 1, 1); ctx.fillStyle = "#c8e8a0"; ctx.fillRect(X + dx, Y, 1, 1); }
+      } else return false;
+      return true;
+    }
+    return false;
+  }
   function drawGround(cx, cy, M) {
-    var T = 16;
+    var T = 16, TT = performance.now() / 1000, TH = M.theme;
     var tx0 = Math.floor(cx / T) - 1, ty0 = Math.floor(cy / T) - 1, tx1 = tx0 + Math.ceil(W / T) + 2, ty1 = ty0 + Math.ceil(H / T) + 2;
     for (var ty = ty0; ty <= ty1; ty++) for (var tx = tx0; tx <= tx1; tx++) {
       var B = M.biomes[biomeAtTile(tx, ty, M)], G = B.ground;
       var sx = Math.round(tx * T - cx), sy = Math.round(ty * T - cy);
       ctx.fillStyle = hash(tx >> 2, ty >> 2) % 3 === 0 ? G.patch : G.base; ctx.fillRect(sx, sy, T, T);
+      if (B.floor) drawFloor(B.floor, G, sx, sy, tx, ty, TT);
     }
     for (ty = ty0; ty <= ty1; ty++) for (tx = tx0; tx <= tx1; tx++) {
       B = M.biomes[biomeAtTile(tx, ty, M)]; G = B.ground;
@@ -5832,6 +5975,7 @@
       var h = hash(tx, ty), k = h % 23, ox = (h >>> 8) % 12, oy = (h >>> 12) % 12;
       if (B.decor && (k === 12 || k === 13 || (B.decor === "pond" && k >= 9 && k <= 11))) { drawDecor(B.decor, G, sx, sy, ox, oy, h); continue; }
       var X = sx + ox, Y = sy + oy;
+      if (TH && themeDetail(TH, G, X, Y, k, h, TT)) continue;
       if (k < 5) {
         // touffe en 3 tons avec ombre (style A)
         var mid = G._mid || (G._mid = mixHex(G.tuft, G.hi, 0.45));
