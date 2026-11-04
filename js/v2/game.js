@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.5.1";
+  var VERSION = "2.7.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -33,7 +33,7 @@
   var SAVE_KEY = "es2-save-v1";
   function defaults() {
     return { gold: 0, shop: {}, ach: {}, quests: {}, owned: { noisette: true }, rank: 1, rankXp: 0, tree: {}, prestige: 0, ppts: 0, pshop: {}, char: "noisette", map: "clairiere", diff: "normal", name: "",
-             opts: { sound: true, shake: true, numbers: true },
+             opts: { sound: true, shake: true, numbers: true, vol: 0.8, hitstop: true, camlead: true, lowfx: false },
              mode: "survie", posture: {}, eq: { inv: [], worn: {}, uid: 1 }, res: {}, clvl: {}, tal: {}, mast: {}, contracts: { offers: [], taken: [] }, cauch: {}, cn: 0, mega: {}, secureSlots: 0, eqSlot: "coiffe", v2: 0, news: 0, recipes: {}, chestSize: 0, stats: { kills: 0, goldEarned: 0, goldSince: 0, runs: 0, bestTime: 0, bestScore: 0, bosses: 0, played: {}, maps: {}, bought: 0 } };
   }
   function load() {
@@ -117,6 +117,8 @@
   function mapById(id) { return D.MAPS.filter(function (m) { return m.id === id; })[0] || D.MAPS[0]; }
   function questOk(def) { return !def || !def.quest || !!(S.quests && S.quests[def.quest]); }
   function charAvailable(c) { return questOk(c) && (!!S.owned[c.id] || !c.unlock || has(c.unlock)); }
+  function achTotal() { return D.ACHIEVEMENTS.filter(function (a) { return !a.soon; }).length; }
+  function achDone() { return D.ACHIEVEMENTS.filter(function (a) { return !a.soon && S.ach[a.id]; }).length; }
   function achById(id) { return D.ACHIEVEMENTS.filter(function (a) { return a.id === id; })[0]; }
   function sanitize() {
     if (!D.CHARACTERS.some(function (c) { return c.id === S.char; }) || !charAvailable(charById(S.char))) S.char = "noisette";
@@ -223,9 +225,11 @@
   /* son 2.5 : tout passe par un bus compressé (plus de saturation quand ça s'empile), bruit filtré pour les impacts */
   var MASTER = null, NBUF = null;
   function bus() {
-    if (!MASTER) { var comp = actx.createDynamicsCompressor(); comp.threshold.value = -20; comp.knee.value = 12; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.15; MASTER = actx.createGain(); MASTER.gain.value = 0.95; MASTER.connect(comp); comp.connect(actx.destination); }
+    if (!MASTER) { var comp = actx.createDynamicsCompressor(); comp.threshold.value = -20; comp.knee.value = 12; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.15; MASTER = actx.createGain(); MASTER.gain.value = volOf(); MASTER.connect(comp); comp.connect(actx.destination); }
     return MASTER;
   }
+  function volOf() { var v = S.opts.vol; return (v === undefined ? 0.8 : v) * 1.2; }
+  function setVol() { if (MASTER) MASTER.gain.value = volOf(); }
   function jit(f, k) { return f * (1 + (Math.random() - 0.5) * (k || 0.1)); }
   function noise(dur, vol, freq, q, type, slide) {
     if (!S.opts.sound) return;
@@ -295,7 +299,7 @@
   var spawnAcc, nextSwarm, nextBoss, bossCount, shake, uid, achTick, pending, xp, xpNext, propTimer;
   /* ---------- gamefeel (2.5) : arrêts sur image, ralenti, tremblement dosé, caméra qui anticipe ---------- */
   var hitstop = 0, slowmo = 0, hsCd = 0, hurtV = 0, CAM = { x: 0, y: 0, lx: 0, ly: 0, kx: 0, ky: 0, t: 0, on: false };
-  function juiceOk() { return S.opts.shake && !(Net.on); }
+  function juiceOk() { return S.opts.hitstop !== false && !(Net.on); }
   function freezeFrame(t) { if (!juiceOk() || hsCd > 0) return; hitstop = Math.max(hitstop, t); hsCd = t + 0.12; }
   function slowMo(t) { if (juiceOk()) slowmo = Math.max(slowmo, t); }
   function kick(x, y, amt) { if (!S.opts.shake) return; var d = Math.hypot(x, y) || 1; CAM.kx += x / d * amt; CAM.ky += y / d * amt; }
@@ -417,7 +421,7 @@
     xp = 0; xpNext = need(1); pending = me.tree.f5 ? 1 : 0; picking = false; netMenuOpen = false;
     spawnAcc = 5; nextSwarm = 60; nextBoss = 180; bossCount = 0; shake = 0; hitstop = 0; slowmo = 0; hurtV = 0; CAM.on = false; uid = 0; achTick = 1; propTimer = 0;
     grid = new Map();
-    if (r.mode === "expedition") { r.bag = []; r.secure = []; r.exStats = {}; startExpe(1); }
+    if (r.mode === "expedition") { r.bag = []; r.secure = []; r.exStats = {}; startExpe(1, Net.on ? (seed || 0) + 7 : 0); }
     if ((!Net.on || Net.role === "host") && r.mode !== "dungeon") for (var i = 0; i < 4; i++) spawnProp(90 + Math.random() * 120);
     if (r.mode === "dungeon") { nextSwarm = 1e9; nextBoss = 1e9; spawnAcc = 0; if (!Net.on || Net.role === "host") populateFloor(); }
     if (r.mode === "arena") { nextSwarm = 1e9; nextBoss = 1e9; spawnAcc = 2; }
@@ -501,7 +505,29 @@
   canvas.addEventListener("pointercancel", release);
   canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
+  // tests d'équilibrage : un pilote automatique qui fuit les ennemis et les zones rouges, ramasse l'XP
+  var BOT = null, FAST = 1;
+  function botVector() {
+    var vx = 0, vy = 0, near0 = null, nd = 1e9, threat = 0, fam = (D.ARMES[me.arme] || {}).fam, want = fam === "melee" ? 26 : 70;
+    enemies.forEach(function (e) {
+      if (e.d.prop) return; var dx = me.x - e.x, dy = me.y - e.y, d = Math.hypot(dx, dy) || 1;
+      if (d < nd) { nd = d; near0 = e; }
+      var lim = (e.d.boss ? 55 : 22) + (e.d.r || 6);
+      if (d < lim) { var w = (lim - d) / lim; vx += dx / d * w * 3; vy += dy / d * w * 3; threat++; }
+    });
+    warns.forEach(function (w) { var dx = me.x - w.x, dy = me.y - w.y, d = Math.hypot(dx, dy) || 1; if (d < w.r + 12) { vx += dx / d * 4; vy += dy / d * 4; threat++; } });
+    hostile.forEach(function (q) { var dx = me.x - q.x, dy = me.y - q.y, d = Math.hypot(dx, dy) || 1; if (d < 40) { vx += -q.vy / (Math.hypot(q.vx, q.vy) || 1) * 2; vy += q.vx / (Math.hypot(q.vx, q.vy) || 1) * 2; threat++; } });
+    if (!threat) {
+      var g = null, gd = 1e9; gems.forEach(function (q) { var d = Math.hypot(q.x - me.x, q.y - me.y); if (d < gd && d < 110) { gd = d; g = q; } });
+      if (g) { vx = g.x - me.x; vy = g.y - me.y; }
+      else if (near0) { var dx2 = near0.x - me.x, dy2 = near0.y - me.y; if (nd > want + 15) { vx = dx2; vy = dy2; } else { vx = -dy2; vy = dx2; if (nd < want - 10) { vx -= dx2; vy -= dy2; } } }
+      else { var a = r.time * 0.4; vx = Math.cos(a); vy = Math.sin(a); }
+    }
+    var mag = Math.hypot(vx, vy); if (mag < 0.001) return { x: 0, y: 0 };
+    return { x: vx / mag, y: vy / mag };
+  }
   function inputVector() {
+    if (BOT && state === "play" && me && enemies) return botVector();
     var x = (keys.r ? 1 : 0) - (keys.l ? 1 : 0), y = (keys.d ? 1 : 0) - (keys.u ? 1 : 0);
     if (x || y) { var l = Math.hypot(x, y); return { x: x / l, y: y / l }; }
     if (joy.active) {
@@ -765,7 +791,7 @@
     }
     dmg = Math.max(1, Math.round(dmg));
     if (e.eshield > 0) { var ab = Math.min(e.eshield, dmg); e.eshield -= ab; dmg -= ab; if (dmg <= 0) { e.flash = 0.05; return; } }
-    e.hp -= dmg; e.flash = 0.1;
+    e.hp -= dmg; e.flash = 0.1; if (r && !e.d.prop) r.dmgTot = (r.dmgTot || 0) + Math.min(dmg, e.hp + dmg);
     if (!e.d.prop) { var hel = atkElem(p); SND.hit(hel, crit); spark(e.x + (p.x - e.x) * 0.25 + (Math.random() * 4 - 2), e.y - 2 + (p.y - e.y) * 0.25, hel, crit); }
     if (crit && !e.d.prop && (e.d.boss || dmg >= 60) && S.opts.shake) { shake = Math.max(shake, 0.12); if (p === me) kick(e.x - p.x, e.y - p.y, 1.5); }
     if (!e.d.prop) {
@@ -890,7 +916,7 @@
   var SPARK_C = { feu: ["#ffd05a", "#ff8a2a", "#ff5a1a"], eau: ["#bfefff", "#6ad8ff", "#3a9ad8"], air: ["#ffffff", "#e6f6fa", "#c8f8e8"], terre: ["#c8a060", "#8a6a48", "#6b4430"] };
   function hx2rgb(c) { c = String(c).replace("#", ""); if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]; return parseInt(c.slice(0, 2), 16) + "," + parseInt(c.slice(2, 4), 16) + "," + parseInt(c.slice(4, 6), 16); }
   function spark(x, y, el, crit) {
-    if (fx.length > 260) return;
+    if (fx.length > 260 || (S.opts.lowfx && Math.random() < 0.7)) return;
     fx.push({ kind: "hitstar", x: x, y: y, life: crit ? 0.1 : 0.07, max: crit ? 0.1 : 0.07, col: crit ? "#f6d36b" : "#ffffff", big: crit });
     var C = SPARK_C[el], n = crit ? 4 : 2, i, a;
     for (i = 0; i < n; i++) {
@@ -4234,7 +4260,8 @@
   /* ---- début, étages, descente ---- */
   function startExpe(floor, seed) {
     var keys = r.ex ? r.ex.keys : 0;
-    r.ex = genExpe(seed || ((Math.random() * 1e9) | 0), floor || 1); r.ex.keys = keys;
+    var sd = seed || ((Math.random() * 1e9) | 0);
+    r.ex = genExpe(sd, floor || 1); r.ex.keys = keys; r.ex.seed = sd;
     r.stageT0 = r.time; r.portal = null; r.mega = null;
     var sp = r.ex.spawn;
     players.forEach(function (pl, k) { pl.x = pl.tx = sp.x + k * 16; pl.y = pl.ty = sp.y; });
@@ -4741,7 +4768,7 @@
     if (!bar) { bar = document.createElement("div"); bar.className = "camp-bar"; bar.setAttribute("data-campbar", ""); stage.appendChild(bar); bar.addEventListener("click", function (e) { var b = e.target.closest("[data-camp]"); if (b) campOpen(b.getAttribute("data-camp")); }); }
     bar.hidden = false;
     bar.innerHTML = '<button type="button" class="camp-go" data-camp="sentier">▶ Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" data-camp="' + l.id + '">' + esc(l.name.replace(/^(Le |La |L')/, "")) + "</button>"; }).join("") +
-      '<button type="button" data-camp="codex">📜</button><button type="button" data-camp="help">❓</button><button type="button" data-camp="options">⚙️</button>';
+      '<button type="button" class="camp-coop" data-camp="coop">👥 Coop</button><button type="button" data-camp="codex">📜</button><button type="button" data-camp="help">❓</button><button type="button" data-camp="options">⚙️</button>';
   }
   // « Nouveautés » : ce qui a changé pour un joueur de la version 1
   function newsCard() {
@@ -4762,6 +4789,7 @@
     var l = D.CAMP.filter(function (q) { return q.id === id; })[0];
     closeCamp(); SND.click();
     if (id === "options" || id === "codex" || id === "help") { go(id); return; }
+    if (id === "coop") { go(Net.on ? "lobby" : "coop"); return; }
     if (l && l.screen === "play") { inspect.char = S.char; inspect.map = S.map; }
     go(l ? l.screen : "menu");
   }
@@ -6237,7 +6265,7 @@
     var cam = me.down ? (me.twinRef && !me.twinRef.down ? me.twinRef : alive()[0] || me) : me;
     if (!isArena()) {
       var mv = cam.moving && cam.vx !== undefined ? Math.hypot(cam.vx, cam.vy) : 0, tlx = mv > 1 ? cam.vx / mv * 18 : 0, tly = mv > 1 ? cam.vy / mv * 12 : 0;
-      if (!S.opts.shake) { tlx = 0; tly = 0; }
+      if (S.opts.camlead === false) { tlx = 0; tly = 0; }
       if (!CAM.on || Math.hypot(cam.x - CAM.x, cam.y - CAM.y) > 120) { CAM.lx = tlx; CAM.ly = tly; CAM.on = true; }
       var kl = 1 - Math.pow(0.08, cdt); CAM.lx += (tlx - CAM.lx) * kl; CAM.ly += (tly - CAM.ly) * kl;
       CAM.x = cam.x; CAM.y = cam.y;
@@ -6342,7 +6370,7 @@
         return;
       }
       var s = SPR[q.sprite] || SPR.acorn;
-      if (fx.length < 220 && flick && (q.vx * q.vx + q.vy * q.vy) > 3600) fx.push({ kind: "trail", x: q.x - q.vx * 0.012, y: q.y - q.vy * 0.012, life: 0.14, max: 0.14, color: q.elem && SPARK_C[q.elem] ? SPARK_C[q.elem][0] : "#fdf3de" });
+      if (fx.length < 220 && flick && !S.opts.lowfx && (q.vx * q.vx + q.vy * q.vy) > 3600) fx.push({ kind: "trail", x: q.x - q.vx * 0.012, y: q.y - q.vy * 0.012, life: 0.14, max: 0.14, color: q.elem && SPARK_C[q.elem] ? SPARK_C[q.elem][0] : "#fdf3de" });
       blit(s[(q.anim || q.kind === "boomerang") ? flick % s.length : 0], q.x, q.y, q.vx < 0);
     });
     hostile.forEach(function (q) {
@@ -6912,11 +6940,14 @@
     return '<div class="diff-row mode-row"><span>Mode :</span>' +
       '<button type="button" class="chip' + (mo === "survie" ? " is-on" : "") + '" data-action="' + action + '" data-arg="survie">🌲 Survie</button>' +
       '<button type="button" class="chip' + (mo === "arena" ? " is-on" : "") + '" data-action="' + action + '" data-arg="arena">🏟️ Arène</button>' +
-      '<button type="button" class="chip' + (mo === "dungeon" ? " is-on" : "") + '" data-action="' + action + '" data-arg="dungeon">🗝️ Donjon</button></div>' +
+      '<button type="button" class="chip' + (mo === "dungeon" ? " is-on" : "") + '" data-action="' + action + '" data-arg="dungeon">🗝️ Donjon</button>' +
+      (action === "lmode" ? '<button type="button" class="chip' + (mo === "expedition" ? " is-on" : "") + '" data-action="' + action + '" data-arg="expedition">🎒 Expédition</button>' : "") + "</div>" +
       '<p class="game-small mode-desc">' + (mo === "dungeon"
         ? DG.floors + " étages générés au hasard : salles à nettoyer, élites, trésors, reliques, un gardien par étage et un boss final."
         : mo === "arena"
         ? "Arène fermée, " + A.rounds + " manches. Boutique entre les manches, manche d'élite toutes les " + A.eliteEvery + ", boss toutes les " + A.bossEvery + "."
+        : mo === "expedition"
+        ? "Carte ronde à explorer en équipe : un sac commun, des structures, des sorties, des passages vers l'étage suivant. Si l'équipe tombe, le sac est perdu."
         : "Monde ouvert sans fin : survis le plus longtemps possible.") + "</p>";
   }
   function swatch(m, cls) {
@@ -6984,7 +7015,7 @@
 
   var SCREENS = {
     menu: function () {
-      var nAch = Object.keys(S.ach).length, nQ = Object.keys(S.quests || {}).length, fp = freePoints();
+      var nAch = achDone(), nQ = Object.keys(S.quests || {}).length, fp = freePoints();
       var need = D.rankNeed(S.rank), k = Math.min(100, Math.round(S.rankXp / need * 100));
       var mode = { arena: "Arène", dungeon: "Donjon" }[S.mode] || "Survie";
       function tile(arg, ic, label, sub, badge, hot) {
@@ -7002,7 +7033,7 @@
         '<div class="mm-grid">' +
         tile("terrier", "🕳️", "Le terrier", "Attirail, talents, maîtrise") +
         tile("atelier", "🔨", "L'atelier", "Craft et recyclage") +
-        tile("succes", "🏆", "Succès", nAch + " / " + D.ACHIEVEMENTS.length) +
+        tile("succes", "🏆", "Succès", nAch + " / " + achTotal()) +
         tile("quetes", "🗝️", "Quêtes", nQ + " / " + D.QUESTS.length) +
         tile("codex", "📜", "Techniques", "20 techniques · " + (Object.keys(D.TFUS).length + Object.keys(D.TFUS2).length + Object.keys(D.COMBOS).length + Object.keys(D.LEGENDS).length) + " fusions") +
         tile("help", "❓", "Aide", "Comment jouer") +
@@ -7222,9 +7253,10 @@
       return html + "</div>";
     },
     succes: function () {
-      var n = Object.keys(S.ach).length;
-      var html = '<div class="screen-head">' + back() + '<h2>Succès</h2><p class="gold-badge">🏆 <b>' + n + " / " + D.ACHIEVEMENTS.length + '</b></p></div><div class="ach-list">';
-      D.ACHIEVEMENTS.forEach(function (a) {
+      var n = achDone();
+      var html = '<div class="screen-head">' + back() + '<h2>Succès</h2><p class="gold-badge">🏆 <b>' + n + " / " + achTotal() + '</b></p></div><div class="ach-list">';
+      D.ACHIEVEMENTS.filter(function (a) { return !a.soon; }).concat(D.ACHIEVEMENTS.filter(function (a) { return a.soon; })).forEach(function (a) {
+        if (a.soon) { html += '<div class="ach is-soon"><span class="ach-ic">🌐</span><div><strong>' + esc(a.name) + "</strong><span>" + esc(a.desc) + '</span><span class="ach-unlock">Coop en ligne : bientôt en 2.0</span></div></div>'; return; }
         var ok = !!S.ach[a.id], un = unlocksOf(a.id);
         html += '<div class="ach' + (ok ? " is-done" : "") + '"><span class="ach-ic">' + (ok ? "🏆" : "🔒") + "</span>" +
           "<div><strong>" + esc(a.name) + "</strong><span>" + esc(a.desc) + "</span>" +
@@ -7384,11 +7416,17 @@
       return html + "</div>";
     },
     options: function () {
+      function volRow() {
+        var v = Math.round((S.opts.vol === undefined ? 0.8 : S.opts.vol) * 100);
+        return '<div class="toggle vol-row"><span>🎚️ Volume</span><span class="vol-ctl"><button type="button" class="btn btn-ghost btn-small" data-action="vol" data-arg="-1" aria-label="Baisser le volume">−</button><b>' + v + ' %</b><button type="button" class="btn btn-ghost btn-small" data-action="vol" data-arg="1" aria-label="Monter le volume">+</button></span></div>';
+      }
       function tog(k, label) {
-        return '<button type="button" class="toggle' + (S.opts[k] ? " is-on" : "") + '" data-action="opt" data-arg="' + k + '" aria-pressed="' + !!S.opts[k] + '"><span>' + label + "</span><b>" + (S.opts[k] ? "Oui" : "Non") + "</b></button>";
+        var on = k === "lowfx" ? !!S.opts[k] : S.opts[k] !== false;
+        return '<button type="button" class="toggle' + (on ? " is-on" : "") + '" data-action="opt" data-arg="' + k + '" aria-pressed="' + on + '"><span>' + label + "</span><b>" + (on ? "Oui" : "Non") + "</b></button>";
       }
       return '<div class="screen-head">' + back() + "<h2>Options</h2></div>" +
-        '<div class="opt-list">' + tog("sound", "🔊 Son") + tog("shake", "📳 Tremblement de l'écran") + tog("numbers", "🔢 Chiffres de dégâts") + "</div>" +
+        '<div class="opt-list">' + tog("sound", "🔊 Son") + volRow() + tog("shake", "📳 Tremblement de l'écran") + tog("hitstop", "⏸️ Arrêts sur image et ralenti") + tog("camlead", "🎥 Caméra qui regarde devant") +
+        tog("numbers", "🔢 Chiffres de dégâts") + tog("lowfx", "✨ Particules réduites (téléphone lent)") + "</div>" +
         '<p class="game-small"><button class="link-btn danger" type="button" data-action="wipe">Effacer toute ma progression</button></p>';
     },
     help: function () {
@@ -7458,7 +7496,7 @@
     tmap: function (id) { inspect.map = id; if (has(mapById(id).unlock)) S.map = id; save(); SND.click(); go("play"); },
     diff: function (k) { S.diff = k; save(); SND.click(); go("play"); },
     mode: function (k) { S.mode = ["arena", "dungeon"].indexOf(k) >= 0 ? k : "survie"; save(); SND.click(); go("play"); },
-    lmode: function (k) { if (Net.role !== "host") return; S.mode = ["arena", "dungeon"].indexOf(k) >= 0 ? k : "survie"; save(); trackMe(); SND.click(); go("lobby"); },
+    lmode: function (k) { if (Net.role !== "host") return; S.mode = ["arena", "dungeon", "expedition"].indexOf(k) >= 0 ? k : "survie"; save(); trackMe(); SND.click(); go("lobby"); },
     buychar: function (id) {
       var c = charById(id);
       if (S.gold < c.price || charAvailable(c) || !questOk(c)) return;
@@ -7479,7 +7517,9 @@
       if (!total || !window.confirm("Rembourser " + total + " glands d'or et remettre toutes les améliorations à zéro ?")) return;
       S.gold += total; S.shop = {}; save(); go("shop");
     },
-    opt: function (k) { S.opts[k] = !S.opts[k]; save(); muteLabel(); SND.click(); go("options"); },
+    opt: function (k) { S.opts[k] = k === "lowfx" ? !S.opts[k] : S.opts[k] === false; save(); muteLabel(); SND.click(); go("options"); },
+    vol: function (d) { var v = S.opts.vol === undefined ? 0.8 : S.opts.vol; S.opts.vol = Math.max(0, Math.min(1, Math.round((v + 0.1 * (+d)) * 10) / 10)); save(); setVol(); SND.click(); go("options"); },
+    "opt-p": function (k) { S.opts[k] = S.opts[k] === false; save(); muteLabel(); setVol(); if (netMenuOpen) { netMenu(); return; } state = "play"; pause(); },
     wipe: function () {
       if (!window.confirm("Effacer toute ta progression (or, améliorations, écureuils, succès) ?")) return;
       var keepName = S.name; S = defaults(); S.name = keepName; save(); go("menu");
@@ -7827,9 +7867,21 @@
     if (ev === "floor" && Net.role === "guest" && isDungeon() && d.n !== r.dg.floor) { guestFloor(d.n); return; }
     if (ev === "end" && Net.role === "guest" && state !== "over") {
       if (d.won) r.won = true;
+      if (d.ex && isExpe()) { r.extracted = d.ex.x || null; r.bag = d.ex.bag || []; r.secure = d.ex.sec || []; }
       if (d.r) { r.time = d.r[0]; r.kills = d.r[1]; r.level = d.r[2]; r.bosses = d.r[3]; r.gold = d.r[4]; }
-      gameOver(!!d.q, d.q ? "L'hôte a mis fin à la partie." : "");
+      gameOver(!!d.q, d.q ? "L'hôte a mis fin à la partie." : (d.why || ""));
     }
+  }
+  // invité en Expédition : même carte (même graine), état des structures, clés et sac commun de l'équipe
+  function guestExpe(x) {
+    if (!r.ex || r.ex.seed !== x[0] || r.ex.floor !== x[1]) {
+      var nf = r.ex && r.ex.floor !== x[1];
+      r.ex = genExpe(x[0], x[1]); r.ex.seed = x[0];
+      if (nf || !me.exPlaced) { me.x = me.tx = r.ex.spawn.x + 16 * Math.max(0, players.indexOf(me)); me.y = me.ty = r.ex.spawn.y; me.exPlaced = true; if (nf) bannerAll("Étage " + r.ex.floor + " : explore, remplis ton sac, puis sors ou descends"); }
+    }
+    r.ex.keys = x[2];
+    (x[3] || []).forEach(function (v, i) { var q = r.ex.st[i]; if (!q) return; q.done = !!v[0]; q.p = v[1] / 100; q.hidden = v[2]; });
+    r.bag = x[4] || []; r.secure = x[5] || []; r.ex.megaWon = !!x[6];
   }
   function guestMap(id, stage, t0) {
     enterMap(id, stage, t0);
@@ -7913,6 +7965,7 @@
              cp: allComps().slice(0, 60).reduce(function (a, c) { a.push(SPRI[c.k] || 0, R1(c.x), R1(c.y), (c.face < 0 ? 1 : 0) | (c.fly ? 2 : 0) | (c.max && c.life < c.max * 0.3 ? 4 : 0)); return a; }, []),
              po: r.portal ? [r.portal.x, r.portal.y, r.portal.st, Math.round(r.portal.p * 100), r.portal.boss && !r.portal.boss.dead ? r.portal.boss.id : 0] : 0, stg: [r.stage || 0, Math.round((r.stageT0 || 0) * 10), MAP.id],
              sh: [Object.keys(r.sh).filter(function (k) { return r.sh[k].used || r.sh[k].p > 0; }).map(function (k) { return [k, Math.round(r.sh[k].p * 100), r.sh[k].used ? 1 : 0]; }), r.madness || 0, r.devil || 0],
+             ex: isExpe() && r.ex ? [r.ex.seed, r.ex.floor, r.ex.keys || 0, r.ex.st.map(function (q) { return [q.done ? 1 : 0, Math.round((q.p || 0) * 100), q.hidden ? 1 : 0]; }), r.bag, r.secure, r.ex.megaWon ? 1 : 0] : 0,
              z: zones.length ? zones.reduce(function (a, z) { a.push(R1(z.x), R1(z.y), R1(z.r), ZONE_K.indexOf(z.kind), Math.round((z.dur - z.t) * 10)); return a; }, []) : 0 };
   }
   // ---------- invité : réception et lissage ----------
@@ -7921,6 +7974,7 @@
     Net.prev = Net.cur; Net.cur = { s: d, at: performance.now() };
     var rr = d.r;
     if (d.stg && (d.stg[0] !== (r.stage || 0) || d.stg[2] !== MAP.id) && !isDungeon() && !isArena()) guestMap(d.stg[2], d.stg[0], d.stg[1] / 10);
+    if (d.ex && isExpe()) { guestExpe(d.ex); if (d.stg) r.stageT0 = d.stg[1] / 10; }
     Net.cps = [];
     if (d.cp) for (var ci = 0; ci < d.cp.length; ci += 4) Net.cps.push({ k: SPRN[d.cp[ci]], x: d.cp[ci + 1], y: d.cp[ci + 2], face: d.cp[ci + 3] & 1 ? -1 : 1, fly: !!(d.cp[ci + 3] & 2), anim: r.time * 8 + ci, max: d.cp[ci + 3] & 4 ? 1 : 0, life: 0 });
     r.portal = d.po ? { x: d.po[0], y: d.po[1], st: d.po[2], p: d.po[3] / 100, gb: d.po[4] } : null;
@@ -7980,6 +8034,7 @@
   }
   function updateGuest(dt) {
     var now = performance.now();
+    if (isExpe() && r.ex && cooledG("fog", 0.25)) revealAt(me.x, me.y, 260);
     if (isArena() && r.phase === "shop") { tickFx(dt); return; }
     if (isArena()) r.roundT = Math.min(r.roundLen, r.roundT + dt);
     moveMe(dt);
@@ -8079,6 +8134,14 @@
     Object.keys(p.weapons).forEach(function (k) { var td = techDef(p, k); html += '<li class="' + (td.fusion ? "is-fusion" : "") + '"><img src="' + spriteUrl(td.icon) + '" alt="">' + esc(techName(p, k)) + " <b>niv. " + p.weapons[k] + "</b></li>"; });
     html += '</ul><h3>Objets (' + Object.keys(p.passives).length + "/" + MAX_P + ')</h3><ul class="build-list">';
     Object.keys(p.passives).forEach(function (k) { html += '<li><img src="' + spriteUrl(D.PASSIVES[k].sprite) + '" alt="">' + esc(D.PASSIVES[k].name) + " <b>niv. " + p.passives[k] + "</b>" + synHtml(k) + "</li>"; });
+    var itk = Object.keys(p.items || {}).filter(function (k) { return ITM[k] && p.items[k] > 0; });
+    if (itk.length) {
+      html += '</ul><h3>Objets à effets (' + itk.length + ')</h3><ul class="item-grid">';
+      itk.forEach(function (k) { var it = ITM[k], ra = D.RARITIES[it.r]; html += '<li style="--rc:' + ra.color + '" title="' + esc(it.name + " : " + it.desc) + '"><span class="ig-ic">' + ic(it.icon) + "</span>" + (p.items[k] > 1 ? "<b>" + p.items[k] + "</b>" : "") + "</li>"; });
+      html += '</ul><details class="ig-more"><summary>Voir les effets</summary><ul class="ig-list">';
+      itk.forEach(function (k) { var it = ITM[k], ra = D.RARITIES[it.r]; html += '<li style="--rc:' + ra.color + '">' + ic(it.icon) + ' <strong>' + esc(it.name) + (p.items[k] > 1 ? " ×" + p.items[k] : "") + "</strong> " + esc(it.desc) + "</li>"; });
+      html += "</ul></details><ul>";
+    }
     html += '</ul></div><div><h3>Statistiques</h3><ul class="stat-list">' +
       "<li>PV <b>" + Math.ceil(p.hp) + " / " + p.maxHp + "</b></li>" +
       "<li>Dégâts <b>" + Math.round(p.might * 100) + " %</b></li>" +
@@ -8089,9 +8152,10 @@
       "<li>Armure <b>" + p.armor + "</b></li>" +
       "<li>Renaissances <b>" + me.revives + "</b></li></ul></div></div>" +
       '<div class="btn-row center"><button class="btn" type="button" data-action="resume" data-autofocus>▶ Reprendre</button>' +
-      '<button class="btn btn-ghost btn-small" type="button" data-action="opt-pause">' + (S.opts.sound ? "🔊 Son : oui" : "🔇 Son : non") + "</button>" +
       '<button class="btn btn-ghost btn-small" type="button" data-action="restart">↻ Recommencer</button>' +
-      '<button class="btn btn-ghost btn-small" type="button" data-action="quit">🏳️ Abandonner</button></div>';
+      '<button class="btn btn-ghost btn-small" type="button" data-action="quit">🏳️ Abandonner</button></div>' +
+      '<div class="quick-opts" aria-label="Réglages rapides">' + [["sound", "🔊 Son"], ["shake", "📳 Tremblement"], ["hitstop", "⏸️ Arrêts sur image"], ["numbers", "🔢 Chiffres"]].map(function (o) {
+        var on = S.opts[o[0]] !== false; return '<button type="button" class="qopt' + (on ? " is-on" : "") + '" data-action="opt-p" data-arg="' + o[0] + '" aria-pressed="' + on + '">' + o[1] + "</button>"; }).join("") + "</div>";
     showCard(html, "pause");
   }
   function resume() {
@@ -8104,7 +8168,7 @@
     chestHideMini();
     if (state === "over") return;
     var online = Net.on && Net.started;
-    if (online && Net.role === "host") netSend("end", { q: quit ? 1 : 0, won: r.won ? 1 : 0, r: [r.time, r.kills, r.level, r.bosses, r.gold] });
+    if (online && Net.role === "host") netSend("end", { q: quit ? 1 : 0, won: r.won ? 1 : 0, r: [r.time, r.kills, r.level, r.bosses, r.gold], ex: isExpe() ? { x: r.extracted || 0, bag: r.bag, sec: r.secure } : 0, why: reason || "" });
     if (online) { Net.started = false; if (Net.role === "guest" && quit && !reason) netLeave(); else trackMe(); }
     picking = false; netMenuOpen = false;
     state = "over"; SND.over();
@@ -8211,6 +8275,7 @@
         else {
           var sdt = dt; if (slowmo > 0) { slowmo -= dt; sdt = dt * 0.4; }
           if (Net.on && Net.role === "guest") updateGuest(sdt); else update(sdt);
+          for (var ff = 1; ff < FAST && state === "play"; ff++) update(sdt);
         }
       }
       if (state === "menu" && camp.on) { campTick(dt); drawCamp(now); }
@@ -8369,6 +8434,9 @@
     combo: function (id) { p = me; v2Apply({ type: "cb", id: id }); calc(me); return Object.keys(me.weapons); },
     entries: function () { return techEntries(me).map(function (e) { return e.key + ":" + e.def.type + ":" + Math.round(V(e.def, "dmg", e.l) || 0); }); },
     arme: function (id) { pickArme(id); return me.weapons; },
+    bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
+    run: function () { return { t: r ? Math.round(r.time) : 0, lvl: r && r.level, kills: r && r.kills, hp: me && Math.round(me.hp), state: state, tier: tierN(), boss: r && r.bossKills }; },
+    dmgTot: function () { return [Math.round(r && r.dmgTot || 0), r ? r.time : 0]; },
     choicesNow: function (n) { p = me; return v2Choices(n || 4).map(function (c) { var v = v2Card(c); return c.type + ":" + (v ? v.name : c.id); }); },
     give: function (type, id, lvl) { p = me; if (type === "w") me.weapons[id] = lvl || 5; else me.passives[id] = lvl || 5; calc(me); refreshCounts(); return readyFusions(); },
     twin: function () { var t = me.twinRef; return t ? { x: Math.round(t.x), y: Math.round(t.y), hp: Math.round(t.hp), max: Math.round(t.maxHp), down: t.down, might: Math.round(t.might * 100) / 100, meMight: Math.round(me.might * 100) / 100, w: t.weapons === me.weapons, meDown: me.down, n: players.length } : null; },
@@ -8505,7 +8573,7 @@
   go("menu");
   if (PT) showCard('<h2>Manche de party</h2><p>' + esc(PT.mode.name) + ' : la partie démarre toute seule dans un instant.</p>', "party");
   function joinFromHash() {
-    if (/#(coop=|party)/.test(location.hash || "")) { location.replace("jeu-classique.html" + location.hash); return; }   // la coop reste sur la version 1
+    if (/#party/.test(location.hash || "")) { location.replace("jeu-classique.html" + location.hash); return; }   // le Versus reste sur la version 1
     var m = /#coop=([A-Za-z]{4})/.exec(location.hash || "");
     if (!m || (Net.on && Net.code === m[1].toUpperCase())) return;
     if (state === "play") return;
