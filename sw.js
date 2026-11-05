@@ -1,6 +1,6 @@
 /* Écureuil Survivor : service worker minimal.
    Réseau d'abord (le jeu est toujours à jour), cache en secours hors ligne. Supabase, Google et les autres domaines ne passent pas par ici. */
-var CACHE = "es-pwa-1";
+var CACHE = "es-pwa-2";
 self.addEventListener("install", function () { self.skipWaiting(); });
 self.addEventListener("activate", function (e) {
   e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); })); }).then(function () { return self.clients.claim(); }));
