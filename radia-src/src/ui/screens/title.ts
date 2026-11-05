@@ -167,11 +167,31 @@ export function showTitle(): void {
   const bubbleTimer = window.setInterval(refreshBubble, 20_000);
   refreshBubble();
   menu.append(monde);
-  const chessBtn = btn('ÉCHECS', '.lavande', () => void go(chess), 220, chessUnlocked() ? icon('chess', 20) : h('span.lock', icon('lock', 18)));
+  // CASINO : troisième grand accès (rose = histoire, or = Mon monde, violet royal = Casino). Sous-titre et pastille vivants (tickets, cadeau, missions).
+  const casino = mode('.casino', 'casino', 'CASINO', 'Tickets · roulette · surprises', () => void go(async () => { await (await import('../../casino')).openCasino(); showTitle(); }), 220);
+  const casinoBubble = h('span.mode-bubble.casino-bubble', icon('sparkle', 14), h('span', ' '));
+  casino.append(casinoBubble);
+  void import('../../casino/store').then((m) => {
+    const refresh = () => {
+      if (!casino.isConnected) { off(); return; }
+      const st = m.casinoStatus();
+      const small = casino.querySelector('small');
+      if (small) small.textContent = st.isNew ? 'Un cadeau de bienvenue t’attend ♡' : st.chips > 0 ? `${fmt(st.chips)} tickets · roulette · surprises` : 'Tickets · roulette · surprises';
+      const note = st.isNew ? 'Bienvenue !' : st.claimable > 0 ? `${st.claimable} à récupérer` : st.refillReady ? 'Recharge offerte !' : st.tasks > 0 ? 'Défis du jour' : '';
+      (casinoBubble.lastElementChild as HTMLElement).textContent = ` ${note}`;
+      casinoBubble.classList.toggle('on', !!note && st.hasNews);
+    };
+    const off = m.onCasinoChange(refresh);
+    refresh();
+  }).catch(() => undefined);
+  menu.append(casino);
+  // accès secondaires : Échecs, Souvenirs, et Succès en PETITE icône discrète (le trophée n'a pas besoin d'un grand bouton)
+  const chessBtn = btn('ÉCHECS', '.lavande', () => void go(chess), 260, chessUnlocked() ? icon('chess', 20) : h('span.lock', icon('lock', 18)));
   if (!chessUnlocked()) chessBtn.classList.add('locked');
-  menu.append(h('div.row', chessBtn, btn('SOUVENIRS', '.secondary', () => void go(() => openAlbum('memories').then(showTitle)), 260, icon('album', 20))));
-  if (lab.free) menu.append(h('div.row', btn('SUCCÈS', '.secondary', () => void go(achievements), 300, icon('trophy', 20)), btn('MES CHAPITRES', '.secondary', () => void go(() => openMap()), 340, icon('heart', 20))));
-  else menu.append(btn('SUCCÈS', '.secondary', () => void go(achievements), 300, icon('trophy', 20)));
+  const trophy = btn('', '.secondary.trophy', () => void go(achievements), 340, icon('trophy', 22));
+  trophy.setAttribute('aria-label', 'Succès'); trophy.title = 'Succès';
+  menu.append(h('div.row', chessBtn, btn('SOUVENIRS', '.secondary', () => void go(() => openAlbum('memories').then(showTitle)), 300, icon('album', 20)), trophy));
+  if (lab.free) menu.append(btn('MES CHAPITRES', '.secondary', () => void go(() => openMap()), 380, icon('heart', 20)));
 
   // barre du haut : réglages · énergie / diamants · carte d'Auguste
   const gems = h('button.res-chip', { 'aria-label': 'Diamants' }, h('img', { src: diamondUrl(52), alt: '' }), h('span', fmt(wallet.diamonds())), h('span.plus', '+'));

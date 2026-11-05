@@ -150,7 +150,8 @@ export function genReactions(storyId: string, n?: number): Reaction[] {
   const out: Reaction[] = [];
   if (r() < 0.8) out.push({ who: 'Auguste', txt: pick(AUGUSTE_REACT, r), after: 1500 });
   const txt = pickN(REACT_TXT, count, r), who = pickN(REACT_WHO, count, r);
-  for (let i = 0; i < count && out.length < 7; i++) out.push({ who: who[i], txt: txt[i], after: 3000 + i * 4000 + Math.floor(r() * 2500) });
+  // une story d'UNE image dure 3,2 s : la première réaction doit arriver avant (≤ 2,4 s), sinon elle n'est jamais vue (20 % des stories sans Auguste)
+  for (let i = 0; i < count && out.length < 7; i++) out.push({ who: who[i], txt: txt[i], after: i === 0 && out.length === 0 ? 1800 + Math.floor(r() * 600) : 3000 + i * 4000 + Math.floor(r() * 2500) });
   return out;
 }
 /** Réactions visibles à l'instant `now`. */

@@ -3,6 +3,7 @@
  * sauvegarde la progression à chaque étape (reprise possible), verse la récompense UNE fois,
  * puis rend la main au mode d'origine (fusion ou Mon monde) exactement comme elle l'avait laissé.
  */
+import { stepAllowed } from './steps';
 import { h, tap } from '../ui/dom';
 import { ui } from '../ui/ui';
 import { icon } from '../ui/icons';
@@ -120,6 +121,7 @@ export async function startEvent(def: EventDef, runId: string, resume?: ActiveRu
       setDots(i);
       save.save();
       const s = def.steps[i];
+      if ('onlyIf' in s && s.onlyIf && !stepAllowed(s.onlyIf, run.data)) continue; // étape conditionnelle (issue d'une activité précédente)
       const repeatNow = st.done[def.id]?.count ?? 0;
       const mkCtx = (params: Record<string, unknown>) => createCtx({ root: body, eventId: def.id, runId: run.runId, params, data: run.data, repeat: st.done[def.id]?.count ?? 0, alive: () => alive });
       if (s.t === 'dress') {

@@ -19,7 +19,7 @@ const check = (name, ok, extra = '') => { if (!ok) ko++; console.log(`${ok ? 'OK
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const today = (() => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })();
 const seed = () => ({
-  v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'], story: { step: 9999 }, levels: {}, hearts: 500,
+  v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'], story: { step: 9999 }, levels: {}, hearts: 500,
   economy: { diamonds: 500, energy: 120, freeChestTs: 0 },
   fun: { daily: { cycle: 0, day: 1, lastKey: today, claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } }, world: { flags: { 'rw:start-gift-v1': true } },
 });

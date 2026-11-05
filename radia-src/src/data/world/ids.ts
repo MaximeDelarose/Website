@@ -128,6 +128,11 @@ export const accGroup = (id: string): AccGroup | null => {
   if (id === 'ac-scarf' || id === 'ac-pearls' || id.startsWith('ac-')) return 'neck';
   return null;
 };
+/**
+ * Objets RETIRÉS du dressing : ils modifiaient la structure du visage (yeux, bouche) ou n'avaient plus d'effet sur la tête peinte (eye-liner
+ * « doux » / « sans » / « ailé » : le tracé de l'illustration est la référence). Ils restent dans l'inventaire (rien n'est perdu) mais ne s'équipent plus.
+ */
+export const isRetiredFaceItem = (id: string): boolean => id.startsWith('ey-') || id.startsWith('mo-') || id === 'el-wing' || id === 'el-soft' || id === 'el-none';
 /** Couleur des yeux (iris). La marque pigmentée dans l'œil de Radia reste toujours là. */
 export const EYE_COLOR: Record<string, string> = {
   'ey-brown': '#5A3520', 'ey-hazel': '#8A6A3A', 'ey-honey': '#C08A38', 'ey-green': '#4E8F6A', 'ey-blue': '#6C8FAF', 'ey-violet': '#8A6CC0', 'ey-black': '#2A1A14',

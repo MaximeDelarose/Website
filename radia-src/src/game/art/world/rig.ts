@@ -43,21 +43,30 @@ export const RIG = {
 
   /** ----- CORPS */
   neck: { y: 168 },
-  shoulder: { y: 204, dx: 50 }, // épaule : (cx ± 50 ; 204)
+  /** Articulation de l'épaule : sur la ligne d'épaule du torse (le dôme de l'épaule la prolonge), PAS au niveau de l'aisselle. */
+  shoulder: { y: 190, dx: 52 }, // épaule : (cx ± 52 ; 190)
   waist: { y: 288 },
   hip: { y: 352 }, // ligne de coupe historique des vêtements
   feet: { y: 585 },
 
   /** Bras : épaisseur de l'épaule au poignet. */
-  arm: { w0: 29, w1: 18.5 },
-  /** Pose de référence (celle de l'illustration) : bras le long du corps, coudes légèrement écartés, mains détendues. */
+  arm: { w0: 28, w1: 17.5 },
+  /**
+   * Pose IDLE par défaut : vivante et un peu asymétrique, jamais les bras ballants.
+   * Côté gauche de l'image : main posée sur la hanche (coude écarté). Côté droit : avant-bras plié, main qui repose près du sac / de la cuisse.
+   * (x1, y1) = poignet ; (cx, cy) = point de contrôle du coude ; x en écart à l'axe.
+   */
   pose: {
-    // [côté] : poignet (x1, y1) et point de contrôle du coude (cx, cy), en écart à l'axe pour x
-    left: { x1: -60, y1: 352, cx: -93, cy: 272 },
-    right: { x1: 61, y1: 352, cx: 93, cy: 272 },
+    left: { x1: -50, y1: 310, cx: -106, cy: 254 },
+    right: { x1: 64, y1: 334, cx: 94, cy: 264 },
+  },
+  /** Ancienne pose au repos (bras le long du corps, symétrique) : gardée pour les écrans qui la demandent. */
+  poseRest: {
+    left: { x1: -60, y1: 352, cx: -86, cy: 268 },
+    right: { x1: 60, y1: 352, cx: 86, cy: 268 },
   },
   /** Main : taille mesurée sur l'illustration (≈ 19 × 28 u visibles) ; `reach` = distance poignet → centre de la main (la manche en recouvre le haut). */
-  hand: { r: 10.5, reach: 12 },
+  hand: { r: 9.8, reach: 11 },
 } as const;
 
 /** Échelle effective d'un calque peint (illustration → avatar), tête comprise. */

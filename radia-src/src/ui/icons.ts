@@ -17,6 +17,7 @@ const P: Record<string, string> = {
   'music-off': '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5" fill="currentColor"/><circle cx="16.5" cy="16" r="2.5" fill="currentColor"/><path d="M3 3l18 18"/>',
   sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/>',
   album: '<rect x="4.5" y="3.5" width="15" height="17" rx="2.5"/><path d="M8 3.5v17"/><path d="M14 12.5c-1.6-1.4-3-2.2-3-3.5a1.5 1.5 0 013-.3 1.5 1.5 0 013 .3c0 1.3-1.4 2.1-3 3.5z" fill="currentColor"/>',
+  casino: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.2"/><path d="M12 3v3.4M12 17.6V21M3 12h3.4M17.6 12H21M5.7 5.7l2.4 2.4M15.9 15.9l2.4 2.4M18.3 5.7l-2.4 2.4M8.1 15.9l-2.4 2.4"/>',
   trophy: '<path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 6H5a3 3 0 003 4M16 6h3a3 3 0 01-3 4M12 13v4M8.5 20h7M10 17h4"/>',
   cup: '<path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 6H5a3 3 0 003 4M16 6h3a3 3 0 01-3 4M12 13v4M8.5 20h7M10 17h4"/>',
   chess: '<path d="M9 20h6M8 17h8l-1-3H9z"/><path d="M10 14l-.5-4.5h5L14 14"/><circle cx="12" cy="6.5" r="2.6"/>',

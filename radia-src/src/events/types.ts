@@ -6,14 +6,15 @@
  */
 import type { CareerId, ClothId, FurnitureId, KidId, Look, StyleId } from '../data/world/ids';
 import type { Expr } from '../data/dialogue';
+import type { RelId } from '../data/family/relatives';
 
 export type EventCategory = 'romantic' | 'family' | 'career' | 'golden';
-export type Sender = 'auguste' | KidId | 'agency';
+export type Sender = 'auguste' | KidId | RelId | 'agency';
 
 /** Lieux (décors dessinés dans src/events/places). */
 export const PLACE_IDS = [
   'restaurant', 'palace', 'fireworks', 'spa', 'hotel', 'cinema', 'flowerMarket', 'rooftop', 'ballroom',
-  'garden', 'pajama', 'boutique', 'stage', 'studio', 'home', 'fountain',
+  'garden', 'pajama', 'boutique', 'stage', 'studio', 'home', 'fountain', 'momHome', 'airport',
 ] as const;
 export type PlaceId = (typeof PLACE_IDS)[number];
 
@@ -21,19 +22,23 @@ export type PlaceId = (typeof PLACE_IDS)[number];
 export const ACTIVITY_IDS = [
   'menuPick', 'guessMenu', 'photoBooth', 'bouquet', 'chocolateBox', 'decorTable', 'shopTry',
   'rhythmDance', 'fireworksPhoto', 'spaRelax', 'cinemaQuiz', 'memoryChallenge', 'fashionThemes', 'careerGame',
-  'dressVerdict', 'photoShoot', 'braceletReveal', 'necklaceNight',
+  'dressVerdict', 'photoShoot', 'braceletReveal', 'necklaceNight', 'familyPick', 'arrangeCare',
 ] as const;
 export type ActivityId = (typeof ACTIVITY_IDS)[number];
 
-export type Speaker = 'radia' | 'auguste' | 'narrator' | KidId;
+export type Speaker = 'radia' | 'auguste' | 'narrator' | KidId | RelId;
 export interface Line { who: Speaker; text: string; expr?: Expr }
 
 export type EventStep =
-  | { t: 'dress'; hint: string; style?: StyleId; /** ambiance « soirée exceptionnelle » du dressing */ mood?: 'gala' }
-  | { t: 'travel'; place: PlaceId; label: string }
-  | { t: 'scene'; lines: Line[] }
+  | { t: 'dress'; hint: string; style?: StyleId; /** ambiance « soirée exceptionnelle » du dressing */ mood?: 'gala'; onlyIf?: StepCond }
+  | { t: 'travel'; place: PlaceId; label: string; onlyIf?: StepCond }
+  /** `onlyIf` : la scène n'est jouée que si le résultat d'une activité précédente correspond (ex. issue de l'organisation des enfants). */
+  | { t: 'scene'; lines: Line[]; onlyIf?: StepCond }
   | { t: 'activity'; id: ActivityId; params?: Record<string, unknown> }
-  | { t: 'photo'; place: PlaceId; title: string; withAuguste?: boolean; withKids?: KidId[] };
+  | { t: 'photo'; place: PlaceId; title: string; withAuguste?: boolean; withKids?: KidId[]; onlyIf?: StepCond };
+
+/** Condition sur une donnée d'activité : `run.data[activity][field]` doit valoir l'une des valeurs de `in`. */
+export interface StepCond { activity: ActivityId; field: string; in: (string | number | boolean)[] }
 
 export interface RewardSpec {
   coins?: number; diamonds?: number; fabric?: number; flowers?: number; cocoa?: number; fans?: number;
@@ -54,7 +59,7 @@ export interface EventDef {
   /** Temps de jeu actif minimal (minutes) avant de pouvoir recevoir cette invitation. */
   minPlayMin?: number;
   /** Conditions de progression. */
-  needs?: { career?: CareerId | 'any'; chapter?: number; chess?: boolean; doneAll?: string[] };
+  needs?: { career?: CareerId | 'any'; chapter?: number; chess?: boolean; doneAll?: string[]; /** n'est proposé qu'après N minutes de jeu actif depuis la fin de cet événement (ex. retrouvailles) */ afterMin?: { id: string; min: number } };
   repeatable: boolean;
   /** Grande invitation (limitée à 2 par 30 min de jeu) ou petit message (discret, plus fréquent). */
   big: boolean;
@@ -80,7 +85,7 @@ export interface EventDef {
 
 // ------------------------------------------------------------------ sauvegarde
 
-export interface Invite { runId: string; eventId: string; at: number; state: 'new' | 'seen' | 'later' | 'done' }
+export interface Invite { runId: string; eventId: string; at: number; /** heure réelle de réception (ms) : place l'invitation dans la conversation, à côté des messages */ ts?: number; state: 'new' | 'seen' | 'later' | 'done' }
 export interface PhotoRec {
   id: string; eventId: string; place: PlaceId; title: string; ts: number; look: Look;
   auguste: boolean; kids: KidId[]; pose: number; frame: string; filter: string;
@@ -93,7 +98,7 @@ export interface ActiveRun {
   startedAt: number;
 }
 /** Petit message dans le téléphone (conversation). */
-export interface Msg { at: number; from: Sender; text: string; read: boolean }
+export interface Msg { at: number; from: Sender; text: string; read: boolean; /** déjà repris dans la conversation de l'application Messages (historique unique) */ synced?: boolean }
 /** Quête secrète « Une soirée avec A ♡ » : déclenchement après 20 à 30 minutes de jeu ACTIF. */
 export interface SecretState {
   /** Temps de jeu actif cumulé depuis le début de la quête (ms). */

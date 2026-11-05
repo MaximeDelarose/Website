@@ -12,14 +12,30 @@ import type { Sender } from '../../events/types';
 import { ui } from '../../ui/ui';
 import { Rng } from '../../utils/rng';
 import { assignInPlace } from '../util';
-import { CONTACT_IDS, type ContactId, type KidStyle } from './data';
-import { advance, applyRead, applyReply, markRead, planReply, sanitizeMessages, send, theirReaction, unreadTotal, type Msg, type MessagesState } from './engine';
+import { CONTACT_IDS, isContactId, type ContactId, type KidStyle } from './data';
+import { ensureInviteTs } from '../../events/manager';
+import { advance, applyRead, applyReply, markRead, planReply, sanitizeMessages, send, syncLegacy, theirReaction, unreadTotal, type Msg, type MessagesState } from './engine';
 
 const seen = new WeakSet<object>();
+let syncing = false;
+/**
+ * État des conversations. Avant de le rendre, reprend (une seule fois chacun) les messages de l'ancien système d'événements :
+ * l'aperçu de la liste, la conversation, les pastilles et la sauvegarde lisent ainsi TOUJOURS le même historique.
+ */
 export function messagesState(): MessagesState {
   const raw = save.data.fun.apps.messages;
   if (!seen.has(raw)) { assignInPlace(raw, sanitizeMessages(raw) as unknown as Record<string, unknown>); seen.add(raw); }
-  return raw as unknown as MessagesState;
+  const s = raw as unknown as MessagesState;
+  if (!syncing) {
+    syncing = true;
+    try {
+      const st = ev();
+      let changed = ensureInviteTs(st, Date.now()) > 0;
+      if (st.msgs.some((m) => !m.synced && isContactId(m.from))) changed = syncLegacy(s, st.msgs) > 0 || changed;
+      if (changed) save.save();
+    } finally { syncing = false; }
+  }
+  return s;
 }
 const persist = (): void => { save.save(); };
 
@@ -53,7 +69,9 @@ export function contactFace(id: ContactId): string {
 
 // ------------------------------------------------------------------ non lus (nouveaux + anciens messages d'événements)
 const KNOWN = new Set<string>(CONTACT_IDS);
-export const legacyUnread = (): number => ev().msgs.filter((m) => !m.read && KNOWN.has(m.from)).length;
+/** Non lus de l'ancien système encore à reprendre : 0 une fois la migration faite (filet de sécurité). */
+export const legacyUnread = (): number => { messagesState(); return ev().msgs.filter((m) => !m.read && KNOWN.has(m.from)).length; };
+/** Pastille de l'application = non lus des conversations + invitations nouvelles (comptées là où on les lit : dans la conversation). */
 export const messagesBadge = (): number => unreadTotal(messagesState()) + legacyUnread();
 
 // ------------------------------------------------------------------ notifications
