@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.27.0";
+  var VERSION = "2.28.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -758,7 +758,7 @@
   }
   function hurt(e, dmg, kx, ky) {
     if (e.dead || p.dry) return;
-    var crit = Math.random() < (p.crit || 0) + (p.critX || 0) + (p.packN && itn(p, "glandsjumeaux") ? 0.1 * itn(p, "glandsjumeaux") : 0);
+    var crit = Math.random() < (p.crit || 0) + (p.critX || 0) + (p.critBoostT > 0 ? 0.6 : 0) + (p.packN && itn(p, "glandsjumeaux") ? 0.1 * itn(p, "glandsjumeaux") : 0);
     dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? (itn(p, "corne") ? 3 : 2) + (p.critDmg || 0) : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
     if (crit && r) r.crits = (r.crits || 0) + 1;
     dmg *= (p.dmgX || 1) * (p.txRage > 0 ? 1.35 : 1) * (p.crewScale || 1);
@@ -811,6 +811,10 @@
     }
     if (p.txf && !e.d.prop) dmg *= txHitMul(p, e);
     if (p.slingT > 0) dmg *= 1.4;
+    if (p.frenzyT > 0) dmg *= 1.3;
+    if (p.char && p.char.id === "devoreur" && p.posture === "estomac") dmg *= 1.2;
+    if (p.char && p.char.id === "pillard" && !e.d.prop) { if (p.posture === "receleur") dmg *= 1 + Math.min(0.3, Math.floor((r.gold || 0) / 100) * 0.02); if (p.posture === "chasseur" && (e.d.boss || (e.aff && e.aff.length))) dmg *= 1.25; }
+    if (p.char && p.char.id === "alchimiste" && p.posture === "transmutatrice" && p.alcBoostT > 0) dmg *= 1 + 0.05 * (p.alcBoostN || 0);
     if (e.dmark > 0 && p.char && p.char.id === "ninja" && !e.d.prop) {   // marque de mort : 3 coups et l'ennemi est exécuté (les boss perdent 12 % de leur vie)
       e.dmark--;
       if (e.dmark <= 0) { if (!e.d.boss) dmg = e.hp + (e.eshield || 0) + 1; else dmg += e.maxHp * 0.12; if (S.opts.numbers) texts.push({ x: e.x, y: e.y - e.d.r - 12, n: "EXECUTION", life: 0.8, col: "#ff5a6a" }); burst(e.x, e.y, "#c9b3ff", 8); }
@@ -893,6 +897,11 @@
     if (stealthy(p) && !e.spotted && setCount(p, "shinobi") >= 3) p.ghostT = Math.max(p.ghostT || 0, 1);
     if (stealthy(p) && !e.spotted && !e.d.prop) { p.ghostT = Math.max(p.ghostT || 0, 1.2); p.volteCd = Math.max(0, (p.volteCd || 0) - 0.5); }
     if (p.char && p.char.id === "pataud" && !e.d.prop && !e.d.boss) p.size = (p.size || 1) + 0.004;
+    if (p.char && !e.d.prop) {
+      if (p.char.id === "devoreur" && p.posture === "charognard" && p.mstate === "mouvement") { p.hp = Math.min(p.maxHp, p.hp + 2); p.faimF = (p.faimF || 0) + 1 / 3; if (p.faimF >= 1) { p.faimF = 0; p.faim = (p.faim || 0) + 1; if (p.faim >= 3) { p.faim = 0; p.frenzyT = 20; bannerAll("FRENESIE !"); } } }
+      if (p.char.id === "alchimiste") alchEssence(p, e.elem || (MAP && MAP.element) || ELEM_K[(Math.random() * 4) | 0]);
+      if (p.char.id === "pillard" && (e.d.boss || (e.aff && e.aff.length))) { addGold(e.d.boss ? 100 : 25); if (S.opts.numbers) texts.push({ x: e.x, y: e.y - 20, n: "PRIME", life: 0.9, col: "#f6d36b" }); }
+    }
     if (p.sigK && p.sigK.ash && Math.hypot(e.x - p.x, e.y - p.y) < 50) pZone({ x: e.x, y: e.y, r: 14, dur: 3, kind: "thorn", dmg: 1, owner: p });
     onKillProcs(e); txFire(p, "kill"); if (p && p.txf) txKillPost(p, e);
     if (e.elem === "feu" && !e.d.boss && enemies.length < 260) addZone(e.x, e.y, 11, 2, "fire", 4);
@@ -1420,7 +1429,7 @@
   }
   // ralentissements au sol pour le joueur local (toiles, aura glaciale)
   function slowMul(pl) {
-    var m = pl.txHaste > 0 ? 1.3 : 1;
+    var m = (pl.txHaste > 0 ? 1.3 : 1) * (pl.frenzyT > 0 ? 1.3 : 1);
     if (pl.wetT > 0) { pl.wetT -= 1 / 60; m *= 0.8; }
     if (waterAt(pl.x, pl.y + 3)) m *= 0.8;
     if (zones.length && zoneAt(pl.x, pl.y + 3, "hole")) m *= 0.5;
@@ -1867,6 +1876,7 @@
   function merchantCost() { return Math.round(chestCost() * 2.2); }
   function betCost() { return Math.round(chestCost() * 1.2); }
   function payGold(cost, st, what) {
+    if (me && me.char && me.char.id === "pillard") cost = Math.round(cost * (me.posture === "cambrioleur" ? 0.65 : 0.85));
     if (r.gold >= cost) { r.gold -= cost; r.goldSpent = (r.goldSpent || 0) + cost; if (!r.bosses && cost > 0) r.spentEarly = 1; return true; }
     st.p = 0; st.cd = 2; bannerAll("Il faut " + cost + " glands " + what); return false;
   }
@@ -1899,7 +1909,7 @@
       var cost = chestCost(); r.chestN = (r.chestN || 0) + 1;
       if (itn(pl, "cle_rouillee") && r.chestN % 3 === 0) { cost = 0; bannerAll("La clé rouillée tourne : coffre gratuit !"); }
       if (r.gold < cost) { st.p = 0; st.cd = 2; bannerAll("Il faut " + cost + " glands pour l'ouvrir"); return; }
-      r.gold -= cost; r.chestsOpened = (r.chestsOpened || 0) + 1; dropItem(s.x, s.y - 14, 0); if (Math.random() < 0.3) dropItem(s.x + 14, s.y - 8, 0); if (anyItem("de_demon")) dropItem(s.x - 14, s.y - 8, 0);
+      r.gold -= cost; r.chestsOpened = (r.chestsOpened || 0) + 1; if (me.char.id === "pillard") addGold(30); dropItem(s.x, s.y - 14, 0); if (Math.random() < 0.3) dropItem(s.x + 14, s.y - 8, 0); if (anyItem("de_demon")) dropItem(s.x - 14, s.y - 8, 0);
       bannerAll("Coffre ouvert !"); SND.gold();
     } else if (s.k === "defi") {
       var n = 5 + tierN(); r.trials[s.id] = n;
@@ -3006,7 +3016,7 @@
     }
     if (humans() > 1 || isArena()) { picking = true; me.choosing = true; sendInput(); } else state = "levelup";
     clearInput();
-    currentChoices = choices(hasMod("unique") ? 1 : 3 + (me.char.id === "noisette" ? 1 : 0) + (me.extraChoice || 0) + (p.luck > 1.3 && Math.random() < 0.3 ? 1 : 0));
+    currentChoices = choices(hasMod("unique") ? 1 : 3 - (me.posture === "estomac" && me.char.id === "devoreur" ? 1 : 0) + (me.char.id === "noisette" ? 1 : 0) + (me.extraChoice || 0) + (p.luck > 1.3 && Math.random() < 0.3 ? 1 : 0));
     // Carnet de Noisette : la carte mise de côté au niveau précédent revient (si elle est encore valable)
     if (me.char.id === "noisette" && r.carnet) { var cn = r.carnet; r.carnet = null; if (cn.type === "w" ? (me.weapons[cn.id] || 0) === cn.lvl - 1 && !me.consumed[cn.id] : cn.type === "p" ? (me.passives[cn.id] || 0) === cn.lvl - 1 : false) if (!currentChoices.some(function (x) { return x.type === cn.type && x.id === cn.id; })) currentChoices.push(cn); }
     var html = '<span class="kicker">Niveau ' + r.level + " !</span><h2>Choisis un pouvoir</h2><div class=\"choices\">";
@@ -3040,7 +3050,8 @@
     });
     html += '</div><div class="btn-row center">';
     if (me.rerolls > 0) html += '<button class="btn btn-alt btn-small" type="button" data-action="reroll">🎲 Relancer (' + me.rerolls + ")</button>";
-    if (me.char.id === "trefle") html += '<button class="btn btn-small" type="button" data-action="bet">🍀 Miser (2 cartes au prochain niveau, ou rien)</button>';
+    if (me.char.id === "trefle" || me.char.id === "devoreur") html += '<button class="btn btn-small" type="button" data-action="bet">🍀 Miser (2 cartes au prochain niveau, ou rien)</button>';
+    if (me.char.id === "devoreur") html += '<button class="btn btn-small" type="button" data-action="devour">🍽️ Dévorer les cartes (' + devourPreview() + ")</button>";
     html += '<button class="btn btn-ghost btn-small" type="button" data-action="skip">Passer (+3 ' + goldIc() + ")</button></div>";
     showCard(html, "levelup");
     SND.level();
@@ -3055,6 +3066,27 @@
     var n = { retour: 0, compagnon: 0 };
     Object.keys(p.weapons).forEach(function (k) { var t = D.TECH[k]; if (!t) return; if (n[t.fam] !== undefined) n[t.fam]++; if (t.fam === "retour" && p.weapons[k] >= MAX_LVL) r.retour5 = 1; });
     r.retourMax = Math.max(r.retourMax || 0, n.retour); r.compMax = Math.max(r.compMax || 0, n.compagnon);
+  }
+  /* ---- Croc, le Dévoreur : dévorer les cartes d'un niveau donne des stats permanentes et remplit la Faim ---- */
+  function devourStats(cards) {
+    var g = {}, mul = me.posture === "gourmet" ? 1.5 : 1, techNew = 0;
+    cards.forEach(function (c) {
+      var a = c.type === "w" ? { dmg: 3 } : c.type === "p" ? { hp: 8, reg: 1 } : ["evo", "pf", "cb", "f"].indexOf(c.type) >= 0 ? { crit: 2, cdm: 6 } : { spd: 2, mag: 6 };
+      Object.keys(a).forEach(function (k) { g[k] = (g[k] || 0) + a[k] * mul; });
+      if (c.type === "w" && !me.weapons[c.id]) techNew++;
+    });
+    Object.keys(g).forEach(function (k) { g[k] = Math.max(1, Math.round(g[k])); });
+    return { g: g, techNew: techNew };
+  }
+  function devourPreview() { var d = devourStats(currentChoices); return bonTxt(d.g).slice(0, 3).join(", ") || "rien"; }
+  function devourApply() {
+    var d = devourStats(currentChoices), pl = me;
+    pl.gbon = pl.gbon || {}; Object.keys(d.g).forEach(function (k) { pl.gbon[k] = (pl.gbon[k] || 0) + d.g[k]; });
+    pl.fest = (pl.fest || 0) + 1; pl.festR = Math.min(6, (pl.festR || 0) + 1); pl.faim = (pl.faim || 0) + 1; pl.emp = (pl.emp || 0) + d.techNew;
+    pl.txf = pl.txf || {}; if (pl.emp) pl.txf.nth = Math.max(4, 13 - pl.emp);
+    var msg = "Festin : " + (bonTxt(d.g).slice(0, 3).join(", ") || "rien");
+    if (pl.faim >= 3) { pl.faim = 0; pl.frenzyT = 20; msg += " · FRENESIE !"; SND.fusion(); burst(pl.x, pl.y, "#ff8a4a", 24); } else SND.level();
+    banner(msg); calc(pl); pl.hp = Math.min(pl.maxHp, pl.hp + 10);
   }
   // « Coup du destin » : quand il n'y a plus rien à choisir, un effet surprise pour relancer la partie
   function fateApply(pl) {
@@ -3090,6 +3122,7 @@
     p = me;
     if (me.char.id === "noisette") { var sv = currentChoices.filter(function (x) { return x !== c && (x.type === "w" || x.type === "p"); })[0]; r.carnet = sv || null; if (sv) banner("Carnet : carte mise de côté"); }
     applyCore(c);
+    if (me.char.id === "devoreur") me.faim = 0;   // une vraie carte remet la Faim à zéro
     refreshCounts();
     if (Net.on && Net.role === "guest") netSend("pick", { id: me.id, c: { type: c.type, id: c.id, lvl: c.lvl } });
     afterChoice();
@@ -4378,13 +4411,14 @@
     pl.rerolls = (pl.rerolls || 0) + (pl.ring.relance ? (pl.ring2x ? 4 : 2) : 0);
     // talents : seulement les paliers ouverts par le niveau de l'écureuil, pour la posture jouée
     var lv = charLevel(cid), pick = ((S.tal[cid] || {})[pl.posture]) || {};
-    pl.tal = {};
+    pl.tal = {}; pl._pfx = [];
     for (var t = 0; t < 4; t++) {
       if (lv < D.TAL_LVL[t] || !pick[t + 1]) continue;
       var pair = t < 2 ? D.TAL_COMMON[t] : (D.TAL[pl.posture] || [])[t - 2]; if (!pair) continue;
-      var node = pair[pick[t + 1] === "b" ? 1 : 0]; pl.tal[node.id] = true;
+      var node = pair[pick[t + 1] === "b" ? 1 : 0]; pl.tal[node.id] = true; if (node.fx) (pl._pfx = pl._pfx || []).push(node.fx);
     }
     var px = (S.tal[cid] || {}).x || {}; pl.txl = []; pl.txs = {}; pl.txf = {};
+    (pl._pfx || []).forEach(function (f) { pl.txf[f.k] = (pl.txf[f.k] || 0) + f.v; }); pl._pfx = [];
     for (var tx = 0; tx < D.TAL_XLVL.length; tx++) {
       if (lv < D.TAL_XLVL[tx] || !px[tx] || !D.TAL_FX[cid]) continue;
       var xo = D.TAL_FX[cid][tx][px[tx].charCodeAt(0) - 97]; if (xo && xo.fx) pl.txf[xo.fx.k] = (pl.txf[xo.fx.k] || 0) + xo.fx.v; else if (xo) pl.txl.push(xo);
@@ -5181,7 +5215,52 @@
     else if (cid === "ninja") ninjaTick(pl, dt, k);
     else if (cid === "trefle") { if (pl.luck0 === undefined) pl.luck0 = pl.luck; pl.luck = pl.luck0 * (1 + (pl.luckX || 0)); if (ps === "portebonheur") pl.luckX = pl.anchored ? Math.min(tal(pl, "portebonheur_t1") ? 2 : 1, (pl.luckX || 0) + dt * 0.2) : Math.max(0, (pl.luckX || 0) - dt * 0.3); }
     else if (cid === "jumeaux") twinsTick(pl, dt, k);
+    else if (cid === "devoreur") { if (pl.frenzyT > 0) pl.frenzyT -= dt; if (pl.posture === "gourmet" && pl.anchored && pl.hp < pl.maxHp) pl.hp = Math.min(pl.maxHp, pl.hp + dt); }
+    else if (cid === "alchimiste") { if (pl.alcBoostT > 0) pl.alcBoostT -= dt; if (pl.posture === "transmutatrice" && pl.anchored && cooled(pl, "essGift", 6)) alchEssence(pl, armElem(pl)); }
+    if (cid === "trefle") trefleDice(pl, dt, k);
     p = pp;
+  }
+  /* Trèfle : trois dés, un bonus au hasard toutes les 20 s */
+  function trefleDice(pl, dt, k) {
+    pl.diceT = (pl.diceT === undefined ? 8 : pl.diceT) - dt; if (pl.critBoostT > 0) pl.critBoostT -= dt;
+    if (pl.diceT > 0) return;
+    pl.diceT = 20; var d = 1 + ((Math.random() * 6) | 0), names = ["Rage (+35 % de dégâts)", "Bouclier", "Soin", "Onde", "Butin", "Critiques assurés"];
+    if (d === 1) pl.txRage = 8; else if (d === 2) pl.inv = Math.max(pl.inv || 0, 2); else if (d === 3) pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * 0.2);
+    else if (d === 4) { ring(pl.x, pl.y, 60, false); near(pl.x, pl.y, 70, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - pl.x, e.y - pl.y) < 60 + e.d.r) hurt(e, 45 * k, (e.x - pl.x) * 3, (e.y - pl.y) * 3); }); }
+    else if (d === 5) { addGold(25); dropItem(pl.x + 12, pl.y, 0); } else pl.critBoostT = 8;
+    if (pl.posture === "flambeuse" && Math.random() < 0.5) pl.diceT = 8;
+    bannerAll("Dé : " + d + " - " + names[d - 1]); SND.fusion(); burst(pl.x, pl.y, "#9cd070", 12);
+  }
+  /* Fiole : essences, potions et réactions */
+  function alchEssence(pl, el) {
+    pl.ess = pl.ess || []; if (!el) return; pl.ess.push(el); if (pl.ess.length > 3) pl.ess.shift();
+    var cur = armElem(pl); if (cur !== el) { pl.elemOv = el; pl.cycleN = 0; pl.tdef = {}; }
+    burst(pl.x, pl.y - 6, D.ELEMENTS[el].color, 5);
+  }
+  function alchVolte(pl, dx, dy) {
+    var k = gpw(), ess = pl.ess || [], tg = nearest(1, 150, pl)[0], tx = tg ? tg.x : pl.x + dx * 60, ty = tg ? tg.y : pl.y + dy * 60, ps = pl.posture, el0 = armElem(pl);
+    var a = ess[ess.length - 1], b = null, i;
+    for (i = ess.length - 2; i >= 0; i--) if (ess[i] !== a) { b = ess[i]; break; }
+    var same3 = ess.length >= 3 && ess[0] === ess[1] && ess[1] === ess[2];
+    fx.push({ kind: "ring", x: tx, y: ty, r: 24, life: 0.3, max: 0.3, col: a ? D.ELEMENTS[a].color.replace("#", "") : "200,200,200" });
+    if (same3) { var hk = HIT_ELEM; HIT_ELEM = a; explode(tx, ty, 70, 70 * k, 0); HIT_ELEM = hk; bannerAll("Grand Œuvre : " + D.ELEMENTS[a].name + " !"); pl.mixN = (pl.mixN || 0) + 1; SND.boom(); }
+    else if (a && b) {
+      near(tx, ty, 50, function (e) { if (e.dead || e.d.prop) return; e.mark = b; e.markT = 3; react(e, b, a, true); });
+      bannerAll("Réaction : " + D.ELEMENTS[b].name + " + " + D.ELEMENTS[a].name); pl.mixN = (pl.mixN || 0) + 1; SND.fusion();
+    } else if (a) { markZone(tx, ty, 30, 3, a); near(tx, ty, 36, function (e) { if (!e.dead && !e.d.prop) { var kp = HIT_ELEM; HIT_ELEM = a; hurt(e, 18 * k, 0, 0); HIT_ELEM = kp; } }); }
+    else markZone(tx, ty, 22, 2.5, el0);
+    if (ps === "empoisonneuse") zones.push({ x: tx, y: ty + 2, r: 26, t: 0, dur: 6, kind: "fire", dmg: 0, owner: pl, pdmg: 6 * k, elem: a || el0 });
+    if (ps === "transmutatrice") { pl.alcBoostT = 5; pl.alcBoostN = ess.length; }
+    if (ps === "catalyseuse") enemies.forEach(function (e) { if (!e.dead && !e.d.prop && e.mark && e.markT > 0 && e.mark !== el0 && inView(e, 0)) react(e, e.mark, el0, true); });
+    pl.ess = [];
+    if ((pl.mixN || 0) >= 20) { pl.mixN = 0; var kk = p; p = pl; near(pl.x, pl.y, 160, function (e) { if (!e.dead && !e.d.prop && !e.d.boss) { addGold(3); if (Math.random() < 0.25) dropItem(e.x, e.y, 0); burst(e.x, e.y, "#f6d36b", 4); } }); p = kk; bannerAll("Pierre philosophale : l'or ruisselle !"); SND.gold(); }
+  }
+  function pillardVolte(pl, dx, dy) {
+    var k = gpw(), n = Math.min(10, Math.floor((r.gold || 0) / 10)), i;
+    if (n < 1) { banner("Bourse vide : plus de pièces à lancer"); return; }
+    r.gold -= n * 10; var base = Math.atan2(dy || 0, dx || 1);
+    for (i = 0; i < n; i++) { var ag = base + (i - (n - 1) / 2) * 0.16; projs.push({ owner: pl, kind: "bullet", x: pl.x, y: pl.y - 3, vx: Math.cos(ag) * 190, vy: Math.sin(ag) * 190, dmg: 16 * k, pierce: 2, sprite: "gold", life: 0.9, hit: [], r: 3, explode: 0 }); }
+    SND.gold();
   }
   /* Cendrine : coups étalés sur 4 s, champ de force */
   function cendrineTick(pl, dt, k) {
@@ -5331,7 +5410,14 @@
       if (ps === "affut") { pl.ghostT = 1; }
       if (ps === "lamevent") { var n = tal(pl, "lamevent_t4") ? 12 : 6; for (var j = 0; j < n; j++) { var b = j / n * TAU; projs.push({ owner: pl, kind: "bullet", x: pl.x, y: pl.y, vx: Math.cos(b) * 170, vy: Math.sin(b) * 170, dmg: 12 * k, pierce: 3, sprite: "shuriken", life: 0.7, hit: [], r: 4, explode: 0 }); } }
       if (ps === "danseuse") { var cap = tal(pl, "danseuse_t3") ? 8 : 5; pl.dance = Math.min(cap, (pl.dance || 0) + 1); if (tal(pl, "danseuse_t4") && pl.dance >= 5) fireNova(50, 20 * k); }
-    } else if (cid === "trefle") {
+    } else if (cid === "devoreur") {
+      var f6 = pl.festR || 0;
+      if (ps === "gourmet") { for (var gi = 0; gi < f6; gi++) { var ga = Math.atan2(dy || 0, dx || 1) + (gi - (f6 - 1) / 2) * 0.3; projs.push({ owner: pl, kind: "bullet", x: pl.x, y: pl.y - 2, vx: Math.cos(ga) * 170, vy: Math.sin(ga) * 170, dmg: 16 * k, pierce: 2, sprite: "acorn", life: 0.9, hit: [], r: 3, explode: 0 }); } pl.festR = Math.max(0, f6 - 1); }
+      else if (ps === "charognard") gems.forEach(function (g) { if (g.kind === "xp" && Math.hypot(g.x - pl.x, g.y - pl.y) < 130) g.pull = 170; });
+      else { var Rr = 40 + 8 * Math.min(8, pl.fest || 0); ring(pl.x, pl.y, Rr, false); near(pl.x, pl.y, Rr + 10, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - pl.x, e.y - pl.y) < Rr + e.d.r) hurt(e, 30 * k * (1 + 0.2 * (pl.fest || 0)), (e.x - pl.x) * 3, (e.y - pl.y) * 3); }); SND.boom(); }
+    } else if (cid === "alchimiste") alchVolte(pl, dx, dy);
+    else if (cid === "pillard") pillardVolte(pl, dx, dy);
+    else if (cid === "trefle") {
       if (ps === "toutourien") { var win = Math.random() < (tal(pl, "toutourien_t2") ? 0.6 : 0.5); if (win) { var nn = tal(pl, "toutourien_t1") ? 32 : 24; for (var q = 0; q < nn; q++) { var c = q / nn * TAU; projs.push({ owner: pl, kind: "bullet", x: pl.x, y: pl.y, vx: Math.cos(c) * 160, vy: Math.sin(c) * 160, dmg: 11 * k, pierce: 1, sprite: "acorn", life: 0.8, hit: [], r: 4, explode: tal(pl, "toutourien_t3") ? 12 : 0 }); } texts.push({ x: pl.x, y: pl.y - 16, n: "PILE !", life: 0.7, col: "#f6d36b" }); } else { texts.push({ x: pl.x, y: pl.y - 16, n: "FACE...", life: 0.7 }); if (tal(pl, "toutourien_t4")) pl.hp = Math.min(pl.maxHp, pl.hp + 10); } }
       if (ps === "portebonheur" && Math.random() < (tal(pl, "portebonheur_t2") ? 0.33 : 0.25)) dropItem(pl.x + dx * 20, pl.y + dy * 20, tal(pl, "portebonheur_t3") && Math.random() < 0.3 ? 2 : 0);
     } else if (cid === "jumeaux" && tw && !tw.down) {
@@ -5400,6 +5486,10 @@
     if (c === "mage") return " · SEVE " + Math.round(pl.sap || 0) + (pl.surge > 0 ? " SURCHARGE" : "");
     if (c === "pataud") return " · TAILLE " + fr(Math.round((pl.size || 1) * 10) / 10);
     if (c === "cendrine") return pl.debt > 0.5 ? " · DETTE " + Math.round(pl.debt) : pl.posture === "belier" ? " · ELAN " + Math.round((pl.elan || 0) * 100) + "%" : "";
+    if (c === "devoreur") return pl.frenzyT > 0 ? " · FRENESIE " + Math.ceil(pl.frenzyT) + " s" : " · FAIM " + (pl.faim || 0) + "/3 · FESTINS " + (pl.fest || 0);
+    if (c === "alchimiste") return " · ESSENCES " + (pl.ess || []).map(function (x) { return { terre: "T", feu: "F", eau: "E", air: "A" }[x]; }).join("") + " · MELANGES " + (pl.mixN || 0) + "/20";
+    if (c === "pillard") return " · BOURSE " + Math.floor(r.gold || 0);
+    if (c === "trefle" && pl.diceT !== undefined && !r.betPend) return " · DE " + Math.max(0, Math.ceil(pl.diceT)) + " s";
     if (c === "ninja") return pl.invis || pl.ghostT > 0 ? " · INVISIBLE" : pl.posture === "danseuse" && pl.dance ? " · DANSE " + pl.dance : "";
     if (c === "druide") return " · ARBRES " + (pl.trees || []).length + "/" + treeMax(pl);
     if (c === "trefle" && r.betPend) return " · MISE EN COURS";
@@ -8700,7 +8790,8 @@
     ctake: function (id) { genContracts(); var c = S.contracts, o = c.offers.filter(function (x) { return x.id === id; })[0]; if (!o) return; var i = c.taken.map(function (x) { return x.id; }).indexOf(id); if (i >= 0) c.taken.splice(i, 1); else if (c.taken.length < 3) c.taken.push(o); save(); SND.click(); go("play"); },
     buysecure: function () { var n = S.secureSlots || 0, cost = [1500, 4000][n]; if (!cost || S.gold < cost) return; S.gold -= cost; S.secureSlots = n + 1; save(); SND.gold(); go("terrier"); },
     cn: function (n) { S.cn = +n || 0; save(); SND.click(); go("play"); },
-    bet: function () { if (state !== "levelup" || me.char.id !== "trefle") return; r.betPend = true; SND.click(); afterChoice(); },
+    devour: function () { if (state !== "levelup" || me.char.id !== "devoreur") return; devourApply(); afterChoice(); },
+    bet: function () { if (state !== "levelup" || (me.char.id !== "trefle" && me.char.id !== "devoreur")) return; r.betPend = true; SND.click(); afterChoice(); },
     parme: function (id) { if (screen === "draft") { SND.level(); pickArme(id); } },
     wtake: function () { if (!wOffer) return; var g = wOffer; wOffer = null; takeWeapon(g.v); state = "play"; hideCard(); last = performance.now(); },
     wleave: function () { if (!wOffer) return; var g = wOffer; wOffer = null; g.cool = r.time + 2.5; gems.push(g); state = "play"; hideCard(); last = performance.now(); },
@@ -9676,6 +9767,10 @@
     hit1: function () { var e = enemies.filter(function (x) { return !x.dead && SHOOTER_AI[x.d.ai]; })[0]; if (!e) return null; e.cd = 0; p = me; hurt(e, 1, 0, 0); return Math.round(e.cd * 100) / 100; },
     clones: function () { return ((me.comp || {}).__clone || []).length; },
     marks: function () { return enemies.filter(function (e) { return e.dmark > 0; }).length; },
+    devourT: function () { if (state !== "levelup") return null; devourApply(); afterChoice(); return [me.faim, me.fest, me.frenzyT || 0, JSON.stringify(me.gbon)]; },
+    alch: function () { return { ess: me.ess, mix: me.mixN, el: armElem(me) }; },
+    setGold: function (n) { r.gold = n; return r.gold; },
+    dice: function () { me.diceT = 0.01; return 1; },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },

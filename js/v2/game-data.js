@@ -1509,8 +1509,8 @@ window.ES_DATA = (function () {
   };
   // 2.17 : talents de personnage à effet, valables avec toutes les postures : 6 paliers, 3 choix par palier. Un talent = un déclencheur + une action, de plus en plus fort selon le palier
   var TAL_XLVL = [3, 5, 7, 9, 10, 12];
-  var TX_CHARS = ["noisette", "cendrine", "charbon", "flocon", "planeur", "capitaine", "jumeaux", "chevalier", "mage", "bucheron", "ninja", "druide", "pataud", "trefle"];
-  var TX_NOUN = { noisette: "glands", cendrine: "cendres", charbon: "braises", flocon: "neige", planeur: "plumes", capitaine: "matelots", jumeaux: "jumeaux", chevalier: "lances", mage: "runes", bucheron: "copeaux", ninja: "ombres", druide: "ronces", pataud: "miettes", trefle: "trèfles" };
+  var TX_CHARS = ["noisette", "cendrine", "charbon", "flocon", "planeur", "capitaine", "jumeaux", "chevalier", "mage", "bucheron", "ninja", "druide", "pataud", "trefle", "devoreur", "alchimiste", "pillard"];
+  var TX_NOUN = { noisette: "glands", cendrine: "cendres", charbon: "braises", flocon: "neige", planeur: "plumes", capitaine: "matelots", jumeaux: "jumeaux", chevalier: "lances", mage: "runes", bucheron: "copeaux", ninja: "ombres", druide: "ronces", pataud: "miettes", trefle: "trèfles", devoreur: "crocs", alchimiste: "fioles", pillard: "pièces" };
   var TX_TRIG = ["volte", "kill", "hurt", "anchor", "timer", "lowhp"], TX_ACT = ["ring", "nova", "heal", "shield", "haste", "rage", "freeze", "chain", "bomb", "pull"];
   var TX_TAG = { volte: "Volte", kill: "Victoires", hurt: "Touché", anchor: "Ancré", timer: "Cadence", lowhp: "Sursaut" };
   var TX_ANAME = { ring: "Gerbe de ", nova: "Éclat de ", heal: "Réconfort de ", shield: "Garde de ", haste: "Élan de ", rage: "Fureur de ", freeze: "Givre de ", chain: "Éclair de ", bomb: "Brasier de ", pull: "Appel de " };
@@ -1574,7 +1574,10 @@ window.ES_DATA = (function () {
     ninja: [["Ombre fatale", "opener"], ["Pas feutré", "sprint"], ["Lame empoisonnée", "burn"], ["Kunaï éclair", "critBolt"], ["Disparition", "afterVolte"], ["Frappe nerveuse", "bounty"]],
     druide: [["Ronces vives", "reflect"], ["Floraison", "patience"], ["Spores", "chill"], ["Racines", "stun"], ["Cycle de vie", "killHeal"], ["Nuée", "crowd"]],
     pataud: [["Gros appétit", "lifesteal"], ["Ventre plein", "desperate"], ["Miettes", "bounty"], ["Digestion", "patience"], ["Festin", "streak"], ["Roulé-boulé", "knock"]],
-    trefle: [["Trèfle à quatre", "critBolt"], ["Coup de bol", "bounty"], ["Chanceux", "execute"], ["Pile ou face", "opener"], ["Jeu de dés", "nth"], ["Fortune", "streak"]]
+    trefle: [["Trèfle à quatre", "critBolt"], ["Coup de bol", "bounty"], ["Chanceux", "execute"], ["Pile ou face", "opener"], ["Jeu de dés", "nth"], ["Fortune", "streak"]],
+    devoreur: [["Gros morceau", "lifesteal"], ["Panse sans fond", "streak"], ["Mâchoire", "execute"], ["Digestion rapide", "patience"], ["Appétit féroce", "desperate"], ["Festin", "killHeal"]],
+    alchimiste: [["Fiole instable", "nth"], ["Vapeurs", "chill"], ["Étincelle chimique", "critBolt"], ["Distillat", "burn"], ["Réaction en chaîne", "crowd"], ["Transmutation", "bounty"]],
+    pillard: [["Main leste", "bounty"], ["Coup bas", "opener"], ["Butin de guerre", "streak"], ["Cible marquée", "execute"], ["Fuite en avant", "sprint"], ["Garde-robe", "reflect"]]
   };
   Object.keys(TXU).forEach(function (cid) {
     TXU[cid].forEach(function (u, t) {
@@ -1609,14 +1612,25 @@ window.ES_DATA = (function () {
     { id: "pataud", name: "Pataud", title: "Écureuil glouton", sprite: "sq_pataud", weapon: "katana", desc: "" },
     { id: "trefle", name: "Trèfle", title: "Écureuil joueur", sprite: "sq_trefle", weapon: "katana", desc: "" }
   );
+  SPRITES.sq_devoreur = squirrelA({ t: "#8a9a4a", d: "#4a5a2a", o: "#b8c86a", c: "#f6f0d0", k: "#2b1709", n: "#3a4a1a" });
+  SPRITES.sq_alchimiste = squirrelA({ t: "#6ac8b8", d: "#2e7a6e", o: "#9ee8d8", c: "#fdf3de", k: "#12302a", n: "#1e5a50" });
+  SPRITES.sq_pillard = squirrelA({ t: "#6a6a80", d: "#2e2e3a", o: "#9a9ab8", c: "#e8dcc0", k: "#1a1a22", n: "#3a3a4a" });
+  CHAR_ALL.push(
+    { id: "devoreur", name: "Croc", title: "Écureuil vorace", sprite: "sq_devoreur", weapon: "katana", desc: "" },
+    { id: "alchimiste", name: "Fiole", title: "Écureuil alchimiste", sprite: "sq_alchimiste", weapon: "katana", desc: "" },
+    { id: "pillard", name: "Rapine", title: "Écureuil pillard", sprite: "sq_pillard", weapon: "katana", desc: "" }
+  );
   var V2CH2 = {
+    devoreur: { order: 10, quest: "q2_croc", rule: "À chaque niveau : prendre une carte, dévorer les cartes (une stat permanente selon leur type) ou miser. Trois festins d'affilée déclenchent une Frénésie de 20 s ; une vraie carte remet la Faim à zéro. Dévorer une technique lui laisse une empreinte : une onde tous les N coups." },
+    alchimiste: { order: 11, quest: "q2_fiole", rule: "Chaque ennemi tué donne une essence de son élément (3 au plus) ; la dernière change l'élément de son arme et de ses techniques. Sa Volte lance une potion : deux essences différentes déclenchent leur réaction, trois identiques font le Grand Œuvre. 20 mélanges : la Pierre philosophale change les ennemis proches en butin." },
+    pillard: { order: 12, quest: "q2_rapine", rule: "L'or est sa munition : sa Volte lance des pièces (10 glands d'or chacune, 10 au plus). Primes sur les élites et les boss, prix réduits aux coffres, marchands et sanctuaires." },
     jumeaux: { order: 3, quest: "q2_jumeaux", rule: "Deux corps sur les mêmes commandes, vies séparées. Pop reprend tes armes à 60 % ; si l'un tombe, l'autre peut le relever." },
     cendrine: { order: 4, quest: "q2_cendrine", rule: "Les coups reçus s'écoulent sur 4 s ; frapper pendant ce délai en efface une partie. Un champ de force l'entoure." },
     druide: { order: 5, quest: "q2_fougere", rule: "Ancrée, elle enterre une noisette qui devient pousse, puis arbre qui attaque." },
     pataud: { order: 6, quest: "q2_pataud", rule: "Grossit en mangeant l'XP et les ennemis qu'il tue : plus de PV et de dégâts au contact, mais plus lent et plus facile à toucher. La Volte recrache tout." },
     mage: { order: 7, quest: "q2_mage", rule: "Ses armes puisent dans une jauge de sève ; à sec, elles tirent 2 fois moins vite. Ancrée, elle recharge ; jauge pleine = surcharge." },
     ninja: { order: 8, quest: "q2_ninja", rule: "Les ennemis ne la repèrent qu'à courte portée ; dégâts x3 sur ceux qui ne l'ont pas vue. Sa Volte marque une cible (3 coups : exécution) et laisse un clone d'ombre qui frappe ; une tuerie silencieuse prolonge son invisibilité et recharge la Volte." },
-    trefle: { order: 9, quest: "q2_trefle", rule: "À chaque niveau, elle prend sa carte ou la mise : deux cartes au niveau suivant, ou rien." },
+    trefle: { order: 9, quest: "q2_trefle", rule: "À chaque niveau, elle prend sa carte ou la mise : deux cartes au niveau suivant, ou rien. Trois dés : toutes les 20 s, un dé donne un bonus au hasard (dégâts, bouclier, soin, onde, butin ou critiques)." },
   };
   Object.keys(V2CH2).forEach(function (k) { V2CH[k] = V2CH2[k]; });
   var ALLCH = CHAR_ALL;
@@ -1654,6 +1668,21 @@ window.ES_DATA = (function () {
       { id: "lamevent", name: "Lame-vent", color: "#d8e8ff", a: "Normal.", m: "Des shurikens restent dans son sillage.", v: "Une gerbe de 6 shurikens ; son clone lance des shurikens au lieu de frapper." },
       { id: "danseuse", name: "Danseuse", color: "#ff7a9a", a: "Normal.", m: "En mouvement : +15 % d'esquive.", v: "Chaque Volte sans prendre de coup : +8 % de cadence (5 fois max) ; 2 clones qui durent plus longtemps." },
     ],
+    devoreur: [
+      { id: "gourmet", name: "Gourmet", color: "#9cc56b", a: "Ancré : regagne 1 PV/s. Les festins donnent +50 % de stats.", m: "Normal.", v: "Recrache un projectile par festin récent (6 au plus)." },
+      { id: "charognard", name: "Charognard", color: "#c8553d", a: "Normal.", m: "En mouvement : chaque ennemi tué le soigne de 2 PV et remplit un tiers de Faim.", v: "Dévore les noisettes d'XP autour de lui." },
+      { id: "estomac", name: "Estomac vide", color: "#ff8a4a", a: "Normal.", m: "Un choix de carte en moins, mais +20 % de dégâts.", v: "Rugit : une onde dont la force dépend de ses festins." },
+    ],
+    alchimiste: [
+      { id: "transmutatrice", name: "Transmutatrice", color: "#9ee8d8", a: "Ancrée : une essence gratuite de l'élément de son arme toutes les 6 s.", m: "Normal.", v: "Potion : chaque essence portée donne +5 % de dégâts pendant 5 s." },
+      { id: "empoisonneuse", name: "Empoisonneuse", color: "#9cc56b", a: "Normal.", m: "Normal.", v: "Les potions laissent une flaque qui brûle 6 s." },
+      { id: "catalyseuse", name: "Catalyseuse", color: "#c9b3ff", a: "Normal.", m: "Normal.", v: "Déclenche la réaction de tous les ennemis marqués à l'écran." },
+    ],
+    pillard: [
+      { id: "receleur", name: "Receleur", color: "#f6d36b", a: "Normal.", m: "Normal.", v: "Lance des pièces. +2 % de dégâts par tranche de 100 glands d'or possédés (30 % max)." },
+      { id: "chasseur", name: "Chasseur de primes", color: "#ff5a6a", a: "Normal.", m: "Normal.", v: "Lance des pièces. +25 % de dégâts sur les élites et les boss." },
+      { id: "cambrioleur", name: "Cambrioleur", color: "#8a8aa8", a: "Normal.", m: "Normal.", v: "Lance des pièces. Les prix baissent de 35 % (15 % pour les autres)." },
+    ],
     trefle: [
       { id: "portebonheur", name: "Porte-bonheur", color: "#9cd070", a: "Ancrée, sa chance monte (butin).", m: "Normal.", v: "Une pièce : un objet tombe 1 fois sur 4." },
       { id: "toutourien", name: "Tout-ou-rien", color: "#f6d36b", a: "Normal.", m: "Normal.", v: "Lance une pièce : salve doublée, ou rien." },
@@ -1674,7 +1703,10 @@ window.ES_DATA = (function () {
     { id: "q2_pataud", desc: "Ramasse 400 noisettes dans une partie (débloque Pataud).", check: function (r) { return (r.nuts || 0) >= 400; } },
     { id: "q2_mage", desc: "Déclenche 30 réactions élémentaires dans une partie (débloque Myrtille).", check: function (r) { return (r.reactions || 0) >= 30; } },
     { id: "q2_ninja", desc: "Fais 30 Voltes dans une partie (débloque Ombre).", check: function (r) { return (r.voltes || 0) >= 30; } },
-    { id: "q2_trefle", desc: "Ouvre 3 coffres scellés dans une partie (débloque Trèfle).", check: function (r) { return (r.chestsOpened || 0) >= 3; } }
+    { id: "q2_trefle", desc: "Ouvre 3 coffres scellés dans une partie (débloque Trèfle).", check: function (r) { return (r.chestsOpened || 0) >= 3; } },
+    { id: "q2_croc", desc: "Atteins le niveau 15 dans une partie (débloque Croc).", check: function (r) { return (r.level || 0) >= 15; } },
+    { id: "q2_fiole", desc: "Tue 400 ennemis dans une partie (débloque Fiole).", check: function (r) { return (r.kills || 0) >= 400; } },
+    { id: "q2_rapine", desc: "Ouvre 6 coffres scellés dans une partie (débloque Rapine).", check: function (r) { return (r.chestsOpened || 0) >= 6; } }
   );
   // talents des 21 nouvelles postures : palier 3 et clé de voûte (paliers 1 et 2 communs)
   var T6 = {
@@ -1700,6 +1732,22 @@ window.ES_DATA = (function () {
     toutourien: [["Double ou rien", "La salve gagnée fait 32 glands."], ["Lancer sûr", "La pièce réussit 6 fois sur 10."], ["Banco", "Clé : salve gagnée explosive."], ["Consolation", "Clé : une pièce ratée te soigne 10 PV."]],
     flambeuse: [["Gros joueur", "Mise gagnée : 3 cartes au lieu de 2."], ["Assurance", "Mise perdue : +20 glands."], ["All-in", "Clé : mises gagnées 7 fois sur 10."], ["Sang-froid", "Clé : plus de malus de PV."]],
   };
+  var T6N = {
+    gourmet: [["Bon appétit", "regen", 2], ["Table d'hôte", "lifesteal", 3], ["Grand festin", "streak", 3], ["Estomac d'or", "killHeal", 2]],
+    charognard: [["Nez creux", "crowd", 2], ["Dent dure", "execute", 20], ["Curée", "streak", 3], ["Sang chaud", "killHeal", 3]],
+    estomac: [["Ventre creux", "desperate", 20], ["Rage froide", "opener", 18], ["Jeûne", "execute", 25], ["Rugissement", "knock", 40]],
+    transmutatrice: [["Fiole pleine", "afterVolte", 20], ["Distillation", "burn", 20], ["Vapeurs", "chill", 20], ["Pierre filtrante", "critBolt", 1]],
+    empoisonneuse: [["Poison lent", "burn", 25], ["Acide", "execute", 20], ["Toxine", "chill", 25], ["Fumée âcre", "stun", 12]],
+    catalyseuse: [["Étincelle", "critBolt", 1], ["Réactif", "crowd", 2], ["Catalyse", "afterVolte", 25], ["Chaîne", "nth", 7]],
+    receleur: [["Bourse pleine", "desperate", 15], ["Gros magot", "streak", 2], ["Coffre-fort", "opener", 15], ["Prêteur", "bounty", 12]],
+    chasseur: [["Affiche", "execute", 20], ["Tir de précision", "critBolt", 1], ["Fin limier", "opener", 20], ["Prime double", "bounty", 15]],
+    cambrioleur: [["Doigts agiles", "sprint", 8], ["Crochet", "bounty", 12], ["Fuite", "afterVolte", 20], ["Receleur de nuit", "lifesteal", 3]]
+  };
+  Object.keys(T6N).forEach(function (ps) {
+    var t = T6N[ps], kd = TXU_KIND;
+    var node = function (i) { var k = t[i][1], v = t[i][2]; return { id: ps + "_t" + (i + 1), name: t[i][0], desc: (k === "regen" ? "Ancré : " + v + " PV par seconde." : kd[k].d(v)).replace(/(\d)\.(\d)/g, "$1,$2"), fx: k === "regen" ? { k: "patience", v: v } : { k: k, v: v } }; };
+    TAL[ps] = [[node(0), node(1)], [node(2), node(3)]];
+  });
   Object.keys(T6).forEach(function (ps) {
     var t = T6[ps], id = function (i) { return ps + "_t" + i; };
     TAL[ps] = [[{ id: id(1), name: t[0][0], desc: t[0][1] }, { id: id(2), name: t[1][0], desc: t[1][1] }], [{ id: id(3), name: t[2][0], desc: t[2][1] }, { id: id(4), name: t[3][0], desc: t[3][1] }]];
