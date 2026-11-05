@@ -10,7 +10,7 @@ import type { EventsState } from '../events/types';
 import type { OrderState, RunState } from '../game/merge/types';
 import { capLocks, validLock } from '../game/merge/locks';
 import { COLLECTION_IDS, GENERATORS, collMax, type ItemColl, type ItemRef } from '../data/items';
-import { defaultFace, sanitizeFace, type FaceCustom } from '../data/world/face';
+import { defaultFace, sanitizeFace, upgradeUntouchedFace, type FaceCustom } from '../data/world/face';
 import { DEFAULT_LOOK, STARTER_CLOTHES, KID_IDS, ROOM_IDS, type Look, type KidId, type RoomId } from '../data/world/ids';
 
 export const SAVE_VERSION = 5;
@@ -170,7 +170,7 @@ export function defaultWorld(): World {
   return {
     res: { coins: 60, flowers: 0, fabric: 0, cocoa: 0 },
     castle: { unlocked: ['bedroom', 'salon', 'garden'], rooms, owned: {}, nextUid: 1 },
-    wardrobe: { owned: [...STARTER_CLOTHES], look: { ...DEFAULT_LOOK, acc: [] }, looks: [null, null, null], hairOwned: ['hair-loose', 'hair-wavy'], face: defaultFace(), faces: [null, null, null, null, null, null] },
+    wardrobe: { owned: [...STARTER_CLOTHES], look: { ...DEFAULT_LOOK, hair: 'hair-wavy', acc: [] }, looks: [null, null, null], hairOwned: ['hair-loose', 'hair-wavy'], face: defaultFace(), faces: [null, null, null, null, null, null] },
     cat: { adopted: false, name: '', items: [], equipped: { collar: null, bed: null }, bond: 0, treats: 3, lastSeen: 0, counters: {} },
     family: { kids, scenes: [] },
     garden: { plots: [null, null, null, null], plotCount: 4, unlocked: ['rose', 'daisy', 'tulip'], harvested: {}, bouquets: {}, seeds: {} },
@@ -537,7 +537,7 @@ export function sanitizeWorld(raw: unknown): World {
       return isObj(l) ? { name: str(l.name, `Look ${i + 1}`).slice(0, 24), look: sanitizeLook(l.look) } : null;
     });
     d.wardrobe.hairOwned = [...new Set(['hair-loose', 'hair-wavy', ...strArr(w.wardrobe.hairOwned)])];
-    d.wardrobe.face = sanitizeFace(w.wardrobe.face);
+    d.wardrobe.face = upgradeUntouchedFace(sanitizeFace(w.wardrobe.face));
     const fs = Array.isArray(w.wardrobe.faces) ? w.wardrobe.faces : [];
     d.wardrobe.faces = [0, 1, 2, 3, 4, 5].map((i) => { const f = fs[i]; return isObj(f) ? { name: str(f.name, 'Mon visage').slice(0, 24) || 'Mon visage', face: sanitizeFace(f.face) } : null; });
   }

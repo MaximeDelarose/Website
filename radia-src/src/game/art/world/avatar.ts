@@ -1862,6 +1862,8 @@ export function drawAvatar(ctx: CanvasRenderingContext2D, look: Look, w: number,
   ctx.save();
   // 1. hanches et jambes : légère rotation autour des pieds
   ctx.translate(cx, feetY); ctx.rotate(TILT_LOWER); ctx.translate(-cx, -feetY);
+  // seulement ce qui est SOUS la taille (repère de la source) : sinon le haut du corps serait dessiné deux fois (fantôme derrière l'épaule)
+  ctx.beginPath(); ctx.rect(-2, seamY - 9 * k, w + 4, h - seamY + 9 * k + 4); ctx.clip();
   ctx.drawImage(tmp, 0, 0, w, h);
   ctx.restore();
   // 2. haut du corps : rotation autour du point de coupe (déjà déplacé par la rotation des hanches)
