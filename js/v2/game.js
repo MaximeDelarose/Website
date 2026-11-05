@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.39.1";
+  var VERSION = "2.39.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -10134,7 +10134,7 @@
       push();
       if (now - lastBack < 2500) {
         lastBack = 0; try { window.close(); } catch (e) {}
-        setTimeout(function () { banner("Ce navigateur ne ferme pas l'appli : utilise le bouton Accueil"); }, 350);
+        setTimeout(function () { banner("Ce navigateur ne ferme pas l'appli : pour quitter, touche le bouton rond de ton téléphone (accueil Android)"); }, 350);
       } else { lastBack = now; banner("Appuie encore sur retour pour quitter"); }
     });
   })();
