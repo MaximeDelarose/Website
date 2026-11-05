@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.37.2";
+  var VERSION = "2.37.3";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -10085,6 +10085,7 @@
     } else fallback();
   }
   function exitFull() {
+    if (window.__isApp) return;
     stage.classList.remove("is-max");
     if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
     else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
@@ -10098,6 +10099,8 @@
   $("[data-exit-max]").addEventListener("click", exitFull);
   $("[data-fs-exit]").addEventListener("click", exitFull);
   ACTIONS.fullscreen = function () { toggleFull(); };
+  // appli installée : le jeu occupe tout l'écran d'emblée, sans bouton pour réduire
+  if (window.__isApp) { document.documentElement.classList.add("is-app"); stage.classList.add("is-max"); setTimeout(function () { syncFull(); resize(); }, 0); }
 
   function resize() {
     var dpr = window.devicePixelRatio || 1;

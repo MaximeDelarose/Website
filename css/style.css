@@ -3136,3 +3136,6 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .game-head-btns [hidden] { display: none; }
 .install-help { margin: 0 0 12px; padding: 10px 12px; background: var(--card, #fdf3de); color: var(--ink, #2b1709); box-shadow: 0 0 0 2px var(--line); font-size: .95em; line-height: 1.45; }
 .install-help[hidden] { display: none; }
+
+html.is-app .fs-exit, html.is-app .game-hud .hud-exit, html.is-app [data-exit-max] { display: none !important; }
+html.is-app, html.is-app body { overflow: hidden; overscroll-behavior: none; }
