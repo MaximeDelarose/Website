@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.34.0";
+  var VERSION = "2.35.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -4264,11 +4264,11 @@
   function elemSpan(el, txt) { return '<span style="color:' + (D.ELEMENTS[el].ui || D.ELEMENTS[el].color) + '">' + txt + "</span>"; }
   function gearTile(q, act, arg, extra) {
     var g = D.GEAR[q.t], R0 = rarOf(q), who = whoWears(q.id);
-    return '<button type="button" class="dof-tile' + (UI.sel === q.id ? " is-sel" : "") + (extra || "") + '" style="--rc:' + R0.color + '" data-action="' + act + '" data-arg="' + arg + '" title="' + esc(g.name + " (" + R0.name + ")") + '">' + ic(g.icon) + (who ? '<i class="dof-worn">' + (who === S.char ? "✓" : "•") + "</i>" : "") + "</button>";
+    return '<button type="button" class="dof-tile' + (UI.sel === q.id ? " is-sel" : "") + (extra || "") + '" style="--rc:' + R0.color + '" data-action="' + act + '" data-arg="' + arg + '" title="' + esc(g.name + " (" + R0.name + ")") + '">' + ic(g.icon) + (who ? '<i class="dof-worn">' + (wearers(q.id).indexOf(S.char) >= 0 ? "✓" : "•") + "</i>" : "") + "</button>";
   }
   function gearTip(q) {
     if (!q) return '<div class="dof-tip is-empty">Choisis une pièce pour voir ses effets.</div>';
-    var g = D.GEAR[q.t], R0 = rarOf(q), who = whoWears(q.id), w = wornBy(S.char), mine = who === S.char;
+    var g = D.GEAR[q.t], R0 = rarOf(q), who = whoWears(q.id), w = wornBy(S.char), mine = wearers(q.id).indexOf(S.char) >= 0;
     var h = '<div class="dof-tip" style="--rc:' + R0.color + '"><div class="dof-tip-h"><span class="dof-tip-ic">' + ic(g.icon) + '</span><div><strong>' + esc(g.name) + "</strong><small>" + esc(SLOT_KIND[g.slot] || g.slot) + " · " + esc((D.SLOTS.filter(function (x) { return (x.kind || x.id) === g.slot; })[0] || {}).state || "") + '</small><em>' + esc(R0.name) + (g.unique ? " · unique" : "") + "</em></div></div>";
     h += '<div class="dof-sec">Effets</div><ul class="dof-fx"><li>' + esc(pieceDesc(q)) + "</li>";
     if (g.elem) h += "<li>" + elemSpan(g.elem, "+" + q.pts + " point" + (q.pts > 1 ? "s" : "") + " de " + D.ELEMENTS[g.elem].name) + "</li>";
@@ -4280,15 +4280,29 @@
     if (g.lo !== undefined) h += '<p class="dof-roll">Jet : ' + Math.round(q.roll * 100) + " % (" + fmtV(g.lo) + " à " + fmtV(g.hi) + ")</p>";
     if (g.set && D.SETS[g.set]) { var st = D.SETS[g.set], n = 0; D.SLOTS.forEach(function (sl) { var o = pieceById(w[sl.id]); if (o && D.GEAR[o.t].set === g.set) n++; }); h += '<div class="dof-sec">Panoplie</div><p class="dof-set">' + esc(st.name) + " (" + n + "/" + (st.full || 4) + ")" + (st.b2 ? "<br>2 : " + esc(st.b2) : "") + (st.b4 ? "<br>" + (st.full || 4) + " : " + esc(st.b4) : "") + "</p>"; }
     if (g.who) h += '<p class="dof-cond">Portable par ' + esc(charById(g.who).name) + " seulement</p>";
-    if (who && !mine) h += '<p class="dof-cond">Portée par ' + esc(charById(who).name) + "</p>";
+    var oth = wearers(q.id).filter(function (c0) { return c0 !== S.char; });
+    if (oth.length) h += '<p class="dof-cond">Aussi portée par ' + oth.map(function (c0) { return esc(charById(c0).name); }).join(", ") + "</p>";
     h += '<div class="dof-btns">';
     if (mine) { var sl0 = Object.keys(w).filter(function (s0) { return w[s0] === q.id; })[0]; h += '<button class="btn btn-small" type="button" data-action="equ" data-arg="' + sl0 + '">Retirer</button>'; }
-    else h += '<button class="btn btn-small" type="button" data-action="eqw" data-arg="' + q.id + '"' + (g.who && g.who !== S.char ? " disabled" : "") + ">" + (who ? "Prendre" : "Équiper") + "</button>";
+    else h += '<button class="btn btn-small" type="button" data-action="eqw" data-arg="' + q.id + '"' + (g.who && g.who !== S.char ? " disabled" : "") + ">" + "Équiper" + "</button>";
     h += '<button class="btn btn-ghost btn-small" type="button" data-action="plock" data-arg="' + q.id + '">' + (q.lock ? "🔒 Verrouillée" : "🔓 Verrouiller") + "</button>";
     if (!who && !q.lock) h += '<button class="btn btn-ghost btn-small" type="button" data-action="recy2" data-arg="' + q.id + '" title="Rend la moitié des ressources">Recycler</button><button class="btn btn-ghost btn-small" type="button" data-action="psell" data-arg="' + q.id + '">Vendre ' + pieceSell(q) + "</button>";
     return h + "</div></div>";
   }
   function pieceSell(q) { return Math.round(([25, 70, 180, 450, 1000][pieceRar(q)] || 25) * (1 + 0.1 * Object.keys(q.bon || {}).length)); }
+  function presetOk(pr, cid) { return Object.keys(pr.s).every(function (sl) { var q = pieceById(pr.s[sl]); if (!q) return true; var g = D.GEAR[q.t]; return !g.who || g.who === cid; }); }
+  function presetHtml(c) {
+    var P = S.presets || [], w = wornBy(c.id), hid = 0, html = '<div class="dof-presets"><div class="dof-sec">Presets d\'attirail</div><div class="dof-prs">';
+    P.forEach(function (pr, i) {
+      if (!presetOk(pr, c.id)) { hid++; return; }
+      var miss = 0, same = true; Object.keys(pr.s).forEach(function (sl) { if (!pieceById(pr.s[sl])) miss++; else if (w[sl] !== pr.s[sl]) same = false; });
+      Object.keys(w).forEach(function (sl) { if (w[sl] && !pr.s[sl]) same = false; });
+      html += '<span class="dof-pr' + (same && !miss ? " is-on" : "") + '"><button type="button" class="btn btn-small" data-action="pset" data-arg="' + i + '">' + esc(pr.name) + (miss ? " (" + miss + " manquante" + (miss > 1 ? "s" : "") + ")" : "") + '</button><button type="button" class="dof-prx" data-action="pdel" data-arg="' + i + '" aria-label="Supprimer ' + esc(pr.name) + '">×</button></span>';
+    });
+    html += (P.length - hid < 12 ? '<button type="button" class="btn btn-ghost btn-small" data-action="psave">+ Enregistrer l\'équipement actuel</button>' : "") + "</div>";
+    if (hid) html += '<p class="game-small dof-note">⚠️ ' + hid + " preset" + (hid > 1 ? "s" : "") + " masqué" + (hid > 1 ? "s" : "") + " : " + (hid > 1 ? "ils contiennent" : "il contient") + " une pièce propre à un autre écureuil.</p>";
+    return html + '<p class="game-small">Un preset marche pour tous les écureuils, et une même pièce peut être portée par plusieurs.</p></div>';
+  }
   function terEquip(c) {
     var w = wornBy(c.id), pts = { terre: 0, feu: 0, eau: 0, air: 0 }, bon = {}, inv = eqS().inv;
     var html = '<div class="dof"><div class="dof-left"><div class="dof-doll">';
@@ -4311,6 +4325,7 @@
     html += '<div class="dof-grid">' + (list.length ? list.map(function (q) { return gearTile(q, "isel", q.id); }).join("") : '<p class="game-small">Rien ici. Les ennemis et les boss lâchent de l\'attirail, l\'atelier en fabrique.</p>') + "</div>";
     html += '<p class="dof-cap">Coffre : ' + inv.length + " / " + (40 + 10 * (S.chestSize || 0)) + "</p>";
     html += gearTip(UI.sel ? pieceById(UI.sel) : null) + "</div></div>";
+    html += presetHtml(c);
     var setsW = {}; D.SLOTS.forEach(function (sl) { var q = pieceById(w[sl.id]); if (q && D.GEAR[q.t].set) setsW[D.GEAR[q.t].set] = (setsW[D.GEAR[q.t].set] || 0) + 1; });
     Object.keys(setsW).forEach(function (sid) { var st = D.SETS[sid], n = setsW[sid], fu = st.full || 4; html += '<p class="np-hint dof-setline"><b>' + esc(st.name) + " " + n + "/" + fu + "</b> · " + (n >= 2 ? "✅" : "⬜") + " 2 : " + esc(st.b2 || "") + (st.b4 ? " · " + (n >= fu ? "✅" : "⬜") + " " + fu + " : " + esc(st.b4) : "") + "</p>"; });
     var sn = S.secureSlots || 0, scost = [1500, 4000][sn];
@@ -4427,10 +4442,16 @@
   }
   var CT_IC = { dmg: "⚔️", crit: "🎯", cdm: "💥", chs: "👑", ptr: "🌍", pfe: "🔥", peu: "💧", pai: "🌬️", area: "⭕", vit: "❤️", arm: "🛡️", reg: "🌿", dod: "💨", res: "🧱", hp: "❤️", soi: "💚", epi: "🌵", vdv: "🩸", gld: "🪙", pro: "🍀", fcom: "🐾", ini: "⚡", mov: "🏃", execute: "🗡️", opener: "🏹", crowd: "👥", desperate: "😤", streak: "🔥", afterVolte: "🌀", crew: "⚓", lifesteal: "🩸", burn: "🔥", chill: "❄️", stun: "💫", knock: "🌊", critBolt: "⚡", reflect: "🪞", bounty: "💰", killHeal: "🍖", patience: "🧘", sprint: "👟" };
   var CT_COL = { a: "#e08a34", b: "#4fb06e", c: "#a07be6" }, CT_N = 800, CT_C = 400;
-  function ctPt(bi, t) {
-    var th0 = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6][bi], ang = th0 + 0.055 * t + 0.17 * Math.sin(t * 0.75 + bi * 2), rr = 62 + t * 29;
-    return [CT_C + Math.cos(ang) * rr, CT_C + Math.sin(ang) * rr];
+  // forme d'un tentacule : le tronc 1-2-3-5-8-10 et deux branches qui partent sur les côtés
+  var CT_PAR = [-1, 0, 1, 1, 2, 2, 3, 4, 5, 7];
+  var CT_LOC = [[1, 0], [2, 0], [3, 0.1], [2.9, -1.2], [4.2, 0.35], [4, 1.3], [3.9, -2.1], [5.4, 0.1], [5.1, 2.2], [6.7, -0.15]];
+  var CT_TH = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6];
+  function ctPt(bi, i) {
+    var l = CT_LOC[i], th = CT_TH[bi], dist = 56 + l[0] * 45, lat = (l[1] + Math.sin(l[0] * 1.7 + bi * 2) * 0.22) * 45;
+    return [CT_C + Math.cos(th) * dist - Math.sin(th) * lat, CT_C + Math.sin(th) * dist + Math.cos(th) * lat];
   }
+  function ctDepth(i) { var d = 0; while (i >= 0) { d++; i = CT_PAR[i]; } return d; }
+  function ctCan(own, br, i) { return i === 0 || !!own[br.nodes[CT_PAR[i]].id]; }
   function ctFix() {
     setTimeout(function () {
       var el = card && card.querySelector(".ct-scroll"); if (!el) return;
@@ -4441,7 +4462,7 @@
   function terTree(c) {
     var cid = c.id, pts = cPts(cid), own = (S.ctree || {})[cid] || {}, lv = charLevel(cid), n = cPres(cid), tr = ctree(cid), sel = null, selB = null, selI = 0;
     tr.forEach(function (br) { br.nodes.forEach(function (nd, i) { if (nd.id === UI.ctn) { sel = nd; selB = br; selI = i; } }); });
-    var html = '<p class="game-small">À <b>niveau 20</b>, le <b>prestige</b> de ' + esc(c.name) + " le remet au niveau 1 (talents conservés) et donne <b>1 point</b>. Chaque tentacule se parcourt dans l'ordre : touche un nœud pour le lire.</p>" +
+    var html = '<p class="game-small">À <b>niveau 20</b>, le <b>prestige</b> de ' + esc(c.name) + " le remet au niveau 1 (talents conservés) et donne <b>1 point</b>. Les tentacules se ramifient : tu peux prendre tout nœud à côté d'un nœud déjà pris. Touche un nœud pour le lire.</p>" +
       '<p class="v2-bar"><span>Prestiges : <b>' + n + "</b> · points libres : <b>" + pts + "</b> · compétences : <b>" + (n - pts) + " / 30</b></span></p>" +
       '<p class="btn-row"><button type="button" class="btn' + (lv >= 20 ? "" : " is-off") + '" data-action="cprestige" ' + (lv >= 20 ? "" : "disabled") + ">★ Prestige de " + esc(c.name) + (lv >= 20 ? "" : " (niveau " + lv + " / 20)") + '</button>' +
       (n - pts ? '<button type="button" class="btn btn-ghost btn-small" data-action="ctreset">Réinitialiser l\'arbre</button>' : "") + "</p>";
@@ -4449,24 +4470,31 @@
       '<defs><radialGradient id="ctbg" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#2d2438"/><stop offset="1" stop-color="#14100d"/></radialGradient><filter id="ctglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.2"/></filter></defs>' +
       '<rect width="' + CT_N + '" height="' + CT_N + '" fill="url(#ctbg)"/>';
     for (var ring = 1; ring <= 4; ring++) svg += '<circle cx="' + CT_C + '" cy="' + CT_C + '" r="' + ring * 85 + '" fill="none" stroke="#3a2f46" stroke-width="1" stroke-dasharray="3 7"/>';
+    var edge = function (bi, i) {
+      var a = i === 0 ? [CT_C + Math.cos(CT_TH[bi]) * 40, CT_C + Math.sin(CT_TH[bi]) * 40] : ctPt(bi, CT_PAR[i]), b = ctPt(bi, i), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, off = (i % 2 ? 1 : -1) * 9;
+      return "M" + a[0].toFixed(1) + " " + a[1].toFixed(1) + " Q" + (mx - dy / L * off).toFixed(1) + " " + (my + dx / L * off).toFixed(1) + " " + b[0].toFixed(1) + " " + b[1].toFixed(1);
+    };
     tr.forEach(function (br, bi) {
-      var col = CT_COL[br.id], k, last = 0;
-      br.nodes.forEach(function (nd, i) { if (own[nd.id]) last = i + 1; });
-      var body = "", glow = "";
-      for (k = 0; k < 43; k++) {      // corps du tentacule : segments qui s'affinent vers la pointe
-        var t0 = k * 0.25, t1 = t0 + 0.25, p0 = ctPt(bi, t0), p1 = ctPt(bi, t1), w = 30 - t0 * 2;
-        body += '<line x1="' + p0[0].toFixed(1) + '" y1="' + p0[1].toFixed(1) + '" x2="' + p1[0].toFixed(1) + '" y2="' + p1[1].toFixed(1) + '" stroke-width="' + w.toFixed(1) + '"/>';
-        if (t1 <= last + 0.01) glow += '<line x1="' + p0[0].toFixed(1) + '" y1="' + p0[1].toFixed(1) + '" x2="' + p1[0].toFixed(1) + '" y2="' + p1[1].toFixed(1) + '"/>';
-      }
-      svg += '<g stroke="#0e0b09" stroke-linecap="round">' + body + "</g>" + '<g stroke="#4a3b2a" stroke-linecap="round" transform="translate(0 0)" opacity=".55">' + body.replace(/stroke-width="([\d.]+)"/g, function (m, w) { return 'stroke-width="' + Math.max(2, w - 9).toFixed(1) + '"'; }) + "</g>";
-      if (glow) svg += '<g stroke="' + col + '" stroke-width="7" stroke-linecap="round" filter="url(#ctglow)" opacity=".9">' + glow + '</g><g stroke="#ffe9a8" stroke-width="2.4" stroke-linecap="round">' + glow + "</g>";
-      var tip = ctPt(bi, 10.9);
-      svg += '<text x="' + tip[0].toFixed(0) + '" y="' + tip[1].toFixed(0) + '" text-anchor="middle" font-size="12" fill="' + col + '" opacity=".8">' + esc(br.name) + "</text>";
+      var col = CT_COL[br.id], base = "", mid = "", glow = "";
+      br.nodes.forEach(function (nd, i) {
+        var w = Math.max(8, 27 - ctDepth(i) * 3), d = edge(bi, i);
+        base += '<path d="' + d + '" stroke-width="' + (w + 7) + '"/>'; mid += '<path d="' + d + '" stroke-width="' + w + '"/>';
+        if (own[nd.id]) glow += '<path d="' + d + '"/>';
+      });
+      [0, 6, 8].forEach(function (i) {   // pointes enroulées au bout des branches
+        var a = ctPt(bi, i === 0 ? 9 : i === 6 ? 6 : 8), th = CT_TH[bi], q = [a[0] + Math.cos(th) * 30 + Math.sin(th) * 12, a[1] + Math.sin(th) * 30 - Math.cos(th) * 12];
+        if (i === 0) { base += '<path d="M' + a[0].toFixed(0) + " " + a[1].toFixed(0) + " q" + (Math.cos(th) * 26).toFixed(0) + " " + (Math.sin(th) * 26).toFixed(0) + " " + (Math.cos(th) * 18 - Math.sin(th) * 20).toFixed(0) + " " + (Math.sin(th) * 18 + Math.cos(th) * 20).toFixed(0) + '" stroke-width="9"/>'; return; }
+        base += '<path d="M' + a[0].toFixed(0) + " " + a[1].toFixed(0) + " Q" + q[0].toFixed(0) + " " + q[1].toFixed(0) + " " + (q[0] + 8).toFixed(0) + " " + (q[1] + 10).toFixed(0) + '" stroke-width="8"/>';
+      });
+      svg += '<g fill="none" stroke="#0e0b09" stroke-linecap="round">' + base + '</g><g fill="none" stroke="#4a3b2a" stroke-linecap="round" opacity=".6">' + mid + "</g>";
+      if (glow) svg += '<g fill="none" stroke="' + col + '" stroke-width="8" stroke-linecap="round" filter="url(#ctglow)" opacity=".9">' + glow + '</g><g fill="none" stroke="#ffe9a8" stroke-width="2.4" stroke-linecap="round">' + glow + "</g>";
+      var tip = ctPt(bi, 9);
+      svg += '<text x="' + tip[0].toFixed(0) + '" y="' + (tip[1] + (bi === 0 ? -34 : 38)).toFixed(0) + '" text-anchor="middle" font-size="12" fill="' + col + '" opacity=".85">' + esc(br.name) + "</text>";
     });
     tr.forEach(function (br, bi) {
       var col = CT_COL[br.id];
       br.nodes.forEach(function (nd, i) {
-        var pt = ctPt(bi, i + 1), on = !!own[nd.id], can = !on && pts > 0 && (i === 0 || own[br.nodes[i - 1].id]), key = i === 9, rad = key ? 21 : 15, ic = CT_IC[nd.g ? Object.keys(nd.g)[0] : nd.fx[0].k] || "✨";
+        var pt = ctPt(bi, i), on = !!own[nd.id], can = !on && pts > 0 && ctCan(own, br, i), key = i === 9, rad = key ? 21 : 15, ic = CT_IC[nd.g ? Object.keys(nd.g)[0] : nd.fx[0].k] || "✨";
         svg += '<g class="ct-node' + (on ? " is-on" : can ? " is-can" : "") + (sel === nd ? " is-sel" : "") + '" data-action="ctsel" data-arg="' + nd.id + '" tabindex="0" role="button" aria-label="' + esc(nd.name) + '" transform="translate(' + pt[0].toFixed(1) + " " + pt[1].toFixed(1) + ')">' +
           (sel === nd ? '<circle r="' + (rad + 7) + '" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="4 3"/>' : "") +
           '<circle r="' + rad + '" fill="' + (on ? col : "#1d1712") + '" stroke="' + (on ? "#ffe9a8" : can ? "#f3e6c8" : "#5b4c3a") + '" stroke-width="' + (key ? 4 : 3) + '"/>' + (key ? '<circle r="' + (rad - 5) + '" fill="none" stroke="' + (on ? "#fff3" : "#5b4c3a") + '" stroke-width="1.5"/>' : "") +
@@ -4476,9 +4504,9 @@
     svg += '<circle cx="' + CT_C + '" cy="' + CT_C + '" r="44" fill="#1d1712" stroke="#c9a45e" stroke-width="4"/><image href="' + spriteUrl(c.sprite) + '" x="' + (CT_C - 30) + '" y="' + (CT_C - 30) + '" width="60" height="60" style="image-rendering:pixelated"/></svg>';
     html += '<div class="ct-scroll">' + svg + "</div>";
     if (sel) {
-      var on2 = !!own[sel.id], can2 = !on2 && pts > 0 && (selI === 0 || own[selB.nodes[selI - 1].id]);
-      html += '<div class="ct-panel" style="--rc:' + CT_COL[selB.id] + '"><strong>' + esc(sel.name) + " <small>· " + esc(selB.name) + " " + (selI + 1) + " / 10</small></strong><span>" + esc(sel.desc) + "</span>" +
-        (on2 ? "<em>✔ Débloquée</em>" : can2 ? '<button type="button" class="btn" data-action="ctnode" data-arg="' + sel.id + '">Débloquer (1 point)</button>' : "<em>" + (pts < 1 ? "Aucun point libre : fais un prestige." : "Débloque d'abord la compétence précédente.") + "</em>") + "</div>";
+      var on2 = !!own[sel.id], can2 = !on2 && pts > 0 && ctCan(own, selB, selI);
+      html += '<div class="ct-panel" style="--rc:' + CT_COL[selB.id] + '"><strong>' + esc(sel.name) + " <small>· " + esc(selB.name) + "</small></strong><span>" + esc(sel.desc) + "</span>" +
+        (on2 ? "<em>✔ Débloquée</em>" : can2 ? '<button type="button" class="btn" data-action="ctnode" data-arg="' + sel.id + '">Débloquer (1 point)</button>' : "<em>" + (pts < 1 ? "Aucun point libre : fais un prestige." : "Prends d'abord un nœud voisin, plus près du centre.") + "</em>") + "</div>";
     } else html += '<p class="game-small ct-hint">Touche un nœud pour voir sa compétence.</p>';
     ctFix();
     return html;
@@ -4487,6 +4515,7 @@
   function mastLevel(aid) { var x = (S.mast || {})[aid] || 0, l = 1; D.MASTERY.forEach(function (t, i) { if (x >= t) l = i + 1; }); return l; }
   function pieceById(id) { return eqS().inv.filter(function (q) { return q.id === id; })[0] || null; }
   function wornBy(cid) { var w = eqS().worn; return (w[cid] = w[cid] || {}); }
+  function wearers(id) { var w = eqS().worn, out = []; Object.keys(w).forEach(function (c) { Object.keys(w[c] || {}).forEach(function (sl) { if (w[c][sl] === id && out.indexOf(c) < 0) out.push(c); }); }); return out; }
   function whoWears(id) { var w = eqS().worn, out = null; Object.keys(w).forEach(function (c) { Object.keys(w[c]).forEach(function (s) { if (w[c][s] === id) out = c; }); }); return out; }
   function gearVal(q) { var g = D.GEAR[q.t]; return g.lo === undefined ? 0 : g.lo + (g.hi - g.lo) * q.roll; }
   function fmtV(v) { return v >= 10 ? String(Math.round(v)) : fr(Math.round(v * 10) / 10); }
@@ -8969,9 +8998,20 @@
       if (gq.who && gq.who !== S.char) { SND.hurt(); return; }
       var sl = gq.slot === "anneau" ? (!wc.anneau1 ? "anneau1" : !wc.anneau2 ? "anneau2" : "anneau1") : gq.slot;
       if (gq.unique) Object.keys(wc).forEach(function (s0) { var o = pieceById(wc[s0]); if (o && o.id !== q.id && D.GEAR[o.t].unique) delete wc[s0]; });
-      Object.keys(e.worn).forEach(function (cc) { Object.keys(e.worn[cc]).forEach(function (s0) { if (e.worn[cc][s0] === q.id) delete e.worn[cc][s0]; }); });
       wc[sl] = q.id; UI.sel = q.id; save(); SND.level(); go("terrier");
     },
+    psave: function () {
+      var w = wornBy(S.char), sl = {}; Object.keys(w).forEach(function (k) { if (w[k] && pieceById(w[k])) sl[k] = w[k]; });
+      if (!Object.keys(sl).length) { banner("Rien d'équipé à enregistrer"); return; }
+      S.presets = S.presets || []; var nm = prompt("Nom du preset", "Preset " + (S.presets.length + 1)); if (!nm) return;
+      S.presets.push({ name: nm.slice(0, 20), s: sl }); save(); SND.level(); go("terrier");
+    },
+    pset: function (i) {
+      var pr = (S.presets || [])[+i]; if (!pr || !presetOk(pr, S.char)) return; var nw = {};
+      Object.keys(pr.s).forEach(function (k) { if (pieceById(pr.s[k])) nw[k] = pr.s[k]; });
+      eqS().worn[S.char] = nw; save(); SND.level(); banner("Preset « " + pr.name + " » équipé"); go("terrier");
+    },
+    pdel: function (i) { if (!S.presets || !S.presets[+i]) return; S.presets.splice(+i, 1); save(); SND.click(); go("terrier"); },
     equ: function (sl) { delete wornBy(S.char)[sl]; save(); SND.click(); go("terrier"); },
     plock: function (id) { var q = pieceById(+id); if (q) { q.lock = !q.lock; save(); SND.click(); } go(screen === "atelier" ? "atelier" : "terrier"); },
     psell: function (id) { var q = pieceById(+id); if (q && !whoWears(q.id) && !q.lock) { earnGold(pieceSell(q)); var e = eqS(); e.inv = e.inv.filter(function (x) { return x.id !== q.id; }); UI.sel = null; save(); SND.gold(); } go(screen === "atelier" ? "atelier" : "terrier"); },
@@ -8985,7 +9025,6 @@
       var q = pieceById(+id); if (!q) return; var sl = S.eqSlot, e = eqS(), gq = D.GEAR[q.t];
       if (gq.who && gq.who !== S.char) { SND.hurt(); return; }
       if (gq.unique) { var wc = wornBy(S.char); Object.keys(wc).forEach(function (s0) { var o = pieceById(wc[s0]); if (o && o.id !== q.id && D.GEAR[o.t].unique) delete wc[s0]; }); }
-      Object.keys(e.worn).forEach(function (c) { Object.keys(e.worn[c]).forEach(function (s0) { if (e.worn[c][s0] === q.id) delete e.worn[c][s0]; }); });
       wornBy(S.char)[sl] = q.id; save(); SND.level(); go("eqslot");
     },
     equnwear: function () { delete wornBy(S.char)[S.eqSlot]; save(); SND.click(); go("eqslot"); },
@@ -9007,9 +9046,9 @@
     ctsel: function (id) { ctKeep(); UI.ctn = id; SND.click(); go("terrier"); },
     ctnode: function (id) {
       ctKeep();
-      var cid = S.char, br = ctree(cid).filter(function (b) { return b.id === id.charAt(0); })[0]; if (!br || cPts(cid) < 1) return;
+      var cid = S.char, bi = ["a", "b", "c"].indexOf(id.charAt(0)), br = ctree(cid)[bi]; if (!br || cPts(cid) < 1) return;
       var i = br.nodes.findIndex(function (nd) { return nd.id === id; }); S.ctree = S.ctree || {}; var t = (S.ctree[cid] = S.ctree[cid] || {});
-      if (i < 0 || t[id] || (i > 0 && !t[br.nodes[i - 1].id])) return; t[id] = 1; save(); SND.click(); go("terrier");
+      if (i < 0 || t[id] || !ctCan(t, br, i)) return; t[id] = 1; save(); SND.click(); go("terrier");
     },
     ctreset: function () { S.ctree = S.ctree || {}; S.ctree[S.char] = {}; save(); SND.click(); go("terrier"); },
     typick: function (a) { var t = a.split(":"); eqS(); S.tal[S.char] = S.tal[S.char] || {}; S.tal[S.char].y = S.tal[S.char].y || {}; S.tal[S.char].y[t[0]] = t[1]; save(); SND.click(); go("terrier"); },
