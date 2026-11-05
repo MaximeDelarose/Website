@@ -34,6 +34,10 @@ Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commenc
   d'Auguste, cheveux dessinés derrière pour combler ; autre coiffure / accessoire de tête → visage peint seul, coiffure dessinée autour.
   Visage personnalisé ou maquillage du dressing → dessin (il suit les réglages). Tenue de la joueuse INCHANGÉE. Expressions : le visage
   peint garde un sourire (comme l'illustration d'Auguste). Fabrication : `scripts/painted-head/`.
+- ✅ CORPS de Radia repris dans la même logique qu'Auguste (code, toutes les tenues) : bras EFFILÉS et ombrés (épaule → poignet arrondi),
+  mains peintes (paume, 4 doigts, pouce côté corps), jambes modelées (cuisse, genou, mollet, cheville, lumière du tibia), contours ≈ 20 %
+  plus fins (`LINE_K` dans `avatar.ts`), jonction des deux moitiés de la posture en S en FONDU (plus de couture à la taille), mèches de la
+  tête peinte complètes devant l'épaule. Tenue et dressing inchangés.
 - 🟡 PHASE B — illustrations en calques pour TOUTES les tenues : cahier des charges `docs/ASSETS_PERSONNAGES.md` (gabarit 720 × 1800,
   calques, identifiants, intégration avec repli sur le dessin). En attente des fichiers d'illustration (pas d'outil de génération ici).
 - ⚠️ À vérifier sur iPhone : la tenue illustrée (dressing → « Tenue illustrée »), puis accueil / MON MONDE / un événement.

@@ -27,10 +27,30 @@ inface=(((xx-cx)/rx)**2+((yy-cy)/ry)**2)<=1.0
 zone=(yy>150)&(yy<470)
 keep[zone]=np.maximum(hairish[zone], inface[zone].astype(float))
 corr=(xx>108)&(xx<244)&(yy>150)
-darkhair=np.clip(((R-B)-10)/10,0,1)*np.clip((R-44)/12,0,1)*(R<150)*(yy<232)*((xx<134)|(xx>219))
+darkhair=np.clip(((R-B)-10)/10,0,1)*np.clip((R-44)/12,0,1)*(R<170)*(xx<176)*((R>78)|(yy>262)|(xx<122))
 keep[corr]=np.where(inface[corr],1.0,np.where((xx[corr]<120)|(xx[corr]>232),hairish[corr],darkhair[corr]))
+# mèches devant l'épaule : fondu horizontal doux (le sweat d'origine les bordait d'une arête nette)
+soft=np.clip((176-xx)/22,0,1); keep=np.where((yy>215)&(xx>118)&(xx<176), keep*soft, keep)
+keep[(xx>143)&(xx<226)&(yy>=209)&(yy<262)]=0   # reste du contour du col d'origine sous le menton
 keep[(xx>262)&(yy>250)]=0                       # pas de liseré du sweat à droite (cheveux derrière l'épaule)
 fade=np.clip((470-yy)/40,0,1); keep*=np.where(yy>200,fade,1); keep[yy>=470]=0
+def components(mask):
+    """composantes connexes (4-voisins) sans scipy : renvoie (étiquettes, nombre)"""
+    lab=np.zeros(mask.shape,dtype=np.int32); n=0; Hh_,Ww_=mask.shape
+    for y0 in range(Hh_):
+        for x0 in range(Ww_):
+            if mask[y0,x0] and not lab[y0,x0]:
+                n+=1; st=[(y0,x0)]; lab[y0,x0]=n
+                while st:
+                    y,x=st.pop()
+                    for yy2,xx2 in ((y+1,x),(y-1,x),(y,x+1),(y,x-1)):
+                        if 0<=yy2<Hh_ and 0<=xx2<Ww_ and mask[yy2,xx2] and not lab[yy2,xx2]: lab[yy2,xx2]=n; st.append((yy2,xx2))
+    return lab,n
+lab,n=components(keep>0.35)
+sizes=np.bincount(lab.ravel(),minlength=n+1)
+keepcomp=np.isin(lab,[i for i in range(1,n+1) if sizes[i]>600])
+grow=Image.fromarray((keepcomp*255).astype('uint8')).filter(ImageFilter.MaxFilter(5))
+keep=np.where(np.array(grow)>0,keep,0)      # supprime les fils parasites isolés
 m=Image.fromarray((np.clip(keep,0,1)*255).astype('uint8')).filter(ImageFilter.GaussianBlur(0.9))
 out=a.copy(); out[...,3]=A*np.array(m)/255.0
 im=Image.fromarray(out.astype('uint8'),'RGBA').crop((0,0,W,470+o+PAD))
