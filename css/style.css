@@ -3072,3 +3072,6 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .dof-spell-row.x3 { grid-template-columns: 44px repeat(3, minmax(0, 1fr)); }
 .dof-spell-row.x3 .dof-spell span { color: #8ac6ff; }
 @media (max-width: 520px) { .dof-spell-row.x3 { grid-template-columns: 38px repeat(3, minmax(0, 1fr)); gap: 4px; } .dof-spell-row.x3 .dof-spell { padding: 4px 5px; } .dof-spell-row.x3 .dof-spell strong { font-size: 11px; } .dof-spell-row.x3 .dof-spell span { font-size: 10px; } }
+.camp-emotes { position: absolute; z-index: 7; left: 50%; bottom: 58px; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 94%; padding: 6px; background: rgba(43, 23, 9, .88); border: 2px solid #2b1709; }
+.camp-emotes[hidden] { display: none; }
+.camp-emotes button { font: inherit; font-weight: 800; font-size: .75rem; padding: 4px 8px; border: 0; cursor: pointer; background: #fdf3de; color: #2b1709; box-shadow: 0 0 0 2px #2b1709; }
