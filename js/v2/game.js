@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.41.1";
+  var VERSION = "2.41.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -4534,6 +4534,7 @@
   function wearers(id) { var w = eqS().worn, out = []; Object.keys(w).forEach(function (c) { Object.keys(w[c] || {}).forEach(function (sl) { if (w[c][sl] === id && out.indexOf(c) < 0) out.push(c); }); }); return out; }
   function whoWears(id) { var w = eqS().worn, out = null; Object.keys(w).forEach(function (c) { Object.keys(w[c]).forEach(function (s) { if (w[c][s] === id) out = c; }); }); return out; }
   function gearVal(q) { var g = D.GEAR[q.t]; return g.lo === undefined ? 0 : g.lo + (g.hi - g.lo) * q.roll; }
+  function rnd1(v) { return String(Math.round(v * 10) / 10).replace(".", ","); }   // pas de 28.799999999999997 à l'écran
   function fmtV(v) { return v >= 10 ? String(Math.round(v)) : fr(Math.round(v * 10) / 10); }
   function pieceDesc(q) {
     var g = D.GEAR[q.t];
@@ -4602,7 +4603,7 @@
   function statRows(q, ranges) {
     return GSTATS.filter(function (x) { return q.bon && q.bon[x.id]; }).map(function (x) {
       var v = q.bon[x.id], t = bonTxt((function (o) { o[x.id] = v; return o; })({}))[0], neg = v < 0, qv = neg ? 0 : statQ(x, q, v), r0 = statRange(x, q);
-      return { id: x.id, text: t, neg: neg, q: qv, range: ranges && !neg ? " (" + r0[0] + " à " + r0[1] + ")" : "", top: !neg && qv >= 0.95 };
+      return { id: x.id, text: t, neg: neg, q: qv, range: ranges && !neg ? " (" + rnd1(r0[0]) + " à " + rnd1(r0[1]) + ")" : "", top: !neg && qv >= 0.95 };
     });
   }
   function statQuality(q) { var j = jetOf(q); return j === null ? "" : '<p class="dof-roll">Jet global des stats : <b class="' + (j >= 0.66 ? "dof-q-hi" : j < 0.33 ? "dof-q-lo" : "") + '">' + Math.round(j * 100) + " %</b>" + (Object.keys(q.bon).some(function (k) { var x = GSTATS.filter(function (z) { return z.id === k; })[0]; return q.bon[k] > 0 && statQ(x, q, q.bon[k]) >= 0.95; }) ? ' · <b class="dof-q-top">jet parfait</b>' : "") + "</p>"; }
@@ -4611,7 +4612,7 @@
   function bonTxt(b, ranges) {
     return GSTATS.filter(function (x) { return b && b[x.id]; }).map(function (x) {
       var v = b[x.id], sg = v > 0 ? "+" : "-", a = Math.abs(v);
-      return sg + (x.tenth ? String(a / 10).replace(".", ",") : a) + (x.pct ? " %" : "") + " " + x.name + (ranges && v > 0 ? " (" + (x.tenth ? String(x.lo / 10).replace(".", ",") + " à " + String(x.hi / 10).replace(".", ",") : x.lo + " à " + x.hi) + ")" : "");
+      return sg + (x.tenth ? rnd1(a / 10) : rnd1(a)) + (x.pct ? " %" : "") + " " + x.name + (ranges && v > 0 ? " (" + (x.tenth ? rnd1(x.lo / 10) + " à " + rnd1(x.hi / 10) : rnd1(x.lo) + " à " + rnd1(x.hi)) + ")" : "");
     });
   }
   function genPiece(tier, tpl, rar) {
