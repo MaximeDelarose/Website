@@ -26,12 +26,15 @@ import { pickReaction } from '../../game/fx/reactions';
 import { pickLine } from '../../data/augusteTone';
 import { augusteSays } from '../components/augusteSays';
 import { notify } from '../notify';
+import { openCustomerSheet, showThanks } from './customerSheet';
+import { customerPortraitUrl } from '../../game/art/customers';
+import { customerById } from '../../data/customers';
 import { sparkleBurst } from '../fx/sparkle';
 import { chestSvg } from './art';
 import { openChestFlow } from './chestFlow';
 import { openInfoFor, openLockSheet } from './itemSheet';
 import { openGoalsSheet, openSecondarySheet, openTreasureSheet } from './sheets';
-import { clothName, furnitureName } from './host';
+import { clothName, furnitureName, settleLoot } from './host';
 import {
   ReactionGate, REACTION_PRIO, TIER_META, bestReaction, limitChips, lootText, newlyReady, orderCardModel, pct, resUse, secIcon, missingText,
   type OrderCardModel, type ReactionKey, type ReactionWish, type RewardKind,
@@ -230,13 +233,20 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
       }, { sound: false }));
       foot = h('div.en-foot', h('i.en-bar', h('b', { style: `width:${Math.round(m.ratio * 100)}%;background:${m.color}` })), rush);
     }
+    // portrait rond + prénom à la place du point de couleur (même ligne, la carte ne grandit pas) ; le palier reste lisible (sous le prénom)
+    const cust = o.customer ? customerById(o.customer) : undefined;
+    const who = cust
+      ? { av: h('img.en-av', { src: customerPortraitUrl(cust.id, 24), alt: '', 'data-cust': cust.id }), lab: h('span.en-who', h('b', cust.name), h('small', m.tierLabel)) }
+      : { av: h('i.en-dot'), lab: h('span.en-lab', m.tierLabel) };
     const card = h(`div.en-card${m.ready ? '.ready' : ''}${lastOrderIds[m.slot] !== o.id ? '.fresh' : ''}`, { 'data-slot': String(m.slot), style: `--tc:${m.color}` },
-      h('div.en-card-top', h('i.en-dot'), h('span.en-lab', m.tierLabel), rep), items, rw, foot);
+      h('div.en-card-top', who.av, who.lab, rep), items, rw, foot);
     card.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('button')) return;
       const sc = cfg.getScene();
       if (m.cells.length && sc) sc.highlightCells(m.cells);
-      feed(m.ready ? 'Prête à livrer !' : missingText(m, itemName), { kind: 'info', ms: 2200 });
+      // toucher la carte : la demande du client s'ouvre dans une petite fiche (jamais de long texte sur la carte)
+      if (cust) openCustomerSheet(cust.id, o.id, m.items.map((x) => itemName(x.ref)), m.tierLabel, fun().customers);
+      else feed(m.ready ? 'Prête à livrer !' : missingText(m, itemName), { kind: 'info', ms: 2200 });
     });
     return card;
   }
@@ -451,6 +461,14 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
           break;
         case 'deliver': {
           haptic('reward');
+          if (e.customer && e.thanks) {
+            const up = !!e.loyalty && e.loyalty.to > e.loyalty.from;
+            showThanks({
+              id: e.customer, text: up && e.story ? e.story : e.thanks, levelUp: up, dock: feedEl.parentElement, feed: feedEl,
+              onShow: () => { if (up) { sparkleBurst(window.innerWidth / 2, window.innerHeight * 0.78, { rarity: 'rare', count: 10 }); audio.play('sparkle'); haptic('reward'); } },
+            });
+            if (up && e.loyalty) settleLoot([{ kind: 'coins', n: 20 * e.loyalty.to, rarity: 'rare', seed: 0 }]);
+          }
           const from = e.cells[0] ?? 14;
           const g = e.gain ?? {};
           let k = 0;

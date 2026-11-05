@@ -129,6 +129,9 @@ export interface AppsState {
   career: Record<string, number>;
 }
 
+/** Clients récurrents : commandes livrées (fidélité), dernière livraison, dernière réplique de remerciement, niveau de fidélité déjà fêté. */
+export interface CustomerState { n: number; last: number; thanks: number; seenLevel: number }
+
 export interface FunState {
   endless2: Endless2;
   daily: DailyState;
@@ -143,6 +146,8 @@ export interface FunState {
   necklace: NecklaceState;
   /** Notifications reçues (identifiants), pour ne pas les répéter. */
   notifs: string[];
+  /** Fidélité des clients récurrents (identifiants de src/data/customers.ts). */
+  customers: Record<string, CustomerState>;
 }
 
 export const defaultFun = (): FunState => ({
@@ -158,6 +163,7 @@ export const defaultFun = (): FunState => ({
   places: {},
   free: { unlocked: false, at: 0, announced: false },
   apps: { swipe: {}, clips: {}, snap: {}, career: {} },
+  customers: {},
   necklace: defaultNecklace(),
   notifs: [],
 });
@@ -221,6 +227,12 @@ export function sanitizeFun(raw: unknown): FunState {
       stats: numRec(c.stats), missions: strArr(c.missions, 200),
       history: Array.isArray(c.history) ? c.history.filter(isObj).slice(-60).map((h) => ({ g: str(h.g, '', 20), bet: Math.floor(num(h.bet, 0, 0, 1e9)), win: Math.floor(num(h.win, 0, 0, 1e9)), at: num(h.at, 0, 0, 1e14) })) : [],
     };
+  }
+  if (isObj(raw.customers)) {
+    for (const [k, v] of Object.entries(raw.customers).slice(0, 60)) {
+      if (!isObj(v)) continue;
+      d.customers[k.slice(0, 30)] = { n: Math.floor(num(v.n, 0, 0, 99999)), last: Math.min(1e14, num(v.last, 0, 0, 1e14)), thanks: Math.floor(num(v.thanks, -1, -1, 99)), seenLevel: Math.floor(num(v.seenLevel, 1, 1, 5)) };
+    }
   }
   if (isObj(raw.wheel)) d.wheel = { lastKey: /^\d{4}-\d{2}-\d{2}$/.test(str(raw.wheel.lastKey)) ? str(raw.wheel.lastKey) : '', spins: Math.floor(num(raw.wheel.spins, 0, 0, 99999)), last: str(raw.wheel.last, '', 60) };
   if (isObj(raw.places)) {

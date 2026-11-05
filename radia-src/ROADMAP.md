@@ -59,6 +59,33 @@ Tests : `scripts/standalone-e2e.mjs` 12/12 (même build dans les deux modes, par
 
 Contraintes : ne jamais afficher âge / origine ; ne pas associer personnalité ou langage au hijab ; pas de marque réelle ; interface légère (rien de permanent en plus sur le plateau Endless).
 
+
+## PRIORITÉ 3 bis — Avancement PIMBÊCHE / clients (mis à jour)
+
+| Étape | État | Détail |
+|---|---|---|
+| Catalogue de 20 clients (prénoms, personnalités, goûts, demandes, remerciements, histoires), sans âge ni origine | ✅ | `src/data/customers.ts`, `tests/customers.test.ts` (9) |
+| Portraits (Canvas 2D, 6 teintes, 10 coiffures, hijabs de 6 couleurs, accessoires) | ✅ | `src/game/art/customers.ts` — vérifiés visuellement |
+| Client sur chaque commande (portrait + prénom dans l'en-tête, carte non agrandie), fiche au toucher, remerciement discret, fidélité 5 niveaux sauvegardée, histoire + récompense au changement de niveau | ✅ | `scripts/customers-e2e.mjs` 29/29, `tests/customers-logic.test.ts` (14) |
+| Chaîne des savons (8 niveaux), générateur « Atelier Pimbêche », déblocage par la boutique de fleurs / palier, matériau fleurs | ✅ code + tests unitaires · 🟡 parcours navigateur à rejouer | `src/game/art/items4.ts`, `tests/endless-chains.test.ts` |
+| Atelier « Ma savonnerie ♡ » (mini-jeu), boutique, réputation, partenariats (Lina), événements commerciaux, liens carrière | ⬜ | prochaines étapes de la priorité 3 |
+| « Mes clients » (galerie, histoires, récompenses de relation) | ⬜ | |
+
+## NOUVELLE SÉRIE DE DEMANDES — réseaux sociaux, dressing, restaurants, vie de famille (⬜ à développer dans cet ordre)
+
+> Noms officiels (confirmés) : **TikTak** et **Snapchien**. Les demandes ci-dessous écrivent parfois « TOCKTIK » : lire TikTak.
+
+1. ⬜ **TikTak — commentaires variés** : compliments, questions, fans, drôles, critiques, désagréables, jaloux ; ≥ 40 commentaires adaptés aux publications ; personnages fictifs récurrents ; pas sous toutes les vidéos ; jalousie jamais présentée comme cause certaine.
+2. ⬜ **Réponses d'Auguste** (compte TikTak avec son avatar) : ≥ 40 réponses drôles / piquantes sans formule répétée ; likes fictifs progressifs animés (120 → 3 500 selon la popularité) ; fils de discussion cohérents (l'auteur peut réagir) ; Radia peut liker et répondre ; jamais d'attaque violente ni de harcèlement ; Auguste ne parle jamais à la place de Radia.
+3. ⬜ **Snapchien — vie des garçons** : messages spontanés variés (≥ 10 personnages adultes fictifs, personnalité + historique), relances après plusieurs jours, **snaps rouges** (photo non ouverte avec indicateur rouge ; vidéo = autre indicateur), ouverture plein écran, réponses de Radia (choix multiples), statut « Ouvert », illustrations humoristiques non explicites (selfies torse nu : Dylan, Kevin, Nicolas, Maxime, Jordan, Thomas, Enzo), flammes inchangées (échange réciproque, jours consécutifs, sans notification insistante), sauvegarde des séries et contacts supprimés.
+4. ⬜ **Dressing : ≥ 30 nouveaux articles** (chic/luxe, casual, streetwear, tenues élégantes et couvrantes dont hijabs facultatifs, accessoires, coiffures) — essayables, achetables, sauvegardés, utilisables en événement ; tenue habituelle jamais modifiée ; bracelet romantique conservé ; galerie compacte multi-lignes avec avatar visible.
+5. ⬜ **Restaurants** : 5 types fictifs (gastronomique, italien, algérien, japonais, brasserie parisienne), menus évolutifs (plats qui changent, suggestions du chef, desserts spéciaux, prix variables), jeu de devinette avec Auguste conservé et dialogues variés.
+6. ⬜ **Événements de famille** : A — visite chez maman ; B — accompagner maman à l'aéroport (+ retrouvailles plus tard) ; C — Auguste invite Radia à sortir.
+7. ⬜ **Répertoire « Famille & proches ♡ »** (maman, tante, sœur, amie de confiance fictives : portrait, prénom, disponibilité simulée, conversation).
+8. ⬜ **Organisation des sorties / garde simulée** des trois enfants (jamais nommés dans le code ni dans ce fichier : étiquettes neutres, prénoms uniquement dans les données chiffrées) : choisir un proche, message, réponse, plan B (autre proche, autre date, sortie familiale, reporter), jamais de compte à rebours ni de culpabilisation, aucun vrai contact.
+9. ⬜ **Événements secondaires** : shopping, parc avec les enfants, anniversaire surprise, spa, week-end romantique, visite chez maman, soirée cinéma ; invitations reportables ; jamais pendant une fusion ; via le gestionnaire de notices ; pas de surcharge de l'écran principal.
+10. ⬜ **Tests** : réponses d'Auguste, likes, snaps rouges, réponses aux snaps, tenues, menus, événements familiaux, répertoire, garde simulée, sorties, sauvegardes, iPhone 16.
+
 ## PRIORITÉ 4 — Téléphone virtuel
 
 | Demande | État | Détail |

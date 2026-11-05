@@ -3,6 +3,7 @@
  * (collection débloquée + niveau accessible avec les générateurs actuels), récompense prévisible,
  * indicateur de progression et remplacements gratuits. Aucun DOM.
  */
+import { pickCustomer } from '../customers/logic';
 import { collMax, itemKey, type CollectionId, type ItemRef } from '../../data/items';
 import { MATERIAL_OF } from '../world/fusionRewards';
 import type { FunState } from '../../save/fun';
@@ -63,7 +64,7 @@ function levelsFor(fun: FunState, c: CollectionId, lo: number, hi: number): numb
  * Crée une commande du palier demandé. `avoid` = clés d'objets déjà demandés par les autres commandes
  * (on les évite autant que possible). L'identifiant est attribué par l'appelant.
  */
-export function makeOrder(fun: FunState, rng: Rng, tier: OrderTier, id: number, avoid: Set<string> = new Set(), others: ItemRef[] = []): OrderState {
+export function makeOrder(fun: FunState, rng: Rng, tier: OrderTier, id: number, avoid: Set<string> = new Set(), others: ItemRef[] = [], avoidCustomers: ReadonlySet<string> = new Set()): OrderState {
   const colls = activeColls(fun);
   // les commandes visibles se recoupent : moins de collections différentes à produire en même temps
   const shared = [...new Set(others.map((r) => r.c))].filter((c): c is CollectionId => (colls as string[]).includes(c));
@@ -89,7 +90,9 @@ export function makeOrder(fun: FunState, rng: Rng, tier: OrderTier, id: number, 
     // repli sûr : l'objet de niveau 3 de la première collection active (toujours atteignable)
     best = [{ c: colls[0], l: 3 }];
   }
-  return { items: best, id, tier, reward: orderReward(fun, best, tier), progress: 0 };
+  // un vrai client passe la commande : il aime (autant que possible) la collection demandée et n'est jamais affiché deux fois
+  const customer = pickCustomer(rng, best[0].c, avoidCustomers, fun.customers);
+  return { items: best, id, tier, reward: orderReward(fun, best, tier), progress: 0, customer };
 }
 
 // ------------------------------------------------------------------ progression

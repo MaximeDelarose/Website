@@ -167,7 +167,11 @@ async function run(H) {
     }
   };
   const click = async (loc, ms = 700) => { await loc.first().click({ timeout: 4000 }).catch(() => {}); await sleep(ms); };
-  const back = async () => { await click(page.locator('#ui > .screen:not(.leaving) .screen-head .icon-btn[aria-label="Retour"], #ui > .screen:not(.leaving) .icon-btn[aria-label="Retour"]'), 900); };
+  const back = async () => {
+    // une invitation (bannière en haut de l'écran, z-index 97) peut recouvrir le bouton Retour : on attend qu'elle se retire (≤ 14 s)
+    for (let i = 0; i < 28 && (await page.locator('.ev-notif:not(.out)').count()); i++) await sleep(500);
+    await click(page.locator('#ui > .screen:not(.leaving) .screen-head .icon-btn[aria-label="Retour"], #ui > .screen:not(.leaving) .icon-btn[aria-label="Retour"]'), 900);
+  };
   /** Point de contrôle : stabilisation puis relevé. `allow` = calques attendus ; `extra` = vérifications propres à l'écran. */
   const check = async (label, { allow = [], wait = 1600, extra } = {}) => {
     await sleep(wait);
