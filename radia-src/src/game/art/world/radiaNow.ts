@@ -11,7 +11,9 @@ import { getFaceCustom } from '../characters';
 import { faceKey, isDefaultFace } from '../../../data/world/face';
 import { hasPhotos as hasPhotosP, photoUrl as photoUrlP } from '../../../core/photos';
 import { makeCanvas } from '../kit';
-import { paintedLookId as paintedLookIdPure, type PaintedId } from '../../world/paintedLook';
+import { paintedLookId as paintedLookIdPure, paintedHeadKind, type PaintedId } from '../../world/paintedLook';
+import { setPaintedHeadProvider, paintedHeadEpoch, type PaintedHead } from './avatar';
+import { accGroup } from '../../../data/world/ids';
 
 /** Signature courte du look : sert de clé de cache / de texture. */
 export function lookKey(l: Look = currentLook()): string {
@@ -19,7 +21,7 @@ export function lookKey(l: Look = currentLook()): string {
   const fc = getFaceCustom();
   const face = isDefaultFace(fc) ? '' : `.f${hash(faceKey(fc))}`;
   // « .P » : l'illustration peinte est prête et remplace le dessin (sinon un sprite en cache garderait la version vectorielle)
-  return `${l.hair}.${l.top}.${l.bottom}.${l.dress}.${l.jacket}.${l.shoes}.${l.bag}.${l.acc.join('+')}.${l.crown}${face}${paintedFor(l) ? '.P' : ''}`;
+  return `${l.hair}.${l.top}.${l.bottom}.${l.dress}.${l.jacket}.${l.shoes}.${l.bag}.${l.acc.join('+')}.${l.crown}${face}${paintedFor(l) ? '.P' : ''}.h${paintedHeadEpoch()}`;
 }
 const hash = (t: string): string => { let h = 2166136261 >>> 0; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36); };
 
@@ -30,16 +32,32 @@ const painted: Partial<Record<PaintedId | 'bust-radia' | 'bust-radia-nc', HTMLIm
 export const paintedLookId = (l: Look): PaintedId | null => paintedLookIdPure(l, isDefaultFace(getFaceCustom()));
 /** Illustration prête pour ce look (null : dessin vectoriel). */
 function paintedFor(l: Look): HTMLImageElement | null { const id = paintedLookId(l); return id ? painted[id] ?? null : null; }
+// ---- tête peinte sur le corps dessiné (toutes les tenues) : couches tirées de l'illustration (pack chiffré)
+const heads: Partial<Record<'headp-radia' | 'headp-radia-nc' | 'facep-radia', HTMLImageElement>> = {};
+// origine de chaque couche dans le repère de l'illustration sans couronne (px) ; la couronne ajoute 49 px au-dessus
+const HEAD_GEOM = { 'headp-radia': { x0: 0, y0: -49 }, 'headp-radia-nc': { x0: 0, y0: -7 }, 'facep-radia': { x0: 100, y0: 20 } } as const;
+function headFor(l: Look): PaintedHead | null {
+  const k = paintedHeadKind(l, isDefaultFace(getFaceCustom()), accGroup);
+  if (!k) return null;
+  const id = k === 'head-crown' ? 'headp-radia' : k === 'head' ? 'headp-radia-nc' : 'facep-radia';
+  const im = heads[id] ?? (id !== 'facep-radia' ? heads['facep-radia'] : undefined); // repli : visage seul si la tête complète manque
+  if (!im) return null;
+  const real = heads[id] ? id : 'facep-radia';
+  const g = HEAD_GEOM[real];
+  return { kind: real === 'facep-radia' ? 'face' : 'head', im, x0: g.x0, y0: g.y0, w: im.width, h: im.height, crownBaked: real === 'headp-radia' };
+}
+setPaintedHeadProvider(headFor);
 const PAINT_REF_H = 1018; // hauteur de l'illustration d'Auguste : même échelle pour les deux (Radia reste un peu plus petite, comme sur la référence)
 /** Charge les illustrations peintes de Radia (sans risque, répétable). */
 export function warmRadia(): Promise<void> {
   if (!hasPhotosP()) return Promise.resolve();
   const ids = ['char-radia', 'char-radia-nc', 'bust-radia', 'bust-radia-nc'] as const;
-  return Promise.all(ids.map((n) => painted[n] ? undefined : photoUrlP(n).then((u) => {
-    if (!u) return;
-    const im = new Image(); im.src = u;
-    return im.decode().then(() => { painted[n] = im; }).catch(() => undefined);
-  }))).then(() => undefined);
+  const hids = ['headp-radia', 'headp-radia-nc', 'facep-radia'] as const;
+  const load = (n: string) => photoUrlP(n).then((u) => { if (!u) return null; const im = new Image(); im.src = u; return im.decode().then(() => im).catch(() => null); });
+  return Promise.all([
+    ...ids.map((n) => painted[n] ? undefined : load(n).then((im) => { if (im) painted[n] = im; })),
+    ...hids.map((n) => heads[n] ? undefined : load(n).then((im) => { if (im) heads[n] = im; })),
+  ]).then(() => { setPaintedHeadProvider(headFor); }); // nouvelle « époque » : les dessins en cache sont refaits avec la tête peinte
 }
 function drawPainted(ctx: CanvasRenderingContext2D, im: HTMLImageElement, w: number, h: number): void {
   // même règle que l'illustration d'Auguste dans une boîte 240 × 600 : pieds en bas, échelle commune

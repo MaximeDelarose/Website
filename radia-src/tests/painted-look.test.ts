@@ -29,3 +29,25 @@ describe('Radia peinte : la tenue doit correspondre à l\'illustration', () => {
     setFaceCustom(true);
   });
 });
+
+import { paintedHeadKind } from '../src/game/world/paintedLook';
+import { accGroup } from '../src/data/world/ids';
+describe('tête peinte sur toutes les tenues', () => {
+  const k = (l: Look, ok = true) => paintedHeadKind(l, ok, accGroup);
+  it('cheveux longs : tête complète peinte (couronne dorée comprise ou non), quelle que soit la tenue', () => {
+    expect(k({ ...ref, top: null, bottom: 'bot-track-red', jacket: 'jk-track-red' })).toBe('head');
+    expect(k({ ...ref, crown: 'cr-gold', dress: 'dr-pink-satin', top: null, bottom: null })).toBe('head-crown');
+    expect(k({ ...ref, hair: 'hair-loose', acc: ['ac-pearls'] })).toBe('head'); // collier : n'est pas sur la tête
+  });
+  it('autre coiffure, autre couronne, boucles / lunettes / accessoire de tête : visage peint seul, le reste dessiné', () => {
+    expect(k({ ...ref, hair: 'hair-bun' })).toBe('face');
+    expect(k({ ...ref, crown: 'cr-tiara' })).toBe('face');
+    expect(k({ ...ref, acc: ['ac-hoops'] })).toBe('face');
+    expect(k({ ...ref, acc: ['ac-sunglasses'] })).toBe('face');
+  });
+  it('visage personnalisé ou maquillage du dressing : dessin (il suit ces réglages)', () => {
+    expect(k(ref, false)).toBeNull();
+    expect(k({ ...ref, acc: ['lp-red'] })).toBeNull();
+    expect(k({ ...ref, acc: ['ey-blue'] })).toBeNull();
+  });
+});

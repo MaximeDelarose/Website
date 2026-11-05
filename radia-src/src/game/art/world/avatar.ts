@@ -1692,7 +1692,31 @@ function pick(id: string | null, slot: string): ClothId | null {
   return c && CLOTH_SLOTS[c] === slot ? c : null;
 }
 
+// ---------------------------------------------------------------- tête PEINTE (illustration, même artiste qu'Auguste)
+/** 'head' : tête complète peinte (visage + cheveux longs, couronne dorée comprise ou non) ; 'face' : visage peint seul, coiffure dessinée autour. */
+export interface PaintedHead { kind: 'head' | 'face'; im: CanvasImageSource; /** origine de l'image dans le repère de l'illustration (px) */ x0: number; y0: number; w: number; h: number; crownBaked: boolean }
+let headProvider: ((look: Look) => PaintedHead | null) | null = null;
+let headEpoch = 0;
+/** Branche la tête peinte (radiaNow) ; à rappeler quand les images sont prêtes (le cache du dessin change de clé). */
+export function setPaintedHeadProvider(fn: ((look: Look) => PaintedHead | null) | null): void { headProvider = fn; headEpoch++; }
+export const paintedHeadEpoch = (): number => headEpoch;
+// repère de l'illustration → repère de l'avatar : yeux alignés, échelle commune
+const PH_S = 0.708, PH_CX = 176, PH_CY = 118, AV_CX = 120, AV_CY = 105; // yeux peints (176 ; 118) px ↔ yeux du dessin (120 ; 105) : lunettes et boucles restent bien placées
+// tête complète : un peu plus petite (proportions tête / corps d'Auguste), le menton reste à sa place sur le cou
+const HEAD_SHRINK = 0.88, PH_CHIN = 205;
+const AV_CHIN = AV_CY + (PH_CHIN - PH_CY) * PH_S;
+/** Applique au contexte la mise à l'échelle de la tête complète autour du menton (pour les cheveux arrière dessinés derrière). */
+function headShrink(ctx: C): void { ctx.translate(AV_CX, AV_CHIN); ctx.scale(HEAD_SHRINK, HEAD_SHRINK); ctx.translate(-AV_CX, -AV_CHIN); }
+function drawPaintedHead(ctx: C, ph: PaintedHead): void {
+  ctx.save(); ctx.imageSmoothingQuality = 'high';
+  if (ph.kind === 'head') headShrink(ctx);
+  ctx.drawImage(ph.im, AV_CX + (ph.x0 - PH_CX) * PH_S, AV_CY + (ph.y0 - PH_CY) * PH_S, ph.w * PH_S, ph.h * PH_S);
+  ctx.restore();
+}
+
 function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
+  const ph = headProvider?.(look) ?? null;
+  const fullHead = ph?.kind === 'head';
   const st = opts.step ?? 0;
   const sway = st * 4;
   const dress = pick(look.dress, 'dress');
@@ -1711,7 +1735,8 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   ctx.lineCap = 'round';
 
   // 1. cheveux arrière, dos de la robe, jambes et chaussures
-  if (!P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); // un voile remplace les cheveux
+  if (fullHead) { ctx.save(); headShrink(ctx); P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); ctx.restore(); } // derrière la tête peinte : comble l'espace entre cou et longueurs
+  else if (!P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); // un voile remplace les cheveux
   dfx?.back?.(ctx, st);
   legsSkin(ctx, st, !!dress && TIGHTS_DRESSES.has(dress));
   shoesDraw(ctx, shoes, st);
@@ -1784,8 +1809,10 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const lipId = accs.find((a) => a.startsWith('lp-'));
   const pickId = (pre: string) => accs.find((a) => a.startsWith(pre));
   const eyeId = pickId('ey-'), moId = pickId('mo-'), elId = pickId('el-'), esId = pickId('es-');
-  P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, iris: eyeId ? EYE_COLOR[eyeId] : undefined, mouth: moId ? MOUTH_SHAPE[moId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
+  if (!fullHead) P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, iris: eyeId ? EYE_COLOR[eyeId] : undefined, mouth: moId ? MOUTH_SHAPE[moId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
   ctx.restore();
+  if (ph) drawPaintedHead(ctx, ph); // visage peint par-dessus l'ovale dessiné (contour du dessin, traits de l'illustration)
+  if (fullHead) { ctx.restore(); return; } // tête complète peinte : cheveux, couronne dorée et finitions déjà dans l'illustration
   if (!P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairFrontLayer(ctx, hair, sway));
   if (P.veilOn()) { ctx.save(); ctx.translate(P.HEAD_X, P.HEAD_Y); ctx.scale(P.HEAD_K, P.HEAD_K); P.drawVeil(ctx); ctx.restore(); }
   if (accs.includes('ac-hoops')) hoops(ctx);
@@ -1883,7 +1910,7 @@ const cache = new Map<string, HTMLCanvasElement>();
 export function avatarCanvas(look: Look, w: number, h: number, opts: AvatarOpts = {}): HTMLCanvasElement {
   // le reflet du bracelet / du collier n'entre dans la clé que si le look le porte (6 pas)
   const sh = look.acc.includes(BRACELET_ID) || look.acc.includes(NECKLACE_ID) ? shineStep(opts.shine ?? 0) : 0;
-  const key = `${w}x${h}|${look.hair}|${look.top}|${look.bottom}|${look.dress}|${look.jacket}|${look.shoes}|${look.bag}|${look.acc.join(',')}|${look.crown}|${opts.expr ?? ''}|${opts.step ?? 0}|${opts.arms ?? ''}|${opts.blink ? 1 : 0}|${sh}|${opts.pose ?? ""}|${faceKey(getFaceCustom())}`;
+  const key = `${w}x${h}|${look.hair}|${look.top}|${look.bottom}|${look.dress}|${look.jacket}|${look.shoes}|${look.bag}|${look.acc.join(',')}|${look.crown}|${opts.expr ?? ''}|${opts.step ?? 0}|${opts.arms ?? ''}|${opts.blink ? 1 : 0}|${sh}|${opts.pose ?? ""}|${faceKey(getFaceCustom())}|h${headEpoch}`;
   let c = cache.get(key);
   if (!c) {
     c = makeCanvas(w, h);

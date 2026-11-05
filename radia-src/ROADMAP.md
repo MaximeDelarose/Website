@@ -29,6 +29,11 @@ Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commenc
   souvenirs, casino, fin, dialogues (buste), médaillons. Règle pure testée : `game/world/paintedLook.ts` (`tests/painted-look.test.ts`).
 - ✅ Bouton « Tenue illustrée ♡ » dans le dressing (`W.equipIllustrated`) : remet en un geste cette tenue avec les pièces possédées.
 - ✅ Vectoriel (autres tenues) : base de visage calquée sur l'illustration (peau dorée, yeux bruns en amande, eye-liner relevé, lèvres nude).
+- ✅ VISAGE PEINT SUR TOUTES LES TENUES (priorité « tête / visage / DA ») : couches tirées de l'illustration (`headp-radia`,
+  `headp-radia-nc`, `facep-radia`, chiffrées). Cheveux longs → tête complète peinte (cheveux, couronne dorée) réduite aux proportions
+  d'Auguste, cheveux dessinés derrière pour combler ; autre coiffure / accessoire de tête → visage peint seul, coiffure dessinée autour.
+  Visage personnalisé ou maquillage du dressing → dessin (il suit les réglages). Tenue de la joueuse INCHANGÉE. Expressions : le visage
+  peint garde un sourire (comme l'illustration d'Auguste). Fabrication : `scripts/painted-head/`.
 - 🟡 PHASE B — illustrations en calques pour TOUTES les tenues : cahier des charges `docs/ASSETS_PERSONNAGES.md` (gabarit 720 × 1800,
   calques, identifiants, intégration avec repli sur le dessin). En attente des fichiers d'illustration (pas d'outil de génération ici).
 - ⚠️ À vérifier sur iPhone : la tenue illustrée (dressing → « Tenue illustrée »), puis accueil / MON MONDE / un événement.
