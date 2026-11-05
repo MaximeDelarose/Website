@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import { viewport } from './layout';
 import { events } from '../core/app';
 import { BackdropScene } from './scenes/BackdropScene';
+import { installPointerHygiene } from './pointerHygiene';
 
 export function createGame(): Phaser.Game {
   const { w, h, dpr } = viewport();
@@ -23,6 +24,9 @@ export function createGame(): Phaser.Game {
     banner: false,
     scene: [BackdropScene],
   });
+
+  // Les relâchements de doigt perdus (iOS) ne doivent jamais épuiser les pointeurs de Phaser : cf. pointerHygiene.ts
+  installPointerHygiene(game);
 
   let timer: number | undefined;
   const resize = () => {
