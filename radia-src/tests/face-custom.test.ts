@@ -3,12 +3,12 @@ import { classicFace, defaultFace, faceKey, hexToRgb, isDefaultFace, ORIGINAL_SK
 
 const lum = (hex: string) => rgbToHsl(...hexToRgb(hex))[2];
 describe('personnalisation du visage : données', () => {
-  it('l\'ANCIEN dessin (classicFace) garde la peau exacte d\'origine ; le nouveau visage de base est ovale, affiné, brun foncé et plein de volume', () => {
+  it('l\'ANCIEN dessin (classicFace) garde la peau exacte d\'origine ; le nouveau visage de base est ovale, affiné, brun chaud et plein de volume', () => {
     expect(skinPalette(classicFace().skin)).toEqual(ORIGINAL_SKIN);
     expect(classicFace().refined).toBe(false); expect(classicFace().hairVolume).toBe(0);
     const f = defaultFace();
     expect(isDefaultFace(f)).toBe(true);
-    expect(f.shape).toBe('oval'); expect(f.brows.shape).toBe('arched'); expect(f.mouth.shape).toBe('full');
+    expect(f.shape).toBe('oval'); expect(f.brows.shape).toBe('soft'); expect(f.mouth.shape).toBe('full');
     expect(f.refined).toBe(true); expect(f.hairVolume).toBeGreaterThan(0); expect(f.hairColor).not.toBe('');
     expect(skinPalette(f.skin)).not.toEqual(ORIGINAL_SKIN);
   });
