@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.22.1";
+  var VERSION = "2.22.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -2707,10 +2707,13 @@
     var arr = compList(id), n = V(w, "n", l), spd = V(w, "spd", l) || 110, range = w.range || 150;
     var sk = p.sigK || {};
     if (w.bird && p.merleT > 0) n += 1;
-    syncCount(arr, n, function (i) { return { k: w.pet, x: p.x - p.face * 10, y: p.y + 4 + i * 3, cd: 0.5, face: p.face, anim: Math.random() * 2, fly: !!w.fly }; });
+    var mini = p.crew && p.crew.length ? p.crew.length : 0, nBase = n;
+    if (mini) n = mini;   // Capitaine : un mini compagnon par matelot, qui le suit et mord à 10 % des dégâts
+    syncCount(arr, n, function (i) { return { mini: mini ? 1 : 0, k: w.pet, x: p.x - p.face * 10, y: p.y + 4 + i * 3, cd: 0.5, face: p.face, anim: Math.random() * 2, fly: !!w.fly }; });
     if ((w.crab && sk.nacre) || (w.bird && sk.melody && p.anchored)) arr.forEach(function (c) { for (var hb = hostile.length - 1; hb >= 0; hb--) if (Math.abs(hostile[hb].x - c.x) < 9 && Math.abs(hostile[hb].y - c.y) < 9) { hostile.splice(hb, 1); burst(c.x, c.y, "#fdf3de", 3); } });
     var down = w.medic ? players.filter(function (o) { return o !== p && o.down; })[0] : null;
     arr.forEach(function (c, i) {
+      if (mini) { var mt = p.crew[i]; if (!mt) return; var sx = p.x, sy = p.y, sf = p.face; p.x = mt.x; p.y = mt.y; p.face = mt.face || 1; c.mini = 1; try { petOne(c, i, arr.length, w, l, sk, dt, 0.1 * nBase, id); } finally { p.x = sx; p.y = sy; p.face = sf; } return; }
       if (down) { c.tgt = null; c.anim += dt * 8; var mx = down.x - c.x, my = down.y - c.y, md = Math.hypot(mx, my); if (md > 8) { c.x += mx / md * Math.min(md, spd * dt); c.y += my / md * Math.min(md, spd * dt); c.face = mx > 0 ? 1 : -1; } else down.medicT = 0.25; return; }
       if (w.crab) { c.age = (c.age || 0) + dt; if (sk.pearl && c.age > 20 && !c.big) { c.big = true; burst(c.x, c.y, "#fdf3de", 10); } }
       if (w.circle || (w.bird && sk.melody && p.anchored) || (sk.rally && p.anchored)) {
@@ -2722,6 +2725,10 @@
       if (w.bird && sk.blackbird && c.cd > cd0) { p.birdN = (p.birdN || 0) + 1; if (p.birdN % 10 === 0) { p.merleT = 10; banner("Un merle de plus !"); } }
     });
   };
+  function petOne(c, i, n, w, l, sk, dt, scale, id) {
+    var spd = V(w, "spd", l) || 110, range = w.range || 150, cd0 = c.cd;
+    petMove(c, i, n, spd, range, dt); petBite(c, compDmg(w, l) * scale, compRate(w, l), (V(w, "splash", l) || 0) * 0.5, dt, w.roll, w.hop);
+  }
   function petMove(c, i, n, spd, range, dt) {
     c.anim += dt * 8; c.cd -= dt;
     if (c.tgt && (c.tgt.dead || c.tgt.under || Math.hypot(c.tgt.x - p.x, c.tgt.y - p.y) > range * 1.4)) c.tgt = null;
@@ -2817,6 +2824,7 @@
     list.forEach(function (c) {
       var fr = SPR[c.k]; if (!fr) return;
       var s = fr[((c.anim || 0) | 0) % fr.length];
+      if (c.mini) { var ms = 0.6, mw = Math.round(s.w * ms), mh = Math.round(s.h * ms); shadow(c.x, c.y + mh / 2, mw * 0.7); ctx.drawImage(c.face < 0 ? s.f : s.c, Math.round(c.x - mw / 2), Math.round(c.y - mh / 2 + (c.fly ? Math.sin((c.anim || 0) * 0.7) - 5 : 0)), mw, mh); return; }
       if (c.fly) shadow(c.x, c.y + s.h / 2 + 6, s.w * 0.5); else shadow(c.x, c.y + s.h / 2 - 1, s.w * 0.7);
       blit(s, c.x, c.y + (c.fly ? Math.sin((c.anim || 0) * 0.7) : 0), c.face < 0);
       if (c.wi && SPR[c.wi]) { var wsm = SPR[c.wi][0], wsc = 0.5; ctx.drawImage(wsm.c, Math.round(c.x + (c.face < 0 ? -4 : 4) - wsm.w * wsc / 2), Math.round(c.y - 1 - wsm.h * wsc / 2), Math.round(wsm.w * wsc), Math.round(wsm.h * wsc)); }
@@ -9048,7 +9056,7 @@
     return { r: [Math.round(r.time * 10), r.kills, r.level, Math.round(Math.min(1, xp / xpNext) * 1000), Math.floor(r.gold), r.bosses, Math.round(r.freeze * 10), Math.round(r.flash * 100), r.round, Math.round(r.roundT * 10)],
              dg: isDungeon() ? [r.dg.floor, r.dg.active, r.dg.rooms.filter(function (x) { return x.state === "cleared"; }).map(function (x) { return x.idx; }), r.dg.stairs ? [Math.round(r.dg.stairs.x), Math.round(r.dg.stairs.y)] : 0, r.dg.clearedTotal, r.dg.hash] : 0,
              e: e, pr: pr, lb: lb, g: g, h: h, w: w, pl: pl, b: curBoss ? [bossTitle(curBoss), Math.round(curBoss.hp / curBoss.maxHp * 1000), affMask(curBoss)] : 0, ev: Net.ev,
-             cp: allComps().slice(0, 72).reduce(function (a, c) { a.push(SPRI[c.k] || 0, R1(c.x), R1(c.y), (c.face < 0 ? 1 : 0) | (c.fly ? 2 : 0) | (c.max && c.life < c.max * 0.3 ? 4 : 0)); return a; }, []),
+             cp: allComps().slice(0, 140).reduce(function (a, c) { a.push(SPRI[c.k] || 0, R1(c.x), R1(c.y), (c.face < 0 ? 1 : 0) | (c.fly ? 2 : 0) | (c.max && c.life < c.max * 0.3 ? 4 : 0) | (c.mini ? 8 : 0)); return a; }, []),
              po: r.portal ? [r.portal.x, r.portal.y, r.portal.st, Math.round(r.portal.p * 100), r.portal.boss && !r.portal.boss.dead ? r.portal.boss.id : 0] : 0, stg: [r.stage || 0, Math.round((r.stageT0 || 0) * 10), MAP.id],
              sh: [Object.keys(r.sh).filter(function (k) { return r.sh[k].used || r.sh[k].p > 0; }).map(function (k) { return [k, Math.round(r.sh[k].p * 100), r.sh[k].used ? 1 : 0]; }), r.madness || 0, r.devil || 0],
              ex: isExpe() && r.ex ? [r.ex.seed, r.ex.floor, r.ex.keys || 0, r.ex.st.map(function (q) { return [q.done ? 1 : 0, Math.round((q.p || 0) * 100), q.hidden ? 1 : 0]; }), r.bag, r.secure, r.ex.megaWon ? 1 : 0] : 0,
@@ -9062,7 +9070,7 @@
     if (d.stg && (d.stg[0] !== (r.stage || 0) || d.stg[2] !== MAP.id) && !isDungeon() && !isArena()) guestMap(d.stg[2], d.stg[0], d.stg[1] / 10);
     if (d.ex && isExpe()) { guestExpe(d.ex); if (d.stg) r.stageT0 = d.stg[1] / 10; }
     Net.cps = [];
-    if (d.cp) for (var ci = 0; ci < d.cp.length; ci += 4) Net.cps.push({ k: SPRN[d.cp[ci]], x: d.cp[ci + 1], y: d.cp[ci + 2], face: d.cp[ci + 3] & 1 ? -1 : 1, fly: !!(d.cp[ci + 3] & 2), anim: r.time * 8 + ci, max: d.cp[ci + 3] & 4 ? 1 : 0, life: 0 });
+    if (d.cp) for (var ci = 0; ci < d.cp.length; ci += 4) Net.cps.push({ k: SPRN[d.cp[ci]], x: d.cp[ci + 1], y: d.cp[ci + 2], face: d.cp[ci + 3] & 1 ? -1 : 1, fly: !!(d.cp[ci + 3] & 2), anim: r.time * 8 + ci, max: d.cp[ci + 3] & 4 ? 1 : 0, mini: d.cp[ci + 3] & 8 ? 1 : 0, life: 0 });
     r.portal = d.po ? { x: d.po[0], y: d.po[1], st: d.po[2], p: d.po[3] / 100, gb: d.po[4] } : null;
     r.time = rr[0] / 10; r.kills = rr[1]; r.gold = rr[4]; r.bosses = rr[5]; r.freeze = rr[6] / 10; r.flash = rr[7] / 100;
     if (isDungeon() && d.dg) {
