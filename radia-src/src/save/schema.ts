@@ -233,7 +233,7 @@ export function defaultSave(): SaveData {
     economy: defaultEconomy(),
     cosmetics: { tiles: 'classic', fx: 'classic', owned: ['classic'] },
     decor: [],
-    seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6'],
+    seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7'],
     world: defaultWorld(),
     events: defaultEvents(),
     fun: defaultFun(),
