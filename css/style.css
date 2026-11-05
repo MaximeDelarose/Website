@@ -3062,3 +3062,4 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .dof-cost .px-ic { width: 18px; height: 18px; vertical-align: -4px; }
 @media (max-width: 640px) { .dof { grid-template-columns: minmax(0, 1fr); } .dof-left { justify-self: stretch; } .dof-doll { grid-template-columns: 52px 1fr 52px; } }
 .dof, .dof-spells { text-align: left; }
+.dof-fx li.dof-neg { color: #ff8a7a; }
