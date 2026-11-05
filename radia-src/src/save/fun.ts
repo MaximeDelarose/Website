@@ -148,6 +148,8 @@ export interface FunState {
   notifs: string[];
   /** Fidélité des clients récurrents (identifiants de src/data/customers.ts). */
   customers: Record<string, CustomerState>;
+  /** Téléphone du jeu : fond d'écran choisi (identifiant de phoneWallpapers.ts). */
+  phone: { wallpaper: string };
 }
 
 export const defaultFun = (): FunState => ({
@@ -164,6 +166,7 @@ export const defaultFun = (): FunState => ({
   free: { unlocked: false, at: 0, announced: false },
   apps: { swipe: {}, clips: {}, snap: {}, career: {} },
   customers: {},
+  phone: { wallpaper: 'rose' },
   necklace: defaultNecklace(),
   notifs: [],
 });
@@ -249,6 +252,7 @@ export function sanitizeFun(raw: unknown): FunState {
     const o = (v: unknown): Record<string, unknown> => { try { return isObj(v) && JSON.stringify(v).length < 400_000 ? (JSON.parse(JSON.stringify(v)) as Record<string, unknown>) : {}; } catch { return {}; } };
     d.apps = { swipe: o(raw.apps.swipe), clips: o(raw.apps.clips), snap: o(raw.apps.snap), career: numRec(raw.apps.career) };
   }
+  if (isObj(raw.phone) && typeof raw.phone.wallpaper === 'string') d.phone = { wallpaper: raw.phone.wallpaper.slice(0, 24) };
   d.notifs = strArr(raw.notifs, 300);
   return d;
 }

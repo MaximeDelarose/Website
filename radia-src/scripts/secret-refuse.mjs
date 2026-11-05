@@ -14,6 +14,7 @@ check('appel refusé : invitation conservée (« plus tard »)', st.trig && st.i
 check('message vocal enregistré dans le téléphone', st.msg);
 check('l\'appel ne se redéclenche pas tout seul', await p.evaluate(async () => { window.RADIA.save.data.events.secret.activeMs = 99 * 60000; await new Promise(r => setTimeout(r, 6000)); return !document.querySelector('.call-layer'); }));
 await p.evaluate(() => window.RADIA.phone()); await p.waitForTimeout(500);
+await p.locator('.phh-app[data-app="messages"]').click(); await p.waitForTimeout(500);
 await p.locator('.ph-row').first().click(); await p.waitForTimeout(500);
 await p.screenshot({ path: 'shots/se-6-phone.png' });
 check('carte « Message vocal de A » dans la conversation', (await p.locator('.ph-voice').count()) === 1);

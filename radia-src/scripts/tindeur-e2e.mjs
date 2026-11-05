@@ -46,11 +46,10 @@ async function swipeCard(dir) {
 }
 async function openApp() {
   await p.locator('.title-left .ph-btn').first().click(); await p.waitForSelector('.ph-back'); await wait(400);
-  if (!(await p.locator('.ph-app[aria-label="Tindeur"]').count())) { await p.locator('.ph-tabs [data-tab="messages"]').click(); await wait(400); } // le téléphone s'ouvre sur « Invitations » s'il y en a une en attente
-  await p.locator('.ph-app[aria-label="Tindeur"]').click();
+  await p.locator('.phh-app[data-app="tindeur"]').click(); // le téléphone s'ouvre sur son écran d'accueil ; l'application s'ouvre par-dessus
   await p.waitForSelector('.sw-app'); await wait(500);
 }
-async function closeApp() { await p.locator('.sw-app .sw-head .tdr-x').click(); await wait(500); }
+async function closeApp() { await p.locator('.sw-app .sw-head .tdr-x').click(); await wait(500); if (await p.locator('.phh-quit').count()) { await p.locator('.phh-quit').click(); await wait(500); } } // fermer l'application ramène à l'accueil du téléphone ; on le quitte ensuite
 
 await p.goto(`http://localhost:${PORT}/?debug`);
 await wait(5500); await clean(6);
@@ -179,7 +178,7 @@ await closeApp();
 // un match avec un message non lu, et la sauvegarde cohérente
 const unreadId = await p.evaluate(() => Object.values(window.RADIA.save.data.fun.apps.swipe.convos).find((c) => c.unread)?.pid);
 check('un match a un message non lu', !!unreadId, String(unreadId));
-check('pastille sur l’icône du téléphone du jeu', await (async () => { await p.locator('.title-left .ph-btn').first().click(); await p.waitForSelector('.ph-back'); await wait(400); const d = await p.locator('.ph-app[aria-label="Tindeur"] .ph-dot').count(); await sh('11-pastille'); await p.locator('.ph-back .ph-x').first().click(); await wait(400); return d === 1; })());
+check('pastille sur l’icône du téléphone du jeu', await (async () => { await p.locator('.title-left .ph-btn').first().click(); await p.waitForSelector('.ph-back'); await wait(400); const d = await p.locator('.phh-app[data-app="tindeur"] .phh-badge').count(); await sh('11-pastille'); await p.locator('.phh-quit').click(); await wait(400); return d === 1; })());
 // avance le temps de jeu ACTIF : le vrai planificateur affiche la notification à un moment sûr
 await p.evaluate(() => { window.RADIA.save.data.fun.apps.swipe.clock += 6 * 60_000; });
 await p.mouse.click(5, 5);
@@ -213,20 +212,20 @@ await closeApp();
 // ------------------------------------------------------------------ 7. désinstaller / réinstaller / recharger
 const before = await sw();
 await p.locator('.title-left .ph-btn').first().click(); await p.waitForSelector('.ph-back'); await wait(300);
-await p.locator('.ph-gear').click(); await wait(400);
+await p.locator('.phh-app[data-app="settings"]').click(); await wait(400);
 for (let k = 1; k <= 2; k++) { await p.locator('.ph-set .btn', { hasText: 'Désinstaller' }).click(); await wait(700); check(`désinstallation : essai ${k}/3 refusé, l'appli reste installée`, (await fun()).installed === true && (await p.locator('.ph-aug-say').count()) >= 1); }
 await p.locator('.ph-set .btn', { hasText: 'Désinstaller' }).click(); await wait(900);
 check('désinstallation au 3e essai : installed=false', (await fun()).installed === false);
 await sh('14-desinstalle');
-await p.locator('.ph-back .ph-x').first().click(); await wait(400); await p.locator('.ph-back .ph-x').first().click(); await wait(400);
+await p.locator('.ph-top .ph-x').first().click(); await wait(400); await p.locator('.phh-quit').click(); await wait(400); // réglages → accueil du téléphone → quitter
 await p.evaluate(() => { window.RADIA.save.data.fun.apps.swipe.clock += 60 * 60_000; for (const c of Object.values(window.RADIA.save.data.fun.apps.swipe.convos)) { c.unread = true; c.notified = false; c.pingAt = 1; } });
 await p.mouse.click(5, 5); await wait(10000);
 check('désinstallée : plus aucune notification Tindeur', (await p.locator('.ev-notif.sw-notif').count()) === 0);
 await p.locator('.title-left .ph-btn').first().click(); await p.waitForSelector('.ph-back'); await wait(300);
-check('icône absente quand désinstallée', (await p.locator('.ph-app[aria-label="Tindeur"]').count()) === 0);
-await p.locator('.ph-gear').click(); await wait(300);
+check('icône absente quand désinstallée', (await p.locator('.phh-app[data-app="tindeur"]').count()) === 0);
+await p.locator('.phh-app[data-app="settings"]').click(); await wait(300);
 await p.locator('.ph-set .btn', { hasText: 'Réinstaller' }).click(); await wait(500);
-await p.locator('.ph-back .ph-x').first().click(); await wait(400); await p.locator('.ph-back .ph-x').first().click(); await wait(400);
+await p.locator('.ph-top .ph-x').first().click(); await wait(400); await p.locator('.phh-quit').click(); await wait(400); // réglages → accueil du téléphone → quitter
 const after = await sw();
 check('réinstaller conserve profils, matchs et conversations', JSON.stringify(after.matches) === JSON.stringify(before.matches) && after.stats.likes === before.stats.likes && Object.keys(after.convos).length === Object.keys(before.convos).length);
 

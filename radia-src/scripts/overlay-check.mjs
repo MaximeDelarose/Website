@@ -236,7 +236,7 @@ async function run(H) {
   // ---- téléphone depuis le titre
   await click(page.locator('.title-top .ph-btn'), 1200);
   await check('téléphone ouvert (titre)', { allow: ['.screen', '.title-screen', '.ph-back', '.ph', '.ph-screen', '.ph-root'] });
-  await click(page.locator('.ph-back .ph-x').first(), 900);
+  await click(page.locator('.phh-quit').first(), 900);
   if (await page.locator('.ph-back:not(.leaving)').count()) await page.mouse.click(196, 40);
   await check('téléphone refermé (titre)', { allow: ['.screen', '.title-screen'], extra: mustBeClean('téléphone') });
 
@@ -299,7 +299,7 @@ async function run(H) {
   // téléphone par-dessus l'Endless
   await click(page.locator('.mh-phone'), 1300);
   await check('Endless : téléphone ouvert', { allow: ['.merge-hud', '.en-layer', '.ph-back', '.ph', '.ph-screen', '.ph-root'] });
-  await click(page.locator('.ph-back .ph-x').first(), 900);
+  await click(page.locator('.phh-quit').first(), 900);
   if (await page.locator('.ph-back:not(.leaving)').count()) await page.mouse.click(196, 40);
   await check('Endless : téléphone refermé', { allow: ['.merge-hud', '.en-layer'], extra: mustBeClean('téléphone') });
   // MON MONDE puis retour : on regarde AUSSI juste après le retour (transition)

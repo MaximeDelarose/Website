@@ -46,11 +46,11 @@ await sleep(400);
 // ---------- téléphone : les deux applications y sont
 await page.evaluate(() => window.RADIA.phone());
 await sleep(700);
-const apps = await page.locator('.ph-app').allTextContents();
+const apps = await page.locator('.phh-app').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
 check('téléphone : TikTak et Snapchien dans la bande d’applications', apps.some((t) => /TikTak/.test(t)) && apps.some((t) => /Snapchien/.test(t)), apps.join(' | '));
 await shot('phone');
 // ---------- Clips
-await page.locator('.ph-app', { hasText: 'TikTak' }).click();
+await page.locator('.phh-app[data-app="clips"]').click();
 await sleep(1800);
 check('Clips ouvert', (await page.locator('.clp-layer').count()) === 1);
 check('Clips : ≥ 2 publications dans le fil, canvas dessiné', (await page.locator('.clp-post').count()) >= 2);
@@ -101,7 +101,7 @@ await page.locator('.clp-x').first().click(); await sleep(500);
 
 // ---------- Snap
 await page.evaluate(() => window.RADIA.phone()); await sleep(600);
-await page.locator('.ph-app', { hasText: 'Snapchien' }).click(); await sleep(1200);
+await page.locator('.phh-app[data-app="snap"]').click(); await sleep(1200);
 check('Snap ouvert', (await page.locator('.snp-layer').count()) === 1);
 await shot('snap-home');
 // Snapchien s'ouvre désormais sur « Chat » ; l'appareil photo est dans l'onglet « Souvenirs ».
@@ -189,10 +189,10 @@ await shot('prop-published');
 // badge sur l’icône
 await page.evaluate(() => window.RADIA.apps.emit('fireworks')); await sleep(300);
 await page.evaluate(() => { document.querySelector('.snp-prop')?.remove(); window.RADIA.phone(); }); await sleep(600);
-const dots = await page.locator('.ph-app .ph-dot').allTextContents();
+const dots = await page.locator('.phh-app .phh-badge').allTextContents();
 check('badge de notification sur l’icône Snap', dots.length >= 1, dots.join(','));
 await shot('phone-badge');
-await page.locator('.ph-tab[data-tab="souvenirs"]').click(); await sleep(900);
+await page.locator('.phh-app[data-app="souvenirs"]').click(); await sleep(900);
 check('Photos souvenirs du téléphone contiennent les photos Snap', /(\d+) photos?/.test(await page.locator('.ph-count').first().textContent().catch(() => '')));
 await shot('phone-souvenirs');
 
