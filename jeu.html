@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Survivor">
     <link rel="manifest" href="jeu.webmanifest">
-  <link rel="apple-touch-icon" href="assets/squirrel.png">
+  <link rel="apple-touch-icon" href="assets/pwa/apple-touch-180.png">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <script>
     // liens du Versus : encore sur la version 1 (la coop est dans la 2.0 depuis la 2.7)
@@ -33,6 +33,12 @@
   <link rel="stylesheet" href="css/style.css?v=20261104mb2">
   <link rel="stylesheet" href="css/party.css?v=20261107vs2">
   <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
+  <script>
+    /* appli installable : service worker + invite d'installation (le bouton est dans les Options du jeu) */
+    window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); window.__pwaPrompt = e; });
+    window.addEventListener("appinstalled", function () { window.__pwaPrompt = null; });
+    if ("serviceWorker" in navigator) window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+  </script>
 </head>
 <body data-page="game">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -145,7 +151,7 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v235c";
+      var FALLBACK = "v236a";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
         if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261108pre2" + b);
