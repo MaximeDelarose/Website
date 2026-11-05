@@ -53,14 +53,14 @@ async function play(page, id, onActivity, shots = {}) {
     await page.waitForTimeout(500);
   }
   // fin d'événement comme la joueuse : fenêtre de récompense (Passer / Tout ouvrir / toucher l'objet), puis écran de conclusion
-  for (let k = 0; k < 24; k++) {
-    if (await page.locator('.rw-root .rw-skip').count()) { await page.locator('.rw-root .rw-skip').first().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(500); continue; }
-    if (await page.locator('.rw-root .rw-all').count()) { await page.locator('.rw-root .rw-all').first().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(500); continue; }
-    if (await page.locator('.rw-root .rw-art').count()) { await page.locator('.rw-root .rw-art').first().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(500); continue; }
-    if (await page.locator('.rw-root button').count()) { await page.locator('.rw-root button').last().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(500); continue; }
-    if (await page.locator('.ev-concl .btn').count()) { if (shots.concl && !shots._c) { shots._c = 1; await page.screenshot({ path: shots.concl }); } await page.locator('.ev-concl .btn').first().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(500); continue; }
-    if (!(await page.locator('.ev-layer').count())) break;
-    await page.waitForTimeout(400);
+  const tryClick = async (sel) => { const l = page.locator(sel).first(); if (!(await l.count()) || !(await l.isVisible().catch(() => false))) return false; try { await l.click({ timeout: 1500 }); return true; } catch { return false; } };
+  for (let k = 0; k < 40; k++) {
+    let did = false;
+    for (const sel of ['.rw-root .rw-primary', '.rw-root .rw-art', '.rw-root .rw-skip', '.rw-root .rw-all', '.rw-root button']) { if (await tryClick(sel)) { did = true; break; } }
+    if (did) { await page.waitForTimeout(600); continue; }
+    if (await tryClick('.ev-concl .btn')) { await page.waitForTimeout(600); continue; }
+    if (!(await page.locator('.ev-layer').count()) && !(await page.locator('.rw-root').count())) break;
+    await page.waitForTimeout(500);
   }
   const onScreen = await page.locator('.ev-concl').count();
   await page.waitForTimeout(1200);
