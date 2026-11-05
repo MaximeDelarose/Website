@@ -359,3 +359,28 @@
 @media (max-height: 620px) {
   .booster { height: 46px; }
 }
+
+
+/* ---- Accueil : trois grands accès (chapitres rose · Mon monde or · Casino violet royal) + Succès en petite icône ---- */
+.title-menu .btn.mode.casino { color: #fff; text-shadow: 0 1.5px 0 rgba(70, 40, 120, 0.45); background: linear-gradient(180deg, #e4cbff 0%, #b690ee 52%, #8a5fd0 100%); box-shadow: 0 5px 0 #6b49ad, 0 10px 20px rgba(107, 73, 173, 0.32), inset 0 2px 0 rgba(255, 255, 255, 0.5); }
+.title-menu .btn.mode.casino:active { box-shadow: 0 1px 0 #6b49ad, 0 4px 10px rgba(107, 73, 173, 0.25), inset 0 2px 0 rgba(255, 255, 255, 0.4); }
+.btn.mode.casino .mode-ic { color: #7a4f10; background: radial-gradient(circle at 35% 30%, #fff6d6, #f3c86b 62%, #d9a238); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.75), 0 2px 6px rgba(70, 40, 120, 0.3); }
+.btn.mode.casino::after { content: '✦'; position: absolute; right: 16px; top: 9px; color: #ffe9a8; font-size: 15px; text-shadow: 0 0 8px rgba(255, 233, 168, 0.9); animation: casinoTwinkle 2.6s ease-in-out infinite; pointer-events: none; }
+@keyframes casinoTwinkle { 0%, 100% { opacity: 0.35; transform: scale(0.8) rotate(0deg); } 50% { opacity: 1; transform: scale(1.15) rotate(25deg); } }
+.casino-bubble { color: #6b49ad; box-shadow: 0 0 0 2px #cdb2f3, 0 6px 14px rgba(59, 49, 82, 0.35); }
+.title-menu .row .btn.trophy { flex: 0 0 52px; width: 52px; min-width: 0; padding: 0; justify-content: center; }
+.title-menu .row .btn.trophy svg { color: #c9962f; }
+@media (prefers-reduced-motion: reduce) { .btn.mode.casino::after { animation: none; opacity: 0.8; } }
+
+/* écrans courts (≈ iPhone SE, barre d'adresse) : on compacte les boutons et le logo pour laisser de la place aux personnages */
+@media (max-height: 700px) {
+  .title-screen .title-logo { font-size: clamp(36px, 10.5vw, 50px); }
+  .title-screen .title-sub { font-size: 17px; margin-top: -4px; }
+  .title-menu { gap: 9px; }
+  .title-menu .btn.mode { min-height: 56px; padding: 5px 12px; }
+  .btn.mode .mode-ic { width: 38px; height: 38px; }
+  .btn.mode .mode-tx b { font-size: 17px; }
+  .btn.mode .mode-tx small { font-size: 11.5px; margin-top: 2px; }
+  .title-menu .row .btn, .title-menu > .btn.secondary { min-height: 42px; padding-top: 5px; padding-bottom: 5px; }
+  .title-menu .row .btn.trophy { flex-basis: 48px; width: 48px; }
+}

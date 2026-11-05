@@ -178,6 +178,27 @@ async function showWhatsNewV9(): Promise<void> {
   });
 }
 
+/** Nouveautés v10 : accueil réorganisé, Casino en grand accès, Messages cohérents, nouvelle pose de Radia (une seule fois, pour les parties existantes). Sans spoiler. */
+async function showWhatsNewV10(): Promise<void> {
+  if (save.data.seenUpdates.includes('v10')) return;
+  save.data.seenUpdates.push('v10');
+  save.save();
+  if (!save.hadSave) return;
+  const li = (t: string) => h('li', { style: 'margin:4px 0' }, t);
+  await ui.modal({
+    title: 'Un accueil plus clair ♡',
+    body: h('div', { style: 'text-align:left;font-size:15px' },
+      h('ul', { style: 'padding-left:18px;margin:6px 0' },
+        li('Le Casino a maintenant sa grande place sur l’accueil, à côté du mode histoire et de Mon monde.'),
+        li('Les Succès se trouvent dans la petite icône en forme de trophée, à droite de Souvenirs.'),
+        li('Ton cadeau du jour est toujours en haut de l’écran.'),
+        li('Messages : ce qui s’affiche dans la liste est toujours dans la conversation, à la bonne heure.'),
+        li('Radia a une nouvelle posture plus naturelle.')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, 'Ta partie est intacte ♡')),
+    actions: [{ label: 'Super !', value: 'ok' }],
+  });
+}
+
 /** Nouveautés v3 : le château de Radia (une seule fois, pour les parties existantes). */
 async function showWhatsNewV3(): Promise<void> {
   if (save.data.seenUpdates.includes('v3')) return;
@@ -278,6 +299,7 @@ async function boot(): Promise<void> {
   await showWhatsNewV7();
   await showWhatsNewV8();
   await showWhatsNewV9();
+  await showWhatsNewV10();
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => undefined);
