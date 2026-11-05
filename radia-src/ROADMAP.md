@@ -34,6 +34,13 @@ Tests : `scripts/standalone-e2e.mjs` 12/12 (même build dans les deux modes, par
 
 **Vérifier sur iPhone** : (1) Safari → Paramètres → Diagnostic → noter « Build » ; (2) Paramètres → « Copier ma sauvegarde » ; (3) ouvrir l'icône (app web) → « Importer ma partie » → « Coller » ; (4) Paramètres → Diagnostic dans l'app : « Build » identique, « Mode : APPLICATION INSTALLÉE », partie existante, photos présentes.
 
+## NOTIFICATIONS PUSH QUOTIDIENNES « Une petite pensée par jour » (⬜ À FAIRE APRÈS validation de la PWA sur iPhone)
+- Une seule notification Web Push par jour (Europe/Paris), pas de nuit, activable/désactivable dans les réglages, **jamais sans consentement** (demande après un geste volontaire), « activées » affiché seulement quand l'abonnement est réellement enregistré.
+- Bibliothèque ≥ 50 messages (douas, bonne journée, encouragements, tendresse, romantique, amusant, motivation douce), catégories alternées, pas de « galbi » partout, pas de promesse d'avenir ni de garantie divine. Les 14 exemples fournis sont repris.
+- Toucher la notification : ouvre RADIA + petite carte ; section « Petites pensées ♡ » (historique, conservation).
+- Fiabilité : permission, abonnement expiré/renouvelé, doublons, fuseau, désactivation, sauvegardes intactes.
+- **Prérequis manquant à ce jour** : un envoi programmé côté serveur (le site est statique sur GitHub Pages : il faut un petit service d'envoi, p. ex. fonction planifiée Supabase + clés VAPID gardées côté serveur) et une vérification réelle sur l'iPhone installé (iOS ≥ 16.4, PWA sur l'écran d'accueil). Aucune simulation ne sera présentée comme une vraie notification.
+
 ## PRIORITÉ 2 — Notifications et interface
 
 | Demande | État | Détail |

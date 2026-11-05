@@ -41,7 +41,7 @@ await page.evaluate(() => window.RADIA.apps.reset());
 await page.evaluate(() => document.querySelector('.ph-x')?.click()); await sleep(400);
 const chat = () => page.evaluate(() => window.RADIA.apps.chat.state());
 let s0 = await chat();
-check('4 contacts au départ, aucun message', Object.values(s0.contacts).filter((c) => c.added).length === 4 && Object.values(s0.contacts).every((c) => c.msgs.length === 0));
+check('5 contacts au départ (dont Hugo), aucun message', Object.values(s0.contacts).filter((c) => c.added).length === 5 && Object.values(s0.contacts).every((c) => c.msgs.length === 0));
 // un snap photo (rouge), une vidéo (violette), un message
 await page.evaluate(() => { const A = window.RADIA.apps.chat; A.push('dylan', 'snap', 'mirror'); A.push('kevin', 'video', 'tractor'); A.push('maxime', 'text'); });
 await sleep(300);
