@@ -3621,6 +3621,106 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { TAL_FX: TAL_FX, TAL_XLVL: TAL_XLVL, WRAR: WRAR, WSTAT: WSTAT, VFX: VFX, VFX_EL: VFX_EL, VFX_W: VFX_W, EMOJI_PX: EMOJI_PX, RIG: { raster: rigRaster, E: rgE, C: rgC, P: rgP, mix: mixc }, EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  /* =====================================================================
+     2.32 : déblocages plus durs, succès longue durée, défis
+     ===================================================================== */
+  function setQ(id, desc, check) { var q = QUESTS.filter(function (x) { return x.id === id; })[0]; if (q) { q.desc = desc; q.check = check; } else QUESTS.push({ id: id, desc: desc, check: check }); }
+  function setA(id, name, desc, gold, check) { var a = ACHIEVEMENTS.filter(function (x) { return x.id === id; })[0]; if (a) { if (name) a.name = name; a.desc = desc; a.gold = gold; a.check = check; } else ACHIEVEMENTS.push({ id: id, name: name, desc: desc, gold: gold, check: check }); }
+  function mn(t) { return t + " minute" + (t > 1 ? "s" : ""); }
+  // un seul écureuil au départ : Noisette. Les autres se méritent.
+  CHARACTERS.forEach(function (c) { if (c.id === "capitaine") c.quest = "q2_capitaine"; if (c.id === "planeur") c.quest = "q2_planeur"; });
+  var CHQ = {
+    capitaine: ["Bats un méga boss (n'importe quelle carte).", function (r) { return !!r.megaWon; }],
+    planeur: ["Survis 15 minutes en difficulté Difficile.", function (r) { return r.time >= 900 && r.diffId === "difficile"; }],
+    jumeaux: ["Atteins le niveau 30 dans une partie.", function (r) { return (r.level || 0) >= 30; }],
+    cendrine: ["Bats un méga boss avec 2 écureuils différents.", function (r) { return ((r.tot && r.tot.megaChars) || 0) >= 2; }],
+    druide: ["Bats le méga boss du Marais.", function (r) { return !!r.megaWon && r.mapId === "marais"; }],
+    pataud: ["Tue 2 000 ennemis dans une partie.", function (r) { return (r.kills || 0) >= 2000; }],
+    mage: ["Déclenche 60 réactions élémentaires dans une partie.", function (r) { return (r.reactions || 0) >= 60; }],
+    ninja: ["Survis 10 minutes en subissant 3 coups ou moins.", function (r) { return r.time >= 600 && (r.hits || 0) <= 3; }],
+    trefle: ["Ouvre 8 coffres scellés et atteins le niveau 25 dans la même partie.", function (r) { return (r.chestsOpened || 0) >= 8 && (r.level || 0) >= 25; }],
+    devoreur: ["Atteins le niveau 40 dans une partie.", function (r) { return (r.level || 0) >= 40; }],
+    alchimiste: ["Tue 1 500 ennemis dans une partie en difficulté Difficile.", function (r) { return (r.kills || 0) >= 1500 && r.diffId === "difficile"; }],
+    pillard: ["Récolte 2 000 glands d'or dans une partie.", function (r) { return (r.gold || 0) + (r.goldSpent || 0) >= 2000; }]
+  };
+  var CHN = { capitaine: "le Capitaine", planeur: "le Planeur", jumeaux: "Pip & Pop", cendrine: "Cendrine", druide: "Fougère", pataud: "Pataud", mage: "Myrtille", ninja: "Ombre", trefle: "Trèfle", devoreur: "Croc", alchimiste: "Fiole", pillard: "Rapine" };
+  Object.keys(CHQ).forEach(function (cid) { setQ("q2_" + (cid === "druide" ? "fougere" : cid === "devoreur" ? "croc" : cid === "alchimiste" ? "fiole" : cid === "pillard" ? "rapine" : cid), CHQ[cid][0].replace(/\.$/, "") + " (débloque " + CHN[cid] + ").", CHQ[cid][1]); });
+  // postures : survivre longtemps, puis battre un méga boss avec l'écureuil
+  CHARACTERS.forEach(function (c) {
+    if (["noisette", "capitaine", "planeur"].indexOf(c.id) >= 0 && c.id !== "noisette") return;
+    var q2 = QUESTS.filter(function (q) { return q.id === "p_" + c.id + "2"; })[0], q3 = QUESTS.filter(function (q) { return q.id === "p_" + c.id + "3"; })[0];
+    if (q2 && /^Survis/.test(q2.desc)) { q2.desc = "Survis 12 minutes avec " + c.name + "."; q2.check = function (r) { return r.char === c.id && r.time >= 720; }; }
+    if (q3 && /^Survis/.test(q3.desc)) { q3.desc = "Bats un méga boss avec " + c.name + "."; q3.check = function (r) { return r.char === c.id && !!r.megaWon; }; }
+  });
+  setQ("p_noisette2", "Survis 12 minutes avec Noisette.", function (r) { return r.char === "noisette" && r.time >= 720; });
+  setQ("p_noisette3", "Bats un méga boss avec Noisette.", function (r) { return r.char === "noisette" && !!r.megaWon; });
+  setQ("p_capitaine3", "Bats un méga boss avec le Capitaine.", function (r) { return r.char === "capitaine" && !!r.megaWon; });
+  setQ("p_planeur3", "Bats un méga boss avec le Planeur.", function (r) { return r.char === "planeur" && !!r.megaWon; });
+  setQ("p_capitaine2", "Recrute 40 matelots dans une partie avec le Capitaine.", function (r) { return r.char === "capitaine" && (r.recruits || 0) >= 40; });
+  setQ("p_planeur2", "Fais 120 Voltes dans une partie avec le Planeur.", function (r) { return r.char === "planeur" && (r.voltes || 0) >= 120; });
+  // quêtes génériques : seuils relevés
+  setQ("q_niveau15", "Atteins le niveau 25 dans une partie.", function (r) { return (r.level || 0) >= 25; });
+  setQ("q_survie8", "Survis 15 minutes.", function (r) { return r.time >= 900; });
+  setQ("q_massacre", "Tue 2 500 ennemis dans une partie.", function (r) { return (r.kills || 0) >= 2500; });
+  setQ("q_elites", "Tue 40 élites dans une partie.", function (r) { return (r.elites || 0) >= 40; });
+  setQ("q_coffres", "Ouvre 8 coffres scellés dans une partie.", function (r) { return (r.chestsOpened || 0) >= 8; });
+  setQ("q_sanctuaires", "Active 12 sanctuaires dans une partie.", function (r) { return (r.shrinesUsed || 0) >= 12; });
+  setQ("q_riche", "Ramasse 1 500 glands d'or dans une partie.", function (r) { return (r.gold || 0) + (r.goldSpent || 0) >= 1500; });
+  setQ("q_crits", "Fais 1 500 coups critiques dans une partie.", function (r) { return (r.crits || 0) >= 1500; });
+  setQ("q_esquive", "Esquive 50 coups dans une partie.", function (r) { return (r.dodges || 0) >= 50; });
+  setQ("q7_memoire", "Joue 60 parties.", function (r) { return ((r.tot && r.tot.runs) || 0) >= 60; });
+  setQ("q7_nid", "Tue 25 000 ennemis au total.", function (r) { return ((r.tot && r.tot.kills) || 0) >= 25000; });
+  // cartes et difficulté : on avance en battant les méga boss
+  MAPS.forEach(function (m) { if (m.id === "marais") m.unlock = "ach_colosse"; if (m.id === "automne") m.unlock = "ach_mere"; if (m.id === "nuit") m.unlock = "ach_brasier"; });
+  DIFFICULTIES.difficile.unlock = "ach_colosse";
+  // succès : seuils relevés
+  setA("survie_1", "Une minute de calme", "Survis 3 minutes.", 25, function (r) { return r.time >= 180; });
+  setA("survie_3", "Ça chauffe", "Survis 8 minutes.", 60, function (r) { return r.time >= 480; });
+  setA("survie_5", "Increvable", "Survis 15 minutes.", 120, function (r) { return r.time >= 900; });
+  setA("survie_10", "Gardien de la forêt", "Survis 25 minutes.", 300, function (r) { return r.time >= 1500; });
+  setA("survie_15", "Légende sylvestre", "Survis 40 minutes.", 600, function (r) { return r.time >= 2400; });
+  setA("tueur_100", "Nettoyage de printemps", "Élimine 400 ennemis en une partie.", 30, function (r) { return r.kills >= 400; });
+  setA("tueur_500", "Tempête de glands", "Élimine 1 500 ennemis en une partie.", 90, function (r) { return r.kills >= 1500; });
+  setA("tueur_1500", "Fléau des bestioles", "Élimine 4 000 ennemis en une partie.", 250, function (r) { return r.kills >= 4000; });
+  setA("total_1000", "Mille bestioles", "Élimine 5 000 ennemis au total.", 60, function (r, s) { return s.kills >= 5000; });
+  setA("total_10000", "Dix mille !", "Élimine 100 000 ennemis au total.", 400, function (r, s) { return s.kills >= 100000; });
+  setA("niveau_10", "Bien nourri", "Atteins le niveau 15.", 40, function (r) { return r.level >= 15; });
+  setA("niveau_20", "Écureuil aguerri", "Atteins le niveau 30.", 100, function (r) { return r.level >= 30; });
+  setA("niveau_35", "Maître du terrier", "Atteins le niveau 50.", 250, function (r) { return r.level >= 50; });
+  setA("boss_3", "Tableau de chasse", "Bats 6 boss en une partie.", 350, function (r) { return r.bosses >= 6; });
+  setA("fusion_3", "Grand alchimiste", "Crée 6 fusions en une partie.", 350, function (r) { return r.fusions >= 6; });
+  // succès longue durée : le jeu se finit à 100 % en une centaine d'heures
+  [[2, 30], [5, 80], [10, 150], [25, 300], [50, 600], [100, 1500]].forEach(function (h) { setA("h_" + h[0], h[0] === 100 ? "Vie d'écureuil" : "Habitué du terrier : " + h[0] + " h", "Joue " + h[0] + " heure" + (h[0] > 1 ? "s" : "") + " de partie au total.", h[1], function (r, s) { return (s.hours || 0) >= h[0]; }); });
+  [[1, 100], [3, 250], [6, 500], [10, 800], [25, 2000]].forEach(function (m) { setA("mega_win_" + m[0], m[0] === 1 ? "Chute du colosse" : "Chasseur de géants : " + m[0], "Bats " + m[0] + " méga boss au total.", m[1], function (r, s) { return (s.megaWins || 0) >= m[0]; }); });
+  [[1, 200], [3, 500], [8, 1500]].forEach(function (m) { setA("mega_hard_" + m[0], "Géants difficiles : " + m[0], "Bats " + m[0] + " méga boss en difficulté Difficile.", m[1], function (r, s) { return (s.megaHard || 0) >= m[0]; }); });
+  setA("mega_chars_3", "Équipe de chasse", "Bats un méga boss avec 3 écureuils différents.", 300, function (r, s) { return (s.megaChars || 0) >= 3; });
+  setA("mega_chars_6", "Toute la bande", "Bats un méga boss avec 6 écureuils différents.", 700, function (r, s) { return (s.megaChars || 0) >= 6; });
+  setA("mega_chars_all", "Tous champions", "Bats un méga boss avec chacun des écureuils.", 2000, function (r, s) { return (s.megaChars || 0) >= CHARACTERS.length; });
+  setA("mega_maps_4", "Tour des cartes", "Bats un méga boss sur 4 cartes différentes.", 600, function (r, s) { return (s.megaMaps || 0) >= 4; });
+  setA("survie_hard_20", "Fournaise", "Survis 20 minutes en difficulté Difficile.", 500, function (r) { return r.time >= 1200 && r.diffId === "difficile"; });
+  // coop : Pip & Pop comptent comme un duo, tout est faisable en solo
+  [[1, 30], [10, 200], [50, 800]].forEach(function (c) { setA("duo_" + c[0], c[0] === 1 ? "Premier duo" : "Duo confirmé : " + c[0] + " parties", "Termine " + c[0] + " partie" + (c[0] > 1 ? "s" : "") + " en duo (coop en ligne ou Pip & Pop).", c[1], function (r, s) { return (s.coopRuns || 0) >= c[0]; }); });
+  [[3, 400], [10, 1500]].forEach(function (c) { setA("duo_mega_" + c[0], "Cogneurs en duo : " + c[0], "Bats " + c[0] + " méga boss en duo (coop en ligne ou Pip & Pop).", c[1], function (r, s) { return (s.coopMega || 0) >= c[0]; }); });
+  // défis (voir DEFIS)
+  [[1, 100], [5, 500], [10, 1200]].forEach(function (d) { setA("defi_" + d[0], d[0] === 1 ? "Premier défi" : "Défis relevés : " + d[0], "Réussis " + d[0] + " défi" + (d[0] > 1 ? "s" : "") + ".", d[1], function (r, s) { return (s.defis || 0) >= d[0]; }); });
+  setA("defi_all", "Maître des défis", "Réussis tous les défis.", 3000, function (r, s) { return (s.defis || 0) >= DEFIS.length; });
+  /* défis : une partie imposée (carte, difficulté, écureuil, arme, règles). Récompense : une arme, un titre, des glands d'or… */
+  var DEFIS = [
+    { id: "d_sanslvl", name: "Sans montée de niveau", desc: "Aucune carte, aucun niveau : seulement ton arme de départ.", char: "noisette", arme: "katana", map: "clairiere", diff: "normal", mods: ["nolevel"], goal: { time: 480 }, reward: { quest: "q4_hache", text: "l'arme Hache" } },
+    { id: "d_nu", name: "Écureuil nu", desc: "Ni objet, ni attirail, ni carte d'objet.", char: "noisette", arme: "arc", map: "clairiere", diff: "normal", mods: ["noitems", "nogear"], goal: { time: 600 }, reward: { quest: "q4_arbalete", text: "l'arme Arbalète" } },
+    { id: "d_verre", name: "Verre brisé", desc: "Tes PV sont divisés par trois.", char: "noisette", arme: "baton", map: "marais", diff: "normal", mods: ["verre"], goal: { time: 600 }, reward: { quest: "q4_sarbacane", text: "l'arme Sarbacane" } },
+    { id: "d_statue", name: "La statue", desc: "Tes techniques ne tirent qu'ancré.", char: "capitaine", arme: "marteau", map: "clairiere", diff: "normal", mods: ["immobiles"], goal: { time: 600 }, reward: { quest: "q4_encensoir", text: "l'arme Encensoir" } },
+    { id: "d_marathon", name: "Marathon", desc: "Tes techniques ne tirent qu'en mouvement.", char: "planeur", arme: "fronde", map: "clairiere", diff: "normal", mods: ["course"], goal: { time: 600 }, reward: { quest: "q4_pluie", text: "l'arme Bâton de pluie" } },
+    { id: "d_sansvolte", name: "Sans Volte", desc: "La Volte est désactivée, et tu ne gardes aucun objet.", char: "noisette", arme: "katana", map: "automne", diff: "normal", mods: ["sansvolte", "noitems"], goal: { time: 720 }, reward: { quest: "q4_carillon", text: "l'arme Carillon" } },
+    { id: "d_sansun", name: "Sans un sou", desc: "Aucun gland d'or, un seul choix de carte par niveau.", char: "noisette", arme: "arc", map: "nuit", diff: "normal", mods: ["pauvrete", "unique"], goal: { time: 720 }, reward: { quest: "q4_yoyo", text: "l'arme Yoyo" } },
+    { id: "d_elite", name: "Élite-mania", desc: "Tous les ennemis sont des élites. En difficulté Difficile.", char: "noisette", arme: "marteau", map: "clairiere", diff: "difficile", mods: ["elitemania"], goal: { time: 600 }, reward: { quest: "q4_chakram", text: "l'arme Chakram" } },
+    { id: "d_ruee", name: "Ruée des boss", desc: "Un boss toutes les 60 secondes.", char: "noisette", arme: "hache", map: "marais", diff: "difficile", mods: ["rueeboss"], goal: { time: 480 }, reward: { quest: "q4_canne", text: "l'arme Canne à pêche" } },
+    { id: "d_hardcore", name: "Hardcore", desc: "PV divisés par trois et aucun soin.", char: "noisette", arme: "katana", map: "clairiere", diff: "normal", mods: ["verre", "noheal"], goal: { kills: 800 }, reward: { quest: "q4_grelot", text: "l'arme Grelot" } },
+    { id: "d_colosse", name: "Colosse à mains nues", desc: "Bats le méga boss sans objet ni attirail, avec un seul choix par niveau.", char: "noisette", arme: "baton", map: "clairiere", diff: "normal", mods: ["noitems", "nogear", "unique"], goal: { mega: 1 }, reward: { quest: "q4_lampion", text: "l'arme Lampion" } },
+    { id: "d_pacifique", name: "Niveau 1", desc: "Bats le méga boss sans jamais monter de niveau.", char: "noisette", arme: "katana", map: "clairiere", diff: "normal", mods: ["nolevel"], goal: { mega: 1 }, reward: { quest: "q4_conque", text: "l'arme Conque" } },
+    { id: "d_brouillard", name: "Dans le brouillard", desc: "Vision réduite de moitié et ennemis plus petits et nombreux.", char: "ninja", arme: "chakram", map: "nuit", diff: "difficile", mods: ["brouillard", "petit"], goal: { time: 900 }, reward: { quest: "q4_flute", text: "l'arme Flûte" } },
+    { id: "d_fievre", name: "Fièvre élémentaire", desc: "L'élément des ennemis change chaque minute, ton arme est aussi tirée au hasard.", char: "mage", arme: "pluie", map: "automne", diff: "difficile", mods: ["fievre", "arsenal"], goal: { time: 900 }, reward: { title: "fievre", text: "le titre « Fiévreux »" } }
+  ];
+  return { DEFIS: DEFIS, TAL_FX: TAL_FX, TAL_XLVL: TAL_XLVL, WRAR: WRAR, WSTAT: WSTAT, VFX: VFX, VFX_EL: VFX_EL, VFX_W: VFX_W, EMOJI_PX: EMOJI_PX, RIG: { raster: rigRaster, E: rgE, C: rgC, P: rgP, mix: mixc }, EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
