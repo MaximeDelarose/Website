@@ -3066,3 +3066,6 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .dof-forge-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 3px 0; }
 .dof-fx li.dof-forge-row { color: #8ac6ff; } .dof-fx li.dof-forge-row.dof-neg { color: #ff8a7a; }
 .dof-forge-row .btn { padding: 2px 8px; }
+/* bouton de sortie du plein écran : un libellé, pour ne pas le prendre pour la fermeture d'une fenêtre */
+.fs-exit.fs-exit-txt { width: auto; height: auto; padding: 4px 9px; font-size: .72rem; font-weight: 800; letter-spacing: .02em; border-radius: 6px; background: rgba(43, 23, 9, .6); border-color: rgba(43, 23, 9, .85); opacity: .85; }
+.fs-exit.fs-exit-txt:hover { opacity: 1; background: rgba(43, 23, 9, .9); }

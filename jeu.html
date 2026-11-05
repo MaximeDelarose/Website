@@ -75,12 +75,12 @@
 
       <div class="game-stage" data-game>
         <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Écureuil Survivor"></canvas>
-        <button class="fs-exit" type="button" data-fs-exit aria-label="Quitter le plein écran">✕</button>
+        <button class="fs-exit fs-exit-txt" type="button" data-fs-exit aria-label="Quitter le plein écran">⛶ Réduire</button>
 
         <div class="game-hud" data-hud hidden>
           <button class="hud-btn" type="button" data-mute aria-label="Couper le son">🔊</button>
           <button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button>
-          <button class="hud-btn hud-exit" type="button" data-exit-max aria-label="Quitter le plein écran">✕</button>
+          <button class="hud-btn hud-exit" type="button" data-exit-max aria-label="Quitter le plein écran" title="Quitter le plein écran">⛶</button>
         </div>
         <p class="game-banner" data-banner hidden></p>
         <div class="game-toasts" data-toasts aria-live="polite"></div>
@@ -145,10 +145,10 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v214c";
+      var FALLBACK = "v214d";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
-        if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261107dof4" + b);
+        if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261107dof5" + b);
         ["js/v2/game-data.js", "js/v2/game.js"].forEach(function (src) {
           var s = document.createElement("script"); s.src = src + "?v=" + b; s.async = false; document.body.appendChild(s);
         });
