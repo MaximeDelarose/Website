@@ -21,10 +21,12 @@ const out = await p.evaluate(async () => {
   });
   const snap = (c) => { const g = c.getContext('2d'); return { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }; };
   const setMk = (mk) => { wd.look.acc = mk.acc; wd.face = { ...wd.face, makeup: { ...wd.face.makeup, ...mk.makeup }, mouth: { ...wd.face.mouth, lip: mk.lip ?? wd.face.mouth.lip } }; lk.applySavedFace(); };
-  const base = {}; for (const [k, c] of Object.entries(render())) if (c) base[k] = snap(c);
   const res = {};
-  const variants = { 'rouge à lèvres + fard (objets du dressing)': { acc: ['lp-red', 'es-gold'], makeup: {} }, 'fard + liner + blush (Personnaliser Radia)': { acc: [], makeup: { shadow: '#C9A0D8', liner: 'bold', blush: 0.8 }, lip: '#A8404E' } };
+  // objets du dressing : la tenue n'est plus EXACTEMENT l'illustration (corps dessiné) → la référence est la même tenue, avec un collier neutre, sans maquillage
+  const baseFor = (acc) => { setMk({ acc, makeup: { shadow: '', liner: 'wing', blush: 0.25 }, lip: '#C98A7E' }); const o = {}; for (const [k, c] of Object.entries(render())) if (c) o[k] = snap(c); return o; };
+  const variants = { 'rouge à lèvres + fard (objets du dressing)': { acc: ['ac-pearls', 'lp-red', 'es-gold'], baseAcc: ['ac-pearls'], makeup: {} }, 'fard + liner + blush (Personnaliser Radia)': { acc: [], makeup: { shadow: '#C9A0D8', liner: 'bold', blush: 0.8 }, lip: '#A8404E' } };
   for (const [name, mk] of Object.entries(variants)) {
+    const base = baseFor(mk.baseAcc ?? []);
     setMk(mk);
     const cur = render(); res[name] = {};
     for (const [k, c] of Object.entries(cur)) {
@@ -39,6 +41,7 @@ const out = await p.evaluate(async () => {
     setMk({ acc: [], makeup: { shadow: '', liner: 'wing', blush: 0.25 }, lip: '#C98A7E' });
   }
   // retour au réglage d'origine : rendu identique à la base (aucun reste de maquillage)
+  const base = baseFor([]); setMk({ acc: [], makeup: { shadow: 'x'.slice(1), liner: 'wing', blush: 0.25 }, lip: '#C98A7E' });
   const back = render(); res.retour = {};
   for (const [k, c] of Object.entries(back)) { if (!c) continue; const S = base[k], V = snap(c); let n = 0; for (let i = 0; i < S.d.length; i++) if (S.d[i] !== V.d[i]) n++; res.retour[k] = n; }
   return res;
