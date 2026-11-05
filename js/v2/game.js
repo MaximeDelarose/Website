@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.46.0";
+  var VERSION = "2.47.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -3264,10 +3264,14 @@
     if (!run || !r) return;
     S.quests = S.quests || {};
     run.tot = { voltes: (S.stats.voltes || 0) + (run.committed ? 0 : (run.voltes || 0)), extracts: (S.stats.extracts || 0) + (!run.settled && run.extracted ? 1 : 0), trials: S.stats.trials || 0, revives: S.stats.revives || 0, fusions: (S.stats.fusions || 0) + (run.committed ? 0 : run.fusions || 0), kills: (S.stats.kills || 0) + (run.committed ? 0 : run.kills || 0), runs: S.stats.runs || 0, sacrifices: S.stats.sacrifices || 0, elites: (S.stats.elites || 0) + (run.committed ? 0 : run.elites || 0), events: S.stats.events || 0, fullChar: D.CHARACTERS.filter(function (c) { return posturesOf(c.id).length && posturesOf(c.id).every(postureOk); }).length, coopMega: S.stats.coopMega || 0, megaChars: Object.keys(S.stats.megaChars || {}).length, nights: (S.stats.nights || 0) + (!run.settled && run.nightDone ? 1 : 0), evoC: S.stats.evoC || 0, seen: Object.keys(S.stats.seenI || {}).length };
-    D.QUESTS.forEach(function (q) {
+    D.QUESTS.slice().sort(function (a, b) { return (/^q2_/.test(b.id) ? 1 : 0) - (/^q2_/.test(a.id) ? 1 : 0); }).forEach(function (q) {   // les écureuils d'abord
       if (S.quests[q.id]) return;
       var ok = false; try { ok = q.check(run); } catch (e) {}
       if (!ok) return;
+      // 2.47 : pas plus d'un écureuil et de 3 quêtes débloqués par partie (le reste se fait à la prochaine)
+      var isCh = /^q2_/.test(q.id); run.qN = run.qN || 0;
+      if (run.qN >= 3 || (isCh && run.chN >= 1)) { run.capped = true; return; }
+      run.qN++; if (isCh) run.chN = (run.chN || 0) + 1;
       S.quests[q.id] = Date.now(); save();
       questToast(questReward(q.id));
     });
@@ -3303,6 +3307,8 @@
       var ok = false;
       try { ok = a.check(run || EMPTY_RUN, t); } catch (e) {}
       if (!ok) return;
+      if (run && (run.achN || 0) >= 5) { run.capped = true; return; }       // 2.47 : 5 succès au plus par partie
+      if (run) run.achN = (run.achN || 0) + 1;
       S.ach[a.id] = Date.now();
       earnGold(a.gold);
       got.push(a);
@@ -10077,10 +10083,11 @@
     S.stats.bestTime = Math.max(S.stats.bestTime, Math.floor(r.time));
     save();
     checkAchievements(r);
-    var achHtml = r.newAch.length ? '<div class="over-ach"><h3>Succès débloqués</h3><ul>' + r.newAch.map(function (a) {
+    var capHtml = r.capped ? '<p class="game-small">⏳ D\'autres succès ou quêtes étaient à portée : une partie n\'en débloque que 5 succès, 3 quêtes et 1 écureuil. Rejoue pour les obtenir.</p>' : "";
+    var achHtml = capHtml + (r.newAch.length ? '<div class="over-ach"><h3>Succès débloqués</h3><ul>' + r.newAch.map(function (a) {
       var un = unlocksOf(a.id);
       return "<li>🏆 <strong>" + esc(a.name) + "</strong> +" + a.gold + " " + goldIc() + (un.length ? "<span>Débloque " + esc(un.join(", ")) + "</span>" : "") + "</li>";
-    }).join("") + "</ul></div>" : "";
+    }).join("") + "</ul></div>" : "");
     var exG = expeSettle();
     var runG = grantRun();
     var lbOk = window.Leaderboard && Leaderboard.configured() && !r.coop && !r.cauch && !isExpe() && !r.mods;
@@ -10440,6 +10447,7 @@
     rage: function (min) { r.stageT0 = r.time - RAGE.start - min * 60; return { rage: rageMin(), dmg: rageDmg(), spd: rageSpd() }; },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
+    setRun: function (o) { Object.assign(r, o); return 1; },
     heavy: function (n) { for (var i = 0; i < n; i++) { var e = spawn(["slug", "beetle", "ant", "moth"][i % 4], Math.random() * TAU, 20 + Math.random() * 90); if (e) { e.hp = e.maxHp = 1e12; } } return enemies.length; },
     bench: function (n) { var t0 = performance.now(), i; for (i = 0; i < n; i++) { if (state === "levelup") { pending = 0; picking = false; state = "play"; hideCard(); } if (state !== "play") break; update(1 / 60); } var t1 = performance.now(); for (i = 0; i < 20; i++) draw(); var t2 = performance.now(); return { upd: +((t1 - t0) / Math.max(1, i0(n))).toFixed(2), drw: +((t2 - t1) / 20).toFixed(2), enemies: enemies.length, crew: me.crew ? me.crew.length : 0, projs: projs.length, t: Math.round(r.time), state: state }; function i0(k) { return k; } },
     ev: function (id) { r.ev = null; startEvent(D.EVENTS.filter(function (e) { return e.id === id; })[0]); return r.ev && [r.ev.id, enemies.length, gems.filter(function (g) { return g.kind === "chest"; }).length]; }, evInfo: function () { return r.ev ? { id: r.ev.id, t: Math.round(r.ev.t), sprung: !!r.ev.sprung, won: !!r.ev.won } : null; }, setTime: function (t) { r.time = t; return t; }, champs: function () { return [r.champs, enemies.filter(function (e) { return e.champion; }).length]; }, tp: function (x, y) { me.x = x; me.y = y; },
