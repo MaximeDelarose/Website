@@ -7,8 +7,9 @@ import { mergeReward, orderGain, MATERIAL_OF } from '../src/game/world/fusionRew
 import { defaultFun } from '../src/save/fun';
 import { drawItem } from '../src/game/art/items';
 import { drawGenerator, type GenKind } from '../src/game/art/generators';
-import { generatorInfo } from '../src/game/endless/generators';
+import { generatorInfo, GEN_MAT } from '../src/game/endless/generators';
 import { host, newSim } from './endless-helpers';
+import { customerById } from '../src/data/customers';
 
 const NEW: CollectionId[] = ['pastry', 'bag', 'gift'];
 
@@ -33,7 +34,7 @@ function fakeCtx() {
 describe('nouvelles chaînes : Pâtisseries, Sacs, Cadeaux', () => {
   beforeEach(() => resetEndless());
   it('trois nouvelles collections de 8 niveaux, noms et textes romantiques / drôles, couleurs valides', () => {
-    expect(COLLECTION_IDS.slice(-3)).toEqual(NEW);
+    expect(COLLECTION_IDS.slice(-4, -1)).toEqual(NEW); // la chaîne « savons » (PIMBÊCHE) vient ensuite
     for (const c of NEW) {
       const d = COLLECTIONS[c];
       expect(collMax(c)).toBe(8);
@@ -64,8 +65,8 @@ describe('nouvelles chaînes : Pâtisseries, Sacs, Cadeaux', () => {
       expect(info.table.reduce((a, r) => a + r.pct, 0)).toBeGreaterThan(99);
     });
   });
-  it('album : 120 objets au total (4×10 + 10×8), les nouvelles chaînes comptent et récompensent', () => {
-    expect(albumTotal()).toBe(120);
+  it('album : 128 objets au total (4×10 + 11×8), les nouvelles chaînes comptent et récompensent', () => {
+    expect(albumTotal()).toBe(128);
     expect(allItems().filter((i) => NEW.includes(i.c as CollectionId)).length).toBe(24);
     expect(new Set(allItems().map(itemKey)).size).toBe(allItems().length);
     const fun = defaultFun();
@@ -73,9 +74,9 @@ describe('nouvelles chaînes : Pâtisseries, Sacs, Cadeaux', () => {
     for (let l = 1; l <= 8; l++) if (discover(fun, { c: 'bag', l }).completed === 'bag') completed++;
     expect(completed).toBe(1);
     const p = albumProgress(fun);
-    expect(p.total).toBe(120);
+    expect(p.total).toBe(128);
     expect(p.perColl.find((x) => x.coll === 'bag')).toMatchObject({ found: 8, max: 8, complete: true });
-    expect(p.perColl.length).toBe(14);
+    expect(p.perColl.length).toBe(15);
   });
   it('fusion : 7 fusions mènent au niveau 8, pas au-delà', () => {
     for (const c of NEW) {
@@ -137,7 +138,7 @@ describe('déblocage progressif selon le palier et les lieux ouverts', () => {
   it('les nouvelles collections débloquées deviennent actives (≤ 6 générateurs), les plus anciennes se reposent', () => {
     const f = defaultFun();
     f.endless2.counters.orders = 9999;
-    expect(unlockedColls(f).length).toBe(14);
+    expect(unlockedColls(f).length).toBe(15);
     const act = activeColls(f);
     expect(act.length).toBe(ENDLESS_CFG.unlock.maxBoardGens);
     expect(act).toEqual(expect.arrayContaining(NEW));
@@ -184,5 +185,44 @@ describe('art vectoriel des nouvelles chaînes', () => {
       expect(n(8)).toBeGreaterThan(n(1));
       expect(n(7)).toBeGreaterThan(n(2));
     }
+  });
+});
+
+describe('chaîne « Savons PIMBÊCHE »', () => {
+  const SOAPS = ['Base de savon', 'Savon brut', 'Savon moulé', 'Savon parfumé', 'Savon décoré', 'Savon artisanal Pimbêche', 'Coffret de savons', 'Coffret Pimbêche de luxe'];
+  it('8 niveaux aux noms demandés, avec un texte chacun et le générateur « Atelier Pimbêche »', () => {
+    expect(COLLECTIONS.soap.items).toEqual(SOAPS);
+    expect(COLLECTIONS.soap.blurbs.length).toBe(8);
+    expect(new Set(COLLECTIONS.soap.blurbs).size).toBe(8);
+    expect(GENERATORS[15].coll).toBe('soap');
+    expect(GENERATORS[15].name).toBe('Atelier Pimbêche');
+  });
+  it('fusion : 7 fusions mènent au niveau 8 (coffret de luxe), pas au-delà', () => {
+    for (let l = 1; l < 8; l++) expect(canMerge({ c: 'soap', l }, { c: 'soap', l })).toBe(true);
+    expect(canMerge({ c: 'soap', l: 8 }, { c: 'soap', l: 8 })).toBe(false);
+    expect(canMerge({ c: 'soap', l: 3 }, { c: 'flowers', l: 3 })).toBe(false);
+  });
+  it('déblocage progressif : jamais au départ ; par la boutique de fleurs rouverte, ou plus tard par le palier', () => {
+    const f = defaultFun();
+    expect(unlockedColls(f)).not.toContain('soap');
+    expect(ENDLESS_CFG.unlock.byPlace.soap).toMatchObject({ place: 'flowers' });
+    f.endless2.counters.orders = 9999;
+    expect(unlockedColls(f)).toContain('soap');
+  });
+  it('commandes : une fois débloqués, des savons sont demandés ; jamais avant ; le client aime (le plus souvent) les savons', () => {
+    const before = defaultFun(); const rng = new Rng(77);
+    for (let k = 0; k < 400; k++) for (const t of ENDLESS_CFG.orders.tiers) for (const r of makeOrder(before, rng, t, k).items) expect(r.c).not.toBe('soap');
+    const f = defaultFun(); f.endless2.counters.orders = 9999;
+    let asked = 0; let liked = 0; const customers = new Set<string>();
+    for (let k = 0; k < 600; k++) for (const t of ENDLESS_CFG.orders.tiers) {
+      const o = makeOrder(f, rng, t, k);
+      if (o.items.some((r) => r.c === 'soap')) { asked++; customers.add(o.customer!); if (customerById(o.customer!)?.likes.includes('soap')) liked++; }
+    }
+    expect(asked).toBeGreaterThan(30);
+    expect(liked / asked).toBeGreaterThan(0.4);
+    expect(customers.size).toBeGreaterThanOrEqual(8); // variété de clients
+  });
+  it('matériau lié : les savons rapportent des fleurs (parfums)', () => {
+    expect(GEN_MAT.soap).toBe('flowers');
   });
 });

@@ -32,7 +32,7 @@ export const ENDLESS_CFG = {
    * et son générateur apparaissent.
    */
   unlock: {
-    at: { flowers: 0, love: 0, paris: 5, chess: 12, rare: 20, choc: 30, jewel: 42, cloth: 56, perfume: 72, acc: 92, castle: 115, pastry: 135, bag: 158, gift: 182 } as Record<CollectionId, number>,
+    at: { flowers: 0, love: 0, paris: 5, chess: 12, rare: 20, choc: 30, jewel: 42, cloth: 56, perfume: 72, acc: 92, castle: 115, pastry: 135, bag: 158, gift: 182, soap: 205 } as Record<CollectionId, number>,
     /**
      * Déblocage ANTICIPÉ par un lieu rénové : la collection arrive dès que le lieu atteint l'étape voulue (0 = à rénover … 4 = ouvert)
      * ET que `minPoints` points de palier sont atteints. Sans le lieu, le seuil `at` s'applique : jamais de blocage.
@@ -41,6 +41,7 @@ export const ENDLESS_CFG = {
       pastry: { place: 'tea', stage: 3, minPoints: 28 },
       bag: { place: 'boutique', stage: 3, minPoints: 40 },
       gift: { place: 'hotel', stage: 2, minPoints: 55 },
+      soap: { place: 'flowers', stage: 1, minPoints: 18 }, // la boutique de fleurs commence à rouvrir : les savons parfumés arrivent
     } as Partial<Record<CollectionId, { place: string; stage: number; minPoints: number }>>,
     chainBonus: 3,
     /** Générateurs posés en même temps sur le plateau (les plus anciens se « reposent » au-delà). */

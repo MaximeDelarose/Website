@@ -142,12 +142,12 @@ describe('affichage', () => {
 });
 
 describe('album', () => {
-  it('14 collections, collMax, total 120', () => {
+  it('15 collections, collMax, total 128', () => {
     const v = albumCollViews(fun);
-    expect(v.length).toBe(14);
+    expect(v.length).toBe(15);
     expect(v.map((x) => x.max)).toEqual(COLLECTION_IDS.map((c) => collMax(c)));
     expect(v.reduce((a, x) => a + x.max, 0)).toBe(albumTotal());
-    expect(albumTotal()).toBe(120); // 4×10 + 10×8
+    expect(albumTotal()).toBe(128); // 4×10 + 11×8
     expect(v.every((x) => x.found === 0)).toBe(true);
   });
   it('un objet découvert reste enregistré et la chaîne complète donne une récompense à prendre ou déjà versée', () => {
