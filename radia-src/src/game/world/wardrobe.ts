@@ -295,6 +295,23 @@ export function equipFavorite(slot: number): Result {
   return { ok: true };
 }
 
+/**
+ * « Tenue illustrée » : remet en un geste la tenue de l'illustration peinte de Radia (sweat noir, pantalon large,
+ * baskets blanches, sac bandoulière, cheveux longs ; couronne dorée si elle est possédée). Uniquement des pièces possédées
+ * (celles de départ) : rien n'est acheté ni retiré de la garde-robe.
+ */
+export function equipIllustrated(): Result {
+  ensureWardrobe();
+  const w = state();
+  const owned = ownedSet(w);
+  const hair = w.look.hair === 'hair-loose' || w.look.hair === 'hair-wavy' ? w.look.hair : 'hair-wavy';
+  const crown = owned.has('cr-gold') ? 'cr-gold' : null;
+  w.look = repairLook({ hair, top: 'top-hoodie-black', bottom: 'bot-wide-black', dress: null, jacket: null, shoes: 'sh-sneakers-white', bag: 'bg-crossbody-black', acc: [], crown }, owned);
+  save.save();
+  stat('world.wardrobe.equipped');
+  return { ok: true };
+}
+
 export function renameFavorite(slot: number, name: string): Result {
   if (!okSlot(slot)) return { ok: false, reason: 'bad-slot' };
   ensureWardrobe();

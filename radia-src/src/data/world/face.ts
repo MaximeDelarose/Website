@@ -82,19 +82,29 @@ export function classicFace(): FaceCustom {
  * pleins de volume, ombrages affinés. Tous les réglages restent modifiables dans « Personnaliser Radia ».
  */
 export function defaultFace(): FaceCustom {
+  // Base calquée sur l'illustration peinte de Radia (même artiste qu'Auguste) : peau dorée chaude, yeux bruns en amande à eye-liner relevé,
+  // sourcils fins naturels, lèvres nude, cheveux bruns chauds ; yeux à taille et écartement mesurés (plus d'effet « lunettes »).
   return {
     skin: { tone: 3, hue: 0, light: 0.02, sat: -0.05, warm: 0.1 },
     shape: 'oval',
-    eyes: { shape: 'almond', size: -0.3, spacing: 0.6, iris: '#4A2E1E', irisSize: 0.22 },
-    brows: { shape: 'arched', thick: 0.25, curve: 0.2, color: '#2A1A14' },
+    eyes: { shape: 'almond', size: -0.5, spacing: 0.45, iris: '#4A2E1E', irisSize: 0.15 },
+    brows: { shape: 'soft', thick: -0.15, curve: 0.1, color: '#2A1A14' },
     nose: { shape: 'fine', size: -0.1, width: -0.2, length: 0 },
-    mouth: { shape: 'full', fullness: 0.3, width: 0.1, lip: '#B8707A' },
-    hairColor: '#4B2E1E',
+    mouth: { shape: 'full', fullness: 0.2, width: 0.05, lip: '#C98A7E' },
+    hairColor: '#5A3722',
     hairVolume: 0.35,
     refined: true,
     veil: { style: 'none', color: '#E8B8C8', elegant: false },
-    makeup: { liner: 'wing', shadow: '', blush: 0.2, blushColor: '#E8A094', mascara: 0.1, lipstick: true, intensity: 0 },
+    makeup: { liner: 'wing', shadow: '', blush: 0.25, blushColor: '#E8A094', mascara: 0.05, lipstick: true, intensity: 0 },
   };
+}
+
+/** Anciennes bases (versions précédentes de ce build). Servent UNIQUEMENT à reconnaître un visage jamais retouché. */
+export function previousDefaultFaces(): FaceCustom[] {
+  const base = { ...defaultFace() };
+  const v1: FaceCustom = { ...base, skin: { tone: 3, hue: 0, light: 0.02, sat: -0.05, warm: 0.1 }, eyes: { shape: 'almond', size: 0.06, spacing: -0.1, iris: '#4A2E1E', irisSize: 0.22 }, brows: { shape: 'arched', thick: 0.25, curve: 0.2, color: '#2A1A14' }, mouth: { shape: 'full', fullness: 0.3, width: 0.1, lip: '#B8707A' }, hairColor: '#4B2E1E', makeup: { liner: 'wing', shadow: '', blush: 0.2, blushColor: '#E8A094', mascara: 0.1, lipstick: true, intensity: 0 } };
+  const v2: FaceCustom = { ...v1, eyes: { ...v1.eyes, size: -0.3, spacing: 0.6 } };
+  return [v1, v2];
 }
 
 // ------------------------------------------------------------------ nettoyage tolérant (une sauvegarde ancienne ou corrompue ne casse rien)
@@ -130,10 +140,8 @@ export function sanitizeFace(raw: unknown): FaceCustom {
   };
 }
 
-/** Ancien réglage de base des yeux (trop larges et rapprochés : effet « lunettes »). Sert uniquement à reconnaître un visage jamais retouché. */
-export function previousDefaultFace(): FaceCustom { const f = defaultFace(); f.eyes = { ...f.eyes, size: 0.06, spacing: -0.1 }; return f; }
-/** Visage jamais personnalisé (égal à l'ancien réglage de base) → reçoit le nouveau réglage ; un visage retouché par la joueuse n'est JAMAIS remplacé. */
-export function upgradeUntouchedFace(f: FaceCustom): FaceCustom { return JSON.stringify(f) === JSON.stringify(previousDefaultFace()) ? defaultFace() : f; }
+/** Visage jamais personnalisé (égal à une ancienne base) → reçoit la base actuelle ; un visage retouché par la joueuse n'est JAMAIS remplacé. */
+export function upgradeUntouchedFace(f: FaceCustom): FaceCustom { const k = JSON.stringify(f); return previousDefaultFaces().some((p) => JSON.stringify(p) === k) ? defaultFace() : f; }
 
 /** Clé de cache (le dessin de l'avatar est mis en cache : toute modification de visage doit changer la clé). */
 export const faceKey = (f: FaceCustom): string => JSON.stringify(f);

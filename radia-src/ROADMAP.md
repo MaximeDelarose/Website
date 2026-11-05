@@ -18,6 +18,21 @@ Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commenc
 3. ✅ **Énergie** — plafond ABSOLU de 100 (`addEnergy` renvoie le gain réel) ; ancien surplus (ex. 644) converti en **réserve** (`economy.reserve`, utilisée seulement à 0) : aucune sauvegarde ne perd rien ; recharge offerte 38→30 et non consommée si c'est plein ; achats « remplir à 100 » refusés sans dépenser quand c'est plein. Tests : `economy` 17, `energy-cap-e2e` 11/11.
 4. ✅/⚠️ **Vraies notifications iPhone** — côté application + serveur FAITS et déployés : service worker (push, clic, cache des pensées), `core/push.ts`, Réglages « Petite pensée du jour ♡ » (consentement après un toucher, « Activées » seulement si le serveur a confirmé, désactiver, tester maintenant), carte + « Petites pensées ♡ ». Serveur (projet Supabase du site) : tables verrouillées, fonction Edge `radia-push` (chiffrement RFC 8291/VAPID testé par aller-retour), `pg_cron` horaire, 56 messages, 1/jour/appareil, 9 h locale, jamais la nuit. Tests : `push-webpush` 9, `push-logic` 12, `push-e2e` 25/25 (API simulées). ⚠️ À VÉRIFIER SUR L'IPHONE RÉEL : app installée sur l'écran d'accueil (iOS ≥ 16.4) → Réglages → Activer → autoriser → « Tester maintenant » : la notification doit arriver en quelques secondes. Non vérifiable ici : la réception réelle par Apple.
 
+## SÉRIE « DA COMMUNE RADIA × AUGUSTE » (dernière demande — refonte artistique)
+- DIAGNOSTIC : sur l'iPhone (avec le lien secret), Auguste est une ILLUSTRATION PEINTE du pack chiffré (`char-auguste`) alors que Radia était
+  dessinée en vectoriel par le dressing : deux techniques → « deux univers ». Les illustrations peintes de Radia existaient (`char-radia`,
+  `char-radia-nc`, `bust-radia`, `bust-radia-nc`) mais n'étaient plus utilisées depuis le dressing.
+- ✅ BUG DE BUILD : `char-radia-nc.bin` et `bust-radia-nc.bin` étaient SUPPRIMÉS à chaque build (`vite.config.ts` : « -radia-nc » ressemblait
+  à une empreinte de 8 caractères). Les fichiers privés `assets/p/` sont exclus de cette règle.
+- ✅ Radia PEINTE partout où elle porte la tenue de l'illustration (sweat noir, pantalon large, baskets blanches, sac bandoulière, cheveux
+  longs, sans autre accessoire, visage non personnalisé ; avec / sans couronne dorée) : accueil, MON MONDE, dressing, événements, photos
+  souvenirs, casino, fin, dialogues (buste), médaillons. Règle pure testée : `game/world/paintedLook.ts` (`tests/painted-look.test.ts`).
+- ✅ Bouton « Tenue illustrée ♡ » dans le dressing (`W.equipIllustrated`) : remet en un geste cette tenue avec les pièces possédées.
+- ✅ Vectoriel (autres tenues) : base de visage calquée sur l'illustration (peau dorée, yeux bruns en amande, eye-liner relevé, lèvres nude).
+- 🟡 PHASE B — illustrations en calques pour TOUTES les tenues : cahier des charges `docs/ASSETS_PERSONNAGES.md` (gabarit 720 × 1800,
+  calques, identifiants, intégration avec repli sur le dessin). En attente des fichiers d'illustration (pas d'outil de génération ici).
+- ⚠️ À vérifier sur iPhone : la tenue illustrée (dressing → « Tenue illustrée »), puis accueil / MON MONDE / un événement.
+
 ## SÉRIE « RADIA : REFONTE VISUELLE + CORRECTIF DE SUPERPOSITION »
 1. ✅ **Bug « personnage dédoublé » (capture iPhone)** — CAUSE RÉELLE (introduite par la refonte précédente, pas par les sauvegardes ni d'anciens sprites) : la posture en S de `drawAvatar` (`game/art/world/avatar.ts`) dessinait l'avatar ENTIER pivoté autour des pieds, puis le haut du corps une 2e fois pivoté autrement → silhouette fantôme derrière l'épaule, tête/cheveux doublés. Correctif : la moitié basse est découpée SOUS la taille (avec 9 unités de recouvrement pour éviter toute fente claire à la taille).
 2. ✅ **Visage « à lunettes »** — CAUSE : yeux trop larges (48) et trop rapprochés (écartement 33) → l'eye-liner rejoignait l'arête du nez. Nouveau réglage de base (`defaultFace()` : yeux un peu plus petits, plus écartés). Migration SANS PERTE (`upgradeUntouchedFace`) : seul un visage strictement égal à l'ancien réglage de base (jamais retouché) est mis à jour ; tout visage personnalisé et les 6 visages enregistrés sont intacts. Test : `tests/face-upgrade.test.ts`.

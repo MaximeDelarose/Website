@@ -1,4 +1,8 @@
 import '../../styles/world-dressing.css';
+import { isDefaultFace } from '../../../data/world/face';
+import { getFaceCustom } from '../../../game/art/characters';
+import { hasPhotos } from '../../../core/photos';
+import { paintedImageFor, drawPainted, warmRadia } from '../../../game/art/world/radiaNow';
 /**
  * « Le dressing de Radia ♡ » : avatar en couches, essayage au toucher, achat
  * (pièces + tissus ou diamants), looks favoris. Règles : src/game/world/wardrobe.ts.
@@ -157,9 +161,13 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
       if (cvs.width !== wpx) { cvs.width = wpx; cvs.height = hpx; }
       const ctx = cvs.getContext('2d')!;
       ctx.clearRect(0, 0, wpx, hpx);
-      ctx.drawImage(avatarCanvas(shown(), wpx, hpx, { expr, blink, arms: 'down', shine: curShine() }), 0, 0);
+      // tenue de l'illustration (et lien secret) : Radia peinte, comme sur l'accueil ; toute autre tenue : dessin qui suit l'essayage
+      const pim = paintedImageFor(shown());
+      if (pim) drawPainted(ctx, pim, wpx, hpx);
+      else ctx.drawImage(avatarCanvas(shown(), wpx, hpx, { expr, blink, arms: 'down', shine: curShine() }), 0, 0);
     };
     const paint = () => { if (Date.now() >= heldUntil) paintNow(); };
+    void warmRadia().then(() => paint()); // les illustrations arrivent après le premier dessin : on repeint une fois prêtes
 
     /** Petit tour sur soi-même (bouton « Tourner », équipement) : le nouveau look apparaît à mi-chemin. */
     const twirl = (e: Expr = 'love') => {
@@ -205,7 +213,17 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
     // ---------------------------------------------------------- colonnes de la scène
     const turnBtn = h('button.dr2-mini', { 'aria-label': 'Faire tourner Radia', on: { click: tap(() => { audio.play('whoosh'); twirl('smile'); }) } }, icon('refresh', 18), h('small', 'Tourner'));
     const cmpBtn = h('button.dr2-mini.dr2-cmp', { 'aria-label': 'Avant / Après : comparer avec ma tenue actuelle', 'aria-pressed': 'false', on: { click: tap(() => compare(), { sound: false }) } }, icon('eye', 18), h('small', 'Avant / Après'));
-    const left = h('div.dr2-col.left', turnBtn, cmpBtn);
+    // tenue de l'illustration peinte (même artiste qu'Auguste) en un geste
+    const illuBtn = h('button.dr2-mini.dr2-illu', { 'aria-label': 'Tenue illustrée : remettre la tenue de l’illustration de Radia', on: { click: tap(() => {
+      tryon.clear();
+      const r = W.equipIllustrated();
+      if (!r.ok) return;
+      audio.play('heart'); haptic('select'); twirl('love');
+      const faceOk = isDefaultFace(getFaceCustom());
+      ui.toast({ title: 'Tenue illustrée ♡', sub: !hasPhotos() ? 'Avec le lien secret, Radia apparaît en illustration, comme Auguste' : faceOk ? 'Radia apparaît en illustration, comme Auguste' : 'Visage personnalisé : Radia reste dessinée avec tes réglages', icon: 'heart' });
+      renderAll();
+    }) } }, icon('heart', 18), h('small', 'Tenue illustrée'));
+    const left = h('div.dr2-col.left', turnBtn, cmpBtn, illuBtn);
     const slotBtns = [0, 1, 2].map((i) => {
       const b = h('button.dr2-slot', { 'aria-label': `Mon look ${i + 1}` });
       b.addEventListener('click', tap(() => void favoriteSheet(i)));

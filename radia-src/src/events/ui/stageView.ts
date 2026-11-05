@@ -1,11 +1,9 @@
 /** Vue « décor + personnages » pour les trajets et les dialogues d'un événement (animée, légère). */
 import { h } from '../../ui/dom';
 import { reducedFx } from '../../core/app';
-import { avatarCanvas } from '../../game/art/world/avatar';
 import { shineAt } from '../../game/art/world/wristShine';
-import { currentLook } from '../../game/world/look';
 import { drawAugusteFull } from '../../game/art/characters';
-import { drawAugusteCutout } from '../../game/art/world/radiaNow';
+import { drawAugusteCutout, radiaNowCanvas } from '../../game/art/world/radiaNow';
 import { drawKid } from '../../game/art/world/kids';
 import { makeCanvas } from '../../game/art/kit';
 import type { PlaceId } from '../types';
@@ -71,7 +69,7 @@ export function mountStage(host: HTMLElement, place: PlaceId, opts: StageOpts, a
     const baseY = hh - 8;
     const twoX = o.auguste ? [w * 0.36, w * 0.64] : [w * 0.5];
     const rs = Math.round(ph * d) / d;
-    const radia = avatarCanvas(currentLook(), Math.round(pw * 2.4 * d / 2), Math.round(rs * d), { expr: 'smile', step: stepFor(0), arms: 'down', shine: shineAt(t, reducedFx()) });
+    const radia = radiaNowCanvas(Math.round(pw * 2.4 * d / 2), Math.round(rs * d), { expr: 'smile', step: stepFor(0), arms: 'down', shine: shineAt(t, reducedFx()) });
     g.drawImage(radia, twoX[0] - pw * 1.2 / 1, baseY - rs + bob, pw * 2.4 / 2 * 1, rs);
     if (o.auguste) {
       const as = augusteSprite(Math.round(pw * 2.4 * d / 2), Math.round(rs * d), Math.round(stepFor(1) * 100));

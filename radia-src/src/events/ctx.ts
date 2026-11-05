@@ -5,10 +5,9 @@ import { icon } from '../ui/icons';
 import { audio, reducedFx } from '../core/app';
 import { kidName } from '../core/family';
 import { currentLook } from '../game/world/look';
-import { avatarCanvas } from '../game/art/world/avatar';
 import { drawAugusteFull } from '../game/art/characters';
 import { drawAugusteCutout } from '../game/art/world/radiaNow';
-import { radiaFaceCanvas } from '../game/art/world/radiaNow';
+import { radiaFaceCanvas, radiaNowCanvas } from '../game/art/world/radiaNow';
 import { canvasUrl, makeCanvas, paint } from '../game/art/kit';
 import { medallionCanvas } from '../game/art/characters';
 import { hasPhotos, photoUrlNow } from '../core/photos';
@@ -97,7 +96,7 @@ export function createCtx(o: CtxOpts): { ctx: ActivityCtx; dispose: () => void }
       disposers.push(() => { done = true; box.remove(); });
     }),
     avatar: (who, w, hh, opts = {}) => {
-      if (who === 'radia') return avatarCanvas(currentLook(), Math.round(w), Math.round(hh), opts);
+      if (who === 'radia') return radiaNowCanvas(Math.round(w), Math.round(hh), opts);
       const c = makeCanvas(Math.round(w), Math.round(hh));
       const g = c.getContext('2d')!;
       const k = Math.min(w / 240, hh / 600);
