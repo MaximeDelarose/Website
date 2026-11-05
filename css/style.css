@@ -3103,3 +3103,13 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .dof-tag { display: block; font-style: normal; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #c9a45e; opacity: .85; }
 .dof-tree { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
 .dof-spell.is-lock { opacity: .5; }
+
+.ct-scroll { overflow: auto; max-height: 440px; border-radius: 6px; box-shadow: 0 0 0 2px #1e1812, inset 0 0 0 1px #6b5a42; background: #14100d; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; }
+.ct-svg { display: block; max-width: none; }
+.ct-node { cursor: pointer; outline: none; }
+.ct-node.is-can circle:first-of-type { animation: ctpulse 1.4s ease-in-out infinite; }
+.ct-node:hover circle { filter: brightness(1.25); }
+@keyframes ctpulse { 50% { stroke-width: 5; } }
+.ct-panel { display: grid; gap: 4px; margin-top: 8px; padding: 8px 10px; background: #2a2219; border-left: 4px solid var(--rc, #c9a45e); color: #e8dcc0; border-radius: 3px; }
+.ct-panel strong { color: #f3e6c8; } .ct-panel small { opacity: .7; } .ct-panel span { color: #8fc1ff; } .ct-panel em { font-style: normal; color: #c9a45e; }
+.ct-hint { margin-top: 6px; }
