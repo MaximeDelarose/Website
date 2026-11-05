@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.10.1";
+  var VERSION = "2.10.2";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -2006,6 +2006,18 @@
     drop("chest", s.x - 8, s.y - 10, 1); dropItem(s.x + 10, s.y - 10, 1);
     bannerAll("Défi réussi !"); SND.fusion();
   }
+  // 2.10.2 : noms et coûts posés dans le monde (sanctuaires, portail, structures, armes au sol) : dessinés au premier plan
+  var WLABELS = [];
+  function wlabel(txt, x, y, col, ico) { WLABELS.push([txt, x, y, col, ico]); }
+  function flushLabels() {
+    WLABELS.forEach(function (L) {
+      var w = textWidth(String(L[0])) + (L[4] ? 10 : 0) + 6;
+      ctx.fillStyle = "rgba(20,14,10,.55)"; ctx.fillRect(Math.round(L[1] - w / 2), Math.round(L[2] - 2), Math.round(w), 9);
+      drawText(L[0], L[1] - (L[4] ? 5 : 0), L[2], L[3], "c");
+      if (L[4]) icon(L[4], L[1] + textWidth(String(L[0])) / 2 + 2 - 5, L[2] + 1);
+    });
+    WLABELS = [];
+  }
   function drawShrines(cx, cy) {
     var list = shrinesNear(cx + W / 2, cy + H / 2, Math.max(W, H));
     list.forEach(function (s) {
@@ -2047,8 +2059,7 @@
       if (!dead && Math.hypot(me.x - x, me.y - y) < 60) {
         var cst = s.k === "coffre" ? chestCost() : s.k === "marchand" ? merchantCost() : s.k === "fortune" ? betCost() : 0;
         var label = def.name + (cst ? " " + cst : s.k === "sang" ? " -20% PV" : s.k === "sacrifice" ? " -1 objet" : "");
-        drawText(label, x, y - 38, col, "c");
-        if (cst) icon("gold", x + textWidth(label) / 2 + 2, y - 37);
+        wlabel(label, x, y - 38, col, cst ? "gold" : null);
       }
     });
   }
@@ -2136,7 +2147,7 @@
       ctx.beginPath(); ctx.ellipse(x, y - 20, rr, rr * 1.6, 0, a0, a0 + 4); ctx.stroke();
     }
     ctx.globalAlpha = 1;
-    if (Math.hypot(me.x - x, me.y - y) < 90) drawText(po.st === 0 ? "PORTAIL : RESTE DEDANS POUR LE REVEILLER" : po.st === 1 ? "TUE LE GARDIEN" : "ENTREZ : CARTE SUIVANTE", x, y - 54, col, "c");
+    if (Math.hypot(me.x - x, me.y - y) < 90) wlabel(po.st === 0 ? "PORTAIL : RESTE DEDANS POUR LE REVEILLER" : po.st === 1 ? "TUE LE GARDIEN" : "ENTREZ : CARTE SUIVANTE", x, y - 54, col);
   }
   function drawPortalMarker() {
     var po = r.portal; if (!po || isArena() || isDungeon()) return;
@@ -4713,7 +4724,7 @@
       if (s.exit || s.k === "passage") { ctx.fillStyle = "#1a120c"; ctx.fillRect(x - 3, y - 16, 6, 15); ctx.fillStyle = col; ctx.globalAlpha = 0.5 + 0.4 * Math.sin(r.time * 5); ctx.fillRect(x - 2, y - 15, 4, 13); ctx.globalAlpha = 1; }
       if (Math.hypot(me.x - x, me.y - y) < 90) {
         var lab = def.name + (s.k === "x_passeur" ? " " + passeurCost() : s.k === "passage" ? " · " + mapById(s.region).name + " · " + s.loot : "") + (s.closedX ? " (fermée)" : s.done ? " (fait)" : "");
-        drawText(lab, x, y - 34, col, "c");
+        wlabel(lab, x, y - 34, col);
       }
     });
   }
@@ -6763,7 +6774,7 @@
         ctx.globalAlpha = 0.3 + 0.1 * Math.sin(r.time * 4); ctx.fillStyle = wr.color; ctx.fillRect(wgx - 3, wgy - 50, 6, 50); ctx.globalAlpha = 0.6; ctx.fillRect(wgx - 1, wgy - 50, 2, 50); ctx.globalAlpha = 1;
         ctx.fillStyle = "rgba(20,14,10,.8)"; ctx.fillRect(wgx - 9, wgy - 9, 18, 18); ctx.strokeStyle = wr.color; ctx.lineWidth = 1; ctx.strokeRect(wgx - 8.5, wgy - 8.5, 17, 17);
         ctx.drawImage(wsp[0].c, wgx - (wsp[0].w >> 1), wgy - (wsp[0].h >> 1));
-        if (Math.hypot(me.x - g.x, me.y - g.y) < 50) drawText(D.ARMES[g.v.id].name + " " + wr.name, wgx, wgy - 20, wr.color, "c");
+        if (Math.hypot(me.x - g.x, me.y - g.y) < 50) wlabel(D.ARMES[g.v.id].name + " " + wr.name, wgx, wgy - 20, wr.color);
         return;
       }
       if (g.kind === "item") {
@@ -6882,6 +6893,7 @@
     if (giants) drawGiantTops(giants);
     fx.forEach(drawFx);
     texts.forEach(function (t) { ctx.globalAlpha = Math.min(1, t.life * 3) * (t.dmgN && !t.col && t.n < 15 ? 0.7 : 1); drawText(t.n, t.x, t.y, t.col || (t.dmgN ? "#e8e0d0" : "#fdf3de"), "c", t.dmgN && (t.col === "#f6d36b" || t.big) && t.life > 0.5 ? 2 : undefined); });
+    ctx.globalAlpha = 1; flushLabels();
     ctx.globalAlpha = 1;
     ctx.restore();
     if (isDungeon()) drawDungeonLight(cx, cy);
