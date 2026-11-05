@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.10.2";
+  var VERSION = "2.11.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -360,6 +360,7 @@
     if (p.epts0) { var ep = { terre: p.epts0.terre, feu: p.epts0.feu, eau: p.epts0.eau, air: p.epts0.air }; Object.keys(D.PASSIVES).forEach(function (k) { var pv = D.PASSIVES[k]; if (pv.elemPt && ps[k]) ep[pv.elemPt] += Math.ceil(ps[k] / 2); }); ep.feu += it.tison || 0; p.epts = ep; }
     if (p.anchorTh0) p.anchorTh = Math.max(0.1, p.anchorTh0 - 0.06 * (ps.patience || 0));
     if (p.volteBase0) p.volteBase = Math.max(1, p.volteBase0 - 0.3 * (ps.ressort || 0));
+    if (p.gbon) { var gb = p.gbon; p.might *= 1 + (gb.dmg || 0) / 100; p.cdMul *= 1 - (gb.cd || 0) / 100; p.area *= 1 + (gb.area || 0) / 100; p.crit = (p.crit || 0) + (gb.crit || 0) / 100; p.speed *= 1 + (gb.spd || 0) / 100; p.maxHp += gb.hp || 0; }
     if (p.wroll && p.wroll.mods) { var wm = p.wroll.mods; p.might *= 1 + (wm.dmg || 0) / 100; p.cdMul *= 1 - (wm.cd || 0) / 100; p.area *= 1 + (wm.area || 0) / 100; p.crit = (p.crit || 0) + (wm.crit || 0) / 100; p.speed *= 1 + (wm.spd || 0) / 100; p.maxHp += wm.hp || 0; p.amount += wm.amt || 0; }
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.hp = Math.min(p.hp, p.maxHp);
@@ -3982,6 +3983,87 @@
   var HIT_FX = null;                      // règles spéciales du coup en cours (évolutions C, fusions)
   var CUR_FAM = null;                     // famille de la technique qui frappe (quêtes, signatures)
   var HIT_TREE = false;                   // le coup vient d'un arbre de Fougère
+  /* ---------- 2.11 : terrier et atelier façon Dofus ---------- */
+  var UI = { ter: "eq", inv: "all", sel: null, at: "coiffe", only: false, el: "all", asel: null };
+  var SLOT_KIND = { coiffe: "Coiffe", bottes: "Bottes", cape: "Cape", amulette: "Amulette", anneau: "Anneau" };
+  function elemSpan(el, txt) { return '<span style="color:' + (D.ELEMENTS[el].ui || D.ELEMENTS[el].color) + '">' + txt + "</span>"; }
+  function gearTile(q, act, arg, extra) {
+    var g = D.GEAR[q.t], R0 = rarOf(q), who = whoWears(q.id);
+    return '<button type="button" class="dof-tile' + (UI.sel === q.id ? " is-sel" : "") + (extra || "") + '" style="--rc:' + R0.color + '" data-action="' + act + '" data-arg="' + arg + '" title="' + esc(g.name + " (" + R0.name + ")") + '">' + ic(g.icon) + (who ? '<i class="dof-worn">' + (who === S.char ? "✓" : "•") + "</i>" : "") + "</button>";
+  }
+  function gearTip(q) {
+    if (!q) return '<div class="dof-tip is-empty">Choisis une pièce pour voir ses effets.</div>';
+    var g = D.GEAR[q.t], R0 = rarOf(q), who = whoWears(q.id), w = wornBy(S.char), mine = who === S.char;
+    var h = '<div class="dof-tip" style="--rc:' + R0.color + '"><div class="dof-tip-h"><span class="dof-tip-ic">' + ic(g.icon) + '</span><div><strong>' + esc(g.name) + "</strong><small>" + esc(SLOT_KIND[g.slot] || g.slot) + " · " + esc((D.SLOTS.filter(function (x) { return (x.kind || x.id) === g.slot; })[0] || {}).state || "") + '</small><em>' + esc(R0.name) + (g.unique ? " · unique" : "") + "</em></div></div>";
+    h += '<div class="dof-sec">Effets</div><ul class="dof-fx"><li>' + esc(pieceDesc(q)) + "</li>";
+    if (g.elem) h += "<li>" + elemSpan(g.elem, "+" + q.pts + " point" + (q.pts > 1 ? "s" : "") + " de " + D.ELEMENTS[g.elem].name) + "</li>";
+    bonTxt(q.bon).forEach(function (t) { h += "<li>" + esc(t) + "</li>"; });
+    if (q.extra && D.GEAR[q.extra]) h += "<li>+ " + esc(D.GEAR[q.extra].name) + "</li>";
+    h += "</ul>";
+    if (g.lo !== undefined) h += '<p class="dof-roll">Jet : ' + Math.round(q.roll * 100) + " % (" + fmtV(g.lo) + " à " + fmtV(g.hi) + ")</p>";
+    if (g.set && D.SETS[g.set]) { var st = D.SETS[g.set], n = 0; D.SLOTS.forEach(function (sl) { var o = pieceById(w[sl.id]); if (o && D.GEAR[o.t].set === g.set) n++; }); h += '<div class="dof-sec">Panoplie</div><p class="dof-set">' + esc(st.name) + " (" + n + "/" + (st.full || 4) + ")" + (st.b2 ? "<br>2 : " + esc(st.b2) : "") + (st.b4 ? "<br>" + (st.full || 4) + " : " + esc(st.b4) : "") + "</p>"; }
+    if (g.who) h += '<p class="dof-cond">Portable par ' + esc(charById(g.who).name) + " seulement</p>";
+    if (who && !mine) h += '<p class="dof-cond">Portée par ' + esc(charById(who).name) + "</p>";
+    h += '<div class="dof-btns">';
+    if (mine) { var sl0 = Object.keys(w).filter(function (s0) { return w[s0] === q.id; })[0]; h += '<button class="btn btn-small" type="button" data-action="equ" data-arg="' + sl0 + '">Retirer</button>'; }
+    else h += '<button class="btn btn-small" type="button" data-action="eqw" data-arg="' + q.id + '"' + (g.who && g.who !== S.char ? " disabled" : "") + ">" + (who ? "Prendre" : "Équiper") + "</button>";
+    if (!who) h += '<button class="btn btn-ghost btn-small" type="button" data-action="recy2" data-arg="' + q.id + '" title="Rend la moitié des ressources">Recycler</button>';
+    return h + "</div></div>";
+  }
+  function terEquip(c) {
+    var w = wornBy(c.id), pts = { terre: 0, feu: 0, eau: 0, air: 0 }, bon = {}, inv = eqS().inv;
+    var html = '<div class="dof"><div class="dof-left"><div class="dof-doll">';
+    D.SLOTS.forEach(function (sl) {
+      var q = pieceById(w[sl.id]), g = q && D.GEAR[q.t];
+      if (g && g.elem) pts[g.elem] += q.pts;
+      if (q && q.bon) Object.keys(q.bon).forEach(function (k) { bon[k] = (bon[k] || 0) + q.bon[k]; });
+      html += '<button type="button" class="dof-slot dof-' + sl.id + (q ? " is-full" : "") + '" style="--rc:' + (q ? rarOf(q).color : "#6b5a42") + '" data-action="islot" data-arg="' + sl.id + '" title="' + esc(sl.name + " · " + sl.state) + '">' + (q ? ic(g.icon) : "<small>" + esc(sl.name) + "</small>") + "</button>";
+    });
+    html += '<div class="dof-face"><img src="' + spriteUrl(c.sprite) + '" alt=""><small>' + esc(c.name) + "</small></div></div>";
+    html += '<div class="dof-stats"><div class="dof-sec">Éléments</div>' + Object.keys(pts).map(function (el) { return '<div class="dof-el"><span>' + elemSpan(el, D.ELEMENTS[el].name) + '</span><i style="--w:' + Math.min(100, pts[el] / 9 * 100) + "%;--c:" + (D.ELEMENTS[el].ui || D.ELEMENTS[el].color) + '"></i><b>' + pts[el] + "</b></div>"; }).join("");
+    var tiers = []; Object.keys(pts).forEach(function (el) { D.ELEM_TIERS[el].forEach(function (t) { if (pts[el] >= t[0]) tiers.push(elemSpan(el, D.ELEMENTS[el].name + " " + t[0]) + " : " + esc(t[1])); }); });
+    if (tiers.length) html += '<ul class="dof-fx small">' + tiers.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+    var bt = bonTxt(bon); if (bt.length) html += '<div class="dof-sec">Bonus</div><ul class="dof-fx small">' + bt.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>";
+    html += "</div></div>";
+    // inventaire en grille, onglets par emplacement
+    var tabs = [["all", "Tout"], ["coiffe", "Coiffes"], ["bottes", "Bottes"], ["cape", "Capes"], ["amulette", "Amulettes"], ["anneau", "Anneaux"]];
+    var list = inv.filter(function (q) { return UI.inv === "all" || D.GEAR[q.t].slot === UI.inv; }).sort(function (a, b) { return (pieceRar(b) - pieceRar(a)) || (D.GEAR[a.t].slot < D.GEAR[b.t].slot ? -1 : 1); });
+    html += '<div class="dof-right"><div class="dof-itabs">' + tabs.map(function (t) { var n = t[0] === "all" ? inv.length : inv.filter(function (q) { return D.GEAR[q.t].slot === t[0]; }).length; return '<button type="button" class="dof-itab' + (UI.inv === t[0] ? " is-on" : "") + '" data-action="itab" data-arg="' + t[0] + '">' + t[1] + " <small>" + n + "</small></button>"; }).join("") + "</div>";
+    html += '<div class="dof-grid">' + (list.length ? list.map(function (q) { return gearTile(q, "isel", q.id); }).join("") : '<p class="game-small">Rien ici. Les ennemis et les boss lâchent de l\'attirail, l\'atelier en fabrique.</p>') + "</div>";
+    html += '<p class="dof-cap">Coffre : ' + inv.length + " / " + (40 + 10 * (S.chestSize || 0)) + "</p>";
+    html += gearTip(UI.sel ? pieceById(UI.sel) : null) + "</div></div>";
+    var setsW = {}; D.SLOTS.forEach(function (sl) { var q = pieceById(w[sl.id]); if (q && D.GEAR[q.t].set) setsW[D.GEAR[q.t].set] = (setsW[D.GEAR[q.t].set] || 0) + 1; });
+    Object.keys(setsW).forEach(function (sid) { var st = D.SETS[sid], n = setsW[sid], fu = st.full || 4; html += '<p class="np-hint dof-setline"><b>' + esc(st.name) + " " + n + "/" + fu + "</b> · " + (n >= 2 ? "✅" : "⬜") + " 2 : " + esc(st.b2 || "") + (st.b4 ? " · " + (n >= fu ? "✅" : "⬜") + " " + fu + " : " + esc(st.b4) : "") + "</p>"; });
+    var sn = S.secureSlots || 0, scost = [1500, 4000][sn];
+    html += '<p class="np-hint">🎒 Emplacements sécurisés d\'expédition : <b>' + (1 + sn) + "</b> / 3" + (scost ? ' <button class="btn btn-small" type="button" data-action="buysecure"' + (S.gold < scost ? " disabled" : "") + ">+1 pour " + scost + " " + goldIc() + "</button>" : "") + "</p>";
+    return html;
+  }
+  function terTalents(c, lv, ps) {
+    var pick = ((S.tal[c.id] || {})[ps.id]) || {};
+    var html = '<p class="game-small">Posture <b>' + esc(ps.name) + '</b> · <button class="link-btn" type="button" data-action="go" data-arg="play">changer de posture</button>. Un talent par palier ; ils ne comptent qu\'avec leur posture.</p><div class="dof-spells">';
+    for (var t = 0; t < 4; t++) {
+      var pair = t < 2 ? D.TAL_COMMON[t] : (D.TAL[ps.id] || [])[t - 2], open = lv >= D.TAL_LVL[t];
+      html += '<div class="dof-spell-row' + (open ? "" : " is-locked") + '"><span class="dof-lvl"><b>' + D.TAL_LVL[t] + "</b><small>niv.</small></span>";
+      (pair || []).forEach(function (nd, i) {
+        var on = pick[t + 1] === (i ? "b" : "a");
+        html += '<button type="button" class="dof-spell' + (on ? " is-on" : "") + '" ' + (open ? 'data-action="tpick" data-arg="' + (t + 1) + ":" + (i ? "b" : "a") + '"' : "disabled") + '><strong>' + (t === 3 ? "🔑 " : "") + esc(nd.name) + "</strong><span>" + esc(nd.desc) + "</span></button>";
+      });
+      html += "</div>";
+    }
+    return html + "</div>";
+  }
+  function terMastery() {
+    var html = "";
+      // maîtrise des armes
+      html += '<h3 class="pick-title">Maîtrise des armes</h3><div class="shop-list">';
+      Object.keys(D.ARMES).forEach(function (aid) {
+        var a = D.ARMES[aid], ml = mastLevel(aid), x = S.mast[aid] || 0, nxt = D.MASTERY[ml];
+        var un = ["Techniques et 1re évolution", "1re signature : " + D.SIGS[aid][0].name, "2e et 3e évolutions de chaque technique", "Signatures : " + D.SIGS[aid][1].name + ", " + D.SIGS[aid][2].name, "Éveil : ultime " + D.ULTS[aid].name];
+        if (!questOk(a)) { html += '<div class="shop-item is-locked"><span class="shop-ic"><img src="' + spriteUrl(a.icon) + '" alt=""></span><div class="shop-text"><strong>🔒 ' + esc(a.name) + "</strong><span>" + esc(a.desc) + "</span><small>Quête : " + esc(questById(a.quest).desc) + "</small></div></div>"; return; }
+        html += '<div class="shop-item"><span class="shop-ic"><img src="' + spriteUrl(a.icon) + '" alt=""></span><div class="shop-text"><strong>' + esc(a.name) + " · maîtrise " + ml + "/5</strong><span>" + un.map(function (u, i) { return (i < ml ? "✅ " : "⬜ ") + esc(u); }).join("<br>") + "</span>" + (nxt ? "<small>" + x + " / " + nxt + " XP</small>" : "") + "</div></div>";
+      });
+    return html + "</div>";
+  }
   function eqS() { S.eq = S.eq || { inv: [], worn: {}, uid: 1 }; S.res = S.res || {}; S.clvl = S.clvl || {}; S.tal = S.tal || {}; S.mast = S.mast || {}; return S.eq; }
   function charLevel(cid) { return Math.min(12, 1 + Math.floor(Math.sqrt(((S.clvl || {})[cid] || 0) / 40))); }
   function charXpFor(l) { return (l - 1) * (l - 1) * 40; }
@@ -3995,10 +4077,17 @@
     var g = D.GEAR[q.t];
     return g.desc.replace("{v}", fmtV(gearVal(q))).replace("{t}", (q.tech || []).map(function (t) { return D.TECH[t] ? D.TECH[t].name : t; }).join(", "));
   }
-  function genPiece(tier, tpl) {
+  /* 2.11 : rareté de l'attirail (même échelle que les armes) : fourchette du jet, points d'élément, bonus de caractéristiques */
+  var GRAR_ROLL = [[0, 0.5], [0.25, 0.7], [0.45, 0.85], [0.65, 1], [0.85, 1.15]], GRAR_W = { 1: [55, 30, 12, 3, 0], 2: [25, 40, 25, 9, 1], 3: [5, 25, 40, 25, 5] };
+  function pieceRar(q) { return q.rar !== undefined ? q.rar : Math.min(2, (q.tier || 1) - 1); }
+  function rarOf(q) { return D.WRAR[pieceRar(q)]; }
+  function bonTxt(b) { return D.WSTAT.filter(function (x) { return b && b[x.id]; }).map(function (x) { return (x.neg ? "-" : "+") + b[x.id] + (x.pct ? " %" : "") + " " + x.name; }); }
+  function genPiece(tier, tpl, rar) {
     var keys = Object.keys(D.GEAR).filter(function (k) { return !D.GEAR[k].unique && questOk(D.GEAR[k]); }), t = tpl || keys[(Math.random() * keys.length) | 0], g = D.GEAR[t];
-    var q = { id: eqS().uid++, t: t, roll: tpl ? 0.5 : Math.random(), tier: tier || 1, pts: 0 };
-    if (g.elem) q.pts = Math.min(3, 1 + (Math.random() < 0.4 ? 1 : 0) + (q.tier - 1));
+    if (rar === undefined) { var W8 = GRAR_W[Math.max(1, Math.min(3, tier || 1))], tot = 100, rr = Math.random() * tot; rar = 0; while (rr >= W8[rar]) { rr -= W8[rar]; rar++; } if (g.unique) rar = Math.max(rar, 3); }
+    var R0 = GRAR_ROLL[rar], q = { id: eqS().uid++, t: t, roll: R0[0] + Math.random() * (R0[1] - R0[0]), tier: tier || 1, pts: 0, rar: rar };
+    var nb = [0, 0, 1, 1, 2][rar]; if (nb) { q.bon = {}; D.WSTAT.filter(function (x) { return x.id !== "amt"; }).sort(function () { return Math.random() - 0.5; }).slice(0, nb).forEach(function (x) { q.bon[x.id] = Math.max(1, Math.round((x.lo + Math.random() * (x.hi - x.lo)) * 0.5 * (rar === 4 ? 1.5 : 1))); }); }
+    if (g.elem) q.pts = Math.min(3, 1 + (rar >= 2 ? 1 : 0) + (rar >= 4 ? 1 : 0));
     if (g.ring === "apprenti") { var all = Object.keys(D.TECH).sort(function () { return Math.random() - 0.5; }); q.tech = all.slice(0, 2); }
     return q;
   }
@@ -4015,19 +4104,20 @@
     S.stats.crafted = (S.stats.crafted || 0) + 1;
     if (!canCraft(t)) return null; var g = D.GEAR[t];
     Object.keys(g.cost).forEach(function (k) { S.res[k] -= g.cost[k]; });
-    var q = genPiece(1, t); addPiece(q); save(); return q;
+    var q = genPiece(1, t, 1); q.roll = 0.5; delete q.bon; addPiece(q); save(); return q;
   }
   // tout ce que l'écureuil emporte en partie : attirail porté, talents de sa posture, maîtrise de l'arme
   function v2Loadout(pl) {
     eqS();
     var cid = pl.char.id, w = wornBy(cid);
-    pl.gear = []; pl.ring = {}; pl.amu = {}; pl.epts = { terre: 0, feu: 0, eau: 0, air: 0 }; pl.extraTech = []; pl.set = {};
+    pl.gear = []; pl.gbon = {}; pl.ring = {}; pl.amu = {}; pl.epts = { terre: 0, feu: 0, eau: 0, air: 0 }; pl.extraTech = []; pl.set = {};
     var uniq = 0;
     Object.keys(w).forEach(function (s) {
       var q = pieceById(w[s]); if (!q) return; var g = D.GEAR[q.t]; if (!g) return;
       if (g.who && g.who !== cid) return;                 // panoplie d'un autre écureuil
       if (g.unique && uniq++) return;                     // une seule pièce unique à la fois
       pl.gear.push({ q: q, g: g, v: gearVal(q) });
+      if (q.bon) { pl.gbon = pl.gbon || {}; Object.keys(q.bon).forEach(function (k) { pl.gbon[k] = (pl.gbon[k] || 0) + q.bon[k]; }); }
       if (q.extra && D.GEAR[q.extra]) { var gx = D.GEAR[q.extra]; pl.gear.push({ q: q, g: gx, v: gx.lo === undefined ? 0 : (gx.lo + gx.hi) / 2 }); }
       if (g.set) pl.set[g.set] = (pl.set[g.set] || 0) + 1;
       if (g.elem && q.pts) pl.epts[g.elem] += q.pts;
@@ -4326,12 +4416,12 @@
     if (isExpe() && e.d.elite && Math.random() < 0.08) { r.ex.keys++; texts.push({ x: e.x, y: e.y - 18, n: "+ CLE", life: 1.2, col: "#f6d36b" }); }
     if (e.d.boss) {
       add(res, 3); var tr = "t_" + (e.type === "colosse" ? "colosse" : e.type); if (D.RES[tr]) { add(tr, e.d.mega ? 2 : 1); texts.push({ x: e.x, y: e.y - 24, n: "+ " + D.RES[tr].name.toUpperCase(), life: 1.6, col: "#f6d36b" }); }
-      if (e.d.mega || Math.random() < 0.35) { var q = genPiece(1 + (tierN() >= 4 ? 1 : 0) + (e.d.mega ? 1 : 0), e.d.mega && Math.random() < 0.35 ? randUnique() : undefined); if (isExpe()) bagAddGear(q); else r.loot.push(q); texts.push({ x: e.x, y: e.y - 32, n: "ATTIRAIL : " + D.GEAR[q.t].name.toUpperCase(), life: 2, col: "#b07cf0" }); }
+      if (e.d.mega || Math.random() < 0.35) { var q = genPiece(1 + (tierN() >= 4 ? 1 : 0) + (e.d.mega ? 1 : 0), e.d.mega && Math.random() < 0.35 ? randUnique() : undefined); if (isExpe()) bagAddGear(q); else r.loot.push(q); texts.push({ x: e.x, y: e.y - 32, n: rarOf(q).name.toUpperCase() + " : " + D.GEAR[q.t].name.toUpperCase(), life: 2, col: rarOf(q).color }); }
       if (me.ring && me.ring.danger) drop("chest", e.x, e.y + 14, 1);
       if (e.d.mega) { runeAdd(3); runeAdd(1, true); } else if (Math.random() < 0.3) runeAdd(1);
       if (isDungeon() && Math.random() < (e.d.bossAi || e.type === "golem" ? 1 : 0.5)) { var locked = Object.keys(D.SETS).filter(function (k2) { return !D.SETS[k2].mega && !(S.recipes || {})[k2]; }); if (locked.length) { var rc = locked[(Math.random() * locked.length) | 0]; S.recipes = S.recipes || {}; S.recipes[rc] = 1; save(); bannerAll("Recette trouvée : " + D.SETS[rc].name + " !"); } }
       if (me.ring && me.ring.source) players.forEach(function (o) { if (!o.down) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * (me.ring2x ? 0.8 : 0.4)); });
-    } else if (e.d.elite) { if (Math.random() < 0.4) add(res, 1); if (Math.random() < (isExpe() && ringOf(e.x, e.y) !== "peri" ? 0.08 : 0.03)) { var q2 = genPiece(isExpe() && ringOf(e.x, e.y) === "coeur" ? 2 : 1, isExpe() && ringOf(e.x, e.y) === "coeur" && Math.random() < 0.2 ? randUnique() : undefined); if (isExpe()) bagAddGear(q2); else r.loot.push(q2); } if (me.ring && me.ring.chasse) dropItem(e.x, e.y, 0); }
+    } else if (e.d.elite) { if (Math.random() < 0.4) add(res, 1); if (Math.random() < (isExpe() && ringOf(e.x, e.y) !== "peri" ? 0.08 : 0.03)) { var q2 = genPiece(isExpe() && ringOf(e.x, e.y) === "coeur" ? 2 : 1, isExpe() && ringOf(e.x, e.y) === "coeur" && Math.random() < 0.2 ? randUnique() : undefined); if (isExpe()) bagAddGear(q2); else r.loot.push(q2); texts.push({ x: e.x, y: e.y - 24, n: rarOf(q2).name.toUpperCase() + " : " + D.GEAR[q2.t].name.toUpperCase(), life: 2, col: rarOf(q2).color }); } if (me.ring && me.ring.chasse) dropItem(e.x, e.y, 0); }
     else if (Math.random() < 0.06) add(res, 1);
     if (e.burnT > 0 && e.burnBy && ept(e.burnBy, "feu", 9)) { var pp = p; p = e.burnBy; explode(e.x, e.y, 26, 18 * gpw(), 0); p = pp; }
   }
@@ -4359,7 +4449,7 @@
     function cxOrM(lab) { return lab.indexOf("Maîtrise") === 0 ? mx : cx; }
     return '<div class="v2-run">' + bar(esc(charById(g.cid).name) + " · niveau", cl, c0, c1, g.l1 > g.l0) + bar("Maîtrise " + esc(D.ARMES[g.aid].name), ml, m0, m1, g.m1 > g.m0) +
       (res.length ? '<p class="game-small">Ressources : ' + res.map(function (k) { return ic(D.RES[k].icon) + " " + esc(D.RES[k].name) + " x" + g.res[k]; }).join(" · ") + "</p>" : "") +
-      (g.loot.length ? '<p class="game-small">Attirail trouvé : ' + g.loot.map(function (q) { return "<b>" + esc(D.GEAR[q.t].name) + "</b>"; }).join(", ") + " (au terrier)</p>" : "") + "</div>";
+      (g.loot.length ? '<p class="game-small">Attirail trouvé : ' + g.loot.map(function (q) { return '<b style="color:' + rarOf(q).color + '">' + esc(D.GEAR[q.t].name) + "</b> <small>(" + esc(rarOf(q).name) + ")</small>"; }).join(", ") + " (au terrier)</p>" : "") + "</div>";
   }
   /* =====================================================================
      2.0 phase 5 : l'Expédition (carte d'extraction à étages)
@@ -7860,44 +7950,11 @@
       D.CHARACTERS.forEach(function (o) { html += '<button type="button" class="np-char' + (S.char === o.id ? " is-selected" : "") + '" data-action="tchar2" data-arg="' + o.id + '" aria-label="' + esc(o.name) + '"><img src="' + spriteUrl(o.sprite) + '" alt=""></button>'; });
       var k = Math.round((cx - charXpFor(lv)) / Math.max(1, charXpFor(lv + 1) - charXpFor(lv)) * 100);
       html += '</div><p class="v2-bar"><span><b>' + esc(c.name) + "</b> · niveau <b>" + lv + '</b></span><span class="rank-bar"><i style="width:' + Math.min(100, k) + '%"></i></span><small>' + cx + " / " + charXpFor(lv + 1) + "</small></p>";
-      // attirail porté
-      var w = wornBy(c.id), pts = { terre: 0, feu: 0, eau: 0, air: 0 };
-      html += '<h3 class="pick-title">Attirail</h3><div class="v2-gear">';
-      D.SLOTS.forEach(function (sl) {
-        var q = pieceById(w[sl.id]), g = q && D.GEAR[q.t];
-        if (g && g.elem) pts[g.elem] += q.pts;
-        html += '<button type="button" class="v2-slot' + (q ? " is-full" : "") + '" data-action="eqpick" data-arg="' + sl.id + '"><span class="v2-slot-h">' + esc(sl.name) + " <small>" + esc(sl.state) + "</small></span>" +
-          (q ? "<b>" + ic(g.icon) + " " + esc(g.name) + "</b><small>" + esc(pieceDesc(q)) + (g.elem ? ' · <span style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + "●".repeat(q.pts) + " " + D.ELEMENTS[g.elem].name + "</span>" : "") + "</small>" : "<small>Vide</small>") + "</button>";
-      });
-      html += "</div>";
-      var tiers = []; Object.keys(pts).forEach(function (el) { D.ELEM_TIERS[el].forEach(function (t) { if (pts[el] >= t[0]) tiers.push("<b>" + D.ELEMENTS[el].name + " " + t[0] + "</b> : " + esc(t[1])); }); });
-      html += '<p class="np-hint">Points d\'élément : ' + Object.keys(pts).map(function (el) { return '<span style="color:' + (D.ELEMENTS[el].ui || D.ELEMENTS[el].color) + '">' + D.ELEMENTS[el].name + " " + pts[el] + "</span>"; }).join(" · ") + " (paliers à 3, 6 et 9)" + (tiers.length ? "<br>" + tiers.join("<br>") : "") + "</p>";
-      var sn = S.secureSlots || 0, scost = [1500, 4000][sn];
-      html += '<p class="np-hint">🎒 Emplacements sécurisés d\'expédition : <b>' + (1 + sn) + "</b> / 3" + (scost ? ' <button class="btn btn-small" type="button" data-action="buysecure"' + (S.gold < scost ? " disabled" : "") + ">+1 pour " + scost + " " + goldIc() + "</button>" : "") + "</p>";
-      var setsW = {}; D.SLOTS.forEach(function (sl) { var q = pieceById(w[sl.id]); if (q && D.GEAR[q.t].set) setsW[D.GEAR[q.t].set] = (setsW[D.GEAR[q.t].set] || 0) + 1; });
-      Object.keys(setsW).forEach(function (sid) { var st = D.SETS[sid], n = setsW[sid], fu = st.full || 4; html += '<p class="np-hint"><b>' + esc(st.name) + " " + n + "/" + fu + "</b>" + (st.who && st.who !== c.id ? " (portable par " + esc(charById(st.who).name) + " seulement)" : "") + " · " + (n >= 2 ? "✅" : "⬜") + " 2 : " + esc(st.b2) + " · " + (n >= fu ? "✅" : "⬜") + " " + fu + " : " + esc(st.b4) + "</p>"; });
-      // talents de la posture
-      html += '<h3 class="pick-title">Talents · posture ' + esc(ps.name) + ' <small><button class="link-btn" type="button" data-action="go" data-arg="play">changer de posture</button></small></h3><div class="v2-tal">';
-      var pick = ((S.tal[c.id] || {})[ps.id]) || {};
-      for (var t = 0; t < 4; t++) {
-        var pair = t < 2 ? D.TAL_COMMON[t] : (D.TAL[ps.id] || [])[t - 2], open = lv >= D.TAL_LVL[t];
-        html += '<div class="v2-tal-row' + (open ? "" : " is-locked") + '"><span class="v2-tal-n">' + (t === 3 ? "Clé" : t + 1) + "<small>niv. " + D.TAL_LVL[t] + "</small></span>";
-        (pair || []).forEach(function (nd, i) {
-          var on = pick[t + 1] === (i ? "b" : "a");
-          html += '<button type="button" class="v2-node' + (on ? " is-on" : "") + '" ' + (open ? 'data-action="tpick" data-arg="' + (t + 1) + ":" + (i ? "b" : "a") + '"' : "disabled") + "><b>" + esc(nd.name) + "</b><small>" + esc(nd.desc) + "</small></button>";
-        });
-        html += "</div>";
-      }
-      html += '</div><p class="np-hint">Les talents ne comptent qu\'avec leur posture. Changement gratuit au camp, figé en partie.</p>';
-      // maîtrise des armes
-      html += '<h3 class="pick-title">Maîtrise des armes</h3><div class="shop-list">';
-      Object.keys(D.ARMES).forEach(function (aid) {
-        var a = D.ARMES[aid], ml = mastLevel(aid), x = S.mast[aid] || 0, nxt = D.MASTERY[ml];
-        var un = ["Techniques et 1re évolution", "1re signature : " + D.SIGS[aid][0].name, "2e et 3e évolutions de chaque technique", "Signatures : " + D.SIGS[aid][1].name + ", " + D.SIGS[aid][2].name, "Éveil : ultime " + D.ULTS[aid].name];
-        if (!questOk(a)) { html += '<div class="shop-item is-locked"><span class="shop-ic"><img src="' + spriteUrl(a.icon) + '" alt=""></span><div class="shop-text"><strong>🔒 ' + esc(a.name) + "</strong><span>" + esc(a.desc) + "</span><small>Quête : " + esc(questById(a.quest).desc) + "</small></div></div>"; return; }
-        html += '<div class="shop-item"><span class="shop-ic"><img src="' + spriteUrl(a.icon) + '" alt=""></span><div class="shop-text"><strong>' + esc(a.name) + " · maîtrise " + ml + "/5</strong><span>" + un.map(function (u, i) { return (i < ml ? "✅ " : "⬜ ") + esc(u); }).join("<br>") + "</span>" + (nxt ? "<small>" + x + " / " + nxt + " XP</small>" : "") + "</div></div>";
-      });
-      return html + "</div>";
+      html += '<div class="dof-tabs">' + [["eq", "Équipement"], ["tal", "Talents"], ["mast", "Maîtrise"]].map(function (t) { return '<button type="button" class="dof-tab' + (UI.ter === t[0] ? " is-on" : "") + '" data-action="dtab" data-arg="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
+      if (UI.ter === "tal") html += terTalents(c, lv, ps);
+      else if (UI.ter === "mast") html += terMastery();
+      else html += terEquip(c);
+      return html;
     },
     eqslot: function () {
       eqS();
@@ -7919,27 +7976,38 @@
       eqS();
       var html = '<div class="screen-head">' + back() + "<h2>L'atelier de Bûche</h2></div>";
       var have = Object.keys(D.RES).filter(function (k) { return S.res[k] > 0; });
-      html += '<p class="game-small">Ressources : ' + (have.length ? have.map(function (k) { return ic(D.RES[k].icon) + " " + esc(D.RES[k].name) + " <b>" + S.res[k] + "</b>"; }).join(" · ") : "aucune pour l'instant (les ennemis en lâchent, chaque région a les siennes)") + "</p>";
-      html += '<p class="game-small">Le craft donne un jet moyen garanti ; un objet trouvé couvre toute la fourchette. Coffre : ' + eqS().inv.length + " / 40.</p>";
-      D.SLOTS.filter(function (s0, i) { return i < 5; }).forEach(function (sl) {
-        var kind = sl.kind || sl.id;
-        html += '<h3 class="pick-title">' + esc(sl.kind ? "Anneaux" : sl.name) + '</h3><div class="shop-list">';
-        Object.keys(D.GEAR).forEach(function (t) {
-          var g = D.GEAR[t]; if (g.slot !== kind || g.unique) return;
-          var lockedR = (g.set && !D.SETS[g.set].mega && !(S.recipes || {})[g.set]) || !questOk(g);
-          var ok = canCraft(t) && !lockedR;
-          html += '<div class="shop-item' + (lockedR ? " is-locked" : "") + '"><span class="shop-ic">' + ic(g.icon) + '</span><div class="shop-text"><strong>' + esc(g.name) + (g.set ? ' <small class="set-tag">' + esc(D.SETS[g.set].name) + (g.who ? " · " + esc(charById(g.who).name) : "") + (lockedR ? " · recette à trouver en Donjon" : "") + "</small>" : "") + (!questOk(g) ? ' <small class="set-tag">🔒 ' + esc(questById(g.quest).desc) + "</small>" : "") + (g.elem ? ' <small style="color:' + (D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color) + '">' + D.ELEMENTS[g.elem].name + "</small>" : "") + "</strong><span>" + esc(g.desc.replace("{v}", g.lo !== undefined ? fmtV(g.lo) + "-" + fmtV(g.hi) : "").replace("{t}", "au hasard")) + "</span><small>" +
-            Object.keys(g.cost).map(function (k) { return ic(D.RES[k].icon) + " " + (S.res[k] || 0) + "/" + g.cost[k]; }).join(" · ") + "</small></div>" +
-            '<button class="btn btn-small" type="button" data-action="craft" data-arg="' + t + '"' + (ok ? "" : " disabled") + ">Fabriquer</button></div>";
-        });
-        html += "</div>";
-      });
-      var spare = eqS().inv.filter(function (q) { return !whoWears(q.id); });
-      if (spare.length) {
-        html += '<h3 class="pick-title">Recyclage</h3><p class="game-small">Rend la moitié des ressources de la recette.</p><div class="shop-list">';
-        spare.forEach(function (q) { var g = D.GEAR[q.t]; html += '<div class="shop-item"><span class="shop-ic">' + ic(g.icon) + '</span><div class="shop-text"><strong>' + esc(g.name) + "</strong><span>" + esc(pieceDesc(q)) + '</span></div><button class="btn btn-ghost btn-small" type="button" data-action="recy" data-arg="' + q.id + '">Recycler</button></div>'; });
-        html += "</div>";
+      var used = {}; Object.keys(D.GEAR).forEach(function (t) { var g = D.GEAR[t]; if (g.slot === UI.at && !g.unique) Object.keys(g.cost).forEach(function (k) { used[k] = 1; }); });
+      if (UI.at !== "recy") have = have.filter(function (k) { return used[k]; });
+      html += '<div class="dof-res">' + (have.length ? have.map(function (k) { return '<span title="' + esc(D.RES[k].name) + '">' + ic(D.RES[k].icon) + "<b>" + S.res[k] + "</b></span>"; }).join("") : '<small>' + (UI.at === "recy" ? "Aucune ressource : les ennemis en lâchent, chaque région a les siennes." : "Aucune ressource utile pour cet onglet.") + "</small>") + "</div>";
+      var tabs = [["coiffe", "Coiffes"], ["bottes", "Bottes"], ["cape", "Capes"], ["amulette", "Amulettes"], ["anneau", "Anneaux"], ["recy", "Recyclage"]];
+      html += '<div class="dof-itabs">' + tabs.map(function (t) { return '<button type="button" class="dof-itab' + (UI.at === t[0] ? " is-on" : "") + '" data-action="atab" data-arg="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
+      if (UI.at === "recy") {
+        var spare = eqS().inv.filter(function (q) { return !whoWears(q.id); }).sort(function (a, b) { return pieceRar(a) - pieceRar(b); });
+        html += '<p class="game-small">Rend la moitié des ressources de la recette. Les pièces portées n\'apparaissent pas.</p><div class="dof"><div class="dof-right wide"><div class="dof-grid">' + (spare.length ? spare.map(function (q) { return gearTile(q, "isel2", q.id); }).join("") : '<p class="game-small">Rien à recycler.</p>') + "</div>";
+        var sq = UI.sel ? pieceById(UI.sel) : null;
+        html += (sq && !whoWears(sq.id) ? gearTip(sq).replace('data-action="recy2"', 'data-action="recy"') : '<div class="dof-tip is-empty">Choisis une pièce à recycler.</div>') + "</div></div>";
+        return html;
       }
+      html += '<div class="dof-filters"><button type="button" class="dof-itab' + (UI.only ? " is-on" : "") + '" data-action="aonly">Fabricables seulement</button>' +
+        [["all", "Tous"], ["terre", "Terre"], ["feu", "Feu"], ["eau", "Eau"], ["air", "Air"], ["none", "Sans élément"]].map(function (e) { return '<button type="button" class="dof-itab' + (UI.el === e[0] ? " is-on" : "") + '" data-action="ael" data-arg="' + e[0] + '">' + e[1] + "</button>"; }).join("") + "</div>";
+      var keys = Object.keys(D.GEAR).filter(function (t) { var g = D.GEAR[t]; if (g.slot !== UI.at || g.unique) return false; if (UI.el === "none" ? g.elem : UI.el !== "all" && g.elem !== UI.el) return false; return !UI.only || (canCraft(t) && questOk(g) && !(g.set && !D.SETS[g.set].mega && !(S.recipes || {})[g.set])); });
+      function locked(g) { return (g.set && !D.SETS[g.set].mega && !(S.recipes || {})[g.set]) || !questOk(g); }
+      keys.sort(function (a, b) { var ga = D.GEAR[a], gb = D.GEAR[b]; return (locked(ga) - locked(gb)) || ((canCraft(b) ? 1 : 0) - (canCraft(a) ? 1 : 0)); });
+      html += '<div class="dof"><div class="dof-right wide"><div class="dof-grid">' + (keys.length ? keys.map(function (t) {
+        var g = D.GEAR[t], lk = locked(g), ok = canCraft(t) && !lk;
+        return '<button type="button" class="dof-tile' + (UI.asel === t ? " is-sel" : "") + (lk ? " is-locked" : ok ? " is-ok" : "") + '" style="--rc:' + (g.elem ? D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color : "#c8c0b0") + '" data-action="asel" data-arg="' + t + '" title="' + esc(g.name) + '">' + ic(g.icon) + (ok ? '<i class="dof-worn">✓</i>' : lk ? '<i class="dof-worn">🔒</i>' : "") + "</button>";
+      }).join("") : '<p class="game-small">Aucune recette avec ces filtres.</p>') + "</div>";
+      var t0 = UI.asel && D.GEAR[UI.asel] && D.GEAR[UI.asel].slot === UI.at ? UI.asel : keys[0];
+      if (t0) {
+        var g = D.GEAR[t0], lk = locked(g), ok = canCraft(t0) && !lk;
+        html += '<div class="dof-tip" style="--rc:' + (g.elem ? D.ELEMENTS[g.elem].ui || D.ELEMENTS[g.elem].color : "#c8c0b0") + '"><div class="dof-tip-h"><span class="dof-tip-ic">' + ic(g.icon) + "</span><div><strong>" + esc(g.name) + "</strong><small>" + esc(SLOT_KIND[g.slot]) + (g.elem ? " · " + D.ELEMENTS[g.elem].name : "") + "</small><em>Fabrication : jet moyen, peu commune</em></div></div>";
+        html += '<div class="dof-sec">Effets</div><ul class="dof-fx"><li>' + esc(g.desc.replace("{v}", g.lo !== undefined ? fmtV(g.lo) + " à " + fmtV(g.hi) : "").replace("{t}", "2 techniques au hasard")) + "</li>" + (g.elem ? "<li>" + elemSpan(g.elem, "+1 point de " + D.ELEMENTS[g.elem].name) + "</li>" : "") + "</ul>";
+        if (g.set && D.SETS[g.set]) html += '<div class="dof-sec">Panoplie</div><p class="dof-set">' + esc(D.SETS[g.set].name) + (g.who ? " · " + esc(charById(g.who).name) : "") + "</p>";
+        html += '<div class="dof-sec">Recette</div><ul class="dof-cost">' + Object.keys(g.cost).map(function (k) { var n0 = S.res[k] || 0; return '<li class="' + (n0 >= g.cost[k] ? "ok" : "ko") + '">' + ic(D.RES[k].icon) + " " + esc(D.RES[k].name) + " <b>" + n0 + " / " + g.cost[k] + "</b></li>"; }).join("") + "</ul>";
+        if (lk) html += '<p class="dof-cond">' + (!questOk(g) ? "Quête : " + esc(questById(g.quest).desc) : "Recette à trouver en Donjon") + "</p>";
+        html += '<div class="dof-btns"><button class="btn btn-small" type="button" data-action="craft" data-arg="' + t0 + '"' + (ok ? "" : " disabled") + ">Fabriquer</button></div></div>";
+      }
+      html += "</div></div><p class=\"dof-cap\">Coffre : " + eqS().inv.length + " / " + (40 + 10 * (S.chestSize || 0)) + "</p>";
       return html;
     },
     forge: function () {
@@ -7963,12 +8031,6 @@
       html += '<h3 class="pick-title">Améliorations du camp</h3><div class="shop-list"><div class="shop-item"><span class="shop-ic">🎒</span><div class="shop-text"><strong>Emplacement sécurisé d\'expédition</strong><span>' + (1 + sn) + " / 3</span></div>" + (scost ? '<button class="btn btn-small" type="button" data-action="buysecure"' + (S.gold < scost ? " disabled" : "") + ">" + scost + " " + goldIc() + "</button>" : '<span class="pill">max</span>') + "</div>";
       var cs = S.chestSize || 0, ccost = [800, 2000, 5000][cs];
       html += '<div class="shop-item"><span class="shop-ic">🧰</span><div class="shop-text"><strong>Coffre agrandi</strong><span>' + (40 + 10 * cs) + " places</span></div>" + (ccost ? '<button class="btn btn-small" type="button" data-action="buychest"' + (S.gold < ccost ? " disabled" : "") + ">" + ccost + " " + goldIc() + "</button>" : '<span class="pill">max</span>') + "</div></div>";
-      html += '<h3 class="pick-title">Conversion (3 pour 1)</h3><p class="game-small">Échange 3 ressources contre 1 d\'une autre région : un seul mode suffit pour tout obtenir, mais pas efficacement.</p><div class="shop-list">';
-      var have = Object.keys(D.RES).filter(function (k) { return !D.RES[k].trophy && !D.RES[k].rune && (S.res[k] || 0) >= 3; });
-      Object.keys(D.RES).filter(function (k) { return !D.RES[k].trophy && !D.RES[k].rune; }).forEach(function (k) {
-        var src = have.filter(function (x) { return x !== k; }).sort(function (a, b) { return (S.res[b] || 0) - (S.res[a] || 0); })[0];
-        html += '<div class="shop-item"><span class="shop-ic">' + ic(D.RES[k].icon) + '</span><div class="shop-text"><strong>' + esc(D.RES[k].name) + " <small>x" + (S.res[k] || 0) + "</small></strong>" + (src ? "<small>contre 3 " + esc(D.RES[src].name) + "</small>" : "<small>il te faut 3 d'une autre ressource</small>") + "</div>" + (src ? '<button class="btn btn-small" type="button" data-action="conv" data-arg="' + src + ">" + k + '">Échanger</button>' : "") + "</div>";
-      });
       return html + "</div>";
     },
     codex: function () {
@@ -8039,6 +8101,24 @@
     go: function (a) { SND.click(); if (a === "play") { inspect.char = S.char; inspect.map = S.map; } go(a); },
     tchar2: function (id) { if (!charAvailable(charById(id))) return; S.char = id; save(); SND.click(); go("terrier"); },
     eqpick: function (sl) { S.eqSlot = sl; SND.click(); go("eqslot"); },
+    dtab: function (t) { UI.ter = t; SND.click(); go("terrier"); },
+    itab: function (t) { UI.inv = t; SND.click(); go("terrier"); },
+    isel: function (id) { UI.sel = +id; SND.click(); go("terrier"); },
+    islot: function (sl) { var q = pieceById(wornBy(S.char)[sl]), so = D.SLOTS.filter(function (x) { return x.id === sl; })[0]; UI.inv = so ? so.kind || so.id : "all"; UI.sel = q ? q.id : null; SND.click(); go("terrier"); },
+    eqw: function (id) {
+      var q = pieceById(+id); if (!q) return; var gq = D.GEAR[q.t], wc = wornBy(S.char), e = eqS();
+      if (gq.who && gq.who !== S.char) { SND.hurt(); return; }
+      var sl = gq.slot === "anneau" ? (!wc.anneau1 ? "anneau1" : !wc.anneau2 ? "anneau2" : "anneau1") : gq.slot;
+      if (gq.unique) Object.keys(wc).forEach(function (s0) { var o = pieceById(wc[s0]); if (o && o.id !== q.id && D.GEAR[o.t].unique) delete wc[s0]; });
+      Object.keys(e.worn).forEach(function (cc) { Object.keys(e.worn[cc]).forEach(function (s0) { if (e.worn[cc][s0] === q.id) delete e.worn[cc][s0]; }); });
+      wc[sl] = q.id; UI.sel = q.id; save(); SND.level(); go("terrier");
+    },
+    equ: function (sl) { delete wornBy(S.char)[sl]; save(); SND.click(); go("terrier"); },
+    recy2: function (id) { var q = pieceById(+id); if (q && !whoWears(q.id)) { recycle(q); SND.crack(); UI.sel = null; } go("terrier"); },
+    atab: function (t) { UI.at = t; UI.asel = null; SND.click(); go("atelier"); },
+    aonly: function () { UI.only = !UI.only; SND.click(); go("atelier"); },
+    ael: function (e) { UI.el = e; SND.click(); go("atelier"); },
+    asel: function (t) { UI.asel = t; SND.click(); go("atelier"); },
     eqwear: function (id) {
       var q = pieceById(+id); if (!q) return; var sl = S.eqSlot, e = eqS(), gq = D.GEAR[q.t];
       if (gq.who && gq.who !== S.char) { SND.hurt(); return; }
@@ -8051,7 +8131,8 @@
       var ps = postureOf(S.char, (S.posture || {})[S.char]).id, t = a.split(":"); eqS();
       S.tal[S.char] = S.tal[S.char] || {}; S.tal[S.char][ps] = S.tal[S.char][ps] || {}; S.tal[S.char][ps][t[0]] = t[1]; save(); SND.click(); go("terrier");
     },
-    craft: function (t) { var q = craft(t); if (q) SND.fusion(); go("atelier"); },
+    craft: function (t) { var q = craft(t); if (q) { SND.fusion(); bannerAll(D.GEAR[q.t].name + " fabriquée"); } UI.asel = t; go("atelier"); },
+    isel2: function (id) { UI.sel = +id; SND.click(); go("atelier"); },
     recy: function (id) { var q = pieceById(+id); if (q && !whoWears(q.id)) { recycle(q); SND.crack(); } go("atelier"); },
     newsok: function () { S.news = 0; save(); SND.level(); openCamp(); },
     rune: function (id) { var q = pieceById(+id); if (!q || (S.res.rune || 0) < 1) return; S.res.rune--; S.stats.runes = (S.stats.runes || 0) + 1; checkAchievements(null); q.roll = Math.random(); save(); SND.fusion(); go("forge"); },
@@ -8063,7 +8144,7 @@
       save(); go("forge");
     },
     buychest: function () { var n = S.chestSize || 0, c = [800, 2000, 5000][n]; if (!c || S.gold < c) return; S.gold -= c; S.chestSize = n + 1; save(); SND.gold(); go("comptoir"); },
-    conv: function (a) { var t = a.split(">"); if ((S.res[t[0]] || 0) < 3) return; S.res[t[0]] -= 3; S.res[t[1]] = (S.res[t[1]] || 0) + 1; save(); SND.click(); go("comptoir"); },
+
     xsecure: function (i) {
       if (screen !== "secure" || !r.ex || !r.ex.pend) return;
       i = +i; if (i >= 0 && r.bag[i] && r.secure.length < 1 + (S.secureSlots || 0)) r.secure.push(r.bag.splice(i, 1)[0]);
