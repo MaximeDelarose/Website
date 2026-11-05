@@ -10,7 +10,8 @@
 import type { Look, ClothId, HairId } from '../../../data/world/ids';
 import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, EYE_COLOR, MOUTH_SHAPE, LINER_STYLE, SHADOW_COLOR, accGroup } from '../../../data/world/ids';
 import type { Expr } from '../../../data/dialogue';
-import { radiaParts as P } from '../characters';
+import { radiaParts as P, getFaceCustom } from '../characters';
+import { faceKey } from '../../../data/world/face';
 import { PAL, heartPath, roundRect, shade, gloss, starPath } from '../kit';
 import { makeCanvas } from '../kit';
 import { BRACELET_ID, SHINE_STEPS, shineStep } from './wristShine';
@@ -23,9 +24,10 @@ export type Pt = [number, number];
 
 export const CX = 120;
 export const INK = P.INK;
-export const SKIN = P.SKIN_R;
-export const SKIN_D = P.SKIN_R_SHADOW;
-export const SKIN_L = P.SKIN_R_LIGHT;
+/** Peau COURANTE (peut être personnalisée) : lue à chaque dessin. */
+export const skin = (): string => P.SKIN_R;
+export const skinD = (): string => P.SKIN_R_SHADOW;
+export const skinL = (): string => P.SKIN_R_LIGHT;
 export const GOLD = P.GOLD;
 
 // ---------------------------------------------------------------- petits outils
@@ -217,7 +219,7 @@ export function chestSkin(ctx: C): void {
   ctx.bezierCurveTo(140, 240, 100, 240, 90, 214);
   ctx.bezierCurveTo(84, 190, 90, 172, 106, 168);
   ctx.closePath();
-  ctx.fillStyle = lg(ctx, 0, 146, 0, 232, SKIN_D, SKIN, SKIN);
+  ctx.fillStyle = lg(ctx, 0, 146, 0, 232, skinD(), skin(), skin());
   ctx.fill();
   ctx.lineWidth = 1.8;
   ctx.strokeStyle = INK;
@@ -1123,7 +1125,7 @@ function legsSkin(ctx: C, st: number): void {
     ctx.lineTo(CX + s * 14 + off, 572);
     ctx.bezierCurveTo(CX + s * 10, 500, CX + s * 8, 430, CX + s * 8, 360);
     ctx.closePath();
-    fs(ctx, lg(ctx, CX + s * 8, 0, CX + s * 54, 0, SKIN_L, SKIN, SKIN_D), 2);
+    fs(ctx, lg(ctx, CX + s * 8, 0, CX + s * 54, 0, skinL(), skin(), skinD()), 2);
     // genou
     ctx.beginPath();
     ctx.ellipse(CX + s * 32 + off * 0.3, 462, 9, 6, 0, 0, Math.PI);
@@ -1152,7 +1154,7 @@ function shoesDraw(ctx: C, id: ClothId | null, st: number, only?: -1 | 1): void 
 export function foot(ctx: C, cx: number, s: number): void {
   ctx.beginPath();
   ctx.ellipse(cx + s * 3, SHOE_Y - 8, 20, 11, 0, 0, Math.PI * 2);
-  fs(ctx, lg(ctx, 0, SHOE_Y - 18, 0, SHOE_Y, SKIN_L, SKIN), 2);
+  fs(ctx, lg(ctx, 0, SHOE_Y - 18, 0, SHOE_Y, skinL(), skin()), 2);
 }
 
 export function pump(ctx: C, cx: number, s: number): void {
@@ -1170,7 +1172,7 @@ export function pump(ctx: C, cx: number, s: number): void {
   ctx.lineTo(14, -30);
   ctx.lineTo(-14, -30);
   ctx.closePath();
-  ctx.fillStyle = SKIN;
+  ctx.fillStyle = skin();
   ctx.fill();
   // escarpin vernis pointu
   ctx.beginPath();
@@ -1229,7 +1231,7 @@ export function flat(ctx: C, cx: number, s: number): void {
   // cheville
   ctx.beginPath();
   ctx.rect(-14, -40, 28, 22);
-  ctx.fillStyle = SKIN;
+  ctx.fillStyle = skin();
   ctx.fill();
   ctx.beginPath();
   ctx.moveTo(-17, -17);
@@ -1504,7 +1506,7 @@ export function hairCap(ctx: C): void {
   ctx.beginPath();
   ctx.moveTo(0, -116);
   ctx.lineTo(0, -85);
-  P.stroke(ctx, 2, SKIN_D);
+  P.stroke(ctx, 2, skinD());
 }
 
 /** Masse de cheveux derrière la tête (dôme) pour les coiffures attachées. */
@@ -1693,7 +1695,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   ctx.lineCap = 'round';
 
   // 1. cheveux arrière, dos de la robe, jambes et chaussures
-  hairBackLayer(ctx, hair, sway, !!crown);
+  if (!P.veilOn()) hairBackLayer(ctx, hair, sway, !!crown); // un voile remplace les cheveux
   dfx?.back?.(ctx, st);
   legsSkin(ctx, st);
   shoesDraw(ctx, shoes, st);
@@ -1723,7 +1725,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const arms = ([-1, 1] as const).map((s) => armGeo(s, opts.arms, st));
   ([-1, 1] as const).forEach((_s, i) => {
     const a = arms[i];
-    armSeg(ctx, a, 0.12, 1, 19, SKIN_L, SKIN_D, true);
+    armSeg(ctx, a, 0.12, 1, 19, skinL(), skinD(), true);
     if (sleeveSpec) drawSleeve(ctx, a, sleeveSpec, !!jk);
   });
 
@@ -1738,7 +1740,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
     if (opts.arms === 'heart') return;
     const a = arms[i];
     const ang = endAng(a, 1);
-    P.hand(ctx, a.x1 + Math.sin(-ang) * 14, a.y1 + Math.cos(-ang) * 14, SKIN, ang, 9.5);
+    P.hand(ctx, a.x1 + Math.sin(-ang) * 14, a.y1 + Math.cos(-ang) * 14, skin(), ang, 9.5);
   });
   if (opts.arms === 'heart') {
     heartPath(ctx, 120, 296, 30);
@@ -1768,7 +1770,8 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const eyeId = pickId('ey-'), moId = pickId('mo-'), elId = pickId('el-'), esId = pickId('es-');
   P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, iris: eyeId ? EYE_COLOR[eyeId] : undefined, mouth: moId ? MOUTH_SHAPE[moId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
   ctx.restore();
-  hairFrontLayer(ctx, hair, sway);
+  if (!P.veilOn()) hairFrontLayer(ctx, hair, sway);
+  if (P.veilOn()) { ctx.save(); ctx.translate(P.HEAD_X, P.HEAD_Y); ctx.scale(P.HEAD_K, P.HEAD_K); P.drawVeil(ctx); ctx.restore(); }
   if (accs.includes('ac-hoops')) hoops(ctx);
   if (accs.includes('ac-sunglasses')) sunglasses(ctx);
   // boucles → lunettes → foulards / accessoires de cheveux (du plus près au plus haut)
@@ -1830,7 +1833,7 @@ const cache = new Map<string, HTMLCanvasElement>();
 export function avatarCanvas(look: Look, w: number, h: number, opts: AvatarOpts = {}): HTMLCanvasElement {
   // le reflet du bracelet / du collier n'entre dans la clé que si le look le porte (6 pas)
   const sh = look.acc.includes(BRACELET_ID) || look.acc.includes(NECKLACE_ID) ? shineStep(opts.shine ?? 0) : 0;
-  const key = `${w}x${h}|${look.hair}|${look.top}|${look.bottom}|${look.dress}|${look.jacket}|${look.shoes}|${look.bag}|${look.acc.join(',')}|${look.crown}|${opts.expr ?? ''}|${opts.step ?? 0}|${opts.arms ?? ''}|${opts.blink ? 1 : 0}|${sh}`;
+  const key = `${w}x${h}|${look.hair}|${look.top}|${look.bottom}|${look.dress}|${look.jacket}|${look.shoes}|${look.bag}|${look.acc.join(',')}|${look.crown}|${opts.expr ?? ''}|${opts.step ?? 0}|${opts.arms ?? ''}|${opts.blink ? 1 : 0}|${sh}|${faceKey(getFaceCustom())}`;
   let c = cache.get(key);
   if (!c) {
     c = makeCanvas(w, h);

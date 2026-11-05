@@ -18,7 +18,7 @@ import { kidBondLevel } from '../../../../game/world/family';
 import { KID_BOND_MAX } from '../../../../data/world/family';
 import { KID_IDS } from '../../../../data/world/ids';
 
-export type HubId = 'castle' | 'dressing' | 'garden' | 'choc' | 'family' | 'cat' | 'career' | 'fans';
+export type HubId = 'castle' | 'dressing' | 'face' | 'garden' | 'choc' | 'family' | 'cat' | 'career' | 'fans';
 export type HubBadge = 'new' | 'quest' | 'reward' | 'gift' | 'salary';
 export interface HubCard { title: string; sub: string; badge?: HubBadge; hint?: string }
 export type HubStatus = Record<HubId, HubCard>;
@@ -208,6 +208,7 @@ export function hubStatus(data: Pick<SaveData, 'world'>, now: number): HubStatus
   return {
     castle: castleCard(w),
     dressing: dressingCard(w),
+    face: { title: 'Personnaliser Radia', sub: 'Visage, yeux, cheveux, voile, maquillage…' },
     garden: gardenCard(w, now),
     choc: chocCard(w),
     family: familyCard(w, now),

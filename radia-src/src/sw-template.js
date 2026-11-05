@@ -57,3 +57,37 @@ self.addEventListener('fetch', (e) => {
     })
   );
 });
+
+// ------------------------------------------------------------------ petites pensées quotidiennes (Web Push)
+// Le message est affiché comme notification ; il est AUSSI rangé dans un cache à part (« rthoughts », jamais effacé par la mise à jour des
+// versions) pour que l'application l'ajoute à « Petites pensées ♡ » à sa prochaine ouverture, même si la notification n'a pas été touchée.
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : '' }; }
+  const body = String(d.body || 'Une petite pensée pour toi ♡').slice(0, 200);
+  const at = Number(d.at) || Date.now();
+  e.waitUntil(Promise.all([
+    self.registration.showNotification(String(d.title || 'RADIA ♡').slice(0, 60), {
+      body,
+      icon: new URL('assets/icons/icon-192.png', self.registration.scope).href,
+      badge: new URL('assets/icons/icon-192.png', self.registration.scope).href,
+      tag: 'radia-daily', // une seule notification quotidienne visible à la fois (pas d'empilement)
+      data: { url: d.url || './?pensee=1', at },
+    }),
+    caches.open('rthoughts').then((c) => c.put('/__thought/' + at, new Response(JSON.stringify({ at, text: body, idx: typeof d.idx === 'number' ? d.idx : -1, test: !!d.test }), { headers: { 'content-type': 'application/json' } }))).catch(() => undefined),
+  ]));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const target = new URL((e.notification.data && e.notification.data.url) || './?pensee=1', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    for (const c of list) { if ('focus' in c) { c.postMessage({ type: 'radia-thought' }); return c.focus(); } }
+    return self.clients.openWindow(target);
+  }));
+});
+
+// L'abonnement peut être renouvelé par le système : on prévient l'application (elle se réabonne à sa prochaine ouverture).
+self.addEventListener('pushsubscriptionchange', (e) => {
+  e.waitUntil(self.clients.matchAll({ includeUncontrolled: true }).then((list) => list.forEach((c) => c.postMessage({ type: 'radia-push-changed' }))));
+});

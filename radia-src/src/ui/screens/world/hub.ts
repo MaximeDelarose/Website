@@ -32,7 +32,7 @@ import { sparkleBurst } from '../../fx/sparkle';
 import { hubStatus, statusKey, BADGE_LABEL, ensureDressingBaseline, markDressingSeen, unlockedRooms, type HubId, type HubStatus } from './hub/state';
 import { domainStatus, openDomainMap } from '../../../domain';
 import { panoramaCanvas } from '../../../domain/art';
-import { heroCanvas, dressingArt, gardenArt, chocArt, familyArt, catArt, careerArt, fansArt, catWalkCanvas, readyFlower, bloomCanvas, gardenSig } from './hub/art';
+import { heroCanvas, dressingArt, faceArt, gardenArt, chocArt, familyArt, catArt, careerArt, fansArt, catWalkCanvas, readyFlower, bloomCanvas, gardenSig } from './hub/art';
 
 interface Dest {
   id: Exclude<HubId, 'castle'>;
@@ -53,6 +53,7 @@ const DESTS: Dest[] = [
   { id: 'choc', tone: 'choc', open: async () => (await mod(import('./chocolaterie'))).openChocolaterie() },
   { id: 'family', tone: 'peach', open: async () => (await mod(import('./family'))).openFamily() },
   { id: 'cat', tone: 'cream', open: async () => (await mod(import('./cat'))).openCat() },
+  { id: 'face', tone: 'peach', wide: true, open: async () => (await mod(import('./faceStudio'))).openFaceStudio() },
   { id: 'fans', tone: 'violet', wide: true, open: async () => (await mod(import('./fans'))).openFans() },
 ];
 
@@ -212,6 +213,7 @@ export function openWorldHub(): Promise<void> {
       return [
         () => paintHero(),
         () => setArt('dressing', `d|${lk}`, () => dressingArt()),
+        () => setArt('face', `f|${lk}`, () => faceArt()),
         () => setArt('garden', gardenSig(w, now), () => gardenArt(w, now)),
         () => setArt('choc', `${w.choc.collection.slice(-4).join(',')}|${w.choc.shopLevel}`, () => chocArt(w)),
         () => setArt('family', 'f', () => familyArt()),

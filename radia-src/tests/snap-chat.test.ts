@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CONTACTS, ANSWERS, REPLIES, SNAP_BACK, BARE_SCENES } from '../src/apps/snap/chat/data';
-import { advance, defaultChat, dayKey, deleteContact, flameCount, openSnap, prevDay, produce, readText, refreshFlames, replyChoices, reply, rowStatus, sanitizeChat, sendSnap, unopenedSnaps, unreadTotal, updateFlame } from '../src/apps/snap/chat/engine';
+import { addFriend, friendStories, markStorySeen, suggestions, unopenedSnapCount, unseenStories, advance, defaultChat, dayKey, deleteContact, flameCount, openSnap, prevDay, produce, readText, refreshFlames, replyChoices, reply, rowStatus, sanitizeChat, sendSnap, unopenedSnaps, unreadTotal, updateFlame } from '../src/apps/snap/chat/engine';
 import { Rng } from '../src/utils/rng';
 import { profileById } from '../src/events/tindeur/swipe/data';
 
@@ -170,5 +170,58 @@ describe('sauvegarde Snapchien', () => {
     expect(sanitizeChat(null)).toEqual(defaultChat());
     const b = sanitizeChat({ clock: -5, contacts: { kevin: { unread: 9999, msgs: 'x', flame: { n: -3, day: 'zz' }, scenes: ['inconnu'] }, evil: {} } });
     expect(b.clock).toBe(0); expect(b.contacts.kevin.unread).toBeLessThanOrEqual(99); expect(b.contacts.kevin.flame.n).toBe(0); expect((b.contacts as Record<string, unknown>).evil).toBeUndefined();
+  });
+});
+
+describe('stories d\'amis, amis suggérés', () => {
+  it('stories du jour déterministes : mêmes amis, même jour → mêmes stories ; environ 2 amis sur 3', () => {
+    const s = defaultChat();
+    const a = friendStories(s, '2026-11-05'); const b = friendStories(s, '2026-11-05');
+    expect(a).toEqual(b);
+    expect(a.length).toBeGreaterThanOrEqual(1);
+    expect(a.length).toBeLessThanOrEqual(Object.values(s.contacts).filter((c) => c.added).length);
+    for (const st of a) expect(st.caption.length).toBeGreaterThan(2);
+  });
+  it('les stories changent d\'un jour à l\'autre', () => {
+    const s = defaultChat();
+    const days = ['2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08'].map((d) => JSON.stringify(friendStories(s, d).map((x) => [x.cid, x.scene])));
+    expect(new Set(days).size).toBeGreaterThan(1);
+  });
+  it('une story vue passe en « vue » (et se range après les nouvelles) ; elle revient « nouvelle » le lendemain', () => {
+    const s = defaultChat(); const day = '2026-11-05';
+    const first = friendStories(s, day)[0];
+    markStorySeen(s, first.cid, day);
+    const after = friendStories(s, day);
+    expect(after.find((x) => x.cid === first.cid)!.seen).toBe(true);
+    expect(after[after.length - 1].cid).toBe(first.cid);
+    expect(unseenStories(s, day)).toBe(after.length - 1);
+    expect(friendStories(s, '2026-11-06').every((x) => !x.seen)).toBe(true);
+  });
+  it('jamais de story pour un contact supprimé ou pas encore ajouté', () => {
+    const s = defaultChat(); deleteContact(s, 'dylan');
+    expect(friendStories(s, '2026-11-05').some((x) => x.cid === 'dylan')).toBe(false);
+    expect(friendStories(s, '2026-11-05').every((x) => s.contacts[x.cid].added)).toBe(true);
+  });
+  it('suggestions : seulement ceux qui ne sont pas là ; « ajouter » est définitif et jamais pour un supprimé', () => {
+    const s = defaultChat(); const sug = suggestions(s);
+    expect(sug.length).toBeGreaterThan(0); expect(sug.every((c) => !s.contacts[c.id].added)).toBe(true);
+    expect(addFriend(s, sug[0].id, T0)).toBe(true); expect(s.contacts[sug[0].id].added).toBe(true);
+    expect(addFriend(s, sug[0].id, T0)).toBe(false);
+    deleteContact(s, sug[1].id); expect(addFriend(s, sug[1].id, T0)).toBe(false);
+    expect(suggestions(s).some((c) => c.id === sug[1].id)).toBe(false);
+  });
+  it('stories vues sauvegardées ; données corrompues ignorées', () => {
+    const s = defaultChat(); markStorySeen(s, 'dylan', '2026-11-05');
+    const back = sanitizeChat(JSON.parse(JSON.stringify(s)));
+    expect(back.storiesSeen.dylan).toBe('2026-11-05');
+    const bad = sanitizeChat({ storiesSeen: { dylan: 'pas-un-jour', inconnu: '2026-11-05', kevin: 42 } });
+    expect(bad.storiesSeen).toEqual({});
+  });
+  it('compte des snaps non ouverts (badge de l\'onglet Snaps)', () => {
+    const s = defaultChat(); expect(unopenedSnapCount(s)).toBe(0);
+    s.contacts.dylan.msgs.push({ id: 'x1', from: 'in', kind: 'snap', text: 't', scene: 'mirror', opened: false, at: T0 });
+    s.contacts.kevin.msgs.push({ id: 'x2', from: 'in', kind: 'video', text: 't', scene: 'tractor', opened: false, at: T0 });
+    s.contacts.kevin.msgs.push({ id: 'x3', from: 'in', kind: 'snap', text: 't', scene: 'abs', opened: true, at: T0 });
+    expect(unopenedSnapCount(s)).toBe(2);
   });
 });

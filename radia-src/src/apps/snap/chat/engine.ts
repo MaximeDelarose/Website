@@ -26,6 +26,8 @@ export interface ChatState {
   muted: boolean;
   /** Arrivées du moment (regroupement des notifications). */
   joinAt: number;
+  /** Stories d'amis déjà regardées : identifiant du contact → jour (AAAA-MM-JJ) de la dernière story vue. */
+  storiesSeen: Record<string, string>;
 }
 
 export const START_CONTACTS = ['dylan', 'maxime', 'kevin', 'thomas', 'hugo'];
@@ -41,7 +43,7 @@ const emptyContact = (added: boolean): ContactState => ({ added, deleted: false,
 export function defaultChat(): ChatState {
   const contacts: Record<string, ContactState> = {};
   for (const c of CONTACTS) contacts[c.id] = emptyContact(START_CONTACTS.includes(c.id));
-  return { v: 1, contacts, clock: 0, nextAt: 75_000, seq: 0, muted: false, joinAt: JOIN_EVERY_MS };
+  return { v: 1, contacts, clock: 0, nextAt: 75_000, seq: 0, muted: false, joinAt: JOIN_EVERY_MS, storiesSeen: {} };
 }
 
 // ------------------------------------------------------------------ dates (jours locaux)
@@ -194,6 +196,34 @@ export function rowStatus(c: ContactState): { status: RowStatus; at: number } {
   return { status: 'sent', at: last.at };
 }
 
+// ------------------------------------------------------------------ stories d'amis (une illustration par jour, jamais d'obligation)
+export interface FriendStory { cid: string; scene: SceneId; caption: string; seen: boolean }
+const h32 = (t: string): number => { let h = 2166136261 >>> 0; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; };
+/** Stories du jour : déterministes (mêmes amis, même jour → mêmes stories), environ deux amis sur trois en publient une. */
+export function friendStories(s: ChatState, today: string): FriendStory[] {
+  const out: FriendStory[] = [];
+  for (const c of CONTACTS) {
+    const st = s.contacts[c.id];
+    if (!st || !st.added || st.deleted) continue;
+    const hh = h32(`${c.id}|${today}`);
+    if (hh % 3 === 0) continue;
+    const scene = c.scenes[hh % c.scenes.length];
+    const caps = c.captions[scene] ?? [];
+    out.push({ cid: c.id, scene, caption: caps.length ? caps[(hh >>> 4) % caps.length] : 'Petit coucou du jour ♡', seen: s.storiesSeen[c.id] === today });
+  }
+  return out.sort((a, b) => Number(a.seen) - Number(b.seen));
+}
+export function markStorySeen(s: ChatState, cid: string, today: string): void { if (contactById(cid)) s.storiesSeen[cid] = today; }
+export const unseenStories = (s: ChatState, today: string): number => friendStories(s, today).filter((x) => !x.seen).length;
+/** Contacts que Radia peut ajouter à la main (pas encore là, jamais supprimés). */
+export const suggestions = (s: ChatState): ChatContact[] => CONTACTS.filter((c) => !s.contacts[c.id].added && !s.contacts[c.id].deleted);
+export function addFriend(s: ChatState, cid: string, now: number): boolean {
+  const st = s.contacts[cid]; if (!st || st.added || st.deleted) return false;
+  st.added = true; st.lastIn = st.lastIn || now;
+  return true;
+}
+export const unopenedSnapCount = (s: ChatState): number => CONTACTS.reduce((n, c) => n + s.contacts[c.id].msgs.filter((m) => m.from === 'in' && m.kind !== 'text' && !m.opened).length, 0);
+
 // ------------------------------------------------------------------ sauvegarde
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v: unknown, d: number, lo = 0, hi = 1e14): number => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
@@ -204,6 +234,7 @@ export function sanitizeChat(raw: unknown): ChatState {
   if (!isObj(raw)) return d;
   d.clock = Math.floor(num(raw.clock, 0)); d.nextAt = Math.floor(num(raw.nextAt, d.nextAt)); d.seq = Math.floor(num(raw.seq, 0, 0, 1e9));
   d.joinAt = Math.floor(num(raw.joinAt, d.joinAt)); d.muted = raw.muted === true;
+  if (isObj(raw.storiesSeen)) for (const [k, v] of Object.entries(raw.storiesSeen).slice(0, 40)) if (contactById(k) && typeof v === 'string' && DAY_RE.test(v)) d.storiesSeen[k] = v;
   if (isObj(raw.contacts)) for (const c of CONTACTS) {
     const r = raw.contacts[c.id]; if (!isObj(r)) continue;
     const st = d.contacts[c.id];

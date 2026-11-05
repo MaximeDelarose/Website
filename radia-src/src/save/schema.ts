@@ -10,6 +10,7 @@ import type { EventsState } from '../events/types';
 import type { OrderState, RunState } from '../game/merge/types';
 import { capLocks, validLock } from '../game/merge/locks';
 import { COLLECTION_IDS, GENERATORS, collMax, type ItemColl, type ItemRef } from '../data/items';
+import { defaultFace, sanitizeFace, type FaceCustom } from '../data/world/face';
 import { DEFAULT_LOOK, STARTER_CLOTHES, KID_IDS, ROOM_IDS, type Look, type KidId, type RoomId } from '../data/world/ids';
 
 export const SAVE_VERSION = 5;
@@ -119,6 +120,10 @@ export interface World {
     /** Trois emplacements de tenue favorite. */
     looks: ({ name: string; look: Look } | null)[];
     hairOwned: string[];
+    /** « Personnaliser Radia » : visage actuel (peau, formes, yeux, sourcils, nez, bouche, cheveux, voile, maquillage). */
+    face: FaceCustom;
+    /** Six emplacements de visages enregistrés. */
+    faces: ({ name: string; face: FaceCustom } | null)[];
   };
   cat: {
     adopted: boolean;
@@ -165,7 +170,7 @@ export function defaultWorld(): World {
   return {
     res: { coins: 60, flowers: 0, fabric: 0, cocoa: 0 },
     castle: { unlocked: ['bedroom', 'salon', 'garden'], rooms, owned: {}, nextUid: 1 },
-    wardrobe: { owned: [...STARTER_CLOTHES], look: { ...DEFAULT_LOOK, acc: [] }, looks: [null, null, null], hairOwned: ['hair-loose', 'hair-wavy'] },
+    wardrobe: { owned: [...STARTER_CLOTHES], look: { ...DEFAULT_LOOK, acc: [] }, looks: [null, null, null], hairOwned: ['hair-loose', 'hair-wavy'], face: defaultFace(), faces: [null, null, null, null, null, null] },
     cat: { adopted: false, name: '', items: [], equipped: { collar: null, bed: null }, bond: 0, treats: 3, lastSeen: 0, counters: {} },
     family: { kids, scenes: [] },
     garden: { plots: [null, null, null, null], plotCount: 4, unlocked: ['rose', 'daisy', 'tulip'], harvested: {}, bouquets: {}, seeds: {} },
@@ -235,7 +240,7 @@ export function defaultSave(): SaveData {
     economy: defaultEconomy(),
     cosmetics: { tiles: 'classic', fx: 'classic', owned: ['classic'] },
     decor: [],
-    seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7'],
+    seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8'],
     world: defaultWorld(),
     events: defaultEvents(),
     fun: defaultFun(),
@@ -532,6 +537,9 @@ export function sanitizeWorld(raw: unknown): World {
       return isObj(l) ? { name: str(l.name, `Look ${i + 1}`).slice(0, 24), look: sanitizeLook(l.look) } : null;
     });
     d.wardrobe.hairOwned = [...new Set(['hair-loose', 'hair-wavy', ...strArr(w.wardrobe.hairOwned)])];
+    d.wardrobe.face = sanitizeFace(w.wardrobe.face);
+    const fs = Array.isArray(w.wardrobe.faces) ? w.wardrobe.faces : [];
+    d.wardrobe.faces = [0, 1, 2, 3, 4, 5].map((i) => { const f = fs[i]; return isObj(f) ? { name: str(f.name, 'Mon visage').slice(0, 24) || 'Mon visage', face: sanitizeFace(f.face) } : null; });
   }
   if (isObj(w.cat)) {
     const c = w.cat;

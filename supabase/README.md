@@ -52,3 +52,18 @@ Côté Google : origine `https://mdelarose.fr`, redirection `https://euxlmipqzmv
 
 Même schéma : une table `<jeu>_profiles` (lecture seule pour son propriétaire, `on delete cascade` sur `auth.users`)
 et des fonctions qui vérifient chaque gain. Côté page : `SiteAuth.rpc("<fonction>", { ... })` (voir `js/auth.js`).
+
+## RADIA ♡ — petites pensées quotidiennes (Web Push)
+
+Appliqué sur le projet : `radia-push.sql` (tables `radia_push_config` / `radia_push_subs`, **verrouillées** : RLS sans aucune politique ;
+le navigateur n'y accède que par `radia_push_public_key()`, `radia_push_register(...)`, `radia_push_unregister(...)`, qui valident tout :
+https, service de push connu (Apple / Google / Mozilla / Microsoft), tailles, 300 appareils au plus), la fonction Edge `radia-push`
+(`functions/radia-push/`, chiffrement RFC 8291 + VAPID en WebCrypto, testé dans `radia-src/tests/push-*.test.ts`) et la tâche
+`pg_cron` **`radia-push-horaire`** (à :05 de chaque heure ; le secret partagé est lu dans la table au moment de l'appel).
+
+- Une seule notification par jour et par appareil, à partir de 9 h **heure locale de l'appareil** (fuseau enregistré), jamais avant 8 h ni à partir de 21 h ; rattrapage possible dans la journée.
+- 56 messages en rotation (aucun deux fois avant d'avoir tout vu, jamais la même catégorie d'affilée).
+- Les clés VAPID sont créées PAR la fonction (`{"action":"init"}`, une seule fois) : la clé privée ne quitte jamais le serveur et n'est dans aucun dépôt.
+- Test à la demande : `{"action":"test","endpoint":"…"}` (3 par jour et par appareil) — bouton « Tester maintenant » dans RADIA.
+- Voir ce qui partirait sans envoyer : `select net.http_post(url:='…/functions/v1/radia-push', headers:=jsonb_build_object('x-radia-cron',(select cron_secret from radia_push_config)), body:='{"action":"send","dry":true}')`.
+- **Tout arrêter** : `select cron.unschedule('radia-push-horaire');` (les abonnements restent mais plus rien ne part). Supprimer un appareil : `delete from radia_push_subs where endpoint = '…';`.

@@ -19,6 +19,7 @@
  */
 import { PAL, ellipse, gloss, heartPath, paint, roundRect, shade, starPath } from './kit';
 import type { Expr } from '../../data/dialogue';
+import { defaultFace, skinPalette, type FaceCustom, ORIGINAL_SKIN } from '../../data/world/face';
 
 export const EYE_MARK = { eye: 'imageLeft' as const, angleDeg: 192, radius: 0.6 };
 export const NOSE_RING_SIDE = 1; // +1 = droite de l'image
@@ -34,11 +35,18 @@ export interface FaceOpts {
 }
 
 const INK = '#3B2419'; // contour fin brun foncé
+const hexA = (hex: string, a: number): string => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 
-const SKIN_R = '#D8A17D';
-const SKIN_R_SHADOW = '#B87C5A';
-const SKIN_R_LIGHT = '#EDBF9E';
 const IRIS_R = '#5A3520';
+
+/** Peau COURANTE (modifiable par « Personnaliser Radia ») : les trois nuances lues à chaque dessin. Valeurs d'origine tant qu'aucun réglage n'est fait. */
+export const SK = { base: ORIGINAL_SKIN.base, shade: ORIGINAL_SKIN.shade, light: ORIGINAL_SKIN.light };
+let CUSTOM: FaceCustom = defaultFace();
+/** Applique une personnalisation de visage aux dessins suivants (peau, formes, couleurs). */
+export function setFaceCustom(f: FaceCustom): void { CUSTOM = f; const p = skinPalette(f.skin); SK.base = p.base; SK.shade = p.shade; SK.light = p.light; }
+export const getFaceCustom = (): FaceCustom => CUSTOM;
+/** Dessine avec une personnalisation donnée puis remet la précédente (aperçus, sauvegardes de looks). */
+export function withFaceCustom<T>(f: FaceCustom, fn: () => T): T { const prev = CUSTOM; setFaceCustom(f); try { return fn(); } finally { setFaceCustom(prev); } }
 
 const SKIN_A = '#F0C8A6';
 const SKIN_A_SHADOW = '#D29F7E';
@@ -124,7 +132,7 @@ function curveThrough(ctx: CanvasRenderingContext2D, pts: Pt[]) {
 
 // ============================================================ yeux, sourcils, bouche
 
-interface EyeStyle { iris: string; lash: string; w: number; h: number; lashes: boolean; wing?: boolean; bold?: boolean; shadow?: string }
+interface EyeStyle { iris: string; lash: string; w: number; h: number; lashes: boolean; wing?: boolean; bold?: boolean; shadow?: string; /** inclinaison du coin extérieur (rad, + = relevé) */ tilt?: number; /** taille de l'iris (1 = d'origine) */ irisK?: number; /** mascara 0–1 */ mascara?: number; /** intensité du fard 0–1.3 */ shadowA?: number }
 
 function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1 | 1, expr: Expr, blink: boolean, st: EyeStyle, mark: boolean) {
   const w = st.w;
@@ -136,6 +144,7 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
   ctx.save();
   ctx.translate(cx, cy);
   ctx.scale(side, 1); // x local positif = coin extérieur de l'œil
+  if (st.tilt) ctx.rotate(-st.tilt); // yeux tombants (−) / relevés (+)
   if (closed) {
     ctx.beginPath();
     if (expr === 'laugh') { ctx.moveTo(-w * 0.55, 3); ctx.quadraticCurveTo(0, -h * 0.85, w * 0.58, 3); }
@@ -174,7 +183,7 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
   let lookY = -h * 0.02;
   if (expr === 'shy') lookX = 5;
   if (expr === 'love') lookY = -h * 0.1;
-  const ir = h * (st.wing ? 0.68 : 0.72);
+  const ir = h * (st.wing ? 0.68 : 0.72) * (st.irisK ?? 1);
   const ix = lookX * side;
   ctx.beginPath();
   ctx.arc(ix, lookY, ir, 0, Math.PI * 2);
@@ -237,13 +246,13 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
     sg.addColorStop(0, shade(st.shadow, 0.25));
     sg.addColorStop(1, st.shadow);
     ctx.save();
-    ctx.globalAlpha = 0.78;
+    ctx.globalAlpha = Math.min(0.95, 0.78 * (st.shadowA ?? 1));
     ctx.fillStyle = sg;
     ctx.fill();
     ctx.restore();
   }
   // paupière supérieure épaisse (eye-liner)
-  const lidT = st.bold ? 5.6 : st.wing ? 4.4 : st.lashes ? 3.6 : 2.2;
+  const lidT = (st.bold ? 5.6 : st.wing ? 4.4 : st.lashes ? 3.6 : 2.2) + (st.mascara ?? 0) * 1.6;
   ctx.beginPath();
   ctx.moveTo(-w * 0.6, 1.5);
   ctx.bezierCurveTo(-w * 0.35, top - 1.2, w * 0.3, top - 2.2, w * 0.62, -h * 0.1);
@@ -278,11 +287,21 @@ function drawEye(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1
   ctx.beginPath();
   ctx.moveTo(-w * 0.45, h * 0.18);
   ctx.bezierCurveTo(-w * 0.2, bot + 0.5, w * 0.25, bot + 0.5, w * 0.5, h * 0.05);
-  stroke(ctx, 1.2, shade(st.lash, 0.25));
+  stroke(ctx, 1.2 + (st.mascara ?? 0) * 1.7, shade(st.lash, 0.25 - (st.mascara ?? 0) * 0.25));
+  if ((st.mascara ?? 0) > 0.45) {
+    // mascara marqué : quelques cils du haut en plus
+    for (const [a, b] of [[0.18, 0.3], [0.34, 0.46]]) {
+      ctx.beginPath();
+      ctx.moveTo(w * a, top + 1);
+      ctx.lineTo(w * (a + 0.07), top - 6 - (st.mascara ?? 0) * 3);
+      stroke(ctx, 1.8, st.lash);
+      void b;
+    }
+  }
   ctx.restore();
 }
 
-function drawBrow(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1 | 1, expr: Expr, color: string, thick: number, straight = false) {
+function drawBrow(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -1 | 1, expr: Expr, color: string, thick: number, straight = false, archOv?: number) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.scale(side, 1);
@@ -293,7 +312,7 @@ function drawBrow(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: -
   if (expr === 'tease' && side === 1) lift = -6;
   if (expr === 'love' || expr === 'shy') tilt = 2;
   ctx.translate(0, lift);
-  const arch = straight ? 3.5 : 8;
+  const arch = archOv ?? (straight ? 3.5 : 8);
   ctx.beginPath();
   ctx.moveTo(-21, 5 + tilt);
   ctx.bezierCurveTo(-10, -arch * 0.7 + tilt * 0.3, 6, -arch * 1.5 + tilt * 0.2, 25, 4 - (straight ? 1 : 0));
@@ -426,6 +445,12 @@ function blush(ctx: CanvasRenderingContext2D, expr: Expr, y: number, x: number, 
 /** Dégradé ombré : racines foncées, pointes caramel. */
 function hairGrad(ctx: CanvasRenderingContext2D, bottom: number) {
   const g = ctx.createLinearGradient(0, -110, 0, bottom);
+  if (CUSTOM.hairColor) {
+    // couleur choisie : racines plus sombres, pointes plus claires (même ombré que le dessin d'origine)
+    const c = CUSTOM.hairColor;
+    g.addColorStop(0, shade(c, -0.55)); g.addColorStop(0.38, shade(c, -0.35)); g.addColorStop(0.6, shade(c, -0.12)); g.addColorStop(0.82, c); g.addColorStop(1, shade(c, 0.22));
+    return g;
+  }
   g.addColorStop(0, '#2A1810');
   g.addColorStop(0.38, '#41261A');
   g.addColorStop(0.6, '#65391F');
@@ -566,7 +591,7 @@ function radiaHairFront(ctx: CanvasRenderingContext2D, sway: number, bottom: num
   ctx.beginPath();
   ctx.moveTo(0, -116);
   ctx.lineTo(0, -85);
-  stroke(ctx, 2, SKIN_R_SHADOW);
+  stroke(ctx, 2, SK.shade);
 }
 
 // ============================================================ RADIA : visage
@@ -578,11 +603,31 @@ function radiaNeck(ctx: CanvasRenderingContext2D) {
   ctx.lineTo(30, 168);
   ctx.lineTo(27, 60);
   ctx.closePath();
-  fillGrad(ctx, 0, 60, 0, 168, [[0, SKIN_R_SHADOW], [0.4, SKIN_R], [1, SKIN_R]]);
+  fillGrad(ctx, 0, 60, 0, 168, [[0, SK.shade], [0.4, SK.base], [1, SK.base]]);
   stroke(ctx);
 }
 
+// ============================================================ RADIA : paramètres de personnalisation (voir data/world/face.ts)
+interface FaceGeom { w: number; top: number; cheek: number; jaw: number; chin: number; low: number }
+const FACE_GEOM: Record<string, FaceGeom> = {
+  round: { w: 1, top: 1, cheek: 1, jaw: 1, chin: 1, low: 1 },
+  oval: { w: 0.94, top: 1.03, cheek: 0.98, jaw: 0.88, chin: 0.8, low: 1.06 },
+  long: { w: 0.9, top: 1.06, cheek: 0.95, jaw: 0.86, chin: 0.85, low: 1.14 },
+  heart: { w: 1.02, top: 1, cheek: 1, jaw: 0.7, chin: 0.55, low: 1.05 },
+  square: { w: 1.02, top: 0.98, cheek: 1.02, jaw: 1.2, chin: 1.5, low: 0.97 },
+  slim: { w: 0.88, top: 1, cheek: 0.9, jaw: 0.85, chin: 0.9, low: 1.02 },
+  wide: { w: 1.1, top: 0.98, cheek: 1.08, jaw: 1.1, chin: 1.1, low: 0.98 },
+};
+const EYE_PARAMS: Record<string, { w: number; h: number; tilt: number }> = {
+  almond: { w: 1, h: 1, tilt: 0 }, round: { w: 0.92, h: 1.3, tilt: 0 }, long: { w: 1.14, h: 0.86, tilt: 0.03 }, down: { w: 1, h: 0.96, tilt: -0.17 }, up: { w: 1.04, h: 0.96, tilt: 0.17 },
+};
+const BROW_PARAMS: Record<string, { thick: number; arch: number; straight: boolean }> = {
+  soft: { thick: 1, arch: 8, straight: false }, arched: { thick: 0.9, arch: 13, straight: false }, straight: { thick: 1.05, arch: 3.5, straight: true }, thin: { thick: 0.6, arch: 8, straight: false }, bold: { thick: 1.6, arch: 8, straight: false },
+};
+const NOSE_PARAMS: Record<string, { sx: number; sy: number }> = { fine: { sx: 1, sy: 1 }, round: { sx: 1.18, sy: 1.0 }, straight: { sx: 0.96, sy: 1.14 }, button: { sx: 0.88, sy: 0.82 } };
+
 function radiaFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
+  const G = FACE_GEOM[CUSTOM.shape] ?? FACE_GEOM.round;
   const expr = o.expr ?? 'neutral';
   // ombre du menton sur le cou
   ctx.save();
@@ -595,29 +640,39 @@ function radiaFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
   ctx.restore();
   // oreilles (à peine visibles)
   for (const s of [-1, 1]) {
-    ellipse(ctx, s * 71, 10, 8, 14);
-    ctx.fillStyle = SKIN_R_SHADOW;
+    ellipse(ctx, s * 71 * G.w, 10, 8, 14);
+    ctx.fillStyle = SK.shade;
     ctx.fill();
     stroke(ctx, 2);
   }
   // visage : front large, joues pleines, petit menton
   ctx.beginPath();
-  ctx.moveTo(0, -100);
-  ctx.bezierCurveTo(44, -100, 76, -74, 76, -24);
-  ctx.bezierCurveTo(77, 26, 66, 62, 44, 88);
-  ctx.bezierCurveTo(28, 101, 12, 105, 0, 105);
-  ctx.bezierCurveTo(-12, 105, -28, 101, -44, 88);
-  ctx.bezierCurveTo(-66, 62, -77, 26, -76, -24);
-  ctx.bezierCurveTo(-76, -74, -44, -100, 0, -100);
+  const T = G.top, W = G.w, J = G.jaw, C = G.chin, Lw = G.low;
+  ctx.moveTo(0, -100 * T);
+  ctx.bezierCurveTo(44 * W, -100 * T, 76 * W, -74 * T, 76 * W, -24);
+  ctx.bezierCurveTo(77 * W * G.cheek, 26, 66 * J, 62 * Lw, 44 * J, 88 * Lw);
+  ctx.bezierCurveTo(28 * C, 101 * Lw, 12 * C, 105 * Lw, 0, 105 * Lw);
+  ctx.bezierCurveTo(-12 * C, 105 * Lw, -28 * C, 101 * Lw, -44 * J, 88 * Lw);
+  ctx.bezierCurveTo(-66 * J, 62 * Lw, -77 * W * G.cheek, 26, -76 * W, -24);
+  ctx.bezierCurveTo(-76 * W, -74 * T, -44 * W, -100 * T, 0, -100 * T);
   ctx.closePath();
   const g = ctx.createRadialGradient(-16, -6, 8, 0, 8, 118);
-  g.addColorStop(0, SKIN_R_LIGHT);
-  g.addColorStop(0.5, SKIN_R);
-  g.addColorStop(1, SKIN_R_SHADOW);
+  g.addColorStop(0, SK.light);
+  g.addColorStop(0.5, SK.base);
+  g.addColorStop(1, SK.shade);
   ctx.fillStyle = g;
   ctx.fill();
   stroke(ctx, 2.4);
   blush(ctx, expr, 38, 47);
+  if (CUSTOM.makeup.blush > 0) {
+    // blush personnalisé : joues colorées, plus ou moins marquées
+    const a = Math.min(0.85, CUSTOM.makeup.blush * 0.5 * (1 + CUSTOM.makeup.intensity * 0.35));
+    for (const sd of [-1, 1]) {
+      const g2 = ctx.createRadialGradient(sd * 46, 40, 0, sd * 46, 40, 30);
+      g2.addColorStop(0, hexA(CUSTOM.makeup.blushColor, a)); g2.addColorStop(1, hexA(CUSTOM.makeup.blushColor, 0));
+      ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(sd * 46, 40, 30, 0, Math.PI * 2); ctx.fill();
+    }
+  }
   // deux petits points clairs sur les pommettes
   ctx.fillStyle = 'rgba(255,238,214,0.85)';
   for (const [x, y, r] of [[-50, 36, 3.4], [49, 38, 3.2]] as const) {
@@ -625,15 +680,26 @@ function radiaFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
   }
-  // yeux
-  const ln = o.liner ?? 'wing';
-  const eye: EyeStyle = { iris: o.iris ?? IRIS_R, lash: '#1B100C', w: 48, h: 24, lashes: ln !== 'none', wing: ln === 'wing' || ln === 'bold', bold: ln === 'bold', shadow: o.shadow };
-  drawEye(ctx, -34, 9, -1, expr, !!o.blink, eye, EYE_MARK.eye === 'imageLeft');
-  drawEye(ctx, 34, 9, 1, expr, !!o.blink, eye, false);
-  // sourcils foncés bien dessinés
-  drawBrow(ctx, -34, -22, -1, expr, '#33201A', 6.4);
-  drawBrow(ctx, 34, -22, 1, expr, '#33201A', 6.4);
-  // nez fin
+  // yeux (forme, taille, écartement, couleur, iris, maquillage)
+  const ln = o.liner ?? CUSTOM.makeup.liner;
+  const EP = EYE_PARAMS[CUSTOM.eyes.shape] ?? EYE_PARAMS.almond;
+  const ek = 1 + CUSTOM.eyes.size * 0.22;
+  const eye: EyeStyle = { iris: o.iris ?? CUSTOM.eyes.iris ?? IRIS_R, lash: '#1B100C', w: 48 * EP.w * ek, h: 24 * EP.h * ek, lashes: ln !== 'none', wing: ln === 'wing' || ln === 'bold', bold: ln === 'bold', shadow: o.shadow ?? (CUSTOM.makeup.shadow || undefined), tilt: EP.tilt, irisK: 1 + CUSTOM.eyes.irisSize * 0.28, mascara: CUSTOM.makeup.mascara * (1 + CUSTOM.makeup.intensity * 0.3), shadowA: 1 + CUSTOM.makeup.intensity * 0.25 };
+  const ex = 34 + CUSTOM.eyes.spacing * 8;
+  drawEye(ctx, -ex, 9, -1, expr, !!o.blink, eye, EYE_MARK.eye === 'imageLeft');
+  drawEye(ctx, ex, 9, 1, expr, !!o.blink, eye, false);
+  // sourcils (forme, épaisseur, courbure, couleur)
+  const BP = BROW_PARAMS[CUSTOM.brows.shape] ?? BROW_PARAMS.soft;
+  const bThick = 6.4 * BP.thick * (1 + CUSTOM.brows.thick * 0.55);
+  const bArch = Math.max(1.5, BP.arch + CUSTOM.brows.curve * 4.5);
+  drawBrow(ctx, -ex, -22, -1, expr, CUSTOM.brows.color, bThick, BP.straight, bArch);
+  drawBrow(ctx, ex, -22, 1, expr, CUSTOM.brows.color, bThick, BP.straight, bArch);
+  // nez (forme, taille, largeur, longueur) : transformation autour de la racine du nez
+  const NP = NOSE_PARAMS[CUSTOM.nose.shape] ?? NOSE_PARAMS.fine;
+  ctx.save();
+  ctx.translate(0, 14);
+  ctx.scale(NP.sx * (1 + CUSTOM.nose.width * 0.3) * (1 + CUSTOM.nose.size * 0.2), NP.sy * (1 + CUSTOM.nose.length * 0.25) * (1 + CUSTOM.nose.size * 0.2));
+  ctx.translate(0, -14);
   ctx.beginPath();
   ctx.moveTo(5, 12);
   ctx.quadraticCurveTo(8, 28, 9, 36);
@@ -657,7 +723,79 @@ function radiaFace(ctx: CanvasRenderingContext2D, o: FaceOpts) {
   ctx.lineWidth = 1.5;
   ctx.strokeStyle = '#F4DFA0';
   ctx.stroke();
-  drawMouth(ctx, 69, expr, o.lip ?? '#C9807A', true, o.mouth);
+  ctx.restore(); // fin de la transformation du nez
+  // bouche (forme, volume, largeur, couleur ; sans rouge à lèvres : teinte naturelle proche de la peau)
+  const lipC = o.lip ?? (CUSTOM.makeup.lipstick ? CUSTOM.mouth.lip : shade(SK.base, -0.2));
+  ctx.save();
+  ctx.translate(0, 69);
+  ctx.scale(1 + CUSTOM.mouth.width * 0.25, 1 + CUSTOM.mouth.fullness * 0.3);
+  ctx.translate(0, -69);
+  drawMouth(ctx, 69, expr, lipC, true, o.mouth ?? (CUSTOM.mouth.shape === 'natural' ? undefined : CUSTOM.mouth.shape));
+  ctx.restore();
+}
+
+// ============================================================ RADIA : voile / foulard (personnalisation)
+
+/**
+ * Voile ou foulard sur la tête, dans le repère du visage (centre 0,0). Il remplace les cheveux (jamais de mèches qui dépassent).
+ * Styles : simple (drapé net), long (retombe sur les épaules), élégant (deux plis, bordure claire, broche), foulard de soie (noué).
+ * L'ouverture du visage est évidée (règle « evenodd ») : le visage dessiné dessous reste entièrement lisible.
+ */
+function drawVeil(ctx: CanvasRenderingContext2D) {
+  const v = CUSTOM.veil;
+  if (v.style === 'none') return;
+  const base = v.color;
+  const fill = (y0: number, y1: number) => {
+    const g = ctx.createLinearGradient(-90, y0, 90, y1);
+    g.addColorStop(0, shade(base, 0.22)); g.addColorStop(0.5, base); g.addColorStop(1, shade(base, -0.22));
+    return g;
+  };
+  const GW = (FACE_GEOM[CUSTOM.shape] ?? FACE_GEOM.round).w;
+  ctx.save();
+  if (v.style === 'silk') {
+    // foulard noué : couvre le dessus de la tête jusqu'au-dessus des oreilles, nœud sur le côté
+    smoothPath(ctx, [[0, -126], [58, -116], [92, -78], [88, -34], [60, -62], [30, -78], [0, -82], [-30, -78], [-60, -62], [-88, -34], [-92, -78], [-58, -116]]);
+    ctx.fillStyle = fill(-126, -30); ctx.fill(); stroke(ctx, 2.4);
+    // bandeau
+    smoothPath(ctx, [[-86, -52], [-40, -76], [0, -80], [40, -76], [86, -52], [84, -40], [40, -64], [0, -68], [-40, -64], [-84, -40]]);
+    ctx.fillStyle = shade(base, 0.12); ctx.fill(); stroke(ctx, 1.6);
+    // nœud + pans
+    smoothPath(ctx, [[66, -86], [92, -102], [104, -84], [86, -70]]); ctx.fillStyle = shade(base, -0.05); ctx.fill(); stroke(ctx, 2);
+    smoothPath(ctx, [[86, -78], [112, -56], [108, -34], [92, -52]]); ctx.fillStyle = base; ctx.fill(); stroke(ctx, 2);
+    smoothPath(ctx, [[84, -76], [100, -46], [88, -22], [78, -50]]); ctx.fillStyle = shade(base, -0.12); ctx.fill(); stroke(ctx, 2);
+    ctx.beginPath(); ctx.arc(80, -76, 5.5, 0, Math.PI * 2); ctx.fillStyle = shade(base, -0.2); ctx.fill(); stroke(ctx, 1.6);
+    ctx.restore();
+    return;
+  }
+  const long = v.style === 'long';
+  const bottom = long ? 262 : 196;
+  const sh = long ? 136 : 102;
+  // masse du voile : dessus de la tête → épaules, ouverture ovale pour le visage
+  smoothPath(ctx, [[0, -132], [66, -120], [104, -72], [112, -4], [106, 64], [sh, 132], [sh + 16, bottom - 36], [64, bottom - 6], [0, bottom + 4], [-64, bottom - 6], [-sh - 16, bottom - 36], [-sh, 132], [-106, 64], [-112, -4], [-104, -72], [-66, -120]]);
+  ctx.moveTo(63 * GW, 12); // nouveau sous-tracé : sinon une ligne parasite relie le contour à l'ouverture
+  ctx.ellipse(0, 12, 63 * GW, 90, 0, 0, Math.PI * 2);
+  ctx.fillStyle = fill(-132, bottom); ctx.fill('evenodd');
+  ctx.lineJoin = 'round'; stroke(ctx, 2.4);
+  // contour de l'ouverture
+  ctx.beginPath(); ctx.ellipse(0, 12, 63 * GW, 90, 0, 0, Math.PI * 2); stroke(ctx, 2.2);
+  // plis du tissu
+  ctx.lineCap = 'round'; ctx.lineWidth = 2; ctx.strokeStyle = hexA('#000000', 0.14);
+  for (const sd of [-1, 1]) {
+    for (const [x0, y0, x1, y1, cx, cy] of [[sd * 80, -70, sd * 92, 60, sd * 108, -6], [sd * 70, 96, sd * 84, bottom - 20, sd * 96, 150], [sd * 40, 106, sd * 52, bottom - 8, sd * 60, 160]] as const) {
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cx, cy, x1, y1); ctx.stroke();
+    }
+  }
+  ctx.strokeStyle = hexA('#FFFFFF', 0.28); ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-70, -100); ctx.quadraticCurveTo(-30, -120, 20, -118); ctx.stroke();
+  if (v.style === 'elegant' || v.elegant) {
+    // version élégante : liseré clair autour du visage, grand pli croisé sur la poitrine et petite broche dorée
+    ctx.beginPath(); ctx.ellipse(0, 12, 66 * GW, 93, 0, 0, Math.PI * 2); ctx.lineWidth = 5; ctx.strokeStyle = shade(base, 0.38); ctx.stroke();
+    smoothPath(ctx, [[-100, 124], [-40, 142], [30, 150], [104, 172], [98, bottom - 26], [30, bottom - 34], [-64, bottom - 28], [-104, 168]]);
+    ctx.fillStyle = shade(base, 0.1); ctx.globalAlpha = 0.9; ctx.fill(); ctx.globalAlpha = 1; stroke(ctx, 2);
+    ctx.beginPath(); ctx.arc(-52, 142, 7.5, 0, Math.PI * 2); ctx.fillStyle = '#F4DFA0'; ctx.fill(); stroke(ctx, 1.8, '#8A7A5A');
+    ctx.beginPath(); ctx.arc(-52, 142, 3, 0, Math.PI * 2); ctx.fillStyle = '#E8558F'; ctx.fill();
+  }
+  ctx.restore();
 }
 
 // ============================================================ RADIA : buste
@@ -785,7 +923,7 @@ function radiaBustShirt(ctx: CanvasRenderingContext2D) {
   ctx.lineTo(0, 238);
   ctx.lineTo(30, 152);
   ctx.closePath();
-  fillGrad(ctx, 0, 150, 0, 240, [[0, SKIN_R_SHADOW], [1, SKIN_R]]);
+  fillGrad(ctx, 0, 150, 0, 240, [[0, SK.shade], [1, SK.base]]);
   stroke(ctx, 2);
   // col
   for (const s of [-1, 1]) {
@@ -856,10 +994,11 @@ export function drawRadiaPortrait(ctx: CanvasRenderingContext2D, o: FaceOpts & {
   const outfit = o.outfit ?? 'hoodie';
   ctx.save();
   ctx.translate(200, 200);
-  radiaHairBack(ctx, o.sway ?? 0, R_HAIR_BOTTOM);
+  const veil = CUSTOM.veil.style !== 'none'; // voile : il remplace les cheveux
+  if (!veil) radiaHairBack(ctx, o.sway ?? 0, R_HAIR_BOTTOM);
   radiaBust(ctx, outfit === 'royal' ? 'hoodie' : outfit);
   radiaFace(ctx, o);
-  radiaHairFront(ctx, o.sway ?? 0, R_HAIR_BOTTOM);
+  if (veil) drawVeil(ctx); else radiaHairFront(ctx, o.sway ?? 0, R_HAIR_BOTTOM);
   if (outfit === 'royal') crown(ctx, CROWN.x, CROWN.y, CROWN.s, CROWN.rot);
   ctx.restore();
 }
@@ -1246,7 +1385,7 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
   ctx.save();
   ctx.translate(HEAD_X, HEAD_Y);
   ctx.scale(HEAD_K, HEAD_K);
-  radiaHairBack(ctx, sway, R_HAIR_BOTTOM_FULL);
+  if (CUSTOM.veil.style === 'none') radiaHairBack(ctx, sway, R_HAIR_BOTTOM_FULL);
   ctx.restore();
 
   // baskets (rouges avec la tenue rayée), puis pantalon large par-dessus
@@ -1293,7 +1432,7 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
   ctx.lineTo(133, 176);
   ctx.lineTo(132, 146);
   ctx.closePath();
-  fillGrad(ctx, 0, 146, 0, 178, [[0, SKIN_R_SHADOW], [1, SKIN_R]]);
+  fillGrad(ctx, 0, 146, 0, 178, [[0, SK.shade], [1, SK.base]]);
   stroke(ctx, 1.8);
   // capuche (derrière la nuque)
   if (!shirt) {
@@ -1328,7 +1467,7 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
     const hx = x1 + Math.sin(-ang) * 14;
     const hy = y1 + Math.cos(-ang) * 14;
     if (pose === 'heart') return;
-    hand(ctx, hx, hy, SKIN_R, ang, 9.5);
+    hand(ctx, hx, hy, SK.base, ang, 9.5);
   };
   // le côté sac (image droite) est dessiné après le torse
   body();
@@ -1345,7 +1484,7 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
     // col ouvert + boutons
     ctx.beginPath();
     ctx.moveTo(108, 166); ctx.lineTo(120, 214); ctx.lineTo(132, 166); ctx.closePath();
-    fillGrad(ctx, 0, 166, 0, 214, [[0, SKIN_R_SHADOW], [1, SKIN_R]]);
+    fillGrad(ctx, 0, 166, 0, 214, [[0, SK.shade], [1, SK.base]]);
     for (const s of [-1, 1]) {
       ctx.beginPath();
       ctx.moveTo(120 + s * 12, 162); ctx.lineTo(120 + s * 34, 186); ctx.lineTo(120 + s * 14, 206); ctx.lineTo(120, 216); ctx.lineTo(120 + s * 4, 178); ctx.closePath();
@@ -1457,7 +1596,7 @@ export function drawRadiaFull(ctx: CanvasRenderingContext2D, o: FullOpts = {}) {
   ctx.translate(HEAD_X, HEAD_Y);
   ctx.scale(HEAD_K, HEAD_K);
   radiaFace(ctx, o);
-  radiaHairFront(ctx, sway, R_HAIR_BOTTOM_FULL);
+  if (CUSTOM.veil.style === 'none') radiaHairFront(ctx, sway, R_HAIR_BOTTOM_FULL); else drawVeil(ctx);
   if (outfit === 'royal') crown(ctx, CROWN.x, CROWN.y, CROWN.s, CROWN.rot);
   ctx.restore();
   ctx.restore();
@@ -1650,10 +1789,10 @@ export function medallionCanvas(who: Who, o: FaceOpts = {}, size = 120): HTMLCan
     ctx.translate(r, r + size * 0.12);
     ctx.scale(k, k);
     if (who === 'radia') {
-      radiaHairBack(ctx, 0, R_HAIR_BOTTOM);
+      if (CUSTOM.veil.style === 'none') radiaHairBack(ctx, 0, R_HAIR_BOTTOM);
       radiaBust(ctx, o.outfit === 'stripes' ? 'stripes' : 'hoodie');
       radiaFace(ctx, o);
-      radiaHairFront(ctx, 0, R_HAIR_BOTTOM);
+      if (CUSTOM.veil.style === 'none') radiaHairFront(ctx, 0, R_HAIR_BOTTOM); else drawVeil(ctx);
       if (o.outfit === 'royal') crown(ctx, CROWN.x, CROWN.y, CROWN.s, CROWN.rot);
     } else { augusteBust(ctx); augusteFace(ctx, o); augusteHair(ctx); }
     ctx.restore();
@@ -1676,5 +1815,8 @@ export { starPath };
 export const radiaParts = {
   radiaFace, radiaHairBack, radiaHairFront, hairGrad, wavyLock, lockShape, lockDetail, smoothPath, curveThrough,
   stroke, fillGrad, hand, sneaker, crown,
-  INK, GOLD, SKIN_R, SKIN_R_SHADOW, SKIN_R_LIGHT, HEAD_X, HEAD_Y, HEAD_K, R_HAIR_BOTTOM_FULL, CROWN,
+  INK, GOLD, HEAD_X, HEAD_Y, HEAD_K, R_HAIR_BOTTOM_FULL, CROWN,
+  get SKIN_R() { return SK.base; }, get SKIN_R_SHADOW() { return SK.shade; }, get SKIN_R_LIGHT() { return SK.light; },
+  drawVeil: (ctx: CanvasRenderingContext2D) => drawVeil(ctx),
+  veilOn: () => CUSTOM.veil.style !== 'none',
 };

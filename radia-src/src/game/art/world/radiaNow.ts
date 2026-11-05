@@ -7,12 +7,18 @@ import type { Look } from '../../../data/world/ids';
 import type { Expr } from '../../../data/dialogue';
 import { drawAvatar, avatarCanvas, type AvatarOpts } from './avatar';
 import { currentLook } from '../../world/look';
+import { getFaceCustom } from '../characters';
+import { faceKey, isDefaultFace } from '../../../data/world/face';
 import { makeCanvas } from '../kit';
 
 /** Signature courte du look : sert de clé de cache / de texture. */
 export function lookKey(l: Look = currentLook()): string {
-  return `${l.hair}.${l.top}.${l.bottom}.${l.dress}.${l.jacket}.${l.shoes}.${l.bag}.${l.acc.join('+')}.${l.crown}`;
+  // le visage personnalisé fait partie de la clé (sinon un portrait en cache garderait l'ancien visage) ; vide tant que rien n'est personnalisé
+  const fc = getFaceCustom();
+  const face = isDefaultFace(fc) ? '' : `.f${hash(faceKey(fc))}`;
+  return `${l.hair}.${l.top}.${l.bottom}.${l.dress}.${l.jacket}.${l.shoes}.${l.bag}.${l.acc.join('+')}.${l.crown}${face}`;
 }
+const hash = (t: string): string => { let h = 2166136261 >>> 0; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36); };
 
 /** Radia en pied (240 × 600 logiques) avec son look actuel. */
 export function drawRadiaNow(ctx: CanvasRenderingContext2D, w: number, h: number, opts: AvatarOpts = {}): void {

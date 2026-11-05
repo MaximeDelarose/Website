@@ -3,7 +3,7 @@
  * (foulards, lunettes, boucles d'oreilles). Enregistre les dessins dans `EXTRA` (voir avatar.ts).
  * ⚠ import circulaire avec avatar.ts : aucune `const` de module utilisée à l'installation.
  */
-import { lg, fs, line, dot, bow, hairCap, hairDome, ropeStrand, EXTRA, CX, INK, SKIN, SKIN_D, SKIN_L, GOLD, SHOE_Y } from './avatar';
+import { lg, fs, line, dot, bow, hairCap, hairDome, ropeStrand, EXTRA, CX, INK, skin, skinD, skinL, GOLD, SHOE_Y } from './avatar';
 import type { C, Pt } from './avatar';
 import { radiaParts as P } from '../characters';
 import { heartPath, starPath, roundRect, shade, gloss } from '../kit';
@@ -96,7 +96,7 @@ function heelShoe(ctx: C, cx: number, s: number, o: ShoeO): void {
 
   // --- pied
   footPath(ctx, H, p, tip);
-  fs(ctx, lg(ctx, -25, 0, 21, 0, SKIN_L, SKIN, SKIN_D), 2);
+  fs(ctx, lg(ctx, -25, 0, 21, 0, skinL(), skin(), skinD()), 2);
 
   // --- empeigne (clippée sur le pied)
   ctx.save();

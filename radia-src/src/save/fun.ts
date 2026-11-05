@@ -152,6 +152,8 @@ export interface FunState {
   customers: Record<string, CustomerState>;
   /** Téléphone du jeu : fond d'écran choisi (identifiant de phoneWallpapers.ts). */
   phone: { wallpaper: string };
+  /** « Petites pensées ♡ » reçues (notifications quotidiennes) : historique local, 60 au plus ; `kept` = gardée par Radia. */
+  thoughts: { at: number; text: string; idx?: number; kept?: boolean }[];
 }
 
 export const defaultFun = (): FunState => ({
@@ -169,6 +171,7 @@ export const defaultFun = (): FunState => ({
   apps: { swipe: {}, clips: {}, snap: {}, career: {}, messages: {} },
   customers: {},
   phone: { wallpaper: 'rose' },
+  thoughts: [],
   necklace: defaultNecklace(),
   notifs: [],
 });
@@ -255,6 +258,7 @@ export function sanitizeFun(raw: unknown): FunState {
     d.apps = { swipe: o(raw.apps.swipe), clips: o(raw.apps.clips), snap: o(raw.apps.snap), career: numRec(raw.apps.career), messages: o(raw.apps.messages) };
   }
   if (isObj(raw.phone) && typeof raw.phone.wallpaper === 'string') d.phone = { wallpaper: raw.phone.wallpaper.slice(0, 24) };
+  if (Array.isArray(raw.thoughts)) d.thoughts = raw.thoughts.filter(isObj).slice(-60).map((t) => ({ at: num(t.at, 0, 0, 1e15), text: typeof t.text === 'string' ? t.text.slice(0, 200) : '', ...(typeof t.idx === 'number' && Number.isFinite(t.idx) ? { idx: Math.floor(t.idx) } : {}), ...(t.kept === true ? { kept: true } : {}) })).filter((t) => t.text);
   d.notifs = strArr(raw.notifs, 300);
   return d;
 }
