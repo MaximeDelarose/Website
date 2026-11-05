@@ -41,9 +41,10 @@ async function run(H, claimable) {
   await page.screenshot({ path: `/tmp/claude-0/da/home-e2e-${H}${claimable ? 'd' : ''}.png` });
 
   // ---- cadeau du jour et accès de la barre du haut conservés
-  check('barre du haut : réglages, téléphone, cadeau du jour, énergie, diamants, boutique', (await page.locator('.title-top .icon-btn[aria-label="Paramètres"]').count()) === 1 && (await page.locator('.title-top .dy-badge').count()) === 1 && (await page.locator('.title-top .res-chip').count()) === 2 && (await page.locator('.title-top .shop-btn').count()) === 1);
-  check('pastille du cadeau du jour : active si un cadeau est à récupérer', ((await page.locator('.dy-badge.on').count()) === 1) === !!claimable, claimable ? 'attendue' : 'absente');
-  if (!claimable) { await page.locator('.dy-badge').click(); await sleep(1500); check('toucher le cadeau du jour ouvre la fenêtre des récompenses quotidiennes', (await page.locator('.dy-back').count()) >= 1); await closeDaily(); }
+  check('barre du haut : réglages, téléphone, cadeau du jour (dans la page), énergie, diamants, boutique', (await page.locator('.title-top .icon-btn[aria-label="Paramètres"]').count()) === 1 && (await page.locator('.title-top .dy-badge').count()) === 1 && (await page.locator('.title-top .res-chip').count()) === 2 && (await page.locator('.title-top .shop-btn').count()) === 1);
+  const badgeVisible = await page.locator('.dy-badge').isVisible();
+  check('pastille du cadeau du jour : visible seulement quand un cadeau est à récupérer (comportement d\'origine)', badgeVisible === !!claimable && ((await page.locator('.dy-badge.on').count()) === 1) === !!claimable, badgeVisible ? 'visible' : 'masquée');
+  if (claimable) { await page.locator('.dy-badge').click(); await sleep(1500); check('toucher le cadeau du jour ouvre la fenêtre des récompenses quotidiennes', (await page.locator('.dy-back').count()) >= 1); await closeDaily(); }
 
   // ---- Casino : sous-titre vivant, pastille, ouverture, retour à l'accueil
   const sub = await page.locator('.btn.mode.casino small').innerText();
