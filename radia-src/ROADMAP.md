@@ -6,7 +6,7 @@ jamais de test sur un vrai iPhone dans cet environnement). Mettre ce fichier à 
 Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commencé · ⚠️ à vérifier sur iPhone réel
 
 ## ORDRE DE TRAVAIL AUTONOME (consigne « nuit », à suivre dans cet ordre)
-1. ⬜ **Plateau de fusion : cases inertes intermittentes** (priorité absolue) — enquête réelle (tutoriel chap. 1, overlays, états), correctif durable, diagnostic tactile dans Paramètres, récupération sûre, tests répétés.
+1. ✅ **Plateau de fusion : cases inertes intermittentes** — CAUSE : le pool de 2 pointeurs tactiles de Phaser s'épuise quand des relâchements de doigt sont perdus (iOS : bord, centre de contrôle, bandeau) → la grille (canvas) ne reçoit plus rien, les boutons HTML oui. Correctif : `src/game/pointerHygiene.ts` (les doigts réels d'`event.touches` font foi, libération des pointeurs périmés, nettoyage au changement de plan) + Paramètres → « Diagnostic tactile » / « Débloquer le plateau ». Tests : `board-hit-audit` 31/31 (le scénario « relâchements perdus » échouait avant), `board-gestures-e2e` 31/31, `chapters-gestures-e2e` 21/21, 1341 unitaires. ⚠️ à confirmer sur iPhone réel.
 2. ⬜ **Fiches de ressources (appui long)** : pièces, diamants, énergie, cœurs, tickets… composant unique, méthodes d'obtention réelles seulement.
 3. ⬜ **Téléphone virtuel : écran d'accueil + navigation à deux niveaux** (fermer une app → fond d'écran ; quitter le téléphone → retour exact au jeu), fonds d'écran, dock, badges, animations, sauvegarde du fond.
 4. ⬜ **Carrière visible dans MON MONDE + salaire** (carte remontée, badge « Salaire prêt ! », récupération immédiate, montant réel).
