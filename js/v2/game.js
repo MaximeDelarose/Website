@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.41.2";
+  var VERSION = "2.42.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -827,7 +827,7 @@
     }
     dmg = Math.max(1, Math.round(dmg));
     if (e.eshield > 0) { var ab = Math.min(e.eshield, dmg); e.eshield -= ab; dmg -= ab; if (dmg <= 0) { e.flash = 0.05; return; } }
-    e.hp -= dmg; e.flash = 0.1; if (r && !e.d.prop) r.dmgTot = (r.dmgTot || 0) + Math.min(dmg, e.hp + dmg);
+    e.hp -= dmg; e.flash = 0.1; if (r && !e.d.prop) { var dd0 = Math.min(dmg, e.hp + dmg); r.dmgTot = (r.dmgTot || 0) + dd0; r.dmgFam = r.dmgFam || {}; var fk0 = CUR_FAM || "autre"; r.dmgFam[fk0] = (r.dmgFam[fk0] || 0) + dd0; }
     if (!e.d.prop) { var hel = atkElem(p); SND.hit(hel, crit); spark(e.x + (p.x - e.x) * 0.25 + (Math.random() * 4 - 2), e.y - 2 + (p.y - e.y) * 0.25, hel, crit); }
     if (crit && !e.d.prop && (e.d.boss || dmg >= 60) && S.opts.shake) { shake = Math.max(shake, 0.12); if (p === me) kick(e.x - p.x, e.y - p.y, 1.5); }
     if (!e.d.prop) {
@@ -1018,7 +1018,7 @@
     if (p.char && p.char.id === "ninja" && !(tal(p, "danseuse_t2") && Math.random() < 0.5)) p.dance = 0;
     if (p.char && p.char.id === "cendrine" && !p.twin) { p.debt = (p.debt || 0) + hit; p.debtRate = Math.max(p.debtRate || 0, p.debt / (p.mstate === "mouvement" && gv(p, "gra_b") ? 5 : 4)); }
     else p.hp -= hit;
-    if (r && p === me) r.dmgIn = (r.dmgIn || 0) + hit;
+    if (r && p === me) { r.dmgIn = (r.dmgIn || 0) + hit; r.dmgMin = r.dmgMin || []; var mi0 = Math.floor(r.time / 60); r.dmgMin[mi0] = (r.dmgMin[mi0] || 0) + hit; r.lastHitN = hit; }
     p.inv = Math.max(0.1, (DIFF.inv || 0.35) * (1 - Math.min(0.7, Math.max(0, (r ? r.time : 0) - 300) / 900))); txFire(p, "hurt");
     var rflv = ((p.txf && p.txf.reflect) || 0) + ((p.gbn && p.gbn.epi) || 0);
     if (rflv) { var rfp = p; near(p.x, p.y, 40, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - rfp.x, e.y - rfp.y) < 36 + e.d.r) { var pq = p; p = rfp; hurt(e, hit * rflv / 100, (e.x - rfp.x) * 3, (e.y - rfp.y) * 3); p = pq; } }); ring(p.x, p.y, 36, false); }
@@ -9936,6 +9936,20 @@
     if (state !== "pause") return; state = "play"; hideCard(); last = performance.now();
   }
 
+  var FAM_NAMES = { melee: "Mêlée", tir: "Tir", zone: "Zone", retour: "Retour", compagnon: "Compagnons", autre: "Autres" };
+  function deathHtml() {
+    if (!r || isArena() || isDungeon() || r.time < 30) return "";
+    var mins = r.dmgMin || [], mx = 0, mxI = 0; mins.forEach(function (v, i) { if (v > mx) { mx = v; mxI = i; } });
+    var bars = "", n = Math.max(1, Math.ceil(r.time / 60));
+    for (var i = 0; i < n; i++) bars += '<i style="height:' + Math.max(2, Math.round((mins[i] || 0) / (mx || 1) * 100)) + '%" title="min ' + (i + 1) + " : " + Math.round((mins[i] || 0) * DISP) + ' PV perdus"></i>';
+    var fam = r.dmgFam || {}, tot = 0; Object.keys(fam).forEach(function (k) { tot += fam[k]; });
+    var famTxt = Object.keys(fam).sort(function (a, b) { return fam[b] - fam[a]; }).slice(0, 4).map(function (k) { return FAM_NAMES[k] + " " + Math.round(fam[k] / (tot || 1) * 100) + " %"; }).join(" · ");
+    var last = r.lastHitBy ? String(r.lastHitBy).replace(" boss", "") : "", boss = /boss/.test(r.lastHitBy || "");
+    return '<div class="over-death"><h3>Comment ça s\'est passé</h3>' +
+      (!r.won && last ? "<p>Dernier coup reçu : <b>" + Math.round((r.lastHitN || +last) * DISP) + " dégâts</b>" + (boss ? " (d'un boss)" : "") + " · tu avais " + Math.round(Math.max(0, p.hp) * DISP) + " / " + Math.round(p.maxHp * DISP) + " PV.</p>" : "") +
+      '<p>Dégâts subis par minute (la plus dure : <b>minute ' + (mxI + 1) + "</b>) :</p><div class=\"over-bars\">" + bars + "</div>" +
+      (famTxt ? "<p>Tes dégâts viennent de : " + esc(famTxt) + ".</p>" : "") + "</div>";
+  }
   function gameOver(quit, reason) {
     if (chestOpen && chestOpen.mini) { chestOpen.t.forEach(clearTimeout); chestOpen = null; }
     chestHideMini();
@@ -9972,6 +9986,7 @@
       '<ul class="over-stats"><li><span>' + (isDungeon() ? "Étage" : isArena() ? "Manche" : "Survie") + "</span><strong>" + (isDungeon() ? r.dg.floor + " / " + DG.floors : isArena() ? (r.won ? A.rounds : r.round) + " / " + A.rounds : fmtTime(r.time)) + "</strong></li><li><span>Ennemis</span><strong>" + r.kills + "</strong></li><li><span>Niveau</span><strong>" + r.level + "</strong></li>" +
       '<li class="total"><span>Score' + (DIFF.score > 1 ? " (×" + fr(DIFF.score) + ")" : "") + "</span><strong>" + sc.toLocaleString("fr-FR") + "</strong></li>" +
       '<li class="gold"><span>Glands d\'or gagnés</span><strong>+' + gold + " " + goldIc() + "</strong></li></ul>" +
+      deathHtml() +
       '<p class="rank-line">+' + rankGain + " XP de rang de compte · <b>Rang " + S.rank + "</b>" + (ranksUp ? ' <span class="rank-up">Rang supérieur !</span>' : "") + "</p>" + (exG ? '<p class="v2-run">' + (exG.extracted ? "🎒 Extraction : le sac (valeur " + exG.value + ") est au camp." : "💀 Sac perdu (" + exG.lost + " emplacement" + (exG.lost > 1 ? "s" : "") + ")" + (r.secure.length ? ", sauf ce qui était à l'abri." : ".")) + " Étage atteint : " + exG.depth + (exG.done.length ? "<br>Contrats remplis : " + exG.done.map(function (c) { return esc(c.txt); }).join(", ") : "") + "</p>" : "") + runSummaryHtml(runG) +
       '<p class="game-small">' + (isBest ? "🏆 Nouveau record perso !" : "Ton record : " + S.stats.bestScore.toLocaleString("fr-FR")) + "</p>" + achHtml +
       (lbOk ? '<form class="submit-score" data-submit><label for="es-name">Ton pseudo pour le classement</label><div class="submit-row">' +
