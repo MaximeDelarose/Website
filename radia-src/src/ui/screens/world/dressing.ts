@@ -1,6 +1,4 @@
 import '../../styles/world-dressing.css';
-import { isDefaultFace } from '../../../data/world/face';
-import { getFaceCustom } from '../../../game/art/characters';
 import { hasPhotos } from '../../../core/photos';
 import { paintedImageFor, drawPainted, warmRadia } from '../../../game/art/world/radiaNow';
 /**
@@ -13,7 +11,7 @@ import { icon } from '../../icons';
 import { audio, events, reducedFx } from '../../../core/app';
 import { firstTime, res } from '../../../core/world';
 import { wallet } from '../../../core/wallet';
-import { HAIR_IDS, NECKLACE_ID, accGroup, type AccGroup, type ClothId, type HairId, type Look, type StyleId } from '../../../data/world/ids';
+import { HAIR_IDS, NECKLACE_ID, accGroup, isRetiredFaceItem, type AccGroup, type ClothId, type HairId, type Look, type StyleId } from '../../../data/world/ids';
 import { CLOTHES, HAIRS } from '../../../data/world/wardrobe';
 import type { Expr } from '../../../data/dialogue';
 import * as W from '../../../game/world/wardrobe';
@@ -38,13 +36,13 @@ const CATS: { key: CatKey; label: string }[] = [
   { key: 'top', label: 'Hauts' }, { key: 'bottom', label: 'Pantalons & jupes' }, { key: 'dress', label: 'Robes' },
   { key: 'jacket', label: 'Vestes' }, { key: 'shoes', label: 'Chaussures' }, { key: 'bag', label: 'Sacs' },
   { key: 'hair', label: 'Coiffures' }, { key: 'head', label: 'Foulards & cheveux' }, { key: 'glasses', label: 'Lunettes' },
-  { key: 'ears', label: 'Boucles d\'oreilles' }, { key: 'lips', label: 'Rouge à lèvres' }, { key: 'neck', label: 'Bijoux' }, { key: 'wrist', label: 'Bracelets' }, { key: 'crown', label: 'Couronnes' },
-  { key: 'eyes', label: 'Yeux' }, { key: 'mouth', label: 'Bouche' }, { key: 'makeup', label: 'Maquillage des yeux' },
+  { key: 'ears', label: 'Boucles d\'oreilles' }, { key: 'neck', label: 'Bijoux' }, { key: 'wrist', label: 'Bracelets' }, { key: 'crown', label: 'Couronnes' },
+  { key: 'makeup', label: 'Maquillage' }, // surcouche légère : eye-liner, fards, rouge à lèvres / gloss — jamais un changement de visage
 ];
 const isHairId = (id: string): id is HairId => (HAIR_IDS as readonly string[]).includes(id);
 /** Un cadeau n'apparaît dans le dressing que s'il est possédé. */
 /** (« L'Éclat Éternel ♡ » est toujours présent en vitrine : visible mais verrouillé tant qu'il n'est pas offert.) */
-const visible = (id: ItemId): boolean => isHairId(id) || !CLOTHES[id].gift || W.owns(id) || id === NECKLACE_ID;
+const visible = (id: ItemId): boolean => isHairId(id) ? true : isRetiredFaceItem(id) ? false : !CLOTHES[id].gift || W.owns(id) || id === NECKLACE_ID;
 const nameOf = (id: ItemId) => (isHairId(id) ? HAIRS[id].name : CLOTHES[id].name);
 
 // ------------------------------------------------------------------ vignettes dessinées
@@ -60,8 +58,10 @@ const catOf = (id: ItemId): CatKey => {
   if (isHairId(id)) return 'hair';
   if (CLOTHES[id].slot !== 'acc') return CLOTHES[id].slot as CatKey;
   const g = accGroup(id) ?? 'neck';
-  return g === 'liner' || g === 'shadow' ? 'makeup' : g; // eye-liner et fards : un seul rayon « Maquillage des yeux »
+  return g === 'liner' || g === 'shadow' || g === 'lips' ? 'makeup' : g; // eye-liner, fards et rouge à lèvres : un seul rayon « Maquillage »
 };
+/** Cadrage de la vignette : les lèvres sont cadrées sur la bouche, le reste du maquillage sur les yeux. */
+const cropOf = (id: ItemId): CatKey => (!isHairId(id) && accGroup(id) === 'lips' ? 'lips' : catOf(id));
 const PX = 192;
 
 /** Aperçu dessiné d'une pièce, porté par un mannequin neutre (mise en cache). */
@@ -71,7 +71,7 @@ export function thumbUrl(id: ItemId): string {
     const look = isHairId(id) ? { ...W.cloneLook(THUMB_BASE), hair: id } : W.applyItem(THUMB_BASE, id);
     if (!isHairId(id) && (CLOTHES[id].slot !== 'crown' && CLOTHES[id].slot !== 'acc' || catOf(id) === 'wrist')) look.hair = 'hair-bun'; // dégage les épaules (et le poignet) pour bien voir la pièce
     if (!isHairId(id) && CLOTHES[id].slot === 'dress') { look.top = null; look.bottom = null; }
-    const [cx, cy, cw, ch] = CROPS[catOf(id)];
+    const [cx, cy, cw, ch] = CROPS[cropOf(id)];
     const c = makeCanvas(PX, PX);
     const ctx = c.getContext('2d')!;
     const f = Math.min(PX / cw, PX / ch);
@@ -219,8 +219,7 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
       const r = W.equipIllustrated();
       if (!r.ok) return;
       audio.play('heart'); haptic('select'); twirl('love');
-      const faceOk = isDefaultFace(getFaceCustom());
-      ui.toast({ title: 'Tenue illustrée ♡', sub: !hasPhotos() ? 'Avec le lien secret, Radia apparaît en illustration, comme Auguste' : faceOk ? 'Radia apparaît en illustration, comme Auguste' : 'Visage personnalisé : Radia reste dessinée avec tes réglages', icon: 'heart' });
+      ui.toast({ title: 'Tenue illustrée ♡', sub: !hasPhotos() ? 'Avec le lien secret, Radia apparaît en illustration, comme Auguste' : 'Radia apparaît en illustration, comme Auguste', icon: 'heart' });
       renderAll();
     }) } }, icon('heart', 18), h('small', 'Tenue illustrée'));
     const left = h('div.dr2-col.left', turnBtn, cmpBtn, illuBtn);
@@ -260,10 +259,10 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
       { label: 'Sacs & souliers', ic: 'basket', subs: ['shoes', 'bag'] },
       { label: 'Cheveux', ic: 'wand', subs: ['hair', 'head', 'crown'] },
       { label: 'Bijoux', ic: 'crown', subs: ['glasses', 'ears', 'neck', 'wrist'] },
-      { label: 'Beauté', ic: 'smile', subs: ['eyes', 'lips', 'mouth', 'makeup'] },
+      { label: 'Maquillage', ic: 'smile', subs: ['makeup'] },
     ];
     const groupOf = (k: CatKey) => GROUPS.findIndex((g) => g.subs.includes(k));
-    const SHORT: Partial<Record<CatKey, string>> = { top: 'Hauts', bottom: 'Bas', dress: 'Robes', jacket: 'Vestes', shoes: 'Chaussures', bag: 'Sacs', hair: 'Coiffures', head: 'Foulards', glasses: 'Lunettes', ears: 'Boucles', lips: 'Lèvres', neck: 'Colliers', wrist: 'Bracelets', crown: 'Couronnes', eyes: 'Yeux', mouth: 'Bouche', makeup: 'Maquillage' };
+    const SHORT: Partial<Record<CatKey, string>> = { top: 'Hauts', bottom: 'Bas', dress: 'Robes', jacket: 'Vestes', shoes: 'Chaussures', bag: 'Sacs', hair: 'Coiffures', head: 'Foulards', glasses: 'Lunettes', ears: 'Boucles', neck: 'Colliers', wrist: 'Bracelets', crown: 'Couronnes', makeup: 'Maquillage' };
     const labelOf = (k: CatKey) => SHORT[k] ?? CATS.find((c) => c.key === k)?.label ?? '';
     const handle = h('button.dr2-handle', { 'aria-label': 'Agrandir ou réduire la galerie' }, h('i'));
     handle.addEventListener('click', () => { setSnap(nextSnap(snap)); });

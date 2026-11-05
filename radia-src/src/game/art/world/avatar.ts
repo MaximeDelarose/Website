@@ -9,9 +9,11 @@
  */
 import type { Look, ClothId, HairId } from '../../../data/world/ids';
 import { RIG, paintedToHead, applyHeadScale, skullTopY, crownDy } from './rig';
-import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, EYE_COLOR, MOUTH_SHAPE, LINER_STYLE, SHADOW_COLOR, accGroup } from '../../../data/world/ids';
+import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, LINER_STYLE, SHADOW_COLOR, accGroup } from '../../../data/world/ids';
 import type { Expr } from '../../../data/dialogue';
 import { radiaParts as P, getFaceCustom } from '../characters';
+import { makeupSpec, hasMakeup } from '../../world/makeupSpec';
+import { drawMakeupOverlay } from './makeupOverlay';
 import { faceKey } from '../../../data/world/face';
 import { PAL, heartPath, roundRect, shade, gloss, starPath } from '../kit';
 import { makeCanvas } from '../kit';
@@ -1915,10 +1917,15 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   ctx.scale(P.HEAD_K, P.HEAD_K);
   const lipId = accs.find((a) => a.startsWith('lp-'));
   const pickId = (pre: string) => accs.find((a) => a.startsWith(pre));
-  const eyeId = pickId('ey-'), moId = pickId('mo-'), elId = pickId('el-'), esId = pickId('es-');
-  if (!fullHead) P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, iris: eyeId ? EYE_COLOR[eyeId] : undefined, mouth: moId ? MOUTH_SHAPE[moId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
+  const elId = pickId('el-'), esId = pickId('es-');
+  if (!fullHead) P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
   ctx.restore();
-  if (ph) drawPaintedLayer(ctx, ph.head); // visage peint par-dessus l'ovale dessiné (contour du dessin, traits de l'illustration)
+  if (ph) {
+    drawPaintedLayer(ctx, ph.head); // visage peint par-dessus l'ovale dessiné (contour du dessin, traits de l'illustration)
+    // maquillage : simple surcouche légère sur le visage peint (jamais un remplacement de tête)
+    const mk = makeupSpec(accs, getFaceCustom());
+    if (hasMakeup(mk)) { const [ox, oy] = paintedToHead(0, 0), k = RIG.painted.k; ctx.save(); ctx.translate(ox, oy); ctx.scale(k, k); drawMakeupOverlay(ctx, mk); ctx.restore(); }
+  }
   if (!fullHead && !P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairFrontLayer(ctx, hair, sway)); // tête complète peinte : cheveux déjà dans l'illustration
   if (P.veilOn()) { ctx.save(); ctx.translate(P.HEAD_X, P.HEAD_Y); ctx.scale(P.HEAD_K, P.HEAD_K); P.drawVeil(ctx); ctx.restore(); }
   if (accs.includes('ac-hoops')) hoops(ctx);

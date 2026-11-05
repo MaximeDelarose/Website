@@ -64,7 +64,7 @@ Les calques de tête sont **tirés de l'illustration privée** (chiffrés, jamai
 | 6 | veste | `jk-<id>` | |
 | 7 | chaussures, sac | `sh-<id>`, `bg-<id>` | |
 | 8 | tête | `head-base` (+ `headp-radia-nc` existant) | sans accessoires |
-| 9 | traits du visage | `eyes-<forme>`, `brows-<forme>`, `nose-<forme>`, `mouth-<forme>` | ancres fixes ; iris neutre, teinté par le jeu |
+| 9 | traits du visage | — | **RETIRÉ** : le visage est canonique (une seule tête) ; seul le maquillage léger (calque `makeup-*`, voir `makeupOverlay.ts`) se pose par-dessus |
 | 10 | maquillage | `liner-<style>`, `blush`, `lip-mask` | masques teintés |
 | 11 | cheveux avant | `hair-<id>-front` | |
 | 12 | accessoires, couronnes, voiles | `ac-<id>`, `cr-<id>`, `veil-<style>` | ancrés au crâne / au visage |

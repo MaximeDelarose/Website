@@ -115,7 +115,24 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 const hex = (v: unknown, d: string, allowEmpty = false): string => (typeof v === 'string' && (HEX.test(v) || (allowEmpty && v === '')) ? v : d);
 const slider = (v: unknown, d = 0): number => Math.round(num(v, d, -1, 1) * 100) / 100;
 
-export function sanitizeFace(raw: unknown): FaceCustom {
+/**
+ * VISAGE CANONIQUE : la tête de Radia est une référence UNIQUE (peau, forme, yeux, sourcils, nez, bouche, cheveux, rendu).
+ * Seuls le maquillage léger (surcouche) et le voile (accessoire) sont personnalisables : tout le reste est ramené à la base,
+ * quelle que soit l'ancienne sauvegarde. La couleur du rouge à lèvres (`mouth.lip`) fait partie du maquillage.
+ */
+export function canonicalFace(f: FaceCustom): FaceCustom {
+  const d = defaultFace();
+  return { ...d, mouth: { ...d.mouth, lip: f.mouth.lip }, veil: { ...f.veil }, makeup: { ...f.makeup } };
+}
+/** Vrai si la structure du visage est déjà canonique (sert à décider de conserver une copie de l'ancien réglage avant migration). */
+export function hasCustomStructure(f: FaceCustom): boolean {
+  const c = canonicalFace(f), k = (x: FaceCustom): string => JSON.stringify({ ...x, mouth: { ...x.mouth, lip: '' }, veil: null, makeup: null });
+  return k(c) !== k(f);
+}
+
+export function sanitizeFace(raw: unknown): FaceCustom { return canonicalFace(sanitizeFaceRaw(raw)); }
+/** Lecture tolérante SANS imposer la structure canonique (uniquement pour conserver une copie de l'ancien visage). */
+export function sanitizeFaceRaw(raw: unknown): FaceCustom {
   const d = defaultFace();
   if (!isObj(raw)) return d;
   const sk = isObj(raw.skin) ? raw.skin : {};

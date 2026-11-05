@@ -19,7 +19,7 @@ import {
   type ClothId, type ClothSlot, type HairId, type Look, type StyleId,
 } from '../../data/world/ids';
 import { CLOTHES, ELEGANT_CLOTHES, HAIRS, type ClothDef } from '../../data/world/wardrobe';
-import { accGroup } from '../../data/world/ids';
+import { accGroup, isRetiredFaceItem } from '../../data/world/ids';
 
 export type PayWith = 'coins' | 'diamonds';
 export type FailReason = 'unknown' | 'owned' | 'coins' | 'fabric' | 'diamonds' | 'no-diamond-price' | 'not-owned' | 'bad-slot' | 'empty-name' | 'gift';
@@ -61,7 +61,7 @@ export function repairLook(raw: Partial<Look> | null | undefined, owned?: Readon
   const accs = Array.isArray(r.acc) ? r.acc : [];
   for (const a of accs) {
     const c = ok(a, 'acc');
-    if (!c || l.acc.includes(c)) continue;
+    if (!c || l.acc.includes(c) || isRetiredFaceItem(c)) continue; // yeux / bouche retirés : ils changeaient le visage
     const g = accGroup(c);
     if (g) l.acc = l.acc.filter((x) => accGroup(x) !== g); // un seul objet par famille
     l.acc.push(c);
