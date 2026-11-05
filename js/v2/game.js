@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.14.3";
+  var VERSION = "2.15.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -2358,7 +2358,20 @@
   }
   // 2.9 : style visuel de l'arme d'un joueur (matière, couleurs, sprites)
   var VFX_DEF = { nova: "", chain: "zap", thorn: "", lob: "pinecone", meteor: "meteore", col: "168,122,232", trail: "#fdf3de", hit: "" };
-  function vstyle(pl) { return (pl && pl.arme && D.VFX && D.VFX[pl.arme]) || VFX_DEF; }
+  var VST_C = {};
+  // style visuel d'une arme ; si son élément a changé, les parties qui dépendent de l'élément (ondes, chaînes, pièges, couleurs) suivent le nouvel élément
+  function vstyle(pl) {
+    if (!pl || !pl.arme || !D.VFX) return VFX_DEF;
+    var base = D.VFX[pl.arme]; if (!base) return VFX_DEF;
+    var el = armElem(pl), nat = D.ARMES[pl.arme].element;
+    if (!el || el === nat || !D.VFX_EL[el]) return base;
+    var key = pl.arme + "|" + el; if (VST_C[key]) return VST_C[key];
+    var st = {}, k, be = D.VFX_EL[el], bn = D.VFX_EL[nat] || {};
+    for (k in base) st[k] = base[k];
+    ["nova", "chain", "thorn", "lob", "meteor", "hit"].forEach(function (q) { if (be[q] && (base[q] === bn[q] || base[q] === undefined)) st[q] = be[q]; });
+    st.col = be.col; st.trail = be.trail; if (base.beamCol && bn.col) st.beamCol = be.trail;
+    return (VST_C[key] = st);
+  }
   function zapChain(start, count, dmg, origin, up) {
     if (p && p.gear) { if (gearHas(p, "ora_a")) count += 1; if (setCount(p, "orage") >= 2 && HIT_ELEM !== "air") { var kz = HIT_ELEM; HIT_ELEM = "air"; zapChain(start, count - (gearHas(p, "ora_a") ? 1 : 0), dmg, origin, up); HIT_ELEM = kz; return; } }
     var pts = [[origin ? origin.x : p.x, origin ? origin.y : p.y - 4]], hit = [], cur = start;
@@ -3339,11 +3352,18 @@
   }
   function armeOf(pl) { return D.ARMES[pl.arme] || D.ARMES.katana; }
   // définition effective d'une technique pour ce joueur (habillage + évolution + fusion d'objet)
+  // une arme dont l'élément a changé adapte toutes ses techniques : nom, dégâts, cadence, portée et effet au toucher
+  var EMUT = {
+    feu: { tag: "de feu", dmg: 1.1, hfx: { ignite: 0.35, flame: 1 } },
+    eau: { tag: "d'eau", area: 1.12, hfx: { slow: 0.4 } },
+    terre: { tag: "de terre", dmg: 1.2, cd: 1.08, hfx: { stun: 0.25 } },
+    air: { tag: "d'air", dmg: 0.95, cd: 0.88, hfx: { bounce: 1 } }
+  };
   function techDef(pl, id, evo, fus) {
     var base = ALLW[id]; if (!base) return null;
     if (base.type === "combo") return base;
     evo = evo === undefined ? (pl.evo || {})[id] : evo; fus = fus === undefined ? (pl.tfus || {})[id] : fus; fus = fus === true ? 1 : fus || 0;
-    var key = id + "|" + (evo || "") + "|" + fus + "|" + (pl.arme || "");
+    var key = id + "|" + (evo || "") + "|" + fus + "|" + (pl.arme || "") + "|" + (pl.arme ? armElem(pl) : "");
     pl.tdef = pl.tdef || {};
     if (pl.tdef[key]) return pl.tdef[key];
     var d = {}; Object.keys(base).forEach(function (k) { d[k] = base[k]; });
@@ -3352,6 +3372,17 @@
     if (evo && base.evos) { var ev = base.evos.filter(function (e) { return e.id === evo; })[0]; if (ev) { applyMods(d, ev); d.evoName = ev.name; } }
     var tf = fus === 2 ? D.TFUS2[id] : fus ? D.TFUS[id] : null;
     if (tf) { applyMods(d, tf); d.fusName = tf.name; d.fusion = true; }
+    var ael = pl.arme ? armElem(pl) : null, em = ael && ael !== armeOf(pl).element && D.TECH[id] ? EMUT[ael] : null;
+    if (em) {
+      d.name = d.name + " " + em.tag;
+      if (em.dmg) d.dmg = mapv(d.dmg, function (x) { return x * em.dmg; });
+      if (em.cd) d.cd = mapv(d.cd, function (x) { return x * em.cd; });
+      ["R", "rad", "reach", "len"].forEach(function (k) { if (em.area && d[k] !== undefined) d[k] = mapv(d[k], function (x) { return x * em.area; }); });
+      var o = {}, hk; for (hk in em.hfx) o[hk] = em.hfx[hk]; if (d.hfx) for (hk in d.hfx) o[hk] = d.hfx[hk];
+      if (!(d.family === "tir" || d.family === "retour" || d.type === "shooter" || d.type === "boomerang") && o.flame) delete o.flame;
+      if (!(d.family === "tir" || d.type === "shooter") && o.bounce) delete o.bounce;
+      d.hfx = o; d.elemAdapt = ael;
+    }
     pl.tdef[key] = d;
     return d;
   }
@@ -3475,31 +3506,33 @@
     while (rr >= W8[ri]) { rr -= W8[ri]; ri++; }
     var R0 = D.WRAR[ri], pool = D.WSTAT.filter(function (q) { return !q.minR || ri >= q.minR; }).sort(function () { return Math.random() - 0.5; }), mods = {};
     pool.slice(0, R0.n).forEach(function (q) { mods[q.id] = Math.round((q.lo + Math.random() * (q.hi - q.lo)) * (R0.mul && q.id !== "amt" ? R0.mul : 1)); });
-    return { id: id, r: ri, mods: mods };
+    var nat = D.ARMES[id].element, ELK = Object.keys(D.ELEMENTS), el = Math.random() < 0.4 ? nat : ELK.filter(function (k) { return k !== nat; })[(Math.random() * (ELK.length - 1)) | 0];
+    return { id: id, r: ri, mods: mods, el: el };
   }
   function wrollTxt(w) { return D.WSTAT.filter(function (q) { return w.mods[q.id]; }).map(function (q) { return (q.neg ? "-" : "+") + w.mods[q.id] + (q.pct ? " %" : "") + " " + q.name; }).join(" · ") || "Aucun bonus"; }
   function dropWeapon(x, y, src) { if (Net.on || !me || !me.arme) return; gems.push({ x: x, y: y, kind: "weapon", v: rollWeapon(src) }); }
+  function elCol(k) { return (D.ELEMENTS[k] || {}).ui || (D.ELEMENTS[k] || {}).color || "#fff"; }
   function weaponCard(w, cur) {
     var a = D.ARMES[w.id], R0 = D.WRAR[w.r];
-    return '<div class="wcard' + (cur ? " is-cur" : "") + '" style="--rc:' + R0.color + '"><small>' + (cur ? "Ton arme" : "Nouvelle arme") + '</small><span class="wcard-ic">' + img(a.icon) + "</span><strong>" + esc(a.name) + '</strong><em>' + esc(R0.name) + "</em><span>" + esc(ALLW[a.base] ? ALLW[a.base].name : "") + "</span><b>" + esc(wrollTxt(w)) + "</b></div>";
+    return '<div class="wcard' + (cur ? " is-cur" : "") + '" style="--rc:' + R0.color + '"><small>' + (cur ? "Ton arme" : "Nouvelle arme") + '</small><span class="wcard-ic">' + img(a.icon) + "</span><strong>" + esc(a.name) + '</strong><em>' + esc(R0.name) + "</em><span style=\"color:" + elCol(w.el || a.element) + "\">" + esc(D.ELEMENTS[w.el || a.element].name) + (w.el && w.el !== a.element ? " (change l'arme)" : "") + "</span><span>" + esc(ALLW[a.base] ? ALLW[a.base].name : "") + "</span><b>" + esc(wrollTxt(w)) + "</b></div>";
   }
   var wOffer = null;
   function weaponOffer(g) {
     wOffer = g; state = "levelup"; clearInput();
     var cur = me.wroll || { id: me.arme, r: 0, mods: {} };
-    showCard('<span class="kicker">Arme trouvée</span><h2>Changer d\'arme ?</h2><p class="game-small">Tes techniques restent et prennent l\'apparence de la nouvelle arme ; l\'attaque de base garde son niveau.</p><div class="wcards">' + weaponCard(cur, true) + weaponCard(g.v, false) + '</div>' +
+    showCard('<span class="kicker">Arme trouvée</span><h2>Changer d\'arme ?</h2><p class="game-small">Tes techniques restent et prennent l\'apparence de la nouvelle arme ; l\'attaque de base garde son niveau.</p><div class="wcards">' + weaponCard({ id: cur.id, r: cur.r, mods: cur.mods, el: armElem(me) }, true) + weaponCard(g.v, false) + '</div>' +
       '<div class="btn-row center"><button class="btn" type="button" data-action="wtake" data-autofocus>Prendre</button><button class="btn btn-ghost" type="button" data-action="wleave">Laisser</button></div>', "weapon");
   }
   function takeWeapon(w) {
     var a = D.ARMES[w.id], old = armeOf(me).base, lv = me.weapons[old] || 1;
     delete me.weapons[old]; if (me.timers) delete me.timers[old];
-    me.arme = w.id; r.arme = w.id; me.weapons[a.base] = lv; me.tdef = {}; me.wroll = w;
+    me.arme = w.id; r.arme = w.id; me.weapons[a.base] = lv; me.tdef = {}; me.wroll = w; me.elemOv = w.el && w.el !== a.element ? w.el : undefined; me.cycleN = 0;
     S.stats.armesP = S.stats.armesP || {}; S.stats.armesP[w.id] = 1;
     calc(me); refreshCounts(); bannerAll(a.name + " " + D.WRAR[w.r].name.toLowerCase() + " !"); SND.fusion();
   }
   function pickArme(id) {
     var a = D.ARMES[id]; if (!a) return;
-    me.wroll = { id: id, r: 0, mods: {} };
+    me.wroll = { id: id, r: 0, mods: {} }; me.elemOv = undefined;
     S.stats.armesP = S.stats.armesP || {}; S.stats.armesP[id] = 1;
     me.arme = id; me.ultG = 0; me.ultK = undefined; me.weapons = {}; me.weapons[a.base] = 1; me.evo = {}; me.tfus = {}; me.cparts = {}; me.tdef = {}; me.timers = {};
     r.arme = id; calc(me); refreshCounts();
@@ -8903,7 +8936,7 @@
     if (humans() > 1) { if (netMenuOpen) resume(); else netMenu(); return; }
     state = "pause"; clearInput();
     var wr0 = p.wroll || { id: p.arme, r: 0, mods: {} }, war = D.WRAR[wr0.r];
-    var html = '<h2>Pause</h2><div class="pause-grid"><div>' + (p.arme ? '<p class="pause-weapon" style="--rc:' + war.color + '">' + img(armeOf(p).icon) + " <b>" + esc(armeOf(p).name) + "</b> <em>" + esc(war.name) + "</em> <small>" + esc(wrollTxt(wr0)) + "</small></p>" : "") + '<h3>Armes (' + Object.keys(p.weapons).length + "/" + MAX_W + ')</h3><ul class="build-list">';
+    var html = '<h2>Pause</h2><div class="pause-grid"><div>' + (p.arme ? '<p class="pause-weapon" style="--rc:' + war.color + '">' + img(armeOf(p).icon) + " <b>" + esc(armeOf(p).name) + "</b> <em>" + esc(war.name) + "</em> <span style=\"color:" + elCol(armElem(p)) + "\">" + esc(D.ELEMENTS[armElem(p)].name) + "</span> <small>" + esc(wrollTxt(wr0)) + "</small></p>" : "") + '<h3>Armes (' + Object.keys(p.weapons).length + "/" + MAX_W + ')</h3><ul class="build-list">';
     Object.keys(p.weapons).forEach(function (k) { var td = techDef(p, k); html += '<li class="' + (td.fusion ? "is-fusion" : "") + '"><img src="' + spriteUrl(td.icon) + '" alt="">' + esc(techName(p, k)) + " <b>niv. " + p.weapons[k] + "</b></li>"; });
     html += '</ul><h3>Objets (' + Object.keys(p.passives).length + "/" + MAX_P + ')</h3><ul class="build-list">';
     Object.keys(p.passives).forEach(function (k) { html += '<li><img src="' + spriteUrl(D.PASSIVES[k].sprite) + '" alt="">' + esc(D.PASSIVES[k].name) + " <b>niv. " + p.passives[k] + "</b>" + synHtml(k) + "</li>"; });
@@ -9207,6 +9240,8 @@
     combo: function (id) { p = me; v2Apply({ type: "cb", id: id }); calc(me); return Object.keys(me.weapons); },
     entries: function () { return techEntries(me).map(function (e) { return e.key + ":" + e.def.type + ":" + Math.round(V(e.def, "dmg", e.l) || 0); }); },
     arme: function (id) { pickArme(id); return me.weapons; },
+    elem: function (k) { me.elemOv = k; me.cycleN = 0; me.tdef = {}; calc(me); return armElem(me); },
+    techs: function () { return Object.keys(me.weapons).map(function (id) { return techName(me, id); }); },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
