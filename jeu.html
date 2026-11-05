@@ -68,7 +68,7 @@
       <div class="game-head">
         <div>
           <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · <a href="jeu-classique.html">version 1 (Versus)</a></span>
-          <h1>Écureuil Survivor <small class="beta-tag">2.0</small></h1>
+          <h1>Écureuil Survivor <small class="beta-tag">2.14</small></h1>
         </div>
         <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
       </div>
@@ -145,7 +145,7 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v214a";
+      var FALLBACK = "v214b";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
         if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261107dof4" + b);
@@ -155,7 +155,7 @@
       }
       var done = false, go = function (b) { if (!done) { done = true; load(b || FALLBACK); } };
       setTimeout(function () { go(FALLBACK); }, 2500);
-      try { fetch("js/v2/version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { go(j.build); }, function () { go(FALLBACK); }); }
+      try { fetch("js/v2/version.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { var tg = document.querySelector(".beta-tag"); if (tg && j.v) tg.textContent = j.v; go(j.build); }, function () { go(FALLBACK); }); }
       catch (e) { go(FALLBACK); }
     })();
   </script>
