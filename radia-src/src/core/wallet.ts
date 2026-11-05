@@ -20,7 +20,11 @@ export const wallet = {
     if (ok) changed();
     return ok;
   },
-  giveEnergy(n: number): void { if (n > 0) { E.addEnergy(eco(), n, Date.now()); changed(); } },
+  /** Donne de l'énergie SANS dépasser 100 ; renvoie le gain réel. */
+  giveEnergy(n: number): number { if (n <= 0) return 0; const g = E.addEnergy(eco(), n, Date.now()); changed(); return g; },
+  /** Réserve héritée (ancien surplus), utilisée seulement quand l'énergie tombe à 0. */
+  reserve: () => eco().reserve ?? 0,
+  energyFull: (): boolean => { E.syncEnergy(eco(), Date.now()); return eco().energy >= E.ENERGY_MAX; },
   takeFreeRefill(): boolean { const ok = E.takeFreeRefill(eco(), Date.now()); if (ok) changed(); return ok; },
 
   giveDiamonds(n: number): void { if (n > 0) { E.addDiamonds(eco(), n); changed(); } },

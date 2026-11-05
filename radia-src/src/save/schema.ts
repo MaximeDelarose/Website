@@ -184,6 +184,8 @@ export interface Economy {
   /** Instant (ms) de la dernière mise à jour de l'énergie (recharge naturelle). */
   energyTs: number;
   diamonds: number;
+  /** Réserve d'énergie HÉRITÉE : l'ancien surplus au-dessus du maximum (100) d'avant le plafonnement. Elle n'est utilisée que lorsque l'énergie tombe à 0 ; rien ne l'alimente plus. */
+  reserve: number;
   /** Dernière recharge gratuite prise / dernier coffre gratuit ouvert (ms). */
   freeRefillTs: number;
   freeChestTs: number;
@@ -196,7 +198,7 @@ export interface Economy {
 }
 
 export const defaultEconomy = (): Economy => ({
-  energy: 100, energyTs: Date.now(), diamonds: 10, freeRefillTs: 0, freeChestTs: 0, bag: [], bagSlots: 6, giftCount: 0, diamondsGifted: 0,
+  energy: 100, energyTs: Date.now(), diamonds: 10, reserve: 0, freeRefillTs: 0, freeChestTs: 0, bag: [], bagSlots: 6, giftCount: 0, diamondsGifted: 0,
 });
 
 export function defaultSave(): SaveData {
@@ -409,8 +411,11 @@ export function sanitize(raw: unknown): SaveData {
   if (isObj(s.economy)) {
     const e = s.economy;
     const bag = Array.isArray(e.bag) ? e.bag.filter((x): x is { c: string; l: number } => isObj(x) && typeof x.c === 'string' && typeof x.l === 'number' && x.c !== 'gen') : [];
+    // Plafond d'énergie : 100 maximum. Un ancien surplus (ex. 644) n'est PAS perdu : il devient la réserve (voir Economy.reserve).
+    const rawEnergy = Math.floor(num(e.energy, 100, 0, 99_999));
     d.economy = {
-      energy: Math.floor(num(e.energy, 100, 0, 9999)),
+      energy: Math.min(100, rawEnergy),
+      reserve: Math.floor(Math.min(9999, num(e.reserve, 0, 0, 9999) + Math.max(0, rawEnergy - 100))),
       energyTs: num(e.energyTs, Date.now(), 0),
       diamonds: Math.floor(num(e.diamonds, 30, 0, 99_999_999)),
       freeRefillTs: num(e.freeRefillTs, 0, 0),

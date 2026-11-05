@@ -32,8 +32,8 @@ export const FREE_TAP_EVERY = ENDLESS_CFG.energy.freeTapEvery;
 export const deliveryEnergy = (tier: 'easy' | 'mid' | 'hard'): number => ENDLESS_CFG.energy.deliverEnergy[tier];
 /** Millisecondes pour regagner UNE énergie quand on en a `energy`. */
 export const regenStep = (energy: number): number => (energy < FLOOR_LEVEL ? FLOOR_REGEN_MS : REGEN_MS);
-/** Recharge gratuite d'Auguste : +38, toutes les 10 minutes. */
-export const FREE_REFILL = 38;
+/** Recharge gratuite d'Auguste : +30, toutes les 10 minutes (jamais au-delà de 100). */
+export const FREE_REFILL = 30;
 export const FREE_REFILL_MS = 10 * 60_000;
 /** Coffre gratuit toutes les 4 heures. */
 export const FREE_CHEST_MS = 4 * 3600_000;
@@ -59,17 +59,27 @@ export function syncEnergy(e: Eco, now: number): void {
 
 export function spendEnergy(e: Eco, n: number, now: number): boolean {
   syncEnergy(e, now);
-  if (e.energy < n) return false;
-  const wasFull = e.energy >= ENERGY_MAX;
-  e.energy -= n;
-  if (wasFull) e.energyTs = now;
-  return true;
+  if (e.energy >= n) {
+    const wasFull = e.energy >= ENERGY_MAX;
+    e.energy -= n;
+    if (wasFull) e.energyTs = now;
+    return true;
+  }
+  // énergie à court : la réserve héritée (ancien surplus) prend le relais, 1 pour 1, sans jamais dépasser ce qu'elle contient
+  if (e.energy + (e.reserve ?? 0) >= n) { e.reserve = (e.reserve ?? 0) - (n - e.energy); e.energy = 0; return true; }
+  return false;
 }
 
-/** Les récompenses peuvent dépasser le maximum (comme dans les jeux du genre). */
-export function addEnergy(e: Eco, n: number, now: number): void {
+/**
+ * L'énergie ne dépasse JAMAIS le maximum (100) : un gain en trop est simplement perdu (l'énergie pleine ne se « stocke » pas).
+ * Renvoie le gain RÉEL (pour des messages honnêtes : « +12 », pas « +50 » quand il ne restait que 12 de place).
+ */
+export function addEnergy(e: Eco, n: number, now: number): number {
   syncEnergy(e, now);
-  e.energy = Math.min(9999, e.energy + n);
+  const before = e.energy;
+  e.energy = Math.min(ENERGY_MAX, e.energy + Math.max(0, Math.floor(n)));
+  if (e.energy >= ENERGY_MAX) e.energyTs = now;
+  return e.energy - before;
 }
 
 /** Millisecondes avant la prochaine énergie (0 si pleine). */
@@ -83,6 +93,8 @@ export const freeRefillIn = (e: Eco, now: number) => Math.max(0, e.freeRefillTs 
 
 export function takeFreeRefill(e: Eco, now: number): boolean {
   if (freeRefillIn(e, now) > 0) return false;
+  syncEnergy(e, now);
+  if (e.energy >= ENERGY_MAX) return false; // énergie déjà pleine : la recharge offerte n'est pas consommée pour rien
   addEnergy(e, FREE_REFILL, now);
   e.freeRefillTs = now;
   return true;
@@ -157,7 +169,7 @@ export type DiamondBuy =
   | 'energy' | 'wand3' | 'wind3' | 'star' | 'box' | 'royalChest' | 'bag';
 
 export const DIAMOND_ITEMS: { id: DiamondBuy; name: string; desc: string; price: number | ((e: Eco) => number); icon: string }[] = [
-  { id: 'energy', name: 'Énergie pleine', desc: '+100 ⚡ tout de suite', price: 15, icon: 'energy' },
+  { id: 'energy', name: 'Énergie pleine', desc: 'Remplit ton énergie jusqu\'à 100 ⚡', price: 15, icon: 'energy' },
   { id: 'wand3', name: '3 Baguettes magiques', desc: 'Fait monter un objet d\'un niveau', price: 30, icon: 'wand' },
   { id: 'wind3', name: '3 Souffles', desc: 'Retire un objet gênant', price: 15, icon: 'wind' },
   { id: 'star', name: 'Étoile filante', desc: 'Objet rare, rangé dans ton sac', price: 12, icon: 'star' },

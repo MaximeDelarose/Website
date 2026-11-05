@@ -35,6 +35,7 @@ export async function openEnergyPanel(empty = false, opts: EnergyPanelOpts = {})
     h('div.ep-big', h('img', { src: energyUrl(96), alt: '' }), h('b', `${fmt(energy)}`), h('small', ` / ${ENERGY_MAX}`)),
     h('p', empty || adv.tone === 'empty' ? 'Plus d\'énergie pour les générateurs… mais pas de panique, ma reine.' : adv.title),
     h('p.muted', { style: 'font-size:13.5px;margin-top:-6px' }, adv.next),
+    wallet.reserve() > 0 ? h('p.muted', { style: 'font-size:12.5px;margin:2px 0' }, `Réserve : ${fmt(wallet.reserve())} ⚡ — utilisée seulement quand ton énergie tombe à 0.`) : null,
     h('ul.ep-list', { style: 'text-align:left;font-size:13px;margin:4px 0 0;padding-left:18px;line-height:1.35' },
       untilFree !== null ? h('li', untilFree === 0 ? 'Ton prochain toucher est gratuit ✨' : `Prochain toucher gratuit dans ${untilFree} touchers.`) : null,
       ...adv.lines.map((l) => h('li', l))),
@@ -44,19 +45,22 @@ export async function openEnergyPanel(empty = false, opts: EnergyPanelOpts = {})
   else actions.push({ label: `Recharge offerte dans ${fmtWait(freeIn)}`, value: 'wait', style: 'secondary' });
   if (opts.onWorld) actions.push({ label: 'Jouer ailleurs : MON MONDE', value: 'world', style: 'lavande' });
   if (opts.onChess) actions.push({ label: 'Jouer ailleurs : échecs', value: 'chess', style: 'lavande' });
-  actions.push({ label: `Facultatif : +100 ⚡ · ${PRICE} 💎`, value: 'buy', style: 'secondary' });
+  actions.push({ label: `Facultatif : remplir à 100 ⚡ · ${PRICE} 💎`, value: 'buy', style: 'secondary' });
   actions.push({ label: empty ? 'Je patiente un peu' : 'Continuer', value: 'close', style: 'secondary' });
   const v = await ui.modal({ title: 'Énergie', body, actions });
   opened = false;
   if (v === 'free') {
-    if (wallet.takeFreeRefill()) { haptic('reward'); audio.play('reward'); ui.toast({ title: `+${FREE_REFILL} énergie`, sub: 'Offerte par Auguste ♡', img: energyUrl(64) }); }
+    const before = wallet.energy();
+    if (wallet.takeFreeRefill()) { const gain = Math.max(0, wallet.energy() - before); haptic('reward'); audio.play('reward'); ui.toast({ title: `+${gain} énergie`, sub: 'Offerte par Auguste ♡', img: energyUrl(64) }); }
+    else if (wallet.energyFull()) ui.toast({ title: 'Énergie déjà pleine ♡', sub: 'La recharge offerte reste pour plus tard', img: energyUrl(64) });
   } else if (v === 'world') opts.onWorld?.();
   else if (v === 'chess') opts.onChess?.();
   else if (v === 'buy') {
+    if (wallet.energyFull()) { ui.toast({ title: 'Énergie déjà pleine ♡', sub: 'Aucun diamant dépensé', img: energyUrl(64) }); return; }
     if (wallet.spendDiamonds(PRICE)) {
-      wallet.giveEnergy(100);
+      const gain = wallet.giveEnergy(100);
       audio.play('reward');
-      ui.toast({ title: '+100 énergie', sub: `−${PRICE} diamants`, img: energyUrl(64) });
+      ui.toast({ title: `+${gain} énergie`, sub: `−${PRICE} diamants`, img: energyUrl(64) });
     } else {
       haptic('error');
       const g = await ui.modal({ title: 'Pas assez de diamants', body: h('p', h('img', { src: diamondUrl(40), alt: '', style: 'width:28px;vertical-align:middle' }), ' Pas grave : l\'énergie revient toute seule, et tu peux jouer ailleurs en attendant ♡'), actions: [{ label: 'Ouvrir la boutique', value: 'shop', style: 'secondary' }, { label: 'D\'accord', value: 'no' }] });
