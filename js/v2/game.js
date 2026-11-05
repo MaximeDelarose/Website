@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.31.0";
+  var VERSION = "2.32.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -371,6 +371,7 @@
       if (gb.vit) p.maxHp *= 1 + gb.vit / 100; if (gb.soi) p.regen *= 1 + gb.soi / 100; if (gb.pro) p.luck += gb.pro / 100; if (gb.inv) p.amount += gb.inv; if (gb.ini && p.volteBase) p.volteBase = Math.max(0.8, p.volteBase * (1 - gb.ini / 100));
     }
     if (p.wroll && p.wroll.mods) { var wm = p.wroll.mods; p.might *= 1 + (wm.dmg || 0) / 100; p.cdMul *= 1 - (wm.cd || 0) / 100; p.area *= 1 + (wm.area || 0) / 100; p.crit = (p.crit || 0) + (wm.crit || 0) / 100; p.speed *= 1 + (wm.spd || 0) / 100; p.maxHp += wm.hp || 0; p.amount += wm.amt || 0; }
+    if (r && r.mods && hasMod("verre")) p.maxHp = Math.max(1, p.maxHp * 0.35);
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.hp = Math.min(p.hp, p.maxHp);
   }
@@ -422,7 +423,7 @@
     if (S.prov && Object.keys(S.prov).length && !Net.on) { me.prov = S.prov; S.prov = {}; save(); me.rerolls = (me.rerolls || 0) + (me.prov.relance ? 2 : 0); calc(me); me.hp = me.maxHp; }
     r = { cauch: (S.cn && (S.cauch || {})[mapId || S.map] >= S.cn) ? S.cn : 0, res: {}, loot: [], voltes: 0, recruits: 0, time: 0, kills: 0, level: 1, bosses: 0, berries: 0, gold: 0, lastHit: 0, maxedWeapon: false, nWeapons: 1, nPassives: 0,
           fusions: 0, legend: 0, biome: -1, props: 0, freeze: 0, flash: 0, hard: (diffId || S.diff) !== "normal", ended: false, committed: false, newAch: [], bonus: 0,
-          char: CH.id, map: MAP.id, coop: n > 1, mode: mode || "survie",
+          char: CH.id, map: MAP.id, mapId: MAP.id, diffId: diffId || S.diff, hits: 0, coop: n > 1, mode: mode || "survie",
           round: 1, roundT: 0, roundLen: A.roundTime(1), roundKills: 0, phase: "fight", mod: null, won: false, ready: {} };
     players.forEach(function (pl) { pl.coins = 0; pl.bonusHp = 0; pl.relics = {}; pl.devil = 0; });
     r.sh = {}; r.trials = {}; r.madness = 0; r.devil = 0; r.tier = undefined; shrineCache = {}; r.duo = players.length > 1;
@@ -976,6 +977,7 @@
     if (r && p === me) r.lastHitBy = Math.round(dmg) + (curBoss && !curBoss.dead && Math.hypot(curBoss.x - p.x, curBoss.y - p.y) < 90 ? ' boss' : '');
     if (p.inv > 0 || p.down || p.choosing || p.god) return;
     if (riposteOnHit(p)) { p.inv = 0.3; return; }
+    if (r && p === me) r.hits = (r.hits || 0) + 1;
     var sgc = hasSig(p, "contre");
     if (sgc && p.anchored && !(p.contreCd > 0)) { p.contreCd = 4; p.inv = 0.4; var ppc = p; riposteBlast(p, { R: [36], dmg: [25 * (1 + 0.25 * (sgc.l - 1))] }, 0); p = ppc; texts.push({ x: p.x, y: p.y - 16, n: "CONTRE !", life: 0.7 }); return; }
     if (p.anchored) dmg *= (1 - (p.gearArm || 0)) * (tal(p, "piedferme") ? 0.8 : 1);
@@ -1149,6 +1151,48 @@
   var AFX = {};
   D.AFFIXES.forEach(function (a, i) { AFX[a.id] = a; a.bit = 1 << i; a.tag = a.name.toUpperCase().replace(/É/g, "E").replace(/È/g, "E"); });
   function hasA(e, id) { return !!(e.aff && e.aff.indexOf(id) >= 0) && !(e.affOff > r.time); }
+  var CHAL = null, CHALMODS = [
+    { id: "nolevel", name: "Sans niveau", desc: "Tu ne montes jamais de niveau." },
+    { id: "noitems", name: "Sans objet", desc: "Aucun objet de butin." },
+    { id: "nogear", name: "Sans attirail", desc: "Ton attirail reste au camp." },
+    { id: "verre", name: "Verre brisé", desc: "PV divisés par trois." },
+    { id: "noheal", name: "Sans soin", desc: "Tu ne peux jamais regagner de PV." }
+  ];
+  function chalMods(ids) { return ids.map(function (id) { return CHALMODS.filter(function (m) { return m.id === id; })[0] || D.MODS2.filter(function (m) { return m.id === id; })[0]; }).filter(Boolean); }
+  function chalGoalTxt(g) { return g.time ? "Survivre " + Math.round(g.time / 60) + " minutes" : g.kills ? "Tuer " + g.kills + " ennemis" : g.mega ? "Battre le méga boss" : "Atteindre le niveau " + g.level; }
+  function chalDone(d) { return !!(S.defis || {})[d.id]; }
+  function chalTick() {
+    if (!CHAL || !r || r.ended || state !== "play") return;
+    var g = CHAL.d.goal;
+    if ((g.time && r.time >= g.time) || (g.kills && r.kills >= g.kills) || (g.mega && r.megaWon) || (g.level && r.level >= g.level)) chalWin();
+  }
+  function chalWin() {
+    var d = CHAL.d; S.defis = S.defis || {};
+    if (!S.defis[d.id]) {
+      S.defis[d.id] = Date.now(); S.stats.defis = Object.keys(S.defis).length;
+      var rw = d.reward || {};
+      if (rw.quest) { S.quests = S.quests || {}; if (!S.quests[rw.quest]) { S.quests[rw.quest] = Date.now(); questToast(questReward(rw.quest)); } }
+      if (rw.title) { S.titles = S.titles || {}; S.titles[rw.title] = 1; }
+      if (rw.gold) earnGold(rw.gold);
+      save();
+    }
+    r.chalWon = 1; gameOver(false, "Défi réussi : " + d.name);
+  }
+  function chalEnd() {
+    var c = CHAL; CHAL = null; r.chal = c.d.id;
+    S.char = c.sv.char; S.map = c.sv.map; S.diff = c.sv.diff; S.mode = c.sv.mode; save();
+  }
+  function startChal(id) {
+    var d = (D.DEFIS || []).filter(function (x) { return x.id === id; })[0]; if (!d || Net.on) return;
+    var sv = { char: S.char, map: S.map, diff: S.diff, mode: S.mode };
+    S.char = d.char; S.map = d.map; S.diff = d.diff; S.mode = "survie";
+    CHAL = { d: d, sv: sv };
+    reset(null, null, null, "survie");
+    r.mods = chalMods(d.mods || []); r.chalId = d.id; r.humans = humans();
+    S.stats.played[CH.id] = true; S.stats.maps[MAP.id] = true; save();
+    beginPlay();
+    bannerAll("Défi : " + d.name + " — " + chalGoalTxt(d.goal));
+  }
   function hasMod(id) { return !!(r && ((r.mod && r.mod.id === id) || (r.mods && r.mods.some(function (m) { return m.id === id; })))); }
   function isoWeek() { var d = new Date(), t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); var day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day); var y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return t.getUTCFullYear() * 100 + Math.ceil(((t - y0) / 86400000 + 1) / 7); }
   function weeklyMods() { var rnd = mulberry(isoWeek() * 7919), pool = D.MODS2.filter(function (m) { return !m.arena; }).slice(), n = 2 + (rnd() < 0.5 ? 1 : 0), out = []; while (out.length < n && pool.length) out.push(pool.splice((rnd() * pool.length) | 0, 1)[0]); return out; }
@@ -1462,6 +1506,7 @@
   function dropItem(x, y, minR) { var it = rollItem(minR, p ? p.luck : 1); drop("item", x, y, it.idx); }
   function giveItem(pl, id) {
     var it = ITM[id]; if (!it) return;
+    if (r && r.mods && hasMod("noitems")) return;
     if (pl.owner) pl = pl.owner;
     pl.items = pl.items || {}; pl.items[id] = (pl.items[id] || 0) + 1;
     S.stats.seenI = S.stats.seenI || {}; S.stats.seenI[id] = 1;
@@ -3154,12 +3199,12 @@
              rank: S.rank, prestige: S.prestige, spent: spentPoints(),
              awake: awake, fullTal: fullTal, campUps: (S.secureSlots || 0) + (S.chestSize || 0), cauch: S.cauch || {}, crafted: s.crafted || 0, rings: Object.keys(rings).length, runes: s.runes || 0,
              armes: Object.keys(s.armesP || {}).length, evoC: s.evoC || 0, fullChar: D.CHARACTERS.filter(function (c) { return posturesOf(c.id).length && posturesOf(c.id).every(postureOk); }).length,
-             charMax: charMax, events: s.events || 0, freed: Object.keys(s.freed || {}).length, treasures: s.treasures || 0, shrineK: Object.keys(s.shrineK || {}).length, revives: s.revives || 0 };
+             charMax: charMax, hours: ((s.timePlayed || 0) + (run && !run.committed ? run.time || 0 : 0)) / 3600, megaWins: s.megaWins || 0, megaChars: Object.keys(s.megaChars || {}).length, megaMaps: Object.keys(s.megaMaps || {}).length, megaHard: s.megaHard || 0, coopRuns: (s.coopRuns || 0) + (run && !run.committed && (run.duo || duo()) ? 1 : 0), coopMega: s.coopMega || 0, defis: Object.keys(S.defis || {}).length, events: s.events || 0, freed: Object.keys(s.freed || {}).length, treasures: s.treasures || 0, shrineK: Object.keys(s.shrineK || {}).length, revives: s.revives || 0 };
   }
   function checkQuests(run) {
     if (!run || !r) return;
     S.quests = S.quests || {};
-    run.tot = { voltes: (S.stats.voltes || 0) + (run.committed ? 0 : (run.voltes || 0)), extracts: (S.stats.extracts || 0) + (!run.settled && run.extracted ? 1 : 0), trials: S.stats.trials || 0, revives: S.stats.revives || 0, fusions: (S.stats.fusions || 0) + (run.committed ? 0 : run.fusions || 0), kills: (S.stats.kills || 0) + (run.committed ? 0 : run.kills || 0), runs: S.stats.runs || 0, sacrifices: S.stats.sacrifices || 0, elites: (S.stats.elites || 0) + (run.committed ? 0 : run.elites || 0), events: S.stats.events || 0, fullChar: D.CHARACTERS.filter(function (c) { return posturesOf(c.id).length && posturesOf(c.id).every(postureOk); }).length, coopMega: S.stats.coopMega || 0, nights: (S.stats.nights || 0) + (!run.settled && run.nightDone ? 1 : 0), evoC: S.stats.evoC || 0, seen: Object.keys(S.stats.seenI || {}).length };
+    run.tot = { voltes: (S.stats.voltes || 0) + (run.committed ? 0 : (run.voltes || 0)), extracts: (S.stats.extracts || 0) + (!run.settled && run.extracted ? 1 : 0), trials: S.stats.trials || 0, revives: S.stats.revives || 0, fusions: (S.stats.fusions || 0) + (run.committed ? 0 : run.fusions || 0), kills: (S.stats.kills || 0) + (run.committed ? 0 : run.kills || 0), runs: S.stats.runs || 0, sacrifices: S.stats.sacrifices || 0, elites: (S.stats.elites || 0) + (run.committed ? 0 : run.elites || 0), events: S.stats.events || 0, fullChar: D.CHARACTERS.filter(function (c) { return posturesOf(c.id).length && posturesOf(c.id).every(postureOk); }).length, coopMega: S.stats.coopMega || 0, megaChars: Object.keys(S.stats.megaChars || {}).length, nights: (S.stats.nights || 0) + (!run.settled && run.nightDone ? 1 : 0), evoC: S.stats.evoC || 0, seen: Object.keys(S.stats.seenI || {}).length };
     D.QUESTS.forEach(function (q) {
       if (S.quests[q.id]) return;
       var ok = false; try { ok = q.check(run); } catch (e) {}
@@ -4195,7 +4240,7 @@
   function megaArena(pl) {
     var m = r.mega; if (!m) return;
     if (m.boss.dead) {
-      r.megaWon = true; if (duo()) S.stats.coopMega = (S.stats.coopMega || 0) + 1;
+      r.megaWon = true; if (duo()) S.stats.coopMega = (S.stats.coopMega || 0) + 1; S.stats.megaWins = (S.stats.megaWins || 0) + 1; S.stats.megaChars = S.stats.megaChars || {}; S.stats.megaChars[r.char] = 1; S.stats.megaMaps = S.stats.megaMaps || {}; S.stats.megaMaps[MAP.id] = 1; if (r.diffId && r.diffId !== 'normal') S.stats.megaHard = (S.stats.megaHard || 0) + 1;
       var mel = m.boss.d.elem || "terre"; S.cauch = S.cauch || {}; S.cauch[MAP.id] = Math.min(10, Math.max(S.cauch[MAP.id] || 0, cN() + 1)); S.mega = S.mega || {};
       if (!S.mega[mel]) { S.mega[mel] = Date.now(); bannerAll(m.boss.d.name + " vaincu ! Palier Cauchemar " + S.cauch[MAP.id] + " débloqué sur " + MAP.name); }
       r.mega = null; if (isExpe() && r.ex) { r.ex.megaWon = true; r.ex.st.forEach(function (st) { if (st.k === "x_mega") st.hidden = 0; }); bannerAll("La sortie du méga boss s'ouvre au cœur"); } save(); var mit = m.boss.type === "colosse" ? ITM.coeur_humus : D.ITEMS.filter(function (it) { return it.mega === m.boss.type; })[0]; if (mit) drop("item", m.boss.x, m.boss.y, mit.idx); else dropItem(m.boss.x, m.boss.y, 3); return; }
@@ -4450,7 +4495,7 @@
   // tout ce que l'écureuil emporte en partie : attirail porté, talents de sa posture, maîtrise de l'arme
   function v2Loadout(pl) {
     eqS();
-    var cid = pl.char.id, w = wornBy(cid);
+    var cid = pl.char.id, w = hasMod("nogear") ? {} : wornBy(cid);
     pl.gear = []; pl.gbon = {}; pl.ring = {}; pl.amu = {}; pl.epts = { terre: 0, feu: 0, eau: 0, air: 0 }; pl.extraTech = []; pl.set = {};
     var uniq = 0;
     Object.keys(w).forEach(function (s) {
@@ -5954,7 +5999,7 @@
     }
   }
   var campLight = null, campMarks = [];
-  var EMOTES = ["SALUT", "GG", "VENEZ", "MERCI", "HAHA", "BRAVO"], TITLES = { gobe: ["Gobe-noisettes", 800], terreur: ["Terreur des bois", 1500], aube: ["Capitaine de l'aube", 2500], legende: ["Écureuil de légende", 3000], roi: ["Roi du hub", 5000] };
+  var EMOTES = ["SALUT", "GG", "VENEZ", "MERCI", "HAHA", "BRAVO"], TITLES = { gobe: ["Gobe-noisettes", 800], terreur: ["Terreur des bois", 1500], aube: ["Capitaine de l'aube", 2500], legende: ["Écureuil de légende", 3000], roi: ["Roi du hub", 5000], fievre: ["Fiévreux", 6000] };
   function titleName(id) { return (TITLES[id] || [""])[0].toUpperCase(); }
   function campBubble(x, y, em, t) {
     if (!em) return; var w = textWidth(em, 1) + 8, bx = Math.round(x - w / 2), by = Math.round(y - 5 - Math.sin(t * 3) * 1);
@@ -6211,11 +6256,13 @@
       if (gd < 7) { gems.splice(i, 1); p = best; collect(g, best); p = me; }
       else if (gd > 600 && (g.kind === "xp" || g.kind === "gold")) gems.splice(i, 1);
     }
-    while (xp >= xpNext) { xp -= xpNext; r.level++; pending++; if (me && me.char && me.char.id === "noisette" && r.level % 5 === 0) { pending++; bannerAll("Enseignement gratuit : un niveau de plus !"); } xpNext = need(r.level); }
+    while (xp >= xpNext && !hasMod("nolevel")) { xp -= xpNext; r.level++; pending++; if (me && me.char && me.char.id === "noisette" && r.level % 5 === 0) { pending++; bannerAll("Enseignement gratuit : un niveau de plus !"); } xpNext = need(r.level); }
 
     tickFx(dt);
     achTick -= dt;
     if (achTick <= 0) { achTick = 1; checkAchievements(r); }
+    if (r.mods && hasMod("noheal")) players.forEach(function (o) { if (o._hpL != null && o.hp > o._hpL) o.hp = o._hpL; o._hpL = o.hp; });
+    if (CHAL) chalTick();
     chestCheck();
     if (pending > 0 && !picking && !me.down && state === "play" && !isArena()) openLevelUp();
     if (Net.on) netHostTick(dt);
@@ -6665,7 +6712,7 @@
     // les noisettes et l'or au sol sont ramassés, le reste disparaît
     gems.forEach(function (g) { if (g.kind === "xp") xp += g.v * me.xpMul; else if (g.kind === "gold") addGold(g.v); });
     gems = [];
-    while (xp >= xpNext) { xp -= xpNext; r.level++; pending++; if (me && me.char && me.char.id === "noisette" && r.level % 5 === 0) { pending++; bannerAll("Enseignement gratuit : un niveau de plus !"); } xpNext = need(r.level); }
+    while (xp >= xpNext && !hasMod("nolevel")) { xp -= xpNext; r.level++; pending++; if (me && me.char && me.char.id === "noisette" && r.level % 5 === 0) { pending++; bannerAll("Enseignement gratuit : un niveau de plus !"); } xpNext = need(r.level); }
     clearField();
     players.forEach(function (pl) { pl.down = false; pl.reviveT = 0; pl.hp = pl.maxHp; });
     var income = Math.round(A.income(r.round, r.roundKills) * ((r.mod && r.mod.income) || 1));
@@ -8332,6 +8379,7 @@
         tile("atelier", "🔨", "L'atelier", "Craft et recyclage") +
         tile("succes", "🏆", "Succès", nAch + " / " + achTotal()) +
         tile("quetes", "🗝️", "Quêtes", nQ + " / " + D.QUESTS.length) +
+        tile("defis", "⚔️", "Défis", Object.keys(S.defis || {}).length + " / " + (D.DEFIS || []).length) +
         tile("codex", "📜", "Techniques", "20 techniques · " + (Object.keys(D.TFUS).length + Object.keys(D.TFUS2).length + Object.keys(D.COMBOS).length + Object.keys(D.LEGENDS).length) + " fusions") +
         tile("help", "❓", "Aide", "Comment jouer") +
         tile("options", "⚙️", "Options", "Son, effets") +
@@ -8540,12 +8588,25 @@
     quetes: function () {
       var q = S.quests || {}, n = Object.keys(q).length;
       var html = '<div class="screen-head">' + back() + '<h2>Quêtes</h2><p class="gold-badge">🗝️ <b>' + n + " / " + D.QUESTS.length + '</b></p></div>' +
-        '<p class="game-small">Chaque quête réussie ajoute un nouvel objet au butin. Elles se re-verrouillent à chaque prestige.</p><div class="ach-list">';
+        '<p class="btn-row"><button type="button" class="btn btn-alt" data-action="go" data-arg="defis">⚔️ Défis (' + Object.keys(S.defis || {}).length + " / " + D.DEFIS.length + ')</button></p>' + '<p class="game-small">Chaque quête réussie ajoute un nouvel objet au butin. Elles se re-verrouillent à chaque prestige.</p><div class="ach-list">';
       D.QUESTS.forEach(function (qq) {
         var ok = !!q[qq.id], rw = questReward(qq.id);
         html += '<div class="ach quest' + (ok ? " is-done" : "") + '" style="--rc:' + rw.color + '"><span class="ach-ic">' + (ok ? (String(rw.icon).indexOf("<") === 0 ? rw.icon : ic(rw.icon)) : "🔒") + "</span>" +
           "<div><strong>" + esc(qq.desc) + "</strong><span>Débloque " + rw.kind + ' <b class="q-item">' + esc(rw.name) + "</b>" + (rw.desc ? " : " + esc(rw.desc) : "") + "</span></div>" +
           '<span class="ach-gold">' + (ok ? "✓" : "") + "</span></div>";
+      });
+      return html + "</div>";
+    },
+    defis: function () {
+      var html = '<div class="screen-head">' + back() + "<h2>Défis</h2>" + '<p class="gold-badge">⚔️ <b>' + Object.keys(S.defis || {}).length + " / " + D.DEFIS.length + '</b></p></div>' +
+        '<p class="game-small">Une partie imposée : carte, difficulté, écureuil, arme et règles spéciales. Réussis-la pour gagner la récompense. Ta partie normale n\'est pas modifiée.</p><div class="ach-list">';
+      D.DEFIS.forEach(function (d) {
+        var ok = chalDone(d), c = charById(d.char), m = mapById(d.map), df = (D.DIFFICULTIES[d.diff] || {}).name || d.diff, ar = D.ARMES[d.arme];
+        html += '<div class="ach quest' + (ok ? " is-done" : "") + '"><span class="ach-ic">' + (ok ? "🏆" : "⚔️") + "</span><div><strong>" + esc(d.name) + "</strong><span>" + esc(d.desc) + "</span>" +
+          '<span class="ach-unlock">' + esc(c.name) + " · " + esc(m.name) + " · " + esc(df) + (ar ? " · arme : " + esc(ar.name) : "") + "</span>" +
+          (d.mods && d.mods.length ? '<span class="ach-unlock">Règles : ' + esc(chalMods(d.mods).map(function (x) { return x.name; }).join(", ")) + "</span>" : "") +
+          '<span class="ach-unlock">Objectif : ' + esc(chalGoalTxt(d.goal)) + " · Récompense : " + esc((d.reward || {}).text || "") + "</span></div>" +
+          '<button type="button" class="btn btn-small" data-action="chal" data-arg="' + d.id + '">' + (ok ? "Rejouer" : "Lancer") + "</button></div>";
       });
       return html + "</div>";
     },
@@ -8954,6 +9015,7 @@
     skip: function () { if (state !== "levelup" && !picking) return; apply({ type: "skip" }); },
     resume: function () { resume(); },
     restart: function () { start(); },
+    chal: function (id) { SND.click(); startChal(id); },
     chestok: function () { if (!chestOpen) return; if (!chestOpen.done) { chestFinish(chestOpen, false); SND.click(); } else closeChest(); },
     quit: function () {
       if (netMenuOpen) { if (window.confirm("Quitter la partie en ligne ? Tu gardes l'or gagné.")) { netMenuOpen = false; gameOver(true); } return; }
@@ -9495,7 +9557,7 @@
     if (!document.fullscreenElement && !stage.classList.contains("is-max") && (rc.top < top || rc.bottom > window.innerHeight))
       window.scrollTo({ top: window.scrollY + rc.top - top - 8, behavior: "smooth" });
     sfx(660, 0.1, "square", 0.04);
-    if (D.ARMES && !Net.on) openDraft();
+    if (D.ARMES && !Net.on) { if (CHAL) pickArme(CHAL.d.arme); else openDraft(); }
   }
   function netMenu() {
     netMenuOpen = true; me.choosing = true; clearInput(); sendInput();
@@ -9557,7 +9619,8 @@
     var sc = score(), gold = runGold();
     if (party) partyEnded(quit);
     S.stats.kills += r.kills; S.stats.voltes = (S.stats.voltes || 0) + (r.voltes || 0); S.stats.fusions = (S.stats.fusions || 0) + (r.fusions || 0); S.stats.elites = (S.stats.elites || 0) + (r.elites || 0); r.committed = true;
-    S.stats.runs++;
+    S.stats.runs++; S.stats.timePlayed = (S.stats.timePlayed || 0) + (r.time || 0); if (r.duo || duo()) S.stats.coopRuns = (S.stats.coopRuns || 0) + 1;
+    if (CHAL) chalEnd();
     earnGold(gold);
     var rankGain = Math.floor((r.time / 10 + r.kills / 20 + r.bosses * 20 + r.level * 2) * (1 + 0.2 * pu("rang"))), ranksUp = 0;
     S.rankXp += rankGain;
@@ -9587,6 +9650,7 @@
         '<button class="btn btn-ghost" type="button" data-action="leave">Quitter le salon</button></div>'
       : '<div class="btn-row center"><button class="btn" type="button" data-action="restart" data-autofocus>↻ Rejouer</button>' +
         '<button class="btn btn-ghost" type="button" data-action="menu">Menu</button></div>');
+    if (r.chal) html = html.replace('data-action="restart" data-autofocus>↻ Rejouer', 'data-action="chal" data-arg="' + r.chal + '" data-autofocus>↻ ' + (r.chalWon ? 'Rejouer le défi' : 'Retenter le défi'));
     showCard(html, "over");
     var form = card.querySelector("[data-submit]");
     if (form) form.addEventListener("submit", function (e) {
@@ -9884,6 +9948,7 @@
     rage: function (min) { r.stageT0 = r.time - RAGE.start - min * 60; return { rage: rageMin(), dmg: rageDmg(), spd: rageSpd() }; },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
+    chal: function (id) { startChal(id); }, chalInfo: function () { return { chal: CHAL && CHAL.d.id, mods: (r.mods || []).map(function (m) { return m.id; }), level: r.level, time: r.time, hp: me.hp, max: me.maxHp, items: Object.keys(me.items || {}).length, state: state }; }, chalWin: function () { chalWin(); }, stat: function () { return JSON.stringify({ st: S.stats, defis: S.defis }); },
     quests: function () { return S.quests; },
     dgHash: function () { return r && r.dg ? dgHash(r.dg) : 0; },
     nextFloor: function () { nextFloor(); },
