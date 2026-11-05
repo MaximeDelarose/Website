@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.40.1";
+  var VERSION = "2.41.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -637,7 +637,7 @@
   }
   function spawnAt(type, x, y) {
     var d = D.ENEMIES[type];
-    var hp = d.hp * (d.boss && !isDungeon() ? (1 + bossCount * 0.9) * (1 + r.time / 200) * DIFF.hp * (MAP.hp || 1) : hpMul());
+    var hp = d.hp * (d.boss && !isDungeon() ? (1 + bossCount * 0.9) * (1 + r.time / 200) * lateHp() * DIFF.hp * (MAP.hp || 1) : hpMul());
     var e = makeEnemy(type, d, x, y, hp);
     if (d.ai === "mole") { e.under = true; e.cd = 1; }
     if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
@@ -649,7 +649,8 @@
   function hpMul() { return hpMul0() * tierHp(); }
   function zoneHp() { return isDungeon() ? DGT.hp || 1 : MAP.hp || 1; }
   function zoneGold() { return r && r.mode === "dungeon" ? DGT.gold || 1 : MAP.gold || 1; }
-  function hpMul0() { if (isDungeon()) return (1 + 0.9 * (r.dg.floor - 1)) * (1 + r.time / 400) * DIFF.hp * zoneHp() * (1 + 0.25 * (players.length - 1)); return (isArena() ? 1 + 0.07 * (r.round - 1) : 1) * (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
+  function lateHp() { return r && r.time > 480 && !isArena() && !isDungeon() ? Math.pow(1.5, (r.time - 480) / 60) : 1; }   // 2.41.1 : au-delà de 8 min les PV des ennemis montent de façon exponentielle, comme la puissance du joueur
+  function hpMul0() { if (isDungeon()) return (1 + 0.9 * (r.dg.floor - 1)) * (1 + r.time / 400) * DIFF.hp * zoneHp() * (1 + 0.25 * (players.length - 1)); return (isArena() ? 1 + 0.07 * (r.round - 1) : 1) * (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * lateHp() * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
   function makeEnemy(type, d, x, y, hp) {
     var e = { id: ++uid, type: type, d: d, spr: SPR[d.sprite], x: x, y: y, hp: hp, maxHp: hp, kx: 0, ky: 0, flash: 0, slowT: 0, slow: 0,
               anim: Math.random() * 2, phase: Math.random() * 6, face: 1, born: r ? r.time : 0, charge: 0, windup: 0, cd: 3, spd: (d.spd || 0) * DIFF.spd, cool: null };
@@ -674,7 +675,7 @@
     var x = around.x + Math.cos(ang) * dist, y = around.y + Math.sin(ang) * dist;
     if (!type) type = pickType(biomeAt(x, y));
     var d = D.ENEMIES[type];
-    var hp = d.hp * (d.boss ? (1 + bossCount * 0.9) * (1 + r.time / 200) * DIFF.hp * (MAP.hp || 1) : hpMul());
+    var hp = d.hp * (d.boss ? (1 + bossCount * 0.9) * (1 + r.time / 200) * lateHp() * DIFF.hp * (MAP.hp || 1) : hpMul());
     var e = makeEnemy(type, d, x, y, hp);
     if (d.ai === "mole") { e.under = true; e.cd = 1; }
     if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
@@ -830,7 +831,7 @@
     if (!e.d.prop) { var hel = atkElem(p); SND.hit(hel, crit); spark(e.x + (p.x - e.x) * 0.25 + (Math.random() * 4 - 2), e.y - 2 + (p.y - e.y) * 0.25, hel, crit); }
     if (crit && !e.d.prop && (e.d.boss || dmg >= 60) && S.opts.shake) { shake = Math.max(shake, 0.12); if (p === me) kick(e.x - p.x, e.y - p.y, 1.5); }
     if (!e.d.prop) {
-      var kb = e.d.boss ? 0.12 : (e.elem === "terre" || hasA(e, "lourd")) ? 0 : 1;
+      var kb = e.d.boss ? 0.12 : (e.elem === "terre" || hasA(e, "lourd")) ? 0 : Math.max(0.3, 1 - (r ? r.time : 0) / 1000);
       e.kx += (kx || 0) * kb; e.ky += (ky || 0) * kb;
     }
     if (S.opts.numbers && !e.d.prop) {
@@ -1004,8 +1005,12 @@
     if (p.oshield > 0) { var ab = Math.min(p.oshield, dmg); p.oshield -= ab; dmg -= ab; p.inv = 0.3; burst(p.x, p.y, "#9cc56b", 4); if (dmg <= 0) return; }
     if (p.packN && p.passives && p.passives.meute) dmg -= p.passives.meute;
     p.redSt = 0; if (r && p === me) r.vc = 0;
-    var hit = Math.max(1, (dmg - p.armor - (p.armX || 0)) * (p.taken || 1) * (1 - (p.resist || 0)) * (elem && p.eres && p.eres[elem] ? 1 - Math.min(0.6, p.eres[elem] / 100) : 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)) * (nm(9) ? 1.3 : 1);
+    // 2.41 : l'armure réduit en pourcentage (A / (A + 12), plafonné à 70 %) au lieu de retrancher des points : avec 100+ d'armure plus rien ne passait
+    var armA = Math.max(0, p.armor + (p.armX || 0)), armRed = Math.min(0.7, armA / (armA + 12)), lateH = r && !isArena() && !isDungeon() ? Math.max(0, r.time - 600) : 0;
+    if (lateH) dmg *= 1 + lateH / 300;                           // après 10 minutes, les coups montent vite : la partie finit toujours
+    var hit = Math.max(1, dmg * (1 - armRed) * (p.taken || 1) * (1 - (p.resist || 0)) * (elem && p.eres && p.eres[elem] ? 1 - Math.min(0.6, p.eres[elem] / 100) : 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)) * (nm(9) ? 1.3 : 1);
     if (p.rmRed > 0) { hit *= 1 - p.rmRed; p.rmRed = 0; }
+    if (lateH > 120) hit += p.maxHp * Math.min(0.08, 0.006 * (lateH - 120) / 60);   // et passé 12 minutes, une part des PV max s'ajoute, armure ignorée
     if (p.posture === "carapace" && p.anchored) { hit *= tal(p, "carapace_t1") ? 0.35 : 0.5; var rf = nearest(1, 40)[0]; if (rf) { var ppr = p; hurt(rf, hit * 2 * (tal(p, "carapace_t2") ? 2 : 1), 0, 0); p = ppr; } }
     if (p.owner && p.owner.posture === "formation" && tal(p.owner, "formation_t1") && Math.hypot(p.x - p.owner.x, p.y - p.owner.y) < 26) hit *= 0.8;
     if (p.posture === "formation" && tal(p, "formation_t1") && p.twinRef && Math.hypot(p.x - p.twinRef.x, p.y - p.twinRef.y) < 26) hit *= 0.8;
@@ -1014,7 +1019,7 @@
     if (p.char && p.char.id === "cendrine" && !p.twin) { p.debt = (p.debt || 0) + hit; p.debtRate = Math.max(p.debtRate || 0, p.debt / (p.mstate === "mouvement" && gv(p, "gra_b") ? 5 : 4)); }
     else p.hp -= hit;
     if (r && p === me) r.dmgIn = (r.dmgIn || 0) + hit;
-    p.inv = DIFF.inv || 0.35; txFire(p, "hurt");
+    p.inv = Math.max(0.1, (DIFF.inv || 0.35) * (1 - Math.min(0.7, Math.max(0, (r ? r.time : 0) - 300) / 900))); txFire(p, "hurt");
     var rflv = ((p.txf && p.txf.reflect) || 0) + ((p.gbn && p.gbn.epi) || 0);
     if (rflv) { var rfp = p; near(p.x, p.y, 40, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - rfp.x, e.y - rfp.y) < 36 + e.d.r) { var pq = p; p = rfp; hurt(e, hit * rflv / 100, (e.x - rfp.x) * 3, (e.y - rfp.y) * 3); p = pq; } }); ring(p.x, p.y, 36, false); }
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = Math.max(shake, 0.32); SND.hurt(); freezeFrame(0.06); hurtV = 0.35; kick(Math.random() - 0.5, Math.random() - 0.5, 3); }
@@ -4529,6 +4534,7 @@
   function wearers(id) { var w = eqS().worn, out = []; Object.keys(w).forEach(function (c) { Object.keys(w[c] || {}).forEach(function (sl) { if (w[c][sl] === id && out.indexOf(c) < 0) out.push(c); }); }); return out; }
   function whoWears(id) { var w = eqS().worn, out = null; Object.keys(w).forEach(function (c) { Object.keys(w[c]).forEach(function (s) { if (w[c][s] === id) out = c; }); }); return out; }
   function gearVal(q) { var g = D.GEAR[q.t]; return g.lo === undefined ? 0 : g.lo + (g.hi - g.lo) * q.roll; }
+  function rnd1(v) { return String(Math.round(v * 10) / 10).replace(".", ","); }   // pas de 28.799999999999997 à l'écran
   function fmtV(v) { return v >= 10 ? String(Math.round(v)) : fr(Math.round(v * 10) / 10); }
   function pieceDesc(q) {
     var g = D.GEAR[q.t];
@@ -4597,7 +4603,7 @@
   function statRows(q, ranges) {
     return GSTATS.filter(function (x) { return q.bon && q.bon[x.id]; }).map(function (x) {
       var v = q.bon[x.id], t = bonTxt((function (o) { o[x.id] = v; return o; })({}))[0], neg = v < 0, qv = neg ? 0 : statQ(x, q, v), r0 = statRange(x, q);
-      return { id: x.id, text: t, neg: neg, q: qv, range: ranges && !neg ? " (" + r0[0] + " à " + r0[1] + ")" : "", top: !neg && qv >= 0.95 };
+      return { id: x.id, text: t, neg: neg, q: qv, range: ranges && !neg ? " (" + rnd1(r0[0]) + " à " + rnd1(r0[1]) + ")" : "", top: !neg && qv >= 0.95 };
     });
   }
   function statQuality(q) { var j = jetOf(q); return j === null ? "" : '<p class="dof-roll">Jet global des stats : <b class="' + (j >= 0.66 ? "dof-q-hi" : j < 0.33 ? "dof-q-lo" : "") + '">' + Math.round(j * 100) + " %</b>" + (Object.keys(q.bon).some(function (k) { var x = GSTATS.filter(function (z) { return z.id === k; })[0]; return q.bon[k] > 0 && statQ(x, q, q.bon[k]) >= 0.95; }) ? ' · <b class="dof-q-top">jet parfait</b>' : "") + "</p>"; }
@@ -4606,7 +4612,7 @@
   function bonTxt(b, ranges) {
     return GSTATS.filter(function (x) { return b && b[x.id]; }).map(function (x) {
       var v = b[x.id], sg = v > 0 ? "+" : "-", a = Math.abs(v);
-      return sg + (x.tenth ? String(a / 10).replace(".", ",") : a) + (x.pct ? " %" : "") + " " + x.name + (ranges && v > 0 ? " (" + (x.tenth ? String(x.lo / 10).replace(".", ",") + " à " + String(x.hi / 10).replace(".", ",") : x.lo + " à " + x.hi) + ")" : "");
+      return sg + (x.tenth ? rnd1(a / 10) : rnd1(a)) + (x.pct ? " %" : "") + " " + x.name + (ranges && v > 0 ? " (" + (x.tenth ? rnd1(x.lo / 10) + " à " + rnd1(x.hi / 10) : rnd1(x.lo) + " à " + rnd1(x.hi)) + ")" : "");
     });
   }
   function genPiece(tier, tpl, rar) {
@@ -6387,6 +6393,7 @@
       if (e.d.boss && (!boss || e.giant)) boss = e;
       e.x += mx * sp * dt + e.kx * dt; e.y += my * sp * dt + e.ky * dt;
       var damp = Math.pow(0.0005, dt); e.kx *= damp; e.ky *= damp;
+      var kmag = Math.hypot(e.kx, e.ky); if (kmag > 130) { e.kx *= 130 / kmag; e.ky *= 130 / kmag; }   // le recul ne tient plus les ennemis à distance
       // zone sûre : les ennemis restent au bord, sauf s'ils poursuivent un autre joueur qui s'y trouve
       for (var z = 0; z < zones.length; z++) {
         var zp = zones[z], zx = e.x - zp.x, zy = e.y - zp.y, zd = Math.hypot(zx, zy) || 0.01, lim = SAFE_R + e.d.r;
@@ -10311,6 +10318,7 @@
     rage: function (min) { r.stageT0 = r.time - RAGE.start - min * 60; return { rage: rageMin(), dmg: rageDmg(), spd: rageSpd() }; },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
+    hit: function (dmg, armor, time) { p.armor = armor; r.time = time; p.inv = 0; var h0 = p.hp; damagePlayer(dmg, p); return { lost: Math.round((h0 - p.hp) * 10), hp: Math.round(p.hp * 10), max: Math.round(p.maxHp * 10), inv: +p.inv.toFixed(2) }; },
     frFake: function (n) { FR.on = {}; FR.list = []; var cs = D.CHARACTERS.map(function (c) { return c.id; }); for (var i = 0; i < n; i++) { FR.on["f" + i] = { n: ["Marmotte", "Chêne42", "Noisetier", "Pomme", "Lutin"][i % 5], c: cs[i % cs.length], ti: i ? 0 : "gobe", lk: {} }; } return Object.keys(FR.on).length; }, frNpcs: function () { return Object.keys(FR.npcs).length; }, frOff: function () { FR.on = {}; },
     cp: function (cid, n, xp) { S.cpres = S.cpres || {}; S.cpres[cid] = n; if (xp !== undefined) S.clvl[cid] = xp; save(); }, treeInfo: function () { return JSON.stringify({ txf: me.txf, gbon: me.gbon }); },
     chal: function (id) { startChal(id); }, chalInfo: function () { return { chal: CHAL && CHAL.d.id, mods: (r.mods || []).map(function (m) { return m.id; }), level: r.level, time: r.time, hp: me.hp, max: me.maxHp, items: Object.keys(me.items || {}).length, state: state }; }, chalWin: function () { chalWin(); }, stat: function () { return JSON.stringify({ st: S.stats, defis: S.defis }); },
@@ -10329,6 +10337,7 @@
     links: function () { var o = {}; Object.keys(Net.peers).forEach(function (k) { o[k] = Net.peers[k].open ? "open" : (Net.peers[k].failed ? "failed" : "pending"); }); return o; },
     net: function () { return { direct: allDirect(), on: Net.on, role: Net.role, code: Net.code, status: Net.status, roster: Net.roster.length, started: Net.started, players: players.length, snap: !!Net.cur }; },
     spawn: function (t) { if (p) spawn(t, Math.random() * TAU, 60); },
+    mobHp: function (type, time) { r.time = time; var e = spawn(type, 0, 60); return e ? Math.round(e.maxHp) : null; },
     projs: function () { return projs.length; },
     cps: function () { return Net.on && Net.role === 'guest' ? (Net.cps || []).length : allComps().length; },
     v2: function () { return { posture: me.posture, mstate: me.mstate, anchored: me.anchored, hooked: !!me.hooked, volteCd: Math.round((me.volteCd || 0) * 10) / 10, voltes: r.voltes, crew: me.crew ? me.crew.length : null, recruits: r.recruits, vx: Math.round(me.vx || 0), cadX: me.cadX, dmgX: me.dmgX, weapons: me.weapons, hp: Math.round(me.hp) }; },
