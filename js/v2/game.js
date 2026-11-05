@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.37.1";
+  var VERSION = "2.37.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -9105,7 +9105,7 @@
     if (sa) return '<p class="game-small">📲 Tu joues depuis l\'appli installée.</p>';
     if (window.__pwaPrompt) return '<p class="btn-row"><button type="button" class="btn" data-action="pwainstall">📲 Installer l\'appli (icône sur l\'écran d\'accueil, plein écran)</button></p>';
     var ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-    return '<p class="game-small">📲 Pour avoir une icône qui ouvre le jeu en plein écran : ' + (ios ? "dans Safari, touche Partager puis « Sur l'écran d'accueil »." : "dans le menu du navigateur (⋮), choisis « Installer l'application » ou « Ajouter à l'écran d'accueil ».") + " Ta connexion, tes sauvegardes et le multi marchent pareil.</p>";
+    return '<p class="game-small">📲 Pour avoir une icône qui ouvre le jeu en plein écran : ' + (ios ? "dans Safari, touche Partager puis « Sur l'écran d'accueil »." : /Firefox/.test(navigator.userAgent) ? "dans Firefox, menu ⋮, déroule « Plus » puis touche « Installer » (ou « Ajouter à l'écran d'accueil »)." : "dans le menu du navigateur (⋮), choisis « Installer l'application » ou « Ajouter à l'écran d'accueil ».") + " Ta connexion, tes sauvegardes et le multi marchent pareil.</p>";
   }
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest(".beta-tag") && Net.on !== true) { if (state === "play") return; go("changelog"); } });
   function go(name) { if (name === "menu" && D.CAMP) { openCamp(); return; } closeCamp(); state = "menu"; showCard(SCREENS[name](), name); }
