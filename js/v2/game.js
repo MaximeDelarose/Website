@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.47.0";
+  var VERSION = "2.47.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -2785,7 +2785,7 @@
   function crewProxy(pl, mt) {
     if (mt.px) return mt.px;
     var px = Object.create(pl);
-    px.isCrew = 1; px.crew = null; px.crewScale = 0.05; px.timers = {}; px.cool = {}; px.st = {}; px.comp = {}; px.trees = []; px.lx = mt.x; px.ly = mt.y; px.mt = mt;
+    px.isCrew = 1; px.crew = null; px.crewScale = 0.1; px.timers = {}; px.cool = {}; px.st = {}; px.comp = {}; px.trees = []; px.lx = mt.x; px.ly = mt.y; px.mt = mt;
     Object.defineProperty(px, "hp", { configurable: true, get: function () { return pl.hp; }, set: function (v) { var d = v - pl.hp; if (d > 0 && pl.hp < pl.maxHp) pl.hp = Math.min(pl.maxHp, pl.hp + d * 0.1); } });
     return (mt.px = px);
   }
