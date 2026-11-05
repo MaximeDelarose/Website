@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.32.1";
+  var VERSION = "2.33.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -3194,7 +3194,7 @@
     var awake = Object.keys(D.ARMES).filter(function (a) { return mastLevel(a) >= 5; }).length, rings = {}, fullTal = false, charMax = 1;
     (S.eq && S.eq.inv || []).forEach(function (q) { var g = D.GEAR[q.t]; if (g && g.slot === "anneau") rings[q.t] = 1; });
     Object.keys(S.tal || {}).forEach(function (cid) { Object.keys(S.tal[cid] || {}).forEach(function (ps) { var t = S.tal[cid][ps] || {}; if (t[1] && t[2] && t[3] && t[4]) fullTal = true; }); });
-    D.CHARACTERS.forEach(function (c) { charMax = Math.max(charMax, charLevel(c.id)); });
+    D.CHARACTERS.forEach(function (c) { charMax = Math.max(charMax, cPres(c.id) ? 20 : charLevel(c.id)); });
     return { kills: s.kills + (run && !run.committed ? run.kills : 0), goldEarned: s.goldEarned, played: s.played, maps: s.maps, bought: s.bought,
              rank: S.rank, prestige: S.prestige, spent: spentPoints(),
              awake: awake, fullTal: fullTal, campUps: (S.secureSlots || 0) + (S.chestSize || 0), cauch: S.cauch || {}, crafted: s.crafted || 0, rings: Object.keys(rings).length, runes: s.runes || 0,
@@ -4318,26 +4318,18 @@
     return html;
   }
   function terTalents(c, lv, ps) {
-    var pick = ((S.tal[c.id] || {})[ps.id]) || {};
-    var html = '<p class="game-small">Posture <b>' + esc(ps.name) + '</b> · <button class="link-btn" type="button" data-action="go" data-arg="play">changer de posture</button>. Un talent par palier ; ils ne comptent qu\'avec leur posture.</p><div class="dof-spells">';
-    for (var t = 0; t < 4; t++) {
-      var pair = t < 2 ? D.TAL_COMMON[t] : (D.TAL[ps.id] || [])[t - 2], open = lv >= D.TAL_LVL[t];
-      html += '<div class="dof-spell-row' + (open ? "" : " is-locked") + '"><span class="dof-lvl"><b>' + D.TAL_LVL[t] + "</b><small>niv.</small></span>";
-      (pair || []).forEach(function (nd, i) {
-        var on = pick[t + 1] === (i ? "b" : "a");
-        html += '<button type="button" class="dof-spell' + (on ? " is-on" : "") + '" ' + (open ? 'data-action="tpick" data-arg="' + (t + 1) + ":" + (i ? "b" : "a") + '"' : "disabled") + '><strong>' + (t === 3 ? "🔑 " : "") + esc(nd.name) + "</strong><span>" + esc(nd.desc) + "</span></button>";
-      });
-      html += "</div>";
-    }
-    html += "</div>";
-    var px = (S.tal[c.id] || {}).x || {};
-    html += '<h3 class="pick-title">Talents de personnage</h3><p class="game-small">Valables avec toutes les postures : un choix par palier.</p><div class="dof-spells">';
-    (D.TAL_FX[c.id] || []).forEach(function (row, tx) {
-      var open = lv >= D.TAL_XLVL[tx];
-      html += '<div class="dof-spell-row x3' + (open ? "" : " is-locked") + '"><span class="dof-lvl"><b>' + D.TAL_XLVL[tx] + "</b><small>niv.</small></span>";
-      row.forEach(function (nd, i) {
-        var on = px[tx] === String.fromCharCode(97 + i);
-        html += '<button type="button" class="dof-spell' + (on ? " is-on" : "") + '" ' + (open ? 'data-action="txpick" data-arg="' + tx + ":" + String.fromCharCode(97 + i) + '"' : "disabled") + "><strong>" + esc(nd.name) + "</strong><span>" + esc(nd.desc) + "</span></button>";
+    lv = talLv(c.id);
+    var pick = ((S.tal[c.id] || {})[ps.id]) || {}, px = (S.tal[c.id] || {}).x || {}, rows = [];
+    for (var t = 0; t < 4; t++) rows.push({ lvl: D.TAL_LVL[t], tag: "Posture", key: t === 3, opts: t < 2 ? D.TAL_COMMON[t] : (D.TAL[ps.id] || [])[t - 2], act: "tpick", id: t + 1, cur: pick[t + 1] });
+    (D.TAL_FX[c.id] || []).forEach(function (row, tx) { rows.push({ lvl: D.TAL_XLVL[tx], tag: "Perso", opts: row, act: "txpick", id: tx, cur: px[tx] }); });
+    rows.sort(function (x, y) { return x.lvl - y.lvl; });
+    var html = '<p class="game-small">Posture <b>' + esc(ps.name) + '</b> · <button class="link-btn" type="button" data-action="go" data-arg="play">changer de posture</button>. Un choix par palier. Les talents <b>Posture</b> ne comptent qu\'avec leur posture, les talents <b>Perso</b> valent pour toutes.' + (cPres(c.id) ? " Prestige : tous les paliers sont ouverts." : "") + '</p><div class="dof-spells">';
+    rows.forEach(function (rw) {
+      var open = lv >= rw.lvl, n = (rw.opts || []).length;
+      html += '<div class="dof-spell-row' + (n > 2 ? " x3" : "") + (open ? "" : " is-locked") + '"><span class="dof-lvl"><b>' + rw.lvl + "</b><small>niv.</small></span>";
+      (rw.opts || []).forEach(function (nd, i) {
+        var L = String.fromCharCode(97 + i), on = rw.cur === L;
+        html += '<button type="button" class="dof-spell' + (on ? " is-on" : "") + '" ' + (open ? 'data-action="' + rw.act + '" data-arg="' + rw.id + ":" + L + '"' : "disabled") + '><em class="dof-tag">' + rw.tag + "</em><strong>" + (rw.key ? "🔑 " : "") + esc(nd.name) + "</strong><span>" + esc(nd.desc) + "</span></button>";
       });
       html += "</div>";
     });
@@ -4372,7 +4364,62 @@
     S.gearScale = 2; S.gearFix = 3;
   }
   function eqS() { if (GS && S.gearFix !== 3) { if (!S.eq) S.gearFix = 3; else migrateGear(); } S.eq = S.eq || { inv: [], worn: {}, uid: 1 }; S.res = S.res || {}; S.clvl = S.clvl || {}; S.tal = S.tal || {}; S.mast = S.mast || {}; return S.eq; }
-  function charLevel(cid) { return Math.min(12, 1 + Math.floor(Math.sqrt(((S.clvl || {})[cid] || 0) / 40))); }
+  function charLevel(cid) { return Math.min(20, 1 + Math.floor(Math.sqrt(((S.clvl || {})[cid] || 0) / 40))); }
+  function cPres(cid) { return ((S.cpres || {})[cid]) || 0; }
+  function talLv(cid) { return cPres(cid) > 0 ? 20 : charLevel(cid); }      // après un prestige, les talents restent ouverts
+  function cPts(cid) { var n = 0, t = (S.ctree || {})[cid] || {}; Object.keys(t).forEach(function (k) { if (t[k]) n++; }); return cPres(cid) - n; }
+  /* ---- arbre de prestige du personnage : 3 branches de 10 compétences, 1 point par prestige ---- */
+  var CT_KN = { execute: ["Coup de grâce", "Bourreau", "Faucheur"], opener: ["Première touche", "Embuscade", "Frappe fantôme"], crowd: ["Dans la mêlée", "Briseur de foule", "Tempête vivante"], desperate: ["Dos au mur", "Rage du blessé", "Dernier souffle"],
+    streak: ["Sur la lancée", "Élan", "Série infernale"], afterVolte: ["Volte tranchante", "Sillage de feu", "Volte fatale"], crew: ["Esprit d'équipage", "Pavillon noir", "Armada"], lifesteal: ["Goût du sang", "Soif", "Festin"],
+    burn: ["Étincelle", "Brasier", "Fournaise"], chill: ["Givre léger", "Gelée", "Hiver éternel"], stun: ["Choc", "Sonnerie", "Grand fracas"], knock: ["Poussée", "Bélier", "Raz-de-marée"],
+    critBolt: ["Éclair", "Foudre", "Orage"], reflect: ["Contre-attaque", "Miroir d'épines", "Représailles"], bounty: ["Œil du pilleur", "Poches pleines", "Magot"], killHeal: ["Dernier repas", "Festin de victoire", "Appétit d'ogre"],
+    patience: ["Souffle posé", "Repos du guerrier", "Sérénité"], sprint: ["Pied léger", "Foulée", "Insaisissable"] };
+  var CT_CH = { noisette: [["critBolt", "bounty", "sprint"], ["crit", "gld"]], capitaine: [["crew", "killHeal", "lifesteal"], ["fcom", "vit"]], planeur: [["afterVolte", "sprint", "streak"], ["ini", "mov"]],
+    jumeaux: [["streak", "crowd", "critBolt"], ["dmg", "cdm"]], cendrine: [["burn", "reflect", "desperate"], ["pfe", "rfeu"]], druide: [["patience", "killHeal", "chill"], ["soi", "ptr"]],
+    pataud: [["knock", "stun", "reflect"], ["arm", "vit"]], mage: [["burn", "chill", "critBolt"], ["pfe", "pai"]], ninja: [["execute", "opener", "sprint"], ["crit", "cdm"]],
+    trefle: [["bounty", "streak", "opener"], ["pro", "gld"]], devoreur: [["lifesteal", "execute", "killHeal"], ["vdv", "vit"]], alchimiste: [["burn", "chill", "stun"], ["peu", "area"]], pillard: [["bounty", "crowd", "execute"], ["gld", "chs"]] };
+  var CT_A = [["Griffes aiguisées", { dmg: 4 }], ["Œil de lynx", { crit: 2 }], ["Coup de patte", { cdm: 8 }], ["Chasseur de gros gibier", { chs: 6 }], ["Sang de terre", { ptr: 5 }], ["Sang de braise", { pfe: 5 }], ["Sang de source", { peu: 5 }], ["Sang de vent", { pai: 5 }], ["Tir d'élite", { dmg: 6, area: 3 }], ["Fureur d'écureuil", { dmg: 8, crit: 3, cdm: 12 }]];
+  var CT_B = [["Peau épaisse", { vit: 4 }], ["Écorce", { arm: 2 }], ["Souffle long", { reg: 0.5 }], ["Réflexes", { dod: 2 }], ["Carapace de résine", { res: 3 }], ["Cœur vaillant", { hp: 20 }], ["Soin des bois", { soi: 10 }], ["Épines", { epi: 6 }], ["Sève vive", { vdv: 1 }], ["Racines profondes", { vit: 8, res: 4, arm: 2 }]];
+  var CT_CACHE = {};
+  function ctKv(k, t) { var b = D.TXU_KIND[k].b, m = [0.5, 0.9, 1.4][t]; if (k === "critBolt") return [1, 1, 2][t]; if (k === "killHeal" || k === "patience") return [1, 2, 3][t]; return Math.round(b * m * 10) / 10; }
+  function ctStore(e) { var g = {}; Object.keys(e).forEach(function (k) { g[k] = Math.round(e[k] * (GK[k] || 1)); }); return g; }
+  function ctree(cid) {
+    if (CT_CACHE[cid]) return CT_CACHE[cid];
+    var cfg = CT_CH[cid] || CT_CH.noisette, K = cfg[0], ST = cfg[1], nm = function (k) { var x = GSTATS.filter(function (z) { return z.id === k; })[0]; return x ? x.name.replace(/ \(.*\)/, "") : k; };
+    function A(arr, id) { return arr.map(function (q, i) { var g = ctStore(q[1]); return { id: id + (i + 1), name: q[0], g: g, desc: bonTxt(g).join(", ") }; }); }
+    function F(id, i, k, t, nmv) { var v = ctKv(k, t); return { id: id + i, name: CT_KN[k][t], fx: [{ k: k, v: v }], desc: D.TXU_KIND[k].d(v) }; }
+    function S2(id, i, k, e) { var g = ctStore(e); return { id: id + i, name: "Spécialité : " + nm(k), g: g, desc: bonTxt(g).join(", ") }; }
+    var C = [F("c", 1, K[0], 0), F("c", 2, K[1], 0), F("c", 3, K[2], 0), S2("c", 4, ST[0], (function (o) { o[ST[0]] = 6; return o; })({})), F("c", 5, K[0], 1), F("c", 6, K[1], 1), F("c", 7, K[2], 1),
+      S2("c", 8, ST[1], (function (o) { o[ST[1]] = 8; return o; })({})), F("c", 9, K[0], 2)];
+    var v1 = ctKv(K[1], 2), v2 = ctKv(K[2], 2);
+    C.push({ id: "c10", name: "Maître : " + CT_KN[K[1]][2], fx: [{ k: K[1], v: v1 }, { k: K[2], v: v2 }], desc: D.TXU_KIND[K[1]].d(v1) + " " + D.TXU_KIND[K[2]].d(v2) });
+    return (CT_CACHE[cid] = [{ id: "a", name: "Griffes", ic: "🗡️", nodes: A(CT_A, "a") }, { id: "b", name: "Écorce", ic: "🛡️", nodes: A(CT_B, "b") }, { id: "c", name: "Voie de " + charById(cid).name, ic: "✨", nodes: C }]);
+  }
+  function ctApply(pl, cid) {
+    var ct = (S.ctree || {})[cid] || {}; if (!cPres(cid)) return;
+    ctree(cid).forEach(function (br) { br.nodes.forEach(function (nd) {
+      if (!ct[nd.id]) return;
+      if (nd.g) { pl.gbon = pl.gbon || {}; Object.keys(nd.g).forEach(function (k) { pl.gbon[k] = (pl.gbon[k] || 0) + nd.g[k]; }); }
+      (nd.fx || []).forEach(function (f) { pl.txf[f.k] = (pl.txf[f.k] || 0) + f.v; });
+    }); });
+  }
+  function terTree(c) {
+    var cid = c.id, pts = cPts(cid), own = (S.ctree || {})[cid] || {}, lv = charLevel(cid), n = cPres(cid);
+    var html = '<p class="game-small">À <b>niveau 20</b>, tu peux faire le <b>prestige</b> de ' + esc(c.name) + " : il repart au niveau 1 (tes talents restent ouverts) et gagne <b>1 point</b> d'arbre. 3 branches de 10 compétences, à débloquer dans l'ordre.</p>" +
+      '<p class="v2-bar"><span>Prestiges : <b>' + n + "</b> · points libres : <b>" + pts + "</b> · compétences : <b>" + (n - pts) + " / 30</b></span></p>" +
+      '<p class="btn-row"><button type="button" class="btn' + (lv >= 20 ? "" : " is-off") + '" data-action="cprestige" ' + (lv >= 20 ? "" : "disabled") + ">★ Prestige de " + esc(c.name) + (lv >= 20 ? "" : " (niveau " + lv + " / 20)") + '</button>' +
+      (n - pts ? '<button type="button" class="btn btn-ghost btn-small" data-action="ctreset">Réinitialiser l\'arbre</button>' : "") + "</p>";
+    ctree(cid).forEach(function (br) {
+      var have = br.nodes.filter(function (nd) { return own[nd.id]; }).length;
+      html += '<h3 class="pick-title">' + br.ic + " " + esc(br.name) + " <small>" + have + " / 10</small></h3><div class=\"dof-tree\">";
+      br.nodes.forEach(function (nd, i) {
+        var on = !!own[nd.id], can = !on && pts > 0 && (i === 0 || own[br.nodes[i - 1].id]);
+        html += '<button type="button" class="dof-spell' + (on ? " is-on" : "") + (!on && !can ? " is-lock" : "") + '" ' + (can ? 'data-action="ctnode" data-arg="' + nd.id + '"' : "disabled") + "><strong>" + (on ? "✔ " : can ? "➕ " : "🔒 ") + esc(nd.name) + "</strong><span>" + esc(nd.desc) + "</span></button>";
+      });
+      html += "</div>";
+    });
+    return html;
+  }
   function charXpFor(l) { return (l - 1) * (l - 1) * 40; }
   function mastLevel(aid) { var x = (S.mast || {})[aid] || 0, l = 1; D.MASTERY.forEach(function (t, i) { if (x >= t) l = i + 1; }); return l; }
   function pieceById(id) { return eqS().inv.filter(function (q) { return q.id === id; })[0] || null; }
@@ -4518,7 +4565,7 @@
     if (r && pl === me && uniq) r.uniqueWorn = true;
     pl.rerolls = (pl.rerolls || 0) + (pl.ring.relance ? (pl.ring2x ? 4 : 2) : 0);
     // talents : seulement les paliers ouverts par le niveau de l'écureuil, pour la posture jouée
-    var lv = charLevel(cid), pick = ((S.tal[cid] || {})[pl.posture]) || {};
+    var lv = talLv(cid), pick = ((S.tal[cid] || {})[pl.posture]) || {};
     pl.tal = {}; pl._pfx = [];
     for (var t = 0; t < 4; t++) {
       if (lv < D.TAL_LVL[t] || !pick[t + 1]) continue;
@@ -4531,6 +4578,7 @@
       if (lv < D.TAL_XLVL[tx] || !px[tx] || !D.TAL_FX[cid]) continue;
       var xo = D.TAL_FX[cid][tx][px[tx].charCodeAt(0) - 97]; if (xo && xo.fx) pl.txf[xo.fx.k] = (pl.txf[xo.fx.k] || 0) + xo.fx.v; else if (xo) pl.txl.push(xo);
     }
+    ctApply(pl, cid);
     pl.anchorTh = pl.anchorTh0 = pl.tal.racines ? 0.25 : V2.anchorT;
     pl.volteBase = pl.volteBase0 = (pl.tal.voltigeuse ? 1.5 : pl.tal.ressort ? 2.2 : V2.volteCd);
     pl.epts0 = { terre: pl.epts.terre, feu: pl.epts.feu, eau: pl.epts.eau, air: pl.epts.air };
@@ -8632,8 +8680,9 @@
       D.CHARACTERS.forEach(function (o) { html += '<button type="button" class="np-char' + (S.char === o.id ? " is-selected" : "") + '" data-action="tchar2" data-arg="' + o.id + '" aria-label="' + esc(o.name) + '"><img src="' + spriteUrl(o.sprite) + '" alt=""></button>'; });
       var k = Math.round((cx - charXpFor(lv)) / Math.max(1, charXpFor(lv + 1) - charXpFor(lv)) * 100);
       html += '</div><p class="v2-bar"><span><b>' + esc(c.name) + "</b> · niveau <b>" + lv + '</b></span><span class="rank-bar"><i style="width:' + Math.min(100, k) + '%"></i></span><small>' + cx + " / " + charXpFor(lv + 1) + "</small></p>";
-      html += '<div class="dof-tabs">' + [["eq", "Équipement"], ["tal", "Talents"], ["mast", "Maîtrise"]].map(function (t) { return '<button type="button" class="dof-tab' + (UI.ter === t[0] ? " is-on" : "") + '" data-action="dtab" data-arg="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
+      html += '<div class="dof-tabs">' + [["eq", "Équipement"], ["tal", "Talents"], ["tree", "Arbre"], ["mast", "Maîtrise"]].map(function (t) { return '<button type="button" class="dof-tab' + (UI.ter === t[0] ? " is-on" : "") + '" data-action="dtab" data-arg="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
       if (UI.ter === "tal") html += terTalents(c, lv, ps);
+      else if (UI.ter === "tree") html += terTree(c);
       else if (UI.ter === "mast") html += terMastery();
       else html += terEquip(c);
       return html;
@@ -8887,6 +8936,17 @@
     cbuyres: function (k) { var c = k === "rune_rare" ? 1200 : 300; if (S.gold < c) return; S.gold -= c; S.res[k] = (S.res[k] || 0) + 1; save(); SND.gold(); go("comptoir"); },
     cprov: function (id) { var pv = COMPTOIR_PROV.filter(function (x) { return x.id === id; })[0]; if (!pv || S.gold < pv.price || (S.prov || {})[id]) return; S.gold -= pv.price; S.prov = S.prov || {}; S.prov[id] = 1; save(); SND.gold(); go("comptoir"); },
     csell: function () { var n = 0; Object.keys(S.res).forEach(function (k) { if (D.RES[k] && !D.RES[k].rune && S.res[k] > 20) { n += S.res[k] - 20; S.res[k] = 20; } }); if (n) { earnGold(n * 3); save(); SND.gold(); } go("comptoir"); },
+    cprestige: function () {
+      var cid = S.char; if (charLevel(cid) < 20) return;
+      if (!confirm("Prestige de " + charById(cid).name + " : retour au niveau 1, +1 point d'arbre. Tes talents restent ouverts. Continuer ?")) return;
+      S.cpres = S.cpres || {}; S.cpres[cid] = cPres(cid) + 1; S.clvl[cid] = 0; save(); SND.level(); banner("Prestige " + S.cpres[cid] + " : +1 point d'arbre"); go("terrier");
+    },
+    ctnode: function (id) {
+      var cid = S.char, br = ctree(cid).filter(function (b) { return b.id === id.charAt(0); })[0]; if (!br || cPts(cid) < 1) return;
+      var i = br.nodes.findIndex(function (nd) { return nd.id === id; }); S.ctree = S.ctree || {}; var t = (S.ctree[cid] = S.ctree[cid] || {});
+      if (i < 0 || t[id] || (i > 0 && !t[br.nodes[i - 1].id])) return; t[id] = 1; save(); SND.click(); go("terrier");
+    },
+    ctreset: function () { S.ctree = S.ctree || {}; S.ctree[S.char] = {}; save(); SND.click(); go("terrier"); },
     txpick: function (a) {
       var t = a.split(":"); eqS(); S.tal[S.char] = S.tal[S.char] || {}; S.tal[S.char].x = S.tal[S.char].x || {}; S.tal[S.char].x[t[0]] = t[1]; save(); SND.click(); go("terrier");
     },
@@ -9964,6 +10024,7 @@
     rage: function (min) { r.stageT0 = r.time - RAGE.start - min * 60; return { rage: rageMin(), dmg: rageDmg(), spd: rageSpd() }; },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
+    cp: function (cid, n, xp) { S.cpres = S.cpres || {}; S.cpres[cid] = n; if (xp !== undefined) S.clvl[cid] = xp; save(); }, treeInfo: function () { return JSON.stringify({ txf: me.txf, gbon: me.gbon }); },
     chal: function (id) { startChal(id); }, chalInfo: function () { return { chal: CHAL && CHAL.d.id, mods: (r.mods || []).map(function (m) { return m.id; }), level: r.level, time: r.time, hp: me.hp, max: me.maxHp, items: Object.keys(me.items || {}).length, state: state }; }, chalWin: function () { chalWin(); }, stat: function () { return JSON.stringify({ st: S.stats, defis: S.defis }); },
     quests: function () { return S.quests; },
     dgHash: function () { return r && r.dg ? dgHash(r.dg) : 0; },
