@@ -2905,7 +2905,7 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .sk-evo { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; margin: 8px 0; }
 .sk-evo img { width: 34px; height: 34px; }
 /* ---------- Survivor 2.0 (bêta) ---------- */
-.beta-tag { font-size: .45em; vertical-align: middle; padding: 2px 8px; background: var(--berry); color: #fff; box-shadow: 0 0 0 2px var(--line); }
+.beta-tag { cursor: pointer; font-size: .45em; vertical-align: middle; padding: 2px 8px; background: var(--berry); color: #fff; box-shadow: 0 0 0 2px var(--line); }
 .v2-states { display: grid; gap: 4px; margin: 8px 0 2px; }
 .v2-states p { margin: 0; padding: 6px 8px; background: var(--panel-2); box-shadow: 0 0 0 2px var(--line); font-size: .9rem; }
 .v2-states b { display: inline-block; min-width: 110px; }

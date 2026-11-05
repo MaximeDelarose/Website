@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.32.0";
+  var VERSION = "2.32.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -8794,6 +8794,20 @@
       });
       return html + "</div>";
     },
+    changelog: function () {
+      var html = '<div class="screen-head">' + back() + "<h2>Nouveautés</h2></div>";
+      if (CHLOG === null) {
+        CHLOG = 0;
+        fetch("README.md?t=" + Date.now(), { cache: "no-store" }).then(function (x) { return x.text(); }).then(function (t) {
+          var re = /(\d+\.\d+\.\d+) : /g, m, ix = [];
+          while ((m = re.exec(t))) ix.push([m.index, m[1], m.index + m[0].length]);
+          CHLOG = ix.map(function (q, i) { return { v: q[1], t: t.slice(q[2], i + 1 < ix.length ? ix[i + 1][0] : t.length).replace(/\s+$/, "").split("\n")[0] }; }).reverse();
+          if (card.querySelector("[data-chlog]")) go("changelog");
+        }, function () { CHLOG = []; if (card.querySelector("[data-chlog]")) go("changelog"); });
+      }
+      if (!CHLOG) return html + '<p class="game-small" data-chlog>' + (CHLOG === 0 ? "Chargement…" : "Impossible de charger l'historique.") + "</p>";
+      return html + '<div class="ach-list" data-chlog>' + CHLOG.map(function (c, i) { return '<div class="ach' + (i === 0 ? " is-done" : "") + '"><span class="ach-ic">' + (i === 0 ? "🆕" : "📜") + "</span><div><strong>Version " + esc(c.v) + "</strong><span>" + esc(c.t) + "</span></div></div>"; }).join("") + "</div>";
+    },
     options: function () {
       function volRow() {
         var v = Math.round((S.opts.vol === undefined ? 0.8 : S.opts.vol) * 100);
@@ -8806,7 +8820,7 @@
       return '<div class="screen-head">' + back() + "<h2>Options</h2></div>" +
         '<div class="opt-list">' + tog("sound", "🔊 Son") + volRow() + tog("shake", "📳 Tremblement de l'écran") + tog("hitstop", "⏸️ Arrêts sur image et ralenti") + tog("camlead", "🎥 Caméra qui regarde devant") +
         tog("numbers", "🔢 Chiffres de dégâts") + tog("lowfx", "✨ Particules réduites (téléphone lent)") + "</div>" +
-        '<p class="game-small"><button class="link-btn danger" type="button" data-action="wipe">Effacer toute ma progression</button></p>';
+        '<p class="btn-row"><button type="button" class="btn btn-alt" data-action="go" data-arg="changelog">📜 Nouveautés (historique des versions)</button></p><p class="game-small"><button class="link-btn danger" type="button" data-action="wipe">Effacer toute ma progression</button></p>';
     },
     help: function () {
       return '<div class="screen-head">' + back() + "<h2>Comment jouer</h2></div><ul class=\"help-list\">" +
@@ -8821,6 +8835,8 @@
         "<li><kbd>Échap</kbd> ou <kbd>P</kbd> : pause.</li></ul>";
     },
   };
+  var CHLOG = null;
+  document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest(".beta-tag") && Net.on !== true) { if (state === "play") return; go("changelog"); } });
   function go(name) { if (name === "menu" && D.CAMP) { openCamp(); return; } closeCamp(); state = "menu"; showCard(SCREENS[name](), name); }
   function readCoopName() {
     var inp = card.querySelector("[data-coop-name]"), name = (inp ? inp.value : S.name || "").trim();
