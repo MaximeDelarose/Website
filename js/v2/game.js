@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.8.0";
+  var VERSION = "2.9.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -1336,6 +1336,16 @@
       if (z.kind === "fire") {
         ctx.fillStyle = "rgba(255,110,30," + (0.25 * k + 0.1) + ")"; ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.fill();
         for (var i = 0; i < 3; i++) { var h = hash(x + i, y + ((r.time * 12) | 0)); ctx.fillStyle = i ? "#ffb040" : "#ff6a20"; ctx.fillRect(x - z.r / 2 + h % Math.max(1, z.r | 0), y - 2 - (h >>> 3) % 4, 2, 2 + (h >>> 5) % 3); }
+      } else if (z.kind === "thorn" && z.st) {
+        var gk2 = Math.min(1, z.t * 6), zst = z.st, zc = { rockspike: ["#5e5850", "#9a9086", "#d8d0c4"], caltrop: ["#3a3e46", "#7a808a", "#c0c8d0"], icespike: ["#4a7898", "#9ee8ff", "#ffffff"], flame: ["#d8401e", "#ff8a2a", "#ffd05a"], windspike: ["#88aaa8", "#c8f8e8", "#ffffff"] }[zst] || ["#3a5a2a", "#6a9a3a", "#8aba5a"];
+        ctx.fillStyle = zst === "flame" ? "rgba(255,110,30," + (0.22 * k) + ")" : zst === "icespike" ? "rgba(160,220,255," + (0.25 * k) + ")" : "rgba(60,50,40," + (0.25 * k) + ")"; ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.fill();
+        for (var tz = 0; tz < 8; tz++) {
+          var hz = hash(x + tz * 7, y), zx = Math.round(x - z.r * 0.7 + hz % Math.max(1, Math.round(z.r * 1.4))), zy = Math.round(y - z.r * 0.4 + (hz >>> 4) % Math.max(1, Math.round(z.r * 0.8))), zh = Math.round((3 + (hz >>> 8) % 4) * gk2);
+          if (zst === "caltrop") { ctx.fillStyle = zc[0]; ctx.fillRect(zx - 2, zy, 5, 1); ctx.fillRect(zx, zy - 2, 1, 5); ctx.fillStyle = zc[2]; ctx.fillRect(zx, zy - 2, 1, 1); ctx.fillRect(zx + 2, zy, 1, 1); }
+          else if (zst === "flame") { var fl2 = zh + Math.round(Math.sin(r.time * 12 + tz) * 1.5); ctx.fillStyle = zc[0]; ctx.fillRect(zx, zy - fl2, 2, fl2); ctx.fillStyle = zc[1]; ctx.fillRect(zx, zy - fl2 + 1, 1, fl2 - 1); ctx.fillStyle = zc[2]; ctx.fillRect(zx, zy - 2, 1, 1); }
+          else if (zst === "windspike") { var wo = Math.round(Math.sin(r.time * 9 + tz) * 2); ctx.fillStyle = zc[1]; ctx.fillRect(zx + wo, zy - zh, 1, zh); ctx.fillStyle = zc[2]; ctx.fillRect(zx + wo, zy - zh, 1, 1); }
+          else { ctx.fillStyle = zc[0]; ctx.fillRect(zx - 1, zy - zh, 3, zh); ctx.fillStyle = zc[1]; ctx.fillRect(zx, zy - zh, 1, zh); ctx.fillStyle = zc[2]; ctx.fillRect(zx, zy - zh, 1, 1); }
+        }
       } else if (z.kind === "thorn") {
         var gk = Math.min(1, z.t * 6);
         ctx.fillStyle = "rgba(60,90,40," + (0.35 * k) + ")"; ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.fill();
@@ -1694,10 +1704,27 @@
   }
   function fireNova(R, dmg) {
     near(p.x, p.y, R + 14, function (e) { if (e.d.prop && R < 30) return; var dx = e.x - p.x, dy = e.y - p.y; if (Math.hypot(dx, dy) <= R + e.d.r) hurt(e, dmg, dx * 2, dy * 2); });
-    fx.push({ kind: "ring", x: p.x, y: p.y, r: R, life: 0.32, max: 0.32, col: "168,122,232" });
+    var nst = vstyle(p); fx.push({ kind: "ring", x: p.x, y: p.y, r: R, life: 0.32, max: 0.32, col: nst.col }); novaFx(nst.nova, p.x, p.y, R);
     netEv(["nv", Math.round(p.x), Math.round(p.y), Math.round(R)]);
     SND.zap();
+  }  // décor des ondes selon la matière de l'arme
+  function novaFx(kind, x, y, R) {
+    if (!kind || fx.length > 240 || S.opts.lowfx && Math.random() < 0.5) return;
+    var i, a, n;
+    if (kind === "quake") {
+      var segs = []; n = 7; for (i = 0; i < n; i++) { a = i / n * TAU + Math.random() * 0.5; var px = x, py = y + 2, L = R * (0.6 + Math.random() * 0.4); var pts = [[px, py]]; for (var k = 1; k <= 4; k++) pts.push([x + Math.cos(a + (Math.random() - 0.5) * 0.4) * L * k / 4, y + 2 + Math.sin(a + (Math.random() - 0.5) * 0.4) * L * k / 4 * 0.75]); segs.push(pts); }
+      fx.push({ kind: "crack", segs: segs, life: 0.7, max: 0.7 });
+      for (i = 0; i < 12; i++) { a = Math.random() * TAU; var d = R * Math.random(); fx.push({ kind: "dot", x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * 0.75, vx: Math.cos(a) * 20, vy: -60 - Math.random() * 50, life: 0.5, max: 0.5, color: i % 3 ? "#9a9086" : "#c8b89a", sz: 2, g: 300 }); }
+    } else if (kind === "splash") {
+      for (i = 0; i < 16; i++) { a = i / 16 * TAU; fx.push({ kind: "dot", x: x + Math.cos(a) * R * 0.8, y: y + Math.sin(a) * R * 0.6, vx: Math.cos(a) * 40, vy: -50 - Math.random() * 40, life: 0.5, max: 0.5, color: i % 2 ? "#6ad8ff" : "#e8f8ff", sz: 1 + (i % 2), g: 260 }); }
+      fx.push({ kind: "ring", x: x, y: y, r: R * 0.6, life: 0.4, max: 0.4, col: "232,248,255" });
+    } else if (kind === "flare") {
+      for (i = 0; i < 16; i++) { a = Math.random() * TAU; var d2 = R * (0.4 + Math.random() * 0.6); fx.push({ kind: "dot", x: x + Math.cos(a) * d2, y: y + Math.sin(a) * d2 * 0.75, vx: Math.cos(a) * 10, vy: -30 - Math.random() * 30, life: 0.6, max: 0.6, color: ["#ffd05a", "#ff8a2a", "#ff5a1a"][i % 3], sz: 1 + (i % 2), g: -30 }); }
+    } else if (kind === "gust") {
+      fx.push({ kind: "swirl", x: x, y: y, r: R, life: 0.4, max: 0.4, a0: Math.random() * TAU });
+    }
   }
+
   /* =====================================================================
      Difficulté qui monte (paliers) et sanctuaires à activer
      ===================================================================== */
@@ -2263,6 +2290,9 @@
     }
     SND.boom();
   }
+  // 2.9 : style visuel de l'arme d'un joueur (matière, couleurs, sprites)
+  var VFX_DEF = { nova: "", chain: "zap", thorn: "", lob: "pinecone", meteor: "meteore", col: "168,122,232", trail: "#fdf3de", hit: "" };
+  function vstyle(pl) { return (pl && pl.arme && D.VFX && D.VFX[pl.arme]) || VFX_DEF; }
   function zapChain(start, count, dmg, origin, up) {
     if (p && p.gear) { if (gearHas(p, "ora_a")) count += 1; if (setCount(p, "orage") >= 2 && HIT_ELEM !== "air") { var kz = HIT_ELEM; HIT_ELEM = "air"; zapChain(start, count - (gearHas(p, "ora_a") ? 1 : 0), dmg, origin, up); HIT_ELEM = kz; return; } }
     var pts = [[origin ? origin.x : p.x, origin ? origin.y : p.y - 4]], hit = [], cur = start;
@@ -2276,7 +2306,8 @@
       cur = chainNext(cur, hit);
     }
     if (alt) HIT_ELEM = base;
-    fx.push({ kind: "bolt", pts: pts, life: 0.16, max: 0.16 });
+    var cst = vstyle(p).chain;
+    fx.push({ kind: "bolt", pts: pts, life: cst === "bounce" ? 0.34 : cst === "zap" ? 0.16 : 0.22, max: cst === "bounce" ? 0.34 : cst === "zap" ? 0.16 : 0.22, st: cst });
     netEv(["bo", pts.map(function (q) { return [Math.round(q[0]), Math.round(q[1])]; })]);
   }
   function chainNext(from, hitIds) {
@@ -2318,14 +2349,14 @@
         var sx = p.st[id + "#x"], sy = p.st[id + "#y"];
         if (sx !== undefined && p.mstate === "mouvement") p.st[id + "#d"] = (p.st[id + "#d"] || 0) + Math.hypot(p.x - sx, p.y - sy);
         p.st[id + "#x"] = p.x; p.st[id + "#y"] = p.y;
-        if ((p.st[id + "#d"] || 0) >= w.sow) { p.st[id + "#d"] = 0; zones.push({ x: p.x, y: p.y + 2, r: V(w, "rad", l) * p.area, t: 0, dur: V(w, "dur", l), kind: "thorn", dmg: V(w, "dmg", l), owner: p }); }
+        if ((p.st[id + "#d"] || 0) >= w.sow) { p.st[id + "#d"] = 0; zones.push({ x: p.x, y: p.y + 2, r: V(w, "rad", l) * p.area, t: 0, dur: V(w, "dur", l), kind: "thorn", dmg: V(w, "dmg", l), owner: p, st: vstyle(p).thorn }); }
       }
       if (!timer(id, V(w, "cd", l), dt)) return;
       var t = nearest(8, 150), n = V(w, "n", l) + Math.floor(p.amount / 2);
       for (var k = 0; k < n; k++) {
         var tg = t.length ? t[(Math.random() * t.length) | 0] : null;
         var x = tg ? tg.x : p.x + (Math.random() - 0.5) * 80, y = tg ? tg.y : p.y + (Math.random() - 0.5) * 60;
-        zones.push({ x: x, y: y, r: V(w, "rad", l) * p.area, t: 0, dur: V(w, "dur", l), kind: "thorn", dmg: V(w, "dmg", l), owner: p });
+        zones.push({ x: x, y: y, r: V(w, "rad", l) * p.area, t: 0, dur: V(w, "dur", l), kind: "thorn", dmg: V(w, "dmg", l), owner: p, st: vstyle(p).thorn });
       }
       SND.crack();
     },
@@ -2428,7 +2459,7 @@
         var tgt = cand.length ? cand[(Math.random() * cand.length) | 0] : null;
         var tx = tgt ? tgt.x : p.x + (Math.random() * 120 - 60), ty = tgt ? tgt.y : p.y + (Math.random() * 80 - 40);
         lobs.push({ owner: p, sx: p.x, sy: p.y, tx: tx, ty: ty, t: 0, dur: 0.55 + k * 0.08, dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area,
-                    frag: V(w, "frag", l) || 0, sprite: w.frag ? "pinebomb" : "pinecone" });
+                    frag: V(w, "frag", l) || 0, sprite: w.lobSpr || (vstyle(p).lob !== "pinecone" ? vstyle(p).lob : w.frag ? "pinebomb" : "pinecone"), st: vstyle(p) });
       }
     },
     aura: function (id, w, l, dt) {
@@ -2487,7 +2518,7 @@
       for (var k = 0; k < n; k++) {
         var t = vis.length ? vis[(Math.random() * vis.length) | 0] : null;
         var tx = t ? t.x : p.x + (Math.random() - 0.5) * W * 0.8, ty = t ? t.y : p.y + (Math.random() - 0.5) * H * 0.8;
-        lobs.push({ owner: p, sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.6 + k * 0.07, dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area, frag: w.frag || 0, sprite: w.lob || "meteore", sky: true });
+        lobs.push({ owner: p, sx: tx, sy: ty, tx: tx, ty: ty, t: 0, dur: 0.6 + k * 0.07, dmg: V(w, "dmg", l), rad: V(w, "rad", l) * p.area, frag: w.frag || 0, sprite: (p.arme && D.VFX && D.VFX[p.arme] ? vstyle(p).meteor : w.lob) || "meteore", sky: true, st: vstyle(p) });
       }
     },
     rocket: function (id, w, l, dt) {
@@ -3175,7 +3206,7 @@
     if (pl.tdef[key]) return pl.tdef[key];
     var d = {}; Object.keys(base).forEach(function (k) { d[k] = base[k]; });
     var sk = D.TECH[id] && armeOf(pl).skin[id];
-    if (sk) { d.name = sk[0]; if (sk[1]) { d.icon = sk[1]; if (d.type === "pet") d.pet = sk[1]; else if (d.type === "turret") d.turret = d.turret; else d.sprite = sk[1]; } d.generic = base.name; }
+    if (sk) { d.name = sk[0]; if (sk[1]) { d.icon = sk[1]; if (d.type === "pet") d.pet = sk[1]; else if (d.type === "turret") { d.turret = SPR[sk[1]] ? sk[1] : d.turret; if (sk[1] === "catapult") d.sprite = "stone"; } else { if (d.type === "drone" && SPR[sk[1]]) d.drone = sk[1]; d.sprite = sk[1]; } } d.generic = base.name; }
     if (evo && base.evos) { var ev = base.evos.filter(function (e) { return e.id === evo; })[0]; if (ev) { applyMods(d, ev); d.evoName = ev.name; } }
     var tf = fus === 2 ? D.TFUS2[id] : fus ? D.TFUS[id] : null;
     if (tf) { applyMods(d, tf); d.fusName = tf.name; d.fusion = true; }
@@ -3550,6 +3581,7 @@
   }
   function lobLand(l) {
     var c = l.cfg, el = l.elem;
+    if (l.st && !l.small) novaFx(l.st.nova, l.tx, l.ty, l.rad * 0.8);
     if (l.drizzle && p.sigK && p.sigK.puddles && Math.random() < 0.35) markZone(l.tx, l.ty, 12, 3, "eau");
     if (c && c.crater && el && !l.small) markZone(l.tx, l.ty, l.rad * 0.9, c.crater, el);
     if (c && c.mine && !l.small) pZone({ x: l.tx, y: l.ty, r: l.rad * 0.7, dur: 4, kind: "thorn", dmg: l.dmg * 0.25, owner: p, elem: el });
@@ -4733,7 +4765,17 @@
       if (ps === "relais") { var ox = pl.x, oy = pl.y; pl.x = tw.x; pl.y = tw.y; tw.x = ox; tw.y = oy; var R2 = 40 * (tal(pl, "relais_t2") ? 1.6 : 1); [pl, tw].forEach(function (o) { var pp2 = p; p = pl; fireNova(R2, 14 * k); p = pp2; if (tal(pl, "relais_t3")) o.inv = Math.max(o.inv, 1); if (tal(pl, "relais_t4")) o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.1); }); }
     }
   }
+  function drawSling(pl) {
+    var a0 = D.ARMES[pl.arme]; if (!a0 || !pl.timers) return;
+    var cdv = Math.max(0.2, (techDef(pl, a0.base) || {}).cd ? V(techDef(pl, a0.base), "cd", pl.weapons[a0.base] || 1) * (pl.cdMul || 1) : 0.7), left = Math.max(0, pl.timers[a0.base] || 0), k = 1 - Math.min(1, left / cdv);
+    pl.slA = (pl.slA || 0) + (6 + k * 16) / 60;
+    var ra = 9, x = pl.x + Math.cos(pl.slA) * ra, y = pl.y - 8 + Math.sin(pl.slA) * ra * 0.45;
+    ctx.strokeStyle = "rgba(200,184,154," + (0.15 + k * 0.45).toFixed(2) + ")"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(pl.x, pl.y - 8, ra, ra * 0.45, 0, pl.slA - 1.2 - k, pl.slA); ctx.stroke();
+    ctx.strokeStyle = "rgba(107,68,48,.8)"; ctx.beginPath(); ctx.moveTo(pl.x + pl.face * 2, pl.y - 4); ctx.lineTo(x, y); ctx.stroke();
+    var ps = SPR.pebble[0]; ctx.drawImage(ps.c, Math.round(x - ps.w / 2), Math.round(y - ps.h / 2));
+  }
   function drawCharFx(pl) {
+    if (vstyle(pl).base === "sling" && !pl.down) drawSling(pl);
     if (pl.trees) pl.trees.forEach(function (t) { var big = t.age >= t.grow; blit(SPR[big ? "minitree" : "sapling"][0], t.x, t.y - (big ? 6 : 2)); if (!big) { ctx.fillStyle = "#9cc56b"; ctx.fillRect(Math.round(t.x - 4), Math.round(t.y + 2), Math.round(8 * t.age / t.grow), 1); } });
     if (pl.char && pl.char.id === "cendrine") {
       var fs = [{ x: pl.x, y: pl.y, R: pl.field || 18 }]; if (pl.fort) fs.push(pl.fort);
@@ -6632,8 +6674,14 @@
         ctx.drawImage(rs.c, -rs.w / 2, -rs.h / 2); ctx.restore();
         return;
       }
-      var s = SPR[q.sprite] || SPR.acorn;
-      if (fx.length < 220 && flick && !S.opts.lowfx && (q.vx * q.vx + q.vy * q.vy) > 3600) fx.push({ kind: "trail", x: q.x - q.vx * 0.012, y: q.y - q.vy * 0.012, life: 0.14, max: 0.14, color: q.elem && SPARK_C[q.elem] ? SPARK_C[q.elem][0] : "#fdf3de" });
+      var s = SPR[q.sprite] || SPR.acorn, qst = q.owner ? vstyle(q.owner) : VFX_DEF;
+      if ((qst.spin && qst.spin[q.sprite]) || q.sprite === "flint" || q.sprite === "iceshard") {
+        var s0 = s[(q.anim ? flick : 0) % s.length], ang = qst.spin && qst.spin[q.sprite] ? r.time * 14 + (q.x + q.y) * 0.05 : Math.atan2(q.vy, q.vx);
+        if (fx.length < 220 && flick && !S.opts.lowfx) fx.push({ kind: "trail", x: q.x - q.vx * 0.015, y: q.y - q.vy * 0.015, life: 0.18, max: 0.18, color: qst.trail });
+        ctx.save(); ctx.translate(Math.round(q.x), Math.round(q.y)); ctx.rotate(Math.round(ang / (Math.PI / 8)) * (Math.PI / 8)); ctx.drawImage(s0.c, -s0.w / 2, -s0.h / 2); ctx.restore();
+        return;
+      }
+      if (fx.length < 220 && flick && !S.opts.lowfx && (q.vx * q.vx + q.vy * q.vy) > 3600) fx.push({ kind: "trail", x: q.x - q.vx * 0.012, y: q.y - q.vy * 0.012, life: 0.14, max: 0.14, color: q.elem && SPARK_C[q.elem] ? SPARK_C[q.elem][0] : qst.trail || "#fdf3de" });
       blit(s[(q.anim || q.kind === "boomerang") ? flick % s.length : 0], q.x, q.y, q.vx < 0);
     });
     hostile.forEach(function (q) {
@@ -6643,13 +6691,15 @@
     });
     lobs.forEach(function (l) {
       var k = l.t / l.dur, x = l.sx + (l.tx - l.sx) * k, y = l.sy + (l.ty - l.sy) * k - (l.sky ? (1 - k) * 110 : Math.sin(k * Math.PI) * (l.small ? 8 : 30));
+      var lst = l.st || VFX_DEF;
       if (l.sky) {
-        ctx.strokeStyle = "rgba(255,120,40,.5)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(l.tx, l.ty, l.rad * k, l.rad * 0.8 * k, 0, 0, TAU); ctx.stroke();
-        fx.push({ kind: "dot", x: x + Math.random() * 4 - 2, y: y - 4, vx: 0, vy: -10, life: 0.2, color: "#f6b468" });
+        ctx.strokeStyle = "rgba(" + (lst.col || "255,120,40") + ",.55)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(l.tx, l.ty, l.rad * k, l.rad * 0.8 * k, 0, 0, TAU); ctx.stroke();
+        if (fx.length < 240) fx.push({ kind: "dot", x: x + Math.random() * 4 - 2, y: y - 4, vx: 0, vy: -10, life: 0.2, color: lst.trail || "#f6b468" });
       }
       if (l.small) { ctx.fillStyle = "#f6b468"; ctx.fillRect(Math.round(x), Math.round(y), 2, 2); return; }
-      shadow(l.sx + (l.tx - l.sx) * k, l.sy + (l.ty - l.sy) * k + 3, 5);
-      blit(SPR[l.sprite || "pinecone"][0], x, y);
+      shadow(l.sx + (l.tx - l.sx) * k, l.sy + (l.ty - l.sy) * k + 3, 5 + (l.sky ? k * 6 : 0));
+      var lsp = SPR[l.sprite || "pinecone"] || SPR.pinecone;
+      blit(lsp[((l.t * 12) | 0) % lsp.length], x, y);
     });
     if (giants) drawGiantTops(giants);
     fx.forEach(drawFx);
@@ -6954,6 +7004,31 @@
       ctx.strokeStyle = "rgba(242,176,94," + (1 - ts) + ")"; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.ellipse((f.pl || me).x, (f.pl || me).y, f.r * 0.85, f.r * 0.7, 0, ts * TAU, ts * TAU + TAU * 0.8); ctx.stroke();
       ctx.strokeStyle = "rgba(253,243,222," + (1 - ts) + ")"; ctx.lineWidth = 1; ctx.stroke();
+    } else if (f.kind === "crack") {
+      var ck = f.life / f.max; ctx.strokeStyle = "rgba(43,23,9," + (0.75 * ck).toFixed(2) + ")"; ctx.lineWidth = 1;
+      f.segs.forEach(function (sg) { ctx.beginPath(); sg.forEach(function (pt, i2) { if (i2) ctx.lineTo(Math.round(pt[0]), Math.round(pt[1])); else ctx.moveTo(Math.round(pt[0]), Math.round(pt[1])); }); ctx.stroke(); });
+      if (ck > 0.6) { ctx.fillStyle = "rgba(154,144,134," + ((ck - 0.6) * 2).toFixed(2) + ")"; f.segs.forEach(function (sg) { var e2 = sg[sg.length - 1]; ctx.fillRect(Math.round(e2[0]) - 1, Math.round(e2[1]) - 3, 3, 3); }); }
+    } else if (f.kind === "swirl") {
+      var sk2 = 1 - f.life / f.max; ctx.strokeStyle = "rgba(240,255,250," + (0.8 * (1 - sk2)).toFixed(2) + ")"; ctx.lineWidth = 1;
+      for (var sw = 0; sw < 4; sw++) { var a1 = f.a0 + sw * Math.PI / 2 + sk2 * 3, rr = f.r * (0.3 + sk2 * 0.7); ctx.beginPath(); ctx.ellipse(f.x, f.y, rr, rr * 0.75, 0, a1, a1 + 1.1); ctx.stroke(); }
+    } else if (f.kind === "bolt" && f.st && f.st !== "zap") {
+      var bk = 1 - f.life / f.max, bal = Math.max(0, f.life / f.max);
+      if (f.st === "bounce") {
+        var segN = f.pts.length - 1, sp = Math.min(segN - 0.001, bk * segN), si = Math.floor(sp), st2 = sp - si;
+        for (var bi = 0; bi < segN; bi++) { var A0 = f.pts[bi], B0 = f.pts[bi + 1], hgt = Math.min(18, Math.hypot(B0[0] - A0[0], B0[1] - A0[1]) * 0.35);
+          for (var ti = 0; ti <= 8; ti++) { var tt = ti / 8; if (bi > si || (bi === si && tt > st2)) break; ctx.fillStyle = "rgba(200,184,154," + (0.6 * bal).toFixed(2) + ")"; ctx.fillRect(Math.round(A0[0] + (B0[0] - A0[0]) * tt), Math.round(A0[1] + (B0[1] - A0[1]) * tt - Math.sin(tt * Math.PI) * hgt), 1, 1); } }
+        var A1 = f.pts[si], B1 = f.pts[si + 1], h1 = Math.min(18, Math.hypot(B1[0] - A1[0], B1[1] - A1[1]) * 0.35), pb = SPR.pebble[0];
+        ctx.drawImage(pb.c, Math.round(A1[0] + (B1[0] - A1[0]) * st2 - pb.w / 2), Math.round(A1[1] + (B1[1] - A1[1]) * st2 - Math.sin(st2 * Math.PI) * h1 - pb.h / 2));
+      } else {
+        var c1 = f.st === "stream" ? ["rgba(74,168,255," + bal + ")", "rgba(232,248,255," + bal + ")"] : ["rgba(255,106,26," + bal + ")", "rgba(255,216,90," + bal + ")"];
+        [[c1[0], 3], [c1[1], 1]].forEach(function (st3) {
+          ctx.strokeStyle = st3[0]; ctx.lineWidth = st3[1]; ctx.beginPath();
+          f.pts.forEach(function (pt, idx) { if (!idx) { ctx.moveTo(pt[0], pt[1]); return; } var pr = f.pts[idx - 1], mx = (pr[0] + pt[0]) / 2, my = (pr[1] + pt[1]) / 2 - 8 + Math.sin(r.time * 20 + idx) * 3; ctx.quadraticCurveTo(mx, my, pt[0], pt[1]); });
+          ctx.stroke();
+        });
+        if (fx.length < 230) f.pts.forEach(function (pt) { fx.push({ kind: "dot", x: pt[0], y: pt[1], vx: Math.random() * 30 - 15, vy: -30, life: 0.3, max: 0.3, color: f.st === "stream" ? "#bfefff" : "#ffd05a", sz: 1, g: f.st === "stream" ? 200 : -20 }); });
+      }
+      ctx.lineWidth = 1;
     } else if (f.kind === "bolt") {
       var al = Math.max(0, f.life / f.max);
       [["rgba(246,239,122," + al + ")", 3], ["rgba(255,255,240," + al + ")", 1]].forEach(function (st2) {
