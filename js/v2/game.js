@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.22.0";
+  var VERSION = "2.22.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -395,7 +395,7 @@
       var c = charById(it.char);
       var pl = { id: it.id, name: it.name || "Écureuil", char: c, sprite: c.sprite, shop: it.shop || {}, tree: it.tree || {}, prestige: it.prestige || 0, pshop: it.pshop || {}, x: (i - (n - 1) / 2) * 20, y: 0,
                  hp: 0, face: 1, moving: false, anim: 0, inv: 0, weapons: {}, passives: {}, timers: {}, st: {}, consumed: {},
-                 shield: false, shieldT: 0, down: false, reviveT: 0, choosing: false, remote: it.id !== myId() };
+                 shield: false, shieldT: 0, down: false, reviveT: 0, choosing: false, remote: it.id !== myId(), look: it.lk || null };
       pl.tx = pl.x; pl.ty = pl.y;
       pl.weapons[c.weapon] = 1;
       pl.posture = postureOf(c.id, it.posture).id; pl.vx = 0; pl.vy = 0; pl.idleT = 0; pl.runT = 0; pl.volteCd = 0;
@@ -753,7 +753,7 @@
     var crit = Math.random() < (p.crit || 0) + (p.critX || 0) + (p.packN && itn(p, "glandsjumeaux") ? 0.1 * itn(p, "glandsjumeaux") : 0);
     dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? (itn(p, "corne") ? 3 : 2) + (p.critDmg || 0) : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
     if (crit && r) r.crits = (r.crits || 0) + 1;
-    dmg *= (p.dmgX || 1) * (p.txRage > 0 ? 1.35 : 1);
+    dmg *= (p.dmgX || 1) * (p.txRage > 0 ? 1.35 : 1) * (p.crewScale || 1);
     if (p.gbon) { var gq = p.gbon, fm = 1; if (CUR_FAM) for (var fk in GFAM) if (GFAM[fk] === CUR_FAM && gq[fk]) fm += gq[fk] / 100; if (p.anchored && gq.anc) fm += gq.anc / 100; if (p.mstate === "mouvement" && gq.mov) fm += gq.mov / 100; dmg *= Math.max(0.2, fm); }
     var hf = HIT_FX, hadMark = e.mark && e.markT > 0 ? e.mark : null;
     if (hf && hf.vsMark && hadMark && hadMark !== atkElem(p)) dmg *= hf.vsMark;
@@ -2654,9 +2654,24 @@
       var rmA = e.def.family === "zone" && p.anchored && itn(p, "racine_mere") ? 1.3 : 1; if (rmA !== 1) p.area *= rmA;
       var el = foyer && e.key === baseId ? "feu" : (p.amu && p.amu[e.def.family]) || wel, n0 = projs.length, l0 = lobs.length, z0 = zones.length, hf = e.def.hfx || null;
       var f0 = fx.length;
-      var sx0 = p.x, sy0 = p.y, sw = null;
-      if (p.crew && p.crew.length && CREW_FIRE[e.def.type]) { var cl = p.crew.filter(function (m) { return !(m.thT > 0); }); sw = cl[(Math.random() * cl.length) | 0]; if (sw) { p.x = sw.x; p.y = sw.y; } }
-      HIT_ELEM = el; HIT_FX = hf; fn(e.key, e.def, e.l, dt); if (sw) { p.x = sx0; p.y = sy0; } HIT_ELEM = undefined; HIT_FX = null; CUR_FAM = null;
+      var sx0 = p.x, sy0 = p.y, tm0 = p.timers;
+      HIT_ELEM = el; HIT_FX = hf;
+      if (p.crew && p.crew.length && CREW_FIRE[e.def.type]) {
+        // Capitaine : chaque matelot lance la technique lui-même, avec son propre délai et 10 % des dégâts
+        for (var mi = 0; mi < p.crew.length; mi++) {
+          var mt = p.crew[mi]; if (mt.thT > 0) continue;
+          mt.tm = mt.tm || {}; if (mt.tm[e.key] === undefined) mt.tm[e.key] = 0.1 + Math.random() * 1.2;
+          var nm0 = projs.length, lm0 = lobs.length, zm0 = zones.length;
+          p.x = mt.x; p.y = mt.y; p.timers = mt.tm; p.crewScale = 0.1;
+          fn(e.key, e.def, e.l, dt);
+          p.crewScale = 0; p.timers = tm0;
+          for (var qi = nm0; qi < projs.length; qi++) if (projs[qi].owner === p) projs[qi].dmg *= 0.1;
+          for (var li = lm0; li < lobs.length; li++) if (lobs[li].dmg !== undefined) lobs[li].dmg *= 0.1;
+          for (var zi = zm0; zi < zones.length; zi++) { if (zones[zi].dmg !== undefined) zones[zi].dmg *= 0.1; if (zones[zi].pdmg !== undefined) zones[zi].pdmg *= 0.1; }
+        }
+        p.x = sx0; p.y = sy0;
+      } else fn(e.key, e.def, e.l, dt);
+      HIT_ELEM = undefined; HIT_FX = null; CUR_FAM = null;
       if (e.key !== baseId) tagTint(techTint(e.key), n0, l0, z0, f0);
       if (rmA !== 1) p.area /= rmA;
       if (e.def.family === "tir" && itn(p, "bec_pivert")) for (var bp = n0; bp < projs.length; bp++) if (!projs[bp].bec) { projs[bp].bec = 1; projs[bp].pierce = (projs[bp].pierce || 1) + 1; }
@@ -5530,7 +5545,7 @@
     } else camp.moving = false;
     if (Net.on && Net.ch && !Net.started) {
       camp.sendT = (camp.sendT || 0) - dt;
-      if (camp.sendT <= 0) { camp.sendT = camp.moving ? 0.12 : 0.8; netSend("cp", { id: Net.id, x: Math.round(camp.x * 10) / 10, y: Math.round(camp.y * 10) / 10, f: camp.face || 1, c: S.char, n: (S.name || "Écureuil").slice(0, 12), ti: S.title || 0, e: camp.emote && performance.now() - camp.emoteT < 4000 ? camp.emote : 0 }); }
+      if (camp.sendT <= 0) { camp.sendT = camp.moving ? 0.12 : 0.8; netSend("cp", { id: Net.id, x: Math.round(camp.x * 10) / 10, y: Math.round(camp.y * 10) / 10, f: camp.face || 1, c: S.char, n: (S.name || "Écureuil").slice(0, 12), ti: S.title || 0, lk: myLook(), e: camp.emote && performance.now() - camp.emoteT < 4000 ? camp.emote : 0 }); }
     }
     // obstacles (le chemin automatique les contourne en glissant)
     CAMP_COL.forEach(function (c) { var ox = camp.x - c.x, oy = (camp.y - c.y) * 1.4, od = Math.hypot(ox, oy); if (od < c.r && od > 0.01) { camp.x = c.x + ox / od * c.r; camp.y = c.y + oy / od * c.r / 1.4; } });
@@ -5594,7 +5609,7 @@
         var q = Net.cps2[id]; if (!live[id] || nowp - q.t > 6000) return;
         var mx = q.x - q.dx, my = q.y - q.dy, mv = Math.hypot(mx, my) > 1.2; q.dx += mx * 0.22; q.dy += my * 0.22;
         var ch = D.CHARACTERS.filter(function (c) { return c.id === q.c; })[0] || D.CHARACTERS[0];
-        list.push({ y: q.dy, f: function () { drawHero(ch.sprite, q.dx, q.dy, q.f || 1, mv, t * 8, 0); drawText(q.n || "Ami", q.dx, q.dy - 24, "#f6d36b", "c"); if (q.ti) drawText(titleName(q.ti), q.dx, q.dy - 31, "#9cdc7a", "c"); campBubble(q.dx, q.dy - 36, q.e && performance.now() - q.et < 4000 ? q.e : null, t); } });
+        list.push({ y: q.dy, f: function () { drawHero(ch.sprite, q.dx, q.dy, q.f || 1, mv, t * 8, 0, false, q.lk || null); drawText(q.n || "Ami", q.dx, q.dy - 24, "#f6d36b", "c"); if (q.ti) drawText(titleName(q.ti), q.dx, q.dy - 31, "#9cdc7a", "c"); campBubble(q.dx, q.dy - 36, q.e && performance.now() - q.et < 4000 ? q.e : null, t); } });
       });
     }
     list.sort(function (a, b) { return a.y - b.y; }).forEach(function (o) { o.f(); });
@@ -6975,16 +6990,20 @@
   /* ---- 2.22 : l'attirail porté se voit sur l'écureuil (coiffe, cape, bottes, amulette) ---- */
   var LOOK = { coiffe: [4, -6.5, 9], amulette: [2.5, 1.5, 5], cape: [-3.5, 1.5, 11], bottes: [[-1.5, 6, 5], [3.5, 6, 5]] };
   var LOOK_C = {};
-  function lookSprites(cid) {
-    var w = (eqS().worn[cid] || {}), key = cid + ":" + ["coiffe", "bottes", "cape", "amulette"].map(function (k) { return w[k] || 0; }).join(",");
+  function myLook() { var w = eqS().worn[S.char] || {}, o = {}; ["coiffe", "bottes", "cape", "amulette"].forEach(function (k) { var q = pieceById(w[k]); if (q) o[k] = q.t; }); return o; }
+  function lookSprites(src) {
+    var T = {};
+    if (typeof src === "string") { var w = eqS().worn[src] || {}; ["coiffe", "bottes", "cape", "amulette"].forEach(function (k) { var q = pieceById(w[k]); if (q) T[k] = q.t; }); }
+    else T = src || {};
+    var key = ["coiffe", "bottes", "cape", "amulette"].map(function (k) { return T[k] || 0; }).join(",");
     if (LOOK_C[key]) return LOOK_C[key];
     var out = {}; ["coiffe", "bottes", "cape", "amulette"].forEach(function (k) {
-      var q = pieceById(w[k]); if (!q || !D.GEAR[q.t]) return; var n = pxName(D.GEAR[q.t].icon); if (n) out[k] = SPR[n][0];
+      if (!T[k] || !D.GEAR[T[k]]) return; var n = pxName(D.GEAR[T[k]].icon); if (n) out[k] = SPR[n][0];
     });
     return (LOOK_C[key] = out);
   }
   function lookDraw(g2, cid, cx, cy, flip, behind) {
-    var L = lookSprites(cid), sg = flip ? -1 : 1;
+    if (!cid) return; var L = lookSprites(cid), sg = flip ? -1 : 1;
     function put(spr, dx, dy, tw) { if (!spr) return; var th = tw * spr.h / spr.w; g2.drawImage(spr.c, Math.round(cx + sg * dx - tw / 2), Math.round(cy + dy - th / 2), tw, th); }
     if (behind) { put(L.cape, LOOK.cape[0], LOOK.cape[1], LOOK.cape[2]); return; }
     LOOK.bottes.forEach(function (b) { put(L.bottes, b[0], b[1], b[2]); });
@@ -7037,7 +7056,7 @@
         blit(ms, pl.x, pl.y + 7, pl.face < 0);
         drawHero(pl.sprite, pl.x, pl.y - 3, pl.face, false, pl.anim, pl.inv);
       } else
-      drawHero(pl.sprite, pl.x, pl.y, pl.face, pl.moving, pl.anim, pl.inv, pl.volteT > 0, !pl.remote && !pl.twin && pl.char ? pl.char.id : null);
+      drawHero(pl.sprite, pl.x, pl.y, pl.face, pl.moving, pl.anim, pl.inv, pl.volteT > 0, pl.remote ? (pl.look || null) : (!pl.twin && pl.char ? pl.char.id : null));
       if (inv0) ctx.globalAlpha = 1;
       if (szs > 1) ctx.restore();
       if (pl.shield) { ctx.strokeStyle = "rgba(156,197,107,.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(pl.x, pl.y, 10, 9, 0, 0, TAU); ctx.stroke(); }
@@ -8845,7 +8864,7 @@
     if (wait > 0) { if (!Net.trackT) Net.trackT = setTimeout(function () { Net.trackT = null; trackMe(); }, wait); return; }
     Net.trackAt = now;
     Net.ch.track({ v: VERSION, id: Net.id, name: (S.name || "Écureuil").slice(0, 16), char: S.char, host: Net.role === "host", map: S.map, dtype: S.dungeon || "terriers", diff: S.diff, mode: S.mode || "survie",
-                   prog: { shop: S.shop, tree: S.tree, pr: S.prestige, pu: S.pshop }, ingame: Net.started, ts: Net.joinTs || (Net.joinTs = Date.now()) });
+                   prog: { shop: S.shop, tree: S.tree, pr: S.prestige, pu: S.pshop }, lk: myLook(), ingame: Net.started, ts: Net.joinTs || (Net.joinTs = Date.now()) });
   }
   function onPresence() {
     if (!Net.ch) return;
@@ -8888,7 +8907,7 @@
       if (d.id === Net.id) return;
       var cp0 = (Net.cps2 = Net.cps2 || {})[d.id];
       if (!cp0) cp0 = Net.cps2[d.id] = { dx: d.x, dy: d.y };
-      cp0.x = d.x; cp0.y = d.y; cp0.f = d.f; cp0.c = d.c; cp0.n = d.n; cp0.ti = d.ti; cp0.t = performance.now();
+      cp0.x = d.x; cp0.y = d.y; cp0.f = d.f; cp0.c = d.c; cp0.n = d.n; cp0.ti = d.ti; cp0.lk = d.lk; cp0.t = performance.now();
       if (d.e && d.e !== cp0.e) { cp0.e = d.e; cp0.et = performance.now(); } else if (!d.e) cp0.e = null;
       return;
     }
@@ -9508,8 +9527,9 @@
     txall: function () { var out = []; D.TAL_FX.noisette.forEach(function (row) { row.forEach(function (o) { var c = Object.assign({}, o, { trig: "volte" }); me.txl = [c]; me.txs = {}; me.hp = me.maxHp * 0.5; txFire(me, "volte"); out.push(o.act); }); }); return out.length; },
     gearR: function (t, rar) { var q = genPiece(3, t, rar); addPiece(q); save(); return q.id; },
     statusAll: function () { enemies.forEach(function (e, i) { if (e.d.prop) return; if (i % 3 === 0) { e.burnT = 30; e.burnD = 0; } else if (i % 3 === 1) { e.slowT = 30; e.slow = 0.5; } else { e.stunT = 30; } }); return enemies.length; },
-    friend: function () { Net.on = true; Net.started = false; Net.roster = [{ id: "zz" }]; Net.cps2 = { zz: { x: camp.x + 40, y: camp.y + 10, dx: camp.x + 40, dy: camp.y + 10, f: -1, c: "capitaine", n: "Ami", t: performance.now() } }; return 1; },
+    friend: function () { Net.on = true; Net.started = false; Net.roster = [{ id: "zz" }]; Net.cps2 = { zz: { x: camp.x + 40, y: camp.y + 10, dx: camp.x + 40, dy: camp.y + 10, f: -1, c: "capitaine", n: "Ami", lk: { coiffe: Object.keys(D.GEAR).filter(function (k) { return D.GEAR[k].slot === "coiffe"; })[1], bottes: Object.keys(D.GEAR).filter(function (k) { return D.GEAR[k].slot === "bottes"; })[0] }, t: performance.now() } }; return 1; },
     friendMove: function () { var q = Net.cps2.zz; q.x += 30; q.y -= 12; q.t = performance.now(); return 1; },
+    projN: function () { return [projs.length, zones.length, lobs.length, me.crew ? me.crew.length : 0]; },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
