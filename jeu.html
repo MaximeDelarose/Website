@@ -35,6 +35,8 @@
   <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
   <script>
     /* appli installable : service worker + invite d'installation (le bouton est dans les Options du jeu) */
+    /* mesuré au chargement, avant que le jeu ne demande le plein écran du navigateur (qui ferait croire à une appli) */
+    try { window.__isApp = !!(navigator.standalone || (window.matchMedia && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: minimal-ui)").matches) && !document.fullscreenElement)); } catch (e) { window.__isApp = false; }
     window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); window.__pwaPrompt = e; });
     window.addEventListener("appinstalled", function () { window.__pwaPrompt = null; });
     if ("serviceWorker" in navigator) window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
@@ -151,7 +153,7 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v236a";
+      var FALLBACK = "v236b";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
         if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261108pre2" + b);
