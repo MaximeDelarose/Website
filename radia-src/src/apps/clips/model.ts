@@ -25,6 +25,10 @@ export interface ClipsState {
   liked: string[]; faved: string[];
   /** Commentaires de Radia : par clip, 6 max. */
   comments: Record<string, string[]>;
+  /** Messages (commentaires et réponses d'Auguste) que Radia a aimés : identifiants de fil `clip:message`. */
+  msgLiked: string[];
+  /** Réponses de Radia à un message du fil (3 max par message). */
+  replies: Record<string, string[]>;
   mine: MinePost[];
   fansToday: { key: string; n: number };
   fansTotal: number;
@@ -36,7 +40,7 @@ export interface ClipsState {
 }
 
 export const defaultClips = (now = Date.now()): ClipsState => ({
-  v: 1, seed: (hash('clips' + Math.floor(now / 3_600_000)) % 900000) + 1, liked: [], faved: [], comments: {}, mine: [],
+  v: 1, seed: (hash('clips' + Math.floor(now / 3_600_000)) % 900000) + 1, liked: [], faved: [], comments: {}, msgLiked: [], replies: {}, mine: [],
   fansToday: { key: '', n: 0 }, fansTotal: 0, drafts: [], shares: 0, opened: 0, inviteKey: '',
 });
 
@@ -83,6 +87,13 @@ export function sanitizeClips(raw: unknown, now = Date.now()): ClipsState {
       if (list.length) d.comments[k.slice(0, 40)] = list;
     }
   }
+  d.msgLiked = strArr(raw.msgLiked, 300, 70).map((t) => t.replace(/[^A-Za-z0-9._:-]/g, '')).filter(Boolean).slice(-300);
+  if (isObj(raw.replies)) {
+    for (const [k, v] of Object.entries(raw.replies).slice(0, 150)) {
+      const list = strArr(v, 3, 120).map((t) => cleanText(t, 120)).filter((t) => t && !mentionsChild(t));
+      if (list.length) d.replies[k.replace(/[^A-Za-z0-9._:-]/g, '').slice(0, 70)] = list;
+    }
+  }
   if (Array.isArray(raw.mine)) d.mine = raw.mine.map(sanitizeMine).filter((p): p is MinePost => !!p).slice(-MAX_MINE);
   if (isObj(raw.fansToday)) d.fansToday = { key: /^\d{4}-\d{2}-\d{2}$/.test(str(raw.fansToday.key)) ? str(raw.fansToday.key) : '', n: Math.floor(num(raw.fansToday.n, 0, 0, DAILY_FAN_CAP)) };
   d.fansTotal = Math.floor(num(raw.fansTotal, 0, 0, 1e9));
@@ -114,6 +125,25 @@ export const toggleLike = (s: ClipsState, id: string): boolean => toggle(s.liked
 export const toggleFav = (s: ClipsState, id: string): boolean => toggle(s.faved, id, MAX_FAVED);
 export const isLiked = (s: ClipsState, id: string): boolean => s.liked.includes(id);
 export const isFaved = (s: ClipsState, id: string): boolean => s.faved.includes(id);
+/** Radia aime (ou n'aime plus) un message du fil ; renvoie le nouvel état. */
+export function toggleMsgLike(s: ClipsState, id: string): boolean {
+  const i = s.msgLiked.indexOf(id);
+  if (i >= 0) { s.msgLiked.splice(i, 1); return false; }
+  s.msgLiked.push(id); if (s.msgLiked.length > 300) s.msgLiked.shift();
+  return true;
+}
+/** Radia répond à un message du fil (3 réponses au plus par message). */
+export function addReply(s: ClipsState, id: string, text: string): boolean {
+  const t = cleanText(text, 120);
+  if (!t || mentionsChild(t)) return false;
+  const list = (s.replies[id] ??= []);
+  if (list.length >= 3) return false;
+  list.push(t);
+  const keys = Object.keys(s.replies);
+  if (keys.length > 150) delete s.replies[keys[0]];
+  return true;
+}
+
 export function addComment(s: ClipsState, id: string, text: string): boolean {
   const t = cleanText(text, 120);
   if (!t || mentionsChild(t)) return false;
