@@ -55,8 +55,9 @@ export function installEndlessDebug(c: DevCtx): void {
       const st = c.getState();
       const f = fun();
       return {
+        customers: JSON.parse(JSON.stringify(f.customers)),
         score: st.score, taps: st.taps, ordersDone: st.ordersDone,
-        orders: st.orders.map((o) => (o ? { id: o.id, tier: o.tier, items: o.items, reward: o.reward } : null)),
+        orders: st.orders.map((o) => (o ? { id: o.id, tier: o.tier, items: o.items, reward: o.reward, customer: o.customer } : null)),
         cells: st.cells.map((x, i) => (x.item ? { i, c: x.item.c, l: x.item.l } : null)).filter(Boolean),
         energy: wallet.energy(), diamonds: wallet.diamonds(), hearts: save.data.hearts, world: { ...save.data.world.res },
         treasure: treasureView(f), replaces: R.replacesLeft(), counters: { ...f.endless2.counters },
@@ -85,6 +86,8 @@ export function installEndlessDebug(c: DevCtx): void {
     lockInfo: (cell: number) => { const l = c.getState().cells[cell]?.lock; return l ? describeLock(l, { merges: c.getState().merges, fun: fun() }) : null; },
     sel: () => ({ text: (document.querySelector('.en-sel') as HTMLElement | null)?.innerText ?? '', cls: (document.querySelector('.en-sel') as HTMLElement | null)?.className ?? '' }),
     sec: () => secondaryView(fun()),
+    setLoyalty: (id: string, n: number) => { fun().customers[id] = { n, last: 0, thanks: -1, seenLevel: 1 }; },
+    setOrderCustomer: (slot: number, id: string) => { const o = c.getState().orders[slot]; if (o) { o.customer = id; c.restart(); } },
     completeOrder: (slot: number) => c.getScene()?.rushOrder(slot),
     combo: (n = 5) => c.getScene()?.comboFx(n, Math.min(3, 1 + 0.25 * (n - 1))),
     cellXY: (i: number) => c.getScene()?.cellCenter(i) ?? null,

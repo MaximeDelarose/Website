@@ -104,6 +104,8 @@ await page.evaluate(() => window.RADIA.phone()); await sleep(600);
 await page.locator('.ph-app', { hasText: 'Snapchien' }).click(); await sleep(1200);
 check('Snap ouvert', (await page.locator('.snp-layer').count()) === 1);
 await shot('snap-home');
+// Snapchien s'ouvre désormais sur « Chat » ; l'appareil photo est dans l'onglet « Souvenirs ».
+await page.locator('.snc-tab', { hasText: 'Souvenirs' }).click(); await sleep(600);
 await page.locator('.snp-fab').click(); await sleep(1400);
 check('Snap : appareil (aperçu animé)', (await page.locator('.snp-prev').count()) === 1);
 await shot('snap-camera');

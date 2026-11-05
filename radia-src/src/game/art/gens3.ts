@@ -44,6 +44,24 @@ function bowTie(c: C, x: number, y: number, s: number, col: string) {
 }
 
 export const GENS3: Record<number, Draw> = {
+  // 15. Atelier Pimbêche : chaudron rose qui mousse, moule à cœurs, enseigne dorée « P »
+  15: (c) => {
+    baseGlow(c);
+    rr(c, 14, 52, 72, 32, 9, '#F4A9C3', LW);
+    rr(c, 10, 46, 80, 12, 6, '#FFF1E2', LW);
+    // chaudron et bulles
+    el(c, 36, 44, 17, 12, '#C98B6B', LW);
+    el(c, 36, 40, 14, 6, '#FFF8F0', LW * 0.6);
+    for (const [x, y, r] of [[30, 33, 4], [38, 28, 3.2], [44, 35, 3.6], [34, 24, 2.4]] as const) { el(c, x, y, r, r, 'rgba(255,255,255,0.7)', LW * 0.4); }
+    // moule à cœurs
+    rr(c, 56, 56, 28, 18, 4, '#FFFFFF', LW * 0.8);
+    for (const x of [62, 72, 80]) { c.beginPath(); c.moveTo(x, 70); c.bezierCurveTo(x - 6, 62, x, 59, x, 63); c.bezierCurveTo(x, 59, x + 6, 62, x, 70); c.closePath(); fs(c, '#FF9FBF', x - 5, 59, 10, 11, LW * 0.4); }
+    // enseigne dorée
+    rr(c, 60, 14, 26, 24, 7, '#F3C86B', LW);
+    c.beginPath(); c.moveTo(68, 33); c.lineTo(68, 19); c.lineTo(75, 19); c.bezierCurveTo(83, 19, 83, 28, 75, 28); c.lineTo(68, 28); c.lineWidth = 3.4; c.strokeStyle = '#7A4528'; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke();
+    el(c, 20, 78, 3, 3, PAL.or, LW * 0.5); el(c, 80, 79, 3, 3, PAL.or, LW * 0.5);
+    sparkles(c, [[16, 30, 3.4], [50, 14, 3]]);
+  },
   // 12. Four du pâtissier : four rose, fenêtre chaude, macarons en train de cuire
   12: (c) => {
     baseGlow(c);

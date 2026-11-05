@@ -11,6 +11,12 @@ import { clipsState, snapState, persist, worldFans } from './store';
 import { clipsBadge, snapBadge, defaultSnap, type SnapState } from './snap/model';
 import { defaultClips, type ClipsState } from './clips/model';
 import { assignInPlace } from './util';
+import { advance, produce, unreadTotal, type Incoming } from './snap/chat/engine';
+import { contactById } from './snap/chat/data';
+import { flags } from './snap/ui-state';
+import { emitPhone } from '../events/bus';
+import { ui } from '../ui/ui';
+import { Rng } from '../utils/rng';
 import { emitMoment, type MomentKind } from './moments';
 import { installMomentPrompt, KIND_TITLES } from './prompt';
 
@@ -26,10 +32,46 @@ registerPhoneApp({
 });
 installMomentPrompt();
 
+// ---- Snapchien : les garçons écrivent pendant le jeu (temps ACTIF, jamais pendant que l'application est en arrière-plan) ----
+let lastChatTick = Date.now();
+const chatRng = new Rng((Date.now() ^ 0x5eed) >>> 0);
+function announceChat(inc: Incoming): void {
+  const st = snapState().chat;
+  const c = contactById(inc.contactId); if (!c) return;
+  emitPhone();
+  if (st.muted || flags.open) return; // notifications coupées, ou Snapchien déjà ouvert : on reste discret
+  const kind = inc.joined ? 'joined' : inc.msg.kind;
+  // regroupement : plusieurs arrivées rapprochées → une seule notice
+  const n = unreadTotal(st);
+  ui.toast({ title: n > 1 ? `Snapchien · ${n} nouveautés` : c.name, sub: n > 1 ? 'Messages et snaps à lire' : kind === 'joined' ? 'T’a ajoutée sur Snapchien' : kind === 'text' ? 'Nouveau message' : kind === 'video' ? 'Nouvelle vidéo' : 'Nouveau Snap rouge', icon: kind === 'text' || kind === 'joined' ? 'mail' : 'camera', ms: 2600 });
+}
+if (typeof window !== 'undefined') {
+  window.setInterval(() => {
+    const now = Date.now(); const dt = Math.min(now - lastChatTick, 15_000); lastChatTick = now;
+    if (document.hidden || dt <= 0) return;
+    const inc = advance(snapState().chat, dt, now, chatRng);
+    if (inc) { persist(); announceChat(inc); }
+  }, 5000);
+}
+
 dbg('apps', {
   /** Émet un moment comme le ferait une activité. */
   emit: (kind: MomentKind, title?: string) => emitMoment({ kind, title: title ?? KIND_TITLES[kind] ?? 'Un moment' }),
   state: (): { clips: ClipsState; snap: SnapState; fans: number; albumSnap: number } => ({ clips: clipsState(), snap: snapState(), fans: worldFans(), albumSnap: ev().photos.filter((p) => p.eventId === 'snap').length }),
+  /** Snapchien : état du chat et déclenchement manuel d'une arrivée (tests). */
+  chat: {
+    state: () => snapState().chat,
+    /** Fait arriver tout de suite un message / snap / vidéo d'un contact. */
+    push: (id: string, kind: 'text' | 'snap' | 'video' = 'snap', scene?: string) => {
+      const st = snapState().chat; const c = contactById(id); const cs = st.contacts[id]; if (!c || !cs) return null;
+      cs.added = true; cs.deleted = false;
+      const sc = (scene ?? c.scenes[0]) as never; const cap = (c.captions[sc] ?? ['Un petit snap.'])[0];
+      const msg = { id: `t${st.seq++}`, from: 'in' as const, kind, text: kind === 'text' ? c.openers[0] : cap, ...(kind === 'text' ? {} : { scene: sc, opened: false }), at: Date.now() };
+      cs.msgs.push(msg); cs.unread++; cs.lastIn = msg.at; persist(); emitPhone(); return msg;
+    },
+    tick: (ms: number) => { const inc = advance(snapState().chat, ms, Date.now(), chatRng); if (inc) { persist(); emitPhone(); } return inc; },
+    produce: () => { const st = snapState().chat; st.clock = Math.max(st.clock, st.nextAt); const inc = produce(st, Date.now(), chatRng); persist(); return inc; },
+  },
   reset: () => {
     assignInPlace(save.data.fun.apps.clips, defaultClips() as unknown as Record<string, unknown>);
     assignInPlace(save.data.fun.apps.snap, defaultSnap() as unknown as Record<string, unknown>);

@@ -93,6 +93,8 @@ export interface OrderState {
   reward?: OrderReward;
   /** Avancement 0..1 (voir `orderProgress` pour le détail), mis à jour après chaque action. */
   progress?: number;
+  /** Client récurrent qui passe la commande (identifiant de src/data/customers.ts ; absent sur les anciennes sauvegardes). */
+  customer?: string;
 }
 
 // ------------------------------------------------------------------ butin
@@ -156,6 +158,8 @@ export type BoardEvent =
   | { t: 'giftOpen'; at: number; item: ItemRef }
   | {
     t: 'deliver'; slot: number; cells: number[]; hearts: number; points: number; items?: ItemRef[];
+    /** Client servi, fidélité (avant → après) et remerciement ; `story` si un nouveau niveau débloque une histoire. */
+    customer?: string; loyalty?: { n: number; from: number; to: number }; thanks?: string; story?: string;
     /** Endless 2.0 : palier, récompense annoncée, gains « monde » (pièces / matériaux) et énergie offerte. */
     tier?: OrderTier; reward?: OrderReward; gain?: Partial<Record<'coins' | 'flowers' | 'fabric' | 'cocoa', number>>; energy?: number; forced?: boolean;
   }

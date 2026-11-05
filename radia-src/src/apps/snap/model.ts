@@ -3,6 +3,7 @@
  * brouillons. Pur (aucun DOM). Jamais d'enfant : les photos Snap n'ont aucun enfant (`kids` vide) et tout
  * texte évoquant un enfant est refusé. Sanitisation tolérante, bornes strictes (40 photos, 60 stories).
  */
+import { defaultChat, sanitizeChat, unreadTotal, type ChatState } from './chat/engine';
 import { assignInPlace, cleanText, hash, isObj, mentionsChild, num, pick, pickN, rng, str } from '../util';
 import { POSES, FRAMES, FILTERS } from '../../events/photo/data';
 
@@ -31,9 +32,11 @@ export interface Story { id: string; at: number; frames: StoryFrame[]; caption: 
 export interface Pending { id: string; kind: string; title: string; caption: string; at: number; snap: boolean; clips: boolean; data?: Record<string, string | number> }
 export interface CamDraft { place: string; pose: number; aug: boolean; cat: boolean; frame: string; filter: string; title: string; stickers: Sticker[] }
 export interface StoryDraft { photos: string[]; caption: string }
-export interface SnapState { v: 1; photos: SnapPhoto[]; stories: Story[]; pending: Pending[]; cam: CamDraft | null; storyDraft: StoryDraft | null; shots: number; published: number }
+export interface SnapState { v: 1; photos: SnapPhoto[]; stories: Story[]; pending: Pending[]; cam: CamDraft | null; storyDraft: StoryDraft | null; shots: number; published: number;
+  /** Conversations avec les contacts (messages, snaps rouges, flammes) — voir ./chat/engine.ts. */
+  chat: ChatState }
 
-export const defaultSnap = (): SnapState => ({ v: 1, photos: [], stories: [], pending: [], cam: null, storyDraft: null, shots: 0, published: 0 });
+export const defaultSnap = (): SnapState => ({ v: 1, photos: [], stories: [], pending: [], cam: null, storyDraft: null, shots: 0, published: 0, chat: defaultChat() });
 export const defaultCam = (): CamDraft => ({ place: 'rooftop', pose: 0, aug: true, cat: false, frame: 'rose', filter: 'doux', title: 'Un joli souvenir', stickers: [] });
 
 // ---------------------------------------------------------------- sanitisation
@@ -104,6 +107,7 @@ export function sanitizeSnap(raw: unknown): SnapState {
   }
   d.shots = Math.floor(num(raw.shots, 0, 0, 1e6));
   d.published = Math.floor(num(raw.published, 0, 0, 1e6));
+  d.chat = sanitizeChat(raw.chat);
   return d;
 }
 export const sanitizeInPlace = (target: Record<string, unknown>): SnapState => { const s = sanitizeSnap(target); assignInPlace(target, s as unknown as Record<string, unknown>); return s; };
@@ -185,7 +189,8 @@ export const dismissPending = (s: SnapState, id: string): void => { s.pending = 
 /** Retire l'offre Snap d'un moment (garde l'offre Clips s'il y en a une). */
 export function closeSnapOffer(s: SnapState, id: string): void { const p = s.pending.find((x) => x.id === id); if (!p) return; p.snap = false; if (!p.clips) dismissPending(s, id); }
 export function closeClipsOffer(s: SnapState, id: string): void { const p = s.pending.find((x) => x.id === id); if (!p) return; p.clips = false; if (!p.snap) dismissPending(s, id); }
-export const snapBadge = (s: SnapState): number => s.pending.filter((p) => p.snap).length;
+/** Pastille de l'icône : moments à publier + messages et snaps non lus (regroupés en un seul nombre). */
+export const snapBadge = (s: SnapState): number => s.pending.filter((p) => p.snap).length + unreadTotal(s.chat);
 export const clipsBadge = (s: SnapState): number => s.pending.filter((p) => p.clips).length;
 
 interface StoryLook { place: string; pose: number; aug: boolean; cat: boolean; frame: string; filter: string }

@@ -88,7 +88,7 @@ async function runEndless(H) {
   let s = await t.st();
   await t.shot('1-start');
   check('départ neuf : 3 commandes facile/moyenne/difficile', s.orders.length === 3 && s.orders.map((o) => o.tier).join() === 'easy,mid,hard');
-  check('3 cartes affichées avec pastille, objets et récompenses', (await page.locator('.en-card').count()) === 3 && (await page.locator('.en-card .en-dot').count()) === 3 && (await page.locator('.en-card .en-it').count()) >= 3 && (await page.locator('.en-card .en-rws .en-rw').count()) >= 6);
+  check('3 cartes affichées avec pastille, objets et récompenses', (await page.locator('.en-card').count()) === 3 && (await page.locator('.en-card .en-av, .en-card .en-dot').count()) === 3 && (await page.locator('.en-card .en-who b').count()) === 3 /* portrait rond + prénom du client à la place du point de couleur */ && (await page.locator('.en-card .en-it').count()) >= 3 && (await page.locator('.en-card .en-rws .en-rw').count()) >= 6);
   check('jauge de trésor, ≤ 2 chips, une ligne d\'objectif', (await page.locator('.en-tre').count()) === 1 && (await page.locator('.en-chip').count()) <= 2 && (await page.locator('.en-goal').count()) === 1);
   check('plus aucun badge « i » (.en-geni) sur les générateurs ; panneau d\'objet sous le plateau', (await page.locator('.en-geni').count()) === 0 && (await page.locator('.en-sel').count()) === 1);
   // la HUD ne déborde pas de l'écran et le plateau est visible

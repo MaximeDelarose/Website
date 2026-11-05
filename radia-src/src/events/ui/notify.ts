@@ -8,6 +8,9 @@ import type { EventDef } from '../types';
 
 let current: HTMLElement | null = null;
 export const notificationVisible = (): boolean => !!current;
+let dismissCurrent: (() => void) | null = null;
+/** Retire la bannière affichée (comme « Plus tard » : l'invitation reste dans le téléphone). Utilisé à l'ouverture du téléphone, dont elle recouvrirait l'en-tête. */
+export function dismissNotification(): void { dismissCurrent?.(); }
 
 export interface NotifyOpts { kind: 'invite' | 'resume'; onOpen: () => void; onLater: () => void }
 
@@ -23,6 +26,7 @@ export function showNotification(def: EventDef, o: NotifyOpts): void {
       h('button.btn.small', { on: { click: tap(() => done(o.onOpen), { sound: false }) } }, o.kind === 'resume' ? 'Reprendre' : 'Voir l’invitation'),
       h('button.btn.small.secondary', { on: { click: tap(() => done(o.onLater), { sound: false }) } }, 'Plus tard')));
   current = el;
+  dismissCurrent = () => done(o.onLater);
   ui.root.append(el);
   audio.play(gold ? 'rare' : 'pop2');
   window.setTimeout(() => audio.play('sparkle'), 160);
@@ -32,7 +36,7 @@ export function showNotification(def: EventDef, o: NotifyOpts): void {
   function done(cb: () => void) {
     if (current !== el) return;
     window.clearTimeout(t);
-    current = null;
+    current = null; dismissCurrent = null;
     el.classList.add('out');
     window.setTimeout(() => el.remove(), 260);
     cb();

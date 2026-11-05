@@ -11,9 +11,13 @@ import { haptic } from '../../core/haptics';
 import { radiaFaceCanvas } from '../../game/art/world/radiaNow';
 import { renderPhoto } from '../../events/photo/render';
 import { genClip, parseGenId, commentsFor, type Clip } from './gen';
+import { buildThreads, type ThreadMsg } from './threads';
+import { canvasUrl } from '../../game/art/kit';
+import { medallionCanvas } from '../../game/art/characters';
+import { hasPhotos, photoUrlNow } from '../../core/photos';
 import { makeScene, SW, SH, type SceneDraw } from './scenes';
 import { clipsState, snapState, persist, photoById, catOpts, worldFans, reduced } from '../store';
-import { isLiked, isFaved, toggleLike, toggleFav, addComment, likesOf, commentCountOf, profileTotals, proposalsFor, fansLeftToday, DAILY_FAN_CAP, removeMine, type MinePost, type Proposal } from './model';
+import { isLiked, isFaved, toggleLike, toggleFav, addComment, addReply, toggleMsgLike, likesOf, commentCountOf, profileTotals, proposalsFor, fansLeftToday, DAILY_FAN_CAP, removeMine, type MinePost, type Proposal } from './model';
 import { publishClip, publishPhotoClip, shareClipToAlbum, postStory, clipsOfferClosed } from '../service';
 import { ico, fmtCount, tick, heartBurst, note } from '../kit';
 import { hash } from '../util';
@@ -210,19 +214,63 @@ export function openClips(startTab: Tab = 'foryou', opts: { moment?: string } = 
     root.append(back, el);
     return { el, close: closeIt };
   }
+  /** Commentaires : fils de discussion (compliments, questions, critiques…) ; Auguste défend Radia, ses réponses reçoivent des likes fictifs. */
   function openComments(clip: Clip, changed: () => void): void {
     const list = h('div.clp-comlist');
-    const fill = () => {
+    const augAv = (): string => (hasPhotos() && photoUrlNow('head-new')) || canvasUrl('med:auguste:smile', () => medallionCanvas('auguste', { expr: 'smile' }, 120));
+    const threads = buildThreads({ id: clip.id, topic: clip.topic, likes: clip.likes, mine: clip.mine }, commentsFor(clip.id, clip.topic));
+    let replyTo: { id: string; by: string } | null = null;
+    const input = h('input.clp-input', { type: 'text', maxLength: 120, placeholder: 'Ajouter un commentaire…', 'aria-label': 'Commentaire' }) as HTMLInputElement;
+    const target = h('div.clp-target', { hidden: 'true' });
+    const setReply = (m: ThreadMsg | null) => {
+      replyTo = m ? { id: m.id, by: m.by } : null;
+      input.placeholder = m ? `Répondre à ${m.by === 'auguste' ? 'Auguste' : '@' + m.by}…` : 'Ajouter un commentaire…';
+      target.textContent = '';
+      if (m) { target.removeAttribute('hidden'); target.append(h('span', `Réponse à ${m.by === 'auguste' ? 'Auguste' : '@' + m.by}`), h('button.clp-x.dark', { 'aria-label': 'Annuler la réponse', on: { click: tap(() => setReply(null), { sound: false }) } }, ico('close', 14))); input.focus(); } else target.setAttribute('hidden', 'true');
+    };
+    const nf = (n: number): string => n.toLocaleString('fr-FR');
+    /** Les likes d'Auguste montent progressivement (sauf animations réduites). */
+    const countUp = (el: HTMLElement, to: number): void => {
+      if (reduced() || to < 30) { el.textContent = nf(to); return; }
+      const t0 = performance.now(); const dur = Math.min(1100, 450 + to * 0.35);
+      const step = (now: number) => { const k = Math.min(1, (now - t0) / dur); el.textContent = nf(Math.round(to * (1 - Math.pow(1 - k, 3)))); if (k < 1 && el.isConnected) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    };
+    const msgEl = (m: ThreadMsg, isReply: boolean, animate: boolean): HTMLElement => {
+      const isA = m.by === 'auguste';
+      const av = isA ? h('img.clp-cav.aug', { src: augAv(), alt: 'Auguste' }) : h('span.clp-cav', { style: `--h:${hash(m.by) % 360}` }, m.by.slice(0, 1).toUpperCase());
+      const liked = st.msgLiked.includes(m.id);
+      const count = h('b', animate && isA ? '0' : nf(m.likes + (liked ? 1 : 0)));
+      const heart = h(`button.clp-mh${liked ? '.on' : ''}`, { 'aria-label': 'Aimer ce commentaire' }, ico('heart', 15), count);
+      heart.addEventListener('click', tap(() => { const on = toggleMsgLike(st, m.id); persist(); heart.classList.toggle('on', on); count.textContent = nf(m.likes + (on ? 1 : 0)); if (on) { tick('heart'); const r = heart.getBoundingClientRect(); heartBurst(root, r.left + 8, r.top, 3); } }, { sound: false }));
+      if (animate && isA) countUp(count, m.likes + (liked ? 1 : 0));
+      const who = isA ? h('b', 'Auguste', h('i.clp-badge', 'compte d\u2019Auguste')) : h('b', `@${m.by}`);
+      const body = h('div.clp-cb', who, h('p', m.text), h('div.clp-meta', heart, isA || !isReply ? h('button.clp-rp', { on: { click: tap(() => setReply(m), { sound: false }) } }, 'Répondre') : null));
+      const el = h(`div.clp-com${isReply ? '.rep' : ''}${isA ? '.augu' : ''}${m.viral ? '.viral' : ''}`, av, body);
+      return el;
+    };
+    const fill = (animate = true) => {
       list.textContent = '';
       for (const t of st.comments[clip.id] ?? []) list.append(h('div.clp-com.me', h('span.clp-cav.me', 'R'), h('div', h('b', 'Radia'), h('p', t))));
-      for (const c of commentsFor(clip.id, clip.topic)) list.append(h('div.clp-com', h('span.clp-cav', { style: `--h:${hash(c.by) % 360}` }, c.by.slice(0, 1).toUpperCase()), h('div', h('b', c.by), h('p', c.text))));
+      for (const th of threads) {
+        const box = h('div.clp-th', msgEl(th.root, false, animate));
+        for (const r of th.replies) {
+          box.append(msgEl(r, true, animate));
+          for (const mine of st.replies[r.id] ?? []) box.append(h('div.clp-com.rep.me', h('span.clp-cav.me', 'R'), h('div', h('b', 'Radia'), h('p', mine), r.by === 'auguste' ? h('small.clp-ah', '♥ Auguste a aimé') : null)));
+        }
+        for (const mine of st.replies[th.root.id] ?? []) box.append(h('div.clp-com.rep.me', h('span.clp-cav.me', 'R'), h('div', h('b', 'Radia'), h('p', mine))));
+        list.append(box);
+      }
     };
-    fill();
-    const input = h('input.clp-input', { type: 'text', maxLength: 120, placeholder: 'Ajouter un commentaire…', 'aria-label': 'Commentaire' }) as HTMLInputElement;
-    const send = () => { if (addComment(st, clip.id, input.value)) { input.value = ''; persist(); fill(); list.scrollTop = 0; tick('pop1'); changed(); } };
+    fill(true);
+    const send = () => {
+      const text = input.value;
+      if (replyTo) { if (addReply(st, replyTo.id, text)) { input.value = ''; persist(); setReply(null); fill(false); tick('pop1'); } return; }
+      if (addComment(st, clip.id, text)) { input.value = ''; persist(); fill(false); list.scrollTop = 0; tick('pop1'); changed(); }
+    };
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
-    const chips = h('div.clp-chips', ...['Merci ♡', 'Trop gentil !', 'Haha, oui !', 'Je rougis…'].map((t) => h('button.clp-chip', { on: { click: tap(() => { input.value = t; send(); }, { sound: false }) } }, t)));
-    sheet(`${fmtCount(clip.comments)} commentaires`, h('div.clp-sheet-b', list, chips, h('div.clp-send', input, h('button.clp-sendbtn', { 'aria-label': 'Envoyer', on: { click: tap(send, { sound: false }) } }, ico('send', 20)))));
+    const chips = h('div.clp-chips', ...['Merci ♡', 'Trop gentil !', 'Haha, oui !', 'Je rougis…'].map((t) => h('button.clp-chip', { on: { click: tap(() => { input.value = replyTo?.by === 'auguste' ? ({ 'Merci ♡': 'Merci mon cœur ♡', 'Trop gentil !': 'Tu me défends trop bien !', 'Haha, oui !': 'T\u2019es bête 😂', 'Je rougis…': 'Je t\u2019aime ♡' } as Record<string, string>)[t] ?? t : t; send(); }, { sound: false }) } }, t)));
+    sheet(`${fmtCount(clip.comments)} commentaires`, h('div.clp-sheet-b', list, target, chips, h('div.clp-send', input, h('button.clp-sendbtn', { 'aria-label': 'Envoyer', on: { click: tap(send, { sound: false }) } }, ico('send', 20)))));
   }
   function openShare(clip: Clip): void {
     const s = sheet('Partager', h('div.clp-sheet-b',

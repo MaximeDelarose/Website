@@ -4,7 +4,7 @@
  * Ces chaînes sont les recettes de fusion fictives du jeu (elles ne suivent
  * pas les règles des échecs classiques pour la collection « Échecs »).
  */
-export type CollectionId = 'flowers' | 'love' | 'paris' | 'chess' | 'rare' | 'choc' | 'jewel' | 'cloth' | 'perfume' | 'acc' | 'castle' | 'pastry' | 'bag' | 'gift';
+export type CollectionId = 'flowers' | 'love' | 'paris' | 'chess' | 'rare' | 'choc' | 'jewel' | 'cloth' | 'perfume' | 'acc' | 'castle' | 'pastry' | 'bag' | 'gift' | 'soap';
 export type ItemColl = CollectionId | 'special' | 'gen';
 
 export interface ItemRef { c: ItemColl; l: number }
@@ -268,6 +268,22 @@ export const COLLECTIONS: Record<CollectionId, CollectionDef> = {
       'Le cadeau parfait : celui qui dit « je pense à toi ».',
     ],
   },
+  soap: {
+    id: 'soap',
+    name: 'Savons PIMBÊCHE',
+    color: '#E9A8C6',
+    items: ['Base de savon', 'Savon brut', 'Savon moulé', 'Savon parfumé', 'Savon décoré', 'Savon artisanal Pimbêche', 'Coffret de savons', 'Coffret Pimbêche de luxe'],
+    blurbs: [
+      'Une base translucide, encore tiède. Tout commence ici.',
+      'Un pain rugueux, pas encore parfumé. Il a du caractère.',
+      'Un cœur en relief, sorti du moule sans une bulle.',
+      'Lavande, rose ou fleur d\'oranger : ça sent la maison de Radia.',
+      'Une petite fleur de savon, à peine trop jolie pour servir.',
+      'Fait main, signé du P doré de PIMBÊCHE.',
+      'Trois savons, un ruban : le cadeau qu\'on garde pour soi.',
+      'Le coffret de la maison PIMBÊCHE. Doré, parfumé, inoubliable.',
+    ],
+  },
 };
 
 export const SPECIAL_ITEMS: Record<number, { name: string; blurb: string }> = {
@@ -277,7 +293,7 @@ export const SPECIAL_ITEMS: Record<number, { name: string; blurb: string }> = {
 };
 
 /** Ordre = ordre des générateurs (kind = index + 1) et ordre de déblocage dans Endless 2.0. */
-export const COLLECTION_IDS: CollectionId[] = ['flowers', 'love', 'paris', 'chess', 'rare', 'choc', 'jewel', 'cloth', 'perfume', 'acc', 'castle', 'pastry', 'bag', 'gift'];
+export const COLLECTION_IDS: CollectionId[] = ['flowers', 'love', 'paris', 'chess', 'rare', 'choc', 'jewel', 'cloth', 'perfume', 'acc', 'castle', 'pastry', 'bag', 'gift', 'soap'];
 /** Les 4 collections d'origine (10 niveaux, mode histoire). */
 export const LEGACY_COLLECTION_IDS: CollectionId[] = ['flowers', 'love', 'paris', 'chess'];
 
@@ -306,6 +322,7 @@ export const GENERATORS: Record<number, { coll: CollectionId; name: string; blur
   12: { coll: 'pastry', name: 'Four du pâtissier', blurb: 'Touche-le : il sort des macarons tout chauds (1 ⚡).' },
   13: { coll: 'bag', name: 'Vitrine à sacs', blurb: 'Touche-la : elle présente des sacs de saison (1 ⚡).' },
   14: { coll: 'gift', name: 'Atelier d\'emballage', blurb: 'Touche-le : il noue des rubans et des surprises (1 ⚡).' },
+  15: { coll: 'soap', name: 'Atelier Pimbêche', blurb: 'Touche-le : il coule des bases de savon à parfumer (1 ⚡).' },
 };
 export const genKindOf = (c: CollectionId): number => COLLECTION_IDS.indexOf(c) + 1;
 export const isGen = (r: ItemRef | null | undefined): boolean => !!r && r.c === 'gen';

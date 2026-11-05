@@ -3,6 +3,7 @@
  * Une donnée invalide est remplacée par sa valeur par défaut : on ne plante
  * jamais à cause d'une sauvegarde abîmée, et on ne l'efface jamais en silence.
  */
+import { customerById } from '../data/customers';
 import { defaultEvents, sanitizeEvents } from '../events/state';
 import { defaultFun, sanitizeFun, type FunState } from './fun';
 import type { EventsState } from '../events/types';
@@ -289,6 +290,7 @@ function validOrder(o: unknown): OrderState | null {
       matN: Math.floor(num(r.matN, 0, 0, 999)), energy: Math.floor(num(r.energy, 2, 0, 99)), treasure: num(r.treasure, 2, 0, 99),
     };
   }
+  if (typeof o.customer === 'string' && customerById(o.customer)) out.customer = o.customer;
   if (typeof o.progress === 'number' && Number.isFinite(o.progress)) out.progress = Math.max(0, Math.min(1, o.progress));
   return out;
 }

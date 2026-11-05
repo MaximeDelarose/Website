@@ -1,4 +1,5 @@
 /** Le téléphone de Radia : messages, invitations, souvenirs, historique. Tout reste interne au jeu. */
+import { dismissNotification } from './notify';
 import '../events.css';
 import { h, tap } from '../../ui/dom';
 import { ui } from '../../ui/ui';
@@ -37,6 +38,7 @@ function defaultTab(): Tab {
 export function openPhone(tab?: Tab): void {
   if (open) return;
   open = true;
+  dismissNotification(); // la bannière d'invitation (au-dessus du téléphone) recouvrirait sa croix de fermeture : l'invitation reste listée ici
   let cur: Tab = tab ?? defaultTab();
   let thread: Sender | null = null;
   const content = h('div.ph-content');

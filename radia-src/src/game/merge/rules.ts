@@ -3,6 +3,7 @@
  * Toutes les actions prennent l'état, le modifient et renvoient la liste des
  * événements à animer. Une action invalide ne modifie jamais l'état.
  */
+import { serve } from '../customers/logic';
 import { SPECIAL, collMax, itemKey, mergePoints, sameItem, GENERATORS, genKindOf, type CollectionId, type ItemRef } from '../../data/items';
 import { Rng, hashString } from '../../utils/rng';
 import {
@@ -145,6 +146,10 @@ function completeOrder(s: RunState, def: LevelDef, slot: number, o: OrderState, 
     Object.assign(d, { tier: o.tier, reward: o.reward, gain: orderGain(o.reward), energy: o.reward.energy, forced });
     bump(fun, 'orders');
     bump(fun, `orders:${o.tier ?? 'easy'}`);
+    if (o.customer) { // le client remercie aussi quand la commande est terminée avec des diamants
+      const sv = serve(fun.customers, o.customer, subRng(s.rng, 0x7a1c), Date.now());
+      if (sv) Object.assign(d, { customer: o.customer, loyalty: { n: sv.n, from: sv.levelFrom, to: sv.levelTo }, thanks: sv.thanks.text, story: sv.story });
+    }
     ev.push(...gainTreasure(fun, forced ? 0 : o.reward.treasure, 'order'));
     if (!forced) {
       // une livraison libère une ou deux cases verrouillées ; de temps en temps une nouvelle surprise apparaît
@@ -714,9 +719,10 @@ export function replaceOrder(s: RunState, def: LevelDef, slot: number): BoardEve
   const tier = old.tier ?? tierOfSlot(slot);
   const avoid = new Set<string>(old.items.map(itemKey));
   const others: ItemRef[] = [];
-  s.orders.forEach((o, k) => { if (o && k !== slot) for (const r of o.items) { avoid.add(itemKey(r)); others.push(r); } });
+  const shown = new Set<string>(old.customer ? [old.customer] : []);
+  s.orders.forEach((o, k) => { if (o && k !== slot) { if (o.customer) shown.add(o.customer); for (const r of o.items) { avoid.add(itemKey(r)); others.push(r); } } });
   const rng = subRng(s.rng, 0x5ee7);
-  s.orders[slot] = makeOrder(fun, rng, tier, s.orderSerial++, avoid, others);
+  s.orders[slot] = makeOrder(fun, rng, tier, s.orderSerial++, avoid, others, shown);
   s.rng = advance(s.rng, rng.int(1 << 20) + 13);
   bump(fun, 'replaced');
   return [{ t: 'orderReplace', slot, tier, left: fun.endless2.replaces }, ...afterAction(s, def)];
@@ -727,8 +733,9 @@ function makeEndlessOrder(s: RunState, slot: number): OrderState {
   const rng = subRng(s.rng, 0x5bd1e995);
   const avoid = new Set<string>();
   const others: ItemRef[] = [];
-  s.orders.forEach((o, k) => { if (o && k !== slot) for (const r of o.items) { avoid.add(itemKey(r)); others.push(r); } });
-  const o = makeOrder(fun, rng, tierOfSlot(slot), s.orderSerial++, avoid, others);
+  const shown = new Set<string>();
+  s.orders.forEach((o, k) => { if (o && k !== slot) { if (o.customer) shown.add(o.customer); for (const r of o.items) { avoid.add(itemKey(r)); others.push(r); } } });
+  const o = makeOrder(fun, rng, tierOfSlot(slot), s.orderSerial++, avoid, others, shown);
   s.rng = advance(s.rng, rng.int(1 << 30));
   return o;
 }

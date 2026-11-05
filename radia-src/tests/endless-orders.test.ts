@@ -69,7 +69,7 @@ describe('commandes atteignables', () => {
       const colls = o.items.map((r) => r.c);
       if (mat === 'cocoa') expect(colls.some((c) => c === 'love' || c === 'choc')).toBe(true);
       if (mat === 'fabric') expect(colls.some((c) => ['paris', 'cloth', 'acc'].includes(c))).toBe(true);
-      if (mat === 'flowers') expect(colls.some((c) => c === 'flowers' || c === 'rare')).toBe(true);
+      if (mat === 'flowers') expect(colls.some((c) => c === 'flowers' || c === 'rare' || c === 'soap')).toBe(true);
       const g = orderGain(o.reward!);
       expect(g.coins).toBe(o.reward!.coins);
     }
@@ -84,7 +84,7 @@ describe('commandes atteignables', () => {
     fun.endless2.counters.chains = 2;
     expect(tierPoints(fun)).toBe(ENDLESS_CFG.unlock.at.paris + ENDLESS_CFG.unlock.chainBonus * 2);
     fun.endless2.counters.orders = 10000;
-    expect(unlockedColls(fun).length).toBe(14);
+    expect(unlockedColls(fun).length).toBe(15);
     expect(activeColls(fun).length).toBe(ENDLESS_CFG.unlock.maxBoardGens);
   });
   it('3 commandes simultanées (facile / moyenne / difficile) et nouvelle commande du même palier après livraison', () => {

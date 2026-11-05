@@ -14,7 +14,7 @@ export const genKey = (coll: CollectionId): string => `gen:${coll}`;
 export const collOfKind = (kind: number): CollectionId | undefined => GENERATORS[kind]?.coll;
 
 /** Matériau du monde lié à chaque collection (pour les coûts) — null = pièces seulement. */
-export const GEN_MAT: Partial<Record<CollectionId, ResKind>> = { flowers: 'flowers', rare: 'flowers', love: 'cocoa', choc: 'cocoa', paris: 'fabric', cloth: 'fabric', acc: 'fabric', bag: 'fabric', pastry: 'cocoa' };
+export const GEN_MAT: Partial<Record<CollectionId, ResKind>> = { flowers: 'flowers', rare: 'flowers', love: 'cocoa', choc: 'cocoa', paris: 'fabric', cloth: 'fabric', acc: 'fabric', bag: 'fabric', pastry: 'cocoa', soap: 'flowers' };
 
 // ------------------------------------------------------------------ état
 export interface GenState { level: number; xp: number; rank: number }
