@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.21.0";
+  var VERSION = "2.22.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -4105,7 +4105,7 @@
       if (q && q.bon) Object.keys(q.bon).forEach(function (k) { bon[k] = (bon[k] || 0) + q.bon[k]; });
       html += '<button type="button" class="dof-slot dof-' + sl.id + (q ? " is-full" : "") + '" style="--rc:' + (q ? rarOf(q).color : "#6b5a42") + '" data-action="islot" data-arg="' + sl.id + '" title="' + esc(sl.name + " · " + sl.state) + '">' + (q ? ic(g.icon) : "<small>" + esc(sl.name) + "</small>") + "</button>";
     });
-    html += '<div class="dof-face"><img src="' + spriteUrl(c.sprite) + '" alt=""><small>' + esc(c.name) + "</small></div></div>";
+    html += '<div class="dof-face"><img src="' + lookUrl(c) + '" alt=""><small>' + esc(c.name) + "</small></div></div>";
     html += '<div class="dof-stats"><div class="dof-sec">Éléments</div>' + Object.keys(pts).map(function (el) { return '<div class="dof-el"><span>' + elemSpan(el, D.ELEMENTS[el].name) + '</span><i style="--w:' + Math.min(100, pts[el] / 9 * 100) + "%;--c:" + (D.ELEMENTS[el].ui || D.ELEMENTS[el].color) + '"></i><b>' + pts[el] + "</b></div>"; }).join("");
     var tiers = []; Object.keys(pts).forEach(function (el) { D.ELEM_TIERS[el].forEach(function (t) { if (pts[el] >= t[0]) tiers.push(elemSpan(el, D.ELEMENTS[el].name + " " + t[0]) + " : " + esc(t[1])); }); });
     if (tiers.length) html += '<ul class="dof-fx small">' + tiers.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
@@ -5587,7 +5587,7 @@
       if (l.npc && SPR[l.npc]) { var nph = hash(l.id.length * 7, 3) % 9, nwk = l.id === "sentier" ? 0 : Math.sin(t * 0.35 + nph), nx = q.x + (l.id === "chene" ? -14 : l.id === "sentier" ? 0 : 20) + nwk * 9, ny = q.y + (l.id === "chene" ? 6 : 4) + Math.cos(t * 0.27 + nph) * 2, nfc = nwk === 0 ? (nx > CAMP_FIRE.x ? -1 : 1) : (Math.cos(t * 0.35 + nph) > 0 ? 1 : -1), nmv = l.id !== "sentier" && Math.abs(Math.cos(t * 0.35 + nph)) > 0.25;
         list.push({ y: ny, f: function () { drawHero(l.npc, nx, ny, nfc, nmv, t * 6, 0); if (hot) { var by = ny - 18 + Math.round(Math.sin(t * 4)); ctx.fillStyle = "#2b1709"; ctx.fillRect(nx - 3, by - 1, 7, 8); ctx.fillStyle = "#fdf3de"; ctx.fillRect(nx - 2, by, 5, 6); ctx.fillStyle = "#2b1709"; ctx.fillRect(nx, by + 1, 1, 2); ctx.fillRect(nx, by + 4, 1, 1); } } }); }
     });
-    list.push({ y: camp.y, f: function () { drawHero(charById(S.char).sprite, camp.x, camp.y, camp.face || 1, camp.moving, t * 8, 0); if (Net.on) { drawText((S.name || "Écureuil").slice(0, 12), camp.x, camp.y - 24, "#fdf3de", "c"); if (S.title) drawText(titleName(S.title), camp.x, camp.y - 31, "#f6d36b", "c"); } campBubble(camp.x, camp.y - 36, camp.emote, t); } });
+    list.push({ y: camp.y, f: function () { drawHero(charById(S.char).sprite, camp.x, camp.y, camp.face || 1, camp.moving, t * 8, 0, false, S.char); if (Net.on) { drawText((S.name || "Écureuil").slice(0, 12), camp.x, camp.y - 24, "#fdf3de", "c"); if (S.title) drawText(titleName(S.title), camp.x, camp.y - 31, "#f6d36b", "c"); } campBubble(camp.x, camp.y - 36, camp.emote, t); } });
     if (Net.on && !Net.started && Net.cps2) {
       var nowp = performance.now(), live = {}; Net.roster.forEach(function (x) { live[x.id] = 1; });
       Object.keys(Net.cps2).forEach(function (id) {
@@ -6972,7 +6972,34 @@
     ctx.fillRect(Math.round(x - w / 2), Math.round(y), Math.round(w), 2);
     ctx.fillRect(Math.round(x - w / 2 + 1), Math.round(y - 1), Math.max(1, Math.round(w - 2)), 4);
   }
-  function drawHero(sprName, x, y, face, moving, anim, inv, volte) {
+  /* ---- 2.22 : l'attirail porté se voit sur l'écureuil (coiffe, cape, bottes, amulette) ---- */
+  var LOOK = { coiffe: [4, -6.5, 9], amulette: [2.5, 1.5, 5], cape: [-3.5, 1.5, 11], bottes: [[-1.5, 6, 5], [3.5, 6, 5]] };
+  var LOOK_C = {};
+  function lookSprites(cid) {
+    var w = (eqS().worn[cid] || {}), key = cid + ":" + ["coiffe", "bottes", "cape", "amulette"].map(function (k) { return w[k] || 0; }).join(",");
+    if (LOOK_C[key]) return LOOK_C[key];
+    var out = {}; ["coiffe", "bottes", "cape", "amulette"].forEach(function (k) {
+      var q = pieceById(w[k]); if (!q || !D.GEAR[q.t]) return; var n = pxName(D.GEAR[q.t].icon); if (n) out[k] = SPR[n][0];
+    });
+    return (LOOK_C[key] = out);
+  }
+  function lookDraw(g2, cid, cx, cy, flip, behind) {
+    var L = lookSprites(cid), sg = flip ? -1 : 1;
+    function put(spr, dx, dy, tw) { if (!spr) return; var th = tw * spr.h / spr.w; g2.drawImage(spr.c, Math.round(cx + sg * dx - tw / 2), Math.round(cy + dy - th / 2), tw, th); }
+    if (behind) { put(L.cape, LOOK.cape[0], LOOK.cape[1], LOOK.cape[2]); return; }
+    LOOK.bottes.forEach(function (b) { put(L.bottes, b[0], b[1], b[2]); });
+    put(L.amulette, LOOK.amulette[0], LOOK.amulette[1], LOOK.amulette[2]);
+    put(L.coiffe, LOOK.coiffe[0], LOOK.coiffe[1], LOOK.coiffe[2]);
+  }
+  var LOOK_URL = {};
+  function lookUrl(c) {
+    var w = eqS().worn[c.id] || {}, key = c.sprite + ":" + ["coiffe", "bottes", "cape", "amulette"].map(function (k) { return w[k] || 0; }).join(",");
+    if (LOOK_URL[key]) return LOOK_URL[key];
+    var cv = document.createElement("canvas"); cv.width = 36; cv.height = 32; var g2 = cv.getContext("2d"); g2.imageSmoothingEnabled = false;
+    var s0 = SPR[c.sprite][0]; lookDraw(g2, c.id, 18, 16, false, true); g2.drawImage(s0.c, Math.round(18 - s0.w / 2), Math.round(16 - s0.h / 2)); lookDraw(g2, c.id, 18, 16, false, false);
+    return (LOOK_URL[key] = cv.toDataURL());
+  }
+  function drawHero(sprName, x, y, face, moving, anim, inv, volte, gcid) {
     var frames = SPR[sprName], fly = frames.flying, s, dy = 0;
     if (volte && frames.volte) s = frames.volte;
     else if (frames.bob && (moving || fly)) { var fi = ((anim * 1.25) | 0) % frames.length; s = frames[fi]; dy = frames.bob[fi]; }
@@ -6982,7 +7009,9 @@
     var lift = fly ? 6 + Math.sin(anim * 0.8) * 1.5 : 0;
     shadow(x, y + 6, fly ? 8 : 10);
     if (inv > 0 && ((inv * 20) | 0) % 2) return;
+    if (gcid) lookDraw(ctx, gcid, x, y - lift - dy, face < 0, true);
     blit(s, x, y - lift - dy, face < 0);
+    if (gcid) lookDraw(ctx, gcid, x, y - lift - dy, face < 0, false);
   }
   var MATE_COL = ["#f6d36b", "#7fd1c7", "#f29ad8", "#9cc56b", "#f2b05e", "#c9b3ff"];
   function mateColor(pl) { return MATE_COL[Math.max(0, players.indexOf(pl)) % MATE_COL.length]; }
@@ -7008,7 +7037,7 @@
         blit(ms, pl.x, pl.y + 7, pl.face < 0);
         drawHero(pl.sprite, pl.x, pl.y - 3, pl.face, false, pl.anim, pl.inv);
       } else
-      drawHero(pl.sprite, pl.x, pl.y, pl.face, pl.moving, pl.anim, pl.inv, pl.volteT > 0);
+      drawHero(pl.sprite, pl.x, pl.y, pl.face, pl.moving, pl.anim, pl.inv, pl.volteT > 0, !pl.remote && !pl.twin && pl.char ? pl.char.id : null);
       if (inv0) ctx.globalAlpha = 1;
       if (szs > 1) ctx.restore();
       if (pl.shield) { ctx.strokeStyle = "rgba(156,197,107,.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(pl.x, pl.y, 10, 9, 0, 0, TAU); ctx.stroke(); }
@@ -7778,7 +7807,7 @@
     }
     parade.forEach(function (q) { q.x -= q.v / 60; q.a += 0.08; blit(q.spr[(q.a | 0) % q.spr.length], q.x, q.y, true); });
     parade = parade.filter(function (q) { return q.x > -30; });
-    drawHero(charById(S.char).sprite, W / 2, H * 0.8, 1, true, t * 8, 0);
+    drawHero(charById(S.char).sprite, W / 2, H * 0.8, 1, true, t * 8, 0, false, S.char);
     ctx.fillStyle = m.night ? "rgba(10,20,15,.4)" : "rgba(30,40,20,.2)";
     ctx.fillRect(0, 0, W, H);
   }
