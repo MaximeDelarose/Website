@@ -160,7 +160,9 @@ begin
       'last_session', (select jsonb_build_object('started_at', started_at, 'last_activity', last_beat_at, 'active_s', active_s, 'ended_at', ended_at, 'end_reason', end_reason,
                          'live', ended_at is null and last_beat_at > now() - interval '150 seconds')
                        from public.radia_stat_sessions where device_id = d.id order by started_at desc limit 1),
-      'days', coalesce((select jsonb_agg(jsonb_build_object('day', day, 'active_s', active_s, 'sessions', sessions) order by day desc) from (select * from public.radia_stat_days where device_id = d.id order by day desc limit 14) z), '[]'::jsonb)
+      'days', coalesce((select jsonb_agg(jsonb_build_object('day', day, 'active_s', active_s, 'sessions', sessions) order by day desc) from (select * from public.radia_stat_days where device_id = d.id order by day desc limit 14) z), '[]'::jsonb),
+      -- historique des 30 dernières sessions (« en cours » = activité il y a moins de 150 s ; sinon fin ESTIMÉE à la dernière activité connue)
+      'sessions', coalesce((select jsonb_agg(jsonb_build_object('started_at', started_at, 'last_activity', last_beat_at, 'active_s', active_s, 'ended_at', ended_at, 'end_reason', end_reason, 'live', ended_at is null and last_beat_at > now() - interval '150 seconds') order by started_at desc) from (select * from public.radia_stat_sessions where device_id = d.id order by started_at desc limit 30) q2), '[]'::jsonb)
     ) as x from public.radia_stat_devices d
   ) q;
   return jsonb_build_object('now', now(), 'devices', out, 'retention', jsonb_build_object('sessions_days', 90, 'days_days', 400, 'idle_device_days', 180));

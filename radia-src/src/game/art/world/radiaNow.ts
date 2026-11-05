@@ -36,7 +36,13 @@ export interface PaintedFigure { im: HTMLImageElement; crown: boolean }
 /** La tenue (et le visage) correspondent-ils à l'illustration peinte ? Règle pure : game/world/paintedLook.ts */
 export const paintedLookId = (l: Look): PaintedId | null => paintedLookIdPure(l, getFaceCustom().veil.style === 'none');
 /** Illustration prête pour ce look (null : dessin vectoriel). */
-function paintedFor(l: Look): PaintedFigure | null { const id = paintedLookId(l); const im = painted['char-radia-nc']; return id && im ? { im, crown: id === 'char-radia' } : null; }
+/**
+ * Figure peinte COMPLÈTE (illustration entière, y compris son corps) : désactivée. Radia est désormais toujours « tête peinte + corps dessiné », avec le même cou, les
+ * mêmes mains et la même pose quelle que soit la tenue : plus de saut de taille ou de proportions quand on enfile la tenue exacte de l'illustration.
+ * (`force` : planche de validation, pour comparer avec l'illustration d'origine.)
+ */
+const USE_PAINTED_FIGURE = false;
+function paintedFor(l: Look, force = false): PaintedFigure | null { if (!USE_PAINTED_FIGURE && !force) return null; const id = paintedLookId(l); const im = painted['char-radia-nc']; return id && im ? { im, crown: id === 'char-radia' } : null; }
 // ---- tête peinte sur le corps dessiné (toutes les tenues) : couches tirées de l'illustration (pack chiffré)
 const heads: Partial<Record<'headp-radia-nc' | 'facep-radia' | 'crownp-gold', HTMLImageElement>> = {};
 // origine de chaque calque dans le repère de l'illustration SANS couronne (px) — voir scripts/painted-head/build.py
@@ -110,7 +116,7 @@ export function radiaNowCanvas(w: number, h: number, opts: AvatarOpts = {}): HTM
 }
 const paintedCache = new Map<string, HTMLCanvasElement>();
 /** Pour une photo souvenir (look enregistré) : illustration peinte si ce look y correspond et qu'elle est prête. */
-export function paintedImageFor(l: Look): PaintedFigure | null { return paintedFor(l); }
+export function paintedImageFor(l: Look, force = false): PaintedFigure | null { return paintedFor(l, force); }
 
 const crops = new Map<string, HTMLCanvasElement>();
 

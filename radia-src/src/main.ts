@@ -239,6 +239,17 @@ async function setupThoughts(): Promise<void> {
   } catch { /* les notifications ne doivent jamais empêcher le jeu de démarrer */ }
 }
 
+/** Statistiques de jeu : reprise du suivi seulement si Radia l'a accepté ; invitation unique à un moment calme (jamais pendant un combo ni une notification). */
+async function setupStats(): Promise<void> {
+  try {
+    const st = await import('./core/stats');
+    st.startStatsTracking();
+    const [sch, ui2] = await Promise.all([import('./events/scheduler'), import('./ui/screens/statsConsent')]);
+    const q = new URLSearchParams(location.search);
+    ui2.scheduleStatsInvite(() => sch.safeToNotify(), q.has('debug') && q.has('statsDelay') ? Math.max(0, Number(q.get('statsDelay')) || 0) : 150_000);
+  } catch { /* les statistiques ne doivent jamais empêcher le jeu de démarrer */ }
+}
+
 async function boot(): Promise<void> {
   progress(0.1);
   save.load();
@@ -298,7 +309,7 @@ async function boot(): Promise<void> {
   await showWhatsNewV3();
   await showWhatsNewV4();
   await showWhatsNewV6();
-  void setupThoughts();
+  void setupThoughts(); void setupStats();
   await showWhatsNewV7();
   await showWhatsNewV8();
   await showWhatsNewV9();

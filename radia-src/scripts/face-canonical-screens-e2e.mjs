@@ -15,7 +15,8 @@ const results = []; const check = (n, ok, x = '') => { results.push(!!ok); conso
 const out = await p.evaluate(async () => {
   const art = await window.RADIA.artMod(), lk = await window.RADIA.lookMod(), av = await window.RADIA.avatarMod();
   const wd = window.RADIA.save.data.world.wardrobe;
-  const KIND = { face: { x: 52, y: 26, w: 136, h: 136 }, bust: { x: 14, y: 22, w: 212, h: 300 }, now: { x: 0, y: 0, w: 240, h: 600 }, avatar: { x: 0, y: 0, w: 240, h: 600 } };
+  const L = 13; // RIG.head.lift
+  const KIND = { face: { x: 52, y: 26 - L, w: 136, h: 136 }, bust: { x: 14, y: 22 - L * 0.5, w: 212, h: 300 }, now: { x: 0, y: 0, w: 240, h: 600 }, avatar: { x: 0, y: 0, w: 240, h: 600 } };
   const render = () => ({
     face: art.radiaFaceCanvas('smile', 320), bust: art.radiaBustCanvas('smile', 400), now: art.radiaNowCanvas(480, 1200), avatar: av.avatarCanvas(wd.look, 480, 1200, { expr: 'smile' }),
   });

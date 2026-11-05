@@ -27,7 +27,10 @@ const out = await p.evaluate(() => {
   for (const l of ['Survêtement rouge', 'Casual', 'Robe élégante', 'Soirée', 'Manteau', 'Couronne + robe']) r.tenues[l] = diff(noir, tile('Tenues', l), l === 'Couronne + robe' ? FACE : HEAD);
   for (const l of ['Lunettes aviateur', 'Lunettes œil de chat', 'Lunettes de soleil', 'Créoles', 'Boucles pendantes', 'Bandana', 'Béret', 'Nœud', 'Serre-tête', 'Collier de perles']) r.accessoires[l] = diff(sans, tile('Accessoires', l), CHIN);
   const pe = tile('Référence', 'Radia peinte'), de = tile('Référence', 'Radia dessinée');
-  r.peintVsDessine = B.painted && pe && de ? diff(pe, de, FACE) : null; // sans le lien secret, pas de figure peinte : contrôle ignoré
+  // la figure peinte d'origine garde sa tête à l'ancienne hauteur ; la tête dessinée est remontée de RIG.head.lift (13) pour laisser voir le cou : on compare à décalage égal
+  const FACE_PAINTED = [FACE[0], FACE[1] + 13, FACE[2], FACE[3] + 13];
+  const diff2 = (a, bx, boxA, boxB) => { const A = px(a, boxA), Bp = px(bx, boxB); let s = 0, n = 0; for (let i = 0; i < A.length; i += 4) { const al = Math.max(A[i + 3], Bp[i + 3]) / 255; for (let j = 0; j < 3; j++) s += Math.abs(A[i + j] - Bp[i + j]) * al; n += 3 * al || 0; } return n ? s / n : 0; };
+  r.peintVsDessine = B.painted && pe && de ? diff2(pe, de, FACE_PAINTED, FACE) : null; // sans le lien secret, pas de figure peinte : contrôle ignoré
   r.painted = B.painted; return r;
 });
 if (!out.painted) console.log('(sans le lien secret : les contrôles « peinte » sont ignorés)');

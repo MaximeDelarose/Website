@@ -80,7 +80,7 @@ function evaluate(label, n, r) {
   const overlap = act.filter((s) => s.ci.pill.y + s.ci.pill.h > s.ci.board.y + 1).length;
   check(`${label} : l'indicateur reste TOUJOURS au-dessus de la grille (jamais sur les cases)`, overlap === 0, `${overlap}/${act.length} échantillons gênants`);
   const inScreen = act.every((s) => s.ci.pill.x >= -1 && s.ci.pill.x + s.ci.pill.w <= 394 && s.ci.pill.y >= 0);
-  check(`${label} : l'indicateur est dans l'écran, compact (≤ 220 px, ≤ 34 px de haut)`, inScreen && act.every((s) => s.ci.pill.w <= 220 && s.ci.pill.h <= 34), act.length ? `${Math.round(act[0].ci.pill.w)}×${Math.round(act[0].ci.pill.h)}` : '');
+  check(`${label} : l'indicateur est dans l'écran, compact (≤ 220 px, ≤ 34 px de haut)`, inScreen && act.every((s) => s.ci.pill.w <= 220 && s.ci.pill.h <= 34), (() => { const b = act.find((s) => !(s.ci.pill.x >= -1 && s.ci.pill.x + s.ci.pill.w <= 394 && s.ci.pill.y >= 0 && s.ci.pill.w <= 220 && s.ci.pill.h <= 34)) ?? act[0]; return b ? JSON.stringify(b.ci.pill, (k, v) => typeof v === 'number' ? Math.round(v) : v) : ''; })());
   const bad = r.during.filter((s) => s.busy === true && (s.aug || s.toast || s.pill || s.modal || s.reward || s.bubble));
   check(`${label} : aucune fenêtre, bulle d'Auguste, toast ni pastille PENDANT la chaîne`, bad.length === 0, bad.length ? JSON.stringify(bad[0].who) : '');
   const total = r.after.aug + r.after.toast + r.after.pill;

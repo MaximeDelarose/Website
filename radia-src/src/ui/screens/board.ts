@@ -67,7 +67,7 @@ export async function openBoard(): Promise<void> {
     tiles.push({ section: sec, label, canvas, look }); return canvas;
   };
   const ref = base();
-  const painted = paintedImageFor(ref);
+  const painted = paintedImageFor(ref, true); // référence : l'illustration d'origine, seulement pour comparer
   const secs: HTMLElement[] = [];
   // référence : Auguste, Radia peinte (tenue illustrée), Radia dessinée avec la même tenue
   const paintedCanvas = (w: number, hh: number): HTMLCanvasElement => { const c = document.createElement('canvas'); c.width = w; c.height = hh; if (painted) drawPainted(c.getContext('2d')!, painted, w, hh); return mk('Référence', 'Radia peinte', c); };
