@@ -11,8 +11,9 @@ import { getFaceCustom } from '../characters';
 import { faceKey, isDefaultFace } from '../../../data/world/face';
 import { hasPhotos as hasPhotosP, photoUrl as photoUrlP } from '../../../core/photos';
 import { makeCanvas } from '../kit';
+import { RIG } from './rig';
 import { paintedLookId as paintedLookIdPure, paintedHeadKind, type PaintedId } from '../../world/paintedLook';
-import { setPaintedHeadProvider, paintedHeadEpoch, type PaintedHead } from './avatar';
+import { setPaintedHeadProvider, paintedHeadEpoch, type PaintedHead, type PaintedLayer } from './avatar';
 import { accGroup } from '../../../data/world/ids';
 
 /** Signature courte du look : sert de clé de cache / de texture. */
@@ -27,45 +28,62 @@ const hash = (t: string): string => { let h = 2166136261 >>> 0; for (let i = 0; 
 
 // ---- Radia PEINTE (même artiste qu'Auguste) : illustrations du pack chiffré, utilisées quand elle porte la tenue qu'elles montrent.
 // Sinon (autre tenue, coiffure, accessoire ou visage personnalisé) : dessin vectoriel du dressing, qui suit chaque choix.
-const painted: Partial<Record<PaintedId | 'bust-radia' | 'bust-radia-nc', HTMLImageElement>> = {};
+const painted: Partial<Record<'char-radia-nc', HTMLImageElement>> = {};
+/** Figure peinte prête : l'illustration SANS couronne (crâne complété par le calque de tête) + couronne dorée en calque si elle est portée. */
+export interface PaintedFigure { im: HTMLImageElement; crown: boolean }
 /** La tenue (et le visage) correspondent-ils à l'illustration peinte ? Règle pure : game/world/paintedLook.ts */
 export const paintedLookId = (l: Look): PaintedId | null => paintedLookIdPure(l, isDefaultFace(getFaceCustom()));
 /** Illustration prête pour ce look (null : dessin vectoriel). */
-function paintedFor(l: Look): HTMLImageElement | null { const id = paintedLookId(l); return id ? painted[id] ?? null : null; }
+function paintedFor(l: Look): PaintedFigure | null { const id = paintedLookId(l); const im = painted['char-radia-nc']; return id && im ? { im, crown: id === 'char-radia' } : null; }
 // ---- tête peinte sur le corps dessiné (toutes les tenues) : couches tirées de l'illustration (pack chiffré)
-const heads: Partial<Record<'headp-radia' | 'headp-radia-nc' | 'facep-radia', HTMLImageElement>> = {};
-// origine de chaque couche dans le repère de l'illustration sans couronne (px) ; la couronne ajoute 49 px au-dessus
-const HEAD_GEOM = { 'headp-radia': { x0: 0, y0: -49 }, 'headp-radia-nc': { x0: 0, y0: -7 }, 'facep-radia': { x0: 100, y0: 20 } } as const;
+const heads: Partial<Record<'headp-radia-nc' | 'facep-radia' | 'crownp-gold', HTMLImageElement>> = {};
+// origine de chaque calque dans le repère de l'illustration SANS couronne (px) — voir scripts/painted-head/build.py
+//  · tête : image décalée de PAD = 26 px vers le haut (dôme du crâne reconstruit) ; visage : recadrage (100 ; 20) ; couronne : détourée du haut de l'illustration avec couronne
+const HEAD_GEOM = { 'headp-radia-nc': { x0: 0, y0: -26 }, 'facep-radia': { x0: 100, y0: 20 }, 'crownp-gold': { x0: 127, y0: -45 } } as const;
+const layer = (id: keyof typeof HEAD_GEOM): PaintedLayer | undefined => { const im = heads[id]; return im ? { im, x0: HEAD_GEOM[id].x0, y0: HEAD_GEOM[id].y0, w: im.width, h: im.height } : undefined; };
 function headFor(l: Look): PaintedHead | null {
   const k = paintedHeadKind(l, isDefaultFace(getFaceCustom()), accGroup);
   if (!k) return null;
-  const id = k === 'head-crown' ? 'headp-radia' : k === 'head' ? 'headp-radia-nc' : 'facep-radia';
-  const im = heads[id] ?? (id !== 'facep-radia' ? heads['facep-radia'] : undefined); // repli : visage seul si la tête complète manque
-  if (!im) return null;
-  const real = heads[id] ? id : 'facep-radia';
-  const g = HEAD_GEOM[real];
-  return { kind: real === 'facep-radia' ? 'face' : 'head', im, x0: g.x0, y0: g.y0, w: im.width, h: im.height, crownBaked: real === 'headp-radia' };
+  // tête complète si prête, sinon visage seul (repli) ; la couronne dorée peinte est un calque séparé, indépendant de la coiffure
+  const full = k === 'head' ? layer('headp-radia-nc') : undefined;
+  const head = full ?? layer('facep-radia');
+  if (!head) return null;
+  return { kind: full ? 'head' : 'face', head, crown: l.crown === 'cr-gold' ? layer('crownp-gold') : undefined };
 }
 setPaintedHeadProvider(headFor);
 const PAINT_REF_H = 1018; // hauteur de l'illustration d'Auguste : même échelle pour les deux (Radia reste un peu plus petite, comme sur la référence)
 /** Charge les illustrations peintes de Radia (sans risque, répétable). */
 export function warmRadia(): Promise<void> {
   if (!hasPhotosP()) return Promise.resolve();
-  const ids = ['char-radia', 'char-radia-nc', 'bust-radia', 'bust-radia-nc'] as const;
-  const hids = ['headp-radia', 'headp-radia-nc', 'facep-radia'] as const;
+  const ids = ['char-radia-nc'] as const;
+  const hids = ['headp-radia-nc', 'facep-radia', 'crownp-gold'] as const;
   const load = (n: string) => photoUrlP(n).then((u) => { if (!u) return null; const im = new Image(); im.src = u; return im.decode().then(() => im).catch(() => null); });
   return Promise.all([
     ...ids.map((n) => painted[n] ? undefined : load(n).then((im) => { if (im) painted[n] = im; })),
     ...hids.map((n) => heads[n] ? undefined : load(n).then((im) => { if (im) heads[n] = im; })),
   ]).then(() => { setPaintedHeadProvider(headFor); }); // nouvelle « époque » : les dessins en cache sont refaits avec la tête peinte
 }
-function drawPainted(ctx: CanvasRenderingContext2D, im: HTMLImageElement, w: number, h: number): void {
+export function drawPainted(ctx: CanvasRenderingContext2D, fig: PaintedFigure, w: number, h: number): void {
+  const im = fig.im;
   // même règle que l'illustration d'Auguste dans une boîte 240 × 600 : pieds en bas, échelle commune
   const k = Math.min(w / 240, h / 600);
   const s = (600 * 0.97 * k) / PAINT_REF_H;
   const dw = im.width * s, dh = im.height * s;
   ctx.save(); ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(im, (w - dw) / 2, h - 6 * k - dh, dw, dh);
+  // le visage de l'illustration est 3,5 px à droite du centre de l'image : on le recale sur l'axe du corps (même axe que la tête posée sur le corps dessiné)
+  const faceShift = (RIG.painted.eyeX - im.width / 2) * s;
+  const x0 = (w - dw) / 2 - faceShift, y0 = h - 6 * k - dh;
+  ctx.drawImage(im, x0, y0, dw, dh);
+  // sommet du crâne : l'illustration est tranchée net en haut ; on superpose le dôme reconstruit (calque de tête, mêmes pixels en dessous)
+  const hd = heads['headp-radia-nc'];
+  if (hd) {
+    const g = HEAD_GEOM['headp-radia-nc'], clipPx = 46; // seulement le haut de la tête (lignes -26 à 46 de l'illustration)
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, y0 + clipPx * s); ctx.clip();
+    ctx.drawImage(hd, x0 + g.x0 * s, y0 + g.y0 * s, hd.width * s, hd.height * s);
+    ctx.restore();
+  }
+  const cr = fig.crown ? heads['crownp-gold'] : undefined;
+  if (cr) { const g = HEAD_GEOM['crownp-gold']; ctx.drawImage(cr, x0 + g.x0 * s, y0 + g.y0 * s, cr.width * s, cr.height * s); }
   ctx.restore();
 }
 
@@ -80,15 +98,14 @@ export function drawRadiaNow(ctx: CanvasRenderingContext2D, w: number, h: number
 export function radiaNowCanvas(w: number, h: number, opts: AvatarOpts = {}): HTMLCanvasElement {
   const im = paintedFor(currentLook());
   if (!im) return avatarCanvas(currentLook(), w, h, opts);
-  const key = `${im.src}|${w}x${h}`;
+  const key = `${im.im.src}|${im.crown ? 'c' : 'n'}|${w}x${h}|${heads['headp-radia-nc'] ? 1 : 0}${heads['crownp-gold'] ? 1 : 0}`;
   let c = paintedCache.get(key);
   if (!c) { c = makeCanvas(w, h); drawPainted(c.getContext('2d')!, im, w, h); if (paintedCache.size > 30) paintedCache.delete(paintedCache.keys().next().value as string); paintedCache.set(key, c); }
   return c;
 }
 const paintedCache = new Map<string, HTMLCanvasElement>();
 /** Pour une photo souvenir (look enregistré) : illustration peinte si ce look y correspond et qu'elle est prête. */
-export function paintedImageFor(l: Look): HTMLImageElement | null { return paintedFor(l); }
-export { drawPainted };
+export function paintedImageFor(l: Look): PaintedFigure | null { return paintedFor(l); }
 
 const crops = new Map<string, HTMLCanvasElement>();
 
@@ -97,24 +114,13 @@ function crop(kind: 'face' | 'bust', expr: Expr, outW: number, blink: boolean): 
   const key = `${kind}|${outW}|${expr}|${blink ? 1 : 0}|${lookKey(look)}`;
   let c = crops.get(key);
   if (c) return c;
-  const pid = paintedLookId(look); const pim = pid ? painted[pid] : undefined;
-  if (pid && pim) {
-    // illustration peinte : buste = image dédiée (avec / sans couronne), visage = carré centré sur la tête
-    const bust = painted[pid === 'char-radia' ? 'bust-radia' : 'bust-radia-nc'];
-    const top = pim.height - 952; // la couronne ajoute de la hauteur au-dessus de la tête
-    const src = kind === 'bust' && bust ? { im: bust, x: 0, y: 0, w: bust.width, h: bust.height } : kind === 'bust' ? { im: pim, x: 0, y: 0, w: pim.width, h: Math.round(pim.width * 1.16) } : { im: pim, x: 78, y: top + 50, w: 190, h: 190 };
-    const outH = Math.round(outW * (src.h / src.w));
-    c = makeCanvas(outW, outH);
-    const g = c.getContext('2d')!; g.imageSmoothingQuality = 'high';
-    g.drawImage(src.im, src.x, src.y, src.w, src.h, 0, 0, outW, outH);
-    if (crops.size > 60) crops.delete(crops.keys().next().value as string);
-    crops.set(key, c);
-    return c;
-  }
   // zones en coordonnées logiques de l'avatar (boîte 240 × 600)
   const r = kind === 'face' ? { x: 52, y: 26, w: 136, h: 136 } : { x: 14, y: 22, w: 212, h: 300 };
   const S = 2.4; // résolution de la source
-  const src = avatarCanvas(look, Math.round(240 * S), Math.round(600 * S), { expr, blink });
+  const fig = paintedFor(look); // figure peinte : même cadrage que le dessin, donc même taille de tête et de buste dans les bulles et les médaillons
+  let src: HTMLCanvasElement;
+  if (fig) { src = makeCanvas(Math.round(240 * S), Math.round(600 * S)); drawPainted(src.getContext('2d')!, fig, src.width, src.height); }
+  else src = avatarCanvas(look, Math.round(240 * S), Math.round(600 * S), { expr, blink });
   const k = src.width / 240;
   const outH = Math.round(outW * (r.h / r.w));
   c = makeCanvas(outW, outH);

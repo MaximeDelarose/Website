@@ -34,16 +34,21 @@ import { paintedHeadKind } from '../src/game/world/paintedLook';
 import { accGroup } from '../src/data/world/ids';
 describe('tête peinte sur toutes les tenues', () => {
   const k = (l: Look, ok = true) => paintedHeadKind(l, ok, accGroup);
-  it('cheveux longs : tête complète peinte (couronne dorée comprise ou non), quelle que soit la tenue', () => {
+  it('cheveux longs : tête complète peinte, quelle que soit la tenue ET quelle que soit la couronne', () => {
     expect(k({ ...ref, top: null, bottom: 'bot-track-red', jacket: 'jk-track-red' })).toBe('head');
-    expect(k({ ...ref, crown: 'cr-gold', dress: 'dr-pink-satin', top: null, bottom: null })).toBe('head-crown');
-    expect(k({ ...ref, hair: 'hair-loose', acc: ['ac-pearls'] })).toBe('head'); // collier : n'est pas sur la tête
+    for (const crown of [null, 'cr-gold', 'cr-flowers', 'cr-tiara'] as const) expect(k({ ...ref, crown })).toBe('head'); // la couronne ne change JAMAIS le mode
+    expect(k({ ...ref, hair: 'hair-loose', acc: ['ac-pearls'] })).toBe('head'); // collier : pas sur la tête
   });
-  it('autre coiffure, autre couronne, boucles / lunettes / accessoire de tête : visage peint seul, le reste dessiné', () => {
+  it('lunettes et boucles sont des calques ancrés sur le visage : ils ne changent pas le mode', () => {
+    expect(k({ ...ref, acc: ['ac-hoops'] })).toBe('head');
+    expect(k({ ...ref, acc: ['ac-sunglasses'] })).toBe('head');
+    expect(k({ ...ref, acc: ['gl-aviator', 'ea-drop-gold'] })).toBe('head');
+  });
+  it('autre coiffure ou accessoire de cheveux : visage peint seul, coiffure dessinée autour', () => {
     expect(k({ ...ref, hair: 'hair-bun' })).toBe('face');
-    expect(k({ ...ref, crown: 'cr-tiara' })).toBe('face');
-    expect(k({ ...ref, acc: ['ac-hoops'] })).toBe('face');
-    expect(k({ ...ref, acc: ['ac-sunglasses'] })).toBe('face');
+    expect(k({ ...ref, hair: 'hair-bun', crown: 'cr-tiara' })).toBe('face');
+    expect(k({ ...ref, acc: ['hd-bandana-pink'] })).toBe('face');
+    expect(k({ ...ref, acc: ['hd-beret'] })).toBe('face');
   });
   it('visage personnalisé ou maquillage du dressing : dessin (il suit ces réglages)', () => {
     expect(k(ref, false)).toBeNull();

@@ -18,19 +18,20 @@ export function paintedLookId(l: Look, faceIsDefault: boolean): PaintedId | null
 }
 
 /** Couche de tête peinte à utiliser avec n'importe quelle tenue. */
-export type PaintedHeadKind = 'head-crown' | 'head' | 'face';
+export type PaintedHeadKind = 'head' | 'face';
 const FACE_MAKEUP = new Set(['lips', 'eyes', 'mouth', 'liner', 'shadow']);
 /**
  * Tête peinte (même artiste qu'Auguste) sur le corps dessiné, quelle que soit la tenue :
- * - cheveux longs (lâchés / ondulés), sans couronne ou couronne dorée, sans accessoire de tête → tête complète peinte ;
- * - autre coiffure / couronne / accessoire → visage peint seul, la coiffure et les accessoires restent dessinés autour ;
- * - visage personnalisé ou maquillage du dressing (lèvres, yeux, liner, fard) → dessin (il suit ces réglages).
+ * - cheveux longs (lâchés / ondulés) et aucun foulard / accessoire de cheveux → tête complète peinte ;
+ * - autre coiffure ou accessoire de cheveux → visage peint seul, la coiffure dessinée autour ;
+ * - visage personnalisé ou maquillage du dressing (lèvres, yeux, liner, fard) → null : dessin (il suit ces réglages).
+ * La COURONNE ne change JAMAIS le mode (ni donc l'échelle ou le style de la tête) : c'est un calque posé sur le sommet du crâne.
+ * Lunettes et boucles d'oreilles non plus : ce sont des calques ancrés sur le visage.
  */
 export function paintedHeadKind(l: Look, faceIsDefault: boolean, groupOf: (id: string) => string | null): PaintedHeadKind | null {
   if (!faceIsDefault) return null;
   if (l.acc.some((a) => FACE_MAKEUP.has(groupOf(a) ?? ''))) return null;
   const long = l.hair === 'hair-loose' || l.hair === 'hair-wavy';
-  const headAcc = l.acc.some((a) => { const g = groupOf(a); return g === 'head' || g === 'glasses' || g === 'ears'; });
-  if (long && !headAcc && (!l.crown || l.crown === 'cr-gold')) return l.crown === 'cr-gold' ? 'head-crown' : 'head';
-  return 'face';
+  const headAcc = l.acc.some((a) => groupOf(a) === 'head');
+  return long && !headAcc ? 'head' : 'face';
 }

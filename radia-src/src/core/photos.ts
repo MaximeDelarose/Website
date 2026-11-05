@@ -58,7 +58,7 @@ export function photoUrl(name: string): Promise<string | null> {
     p = (async () => {
       const plain = await decryptAsset(name);
       if (!plain) return null;
-      const type = /^(char|bust|headp|facep)-/.test(name) ? 'image/webp' : 'image/jpeg';
+      const type = /^(char|bust|headp|facep|crownp)-/.test(name) ? 'image/webp' : 'image/jpeg';
       const url = URL.createObjectURL(new Blob([plain as BlobPart], { type }));
       ready.set(name, url);
       return url;

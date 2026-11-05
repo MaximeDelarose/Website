@@ -8,6 +8,7 @@
  * Le visage, les yeux, le nez (anneau) et la marque dans l'œil sont ceux de characters.ts.
  */
 import type { Look, ClothId, HairId } from '../../../data/world/ids';
+import { RIG, paintedToHead, applyHeadScale, skullTopY, crownDy } from './rig';
 import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, EYE_COLOR, MOUTH_SHAPE, LINER_STYLE, SHADOW_COLOR, accGroup } from '../../../data/world/ids';
 import type { Expr } from '../../../data/dialogue';
 import { radiaParts as P, getFaceCustom } from '../characters';
@@ -119,8 +120,9 @@ export function armGeo(s: -1 | 1, pose: AvatarOpts['arms'], st: number, natural 
   else if (pose === 'heart') { x1 = CX + s * 16; y1 = 286; cx = CX + s * 76; cy = 262; }
   else if (pose === 'open') { x1 = CX + s * 94; y1 = 316; cx = CX + s * 90; cy = 236; }
   else if (natural) {
-    // posture naturelle : côté droit de l'image = main posée sur la hanche (coude écarté), côté gauche = bras détendu, légèrement en avant
-    if (s === 1) { x1 = CX + 57; y1 = 306; cx = CX + 96; cy = 246; } else { x1 = CX - 72; y1 = 326; cx = CX - 94; cy = 264; }
+    // pose de RÉFÉRENCE (celle de l'illustration) : bras le long du corps, coudes légèrement écartés, mains détendues — définie dans le gabarit
+    const q = s === 1 ? RIG.pose.right : RIG.pose.left;
+    x1 = CX + q.x1; y1 = q.y1; cx = CX + q.cx; cy = q.cy;
   }
   return { x0: CX + s * 50, y0: 204, cx, cy, x1, y1 };
 }
@@ -187,7 +189,7 @@ function limb(ctx: C, a: Arm, t0: number, t1: number, w0: number, w1: number): v
  * Main peinte : dos de la main pleine, quatre doigts épais réunis (légèrement écartés en éventail), pouce charnu côté corps,
  * ombre douce sous les doigts et lumière sur le dos. `ang` = direction de l'avant-bras (0 = vers le bas), `r` ≈ demi-largeur de la main.
  */
-function handPainted(ctx: C, x: number, y: number, ang: number, s: -1 | 1, r = 14.2): void {
+function handPainted(ctx: C, x: number, y: number, ang: number, s: -1 | 1, r: number = RIG.hand.r): void {
   const k = r / 9.5, sk = skin(), sl = skinL(), sd = skinD();
   ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(k, k); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   const LW = 1.15; // trait fin (le groupe est agrandi par k)
@@ -1776,25 +1778,23 @@ function pick(id: string | null, slot: string): ClothId | null {
 }
 
 // ---------------------------------------------------------------- tête PEINTE (illustration, même artiste qu'Auguste)
-/** 'head' : tête complète peinte (visage + cheveux longs, couronne dorée comprise ou non) ; 'face' : visage peint seul, coiffure dessinée autour. */
-export interface PaintedHead { kind: 'head' | 'face'; im: CanvasImageSource; /** origine de l'image dans le repère de l'illustration (px) */ x0: number; y0: number; w: number; h: number; crownBaked: boolean }
+/** Calque peint : image + origine (px) dans le repère de l'illustration sans couronne. */
+export interface PaintedLayer { im: CanvasImageSource; x0: number; y0: number; w: number; h: number }
+/**
+ * 'head' : tête complète peinte (visage + cheveux longs, crâne complet, SANS couronne) ;
+ * 'face' : visage peint seul, coiffure dessinée autour. `crown` : couronne dorée peinte (calque séparé, posée sur le crâne).
+ */
+export interface PaintedHead { kind: 'head' | 'face'; head: PaintedLayer; crown?: PaintedLayer }
 let headProvider: ((look: Look) => PaintedHead | null) | null = null;
 let headEpoch = 0;
 /** Branche la tête peinte (radiaNow) ; à rappeler quand les images sont prêtes (le cache du dessin change de clé). */
 export function setPaintedHeadProvider(fn: ((look: Look) => PaintedHead | null) | null): void { headProvider = fn; headEpoch++; }
 export const paintedHeadEpoch = (): number => headEpoch;
-// repère de l'illustration → repère de l'avatar : yeux alignés, échelle commune
-const PH_S = 0.708, PH_CX = 176, PH_CY = 118, AV_CX = 120, AV_CY = 105; // yeux peints (176 ; 118) px ↔ yeux du dessin (120 ; 105) : lunettes et boucles restent bien placées
-// tête complète : un peu plus petite (proportions tête / corps d'Auguste), le menton reste à sa place sur le cou
-// Proportions tête / corps d'Auguste : toute la tête (visage, cheveux, couronne, bijoux) est réduite autour du MENTON, le cou ne bouge pas.
-// Tête peinte complète : un peu plus (ses cheveux sont très volumineux).
-const HEAD_ALL = 0.93, HEAD_SHRINK = 0.88, PH_CHIN = 205;
-const AV_CHIN = AV_CY + (PH_CHIN - PH_CY) * PH_S;
-/** Applique au contexte la mise à l'échelle de la tête complète autour du menton (pour les cheveux arrière dessinés derrière). */
-function headShrink(ctx: C, full: boolean): void { const k = full ? HEAD_ALL * HEAD_SHRINK : HEAD_ALL; ctx.translate(AV_CX, AV_CHIN); ctx.scale(k, k); ctx.translate(-AV_CX, -AV_CHIN); }
-function drawPaintedHead(ctx: C, ph: PaintedHead): void {
+/** Dessine un calque peint dans le repère de la tête (avant l'échelle de tête), à partir de son origine dans l'illustration. */
+function drawPaintedLayer(ctx: C, l: PaintedLayer, dy = 0): void {
+  const [x, y] = paintedToHead(l.x0, l.y0), k = RIG.painted.k;
   ctx.save(); ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(ph.im, AV_CX + (ph.x0 - PH_CX) * PH_S, AV_CY + (ph.y0 - PH_CY) * PH_S, ph.w * PH_S, ph.h * PH_S);
+  ctx.drawImage(l.im, x, y + dy, l.w * k, l.h * k);
   ctx.restore();
 }
 
@@ -1819,7 +1819,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   ctx.lineCap = 'round';
 
   // 1. cheveux arrière, dos de la robe, jambes et chaussures
-  if (fullHead || !P.veilOn()) { ctx.save(); headShrink(ctx, fullHead); P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); ctx.restore(); } // derrière la tête peinte : comble l'espace entre cou et longueurs ; un voile remplace les cheveux
+  if (fullHead || !P.veilOn()) { ctx.save(); applyHeadScale(ctx); P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); ctx.restore(); } // derrière la tête peinte : comble l'espace entre cou et longueurs ; un voile remplace les cheveux
   dfx?.back?.(ctx, st);
   legsSkin(ctx, st, !!dress && TIGHTS_DRESSES.has(dress));
   shoesDraw(ctx, shoes, st);
@@ -1849,7 +1849,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const arms = ([-1, 1] as const).map((s) => armGeo(s, opts.arms, st, isNatural(opts)));
   ([-1, 1] as const).forEach((_s, i) => {
     const a = arms[i];
-    limb(ctx, a, 0.08, 1, 25, 16.5);
+    limb(ctx, a, 0.08, 1, RIG.arm.w0, RIG.arm.w1);
     if (sleeveSpec) drawSleeve(ctx, a, sleeveSpec, !!jk);
   });
 
@@ -1864,7 +1864,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
     if (opts.arms === 'heart') return;
     const a = arms[i];
     const ang = endAng(a, 1);
-    handPainted(ctx, a.x1 + Math.sin(-ang) * 8, a.y1 + Math.cos(-ang) * 8, ang, _s, 14.2);
+    handPainted(ctx, a.x1 + Math.sin(-ang) * RIG.hand.reach, a.y1 + Math.cos(-ang) * RIG.hand.reach, ang, _s, RIG.hand.r);
   });
   if (opts.arms === 'heart') {
     heartPath(ctx, 120, 296, 30);
@@ -1885,8 +1885,8 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   if (accs.includes('ac-pearls')) pearls(ctx);
   for (const a of accs) EXTRA.neck[a]?.(ctx, opts.shine ?? 0);
 
-  // 8. tête (bloc réduit autour du menton : mêmes proportions tête / corps qu'Auguste)
-  ctx.save(); headShrink(ctx, fullHead);
+  // 8. tête : UNE SEULE échelle (gabarit) pour tout le bloc, quelle que soit la coiffure, la couronne ou le mode peint / dessiné
+  ctx.save(); applyHeadScale(ctx);
   ctx.save();
   ctx.translate(P.HEAD_X, P.HEAD_Y);
   ctx.scale(P.HEAD_K, P.HEAD_K);
@@ -1895,17 +1895,24 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const eyeId = pickId('ey-'), moId = pickId('mo-'), elId = pickId('el-'), esId = pickId('es-');
   if (!fullHead) P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, iris: eyeId ? EYE_COLOR[eyeId] : undefined, mouth: moId ? MOUTH_SHAPE[moId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
   ctx.restore();
-  if (ph) drawPaintedHead(ctx, ph); // visage peint par-dessus l'ovale dessiné (contour du dessin, traits de l'illustration)
-  if (fullHead) { ctx.restore(); ctx.restore(); return; } // tête complète peinte : cheveux, couronne dorée et finitions déjà dans l'illustration
-  if (!P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairFrontLayer(ctx, hair, sway));
+  if (ph) drawPaintedLayer(ctx, ph.head); // visage peint par-dessus l'ovale dessiné (contour du dessin, traits de l'illustration)
+  if (!fullHead && !P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairFrontLayer(ctx, hair, sway)); // tête complète peinte : cheveux déjà dans l'illustration
   if (P.veilOn()) { ctx.save(); ctx.translate(P.HEAD_X, P.HEAD_Y); ctx.scale(P.HEAD_K, P.HEAD_K); P.drawVeil(ctx); ctx.restore(); }
   if (accs.includes('ac-hoops')) hoops(ctx);
   if (accs.includes('ac-sunglasses')) sunglasses(ctx);
   // boucles → lunettes → foulards / accessoires de cheveux (du plus près au plus haut)
   for (const grp of ['ears', 'glasses', 'head'] as const) for (const a of accs) if (accGroup(a) === grp) EXTRA.face[a]?.(ctx);
-  if (crown === 'cr-gold') crownGold(ctx);
-  else if (crown === 'cr-flowers') crownFlowers(ctx);
-  else if (crown === 'cr-tiara') crownTiara(ctx);
+  // couronnes : TOUJOURS posées par rapport au sommet du crâne (peint ou dessiné), jamais par rapport aux dimensions d'une image
+  if (crown) {
+    const dy = fullHead ? crownDy('painted') : 0; // couronnes dessinées : calées sur le crâne dessiné, décalées vers le crâne peint
+    ctx.save(); ctx.translate(0, dy);
+    if (crown === 'cr-gold') {
+      if (ph?.crown) { ctx.restore(); ctx.save(); drawPaintedLayer(ctx, ph.crown, fullHead ? 0 : skullTopY('vector') - skullTopY('painted')); } // couronne peinte : même position relative au crâne
+      else crownGold(ctx);
+    } else if (crown === 'cr-flowers') crownFlowers(ctx);
+    else if (crown === 'cr-tiara') crownTiara(ctx);
+    ctx.restore();
+  }
   ctx.restore(); // bloc tête
   ctx.restore();
 }
@@ -1946,53 +1953,19 @@ function drawSleeve(ctx: C, a: Arm, sp: SleeveSpec, under: boolean): void {
  * Dessine Radia en pied avec son look, centrée dans une boîte w × h (ratio 240 × 600
  * conservé, pieds en bas de la boîte).
  */
-/** Posture naturelle par défaut, sauf marche animée (step) ou demande explicite de l'ancienne posture droite. */
+/** Pose de référence (bras le long du corps, comme l'illustration), sauf marche animée (step) ou demande explicite de l'ancienne pose. */
 const isNatural = (o: AvatarOpts): boolean => o.pose !== 'straight' && !o.step;
-const TILT_UPPER = -0.055; // haut du corps : ≈ −3° autour de la taille
-const TILT_LOWER = 0.02; // hanches et jambes : ≈ +1,1° autour des pieds (poids du corps sur une jambe)
 
-function drawAvatarFlat(ctx: CanvasRenderingContext2D, look: Look, w: number, h: number, opts: AvatarOpts): void {
+/**
+ * Dessine Radia en pied, centrée dans une boîte w × h (ratio 240 × 600 conservé, pieds en bas de la boîte).
+ * Un seul passage : le corps est symétrique et suit la pose de l'illustration (plus de recomposition en deux moitiés).
+ */
+export function drawAvatar(ctx: CanvasRenderingContext2D, look: Look, w: number, h: number, opts: AvatarOpts = {}): void {
   const k = Math.min(w / 240, h / 600);
   ctx.save();
   ctx.translate((w - 240 * k) / 2, h - 600 * k);
   ctx.scale(k, k);
   drawAvatarLocal(ctx, look, opts);
-  ctx.restore();
-}
-
-export function drawAvatar(ctx: CanvasRenderingContext2D, look: Look, w: number, h: number, opts: AvatarOpts = {}): void {
-  if (!isNatural(opts)) { drawAvatarFlat(ctx, look, w, h, opts); return; }
-  // silhouette en S : l'avatar est dessiné une fois puis recomposé en deux moitiés qui pivotent autour de la taille et des pieds.
-  // La jonction est un FONDU (le haut s'efface sur quelques unités au-dessus de la couture) : aucune arête visible à la taille.
-  const t = ctx.getTransform(); const sc = Math.hypot(t.a, t.b) || 1;
-  const pw = Math.max(1, Math.ceil(w * sc)), ph = Math.max(1, Math.ceil(h * sc));
-  const tmp = makeCanvas(pw, ph);
-  const tc = tmp.getContext('2d')!; tc.scale(sc, sc);
-  drawAvatarFlat(tc, look, w, h, opts);
-  const k = Math.min(w / 240, h / 600);
-  const ox = (w - 240 * k) / 2, oy = h - 600 * k;
-  const cx = ox + CX * k, seamY = oy + 352 * k, feetY = oy + 585 * k;
-  const fade = 10 * k; // hauteur du fondu
-  ctx.save();
-  // 1. hanches et jambes : légère rotation autour des pieds, en recouvrement sous la couture
-  ctx.translate(cx, feetY); ctx.rotate(TILT_LOWER); ctx.translate(-cx, -feetY);
-  ctx.beginPath(); ctx.rect(-2, seamY - 14 * k, w + 4, h - seamY + 14 * k + 4); ctx.clip();
-  ctx.drawImage(tmp, 0, 0, w, h);
-  ctx.restore();
-  // 2. haut du corps : rotation autour de la couture ; la moitié basse est estompée en dégradé (canvas temporaire, même repère)
-  const dy = seamY - feetY;
-  const px = cx - dy * Math.sin(TILT_LOWER), py = feetY + dy * Math.cos(TILT_LOWER);
-  const up = makeCanvas(pw, ph);
-  const uc = up.getContext('2d')!; uc.scale(sc, sc);
-  uc.beginPath(); uc.rect(-2, -2, w + 4, seamY + fade * 0.4 + 2); uc.clip();
-  uc.drawImage(tmp, 0, 0, w, h);
-  uc.globalCompositeOperation = 'destination-in';
-  const gm = uc.createLinearGradient(0, seamY - fade, 0, seamY + fade * 0.4); gm.addColorStop(0, 'rgba(0,0,0,1)'); gm.addColorStop(1, 'rgba(0,0,0,0)');
-  uc.fillStyle = gm; uc.fillRect(-2, -2, w + 4, h + 4);
-  ctx.save();
-  ctx.translate(px, py); ctx.rotate(TILT_UPPER); ctx.translate(-px, -py);
-  ctx.translate(cx, feetY); ctx.rotate(TILT_LOWER); ctx.translate(-cx, -feetY); // même repère que la moitié basse
-  ctx.drawImage(up, 0, 0, w, h);
   ctx.restore();
 }
 

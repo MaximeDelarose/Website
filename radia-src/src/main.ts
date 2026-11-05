@@ -159,6 +159,25 @@ async function showWhatsNewV8(): Promise<void> {
   });
 }
 
+/** Nouveautés v9 : le nouveau look de Radia, la planche et le bouton « Tenue illustrée » (une seule fois, pour les parties existantes). Sans spoiler. */
+async function showWhatsNewV9(): Promise<void> {
+  if (save.data.seenUpdates.includes('v9')) return;
+  save.data.seenUpdates.push('v9');
+  save.save();
+  if (!save.hadSave) return;
+  const li = (t: string) => h('li', { style: 'margin:4px 0' }, t);
+  await ui.modal({
+    title: 'Radia a un nouveau look ♡',
+    body: h('div', { style: 'text-align:left;font-size:15px' },
+      h('ul', { style: 'padding-left:18px;margin:6px 0' },
+        li('Un nouveau visage et de longs cheveux, dessinés dans le même style qu\'Auguste : les deux personnages vont mieux ensemble.'),
+        li('Sa tête garde la même taille avec toutes les couronnes, coiffures et accessoires.'),
+        li('Au dressing, le bouton « Tenue illustrée » remet en un geste la tenue de l\'illustration, avec les pièces que tu possèdes déjà.')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, 'Tes tenues, tes achats et ta partie sont intacts ♡')),
+    actions: [{ label: 'Super !', value: 'ok' }],
+  });
+}
+
 /** Nouveautés v3 : le château de Radia (une seule fois, pour les parties existantes). */
 async function showWhatsNewV3(): Promise<void> {
   if (save.data.seenUpdates.includes('v3')) return;
@@ -211,7 +230,7 @@ async function boot(): Promise<void> {
   startGiftBubbles();
   startDaily();
   void warmAuguste();
-  preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'headp-radia', 'headp-radia-nc', 'facep-radia', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste', 'head-new']);
+  preloadPhotos(['face-radia', 'face-auguste', 'char-radia-nc', 'headp-radia-nc', 'facep-radia', 'crownp-gold', 'char-auguste', 'bust-auguste', 'head-auguste', 'head-new']);
   progress(0.3);
 
   // Écriture immédiate quand Safari passe en arrière-plan ou se ferme.
@@ -258,6 +277,7 @@ async function boot(): Promise<void> {
   void setupThoughts();
   await showWhatsNewV7();
   await showWhatsNewV8();
+  await showWhatsNewV9();
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => undefined);
@@ -276,6 +296,9 @@ boot().catch((e) => {
 });
 
 startUpdateWatch();
+
+// Planche de validation visuelle des personnages : ?planche (vrais composants du jeu, même échelle, repères du gabarit)
+if (new URLSearchParams(location.search).has('planche')) { window.setTimeout(() => { void import('./ui/screens/board').then((m) => m.openBoard()); }, 1800); }
 
 // Accès debug en développement : window.RADIA
 if (new URLSearchParams(location.search).has('debug')) { void import('./casino'); void import('./wheel'); }
