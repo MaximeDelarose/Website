@@ -1171,13 +1171,13 @@ window.ES_DATA = (function () {
     ],
     planeur: [
       { id: "pique",    name: "Piqué",    color: "#6ad8ff", a: "Accroché, se recharge 2 fois plus vite.", m: "Normal.", v: "Plongeon : invulnérable, frappe fort à l'arrivée." },
-      { id: "courant",  name: "Courant",  color: "#b07cf0", quest: "p_planeur2", a: "Accroché, rien de spécial.", m: "Plus il va vite, plus il fait mal (jusqu'à +60 %).", v: "Rafale qui repousse et blesse autour de lui." },
+      { id: "courant",  name: "Courant",  color: "#b07cf0", quest: "p_planeur2", a: "Accroché : l'élan de la glisse se garde, +40 % de dégâts pendant 3 s à chaque accrochage.", m: "Plus il va vite, plus il fait mal (jusqu'à +60 %).", v: "Rafale qui repousse et blesse autour de lui." },
       { id: "perchoir", name: "Perchoir", color: "#f2b05e", quest: "p_planeur3", a: "Accroché, portée x1,6 et +30 % de dégâts.", m: "Normal.", v: "Une gerbe de 5 plumes vers l'avant." },
     ],
   };
   var V2CH = {
-    noisette:  { order: 0, rule: "Choisit parmi 4 cartes au lieu de 3. L'écureuil d'apprentissage." },
-    capitaine: { order: 1, rule: "Il ne frappe pas lui-même : son équipage le suit en grappe et attaque avec une version miniature de son arme (10 % de ses dégâts par matelot). 10 matelots au départ, +2 par niveau, 50 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
+    noisette:  { order: 0, rule: "Choisit parmi 4 cartes au lieu de 3. Carnet : une carte non choisie est mise de côté et revient au niveau suivant ; un niveau gratuit tous les 5 niveaux." },
+    capitaine: { order: 1, rule: "Il ne frappe pas lui-même : son équipage le suit, éparpillé autour de lui, et attaque avec une version miniature de son arme (5 % de ses dégâts par matelot). 5 matelots au départ, +2 par niveau, 50 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
     planeur:   { order: 2, rule: "Glisse sans cesse (inertie) et survole les obstacles. Ne s'ancre qu'accroché à un arbre ou à une souche." },
   };
   var CHAR_ALL = CHARACTERS.slice();
@@ -1494,7 +1494,7 @@ window.ES_DATA = (function () {
                [{ id: "voltigeuse", name: "Voltigeuse", desc: "Clé : la Volte se recharge en 1,5 s." }, { id: "intouchable", name: "Intouchable", desc: "Clé : invulnérable 1 s de plus après une roulade." }]],
     glaneuse: [[{ id: "pochespleines", name: "Poches pleines", desc: "En mouvement : +15 % d'expérience." }, { id: "aspiration", name: "Aspiration", desc: "La Volte aspire aussi l'or et les objets." }],
                [{ id: "moisson", name: "Grande glane", desc: "Clé : ramassage x3 en mouvement." }, { id: "avarice", name: "Avarice", desc: "Clé : toutes les 30 noisettes, une onde part autour de toi." }]],
-    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+4 matelots max (50 au plus)." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
+    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+2 matelots max (50 au plus)." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
                [{ id: "batterie", name: "Canonnade", desc: "Clé : ancré, la salve part toutes les 0,3 s." }, { id: "couverture", name: "Tir de couverture", desc: "Clé : la salve marche aussi en mouvement, 2 fois plus lente." }]],
     abordage: [[{ id: "sabres", name: "Sabres", desc: "La charge fait +50 % de dégâts." }, { id: "recrue", name: "Recrue d'abordage", desc: "Un ennemi tué pendant une charge a 25 % de chance de recruter." }],
                [{ id: "mutinerie", name: "Mutinerie", desc: "Clé : la charge dure 2 fois plus longtemps." }, { id: "bouclierh", name: "Mur de matelots", desc: "Clé : en cercle, les matelots arrêtent les tirs ennemis." }]],
@@ -1509,8 +1509,8 @@ window.ES_DATA = (function () {
   };
   // 2.17 : talents de personnage à effet, valables avec toutes les postures : 6 paliers, 3 choix par palier. Un talent = un déclencheur + une action, de plus en plus fort selon le palier
   var TAL_XLVL = [3, 5, 7, 9, 10, 12];
-  var TX_CHARS = ["noisette", "cendrine", "charbon", "flocon", "planeur", "capitaine", "jumeaux", "chevalier", "mage", "bucheron", "ninja", "druide", "pataud", "trefle"];
-  var TX_NOUN = { noisette: "glands", cendrine: "cendres", charbon: "braises", flocon: "neige", planeur: "plumes", capitaine: "matelots", jumeaux: "jumeaux", chevalier: "lances", mage: "runes", bucheron: "copeaux", ninja: "ombres", druide: "ronces", pataud: "miettes", trefle: "trèfles" };
+  var TX_CHARS = ["noisette", "cendrine", "charbon", "flocon", "planeur", "capitaine", "jumeaux", "chevalier", "mage", "bucheron", "ninja", "druide", "pataud", "trefle", "devoreur", "alchimiste", "pillard"];
+  var TX_NOUN = { noisette: "glands", cendrine: "cendres", charbon: "braises", flocon: "neige", planeur: "plumes", capitaine: "matelots", jumeaux: "jumeaux", chevalier: "lances", mage: "runes", bucheron: "copeaux", ninja: "ombres", druide: "ronces", pataud: "miettes", trefle: "trèfles", devoreur: "crocs", alchimiste: "fioles", pillard: "pièces" };
   var TX_TRIG = ["volte", "kill", "hurt", "anchor", "timer", "lowhp"], TX_ACT = ["ring", "nova", "heal", "shield", "haste", "rage", "freeze", "chain", "bomb", "pull"];
   var TX_TAG = { volte: "Volte", kill: "Victoires", hurt: "Touché", anchor: "Ancré", timer: "Cadence", lowhp: "Sursaut" };
   var TX_ANAME = { ring: "Gerbe de ", nova: "Éclat de ", heal: "Réconfort de ", shield: "Garde de ", haste: "Élan de ", rage: "Fureur de ", freeze: "Givre de ", chain: "Éclair de ", bomb: "Brasier de ", pull: "Appel de " };
@@ -1574,7 +1574,10 @@ window.ES_DATA = (function () {
     ninja: [["Ombre fatale", "opener"], ["Pas feutré", "sprint"], ["Lame empoisonnée", "burn"], ["Kunaï éclair", "critBolt"], ["Disparition", "afterVolte"], ["Frappe nerveuse", "bounty"]],
     druide: [["Ronces vives", "reflect"], ["Floraison", "patience"], ["Spores", "chill"], ["Racines", "stun"], ["Cycle de vie", "killHeal"], ["Nuée", "crowd"]],
     pataud: [["Gros appétit", "lifesteal"], ["Ventre plein", "desperate"], ["Miettes", "bounty"], ["Digestion", "patience"], ["Festin", "streak"], ["Roulé-boulé", "knock"]],
-    trefle: [["Trèfle à quatre", "critBolt"], ["Coup de bol", "bounty"], ["Chanceux", "execute"], ["Pile ou face", "opener"], ["Jeu de dés", "nth"], ["Fortune", "streak"]]
+    trefle: [["Trèfle à quatre", "critBolt"], ["Coup de bol", "bounty"], ["Chanceux", "execute"], ["Pile ou face", "opener"], ["Jeu de dés", "nth"], ["Fortune", "streak"]],
+    devoreur: [["Gros morceau", "lifesteal"], ["Panse sans fond", "streak"], ["Mâchoire", "execute"], ["Digestion rapide", "patience"], ["Appétit féroce", "desperate"], ["Festin", "killHeal"]],
+    alchimiste: [["Fiole instable", "nth"], ["Vapeurs", "chill"], ["Étincelle chimique", "critBolt"], ["Distillat", "burn"], ["Réaction en chaîne", "crowd"], ["Transmutation", "bounty"]],
+    pillard: [["Main leste", "bounty"], ["Coup bas", "opener"], ["Butin de guerre", "streak"], ["Cible marquée", "execute"], ["Fuite en avant", "sprint"], ["Garde-robe", "reflect"]]
   };
   Object.keys(TXU).forEach(function (cid) {
     TXU[cid].forEach(function (u, t) {
@@ -1609,14 +1612,28 @@ window.ES_DATA = (function () {
     { id: "pataud", name: "Pataud", title: "Écureuil glouton", sprite: "sq_pataud", weapon: "katana", desc: "" },
     { id: "trefle", name: "Trèfle", title: "Écureuil joueur", sprite: "sq_trefle", weapon: "katana", desc: "" }
   );
+  var DEV_TOP = ["....tt..........", "..ttttt.........", ".tttdtttt..d..d.", ".ttd...tt.ooooo.", ".ttd....t.ookooo", ".ttd......ooooon", "..ttd....orRRr..", "...ttd..ooocc...", "....tddoooocc...", ".....doooooc....", ".....ddooooo...."];
+  var ALCH_TOP = ["....tt......y...", "..ttttt....hhh..", ".tttdtttt.hHhHh.", ".ttd...tt.ooooo.", ".ttd....t.ookooo", ".ttd......ooooon", "..ttd....ooccc..", "...ttd..oooGg...", "....tddoooocc...", ".....doooooc....", ".....ddooooo...."];
+  var PILL_TOP = ["....tt..........", "..ttttt.........", ".tttdtttt..d..d.", ".ttd...tt.mmmmm.", ".ttd....t.mmkmmm", ".ttd......ooooon", "..ttd....ooccc..", "...ttd..ooocc...", "....tddoooocc...", ".....dooooyc....", ".....ddooooo...."];
+  SPRITES.sq_devoreur = squirrelA({ t: "#8a9a4a", d: "#4a5a2a", o: "#b8c86a", c: "#f6f0d0", k: "#2b1709", n: "#3a4a1a", r: "#c8553d", R: "#fdf3de" }, DEV_TOP);
+  SPRITES.sq_alchimiste = squirrelA({ t: "#6ac8b8", d: "#2e7a6e", o: "#9ee8d8", c: "#fdf3de", k: "#12302a", n: "#1e5a50", h: "#7a4aa8", H: "#a87ad8", y: "#f6d36b", g: "#9cf06a", G: "#d8ffb0" }, ALCH_TOP);
+  SPRITES.sq_pillard = squirrelA({ t: "#6a6a80", d: "#2e2e3a", o: "#9a9ab8", c: "#e8dcc0", k: "#1a1a22", n: "#3a3a4a", m: "#1a1a22", y: "#f6d36b" }, PILL_TOP);
+  CHAR_ALL.push(
+    { id: "devoreur", name: "Croc", title: "Écureuil vorace", sprite: "sq_devoreur", weapon: "katana", desc: "" },
+    { id: "alchimiste", name: "Fiole", title: "Écureuil alchimiste", sprite: "sq_alchimiste", weapon: "katana", desc: "" },
+    { id: "pillard", name: "Rapine", title: "Écureuil pillard", sprite: "sq_pillard", weapon: "katana", desc: "" }
+  );
   var V2CH2 = {
+    devoreur: { order: 10, quest: "q2_croc", rule: "À chaque niveau : prendre une carte, dévorer les cartes (une stat permanente selon leur type) ou miser. Trois festins d'affilée déclenchent une Frénésie de 20 s ; une vraie carte remet la Faim à zéro. Dévorer une technique lui laisse une empreinte : une onde tous les N coups." },
+    alchimiste: { order: 11, quest: "q2_fiole", rule: "Chaque ennemi tué donne une essence de son élément (3 au plus) ; la dernière change l'élément de son arme et de ses techniques. Sa Volte lance une potion : deux essences différentes déclenchent leur réaction, trois identiques font le Grand Œuvre. 20 mélanges : la Pierre philosophale change les ennemis proches en butin." },
+    pillard: { order: 12, quest: "q2_rapine", rule: "L'or est sa munition : sa Volte lance des pièces (10 glands d'or chacune, 10 au plus). Primes sur les élites et les boss, prix réduits aux coffres, marchands et sanctuaires." },
     jumeaux: { order: 3, quest: "q2_jumeaux", rule: "Deux corps sur les mêmes commandes, vies séparées. Pop reprend tes armes à 60 % ; si l'un tombe, l'autre peut le relever." },
     cendrine: { order: 4, quest: "q2_cendrine", rule: "Les coups reçus s'écoulent sur 4 s ; frapper pendant ce délai en efface une partie. Un champ de force l'entoure." },
     druide: { order: 5, quest: "q2_fougere", rule: "Ancrée, elle enterre une noisette qui devient pousse, puis arbre qui attaque." },
-    pataud: { order: 6, quest: "q2_pataud", rule: "Grossit en mangeant l'XP : plus de PV et de dégâts au contact, mais plus lent et plus facile à toucher. La Volte recrache tout." },
+    pataud: { order: 6, quest: "q2_pataud", rule: "Grossit en mangeant l'XP et les ennemis qu'il tue : plus de PV et de dégâts au contact, mais plus lent et plus facile à toucher. La Volte recrache tout." },
     mage: { order: 7, quest: "q2_mage", rule: "Ses armes puisent dans une jauge de sève ; à sec, elles tirent 2 fois moins vite. Ancrée, elle recharge ; jauge pleine = surcharge." },
-    ninja: { order: 8, quest: "q2_ninja", rule: "Les ennemis ne la repèrent qu'à courte portée. Dégâts x3 sur ceux qui ne l'ont pas vue." },
-    trefle: { order: 9, quest: "q2_trefle", rule: "À chaque niveau, elle prend sa carte ou la mise : deux cartes au niveau suivant, ou rien." },
+    ninja: { order: 8, quest: "q2_ninja", rule: "Les ennemis ne la repèrent qu'à courte portée ; dégâts x3 sur ceux qui ne l'ont pas vue. Sa Volte marque une cible (3 coups : exécution) et laisse un clone d'ombre qui frappe ; une tuerie silencieuse prolonge son invisibilité et recharge la Volte." },
+    trefle: { order: 9, quest: "q2_trefle", rule: "À chaque niveau, elle prend sa carte ou la mise : deux cartes au niveau suivant, ou rien. Trois dés : toutes les 20 s, un dé donne un bonus au hasard (dégâts, bouclier, soin, onde, butin ou critiques)." },
   };
   Object.keys(V2CH2).forEach(function (k) { V2CH[k] = V2CH2[k]; });
   var ALLCH = CHAR_ALL;
@@ -1650,9 +1667,24 @@ window.ES_DATA = (function () {
       { id: "instable", name: "Instable", color: "#ff5ad0", a: "Recharge la sève.", m: "Consomme la sève.", v: "Déclenche une surcharge si la jauge dépasse 60 ; les surcharges explosent." },
     ],
     ninja: [
-      { id: "affut", name: "Affût", color: "#8a8aa8", a: "Après 1 s : invisible, le prochain coup est critique.", m: "Normal.", v: "Disparaît 1 s." },
-      { id: "lamevent", name: "Lame-vent", color: "#d8e8ff", a: "Normal.", m: "Des shurikens restent dans son sillage.", v: "Une gerbe de 6 shurikens." },
-      { id: "danseuse", name: "Danseuse", color: "#ff7a9a", a: "Normal.", m: "Normal.", v: "Chaque Volte sans prendre de coup : +8 % de cadence (5 fois max)." },
+      { id: "affut", name: "Affût", color: "#8a8aa8", a: "Après 1 s : invisible, le prochain coup est critique.", m: "Normal.", v: "Disparaît 1 s et marque 2 cibles au lieu d'une." },
+      { id: "lamevent", name: "Lame-vent", color: "#d8e8ff", a: "Normal.", m: "Des shurikens restent dans son sillage.", v: "Une gerbe de 6 shurikens ; son clone lance des shurikens au lieu de frapper." },
+      { id: "danseuse", name: "Danseuse", color: "#ff7a9a", a: "Normal.", m: "En mouvement : +15 % d'esquive.", v: "Chaque Volte sans prendre de coup : +8 % de cadence (5 fois max) ; 2 clones qui durent plus longtemps." },
+    ],
+    devoreur: [
+      { id: "gourmet", name: "Gourmet", color: "#9cc56b", a: "Ancré : regagne 1 PV/s. Les festins donnent +50 % de stats.", m: "Normal.", v: "Recrache un projectile par festin récent (6 au plus)." },
+      { id: "charognard", name: "Charognard", color: "#c8553d", a: "Normal.", m: "En mouvement : chaque ennemi tué le soigne de 2 PV et remplit un tiers de Faim.", v: "Dévore les noisettes d'XP autour de lui." },
+      { id: "estomac", name: "Estomac vide", color: "#ff8a4a", a: "Normal.", m: "Un choix de carte en moins, mais +20 % de dégâts.", v: "Rugit : une onde dont la force dépend de ses festins." },
+    ],
+    alchimiste: [
+      { id: "transmutatrice", name: "Transmutatrice", color: "#9ee8d8", a: "Ancrée : une essence gratuite de l'élément de son arme toutes les 6 s.", m: "Normal.", v: "Potion : chaque essence portée donne +5 % de dégâts pendant 5 s." },
+      { id: "empoisonneuse", name: "Empoisonneuse", color: "#9cc56b", a: "Normal.", m: "Normal.", v: "Les potions laissent une flaque qui brûle 6 s." },
+      { id: "catalyseuse", name: "Catalyseuse", color: "#c9b3ff", a: "Normal.", m: "Normal.", v: "Déclenche la réaction de tous les ennemis marqués à l'écran." },
+    ],
+    pillard: [
+      { id: "receleur", name: "Receleur", color: "#f6d36b", a: "Normal.", m: "Normal.", v: "Lance des pièces. +2 % de dégâts par tranche de 100 glands d'or possédés (30 % max)." },
+      { id: "chasseur", name: "Chasseur de primes", color: "#ff5a6a", a: "Normal.", m: "Normal.", v: "Lance des pièces. +25 % de dégâts sur les élites et les boss." },
+      { id: "cambrioleur", name: "Cambrioleur", color: "#8a8aa8", a: "Normal.", m: "Normal.", v: "Lance des pièces. Les prix baissent de 35 % (15 % pour les autres)." },
     ],
     trefle: [
       { id: "portebonheur", name: "Porte-bonheur", color: "#9cd070", a: "Ancrée, sa chance monte (butin).", m: "Normal.", v: "Une pièce : un objet tombe 1 fois sur 4." },
@@ -1674,7 +1706,10 @@ window.ES_DATA = (function () {
     { id: "q2_pataud", desc: "Ramasse 400 noisettes dans une partie (débloque Pataud).", check: function (r) { return (r.nuts || 0) >= 400; } },
     { id: "q2_mage", desc: "Déclenche 30 réactions élémentaires dans une partie (débloque Myrtille).", check: function (r) { return (r.reactions || 0) >= 30; } },
     { id: "q2_ninja", desc: "Fais 30 Voltes dans une partie (débloque Ombre).", check: function (r) { return (r.voltes || 0) >= 30; } },
-    { id: "q2_trefle", desc: "Ouvre 3 coffres scellés dans une partie (débloque Trèfle).", check: function (r) { return (r.chestsOpened || 0) >= 3; } }
+    { id: "q2_trefle", desc: "Ouvre 3 coffres scellés dans une partie (débloque Trèfle).", check: function (r) { return (r.chestsOpened || 0) >= 3; } },
+    { id: "q2_croc", desc: "Atteins le niveau 15 dans une partie (débloque Croc).", check: function (r) { return (r.level || 0) >= 15; } },
+    { id: "q2_fiole", desc: "Tue 400 ennemis dans une partie (débloque Fiole).", check: function (r) { return (r.kills || 0) >= 400; } },
+    { id: "q2_rapine", desc: "Ouvre 6 coffres scellés dans une partie (débloque Rapine).", check: function (r) { return (r.chestsOpened || 0) >= 6; } }
   );
   // talents des 21 nouvelles postures : palier 3 et clé de voûte (paliers 1 et 2 communs)
   var T6 = {
@@ -1700,6 +1735,22 @@ window.ES_DATA = (function () {
     toutourien: [["Double ou rien", "La salve gagnée fait 32 glands."], ["Lancer sûr", "La pièce réussit 6 fois sur 10."], ["Banco", "Clé : salve gagnée explosive."], ["Consolation", "Clé : une pièce ratée te soigne 10 PV."]],
     flambeuse: [["Gros joueur", "Mise gagnée : 3 cartes au lieu de 2."], ["Assurance", "Mise perdue : +20 glands."], ["All-in", "Clé : mises gagnées 7 fois sur 10."], ["Sang-froid", "Clé : plus de malus de PV."]],
   };
+  var T6N = {
+    gourmet: [["Bon appétit", "regen", 2], ["Table d'hôte", "lifesteal", 3], ["Grand festin", "streak", 3], ["Estomac d'or", "killHeal", 2]],
+    charognard: [["Nez creux", "crowd", 2], ["Dent dure", "execute", 20], ["Curée", "streak", 3], ["Sang chaud", "killHeal", 3]],
+    estomac: [["Ventre creux", "desperate", 20], ["Rage froide", "opener", 18], ["Jeûne", "execute", 25], ["Rugissement", "knock", 40]],
+    transmutatrice: [["Fiole pleine", "afterVolte", 20], ["Distillation", "burn", 20], ["Vapeurs", "chill", 20], ["Pierre filtrante", "critBolt", 1]],
+    empoisonneuse: [["Poison lent", "burn", 25], ["Acide", "execute", 20], ["Toxine", "chill", 25], ["Fumée âcre", "stun", 12]],
+    catalyseuse: [["Étincelle", "critBolt", 1], ["Réactif", "crowd", 2], ["Catalyse", "afterVolte", 25], ["Chaîne", "nth", 7]],
+    receleur: [["Bourse pleine", "desperate", 15], ["Gros magot", "streak", 2], ["Coffre-fort", "opener", 15], ["Prêteur", "bounty", 12]],
+    chasseur: [["Affiche", "execute", 20], ["Tir de précision", "critBolt", 1], ["Fin limier", "opener", 20], ["Prime double", "bounty", 15]],
+    cambrioleur: [["Doigts agiles", "sprint", 8], ["Crochet", "bounty", 12], ["Fuite", "afterVolte", 20], ["Receleur de nuit", "lifesteal", 3]]
+  };
+  Object.keys(T6N).forEach(function (ps) {
+    var t = T6N[ps], kd = TXU_KIND;
+    var node = function (i) { var k = t[i][1], v = t[i][2]; return { id: ps + "_t" + (i + 1), name: t[i][0], desc: (k === "regen" ? "Ancré : " + v + " PV par seconde." : kd[k].d(v)).replace(/(\d)\.(\d)/g, "$1,$2"), fx: k === "regen" ? { k: "patience", v: v } : { k: k, v: v } }; };
+    TAL[ps] = [[node(0), node(1)], [node(2), node(3)]];
+  });
   Object.keys(T6).forEach(function (ps) {
     var t = T6[ps], id = function (i) { return ps + "_t" + i; };
     TAL[ps] = [[{ id: id(1), name: t[0][0], desc: t[0][1] }, { id: id(2), name: t[1][0], desc: t[1][1] }], [{ id: id(3), name: t[2][0], desc: t[2][1] }, { id: id(4), name: t[3][0], desc: t[3][1] }]];
@@ -1769,7 +1820,7 @@ window.ES_DATA = (function () {
   RES.rune_rare = { name: "Rune rare", icon: "🔷", rune: 1 };
   // panoplies : 2 à 4 pièces ; 2 pièces = un bonus d'effet, 4 pièces = un bonus qui change une règle ; recettes trouvées en Donjon
   var SETS = {
-    corsaire: { name: "Panoplie du Corsaire", who: "capitaine", b2: "+2 matelots max.", b4: "Les matelots tirent des boulets qui explosent." },
+    corsaire: { name: "Panoplie du Corsaire", who: "capitaine", b2: "+1 matelot max.", b4: "Les matelots tirent des boulets qui explosent." },
     sylve:    { name: "Panoplie de la Sylve", b2: "Ancré : régénère 1 PV/s.", b4: "Ancré : une pousse d'arbre toutes les 4 s, qui attaque." },
     orage:    { name: "Panoplie de l'Orage", b2: "La Volte se recharge 0,6 s plus vite.", b4: "Chaque Volte lance un éclair qui saute sur 5 ennemis." },
     braise:   { name: "Panoplie de Braise", b2: "10 % de chance par coup d'enflammer.", b4: "Les ennemis brûlés explosent à leur mort." },
@@ -1897,6 +1948,48 @@ window.ES_DATA = (function () {
   };
   Object.keys(COMBOS2).forEach(function (k) { var c = COMBOS2[k]; COMBOS[k] = { name: c[0], icon: c[1], parts: c[2], mul: 1.35, desc: [c[3]], fx: c[4], type: "combo", fusion: true }; WEAPONS[k] = COMBOS[k]; });
   Object.keys(LEGENDS2).forEach(function (k) { var c = LEGENDS2[k]; LEGENDS[k] = { name: c[0], icon: c[1], parts: c[2], mul: 1.7, desc: [c[3]], fx: c[4], type: "combo", fusion: true, legend: true }; WEAPONS[k] = LEGENDS[k]; });
+  /* 2.25 : plus de fusions, et des paliers au-dessus de la légendaire : ultra, méga ultra, giga (chaque palier fusionne 2 fusions du palier d'en dessous) */
+  var IC = ["mushroom", "tail", "meteore", "bolt", "claw", "shield", "thorn", "feather", "turret", "ghost", "orb", "pethog", "drone", "needle", "smg"];
+  var COMBOS3 = [
+    ["salve_mere", "Salve mère", ["projection", "rafale"], "Une salve qui n'en finit plus."], ["averse_acier", "Averse d'acier", ["projection", "pluie"], "Des projectiles tombent du ciel."],
+    ["halo_ardent", "Halo ardent", ["rayon", "aura"], "Un rayon qui nimbe tout autour de toi."], ["contre_taille", "Contre-taille", ["fente", "riposte"], "Chaque coup reçu appelle une estocade."],
+    ["vortex_choc", "Vortex de choc", ["tourbillon", "onde"], "Le tourbillon crache des ondes."], ["rouleau_retour", "Rouleau retour", ["charge", "boomerang"], "Tu fonces, tout revient."],
+    ["couronne_onde", "Couronne d'ondes", ["onde", "orbite"], "Des ondes tournent autour de toi."], ["pluie_etoiles", "Pluie d'étoiles", ["pluie", "orbite"], "Des étoiles tombent et tournent."],
+    ["jardin_epines", "Jardin d'épines", ["piege", "aura"], "Un champ d'épines vivant."], ["tour_piegee", "Tour piégée", ["piege", "sentinelle"], "Les sentinelles gardent des pièges."],
+    ["chien_obus", "Chien d'obus", ["mortier", "familier"], "Des familiers qui explosent."], ["ombre_retour", "Ombre de retour", ["boomerang", "echo"], "Ton double renvoie tes lancers."],
+    ["reflet_vif", "Reflet vif", ["ricochet", "echo"], "Les rebonds se reflètent."], ["laisse_vivante", "Laisse vivante", ["grappin", "familier"], "Tes familiers tirent les ennemis à eux."],
+    ["sentinelle_fantome", "Sentinelle fantôme", ["sentinelle", "echo"], "Des sentinelles qui se dédoublent."], ["essaim_familier", "Essaim familier", ["nuee", "familier"], "Une nuée de bêtes fidèles."],
+    ["tir_miroir", "Tir miroir", ["rafale", "echo"], "Tes rafales sont doublées."], ["foudre_pluie", "Pluie de foudre", ["rayon", "pluie"], "Des rayons tombent du ciel."],
+    ["mortier_ardent", "Mortier ardent", ["aura", "mortier"], "Des obus qui brûlent."], ["choc_frontal", "Choc frontal", ["charge", "onde"], "La charge fait trembler le sol."]
+  ];
+  COMBOS3.forEach(function (c, i) { COMBOS[c[0]] = { name: c[1], icon: IC[i % IC.length], parts: c[2], mul: 1.35, desc: [c[3]], type: "combo", fusion: true }; WEAPONS[c[0]] = COMBOS[c[0]]; });
+  var LEGENDS3 = [
+    ["pluie_argent", "Pluie d'argent", ["averse_acier", "pluie_etoiles"], "Légendaire : le ciel crache de l'acier et des étoiles."], ["cour_miracles", "Cour des miracles", ["jardin_epines", "tour_piegee"], "Légendaire : un fort d'épines et de pièges."],
+    ["veille_eternelle", "Veille éternelle", ["sentinelle_fantome", "garnison"], "Légendaire : des sentinelles partout, sans fin."], ["meute_ombres", "Meute d'ombres", ["ombre_retour", "meute_echo"], "Légendaire : une meute de doubles."],
+    ["maree_fer", "Marée de fer", ["rouleau_retour", "choc_frontal"], "Légendaire : une charge qui revient en vague."], ["couronne_solaire", "Couronne solaire", ["halo_ardent", "couronne_onde"], "Légendaire : un soleil qui tourne autour de toi."],
+    ["lame_miroir", "Lame miroir", ["contre_taille", "reflet_vif"], "Légendaire : des estocades à l'infini."], ["tempete_acier", "Tempête d'acier", ["salve_mere", "tir_miroir"], "Légendaire : deux salves sans fin."],
+    ["forge_infernale", "Forge infernale", ["mortier_ardent", "chien_obus"], "Légendaire : des obus vivants et brûlants."], ["orage_vivant", "Orage vivant", ["foudre_pluie", "vortex_choc"], "Légendaire : un orage qui te suit."],
+    ["chasse_sauvage", "Chasse sauvage", ["laisse_vivante", "essaim_familier"], "Légendaire : des bêtes qui chassent pour toi."], ["sanctuaire", "Sanctuaire", ["egide", "tour_piegee"], "Légendaire : un refuge où rien n'entre."],
+    ["rafale_infinie", "Rafale infinie", ["spirale", "salve_mere"], "Légendaire : une spirale de salves."], ["tonnerre", "Tonnerre", ["prisme", "foudre_pluie"], "Légendaire : la foudre rebondit du ciel."]
+  ];
+  LEGENDS3.forEach(function (c, i) { LEGENDS[c[0]] = { name: c[1], icon: IC[(i + 3) % IC.length], parts: c[2], mul: 1.7, desc: [c[3]], type: "combo", fusion: true, legend: true, tier: 2 }; WEAPONS[c[0]] = LEGENDS[c[0]]; });
+  // paliers au-dessus : ultra (2 légendaires), méga ultra (2 ultras), giga (2 méga ultras)
+  var ULTRAS = [
+    ["supernova", "Supernova", ["constellation", "aurore"]], ["cataclysme", "Cataclysme", ["apocalypse", "deluge"]], ["maelstrom", "Maelström", ["ouragan_t", "lame_tempete"]],
+    ["citadelle", "Citadelle", ["forteresse", "siege"]], ["grande_curee", "Grande curée", ["chasse", "horde"]], ["immortel", "Immortel", ["eternite", "inebranlable"]],
+    ["parque", "Parque", ["fil_destin", "filet_celeste"]], ["nuee_monde", "Nuée-monde", ["nuee_mille", "tourmente"]], ["tonnerre_argent", "Tonnerre d'argent", ["pluie_argent", "tonnerre"]],
+    ["fournaise", "Fournaise", ["forge_infernale", "sanctuaire"]]
+  ];
+  var MEGAS = [
+    ["mega_cosmos", "Méga Cosmos", ["supernova", "maelstrom"]], ["mega_cataclysme", "Méga Cataclysme", ["cataclysme", "fournaise"]], ["mega_citadelle", "Méga Citadelle", ["citadelle", "immortel"]],
+    ["mega_curee", "Méga Curée", ["grande_curee", "nuee_monde"]], ["mega_destin", "Méga Destin", ["parque", "tonnerre_argent"]]
+  ];
+  var GIGAS = [
+    ["giga_genese", "Giga Genèse", ["mega_cosmos", "mega_cataclysme"]], ["giga_rempart", "Giga Rempart", ["mega_citadelle", "mega_curee"]]
+  ];
+  [[ULTRAS, 3, 2.0, "Ultra fusion : "], [MEGAS, 4, 2.4, "Méga ultra fusion : "], [GIGAS, 5, 3.0, "Giga fusion : "]].forEach(function (T) {
+    T[0].forEach(function (c, i) { LEGENDS[c[0]] = { name: c[1], icon: IC[(i + 7) % IC.length], parts: c[2], mul: T[2], desc: [T[3] + "deux fusions du palier d'en dessous réunies en une seule."], type: "combo", fusion: true, legend: true, tier: T[1] }; WEAPONS[c[0]] = LEGENDS[c[0]]; });
+  });
   // quêtes des objets de niveau
   QUESTS.push(
     { id: "q3_racines", desc: "Reste ancré 2 minutes au total dans une partie.", check: function (r) { return (r.anchorTot || 0) >= 120; } },
@@ -2248,7 +2341,7 @@ window.ES_DATA = (function () {
   var SETS4 = [
     ["apprentie", "Panoplie de l'Apprentie", "terre", "noisette", null, "1 relance de cartes gratuite par palier de difficulté.", "Chaque choix propose au moins une amélioration d'une technique que tu as.",
       [["coiffe", "Bonnet roux", "🧢", "app_c", 15, 30, "Ancrée : l'XP ramassée compte +{v} %."], ["bottes", "Sandales de noisetier", "🩴", "app_b", 5, 10, "En mouvement : {v} % des noisettes comptent double."], ["cape", "Écharpe d'automne", "🧣", "app_k", null, null, "Volte : attire toutes les noisettes de l'écran."]]],
-    ["corsaire", "Panoplie du Corsaire", "eau", "capitaine", null, "+2 matelots max.", "Les matelots tirent des boulets qui explosent.",
+    ["corsaire", "Panoplie du Corsaire", "eau", "capitaine", null, "+1 matelot max.", "Les matelots tirent des boulets qui explosent.",
       [["coiffe", "Tricorne", "🏴‍☠️", "cor_c", null, null, "Ancré : les matelots se mettent en carré et bloquent les tirs."], ["bottes", "Bottes de pont", "🥾", "cor_b", 6, 12, "En mouvement : la file piétine les ennemis ({v} dégâts)."], ["cape", "Cape de corsaire", "🧥", "cor_k", null, null, "Volte : les matelots tirent une bordée."]]],
     ["sylve", "Panoplie de la Sylve", "terre", "druide", null, "Tes arbres te rendent 1 PV quand ils tuent.", "Ancrée, une pousse apparaît toutes les 4 s.",
       [["coiffe", "Couronne de lierre", "🌿", "syl_c", 30, 50, "Ancrée : tes pousses grandissent {v} % plus vite."], ["bottes", "Sabots d'écorce", "🪵", "syl_b", null, null, "Passer près de tes arbres les fait tirer 2 fois."], ["cape", "Cape de mousse", "🍃", "syl_k", null, null, "Volte : une pousse apparaît là où tu étais."]]],

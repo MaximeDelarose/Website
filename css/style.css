@@ -3075,3 +3075,27 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .camp-emotes { position: absolute; z-index: 7; left: 50%; bottom: 58px; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 94%; padding: 6px; background: rgba(43, 23, 9, .88); border: 2px solid #2b1709; }
 .camp-emotes[hidden] { display: none; }
 .camp-emotes button { font: inherit; font-weight: 800; font-size: .75rem; padding: 4px 8px; border: 0; cursor: pointer; background: #fdf3de; color: #2b1709; box-shadow: 0 0 0 2px #2b1709; }
+
+/* Survivor 2.28.2 : barre du hub en bas, plus propre (dock) */
+.camp-dock { left: 0; right: 0; bottom: 0; margin: 0; width: auto; max-width: none; display: grid; gap: 6px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); overflow: visible; background: linear-gradient(to top, rgba(28, 15, 6, .92) 65%, rgba(28, 15, 6, 0)); border-radius: 0; }
+.camp-dock .cb-util { display: flex; justify-content: flex-end; gap: 6px; }
+.camp-dock .cb-util button { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; font-size: 1rem; line-height: 1; border-radius: 50%; background: rgba(43, 23, 9, .85); color: #fdf3de; box-shadow: 0 0 0 2px #6b4430; }
+.camp-dock .cb-util button:hover { background: #6b4430; }
+.camp-dock .cb-util .camp-coop { width: auto; padding: 0 12px; grid-auto-flow: column; gap: 6px; border-radius: 17px; background: #2e7a6e; box-shadow: 0 0 0 2px #7fd1c7; font-size: .85rem; }
+.camp-dock .cb-util .camp-coop span { font-size: .72rem; font-weight: 800; letter-spacing: .04em; }
+.camp-dock .cb-main { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.camp-dock .camp-go { grid-column: 1 / -1; padding: 11px 10px; font-size: 1.05rem; letter-spacing: .04em; border-radius: 8px; background: linear-gradient(#f29a4a, #e0782a); color: #fff; box-shadow: 0 0 0 2px #2b1709, 0 4px 0 2px #8a3f10; text-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
+.camp-dock .camp-go b { margin-right: 6px; }
+.camp-dock .camp-go:hover { background: linear-gradient(#ffb26a, #f08838); }
+.camp-dock .cb-place { display: grid; justify-items: center; gap: 2px; padding: 7px 2px 6px; border-radius: 8px; background: rgba(43, 23, 9, .88); color: #fdf3de; box-shadow: 0 0 0 2px #6b4430; }
+.camp-dock .cb-place i { font-style: normal; font-size: 1.25rem; line-height: 1; }
+.camp-dock .cb-place span { font-size: .62rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+.camp-dock .cb-place:hover { background: #6b4430; box-shadow: 0 0 0 2px #f6d36b; }
+@media (min-width: 720px) {
+  .camp-dock { left: 50%; right: auto; transform: translateX(-50%); width: min(640px, 100%); border-radius: 12px 12px 0 0; }
+  .camp-dock .cb-main { grid-template-columns: 1.6fr repeat(6, minmax(0, 1fr)); }
+  .camp-dock .camp-go { grid-column: auto; }
+}
+.camp-emotes { bottom: 150px; }
+/* jet à la Dofus : couleur selon la qualité du jet */
+.dof-fx li.dof-q-hi, .dof-q-hi { color: #9cdc7a; } .dof-fx li.dof-q-lo, .dof-q-lo { color: #c8a08a; } .dof-fx li.dof-q-top, .dof-q-top { color: #f6d36b; font-weight: 800; }
