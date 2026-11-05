@@ -1151,6 +1151,13 @@ window.ES_DATA = (function () {
     // Difficile : la montée en difficulté de la 0.27.0 (paliers toutes les 2 min, +22 % de dégâts par palier, invulnérabilité courte)
     difficile: { name: "Difficile", hp: 1.3, spd: 1.05, spawn: 1.15, gold: 1.6, score: 1.5, unlock: "survie_5",
                  tier: { minutes: 2.0, hp: 0.14, dmg: 0.22, spawn: 0.1, elite: 0.006 }, inv: 0.22 },
+    // 2.40 : trois niveaux au-dessus de Difficile, chacun s'ouvre en battant des méga boss en Difficile ou plus
+    expert: { name: "Expert", hp: 1.7, spd: 1.1, spawn: 1.3, gold: 2.2, score: 2.2, unlock: "mega_hard_1",
+              tier: { minutes: 1.7, hp: 0.18, dmg: 0.28, spawn: 0.12, elite: 0.008 }, inv: 0.2 },
+    infernal: { name: "Infernal", hp: 2.3, spd: 1.15, spawn: 1.5, gold: 3, score: 3.2, unlock: "mega_hard_3",
+                tier: { minutes: 1.4, hp: 0.24, dmg: 0.35, spawn: 0.15, elite: 0.011 }, inv: 0.18 },
+    apocalypse: { name: "Apocalypse", hp: 3.2, spd: 1.2, spawn: 1.8, gold: 4.5, score: 5, unlock: "mega_hard_8",
+                  tier: { minutes: 1.0, hp: 0.3, dmg: 0.45, spawn: 0.2, elite: 0.015 }, inv: 0.15 },
   };
 
   /* =====================================================================
@@ -1846,8 +1853,8 @@ window.ES_DATA = (function () {
     { id: "atelier", name: "L'atelier", who: "Bûche", npc: "sq_bucheron", x: 104, y: 0.32, screen: "atelier", desc: "Craft et recyclage" },
     { id: "forge", name: "La forge", who: "Charbon", npc: "sq_charbon", x: 210, y: 0.3, screen: "forge", desc: "Runes : relancer, ajouter un effet" },
     { id: "comptoir", name: "Le comptoir", who: "le Marchand", npc: "sq_capitaine", x: 252, y: 0.66, screen: "comptoir", desc: "Glands d'or, conversion de ressources" },
-    { id: "chene", name: "Le vieux chêne", who: "Flocon", npc: "sq_flocon", x: 160, y: 0.3, screen: "quetes", desc: "Quêtes, codex, succès" },
-    { id: "arene", name: "L'arène", who: "Bastien", npc: "sq_chevalier", x: 266, y: 0.36, screen: "succes", desc: "Succès et records" },
+    { id: "chene", name: "Quêtes", who: "Flocon", npc: "sq_flocon", x: 160, y: 0.3, screen: "quetes", desc: "Quêtes et défis" },
+    { id: "arene", name: "Succès", who: "Bastien", npc: "sq_chevalier", x: 266, y: 0.36, screen: "succes", desc: "Succès et records" },
   ];
   /* =====================================================================
      Contenu étendu, lot 1 : objets de niveau, 3e évolution, fusions

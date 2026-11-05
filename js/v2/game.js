@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.37.3";
+  var VERSION = "2.40.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -5877,9 +5877,12 @@
     var bar = document.querySelector("[data-campbar]");
     if (!bar) { bar = document.createElement("div"); bar.className = "camp-bar camp-dock"; bar.setAttribute("data-campbar", ""); stage.appendChild(bar); bar.addEventListener("click", function (e) { var b = e.target.closest("[data-camp]"); if (b) campOpen(b.getAttribute("data-camp")); }); }
     bar.hidden = false;
+    var ver = document.querySelector("[data-campver]");
+    if (!ver) { ver = document.createElement("button"); ver.type = "button"; ver.className = "camp-ver"; ver.setAttribute("data-campver", ""); ver.title = "Nouveautés de cette version"; stage.appendChild(ver); ver.addEventListener("click", function () { campOpen("changelog"); }); }
+    ver.textContent = "v" + VERSION; ver.hidden = false;
     var PI = { terrier: "🏡", atelier: "🔨", forge: "🔥", comptoir: "🛒", chene: "🌳", arene: "⚔️" };
     bar.innerHTML = '<div class="cb-util"><button type="button" class="camp-coop" data-camp="coop" title="Coop en ligne">👥<span>Coop</span></button><button type="button" class="camp-amis" data-camp="amis" title="Amis">🧑‍🤝‍🧑<i class="fr-badge" hidden></i></button><button type="button" data-camp="emote" title="Message rapide">💬</button><button type="button" data-camp="codex" title="Techniques et fusions">📜</button><button type="button" data-camp="help" title="Aide">❓</button><button type="button" data-camp="options" title="Réglages">⚙️</button></div>' +
-      '<div class="cb-main"><button type="button" class="camp-go" data-camp="sentier"><b>▶</b> Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" class="cb-place" data-camp="' + l.id + '"><i>' + (PI[l.id] || "•") + "</i><span>" + esc(l.id === "chene" ? "Chêne" : l.name.replace(/^(Le |La |L')/, "")) + "</span></button>"; }).join("") + "</div>";
+      '<div class="cb-main"><button type="button" class="camp-go" data-camp="sentier"><b>▶</b> Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" class="cb-place" data-camp="' + l.id + '"><i>' + (PI[l.id] || "•") + "</i><span>" + esc(l.name.replace(/^(Le |La |L')/, "")) + "</span></button>"; }).join("") + "</div>";
   }
   // « Nouveautés » : ce qui a changé pour un joueur de la version 1
   function newsCard() {
@@ -5895,7 +5898,7 @@
       '<div class="btn-row center"><button class="btn" type="button" data-action="newsok" data-autofocus>Au camp !</button></div>';
     showCard(html, "news");
   }
-  function closeCamp() { camp.on = false; var bar = document.querySelector("[data-campbar]"); if (bar) bar.hidden = true; var em = document.querySelector("[data-emotes]"); if (em) em.hidden = true; }
+  function closeCamp() { camp.on = false; var cv = document.querySelector("[data-campver]"); if (cv) cv.hidden = true; var bar = document.querySelector("[data-campbar]"); if (bar) bar.hidden = true; var em = document.querySelector("[data-emotes]"); if (em) em.hidden = true; }
   function campEmoteMenu() {
     var m = document.querySelector("[data-emotes]");
     if (!m) { m = document.createElement("div"); m.className = "camp-emotes"; m.setAttribute("data-emotes", ""); stage.appendChild(m); m.addEventListener("click", function (e) { var b = e.target.closest("[data-em]"); if (!b) return; camp.emote = b.getAttribute("data-em"); camp.emoteT = performance.now(); camp.emoteMenu = false; camp.sendT = 0; SND.click(); campEmoteMenu(); }); }
@@ -5906,7 +5909,7 @@
     var l = D.CAMP.filter(function (q) { return q.id === id; })[0];
     closeCamp(); SND.click();
     if (id === "amis") { go("amis"); frRefresh(); return; }
-    if (id === "options" || id === "codex" || id === "help") { go(id); return; }
+    if (id === "options" || id === "codex" || id === "help" || id === "changelog") { go(id); return; }
     if (id === "coop") { go(Net.on ? "lobby" : "coop"); return; }
     if (l && l.screen === "play") { inspect.char = S.char; inspect.map = S.map; }
     go(l ? l.screen : "menu");
@@ -8893,7 +8896,7 @@
       D.CHARACTERS.forEach(function (o) { var okc = charAvailable(o); html += '<button type="button" class="np-char' + (S.char === o.id ? " is-selected" : "") + (okc ? "" : " is-locked") + '" data-action="tchar2" data-arg="' + o.id + '" aria-label="' + esc(o.name) + '" title="' + esc(okc ? o.name : "🔒 " + o.name + " : " + questById(o.quest).desc) + '"><img src="' + spriteUrl(o.sprite) + '" alt="">' + (okc ? "" : '<i class="np-lock">🔒</i>') + "</button>"; });
       var lc = D.CHARACTERS.filter(function (o) { return !charAvailable(o); }).length;
       var k = Math.round((cx - charXpFor(lv)) / Math.max(1, charXpFor(lv + 1) - charXpFor(lv)) * 100);
-      html += '</div>' + (lc ? '<p class="game-small">🔒 ' + lc + " écureuil" + (lc > 1 ? "s" : "") + " à débloquer : touche-en un pour voir sa quête (Vieux chêne &gt; Quêtes).</p>" : "") + '<p class="v2-bar"><span><b>' + esc(c.name) + "</b> · niveau <b>" + lv + '</b></span><span class="rank-bar"><i style="width:' + Math.min(100, k) + '%"></i></span><small>' + cx + " / " + charXpFor(lv + 1) + "</small></p>";
+      html += '</div>' + (lc ? '<p class="game-small">🔒 ' + lc + " écureuil" + (lc > 1 ? "s" : "") + " à débloquer : touche-en un pour voir sa quête (lieu Quêtes du camp).</p>" : "") + '<p class="v2-bar"><span><b>' + esc(c.name) + "</b> · niveau <b>" + lv + '</b></span><span class="rank-bar"><i style="width:' + Math.min(100, k) + '%"></i></span><small>' + cx + " / " + charXpFor(lv + 1) + "</small></p>";
       html += '<div class="dof-tabs">' + [["eq", "Équipement"], ["tal", "Talents"], ["tree", "Arbre"], ["mast", "Maîtrise"]].map(function (t) { return '<button type="button" class="dof-tab' + (UI.ter === t[0] ? " is-on" : "") + '" data-action="dtab" data-arg="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
       if (UI.ter === "tal") html += terTalents(c, lv, ps);
       else if (UI.ter === "tree") html += terTree(c);
@@ -10099,6 +10102,42 @@
   $("[data-exit-max]").addEventListener("click", exitFull);
   $("[data-fs-exit]").addEventListener("click", exitFull);
   ACTIONS.fullscreen = function () { toggleFull(); };
+  /* bouton retour du téléphone : il ferme d'abord pause, menus et écrans du jeu, sans quitter la page ;
+     au camp : un premier retour affiche un message, un second quitte */
+  function esBack() {
+    if (state === "play") { pause(); return true; }
+    if (state === "pause") { resume(); return true; }
+    if (state === "levelup" || picking) return true;
+    if (state === "over") { if (Net.on) return true; go("menu"); return true; }
+    if (state === "menu" && !camp.on) {
+      if (Net.on) return true;
+      if (screen === "eqslot") go("terrier"); else go("menu");
+      return true;
+    }
+    if (state === "menu" && camp.on && camp.emoteMenu) { camp.emoteMenu = false; campEmoteMenu(); return true; }
+    return false;
+  }
+  (function () {
+    var lastBack = 0, armed = false;
+    function push() { try { history.pushState({ es: 1 }, ""); } catch (e) {} }
+    // l'entrée « garde » doit être créée pendant un geste de l'utilisateur : sinon Firefox et Chrome la sautent au retour
+    function gesture(e) { if (!armed && e.isTrusted) { armed = true; push(); } }
+    ["pointerup", "touchend", "click", "keydown"].forEach(function (ev) { window.addEventListener(ev, gesture, { capture: true, passive: true }); });   // seuls ces événements comptent comme « geste » sur téléphone
+    push();
+    window.addEventListener("popstate", function () {
+      armed = false;
+      var used = false; try { used = esBack(); } catch (e) {}
+      if (used) { push(); return; }
+      // au camp : un premier retour prévient ; un second, tout de suite après, tente de fermer la fenêtre.
+      // Firefox Android refuse de fermer une appli depuis une page (retour = écran vide) : on reste alors dans le jeu.
+      var now = Date.now();
+      push();
+      if (now - lastBack < 2500) {
+        lastBack = 0; try { window.close(); } catch (e) {}
+        setTimeout(function () { banner("Ce navigateur ne ferme pas l'appli : pour quitter, touche le bouton rond de ton téléphone (accueil Android)"); }, 350);
+      } else { lastBack = now; banner("Appuie encore sur retour pour quitter"); }
+    });
+  })();
   // appli installée : le jeu occupe tout l'écran d'emblée, sans bouton pour réduire
   if (window.__isApp) { document.documentElement.classList.add("is-app"); stage.classList.add("is-max"); setTimeout(function () { syncFull(); resize(); }, 0); }
 
