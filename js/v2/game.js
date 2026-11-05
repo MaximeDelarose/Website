@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.29.0";
+  var VERSION = "2.30.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -364,7 +364,7 @@
     p.critDmg = 0; p.resist = 0; p.eres = {};
     if (p.prov) { if (p.prov.parchemin) p.xpMul += 0.25; if (p.prov.bourse) p.goldMul *= 1.25; if (p.prov.ration) p.maxHp *= 1.2; if (p.prov.elixir) p.might *= 1.1; }
     if (p.gbon) {
-      var gb = p.gbon; p.might *= 1 + (gb.dmg || 0) / 100; p.cdMul *= 1 - (gb.cd || 0) / 100; p.area *= 1 + (gb.area || 0) / 100; p.crit = (p.crit || 0) + (gb.crit || 0) / 100; p.speed *= 1 + (gb.spd || 0) / 100; p.maxHp += gb.hp || 0;
+      var gb = (p.gbn = normG(p.gbon)); p.might *= 1 + (gb.dmg || 0) / 100; p.cdMul *= 1 - (gb.cd || 0) / 100; p.area *= 1 + (gb.area || 0) / 100; p.crit = (p.crit || 0) + (gb.crit || 0) / 100; p.speed *= 1 + (gb.spd || 0) / 100; p.maxHp += gb.hp || 0;
       p.critDmg = (gb.cdm || 0) / 100; p.armor += gb.arm || 0; p.resist = Math.min(0.6, (gb.res || 0) / 100); p.eres = { terre: gb.rter || 0, feu: gb.rfeu || 0, eau: gb.reau || 0, air: gb.rair || 0 }; p.dodge = Math.max(0, (p.dodge || 0) + (gb.dod || 0) / 100); p.regen += (gb.reg || 0) / 10;
       p.magnet *= 1 + (gb.mag || 0) / 100; p.xpMul += (gb.xp || 0) / 100; p.goldMul *= 1 + (gb.gld || 0) / 100;
       if (gb.vit) p.maxHp *= 1 + gb.vit / 100; if (gb.soi) p.regen *= 1 + gb.soi / 100; if (gb.pro) p.luck += gb.pro / 100; if (gb.inv) p.amount += gb.inv; if (gb.ini && p.volteBase) p.volteBase = Math.max(0.8, p.volteBase * (1 - gb.ini / 100));
@@ -763,7 +763,7 @@
     dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? (itn(p, "corne") ? 3 : 2) + (p.critDmg || 0) : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
     if (crit && r) r.crits = (r.crits || 0) + 1;
     dmg *= (p.dmgX || 1) * (p.txRage > 0 ? 1.35 : 1) * (p.crewScale || 1);
-    if (p.gbon) { var gq = p.gbon, fm = 1; if (CUR_FAM) for (var fk in GFAM) if (GFAM[fk] === CUR_FAM && gq[fk]) fm += gq[fk] / 100; if (p.anchored && gq.anc) fm += gq.anc / 100; if (p.mstate === "mouvement" && gq.mov) fm += gq.mov / 100; var pe = atkElem(p); for (var pk in GPEL) if (GPEL[pk] === pe && gq[pk]) fm += gq[pk] / 100; if (gq.chs && (e.d.boss || (e.aff && e.aff.length))) fm += gq.chs / 100; dmg *= Math.max(0.2, fm); if (gq.dfx) dmg += gq.dfx * gpw(); }
+    if (p.gbn) { var gq = p.gbn, fm = 1; if (CUR_FAM) for (var fk in GFAM) if (GFAM[fk] === CUR_FAM && gq[fk]) fm += gq[fk] / 100; if (p.anchored && gq.anc) fm += gq.anc / 100; if (p.mstate === "mouvement" && gq.mov) fm += gq.mov / 100; var pe = atkElem(p); for (var pk in GPEL) if (GPEL[pk] === pe && gq[pk]) fm += gq[pk] / 100; if (gq.chs && (e.d.boss || (e.aff && e.aff.length))) fm += gq.chs / 100; dmg *= Math.max(0.2, fm); if (gq.dfx) dmg += gq.dfx * gpw(); }
     var hf = HIT_FX, hadMark = e.mark && e.markT > 0 ? e.mark : null;
     if (hf && hf.vsMark && hadMark && hadMark !== atkElem(p)) dmg *= hf.vsMark;
     dmg = elemHit(e, dmg);
@@ -831,15 +831,15 @@
     }
     if (S.opts.numbers && !e.d.prop) {
       var tn = e.dmgTxt;
-      if (tn && tn.life > 0.25 && texts.indexOf(tn) >= 0) { tn.n += dmg; tn.life = 0.6; tn.big = tn.n >= 100; if (crit) tn.col = "#f6d36b"; }
-      else if (texts.length < 50) { tn = { x: e.x + (Math.random() * 6 - 3), y: e.y - e.d.r - 6, n: dmg, life: 0.6, col: crit ? "#f6d36b" : null, dmgN: 1 }; texts.push(tn); e.dmgTxt = tn; }
+      if (tn && tn.life > 0.25 && texts.indexOf(tn) >= 0) { tn.n += dmg * DISP + ((Math.random() * DISP) | 0); tn.life = 0.6; tn.big = tn.n >= 1000; if (crit) tn.col = "#f6d36b"; }
+      else if (texts.length < 50) { tn = { x: e.x + (Math.random() * 6 - 3), y: e.y - e.d.r - 6, n: dmg * DISP + ((Math.random() * DISP) | 0), life: 0.6, col: crit ? "#f6d36b" : null, dmgN: 1 }; texts.push(tn); e.dmgTxt = tn; }
     }
     if (Net.dmgN < 30) { Net.dmgN++; netEv(["d", Math.round(e.x), Math.round(e.y - e.d.r - 6), dmg]); }
     if (p.items) onHitProcs(e);
     if (hf && !e.d.prop) hitFx(e, hf, dmg, hadMark);
     if (!e.dead && SHOOTER_AI[e.d.ai] && !e.d.boss && !e.d.mega && !(e.aff && e.aff.length)) interruptShot(e);
     if (p.txf && !e.d.prop) txHitPost(p, e, dmg, crit);
-    if (p.gbon && p.gbon.vdv && !e.d.prop && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + dmg * p.gbon.vdv / 100 * (1 + (p.gbon.soi || 0) / 100));
+    if (p.gbn && p.gbn.vdv && !e.d.prop && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + dmg * p.gbn.vdv / 100 * (1 + (p.gbn.soi || 0) / 100));
     if (crit && itn(p, "dard_reine") && !procLock && !e.d.prop) { procLock = true; explode(e.x, e.y, 18, 15 * itn(p, "dard_reine")); procLock = false; }
     if (e.hp <= 0 && !e.dead) kill(e);
   }
@@ -1010,7 +1010,7 @@
     else p.hp -= hit;
     if (r && p === me) r.dmgIn = (r.dmgIn || 0) + hit;
     p.inv = DIFF.inv || 0.35; txFire(p, "hurt");
-    var rflv = ((p.txf && p.txf.reflect) || 0) + ((p.gbon && p.gbon.epi) || 0);
+    var rflv = ((p.txf && p.txf.reflect) || 0) + ((p.gbn && p.gbn.epi) || 0);
     if (rflv) { var rfp = p; near(p.x, p.y, 40, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - rfp.x, e.y - rfp.y) < 36 + e.d.r) { var pq = p; p = rfp; hurt(e, hit * rflv / 100, (e.x - rfp.x) * 3, (e.y - rfp.y) * 3); p = pq; } }); ring(p.x, p.y, 36, false); }
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = Math.max(shake, 0.32); SND.hurt(); freezeFrame(0.06); hurtV = 0.35; kick(Math.random() - 0.5, Math.random() - 0.5, 3); }
     burst(p.x, p.y, "#c8553d", 5);
@@ -3078,7 +3078,7 @@
       Object.keys(a).forEach(function (k) { g[k] = (g[k] || 0) + a[k] * mul; });
       if (c.type === "w" && !me.weapons[c.id]) techNew++;
     });
-    Object.keys(g).forEach(function (k) { g[k] = Math.max(1, Math.round(g[k])); });
+    Object.keys(g).forEach(function (k) { g[k] = Math.max(1, Math.round(g[k] * (GS[k] || 1))); });
     return { g: g, techNew: techNew };
   }
   function devourPreview() { var d = devourStats(currentChoices); return bonTxt(d.g).slice(0, 3).join(", ") || "rien"; }
@@ -3296,7 +3296,7 @@
     if (ps === "perchoir" && a) { pl.rangeMul = tal(pl, "longuevue") ? 2 : 1.6; pl.dmgX = 1.3 * (tal(pl, "sniper") && pl.anchorT > 2 ? 2 : 1); }
     if (hasSig(pl, "anchorDmg") && a && pl.anchorT > 1) pl.dmgX *= 2;
     if (hasSig(pl, "critRange")) pl.rangeMul *= 1.2;
-    if (pl.gbon && pl.gbon.rng) pl.rangeMul *= 1 + pl.gbon.rng / 100;
+    if (pl.gbn && pl.gbn.rng) pl.rangeMul *= 1 + pl.gbn.rng / 100;
     if (pl.sillT > 0) pl.spdX *= 1.3;
     if (pl.size > 1 && setCount(pl, "glouton") < 2) pl.spdX /= 1 + (tal(pl, "rouleau_t2") ? 0.17 : 0.35) * (pl.size - 1);
     var gv = gearHas(pl, "vitesse"); if (gv && m) pl.spdX *= 1 + gv.v / 100;
@@ -4308,7 +4308,14 @@
       });
     return html + "</div>";
   }
-  function eqS() { S.eq = S.eq || { inv: [], worn: {}, uid: 1 }; S.res = S.res || {}; S.clvl = S.clvl || {}; S.tal = S.tal || {}; S.mast = S.mast || {}; return S.eq; }
+  // 2.30 : passage à l'échelle « points » : les anciennes pièces sont converties une fois
+  function migrateGear() {
+    if (S.gearScale === 2) return;
+    var f = function (q) { if (q && q.bon) Object.keys(q.bon).forEach(function (k) { if (GS[k] && GS[k] > 1) q.bon[k] = Math.round(q.bon[k] * GS[k]); }); };
+    ((S.eq || {}).inv || []).forEach(f); if (S.shopStock) S.shopStock.items.forEach(function (it) { f(it.q); });
+    S.gearScale = 2;
+  }
+  function eqS() { if (GS && S.gearScale !== 2 && S.eq) migrateGear(); S.eq = S.eq || { inv: [], worn: {}, uid: 1 }; S.res = S.res || {}; S.clvl = S.clvl || {}; S.tal = S.tal || {}; S.mast = S.mast || {}; return S.eq; }
   function charLevel(cid) { return Math.min(12, 1 + Math.floor(Math.sqrt(((S.clvl || {})[cid] || 0) / 40))); }
   function charXpFor(l) { return (l - 1) * (l - 1) * 40; }
   function mastLevel(aid) { var x = (S.mast || {})[aid] || 0, l = 1; D.MASTERY.forEach(function (t, i) { if (x >= t) l = i + 1; }); return l; }
@@ -4346,7 +4353,15 @@
     { id: "epi", name: "renvoi de dommages", lo: 5, hi: 14, pct: 1 }, { id: "pod", name: "Pods (sac d'expédition)", lo: 1, hi: 2 },
     { id: "inv", name: "Invocation (+1 projectile ou compagnon)", lo: 1, hi: 1, minR: 4 }
   ];
+  // échelle « points » à la Dofus : les stats de puissance s'expriment en points (Force +100…) et sont converties en effet par un diviseur k
+  // (100 points de Force = +20 % de dégâts). s = échelle des fourchettes, k = points par unité d'effet.
+  var GSC = { dmg: [5, 5], ptr: [5, 5], pfe: [5, 5], peu: [5, 5], pai: [5, 5], fmel: [5, 5], ftir: [5, 5], fzon: [5, 5], fret: [5, 5], fcom: [5, 5], anc: [5, 5], mov: [5, 5], chs: [5, 5], cdm: [5, 5],
+    vit: [5, 5], hp: [10, 10], dfx: [10, 10], arm: [10, 10], reg: [1, 10] };
+  GSTATS.forEach(function (x) { var c = GSC[x.id]; if (c) { x.lo *= c[0]; x.hi *= c[0]; } x.k = c ? c[1] : 1; x.s = c ? c[0] : 1; if (x.id === "reg") delete x.tenth; });
+  var GK = {}, GS = {}; GSTATS.forEach(function (x) { GK[x.id] = x.k; GS[x.id] = x.s; });
+  function normG(b) { var o = {}; if (b) Object.keys(b).forEach(function (k) { o[k] = b[k] / (GK[k] || 1); }); return o; }
   var GPEL = { ptr: "terre", pfe: "feu", peu: "eau", pai: "air" };
+  var DISP = 10;   // les chiffres de dégâts s'affichent x10, comme les PV et dégâts en points
   var GFAM = { fmel: "melee", ftir: "tir", fzon: "zone", fret: "retour", fcom: "compagnon" };
   var COMPTOIR_PROV = [
     { id: "ration", ic: "🍖", name: "Ration copieuse", desc: "+20 % de PV max.", price: 500 },
@@ -4377,7 +4392,8 @@
     function rollV(x, f) { return statRoll(x, f); }
     q.bon = {};
     if (rar >= 2 && Math.random() < [0, 0, 0.3, 0.5, 0.6][rar]) { mal = pool.filter(function (x) { return x.mal; })[0]; if (mal) pool.splice(pool.indexOf(mal), 1); }
-    pool.slice(0, nb).forEach(function (x) { q.bon[x.id] = rollV(x, mulR * (mal ? 1.25 : 1)); });
+    var tm = [1, 1.15, 1.35][Math.max(0, Math.min(2, (tier || 1) - 1))];   // les pièces de palier élevé ont de meilleures stats
+    pool.slice(0, nb).forEach(function (x) { q.bon[x.id] = rollV(x, mulR * tm * (mal ? 1.25 : 1)); });
     if (mal) q.bon[mal.id] = -rollV(mal, 0.45);
     if (g.elem) q.pts = Math.min(3, 1 + (rar >= 2 ? 1 : 0) + (rar >= 4 ? 1 : 0));
     if (g.ring === "apprenti") { var all = Object.keys(D.TECH).sort(function () { return Math.random() - 0.5; }); q.tech = all.slice(0, 2); }
@@ -4879,7 +4895,7 @@
   };
   Object.keys(D.EXDEF2).forEach(function (k) { EXDEF[k] = D.EXDEF2[k]; });
   function passeurCost() { return Math.round((60 + 40 * r.ex.floor) * (nm(7) ? 2 : 1) * (anyItem("sceau_passeur") ? 0.5 : 1)); }
-  function bagCap() { return EX.bag + 2 * Math.min(1, (me && itn(me, "sacoche")) || 0) + ((me && me.gbon && me.gbon.pod) || 0); }
+  function bagCap() { return EX.bag + 2 * Math.min(1, (me && itn(me, "sacoche")) || 0) + ((me && me.gbn && me.gbn.pod) || 0); }
   /* ---- le sac ---- */
   function bagSlots() { return r.bag.length; }
   function bagAddRes(id, n) {
@@ -9474,7 +9490,7 @@
       html += "</ul></details><ul>";
     }
     html += '</ul></div><div><h3>Statistiques</h3><ul class="stat-list">' +
-      "<li>PV <b>" + Math.ceil(p.hp) + " / " + p.maxHp + "</b></li>" +
+      "<li>PV <b>" + Math.ceil(p.hp * DISP) + " / " + Math.round(p.maxHp * DISP) + "</b></li>" +
       "<li>Dégâts <b>" + Math.round(p.might * 100) + " %</b></li>" +
       "<li>Vitesse <b>" + Math.round(p.speed / 62 * 100) + " %</b></li>" +
       "<li>Recharge <b>" + Math.round(p.cdMul * 100) + " %</b></li>" +
