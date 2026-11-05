@@ -3063,3 +3063,6 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 @media (max-width: 640px) { .dof { grid-template-columns: minmax(0, 1fr); } .dof-left { justify-self: stretch; } .dof-doll { grid-template-columns: 52px 1fr 52px; } }
 .dof, .dof-spells { text-align: left; }
 .dof-fx li.dof-neg { color: #ff8a7a; }
+.dof-forge-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 3px 0; }
+.dof-fx li.dof-forge-row { color: #8ac6ff; } .dof-fx li.dof-forge-row.dof-neg { color: #ff8a7a; }
+.dof-forge-row .btn { padding: 2px 8px; }

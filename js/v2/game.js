@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.13.1";
+  var VERSION = "2.14.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -4026,7 +4026,7 @@
   var CUR_FAM = null;                     // famille de la technique qui frappe (quêtes, signatures)
   var HIT_TREE = false;                   // le coup vient d'un arbre de Fougère
   /* ---------- 2.11 : terrier et atelier façon Dofus ---------- */
-  var UI = { ter: "eq", inv: "all", sel: null, at: "coiffe", only: false, el: "all", asel: null };
+  var UI = { ft: "all", ter: "eq", inv: "all", sel: null, at: "coiffe", only: false, el: "all", asel: null };
   var SLOT_KIND = { coiffe: "Coiffe", bottes: "Bottes", cape: "Cape", amulette: "Amulette", anneau: "Anneau" };
   function elemSpan(el, txt) { return '<span style="color:' + (D.ELEMENTS[el].ui || D.ELEMENTS[el].color) + '">' + txt + "</span>"; }
   function gearTile(q, act, arg, extra) {
@@ -4136,6 +4136,8 @@
     { id: "mag", name: "portée de ramassage", lo: 10, hi: 30, pct: 1 }, { id: "xp", name: "expérience", lo: 4, hi: 10, pct: 1 }, { id: "gld", name: "or gagné", lo: 5, hi: 15, pct: 1 }
   ];
   var GFAM = { fmel: "melee", ftir: "tir", fzon: "zone", fret: "retour", fcom: "compagnon" };
+  function statRoll(x, f) { return Math.max(1, Math.round((x.lo + Math.random() * (x.hi - x.lo)) * f)); }
+  function rarMul(rar) { return [0.5, 0.65, 0.8, 1, 1.2][rar] || 1; }
   function bonTxt(b) {
     return GSTATS.filter(function (x) { return b && b[x.id]; }).map(function (x) {
       var v = b[x.id], sg = v > 0 ? "+" : "-", a = Math.abs(v);
@@ -4147,7 +4149,7 @@
     if (rar === undefined) { var W8 = GRAR_W[Math.max(1, Math.min(3, tier || 1))], tot = 100, rr = Math.random() * tot; rar = 0; while (rr >= W8[rar]) { rr -= W8[rar]; rar++; } if (g.unique) rar = Math.max(rar, 3); }
     var R0 = GRAR_ROLL[rar], q = { id: eqS().uid++, t: t, roll: R0[0] + Math.random() * (R0[1] - R0[0]), tier: tier || 1, pts: 0, rar: rar };
     var nb = rar + 1, mulR = [0.5, 0.65, 0.8, 1, 1.2][rar], pool = GSTATS.slice().sort(function () { return Math.random() - 0.5; }), mal = null;
-    function rollV(x, f) { return Math.max(1, Math.round((x.lo + Math.random() * (x.hi - x.lo)) * f)); }
+    function rollV(x, f) { return statRoll(x, f); }
     q.bon = {};
     if (rar >= 2 && Math.random() < [0, 0, 0.3, 0.5, 0.6][rar]) { mal = pool.filter(function (x) { return x.mal; })[0]; if (mal) pool.splice(pool.indexOf(mal), 1); }
     pool.slice(0, nb).forEach(function (x) { q.bon[x.id] = rollV(x, mulR * (mal ? 1.25 : 1)); });
@@ -8081,16 +8083,30 @@
     forge: function () {
       eqS();
       var html = '<div class="screen-head">' + back() + "<h2>La forge de Charbon</h2></div>";
-      html += '<p class="game-small">🔹 Runes : <b>' + (S.res.rune || 0) + "</b> · 🔷 Runes rares : <b>" + (S.res.rune_rare || 0) + "</b>. Une rune relance la force d'un effet dans sa fourchette. Une rune rare ajoute un 2e effet (1 fois sur 4, ça rate et l'effet ajouté est perdu). L'Arène en donne beaucoup.</p><div class=\"shop-list\">";
-      var list = eqS().inv.filter(function (q) { return D.GEAR[q.t].lo !== undefined; });
-      if (!list.length) html += '<p class="game-small">Aucune pièce à forger.</p>';
-      list.forEach(function (q) {
-        var g = D.GEAR[q.t], who = whoWears(q.id);
-        html += '<div class="shop-item"><span class="shop-ic">' + ic(g.icon) + '</span><div class="shop-text"><strong>' + esc(g.name) + (who ? " <small>(" + esc(charById(who).name) + ")</small>" : "") + "</strong><span>" + esc(pieceDesc(q)) + (q.extra ? " + " + esc(D.GEAR[q.extra].name) : "") + "</span><small>Jet " + Math.round(q.roll * 100) + " %</small></div>" +
-          '<button class="btn btn-small" type="button" data-action="rune" data-arg="' + q.id + '"' + ((S.res.rune || 0) < 1 ? " disabled" : "") + '>Relancer 🔹</button>' +
-          (["coiffe", "bottes", "cape"].indexOf(g.slot) >= 0 ? '<button class="btn btn-small btn-alt" type="button" data-action="runer" data-arg="' + q.id + '"' + ((S.res.rune_rare || 0) < 1 ? " disabled" : "") + ">+ effet 🔷</button>" : "") + "</div>";
-      });
-      return html + "</div>";
+      html += '<div class="dof-res"><span title="Rune">' + ic(D.RES.rune.icon) + "<b>" + (S.res.rune || 0) + '</b> runes</span><span title="Rune rare">' + ic(D.RES.rune_rare.icon) + "<b>" + (S.res.rune_rare || 0) + "</b> runes rares</span><small>L'Arène en donne beaucoup.</small></div>";
+      var tabs = [["all", "Tout"], ["coiffe", "Coiffes"], ["bottes", "Bottes"], ["cape", "Capes"], ["amulette", "Amulettes"], ["anneau", "Anneaux"]];
+      html += '<div class="dof-itabs">' + tabs.map(function (t) { return '<button type="button" class="dof-itab' + ((UI.ft || "all") === t[0] ? " is-on" : "") + '" data-action="ftab" data-arg="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
+      var list = eqS().inv.filter(function (q) { return (UI.ft || "all") === "all" || D.GEAR[q.t].slot === UI.ft; }).sort(function (a, b) { return pieceRar(b) - pieceRar(a); });
+      var fq = UI.sel ? pieceById(UI.sel) : null; if (fq && (UI.ft || "all") !== "all" && D.GEAR[fq.t].slot !== UI.ft) fq = null;
+      html += '<div class="dof"><div class="dof-right wide"><div class="dof-grid">' + (list.length ? list.map(function (q) { return gearTile(q, "fsel", q.id); }).join("") : '<p class="game-small">Aucune pièce à forger.</p>') + "</div>";
+      if (!fq) html += '<div class="dof-tip is-empty">Choisis une pièce à forger.</div>';
+      else {
+        var g = D.GEAR[fq.t], R0 = rarOf(fq), who = whoWears(fq.id), nb = Object.keys(fq.bon || {}).length, hasNeg = Object.keys(fq.bon || {}).some(function (k) { return fq.bon[k] < 0; }), r1 = S.res.rune || 0, r2 = S.res.rune_rare || 0;
+        html += '<div class="dof-tip" style="--rc:' + R0.color + '"><div class="dof-tip-h"><span class="dof-tip-ic">' + ic(g.icon) + "</span><div><strong>" + esc(g.name) + "</strong><small>" + esc(SLOT_KIND[g.slot] || g.slot) + (who ? " · porté par " + esc(charById(who).name) : "") + "</small><em>" + esc(R0.name) + "</em></div></div>";
+        html += '<div class="dof-sec">Effet</div><ul class="dof-fx"><li>' + esc(pieceDesc(fq)) + (fq.extra ? " + " + esc(D.GEAR[fq.extra].name) : "") + "</li></ul>";
+        if (g.lo !== undefined) html += '<div class="dof-forge-row"><span>Jet ' + Math.round(fq.roll * 100) + ' %</span><button class="btn btn-small" type="button" data-action="rune" data-arg="' + fq.id + '"' + (r1 < 1 ? " disabled" : "") + ">Relancer le jet " + ic(D.RES.rune.icon) + "</button></div>";
+        html += '<div class="dof-sec">Stats (' + nb + " / 6)</div>";
+        if (!nb) html += '<p class="game-small">Aucune stat : une rune rare peut en ajouter une.</p>';
+        html += '<ul class="dof-fx">' + GSTATS.filter(function (x) { return fq.bon && fq.bon[x.id]; }).map(function (x) {
+          var t = bonTxt((function (o) { o[x.id] = fq.bon[x.id]; return o; })({}))[0];
+          return '<li class="dof-forge-row' + (fq.bon[x.id] < 0 ? " dof-neg" : "") + '"><span>' + esc(t) + '</span><button class="btn btn-small btn-alt" type="button" data-action="rstat" data-arg="' + fq.id + ":" + x.id + '"' + (r1 < 1 ? " disabled" : "") + ' title="Relancer cette stat">↻ ' + ic(D.RES.rune.icon) + "</button></li>";
+        }).join("") + "</ul>";
+        html += '<div class="dof-btns"><button class="btn btn-small" type="button" data-action="radd" data-arg="' + fq.id + '"' + (r2 < 1 || nb >= 6 ? " disabled" : "") + ">+ Une stat " + ic(D.RES.rune_rare.icon) + "</button>" +
+          (hasNeg ? '<button class="btn btn-small" type="button" data-action="rpurge" data-arg="' + fq.id + '"' + (r2 < 1 ? " disabled" : "") + ">Purger le malus " + ic(D.RES.rune_rare.icon) + "</button>" : "") +
+          (["coiffe", "bottes", "cape"].indexOf(g.slot) >= 0 ? '<button class="btn btn-small btn-alt" type="button" data-action="runer" data-arg="' + fq.id + '"' + (r2 < 1 ? " disabled" : "") + ">+ effet " + ic(D.RES.rune_rare.icon) + "</button>" : "") + "</div>";
+        html += '<p class="dof-cap">Rune : relance une valeur dans sa fourchette. Rune rare : ajoute une stat (1 chance sur 4 de rater et de perdre la rune), retire un malus ou ajoute un 2e effet.</p></div>';
+      }
+      return html + "</div></div>";
     },
     comptoir: function () {
       eqS();
@@ -8203,6 +8219,24 @@
     isel2: function (id) { UI.sel = +id; SND.click(); go("atelier"); },
     recy: function (id) { var q = pieceById(+id); if (q && !whoWears(q.id)) { recycle(q); SND.crack(); } go("atelier"); },
     newsok: function () { S.news = 0; save(); SND.level(); openCamp(); },
+    fsel: function (id) { UI.sel = +id; SND.click(); go("forge"); },
+    ftab: function (t) { UI.ft = t; SND.click(); go("forge"); },
+    rstat: function (a) {
+      var pr = String(a).split(":"), q = pieceById(+pr[0]), x = GSTATS.filter(function (z) { return z.id === pr[1]; })[0]; if (!q || !x || !q.bon || !q.bon[x.id] || (S.res.rune || 0) < 1) return;
+      S.res.rune--; S.stats.runes = (S.stats.runes || 0) + 1; checkAchievements(null);
+      q.bon[x.id] = q.bon[x.id] < 0 ? -statRoll(x, 0.45) : statRoll(x, rarMul(pieceRar(q))); save(); SND.fusion(); go("forge");
+    },
+    radd: function (id) {
+      var q = pieceById(+id); if (!q || (S.res.rune_rare || 0) < 1) return; q.bon = q.bon || {}; if (Object.keys(q.bon).length >= 6) return;
+      S.res.rune_rare--; S.stats.runes = (S.stats.runes || 0) + 1; checkAchievements(null);
+      if (Math.random() < 0.25) { banner("Raté : la rune se brise"); SND.crack(); }
+      else { var pool = GSTATS.filter(function (x) { return !q.bon[x.id]; }), x = pool[(Math.random() * pool.length) | 0]; q.bon[x.id] = statRoll(x, rarMul(pieceRar(q))); banner("Nouvelle stat : " + bonTxt((function (o) { o[x.id] = q.bon[x.id]; return o; })({}))[0]); SND.fusion(); }
+      save(); go("forge");
+    },
+    rpurge: function (id) {
+      var q = pieceById(+id); if (!q || !q.bon || (S.res.rune_rare || 0) < 1) return; var k = Object.keys(q.bon).filter(function (z) { return q.bon[z] < 0; })[0]; if (!k) return;
+      S.res.rune_rare--; S.stats.runes = (S.stats.runes || 0) + 1; checkAchievements(null); delete q.bon[k]; banner("Malus purgé"); save(); SND.fusion(); go("forge");
+    },
     rune: function (id) { var q = pieceById(+id); if (!q || (S.res.rune || 0) < 1) return; S.res.rune--; S.stats.runes = (S.stats.runes || 0) + 1; checkAchievements(null); q.roll = Math.random(); save(); SND.fusion(); go("forge"); },
     runer: function (id) {
       var q = pieceById(+id); if (!q || (S.res.rune_rare || 0) < 1) return; S.res.rune_rare--; S.stats.runes = (S.stats.runes || 0) + 1;
