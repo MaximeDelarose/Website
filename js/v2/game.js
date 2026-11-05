@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.24.0";
+  var VERSION = "2.24.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -3328,10 +3328,10 @@
   }
   /* ---- Capitaine : l'équipage ---- */
   /* ---- Capitaine : l'équipage (10 au départ, +2 par niveau, 50 max), chaque matelot attaque avec l'arme du Capitaine en miniature ---- */
-  var CREW0 = 5, CREWMAX = 25;
+  var CREW0 = 5, CREWMAX = 50;
   function crewHp(pl) { return 8 + 2 * ((r && r.level) || 1); }
   function newMatelot(pl) { var h = crewHp(pl); return { k: "matelot", x: pl.x, y: pl.y, face: 1, anim: Math.random() * 2, cd: 0.4 + Math.random() * 0.8, chargeT: 0, hitCd: 0, hp: h, mhp: h, hurtT: 0 }; }
-  function crewMax(pl) { return Math.min(CREWMAX, CREW0 + (((r && r.level) || 1) - 1) + (setCount(pl, "corsaire") >= 2 ? 1 : 0) + (tal(pl, "canonniers") ? 2 : 0)); }
+  function crewMax(pl) { return Math.min(CREWMAX, CREW0 + 2 * (((r && r.level) || 1) - 1) + (setCount(pl, "corsaire") >= 2 ? 1 : 0) + (tal(pl, "canonniers") ? 2 : 0)); }
   // un coup de matelot = 10 % d'un coup de l'arme de base du Capitaine
   function crewHit(pl) {
     if (pl._chT === r.time) return pl._ch;

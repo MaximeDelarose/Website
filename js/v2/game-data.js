@@ -1177,7 +1177,7 @@ window.ES_DATA = (function () {
   };
   var V2CH = {
     noisette:  { order: 0, rule: "Choisit parmi 4 cartes au lieu de 3. L'écureuil d'apprentissage." },
-    capitaine: { order: 1, rule: "Il ne frappe pas lui-même : son équipage le suit, éparpillé autour de lui, et attaque avec une version miniature de son arme (5 % de ses dégâts par matelot). 5 matelots au départ, +1 par niveau, 25 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
+    capitaine: { order: 1, rule: "Il ne frappe pas lui-même : son équipage le suit, éparpillé autour de lui, et attaque avec une version miniature de son arme (5 % de ses dégâts par matelot). 5 matelots au départ, +2 par niveau, 50 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
     planeur:   { order: 2, rule: "Glisse sans cesse (inertie) et survole les obstacles. Ne s'ancre qu'accroché à un arbre ou à une souche." },
   };
   var CHAR_ALL = CHARACTERS.slice();
@@ -1494,7 +1494,7 @@ window.ES_DATA = (function () {
                [{ id: "voltigeuse", name: "Voltigeuse", desc: "Clé : la Volte se recharge en 1,5 s." }, { id: "intouchable", name: "Intouchable", desc: "Clé : invulnérable 1 s de plus après une roulade." }]],
     glaneuse: [[{ id: "pochespleines", name: "Poches pleines", desc: "En mouvement : +15 % d'expérience." }, { id: "aspiration", name: "Aspiration", desc: "La Volte aspire aussi l'or et les objets." }],
                [{ id: "moisson", name: "Grande glane", desc: "Clé : ramassage x3 en mouvement." }, { id: "avarice", name: "Avarice", desc: "Clé : toutes les 30 noisettes, une onde part autour de toi." }]],
-    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+2 matelots max (25 au plus)." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
+    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+2 matelots max (50 au plus)." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
                [{ id: "batterie", name: "Canonnade", desc: "Clé : ancré, la salve part toutes les 0,3 s." }, { id: "couverture", name: "Tir de couverture", desc: "Clé : la salve marche aussi en mouvement, 2 fois plus lente." }]],
     abordage: [[{ id: "sabres", name: "Sabres", desc: "La charge fait +50 % de dégâts." }, { id: "recrue", name: "Recrue d'abordage", desc: "Un ennemi tué pendant une charge a 25 % de chance de recruter." }],
                [{ id: "mutinerie", name: "Mutinerie", desc: "Clé : la charge dure 2 fois plus longtemps." }, { id: "bouclierh", name: "Mur de matelots", desc: "Clé : en cercle, les matelots arrêtent les tirs ennemis." }]],
