@@ -38,6 +38,14 @@ Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commenc
   mains peintes (paume, 4 doigts, pouce côté corps), jambes modelées (cuisse, genou, mollet, cheville, lumière du tibia), contours ≈ 20 %
   plus fins (`LINE_K` dans `avatar.ts`), jonction des deux moitiés de la posture en S en FONDU (plus de couture à la taille), mèches de la
   tête peinte complètes devant l'épaule. Tenue et dressing inchangés.
+- ✅ PASSE « PROPORTIONS / HOMOGÉNÉITÉ » (corps de Radia) : tête réduite autour du MENTON (−7 % pour toute tête ; −18 % pour la tête peinte complète,
+  très volumineuse) — cheveux arrière, visage, accessoires et couronne suivent ; bras plus épais (épaule 25, poignet 16,5) ; mains refaites et
+  agrandies (~1,5×, paume + 4 doigts épais + pouce charnu, ombre et lumière douces) ; reflets du bras sans tache au poignet. Mesures prises face
+  à Auguste peint (hauteur de tête ≈ 23 % de la silhouette, main ≈ 4 % de la hauteur sur la référence). Vérifié à l'écran : accueil, dressing,
+  événement (restaurant), 5 tenues / coiffures dont visage seul peint.
+- ⚠️ TEST INSTABLE CONNU : `apps-e2e` « Snap : réactions fictives affichées pendant la story » échoue ≈ 18 % du temps, indépendamment du dessin :
+  les délais des réactions sont tirés de l'identifiant de la story (donc de l'heure) ; sans réaction d'Auguste (20 %), la première arrive à ≥ 3 s,
+  alors que le test ne regarde que ~3 s (mesuré avec le vrai `genReactions` : 19,5 % sans réaction avant 3,0 s). À élargir à ~7 s si besoin.
 - 🟡 PHASE B — illustrations en calques pour TOUTES les tenues : cahier des charges `docs/ASSETS_PERSONNAGES.md` (gabarit 720 × 1800,
   calques, identifiants, intégration avec repli sur le dessin). En attente des fichiers d'illustration (pas d'outil de génération ici).
 - ⚠️ À vérifier sur iPhone : la tenue illustrée (dressing → « Tenue illustrée »), puis accueil / MON MONDE / un événement.
