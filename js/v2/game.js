@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.28.1";
+  var VERSION = "2.28.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -5510,10 +5510,11 @@
     state = "menu"; screen = "camp"; overlay.hidden = true; camp.on = true;
     camp.camOk = false; camp.tx = null; camp.goal = null;
     var bar = document.querySelector("[data-campbar]");
-    if (!bar) { bar = document.createElement("div"); bar.className = "camp-bar"; bar.setAttribute("data-campbar", ""); stage.appendChild(bar); bar.addEventListener("click", function (e) { var b = e.target.closest("[data-camp]"); if (b) campOpen(b.getAttribute("data-camp")); }); }
+    if (!bar) { bar = document.createElement("div"); bar.className = "camp-bar camp-dock"; bar.setAttribute("data-campbar", ""); stage.appendChild(bar); bar.addEventListener("click", function (e) { var b = e.target.closest("[data-camp]"); if (b) campOpen(b.getAttribute("data-camp")); }); }
     bar.hidden = false;
-    bar.innerHTML = '<button type="button" class="camp-go" data-camp="sentier">▶ Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" data-camp="' + l.id + '">' + esc(l.name.replace(/^(Le |La |L')/, "")) + "</button>"; }).join("") +
-      '<button type="button" class="camp-coop" data-camp="coop">👥 Coop</button><button type="button" data-camp="emote" title="Message rapide">💬</button><button type="button" data-camp="codex">📜</button><button type="button" data-camp="help">❓</button><button type="button" data-camp="options">⚙️</button>';
+    var PI = { terrier: "🏡", atelier: "🔨", forge: "🔥", comptoir: "🛒", chene: "🌳", arene: "⚔️" };
+    bar.innerHTML = '<div class="cb-util"><button type="button" class="camp-coop" data-camp="coop" title="Coop en ligne">👥<span>Coop</span></button><button type="button" data-camp="emote" title="Message rapide">💬</button><button type="button" data-camp="codex" title="Techniques et fusions">📜</button><button type="button" data-camp="help" title="Aide">❓</button><button type="button" data-camp="options" title="Réglages">⚙️</button></div>' +
+      '<div class="cb-main"><button type="button" class="camp-go" data-camp="sentier"><b>▶</b> Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" class="cb-place" data-camp="' + l.id + '"><i>' + (PI[l.id] || "•") + "</i><span>" + esc(l.id === "chene" ? "Chêne" : l.name.replace(/^(Le |La |L')/, "")) + "</span></button>"; }).join("") + "</div>";
   }
   // « Nouveautés » : ce qui a changé pour un joueur de la version 1
   function newsCard() {
