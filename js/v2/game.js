@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.30.2";
+  var VERSION = "2.31.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -4388,7 +4388,14 @@
     S.shopStock = { day: day, items: items }; save();
   }
   // jet à la Dofus : fourchette possible d'une stat sur cette pièce (selon sa rareté et son palier) et qualité du jet obtenu
-  function statRange(x, q) { var f = rarMul(pieceRar(q)) * [1, 1.15, 1.35][Math.max(0, Math.min(2, (q.tier || 1) - 1))]; return [Math.max(1, Math.round(x.lo * f)), Math.max(1, Math.round(x.hi * f))]; }
+  function budgetOf(q) { return [0.5, 0.9, 1.4, 2.0, 2.6][pieceRar(q)] * [1, 1.15, 1.35][Math.max(0, Math.min(2, (q.tier || 1) - 1))]; }
+  function nPosOf(q) { return Math.max(1, Object.keys(q.bon || {}).filter(function (k) { return q.bon[k] > 0; }).length); }
+  function budRange(x, q, n) {
+    var ref = x.s === 5 && x.hi > 80 ? 80 : x.hi, cap = x.hi <= 3 ? x.hi : ref * 2.4, b = ref * budgetOf(q) / n;
+    return [Math.max(1, Math.min(cap, Math.round(b * 0.6))), Math.max(1, Math.min(cap, Math.round(b * 1.4)))];
+  }
+  function rollBud(x, q, n, f) { var r0 = budRange(x, q, n), ref = x.s === 5 && x.hi > 80 ? 80 : x.hi; return Math.max(1, Math.min(x.hi <= 3 ? x.hi : ref * 2.4, Math.round((r0[0] + Math.random() * (r0[1] - r0[0])) * (f || 1)))); }
+  function statRange(x, q) { if (q.bv === 2) return budRange(x, q, nPosOf(q)); var f = rarMul(pieceRar(q)) * [1, 1.15, 1.35][Math.max(0, Math.min(2, (q.tier || 1) - 1))]; return [Math.max(1, Math.round(x.lo * f)), Math.max(1, Math.round(x.hi * f))]; }
   function statQ(x, q, v) { var r0 = statRange(x, q); return r0[1] > r0[0] ? Math.max(0, Math.min(1, (Math.abs(v) - r0[0]) / (r0[1] - r0[0]))) : 1; }
   function jetOf(q) { var ks = Object.keys(q.bon || {}).filter(function (k) { return q.bon[k] > 0; }), tot = 0; if (!ks.length) return null; ks.forEach(function (k) { var x = GSTATS.filter(function (z) { return z.id === k; })[0]; tot += statQ(x, q, q.bon[k]); }); return tot / ks.length; }
   function qCls(qv) { return qv >= 0.95 ? " dof-q-top" : qv >= 0.66 ? " dof-q-hi" : qv >= 0.33 ? "" : " dof-q-lo"; }
@@ -4416,7 +4423,10 @@
     q.bon = {};
     if (rar >= 2 && Math.random() < [0, 0, 0.3, 0.5, 0.6][rar]) { mal = pool.filter(function (x) { return x.mal; })[0]; if (mal) pool.splice(pool.indexOf(mal), 1); }
     var tm = [1, 1.15, 1.35][Math.max(0, Math.min(2, (tier || 1) - 1))];   // les pièces de palier élevé ont de meilleures stats
-    pool.slice(0, nb).forEach(function (x) { q.bon[x.id] = rollV(x, mulR * tm * (mal ? 1.25 : 1)); });
+    // budget de puissance (2.31) : une pièce a un budget fixé par sa rareté et son palier, réparti entre ses stats ;
+    // peu de stats = de grosses valeurs (jusqu'à +150 de Force sur une pièce haut de gamme), beaucoup de stats = valeurs modestes
+    q.bv = 2; var nPos = Math.max(1, Math.min(pool.length, 1 + Math.floor(Math.pow(Math.random(), 0.8) * (rar + 1))));
+    pool.slice(0, nPos).forEach(function (x) { q.bon[x.id] = rollBud(x, q, nPos, mal ? 1.25 : 1); });
     if (mal) q.bon[mal.id] = -rollV(mal, 0.45);
     if (g.elem) q.pts = Math.min(3, 1 + (rar >= 2 ? 1 : 0) + (rar >= 4 ? 1 : 0));
     if (g.ring === "apprenti") { var all = Object.keys(D.TECH).sort(function () { return Math.random() - 0.5; }); q.tech = all.slice(0, 2); }
@@ -8812,13 +8822,13 @@
     rstat: function (a) {
       var pr = String(a).split(":"), q = pieceById(+pr[0]), x = GSTATS.filter(function (z) { return z.id === pr[1]; })[0]; if (!q || !x || !q.bon || !q.bon[x.id] || (S.res.rune || 0) < 1) return;
       S.res.rune--; S.stats.runes = (S.stats.runes || 0) + 1; checkAchievements(null);
-      q.bon[x.id] = q.bon[x.id] < 0 ? -statRoll(x, 0.45) : statRoll(x, rarMul(pieceRar(q))); save(); SND.fusion(); go("forge");
+      q.bon[x.id] = q.bon[x.id] < 0 ? -statRoll(x, 0.45) : q.bv === 2 ? rollBud(x, q, nPosOf(q), 1) : statRoll(x, rarMul(pieceRar(q))); save(); SND.fusion(); go("forge");
     },
     radd: function (id) {
       var q = pieceById(+id); if (!q || (S.res.rune_rare || 0) < 1) return; q.bon = q.bon || {}; if (Object.keys(q.bon).length >= 6) return;
       S.res.rune_rare--; S.stats.runes = (S.stats.runes || 0) + 1; checkAchievements(null);
       if (Math.random() < 0.25) { banner("Raté : la rune se brise"); SND.crack(); }
-      else { var pool = GSTATS.filter(function (x) { return !q.bon[x.id] && (!x.minR || pieceRar(q) >= x.minR); }), x = pool[(Math.random() * pool.length) | 0]; q.bon[x.id] = statRoll(x, rarMul(pieceRar(q))); banner("Nouvelle stat : " + bonTxt((function (o) { o[x.id] = q.bon[x.id]; return o; })({}))[0]); SND.fusion(); }
+      else { var pool = GSTATS.filter(function (x) { return !q.bon[x.id] && (!x.minR || pieceRar(q) >= x.minR); }), x = pool[(Math.random() * pool.length) | 0]; q.bon[x.id] = q.bv === 2 ? rollBud(x, q, nPosOf(q) + 1, 1) : statRoll(x, rarMul(pieceRar(q))); banner("Nouvelle stat : " + bonTxt((function (o) { o[x.id] = q.bon[x.id]; return o; })({}))[0]); SND.fusion(); }
       save(); go("forge");
     },
     rpurge: function (id) {
@@ -9825,6 +9835,7 @@
     alch: function () { return { ess: me.ess, mix: me.mixN, el: armElem(me) }; },
     setGold: function (n) { r.gold = n; return r.gold; },
     dice: function () { me.diceT = 0.01; return 1; },
+    genSim: function (n, tier, rar) { var out = []; for (var i = 0; i < n; i++) { var q = genPiece(tier, undefined, rar); out.push(q.bon); } return out; },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
