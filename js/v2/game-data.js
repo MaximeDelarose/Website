@@ -1897,6 +1897,48 @@ window.ES_DATA = (function () {
   };
   Object.keys(COMBOS2).forEach(function (k) { var c = COMBOS2[k]; COMBOS[k] = { name: c[0], icon: c[1], parts: c[2], mul: 1.35, desc: [c[3]], fx: c[4], type: "combo", fusion: true }; WEAPONS[k] = COMBOS[k]; });
   Object.keys(LEGENDS2).forEach(function (k) { var c = LEGENDS2[k]; LEGENDS[k] = { name: c[0], icon: c[1], parts: c[2], mul: 1.7, desc: [c[3]], fx: c[4], type: "combo", fusion: true, legend: true }; WEAPONS[k] = LEGENDS[k]; });
+  /* 2.25 : plus de fusions, et des paliers au-dessus de la légendaire : ultra, méga ultra, giga (chaque palier fusionne 2 fusions du palier d'en dessous) */
+  var IC = ["mushroom", "tail", "meteore", "bolt", "claw", "shield", "thorn", "feather", "turret", "ghost", "orb", "pethog", "drone", "needle", "smg"];
+  var COMBOS3 = [
+    ["salve_mere", "Salve mère", ["projection", "rafale"], "Une salve qui n'en finit plus."], ["averse_acier", "Averse d'acier", ["projection", "pluie"], "Des projectiles tombent du ciel."],
+    ["halo_ardent", "Halo ardent", ["rayon", "aura"], "Un rayon qui nimbe tout autour de toi."], ["contre_taille", "Contre-taille", ["fente", "riposte"], "Chaque coup reçu appelle une estocade."],
+    ["vortex_choc", "Vortex de choc", ["tourbillon", "onde"], "Le tourbillon crache des ondes."], ["rouleau_retour", "Rouleau retour", ["charge", "boomerang"], "Tu fonces, tout revient."],
+    ["couronne_onde", "Couronne d'ondes", ["onde", "orbite"], "Des ondes tournent autour de toi."], ["pluie_etoiles", "Pluie d'étoiles", ["pluie", "orbite"], "Des étoiles tombent et tournent."],
+    ["jardin_epines", "Jardin d'épines", ["piege", "aura"], "Un champ d'épines vivant."], ["tour_piegee", "Tour piégée", ["piege", "sentinelle"], "Les sentinelles gardent des pièges."],
+    ["chien_obus", "Chien d'obus", ["mortier", "familier"], "Des familiers qui explosent."], ["ombre_retour", "Ombre de retour", ["boomerang", "echo"], "Ton double renvoie tes lancers."],
+    ["reflet_vif", "Reflet vif", ["ricochet", "echo"], "Les rebonds se reflètent."], ["laisse_vivante", "Laisse vivante", ["grappin", "familier"], "Tes familiers tirent les ennemis à eux."],
+    ["sentinelle_fantome", "Sentinelle fantôme", ["sentinelle", "echo"], "Des sentinelles qui se dédoublent."], ["essaim_familier", "Essaim familier", ["nuee", "familier"], "Une nuée de bêtes fidèles."],
+    ["tir_miroir", "Tir miroir", ["rafale", "echo"], "Tes rafales sont doublées."], ["foudre_pluie", "Pluie de foudre", ["rayon", "pluie"], "Des rayons tombent du ciel."],
+    ["mortier_ardent", "Mortier ardent", ["aura", "mortier"], "Des obus qui brûlent."], ["choc_frontal", "Choc frontal", ["charge", "onde"], "La charge fait trembler le sol."]
+  ];
+  COMBOS3.forEach(function (c, i) { COMBOS[c[0]] = { name: c[1], icon: IC[i % IC.length], parts: c[2], mul: 1.35, desc: [c[3]], type: "combo", fusion: true }; WEAPONS[c[0]] = COMBOS[c[0]]; });
+  var LEGENDS3 = [
+    ["pluie_argent", "Pluie d'argent", ["averse_acier", "pluie_etoiles"], "Légendaire : le ciel crache de l'acier et des étoiles."], ["cour_miracles", "Cour des miracles", ["jardin_epines", "tour_piegee"], "Légendaire : un fort d'épines et de pièges."],
+    ["veille_eternelle", "Veille éternelle", ["sentinelle_fantome", "garnison"], "Légendaire : des sentinelles partout, sans fin."], ["meute_ombres", "Meute d'ombres", ["ombre_retour", "meute_echo"], "Légendaire : une meute de doubles."],
+    ["maree_fer", "Marée de fer", ["rouleau_retour", "choc_frontal"], "Légendaire : une charge qui revient en vague."], ["couronne_solaire", "Couronne solaire", ["halo_ardent", "couronne_onde"], "Légendaire : un soleil qui tourne autour de toi."],
+    ["lame_miroir", "Lame miroir", ["contre_taille", "reflet_vif"], "Légendaire : des estocades à l'infini."], ["tempete_acier", "Tempête d'acier", ["salve_mere", "tir_miroir"], "Légendaire : deux salves sans fin."],
+    ["forge_infernale", "Forge infernale", ["mortier_ardent", "chien_obus"], "Légendaire : des obus vivants et brûlants."], ["orage_vivant", "Orage vivant", ["foudre_pluie", "vortex_choc"], "Légendaire : un orage qui te suit."],
+    ["chasse_sauvage", "Chasse sauvage", ["laisse_vivante", "essaim_familier"], "Légendaire : des bêtes qui chassent pour toi."], ["sanctuaire", "Sanctuaire", ["egide", "tour_piegee"], "Légendaire : un refuge où rien n'entre."],
+    ["rafale_infinie", "Rafale infinie", ["spirale", "salve_mere"], "Légendaire : une spirale de salves."], ["tonnerre", "Tonnerre", ["prisme", "foudre_pluie"], "Légendaire : la foudre rebondit du ciel."]
+  ];
+  LEGENDS3.forEach(function (c, i) { LEGENDS[c[0]] = { name: c[1], icon: IC[(i + 3) % IC.length], parts: c[2], mul: 1.7, desc: [c[3]], type: "combo", fusion: true, legend: true, tier: 2 }; WEAPONS[c[0]] = LEGENDS[c[0]]; });
+  // paliers au-dessus : ultra (2 légendaires), méga ultra (2 ultras), giga (2 méga ultras)
+  var ULTRAS = [
+    ["supernova", "Supernova", ["constellation", "aurore"]], ["cataclysme", "Cataclysme", ["apocalypse", "deluge"]], ["maelstrom", "Maelström", ["ouragan_t", "lame_tempete"]],
+    ["citadelle", "Citadelle", ["forteresse", "siege"]], ["grande_curee", "Grande curée", ["chasse", "horde"]], ["immortel", "Immortel", ["eternite", "inebranlable"]],
+    ["parque", "Parque", ["fil_destin", "filet_celeste"]], ["nuee_monde", "Nuée-monde", ["nuee_mille", "tourmente"]], ["tonnerre_argent", "Tonnerre d'argent", ["pluie_argent", "tonnerre"]],
+    ["fournaise", "Fournaise", ["forge_infernale", "sanctuaire"]]
+  ];
+  var MEGAS = [
+    ["mega_cosmos", "Méga Cosmos", ["supernova", "maelstrom"]], ["mega_cataclysme", "Méga Cataclysme", ["cataclysme", "fournaise"]], ["mega_citadelle", "Méga Citadelle", ["citadelle", "immortel"]],
+    ["mega_curee", "Méga Curée", ["grande_curee", "nuee_monde"]], ["mega_destin", "Méga Destin", ["parque", "tonnerre_argent"]]
+  ];
+  var GIGAS = [
+    ["giga_genese", "Giga Genèse", ["mega_cosmos", "mega_cataclysme"]], ["giga_rempart", "Giga Rempart", ["mega_citadelle", "mega_curee"]]
+  ];
+  [[ULTRAS, 3, 2.0, "Ultra fusion : "], [MEGAS, 4, 2.4, "Méga ultra fusion : "], [GIGAS, 5, 3.0, "Giga fusion : "]].forEach(function (T) {
+    T[0].forEach(function (c, i) { LEGENDS[c[0]] = { name: c[1], icon: IC[(i + 7) % IC.length], parts: c[2], mul: T[2], desc: [T[3] + "deux fusions du palier d'en dessous réunies en une seule."], type: "combo", fusion: true, legend: true, tier: T[1] }; WEAPONS[c[0]] = LEGENDS[c[0]]; });
+  });
   // quêtes des objets de niveau
   QUESTS.push(
     { id: "q3_racines", desc: "Reste ancré 2 minutes au total dans une partie.", check: function (r) { return (r.anchorTot || 0) >= 120; } },

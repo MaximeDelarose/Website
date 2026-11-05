@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.24.1";
+  var VERSION = "2.25.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -2654,6 +2654,11 @@
     Object.defineProperty(px, "hp", { configurable: true, get: function () { return pl.hp; }, set: function (v) { var d = v - pl.hp; if (d > 0 && pl.hp < pl.maxHp) pl.hp = Math.min(pl.maxHp, pl.hp + d * 0.1); } });
     return (mt.px = px);
   }
+  function treeProxies(pl) {
+    var out = [];
+    pl.trees.forEach(function (t) { if (t.age < t.grow) return; var px = crewProxy(pl, t); px.x = t.x; px.y = t.y - 4; px.face = 1; px.crewScale = 0.1; t.px = px; out.push(px); });
+    return out;
+  }
   function crewProxies(pl, max) {
     var out = [], cap = max || pl.crew.length;
     for (var i = 0; i < pl.crew.length && out.length < cap; i++) { var mt = pl.crew[i]; if (mt.thT > 0) continue; var px = crewProxy(pl, mt); px.x = mt.x; px.y = mt.y; px.face = mt.face || 1; out.push(px); }
@@ -2697,7 +2702,14 @@
           var px = cps[mi]; if (px.timers[e.key] === undefined) px.timers[e.key] = 0.1 + Math.random() * 1.2;
           p = px; try { fn(e.key, e.def, e.l, dt); } finally { p = kpw; }
         }
-      } else fn(e.key, e.def, e.l, dt);
+      } else {
+        fn(e.key, e.def, e.l, dt);
+        // Fougère : chaque arbre adulte lance aussi la technique, à 10 % des dégâts
+        if (p.trees && p.trees.length && p.char && p.char.id === "druide" && e.def.type !== "pet" && e.def.type !== "riposte") {
+          var kpt = p, tps = treeProxies(p);
+          for (var ti = 0; ti < tps.length; ti++) { var tpx = tps[ti]; if (tpx.timers[e.key] === undefined) tpx.timers[e.key] = 0.1 + Math.random() * 1.2; p = tpx; try { fn(e.key, e.def, e.l, dt); } finally { p = kpt; } }
+        }
+      }
       HIT_ELEM = undefined; HIT_FX = null; CUR_FAM = null;
       if (e.key !== baseId) tagTint(techTint(e.key), n0, l0, z0, f0);
       if (rmA !== 1) p.area /= rmA;
@@ -2861,7 +2873,9 @@
   }
   function allComps() {
     var out = [];
-    players.forEach(function (pl) { if (pl.crew && !pl.down) pl.crew.forEach(function (c) { out.push(c); if (c.px) Object.keys(c.px.comp).forEach(function (id) { c.px.comp[id].forEach(function (cc) { out.push(cc); }); }); }); if (!pl.comp || pl.down) return; Object.keys(pl.comp).forEach(function (id) { pl.comp[id].forEach(function (c) { out.push(c); }); }); });
+    players.forEach(function (pl) {
+      if (pl.trees && !pl.down) pl.trees.forEach(function (t) { if (t.px) Object.keys(t.px.comp).forEach(function (id) { t.px.comp[id].forEach(function (cc) { cc.mini = 1; out.push(cc); }); }); });
+      if (pl.crew && !pl.down) pl.crew.forEach(function (c) { out.push(c); if (c.px) Object.keys(c.px.comp).forEach(function (id) { c.px.comp[id].forEach(function (cc) { out.push(cc); }); }); }); if (!pl.comp || pl.down) return; Object.keys(pl.comp).forEach(function (id) { pl.comp[id].forEach(function (c) { out.push(c); }); }); });
     return out;
   }
 
@@ -3490,6 +3504,7 @@
     if (pl.cparts && pl.cparts[id]) return pl.cparts[id];
     return [{ id: id, evo: (pl.evo || {})[id], fus: (pl.tfus || {})[id] || 0 }];
   }
+  function fusLabel(cd) { return cd.tier === 5 ? "Giga fusion" : cd.tier === 4 ? "Méga ultra fusion" : cd.tier === 3 ? "Ultra fusion" : cd.legend ? "Légendaire" : "Fusion"; }
   function comboReady(pl, cid) {
     var c = ALLW[cid];
     var fg = pl.ring && pl.ring.forgeron && !c.legend;
@@ -3542,8 +3557,8 @@
       cd.parts.forEach(function (q) { partsOf(pl, q).forEach(function (pt) { parts.push({ id: pt.id, evo: pt.evo, fus: pt.fus, fx: (pt.fx || []).slice() }); }); delete pl.weapons[q]; pl.consumed[q] = true; if (pl.cparts) delete pl.cparts[q]; delete pl.timers[q]; });
       if (cd.fx) parts.forEach(function (pt) { if (cd.fx[pt.id]) pt.fx.push(cd.fx[pt.id]); if (cd.fx["*"]) pt.fx.push(cd.fx["*"]); });
       pl.cparts = pl.cparts || {}; pl.cparts[c.id] = parts; pl.weapons[c.id] = MAX_LVL;
-      burst(pl.x, pl.y, cd.legend ? "#ff9a3a" : "#f6d36b", 30);
-      if (pl === me) { r.fusions++; r.cbN = (r.cbN || 0) + 1; if (cd.legend) r.legend++; banner((cd.legend ? "Légendaire : " : "Fusion : ") + cd.name + " !"); SND.fusion(); }
+      burst(pl.x, pl.y, cd.tier >= 5 ? "#ff5a8a" : cd.tier >= 4 ? "#c9b3ff" : cd.tier >= 3 ? "#6ad8ff" : cd.legend ? "#ff9a3a" : "#f6d36b", 30 + 10 * Math.max(0, (cd.tier || 2) - 2));
+      if (pl === me) { r.fusions++; r.cbN = (r.cbN || 0) + 1; if (cd.legend) r.legend++; banner(fusLabel(cd) + " : " + cd.name + " !"); SND.fusion(); }
       return true;
     }
     return false;
@@ -3553,7 +3568,7 @@
     if (c.type === "itm") { var it = ITM[c.id]; return { icon: "ITEMICON", iconTxt: ic(it.icon), name: it.name, lvl: "Objet commun (anneau du collectionneur)", desc: it.desc, cls: "" }; }
     if (c.type === "evo") { var ev = ALLW[c.id].evos.filter(function (e) { return e.id === c.evo; })[0]; d = techDef(pl, c.id); var eel = D.ELEMENTS[armeOf(pl).element]; return { icon: d.icon, name: d.name + " → " + ev.name, lvl: ev.elemC ? "Évolution élémentaire · " + (eel ? eel.name : "") : "Évolution", desc: ev.desc, cls: ev.elemC ? " is-fusion is-legend" : " is-fusion" }; }
     if (c.type === "pf") { var tf = c.rec === 2 ? D.TFUS2[c.id] : D.TFUS[c.id]; d = techDef(pl, c.id); return { icon: d.icon, name: d.name + " + " + D.PASSIVES[tf.p].name, lvl: "Fusion : " + tf.name, desc: tf.desc, cls: " is-fusion" }; }
-    if (c.type === "cb") { var cb = ALLW[c.id]; return { icon: cb.icon, name: cb.name, lvl: cb.legend ? "Fusion légendaire !" : "Fusion de techniques", desc: cb.desc[0] + " Recette : " + cb.parts.map(function (q) { return ALLW[q].type === "combo" ? ALLW[q].name : techDef(pl, q).name; }).join(" + ") + ". Libère un emplacement.", cls: cb.legend ? " is-fusion is-legend" : " is-fusion" }; }
+    if (c.type === "cb") { var cb = ALLW[c.id]; return { icon: cb.icon, name: cb.name, lvl: cb.legend ? (cb.tier >= 3 ? fusLabel(cb) + " !" : "Fusion légendaire !") : "Fusion de techniques", desc: cb.desc[0] + " Recette : " + cb.parts.map(function (q) { return ALLW[q].type === "combo" ? ALLW[q].name : techDef(pl, q).name; }).join(" + ") + ". Libère un emplacement.", cls: cb.legend ? " is-fusion is-legend" : " is-fusion" }; }
     if (c.type === "w") {
       d = techDef(pl, c.id);
       var fam = { tir: "Tir", melee: "Mêlée", zone: "Zone", retour: "Retour", compagnon: "Compagnon" }[d.family] || "";
@@ -5178,7 +5193,7 @@
   // Cendrine : les coups reçus deviennent une dette remboursée sur 4 s
   function damageRaw(pl, n) { pl.hp -= n; }
   /* Fougère : noisettes plantées → pousses → arbres qui attaquent */
-  function treeMax(pl) { return (pl.posture === "semeuse" ? 8 : 4) + (tal(pl, "jardiniere_t3") || tal(pl, "ronceraie_t3") ? 3 : 0) + (tal(pl, "semeuse_t3") ? 6 : 0); }
+  function treeMax(pl) { return Math.min(10, (pl.posture === "semeuse" ? 8 : 6) + (tal(pl, "jardiniere_t3") || tal(pl, "ronceraie_t3") ? 2 : 0) + (tal(pl, "semeuse_t3") ? 2 : 0)); }
   function plant(pl, weak) {
     pl.trees = pl.trees || [];
     if (pl.trees.length >= treeMax(pl)) pl.trees.shift();
@@ -7167,7 +7182,7 @@
     smoke: { fill: "rgba(110,100,92,.2)", ring: "rgba(255,140,60,.5)", dot: "wisp" },
   };
   // Capitaine : auras, orbites et liens sont dessinés autour de chaque matelot (leur double), pas autour du joueur
-  function crewDrawList(pl) { if (!pl.crew || !pl.crew.length) return [pl]; var out = []; pl.crew.forEach(function (mt) { if (mt.px && !(mt.thT > 0)) out.push(mt.px); }); return out; }
+  function crewDrawList(pl) { if (pl.trees && pl.trees.length && pl.char && pl.char.id === "druide") { var tl = [pl]; pl.trees.forEach(function (t) { if (t.px && t.age >= t.grow) tl.push(t.px); }); return tl; } if (!pl.crew || !pl.crew.length) return [pl]; var out = []; pl.crew.forEach(function (mt) { if (mt.px && !(mt.thT > 0)) out.push(mt.px); }); return out; }
   function drawAuras(p0) {
     crewDrawList(p0).forEach(function (p) {
     techEntries(p).forEach(function (te) {
@@ -8509,7 +8524,7 @@
       [D.COMBOS, D.LEGENDS].forEach(function (set) {
         Object.keys(set).forEach(function (id) {
           var c = set[id];
-          html += '<div class="shop-item fusion-row' + (c.legend ? " is-legend" : "") + '"><span class="shop-ic"><img src="' + spriteUrl(c.icon) + '" alt=""></span><div class="shop-text"><strong>' + esc(c.name) + (c.legend ? ' <em class="legend-tag">Légendaire</em>' : "") + "</strong><span>" + esc(c.desc[0]) + '</span><span class="fusion-recipe">' + c.parts.map(function (q) { return esc(nm(q)); }).join(" + ") + "</span></div></div>";
+          html += '<div class="shop-item fusion-row' + (c.legend ? " is-legend" : "") + '"><span class="shop-ic"><img src="' + spriteUrl(c.icon) + '" alt=""></span><div class="shop-text"><strong>' + esc(c.name) + (c.legend ? ' <em class="legend-tag">' + fusLabel(c) + '</em>' : "") + "</strong><span>" + esc(c.desc[0]) + '</span><span class="fusion-recipe">' + c.parts.map(function (q) { return esc(nm(q)); }).join(" + ") + "</span></div></div>";
         });
       });
       return html + "</div>";
@@ -9605,6 +9620,9 @@
     projN: function () { return [projs.length, zones.length, lobs.length, me.crew ? me.crew.length : 0]; },
     fate: function (n) { var o = []; for (var i = 0; i < (n || 1); i++) { fateApply(me); o.push(1); } return o.length; },
     fateCard: function () { choicesOverride = [{ type: "heal" }, { type: "gold" }, { type: "fate" }]; pending += 1; return 1; },
+    plant: function (n) { for (var i = 0; i < (n || 1); i++) { plant(me, false); } me.trees.forEach(function (t) { t.age = 99; }); return me.trees.length + "/" + treeMax(me); },
+    fusReady: function () { return Object.keys(D.COMBOS).concat(Object.keys(D.LEGENDS)).filter(function (c) { return comboReady(me, c); }); },
+    fuse: function (id) { p = me; v2Apply({ type: "cb", id: id }); return Object.keys(me.weapons); },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
