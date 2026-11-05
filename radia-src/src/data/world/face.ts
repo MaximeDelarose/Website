@@ -85,7 +85,7 @@ export function defaultFace(): FaceCustom {
   return {
     skin: { tone: 3, hue: 0, light: 0.02, sat: -0.05, warm: 0.1 },
     shape: 'oval',
-    eyes: { shape: 'almond', size: 0.06, spacing: -0.1, iris: '#4A2E1E', irisSize: 0.22 },
+    eyes: { shape: 'almond', size: -0.3, spacing: 0.6, iris: '#4A2E1E', irisSize: 0.22 },
     brows: { shape: 'arched', thick: 0.25, curve: 0.2, color: '#2A1A14' },
     nose: { shape: 'fine', size: -0.1, width: -0.2, length: 0 },
     mouth: { shape: 'full', fullness: 0.3, width: 0.1, lip: '#B8707A' },
@@ -129,6 +129,11 @@ export function sanitizeFace(raw: unknown): FaceCustom {
     makeup: { liner: oneOf(mk.liner, LINER_STYLES, d.makeup.liner), shadow: hex(mk.shadow, '', true), blush: Math.round(num(mk.blush, 0, 0, 1) * 100) / 100, blushColor: hex(mk.blushColor, d.makeup.blushColor), mascara: Math.round(num(mk.mascara, 0, 0, 1) * 100) / 100, lipstick: mk.lipstick !== false, intensity: slider(mk.intensity) },
   };
 }
+
+/** Ancien réglage de base des yeux (trop larges et rapprochés : effet « lunettes »). Sert uniquement à reconnaître un visage jamais retouché. */
+export function previousDefaultFace(): FaceCustom { const f = defaultFace(); f.eyes = { ...f.eyes, size: 0.06, spacing: -0.1 }; return f; }
+/** Visage jamais personnalisé (égal à l'ancien réglage de base) → reçoit le nouveau réglage ; un visage retouché par la joueuse n'est JAMAIS remplacé. */
+export function upgradeUntouchedFace(f: FaceCustom): FaceCustom { return JSON.stringify(f) === JSON.stringify(previousDefaultFace()) ? defaultFace() : f; }
 
 /** Clé de cache (le dessin de l'avatar est mis en cache : toute modification de visage doit changer la clé). */
 export const faceKey = (f: FaceCustom): string => JSON.stringify(f);

@@ -115,10 +115,10 @@ describe('équipement', () => {
 });
 
 describe('coiffures', () => {
-  it('lâchés par défaut ; changer vers une coiffure offerte', () => {
-    expect(W.getLook().hair).toBe('hair-loose');
-    expect(W.setHair('hair-wavy').ok).toBe(true);
+  it('longs ondulés par défaut (look de référence) ; changer vers une coiffure offerte', () => {
     expect(W.getLook().hair).toBe('hair-wavy');
+    expect(W.setHair('hair-loose').ok).toBe(true);
+    expect(W.getLook().hair).toBe('hair-loose');
   });
   it('achète une coiffure non possédée', () => {
     w().res.coins = 150;
@@ -131,7 +131,7 @@ describe('coiffures', () => {
   it('refuse faute de pièces', () => {
     w().res.coins = 10;
     expect(W.setHair('hair-half').reason).toBe('coins');
-    expect(W.getLook().hair).toBe('hair-loose');
+    expect(W.getLook().hair).toBe('hair-wavy');
     expect(w().res.coins).toBe(10);
   });
 });
