@@ -171,10 +171,10 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v238b";
+      var FALLBACK = "v238c";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
-        if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261109app3" + b);
+        if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261109ver4" + b);
         ["js/v2/game-data.js", "js/v2/game.js"].forEach(function (src) {
           var s = document.createElement("script"); s.src = src + "?v=" + b; s.async = false; document.body.appendChild(s);
         });

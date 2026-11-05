@@ -3139,3 +3139,6 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 
 html.is-app .fs-exit, html.is-app .game-hud .hud-exit, html.is-app [data-exit-max] { display: none !important; }
 html.is-app, html.is-app body { overflow: hidden; overscroll-behavior: none; }
+
+.camp-ver { position: absolute; z-index: 5; left: calc(env(safe-area-inset-left, 0px) + 6px); top: calc(env(safe-area-inset-top, 0px) + 6px); padding: 3px 8px; font: 700 12px/1.2 system-ui, sans-serif; color: #fdf3de; background: rgba(43, 23, 9, .7); border: 0; box-shadow: 0 0 0 2px #2b1709; cursor: pointer; }
+.camp-ver[hidden] { display: none; }
