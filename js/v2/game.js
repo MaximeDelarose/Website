@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.38.3";
+  var VERSION = "2.38.4";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -10121,8 +10121,8 @@
     var lastBack = 0, armed = false;
     function push() { try { history.pushState({ es: 1 }, ""); } catch (e) {} }
     // l'entrée « garde » doit être créée pendant un geste de l'utilisateur : sinon Firefox et Chrome la sautent au retour
-    function gesture() { if (!armed) { armed = true; push(); } }
-    ["pointerdown", "touchstart", "keydown", "click"].forEach(function (ev) { window.addEventListener(ev, gesture, { capture: true, passive: true }); });
+    function gesture(e) { if (!armed && e.isTrusted) { armed = true; push(); } }
+    ["pointerup", "touchend", "click", "keydown"].forEach(function (ev) { window.addEventListener(ev, gesture, { capture: true, passive: true }); });   // seuls ces événements comptent comme « geste » sur téléphone
     push();
     window.addEventListener("popstate", function () {
       armed = false;
