@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.30.0";
+  var VERSION = "2.30.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -46,6 +46,7 @@
         if (s[k] && typeof s[k] === "object" && !Array.isArray(s[k])) s[k] = Object.assign(s[k], raw[k]);
         else s[k] = raw[k];
       });
+      Object.keys(raw).forEach(function (k) { if (!(k in s) && raw[k] !== undefined && raw[k] !== null) s[k] = raw[k]; });   // titres, cadeau du jour, provisions, stock du comptoir, échelle d'attirail…
       s.stats.played = s.stats.played || {}; s.stats.maps = s.stats.maps || {};
       if (!raw.stats || raw.stats.goldSince === undefined) s.stats.goldSince = s.stats.goldEarned || 0;
       s.tree = s.tree || {}; s.pshop = s.pshop || {}; s.ppts = s.ppts || 0;
@@ -4226,10 +4227,11 @@
     var h = '<div class="dof-tip" style="--rc:' + R0.color + '"><div class="dof-tip-h"><span class="dof-tip-ic">' + ic(g.icon) + '</span><div><strong>' + esc(g.name) + "</strong><small>" + esc(SLOT_KIND[g.slot] || g.slot) + " · " + esc((D.SLOTS.filter(function (x) { return (x.kind || x.id) === g.slot; })[0] || {}).state || "") + '</small><em>' + esc(R0.name) + (g.unique ? " · unique" : "") + "</em></div></div>";
     h += '<div class="dof-sec">Effets</div><ul class="dof-fx"><li>' + esc(pieceDesc(q)) + "</li>";
     if (g.elem) h += "<li>" + elemSpan(g.elem, "+" + q.pts + " point" + (q.pts > 1 ? "s" : "") + " de " + D.ELEMENTS[g.elem].name) + "</li>";
-    bonTxt(q.bon, true).forEach(function (t) { h += "<li" + (t.charAt(0) === "-" ? ' class="dof-neg"' : "") + ">" + esc(t) + "</li>"; });
+    statRows(q, true).forEach(function (rw) { h += "<li class=\"" + (rw.neg ? "dof-neg" : "") + qCls(rw.q).trim() + "\">" + esc(rw.text + rw.range) + (rw.top ? " ★" : "") + "</li>"; });
     if (q.extra && D.GEAR[q.extra]) h += "<li>+ " + esc(D.GEAR[q.extra].name) + "</li>";
     h += "</ul>";
     if (!mine) { var cur = pieceById(w[g.slot === "anneau" ? "anneau1" : g.slot]) || (g.slot === "anneau" ? pieceById(w.anneau2) : null); if (cur && cur.id !== q.id) { var df = {}, ks = {}; Object.keys(q.bon || {}).forEach(function (k) { ks[k] = 1; }); Object.keys(cur.bon || {}).forEach(function (k) { ks[k] = 1; }); Object.keys(ks).forEach(function (k) { var d0 = ((q.bon || {})[k] || 0) - ((cur.bon || {})[k] || 0); if (d0) df[k] = d0; }); var ct = bonTxt(df); h += '<div class="dof-sec">Comparé à ' + esc(D.GEAR[cur.t].name) + '</div><ul class="dof-fx small">' + (ct.length ? ct.map(function (t) { return "<li" + (t.charAt(0) === "-" ? ' class="dof-neg"' : "") + ">" + esc(t) + "</li>"; }).join("") : "<li>Mêmes stats</li>") + "</ul>"; } }
+    h += statQuality(q);
     if (g.lo !== undefined) h += '<p class="dof-roll">Jet : ' + Math.round(q.roll * 100) + " % (" + fmtV(g.lo) + " à " + fmtV(g.hi) + ")</p>";
     if (g.set && D.SETS[g.set]) { var st = D.SETS[g.set], n = 0; D.SLOTS.forEach(function (sl) { var o = pieceById(w[sl.id]); if (o && D.GEAR[o.t].set === g.set) n++; }); h += '<div class="dof-sec">Panoplie</div><p class="dof-set">' + esc(st.name) + " (" + n + "/" + (st.full || 4) + ")" + (st.b2 ? "<br>2 : " + esc(st.b2) : "") + (st.b4 ? "<br>" + (st.full || 4) + " : " + esc(st.b4) : "") + "</p>"; }
     if (g.who) h += '<p class="dof-cond">Portable par ' + esc(charById(g.who).name) + " seulement</p>";
@@ -4308,14 +4310,23 @@
       });
     return html + "</div>";
   }
-  // 2.30 : passage à l'échelle « points » : les anciennes pièces sont converties une fois
+  // 2.30 : passage à l'échelle « points ». Les pièces à l'ancienne échelle sont converties une fois ; celles déjà converties (jusqu'à plusieurs fois, par erreur) sont ramenées à la bonne échelle selon leur ordre de grandeur.
   function migrateGear() {
-    if (S.gearScale === 2) return;
-    var f = function (q) { if (q && q.bon) Object.keys(q.bon).forEach(function (k) { if (GS[k] && GS[k] > 1) q.bon[k] = Math.round(q.bon[k] * GS[k]); }); };
+    if (S.gearFix === 3) return;
+    var f = function (q) {
+      if (!q || !q.bon) return;
+      Object.keys(q.bon).forEach(function (k) {
+        var sc = GS[k]; if (!sc || sc <= 1) return;
+        var x = GSTATS.filter(function (z) { return z.id === k; })[0], v = q.bon[k], a = Math.abs(v), n = 0;
+        var oldMax = v < 0 ? x.hi / sc * 0.45 * 1.1 : x.hi / sc * 1.1 * 1.35, newMax = (v < 0 ? x.hi * 0.45 : x.hi * 1.1 * 1.35) * 1.3;
+        if (a <= oldMax) a *= sc; else while (a > newMax && n++ < 4) a /= sc;
+        q.bon[k] = (v < 0 ? -1 : 1) * Math.max(1, Math.round(a));
+      });
+    };
     ((S.eq || {}).inv || []).forEach(f); if (S.shopStock) S.shopStock.items.forEach(function (it) { f(it.q); });
-    S.gearScale = 2;
+    S.gearScale = 2; S.gearFix = 3;
   }
-  function eqS() { if (GS && S.gearScale !== 2 && S.eq) migrateGear(); S.eq = S.eq || { inv: [], worn: {}, uid: 1 }; S.res = S.res || {}; S.clvl = S.clvl || {}; S.tal = S.tal || {}; S.mast = S.mast || {}; return S.eq; }
+  function eqS() { if (GS && S.gearFix !== 3) { if (!S.eq) S.gearFix = 3; else migrateGear(); } S.eq = S.eq || { inv: [], worn: {}, uid: 1 }; S.res = S.res || {}; S.clvl = S.clvl || {}; S.tal = S.tal || {}; S.mast = S.mast || {}; return S.eq; }
   function charLevel(cid) { return Math.min(12, 1 + Math.floor(Math.sqrt(((S.clvl || {})[cid] || 0) / 40))); }
   function charXpFor(l) { return (l - 1) * (l - 1) * 40; }
   function mastLevel(aid) { var x = (S.mast || {})[aid] || 0, l = 1; D.MASTERY.forEach(function (t, i) { if (x >= t) l = i + 1; }); return l; }
@@ -4376,6 +4387,18 @@
     rars.forEach(function (rr) { var q = genPiece(2, undefined, rr); items.push({ q: q, price: [150, 450, 1100, 2800, 7000][rr] + (q.bon ? Object.keys(q.bon).length * 60 : 0) }); });
     S.shopStock = { day: day, items: items }; save();
   }
+  // jet à la Dofus : fourchette possible d'une stat sur cette pièce (selon sa rareté et son palier) et qualité du jet obtenu
+  function statRange(x, q) { var f = rarMul(pieceRar(q)) * [1, 1.15, 1.35][Math.max(0, Math.min(2, (q.tier || 1) - 1))]; return [Math.max(1, Math.round(x.lo * f)), Math.max(1, Math.round(x.hi * f))]; }
+  function statQ(x, q, v) { var r0 = statRange(x, q); return r0[1] > r0[0] ? Math.max(0, Math.min(1, (Math.abs(v) - r0[0]) / (r0[1] - r0[0]))) : 1; }
+  function jetOf(q) { var ks = Object.keys(q.bon || {}).filter(function (k) { return q.bon[k] > 0; }), tot = 0; if (!ks.length) return null; ks.forEach(function (k) { var x = GSTATS.filter(function (z) { return z.id === k; })[0]; tot += statQ(x, q, q.bon[k]); }); return tot / ks.length; }
+  function qCls(qv) { return qv >= 0.95 ? " dof-q-top" : qv >= 0.66 ? " dof-q-hi" : qv >= 0.33 ? "" : " dof-q-lo"; }
+  function statRows(q, ranges) {
+    return GSTATS.filter(function (x) { return q.bon && q.bon[x.id]; }).map(function (x) {
+      var v = q.bon[x.id], t = bonTxt((function (o) { o[x.id] = v; return o; })({}))[0], neg = v < 0, qv = neg ? 0 : statQ(x, q, v), r0 = statRange(x, q);
+      return { id: x.id, text: t, neg: neg, q: qv, range: ranges && !neg ? " (" + r0[0] + " à " + r0[1] + ")" : "", top: !neg && qv >= 0.95 };
+    });
+  }
+  function statQuality(q) { var j = jetOf(q); return j === null ? "" : '<p class="dof-roll">Jet global des stats : <b class="' + (j >= 0.66 ? "dof-q-hi" : j < 0.33 ? "dof-q-lo" : "") + '">' + Math.round(j * 100) + " %</b>" + (Object.keys(q.bon).some(function (k) { var x = GSTATS.filter(function (z) { return z.id === k; })[0]; return q.bon[k] > 0 && statQ(x, q, q.bon[k]) >= 0.95; }) ? ' · <b class="dof-q-top">jet parfait</b>' : "") + "</p>"; }
   function statRoll(x, f) { return Math.max(1, Math.round((x.lo + Math.random() * (x.hi - x.lo)) * f)); }
   function rarMul(rar) { return [0.5, 0.65, 0.8, 0.95, 1.1][rar] || 1; }
   function bonTxt(b, ranges) {
@@ -8615,9 +8638,9 @@
         if (g.lo !== undefined) html += '<div class="dof-forge-row"><span>Jet ' + Math.round(fq.roll * 100) + ' %</span><button class="btn btn-small" type="button" data-action="rune" data-arg="' + fq.id + '"' + (r1 < 1 ? " disabled" : "") + ">Relancer le jet " + ic(D.RES.rune.icon) + "</button></div>";
         html += '<div class="dof-sec">Stats (' + nb + " / 6)</div>";
         if (!nb) html += '<p class="game-small">Aucune stat : une rune rare peut en ajouter une.</p>';
-        html += '<ul class="dof-fx">' + GSTATS.filter(function (x) { return fq.bon && fq.bon[x.id]; }).map(function (x) {
-          var t = bonTxt((function (o) { o[x.id] = fq.bon[x.id]; return o; })({}))[0];
-          return '<li class="dof-forge-row' + (fq.bon[x.id] < 0 ? " dof-neg" : "") + '"><span>' + esc(t) + '</span><button class="btn btn-small btn-alt" type="button" data-action="rstat" data-arg="' + fq.id + ":" + x.id + '"' + (r1 < 1 ? " disabled" : "") + ' title="Relancer cette stat">↻ ' + ic(D.RES.rune.icon) + "</button></li>";
+        html += statQuality(fq) + '<ul class="dof-fx">' + statRows(fq, true).map(function (rw) {
+          var x = { id: rw.id };
+          return '<li class="dof-forge-row' + (rw.neg ? " dof-neg" : "") + qCls(rw.q) + '"><span>' + esc(rw.text + rw.range) + (rw.top ? " ★" : "") + '</span><button class="btn btn-small btn-alt" type="button" data-action="rstat" data-arg="' + fq.id + ":" + x.id + '"' + (r1 < 1 ? " disabled" : "") + ' title="Relancer cette stat">↻ ' + ic(D.RES.rune.icon) + "</button></li>";
         }).join("") + "</ul>";
         html += '<div class="dof-btns"><button class="btn btn-small" type="button" data-action="radd" data-arg="' + fq.id + '"' + (r2 < 1 || nb >= 6 ? " disabled" : "") + ">+ Une stat " + ic(D.RES.rune_rare.icon) + "</button>" +
           (hasNeg ? '<button class="btn btn-small" type="button" data-action="rpurge" data-arg="' + fq.id + '"' + (r2 < 1 ? " disabled" : "") + ">Purger le malus " + ic(D.RES.rune_rare.icon) + "</button>" : "") +

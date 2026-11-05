@@ -3097,3 +3097,5 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
   .camp-dock .camp-go { grid-column: auto; }
 }
 .camp-emotes { bottom: 150px; }
+/* jet à la Dofus : couleur selon la qualité du jet */
+.dof-fx li.dof-q-hi, .dof-q-hi { color: #9cdc7a; } .dof-fx li.dof-q-lo, .dof-q-lo { color: #c8a08a; } .dof-fx li.dof-q-top, .dof-q-top { color: #f6d36b; font-weight: 800; }
