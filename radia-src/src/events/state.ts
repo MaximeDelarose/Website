@@ -64,7 +64,7 @@ export function sanitizeEvents(raw: unknown): EventsState {
   }
   if (Array.isArray(raw.msgs)) {
     d.msgs = raw.msgs.filter(isObj).slice(-60).map((m): Msg => ({
-      at: num(m.at, 0), from: (['auguste', 'kid1', 'kid2', 'kid3', 'agency'].includes(m.from as string) ? m.from : 'auguste') as Sender,
+      at: num(m.at, 0), from: (['auguste', 'kid1', 'kid2', 'kid3', 'agency', 'maman', 'tante', 'soeur', 'amie'].includes(m.from as string) ? m.from : 'auguste') as Sender,
       text: str(m.text, '', 200), read: m.read === true,
     })).filter((m) => m.text);
   }

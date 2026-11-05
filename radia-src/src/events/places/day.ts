@@ -334,3 +334,92 @@ export const spa: PlaceDef = {
 };
 const SPA_FL: [number, number][] = [];
 void archPath; void rad; void vase; void rose; void INK; void H;
+
+// ------------------------------------------------------------------ chez maman (salon-cuisine chaleureux)
+const MH_PTS: [number, number][] = [];
+export const momHome: PlaceDef = {
+  bg(c) {
+    MH_PTS.length = 0;
+    c.fillStyle = lin(c, 0, 0, 0, 360, '#fdeed9', '#f9dcc8'); c.fillRect(0, 0, W, 360);
+    // papier peint à petits motifs
+    const r = seeded(11);
+    for (let i = 0; i < 46; i++) heart(c, r() * W, 20 + r() * 300, 3 + r() * 2.4, 'rgba(236,150,170,0.22)');
+    // fenêtre ensoleillée avec voilage
+    rr(c, 24, 54, 120, 142, 8, lin(c, 0, 54, 0, 196, '#cfe9f8', '#fbf3e0'), '#fffaf0', 6);
+    c.strokeStyle = '#fffaf0'; c.lineWidth = 4; c.beginPath(); c.moveTo(84, 54); c.lineTo(84, 196); c.moveTo(24, 124); c.lineTo(144, 124); c.stroke();
+    curtain(c, -1, 56, 160, '#fff6ea', '#fdeed9', 44); curtain(c, 1, 56, 160, '#fff6ea', '#fdeed9', 44);
+    plant(c, 118, 204, 0.5, '#f1c3d0');
+    // étagère de vaisselle et cadres photo
+    rr(c, 182, 96, 190, 8, 2, '#c79a6a', INK_S);
+    for (let i = 0; i < 5; i++) { rr(c, 192 + i * 34, 70, 24, 26, 5, ['#f9c9d4', '#fff', '#c9e4f0', '#f6dfa3', '#f9c9d4'][i], INK_S); }
+    rr(c, 182, 150, 190, 8, 2, '#c79a6a', INK_S);
+    for (const [x, col] of [[200, '#ffb3c8'], [250, '#c9a6ff'], [300, '#f6c36a']] as const) { rr(c, x, 112, 34, 38, 3, '#fff', '#d9a43c', 2); rr(c, x + 4, 116, 26, 30, 2, col, null); }
+    // table ronde avec nappe, théière, gâteau
+    shadowEll(c, 214, 452, 150, 16, 0.2);
+    floor(c, 330, '#e6c9a6', '#c9a07a', 'rgba(120,80,50,0.12)');
+    rr(c, 204, 392, 20, 62, 4, '#b98657', INK_S);
+    ell(c, 214, 392, 150, 36, lin(c, 0, 356, 0, 428, '#fff6ea', '#f4dfc4'), INK, 1.6);
+    ell(c, 214, 394, 118, 24, 'rgba(244,160,180,0.35)');
+    // théière
+    ell(c, 160, 378, 24, 17, lin(c, 0, 361, 0, 395, '#fff', '#e6d3f4'), INK_S, 1.2);
+    rr(c, 150, 358, 20, 8, 3, '#fff', INK_S); rr(c, 180, 372, 16, 6, 3, '#fff', INK_S);
+    // gâteau sur support
+    rr(c, 236, 380, 56, 10, 3, '#fff', INK_S); rr(c, 242, 358, 44, 24, 8, lin(c, 0, 358, 0, 382, '#fbd9c0', '#e8a98a'), INK_S);
+    ell(c, 264, 360, 22, 8, '#fff6ea', INK_S, 1); heart(c, 264, 358, 6, '#ff8fb1');
+    // petites tasses
+    for (const x of [110, 316]) { rr(c, x, 388, 20, 14, 4, '#fff', INK_S); c.strokeStyle = INK_S; c.lineWidth = 1.2; c.beginPath(); c.arc(x + 22, 394, 4, -1.5, 1.5); c.stroke(); }
+    // fauteuil et plaid
+    rr(c, 296, 250, 90, 100, 24, lin(c, 0, 250, 0, 350, '#e9b6c8', '#cf8aa6'), INK, 1.4);
+    rr(c, 304, 300, 74, 48, 14, lin(c, 0, 300, 0, 348, '#f5cddb', '#e2a0b8'), INK_S);
+    MH_PTS.push([356, 140]);
+    plant(c, 24, 372, 1.0);
+    ell(c, 214, 468, 180, 26, 'rgba(255,255,255,0.6)', 'rgba(244,160,180,0.4)', 2);
+  },
+  fx(c, t) {
+    c.save(); c.globalAlpha = 0.16; c.fillStyle = '#fff3c4';
+    c.beginPath(); c.moveTo(40, 60); c.lineTo(130, 60); c.lineTo(250, 470); c.lineTo(60, 470); c.closePath(); c.fill(); c.restore();
+    for (let i = 0; i < 14; i++) { const x = 50 + ((i * 47 + Math.sin(t * 0.5 + i) * 18) % 160), y = ((i * 59 - t * 7) % 330 + 330) % 330 + 90; c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.arc(x, y, 1.4 + (i % 3) * 0.5, 0, Math.PI * 2); c.fill(); }
+    for (let k = 0; k < 2; k++) { const y = 372 - ((t * 11 + k * 14) % 30); c.strokeStyle = `rgba(255,255,255,${0.55 - (372 - y) / 60})`; c.lineWidth = 1.6; c.beginPath(); c.moveTo(160 + k * 6, y); c.quadraticCurveTo(164 + k * 6, y - 8, 160 + k * 6, y - 14); c.stroke(); }
+  },
+};
+
+// ------------------------------------------------------------------ aéroport (hall lumineux, panneau des vols, avion à la baie)
+export const airport: PlaceDef = {
+  bg(c) {
+    c.fillStyle = lin(c, 0, 0, 0, 330, '#cfe6f7', '#f2f1ee'); c.fillRect(0, 0, W, 330);
+    // grande baie vitrée avec ciel, nuages et avion sur le tarmac
+    rr(c, 14, 36, 365, 190, 10, lin(c, 0, 36, 0, 226, '#9fd0f0', '#e7f3fb'), '#f4f6f8', 6);
+    c.strokeStyle = '#f4f6f8'; c.lineWidth = 4; for (const x of [105, 196, 288]) { c.beginPath(); c.moveTo(x, 36); c.lineTo(x, 226); c.stroke(); }
+    for (const [x, y, s] of [[60, 80, 1], [250, 70, 1.2], [330, 110, 0.8]] as const) { ell(c, x, y, 26 * s, 9 * s, '#fff'); ell(c, x + 14 * s, y - 5 * s, 18 * s, 8 * s, '#fff'); }
+    box(c, 20, 196, 353, 26, '#b9bfc7', null); box(c, 20, 208, 353, 3, '#fffbe6', null);
+    // avion
+    c.save(); c.translate(150, 178);
+    c.beginPath(); c.moveTo(-70, 0); c.quadraticCurveTo(-70, -16, -48, -16); c.lineTo(58, -14); c.quadraticCurveTo(82, -10, 86, 2); c.quadraticCurveTo(70, 12, 40, 12); c.lineTo(-52, 12); c.quadraticCurveTo(-70, 12, -70, 0); c.closePath();
+    c.fillStyle = lin(c, 0, -16, 0, 12, '#ffffff', '#dfe6ee'); c.fill(); c.strokeStyle = INK_S; c.lineWidth = 1.2; c.stroke();
+    c.beginPath(); c.moveTo(-60, -10); c.lineTo(-72, -34); c.lineTo(-58, -34); c.lineTo(-40, -12); c.closePath(); c.fillStyle = '#e8558f'; c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(-8, 6); c.lineTo(-30, 30); c.lineTo(-10, 30); c.lineTo(14, 8); c.closePath(); c.fillStyle = '#cfd6df'; c.fill(); c.stroke();
+    for (let i = 0; i < 9; i++) ell(c, -40 + i * 10, -4, 2.2, 2.6, '#8fbfe0');
+    c.restore();
+    // panneau des départs
+    rr(c, 114, 8, 166, 24, 6, '#2f3a4a', '#58433f', 2);
+    c.fillStyle = '#ffe28a'; c.font = '700 11px sans-serif'; c.textAlign = 'center'; c.fillText('DÉPARTS · EMBARQUEMENT', 197, 24);
+    // sol brillant
+    floor(c, 330, '#ece4da', '#d4c8ba', 'rgba(120,100,90,0.12)');
+    ell(c, 196, 440, 190, 30, 'rgba(255,255,255,0.45)');
+    // chariot à bagages et valises
+    rr(c, 40, 380, 70, 10, 3, '#9aa4b0', INK_S);
+    rr(c, 46, 330, 46, 52, 6, lin(c, 0, 330, 0, 382, '#f4a9c4', '#d97aa0'), INK, 1.4); rr(c, 52, 322, 34, 10, 4, '#b86a8c', INK_S);
+    rr(c, 270, 360, 58, 70, 8, lin(c, 0, 360, 0, 430, '#a8d4cf', '#7fb5ae'), INK, 1.4); rr(c, 285, 346, 28, 16, 5, 'rgba(0,0,0,0)', INK, 2);
+    for (const [x, y] of [[284, 432], [314, 432]] as const) ell(c, x, y, 5, 5, '#44505e');
+    // bancs
+    rr(c, 300, 296, 80, 8, 3, '#7f8da0', INK_S); box(c, 308, 304, 5, 30, '#667386', null); box(c, 366, 304, 5, 30, '#667386', null);
+    plant(c, 372, 270, 0.8, '#cfd6df');
+  },
+  fx(c, t) {
+    // reflets sur la baie et petit avion lointain
+    c.save(); c.globalAlpha = 0.18; c.fillStyle = '#fff';
+    c.beginPath(); c.moveTo(20 + ((t * 8) % 120), 40); c.lineTo(48 + ((t * 8) % 120), 40); c.lineTo(8 + ((t * 8) % 120), 220); c.lineTo(-20 + ((t * 8) % 120), 220); c.closePath(); c.fill(); c.restore();
+    const x = 40 + ((t * 18) % 320); c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.ellipse(x, 62, 8, 2, 0, 0, Math.PI * 2); c.fill();
+    for (let i = 0; i < 6; i++) star4(c, 110 + i * 34, 20, 1.4 + (Math.sin(t * 3 + i) + 1) * 0.5, '#ffe28a', 0.8);
+  },
+};

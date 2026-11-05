@@ -58,6 +58,7 @@ export function eligible(def: EventDef, st: EventsState, pr: Progress): boolean 
     if (n.chapter && pr.chapter < n.chapter) return false;
     if (n.chess && !pr.chessUnlocked) return false;
     if (n.doneAll && !n.doneAll.every((id) => (st.done[id]?.count ?? 0) > 0)) return false;
+    if (n.afterMin) { const d = st.done[n.afterMin.id]; if (!d || st.playMs - d.last < n.afterMin.min * 60_000) return false; }
   }
   if (def.golden) {
     if (st.playMs < EVENT_CONFIG.goldenMinPlayMs) return false;
