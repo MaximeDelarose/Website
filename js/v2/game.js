@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.10.0";
+  var VERSION = "2.10.1";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -1563,10 +1563,14 @@
   }
   function drawItemsHud(y0) {
     var it = me.items; if (!it) return;
-    var x = 2, per = Math.max(6, Math.floor((W * 0.55) / 15)), cnt = 0;
+    // 2.10.1 : une ligne sur téléphone, deux sur PC ; les plus rares d'abord, le reste dans « +N » (liste complète dans la pause)
+    var per = Math.max(5, Math.floor((W * 0.55) / 15)), rows = W < 300 ? 1 : 2, cap = per * rows;
+    var ids = Object.keys(it).filter(function (id) { return ITM[id] && it[id] > 0; });
+    ids.sort(function (a, b) { return (ITM[b].r - ITM[a].r) || (it[b] - it[a]); });
+    var shown = ids.length > cap ? ids.slice(0, cap - 1) : ids, rest = ids.length - shown.length, x = 2, cnt = 0;
     ctx.font = "7px sans-serif"; ctx.textBaseline = "top";
-    Object.keys(it).forEach(function (id) {
-      var d = ITM[id]; if (!d) return;
+    shown.forEach(function (id) {
+      var d = ITM[id];
       if (cnt && cnt % per === 0) { x = 2; y0 += 15; }
       cnt++;
       ctx.fillStyle = "rgba(20,14,10,.55)"; ctx.fillRect(x, y0, 14, 14);
@@ -1575,6 +1579,11 @@
       if (it[id] > 1) drawText(String(it[id]), x + 14, y0 + 9, "#fdf3de", "r");
       x += 15;
     });
+    if (rest > 0) {
+      if (cnt && cnt % per === 0) { x = 2; y0 += 15; }
+      ctx.fillStyle = "rgba(20,14,10,.7)"; ctx.fillRect(x, y0, 14, 14);
+      drawText("+" + rest, x + 7, y0 + 4, "#f6d36b", "c");
+    }
     ctx.textBaseline = "alphabetic";
   }
   /* =====================================================================
