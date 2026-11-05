@@ -39,10 +39,12 @@ export function lg(ctx: C, x0: number, y0: number, x1: number, y1: number, ...co
 }
 
 /** Remplit puis contourne le chemin courant. */
+/** Finesse du trait : contours ≈ 20 % plus fins qu'avant, comme sur l'illustration d'Auguste (trait fin brun, volumes portés par l'ombrage). */
+export const LINE_K = 0.8;
 export function fs(ctx: C, fill: string | CanvasGradient, lw = 2.2, ink: string = INK): void {
   ctx.fillStyle = fill;
   ctx.fill();
-  ctx.lineWidth = lw;
+  ctx.lineWidth = lw * LINE_K;
   ctx.strokeStyle = ink;
   ctx.stroke();
 }
@@ -141,12 +143,72 @@ function armSeg(ctx: C, a: Arm, t0: number, t1: number, width: number, c0: strin
   ctx.beginPath();
   ctx.moveTo(p0[0], p0[1]);
   ctx.quadraticCurveTo(cx, cy, p1[0], p1[1]);
-  if (ink) { ctx.lineWidth = width + 3.4; ctx.strokeStyle = INK; ctx.stroke(); }
+  if (ink) { ctx.lineWidth = width + 3.4 * LINE_K; ctx.strokeStyle = INK; ctx.stroke(); }
   ctx.lineWidth = width;
   ctx.strokeStyle = lg(ctx, Math.min(p0[0], p1[0]) - width, p0[1], Math.max(p0[0], p1[0]) + width, p1[1], c0, c1);
   ctx.stroke();
   ctx.lineCap = 'round';
 }
+
+/**
+ * Membre effilé (bras nu) : de l'épaule (w0) au poignet (w1), ombré, contour fin ; remplace le tube uniforme à bout rond.
+ * Même logique de construction que le corps d'Auguste (volumes doux, contour léger).
+ */
+function limb(ctx: C, a: Arm, t0: number, t1: number, w0: number, w1: number): void {
+  const N = 18, L: Pt[] = [], Rt: Pt[] = [], C0: Pt[] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = t0 + ((t1 - t0) * i) / N;
+    const [x, y] = qAt(a, t);
+    const dx = 2 * (1 - t) * (a.cx - a.x0) + 2 * t * (a.x1 - a.cx), dy = 2 * (1 - t) * (a.cy - a.y0) + 2 * t * (a.y1 - a.cy);
+    const d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+    const u = i / N, w = (w0 + (w1 - w0) * (u * (2 - u) * 0.7 + u * 0.3)) / 2; // affinement rapide près du coude, puis doux jusqu'au poignet
+    L.push([x + nx * w, y + ny * w]); Rt.push([x - nx * w, y - ny * w]); C0.push([x, y]);
+  }
+  ctx.save(); ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(L[0][0], L[0][1]);
+  for (const p of L) ctx.lineTo(p[0], p[1]);
+  { // bout du poignet arrondi (le dos de la main le recouvre)
+    const q = qAt(a, t1), dx = 2 * (1 - t1) * (a.cx - a.x0) + 2 * t1 * (a.x1 - a.cx), dy = 2 * (1 - t1) * (a.cy - a.y0) + 2 * t1 * (a.y1 - a.cy);
+    const a1 = Math.atan2(dx, -dy); // angle de la normale gauche
+    ctx.arc(q[0], q[1], w1 / 2, a1, a1 - Math.PI, true);
+  }
+  for (let i = N; i >= 0; i--) ctx.lineTo(Rt[i][0], Rt[i][1]);
+  ctx.closePath();
+  const x0 = Math.min(...L.map((p) => p[0]), ...Rt.map((p) => p[0])), x1 = Math.max(...L.map((p) => p[0]), ...Rt.map((p) => p[0]));
+  fs(ctx, lg(ctx, x0, 0, x1, 0, skinL(), skin(), shade(skin(), -0.07)), 1.7);
+  // ombre douce côté intérieur + lumière sur le dessus : le volume que l'illustration donne aux bras
+  ctx.clip();
+  ctx.beginPath(); ctx.moveTo(C0[2][0], C0[2][1]); for (const p of C0) ctx.lineTo(p[0], p[1]);
+  ctx.lineCap = 'round'; ctx.lineWidth = w0 * 0.42; ctx.globalAlpha = 0.5; ctx.strokeStyle = skinL(); ctx.stroke();
+  ctx.globalAlpha = 1; ctx.restore();
+}
+
+/** Main peinte : paume, quatre doigts réunis et pouce côté corps (au lieu d'une boule). `ang` = direction de l'avant-bras (0 = vers le bas). */
+function handPainted(ctx: C, x: number, y: number, ang: number, s: -1 | 1, r = 9.5): void {
+  const k = r / 9.5, sk = skin(), sl = skinL(), sd = skinD();
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(k, k); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  const g = lg(ctx, -8, 0, 8, 0, sl, sk, shade(sk, -0.06));
+  // pouce (côté du corps), derrière la paume
+  ctx.save(); ctx.translate(-s * 7, 2); ctx.rotate(-s * 0.4);
+  ctx.beginPath(); ctx.ellipse(0, 3, 2.9, 6.6, 0, 0, Math.PI * 2); fs(ctx, g, 1.4); ctx.restore();
+  // doigts : quatre capsules de longueurs différentes
+  const lens = [9.6, 11.6, 10.8, 8.2];
+  lens.forEach((len, i) => {
+    const cx = -5.1 + i * 3.4, tip = 5 + len;
+    ctx.beginPath(); ctx.moveTo(cx - 1.75, 3); ctx.lineTo(cx - 1.75, tip - 1.75); ctx.arc(cx, tip - 1.75, 1.75, Math.PI, 0, true); ctx.lineTo(cx + 1.75, 3); ctx.closePath();
+    fs(ctx, g, 1.3);
+  });
+  // paume
+  ctx.beginPath(); ctx.moveTo(-7, 8.5); ctx.bezierCurveTo(-8.2, 1, -7.6, -5, -4.6, -8); ctx.quadraticCurveTo(0, -10, 4.6, -8); ctx.bezierCurveTo(7.6, -5, 8.2, 1, 7, 8.5); ctx.closePath();
+  ctx.fillStyle = g; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-7, 8.5); ctx.bezierCurveTo(-8.2, 1, -7.6, -5, -4.6, -8); ctx.quadraticCurveTo(0, -10, 4.6, -8); ctx.bezierCurveTo(7.6, -5, 8.2, 1, 7, 8.5);
+  ctx.lineWidth = 1.5; ctx.strokeStyle = INK; ctx.stroke();
+  // plis des phalanges et ombre sous la paume
+  ctx.lineWidth = 0.8; ctx.strokeStyle = hexA2(sd, 0.55);
+  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-3.4 + i * 3.4, 4.5); ctx.lineTo(-3.4 + i * 3.4, 12); ctx.stroke(); }
+  ctx.restore();
+}
+const hexA2 = (hex: string, a: number): string => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 
 function endAng(a: Arm, t: number): number {
   const dx = (1 - t) * (a.cx - a.x0) + t * (a.x1 - a.cx);
@@ -1128,26 +1190,34 @@ export const EXTRA = {
 function legsSkin(ctx: C, st: number, tights = false): void {
   for (const s of [-1, 1] as const) {
     const off = st * s * 12;
+    // cuisse → genou → mollet → cheville : jambe modelée (au lieu d'une colonne droite)
     ctx.beginPath();
     ctx.moveTo(CX + s * 8, 360);
     ctx.lineTo(CX + s * 52, 360);
-    ctx.bezierCurveTo(CX + s * 54, 430, CX + s * 46, 500, CX + s * 44 + off, 572);
-    ctx.lineTo(CX + s * 14 + off, 572);
-    ctx.bezierCurveTo(CX + s * 10, 500, CX + s * 8, 430, CX + s * 8, 360);
+    ctx.bezierCurveTo(CX + s * 53, 408, CX + s * 50, 440, CX + s * 49 + off * 0.3, 466);
+    ctx.bezierCurveTo(CX + s * 50 + off * 0.4, 490, CX + s * 49 + off * 0.6, 512, CX + s * 42 + off, 572);
+    ctx.lineTo(CX + s * 16 + off, 572);
+    ctx.bezierCurveTo(CX + s * 15 + off * 0.8, 520, CX + s * 12 + off * 0.5, 490, CX + s * 11 + off * 0.3, 462);
+    ctx.bezierCurveTo(CX + s * 9, 430, CX + s * 8, 400, CX + s * 8, 360);
     ctx.closePath();
     if (tights) {
       // collants noirs transparents : la peau se devine, reflet doux sur le devant de la jambe
-      fs(ctx, lg(ctx, CX + s * 8, 0, CX + s * 54, 0, '#3A3844', '#1B1A22', '#101016'), 2);
+      fs(ctx, lg(ctx, CX + s * 8, 0, CX + s * 54, 0, '#3A3844', '#1B1A22', '#101016'), 1.8);
       ctx.save(); ctx.globalAlpha = 0.28; ctx.beginPath(); ctx.moveTo(CX + s * 22, 380); ctx.quadraticCurveTo(CX + s * 26, 470, CX + s * 24, 560); ctx.lineWidth = 6; ctx.strokeStyle = '#FFFFFF'; ctx.stroke(); ctx.restore();
       continue;
     }
-    fs(ctx, lg(ctx, CX + s * 8, 0, CX + s * 54, 0, skinL(), skin(), skinD()), 2);
-    // genou
-    ctx.beginPath();
-    ctx.ellipse(CX + s * 32 + off * 0.3, 462, 9, 6, 0, 0, Math.PI);
-    ctx.lineWidth = 1.2;
-    ctx.strokeStyle = 'rgba(140,80,55,0.35)';
-    ctx.stroke();
+    fs(ctx, lg(ctx, CX + s * 8, 0, CX + s * 54, 0, skinL(), skin(), shade(skin(), -0.07)), 1.7);
+    ctx.save(); ctx.clip();
+    // lumière sur le devant de la cuisse et du tibia, ombre sous le genou et le long de l'intérieur
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(CX + s * 28, 372); ctx.quadraticCurveTo(CX + s * 33, 430, CX + s * 31 + off * 0.3, 462); ctx.quadraticCurveTo(CX + s * 32 + off * 0.5, 510, CX + s * 29 + off * 0.8, 556);
+    ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(255,238,220,0.26)'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(CX + s * 10, 366); ctx.quadraticCurveTo(CX + s * 12, 440, CX + s * 13 + off * 0.5, 540);
+    ctx.lineWidth = 6; ctx.strokeStyle = hexA2(skinD(), 0.22); ctx.stroke();
+    ctx.restore();
+    // genou : petits plis doux
+    ctx.beginPath(); ctx.ellipse(CX + s * 31 + off * 0.3, 464, 9.5, 5.5, 0, 0, Math.PI);
+    ctx.lineWidth = 1.1; ctx.strokeStyle = hexA2(skinD(), 0.5); ctx.stroke();
   }
 }
 
@@ -1692,7 +1762,31 @@ function pick(id: string | null, slot: string): ClothId | null {
   return c && CLOTH_SLOTS[c] === slot ? c : null;
 }
 
+// ---------------------------------------------------------------- tête PEINTE (illustration, même artiste qu'Auguste)
+/** 'head' : tête complète peinte (visage + cheveux longs, couronne dorée comprise ou non) ; 'face' : visage peint seul, coiffure dessinée autour. */
+export interface PaintedHead { kind: 'head' | 'face'; im: CanvasImageSource; /** origine de l'image dans le repère de l'illustration (px) */ x0: number; y0: number; w: number; h: number; crownBaked: boolean }
+let headProvider: ((look: Look) => PaintedHead | null) | null = null;
+let headEpoch = 0;
+/** Branche la tête peinte (radiaNow) ; à rappeler quand les images sont prêtes (le cache du dessin change de clé). */
+export function setPaintedHeadProvider(fn: ((look: Look) => PaintedHead | null) | null): void { headProvider = fn; headEpoch++; }
+export const paintedHeadEpoch = (): number => headEpoch;
+// repère de l'illustration → repère de l'avatar : yeux alignés, échelle commune
+const PH_S = 0.708, PH_CX = 176, PH_CY = 118, AV_CX = 120, AV_CY = 105; // yeux peints (176 ; 118) px ↔ yeux du dessin (120 ; 105) : lunettes et boucles restent bien placées
+// tête complète : un peu plus petite (proportions tête / corps d'Auguste), le menton reste à sa place sur le cou
+const HEAD_SHRINK = 0.88, PH_CHIN = 205;
+const AV_CHIN = AV_CY + (PH_CHIN - PH_CY) * PH_S;
+/** Applique au contexte la mise à l'échelle de la tête complète autour du menton (pour les cheveux arrière dessinés derrière). */
+function headShrink(ctx: C): void { ctx.translate(AV_CX, AV_CHIN); ctx.scale(HEAD_SHRINK, HEAD_SHRINK); ctx.translate(-AV_CX, -AV_CHIN); }
+function drawPaintedHead(ctx: C, ph: PaintedHead): void {
+  ctx.save(); ctx.imageSmoothingQuality = 'high';
+  if (ph.kind === 'head') headShrink(ctx);
+  ctx.drawImage(ph.im, AV_CX + (ph.x0 - PH_CX) * PH_S, AV_CY + (ph.y0 - PH_CY) * PH_S, ph.w * PH_S, ph.h * PH_S);
+  ctx.restore();
+}
+
 function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
+  const ph = headProvider?.(look) ?? null;
+  const fullHead = ph?.kind === 'head';
   const st = opts.step ?? 0;
   const sway = st * 4;
   const dress = pick(look.dress, 'dress');
@@ -1711,7 +1805,8 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   ctx.lineCap = 'round';
 
   // 1. cheveux arrière, dos de la robe, jambes et chaussures
-  if (!P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); // un voile remplace les cheveux
+  if (fullHead) { ctx.save(); headShrink(ctx); P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); ctx.restore(); } // derrière la tête peinte : comble l'espace entre cou et longueurs
+  else if (!P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); // un voile remplace les cheveux
   dfx?.back?.(ctx, st);
   legsSkin(ctx, st, !!dress && TIGHTS_DRESSES.has(dress));
   shoesDraw(ctx, shoes, st);
@@ -1741,7 +1836,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const arms = ([-1, 1] as const).map((s) => armGeo(s, opts.arms, st, isNatural(opts)));
   ([-1, 1] as const).forEach((_s, i) => {
     const a = arms[i];
-    armSeg(ctx, a, 0.12, 1, 19, skinL(), skinD(), true);
+    limb(ctx, a, 0.08, 1, 21, 12.5);
     if (sleeveSpec) drawSleeve(ctx, a, sleeveSpec, !!jk);
   });
 
@@ -1756,7 +1851,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
     if (opts.arms === 'heart') return;
     const a = arms[i];
     const ang = endAng(a, 1);
-    P.hand(ctx, a.x1 + Math.sin(-ang) * 14, a.y1 + Math.cos(-ang) * 14, skin(), ang, 9.5);
+    handPainted(ctx, a.x1 + Math.sin(-ang) * 5.5, a.y1 + Math.cos(-ang) * 5.5, ang, _s, 9.5);
   });
   if (opts.arms === 'heart') {
     heartPath(ctx, 120, 296, 30);
@@ -1784,8 +1879,10 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const lipId = accs.find((a) => a.startsWith('lp-'));
   const pickId = (pre: string) => accs.find((a) => a.startsWith(pre));
   const eyeId = pickId('ey-'), moId = pickId('mo-'), elId = pickId('el-'), esId = pickId('es-');
-  P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, iris: eyeId ? EYE_COLOR[eyeId] : undefined, mouth: moId ? MOUTH_SHAPE[moId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
+  if (!fullHead) P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, iris: eyeId ? EYE_COLOR[eyeId] : undefined, mouth: moId ? MOUTH_SHAPE[moId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
   ctx.restore();
+  if (ph) drawPaintedHead(ctx, ph); // visage peint par-dessus l'ovale dessiné (contour du dessin, traits de l'illustration)
+  if (fullHead) { ctx.restore(); return; } // tête complète peinte : cheveux, couronne dorée et finitions déjà dans l'illustration
   if (!P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairFrontLayer(ctx, hair, sway));
   if (P.veilOn()) { ctx.save(); ctx.translate(P.HEAD_X, P.HEAD_Y); ctx.scale(P.HEAD_K, P.HEAD_K); P.drawVeil(ctx); ctx.restore(); }
   if (accs.includes('ac-hoops')) hoops(ctx);
@@ -1850,30 +1947,37 @@ function drawAvatarFlat(ctx: CanvasRenderingContext2D, look: Look, w: number, h:
 
 export function drawAvatar(ctx: CanvasRenderingContext2D, look: Look, w: number, h: number, opts: AvatarOpts = {}): void {
   if (!isNatural(opts)) { drawAvatarFlat(ctx, look, w, h, opts); return; }
-  // silhouette en S : l'avatar est dessiné une fois puis recomposé en deux moitiés qui pivotent autour de la taille et des pieds
-  // (aucune couture visible : les deux pivots coïncident avec la ligne de coupe).
+  // silhouette en S : l'avatar est dessiné une fois puis recomposé en deux moitiés qui pivotent autour de la taille et des pieds.
+  // La jonction est un FONDU (le haut s'efface sur quelques unités au-dessus de la couture) : aucune arête visible à la taille.
   const t = ctx.getTransform(); const sc = Math.hypot(t.a, t.b) || 1;
-  const tmp = makeCanvas(Math.max(1, Math.ceil(w * sc)), Math.max(1, Math.ceil(h * sc)));
+  const pw = Math.max(1, Math.ceil(w * sc)), ph = Math.max(1, Math.ceil(h * sc));
+  const tmp = makeCanvas(pw, ph);
   const tc = tmp.getContext('2d')!; tc.scale(sc, sc);
   drawAvatarFlat(tc, look, w, h, opts);
   const k = Math.min(w / 240, h / 600);
   const ox = (w - 240 * k) / 2, oy = h - 600 * k;
   const cx = ox + CX * k, seamY = oy + 352 * k, feetY = oy + 585 * k;
+  const fade = 10 * k; // hauteur du fondu
   ctx.save();
-  // 1. hanches et jambes : légère rotation autour des pieds
+  // 1. hanches et jambes : légère rotation autour des pieds, en recouvrement sous la couture
   ctx.translate(cx, feetY); ctx.rotate(TILT_LOWER); ctx.translate(-cx, -feetY);
-  // seulement ce qui est SOUS la taille (repère de la source) : sinon le haut du corps serait dessiné deux fois (fantôme derrière l'épaule)
-  ctx.beginPath(); ctx.rect(-2, seamY - 9 * k, w + 4, h - seamY + 9 * k + 4); ctx.clip();
+  ctx.beginPath(); ctx.rect(-2, seamY - 14 * k, w + 4, h - seamY + 14 * k + 4); ctx.clip();
   ctx.drawImage(tmp, 0, 0, w, h);
   ctx.restore();
-  // 2. haut du corps : rotation autour du point de coupe (déjà déplacé par la rotation des hanches)
+  // 2. haut du corps : rotation autour de la couture ; la moitié basse est estompée en dégradé (canvas temporaire, même repère)
   const dy = seamY - feetY;
   const px = cx - dy * Math.sin(TILT_LOWER), py = feetY + dy * Math.cos(TILT_LOWER);
+  const up = makeCanvas(pw, ph);
+  const uc = up.getContext('2d')!; uc.scale(sc, sc);
+  uc.beginPath(); uc.rect(-2, -2, w + 4, seamY + fade * 0.4 + 2); uc.clip();
+  uc.drawImage(tmp, 0, 0, w, h);
+  uc.globalCompositeOperation = 'destination-in';
+  const gm = uc.createLinearGradient(0, seamY - fade, 0, seamY + fade * 0.4); gm.addColorStop(0, 'rgba(0,0,0,1)'); gm.addColorStop(1, 'rgba(0,0,0,0)');
+  uc.fillStyle = gm; uc.fillRect(-2, -2, w + 4, h + 4);
   ctx.save();
   ctx.translate(px, py); ctx.rotate(TILT_UPPER); ctx.translate(-px, -py);
   ctx.translate(cx, feetY); ctx.rotate(TILT_LOWER); ctx.translate(-cx, -feetY); // même repère que la moitié basse
-  ctx.beginPath(); ctx.rect(-2, -2, w + 4, seamY + 2); ctx.clip(); // seulement ce qui est au-dessus de la taille (repère de la source)
-  ctx.drawImage(tmp, 0, 0, w, h);
+  ctx.drawImage(up, 0, 0, w, h);
   ctx.restore();
 }
 
@@ -1883,7 +1987,7 @@ const cache = new Map<string, HTMLCanvasElement>();
 export function avatarCanvas(look: Look, w: number, h: number, opts: AvatarOpts = {}): HTMLCanvasElement {
   // le reflet du bracelet / du collier n'entre dans la clé que si le look le porte (6 pas)
   const sh = look.acc.includes(BRACELET_ID) || look.acc.includes(NECKLACE_ID) ? shineStep(opts.shine ?? 0) : 0;
-  const key = `${w}x${h}|${look.hair}|${look.top}|${look.bottom}|${look.dress}|${look.jacket}|${look.shoes}|${look.bag}|${look.acc.join(',')}|${look.crown}|${opts.expr ?? ''}|${opts.step ?? 0}|${opts.arms ?? ''}|${opts.blink ? 1 : 0}|${sh}|${opts.pose ?? ""}|${faceKey(getFaceCustom())}`;
+  const key = `${w}x${h}|${look.hair}|${look.top}|${look.bottom}|${look.dress}|${look.jacket}|${look.shoes}|${look.bag}|${look.acc.join(',')}|${look.crown}|${opts.expr ?? ''}|${opts.step ?? 0}|${opts.arms ?? ''}|${opts.blink ? 1 : 0}|${sh}|${opts.pose ?? ""}|${faceKey(getFaceCustom())}|h${headEpoch}`;
   let c = cache.get(key);
   if (!c) {
     c = makeCanvas(w, h);
