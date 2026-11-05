@@ -21,7 +21,12 @@ async function play(page, id, onActivity, shots = {}) {
   const seen = { says: [], places: new Set(), activities: [], travel: 0, dress: 0 };
   const count0 = await page.evaluate((i) => window.RADIA.save.data.events.done[i]?.count ?? 0, id);
   await page.evaluate((i) => window.RADIA.invite(i), id);
-  await page.waitForSelector('.ev-notif', { timeout: 25000 }); await page.locator('.ev-notif .btn').first().click();
+  try { await page.waitForSelector('.ev-notif', { timeout: 25000 }); } catch (e) {
+    await page.screenshot({ path: '/tmp/claude-0/da/fm-stuck.png' });
+    console.log('   notification absente ; couches ouvertes :', await page.evaluate(() => [...document.querySelectorAll('.modal-backdrop,.dialog-layer,.rw-layer,#reward-overlay > *,.ev-layer,.ev-concl,.toast,.notice')].map((e) => e.className.toString().slice(0, 40) + ' « ' + e.textContent.trim().slice(0, 60) + ' »').join(' || ')));
+    throw e;
+  }
+  await page.locator('.ev-notif .btn').first().click();
   await page.waitForSelector('.ev-inv', { timeout: 6000 });
   if (shots.invite) await page.screenshot({ path: shots.invite });
   await page.locator('.ev-inv .btn').first().click();
