@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.18.0";
+  var VERSION = "2.18.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -5261,7 +5261,7 @@
      l'écureuil, bâtiments pixel en 3 tons, chemins de terre, feu de camp, étang,
      lisière d'arbres, et l'heure réelle (jour, crépuscule, nuit avec lumières).
      ===================================================================== */
-  var CAMP_PAD = 180, CAMPW = 480, CAMPH = 320, CAMP_FIRE = { x: 240, y: 186 };
+  var CAMP_PAD = 320, CAMPW = 480, CAMPH = 320, CAMP_FIRE = { x: 240, y: 186 };
   var CAMP_AT = {   // porte de chaque lieu (là où l'écureuil se tient pour entrer)
     sentier: { x: 240, y: 58 }, chene: { x: 104, y: 112 }, arene: { x: 382, y: 108 },
     atelier: { x: 70, y: 214 }, forge: { x: 412, y: 216 }, terrier: { x: 136, y: 292 }, comptoir: { x: 344, y: 292 }
@@ -5387,10 +5387,20 @@
       // sol : herbe unie, grandes taches douces et petites touffes, sans quadrillage
       g.fillStyle = GR.base; g.fillRect(0, 0, W, H);
       var dkc = mixHex(GR.base, "#000000", 0.1), lic = mixHex(GR.base, GR.hi, 0.35);
-      for (var bi = 0; bi < 150; bi++) { var hb = hash(bi * 7 + 3, 41); g.fillStyle = bi % 3 ? lic : dkc; g.globalAlpha = 0.35; pxEllipseC(g, hb % W, (hb >>> 8) % H, 8 + (hb >>> 16) % 16, 4 + (hb >>> 20) % 8); }
+      for (var bi = 0; bi < 420; bi++) { var hb = hash(bi * 7 + 3, 41); g.fillStyle = bi % 3 ? lic : dkc; g.globalAlpha = 0.5; pxEllipseC(g, hb % W, (hb >>> 8) % H, 8 + (hb >>> 16) % 16, 4 + (hb >>> 20) % 8); }
       g.globalAlpha = 1;
-      for (var tf = 0; tf < 700; tf++) { var ht = hash(tf * 13 + 5, 77), tx0 = ht % W, ty0 = (ht >>> 9) % H; g.fillStyle = tf % 4 ? GR.tuft : GR.hi; g.fillRect(tx0, ty0, 1, 2); g.fillRect(tx0 + 2, ty0 + 1, 1, 1); if (tf % 6 === 0) g.fillRect(tx0 + 1, ty0 - 1, 1, 1); }
+      for (var tf = 0; tf < 1400; tf++) { var ht = hash(tf * 13 + 5, 77), tx0 = ht % W, ty0 = (ht >>> 9) % H; g.fillStyle = tf % 4 ? GR.tuft : GR.hi; g.fillRect(tx0, ty0, 1, 2); g.fillRect(tx0 + 2, ty0 + 1, 1, 1); if (tf % 6 === 0) g.fillRect(tx0 + 1, ty0 - 1, 1, 1); }
       for (var fl = 0; fl < 70; fl++) { var hf = hash(fl * 17 + 9, 23); g.fillStyle = GR.flowers[hf % GR.flowers.length]; g.fillRect(hf % W, (hf >>> 9) % H, 1, 1); g.fillRect((hf % W) + 1, (hf >>> 9) % H, 1, 1); }
+      // textures de sol : terre nue, herbe haute, trèfles, cailloux, feuilles mortes, mousse
+      var soil = "#a08a5a", mossC = mixHex(GR.base, "#2f5a2a", 0.45), cloverC = mixHex(GR.base, "#3a7a3a", 0.5);
+      for (var sp = 0; sp < 210; sp++) { var hs = hash(sp * 29 + 11, 61), sx = hs % W, sy = (hs >>> 8) % H, srx = 6 + (hs >>> 16) % 10, sry = 3 + (hs >>> 20) % 5;
+        g.globalAlpha = 0.5; g.fillStyle = mixHex(GR.base, soil, 0.55); pxEllipseC(g, sx, sy, srx, sry); g.globalAlpha = 0.65; g.fillStyle = mixHex(GR.base, soil, 0.8); pxEllipseC(g, sx, sy, srx - 2, Math.max(1, sry - 1)); g.globalAlpha = 1;
+        for (var sg = 0; sg < 6; sg++) { var hg = hash(sp * 7 + sg, 83); g.fillStyle = sg % 2 ? "#7a6a44" : "#c0aa78"; g.fillRect(sx - srx + hg % (srx * 2), sy - sry + (hg >>> 7) % (sry * 2), 1, 1); } }
+      for (var mp = 0; mp < 170; mp++) { var hm = hash(mp * 31 + 2, 47); g.globalAlpha = 0.7; g.fillStyle = mossC; pxEllipseC(g, hm % W, (hm >>> 8) % H, 7 + (hm >>> 16) % 9, 3 + (hm >>> 20) % 4); g.globalAlpha = 1; }
+      for (var cp = 0; cp < 520; cp++) { var hc = hash(cp * 19 + 4, 29), cx0 = hc % W, cy0 = (hc >>> 9) % H; g.fillStyle = cloverC; g.fillRect(cx0, cy0, 3, 1); g.fillRect(cx0 + 1, cy0 - 1, 1, 3); g.fillRect(cx0 - 1, cy0 + 1, 1, 1); g.fillRect(cx0 + 3, cy0 + 1, 1, 1); g.fillStyle = GR.hi; g.fillRect(cx0 + 1, cy0, 1, 1); }
+      for (var tg = 0; tg < 800; tg++) { var hh = hash(tg * 23 + 6, 71), gx = hh % W, gy = (hh >>> 9) % H; g.fillStyle = GR.tuft; g.fillRect(gx, gy - 3, 1, 4); g.fillRect(gx + 2, gy - 4, 1, 5); g.fillRect(gx + 4, gy - 2, 1, 3); g.fillStyle = GR.hi; g.fillRect(gx + 2, gy - 4, 1, 2); g.fillRect(gx, gy - 3, 1, 1); g.fillStyle = dkc; g.fillRect(gx - 1, gy + 1, 7, 1); }
+      for (var pb = 0; pb < 320; pb++) { var hp = hash(pb * 13 + 8, 37), px0 = hp % W, py0 = (hp >>> 9) % H, pn = 1 + pb % 3; for (var pj = 0; pj < pn; pj++) { g.fillStyle = GR.pebbleDk; g.fillRect(px0 + pj * 3, py0 + (pj % 2), 3, 2); g.fillStyle = GR.pebble; g.fillRect(px0 + pj * 3, py0 + (pj % 2), 2, 1); } }
+      for (var lf = 0; lf < 260; lf++) { var hl = hash(lf * 41 + 1, 53); g.fillStyle = ["#c8883a", "#b5652d", "#d8a84a", "#8a5a2a"][lf % 4]; g.fillRect(hl % W, (hl >>> 9) % H, 2, 1); g.fillRect((hl % W) + 1, ((hl >>> 9) % H) + 1, 1, 1); }
       // lisière hors du camp : sous-bois plus sombre, arbres serrés
       g.fillStyle = "rgba(20,48,24,.5)";
       g.fillRect(0, 0, W, PAD - 4); g.fillRect(0, PAD + CAMPH + 4, W, PAD - 4); g.fillRect(0, 0, PAD - 4, H); g.fillRect(PAD + CAMPW + 4, 0, PAD - 4, H);
@@ -5430,9 +5440,9 @@
       g.fillStyle = "#2b1709"; g.fillRect(FL - 1, FT, 3, FB - FT); g.fillRect(FR - 1, FT, 3, FB - FT); g.fillStyle = "#a06a3e"; g.fillRect(FL, FT, 1, FB - FT); g.fillRect(FR, FT, 1, FB - FT);
       // forêt dense derrière la palissade
       var S1 = campSprites(), fr = [], hq;
-      for (var ox = -PAD + 6; ox < CAMPW + PAD; ox += 20) { hq = hash(ox + 500, 5); [[-12, 0], [-30, 1], [-54, 2], [-86, 0], [-120, 1]].forEach(function (rw, ri) { fr.push({ x: ox + (hq >>> (ri * 3)) % 14, y: FT + rw[0] + (hq >>> (ri * 2 + 1)) % 8, v: (hq + ri) % 3 }); }); }
-      for (var ox2 = -PAD + 6; ox2 < CAMPW + PAD; ox2 += 20) { hq = hash(ox2 + 900, 9); [[22, 0], [44, 1], [70, 2], [100, 0], [130, 1]].forEach(function (rw, ri) { fr.push({ x: ox2 + (hq >>> (ri * 3)) % 14, y: CAMPH + rw[0] + (hq >>> (ri * 2 + 1)) % 8, v: (hq + ri) % 3 }); }); }
-      for (var oy = FT - 4; oy < CAMPH + 8; oy += 24) { hq = hash(oy + 77, 13); [[-14, 0], [-44, 1], [-80, 2]].forEach(function (rw, ri) { fr.push({ x: FL + rw[0] - (hq >>> ri) % 6, y: oy + 12, v: (hq + ri) % 3 }); fr.push({ x: FR - rw[0] + (hq >>> (ri + 2)) % 6, y: oy + 18, v: (hq + ri + 1) % 3 }); }); }
+      for (var ox = -PAD + 6; ox < CAMPW + PAD; ox += 20) { hq = hash(ox + 500, 5); [[-12, 0], [-30, 1], [-54, 2], [-86, 0], [-120, 1], [-150, 2], [-180, 0], [-215, 1], [-250, 2], [-290, 0]].forEach(function (rw, ri) { fr.push({ x: ox + (hq >>> (ri * 3)) % 14, y: FT + rw[0] + (hq >>> (ri * 2 + 1)) % 8, v: (hq + ri) % 3 }); }); }
+      for (var ox2 = -PAD + 6; ox2 < CAMPW + PAD; ox2 += 20) { hq = hash(ox2 + 900, 9); [[22, 0], [44, 1], [70, 2], [100, 0], [130, 1], [160, 2], [195, 0], [230, 1], [270, 2], [310, 0]].forEach(function (rw, ri) { fr.push({ x: ox2 + (hq >>> (ri * 3)) % 14, y: CAMPH + rw[0] + (hq >>> (ri * 2 + 1)) % 8, v: (hq + ri) % 3 }); }); }
+      for (var oy = FT - 4; oy < CAMPH + 8; oy += 24) { hq = hash(oy + 77, 13); [[-14, 0], [-44, 1], [-80, 2], [-120, 0], [-160, 1], [-200, 2], [-250, 0]].forEach(function (rw, ri) { fr.push({ x: FL + rw[0] - (hq >>> ri) % 6, y: oy + 12, v: (hq + ri) % 3 }); fr.push({ x: FR - rw[0] + (hq >>> (ri + 2)) % 6, y: oy + 18, v: (hq + ri + 1) % 3 }); }); }
       fr = fr.filter(function (q) { return !(q.y > FT - 6 && q.y < FB + 8 && q.x > FL - 4 && q.x < FR + 4); });
       fr.filter(function (q) { return !(q.y < FT && Math.abs(q.x - CAMP_AT.sentier.x) < 40); }).sort(function (a, b) { return a.y - b.y; }).forEach(function (q) { blitAnchor(S1.trees[q.v], q.x, q.y); });
     } finally { ctx = kctx; W = kW; H = kH; }
