@@ -1853,8 +1853,8 @@ window.ES_DATA = (function () {
     { id: "atelier", name: "L'atelier", who: "Bûche", npc: "sq_bucheron", x: 104, y: 0.32, screen: "atelier", desc: "Craft et recyclage" },
     { id: "forge", name: "La forge", who: "Charbon", npc: "sq_charbon", x: 210, y: 0.3, screen: "forge", desc: "Runes : relancer, ajouter un effet" },
     { id: "comptoir", name: "Le comptoir", who: "le Marchand", npc: "sq_capitaine", x: 252, y: 0.66, screen: "comptoir", desc: "Glands d'or, conversion de ressources" },
-    { id: "chene", name: "Le vieux chêne", who: "Flocon", npc: "sq_flocon", x: 160, y: 0.3, screen: "quetes", desc: "Quêtes, codex, succès" },
-    { id: "arene", name: "L'arène", who: "Bastien", npc: "sq_chevalier", x: 266, y: 0.36, screen: "succes", desc: "Succès et records" },
+    { id: "chene", name: "Quêtes", who: "Flocon", npc: "sq_flocon", x: 160, y: 0.3, screen: "quetes", desc: "Quêtes et défis" },
+    { id: "arene", name: "Succès", who: "Bastien", npc: "sq_chevalier", x: 266, y: 0.36, screen: "succes", desc: "Succès et records" },
   ];
   /* =====================================================================
      Contenu étendu, lot 1 : objets de niveau, 3e évolution, fusions

@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.40.0";
+  var VERSION = "2.40.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -5882,7 +5882,7 @@
     ver.textContent = "v" + VERSION; ver.hidden = false;
     var PI = { terrier: "🏡", atelier: "🔨", forge: "🔥", comptoir: "🛒", chene: "🌳", arene: "⚔️" };
     bar.innerHTML = '<div class="cb-util"><button type="button" class="camp-coop" data-camp="coop" title="Coop en ligne">👥<span>Coop</span></button><button type="button" class="camp-amis" data-camp="amis" title="Amis">🧑‍🤝‍🧑<i class="fr-badge" hidden></i></button><button type="button" data-camp="emote" title="Message rapide">💬</button><button type="button" data-camp="codex" title="Techniques et fusions">📜</button><button type="button" data-camp="help" title="Aide">❓</button><button type="button" data-camp="options" title="Réglages">⚙️</button></div>' +
-      '<div class="cb-main"><button type="button" class="camp-go" data-camp="sentier"><b>▶</b> Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" class="cb-place" data-camp="' + l.id + '"><i>' + (PI[l.id] || "•") + "</i><span>" + esc(l.id === "chene" ? "Chêne" : l.name.replace(/^(Le |La |L')/, "")) + "</span></button>"; }).join("") + "</div>";
+      '<div class="cb-main"><button type="button" class="camp-go" data-camp="sentier"><b>▶</b> Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" class="cb-place" data-camp="' + l.id + '"><i>' + (PI[l.id] || "•") + "</i><span>" + esc(l.name.replace(/^(Le |La |L')/, "")) + "</span></button>"; }).join("") + "</div>";
   }
   // « Nouveautés » : ce qui a changé pour un joueur de la version 1
   function newsCard() {
@@ -8896,7 +8896,7 @@
       D.CHARACTERS.forEach(function (o) { var okc = charAvailable(o); html += '<button type="button" class="np-char' + (S.char === o.id ? " is-selected" : "") + (okc ? "" : " is-locked") + '" data-action="tchar2" data-arg="' + o.id + '" aria-label="' + esc(o.name) + '" title="' + esc(okc ? o.name : "🔒 " + o.name + " : " + questById(o.quest).desc) + '"><img src="' + spriteUrl(o.sprite) + '" alt="">' + (okc ? "" : '<i class="np-lock">🔒</i>') + "</button>"; });
       var lc = D.CHARACTERS.filter(function (o) { return !charAvailable(o); }).length;
       var k = Math.round((cx - charXpFor(lv)) / Math.max(1, charXpFor(lv + 1) - charXpFor(lv)) * 100);
-      html += '</div>' + (lc ? '<p class="game-small">🔒 ' + lc + " écureuil" + (lc > 1 ? "s" : "") + " à débloquer : touche-en un pour voir sa quête (Vieux chêne &gt; Quêtes).</p>" : "") + '<p class="v2-bar"><span><b>' + esc(c.name) + "</b> · niveau <b>" + lv + '</b></span><span class="rank-bar"><i style="width:' + Math.min(100, k) + '%"></i></span><small>' + cx + " / " + charXpFor(lv + 1) + "</small></p>";
+      html += '</div>' + (lc ? '<p class="game-small">🔒 ' + lc + " écureuil" + (lc > 1 ? "s" : "") + " à débloquer : touche-en un pour voir sa quête (lieu Quêtes du camp).</p>" : "") + '<p class="v2-bar"><span><b>' + esc(c.name) + "</b> · niveau <b>" + lv + '</b></span><span class="rank-bar"><i style="width:' + Math.min(100, k) + '%"></i></span><small>' + cx + " / " + charXpFor(lv + 1) + "</small></p>";
       html += '<div class="dof-tabs">' + [["eq", "Équipement"], ["tal", "Talents"], ["tree", "Arbre"], ["mast", "Maîtrise"]].map(function (t) { return '<button type="button" class="dof-tab' + (UI.ter === t[0] ? " is-on" : "") + '" data-action="dtab" data-arg="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
       if (UI.ter === "tal") html += terTalents(c, lv, ps);
       else if (UI.ter === "tree") html += terTree(c);
