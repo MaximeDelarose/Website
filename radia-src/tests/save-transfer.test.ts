@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyTransfer, BEFORE_IMPORT_LS, decodeTransfer, encodeTransfer, PHOTO_KEY_LS, SAVE_LS, TRANSFER_PREFIX } from '../src/save/transfer';
+import { applyKeyOnly, applyTransfer, BEFORE_IMPORT_LS, decodeTransfer, encodeTransfer, PHOTO_KEY_LS, SAVE_LS, TRANSFER_PREFIX } from '../src/save/transfer';
 import { defaultSave } from '../src/save/schema';
 
 const KEY = 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-AB'; // clé factice de test (aucun rapport avec une vraie clé)
@@ -60,6 +60,18 @@ describe('transfert de sauvegarde (Safari ⇄ application installée)', () => {
     if (!d.ok) throw new Error('décodage');
     const full = { getItem: () => null, setItem: () => { throw new Error('quota'); } };
     expect(applyTransfer(d.payload, full)).toBe(false);
+  });
+  it('applyKeyOnly : reprend seulement la clé, la partie du stockage reste intacte ; sans clé dans le code → false', () => {
+    const store = fakeStore({ [SAVE_LS]: '{"v":5,"mine":true}' });
+    const d = decodeTransfer(encodeTransfer(defaultSave(), KEY));
+    if (!d.ok) throw new Error('décodage');
+    expect(applyKeyOnly(d.payload, store)).toBe(true);
+    expect(store.raw.get(PHOTO_KEY_LS)).toBe(KEY);
+    expect(store.raw.get(SAVE_LS)).toBe('{"v":5,"mine":true}');
+    expect(store.raw.has(BEFORE_IMPORT_LS)).toBe(false);
+    const n = decodeTransfer(encodeTransfer(defaultSave(), null));
+    if (!n.ok) throw new Error('décodage');
+    expect(applyKeyOnly(n.payload, fakeStore({}))).toBe(false);
   });
   it('décoder ne modifie aucun stockage', () => {
     const store = fakeStore({ [SAVE_LS]: 'X' });

@@ -43,6 +43,16 @@ export function openSettings(): Promise<void> {
       checkBtn.removeAttribute('disabled');
       checkBtn.textContent = r === 'uptodate' ? 'À jour ♡' : r === 'available' ? 'Mise à jour prête' : 'Pas de réseau';
     }, { sound: false }));
+    // ---- diagnostic tactile : état réel du plateau (utile si les cases ne répondent plus)
+    const touchBtn = h('button.btn.small.secondary', { on: { click: tap(async () => {
+      const { touchDiagnostics, unblockBoard } = await import('../../game/touchDiag');
+      const rows = touchDiagnostics();
+      const text = rows.map(([k, v]) => `${k} : ${v}`).join('\n');
+      const list = h('div', { style: 'text-align:left;font-size:12.5px;line-height:1.35' }, ...rows.map(([k, v]) => h('p', { style: 'margin:0 0 7px' }, h('b', `${k} : `), v)));
+      const r = await ui.modal({ title: 'Diagnostic tactile', body: list, actions: [{ label: 'Copier', value: 'copy', style: 'primary' }, { label: 'Débloquer le plateau', value: 'fix', style: 'secondary' }, { label: 'Fermer', value: 'ok', style: 'secondary' }] });
+      if (r === 'copy') { try { await navigator.clipboard.writeText(text); ui.toast({ title: 'Diagnostic tactile copié ♡', icon: 'info', ms: 2200 }); } catch { /* le texte reste visible */ } }
+      if (r === 'fix') { const n = unblockBoard(); ui.toast({ title: n ? 'Plateau débloqué ♡' : 'Rien à débloquer', sub: 'Aucun objet ni sauvegarde touchés', icon: 'info', ms: 2400 }); }
+    }, { sound: false }) } }, 'Afficher');
     // ---- diagnostic : comparer objectivement Safari et l'application installée
     const diagBtn = h('button.btn.small.secondary', { on: { click: tap(async () => {
       const rows = formatDiagnostics(await gatherDiagnostics(save, photoKey));
@@ -74,7 +84,9 @@ export function openSettings(): Promise<void> {
       h('div.setting-row', h('label', 'Animations réduites'), toggle(s.reducedMotion, (v) => { s.reducedMotion = v; commit(); })),
       h('div.setting-row', h('label', 'Vitesse du texte'), seg([['normal', 'Normale'], ['fast', 'Rapide'], ['instant', 'Immédiate']], s.textSpeed, (v) => { s.textSpeed = v; commit(); })),
       h('div.setting-row', h('label', 'Version', h('small', versionLabel())), checkBtn),
+      h('div.setting-row', h('label', 'Ressources', h('small', 'À quoi servent pièces, diamants, énergie, cœurs, tickets')), h('button.btn.small.secondary', { on: { click: tap(async () => { (await import('../components/resourceInfo')).openResourceHelp(); }, { sound: false }) } }, 'Voir')),
       h('div.setting-row', h('label', 'Diagnostic', h('small', 'Build, mode (Safari / application), partie, photos')), diagBtn),
+      h('div.setting-row', h('label', 'Diagnostic tactile', h('small', 'État du plateau ; « Débloquer le plateau » sans rien perdre')), touchBtn),
       h('div.setting-row', h('label', 'Copier ma sauvegarde', h('small', 'Pour la mettre dans l\'application de l\'écran d\'accueil (ou l\'inverse)')), copyBtn),
       h('div.setting-row', h('label', 'Importer une sauvegarde', h('small', 'Colle le code copié ailleurs')), importBtn),
       h('div.setting-row', h('label', 'Recommencer depuis le début', h('small', 'Efface toute la progression')),

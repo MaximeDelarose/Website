@@ -11,7 +11,7 @@ const URL = `http://localhost:${PORT}/?debug`;
 mkdirSync('shots', { recursive: true });
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
 const todayKey = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
-const baseSave = () => ({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5'], story: { step: 9999 }, levels: {}, hearts: 500, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } });
+const baseSave = () => ({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7'], story: { step: 9999 }, levels: {}, hearts: 500, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } });
 // .car-card : contenu normal de la page (grande carte opaque), pas un calque
 const BASE_ALLOW = ['#app', '#game', '#ui', 'canvas', 'html', 'body', '.car-card'];
 const results = [];
@@ -113,7 +113,7 @@ async function run(H) {
 
   // ---------- salaire (+ dialogue d'Auguste éventuel)
   const coins0 = await page.evaluate(() => window.RADIA.save.data.world.res.coins);
-  await page.locator('.car-sal-btn:not([disabled])').first().click().catch(() => {}); await sleep(900); await dismissAll();
+  await page.locator('.car-sal-big, .car-sal-btn:not([disabled])').first().click().catch(() => {}); await sleep(900); await dismissAll();
   const coins1 = await page.evaluate(() => window.RADIA.save.data.world.res.coins);
   note(coins1 > coins0, `[${tag}] salaire touché (+${coins1 - coins0} pièces)`);
   await check('après salaire + fermeture du dialogue', { wait: 3200 });

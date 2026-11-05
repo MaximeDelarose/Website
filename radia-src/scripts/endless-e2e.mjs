@@ -14,7 +14,7 @@ let curTag = '';
 const check = (name, ok, detail = '') => { results.push({ ok: !!ok, line: `${ok ? 'OK ' : 'KO '} [${curTag}] ${name}${detail ? ` — ${detail}` : ''}` }); };
 
 const todayKey = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
-const baseSave = () => ({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5'], story: { step: 9999 }, levels: {}, hearts: 500, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } });
+const baseSave = () => ({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7'], story: { step: 9999 }, levels: {}, hearts: 500, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } });
 
 async function open(H, saveObj, tag) {
   const ctx = await browser.newContext({ viewport: { width: 393, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
@@ -352,7 +352,7 @@ async function runMigration(H) {
 /** Mode histoire : niveau 1 jouable, sauvegarde `run` intacte, aucune donnée Endless touchée. */
 async function runStory() {
   curTag = 'histoire';
-  const { ctx, page } = await open(852, { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5'], world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 } } }, curTag);
+  const { ctx, page } = await open(852, { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7'], world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 } } }, curTag);
   const sleep = (ms) => page.waitForTimeout(ms);
   await page.getByText('MODE CHAPITRES').first().click();
   await sleep(900);

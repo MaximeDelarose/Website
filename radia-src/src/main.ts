@@ -8,7 +8,7 @@ import './ui/styles/game.css';
 import { debugApis } from './core/debug';
 import { startUpdateWatch } from './core/updateWatch';
 import { startUpdates } from './core/updates';
-import { maybeShowStandaloneWelcome } from './ui/screens/standaloneWelcome';
+import { maybeHintMissingPhotos, maybeShowStandaloneWelcome } from './ui/screens/standaloneWelcome';
 import { save, setGame, applySettings, audio, events, game as getGame } from './core/app';
 import { ACHIEVEMENT_DIAMONDS } from './core/progress';
 import { createGame } from './game/GameConfig';
@@ -98,6 +98,46 @@ async function showWhatsNewV4(): Promise<void> {
   });
 }
 
+/** Nouveautés v6 : petites améliorations (une seule fois, pour les parties existantes). Sans spoiler : on explique l'usage, pas les surprises. */
+async function showWhatsNewV6(): Promise<void> {
+  if (save.data.seenUpdates.includes('v6')) return;
+  save.data.seenUpdates.push('v6');
+  save.save();
+  if (!save.hadSave) return;
+  const li = (t: string) => h('li', { style: 'margin:4px 0' }, t);
+  await ui.modal({
+    title: 'Petites améliorations ♡',
+    body: h('div', { style: 'text-align:left;font-size:15px' },
+      h('ul', { style: 'padding-left:18px;margin:6px 0' },
+        li('Maintiens ton doigt sur un compteur (pièces, diamants, énergie, cœurs, tickets) : une petite fiche explique à quoi il sert et comment en gagner.'),
+        li('Le plateau est plus fiable : si un geste est interrompu, il se remet tout seul en route.'),
+        li('RADIA se met à jour toute seule quand tu reviens dedans, sans toucher à ta partie.'),
+        li('Dans Paramètres, « Ressources » te rappelle tout cela.')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, 'Rien à faire : ta partie est intacte ♡')),
+    actions: [{ label: 'Merci !', value: 'ok' }],
+  });
+}
+
+/** Nouveautés v7 : téléphone, carrière, Messages (une seule fois, pour les parties existantes). Sans spoiler : on explique l'usage, pas les surprises. */
+async function showWhatsNewV7(): Promise<void> {
+  if (save.data.seenUpdates.includes('v7')) return;
+  save.data.seenUpdates.push('v7');
+  save.save();
+  if (!save.hadSave) return;
+  const li = (t: string) => h('li', { style: 'margin:4px 0' }, t);
+  await ui.modal({
+    title: 'Ton téléphone a changé ♡',
+    body: h('div', { style: 'text-align:left;font-size:15px' },
+      h('ul', { style: 'padding-left:18px;margin:6px 0' },
+        li('Il s\'ouvre sur un vrai écran d\'accueil, avec un fond d\'écran à choisir dans Réglages.'),
+        li('Fermer une application te ramène à cet écran ; la croix ✕ en haut te ramène au jeu, exactement où tu étais.'),
+        li('Messages ressemble enfin à une vraie messagerie : bulles, « … », réactions (maintiens ton doigt sur un message).'),
+        li('Dans MON MONDE, « Ma carrière » est juste après le dressing. Quand ton salaire est prêt, un badge doré t\'attend : ouvre la carrière et touche le grand bouton.')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, 'Tes conversations et ta partie sont intactes ♡')),
+    actions: [{ label: 'Super !', value: 'ok' }],
+  });
+}
+
 /** Nouveautés v3 : le château de Radia (une seule fois, pour les parties existantes). */
 async function showWhatsNewV3(): Promise<void> {
   if (save.data.seenUpdates.includes('v3')) return;
@@ -172,9 +212,12 @@ async function boot(): Promise<void> {
   showTitle();
   await handleSaveProblems();
   await maybeShowStandaloneWelcome();
+  await maybeHintMissingPhotos();
   await showWhatsNew();
   await showWhatsNewV3();
   await showWhatsNewV4();
+  await showWhatsNewV6();
+  await showWhatsNewV7();
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => undefined);

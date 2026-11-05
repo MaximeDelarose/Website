@@ -41,7 +41,7 @@ await page.evaluate(() => window.RADIA.phone()); await sleep(900);
 await page.evaluate(() => window.RADIA.apps.reset());
 await page.evaluate(() => document.querySelector('.ph-x')?.click()); await sleep(400);
 await page.evaluate(() => window.RADIA.phone()); await sleep(900);
-await page.locator('.ph-app', { hasText: 'TikTak' }).click(); await sleep(1800);
+await page.locator('.phh-app[data-app="clips"]').click(); await sleep(1800);
 check('TikTak ouvert', (await page.locator('.clp-layer').count()) === 1);
 const rows = [];
 let augFound = null;
@@ -56,7 +56,7 @@ for (let i = 0; i < 24 && (rows.filter((r) => r.aug).length < 2 || rows.length <
   }, NEG);
   rows.push(info);
   if (info.aug && !augFound) { augFound = i; await page.screenshot({ path: `shots/tc-comments-aug-${H}.png` }); }
-  if (info.aug && augFound === i) break;
+  if (info.aug && augFound === i && rows.length >= 10) break; // on continue à parcourir au moins 10 vidéos (sinon le test dépendrait de l'ordre du fil)
   await page.locator('.clp-sheet .clp-x').click(); await sleep(400);
   await swipeUp();
 }

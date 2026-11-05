@@ -41,14 +41,14 @@ await page.evaluate(() => window.RADIA.apps.reset());
 await page.evaluate(() => document.querySelector('.ph-x')?.click()); await sleep(400);
 const chat = () => page.evaluate(() => window.RADIA.apps.chat.state());
 let s0 = await chat();
-check('4 contacts au départ, aucun message', Object.values(s0.contacts).filter((c) => c.added).length === 4 && Object.values(s0.contacts).every((c) => c.msgs.length === 0));
+check('5 contacts au départ (dont Hugo), aucun message', Object.values(s0.contacts).filter((c) => c.added).length === 5 && Object.values(s0.contacts).every((c) => c.msgs.length === 0));
 // un snap photo (rouge), une vidéo (violette), un message
 await page.evaluate(() => { const A = window.RADIA.apps.chat; A.push('dylan', 'snap', 'mirror'); A.push('kevin', 'video', 'tractor'); A.push('maxime', 'text'); });
 await sleep(300);
 await page.evaluate(() => window.RADIA.phone()); await sleep(900);
-const badge = await page.locator('.ph-app', { hasText: 'Snapchien' }).locator('.ph-dot').first().innerText().catch(() => '');
+const badge = await page.locator('.phh-app[data-app="snap"]').locator('.phh-badge').first().innerText().catch(() => '');
 check('la pastille de l\'icône Snapchien compte les nouveautés (3)', badge.trim() === '3', badge);
-await page.locator('.ph-app', { hasText: 'Snapchien' }).click(); await sleep(1500);
+await page.locator('.phh-app[data-app="snap"]').click(); await sleep(1500);
 check('Snapchien s\'ouvre sur l\'écran Chat', (await page.locator('.snc-body.list').count()) === 1);
 const rows = await page.evaluate(() => [...document.querySelectorAll('.snc-row')].map((r) => ({ name: r.querySelector('b')?.childNodes[0]?.textContent, st: r.querySelector('.snc-st')?.innerText.replace(/\n/g, ' ') ?? '', red: !!r.querySelector('.snc-sq.red'), vid: !!r.querySelector('.snc-sq.vid'), txt: !!r.querySelector('.snc-sq.txt') })));
 check('Dylan : snap photo = indicateur ROUGE « Nouveau Snap »', rows.some((r) => r.name === 'Dylan' && r.red && /Nouveau Snap/.test(r.st)), JSON.stringify(rows.find((r) => r.name === 'Dylan')));

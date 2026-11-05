@@ -3,6 +3,7 @@
  * pour comparer deux installations. Aucune donnée personnelle : l'adresse est affichée SANS sa partie après « # » (là où voyage la
  * clé des photos), et la clé n'est jamais montrée — seulement sa présence.
  */
+import { SAVE_VERSION } from '../save/schema';
 import { BUILD_ID, BUILD_TIME, fetchRemoteVersion, isNewer, versionLabel, type RemoteVersion } from './updates';
 
 export interface DiagInput {
@@ -13,6 +14,10 @@ export interface DiagInput {
   manifestStart: string;
   sw: { supported: boolean; controlled: boolean; scope: string; script: string; state: string; caches: string[] };
   remote: RemoteVersion | 'unreachable';
+  /** Pack de personnages : empreinte du fichier chiffré servi (identique dans les deux modes si les fichiers sont les mêmes) + essai de déchiffrement. */
+  chars?: { file: string; fingerprint: string; decrypt: 'ok' | 'échec' | 'sans clé' | 'fichier introuvable' };
+  schema?: number;
+  scope?: string;
   save: { hadSave: boolean; storyStep: number; hearts: number; coins: number; updatedAt: number; hasPhotoKey: boolean; storageOk: boolean };
 }
 
@@ -42,11 +47,29 @@ export function formatDiagnostics(d: DiagInput): [string, string][] {
     ['Adresse de lancement', d.launchUrl],
     ['start_url du manifeste', d.manifestStart || '—'],
     ['Mode', d.standalone ? 'APPLICATION INSTALLÉE (plein écran, mémoire séparée de Safari)' : 'Safari / navigateur'],
+    ['Scope du manifeste', d.scope || '—'],
     ['Service worker', sw],
     ['Cache du service worker', d.sw.caches.join(', ') || '—'],
     ['Partie dans ce mode', d.save.storageOk ? (d.save.hadSave ? `existante · histoire étape ${d.save.storyStep} · ${d.save.hearts} ♡ · ${d.save.coins} pièces · modifiée ${when(d.save.updatedAt)}` : 'NEUVE (aucune partie enregistrée ici)') : 'stockage indisponible'],
+    ['Schéma de sauvegarde', d.schema == null ? '—' : `v${d.schema}`],
+    ['Pack de personnages', d.chars ? `${d.chars.file} · empreinte ${d.chars.fingerprint} · déchiffrement : ${d.chars.decrypt}` : '—'],
     ['Photos (clé)', d.save.hasPhotoKey ? 'présente' : 'ABSENTE → personnages dessinés au lieu des photos'],
   ];
+}
+
+/** Empreinte (SHA-256 court) du fichier chiffré du visage de Radia + test de déchiffrement avec la clé locale. Aucune clé ni image n'est affichée. */
+async function charsProbe(hasKey: boolean): Promise<NonNullable<DiagInput['chars']>> {
+  const file = 'char-radia.bin';
+  try {
+    const res = await fetch(`./assets/p/${file}`, { cache: 'no-store' });
+    if (!res.ok) return { file, fingerprint: '—', decrypt: 'fichier introuvable' };
+    const buf = await res.arrayBuffer();
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', buf));
+    const fingerprint = [...h.slice(0, 4)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (!hasKey) return { file, fingerprint, decrypt: 'sans clé' };
+    const { decryptAsset } = await import('./photos');
+    return { file, fingerprint, decrypt: (await decryptAsset('char-radia')) ? 'ok' : 'échec' };
+  } catch { return { file, fingerprint: '—', decrypt: 'échec' }; }
 }
 
 export async function gatherDiagnostics(save: { hadSave: boolean; data: { story?: { step?: number }; hearts?: number; world?: { res?: { coins?: number } }; updatedAt?: number } }, photoKey: () => string | null): Promise<DiagInput> {
@@ -64,11 +87,17 @@ export async function gatherDiagnostics(save: { hadSave: boolean; data: { story?
     const link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
     if (link) { const m = await (await fetch(link.href, { cache: 'no-store' })).json(); manifestStart = new URL(m.start_url ?? './', link.href).href; }
   } catch { /* ignore */ }
+  let scope = '';
+  try {
+    const link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
+    if (link) { const m = await (await fetch(link.href, { cache: 'no-store' })).json(); scope = new URL(m.scope ?? './', link.href).href; }
+  } catch { /* ignore */ }
+  const chars = await charsProbe(!!photoKey());
   const remote = (await fetchRemoteVersion()) ?? 'unreachable';
   let storageOk = true;
   try { localStorage.setItem('__d__', '1'); localStorage.removeItem('__d__'); } catch { storageOk = false; }
   return {
-    buildId: BUILD_ID, buildTime: BUILD_TIME, launchUrl: safeUrl(location.href), standalone: isStandalone(), manifestStart, sw, remote,
+    buildId: BUILD_ID, buildTime: BUILD_TIME, launchUrl: safeUrl(location.href), standalone: isStandalone(), manifestStart, scope, schema: SAVE_VERSION, chars, sw, remote,
     save: { hadSave: save.hadSave, storyStep: save.data.story?.step ?? 0, hearts: save.data.hearts ?? 0, coins: save.data.world?.res?.coins ?? 0, updatedAt: save.data.updatedAt ?? 0, hasPhotoKey: !!photoKey(), storageOk },
   };
 }

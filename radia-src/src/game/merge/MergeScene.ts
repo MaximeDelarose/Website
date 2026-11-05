@@ -32,6 +32,7 @@ import { BOARD_H, BOARD_SIZE, BOARD_W, type BoardEvent, type LevelDef, type RunS
 import * as R from './rules';
 import { suggestMerge, botStep } from './bot';
 import { LONG_PRESS_MS, PointerFsm, staleGesture } from './pointerFsm';
+import { POINTERS_RESET_EVENT } from '../pointerHygiene';
 import { ENDLESS_CFG } from '../endless/config';
 import { MAX_LEVEL, RARITY_COLOR, SPECIAL, collMax, type ItemRef, type Rarity } from '../../data/items';
 import {
@@ -193,12 +194,13 @@ export class MergeScene extends BaseScene {
     window.addEventListener('pointercancel', onAbort);
     window.addEventListener('touchcancel', onAbort);
     window.addEventListener('blur', onAbort);
+    window.addEventListener(POINTERS_RESET_EVENT, onAbort); // un pointeur coincé vient d'être libéré : le geste associé est annulé proprement
     document.addEventListener('visibilitychange', onHidden);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       window.clearTimeout(this.pressTimer);
       window.removeEventListener('pointermove', onWinMove); window.removeEventListener('pointerup', onWinUp);
       window.removeEventListener('pointercancel', onAbort); window.removeEventListener('touchcancel', onAbort);
-      window.removeEventListener('blur', onAbort); document.removeEventListener('visibilitychange', onHidden);
+      window.removeEventListener('blur', onAbort); window.removeEventListener(POINTERS_RESET_EVENT, onAbort); document.removeEventListener('visibilitychange', onHidden);
       this.slowDepth = 0; this.time.timeScale = 1; this.tweens.timeScale = 1;
     });
     this.lastAction = this.time.now;

@@ -4,6 +4,8 @@
  * chat, carrière, fans) dont les messages viennent de l'état réel (voir hub/state.ts).
  * Chaque destination est chargée à la demande et s'ouvre exactement comme avant.
  */
+import { attachResourceInfo } from '../../components/resourceInfo';
+import type { ResInfoId } from '../../../data/resourceInfo';
 import '../../styles/world-hub.css';
 import { h, tap } from '../../dom';
 import { ui } from '../../ui';
@@ -45,11 +47,12 @@ const CASTLE_OPEN = async (): Promise<void> => (await mod(import('./castle'))).o
 
 const DESTS: Dest[] = [
   { id: 'dressing', tone: 'lavande', open: async () => { await (await mod(import('./dressing'))).openDressing(); markDressingSeen(world()); save.save(); } },
+  // la carrière juste après le dressing : visible sans défiler (le salaire s'y récupère)
+  { id: 'career', tone: 'gold', open: async () => (await mod(import('./career'))).openCareer() },
   { id: 'garden', tone: 'sage', open: async () => (await mod(import('./garden'))).openGarden() },
   { id: 'choc', tone: 'choc', open: async () => (await mod(import('./chocolaterie'))).openChocolaterie() },
   { id: 'family', tone: 'peach', open: async () => (await mod(import('./family'))).openFamily() },
   { id: 'cat', tone: 'cream', open: async () => (await mod(import('./cat'))).openCat() },
-  { id: 'career', tone: 'gold', open: async () => (await mod(import('./career'))).openCareer() },
   { id: 'fans', tone: 'violet', wide: true, open: async () => (await mod(import('./fans'))).openFans() },
 ];
 
@@ -68,9 +71,11 @@ export function openWorldHub(): Promise<void> {
     const renderChips = () => {
       chips.textContent = '';
       for (const k of RES) {
-        chips.append(h('span.res-chip', { title: RES_NAMES[k] }, h('img', { src: resIconUrl(k, 40), alt: RES_NAMES[k] }), h('b', fmt(world().res[k]))));
+        const rc = h('span.res-chip', { title: RES_NAMES[k] }, h('img', { src: resIconUrl(k, 40), alt: RES_NAMES[k] }), h('b', fmt(world().res[k])));
+        attachResourceInfo(rc, k as ResInfoId); chips.append(rc);
       }
-      chips.append(h('span.res-chip', { title: 'Diamants' }, h('img', { src: diamondUrl(40), alt: 'Diamants' }), h('b', fmt(wallet.diamonds()))));
+      const dc = h('span.res-chip', { title: 'Diamants' }, h('img', { src: diamondUrl(40), alt: 'Diamants' }), h('b', fmt(wallet.diamonds())));
+      attachResourceInfo(dc, 'diamonds'); chips.append(dc);
     };
     let scr: HTMLElement;
     const reshow = () => {

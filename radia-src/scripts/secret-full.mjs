@@ -59,7 +59,7 @@ check('récompense unique', st.claimed === 1 && st.coins - coins0 >= 100, `pièc
 check('bracelet porté (choix « Le porter »)', st.worn);
 // souvenir « Une promesse au poignet ♡ » dans le téléphone + revoir la scène (sans récompense)
 await p.evaluate(() => window.RADIA.phone()); await p.waitForTimeout(500);
-await p.locator('.ph-tab[data-tab=souvenirs]').click(); await p.waitForTimeout(1800);
+await p.locator('.phh-app[data-app=souvenirs]').click(); await p.waitForTimeout(1800);
 await p.screenshot({ path: 'shots/sf-souvenir.png' });
 check('souvenir « Une promesse au poignet ♡ » dans l\'album', (await p.locator('.ph-promise').count()) === 1 && (await p.locator('.ph-promise').textContent()).includes('promesse'));
 const before = await p.evaluate(() => { const s = window.RADIA.save.data; return { coins: s.world.res.coins, dia: s.economy.diamonds, claimed: Object.keys(s.events.claimed).length, owned: s.world.wardrobe.owned.filter(x => x === 'br-promise').length, count: s.events.done['s-evening'].count }; });

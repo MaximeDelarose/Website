@@ -36,10 +36,20 @@ describe('contacts Snapchien', () => {
   });
 });
 
+describe('Hugo (contact de départ)', () => {
+  it('une ancienne sauvegarde sans Hugo le reçoit ; supprimé, il ne revient pas', () => {
+    const old = defaultChat(); old.contacts.hugo.added = false;
+    expect(sanitizeChat(JSON.parse(JSON.stringify(old))).contacts.hugo.added).toBe(true);
+    deleteContact(old, 'hugo');
+    const back = sanitizeChat(JSON.parse(JSON.stringify(old)));
+    expect(back.contacts.hugo.added).toBe(false); expect(back.contacts.hugo.deleted).toBe(true);
+  });
+});
+
 describe('arrivée des messages', () => {
-  it('au départ : 4 contacts, aucun message ; le premier message arrive après environ 75 s de jeu actif', () => {
+  it('au départ : 5 contacts (dont Hugo), aucun message ; le premier message arrive après environ 75 s de jeu actif', () => {
     const s = defaultChat();
-    expect(Object.values(s.contacts).filter((c) => c.added).length).toBe(4);
+    expect(Object.values(s.contacts).filter((c) => c.added).length).toBe(5);
     expect(advance(s, 30_000, T0, rng())).toBeNull();
     const got = advance(s, 60_000, T0, rng());
     expect(got).toBeTruthy();
@@ -63,7 +73,7 @@ describe('arrivée des messages', () => {
     let checked = 0;
     for (let seed = 1; seed <= 60 && checked < 5; seed++) {
       const s = defaultChat(); const r = rng(seed);
-      for (const id of ['maxime', 'kevin', 'thomas']) s.contacts[id].added = false;
+      for (const id of ['maxime', 'kevin', 'thomas', 'hugo']) s.contacts[id].added = false;
       s.contacts.dylan.lastIn = T0 - 6 * DAY; s.clock = s.nextAt;
       const got = produce(s, T0, r);
       if (got?.msg.kind !== 'text') continue; // premier message = texte : c'est une relance

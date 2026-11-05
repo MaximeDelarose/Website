@@ -3,6 +3,7 @@ import { defaultSave, type SaveData } from '../src/save/schema';
 import { hubStatus, markDressingSeen, ensureDressingBaseline, affordableRoom, newWardrobeItems, DRESS_SEEN_KEY, type HubId } from '../src/ui/screens/world/hub/state';
 import { FAN_TIERS, ROOM_IDS } from '../src/data/world/ids';
 import { FLOWERS } from '../src/data/world/garden';
+import { salaryAmount } from '../src/game/world/careers';
 
 const NOW = 1_800_000_000_000;
 const fresh = (): SaveData => defaultSave();
@@ -225,16 +226,28 @@ describe('carrière', () => {
     const subs: Record<string, string> = { photo: 'Prochain shooting', model: 'Prochain défilé', actress: 'Prochain tournage', singer: 'Prochain concert' };
     for (const [id, txt] of Object.entries(subs)) {
       d.world.careers.current = id;
-      expect(st(d).career.sub).toBe(txt);
+      expect(st(d).career.sub).toMatch(/^Prochain salaire dans /); // ligne principale : le vrai délai du salaire
+      expect(st(d).career.hint).toContain(txt); // la prochaine activité reste indiquée en dessous
       expect(st(d).career.badge).toBeUndefined();
     }
   });
   it('salaire prêt : récompense, sinon rien', () => {
     const d = calm(); d.world.careers.current = 'photo';
-    expect(st(d).career).toMatchObject({ sub: 'Salaire à toucher', badge: 'reward' });
+    expect(st(d).career).toMatchObject({ sub: 'Salaire à toucher', badge: 'salary' });
     d.world.extra['career.salary.ts'] = NOW - 1000;
     expect(st(d).career.badge).toBeUndefined();
-    expect(st(d, NOW + 4 * 3600_000).career.badge).toBe('reward');
+    expect(st(d, NOW + 4 * 3600_000).career.badge).toBe('salary');
+  });
+  it('salaire pas prêt : le VRAI délai restant est affiché (jamais un faux délai)', () => {
+    const d = calm(); d.world.careers.current = 'photo';
+    d.world.extra['career.salary.ts'] = NOW - 1000; // touché il y a 1 s ; cooldown réel = 4 h
+    expect(st(d).career.sub).toBe('Prochain salaire dans 4 h 00');
+    expect(st(d, NOW + 3 * 3600_000 + 30 * 60_000).career.sub).toBe('Prochain salaire dans 30 min');
+  });
+  it('salaire prêt : le montant du badge est le montant réel calculé par le jeu', () => {
+    const d = calm(); d.world.careers.current = 'photo';
+    const amount = salaryAmount(d.world);
+    expect(st(d).career.hint).toBe(`${amount.toLocaleString('fr-FR')} pièces t'attendent`);
   });
   it('aucune carrière : « Choisis ta voie », même si le salaire serait prêt', () => {
     const d = calm();

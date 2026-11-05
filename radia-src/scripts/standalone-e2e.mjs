@@ -7,7 +7,7 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const results = []; const errors = [];
 const check = (name, ok, extra = '') => { results.push(!!ok); console.log(`${ok ? 'OK ' : 'KO '} ${name}${extra ? ' — ' + extra : ''}`); };
 const todayKey = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
-const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5'], story: { step: 9999 }, levels: {}, hearts: 2990, world: { flags: { 'rw:start-gift-v1': true }, res: { coins: 5474, flowers: 5, fabric: 5, cocoa: 5 } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } };
+const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7'], story: { step: 9999 }, levels: {}, hearts: 2990, world: { flags: { 'rw:start-gift-v1': true }, res: { coins: 5474, flowers: 5, fabric: 5, cocoa: 5 } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } };
 async function open({ standalone, withSave }) {
   const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, permissions: ['clipboard-read', 'clipboard-write'] });
   const page = await ctx.newPage();
@@ -57,6 +57,27 @@ check('application : mode « APPLICATION INSTALLÉE »', /APPLICATION INSTALLÉE
 check('application : MÊME build que Safari', line(dB, 'Build') === buildA && !!buildA, `${line(dB, 'Build')} vs ${buildA}`);
 check('application : partie reprise + photos présentes', /existante · histoire étape 9999/.test(line(dB, 'Partie dans ce mode')) && /présente/.test(line(dB, 'Photos \\(clé\\)')), `${line(dB, 'Partie dans ce mode')} | ${line(dB, 'Photos \\(clé\\)')}`);
 check('application : cœurs et pièces identiques à Safari', (await B.page.evaluate(() => [window.RADIA.save.data.hearts, window.RADIA.save.data.world.res.coins])).join() === '2990,5474');
+
+// ---- cas réel : application installée avec SA propre partie (déjà jouée) mais SANS la clé des photos
+{
+  const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, permissions: ['clipboard-read', 'clipboard-write'] });
+  const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'standalone', { get: () => true }); });
+  const mine = { ...seed, story: { step: 19 }, hearts: 55, world: { ...seed.world, res: { ...seed.world.res, coins: 692 } } };
+  await page.addInitScript((s) => { if (!localStorage.getItem('radia-save-v1')) localStorage.setItem('radia-save-v1', s); }, JSON.stringify(mine));
+  await page.goto(URL, { waitUntil: 'networkidle' }); await page.waitForTimeout(3500);
+  check('application avec partie mais sans clé : rappel « photos pas là » affiché (une fois)', (await page.locator('.modal-backdrop', { hasText: 'photos ne sont pas là' }).count()) === 1);
+  await page.locator('.modal-backdrop .actions button', { hasText: 'Reprendre les photos' }).click(); await page.waitForSelector('.modal-backdrop textarea');
+  await page.locator('.modal-backdrop textarea').fill(code);
+  await page.locator('.modal-backdrop .actions button', { hasText: 'Reprendre les photos' }).click();
+  await page.waitForLoadState('networkidle'); await page.waitForTimeout(3800); await closeModals(page);
+  const dC = await diag(page);
+  // le test utilise une clé factice (la vraie n'est jamais dans le dépôt) : on vérifie la présence de la clé, pas un déchiffrement réel
+  check('photos reprises : clé présente (déchiffrement réel à vérifier sur l\'iPhone)', /présente/.test(line(dC, 'Photos \\(clé\\)')) && !/sans clé/.test(line(dC, 'Pack de personnages')), `${line(dC, 'Photos \\(clé\\)')} | ${line(dC, 'Pack de personnages')}`);
+  check('la partie de l\'application est intacte (pas remplacée)', (await page.evaluate(() => [window.RADIA.save.data.hearts, window.RADIA.save.data.story.step])).join() === '55,19');
+  check('le rappel ne revient pas', (await page.locator('.modal-backdrop', { hasText: 'photos ne sont pas là' }).count()) === 0);
+  await ctx.close();
+}
 check('aucune erreur JS', errors.length === 0, errors.slice(0, 2).join(' | '));
 const ko = results.filter((x) => !x).length; console.log(`\n${results.length - ko}/${results.length} OK`);
 await browser.close(); process.exit(ko ? 1 : 0);

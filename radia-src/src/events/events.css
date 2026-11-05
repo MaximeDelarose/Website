@@ -139,3 +139,34 @@
 .ph-tab { position: relative; }
 .ph-tabdot { display: none; position: absolute; top: 4px; left: calc(50% + 8px); width: 11px; height: 11px; border-radius: 50%; background: var(--rose-deep); box-shadow: 0 0 0 2px #fff; }
 .ph-tabdot.on { display: block; }
+
+/* ---------- Écran d'accueil du téléphone (préfixe phh-) ---------- */
+.ph.home { background: #3b3152; }
+.ph-content.ph-home-c { padding: 0; gap: 0; overflow: hidden; }
+.phh { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 34px 16px 10px; background-size: cover; background-position: center; color: #fff; }
+.phh-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.phh-time { font-size: 52px; font-weight: 700; line-height: 1; text-shadow: 0 2px 10px rgba(59, 49, 82, 0.35); letter-spacing: -1px; }
+.phh-date { margin-top: 4px; font-size: 15px; font-weight: 600; text-shadow: 0 1px 6px rgba(59, 49, 82, 0.4); text-transform: capitalize; }
+.phh-quit { width: 44px; height: 44px; flex: 0 0 auto; border: 0; border-radius: 50%; background: rgba(59, 49, 82, 0.32); color: #fff; display: grid; place-items: center; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.phh-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 4px; margin-top: 26px; }
+.phh-spacer { flex: 1; }
+.phh-app { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 44px; padding: 0; border: 0; background: none; color: #fff; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.phh-ic { position: relative; display: block; width: 56px; height: 56px; border-radius: 15px; transition: transform 0.13s ease; }
+.phh-ic > *:first-child { width: 56px; height: 56px; border-radius: 15px; display: grid; place-items: center; color: #fff; box-shadow: 0 3px 8px rgba(59, 49, 82, 0.3); }
+.phh-ic > img, .phh-ic > canvas, .phh-ic > svg { display: block; }
+.phh-app.launch .phh-ic { transform: scale(1.14); }
+.phh-app:active .phh-ic { transform: scale(0.93); }
+.phh-name { font-size: 11.5px; font-weight: 600; text-shadow: 0 1px 4px rgba(59, 49, 82, 0.55); max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.phh-badge { position: absolute; top: -6px; right: -6px; min-width: 21px; height: 21px; padding: 0 5px; border-radius: 99px; background: #ff3b5c; color: #fff; font: 800 12px/21px var(--font); font-style: normal; text-align: center; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9); }
+.phh-dock { display: flex; justify-content: space-around; padding: 10px 8px; border-radius: 26px; background: rgba(255, 255, 255, 0.3); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.phh-indicator { align-self: center; width: 120px; height: 5px; margin-top: 10px; border-radius: 99px; background: rgba(255, 255, 255, 0.85); }
+/* ouverture / fermeture : l'application grandit depuis son icône et rétrécit vers elle */
+@keyframes phhGrow { from { opacity: 0; transform: scale(0.35); } to { opacity: 1; transform: none; } }
+@keyframes phhShrink { to { opacity: 0; transform: scale(0.35); } }
+.ph-back ~ .snp-layer, .ph-back ~ .clp-layer, .ph-back ~ .tdr-layer { transform-origin: var(--app-ox, 50%) var(--app-oy, 50%); animation: phhGrow 0.28s var(--ease-out); }
+.ph-back ~ .snp-layer.out, .ph-back ~ .clp-layer.out, .ph-back ~ .tdr-layer.out { animation: phhShrink 0.22s ease forwards; }
+.ph-wp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+.ph-wp button { padding: 0; border: 0; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 0 0 2px #f0e0d2; cursor: pointer; font: inherit; }
+.ph-wp button.on { box-shadow: 0 0 0 3px var(--rose-deep); }
+.ph-wp img { display: block; width: 100%; height: 88px; object-fit: cover; }
+.ph-wp small { display: block; padding: 3px 2px; font-size: 10.5px; font-weight: 700; color: var(--choco); }

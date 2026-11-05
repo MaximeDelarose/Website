@@ -36,4 +36,10 @@ describe('diagnostic Safari / application installée', () => {
     expect(get(formatDiagnostics(base({ sw: { supported: false, controlled: false, scope: '', script: '', state: '', caches: [] } })), 'Service worker')).toMatch(/non pris en charge/);
     expect(get(formatDiagnostics(base({ sw: { supported: true, controlled: false, scope: '', script: '', state: '', caches: [] } })), 'Service worker')).toBe('aucun');
   });
+  it('affiche le pack de personnages (empreinte, déchiffrement), le schéma de sauvegarde et le scope — sans jamais montrer la clé', () => {
+    const rows = formatDiagnostics(base({ schema: 5, scope: 'https://mdelarose.fr/radia-52c8654e04/', chars: { file: 'char-radia.bin', fingerprint: 'a1b2c3d4', decrypt: 'sans clé' } }));
+    expect(get(rows, 'Schéma de sauvegarde')).toBe('v5');
+    expect(get(rows, 'Pack de personnages')).toMatch(/a1b2c3d4.*sans clé/);
+    expect(get(rows, 'Scope du manifeste')).toMatch(/radia-52c8654e04/);
+  });
 });

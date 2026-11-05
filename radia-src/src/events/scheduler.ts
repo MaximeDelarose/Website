@@ -142,7 +142,13 @@ const KNOWN_SENDERS = new Set<string>(['auguste', 'kid1', 'kid2', 'kid3', 'agenc
 /** Non lus RÉELLEMENT visibles dans le téléphone (la pastille ne compte jamais un élément qu'on ne pourrait pas ouvrir). */
 export function visibleUnread(): number {
   const st = ev();
-  return st.msgs.filter((m) => !m.read && KNOWN_SENDERS.has(m.from)).length + st.inbox.filter((i) => i.state === 'new' && !!eventById(i.eventId)).length;
+  return st.msgs.filter((m) => !m.read && KNOWN_SENDERS.has(m.from)).length + st.inbox.filter((i) => i.state === 'new' && !!eventById(i.eventId)).length + appMessagesUnread();
+}
+/** Non lus de l'application Messages (lus directement dans la sauvegarde : l'application est chargée à la demande). */
+function appMessagesUnread(): number {
+  const c = (save.data.fun.apps.messages as { convos?: Record<string, { unread?: unknown }> }).convos;
+  if (!c || typeof c !== 'object') return 0;
+  return Object.values(c).reduce((n, x) => n + (x && typeof x.unread === 'number' && x.unread > 0 ? Math.min(99, x.unread) : 0), 0);
 }
 
 /** Bouton « téléphone » avec pastille ; à placer dans la fusion, l'accueil et Mon monde. */

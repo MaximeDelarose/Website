@@ -56,11 +56,39 @@ export async function fetchRemoteVersion(): Promise<RemoteVersion | null> {
 const GUARD = 'radia-upd-at';
 
 /** Moment sûr pour recharger tout seul : écran titre, aucune fenêtre, aucun cadeau, rien en cours d'écriture. */
+const OVERLAYS = '.modal-backdrop, #reward-overlay .rw-root, .ev-layer, .inc-layer, .dm-reveal';
+const noOverlay = (): boolean => typeof document !== 'undefined' && !document.querySelector(OVERLAYS) && document.visibilityState === 'visible';
 export function safeToApplyNow(): boolean {
   if (typeof document === 'undefined') return false;
-  if (!document.querySelector('.title-screen')) return false;
-  if (document.querySelector('.modal-backdrop, #reward-overlay .rw-root, .ev-layer, .inc-layer, .dm-reveal')) return false;
-  return document.visibilityState === 'visible';
+  return !!document.querySelector('.title-screen') && noOverlay();
+}
+
+/** Décision pure (testée) : recharger toute seule maintenant ? Jamais si la joueuse a demandé la vérification elle-même ni juste après un rechargement. */
+export function shouldAutoApply(o: { manual: boolean; justReloaded: boolean; onTitle: boolean; overlay: boolean; resumedAfterAbsence: boolean }): boolean {
+  if (o.manual || o.justReloaded || o.overlay) return false;
+  return o.onTitle || o.resumedAfterAbsence;
+}
+
+/** Petit message avant le rechargement automatique (jamais silencieux). */
+function showApplying(): void {
+  if (typeof document === 'undefined' || document.getElementById('radia-upd-now')) return;
+  const n = document.createElement('div');
+  n.id = 'radia-upd-now'; n.setAttribute('role', 'status');
+  n.style.cssText = 'position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:2001;padding:12px 14px;border-radius:18px;background:#fff7fb;color:#3b3152;text-align:center;box-shadow:0 0 0 2px #f5a0bb,0 10px 28px rgba(59,49,82,.35);font:600 14px/1.25 Fredoka,system-ui,sans-serif';
+  n.textContent = 'Nouvelle version de RADIA ♡ mise à jour en cours…';
+  document.body.append(n);
+}
+
+/** Après un rechargement dû à une mise à jour : confirmation discrète. */
+function showUpdated(): void {
+  if (typeof document === 'undefined') return;
+  const n = document.createElement('div');
+  n.setAttribute('role', 'status');
+  n.style.cssText = 'position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:2001;padding:10px 14px;border-radius:18px;background:#fff7fb;color:#3b3152;text-align:center;box-shadow:0 0 0 2px #f5a0bb,0 10px 28px rgba(59,49,82,.35);font:600 14px/1.25 Fredoka,system-ui,sans-serif;transition:opacity .4s';
+  n.textContent = `RADIA est à jour ♡ (${versionLabel().split(' · ')[0]})`;
+  document.body.append(n);
+  window.setTimeout(() => { n.style.opacity = '0'; }, 2600);
+  window.setTimeout(() => n.remove(), 3200);
 }
 
 export async function applyUpdate(writeSave?: () => void): Promise<void> {
@@ -102,12 +130,17 @@ export function showUpdateAvailable(onApply: () => void): void {
 let inflight: Promise<UpdateStatus> | null = null;
 let writeSaveFn: (() => void) | undefined;
 
-async function doCheck(manual: boolean): Promise<UpdateStatus> {
+async function doCheck(manual: boolean, resumed = false): Promise<UpdateStatus> {
   try { const reg = await navigator.serviceWorker?.getRegistration(); void reg?.update().catch(() => undefined); } catch { /* ignore */ }
   const remote = await fetchRemoteVersion();
   if (!remote) return 'unreachable';
   if (!isNewer(remote)) return 'uptodate';
-  if (!manual && safeToApplyNow() && !justReloaded()) { void applyUpdate(writeSaveFn); return 'available'; }
+  if (shouldAutoApply({ manual, justReloaded: justReloaded(), onTitle: !!document.querySelector('.title-screen'), overlay: !noOverlay(), resumedAfterAbsence: resumed })) {
+    // le message s'affiche un instant, puis la partie est écrite et la page rechargée (la sauvegarde n'est jamais touchée)
+    showApplying();
+    window.setTimeout(() => void applyUpdate(writeSaveFn), 1400);
+    return 'available';
+  }
   showUpdateAvailable(() => void applyUpdate(writeSaveFn));
   return 'available';
 }
@@ -116,16 +149,23 @@ async function doCheck(manual: boolean): Promise<UpdateStatus> {
  * Vérifie s'il existe une version plus récente. `manual` : l'utilisatrice l'a demandé (on ne recharge pas toute seule).
  * Une vérification déjà en cours est partagée (jamais de faux « à jour » parce qu'une autre tourne).
  */
-export function checkForUpdate(manual = false): Promise<UpdateStatus> {
+export function checkForUpdate(manual = false, resumed = false): Promise<UpdateStatus> {
   if (inflight) return inflight;
-  inflight = doCheck(manual).finally(() => { inflight = null; });
+  inflight = doCheck(manual, resumed).finally(() => { inflight = null; });
   return inflight;
 }
 
 export function startUpdates(writeSave: () => void): void {
   writeSaveFn = writeSave;
   const run = () => void checkForUpdate(false);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') run(); });
+  if (justReloaded()) showUpdated();
+  // Retour dans l'application après une absence (≥ 30 s) : moment naturel pour mettre à jour, sans rien interrompre.
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+    const away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = 0;
+    void checkForUpdate(false, away >= 30_000);
+  });
   window.addEventListener('pageshow', (e) => { if ((e as PageTransitionEvent).persisted) run(); });
   window.addEventListener('online', run);
   window.setInterval(run, 10 * 60_000);

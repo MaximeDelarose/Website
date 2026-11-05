@@ -28,11 +28,11 @@ export interface ChatState {
   joinAt: number;
 }
 
-export const START_CONTACTS = ['dylan', 'maxime', 'kevin', 'thomas'];
+export const START_CONTACTS = ['dylan', 'maxime', 'kevin', 'thomas', 'hugo'];
 const MAX_MSGS = 40;
 const MAX_UNREAD_PER_CONTACT = 2;
 const MAX_UNREAD_TOTAL = 6;
-/** Une nouvelle arrivée de contact toutes les ~18 minutes de jeu actif (les 4 premiers sont là au départ). */
+/** Une nouvelle arrivée de contact toutes les ~18 minutes de jeu actif (les 5 premiers sont là au départ). */
 const JOIN_EVERY_MS = 18 * 60_000;
 
 const emptyFlame = (): Flame => ({ n: 0, day: '', mine: '', theirs: '' });
@@ -217,5 +217,7 @@ export function sanitizeChat(raw: unknown): ChatState {
       ...(typeof m.scene === 'string' && c.scenes.includes(m.scene as SceneId) ? { scene: m.scene as SceneId } : {}), opened: m.opened === true, at: num(m.at, 0),
     }));
   }
+  // Sauvegardes antérieures : les contacts de départ (dont Hugo) sont présents, sauf s'ils ont été supprimés par la joueuse.
+  for (const id of START_CONTACTS) { const st = d.contacts[id]; if (st && !st.deleted) st.added = true; }
   return d;
 }
