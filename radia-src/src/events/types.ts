@@ -85,7 +85,7 @@ export interface EventDef {
 
 // ------------------------------------------------------------------ sauvegarde
 
-export interface Invite { runId: string; eventId: string; at: number; state: 'new' | 'seen' | 'later' | 'done' }
+export interface Invite { runId: string; eventId: string; at: number; /** heure réelle de réception (ms) : place l'invitation dans la conversation, à côté des messages */ ts?: number; state: 'new' | 'seen' | 'later' | 'done' }
 export interface PhotoRec {
   id: string; eventId: string; place: PlaceId; title: string; ts: number; look: Look;
   auguste: boolean; kids: KidId[]; pose: number; frame: string; filter: string;
@@ -98,7 +98,7 @@ export interface ActiveRun {
   startedAt: number;
 }
 /** Petit message dans le téléphone (conversation). */
-export interface Msg { at: number; from: Sender; text: string; read: boolean }
+export interface Msg { at: number; from: Sender; text: string; read: boolean; /** déjà repris dans la conversation de l'application Messages (historique unique) */ synced?: boolean }
 /** Quête secrète « Une soirée avec A ♡ » : déclenchement après 20 à 30 minutes de jeu ACTIF. */
 export interface SecretState {
   /** Temps de jeu actif cumulé depuis le début de la quête (ms). */

@@ -107,6 +107,49 @@ export function send(s: MessagesState, id: ContactId, text: string, now: number,
 }
 export function markRead(s: MessagesState, id: ContactId): void { s.convos[id].unread = 0; }
 
+// ------------------------------------------------------------------ UN SEUL historique par conversation
+/** Index d'insertion chronologique : après le dernier message dont l'heure est ≤ `at` (stable : l'ordre d'arrivée est conservé à égalité). */
+function slotFor(msgs: readonly Msg[], at: number): number {
+  let i = msgs.length;
+  while (i > 0 && msgs[i - 1].at > at) i--;
+  return i;
+}
+/**
+ * Dépose un message REÇU dans la conversation, à sa place chronologique (jamais « en haut » ni hors du fil).
+ * Utilisé par tous les producteurs de messages (messages d'événements, mots d'Auguste, message vocal…) : c'est la seule porte d'entrée,
+ * donc l'aperçu de la liste, la conversation, le badge et la sauvegarde lisent TOUJOURS le même historique.
+ * Renvoie le message, ou null si le texte est vide ou si ce même message (même texte à la même seconde) est déjà là.
+ */
+export function deliver(s: MessagesState, id: ContactId, text: string, at: number, opts: { unread?: boolean } = {}): Msg | null {
+  const t = text.replace(/\s+/g, ' ').trim().slice(0, 500);
+  if (!t || !s.convos[id]) return null;
+  const c = s.convos[id];
+  if (c.msgs.some((m) => m.from === 'them' && m.text === t && Math.abs(m.at - at) < 1000)) return null;
+  const m: Msg = { id: newId(s), from: 'them', text: t, at };
+  c.msgs.splice(slotFor(c.msgs, at), 0, m);
+  while (c.msgs.length > MAX_MSGS) c.msgs.shift();
+  if (opts.unread !== false) c.unread = Math.min(99, c.unread + 1);
+  c.lastIn = Math.max(c.lastIn, at);
+  return m;
+}
+
+/** Message de l'ancien système d'événements (`events.msgs`). */
+export interface LegacyMsg { at: number; from: string; text: string; read: boolean; synced?: boolean }
+/**
+ * Migre les messages de l'ancien système (idempotent : chacun n'est repris qu'UNE fois, puis marqué `synced`).
+ * Les messages d'un contact connu entrent dans sa conversation à leur heure d'origine ; les non lus restent non lus.
+ * Renvoie le nombre de messages repris. Rien n'est supprimé de l'ancien historique (marqué seulement).
+ */
+export function syncLegacy(s: MessagesState, legacy: LegacyMsg[]): number {
+  let moved = 0;
+  for (const l of legacy) {
+    if (l.synced || !isContactId(l.from)) continue;
+    deliver(s, l.from, l.text, l.at, { unread: !l.read }); // doublon éventuel : ignoré, mais marqué traité
+    l.synced = true; l.read = true; moved++;
+  }
+  return moved;
+}
+
 export interface ReplyPlan { readAfterMs: number; typingMs: number; text: string; reaction: ReactionId | null }
 /** Prévoit comment le personnage réagit à un message de Radia : quand il le « lit », combien de temps il « écrit », sa réponse. */
 export function planReply(id: ContactId, myText: string, rng: RngLike, styleOf: StyleOf, c?: Convo): ReplyPlan {
@@ -179,6 +222,7 @@ export function sanitizeMessages(raw: unknown): MessagesState {
       ...(typeof m.photo === 'string' && m.photo ? { photo: m.photo.slice(0, 40) } : {}),
     }));
   }
+  for (const id of CONTACT_IDS) d.convos[id].msgs.sort((a, b) => a.at - b.at); // tri stable : une sauvegarde mal ordonnée est remise dans l'ordre
   return d;
 }
 export { isContactId };

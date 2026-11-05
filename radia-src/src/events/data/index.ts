@@ -12,7 +12,8 @@ const BY_ID = new Map(EVENTS.map((e) => [e.id, e]));
 export const eventById = (id: string): EventDef | undefined => BY_ID.get(id);
 
 /** Petits messages du téléphone (discrets, sans pénalité). `from` = expéditeur ; aucun prénom en clair. */
-export const SMALL_MESSAGES: { from: 'auguste' | 'kid1' | 'kid2' | 'kid3' | 'maman' | 'tante' | 'soeur' | 'amie'; text: string }[] = [
+/** Seuls les contacts qui ont une conversation dans Messages peuvent écrire (sinon le message serait invisible). */
+export const SMALL_MESSAGES: { from: 'auguste' | 'kid1' | 'kid2' | 'kid3' | 'maman'; text: string }[] = [
   { from: 'auguste', text: 'Je pense à toi. C’est tout. Voilà, c’est dit ♡' },
   { from: 'auguste', text: 'Si tu lis ça, c’est que tu es en train de sourire. Je le sais.' },
   { from: 'auguste', text: 'Pause eau, pause respiration, puis tu reviens conquérir ton petit monde.' },
@@ -32,7 +33,4 @@ export const SMALL_MESSAGES: { from: 'auguste' | 'kid1' | 'kid2' | 'kid3' | 'mam
   { from: 'kid1', text: 'Câlin ! ♡' },
   { from: 'maman', text: 'Coucou ma chérie, j’ai pensé à toi ce matin ♡' },
   { from: 'maman', text: 'N’oublie pas de bien manger, tu as l’air fatiguée sur les photos.' },
-  { from: 'tante', text: 'Ma belle ! Dis-moi quand on se voit, j’ai une histoire à te raconter.' },
-  { from: 'soeur', text: 'Je viens de voir un truc qui m’a fait penser à toi. Tu me manques !' },
-  { from: 'amie', text: 'Coucou toi ♡ Une pause café quand tu veux, je suis là.' },
 ];

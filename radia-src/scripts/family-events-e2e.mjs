@@ -5,7 +5,8 @@ const PORT = process.env.PORT ?? 4190;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
 const results = []; const errors = [];
 const check = (n, ok, x = '') => { results.push(!!ok); console.log(`${ok ? 'OK ' : 'KO '} ${n}${x ? ' — ' + x : ''}`); };
-const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'], story: { step: 9999 }, levels: {}, hearts: 50, world: { flags: { 'rw:start-gift-v1': true }, res: { coins: 300 } } };
+const d = new Date(); const p2 = (n) => String(n).padStart(2, '0'); // cadeau du jour déjà réclamé : sinon sa fenêtre bloque les notifications
+const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'], story: { step: 9999 }, levels: {}, hearts: 50, world: { flags: { 'rw:start-gift-v1': true }, res: { coins: 300 } }, fun: { daily: { cycle: 0, day: 1, lastKey: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`, claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } };
 
 async function open() {
   const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
@@ -18,13 +19,16 @@ async function open() {
 /** Lance l'invitation `id` et déroule l'événement ; `onActivity(page, state)` joue les mini-jeux. Renvoie les captures de textes vus. */
 async function play(page, id, onActivity, shots = {}) {
   const seen = { says: [], places: new Set(), activities: [], travel: 0, dress: 0 };
+  const count0 = await page.evaluate((i) => window.RADIA.save.data.events.done[i]?.count ?? 0, id);
   await page.evaluate((i) => window.RADIA.invite(i), id);
   await page.waitForSelector('.ev-notif', { timeout: 25000 }); await page.locator('.ev-notif .btn').first().click();
   await page.waitForSelector('.ev-inv', { timeout: 6000 });
   if (shots.invite) await page.screenshot({ path: shots.invite });
   await page.locator('.ev-inv .btn').first().click();
   const t0 = Date.now();
+  let lastLog = 0;
   while (Date.now() - t0 < 200000) {
+    if (process.env.DEBUG && Date.now() - lastLog > 8000) { lastLog = Date.now(); console.log('   …', id, await page.evaluate(() => { const L = document.querySelector('.ev-layer'); return L ? [...L.querySelectorAll('*')].filter((e) => e.children.length === 0 && e.textContent.trim()).slice(0, 6).map((e) => e.textContent.trim().slice(0, 28)).join(' | ') : 'pas de couche'; })); }
     if (await page.locator('.ev-concl').count()) break;
     if (await page.locator('.dr-tip button').count()) { await page.locator('.dr-tip button').first().click().catch(() => {}); await page.waitForTimeout(250); continue; }
     if (await page.locator('.dr-ready').count()) { seen.dress++; await page.locator('.dr-ready').first().click().catch(() => {}); await page.waitForTimeout(700); continue; }
@@ -42,10 +46,12 @@ async function play(page, id, onActivity, shots = {}) {
     const cont = page.locator('button', { hasText: /^Continuer|Terminer|Suite/ }); if (await cont.count()) { await cont.first().click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(500); continue; }
     await page.waitForTimeout(500);
   }
-  const done = await page.locator('.ev-concl').count();
+  const onScreen = await page.locator('.ev-concl').count();
   if (shots.concl) await page.screenshot({ path: shots.concl });
-  if (done) { await page.locator('.ev-concl .btn').first().click().catch(() => {}); await page.waitForTimeout(1200); }
-  return { ...seen, concluded: done > 0 };
+  if (onScreen) { await page.locator('.ev-concl .btn').first().click().catch(() => {}); }
+  await page.waitForTimeout(1200);
+  const count1 = await page.evaluate((i) => window.RADIA.save.data.events.done[i]?.count ?? 0, id);
+  return { ...seen, concluded: count1 > count0 };
 }
 
 // ---- mini-jeu « choix en famille » : on choisit les N premières tuiles puis on valide
@@ -63,8 +69,9 @@ const picks = async (page, seen, shots) => {
 };
 const noAct = async () => false;
 
+const ONLY = process.env.ONLY ?? '';
 // ===================================================================== A — chez maman
-{
+if (!ONLY || ONLY === 'A') {
   const page = await open();
   const r = await play(page, 'fm-mom-visit', picks, { invite: '/tmp/claude-0/da/fm-a-invite.png', travel: '/tmp/claude-0/da/fm-a-travel.png', say: '/tmp/claude-0/da/fm-a-say.png', pick: '/tmp/claude-0/da/fm-a-pick.png' });
   check('A : événement terminé jusqu\'à la conclusion', r.concluded);
@@ -78,7 +85,7 @@ const noAct = async () => false;
 }
 
 // ===================================================================== B puis B2 — aéroport et retrouvailles
-{
+if (!ONLY || ONLY === 'B') {
   const page = await open();
   const r = await play(page, 'fm-airport', picks, { travel: '/tmp/claude-0/da/fm-b-travel.png', say: '/tmp/claude-0/da/fm-b-say.png' });
   check('B : événement terminé', r.concluded);
@@ -122,7 +129,7 @@ const careAct = (relWant, planB) => async (page, seen, shots) => {
   }
   return false;
 };
-for (const mode of ['arranged', 'family', 'postpone']) {
+for (const mode of (ONLY && ONLY !== 'C' ? [] : ONLY === 'C' && process.env.MODE ? [process.env.MODE] : ['arranged', 'family', 'postpone'])) {
   const page = await open();
   const shots = mode === 'arranged' ? { invite: '/tmp/claude-0/da/fm-c-invite.png', rel: '/tmp/claude-0/da/fm-c-rel.png', planb: '/tmp/claude-0/da/fm-c-planb.png', concl: '/tmp/claude-0/da/fm-c-concl.png' } : {};
   // forcer le plan B pour les issues « famille » et « report » : toutes les personnes occupées → refus, puis le plan B choisi
