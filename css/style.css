@@ -2974,3 +2974,18 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .camp-bar button:hover { background: #f6d36b; }
 .camp-bar .camp-go { background: #e8873a; color: #fff; }
 .camp-bar .camp-coop { background: #7fd1c7; }
+
+/* Survivor 2.10 : armes trouvées */
+.wcards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0; }
+.wcard { display: grid; justify-items: center; gap: 2px; padding: 10px 8px; text-align: center; background: var(--panel-2, #efe2c4); box-shadow: 0 0 0 2px var(--line, #2b1709), inset 0 -4px 0 var(--rc); min-width: 0; }
+.wcard small { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .7; }
+.wcard .wcard-ic img { width: 40px; height: 40px; image-rendering: pixelated; }
+.wcard strong { font-size: 1rem; }
+.wcard em { font-style: normal; font-weight: 800; color: var(--rc); text-shadow: 0 1px 0 #2b1709; }
+.wcard span { font-size: 12px; opacity: .8; }
+.wcard b { font-size: 12px; }
+.wcard.is-cur { opacity: .8; }
+.pause-weapon { margin: 0 0 8px; padding: 6px 8px; background: var(--panel-2, #efe2c4); box-shadow: inset 4px 0 0 var(--rc); font-size: 13px; }
+.pause-weapon img { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pixelated; }
+.pause-weapon em { font-style: normal; font-weight: 800; color: var(--rc); text-shadow: 0 1px 0 #2b1709; }
+.pause-weapon small { display: block; opacity: .85; }

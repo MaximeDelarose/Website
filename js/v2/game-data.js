@@ -3306,6 +3306,146 @@ window.ES_DATA = (function () {
   });
   // succès qui demandent la coop en ligne (pas encore en 2.0) : rangés à part, hors du compte
   ["x_sauveteur", "c_quatre", "c_bande"].forEach(function (id) { ACHIEVEMENTS.forEach(function (a) { if (a.id === id) a.soon = true; }); });
+  /* =====================================================================
+     2.9 : techniques plus lisibles. Chaque arme habille ses techniques selon
+     sa matière (style par élément, et réglages propres à une arme), avec de
+     nouveaux sprites. VFX[arme] = style complet utilisé par le moteur.
+     ===================================================================== */
+  (function () {
+    function rp(c) { return [mixc(c, "#ffffff", 0.3), c, mixc(c, "#000000", 0.25), mixc(c, "#000000", 0.45)]; }
+    var STONE = rp("#9a9086"), DUST = ["#c8b89a"], INK = ["#2b1709"];
+    function rot(pts, a, cx, cy) { var c = Math.cos(a), s = Math.sin(a); return pts.map(function (q) { var dx = q[0] - cx, dy = q[1] - cy; return [cx + dx * c - dy * s, cy + dx * s + dy * c]; }); }
+    SPRITES.flint = rigSprite(11, 5, { f: rp("#b8b0a4"), e: ["#ffffff"] }, function () { return [rgP([[0, 2.5], [4, 0.5], [10.8, 2.5], [4, 4.5]], "f", { line: true }), rgC(3, 2, 8, 2, 0.3, 0.3, "e", { flat: true })]; }, 1);
+    SPRITES.pebble = rigSprite(5, 4, { s: STONE }, function () { return [rgE(2.5, 2, 2.3, 1.8, 0, "s")]; }, 1);
+    SPRITES.boulder = rigSprite(12, 12, { s: STONE, c: ["#5e5850"], m: rp("#6a9a3a") }, function (ph) {
+      var a = ph * Math.PI * 2, S = [rgE(6, 6, 5.6, 5.4, 0, "s", { line: true })];
+      [[0, 2.8], [2.1, 2.4], [4.2, 3]].forEach(function (q) { var x = 6 + Math.cos(a + q[0]) * q[1], y = 6 + Math.sin(a + q[0]) * q[1] * 0.9; S.push(rgC(x - 1, y, x + 1, y + 0.6, 0.35, 0.35, "c", { flat: true })); });
+      var mx = 6 + Math.cos(a + 1) * 3, my = 6 + Math.sin(a + 1) * 3; S.push(rgE(mx, my, 1.6, 1.1, 0, "m", { flat: true }));
+      return S;
+    }, 4);
+    SPRITES.block = rigSprite(13, 13, { s: rp("#a89a86"), c: ["#6e6456"] }, function (ph) {
+      var a = ph * Math.PI / 2, sq = rot([[2.5, 2.5], [10.5, 2.5], [10.5, 10.5], [2.5, 10.5]], a, 6.5, 6.5);
+      return [rgP(sq, "s", { line: true }), rgC(sq[0][0] * 0.5 + sq[2][0] * 0.5 - 1, sq[0][1] * 0.5 + sq[2][1] * 0.5, sq[0][0] * 0.5 + sq[2][0] * 0.5 + 2, sq[0][1] * 0.5 + sq[2][1] * 0.5 + 1, 0.35, 0.35, "c", { flat: true })];
+    }, 4);
+    SPRITES.catapult = rigSprite(18, 15, { w: rp("#a87a48"), r: ["#4a2e1c"], s: STONE }, function (ph) {
+      var up = ph >= 0.5, ax = up ? 14 : 4, ay = up ? 2 : 6;
+      return [rgC(2, 13, 16, 13, 1.1, 1.1, "w", { line: true }), rgE(4, 13.5, 1.7, 1.7, 0, "r"), rgE(14, 13.5, 1.7, 1.7, 0, "r"), rgC(9, 12, 9, 8, 0.9, 0.9, "w"),
+        rgC(9, 9, ax, ay, 0.8, 0.8, "w", { line: true }), rgE(ax, ay - 0.5, 1.8, 1.4, 0, "s")];
+    }, 2);
+    SPRITES.fireball = rigSprite(9, 9, { o: ["#ff8a2a"], y: ["#ffd05a"], r: ["#d8401e"] }, function (ph) { var w = ph < 0.5 ? 0 : 1; return [rgP([[0.5 + w, 4.5], [4, 0.5], [8.5, 3], [8.5, 6], [4, 8.5]], "r", { flat: true }), rgE(5, 4.5, 3.2, 3, 0, "o", { flat: true }), rgE(5.5, 4.2, 1.6, 1.5, 0, "y", { flat: true })]; }, 2);
+    SPRITES.waterorb = rigSprite(9, 9, { b: rp("#4aa8ff"), w: ["#e8f8ff"] }, function () { return [rgE(4.5, 4.5, 4, 4, 0, "b", { line: true }), rgE(3.2, 3, 1.1, 0.8, -0.5, "w", { flat: true })]; }, 1);
+    SPRITES.iceshard = rigSprite(12, 6, { i: rp("#9ee8ff"), w: ["#ffffff"] }, function () { return [rgP([[0, 3], [5, 0.4], [11.6, 3], [5, 5.6]], "i", { line: true }), rgC(3, 2.4, 8, 2.6, 0.3, 0.3, "w", { flat: true })]; }, 1);
+    SPRITES.windorb = rigSprite(9, 9, { a: rp("#c8f8e8"), w: ["#ffffff"] }, function (ph) { var a = ph * Math.PI * 2, S = [rgE(4.5, 4.5, 3.8, 3.8, 0, "a", { line: true })]; for (var i = 0; i < 2; i++) { var b = a + i * Math.PI; S.push(rgC(4.5, 4.5, 4.5 + Math.cos(b) * 3, 4.5 + Math.sin(b) * 3, 0.4, 0.3, "w", { flat: true })); } return S; }, 2);
+  })();
+  // 2.9.1 : sprites des passes katana, arc, bâton
+  (function () {
+    function rp(c) { return [mixc(c, "#ffffff", 0.3), c, mixc(c, "#000000", 0.25), mixc(c, "#000000", 0.45)]; }
+    SPRITES.specblade = rigSprite(14, 5, { b: ["#e8fbff", "#b8e8f0", "#7fc8d8", "#4a98a8"], h: ["#3a4a6a"] }, function () { return [rgP([[3, 1.6], [13.6, 2.5], [3, 3.4]], "b", { line: true }), rgC(0.5, 2.5, 3, 2.5, 0.9, 0.9, "h")]; }, 1);
+    SPRITES.arrowdown = rigSprite(5, 13, { s: rp("#a87a48"), h: rp("#c0c8d0"), f: ["#ff8a2a"] }, function () { return [rgC(2.5, 0.5, 2.5, 10, 0.5, 0.5, "s"), rgP([[0.5, 9], [4.5, 9], [2.5, 12.6]], "h", { line: true }), rgP([[0.5, 0], [2.5, 2], [4.5, 0], [4.5, 2], [2.5, 4], [0.5, 2]], "f", { flat: true })]; }, 1);
+    SPRITES.strawarcher = rigSprite(14, 18, { s: rp("#e0c070"), w: rp("#a87a48"), r: ["#c8553d"], k: ["#2b1709"] }, function (ph) {
+      var d = ph < 0.5 ? 0 : 1.5;
+      return [rgC(6, 17.5, 6, 9, 0.8, 0.8, "w"), rgE(6, 10, 3.6, 4.6, 0, "s", { line: true }), rgE(6, 4, 2.8, 2.8, 0, "s", { line: true }), rgE(5, 3.6, 0.5, 0.5, 0, "k", { flat: true }), rgE(7, 3.6, 0.5, 0.5, 0, "k", { flat: true }),
+        rgC(3, 2, 9, 1.4, 0.7, 0.7, "r"), rgE(11, 9, 1.6, 5, 0, "w", { line: true, maxY: 14 }), rgC(11 - d, 4.5, 11 - d, 13.5, 0.25, 0.25, "k", { flat: true })];
+    }, 2);
+    SPRITES.totem = rigSprite(12, 18, { s: rp("#8e877c"), m: rp("#6a9a3a"), g: ["#9cf06a"] }, function (ph) {
+      var on = ph < 0.5;
+      return [rgP([[2, 17.5], [10, 17.5], [9, 3], [3, 3]], "s", { line: true }), rgE(6, 3, 3.6, 2.4, 0, "s", { line: true }), rgE(6, 1.6, 3, 1.2, 0, "m"),
+        rgE(4.4, 8, 0.8, 0.8, 0, on ? "g" : "m", { flat: true }), rgE(7.6, 8, 0.8, 0.8, 0, on ? "g" : "m", { flat: true }), rgC(4, 12, 8, 12, 0.4, 0.4, on ? "g" : "m", { flat: true }), rgC(3.2, 15, 5, 13, 0.35, 0.35, "m", { flat: true })];
+    }, 2);
+  })();
+  // 2.9.2 : sprites des 16 autres armes (chutes du ciel, tirs en cloche, tourelles)
+  (function () {
+    function rp(c) { return [mixc(c, "#ffffff", 0.3), c, mixc(c, "#000000", 0.25), mixc(c, "#000000", 0.45)]; }
+    var L = { line: true }, F = { flat: true }, IRON = rp("#8a929a"), WOOD = rp("#a87a48"), K = ["#2b1709"];
+    function one(w, h, m, sh) { SPRITES[sh.name] = rigSprite(w, h, m, function (ph) { return sh.f(ph); }, sh.n || 1); }
+    one(4, 9, { i: IRON }, { name: "nail", f: function () { return [rgC(2, 2, 2, 8.6, 0.6, 0.4, "i"), rgE(2, 1.4, 1.8, 0.9, 0, "i")]; } });
+    one(5, 4, { a: rp("#b8b0a8"), e: ["#ff8a2a"] }, { name: "ashflake", f: function () { return [rgE(2.5, 2, 2.3, 1.6, 0.4, "a"), rgE(3, 1.6, 0.6, 0.5, 0, "e", F)]; } });
+    one(7, 9, { n: ["#3a3a5a"], g: ["#f6d36b"] }, { name: "note", f: function () { return [rgE(2.4, 7, 2.2, 1.6, -0.3, "n"), rgC(4.2, 7, 4.2, 1, 0.5, 0.5, "n"), rgP([[4.2, 0.6], [6.8, 2.2], [6.8, 3.6], [4.2, 2.4]], "n"), rgE(1.8, 6.6, 0.6, 0.4, 0, "g", F)]; } });
+    one(6, 10, { i: IRON, f: ["#c8553d"] }, { name: "hook", f: function () { return [rgC(3, 0.6, 3, 7, 0.5, 0.5, "i"), rgC(3, 7, 1.2, 8.6, 0.5, 0.5, "i"), rgC(1.2, 8.6, 1, 6.5, 0.5, 0.5, "i"), rgE(3, 0.8, 1.2, 1, 0, "f")]; } });
+    one(12, 12, { i: rp("#bfefff"), w: ["#ffffff"] }, { name: "iceblock", n: 4, f: function (ph) { var a = ph * Math.PI / 2, c = Math.cos(a), s2 = Math.sin(a), q = [[2.5, 2.5], [9.5, 2.5], [9.5, 9.5], [2.5, 9.5]].map(function (p) { var dx = p[0] - 6, dy = p[1] - 6; return [6 + dx * c - dy * s2, 6 + dx * s2 + dy * c]; }); return [rgP(q, "i", L), rgC(q[0][0] + 1, q[0][1] + 1, q[1][0] - 1, q[1][1] + 1, 0.3, 0.3, "w", F)]; } });
+    one(9, 10, { c: rp("#8a5a3b"), f: ["#ff8a2a"], y: ["#ffd05a"] }, { name: "firepot", n: 2, f: function (ph) { return [rgE(4.5, 6.5, 4, 3.3, 0, "c", L), rgC(1.5, 3.6, 7.5, 3.6, 0.6, 0.6, "c"), rgP([[2, 3.4], [4.5, ph < 0.5 ? 0 : 0.8], [7, 3.4]], "f", F), rgE(4.5, 2.6, 1, 0.8, 0, "y", F)]; } });
+    one(10, 10, { b: rp("#8a929a"), w: rp("#4aa8ff"), h: ["#5a5e66"] }, { name: "bucket", f: function () { return [rgP([[1, 3], [9, 3], [8, 9.5], [2, 9.5]], "b", L), rgE(5, 3, 4, 1.2, 0, "w"), rgC(1, 3, 5, -0.5, 0.35, 0.35, "h", F), rgC(5, -0.5, 9, 3, 0.35, 0.35, "h", F)]; } });
+    one(16, 12, { w: WOOD, i: rp("#bfefff"), r: K }, { name: "ballista", n: 2, f: function (ph) { var p0 = ph < 0.5 ? 0 : 1.5; return [rgC(3, 11, 13, 11, 1, 1, "w", L), rgC(8, 11, 8, 6, 0.9, 0.9, "w"), rgC(2, 4 + p0, 14, 4 + p0, 0.8, 0.8, "w", L), rgC(2, 4 + p0, 8 - p0, 6, 0.25, 0.25, "r", F), rgC(14, 4 + p0, 8 - p0, 6, 0.25, 0.25, "r", F), rgP([[9, 4.6], [15.6, 5.4], [9, 6.2]], "i", L)]; } });
+    one(14, 8, { w: rp("#6a9a3a"), r: K, s: WOOD }, { name: "tube", f: function () { return [rgC(2, 4, 13, 2.5, 1.6, 1.4, "w", L), rgE(13.2, 2.4, 0.7, 1, 0, "r", F), rgC(4, 7.5, 6, 5, 0.6, 0.6, "s"), rgC(9, 7.5, 7.5, 5, 0.6, 0.6, "s")]; } });
+    one(12, 13, { i: IRON, f: ["#ff8a2a"], y: ["#ffd05a"] }, { name: "brazier", n: 2, f: function (ph) { var h = ph < 0.5 ? 0 : 1; return [rgC(3, 12.5, 6, 7, 0.5, 0.5, "i"), rgC(9, 12.5, 6, 7, 0.5, 0.5, "i"), rgP([[0.5, 4], [11.5, 4], [9, 8], [3, 8]], "i", L), rgP([[2, 4], [4, 0.4 + h], [6, 2], [8, h], [10, 4]], "f", F), rgE(6, 3.4, 1.4, 1, 0, "y", F)]; } });
+    one(10, 11, { t: rp("#c8553d"), y: rp("#f6d36b"), s: WOOD }, { name: "top", n: 2, f: function (ph) { var w = ph < 0.5 ? 0 : 1; return [rgP([[0.5, 4], [9.5, 4], [5, 10.6]], "t", L), rgC(1 + w, 4.5, 8 - w, 6.5, 0.6, 0.6, "y", F), rgC(5, 0.5, 5, 4, 0.8, 0.8, "s")]; } });
+    one(12, 16, { w: WOOD, l: ["#e8e0d0"], f: ["#c8553d"], b: ["#fdf3de"] }, { name: "rodpost", n: 2, f: function (ph) { var bb = ph < 0.5 ? 0 : 1; return [rgC(2, 15.5, 2, 9, 0.8, 0.8, "w"), rgC(2, 10, 10, 1, 0.6, 0.4, "w", L), rgC(10, 1, 10, 12 + bb, 0.2, 0.2, "l", F), rgE(10, 12.6 + bb, 1.3, 1.3, 0, "f"), rgE(10, 11.6 + bb, 1, 0.6, 0, "b", F)]; } });
+    one(16, 10, { c: rp("#e8d8c8"), p: rp("#f29ad8"), o: ["#ffffff"] }, { name: "clam", n: 2, f: function (ph) { var op = ph < 0.5 ? 0 : 2; return [rgE(8, 7.5, 7.6, 2.6, 0, "c", L), rgE(8, 3.5 - op * 0.3, 7.4, 3 + op * 0.2, 0, "c", { line: true, maxY: 5 }), rgE(8, 5.8, 2, 1.6, 0, "o"), rgC(3, 7.5, 13, 7.5, 0.3, 0.3, "p", F)]; } });
+    one(12, 16, { w: WOOD, r: rp("#c8553d"), k: K }, { name: "birdhouse", f: function () { return [rgC(6, 15.5, 6, 11, 0.8, 0.8, "w"), rgP([[1.5, 6], [10.5, 6], [10.5, 12], [1.5, 12]], "w", L), rgP([[0.5, 6.4], [6, 1], [11.5, 6.4]], "r", L), rgE(6, 8.6, 1.4, 1.4, 0, "k", F), rgC(6, 10.6, 6, 11.6, 0.3, 0.3, "k", F)]; } });
+    one(5, 11, { s: rp("#6a9a3a"), t: ["#c8282a"], p: ["#fdf3de"] }, { name: "dartdown", f: function () { return [rgC(2.5, 0.5, 2.5, 8, 0.6, 0.6, "s"), rgP([[1, 8], [4, 8], [2.5, 10.6]], "p"), rgP([[0.5, 0], [2.5, 2], [4.5, 0], [4.5, 2.2], [2.5, 3.6], [0.5, 2.2]], "t", F)]; } });
+    one(6, 10, { b: rp("#4aa8ff"), w: ["#e8f8ff"] }, { name: "droplet", f: function () { return [rgP([[3, 0.4], [5.4, 6], [0.6, 6]], "b"), rgE(3, 6.8, 2.6, 2.6, 0, "b", L), rgE(2.2, 6.2, 0.6, 0.9, 0, "w", F)]; } });
+  })();
+  // 2.10 : autel du boss (crâne cornu, braseros violets, runes)
+  SPRITES.altarboss = rigSprite(30, 30, { s: ["#a49c92", "#7a7068", "#5a524a", "#3a342e"], b: ["#f3efe6", "#d8d0c4", "#a8a094", "#6f6655"], h: ["#6a5a4a", "#4a3a2a", "#32261a", "#1e1610"],
+    k: ["#1b1226"], p: ["#b07cf0"], P: ["#e0c0ff"], r: ["#ff4a8a"] }, function (ph) {
+    var fl = ph < 0.5 ? 0 : 1.5;
+    return [rgP([[3, 29.5], [27, 29.5], [25, 22], [5, 22]], "s", { line: true }), rgP([[6, 22], [24, 22], [22, 15], [8, 15]], "s", { line: true }),
+      rgC(8, 26, 22, 26, 0.4, 0.4, "p", { flat: true }), rgE(10, 25.6, 0.7, 0.7, 0, "P", { flat: true }), rgE(15, 25.6, 0.7, 0.7, 0, "P", { flat: true }), rgE(20, 25.6, 0.7, 0.7, 0, "P", { flat: true }),
+      rgC(10, 9, 5, 2 + fl * 0.3, 1.4, 0.6, "h", { line: true }), rgC(20, 9, 25, 2 + fl * 0.3, 1.4, 0.6, "h", { line: true }),
+      rgE(15, 10, 5.6, 5.2, 0, "b", { line: true }), rgP([[11.5, 13], [18.5, 13], [17.5, 16.5], [12.5, 16.5]], "b", { line: true }),
+      rgE(12.8, 9.6, 1.5, 1.6, 0, "k", { flat: true }), rgE(17.2, 9.6, 1.5, 1.6, 0, "k", { flat: true }), rgE(12.8, 9.6, 0.6, 0.6, 0, "r", { flat: true }), rgE(17.2, 9.6, 0.6, 0.6, 0, "r", { flat: true }),
+      rgC(14, 14.5, 14, 16, 0.3, 0.3, "k", { flat: true }), rgC(16, 14.5, 16, 16, 0.3, 0.3, "k", { flat: true }),
+      rgC(1.5, 29, 1.5, 19, 0.7, 0.7, "h"), rgP([[0, 19], [1.5, 13 - fl], [3, 19]], "p", { flat: true }), rgE(1.5, 17.5, 0.7, 1, 0, "P", { flat: true }),
+      rgC(28.5, 29, 28.5, 19, 0.7, 0.7, "h"), rgP([[27, 19], [28.5, 14.5 + fl], [30, 19]], "p", { flat: true }), rgE(28.5, 17.5, 0.7, 1, 0, "P", { flat: true })];
+  }, 2);
+  // 2.10 : armes ramassées en partie (rareté et statistiques tirées au hasard, comme l'attirail)
+  var WRAR = [{ name: "Commune", color: "#c8c0b0", n: 0 }, { name: "Peu commune", color: "#9cc56b", n: 1 }, { name: "Rare", color: "#6ad8ff", n: 2 }, { name: "Épique", color: "#b07cf0", n: 3 }, { name: "Légendaire", color: "#f6d36b", n: 3, mul: 1.5 }];
+  var WSTAT = [{ id: "dmg", name: "dégâts", lo: 8, hi: 22, pct: 1 }, { id: "cd", name: "recharge", lo: 5, hi: 14, pct: 1, neg: 1 }, { id: "area", name: "zone", lo: 8, hi: 20, pct: 1 },
+    { id: "crit", name: "critiques", lo: 3, hi: 8, pct: 1 }, { id: "spd", name: "vitesse", lo: 4, hi: 9, pct: 1 }, { id: "hp", name: "PV max", lo: 10, hi: 30 }, { id: "amt", name: "projectile", lo: 1, hi: 1, minR: 3 }];
+  // en Normal, un palier toutes les 1 min 30 (demande 2.10)
+  TIER.minutes = 1.5;
+  // styles par élément : onde (nova), chaîne, piège au sol, tir en cloche, chute du ciel, couleur et traînée
+  var VFX_EL = {
+    terre: { nova: "quake", chain: "bounce", thorn: "rockspike", lob: "boulder", meteor: "boulder", col: "200,160,96", trail: "#c8b89a", hit: "dust" },
+    eau: { nova: "splash", chain: "stream", thorn: "icespike", lob: "waterorb", meteor: "iceshard", col: "106,200,255", trail: "#bfefff", hit: "drop" },
+    feu: { nova: "flare", chain: "firearc", thorn: "flame", lob: "fireball", meteor: "meteore", col: "255,138,42", trail: "#ffb040", hit: "ember" },
+    air: { nova: "gust", chain: "zap", thorn: "windspike", lob: "windorb", meteor: "windorb", col: "200,248,232", trail: "#ffffff", hit: "wind" }
+  };
+  // réglages propres à une arme (par-dessus le style de son élément)
+  var VFX_W = {
+    fronde: { thorn: "caltrop", lob: "block", meteor: "boulder", base: "sling", spin: { stone: 1, pebble: 1, boulder: 1, block: 1 } },
+    katana: { base: "iaido", nova: "cuts", chain: "blade", thorn: "seal", lunge: "iai", spinFx: "moon", grap: "chain", ripo: "counter", beamCol: "230,250,255", col: "230,250,255" },
+    arc: { base: "bow", meteor: "arrowdown", chain: "arrow", thorn: "caltrop", beamCol: "255,200,90", grap: "harpoon", stick: 1 },
+    baton: { base: "staff", nova: "runequake", thorn: "roots", lunge: "spike", spinFx: "staff", ripo: "wall", col: "150,200,110", beamCol: "180,220,120" },
+    eventail: { base: "fan", nova: "feathers", chain: "t:feather", spinFx: "feathers", grap: "wind", beamCol: "220,250,240", spin: { windblade: 1 } },
+    trident: { base: "trident", thorn: "net", lunge: "splash", spinFx: "foam", ripo: "splash", grap: "harpoon", meteor: "droplet", nova: "ripples", beamCol: "106,200,255" },
+    marteau: { base: "hammer", nova: "shock", thorn: "nails", meteor: "nail", lob: "hammer", spinFx: "staff", ripo: "wall", grap: "chain", spin: { hammer: 1 } },
+    hache: { base: "blaze", nova: "flare", meteor: "fireball", lob: "log", lunge: "fire", spinFx: "fire", ripo: "flame", chain: "t:fireball", spin: { axe: 1 } },
+    arbalete: { base: "crossbow", thorn: "icespike", meteor: "iceshard", lob: "iceblock", chain: "t:iceshard", grap: "line", beamCol: "180,240,255" },
+    sarbacane: { base: "blowpipe", thorn: "darts", meteor: "dartdown", chain: "t:dart", grap: "line", beamCol: "220,250,240" },
+    encensoir: { base: "censer", nova: "smoke", thorn: "embers", meteor: "ashflake", lob: "firepot", spinFx: "smoke", ripo: "flame", beamCol: "255,170,90" },
+    pluie: { base: "cloud", nova: "ripples", thorn: "bubbles", meteor: "droplet", lob: "bucket", chain: "b:pebble", ripo: "splash", grap: "line" },
+    carillon: { base: "chime", nova: "notes", thorn: "bells", meteor: "note", chain: "t:note", spinFx: "sound", ripo: "notes", beamCol: "246,239,180" },
+    yoyo: { base: "yoyo", string: 1, thorn: "nuts", lob: "bignut", meteor: "nut", chain: "b:nut", lunge: "string", spinFx: "string", grap: "string" },
+    chakram: { base: "ring", nova: "rings", lob: "chakram", meteor: "fireball", chain: "t:chakram", spinFx: "fire", ripo: "flame", beamCol: "255,160,60" },
+    canne: { base: "rod", nova: "ripples", thorn: "net", meteor: "hook", chain: "b:pebble", grap: "line", beamCol: "106,200,255" },
+    grelot: { base: "bell", nova: "quake", thorn: "holes", spinFx: "staff", ripo: "wall", grap: "vine" },
+    lampion: { base: "lantern", meteor: "fireball", lob: "lampion", chain: "t:wisp", ripo: "flame", beamCol: "255,220,120" },
+    conque: { base: "conch", nova: "ripples", thorn: "shells", meteor: "droplet", chain: "b:pebble", spinFx: "foam", ripo: "splash", grap: "claw" },
+    flute: { base: "flute", nova: "feathers", meteor: "feather", chain: "t:feather", ripo: "notes", grap: "claw", beamCol: "246,239,180" },
+    yoyo: { spin: { nut: 1 } }, chakram: { spin: { chakram: 1 } }, marteau: { spin: { hammer: 1 } }, hache: { spin: { axe: 1 } }
+  };
+  var VFX = {};
+  Object.keys(ARMES).forEach(function (a) { var st = {}, b = VFX_EL[ARMES[a].element] || VFX_EL.terre, o = VFX_W[a] || {}, k; for (k in b) st[k] = b[k]; for (k in o) st[k] = o[k]; VFX[a] = st; });
+  // tourelles et quelques techniques habillées des 16 autres armes
+  [["marteau", "sentinelle", "Petite forge", "brazier"], ["arbalete", "sentinelle", "Baliste de glace", "ballista"], ["sarbacane", "sentinelle", "Tube posé", "tube"],
+   ["encensoir", "sentinelle", "Brasero", "brazier"], ["yoyo", "sentinelle", "Toupie posée", "top"], ["canne", "sentinelle", "Canne posée", "rodpost"],
+   ["grelot", "sentinelle", "Tertre de garde", "mound"], ["lampion", "sentinelle", "Lampion suspendu", "lampion"], ["conque", "sentinelle", "Bénitier", "clam"],
+   ["flute", "sentinelle", "Nichoir", "birdhouse"], ["carillon", "nuee", "Nuée de notes", "note"], ["pluie", "nuee", "Nuée de gouttes", "droplet"],
+   ["canne", "projection", "Plomb lancé", "pebble"], ["encensoir", "nuee", "Nuée d'étincelles", "spark"], ["lampion", "nuee", "Essaim de braises", "fireball"]].forEach(function (q) {
+    if (ARMES[q[0]] && ARMES[q[0]].skin[q[1]]) ARMES[q[0]].skin[q[1]] = [q[2], q[3]];
+  });
+  // katana, arc, bâton : apparences propres
+  if (ARMES.katana) { ARMES.katana.skin.orbite = ["Lames spectrales", "specblade"]; ARMES.katana.skin.projection = ["Vague d'acier", "specblade"]; }
+  if (ARMES.arc) { ARMES.arc.skin.sentinelle = ["Archer de paille", "strawarcher"]; ARMES.arc.skin.nuee = ["Essaim de plumes", "feather"]; }
+  if (ARMES.baton) { ARMES.baton.skin.sentinelle = ["Totem de pierre", "totem"]; }
+  // la fronde : une apparence par technique
+  if (ARMES.fronde) {
+    var sk = ARMES.fronde.skin;
+    sk.projection = ["Silex perçant", "flint"]; sk.rafale = ["Grêle de cailloux", "pebble"]; sk.orbite = ["Pierres en orbite", "stone"];
+    sk.charge = ["Rocher roulant", "boulder"]; sk.sentinelle = ["Catapulte", "catapult"]; sk.nuee = ["Nuée de cailloux", "pebble"];
+    sk.pluie = ["Chute de rochers"]; sk.mortier = ["Bloc lancé"]; sk.onde = ["Onde de roche"]; sk.ricochet = ["Galet rebondissant"];
+  }
   // bêta 2.0 : Survie solo et 3 écureuils seulement ; les quêtes qui demandent un autre mode ou un écureuil retiré
   // disparaissent et leur contenu devient libre
   var V2_DROP = { q_arene: 1, q_donjon: 1, q_coopboss: 1, q_releve: 1, q_releve1: 1, q_druide: 1, q_bucheron: 1, q_ninja: 1, q_mage: 1, q_chevalier: 1, q_intouchable: 1, q_duo10: 1, q_seul: 1, q_coopboss: 1 };
@@ -3313,6 +3453,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { EMOJI_PX: EMOJI_PX, RIG: { raster: rigRaster, E: rgE, C: rgC, P: rgP, mix: mixc }, EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { WRAR: WRAR, WSTAT: WSTAT, VFX: VFX, EMOJI_PX: EMOJI_PX, RIG: { raster: rigRaster, E: rgE, C: rgC, P: rgP, mix: mixc }, EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
