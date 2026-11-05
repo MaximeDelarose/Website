@@ -550,6 +550,9 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       g.scene.pause(MergeScene.KEY);
       g.scene.getScene(MergeScene.KEY)?.scene.setVisible(false);
       try { await fn(); } finally {
+        // Cet écran est RENDU au plateau : si une invitation (événement) a démarré pendant qu'il était ouvert, elle ne doit jamais le
+        // rétablir par-dessus le plateau à sa fin (écran opaque qui bloquait toute la grille) — cf. runner.ts, `data-closed`.
+        const handedBack = ui.screen; if (handedBack) handedBack.dataset.closed = '1';
         ui.closeScreen();
         ui.flushScreens(); // l'écran quitté est retiré tout de suite : rien ne transparaît sous le plateau qui revient
         setBackdrop(backdropTheme === 'royaume' ? 'monde' : backdropTheme);

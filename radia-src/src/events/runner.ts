@@ -38,7 +38,9 @@ function captureOrigin(): { mode: ActiveRun['origin']['mode']; restore: () => vo
     restore: () => {
       if (resumeMerge) { try { g!.scene.resume('merge'); } catch { /* ignoré */ } }
       prev?.classList.remove('ev-under');
-      if (prev && !prev.isConnected) {
+      if (prev && prev.dataset.closed === '1') {
+        // l'écran a été rendu au plateau pendant l'événement : ne jamais le rétablir (il recouvrirait la grille)
+      } else if (prev && !prev.isConnected) {
         prev.classList.remove('leaving');
         prev.style.pointerEvents = '';
         ui.showScreen(prev);
