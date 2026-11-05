@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.12.2";
+  var VERSION = "2.13.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -360,7 +360,12 @@
     if (p.epts0) { var ep = { terre: p.epts0.terre, feu: p.epts0.feu, eau: p.epts0.eau, air: p.epts0.air }; Object.keys(D.PASSIVES).forEach(function (k) { var pv = D.PASSIVES[k]; if (pv.elemPt && ps[k]) ep[pv.elemPt] += Math.ceil(ps[k] / 2); }); ep.feu += it.tison || 0; p.epts = ep; }
     if (p.anchorTh0) p.anchorTh = Math.max(0.1, p.anchorTh0 - 0.06 * (ps.patience || 0));
     if (p.volteBase0) p.volteBase = Math.max(1, p.volteBase0 - 0.3 * (ps.ressort || 0));
-    if (p.gbon) { var gb = p.gbon; p.might *= 1 + (gb.dmg || 0) / 100; p.cdMul *= 1 - (gb.cd || 0) / 100; p.area *= 1 + (gb.area || 0) / 100; p.crit = (p.crit || 0) + (gb.crit || 0) / 100; p.speed *= 1 + (gb.spd || 0) / 100; p.maxHp += gb.hp || 0; }
+    p.critDmg = 0; p.resist = 0;
+    if (p.gbon) {
+      var gb = p.gbon; p.might *= 1 + (gb.dmg || 0) / 100; p.cdMul *= 1 - (gb.cd || 0) / 100; p.area *= 1 + (gb.area || 0) / 100; p.crit = (p.crit || 0) + (gb.crit || 0) / 100; p.speed *= 1 + (gb.spd || 0) / 100; p.maxHp += gb.hp || 0;
+      p.critDmg = (gb.cdm || 0) / 100; p.armor += gb.arm || 0; p.resist = Math.min(0.6, (gb.res || 0) / 100); p.dodge = Math.max(0, (p.dodge || 0) + (gb.dod || 0) / 100); p.regen += (gb.reg || 0) / 10;
+      p.magnet *= 1 + (gb.mag || 0) / 100; p.xpMul += (gb.xp || 0) / 100; p.goldMul *= 1 + (gb.gld || 0) / 100;
+    }
     if (p.wroll && p.wroll.mods) { var wm = p.wroll.mods; p.might *= 1 + (wm.dmg || 0) / 100; p.cdMul *= 1 - (wm.cd || 0) / 100; p.area *= 1 + (wm.area || 0) / 100; p.crit = (p.crit || 0) + (wm.crit || 0) / 100; p.speed *= 1 + (wm.spd || 0) / 100; p.maxHp += wm.hp || 0; p.amount += wm.amt || 0; }
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.hp = Math.min(p.hp, p.maxHp);
@@ -743,9 +748,10 @@
   function hurt(e, dmg, kx, ky) {
     if (e.dead) return;
     var crit = Math.random() < (p.crit || 0) + (p.critX || 0) + (p.packN && itn(p, "glandsjumeaux") ? 0.1 * itn(p, "glandsjumeaux") : 0);
-    dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? (itn(p, "corne") ? 3 : 2) : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
+    dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? (itn(p, "corne") ? 3 : 2) + (p.critDmg || 0) : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
     if (crit && r) r.crits = (r.crits || 0) + 1;
     dmg *= p.dmgX || 1;
+    if (p.gbon) { var gq = p.gbon, fm = 1; if (CUR_FAM) for (var fk in GFAM) if (GFAM[fk] === CUR_FAM && gq[fk]) fm += gq[fk] / 100; if (p.anchored && gq.anc) fm += gq.anc / 100; if (p.mstate === "mouvement" && gq.mov) fm += gq.mov / 100; dmg *= Math.max(0.2, fm); }
     var hf = HIT_FX, hadMark = e.mark && e.markT > 0 ? e.mark : null;
     if (hf && hf.vsMark && hadMark && hadMark !== atkElem(p)) dmg *= hf.vsMark;
     dmg = elemHit(e, dmg);
@@ -953,7 +959,7 @@
     if (p.oshield > 0) { var ab = Math.min(p.oshield, dmg); p.oshield -= ab; dmg -= ab; p.inv = 0.3; burst(p.x, p.y, "#9cc56b", 4); if (dmg <= 0) return; }
     if (p.packN && p.passives && p.passives.meute) dmg -= p.passives.meute;
     p.redSt = 0; if (r && p === me) r.vc = 0;
-    var hit = Math.max(1, (dmg - p.armor - (p.armX || 0)) * (p.taken || 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)) * (nm(9) ? 1.3 : 1);
+    var hit = Math.max(1, (dmg - p.armor - (p.armX || 0)) * (p.taken || 1) * (1 - (p.resist || 0)) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)) * (nm(9) ? 1.3 : 1);
     if (p.rmRed > 0) { hit *= 1 - p.rmRed; p.rmRed = 0; }
     if (p.posture === "carapace" && p.anchored) { hit *= tal(p, "carapace_t1") ? 0.35 : 0.5; var rf = nearest(1, 40)[0]; if (rf) { var ppr = p; hurt(rf, hit * 2 * (tal(p, "carapace_t2") ? 2 : 1), 0, 0); p = ppr; } }
     if (p.owner && p.owner.posture === "formation" && tal(p.owner, "formation_t1") && Math.hypot(p.x - p.owner.x, p.y - p.owner.y) < 26) hit *= 0.8;
@@ -4033,7 +4039,7 @@
     var h = '<div class="dof-tip" style="--rc:' + R0.color + '"><div class="dof-tip-h"><span class="dof-tip-ic">' + ic(g.icon) + '</span><div><strong>' + esc(g.name) + "</strong><small>" + esc(SLOT_KIND[g.slot] || g.slot) + " · " + esc((D.SLOTS.filter(function (x) { return (x.kind || x.id) === g.slot; })[0] || {}).state || "") + '</small><em>' + esc(R0.name) + (g.unique ? " · unique" : "") + "</em></div></div>";
     h += '<div class="dof-sec">Effets</div><ul class="dof-fx"><li>' + esc(pieceDesc(q)) + "</li>";
     if (g.elem) h += "<li>" + elemSpan(g.elem, "+" + q.pts + " point" + (q.pts > 1 ? "s" : "") + " de " + D.ELEMENTS[g.elem].name) + "</li>";
-    bonTxt(q.bon).forEach(function (t) { h += "<li>" + esc(t) + "</li>"; });
+    bonTxt(q.bon).forEach(function (t) { h += "<li" + (t.charAt(0) === "-" ? ' class="dof-neg"' : "") + ">" + esc(t) + "</li>"; });
     if (q.extra && D.GEAR[q.extra]) h += "<li>+ " + esc(D.GEAR[q.extra].name) + "</li>";
     h += "</ul>";
     if (g.lo !== undefined) h += '<p class="dof-roll">Jet : ' + Math.round(q.roll * 100) + " % (" + fmtV(g.lo) + " à " + fmtV(g.hi) + ")</p>";
@@ -4059,7 +4065,7 @@
     html += '<div class="dof-stats"><div class="dof-sec">Éléments</div>' + Object.keys(pts).map(function (el) { return '<div class="dof-el"><span>' + elemSpan(el, D.ELEMENTS[el].name) + '</span><i style="--w:' + Math.min(100, pts[el] / 9 * 100) + "%;--c:" + (D.ELEMENTS[el].ui || D.ELEMENTS[el].color) + '"></i><b>' + pts[el] + "</b></div>"; }).join("");
     var tiers = []; Object.keys(pts).forEach(function (el) { D.ELEM_TIERS[el].forEach(function (t) { if (pts[el] >= t[0]) tiers.push(elemSpan(el, D.ELEMENTS[el].name + " " + t[0]) + " : " + esc(t[1])); }); });
     if (tiers.length) html += '<ul class="dof-fx small">' + tiers.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
-    var bt = bonTxt(bon); if (bt.length) html += '<div class="dof-sec">Bonus</div><ul class="dof-fx small">' + bt.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>";
+    var bt = bonTxt(bon); if (bt.length) html += '<div class="dof-sec">Bonus</div><ul class="dof-fx small">' + bt.map(function (t) { return "<li" + (t.charAt(0) === "-" ? ' class="dof-neg"' : "") + ">" + esc(t) + "</li>"; }).join("") + "</ul>";
     html += "</div></div>";
     // inventaire en grille, onglets par emplacement
     var tabs = [["all", "Tout"], ["coiffe", "Coiffes"], ["bottes", "Bottes"], ["cape", "Capes"], ["amulette", "Amulettes"], ["anneau", "Anneaux"]];
@@ -4117,12 +4123,34 @@
   var GRAR_ROLL = [[0, 0.5], [0.25, 0.7], [0.45, 0.85], [0.65, 1], [0.85, 1.15]], GRAR_W = { 1: [55, 30, 12, 3, 0], 2: [25, 40, 25, 9, 1], 3: [5, 25, 40, 25, 5] };
   function pieceRar(q) { return q.rar !== undefined ? q.rar : Math.min(2, (q.tier || 1) - 1); }
   function rarOf(q) { return D.WRAR[pieceRar(q)]; }
-  function bonTxt(b) { return D.WSTAT.filter(function (x) { return b && b[x.id]; }).map(function (x) { return (x.neg ? "-" : "+") + b[x.id] + (x.pct ? " %" : "") + " " + x.name; }); }
+  // stats de l'attirail (façon Dofus) : lo/hi = jet d'une épique ; mal = peut sortir en malus ; fmt = affichage
+  var GSTATS = [
+    { id: "dmg", name: "dégâts", lo: 4, hi: 12, pct: 1, mal: 1 }, { id: "crit", name: "chance de critique", lo: 2, hi: 6, pct: 1 }, { id: "cdm", name: "dégâts critiques", lo: 10, hi: 30, pct: 1 },
+    { id: "hp", name: "PV max", lo: 10, hi: 35, mal: 1 }, { id: "arm", name: "armure", lo: 1, hi: 3 }, { id: "res", name: "résistance aux dégâts", lo: 3, hi: 8, pct: 1 },
+    { id: "dod", name: "esquive", lo: 2, hi: 6, pct: 1, mal: 1 }, { id: "reg", name: "PV par seconde", lo: 2, hi: 6, tenth: 1 },
+    { id: "spd", name: "vitesse", lo: 4, hi: 10, pct: 1, mal: 1 }, { id: "cd", name: "recharge des techniques", lo: 4, hi: 12, pct: 1, mal: 1, inv: 1 }, { id: "area", name: "zone", lo: 6, hi: 16, pct: 1, mal: 1 },
+    { id: "fmel", name: "dégâts de mêlée", lo: 8, hi: 20, pct: 1 }, { id: "ftir", name: "dégâts de tir", lo: 8, hi: 20, pct: 1 }, { id: "fzon", name: "dégâts de zone", lo: 8, hi: 20, pct: 1 },
+    { id: "fret", name: "dégâts de retour", lo: 8, hi: 20, pct: 1 }, { id: "fcom", name: "dégâts de compagnon", lo: 8, hi: 20, pct: 1 },
+    { id: "anc", name: "dégâts ancré", lo: 8, hi: 22, pct: 1, mal: 1 }, { id: "mov", name: "dégâts en mouvement", lo: 8, hi: 22, pct: 1, mal: 1 },
+    { id: "mag", name: "portée de ramassage", lo: 10, hi: 30, pct: 1 }, { id: "xp", name: "expérience", lo: 4, hi: 10, pct: 1 }, { id: "gld", name: "or gagné", lo: 5, hi: 15, pct: 1 }
+  ];
+  var GFAM = { fmel: "melee", ftir: "tir", fzon: "zone", fret: "retour", fcom: "compagnon" };
+  function bonTxt(b) {
+    return GSTATS.filter(function (x) { return b && b[x.id]; }).map(function (x) {
+      var v = b[x.id], sg = v > 0 ? "+" : "-", a = Math.abs(v);
+      return sg + (x.tenth ? String(a / 10).replace(".", ",") : a) + (x.pct ? " %" : "") + " " + x.name;
+    });
+  }
   function genPiece(tier, tpl, rar) {
     var keys = Object.keys(D.GEAR).filter(function (k) { return !D.GEAR[k].unique && questOk(D.GEAR[k]); }), t = tpl || keys[(Math.random() * keys.length) | 0], g = D.GEAR[t];
     if (rar === undefined) { var W8 = GRAR_W[Math.max(1, Math.min(3, tier || 1))], tot = 100, rr = Math.random() * tot; rar = 0; while (rr >= W8[rar]) { rr -= W8[rar]; rar++; } if (g.unique) rar = Math.max(rar, 3); }
     var R0 = GRAR_ROLL[rar], q = { id: eqS().uid++, t: t, roll: R0[0] + Math.random() * (R0[1] - R0[0]), tier: tier || 1, pts: 0, rar: rar };
-    var nb = [0, 0, 1, 1, 2][rar]; if (nb) { q.bon = {}; D.WSTAT.filter(function (x) { return x.id !== "amt"; }).sort(function () { return Math.random() - 0.5; }).slice(0, nb).forEach(function (x) { q.bon[x.id] = Math.max(1, Math.round((x.lo + Math.random() * (x.hi - x.lo)) * 0.5 * (rar === 4 ? 1.5 : 1))); }); }
+    var nb = rar + 1, mulR = [0.5, 0.65, 0.8, 1, 1.2][rar], pool = GSTATS.slice().sort(function () { return Math.random() - 0.5; }), mal = null;
+    function rollV(x, f) { return Math.max(1, Math.round((x.lo + Math.random() * (x.hi - x.lo)) * f)); }
+    q.bon = {};
+    if (rar >= 2 && Math.random() < [0, 0, 0.3, 0.5, 0.6][rar]) { mal = pool.filter(function (x) { return x.mal; })[0]; if (mal) pool.splice(pool.indexOf(mal), 1); }
+    pool.slice(0, nb).forEach(function (x) { q.bon[x.id] = rollV(x, mulR * (mal ? 1.25 : 1)); });
+    if (mal) q.bon[mal.id] = -rollV(mal, 0.45);
     if (g.elem) q.pts = Math.min(3, 1 + (rar >= 2 ? 1 : 0) + (rar >= 4 ? 1 : 0));
     if (g.ring === "apprenti") { var all = Object.keys(D.TECH).sort(function () { return Math.random() - 0.5; }); q.tech = all.slice(0, 2); }
     return q;
@@ -4140,7 +4168,7 @@
     S.stats.crafted = (S.stats.crafted || 0) + 1;
     if (!canCraft(t)) return null; var g = D.GEAR[t];
     Object.keys(g.cost).forEach(function (k) { S.res[k] -= g.cost[k]; });
-    var q = genPiece(1, t, 1); q.roll = 0.5; delete q.bon; addPiece(q); save(); return q;
+    var q = genPiece(1, t, 1); q.roll = 0.5; addPiece(q); save(); return q;
   }
   // tout ce que l'écureuil emporte en partie : attirail porté, talents de sa posture, maîtrise de l'arme
   function v2Loadout(pl) {
