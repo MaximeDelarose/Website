@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.13.0";
+  var VERSION = "2.13.1";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -360,10 +360,10 @@
     if (p.epts0) { var ep = { terre: p.epts0.terre, feu: p.epts0.feu, eau: p.epts0.eau, air: p.epts0.air }; Object.keys(D.PASSIVES).forEach(function (k) { var pv = D.PASSIVES[k]; if (pv.elemPt && ps[k]) ep[pv.elemPt] += Math.ceil(ps[k] / 2); }); ep.feu += it.tison || 0; p.epts = ep; }
     if (p.anchorTh0) p.anchorTh = Math.max(0.1, p.anchorTh0 - 0.06 * (ps.patience || 0));
     if (p.volteBase0) p.volteBase = Math.max(1, p.volteBase0 - 0.3 * (ps.ressort || 0));
-    p.critDmg = 0; p.resist = 0;
+    p.critDmg = 0; p.resist = 0; p.eres = {};
     if (p.gbon) {
       var gb = p.gbon; p.might *= 1 + (gb.dmg || 0) / 100; p.cdMul *= 1 - (gb.cd || 0) / 100; p.area *= 1 + (gb.area || 0) / 100; p.crit = (p.crit || 0) + (gb.crit || 0) / 100; p.speed *= 1 + (gb.spd || 0) / 100; p.maxHp += gb.hp || 0;
-      p.critDmg = (gb.cdm || 0) / 100; p.armor += gb.arm || 0; p.resist = Math.min(0.6, (gb.res || 0) / 100); p.dodge = Math.max(0, (p.dodge || 0) + (gb.dod || 0) / 100); p.regen += (gb.reg || 0) / 10;
+      p.critDmg = (gb.cdm || 0) / 100; p.armor += gb.arm || 0; p.resist = Math.min(0.6, (gb.res || 0) / 100); p.eres = { terre: gb.rter || 0, feu: gb.rfeu || 0, eau: gb.reau || 0, air: gb.rair || 0 }; p.dodge = Math.max(0, (p.dodge || 0) + (gb.dod || 0) / 100); p.regen += (gb.reg || 0) / 10;
       p.magnet *= 1 + (gb.mag || 0) / 100; p.xpMul += (gb.xp || 0) / 100; p.goldMul *= 1 + (gb.gld || 0) / 100;
     }
     if (p.wroll && p.wroll.mods) { var wm = p.wroll.mods; p.might *= 1 + (wm.dmg || 0) / 100; p.cdMul *= 1 - (wm.cd || 0) / 100; p.area *= 1 + (wm.area || 0) / 100; p.crit = (p.crit || 0) + (wm.crit || 0) / 100; p.speed *= 1 + (wm.spd || 0) / 100; p.maxHp += wm.hp || 0; p.amount += wm.amt || 0; }
@@ -938,7 +938,7 @@
       else fx.push({ kind: "dot", x: x, y: y, vx: Math.cos(a) * 50, vy: Math.sin(a) * 50, life: 0.15, max: 0.15, color: "#fdf3de", sz: 1, g: 0 });
     }
   }
-  function damagePlayer(dmg, pl) {
+  function damagePlayer(dmg, pl, elem) {
     var p = pl || me;
     if (r && p === me) r.lastHitBy = Math.round(dmg) + (curBoss && !curBoss.dead && Math.hypot(curBoss.x - p.x, curBoss.y - p.y) < 90 ? ' boss' : '');
     if (p.inv > 0 || p.down || p.choosing || p.god) return;
@@ -959,7 +959,7 @@
     if (p.oshield > 0) { var ab = Math.min(p.oshield, dmg); p.oshield -= ab; dmg -= ab; p.inv = 0.3; burst(p.x, p.y, "#9cc56b", 4); if (dmg <= 0) return; }
     if (p.packN && p.passives && p.passives.meute) dmg -= p.passives.meute;
     p.redSt = 0; if (r && p === me) r.vc = 0;
-    var hit = Math.max(1, (dmg - p.armor - (p.armX || 0)) * (p.taken || 1) * (1 - (p.resist || 0)) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)) * (nm(9) ? 1.3 : 1);
+    var hit = Math.max(1, (dmg - p.armor - (p.armX || 0)) * (p.taken || 1) * (1 - (p.resist || 0)) * (elem && p.eres && p.eres[elem] ? 1 - Math.min(0.6, p.eres[elem] / 100) : 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)) * (nm(9) ? 1.3 : 1);
     if (p.rmRed > 0) { hit *= 1 - p.rmRed; p.rmRed = 0; }
     if (p.posture === "carapace" && p.anchored) { hit *= tal(p, "carapace_t1") ? 0.35 : 0.5; var rf = nearest(1, 40)[0]; if (rf) { var ppr = p; hurt(rf, hit * 2 * (tal(p, "carapace_t2") ? 2 : 1), 0, 0); p = ppr; } }
     if (p.owner && p.owner.posture === "formation" && tal(p.owner, "formation_t1") && Math.hypot(p.x - p.owner.x, p.y - p.owner.y) < 26) hit *= 0.8;
@@ -4132,6 +4132,7 @@
     { id: "fmel", name: "dégâts de mêlée", lo: 8, hi: 20, pct: 1 }, { id: "ftir", name: "dégâts de tir", lo: 8, hi: 20, pct: 1 }, { id: "fzon", name: "dégâts de zone", lo: 8, hi: 20, pct: 1 },
     { id: "fret", name: "dégâts de retour", lo: 8, hi: 20, pct: 1 }, { id: "fcom", name: "dégâts de compagnon", lo: 8, hi: 20, pct: 1 },
     { id: "anc", name: "dégâts ancré", lo: 8, hi: 22, pct: 1, mal: 1 }, { id: "mov", name: "dégâts en mouvement", lo: 8, hi: 22, pct: 1, mal: 1 },
+    { id: "rter", name: "résistance Terre", lo: 4, hi: 12, pct: 1 }, { id: "rfeu", name: "résistance Feu", lo: 4, hi: 12, pct: 1 }, { id: "reau", name: "résistance Eau", lo: 4, hi: 12, pct: 1 }, { id: "rair", name: "résistance Air", lo: 4, hi: 12, pct: 1 },
     { id: "mag", name: "portée de ramassage", lo: 10, hi: 30, pct: 1 }, { id: "xp", name: "expérience", lo: 4, hi: 10, pct: 1 }, { id: "gld", name: "or gagné", lo: 5, hi: 15, pct: 1 }
   ];
   var GFAM = { fmel: "melee", ftir: "tir", fzon: "zone", fret: "retour", fcom: "compagnon" };
@@ -5599,7 +5600,7 @@
         var hbx = 5 * (pl.size || 1);
         if (Math.abs(pl.x - e.x) < e.d.r + hbx && Math.abs(pl.y - e.y) < e.d.r + hbx) {
           if (!contactOk(e, pl)) continue;
-          var hb = pl.hp; damagePlayer(e.d.dmg * (e.dmgMul || 1) * (e.buffT > 0 ? 1.3 : 1), pl);
+          var hb = pl.hp; damagePlayer(e.d.dmg * (e.dmgMul || 1) * (e.buffT > 0 ? 1.3 : 1), pl, e.elem);
           if (pl.hp < hb && e.elem === "eau" && !e.d.boss) pl.wetT = 1;
           if (pl.hp < hb && e.elem === "air" && !e.d.boss) { var ad = Math.hypot(e.x - pl.x, e.y - pl.y) || 1; e.kx += (e.x - pl.x) / ad * 220; e.ky += (e.y - pl.y) / ad * 220; }
           if (pl.hp < hb && itn(pl, "ecaille_sala") && !e.d.prop) { e.burnT = 3; e.burnD = 3 * gpw(); e.burnBy = pl; }
@@ -5639,7 +5640,7 @@
       if (isDungeon() && (inPillar(hq.x, hq.y, 0) || (!roomAt(hq.x, hq.y, 0) && !inCorridor(hq.x, hq.y, 0)))) { burst(hq.x, hq.y, "#ff5a3a", 3); hostile.splice(i, 1); continue; }
       for (var h2 = 0; h2 < players.length; h2++) {
         var hp = players[h2];
-        if (!hp.down && Math.abs(hq.x - hp.x) < 5 && Math.abs(hq.y - hp.y) < 6) { if (!hq.trav && hp.mstate === "mouvement" && gv(hp, "traverse")) { hq.trav = 1; if (Math.random() < gv(hp, "traverse") / 100) continue; } damagePlayer(hq.dmg, hp); hq.life = 0; break; }
+        if (!hp.down && Math.abs(hq.x - hp.x) < 5 && Math.abs(hq.y - hp.y) < 6) { if (!hq.trav && hp.mstate === "mouvement" && gv(hp, "traverse")) { hq.trav = 1; if (Math.random() < gv(hp, "traverse") / 100) continue; } damagePlayer(hq.dmg, hp, hq.el || (MAP && MAP.element) || undefined); hq.life = 0; break; }
       }
       if (hq.life <= 0) { if (hq.web) addZone(hq.x, hq.y, 16, 4, "web", 0); if (hq.log && enemies.length < 280) spawnAt("logprop", hq.x, hq.y); hostile.splice(i, 1); }
     }
