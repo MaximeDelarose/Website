@@ -2,6 +2,7 @@
 import type { PhotoRec } from '../types';
 import { makeCanvas, heartPath, starPath, seeded } from '../../game/art/kit';
 import { drawAvatar } from '../../game/art/world/avatar';
+import { paintedImageFor, drawPainted } from '../../game/art/world/radiaNow';
 import { drawAugusteCutout, warmAuguste, augusteCutout } from '../../game/art/world/radiaNow';
 import { drawAugusteFull } from '../../game/art/characters';
 import { drawKid } from '../../game/art/world/kids';
@@ -33,11 +34,13 @@ function augusteCanvas(w: number, h: number, arms: string, step: number, expr: s
 const radCache = new Map<string, HTMLCanvasElement>();
 function radiaCanvas(rec: PhotoRec, w: number, h: number, arms: string, step: number, expr: string): HTMLCanvasElement {
   const l = rec.look;
-  const key = `${w}x${h}|${l.hair}|${l.top}|${l.bottom}|${l.dress}|${l.jacket}|${l.shoes}|${l.bag}|${l.acc.join(',')}|${l.crown}|${arms}|${step}|${expr}`;
+  const pim = paintedImageFor(l); // même tenue que l'illustration peinte : la photo montre Radia peinte, comme Auguste
+  const key = `${pim ? 'P' : ''}${w}x${h}|${l.hair}|${l.top}|${l.bottom}|${l.dress}|${l.jacket}|${l.shoes}|${l.bag}|${l.acc.join(',')}|${l.crown}|${arms}|${step}|${expr}`;
   let c = radCache.get(key);
   if (!c) {
     c = makeCanvas(w, h);
-    drawAvatar(c.getContext('2d')!, l, c.width, c.height, { expr: expr as 'smile', step, arms: arms as 'down' });
+    if (pim) drawPainted(c.getContext('2d')!, pim, c.width, c.height);
+    else drawAvatar(c.getContext('2d')!, l, c.width, c.height, { expr: expr as 'smile', step, arms: arms as 'down' });
     if (radCache.size > 30) radCache.delete(radCache.keys().next().value as string);
     radCache.set(key, c);
   }

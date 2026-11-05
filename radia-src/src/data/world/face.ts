@@ -82,19 +82,20 @@ export function classicFace(): FaceCustom {
  * pleins de volume, ombrages affinés. Tous les réglages restent modifiables dans « Personnaliser Radia ».
  */
 export function defaultFace(): FaceCustom {
-  // Base commune avec Auguste : peau crème en dégradé léger, yeux petits au contour fin, sourcils fins, trait léger.
+  // Base calquée sur l'illustration peinte de Radia (même artiste qu'Auguste) : peau dorée chaude, yeux bruns en amande à eye-liner relevé,
+  // sourcils fins naturels, lèvres nude, cheveux bruns chauds ; yeux à taille et écartement mesurés (plus d'effet « lunettes »).
   return {
-    skin: { tone: 2, hue: 0, light: 0.04, sat: -0.05, warm: 0.05 },
+    skin: { tone: 3, hue: 0, light: 0.02, sat: -0.05, warm: 0.1 },
     shape: 'oval',
-    eyes: { shape: 'almond', size: -0.55, spacing: 0.45, iris: '#4A2E1E', irisSize: 0.1 },
-    brows: { shape: 'soft', thick: -0.2, curve: 0, color: '#2A1A14' },
+    eyes: { shape: 'almond', size: -0.5, spacing: 0.45, iris: '#4A2E1E', irisSize: 0.15 },
+    brows: { shape: 'soft', thick: -0.15, curve: 0.1, color: '#2A1A14' },
     nose: { shape: 'fine', size: -0.1, width: -0.2, length: 0 },
-    mouth: { shape: 'full', fullness: 0.3, width: 0.1, lip: '#C27E80' },
-    hairColor: '#6B4228',
+    mouth: { shape: 'full', fullness: 0.2, width: 0.05, lip: '#C98A7E' },
+    hairColor: '#5A3722',
     hairVolume: 0.35,
     refined: true,
     veil: { style: 'none', color: '#E8B8C8', elegant: false },
-    makeup: { liner: 'soft', shadow: '', blush: 0.3, blushColor: '#E8A094', mascara: 0.05, lipstick: true, intensity: 0 },
+    makeup: { liner: 'wing', shadow: '', blush: 0.25, blushColor: '#E8A094', mascara: 0.05, lipstick: true, intensity: 0 },
   };
 }
 

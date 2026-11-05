@@ -67,8 +67,8 @@ function titleArt(): { el: HTMLCanvasElement; stop: () => void } {
   };
   const STEPS = [-0.35, -0.175, 0, 0.175, 0.35];
 
-  // Avec le lien secret : Auguste en illustration détourée ; Radia reste dessinée
-  // avec sa tenue actuelle (dressing), comme partout ailleurs dans le jeu.
+  // Avec le lien secret : Auguste en illustration détourée ; Radia aussi quand elle porte la tenue
+  // de son illustration (même artiste), sinon elle est dessinée avec sa tenue actuelle (dressing).
   const art: { a: HTMLImageElement | null } = { a: null };
   const waitingPhotos = hasPhotos();
   const born = performance.now();

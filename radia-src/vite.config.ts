@@ -37,7 +37,8 @@ function serviceWorker(): Plugin {
       walk(outDir);
       // .woff (ancien format) inutile : Safari utilise les .woff2
       // fichiers à empreinte : seuls ceux de CETTE build (les anciens restent sur le serveur mais ne sont pas mis en cache)
-      const hashed = (f: string) => f.startsWith('assets/') && /-[A-Za-z0-9_-]{8}\.[a-z0-9]+$/.test(f);
+      // les fichiers privés (assets/p/) n'ont jamais d'empreinte : « char-radia-nc.bin » ressemblait à « nom-XXXXXXXX.bin » et était supprimé
+      const hashed = (f: string) => f.startsWith('assets/') && !f.startsWith('assets/p/') && /-[A-Za-z0-9_-]{8}\.[a-z0-9]+$/.test(f);
       const precache = files.filter((f) => f !== 'sw.js' && f !== 'version.json' && f !== 'builds.json' && !f.endsWith('.map') && !f.endsWith('.woff') && (!hashed(f) || emitted.has(f)));
       const version = BUILD_ID;
       const src = readFileSync(join(__dirname, 'src/sw-template.js'), 'utf8')

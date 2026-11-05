@@ -35,7 +35,7 @@ async function run(H) {
   await page.locator('.fs-swatch[aria-label="Brun"]').click(); await sleep(400);
   const p1 = await previewUrl();
   check('peau : l\'aperçu change en direct', p1 !== p0);
-  check('rien n\'est enregistré avant « Appliquer »', (await face()).skin.tone === 2);
+  check('rien n\'est enregistré avant « Appliquer »', (await face()).skin.tone === 3);
   await page.locator('.fs-slider input').first().fill('60'); await page.locator('.fs-slider input').first().dispatchEvent('input'); await sleep(400);
   check('réglage fin de la peau (curseur) : aperçu à jour', (await previewUrl()) !== p1);
   // forme du visage
@@ -69,7 +69,7 @@ async function run(H) {
   check('Annuler avec des changements : demande de confirmation', (await confirmBtn('Quitter').count()) === 1);
   await confirmBtn('Quitter').click(); await sleep(900); await closeModals();
   const f1 = await face();
-  check('Annuler : le visage enregistré est exactement l\'ancien (rien appliqué)', f1.skin.tone === 2 && f1.shape === 'oval' && f1.veil.style === 'none');
+  check('Annuler : le visage enregistré est exactement l\'ancien (rien appliqué)', f1.skin.tone === 3 && f1.shape === 'oval' && f1.veil.style === 'none');
   check('retour à MON MONDE', (await page.locator('.fs-screen').count()) === 0 && (await page.locator('.hub-screen').count()) === 1);
   check('carte du hub : dessin inchangé après annulation', (await card.locator('canvas').first().evaluate((c) => c.toDataURL())) === cardArt0);
   // réouvrir : charger le visage enregistré puis appliquer
@@ -91,7 +91,7 @@ async function run(H) {
   await page.locator('.fs-actions .btn', { hasText: 'Origine' }).click(); await sleep(400); await confirmBtn('Réinitialiser').click(); await sleep(500);
   check('« Origine » : le brouillon revient au visage de base (sans rien appliquer)', (await face()).skin.tone === 7 && (await previewUrl()) === p0);
   await page.locator('.fs-actions .btn', { hasText: 'Appliquer' }).click(); await sleep(900); await closeModals();
-  check('appliquer le visage de base : retour exact au visage de base', (await face()).skin.tone === 2 && (await face()).veil.style === 'none' && (await face()).shape === 'oval');
+  check('appliquer le visage de base : retour exact au visage de base', (await face()).skin.tone === 3 && (await face()).veil.style === 'none' && (await face()).shape === 'oval');
   await ctx.close();
 }
 for (const H of [852, 660]) { try { await run(H); } catch (e) { check('exécution sans exception', false, String(e.message).split('\n')[0]); } }
