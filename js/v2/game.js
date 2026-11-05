@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.40.1";
+  var VERSION = "2.41.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -830,7 +830,7 @@
     if (!e.d.prop) { var hel = atkElem(p); SND.hit(hel, crit); spark(e.x + (p.x - e.x) * 0.25 + (Math.random() * 4 - 2), e.y - 2 + (p.y - e.y) * 0.25, hel, crit); }
     if (crit && !e.d.prop && (e.d.boss || dmg >= 60) && S.opts.shake) { shake = Math.max(shake, 0.12); if (p === me) kick(e.x - p.x, e.y - p.y, 1.5); }
     if (!e.d.prop) {
-      var kb = e.d.boss ? 0.12 : (e.elem === "terre" || hasA(e, "lourd")) ? 0 : 1;
+      var kb = e.d.boss ? 0.12 : (e.elem === "terre" || hasA(e, "lourd")) ? 0 : Math.max(0.3, 1 - (r ? r.time : 0) / 1000);
       e.kx += (kx || 0) * kb; e.ky += (ky || 0) * kb;
     }
     if (S.opts.numbers && !e.d.prop) {
@@ -1004,8 +1004,12 @@
     if (p.oshield > 0) { var ab = Math.min(p.oshield, dmg); p.oshield -= ab; dmg -= ab; p.inv = 0.3; burst(p.x, p.y, "#9cc56b", 4); if (dmg <= 0) return; }
     if (p.packN && p.passives && p.passives.meute) dmg -= p.passives.meute;
     p.redSt = 0; if (r && p === me) r.vc = 0;
-    var hit = Math.max(1, (dmg - p.armor - (p.armX || 0)) * (p.taken || 1) * (1 - (p.resist || 0)) * (elem && p.eres && p.eres[elem] ? 1 - Math.min(0.6, p.eres[elem] / 100) : 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)) * (nm(9) ? 1.3 : 1);
+    // 2.41 : l'armure réduit en pourcentage (A / (A + 12), plafonné à 70 %) au lieu de retrancher des points : avec 100+ d'armure plus rien ne passait
+    var armA = Math.max(0, p.armor + (p.armX || 0)), armRed = Math.min(0.7, armA / (armA + 12)), lateH = r && !isArena() && !isDungeon() ? Math.max(0, r.time - 600) : 0;
+    if (lateH) dmg *= 1 + lateH / 300;                           // après 10 minutes, les coups montent vite : la partie finit toujours
+    var hit = Math.max(1, dmg * (1 - armRed) * (p.taken || 1) * (1 - (p.resist || 0)) * (elem && p.eres && p.eres[elem] ? 1 - Math.min(0.6, p.eres[elem] / 100) : 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)) * (nm(9) ? 1.3 : 1);
     if (p.rmRed > 0) { hit *= 1 - p.rmRed; p.rmRed = 0; }
+    if (lateH > 120) hit += p.maxHp * Math.min(0.08, 0.006 * (lateH - 120) / 60);   // et passé 12 minutes, une part des PV max s'ajoute, armure ignorée
     if (p.posture === "carapace" && p.anchored) { hit *= tal(p, "carapace_t1") ? 0.35 : 0.5; var rf = nearest(1, 40)[0]; if (rf) { var ppr = p; hurt(rf, hit * 2 * (tal(p, "carapace_t2") ? 2 : 1), 0, 0); p = ppr; } }
     if (p.owner && p.owner.posture === "formation" && tal(p.owner, "formation_t1") && Math.hypot(p.x - p.owner.x, p.y - p.owner.y) < 26) hit *= 0.8;
     if (p.posture === "formation" && tal(p, "formation_t1") && p.twinRef && Math.hypot(p.x - p.twinRef.x, p.y - p.twinRef.y) < 26) hit *= 0.8;
@@ -1014,7 +1018,7 @@
     if (p.char && p.char.id === "cendrine" && !p.twin) { p.debt = (p.debt || 0) + hit; p.debtRate = Math.max(p.debtRate || 0, p.debt / (p.mstate === "mouvement" && gv(p, "gra_b") ? 5 : 4)); }
     else p.hp -= hit;
     if (r && p === me) r.dmgIn = (r.dmgIn || 0) + hit;
-    p.inv = DIFF.inv || 0.35; txFire(p, "hurt");
+    p.inv = Math.max(0.1, (DIFF.inv || 0.35) * (1 - Math.min(0.7, Math.max(0, (r ? r.time : 0) - 300) / 900))); txFire(p, "hurt");
     var rflv = ((p.txf && p.txf.reflect) || 0) + ((p.gbn && p.gbn.epi) || 0);
     if (rflv) { var rfp = p; near(p.x, p.y, 40, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - rfp.x, e.y - rfp.y) < 36 + e.d.r) { var pq = p; p = rfp; hurt(e, hit * rflv / 100, (e.x - rfp.x) * 3, (e.y - rfp.y) * 3); p = pq; } }); ring(p.x, p.y, 36, false); }
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = Math.max(shake, 0.32); SND.hurt(); freezeFrame(0.06); hurtV = 0.35; kick(Math.random() - 0.5, Math.random() - 0.5, 3); }
@@ -6387,6 +6391,7 @@
       if (e.d.boss && (!boss || e.giant)) boss = e;
       e.x += mx * sp * dt + e.kx * dt; e.y += my * sp * dt + e.ky * dt;
       var damp = Math.pow(0.0005, dt); e.kx *= damp; e.ky *= damp;
+      var kmag = Math.hypot(e.kx, e.ky); if (kmag > 130) { e.kx *= 130 / kmag; e.ky *= 130 / kmag; }   // le recul ne tient plus les ennemis à distance
       // zone sûre : les ennemis restent au bord, sauf s'ils poursuivent un autre joueur qui s'y trouve
       for (var z = 0; z < zones.length; z++) {
         var zp = zones[z], zx = e.x - zp.x, zy = e.y - zp.y, zd = Math.hypot(zx, zy) || 0.01, lim = SAFE_R + e.d.r;
@@ -10311,6 +10316,7 @@
     rage: function (min) { r.stageT0 = r.time - RAGE.start - min * 60; return { rage: rageMin(), dmg: rageDmg(), spd: rageSpd() }; },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
+    hit: function (dmg, armor, time) { p.armor = armor; r.time = time; p.inv = 0; var h0 = p.hp; damagePlayer(dmg, p); return { lost: Math.round((h0 - p.hp) * 10), hp: Math.round(p.hp * 10), max: Math.round(p.maxHp * 10), inv: +p.inv.toFixed(2) }; },
     frFake: function (n) { FR.on = {}; FR.list = []; var cs = D.CHARACTERS.map(function (c) { return c.id; }); for (var i = 0; i < n; i++) { FR.on["f" + i] = { n: ["Marmotte", "Chêne42", "Noisetier", "Pomme", "Lutin"][i % 5], c: cs[i % cs.length], ti: i ? 0 : "gobe", lk: {} }; } return Object.keys(FR.on).length; }, frNpcs: function () { return Object.keys(FR.npcs).length; }, frOff: function () { FR.on = {}; },
     cp: function (cid, n, xp) { S.cpres = S.cpres || {}; S.cpres[cid] = n; if (xp !== undefined) S.clvl[cid] = xp; save(); }, treeInfo: function () { return JSON.stringify({ txf: me.txf, gbon: me.gbon }); },
     chal: function (id) { startChal(id); }, chalInfo: function () { return { chal: CHAL && CHAL.d.id, mods: (r.mods || []).map(function (m) { return m.id; }), level: r.level, time: r.time, hp: me.hp, max: me.maxHp, items: Object.keys(me.items || {}).length, state: state }; }, chalWin: function () { chalWin(); }, stat: function () { return JSON.stringify({ st: S.stats, defis: S.defis }); },
