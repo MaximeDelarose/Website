@@ -23,7 +23,7 @@ const todayKey = () => { const d = new Date(); const p = (n) => String(n).padSta
 // sauvegarde v5 : château avec des meubles posés à l'ancienne (migration), pièces suffisantes
 const legacy = (uid, id, x, y, color = 'cream') => ({ uid, id, x, y, color, flip: false });
 const seed = {
-  v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8'], story: { step: 9999 }, levels: {}, hearts: 500,
+  v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'], story: { step: 9999 }, levels: {}, hearts: 500,
   fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } },
   world: {
     flags: { 'rw:start-gift-v1': true },

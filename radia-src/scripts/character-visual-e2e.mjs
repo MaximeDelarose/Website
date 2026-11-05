@@ -7,7 +7,7 @@ const PORT = process.env.PORT ?? 4190, KEY = process.env.PHOTO_KEY ?? '';
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
 const p = await (await b.newContext({ viewport: { width: 1500, height: 900 }, deviceScaleFactor: 2 })).newPage();
 const errs = []; p.on('pageerror', (e) => errs.push(e.message));
-await p.addInitScript(() => localStorage.setItem('radia-save-v1', JSON.stringify({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8'], world: { flags: { 'rw:start-gift-v1': true } } })));
+await p.addInitScript(() => localStorage.setItem('radia-save-v1', JSON.stringify({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'], world: { flags: { 'rw:start-gift-v1': true } } })));
 await p.goto(`http://localhost:${PORT}/?planche${KEY ? '#k=' + KEY : ''}`); await p.waitForSelector('.bd-root', { timeout: 25000 }); await p.waitForTimeout(1500);
 const results = []; const check = (n, ok, x = '') => { results.push(!!ok); console.log(`${ok ? 'OK ' : 'KO '} ${n}${x ? ' — ' + x : ''}`); };
 

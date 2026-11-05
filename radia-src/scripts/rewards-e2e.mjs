@@ -13,7 +13,7 @@ const check = (name, ok, extra = '') => { const l = `${ok ? 'OK ' : 'KO '} ${nam
 const errs = [];
 const today = (() => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })();
 const seedOf = (o = {}) => ({
-  v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8'], story: { step: 80 }, levels: {}, hearts: 500,
+  v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'], story: { step: 80 }, levels: {}, hearts: 500,
   fun: { free: { unlocked: true, announced: true, at: 1 }, ...(o.fun ?? {}) }, world: { flags: { ...(o.flags ?? {}) } },
 });
 

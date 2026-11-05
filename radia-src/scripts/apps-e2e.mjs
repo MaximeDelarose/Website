@@ -147,7 +147,8 @@ await page.locator('.snp-ov .snp-cell').first().click(); await sleep(150);
 await page.locator('.snp-ov .snp-cell').nth(1).click().catch(() => {}); await sleep(150);
 await page.locator('.snp-go').click({ noWaitAfter: true });
 let nReacts = 0;
-for (let i = 0; i < 10; i++) { await sleep(300); nReacts = Math.max(nReacts, await page.locator('.snp-react').count()); if (i === 5) await shot('snap-story-view'); }
+// la 1re réaction fictive arrive après 1,5 s (Auguste, 80 %) ou 3 à 5,5 s : on observe jusqu'à ~7 s (avant : 3 s → échec ≈ 18 % du temps)
+for (let i = 0; i < 24; i++) { await sleep(300); nReacts = Math.max(nReacts, await page.locator('.snp-react').count()); if (i === 5) await shot('snap-story-view'); if (nReacts >= 1 && i >= 5) break; }
 s2 = await st();
 check('Snap : story publiée (1 à 5 images)', s2.snap.stories.length === 1 && s2.snap.stories[0].frames.length >= 1 && s2.snap.stories[0].frames.length <= 5);
 check('Snap : réactions fictives affichées pendant la story', nReacts >= 1, String(nReacts));

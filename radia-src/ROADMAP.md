@@ -34,6 +34,8 @@ Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commenc
 - ✅ PLANCHE `?planche` (vrais composants, même échelle, repères du gabarit, Auguste en référence) + `scripts/board-shots.mjs`.
 - ✅ TESTS : `tests/rig.test.ts`, `tests/painted-look.test.ts`, `scripts/character-visual-e2e.mjs` (33 contrôles : le visage ne change pas avec la
   couronne / coiffure / accessoire / tenue, écarts ≤ 3,7/255 ; temps de dessin ≈ 1 ms en émulé).
+- ✅ « Nouveautés » v9 (nouveau look de Radia, tête stable, bouton « Tenue illustrée », partie intacte) — `main.ts` `showWhatsNewV9`, clé `v9` ajoutée aux sauvegardes neuves et aux amorces des parcours.
+- ✅ Test Snap « réactions fictives » : fenêtre d'observation élargie de 3 s à ~7 s (la 1re réaction peut arriver à 3–5,5 s ; avant : ≈ 18 % d'échecs). Pas un bug du jeu.
 - 🟡 RESTE : coiffures dessinées plus plates que la tête peinte ; col de la tenue noire dessinée ≠ illustration ; vêtements / corps encore en vectoriel →
   cahier des charges `docs/ASSETS_PERSONNAGES.md` (5 tenues prioritaires). ⚠️ À valider sur iPhone réel. La DA n'est PAS déclarée validée.
 
