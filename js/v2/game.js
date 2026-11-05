@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.41.0";
+  var VERSION = "2.41.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -637,7 +637,7 @@
   }
   function spawnAt(type, x, y) {
     var d = D.ENEMIES[type];
-    var hp = d.hp * (d.boss && !isDungeon() ? (1 + bossCount * 0.9) * (1 + r.time / 200) * DIFF.hp * (MAP.hp || 1) : hpMul());
+    var hp = d.hp * (d.boss && !isDungeon() ? (1 + bossCount * 0.9) * (1 + r.time / 200) * lateHp() * DIFF.hp * (MAP.hp || 1) : hpMul());
     var e = makeEnemy(type, d, x, y, hp);
     if (d.ai === "mole") { e.under = true; e.cd = 1; }
     if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
@@ -649,7 +649,8 @@
   function hpMul() { return hpMul0() * tierHp(); }
   function zoneHp() { return isDungeon() ? DGT.hp || 1 : MAP.hp || 1; }
   function zoneGold() { return r && r.mode === "dungeon" ? DGT.gold || 1 : MAP.gold || 1; }
-  function hpMul0() { if (isDungeon()) return (1 + 0.9 * (r.dg.floor - 1)) * (1 + r.time / 400) * DIFF.hp * zoneHp() * (1 + 0.25 * (players.length - 1)); return (isArena() ? 1 + 0.07 * (r.round - 1) : 1) * (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
+  function lateHp() { return r && r.time > 480 && !isArena() && !isDungeon() ? Math.pow(1.5, (r.time - 480) / 60) : 1; }   // 2.41.1 : au-delà de 8 min les PV des ennemis montent de façon exponentielle, comme la puissance du joueur
+  function hpMul0() { if (isDungeon()) return (1 + 0.9 * (r.dg.floor - 1)) * (1 + r.time / 400) * DIFF.hp * zoneHp() * (1 + 0.25 * (players.length - 1)); return (isArena() ? 1 + 0.07 * (r.round - 1) : 1) * (1 + r.time / 100 + Math.pow(r.time / 300, 2)) * lateHp() * DIFF.hp * (MAP.hp || 1) * (1 + 0.25 * (players.length - 1)); }
   function makeEnemy(type, d, x, y, hp) {
     var e = { id: ++uid, type: type, d: d, spr: SPR[d.sprite], x: x, y: y, hp: hp, maxHp: hp, kx: 0, ky: 0, flash: 0, slowT: 0, slow: 0,
               anim: Math.random() * 2, phase: Math.random() * 6, face: 1, born: r ? r.time : 0, charge: 0, windup: 0, cd: 3, spd: (d.spd || 0) * DIFF.spd, cool: null };
@@ -674,7 +675,7 @@
     var x = around.x + Math.cos(ang) * dist, y = around.y + Math.sin(ang) * dist;
     if (!type) type = pickType(biomeAt(x, y));
     var d = D.ENEMIES[type];
-    var hp = d.hp * (d.boss ? (1 + bossCount * 0.9) * (1 + r.time / 200) * DIFF.hp * (MAP.hp || 1) : hpMul());
+    var hp = d.hp * (d.boss ? (1 + bossCount * 0.9) * (1 + r.time / 200) * lateHp() * DIFF.hp * (MAP.hp || 1) : hpMul());
     var e = makeEnemy(type, d, x, y, hp);
     if (d.ai === "mole") { e.under = true; e.cd = 1; }
     if (d.ai === "spitter" || d.ai === "spiker") e.cd = 1.5 + Math.random() * 2;
@@ -10335,6 +10336,7 @@
     links: function () { var o = {}; Object.keys(Net.peers).forEach(function (k) { o[k] = Net.peers[k].open ? "open" : (Net.peers[k].failed ? "failed" : "pending"); }); return o; },
     net: function () { return { direct: allDirect(), on: Net.on, role: Net.role, code: Net.code, status: Net.status, roster: Net.roster.length, started: Net.started, players: players.length, snap: !!Net.cur }; },
     spawn: function (t) { if (p) spawn(t, Math.random() * TAU, 60); },
+    mobHp: function (type, time) { r.time = time; var e = spawn(type, 0, 60); return e ? Math.round(e.maxHp) : null; },
     projs: function () { return projs.length; },
     cps: function () { return Net.on && Net.role === 'guest' ? (Net.cps || []).length : allComps().length; },
     v2: function () { return { posture: me.posture, mstate: me.mstate, anchored: me.anchored, hooked: !!me.hooked, volteCd: Math.round((me.volteCd || 0) * 10) / 10, voltes: r.voltes, crew: me.crew ? me.crew.length : null, recruits: r.recruits, vx: Math.round(me.vx || 0), cadX: me.cadX, dmgX: me.dmgX, weapons: me.weapons, hp: Math.round(me.hp) }; },
