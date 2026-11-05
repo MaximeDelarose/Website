@@ -1177,7 +1177,7 @@ window.ES_DATA = (function () {
   };
   var V2CH = {
     noisette:  { order: 0, rule: "Choisit parmi 4 cartes au lieu de 3. L'écureuil d'apprentissage." },
-    capitaine: { order: 1, rule: "Son équipage le suit et attaque avec une version miniature de son arme (10 % de ses dégâts par matelot). 10 matelots au départ, +2 par niveau, 50 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
+    capitaine: { order: 1, rule: "Il ne frappe pas lui-même : son équipage le suit en grappe et attaque avec une version miniature de son arme (10 % de ses dégâts par matelot). 10 matelots au départ, +2 par niveau, 50 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
     planeur:   { order: 2, rule: "Glisse sans cesse (inertie) et survole les obstacles. Ne s'ancre qu'accroché à un arbre ou à une souche." },
   };
   var CHAR_ALL = CHARACTERS.slice();
