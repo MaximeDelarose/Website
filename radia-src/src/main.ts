@@ -233,6 +233,8 @@ async function setupThoughts(): Promise<void> {
       if (e.data?.type === 'radia-push-changed') void import('./core/push').then((p) => p.refreshPushIfNeeded());
     });
     void import('./core/push').then((p) => p.refreshPushIfNeeded());
+    // première ouverture dans l'application installée : une seule invitation douce, à un moment calme (jamais à l'ouverture d'une notification)
+    if (!fromNotif) { const sch = await import('./events/scheduler'); const q = new URLSearchParams(location.search); m.scheduleThoughtInvite(() => sch.safeToNotify(), q.has('debug') && q.has('inviteDelay') ? Math.max(0, Number(q.get('inviteDelay')) || 0) : 20_000); } // inviteDelay : tests uniquement (avec ?debug)
   } catch { /* les notifications ne doivent jamais empêcher le jeu de démarrer */ }
 }
 

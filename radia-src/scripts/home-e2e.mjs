@@ -54,7 +54,6 @@ async function run(H, claimable) {
   check('toucher CASINO ouvre le casino', (await page.locator('.cz-root').count()) === 1);
   const chips = await page.evaluate(() => window.RADIA.casino?.state?.().total ?? -1);
   check('le cadeau d\'ouverture gratuit est versé (tickets virtuels)', chips > 0, `${chips} tickets`);
-  await page.evaluate(() => window.RADIA.casino.open()); // déjà ouvert : sans effet
   const exit = page.locator('.cz-root button[aria-label*="Quitter"], .cz-root .cz-back, .cz-root button[aria-label*="Retour"]').first();
   if (await exit.count()) { await exit.click().catch(() => {}); await sleep(1200); }
   for (let i = 0; i < 4 && (await page.locator('.cz-root').count()); i++) { const b = page.locator('.cz-root button', { hasText: /Retour|Quitter|Sortir|Fermer/ }).first(); if (await b.count()) { await b.click().catch(() => {}); await sleep(1000); } }

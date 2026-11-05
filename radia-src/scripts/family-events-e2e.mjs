@@ -112,7 +112,8 @@ if (!ONLY || ONLY === 'B') {
   // quelques minutes de jeu actif plus tard : éligible
   const el = await page.evaluate(async () => { const { eligible } = await window.RADIA.eventsManager(); const { eventById } = await window.RADIA.eventsData(); const e = window.RADIA.save.data.events; const pr = { chapter: 0, chessUnlocked: false, careerCurrent: null, careersTried: [] }; const before = eligible(eventById('fm-airport-return'), e, pr); e.playMs += 23 * 60000; const after = eligible(eventById('fm-airport-return'), e, pr); return { before, after }; }).catch(() => null);
   if (el) check('B2 : devient possible après ~22 min de jeu actif', el.before === false && el.after === true, JSON.stringify(el));
-  await page.evaluate(() => { window.RADIA.save.data.events.current = null; window.RADIA.save.data.events.lastEventId = ''; });
+  // le planificateur propose naturellement d'autres invitations quand le temps de jeu avance : on les écarte pour ouvrir PRÉCISÉMENT les retrouvailles
+  await page.evaluate(() => { const e = window.RADIA.save.data.events; e.current = null; e.lastEventId = ''; e.inbox = e.inbox.filter((i) => i.state === 'done'); e.bigLog.push(e.playMs); e.lastInviteAt = e.playMs; });
   const r2 = await play(page, 'fm-airport-return', picks, { say: '/tmp/claude-0/da/fm-b2-say.png' });
   check('B2 : retrouvailles terminées', r2.concluded);
   const st2 = await page.evaluate(() => window.RADIA.save.data.events.done['fm-airport-return']);

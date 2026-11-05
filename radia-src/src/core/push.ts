@@ -16,6 +16,15 @@ export type PushStatus =
   | { kind: 'off'; canAsk: boolean }
   | { kind: 'on'; endpointShort: string };
 
+/**
+ * Règle PURE (testée) : faut-il proposer la carte « Une petite pensée pour toi » ?
+ * Seulement dans l'application installée (écran d'accueil), une seule fois, si les notifications sont possibles et pas encore décidées.
+ * Jamais si Radia a déjà répondu (plus tard, refusé, accepté) ou si le système les a déjà refusées : on ne redemande pas.
+ */
+export function shouldInvite(o: { standalone: boolean; state: 'none' | 'later' | 'accepted' | 'refused' | 'error'; status: PushStatus['kind']; canAsk?: boolean }): boolean {
+  return o.standalone && o.state === 'none' && o.status === 'off' && o.canAsk !== false;
+}
+
 const hasApis = (): boolean => typeof navigator !== 'undefined' && 'serviceWorker' in navigator && typeof window !== 'undefined' && 'PushManager' in window && 'Notification' in window;
 
 /** Pure (testée) : ce que la plateforme permet. iPhone : seulement l'application installée (standalone). */
@@ -61,11 +70,17 @@ export type EnableResult = 'ok' | 'denied' | 'unsupported' | 'server' | 'no-key'
  * À appeler SEULEMENT depuis un toucher de Radia. Demande l'autorisation, s'abonne, enregistre l'abonnement côté serveur et ne renvoie 'ok'
  * qu'une fois l'enregistrement confirmé (sinon l'abonnement local est annulé : on n'affiche jamais « activées » à tort).
  */
-export async function enablePush(hour = 9): Promise<EnableResult> {
-  const st = await pushStatus();
-  if (st.kind === 'unsupported') return 'unsupported';
-  if (st.kind === 'denied') return 'denied';
-  const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+export function enablePush(hour = 9): Promise<EnableResult> {
+  // iOS exige que Notification.requestPermission() soit appelé DIRECTEMENT par le geste de Radia : on le lance de façon synchrone,
+  // avant toute attente (lecture du service worker, réseau…), sinon Safari peut ignorer la demande.
+  const sup = classifySupport({ apis: hasApis(), secure: typeof isSecureContext === 'boolean' ? isSecureContext : true, ios: isIos(), standalone: isStandalone() });
+  if (sup !== 'ok') return Promise.resolve('unsupported');
+  if (Notification.permission === 'denied') return Promise.resolve('denied');
+  const asked: Promise<NotificationPermission> = Notification.permission === 'granted' ? Promise.resolve('granted') : Notification.requestPermission();
+  return enableAfterPermission(asked, hour);
+}
+async function enableAfterPermission(asked: Promise<NotificationPermission>, hour: number): Promise<EnableResult> {
+  const perm = await asked;
   if (perm !== 'granted') return 'denied';
   const reg = await registration(); if (!reg) return 'error';
   const key = await rpc<string>('radia_push_public_key', {});
