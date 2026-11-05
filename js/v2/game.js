@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.35.1";
+  var VERSION = "2.35.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -1162,6 +1162,14 @@
   ];
   function chalMods(ids) { return ids.map(function (id) { return CHALMODS.filter(function (m) { return m.id === id; })[0] || D.MODS2.filter(function (m) { return m.id === id; })[0]; }).filter(Boolean); }
   function chalGoalTxt(g) { return g.time ? "Survivre " + Math.round(g.time / 60) + " minutes" : g.kills ? "Tuer " + g.kills + " ennemis" : g.mega ? "Battre le méga boss" : "Atteindre le niveau " + g.level; }
+  function chalMissing(d) {
+    var m = [], c = charById(d.char), mp = mapById(d.map), df = D.DIFFICULTIES[d.diff] || {}, ar = D.ARMES[d.arme];
+    if (!charAvailable(c)) m.push("écureuil " + c.name);
+    if (mp.unlock && !has(mp.unlock)) m.push("carte " + mp.name);
+    if (df.unlock && !has(df.unlock)) m.push("difficulté " + (df.name || d.diff));
+    if (ar && !questOk(ar)) m.push("arme " + ar.name);
+    return m;
+  }
   function chalDone(d) { return !!(S.defis || {})[d.id]; }
   function chalTick() {
     if (!CHAL || !r || r.ended || state !== "play") return;
@@ -1186,6 +1194,7 @@
   }
   function startChal(id) {
     var d = (D.DEFIS || []).filter(function (x) { return x.id === id; })[0]; if (!d || Net.on) return;
+    if (chalMissing(d).length) { banner("🔒 Défi verrouillé : il te manque " + chalMissing(d).join(", ")); return; }
     var sv = { char: S.char, map: S.map, diff: S.diff, mode: S.mode };
     S.char = d.char; S.map = d.map; S.diff = d.diff; S.mode = "survie";
     CHAL = { d: d, sv: sv };
@@ -8743,12 +8752,13 @@
       var html = '<div class="screen-head">' + back() + "<h2>Défis</h2>" + '<p class="gold-badge">⚔️ <b>' + Object.keys(S.defis || {}).length + " / " + D.DEFIS.length + '</b></p></div>' +
         '<p class="game-small">Une partie imposée : carte, difficulté, écureuil, arme et règles spéciales. Réussis-la pour gagner la récompense. Ta partie normale n\'est pas modifiée.</p><div class="ach-list">';
       D.DEFIS.forEach(function (d) {
-        var ok = chalDone(d), c = charById(d.char), m = mapById(d.map), df = (D.DIFFICULTIES[d.diff] || {}).name || d.diff, ar = D.ARMES[d.arme];
+        var ok = chalDone(d), miss = chalMissing(d), c = charById(d.char), m = mapById(d.map), df = (D.DIFFICULTIES[d.diff] || {}).name || d.diff, ar = D.ARMES[d.arme];
         html += '<div class="ach quest' + (ok ? " is-done" : "") + '"><span class="ach-ic">' + (ok ? "🏆" : "⚔️") + "</span><div><strong>" + esc(d.name) + "</strong><span>" + esc(d.desc) + "</span>" +
           '<span class="ach-unlock">' + esc(c.name) + " · " + esc(m.name) + " · " + esc(df) + (ar ? " · arme : " + esc(ar.name) : "") + "</span>" +
           (d.mods && d.mods.length ? '<span class="ach-unlock">Règles : ' + esc(chalMods(d.mods).map(function (x) { return x.name; }).join(", ")) + "</span>" : "") +
-          '<span class="ach-unlock">Objectif : ' + esc(chalGoalTxt(d.goal)) + " · Récompense : " + esc((d.reward || {}).text || "") + "</span></div>" +
-          '<button type="button" class="btn btn-small" data-action="chal" data-arg="' + d.id + '">' + (ok ? "Rejouer" : "Lancer") + "</button></div>";
+          '<span class="ach-unlock">Objectif : ' + esc(chalGoalTxt(d.goal)) + " · Récompense : " + esc((d.reward || {}).text || "") + "</span>" +
+          (miss.length ? '<span class="ach-unlock">🔒 Il te manque : ' + esc(miss.join(", ")) + "</span>" : "") + "</div>" +
+          (miss.length ? '<button type="button" class="btn btn-small is-off" disabled>🔒</button>' : '<button type="button" class="btn btn-small" data-action="chal" data-arg="' + d.id + '">' + (ok ? "Rejouer" : "Lancer") + "</button>") + "</div>";
       });
       return html + "</div>";
     },
