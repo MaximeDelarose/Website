@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.43.0";
+  var VERSION = "2.44.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -1176,6 +1176,23 @@
   ];
   function chalMods(ids) { return ids.map(function (id) { return CHALMODS.filter(function (m) { return m.id === id; })[0] || D.MODS2.filter(function (m) { return m.id === id; })[0]; }).filter(Boolean); }
   function chalGoalTxt(g) { return g.time ? "Survivre " + Math.round(g.time / 60) + " minutes" : g.kills ? "Tuer " + g.kills + " ennemis" : g.mega ? "Battre le méga boss" : "Atteindre le niveau " + g.level; }
+  /* défi du jour : mêmes règles pour tout le monde (écureuil, carte, difficulté, arme, 2 règles tirés de la date, UTC) ; score envoyé au classement d'amis */
+  var DAILY = { board: null, err: "", loading: false };
+  function dailyKey() { return new Date().toISOString().slice(0, 10); }
+  function dailyDef() {
+    var k = dailyKey(), rnd = mulberry(parseInt(k.replace(/-/g, ""), 10) * 7919 + 13), pick = function (a) { return a[(rnd() * a.length) | 0]; };
+    var pool = D.MODS2.filter(function (m) { return !m.arena; }).map(function (m) { return m.id; }), m1 = pick(pool); pool = pool.filter(function (x) { return x !== m1; });
+    return { id: "daily", daily: true, name: "Défi du jour", char: pick(D.CHARACTERS).id, map: pick(D.MAPS).id, diff: pick(["normal", "difficile", "expert"]), arme: pick(Object.keys(D.ARMES)), mods: [m1, pick(pool)], goal: null, reward: {} };
+  }
+  function dailyLoad(cb) {
+    if (!frUid()) { DAILY.board = null; if (cb) cb(); return; }
+    DAILY.loading = true;
+    SiteAuth.rpc("daily_board", { p_day: dailyKey() }).then(function (b) { DAILY.board = b || []; DAILY.err = ""; }).catch(function () { DAILY.err = "Classement indisponible pour l'instant."; }).then(function () { DAILY.loading = false; if (cb) cb(); });
+  }
+  function dailySubmit(sc) {
+    S.daily = S.daily || {}; if (S.daily.day !== dailyKey()) S.daily = { day: dailyKey(), best: 0 }; S.daily.best = Math.max(S.daily.best, Math.round(sc)); DAILY.board = null; save();
+    if (frUid()) SiteAuth.rpc("daily_submit", { p_day: dailyKey(), p_score: Math.round(sc), p_time: Math.round(r.time), p_kills: r.kills | 0, p_char: r.char }).catch(function () {});
+  }
   function chalMissing(d) {
     var m = [], c = charById(d.char), mp = mapById(d.map), df = D.DIFFICULTIES[d.diff] || {}, ar = D.ARMES[d.arme];
     if (!charAvailable(c)) m.push("écureuil " + c.name);
@@ -1187,7 +1204,7 @@
   function chalDone(d) { return !!(S.defis || {})[d.id]; }
   function chalTick() {
     if (!CHAL || !r || r.ended || state !== "play") return;
-    var g = CHAL.d.goal;
+    var g = CHAL.d.goal; if (!g) return;
     if ((g.time && r.time >= g.time) || (g.kills && r.kills >= g.kills) || (g.mega && r.megaWon) || (g.level && r.level >= g.level)) chalWin();
   }
   function chalWin() {
@@ -1207,8 +1224,8 @@
     S.char = c.sv.char; S.map = c.sv.map; S.diff = c.sv.diff; S.mode = c.sv.mode; save();
   }
   function startChal(id) {
-    var d = (D.DEFIS || []).filter(function (x) { return x.id === id; })[0]; if (!d || Net.on) return;
-    if (chalMissing(d).length) { banner("🔒 Défi verrouillé : il te manque " + chalMissing(d).join(", ")); return; }
+    var d = id === "daily" ? dailyDef() : (D.DEFIS || []).filter(function (x) { return x.id === id; })[0]; if (!d || Net.on) return;
+    if (!d.daily && chalMissing(d).length) { banner("🔒 Défi verrouillé : il te manque " + chalMissing(d).join(", ")); return; }
     var sv = { char: S.char, map: S.map, diff: S.diff, mode: S.mode };
     S.char = d.char; S.map = d.map; S.diff = d.diff; S.mode = "survie";
     CHAL = { d: d, sv: sv };
@@ -1216,7 +1233,7 @@
     r.mods = chalMods(d.mods || []); r.chalId = d.id; r.humans = humans();
     S.stats.played[CH.id] = true; S.stats.maps[MAP.id] = true; save();
     beginPlay();
-    bannerAll("Défi : " + d.name + " — " + chalGoalTxt(d.goal));
+    bannerAll(d.daily ? "Défi du jour : va le plus loin possible !" : "Défi : " + d.name + " — " + chalGoalTxt(d.goal));
   }
   function hasMod(id) { return !!(r && ((r.mod && r.mod.id === id) || (r.mods && r.mods.some(function (m) { return m.id === id; })))); }
   function isoWeek() { var d = new Date(), t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); var day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day); var y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return t.getUTCFullYear() * 100 + Math.ceil(((t - y0) / 86400000 + 1) / 7); }
@@ -8695,6 +8712,7 @@
                     ["dungeon", "🗝️", "Donjon", DG.floors + " étages de salles, gardiens et boss final. Spécialité : trophées et recettes de panoplies."],
                     ["expedition", "🎒", "Expédition", "Carte d'extraction à étages : explore, remplis ton sac, puis sors ou descends. Mourir fait perdre le sac (sauf l'abri)." + (S.stats.bestDepth ? " Record : étage " + S.stats.bestDepth + "." : "")]];
       var wk = weeklyMods();
+      if (mo === "survie") html += '<p class="np-hint">📅 <b>Défi du jour</b> : mêmes règles pour tous, classement entre amis. <button class="btn btn-small" type="button" data-action="go" data-arg="daily">Voir</button></p>';
       if (mo === "survie") html += '<p class="np-hint">🗓️ <b>Défi de la semaine</b> : ' + wk.map(function (m) { return esc(m.name) + " (" + esc(m.desc) + ")"; }).join(" · ") + ' <button class="btn btn-small" type="button" data-action="weekly">Jouer le défi</button></p>';
       html += '<section class="np-sec"><h3>Mode</h3><div class="np-seg">' + MODES2.map(function (m) { return '<button type="button" class="np-opt' + (mo === m[0] ? " is-on" : "") + '" data-action="mode2" data-arg="' + m[0] + '"><span class="np-oi">' + m[1] + "</span>" + m[2] + "</button>"; }).join("") +
         '</div><p class="np-hint">' + esc(MODES2.filter(function (m) { return m[0] === mo; })[0][3]) + "</p></section>";
@@ -9092,6 +9110,20 @@
         });
       });
       return html + "</div>";
+    },
+    daily: function () {
+      var d = dailyDef(), c = charById(d.char), m = mapById(d.map), df = (D.DIFFICULTIES[d.diff] || {}).name || d.diff, ar = D.ARMES[d.arme], uid = frUid();
+      var html = '<div class="screen-head">' + back() + "<h2>Défi du jour</h2></div>" +
+        '<p class="game-small">Les mêmes règles pour tout le monde aujourd\'hui. Va le plus loin possible : ton meilleur score du jour part au classement de tes amis.</p>' +
+        '<div class="ach is-done"><span class="ach-ic">📅</span><div><strong>' + esc(c.name) + " · " + esc(m.name) + " · " + esc(df) + "</strong><span>Arme : " + esc(ar ? ar.name : d.arme) + " · Règles : " + esc(chalMods(d.mods).map(function (x) { return x.name; }).join(", ")) + '</span><span class="ach-unlock">' + chalMods(d.mods).map(function (x) { return esc(x.desc); }).join(" · ") + "</span></div></div>" +
+        '<p class="btn-row"><button type="button" class="btn" data-action="chal" data-arg="daily">▶ Jouer le défi du jour</button></p>' +
+        (S.daily && S.daily.day === dailyKey() ? '<p class="game-small">Ton meilleur score aujourd\'hui : <b>' + S.daily.best.toLocaleString("fr-FR") + "</b></p>" : "");
+      if (!uid) return html + '<p class="game-small">Connecte-toi avec Google (menu Amis) pour envoyer ton score et voir celui de tes amis.</p>';
+      if (DAILY.board === null && !DAILY.loading) dailyLoad(function () { if (card && card.querySelector(".daily-board")) go("daily"); });
+      html += '<h3 class="pick-title daily-board">Classement entre amis</h3>';
+      if (DAILY.err) return html + '<p class="game-small">' + esc(DAILY.err) + "</p>";
+      if (!DAILY.board) return html + '<p class="game-small">Chargement…</p>';
+      return html + (DAILY.board.length ? '<div class="ach-list">' + DAILY.board.map(function (b, i) { var cc = D.CHARACTERS.filter(function (x) { return x.id === b.char; })[0]; return '<div class="ach' + (b.me ? " is-done" : "") + '"><span class="ach-ic">' + (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1) + "</span><div><strong>" + esc(b.pseudo || "Écureuil") + (b.me ? " (toi)" : "") + "</strong><span>" + (cc ? esc(cc.name) + " · " : "") + fmtTime(b.time) + " · " + b.kills + " ennemis</span></div><span class=\"ach-gold\">" + Number(b.score).toLocaleString("fr-FR") + "</span></div>"; }).join("") + "</div>" : '<p class="game-small">Personne n\'a joué aujourd\'hui : sois le premier !</p>');
     },
     amis: function () { return amisHtml(); },
     changelog: function () {
@@ -9992,6 +10024,7 @@
     S.stats.kills += r.kills; S.stats.voltes = (S.stats.voltes || 0) + (r.voltes || 0); S.stats.fusions = (S.stats.fusions || 0) + (r.fusions || 0); S.stats.elites = (S.stats.elites || 0) + (r.elites || 0); r.committed = true;
     S.stats.runs++; S.stats.timePlayed = (S.stats.timePlayed || 0) + (r.time || 0); if (r.duo || duo()) S.stats.coopRuns = (S.stats.coopRuns || 0) + 1;
     if (CHAL) chalEnd();
+    if (r.chal === "daily") dailySubmit(sc);
     earnGold(gold);
     var rankGain = Math.floor((r.time / 10 + r.kills / 20 + r.bosses * 20 + r.level * 2) * (1 + 0.2 * pu("rang"))), ranksUp = 0;
     S.rankXp += rankGain;
