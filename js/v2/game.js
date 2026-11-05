@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.17.0";
+  var VERSION = "2.17.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -5261,7 +5261,7 @@
      l'écureuil, bâtiments pixel en 3 tons, chemins de terre, feu de camp, étang,
      lisière d'arbres, et l'heure réelle (jour, crépuscule, nuit avec lumières).
      ===================================================================== */
-  var CAMPW = 480, CAMPH = 320, CAMP_FIRE = { x: 240, y: 186 };
+  var CAMP_PAD = 180, CAMPW = 480, CAMPH = 320, CAMP_FIRE = { x: 240, y: 186 };
   var CAMP_AT = {   // porte de chaque lieu (là où l'écureuil se tient pour entrer)
     sentier: { x: 240, y: 58 }, chene: { x: 104, y: 112 }, arene: { x: 382, y: 108 },
     atelier: { x: 70, y: 214 }, forge: { x: 412, y: 216 }, terrier: { x: 136, y: 292 }, comptoir: { x: 344, y: 292 }
@@ -5380,12 +5380,21 @@
   var CAMP_COL = null;
   function campBackground() {
     if (CAMP_BG) return CAMP_BG;
-    var cv = document.createElement("canvas"); cv.width = CAMPW; cv.height = CAMPH;
-    var kctx = ctx, kW = W, kH = H; ctx = cv.getContext("2d"); W = CAMPW; H = CAMPH;
+    var PAD = CAMP_PAD, cv = document.createElement("canvas"); cv.width = CAMPW + 2 * PAD; cv.height = CAMPH + 2 * PAD;
+    var kctx = ctx, kW = W, kH = H; ctx = cv.getContext("2d"); W = CAMPW + 2 * PAD; H = CAMPH + 2 * PAD;
     try {
-      var cl = mapById("clairiere"), cm = { id: "camp", biomes: [cl.biomes[0]] };
-      drawGround(0, 0, cm);
-      var g = ctx;
+      var g = ctx, GR = mapById("clairiere").biomes[0].ground;
+      // sol : herbe unie, grandes taches douces et petites touffes, sans quadrillage
+      g.fillStyle = GR.base; g.fillRect(0, 0, W, H);
+      var dkc = mixHex(GR.base, "#000000", 0.1), lic = mixHex(GR.base, GR.hi, 0.35);
+      for (var bi = 0; bi < 150; bi++) { var hb = hash(bi * 7 + 3, 41); g.fillStyle = bi % 3 ? lic : dkc; g.globalAlpha = 0.35; pxEllipseC(g, hb % W, (hb >>> 8) % H, 8 + (hb >>> 16) % 16, 4 + (hb >>> 20) % 8); }
+      g.globalAlpha = 1;
+      for (var tf = 0; tf < 700; tf++) { var ht = hash(tf * 13 + 5, 77), tx0 = ht % W, ty0 = (ht >>> 9) % H; g.fillStyle = tf % 4 ? GR.tuft : GR.hi; g.fillRect(tx0, ty0, 1, 2); g.fillRect(tx0 + 2, ty0 + 1, 1, 1); if (tf % 6 === 0) g.fillRect(tx0 + 1, ty0 - 1, 1, 1); }
+      for (var fl = 0; fl < 70; fl++) { var hf = hash(fl * 17 + 9, 23); g.fillStyle = GR.flowers[hf % GR.flowers.length]; g.fillRect(hf % W, (hf >>> 9) % H, 1, 1); g.fillRect((hf % W) + 1, (hf >>> 9) % H, 1, 1); }
+      // lisière hors du camp : sous-bois plus sombre, arbres serrés
+      g.fillStyle = "rgba(20,48,24,.5)";
+      g.fillRect(0, 0, W, PAD - 4); g.fillRect(0, PAD + CAMPH + 4, W, PAD - 4); g.fillRect(0, 0, PAD - 4, H); g.fillRect(PAD + CAMPW + 4, 0, PAD - 4, H);
+      g.translate(PAD, PAD);
       // chemins de terre : du feu vers chaque porte, bords plus sombres et cailloux
       function path(ax, ay, bx, by, bend) {
         var mx = (ax + bx) / 2 + (by - ay) * bend, my = (ay + by) / 2 - (bx - ax) * bend;
@@ -5411,6 +5420,21 @@
       g.fillStyle = "#4f94a4"; pxEllipseC(g, P0.x - 4, P0.y - 3, P0.rx - 10, P0.ry - 6);
       g.fillStyle = "#2e5e6e"; for (var rx = -P0.rx + 6; rx < P0.rx - 6; rx += 2) g.fillRect(P0.x + rx, P0.y + Math.round(Math.sqrt(Math.max(0, 1 - rx * rx / (P0.rx * P0.rx))) * P0.ry) - 1, 2, 1);
       for (var rd = 0; rd < 7; rd++) { var rxx = P0.x + P0.rx - 4 + (rd % 3) * 2, ryy = P0.y - 4 + rd; g.fillStyle = "#6b7a3a"; g.fillRect(rxx, ryy - 7, 1, 7); g.fillStyle = "#8a5a3b"; g.fillRect(rxx, ryy - 9, 1, 2); }
+      // palissade de village autour du camp, ouverte devant le portique du sentier
+      function post(x, y) { g.fillStyle = "#2b1709"; g.fillRect(x - 2, y - 11, 5, 13); g.fillStyle = "#8a5a3b"; g.fillRect(x - 1, y - 10, 3, 11); g.fillStyle = "#b07a4a"; g.fillRect(x - 1, y - 10, 1, 11); g.fillStyle = "#2b1709"; g.fillRect(x - 1, y - 12, 3, 1); g.fillRect(x, y - 13, 1, 1); g.fillStyle = "#6b4430"; g.fillRect(x + 1, y - 10, 1, 11); }
+      function railH(x0, x1, y) { g.fillStyle = "#2b1709"; g.fillRect(x0, y - 7, x1 - x0, 3); g.fillRect(x0, y - 3, x1 - x0, 3); g.fillStyle = "#a06a3e"; g.fillRect(x0, y - 6, x1 - x0, 1); g.fillRect(x0, y - 2, x1 - x0, 1); }
+      var FT = 30, FB = CAMPH - 2, FL = 8, FR = CAMPW - 8, gate0 = CAMP_AT.sentier.x - 34, gate1 = CAMP_AT.sentier.x + 34, fx;
+      railH(FL, gate0, FT); railH(gate1, FR, FT); railH(FL, FR, FB);
+      for (fx = FL; fx <= gate0; fx += 8) post(fx, FT); for (fx = gate1; fx <= FR; fx += 8) post(fx, FT); for (fx = FL; fx <= FR; fx += 8) post(fx, FB);
+      for (var fy = FT + 8; fy < FB; fy += 9) { post(FL, fy); post(FR, fy); }
+      g.fillStyle = "#2b1709"; g.fillRect(FL - 1, FT, 3, FB - FT); g.fillRect(FR - 1, FT, 3, FB - FT); g.fillStyle = "#a06a3e"; g.fillRect(FL, FT, 1, FB - FT); g.fillRect(FR, FT, 1, FB - FT);
+      // forêt dense derrière la palissade
+      var S1 = campSprites(), fr = [], hq;
+      for (var ox = -PAD + 6; ox < CAMPW + PAD; ox += 20) { hq = hash(ox + 500, 5); [[-12, 0], [-30, 1], [-54, 2], [-86, 0], [-120, 1]].forEach(function (rw, ri) { fr.push({ x: ox + (hq >>> (ri * 3)) % 14, y: FT + rw[0] + (hq >>> (ri * 2 + 1)) % 8, v: (hq + ri) % 3 }); }); }
+      for (var ox2 = -PAD + 6; ox2 < CAMPW + PAD; ox2 += 20) { hq = hash(ox2 + 900, 9); [[22, 0], [44, 1], [70, 2], [100, 0], [130, 1]].forEach(function (rw, ri) { fr.push({ x: ox2 + (hq >>> (ri * 3)) % 14, y: CAMPH + rw[0] + (hq >>> (ri * 2 + 1)) % 8, v: (hq + ri) % 3 }); }); }
+      for (var oy = FT - 4; oy < CAMPH + 8; oy += 24) { hq = hash(oy + 77, 13); [[-14, 0], [-44, 1], [-80, 2]].forEach(function (rw, ri) { fr.push({ x: FL + rw[0] - (hq >>> ri) % 6, y: oy + 12, v: (hq + ri) % 3 }); fr.push({ x: FR - rw[0] + (hq >>> (ri + 2)) % 6, y: oy + 18, v: (hq + ri + 1) % 3 }); }); }
+      fr = fr.filter(function (q) { return !(q.y > FT - 6 && q.y < FB + 8 && q.x > FL - 4 && q.x < FR + 4); });
+      fr.filter(function (q) { return !(q.y < FT && Math.abs(q.x - CAMP_AT.sentier.x) < 40); }).sort(function (a, b) { return a.y - b.y; }).forEach(function (q) { blitAnchor(S1.trees[q.v], q.x, q.y); });
     } finally { ctx = kctx; W = kW; H = kH; }
     return (CAMP_BG = cv);
   }
@@ -5463,7 +5487,7 @@
   function drawCamp(now) {
     var t = now / 1000, S0 = campSprites(), bg = campBackground(), cx = Math.round(campCam.x), cy = Math.round(campCam.y), night = campNight();
     ctx.fillStyle = "#3f6b3a"; ctx.fillRect(0, 0, W, H);
-    ctx.drawImage(bg, -cx, -cy);
+    ctx.drawImage(bg, -cx - CAMP_PAD, -cy - CAMP_PAD);
     ctx.save(); ctx.translate(-cx, -cy);
     // reflets de l'étang
     var P0 = CAMP_POND;
