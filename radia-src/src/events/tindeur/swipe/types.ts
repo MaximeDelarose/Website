@@ -2,7 +2,7 @@
 
 export type HairStyle = 'short' | 'quiff' | 'buzz' | 'curly' | 'bald' | 'long' | 'bun' | 'slick' | 'messy' | 'afro' | 'receding' | 'side';
 export type Beard = 'none' | 'stubble' | 'full' | 'goatee' | 'mustache' | 'chin';
-export type Outfit = 'tee' | 'polo' | 'shirt' | 'hoodie' | 'suit' | 'tank' | 'sweater' | 'overalls' | 'apron' | 'blazer' | 'cardigan' | 'turtle';
+export type Outfit = 'tee' | 'polo' | 'shirt' | 'hoodie' | 'suit' | 'tank' | 'sweater' | 'overalls' | 'apron' | 'blazer' | 'cardigan' | 'turtle' | 'bare' | 'abs';
 export type Glasses = 'none' | 'round' | 'square' | 'sun' | 'sunHead';
 export type Acc = 'none' | 'cap' | 'beanie' | 'headphones' | 'headset' | 'earbud' | 'chefhat' | 'beret' | 'bandana' | 'tie' | 'bowtie' | 'scarf' | 'medal' | 'towel' | 'flower' | 'strawhat';
 export type Mood = 'smile' | 'grin' | 'smirk' | 'wink' | 'calm' | 'shy' | 'proud' | 'tongue' | 'surprised';

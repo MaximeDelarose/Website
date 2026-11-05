@@ -24,11 +24,13 @@ import { makeCanvas } from '../../game/art/kit';
 import { cleanText } from '../util';
 import { addFansNote } from './fansNote';
 import { flags } from './ui-state';
+import { chatView } from './chat/view';
+import { unreadTotal } from './chat/engine';
 
 let layer: HTMLElement | null = null;
 registerBusy(() => !!layer);
 
-type View = 'home' | 'camera';
+type View = 'home' | 'camera' | 'chat';
 const thumbCache = new Map<string, HTMLCanvasElement>();
 export function snapThumb(id: string, w = 220): HTMLCanvasElement | null {
   const rec = photoById(id); if (!rec) return null;
@@ -45,7 +47,7 @@ export function snapThumb(id: string, w = 220): HTMLCanvasElement | null {
 }
 const recFor = (cam: CamDraft): PhotoRec => ({ id: 'draft', eventId: 'snap', place: cam.place as PlaceId, title: cam.title, ts: 1_700_000_000_000, look: currentLook(), auguste: cam.aug, kids: [], pose: cam.pose, frame: cam.frame, filter: cam.filter });
 
-export function openSnap(view: View = 'home', opts: { pending?: Pending } = {}): void {
+export function openSnap(view: View = 'chat', opts: { pending?: Pending } = {}): void {
   if (layer) return;
   flags.open = true;
   void warmPhotos().catch(() => undefined);
@@ -57,10 +59,24 @@ export function openSnap(view: View = 'home', opts: { pending?: Pending } = {}):
   tick('pop2');
   let stopAnim: (() => void) | null = null;
 
-  const close = () => { stopAnim?.(); root.classList.add('out'); window.setTimeout(() => root.remove(), 240); layer = null; flags.open = false; persist(); emitPhone(); };
-  const go = (v: View, p?: Pending) => { stopAnim?.(); stopAnim = null; root.querySelectorAll('.snp-view').forEach((e) => e.remove()); if (v === 'home') homeView(); else cameraView(p); };
+  const close = () => { stopAnim?.(); chatOff?.(); chatOff = null; root.classList.add('out'); window.setTimeout(() => root.remove(), 240); layer = null; flags.open = false; persist(); emitPhone(); };
+  const go = (v: View, p?: Pending) => { stopAnim?.(); stopAnim = null; root.querySelectorAll('.snp-view').forEach((e) => e.remove()); if (v === 'home') homeView(); else if (v === 'chat') chatScreen(); else cameraView(p); };
 
-  // ================================================================ ACCUEIL
+  // ================================================================ CHAT (conversations, snaps rouges, flammes)
+  let chatOff: (() => void) | null = null;
+  /** Barre d'onglets du bas : Chat / Souvenirs. */
+  const tabs = (active: 'chat' | 'home'): HTMLElement => h('nav.snc-tabs',
+    h(`button.snc-tab${active === 'chat' ? '.on' : ''}`, { 'aria-label': 'Chat', on: { click: tap(() => { if (active !== 'chat') go('chat'); }, { sound: false }) } }, ico('comment', 24), h('span', 'Chat'), snapUnread() ? h('i.snc-dot', String(snapUnread())) : null),
+    h(`button.snc-tab${active === 'home' ? '.on' : ''}`, { 'aria-label': 'Souvenirs', on: { click: tap(() => { if (active !== 'home') go('home'); }, { sound: false }) } }, ico('camera', 24), h('span', 'Souvenirs')));
+  const snapUnread = (): number => unreadTotal(st.chat);
+  function chatScreen(): void {
+    chatOff?.();
+    const v = h('div.snp-view.snp-chat');
+    root.append(v);
+    chatOff = chatView({ root, toast, tabs, close }, v);
+  }
+
+  // ================================================================ ACCUEIL (souvenirs)
   function homeView(): void {
     const v = h('div.snp-view.snp-home');
     const head = h('div.snp-head',
@@ -99,7 +115,7 @@ export function openSnap(view: View = 'home', opts: { pending?: Pending } = {}):
     }
     body.append(h('p.snp-fine', 'Tes photos sont enregistrées dans « Photos souvenirs » du téléphone. Rien n’est publié hors du jeu.'));
     const fab = h('button.snp-fab', { 'aria-label': 'Prendre une photo', on: { click: tap(() => go('camera'), { sound: false }) } }, ico('camera', 28));
-    v.append(head, bar, body, fab);
+    v.append(head, bar, body, fab, tabs('home'));
     root.append(v);
   }
 
@@ -408,7 +424,7 @@ export function openSnap(view: View = 'home', opts: { pending?: Pending } = {}):
     s.viewed = true; persist();
   }
 
-  if (view === 'camera') cameraView(opts.pending); else homeView();
+  if (view === 'camera') cameraView(opts.pending); else if (view === 'home') homeView(); else chatScreen();
 }
 
 /** Export PNG LOCAL (action volontaire) : partage système avec fichier si possible, sinon téléchargement. */

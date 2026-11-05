@@ -39,7 +39,7 @@ function torso(c: G, l: Look): void {
   c.save(); c.globalAlpha = 0.25; c.beginPath(); c.ellipse(150, 214, 30, 14, 0, 0, 7); c.fillStyle = shade(l.skin, -0.45); c.fill(); c.restore();
   const t2 = l.top2 ?? shade(l.top, 0.3);
   const o = l.outfit;
-  if (o === 'tank') { body(); fp(c, l.skin, 3.2); }
+  if (o === 'tank' || o === 'bare' || o === 'abs') { body(); fp(c, l.skin, 3.2); }
   else if (o === 'overalls' || o === 'apron' || o === 'cardigan' || o === 'blazer' || o === 'suit') { body(); fp(c, o === 'overalls' || o === 'apron' ? t2 : l.top, 3.2); }
   else { body(); fp(c, l.top, 3.2); }
   c.save(); body(); c.clip();
@@ -92,6 +92,18 @@ function torso(c: G, l: Look): void {
       rectR(c, 126, 322, 48, 34, shade(l.top, -0.08), 2.5, 6);
       c.beginPath(); c.ellipse(150, 252, 20, 12, 0, 0, Math.PI); fp(c, shade(l.skin, -0.1), 2);
       break;
+    case 'bare': case 'abs': {
+      // torse nu (humour, non explicite) : clavicules, contours des pectoraux sans détail, ombre douce ; « abs » : tablette de chocolat dessinée
+      const line = shade(l.skin, -0.32);
+      c.lineWidth = 2.4; c.strokeStyle = line; c.lineCap = 'round';
+      for (const s of [-1, 1]) { c.beginPath(); c.moveTo(150 + s * 10, 254); c.quadraticCurveTo(150 + s * 42, 246, 150 + s * 84, 262); c.stroke(); }
+      for (const s of [-1, 1]) { c.beginPath(); c.arc(150 + s * 28, 296, 27, 0.2 + (s > 0 ? 0 : 0.0), Math.PI - 0.2); c.stroke(); }
+      c.save(); c.globalAlpha = 0.14; c.beginPath(); c.ellipse(150, 330, 80, 70, 0, 0, 7); c.fillStyle = shade(l.skin, -0.5); c.fill(); c.restore();
+      if (o === 'abs') {
+        c.beginPath(); c.moveTo(150, 318); c.lineTo(150, 410); c.stroke();
+        for (const y of [336, 362, 388]) for (const s of [-1, 1]) { c.beginPath(); c.moveTo(150 + s * 4, y); c.quadraticCurveTo(150 + s * 26, y - 6, 150 + s * 36, y + 2); c.stroke(); }
+      }
+      break; }
     case 'tank': {
       for (const s of [-1, 1]) { c.beginPath(); c.moveTo(150 + s * 24, 250); c.lineTo(150 + s * 42, 250); c.lineTo(150 + s * 66, 410); c.lineTo(150 + s * 26, 410); c.closePath(); fp(c, l.top, 3); }
       c.beginPath(); c.moveTo(106, 300); c.lineTo(194, 300); c.lineTo(198, 410); c.lineTo(102, 410); c.closePath(); fp(c, l.top, 3);
