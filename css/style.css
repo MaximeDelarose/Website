@@ -3131,3 +3131,8 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .fr-btns { display: flex; gap: 6px; }
 .fr-code { letter-spacing: .12em; font-size: 1.1em; }
 .fr-msg { color: #8a5a1a; }
+
+.game-head-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.game-head-btns [hidden] { display: none; }
+.install-help { margin: 0 0 12px; padding: 10px 12px; background: var(--card, #fdf3de); color: var(--ink, #2b1709); box-shadow: 0 0 0 2px var(--line); font-size: .95em; line-height: 1.45; }
+.install-help[hidden] { display: none; }

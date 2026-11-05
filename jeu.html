@@ -39,6 +39,19 @@
     try { window.__isApp = !!(navigator.standalone || (window.matchMedia && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: minimal-ui)").matches) && !document.fullscreenElement)); } catch (e) { window.__isApp = false; }
     window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); window.__pwaPrompt = e; });
     window.addEventListener("appinstalled", function () { window.__pwaPrompt = null; });
+    window.addEventListener("DOMContentLoaded", function () {
+      var btn = document.querySelector("[data-game-install]"), help = document.querySelector("[data-install-help]");
+      if (!btn || window.__isApp) return;
+      btn.hidden = false;
+      window.addEventListener("appinstalled", function () { btn.hidden = true; if (help) help.hidden = true; });
+      btn.addEventListener("click", function () {
+        var e = window.__pwaPrompt;
+        if (e) { e.prompt(); e.userChoice.then(function (c) { if (c && c.outcome === "accepted") btn.hidden = true; window.__pwaPrompt = null; }); return; }
+        var ios = /iPhone|iPad|iPod/.test(navigator.userAgent), safari = /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|Chrome|Edg/.test(navigator.userAgent);
+        help.innerHTML = "<b>Installer le jeu sur ton écran d'accueil</b><br>" + (ios ? (safari ? "Touche le bouton Partager <span aria-hidden='true'>⎋</span> en bas de Safari, puis « Sur l'écran d'accueil »." : "Ouvre cette page dans Safari, touche Partager puis « Sur l'écran d'accueil ».") : "Ouvre le menu du navigateur (⋮ ou ⋯) puis choisis « Installer l'application » ou « Ajouter à l'écran d'accueil ». Si tu ne vois rien, utilise Chrome ou Edge.") + "<br><small>Connexion, sauvegardes et multi restent les mêmes.</small>";
+        help.hidden = !help.hidden;
+      });
+    });
     if ("serviceWorker" in navigator) window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
   </script>
 </head>
@@ -78,8 +91,12 @@
           <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · <a href="jeu-classique.html">version 1 (Versus)</a></span>
           <h1>Écureuil Survivor <small class="beta-tag">2.14.2</small></h1>
         </div>
-        <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
+        <div class="game-head-btns">
+          <button class="btn btn-ghost btn-small" type="button" data-game-install hidden>⬇ Télécharger</button>
+          <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
+        </div>
       </div>
+      <div class="install-help" data-install-help hidden></div>
 
       <div class="game-stage" data-game>
         <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Écureuil Survivor"></canvas>
@@ -153,10 +170,10 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v237a";
+      var FALLBACK = "v237b";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
-        if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261109fr1" + b);
+        if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261109fr2" + b);
         ["js/v2/game-data.js", "js/v2/game.js"].forEach(function (src) {
           var s = document.createElement("script"); s.src = src + "?v=" + b; s.async = false; document.body.appendChild(s);
         });
