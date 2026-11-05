@@ -18,6 +18,25 @@ Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commenc
 3. ✅ **Énergie** — plafond ABSOLU de 100 (`addEnergy` renvoie le gain réel) ; ancien surplus (ex. 644) converti en **réserve** (`economy.reserve`, utilisée seulement à 0) : aucune sauvegarde ne perd rien ; recharge offerte 38→30 et non consommée si c'est plein ; achats « remplir à 100 » refusés sans dépenser quand c'est plein. Tests : `economy` 17, `energy-cap-e2e` 11/11.
 4. ✅/⚠️ **Vraies notifications iPhone** — côté application + serveur FAITS et déployés : service worker (push, clic, cache des pensées), `core/push.ts`, Réglages « Petite pensée du jour ♡ » (consentement après un toucher, « Activées » seulement si le serveur a confirmé, désactiver, tester maintenant), carte + « Petites pensées ♡ ». Serveur (projet Supabase du site) : tables verrouillées, fonction Edge `radia-push` (chiffrement RFC 8291/VAPID testé par aller-retour), `pg_cron` horaire, 56 messages, 1/jour/appareil, 9 h locale, jamais la nuit. Tests : `push-webpush` 9, `push-logic` 12, `push-e2e` 25/25 (API simulées). ⚠️ À VÉRIFIER SUR L'IPHONE RÉEL : app installée sur l'écran d'accueil (iOS ≥ 16.4) → Réglages → Activer → autoriser → « Tester maintenant » : la notification doit arriver en quelques secondes. Non vérifiable ici : la réception réelle par Apple.
 
+## SÉRIE « REFONTE STRUCTURELLE DU PERSONNAGE DE RADIA » (dernière demande)
+- POINT DE RESTAURATION : branche `backup/pre-refonte-personnage` (commit 48ca189, version en ligne mw3o7b25). Aucune donnée de sauvegarde modifiée
+  (le dessin seul change) → aucune migration nécessaire ; revenir en arrière = redéployer cette branche.
+- DIAGNOSTIC (mesuré) : l'hypothèse « illustration peinte + personnage assemblé en code » est CONFIRMÉE, avec une cause chiffrée : deux échelles de tête
+  choisies selon la coiffure / la couronne (mode « visage » 69,8 u vs mode « tête » 61,4 u de large = +13,6 %, et +15 % par rapport à l'illustration
+  de référence 60,6 u). Couronnes dessinées calées sur le crâne DESSINÉ (≈ 40 u plus bas que le crâne peint). Pose du corps (main sur la hanche +
+  inclinaison en deux moitiés) différente de celle de l'illustration (bras le long du corps).
+- ✅ GABARIT UNIQUE `src/game/art/world/rig.ts` : proportions et ancres centralisées (échelle de tête 0,807 pivot au menton, sommet du crâne, pose de
+  référence, bras, mains). ✅ UNE échelle de tête : le visage est identique avec toute couronne / coiffure / accessoire / tenue.
+- ✅ CRÂNE complet : dôme reconstruit par ajustement d'ellipse sur le vrai contour (sommet y = -6 px, erreur 0,09 px²). ✅ Couronne dorée = calque
+  peint séparé ; TOUTES les couronnes ancrées sur le sommet du crâne (`skullTopY` / `crownDy`). La couronne ne change plus le mode de la tête.
+- ✅ POSE de l'illustration (bras le long du corps) ; inclinaison en deux moitiés SUPPRIMÉE (plus de couture, moins de coût). Bras 29→18,5, mains
+  recalées sur la mesure de l'illustration.
+- ✅ PLANCHE `?planche` (vrais composants, même échelle, repères du gabarit, Auguste en référence) + `scripts/board-shots.mjs`.
+- ✅ TESTS : `tests/rig.test.ts`, `tests/painted-look.test.ts`, `scripts/character-visual-e2e.mjs` (33 contrôles : le visage ne change pas avec la
+  couronne / coiffure / accessoire / tenue, écarts ≤ 3,7/255 ; temps de dessin ≈ 1 ms en émulé).
+- 🟡 RESTE : coiffures dessinées plus plates que la tête peinte ; col de la tenue noire dessinée ≠ illustration ; vêtements / corps encore en vectoriel →
+  cahier des charges `docs/ASSETS_PERSONNAGES.md` (5 tenues prioritaires). ⚠️ À valider sur iPhone réel. La DA n'est PAS déclarée validée.
+
 ## SÉRIE « DA COMMUNE RADIA × AUGUSTE » (dernière demande — refonte artistique)
 - DIAGNOSTIC : sur l'iPhone (avec le lien secret), Auguste est une ILLUSTRATION PEINTE du pack chiffré (`char-auguste`) alors que Radia était
   dessinée en vectoriel par le dressing : deux techniques → « deux univers ». Les illustrations peintes de Radia existaient (`char-radia`,

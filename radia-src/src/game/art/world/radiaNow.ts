@@ -11,8 +11,9 @@ import { getFaceCustom } from '../characters';
 import { faceKey, isDefaultFace } from '../../../data/world/face';
 import { hasPhotos as hasPhotosP, photoUrl as photoUrlP } from '../../../core/photos';
 import { makeCanvas } from '../kit';
+import { RIG } from './rig';
 import { paintedLookId as paintedLookIdPure, paintedHeadKind, type PaintedId } from '../../world/paintedLook';
-import { setPaintedHeadProvider, paintedHeadEpoch, type PaintedHead } from './avatar';
+import { setPaintedHeadProvider, paintedHeadEpoch, type PaintedHead, type PaintedLayer } from './avatar';
 import { accGroup } from '../../../data/world/ids';
 
 /** Signature courte du look : sert de clé de cache / de texture. */
@@ -33,18 +34,19 @@ export const paintedLookId = (l: Look): PaintedId | null => paintedLookIdPure(l,
 /** Illustration prête pour ce look (null : dessin vectoriel). */
 function paintedFor(l: Look): HTMLImageElement | null { const id = paintedLookId(l); return id ? painted[id] ?? null : null; }
 // ---- tête peinte sur le corps dessiné (toutes les tenues) : couches tirées de l'illustration (pack chiffré)
-const heads: Partial<Record<'headp-radia' | 'headp-radia-nc' | 'facep-radia', HTMLImageElement>> = {};
-// origine de chaque couche dans le repère de l'illustration sans couronne (px) ; la couronne ajoute 49 px au-dessus
-const HEAD_GEOM = { 'headp-radia': { x0: 0, y0: -49 }, 'headp-radia-nc': { x0: 0, y0: -7 }, 'facep-radia': { x0: 100, y0: 20 } } as const;
+const heads: Partial<Record<'headp-radia-nc' | 'facep-radia' | 'crownp-gold', HTMLImageElement>> = {};
+// origine de chaque calque dans le repère de l'illustration SANS couronne (px) — voir scripts/painted-head/build.py
+//  · tête : image décalée de PAD = 26 px vers le haut (dôme du crâne reconstruit) ; visage : recadrage (100 ; 20) ; couronne : détourée du haut de l'illustration avec couronne
+const HEAD_GEOM = { 'headp-radia-nc': { x0: 0, y0: -26 }, 'facep-radia': { x0: 100, y0: 20 }, 'crownp-gold': { x0: 127, y0: -45 } } as const;
+const layer = (id: keyof typeof HEAD_GEOM): PaintedLayer | undefined => { const im = heads[id]; return im ? { im, x0: HEAD_GEOM[id].x0, y0: HEAD_GEOM[id].y0, w: im.width, h: im.height } : undefined; };
 function headFor(l: Look): PaintedHead | null {
   const k = paintedHeadKind(l, isDefaultFace(getFaceCustom()), accGroup);
   if (!k) return null;
-  const id = k === 'head-crown' ? 'headp-radia' : k === 'head' ? 'headp-radia-nc' : 'facep-radia';
-  const im = heads[id] ?? (id !== 'facep-radia' ? heads['facep-radia'] : undefined); // repli : visage seul si la tête complète manque
-  if (!im) return null;
-  const real = heads[id] ? id : 'facep-radia';
-  const g = HEAD_GEOM[real];
-  return { kind: real === 'facep-radia' ? 'face' : 'head', im, x0: g.x0, y0: g.y0, w: im.width, h: im.height, crownBaked: real === 'headp-radia' };
+  // tête complète si prête, sinon visage seul (repli) ; la couronne dorée peinte est un calque séparé, indépendant de la coiffure
+  const full = k === 'head' ? layer('headp-radia-nc') : undefined;
+  const head = full ?? layer('facep-radia');
+  if (!head) return null;
+  return { kind: full ? 'head' : 'face', head, crown: l.crown === 'cr-gold' ? layer('crownp-gold') : undefined };
 }
 setPaintedHeadProvider(headFor);
 const PAINT_REF_H = 1018; // hauteur de l'illustration d'Auguste : même échelle pour les deux (Radia reste un peu plus petite, comme sur la référence)
@@ -52,7 +54,7 @@ const PAINT_REF_H = 1018; // hauteur de l'illustration d'Auguste : même échell
 export function warmRadia(): Promise<void> {
   if (!hasPhotosP()) return Promise.resolve();
   const ids = ['char-radia', 'char-radia-nc', 'bust-radia', 'bust-radia-nc'] as const;
-  const hids = ['headp-radia', 'headp-radia-nc', 'facep-radia'] as const;
+  const hids = ['headp-radia-nc', 'facep-radia', 'crownp-gold'] as const;
   const load = (n: string) => photoUrlP(n).then((u) => { if (!u) return null; const im = new Image(); im.src = u; return im.decode().then(() => im).catch(() => null); });
   return Promise.all([
     ...ids.map((n) => painted[n] ? undefined : load(n).then((im) => { if (im) painted[n] = im; })),
@@ -65,7 +67,9 @@ function drawPainted(ctx: CanvasRenderingContext2D, im: HTMLImageElement, w: num
   const s = (600 * 0.97 * k) / PAINT_REF_H;
   const dw = im.width * s, dh = im.height * s;
   ctx.save(); ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(im, (w - dw) / 2, h - 6 * k - dh, dw, dh);
+  // le visage de l'illustration est 3,5 px à droite du centre de l'image : on le recale sur l'axe du corps (même axe que la tête posée sur le corps dessiné)
+  const faceShift = (RIG.painted.eyeX - im.width / 2) * s;
+  ctx.drawImage(im, (w - dw) / 2 - faceShift, h - 6 * k - dh, dw, dh);
   ctx.restore();
 }
 

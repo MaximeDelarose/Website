@@ -211,7 +211,7 @@ async function boot(): Promise<void> {
   startGiftBubbles();
   startDaily();
   void warmAuguste();
-  preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'headp-radia', 'headp-radia-nc', 'facep-radia', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste', 'head-new']);
+  preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'headp-radia-nc', 'facep-radia', 'crownp-gold', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste', 'head-new']);
   progress(0.3);
 
   // Écriture immédiate quand Safari passe en arrière-plan ou se ferme.
@@ -276,6 +276,9 @@ boot().catch((e) => {
 });
 
 startUpdateWatch();
+
+// Planche de validation visuelle des personnages : ?planche (vrais composants du jeu, même échelle, repères du gabarit)
+if (new URLSearchParams(location.search).has('planche')) { window.setTimeout(() => { void import('./ui/screens/board').then((m) => m.openBoard()); }, 1800); }
 
 // Accès debug en développement : window.RADIA
 if (new URLSearchParams(location.search).has('debug')) { void import('./casino'); void import('./wheel'); }
