@@ -23,11 +23,12 @@ async function open(o = {}) {
     if (!localStorage.getItem('radia-save-v1')) localStorage.setItem('radia-save-v1', s);
     try { localStorage.setItem('radia-photos-hint', '1'); localStorage.setItem('radia-standalone-welcome', '1'); } catch { /* ignoré */ } // dialogues propres à l'application installée (testés ailleurs) : ici, installation « complète »
     if (standalone) Object.defineProperty(navigator, 'standalone', { get: () => true });
-    window.__perm = perm0; window.__asked = 0; window.__askedInClickTask = null; window.__unsub = 0;
+    window.__perm = localStorage.getItem('__perm') ?? perm0; window.__asked = 0; // iOS conserve la réponse d'une session à l'autre : le simulateur aussi
+     window.__askedInClickTask = null; window.__unsub = 0;
     // la demande d'autorisation doit partir DANS le tour d'événement du toucher (condition d'iOS) : on le mesure
     window.__inClick = false; document.addEventListener('click', () => { window.__inClick = true; setTimeout(() => { window.__inClick = false; }, 0); }, true);
     Object.defineProperty(Notification, 'permission', { get: () => window.__perm, configurable: true });
-    Notification.requestPermission = async () => { window.__asked++; window.__askedInClickTask = window.__inClick; window.__perm = answer; return window.__perm; };
+    Notification.requestPermission = async () => { window.__asked++; window.__askedInClickTask = window.__inClick; window.__perm = answer; try { localStorage.setItem('__perm', answer); } catch { /* ignoré */ } return window.__perm; };
     const mk = () => ({ endpoint: 'https://web.push.apple.com/QWxhZGRpbjpvcGVuIHNlc2FtZQ-demo-endpoint-123456', unsubscribe: async () => { window.__unsub++; window.__sub = null; return true; }, getKey: (k) => { const b64 = k === 'p256dh' ? p256 : auth; const t = b64.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (b64.length % 4)) % 4); return Uint8Array.from(atob(t), (c) => c.charCodeAt(0)).buffer; } });
     window.__sub = hasSub ? mk() : null;
     PushManager.prototype.getSubscription = async function () { return window.__sub; };
