@@ -26,6 +26,8 @@ import { sizedCanvas } from '../careerGames/shared';
 import { ACTIVITY, outfitAdvice, stateLabel, tierPercent, tierSteps } from './logic';
 import { runSession } from './session';
 import { showResult } from './result';
+import { waitLabel } from '../hub/state';
+import { augusteSays } from '../../../components/augusteSays';
 
 const SHORT: Record<CareerId, string> = { photo: 'Modèle photo', model: 'Mannequin', actress: 'Actrice', singer: 'Chanteuse' };
 
@@ -39,14 +41,58 @@ export function openCareer(): Promise<void> {
     function build() {
       if (!alive) return;
       clearCareerFx();
+      const salaryBox = h('section.car-salary');
       const top = h('section.car-top');
       const stage = h('section.car-stage');
       const tabs = h('nav.car-tabs', { role: 'tablist', 'aria-label': 'Carrières' });
       const path = h('section.car-path');
       const links = h('div.car-links');
-      const body = h('div.screen-body.car-body', top, stage, h('p.car-free', 'Choisis ta voie quand tu veux : rien n\'est perdu ♡'), tabs, path, links);
+      const body = h('div.screen-body.car-body', salaryBox, top, stage, h('p.car-free', 'Choisis ta voie quand tu veux : rien n\'est perdu ♡'), tabs, path, links);
       const screen = h('div.screen.bg-soft.car-screen', ui.header('La carrière de Radia ♡', leave), body);
       ui.showScreen(screen);
+
+      // ---------------------------------------------------------- salaire : récupération immédiate, sans défiler
+      let claiming = false;
+      /** Verse le salaire RÉEL (montant calculé par le jeu) ; refuse un second versement (délai de 4 h dans claimSalary). */
+      function claim(from: HTMLElement) {
+        if (claiming) return;
+        claiming = true;
+        const got = claimSalary(world(), Date.now());
+        if (!got) { claiming = false; renderTop(); return; }
+        events.emit('economy', undefined);
+        stat('world.career.salary');
+        save.save();
+        audio.play('reward'); haptic('reward');
+        const r = from.getBoundingClientRect();
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        void import('../../../fx/sparkle').then((m) => m.sparkleBurst(cx, cy, { rarity: 'rare' }));
+        if (!reducedFx()) {
+          // pièces qui s'envolent vers le haut (là où se trouvent les compteurs), puis petit « pop »
+          for (let i = 0; i < 9; i++) {
+            const c = h('span.car-coin', '🪙');
+            c.style.cssText = `left:${cx}px;top:${cy}px;--dx:${Math.round((i - 4) * 14)}px;--dy:${-Math.round(180 + (i % 3) * 40)}px;animation-delay:${i * 40}ms`;
+            ui.root.append(c);
+            window.setTimeout(() => c.remove(), 1100);
+          }
+        }
+        salaryBox.classList.add('claimed');
+        ui.toast({ title: `Salaire : +${fmt(got)} pièces`, sub: 'Tout ce que tu construis, tu le construis toi-même ♡', icon: 'star', ms: 3000 });
+        augusteSays('Bsahték, tu l\'as mérité !', 3600);
+        claiming = false;
+        renderTop(); // le bandeau et le badge disparaissent tout de suite
+      }
+      function renderSalaryBox(sal: ReturnType<typeof salaryInfo>) {
+        salaryBox.classList.remove('claimed');
+        salaryBox.classList.toggle('ready', sal.ready);
+        if (sal.ready) {
+          const btn = h('button.btn.gold.car-sal-big', `Récupérer mes ${fmt(sal.amount)} pièces`);
+          btn.addEventListener('click', tap(() => claim(btn), { sound: false }));
+          salaryBox.replaceChildren(h('b.car-sal-title', 'Ton salaire est prêt ♡'), h('p', `Tu as gagné ${fmt(sal.amount)} pièces grâce à ton travail !`), btn);
+        } else {
+          // le salaire revient avec le temps : on affiche le vrai délai, rien d'autre
+          salaryBox.replaceChildren(h('small.car-sal-next', `Prochain salaire dans ${waitLabel(sal.nextInMs)}`));
+        }
+      }
 
       // ---------------------------------------------------------- en-tête : portrait, palier, fans, salaire
       function renderTop() {
@@ -60,19 +106,8 @@ export function openCareer(): Promise<void> {
         const mins = Math.ceil(sal.nextInMs / 60_000);
         const salBtn = h('button.btn.gold.small.car-sal-btn', sal.ready ? 'Toucher' : (mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60}` : `${mins} min`));
         if (!sal.ready) salBtn.setAttribute('disabled', '');
-        salBtn.addEventListener('click', tap(() => {
-          const got = claimSalary(world(), Date.now());
-          if (!got) return;
-          events.emit('economy', undefined);
-          stat('world.career.salary');
-          save.save();
-          audio.play('reward'); haptic('reward');
-          const r = salBtn.getBoundingClientRect();
-          void import('../../../fx/sparkle').then((m) => m.sparkleBurst(r.left + r.width / 2, r.top + r.height / 2, { rarity: 'rare' }));
-          ui.toast({ title: `Salaire : +${fmt(got)} pièces`, sub: 'Tout ce que tu construis, tu le construis toi-même ♡', icon: 'star', ms: 3000 });
-          reactAuguste('career', 1, true);
-          renderTop();
-        }, { sound: false }));
+        salBtn.addEventListener('click', tap(() => claim(salBtn), { sound: false }));
+        renderSalaryBox(sal);
         const fansEl = h('b', fmt(w.fans));
         const chips = ov.tier ? rewardChips(ov.tier.reward).slice(0, 3) : [];
         top.replaceChildren(
@@ -82,7 +117,8 @@ export function openCareer(): Promise<void> {
             h('b.car-job', def.name),
             h('span.car-lvl', lvl >= MAX_LEVEL ? 'Palier maximum ♡' : `Palier ${lvl} sur ${MAX_LEVEL}${ov.tier ? ' · ' + ov.tier.title : ''}`),
             h('span.car-fans', icon('heart', 16), fansEl, ' fans')),
-          h('div.car-sal', h('small', sal.ready ? `${fmt(sal.amount)} pièces` : `+${fmt(sal.amount)} à venir`), salBtn),
+          // salaire prêt : le grand bouton du bandeau suffit (pas de doublon) ; sinon, la petite pastille « à venir »
+          ...(sal.ready ? [] : [h('div.car-sal', h('small', `+${fmt(sal.amount)} à venir`), salBtn)]),
           h('div.car-next', h('small', 'Prochaine récompense'), h('div.rc-row.small', ...(chips.length ? chips : [h('span.rc', 'Tout est débloqué ♡')]))));
       }
 
@@ -193,7 +229,8 @@ export function openCareer(): Promise<void> {
 
       function renderAll(animate: boolean) { renderTop(); renderStage(animate); renderTabs(); renderPath(); renderLinks(); }
       renderAll(false);
-      if (firstTime('tip.career.intro')) ui.toast({ title: 'Quatre carrières', sub: 'Chaque séance est un petit jeu : plus tu progresses, plus c\'est difficile… et plus tu as de fans.', icon: 'sparkle', ms: 3200 });
+      // le conseil d'accueil ne doit jamais masquer « Ton salaire est prêt » : il attend la prochaine visite (non consommé)
+      if (!salaryInfo(world(), Date.now()).ready && firstTime('tip.career.intro')) ui.toast({ title: 'Quatre carrières', sub: 'Chaque séance est un petit jeu : plus tu progresses, plus c\'est difficile… et plus tu as de fans.', icon: 'sparkle', ms: 3200 });
       reactAuguste('career', 0.25);
     }
 

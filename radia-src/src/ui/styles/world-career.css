@@ -341,3 +341,17 @@
   .car-bar i, .car-line i { transition: none; }
 }
 @media (max-height: 700px) { .car-info { gap: 6px; } .car-go { min-height: 56px; } }
+
+/* Salaire : bandeau doré en HAUT de l'écran Carrière quand il est prêt (récupération immédiate), simple ligne sinon */
+.car-salary { display: none; }
+.car-salary.ready { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 20px; text-align: center; background: linear-gradient(180deg, #fff3c9, #ffe08a); box-shadow: 0 0 0 2px #f0c35a, 0 6px 16px rgba(181, 134, 44, 0.3); animation: carSalIn 0.35s var(--ease-pop); }
+.car-salary:not(.ready) { display: block; text-align: center; }
+.car-sal-title { font-size: 18px; color: var(--choco); }
+.car-salary p { margin: 0; font-size: 14px; color: var(--choco); }
+.car-sal-big { width: 100%; min-height: 52px; font-size: 17px; }
+.car-sal-next { color: var(--choco-soft); font-size: 12.5px; }
+.car-salary.claimed { animation: carSalPop 0.3s var(--ease-pop); }
+.car-coin { position: fixed; z-index: 700; font-size: 22px; pointer-events: none; transform: translate(-50%, -50%); animation: carCoinFly 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+@keyframes carCoinFly { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } 12% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1); } }
+@keyframes carSalIn { from { opacity: 0; transform: translateY(-8px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes carSalPop { 50% { transform: scale(1.04); } }

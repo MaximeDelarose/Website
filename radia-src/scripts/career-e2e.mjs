@@ -113,7 +113,7 @@ async function run(H) {
 
   // ---------- salaire (+ dialogue d'Auguste éventuel)
   const coins0 = await page.evaluate(() => window.RADIA.save.data.world.res.coins);
-  await page.locator('.car-sal-btn:not([disabled])').first().click().catch(() => {}); await sleep(900); await dismissAll();
+  await page.locator('.car-sal-big, .car-sal-btn:not([disabled])').first().click().catch(() => {}); await sleep(900); await dismissAll();
   const coins1 = await page.evaluate(() => window.RADIA.save.data.world.res.coins);
   note(coins1 > coins0, `[${tag}] salaire touché (+${coins1 - coins0} pièces)`);
   await check('après salaire + fermeture du dialogue', { wait: 3200 });

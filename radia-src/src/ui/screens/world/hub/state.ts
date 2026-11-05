@@ -11,22 +11,25 @@ import { FLOWERS, BOUQUET_MIN } from '../../../../data/world/garden';
 import { CHOCS, BOX_SIZE } from '../../../../data/world/chocolate';
 import { CAT_ITEMS } from '../../../../data/world/family';
 import { CAT_ITEM_IDS } from '../../../../data/world/ids';
-import { CAREERS } from '../../../../data/world/careers';
 import { isReady, remainingMs } from '../../../../game/world/garden';
 import { salaryInfo } from '../../../../game/world/careers';
+import { CAREERS } from '../../../../data/world/careers';
 import { kidBondLevel } from '../../../../game/world/family';
 import { KID_BOND_MAX } from '../../../../data/world/family';
 import { KID_IDS } from '../../../../data/world/ids';
 
 export type HubId = 'castle' | 'dressing' | 'garden' | 'choc' | 'family' | 'cat' | 'career' | 'fans';
-export type HubBadge = 'new' | 'quest' | 'reward' | 'gift';
+export type HubBadge = 'new' | 'quest' | 'reward' | 'gift' | 'salary';
 export interface HubCard { title: string; sub: string; badge?: HubBadge; hint?: string }
 export type HubStatus = Record<HubId, HubCard>;
 
 /** Clé (World.extra) : nombre de pièces du dressing déjà « vues » (préfixe hub.). */
 export const DRESS_SEEN_KEY = 'hub.dressSeen';
 
-export const BADGE_LABEL: Record<HubBadge, string> = { new: 'Nouveau', quest: 'À faire', reward: 'Récompense', gift: 'Cadeau' };
+export const BADGE_LABEL: Record<HubBadge, string> = { new: 'Nouveau', quest: 'À faire', reward: 'Récompense', gift: 'Cadeau', salary: 'Salaire prêt !' };
+
+/** « 2 h 10 » / « 35 min » : délai réel avant le prochain salaire. */
+export const waitLabel = (ms: number): string => { const m = Math.max(1, Math.ceil(ms / 60_000)); return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`; };
 
 const nf = (n: number): string => Math.floor(Math.max(0, n)).toLocaleString('fr-FR');
 
@@ -178,10 +181,10 @@ function careerCard(w: World, now: number): HubCard {
   if (!cur) return { title, sub: 'Choisis ta voie', badge: 'new', hint: 'Photo, mannequinat, cinéma ou chant' };
   // copie légère : salaryInfo crée des entrées de progression vides, la sauvegarde ne doit pas bouger
   const sal = salaryInfo({ ...w, careers: { ...w.careers, progress: { ...w.careers.progress } } }, now);
-  if (sal.ready) return { title, sub: 'Salaire à toucher', badge: 'reward', hint: `${nf(sal.amount)} pièces t'attendent` };
+  if (sal.ready) return { title, sub: 'Salaire à toucher', badge: 'salary', hint: `${nf(sal.amount)} pièces t'attendent` };
+  // le salaire revient avec le TEMPS (pas après une mission) : on l'indique tel quel, sans faux délai
   const level = Math.max(0, Math.floor(w.careers.progress[cur]?.level ?? 0));
-  const goal = CAREERS[cur].tiers[level]?.goal;
-  return { title, sub: SESSION_NEXT[cur], hint: goal };
+  return { title, sub: `Prochain salaire dans ${waitLabel(sal.nextInMs)}`, hint: `${SESSION_NEXT[cur]}${CAREERS[cur].tiers[level]?.goal ? ' · ' + CAREERS[cur].tiers[level].goal : ''}` };
 }
 
 // ------------------------------------------------------------------ fans

@@ -47,11 +47,12 @@ const CASTLE_OPEN = async (): Promise<void> => (await mod(import('./castle'))).o
 
 const DESTS: Dest[] = [
   { id: 'dressing', tone: 'lavande', open: async () => { await (await mod(import('./dressing'))).openDressing(); markDressingSeen(world()); save.save(); } },
+  // la carrière juste après le dressing : visible sans défiler (le salaire s'y récupère)
+  { id: 'career', tone: 'gold', open: async () => (await mod(import('./career'))).openCareer() },
   { id: 'garden', tone: 'sage', open: async () => (await mod(import('./garden'))).openGarden() },
   { id: 'choc', tone: 'choc', open: async () => (await mod(import('./chocolaterie'))).openChocolaterie() },
   { id: 'family', tone: 'peach', open: async () => (await mod(import('./family'))).openFamily() },
   { id: 'cat', tone: 'cream', open: async () => (await mod(import('./cat'))).openCat() },
-  { id: 'career', tone: 'gold', open: async () => (await mod(import('./career'))).openCareer() },
   { id: 'fans', tone: 'violet', wide: true, open: async () => (await mod(import('./fans'))).openFans() },
 ];
 
