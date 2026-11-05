@@ -120,7 +120,9 @@ function crop(kind: 'face' | 'bust', expr: Expr, outW: number, blink: boolean): 
   let c = crops.get(key);
   if (c) return c;
   // zones en coordonnées logiques de l'avatar (boîte 240 × 600)
-  const r = kind === 'face' ? { x: 52, y: 26, w: 136, h: 136 } : { x: 14, y: 22, w: 212, h: 300 };
+  // cadrages calés sur le gabarit : la tête est remontée de RIG.head.lift (voir rig.ts)
+  const L = RIG.head.lift;
+  const r = kind === 'face' ? { x: 52, y: 26 - L, w: 136, h: 136 } : { x: 14, y: 22 - L * 0.5, w: 212, h: 300 };
   const S = 2.4; // résolution de la source
   const fig = paintedFor(look); // figure peinte : même cadrage que le dessin, donc même taille de tête et de buste dans les bulles et les médaillons
   let src: HTMLCanvasElement;

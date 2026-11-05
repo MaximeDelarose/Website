@@ -50,9 +50,10 @@ const nameOf = (id: ItemId) => (isHairId(id) ? HAIRS[id].name : CLOTHES[id].name
 const THUMB_BASE: Look = { hair: 'hair-loose', top: 'top-tee-white', bottom: 'bot-jeans', dress: null, jacket: null, shoes: 'sh-sneakers-white', bag: null, acc: [], crown: null };
 const CROPS: Record<CatKey, [number, number, number, number]> = {
   top: [26, 138, 188, 236], bottom: [20, 268, 200, 322], dress: [0, 140, 240, 452], jacket: [22, 138, 196, 236],
-  shoes: [26, 498, 188, 104], bag: [0, 150, 240, 262], crown: [26, -14, 188, 178], hair: [8, 0, 224, 262],
-  head: [44, -4, 152, 164], glasses: [60, 36, 120, 80], ears: [44, 50, 152, 104], lips: [84, 108, 72, 56], neck: [50, 128, 140, 100], wrist: [-6, 278, 64, 64],
-  eyes: [66, 62, 108, 82], mouth: [72, 102, 96, 74], liner: [66, 62, 108, 82], shadow: [66, 58, 108, 86], makeup: [66, 60, 108, 84], nails: [-6, 278, 64, 64],
+  shoes: [26, 498, 188, 104], bag: [0, 150, 240, 262], crown: [26, -27, 188, 178], hair: [8, -4, 224, 262],
+  // visage et tête : cadrages calculés sur le gabarit actuel (tête remontée de RIG.head.lift, yeux ≈ y 104, bouche ≈ y 136, menton ≈ y 154) avec de l'AIR autour
+  head: [36, 6, 168, 168], glasses: [62, 72, 116, 66], ears: [56, 72, 128, 84], lips: [84, 114, 72, 44], neck: [50, 128, 140, 100], wrist: [-6, 278, 64, 64],
+  eyes: [66, 74, 108, 60], mouth: [84, 114, 72, 44], liner: [62, 76, 116, 56], shadow: [62, 76, 116, 56], makeup: [62, 76, 116, 56], nails: [-14, 296, 78, 78],
 };
 const catOf = (id: ItemId): CatKey => {
   if (isHairId(id)) return 'hair';

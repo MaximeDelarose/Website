@@ -24,7 +24,7 @@ export const RIG = {
     /** Menton (unité avatar) : pivot de l'échelle de tête, le cou ne bouge jamais. */
     chinY: 166.6,
     /** Remontée de toute la tête (unité avatar) : le menton se pose AU-DESSUS du col, ce qui laisse voir un vrai cou (sinon la tête semble posée sur le vêtement). */
-    lift: 9,
+    lift: 13,
     /** Échelle de toute la tête (crâne, visage, cheveux, accessoires) : fait coïncider le visage avec l'illustration (60,6 u de large). */
     scale: PAINT_SCALE / 0.708,
     /** Position du crâne dessiné (vectoriel) avant échelle : centre (HEAD_X, HEAD_Y) et échelle d'origine du dessin de visage. */
@@ -68,7 +68,7 @@ export const RIG = {
     right: { x1: 60, y1: 352, cx: 86, cy: 268 },
   },
   /** Main : taille mesurée sur l'illustration (≈ 19 × 28 u visibles) ; `reach` = distance poignet → centre de la main (la manche en recouvre le haut). */
-  hand: { r: 9.8, reach: 11 },
+  hand: { r: 11, reach: 12.4 },
 } as const;
 
 /** Échelle effective d'un calque peint (illustration → avatar), tête comprise. */

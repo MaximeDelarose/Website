@@ -21,8 +21,8 @@ const out = await p.evaluate(() => {
     for (let i = 0; i < S.d.length; i += 4) {
       const px = (i / 4) % S.w, py = Math.floor(i / 4 / S.w); const x = px / S.k, y = py / S.k;
       if (S.d[i + 3] !== V.d[i + 3]) aDiff++;
-      if (y > 14 && y < 168 && x > 70 && x < 170) {
-        const band = y >= 104 && y <= 158 && x >= 88 && x <= 152; // yeux, joues, bouche
+      if (y > 2 && y < 156 && x > 70 && x < 170) {
+        const band = y >= 88 && y <= 148 && x >= 88 && x <= 152; // yeux, joues, bouche
         let s = 0; for (let j = 0; j < 3; j++) s += Math.abs(S.d[i + j] - V.d[i + j]);
         if (band) { inside += s; insideN++; } else { outside += s; outsideN++; }
       }

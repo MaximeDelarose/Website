@@ -11,13 +11,13 @@ await p.addInitScript(() => localStorage.setItem('radia-save-v1', JSON.stringify
 await p.goto(`http://localhost:${PORT}/?planche${KEY ? '#k=' + KEY : ''}`); await p.waitForSelector('.bd-root', { timeout: 25000 }); await p.waitForTimeout(1500);
 const results = []; const check = (n, ok, x = '') => { results.push(!!ok); console.log(`${ok ? 'OK ' : 'KO '} ${n}${x ? ' — ' + x : ''}`); };
 
-// zone du visage en unités d'avatar : x 98..142, y 108..164 (yeux → menton, centrée) ; tête entière : x 80..160, y 14..166
+// zone du visage en unités d'avatar (tête remontée de RIG.head.lift = 13) : x 98..142, y 95..151 (yeux → menton, centrée) ; tête entière : x 80..160, y 1..145
 const out = await p.evaluate(() => {
   const B = window.__board; const W = B.W, H = B.H;
   const tile = (sec, label) => B.tiles.find((t) => t.section.startsWith(sec) && t.label === label)?.canvas;
   const px = (c, box) => { const k = c.height / 600; const [x0, y0, x1, y1] = box.map((v) => Math.round(v * k)); const d = c.getContext('2d').getImageData(Math.round((c.width - 240 * k) / 2) + x0, y0, x1 - x0, y1 - y0).data; return d; };
   const diff = (a, b, box) => { const A = px(a, box), Bp = px(b, box); let s = 0, n = 0; for (let i = 0; i < A.length; i += 4) { const al = Math.max(A[i + 3], Bp[i + 3]) / 255; for (let j = 0; j < 3; j++) { s += Math.abs(A[i + j] - Bp[i + j]) * al; } n += 3 * al || 0; } return n ? s / n : 0; };
-  const FACE = [98, 108, 142, 164], HEAD = [80, 14, 160, 158], CHIN = [102, 140, 138, 164]; // HEAD s'arrête au-dessus du col (le col change avec la tenue)
+  const FACE = [98, 95, 142, 151], HEAD = [80, 1, 160, 145], CHIN = [102, 127, 138, 151]; // HEAD s'arrête au-dessus du col (le col change avec la tenue)
   const sans = tile('Couronnes', 'Sans couronne');
   const r = { perf: B.perfMs, couronnes: {}, coiffures: {}, accessoires: {}, tenues: {}, peintVsDessine: null };
   for (const l of ['Couronne dorée', 'Couronne de fleurs', 'Diadème']) r.couronnes[l] = diff(sans, tile('Couronnes', l), FACE);

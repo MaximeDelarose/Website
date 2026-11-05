@@ -50,7 +50,7 @@ for (const [name, byKind] of Object.entries(out)) {
   if (name === 'retour') { for (const [k, n] of Object.entries(byKind)) check(`retour au maquillage d'origine : « ${k} » identique pixel pour pixel`, n === 0, `${n} valeurs différentes`); continue; }
   for (const [k, r] of Object.entries(byKind)) {
     check(`${name} — ${k} : silhouette identique (la tête ne change pas)`, r.aDiff === 0, `${r.aDiff} px d'alpha`);
-    check(`${name} — ${k} : le maquillage se voit, uniquement sur yeux / joues / bouche`, r.n > 0 && r.box && r.box[1] >= 96 && r.box[3] <= 166 && r.box[0] >= 80 && r.box[2] <= 160, JSON.stringify(r.box));
+    check(`${name} — ${k} : le maquillage se voit, uniquement sur yeux / joues / bouche`, r.n > 0 && r.box && r.box[1] >= 84 && r.box[3] <= 154 && r.box[0] >= 80 && r.box[2] <= 160, JSON.stringify(r.box));
   }
 }
 check('aucune erreur JS', errs.length === 0, errs.slice(0, 2).join(' | '));

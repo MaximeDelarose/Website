@@ -83,6 +83,9 @@ export class NotifyCore {
     if (this.poll) { this.o.clearTimer(this.poll); this.poll = null; }
   }
 
+  /** Retire tout de suite les notices affichées (la file d'attente est conservée) : un combo démarre, plus rien ne doit traîner sur le plateau. */
+  dismissLive(): void { for (const l of [...this.live]) this.release(l, false, true); }
+
   get visible(): number { return this.live.length; }
   get waiting(): number { return this.queue.length; }
   visibleKeys(): string[] { return this.live.map((l) => l.item.key); }

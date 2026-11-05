@@ -74,7 +74,7 @@
 .rw-hint.off { opacity: 0; transition: opacity .2s ease; }
 
 /* récompenses */
-.rw-rewards { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 100%; }
+.rw-rewards { display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 10px; width: 100%; }
 .rw-card {
   position: relative; width: 98px; min-height: 112px; padding: 8px 5px 8px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px;
   background: linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(255, 244, 232, .92)); color: var(--choco); text-align: center;

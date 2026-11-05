@@ -1,6 +1,6 @@
 /** Instance unique du gestionnaire de notices (voir core.ts pour les règles). */
 import { NotifyCore, type NotifyItem, type PushResult } from './core';
-import { isBoardBusy } from '../../game/fx/comboState';
+import { isBoardBusy, isComboBusy, onBoardBusyChange } from '../../game/fx/comboState';
 
 const blocked = (): boolean => {
   if (typeof document === 'undefined') return true;
@@ -33,3 +33,6 @@ export type { NotifyItem, PushResult };
 const log: { at: number; text: string }[] = [];
 export function recordNotice(text: string): void { log.push({ at: Date.now(), text }); if (log.length > 40) log.shift(); }
 export const noticeHistory = (): readonly { at: number; text: string }[] => log;
+
+// un combo démarre : les notices déjà visibles s'effacent, celles qui comptent reviennent après la chaîne
+onBoardBusyChange(() => { if (isComboBusy()) core.dismissLive(); });
