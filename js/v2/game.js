@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.9.2";
+  var VERSION = "2.10.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -320,7 +320,7 @@
     if (p.arme && D.ARMES[p.arme]) { var famA = D.ARMES[p.arme].fam; p.armor += famA === "melee" ? 2 : famA === "zone" || famA === "retour" ? 1 : 0; }   // équilibrage 2.7.1 : les armes qui frappent de près encaissent mieux
     p.magnet = 30 * (1 + (m.magnet || 0) + 0.15 * (sh.aimant || 0) + 0.4 * (ps.joues || 0) + 0.1 * (tr.f1 || 0) + (rl.aimant ? 0.6 : 0));
     p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0) - (rl.sablier ? 0.1 : 0) - 0.06 * (it.sablier || 0) - 0.2 * (it.horloge || 0) - 0.2 * (it.pacte_ailes || 0));
-    p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + 0.1 * (pg.seve || 0) + 0.5 * (it.couronne || 0);
+    p.xpMul = 1.15 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + 0.1 * (pg.seve || 0) + 0.5 * (it.couronne || 0);
     p.regen = 0.2 * (sh.recup || 0) + 0.4 * (ps.seve || 0) + 0.15 * (tr.s2 || 0) + (rl.mousse ? 0.8 : 0) + (it.coeurchene || 0) + (m.regen || 0) + 2 * (it.eau_benite || 0);
     p.luck = 1 + 0.15 * (sh.chance || 0) + 0.2 * (ps.trefle || 0) + (rl.trefle ? 0.3 : 0);
     p.area = 1 + (m.area || 0) + 0.05 * (sh.zone || 0) + 0.1 * (ps.loupe || 0) + 0.06 * (tr.a3 || 0) + (rl.loupe ? 0.2 : 0);
@@ -360,6 +360,7 @@
     if (p.epts0) { var ep = { terre: p.epts0.terre, feu: p.epts0.feu, eau: p.epts0.eau, air: p.epts0.air }; Object.keys(D.PASSIVES).forEach(function (k) { var pv = D.PASSIVES[k]; if (pv.elemPt && ps[k]) ep[pv.elemPt] += Math.ceil(ps[k] / 2); }); ep.feu += it.tison || 0; p.epts = ep; }
     if (p.anchorTh0) p.anchorTh = Math.max(0.1, p.anchorTh0 - 0.06 * (ps.patience || 0));
     if (p.volteBase0) p.volteBase = Math.max(1, p.volteBase0 - 0.3 * (ps.ressort || 0));
+    if (p.wroll && p.wroll.mods) { var wm = p.wroll.mods; p.might *= 1 + (wm.dmg || 0) / 100; p.cdMul *= 1 - (wm.cd || 0) / 100; p.area *= 1 + (wm.area || 0) / 100; p.crit = (p.crit || 0) + (wm.crit || 0) / 100; p.speed *= 1 + (wm.spd || 0) / 100; p.maxHp += wm.hp || 0; p.amount += wm.amt || 0; }
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.hp = Math.min(p.hp, p.maxHp);
   }
@@ -844,6 +845,7 @@
     if (e.spr && e.spr[0] && fx.length < 160) { var gs0 = e.scale || (e.giant ? 2 : 1); if (e.spr.ns) gs0 = Math.max(1, gs0 / e.spr.ns); fx.push({ kind: "pop", x: e.x, y: e.y, s: e.spr[0], face: e.face, g: gs0, life: e.d.boss ? 0.3 : 0.14, max: e.d.boss ? 0.3 : 0.14 }); }
     if (!e.d.prop) {
       if (e.d.boss) SND.bossDown(); else SND.pop(!!(e.aff || e.d.elite));
+      if (e.d.boss) dropWeapon(e.x + 14, e.y, "boss"); else if ((e.aff || e.d.elite) && Math.random() < 0.04) dropWeapon(e.x, e.y, "elite");
       if (e.d.boss) { freezeFrame(0.12); slowMo(e.d.mega ? 0.9 : 0.5); if (S.opts.shake) shake = Math.max(shake, 0.6); r.flash = Math.max(r.flash || 0, 0.15); }
       else if (e.aff || e.d.elite) { freezeFrame(0.05); if (S.opts.shake) shake = Math.max(shake, 0.22); }
     }
@@ -1333,6 +1335,7 @@
   function drawZones() {
     zones.forEach(function (z) {
       var k = 1 - z.t / z.dur, x = Math.round(z.x), y = Math.round(z.y);
+      if (z.tint) { ctx.strokeStyle = z.tint; ctx.globalAlpha = 0.5 * k + 0.15; ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
       if (z.kind === "fire") {
         ctx.fillStyle = "rgba(255,110,30," + (0.25 * k + 0.1) + ")"; ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.8, 0, 0, TAU); ctx.fill();
         for (var i = 0; i < 3; i++) { var h = hash(x + i, y + ((r.time * 12) | 0)); ctx.fillStyle = i ? "#ffb040" : "#ff6a20"; ctx.fillRect(x - z.r / 2 + h % Math.max(1, z.r | 0), y - 2 - (h >>> 3) % 4, 2, 2 + (h >>> 5) % 3); }
@@ -2013,6 +2016,10 @@
         for (var aw = 0; aw < 6; aw++) { ctx.fillStyle = dead ? "#6a625a" : aw % 2 ? "#fdf3de" : "#3f9a4a"; ctx.fillRect(x - 11 + aw * 4, y - 23, 4, 5); }
         ctx.fillStyle = dead ? "#5a4a3a" : "#8a5a3b"; ctx.fillRect(x - 11, y - 9, 22, 9); ctx.fillRect(x - 10, y - 18, 2, 9); ctx.fillRect(x + 8, y - 18, 2, 9);
         if (!dead) { ctx.fillStyle = "#f6d36b"; ctx.fillRect(x - 6, y - 12 + bob, 3, 3); ctx.fillStyle = "#b07cf0"; ctx.fillRect(x - 1, y - 13 + bob, 3, 4); ctx.fillStyle = "#6ad8ff"; ctx.fillRect(x + 4, y - 12 + bob, 3, 3); }
+      } else if (s.k === "boss" && SPR.altarboss) {
+        var ab = SPR.altarboss[dead ? 0 : ((r.time * 5) | 0) % 2]; if (dead) ctx.globalAlpha = 0.5;
+        ctx.drawImage(ab.c, x - (ab.w >> 1), y - ab.h + 3); ctx.globalAlpha = 1;
+        if (!dead) { ctx.fillStyle = "rgba(176,124,240," + (0.15 + 0.1 * Math.sin(r.time * 3)).toFixed(2) + ")"; ctx.beginPath(); ctx.ellipse(x, y - 14, 20, 14, 0, 0, TAU); ctx.fill(); }
       } else if (s.k === "coffre") {
         ctx.fillStyle = "#2b1709"; ctx.fillRect(x - 9, y - 12, 18, 12);
         ctx.fillStyle = dead ? "#5a4a3a" : "#8a5a3b"; ctx.fillRect(x - 8, y - 11, 16, 10);
@@ -2569,6 +2576,22 @@
       SND.shot();
     },
   };
+  // 2.10 : chaque technique a sa couleur, pour savoir d'où vient chaque tir (l'attaque de base garde ses couleurs)
+  var TECH_TINT = { projection: "#6ad8ff", rafale: "#9cf06a", rayon: "#ffd05a", fente: "#ff9a3a", tourbillon: "#c9b3ff", charge: "#7fd1c7", riposte: "#fdf3de", onde: "#b07cf0",
+    pluie: "#f29ad8", piege: "#ff6a5a", orbite: "#ffb040", aura: "#9ad0c4", mortier: "#e8873a", boomerang: "#a8e060", ricochet: "#d0a0ff", grappin: "#e0c070", echo: "#e0e0ff", sentinelle: "#f6d36b", familier: "#ff7a9a", nuee: "#80ffd0" };
+  function techTint(key) {
+    var k = String(key).split("#")[0]; if (TECH_TINT[k]) return TECH_TINT[k];
+    var h = 0; for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) % 360;
+    return "hsl(" + h + ",85%,68%)";
+  }
+  function tintRgb(c) { if (c.indexOf("#") === 0) return hx2rgb(c); var t = document.createElement("canvas").getContext("2d"); t.fillStyle = c; return hx2rgb(t.fillStyle); }
+  function tagTint(col, n0, l0, z0, f0) {
+    var i, rgb = null;
+    for (i = n0; i < projs.length; i++) if (!projs[i].tint) projs[i].tint = col;
+    for (i = l0; i < lobs.length; i++) if (!lobs[i].tint) lobs[i].tint = col;
+    for (i = z0; i < zones.length; i++) if (!zones[i].tint) zones[i].tint = col;
+    for (i = f0; i < fx.length; i++) { var f = fx[i]; if (f.tint) continue; f.tint = col; if (f.col && (f.kind === "ring" || f.kind === "beam" || f.kind === "cutline")) f.col = rgb || (rgb = tintRgb(col)); }
+  }
   function weapons(dt) {
     var wel = p.arme ? armElem(p) : null, foyer = p.gear && gearHas(p, "foyer"), baseId = p.arme ? armeOf(p).base : null;
     p.sigK = {}; for (var sid in p.weapons) { var sgd = SIGDEF[sid]; if (sgd) p.sigK[sgd.kind] = p.weapons[sid]; }
@@ -2580,7 +2603,9 @@
       CUR_FAM = e.def.family || null;
       var rmA = e.def.family === "zone" && p.anchored && itn(p, "racine_mere") ? 1.3 : 1; if (rmA !== 1) p.area *= rmA;
       var el = foyer && e.key === baseId ? "feu" : (p.amu && p.amu[e.def.family]) || wel, n0 = projs.length, l0 = lobs.length, z0 = zones.length, hf = e.def.hfx || null;
+      var f0 = fx.length;
       HIT_ELEM = el; HIT_FX = hf; fn(e.key, e.def, e.l, dt); HIT_ELEM = undefined; HIT_FX = null; CUR_FAM = null;
+      if (e.key !== baseId) tagTint(techTint(e.key), n0, l0, z0, f0);
       if (rmA !== 1) p.area /= rmA;
       if (e.def.family === "tir" && itn(p, "bec_pivert")) for (var bp = n0; bp < projs.length; bp++) if (!projs[bp].bec) { projs[bp].bec = 1; projs[bp].pierce = (projs[bp].pierce || 1) + 1; }
       var whis = p.sigK.whistle && e.def.family === "tir", sil = itn(p, "sillon") && p.mstate === "mouvement" && e.def.family === "tir", nEnd = projs.length;
@@ -2812,6 +2837,22 @@
         (have ? " (niv. " + lvlOf(s.partner) + "/5)" : "") + " → " + img(f.icon) + "<b>" + esc(f.name) + "</b></span>";
     }).join("") + "</span>";
   }
+  // 2.10 : fusions possibles d'une technique ou d'un objet de niveau (technique + objet, technique + technique)
+  function v2Syn(id) {
+    var out = [], nm = function (k) { return ALLW[k] ? techName(p, k) : D.PASSIVES[k] ? D.PASSIVES[k].name : k; }, ic0 = function (k) { return ALLW[k] ? techDef(p, k).icon : D.PASSIVES[k] ? D.PASSIVES[k].sprite : "nut"; };
+    if (D.TECH[id]) {
+      [[D.TFUS, 1], [D.TFUS2, 2]].forEach(function (q) { var tf = q[0][id]; if (tf && D.PASSIVES[tf.p] && !((p.tfus || {})[id])) out.push({ partner: tf.p, name: tf.name, icon: D.PASSIVES[tf.p].sprite, how: "évoluée" }); });
+      Object.keys(D.COMBOS).forEach(function (c) { var cb = D.COMBOS[c], i = cb.parts.indexOf(id); if (i < 0 || p.weapons[c]) return; out.push({ partner: cb.parts[1 - i], name: cb.name, icon: cb.icon }); });
+    } else if (D.PASSIVES[id]) {
+      [D.TFUS, D.TFUS2].forEach(function (T) { Object.keys(T).forEach(function (t) { if (T[t].p === id && D.TECH[t] && !((p.tfus || {})[t])) out.push({ partner: t, name: T[t].name, icon: ic0(t), how: "évoluée" }); }); });
+    }
+    if (!out.length) return "";
+    out.sort(function (a, b) { return (owns(b.partner) ? 1 : 0) - (owns(a.partner) ? 1 : 0); });
+    return '<span class="syn">' + out.slice(0, 3).map(function (q) {
+      var have = owns(q.partner);
+      return '<span class="syn-row' + (have ? " have" : "") + '">🔗 ' + img(ic0(q.partner)) + esc(nm(q.partner)) + (q.how && D.TECH[q.partner] ? " " + q.how : "") + (have ? " ✓" : "") + " → " + (SPR[q.icon] ? img(q.icon) : "") + "<b>" + esc(q.name) + "</b></span>";
+    }).join("") + "</span>";
+  }
   function recipeHtml(id) {
     var f = D.FUSIONS[id], a = f.from[0], b = f.from[1], bw = !!ALLW[b];
     return '<span class="recipe">' + img(iconOf(a)) + " + " + img(iconOf(b)) + " → " + img(f.icon) + "</span>" +
@@ -2832,7 +2873,7 @@
     var html = '<span class="kicker">Niveau ' + r.level + " !</span><h2>Choisis un pouvoir</h2><div class=\"choices\">";
     currentChoices.forEach(function (c, i) {
       var icon, name, lvl = "", desc, cls = "choice", extra = "", vc = v2Card(c);
-      if (vc) { icon = vc.iconTxt ? '<span class="choice-emoji">' + vc.iconTxt + "</span>" : img(vc.icon); name = vc.name; lvl = vc.lvl; desc = vc.desc; cls += vc.cls; }
+      if (vc) { icon = vc.iconTxt ? '<span class="choice-emoji">' + vc.iconTxt + "</span>" : img(vc.icon); name = vc.name; lvl = vc.lvl; desc = vc.desc; cls += vc.cls; if (c.type === "w") extra = v2Syn(c.id); }
       else if (c.type === "f") {
         var f = D.FUSIONS[c.id];
         icon = img(f.icon); name = f.name; lvl = f.tier === 2 ? "Fusion légendaire !" : "Fusion !"; cls += f.tier === 2 ? " is-fusion is-legend" : " is-fusion";
@@ -2846,7 +2887,7 @@
       } else if (c.type === "p") {
         icon = img(D.PASSIVES[c.id].sprite); name = D.PASSIVES[c.id].name;
         lvl = c.lvl === 1 ? "Nouvel objet" : "Niv. " + c.lvl; desc = D.PASSIVES[c.id].desc;
-        extra = synHtml(c.id);
+        extra = v2Syn(c.id) || synHtml(c.id);
       } else if (c.type === "heal") {
         icon = img("berry"); name = "Panier de baies"; desc = "Soigne 40 PV.";
       } else {
@@ -3349,7 +3390,7 @@
   // arme tirée au début de chaque partie (3 parmi celles débloquées)
   function openDraft() {
     state = "levelup"; clearInput();
-    var ids = Object.keys(D.ARMES).filter(function (id) { return questOk(D.ARMES[id]); }).sort(function () { return Math.random() - 0.5; }).slice(0, 3);
+    var ids = Object.keys(D.ARMES).sort(function () { return Math.random() - 0.5; }).slice(0, 3);   // 2.10 : parmi toutes les armes
     var html = '<span class="kicker">Nouvelle partie</span><h2>Choisis ton arme</h2><div class="choices">';
     ids.forEach(function (id, i) {
       var a = D.ARMES[id], b = ALLW[a.base];
@@ -3363,8 +3404,38 @@
     var ids = Object.keys(D.ARMES).filter(function (k) { return k !== me.arme; }), nid = ids[(Math.random() * ids.length) | 0], old = armeOf(me).base, lv = me.weapons[old] || 1;
     delete me.weapons[old]; me.arme = nid; me.weapons[D.ARMES[nid].base] = lv; me.tdef = {}; bannerAll("Arsenal : " + D.ARMES[nid].name + " !"); refreshCounts();
   }
+  /* ---- 2.10 : armes à ramasser (rareté et statistiques au hasard) ---- */
+  function rollWeapon(src) {
+    var ids = Object.keys(D.ARMES).filter(function (k) { return k !== me.arme; }), id = ids[(Math.random() * ids.length) | 0];
+    var W8 = src === "boss" ? [0, 35, 35, 22, 8] : [45, 35, 15, 5, 0], tot = W8.reduce(function (a, b) { return a + b; }, 0), rr = Math.random() * tot, ri = 0;
+    while (rr >= W8[ri]) { rr -= W8[ri]; ri++; }
+    var R0 = D.WRAR[ri], pool = D.WSTAT.filter(function (q) { return !q.minR || ri >= q.minR; }).sort(function () { return Math.random() - 0.5; }), mods = {};
+    pool.slice(0, R0.n).forEach(function (q) { mods[q.id] = Math.round((q.lo + Math.random() * (q.hi - q.lo)) * (R0.mul && q.id !== "amt" ? R0.mul : 1)); });
+    return { id: id, r: ri, mods: mods };
+  }
+  function wrollTxt(w) { return D.WSTAT.filter(function (q) { return w.mods[q.id]; }).map(function (q) { return (q.neg ? "-" : "+") + w.mods[q.id] + (q.pct ? " %" : "") + " " + q.name; }).join(" · ") || "Aucun bonus"; }
+  function dropWeapon(x, y, src) { if (Net.on || !me || !me.arme) return; gems.push({ x: x, y: y, kind: "weapon", v: rollWeapon(src) }); }
+  function weaponCard(w, cur) {
+    var a = D.ARMES[w.id], R0 = D.WRAR[w.r];
+    return '<div class="wcard' + (cur ? " is-cur" : "") + '" style="--rc:' + R0.color + '"><small>' + (cur ? "Ton arme" : "Nouvelle arme") + '</small><span class="wcard-ic">' + img(a.icon) + "</span><strong>" + esc(a.name) + '</strong><em>' + esc(R0.name) + "</em><span>" + esc(ALLW[a.base] ? ALLW[a.base].name : "") + "</span><b>" + esc(wrollTxt(w)) + "</b></div>";
+  }
+  var wOffer = null;
+  function weaponOffer(g) {
+    wOffer = g; state = "levelup"; clearInput();
+    var cur = me.wroll || { id: me.arme, r: 0, mods: {} };
+    showCard('<span class="kicker">Arme trouvée</span><h2>Changer d\'arme ?</h2><p class="game-small">Tes techniques restent et prennent l\'apparence de la nouvelle arme ; l\'attaque de base garde son niveau.</p><div class="wcards">' + weaponCard(cur, true) + weaponCard(g.v, false) + '</div>' +
+      '<div class="btn-row center"><button class="btn" type="button" data-action="wtake" data-autofocus>Prendre</button><button class="btn btn-ghost" type="button" data-action="wleave">Laisser</button></div>', "weapon");
+  }
+  function takeWeapon(w) {
+    var a = D.ARMES[w.id], old = armeOf(me).base, lv = me.weapons[old] || 1;
+    delete me.weapons[old]; if (me.timers) delete me.timers[old];
+    me.arme = w.id; r.arme = w.id; me.weapons[a.base] = lv; me.tdef = {}; me.wroll = w;
+    S.stats.armesP = S.stats.armesP || {}; S.stats.armesP[w.id] = 1;
+    calc(me); refreshCounts(); bannerAll(a.name + " " + D.WRAR[w.r].name.toLowerCase() + " !"); SND.fusion();
+  }
   function pickArme(id) {
     var a = D.ARMES[id]; if (!a) return;
+    me.wroll = { id: id, r: 0, mods: {} };
     S.stats.armesP = S.stats.armesP || {}; S.stats.armesP[id] = 1;
     me.arme = id; me.ultG = 0; me.ultK = undefined; me.weapons = {}; me.weapons[a.base] = 1; me.evo = {}; me.tfus = {}; me.cparts = {}; me.tdef = {}; me.timers = {};
     r.arme = id; calc(me); refreshCounts();
@@ -5455,6 +5526,7 @@
         if (dd2 < bd) { bd = dd2; best = gp; }
       }
       if (!best) continue;
+      if (g.kind === "weapon") { if (best === me && bd < 10 && !(g.cool > r.time) && state === "play") { gems.splice(i, 1); weaponOffer(g); } continue; }
       var gx = best.x - g.x, gy = best.y - g.y, gd = bd;
       if (gd > 0.5 && (g.pull || gd < best.magnet * (best.magX || 1))) {
         g.pull = (g.pull || 60) + 260 * dt;
@@ -6677,6 +6749,14 @@
 
     var bob = Math.sin(r.time * 4);
     gems.forEach(function (g) {
+      if (g.kind === "weapon") {
+        var wr = D.WRAR[g.v.r], wgx = Math.round(g.x), wgy = Math.round(g.y + bob * 1.5), wsp = SPR[D.ARMES[g.v.id].icon] || SPR.katana;
+        ctx.globalAlpha = 0.3 + 0.1 * Math.sin(r.time * 4); ctx.fillStyle = wr.color; ctx.fillRect(wgx - 3, wgy - 50, 6, 50); ctx.globalAlpha = 0.6; ctx.fillRect(wgx - 1, wgy - 50, 2, 50); ctx.globalAlpha = 1;
+        ctx.fillStyle = "rgba(20,14,10,.8)"; ctx.fillRect(wgx - 9, wgy - 9, 18, 18); ctx.strokeStyle = wr.color; ctx.lineWidth = 1; ctx.strokeRect(wgx - 8.5, wgy - 8.5, 17, 17);
+        ctx.drawImage(wsp[0].c, wgx - (wsp[0].w >> 1), wgy - (wsp[0].h >> 1));
+        if (Math.hypot(me.x - g.x, me.y - g.y) < 50) drawText(D.ARMES[g.v.id].name + " " + wr.name, wgx, wgy - 20, wr.color, "c");
+        return;
+      }
       if (g.kind === "item") {
         var di = D.ITEMS[g.v] || D.ITEMS[0], rc = D.RARITIES[di.r].color, gx = Math.round(g.x), gy = Math.round(g.y + bob * 1.5);
         ctx.globalAlpha = 0.25 + 0.1 * Math.sin(r.time * 4); ctx.fillStyle = rc; ctx.fillRect(gx - 2, gy - 40, 4, 40); ctx.globalAlpha = 0.5; ctx.fillRect(gx - 1, gy - 40, 2, 40); ctx.globalAlpha = 1;
@@ -6761,12 +6841,16 @@
       if (qst.string && q.kind === "boomerang" && q.owner) { ctx.strokeStyle = "rgba(232,224,208,.75)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(q.owner.x + (q.owner.face || 1) * 4, q.owner.y - 6); ctx.lineTo(q.x, q.y); ctx.stroke(); }
       if ((qst.spin && qst.spin[q.sprite]) || q.sprite === "flint" || q.sprite === "iceshard" || q.sprite === "specblade" || (q.sprite === "arrow" && qst.stick)) {
         var s0 = s[(q.anim ? flick : 0) % s.length], ang = qst.spin && qst.spin[q.sprite] ? r.time * 14 + (q.x + q.y) * 0.05 : Math.atan2(q.vy, q.vx);
-        if (fx.length < 220 && flick && !S.opts.lowfx) fx.push({ kind: "trail", x: q.x - q.vx * 0.015, y: q.y - q.vy * 0.015, life: 0.18, max: 0.18, color: qst.trail });
-        ctx.save(); ctx.translate(Math.round(q.x), Math.round(q.y)); ctx.rotate(Math.round(ang / (Math.PI / 8)) * (Math.PI / 8)); ctx.drawImage(s0.c, -s0.w / 2, -s0.h / 2); ctx.restore();
+        if (fx.length < 220 && flick && !S.opts.lowfx) fx.push({ kind: "trail", x: q.x - q.vx * 0.015, y: q.y - q.vy * 0.015, life: 0.18, max: 0.18, color: q.tint || qst.trail });
+        ctx.save(); ctx.translate(Math.round(q.x), Math.round(q.y)); ctx.rotate(Math.round(ang / (Math.PI / 8)) * (Math.PI / 8)); ctx.drawImage(s0.c, -s0.w / 2, -s0.h / 2);
+        if (q.tint) { ctx.globalAlpha = 0.6; ctx.drawImage(tinted(s0, q.tint, false), -s0.w / 2, -s0.h / 2); ctx.globalAlpha = 1; }
+        ctx.restore();
         return;
       }
-      if (fx.length < 220 && flick && !S.opts.lowfx && (q.vx * q.vx + q.vy * q.vy) > 3600) fx.push({ kind: "trail", x: q.x - q.vx * 0.012, y: q.y - q.vy * 0.012, life: 0.14, max: 0.14, color: q.elem && SPARK_C[q.elem] ? SPARK_C[q.elem][0] : qst.trail || "#fdf3de" });
-      blit(s[(q.anim || q.kind === "boomerang") ? flick % s.length : 0], q.x, q.y, q.vx < 0);
+      if (fx.length < 220 && flick && !S.opts.lowfx && (q.vx * q.vx + q.vy * q.vy) > 3600) fx.push({ kind: "trail", x: q.x - q.vx * 0.012, y: q.y - q.vy * 0.012, life: 0.14, max: 0.14, color: q.tint || (q.elem && SPARK_C[q.elem] ? SPARK_C[q.elem][0] : qst.trail || "#fdf3de") });
+      var sq0 = s[(q.anim || q.kind === "boomerang") ? flick % s.length : 0];
+      blit(sq0, q.x, q.y, q.vx < 0);
+      if (q.tint) { ctx.globalAlpha = 0.6; ctx.drawImage(tinted(sq0, q.tint, q.vx < 0), Math.round(q.x - sq0.w / 2), Math.round(q.y - sq0.h / 2)); ctx.globalAlpha = 1; }
     });
     hostile.forEach(function (q) {
       ctx.fillStyle = "rgba(255,60,30,.35)"; ctx.fillRect(Math.round(q.x) - 4, Math.round(q.y) - 4, 8, 8);
@@ -6783,7 +6867,8 @@
       if (l.small) { ctx.fillStyle = "#f6b468"; ctx.fillRect(Math.round(x), Math.round(y), 2, 2); return; }
       shadow(l.sx + (l.tx - l.sx) * k, l.sy + (l.ty - l.sy) * k + 3, 5 + (l.sky ? k * 6 : 0));
       var lsp = SPR[l.sprite || "pinecone"] || SPR.pinecone;
-      blit(lsp[((l.t * 12) | 0) % lsp.length], x, y);
+      var lf0 = lsp[((l.t * 12) | 0) % lsp.length]; blit(lf0, x, y);
+      if (l.tint) { ctx.globalAlpha = 0.55; ctx.drawImage(tinted(lf0, l.tint, false), Math.round(x - lf0.w / 2), Math.round(y - lf0.h / 2)); ctx.globalAlpha = 1; }
     });
     if (giants) drawGiantTops(giants);
     fx.forEach(drawFx);
@@ -7086,7 +7171,7 @@
     } else if (f.kind === "slash") {
       var tk = 1 - f.life / f.max, o = f.pl || me, a0 = f.a - f.arc / 2, sw = f.arc * Math.min(1, tk * 2.2);
       var s0 = f.flip ? f.a + f.arc / 2 : a0, s1 = f.flip ? s0 - sw : s0 + sw;
-      ctx.strokeStyle = f.fire ? "rgba(255,138,42," + (0.85 * (1 - tk)) + ")" : f.thin ? "rgba(127,209,199," + (0.8 * (1 - tk)) + ")" : "rgba(216,224,232," + (1 - tk) + ")"; ctx.lineWidth = f.thin || f.fire ? 2 : 5;
+      ctx.strokeStyle = f.tint ? "rgba(" + tintRgb(f.tint) + "," + (0.9 * (1 - tk)) + ")" : f.fire ? "rgba(255,138,42," + (0.85 * (1 - tk)) + ")" : f.thin ? "rgba(127,209,199," + (0.8 * (1 - tk)) + ")" : "rgba(216,224,232," + (1 - tk) + ")"; ctx.lineWidth = f.thin || f.fire ? 2 : 5;
       ctx.beginPath(); ctx.ellipse(o.x, o.y, f.r * 0.9, f.r * 0.75, 0, s0, s1, !!f.flip); ctx.stroke();
       ctx.strokeStyle = "rgba(255,255,255," + (1 - tk) + ")"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.lineWidth = 1;
     } else if (f.kind === "swipe") {
@@ -7170,6 +7255,7 @@
         if (fx.length < 230) f.pts.forEach(function (pt) { fx.push({ kind: "dot", x: pt[0], y: pt[1], vx: Math.random() * 30 - 15, vy: -30, life: 0.3, max: 0.3, color: f.st === "stream" ? "#bfefff" : "#ffd05a", sz: 1, g: f.st === "stream" ? 200 : -20 }); });
       }
       ctx.lineWidth = 1;
+      if (f.tint) { ctx.strokeStyle = f.tint; ctx.globalAlpha = bal; ctx.beginPath(); f.pts.forEach(function (pt, ix) { if (ix) ctx.lineTo(pt[0], pt[1] - 1); else ctx.moveTo(pt[0], pt[1] - 1); }); ctx.stroke(); ctx.globalAlpha = 1; }
     } else if (f.kind === "bolt") {
       var al = Math.max(0, f.life / f.max);
       [["rgba(246,239,122," + al + ")", 3], ["rgba(255,255,240," + al + ")", 1]].forEach(function (st2) {
@@ -7968,6 +8054,8 @@
     cn: function (n) { S.cn = +n || 0; save(); SND.click(); go("play"); },
     bet: function () { if (state !== "levelup" || me.char.id !== "trefle") return; r.betPend = true; SND.click(); afterChoice(); },
     parme: function (id) { if (screen === "draft") { SND.level(); pickArme(id); } },
+    wtake: function () { if (!wOffer) return; var g = wOffer; wOffer = null; takeWeapon(g.v); state = "play"; hideCard(); last = performance.now(); },
+    wleave: function () { if (!wOffer) return; var g = wOffer; wOffer = null; g.cool = r.time + 2.5; gems.push(g); state = "play"; hideCard(); last = performance.now(); },
     tpos: function (id) { var ps = posturesOf(S.char).filter(function (x) { return x.id === id; })[0]; if (!ps || !postureOk(ps)) return; S.posture = S.posture || {}; S.posture[S.char] = id; save(); SND.click(); go("play"); },
     tchar: function (id) { inspect.char = id; if (charAvailable(charById(id))) S.char = id; save(); SND.click(); go("play"); },
     tdun: function (id) { inspect.dun = id; if (has(dungeonById(id).unlock)) S.dungeon = id; save(); trackMe(); SND.click(); go("play"); },
@@ -8609,7 +8697,8 @@
     if (state !== "play" || picking || party) return;
     if (humans() > 1) { if (netMenuOpen) resume(); else netMenu(); return; }
     state = "pause"; clearInput();
-    var html = '<h2>Pause</h2><div class="pause-grid"><div><h3>Armes (' + Object.keys(p.weapons).length + "/" + MAX_W + ')</h3><ul class="build-list">';
+    var wr0 = p.wroll || { id: p.arme, r: 0, mods: {} }, war = D.WRAR[wr0.r];
+    var html = '<h2>Pause</h2><div class="pause-grid"><div>' + (p.arme ? '<p class="pause-weapon" style="--rc:' + war.color + '">' + img(armeOf(p).icon) + " <b>" + esc(armeOf(p).name) + "</b> <em>" + esc(war.name) + "</em> <small>" + esc(wrollTxt(wr0)) + "</small></p>" : "") + '<h3>Armes (' + Object.keys(p.weapons).length + "/" + MAX_W + ')</h3><ul class="build-list">';
     Object.keys(p.weapons).forEach(function (k) { var td = techDef(p, k); html += '<li class="' + (td.fusion ? "is-fusion" : "") + '"><img src="' + spriteUrl(td.icon) + '" alt="">' + esc(techName(p, k)) + " <b>niv. " + p.weapons[k] + "</b></li>"; });
     html += '</ul><h3>Objets (' + Object.keys(p.passives).length + "/" + MAX_P + ')</h3><ul class="build-list">';
     Object.keys(p.passives).forEach(function (k) { html += '<li><img src="' + spriteUrl(D.PASSIVES[k].sprite) + '" alt="">' + esc(D.PASSIVES[k].name) + " <b>niv. " + p.passives[k] + "</b>" + synHtml(k) + "</li>"; });
@@ -8916,6 +9005,8 @@
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
     run: function () { return { boss: curBoss && !curBoss.dead ? curBoss.d.name + ':' + Math.round(curBoss.hp) + '/' + Math.round(curBoss.maxHp) : 0, hit: r && r.lastHitBy, din: r && Math.round(r.dmgIn || 0), t: r ? Math.round(r.time) : 0, lvl: r && r.level, kills: r && r.kills, hp: me && Math.round(me.hp), state: state, tier: tierN(), boss: r && r.bossKills }; },
+    lvl: function () { pending += 1; return pending; },
+    dropW: function () { if (!me) return; dropWeapon(me.x, me.y, 'boss'); return gems.length; },
     dmgTot: function () { return [Math.round(r && r.dmgTot || 0), r ? r.time : 0]; },
     choicesNow: function (n) { p = me; return v2Choices(n || 4).map(function (c) { var v = v2Card(c); return c.type + ":" + (v ? v.name : c.id); }); },
     give: function (type, id, lvl) { p = me; if (type === "w") me.weapons[id] = lvl || 5; else me.passives[id] = lvl || 5; calc(me); refreshCounts(); return readyFusions(); },

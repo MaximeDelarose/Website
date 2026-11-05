@@ -3375,6 +3375,25 @@ window.ES_DATA = (function () {
     one(5, 11, { s: rp("#6a9a3a"), t: ["#c8282a"], p: ["#fdf3de"] }, { name: "dartdown", f: function () { return [rgC(2.5, 0.5, 2.5, 8, 0.6, 0.6, "s"), rgP([[1, 8], [4, 8], [2.5, 10.6]], "p"), rgP([[0.5, 0], [2.5, 2], [4.5, 0], [4.5, 2.2], [2.5, 3.6], [0.5, 2.2]], "t", F)]; } });
     one(6, 10, { b: rp("#4aa8ff"), w: ["#e8f8ff"] }, { name: "droplet", f: function () { return [rgP([[3, 0.4], [5.4, 6], [0.6, 6]], "b"), rgE(3, 6.8, 2.6, 2.6, 0, "b", L), rgE(2.2, 6.2, 0.6, 0.9, 0, "w", F)]; } });
   })();
+  // 2.10 : autel du boss (crâne cornu, braseros violets, runes)
+  SPRITES.altarboss = rigSprite(30, 30, { s: ["#a49c92", "#7a7068", "#5a524a", "#3a342e"], b: ["#f3efe6", "#d8d0c4", "#a8a094", "#6f6655"], h: ["#6a5a4a", "#4a3a2a", "#32261a", "#1e1610"],
+    k: ["#1b1226"], p: ["#b07cf0"], P: ["#e0c0ff"], r: ["#ff4a8a"] }, function (ph) {
+    var fl = ph < 0.5 ? 0 : 1.5;
+    return [rgP([[3, 29.5], [27, 29.5], [25, 22], [5, 22]], "s", { line: true }), rgP([[6, 22], [24, 22], [22, 15], [8, 15]], "s", { line: true }),
+      rgC(8, 26, 22, 26, 0.4, 0.4, "p", { flat: true }), rgE(10, 25.6, 0.7, 0.7, 0, "P", { flat: true }), rgE(15, 25.6, 0.7, 0.7, 0, "P", { flat: true }), rgE(20, 25.6, 0.7, 0.7, 0, "P", { flat: true }),
+      rgC(10, 9, 5, 2 + fl * 0.3, 1.4, 0.6, "h", { line: true }), rgC(20, 9, 25, 2 + fl * 0.3, 1.4, 0.6, "h", { line: true }),
+      rgE(15, 10, 5.6, 5.2, 0, "b", { line: true }), rgP([[11.5, 13], [18.5, 13], [17.5, 16.5], [12.5, 16.5]], "b", { line: true }),
+      rgE(12.8, 9.6, 1.5, 1.6, 0, "k", { flat: true }), rgE(17.2, 9.6, 1.5, 1.6, 0, "k", { flat: true }), rgE(12.8, 9.6, 0.6, 0.6, 0, "r", { flat: true }), rgE(17.2, 9.6, 0.6, 0.6, 0, "r", { flat: true }),
+      rgC(14, 14.5, 14, 16, 0.3, 0.3, "k", { flat: true }), rgC(16, 14.5, 16, 16, 0.3, 0.3, "k", { flat: true }),
+      rgC(1.5, 29, 1.5, 19, 0.7, 0.7, "h"), rgP([[0, 19], [1.5, 13 - fl], [3, 19]], "p", { flat: true }), rgE(1.5, 17.5, 0.7, 1, 0, "P", { flat: true }),
+      rgC(28.5, 29, 28.5, 19, 0.7, 0.7, "h"), rgP([[27, 19], [28.5, 14.5 + fl], [30, 19]], "p", { flat: true }), rgE(28.5, 17.5, 0.7, 1, 0, "P", { flat: true })];
+  }, 2);
+  // 2.10 : armes ramassées en partie (rareté et statistiques tirées au hasard, comme l'attirail)
+  var WRAR = [{ name: "Commune", color: "#c8c0b0", n: 0 }, { name: "Peu commune", color: "#9cc56b", n: 1 }, { name: "Rare", color: "#6ad8ff", n: 2 }, { name: "Épique", color: "#b07cf0", n: 3 }, { name: "Légendaire", color: "#f6d36b", n: 3, mul: 1.5 }];
+  var WSTAT = [{ id: "dmg", name: "dégâts", lo: 8, hi: 22, pct: 1 }, { id: "cd", name: "recharge", lo: 5, hi: 14, pct: 1, neg: 1 }, { id: "area", name: "zone", lo: 8, hi: 20, pct: 1 },
+    { id: "crit", name: "critiques", lo: 3, hi: 8, pct: 1 }, { id: "spd", name: "vitesse", lo: 4, hi: 9, pct: 1 }, { id: "hp", name: "PV max", lo: 10, hi: 30 }, { id: "amt", name: "projectile", lo: 1, hi: 1, minR: 3 }];
+  // en Normal, un palier toutes les 1 min 30 (demande 2.10)
+  TIER.minutes = 1.5;
   // styles par élément : onde (nova), chaîne, piège au sol, tir en cloche, chute du ciel, couleur et traînée
   var VFX_EL = {
     terre: { nova: "quake", chain: "bounce", thorn: "rockspike", lob: "boulder", meteor: "boulder", col: "200,160,96", trail: "#c8b89a", hit: "dust" },
@@ -3434,6 +3453,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { VFX: VFX, EMOJI_PX: EMOJI_PX, RIG: { raster: rigRaster, E: rgE, C: rgC, P: rgP, mix: mixc }, EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { WRAR: WRAR, WSTAT: WSTAT, VFX: VFX, EMOJI_PX: EMOJI_PX, RIG: { raster: rigRaster, E: rgE, C: rgC, P: rgP, mix: mixc }, EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
