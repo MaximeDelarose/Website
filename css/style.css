@@ -3120,3 +3120,5 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .dof-pr.is-on .btn { box-shadow: 0 0 0 2px #ffe9a8; }
 .dof-prx { border: 0; background: #4a2a22; color: #f3d5cb; padding: 0 8px; cursor: pointer; font: inherit; border-radius: 0 3px 3px 0; }
 .dof-note { color: #e8b86b; }
+
+.np-lock { position: absolute; right: 2px; bottom: 0; font-style: normal; font-size: 14px; }

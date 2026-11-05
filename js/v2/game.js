@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.35.0";
+  var VERSION = "2.35.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -50,6 +50,10 @@
       s.stats.played = s.stats.played || {}; s.stats.maps = s.stats.maps || {};
       if (!raw.stats || raw.stats.goldSince === undefined) s.stats.goldSince = s.stats.goldEarned || 0;
       s.tree = s.tree || {}; s.pshop = s.pshop || {}; s.ppts = s.ppts || 0;
+      if (s.unlockFix !== 1) {   // 2.36 : un seul écureuil au départ ; les autres se regagnent avec les nouvelles quêtes
+        s.unlockFix = 1; s.quests = s.quests || {}; s.owned = { noisette: true };
+        ["capitaine", "planeur", "jumeaux", "cendrine", "fougere", "pataud", "mage", "ninja", "trefle", "croc", "fiole", "rapine"].forEach(function (c) { delete s.quests["q2_" + c]; });
+      }
     }
     return s;
   }
@@ -76,9 +80,7 @@
     if (pr) ["herbe", "ecorce", "chapeau"].forEach(function (r0) { S.res[r0] = (S.res[r0] || 0) + 10 * pr; });
     if (pr) S.res.rune = (S.res.rune || 0) + 2 * pr;
     // écureuils déjà débloqués en v1 : leur quête de 2.0 est donnée
-    var map = { cendrine: "q2_cendrine", jumeaux: "q2_jumeaux", druide: "q2_fougere", mage: "q2_mage", ninja: "q2_ninja" };
-    S.quests = S.quests || {};
-    Object.keys(map).forEach(function (c) { if ((S.owned || {})[c] || (S.stats && S.stats.played && S.stats.played[c])) S.quests[map[c]] = Date.now(); });
+    S.quests = S.quests || {};   // 2.36 : plus aucun écureuil offert par la migration, tout se gagne
     // on garde rang, succès, quêtes, records ; les stats achetées, l'arbre et les points de prestige sont remboursés
     S.shop = {}; S.tree = {}; S.pshop = {}; S.ppts = 0;
     if (D.CHARACTERS.every(function (c) { return c.id !== S.char; })) S.char = "noisette";
@@ -8769,9 +8771,10 @@
       var c = charById(S.char), lv = charLevel(c.id), cx = S.clvl[c.id] || 0, ps = postureOf(c.id, (S.posture || {})[c.id]);
       var html = '<div class="screen-head">' + back() + "<h2>Le terrier</h2>" + goldBadge() + "</div>";
       html += '<div class="np-chars">';
-      D.CHARACTERS.forEach(function (o) { html += '<button type="button" class="np-char' + (S.char === o.id ? " is-selected" : "") + '" data-action="tchar2" data-arg="' + o.id + '" aria-label="' + esc(o.name) + '"><img src="' + spriteUrl(o.sprite) + '" alt=""></button>'; });
+      D.CHARACTERS.forEach(function (o) { var okc = charAvailable(o); html += '<button type="button" class="np-char' + (S.char === o.id ? " is-selected" : "") + (okc ? "" : " is-locked") + '" data-action="tchar2" data-arg="' + o.id + '" aria-label="' + esc(o.name) + '" title="' + esc(okc ? o.name : "🔒 " + o.name + " : " + questById(o.quest).desc) + '"><img src="' + spriteUrl(o.sprite) + '" alt="">' + (okc ? "" : '<i class="np-lock">🔒</i>') + "</button>"; });
+      var lc = D.CHARACTERS.filter(function (o) { return !charAvailable(o); }).length;
       var k = Math.round((cx - charXpFor(lv)) / Math.max(1, charXpFor(lv + 1) - charXpFor(lv)) * 100);
-      html += '</div><p class="v2-bar"><span><b>' + esc(c.name) + "</b> · niveau <b>" + lv + '</b></span><span class="rank-bar"><i style="width:' + Math.min(100, k) + '%"></i></span><small>' + cx + " / " + charXpFor(lv + 1) + "</small></p>";
+      html += '</div>' + (lc ? '<p class="game-small">🔒 ' + lc + " écureuil" + (lc > 1 ? "s" : "") + " à débloquer : touche-en un pour voir sa quête (Vieux chêne &gt; Quêtes).</p>" : "") + '<p class="v2-bar"><span><b>' + esc(c.name) + "</b> · niveau <b>" + lv + '</b></span><span class="rank-bar"><i style="width:' + Math.min(100, k) + '%"></i></span><small>' + cx + " / " + charXpFor(lv + 1) + "</small></p>";
       html += '<div class="dof-tabs">' + [["eq", "Équipement"], ["tal", "Talents"], ["tree", "Arbre"], ["mast", "Maîtrise"]].map(function (t) { return '<button type="button" class="dof-tab' + (UI.ter === t[0] ? " is-on" : "") + '" data-action="dtab" data-arg="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>";
       if (UI.ter === "tal") html += terTalents(c, lv, ps);
       else if (UI.ter === "tree") html += terTree(c);
@@ -8987,7 +8990,7 @@
 
   var ACTIONS = {
     go: function (a) { SND.click(); if (a === "play") { inspect.char = S.char; inspect.map = S.map; } go(a); },
-    tchar2: function (id) { UI.ctn = null; UI.cts = null; if (!charAvailable(charById(id))) return; S.char = id; save(); SND.click(); go("terrier"); },
+    tchar2: function (id) { UI.ctn = null; UI.cts = null; if (!charAvailable(charById(id))) { var lk = charById(id); banner("🔒 " + lk.name + " : " + questById(lk.quest).desc); SND.hurt(); return; } S.char = id; save(); SND.click(); go("terrier"); },
     eqpick: function (sl) { S.eqSlot = sl; SND.click(); go("eqslot"); },
     dtab: function (t) { UI.cts = null; UI.ter = t; SND.click(); go("terrier"); },
     itab: function (t) { UI.inv = t; SND.click(); go("terrier"); },
