@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.14.1";
+  var VERSION = "2.14.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -5459,11 +5459,11 @@
     });
     // bandeau du lieu proche
     if (camp.near) {
-      var l = camp.near, l1 = l.name.toUpperCase(), l2 = ((l.who ? l.who + " · " : "") + l.desc).toUpperCase(), hint = isTouch ? "TOUCHE POUR ENTRER" : "ENTREE POUR ENTRER";
+      var l = camp.near, l1 = l.name.toUpperCase(), l2 = ((l.who ? l.who + " - " : "") + l.desc).toUpperCase(), hint = isTouch ? "TOUCHE POUR ENTRER" : "ENTREE POUR ENTRER";
       var bw2 = Math.min(W - 8, Math.max(textWidth(l1, 1), textWidth(l2, 1), textWidth(hint, 1)) + 12), bx = Math.round((W - bw2) / 2), byy = 4;
-      ctx.fillStyle = "#2b1709"; ctx.fillRect(bx - 1, byy - 1, bw2 + 2, 33); ctx.fillStyle = "#e8cfa0"; ctx.fillRect(bx, byy, bw2, 31); ctx.fillStyle = "#c49a62"; ctx.fillRect(bx, byy + 29, bw2, 2);
-      drawText(l1, W / 2, byy + 3, "#b8662a", "c"); drawText(l2, W / 2, byy + 12, "#2b1709", "c");
-      if (Math.sin(t * 5) > -0.4) drawText(hint, W / 2, byy + 21, "#6b4430", "c");
+      ctx.fillStyle = "#2b1709"; ctx.fillRect(bx - 1, byy - 1, bw2 + 2, 33); ctx.fillStyle = "#8a5a32"; ctx.fillRect(bx, byy, bw2, 31); ctx.fillStyle = "#6b4430"; ctx.fillRect(bx, byy + 29, bw2, 2);
+      drawText(l1, W / 2, byy + 3, "#f6d36b", "c"); drawText(l2, W / 2, byy + 12, "#fff6e0", "c");
+      if (Math.sin(t * 5) > -0.4) drawText(hint, W / 2, byy + 21, "#e8cfa0", "c");
     }
   }
   var campLight = null, campMarks = [];
@@ -9207,6 +9207,7 @@
     combo: function (id) { p = me; v2Apply({ type: "cb", id: id }); calc(me); return Object.keys(me.weapons); },
     entries: function () { return techEntries(me).map(function (e) { return e.key + ":" + e.def.type + ":" + Math.round(V(e.def, "dmg", e.l) || 0); }); },
     arme: function (id) { pickArme(id); return me.weapons; },
+    campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
     run: function () { return { boss: curBoss && !curBoss.dead ? curBoss.d.name + ':' + Math.round(curBoss.hp) + '/' + Math.round(curBoss.maxHp) : 0, hit: r && r.lastHitBy, din: r && Math.round(r.dmgIn || 0), t: r ? Math.round(r.time) : 0, lvl: r && r.level, kills: r && r.kills, hp: me && Math.round(me.hp), state: state, tier: tierN(), boss: r && r.bossKills }; },
