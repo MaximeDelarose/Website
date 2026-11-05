@@ -21,6 +21,7 @@ async function open(o = {}) {
   await page.route('**/rest/v1/rpc/radia_push_unregister', (r) => { calls.unregister.push(JSON.parse(r.request().postData() || '{}')); r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }); });
   await page.addInitScript(([s, standalone, answer, perm0, hasSub, p256, auth]) => {
     if (!localStorage.getItem('radia-save-v1')) localStorage.setItem('radia-save-v1', s);
+    try { localStorage.setItem('radia-photos-hint', '1'); localStorage.setItem('radia-standalone-welcome', '1'); } catch { /* ignoré */ } // dialogues propres à l'application installée (testés ailleurs) : ici, installation « complète »
     if (standalone) Object.defineProperty(navigator, 'standalone', { get: () => true });
     window.__perm = perm0; window.__asked = 0; window.__askedInClickTask = null; window.__unsub = 0;
     // la demande d'autorisation doit partir DANS le tour d'événement du toucher (condition d'iOS) : on le mesure

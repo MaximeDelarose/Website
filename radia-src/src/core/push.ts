@@ -37,8 +37,13 @@ export function classifySupport(o: { apis: boolean; secure: boolean; ios: boolea
 
 const isIos = (): boolean => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints ?? 0) > 1);
 
-async function registration(): Promise<ServiceWorkerRegistration | null> {
-  try { return (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.ready); } catch { return null; }
+/** Service worker de l'application. `waitMs` : combien de temps attendre son activation (jamais indéfiniment : le démarrage peut le retarder). */
+async function registration(waitMs = 4000): Promise<ServiceWorkerRegistration | null> {
+  try {
+    const r = await navigator.serviceWorker.getRegistration();
+    if (r) return r;
+    return await Promise.race([navigator.serviceWorker.ready, new Promise<null>((res) => window.setTimeout(() => res(null), waitMs))]);
+  } catch { return null; }
 }
 
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T | null> {
@@ -82,7 +87,7 @@ export function enablePush(hour = 9): Promise<EnableResult> {
 async function enableAfterPermission(asked: Promise<NotificationPermission>, hour: number): Promise<EnableResult> {
   const perm = await asked;
   if (perm !== 'granted') return 'denied';
-  const reg = await registration(); if (!reg) return 'error';
+  const reg = await registration(12_000); if (!reg) return 'error'; // elle vient de toucher le bouton : on laisse le temps au service worker de s'activer
   const key = await rpc<string>('radia_push_public_key', {});
   if (!key) return 'no-key';
   let sub: PushSubscription | null = null;
