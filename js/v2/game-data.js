@@ -3337,6 +3337,22 @@ window.ES_DATA = (function () {
     SPRITES.iceshard = rigSprite(12, 6, { i: rp("#9ee8ff"), w: ["#ffffff"] }, function () { return [rgP([[0, 3], [5, 0.4], [11.6, 3], [5, 5.6]], "i", { line: true }), rgC(3, 2.4, 8, 2.6, 0.3, 0.3, "w", { flat: true })]; }, 1);
     SPRITES.windorb = rigSprite(9, 9, { a: rp("#c8f8e8"), w: ["#ffffff"] }, function (ph) { var a = ph * Math.PI * 2, S = [rgE(4.5, 4.5, 3.8, 3.8, 0, "a", { line: true })]; for (var i = 0; i < 2; i++) { var b = a + i * Math.PI; S.push(rgC(4.5, 4.5, 4.5 + Math.cos(b) * 3, 4.5 + Math.sin(b) * 3, 0.4, 0.3, "w", { flat: true })); } return S; }, 2);
   })();
+  // 2.9.1 : sprites des passes katana, arc, bâton
+  (function () {
+    function rp(c) { return [mixc(c, "#ffffff", 0.3), c, mixc(c, "#000000", 0.25), mixc(c, "#000000", 0.45)]; }
+    SPRITES.specblade = rigSprite(14, 5, { b: ["#e8fbff", "#b8e8f0", "#7fc8d8", "#4a98a8"], h: ["#3a4a6a"] }, function () { return [rgP([[3, 1.6], [13.6, 2.5], [3, 3.4]], "b", { line: true }), rgC(0.5, 2.5, 3, 2.5, 0.9, 0.9, "h")]; }, 1);
+    SPRITES.arrowdown = rigSprite(5, 13, { s: rp("#a87a48"), h: rp("#c0c8d0"), f: ["#ff8a2a"] }, function () { return [rgC(2.5, 0.5, 2.5, 10, 0.5, 0.5, "s"), rgP([[0.5, 9], [4.5, 9], [2.5, 12.6]], "h", { line: true }), rgP([[0.5, 0], [2.5, 2], [4.5, 0], [4.5, 2], [2.5, 4], [0.5, 2]], "f", { flat: true })]; }, 1);
+    SPRITES.strawarcher = rigSprite(14, 18, { s: rp("#e0c070"), w: rp("#a87a48"), r: ["#c8553d"], k: ["#2b1709"] }, function (ph) {
+      var d = ph < 0.5 ? 0 : 1.5;
+      return [rgC(6, 17.5, 6, 9, 0.8, 0.8, "w"), rgE(6, 10, 3.6, 4.6, 0, "s", { line: true }), rgE(6, 4, 2.8, 2.8, 0, "s", { line: true }), rgE(5, 3.6, 0.5, 0.5, 0, "k", { flat: true }), rgE(7, 3.6, 0.5, 0.5, 0, "k", { flat: true }),
+        rgC(3, 2, 9, 1.4, 0.7, 0.7, "r"), rgE(11, 9, 1.6, 5, 0, "w", { line: true, maxY: 14 }), rgC(11 - d, 4.5, 11 - d, 13.5, 0.25, 0.25, "k", { flat: true })];
+    }, 2);
+    SPRITES.totem = rigSprite(12, 18, { s: rp("#8e877c"), m: rp("#6a9a3a"), g: ["#9cf06a"] }, function (ph) {
+      var on = ph < 0.5;
+      return [rgP([[2, 17.5], [10, 17.5], [9, 3], [3, 3]], "s", { line: true }), rgE(6, 3, 3.6, 2.4, 0, "s", { line: true }), rgE(6, 1.6, 3, 1.2, 0, "m"),
+        rgE(4.4, 8, 0.8, 0.8, 0, on ? "g" : "m", { flat: true }), rgE(7.6, 8, 0.8, 0.8, 0, on ? "g" : "m", { flat: true }), rgC(4, 12, 8, 12, 0.4, 0.4, on ? "g" : "m", { flat: true }), rgC(3.2, 15, 5, 13, 0.35, 0.35, "m", { flat: true })];
+    }, 2);
+  })();
   // styles par élément : onde (nova), chaîne, piège au sol, tir en cloche, chute du ciel, couleur et traînée
   var VFX_EL = {
     terre: { nova: "quake", chain: "bounce", thorn: "rockspike", lob: "boulder", meteor: "boulder", col: "200,160,96", trail: "#c8b89a", hit: "dust" },
@@ -3347,10 +3363,17 @@ window.ES_DATA = (function () {
   // réglages propres à une arme (par-dessus le style de son élément)
   var VFX_W = {
     fronde: { thorn: "caltrop", lob: "block", meteor: "boulder", base: "sling", spin: { stone: 1, pebble: 1, boulder: 1, block: 1 } },
+    katana: { base: "iaido", nova: "cuts", chain: "blade", thorn: "seal", lunge: "iai", spinFx: "moon", grap: "chain", ripo: "counter", beamCol: "230,250,255", col: "230,250,255" },
+    arc: { base: "bow", meteor: "arrowdown", chain: "arrow", thorn: "caltrop", beamCol: "255,200,90", grap: "harpoon", stick: 1 },
+    baton: { base: "staff", nova: "runequake", thorn: "roots", lunge: "spike", spinFx: "staff", ripo: "wall", col: "150,200,110", beamCol: "180,220,120" },
     yoyo: { spin: { nut: 1 } }, chakram: { spin: { chakram: 1 } }, marteau: { spin: { hammer: 1 } }, hache: { spin: { axe: 1 } }
   };
   var VFX = {};
   Object.keys(ARMES).forEach(function (a) { var st = {}, b = VFX_EL[ARMES[a].element] || VFX_EL.terre, o = VFX_W[a] || {}, k; for (k in b) st[k] = b[k]; for (k in o) st[k] = o[k]; VFX[a] = st; });
+  // katana, arc, bâton : apparences propres
+  if (ARMES.katana) { ARMES.katana.skin.orbite = ["Lames spectrales", "specblade"]; ARMES.katana.skin.projection = ["Vague d'acier", "specblade"]; }
+  if (ARMES.arc) { ARMES.arc.skin.sentinelle = ["Archer de paille", "strawarcher"]; ARMES.arc.skin.nuee = ["Essaim de plumes", "feather"]; }
+  if (ARMES.baton) { ARMES.baton.skin.sentinelle = ["Totem de pierre", "totem"]; }
   // la fronde : une apparence par technique
   if (ARMES.fronde) {
     var sk = ARMES.fronde.skin;
