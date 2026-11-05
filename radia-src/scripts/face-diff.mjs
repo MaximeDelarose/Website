@@ -8,6 +8,7 @@ async function render(port) {
   await page.goto(`http://localhost:${port}/`, { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(2500);
   const out = await page.evaluate(async () => {
     const ch = await import('/src/game/art/characters.ts'); const av = await import('/src/game/art/world/avatar.ts'); const ids = await import('/src/data/world/ids.ts');
+    if (ch.setFaceCustom) { const F = await import('/src/data/world/face.ts'); ch.setFaceCustom(F.classicFace()); } // le NOUVEAU build rend l'ANCIEN dessin via classicFace()
     const res = {};
     const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
     for (const expr of ['smile', 'neutral', 'love', 'surprise', 'laugh', 'sad']) { const c = mk(400, 400); ch.drawRadiaPortrait(c.getContext('2d'), { expr }); res[`portrait:${expr}`] = c.toDataURL(); }

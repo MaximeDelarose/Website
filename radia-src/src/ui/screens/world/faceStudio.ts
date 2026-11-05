@@ -18,7 +18,7 @@ import { HAIR_IDS, type HairId } from '../../../data/world/ids';
 import { makeCanvas } from '../../../game/art/kit';
 import {
   BLUSH_COLORS, BROW_COLORS, BROW_SHAPES, EYE_COLORS, EYE_SHAPES, FACE_SHAPES, HAIR_COLORS, LINER_STYLES, LIP_COLORS, MOUTH_SHAPES, NOSE_SHAPES,
-  SHADOW_COLORS, SKIN_TONES, VEIL_COLORS, VEIL_STYLES, defaultFace, faceKey, sanitizeFace, skinPalette, type FaceCustom,
+  SHADOW_COLORS, SKIN_TONES, VEIL_COLORS, VEIL_STYLES, classicFace, defaultFace, faceKey, sanitizeFace, skinPalette, type FaceCustom,
 } from '../../../data/world/face';
 
 type Tab = 'skin' | 'shape' | 'eyes' | 'brows' | 'nose' | 'mouth' | 'hair' | 'veil' | 'makeup' | 'saved';
@@ -101,7 +101,8 @@ export function openFaceStudio(): Promise<void> {
             sec('Teinte de peau', h('div.fs-sw.big', ...SKIN_TONES.map((t) => h(`button.fs-swatch${t.id === d.skin.tone ? '.on' : ''}`, { 'aria-label': t.name, 'aria-pressed': String(t.id === d.skin.tone), style: `background:${skinPalette({ tone: t.id, hue: 0, light: 0, sat: 0, warm: 0 }).base}`, on: { click: tap(() => change(() => { d.skin.tone = t.id; }), { sound: false }) } })))),
             sec('Réglages fins', slider('Teinte', d.skin.hue, (n) => { d.skin.hue = n; }), slider('Luminosité', d.skin.light, (n) => { d.skin.light = n; }, -1, 'Plus foncée', 'Plus claire'), slider('Saturation', d.skin.sat, (n) => { d.skin.sat = n; }, -1, 'Plus douce', 'Plus vive'), slider('Chaleur (sous-ton)', d.skin.warm, (n) => { d.skin.warm = n; }, -1, 'Rosé', 'Doré')));
           break;
-        case 'shape': put(sec('Forme du visage', chips(FACE_SHAPES, d.shape, (v) => { d.shape = v; }))); break;
+        case 'shape': put(sec('Forme du visage', chips(FACE_SHAPES, d.shape, (v) => { d.shape = v; })),
+            sec('Style du dessin', toggle('Rendu affiné (ombrages plus riches)', d.refined, (v) => { d.refined = v; }), h('button.btn.small.secondary', { on: { click: tap(() => change(() => { draft = classicFace(); }), { sound: false }) } }, 'Revenir à l’ancien dessin de Radia'))); break;
         case 'eyes':
           put(sec('Forme des yeux', chips(EYE_SHAPES, d.eyes.shape, (v) => { d.eyes.shape = v; })),
             sec('Proportions', slider('Taille', d.eyes.size, (n) => { d.eyes.size = n; }), slider('Écartement', d.eyes.spacing, (n) => { d.eyes.spacing = n; }, -1, 'Rapprochés', 'Écartés'), slider('Taille de l’iris', d.eyes.irisSize, (n) => { d.eyes.irisSize = n; })),
@@ -124,6 +125,7 @@ export function openFaceStudio(): Promise<void> {
         case 'hair': {
           const owned = new Set<string>(wd.hairOwned);
           put(sec('Couleur des cheveux', swatches(['', ...HAIR_COLORS], d.hairColor, (v) => { d.hairColor = v; }, 'Couleur des cheveux', 'couleur d’origine')),
+            sec('Volume', slider('Volume des cheveux', d.hairVolume, (n) => { d.hairVolume = n; }, -1, 'Plus plats', 'Plus de volume')),
             sec('Coiffure', h('div.fs-chips', ...HAIR_IDS.filter((id) => owned.has(id)).map((id) => h(`button.fs-chip${id === hair ? '.on' : ''}`, { 'aria-pressed': String(id === hair), on: { click: tap(() => change(() => { hair = id; }), { sound: false }) } }, HAIRS[id].name))),
               h('p.fs-note', 'D’autres coiffures se débloquent au dressing ♡')));
           break;
@@ -182,7 +184,7 @@ export function openFaceStudio(): Promise<void> {
       h('button.fs-chip', { 'aria-pressed': 'false', on: { click: tap((e) => { full = true; (e.currentTarget as HTMLElement).classList.add('on'); (e.currentTarget as HTMLElement).previousElementSibling?.classList.remove('on'); drawPreview(); }, { sound: false }) } }, 'Corps entier'));
     const actions = h('div.fs-actions',
       h('button.btn.secondary', { on: { click: tap(() => void leave(), { sound: false }) } }, 'Annuler'),
-      h('button.btn.secondary', { 'aria-label': 'Revenir au visage d’origine', on: { click: tap(async () => { if (await ui.confirm('Revenir au visage d’origine ?', 'Tous les réglages du brouillon sont remis à zéro (rien n’est appliqué avant « Appliquer »).', 'Réinitialiser', 'Garder')) { draft = defaultFace(); refresh(); renderPanel(false); } }, { sound: false }) } }, 'Origine'),
+      h('button.btn.secondary', { 'aria-label': 'Revenir au visage de base', on: { click: tap(async () => { if (await ui.confirm('Revenir au visage de base ?', 'Tous les réglages du brouillon sont remis à zéro (rien n’est appliqué avant « Appliquer »).', 'Réinitialiser', 'Garder')) { draft = defaultFace(); refresh(); renderPanel(false); } }, { sound: false }) } }, 'Origine'),
       h('button.btn', { on: { click: tap(() => end(true)) } }, 'Appliquer ♡'));
     const scr = h('div.screen.bg-soft.fs-screen', ui.header('Personnaliser Radia ♡', () => void leave()), h('div.fs-body', preview, viewBtns, tabsEl, panel), actions);
     ui.showScreen(scr);

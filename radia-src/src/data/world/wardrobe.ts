@@ -39,6 +39,8 @@ export const CLOTHES: Record<ClothId, ClothDef> = {
   'bot-wide-black': C('bot-wide-black', 'Pantalon large noir', ['casual', 'chic'], 0, { starter: true }),
   'bot-skirt-pleated': C('bot-skirt-pleated', 'Jupe plissée', ['romantic', 'chic'], 130, { fabric: 2 }),
   'bot-trousers-chic': C('bot-trousers-chic', 'Pantalon élégant', ['chic'], 200, { fabric: 3 }),
+  'dr-black-mini-ls': C('dr-black-mini-ls', 'Robe noire courte, collants noirs', ['chic', 'stage'], 280, { fabric: 3 }),
+  'dr-pink-satin': C('dr-pink-satin', 'Robe rose satinée', ['chic', 'romantic'], 260, { fabric: 4 }),
   'dr-flowy-floral': C('dr-flowy-floral', 'Robe fluide fleurie', ['romantic'], 260, { fabric: 4 }),
   'dr-romantic-pink': C('dr-romantic-pink', 'Robe rose romantique', ['romantic'], 300, { fabric: 4 }),
   'dr-royal-gown': C('dr-royal-gown', 'Robe royale', ['royal'], 520, { fabric: 8, diamonds: 40 }),

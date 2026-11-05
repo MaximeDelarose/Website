@@ -1,12 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { defaultFace, faceKey, hexToRgb, isDefaultFace, ORIGINAL_SKIN, rgbToHsl, sanitizeFace, skinPalette, SKIN_TONES, FACE_SHAPES, EYE_SHAPES, BROW_SHAPES, NOSE_SHAPES, MOUTH_SHAPES, VEIL_STYLES, HAIR_COLORS, EYE_COLORS, LIP_COLORS, VEIL_COLORS } from '../src/data/world/face';
+import { classicFace, defaultFace, faceKey, hexToRgb, isDefaultFace, ORIGINAL_SKIN, rgbToHsl, sanitizeFace, skinPalette, SKIN_TONES, FACE_SHAPES, EYE_SHAPES, BROW_SHAPES, NOSE_SHAPES, MOUTH_SHAPES, VEIL_STYLES, HAIR_COLORS, EYE_COLORS, LIP_COLORS, VEIL_COLORS } from '../src/data/world/face';
 
 const lum = (hex: string) => rgbToHsl(...hexToRgb(hex))[2];
 describe('personnalisation du visage : données', () => {
-  it('le visage par défaut est le dessin d\'origine (peau exacte, aucune personnalisation)', () => {
+  it('l\'ANCIEN dessin (classicFace) garde la peau exacte d\'origine ; le nouveau visage de base est ovale, affiné, brun foncé et plein de volume', () => {
+    expect(skinPalette(classicFace().skin)).toEqual(ORIGINAL_SKIN);
+    expect(classicFace().refined).toBe(false); expect(classicFace().hairVolume).toBe(0);
     const f = defaultFace();
     expect(isDefaultFace(f)).toBe(true);
-    expect(skinPalette(f.skin)).toEqual(ORIGINAL_SKIN);
+    expect(f.shape).toBe('oval'); expect(f.brows.shape).toBe('arched'); expect(f.mouth.shape).toBe('full');
+    expect(f.refined).toBe(true); expect(f.hairVolume).toBeGreaterThan(0); expect(f.hairColor).not.toBe('');
+    expect(skinPalette(f.skin)).not.toEqual(ORIGINAL_SKIN);
   });
   it('catalogue : formes de visage, yeux, sourcils, nez, bouche, voiles, couleurs variées', () => {
     expect(SKIN_TONES.length).toBeGreaterThanOrEqual(8);
@@ -32,8 +36,8 @@ describe('personnalisation du visage : données', () => {
     for (const raw of [undefined, null, 5, 'x', [], { skin: 7, eyes: 'x' }]) expect(() => sanitizeFace(raw)).not.toThrow();
     expect(isDefaultFace(sanitizeFace(null))).toBe(true);
     const f = sanitizeFace({ shape: 'triangle', skin: { tone: 99, light: 9, hue: -9 }, eyes: { shape: 'rond?', size: 5, iris: 'rouge' }, hairColor: 'blond', veil: { style: 'tchador', color: 'zz' } });
-    expect(f.shape).toBe('round'); expect(f.skin.tone).toBe(SKIN_TONES.length - 1); expect(f.skin.light).toBe(1); expect(f.skin.hue).toBe(-1);
-    expect(f.eyes.shape).toBe('almond'); expect(f.eyes.size).toBe(1); expect(f.eyes.iris).toBe('#5A3520'); expect(f.hairColor).toBe(''); expect(f.veil.style).toBe('none');
+    expect(f.shape).toBe(defaultFace().shape); expect(f.skin.tone).toBe(SKIN_TONES.length - 1); expect(f.skin.light).toBe(1); expect(f.skin.hue).toBe(-1);
+    expect(f.eyes.shape).toBe(defaultFace().eyes.shape); expect(f.eyes.size).toBe(1); expect(f.eyes.iris).toBe(defaultFace().eyes.iris); expect(f.hairColor).toBe(defaultFace().hairColor); expect(f.veil.style).toBe('none');
   });
   it('aller-retour JSON identique ; la clé de cache change dès qu\'un réglage change', () => {
     const f = defaultFace(); f.shape = 'heart'; f.eyes.size = 0.4; f.makeup.blush = 0.6; f.veil = { style: 'elegant', color: '#C9A0D8', elegant: true };

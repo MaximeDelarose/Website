@@ -21,6 +21,10 @@ export interface FaceCustom {
   mouth: { shape: MouthShape; fullness: number; width: number; lip: string };
   /** Couleur des cheveux ('' = couleur d'origine du dessin). */
   hairColor: string;
+  /** Volume des cheveux −1…+1 (0 = d'origine). */
+  hairVolume: number;
+  /** Rendu affiné (ombrages du visage plus riches, même niveau de détail qu'Auguste). Faux = ancien dessin, identique à l'original. */
+  refined: boolean;
   veil: { style: VeilStyle; color: string; elegant: boolean };
   makeup: { liner: LinerStyle; shadow: string; blush: number; blushColor: string; mascara: number; lipstick: boolean; intensity: number };
 }
@@ -55,7 +59,8 @@ export const BLUSH_COLORS = ['#F08A98', '#E8A094', '#F2A8C0', '#D9798A', '#E8B07
 export const VEIL_COLORS = ['#FFFFFF', '#F5E6D8', '#E8B8C8', '#C9A0D8', '#9FB8D8', '#7FB89A', '#8A6A5A', '#2F2A3A', '#B04A5A', '#D8B86A'] as const;
 
 // ------------------------------------------------------------------ valeurs d'origine
-export function defaultFace(): FaceCustom {
+/** L'ANCIEN visage de Radia (dessin d'origine) : strictement identique à l'ancien rendu, toujours disponible (« Ancien style »). */
+export function classicFace(): FaceCustom {
   return {
     skin: { tone: ORIGINAL_TONE, hue: 0, light: 0, sat: 0, warm: 0 },
     shape: 'round',
@@ -64,8 +69,31 @@ export function defaultFace(): FaceCustom {
     nose: { shape: 'fine', size: 0, width: 0, length: 0 },
     mouth: { shape: 'natural', fullness: 0, width: 0, lip: '#C9807A' },
     hairColor: '',
+    hairVolume: 0,
+    refined: false,
     veil: { style: 'none', color: '#E8B8C8', elegant: false },
     makeup: { liner: 'wing', shadow: '', blush: 0, blushColor: '#F08A98', mascara: 0, lipstick: true, intensity: 0 },
+  };
+}
+
+/**
+ * Le NOUVEAU visage de base de Radia (inspiré de ses photos, dans la direction artistique du jeu) : visage ovale plus fin, yeux en amande
+ * un peu étirés et expressifs, sourcils arqués mieux dessinés, nez fin, lèvres plus pulpeuses, teint doré chaud, cheveux bruns foncés
+ * pleins de volume, ombrages affinés. Tous les réglages restent modifiables dans « Personnaliser Radia ».
+ */
+export function defaultFace(): FaceCustom {
+  return {
+    skin: { tone: 3, hue: 0, light: 0.02, sat: -0.05, warm: 0.1 },
+    shape: 'oval',
+    eyes: { shape: 'almond', size: 0.06, spacing: -0.1, iris: '#4A2E1E', irisSize: 0.22 },
+    brows: { shape: 'arched', thick: 0.25, curve: 0.2, color: '#2A1A14' },
+    nose: { shape: 'fine', size: -0.1, width: -0.2, length: 0 },
+    mouth: { shape: 'full', fullness: 0.3, width: 0.1, lip: '#B8707A' },
+    hairColor: '#4B2E1E',
+    hairVolume: 0.35,
+    refined: true,
+    veil: { style: 'none', color: '#E8B8C8', elegant: false },
+    makeup: { liner: 'wing', shadow: '', blush: 0.2, blushColor: '#E8A094', mascara: 0.1, lipstick: true, intensity: 0 },
   };
 }
 
@@ -94,7 +122,9 @@ export function sanitizeFace(raw: unknown): FaceCustom {
     brows: { shape: oneOf(br.shape, BROW_SHAPES, d.brows.shape), thick: slider(br.thick), curve: slider(br.curve), color: hex(br.color, d.brows.color) },
     nose: { shape: oneOf(no.shape, NOSE_SHAPES, d.nose.shape), size: slider(no.size), width: slider(no.width), length: slider(no.length) },
     mouth: { shape: oneOf(mo.shape, MOUTH_SHAPES, d.mouth.shape), fullness: slider(mo.fullness), width: slider(mo.width), lip: hex(mo.lip, d.mouth.lip) },
-    hairColor: hex(raw.hairColor, '', true),
+    hairColor: hex(raw.hairColor, d.hairColor, true),
+    hairVolume: slider(raw.hairVolume, d.hairVolume),
+    refined: typeof raw.refined === 'boolean' ? raw.refined : d.refined,
     veil: { style: oneOf(ve.style, VEIL_STYLES, 'none'), color: hex(ve.color, d.veil.color), elegant: ve.elegant === true },
     makeup: { liner: oneOf(mk.liner, LINER_STYLES, d.makeup.liner), shadow: hex(mk.shadow, '', true), blush: Math.round(num(mk.blush, 0, 0, 1) * 100) / 100, blushColor: hex(mk.blushColor, d.makeup.blushColor), mascara: Math.round(num(mk.mascara, 0, 0, 1) * 100) / 100, lipstick: mk.lipstick !== false, intensity: slider(mk.intensity) },
   };
@@ -102,8 +132,9 @@ export function sanitizeFace(raw: unknown): FaceCustom {
 
 /** Clé de cache (le dessin de l'avatar est mis en cache : toute modification de visage doit changer la clé). */
 export const faceKey = (f: FaceCustom): string => JSON.stringify(f);
-/** Vrai si le visage est identique au dessin d'origine (aucune personnalisation). */
+/** Vrai si le visage est identique au nouveau visage de base (aucune personnalisation). */
 export const isDefaultFace = (f: FaceCustom): boolean => faceKey(f) === faceKey(defaultFace());
+export const isClassicFace = (f: FaceCustom): boolean => faceKey(f) === faceKey(classicFace());
 
 // ------------------------------------------------------------------ peau : teinte de base + réglages fins → trois nuances (ombre, base, lumière)
 export function hexToRgb(h: string): [number, number, number] { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
