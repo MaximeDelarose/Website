@@ -15,7 +15,8 @@ const results = []; const check = (n, ok, x = '') => { results.push(!!ok); conso
 const out = await p.evaluate(async () => {
   const art = await window.RADIA.artMod(), lk = await window.RADIA.lookMod(), av = await window.RADIA.avatarMod();
   const wd = window.RADIA.save.data.world.wardrobe;
-  const KIND = { face: { x: 52, y: 26, w: 136, h: 136 }, bust: { x: 14, y: 22, w: 212, h: 300 }, now: { x: 0, y: 0, w: 240, h: 600 }, avatar: { x: 0, y: 0, w: 240, h: 600 } };
+  const L = 13; // RIG.head.lift
+  const KIND = { face: { x: 52, y: 26 - L, w: 136, h: 136 }, bust: { x: 14, y: 22 - L * 0.5, w: 212, h: 300 }, now: { x: 0, y: 0, w: 240, h: 600 }, avatar: { x: 0, y: 0, w: 240, h: 600 } };
   const render = () => ({
     face: art.radiaFaceCanvas('smile', 320), bust: art.radiaBustCanvas('smile', 400), now: art.radiaNowCanvas(480, 1200), avatar: av.avatarCanvas(wd.look, 480, 1200, { expr: 'smile' }),
   });
@@ -50,7 +51,7 @@ for (const [name, byKind] of Object.entries(out)) {
   if (name === 'retour') { for (const [k, n] of Object.entries(byKind)) check(`retour au maquillage d'origine : « ${k} » identique pixel pour pixel`, n === 0, `${n} valeurs différentes`); continue; }
   for (const [k, r] of Object.entries(byKind)) {
     check(`${name} — ${k} : silhouette identique (la tête ne change pas)`, r.aDiff === 0, `${r.aDiff} px d'alpha`);
-    check(`${name} — ${k} : le maquillage se voit, uniquement sur yeux / joues / bouche`, r.n > 0 && r.box && r.box[1] >= 96 && r.box[3] <= 166 && r.box[0] >= 80 && r.box[2] <= 160, JSON.stringify(r.box));
+    check(`${name} — ${k} : le maquillage se voit, uniquement sur yeux / joues / bouche`, r.n > 0 && r.box && r.box[1] >= 84 && r.box[3] <= 154 && r.box[0] >= 80 && r.box[2] <= 160, JSON.stringify(r.box));
   }
 }
 check('aucune erreur JS', errs.length === 0, errs.slice(0, 2).join(' | '));

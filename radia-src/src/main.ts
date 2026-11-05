@@ -3,6 +3,7 @@
  * Chargement : sauvegarde → réglages → Phaser (scène de fond) → polices →
  * écran d'accueil. Service worker pour le hors-ligne (build uniquement).
  */
+import { isComboBusy } from './game/fx/comboState';
 import { applySavedFace } from './game/world/look';
 import './ui/styles/base.css';
 import './ui/styles/game.css';
@@ -238,6 +239,17 @@ async function setupThoughts(): Promise<void> {
   } catch { /* les notifications ne doivent jamais empêcher le jeu de démarrer */ }
 }
 
+/** Statistiques de jeu : reprise du suivi seulement si Radia l'a accepté ; invitation unique à un moment calme (jamais pendant un combo ni une notification). */
+async function setupStats(): Promise<void> {
+  try {
+    const st = await import('./core/stats');
+    st.startStatsTracking();
+    const [sch, ui2] = await Promise.all([import('./events/scheduler'), import('./ui/screens/statsConsent')]);
+    const q = new URLSearchParams(location.search);
+    ui2.scheduleStatsInvite(() => sch.safeToNotify(), q.has('debug') && q.has('statsDelay') ? Math.max(0, Number(q.get('statsDelay')) || 0) : 150_000);
+  } catch { /* les statistiques ne doivent jamais empêcher le jeu de démarrer */ }
+}
+
 async function boot(): Promise<void> {
   progress(0.1);
   save.load();
@@ -297,7 +309,7 @@ async function boot(): Promise<void> {
   await showWhatsNewV3();
   await showWhatsNewV4();
   await showWhatsNewV6();
-  void setupThoughts();
+  void setupThoughts(); void setupStats();
   await showWhatsNewV7();
   await showWhatsNewV8();
   await showWhatsNewV9();
@@ -327,5 +339,5 @@ if (new URLSearchParams(location.search).has('planche')) { window.setTimeout(() 
 // Accès debug en développement : window.RADIA
 if (new URLSearchParams(location.search).has('debug')) { void import('./casino'); void import('./wheel'); }
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  (window as unknown as Record<string, unknown>).RADIA = { ...debugApis(), save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), relatives: () => import('./data/family/relatives'), pushMod: () => import('./core/push'), artMod: () => import('./game/art/world/radiaNow'), avatarMod: () => import('./game/art/world/avatar'), lookMod: () => import('./game/world/look'), thoughtsMod: () => import('./ui/screens/thoughts'), schedulerMod: () => import('./events/scheduler'), eventsManager: () => import('./events/manager'), eventsData: () => import('./events/data'), gift: () => spawnGiftNow(), secretCall: () => secretNow(), secretAdvance: (m: number) => secretAdvance(m), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
+  (window as unknown as Record<string, unknown>).RADIA = { ...debugApis(), save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), relatives: () => import('./data/family/relatives'), pushMod: () => import('./core/push'), comboBusy: () => isComboBusy(), dressMod: () => import('./ui/screens/world/dressing'), wardrobeData: () => import('./data/world/wardrobe'), artMod: () => import('./game/art/world/radiaNow'), avatarMod: () => import('./game/art/world/avatar'), lookMod: () => import('./game/world/look'), thoughtsMod: () => import('./ui/screens/thoughts'), schedulerMod: () => import('./events/scheduler'), eventsManager: () => import('./events/manager'), eventsData: () => import('./events/data'), gift: () => spawnGiftNow(), secretCall: () => secretNow(), secretAdvance: (m: number) => secretAdvance(m), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
 }

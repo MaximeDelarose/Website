@@ -37,7 +37,7 @@ const CATS: { key: CatKey; label: string }[] = [
   { key: 'jacket', label: 'Vestes' }, { key: 'shoes', label: 'Chaussures' }, { key: 'bag', label: 'Sacs' },
   { key: 'hair', label: 'Coiffures' }, { key: 'head', label: 'Foulards & cheveux' }, { key: 'glasses', label: 'Lunettes' },
   { key: 'ears', label: 'Boucles d\'oreilles' }, { key: 'neck', label: 'Bijoux' }, { key: 'wrist', label: 'Bracelets' }, { key: 'crown', label: 'Couronnes' },
-  { key: 'makeup', label: 'Maquillage' }, // surcouche légère : eye-liner, fards, rouge à lèvres / gloss — jamais un changement de visage
+  { key: 'makeup', label: 'Maquillage' }, { key: 'nails', label: 'Vernis à ongles' }, // surcouche légère : eye-liner, fards, rouge à lèvres / gloss — jamais un changement de visage
 ];
 const isHairId = (id: string): id is HairId => (HAIR_IDS as readonly string[]).includes(id);
 /** Un cadeau n'apparaît dans le dressing que s'il est possédé. */
@@ -50,15 +50,16 @@ const nameOf = (id: ItemId) => (isHairId(id) ? HAIRS[id].name : CLOTHES[id].name
 const THUMB_BASE: Look = { hair: 'hair-loose', top: 'top-tee-white', bottom: 'bot-jeans', dress: null, jacket: null, shoes: 'sh-sneakers-white', bag: null, acc: [], crown: null };
 const CROPS: Record<CatKey, [number, number, number, number]> = {
   top: [26, 138, 188, 236], bottom: [20, 268, 200, 322], dress: [0, 140, 240, 452], jacket: [22, 138, 196, 236],
-  shoes: [26, 498, 188, 104], bag: [0, 150, 240, 262], crown: [26, -14, 188, 178], hair: [8, 0, 224, 262],
-  head: [44, -4, 152, 164], glasses: [60, 36, 120, 80], ears: [44, 50, 152, 104], lips: [84, 108, 72, 56], neck: [50, 128, 140, 100], wrist: [-6, 278, 64, 64],
-  eyes: [66, 62, 108, 82], mouth: [72, 102, 96, 74], liner: [66, 62, 108, 82], shadow: [66, 58, 108, 86], makeup: [66, 60, 108, 84],
+  shoes: [26, 498, 188, 104], bag: [0, 150, 240, 262], crown: [26, -27, 188, 178], hair: [8, -4, 224, 262],
+  // visage et tête : cadrages calculés sur le gabarit actuel (tête remontée de RIG.head.lift, yeux ≈ y 104, bouche ≈ y 136, menton ≈ y 154) avec de l'AIR autour
+  head: [36, 6, 168, 168], glasses: [62, 72, 116, 66], ears: [56, 72, 128, 84], lips: [84, 114, 72, 44], neck: [50, 128, 140, 100], wrist: [-6, 278, 64, 64],
+  eyes: [66, 74, 108, 60], mouth: [84, 114, 72, 44], liner: [62, 76, 116, 56], shadow: [62, 76, 116, 56], makeup: [62, 76, 116, 56], nails: [-14, 296, 78, 78],
 };
 const catOf = (id: ItemId): CatKey => {
   if (isHairId(id)) return 'hair';
   if (CLOTHES[id].slot !== 'acc') return CLOTHES[id].slot as CatKey;
   const g = accGroup(id) ?? 'neck';
-  return g === 'liner' || g === 'shadow' || g === 'lips' ? 'makeup' : g; // eye-liner, fards et rouge à lèvres : un seul rayon « Maquillage »
+  return g === 'liner' || g === 'shadow' || g === 'lips' ? 'makeup' : g; // les vernis ont leur propre rayon // eye-liner, fards et rouge à lèvres : un seul rayon « Maquillage »
 };
 /** Cadrage de la vignette : les lèvres sont cadrées sur la bouche, le reste du maquillage sur les yeux. */
 const cropOf = (id: ItemId): CatKey => (!isHairId(id) && accGroup(id) === 'lips' ? 'lips' : catOf(id));
@@ -69,7 +70,7 @@ export function thumbUrl(id: ItemId): string {
   if (id === NECKLACE_ID) return necklaceThumbUrl(PX);
   return canvasUrl(`dr:thumb:${id}`, () => {
     const look = isHairId(id) ? { ...W.cloneLook(THUMB_BASE), hair: id } : W.applyItem(THUMB_BASE, id);
-    if (!isHairId(id) && (CLOTHES[id].slot !== 'crown' && CLOTHES[id].slot !== 'acc' || catOf(id) === 'wrist')) look.hair = 'hair-bun'; // dégage les épaules (et le poignet) pour bien voir la pièce
+    if (!isHairId(id) && (CLOTHES[id].slot !== 'crown' && CLOTHES[id].slot !== 'acc' || catOf(id) === 'wrist' || catOf(id) === 'nails')) look.hair = 'hair-bun'; // dégage les épaules (et le poignet) pour bien voir la pièce
     if (!isHairId(id) && CLOTHES[id].slot === 'dress') { look.top = null; look.bottom = null; }
     const [cx, cy, cw, ch] = CROPS[cropOf(id)];
     const c = makeCanvas(PX, PX);
@@ -80,7 +81,7 @@ export function thumbUrl(id: ItemId): string {
     ctx.beginPath();
     ctx.rect(cx, cy, cw, ch);
     ctx.clip();
-    drawAvatar(ctx, look, 240, 600, { expr: 'smile', arms: catOf(id) === 'wrist' ? 'open' : undefined });
+    drawAvatar(ctx, look, 240, 600, { expr: 'smile', arms: catOf(id) === 'wrist' || catOf(id) === 'nails' ? 'open' : undefined });
     return c;
   });
 }
@@ -259,10 +260,10 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
       { label: 'Sacs & souliers', ic: 'basket', subs: ['shoes', 'bag'] },
       { label: 'Cheveux', ic: 'wand', subs: ['hair', 'head', 'crown'] },
       { label: 'Bijoux', ic: 'crown', subs: ['glasses', 'ears', 'neck', 'wrist'] },
-      { label: 'Maquillage', ic: 'smile', subs: ['makeup'] },
+      { label: 'Maquillage', ic: 'smile', subs: ['makeup', 'nails'] },
     ];
     const groupOf = (k: CatKey) => GROUPS.findIndex((g) => g.subs.includes(k));
-    const SHORT: Partial<Record<CatKey, string>> = { top: 'Hauts', bottom: 'Bas', dress: 'Robes', jacket: 'Vestes', shoes: 'Chaussures', bag: 'Sacs', hair: 'Coiffures', head: 'Foulards', glasses: 'Lunettes', ears: 'Boucles', neck: 'Colliers', wrist: 'Bracelets', crown: 'Couronnes', makeup: 'Maquillage' };
+    const SHORT: Partial<Record<CatKey, string>> = { top: 'Hauts', bottom: 'Bas', dress: 'Robes', jacket: 'Vestes', shoes: 'Chaussures', bag: 'Sacs', hair: 'Coiffures', head: 'Foulards', glasses: 'Lunettes', ears: 'Boucles', neck: 'Colliers', wrist: 'Bracelets', crown: 'Couronnes', makeup: 'Maquillage', nails: 'Vernis' };
     const labelOf = (k: CatKey) => SHORT[k] ?? CATS.find((c) => c.key === k)?.label ?? '';
     const handle = h('button.dr2-handle', { 'aria-label': 'Agrandir ou réduire la galerie' }, h('i'));
     handle.addEventListener('click', () => { setSnap(nextSnap(snap)); });

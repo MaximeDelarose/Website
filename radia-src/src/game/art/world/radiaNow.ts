@@ -36,7 +36,13 @@ export interface PaintedFigure { im: HTMLImageElement; crown: boolean }
 /** La tenue (et le visage) correspondent-ils à l'illustration peinte ? Règle pure : game/world/paintedLook.ts */
 export const paintedLookId = (l: Look): PaintedId | null => paintedLookIdPure(l, getFaceCustom().veil.style === 'none');
 /** Illustration prête pour ce look (null : dessin vectoriel). */
-function paintedFor(l: Look): PaintedFigure | null { const id = paintedLookId(l); const im = painted['char-radia-nc']; return id && im ? { im, crown: id === 'char-radia' } : null; }
+/**
+ * Figure peinte COMPLÈTE (illustration entière, y compris son corps) : désactivée. Radia est désormais toujours « tête peinte + corps dessiné », avec le même cou, les
+ * mêmes mains et la même pose quelle que soit la tenue : plus de saut de taille ou de proportions quand on enfile la tenue exacte de l'illustration.
+ * (`force` : planche de validation, pour comparer avec l'illustration d'origine.)
+ */
+const USE_PAINTED_FIGURE = false;
+function paintedFor(l: Look, force = false): PaintedFigure | null { if (!USE_PAINTED_FIGURE && !force) return null; const id = paintedLookId(l); const im = painted['char-radia-nc']; return id && im ? { im, crown: id === 'char-radia' } : null; }
 // ---- tête peinte sur le corps dessiné (toutes les tenues) : couches tirées de l'illustration (pack chiffré)
 const heads: Partial<Record<'headp-radia-nc' | 'facep-radia' | 'crownp-gold', HTMLImageElement>> = {};
 // origine de chaque calque dans le repère de l'illustration SANS couronne (px) — voir scripts/painted-head/build.py
@@ -110,7 +116,7 @@ export function radiaNowCanvas(w: number, h: number, opts: AvatarOpts = {}): HTM
 }
 const paintedCache = new Map<string, HTMLCanvasElement>();
 /** Pour une photo souvenir (look enregistré) : illustration peinte si ce look y correspond et qu'elle est prête. */
-export function paintedImageFor(l: Look): PaintedFigure | null { return paintedFor(l); }
+export function paintedImageFor(l: Look, force = false): PaintedFigure | null { return paintedFor(l, force); }
 
 const crops = new Map<string, HTMLCanvasElement>();
 
@@ -120,7 +126,9 @@ function crop(kind: 'face' | 'bust', expr: Expr, outW: number, blink: boolean): 
   let c = crops.get(key);
   if (c) return c;
   // zones en coordonnées logiques de l'avatar (boîte 240 × 600)
-  const r = kind === 'face' ? { x: 52, y: 26, w: 136, h: 136 } : { x: 14, y: 22, w: 212, h: 300 };
+  // cadrages calés sur le gabarit : la tête est remontée de RIG.head.lift (voir rig.ts)
+  const L = RIG.head.lift;
+  const r = kind === 'face' ? { x: 52, y: 26 - L, w: 136, h: 136 } : { x: 14, y: 22 - L * 0.5, w: 212, h: 300 };
   const S = 2.4; // résolution de la source
   const fig = paintedFor(look); // figure peinte : même cadrage que le dessin, donc même taille de tête et de buste dans les bulles et les médaillons
   let src: HTMLCanvasElement;
