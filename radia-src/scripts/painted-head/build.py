@@ -63,7 +63,11 @@ darkhair = np.clip(((R - B) - 10) / 10, 0, 1) * np.clip((R - 44) / 12, 0, 1) * (
 keep[corr] = np.where(inface[corr], 1.0, np.where((xx[corr] < 120) | (xx[corr] > 232), hairish[corr], darkhair[corr]))
 soft = np.clip((176 - xx) / 22, 0, 1); keep = np.where((yy > 215) & (xx > 118) & (xx < 176), keep * soft, keep)
 keep[(xx > 143) & (xx < 226) & (yy >= 209) & (yy < 262)] = 0
-keep[(xx > 262) & (yy > 250)] = 0
+# mèche de droite (derrière l'épaule) : bords adoucis et extrémité en FONDU (plus de coupe franche posée sur la manche)
+f = np.clip((yy - 170) / 50.0, 0, 1)                      # l'adoucissement des bords démarre PROGRESSIVEMENT (aucune marche)
+xfade = 1 - f * (1 - np.clip((270 - xx) / 16.0, 0, 1))
+yfade = np.clip((290 - yy) / 56.0, 0, 1)
+keep = np.where(xx > 190, keep * xfade * yfade, keep)
 fade = np.clip((470 - yy) / 40, 0, 1); keep *= np.where(yy > 200, fade, 1); keep[yy >= 470] = 0
 
 def components(mask):
