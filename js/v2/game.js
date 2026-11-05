@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.36.0";
+  var VERSION = "2.36.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -8991,7 +8991,7 @@
   };
   var CHLOG = null;
   function installHtml() {
-    var sa = (window.matchMedia && matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches) || navigator.standalone;
+    var sa = !!window.__isApp;
     if (sa) return '<p class="game-small">📲 Tu joues depuis l\'appli installée.</p>';
     if (window.__pwaPrompt) return '<p class="btn-row"><button type="button" class="btn" data-action="pwainstall">📲 Installer l\'appli (icône sur l\'écran d\'accueil, plein écran)</button></p>';
     var ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
