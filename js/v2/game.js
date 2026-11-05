@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.23.0";
+  var VERSION = "2.23.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -2640,11 +2640,11 @@
     for (i = f0; i < fx.length; i++) { var f = fx[i]; if (f.tint) continue; f.tint = col; if (f.col && (f.kind === "ring" || f.kind === "beam" || f.kind === "cutline")) f.col = rgb || (rgb = tintRgb(col)); }
   }
   /* ---- Capitaine : tout ce que le joueur émet part des matelots, par un double de chaque matelot ---- */
-  var CREW_CAP = 30;   // nombre de matelots qui émettent objets, attirail et talents (les autres suivent seulement)
+  var CREW_CAP = 15;   // nombre de matelots qui émettent objets, attirail et talents (les autres suivent seulement)
   function crewProxy(pl, mt) {
     if (mt.px) return mt.px;
     var px = Object.create(pl);
-    px.isCrew = 1; px.crew = null; px.crewScale = 0.1; px.timers = {}; px.cool = {}; px.st = {}; px.comp = {}; px.trees = []; px.lx = mt.x; px.ly = mt.y; px.mt = mt;
+    px.isCrew = 1; px.crew = null; px.crewScale = 0.05; px.timers = {}; px.cool = {}; px.st = {}; px.comp = {}; px.trees = []; px.lx = mt.x; px.ly = mt.y; px.mt = mt;
     Object.defineProperty(px, "hp", { configurable: true, get: function () { return pl.hp; }, set: function (v) { var d = v - pl.hp; if (d > 0 && pl.hp < pl.maxHp) pl.hp = Math.min(pl.maxHp, pl.hp + d * 0.1); } });
     return (mt.px = px);
   }
@@ -2734,7 +2734,7 @@
     if ((w.crab && sk.nacre) || (w.bird && sk.melody && p.anchored)) arr.forEach(function (c) { for (var hb = hostile.length - 1; hb >= 0; hb--) if (Math.abs(hostile[hb].x - c.x) < 9 && Math.abs(hostile[hb].y - c.y) < 9) { hostile.splice(hb, 1); burst(c.x, c.y, "#fdf3de", 3); } });
     var down = w.medic ? players.filter(function (o) { return o !== p && o.down; })[0] : null;
     arr.forEach(function (c, i) {
-      if (mini) { var mt = p.crew[i]; if (!mt) return; var sx = p.x, sy = p.y, sf = p.face; p.x = mt.x; p.y = mt.y; p.face = mt.face || 1; c.mini = 1; try { petOne(c, i, arr.length, w, l, sk, dt, 0.1 * nBase, id); } finally { p.x = sx; p.y = sy; p.face = sf; } return; }
+      if (mini) { var mt = p.crew[i]; if (!mt) return; var sx = p.x, sy = p.y, sf = p.face; p.x = mt.x; p.y = mt.y; p.face = mt.face || 1; c.mini = 1; try { petOne(c, i, arr.length, w, l, sk, dt, 0.05 * nBase, id); } finally { p.x = sx; p.y = sy; p.face = sf; } return; }
       if (down) { c.tgt = null; c.anim += dt * 8; var mx = down.x - c.x, my = down.y - c.y, md = Math.hypot(mx, my); if (md > 8) { c.x += mx / md * Math.min(md, spd * dt); c.y += my / md * Math.min(md, spd * dt); c.face = mx > 0 ? 1 : -1; } else down.medicT = 0.25; return; }
       if (w.crab) { c.age = (c.age || 0) + dt; if (sk.pearl && c.age > 20 && !c.big) { c.big = true; burst(c.x, c.y, "#fdf3de", 10); } }
       if (w.circle || (w.bird && sk.melody && p.anchored) || (sk.rally && p.anchored)) {
@@ -3300,14 +3300,14 @@
   }
   /* ---- Capitaine : l'équipage ---- */
   /* ---- Capitaine : l'équipage (10 au départ, +2 par niveau, 50 max), chaque matelot attaque avec l'arme du Capitaine en miniature ---- */
-  var CREW0 = 10, CREWMAX = 50;
+  var CREW0 = 5, CREWMAX = 25;
   function newMatelot(pl) { return { k: "matelot", x: pl.x, y: pl.y, face: 1, anim: Math.random() * 2, cd: 0.4 + Math.random() * 0.8, chargeT: 0, hitCd: 0 }; }
-  function crewMax(pl) { return Math.min(CREWMAX, CREW0 + 2 * (((r && r.level) || 1) - 1) + (setCount(pl, "corsaire") >= 2 ? 2 : 0) + (tal(pl, "canonniers") ? 4 : 0)); }
+  function crewMax(pl) { return Math.min(CREWMAX, CREW0 + (((r && r.level) || 1) - 1) + (setCount(pl, "corsaire") >= 2 ? 1 : 0) + (tal(pl, "canonniers") ? 2 : 0)); }
   // un coup de matelot = 10 % d'un coup de l'arme de base du Capitaine
   function crewHit(pl) {
     if (pl._chT === r.time) return pl._ch;
     var id = armeOf(pl).base, d = techDef(pl, id), v = d ? V(d, "dmg", Math.max(0, (pl.weapons[id] || 1) - 1)) : 15;
-    pl._chT = r.time; pl._ch = (typeof v === "number" ? v : 15) * 0.1;
+    pl._chT = r.time; pl._ch = (typeof v === "number" ? v : 15) * 0.05;
     return pl._ch;
   }
   function crewMelee(pl) { var f = armeOf(pl).fam; return f === "melee"; }
@@ -3339,7 +3339,7 @@
     // la file suit le chemin du Capitaine
     var tr = pl.trail, last = tr[0];
     if (!last || Math.hypot(last.x - pl.x, last.y - pl.y) > 2) { tr.unshift({ x: pl.x, y: pl.y }); if (tr.length > 200) tr.length = 200; }
-    var nC = pl.crew.length, blobR = 3.6 * Math.sqrt(nC + 0.5), lagI = Math.min(tr.length - 1, Math.round((12 + blobR * 0.7) / 2)), ctr = tr[Math.max(0, lagI)] || { x: pl.x, y: pl.y }, circle = pl.posture === "abordage" && pl.anchored;
+    var nC = pl.crew.length, blobR = 9 * Math.sqrt(nC + 0.5), lagI = Math.min(tr.length - 1, Math.round((12 + blobR * 0.7) / 2)), ctr = tr[Math.max(0, lagI)] || { x: pl.x, y: pl.y }, circle = pl.posture === "abordage" && pl.anchored;
     var cm = crewMax(pl); if (pl.crewTop === undefined) pl.crewTop = pl.crew.length;
     if (cm > pl.crewTop) { for (var nq = pl.crewTop; nq < cm; nq++) if (pl.crew.length < cm) addMatelot(pl); pl.crewTop = cm; if (pl === me) SND.click(); }
     if (pl.crew.length < cm) { pl.regenT = (pl.regenT || 0) + dt * (pl.posture === "convoi" && pl.anchored ? 2 : 1); if (pl.regenT >= 2.5) { pl.regenT = 0; addMatelot(pl); } } else pl.regenT = 0;
@@ -3368,7 +3368,7 @@
         return;
       }
       if (circle) { var a = r.time * 0.8 + i / pl.crew.length * TAU; tx = pl.x + Math.cos(a) * 20; ty = pl.y + Math.sin(a) * 15; }
-      else { var ga = i * 2.39996, gr = 3.6 * Math.sqrt(i + 0.5), wob = Math.sin(r.time * 3 + i * 1.7); tx = ctr.x + Math.cos(ga) * gr + wob; ty = ctr.y + Math.sin(ga) * gr * 0.7 + Math.cos(r.time * 2.6 + i) * 0.8; }
+      else { var ga = i * 2.39996, gr = 10 * Math.sqrt(i + 0.7), ga2 = ga + Math.sin(r.time * 0.5 + i * 1.3) * 0.5, wob = Math.sin(r.time * 1.3 + i * 1.7) * 7; tx = ctr.x + Math.cos(ga2) * gr + wob; ty = ctr.y + Math.sin(ga2) * gr * 0.75 + Math.cos(r.time * 2.6 + i) * 0.8; }
       var ex = tx - mt.x, ey = ty - mt.y, kf = Math.min(1, dt * (6 + (i % 5))); mt.x += ex * kf; mt.y += ey * kf;
       if (Math.abs(ex) > 0.5) mt.face = ex > 0 ? 1 : -1;
       if (pl.posture === "convoi" && pl.mstate === "mouvement") near(mt.x, mt.y, 12, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - mt.x, e.y - mt.y) < 6 + e.d.r && cooled(e, "train", 0.4)) crewHurt(pl, e, crewHit(pl) * 1.5, (e.x - mt.x) * 3, (e.y - mt.y) * 3); });
@@ -4386,7 +4386,7 @@
   }
   var TX_EMIT = { ring: 1, nova: 1, freeze: 1, chain: 1, bomb: 1, pull: 1 };
   function txRun(pl, o) {
-    if (pl.crew && pl.crew.length && TX_EMIT[o.act]) { crewProxies(pl, 12).forEach(function (px) { txAct(px, o); }); return; }
+    if (pl.crew && pl.crew.length && TX_EMIT[o.act]) { crewProxies(pl, 6).forEach(function (px) { txAct(px, o); }); return; }
     txAct(pl, o);
   }
   function txAct(pl, o) {
