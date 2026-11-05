@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.38.4";
+  var VERSION = "2.39.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -10103,7 +10103,7 @@
   $("[data-fs-exit]").addEventListener("click", exitFull);
   ACTIONS.fullscreen = function () { toggleFull(); };
   /* bouton retour du téléphone : il ferme d'abord pause, menus et écrans du jeu, sans quitter la page ;
-     au camp, dans l'appli installée, il ne fait rien (sinon la page se vide) */
+     au camp : un premier retour affiche un message, un second quitte */
   function esBack() {
     if (state === "play") { pause(); return true; }
     if (state === "pause") { resume(); return true; }
@@ -10128,9 +10128,9 @@
       armed = false;
       var used = false; try { used = esBack(); } catch (e) {}
       if (used) { push(); return; }
-      var now = Date.now();
-      if (window.__isApp || now - lastBack > 2500) { lastBack = now; banner(window.__isApp ? "Utilise le bouton Accueil pour quitter" : "Appuie encore sur retour pour quitter"); push(); return; }
-      if (history.length > 2) history.back(); else push();
+      // au camp : premier retour = message, sans recréer l'entrée ; un second retour tout de suite quitte vraiment l'appli.
+      // Si le joueur touche l'écran entre-temps, l'entrée est recréée (il reste dans le jeu).
+      banner("Appuie encore sur retour pour quitter");
     });
   })();
   // appli installée : le jeu occupe tout l'écran d'emblée, sans bouton pour réduire
