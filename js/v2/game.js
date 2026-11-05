@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.42.0";
+  var VERSION = "2.43.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -742,6 +742,14 @@
       bannerAll(D.ENEMIES[bt].name + (r.madness ? " x" + (1 + r.madness) : "") + " arrive !");
       SND.boom();
     }
+    if (!isArena() && !isDungeon() && me) {
+      var CHT = [300, 600, 900]; r.champs = r.champs || 0;
+      if (r.champs < CHT.length && r.time >= CHT[r.champs]) {
+        var ci = r.champs++, cpl = MAP.biomes[0].enemies.map(function (q) { return q[0]; }), cc = spawnAt(cpl[(Math.random() * cpl.length) | 0], me.x + 70, me.y);
+        if (cc) { cc.hp *= 9 + ci * 5; cc.maxHp = cc.hp; cc.scale = 1.7; cc.champion = 1; giveAffixes(cc, 2); }
+        bannerAll("⚔ Champion : une brute te défie ! (objet rare à la clé)"); SND.boom();
+      }
+    }
     propTimer -= dt;
     if (propTimer <= 0) {
       propTimer = 4.5;
@@ -879,6 +887,7 @@
   function kill(e) {
     e.dead = true;
     lootKill(e);
+    if (e.champion) { dropItem(e.x, e.y, 2); drop("chest", e.x + 6, e.y, 2); bannerAll("Champion vaincu !"); }
     if (e.spr && e.spr[0] && fx.length < 160) { var gs0 = e.scale || (e.giant ? 2 : 1); if (e.spr.ns) gs0 = Math.max(1, gs0 / e.spr.ns); fx.push({ kind: "pop", x: e.x, y: e.y, s: e.spr[0], face: e.face, g: gs0, life: e.d.boss ? 0.3 : 0.14, max: e.d.boss ? 0.3 : 0.14 }); }
     if (!e.d.prop) {
       if (e.d.boss) SND.bossDown(); else SND.pop(!!(e.aff || e.d.elite));
@@ -2000,6 +2009,10 @@
     } else if (s.k === "soin") {
       var full = !!anyItem("pain_beni"); players.forEach(function (o) { if (!o.down) { o.hp = Math.min(o.maxHp, o.hp + o.maxHp * (full ? 1 : 0.5)); burst(o.x, o.y, "#6ad8ff", 8); } });
       bannerAll("L'eau claire vous soigne"); SND.level();
+    } else if (s.k === "marchand" && s.curse) {
+      if (pl.hp <= pl.maxHp * 0.3) { st.p = 0; st.cd = 1.5; bannerAll("Trop faible pour ce marché…"); return; }
+      pl.hp = Math.max(1, pl.hp - pl.maxHp * 0.25); dropItem(s.x, s.y - 16, 2); bannerAll("Marché maudit conclu…"); SND.hurt();
+      if (s.uses) { s.uses--; if (s.uses > 0) { st.p = 0; st.cd = 1; return; } }
     } else if (s.k === "marchand") {
       if (!payGold(Math.round(merchantCost() * (s.cheap || 1)), st, "pour acheter")) return;
       dropItem(s.x, s.y - 16, 1); bannerAll("Marché conclu !"); SND.gold();
@@ -2169,8 +2182,8 @@
       }
       // nom et coût quand on s'approche
       if (!dead && Math.hypot(me.x - x, me.y - y) < 60) {
-        var cst = s.k === "coffre" ? chestCost() : s.k === "marchand" ? merchantCost() : s.k === "fortune" ? betCost() : 0;
-        var label = def.name + (cst ? " " + cst : s.k === "sang" ? " -20% PV" : s.k === "sacrifice" ? " -1 objet" : "");
+        var cst = s.k === "coffre" ? chestCost() : s.k === "marchand" && !s.curse ? merchantCost() : s.k === "fortune" ? betCost() : 0;
+        var label = (s.curse ? "Marchand maudit" : def.name) + (s.curse ? " -25% PV" : cst ? " " + cst : s.k === "sang" ? " -20% PV" : s.k === "sacrifice" ? " -1 objet" : "");
         wlabel(label, x, y - 38, col, cst ? "gold" : null);
       }
     });
@@ -2340,10 +2353,10 @@
     }
   }
   // événements de partie : 1 ou 2 par carte en Survie, 1 par étage en Expédition (+1 avec l'Anneau de l'orage)
-  function evMax() { return (isExpe() ? 1 : 2) + (me && me.ring && me.ring.orage ? 1 : 0); }
+  function evMax() { return (isExpe() ? 1 : 5) + (me && me.ring && me.ring.orage ? 1 : 0); }
   function eventTick(dt) {
     if (isArena() || isDungeon() || !me) return;
-    if (r.evStage !== r.stageT0) { r.evStage = r.stageT0; r.evN = 0; r.evAt = (isExpe() ? 150 : 100) + Math.random() * 80; r.evSaid = false; }
+    if (r.evStage !== r.stageT0) { r.evStage = r.stageT0; r.evN = 0; r.evAt = (isExpe() ? 150 : 55) + Math.random() * 40; r.evSaid = false; }
     var st = stageTime(), ciel = !!anyItem("carte_ciel");
     if (!r.ev && r.evN < evMax()) {
       if (!r.evPick) { var pool = D.EVENTS.filter(function (e) { return !e.map || e.map === MAP.id; }); r.evPick = pool[(Math.random() * pool.length) | 0]; }
@@ -2358,6 +2371,13 @@
     bannerAll("Événement : " + def.name + " — " + def.desc); SND.fusion();
     var ev = r.ev, k;
     if (def.id === "migration") { var side = Math.random() < 0.5 ? -1 : 1, prev = null; for (k = 0; k < 30 && enemies.length < 260; k++) { var mg = spawnAt(Math.random() < 0.5 ? "ant" : "slug", me.x + side * 190, me.y - 90 + k * 6); if (mg) { mg.awake = true; if (prev && k % 5) mg.follow = prev; prev = mg; } } r.xpXT = r.time + 30; }
+    else if (def.id === "camp") {
+      var cpool = MAP.biomes[0].enemies.map(function (q) { return q[0]; }); ev.cx = ev.x; ev.cy = ev.y; ev.guards = [];
+      for (k = 0; k < 9; k++) { var ca = k / 9 * TAU, ce = spawnAt(cpool[(Math.random() * cpool.length) | 0], ev.cx + Math.cos(ca) * 34, ev.cy + Math.sin(ca) * 24); if (ce) { if (k % 3 === 0) giveAffixes(ce, 1); ev.guards.push(ce); } }
+      drop("chest", ev.cx, ev.cy, 2);
+    }
+    else if (def.id === "piege") { ev.cx = ev.x; ev.cy = ev.y; drop("chest", ev.cx, ev.cy, 3); }
+    else if (def.id === "maudit") addEvShrine({ k: "marchand", curse: 1, x: ev.x, y: ev.y, uses: 2, until: r.time + dur });
     else if (def.id === "coup_vent") r.wind = { a: Math.random() * TAU, t: r.time + dur };
     else if (def.id === "eclipse") enemies.forEach(function (e) { if (e.aff && !e.d.boss) giveAffixes(e, 1); });
     else if (def.id === "pluie_glands") spawnSquad({ rodeur: 3 });
@@ -2383,6 +2403,12 @@
       if (ev.ok && Math.hypot(me.x - ev.cx, me.y - ev.cy) > ev.R) { ev.ok = false; bannerAll("Tu as quitté le cercle : le duel est perdu"); }
       if (ev.e.dead) { if (ev.ok) { dropItem(ev.cx, ev.cy, 2); bannerAll("Duel gagné : un objet rare !"); } ev.over = true; }
     }
+    else if (ev.id === "camp") { if (ev.guards && ev.guards.length && ev.guards.every(function (g) { return g.dead; }) && !ev.won) { ev.won = true; bannerAll("Camp nettoyé : le coffre est à toi !"); drop("chest", ev.cx + 8, ev.cy, 2); ev.over = true; } }
+    else if (ev.id === "piege" && !ev.sprung && Math.hypot(me.x - ev.cx, me.y - ev.cy) < 40) {
+      ev.sprung = true; bannerAll("Piège ! Une embuscade !"); SND.boom(); var ppool = MAP.biomes[0].enemies.map(function (q) { return q[0]; });
+      for (var pk = 0; pk < 11; pk++) { var pa = pk / 11 * TAU, pe2 = spawnAt(ppool[(Math.random() * ppool.length) | 0], ev.cx + Math.cos(pa) * 60, ev.cy + Math.sin(pa) * 44); if (pe2 && pk % 4 === 0) giveAffixes(pe2, 1); }
+      ev.dur = ev.t + 25;
+    }
     else if (ev.id === "comete" && !ev.hit && ev.t >= 3) { ev.hit = true; var kp2 = p; p = me; explode(ev.cx, ev.cy, 40, 40 * gpw(), 0); p = kp2; drop("chest", ev.cx, ev.cy, 2); if (S.opts.shake) shake = 0.4; }
     else if (ev.id === "fete_champi" && !ev.done && ev.t >= 6) { ev.done = true; var n = 0; ev.props.forEach(function (pe) { if (!pe.dead) { pe.dead = true; var b = spawnAt("bombshroom", pe.x, pe.y); if (b) b.awake = true; n++; } }); if (n) bannerAll(n + " champignons s'éveillent !"); }
     else if (ev.id === "essaim_amical") ev.lights.forEach(function (l) { l.a += (Math.random() - 0.5) * dt * 2; l.x += Math.cos(l.a) * 14 * dt; l.y += Math.sin(l.a) * 10 * dt; players.forEach(function (pl) { if (!pl.down && Math.hypot(pl.x - l.x, pl.y - l.y) < 30) pl.hp = Math.min(pl.maxHp, pl.hp + 2 * dt); }); });
@@ -2393,7 +2419,7 @@
     var ev = r.ev; r.ev = null; S.stats.events = (S.stats.events || 0) + 1; r.evDone = (r.evDone || 0) + 1;
     r.evShrines = (r.evShrines || []).filter(function (s) { return !(s.until && s.until <= r.time + 0.01) && !s.evEnd; });
     if (anyItem("calendrier")) { var c = rollItem(0, 1); var com = D.ITEMS.filter(function (it) { return it.r === 0 && !it.pool && allowed(it) && questOk(it) && (!it.expe || isExpe()); }); if (com.length) drop("item", me.x + 10, me.y, com[(Math.random() * com.length) | 0].idx); }
-    r.evAt = stageTime() + 150 + Math.random() * 70;
+    r.evAt = stageTime() + (isExpe() ? 150 : 65) + Math.random() * 40;
     bannerAll("Fin de l'événement : " + ev.name);
   }
   function addEvShrine(o) { r.evShrines = r.evShrines || []; o.id = "ev" + (r.evShrines.length + 1) + "_" + Math.round(r.time); o.ev = 1; r.evShrines.push(o); return o; }
@@ -10333,6 +10359,7 @@
     rage: function (min) { r.stageT0 = r.time - RAGE.start - min * 60; return { rage: rageMin(), dmg: rageDmg(), spd: rageSpd() }; },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
+    ev: function (id) { r.ev = null; startEvent(D.EVENTS.filter(function (e) { return e.id === id; })[0]); return r.ev && [r.ev.id, enemies.length, gems.filter(function (g) { return g.kind === "chest"; }).length]; }, evInfo: function () { return r.ev ? { id: r.ev.id, t: Math.round(r.ev.t), sprung: !!r.ev.sprung, won: !!r.ev.won } : null; }, setTime: function (t) { r.time = t; return t; }, champs: function () { return [r.champs, enemies.filter(function (e) { return e.champion; }).length]; }, tp: function (x, y) { me.x = x; me.y = y; },
     hit: function (dmg, armor, time) { p.armor = armor; r.time = time; p.inv = 0; var h0 = p.hp; damagePlayer(dmg, p); return { lost: Math.round((h0 - p.hp) * 10), hp: Math.round(p.hp * 10), max: Math.round(p.maxHp * 10), inv: +p.inv.toFixed(2) }; },
     frFake: function (n) { FR.on = {}; FR.list = []; var cs = D.CHARACTERS.map(function (c) { return c.id; }); for (var i = 0; i < n; i++) { FR.on["f" + i] = { n: ["Marmotte", "Chêne42", "Noisetier", "Pomme", "Lutin"][i % 5], c: cs[i % cs.length], ti: i ? 0 : "gobe", lk: {} }; } return Object.keys(FR.on).length; }, frNpcs: function () { return Object.keys(FR.npcs).length; }, frOff: function () { FR.on = {}; },
     cp: function (cid, n, xp) { S.cpres = S.cpres || {}; S.cpres[cid] = n; if (xp !== undefined) S.clvl[cid] = xp; save(); }, treeInfo: function () { return JSON.stringify({ txf: me.txf, gbon: me.gbon }); },
