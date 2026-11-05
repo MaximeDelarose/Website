@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.25.0";
+  var VERSION = "2.25.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -6573,11 +6573,11 @@
       else if (o.type === "p") { icon = img(D.PASSIVES[o.id].sprite); name = D.PASSIVES[o.id].name; tag = o.lvl === 1 ? "Nouvel objet" : "Niv. " + o.lvl; desc = D.PASSIVES[o.id].desc; }
       else if (o.type === "fullheal") { icon = img("berry"); name = "Grand panier de baies"; desc = "Soigne tous tes PV."; tag = "Soin"; }
       else { icon = img("mushroom"); name = "Champignon fortifiant"; desc = "+10 PV max pour la partie."; tag = "Bonus"; }
-      var can = !o.sold && !waiting && me.coins >= o.price;
+      var full = !o.sold && offerFull(o), can = !o.sold && !waiting && !full && me.coins >= o.price;
       html += '<button type="button" class="' + cls + (o.sold ? " is-sold" : "") + '" data-action="abuy" data-arg="' + i + '"' + (can ? "" : " disabled") + ">" +
         '<span class="choice-icon">' + icon + '</span><span class="choice-text"><strong>' + esc(name) + "</strong><em>" + esc(tag) + "</em><span>" + esc(desc) + "</span>" +
         (o.type === "w" || o.type === "p" ? synHtml(o.id) : "") + "</span>" +
-        '<span class="price">' + (o.sold ? "Acheté" : o.price + " 🌰") + "</span></button>";
+        '<span class="price">' + (o.sold ? "Acheté" : full ? "Plein" : o.price + " 🌰") + "</span></button>";
     });
     html += "</div>";
     var nextMod = roundModFor(r.round + 1), nextBoss = (r.round + 1) % A.bossEvery === 0;
@@ -6590,9 +6590,16 @@
     html += "</div>";
     showCard(html, "ashop");
   }
+  // marché de l'Arène : on ne peut pas dépasser 6 techniques ni 6 objets (une nouvelle technique ou un nouvel objet est refusé si c'est plein)
+  function offerFull(o) {
+    if (o.type === "w" && o.lvl === 1) return Object.keys(me.weapons).filter(function (k) { return ALLW[k]; }).length >= MAX_W;
+    if (o.type === "p" && o.lvl === 1) return Object.keys(me.passives).length >= MAX_P;
+    return false;
+  }
   ACTIONS_LATE.abuy = function (i) {
     var o = r.offers && r.offers[Number(i)];
     if (!o || o.sold || me.coins < o.price || r.ready[me.id]) return;
+    if (offerFull(o)) { banner(o.type === "w" ? "Tu as déjà 6 techniques" : "Tu as déjà 6 objets"); openShop(); return; }
     me.coins -= o.price; o.sold = true;
     p = me;
     var c = o.type === "fullheal" ? { type: "fullheal" } : o.type === "maxhp" ? { type: "maxhp" } : { type: o.type, id: o.id, lvl: o.lvl, evo: o.evo, rec: o.rec };
