@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.26.0";
+  var VERSION = "2.27.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -810,6 +810,11 @@
       if (e.d.prop && itn(p, "dent_castor")) dmg *= 3;
     }
     if (p.txf && !e.d.prop) dmg *= txHitMul(p, e);
+    if (p.slingT > 0) dmg *= 1.4;
+    if (e.dmark > 0 && p.char && p.char.id === "ninja" && !e.d.prop) {   // marque de mort : 3 coups et l'ennemi est exécuté (les boss perdent 12 % de leur vie)
+      e.dmark--;
+      if (e.dmark <= 0) { if (!e.d.boss) dmg = e.hp + (e.eshield || 0) + 1; else dmg += e.maxHp * 0.12; if (S.opts.numbers) texts.push({ x: e.x, y: e.y - e.d.r - 12, n: "EXECUTION", life: 0.8, col: "#ff5a6a" }); burst(e.x, e.y, "#c9b3ff", 8); }
+    }
     dmg = Math.max(1, Math.round(dmg));
     if (e.eshield > 0) { var ab = Math.min(e.eshield, dmg); e.eshield -= ab; dmg -= ab; if (dmg <= 0) { e.flash = 0.05; return; } }
     e.hp -= dmg; e.flash = 0.1; if (r && !e.d.prop) r.dmgTot = (r.dmgTot || 0) + Math.min(dmg, e.hp + dmg);
@@ -886,6 +891,8 @@
     if (p.items) killItems(e);
     if (HIT_TREE && setCount(p, "sylve") >= 2) p.hp = Math.min(p.maxHp, p.hp + 1);
     if (stealthy(p) && !e.spotted && setCount(p, "shinobi") >= 3) p.ghostT = Math.max(p.ghostT || 0, 1);
+    if (stealthy(p) && !e.spotted && !e.d.prop) { p.ghostT = Math.max(p.ghostT || 0, 1.2); p.volteCd = Math.max(0, (p.volteCd || 0) - 0.5); }
+    if (p.char && p.char.id === "pataud" && !e.d.prop && !e.d.boss) p.size = (p.size || 1) + 0.004;
     if (p.sigK && p.sigK.ash && Math.hypot(e.x - p.x, e.y - p.y) < 50) pZone({ x: e.x, y: e.y, r: 14, dur: 3, kind: "thorn", dmg: 1, owner: p });
     onKillProcs(e); txFire(p, "kill"); if (p && p.txf) txKillPost(p, e);
     if (e.elem === "feu" && !e.d.boss && enemies.length < 260) addZone(e.x, e.y, 11, 2, "fire", 4);
@@ -973,6 +980,7 @@
       if (mt.hp <= 0) { p.crew.splice(mi, 1); burst(mt.x, mt.y, "#c8553d", 8); SND.crack(); if (S.opts.numbers) texts.push({ x: mt.x, y: mt.y - 8, n: "MATELOT !", life: 0.7 }); }
       dmg *= 0.4;
     }
+    if (p.char && p.char.id === "ninja" && p.posture === "danseuse" && p.mstate === "mouvement" && Math.random() < 0.15) { p.inv = 0.3; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     if (p.txf && p.txf.sprint && p.mstate === "mouvement" && Math.random() < p.txf.sprint / 100) { p.inv = 0.3; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     if ((p.dodge || p.dodgeX) && Math.random() < (p.dodge || 0) + (p.dodgeX || 0)) { p.inv = 0.3; r.dodges = (r.dodges || 0) + 1; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     p.calmT = 0;
@@ -2999,6 +3007,8 @@
     if (humans() > 1 || isArena()) { picking = true; me.choosing = true; sendInput(); } else state = "levelup";
     clearInput();
     currentChoices = choices(hasMod("unique") ? 1 : 3 + (me.char.id === "noisette" ? 1 : 0) + (me.extraChoice || 0) + (p.luck > 1.3 && Math.random() < 0.3 ? 1 : 0));
+    // Carnet de Noisette : la carte mise de côté au niveau précédent revient (si elle est encore valable)
+    if (me.char.id === "noisette" && r.carnet) { var cn = r.carnet; r.carnet = null; if (cn.type === "w" ? (me.weapons[cn.id] || 0) === cn.lvl - 1 && !me.consumed[cn.id] : cn.type === "p" ? (me.passives[cn.id] || 0) === cn.lvl - 1 : false) if (!currentChoices.some(function (x) { return x.type === cn.type && x.id === cn.id; })) currentChoices.push(cn); }
     var html = '<span class="kicker">Niveau ' + r.level + " !</span><h2>Choisis un pouvoir</h2><div class=\"choices\">";
     currentChoices.forEach(function (c, i) {
       var icon, name, lvl = "", desc, cls = "choice", extra = "", vc = v2Card(c);
@@ -3078,6 +3088,7 @@
   function apply(c) {
     if ((state !== "levelup" && !picking) || !c) return;
     p = me;
+    if (me.char.id === "noisette") { var sv = currentChoices.filter(function (x) { return x !== c && (x.type === "w" || x.type === "p"); })[0]; r.carnet = sv || null; if (sv) banner("Carnet : carte mise de côté"); }
     applyCore(c);
     refreshCounts();
     if (Net.on && Net.role === "guest") netSend("pick", { id: me.id, c: { type: c.type, id: c.id, lvl: c.lvl } });
@@ -4485,6 +4496,7 @@
     if (tal(pl, "nid_t") && pl.hooked) pl.hp = Math.min(pl.maxHp, pl.hp + 2 * dt);
     if (setCount(pl, "sylve") >= 3 && pl.char.id !== "druide") { if (pl.anchored && cooled(pl, "sylveP", 4)) plant(pl, true); if (pl.trees) druideTick(pl, dt, k); }
     if (tal(pl, "tourelle_v") && pl.anchored && pl.anchorT > 2 && cooled(pl, "t_tour", 3)) crown(pl);
+    if (pl.char.id === "planeur") { if (pl.slingT > 0) pl.slingT -= dt; if (pl.hooked && !pl._hk0 && pl.posture === "courant") pl.slingT = 3; pl._hk0 = pl.hooked; }
     if (pl.posture === "courant" && pl.char.id === "planeur") {
       var spf = Math.hypot(pl.vx || 0, pl.vy || 0) / ((pl.speed || 60) * 1.15);
       if (tal(pl, "lameair") && spf > 0.8 && cooled(pl, "t_lame", 0.8)) { var ag = Math.atan2(pl.vy, pl.vx); projs.push({ owner: pl, kind: "bullet", x: pl.x, y: pl.y, vx: Math.cos(ag) * 200, vy: Math.sin(ag) * 200, dmg: 14 * k, pierce: 6, sprite: "windblade", life: 0.6, hit: [], r: 6, explode: 0 }); }
@@ -5269,6 +5281,26 @@
     if (pl.invis) { pl.critNext = true; pl.ghostT = tal(pl, "affut_t4") ? 1 : 0; } else if (pl.ghostT > 0) pl.ghostT -= dt;
     if (ps === "lamevent" && pl.mstate === "mouvement" && cooled(pl, "lv", tal(pl, "lamevent_t1") ? 0.12 : 0.25)) zones.push({ x: pl.x, y: pl.y + 2, r: 9, t: 0, dur: 1.5, kind: "thorn", dmg: 5 * k * (tal(pl, "lamevent_t2") ? 1.5 : 1) * (tal(pl, "lamevent_t3") ? 2 : 1), owner: pl });
     pl.cadX *= 1 / (1 + (pl.dance || 0) * (tal(pl, "danseuse_t1") ? 0.1 : 0.08));
+    cloneTick(pl, dt, k);
+  }
+  // Volte d'Ombre : marque de mort sur les cibles les plus proches et clone d'ombre
+  function ninjaVolte(pl, dx, dy) {
+    var nM = pl.posture === "affut" ? 2 : 1, tg = nearest(nM + 2, 160, pl), i;
+    for (i = 0; i < nM && i < tg.length; i++) { if (tg[i].d.prop) continue; tg[i].dmark = 3; burst(tg[i].x, tg[i].y - 4, "#ff5a6a", 5); }
+    var nC = pl.posture === "danseuse" ? 2 : 1, life = pl.posture === "danseuse" ? 7 : 4, arr = compList("__clone");
+    for (i = 0; i < nC; i++) { if (arr.length >= 3) arr.shift(); arr.push({ k: "sq_ninja", x: pl.x - dx * 10 * (i + 1), y: pl.y - dy * 10 * (i + 1) + (i ? 6 : 0), face: pl.face || 1, anim: 0, life: life, max: life, cd: 0.3, clone: 1 }); }
+    burst(pl.x, pl.y, "#c9b3ff", 8);
+  }
+  function cloneTick(pl, dt, k) {
+    var arr = (pl.comp || {}).__clone; if (!arr) return;
+    for (var i = arr.length - 1; i >= 0; i--) {
+      var c = arr[i]; c.life -= dt; c.anim += dt * 8; c.cd -= dt; if (c.life <= 0) { burst(c.x, c.y, "#c9b3ff", 6); arr.splice(i, 1); continue; }
+      var tg = nearest(1, 150, c)[0];
+      if (!tg) { var ax = pl.x - c.x, ay = pl.y - c.y, ad = Math.hypot(ax, ay); if (ad > 24) { c.x += ax / ad * 90 * dt; c.y += ay / ad * 90 * dt; c.face = ax > 0 ? 1 : -1; } continue; }
+      var dx = tg.x - c.x, dy = tg.y - c.y, d = Math.hypot(dx, dy) || 1; c.face = dx > 0 ? 1 : -1;
+      if (pl.posture === "lamevent") { if (d > 70) { c.x += dx / d * 60 * dt; c.y += dy / d * 60 * dt; } if (c.cd <= 0) { c.cd = 0.7; projs.push({ owner: pl, kind: "bullet", x: c.x, y: c.y - 2, vx: dx / d * 190, vy: dy / d * 190, dmg: 12 * k, pierce: 2, sprite: "shuriken" in SPR ? "shuriken" : "needle", life: 0.9, hit: [], r: 3, explode: 0 }); } }
+      else { if (d > 9) { c.x += dx / d * 130 * dt; c.y += dy / d * 130 * dt; } else if (c.cd <= 0) { c.cd = 0.45; hurt(tg, 16 * k, dx * 3, dy * 3); } }
+    }
   }
   function stealthy(pl) { return pl && pl.char && pl.char.id === "ninja"; }
   /* Pip & Pop */
@@ -5295,6 +5327,7 @@
     } else if (cid === "pataud") pataudSpit(pl, dx, dy);
     else if (cid === "mage") { pl.sap = Math.min(100, (pl.sap || 0) + (ps === "canalisatrice" ? 20 : ps === "vagabonde" ? (tal(pl, "vagabonde_t4") ? 40 : 15) : 0)); if (ps === "instable" && pl.sap >= 60 && !(pl.surge > 0)) { pl.surge = 4; pl.sap = 30; bannerAll("Surcharge instable !"); } }
     else if (cid === "ninja") {
+      ninjaVolte(pl, dx, dy);
       if (ps === "affut") { pl.ghostT = 1; }
       if (ps === "lamevent") { var n = tal(pl, "lamevent_t4") ? 12 : 6; for (var j = 0; j < n; j++) { var b = j / n * TAU; projs.push({ owner: pl, kind: "bullet", x: pl.x, y: pl.y, vx: Math.cos(b) * 170, vy: Math.sin(b) * 170, dmg: 12 * k, pierce: 3, sprite: "shuriken", life: 0.7, hit: [], r: 4, explode: 0 }); } }
       if (ps === "danseuse") { var cap = tal(pl, "danseuse_t3") ? 8 : 5; pl.dance = Math.min(cap, (pl.dance || 0) + 1); if (tal(pl, "danseuse_t4") && pl.dance >= 5) fireNova(50, 20 * k); }
@@ -6024,7 +6057,7 @@
       if (gd < 7) { gems.splice(i, 1); p = best; collect(g, best); p = me; }
       else if (gd > 600 && (g.kind === "xp" || g.kind === "gold")) gems.splice(i, 1);
     }
-    while (xp >= xpNext) { xp -= xpNext; r.level++; pending++; xpNext = need(r.level); }
+    while (xp >= xpNext) { xp -= xpNext; r.level++; pending++; if (me && me.char && me.char.id === "noisette" && r.level % 5 === 0) { pending++; bannerAll("Enseignement gratuit : un niveau de plus !"); } xpNext = need(r.level); }
 
     tickFx(dt);
     achTick -= dt;
@@ -6478,7 +6511,7 @@
     // les noisettes et l'or au sol sont ramassés, le reste disparaît
     gems.forEach(function (g) { if (g.kind === "xp") xp += g.v * me.xpMul; else if (g.kind === "gold") addGold(g.v); });
     gems = [];
-    while (xp >= xpNext) { xp -= xpNext; r.level++; pending++; xpNext = need(r.level); }
+    while (xp >= xpNext) { xp -= xpNext; r.level++; pending++; if (me && me.char && me.char.id === "noisette" && r.level % 5 === 0) { pending++; bannerAll("Enseignement gratuit : un niveau de plus !"); } xpNext = need(r.level); }
     clearField();
     players.forEach(function (pl) { pl.down = false; pl.reviveT = 0; pl.hp = pl.maxHp; });
     var income = Math.round(A.income(r.round, r.roundKills) * ((r.mod && r.mod.income) || 1));
@@ -7359,6 +7392,7 @@
       // bêtes enragées : voile rouge qui pulse de plus en plus fort
       if (rgA > 0 && !e.d.prop) { ctx.globalAlpha = rgA * (0.55 + 0.45 * Math.sin(r.time * 9 + e.id)); ctx.drawImage(tinted(spr, "#ff1a10", e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1; }
       if (e.aff && e.aff.length) drawEliteTag(e, spr);
+      if (e.dmark > 0) { drawText(String(e.dmark), e.x, e.y - spr.h / 2 - 10, "#ff5a6a", "c"); }
       if (e.slowT > 0 && !e.d.boss && !e.d.prop) { ctx.fillStyle = "rgba(160,130,230,.7)"; ctx.fillRect(Math.round(e.x - 1), Math.round(e.y - spr.h / 2 - 2), 2, 2); }
       if (!e.d.prop && !S.opts.lowfx) {
         if (e.burnT > 0) { ctx.globalAlpha = 0.22 + 0.14 * Math.sin(r.time * 14 + e.id); ctx.drawImage(tinted(spr, "#ff7a2a", e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1; if (flick && fx.length < 200 && Math.random() < 0.5) fx.push({ kind: "dot", x: e.x + (Math.random() * 6 - 3), y: e.y - spr.h / 2 + 2, vx: Math.random() * 6 - 3, vy: -22, life: 0.45, max: 0.45, color: Math.random() < 0.5 ? "#ff9a3a" : "#f6d36b", sz: 1, g: 0 }); }
@@ -9640,6 +9674,8 @@
     fusReady: function () { return Object.keys(D.COMBOS).concat(Object.keys(D.LEGENDS)).filter(function (c) { return comboReady(me, c); }); },
     fuse: function (id) { p = me; v2Apply({ type: "cb", id: id }); return Object.keys(me.weapons); },
     hit1: function () { var e = enemies.filter(function (x) { return !x.dead && SHOOTER_AI[x.d.ai]; })[0]; if (!e) return null; e.cd = 0; p = me; hurt(e, 1, 0, 0); return Math.round(e.cd * 100) / 100; },
+    clones: function () { return ((me.comp || {}).__clone || []).length; },
+    marks: function () { return enemies.filter(function (e) { return e.dmark > 0; }).length; },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },

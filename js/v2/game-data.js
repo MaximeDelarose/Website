@@ -1171,12 +1171,12 @@ window.ES_DATA = (function () {
     ],
     planeur: [
       { id: "pique",    name: "Piqué",    color: "#6ad8ff", a: "Accroché, se recharge 2 fois plus vite.", m: "Normal.", v: "Plongeon : invulnérable, frappe fort à l'arrivée." },
-      { id: "courant",  name: "Courant",  color: "#b07cf0", quest: "p_planeur2", a: "Accroché, rien de spécial.", m: "Plus il va vite, plus il fait mal (jusqu'à +60 %).", v: "Rafale qui repousse et blesse autour de lui." },
+      { id: "courant",  name: "Courant",  color: "#b07cf0", quest: "p_planeur2", a: "Accroché : l'élan de la glisse se garde, +40 % de dégâts pendant 3 s à chaque accrochage.", m: "Plus il va vite, plus il fait mal (jusqu'à +60 %).", v: "Rafale qui repousse et blesse autour de lui." },
       { id: "perchoir", name: "Perchoir", color: "#f2b05e", quest: "p_planeur3", a: "Accroché, portée x1,6 et +30 % de dégâts.", m: "Normal.", v: "Une gerbe de 5 plumes vers l'avant." },
     ],
   };
   var V2CH = {
-    noisette:  { order: 0, rule: "Choisit parmi 4 cartes au lieu de 3. L'écureuil d'apprentissage." },
+    noisette:  { order: 0, rule: "Choisit parmi 4 cartes au lieu de 3. Carnet : une carte non choisie est mise de côté et revient au niveau suivant ; un niveau gratuit tous les 5 niveaux." },
     capitaine: { order: 1, rule: "Il ne frappe pas lui-même : son équipage le suit, éparpillé autour de lui, et attaque avec une version miniature de son arme (5 % de ses dégâts par matelot). 5 matelots au départ, +2 par niveau, 50 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
     planeur:   { order: 2, rule: "Glisse sans cesse (inertie) et survole les obstacles. Ne s'ancre qu'accroché à un arbre ou à une souche." },
   };
@@ -1613,9 +1613,9 @@ window.ES_DATA = (function () {
     jumeaux: { order: 3, quest: "q2_jumeaux", rule: "Deux corps sur les mêmes commandes, vies séparées. Pop reprend tes armes à 60 % ; si l'un tombe, l'autre peut le relever." },
     cendrine: { order: 4, quest: "q2_cendrine", rule: "Les coups reçus s'écoulent sur 4 s ; frapper pendant ce délai en efface une partie. Un champ de force l'entoure." },
     druide: { order: 5, quest: "q2_fougere", rule: "Ancrée, elle enterre une noisette qui devient pousse, puis arbre qui attaque." },
-    pataud: { order: 6, quest: "q2_pataud", rule: "Grossit en mangeant l'XP : plus de PV et de dégâts au contact, mais plus lent et plus facile à toucher. La Volte recrache tout." },
+    pataud: { order: 6, quest: "q2_pataud", rule: "Grossit en mangeant l'XP et les ennemis qu'il tue : plus de PV et de dégâts au contact, mais plus lent et plus facile à toucher. La Volte recrache tout." },
     mage: { order: 7, quest: "q2_mage", rule: "Ses armes puisent dans une jauge de sève ; à sec, elles tirent 2 fois moins vite. Ancrée, elle recharge ; jauge pleine = surcharge." },
-    ninja: { order: 8, quest: "q2_ninja", rule: "Les ennemis ne la repèrent qu'à courte portée. Dégâts x3 sur ceux qui ne l'ont pas vue." },
+    ninja: { order: 8, quest: "q2_ninja", rule: "Les ennemis ne la repèrent qu'à courte portée ; dégâts x3 sur ceux qui ne l'ont pas vue. Sa Volte marque une cible (3 coups : exécution) et laisse un clone d'ombre qui frappe ; une tuerie silencieuse prolonge son invisibilité et recharge la Volte." },
     trefle: { order: 9, quest: "q2_trefle", rule: "À chaque niveau, elle prend sa carte ou la mise : deux cartes au niveau suivant, ou rien." },
   };
   Object.keys(V2CH2).forEach(function (k) { V2CH[k] = V2CH2[k]; });
@@ -1650,9 +1650,9 @@ window.ES_DATA = (function () {
       { id: "instable", name: "Instable", color: "#ff5ad0", a: "Recharge la sève.", m: "Consomme la sève.", v: "Déclenche une surcharge si la jauge dépasse 60 ; les surcharges explosent." },
     ],
     ninja: [
-      { id: "affut", name: "Affût", color: "#8a8aa8", a: "Après 1 s : invisible, le prochain coup est critique.", m: "Normal.", v: "Disparaît 1 s." },
-      { id: "lamevent", name: "Lame-vent", color: "#d8e8ff", a: "Normal.", m: "Des shurikens restent dans son sillage.", v: "Une gerbe de 6 shurikens." },
-      { id: "danseuse", name: "Danseuse", color: "#ff7a9a", a: "Normal.", m: "Normal.", v: "Chaque Volte sans prendre de coup : +8 % de cadence (5 fois max)." },
+      { id: "affut", name: "Affût", color: "#8a8aa8", a: "Après 1 s : invisible, le prochain coup est critique.", m: "Normal.", v: "Disparaît 1 s et marque 2 cibles au lieu d'une." },
+      { id: "lamevent", name: "Lame-vent", color: "#d8e8ff", a: "Normal.", m: "Des shurikens restent dans son sillage.", v: "Une gerbe de 6 shurikens ; son clone lance des shurikens au lieu de frapper." },
+      { id: "danseuse", name: "Danseuse", color: "#ff7a9a", a: "Normal.", m: "En mouvement : +15 % d'esquive.", v: "Chaque Volte sans prendre de coup : +8 % de cadence (5 fois max) ; 2 clones qui durent plus longtemps." },
     ],
     trefle: [
       { id: "portebonheur", name: "Porte-bonheur", color: "#9cd070", a: "Ancrée, sa chance monte (butin).", m: "Normal.", v: "Une pièce : un objet tombe 1 fois sur 4." },
