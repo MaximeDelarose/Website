@@ -178,34 +178,47 @@ function limb(ctx: C, a: Arm, t0: number, t1: number, w0: number, w1: number): v
   fs(ctx, lg(ctx, x0, 0, x1, 0, skinL(), skin(), shade(skin(), -0.07)), 1.7);
   // ombre douce côté intérieur + lumière sur le dessus : le volume que l'illustration donne aux bras
   ctx.clip();
-  ctx.beginPath(); ctx.moveTo(C0[2][0], C0[2][1]); for (const p of C0) ctx.lineTo(p[0], p[1]);
-  ctx.lineCap = 'round'; ctx.lineWidth = w0 * 0.42; ctx.globalAlpha = 0.5; ctx.strokeStyle = skinL(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(C0[2][0], C0[2][1]); for (let i = 2; i <= N - 5; i++) ctx.lineTo(C0[i][0], C0[i][1]);
+  ctx.lineCap = 'butt'; ctx.lineWidth = w0 * 0.34; ctx.globalAlpha = 0.28; ctx.strokeStyle = skinL(); ctx.stroke();
   ctx.globalAlpha = 1; ctx.restore();
 }
 
-/** Main peinte : paume, quatre doigts réunis et pouce côté corps (au lieu d'une boule). `ang` = direction de l'avant-bras (0 = vers le bas). */
-function handPainted(ctx: C, x: number, y: number, ang: number, s: -1 | 1, r = 9.5): void {
+/**
+ * Main peinte : dos de la main pleine, quatre doigts épais réunis (légèrement écartés en éventail), pouce charnu côté corps,
+ * ombre douce sous les doigts et lumière sur le dos. `ang` = direction de l'avant-bras (0 = vers le bas), `r` ≈ demi-largeur de la main.
+ */
+function handPainted(ctx: C, x: number, y: number, ang: number, s: -1 | 1, r = 14.2): void {
   const k = r / 9.5, sk = skin(), sl = skinL(), sd = skinD();
   ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(k, k); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  const g = lg(ctx, -8, 0, 8, 0, sl, sk, shade(sk, -0.06));
-  // pouce (côté du corps), derrière la paume
-  ctx.save(); ctx.translate(-s * 7, 2); ctx.rotate(-s * 0.4);
-  ctx.beginPath(); ctx.ellipse(0, 3, 2.9, 6.6, 0, 0, Math.PI * 2); fs(ctx, g, 1.4); ctx.restore();
-  // doigts : quatre capsules de longueurs différentes
-  const lens = [9.6, 11.6, 10.8, 8.2];
-  lens.forEach((len, i) => {
-    const cx = -5.1 + i * 3.4, tip = 5 + len;
-    ctx.beginPath(); ctx.moveTo(cx - 1.75, 3); ctx.lineTo(cx - 1.75, tip - 1.75); ctx.arc(cx, tip - 1.75, 1.75, Math.PI, 0, true); ctx.lineTo(cx + 1.75, 3); ctx.closePath();
-    fs(ctx, g, 1.3);
-  });
-  // paume
-  ctx.beginPath(); ctx.moveTo(-7, 8.5); ctx.bezierCurveTo(-8.2, 1, -7.6, -5, -4.6, -8); ctx.quadraticCurveTo(0, -10, 4.6, -8); ctx.bezierCurveTo(7.6, -5, 8.2, 1, 7, 8.5); ctx.closePath();
-  ctx.fillStyle = g; ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-7, 8.5); ctx.bezierCurveTo(-8.2, 1, -7.6, -5, -4.6, -8); ctx.quadraticCurveTo(0, -10, 4.6, -8); ctx.bezierCurveTo(7.6, -5, 8.2, 1, 7, 8.5);
-  ctx.lineWidth = 1.5; ctx.strokeStyle = INK; ctx.stroke();
-  // plis des phalanges et ombre sous la paume
-  ctx.lineWidth = 0.8; ctx.strokeStyle = hexA2(sd, 0.55);
-  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-3.4 + i * 3.4, 4.5); ctx.lineTo(-3.4 + i * 3.4, 12); ctx.stroke(); }
+  const LW = 1.15; // trait fin (le groupe est agrandi par k)
+  const g = lg(ctx, -9, -8, 9, 14, sl, sk, shade(sk, -0.05));
+  const ink = (w = LW) => { ctx.lineWidth = w; ctx.strokeStyle = INK; ctx.stroke(); };
+  // pouce charnu côté corps, derrière la paume
+  ctx.save(); ctx.translate(-s * 7.6, 1.5); ctx.rotate(-s * 0.42);
+  ctx.beginPath(); ctx.moveTo(-3.4, -3); ctx.bezierCurveTo(-4.6, 3, -3.8, 9, -1.2, 11.2); ctx.bezierCurveTo(1.6, 12, 3.8, 9, 3.8, 3.5); ctx.bezierCurveTo(3.8, -0.5, 3, -2.6, 2.4, -3.4); ctx.closePath();
+  ctx.fillStyle = g; ctx.fill(); ink(); ctx.restore();
+  // doigts : quatre capsules épaisses, longueurs naturelles (majeur le plus long), léger éventail
+  const F = [{ x: -5.6, len: 12.4, rot: 0.05 }, { x: -1.9, len: 14.8, rot: 0.01 }, { x: 1.9, len: 14, rot: -0.03 }, { x: 5.5, len: 11, rot: -0.08 }];
+  for (const f of F) {
+    ctx.save(); ctx.translate(f.x, 2.2); ctx.rotate(f.rot);
+    const w = 2.05, L = f.len;
+    ctx.beginPath(); ctx.moveTo(-w, 0); ctx.lineTo(-w * 0.92, L - w); ctx.arc(0, L - w, w * 0.92, Math.PI, 0, true); ctx.lineTo(w, 0); ctx.closePath();
+    ctx.fillStyle = g; ctx.fill(); ink();
+    // ongle discret et pli de phalange
+    ctx.beginPath(); ctx.ellipse(0, L - 2.6, w * 0.55, 1.5, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,236,224,0.5)'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-w * 0.7, L * 0.5); ctx.lineTo(w * 0.7, L * 0.5); ctx.lineWidth = 0.6; ctx.strokeStyle = hexA2(sd, 0.45); ctx.stroke();
+    ctx.restore();
+  }
+  // dos de la main : trapèze arrondi, un peu plus large aux articulations
+  const palm = () => { ctx.beginPath(); ctx.moveTo(-6.8, -9); ctx.bezierCurveTo(-8.8, -4, -8.6, 0, -8.2, 5.2); ctx.quadraticCurveTo(0, 7.6, 8.2, 5.2); ctx.bezierCurveTo(8.6, 0, 8.8, -4, 6.8, -9); ctx.quadraticCurveTo(0, -11.4, -6.8, -9); ctx.closePath(); };
+  palm(); ctx.fillStyle = g; ctx.fill();
+  ctx.save(); palm(); ctx.clip();
+  ctx.beginPath(); ctx.ellipse(-2.6, -3, 2.6, 5, 0.15, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,238,224,0.16)'; ctx.fill(); // lumière discrète sur le dos de la main
+  ctx.beginPath(); ctx.ellipse(0, 6.2, 9.2, 2.6, 0, 0, Math.PI * 2); ctx.fillStyle = hexA2(sd, 0.2); ctx.fill(); // ombre à la naissance des doigts
+  ctx.restore();
+  // contour de la paume seulement sur les côtés (le haut se fond dans le poignet, le bas dans les doigts)
+  ctx.beginPath(); ctx.moveTo(-8.2, 5.2); ctx.bezierCurveTo(-8.6, 0, -8.8, -4, -6.8, -9); ink();
+  ctx.beginPath(); ctx.moveTo(8.2, 5.2); ctx.bezierCurveTo(8.6, 0, 8.8, -4, 6.8, -9); ink();
   ctx.restore();
 }
 const hexA2 = (hex: string, a: number): string => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
@@ -1773,13 +1786,14 @@ export const paintedHeadEpoch = (): number => headEpoch;
 // repère de l'illustration → repère de l'avatar : yeux alignés, échelle commune
 const PH_S = 0.708, PH_CX = 176, PH_CY = 118, AV_CX = 120, AV_CY = 105; // yeux peints (176 ; 118) px ↔ yeux du dessin (120 ; 105) : lunettes et boucles restent bien placées
 // tête complète : un peu plus petite (proportions tête / corps d'Auguste), le menton reste à sa place sur le cou
-const HEAD_SHRINK = 0.88, PH_CHIN = 205;
+// Proportions tête / corps d'Auguste : toute la tête (visage, cheveux, couronne, bijoux) est réduite autour du MENTON, le cou ne bouge pas.
+// Tête peinte complète : un peu plus (ses cheveux sont très volumineux).
+const HEAD_ALL = 0.93, HEAD_SHRINK = 0.88, PH_CHIN = 205;
 const AV_CHIN = AV_CY + (PH_CHIN - PH_CY) * PH_S;
 /** Applique au contexte la mise à l'échelle de la tête complète autour du menton (pour les cheveux arrière dessinés derrière). */
-function headShrink(ctx: C): void { ctx.translate(AV_CX, AV_CHIN); ctx.scale(HEAD_SHRINK, HEAD_SHRINK); ctx.translate(-AV_CX, -AV_CHIN); }
+function headShrink(ctx: C, full: boolean): void { const k = full ? HEAD_ALL * HEAD_SHRINK : HEAD_ALL; ctx.translate(AV_CX, AV_CHIN); ctx.scale(k, k); ctx.translate(-AV_CX, -AV_CHIN); }
 function drawPaintedHead(ctx: C, ph: PaintedHead): void {
   ctx.save(); ctx.imageSmoothingQuality = 'high';
-  if (ph.kind === 'head') headShrink(ctx);
   ctx.drawImage(ph.im, AV_CX + (ph.x0 - PH_CX) * PH_S, AV_CY + (ph.y0 - PH_CY) * PH_S, ph.w * PH_S, ph.h * PH_S);
   ctx.restore();
 }
@@ -1805,8 +1819,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   ctx.lineCap = 'round';
 
   // 1. cheveux arrière, dos de la robe, jambes et chaussures
-  if (fullHead) { ctx.save(); headShrink(ctx); P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); ctx.restore(); } // derrière la tête peinte : comble l'espace entre cou et longueurs
-  else if (!P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); // un voile remplace les cheveux
+  if (fullHead || !P.veilOn()) { ctx.save(); headShrink(ctx, fullHead); P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairBackLayer(ctx, hair, sway, !!crown)); ctx.restore(); } // derrière la tête peinte : comble l'espace entre cou et longueurs ; un voile remplace les cheveux
   dfx?.back?.(ctx, st);
   legsSkin(ctx, st, !!dress && TIGHTS_DRESSES.has(dress));
   shoesDraw(ctx, shoes, st);
@@ -1836,7 +1849,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const arms = ([-1, 1] as const).map((s) => armGeo(s, opts.arms, st, isNatural(opts)));
   ([-1, 1] as const).forEach((_s, i) => {
     const a = arms[i];
-    limb(ctx, a, 0.08, 1, 21, 12.5);
+    limb(ctx, a, 0.08, 1, 25, 16.5);
     if (sleeveSpec) drawSleeve(ctx, a, sleeveSpec, !!jk);
   });
 
@@ -1851,7 +1864,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
     if (opts.arms === 'heart') return;
     const a = arms[i];
     const ang = endAng(a, 1);
-    handPainted(ctx, a.x1 + Math.sin(-ang) * 5.5, a.y1 + Math.cos(-ang) * 5.5, ang, _s, 9.5);
+    handPainted(ctx, a.x1 + Math.sin(-ang) * 8, a.y1 + Math.cos(-ang) * 8, ang, _s, 14.2);
   });
   if (opts.arms === 'heart') {
     heartPath(ctx, 120, 296, 30);
@@ -1872,7 +1885,8 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   if (accs.includes('ac-pearls')) pearls(ctx);
   for (const a of accs) EXTRA.neck[a]?.(ctx, opts.shine ?? 0);
 
-  // 8. tête
+  // 8. tête (bloc réduit autour du menton : mêmes proportions tête / corps qu'Auguste)
+  ctx.save(); headShrink(ctx, fullHead);
   ctx.save();
   ctx.translate(P.HEAD_X, P.HEAD_Y);
   ctx.scale(P.HEAD_K, P.HEAD_K);
@@ -1882,7 +1896,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   if (!fullHead) P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, iris: eyeId ? EYE_COLOR[eyeId] : undefined, mouth: moId ? MOUTH_SHAPE[moId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
   ctx.restore();
   if (ph) drawPaintedHead(ctx, ph); // visage peint par-dessus l'ovale dessiné (contour du dessin, traits de l'illustration)
-  if (fullHead) { ctx.restore(); return; } // tête complète peinte : cheveux, couronne dorée et finitions déjà dans l'illustration
+  if (fullHead) { ctx.restore(); ctx.restore(); return; } // tête complète peinte : cheveux, couronne dorée et finitions déjà dans l'illustration
   if (!P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairFrontLayer(ctx, hair, sway));
   if (P.veilOn()) { ctx.save(); ctx.translate(P.HEAD_X, P.HEAD_Y); ctx.scale(P.HEAD_K, P.HEAD_K); P.drawVeil(ctx); ctx.restore(); }
   if (accs.includes('ac-hoops')) hoops(ctx);
@@ -1892,6 +1906,7 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   if (crown === 'cr-gold') crownGold(ctx);
   else if (crown === 'cr-flowers') crownFlowers(ctx);
   else if (crown === 'cr-tiara') crownTiara(ctx);
+  ctx.restore(); // bloc tête
   ctx.restore();
 }
 
