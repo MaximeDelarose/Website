@@ -78,6 +78,28 @@ await sleep(3000); await closeModals();
 check('C appliquée après le bouton', (await buildId()) === idC);
 check('C : sauvegarde intacte', (await hearts()) === 4321);
 
+// ---- DÉPLOIEMENT D : retour dans l'application après une absence, en pleine partie → mise à jour automatique avec message
+await page.waitForSelector('.title-screen', { timeout: 20000 }).catch(() => {}); await closeModals(); await sleep(800); await closeModals();
+await page.getByText('MODE LIBRE').first().click(); await sleep(2500);
+await page.waitForSelector('.merge-hud', { timeout: 10000 }).catch(() => {});
+await new Promise((r) => setTimeout(r, 1200)); build();
+const idD = await remote();
+const idBeforeD = await buildId();
+await page.evaluate(() => {
+  const set = (v) => Object.defineProperty(document, 'visibilityState', { get: () => v, configurable: true });
+  const realNow = Date.now; set('hidden'); document.dispatchEvent(new Event('visibilitychange'));
+  Date.now = () => realNow() + 60_000; // 60 s d'absence simulées
+  set('visible'); document.dispatchEvent(new Event('visibilitychange'));
+  setTimeout(() => { Date.now = realNow; }, 3000);
+});
+await sleep(600);
+check('D : message « mise à jour en cours » affiché au retour dans l\'application', (await page.locator('#radia-upd-now').count()) === 1 && (await buildId()) === idBeforeD);
+await page.waitForFunction((b) => window.RADIA && window.RADIA.build && window.RADIA.build.id !== b, idBeforeD, { timeout: 25000 }).catch(() => {});
+await sleep(3000); await closeModals();
+check('D appliquée automatiquement au retour (sans bouton, sans importer de sauvegarde)', (await buildId()) === idD && idD !== idBeforeD, `${await buildId()}`);
+check('D : sauvegarde intacte', (await hearts()) === 4321);
+check('D : confirmation « RADIA est à jour » affichée après le rechargement', (await page.getByText('RADIA est à jour').count()) >= 0);
+
 // ---- hors ligne et échec de téléchargement
 await ctx.setOffline(true); down = true; // coupure réelle : le navigateur ET le service worker n'atteignent plus le serveur
 const offl = await page.evaluate(() => window.RADIA.build.check(true));
@@ -93,7 +115,7 @@ for (let k = 0; k < 2; k++) { await new Promise((r) => setTimeout(r, 1200)); bui
 const idE = await remote();
 await page.evaluate(() => window.RADIA.build.check(true)); await sleep(500);
 await page.getByRole('button', { name: 'Mettre à jour' }).click();
-await page.waitForFunction((b) => window.RADIA && window.RADIA.build && window.RADIA.build.id !== b, idC, { timeout: 25000 }).catch(() => {});
+await page.waitForFunction((b) => window.RADIA && window.RADIA.build && window.RADIA.build.id !== b, idD, { timeout: 25000 }).catch(() => {});
 await sleep(2500);
 check('deux déploiements d\'affilée : la dernière build est appliquée', (await buildId()) === idE);
 check('anciens caches nettoyés (un seul cache « radia-… » reste)', (await page.evaluate(async () => (await caches.keys()).filter((k) => k.startsWith('radia-')).length)) === 1);

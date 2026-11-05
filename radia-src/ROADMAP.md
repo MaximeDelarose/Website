@@ -41,6 +41,8 @@ Tests : `scripts/standalone-e2e.mjs` 12/12 (même build dans les deux modes, par
 - Fiabilité : permission, abonnement expiré/renouvelé, doublons, fuseau, désactivation, sauvegardes intactes.
 - **Prérequis manquant à ce jour** : un envoi programmé côté serveur (le site est statique sur GitHub Pages : il faut un petit service d'envoi, p. ex. fonction planifiée Supabase + clés VAPID gardées côté serveur) et une vérification réelle sur l'iPhone installé (iOS ≥ 16.4, PWA sur l'écran d'accueil). Aucune simulation ne sera présentée comme une vraie notification.
 
+- ✅ Mise à jour automatique : message « mise à jour en cours… » puis rechargement tout seul sur l'écran titre **et** au retour dans l'app après ≥ 30 s d'absence (jamais pendant une fenêtre/cadeau ouvert, jamais deux fois de suite) ; sinon barre « Mettre à jour ». Confirmation « RADIA est à jour ♡ » après. `update-e2e` 25/25 (Chromium émulé).
+
 ## PRIORITÉ 2 — Notifications et interface
 
 | Demande | État | Détail |

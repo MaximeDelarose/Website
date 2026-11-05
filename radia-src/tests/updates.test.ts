@@ -23,3 +23,18 @@ describe('mises à jour : comparaison de versions', () => {
     expect(versionLabel('abc-123', Date.UTC(2026, 10, 5, 12, 0))).toMatch(/^2026-11-0[45] \d\d:\d\d · abc-123$/);
   });
 });
+
+import { shouldAutoApply } from '../src/core/updates';
+describe('mise à jour automatique : quand recharger toute seule', () => {
+  const base = { manual: false, justReloaded: false, onTitle: false, overlay: false, resumedAfterAbsence: false };
+  it('écran titre ou retour après une absence : oui', () => {
+    expect(shouldAutoApply({ ...base, onTitle: true })).toBe(true);
+    expect(shouldAutoApply({ ...base, resumedAfterAbsence: true })).toBe(true);
+  });
+  it('en pleine partie (pas d\'absence), fenêtre ouverte, vérification manuelle ou rechargement récent : non', () => {
+    expect(shouldAutoApply(base)).toBe(false);
+    expect(shouldAutoApply({ ...base, onTitle: true, overlay: true })).toBe(false);
+    expect(shouldAutoApply({ ...base, onTitle: true, manual: true })).toBe(false);
+    expect(shouldAutoApply({ ...base, resumedAfterAbsence: true, justReloaded: true })).toBe(false);
+  });
+});
