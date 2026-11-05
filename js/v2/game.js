@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.22.2";
+  var VERSION = "2.23.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -749,7 +749,7 @@
      Dégâts, morts, butin
      ===================================================================== */
   function hurt(e, dmg, kx, ky) {
-    if (e.dead) return;
+    if (e.dead || p.dry) return;
     var crit = Math.random() < (p.crit || 0) + (p.critX || 0) + (p.packN && itn(p, "glandsjumeaux") ? 0.1 * itn(p, "glandsjumeaux") : 0);
     dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? (itn(p, "corne") ? 3 : 2) + (p.critDmg || 0) : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
     if (crit && r) r.crits = (r.crits || 0) + 1;
@@ -2639,6 +2639,35 @@
     for (i = z0; i < zones.length; i++) if (!zones[i].tint) zones[i].tint = col;
     for (i = f0; i < fx.length; i++) { var f = fx[i]; if (f.tint) continue; f.tint = col; if (f.col && (f.kind === "ring" || f.kind === "beam" || f.kind === "cutline")) f.col = rgb || (rgb = tintRgb(col)); }
   }
+  /* ---- Capitaine : tout ce que le joueur émet part des matelots, par un double de chaque matelot ---- */
+  var CREW_CAP = 30;   // nombre de matelots qui émettent objets, attirail et talents (les autres suivent seulement)
+  function crewProxy(pl, mt) {
+    if (mt.px) return mt.px;
+    var px = Object.create(pl);
+    px.isCrew = 1; px.crew = null; px.crewScale = 0.1; px.timers = {}; px.cool = {}; px.st = {}; px.comp = {}; px.trees = []; px.lx = mt.x; px.ly = mt.y; px.mt = mt;
+    Object.defineProperty(px, "hp", { configurable: true, get: function () { return pl.hp; }, set: function (v) { var d = v - pl.hp; if (d > 0 && pl.hp < pl.maxHp) pl.hp = Math.min(pl.maxHp, pl.hp + d * 0.1); } });
+    return (mt.px = px);
+  }
+  function crewProxies(pl, max) {
+    var out = [], cap = max || pl.crew.length;
+    for (var i = 0; i < pl.crew.length && out.length < cap; i++) { var mt = pl.crew[i]; if (mt.thT > 0) continue; var px = crewProxy(pl, mt); px.x = mt.x; px.y = mt.y; px.face = mt.face || 1; out.push(px); }
+    return out;
+  }
+  // le joueur lui-même n'émet rien : ses objets et son attirail tournent « à blanc » (rien n'est créé, aucun dégât)
+  function crewDry(pl, fn) {
+    if (!pl.crew || !pl.crew.length) { fn(); return; }
+    var kp = projs, kz = zones, kl = lobs, kw = warns, kf = fx, kt = texts; projs = []; zones = []; lobs = []; warns = []; fx = []; texts = []; pl.dry = true;
+    try { fn(); } finally { projs = kp; zones = kz; lobs = kl; warns = kw; fx = kf; texts = kt; pl.dry = false; }
+  }
+  function crewEmitTick(pl, dt) {
+    if (!pl.crew || !pl.crew.length || pl.down) return;
+    var kp = p, cps = crewProxies(pl, CREW_CAP);
+    for (var i = 0; i < cps.length; i++) {
+      var px = cps[i]; p = px;
+      try { itemTick(px, dt); gearTick(px, dt); itemComps(dt); } finally { p = kp; }
+      for (var k in px.comp) px.comp[k].forEach(function (c) { c.mini = 1; });
+    }
+  }
   // Capitaine : toutes ses techniques qui partent d'un coup sont tirées depuis un matelot au hasard
   var CREW_FIRE = { nova: 1, thorns: 1, shooter: 1, slash: 1, whip: 1, spin: 1, radial: 1, lob: 1, boomerang: 1, chain: 1, storm: 1, meteor: 1, rocket: 1 };
   function weapons(dt) {
@@ -2654,22 +2683,14 @@
       var rmA = e.def.family === "zone" && p.anchored && itn(p, "racine_mere") ? 1.3 : 1; if (rmA !== 1) p.area *= rmA;
       var el = foyer && e.key === baseId ? "feu" : (p.amu && p.amu[e.def.family]) || wel, n0 = projs.length, l0 = lobs.length, z0 = zones.length, hf = e.def.hfx || null;
       var f0 = fx.length;
-      var sx0 = p.x, sy0 = p.y, tm0 = p.timers;
       HIT_ELEM = el; HIT_FX = hf;
-      if (p.crew && p.crew.length && CREW_FIRE[e.def.type]) {
-        // Capitaine : chaque matelot lance la technique lui-même, avec son propre délai et 10 % des dégâts
-        for (var mi = 0; mi < p.crew.length; mi++) {
-          var mt = p.crew[mi]; if (mt.thT > 0) continue;
-          mt.tm = mt.tm || {}; if (mt.tm[e.key] === undefined) mt.tm[e.key] = 0.1 + Math.random() * 1.2;
-          var nm0 = projs.length, lm0 = lobs.length, zm0 = zones.length;
-          p.x = mt.x; p.y = mt.y; p.timers = mt.tm; p.crewScale = 0.1;
-          fn(e.key, e.def, e.l, dt);
-          p.crewScale = 0; p.timers = tm0;
-          for (var qi = nm0; qi < projs.length; qi++) if (projs[qi].owner === p) projs[qi].dmg *= 0.1;
-          for (var li = lm0; li < lobs.length; li++) if (lobs[li].dmg !== undefined) lobs[li].dmg *= 0.1;
-          for (var zi = zm0; zi < zones.length; zi++) { if (zones[zi].dmg !== undefined) zones[zi].dmg *= 0.1; if (zones[zi].pdmg !== undefined) zones[zi].pdmg *= 0.1; }
+      if (p.crew && p.crew.length && e.def.type !== "pet" && e.def.type !== "riposte") {
+        // Capitaine : chaque matelot lance la technique lui-même (par un double de lui qui a ses propres délais), à 10 % des dégâts
+        var kpw = p, cps = crewProxies(p);
+        for (var mi = 0; mi < cps.length; mi++) {
+          var px = cps[mi]; if (px.timers[e.key] === undefined) px.timers[e.key] = 0.1 + Math.random() * 1.2;
+          p = px; try { fn(e.key, e.def, e.l, dt); } finally { p = kpw; }
         }
-        p.x = sx0; p.y = sy0;
       } else fn(e.key, e.def, e.l, dt);
       HIT_ELEM = undefined; HIT_FX = null; CUR_FAM = null;
       if (e.key !== baseId) tagTint(techTint(e.key), n0, l0, z0, f0);
@@ -2680,7 +2701,7 @@
       for (var i = n0; i < projs.length; i++) { var pq = projs[i]; if (pq.elem === undefined) pq.elem = el; if (pq.hfx === undefined) pq.hfx = hf; if (pq.fam === undefined) pq.fam = e.def.family; if (whis && !pq.whis) { pq.whis = 1; pq.pierce = (pq.pierce || 1) + 2; var wh = { mark: "air" }; if (pq.hfx) for (var hk0 in pq.hfx) wh[hk0] = pq.hfx[hk0]; pq.hfx = wh; } }
       for (var j = l0; j < lobs.length; j++) { if (lobs[j].elem === undefined) lobs[j].elem = el; if (lobs[j].hfx === undefined) lobs[j].hfx = hf; if (lobs[j].cfg === undefined) lobs[j].cfg = e.def; if (lobs[j].fam === undefined) lobs[j].fam = e.def.family; }
       var mil2 = setCount(p, "racines_m") >= 2 && e.def.type === "thorns";
-      for (var z = z0; z < zones.length; z++) if (zones[z].owner === p) { if (mil2 && !zones[z].mil) { zones[z].mil = 1; zones[z].dur *= 2; } if (zones[z].elem === undefined) zones[z].elem = el; if (zones[z].cfg === undefined) zones[z].cfg = e.def; }
+      for (var z = z0; z < zones.length; z++) if (zones[z].owner === p || (zones[z].owner && zones[z].owner.isCrew)) { if (mil2 && !zones[z].mil) { zones[z].mil = 1; zones[z].dur *= 2; } if (zones[z].elem === undefined) zones[z].elem = el; if (zones[z].cfg === undefined) zones[z].cfg = e.def; }
     });
     if (grav) { p.area /= 1.3; for (var gq = 0; gq < projs.length; gq++) if (projs[gq].owner === p && projs[gq].kind === "bullet" && !projs[gq].grav) { projs[gq].grav = 1; projs[gq].life *= 0.6; } }
     ultTick(p);
@@ -2833,7 +2854,7 @@
   }
   function allComps() {
     var out = [];
-    players.forEach(function (pl) { if (pl.crew && !pl.down) pl.crew.forEach(function (c) { out.push(c); }); if (!pl.comp || pl.down) return; Object.keys(pl.comp).forEach(function (id) { pl.comp[id].forEach(function (c) { out.push(c); }); }); });
+    players.forEach(function (pl) { if (pl.crew && !pl.down) pl.crew.forEach(function (c) { out.push(c); if (c.px) Object.keys(c.px.comp).forEach(function (id) { c.px.comp[id].forEach(function (cc) { out.push(cc); }); }); }); if (!pl.comp || pl.down) return; Object.keys(pl.comp).forEach(function (id) { pl.comp[id].forEach(function (c) { out.push(c); }); }); });
     return out;
   }
 
@@ -4345,7 +4366,7 @@
       if (st.t > 0) continue;
       if (trig === "kill") { st.c++; if (st.c < o.every) continue; st.c = 0; }
       st.t = trig === "hurt" || trig === "lowhp" || trig === "anchor" ? o.cd : 0;
-      txAct(pl, o);
+      txRun(pl, o);
     }
   }
   function txTick(pl, dt) {
@@ -4359,9 +4380,14 @@
     for (var i = 0; i < pl.txl.length; i++) {
       var o = pl.txl[i], st = pl.txs[o.id] = pl.txs[o.id] || { c: 0, t: 0 };
       if (st.t > 0) st.t -= dt;
-      if (o.trig === "timer") { st.q = (st.q || 0) + dt; if (st.q >= o.cd) { st.q = 0; txAct(pl, o); } }
-      else if (o.trig === "lowhp" && pl.hp < pl.maxHp * 0.35 && !(st.t > 0)) { st.t = o.cd; txAct(pl, o); }
+      if (o.trig === "timer") { st.q = (st.q || 0) + dt; if (st.q >= o.cd) { st.q = 0; txRun(pl, o); } }
+      else if (o.trig === "lowhp" && pl.hp < pl.maxHp * 0.35 && !(st.t > 0)) { st.t = o.cd; txRun(pl, o); }
     }
+  }
+  var TX_EMIT = { ring: 1, nova: 1, freeze: 1, chain: 1, bomb: 1, pull: 1 };
+  function txRun(pl, o) {
+    if (pl.crew && pl.crew.length && TX_EMIT[o.act]) { crewProxies(pl, 12).forEach(function (px) { txAct(px, o); }); return; }
+    txAct(pl, o);
   }
   function txAct(pl, o) {
     var pp = p; p = pl; var dm = 14 * gpw() * o.k, a = o.act, i;
@@ -5754,7 +5780,7 @@
     }
     var hp0 = me.hp, mh0 = me.maxHp;
     moveMe(dt);
-    gearTick(me, dt);
+    crewDry(me, function () { gearTick(me, dt); });
     charTick(me, dt);
     if (r.mega) players.forEach(megaArena);
     tickPlayers(dt);
@@ -5768,7 +5794,7 @@
     if (!isArena()) shrineTick(dt);
     if (isArena()) arenaDirector(dt); else if (isDungeon()) { dungeonTick(dt); if (state !== "play") return; } else if (isExpe()) { expeTick(dt); if (state !== "play") return; } else { director(dt); portalTick(dt); }
     buildGrid();
-    players.forEach(function (pl) { if (pl.down) return; p = pl; crewTick(pl, dt); teamTick(pl, dt); txTick(pl, dt); if (isDungeon() && !inCombat(pl)) return; itemTick(pl, dt); weapons(dt); });
+    players.forEach(function (pl) { if (pl.down) return; p = pl; crewTick(pl, dt); teamTick(pl, dt); txTick(pl, dt); if (isDungeon() && !inCombat(pl)) return; crewDry(pl, function () { itemTick(pl, dt); }); weapons(dt); crewEmitTick(pl, dt); });
     p = me;
 
     var zones = players.length > 1 ? players.filter(function (pl) { return pl.choosing && !pl.down; }) : [];
