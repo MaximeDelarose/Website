@@ -23,6 +23,8 @@ export const RIG = {
   head: {
     /** Menton (unité avatar) : pivot de l'échelle de tête, le cou ne bouge jamais. */
     chinY: 166.6,
+    /** Remontée de toute la tête (unité avatar) : le menton se pose AU-DESSUS du col, ce qui laisse voir un vrai cou (sinon la tête semble posée sur le vêtement). */
+    lift: 9,
     /** Échelle de toute la tête (crâne, visage, cheveux, accessoires) : fait coïncider le visage avec l'illustration (60,6 u de large). */
     scale: PAINT_SCALE / 0.708,
     /** Position du crâne dessiné (vectoriel) avant échelle : centre (HEAD_X, HEAD_Y) et échelle d'origine du dessin de visage. */
@@ -95,8 +97,9 @@ export function skullTopY(kind: 'painted' | 'vector'): number {
 /** Décalage vertical (unité avatar) à appliquer à une couronne dessinée pour le crâne vectoriel, afin qu'elle se pose sur le crâne `kind`. */
 export const crownDy = (kind: 'painted' | 'vector'): number => skullTopY(kind) - skullTopY('vector');
 
-/** Matrice d'échelle de la tête : réduit TOUT le bloc tête autour du menton (le cou et le corps ne bougent pas). */
+/** Matrice de la tête : réduit TOUT le bloc tête autour du menton puis le remonte de `lift` (le cou et le corps ne bougent pas). */
 export function applyHeadScale(ctx: CanvasRenderingContext2D): void {
   const { cx, head } = RIG;
+  ctx.translate(0, -head.lift); // la tête repose sur un cou visible
   ctx.translate(cx, head.chinY); ctx.scale(head.scale, head.scale); ctx.translate(-cx, -head.chinY);
 }

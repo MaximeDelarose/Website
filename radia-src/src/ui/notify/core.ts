@@ -3,7 +3,7 @@
  *
  * Trois sortes de notices, avec des règles différentes :
  *   - 'ambient'   : pastille discrète (gain, info courte)           — au plus 1 visible, vite périmée, jamais pendant une notice importante
- *   - 'toast'     : petite notification                              — au plus 2 visibles, jamais pendant une notice importante
+ *   - 'toast'     : petite notification                              — au plus 1 visible (les autres attendent leur tour), jamais pendant une notice importante
  *   - 'narrative' : message important (Auguste, client, invitation…) — au plus 1 visible ; une notice plus prioritaire peut passer devant
  * Règles communes : file d'attente par priorité (puis ordre d'arrivée) ; une notice qui attend trop longtemps est ABANDONNÉE (une
  * information périmée ne s'affiche jamais) ; deux notices de même clé rapprochées sont fusionnées ; rien ne s'affiche tant que
@@ -37,7 +37,7 @@ export interface CoreOptions {
   gapMs?: number;
   /**
    * Voie d'affichage partagée (ex. Endless : une seule ligne sous le plateau) : toasts et pastilles se partagent alors UNE place.
-   * Sinon : 2 toasts + 1 pastille au plus.
+   * Sinon : 1 toast + 1 pastille au plus.
    */
   sharedLane?: () => boolean;
 }
@@ -47,7 +47,7 @@ export type PushResult = 'shown' | 'queued' | 'merged' | 'dropped';
 interface Live { item: NotifyItem; hide: HideFn; timer: unknown; at: number }
 interface Queued { item: NotifyItem; at: number; seq: number }
 
-export const LIMITS: Record<Channel, number> = { ambient: 1, toast: 2, narrative: 1 };
+export const LIMITS: Record<Channel, number> = { ambient: 1, toast: 1, narrative: 1 }; // jamais deux pop-ups de systèmes différents en même temps : ils se succèdent
 export const MERGE_WINDOW_MS = 3000;
 /** Une notice importante qui a au moins 2 points d'avance sur celle qui est affichée la remplace. */
 export const PREEMPT_MARGIN = 2;

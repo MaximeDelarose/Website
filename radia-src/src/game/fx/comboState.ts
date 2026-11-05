@@ -5,7 +5,7 @@
  * d'objet) l'interface ne doit RIEN faire apparaître : ni notice, ni message d'Auguste, ni invitation, ni coffre qui s'ouvre. Les gains et les
  * petites annonces sont mis de côté puis résumés UNE seule fois quand le combo se termine.
  */
-export const COMBO_HOLD_MS = 1400;
+export const COMBO_HOLD_MS = 3000; // = COMBO_WINDOW_MS du moteur : le combo est actif tant que la fusion suivante PEUT encore le prolonger
 
 export interface ComboRecap { merges: number; points: number; best: number; notes: string[] }
 type Timer = ReturnType<typeof setTimeout>;

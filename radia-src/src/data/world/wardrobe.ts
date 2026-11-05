@@ -145,6 +145,12 @@ export const CLOTHES: Record<ClothId, ClothDef> = {
   'es-smoky': C('es-smoky', 'Fard smoky', ['romantic', 'stage'], 40),
   'es-green': C('es-green', 'Fard vert tendre', ['romantic', 'stage'], 40),
   'es-blue': C('es-blue', 'Fard bleu ciel', ['romantic', 'stage'], 40),
+  // vernis à ongles : OPTIONNELS et gratuits (sans objet porté = sans vernis)
+  'nv-nude': C('nv-nude', 'Vernis nude', ['casual', 'chic'], 0, { free: true }),
+  'nv-pink': C('nv-pink', 'Vernis rose pâle', ['romantic', 'casual'], 0, { free: true }),
+  'nv-red': C('nv-red', 'Vernis rouge', ['chic', 'stage'], 0, { free: true }),
+  'nv-wine': C('nv-wine', 'Vernis bordeaux', ['chic', 'stage'], 0, { free: true }),
+  'nv-french': C('nv-french', 'French léger', ['romantic', 'chic'], 0, { free: true }),
   // cadeau d'Auguste : ni achetable ni vendu, il se reçoit pendant « Une soirée avec A ♡ »
   'br-promise': C('br-promise', 'La promesse d’Auguste ♡', ['romantic', 'royal'], 0, { gift: true }),
   // cadeau légendaire unique : aucun prix, jamais en vente ni dans un butin (la scène du feu d'artifice l'attribue)

@@ -216,7 +216,11 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
   }
 
   const offEnd = onComboEnd(() => { flushHeld(); });
-  const offBusy = onBoardBusyChange(() => { if (!isBoardBusy()) { flushHeld(); if (wishes.length) flushWishes(); } });
+  const offBusy = onBoardBusyChange(() => {
+    if (!isBoardBusy()) { flushHeld(); if (wishes.length) flushWishes(); return; }
+    // un combo démarre : ce qui s'affichait juste avant (pastille, bulle d'Auguste) s'efface tout de suite, pour ne rien laisser traîner sur la voie du bas
+    if (isComboBusy()) feedEl.parentElement?.querySelectorAll('.en-pill, .en-aug').forEach((e) => { e.classList.add('out'); window.setTimeout(() => e.remove(), 250); });
+  });
 
   // ---------------------------------------------------------------- commandes
   const chip = (kind: RewardKind, n: number) => {

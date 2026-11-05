@@ -53,10 +53,10 @@ describe('gestionnaire de notices : cœur', () => {
     r.advance(3000);
     expect(r.core.visibleKeys().sort()).toEqual(['p1', 't1']);
   });
-  it('limites par canal : 2 toasts, 1 pastille', () => {
+  it('limites par canal : 1 toast (plus jamais deux pop-ups de systèmes différents en même temps), 1 pastille', () => {
     const r = rig();
     expect(r.core.push(r.item('t1', 'toast'))).toBe('shown');
-    expect(r.core.push(r.item('t2', 'toast'))).toBe('shown');
+    expect(r.core.push(r.item('t2', 'toast'))).toBe('queued'); // attend son tour au lieu de s'empiler
     expect(r.core.push(r.item('t3', 'toast'))).toBe('queued');
     expect(r.core.push(r.item('p1', 'ambient'))).toBe('shown');
     expect(r.core.push(r.item('p2', 'ambient'))).toBe('queued');

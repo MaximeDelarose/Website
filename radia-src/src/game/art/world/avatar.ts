@@ -9,7 +9,7 @@
  */
 import type { Look, ClothId, HairId } from '../../../data/world/ids';
 import { RIG, paintedToHead, applyHeadScale, skullTopY, crownDy } from './rig';
-import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, LINER_STYLE, SHADOW_COLOR, accGroup } from '../../../data/world/ids';
+import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, LINER_STYLE, SHADOW_COLOR, NAIL_STYLE, accGroup, type NailStyle } from '../../../data/world/ids';
 import type { Expr } from '../../../data/dialogue';
 import { radiaParts as P, getFaceCustom } from '../characters';
 import { makeupSpec, hasMakeup } from '../../world/makeupSpec';
@@ -204,6 +204,13 @@ function limb(ctx: C, a: Arm, t0: number, t1: number, w0: number, w1: number): v
  * Main peinte : dos de la main pleine, quatre doigts épais réunis (légèrement écartés en éventail), pouce charnu côté corps,
  * ombre douce sous les doigts et lumière sur le dos. `ang` = direction de l'avant-bras (0 = vers le bas), `r` ≈ demi-largeur de la main.
  */
+/** Vernis porté par le look en cours de dessin (null : ongles naturels). */
+let NAIL: NailStyle | null = null;
+function nailPath(ctx: C, w: number, L: number): void {
+  // ongle arrondi posé sur le bout du doigt
+  const nw = w * 0.78, top = L - 5.4, bot = L - 1.3;
+  ctx.beginPath(); ctx.moveTo(-nw, top + 1); ctx.quadraticCurveTo(-nw, top, 0, top - 0.3); ctx.quadraticCurveTo(nw, top, nw, top + 1); ctx.lineTo(nw * 0.96, bot - 1.4); ctx.quadraticCurveTo(0, bot + 0.9, -nw * 0.96, bot - 1.4); ctx.closePath();
+}
 function handPainted(ctx: C, x: number, y: number, ang: number, s: -1 | 1, r: number = RIG.hand.r): void {
   const k = r / 9.5, sk = skin(), sl = skinL(), sd = skinD();
   ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(k, k); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
@@ -222,7 +229,12 @@ function handPainted(ctx: C, x: number, y: number, ang: number, s: -1 | 1, r: nu
     ctx.beginPath(); ctx.moveTo(-w, 0); ctx.lineTo(-w * 0.92, L - w); ctx.arc(0, L - w, w * 0.92, Math.PI, 0, true); ctx.lineTo(w, 0); ctx.closePath();
     ctx.fillStyle = g; ctx.fill(); ink();
     // ongle discret et pli de phalange
-    ctx.beginPath(); ctx.ellipse(0, L - 2.6, w * 0.55, 1.5, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,236,224,0.5)'; ctx.fill();
+    if (NAIL) {
+      nailPath(ctx, w, L); ctx.fillStyle = NAIL.color; ctx.fill();
+      if (NAIL.tip) { ctx.save(); nailPath(ctx, w, L); ctx.clip(); ctx.fillStyle = NAIL.tip; ctx.fillRect(-w, L - 3.1, w * 2, 3.4); ctx.restore(); } // french : bout blanc
+      nailPath(ctx, w, L); ctx.lineWidth = 0.5; ctx.strokeStyle = 'rgba(88,40,40,0.28)'; ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(-w * 0.28, L - 4.2, w * 0.22, 0.8, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill(); // reflet
+    } else { ctx.beginPath(); ctx.ellipse(0, L - 2.6, w * 0.55, 1.5, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,236,224,0.5)'; ctx.fill(); }
     ctx.beginPath(); ctx.moveTo(-w * 0.7, L * 0.5); ctx.lineTo(w * 0.7, L * 0.5); ctx.lineWidth = 0.6; ctx.strokeStyle = hexA2(sd, 0.45); ctx.stroke();
     ctx.restore();
   }
@@ -307,22 +319,34 @@ export function neckTrim(ctx: C, kind: 'crew' | 'v' | 'scoop', nd: number, color
 }
 
 export function chestSkin(ctx: C): void {
-  ctx.beginPath();
-  ctx.moveTo(107, 144);
-  ctx.lineTo(133, 144);
-  ctx.lineTo(134, 168);
-  ctx.bezierCurveTo(150, 172, 156, 190, 150, 214);
-  ctx.bezierCurveTo(140, 240, 100, 240, 90, 214);
-  ctx.bezierCurveTo(84, 190, 90, 172, 106, 168);
-  ctx.closePath();
-  ctx.fillStyle = lg(ctx, 0, 146, 0, 232, skinD(), skin(), skin());
-  ctx.fill();
-  ctx.lineWidth = 1.8;
-  ctx.strokeStyle = INK;
-  ctx.beginPath();
-  ctx.moveTo(107, 144); ctx.lineTo(106, 168);
-  ctx.moveTo(133, 144); ctx.lineTo(134, 168);
-  ctx.stroke();
+  // COU : colonne qui s'évase doucement vers les épaules (trapèzes), du dessous de la tête jusqu'au décolleté ; la tête (remontée de RIG.head.lift) repose dessus.
+  const sk = skin(), sl = skinL(), sd = skinD();
+  const NW0 = 12.2, NW1 = 15.5; // demi-largeur haut / bas du cou
+  const neckPath = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(CX - NW0, 140); ctx.lineTo(CX + NW0, 140);
+    ctx.bezierCurveTo(CX + NW1 - 1, 160, CX + NW1 + 1, 168, CX + NW1 + 14, 178); // trapèze droit vers l'épaule
+    ctx.bezierCurveTo(150, 184, 156, 196, 150, 214);
+    ctx.bezierCurveTo(140, 240, 100, 240, 90, 214);
+    ctx.bezierCurveTo(84, 196, 90, 184, CX - NW1 - 14, 178);
+    ctx.bezierCurveTo(CX - NW1 - 1, 168, CX - NW1 + 1, 160, CX - NW0, 140);
+    ctx.closePath();
+  };
+  neckPath();
+  // lumière à gauche, creux à droite ; l'ombre du menton tombe sur le haut du cou
+  const g = lg(ctx, CX - 22, 0, CX + 22, 0, sl, sk, shade(sk, -0.06));
+  ctx.fillStyle = g; ctx.fill();
+  ctx.save(); neckPath(); ctx.clip();
+  const chin = RIG.head.chinY - RIG.head.lift;
+  const sh = ctx.createLinearGradient(0, chin - 2, 0, chin + 15); sh.addColorStop(0, hexA2(sd, 0.62)); sh.addColorStop(0.55, hexA2(sd, 0.22)); sh.addColorStop(1, hexA2(sd, 0));
+  ctx.fillStyle = sh; ctx.fillRect(CX - 40, chin - 2, 80, 20);
+  // creux de la clavicule, très discret
+  ctx.beginPath(); ctx.ellipse(CX, 196, 15, 3.2, 0, 0, Math.PI * 2); ctx.fillStyle = hexA2(sd, 0.1); ctx.fill();
+  ctx.restore();
+  // contours : seulement les deux côtés du cou, du menton jusqu'au départ des épaules
+  ctx.lineWidth = 1.6; ctx.strokeStyle = INK; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(CX - NW0, 150); ctx.bezierCurveTo(CX - NW1 + 1, 160, CX - NW1 - 1, 168, CX - NW1 - 6, 174); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CX + NW0, 150); ctx.bezierCurveTo(CX + NW1 - 1, 160, CX + NW1 + 1, 168, CX + NW1 + 6, 174); ctx.stroke();
 }
 
 // ---------------------------------------------------------------- tenues : définitions
@@ -1822,6 +1846,7 @@ function drawPaintedLayer(ctx: C, l: PaintedLayer, dy = 0): void {
 
 function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const ph = headProvider?.(look) ?? null;
+  NAIL = look.acc.map((a) => NAIL_STYLE[a]).find(Boolean) ?? null;
   const fullHead = ph?.kind === 'head';
   const st = opts.step ?? 0;
   const sway = st * 4;
