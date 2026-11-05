@@ -3640,21 +3640,23 @@ window.ES_DATA = (function () {
   // un seul écureuil au départ : Noisette. Les autres se méritent.
   CHARACTERS.forEach(function (c) { if (c.id === "capitaine") c.quest = "q2_capitaine"; if (c.id === "planeur") c.quest = "q2_planeur"; });
   var CHQ = {
-    capitaine: ["Bats un méga boss (n'importe quelle carte).", function (r) { return !!r.megaWon; }],
-    planeur: ["Survis 15 minutes en difficulté Difficile.", function (r) { return r.time >= 900 && r.diffId === "difficile"; }],
-    jumeaux: ["Atteins le niveau 30 dans une partie.", function (r) { return (r.level || 0) >= 30; }],
-    cendrine: ["Bats un méga boss avec 2 écureuils différents.", function (r) { return ((r.tot && r.tot.megaChars) || 0) >= 2; }],
-    druide: ["Bats le méga boss du Marais.", function (r) { return !!r.megaWon && r.mapId === "marais"; }],
-    pataud: ["Tue 2 000 ennemis dans une partie.", function (r) { return (r.kills || 0) >= 2000; }],
-    mage: ["Déclenche 60 réactions élémentaires dans une partie.", function (r) { return (r.reactions || 0) >= 60; }],
-    ninja: ["Survis 10 minutes en subissant 3 coups ou moins.", function (r) { return r.time >= 600 && (r.hits || 0) <= 3; }],
-    trefle: ["Ouvre 8 coffres scellés et atteins le niveau 25 dans la même partie.", function (r) { return (r.chestsOpened || 0) >= 8 && (r.level || 0) >= 25; }],
-    devoreur: ["Atteins le niveau 40 dans une partie.", function (r) { return (r.level || 0) >= 40; }],
-    alchimiste: ["Tue 1 500 ennemis dans une partie en difficulté Difficile.", function (r) { return (r.kills || 0) >= 1500 && r.diffId === "difficile"; }],
-    pillard: ["Récolte 2 000 glands d'or dans une partie.", function (r) { return (r.gold || 0) + (r.goldSpent || 0) >= 2000; }]
+    capitaine: ["Bats un méga boss", function (r) { return !!r.megaWon; }, "noisette"],
+    planeur: ["Survis 15 minutes en difficulté Difficile", function (r) { return r.time >= 900 && r.diffId === "difficile"; }, "capitaine"],
+    jumeaux: ["Atteins le niveau 30 dans une partie", function (r) { return (r.level || 0) >= 30; }, "planeur"],
+    cendrine: ["Bats un méga boss", function (r) { return !!r.megaWon; }, "jumeaux"],
+    druide: ["Bats le méga boss du Marais", function (r) { return !!r.megaWon && r.mapId === "marais"; }, "cendrine"],
+    pataud: ["Tue 2 000 ennemis dans une partie", function (r) { return (r.kills || 0) >= 2000; }, "druide"],
+    mage: ["Déclenche 60 réactions élémentaires dans une partie", function (r) { return (r.reactions || 0) >= 60; }, "pataud"],
+    ninja: ["Survis 10 minutes en subissant 3 coups ou moins", function (r) { return r.time >= 600 && (r.hits || 0) <= 3; }, "mage"],
+    trefle: ["Ouvre 8 coffres scellés et atteins le niveau 25 dans la même partie", function (r) { return (r.chestsOpened || 0) >= 8 && (r.level || 0) >= 25; }, "ninja"],
+    devoreur: ["Atteins le niveau 40 dans une partie", function (r) { return (r.level || 0) >= 40; }, "trefle"],
+    alchimiste: ["Tue 1 500 ennemis dans une partie en difficulté Difficile", function (r) { return (r.kills || 0) >= 1500 && r.diffId === "difficile"; }, "devoreur"],
+    pillard: ["Récolte 2 000 glands d'or dans une partie", function (r) { return (r.gold || 0) + (r.goldSpent || 0) >= 2000; }, "alchimiste"]
   };
+
   var CHN = { capitaine: "le Capitaine", planeur: "le Planeur", jumeaux: "Pip & Pop", cendrine: "Cendrine", druide: "Fougère", pataud: "Pataud", mage: "Myrtille", ninja: "Ombre", trefle: "Trèfle", devoreur: "Croc", alchimiste: "Fiole", pillard: "Rapine" };
-  Object.keys(CHQ).forEach(function (cid) { setQ("q2_" + (cid === "druide" ? "fougere" : cid === "devoreur" ? "croc" : cid === "alchimiste" ? "fiole" : cid === "pillard" ? "rapine" : cid), CHQ[cid][0].replace(/\.$/, "") + " (débloque " + CHN[cid] + ").", CHQ[cid][1]); });
+  var CHP = { noisette: "Noisette" }; Object.keys(CHN).forEach(function (k) { CHP[k] = CHN[k].replace(/^le /, ""); });
+  Object.keys(CHQ).forEach(function (cid) { var prev = CHQ[cid][2], fn = CHQ[cid][1]; setQ("q2_" + (cid === "druide" ? "fougere" : cid === "devoreur" ? "croc" : cid === "alchimiste" ? "fiole" : cid === "pillard" ? "rapine" : cid), CHQ[cid][0] + " avec " + CHP[prev] + " (débloque " + CHN[cid] + ").", function (r) { return r.char === prev && fn(r); }); });
   // postures : survivre longtemps, puis battre un méga boss avec l'écureuil
   CHARACTERS.forEach(function (c) {
     if (["noisette", "capitaine", "planeur"].indexOf(c.id) >= 0 && c.id !== "noisette") return;
