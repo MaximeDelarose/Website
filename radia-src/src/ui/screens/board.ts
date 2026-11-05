@@ -10,11 +10,11 @@ import './board.css';
 import { DEFAULT_LOOK, type Look } from '../../data/world/ids';
 import { avatarCanvas, drawAvatar } from '../../game/art/world/avatar';
 import { RIG } from '../../game/art/world/rig';
-import { warmAuguste, paintedImageFor, drawPainted } from '../../game/art/world/radiaNow';
+import { warmAuguste, paintedImageFor, drawPainted, radiaBustCanvas, radiaFaceCanvas } from '../../game/art/world/radiaNow';
 import { augusteSprite } from '../../apps/art';
 
 export interface BoardTile { section: string; label: string; canvas: HTMLCanvasElement; look?: Look }
-declare global { interface Window { __board?: { tiles: BoardTile[]; W: number; H: number; perfMs: number } } }
+declare global { interface Window { __board?: { tiles: BoardTile[]; W: number; H: number; perfMs: number; painted: boolean } } }
 
 const W = 112, H = 280;
 const base = (o: Partial<Look> = {}): Look => ({ ...DEFAULT_LOOK, hair: 'hair-wavy', crown: null, acc: [], ...o });
@@ -79,12 +79,16 @@ export async function openBoard(): Promise<void> {
       tile('Auguste (réf.)', (w, hh) => mk(s.name, 'Auguste', augusteSprite(w, hh)), guides),
       ...s.items.map(([label, look]) => tile(label, (w, hh) => mk(s.name, label, avatarCanvas(look, w, hh, { expr: 'smile' }), look), guides)))));
   }
+  // bustes (dialogues) et médaillons (cartes, bulles) : autre chemin de dessin, même tête
+  const bustTile = (label: string, f: (w: number) => HTMLCanvasElement, wide: number) => tile(label, (w, hh) => { const c = document.createElement('canvas'); c.width = w; c.height = hh; const src = f(Math.round(wide * dpr())); const g = c.getContext('2d')!; const sc = Math.min(w / src.width, hh / src.height); g.drawImage(src, (w - src.width * sc) / 2, 0, src.width * sc, src.height * sc); return mk('Bustes', label, c); }, guides);
+  secs.push(h('section.bd-sec', h('h2', 'Bustes et médaillons (look actuel de la sauvegarde)'), h('div.bd-row',
+    bustTile('Buste · sourire', (w) => radiaBustCanvas('smile', w), 112), bustTile('Buste · amour', (w) => radiaBustCanvas('love', w), 112), bustTile('Médaillon', (w) => radiaFaceCanvas('smile', w), 112))));
   let on = true;
   const tog = h('button.btn.small', { on: { click: () => { on = !on; root.classList.toggle('noguides', !on); tog.textContent = on ? 'Masquer les repères' : 'Afficher les repères'; } } }, 'Masquer les repères');
   const close = h('button.btn.small.secondary', { on: { click: () => { root.remove(); delete window.__board; } } }, 'Fermer');
   const root = h('div.bd-root', h('header', h('b', 'Planche de validation ♡'), h('small', 'Vrais composants du jeu · même échelle · repères : menton, épaules, taille, hanches, pieds'), h('div.bd-act', tog, close)), ...secs);
-  document.body.append(root);
+  (document.getElementById('ui') ?? document.body).append(root); // dans #ui comme les autres écrans (table d'empilement : z-index ≤ 1000)
   const perfMs = measurePerf();
-  window.__board = { tiles, W, H, perfMs };
+  window.__board = { tiles, W, H, perfMs, painted: !!painted };
   root.querySelector('header small')!.append(` · dessin d'un avatar : ${perfMs.toFixed(1)} ms`);
 }

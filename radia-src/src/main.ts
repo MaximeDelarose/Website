@@ -211,7 +211,7 @@ async function boot(): Promise<void> {
   startGiftBubbles();
   startDaily();
   void warmAuguste();
-  preloadPhotos(['face-radia', 'face-auguste', 'char-radia', 'char-radia-nc', 'headp-radia-nc', 'facep-radia', 'crownp-gold', 'char-auguste', 'bust-radia', 'bust-radia-nc', 'bust-auguste', 'head-auguste', 'head-new']);
+  preloadPhotos(['face-radia', 'face-auguste', 'char-radia-nc', 'headp-radia-nc', 'facep-radia', 'crownp-gold', 'char-auguste', 'bust-auguste', 'head-auguste', 'head-new']);
   progress(0.3);
 
   // Écriture immédiate quand Safari passe en arrière-plan ou se ferme.

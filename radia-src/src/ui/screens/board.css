@@ -1,4 +1,4 @@
-.bd-root { position: fixed; inset: 0; z-index: 9000; overflow: auto; background: #efe6fa; color: #3b2a4a; font: 14px/1.3 system-ui, sans-serif; padding: 10px 0 40px; -webkit-overflow-scrolling: touch; }
+.bd-root { position: fixed; inset: 0; z-index: 1000; overflow: auto; background: #efe6fa; color: #3b2a4a; font: 14px/1.3 system-ui, sans-serif; padding: 10px 0 40px; -webkit-overflow-scrolling: touch; }
 .bd-root header { position: sticky; top: 0; z-index: 2; background: #efe6fae6; backdrop-filter: blur(6px); padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
 .bd-root header small { opacity: .7; flex-basis: 100%; }
 .bd-act { display: flex; gap: 8px; margin-left: auto; }

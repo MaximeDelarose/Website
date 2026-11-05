@@ -17,7 +17,7 @@ const out = await p.evaluate(() => {
   const tile = (sec, label) => B.tiles.find((t) => t.section.startsWith(sec) && t.label === label)?.canvas;
   const px = (c, box) => { const k = c.height / 600; const [x0, y0, x1, y1] = box.map((v) => Math.round(v * k)); const d = c.getContext('2d').getImageData(Math.round((c.width - 240 * k) / 2) + x0, y0, x1 - x0, y1 - y0).data; return d; };
   const diff = (a, b, box) => { const A = px(a, box), Bp = px(b, box); let s = 0, n = 0; for (let i = 0; i < A.length; i += 4) { const al = Math.max(A[i + 3], Bp[i + 3]) / 255; for (let j = 0; j < 3; j++) { s += Math.abs(A[i + j] - Bp[i + j]) * al; } n += 3 * al || 0; } return n ? s / n : 0; };
-  const FACE = [98, 108, 142, 164], HEAD = [80, 14, 160, 166], CHIN = [102, 140, 138, 164];
+  const FACE = [98, 108, 142, 164], HEAD = [80, 14, 160, 158], CHIN = [102, 140, 138, 164]; // HEAD s'arrête au-dessus du col (le col change avec la tenue)
   const sans = tile('Couronnes', 'Sans couronne');
   const r = { perf: B.perfMs, couronnes: {}, coiffures: {}, accessoires: {}, tenues: {}, peintVsDessine: null };
   for (const l of ['Couronne dorée', 'Couronne de fleurs', 'Diadème']) r.couronnes[l] = diff(sans, tile('Couronnes', l), FACE);
@@ -27,9 +27,10 @@ const out = await p.evaluate(() => {
   for (const l of ['Survêtement rouge', 'Casual', 'Robe élégante', 'Soirée', 'Manteau', 'Couronne + robe']) r.tenues[l] = diff(noir, tile('Tenues', l), l === 'Couronne + robe' ? FACE : HEAD);
   for (const l of ['Lunettes aviateur', 'Lunettes œil de chat', 'Lunettes de soleil', 'Créoles', 'Boucles pendantes', 'Bandana', 'Béret', 'Nœud', 'Serre-tête', 'Collier de perles']) r.accessoires[l] = diff(sans, tile('Accessoires', l), CHIN);
   const pe = tile('Référence', 'Radia peinte'), de = tile('Référence', 'Radia dessinée');
-  r.peintVsDessine = pe && de ? diff(pe, de, FACE) : null;
-  return r;
+  r.peintVsDessine = B.painted && pe && de ? diff(pe, de, FACE) : null; // sans le lien secret, pas de figure peinte : contrôle ignoré
+  r.painted = B.painted; return r;
 });
+if (!out.painted) console.log('(sans le lien secret : les contrôles « peinte » sont ignorés)');
 console.log('temps de dessin d\'un avatar : ' + out.perf.toFixed(1) + ' ms (taille iPhone, sans cache)');
 const T = 3.0; // écart moyen toléré (sur 255) pour « même visage »
 for (const [grp, o] of [['couronne', out.couronnes], ['coiffure', out.coiffures], ['tenue', out.tenues], ['accessoire (bas du visage)', out.accessoires]]) {
