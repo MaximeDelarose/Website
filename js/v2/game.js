@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.18.1";
+  var VERSION = "2.19.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -362,6 +362,7 @@
     if (p.anchorTh0) p.anchorTh = Math.max(0.1, p.anchorTh0 - 0.06 * (ps.patience || 0));
     if (p.volteBase0) p.volteBase = Math.max(1, p.volteBase0 - 0.3 * (ps.ressort || 0));
     p.critDmg = 0; p.resist = 0; p.eres = {};
+    if (p.prov) { if (p.prov.parchemin) p.xpMul += 0.25; if (p.prov.bourse) p.goldMul *= 1.25; if (p.prov.ration) p.maxHp *= 1.2; if (p.prov.elixir) p.might *= 1.1; }
     if (p.gbon) {
       var gb = p.gbon; p.might *= 1 + (gb.dmg || 0) / 100; p.cdMul *= 1 - (gb.cd || 0) / 100; p.area *= 1 + (gb.area || 0) / 100; p.crit = (p.crit || 0) + (gb.crit || 0) / 100; p.speed *= 1 + (gb.spd || 0) / 100; p.maxHp += gb.hp || 0;
       p.critDmg = (gb.cdm || 0) / 100; p.armor += gb.arm || 0; p.resist = Math.min(0.6, (gb.res || 0) / 100); p.eres = { terre: gb.rter || 0, feu: gb.rfeu || 0, eau: gb.reau || 0, air: gb.rair || 0 }; p.dodge = Math.max(0, (p.dodge || 0) + (gb.dod || 0) / 100); p.regen += (gb.reg || 0) / 10;
@@ -416,6 +417,7 @@
     });
     me = players.filter(function (pl) { return pl.id === myId(); })[0] || players[0];
     me.remote = false; p = me; CH = me.char;
+    if (S.prov && Object.keys(S.prov).length && !Net.on) { me.prov = S.prov; S.prov = {}; save(); me.rerolls = (me.rerolls || 0) + (me.prov.relance ? 2 : 0); calc(me); me.hp = me.maxHp; }
     r = { cauch: (S.cn && (S.cauch || {})[mapId || S.map] >= S.cn) ? S.cn : 0, res: {}, loot: [], voltes: 0, recruits: 0, time: 0, kills: 0, level: 1, bosses: 0, berries: 0, gold: 0, lastHit: 0, maxedWeapon: false, nWeapons: 1, nPassives: 0,
           fusions: 0, legend: 0, biome: -1, props: 0, freeze: 0, flash: 0, hard: (diffId || S.diff) !== "normal", ended: false, committed: false, newAch: [], bonus: 0,
           char: CH.id, map: MAP.id, coop: n > 1, mode: mode || "survie",
@@ -4183,6 +4185,19 @@
     { id: "mag", name: "portée de ramassage", lo: 10, hi: 30, pct: 1 }, { id: "xp", name: "expérience", lo: 4, hi: 10, pct: 1 }, { id: "gld", name: "or gagné", lo: 5, hi: 15, pct: 1 }
   ];
   var GFAM = { fmel: "melee", ftir: "tir", fzon: "zone", fret: "retour", fcom: "compagnon" };
+  var COMPTOIR_PROV = [
+    { id: "ration", ic: "🍖", name: "Ration copieuse", desc: "+20 % de PV max.", price: 500 },
+    { id: "parchemin", ic: "📜", name: "Parchemin d'érudit", desc: "+25 % d'expérience.", price: 600 },
+    { id: "bourse", ic: "👛", name: "Bourse porte-bonheur", desc: "+25 % de glands d'or gagnés.", price: 600 },
+    { id: "elixir", ic: "🧪", name: "Élixir de rage", desc: "+10 % de dégâts.", price: 900 },
+    { id: "relance", ic: "🎲", name: "Dés pipés", desc: "+2 relances de pouvoirs.", price: 500 }
+  ];
+  // stock du jour du comptoir : 6 pièces, de peu commune à épique
+  function shopRoll(day) {
+    var items = [], rars = [1, 1, 2, 2, 2, 3];
+    rars.forEach(function (rr) { var q = genPiece(2, undefined, rr); items.push({ q: q, price: [150, 450, 1100, 2800, 7000][rr] + (q.bon ? Object.keys(q.bon).length * 60 : 0) }); });
+    S.shopStock = { day: day, items: items }; save();
+  }
   function statRoll(x, f) { return Math.max(1, Math.round((x.lo + Math.random() * (x.hi - x.lo)) * f)); }
   function rarMul(rar) { return [0.5, 0.65, 0.8, 1, 1.2][rar] || 1; }
   function bonTxt(b) {
@@ -8246,10 +8261,40 @@
     comptoir: function () {
       eqS();
       var html = '<div class="screen-head">' + back() + "<h2>Le comptoir</h2>" + goldBadge() + "</div>";
+      var today = new Date().toISOString().slice(0, 10), W0 = S.wallet || {};
+      // cadeau du jour
+      html += '<h3 class="pick-title">Cadeau du jour</h3><div class="shop-list"><div class="shop-item"><span class="shop-ic">🎁</span><div class="shop-text"><strong>Le marchand te fait un petit cadeau</strong><span>200 glands d\'or et une rune, une fois par jour.</span></div>' +
+        (S.giftDay === today ? '<span class="pill">pris</span>' : '<button class="btn btn-small" type="button" data-action="cgift">Prendre</button>') + "</div></div>";
+      // stock du jour
+      if (!S.shopStock || S.shopStock.day !== today) shopRoll(today);
+      html += '<h3 class="pick-title">Attirail du jour</h3><p class="game-small">Le stock change chaque jour.</p><div class="shop-list">';
+      S.shopStock.items.forEach(function (it, i) {
+        if (it.sold) return;
+        var q = it.q, g = D.GEAR[q.t], R0 = rarOf(q);
+        html += '<div class="shop-item"><span class="shop-ic">' + ic(g.icon) + '</span><div class="shop-text"><strong style="color:' + R0.color + '">' + esc(g.name) + " <small>" + esc(R0.name) + "</small></strong><span>" + esc(pieceDesc(q)) + "</span>" +
+          (bonTxt(q.bon).length ? "<small>" + bonTxt(q.bon).map(function (t) { return t.charAt(0) === "-" ? '<b style="color:#c8553d">' + esc(t) + "</b>" : esc(t); }).join(" · ") + "</small>" : "") + '</div><button class="btn btn-small" type="button" data-action="cbuy" data-arg="' + i + '"' + (S.gold < it.price ? " disabled" : "") + ">" + it.price.toLocaleString("fr-FR") + " " + goldIc() + "</button></div>";
+      });
+      if (!S.shopStock.items.some(function (it) { return !it.sold; })) html += '<p class="game-small">Plus rien en stock aujourd\'hui.</p>';
+      html += '<div class="shop-item"><span class="shop-ic">🔄</span><div class="shop-text"><strong>Renouveler le stock</strong><span>Un nouvel arrivage tout de suite.</span></div><button class="btn btn-small btn-alt" type="button" data-action="crefresh"' + (S.gold < 600 ? " disabled" : "") + ">600 " + goldIc() + "</button></div></div>";
+      // runes
+      html += '<h3 class="pick-title">Runes de forge</h3><div class="shop-list">' +
+        [["rune", "Rune", "Relance une valeur à la forge.", 300], ["rune_rare", "Rune rare", "Ajoute une stat, purge un malus ou ajoute un effet.", 1200]].map(function (rr) {
+          return '<div class="shop-item"><span class="shop-ic">' + ic(D.RES[rr[0]].icon) + '</span><div class="shop-text"><strong>' + rr[1] + " <small>(" + (S.res[rr[0]] || 0) + ")</small></strong><span>" + rr[2] + '</span></div><button class="btn btn-small" type="button" data-action="cbuyres" data-arg="' + rr[0] + '"' + (S.gold < rr[3] ? " disabled" : "") + ">" + rr[3] + " " + goldIc() + "</button></div>";
+        }).join("") + "</div>";
+      // provisions pour la prochaine partie
+      html += '<h3 class="pick-title">Provisions</h3><p class="game-small">Valables pour ta prochaine partie seulement.</p><div class="shop-list">' + COMPTOIR_PROV.map(function (pv) {
+        var has1 = (S.prov || {})[pv.id];
+        return '<div class="shop-item"><span class="shop-ic">' + pv.ic + '</span><div class="shop-text"><strong>' + pv.name + "</strong><span>" + pv.desc + "</span></div>" + (has1 ? '<span class="pill">prête</span>' : '<button class="btn btn-small" type="button" data-action="cprov" data-arg="' + pv.id + '"' + (S.gold < pv.price ? " disabled" : "") + ">" + pv.price + " " + goldIc() + "</button>") + "</div>";
+      }).join("") + "</div>";
+      // surplus de ressources
+      var surplus = 0, sKeys = Object.keys(S.res).filter(function (k) { return D.RES[k] && !D.RES[k].rune && S.res[k] > 20; });
+      sKeys.forEach(function (k) { surplus += S.res[k] - 20; });
+      html += '<h3 class="pick-title">Revente</h3><div class="shop-list"><div class="shop-item"><span class="shop-ic">💰</span><div class="shop-text"><strong>Vendre le surplus de ressources</strong><span>Tout ce qui dépasse 20 par ressource : ' + surplus + " pièces, 3 glands d'or chacune.</span></div>" + (surplus ? '<button class="btn btn-small" type="button" data-action="csell">+' + surplus * 3 + " " + goldIc() + "</button>" : '<span class="pill">rien à vendre</span>') + "</div></div>";
+      // améliorations du camp
       var sn = S.secureSlots || 0, scost = [1500, 4000][sn];
       html += '<h3 class="pick-title">Améliorations du camp</h3><div class="shop-list"><div class="shop-item"><span class="shop-ic">🎒</span><div class="shop-text"><strong>Emplacement sécurisé d\'expédition</strong><span>' + (1 + sn) + " / 3</span></div>" + (scost ? '<button class="btn btn-small" type="button" data-action="buysecure"' + (S.gold < scost ? " disabled" : "") + ">" + scost + " " + goldIc() + "</button>" : '<span class="pill">max</span>') + "</div>";
       var cs = S.chestSize || 0, ccost = [800, 2000, 5000][cs];
-      html += '<div class="shop-item"><span class="shop-ic">🧰</span><div class="shop-text"><strong>Coffre agrandi</strong><span>' + (40 + 10 * cs) + " places</span></div>" + (ccost ? '<button class="btn btn-small" type="button" data-action="buychest"' + (S.gold < ccost ? " disabled" : "") + ">" + ccost + " " + goldIc() + "</button>" : '<span class="pill">max</span>') + "</div></div>";
+      html += '<div class="shop-item"><span class="shop-ic">🧰</span><div class="shop-text"><strong>Coffre agrandi</strong><span>' + (40 + 10 * cs) + " places</span></div>" + (ccost ? '<button class="btn btn-small" type="button" data-action="buychest"' + (S.gold < ccost ? " disabled" : "") + ">" + ccost + " " + goldIc() + "</button>" : '<span class="pill">max</span>') + "</div>";
       return html + "</div>";
     },
     codex: function () {
@@ -8350,6 +8395,12 @@
       var ps = postureOf(S.char, (S.posture || {})[S.char]).id, t = a.split(":"); eqS();
       S.tal[S.char] = S.tal[S.char] || {}; S.tal[S.char][ps] = S.tal[S.char][ps] || {}; S.tal[S.char][ps][t[0]] = t[1]; save(); SND.click(); go("terrier");
     },
+    cgift: function () { var td = new Date().toISOString().slice(0, 10); if (S.giftDay === td) return; S.giftDay = td; earnGold(200); S.res.rune = (S.res.rune || 0) + 1; save(); SND.gold(); go("comptoir"); },
+    cbuy: function (i) { var it = S.shopStock && S.shopStock.items[+i]; if (!it || it.sold || S.gold < it.price) return; if (!addPiece(it.q)) { banner("Coffre plein"); return; } S.gold -= it.price; it.sold = true; save(); SND.gold(); go("comptoir"); },
+    crefresh: function () { if (S.gold < 600) return; S.gold -= 600; shopRoll(new Date().toISOString().slice(0, 10)); SND.gold(); go("comptoir"); },
+    cbuyres: function (k) { var c = k === "rune_rare" ? 1200 : 300; if (S.gold < c) return; S.gold -= c; S.res[k] = (S.res[k] || 0) + 1; save(); SND.gold(); go("comptoir"); },
+    cprov: function (id) { var pv = COMPTOIR_PROV.filter(function (x) { return x.id === id; })[0]; if (!pv || S.gold < pv.price || (S.prov || {})[id]) return; S.gold -= pv.price; S.prov = S.prov || {}; S.prov[id] = 1; save(); SND.gold(); go("comptoir"); },
+    csell: function () { var n = 0; Object.keys(S.res).forEach(function (k) { if (D.RES[k] && !D.RES[k].rune && S.res[k] > 20) { n += S.res[k] - 20; S.res[k] = 20; } }); if (n) { earnGold(n * 3); save(); SND.gold(); } go("comptoir"); },
     txpick: function (a) {
       var t = a.split(":"); eqS(); S.tal[S.char] = S.tal[S.char] || {}; S.tal[S.char].x = S.tal[S.char].x || {}; S.tal[S.char].x[t[0]] = t[1]; save(); SND.click(); go("terrier");
     },
