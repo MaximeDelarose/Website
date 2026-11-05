@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.25.1";
+  var VERSION = "2.26.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -748,6 +748,14 @@
   /* =====================================================================
      Dégâts, morts, butin
      ===================================================================== */
+  // un ennemi qui tire est interrompu quand on le touche (sauf mini boss, élites et boss) : son tir est annulé et reporté
+  var SHOOTER_AI = { spitter: 1, spiker: 1, artillery: 1, predict: 1, webber: 1, sporer: 1 };
+  function interruptShot(e) {
+    var was = e.cd === undefined ? 9 : e.cd;
+    e.cd = Math.max(e.cd === undefined ? 0 : e.cd, 1.1);
+    for (var wi = warns.length - 1; wi >= 0; wi--) if (warns[wi].owner === e && !warns[wi].pre) { warns.splice(wi, 1); was = 0; }
+    if (was < 0.5 && cooled(e, "interrupt", 1.5) && S.opts.numbers) texts.push({ x: e.x, y: e.y - e.d.r - 12, n: "INTERROMPU", life: 0.6, col: "#9ee8ff" });
+  }
   function hurt(e, dmg, kx, ky) {
     if (e.dead || p.dry) return;
     var crit = Math.random() < (p.crit || 0) + (p.critX || 0) + (p.packN && itn(p, "glandsjumeaux") ? 0.1 * itn(p, "glandsjumeaux") : 0);
@@ -819,6 +827,7 @@
     if (Net.dmgN < 30) { Net.dmgN++; netEv(["d", Math.round(e.x), Math.round(e.y - e.d.r - 6), dmg]); }
     if (p.items) onHitProcs(e);
     if (hf && !e.d.prop) hitFx(e, hf, dmg, hadMark);
+    if (!e.dead && SHOOTER_AI[e.d.ai] && !e.d.boss && !e.d.mega && !(e.aff && e.aff.length)) interruptShot(e);
     if (p.txf && !e.d.prop) txHitPost(p, e, dmg, crit);
     if (crit && itn(p, "dard_reine") && !procLock && !e.d.prop) { procLock = true; explode(e.x, e.y, 18, 15 * itn(p, "dard_reine")); procLock = false; }
     if (e.hp <= 0 && !e.dead) kill(e);
@@ -9630,6 +9639,7 @@
     plant: function (n) { for (var i = 0; i < (n || 1); i++) { plant(me, false); } me.trees.forEach(function (t) { t.age = 99; }); return me.trees.length + "/" + treeMax(me); },
     fusReady: function () { return Object.keys(D.COMBOS).concat(Object.keys(D.LEGENDS)).filter(function (c) { return comboReady(me, c); }); },
     fuse: function (id) { p = me; v2Apply({ type: "cb", id: id }); return Object.keys(me.weapons); },
+    hit1: function () { var e = enemies.filter(function (x) { return !x.dead && SHOOTER_AI[x.d.ai]; })[0]; if (!e) return null; e.cd = 0; p = me; hurt(e, 1, 0, 0); return Math.round(e.cd * 100) / 100; },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
