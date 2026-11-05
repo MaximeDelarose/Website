@@ -1177,7 +1177,7 @@ window.ES_DATA = (function () {
   };
   var V2CH = {
     noisette:  { order: 0, rule: "Choisit parmi 4 cartes au lieu de 3. L'écureuil d'apprentissage." },
-    capitaine: { order: 1, rule: "Il ne frappe pas lui-même : son équipage le suit en grappe et attaque avec une version miniature de son arme (10 % de ses dégâts par matelot). 10 matelots au départ, +2 par niveau, 50 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
+    capitaine: { order: 1, rule: "Il ne frappe pas lui-même : son équipage le suit, éparpillé autour de lui, et attaque avec une version miniature de son arme (5 % de ses dégâts par matelot). 5 matelots au départ, +1 par niveau, 25 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
     planeur:   { order: 2, rule: "Glisse sans cesse (inertie) et survole les obstacles. Ne s'ancre qu'accroché à un arbre ou à une souche." },
   };
   var CHAR_ALL = CHARACTERS.slice();
@@ -1494,7 +1494,7 @@ window.ES_DATA = (function () {
                [{ id: "voltigeuse", name: "Voltigeuse", desc: "Clé : la Volte se recharge en 1,5 s." }, { id: "intouchable", name: "Intouchable", desc: "Clé : invulnérable 1 s de plus après une roulade." }]],
     glaneuse: [[{ id: "pochespleines", name: "Poches pleines", desc: "En mouvement : +15 % d'expérience." }, { id: "aspiration", name: "Aspiration", desc: "La Volte aspire aussi l'or et les objets." }],
                [{ id: "moisson", name: "Grande glane", desc: "Clé : ramassage x3 en mouvement." }, { id: "avarice", name: "Avarice", desc: "Clé : toutes les 30 noisettes, une onde part autour de toi." }]],
-    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+4 matelots max (50 au plus)." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
+    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+2 matelots max (25 au plus)." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
                [{ id: "batterie", name: "Canonnade", desc: "Clé : ancré, la salve part toutes les 0,3 s." }, { id: "couverture", name: "Tir de couverture", desc: "Clé : la salve marche aussi en mouvement, 2 fois plus lente." }]],
     abordage: [[{ id: "sabres", name: "Sabres", desc: "La charge fait +50 % de dégâts." }, { id: "recrue", name: "Recrue d'abordage", desc: "Un ennemi tué pendant une charge a 25 % de chance de recruter." }],
                [{ id: "mutinerie", name: "Mutinerie", desc: "Clé : la charge dure 2 fois plus longtemps." }, { id: "bouclierh", name: "Mur de matelots", desc: "Clé : en cercle, les matelots arrêtent les tirs ennemis." }]],
@@ -1769,7 +1769,7 @@ window.ES_DATA = (function () {
   RES.rune_rare = { name: "Rune rare", icon: "🔷", rune: 1 };
   // panoplies : 2 à 4 pièces ; 2 pièces = un bonus d'effet, 4 pièces = un bonus qui change une règle ; recettes trouvées en Donjon
   var SETS = {
-    corsaire: { name: "Panoplie du Corsaire", who: "capitaine", b2: "+2 matelots max.", b4: "Les matelots tirent des boulets qui explosent." },
+    corsaire: { name: "Panoplie du Corsaire", who: "capitaine", b2: "+1 matelot max.", b4: "Les matelots tirent des boulets qui explosent." },
     sylve:    { name: "Panoplie de la Sylve", b2: "Ancré : régénère 1 PV/s.", b4: "Ancré : une pousse d'arbre toutes les 4 s, qui attaque." },
     orage:    { name: "Panoplie de l'Orage", b2: "La Volte se recharge 0,6 s plus vite.", b4: "Chaque Volte lance un éclair qui saute sur 5 ennemis." },
     braise:   { name: "Panoplie de Braise", b2: "10 % de chance par coup d'enflammer.", b4: "Les ennemis brûlés explosent à leur mort." },
@@ -2248,7 +2248,7 @@ window.ES_DATA = (function () {
   var SETS4 = [
     ["apprentie", "Panoplie de l'Apprentie", "terre", "noisette", null, "1 relance de cartes gratuite par palier de difficulté.", "Chaque choix propose au moins une amélioration d'une technique que tu as.",
       [["coiffe", "Bonnet roux", "🧢", "app_c", 15, 30, "Ancrée : l'XP ramassée compte +{v} %."], ["bottes", "Sandales de noisetier", "🩴", "app_b", 5, 10, "En mouvement : {v} % des noisettes comptent double."], ["cape", "Écharpe d'automne", "🧣", "app_k", null, null, "Volte : attire toutes les noisettes de l'écran."]]],
-    ["corsaire", "Panoplie du Corsaire", "eau", "capitaine", null, "+2 matelots max.", "Les matelots tirent des boulets qui explosent.",
+    ["corsaire", "Panoplie du Corsaire", "eau", "capitaine", null, "+1 matelot max.", "Les matelots tirent des boulets qui explosent.",
       [["coiffe", "Tricorne", "🏴‍☠️", "cor_c", null, null, "Ancré : les matelots se mettent en carré et bloquent les tirs."], ["bottes", "Bottes de pont", "🥾", "cor_b", 6, 12, "En mouvement : la file piétine les ennemis ({v} dégâts)."], ["cape", "Cape de corsaire", "🧥", "cor_k", null, null, "Volte : les matelots tirent une bordée."]]],
     ["sylve", "Panoplie de la Sylve", "terre", "druide", null, "Tes arbres te rendent 1 PV quand ils tuent.", "Ancrée, une pousse apparaît toutes les 4 s.",
       [["coiffe", "Couronne de lierre", "🌿", "syl_c", 30, 50, "Ancrée : tes pousses grandissent {v} % plus vite."], ["bottes", "Sabots d'écorce", "🪵", "syl_b", null, null, "Passer près de tes arbres les fait tirer 2 fois."], ["cape", "Cape de mousse", "🍃", "syl_k", null, null, "Volte : une pousse apparaît là où tu étais."]]],
