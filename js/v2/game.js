@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.38.1";
+  var VERSION = "2.38.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -5877,6 +5877,9 @@
     var bar = document.querySelector("[data-campbar]");
     if (!bar) { bar = document.createElement("div"); bar.className = "camp-bar camp-dock"; bar.setAttribute("data-campbar", ""); stage.appendChild(bar); bar.addEventListener("click", function (e) { var b = e.target.closest("[data-camp]"); if (b) campOpen(b.getAttribute("data-camp")); }); }
     bar.hidden = false;
+    var ver = document.querySelector("[data-campver]");
+    if (!ver) { ver = document.createElement("button"); ver.type = "button"; ver.className = "camp-ver"; ver.setAttribute("data-campver", ""); ver.title = "Nouveautés de cette version"; stage.appendChild(ver); ver.addEventListener("click", function () { campOpen("changelog"); }); }
+    ver.textContent = "v" + VERSION; ver.hidden = false;
     var PI = { terrier: "🏡", atelier: "🔨", forge: "🔥", comptoir: "🛒", chene: "🌳", arene: "⚔️" };
     bar.innerHTML = '<div class="cb-util"><button type="button" class="camp-coop" data-camp="coop" title="Coop en ligne">👥<span>Coop</span></button><button type="button" class="camp-amis" data-camp="amis" title="Amis">🧑‍🤝‍🧑<i class="fr-badge" hidden></i></button><button type="button" data-camp="emote" title="Message rapide">💬</button><button type="button" data-camp="codex" title="Techniques et fusions">📜</button><button type="button" data-camp="help" title="Aide">❓</button><button type="button" data-camp="options" title="Réglages">⚙️</button></div>' +
       '<div class="cb-main"><button type="button" class="camp-go" data-camp="sentier"><b>▶</b> Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" class="cb-place" data-camp="' + l.id + '"><i>' + (PI[l.id] || "•") + "</i><span>" + esc(l.id === "chene" ? "Chêne" : l.name.replace(/^(Le |La |L')/, "")) + "</span></button>"; }).join("") + "</div>";
@@ -5895,7 +5898,7 @@
       '<div class="btn-row center"><button class="btn" type="button" data-action="newsok" data-autofocus>Au camp !</button></div>';
     showCard(html, "news");
   }
-  function closeCamp() { camp.on = false; var bar = document.querySelector("[data-campbar]"); if (bar) bar.hidden = true; var em = document.querySelector("[data-emotes]"); if (em) em.hidden = true; }
+  function closeCamp() { camp.on = false; var cv = document.querySelector("[data-campver]"); if (cv) cv.hidden = true; var bar = document.querySelector("[data-campbar]"); if (bar) bar.hidden = true; var em = document.querySelector("[data-emotes]"); if (em) em.hidden = true; }
   function campEmoteMenu() {
     var m = document.querySelector("[data-emotes]");
     if (!m) { m = document.createElement("div"); m.className = "camp-emotes"; m.setAttribute("data-emotes", ""); stage.appendChild(m); m.addEventListener("click", function (e) { var b = e.target.closest("[data-em]"); if (!b) return; camp.emote = b.getAttribute("data-em"); camp.emoteT = performance.now(); camp.emoteMenu = false; camp.sendT = 0; SND.click(); campEmoteMenu(); }); }
@@ -5906,7 +5909,7 @@
     var l = D.CAMP.filter(function (q) { return q.id === id; })[0];
     closeCamp(); SND.click();
     if (id === "amis") { go("amis"); frRefresh(); return; }
-    if (id === "options" || id === "codex" || id === "help") { go(id); return; }
+    if (id === "options" || id === "codex" || id === "help" || id === "changelog") { go(id); return; }
     if (id === "coop") { go(Net.on ? "lobby" : "coop"); return; }
     if (l && l.screen === "play") { inspect.char = S.char; inspect.map = S.map; }
     go(l ? l.screen : "menu");
