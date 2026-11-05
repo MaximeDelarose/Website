@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.20.0";
+  var VERSION = "2.21.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -4083,6 +4083,7 @@
     bonTxt(q.bon).forEach(function (t) { h += "<li" + (t.charAt(0) === "-" ? ' class="dof-neg"' : "") + ">" + esc(t) + "</li>"; });
     if (q.extra && D.GEAR[q.extra]) h += "<li>+ " + esc(D.GEAR[q.extra].name) + "</li>";
     h += "</ul>";
+    if (!mine) { var cur = pieceById(w[g.slot === "anneau" ? "anneau1" : g.slot]) || (g.slot === "anneau" ? pieceById(w.anneau2) : null); if (cur && cur.id !== q.id) { var df = {}, ks = {}; Object.keys(q.bon || {}).forEach(function (k) { ks[k] = 1; }); Object.keys(cur.bon || {}).forEach(function (k) { ks[k] = 1; }); Object.keys(ks).forEach(function (k) { var d0 = ((q.bon || {})[k] || 0) - ((cur.bon || {})[k] || 0); if (d0) df[k] = d0; }); var ct = bonTxt(df); h += '<div class="dof-sec">Comparé à ' + esc(D.GEAR[cur.t].name) + '</div><ul class="dof-fx small">' + (ct.length ? ct.map(function (t) { return "<li" + (t.charAt(0) === "-" ? ' class="dof-neg"' : "") + ">" + esc(t) + "</li>"; }).join("") : "<li>Mêmes stats</li>") + "</ul>"; } }
     if (g.lo !== undefined) h += '<p class="dof-roll">Jet : ' + Math.round(q.roll * 100) + " % (" + fmtV(g.lo) + " à " + fmtV(g.hi) + ")</p>";
     if (g.set && D.SETS[g.set]) { var st = D.SETS[g.set], n = 0; D.SLOTS.forEach(function (sl) { var o = pieceById(w[sl.id]); if (o && D.GEAR[o.t].set === g.set) n++; }); h += '<div class="dof-sec">Panoplie</div><p class="dof-set">' + esc(st.name) + " (" + n + "/" + (st.full || 4) + ")" + (st.b2 ? "<br>2 : " + esc(st.b2) : "") + (st.b4 ? "<br>" + (st.full || 4) + " : " + esc(st.b4) : "") + "</p>"; }
     if (g.who) h += '<p class="dof-cond">Portable par ' + esc(charById(g.who).name) + " seulement</p>";
@@ -4090,9 +4091,11 @@
     h += '<div class="dof-btns">';
     if (mine) { var sl0 = Object.keys(w).filter(function (s0) { return w[s0] === q.id; })[0]; h += '<button class="btn btn-small" type="button" data-action="equ" data-arg="' + sl0 + '">Retirer</button>'; }
     else h += '<button class="btn btn-small" type="button" data-action="eqw" data-arg="' + q.id + '"' + (g.who && g.who !== S.char ? " disabled" : "") + ">" + (who ? "Prendre" : "Équiper") + "</button>";
-    if (!who) h += '<button class="btn btn-ghost btn-small" type="button" data-action="recy2" data-arg="' + q.id + '" title="Rend la moitié des ressources">Recycler</button>';
+    h += '<button class="btn btn-ghost btn-small" type="button" data-action="plock" data-arg="' + q.id + '">' + (q.lock ? "🔒 Verrouillée" : "🔓 Verrouiller") + "</button>";
+    if (!who && !q.lock) h += '<button class="btn btn-ghost btn-small" type="button" data-action="recy2" data-arg="' + q.id + '" title="Rend la moitié des ressources">Recycler</button><button class="btn btn-ghost btn-small" type="button" data-action="psell" data-arg="' + q.id + '">Vendre ' + pieceSell(q) + "</button>";
     return h + "</div></div>";
   }
+  function pieceSell(q) { return Math.round(([25, 70, 180, 450, 1000][pieceRar(q)] || 25) * (1 + 0.1 * Object.keys(q.bon || {}).length)); }
   function terEquip(c) {
     var w = wornBy(c.id), pts = { terre: 0, feu: 0, eau: 0, air: 0 }, bon = {}, inv = eqS().inv;
     var html = '<div class="dof"><div class="dof-left"><div class="dof-doll">';
@@ -5284,7 +5287,7 @@
     if (!bar) { bar = document.createElement("div"); bar.className = "camp-bar"; bar.setAttribute("data-campbar", ""); stage.appendChild(bar); bar.addEventListener("click", function (e) { var b = e.target.closest("[data-camp]"); if (b) campOpen(b.getAttribute("data-camp")); }); }
     bar.hidden = false;
     bar.innerHTML = '<button type="button" class="camp-go" data-camp="sentier">▶ Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" data-camp="' + l.id + '">' + esc(l.name.replace(/^(Le |La |L')/, "")) + "</button>"; }).join("") +
-      '<button type="button" class="camp-coop" data-camp="coop">👥 Coop</button><button type="button" data-camp="codex">📜</button><button type="button" data-camp="help">❓</button><button type="button" data-camp="options">⚙️</button>';
+      '<button type="button" class="camp-coop" data-camp="coop">👥 Coop</button><button type="button" data-camp="emote" title="Message rapide">💬</button><button type="button" data-camp="codex">📜</button><button type="button" data-camp="help">❓</button><button type="button" data-camp="options">⚙️</button>';
   }
   // « Nouveautés » : ce qui a changé pour un joueur de la version 1
   function newsCard() {
@@ -5300,8 +5303,14 @@
       '<div class="btn-row center"><button class="btn" type="button" data-action="newsok" data-autofocus>Au camp !</button></div>';
     showCard(html, "news");
   }
-  function closeCamp() { camp.on = false; var bar = document.querySelector("[data-campbar]"); if (bar) bar.hidden = true; }
+  function closeCamp() { camp.on = false; var bar = document.querySelector("[data-campbar]"); if (bar) bar.hidden = true; var em = document.querySelector("[data-emotes]"); if (em) em.hidden = true; }
+  function campEmoteMenu() {
+    var m = document.querySelector("[data-emotes]");
+    if (!m) { m = document.createElement("div"); m.className = "camp-emotes"; m.setAttribute("data-emotes", ""); stage.appendChild(m); m.addEventListener("click", function (e) { var b = e.target.closest("[data-em]"); if (!b) return; camp.emote = b.getAttribute("data-em"); camp.emoteT = performance.now(); camp.emoteMenu = false; camp.sendT = 0; SND.click(); campEmoteMenu(); }); }
+    m.innerHTML = EMOTES.map(function (x) { return '<button type="button" data-em="' + x + '">' + x + "</button>"; }).join(""); m.hidden = !camp.emoteMenu || !camp.on;
+  }
   function campOpen(id) {
+    if (id === "emote") { camp.emoteMenu = !camp.emoteMenu; SND.click(); campEmoteMenu(); return; }
     var l = D.CAMP.filter(function (q) { return q.id === id; })[0];
     closeCamp(); SND.click();
     if (id === "options" || id === "codex" || id === "help") { go(id); return; }
@@ -5521,7 +5530,7 @@
     } else camp.moving = false;
     if (Net.on && Net.ch && !Net.started) {
       camp.sendT = (camp.sendT || 0) - dt;
-      if (camp.sendT <= 0) { camp.sendT = camp.moving ? 0.12 : 0.8; netSend("cp", { id: Net.id, x: Math.round(camp.x * 10) / 10, y: Math.round(camp.y * 10) / 10, f: camp.face || 1, c: S.char, n: (S.name || "Écureuil").slice(0, 12) }); }
+      if (camp.sendT <= 0) { camp.sendT = camp.moving ? 0.12 : 0.8; netSend("cp", { id: Net.id, x: Math.round(camp.x * 10) / 10, y: Math.round(camp.y * 10) / 10, f: camp.face || 1, c: S.char, n: (S.name || "Écureuil").slice(0, 12), ti: S.title || 0, e: camp.emote && performance.now() - camp.emoteT < 4000 ? camp.emote : 0 }); }
     }
     // obstacles (le chemin automatique les contourne en glissant)
     CAMP_COL.forEach(function (c) { var ox = camp.x - c.x, oy = (camp.y - c.y) * 1.4, od = Math.hypot(ox, oy); if (od < c.r && od > 0.01) { camp.x = c.x + ox / od * c.r; camp.y = c.y + oy / od * c.r / 1.4; } });
@@ -5575,17 +5584,17 @@
         if (l.id === "forge") { var fl = 0.5 + 0.5 * Math.sin(t * 7); ctx.fillStyle = "rgba(255," + Math.round(140 + 60 * fl) + ",40,.8)"; ctx.fillRect(q.x - 4, q.y - 6, 8, 3); }
         if (l.id === "arene") { [-36, 36].forEach(function (ox, k) { for (var fx = 0; fx < 8; fx++) { var wv = Math.round(Math.sin(t * 5 + fx * 0.8 + k) * 1.2); ctx.fillStyle = k ? "#3a7ad8" : "#d8483a"; ctx.fillRect(q.x + ox + (ox > 0 ? -fx - 1 : fx + 1), q.y - 47 + wv + (fx > 5 ? 1 : 0), 1, 5 - (fx > 5 ? 2 : 0)); } }); }
       } });
-      if (l.npc && SPR[l.npc]) { var nx = q.x + (l.id === "chene" ? -14 : l.id === "sentier" ? 0 : 20), ny = q.y + (l.id === "chene" ? 6 : 4);
-        list.push({ y: ny, f: function () { drawHero(l.npc, nx, ny, nx > CAMP_FIRE.x ? -1 : 1, false, t * 4, 0); if (hot) { var by = ny - 18 + Math.round(Math.sin(t * 4)); ctx.fillStyle = "#2b1709"; ctx.fillRect(nx - 3, by - 1, 7, 8); ctx.fillStyle = "#fdf3de"; ctx.fillRect(nx - 2, by, 5, 6); ctx.fillStyle = "#2b1709"; ctx.fillRect(nx, by + 1, 1, 2); ctx.fillRect(nx, by + 4, 1, 1); } } }); }
+      if (l.npc && SPR[l.npc]) { var nph = hash(l.id.length * 7, 3) % 9, nwk = l.id === "sentier" ? 0 : Math.sin(t * 0.35 + nph), nx = q.x + (l.id === "chene" ? -14 : l.id === "sentier" ? 0 : 20) + nwk * 9, ny = q.y + (l.id === "chene" ? 6 : 4) + Math.cos(t * 0.27 + nph) * 2, nfc = nwk === 0 ? (nx > CAMP_FIRE.x ? -1 : 1) : (Math.cos(t * 0.35 + nph) > 0 ? 1 : -1), nmv = l.id !== "sentier" && Math.abs(Math.cos(t * 0.35 + nph)) > 0.25;
+        list.push({ y: ny, f: function () { drawHero(l.npc, nx, ny, nfc, nmv, t * 6, 0); if (hot) { var by = ny - 18 + Math.round(Math.sin(t * 4)); ctx.fillStyle = "#2b1709"; ctx.fillRect(nx - 3, by - 1, 7, 8); ctx.fillStyle = "#fdf3de"; ctx.fillRect(nx - 2, by, 5, 6); ctx.fillStyle = "#2b1709"; ctx.fillRect(nx, by + 1, 1, 2); ctx.fillRect(nx, by + 4, 1, 1); } } }); }
     });
-    list.push({ y: camp.y, f: function () { drawHero(charById(S.char).sprite, camp.x, camp.y, camp.face || 1, camp.moving, t * 8, 0); if (Net.on) drawText((S.name || "Écureuil").slice(0, 12), camp.x, camp.y - 24, "#fdf3de", "c"); } });
+    list.push({ y: camp.y, f: function () { drawHero(charById(S.char).sprite, camp.x, camp.y, camp.face || 1, camp.moving, t * 8, 0); if (Net.on) { drawText((S.name || "Écureuil").slice(0, 12), camp.x, camp.y - 24, "#fdf3de", "c"); if (S.title) drawText(titleName(S.title), camp.x, camp.y - 31, "#f6d36b", "c"); } campBubble(camp.x, camp.y - 36, camp.emote, t); } });
     if (Net.on && !Net.started && Net.cps2) {
       var nowp = performance.now(), live = {}; Net.roster.forEach(function (x) { live[x.id] = 1; });
       Object.keys(Net.cps2).forEach(function (id) {
         var q = Net.cps2[id]; if (!live[id] || nowp - q.t > 6000) return;
         var mx = q.x - q.dx, my = q.y - q.dy, mv = Math.hypot(mx, my) > 1.2; q.dx += mx * 0.22; q.dy += my * 0.22;
         var ch = D.CHARACTERS.filter(function (c) { return c.id === q.c; })[0] || D.CHARACTERS[0];
-        list.push({ y: q.dy, f: function () { drawHero(ch.sprite, q.dx, q.dy, q.f || 1, mv, t * 8, 0); drawText(q.n || "Ami", q.dx, q.dy - 24, "#f6d36b", "c"); } });
+        list.push({ y: q.dy, f: function () { drawHero(ch.sprite, q.dx, q.dy, q.f || 1, mv, t * 8, 0); drawText(q.n || "Ami", q.dx, q.dy - 24, "#f6d36b", "c"); if (q.ti) drawText(titleName(q.ti), q.dx, q.dy - 31, "#9cdc7a", "c"); campBubble(q.dx, q.dy - 36, q.e && performance.now() - q.et < 4000 ? q.e : null, t); } });
       });
     }
     list.sort(function (a, b) { return a.y - b.y; }).forEach(function (o) { o.f(); });
@@ -5644,6 +5653,7 @@
       drawText(nm, mx + (sx < 6 ? 2 : sx > W - 6 ? -2 : 0), by + 2, "#fdf3de", "c");
       campMarks.push({ x: bx, y: by, w: w, h: 9, id: l.id });
     });
+    if (Net.on && !Net.started && Net.roster.length && !camp.near) { var rl = Net.roster.slice(0, 6).map(function (x) { return (x.name || "Ecureuil").slice(0, 10); }).join(", "); drawText("SALON " + Net.code, W / 2, 4, "#f6d36b", "c"); drawText(rl, W / 2, 13, "#fdf3de", "c"); }
     // bandeau du lieu proche
     if (camp.near) {
       var l = camp.near, l1 = l.name.toUpperCase(), l2 = ((l.who ? l.who + " - " : "") + l.desc).toUpperCase(), hint = isTouch ? "TOUCHE POUR ENTRER" : "ENTREE POUR ENTRER";
@@ -5654,6 +5664,14 @@
     }
   }
   var campLight = null, campMarks = [];
+  var EMOTES = ["SALUT", "GG", "VENEZ", "MERCI", "HAHA", "BRAVO"], TITLES = { gobe: ["Gobe-noisettes", 800], terreur: ["Terreur des bois", 1500], aube: ["Capitaine de l'aube", 2500], legende: ["Écureuil de légende", 3000], roi: ["Roi du hub", 5000] };
+  function titleName(id) { return (TITLES[id] || [""])[0].toUpperCase(); }
+  function campBubble(x, y, em, t) {
+    if (!em) return; var w = textWidth(em, 1) + 8, bx = Math.round(x - w / 2), by = Math.round(y - 5 - Math.sin(t * 3) * 1);
+    ctx.fillStyle = "#fdf3de"; ctx.fillRect(bx - 1, by - 1, w + 2, 12); ctx.fillRect(bx + w / 2 - 2, by + 11, 4, 2);
+    ctx.fillStyle = "#2b1709"; ctx.fillRect(bx, by, w, 10); ctx.fillRect(bx + w / 2 - 1, by + 10, 2, 2);
+    drawText(em, x, by + 2, "#fdf3de", "c");
+  }
   function flame(x, y, t) { for (var i = 0; i < 3; i++) { ctx.fillStyle = ["#ff9a3a", "#f6d36b", "#ff5a2a"][i]; var fh = 3 + Math.sin(t * 11 + i * 2) * 1.5; ctx.fillRect(Math.round(x - 1 + i * 1 - 1), Math.round(y - fh), 1, Math.round(fh) + 1); } }
   function drawCampFire(t) {
     var x = CAMP_FIRE.x, y = CAMP_FIRE.y;
@@ -7190,6 +7208,11 @@
       if (rgA > 0 && !e.d.prop) { ctx.globalAlpha = rgA * (0.55 + 0.45 * Math.sin(r.time * 9 + e.id)); ctx.drawImage(tinted(spr, "#ff1a10", e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1; }
       if (e.aff && e.aff.length) drawEliteTag(e, spr);
       if (e.slowT > 0 && !e.d.boss && !e.d.prop) { ctx.fillStyle = "rgba(160,130,230,.7)"; ctx.fillRect(Math.round(e.x - 1), Math.round(e.y - spr.h / 2 - 2), 2, 2); }
+      if (!e.d.prop && !S.opts.lowfx) {
+        if (e.burnT > 0) { ctx.globalAlpha = 0.22 + 0.14 * Math.sin(r.time * 14 + e.id); ctx.drawImage(tinted(spr, "#ff7a2a", e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1; if (flick && fx.length < 200 && Math.random() < 0.5) fx.push({ kind: "dot", x: e.x + (Math.random() * 6 - 3), y: e.y - spr.h / 2 + 2, vx: Math.random() * 6 - 3, vy: -22, life: 0.45, max: 0.45, color: Math.random() < 0.5 ? "#ff9a3a" : "#f6d36b", sz: 1, g: 0 }); }
+        if (e.slowT > 0 && e.slow >= 0.3) { ctx.globalAlpha = 0.28; ctx.drawImage(tinted(spr, "#9ee8ff", e.face < 0), Math.round(e.x - spr.w / 2), Math.round(e.y - spr.h / 2)); ctx.globalAlpha = 1; }
+        if (e.stunT > 0) { var sa = r.time * 8; ctx.fillStyle = "#f6d36b"; for (var si = 0; si < 3; si++) { var aa = sa + si * 2.09; ctx.fillRect(Math.round(e.x + Math.cos(aa) * 5), Math.round(e.y - spr.h / 2 - 4 + Math.sin(aa) * 1.5), 2, 2); } }
+      }
       if (etr) ctx.restore();
       ctx.globalAlpha = 1;
     }
@@ -8328,6 +8351,11 @@
       var surplus = 0, sKeys = Object.keys(S.res).filter(function (k) { return D.RES[k] && !D.RES[k].rune && S.res[k] > 20; });
       sKeys.forEach(function (k) { surplus += S.res[k] - 20; });
       html += '<h3 class="pick-title">Revente</h3><div class="shop-list"><div class="shop-item"><span class="shop-ic">💰</span><div class="shop-text"><strong>Vendre le surplus de ressources</strong><span>Tout ce qui dépasse 20 par ressource : ' + surplus + " pièces, 3 glands d'or chacune.</span></div>" + (surplus ? '<button class="btn btn-small" type="button" data-action="csell">+' + surplus * 3 + " " + goldIc() + "</button>" : '<span class="pill">rien à vendre</span>') + "</div></div>";
+      // titres
+      html += '<h3 class="pick-title">Titres</h3><p class="game-small">Affichés au-dessus de ton nom, dans le hub en coop.</p><div class="shop-list">' + Object.keys(TITLES).map(function (id) {
+        var t = TITLES[id], own = (S.titles || {})[id];
+        return '<div class="shop-item"><span class="shop-ic">🏷️</span><div class="shop-text"><strong>' + esc(t[0]) + "</strong></div>" + (own ? '<button class="btn btn-small ' + (S.title === id ? "" : "btn-alt") + '" type="button" data-action="ctitle" data-arg="' + id + '">' + (S.title === id ? "Porté" : "Porter") + "</button>" : '<button class="btn btn-small" type="button" data-action="ctitle" data-arg="' + id + '"' + (S.gold < t[1] ? " disabled" : "") + ">" + t[1] + " " + goldIc() + "</button>") + "</div>";
+      }).join("") + "</div>";
       // améliorations du camp
       var sn = S.secureSlots || 0, scost = [1500, 4000][sn];
       html += '<h3 class="pick-title">Améliorations du camp</h3><div class="shop-list"><div class="shop-item"><span class="shop-ic">🎒</span><div class="shop-text"><strong>Emplacement sécurisé d\'expédition</strong><span>' + (1 + sn) + " / 3</span></div>" + (scost ? '<button class="btn btn-small" type="button" data-action="buysecure"' + (S.gold < scost ? " disabled" : "") + ">" + scost + " " + goldIc() + "</button>" : '<span class="pill">max</span>') + "</div>";
@@ -8416,7 +8444,10 @@
       wc[sl] = q.id; UI.sel = q.id; save(); SND.level(); go("terrier");
     },
     equ: function (sl) { delete wornBy(S.char)[sl]; save(); SND.click(); go("terrier"); },
-    recy2: function (id) { var q = pieceById(+id); if (q && !whoWears(q.id)) { recycle(q); SND.crack(); UI.sel = null; } go("terrier"); },
+    plock: function (id) { var q = pieceById(+id); if (q) { q.lock = !q.lock; save(); SND.click(); } go(screen === "atelier" ? "atelier" : "terrier"); },
+    psell: function (id) { var q = pieceById(+id); if (q && !whoWears(q.id) && !q.lock) { earnGold(pieceSell(q)); var e = eqS(); e.inv = e.inv.filter(function (x) { return x.id !== q.id; }); UI.sel = null; save(); SND.gold(); } go(screen === "atelier" ? "atelier" : "terrier"); },
+    ctitle: function (id) { var t = TITLES[id]; if (!t) return; S.titles = S.titles || {}; if (!S.titles[id]) { if (S.gold < t[1]) return; S.gold -= t[1]; S.titles[id] = 1; S.title = id; } else S.title = S.title === id ? 0 : id; save(); SND.gold(); go("comptoir"); },
+    recy2: function (id) { var q = pieceById(+id); if (q && !q.lock && !whoWears(q.id)) { recycle(q); SND.crack(); UI.sel = null; } go("terrier"); },
     atab: function (t) { UI.at = t; UI.asel = null; SND.click(); go("atelier"); },
     aonly: function () { UI.only = !UI.only; SND.click(); go("atelier"); },
     ael: function (e) { UI.el = e; SND.click(); go("atelier"); },
@@ -8444,7 +8475,7 @@
     },
     craft: function (t) { var q = craft(t); if (q) { SND.fusion(); bannerAll(D.GEAR[q.t].name + " fabriquée"); } UI.asel = t; go("atelier"); },
     isel2: function (id) { UI.sel = +id; SND.click(); go("atelier"); },
-    recy: function (id) { var q = pieceById(+id); if (q && !whoWears(q.id)) { recycle(q); SND.crack(); } go("atelier"); },
+    recy: function (id) { var q = pieceById(+id); if (q && !q.lock && !whoWears(q.id)) { recycle(q); SND.crack(); } go("atelier"); },
     newsok: function () { S.news = 0; save(); SND.level(); openCamp(); },
     fsel: function (id) { UI.sel = +id; SND.click(); go("forge"); },
     ftab: function (t) { UI.ft = t; SND.click(); go("forge"); },
@@ -8828,7 +8859,8 @@
       if (d.id === Net.id) return;
       var cp0 = (Net.cps2 = Net.cps2 || {})[d.id];
       if (!cp0) cp0 = Net.cps2[d.id] = { dx: d.x, dy: d.y };
-      cp0.x = d.x; cp0.y = d.y; cp0.f = d.f; cp0.c = d.c; cp0.n = d.n; cp0.t = performance.now();
+      cp0.x = d.x; cp0.y = d.y; cp0.f = d.f; cp0.c = d.c; cp0.n = d.n; cp0.ti = d.ti; cp0.t = performance.now();
+      if (d.e && d.e !== cp0.e) { cp0.e = d.e; cp0.et = performance.now(); } else if (!d.e) cp0.e = null;
       return;
     }
     if (ev === "s" && !direct && Net.role === "guest" && hostLinkOpen()) return;   // déjà reçu en direct
@@ -9446,6 +9478,7 @@
     tx: function (trig) { var n = (me.txl || []).length; if (trig) { me.txl.forEach(function (o) { o.trig = trig; }); me.txs = {}; for (var i = 0; i < 12; i++) txFire(me, trig); } return n; },
     txall: function () { var out = []; D.TAL_FX.noisette.forEach(function (row) { row.forEach(function (o) { var c = Object.assign({}, o, { trig: "volte" }); me.txl = [c]; me.txs = {}; me.hp = me.maxHp * 0.5; txFire(me, "volte"); out.push(o.act); }); }); return out.length; },
     gearR: function (t, rar) { var q = genPiece(3, t, rar); addPiece(q); save(); return q.id; },
+    statusAll: function () { enemies.forEach(function (e, i) { if (e.d.prop) return; if (i % 3 === 0) { e.burnT = 30; e.burnD = 0; } else if (i % 3 === 1) { e.slowT = 30; e.slow = 0.5; } else { e.stunT = 30; } }); return enemies.length; },
     friend: function () { Net.on = true; Net.started = false; Net.roster = [{ id: "zz" }]; Net.cps2 = { zz: { x: camp.x + 40, y: camp.y + 10, dx: camp.x + 40, dy: camp.y + 10, f: -1, c: "capitaine", n: "Ami", t: performance.now() } }; return 1; },
     friendMove: function () { var q = Net.cps2.zz; q.x += 30; q.y -= 12; q.t = performance.now(); return 1; },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
