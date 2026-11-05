@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.38.0";
+  var VERSION = "2.38.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -10100,7 +10100,7 @@
   $("[data-fs-exit]").addEventListener("click", exitFull);
   ACTIONS.fullscreen = function () { toggleFull(); };
   /* bouton retour du téléphone : il ferme d'abord pause, menus et écrans du jeu, sans quitter la page ;
-     au camp, dans l'appli installée, un second appui rapide quitte (comme une vraie appli) */
+     au camp, dans l'appli installée, il ne fait rien (sinon la page se vide) */
   function esBack() {
     if (state === "play") { pause(); return true; }
     if (state === "pause") { resume(); return true; }
@@ -10120,12 +10120,9 @@
     window.addEventListener("popstate", function () {
       var used = false; try { used = esBack(); } catch (e) {}
       if (used) { history.pushState({ es: 1 }, ""); return; }
-      if (window.__isApp) {
-        var now = Date.now();
-        if (now - lastBack < 2500) { history.back(); return; }
-        lastBack = now; banner("Appuie encore sur retour pour quitter"); history.pushState({ es: 1 }, ""); return;
-      }
-      history.back();
+      if (window.__isApp) { banner("Utilise le bouton Accueil pour quitter"); history.pushState({ es: 1 }, ""); return; }
+      if (history.length > 2) history.back();    // il y a une page avant le jeu : on la rejoint
+      else { banner("Utilise le bouton Accueil pour quitter"); history.pushState({ es: 1 }, ""); }
     });
   })();
   // appli installée : le jeu occupe tout l'écran d'emblée, sans bouton pour réduire
