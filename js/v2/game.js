@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.45.0";
+  var VERSION = "2.46.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -1728,7 +1728,7 @@
      ===================================================================== */
   var GC = 120, giantCache = {}, giantSeed = 0;
   function giantAt(cx, cy) {
-    var key = cx + "," + cy;
+    var key = (cx + 20000) * 40000 + (cy + 20000);   // clé numérique : plus de chaîne créée à chaque appel
     if (giantCache[key] !== undefined) return giantCache[key];
     var h = hash(cx * 7 + 13 + giantSeed, cy * 11 - giantSeed) >>> 0, g = null;
     var x = cx * GC + 20 + (h % 80), y = cy * GC + 20 + ((h >>> 8) % 80);
@@ -5829,7 +5829,12 @@
     var ch = FR.chans[id]; if (!ch) return; var st = {}, me = frUid(), other = null;
     try { st = ch.presenceState(); } catch (e) {}
     Object.keys(st).forEach(function (k) { if (k !== me && st[k] && st[k][0]) other = st[k][0]; });
+    var was = !!FR.on[id];
     if (other) FR.on[id] = other; else delete FR.on[id];
+    if (other && !was && FR.readyAt && Date.now() > FR.readyAt && S.opts.frnotif !== false) {          // un ami vient de se connecter
+      var who = frName(id); toastMsg("🟢 " + who + " vient de se connecter");
+      try { if (document.hidden && window.Notification && Notification.permission === "granted") new Notification("Écureuil Survivor", { body: who + " vient de se connecter", icon: "assets/pwa/icon-192.png", tag: "fr-" + id }); } catch (e) {}
+    }
   }
   function frSync() {
     var want = {}, uid = frUid();
@@ -5839,7 +5844,7 @@
       if (ch) SiteAuth.client().then(function (c) { c.removeChannel(ch); }).catch(function () {});
     });
     Object.keys(want).slice(0, 30).forEach(function (id) {
-      if (id in FR.chans) return; FR.chans[id] = null;
+      if (id in FR.chans) return; FR.chans[id] = null; if (!FR.readyAt) FR.readyAt = Date.now() + 5000;   // pas de notification pour ceux déjà là au chargement
       SiteAuth.client().then(function (c) {
         var ch = c.channel("es-fr-" + id, { config: { presence: { key: uid }, broadcast: { self: false } } });
         ch.on("broadcast", { event: "fr" }, function (m) { frRecv(id, (m && m.payload) || {}); });
@@ -9181,7 +9186,7 @@
       }
       return '<div class="screen-head">' + back() + "<h2>Options</h2></div>" +
         '<div class="opt-list">' + tog("sound", "🔊 Son") + volRow() + tog("shake", "📳 Tremblement de l'écran") + tog("hitstop", "⏸️ Arrêts sur image et ralenti") + tog("camlead", "🎥 Caméra qui regarde devant") +
-        tog("numbers", "🔢 Chiffres de dégâts") + tog("lowfx", "✨ Particules réduites (téléphone lent)") + "</div>" +
+        tog("numbers", "🔢 Chiffres de dégâts") + tog("lowfx", "✨ Particules réduites (téléphone lent)") + tog("frnotif", "🔔 Prévenir quand un ami se connecte") + "</div>" +
         installHtml() + '<p class="btn-row"><button type="button" class="btn btn-alt" data-action="go" data-arg="changelog">📜 Nouveautés (historique des versions)</button></p><p class="game-small"><button class="link-btn danger" type="button" data-action="wipe">Effacer toute ma progression</button></p>';
     },
     help: function () {
@@ -9374,7 +9379,7 @@
       if (!total || !window.confirm("Rembourser " + total + " glands d'or et remettre toutes les améliorations à zéro ?")) return;
       S.gold += total; S.shop = {}; save(); go("shop");
     },
-    opt: function (k) { S.opts[k] = k === "lowfx" ? !S.opts[k] : S.opts[k] === false; save(); muteLabel(); SND.click(); go("options"); },
+    opt: function (k) { S.opts[k] = k === "lowfx" ? !S.opts[k] : S.opts[k] === false; if (k === "frnotif" && S.opts[k] !== false) { try { if (window.Notification && Notification.permission === "default") Notification.requestPermission(); } catch (e) {} } save(); muteLabel(); SND.click(); go("options"); },
     vol: function (d) { var v = S.opts.vol === undefined ? 0.8 : S.opts.vol; S.opts.vol = Math.max(0, Math.min(1, Math.round((v + 0.1 * (+d)) * 10) / 10)); save(); setVol(); SND.click(); go("options"); },
     "opt-p": function (k) { S.opts[k] = S.opts[k] === false; save(); muteLabel(); setVol(); if (netMenuOpen) { netMenu(); return; } state = "play"; pause(); },
     wipe: function () {
@@ -10151,10 +10156,15 @@
   /* =====================================================================
      Boucle
      ===================================================================== */
+  var PERF = { acc: 0, n: 0, asked: false };
   function loop(now) {
     requestAnimationFrame(loop);
-    var dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+    var raw = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
     if (state === "error") return;
+    if (state === "play" && r && r.time > 10 && !document.hidden && raw < 1) {        // téléphone dépassé : économie automatique des effets
+      PERF.acc += raw; PERF.n++;
+      if (PERF.acc >= 5) { if (PERF.acc / PERF.n > 0.034 && !S.opts.lowfx && !PERF.asked) { PERF.asked = true; S.opts.lowfx = true; save(); bannerAll("Le jeu ramait : mode économie activé (Options > Particules réduites)"); } PERF.acc = 0; PERF.n = 0; }
+    }
     try {
       if (state === "play") {
         hsCd = Math.max(0, hsCd - dt); hurtV = Math.max(0, hurtV - dt);
@@ -10430,6 +10440,8 @@
     rage: function (min) { r.stageT0 = r.time - RAGE.start - min * 60; return { rage: rageMin(), dmg: rageDmg(), spd: rageSpd() }; },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
+    heavy: function (n) { for (var i = 0; i < n; i++) { var e = spawn(["slug", "beetle", "ant", "moth"][i % 4], Math.random() * TAU, 20 + Math.random() * 90); if (e) { e.hp = e.maxHp = 1e12; } } return enemies.length; },
+    bench: function (n) { var t0 = performance.now(), i; for (i = 0; i < n; i++) { if (state === "levelup") { pending = 0; picking = false; state = "play"; hideCard(); } if (state !== "play") break; update(1 / 60); } var t1 = performance.now(); for (i = 0; i < 20; i++) draw(); var t2 = performance.now(); return { upd: +((t1 - t0) / Math.max(1, i0(n))).toFixed(2), drw: +((t2 - t1) / 20).toFixed(2), enemies: enemies.length, crew: me.crew ? me.crew.length : 0, projs: projs.length, t: Math.round(r.time), state: state }; function i0(k) { return k; } },
     ev: function (id) { r.ev = null; startEvent(D.EVENTS.filter(function (e) { return e.id === id; })[0]); return r.ev && [r.ev.id, enemies.length, gems.filter(function (g) { return g.kind === "chest"; }).length]; }, evInfo: function () { return r.ev ? { id: r.ev.id, t: Math.round(r.ev.t), sprung: !!r.ev.sprung, won: !!r.ev.won } : null; }, setTime: function (t) { r.time = t; return t; }, champs: function () { return [r.champs, enemies.filter(function (e) { return e.champion; }).length]; }, tp: function (x, y) { me.x = x; me.y = y; },
     hit: function (dmg, armor, time) { p.armor = armor; r.time = time; p.inv = 0; var h0 = p.hp; damagePlayer(dmg, p); return { lost: Math.round((h0 - p.hp) * 10), hp: Math.round(p.hp * 10), max: Math.round(p.maxHp * 10), inv: +p.inv.toFixed(2) }; },
     frFake: function (n) { FR.on = {}; FR.list = []; var cs = D.CHARACTERS.map(function (c) { return c.id; }); for (var i = 0; i < n; i++) { FR.on["f" + i] = { n: ["Marmotte", "Chêne42", "Noisetier", "Pomme", "Lutin"][i % 5], c: cs[i % cs.length], ti: i ? 0 : "gobe", lk: {} }; } return Object.keys(FR.on).length; }, frNpcs: function () { return Object.keys(FR.npcs).length; }, frOff: function () { FR.on = {}; },
