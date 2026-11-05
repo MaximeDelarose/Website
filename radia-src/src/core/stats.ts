@@ -95,6 +95,12 @@ export function startStatsTracking(): void {
   if (s.state === 'on') beginTracking();
 }
 
+/** Le serveur de statistiques est-il en place ? (sonde sans effet : un appareil inconnu répond « unknown »). Tant qu'il ne l'est pas, aucune invitation n'est affichée. */
+export async function statsServerReady(): Promise<boolean> {
+  const r = await rpc('radia_stats_mine', { p_device: uuid(), p_secret: rnd(16) });
+  return !!r && r.error === 'unknown';
+}
+
 export type EnableResult = 'ok' | 'server' | 'unsupported';
 /** Consentement : à appeler SEULEMENT depuis un geste de Radia après l'information claire. Enregistre l'appareil (identifiant aléatoire) puis démarre le suivi. */
 export async function enableStats(): Promise<EnableResult> {

@@ -1411,6 +1411,7 @@ export class MergeScene extends BaseScene {
     this.comboLbl.setText(comboPopLabel(value, pts));
     this.comboLbl.setFontSize(lvl >= 3 ? 17 : 15);
     this.comboLbl.setStroke(lvl >= 3 ? '#B8761C' : '#C2437A', 3);
+    if (this.comboLbl.width > 168) this.comboLbl.setFontSize(13); // long (Super combo + total de points) : reste compact
     const w = Math.max(96, this.comboLbl.width + 26), h = 22;
     this.comboBg.clear();
     this.comboBg.fillStyle(lvl >= 3 ? 0xf3c86b : 0xff75a8, 0.95); this.comboBg.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
@@ -1422,7 +1423,7 @@ export class MergeScene extends BaseScene {
     if (calm) this.comboPill.setScale(1);
     else {
       this.comboPill.setScale(0.82);
-      this.tweens.add({ targets: this.comboPill, scale: 1 + lvl * 0.035, duration: 120, ease: 'Back.easeOut', onComplete: () => this.tweens.add({ targets: this.comboPill, scale: 1, duration: 90 }) });
+      this.tweens.add({ targets: this.comboPill, scale: 1 + lvl * 0.02, duration: 120, ease: 'Back.easeOut', onComplete: () => this.tweens.add({ targets: this.comboPill, scale: 1, duration: 90 }) });
     }
     this.comboHide = this.time.delayedCall(1000, () => this.tweens.add({ targets: this.comboPill, alpha: 0, duration: 280 }));
     audio.play('combo', 1 + Math.min(10, value) * 0.1);

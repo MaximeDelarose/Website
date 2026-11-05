@@ -68,11 +68,14 @@ export function scheduleStatsInvite(safe: () => boolean, minDelayMs = 150_000): 
     if (S.statsState() !== 'none' || S.statsAsked()) { window.clearInterval(iv); return; }
     if (Date.now() - t0 < minDelayMs || !safe() || document.querySelector('.ti-card, .modal-backdrop:not(.leaving)')) return;
     window.clearInterval(iv);
-    S.markStatsAsked();
-    void ui.modal({ title: 'Partager mes statistiques de jeu ?', body: infoBody(), actions: [{ label: 'Oui, je partage', value: 'on', style: 'primary' }, { label: 'Non merci', value: 'no', style: 'secondary' }] }).then(async (r) => {
+    void S.statsServerReady().then((ready) => {
+      if (!ready) return; // serveur pas encore prêt : on ne demande rien (et on ne marque pas « déjà demandé »)
+      S.markStatsAsked();
+      void ui.modal({ title: 'Partager mes statistiques de jeu ?', body: infoBody(), actions: [{ label: 'Oui, je partage', value: 'on', style: 'primary' }, { label: 'Non merci', value: 'no', style: 'secondary' }] }).then(async (r) => {
       if (r !== 'on') return;
       const res = await S.enableStats();
       ui.toast({ title: res === 'ok' ? 'Partage activé ♡' : 'Activation impossible pour l’instant', sub: res === 'ok' ? 'Tu peux l’arrêter dans les Réglages' : 'Tu pourras réessayer dans les Réglages', icon: res === 'ok' ? 'heart' : 'info', ms: 3000 });
+    });
     });
   }, 5000);
 }
