@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.23.2";
+  var VERSION = "2.24.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -957,7 +957,13 @@
       return;
     }
     // Capitaine : le dernier matelot prend le coup à sa place
-    if (p.crew && p.crew.length) { var mt = p.crew.pop(); burst(mt.x, mt.y, "#c8553d", 8); SND.crack(); if (S.opts.numbers) texts.push({ x: mt.x, y: mt.y - 8, n: "MATELOT !", life: 0.7 }); dmg *= 0.4; }
+    if (p.crew && p.crew.length) {
+      // un matelot au hasard encaisse 60 % du coup avec sa barre de vie ; s'il tombe, il disparaît
+      var mi = (Math.random() * p.crew.length) | 0, mt = p.crew[mi], take = dmg * 0.6;
+      mt.hp -= take; mt.hurtT = 3; burst(mt.x, mt.y, "#c8553d", 4);
+      if (mt.hp <= 0) { p.crew.splice(mi, 1); burst(mt.x, mt.y, "#c8553d", 8); SND.crack(); if (S.opts.numbers) texts.push({ x: mt.x, y: mt.y - 8, n: "MATELOT !", life: 0.7 }); }
+      dmg *= 0.4;
+    }
     if (p.txf && p.txf.sprint && p.mstate === "mouvement" && Math.random() < p.txf.sprint / 100) { p.inv = 0.3; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     if ((p.dodge || p.dodgeX) && Math.random() < (p.dodge || 0) + (p.dodgeX || 0)) { p.inv = 0.3; r.dodges = (r.dodges || 0) + 1; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     p.calmT = 0;
@@ -2848,6 +2854,7 @@
       if (c.mini) { var ms = 0.6, mw = Math.round(s.w * ms), mh = Math.round(s.h * ms); shadow(c.x, c.y + mh / 2, mw * 0.7); ctx.drawImage(c.face < 0 ? s.f : s.c, Math.round(c.x - mw / 2), Math.round(c.y - mh / 2 + (c.fly ? Math.sin((c.anim || 0) * 0.7) - 5 : 0)), mw, mh); return; }
       if (c.fly) shadow(c.x, c.y + s.h / 2 + 6, s.w * 0.5); else shadow(c.x, c.y + s.h / 2 - 1, s.w * 0.7);
       blit(s, c.x, c.y + (c.fly ? Math.sin((c.anim || 0) * 0.7) : 0), c.face < 0);
+      if (c.mhp && c.hp < c.mhp) { var bw = 9, bx0 = Math.round(c.x - bw / 2), by0 = Math.round(c.y - 11); ctx.fillStyle = "#2b1709"; ctx.fillRect(bx0 - 1, by0 - 1, bw + 2, 4); ctx.fillStyle = "#5a2a1c"; ctx.fillRect(bx0, by0, bw, 2); ctx.fillStyle = c.hp / c.mhp > 0.5 ? "#9cc56b" : c.hp / c.mhp > 0.25 ? "#f6d36b" : "#c8553d"; ctx.fillRect(bx0, by0, Math.max(1, Math.round(bw * c.hp / c.mhp)), 2); }
       if (c.wi && SPR[c.wi]) { var wsm = SPR[c.wi][0], wsc = 0.5; ctx.drawImage(wsm.c, Math.round(c.x + (c.face < 0 ? -4 : 4) - wsm.w * wsc / 2), Math.round(c.y - 1 - wsm.h * wsc / 2), Math.round(wsm.w * wsc), Math.round(wsm.h * wsc)); }
       if (c.max && c.life < c.max * 0.3 && Math.sin(r.time * 14) > 0) { ctx.globalAlpha = 0.4; blit(s, c.x, c.y, c.face < 0, true); ctx.globalAlpha = 1; }
     });
@@ -2873,7 +2880,9 @@
     return out;
   }
   function ingredientName(k) { return (ALLW[k] || D.PASSIVES[k] || {}).name || k; }
+  var choicesOverride = null;
   function choices(n) {
+    if (choicesOverride) { var co = choicesOverride; choicesOverride = null; return co; }
     if (D.TECH) return v2Choices(n);
     var out = readyFusions().slice(0, 2).map(function (id) { return { type: "f", id: id }; });
     var pool = [];
@@ -2892,7 +2901,7 @@
       var total = pool.reduce(function (s, c) { return s + c.weight; }, 0), x = Math.random() * total;
       for (var i = 0; i < pool.length; i++) { x -= pool[i].weight; if (x <= 0 || i === pool.length - 1) { out.push(pool.splice(i, 1)[0]); break; } }
     }
-    if (!out.length) out = [{ type: "heal" }, { type: "gold" }];
+    if (!out.length) out = [{ type: "heal" }, { type: "gold" }, { type: "fate" }];
     return out;
   }
   function applyFusion(id) {
@@ -2987,6 +2996,8 @@
         extra = v2Syn(c.id) || synHtml(c.id);
       } else if (c.type === "heal") {
         icon = img("berry"); name = "Panier de baies"; desc = "Soigne 40 PV.";
+      } else if (c.type === "fate") {
+        icon = img("clover"); name = "Coup du destin"; lvl = "Surprise"; desc = "Un effet au hasard : métamorphose de ton arme (nouvel élément), objet rare, mutation permanente, cataclysme ou jackpot."; cls += " is-fusion";
       } else {
         icon = img("goldbag"); name = "Bourse de glands"; desc = "+15 glands d'or.";
       }
@@ -3012,6 +3023,22 @@
     Object.keys(p.weapons).forEach(function (k) { var t = D.TECH[k]; if (!t) return; if (n[t.fam] !== undefined) n[t.fam]++; if (t.fam === "retour" && p.weapons[k] >= MAX_LVL) r.retour5 = 1; });
     r.retourMax = Math.max(r.retourMax || 0, n.retour); r.compMax = Math.max(r.compMax || 0, n.compagnon);
   }
+  // « Coup du destin » : quand il n'y a plus rien à choisir, un effet surprise pour relancer la partie
+  function fateApply(pl) {
+    var x = Math.random(), pp = p; p = pl;
+    if (x < 0.3 && pl.arme) {
+      var ELK = Object.keys(D.ELEMENTS), cur = armElem(pl), ne = ELK.filter(function (k) { return k !== cur; })[(Math.random() * (ELK.length - 1)) | 0];
+      pl.elemOv = ne; pl.cycleN = 0; pl.tdef = {}; burst(pl.x, pl.y, D.ELEMENTS[ne].color, 24); bannerAll("Métamorphose : ton arme devient " + D.ELEMENTS[ne].name + " !"); SND.fusion();
+    } else if (x < 0.55) {
+      var it = rollItem(1, pl.luck || 1); if (it) { giveItem(pl, it.id); bannerAll("Objet rare : " + it.name + " !"); SND.fusion(); } else addGold(40);
+    } else if (x < 0.8) {
+      var st = GSTATS.filter(function (g) { return !g.mal || true; })[(Math.random() * GSTATS.length) | 0], v = Math.round((st.lo + st.hi) / 2 * 1.5);
+      pl.gbon = pl.gbon || {}; pl.gbon[st.id] = (pl.gbon[st.id] || 0) + v; bannerAll("Mutation : " + bonTxt((function (o) { o[st.id] = v; return o; })({}))[0] + " pour la partie !"); SND.level();
+    } else if (x < 0.9) {
+      var R = 130; ring(pl.x, pl.y, R, false); near(pl.x, pl.y, R + 12, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - pl.x, e.y - pl.y) < R + e.d.r) hurt(e, 80 * gpw(), (e.x - pl.x) * 3, (e.y - pl.y) * 3); }); if (S.opts.shake) shake = Math.max(shake, 0.4); bannerAll("Cataclysme !"); SND.boom();
+    } else { addGold(60); bannerAll("Jackpot : +60 glands d'or !"); SND.gold(); }
+    p = pp;
+  }
   function applyCore(c) {
     if (v2Apply(c)) { calc(p); famTrack(); return; }
     if (c.type === "f") applyFusion(c.id);
@@ -3022,6 +3049,7 @@
     else if (c.type === "maxhp") { p.bonusHp = (p.bonusHp || 0) + 10; calc(p); p.hp += 10; }
     else if (c.type === "skip") addGold(3);
     else if (c.type === "gold") addGold(15);
+    else if (c.type === "fate") fateApply(p);
     calc(p);
   }
   function apply(c) {
@@ -3301,7 +3329,8 @@
   /* ---- Capitaine : l'équipage ---- */
   /* ---- Capitaine : l'équipage (10 au départ, +2 par niveau, 50 max), chaque matelot attaque avec l'arme du Capitaine en miniature ---- */
   var CREW0 = 5, CREWMAX = 25;
-  function newMatelot(pl) { return { k: "matelot", x: pl.x, y: pl.y, face: 1, anim: Math.random() * 2, cd: 0.4 + Math.random() * 0.8, chargeT: 0, hitCd: 0 }; }
+  function crewHp(pl) { return 8 + 2 * ((r && r.level) || 1); }
+  function newMatelot(pl) { var h = crewHp(pl); return { k: "matelot", x: pl.x, y: pl.y, face: 1, anim: Math.random() * 2, cd: 0.4 + Math.random() * 0.8, chargeT: 0, hitCd: 0, hp: h, mhp: h, hurtT: 0 }; }
   function crewMax(pl) { return Math.min(CREWMAX, CREW0 + (((r && r.level) || 1) - 1) + (setCount(pl, "corsaire") >= 2 ? 1 : 0) + (tal(pl, "canonniers") ? 2 : 0)); }
   // un coup de matelot = 10 % d'un coup de l'arme de base du Capitaine
   function crewHit(pl) {
@@ -3350,6 +3379,7 @@
     if (circle && tal(pl, "bouclierh")) for (var hi = hostile.length - 1; hi >= 0; hi--) { var hh = hostile[hi]; if (pl.crew.some(function (mt) { return Math.abs(mt.x - hh.x) < 6 && Math.abs(mt.y - hh.y) < 6; })) hostile.splice(hi, 1); }
     pl.crew.forEach(function (mt, i) {
       mt.anim += dt * 8; mt.cd -= dt; mt.hitCd -= dt; mt.wi = wi;
+      if (mt.hp < mt.mhp) { mt.hurtT -= dt; if (mt.hurtT <= 0) mt.hp = Math.min(mt.mhp, mt.hp + dt * 2); }
       var tx, ty;
       if (mt.thT > 0) {
         mt.thT -= dt; mt.x += mt.tvx * dt; mt.y += mt.tvy * dt; mt.tvx *= 1 - dt * 1.5; mt.tvy *= 1 - dt * 1.5; mt.face = mt.tvx >= 0 ? 1 : -1; mt.anim += dt * 10;
@@ -3499,7 +3529,7 @@
       var up = techs.filter(function (k) { return ALLW[k].type !== "combo" && pl.weapons[k] < MAX_LVL; })[0]; if (up) out[out.length - 1] = { type: "w", id: up, lvl: pl.weapons[up] + 1 };
     }
     if (pl.ring && pl.ring.collection) { var com = D.ITEMS.filter(function (it) { return it.r === 0 && !it.pool && allowed(it) && (!it.expe || isExpe()) && questOk(it); }); if (com.length) out.push({ type: "itm", id: com[(Math.random() * com.length) | 0].id }); }
-    if (!out.length) out = [{ type: "heal" }, { type: "gold" }];
+    if (!out.length) out = [{ type: "heal" }, { type: "gold" }, { type: "fate" }];
     return out;
   }
   function v2Apply(c) {
@@ -6609,6 +6639,7 @@
     var vc = v2Card(c); if (vc) return { icon: vc.icon, name: vc.name, sub: vc.lvl, fx: c.type !== "w" };
     if (c.type === "p") { var ps = D.PASSIVES[c.id]; return { icon: ps.sprite, name: ps.name, sub: c.lvl === 1 ? "Nouvel objet" : "Niv. " + c.lvl }; }
     if (c.type === "heal") return { icon: "berry", name: "Baies", sub: "+40 PV" };
+    if (c.type === "fate") return { icon: "clover", name: "Coup du destin", sub: "Surprise !", fx: true };
     return { icon: "goldbag", name: "Bourse", sub: "+15 glands" };
   }
   function rouletteIcon() {
@@ -9572,6 +9603,8 @@
     friend: function () { Net.on = true; Net.started = false; Net.roster = [{ id: "zz" }]; Net.cps2 = { zz: { x: camp.x + 40, y: camp.y + 10, dx: camp.x + 40, dy: camp.y + 10, f: -1, c: "capitaine", n: "Ami", lk: { coiffe: Object.keys(D.GEAR).filter(function (k) { return D.GEAR[k].slot === "coiffe"; })[1], bottes: Object.keys(D.GEAR).filter(function (k) { return D.GEAR[k].slot === "bottes"; })[0] }, t: performance.now() } }; return 1; },
     friendMove: function () { var q = Net.cps2.zz; q.x += 30; q.y -= 12; q.t = performance.now(); return 1; },
     projN: function () { return [projs.length, zones.length, lobs.length, me.crew ? me.crew.length : 0]; },
+    fate: function (n) { var o = []; for (var i = 0; i < (n || 1); i++) { fateApply(me); o.push(1); } return o.length; },
+    fateCard: function () { choicesOverride = [{ type: "heal" }, { type: "gold" }, { type: "fate" }]; pending += 1; return 1; },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
