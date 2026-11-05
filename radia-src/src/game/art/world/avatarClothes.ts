@@ -6,7 +6,7 @@
 import type { ClothId } from '../../../data/world/ids';
 import { shade, roundRect } from '../kit';
 import {
-  CX, INK, SKIN, SKIN_L, GOLD, lg, fs, line, dot, clipped, sheen, bow, torso, pants, wave, genDress, lapels,
+  CX, INK, skin, skinL, GOLD, lg, fs, line, dot, clipped, sheen, bow, torso, pants, wave, genDress, lapels,
   SLEEVES, TOPS, BOTTOMS, DRESSES, JACKETS,
 } from './avatar';
 import type { C, TorsoO, SleeveSpec, DressFx, LegO } from './avatar';
@@ -20,7 +20,7 @@ function bareTorso(ctx: C, y0: number, y1: number, nd = 30): void {
   ctx.rect(0, y0, 240, y1 - y0);
   ctx.clip();
   torso(ctx, { hem: y1 + 30, hemW: 50, waist: 46, shW: 56, neck: 'scoop', nd });
-  fs(ctx, lg(ctx, 0, 170, 0, y1, SKIN_L, SKIN), 2.2);
+  fs(ctx, lg(ctx, 0, 170, 0, y1, skinL(), skin()), 2.2);
   ctx.restore();
 }
 
@@ -34,7 +34,7 @@ function boatSkin(ctx: C): void {
   ctx.lineTo(CX - 46, 192);
   ctx.lineTo(CX - 44, 173);
   ctx.closePath();
-  ctx.fillStyle = lg(ctx, 0, 156, 0, 192, SKIN, SKIN_L);
+  ctx.fillStyle = lg(ctx, 0, 156, 0, 192, skin(), skinL());
   ctx.fill();
 }
 
@@ -625,7 +625,7 @@ function dressSatinChampagne(): DressFx {
       ctx.lineTo(CX + 10, 579);
       ctx.lineTo(CX + 42 + sw, 579);
       ctx.closePath();
-      fs(ctx, lg(ctx, 0, 470, 0, 588, SKIN_L, SKIN), 1.8);
+      fs(ctx, lg(ctx, 0, 470, 0, 588, skinL(), skin()), 1.8);
       line(ctx, [[CX + 18, 470], [CX + 12, 560]], 'rgba(255,255,255,0.45)', 1.6, false);
     },
   };

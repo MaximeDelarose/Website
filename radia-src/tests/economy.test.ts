@@ -19,16 +19,43 @@ describe('énergie', () => {
     expect(spendEnergy(e, 1, 2)).toBe(false);
     expect(e.energy).toBe(0);
   });
-  it('les récompenses peuvent dépasser le maximum', () => {
+  // CHANGEMENT DE RÈGLE VOULU (demande de la joueuse) : l'ancien test « les récompenses peuvent dépasser le maximum » (95 + 20 = 115)
+  // n'est plus valable ; l'énergie est désormais plafonnée à 100 (plus de « 644 / 100 »).
+  it('l\'énergie ne dépasse JAMAIS le maximum : 95 + 20 → 100, gain réel = 5', () => {
     const e = { ...defaultEconomy(), energy: 95, energyTs: 0 };
-    addEnergy(e, 20, 0);
-    expect(e.energy).toBe(115);
+    expect(addEnergy(e, 20, 0)).toBe(5);
+    expect(e.energy).toBe(ENERGY_MAX);
+    expect(addEnergy(e, 500, 0)).toBe(0);
+    expect(e.energy).toBe(100);
+  });
+  it('un gain négatif ou fractionnaire est sans danger', () => {
+    const e = { ...defaultEconomy(), energy: 50, energyTs: 0 };
+    expect(addEnergy(e, -10, 0)).toBe(0);
+    expect(addEnergy(e, 2.9, 0)).toBe(2);
+    expect(e.energy).toBe(52);
+  });
+  it('la réserve héritée ne sert qu\'à 0 d\'énergie, 1 pour 1, sans jamais devenir négative', () => {
+    const e = { ...defaultEconomy(), energy: 2, reserve: 3, energyTs: 0 };
+    expect(spendEnergy(e, 1, 1)).toBe(true); expect(e.energy).toBe(1); expect(e.reserve).toBe(3); // l'énergie normale d'abord
+    expect(spendEnergy(e, 3, 1)).toBe(true); expect(e.energy).toBe(0); expect(e.reserve).toBe(1); // 1 d'énergie + 2 de réserve
+    expect(spendEnergy(e, 2, 1)).toBe(false); expect(e.reserve).toBe(1); // pas assez : rien n'est consommé
+  });
+  it('recharge offerte d\'Auguste : jamais consommée si l\'énergie est déjà pleine', () => {
+    const e = { ...defaultEconomy(), energy: 100, energyTs: 0, freeRefillTs: 0 };
+    expect(takeFreeRefill(e, FREE_REFILL_MS + 1)).toBe(false);
+    expect(e.freeRefillTs).toBe(0);
+  });
+  it('recharge offerte : n\'ajoute jamais plus que la place restante', () => {
+    const e = { ...defaultEconomy(), energy: 90, energyTs: FREE_REFILL_MS, freeRefillTs: 0 };
+    expect(takeFreeRefill(e, FREE_REFILL_MS + 1)).toBe(true);
+    expect(e.energy).toBe(100);
   });
   it('recharge gratuite : une fois par période', () => {
     const e = { ...defaultEconomy(), energy: 0, energyTs: 0, freeRefillTs: 0 };
     const t = FREE_REFILL_MS + 1;
     expect(takeFreeRefill(e, t)).toBe(true);
     expect(e.energy).toBeGreaterThanOrEqual(FREE_REFILL);
+    expect(e.energy).toBeLessThanOrEqual(ENERGY_MAX);
     expect(takeFreeRefill(e, t + 1000)).toBe(false);
     expect(freeRefillIn(e, t + 1000)).toBeGreaterThan(0);
   });
@@ -89,5 +116,25 @@ describe('migration v1 → v2', () => {
     expect(s.economy.diamonds).toBe(30);
     expect(s.economy.bag).toEqual([{ c: 'love', l: 3 }]);
     expect(s.economy.bagSlots).toBeLessThanOrEqual(24);
+  });
+});
+
+describe('migration du plafond d\'énergie (sauvegardes existantes)', () => {
+  it('644 d\'énergie → 100 + réserve de 544 : rien n\'est perdu', () => {
+    const s = sanitize({ v: SAVE_VERSION, economy: { energy: 644, diamonds: 12 } });
+    expect(s.economy.energy).toBe(100);
+    expect(s.economy.reserve).toBe(544);
+    expect(s.economy.diamonds).toBe(12);
+  });
+  it('idempotent : re-sanitiser l\'état déjà migré ne crée pas de réserve en plus', () => {
+    const once = sanitize({ v: SAVE_VERSION, economy: { energy: 644 } });
+    const twice = sanitize(JSON.parse(JSON.stringify(once)));
+    expect(twice.economy.energy).toBe(100);
+    expect(twice.economy.reserve).toBe(544);
+  });
+  it('énergie ≤ 100 : réserve à 0 ; valeurs absurdes bornées', () => {
+    expect(sanitize({ v: SAVE_VERSION, economy: { energy: 40 } }).economy.reserve).toBe(0);
+    expect(sanitize({ v: SAVE_VERSION, economy: { energy: 1e9, reserve: 1e9 } }).economy.reserve).toBe(9999);
+    expect(sanitize({ v: SAVE_VERSION, economy: { energy: -5 } }).economy.energy).toBe(0);
   });
 });

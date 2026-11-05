@@ -43,6 +43,34 @@ export function openSettings(): Promise<void> {
       checkBtn.removeAttribute('disabled');
       checkBtn.textContent = r === 'uptodate' ? 'À jour ♡' : r === 'available' ? 'Mise à jour prête' : 'Pas de réseau';
     }, { sound: false }));
+    // ---- petite pensée du jour : VRAIES notifications iPhone (une par jour, avec le consentement de Radia)
+    const pushState = h('small', 'Vérification…');
+    const pushBtns = h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end' });
+    const paintPush = async (): Promise<void> => {
+      const P = await import('../../core/push');
+      const st = await P.pushStatus();
+      pushBtns.replaceChildren();
+      const btn = (label: string, fn: () => void | Promise<void>, secondary = true) => { const b = h(`button.btn.small${secondary ? '.secondary' : ''}`, { on: { click: tap(async () => { b.setAttribute('disabled', 'true'); try { await fn(); } finally { b.removeAttribute('disabled'); } }, { sound: false }) } }, label); pushBtns.append(b); };
+      if (st.kind === 'unsupported') pushState.textContent = st.why === 'not-installed' ? 'Disponible dans l’application installée : dans Safari, Partager → « Sur l’écran d’accueil », puis rouvre RADIA depuis l’icône.' : st.why === 'insecure' ? 'Indisponible (connexion non sécurisée).' : 'Ton navigateur ne gère pas les notifications.';
+      else if (st.kind === 'denied') pushState.textContent = 'Notifications refusées. Pour les autoriser : Réglages de l’iPhone → Notifications → RADIA.';
+      else if (st.kind === 'on') {
+        pushState.textContent = 'Activées ♡ Une petite pensée par jour, le matin, jamais la nuit.';
+        btn('Tester maintenant', async () => { const r = await P.sendTestPush(); ui.toast({ title: r === 'ok' ? 'Notification envoyée ♡' : r === 'limit' ? 'Déjà 3 essais aujourd’hui' : 'Envoi impossible pour l’instant', sub: r === 'ok' ? 'Elle arrive dans quelques secondes' : undefined, icon: 'info', ms: 3000 }); });
+        btn('Désactiver', async () => { const ok = await P.disablePush(); ui.toast({ title: ok ? 'Petites pensées désactivées' : 'Impossible de désactiver pour l’instant', icon: 'info', ms: 2600 }); await paintPush(); });
+      } else {
+        pushState.textContent = 'Reçois une petite pensée douce par jour sur ton iPhone, même quand RADIA est fermée.';
+        btn('Activer', async () => {
+          const go = await ui.modal({ title: 'Une petite pensée par jour ♡', body: h('div', { style: 'text-align:left;font-size:14.5px;line-height:1.4' }, h('p', 'Une seule notification par jour, le matin, jamais la nuit. Tu peux arrêter quand tu veux.'), h('p.muted', { style: 'font-size:12.5px' }, 'RADIA ne te la demande que si tu appuies sur « Activer ». Rien d’autre n’est partagé que l’adresse d’envoi de ton iPhone et ton fuseau horaire.')), actions: [{ label: 'Activer', value: 'go', style: 'primary' }, { label: 'Plus tard', value: 'no', style: 'secondary' }] });
+          if (go !== 'go') return;
+          const r = await P.enablePush(9);
+          if (r === 'ok') ui.toast({ title: 'Petites pensées activées ♡', sub: 'Tu en recevras une par jour', icon: 'heart', ms: 3200 });
+          else ui.toast({ title: r === 'denied' ? 'Notifications refusées' : r === 'unsupported' ? 'Pas disponible ici' : 'Activation impossible pour l’instant', sub: r === 'denied' ? 'Tu pourras les autoriser dans les Réglages de l’iPhone' : 'Rien n’a été activé', icon: 'info', ms: 3600 });
+          await paintPush();
+        }, false);
+      }
+    };
+    void paintPush();
+    const thoughtsBtn = h('button.btn.small.secondary', { on: { click: tap(() => { void import('./thoughts').then((m) => m.openThoughtsList()); }, { sound: false }) } }, 'Voir');
     // ---- diagnostic tactile : état réel du plateau (utile si les cases ne répondent plus)
     const touchBtn = h('button.btn.small.secondary', { on: { click: tap(async () => {
       const { touchDiagnostics, unblockBoard } = await import('../../game/touchDiag');
@@ -85,6 +113,8 @@ export function openSettings(): Promise<void> {
       h('div.setting-row', h('label', 'Vitesse du texte'), seg([['normal', 'Normale'], ['fast', 'Rapide'], ['instant', 'Immédiate']], s.textSpeed, (v) => { s.textSpeed = v; commit(); })),
       h('div.setting-row', h('label', 'Version', h('small', versionLabel())), checkBtn),
       h('div.setting-row', h('label', 'Ressources', h('small', 'À quoi servent pièces, diamants, énergie, cœurs, tickets')), h('button.btn.small.secondary', { on: { click: tap(async () => { (await import('../components/resourceInfo')).openResourceHelp(); }, { sound: false }) } }, 'Voir')),
+      h('div.setting-row.push-row', { style: 'align-items:flex-start;flex-direction:column;gap:6px' }, h('label', 'Petite pensée du jour ♡', pushState), pushBtns),
+      h('div.setting-row', h('label', 'Petites pensées ♡', h('small', 'Celles que tu as reçues')), thoughtsBtn),
       h('div.setting-row', h('label', 'Diagnostic', h('small', 'Build, mode (Safari / application), partie, photos')), diagBtn),
       h('div.setting-row', h('label', 'Diagnostic tactile', h('small', 'État du plateau ; « Débloquer le plateau » sans rien perdre')), touchBtn),
       h('div.setting-row', h('label', 'Copier ma sauvegarde', h('small', 'Pour la mettre dans l\'application de l\'écran d\'accueil (ou l\'inverse)')), copyBtn),

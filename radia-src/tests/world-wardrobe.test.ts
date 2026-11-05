@@ -15,7 +15,8 @@ beforeEach(() => { save.data = defaultSave(); });
 
 describe('catalogue', () => {
   it('chaque identifiant a une fiche, un emplacement cohérent et un prix', () => {
-    expect(CLOTH_IDS.length).toBe(133);
+    // 135 = 133 + 2 nouvelles robes (robe noire courte + collants, robe rose satinée)
+    expect(CLOTH_IDS.length).toBe(135);
     for (const id of CLOTH_IDS) {
       expect(CLOTHES[id].slot).toBe(CLOTH_SLOTS[id]);
       expect(CLOTHES[id].coins).toBeGreaterThanOrEqual(0);

@@ -14,7 +14,7 @@ let curTag = '';
 const check = (name, ok, detail = '') => { results.push({ ok: !!ok, line: `${ok ? 'OK ' : 'KO '} [${curTag}] ${name}${detail ? ` — ${detail}` : ''}` }); };
 
 const todayKey = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
-const baseSave = () => ({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7'], story: { step: 9999 }, levels: {}, hearts: 500, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } });
+const baseSave = () => ({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8'], story: { step: 9999 }, levels: {}, hearts: 500, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } });
 
 async function open(H, saveObj, tag) {
   const ctx = await browser.newContext({ viewport: { width: 393, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
@@ -286,7 +286,7 @@ async function runEndless(H) {
   check('plateau restauré à l\'identique', JSON.stringify(aR.cells) === JSON.stringify(bR.cells));
   await t.shot('19-reloaded');
 
-  // ---- 11. album (14 collections)
+  // ---- 11. album (15 collections)
   await page.locator('.mh-bar .icon-btn').first().click();
   await t.sleep(500);
   await page.getByText('Quitter vers le menu').click();
@@ -297,7 +297,7 @@ async function runEndless(H) {
   await page.getByRole('button', { name: 'Objets' }).click();
   await t.sleep(800);
   const rows = await page.locator('.coll-row').count();
-  check('album : 14 collections + objets magiques', rows === 15, `${rows} rangées`);
+  check('album : 15 collections (dont les savons PIMBÊCHE) + objets magiques', rows === 16, `${rows} rangées`);
   check('album : objets non découverts en silhouette, découverts affichés', (await page.locator('.coll-item.unknown').count()) > 0 && (await page.locator('.coll-item:not(.unknown)').count()) > 0);
   check('album : prochaine récompense visible', (await page.locator('.alb-next').count()) === 1);
   await t.shot('20-album');
@@ -352,7 +352,7 @@ async function runMigration(H) {
 /** Mode histoire : niveau 1 jouable, sauvegarde `run` intacte, aucune donnée Endless touchée. */
 async function runStory() {
   curTag = 'histoire';
-  const { ctx, page } = await open(852, { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7'], world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 } } }, curTag);
+  const { ctx, page } = await open(852, { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8'], world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 } } }, curTag);
   const sleep = (ms) => page.waitForTimeout(ms);
   await page.getByText('MODE CHAPITRES').first().click();
   await sleep(900);

@@ -5,7 +5,7 @@
  * Chaque canvas est mis en cache sous une clé qui contient ce qui change le dessin.
  */
 import { PAL, paint, roundRect, seeded, sparkle, glow, groundShadow, heartPath, starPath, shade, OUTLINE } from '../../../../game/art/kit';
-import { drawRadiaNow, lookKey, radiaBustCanvas } from '../../../../game/art/world/radiaNow';
+import { drawRadiaNow, lookKey, radiaBustCanvas, radiaFaceCanvas } from '../../../../game/art/world/radiaNow';
 import { drawFlower } from '../../../../game/art/world/garden';
 import { drawChocolate, drawChocSilhouette } from '../../../../game/art/world/chocolate';
 import { drawKid } from '../../../../game/art/world/kids';
@@ -227,6 +227,17 @@ function stars(c: C, w: number, h: number, seed: number, n: number): void {
 }
 
 /** Dressing : un portant de tenues et Radia dans SA tenue équipée. */
+/** Carte « Personnaliser Radia » : son visage du moment sur un fond doux (suit le visage personnalisé grâce à lookKey()). */
+export function faceArt(): HTMLCanvasElement {
+  return art(`face|${lookKey()}`, 124, CARD_H, (c, w, h) => {
+    frame(c, w, h, '#FFF0F6', '#F8C9DD');
+    glow(c, w * 0.5, h * 0.45, 52, '#FFFFFF', 0.75);
+    const f = radiaFaceCanvas('smile', Math.round(h * 0.98));
+    c.drawImage(f, (w - h * 0.98) / 2, h * 0.04, h * 0.98, h * 0.98);
+    for (const [x, y, r] of [[w * 0.14, h * 0.28, 5], [w * 0.86, h * 0.34, 4], [w * 0.2, h * 0.74, 3]] as const) { c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
+  });
+}
+
 export function dressingArt(): HTMLCanvasElement {
   return art(`dress|${lookKey()}`, CARD_W, CARD_H, (c, w, h) => {
     frame(c, w, h, '#F3EBFF', '#CDBDF0');

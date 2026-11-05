@@ -24,13 +24,15 @@ import { makeCanvas } from '../../game/art/kit';
 import { cleanText } from '../util';
 import { addFansNote } from './fansNote';
 import { flags } from './ui-state';
-import { chatView } from './chat/view';
-import { unreadTotal } from './chat/engine';
+import { chatView, openFriendStory, type SnapTab } from './chat/view';
+import { contactById } from './chat/data';
+import { faceUrl } from './chat/selfie';
+import { dayKey, friendStories, unopenedSnapCount, unseenStories, unreadTotal } from './chat/engine';
 
 let layer: HTMLElement | null = null;
 registerBusy(() => !!layer);
 
-type View = 'home' | 'camera' | 'chat';
+type View = 'home' | 'camera' | 'chat' | 'snaps' | 'friends' | 'stories';
 const thumbCache = new Map<string, HTMLCanvasElement>();
 export function snapThumb(id: string, w = 220): HTMLCanvasElement | null {
   const rec = photoById(id); if (!rec) return null;
@@ -60,46 +62,69 @@ export function openSnap(view: View = 'chat', opts: { pending?: Pending } = {}):
   let stopAnim: (() => void) | null = null;
 
   const close = () => { stopAnim?.(); chatOff?.(); chatOff = null; root.classList.add('out'); window.setTimeout(() => root.remove(), 240); layer = null; flags.open = false; persist(); emitPhone(); };
-  const go = (v: View, p?: Pending) => { stopAnim?.(); stopAnim = null; root.querySelectorAll('.snp-view').forEach((e) => e.remove()); if (v === 'home') homeView(); else if (v === 'chat') chatScreen(); else cameraView(p); };
+  const go = (v: View, p?: Pending) => { stopAnim?.(); stopAnim = null; root.querySelectorAll('.snp-view').forEach((e) => e.remove()); if (v === 'home') homeView(); else if (v === 'stories') storiesView(); else if (v === 'chat' || v === 'snaps' || v === 'friends') chatScreen(v); else cameraView(p); };
 
   // ================================================================ CHAT (conversations, snaps rouges, flammes)
   let chatOff: (() => void) | null = null;
   /** Barre d'onglets du bas : Chat / Souvenirs. */
-  const tabs = (active: 'chat' | 'home'): HTMLElement => h('nav.snc-tabs',
-    h(`button.snc-tab${active === 'chat' ? '.on' : ''}`, { 'aria-label': 'Chat', on: { click: tap(() => { if (active !== 'chat') go('chat'); }, { sound: false }) } }, ico('comment', 24), h('span', 'Chat'), snapUnread() ? h('i.snc-dot', String(snapUnread())) : null),
-    h(`button.snc-tab${active === 'home' ? '.on' : ''}`, { 'aria-label': 'Souvenirs', on: { click: tap(() => { if (active !== 'home') go('home'); }, { sound: false }) } }, ico('camera', 24), h('span', 'Souvenirs')));
+  const tabs = (active: SnapTab): HTMLElement => {
+    const t = (id: SnapTab, label: string, icon: string, badge: number): HTMLElement => h(`button.snc-tab${active === id ? '.on' : ''}`, { 'aria-label': badge ? `${label}, ${badge} nouveau${badge > 1 ? 'x' : ''}` : label, 'data-tab': id, on: { click: tap(() => { if (active !== id) go(id); }, { sound: false }) } }, ico(icon, 24), h('span', label), badge ? h('i.snc-dot', String(Math.min(99, badge))) : null);
+    return h('nav.snc-tabs', t('chat', 'Chats', 'comment', snapUnread()), t('snaps', 'Snaps', 'camera', unopenedSnapCount(st.chat)), t('friends', 'Amis', 'user', 0), t('stories', 'Stories', 'play', unseenStories(st.chat, dayKey(Date.now()))), t('home', 'Souvenirs', 'image', 0));
+  };
   const snapUnread = (): number => unreadTotal(st.chat);
-  function chatScreen(): void {
+  function chatScreen(mode: 'chat' | 'snaps' | 'friends' = 'chat'): void {
     chatOff?.();
     const v = h('div.snp-view.snp-chat');
     root.append(v);
-    chatOff = chatView({ root, toast, tabs, close }, v);
+    chatOff = chatView({ root, toast, tabs, close }, v, mode);
   }
 
-  // ================================================================ ACCUEIL (souvenirs)
-  function homeView(): void {
-    const v = h('div.snp-view.snp-home');
+  // ================================================================ STORIES (amis + les miennes + moments à publier)
+  function storiesView(): void {
+    const v = h('div.snp-view.snp-home.snp-stories');
     const head = h('div.snp-head',
       h('button.snp-x', { 'aria-label': 'Fermer', on: { click: tap(close, { sound: false }) } }, ico('close', 22)),
-      h('div.snp-brand', h('i'), h('b', 'Snapchien')),
+      h('div.snp-brand', h('i'), h('b', 'Stories')),
       h('button.snp-x.snp-cam', { 'aria-label': 'Prendre une photo', on: { click: tap(() => go('camera'), { sound: false }) } }, ico('camera', 22)));
     const bar = h('div.snp-stories');
     const addBtn = h('button.snp-story.add', { on: { click: tap(() => openStoryComposer(), { sound: false }) } }, h('span.snp-ring.plain', h('i', '+')), h('small', 'Ma story'));
     bar.append(addBtn);
     for (const p of st.pending.filter((x) => x.snap)) {
-      bar.append(h('button.snp-story.moment', { 'aria-label': `Moment : ${p.title}`, on: { click: tap(() => document.getElementById(`pd-${p.id}`)?.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }), { sound: false }) } }, h('span.snp-ring.dash', h('i', '✦')), h('small', p.title.slice(0, 12))));
+      bar.append(h('button.snp-story.moment', { 'aria-label': `Moment : ${p.title}`, on: { click: tap(() => document.getElementById(`pd-${p.id}`)?.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'center' }), { sound: false }) } }, h('span.snp-ring.moment', h('i', '✦')), h('small', 'Moment')));
     }
-    for (const s of st.stories.slice().reverse()) {
-      const th = snapThumb(s.frames[0].photo, 120);
-      bar.append(h(`button.snp-story${s.viewed ? '.seen' : ''}`, { 'aria-label': 'Voir la story', on: { click: tap(() => openStoryViewer(s.id), { sound: false }) } }, h('span.snp-ring', th ?? h('i', '♡')), h('small', s.caption.slice(0, 12) || 'Story')));
+    for (const s2 of st.stories.slice().reverse()) {
+      const th = snapThumb(s2.frames[0].photo, 120);
+      bar.append(h(`button.snp-story${s2.viewed ? '.seen' : ''}`, { 'aria-label': 'Voir la story', on: { click: tap(() => openStoryViewer(s2.id), { sound: false }) } }, h('span.snp-ring', th ?? h('i', '♡')), h('small', 'Moi')));
     }
     const body = h('div.snp-hbody');
-    // moments proposés
+    // stories des amis : une par jour et par ami, jamais d'obligation de les regarder
+    const fs = friendStories(st.chat, dayKey(Date.now()));
+    body.append(h('h3.snp-h', 'Stories des amis'));
+    if (!fs.length) body.append(h('p.snp-fine', 'Pas de story pour le moment. Reviens plus tard ♡'));
+    const frow = h('div.snp-stories.friends');
+    for (const f of fs) {
+      const ct = contactById(f.cid);
+      frow.append(h(`button.snp-story${f.seen ? '.seen' : ''}`, { 'aria-label': `Story de ${ct?.name ?? ''}${f.seen ? ' (vue)' : ''}`, 'data-cid': f.cid, on: { click: tap(() => openFriendStory({ root }, f, { onClose: () => go('stories'), onReply: (cid) => { go('chat'); window.setTimeout(() => (root.querySelector(`.snc-row[data-cid="${cid}"]`) as HTMLElement | null)?.click(), 60); } }), { sound: false }) } },
+        h('span.snp-ring', h('img.snc-face', { src: faceUrl(f.cid, 96), alt: '' })), h('small', ct?.name ?? '')));
+    }
+    body.append(frow);
     const pend = st.pending.filter((p) => p.snap);
     if (pend.length) {
       body.append(h('h3.snp-h', 'Moments à publier'));
       for (const p of pend) body.append(pendingCard(p));
     }
+    v.append(head, bar, body, tabs('stories'));
+    root.append(v);
+  }
+
+  // ================================================================ SOUVENIRS (mon album)
+  function homeView(): void {
+    const v = h('div.snp-view.snp-home');
+    const head = h('div.snp-head',
+      h('button.snp-x', { 'aria-label': 'Fermer', on: { click: tap(close, { sound: false }) } }, ico('close', 22)),
+      h('div.snp-brand', h('i'), h('b', 'Souvenirs')),
+      h('button.snp-x.snp-cam', { 'aria-label': 'Prendre une photo', on: { click: tap(() => go('camera'), { sound: false }) } }, ico('camera', 22)));
+    const body = h('div.snp-hbody');
     body.append(h('h3.snp-h', 'Mon album'));
     const photos = st.photos.slice().reverse();
     if (!photos.length) body.append(h('div.snp-empty', h('p', 'Aucune photo pour l’instant.'), h('button.btn', { on: { click: tap(() => go('camera'), { sound: false }) } }, 'Prendre ma première photo')));
@@ -115,7 +140,7 @@ export function openSnap(view: View = 'chat', opts: { pending?: Pending } = {}):
     }
     body.append(h('p.snp-fine', 'Tes photos sont enregistrées dans « Photos souvenirs » du téléphone. Rien n’est publié hors du jeu.'));
     const fab = h('button.snp-fab', { 'aria-label': 'Prendre une photo', on: { click: tap(() => go('camera'), { sound: false }) } }, ico('camera', 28));
-    v.append(head, bar, body, fab, tabs('home'));
+    v.append(head, body, fab, tabs('home'));
     root.append(v);
   }
 

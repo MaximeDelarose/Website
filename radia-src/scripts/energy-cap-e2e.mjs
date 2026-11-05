@@ -1,0 +1,46 @@
+// Énergie plafonnée à 100 (migration d'une ancienne sauvegarde à 644). Chromium ÉMULÉ. PORT=4190 node scripts/energy-cap-e2e.mjs
+import { chromium } from 'playwright';
+const PORT = process.env.PORT ?? 4190;
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
+const results = []; const errors = [];
+const check = (n, ok, x = '') => { results.push(!!ok); console.log(`${ok ? 'OK ' : 'KO '} ${n}${x ? ' — ' + x : ''}`); };
+const d = new Date(); const p2 = (n) => String(n).padStart(2, '0');
+const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8'], story: { step: 9999 }, levels: {}, hearts: 5, economy: { energy: 644, energyTs: Date.now(), diamonds: 70, bag: [], bagSlots: 6 }, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`, claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } };
+const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, hasTouch: true, isMobile: true });
+const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(e.message));
+await page.addInitScript((s) => { if (!localStorage.getItem('radia-save-v1')) localStorage.setItem('radia-save-v1', s); }, JSON.stringify(seed));
+await page.goto(`http://localhost:${PORT}/?debug`, { waitUntil: 'networkidle' }); await page.waitForTimeout(2800);
+const eco = () => page.evaluate(() => { const e = window.RADIA.save.data.economy; return { energy: e.energy, reserve: e.reserve, diamonds: e.diamonds }; });
+const closeModals = async () => { for (let i = 0; i < 6; i++) { const b = page.locator('.modal-backdrop:not(.leaving) .actions button'); if (await b.count()) { await b.last().click().catch(() => {}); await page.waitForTimeout(400); } else break; } };
+await closeModals();
+let e = await eco();
+check('ancienne sauvegarde à 644 : énergie ramenée à 100', e.energy === 100, JSON.stringify(e));
+check('le surplus (544) n\'est pas perdu : il devient une réserve', e.reserve === 544);
+check('écran titre : le compteur affiche 100 (plus jamais 644 / 100)', (await page.locator('.title-top button[aria-label="Énergie"]').innerText()).replace(/\s/g, '') === '100');
+await page.locator('.title-top button[aria-label="Énergie"]').click(); await page.waitForTimeout(700);
+const panel = await page.locator('.energy-panel').innerText();
+check('panneau : « 100 / 100 »', /100\s*\/\s*100/.test(panel));
+check('panneau : la réserve héritée est expliquée', /Réserve : 544/.test(panel));
+const buy = page.locator('.modal-backdrop .actions button', { hasText: 'remplir à 100' });
+check('l\'achat est libellé « remplir à 100 »', (await buy.count()) === 1);
+await buy.click(); await page.waitForTimeout(700);
+e = await eco();
+check('énergie pleine : l\'achat est refusé SANS dépenser de diamants', e.diamonds === 70 && e.energy === 100);
+check('message « Énergie déjà pleine »', (await page.getByText('Énergie déjà pleine').count()) >= 1);
+await closeModals();
+// dépenser puis récompenser : jamais au-dessus de 100 (mode infini : l'API de debug de la partie)
+await page.getByText('MODE LIBRE').first().click(); await page.waitForTimeout(2800); await closeModals();
+await page.evaluate(() => window.RADIA.save.data.economy.energy = 90);
+const gain = await page.evaluate(async () => { const m = window.RADIA.endless; return m && m.giveEnergy ? m.giveEnergy(50) : null; });
+void gain;
+await page.waitForTimeout(400);
+e = await eco();
+check('90 + 50 d\'énergie offerte → 100 (jamais 140)', e.energy === 100, JSON.stringify(e));
+// à 0 : la réserve prend le relais ; persistance
+await page.evaluate(() => { const s = window.RADIA.save.data.economy; s.energy = 0; });
+await page.evaluate(() => window.RADIA.save.writeNow()); await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(2800); await closeModals();
+e = await eco();
+check('après rechargement : énergie ≤ 100 et réserve conservée', e.energy <= 100 && e.reserve === 544, JSON.stringify(e));
+check('aucune erreur JS', errors.length === 0, errors.join(' | '));
+const ko = results.filter((x) => !x).length; console.log(`\n${results.length - ko}/${results.length} OK`);
+await browser.close(); process.exit(ko ? 1 : 0);

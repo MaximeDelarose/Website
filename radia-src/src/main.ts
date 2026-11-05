@@ -3,6 +3,7 @@
  * Chargement : sauvegarde → réglages → Phaser (scène de fond) → polices →
  * écran d'accueil. Service worker pour le hors-ligne (build uniquement).
  */
+import { applySavedFace } from './game/world/look';
 import './ui/styles/base.css';
 import './ui/styles/game.css';
 import { debugApis } from './core/debug';
@@ -138,6 +139,26 @@ async function showWhatsNewV7(): Promise<void> {
   });
 }
 
+/** Nouveautés v8 : personnalisation, Snapchien, énergie, petites pensées (une seule fois, pour les parties existantes). Sans spoiler. */
+async function showWhatsNewV8(): Promise<void> {
+  if (save.data.seenUpdates.includes('v8')) return;
+  save.data.seenUpdates.push('v8');
+  save.save();
+  if (!save.hadSave) return;
+  const li = (t: string) => h('li', { style: 'margin:4px 0' }, t);
+  await ui.modal({
+    title: 'Du nouveau pour toi ♡',
+    body: h('div', { style: 'text-align:left;font-size:15px' },
+      h('ul', { style: 'padding-left:18px;margin:6px 0' },
+        li('MON MONDE : « Personnaliser Radia » — peau, forme du visage, yeux, sourcils, nez, bouche, cheveux, voile et maquillage, avec un aperçu en direct. Tu peux annuler, et enregistrer tes visages préférés.'),
+        li('Snapchien a une nouvelle icône et cinq onglets : Chats, Snaps, Amis, Stories, Souvenirs.'),
+        li('L\'énergie s\'arrête maintenant à 100. Si tu en avais plus, ton surplus est gardé en réserve (utilisée seulement quand tu tombes à 0).'),
+        li('Dans Réglages : « Petite pensée du jour ♡ » — une notification douce par jour sur ton iPhone, si tu le souhaites.')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, 'Ta partie est intacte ♡')),
+    actions: [{ label: 'Super !', value: 'ok' }],
+  });
+}
+
 /** Nouveautés v3 : le château de Radia (une seule fois, pour les parties existantes). */
 async function showWhatsNewV3(): Promise<void> {
   if (save.data.seenUpdates.includes('v3')) return;
@@ -159,9 +180,26 @@ async function showWhatsNewV3(): Promise<void> {
   });
 }
 
+/** Petites pensées reçues par notification : on les range, on ouvre la carte si Radia vient d'une notification, on se réabonne si besoin. */
+async function setupThoughts(): Promise<void> {
+  try {
+    const m = await import('./ui/screens/thoughts');
+    const fromNotif = /[?&]pensee=1/.test(location.search);
+    const handle = async (): Promise<void> => { const fresh = await m.importThoughts(); if (fresh.length || fromNotif) { const last = save.data.fun.thoughts[save.data.fun.thoughts.length - 1]; if (last && (fresh.length || fromNotif)) await m.showThoughtCard(last); } };
+    if (fromNotif) { try { const q = new URLSearchParams(location.search); q.delete('pensee'); history.replaceState(null, '', location.pathname + (q.toString() ? `?${q}` : '') + location.hash); } catch { /* ignoré */ } } // on ne retire que « pensee »
+    await handle();
+    navigator.serviceWorker?.addEventListener('message', (e) => {
+      if (e.data?.type === 'radia-thought') void m.importThoughts().then((f) => { const last = f[f.length - 1]; if (last) void m.showThoughtCard(last); });
+      if (e.data?.type === 'radia-push-changed') void import('./core/push').then((p) => p.refreshPushIfNeeded());
+    });
+    void import('./core/push').then((p) => p.refreshPushIfNeeded());
+  } catch { /* les notifications ne doivent jamais empêcher le jeu de démarrer */ }
+}
+
 async function boot(): Promise<void> {
   progress(0.1);
   save.load();
+  applySavedFace(); // visage personnalisé de Radia (identique à l'original tant qu'aucun réglage n'est fait)
   setLowFx(save.data.settings.effects === 'reduced');
   applySettings();
   void save.requestPersistence();
@@ -217,7 +255,9 @@ async function boot(): Promise<void> {
   await showWhatsNewV3();
   await showWhatsNewV4();
   await showWhatsNewV6();
+  void setupThoughts();
   await showWhatsNewV7();
+  await showWhatsNewV8();
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => undefined);

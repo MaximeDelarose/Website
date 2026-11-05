@@ -153,6 +153,7 @@ check('Snap : story publiée (1 à 5 images)', s2.snap.stories.length === 1 && s
 check('Snap : réactions fictives affichées pendant la story', nReacts >= 1, String(nReacts));
 await page.waitForSelector('.snp-ov.story', { state: 'detached', timeout: 30000 }).catch(() => {});
 await sleep(600);
+await page.locator('.snc-tab[data-tab="stories"]').click().catch(() => {}); await sleep(600); // les stories sont dans l'onglet « Stories »
 await shot('snap-home-stories');
 check('Snap : barre de stories', (await page.locator('.snp-story').count()) >= 2);
 await page.locator('.snp-x').first().click(); await sleep(500);

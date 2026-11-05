@@ -76,7 +76,7 @@ export const CLOTH_SLOTS = {
   'top-tee-white': 'top', 'top-tee-pink': 'top', 'top-hoodie-black': 'top', 'top-hoodie-cream': 'top',
   'top-cardigan-lavender': 'top', 'top-blouse-silk': 'top', 'top-stripe-shirt': 'top',
   'bot-jeans': 'bottom', 'bot-wide-black': 'bottom', 'bot-skirt-pleated': 'bottom', 'bot-trousers-chic': 'bottom',
-  'dr-flowy-floral': 'dress', 'dr-romantic-pink': 'dress', 'dr-royal-gown': 'dress', 'dr-stage-sequin': 'dress', 'dr-redcarpet': 'dress',
+  'dr-black-mini-ls': 'dress', 'dr-pink-satin': 'dress', 'dr-flowy-floral': 'dress', 'dr-romantic-pink': 'dress', 'dr-royal-gown': 'dress', 'dr-stage-sequin': 'dress', 'dr-redcarpet': 'dress',
   'dr-sundress-yellow': 'dress', 'dr-little-black': 'dress', 'dr-gingham-red': 'dress', 'dr-denim': 'dress',
   'dr-lavender-tulle': 'dress', 'dr-bathrobe': 'dress', 'dr-pajama-pink': 'dress', 'dr-pajama-stars': 'dress', 'dr-nightgown-silk': 'dress', 'dr-white-gown': 'dress', 'dr-emerald-evening': 'dress', 'dr-striped-navy': 'dress',
   'jk-blazer-cream': 'jacket', 'jk-leather-black': 'jacket', 'jk-denim': 'jacket',

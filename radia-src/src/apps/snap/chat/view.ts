@@ -12,8 +12,8 @@ import { emitPhone } from '../../../events/bus';
 import { Rng } from '../../../utils/rng';
 import { contactById, CONTACTS } from './data';
 import {
-  activeContacts, deleteContact, dayKey, flameCount, openSnap, readText, reply, replyChoices, rowStatus, sendSnap, setMuted,
-  type ChatMsg, type ContactState,
+  activeContacts, addFriend, deleteContact, dayKey, flameCount, markStorySeen, openSnap, readText, reply, replyChoices, rowStatus, sendSnap, setMuted, suggestions,
+  type ChatMsg, type ContactState, type FriendStory,
 } from './engine';
 import { faceUrl, selfieUrl } from './selfie';
 
@@ -28,15 +28,32 @@ function ago(at: number, now = Date.now()): string {
   return `il y a ${Math.round(hh / 24)} j`;
 }
 
-export interface ChatHost { root: HTMLElement; toast: (title: string, sub?: string, ms?: number) => void; tabs: (active: 'chat' | 'home') => HTMLElement; close: () => void }
+export type SnapTab = 'chat' | 'snaps' | 'friends' | 'stories' | 'home';
+export interface ChatHost { root: HTMLElement; toast: (title: string, sub?: string, ms?: number) => void; tabs: (active: SnapTab) => HTMLElement; close: () => void }
+
+/** Story d'un ami en plein écran (illustration + légende du jour). Fermer = retour ; Répondre = ouvre la conversation. */
+export function openFriendStory(host: Pick<ChatHost, 'root'>, story: FriendStory, o: { onClose: () => void; onReply: (cid: string) => void }): void {
+  const ct = contactById(story.cid); if (!ct) return;
+  const chat = snapState().chat; markStorySeen(chat, story.cid, dayKey(Date.now())); persist(); emitPhone(); tick('pop2'); haptic('select');
+  const view = h('div.snc-viewer.story', { role: 'dialog', 'aria-label': `Story de ${ct.name}` },
+    h('img.snc-photo', { src: selfieUrl(story.cid, story.scene), alt: '' }),
+    h('div.snc-vtop', h('img.snc-face.sm', { src: faceUrl(story.cid, 72), alt: '' }), h('div', h('b', ct.name), h('small', 'Story · aujourd’hui')),
+      h('button.snp-x.snc-vx', { 'aria-label': 'Fermer', on: { click: tap(() => end(false), { sound: false }) } }, ico('close', 22))),
+    h('div.snc-storybar', h('b')),
+    h('div.snc-cap', h('p', story.caption)),
+    h('div.snc-vact', h('button.btn.secondary.snc-vclose', { on: { click: tap(() => end(false), { sound: false }) } }, 'Fermer'), h('button.btn.snc-vreply', { on: { click: tap(() => end(true), { sound: false }) } }, 'Répondre')));
+  host.root.append(view);
+  function end(reply: boolean): void { view.classList.add('out'); window.setTimeout(() => view.remove(), 200); o.onClose(); if (reply) o.onReply(story.cid); }
+}
 
 /** Monte l'écran Chat dans `container` ; renvoie la fonction de nettoyage. */
-export function chatView(host: ChatHost, container: HTMLElement): () => void {
+export function chatView(host: ChatHost, container: HTMLElement, mode: 'chat' | 'snaps' | 'friends' = 'chat'): () => void {
   const st = snapState();
   const chat = st.chat;
   let alive = true;
   const body = h('div.snc-body');
   const refresh = () => { if (open) renderConversation(open); else renderList(); };
+  const TITLES = { chat: 'Chats', snaps: 'Snaps', friends: 'Amis' } as const;
   let open: string | null = null;
 
   // ---------------------------------------------------------------- liste
@@ -52,14 +69,21 @@ export function chatView(host: ChatHost, container: HTMLElement): () => void {
     }
   }
   function renderList(): void {
+    if (mode === 'friends') { renderFriends(); return; }
     body.textContent = '';
     body.className = 'snc-body list';
     const head = h('div.snc-head',
       h('button.snp-x', { 'aria-label': 'Fermer', on: { click: tap(host.close, { sound: false }) } }, ico('close', 22)),
-      h('div.snp-brand', h('i'), h('b', 'Chat')),
+      h('div.snp-brand', h('i'), h('b', TITLES[mode])),
       h(`button.snp-x.snc-bell${chat.muted ? '.off' : ''}`, { 'aria-label': chat.muted ? 'Notifications coupées : les remettre' : 'Couper les notifications de Snapchien', on: { click: tap(() => { setMuted(chat, !chat.muted); persist(); host.toast(chat.muted ? 'Notifications coupées' : 'Notifications remises', chat.muted ? 'Les messages t’attendent ici, sans bruit.' : undefined, 2200); renderList(); }, { sound: false }) } }, ico(chat.muted ? 'bellOff' : 'bell', 22)));
     const list = h('div.snc-list');
-    const rows = activeContacts(chat).map((c) => ({ c, cs: chat.contacts[c.id] })).sort((a, b) => rowStatus(b.cs).at - rowStatus(a.cs).at);
+    let rows = activeContacts(chat).map((c) => ({ c, cs: chat.contacts[c.id] })).sort((a, b) => rowStatus(b.cs).at - rowStatus(a.cs).at);
+    if (mode === 'snaps') {
+      // onglet Snaps : seulement les échanges de snaps ; les non ouverts (rouges / violets) d'abord
+      rows = rows.filter((r) => r.cs.msgs.some((m) => m.kind !== 'text'));
+      const unopened = (cs: ContactState): number => (cs.msgs.some((m) => m.from === 'in' && m.kind !== 'text' && !m.opened) ? 1 : 0);
+      rows.sort((a, b) => unopened(b.cs) - unopened(a.cs) || rowStatus(b.cs).at - rowStatus(a.cs).at);
+    }
     const today = dayKey(Date.now());
     for (const { c, cs } of rows) {
       const { el, unseen } = statusLine(cs);
@@ -74,8 +98,38 @@ export function chatView(host: ChatHost, container: HTMLElement): () => void {
       const quick = h('button.snc-cam', { 'aria-label': `Envoyer un snap à ${c.name}`, on: { click: tap((e) => { e?.stopPropagation(); sendQuick(c.id); }, { sound: false }) } }, ico('camera', 20));
       list.append(h('div.snc-rowwrap', row, quick));
     }
-    if (!rows.length) list.append(h('div.snp-empty', h('p', 'Aucun contact pour l’instant.')));
-    body.append(head, list, host.tabs('chat'));
+    if (!rows.length) list.append(h('div.snp-empty', h('p', mode === 'snaps' ? 'Aucun snap pour l’instant. Envoie le premier avec l’appareil photo d’un ami ♡' : 'Aucun contact pour l’instant.')));
+    body.append(head, list, host.tabs(mode));
+  }
+
+  // ---------------------------------------------------------------- amis (flammes, suggestions)
+  function renderFriends(): void {
+    body.textContent = ''; body.className = 'snc-body list friends';
+    const head = h('div.snc-head', h('button.snp-x', { 'aria-label': 'Fermer', on: { click: tap(host.close, { sound: false }) } }, ico('close', 22)), h('div.snp-brand', h('i'), h('b', 'Amis')), h('span.snc-sp'));
+    const list = h('div.snc-list');
+    const today = dayKey(Date.now());
+    const mine = activeContacts(chat);
+    list.append(h('h3.snp-h.snc-h', `Mes amis · ${mine.length}`));
+    for (const c of mine) {
+      const cs = chat.contacts[c.id]; const fl = flameCount(cs.flame, today);
+      const row = h('button.snc-row', { 'data-cid': c.id, 'aria-label': `${c.name}${fl ? `, flamme ${fl}` : ''}` },
+        h('img.snc-face', { src: faceUrl(c.id, 96), alt: '' }),
+        h('div.snc-mid', h('b', c.name, fl ? h('em.snc-fl', `🔥 ${fl}`) : null), h('span.snc-st', h('small', fl ? `Série de ${fl} jour${fl > 1 ? 's' : ''} en cours` : 'Pas de flamme en ce moment'))));
+      row.addEventListener('click', tap(() => { open = c.id; renderConversation(c.id); }, { sound: false }));
+      list.append(row);
+    }
+    const sug = suggestions(chat);
+    if (sug.length) {
+      list.append(h('h3.snp-h.snc-h', 'Ajouter des amis'));
+      for (const c of sug) {
+        const add = h('button.btn.small.snc-add', { 'aria-label': `Ajouter ${c.name}`, on: { click: tap(() => {
+          if (!addFriend(chat, c.id, Date.now())) return;
+          persist(); emitPhone(); tick('sparkle'); host.toast(`${c.name} est dans tes amis`, 'Il pourra t’écrire ♡', 2200); renderFriends();
+        }, { sound: false }) } }, 'Ajouter');
+        list.append(h('div.snc-row.sug', { 'data-cid': c.id }, h('img.snc-face', { src: faceUrl(c.id, 96), alt: '' }), h('div.snc-mid', h('b', c.name), h('span.snc-st', h('small', 'Suggestion'))), add));
+      }
+    }
+    body.append(head, list, host.tabs('friends'));
   }
 
   // ---------------------------------------------------------------- conversation
@@ -111,7 +165,7 @@ export function chatView(host: ChatHost, container: HTMLElement): () => void {
     for (const r of replyChoices(lastIn?.scene)) chips.append(h('button.snc-chip', { 'data-r': r.id, on: { click: tap(() => doReply(cid, r.id, thread), { sound: false }) } }, r.text));
     const send = h('button.snc-sendsnap', { on: { click: tap(() => { sendQuick(cid); }, { sound: false }) } }, ico('camera', 20), h('span', 'Envoyer un snap'));
     const foot = h('div.snc-foot', chips, send);
-    body.append(head, thread, foot, host.tabs('chat'));
+    body.append(head, thread, foot, host.tabs(mode));
     window.setTimeout(() => { thread.scrollTop = thread.scrollHeight; }, 30);
   }
   function typing(thread: HTMLElement): HTMLElement { const t = h('div.snc-b.in.typing', h('i'), h('i'), h('i')); thread.append(t); thread.scrollTop = thread.scrollHeight; return t; }

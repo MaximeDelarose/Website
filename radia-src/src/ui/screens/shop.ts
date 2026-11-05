@@ -210,11 +210,12 @@ export function openShop(tab: Tab = 'diamonds'): Promise<void> {
         render('spend');
         return;
       }
+      if (id === 'energy' && wallet.energyFull()) { ui.toast({ title: 'Énergie déjà pleine ♡', sub: 'Aucun diamant dépensé', img: energyUrl(64) }); return; }
       if (!wallet.spendDiamonds(price)) return;
       let title = '';
       let img: string | undefined;
       switch (id) {
-        case 'energy': wallet.giveEnergy(100); title = '+100 énergie'; img = energyUrl(64); break;
+        case 'energy': title = `+${wallet.giveEnergy(100)} énergie`; img = energyUrl(64); break;
         case 'wand3': save.data.boosters.wand += 3; title = '+3 Baguettes magiques'; break;
         case 'wind3': save.data.boosters.wind += 3; title = '+3 Souffles'; break;
         case 'star': wallet.bagPut({ c: 'special', l: SPECIAL.STAR }); title = 'Étoile filante rangée dans ton sac'; img = itemImageUrl({ c: 'special', l: SPECIAL.STAR }, 80); break;
@@ -368,7 +369,7 @@ async function openChestNow(kind: 'free' | 'royal'): Promise<void> {
   }
   const loot = E.rollChest(kind, Math.random);
   // appliquer tout de suite (rien ne se perd si l'écran est fermé)
-  wallet.giveEnergy(loot.energy);
+  loot.energy = wallet.giveEnergy(loot.energy); // l'énergie ne dépasse jamais 100 : on affiche le gain RÉEL
   addHearts(loot.hearts);
   if (loot.diamonds) wallet.giveDiamonds(loot.diamonds);
   save.data.boosters.wand += loot.wands;
