@@ -92,14 +92,24 @@ export function comboLabel(value: number, mult = 1): string {
   return `Combo ${value}${m}`;
 }
 
-/** Libellé du petit texte de combo posé près de la fusion : « Combo ×5 ! » (+ multiplicateur s'il dépasse 1). */
-export function comboPopLabel(value: number, mult = 1): string {
-  const m = mult > 1 ? ` · ×${Number.isInteger(mult) ? mult : mult.toFixed(1)}` : '';
-  return `Combo ×${value} !${m}`;
+/**
+ * Libellé de l'indicateur de combo (zone fixe au-dessus de la grille) : « Combo x3 ! », « Combo x5 ! », « Super combo x10 ! ».
+ * À partir de 8 (palier de la baguette) c'est un « Super combo ». `points` (facultatif) ajoute le total gagné pendant la chaîne : « · +120 ».
+ */
+export function comboPopLabel(value: number, points = 0): string {
+  const p = points > 0 ? ` · +${Math.round(points)}` : '';
+  return `${value >= 8 ? 'Super combo' : 'Combo'} x${value} !${p}`;
+}
+
+/** Niveau d'intensité des effets d'un combo (0 : aucun, 1 : 2–4, 2 : 5–7, 3 : 8–11, 4 : 12 et plus) — plus marqué sans jamais devenir envahissant. */
+export function comboIntensity(value: number): 0 | 1 | 2 | 3 | 4 {
+  return value < 2 ? 0 : value < 5 ? 1 : value < 8 ? 2 : value < 12 ? 3 : 4;
 }
 
 /** Durée totale visible du texte de combo (ms) : 400–600 ms, un peu plus pour un combo exceptionnel. */
 export const comboPopMs = (value: number): number => (value >= 8 ? 600 : value >= 5 ? 520 : 440);
+/** Nombre de particules ajoutées à un POP selon le combo (au plus +50 %, toujours budgétées par le profil d'effets). */
+export const comboParticleBonus = (value: number): number => 1 + Math.min(0.5, Math.max(0, value - 2) * 0.06);
 
 /** Hexadécimal « #RRGGBB » → entier Phaser. */
 export function hexInt(hex: string): number { return parseInt(hex.replace('#', ''), 16); }

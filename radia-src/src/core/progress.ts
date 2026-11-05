@@ -3,6 +3,7 @@
  * répliques contextuelles d'Auguste. Toute récompense passe par ici, avec des
  * gardes pour qu'elle ne puisse jamais être obtenue deux fois par erreur.
  */
+import { isBoardBusy, onBoardBusyChange } from '../game/fx/comboState';
 import { save, events } from './app';
 import { ACHIEVEMENTS, type AchievementDef } from '../data/achievements';
 import { itemKey, itemName, type ItemRef } from '../data/items';
@@ -96,7 +97,16 @@ let sink: BarkSink | null = null;
 export function setBarkSink(fn: BarkSink | null): void { sink = fn; }
 
 /** Fait parler Auguste si le déclencheur n'est pas en temps de recharge. */
+let pendingBark: BarkTrigger | null = null;
+let barkWatch: (() => void) | null = null;
+const BARK_RANK: Partial<Record<BarkTrigger, number>> = { win: 5, stuck: 4, combo5: 3, rare: 3, discover: 2, combo3: 1, invalid: 0 };
 export function bark(trigger: BarkTrigger, force = false): boolean {
+  // PENDANT un combo ou un glissement : Auguste ne parle pas sur le plateau. La réplique la plus importante est dite UNE fois la chaîne terminée.
+  if (!force && isBoardBusy()) {
+    if (pendingBark === null || (BARK_RANK[trigger] ?? 0) > (BARK_RANK[pendingBark] ?? 0)) pendingBark = trigger;
+    barkWatch ??= onBoardBusyChange(() => { if (isBoardBusy()) return; const t = pendingBark; pendingBark = null; barkWatch?.(); barkWatch = null; if (t) bark(t); });
+    return false;
+  }
   const now = Date.now();
   if (!force && now - (lastBark[trigger] ?? 0) < BARK_COOLDOWN[trigger]) return false;
   if (!sink) return false;

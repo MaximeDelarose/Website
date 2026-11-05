@@ -33,6 +33,7 @@ import * as R from './rules';
 import { suggestMerge, botStep } from './bot';
 import { LONG_PRESS_MS, PointerFsm, staleGesture } from './pointerFsm';
 import { POINTERS_RESET_EVENT } from '../pointerHygiene';
+import { comboTick, setDragging, endComboNow, currentRecap } from '../fx/comboState';
 import { ENDLESS_CFG } from '../endless/config';
 import { MAX_LEVEL, RARITY_COLOR, SPECIAL, collMax, type ItemRef, type Rarity } from '../../data/items';
 import {
@@ -42,10 +43,13 @@ import { audio, reducedFx, save } from '../../core/app';
 import { haptic } from '../../core/haptics';
 import { texScale } from '../art/kit';
 import {
-  POP_AT_MS, SLAM_MS, WINDUP_MS, ParticleBudget, comboMilestone, comboPopLabel, comboPopMs, comboPitch, fxProfile, hexInt, mergeTier, popSfx, scaledCount,
+  POP_AT_MS, SLAM_MS, WINDUP_MS, ParticleBudget, comboMilestone, comboPopLabel, comboPitch, comboIntensity, comboParticleBonus, fxProfile, hexInt, mergeTier, popSfx, scaledCount,
   type FxProfile, type MergeTier,
 } from '../fx/feel';
 import type { Sfx } from '../../audio/AudioManager';
+
+/** Hauteur (px) de la bande réservée à l'indicateur de combo, au-dessus de la grille. */
+const COMBO_STRIP = 26;
 
 export interface MergeHost {
   /** Zone libre pour le plateau (pixels CSS) : entre le haut et le bas de l'interface. */
@@ -106,7 +110,12 @@ export class MergeScene extends BaseScene {
   /** Cases compatibles avec l'objet touché (surbrillance) et objets qui pulsent. */
   private matchHi: Phaser.GameObjects.Image[] = [];
   private matchCells: number[] = [];
-  private comboText!: Phaser.GameObjects.Text;
+  /** Indicateur de combo : petite pastille FIXE dans la bande réservée au-dessus de la grille (jamais sur les cases). */
+  private comboPill!: Phaser.GameObjects.Container;
+  private comboBg!: Phaser.GameObjects.Graphics;
+  private comboLbl!: Phaser.GameObjects.Text;
+  private comboHide?: Phaser.Time.TimerEvent;
+  private comboStripY = 0;
   private lastMergeAt = -1;
   /** Case de la dernière fusion (ancre des effets de récompense proches de la fusion). */
   get lastMerge(): number { return this.lastMergeAt >= 0 ? this.lastMergeAt : 14; }
@@ -197,6 +206,7 @@ export class MergeScene extends BaseScene {
     window.addEventListener(POINTERS_RESET_EVENT, onAbort); // un pointeur coincé vient d'être libéré : le geste associé est annulé proprement
     document.addEventListener('visibilitychange', onHidden);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      setDragging(false); endComboNow(); // on quitte le plateau : plus rien ne doit rester « occupé »
       window.clearTimeout(this.pressTimer);
       window.removeEventListener('pointermove', onWinMove); window.removeEventListener('pointerup', onWinUp);
       window.removeEventListener('pointercancel', onAbort); window.removeEventListener('touchcancel', onAbort);
@@ -219,13 +229,25 @@ export class MergeScene extends BaseScene {
   private computeGeometry(): void {
     const a = this.host.area();
     // plus de panier : le plateau prend toute la place (générateurs dedans)
-    const availH = this.H - a.top - (this.H - a.bottom) - 14;
+    let availH = this.H - a.top - (this.H - a.bottom) - 14;
     const availW = Math.min(this.W - 20, 560);
     this.cell = Math.floor(Math.max(36, Math.min(availW / BOARD_W, availH / BOARD_H)));
-    const bw = this.cell * BOARD_W;
-    const bh = this.cell * BOARD_H;
+    let bw = this.cell * BOARD_W;
+    let bh = this.cell * BOARD_H;
     this.ox = Math.round((this.W - bw) / 2);
     this.oy = Math.round(a.top + Math.max(4, (availH - bh) / 2) + 4);
+    // Bande RÉSERVÉE à l'indicateur de combo, juste au-dessus de la grille : il n'apparaît jamais sur les objets. Si la place manque, c'est la grille
+    // qui rétrécit un peu (jamais l'indicateur qui recouvre les cases).
+    const strip = COMBO_STRIP;
+    const room = this.oy - a.top;
+    if (room < strip + 2) {
+      availH -= strip + 2 - room;
+      this.cell = Math.floor(Math.max(36, Math.min(availW / BOARD_W, availH / BOARD_H)));
+      bw = this.cell * BOARD_W; bh = this.cell * BOARD_H;
+      this.ox = Math.round((this.W - bw) / 2);
+      this.oy = Math.round(a.top + strip + 2 + Math.max(0, (availH - bh) / 2));
+    }
+    this.comboStripY = this.oy - strip / 2 - 1;
   }
 
   /**
@@ -295,8 +317,11 @@ export class MergeScene extends BaseScene {
       if (cell.lock) this.makeLockVis(i);
     }
 
-    this.comboText?.destroy();
-    this.comboText = this.text(this.W / 2, this.oy + this.cell * 0.55, '', { fontSize: '22px', fontStyle: '700', color: '#FFFFFF', stroke: '#E8558F', strokeThickness: 6 }).setOrigin(0.5, 0.5).setDepth(120).setAlpha(0);
+    this.comboHide?.remove(false); this.comboHide = undefined;
+    this.comboPill?.destroy();
+    this.comboBg = this.add.graphics();
+    this.comboLbl = this.text(0, 0, '', { fontSize: '15px', fontStyle: '700', color: '#FFFFFF', stroke: '#C2437A', strokeThickness: 3 }).setOrigin(0.5, 0.5);
+    this.comboPill = this.add.container(this.W / 2, this.comboStripY, [this.comboBg, this.comboLbl]).setDepth(120).setAlpha(0);
   }
 
   layout(): void {
@@ -714,6 +739,20 @@ export class MergeScene extends BaseScene {
   // ------------------------------------------------------- API (interface)
 
   cellCenter(i: number): { x: number; y: number } { return { x: this.cx(i), y: this.cy(i) }; }
+
+  /** Tests : position de l'indicateur de combo et du plateau (pixels de la page) — l'indicateur ne doit jamais toucher la grille. */
+  comboInfo(): { alpha: number; text: string; pill: { x: number; y: number; w: number; h: number }; board: { x: number; y: number; w: number; h: number }; strip: number } {
+    const r = this.game.canvas.getBoundingClientRect(); const k = r.width / this.W;
+    const b = this.comboPill.getBounds();
+    return { alpha: this.comboPill.alpha, text: this.comboLbl.text, pill: { x: r.left + b.x * k, y: r.top + b.y * k, w: b.width * k, h: b.height * k },
+      board: { x: r.left + this.ox * k, y: r.top + this.oy * k, w: this.cell * BOARD_W * k, h: this.cell * BOARD_H * k }, strip: COMBO_STRIP };
+  }
+  /** Tests : remplace le contenu du plateau (cases { i, c, l } ; les autres se vident, sans verrou) et le redessine. */
+  debugLayout(items: { i: number; c: string; l: number }[]): void {
+    for (const cell of this.state.cells) { cell.item = null; cell.lock = undefined; }
+    for (const it of items) this.state.cells[it.i].item = { c: it.c, l: it.l } as never;
+    this.buildBoard();
+  }
   get cellSize(): number { return this.cell; }
 
   deliver(slot: number): boolean {
@@ -1150,9 +1189,11 @@ export class MergeScene extends BaseScene {
     if (variant > 0.5 && !reducedFx()) this.tweens.add({ targets: sp, angle: { from: variant > 0.75 ? -8 : 8, to: 0 }, duration: 360, ease: 'Back.easeOut' });
     // 4. éclat + 5. particules
     this.flashAt(x, y, big ? 1.7 : 1.0, big ? 420 : 280);
-    this.burst(x, y, e.result, tier === 'max' ? 26 : tier === 'rare' ? 18 : e.result.l >= 4 ? 11 : 7, variant);
+    this.burst(x, y, e.result, Math.round((tier === 'max' ? 26 : tier === 'rare' ? 18 : e.result.l >= 4 ? 11 : 7) * comboParticleBonus(e.combo)), variant);
     // 8. score flottant
-    this.floatText(x, y - this.cell * 0.3, `+${e.points}`, e.combo >= 2 ? '#FFE7A0' : '#FFFFFF');
+    // les points d'une chaîne sont ADDITIONNÉS dans l'indicateur de combo : un « +N » flottant n'apparaît que pour une fusion isolée
+    comboTick(e.combo, e.points);
+    if (e.combo < 2) this.floatText(x, y - this.cell * 0.3, `+${e.points}`, '#FFFFFF');
     // 9. son + haptique
     const pop = popSfx(tier, e.result.l, e.combo, Math.random(), this.lastPop);
     this.lastPop = pop.name;
@@ -1355,37 +1396,42 @@ export class MergeScene extends BaseScene {
   }
 
   /**
-   * Compteur de combo discret et animé : petit texte en haut du plateau qui « pulse » à chaque
-   * incrément, son dont la hauteur monte, haptique `combo` aux paliers (3, 5, 8). `mult` = multiplicateur
-   * de récompense éventuel (affiché s'il dépasse 1).
+   * Indicateur de combo : UNE petite pastille fixe, dans la bande réservée au-dessus de la grille (« Combo x3 ! », « Super combo x10 ! »).
+   * Elle pulse à chaque fusion de la chaîne, affiche le total de points gagnés pendant le combo (plus de « +N » qui flottent sur les cases) et
+   * s'efface doucement un instant après la dernière fusion. Le son, l'haptique et les particules montent avec le combo sans jamais gêner.
    */
-  comboFx(value: number, mult = 1): void {
-    if (value < 2 || !this.comboText?.active) return;
-    const t = this.comboText;
-    const big = value >= 5;
-    const huge = value >= 8;
-    // petit texte posé PRÈS de la fusion (jamais au milieu du plateau), qui monte et disparaît vite ; un seul à la fois
+  comboFx(value: number, _mult = 1): void {
+    void _mult;
+    if (value < 2 || !this.comboPill?.active) return;
+    const calm = reducedFx();
+    const lvl = comboIntensity(value);
     const at = this.lastMerge;
-    const bw = this.cell * BOARD_W;
-    const x = Math.max(this.ox + this.cell * 1.2, Math.min(this.ox + bw - this.cell * 1.2, this.cx(at)));
-    const y0 = Math.max(this.oy + this.cell * 0.35, this.cy(at) - this.cell * 0.62);
-    const ms = comboPopMs(value);
-    t.setText(comboPopLabel(value, mult));
-    t.setFontSize(huge ? 19 : big ? 17 : 15);
-    t.setPosition(x, y0);
-    this.tweens.killTweensOf(t);
-    t.setAlpha(1).setScale(0.55);
-    this.tweens.add({ targets: t, scale: huge ? 1.2 : 1.1, duration: 130, ease: 'Back.easeOut',
-      onComplete: () => this.tweens.add({ targets: t, scale: 1, duration: 90 }) });
-    this.tweens.add({ targets: t, y: y0 - this.cell * 0.45, duration: ms, ease: 'Quad.easeOut' });
-    this.tweens.add({ targets: t, alpha: 0, delay: Math.round(ms * 0.55), duration: Math.round(ms * 0.45) });
+    const pts = currentRecap().points;
+    // texte + fond arrondi (taille adaptée au texte), centré dans la bande
+    this.comboLbl.setText(comboPopLabel(value, pts));
+    this.comboLbl.setFontSize(lvl >= 3 ? 17 : 15);
+    this.comboLbl.setStroke(lvl >= 3 ? '#B8761C' : '#C2437A', 3);
+    const w = Math.max(96, this.comboLbl.width + 26), h = 22;
+    this.comboBg.clear();
+    this.comboBg.fillStyle(lvl >= 3 ? 0xf3c86b : 0xff75a8, 0.95); this.comboBg.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    this.comboBg.lineStyle(2, 0xffffff, 0.9); this.comboBg.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    this.comboPill.setPosition(this.W / 2, this.comboStripY);
+    this.tweens.killTweensOf(this.comboPill);
+    this.comboHide?.remove(false);
+    this.comboPill.setAlpha(1);
+    if (calm) this.comboPill.setScale(1);
+    else {
+      this.comboPill.setScale(0.82);
+      this.tweens.add({ targets: this.comboPill, scale: 1 + lvl * 0.035, duration: 120, ease: 'Back.easeOut', onComplete: () => this.tweens.add({ targets: this.comboPill, scale: 1, duration: 90 }) });
+    }
+    this.comboHide = this.time.delayedCall(1000, () => this.tweens.add({ targets: this.comboPill, alpha: 0, duration: 280 }));
     audio.play('combo', 1 + Math.min(10, value) * 0.1);
     audio.play('heart', comboPitch(value) + 0.1);
     const m = comboMilestone(value);
-    if (m) haptic('combo');
-    // particules concentrées autour de l'objet fusionné
+    if (m || (value >= 10 && value % 5 === 0)) haptic('combo');
+    // particules : un petit anneau autour de l'objet fusionné dès 3, un peu de confettis aux paliers (plus marqués pour les gros combos)
     if (value >= 3) this.halo(value);
-    if (value === 5 || value === 8 || (value > 8 && value % 5 === 0)) this.confetti(this.cx(at), this.cy(at) - this.cell * 0.3, huge ? 26 : 16);
+    if (value === 5 || value === 8 || (value > 8 && value % 5 === 0)) this.confetti(this.cx(at), this.cy(at) - this.cell * 0.3, lvl >= 3 ? 26 : 16);
   }
 
   private halo(value: number): void {
@@ -1623,6 +1669,7 @@ export class MergeScene extends BaseScene {
 
   override update(time: number): void {
     this.breathe(time / 1000);
+    setDragging(!this.isIdle()); // glissement ou animation de fusion en cours : aucune notice, aucun message ne doit apparaître
     // Chien de garde : si le doigt suivi n'appuie plus depuis un instant mais que le geste est toujours « en cours », on le libère.
     const d = this.drag;
     if (d) {

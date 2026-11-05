@@ -37,6 +37,8 @@ import { countTo } from '../../ui/endless/sheet';
 import { installEndlessDebug } from '../../ui/endless/dev';
 import { shouldRefund } from '../../ui/endless/logic';
 import { haptic } from '../../core/haptics';
+import { comboNote, onComboEnd } from '../fx/comboState';
+import { recordNotice } from '../../ui/notify';
 
 /** Personnages qui passent commande. */
 const REQUESTERS = ['auguste', 'cat', 'florist', 'pawn'] as const;
@@ -248,6 +250,14 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       (heartsEl.lastChild as HTMLElement).textContent = fmt(n);
       heartsEl.classList.add('bump');
       window.setTimeout(() => heartsEl.classList.remove('bump'), 200);
+    });
+
+    // fin d'un combo (chapitres) : UN seul récapitulatif discret (points de la chaîne + gains de paliers) au lieu d'une annonce par fusion
+    const offComboRecap = endlessMode ? () => undefined : onComboEnd((r) => {
+      if (finished || (r.best < 5 && !r.notes.length)) return;
+      const bits = [r.points > 0 ? `+${Math.round(r.points)} pts` : '', ...r.notes].filter(Boolean);
+      recordNotice(`Combo x${r.best} : ${bits.join(' · ')}`);
+      ui.toast({ title: `${r.best >= 8 ? 'Super combo' : 'Combo'} x${r.best} !`, sub: bits.join(' · ') || undefined, icon: r.best >= 8 ? 'wand' : 'sparkle', ms: 2200 });
     });
 
     setBarkSink((text) => {
@@ -462,10 +472,11 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
         } else if (e.t === 'combo') {
           statMax('bestCombo', e.value);
           if (!endlessMode) {
-            if (e.value >= 5) { bark('combo5'); wallet.giveEnergy(5); } else if (e.value >= 3) bark('combo3');
-            if (e.reward === 'wand') { save.data.boosters.wand++; refreshBoosters(); ui.toast({ title: 'Combo ×8 !', sub: '+1 Baguette magique', icon: 'wand' }); }
-            if (e.reward === 'hearts') addHearts(e.value >= 12 ? 15 : 5);
-            if (e.reward === 'star') ui.toast({ title: `Combo ×${e.value} !`, sub: 'Une Étoile filante est apparue ✨', icon: 'sparkle' });
+            // une seule réplique d'Auguste à la fin de la chaîne (jamais à chaque fusion) ; les gains de palier sont résumés, pas annoncés un par un
+            if (e.value >= 5) { bark('combo5'); wallet.giveEnergy(5); comboNote('+5 ⚡'); } else if (e.value >= 3) bark('combo3');
+            if (e.reward === 'wand') { save.data.boosters.wand++; refreshBoosters(); comboNote('+1 Baguette magique'); recordNotice('Combo x8 : +1 Baguette magique'); }
+            if (e.reward === 'hearts') { const n = e.value >= 12 ? 15 : 5; addHearts(n); comboNote(`+${n} ♡`); }
+            if (e.reward === 'star') { comboNote('Étoile filante ✨'); recordNotice(`Combo x${e.value} : une Étoile filante est apparue`); }
           }
         } else if (e.t === 'invalid') {
           invalidStreak++;
@@ -657,6 +668,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       persist();
       eh?.destroy();
       if (r === 'won' && mode === 'story' && !opts.replay) { save.data.run = null; save.save(); }
+      offComboRecap();
       offHearts();
       offEco();
       offBoost();

@@ -3,6 +3,7 @@
  * Chargement : sauvegarde → réglages → Phaser (scène de fond) → polices →
  * écran d'accueil. Service worker pour le hors-ligne (build uniquement).
  */
+import { isBoardBusy } from './game/fx/comboState';
 import { applySavedFace } from './game/world/look';
 import './ui/styles/base.css';
 import './ui/styles/game.css';
@@ -327,5 +328,5 @@ if (new URLSearchParams(location.search).has('planche')) { window.setTimeout(() 
 // Accès debug en développement : window.RADIA
 if (new URLSearchParams(location.search).has('debug')) { void import('./casino'); void import('./wheel'); }
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  (window as unknown as Record<string, unknown>).RADIA = { ...debugApis(), save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), relatives: () => import('./data/family/relatives'), pushMod: () => import('./core/push'), artMod: () => import('./game/art/world/radiaNow'), avatarMod: () => import('./game/art/world/avatar'), lookMod: () => import('./game/world/look'), thoughtsMod: () => import('./ui/screens/thoughts'), schedulerMod: () => import('./events/scheduler'), eventsManager: () => import('./events/manager'), eventsData: () => import('./events/data'), gift: () => spawnGiftNow(), secretCall: () => secretNow(), secretAdvance: (m: number) => secretAdvance(m), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
+  (window as unknown as Record<string, unknown>).RADIA = { ...debugApis(), save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), relatives: () => import('./data/family/relatives'), pushMod: () => import('./core/push'), comboBusy: () => isBoardBusy(), artMod: () => import('./game/art/world/radiaNow'), avatarMod: () => import('./game/art/world/avatar'), lookMod: () => import('./game/world/look'), thoughtsMod: () => import('./ui/screens/thoughts'), schedulerMod: () => import('./events/scheduler'), eventsManager: () => import('./events/manager'), eventsData: () => import('./events/data'), gift: () => spawnGiftNow(), secretCall: () => secretNow(), secretAdvance: (m: number) => secretAdvance(m), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
 }

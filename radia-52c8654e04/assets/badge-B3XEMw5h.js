@@ -1,0 +1,1 @@
+import{s as r}from"./index-D5jbB73U.js";function a(){try{const t=r.data.fun.apps.swipe.convos;return!t||typeof t!="object"?0:Object.values(t).filter(e=>e&&e.unread===!0&&e.status!=="stopped").length}catch{return 0}}export{a as r};

@@ -18,6 +18,7 @@ import { openInvite, resumeFlow, triggerSecretCall } from './flow';
 import { emitPhone, onPhoneChange, funBusy } from './bus';
 import { funTrack, funMaybe, funBadge } from './incidents/runtime';
 import { necklaceLaunch, necklaceTick } from './necklace/trigger';
+import { isBoardBusy } from '../game/fx/comboState';
 import { installNecklaceDebug } from './necklace/dev';
 
 let started = false;
@@ -38,7 +39,7 @@ export function progress(): Progress {
 
 /** Moment sûr pour afficher une notification (aucune interaction ni animation critique en cours). */
 export function safeToNotify(): boolean {
-  if (document.hidden || isEventRunning() || notificationVisible() || funBusy()) return false;
+  if (document.hidden || isEventRunning() || notificationVisible() || funBusy() || isBoardBusy()) return false; // combo / glissement en cours : ni invitation surprise ni message
   if (document.querySelector('.modal-backdrop:not(.leaving), .dialog-layer:not(.leaving), .finale-layer, .chapter-card, .chess-view, .cg-screen, .fam-scene, .fam-body, .kc, .aug-says, .splash, .ev-layer, .ev-inv-back, .ph-back, .call-layer, .rw-root, .inc-layer, .tdr-layer')) return false;
   try {
     const g = getGame();

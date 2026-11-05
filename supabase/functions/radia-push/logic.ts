@@ -2,7 +2,7 @@
  * RADIA ♡ — logique PURE des notifications quotidiennes (fuseau horaire, une par jour, pas de nuit, rotation des messages).
  * Utilisée par la fonction Edge (supabase/functions/radia-push/index.ts) ET testée dans radia-src/tests/push-logic.test.ts.
  */
-import { THOUGHTS, type Cat } from './messages.ts';
+import { THOUGHTS, ORIGINAL_COUNT, type Cat } from './messages.ts';
 
 export interface SubLike { tz: string; send_hour: number; enabled: boolean; last_sent_day: string | null; deck: number[]; last_idx: number }
 
@@ -35,15 +35,35 @@ export function shuffled(n: number, rnd: () => number): number[] {
 }
 
 /**
+ * Le « paquet » est une liste d'indices restants ; une valeur NÉGATIVE (-N) mémorise la taille de la banque quand le paquet a été construit.
+ * Les paquets créés avant l'ajout des nouvelles pensées n'ont pas de marqueur : leur taille est ORIGINAL_COUNT. Les pensées ajoutées depuis sont
+ * glissées à des places au hasard dans le paquet EN COURS (donc découvertes dans les jours qui viennent, sans attendre la fin du cycle, sans doublon).
+ */
+export function withNewThoughts(deck: number[], rnd: () => number): number[] {
+  const marker = deck.find((v) => Number.isInteger(v) && v < 0);
+  const known = marker === undefined ? ORIGINAL_COUNT : -marker;
+  const d = deck.filter((i) => Number.isInteger(i) && i >= 0 && i < THOUGHTS.length);
+  if (d.length && known < THOUGHTS.length) {
+    for (let i = Math.max(0, known); i < THOUGHTS.length; i++) if (!d.includes(i)) d.splice(Math.floor(rnd() * (d.length + 1)), 0, i);
+  }
+  return d;
+}
+
+/**
  * Message suivant : on vide un « paquet » mélangé (aucun message deux fois avant d'avoir tout vu), en évitant deux fois la même catégorie
  * d'affilée et la répétition de la toute dernière pensée quand le paquet est rebattu.
  */
 export function nextThought(deck: number[], lastIdx: number, rnd: () => number): { idx: number; deck: number[] } {
-  let d = deck.filter((i) => Number.isInteger(i) && i >= 0 && i < THOUGHTS.length);
+  let d = withNewThoughts(deck, rnd);
   if (!d.length) { d = shuffled(THOUGHTS.length, rnd); if (d.length > 1 && d[0] === lastIdx) d.push(d.shift() as number); }
   const lastCat: Cat | null = lastIdx >= 0 && lastIdx < THOUGHTS.length ? THOUGHTS[lastIdx].cat : null;
-  let pos = d.findIndex((i) => THOUGHTS[i].cat !== lastCat);
+  // parmi celles d'une AUTRE catégorie que la précédente, on prend d'abord celle dont la catégorie est la plus représentée dans le paquet restant :
+  // cela évite de finir le paquet avec une seule catégorie (donc deux pensées de même nature d'affilée)
+  const left = new Map<Cat, number>(); for (const i of d) left.set(THOUGHTS[i].cat, (left.get(THOUGHTS[i].cat) ?? 0) + 1);
+  let pos = -1, best = -1;
+  d.forEach((i, k) => { if (i !== lastIdx && THOUGHTS[i].cat !== lastCat) { const c = left.get(THOUGHTS[i].cat) ?? 0; if (c > best) { best = c; pos = k; } } });
+  if (pos < 0) pos = d.findIndex((i) => i !== lastIdx);
   if (pos < 0) pos = 0;
   const idx = d[pos];
-  return { idx, deck: d.filter((_, k) => k !== pos) };
+  return { idx, deck: [...d.filter((_, k) => k !== pos), -THOUGHTS.length] };
 }

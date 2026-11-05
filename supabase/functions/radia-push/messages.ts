@@ -4,7 +4,7 @@
  * « galbi » n'apparaît presque jamais. Les catégories servent à alterner naturellement (jamais deux fois la même d'affilée).
  */
 export type Cat = 'doua' | 'jour' | 'courage' | 'tendresse' | 'romantique' | 'drole' | 'douceur';
-export interface Thought { text: string; cat: Cat }
+export interface Thought { text: string; cat: Cat; /** Titre de la notification (par défaut « RADIA ♡ »). */ title?: string }
 const T = (cat: Cat, ...texts: string[]): Thought[] => texts.map((text) => ({ text, cat }));
 
 export const THOUGHTS: readonly Thought[] = [
@@ -22,6 +22,18 @@ export const THOUGHTS: readonly Thought[] = [
   ...T('drole', 'Petit rappel du jour : tu as le droit de t’offrir un goûter. C’est presque médical.', 'Si quelqu’un te dit que tu ne peux pas faire une pause, c’est faux.', 'Annonce météo : grand soleil de gentillesse sur toute la journée.', 'Information importante : aujourd’hui, tu peux être légèrement adorable.', 'Une journée sans petit rire est une journée incomplète. Je compte sur toi.', 'Rappel officiel : les câlins, les gaufres et les siestes sont recommandés.'),
   // motivation douce
   ...T('douceur', 'Une petite chose à la fois, et ça ira très bien.', 'Respire doucement : tu fais de ton mieux, c’est déjà beaucoup.', 'Choisis une toute petite joie pour aujourd’hui, et savoure-la.', 'Ce que tu fais compte, même quand personne ne le voit.', 'Aujourd’hui, avance sans te presser. Qu’Allah t’accompagne.', 'Chaque petit effort est un pas dans la bonne direction.', 'Inchallah, de bonnes choses viendront. En attendant, sois douce avec toi-même.'),
+  // --- pensées personnelles AJOUTÉES À LA FIN (les indices des anciennes pensées ne changent jamais : les « paquets » en cours restent valides).
+  // Textes EXACTS fournis par Auguste (signes « + » et cœurs compris) : ne pas les reformuler. Longs : l'aperçu de la notification est raccourci
+  // par le service worker, le texte intégral est conservé dans « Petites pensées ♡ ».
+  { cat: 'tendresse', title: 'Pense à toi ♡', text: 'Radia ♡ Je veux que tu penses un peu + à toi, que tu te choisisses + souvent et que tu n’oublies jamais à quel point tu es précieuse. Prends soin de toi, tu le mérites. ❤️' },
+  { cat: 'tendresse', title: 'Une mère extraordinaire ♡', text: 'Radia, tu as une magnifique famille et tu es une mère extraordinaire. Je suis sûr que tes enfants s’en rendent compte, ou qu’ils le comprendront encore davantage en grandissant. N’en doute jamais. ❤️' },
+  { cat: 'doua', title: 'Une journée remplie de baraka ♡', text: 'Qu’Allah mette de la baraka dans ta journée, apaise ton cœur et t’apporte de belles choses. Prends soin de toi ♡' },
+  { cat: 'courage', title: 'Je suis là pour toi ♡', text: 'Si un jour tu as un coup de mou ou simplement besoin de parler, appelle-moi. Je serai toujours heureux de t’écouter, sans jamais te juger. Même tes petits défauts font partie de la personne que tu es, et c’est aussi ce qui te rend unique. ❤️' },
+  { cat: 'romantique', title: 'Reconnaissant de t’avoir rencontrée ♡', text: 'Je ne remercierai jamais assez Dieu de t’avoir mise sur mon chemin. Tu as cette façon de faire rayonner les gens qui t’entourent, parfois même sans t’en rendre compte. Et je voulais simplement que tu le saches. ❤️' },
+  { cat: 'courage', title: 'Tu peux compter sur moi ♡', text: 'N’oublie jamais qu’au moindre problème, tu peux compter sur moi. Je ferai toujours de mon mieux pour t’aider, te soutenir et trouver des solutions à tes côtés. Tu n’as pas besoin de tout porter toute seule. ♡' },
 ];
+
+/** Nombre de pensées avant l'ajout des six pensées personnelles (indices 0 … 52 inchangés). */
+export const ORIGINAL_COUNT = THOUGHTS.length - 6;
 
 export const THOUGHT_COUNT = THOUGHTS.length;

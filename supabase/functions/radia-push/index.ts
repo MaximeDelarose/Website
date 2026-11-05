@@ -23,8 +23,13 @@ interface Row { endpoint: string; p256dh: string; auth: string; tz: string; send
 async function deliver(row: Row, vapid: VapidKeys, nowMs: number, dayIso: string) {
   const n = nextThought(row.deck ?? [], row.last_idx ?? -1, rnd);
   const t = THOUGHTS[n.idx];
-  const res = await sendPush({ endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth }, { title: 'RADIA ♡', body: t.text, idx: n.idx, at: nowMs, url: './?pensee=1' }, vapid, SUBJECT);
-  if (res.ok) await db.from('radia_push_subs').update({ deck: n.deck, last_idx: n.idx, last_sent_day: dayIso, sends: row.sends + 1, updated_at: new Date().toISOString() }).eq('endpoint', row.endpoint);
+  // AUCUN DOUBLON : le jour est « réservé » de façon atomique AVANT l'envoi (deux exécutions simultanées du planificateur, un redémarrage ou un rejeu
+  // ne peuvent pas envoyer deux fois le même jour). Si l'envoi échoue (sans abonnement expiré), la réservation est rendue pour un nouvel essai.
+  const claim = await db.from('radia_push_subs').update({ last_sent_day: dayIso, updated_at: new Date().toISOString() }).eq('endpoint', row.endpoint).or(`last_sent_day.is.null,last_sent_day.neq.${dayIso}`).select('endpoint');
+  if (claim.error || !claim.data?.length) return { ok: false, gone: false, status: 0, skipped: true };
+  const res = await sendPush({ endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth }, { title: t.title ?? 'RADIA ♡', body: t.text, idx: n.idx, at: nowMs, url: './?pensee=1' }, vapid, SUBJECT);
+  if (res.ok) await db.from('radia_push_subs').update({ deck: n.deck, last_idx: n.idx, sends: row.sends + 1, updated_at: new Date().toISOString() }).eq('endpoint', row.endpoint);
+  else if (!res.gone) await db.from('radia_push_subs').update({ last_sent_day: row.last_sent_day }).eq('endpoint', row.endpoint);
   else if (res.gone) await db.from('radia_push_subs').delete().eq('endpoint', row.endpoint); // abonnement expiré : on le retire (l'appli se réabonnera)
   return res;
 }
@@ -53,9 +58,9 @@ Deno.serve(async (req) => {
     const due = (rows ?? []).filter((r: Row) => isDue(r, now) && isPushHost(r.endpoint));
     if (body.dry === true) return json({ ok: true, dry: true, subscribers: rows?.length ?? 0, due: due.length });
     const { localParts } = await import('./logic.ts');
-    let sent = 0, failed = 0, removed = 0;
-    for (const r of due) { const res = await deliver(r, cfg.vapid, now, localParts(now, r.tz).day); if (res.ok) sent++; else { failed++; if (res.gone) removed++; } }
-    return json({ ok: true, subscribers: rows?.length ?? 0, due: due.length, sent, failed, removed });
+    let sent = 0, failed = 0, removed = 0, skipped = 0;
+    for (const r of due) { const res = await deliver(r, cfg.vapid, now, localParts(now, r.tz).day) as { ok: boolean; gone?: boolean; skipped?: boolean }; if (res.ok) sent++; else if (res.skipped) skipped++; else { failed++; if (res.gone) removed++; } }
+    return json({ ok: true, subscribers: rows?.length ?? 0, due: due.length, sent, failed, removed, skipped });
   }
 
   if (action === 'test') {
@@ -68,7 +73,7 @@ Deno.serve(async (req) => {
     if (used >= 3) return json({ ok: false, error: 'limit' }, 429);
     await db.from('radia_push_subs').update({ test_day: today, test_n: used + 1 }).eq('endpoint', endpoint);
     const n = nextThought(row.deck ?? [], row.last_idx ?? -1, rnd);
-    const res = await sendPush({ endpoint, p256dh: row.p256dh, auth: row.auth }, { title: 'RADIA ♡', body: THOUGHTS[n.idx].text, idx: n.idx, at: Date.now(), url: './?pensee=1', test: true }, cfg.vapid, SUBJECT);
+    const res = await sendPush({ endpoint, p256dh: row.p256dh, auth: row.auth }, { title: THOUGHTS[n.idx].title ?? 'RADIA ♡', body: THOUGHTS[n.idx].text, idx: n.idx, at: Date.now(), url: './?pensee=1', test: true }, cfg.vapid, SUBJECT);
     if (!res.ok && res.gone) await db.from('radia_push_subs').delete().eq('endpoint', endpoint);
     return json(res.ok ? { ok: true } : { ok: false, error: 'push', status: res.status, gone: res.gone });
   }

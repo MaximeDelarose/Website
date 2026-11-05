@@ -137,7 +137,7 @@ export async function collectThoughts(): Promise<Thought[]> {
     const c = await caches.open(CACHE);
     for (const req of await c.keys()) {
       const res = await c.match(req); if (!res) continue;
-      try { const j = await res.json(); if (typeof j.text === 'string' && typeof j.at === 'number') out.push({ at: j.at, text: j.text.slice(0, 200), idx: typeof j.idx === 'number' ? j.idx : undefined }); } catch { /* entrée illisible */ }
+      try { const j = await res.json(); if (typeof j.text === 'string' && typeof j.at === 'number') out.push({ at: j.at, text: j.text.slice(0, 700), idx: typeof j.idx === 'number' ? j.idx : undefined }); } catch { /* entrée illisible */ }
       await c.delete(req);
     }
   } catch { /* Cache API indisponible */ }
