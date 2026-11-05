@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.23.1";
+  var VERSION = "2.23.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -7135,7 +7135,10 @@
     hurricane: { fill: "rgba(160,200,230,.14)", ring: "rgba(230,255,248,.7)", dot: "leaf" },
     smoke: { fill: "rgba(110,100,92,.2)", ring: "rgba(255,140,60,.5)", dot: "wisp" },
   };
-  function drawAuras(p) {
+  // Capitaine : auras, orbites et liens sont dessinés autour de chaque matelot (leur double), pas autour du joueur
+  function crewDrawList(pl) { if (!pl.crew || !pl.crew.length) return [pl]; var out = []; pl.crew.forEach(function (mt) { if (mt.px && !(mt.thT > 0)) out.push(mt.px); }); return out; }
+  function drawAuras(p0) {
+    crewDrawList(p0).forEach(function (p) {
     techEntries(p).forEach(function (te) {
       var id = te.key, w = te.def; if (!w || w.type !== "aura") return;
       var st = AURA[w.color] || AURA.spore, R = V(w, "R", te.l) * p.area * (w.smoke ? p.smokeX || 1 : 1);
@@ -7152,8 +7155,10 @@
         blit(SPR[st.dot][0], p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr * 0.8);
       }
     });
+    });
   }
-  function drawTethers(p) {
+  function drawTethers(p0) {
+    crewDrawList(p0).forEach(function (p) {
     techEntries(p).forEach(function (te) {
       var id = te.key, w = te.def; if (!w || w.type !== "tether") return;
       var l = te.l, rng = V(w, "range", l), big = !!w.chain;
@@ -7169,8 +7174,10 @@
         }
       });
     });
+    });
   }
-  function drawOrbits(p) {
+  function drawOrbits(p0) {
+    crewDrawList(p0).forEach(function (p) {
     techEntries(p).forEach(function (te) {
       var id = te.key, w = te.def; if (!w || w.type !== "orbit") return;
       var l = te.l, n = V(w, "n", l) + p.amount, R = V(w, "R", l) * p.area;
@@ -7179,6 +7186,7 @@
         var oa = (p.st[id] || 0) + j / n * TAU;
         blit(SPR[w.sprite || "mushroom"][0], c.x + Math.cos(oa) * R, c.y + Math.sin(oa) * R * 0.8);
       }
+    });
     });
   }
 
