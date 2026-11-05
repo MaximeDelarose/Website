@@ -2926,7 +2926,9 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .v2-node small { font-size: .76rem; color: var(--ink-soft); }
 .v2-node.is-on { background: var(--sun, #f6d36b); box-shadow: 0 0 0 2px var(--line), 0 3px 0 2px var(--line); }
 @media (max-width: 480px) { .v2-tal-row { grid-template-columns: 34px 1fr 1fr; } .v2-node small { font-size: .7rem; } }
-.camp-bar { position: absolute; left: 6px; right: 6px; bottom: 6px; z-index: 5; display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; pointer-events: auto; }
+.camp-bar { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; bottom: 6px; max-width: calc(100% - 12px); z-index: 5; display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 5px; pointer-events: auto; padding: 5px; background: rgba(43,23,9,.55); border-radius: 6px; scrollbar-width: none; }
+.camp-bar::-webkit-scrollbar { display: none; }
+.camp-bar button { flex: 0 0 auto; white-space: nowrap; }
 .camp-bar[hidden] { display: none; }
 .camp-bar button { font: inherit; font-weight: 800; font-size: .78rem; padding: 5px 8px; color: var(--ink); background: var(--panel); border: 0; box-shadow: 0 0 0 2px var(--line), 0 3px 0 2px var(--line); cursor: pointer; }
 .camp-bar .camp-go { background: var(--accent, #e8873a); color: #fff; font-size: .9rem; }
@@ -2966,3 +2968,9 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .vol-ctl { display: inline-flex; align-items: center; gap: 6px; }
 .vol-ctl b { min-width: 3.2em; text-align: center; }
 .ach.is-soon { opacity: .55; }
+
+/* Survivor 2.8 : barre du camp */
+.camp-bar button { box-shadow: 0 0 0 2px #2b1709, 0 2px 0 2px #2b1709; background: #e8cfa0; color: #2b1709; border-radius: 2px; }
+.camp-bar button:hover { background: #f6d36b; }
+.camp-bar .camp-go { background: #e8873a; color: #fff; }
+.camp-bar .camp-coop { background: #7fd1c7; }
