@@ -9,6 +9,11 @@ import { PICK_PRESETS, pickPreset } from '../src/events/games/family/picks';
 import { CLOTH_SLOTS, FURNITURE_IDS } from '../src/data/world/ids';
 import { mulberry32 } from '../src/game/world/careerGames/rng';
 
+// aucun prénom protégé en clair : vérification par empreintes (aucun prénom n'est écrit dans le dépôt)
+const fnv = (w: string): number => { let x = 2166136261; for (let i = 0; i < w.length; i++) { x ^= w.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; } return x >>> 0; };
+const PROTECTED = new Set<number>([3946716181, 2134510645, 4286642214, 2941064473]);
+const noProtectedName = (text: string): void => { for (const w of new Set(text.toLowerCase().match(/[a-zà-ÿ]+/g) ?? [])) expect(PROTECTED.has(fnv(w)), 'un prénom protégé apparaît dans le texte').toBe(false); };
+
 const PR: Progress = { chapter: 2, chessUnlocked: true, careerCurrent: null, careersTried: [] };
 const MIN = 60_000;
 const byId = (id: string): EventDef => eventById(id)!;
@@ -32,7 +37,7 @@ describe('événements de famille : A (chez maman), B (aéroport), B2 (retrouvai
   });
   it('les proches parlent avec leur étiquette neutre ; aucun prénom d\'enfant ni de proche réel', () => {
     const txt = JSON.stringify(FAMILY_RELATIVES);
-    expect(txt).not.toMatch(/c[ée]lia|aliya|tania/i);
+    noProtectedName(txt);
     const speakers = new Set<string>(); for (const e of FAMILY_RELATIVES) for (const s of e.steps) if (s.t === 'scene') for (const l of s.lines) speakers.add(l.who);
     expect(speakers.has('maman')).toBe(true);
   });

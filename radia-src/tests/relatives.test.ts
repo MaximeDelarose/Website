@@ -1,13 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { REL_IDS, RELATIVES, SLOTS, TONES, availability, askCare, confirmLater, BANNED_REPLY, PLAN_B, CARE_OUTCOME_TEXT, isRelId, type RelId, type SlotId } from '../src/data/family/relatives';
 
+// aucun prénom protégé en clair : vérification par empreintes (aucun prénom n'est écrit dans le dépôt)
+const fnv = (w: string): number => { let x = 2166136261; for (let i = 0; i < w.length; i++) { x ^= w.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; } return x >>> 0; };
+const PROTECTED = new Set<number>([3946716181, 2134510645, 4286642214, 2941064473]);
+const noProtectedName = (text: string): void => { for (const w of new Set(text.toLowerCase().match(/[a-zà-ÿ]+/g) ?? [])) expect(PROTECTED.has(fnv(w)), 'un prénom protégé apparaît dans le texte').toBe(false); };
+
 const rng = (): (() => number) => { let s = 7; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; };
 
 describe('Famille & proches : données', () => {
   it('quatre proches fictifs, libellés neutres (aucun prénom d\'enfant ni de proche réel)', () => {
     expect(REL_IDS).toEqual(['maman', 'tante', 'soeur', 'amie']);
-    const all = JSON.stringify(RELATIVES);
-    expect(all).not.toMatch(/c[ée]lia|aliya|tania/i);
+    noProtectedName(JSON.stringify(RELATIVES));
     for (const id of REL_IDS) { expect(RELATIVES[id].label.length).toBeGreaterThan(2); expect(RELATIVES[id].hello.length).toBeGreaterThanOrEqual(3); expect(isRelId(id)).toBe(true); }
     expect(isRelId('kid1')).toBe(false);
   });
