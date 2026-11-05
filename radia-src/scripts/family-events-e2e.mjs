@@ -52,9 +52,17 @@ async function play(page, id, onActivity, shots = {}) {
     const cont = page.locator('button', { hasText: /^Continuer|Terminer|Suite/ }); if (await cont.count()) { await cont.first().click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(500); continue; }
     await page.waitForTimeout(500);
   }
+  // fin d'événement comme la joueuse : fenêtre de récompense (Passer / Tout ouvrir / toucher l'objet), puis écran de conclusion
+  for (let k = 0; k < 24; k++) {
+    if (await page.locator('.rw-root .rw-skip').count()) { await page.locator('.rw-root .rw-skip').first().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(500); continue; }
+    if (await page.locator('.rw-root .rw-all').count()) { await page.locator('.rw-root .rw-all').first().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(500); continue; }
+    if (await page.locator('.rw-root .rw-art').count()) { await page.locator('.rw-root .rw-art').first().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(500); continue; }
+    if (await page.locator('.rw-root button').count()) { await page.locator('.rw-root button').last().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(500); continue; }
+    if (await page.locator('.ev-concl .btn').count()) { if (shots.concl && !shots._c) { shots._c = 1; await page.screenshot({ path: shots.concl }); } await page.locator('.ev-concl .btn').first().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(500); continue; }
+    if (!(await page.locator('.ev-layer').count())) break;
+    await page.waitForTimeout(400);
+  }
   const onScreen = await page.locator('.ev-concl').count();
-  if (shots.concl) await page.screenshot({ path: shots.concl });
-  if (onScreen) { await page.locator('.ev-concl .btn').first().click().catch(() => {}); }
   await page.waitForTimeout(1200);
   const count1 = await page.evaluate((i) => window.RADIA.save.data.events.done[i]?.count ?? 0, id);
   return { ...seen, concluded: count1 > count0 };
