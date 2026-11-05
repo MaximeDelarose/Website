@@ -76,7 +76,10 @@ export function openCareer(): Promise<void> {
           }
         }
         salaryBox.classList.add('claimed');
-        ui.toast({ title: `Salaire : +${fmt(got)} pièces`, sub: 'Tout ce que tu construis, tu le construis toi-même ♡', icon: 'star', ms: 3000 });
+        // une seule notice discrète (celle d'Auguste) : le montant s'affiche en « +N » flottant, pas dans une seconde bulle
+        const plus = h('span.car-plus', `+${fmt(got)} 🪙`);
+        plus.style.cssText = `left:${cx}px;top:${cy - 28}px`;
+        ui.root.append(plus); window.setTimeout(() => plus.remove(), 1300);
         augusteSays('Bsahték, tu l\'as mérité !', 3600);
         claiming = false;
         renderTop(); // le bandeau et le badge disparaissent tout de suite
