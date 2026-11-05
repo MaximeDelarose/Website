@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.35.2";
+  var VERSION = "2.36.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -8974,7 +8974,7 @@
       return '<div class="screen-head">' + back() + "<h2>Options</h2></div>" +
         '<div class="opt-list">' + tog("sound", "🔊 Son") + volRow() + tog("shake", "📳 Tremblement de l'écran") + tog("hitstop", "⏸️ Arrêts sur image et ralenti") + tog("camlead", "🎥 Caméra qui regarde devant") +
         tog("numbers", "🔢 Chiffres de dégâts") + tog("lowfx", "✨ Particules réduites (téléphone lent)") + "</div>" +
-        '<p class="btn-row"><button type="button" class="btn btn-alt" data-action="go" data-arg="changelog">📜 Nouveautés (historique des versions)</button></p><p class="game-small"><button class="link-btn danger" type="button" data-action="wipe">Effacer toute ma progression</button></p>';
+        installHtml() + '<p class="btn-row"><button type="button" class="btn btn-alt" data-action="go" data-arg="changelog">📜 Nouveautés (historique des versions)</button></p><p class="game-small"><button class="link-btn danger" type="button" data-action="wipe">Effacer toute ma progression</button></p>';
     },
     help: function () {
       return '<div class="screen-head">' + back() + "<h2>Comment jouer</h2></div><ul class=\"help-list\">" +
@@ -8990,6 +8990,13 @@
     },
   };
   var CHLOG = null;
+  function installHtml() {
+    var sa = (window.matchMedia && matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches) || navigator.standalone;
+    if (sa) return '<p class="game-small">📲 Tu joues depuis l\'appli installée.</p>';
+    if (window.__pwaPrompt) return '<p class="btn-row"><button type="button" class="btn" data-action="pwainstall">📲 Installer l\'appli (icône sur l\'écran d\'accueil, plein écran)</button></p>';
+    var ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    return '<p class="game-small">📲 Pour avoir une icône qui ouvre le jeu en plein écran : ' + (ios ? "dans Safari, touche Partager puis « Sur l'écran d'accueil »." : "dans le menu du navigateur (⋮), choisis « Installer l'application » ou « Ajouter à l'écran d'accueil ».") + " Ta connexion, tes sauvegardes et le multi marchent pareil.</p>";
+  }
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest(".beta-tag") && Net.on !== true) { if (state === "play") return; go("changelog"); } });
   function go(name) { if (name === "menu" && D.CAMP) { openCamp(); return; } closeCamp(); state = "menu"; showCard(SCREENS[name](), name); }
   function readCoopName() {
@@ -9063,6 +9070,7 @@
       var i = br.nodes.findIndex(function (nd) { return nd.id === id; }); S.ctree = S.ctree || {}; var t = (S.ctree[cid] = S.ctree[cid] || {});
       if (i < 0 || t[id] || !ctCan(t, br, i)) return; t[id] = 1; save(); SND.click(); go("terrier");
     },
+    pwainstall: function () { var e = window.__pwaPrompt; if (!e) return; e.prompt(); e.userChoice.then(function () { window.__pwaPrompt = null; go("options"); }); },
     ctreset: function () { S.ctree = S.ctree || {}; S.ctree[S.char] = {}; save(); SND.click(); go("terrier"); },
     typick: function (a) { var t = a.split(":"); eqS(); S.tal[S.char] = S.tal[S.char] || {}; S.tal[S.char].y = S.tal[S.char].y || {}; S.tal[S.char].y[t[0]] = t[1]; save(); SND.click(); go("terrier"); },
     txpick: function (a) {
