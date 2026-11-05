@@ -58,15 +58,15 @@ async function run(H) {
   await sleep(1200);
   await page.locator('.clp-layer .clp-x[aria-label="Fermer"]').first().click(); await sleep(700);
   check('fermer TikTak → ÉCRAN D\'ACCUEIL du téléphone', (await page.locator('.clp-layer').count()) === 0 && (await home()));
-  // 12-14. Messages → Auguste
+  // 12-14. Messages → Auguste (application façon iMessage, par-dessus le téléphone)
   await tap('.phh-app[data-app="messages"]');
-  check('Messages : liste des conversations (pas de Tindeur/Snapchien mélangés)', (await page.locator('.ph-row').count()) >= 1 && (await page.locator('.ph-app').count()) === 0);
-  await page.locator('.ph-row').first().click(); await sleep(500);
-  check('conversation ouverte (fil de messages)', (await page.locator('.ph-thread').count()) === 1);
-  await page.locator('.ph-top button[aria-label="Retour"]').click(); await sleep(400);
-  check('retour de la conversation → liste (pas la fermeture de l\'application)', (await page.locator('.ph-row').count()) >= 1 && !(await home()));
-  await page.locator('.ph-top button[aria-label="Écran d’accueil du téléphone"]').click(); await sleep(500);
-  check('« accueil » depuis Messages → écran d\'accueil', await home());
+  check('Messages : liste des conversations (pas de Tindeur/Snapchien mélangés)', (await page.locator('.msg-row-c').count()) >= 1 && (await page.locator('.msg-row-c[data-cid="tindeur"], .msg-row-c[data-cid="snap"]').count()) === 0);
+  await page.locator('.msg-row-c[data-cid="auguste"]').click(); await sleep(600);
+  check('conversation ouverte (fil de messages + saisie)', (await page.locator('.msg-thread').count()) === 1 && (await page.locator('.msg-in').count()) === 1);
+  await page.locator('button[aria-label="Retour à la liste des conversations"]').click(); await sleep(400);
+  check('retour de la conversation → liste (pas la fermeture de l\'application)', (await page.locator('.msg-row-c').count()) >= 1 && (await page.locator('.msg-layer').count()) === 1);
+  await page.locator('button[aria-label="Écran d’accueil du téléphone"]').click(); await sleep(600);
+  check('fermer Messages → écran d\'accueil du téléphone', (await page.locator('.msg-layer').count()) === 0 && await home());
   // fond d'écran : changer et conserver
   await tap('.phh-app[data-app="settings"]');
   const wpBtns = page.locator('.ph-wp button'); const nWp = await wpBtns.count();

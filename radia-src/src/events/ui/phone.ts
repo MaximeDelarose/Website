@@ -11,16 +11,16 @@ import { EVENTS, eventById } from '../data';
 import { ev } from '../api';
 import { pendingInvites } from '../manager';
 import { abandonCurrent } from '../runner';
-import { openInvite, replay, resumeFlow, replayVoice, replayBraceletScene } from '../flow';
+import { openInvite, replay, resumeFlow, replayBraceletScene } from '../flow';
 import { SECRET_ID } from '../data';
 import { emitPhone } from '../bus';
-import { senderFace, senderName } from './people';
-import type { EventDef, Sender } from '../types';
+import type { EventDef } from '../types';
 import '../tindeur/tindeur.css';
 import { phoneApps } from './phoneApps';
 import { buildHome, type HomeApp } from './phoneHome';
 import { WALLPAPERS, wallpaperUrl, isWallpaper, DEFAULT_WALLPAPER } from './phoneWallpapers';
 import { onPhoneChange } from '../bus';
+import { messagesBadge } from '../../apps/messages/runtime';
 import '../../apps';
 import { tindeurLogo } from '../tindeur/icon';
 import { hasPending } from '../tindeur/logic';
@@ -36,14 +36,14 @@ export function openPhone(tab?: Tab): void {
   open = true;
   dismissNotification(); // la bannière d'invitation (au-dessus du téléphone) recouvrirait sa croix de fermeture : l'invitation reste listée ici
   let cur: Tab = tab ?? 'home'; // le téléphone s'ouvre sur son écran d'accueil (fond d'écran) ; une pastille mène directement à l'onglet voulu
-  let thread: Sender | null = null;
   const content = h('div.ph-content');
   const tabs = h('div.ph-tabs');
   const title = h('b', 'Mon téléphone');
   const closeBtn = h('button.icon-btn.ph-x', { 'aria-label': 'Fermer', on: { click: tap(() => closePhone(), { sound: false }) } }, icon('close', 20));
   const homeBtn = h('button.icon-btn.ph-x', { 'aria-label': 'Écran d’accueil du téléphone', on: { click: tap(() => go('home'), { sound: false }) } }, icon('back', 20));
-  const backBtn = h('button.icon-btn.ph-x', { 'aria-label': 'Retour', on: { click: tap(() => { thread = null; render(); }, { sound: false }) } }, icon('back', 20));
-  const go = (t: Tab) => { cur = t; thread = null; render(); };
+  const go = (t: Tab) => { if (t === 'messages') { openMessagesApp(); return; } cur = t; render(); };
+  /** Messages : application plein écran PAR-DESSUS le téléphone (fermer ‹ → retour ici). */
+  function openMessagesApp() { void import('../../apps/messages/view').then((m) => m.openMessagesView({ close: () => { if (open && cur === 'home') render(); }, leavePhone: () => closePhone() })); }
   const gear = () => h('button.icon-btn.ph-gear', { 'aria-label': 'Réglages du téléphone', on: { click: tap(() => go('settings'), { sound: false }) } }, icon('settings', 20));
   const topRight = () => h('span.ph-right', gear(), h('span.ph-time', new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })));
   const top = h('div.ph-top', closeBtn, title, topRight());
@@ -65,11 +65,10 @@ export function openPhone(tab?: Tab): void {
   const TABS: [Tab, string, string][] = [['messages', 'Messages', 'chat'], ['invites', 'Invitations', 'mail'], ['souvenirs', 'Souvenirs', 'camera'], ['history', 'Historique', 'album']];
   for (const [k, label, ic] of TABS) {
     const b = h('button.ph-tab', { 'data-tab': k }, icon(ic, 22), h('span', label), h('i.ph-tabdot'));
-    b.addEventListener('click', tap(() => { cur = k; thread = null; render(); }, { sound: false }));
+    b.addEventListener('click', tap(() => go(k), { sound: false }));
     tabs.append(b);
   }
 
-  const bubble = (txt: string, mine = false) => h(`div.ph-bub${mine ? '.me' : ''}`, txt);
   const evTitle = (id: string) => eventById(id)?.title ?? 'Événement';
 
   function inviteCard(runId: string, def: EventDef, state: string): HTMLElement {
@@ -85,7 +84,7 @@ export function openPhone(tab?: Tab): void {
   }
 
   // ---------------------------------------------------------------- écran d'accueil
-  const unreadMessages = (): number => { const st = ev(); return st.msgs.filter((m) => !m.read).length; };
+  const unreadMessages = (): number => messagesBadge();
   const newInvites = (): number => { const st = ev(); return pendingInvites(st).filter((i) => i.state === 'new' && !!eventById(i.eventId)).length + (st.current && eventById(st.current.eventId) ? 1 : 0) + (activeIncident() ? 1 : 0); };
   const launchOver = (from: HTMLElement, fn: () => void) => {
     // l'application s'ouvre PAR-DESSUS le téléphone et grandit depuis son icône ; la fermer ramène à cet écran d'accueil
@@ -99,7 +98,7 @@ export function openPhone(tab?: Tab): void {
     const registered = phoneApps();
     const reg = (id: string): HomeApp | null => { const a = registered.find((x) => x.id === id); return a ? { id: a.id, name: a.name, icon: a.icon, badge: (a.badge?.() as number | null) ?? null, open: (from) => launchOver(from, () => void a.open()) } : null; };
     const tin: HomeApp | null = t.installed ? { id: 'tindeur', name: 'Tindeur', icon: (n) => tindeurLogo(n), badge: (hasPending(t) || rawUnread() ? Math.max(1, rawUnread() + (t.shown && t.choice === 'none' ? 1 : 0)) : null), open: (from) => launchOver(from, () => { void import('../tindeur/ui').then((m) => m.openTindeur()); }) } : null;
-    const msg: HomeApp = { id: 'messages', name: 'Messages', glyph: 'chat', tone: 'linear-gradient(180deg,#7bd88f,#34b25c)', badge: unreadMessages() || null, open: () => go('messages') };
+    const msg: HomeApp = { id: 'messages', name: 'Messages', glyph: 'chat', tone: 'linear-gradient(180deg,#7bd88f,#34b25c)', badge: unreadMessages() || null, open: (from) => launchOver(from, openMessagesApp) };
     const dock = [msg, tin, reg('snap'), reg('clips')].filter((a): a is HomeApp => !!a);
     const grid: HomeApp[] = [
       { id: 'souvenirs', name: 'Souvenirs', glyph: 'camera', tone: 'linear-gradient(180deg,#ffc27a,#ff8f5a)', badge: null, open: () => go('souvenirs') },
@@ -144,58 +143,6 @@ export function openPhone(tab?: Tab): void {
       wp.append(b);
     }
     content.append(row, h('h4.ph-h', 'Fond d’écran'), wp, h('p.ph-empty', 'Ces réglages ne concernent que le téléphone du jeu : rien n’est lié à ton vrai téléphone ♡'));
-  }
-
-  function renderMessages() {
-    const st = ev();
-    if (thread) {
-      const s = thread;
-      title.textContent = senderName(s);
-      top.replaceChildren(backBtn, title, h('span.ph-time', ''));
-      const msgs = st.msgs.filter((m) => m.from === s);
-      msgs.forEach((m) => { m.read = true; });
-      save.save();
-      const invs = st.inbox.filter((i) => eventById(i.eventId)?.sender === s).slice(-8);
-      const list = h('div.ph-thread');
-      if (s === 'auguste' && st.secret.triggered) {
-        const done = (st.done[SECRET_ID]?.count ?? 0) > 0;
-        const card = h('button.ph-voice', icon('play', 20), h('div', h('b', 'Message vocal de A'), h('small', done ? 'Réécouter ♡' : 'Écouter · une surprise t’attend ♡')));
-        card.addEventListener('click', tap(() => { closePhone(); void replayVoice(); }, { sound: false }));
-        list.append(card);
-      }
-      for (const i of invs) { const d = eventById(i.eventId); if (d) list.append(bubble(d.teaser), inviteCard(i.runId, d, i.state)); }
-      for (const m of msgs.slice(-12)) {
-        if (m.from === 'kid1' && /dessin/i.test(m.text)) {
-          // le dessin de la petite : on peut l'ouvrir et l'admirer
-          const mini = h('canvas.ph-draw-mini') as HTMLCanvasElement;
-          void import('./drawing').then((d) => { const c = d.sailboatCanvas(120); mini.width = c.width; mini.height = c.height; mini.getContext('2d')!.drawImage(c, 0, 0); });
-          const card = h('button.ph-draw', mini, h('div', h('b', m.text), h('small', 'Touche pour voir le dessin ♡')));
-          card.addEventListener('click', tap(() => { void import('./drawing').then((d) => d.openDrawing()); }, { sound: false }));
-          list.append(card);
-        } else list.append(bubble(m.text));
-      }
-      if (!list.children.length) list.append(h('p.ph-empty', 'Aucun message pour l’instant.'));
-      content.append(list);
-      emitPhone();
-      return;
-    }
-    title.textContent = 'Messages';
-    top.replaceChildren(homeBtn, title, topRight());
-    const senders: Sender[] = ['auguste', 'kid1', 'kid2', 'kid3', 'agency'];
-    const rows = senders.map((s) => {
-      const msgs = st.msgs.filter((m) => m.from === s);
-      const invs = st.inbox.filter((i) => eventById(i.eventId)?.sender === s);
-      const unread = msgs.filter((m) => !m.read).length + invs.filter((i) => i.state === 'new').length;
-      const lastInv = invs.length ? eventById(invs[invs.length - 1].eventId)?.teaser : undefined;
-      const lastMsg = msgs.length ? msgs[msgs.length - 1].text : undefined;
-      const last = lastMsg ?? lastInv ?? (s === 'auguste' ? 'Un petit mot, quand tu veux ♡' : '');
-      return { s, unread, last, has: msgs.length + invs.length > 0 || s === 'auguste' };
-    }).filter((r) => r.has);
-    for (const r of rows) {
-      const row = h('button.ph-row', h('img', { src: senderFace(r.s), alt: '' }), h('div', h('b', senderName(r.s)), h('small', r.last)), r.unread ? h('i.ph-dot', String(r.unread)) : null);
-      row.addEventListener('click', tap(() => { thread = r.s; render(); }, { sound: false }));
-      content.append(row);
-    }
   }
 
   function renderInvites() {
@@ -288,10 +235,10 @@ export function openPhone(tab?: Tab): void {
       tabs.querySelector('[data-tab="invites"] .ph-tabdot')?.classList.toggle('on', inv && cur !== 'invites');
       tabs.querySelector('[data-tab="messages"] .ph-tabdot')?.classList.toggle('on', msg && cur !== 'messages');
     }
-    if (cur === 'messages') renderMessages();
-    else if (cur === 'settings') renderSettings();
+    if (cur === 'settings') renderSettings();
     else { top.replaceChildren(homeBtn, title, topRight()); if (cur === 'invites') renderInvites(); else if (cur === 'souvenirs') renderSouvenirs(); else renderHistory(); }
     content.scrollTop = 0;
   }
   render();
+  if (tab === 'messages') openMessagesApp(); // arrivée directe (pastille « message ») : on ouvre l'application par-dessus l'accueil
 }

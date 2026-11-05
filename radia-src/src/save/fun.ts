@@ -127,6 +127,8 @@ export interface AppsState {
   snap: Record<string, unknown>;
   /** Carrière : récompenses et activités (compteurs libres). */
   career: Record<string, number>;
+  /** Messages (conversations du téléphone) : sanitisé par src/apps/messages/engine.ts. */
+  messages: Record<string, unknown>;
 }
 
 /** Clients récurrents : commandes livrées (fidélité), dernière livraison, dernière réplique de remerciement, niveau de fidélité déjà fêté. */
@@ -164,7 +166,7 @@ export const defaultFun = (): FunState => ({
   wheel: { lastKey: '', spins: 0, last: '' },
   places: {},
   free: { unlocked: false, at: 0, announced: false },
-  apps: { swipe: {}, clips: {}, snap: {}, career: {} },
+  apps: { swipe: {}, clips: {}, snap: {}, career: {}, messages: {} },
   customers: {},
   phone: { wallpaper: 'rose' },
   necklace: defaultNecklace(),
@@ -250,7 +252,7 @@ export function sanitizeFun(raw: unknown): FunState {
   d.necklace = sanitizeNecklace(raw.necklace);
   if (isObj(raw.apps)) {
     const o = (v: unknown): Record<string, unknown> => { try { return isObj(v) && JSON.stringify(v).length < 400_000 ? (JSON.parse(JSON.stringify(v)) as Record<string, unknown>) : {}; } catch { return {}; } };
-    d.apps = { swipe: o(raw.apps.swipe), clips: o(raw.apps.clips), snap: o(raw.apps.snap), career: numRec(raw.apps.career) };
+    d.apps = { swipe: o(raw.apps.swipe), clips: o(raw.apps.clips), snap: o(raw.apps.snap), career: numRec(raw.apps.career), messages: o(raw.apps.messages) };
   }
   if (isObj(raw.phone) && typeof raw.phone.wallpaper === 'string') d.phone = { wallpaper: raw.phone.wallpaper.slice(0, 24) };
   d.notifs = strArr(raw.notifs, 300);

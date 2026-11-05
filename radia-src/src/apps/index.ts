@@ -15,6 +15,9 @@ import { advance, produce, unreadTotal, type Incoming } from './snap/chat/engine
 import { contactById } from './snap/chat/data';
 import { flags } from './snap/ui-state';
 import { emitPhone } from '../events/bus';
+import { startMessagesRuntime, messagesState, sendMessage, view as msgView } from './messages/runtime';
+import { produce as msgProduce } from './messages/engine';
+import { styleOf as msgStyle } from './messages/runtime';
 import { ui } from '../ui/ui';
 import { Rng } from '../utils/rng';
 import { emitMoment, type MomentKind } from './moments';
@@ -31,6 +34,9 @@ registerPhoneApp({
   badge: () => snapBadge(snapState()) || null,
 });
 installMomentPrompt();
+
+// ---- Messages : arrivées spontanées (temps de jeu actif), réponses simulées, pastille
+startMessagesRuntime();
 
 // ---- Snapchien : les garçons écrivent pendant le jeu (temps ACTIF, jamais pendant que l'application est en arrière-plan) ----
 let lastChatTick = Date.now();
@@ -53,6 +59,14 @@ if (typeof window !== 'undefined') {
     if (inc) { persist(); announceChat(inc); }
   }, 5000);
 }
+
+dbg('messages', {
+  state: () => messagesState(),
+  /** Fait arriver un message spontané tout de suite (tests). */
+  incoming: () => { const inc = msgProduce(messagesState(), Date.now(), chatRng, msgStyle); if (inc) { persist(); emitPhone(); } return inc; },
+  send: (id: string, text: string) => sendMessage(id as never, text),
+  open: () => msgView.open,
+});
 
 dbg('apps', {
   /** Émet un moment comme le ferait une activité. */
