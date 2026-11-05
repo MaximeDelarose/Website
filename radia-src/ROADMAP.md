@@ -5,6 +5,15 @@ jamais de test sur un vrai iPhone dans cet environnement). Mettre ce fichier à 
 
 Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commencé · ⚠️ à vérifier sur iPhone réel
 
+## ORDRE DE TRAVAIL AUTONOME (consigne « nuit », à suivre dans cet ordre)
+1. ⬜ **Plateau de fusion : cases inertes intermittentes** (priorité absolue) — enquête réelle (tutoriel chap. 1, overlays, états), correctif durable, diagnostic tactile dans Paramètres, récupération sûre, tests répétés.
+2. ⬜ **Fiches de ressources (appui long)** : pièces, diamants, énergie, cœurs, tickets… composant unique, méthodes d'obtention réelles seulement.
+3. ⬜ **Téléphone virtuel : écran d'accueil + navigation à deux niveaux** (fermer une app → fond d'écran ; quitter le téléphone → retour exact au jeu), fonds d'écran, dock, badges, animations, sauvegarde du fond.
+4. ⬜ **Carrière visible dans MON MONDE + salaire** (carte remontée, badge « Salaire prêt ! », récupération immédiate, montant réel).
+5. ⬜ **Application Messages façon iMessage** (liste, conversations, bulles, « … », Distribué/Lu simulés, réactions, Auguste, famille, médias, notifications) — conversations existantes conservées, séparées de Tindeur/Snapchien.
+6. ⬜ Puis la série existante : dressing +30, restaurants, événements familiaux, annuaire « Famille & proches », organisation simulée des enfants, événements secondaires, PIMBÊCHE (atelier, boutique, réputation), Tindeur↔Snapchien, TikTak→Auguste, Casino/économie, notifications push quotidiennes.
+Rappel confidentialité : aucun prénom d'enfant ni la clé des photos dans le dépôt (libellés neutres).
+
 ## PRIORITÉ 1 — Stabilité
 
 | Demande | État | Détail / vérification |
@@ -20,7 +29,7 @@ Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commenc
 | Journaux de diagnostic | 🟡 | `radia-errors` (8 dernières erreurs, localStorage) existe ; pas encore d'écran pour les lire. |
 | Ancienne version déjà installée sur l'iPhone | ⚠️ | Elle ne contient pas le nouveau système : **fermer complètement l'application (la faire glisser hors du sélecteur) puis la rouvrir une fois** ; ensuite les mises à jour sont automatiques. |
 
-### Diagnostic « application installée ≠ Safari » (étape 3 — CAUSE CONFIRMÉE par les diagnostics de l'iPhone : même build/service worker/personnages, mais mémoire séparée → partie différente + clé des photos absente dans l'app ; correctif : rappel « Reprendre les photos » ; ⚠️ validation finale par la joueuse en attente)
+### Diagnostic « application installée ≠ Safari » (étape 3 — ✅ VALIDÉE sur iPhone réel par la joueuse : bons personnages et dernières modifications en mode application installée. Cause : mémoire séparée Safari/app → clé des photos absente ; correctif : rappel « Reprendre les photos » + mise à jour automatique)
 
 **Constat** (code + captures de l'app installée) : ce n'est PAS une ancienne version du code. L'app « Ouvrir comme app web » a son **propre stockage** (iOS le sépare de Safari) :
 partie neuve (150 ⚡ / 70 💎 / tutoriel du chapitre 1) et **aucune clé de photos** → personnages dessinés, fonctionnalités de départ.
