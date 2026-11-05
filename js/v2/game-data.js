@@ -1165,9 +1165,9 @@ window.ES_DATA = (function () {
       { id: "glaneuse", name: "Glaneuse", color: "#9cc56b", quest: "p_noisette3", a: "Ancrée, ramassage +50 %.", m: "En mouvement, ramassage x2.", v: "Aspire les noisettes proches." },
     ],
     capitaine: [
-      { id: "bordee",   name: "Bordée",   color: "#c8553d", a: "Ancré, l'équipage tire en salve, deux fois plus vite.", m: "Normal.", v: "Bordée : tout l'équipage tire d'un coup, dégâts x2." },
+      { id: "bordee",   name: "Bordée",   color: "#c8553d", a: "Ancré, l'équipage attaque en salve, deux fois plus vite.", m: "Normal.", v: "Bordée : tout l'équipage attaque d'un coup, dégâts x2." },
       { id: "abordage", name: "Abordage", color: "#f6d36b", quest: "p_capitaine2", a: "Ancré, l'équipage se range en cercle autour de toi.", m: "Normal.", v: "À l'abordage : l'équipage charge les ennemis proches." },
-      { id: "convoi",   name: "Convoi",   color: "#9cc56b", quest: "p_capitaine3", a: "Ancré, un matelot rejoint la file toutes les 8 s.", m: "La file s'allonge plus vite (recrute 2 fois plus vite, 10 matelots max).", v: "La file fouette : chaque matelot frappe autour de lui." },
+      { id: "convoi",   name: "Virevolte",   color: "#9cc56b", quest: "p_capitaine3", a: "Ancré, les matelots perdus reviennent 2 fois plus vite.", m: "En mouvement, la file blesse les ennemis qu'elle touche.", v: "Virevolte : la moitié de l'équipage est lancée dans ta direction, traverse les ennemis (x3 dégâts) puis revient." },
     ],
     planeur: [
       { id: "pique",    name: "Piqué",    color: "#6ad8ff", a: "Accroché, se recharge 2 fois plus vite.", m: "Normal.", v: "Plongeon : invulnérable, frappe fort à l'arrivée." },
@@ -1177,7 +1177,7 @@ window.ES_DATA = (function () {
   };
   var V2CH = {
     noisette:  { order: 0, rule: "Choisit parmi 4 cartes au lieu de 3. L'écureuil d'apprentissage." },
-    capitaine: { order: 1, rule: "Une file de matelots le suit et tire. Un coup reçu coûte le dernier matelot au lieu de PV ; les noisettes d'XP recrutent." },
+    capitaine: { order: 1, rule: "Il ne frappe pas lui-même : son équipage le suit en grappe et attaque avec une version miniature de son arme (10 % de ses dégâts par matelot). 10 matelots au départ, +2 par niveau, 50 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
     planeur:   { order: 2, rule: "Glisse sans cesse (inertie) et survole les obstacles. Ne s'ancre qu'accroché à un arbre ou à une souche." },
   };
   var CHAR_ALL = CHARACTERS.slice();
@@ -1494,12 +1494,12 @@ window.ES_DATA = (function () {
                [{ id: "voltigeuse", name: "Voltigeuse", desc: "Clé : la Volte se recharge en 1,5 s." }, { id: "intouchable", name: "Intouchable", desc: "Clé : invulnérable 1 s de plus après une roulade." }]],
     glaneuse: [[{ id: "pochespleines", name: "Poches pleines", desc: "En mouvement : +15 % d'expérience." }, { id: "aspiration", name: "Aspiration", desc: "La Volte aspire aussi l'or et les objets." }],
                [{ id: "moisson", name: "Grande glane", desc: "Clé : ramassage x3 en mouvement." }, { id: "avarice", name: "Avarice", desc: "Clé : toutes les 30 noisettes, une onde part autour de toi." }]],
-    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+2 matelots max." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
+    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+4 matelots max (50 au plus)." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
                [{ id: "batterie", name: "Canonnade", desc: "Clé : ancré, la salve part toutes les 0,3 s." }, { id: "couverture", name: "Tir de couverture", desc: "Clé : la salve marche aussi en mouvement, 2 fois plus lente." }]],
     abordage: [[{ id: "sabres", name: "Sabres", desc: "La charge fait +50 % de dégâts." }, { id: "recrue", name: "Recrue d'abordage", desc: "Un ennemi tué pendant une charge a 25 % de chance de recruter." }],
                [{ id: "mutinerie", name: "Mutinerie", desc: "Clé : la charge dure 2 fois plus longtemps." }, { id: "bouclierh", name: "Mur de matelots", desc: "Clé : en cercle, les matelots arrêtent les tirs ennemis." }]],
-    convoi:   [[{ id: "longuefile", name: "Longue file", desc: "+3 matelots max." }, { id: "ravitaillement", name: "Ravitaillement", desc: "Chaque recrue soigne 3 PV." }],
-               [{ id: "train", name: "Train", desc: "Clé : en mouvement, les matelots blessent au contact." }, { id: "lignetir", name: "Ligne de tir", desc: "Clé : tout l'équipage tire ensemble toutes les 1,5 s." }]],
+    convoi:   [[{ id: "longuefile", name: "Grande virevolte", desc: "La Virevolte lance tout l'équipage." }, { id: "ravitaillement", name: "Ravitaillement", desc: "Un ennemi tué par un matelot lancé soigne 1 PV." }],
+               [{ id: "train", name: "Boulets vivants", desc: "Clé : les matelots lancés explosent en fin de course." }, { id: "lignetir", name: "Ligne de tir", desc: "Clé : tout l'équipage tire ensemble toutes les 1,5 s." }]],
     pique:    [[{ id: "grandplongeon", name: "Grand plongeon", desc: "Dégâts du plongeon x1,6." }, { id: "remontee", name: "Reprise d'altitude", desc: "Après un plongeon, la Volte se recharge 2 fois plus vite." }],
                [{ id: "faucon_t", name: "Serres plongeantes", desc: "Clé : le plongeon fonce sur l'ennemi le plus proche." }, { id: "meteore_t", name: "Météore", desc: "Clé : le plongeon laisse une zone qui brûle 3 s." }]],
     courant:  [[{ id: "ventarriere", name: "Vent porteur", desc: "+20 % de vitesse max." }, { id: "lameair", name: "Lame d'air", desc: "Au-delà de 80 % de vitesse, une lame part devant toutes les 0,8 s." }],
@@ -1507,6 +1507,37 @@ window.ES_DATA = (function () {
     perchoir: [[{ id: "longuevue", name: "Longue-vue", desc: "Accroché : portée x2 au lieu de x1,6." }, { id: "nid_t", name: "Nid", desc: "Accroché : régénère 2 PV/s." }],
                [{ id: "sniper", name: "Tireur d'élite", desc: "Clé : accroché depuis 2 s, tous tes coups sont critiques." }, { id: "grappe", name: "Agrippe-tout", desc: "Clé : tu peux t'accrocher n'importe où en ralentissant." }]],
   };
+  // 2.17 : talents de personnage à effet, valables avec toutes les postures : 6 paliers, 3 choix par palier. Un talent = un déclencheur + une action, de plus en plus fort selon le palier
+  var TAL_XLVL = [3, 5, 7, 9, 10, 12];
+  var TX_CHARS = ["noisette", "cendrine", "charbon", "flocon", "planeur", "capitaine", "jumeaux", "chevalier", "mage", "bucheron", "ninja", "druide", "pataud", "trefle"];
+  var TX_NOUN = { noisette: "glands", cendrine: "cendres", charbon: "braises", flocon: "neige", planeur: "plumes", capitaine: "matelots", jumeaux: "jumeaux", chevalier: "lances", mage: "runes", bucheron: "copeaux", ninja: "ombres", druide: "ronces", pataud: "miettes", trefle: "trèfles" };
+  var TX_TRIG = ["volte", "kill", "hurt", "anchor", "timer", "lowhp"], TX_ACT = ["ring", "nova", "heal", "shield", "haste", "rage", "freeze", "chain", "bomb", "pull"];
+  var TX_TAG = { volte: "Volte", kill: "Victoires", hurt: "Touché", anchor: "Ancré", timer: "Cadence", lowhp: "Sursaut" };
+  var TX_ANAME = { ring: "Gerbe de ", nova: "Éclat de ", heal: "Réconfort de ", shield: "Garde de ", haste: "Élan de ", rage: "Fureur de ", freeze: "Givre de ", chain: "Éclair de ", bomb: "Brasier de ", pull: "Appel de " };
+  function txOpt(cid, t, o, trig, act) {
+    var k = 1 + 0.4 * t, every = Math.max(3, 8 - t), cd = trig === "timer" ? Math.max(3, 7 - t * 0.6) : trig === "hurt" ? 5 : trig === "lowhp" ? 20 : trig === "anchor" ? 3 : 0;
+    var n = 5 + t * 2, pct = Math.round(3 * k), sec = (0.5 + 0.2 * t).toFixed(1).replace(".", ",");
+    var tp = { volte: "À chaque Volte", kill: "Toutes les " + every + " victimes", hurt: "Quand tu es touché (1 fois par 5 s)", anchor: "Quand tu t'ancres (au plus toutes les 3 s)", timer: "Toutes les " + String(Math.round(cd * 10) / 10).replace(".", ",") + " s", lowhp: "Sous 35 % de PV (1 fois par 20 s)" }[trig];
+    var ap = { ring: "une gerbe de " + n + " projectiles part autour de toi", nova: "une onde blesse tous les ennemis proches", heal: "tu récupères " + pct + " % de tes PV", shield: "tu es invulnérable " + sec + " s", haste: "+30 % de vitesse pendant 3 s", rage: "+35 % de dégâts pendant 4 s", freeze: "les ennemis proches sont ralentis de moitié 2 s", chain: "un éclair saute sur " + (3 + t) + " ennemis", bomb: "une flaque de feu brûle 3 s sous tes pattes", pull: "attire les ennemis et les noisettes proches" }[act];
+    return { id: "x_" + cid + "_" + t + "_" + o, name: TX_ANAME[act] + TX_NOUN[cid] + " · " + TX_TAG[trig], desc: tp + " : " + ap + ".", trig: trig, act: act, k: k, n: n, pct: pct, sec: 0.5 + 0.2 * t, every: every, cd: cd };
+  }
+  var TAL_FX = {};
+  TX_CHARS.forEach(function (cid, ci) {
+    var used = {}; TAL_FX[cid] = [];
+    for (var t = 0; t < 6; t++) {
+      var row = [], acts = {}, seed = (ci + 1) * 7919 + t * 104729;
+      for (var o = 0; o < 3; o++) {
+        for (var tries = 0; tries < 200; tries++) {
+          seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+          var trig = TX_TRIG[seed % 6], act = TX_ACT[(seed >> 8) % 10], key = trig + act;
+          if (used[key] || acts[act]) continue;
+          if (trig === "lowhp" && t < 2 && act !== "heal" && act !== "shield") continue;
+          used[key] = acts[act] = 1; row.push(txOpt(cid, t, o, trig, act)); break;
+        }
+      }
+      TAL_FX[cid].push(row);
+    }
+  });
   var TAL_LVL = [2, 4, 6, 8];   // niveau d'écureuil qui ouvre chaque palier
   // maîtrise des armes : des options, pas de puissance (1 : techniques et 1re évolution · 2 : 1re signature · 3 : 2e évolution · 4 : signatures 2 et 3 · 5 : éveil)
   var MASTERY = [0, 120, 350, 700, 1200];
@@ -3453,6 +3484,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { WRAR: WRAR, WSTAT: WSTAT, VFX: VFX, EMOJI_PX: EMOJI_PX, RIG: { raster: rigRaster, E: rgE, C: rgC, P: rgP, mix: mixc }, EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { TAL_FX: TAL_FX, TAL_XLVL: TAL_XLVL, WRAR: WRAR, WSTAT: WSTAT, VFX: VFX, VFX_EL: VFX_EL, VFX_W: VFX_W, EMOJI_PX: EMOJI_PX, RIG: { raster: rigRaster, E: rgE, C: rgC, P: rgP, mix: mixc }, EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
