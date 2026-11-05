@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.36.1";
+  var VERSION = "2.37.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -5764,15 +5764,121 @@
   function runeAdd(n, rare) { if (!r) return; var id = rare ? "rune_rare" : "rune"; if (isExpe()) bagAddRes(id, n); else r.res[id] = (r.res[id] || 0) + n; }
   /* ---- le camp : un écran-diorama où l'écureuil se déplace jusqu'aux lieux ---- */
   var camp = { x: 160, y: 0, tx: null, ty: null, near: null, on: false, t: 0 };
+  /* =====================================================================
+     Amis (2.37) : demandes et liste côté serveur (compte Google du site), présence en ligne par
+     canal Realtime d'amitié ; les amis connectés se promènent dans le camp comme des PNJ.
+     ===================================================================== */
+  var FR = { code: "", list: [], loaded: false, msg: "", chans: {}, on: {}, npcs: {}, at: 0 };
+  function frUid() { return window.SiteAuth && SiteAuth.user ? SiteAuth.user.id : null; }
+  function frErr(e) {
+    var m = (e && e.message) || "";
+    return { not_logged_in: "Connecte-toi d'abord.", not_found: "Aucun joueur avec ce pseudo ou ce code ami.", ambiguous: "Plusieurs joueurs ont ce pseudo : utilise plutôt son code ami.", self: "C'est ton propre code !", already: "Déjà ami, ou demande déjà envoyée.", too_many: "Trop d'amis ou de demandes en attente." }[m] || "Le serveur ne répond pas, réessaie dans un moment.";
+  }
+  function frPayload() { return { n: ((window.SiteAuth && SiteAuth.profile && SiteAuth.profile.pseudo) || S.name || "Écureuil").slice(0, 14), c: S.char, ti: S.title || 0, lk: myLook() }; }
+  function frTrack() { Object.keys(FR.chans).forEach(function (id) { var ch = FR.chans[id]; if (ch) { try { ch.track(frPayload()); } catch (e) {} } }); }
+  function frPres(id) {
+    var ch = FR.chans[id]; if (!ch) return; var st = {}, me = frUid(), other = null;
+    try { st = ch.presenceState(); } catch (e) {}
+    Object.keys(st).forEach(function (k) { if (k !== me && st[k] && st[k][0]) other = st[k][0]; });
+    if (other) FR.on[id] = other; else delete FR.on[id];
+  }
+  function frSync() {
+    var want = {}, uid = frUid();
+    if (uid) FR.list.forEach(function (f) { if (f.status === "accepted") want[f.id] = 1; });
+    Object.keys(FR.chans).forEach(function (id) {
+      if (want[id]) return; var ch = FR.chans[id]; delete FR.chans[id]; delete FR.on[id];
+      if (ch) SiteAuth.client().then(function (c) { c.removeChannel(ch); }).catch(function () {});
+    });
+    Object.keys(want).slice(0, 30).forEach(function (id) {
+      if (id in FR.chans) return; FR.chans[id] = null;
+      SiteAuth.client().then(function (c) {
+        var ch = c.channel("es-fr-" + id, { config: { presence: { key: uid } } });
+        FR.chans[id] = ch;
+        ch.on("presence", { event: "sync" }, function () { frPres(id); });
+        ch.subscribe(function (st) { if (st === "SUBSCRIBED") ch.track(frPayload()); });
+      }).catch(function () { delete FR.chans[id]; });
+    });
+  }
+  function frBadge() { var n = FR.list.filter(function (f) { return f.status === "pending" && f.dir === "in"; }).length, b = document.querySelector("[data-camp=\"amis\"] .fr-badge"); if (b) { b.textContent = n; b.hidden = !n; } return n; }
+  function frLoad(cb) {
+    FR.at = Date.now();
+    if (!frUid()) { FR.loaded = false; FR.list = []; frSync(); frBadge(); if (cb) cb(); return; }
+    SiteAuth.rpc("friends_list").then(function (d) { FR.code = d.code; FR.list = d.list || []; FR.loaded = true; FR.msg = FR.msg === "…" ? "" : FR.msg; frSync(); frBadge(); if (cb) cb(); })
+      .catch(function (e) { FR.msg = frErr(e); if (cb) cb(); });
+  }
+  function frInit() {
+    if (!window.SiteAuth) return;
+    SiteAuth.ready.then(function () { frLoad(); });
+    SiteAuth.on(function () { frLoad(); });
+    setInterval(function () { if (frUid() && document.visibilityState === "visible") frLoad(); }, 45000);
+  }
+  function frBlock(o) {
+    if (!CAMP_COL) return;
+    CAMP_COL.forEach(function (c) { var ox = o.x - c.x, oy = (o.y - c.y) * 1.4, od = Math.hypot(ox, oy); if (od < c.r && od > 0.01) { o.x = c.x + ox / od * c.r; o.y = c.y + oy / od * c.r / 1.4; } });
+    var P0 = CAMP_POND, pdx = (o.x - P0.x) / (P0.rx + 4), pdy = (o.y - P0.y) / (P0.ry + 4), pq = Math.hypot(pdx, pdy);
+    if (pq < 1 && pq > 0.01) { o.x = P0.x + pdx / pq * (P0.rx + 4); o.y = P0.y + pdy / pq * (P0.ry + 4); }
+    o.x = Math.max(16, Math.min(CAMPW - 16, o.x)); o.y = Math.max(46, Math.min(CAMPH - 10, o.y));
+  }
+  function frPick() {
+    if (Math.random() < 0.4) { var a = Math.random() * 6.28, rr = 34 + Math.random() * 30; return [CAMP_FIRE.x + Math.cos(a) * rr, CAMP_FIRE.y + 10 + Math.sin(a) * rr * 0.6]; }
+    var ids = Object.keys(CAMP_AT).filter(function (k) { return k !== "sentier"; }), l = CAMP_AT[ids[(Math.random() * ids.length) | 0]];
+    return [l.x + (Math.random() - 0.5) * 30, l.y + 16 + Math.random() * 8];
+  }
+  function frNpcTick(dt) {
+    var now = performance.now();
+    Object.keys(FR.on).forEach(function (id) {
+      var m = FR.on[id], q = FR.npcs[id];
+      if (!q) q = FR.npcs[id] = { x: CAMP_AT.sentier.x + (Math.random() - 0.5) * 20, y: CAMP_AT.sentier.y + 26, tx: null, ty: null, wait: 0.4 + Math.random() * 1.5, f: 1, mv: false, em: null, et: 0, emT: 12 + Math.random() * 25 };
+      q.leaving = false; q.n = m.n; q.c = m.c; q.ti = m.ti; q.lk = m.lk;
+    });
+    Object.keys(FR.npcs).forEach(function (id) {
+      var q = FR.npcs[id];
+      if (!FR.on[id] && !q.leaving) { q.leaving = true; q.tx = CAMP_AT.sentier.x; q.ty = CAMP_AT.sentier.y + 8; }
+      if (q.tx === null) { q.mv = false; q.wait -= dt; if (q.wait <= 0) { var p = frPick(); q.tx = p[0]; q.ty = p[1]; } }
+      else {
+        var dx = q.tx - q.x, dy = q.ty - q.y, d = Math.hypot(dx, dy);
+        if (d < 3) { q.tx = null; q.mv = false; q.wait = 2 + Math.random() * 6; if (q.leaving) { delete FR.npcs[id]; return; } }
+        else { var st = Math.min(d, 24 * dt); q.x += dx / d * st; q.y += dy / d * st; q.f = dx < 0 ? -1 : 1; q.mv = true; }
+      }
+      frBlock(q);
+      q.emT -= dt; if (q.emT <= 0) { q.emT = 20 + Math.random() * 30; q.em = EMOTES[(Math.random() * EMOTES.length) | 0]; q.et = now; }
+    });
+  }
+  function frDraw(list, t) {
+    var now = performance.now();
+    Object.keys(FR.npcs).forEach(function (id) {
+      var q = FR.npcs[id], ch = D.CHARACTERS.filter(function (c) { return c.id === q.c; })[0] || D.CHARACTERS[0];
+      list.push({ y: q.y, f: function () {
+        drawHero(ch.sprite, q.x, q.y, q.f || 1, q.mv, t * 8, 0, false, q.lk || null);
+        drawText((q.n || "Ami").slice(0, 14), q.x, q.y - 24, "#9cdc7a", "c"); if (q.ti && TITLES[q.ti]) drawText(titleName(q.ti), q.x, q.y - 31, "#f6d36b", "c");
+        campBubble(q.x, q.y - 36, q.em && now - q.et < 4000 ? q.em : null, t);
+      } });
+    });
+  }
+  function amisHtml() {
+    var html = '<div class="screen-head">' + back() + "<h2>Amis</h2></div>";
+    if (!window.SiteAuth) return html + '<p class="game-small">Le compte du site n\'est pas disponible sur cette page.</p>';
+    if (!frUid()) return html + '<p class="game-small">Connecte-toi avec ton compte Google pour avoir des amis : ceux qui sont connectés se promènent dans ton camp.</p><p class="btn-row"><button type="button" class="btn" data-action="frlogin">Se connecter avec Google</button></p>';
+    var pend = FR.list.filter(function (f) { return f.status === "pending" && f.dir === "in"; }), out = FR.list.filter(function (f) { return f.status === "pending" && f.dir === "out"; }), fr = FR.list.filter(function (f) { return f.status === "accepted"; });
+    var nm = function (f) { return esc(f.pseudo || "Écureuil " + f.code); };
+    html += '<p class="game-small">Ton code ami : <b class="fr-code">' + esc(FR.code || "…") + '</b> <button type="button" class="link-btn" data-action="frcopy">copier</button>' + (SiteAuth.profile && SiteAuth.profile.pseudo ? "" : ' · <a href="compte.html">choisis un pseudo</a> pour que tes amis te reconnaissent') + "</p>" +
+      '<div class="fr-add"><input id="fr-in" type="text" maxlength="20" autocomplete="off" placeholder="Pseudo ou code ami"><button type="button" class="btn btn-small" data-action="fradd">Ajouter</button></div>' + (FR.msg ? '<p class="game-small fr-msg" role="status">' + esc(FR.msg) + "</p>" : "");
+    if (pend.length) html += '<h3 class="pick-title">Demandes reçues</h3><div class="ach-list">' + pend.map(function (f) { return '<div class="ach"><span class="ach-ic">✉️</span><div><strong>' + nm(f) + '</strong><span>Veut devenir ton ami</span></div><span class="fr-btns"><button type="button" class="btn btn-small" data-action="fracc" data-arg="' + f.id + '">Accepter</button><button type="button" class="btn btn-ghost btn-small" data-action="frdel" data-arg="' + f.id + '">Refuser</button></span></div>'; }).join("") + "</div>";
+    html += '<h3 class="pick-title">Mes amis <small>' + fr.filter(function (f) { return FR.on[f.id]; }).length + " en ligne / " + fr.length + "</small></h3>";
+    html += fr.length ? '<div class="ach-list">' + fr.map(function (f) { var on = FR.on[f.id]; return '<div class="ach' + (on ? " is-done" : "") + '"><span class="ach-ic">' + (on ? "🟢" : "⚪") + "</span><div><strong>" + nm(f) + "</strong><span>" + (on ? "En ligne · " + esc((D.CHARACTERS.filter(function (c) { return c.id === on.c; })[0] || {}).name || "") : "Hors ligne") + '</span></div><button type="button" class="btn btn-ghost btn-small" data-action="frdel" data-arg="' + f.id + '" data-ask="1" aria-label="Retirer">×</button></div>'; }).join("") + "</div>" : '<p class="game-small">Pas encore d\'ami. Échange ton code ami avec quelqu\'un, ou ajoute-le par son pseudo.</p>';
+    if (out.length) html += '<h3 class="pick-title">Demandes envoyées</h3><div class="ach-list">' + out.map(function (f) { return '<div class="ach"><span class="ach-ic">⏳</span><div><strong>' + nm(f) + '</strong><span>En attente de réponse</span></div><button type="button" class="btn btn-ghost btn-small" data-action="frdel" data-arg="' + f.id + '">Annuler</button></div>'; }).join("") + "</div>";
+    return html + '<p class="game-small">Les amis connectés apparaissent dans le camp, où que tu sois sur le site.</p>';
+  }
+  function frRefresh() { frLoad(function () { if (card && card.querySelector(".fr-add")) go("amis"); }); }
   function openCamp() {
     if (S.news) { newsCard(); return; }
     state = "menu"; screen = "camp"; overlay.hidden = true; camp.on = true;
-    camp.camOk = false; camp.tx = null; camp.goal = null;
+    camp.camOk = false; camp.tx = null; camp.goal = null; frTrack(); if (frUid() && Date.now() - FR.at > 20000) frLoad();
     var bar = document.querySelector("[data-campbar]");
     if (!bar) { bar = document.createElement("div"); bar.className = "camp-bar camp-dock"; bar.setAttribute("data-campbar", ""); stage.appendChild(bar); bar.addEventListener("click", function (e) { var b = e.target.closest("[data-camp]"); if (b) campOpen(b.getAttribute("data-camp")); }); }
     bar.hidden = false;
     var PI = { terrier: "🏡", atelier: "🔨", forge: "🔥", comptoir: "🛒", chene: "🌳", arene: "⚔️" };
-    bar.innerHTML = '<div class="cb-util"><button type="button" class="camp-coop" data-camp="coop" title="Coop en ligne">👥<span>Coop</span></button><button type="button" data-camp="emote" title="Message rapide">💬</button><button type="button" data-camp="codex" title="Techniques et fusions">📜</button><button type="button" data-camp="help" title="Aide">❓</button><button type="button" data-camp="options" title="Réglages">⚙️</button></div>' +
+    bar.innerHTML = '<div class="cb-util"><button type="button" class="camp-coop" data-camp="coop" title="Coop en ligne">👥<span>Coop</span></button><button type="button" class="camp-amis" data-camp="amis" title="Amis">🧑‍🤝‍🧑<i class="fr-badge" hidden></i></button><button type="button" data-camp="emote" title="Message rapide">💬</button><button type="button" data-camp="codex" title="Techniques et fusions">📜</button><button type="button" data-camp="help" title="Aide">❓</button><button type="button" data-camp="options" title="Réglages">⚙️</button></div>' +
       '<div class="cb-main"><button type="button" class="camp-go" data-camp="sentier"><b>▶</b> Partir</button>' + D.CAMP.filter(function (l) { return l.id !== "sentier"; }).map(function (l) { return '<button type="button" class="cb-place" data-camp="' + l.id + '"><i>' + (PI[l.id] || "•") + "</i><span>" + esc(l.id === "chene" ? "Chêne" : l.name.replace(/^(Le |La |L')/, "")) + "</span></button>"; }).join("") + "</div>";
   }
   // « Nouveautés » : ce qui a changé pour un joueur de la version 1
@@ -5799,6 +5905,7 @@
     if (id === "emote") { camp.emoteMenu = !camp.emoteMenu; SND.click(); campEmoteMenu(); return; }
     var l = D.CAMP.filter(function (q) { return q.id === id; })[0];
     closeCamp(); SND.click();
+    if (id === "amis") { go("amis"); frRefresh(); return; }
     if (id === "options" || id === "codex" || id === "help") { go(id); return; }
     if (id === "coop") { go(Net.on ? "lobby" : "coop"); return; }
     if (l && l.screen === "play") { inspect.char = S.char; inspect.map = S.map; }
@@ -6007,6 +6114,7 @@
     camp.t += dt;
     if (!CAMP_COL) CAMP_COL = campColliders();
     if (!camp.inWorld) { camp.x = CAMP_FIRE.x + 22; camp.y = CAMP_FIRE.y + 22; camp.inWorld = true; }
+    frNpcTick(dt);
     var v = inputVector(), sp = 78;
     if (Math.hypot(v.x, v.y) > 0.1) { camp.tx = null; camp.goal = null; camp.x += v.x * sp * dt; camp.y += v.y * sp * dt; camp.face = v.x < -0.1 ? -1 : v.x > 0.1 ? 1 : camp.face; camp.moving = true; }
     else if (camp.tx !== null) {
@@ -6083,6 +6191,7 @@
         list.push({ y: q.dy, f: function () { drawHero(ch.sprite, q.dx, q.dy, q.f || 1, mv, t * 8, 0, false, q.lk || null); drawText(q.n || "Ami", q.dx, q.dy - 24, "#f6d36b", "c"); if (q.ti) drawText(titleName(q.ti), q.dx, q.dy - 31, "#9cdc7a", "c"); campBubble(q.dx, q.dy - 36, q.e && performance.now() - q.et < 4000 ? q.e : null, t); } });
       });
     }
+    frDraw(list, t);
     list.sort(function (a, b) { return a.y - b.y; }).forEach(function (o) { o.f(); });
     // panneaux des lieux (nom sous chaque porte), flèche sur le lieu proche
     D.CAMP.forEach(function (l) {
@@ -8948,6 +9057,7 @@
       });
       return html + "</div>";
     },
+    amis: function () { return amisHtml(); },
     changelog: function () {
       var html = '<div class="screen-head">' + back() + "<h2>Nouveautés</h2></div>";
       if (CHLOG === null) {
@@ -9063,6 +9173,14 @@
       if (!confirm("Prestige de " + charById(cid).name + " : retour au niveau 1, +1 point d'arbre. Tes talents restent ouverts. Continuer ?")) return;
       S.cpres = S.cpres || {}; S.cpres[cid] = cPres(cid) + 1; S.clvl[cid] = 0; save(); SND.level(); banner("Prestige " + S.cpres[cid] + " : +1 point d'arbre"); go("terrier");
     },
+    frlogin: function () { SiteAuth.signIn(); },
+    frcopy: function () { try { navigator.clipboard.writeText(FR.code); FR.msg = "Code copié."; } catch (e) { FR.msg = "Ton code : " + FR.code; } go("amis"); },
+    fradd: function () {
+      var el = document.getElementById("fr-in"), v = el ? el.value.trim() : ""; if (!v) return; FR.msg = "…";
+      SiteAuth.rpc("friend_request", { p_who: v }).then(function (res) { FR.msg = res === "accepted" ? "Vous êtes maintenant amis !" : "Demande envoyée."; frRefresh(); }).catch(function (e) { FR.msg = frErr(e); go("amis"); });
+    },
+    fracc: function (id) { SiteAuth.rpc("friend_accept", { p_id: id }).then(function () { FR.msg = "Ami ajouté."; frRefresh(); }).catch(function (e) { FR.msg = frErr(e); go("amis"); }); },
+    frdel: function (id) { var f0 = FR.list.filter(function (f) { return f.id === id; })[0]; if (f0 && f0.status === "accepted" && !confirm("Retirer " + (f0.pseudo || "cet ami") + " de tes amis ?")) return; SiteAuth.rpc("friend_remove", { p_id: id }).then(function () { FR.msg = ""; frRefresh(); }).catch(function (e) { FR.msg = frErr(e); go("amis"); }); },
     ctsel: function (id) { ctKeep(); UI.ctn = id; SND.click(); go("terrier"); },
     ctnode: function (id) {
       ctKeep();
@@ -9737,6 +9855,7 @@
      ===================================================================== */
   var last = 0;
   var r_weekly = false;
+  frInit();
   function start() {
     if (Net.on) { if (Net.role === "host") hostStart(); return; }
     sanitize();
@@ -10150,6 +10269,7 @@
     rage: function (min) { r.stageT0 = r.time - RAGE.start - min * 60; return { rage: rageMin(), dmg: rageDmg(), spd: rageSpd() }; },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
+    frFake: function (n) { FR.on = {}; FR.list = []; var cs = D.CHARACTERS.map(function (c) { return c.id; }); for (var i = 0; i < n; i++) { FR.on["f" + i] = { n: ["Marmotte", "Chêne42", "Noisetier", "Pomme", "Lutin"][i % 5], c: cs[i % cs.length], ti: i ? 0 : "gobe", lk: {} }; } return Object.keys(FR.on).length; }, frNpcs: function () { return Object.keys(FR.npcs).length; }, frOff: function () { FR.on = {}; },
     cp: function (cid, n, xp) { S.cpres = S.cpres || {}; S.cpres[cid] = n; if (xp !== undefined) S.clvl[cid] = xp; save(); }, treeInfo: function () { return JSON.stringify({ txf: me.txf, gbon: me.gbon }); },
     chal: function (id) { startChal(id); }, chalInfo: function () { return { chal: CHAL && CHAL.d.id, mods: (r.mods || []).map(function (m) { return m.id; }), level: r.level, time: r.time, hp: me.hp, max: me.maxHp, items: Object.keys(me.items || {}).length, state: state }; }, chalWin: function () { chalWin(); }, stat: function () { return JSON.stringify({ st: S.stats, defis: S.defis }); },
     quests: function () { return S.quests; },

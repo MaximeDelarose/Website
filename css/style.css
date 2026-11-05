@@ -3122,3 +3122,12 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 .dof-note { color: #e8b86b; }
 
 .np-lock { position: absolute; right: 2px; bottom: 0; font-style: normal; font-size: 14px; }
+
+.camp-amis { position: relative; }
+.fr-badge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px; background: #d8483a; color: #fff; font: 700 11px/16px system-ui, sans-serif; text-align: center; font-style: normal; box-shadow: 0 0 0 2px #2b1709; }
+.fr-badge[hidden] { display: none; }
+.fr-add { display: flex; gap: 6px; margin: 8px 0; }
+.fr-add input { flex: 1; min-width: 0; padding: 8px 10px; font: inherit; background: #fdf3de; color: #2b1709; border: 0; box-shadow: 0 0 0 2px var(--line); }
+.fr-btns { display: flex; gap: 6px; }
+.fr-code { letter-spacing: .12em; font-size: 1.1em; }
+.fr-msg { color: #8a5a1a; }
