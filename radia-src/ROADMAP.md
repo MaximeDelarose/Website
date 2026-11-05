@@ -20,7 +20,7 @@ Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commenc
 | Journaux de diagnostic | 🟡 | `radia-errors` (8 dernières erreurs, localStorage) existe ; pas encore d'écran pour les lire. |
 | Ancienne version déjà installée sur l'iPhone | ⚠️ | Elle ne contient pas le nouveau système : **fermer complètement l'application (la faire glisser hors du sélecteur) puis la rouvrir une fois** ; ensuite les mises à jour sont automatiques. |
 
-### Diagnostic « application installée ≠ Safari » (étape 3 — terminée, ⚠️ à confirmer sur iPhone)
+### Diagnostic « application installée ≠ Safari » (étape 3 — CAUSE CONFIRMÉE par les diagnostics de l'iPhone : même build/service worker/personnages, mais mémoire séparée → partie différente + clé des photos absente dans l'app ; correctif : rappel « Reprendre les photos » ; ⚠️ validation finale par la joueuse en attente)
 
 **Constat** (code + captures de l'app installée) : ce n'est PAS une ancienne version du code. L'app « Ouvrir comme app web » a son **propre stockage** (iOS le sépare de Safari) :
 partie neuve (150 ⚡ / 70 💎 / tutoriel du chapitre 1) et **aucune clé de photos** → personnages dessinés, fonctionnalités de départ.

@@ -62,4 +62,10 @@ export function applyTransfer(p: TransferPayload, store: Pick<Storage, 'getItem'
   } catch { return false; }
 }
 
+/** Reprend UNIQUEMENT la clé des photos (la partie de ce RADIA n'est pas touchée). Renvoie false s'il n'y a pas de clé dans le code ou si le stockage refuse. */
+export function applyKeyOnly(p: TransferPayload, store: Pick<Storage, 'getItem' | 'setItem'> = localStorage): boolean {
+  if (!p.key) return false;
+  try { store.setItem(PHOTO_KEY_LS, p.key); return true; } catch { return false; }
+}
+
 export { SAVE_VERSION };
