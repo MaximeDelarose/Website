@@ -1165,9 +1165,9 @@ window.ES_DATA = (function () {
       { id: "glaneuse", name: "Glaneuse", color: "#9cc56b", quest: "p_noisette3", a: "Ancrée, ramassage +50 %.", m: "En mouvement, ramassage x2.", v: "Aspire les noisettes proches." },
     ],
     capitaine: [
-      { id: "bordee",   name: "Bordée",   color: "#c8553d", a: "Ancré, l'équipage tire en salve, deux fois plus vite.", m: "Normal.", v: "Bordée : tout l'équipage tire d'un coup, dégâts x2." },
+      { id: "bordee",   name: "Bordée",   color: "#c8553d", a: "Ancré, l'équipage attaque en salve, deux fois plus vite.", m: "Normal.", v: "Bordée : tout l'équipage attaque d'un coup, dégâts x2." },
       { id: "abordage", name: "Abordage", color: "#f6d36b", quest: "p_capitaine2", a: "Ancré, l'équipage se range en cercle autour de toi.", m: "Normal.", v: "À l'abordage : l'équipage charge les ennemis proches." },
-      { id: "convoi",   name: "Convoi",   color: "#9cc56b", quest: "p_capitaine3", a: "Ancré, un matelot rejoint la file toutes les 8 s.", m: "La file s'allonge plus vite (recrute 2 fois plus vite, 10 matelots max).", v: "La file fouette : chaque matelot frappe autour de lui." },
+      { id: "convoi",   name: "Virevolte",   color: "#9cc56b", quest: "p_capitaine3", a: "Ancré, les matelots perdus reviennent 2 fois plus vite.", m: "En mouvement, la file blesse les ennemis qu'elle touche.", v: "Virevolte : la moitié de l'équipage est lancée dans ta direction, traverse les ennemis (x3 dégâts) puis revient." },
     ],
     planeur: [
       { id: "pique",    name: "Piqué",    color: "#6ad8ff", a: "Accroché, se recharge 2 fois plus vite.", m: "Normal.", v: "Plongeon : invulnérable, frappe fort à l'arrivée." },
@@ -1177,7 +1177,7 @@ window.ES_DATA = (function () {
   };
   var V2CH = {
     noisette:  { order: 0, rule: "Choisit parmi 4 cartes au lieu de 3. L'écureuil d'apprentissage." },
-    capitaine: { order: 1, rule: "Une file de matelots le suit et tire. Un coup reçu coûte le dernier matelot au lieu de PV ; les noisettes d'XP recrutent." },
+    capitaine: { order: 1, rule: "Son équipage le suit et attaque avec une version miniature de son arme (10 % de ses dégâts par matelot). 10 matelots au départ, +2 par niveau, 50 au plus. Un coup reçu fait tomber un matelot, qui en encaisse 60 % ; les pertes reviennent toutes les 2,5 s." },
     planeur:   { order: 2, rule: "Glisse sans cesse (inertie) et survole les obstacles. Ne s'ancre qu'accroché à un arbre ou à une souche." },
   };
   var CHAR_ALL = CHARACTERS.slice();
@@ -1494,12 +1494,12 @@ window.ES_DATA = (function () {
                [{ id: "voltigeuse", name: "Voltigeuse", desc: "Clé : la Volte se recharge en 1,5 s." }, { id: "intouchable", name: "Intouchable", desc: "Clé : invulnérable 1 s de plus après une roulade." }]],
     glaneuse: [[{ id: "pochespleines", name: "Poches pleines", desc: "En mouvement : +15 % d'expérience." }, { id: "aspiration", name: "Aspiration", desc: "La Volte aspire aussi l'or et les objets." }],
                [{ id: "moisson", name: "Grande glane", desc: "Clé : ramassage x3 en mouvement." }, { id: "avarice", name: "Avarice", desc: "Clé : toutes les 30 noisettes, une onde part autour de toi." }]],
-    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+2 matelots max." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
+    bordee:   [[{ id: "canonniers", name: "Canonniers", desc: "+4 matelots max (50 au plus)." }, { id: "salvelourde", name: "Salve lourde", desc: "Ancré : l'équipage fait +50 % de dégâts." }],
                [{ id: "batterie", name: "Canonnade", desc: "Clé : ancré, la salve part toutes les 0,3 s." }, { id: "couverture", name: "Tir de couverture", desc: "Clé : la salve marche aussi en mouvement, 2 fois plus lente." }]],
     abordage: [[{ id: "sabres", name: "Sabres", desc: "La charge fait +50 % de dégâts." }, { id: "recrue", name: "Recrue d'abordage", desc: "Un ennemi tué pendant une charge a 25 % de chance de recruter." }],
                [{ id: "mutinerie", name: "Mutinerie", desc: "Clé : la charge dure 2 fois plus longtemps." }, { id: "bouclierh", name: "Mur de matelots", desc: "Clé : en cercle, les matelots arrêtent les tirs ennemis." }]],
-    convoi:   [[{ id: "longuefile", name: "Longue file", desc: "+3 matelots max." }, { id: "ravitaillement", name: "Ravitaillement", desc: "Chaque recrue soigne 3 PV." }],
-               [{ id: "train", name: "Train", desc: "Clé : en mouvement, les matelots blessent au contact." }, { id: "lignetir", name: "Ligne de tir", desc: "Clé : tout l'équipage tire ensemble toutes les 1,5 s." }]],
+    convoi:   [[{ id: "longuefile", name: "Grande virevolte", desc: "La Virevolte lance tout l'équipage." }, { id: "ravitaillement", name: "Ravitaillement", desc: "Un ennemi tué par un matelot lancé soigne 1 PV." }],
+               [{ id: "train", name: "Boulets vivants", desc: "Clé : les matelots lancés explosent en fin de course." }, { id: "lignetir", name: "Ligne de tir", desc: "Clé : tout l'équipage tire ensemble toutes les 1,5 s." }]],
     pique:    [[{ id: "grandplongeon", name: "Grand plongeon", desc: "Dégâts du plongeon x1,6." }, { id: "remontee", name: "Reprise d'altitude", desc: "Après un plongeon, la Volte se recharge 2 fois plus vite." }],
                [{ id: "faucon_t", name: "Serres plongeantes", desc: "Clé : le plongeon fonce sur l'ennemi le plus proche." }, { id: "meteore_t", name: "Météore", desc: "Clé : le plongeon laisse une zone qui brûle 3 s." }]],
     courant:  [[{ id: "ventarriere", name: "Vent porteur", desc: "+20 % de vitesse max." }, { id: "lameair", name: "Lame d'air", desc: "Au-delà de 80 % de vitesse, une lame part devant toutes les 0,8 s." }],

@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.11.0";
+  var VERSION = "2.12.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -393,7 +393,7 @@
       pl.weapons[c.weapon] = 1;
       pl.posture = postureOf(c.id, it.posture).id; pl.vx = 0; pl.vy = 0; pl.idleT = 0; pl.runT = 0; pl.volteCd = 0;
       if (!pl.remote) v2Loadout(pl);
-      if (c.id === "capitaine") { pl.crew = []; pl.recruitAcc = 0; pl.trail = []; for (var ci = 0; ci < 2; ci++) pl.crew.push(newMatelot(pl)); }
+      if (c.id === "capitaine") { pl.crew = []; pl.recruitAcc = 0; pl.trail = []; pl.crewTop = CREW0; pl.regenT = 0; for (var ci = 0; ci < CREW0; ci++) pl.crew.push(newMatelot(pl)); }
       p = pl; calc(pl); pl.hp = pl.maxHp;
       pl.revives = (pl.shop.renaissance || 0) + (pl.tree.s4 || 0); pl.rerolls = pl.shop.relance || 0;
       return pl;
@@ -946,7 +946,7 @@
       return;
     }
     // Capitaine : le dernier matelot prend le coup à sa place
-    if (p.crew && p.crew.length) { var mt = p.crew.pop(); burst(mt.x, mt.y, "#c8553d", 8); p.inv = 0.45; SND.crack(); if (S.opts.numbers) texts.push({ x: mt.x, y: mt.y - 8, n: "MATELOT !", life: 0.7 }); return; }
+    if (p.crew && p.crew.length) { var mt = p.crew.pop(); burst(mt.x, mt.y, "#c8553d", 8); SND.crack(); if (S.opts.numbers) texts.push({ x: mt.x, y: mt.y - 8, n: "MATELOT !", life: 0.7 }); dmg *= 0.4; }
     if ((p.dodge || p.dodgeX) && Math.random() < (p.dodge || 0) + (p.dodgeX || 0)) { p.inv = 0.3; r.dodges = (r.dodges || 0) + 1; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     p.calmT = 0;
     if (r && TIER) dmg *= (1 + tcfg().dmg * tierN()) * rageDmg();
@@ -2773,6 +2773,7 @@
       var s = fr[((c.anim || 0) | 0) % fr.length];
       if (c.fly) shadow(c.x, c.y + s.h / 2 + 6, s.w * 0.5); else shadow(c.x, c.y + s.h / 2 - 1, s.w * 0.7);
       blit(s, c.x, c.y + (c.fly ? Math.sin((c.anim || 0) * 0.7) : 0), c.face < 0);
+      if (c.wi && SPR[c.wi]) { var wsm = SPR[c.wi][0], wsc = 0.5; ctx.drawImage(wsm.c, Math.round(c.x + (c.face < 0 ? -4 : 4) - wsm.w * wsc / 2), Math.round(c.y - 1 - wsm.h * wsc / 2), Math.round(wsm.w * wsc), Math.round(wsm.h * wsc)); }
       if (c.max && c.life < c.max * 0.3 && Math.sin(r.time * 14) > 0) { ctx.globalAlpha = 0.4; blit(s, c.x, c.y, c.face < 0, true); ctx.globalAlpha = 1; }
     });
   }
@@ -3156,8 +3157,8 @@
     else if (ps === "acrobate") { pl.rollT = tal(pl, "longroulade") ? 0.56 : 0.28; pl.rollX = dx; pl.rollY = dy; pl.inv = Math.max(pl.inv, (tal(pl, "longroulade") ? 0.7 : 0.45) + (tal(pl, "intouchable") ? 1 : 0)); SND.whip(); }
     else if (ps === "glaneuse") { gems.forEach(function (g) { if ((g.kind === "xp" || (tal(pl, "aspiration") && g.kind !== "chest")) && Math.hypot(g.x - pl.x, g.y - pl.y) < 150) g.pull = 160; }); SND.pick(); }
     else if (ps === "bordee") { (pl.crew || []).forEach(function (mt) { crewShoot(pl, mt, 2); }); SND.boom(); }
-    else if (ps === "abordage") { (pl.crew || []).forEach(function (mt) { mt.chargeT = tal(pl, "mutinerie") ? 2.8 : 1.4; mt.tgt = null; }); SND.whip(); }
-    else if (ps === "convoi") { (pl.crew || []).forEach(function (mt) { fx.push({ kind: "spin", r: 16, life: 0.25, max: 0.25, pl: mt }); near(mt.x, mt.y, 24, function (e) { if (Math.hypot(e.x - mt.x, e.y - mt.y) < 16 + e.d.r) hurt(e, 12, (e.x - mt.x) * 3, (e.y - mt.y) * 3); }); }); SND.whip(); }
+    else if (ps === "abordage") { (pl.crew || []).forEach(function (mt) { mt.chargeT = tal(pl, "mutinerie") ? 2.8 : 1.4; mt.tgt = null; mt.one = 0; }); SND.whip(); }
+    else if (ps === "convoi") { throwCrew(pl, dx, dy); SND.whip(); }
     else if (ps === "pique") {
       if (tal(pl, "faucon_t")) { var ft = nearest(1, 120)[0]; if (ft) { var fd = Math.hypot(ft.x - pl.x, ft.y - pl.y) || 1; dx = (ft.x - pl.x) / fd; dy = (ft.y - pl.y) / fd; } }
       pl.diveT = 0.35; pl.inv = Math.max(pl.inv, 0.5); pl.vx = dx * pl.speed * 2.6; pl.vy = dy * pl.speed * 2.6; SND.whip();
@@ -3222,40 +3223,70 @@
     burst(pl.x, pl.y, "#c8a878", 4);
   }
   /* ---- Capitaine : l'équipage ---- */
-  function newMatelot(pl) { return { k: "matelot", x: pl.x, y: pl.y, face: 1, anim: Math.random() * 2, cd: 0.5 + Math.random() * 0.5, chargeT: 0, hitCd: 0 }; }
-  function crewMax(pl) { return (pl.posture === "convoi" ? 10 : 6) + (setCount(pl, "corsaire") >= 2 ? 2 : 0) + (tal(pl, "canonniers") ? 2 : 0) + (tal(pl, "longuefile") ? 3 : 0); }
-  function recruit(pl, v) {
-    if (!pl.crew) return;
-    pl.recruitAcc += v * (pl.posture === "convoi" && pl.mstate === "mouvement" ? 2 : 1);
-    var needN = 7;
-    while (pl.recruitAcc >= needN) {
-      pl.recruitAcc -= needN;
-      if (pl.crew.length < crewMax(pl)) { pl.crew.push(newMatelot(pl)); r.recruits = (r.recruits || 0) + 1; if (tal(pl, "ravitaillement")) pl.hp = Math.min(pl.maxHp, pl.hp + 3); if (pl === me) SND.click(); }
-    }
+  /* ---- Capitaine : l'équipage (10 au départ, +2 par niveau, 50 max), chaque matelot attaque avec l'arme du Capitaine en miniature ---- */
+  var CREW0 = 10, CREWMAX = 50;
+  function newMatelot(pl) { return { k: "matelot", x: pl.x, y: pl.y, face: 1, anim: Math.random() * 2, cd: 0.4 + Math.random() * 0.8, chargeT: 0, hitCd: 0 }; }
+  function crewMax(pl) { return Math.min(CREWMAX, CREW0 + 2 * (((r && r.level) || 1) - 1) + (setCount(pl, "corsaire") >= 2 ? 2 : 0) + (tal(pl, "canonniers") ? 4 : 0)); }
+  // un coup de matelot = 10 % d'un coup de l'arme de base du Capitaine
+  function crewHit(pl) {
+    if (pl._chT === r.time) return pl._ch;
+    var id = armeOf(pl).base, d = techDef(pl, id), v = d ? V(d, "dmg", Math.max(0, (pl.weapons[id] || 1) - 1)) : 15;
+    pl._chT = r.time; pl._ch = (typeof v === "number" ? v : 15) * 0.1;
+    return pl._ch;
   }
+  function crewMelee(pl) { var f = armeOf(pl).fam; return f === "melee"; }
+  function recruit(pl, v) { if (pl.crew) pl.regenT = (pl.regenT || 0) + v * 0.04; }
+  function addMatelot(pl) { var mt = newMatelot(pl); pl.crew.push(mt); r.recruits = (r.recruits || 0) + 1; return mt; }
+  function crewHurt(pl, e, dmg, kx, ky) { var pp = p; p = pl; HIT_ELEM = armElem(pl); hurt(e, dmg, kx, ky); HIT_ELEM = undefined; p = pp; }
   function crewShoot(pl, mt, mul) {
-    var t = nearest(1, 130, mt)[0]; if (!t) return false;
+    var mel = crewMelee(pl), t = nearest(1, mel ? 95 : 140, mt)[0]; if (!t) return false;
     var a = Math.atan2(t.y - mt.y, t.x - mt.x); mt.face = Math.cos(a) >= 0 ? 1 : -1;
-    projs.push({ owner: pl, kind: "bullet", x: mt.x, y: mt.y - 2, vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, dmg: 6 * (mul || 1) * (tal(pl, "salvelourde") && pl.anchored ? 1.5 : 1) * gpw() * 1.6, pierce: 1, sprite: "miniacorn", life: 0.95, hit: [], r: 3, explode: setCount(pl, "corsaire") >= 3 ? 14 : 0 });
+    var dmg = crewHit(pl) * (mul || 1) * (tal(pl, "salvelourde") && pl.anchored ? 1.5 : 1);
+    if (mel) { mt.chargeT = 0.7; mt.tgt = t; mt.one = 1; mt.dmul = dmg; return true; }
+    var A = armeOf(pl), bd = techDef(pl, A.base) || {}, fam = A.fam, spr = fam === "tir" && bd.sprite && SPR[bd.sprite] ? bd.sprite : SPR[A.icon] ? A.icon : "miniacorn";
+    projs.push({ owner: pl, kind: "bullet", mini: 1, x: mt.x, y: mt.y - 2, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, dmg: dmg, pierce: fam === "retour" ? 3 : fam === "tir" ? 2 : 1, sprite: spr, life: 0.85, hit: [], r: 3,
+      explode: fam === "zone" ? 12 : setCount(pl, "corsaire") >= 3 ? 14 : 0, elem: armElem(pl), fam: fam === "tir" ? "tir" : undefined });
     return true;
+  }
+  // Virevolte : la moitié de l'équipage (tout avec Longue file) part en vol dans la direction de la course
+  function throwCrew(pl, dx, dy) {
+    var L = Math.hypot(dx || 0, dy || 0), ux = L ? dx / L : (pl.face || 1), uy = L ? dy / L : 0, c = pl.crew || [];
+    var n = tal(pl, "longuefile") ? c.length : Math.ceil(c.length / 2);
+    for (var i = 0; i < n; i++) {
+      var mt = c[c.length - 1 - i], sp = (Math.random() - 0.5) * 0.8, ca = Math.cos(sp), sa = Math.sin(sp), v = 230 + Math.random() * 60;
+      mt.thT = 0.42 + Math.random() * 0.16; mt.tvx = (ux * ca - uy * sa) * v; mt.tvy = (ux * sa + uy * ca) * v; mt.x = pl.x; mt.y = pl.y; mt.hs = []; mt.chargeT = 0;
+    }
+    fx.push({ kind: "ring", x: pl.x, y: pl.y, r: 14, life: 0.25, max: 0.25, col: "156,197,107" });
   }
   function crewTick(pl, dt) {
     if (!pl.crew) return;
     // la file suit le chemin du Capitaine
     var tr = pl.trail, last = tr[0];
     if (!last || Math.hypot(last.x - pl.x, last.y - pl.y) > 2) { tr.unshift({ x: pl.x, y: pl.y }); if (tr.length > 200) tr.length = 200; }
-    var gap = pl.posture === "convoi" && pl.mstate === "mouvement" ? 7 : 5, circle = pl.posture === "abordage" && pl.anchored;
-    if (pl.posture === "convoi" && pl.anchored) { pl.convoiT = (pl.convoiT || 0) + dt; if (pl.convoiT >= 8) { pl.convoiT = 0; if (pl.crew.length < crewMax(pl)) { pl.crew.push(newMatelot(pl)); r.recruits++; } } }
+    var gap = pl.crew.length > 24 ? 3 : pl.crew.length > 14 ? 4 : 5, circle = pl.posture === "abordage" && pl.anchored;
+    var cm = crewMax(pl); if (pl.crewTop === undefined) pl.crewTop = pl.crew.length;
+    if (cm > pl.crewTop) { for (var nq = pl.crewTop; nq < cm; nq++) if (pl.crew.length < cm) addMatelot(pl); pl.crewTop = cm; if (pl === me) SND.click(); }
+    if (pl.crew.length < cm) { pl.regenT = (pl.regenT || 0) + dt * (pl.posture === "convoi" && pl.anchored ? 2 : 1); if (pl.regenT >= 2.5) { pl.regenT = 0; addMatelot(pl); } } else pl.regenT = 0;
+    if (pl.crew.length > CREWMAX) pl.crew.length = CREWMAX;
+    var wi = SPR[armeOf(pl).icon] ? armeOf(pl).icon : null;
     var salvo = (pl.posture === "bordee" && (pl.anchored || tal(pl, "couverture"))) || tal(pl, "lignetir");
     if (salvo) { pl.salvoT = (pl.salvoT || 0) - dt; if (pl.salvoT <= 0) { pl.salvoT = (tal(pl, "lignetir") ? 1.5 : tal(pl, "batterie") && pl.anchored ? 0.3 : !pl.anchored ? 1.1 : 0.55) * (pl.cdMul || 1); var ppS = p; p = pl; pl.crew.forEach(function (mt) { crewShoot(pl, mt, 1); }); p = ppS; } }
     if (circle && tal(pl, "bouclierh")) for (var hi = hostile.length - 1; hi >= 0; hi--) { var hh = hostile[hi]; if (pl.crew.some(function (mt) { return Math.abs(mt.x - hh.x) < 6 && Math.abs(mt.y - hh.y) < 6; })) hostile.splice(hi, 1); }
     pl.crew.forEach(function (mt, i) {
-      mt.anim += dt * 8; mt.cd -= dt; mt.hitCd -= dt;
+      mt.anim += dt * 8; mt.cd -= dt; mt.hitCd -= dt; mt.wi = wi;
       var tx, ty;
+      if (mt.thT > 0) {
+        mt.thT -= dt; mt.x += mt.tvx * dt; mt.y += mt.tvy * dt; mt.tvx *= 1 - dt * 1.5; mt.tvy *= 1 - dt * 1.5; mt.face = mt.tvx >= 0 ? 1 : -1; mt.anim += dt * 10;
+        near(mt.x, mt.y, 16, function (e) { if (e.dead || e.d.prop || mt.hs.indexOf(e) >= 0 || Math.hypot(e.x - mt.x, e.y - mt.y) > 5 + e.d.r) return; mt.hs.push(e); crewHurt(pl, e, crewHit(pl) * 3, mt.tvx * 0.4, mt.tvy * 0.4); if (e.dead && tal(pl, "ravitaillement")) pl.hp = Math.min(pl.maxHp, pl.hp + 1); });
+        if (fx.length < 200 && !S.opts.lowfx && Math.random() < 0.5) fx.push({ kind: "dot", x: mt.x, y: mt.y, vx: 0, vy: 0, life: 0.2, max: 0.2, color: "#9cc56b", sz: 1, g: 0 });
+        if (mt.thT <= 0 && tal(pl, "train")) { ring(mt.x, mt.y, 16, false); near(mt.x, mt.y, 24, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - mt.x, e.y - mt.y) < 16 + e.d.r) crewHurt(pl, e, crewHit(pl) * 2, 0, 0); }); }
+        return;
+      }
       if (mt.chargeT > 0) {
         mt.chargeT -= dt;
-        if (!mt.tgt || mt.tgt.dead) mt.tgt = nearest(1, 160, mt)[0] || null;
-        if (mt.tgt) { tx = mt.tgt.x; ty = mt.tgt.y; if (Math.hypot(tx - mt.x, ty - mt.y) < mt.tgt.d.r + 4 && mt.hitCd <= 0) { var pp = p; p = pl; var tgK = mt.tgt; hurt(tgK, 14 * gpw() * 1.4 * (tal(pl, "sabres") ? 1.5 : 1), (tx - mt.x) * 4, (ty - mt.y) * 4); if (tgK.dead && tal(pl, "recrue") && Math.random() < 0.25 && pl.crew.length < crewMax(pl)) { pl.crew.push(newMatelot(pl)); r.recruits++; } p = pp; mt.hitCd = 0.3; } }
+        if (!mt.tgt || mt.tgt.dead) mt.tgt = mt.one ? null : nearest(1, 160, mt)[0] || null;
+        if (!mt.tgt && mt.one) { mt.one = 0; mt.chargeT = 0; }
+        if (mt.tgt) { tx = mt.tgt.x; ty = mt.tgt.y; if (Math.hypot(tx - mt.x, ty - mt.y) < mt.tgt.d.r + 4 && mt.hitCd <= 0) { var pp = p; p = pl; var tgK = mt.tgt; HIT_ELEM = armElem(pl); hurt(tgK, mt.one ? mt.dmul : crewHit(pl) * 2.5 * (tal(pl, "sabres") ? 1.5 : 1), (tx - mt.x) * 4, (ty - mt.y) * 4); HIT_ELEM = undefined; if (mt.one) { fx.push({ kind: "spin", r: 8, life: 0.15, max: 0.15, pl: mt }); mt.one = 0; mt.chargeT = 0; } if (tgK.dead && tal(pl, "recrue") && Math.random() < 0.25 && pl.crew.length < crewMax(pl)) addMatelot(pl); p = pp; mt.hitCd = 0.3; } }
         else { tx = pl.x; ty = pl.y; }
         var dx = tx - mt.x, dy = ty - mt.y, d = Math.hypot(dx, dy) || 1, sp = Math.min(d, 190 * dt); mt.x += dx / d * sp; mt.y += dy / d * sp; if (Math.abs(dx) > 1) mt.face = dx > 0 ? 1 : -1;
         return;
@@ -3264,8 +3295,8 @@
       else { var pt = tr[Math.min(tr.length - 1, (i + 1) * gap)] || { x: pl.x, y: pl.y }; tx = pt.x; ty = pt.y; }
       var ex = tx - mt.x, ey = ty - mt.y; mt.x += ex * Math.min(1, dt * 10); mt.y += ey * Math.min(1, dt * 10);
       if (Math.abs(ex) > 0.5) mt.face = ex > 0 ? 1 : -1;
-      if (tal(pl, "train") && pl.mstate === "mouvement") { var ppT = p; p = pl; near(mt.x, mt.y, 12, function (e) { if (Math.hypot(e.x - mt.x, e.y - mt.y) < 6 + e.d.r && cooled(e, "train", 0.4)) hurt(e, 8 * gpw(), (e.x - mt.x) * 3, (e.y - mt.y) * 3); }); p = ppT; }
-      if (!salvo && mt.cd <= 0) { var pp2 = p; p = pl; if (crewShoot(pl, mt, 1)) mt.cd = 1.1 * (pl.cdMul || 1); else mt.cd = 0.3; p = pp2; }
+      if (pl.posture === "convoi" && pl.mstate === "mouvement") near(mt.x, mt.y, 12, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - mt.x, e.y - mt.y) < 6 + e.d.r && cooled(e, "train", 0.4)) crewHurt(pl, e, crewHit(pl) * 1.5, (e.x - mt.x) * 3, (e.y - mt.y) * 3); });
+      if (!salvo && mt.cd <= 0) { var pp2 = p; p = pl; if (crewShoot(pl, mt, 1)) mt.cd = (1.1 + Math.random() * 0.3) * (pl.cdMul || 1); else mt.cd = 0.3; p = pp2; }
     });
   }
   /* ---- rendu des états ---- */
@@ -6947,6 +6978,7 @@
         ctx.drawImage(rs.c, -rs.w / 2, -rs.h / 2); ctx.restore();
         return;
       }
+      if (q.mini) { var ms = (SPR[q.sprite] || SPR.acorn)[0]; ctx.save(); ctx.translate(Math.round(q.x), Math.round(q.y)); ctx.rotate(Math.round(Math.atan2(q.vy, q.vx) / (Math.PI / 4)) * (Math.PI / 4)); ctx.drawImage(ms.c, -Math.round(ms.w * 0.3), -Math.round(ms.h * 0.3), Math.round(ms.w * 0.6), Math.round(ms.h * 0.6)); ctx.restore(); return; }
       var s = SPR[q.sprite] || SPR.acorn, qst = q.owner ? vstyle(q.owner) : VFX_DEF;
       if (qst.string && q.kind === "boomerang" && q.owner) { ctx.strokeStyle = "rgba(232,224,208,.75)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(q.owner.x + (q.owner.face || 1) * 4, q.owner.y - 6); ctx.lineTo(q.x, q.y); ctx.stroke(); }
       if ((qst.spin && qst.spin[q.sprite]) || q.sprite === "flint" || q.sprite === "iceshard" || q.sprite === "specblade" || (q.sprite === "arrow" && qst.stick)) {
@@ -8631,7 +8663,7 @@
     return { r: [Math.round(r.time * 10), r.kills, r.level, Math.round(Math.min(1, xp / xpNext) * 1000), Math.floor(r.gold), r.bosses, Math.round(r.freeze * 10), Math.round(r.flash * 100), r.round, Math.round(r.roundT * 10)],
              dg: isDungeon() ? [r.dg.floor, r.dg.active, r.dg.rooms.filter(function (x) { return x.state === "cleared"; }).map(function (x) { return x.idx; }), r.dg.stairs ? [Math.round(r.dg.stairs.x), Math.round(r.dg.stairs.y)] : 0, r.dg.clearedTotal, r.dg.hash] : 0,
              e: e, pr: pr, lb: lb, g: g, h: h, w: w, pl: pl, b: curBoss ? [bossTitle(curBoss), Math.round(curBoss.hp / curBoss.maxHp * 1000), affMask(curBoss)] : 0, ev: Net.ev,
-             cp: allComps().slice(0, 60).reduce(function (a, c) { a.push(SPRI[c.k] || 0, R1(c.x), R1(c.y), (c.face < 0 ? 1 : 0) | (c.fly ? 2 : 0) | (c.max && c.life < c.max * 0.3 ? 4 : 0)); return a; }, []),
+             cp: allComps().slice(0, 72).reduce(function (a, c) { a.push(SPRI[c.k] || 0, R1(c.x), R1(c.y), (c.face < 0 ? 1 : 0) | (c.fly ? 2 : 0) | (c.max && c.life < c.max * 0.3 ? 4 : 0)); return a; }, []),
              po: r.portal ? [r.portal.x, r.portal.y, r.portal.st, Math.round(r.portal.p * 100), r.portal.boss && !r.portal.boss.dead ? r.portal.boss.id : 0] : 0, stg: [r.stage || 0, Math.round((r.stageT0 || 0) * 10), MAP.id],
              sh: [Object.keys(r.sh).filter(function (k) { return r.sh[k].used || r.sh[k].p > 0; }).map(function (k) { return [k, Math.round(r.sh[k].p * 100), r.sh[k].used ? 1 : 0]; }), r.madness || 0, r.devil || 0],
              ex: isExpe() && r.ex ? [r.ex.seed, r.ex.floor, r.ex.keys || 0, r.ex.st.map(function (q) { return [q.done ? 1 : 0, Math.round((q.p || 0) * 100), q.hidden ? 1 : 0]; }), r.bag, r.secure, r.ex.megaWon ? 1 : 0] : 0,
