@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.19.0";
+  var VERSION = "2.20.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -801,6 +801,7 @@
       if (itn(p, "patte_ours") && p.hp < p.maxHp * 0.5) dmg *= 1.25;
       if (e.d.prop && itn(p, "dent_castor")) dmg *= 3;
     }
+    if (p.txf && !e.d.prop) dmg *= txHitMul(p, e);
     dmg = Math.max(1, Math.round(dmg));
     if (e.eshield > 0) { var ab = Math.min(e.eshield, dmg); e.eshield -= ab; dmg -= ab; if (dmg <= 0) { e.flash = 0.05; return; } }
     e.hp -= dmg; e.flash = 0.1; if (r && !e.d.prop) r.dmgTot = (r.dmgTot || 0) + Math.min(dmg, e.hp + dmg);
@@ -818,6 +819,7 @@
     if (Net.dmgN < 30) { Net.dmgN++; netEv(["d", Math.round(e.x), Math.round(e.y - e.d.r - 6), dmg]); }
     if (p.items) onHitProcs(e);
     if (hf && !e.d.prop) hitFx(e, hf, dmg, hadMark);
+    if (p.txf && !e.d.prop) txHitPost(p, e, dmg, crit);
     if (crit && itn(p, "dard_reine") && !procLock && !e.d.prop) { procLock = true; explode(e.x, e.y, 18, 15 * itn(p, "dard_reine")); procLock = false; }
     if (e.hp <= 0 && !e.dead) kill(e);
   }
@@ -876,7 +878,7 @@
     if (HIT_TREE && setCount(p, "sylve") >= 2) p.hp = Math.min(p.maxHp, p.hp + 1);
     if (stealthy(p) && !e.spotted && setCount(p, "shinobi") >= 3) p.ghostT = Math.max(p.ghostT || 0, 1);
     if (p.sigK && p.sigK.ash && Math.hypot(e.x - p.x, e.y - p.y) < 50) pZone({ x: e.x, y: e.y, r: 14, dur: 3, kind: "thorn", dmg: 1, owner: p });
-    onKillProcs(e); txFire(p, "kill");
+    onKillProcs(e); txFire(p, "kill"); if (p && p.txf) txKillPost(p, e);
     if (e.elem === "feu" && !e.d.boss && enemies.length < 260) addZone(e.x, e.y, 11, 2, "fire", 4);
     if (hasMod("revenants") && !e.ghost && !e.d.boss && enemies.length < 260) { var gh = spawnAt(e.type, e.x, e.y); if (gh) { gh.ghost = true; gh.hp *= 0.4; gh.maxHp = gh.hp; } }
     if (r.ev && r.ev.id === "chasseurs" && e.d.role === "rodeur") drop("xp", e.x, e.y, (e.d.xp || 2) * 5);
@@ -956,6 +958,7 @@
     }
     // Capitaine : le dernier matelot prend le coup à sa place
     if (p.crew && p.crew.length) { var mt = p.crew.pop(); burst(mt.x, mt.y, "#c8553d", 8); SND.crack(); if (S.opts.numbers) texts.push({ x: mt.x, y: mt.y - 8, n: "MATELOT !", life: 0.7 }); dmg *= 0.4; }
+    if (p.txf && p.txf.sprint && p.mstate === "mouvement" && Math.random() < p.txf.sprint / 100) { p.inv = 0.3; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     if ((p.dodge || p.dodgeX) && Math.random() < (p.dodge || 0) + (p.dodgeX || 0)) { p.inv = 0.3; r.dodges = (r.dodges || 0) + 1; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     p.calmT = 0;
     if (r && TIER) dmg *= (1 + tcfg().dmg * tierN()) * rageDmg();
@@ -973,6 +976,7 @@
     else p.hp -= hit;
     if (r && p === me) r.dmgIn = (r.dmgIn || 0) + hit;
     p.inv = DIFF.inv || 0.35; txFire(p, "hurt");
+    if (p.txf && p.txf.reflect) { var rfp = p; near(p.x, p.y, 40, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - rfp.x, e.y - rfp.y) < 36 + e.d.r) { var pq = p; p = rfp; hurt(e, hit * rfp.txf.reflect / 100, (e.x - rfp.x) * 3, (e.y - rfp.y) * 3); p = pq; } }); ring(p.x, p.y, 36, false); }
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = Math.max(shake, 0.32); SND.hurt(); freezeFrame(0.06); hurtV = 0.35; kick(Math.random() - 0.5, Math.random() - 0.5, 3); }
     burst(p.x, p.y, "#c8553d", 5);
   }
@@ -3180,7 +3184,7 @@
     else pl.volteCd = pl.volteBase || V2.volteCd; pl.volteT = 0.35; r.voltes = (r.voltes || 0) + 1;
     fx.push({ kind: "ring", x: pl.x, y: pl.y, r: 18, life: 0.3, max: 0.3, col: "246,239,122" });
     SND.whoosh(); for (var dsi = 0; dsi < 6; dsi++) fx.push({ kind: "dot", x: pl.x + (Math.random() * 8 - 4), y: pl.y + 6, vx: -(dx || 0) * 30 + (Math.random() * 30 - 15), vy: -Math.random() * 12, life: 0.35, max: 0.35, color: dsi % 2 ? "#d8cdb4" : "#b0a488", sz: 2, g: 0 });
-    var ps = pl.posture, pp = p; p = pl; txFire(pl, "volte");
+    var ps = pl.posture, pp = p; p = pl; txFire(pl, "volte"); pl.txVolteT = 3;
     if (ps === "tireuse") crown(pl);
     else if (ps === "acrobate") { pl.rollT = tal(pl, "longroulade") ? 0.56 : 0.28; pl.rollX = dx; pl.rollY = dy; pl.inv = Math.max(pl.inv, (tal(pl, "longroulade") ? 0.7 : 0.45) + (tal(pl, "intouchable") ? 1 : 0)); SND.whip(); }
     else if (ps === "glaneuse") { gems.forEach(function (g) { if ((g.kind === "xp" || (tal(pl, "aspiration") && g.kind !== "chest")) && Math.hypot(g.x - pl.x, g.y - pl.y) < 150) g.pull = 160; }); SND.pick(); }
@@ -4174,13 +4178,13 @@
   function rarOf(q) { return D.WRAR[pieceRar(q)]; }
   // stats de l'attirail (façon Dofus) : lo/hi = jet d'une épique ; mal = peut sortir en malus ; fmt = affichage
   var GSTATS = [
-    { id: "dmg", name: "dégâts", lo: 4, hi: 12, pct: 1, mal: 1 }, { id: "crit", name: "chance de critique", lo: 2, hi: 6, pct: 1 }, { id: "cdm", name: "dégâts critiques", lo: 10, hi: 30, pct: 1 },
+    { id: "dmg", name: "dégâts", lo: 3, hi: 9, pct: 1, mal: 1 }, { id: "crit", name: "chance de critique", lo: 2, hi: 6, pct: 1 }, { id: "cdm", name: "dégâts critiques", lo: 8, hi: 22, pct: 1 },
     { id: "hp", name: "PV max", lo: 10, hi: 35, mal: 1 }, { id: "arm", name: "armure", lo: 1, hi: 3 }, { id: "res", name: "résistance aux dégâts", lo: 3, hi: 8, pct: 1 },
     { id: "dod", name: "esquive", lo: 2, hi: 6, pct: 1, mal: 1 }, { id: "reg", name: "PV par seconde", lo: 2, hi: 6, tenth: 1 },
-    { id: "spd", name: "vitesse", lo: 4, hi: 10, pct: 1, mal: 1 }, { id: "cd", name: "recharge des techniques", lo: 4, hi: 12, pct: 1, mal: 1, inv: 1 }, { id: "area", name: "zone", lo: 6, hi: 16, pct: 1, mal: 1 },
-    { id: "fmel", name: "dégâts de mêlée", lo: 8, hi: 20, pct: 1 }, { id: "ftir", name: "dégâts de tir", lo: 8, hi: 20, pct: 1 }, { id: "fzon", name: "dégâts de zone", lo: 8, hi: 20, pct: 1 },
-    { id: "fret", name: "dégâts de retour", lo: 8, hi: 20, pct: 1 }, { id: "fcom", name: "dégâts de compagnon", lo: 8, hi: 20, pct: 1 },
-    { id: "anc", name: "dégâts ancré", lo: 8, hi: 22, pct: 1, mal: 1 }, { id: "mov", name: "dégâts en mouvement", lo: 8, hi: 22, pct: 1, mal: 1 },
+    { id: "spd", name: "vitesse", lo: 4, hi: 10, pct: 1, mal: 1 }, { id: "cd", name: "vitesse de recharge", lo: 3, hi: 9, pct: 1, mal: 1, inv: 1 }, { id: "area", name: "zone", lo: 5, hi: 12, pct: 1, mal: 1 },
+    { id: "fmel", name: "dégâts de mêlée", lo: 6, hi: 14, pct: 1 }, { id: "ftir", name: "dégâts de tir", lo: 6, hi: 14, pct: 1 }, { id: "fzon", name: "dégâts de zone", lo: 6, hi: 14, pct: 1 },
+    { id: "fret", name: "dégâts de retour", lo: 6, hi: 14, pct: 1 }, { id: "fcom", name: "dégâts de compagnon", lo: 6, hi: 14, pct: 1 },
+    { id: "anc", name: "dégâts ancré", lo: 6, hi: 14, pct: 1, mal: 1 }, { id: "mov", name: "dégâts en mouvement", lo: 6, hi: 14, pct: 1, mal: 1 },
     { id: "rter", name: "résistance Terre", lo: 4, hi: 12, pct: 1 }, { id: "rfeu", name: "résistance Feu", lo: 4, hi: 12, pct: 1 }, { id: "reau", name: "résistance Eau", lo: 4, hi: 12, pct: 1 }, { id: "rair", name: "résistance Air", lo: 4, hi: 12, pct: 1 },
     { id: "mag", name: "portée de ramassage", lo: 10, hi: 30, pct: 1 }, { id: "xp", name: "expérience", lo: 4, hi: 10, pct: 1 }, { id: "gld", name: "or gagné", lo: 5, hi: 15, pct: 1 }
   ];
@@ -4199,7 +4203,7 @@
     S.shopStock = { day: day, items: items }; save();
   }
   function statRoll(x, f) { return Math.max(1, Math.round((x.lo + Math.random() * (x.hi - x.lo)) * f)); }
-  function rarMul(rar) { return [0.5, 0.65, 0.8, 1, 1.2][rar] || 1; }
+  function rarMul(rar) { return [0.5, 0.65, 0.8, 0.95, 1.1][rar] || 1; }
   function bonTxt(b) {
     return GSTATS.filter(function (x) { return b && b[x.id]; }).map(function (x) {
       var v = b[x.id], sg = v > 0 ? "+" : "-", a = Math.abs(v);
@@ -4210,7 +4214,7 @@
     var keys = Object.keys(D.GEAR).filter(function (k) { return !D.GEAR[k].unique && questOk(D.GEAR[k]); }), t = tpl || keys[(Math.random() * keys.length) | 0], g = D.GEAR[t];
     if (rar === undefined) { var W8 = GRAR_W[Math.max(1, Math.min(3, tier || 1))], tot = 100, rr = Math.random() * tot; rar = 0; while (rr >= W8[rar]) { rr -= W8[rar]; rar++; } if (g.unique) rar = Math.max(rar, 3); }
     var R0 = GRAR_ROLL[rar], q = { id: eqS().uid++, t: t, roll: R0[0] + Math.random() * (R0[1] - R0[0]), tier: tier || 1, pts: 0, rar: rar };
-    var nb = rar + 1, mulR = [0.5, 0.65, 0.8, 1, 1.2][rar], pool = GSTATS.slice().sort(function () { return Math.random() - 0.5; }), mal = null;
+    var nb = rar + 1, mulR = [0.5, 0.65, 0.8, 0.95, 1.1][rar], pool = GSTATS.slice().sort(function () { return Math.random() - 0.5; }), mal = null;
     function rollV(x, f) { return statRoll(x, f); }
     q.bon = {};
     if (rar >= 2 && Math.random() < [0, 0, 0.3, 0.5, 0.6][rar]) { mal = pool.filter(function (x) { return x.mal; })[0]; if (mal) pool.splice(pool.indexOf(mal), 1); }
@@ -4268,16 +4272,45 @@
       var pair = t < 2 ? D.TAL_COMMON[t] : (D.TAL[pl.posture] || [])[t - 2]; if (!pair) continue;
       var node = pair[pick[t + 1] === "b" ? 1 : 0]; pl.tal[node.id] = true;
     }
-    var px = (S.tal[cid] || {}).x || {}; pl.txl = []; pl.txs = {};
+    var px = (S.tal[cid] || {}).x || {}; pl.txl = []; pl.txs = {}; pl.txf = {};
     for (var tx = 0; tx < D.TAL_XLVL.length; tx++) {
       if (lv < D.TAL_XLVL[tx] || !px[tx] || !D.TAL_FX[cid]) continue;
-      var xo = D.TAL_FX[cid][tx][px[tx].charCodeAt(0) - 97]; if (xo) pl.txl.push(xo);
+      var xo = D.TAL_FX[cid][tx][px[tx].charCodeAt(0) - 97]; if (xo && xo.fx) pl.txf[xo.fx.k] = (pl.txf[xo.fx.k] || 0) + xo.fx.v; else if (xo) pl.txl.push(xo);
     }
     pl.anchorTh = pl.anchorTh0 = pl.tal.racines ? 0.25 : V2.anchorT;
     pl.volteBase = pl.volteBase0 = (pl.tal.voltigeuse ? 1.5 : pl.tal.ressort ? 2.2 : V2.volteCd);
     pl.epts0 = { terre: pl.epts.terre, feu: pl.epts.feu, eau: pl.epts.eau, air: pl.epts.air };
   }
   /* ---- talents de personnage à effet (2.17) : un déclencheur + une action ---- */
+  // talents de signature : modificateurs de coups
+  function txHitMul(pl, e) {
+    var f = pl.txf, m = 1, n;
+    if (f.execute && e.hp < e.maxHp * 0.3) m *= 1 + f.execute / 100;
+    if (f.opener && e.hp >= e.maxHp * 0.98) m *= 1 + f.opener / 100;
+    if (f.desperate && pl.hp < pl.maxHp * 0.5) m *= 1 + f.desperate / 100;
+    if (f.streak && pl.txStreak > 0) m *= 1 + f.streak * pl.txStreak / 100;
+    if (f.afterVolte && pl.txVolteT > 0) m *= 1 + f.afterVolte / 100;
+    if (f.crew && pl.crew) m *= 1 + f.crew * pl.crew.length / 1000;
+    if (f.crowd) { n = 0; near(e.x, e.y, 50, function (o) { if (n < 10 && !o.dead && !o.d.prop) n++; }); m *= 1 + f.crowd * n / 100; }
+    return m;
+  }
+  function txHitPost(pl, e, dmg, crit) {
+    var f = pl.txf;
+    if (f.lifesteal && pl.hp < pl.maxHp) pl.hp = Math.min(pl.maxHp, pl.hp + dmg * f.lifesteal / 100);
+    if (f.burn && !e.dead && Math.random() < f.burn / 100) { e.burnT = 3; e.burnD = Math.max(e.burnD || 0, 3 * gpw()); e.burnBy = pl; }
+    if (f.chill && !e.dead && !e.d.boss && Math.random() < f.chill / 100) { e.slowT = Math.max(e.slowT || 0, 1.2); e.slow = Math.max(e.slow || 0, 0.45); }
+    if (f.stun && !e.dead && !e.d.boss && Math.random() < f.stun / 100) { e.stunT = Math.max(e.stunT || 0, 0.6); e.slowT = Math.max(e.slowT || 0, 0.6); e.slow = 1; }
+    if (f.knock && !e.d.boss) { var d = Math.hypot(e.x - pl.x, e.y - pl.y) || 1; e.kx += (e.x - pl.x) / d * f.knock * 0.8; e.ky += (e.y - pl.y) / d * f.knock * 0.8; }
+    if (procLock) return;
+    if (crit && f.critBolt && !e.dead) { procLock = true; var nx = chainNext(e, [e.id]); if (nx) zapChain(nx, 2 + f.critBolt, 12 * gpw(), e); procLock = false; }
+    if (f.nth) { pl.txN = (pl.txN || 0) + 1; if (pl.txN >= f.nth) { pl.txN = 0; procLock = true; explode(e.x, e.y, 26, 12 * gpw(), 0); procLock = false; } }
+  }
+  function txKillPost(pl, e) {
+    var f = pl.txf; if (!f || e.d.prop) return;
+    if (f.streak) { pl.txStreak = Math.min(10, (pl.txStreak || 0) + 1); pl.txStreakT = 5; }
+    if (f.killHeal) pl.hp = Math.min(pl.maxHp, pl.hp + f.killHeal);
+    if (f.bounty && Math.random() < f.bounty / 100) addGold(2 + 4 * gpw());
+  }
   function txFire(pl, trig) {
     if (!pl || !pl.txl || !pl.txl.length || pl.down) return;
     for (var i = 0; i < pl.txl.length; i++) {
@@ -4290,6 +4323,11 @@
     }
   }
   function txTick(pl, dt) {
+    if (pl.txf) {
+      if (pl.txStreakT > 0) { pl.txStreakT -= dt; if (pl.txStreakT <= 0) pl.txStreak = 0; }
+      if (pl.txVolteT > 0) pl.txVolteT -= dt;
+      if (pl.txf.patience && pl.anchored && pl.hp < pl.maxHp) pl.hp = Math.min(pl.maxHp, pl.hp + pl.txf.patience * dt);
+    }
     if (!pl.txl || !pl.txl.length) return;
     if (pl.txHaste > 0) pl.txHaste -= dt; if (pl.txRage > 0) pl.txRage -= dt;
     for (var i = 0; i < pl.txl.length; i++) {
@@ -9407,6 +9445,7 @@
     techs: function () { return Object.keys(me.weapons).map(function (id) { return techName(me, id); }); },
     tx: function (trig) { var n = (me.txl || []).length; if (trig) { me.txl.forEach(function (o) { o.trig = trig; }); me.txs = {}; for (var i = 0; i < 12; i++) txFire(me, trig); } return n; },
     txall: function () { var out = []; D.TAL_FX.noisette.forEach(function (row) { row.forEach(function (o) { var c = Object.assign({}, o, { trig: "volte" }); me.txl = [c]; me.txs = {}; me.hp = me.maxHp * 0.5; txFire(me, "volte"); out.push(o.act); }); }); return out.length; },
+    gearR: function (t, rar) { var q = genPiece(3, t, rar); addPiece(q); save(); return q.id; },
     friend: function () { Net.on = true; Net.started = false; Net.roster = [{ id: "zz" }]; Net.cps2 = { zz: { x: camp.x + 40, y: camp.y + 10, dx: camp.x + 40, dy: camp.y + 10, f: -1, c: "capitaine", n: "Ami", t: performance.now() } }; return 1; },
     friendMove: function () { var q = Net.cps2.zz; q.x += 30; q.y -= 12; q.t = performance.now(); return 1; },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },

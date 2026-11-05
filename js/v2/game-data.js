@@ -1538,6 +1538,50 @@ window.ES_DATA = (function () {
       TAL_FX[cid].push(row);
     }
   });
+  // 2.20 : un talent de signature par palier et par écureuil (le 3e choix), qui change la façon de jouer
+  var TXU_KIND = {
+    execute:   { b: 20,  d: function (v) { return "+" + v + " % de dégâts contre les ennemis sous 30 % de PV."; } },
+    opener:    { b: 16,  d: function (v) { return "+" + v + " % de dégâts contre les ennemis à PV pleins."; } },
+    crowd:     { b: 1.5, d: function (v) { return "+" + v + " % de dégâts par ennemi à moins de 50 px (jusqu'à 10)."; } },
+    desperate: { b: 20,  d: function (v) { return "+" + v + " % de dégâts sous 50 % de PV."; } },
+    streak:    { b: 2,   d: function (v) { return "Chaque victoire donne +" + v + " % de dégâts pendant 5 s (jusqu'à 10 cumuls)."; } },
+    afterVolte:{ b: 20,  d: function (v) { return "Après une Volte : +" + v + " % de dégâts pendant 3 s."; } },
+    crew:      { b: 6,   d: function (v) { return "+" + (v / 10).toFixed(1).replace(".", ",") + " % de dégâts par matelot de l'équipage."; } },
+    lifesteal: { b: 2,   d: function (v) { return "Tu récupères " + v + " % des dégâts infligés en PV."; } },
+    burn:      { b: 15,  d: function (v) { return v + " % de chances d'enflammer l'ennemi touché."; } },
+    chill:     { b: 20,  d: function (v) { return v + " % de chances de ralentir l'ennemi touché."; } },
+    stun:      { b: 10,  d: function (v) { return v + " % de chances d'étourdir l'ennemi touché."; } },
+    knock:     { b: 40,  d: function (v) { return "Tes coups repoussent beaucoup plus fort (+" + v + " %)."; } },
+    critBolt:  { b: 1,   d: function (v) { return "Un coup critique lâche un éclair sur " + (2 + v) + " ennemis."; } },
+    nth:       { b: 10,  d: function (v) { return "Tous les " + v + " coups, une onde jaillit de la cible."; } },
+    reflect:   { b: 25,  d: function (v) { return "Quand tu es touché, une onde renvoie " + v + " % du coup aux ennemis proches."; } },
+    bounty:    { b: 6,   d: function (v) { return v + " % de chances qu'un ennemi tué laisse des glands d'or."; } },
+    killHeal:  { b: 1,   d: function (v) { return "Chaque victoire te soigne de " + v + " PV."; } },
+    patience:  { b: 1,   d: function (v) { return "Ancré : tu récupères " + v + " PV par seconde."; } },
+    sprint:    { b: 6,   d: function (v) { return "En mouvement : " + v + " % de chances d'esquiver un coup."; } }
+  };
+  var TXU = {
+    noisette: [["Gland chanceux", "critBolt"], ["Pluie de glands", "nth"], ["Cachette sûre", "patience"], ["Écureuil pressé", "sprint"], ["Chasse aux noisettes", "bounty"], ["Pas de côté", "afterVolte"]],
+    cendrine: [["Peau de cendre", "reflect"], ["Braise couvante", "burn"], ["Cendre froide", "chill"], ["Souffle court", "desperate"], ["Phénix", "killHeal"], ["Rancune", "crowd"]],
+    charbon: [["Charbon ardent", "burn"], ["Étincelle", "nth"], ["Brûlure vive", "execute"], ["Fournaise", "crowd"], ["Four rugissant", "streak"], ["Cendres chaudes", "lifesteal"]],
+    flocon: [["Givre mordant", "chill"], ["Avalanche", "knock"], ["Congélation", "stun"], ["Blizzard", "crowd"], ["Souffle glacé", "reflect"], ["Silence blanc", "opener"]],
+    planeur: [["Piqué mortel", "opener"], ["Vent arrière", "sprint"], ["Plume tranchante", "critBolt"], ["Courant ascendant", "afterVolte"], ["Œil de faucon", "execute"], ["Chute libre", "knock"]],
+    capitaine: [["Grande équipe", "crew"], ["Mutinerie", "streak"], ["Pillage", "bounty"], ["Pavillon noir", "desperate"], ["Ravitaillement", "killHeal"], ["Abordage", "stun"]],
+    jumeaux: [["Coup double", "nth"], ["Complicité", "afterVolte"], ["Miroir", "reflect"], ["Bagarre", "crowd"], ["Jeu d'équipe", "lifesteal"], ["Farce", "stun"]],
+    chevalier: [["Charge lourde", "knock"], ["Bouclier fort", "reflect"], ["Honneur", "opener"], ["Lance sacrée", "execute"], ["Rempart", "patience"], ["Volonté", "desperate"]],
+    mage: [["Rune explosive", "nth"], ["Étincelle runique", "critBolt"], ["Rune de gel", "chill"], ["Savoir", "streak"], ["Focus", "opener"], ["Mana", "killHeal"]],
+    bucheron: [["Coup de grâce", "execute"], ["Écorce épaisse", "reflect"], ["Bûcher", "burn"], ["Fendre le bois", "knock"], ["Cognée", "streak"], ["Sève", "patience"]],
+    ninja: [["Ombre fatale", "opener"], ["Pas feutré", "sprint"], ["Lame empoisonnée", "burn"], ["Kunaï éclair", "critBolt"], ["Disparition", "afterVolte"], ["Frappe nerveuse", "bounty"]],
+    druide: [["Ronces vives", "reflect"], ["Floraison", "patience"], ["Spores", "chill"], ["Racines", "stun"], ["Cycle de vie", "killHeal"], ["Nuée", "crowd"]],
+    pataud: [["Gros appétit", "lifesteal"], ["Ventre plein", "desperate"], ["Miettes", "bounty"], ["Digestion", "patience"], ["Festin", "streak"], ["Roulé-boulé", "knock"]],
+    trefle: [["Trèfle à quatre", "critBolt"], ["Coup de bol", "bounty"], ["Chanceux", "execute"], ["Pile ou face", "opener"], ["Jeu de dés", "nth"], ["Fortune", "streak"]]
+  };
+  Object.keys(TXU).forEach(function (cid) {
+    TXU[cid].forEach(function (u, t) {
+      var kd = TXU_KIND[u[1]], v = u[1] === "nth" ? Math.max(4, 11 - t) : u[1] === "critBolt" ? 1 + Math.floor(t / 2) : u[1] === "killHeal" || u[1] === "patience" ? Math.round(kd.b * (1 + 0.45 * t) * 10) / 10 : Math.round(kd.b * (1 + 0.3 * t) * 10) / 10;
+      TAL_FX[cid][t][2] = { id: "xu_" + cid + "_" + t, name: u[0], desc: ("Signature : " + kd.d(v)).replace(/(\d)\.(\d)/g, "$1,$2"), fx: { k: u[1], v: v } };
+    });
+  });
   var TAL_LVL = [2, 4, 6, 8];   // niveau d'écureuil qui ouvre chaque palier
   // maîtrise des armes : des options, pas de puissance (1 : techniques et 1re évolution · 2 : 1re signature · 3 : 2e évolution · 4 : signatures 2 et 3 · 5 : éveil)
   var MASTERY = [0, 120, 350, 700, 1200];
