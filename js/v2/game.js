@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.17.1";
+  var VERSION = "2.18.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -5456,6 +5456,10 @@
       if (d < 3) { camp.tx = null; camp.moving = false; if (camp.goal) { var g = camp.goal; camp.goal = null; campOpen(g); return; } }
       else { camp.x += dx / d * Math.min(d, sp * 1.4 * dt); camp.y += dy / d * Math.min(d, sp * 1.4 * dt); camp.face = dx < 0 ? -1 : 1; camp.moving = true; }
     } else camp.moving = false;
+    if (Net.on && Net.ch && !Net.started) {
+      camp.sendT = (camp.sendT || 0) - dt;
+      if (camp.sendT <= 0) { camp.sendT = camp.moving ? 0.12 : 0.8; netSend("cp", { id: Net.id, x: Math.round(camp.x * 10) / 10, y: Math.round(camp.y * 10) / 10, f: camp.face || 1, c: S.char, n: (S.name || "Écureuil").slice(0, 12) }); }
+    }
     // obstacles (le chemin automatique les contourne en glissant)
     CAMP_COL.forEach(function (c) { var ox = camp.x - c.x, oy = (camp.y - c.y) * 1.4, od = Math.hypot(ox, oy); if (od < c.r && od > 0.01) { camp.x = c.x + ox / od * c.r; camp.y = c.y + oy / od * c.r / 1.4; } });
     var P0 = CAMP_POND, pdx = (camp.x - P0.x) / (P0.rx + 4), pdy = (camp.y - P0.y) / (P0.ry + 4), pq = Math.hypot(pdx, pdy);
@@ -5511,7 +5515,16 @@
       if (l.npc && SPR[l.npc]) { var nx = q.x + (l.id === "chene" ? -14 : l.id === "sentier" ? 0 : 20), ny = q.y + (l.id === "chene" ? 6 : 4);
         list.push({ y: ny, f: function () { drawHero(l.npc, nx, ny, nx > CAMP_FIRE.x ? -1 : 1, false, t * 4, 0); if (hot) { var by = ny - 18 + Math.round(Math.sin(t * 4)); ctx.fillStyle = "#2b1709"; ctx.fillRect(nx - 3, by - 1, 7, 8); ctx.fillStyle = "#fdf3de"; ctx.fillRect(nx - 2, by, 5, 6); ctx.fillStyle = "#2b1709"; ctx.fillRect(nx, by + 1, 1, 2); ctx.fillRect(nx, by + 4, 1, 1); } } }); }
     });
-    list.push({ y: camp.y, f: function () { drawHero(charById(S.char).sprite, camp.x, camp.y, camp.face || 1, camp.moving, t * 8, 0); } });
+    list.push({ y: camp.y, f: function () { drawHero(charById(S.char).sprite, camp.x, camp.y, camp.face || 1, camp.moving, t * 8, 0); if (Net.on) drawText((S.name || "Écureuil").slice(0, 12), camp.x, camp.y - 24, "#fdf3de", "c"); } });
+    if (Net.on && !Net.started && Net.cps2) {
+      var nowp = performance.now(), live = {}; Net.roster.forEach(function (x) { live[x.id] = 1; });
+      Object.keys(Net.cps2).forEach(function (id) {
+        var q = Net.cps2[id]; if (!live[id] || nowp - q.t > 6000) return;
+        var mx = q.x - q.dx, my = q.y - q.dy, mv = Math.hypot(mx, my) > 1.2; q.dx += mx * 0.22; q.dy += my * 0.22;
+        var ch = D.CHARACTERS.filter(function (c) { return c.id === q.c; })[0] || D.CHARACTERS[0];
+        list.push({ y: q.dy, f: function () { drawHero(ch.sprite, q.dx, q.dy, q.f || 1, mv, t * 8, 0); drawText(q.n || "Ami", q.dx, q.dy - 24, "#f6d36b", "c"); } });
+      });
+    }
     list.sort(function (a, b) { return a.y - b.y; }).forEach(function (o) { o.f(); });
     // panneaux des lieux (nom sous chaque porte), flèche sur le lieu proche
     D.CAMP.forEach(function (l) {
@@ -7997,7 +8010,7 @@
       if (!Net.on) return SCREENS.coop();
       var host = Net.role === "host", ok = Net.status === "SUBSCRIBED";
       var hp = Net.roster.filter(function (x) { return x.host; })[0];
-      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="leave">← Quitter</button><h2>Salon</h2>' + goldBadge() + "</div>" +
+      var html = '<div class="screen-head"><button class="btn btn-ghost btn-small" type="button" data-action="leave">← Quitter</button><button class="btn btn-small" type="button" data-action="go" data-arg="menu">🏕️ Camp</button><h2>Salon</h2>' + goldBadge() + "</div>" +
         '<div class="room-code"><span>Code du salon</span><b>' + esc(Net.code) + '</b><button class="btn btn-alt btn-small" type="button" data-action="invite">📨 Inviter</button></div>' +
         (Net.err ? '<p class="net-err">' + esc(Net.err) + "</p>" : "") +
         (!ok ? '<p class="game-small">Connexion au salon… (' + esc(Net.status || "") + ")</p>" : "") +
@@ -8639,7 +8652,7 @@
     }
     var ch = cl.channel("es-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: Net.id } } });
     ch.on("presence", { event: "sync" }, onPresence);
-    ["start", "s", "in", "pick", "end", "round", "next", "rdy", "tp", "floor", "need"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
+    ["start", "s", "in", "pick", "end", "round", "next", "rdy", "tp", "floor", "need", "cp"].forEach(function (ev) { ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload, false); } catch (err) { showError(err); } }); });
     ch.on("broadcast", { event: "sig" }, function (msg) { try { onSignal(msg.payload); } catch (err) { try { console.warn(err); } catch (e) {} } });
     if (window.Party && window.Party.emoteChannel) window.Party.emoteChannel(ch, function () { return S.name; });   // émotes (bouton 😀 / touche T)
     ch.subscribe(function (status) {
@@ -8712,6 +8725,13 @@
   }
   function onNet(ev, d, direct) {
     if (!d) return;
+    if (ev === "cp") {   // position d'un ami dans le hub
+      if (d.id === Net.id) return;
+      var cp0 = (Net.cps2 = Net.cps2 || {})[d.id];
+      if (!cp0) cp0 = Net.cps2[d.id] = { dx: d.x, dy: d.y };
+      cp0.x = d.x; cp0.y = d.y; cp0.f = d.f; cp0.c = d.c; cp0.n = d.n; cp0.t = performance.now();
+      return;
+    }
     if (ev === "s" && !direct && Net.role === "guest" && hostLinkOpen()) return;   // déjà reçu en direct
     if (ev === "start" && Net.role === "guest") {
       if (Net.started) return;
@@ -8793,6 +8813,7 @@
     sendFast("start", info);
   }
   function startOnline(info) {
+    closeCamp(); Net.cps2 = {};
     Net.started = true; Net.missing = {}; Net.hostGone = 0; Net.ev = []; Net.acc = 0; Net.inAcc = 0; Net.cur = Net.prev = null;
     reset(info.roster, info.map, info.diff, info.mode, info.seed, info.dtype);
     Net.lastLevel = 1;
@@ -9325,6 +9346,8 @@
     techs: function () { return Object.keys(me.weapons).map(function (id) { return techName(me, id); }); },
     tx: function (trig) { var n = (me.txl || []).length; if (trig) { me.txl.forEach(function (o) { o.trig = trig; }); me.txs = {}; for (var i = 0; i < 12; i++) txFire(me, trig); } return n; },
     txall: function () { var out = []; D.TAL_FX.noisette.forEach(function (row) { row.forEach(function (o) { var c = Object.assign({}, o, { trig: "volte" }); me.txl = [c]; me.txs = {}; me.hp = me.maxHp * 0.5; txFire(me, "volte"); out.push(o.act); }); }); return out.length; },
+    friend: function () { Net.on = true; Net.started = false; Net.roster = [{ id: "zz" }]; Net.cps2 = { zz: { x: camp.x + 40, y: camp.y + 10, dx: camp.x + 40, dy: camp.y + 10, f: -1, c: "capitaine", n: "Ami", t: performance.now() } }; return 1; },
+    friendMove: function () { var q = Net.cps2.zz; q.x += 30; q.y -= 12; q.t = performance.now(); return 1; },
     campGo: function (x, y) { camp.x = x; camp.y = y; camp.tx = x; camp.ty = y; },
     campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
