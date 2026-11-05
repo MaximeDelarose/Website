@@ -3069,3 +3069,6 @@ html.at-lock, html.at-lock body { overflow: hidden; height: 100%; overscroll-beh
 /* bouton de sortie du plein écran : un libellé, pour ne pas le prendre pour la fermeture d'une fenêtre */
 .fs-exit.fs-exit-txt { width: auto; height: auto; padding: 4px 9px; font-size: .72rem; font-weight: 800; letter-spacing: .02em; border-radius: 6px; background: rgba(43, 23, 9, .6); border-color: rgba(43, 23, 9, .85); opacity: .85; }
 .fs-exit.fs-exit-txt:hover { opacity: 1; background: rgba(43, 23, 9, .9); }
+.dof-spell-row.x3 { grid-template-columns: 44px repeat(3, minmax(0, 1fr)); }
+.dof-spell-row.x3 .dof-spell span { color: #8ac6ff; }
+@media (max-width: 520px) { .dof-spell-row.x3 { grid-template-columns: 38px repeat(3, minmax(0, 1fr)); gap: 4px; } .dof-spell-row.x3 .dof-spell { padding: 4px 5px; } .dof-spell-row.x3 .dof-spell strong { font-size: 11px; } .dof-spell-row.x3 .dof-spell span { font-size: 10px; } }

@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.15.0";
+  var VERSION = "2.16.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -4126,6 +4126,18 @@
       });
       html += "</div>";
     }
+    html += "</div>";
+    var px = (S.tal[c.id] || {}).x || {};
+    html += '<h3 class="pick-title">Talents de personnage</h3><p class="game-small">Valables avec toutes les postures : un choix par palier.</p><div class="dof-spells">';
+    D.TAL_X.forEach(function (row, tx) {
+      var open = lv >= D.TAL_XLVL[tx];
+      html += '<div class="dof-spell-row x3' + (open ? "" : " is-locked") + '"><span class="dof-lvl"><b>' + D.TAL_XLVL[tx] + "</b><small>niv.</small></span>";
+      row.forEach(function (nd, i) {
+        var on = px[tx] === String.fromCharCode(97 + i);
+        html += '<button type="button" class="dof-spell' + (on ? " is-on" : "") + '" ' + (open ? 'data-action="txpick" data-arg="' + tx + ":" + String.fromCharCode(97 + i) + '"' : "disabled") + "><strong>" + esc(nd[0]) + "</strong><span>" + esc(bonTxt(nd[1]).join(", ")) + "</span></button>";
+      });
+      html += "</div>";
+    });
     return html + "</div>";
   }
   function terMastery() {
@@ -4239,6 +4251,12 @@
       if (lv < D.TAL_LVL[t] || !pick[t + 1]) continue;
       var pair = t < 2 ? D.TAL_COMMON[t] : (D.TAL[pl.posture] || [])[t - 2]; if (!pair) continue;
       var node = pair[pick[t + 1] === "b" ? 1 : 0]; pl.tal[node.id] = true;
+    }
+    var px = (S.tal[cid] || {}).x || {};
+    for (var tx = 0; tx < D.TAL_XLVL.length; tx++) {
+      if (lv < D.TAL_XLVL[tx] || !px[tx]) continue;
+      var xo = D.TAL_X[tx][px[tx].charCodeAt(0) - 97]; if (!xo) continue;
+      Object.keys(xo[1]).forEach(function (k) { pl.gbon[k] = (pl.gbon[k] || 0) + xo[1][k]; });
     }
     pl.anchorTh = pl.anchorTh0 = pl.tal.racines ? 0.25 : V2.anchorT;
     pl.volteBase = pl.volteBase0 = (pl.tal.voltigeuse ? 1.5 : pl.tal.ressort ? 2.2 : V2.volteCd);
@@ -8248,6 +8266,9 @@
     tpick: function (a) {
       var ps = postureOf(S.char, (S.posture || {})[S.char]).id, t = a.split(":"); eqS();
       S.tal[S.char] = S.tal[S.char] || {}; S.tal[S.char][ps] = S.tal[S.char][ps] || {}; S.tal[S.char][ps][t[0]] = t[1]; save(); SND.click(); go("terrier");
+    },
+    txpick: function (a) {
+      var t = a.split(":"); eqS(); S.tal[S.char] = S.tal[S.char] || {}; S.tal[S.char].x = S.tal[S.char].x || {}; S.tal[S.char].x[t[0]] = t[1]; save(); SND.click(); go("terrier");
     },
     craft: function (t) { var q = craft(t); if (q) { SND.fusion(); bannerAll(D.GEAR[q.t].name + " fabriquée"); } UI.asel = t; go("atelier"); },
     isel2: function (id) { UI.sel = +id; SND.click(); go("atelier"); },
