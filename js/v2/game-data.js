@@ -1079,8 +1079,8 @@ window.ES_DATA = (function () {
     { name: "C'est la fin", color: "#100008" },
   ];
   var TIER = {
-    minutes: 2.4,          // minutes par palier (mode Normal)
-    hp: 0.12, dmg: 0.18, spawn: 0.1, elite: 0.006, // bonus par palier (continue au-delà du dernier palier)
+    minutes: 2.8,          // minutes par palier (mode Normal) ; 2.4 avant l'équilibrage 2.7.1
+    hp: 0.12, dmg: 0.15, spawn: 0.1, elite: 0.006, // bonus par palier (continue au-delà du dernier palier) ; dégâts 0.18 avant 2.7.1
   };
   // Rage : passé 10 min sur une même carte, les bêtes s'énervent de plus en plus vite (dégâts et vitesse)
   var RAGE = { start: 600, dmgK: 0.5, dmgPow: 1.6, spdPerMin: 0.07, spdMax: 2.2, hpPerMin: 0.25 };

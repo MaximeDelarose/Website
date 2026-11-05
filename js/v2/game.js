@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.7.0";
+  var VERSION = "2.8.0";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -317,6 +317,7 @@
     p.speed = 62 * (1 + (m.speed || 0) + 0.05 * (sh.celerite || 0) + 0.1 * (ps.pattes || 0) + (rl.plume ? 0.12 : 0) + 0.08 * (it.plume || 0) + 0.25 * (it.pacte_ailes || 0) + 0.15 * (it.aureole || 0) - 0.05 * (it.coeur_golem || 0));
     p.might = 1 + (m.might || 0) + 0.05 * (sh.force || 0) + 0.1 * (ps.griffes || 0) + 0.04 * (tr.a1 || 0) + 0.08 * (pg.racines || 0) + (rl.croc ? 0.15 : 0) + 0.15 * (it.horloge || 0) + 0.4 * (it.pacte_force || 0) + 0.2 * (it.aureole || 0);
     p.armor = (m.armor || 0) + (sh.ecorce || 0) + (ps.ecorce || 0) + (tr.s3 || 0) + 2 * (it.ecaille || 0) + (it.bois_roi || 0) + 2 * (it.coeur_golem || 0);
+    if (p.arme && D.ARMES[p.arme]) { var famA = D.ARMES[p.arme].fam; p.armor += famA === "melee" ? 2 : famA === "zone" || famA === "retour" ? 1 : 0; }   // équilibrage 2.7.1 : les armes qui frappent de près encaissent mieux
     p.magnet = 30 * (1 + (m.magnet || 0) + 0.15 * (sh.aimant || 0) + 0.4 * (ps.joues || 0) + 0.1 * (tr.f1 || 0) + (rl.aimant ? 0.6 : 0));
     p.cdMul = Math.max(0.4, 1 - (m.cd || 0) - 0.03 * (sh.vivacite || 0) - 0.08 * (ps.vivacite || 0) - 0.03 * (tr.a2 || 0) - (rl.sablier ? 0.1 : 0) - 0.06 * (it.sablier || 0) - 0.2 * (it.horloge || 0) - 0.2 * (it.pacte_ailes || 0));
     p.xpMul = 1 + (m.xp || 0) + 0.08 * (sh.sagesse || 0) + 0.12 * (ps.savoir || 0) + 0.06 * (tr.f3 || 0) + 0.1 * (pg.seve || 0) + 0.5 * (it.couronne || 0);
@@ -930,6 +931,7 @@
   }
   function damagePlayer(dmg, pl) {
     var p = pl || me;
+    if (r && p === me) r.lastHitBy = Math.round(dmg) + (curBoss && !curBoss.dead && Math.hypot(curBoss.x - p.x, curBoss.y - p.y) < 90 ? ' boss' : '');
     if (p.inv > 0 || p.down || p.choosing || p.god) return;
     if (riposteOnHit(p)) { p.inv = 0.3; return; }
     var sgc = hasSig(p, "contre");
@@ -957,6 +959,7 @@
     if (p.char && p.char.id === "ninja" && !(tal(p, "danseuse_t2") && Math.random() < 0.5)) p.dance = 0;
     if (p.char && p.char.id === "cendrine" && !p.twin) { p.debt = (p.debt || 0) + hit; p.debtRate = Math.max(p.debtRate || 0, p.debt / (p.mstate === "mouvement" && gv(p, "gra_b") ? 5 : 4)); }
     else p.hp -= hit;
+    if (r && p === me) r.dmgIn = (r.dmgIn || 0) + hit;
     p.inv = DIFF.inv || 0.35;
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = Math.max(shake, 0.32); SND.hurt(); freezeFrame(0.06); hurtV = 0.35; kick(Math.random() - 0.5, Math.random() - 0.5, 3); }
     burst(p.x, p.y, "#c8553d", 5);
@@ -4758,12 +4761,10 @@
   function runeAdd(n, rare) { if (!r) return; var id = rare ? "rune_rare" : "rune"; if (isExpe()) bagAddRes(id, n); else r.res[id] = (r.res[id] || 0) + n; }
   /* ---- le camp : un écran-diorama où l'écureuil se déplace jusqu'aux lieux ---- */
   var camp = { x: 160, y: 0, tx: null, ty: null, near: null, on: false, t: 0 };
-  // positions prévues pour 320 px de large : en portrait (écran plus étroit), tout se resserre
-  function campPos(l) { var nar = W < 300; return { x: Math.round(l.x / 320 * W), y: Math.round((nar ? 0.08 + l.y * 0.84 : l.y) * H) }; }
   function openCamp() {
     if (S.news) { newsCard(); return; }
     state = "menu"; screen = "camp"; overlay.hidden = true; camp.on = true;
-    if (!camp.y) { camp.x = Math.round(W / 2); camp.y = Math.round(H * 0.7); }
+    camp.camOk = false; camp.tx = null; camp.goal = null;
     var bar = document.querySelector("[data-campbar]");
     if (!bar) { bar = document.createElement("div"); bar.className = "camp-bar"; bar.setAttribute("data-campbar", ""); stage.appendChild(bar); bar.addEventListener("click", function (e) { var b = e.target.closest("[data-camp]"); if (b) campOpen(b.getAttribute("data-camp")); }); }
     bar.hidden = false;
@@ -4793,57 +4794,317 @@
     if (l && l.screen === "play") { inspect.char = S.char; inspect.map = S.map; }
     go(l ? l.screen : "menu");
   }
+  /* =====================================================================
+     Le camp (hub), refait en 2.8 : un village plus grand que l'écran, caméra qui suit
+     l'écureuil, bâtiments pixel en 3 tons, chemins de terre, feu de camp, étang,
+     lisière d'arbres, et l'heure réelle (jour, crépuscule, nuit avec lumières).
+     ===================================================================== */
+  var CAMPW = 480, CAMPH = 320, CAMP_FIRE = { x: 240, y: 186 };
+  var CAMP_AT = {   // porte de chaque lieu (là où l'écureuil se tient pour entrer)
+    sentier: { x: 240, y: 58 }, chene: { x: 104, y: 112 }, arene: { x: 382, y: 108 },
+    atelier: { x: 70, y: 214 }, forge: { x: 412, y: 216 }, terrier: { x: 136, y: 292 }, comptoir: { x: 344, y: 292 }
+  };
+  var CAMP_SPR = null, CAMP_BG = null, campCam = { x: 0, y: 0 }, campFx = [];
+  function campPos(l) { return CAMP_AT[l.id] || { x: CAMPW / 2, y: CAMPH / 2 }; }
+  function campSprites() {
+    if (CAMP_SPR) return CAMP_SPR;
+    var E = RG.E, C = RG.C, P = RG.P, L = { line: true }, F = { flat: true };
+    function rp(c) { return [RG.mix(c, "#ffffff", 0.28), c, RG.mix(c, "#000000", 0.22), RG.mix(c, "#000000", 0.42)]; }
+    function mk(w, h, ax, ay, shapes, mats) { var R0 = RG.raster(w, h, shapes, mats), s = sprite(R0.rows, R0.pal); s.ax = ax + 1; s.ay = ay + 1; return s; }
+    function lineF(x1, y1, x2, y2, m) { return C(x1, y1, x2, y2, 0.35, 0.35, m, F); }
+    var M = { grass: rp("#6aa850"), dirt: rp("#8a5a3b"), wood: rp("#a87a48"), plank: rp("#b8844a"), door: rp("#6b4430"), roof: rp("#c8553d"), slate: rp("#4e5466"),
+      stone: rp("#8e877c"), dark: ["#2b1709"], glow: ["#ffe08a"], fire: ["#ff8a2a"], gold: rp("#f2c230"), iron: rp("#5a5e66"), red: rp("#d8483a"), cream: rp("#f3e6c8"),
+      leaf: rp("#4f8a3a"), leaf2: rp("#6aa850"), bark: rp("#7a5232"), sand: rp("#d8c08a"), straw: rp("#e0c070"), paper: ["#fdf3de"], sack: rp("#c9a070"), apple: rp("#c8282a"),
+      flowerP: ["#f29ad8"], flowerY: ["#f6d36b"], flowerW: ["#fdf3de"], lineD: ["#4a2e1c"], lineS: ["#5e5850"], blue: rp("#3a7ad8") };
+    var S = {};
+    // le terrier : une butte herbeuse, porte ronde, fenêtres éclairées
+    S.terrier = mk(70, 46, 35, 44, [
+      E(35, 32, 33, 17, 0, "grass", L), E(35, 42, 34, 5, 0, "grass"),
+      E(14, 22, 2, 1.4, 0, "flowerP", F), E(52, 19, 2, 1.4, 0, "flowerY", F), E(26, 17, 1.6, 1.2, 0, "flowerW", F), E(60, 27, 1.8, 1.2, 0, "flowerP", F),
+      C(52, 18, 52, 10, 1.6, 1.6, "iron", L), E(52, 9.5, 2.4, 1.2, 0, "iron"),
+      E(35, 36, 10, 10, 0, "wood", { line: true, maxY: 45 }), E(35, 37, 7.6, 8, 0, "door", { maxY: 45 }),
+      lineF(31, 31, 31, 45, "lineD"), lineF(35, 29, 35, 45, "lineD"), lineF(39, 31, 39, 45, "lineD"), E(38.5, 39, 0.9, 0.9, 0, "gold", F),
+      E(17, 31, 4.6, 4.6, 0, "wood", L), E(17, 31, 3.2, 3.2, 0, "glow", F), lineF(17, 28, 17, 34, "lineD"),
+      E(54, 31, 4.2, 4.2, 0, "wood", L), E(54, 31, 2.9, 2.9, 0, "glow", F),
+      C(65, 45, 65, 31, 0.7, 0.7, "wood"), E(65, 30, 2.2, 2.6, 0, "glow", F)
+    ], M);
+    // l'atelier de Bûche : cabane en planches, toit rouge, porte ouverte, tas de bûches
+    var at = [
+      P([[10, 24], [56, 24], [56, 50], [10, 50]], "plank", L),
+      lineF(10, 31, 56, 31, "lineD"), lineF(10, 38, 56, 38, "lineD"), lineF(10, 45, 56, 45, "lineD"),
+      P([[46, 4], [52, 4], [52, 16], [46, 16]], "stone", L),
+      P([[3, 26], [33, 5], [63, 26]], "roof", L), C(3, 26, 63, 26, 1.3, 1.3, "roof"),
+      lineF(12, 21, 33, 8, "lineD"), lineF(54, 21, 33, 8, "lineD"), lineF(22, 16, 44, 16, "lineD"),
+      P([[27, 33], [39, 33], [39, 50], [27, 50]], "dark", F), E(33, 45, 4, 3, 0, "glow", F),
+      P([[14, 30], [22, 30], [22, 37], [14, 37]], "wood", L), P([[15, 31], [21, 31], [21, 36], [15, 36]], "glow", F), lineF(18, 31, 18, 36, "lineD"),
+      P([[44, 30], [52, 30], [52, 37], [44, 37]], "wood", L), P([[45, 31], [51, 31], [51, 36], [45, 36]], "glow", F)
+    ];
+    [[66, 47], [72, 47], [69, 42], [78, 47], [75, 42], [72, 37]].forEach(function (q) { at.push(E(q[0], q[1], 3, 3, 0, "bark", L), E(q[0], q[1], 1.6, 1.6, 0, "sand", F)); });
+    S.atelier = mk(82, 52, 33, 50, at, M);
+    // la forge de Charbon : pierre, toit d'ardoise, grande cheminée, foyer, enclume
+    var fg = [P([[12, 26], [62, 26], [62, 54], [12, 54]], "stone", L)];
+    for (var fi = 0; fi < 18; fi++) { var hx = hash(fi, 7); fg.push(E(15 + (hx % 45), 29 + ((hx >>> 6) % 22), 2.2, 1.4, 0, fi % 2 ? "lineS" : "cream", F)); }
+    fg.push(P([[48, 2], [57, 2], [57, 22], [48, 22]], "stone", L), P([[47, 0], [58, 0], [58, 3], [47, 3]], "iron"),
+      P([[7, 28], [37, 9], [67, 28]], "slate", L), C(7, 28, 67, 28, 1.3, 1.3, "slate"), lineF(16, 22, 58, 22, "lineD"), lineF(26, 15, 48, 15, "lineD"),
+      E(37, 46, 9, 9, 0, "stone", { line: true, maxY: 54 }), E(37, 47, 7, 7, 0, "dark", { flat: true, maxY: 54 }), E(37, 50, 5, 3.4, 0, "fire", F),
+      P([[66, 46], [78, 46], [76, 49.5], [68, 49.5]], "iron", L), C(72, 49, 72, 54, 1.6, 2.4, "iron"), P([[63, 46], [66, 46], [66, 48]], "iron"));
+    S.forge = mk(80, 56, 37, 54, fg, M);
+    // le comptoir du Marchand : étal, auvent rayé, marchandises
+    var cp = [P([[10, 22], [62, 22], [62, 48], [10, 48]], "wood", L), C(10, 12, 10, 48, 1.2, 1.2, "wood"), C(62, 12, 62, 48, 1.2, 1.2, "wood")];
+    for (var ci = 0; ci < 6; ci++) { var x0 = 7 + ci * 9.7; cp.push(P([[x0, 11], [x0 + 9.7, 11], [x0 + 9.7, 21], [x0, 21]], ci % 2 ? "cream" : "red", L), E(x0 + 4.85, 21, 4.85, 2.4, 0, ci % 2 ? "cream" : "red", { line: true })); }
+    cp.push(P([[8, 33], [64, 33], [64, 48], [8, 48]], "plank", L), lineF(8, 40, 64, 40, "lineD"),
+      E(18, 31, 3.4, 2, 0, "gold"), E(17, 29.5, 2.4, 1.4, 0, "gold"), E(28, 31, 2.4, 2.4, 0, "apple"), E(32.5, 31, 2.4, 2.4, 0, "apple"), E(30.3, 28.6, 2.2, 2.2, 0, "apple"),
+      P([[40, 26], [48, 26], [48, 33], [40, 33]], "blue", L), E(56, 30, 3.2, 3.6, 0, "sack"), C(56, 26, 56, 27, 1, 1, "lineD", F),
+      E(70, 44, 4.4, 5, 0, "sack", L), C(70, 39, 70, 40, 1.2, 1.2, "lineD", F), P([[64, 42], [72, 42], [72, 50], [64, 50]], "plank", L), lineF(64, 46, 72, 46, "lineD"));
+    S.comptoir = mk(78, 52, 36, 50, cp, M);
+    // le vieux chêne de Flocon : énorme arbre, porte dans le tronc, panneau des quêtes
+    var ch = [C(48, 86, 48, 46, 9, 7, "bark", L), C(46, 84, 33, 90, 3.5, 1.4, "bark"), C(50, 84, 64, 90, 3.5, 1.4, "bark"),
+      lineF(44, 50, 43, 74, "lineD"), lineF(53, 56, 52, 70, "lineD"),
+      E(48, 80, 4.6, 7, 0, "wood", { line: true, maxY: 88 }), E(48, 81, 3.4, 5.6, 0, "door", { maxY: 88 }), E(50, 82, 0.7, 0.7, 0, "gold", F),
+      E(48, 34, 42, 24, 0, "leaf", L), E(24, 40, 19, 15, 0, "leaf", L), E(72, 40, 19, 15, 0, "leaf", L), E(48, 16, 28, 14, 0, "leaf", L), E(36, 26, 16, 10, 0, "leaf2", L), E(62, 24, 14, 9, 0, "leaf2")];
+    for (var li = 0; li < 26; li++) { var hl = hash(li, 31); ch.push(E(10 + (hl % 78), 6 + ((hl >>> 7) % 44), 1.6, 1.1, 0, ((hl >>> 3) % 3) ? "leaf2" : "flowerY", F)); }
+    ch.push(C(14, 90, 14, 70, 0.9, 0.9, "wood"), C(30, 90, 30, 70, 0.9, 0.9, "wood"), P([[10, 64], [34, 64], [34, 77], [10, 77]], "wood", L),
+      P([[12.5, 66], [18.5, 66], [18.5, 72], [12.5, 72]], "paper", F), P([[20, 65.5], [25, 65.5], [25, 70], [20, 70]], "paper", F), P([[26.5, 67], [32, 67], [32, 75], [26.5, 75]], "paper", F),
+      E(15.5, 66, 0.7, 0.7, 0, "red", F), E(22.5, 65.5, 0.7, 0.7, 0, "red", F), E(29, 67, 0.7, 0.7, 0, "red", F));
+    S.chene = mk(98, 92, 48, 88, ch, M);
+    // l'arène de Bastien : piste de sable, palissade, mannequin, mâts à fanions
+    var ar = [E(42, 40, 38, 12, 0, "sand")];
+    function post(x, y) { return C(x, y, x, y - 7, 1.1, 1, "wood", L); }
+    var pts = []; for (var ai = 0; ai < 14; ai++) { var aa = Math.PI + ai / 14 * Math.PI * 2; pts.push([42 + Math.cos(aa) * 37, 40 + Math.sin(aa) * 11]); }
+    pts.filter(function (q) { return q[1] <= 40; }).forEach(function (q) { ar.push(post(q[0], q[1])); });
+    ar.push(C(42, 40, 42, 24, 1.3, 1.3, "wood"), E(42, 30, 4.6, 6, 0, "straw", L), E(42, 21, 3.6, 3.6, 0, "straw", L), C(35, 28, 49, 28, 1.2, 1.2, "straw"), E(41, 20.5, 0.6, 0.6, 0, "dark", F), E(43.5, 20.5, 0.6, 0.6, 0, "dark", F));
+    ar.push(C(6, 42, 6, 4, 0.9, 0.9, "wood"), C(78, 42, 78, 4, 0.9, 0.9, "wood"), E(6, 3.5, 1.4, 1.4, 0, "gold"), E(78, 3.5, 1.4, 1.4, 0, "gold"));
+    pts.filter(function (q) { return q[1] > 40; }).forEach(function (q) { ar.push(post(q[0], q[1])); });
+    ar.push(C(5, 37, 79, 37, 0.5, 0.5, "plank", { line: true, maxY: 60 }));
+    S.arene = mk(86, 54, 42, 52, ar, M);
+    // le sentier : portique en bois, panneau, torches
+    S.sentier = mk(64, 54, 32, 52, [
+      C(9, 54, 9, 9, 2.6, 2.4, "wood", L), C(55, 54, 55, 9, 2.6, 2.4, "wood", L), C(3, 10, 61, 10, 2.8, 2.8, "wood", L), C(6, 15, 58, 15, 1.4, 1.4, "wood", L),
+      P([[16, 17], [48, 17], [48, 27], [16, 27]], "plank", L), C(22, 15, 22, 17, 0.5, 0.5, "lineD", F), C(42, 15, 42, 17, 0.5, 0.5, "lineD", F),
+      C(3, 36, 3, 24, 0.8, 0.8, "wood"), E(3, 22.5, 2, 2.4, 0, "fire", F), C(61, 36, 61, 24, 0.8, 0.8, "wood"), E(61, 22.5, 2, 2.4, 0, "fire", F)
+    ], M);
+    // arbres de la lisière, buissons, rondins autour du feu, lanternes des chemins
+    function tree(v) {
+      var sh = [C(14, 34, 14, 18, 2.6, 2.2, "bark", L)];
+      if (v === 2) sh.push(P([[14, 0], [24, 12], [4, 12]], "leaf", L), P([[14, 6], [27, 20], [1, 20]], "leaf", L), P([[14, 12], [28, 27], [0, 27]], "leaf", L));
+      else sh.push(E(14, 14, 13, 11, 0, "leaf", L), E(7, 18, 7, 6, 0, "leaf", L), E(21, 18, 7, 6, 0, "leaf", L), E(11, 9, 6, 4, 0, "leaf2"), E(v ? 18 : 10, 15, 1.3, 1.3, 0, v ? "apple" : "flowerW", F));
+      return mk(29, 36, 14, 34, sh, M);
+    }
+    S.trees = [tree(0), tree(1), tree(2)];
+    S.bush = mk(18, 11, 9, 10, [E(9, 7, 8.5, 4.5, 0, "leaf", L), E(5, 5, 4, 3, 0, "leaf2"), E(12, 6, 1, 1, 0, "flowerP", F)], M);
+    S.seat = mk(18, 7, 9, 5, [C(2, 4, 16, 3, 2.4, 2.4, "bark", L), E(16, 3, 1.6, 2.2, 0, "sand", F)], M);
+    S.lantern = mk(7, 16, 3, 15, [C(3, 16, 3, 5, 0.6, 0.6, "wood"), P([[1, 1], [5, 1], [5, 6], [1, 6]], "iron", L), P([[1.8, 2], [4.2, 2], [4.2, 5], [1.8, 5]], "glow", F)], M);
+    S.lily = mk(8, 4, 4, 2, [E(4, 2, 3.6, 1.6, 0, "leaf2"), E(5, 1.6, 0.9, 0.7, 0, "flowerP", F)], M);
+    return (CAMP_SPR = S);
+  }
+  var CAMP_TREES = [], CAMP_BUSH = [], CAMP_LAMPS = [{ x: 172, y: 150 }, { x: 306, y: 150 }, { x: 160, y: 232 }, { x: 318, y: 236 }, { x: 232, y: 112 }];
+  var CAMP_POND = { x: 240, y: 286, rx: 46, ry: 18 };
+  (function () {
+    for (var i = 0; i < 46; i++) {   // lisière : arbres le long des bords, sauf l'ouverture du sentier
+      var a = i / 46 * TAU, h = hash(i, 91), x = 240 + Math.cos(a) * (250 + (h % 30)), y = 160 + Math.sin(a) * (176 + ((h >>> 5) % 22));
+      if (y < 40 && Math.abs(x - 240) < 44) continue;
+      CAMP_TREES.push({ x: Math.round(x), y: Math.round(y), v: h % 3 });
+    }
+    [[176, 76], [302, 74], [36, 150], [446, 150], [198, 236], [286, 238], [60, 286], [420, 290], [150, 168], [334, 170]].forEach(function (q, k) { if (k < 8) CAMP_BUSH.push({ x: q[0], y: q[1] }); else CAMP_TREES.push({ x: q[0], y: q[1] - 30, v: k % 2 }); });
+  })();
+  function campColliders() {
+    var c = [{ x: CAMP_FIRE.x, y: CAMP_FIRE.y, r: 11 }];
+    var B = { terrier: [0, -10, 26], atelier: [0, -10, 22], forge: [0, -12, 24], comptoir: [0, -10, 24], chene: [0, -14, 16], arene: [0, -16, 30], sentier: [0, 0, 0] };
+    // le cercle (aplati en hauteur) s'arrête 4 px au-dessus de la porte : on peut toujours l'atteindre
+    Object.keys(CAMP_AT).forEach(function (k) { var a = CAMP_AT[k], b = B[k]; if (b[2]) c.push({ x: a.x + b[0], y: a.y - 4 - b[2] / 1.4, r: b[2] }); });
+    CAMP_TREES.forEach(function (t) { c.push({ x: t.x, y: t.y - 2, r: 6 }); });
+    return c;
+  }
+  var CAMP_COL = null;
+  function campBackground() {
+    if (CAMP_BG) return CAMP_BG;
+    var cv = document.createElement("canvas"); cv.width = CAMPW; cv.height = CAMPH;
+    var kctx = ctx, kW = W, kH = H; ctx = cv.getContext("2d"); W = CAMPW; H = CAMPH;
+    try {
+      var cl = mapById("clairiere"), cm = { id: "camp", biomes: [cl.biomes[0]] };
+      drawGround(0, 0, cm);
+      var g = ctx;
+      // chemins de terre : du feu vers chaque porte, bords plus sombres et cailloux
+      function path(ax, ay, bx, by, bend) {
+        var mx = (ax + bx) / 2 + (by - ay) * bend, my = (ay + by) / 2 - (bx - ax) * bend;
+        for (var pass = 0; pass < 2; pass++) {
+          g.fillStyle = pass ? "#c49a62" : "#8a6a44";
+          for (var t = 0; t <= 1; t += 0.01) {
+            var u = 1 - t, x = u * u * ax + 2 * u * t * mx + t * t * bx, y = u * u * ay + 2 * u * t * my + t * t * by, rr = pass ? 4 : 6;
+            for (var yy = -rr; yy <= rr; yy++) { var ww = Math.round(Math.sqrt(rr * rr - yy * yy)); g.fillRect(Math.round(x - ww), Math.round(y + yy * 0.7), ww * 2, 1); }
+          }
+        }
+        for (var k = 0; k < 10; k++) { var tt = (hash(ax + k, by) % 100) / 100, uu = 1 - tt, px = uu * uu * ax + 2 * uu * tt * mx + tt * tt * bx, py = uu * uu * ay + 2 * uu * tt * my + tt * tt * by;
+          g.fillStyle = k % 2 ? "#a88a64" : "#e0c49a"; g.fillRect(Math.round(px + (k % 5) - 2), Math.round(py + (k % 3) - 1), 2, 1); }
+      }
+      var f = CAMP_FIRE;
+      Object.keys(CAMP_AT).forEach(function (k, i) { var a = CAMP_AT[k]; path(f.x, f.y, a.x, a.y + 2, (i % 2 ? 0.12 : -0.12)); });
+      path(CAMP_AT.sentier.x, CAMP_AT.sentier.y, 240, -10, 0.05);
+      // place du feu : terre battue ronde
+      g.fillStyle = "#8a6a44"; pxEllipseC(g, f.x, f.y + 2, 30, 18); g.fillStyle = "#c49a62"; pxEllipseC(g, f.x, f.y + 2, 28, 16);
+      // étang
+      var P0 = CAMP_POND;
+      g.fillStyle = "#4a6a3a"; pxEllipseC(g, P0.x, P0.y, P0.rx + 3, P0.ry + 2);
+      g.fillStyle = "#3d7a8a"; pxEllipseC(g, P0.x, P0.y, P0.rx, P0.ry);
+      g.fillStyle = "#4f94a4"; pxEllipseC(g, P0.x - 4, P0.y - 3, P0.rx - 10, P0.ry - 6);
+      g.fillStyle = "#2e5e6e"; for (var rx = -P0.rx + 6; rx < P0.rx - 6; rx += 2) g.fillRect(P0.x + rx, P0.y + Math.round(Math.sqrt(Math.max(0, 1 - rx * rx / (P0.rx * P0.rx))) * P0.ry) - 1, 2, 1);
+      for (var rd = 0; rd < 7; rd++) { var rxx = P0.x + P0.rx - 4 + (rd % 3) * 2, ryy = P0.y - 4 + rd; g.fillStyle = "#6b7a3a"; g.fillRect(rxx, ryy - 7, 1, 7); g.fillStyle = "#8a5a3b"; g.fillRect(rxx, ryy - 9, 1, 2); }
+    } finally { ctx = kctx; W = kW; H = kH; }
+    return (CAMP_BG = cv);
+  }
+  function pxEllipseC(g, cx, cy, rx, ry) { for (var y = -ry; y <= ry; y++) { var w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y * y) / (ry * ry)))); if (w > 0) g.fillRect(Math.round(cx - w), Math.round(cy + y), w * 2, 1); } }
+  // heure réelle : 0 = jour, 1 = nuit noire
+  function campNight() {
+    var d = new Date(), h = d.getHours() + d.getMinutes() / 60;
+    if (h >= 8 && h < 18) return 0; if (h >= 18 && h < 21) return (h - 18) / 3 * 0.75; if (h >= 21 || h < 5) return 0.75; return 0.75 * (1 - (h - 5) / 3);
+  }
   function campTick(dt) {
     if (!camp.on) return;
     camp.t += dt;
-    var v = inputVector(), sp = 70;
-    if (Math.hypot(v.x, v.y) > 0.1) { camp.tx = null; camp.x += v.x * sp * dt; camp.y += v.y * sp * dt; camp.face = v.x < -0.1 ? -1 : v.x > 0.1 ? 1 : camp.face; camp.moving = true; }
+    if (!CAMP_COL) CAMP_COL = campColliders();
+    if (!camp.inWorld) { camp.x = CAMP_FIRE.x + 22; camp.y = CAMP_FIRE.y + 22; camp.inWorld = true; }
+    var v = inputVector(), sp = 78;
+    if (Math.hypot(v.x, v.y) > 0.1) { camp.tx = null; camp.goal = null; camp.x += v.x * sp * dt; camp.y += v.y * sp * dt; camp.face = v.x < -0.1 ? -1 : v.x > 0.1 ? 1 : camp.face; camp.moving = true; }
     else if (camp.tx !== null) {
       var dx = camp.tx - camp.x, dy = camp.ty - camp.y, d = Math.hypot(dx, dy);
-      if (d < 3) { camp.tx = null; if (camp.goal) { var g = camp.goal; camp.goal = null; campOpen(g); return; } }
+      if (d < 3) { camp.tx = null; camp.moving = false; if (camp.goal) { var g = camp.goal; camp.goal = null; campOpen(g); return; } }
       else { camp.x += dx / d * Math.min(d, sp * 1.4 * dt); camp.y += dy / d * Math.min(d, sp * 1.4 * dt); camp.face = dx < 0 ? -1 : 1; camp.moving = true; }
     } else camp.moving = false;
-    camp.x = Math.max(10, Math.min(W - 10, camp.x)); camp.y = Math.max(20, Math.min(H - 14, camp.y));
+    // obstacles (le chemin automatique les contourne en glissant)
+    CAMP_COL.forEach(function (c) { var ox = camp.x - c.x, oy = (camp.y - c.y) * 1.4, od = Math.hypot(ox, oy); if (od < c.r && od > 0.01) { camp.x = c.x + ox / od * c.r; camp.y = c.y + oy / od * c.r / 1.4; } });
+    var P0 = CAMP_POND, pdx = (camp.x - P0.x) / (P0.rx + 4), pdy = (camp.y - P0.y) / (P0.ry + 4), pq = Math.hypot(pdx, pdy);
+    if (pq < 1 && pq > 0.01) { camp.x = P0.x + pdx / pq * (P0.rx + 4); camp.y = P0.y + pdy / pq * (P0.ry + 4); }
+    camp.x = Math.max(16, Math.min(CAMPW - 16, camp.x)); camp.y = Math.max(46, Math.min(CAMPH - 10, camp.y));
     camp.near = null;
-    D.CAMP.forEach(function (l) { var q = campPos(l); if (Math.hypot(q.x - camp.x, q.y + 10 - camp.y) < 22) camp.near = l; });
+    D.CAMP.forEach(function (l) { var q = campPos(l); if (Math.hypot(q.x - camp.x, q.y - camp.y) < 22) camp.near = l; });
+    // caméra : suit l'écureuil, bloquée aux bords du village
+    var tx = W >= CAMPW ? (CAMPW - W) / 2 : Math.max(0, Math.min(CAMPW - W, camp.x - W / 2)), ty = H >= CAMPH ? (CAMPH - H) / 2 : Math.max(0, Math.min(CAMPH - H, camp.y - H * 0.55));
+    if (!camp.camOk) { campCam.x = tx; campCam.y = ty; camp.camOk = true; }
+    var k = 1 - Math.pow(0.004, dt); campCam.x += (tx - campCam.x) * k; campCam.y += (ty - campCam.y) * k;
+    // fumées, étincelles, lucioles
+    var night = campNight();
+    if (Math.random() < dt * 3) campFx.push({ k: "smoke", x: CAMP_AT.atelier.x + 16, y: CAMP_AT.atelier.y - 47, vy: -8, life: 2.4, max: 2.4 });
+    if (Math.random() < dt * 4) campFx.push({ k: "smoke", x: CAMP_AT.forge.x + 15, y: CAMP_AT.forge.y - 55, vy: -10, life: 2.4, max: 2.4, dark: 1 });
+    if (Math.random() < dt * 2) campFx.push({ k: "smoke", x: CAMP_AT.terrier.x + 17, y: CAMP_AT.terrier.y - 36, vy: -6, life: 2, max: 2 });
+    if (Math.random() < dt * 6) campFx.push({ k: "spark", x: CAMP_FIRE.x + (Math.random() * 8 - 4), y: CAMP_FIRE.y - 6, vx: Math.random() * 10 - 5, vy: -22 - Math.random() * 14, life: 1, max: 1 });
+    if (Math.random() < dt * 3) campFx.push({ k: "spark", x: CAMP_AT.forge.x + 15, y: CAMP_AT.forge.y - 56, vx: Math.random() * 8 - 4, vy: -26, life: 0.8, max: 0.8 });
+    if (night > 0.3 && campFx.length < 90 && Math.random() < dt * 4) campFx.push({ k: "fly", x: Math.random() * CAMPW, y: 60 + Math.random() * (CAMPH - 80), ph: Math.random() * 6, life: 6, max: 6 });
+    if (night < 0.2 && campFx.length < 60 && Math.random() < dt * 0.6) campFx.push({ k: "bfly", x: Math.random() * CAMPW, y: 80 + Math.random() * 200, ph: Math.random() * 6, c: ["#f6d36b", "#f29ad8", "#fdf3de"][(Math.random() * 3) | 0], life: 8, max: 8 });
+    for (var i = campFx.length - 1; i >= 0; i--) {
+      var q = campFx[i]; q.life -= dt;
+      if (q.k === "smoke") { q.y += q.vy * dt; q.x += Math.sin(q.life * 2 + i) * 4 * dt + 3 * dt; }
+      else if (q.k === "spark") { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 10 * dt; }
+      else { q.ph += dt; q.x += Math.cos(q.ph * 0.9) * 10 * dt; q.y += Math.sin(q.ph * 1.3) * 7 * dt; }
+      if (q.life <= 0) campFx.splice(i, 1);
+    }
   }
   function drawCamp(now) {
-    var t = now / 1000, m = mapById("clairiere");
-    drawGround(0, 0, m);
-    ctx.fillStyle = "rgba(30,40,20,.15)"; ctx.fillRect(0, 0, W, H);
-    // chemins entre les lieux
-    ctx.strokeStyle = "rgba(160,120,70,.55)"; ctx.lineWidth = 7; ctx.lineCap = "round";
-    var c0 = campPos(D.CAMP[0]);
-    D.CAMP.forEach(function (l) { if (l.id === "sentier") return; var q = campPos(l); ctx.beginPath(); ctx.moveTo(c0.x, c0.y); ctx.lineTo(q.x, q.y + 8); ctx.stroke(); });
-    ctx.lineWidth = 1; ctx.lineCap = "butt";
-    // feu de camp
-    var fx0 = Math.round(W / 2), fy0 = Math.round(H * 0.55);
-    ctx.fillStyle = "#6b4430"; ctx.fillRect(fx0 - 7, fy0 + 2, 14, 3);
-    for (var i = 0; i < 5; i++) { ctx.fillStyle = ["#ff9a3a", "#f6d36b", "#ff5a2a"][i % 3]; var fh = 4 + Math.sin(t * 9 + i) * 2; ctx.fillRect(fx0 - 5 + i * 2, Math.round(fy0 - fh), 2, Math.round(fh) + 2); }
+    var t = now / 1000, S0 = campSprites(), bg = campBackground(), cx = Math.round(campCam.x), cy = Math.round(campCam.y), night = campNight();
+    ctx.fillStyle = "#3f6b3a"; ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(bg, -cx, -cy);
+    ctx.save(); ctx.translate(-cx, -cy);
+    // reflets de l'étang
+    var P0 = CAMP_POND;
+    for (var w0 = 0; w0 < 5; w0++) { var wx = P0.x - 30 + ((t * 6 + w0 * 17) % 60), wy = P0.y - 8 + w0 * 4; ctx.fillStyle = "rgba(220,245,250,.45)"; ctx.fillRect(Math.round(wx), wy, 4, 1); }
+    blitAnchor(S0.lily, P0.x - 18, P0.y + 2); blitAnchor(S0.lily, P0.x + 12, P0.y - 6); blitAnchor(S0.lily, P0.x - 2, P0.y + 9);
+    // objets triés par profondeur
+    var list = [];
+    CAMP_TREES.forEach(function (tr) { list.push({ y: tr.y, f: function () { blitAnchor(S0.trees[tr.v], tr.x, tr.y); } }); });
+    CAMP_BUSH.forEach(function (b) { list.push({ y: b.y, f: function () { blitAnchor(S0.bush, b.x, b.y); } }); });
+    CAMP_LAMPS.forEach(function (l) { list.push({ y: l.y, f: function () { blitAnchor(S0.lantern, l.x, l.y); } }); });
+    [[-22, 6, 1], [22, 8, -1], [0, -16, 1]].forEach(function (s) { list.push({ y: CAMP_FIRE.y + s[1], f: function () { blitAnchor(S0.seat, CAMP_FIRE.x + s[0], CAMP_FIRE.y + s[1]); } }); });
+    list.push({ y: CAMP_FIRE.y, f: function () { drawCampFire(t); } });
     D.CAMP.forEach(function (l) {
-      var q = campPos(l), lv = 1 + Math.min(2, Math.floor((S.rank || 1) / 6)), hot = camp.near === l;
-      // bâtiment (3 états visuels selon le rang)
-      if (l.id === "chene") { ctx.fillStyle = "#3f6a2a"; ctx.beginPath(); ctx.arc(q.x, q.y - 14, 18 + lv * 2, 0, TAU); ctx.fill(); ctx.fillStyle = "#6b4430"; ctx.fillRect(q.x - 4, q.y - 6, 8, 14); }
-      else if (l.id === "sentier") { ctx.fillStyle = "#a07848"; ctx.fillRect(q.x - 2, q.y - 14, 4, 16); ctx.fillStyle = "#f6d36b"; ctx.fillRect(q.x - 12, q.y - 16, 24, 7); drawText("SENTIER", q.x, q.y - 15, "#2b1709", "c"); }
-      else {
-        var bw = (24 + lv * 4) * Math.min(1, W / 320 + 0.25), bh = 14 + lv * 2, col = { terrier: "#6b4430", atelier: "#8a5a3b", forge: "#5a524a", comptoir: "#8a6a3a", arene: "#9a8a7a" }[l.id] || "#8a5a3b";
-        ctx.fillStyle = "#2b1709"; ctx.fillRect(q.x - bw / 2 - 1, q.y - bh - 1, bw + 2, bh + 2);
-        ctx.fillStyle = col; ctx.fillRect(q.x - bw / 2, q.y - bh, bw, bh);
-        ctx.fillStyle = l.id === "forge" ? "#ff7a2a" : "#2b1709"; ctx.fillRect(q.x - 3, q.y - 8, 6, 8);
-        ctx.fillStyle = { terrier: "#3f6a2a", atelier: "#c8553d", forge: "#3a322c", comptoir: "#3f9a4a", arene: "#c8c0b0" }[l.id] || "#c8553d";
-        ctx.beginPath(); ctx.moveTo(q.x - bw / 2 - 3, q.y - bh); ctx.lineTo(q.x, q.y - bh - 9 - lv); ctx.lineTo(q.x + bw / 2 + 3, q.y - bh); ctx.fill();
-        if (l.id === "forge") for (var s0 = 0; s0 < 3; s0++) { ctx.fillStyle = "rgba(200,200,200," + (0.3 - s0 * 0.08) + ")"; ctx.fillRect(Math.round(q.x + 6 + Math.sin(t * 2 + s0) * 2), Math.round(q.y - bh - 12 - s0 * 5 - (t * 6 % 5)), 3, 3); }
-      }
-      if (l.npc && SPR[l.npc]) drawHero(l.npc, q.x + (W < 300 ? 11 : 16), q.y + 4, -1, false, t * 4, 0);
-      if (l.id !== "sentier" && (W >= 300 || hot || Math.hypot(q.x - camp.x, q.y - camp.y) < 50)) { var lb = l.name.replace(/^(Le |La |L')/i, ""); ctx.globalAlpha = hot ? 1 : 0.85; drawText(lb, q.x, q.y + 10, hot ? "#f6d36b" : "#fdf3de", "c"); ctx.globalAlpha = 1; }
-      if (hot) drawText(isTouch ? "TOUCHE POUR ENTRER" : "ENTREE POUR ENTRER", q.x, q.y - 26, "#fdf3de", "c");
+      var q = campPos(l), s = S0[l.id], hot = camp.near === l;
+      if (s) list.push({ y: q.y - 1, f: function () {
+        blitAnchor(s, q.x, q.y);
+        if (l.id === "sentier") { drawText("PARTIR", q.x, q.y - 32, "#fdf3de", "c"); flame(q.x - 29, q.y - 31, t); flame(q.x + 29, q.y - 31, t + 1); }
+        if (l.id === "forge") { var fl = 0.5 + 0.5 * Math.sin(t * 7); ctx.fillStyle = "rgba(255," + Math.round(140 + 60 * fl) + ",40,.8)"; ctx.fillRect(q.x - 4, q.y - 6, 8, 3); }
+        if (l.id === "arene") { [-36, 36].forEach(function (ox, k) { for (var fx = 0; fx < 8; fx++) { var wv = Math.round(Math.sin(t * 5 + fx * 0.8 + k) * 1.2); ctx.fillStyle = k ? "#3a7ad8" : "#d8483a"; ctx.fillRect(q.x + ox + (ox > 0 ? -fx - 1 : fx + 1), q.y - 47 + wv + (fx > 5 ? 1 : 0), 1, 5 - (fx > 5 ? 2 : 0)); } }); }
+      } });
+      if (l.npc && SPR[l.npc]) { var nx = q.x + (l.id === "chene" ? -14 : l.id === "sentier" ? 0 : 20), ny = q.y + (l.id === "chene" ? 6 : 4);
+        list.push({ y: ny, f: function () { drawHero(l.npc, nx, ny, nx > CAMP_FIRE.x ? -1 : 1, false, t * 4, 0); if (hot) { var by = ny - 18 + Math.round(Math.sin(t * 4)); ctx.fillStyle = "#2b1709"; ctx.fillRect(nx - 3, by - 1, 7, 8); ctx.fillStyle = "#fdf3de"; ctx.fillRect(nx - 2, by, 5, 6); ctx.fillStyle = "#2b1709"; ctx.fillRect(nx, by + 1, 1, 2); ctx.fillRect(nx, by + 4, 1, 1); } } }); }
     });
-    drawHero(charById(S.char).sprite, camp.x, camp.y, camp.face || 1, camp.moving, t * 8, 0);
+    list.push({ y: camp.y, f: function () { drawHero(charById(S.char).sprite, camp.x, camp.y, camp.face || 1, camp.moving, t * 8, 0); } });
+    list.sort(function (a, b) { return a.y - b.y; }).forEach(function (o) { o.f(); });
+    // panneaux des lieux (nom sous chaque porte), flèche sur le lieu proche
+    D.CAMP.forEach(function (l) {
+      if (l.id === "sentier") return;
+      var q = campPos(l), hot = camp.near === l, nm = l.name.replace(/^(Le |La |L')/i, "").toUpperCase(), w = textWidth(nm, 1) + 6;
+      ctx.fillStyle = "#2b1709"; ctx.fillRect(Math.round(q.x - w / 2) - 1, q.y + 5, w + 2, 11);
+      ctx.fillStyle = hot ? "#8a5a1a" : "#5a3a22"; ctx.fillRect(Math.round(q.x - w / 2), q.y + 6, w, 9);
+      drawText(nm, q.x, q.y + 8, hot ? "#f6d36b" : "#fdf3de", "c");
+    });
+    campFx.forEach(function (q) {
+      var a = q.life / q.max;
+      if (q.k === "smoke") { ctx.fillStyle = q.dark ? "rgba(90,86,80," + (0.5 * a) + ")" : "rgba(230,230,225," + (0.45 * a) + ")"; var sz = Math.round(2 + (1 - a) * 4); ctx.fillRect(Math.round(q.x), Math.round(q.y), sz, sz); }
+      else if (q.k === "spark") { ctx.fillStyle = a > 0.5 ? "#ffd05a" : "#ff8a2a"; ctx.fillRect(Math.round(q.x), Math.round(q.y), 1, 1); }
+    });
+    ctx.restore();
+    // lumière : voile selon l'heure, trous de lumière autour des feux et fenêtres
+    if (night > 0.02) {
+      var lc = campLight || (campLight = document.createElement("canvas"));
+      if (lc.width !== W || lc.height !== H) { lc.width = W; lc.height = H; }
+      var lg = lc.getContext("2d");
+      lg.globalCompositeOperation = "source-over"; lg.clearRect(0, 0, W, H);
+      lg.fillStyle = "rgba(14,18,48," + night.toFixed(3) + ")"; lg.fillRect(0, 0, W, H);
+      lg.globalCompositeOperation = "destination-out";
+      var lights = [[CAMP_FIRE.x, CAMP_FIRE.y - 4, 70 + Math.sin(t * 9) * 3], [CAMP_AT.forge.x, CAMP_AT.forge.y - 6, 34], [CAMP_AT.sentier.x - 29, CAMP_AT.sentier.y - 31, 26], [CAMP_AT.sentier.x + 29, CAMP_AT.sentier.y - 31, 26],
+        [CAMP_AT.terrier.x - 18, CAMP_AT.terrier.y - 13, 18], [CAMP_AT.terrier.x + 19, CAMP_AT.terrier.y - 13, 16], [CAMP_AT.terrier.x + 30, CAMP_AT.terrier.y - 14, 18], [CAMP_AT.atelier.x, CAMP_AT.atelier.y - 6, 22], [CAMP_AT.atelier.x - 15, CAMP_AT.atelier.y - 17, 14],
+        [CAMP_AT.comptoir.x, CAMP_AT.comptoir.y - 16, 26], [CAMP_AT.chene.x, CAMP_AT.chene.y - 6, 18], [camp.x, camp.y - 4, 26]];
+      CAMP_LAMPS.forEach(function (l) { lights.push([l.x, l.y - 12, 24]); });
+      campFx.forEach(function (q) { if (q.k === "fly") lights.push([q.x, q.y, 8]); });
+      lights.forEach(function (L0) { var x = L0[0] - cx, y = L0[1] - cy, rr = L0[2]; if (x < -rr || y < -rr || x > W + rr || y > H + rr) return; var gr = lg.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, "rgba(0,0,0,.95)"); gr.addColorStop(1, "rgba(0,0,0,0)"); lg.fillStyle = gr; lg.fillRect(x - rr, y - rr, rr * 2, rr * 2); });
+      ctx.drawImage(lc, 0, 0);
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      var gw = ctx.createRadialGradient(CAMP_FIRE.x - cx, CAMP_FIRE.y - 4 - cy, 0, CAMP_FIRE.x - cx, CAMP_FIRE.y - 4 - cy, 60); gw.addColorStop(0, "rgba(255,150,60," + (0.22 * night).toFixed(3) + ")"); gw.addColorStop(1, "rgba(255,150,60,0)");
+      ctx.fillStyle = gw; ctx.fillRect(0, 0, W, H); ctx.restore();
+    }
+    // lucioles et papillons (par-dessus le voile)
+    campFx.forEach(function (q) {
+      var sx = Math.round(q.x - cx), sy = Math.round(q.y - cy);
+      if (q.k === "fly") { var on = Math.sin(q.ph * 3) > -0.3; if (!on) return; ctx.fillStyle = "rgba(246,239,122,.35)"; ctx.fillRect(sx - 1, sy - 1, 3, 3); ctx.fillStyle = "#fffbd0"; ctx.fillRect(sx, sy, 1, 1); }
+      else if (q.k === "bfly") { var op = Math.sin(q.ph * 14) > 0; ctx.fillStyle = q.c; ctx.fillRect(sx - (op ? 2 : 1), sy, op ? 2 : 1, 2); ctx.fillRect(sx + 1, sy, op ? 2 : 1, 2); ctx.fillStyle = "#2b1709"; ctx.fillRect(sx, sy, 1, 2); }
+    });
+    // repères au bord de l'écran vers les lieux hors champ (on peut les toucher)
+    campMarks = [];
+    D.CAMP.forEach(function (l) {
+      var q = campPos(l), sx = q.x - cx, sy = q.y - 16 - cy, py = q.y + 10 - cy;
+      var pw = textWidth(l.name.replace(/^(Le |La |L')/i, ""), 1) / 2 + 4;
+      if (sx + pw > 10 && sx - pw < W - 10 && py > 4 && py < H - 40) return;   // le lieu ou son panneau se voit : pas de repère
+      var nm = l.name.replace(/^(Le |La |L')/i, "").toUpperCase(), w = textWidth(nm, 1) + 10;
+      var mx = Math.max(w / 2 + 2, Math.min(W - w / 2 - 2, sx)), my = Math.max(camp.near ? 40 : 6, Math.min(H - 52, sy));
+      var bx = Math.round(mx - w / 2), by = Math.round(my);
+      ctx.fillStyle = "#2b1709"; ctx.fillRect(bx - 1, by - 1, w + 2, 11); ctx.fillStyle = "rgba(90,58,34,.92)"; ctx.fillRect(bx, by, w, 9);
+      var ax = sx < 6 ? bx + 2 : sx > W - 6 ? bx + w - 4 : Math.round(mx) - 1, ay = sy < 6 ? by + 3 : sy > H - 6 ? by + 4 : by + 3;
+      ctx.fillStyle = "#f6d36b";
+      if (sx < 6) { ctx.fillRect(ax, ay + 1, 1, 1); ctx.fillRect(ax + 1, ay, 1, 3); } else if (sx > W - 6) { ctx.fillRect(ax + 1, ay + 1, 1, 1); ctx.fillRect(ax, ay, 1, 3); }
+      drawText(nm, mx + (sx < 6 ? 2 : sx > W - 6 ? -2 : 0), by + 2, "#fdf3de", "c");
+      campMarks.push({ x: bx, y: by, w: w, h: 9, id: l.id });
+    });
+    // bandeau du lieu proche
+    if (camp.near) {
+      var l = camp.near, l1 = l.name.toUpperCase(), l2 = ((l.who ? l.who + " · " : "") + l.desc).toUpperCase(), hint = isTouch ? "TOUCHE POUR ENTRER" : "ENTREE POUR ENTRER";
+      var bw2 = Math.min(W - 8, Math.max(textWidth(l1, 1), textWidth(l2, 1), textWidth(hint, 1)) + 12), bx = Math.round((W - bw2) / 2), byy = 4;
+      ctx.fillStyle = "#2b1709"; ctx.fillRect(bx - 1, byy - 1, bw2 + 2, 33); ctx.fillStyle = "#e8cfa0"; ctx.fillRect(bx, byy, bw2, 31); ctx.fillStyle = "#c49a62"; ctx.fillRect(bx, byy + 29, bw2, 2);
+      drawText(l1, W / 2, byy + 3, "#b8662a", "c"); drawText(l2, W / 2, byy + 12, "#2b1709", "c");
+      if (Math.sin(t * 5) > -0.4) drawText(hint, W / 2, byy + 21, "#6b4430", "c");
+    }
+  }
+  var campLight = null, campMarks = [];
+  function flame(x, y, t) { for (var i = 0; i < 3; i++) { ctx.fillStyle = ["#ff9a3a", "#f6d36b", "#ff5a2a"][i]; var fh = 3 + Math.sin(t * 11 + i * 2) * 1.5; ctx.fillRect(Math.round(x - 1 + i * 1 - 1), Math.round(y - fh), 1, Math.round(fh) + 1); } }
+  function drawCampFire(t) {
+    var x = CAMP_FIRE.x, y = CAMP_FIRE.y;
+    for (var i = 0; i < 8; i++) { var a = i / 8 * TAU; ctx.fillStyle = "#2b1709"; ctx.fillRect(Math.round(x + Math.cos(a) * 9) - 2, Math.round(y + Math.sin(a) * 5) - 1, 4, 3); ctx.fillStyle = i % 2 ? "#9a948a" : "#bab4a8"; ctx.fillRect(Math.round(x + Math.cos(a) * 9) - 1, Math.round(y + Math.sin(a) * 5) - 1, 3, 2); }
+    ctx.fillStyle = "#4a2e1c"; ctx.fillRect(x - 6, y - 1, 12, 3); ctx.fillStyle = "#6b4430"; ctx.fillRect(x - 5, y - 1, 10, 2);
+    for (var f = 0; f < 7; f++) { var fh = 6 + Math.sin(t * 9 + f * 1.7) * 3 + (f === 3 ? 4 : 0), fx = x - 4 + f * 1.3; ctx.fillStyle = f % 3 === 0 ? "#ff5a2a" : f % 3 === 1 ? "#ff9a3a" : "#f6d36b"; ctx.fillRect(Math.round(fx), Math.round(y - fh), 2, Math.round(fh)); }
+    ctx.fillStyle = "#fff6c0"; ctx.fillRect(x - 1, y - 4, 2, 3);
   }
   function campTap(x, y) {
-    var best = null, bd = 1e9;
-    D.CAMP.forEach(function (l) { var q = campPos(l), d = Math.hypot(q.x - x, q.y - 8 - y); if (d < 30 && d < bd) { bd = d; best = l; } });
-    camp.tx = best ? campPos(best).x : x; camp.ty = best ? campPos(best).y + 10 : y; camp.goal = best ? best.id : null;
+    for (var mi = 0; mi < campMarks.length; mi++) { var mk0 = campMarks[mi]; if (x >= mk0.x - 3 && x <= mk0.x + mk0.w + 3 && y >= mk0.y - 4 && y <= mk0.y + mk0.h + 4) { var pq = CAMP_AT[mk0.id]; camp.tx = pq.x; camp.ty = pq.y; camp.goal = mk0.id; return; } }
+    var wx = x + campCam.x, wy = y + campCam.y, best = null, bd = 1e9;
+    D.CAMP.forEach(function (l) { var q = campPos(l), s = CAMP_SPR && CAMP_SPR[l.id], hit = s ? (wx > q.x - s.ax && wx < q.x - s.ax + s.w && wy > q.y - s.ay && wy < q.y + 14) : false, d = Math.hypot(q.x - wx, q.y - 8 - wy); if ((hit || d < 30) && d < bd) { bd = d; best = l; } });
+    camp.tx = best ? campPos(best).x : wx; camp.ty = best ? campPos(best).y : wy; camp.goal = best ? best.id : null;
   }
   function moveMe(dt) {
     var v = (me.down || me.choosing || netMenuOpen) ? { x: 0, y: 0 } : inputVector();
@@ -4971,6 +5232,8 @@
           if (pl.hp < hb && e.elem === "eau" && !e.d.boss) pl.wetT = 1;
           if (pl.hp < hb && e.elem === "air" && !e.d.boss) { var ad = Math.hypot(e.x - pl.x, e.y - pl.y) || 1; e.kx += (e.x - pl.x) / ad * 220; e.ky += (e.y - pl.y) / ad * 220; }
           if (pl.hp < hb && itn(pl, "ecaille_sala") && !e.d.prop) { e.burnT = 3; e.burnD = 3 * gpw(); e.burnBy = pl; }
+          // équilibrage 2.7.1 : un boss au contact ne frappe plus 3 fois par seconde (mêlée possible) et recule un peu
+          if (pl.hp < hb && e.d.boss) { pl.inv = Math.max(pl.inv, 0.9); var bd = Math.hypot(e.x - pl.x, e.y - pl.y) || 1; e.kx += (e.x - pl.x) / bd * 90; e.ky += (e.y - pl.y) / bd * 90; }
           if (pl.hp < hb) { e.hitDash = 1; if (itn(pl, "bogue") && pl.anchored) { var kpb = p; p = pl; hurt(e, 15 * itn(pl, "bogue") * gpw(), 0, 0); p = kpb; } }
           if (e.aff && pl.hp < hb && hasA(e, "vampire") && !itn(pl, "sceau_purete")) { e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.08); burst(e.x, e.y, AFX.vampire.color, 6); }
         }
@@ -8434,8 +8697,9 @@
     combo: function (id) { p = me; v2Apply({ type: "cb", id: id }); calc(me); return Object.keys(me.weapons); },
     entries: function () { return techEntries(me).map(function (e) { return e.key + ":" + e.def.type + ":" + Math.round(V(e.def, "dmg", e.l) || 0); }); },
     arme: function (id) { pickArme(id); return me.weapons; },
+    campInfo: function () { return { cam: campCam, W: W, H: H, marks: campMarks, at: CAMP_AT, me: { x: camp.x, y: camp.y } }; },
     bot: function (on, fast) { BOT = on ? 1 : null; FAST = fast || 1; return !!BOT; },
-    run: function () { return { t: r ? Math.round(r.time) : 0, lvl: r && r.level, kills: r && r.kills, hp: me && Math.round(me.hp), state: state, tier: tierN(), boss: r && r.bossKills }; },
+    run: function () { return { boss: curBoss && !curBoss.dead ? curBoss.d.name + ':' + Math.round(curBoss.hp) + '/' + Math.round(curBoss.maxHp) : 0, hit: r && r.lastHitBy, din: r && Math.round(r.dmgIn || 0), t: r ? Math.round(r.time) : 0, lvl: r && r.level, kills: r && r.kills, hp: me && Math.round(me.hp), state: state, tier: tierN(), boss: r && r.bossKills }; },
     dmgTot: function () { return [Math.round(r && r.dmgTot || 0), r ? r.time : 0]; },
     choicesNow: function (n) { p = me; return v2Choices(n || 4).map(function (c) { var v = v2Card(c); return c.type + ":" + (v ? v.name : c.id); }); },
     give: function (type, id, lvl) { p = me; if (type === "w") me.weapons[id] = lvl || 5; else me.passives[id] = lvl || 5; calc(me); refreshCounts(); return readyFusions(); },
