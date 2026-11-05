@@ -84,6 +84,7 @@ export function openSettings(): Promise<void> {
       h('div.setting-row', h('label', 'Animations réduites'), toggle(s.reducedMotion, (v) => { s.reducedMotion = v; commit(); })),
       h('div.setting-row', h('label', 'Vitesse du texte'), seg([['normal', 'Normale'], ['fast', 'Rapide'], ['instant', 'Immédiate']], s.textSpeed, (v) => { s.textSpeed = v; commit(); })),
       h('div.setting-row', h('label', 'Version', h('small', versionLabel())), checkBtn),
+      h('div.setting-row', h('label', 'Ressources', h('small', 'À quoi servent pièces, diamants, énergie, cœurs, tickets')), h('button.btn.small.secondary', { on: { click: tap(async () => { (await import('../components/resourceInfo')).openResourceHelp(); }, { sound: false }) } }, 'Voir')),
       h('div.setting-row', h('label', 'Diagnostic', h('small', 'Build, mode (Safari / application), partie, photos')), diagBtn),
       h('div.setting-row', h('label', 'Diagnostic tactile', h('small', 'État du plateau ; « Débloquer le plateau » sans rien perdre')), touchBtn),
       h('div.setting-row', h('label', 'Copier ma sauvegarde', h('small', 'Pour la mettre dans l\'application de l\'écran d\'accueil (ou l\'inverse)')), copyBtn),

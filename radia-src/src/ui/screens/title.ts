@@ -1,6 +1,7 @@
 /**
  * Écran d'accueil + navigation principale (menu, carte des niveaux, succès).
  */
+import { attachResourceInfo } from '../components/resourceInfo';
 import { h, tap } from '../dom';
 import { ui } from '../ui';
 import { icon } from '../icons';
@@ -177,6 +178,7 @@ export function showTitle(): void {
   gems.addEventListener('click', tap(() => void openShop('diamonds').then(() => { (gems.children[1] as HTMLElement).textContent = fmt(wallet.diamonds()); })));
   const nrg = h('button.res-chip', { 'aria-label': 'Énergie' }, h('img', { src: energyUrl(52), alt: '' }), h('span', fmt(wallet.energy())));
   nrg.addEventListener('click', tap(() => void openEnergyPanel(false)));
+  attachResourceInfo(gems, 'diamonds'); attachResourceInfo(nrg, 'energy');
   const offEco = events.on('economy', () => { (gems.children[1] as HTMLElement).textContent = fmt(wallet.diamonds()); (nrg.children[1] as HTMLElement).textContent = fmt(wallet.energy()); });
   const topBar = h('div.title-top',
     h('div.title-left', h('button.icon-btn', { 'aria-label': 'Paramètres', on: { click: tap(() => void openSettings()) } }, icon('settings')), phoneButton(), dailyBadge()),

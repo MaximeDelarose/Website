@@ -2,6 +2,7 @@
  * Lance un niveau de fusion (ou le mode infini) : interface HTML (HUD) +
  * scène Phaser, récompenses, sauvegarde automatique. Résout à la fin.
  */
+import { attachResourceInfo } from '../../ui/components/resourceInfo';
 import { phoneButton } from '../../events/scheduler';
 import { h, tap, clear } from '../../ui/dom';
 import { icon } from '../../ui/icons';
@@ -115,6 +116,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     const energyEl = h('button.res-chip.interactive', { 'aria-label': 'Énergie' }, h('img', { src: energyUrl(52), alt: '' }), h('span', ''), h('small', ''));
     const diamondEl = h('button.res-chip.interactive', { 'aria-label': 'Diamants' }, h('img', { src: diamondUrl(52), alt: '' }), h('span', ''), h('span.plus', '+'));
     const coinsEl = h('button.res-chip.interactive', { 'aria-label': 'Pièces' }, h('img', { src: resIconUrl('coins', 52), alt: '' }), h('span', fmt(save.data.world.res.coins)));
+    attachResourceInfo(heartsEl, 'hearts'); attachResourceInfo(energyEl, 'energy'); attachResourceInfo(diamondEl, 'diamonds'); attachResourceInfo(coinsEl, 'coins');
     const resRow = h('div.res-row', energyEl, heartsEl, ...(endlessMode ? [coinsEl] : []), diamondEl, phoneButton('mh-phone'));
     const renderRes = () => {
       const e = wallet.energy();

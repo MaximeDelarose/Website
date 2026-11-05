@@ -1,0 +1,20 @@
+/* Fiche de ressource (préfixe ri-) */
+.ri-target { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.ri-back { position: absolute; inset: 0; z-index: 600; display: flex; align-items: center; justify-content: center; padding: calc(var(--sat) + 16px) 18px calc(var(--sab) + 16px); background: rgba(59, 49, 82, 0.28); animation: fadeIn 0.15s ease; }
+.ri-back.leaving { animation: fadeOut 0.16s ease forwards; pointer-events: none; }
+.ri-card { width: min(100%, 340px); max-height: 100%; overflow-y: auto; padding: 14px 16px 14px; border-radius: 22px; background: #fff7ee; color: var(--choco, #58433f); box-shadow: 0 0 0 2px #f1d9c2, 0 14px 34px rgba(59, 49, 82, 0.38); text-align: left; animation: popIn 0.22s var(--ease-pop); }
+.ri-head { display: flex; align-items: center; gap: 10px; }
+.ri-ic { width: 44px; height: 44px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 14px; background: #fff; box-shadow: 0 0 0 2px #f6e1cc; font-size: 24px; }
+.ri-ic img { width: 34px; height: 34px; }
+.ri-ic svg { width: 26px; height: 26px; color: var(--rose-deep, #e8558f); }
+.ri-title { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
+.ri-title b { font-size: 17px; }
+.ri-bal { font-weight: 700; font-size: 20px; color: var(--rose-deep, #e8558f); }
+.ri-x { width: 44px; height: 44px; flex: 0 0 auto; border: 0; border-radius: 50%; background: transparent; color: #9a8579; font-size: 18px; cursor: pointer; }
+.ri-use { margin: 8px 0 6px; font-size: 14px; line-height: 1.35; }
+.ri-card h4 { margin: 6px 0 3px; font-size: 13px; color: #8a6f5f; text-transform: none; }
+.ri-card ul { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.4; }
+.ri-note { margin: 8px 0 0; padding: 6px 10px; border-radius: 12px; background: #fff; font-size: 12.5px; color: #7a6a5f; }
+.ri-list { display: flex; flex-direction: column; gap: 6px; }
+.ri-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 4px 10px; border: 0; border-radius: 16px; background: #fff7ee; box-shadow: 0 0 0 2px #f1d9c2; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ri-row b { flex: 1; }

@@ -1,4 +1,5 @@
 /** Coque du casino : écran plein cadre au-dessus du jeu, en-tête (retour, titre, solde, aide), changement de scène. */
+import { attachResourceInfo } from '../../ui/components/resourceInfo';
 import { h } from '../../ui/dom';
 import { audio } from '../../core/app';
 import { haptic } from '../../core/haptics';
@@ -43,6 +44,7 @@ export function createShell(onClose: () => void): Shell {
   let dead = false;
   const balEl = h('b.cz-bal', fmt(cs().bring));
   const pill = h('div.cz-pill', { 'aria-label': 'Tickets à la table' }, h('img', { src: ticketUrl(36), alt: '', draggable: false }), balEl);
+  attachResourceInfo(pill, 'tickets');
   const title = h('h1.cz-title', '');
   const back = h('button.cz-ibtn.cz-back', { 'aria-label': 'Retour' }, '‹');
   const help = h('button.cz-ibtn.cz-helpbtn', { 'aria-label': 'Aide : règles et probabilités' }, '?');
