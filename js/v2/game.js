@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.28.2";
+  var VERSION = "2.29.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -367,6 +367,7 @@
       var gb = p.gbon; p.might *= 1 + (gb.dmg || 0) / 100; p.cdMul *= 1 - (gb.cd || 0) / 100; p.area *= 1 + (gb.area || 0) / 100; p.crit = (p.crit || 0) + (gb.crit || 0) / 100; p.speed *= 1 + (gb.spd || 0) / 100; p.maxHp += gb.hp || 0;
       p.critDmg = (gb.cdm || 0) / 100; p.armor += gb.arm || 0; p.resist = Math.min(0.6, (gb.res || 0) / 100); p.eres = { terre: gb.rter || 0, feu: gb.rfeu || 0, eau: gb.reau || 0, air: gb.rair || 0 }; p.dodge = Math.max(0, (p.dodge || 0) + (gb.dod || 0) / 100); p.regen += (gb.reg || 0) / 10;
       p.magnet *= 1 + (gb.mag || 0) / 100; p.xpMul += (gb.xp || 0) / 100; p.goldMul *= 1 + (gb.gld || 0) / 100;
+      if (gb.vit) p.maxHp *= 1 + gb.vit / 100; if (gb.soi) p.regen *= 1 + gb.soi / 100; if (gb.pro) p.luck += gb.pro / 100; if (gb.inv) p.amount += gb.inv; if (gb.ini && p.volteBase) p.volteBase = Math.max(0.8, p.volteBase * (1 - gb.ini / 100));
     }
     if (p.wroll && p.wroll.mods) { var wm = p.wroll.mods; p.might *= 1 + (wm.dmg || 0) / 100; p.cdMul *= 1 - (wm.cd || 0) / 100; p.area *= 1 + (wm.area || 0) / 100; p.crit = (p.crit || 0) + (wm.crit || 0) / 100; p.speed *= 1 + (wm.spd || 0) / 100; p.maxHp += wm.hp || 0; p.amount += wm.amt || 0; }
     if (oldMax && p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
@@ -762,7 +763,7 @@
     dmg = dmg * p.might * (0.9 + Math.random() * 0.2) * (crit ? (itn(p, "corne") ? 3 : 2) + (p.critDmg || 0) : 1) * (p.rage && p.hp < p.maxHp * 0.3 ? 1.25 : 1);
     if (crit && r) r.crits = (r.crits || 0) + 1;
     dmg *= (p.dmgX || 1) * (p.txRage > 0 ? 1.35 : 1) * (p.crewScale || 1);
-    if (p.gbon) { var gq = p.gbon, fm = 1; if (CUR_FAM) for (var fk in GFAM) if (GFAM[fk] === CUR_FAM && gq[fk]) fm += gq[fk] / 100; if (p.anchored && gq.anc) fm += gq.anc / 100; if (p.mstate === "mouvement" && gq.mov) fm += gq.mov / 100; dmg *= Math.max(0.2, fm); }
+    if (p.gbon) { var gq = p.gbon, fm = 1; if (CUR_FAM) for (var fk in GFAM) if (GFAM[fk] === CUR_FAM && gq[fk]) fm += gq[fk] / 100; if (p.anchored && gq.anc) fm += gq.anc / 100; if (p.mstate === "mouvement" && gq.mov) fm += gq.mov / 100; var pe = atkElem(p); for (var pk in GPEL) if (GPEL[pk] === pe && gq[pk]) fm += gq[pk] / 100; if (gq.chs && (e.d.boss || (e.aff && e.aff.length))) fm += gq.chs / 100; dmg *= Math.max(0.2, fm); if (gq.dfx) dmg += gq.dfx * gpw(); }
     var hf = HIT_FX, hadMark = e.mark && e.markT > 0 ? e.mark : null;
     if (hf && hf.vsMark && hadMark && hadMark !== atkElem(p)) dmg *= hf.vsMark;
     dmg = elemHit(e, dmg);
@@ -838,6 +839,7 @@
     if (hf && !e.d.prop) hitFx(e, hf, dmg, hadMark);
     if (!e.dead && SHOOTER_AI[e.d.ai] && !e.d.boss && !e.d.mega && !(e.aff && e.aff.length)) interruptShot(e);
     if (p.txf && !e.d.prop) txHitPost(p, e, dmg, crit);
+    if (p.gbon && p.gbon.vdv && !e.d.prop && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + dmg * p.gbon.vdv / 100 * (1 + (p.gbon.soi || 0) / 100));
     if (crit && itn(p, "dard_reine") && !procLock && !e.d.prop) { procLock = true; explode(e.x, e.y, 18, 15 * itn(p, "dard_reine")); procLock = false; }
     if (e.hp <= 0 && !e.dead) kill(e);
   }
@@ -1008,7 +1010,8 @@
     else p.hp -= hit;
     if (r && p === me) r.dmgIn = (r.dmgIn || 0) + hit;
     p.inv = DIFF.inv || 0.35; txFire(p, "hurt");
-    if (p.txf && p.txf.reflect) { var rfp = p; near(p.x, p.y, 40, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - rfp.x, e.y - rfp.y) < 36 + e.d.r) { var pq = p; p = rfp; hurt(e, hit * rfp.txf.reflect / 100, (e.x - rfp.x) * 3, (e.y - rfp.y) * 3); p = pq; } }); ring(p.x, p.y, 36, false); }
+    var rflv = ((p.txf && p.txf.reflect) || 0) + ((p.gbon && p.gbon.epi) || 0);
+    if (rflv) { var rfp = p; near(p.x, p.y, 40, function (e) { if (!e.dead && !e.d.prop && Math.hypot(e.x - rfp.x, e.y - rfp.y) < 36 + e.d.r) { var pq = p; p = rfp; hurt(e, hit * rflv / 100, (e.x - rfp.x) * 3, (e.y - rfp.y) * 3); p = pq; } }); ring(p.x, p.y, 36, false); }
     if (p === me) { r.lastHit = r.time; if (S.opts.shake) shake = Math.max(shake, 0.32); SND.hurt(); freezeFrame(0.06); hurtV = 0.35; kick(Math.random() - 0.5, Math.random() - 0.5, 3); }
     burst(p.x, p.y, "#c8553d", 5);
   }
@@ -3293,6 +3296,7 @@
     if (ps === "perchoir" && a) { pl.rangeMul = tal(pl, "longuevue") ? 2 : 1.6; pl.dmgX = 1.3 * (tal(pl, "sniper") && pl.anchorT > 2 ? 2 : 1); }
     if (hasSig(pl, "anchorDmg") && a && pl.anchorT > 1) pl.dmgX *= 2;
     if (hasSig(pl, "critRange")) pl.rangeMul *= 1.2;
+    if (pl.gbon && pl.gbon.rng) pl.rangeMul *= 1 + pl.gbon.rng / 100;
     if (pl.sillT > 0) pl.spdX *= 1.3;
     if (pl.size > 1 && setCount(pl, "glouton") < 2) pl.spdX /= 1 + (tal(pl, "rouleau_t2") ? 0.17 : 0.35) * (pl.size - 1);
     var gv = gearHas(pl, "vitesse"); if (gv && m) pl.spdX *= 1 + gv.v / 100;
@@ -4222,7 +4226,7 @@
     var h = '<div class="dof-tip" style="--rc:' + R0.color + '"><div class="dof-tip-h"><span class="dof-tip-ic">' + ic(g.icon) + '</span><div><strong>' + esc(g.name) + "</strong><small>" + esc(SLOT_KIND[g.slot] || g.slot) + " · " + esc((D.SLOTS.filter(function (x) { return (x.kind || x.id) === g.slot; })[0] || {}).state || "") + '</small><em>' + esc(R0.name) + (g.unique ? " · unique" : "") + "</em></div></div>";
     h += '<div class="dof-sec">Effets</div><ul class="dof-fx"><li>' + esc(pieceDesc(q)) + "</li>";
     if (g.elem) h += "<li>" + elemSpan(g.elem, "+" + q.pts + " point" + (q.pts > 1 ? "s" : "") + " de " + D.ELEMENTS[g.elem].name) + "</li>";
-    bonTxt(q.bon).forEach(function (t) { h += "<li" + (t.charAt(0) === "-" ? ' class="dof-neg"' : "") + ">" + esc(t) + "</li>"; });
+    bonTxt(q.bon, true).forEach(function (t) { h += "<li" + (t.charAt(0) === "-" ? ' class="dof-neg"' : "") + ">" + esc(t) + "</li>"; });
     if (q.extra && D.GEAR[q.extra]) h += "<li>+ " + esc(D.GEAR[q.extra].name) + "</li>";
     h += "</ul>";
     if (!mine) { var cur = pieceById(w[g.slot === "anneau" ? "anneau1" : g.slot]) || (g.slot === "anneau" ? pieceById(w.anneau2) : null); if (cur && cur.id !== q.id) { var df = {}, ks = {}; Object.keys(q.bon || {}).forEach(function (k) { ks[k] = 1; }); Object.keys(cur.bon || {}).forEach(function (k) { ks[k] = 1; }); Object.keys(ks).forEach(function (k) { var d0 = ((q.bon || {})[k] || 0) - ((cur.bon || {})[k] || 0); if (d0) df[k] = d0; }); var ct = bonTxt(df); h += '<div class="dof-sec">Comparé à ' + esc(D.GEAR[cur.t].name) + '</div><ul class="dof-fx small">' + (ct.length ? ct.map(function (t) { return "<li" + (t.charAt(0) === "-" ? ' class="dof-neg"' : "") + ">" + esc(t) + "</li>"; }).join("") : "<li>Mêmes stats</li>") + "</ul>"; } }
@@ -4331,8 +4335,18 @@
     { id: "fret", name: "dégâts de retour", lo: 6, hi: 14, pct: 1 }, { id: "fcom", name: "dégâts de compagnon", lo: 6, hi: 14, pct: 1 },
     { id: "anc", name: "dégâts ancré", lo: 6, hi: 14, pct: 1, mal: 1 }, { id: "mov", name: "dégâts en mouvement", lo: 6, hi: 14, pct: 1, mal: 1 },
     { id: "rter", name: "résistance Terre", lo: 4, hi: 12, pct: 1 }, { id: "rfeu", name: "résistance Feu", lo: 4, hi: 12, pct: 1 }, { id: "reau", name: "résistance Eau", lo: 4, hi: 12, pct: 1 }, { id: "rair", name: "résistance Air", lo: 4, hi: 12, pct: 1 },
-    { id: "mag", name: "portée de ramassage", lo: 10, hi: 30, pct: 1 }, { id: "xp", name: "expérience", lo: 4, hi: 10, pct: 1 }, { id: "gld", name: "or gagné", lo: 5, hi: 15, pct: 1 }
+    { id: "mag", name: "portée de ramassage", lo: 10, hi: 30, pct: 1 }, { id: "xp", name: "expérience", lo: 4, hi: 10, pct: 1 }, { id: "gld", name: "or gagné", lo: 5, hi: 15, pct: 1 },
+    // stats à la Dofus : puissances élémentaires, dommages fixes, soins, initiative, prospection, portée, renvoi, vitalité, vol de vie, pods
+    { id: "ptr", name: "Force (dégâts de Terre)", lo: 6, hi: 16, pct: 1 }, { id: "pfe", name: "Intelligence (dégâts de Feu)", lo: 6, hi: 16, pct: 1 },
+    { id: "peu", name: "Chance (dégâts d'Eau)", lo: 6, hi: 16, pct: 1 }, { id: "pai", name: "Agilité (dégâts d'Air)", lo: 6, hi: 16, pct: 1 },
+    { id: "dfx", name: "Dommages", lo: 1, hi: 3 }, { id: "chs", name: "dégâts aux élites et boss", lo: 8, hi: 20, pct: 1 },
+    { id: "vit", name: "Vitalité (PV max)", lo: 4, hi: 10, pct: 1 }, { id: "vdv", name: "vol de vie", lo: 1, hi: 3, pct: 1 },
+    { id: "soi", name: "Soins", lo: 10, hi: 30, pct: 1 }, { id: "ini", name: "Initiative (recharge de la Volte)", lo: 6, hi: 16, pct: 1 },
+    { id: "pro", name: "Prospection (butin)", lo: 5, hi: 15, pct: 1 }, { id: "rng", name: "Portée", lo: 8, hi: 20, pct: 1 },
+    { id: "epi", name: "renvoi de dommages", lo: 5, hi: 14, pct: 1 }, { id: "pod", name: "Pods (sac d'expédition)", lo: 1, hi: 2 },
+    { id: "inv", name: "Invocation (+1 projectile ou compagnon)", lo: 1, hi: 1, minR: 4 }
   ];
+  var GPEL = { ptr: "terre", pfe: "feu", peu: "eau", pai: "air" };
   var GFAM = { fmel: "melee", ftir: "tir", fzon: "zone", fret: "retour", fcom: "compagnon" };
   var COMPTOIR_PROV = [
     { id: "ration", ic: "🍖", name: "Ration copieuse", desc: "+20 % de PV max.", price: 500 },
@@ -4349,17 +4363,17 @@
   }
   function statRoll(x, f) { return Math.max(1, Math.round((x.lo + Math.random() * (x.hi - x.lo)) * f)); }
   function rarMul(rar) { return [0.5, 0.65, 0.8, 0.95, 1.1][rar] || 1; }
-  function bonTxt(b) {
+  function bonTxt(b, ranges) {
     return GSTATS.filter(function (x) { return b && b[x.id]; }).map(function (x) {
       var v = b[x.id], sg = v > 0 ? "+" : "-", a = Math.abs(v);
-      return sg + (x.tenth ? String(a / 10).replace(".", ",") : a) + (x.pct ? " %" : "") + " " + x.name;
+      return sg + (x.tenth ? String(a / 10).replace(".", ",") : a) + (x.pct ? " %" : "") + " " + x.name + (ranges && v > 0 ? " (" + (x.tenth ? String(x.lo / 10).replace(".", ",") + " à " + String(x.hi / 10).replace(".", ",") : x.lo + " à " + x.hi) + ")" : "");
     });
   }
   function genPiece(tier, tpl, rar) {
     var keys = Object.keys(D.GEAR).filter(function (k) { return !D.GEAR[k].unique && questOk(D.GEAR[k]); }), t = tpl || keys[(Math.random() * keys.length) | 0], g = D.GEAR[t];
     if (rar === undefined) { var W8 = GRAR_W[Math.max(1, Math.min(3, tier || 1))], tot = 100, rr = Math.random() * tot; rar = 0; while (rr >= W8[rar]) { rr -= W8[rar]; rar++; } if (g.unique) rar = Math.max(rar, 3); }
     var R0 = GRAR_ROLL[rar], q = { id: eqS().uid++, t: t, roll: R0[0] + Math.random() * (R0[1] - R0[0]), tier: tier || 1, pts: 0, rar: rar };
-    var nb = rar + 1, mulR = [0.5, 0.65, 0.8, 0.95, 1.1][rar], pool = GSTATS.slice().sort(function () { return Math.random() - 0.5; }), mal = null;
+    var nb = rar + 1, mulR = [0.5, 0.65, 0.8, 0.95, 1.1][rar], pool = GSTATS.filter(function (x) { return !x.minR || rar >= x.minR; }).sort(function () { return Math.random() - 0.5; }), mal = null;
     function rollV(x, f) { return statRoll(x, f); }
     q.bon = {};
     if (rar >= 2 && Math.random() < [0, 0, 0.3, 0.5, 0.6][rar]) { mal = pool.filter(function (x) { return x.mal; })[0]; if (mal) pool.splice(pool.indexOf(mal), 1); }
@@ -4865,7 +4879,7 @@
   };
   Object.keys(D.EXDEF2).forEach(function (k) { EXDEF[k] = D.EXDEF2[k]; });
   function passeurCost() { return Math.round((60 + 40 * r.ex.floor) * (nm(7) ? 2 : 1) * (anyItem("sceau_passeur") ? 0.5 : 1)); }
-  function bagCap() { return EX.bag + 2 * Math.min(1, (me && itn(me, "sacoche")) || 0); }
+  function bagCap() { return EX.bag + 2 * Math.min(1, (me && itn(me, "sacoche")) || 0) + ((me && me.gbon && me.gbon.pod) || 0); }
   /* ---- le sac ---- */
   function bagSlots() { return r.bag.length; }
   function bagAddRes(id, n) {
@@ -8765,7 +8779,7 @@
       var q = pieceById(+id); if (!q || (S.res.rune_rare || 0) < 1) return; q.bon = q.bon || {}; if (Object.keys(q.bon).length >= 6) return;
       S.res.rune_rare--; S.stats.runes = (S.stats.runes || 0) + 1; checkAchievements(null);
       if (Math.random() < 0.25) { banner("Raté : la rune se brise"); SND.crack(); }
-      else { var pool = GSTATS.filter(function (x) { return !q.bon[x.id]; }), x = pool[(Math.random() * pool.length) | 0]; q.bon[x.id] = statRoll(x, rarMul(pieceRar(q))); banner("Nouvelle stat : " + bonTxt((function (o) { o[x.id] = q.bon[x.id]; return o; })({}))[0]); SND.fusion(); }
+      else { var pool = GSTATS.filter(function (x) { return !q.bon[x.id] && (!x.minR || pieceRar(q) >= x.minR); }), x = pool[(Math.random() * pool.length) | 0]; q.bon[x.id] = statRoll(x, rarMul(pieceRar(q))); banner("Nouvelle stat : " + bonTxt((function (o) { o[x.id] = q.bon[x.id]; return o; })({}))[0]); SND.fusion(); }
       save(); go("forge");
     },
     rpurge: function (id) {
