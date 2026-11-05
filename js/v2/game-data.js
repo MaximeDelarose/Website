@@ -1507,16 +1507,37 @@ window.ES_DATA = (function () {
     perchoir: [[{ id: "longuevue", name: "Longue-vue", desc: "Accroché : portée x2 au lieu de x1,6." }, { id: "nid_t", name: "Nid", desc: "Accroché : régénère 2 PV/s." }],
                [{ id: "sniper", name: "Tireur d'élite", desc: "Clé : accroché depuis 2 s, tous tes coups sont critiques." }, { id: "grappe", name: "Agrippe-tout", desc: "Clé : tu peux t'accrocher n'importe où en ralentissant." }]],
   };
-  // 2.16 : talents de personnage, valables avec toutes les postures : 6 paliers de plus, 3 choix par palier (attaque, défense, utilité), en stats d'attirail
+  // 2.17 : talents de personnage à effet, valables avec toutes les postures : 6 paliers, 3 choix par palier. Un talent = un déclencheur + une action, de plus en plus fort selon le palier
   var TAL_XLVL = [3, 5, 7, 9, 10, 12];
-  var TAL_X = [
-    [["Aiguisage", { dmg: 4, crit: 2 }], ["Poil épais", { hp: 15, arm: 1 }], ["Pattes vives", { spd: 4, mag: 10 }]],
-    [["Affûtage", { dmg: 5, cdm: 12 }], ["Endurance", { res: 3, hp: 20 }], ["Esprit vif", { cd: 4, xp: 4 }]],
-    [["Fureur", { dmg: 6, crit: 3 }], ["Esquive féline", { arm: 1, dod: 2, hp: 20 }], ["Flair", { spd: 5, area: 6 }]],
-    [["Précision mortelle", { dmg: 7, cdm: 18 }], ["Peau de chêne", { res: 4, hp: 30 }], ["Grande glane", { cd: 5, gld: 6, mag: 15 }]],
-    [["Instinct de tueur", { dmg: 8, crit: 4 }], ["Second souffle", { arm: 2, reg: 3, hp: 30 }], ["Maître du terrain", { spd: 6, xp: 6, area: 8 }]],
-    [["Apothéose", { dmg: 10, cdm: 25, crit: 3 }], ["Increvable", { res: 6, dod: 3, hp: 50 }], ["Sixième sens", { cd: 8, area: 10, spd: 6 }]]
-  ];
+  var TX_CHARS = ["noisette", "cendrine", "charbon", "flocon", "planeur", "capitaine", "jumeaux", "chevalier", "mage", "bucheron", "ninja", "druide", "pataud", "trefle"];
+  var TX_NOUN = { noisette: "glands", cendrine: "cendres", charbon: "braises", flocon: "neige", planeur: "plumes", capitaine: "matelots", jumeaux: "jumeaux", chevalier: "lances", mage: "runes", bucheron: "copeaux", ninja: "ombres", druide: "ronces", pataud: "miettes", trefle: "trèfles" };
+  var TX_TRIG = ["volte", "kill", "hurt", "anchor", "timer", "lowhp"], TX_ACT = ["ring", "nova", "heal", "shield", "haste", "rage", "freeze", "chain", "bomb", "pull"];
+  var TX_TAG = { volte: "Volte", kill: "Victoires", hurt: "Touché", anchor: "Ancré", timer: "Cadence", lowhp: "Sursaut" };
+  var TX_ANAME = { ring: "Gerbe de ", nova: "Éclat de ", heal: "Réconfort de ", shield: "Garde de ", haste: "Élan de ", rage: "Fureur de ", freeze: "Givre de ", chain: "Éclair de ", bomb: "Brasier de ", pull: "Appel de " };
+  function txOpt(cid, t, o, trig, act) {
+    var k = 1 + 0.4 * t, every = Math.max(3, 8 - t), cd = trig === "timer" ? Math.max(3, 7 - t * 0.6) : trig === "hurt" ? 5 : trig === "lowhp" ? 20 : trig === "anchor" ? 3 : 0;
+    var n = 5 + t * 2, pct = Math.round(3 * k), sec = (0.5 + 0.2 * t).toFixed(1).replace(".", ",");
+    var tp = { volte: "À chaque Volte", kill: "Toutes les " + every + " victimes", hurt: "Quand tu es touché (1 fois par 5 s)", anchor: "Quand tu t'ancres (au plus toutes les 3 s)", timer: "Toutes les " + String(Math.round(cd * 10) / 10).replace(".", ",") + " s", lowhp: "Sous 35 % de PV (1 fois par 20 s)" }[trig];
+    var ap = { ring: "une gerbe de " + n + " projectiles part autour de toi", nova: "une onde blesse tous les ennemis proches", heal: "tu récupères " + pct + " % de tes PV", shield: "tu es invulnérable " + sec + " s", haste: "+30 % de vitesse pendant 3 s", rage: "+35 % de dégâts pendant 4 s", freeze: "les ennemis proches sont ralentis de moitié 2 s", chain: "un éclair saute sur " + (3 + t) + " ennemis", bomb: "une flaque de feu brûle 3 s sous tes pattes", pull: "attire les ennemis et les noisettes proches" }[act];
+    return { id: "x_" + cid + "_" + t + "_" + o, name: TX_ANAME[act] + TX_NOUN[cid] + " · " + TX_TAG[trig], desc: tp + " : " + ap + ".", trig: trig, act: act, k: k, n: n, pct: pct, sec: 0.5 + 0.2 * t, every: every, cd: cd };
+  }
+  var TAL_FX = {};
+  TX_CHARS.forEach(function (cid, ci) {
+    var used = {}; TAL_FX[cid] = [];
+    for (var t = 0; t < 6; t++) {
+      var row = [], acts = {}, seed = (ci + 1) * 7919 + t * 104729;
+      for (var o = 0; o < 3; o++) {
+        for (var tries = 0; tries < 200; tries++) {
+          seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+          var trig = TX_TRIG[seed % 6], act = TX_ACT[(seed >> 8) % 10], key = trig + act;
+          if (used[key] || acts[act]) continue;
+          if (trig === "lowhp" && t < 2 && act !== "heal" && act !== "shield") continue;
+          used[key] = acts[act] = 1; row.push(txOpt(cid, t, o, trig, act)); break;
+        }
+      }
+      TAL_FX[cid].push(row);
+    }
+  });
   var TAL_LVL = [2, 4, 6, 8];   // niveau d'écureuil qui ouvre chaque palier
   // maîtrise des armes : des options, pas de puissance (1 : techniques et 1re évolution · 2 : 1re signature · 3 : 2e évolution · 4 : signatures 2 et 3 · 5 : éveil)
   var MASTERY = [0, 120, 350, 700, 1200];
@@ -3463,6 +3484,6 @@ window.ES_DATA = (function () {
   [ITEMS].forEach(function (l) { l.forEach(function (x) { if (V2_DROP[x.quest]) delete x.quest; }); });
   [WEAPONS, PASSIVES, FUSIONS].forEach(function (o) { Object.keys(o).forEach(function (k) { if (V2_DROP[o[k].quest]) delete o[k].quest; }); });
 
-  return { TAL_X: TAL_X, TAL_XLVL: TAL_XLVL, WRAR: WRAR, WSTAT: WSTAT, VFX: VFX, VFX_EL: VFX_EL, VFX_W: VFX_W, EMOJI_PX: EMOJI_PX, RIG: { raster: rigRaster, E: rgE, C: rgC, P: rgP, mix: mixc }, EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
+  return { TAL_FX: TAL_FX, TAL_XLVL: TAL_XLVL, WRAR: WRAR, WSTAT: WSTAT, VFX: VFX, VFX_EL: VFX_EL, VFX_W: VFX_W, EMOJI_PX: EMOJI_PX, RIG: { raster: rigRaster, E: rgE, C: rgC, P: rgP, mix: mixc }, EVENTS: EVENTS, EXDEF2: EXDEF2, MODS2: MODS2, STRATA: STRATA, SQUADS_MAP: SQUADS_MAP, ARENA_BOSSES: ARENA_BOSSES, TFUS2: TFUS2, SETS: SETS, CAMP: CAMP, NIGHTMARE: NIGHTMARE, RES: RES, MAP_RES: MAP_RES, SLOTS: SLOTS, GEAR: GEAR, ELEM_TIERS: ELEM_TIERS, TAL_COMMON: TAL_COMMON, TAL: TAL, TAL_LVL: TAL_LVL, MASTERY: MASTERY, SIGS: SIGS, ULTS: ULTS, ROLES: ROLES, SQUADS: SQUADS, ELEMENTS: ELEMENTS, REACTIONS: REACTIONS, TECH: TECH, ARMES: ARMES, TFUS: TFUS, COMBOS: COMBOS, LEGENDS: LEGENDS, V2: V2, POSTURES: POSTURES, RAGE: RAGE, DUNGEONS: DUNGEONS, QUESTS: QUESTS, TIERS: TIERS, TIER: TIER, SHRINES: SHRINES, ITEMS: ITEMS, RARITIES: RARITIES, AFFIXES: AFFIXES, DUNGEON: DUNGEON, RELICS: RELICS, ARENA: ARENA, PRESTIGE_SHOP: PRESTIGE_SHOP, SKILLS: SKILLS, SKILL_BRANCHES: SKILL_BRANCHES, PRESTIGE: PRESTIGE, rankNeed: rankNeed, SPRITES: SPRITES, CHARACTERS: CHARACTERS, WEAPONS: WEAPONS, FUSIONS: FUSIONS, PASSIVES: PASSIVES, LOOT: LOOT, MAPS: MAPS,
            SHOP: SHOP, ACHIEVEMENTS: ACHIEVEMENTS, ENEMIES: ENEMIES, DIFFICULTIES: DIFFICULTIES };
 })();
