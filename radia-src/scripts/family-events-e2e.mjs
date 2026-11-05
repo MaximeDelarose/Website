@@ -30,6 +30,7 @@ async function play(page, id, onActivity, shots = {}) {
   while (Date.now() - t0 < 200000) {
     if (process.env.DEBUG && Date.now() - lastLog > 8000) { lastLog = Date.now(); console.log('   …', id, await page.evaluate(() => { const L = document.querySelector('.ev-layer'); return L ? [...L.querySelectorAll('*')].filter((e) => e.children.length === 0 && e.textContent.trim()).slice(0, 6).map((e) => e.textContent.trim().slice(0, 28)).join(' | ') : 'pas de couche'; })); }
     if (await page.locator('.ev-concl').count()) break;
+    if (await page.locator('.rw-skip').count()) { await page.locator('.rw-skip').first().click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(400); continue; }
     if (await page.locator('.dr-tip button').count()) { await page.locator('.dr-tip button').first().click().catch(() => {}); await page.waitForTimeout(250); continue; }
     if (await page.locator('.dr-ready').count()) { seen.dress++; await page.locator('.dr-ready').first().click().catch(() => {}); await page.waitForTimeout(700); continue; }
     if (await page.locator('.ev-say').count()) {
