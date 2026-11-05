@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.28.0";
+  var VERSION = "2.28.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -2902,7 +2902,7 @@
     var out = [];
     players.forEach(function (pl) {
       if (pl.trees && !pl.down) pl.trees.forEach(function (t) { if (t.px) Object.keys(t.px.comp).forEach(function (id) { t.px.comp[id].forEach(function (cc) { cc.mini = 1; out.push(cc); }); }); });
-      if (pl.crew && !pl.down) pl.crew.forEach(function (c) { out.push(c); if (c.px) Object.keys(c.px.comp).forEach(function (id) { c.px.comp[id].forEach(function (cc) { out.push(cc); }); }); }); if (!pl.comp || pl.down) return; Object.keys(pl.comp).forEach(function (id) { pl.comp[id].forEach(function (c) { out.push(c); }); }); });
+      if (pl.crew && !pl.down) pl.crew.forEach(function (c) { out.push(c); if (c.px) Object.keys(c.px.comp).forEach(function (id) { c.px.comp[id].forEach(function (cc) { cc.mini = 1; out.push(cc); }); }); }); if (!pl.comp || pl.down) return; Object.keys(pl.comp).forEach(function (id) { pl.comp[id].forEach(function (c) { out.push(c); }); }); });
     return out;
   }
 
