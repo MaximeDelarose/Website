@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.44.0";
+  var VERSION = "2.45.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -5823,7 +5823,7 @@
     var m = (e && e.message) || "";
     return { not_logged_in: "Connecte-toi d'abord.", not_found: "Aucun joueur avec ce pseudo ou ce code ami.", ambiguous: "Plusieurs joueurs ont ce pseudo : utilise plutôt son code ami.", self: "C'est ton propre code !", already: "Déjà ami, ou demande déjà envoyée.", too_many: "Trop d'amis ou de demandes en attente." }[m] || "Le serveur ne répond pas, réessaie dans un moment.";
   }
-  function frPayload() { return { n: ((window.SiteAuth && SiteAuth.profile && SiteAuth.profile.pseudo) || S.name || "Écureuil").slice(0, 14), c: S.char, ti: S.title || 0, lk: myLook() }; }
+  function frPayload() { return { n: ((window.SiteAuth && SiteAuth.profile && SiteAuth.profile.pseudo) || S.name || "Écureuil").slice(0, 14), c: S.char, ti: S.title || 0, lk: myLook(), rk: S.rank, ac: achDone(), mg: S.stats.megaWins || 0, hr: Math.round((S.stats.timePlayed || 0) / 360) / 10, kl: S.stats.kills || 0 }; }
   function frTrack() { Object.keys(FR.chans).forEach(function (id) { var ch = FR.chans[id]; if (ch) { try { ch.track(frPayload()); } catch (e) {} } }); }
   function frPres(id) {
     var ch = FR.chans[id]; if (!ch) return; var st = {}, me = frUid(), other = null;
@@ -5841,17 +5841,34 @@
     Object.keys(want).slice(0, 30).forEach(function (id) {
       if (id in FR.chans) return; FR.chans[id] = null;
       SiteAuth.client().then(function (c) {
-        var ch = c.channel("es-fr-" + id, { config: { presence: { key: uid } } });
+        var ch = c.channel("es-fr-" + id, { config: { presence: { key: uid }, broadcast: { self: false } } });
+        ch.on("broadcast", { event: "fr" }, function (m) { frRecv(id, (m && m.payload) || {}); });
         FR.chans[id] = ch;
         ch.on("presence", { event: "sync" }, function () { frPres(id); });
         ch.subscribe(function (st) { if (st === "SUBSCRIBED") ch.track(frPayload()); });
       }).catch(function () { delete FR.chans[id]; });
     });
   }
-  function frBadge() { var n = FR.list.filter(function (f) { return f.status === "pending" && f.dir === "in"; }).length, b = document.querySelector("[data-camp=\"amis\"] .fr-badge"); if (b) { b.textContent = n; b.hidden = !n; } return n; }
+  function frSend(fid, payload) { var ch = FR.chans[fid]; if (!ch) return false; try { ch.send({ type: "broadcast", event: "fr", payload: payload }); return true; } catch (e) { return false; } }
+  function frName(fid) { var f = FR.list.filter(function (x) { return x.id === fid; })[0]; return (f && f.pseudo) || (FR.on[fid] && FR.on[fid].n) || "Un ami"; }
+  function frRecv(fid, m) {
+    if (m.t === "msg" && typeof m.e === "string") {
+      var q = FR.npcs[fid]; if (q) { q.em = m.e.slice(0, 12); q.et = performance.now(); }
+      toastMsg("💬 " + frName(fid) + " : " + m.e.slice(0, 12));
+    } else if (m.t === "inv" && typeof m.code === "string" && /^[A-Z]{4}$/.test(m.code)) {
+      toastMsg("🎮 " + frName(fid) + " t'invite à jouer", { label: "Rejoindre", fn: function () { if (state === "play") { banner("Termine ta partie d'abord"); return; } if (!S.name) S.name = frName(fid) === "Un ami" ? "Écureuil" : ((SiteAuth.profile && SiteAuth.profile.pseudo) || "Écureuil"); closeCamp(); Net.joinTs = Date.now(); netJoin(m.code, false); go("lobby"); } });
+    }
+  }
+  function toastMsg(text, btn) {
+    var box = $("[data-toasts]"); if (!box) return; var el = document.createElement("div"); el.className = "game-toast fr-toast"; el.innerHTML = "<strong>" + esc(text) + "</strong>";
+    if (btn) { var b = document.createElement("button"); b.type = "button"; b.className = "btn btn-small"; b.textContent = btn.label; b.addEventListener("click", function () { btn.fn(); if (el.parentNode) el.parentNode.removeChild(el); }); el.appendChild(b); }
+    box.appendChild(el); setTimeout(function () { el.classList.add("out"); }, btn ? 12000 : 3600); setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, btn ? 12600 : 4200);
+  }
+  function frBadge() { var n = FR.list.filter(function (f) { return f.status === "pending" && f.dir === "in"; }).length + (FR.gifts || []).length, b = document.querySelector("[data-camp=\"amis\"] .fr-badge"); if (b) { b.textContent = n; b.hidden = !n; } return n; }
   function frLoad(cb) {
     FR.at = Date.now();
     if (!frUid()) { FR.loaded = false; FR.list = []; frSync(); frBadge(); if (cb) cb(); return; }
+    SiteAuth.rpc("gift_inbox").then(function (gs) { FR.gifts = gs || []; frBadge(); }).catch(function () {});
     SiteAuth.rpc("friends_list").then(function (d) { FR.code = d.code; FR.list = d.list || []; FR.loaded = true; FR.msg = FR.msg === "…" ? "" : FR.msg; frSync(); frBadge(); if (cb) cb(); })
       .catch(function (e) { FR.msg = frErr(e); if (cb) cb(); });
   }
@@ -5912,11 +5929,24 @@
     var nm = function (f) { return esc(f.pseudo || "Écureuil " + f.code); };
     html += '<p class="game-small">Ton code ami : <b class="fr-code">' + esc(FR.code || "…") + '</b> <button type="button" class="link-btn" data-action="frcopy">copier</button>' + (SiteAuth.profile && SiteAuth.profile.pseudo ? "" : ' · <a href="compte.html">choisis un pseudo</a> pour que tes amis te reconnaissent') + "</p>" +
       '<div class="fr-add"><input id="fr-in" type="text" maxlength="20" autocomplete="off" placeholder="Pseudo ou code ami"><button type="button" class="btn btn-small" data-action="fradd">Ajouter</button></div>' + (FR.msg ? '<p class="game-small fr-msg" role="status">' + esc(FR.msg) + "</p>" : "");
+    if ((FR.gifts || []).length) html += '<h3 class="pick-title">🎁 Cadeaux reçus</h3><div class="ach-list">' + FR.gifts.map(function (g) { return '<div class="ach is-done"><span class="ach-ic">🎁</span><div><strong>' + esc(g.pseudo || "Un ami") + '</strong><span>t\'offre ' + g.amount + " glands d'or</span></div><button type=\"button\" class=\"btn btn-small\" data-action=\"frclaim\" data-arg=\"" + g.id + '">Récupérer</button></div>'; }).join("") + "</div>";
     if (pend.length) html += '<h3 class="pick-title">Demandes reçues</h3><div class="ach-list">' + pend.map(function (f) { return '<div class="ach"><span class="ach-ic">✉️</span><div><strong>' + nm(f) + '</strong><span>Veut devenir ton ami</span></div><span class="fr-btns"><button type="button" class="btn btn-small" data-action="fracc" data-arg="' + f.id + '">Accepter</button><button type="button" class="btn btn-ghost btn-small" data-action="frdel" data-arg="' + f.id + '">Refuser</button></span></div>'; }).join("") + "</div>";
     html += '<h3 class="pick-title">Mes amis <small>' + fr.filter(function (f) { return FR.on[f.id]; }).length + " en ligne / " + fr.length + "</small></h3>";
-    html += fr.length ? '<div class="ach-list">' + fr.map(function (f) { var on = FR.on[f.id]; return '<div class="ach' + (on ? " is-done" : "") + '"><span class="ach-ic">' + (on ? "🟢" : "⚪") + "</span><div><strong>" + nm(f) + "</strong><span>" + (on ? "En ligne · " + esc((D.CHARACTERS.filter(function (c) { return c.id === on.c; })[0] || {}).name || "") : "Hors ligne") + '</span></div><button type="button" class="btn btn-ghost btn-small" data-action="frdel" data-arg="' + f.id + '" data-ask="1" aria-label="Retirer">×</button></div>'; }).join("") + "</div>" : '<p class="game-small">Pas encore d\'ami. Échange ton code ami avec quelqu\'un, ou ajoute-le par son pseudo.</p>';
+    html += fr.length ? '<div class="ach-list">' + fr.map(function (f) { var on = FR.on[f.id]; return '<div class="ach fr-row' + (on ? " is-done" : "") + (FR.sel === f.id ? " is-sel" : "") + '" data-action="frsel" data-arg="' + f.id + '" role="button" tabindex="0"><span class="ach-ic">' + (on ? "🟢" : "⚪") + "</span><div><strong>" + nm(f) + "</strong><span>" + (on ? "En ligne · " + esc((D.CHARACTERS.filter(function (c) { return c.id === on.c; })[0] || {}).name || "") : "Hors ligne") + '</span></div><span class="ach-gold">▸</span></div>'; }).join("") + "</div>" + frPanel(fr) : '<p class="game-small">Pas encore d\'ami. Échange ton code ami avec quelqu\'un, ou ajoute-le par son pseudo.</p>';
     if (out.length) html += '<h3 class="pick-title">Demandes envoyées</h3><div class="ach-list">' + out.map(function (f) { return '<div class="ach"><span class="ach-ic">⏳</span><div><strong>' + nm(f) + '</strong><span>En attente de réponse</span></div><button type="button" class="btn btn-ghost btn-small" data-action="frdel" data-arg="' + f.id + '">Annuler</button></div>'; }).join("") + "</div>";
     return html + '<p class="game-small">Les amis connectés apparaissent dans le camp, où que tu sois sur le site.</p>';
+  }
+  function frPanel(fr) {
+    var f = fr.filter(function (x) { return x.id === FR.sel; })[0]; if (!f) return "";
+    var on = FR.on[f.id], html = '<div class="fr-panel"><strong>' + esc(f.pseudo || "Écureuil " + f.code) + "</strong>";
+    if (on) {
+      var cc = D.CHARACTERS.filter(function (c) { return c.id === on.c; })[0] || D.CHARACTERS[0];
+      html += '<div class="fr-card"><img src="' + lookUrl(cc) + '" alt=""><div><b>' + esc(cc.name) + "</b>" + (on.ti && TITLES[on.ti] ? "<br><i>" + esc(TITLES[on.ti][0]) + "</i>" : "") + "<br>Rang " + (on.rk || 1) + " · " + (on.ac || 0) + " succès<br>" + (on.mg || 0) + " méga boss · " + (on.hr || 0) + " h de jeu · " + (on.kl || 0).toLocaleString("fr-FR") + " ennemis</div></div>";
+      html += '<div class="fr-emotes">' + EMOTES.map(function (e) { return '<button type="button" class="btn btn-ghost btn-small" data-action="frmsg" data-arg="' + f.id + ":" + esc(e) + '">' + esc(e) + "</button>"; }).join("") + "</div>";
+      if (Net.on && Net.code && !Net.started) html += '<p class="btn-row"><button type="button" class="btn btn-small" data-action="frinvite" data-arg="' + f.id + '">🎮 L\'inviter dans mon salon (' + esc(Net.code) + ")</button></p>";
+    } else html += '<p class="game-small">Hors ligne : sa fiche et les messages ne sont dispo que quand il est connecté.</p>';
+    html += '<p class="btn-row"><button type="button" class="btn btn-small' + (S.gold < 100 ? " is-off" : "") + '" data-action="frgift" data-arg="' + f.id + '"' + (S.gold < 100 ? " disabled" : "") + ">🎁 Offrir 100 glands (1 par jour)</button>" + '<button type="button" class="btn btn-ghost btn-small" data-action="frdel" data-arg="' + f.id + '">Retirer de mes amis</button></p></div>';
+    return html;
   }
   function frRefresh() { frLoad(function () { if (card && card.querySelector(".fr-add")) go("amis"); }); }
   function openCamp() {
@@ -9241,6 +9271,14 @@
       if (!confirm("Prestige de " + charById(cid).name + " : retour au niveau 1, +1 point d'arbre. Tes talents restent ouverts. Continuer ?")) return;
       S.cpres = S.cpres || {}; S.cpres[cid] = cPres(cid) + 1; S.clvl[cid] = 0; save(); SND.level(); banner("Prestige " + S.cpres[cid] + " : +1 point d'arbre"); go("terrier");
     },
+    frsel: function (id) { FR.sel = FR.sel === id ? null : id; SND.click(); go("amis"); },
+    frmsg: function (a) { var i = a.indexOf(":"), fid = a.slice(0, i), e = a.slice(i + 1); if (frSend(fid, { t: "msg", e: e })) { FR.msg = "Message envoyé : " + e; SND.click(); } else FR.msg = "Impossible d'envoyer pour l'instant."; go("amis"); },
+    frinvite: function (fid) { FR.msg = frSend(fid, { t: "inv", code: Net.code }) ? "Invitation envoyée." : "Impossible d'envoyer pour l'instant."; go("amis"); },
+    frgift: function (fid) {
+      if (S.gold < 100) return; if (!confirm("Offrir 100 glands d'or à " + frName(fid) + " ? (un seul cadeau par jour et par ami)")) return;
+      SiteAuth.rpc("gift_send", { p_fid: fid, p_amount: 100 }).then(function () { S.gold -= 100; save(); FR.msg = "Cadeau envoyé !"; SND.gold(); go("amis"); }).catch(function (e) { FR.msg = (e && e.message) === "already_today" ? "Tu as déjà fait un cadeau à cet ami aujourd'hui." : frErr(e); go("amis"); });
+    },
+    frclaim: function (id) { SiteAuth.rpc("gift_claim", { p_id: id }).then(function (n) { if (n > 0) { S.gold += n; save(); FR.msg = "+" + n + " glands d'or !"; SND.gold(); } FR.gifts = (FR.gifts || []).filter(function (g) { return g.id !== id; }); frBadge(); go("amis"); }).catch(function (e) { FR.msg = frErr(e); go("amis"); }); },
     frlogin: function () { SiteAuth.signIn(); },
     frcopy: function () { try { navigator.clipboard.writeText(FR.code); FR.msg = "Code copié."; } catch (e) { FR.msg = "Ton code : " + FR.code; } go("amis"); },
     fradd: function () {
