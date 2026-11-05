@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.38.2";
+  var VERSION = "2.38.3";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -10118,14 +10118,19 @@
     return false;
   }
   (function () {
-    var lastBack = 0;
-    try { history.pushState({ es: 1 }, ""); } catch (e) { return; }
+    var lastBack = 0, armed = false;
+    function push() { try { history.pushState({ es: 1 }, ""); } catch (e) {} }
+    // l'entrée « garde » doit être créée pendant un geste de l'utilisateur : sinon Firefox et Chrome la sautent au retour
+    function gesture() { if (!armed) { armed = true; push(); } }
+    ["pointerdown", "touchstart", "keydown", "click"].forEach(function (ev) { window.addEventListener(ev, gesture, { capture: true, passive: true }); });
+    push();
     window.addEventListener("popstate", function () {
+      armed = false;
       var used = false; try { used = esBack(); } catch (e) {}
-      if (used) { history.pushState({ es: 1 }, ""); return; }
-      if (window.__isApp) { banner("Utilise le bouton Accueil pour quitter"); history.pushState({ es: 1 }, ""); return; }
-      if (history.length > 2) history.back();    // il y a une page avant le jeu : on la rejoint
-      else { banner("Utilise le bouton Accueil pour quitter"); history.pushState({ es: 1 }, ""); }
+      if (used) { push(); return; }
+      var now = Date.now();
+      if (window.__isApp || now - lastBack > 2500) { lastBack = now; banner(window.__isApp ? "Utilise le bouton Accueil pour quitter" : "Appuie encore sur retour pour quitter"); push(); return; }
+      if (history.length > 2) history.back(); else push();
     });
   })();
   // appli installée : le jeu occupe tout l'écran d'emblée, sans bouton pour réduire
