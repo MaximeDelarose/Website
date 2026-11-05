@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.12.1";
+  var VERSION = "2.12.2";
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
   var SAFE_R = 46;   // rayon de la zone sûre autour d'un joueur qui choisit (coop)
@@ -2613,6 +2613,8 @@
     for (i = z0; i < zones.length; i++) if (!zones[i].tint) zones[i].tint = col;
     for (i = f0; i < fx.length; i++) { var f = fx[i]; if (f.tint) continue; f.tint = col; if (f.col && (f.kind === "ring" || f.kind === "beam" || f.kind === "cutline")) f.col = rgb || (rgb = tintRgb(col)); }
   }
+  // Capitaine : toutes ses techniques qui partent d'un coup sont tirées depuis un matelot au hasard
+  var CREW_FIRE = { nova: 1, thorns: 1, shooter: 1, slash: 1, whip: 1, spin: 1, radial: 1, lob: 1, boomerang: 1, chain: 1, storm: 1, meteor: 1, rocket: 1 };
   function weapons(dt) {
     var wel = p.arme ? armElem(p) : null, foyer = p.gear && gearHas(p, "foyer"), baseId = p.arme ? armeOf(p).base : null;
     p.sigK = {}; for (var sid in p.weapons) { var sgd = SIGDEF[sid]; if (sgd) p.sigK[sgd.kind] = p.weapons[sid]; }
@@ -2626,7 +2628,9 @@
       var rmA = e.def.family === "zone" && p.anchored && itn(p, "racine_mere") ? 1.3 : 1; if (rmA !== 1) p.area *= rmA;
       var el = foyer && e.key === baseId ? "feu" : (p.amu && p.amu[e.def.family]) || wel, n0 = projs.length, l0 = lobs.length, z0 = zones.length, hf = e.def.hfx || null;
       var f0 = fx.length;
-      HIT_ELEM = el; HIT_FX = hf; fn(e.key, e.def, e.l, dt); HIT_ELEM = undefined; HIT_FX = null; CUR_FAM = null;
+      var sx0 = p.x, sy0 = p.y, sw = null;
+      if (p.crew && p.crew.length && CREW_FIRE[e.def.type]) { var cl = p.crew.filter(function (m) { return !(m.thT > 0); }); sw = cl[(Math.random() * cl.length) | 0]; if (sw) { p.x = sw.x; p.y = sw.y; } }
+      HIT_ELEM = el; HIT_FX = hf; fn(e.key, e.def, e.l, dt); if (sw) { p.x = sx0; p.y = sy0; } HIT_ELEM = undefined; HIT_FX = null; CUR_FAM = null;
       if (e.key !== baseId) tagTint(techTint(e.key), n0, l0, z0, f0);
       if (rmA !== 1) p.area /= rmA;
       if (e.def.family === "tir" && itn(p, "bec_pivert")) for (var bp = n0; bp < projs.length; bp++) if (!projs[bp].bec) { projs[bp].bec = 1; projs[bp].pierce = (projs[bp].pierce || 1) + 1; }
