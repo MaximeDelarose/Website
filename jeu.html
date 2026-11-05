@@ -36,7 +36,8 @@
   <script>
     /* appli installable : service worker + invite d'installation (le bouton est dans les Options du jeu) */
     /* mesuré au chargement, avant que le jeu ne demande le plein écran du navigateur (qui ferait croire à une appli) */
-    try { window.__isApp = !!(navigator.standalone || (window.matchMedia && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: minimal-ui)").matches) && !document.fullscreenElement)); } catch (e) { window.__isApp = false; }
+    try { if (/[?&]source=pwa/.test(location.search)) sessionStorage.setItem("es-app", "1"); } catch (e) {}
+    try { window.__isApp = !!(sessionStorage.getItem("es-app") || navigator.standalone || (window.matchMedia && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: minimal-ui)").matches) && !document.fullscreenElement)); } catch (e) { window.__isApp = false; }
     window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); window.__pwaPrompt = e; });
     window.addEventListener("appinstalled", function () { window.__pwaPrompt = null; });
     window.addEventListener("DOMContentLoaded", function () {
@@ -170,10 +171,10 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v237c";
+      var FALLBACK = "v237d";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
-        if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261109fr2" + b);
+        if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261109app3" + b);
         ["js/v2/game-data.js", "js/v2/game.js"].forEach(function (src) {
           var s = document.createElement("script"); s.src = src + "?v=" + b; s.async = false; document.body.appendChild(s);
         });
