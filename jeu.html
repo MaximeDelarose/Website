@@ -48,7 +48,7 @@
         var e = window.__pwaPrompt;
         if (e) { e.prompt(); e.userChoice.then(function (c) { if (c && c.outcome === "accepted") btn.hidden = true; window.__pwaPrompt = null; }); return; }
         var ios = /iPhone|iPad|iPod/.test(navigator.userAgent), safari = /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|Chrome|Edg/.test(navigator.userAgent);
-        help.innerHTML = "<b>Installer le jeu sur ton écran d'accueil</b><br>" + (ios ? (safari ? "Touche le bouton Partager <span aria-hidden='true'>⎋</span> en bas de Safari, puis « Sur l'écran d'accueil »." : "Ouvre cette page dans Safari, touche Partager puis « Sur l'écran d'accueil ».") : "Ouvre le menu du navigateur (⋮ ou ⋯) puis choisis « Installer l'application » ou « Ajouter à l'écran d'accueil ». Si tu ne vois rien, utilise Chrome ou Edge.") + "<br><small>Connexion, sauvegardes et multi restent les mêmes.</small>";
+        help.innerHTML = "<b>Installer le jeu sur ton écran d'accueil</b><br>" + (ios ? (safari ? "Touche le bouton Partager <span aria-hidden='true'>⎋</span> en bas de Safari, puis « Sur l'écran d'accueil »." : "Ouvre cette page dans Safari, touche Partager puis « Sur l'écran d'accueil ».") : (/Firefox/.test(navigator.userAgent) ? "Dans Firefox : ouvre le menu ⋮, déroule <b>« Plus »</b> (tout en bas de la liste d'options) puis touche <b>« Installer »</b> ou « Ajouter à l'écran d'accueil »." : "Ouvre le menu du navigateur (⋮ ou ⋯) puis choisis « Installer l'application » ou « Ajouter à l'écran d'accueil ». S'il est dans « Plus », déroule-le. Si tu ne vois rien, utilise Chrome ou Edge.")) + "<br><small>Connexion, sauvegardes et multi restent les mêmes.</small>";
         help.hidden = !help.hidden;
       });
     });
@@ -170,7 +170,7 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v237b";
+      var FALLBACK = "v237c";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css"]');
         if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261109fr2" + b);
