@@ -1612,9 +1612,12 @@ window.ES_DATA = (function () {
     { id: "pataud", name: "Pataud", title: "Écureuil glouton", sprite: "sq_pataud", weapon: "katana", desc: "" },
     { id: "trefle", name: "Trèfle", title: "Écureuil joueur", sprite: "sq_trefle", weapon: "katana", desc: "" }
   );
-  SPRITES.sq_devoreur = squirrelA({ t: "#8a9a4a", d: "#4a5a2a", o: "#b8c86a", c: "#f6f0d0", k: "#2b1709", n: "#3a4a1a" });
-  SPRITES.sq_alchimiste = squirrelA({ t: "#6ac8b8", d: "#2e7a6e", o: "#9ee8d8", c: "#fdf3de", k: "#12302a", n: "#1e5a50" });
-  SPRITES.sq_pillard = squirrelA({ t: "#6a6a80", d: "#2e2e3a", o: "#9a9ab8", c: "#e8dcc0", k: "#1a1a22", n: "#3a3a4a" });
+  var DEV_TOP = ["....tt..........", "..ttttt.........", ".tttdtttt..d..d.", ".ttd...tt.ooooo.", ".ttd....t.ookooo", ".ttd......ooooon", "..ttd....orRRr..", "...ttd..ooocc...", "....tddoooocc...", ".....doooooc....", ".....ddooooo...."];
+  var ALCH_TOP = ["....tt......y...", "..ttttt....hhh..", ".tttdtttt.hHhHh.", ".ttd...tt.ooooo.", ".ttd....t.ookooo", ".ttd......ooooon", "..ttd....ooccc..", "...ttd..oooGg...", "....tddoooocc...", ".....doooooc....", ".....ddooooo...."];
+  var PILL_TOP = ["....tt..........", "..ttttt.........", ".tttdtttt..d..d.", ".ttd...tt.mmmmm.", ".ttd....t.mmkmmm", ".ttd......ooooon", "..ttd....ooccc..", "...ttd..ooocc...", "....tddoooocc...", ".....dooooyc....", ".....ddooooo...."];
+  SPRITES.sq_devoreur = squirrelA({ t: "#8a9a4a", d: "#4a5a2a", o: "#b8c86a", c: "#f6f0d0", k: "#2b1709", n: "#3a4a1a", r: "#c8553d", R: "#fdf3de" }, DEV_TOP);
+  SPRITES.sq_alchimiste = squirrelA({ t: "#6ac8b8", d: "#2e7a6e", o: "#9ee8d8", c: "#fdf3de", k: "#12302a", n: "#1e5a50", h: "#7a4aa8", H: "#a87ad8", y: "#f6d36b", g: "#9cf06a", G: "#d8ffb0" }, ALCH_TOP);
+  SPRITES.sq_pillard = squirrelA({ t: "#6a6a80", d: "#2e2e3a", o: "#9a9ab8", c: "#e8dcc0", k: "#1a1a22", n: "#3a3a4a", m: "#1a1a22", y: "#f6d36b" }, PILL_TOP);
   CHAR_ALL.push(
     { id: "devoreur", name: "Croc", title: "Écureuil vorace", sprite: "sq_devoreur", weapon: "katana", desc: "" },
     { id: "alchimiste", name: "Fiole", title: "Écureuil alchimiste", sprite: "sq_alchimiste", weapon: "katana", desc: "" },
