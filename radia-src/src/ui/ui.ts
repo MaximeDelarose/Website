@@ -2,6 +2,7 @@
  * Gestion de l'interface HTML posée au-dessus du canvas Phaser :
  * écrans plein cadre, fenêtres modales, notifications, bulles.
  */
+import { notify } from './notify';
 import { h, tap } from './dom';
 import { icon } from './icons';
 import { initViewport } from './viewport';
@@ -38,6 +39,22 @@ function ensureJanitor(): void {
 }
 
 export interface ModalAction { label: string; value: string; style?: 'primary' | 'secondary' | 'lavande' | 'gold' }
+
+/** Dessine une notification dans la zone d'accueil ; renvoie la fonction qui la retire. */
+function showToast(o: { title: string; sub?: string; icon?: string; img?: string }): (immediate?: boolean) => void {
+  if (!toastWrap || !toastWrap.isConnected) {
+    toastWrap = h('div.toasts.passthrough');
+    ensureJanitor();
+    (toastDock && toastDock.isConnected ? toastDock : root()).append(toastWrap);
+  } else if (toastDock && toastDock.isConnected && toastWrap.parentElement !== toastDock) toastDock.append(toastWrap);
+  else if (!toastDock && toastWrap.parentElement !== root()) root().append(toastWrap);
+  const ic = o.img
+    ? h('img', { src: o.img, alt: '', style: 'width:38px;height:38px;object-fit:contain' })
+    : h('span.t-icon', icon(o.icon ?? 'star', 20));
+  const t = h('div.toast', ic, h('div', o.title, o.sub ? h('small', o.sub) : null));
+  toastWrap.append(t);
+  return (immediate) => { if (immediate) { t.remove(); return; } t.classList.add('out'); window.setTimeout(() => t.remove(), 320); };
+}
 
 export const ui = {
   get root() { ensureJanitor(); return root(); },
@@ -124,22 +141,13 @@ export const ui = {
     return v === 'y';
   },
 
-  /** Notification en haut de l'écran. `img` : URL d'image ou nom d'icône. */
+  /**
+   * Notification discrète. Passe par le gestionnaire central (src/ui/notify) : au plus 2 à la fois, jamais pendant un message
+   * important d'Auguste, jamais pendant l'ouverture d'un coffre, fusionnée si elle se répète. `img` : URL d'image ou nom d'icône.
+   */
   toast(o: { title: string; sub?: string; icon?: string; img?: string; ms?: number }): void {
-    if (!toastWrap || !toastWrap.isConnected) {
-      toastWrap = h('div.toasts.passthrough');
-      ensureJanitor();
-      (toastDock && toastDock.isConnected ? toastDock : root()).append(toastWrap);
-    } else if (toastDock && toastDock.isConnected && toastWrap.parentElement !== toastDock) toastDock.append(toastWrap);
-    else if (!toastDock && toastWrap.parentElement !== root()) root().append(toastWrap);
-    const ic = o.img
-      ? h('img', { src: o.img, alt: '', style: 'width:38px;height:38px;object-fit:contain' })
-      : h('span.t-icon', icon(o.icon ?? 'star', 20));
-    const t = h('div.toast', ic, h('div', o.title, o.sub ? h('small', o.sub) : null));
-    // au plus 2 notifications à la fois : la plus ancienne s'efface
-    while (toastWrap.children.length >= 2) toastWrap.firstElementChild?.remove();
-    toastWrap.append(t);
-    window.setTimeout(() => { t.classList.add('out'); window.setTimeout(() => t.remove(), 320); }, o.ms ?? 2600);
+    const ms = o.ms ?? 2600;
+    notify({ key: `toast:${o.title}|${o.sub ?? ''}`, channel: 'toast', prio: 1, ttl: 3500, ms, show: () => showToast(o) });
   },
 
   /** Bulle de dialogue ancrée à un point de l'écran (coordonnées CSS). */

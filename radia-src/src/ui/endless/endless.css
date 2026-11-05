@@ -306,3 +306,13 @@
 .merge-hud.endless .mh-dock { bottom: 2px; }
 
 .mh-bottom.sel-open .mh-actions { visibility: hidden; }
+
+/* Dans la voie du bas d'Endless, un toast tient sur UNE ligne (jamais sur les cases) */
+.merge-hud.endless .mh-dock .toast { min-height: 0; padding: 5px 12px; gap: 7px; }
+.merge-hud.endless .mh-dock .toast small { display: none; }
+.merge-hud.endless .mh-dock .toast .t-icon { width: 20px; height: 20px; }
+.merge-hud.endless .mh-dock .toast { font-size: 13px; }
+
+/* Commande spéciale de chocolats : la ligne reste compacte, mais sa zone de toucher atteint 44 px (comme les autres boutons du plateau) */
+.en-choc-line { position: relative; }
+.en-choc-line::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%); }
