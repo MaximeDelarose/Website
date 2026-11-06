@@ -1,4 +1,7 @@
 // RADIA ♡ — fonction Edge « radia-push » : envoie la petite pensée du jour (Web Push), une par jour et par appareil.
+//   POST { action: 'stats-forget', device, secret } : Radia supprime TOUTES ses statistiques (secret d'appareil vérifié).
+//   POST { action: 'stats-admin-delete', device }  : le créateur (compte de site_admins, jeton Google dans Authorization) supprime un appareil.
+//   Les suppressions passent par ici (service role) et non par des fonctions SQL ; la purge de rétention des statistiques est lancée par l'envoi horaire.
 //   POST { action: 'init' }              : crée (une seule fois) les clés VAPID et le secret de planification ; renvoie la clé publique.
 //   POST { action: 'send' }              : appelée chaque heure par pg_cron (en-tête x-radia-cron) ; envoie à ceux dont c'est l'heure.
 //   POST { action: 'test', endpoint }    : envoie TOUT DE SUITE une pensée à cet appareil (3 par jour au plus) pour vérifier la réception.
@@ -34,6 +37,17 @@ async function deliver(row: Row, vapid: VapidKeys, nowMs: number, dayIso: string
   return res;
 }
 
+const sha256hex = async (t: string): Promise<string> => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Conservation limitée des statistiques : sessions 90 j, totaux par jour 400 j, appareil inactif 180 j. */
+async function purgeStats(): Promise<void> {
+  const ago = (d: number): string => new Date(Date.now() - d * 86400000).toISOString();
+  await db.from('radia_stat_sessions').delete().lt('started_at', ago(90));
+  await db.from('radia_stat_days').delete().lt('day', ago(400).slice(0, 10));
+  await db.from('radia_stat_devices').delete().lt('last_seen', ago(180));
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return json({ ok: true });
   let body: Record<string, unknown> = {};
@@ -49,11 +63,31 @@ Deno.serve(async (req) => {
     if (error) return json({ ok: false, error: 'init' }, 500);
     return json({ ok: true, publicKey: v.publicKey });
   }
+  if (action === 'stats-forget') {
+    const device = String(body.device ?? ''), secret = String(body.secret ?? '');
+    if (!UUID.test(device) || secret.length < 24 || secret.length > 128) return json({ ok: false, error: 'args' }, 400);
+    const { data } = await db.from('radia_stat_devices').select('id').eq('id', device).eq('secret_hash', await sha256hex(secret)).maybeSingle();
+    if (!data) return json({ ok: true }); // déjà supprimé ou secret inconnu : rien à faire
+    const { error } = await db.from('radia_stat_devices').delete().eq('id', device); // sessions et jours : suppression en cascade
+    return error ? json({ ok: false, error: 'delete' }, 500) : json({ ok: true });
+  }
+  if (action === 'stats-admin-delete') {
+    const device = String(body.device ?? '');
+    const token = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
+    if (!UUID.test(device) || !token) return json({ ok: false, error: 'args' }, 400);
+    const { data: u } = await db.auth.getUser(token);
+    if (!u?.user) return json({ ok: false, error: 'not_admin' }, 403);
+    const { data: adm } = await db.from('site_admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
+    if (!adm) return json({ ok: false, error: 'not_admin' }, 403);
+    const { error } = await db.from('radia_stat_devices').delete().eq('id', device);
+    return error ? json({ ok: false, error: 'delete' }, 500) : json({ ok: true });
+  }
   if (!cfg) return json({ ok: false, error: 'not-initialised' }, 503);
 
   if (action === 'send') {
     if (req.headers.get('x-radia-cron') !== cfg.cron_secret) return json({ ok: false, error: 'forbidden' }, 403);
     const now = Date.now();
+    await purgeStats().catch(() => undefined); // conservation limitée des statistiques de jeu (sans effet sur les petites pensées)
     const { data: rows } = await db.from('radia_push_subs').select('*').eq('enabled', true);
     const due = (rows ?? []).filter((r: Row) => isDue(r, now) && isPushHost(r.endpoint));
     if (body.dry === true) return json({ ok: true, dry: true, subscribers: rows?.length ?? 0, due: due.length });

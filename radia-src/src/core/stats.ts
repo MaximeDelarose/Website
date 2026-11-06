@@ -126,7 +126,12 @@ export function disable(callServer = true): void {
 export async function forgetStats(): Promise<boolean> {
   const s = readLocal();
   stopTracking();
-  if (s.device) { const r = await rpc('radia_stats_forget', { p_device: s.device, p_secret: s.secret }); if (!r) { writeLocal({ ...s, state: 'off', pendingPause: false }); return false; } }
+  if (s.device) {
+    // la suppression est faite par la fonction serveur (secret d'appareil vérifié) : sessions, jours et appareil sont effacés ensemble
+    let ok = false;
+    try { const r = await fetch(`${PUSH_API.url}/functions/v1/radia-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: PUSH_API.key, Authorization: `Bearer ${PUSH_API.key}` }, body: JSON.stringify({ action: 'stats-forget', device: s.device, secret: s.secret }) }); ok = r.ok && !!(await r.json()).ok; } catch { ok = false; }
+    if (!ok) { writeLocal({ ...s, state: 'off', pendingPause: false }); return false; }
+  }
   writeLocal({ ...EMPTY, asked: true });
   return true;
 }

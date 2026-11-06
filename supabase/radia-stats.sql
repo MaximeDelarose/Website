@@ -133,14 +133,7 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
--- suppression complète (appareil, sessions, jours)
-create or replace function public.radia_stats_forget(p_device uuid, p_secret text) returns jsonb
-language plpgsql security definer set search_path = public as $$
-begin
-  if public.radia_stat_auth(p_device, p_secret) is null then return jsonb_build_object('ok', true); end if; -- déjà supprimé : rien à faire
-  delete from public.radia_stat_devices where id = p_device;
-  return jsonb_build_object('ok', true);
-end $$;
+-- suppression complète : faite par la fonction Edge radia-push (action « stats-forget », secret d'appareil vérifié) — voir supabase/functions/radia-push/index.ts
 
 -- ---------------------------------------------------------------- côté créateur (connexion Google + public.site_admins)
 create or replace function public.radia_stats_admin() returns jsonb
@@ -176,27 +169,15 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
-create or replace function public.radia_stats_admin_delete(p_device uuid) returns jsonb
-language plpgsql security definer set search_path = public as $$
-begin
-  if not public.is_admin() then raise exception 'not_admin'; end if;
-  delete from public.radia_stat_devices where id = p_device;
-  return jsonb_build_object('ok', true);
-end $$;
+-- suppression d'un appareil par le créateur : fonction Edge radia-push (action « stats-admin-delete », jeton Google + site_admins)
 
 -- ---------------------------------------------------------------- droits
 revoke all on function public.radia_stats_join(uuid, text, text, text), public.radia_stats_beat(uuid, text, uuid, text, int, text),
-  public.radia_stats_mine(uuid, text), public.radia_stats_pause(uuid, text), public.radia_stats_forget(uuid, text),
-  public.radia_stats_admin(), public.radia_stats_admin_label(uuid, text), public.radia_stats_admin_delete(uuid) from public, anon, authenticated;
+  public.radia_stats_mine(uuid, text), public.radia_stats_pause(uuid, text),
+  public.radia_stats_admin(), public.radia_stats_admin_label(uuid, text) from public, anon, authenticated;
 grant execute on function public.radia_stats_join(uuid, text, text, text), public.radia_stats_beat(uuid, text, uuid, text, int, text),
-  public.radia_stats_mine(uuid, text), public.radia_stats_pause(uuid, text), public.radia_stats_forget(uuid, text) to anon, authenticated;
-grant execute on function public.radia_stats_admin(), public.radia_stats_admin_label(uuid, text), public.radia_stats_admin_delete(uuid) to authenticated;
+  public.radia_stats_mine(uuid, text), public.radia_stats_pause(uuid, text) to anon, authenticated;
+grant execute on function public.radia_stats_admin(), public.radia_stats_admin_label(uuid, text) to authenticated;
 
--- ---------------------------------------------------------------- conservation limitée (chaque nuit)
-create or replace function public.radia_stats_purge() returns void
-language sql security definer set search_path = public as $$
-  delete from public.radia_stat_sessions where started_at < now() - interval '90 days';
-  delete from public.radia_stat_days where day < ((now() at time zone 'Europe/Paris')::date - 400);
-  delete from public.radia_stat_devices where last_seen < now() - interval '180 days';
-$$;
-revoke all on function public.radia_stats_purge() from public, anon, authenticated;
+-- ---------------------------------------------------------------- conservation limitée
+-- Purge (sessions 90 j, jours 400 j, appareil inactif 180 j) : exécutée par la fonction Edge radia-push à chaque envoi horaire (purgeStats).
