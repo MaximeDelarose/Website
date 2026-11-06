@@ -32,17 +32,18 @@ describe('personnalisation du visage : données', () => {
     expect(skinPalette({ ...base, hue: 1, warm: 1 }).base).not.toBe(skinPalette(base).base);
     for (const v of [-5, 5]) expect(skinPalette({ ...base, light: v, sat: v, hue: v, warm: v }).base).toMatch(/^#[0-9a-f]{6}$/);
   });
-  it('nettoyage : absent, corrompu ou hors bornes → valeurs valides, sans exception', () => {
+  it('nettoyage : absent, corrompu ou hors bornes → valeurs valides, sans exception ; la structure est toujours canonique', () => {
     for (const raw of [undefined, null, 5, 'x', [], { skin: 7, eyes: 'x' }]) expect(() => sanitizeFace(raw)).not.toThrow();
     expect(isDefaultFace(sanitizeFace(null))).toBe(true);
-    const f = sanitizeFace({ shape: 'triangle', skin: { tone: 99, light: 9, hue: -9 }, eyes: { shape: 'rond?', size: 5, iris: 'rouge' }, hairColor: 'blond', veil: { style: 'tchador', color: 'zz' } });
-    expect(f.shape).toBe(defaultFace().shape); expect(f.skin.tone).toBe(SKIN_TONES.length - 1); expect(f.skin.light).toBe(1); expect(f.skin.hue).toBe(-1);
-    expect(f.eyes.shape).toBe(defaultFace().eyes.shape); expect(f.eyes.size).toBe(1); expect(f.eyes.iris).toBe(defaultFace().eyes.iris); expect(f.hairColor).toBe(defaultFace().hairColor); expect(f.veil.style).toBe('none');
+    const f = sanitizeFace({ shape: 'triangle', skin: { tone: 99, light: 9, hue: -9 }, eyes: { shape: 'rond?', size: 5, iris: 'rouge' }, hairColor: 'blond', veil: { style: 'tchador', color: 'zz' }, makeup: { blush: 9, shadow: 'x', liner: 'zzz' } });
+    expect(f.shape).toBe(defaultFace().shape); expect(f.skin).toEqual(defaultFace().skin); expect(f.eyes).toEqual(defaultFace().eyes); expect(f.hairColor).toBe(defaultFace().hairColor);
+    expect(f.veil.style).toBe('none'); expect(f.makeup.blush).toBe(1); expect(f.makeup.shadow).toBe(''); expect(f.makeup.liner).toBe(defaultFace().makeup.liner);
   });
-  it('aller-retour JSON identique ; la clé de cache change dès qu\'un réglage change', () => {
-    const f = defaultFace(); f.shape = 'heart'; f.eyes.size = 0.4; f.makeup.blush = 0.6; f.veil = { style: 'elegant', color: '#C9A0D8', elegant: true };
+  it('aller-retour JSON identique ; la clé de cache change dès qu\'un réglage de maquillage ou de voile change (jamais pour la structure)', () => {
+    const f = defaultFace(); f.makeup.blush = 0.6; f.makeup.shadow = '#E8B8A8'; f.veil = { style: 'elegant', color: '#C9A0D8', elegant: true };
     expect(sanitizeFace(JSON.parse(JSON.stringify(f)))).toEqual(f);
     expect(faceKey(f)).not.toBe(faceKey(defaultFace()));
-    const g = JSON.parse(JSON.stringify(f)); g.eyes.size = 0.5; expect(faceKey(sanitizeFace(g))).not.toBe(faceKey(f));
+    const g = JSON.parse(JSON.stringify(f)); g.makeup.blush = 0.5; expect(faceKey(sanitizeFace(g))).not.toBe(faceKey(f));
+    const h = JSON.parse(JSON.stringify(f)); h.eyes.size = 0.5; h.shape = 'heart'; expect(faceKey(sanitizeFace(h))).toBe(faceKey(f)); // structure ignorée
   });
 });

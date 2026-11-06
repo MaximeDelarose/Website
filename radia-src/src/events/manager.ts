@@ -58,6 +58,7 @@ export function eligible(def: EventDef, st: EventsState, pr: Progress): boolean 
     if (n.chapter && pr.chapter < n.chapter) return false;
     if (n.chess && !pr.chessUnlocked) return false;
     if (n.doneAll && !n.doneAll.every((id) => (st.done[id]?.count ?? 0) > 0)) return false;
+    if (n.afterMin) { const d = st.done[n.afterMin.id]; if (!d || st.playMs - d.last < n.afterMin.min * 60_000) return false; }
   }
   if (def.golden) {
     if (st.playMs < EVENT_CONFIG.goldenMinPlayMs) return false;
@@ -93,8 +94,7 @@ export function pickEvent(defs: EventDef[], st: EventsState, pr: Progress, rng: 
 }
 
 export function offerInvite(st: EventsState, def: EventDef, now: number, runId: string): Invite {
-  const inv: Invite = { runId, eventId: def.id, at: st.playMs, state: 'new' };
-  void now;
+  const inv: Invite = { runId, eventId: def.id, at: st.playMs, ...(now > 0 ? { ts: now } : {}), state: 'new' };
   st.inbox.push(inv);
   if (st.inbox.length > 60) st.inbox.splice(0, st.inbox.length - 60);
   st.lastEventId = def.id;
@@ -102,6 +102,13 @@ export function offerInvite(st: EventsState, def: EventDef, now: number, runId: 
   st.bigLog.push(st.playMs);
   if (st.bigLog.length > 20) st.bigLog.splice(0, st.bigLog.length - 20);
   return inv;
+}
+
+/** Heure réelle d'une invitation : `ts` si connue, sinon estimée (temps de jeu actif écoulé depuis sa réception, jamais dans le futur). */
+export function inviteTime(st: EventsState, i: Invite, now: number): number { return i.ts ?? Math.max(1, now - Math.max(0, st.playMs - i.at)); }
+/** Donne une heure réelle aux anciennes invitations (sauvegardes d'avant) : estimée une seule fois, puis stable. */
+export function ensureInviteTs(st: EventsState, now: number): number {
+  let n = 0; for (const i of st.inbox) if (i.ts === undefined) { i.ts = inviteTime(st, i, now); n++; } return n;
 }
 
 /** Une notification trop ancienne et jamais vue passe en « plus tard » (jamais perdue). */

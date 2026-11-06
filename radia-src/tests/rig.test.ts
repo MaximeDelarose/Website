@@ -23,12 +23,40 @@ describe('gabarit unique de Radia (rig)', () => {
     expect(skullTopY('painted')).toBeLessThan(skullTopY('vector')); // le crâne peint (cheveux volumineux) est plus haut
     expect(crownDy('painted')).toBeCloseTo(skullTopY('painted') - skullTopY('vector'), 6);
   });
-  it('pose de référence : bras symétriques (±3 u), poignets à hauteur des hanches, mains plus bas que les poignets', () => {
+  // longueur d'un bras (courbe quadratique épaule → coude → poignet), par échantillonnage
+  const armLen = (side: 'left' | 'right', pose: typeof RIG.pose | typeof RIG.poseRest = RIG.pose): number => {
+    const sg = side === 'left' ? -1 : 1, q = pose[side];
+    const P0: [number, number] = [sg * RIG.shoulder.dx, RIG.shoulder.y], C: [number, number] = [q.cx, q.cy], P1: [number, number] = [q.x1, q.y1];
+    let len = 0, prev = P0;
+    for (let i = 1; i <= 60; i++) { const t = i / 60, u = 1 - t; const x = u * u * P0[0] + 2 * u * t * C[0] + t * t * P1[0], y = u * u * P0[1] + 2 * u * t * C[1] + t * t * P1[1]; len += Math.hypot(x - prev[0], y - prev[1]); prev = [x, y]; }
+    return len;
+  };
+  it('pose IDLE : asymétrique et vivante (jamais deux bras identiques le long du corps), main gauche sur la hanche', () => {
     const { left, right } = RIG.pose;
-    expect(Math.abs(left.x1 + right.x1)).toBeLessThan(4);
-    expect(Math.abs(left.y1 - right.y1)).toBeLessThan(4);
-    expect(left.y1).toBeGreaterThan(RIG.waist.y); expect(left.y1).toBeLessThan(RIG.feet.y);
-    expect(RIG.hand.reach).toBeGreaterThan(0);
+    expect(Math.abs(left.y1 - right.y1), 'les poignets ne sont pas à la même hauteur').toBeGreaterThan(18);
+    expect(Math.abs(right.x1) - Math.abs(left.x1), 'la main droite pend plus à l\'extérieur, la gauche reste sur la hanche').toBeGreaterThanOrEqual(10);
+    expect(left.y1, 'main sur la hanche : entre la taille et le bas des hanches').toBeGreaterThan(RIG.waist.y);
+    expect(left.y1).toBeLessThan(RIG.hip.y);
+    expect(Math.abs(left.x1), 'le poignet de la main sur la hanche reste contre le corps').toBeLessThan(58);
+    expect(Math.abs(left.cx), 'le coude gauche est écarté').toBeGreaterThan(RIG.shoulder.dx + 30);
+    // la main droite repose près de la cuisse / du sac : sous la taille, à l'extérieur de la hanche
+    expect(right.y1).toBeGreaterThan(RIG.hip.y - 40); expect(right.y1).toBeLessThan(RIG.hip.y + 40);
+    expect(right.x1).toBeGreaterThan(50);
+  });
+  it('anatomie : le bras plié (main sur la hanche) paraît raccourci par la perspective (≤ 14 %, jamais plus long que le bras détendu), ni étiré ni écrasé', () => {
+    const l = armLen('left'), r = armLen('right');
+    expect(l).toBeLessThanOrEqual(r + 1); expect((r - l) / r).toBeLessThan(0.14);
+    for (const v of [l, r]) { expect(v).toBeGreaterThan(125); expect(v).toBeLessThan(175); }
+    const rest = [armLen('left', RIG.poseRest), armLen('right', RIG.poseRest)];
+    expect(Math.abs(r - rest[1]) / rest[1], 'le bras détendu garde la longueur du bras au repos').toBeLessThan(0.12);
+  });
+  it('aucun bras ne sort du personnage ni ne traverse le corps (poignets et coudes dans des limites raisonnables)', () => {
+    for (const side of ['left', 'right'] as const) { const q = RIG.pose[side]; expect(Math.abs(q.x1)).toBeLessThan(75); const elbowX = 0.25 * (side === 'left' ? -RIG.shoulder.dx : RIG.shoulder.dx) + 0.5 * q.cx + 0.25 * q.x1; expect(Math.abs(elbowX), 'le coude reste proche du corps (≈ largeur des manches du sweat)').toBeLessThan(100); expect(Math.sign(q.cx)).toBe(side === 'left' ? -1 : 1); expect(q.y1).toBeLessThan(RIG.feet.y - 180); }
+    expect(RIG.pose.left.x1 * RIG.pose.left.cx, 'le poignet est du même côté que son coude').toBeGreaterThan(0);
+  });
+  it('ancienne pose au repos conservée (bras le long du corps, symétrique) pour les écrans qui la demandent', () => {
+    expect(Math.abs(RIG.poseRest.left.x1 + RIG.poseRest.right.x1)).toBeLessThan(4);
+    expect(RIG.poseRest.left.y1).toBe(RIG.poseRest.right.y1);
   });
   it('proportions du corps cohérentes : menton < épaules < taille < hanches < pieds ; bras plus épais à l\'épaule qu\'au poignet', () => {
     expect(RIG.head.chinY).toBeLessThan(RIG.shoulder.y);

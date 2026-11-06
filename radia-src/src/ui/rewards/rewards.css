@@ -9,10 +9,10 @@
 .rw-root.rw-gone { animation: rwFadeOut .22s ease forwards; pointer-events: none; }
 .rw-dim {
   position: absolute; inset: 0; pointer-events: none; animation: rwFadeIn .3s ease both;
-  background: radial-gradient(ellipse 90% 70% at 50% 38%, rgba(104, 70, 150, .74), rgba(33, 22, 52, .93) 78%);
+  background: radial-gradient(ellipse 90% 70% at 50% 38%, rgba(104, 70, 150, .93), rgba(33, 22, 52, .975) 78%);
 }
-.rw-love .rw-dim { background: radial-gradient(ellipse 90% 70% at 50% 38%, rgba(214, 98, 148, .66), rgba(60, 24, 52, .93) 78%); }
-.rw-root[data-rarity='legendary'] .rw-dim, .rw-root[data-rarity='epic'] .rw-dim { background: radial-gradient(ellipse 90% 70% at 50% 38%, rgba(140, 92, 190, .74), rgba(30, 18, 52, .94) 78%); }
+.rw-love .rw-dim { background: radial-gradient(ellipse 90% 70% at 50% 38%, rgba(214, 98, 148, .9), rgba(60, 24, 52, .975) 78%); }
+.rw-root[data-rarity='legendary'] .rw-dim, .rw-root[data-rarity='epic'] .rw-dim { background: radial-gradient(ellipse 90% 70% at 50% 38%, rgba(140, 92, 190, .93), rgba(30, 18, 52, .975) 78%); }
 .rw-fx { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .rw-softstar { position: absolute; z-index: 4; width: 14px; height: 14px; margin: -7px 0 0 -7px; background: var(--c, #fff); pointer-events: none; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
 .rw-flash { position: absolute; inset: 0; z-index: 5; background: #fff; opacity: 0; pointer-events: none; }
@@ -74,7 +74,7 @@
 .rw-hint.off { opacity: 0; transition: opacity .2s ease; }
 
 /* récompenses */
-.rw-rewards { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 100%; }
+.rw-rewards { display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 10px; width: 100%; }
 .rw-card {
   position: relative; width: 98px; min-height: 112px; padding: 8px 5px 8px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px;
   background: linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(255, 244, 232, .92)); color: var(--choco); text-align: center;

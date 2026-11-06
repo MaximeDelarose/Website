@@ -4,6 +4,8 @@ import { h, tap } from '../ui/dom';
 import { icon } from '../ui/icons';
 import { audio, reducedFx } from '../core/app';
 import { kidName } from '../core/family';
+import { isRelId, relLabel } from '../data/family/relatives';
+import { relativeFaceUrl } from '../game/art/relatives';
 import { currentLook } from '../game/world/look';
 import { drawAugusteFull } from '../game/art/characters';
 import { drawAugusteCutout } from '../game/art/world/radiaNow';
@@ -34,6 +36,7 @@ export function speakerFace(who: Speaker): string {
   if (who === 'radia') return canvasUrl(`evf:radia:${Date.now() >> 14}`, () => radiaFaceCanvas('smile', 120));
   if (who === 'auguste') return (hasPhotos() && photoUrlNow('head-new')) || canvasUrl('med:auguste:smile', () => medallionCanvas('auguste', { expr: 'smile' }, 120));
   if (who === 'narrator') return '';
+  if (isRelId(who)) return relativeFaceUrl(who, 120);
   return kidFace(who as KidId);
 }
 
@@ -82,7 +85,7 @@ export function createCtx(o: CtxOpts): { ctx: ActivityCtx; dispose: () => void }
     isAlive: o.alive,
     say: (who, text, expr) => new Promise<void>((resolve) => {
       const face = speakerFace(who);
-      const name = who === 'radia' ? 'Radia' : who === 'auguste' ? 'Auguste' : who === 'narrator' ? '' : kidName(who as KidId);
+      const name = who === 'radia' ? 'Radia' : who === 'auguste' ? 'Auguste' : who === 'narrator' ? '' : isRelId(who) ? relLabel(who) : kidName(who as KidId);
       const box = h(`div.ev-say${who === 'narrator' ? '.narr' : ''}`,
         face ? h('img.ev-say-face', { src: face, alt: '' }) : null,
         h('div.ev-say-tx', name ? h('b', name) : null, h('span', text)),

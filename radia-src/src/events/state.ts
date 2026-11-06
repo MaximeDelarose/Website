@@ -59,13 +59,14 @@ export function sanitizeEvents(raw: unknown): EventsState {
   if (Array.isArray(raw.inbox)) {
     d.inbox = raw.inbox.filter(isObj).slice(-60).map((i): Invite => ({
       runId: str(i.runId, '', 40), eventId: str(i.eventId, '', 40), at: num(i.at, 0),
+      ...(typeof i.ts === 'number' && Number.isFinite(i.ts) && i.ts > 0 ? { ts: i.ts } : {}),
       state: i.state === 'seen' || i.state === 'later' || i.state === 'done' ? i.state : 'new',
     })).filter((i) => i.runId && i.eventId);
   }
   if (Array.isArray(raw.msgs)) {
     d.msgs = raw.msgs.filter(isObj).slice(-60).map((m): Msg => ({
-      at: num(m.at, 0), from: (['auguste', 'kid1', 'kid2', 'kid3', 'agency'].includes(m.from as string) ? m.from : 'auguste') as Sender,
-      text: str(m.text, '', 200), read: m.read === true,
+      at: num(m.at, 0), from: (['auguste', 'kid1', 'kid2', 'kid3', 'agency', 'maman', 'tante', 'soeur', 'amie'].includes(m.from as string) ? m.from : 'auguste') as Sender,
+      text: str(m.text, '', 200), read: m.read === true, ...(m.synced === true ? { synced: true } : {}),
     })).filter((m) => m.text);
   }
   if (isObj(raw.done)) {

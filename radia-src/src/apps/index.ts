@@ -15,6 +15,7 @@ import { advance, produce, unreadTotal, type Incoming } from './snap/chat/engine
 import { contactById } from './snap/chat/data';
 import { flags } from './snap/ui-state';
 import { emitPhone } from '../events/bus';
+import { pushMessage } from '../events/manager';
 import { startMessagesRuntime, messagesState, sendMessage, view as msgView } from './messages/runtime';
 import { produce as msgProduce } from './messages/engine';
 import { styleOf as msgStyle } from './messages/runtime';
@@ -65,6 +66,8 @@ dbg('messages', {
   /** Fait arriver un message spontané tout de suite (tests). */
   incoming: () => { const inc = msgProduce(messagesState(), Date.now(), chatRng, msgStyle); if (inc) { persist(); emitPhone(); } return inc; },
   send: (id: string, text: string) => sendMessage(id as never, text),
+  /** Reproduit EXACTEMENT le circuit des messages d'événements (pushMessage + rafraîchissement du téléphone) — tests. */
+  legacy: (from: string, text: string) => { pushMessage(ev(), from as never, text, Date.now()); persist(); emitPhone(); },
   open: () => msgView.open,
 });
 

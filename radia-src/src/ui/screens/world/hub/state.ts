@@ -208,7 +208,7 @@ export function hubStatus(data: Pick<SaveData, 'world'>, now: number): HubStatus
   return {
     castle: castleCard(w),
     dressing: dressingCard(w),
-    face: { title: 'Personnaliser Radia', sub: 'Visage, yeux, cheveux, voile, maquillage…' },
+    face: { title: 'Personnaliser Radia', sub: 'Maquillage léger et voile — sa tête reste la même ♡' },
     garden: gardenCard(w, now),
     choc: chocCard(w),
     family: familyCard(w, now),

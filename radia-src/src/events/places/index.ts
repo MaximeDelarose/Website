@@ -10,7 +10,7 @@ import { W, H, type PlaceDef } from './common';
 import { restaurant, palace, ballroom, hotel } from './romantic';
 import { fireworks, rooftop, cinema, stage } from './night';
 import { fountain } from './fountain';
-import { flowerMarket, garden, boutique, studio, home, pajama, spa } from './day';
+import { flowerMarket, garden, boutique, studio, home, pajama, spa, momHome, airport } from './day';
 
 export const PLACE_NAMES: Record<PlaceId, string> = {
   restaurant: 'Restaurant aux chandelles',
@@ -29,10 +29,12 @@ export const PLACE_NAMES: Record<PlaceId, string> = {
   studio: 'Studio photo',
   home: 'À la maison',
   fountain: 'Devant la fontaine',
+  momHome: 'Chez maman',
+  airport: 'À l’aéroport',
 };
 
 const DEFS: Record<PlaceId, PlaceDef> = {
-  restaurant, palace, fireworks, spa, hotel, cinema, flowerMarket, rooftop, ballroom, garden, pajama, boutique, stage, studio, home, fountain,
+  restaurant, palace, fireworks, spa, hotel, cinema, flowerMarket, rooftop, ballroom, garden, pajama, boutique, stage, studio, home, fountain, momHome, airport,
 };
 
 const cache = new Map<string, HTMLCanvasElement>();

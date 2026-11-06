@@ -61,10 +61,21 @@ self.addEventListener('fetch', (e) => {
 // ------------------------------------------------------------------ petites pensées quotidiennes (Web Push)
 // Le message est affiché comme notification ; il est AUSSI rangé dans un cache à part (« rthoughts », jamais effacé par la mise à jour des
 // versions) pour que l'application l'ajoute à « Petites pensées ♡ » à sa prochaine ouverture, même si la notification n'a pas été touchée.
+// Aperçu de la notification : les pensées personnelles sont longues ; sur l'écran verrouillé on montre le début (coupé à un mot, « … »),
+// le texte INTÉGRAL est rangé dans « Petites pensées ♡ » (ouvert en touchant la notification).
+//#preview-start
+function previewOf(t) {
+  const s = String(t || '').replace(/\s+/g, ' ').trim();
+  if (s.length <= 130) return s;
+  const cut = s.slice(0, 118), sp = cut.lastIndexOf(' ');
+  return (sp > 60 ? cut.slice(0, sp) : cut).replace(/[\s,;:.!?-]+$/, '') + ' …';
+}
+//#preview-end
 self.addEventListener('push', (e) => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : '' }; }
-  const body = String(d.body || 'Une petite pensée pour toi ♡').slice(0, 200);
+  const full = String(d.body || 'Une petite pensée pour toi ♡').slice(0, 700);
+  const body = previewOf(full);
   const at = Number(d.at) || Date.now();
   e.waitUntil(Promise.all([
     self.registration.showNotification(String(d.title || 'RADIA ♡').slice(0, 60), {
@@ -74,7 +85,7 @@ self.addEventListener('push', (e) => {
       tag: 'radia-daily', // une seule notification quotidienne visible à la fois (pas d'empilement)
       data: { url: d.url || './?pensee=1', at },
     }),
-    caches.open('rthoughts').then((c) => c.put('/__thought/' + at, new Response(JSON.stringify({ at, text: body, idx: typeof d.idx === 'number' ? d.idx : -1, test: !!d.test }), { headers: { 'content-type': 'application/json' } }))).catch(() => undefined),
+    caches.open('rthoughts').then((c) => c.put('/__thought/' + at, new Response(JSON.stringify({ at, text: full, idx: typeof d.idx === 'number' ? d.idx : -1, test: !!d.test }), { headers: { 'content-type': 'application/json' } }))).catch(() => undefined),
   ]));
 });
 

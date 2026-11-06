@@ -31,6 +31,7 @@ function section(): { name: string; items: [string, Look][] }[] {
     { name: 'Couronnes — même coiffure, même tenue', items: [['Sans couronne', base()], ['Couronne dorée', base({ crown: 'cr-gold' })], ['Couronne de fleurs', base({ crown: 'cr-flowers' })], ['Diadème', base({ crown: 'cr-tiara' })]] },
     { name: 'Coiffures', items: [['Lâchés', base({ hair: 'hair-loose' })], ['Ondulés', base()], ['Queue', base({ hair: 'hair-ponytail' })], ['Chignon', base({ hair: 'hair-bun' })], ['Mi-longs', base({ hair: 'hair-half' })], ['Raie nette', base({ hair: 'hair-sleek-part' })], ['Moyens', base({ hair: 'hair-medium' })], ['Carré', base({ hair: 'hair-bob' })], ['Tresse', base({ hair: 'hair-braid' })], ['Bouclés', base({ hair: 'hair-curly' })], ['Macarons', base({ hair: 'hair-space-buns' })], ['Queue haute', base({ hair: 'hair-high-pony' })]] },
     { name: 'Tenues (mêmes proportions de base)', items: [['Noire illustrée', base()], ['Survêtement rouge', red], ['Casual', base({ top: 'top-tee-white', bottom: 'bot-jeans', bag: null })], ['Robe élégante', base({ top: null, bottom: null, dress: 'dr-satin-champagne', shoes: 'sh-heels', bag: null })], ['Soirée', base({ top: null, bottom: null, dress: 'dr-redcarpet', shoes: 'sh-heels', bag: null, acc: ['ac-pearls'] })], ['Manteau', base({ jacket: 'jk-trench-beige' })], ['Chignon + survêt.', { ...red, hair: 'hair-bun' }], ['Couronne + robe', base({ top: null, bottom: null, dress: 'dr-pink-satin', shoes: 'sh-heels', bag: null, crown: 'cr-gold' })]] },
+    { name: 'Maquillage — surcouche légère, même tête', items: [['Sans maquillage', base()], ['Rouge à lèvres', base({ acc: ['lp-red'] })], ['Gloss', base({ acc: ['lp-gloss'] })], ['Fard doré', base({ acc: ['es-gold'] })], ['Fard lavande', base({ acc: ['es-lavender'] })], ['Eye-liner appuyé', base({ acc: ['el-bold'] })], ['Tout ensemble', base({ acc: ['lp-berry', 'es-rose', 'el-bold'] })]] },
     { name: 'Accessoires du visage', items: [['Lunettes aviateur', base({ acc: ['gl-aviator'] })], ['Lunettes œil de chat', base({ acc: ['gl-cat-eye'] })], ['Lunettes de soleil', base({ acc: ['ac-sunglasses'] })], ['Créoles', base({ acc: ['ac-hoops'] })], ['Boucles pendantes', base({ acc: ['ea-drop-gold'] })], ['Bandana', base({ acc: ['hd-bandana-pink'] })], ['Béret', base({ acc: ['hd-beret'] })], ['Nœud', base({ acc: ['hd-bow-pink'] })], ['Serre-tête', base({ acc: ['hd-headband-velvet'] })], ['Collier de perles', base({ acc: ['ac-pearls'] })]] },
   ];
 }
@@ -66,7 +67,7 @@ export async function openBoard(): Promise<void> {
     tiles.push({ section: sec, label, canvas, look }); return canvas;
   };
   const ref = base();
-  const painted = paintedImageFor(ref);
+  const painted = paintedImageFor(ref, true); // référence : l'illustration d'origine, seulement pour comparer
   const secs: HTMLElement[] = [];
   // référence : Auguste, Radia peinte (tenue illustrée), Radia dessinée avec la même tenue
   const paintedCanvas = (w: number, hh: number): HTMLCanvasElement => { const c = document.createElement('canvas'); c.width = w; c.height = hh; if (painted) drawPainted(c.getContext('2d')!, painted, w, hh); return mk('Référence', 'Radia peinte', c); };

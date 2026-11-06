@@ -9,9 +9,11 @@
  */
 import type { Look, ClothId, HairId } from '../../../data/world/ids';
 import { RIG, paintedToHead, applyHeadScale, skullTopY, crownDy } from './rig';
-import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, EYE_COLOR, MOUTH_SHAPE, LINER_STYLE, SHADOW_COLOR, accGroup } from '../../../data/world/ids';
+import { CLOTH_SLOTS, HAIR_IDS, LIP_COLOR, LINER_STYLE, SHADOW_COLOR, NAIL_STYLE, accGroup, type NailStyle } from '../../../data/world/ids';
 import type { Expr } from '../../../data/dialogue';
 import { radiaParts as P, getFaceCustom } from '../characters';
+import { makeupSpec, hasMakeup } from '../../world/makeupSpec';
+import { drawMakeupOverlay } from './makeupOverlay';
 import { faceKey } from '../../../data/world/face';
 import { PAL, heartPath, roundRect, shade, gloss, starPath } from '../kit';
 import { makeCanvas } from '../kit';
@@ -124,7 +126,7 @@ export function armGeo(s: -1 | 1, pose: AvatarOpts['arms'], st: number, natural 
     const q = s === 1 ? RIG.pose.right : RIG.pose.left;
     x1 = CX + q.x1; y1 = q.y1; cx = CX + q.cx; cy = q.cy;
   }
-  return { x0: CX + s * 50, y0: 204, cx, cy, x1, y1 };
+  return { x0: CX + s * RIG.shoulder.dx, y0: RIG.shoulder.y, cx, cy, x1, y1 };
 }
 
 const qAt = (a: Arm, t: number): Pt => [
@@ -132,95 +134,122 @@ const qAt = (a: Arm, t: number): Pt => [
   (1 - t) * (1 - t) * a.y0 + 2 * (1 - t) * t * a.cy + t * t * a.y1,
 ];
 
-/** Portion [t0, t1] de la courbe du bras, épaisse (manche ou peau). */
-function armSeg(ctx: C, a: Arm, t0: number, t1: number, width: number, c0: string, c1: string, round: boolean, ink = true): void {
-  const p0 = qAt(a, t0);
-  const p1 = qAt(a, t1);
-  const dx = (1 - t0) * (a.cx - a.x0) + t0 * (a.x1 - a.cx);
-  const dy = (1 - t0) * (a.cy - a.y0) + t0 * (a.y1 - a.cy);
-  const k = t1 - t0;
-  const cx = p0[0] + k * dx;
-  const cy = p0[1] + k * dy;
-  ctx.lineCap = round ? 'round' : 'butt';
-  ctx.beginPath();
-  ctx.moveTo(p0[0], p0[1]);
-  ctx.quadraticCurveTo(cx, cy, p1[0], p1[1]);
-  if (ink) { ctx.lineWidth = width + 3.4 * LINE_K; ctx.strokeStyle = INK; ctx.stroke(); }
-  ctx.lineWidth = width;
-  ctx.strokeStyle = lg(ctx, Math.min(p0[0], p1[0]) - width, p0[1], Math.max(p0[0], p1[0]) + width, p1[1], c0, c1);
-  ctx.stroke();
-  ctx.lineCap = 'round';
+/** Bords d'un membre épais le long de la courbe du bras : côté extérieur (loin du corps), côté intérieur, axe. */
+function tubeEdges(a: Arm, t0: number, t1: number, w0: number, w1: number, n = 22): { out: Pt[]; inn: Pt[]; mid: Pt[]; ts: number[]; nx0: number; ny0: number; tx0: number; ty0: number } {
+  const out: Pt[] = [], inn: Pt[] = [], mid: Pt[] = [], ts: number[] = [];
+  const side = a.x0 >= CX ? 1 : -1;
+  let nx0 = 0, ny0 = 0, tx0 = 0, ty0 = 0;
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, t = t0 + (t1 - t0) * u, [x, y] = qAt(a, t);
+    const dx = 2 * (1 - t) * (a.cx - a.x0) + 2 * t * (a.x1 - a.cx), dy = 2 * (1 - t) * (a.cy - a.y0) + 2 * t * (a.y1 - a.cy), d = Math.hypot(dx, dy) || 1;
+    let nx = -dy / d, ny = dx / d; if (nx * side < 0) { nx = -nx; ny = -ny; } // la normale pointe vers l'extérieur
+    const w = (w0 + (w1 - w0) * (u * (2 - u) * 0.7 + u * 0.3)) / 2; // s'affine vite près du coude puis doucement jusqu'au poignet
+    out.push([x + nx * w, y + ny * w]); inn.push([x - nx * w, y - ny * w]); mid.push([x, y]); ts.push(t);
+    if (i === 0) { nx0 = nx; ny0 = ny; tx0 = dx / d; ty0 = dy / d; }
+  }
+  return { out, inn, mid, ts, nx0, ny0, tx0, ty0 };
 }
+const ARMPIT_T = 0.2; // en dessous de cette abscisse, le bord intérieur du bras est visible (aisselle) : il reçoit son contour
 
 /**
- * Membre effilé (bras nu) : de l'épaule (w0) au poignet (w1), ombré, contour fin ; remplace le tube uniforme à bout rond.
- * Même logique de construction que le corps d'Auguste (volumes doux, contour léger).
+ * Membre épais (manche ou bras nu) avec une JONCTION NATURELLE à l'épaule : le dessus de l'épaule est un dôme arrondi qui prolonge la ligne
+ * d'épaule du torse ; le contour n'est tracé que sur le bord extérieur, puis sur le bord intérieur à partir de l'aisselle (aucune couture
+ * à l'intérieur du torse). Même géométrie pour la peau et pour les manches : ils ne peuvent plus se décaler.
  */
+function tube(ctx: C, a: Arm, t0: number, t1: number, w0: number, w1: number, fill: string | CanvasGradient, round: boolean, ink = true): void {
+  const e = tubeEdges(a, t0, t1, w0, w1); const n = e.out.length - 1;
+  ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(e.out[0][0], e.out[0][1]);
+  for (const p of e.out) ctx.lineTo(p[0], p[1]);
+  if (round) { const [x, y] = e.mid[n], r = w1 / 2, an = Math.atan2(e.out[n][1] - y, e.out[n][0] - x); ctx.arc(x, y, r, an, an + Math.PI, an > 0 ? false : false); }
+  for (let i = n; i >= 0; i--) ctx.lineTo(e.inn[i][0], e.inn[i][1]);
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  // dôme de l'épaule (rempli sans contour, il se fond dans le torse)
+  if (t0 < 0.05) { ctx.beginPath(); ctx.arc(e.mid[0][0], e.mid[0][1], w0 / 2, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); }
+  if (ink) {
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.2 * LINE_K;
+    // bord extérieur : du sommet de l'épaule (quart de cercle vers l'arrière) jusqu'au bout
+    ctx.beginPath();
+    if (t0 < 0.05) { const [cx, cy] = e.mid[0], r = w0 / 2, aOut = Math.atan2(e.ny0, e.nx0), aBack = Math.atan2(-e.ty0, -e.tx0); let da = aBack - aOut; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; ctx.arc(cx, cy, r, aOut, aOut + da * 0.85, da < 0); ctx.lineTo(e.out[0][0], e.out[0][1]); }
+    else ctx.moveTo(e.out[0][0], e.out[0][1]);
+    for (const p of e.out) ctx.lineTo(p[0], p[1]);
+    ctx.stroke();
+    // bord intérieur : à partir de l'aisselle
+    const i0 = e.ts.findIndex((t) => t >= ARMPIT_T);
+    if (i0 >= 0) { ctx.beginPath(); ctx.moveTo(e.inn[i0][0], e.inn[i0][1]); for (let i = i0 + 1; i <= n; i++) ctx.lineTo(e.inn[i][0], e.inn[i][1]); ctx.stroke(); }
+    // extrémité
+    ctx.beginPath();
+    if (round) { const [x, y] = e.mid[n], r = w1 / 2, an = Math.atan2(e.out[n][1] - y, e.out[n][0] - x); ctx.arc(x, y, r, an, an + Math.PI); } else { ctx.moveTo(e.out[n][0], e.out[n][1]); ctx.lineTo(e.inn[n][0], e.inn[n][1]); }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Portion [t0, t1] de la courbe du bras, épaisse (manche ou peau) : un tube légèrement effilé (`taper` = largeur au bout / largeur au départ). */
+function armSeg(ctx: C, a: Arm, t0: number, t1: number, width: number, c0: string, c1: string, round: boolean, ink = true, taper = 0.9): void {
+  const p0 = qAt(a, t0), p1 = qAt(a, t1);
+  tube(ctx, a, t0, t1, width, width * taper, lg(ctx, Math.min(p0[0], p1[0]) - width, p0[1], Math.max(p0[0], p1[0]) + width, p1[1], c0, c1), round, ink);
+}
+
+/** Bras nu : même tube que les manches (même géométrie, même jonction à l'épaule), de l'épaule (w0) au poignet (w1), ombré. */
 function limb(ctx: C, a: Arm, t0: number, t1: number, w0: number, w1: number): void {
-  const N = 18, L: Pt[] = [], Rt: Pt[] = [], C0: Pt[] = [];
-  for (let i = 0; i <= N; i++) {
-    const t = t0 + ((t1 - t0) * i) / N;
-    const [x, y] = qAt(a, t);
-    const dx = 2 * (1 - t) * (a.cx - a.x0) + 2 * t * (a.x1 - a.cx), dy = 2 * (1 - t) * (a.cy - a.y0) + 2 * t * (a.y1 - a.cy);
-    const d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
-    const u = i / N, w = (w0 + (w1 - w0) * (u * (2 - u) * 0.7 + u * 0.3)) / 2; // affinement rapide près du coude, puis doux jusqu'au poignet
-    L.push([x + nx * w, y + ny * w]); Rt.push([x - nx * w, y - ny * w]); C0.push([x, y]);
-  }
-  ctx.save(); ctx.lineJoin = 'round';
-  ctx.beginPath(); ctx.moveTo(L[0][0], L[0][1]);
-  for (const p of L) ctx.lineTo(p[0], p[1]);
-  { // bout du poignet arrondi (le dos de la main le recouvre)
-    const q = qAt(a, t1), dx = 2 * (1 - t1) * (a.cx - a.x0) + 2 * t1 * (a.x1 - a.cx), dy = 2 * (1 - t1) * (a.cy - a.y0) + 2 * t1 * (a.y1 - a.cy);
-    const a1 = Math.atan2(dx, -dy); // angle de la normale gauche
-    ctx.arc(q[0], q[1], w1 / 2, a1, a1 - Math.PI, true);
-  }
-  for (let i = N; i >= 0; i--) ctx.lineTo(Rt[i][0], Rt[i][1]);
-  ctx.closePath();
-  const x0 = Math.min(...L.map((p) => p[0]), ...Rt.map((p) => p[0])), x1 = Math.max(...L.map((p) => p[0]), ...Rt.map((p) => p[0]));
-  fs(ctx, lg(ctx, x0, 0, x1, 0, skinL(), skin(), shade(skin(), -0.07)), 1.7);
-  // ombre douce côté intérieur + lumière sur le dessus : le volume que l'illustration donne aux bras
-  ctx.clip();
-  ctx.beginPath(); ctx.moveTo(C0[2][0], C0[2][1]); for (let i = 2; i <= N - 5; i++) ctx.lineTo(C0[i][0], C0[i][1]);
-  ctx.lineCap = 'butt'; ctx.lineWidth = w0 * 0.34; ctx.globalAlpha = 0.28; ctx.strokeStyle = skinL(); ctx.stroke();
-  ctx.globalAlpha = 1; ctx.restore();
+  tube(ctx, a, t0, t1, w0, w1, lg(ctx, Math.min(a.x0, a.x1) - w0, 0, Math.max(a.x0, a.x1) + w0, 0, skinL(), skin(), shade(skin(), -0.07)), true, true);
+  // lumière douce sur le dessus du bras (ne touche ni l'épaule ni le poignet)
+  const e = tubeEdges(a, t0, t1, w0, w1);
+  ctx.save(); ctx.beginPath(); ctx.moveTo(e.mid[3][0], e.mid[3][1]); for (let i = 3; i <= e.mid.length - 6; i++) ctx.lineTo(e.mid[i][0], e.mid[i][1]);
+  ctx.lineCap = 'butt'; ctx.lineWidth = w0 * 0.3; ctx.globalAlpha = 0.22; ctx.strokeStyle = skinL(); ctx.stroke(); ctx.restore();
 }
 
 /**
  * Main peinte : dos de la main pleine, quatre doigts épais réunis (légèrement écartés en éventail), pouce charnu côté corps,
  * ombre douce sous les doigts et lumière sur le dos. `ang` = direction de l'avant-bras (0 = vers le bas), `r` ≈ demi-largeur de la main.
  */
+/** Vernis porté par le look en cours de dessin (null : ongles naturels). */
+let NAIL: NailStyle | null = null;
+function nailPath(ctx: C, w: number, L: number): void {
+  // ongle arrondi posé sur le bout du doigt
+  const nw = w * 0.78, top = L - 5.4, bot = L - 1.3;
+  ctx.beginPath(); ctx.moveTo(-nw, top + 1); ctx.quadraticCurveTo(-nw, top, 0, top - 0.3); ctx.quadraticCurveTo(nw, top, nw, top + 1); ctx.lineTo(nw * 0.96, bot - 1.4); ctx.quadraticCurveTo(0, bot + 0.9, -nw * 0.96, bot - 1.4); ctx.closePath();
+}
 function handPainted(ctx: C, x: number, y: number, ang: number, s: -1 | 1, r: number = RIG.hand.r): void {
   const k = r / 9.5, sk = skin(), sl = skinL(), sd = skinD();
   ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(k, k); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   const LW = 1.15; // trait fin (le groupe est agrandi par k)
   const g = lg(ctx, -9, -8, 9, 14, sl, sk, shade(sk, -0.05));
   const ink = (w = LW) => { ctx.lineWidth = w; ctx.strokeStyle = INK; ctx.stroke(); };
-  // pouce charnu côté corps, derrière la paume
-  ctx.save(); ctx.translate(-s * 7.6, 1.5); ctx.rotate(-s * 0.42);
-  ctx.beginPath(); ctx.moveTo(-3.4, -3); ctx.bezierCurveTo(-4.6, 3, -3.8, 9, -1.2, 11.2); ctx.bezierCurveTo(1.6, 12, 3.8, 9, 3.8, 3.5); ctx.bezierCurveTo(3.8, -0.5, 3, -2.6, 2.4, -3.4); ctx.closePath();
-  ctx.fillStyle = g; ctx.fill(); ink(); ctx.restore();
-  // doigts : quatre capsules épaisses, longueurs naturelles (majeur le plus long), léger éventail
-  const F = [{ x: -5.6, len: 12.4, rot: 0.05 }, { x: -1.9, len: 14.8, rot: 0.01 }, { x: 1.9, len: 14, rot: -0.03 }, { x: 5.5, len: 11, rot: -0.08 }];
+  // pouce : fin, allongé, un peu écarté, côté corps (derrière le dos de la main)
+  ctx.save(); ctx.translate(-s * 9.3, 1.2); ctx.rotate(-s * 0.26);
+  ctx.beginPath(); ctx.moveTo(-2.6, -2.4); ctx.bezierCurveTo(-3.4, 3, -2.8, 9, -1.4, 12.2); ctx.bezierCurveTo(-0.2, 14.4, 2.2, 13.4, 2.4, 10.6); ctx.bezierCurveTo(2.8, 6, 2.8, 1, 2.2, -2.8); ctx.closePath();
+  ctx.fillStyle = g; ctx.fill(); ink();
+  if (NAIL) { ctx.save(); ctx.translate(0.2, 0); nailPath(ctx, 2.1, 13.2); ctx.fillStyle = NAIL.color; ctx.fill(); if (NAIL.tip) { ctx.save(); nailPath(ctx, 2.1, 13.2); ctx.clip(); ctx.fillStyle = NAIL.tip; ctx.fillRect(-3, 10.2, 6, 4); ctx.restore(); } ctx.restore(); }
+  ctx.restore();
+  // doigts : quatre doigts fins et effilés, séparés par un petit creux, légèrement en éventail (majeur le plus long)
+  const F = [{ x: -6.0, len: 12.6, rot: 0.1 }, { x: -2.0, len: 15.4, rot: 0.03 }, { x: 2.1, len: 14.4, rot: -0.04 }, { x: 6.0, len: 11.2, rot: -0.12 }];
   for (const f of F) {
-    ctx.save(); ctx.translate(f.x, 2.2); ctx.rotate(f.rot);
-    const w = 2.05, L = f.len;
-    ctx.beginPath(); ctx.moveTo(-w, 0); ctx.lineTo(-w * 0.92, L - w); ctx.arc(0, L - w, w * 0.92, Math.PI, 0, true); ctx.lineTo(w, 0); ctx.closePath();
+    ctx.save(); ctx.translate(f.x, 2); ctx.rotate(f.rot);
+    const w = 1.95, L = f.len, wt = 1.5; // base / bout : le doigt s'effile
+    ctx.beginPath(); ctx.moveTo(-w, 0); ctx.lineTo(-wt, L - wt); ctx.arc(0, L - wt, wt, Math.PI, 0, true); ctx.lineTo(w, 0); ctx.closePath();
     ctx.fillStyle = g; ctx.fill(); ink();
-    // ongle discret et pli de phalange
-    ctx.beginPath(); ctx.ellipse(0, L - 2.6, w * 0.55, 1.5, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,236,224,0.5)'; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-w * 0.7, L * 0.5); ctx.lineTo(w * 0.7, L * 0.5); ctx.lineWidth = 0.6; ctx.strokeStyle = hexA2(sd, 0.45); ctx.stroke();
+    // ongle (vernis éventuel) et pli de phalange
+    if (NAIL) {
+      nailPath(ctx, wt + 0.2, L); ctx.fillStyle = NAIL.color; ctx.fill();
+      if (NAIL.tip) { ctx.save(); nailPath(ctx, wt + 0.2, L); ctx.clip(); ctx.fillStyle = NAIL.tip; ctx.fillRect(-w, L - 3.1, w * 2, 3.6); ctx.restore(); } // french : bout blanc
+      nailPath(ctx, wt + 0.2, L); ctx.lineWidth = 0.5; ctx.strokeStyle = 'rgba(88,40,40,0.3)'; ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(-wt * 0.3, L - 4.3, wt * 0.22, 0.8, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill(); // reflet
+    } else { ctx.beginPath(); ctx.ellipse(0, L - 2.7, wt * 0.62, 1.55, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,236,224,0.5)'; ctx.fill(); }
+    ctx.beginPath(); ctx.moveTo(-w * 0.6, L * 0.52); ctx.lineTo(w * 0.6, L * 0.52); ctx.lineWidth = 0.55; ctx.strokeStyle = hexA2(sd, 0.4); ctx.stroke();
     ctx.restore();
   }
   // dos de la main : trapèze arrondi, un peu plus large aux articulations
-  const palm = () => { ctx.beginPath(); ctx.moveTo(-6.8, -9); ctx.bezierCurveTo(-8.8, -4, -8.6, 0, -8.2, 5.2); ctx.quadraticCurveTo(0, 7.6, 8.2, 5.2); ctx.bezierCurveTo(8.6, 0, 8.8, -4, 6.8, -9); ctx.quadraticCurveTo(0, -11.4, -6.8, -9); ctx.closePath(); };
+  const palm = () => { ctx.beginPath(); ctx.moveTo(-6.4, -9); ctx.bezierCurveTo(-8.2, -4, -8.6, 0, -8.6, 4.6); ctx.quadraticCurveTo(0, 7, 8.6, 4.6); ctx.bezierCurveTo(8.6, 0, 8.2, -4, 6.4, -9); ctx.quadraticCurveTo(0, -11.2, -6.4, -9); ctx.closePath(); };
   palm(); ctx.fillStyle = g; ctx.fill();
   ctx.save(); palm(); ctx.clip();
   ctx.beginPath(); ctx.ellipse(-2.6, -3, 2.6, 5, 0.15, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,238,224,0.16)'; ctx.fill(); // lumière discrète sur le dos de la main
   ctx.beginPath(); ctx.ellipse(0, 6.2, 9.2, 2.6, 0, 0, Math.PI * 2); ctx.fillStyle = hexA2(sd, 0.2); ctx.fill(); // ombre à la naissance des doigts
   ctx.restore();
   // contour de la paume seulement sur les côtés (le haut se fond dans le poignet, le bas dans les doigts)
-  ctx.beginPath(); ctx.moveTo(-8.2, 5.2); ctx.bezierCurveTo(-8.6, 0, -8.8, -4, -6.8, -9); ink();
-  ctx.beginPath(); ctx.moveTo(8.2, 5.2); ctx.bezierCurveTo(8.6, 0, 8.8, -4, 6.8, -9); ink();
+  ctx.beginPath(); ctx.moveTo(-8.6, 4.6); ctx.bezierCurveTo(-8.6, 0, -8.2, -4, -6.4, -9); ink();
+  ctx.beginPath(); ctx.moveTo(8.6, 4.6); ctx.bezierCurveTo(8.6, 0, 8.2, -4, 6.4, -9); ink();
   ctx.restore();
 }
 const hexA2 = (hex: string, a: number): string => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
@@ -292,22 +321,34 @@ export function neckTrim(ctx: C, kind: 'crew' | 'v' | 'scoop', nd: number, color
 }
 
 export function chestSkin(ctx: C): void {
-  ctx.beginPath();
-  ctx.moveTo(107, 144);
-  ctx.lineTo(133, 144);
-  ctx.lineTo(134, 168);
-  ctx.bezierCurveTo(150, 172, 156, 190, 150, 214);
-  ctx.bezierCurveTo(140, 240, 100, 240, 90, 214);
-  ctx.bezierCurveTo(84, 190, 90, 172, 106, 168);
-  ctx.closePath();
-  ctx.fillStyle = lg(ctx, 0, 146, 0, 232, skinD(), skin(), skin());
-  ctx.fill();
-  ctx.lineWidth = 1.8;
-  ctx.strokeStyle = INK;
-  ctx.beginPath();
-  ctx.moveTo(107, 144); ctx.lineTo(106, 168);
-  ctx.moveTo(133, 144); ctx.lineTo(134, 168);
-  ctx.stroke();
+  // COU : colonne qui s'évase doucement vers les épaules (trapèzes), du dessous de la tête jusqu'au décolleté ; la tête (remontée de RIG.head.lift) repose dessus.
+  const sk = skin(), sl = skinL(), sd = skinD();
+  const NW0 = 14.2, NW1 = 17.4; // demi-largeur haut / bas du cou
+  const neckPath = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(CX - NW0, 140); ctx.lineTo(CX + NW0, 140);
+    ctx.bezierCurveTo(CX + NW1 - 1, 160, CX + NW1 + 1, 168, CX + NW1 + 14, 178); // trapèze droit vers l'épaule
+    ctx.bezierCurveTo(150, 184, 156, 196, 150, 214);
+    ctx.bezierCurveTo(140, 240, 100, 240, 90, 214);
+    ctx.bezierCurveTo(84, 196, 90, 184, CX - NW1 - 14, 178);
+    ctx.bezierCurveTo(CX - NW1 - 1, 168, CX - NW1 + 1, 160, CX - NW0, 140);
+    ctx.closePath();
+  };
+  neckPath();
+  // lumière à gauche, creux à droite ; l'ombre du menton tombe sur le haut du cou
+  const g = lg(ctx, CX - 22, 0, CX + 22, 0, sl, sk, shade(sk, -0.06));
+  ctx.fillStyle = g; ctx.fill();
+  ctx.save(); neckPath(); ctx.clip();
+  const chin = RIG.head.chinY - RIG.head.lift;
+  const sh = ctx.createLinearGradient(0, chin - 2, 0, chin + 15); sh.addColorStop(0, hexA2(sd, 0.62)); sh.addColorStop(0.55, hexA2(sd, 0.22)); sh.addColorStop(1, hexA2(sd, 0));
+  ctx.fillStyle = sh; ctx.fillRect(CX - 40, chin - 2, 80, 20);
+  // creux de la clavicule, très discret
+  ctx.beginPath(); ctx.ellipse(CX, 196, 15, 3.2, 0, 0, Math.PI * 2); ctx.fillStyle = hexA2(sd, 0.1); ctx.fill();
+  ctx.restore();
+  // contours : seulement les deux côtés du cou, du menton jusqu'au départ des épaules
+  ctx.lineWidth = 1.6; ctx.strokeStyle = INK; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(CX - NW0, 150); ctx.bezierCurveTo(CX - NW1 + 1, 160, CX - NW1 - 1, 168, CX - NW1 - 6, 174); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CX + NW0, 150); ctx.bezierCurveTo(CX + NW1 - 1, 160, CX + NW1 + 1, 168, CX + NW1 + 6, 174); ctx.stroke();
 }
 
 // ---------------------------------------------------------------- tenues : définitions
@@ -1349,19 +1390,25 @@ export function flat(ctx: C, cx: number, s: number): void {
 
 // ---------------------------------------------------------------- sacs
 
-function bagCross(ctx: C): void {
+const BAG_DX = 8; // le sac pend un peu plus à l'extérieur de la hanche : la main reste dégagée
+/** Bandoulière : passe SOUS la manche (elle est dessinée avant les bras), du cou jusqu'au sac. */
+function bagStrap(ctx: C): void {
   ctx.beginPath();
   ctx.moveTo(146, 168);
-  ctx.bezierCurveTo(154, 220, 162, 270, 170, 330);
+  ctx.bezierCurveTo(154, 220, 162, 270, 170 + BAG_DX, 330);
   ctx.lineWidth = 3.6;
   ctx.strokeStyle = '#0C0910';
   ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(145, 168);
-  ctx.bezierCurveTo(153, 220, 161, 270, 169, 330);
+  ctx.bezierCurveTo(153, 220, 161, 270, 169 + BAG_DX, 330);
   ctx.lineWidth = 1;
   ctx.strokeStyle = 'rgba(255,255,255,0.18)';
   ctx.stroke();
+}
+/** Le sac lui-même : dessiné avant les mains (la main se pose devant, jamais à moitié cachée derrière). */
+function bagBody(ctx: C): void {
+  ctx.save(); ctx.translate(BAG_DX, 0);
   ctx.beginPath();
   ctx.moveTo(166, 330); ctx.lineTo(206, 330);
   ctx.quadraticCurveTo(210, 352, 207, 372);
@@ -1373,6 +1420,7 @@ function bagCross(ctx: C): void {
   dot(ctx, 187, 351, 2.6, GOLD, INK, 1);
   roundRect(ctx, 168, 321, 5, 9, 1.5);
   fs(ctx, GOLD, 1.2);
+  ctx.restore();
 }
 
 function bagGold(ctx: C): void {
@@ -1800,6 +1848,7 @@ function drawPaintedLayer(ctx: C, l: PaintedLayer, dy = 0): void {
 
 function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   const ph = headProvider?.(look) ?? null;
+  NAIL = look.acc.map((a) => NAIL_STYLE[a]).find(Boolean) ?? null;
   const fullHead = ph?.kind === 'head';
   const st = opts.step ?? 0;
   const sway = st * 4;
@@ -1843,13 +1892,16 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
     drawBottomWaist(ctx, bottom, st);
   }
 
+  // 2b. bandoulière du sac : sous les bras et les manches
+  if (bag === 'bg-crossbody-black') bagStrap(ctx);
+
   // 3. bras : peau puis manches (haut ou robe)
   const sleeveSpec: SleeveSpec | undefined = dress ? dfx?.sleeve : top ? SLEEVES[top] : undefined;
   const jk = jacket ? JACKETS[jacket] : undefined;
   const arms = ([-1, 1] as const).map((s) => armGeo(s, opts.arms, st, isNatural(opts)));
   ([-1, 1] as const).forEach((_s, i) => {
     const a = arms[i];
-    limb(ctx, a, 0.08, 1, RIG.arm.w0, RIG.arm.w1);
+    limb(ctx, a, 0, 1, RIG.arm.w0, RIG.arm.w1);
     if (sleeveSpec) drawSleeve(ctx, a, sleeveSpec, !!jk);
   });
 
@@ -1858,6 +1910,11 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
     jk.draw(ctx);
     ([-1, 1] as const).forEach((_s, i) => drawSleeve(ctx, arms[i], jk.sleeve, false));
   }
+
+  // 4b. sac (avant les mains : la main se pose devant le sac, jamais à moitié cachée derrière)
+  if (bag === 'bg-crossbody-black') bagBody(ctx);
+  else if (bag === 'bg-mini-gold') bagGold(ctx);
+  else if (bag && EXTRA.bag[bag]) EXTRA.bag[bag](ctx);
 
   // 5. mains
   ([-1, 1] as const).forEach((_s, i) => {
@@ -1875,11 +1932,6 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   // 5b. bracelets (au-dessus des mains)
   for (const a of accs) EXTRA.wrist[a]?.(ctx, arms, (ar) => endAng(ar, 1), opts.shine ?? 0);
 
-  // 6. sac
-  if (bag === 'bg-crossbody-black') bagCross(ctx);
-  else if (bag === 'bg-mini-gold') bagGold(ctx);
-  else if (bag && EXTRA.bag[bag]) EXTRA.bag[bag](ctx);
-
   // 7. accessoires du cou
   if (accs.includes('ac-scarf')) scarf(ctx);
   if (accs.includes('ac-pearls')) pearls(ctx);
@@ -1892,10 +1944,15 @@ function drawAvatarLocal(ctx: C, look: Look, opts: AvatarOpts): void {
   ctx.scale(P.HEAD_K, P.HEAD_K);
   const lipId = accs.find((a) => a.startsWith('lp-'));
   const pickId = (pre: string) => accs.find((a) => a.startsWith(pre));
-  const eyeId = pickId('ey-'), moId = pickId('mo-'), elId = pickId('el-'), esId = pickId('es-');
-  if (!fullHead) P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, iris: eyeId ? EYE_COLOR[eyeId] : undefined, mouth: moId ? MOUTH_SHAPE[moId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
+  const elId = pickId('el-'), esId = pickId('es-');
+  if (!fullHead) P.radiaFace(ctx, { expr: opts.expr ?? 'smile', blink: !!opts.blink, lip: lipId ? LIP_COLOR[lipId] : undefined, liner: elId ? LINER_STYLE[elId] : undefined, shadow: esId ? SHADOW_COLOR[esId] : undefined });
   ctx.restore();
-  if (ph) drawPaintedLayer(ctx, ph.head); // visage peint par-dessus l'ovale dessiné (contour du dessin, traits de l'illustration)
+  if (ph) {
+    drawPaintedLayer(ctx, ph.head); // visage peint par-dessus l'ovale dessiné (contour du dessin, traits de l'illustration)
+    // maquillage : simple surcouche légère sur le visage peint (jamais un remplacement de tête)
+    const mk = makeupSpec(accs, getFaceCustom());
+    if (hasMakeup(mk)) { const [ox, oy] = paintedToHead(0, 0), k = RIG.painted.k; ctx.save(); ctx.translate(ox, oy); ctx.scale(k, k); drawMakeupOverlay(ctx, mk); ctx.restore(); }
+  }
   if (!fullHead && !P.veilOn()) P.hairVolume(ctx, P.HEAD_X, P.HEAD_Y, () => hairFrontLayer(ctx, hair, sway)); // tête complète peinte : cheveux déjà dans l'illustration
   if (P.veilOn()) { ctx.save(); ctx.translate(P.HEAD_X, P.HEAD_Y); ctx.scale(P.HEAD_K, P.HEAD_K); P.drawVeil(ctx); ctx.restore(); }
   if (accs.includes('ac-hoops')) hoops(ctx);

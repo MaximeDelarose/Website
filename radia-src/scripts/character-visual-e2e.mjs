@@ -7,17 +7,17 @@ const PORT = process.env.PORT ?? 4190, KEY = process.env.PHOTO_KEY ?? '';
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
 const p = await (await b.newContext({ viewport: { width: 1500, height: 900 }, deviceScaleFactor: 2 })).newPage();
 const errs = []; p.on('pageerror', (e) => errs.push(e.message));
-await p.addInitScript(() => localStorage.setItem('radia-save-v1', JSON.stringify({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'], world: { flags: { 'rw:start-gift-v1': true } } })));
+await p.addInitScript(() => localStorage.setItem('radia-save-v1', JSON.stringify({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'], world: { flags: { 'rw:start-gift-v1': true } } })));
 await p.goto(`http://localhost:${PORT}/?planche${KEY ? '#k=' + KEY : ''}`); await p.waitForSelector('.bd-root', { timeout: 25000 }); await p.waitForTimeout(1500);
 const results = []; const check = (n, ok, x = '') => { results.push(!!ok); console.log(`${ok ? 'OK ' : 'KO '} ${n}${x ? ' — ' + x : ''}`); };
 
-// zone du visage en unités d'avatar : x 98..142, y 108..164 (yeux → menton, centrée) ; tête entière : x 80..160, y 14..166
+// zone du visage en unités d'avatar (tête remontée de RIG.head.lift = 13) : x 98..142, y 95..151 (yeux → menton, centrée) ; tête entière : x 80..160, y 1..145
 const out = await p.evaluate(() => {
   const B = window.__board; const W = B.W, H = B.H;
   const tile = (sec, label) => B.tiles.find((t) => t.section.startsWith(sec) && t.label === label)?.canvas;
   const px = (c, box) => { const k = c.height / 600; const [x0, y0, x1, y1] = box.map((v) => Math.round(v * k)); const d = c.getContext('2d').getImageData(Math.round((c.width - 240 * k) / 2) + x0, y0, x1 - x0, y1 - y0).data; return d; };
   const diff = (a, b, box) => { const A = px(a, box), Bp = px(b, box); let s = 0, n = 0; for (let i = 0; i < A.length; i += 4) { const al = Math.max(A[i + 3], Bp[i + 3]) / 255; for (let j = 0; j < 3; j++) { s += Math.abs(A[i + j] - Bp[i + j]) * al; } n += 3 * al || 0; } return n ? s / n : 0; };
-  const FACE = [98, 108, 142, 164], HEAD = [80, 14, 160, 158], CHIN = [102, 140, 138, 164]; // HEAD s'arrête au-dessus du col (le col change avec la tenue)
+  const FACE = [98, 95, 142, 151], HEAD = [80, 1, 160, 145], CHIN = [102, 127, 138, 151]; // HEAD s'arrête au-dessus du col (le col change avec la tenue)
   const sans = tile('Couronnes', 'Sans couronne');
   const r = { perf: B.perfMs, couronnes: {}, coiffures: {}, accessoires: {}, tenues: {}, peintVsDessine: null };
   for (const l of ['Couronne dorée', 'Couronne de fleurs', 'Diadème']) r.couronnes[l] = diff(sans, tile('Couronnes', l), FACE);
@@ -27,7 +27,10 @@ const out = await p.evaluate(() => {
   for (const l of ['Survêtement rouge', 'Casual', 'Robe élégante', 'Soirée', 'Manteau', 'Couronne + robe']) r.tenues[l] = diff(noir, tile('Tenues', l), l === 'Couronne + robe' ? FACE : HEAD);
   for (const l of ['Lunettes aviateur', 'Lunettes œil de chat', 'Lunettes de soleil', 'Créoles', 'Boucles pendantes', 'Bandana', 'Béret', 'Nœud', 'Serre-tête', 'Collier de perles']) r.accessoires[l] = diff(sans, tile('Accessoires', l), CHIN);
   const pe = tile('Référence', 'Radia peinte'), de = tile('Référence', 'Radia dessinée');
-  r.peintVsDessine = B.painted && pe && de ? diff(pe, de, FACE) : null; // sans le lien secret, pas de figure peinte : contrôle ignoré
+  // la figure peinte d'origine garde sa tête à l'ancienne hauteur ; la tête dessinée est remontée de RIG.head.lift (13) pour laisser voir le cou : on compare à décalage égal
+  const FACE_PAINTED = [FACE[0], FACE[1] + 13, FACE[2], FACE[3] + 13];
+  const diff2 = (a, bx, boxA, boxB) => { const A = px(a, boxA), Bp = px(bx, boxB); let s = 0, n = 0; for (let i = 0; i < A.length; i += 4) { const al = Math.max(A[i + 3], Bp[i + 3]) / 255; for (let j = 0; j < 3; j++) s += Math.abs(A[i + j] - Bp[i + j]) * al; n += 3 * al || 0; } return n ? s / n : 0; };
+  r.peintVsDessine = B.painted && pe && de ? diff2(pe, de, FACE_PAINTED, FACE) : null; // sans le lien secret, pas de figure peinte : contrôle ignoré
   r.painted = B.painted; return r;
 });
 if (!out.painted) console.log('(sans le lien secret : les contrôles « peinte » sont ignorés)');

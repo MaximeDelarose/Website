@@ -10,8 +10,10 @@ import { icon } from '../../ui/icons';
 import { audio } from '../../core/app';
 import { haptic } from '../../core/haptics';
 import { ev } from '../../events/api';
-import { emitPhone } from '../../events/bus';
+import { emitPhone, onPhoneChange } from '../../events/bus';
 import { eventById, SECRET_ID } from '../../events/data';
+import { inviteTime } from '../../events/manager';
+import type { EventDef, Invite } from '../../events/types';
 import { openInvite, replayVoice } from '../../events/flow';
 import { save } from '../../core/app';
 import { CONTACT_IDS, REACTIONS, type ContactId, type ReactionId } from './data';
@@ -25,21 +27,31 @@ export interface MessagesHost { /** quitter l'application → écran d'accueil d
 const fold = (t: string): string => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 interface Item { id: string; from: 'me' | 'them'; text: string; at: number; msg?: Msg }
 
-/** Éléments hérités (messages d'événements) d'un contact : ils restent visibles, au début de la conversation. */
-function legacyItems(id: ContactId): Item[] {
-  return ev().msgs.filter((m) => m.from === id).map((m, i) => ({ id: `L${i}`, from: 'them' as const, text: m.text, at: m.at }));
+/**
+ * Chronologie UNIQUE d'une conversation : messages (déjà migrés depuis l'ancien système), invitations et message vocal, triés par heure.
+ * L'aperçu de la liste est le DERNIER élément de cette même chronologie : ce qui s'affiche dans la liste est toujours dans le fil.
+ */
+type Entry = { kind: 'msg'; at: number; msg: Msg } | { kind: 'invite'; at: number; invite: Invite; def: EventDef } | { kind: 'voice'; at: number };
+const VOICE_TXT = '🎙 Message vocal de A';
+function timeline(id: ContactId): Entry[] {
+  const s = messagesState(); // migre d'abord les messages hérités : une seule source de vérité
+  const st = ev(); const now = Date.now();
+  const out: Entry[] = s.convos[id].msgs.map((msg) => ({ kind: 'msg', at: msg.at, msg }));
+  for (const i of st.inbox.filter((x) => eventById(x.eventId)?.sender === id).slice(-8)) { const def = eventById(i.eventId); if (def) out.push({ kind: 'invite', at: inviteTime(st, i, now), invite: i, def }); }
+  if (id === 'auguste' && st.secret.triggered) { // carte « Écouter » juste après la bulle du message vocal (sinon en tête du fil)
+    const v = s.convos.auguste.msgs.find((m) => m.text === VOICE_TXT);
+    out.push({ kind: 'voice', at: v ? v.at + 1 : 0 });
+  }
+  return out.sort((a, b) => a.at - b.at); // tri stable
 }
 function lastOf(id: ContactId): { text: string; at: number } | null {
-  const c = messagesState().convos[id];
-  const l = c.msgs[c.msgs.length - 1];
-  const g = legacyItems(id).pop();
-  const inv = ev().inbox.filter((i) => eventById(i.eventId)?.sender === id).pop();
-  const cands = [l ? { text: l.photo ? '📷 Photo' : l.text, at: l.at } : null, g ? { text: g.text, at: g.at } : null, inv ? { text: eventById(inv.eventId)?.teaser ?? '', at: inv.at } : null].filter((x): x is { text: string; at: number } => !!x);
-  return cands.sort((a, b) => b.at - a.at)[0] ?? null;
+  const t = timeline(id); const l = t[t.length - 1];
+  if (!l) return null;
+  return l.kind === 'msg' ? { text: l.msg.photo ? '📷 Photo' : l.msg.text, at: l.at } : l.kind === 'invite' ? { text: l.def.teaser, at: l.at } : { text: VOICE_TXT, at: l.at };
 }
 function unreadOf(id: ContactId): number {
   const st = ev();
-  return messagesState().convos[id].unread + st.msgs.filter((m) => m.from === id && !m.read).length + st.inbox.filter((i) => i.state === 'new' && eventById(i.eventId)?.sender === id).length;
+  return messagesState().convos[id].unread + st.inbox.filter((i) => i.state === 'new' && eventById(i.eventId)?.sender === id).length;
 }
 
 export function openMessagesView(host: MessagesHost): { close: () => void } {
@@ -52,7 +64,9 @@ export function openMessagesView(host: MessagesHost): { close: () => void } {
   view.open = true; view.thread = null;
   audio.play('pop2');
 
-  const stopAll = () => { alive = false; view.open = false; view.thread = null; view.refresh = null; view.typing.clear(); };
+  // un message qui arrive par un autre circuit (messages d'événements, invitations) met aussi à jour la liste / le fil ouverts
+  const offPhone = onPhoneChange(() => { if (alive) view.refresh?.(view.thread ?? 'auguste'); });
+  const stopAll = () => { alive = false; offPhone(); view.open = false; view.thread = null; view.refresh = null; view.typing.clear(); };
   function close() {
     if (!alive) return;
     stopAll();
@@ -119,7 +133,6 @@ export function openMessagesView(host: MessagesHost): { close: () => void } {
     view.thread = id;
     // lire la conversation : non lus remis à zéro (nouveaux + anciens messages d'événements)
     markRead(s, id);
-    for (const m of ev().msgs) if (m.from === id) m.read = true;
     save.save(); emitPhone();
     body.className = 'msg-body thread';
     body.replaceChildren();
@@ -142,40 +155,34 @@ export function openMessagesView(host: MessagesHost): { close: () => void } {
       thread.replaceChildren();
       const now = Date.now();
       const c = messagesState().convos[id];
-      // 1) éléments hérités (messages d'événements + invitations + cartes)
-      const legacy = legacyItems(id);
+      // chronologie unique : messages, invitations et message vocal, dans l'ordre de réception
       let prevAt: number | null = null;
-      for (const it of legacy) { if (needSeparator(prevAt, it.at)) thread.append(h('div.msg-sep', separatorLabel(it.at, now))); prevAt = it.at; thread.append(row({ ...it, from: 'them' })); }
-      legacyExtras().forEach((n) => thread.append(n));
-      // 2) conversation de l'application
       const status = lastSentStatus(c, hhmm);
-      for (const m of c.msgs) {
-        if (needSeparator(prevAt, m.at)) thread.append(h('div.msg-sep', separatorLabel(m.at, now)));
-        prevAt = m.at;
-        thread.append(row({ id: m.id, from: m.from, text: m.text, at: m.at, msg: m }));
-        if (status && status.msgId === m.id) thread.append(h('div.msg-status', status.label));
+      for (const e of timeline(id)) {
+        if (needSeparator(prevAt, e.at) && e.at > 0) thread.append(h('div.msg-sep', separatorLabel(e.at, now)));
+        prevAt = e.at > 0 ? e.at : prevAt;
+        if (e.kind === 'msg') {
+          const m = e.msg;
+          thread.append(row({ id: m.id, from: m.from, text: m.text, at: m.at, msg: m }));
+          if (status && status.msgId === m.id) thread.append(h('div.msg-status', status.label));
+        } else if (e.kind === 'voice') thread.append(voiceCard());
+        else for (const n of inviteNodes(e.invite, e.def)) thread.append(n);
       }
       if (view.typing.has(id)) thread.append(h('div.msg-r.in', h('div.msg-b.typing', h('i'), h('i'), h('i'))));
       if (!thread.children.length) thread.append(h('p.msg-empty', 'Écris le premier message ♡'));
       if (stick) toBottom();
     }
-    function legacyExtras(): HTMLElement[] {
-      const st = ev(); const out: HTMLElement[] = [];
-      if (id === 'auguste' && st.secret.triggered) {
-        const done = (st.done[SECRET_ID]?.count ?? 0) > 0;
-        const card = h('button.msg-card', icon('play', 20), h('div', h('b', 'Message vocal de A'), h('small', done ? 'Réécouter ♡' : 'Écouter · une surprise t’attend ♡')));
-        card.addEventListener('click', tap(() => { leave(); void replayVoice(); }, { sound: false }));
-        out.push(card);
-      }
-      for (const i of st.inbox.filter((x) => eventById(x.eventId)?.sender === id).slice(-8)) {
-        const d = eventById(i.eventId); if (!d) continue;
-        out.push(h('div.msg-r.in', h('div.msg-b', d.teaser)));
-        const lbl = i.state === 'new' ? 'Nouveau' : i.state === 'later' ? 'Pour plus tard' : i.state === 'done' ? 'Terminé ♡' : 'Vu';
-        const card = h(`div.msg-inv${d.golden ? '.gold' : ''}`, h('div.msg-inv-h', h('b', d.title), h('small', lbl)), h('p', d.invite));
-        if (i.state !== 'done') card.append(h('button.msg-inv-go', { on: { click: tap(() => { leave(); void openInvite(i.runId); }) } }, 'Voir l’invitation'));
-        out.push(card);
-      }
-      return out;
+    function voiceCard(): HTMLElement {
+      const done = (ev().done[SECRET_ID]?.count ?? 0) > 0;
+      const card = h('button.msg-card', icon('play', 20), h('div', h('b', 'Message vocal de A'), h('small', done ? 'Réécouter ♡' : 'Écouter · une surprise t’attend ♡')));
+      card.addEventListener('click', tap(() => { leave(); void replayVoice(); }, { sound: false }));
+      return card;
+    }
+    function inviteNodes(i: Invite, d: EventDef): HTMLElement[] {
+      const lbl = i.state === 'new' ? 'Nouveau' : i.state === 'later' ? 'Pour plus tard' : i.state === 'done' ? 'Terminé ♡' : 'Vu';
+      const card = h(`div.msg-inv${d.golden ? '.gold' : ''}`, h('div.msg-inv-h', h('b', d.title), h('small', lbl)), h('p', d.invite));
+      if (i.state !== 'done') card.append(h('button.msg-inv-go', { on: { click: tap(() => { leave(); void openInvite(i.runId); }) } }, 'Voir l’invitation'));
+      return [h('div.msg-r.in', h('div.msg-b', d.teaser)), card];
     }
     function row(it: Item): HTMLElement {
       const m = it.msg;

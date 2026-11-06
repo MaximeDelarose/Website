@@ -154,6 +154,8 @@ export interface FunState {
   phone: { wallpaper: string };
   /** « Petites pensées ♡ » reçues (notifications quotidiennes) : historique local, 60 au plus ; `kept` = gardée par Radia. */
   thoughts: { at: number; text: string; idx?: number; kept?: boolean }[];
+  /** Invitation « Une petite pensée pour toi, chaque jour » : montrée UNE seule fois (application installée). `later` / `refused` / `error` : on ne redemande jamais automatiquement. */
+  pensee: { state: 'none' | 'later' | 'accepted' | 'refused' | 'error'; at: number };
 }
 
 export const defaultFun = (): FunState => ({
@@ -172,6 +174,7 @@ export const defaultFun = (): FunState => ({
   customers: {},
   phone: { wallpaper: 'rose' },
   thoughts: [],
+  pensee: { state: 'none', at: 0 },
   necklace: defaultNecklace(),
   notifs: [],
 });
@@ -258,7 +261,8 @@ export function sanitizeFun(raw: unknown): FunState {
     d.apps = { swipe: o(raw.apps.swipe), clips: o(raw.apps.clips), snap: o(raw.apps.snap), career: numRec(raw.apps.career), messages: o(raw.apps.messages) };
   }
   if (isObj(raw.phone) && typeof raw.phone.wallpaper === 'string') d.phone = { wallpaper: raw.phone.wallpaper.slice(0, 24) };
-  if (Array.isArray(raw.thoughts)) d.thoughts = raw.thoughts.filter(isObj).slice(-60).map((t) => ({ at: num(t.at, 0, 0, 1e15), text: typeof t.text === 'string' ? t.text.slice(0, 200) : '', ...(typeof t.idx === 'number' && Number.isFinite(t.idx) ? { idx: Math.floor(t.idx) } : {}), ...(t.kept === true ? { kept: true } : {}) })).filter((t) => t.text);
+  if (Array.isArray(raw.thoughts)) d.thoughts = raw.thoughts.filter(isObj).slice(-60).map((t) => ({ at: num(t.at, 0, 0, 1e15), text: typeof t.text === 'string' ? t.text.slice(0, 700) : '', ...(typeof t.idx === 'number' && Number.isFinite(t.idx) ? { idx: Math.floor(t.idx) } : {}), ...(t.kept === true ? { kept: true } : {}) })).filter((t) => t.text);
+  if (isObj(raw.pensee)) { const st = raw.pensee.state; d.pensee = { state: st === 'later' || st === 'accepted' || st === 'refused' || st === 'error' ? st : 'none', at: num(raw.pensee.at, 0, 0, 1e15) }; }
   d.notifs = strArr(raw.notifs, 300);
   return d;
 }

@@ -3,6 +3,7 @@
  * Chargement : sauvegarde → réglages → Phaser (scène de fond) → polices →
  * écran d'accueil. Service worker pour le hors-ligne (build uniquement).
  */
+import { isComboBusy } from './game/fx/comboState';
 import { applySavedFace } from './game/world/look';
 import './ui/styles/base.css';
 import './ui/styles/game.css';
@@ -178,6 +179,27 @@ async function showWhatsNewV9(): Promise<void> {
   });
 }
 
+/** Nouveautés v10 : accueil réorganisé, Casino en grand accès, Messages cohérents, nouvelle pose de Radia (une seule fois, pour les parties existantes). Sans spoiler. */
+async function showWhatsNewV10(): Promise<void> {
+  if (save.data.seenUpdates.includes('v10')) return;
+  save.data.seenUpdates.push('v10');
+  save.save();
+  if (!save.hadSave) return;
+  const li = (t: string) => h('li', { style: 'margin:4px 0' }, t);
+  await ui.modal({
+    title: 'Un accueil plus clair ♡',
+    body: h('div', { style: 'text-align:left;font-size:15px' },
+      h('ul', { style: 'padding-left:18px;margin:6px 0' },
+        li('Le Casino a maintenant sa grande place sur l’accueil, à côté du mode histoire et de Mon monde.'),
+        li('Les Succès se trouvent dans la petite icône en forme de trophée, à droite de Souvenirs.'),
+        li('Ton cadeau du jour est toujours en haut de l’écran.'),
+        li('Messages : ce qui s’affiche dans la liste est toujours dans la conversation, à la bonne heure.'),
+        li('Radia a une nouvelle posture plus naturelle.')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, 'Ta partie est intacte ♡')),
+    actions: [{ label: 'Super !', value: 'ok' }],
+  });
+}
+
 /** Nouveautés v3 : le château de Radia (une seule fois, pour les parties existantes). */
 async function showWhatsNewV3(): Promise<void> {
   if (save.data.seenUpdates.includes('v3')) return;
@@ -212,7 +234,20 @@ async function setupThoughts(): Promise<void> {
       if (e.data?.type === 'radia-push-changed') void import('./core/push').then((p) => p.refreshPushIfNeeded());
     });
     void import('./core/push').then((p) => p.refreshPushIfNeeded());
+    // première ouverture dans l'application installée : une seule invitation douce, à un moment calme (jamais à l'ouverture d'une notification)
+    if (!fromNotif) { const sch = await import('./events/scheduler'); const q = new URLSearchParams(location.search); m.scheduleThoughtInvite(() => sch.safeToNotify(), q.has('debug') && q.has('inviteDelay') ? Math.max(0, Number(q.get('inviteDelay')) || 0) : 20_000); } // inviteDelay : tests uniquement (avec ?debug)
   } catch { /* les notifications ne doivent jamais empêcher le jeu de démarrer */ }
+}
+
+/** Statistiques de jeu : reprise du suivi seulement si Radia l'a accepté ; invitation unique à un moment calme (jamais pendant un combo ni une notification). */
+async function setupStats(): Promise<void> {
+  try {
+    const st = await import('./core/stats');
+    st.startStatsTracking();
+    const [sch, ui2] = await Promise.all([import('./events/scheduler'), import('./ui/screens/statsConsent')]);
+    const q = new URLSearchParams(location.search);
+    ui2.scheduleStatsInvite(() => sch.safeToNotify(), q.has('debug') && q.has('statsDelay') ? Math.max(0, Number(q.get('statsDelay')) || 0) : 150_000);
+  } catch { /* les statistiques ne doivent jamais empêcher le jeu de démarrer */ }
 }
 
 async function boot(): Promise<void> {
@@ -274,10 +309,11 @@ async function boot(): Promise<void> {
   await showWhatsNewV3();
   await showWhatsNewV4();
   await showWhatsNewV6();
-  void setupThoughts();
+  void setupThoughts(); void setupStats();
   await showWhatsNewV7();
   await showWhatsNewV8();
   await showWhatsNewV9();
+  await showWhatsNewV10();
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => undefined);
@@ -303,5 +339,5 @@ if (new URLSearchParams(location.search).has('planche')) { window.setTimeout(() 
 // Accès debug en développement : window.RADIA
 if (new URLSearchParams(location.search).has('debug')) { void import('./casino'); void import('./wheel'); }
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  (window as unknown as Record<string, unknown>).RADIA = { ...debugApis(), save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), gift: () => spawnGiftNow(), secretCall: () => secretNow(), secretAdvance: (m: number) => secretAdvance(m), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
+  (window as unknown as Record<string, unknown>).RADIA = { ...debugApis(), save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), relatives: () => import('./data/family/relatives'), pushMod: () => import('./core/push'), comboBusy: () => isComboBusy(), dressMod: () => import('./ui/screens/world/dressing'), wardrobeData: () => import('./data/world/wardrobe'), artMod: () => import('./game/art/world/radiaNow'), avatarMod: () => import('./game/art/world/avatar'), lookMod: () => import('./game/world/look'), thoughtsMod: () => import('./ui/screens/thoughts'), schedulerMod: () => import('./events/scheduler'), eventsManager: () => import('./events/manager'), eventsData: () => import('./events/data'), gift: () => spawnGiftNow(), secretCall: () => secretNow(), secretAdvance: (m: number) => secretAdvance(m), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
 }

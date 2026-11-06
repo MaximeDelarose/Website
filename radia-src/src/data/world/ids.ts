@@ -105,6 +105,7 @@ export const CLOTH_SLOTS = {
   'mo-full': 'acc', 'mo-thin': 'acc', 'mo-cupid': 'acc', 'mo-wide': 'acc', 'mo-closed': 'acc',
   'el-wing': 'acc', 'el-soft': 'acc', 'el-none': 'acc', 'el-bold': 'acc',
   'es-rose': 'acc', 'es-lavender': 'acc', 'es-gold': 'acc', 'es-bronze': 'acc', 'es-smoky': 'acc', 'es-green': 'acc', 'es-blue': 'acc',
+  'nv-nude': 'acc', 'nv-pink': 'acc', 'nv-red': 'acc', 'nv-wine': 'acc', 'nv-french': 'acc',
   'br-promise': 'acc', 'ac-chain-gold': 'acc', 'ac-choker': 'acc', 'ac-pendant': 'acc',
   // cadeau unique et légendaire (jamais en vente, ni butin, ni récompense : voir src/events/necklace)
   'ac-eclat': 'acc',
@@ -113,8 +114,8 @@ export const CLOTH_SLOTS = {
 export type ClothId = keyof typeof CLOTH_SLOTS;
 
 /** Les accessoires sont rangés par famille : un seul objet par famille à la fois. */
-export type AccGroup = 'head' | 'glasses' | 'ears' | 'lips' | 'neck' | 'wrist' | 'eyes' | 'mouth' | 'liner' | 'shadow';
-export const ACC_GROUP_NAMES: Record<AccGroup, string> = { head: 'Cheveux & foulards', glasses: 'Lunettes', ears: 'Boucles d\'oreilles', lips: 'Rouge à lèvres', neck: 'Bijoux', wrist: 'Bracelets', eyes: 'Yeux', mouth: 'Bouche', liner: 'Eye-liner', shadow: 'Fards à paupières' };
+export type AccGroup = 'head' | 'glasses' | 'ears' | 'lips' | 'neck' | 'wrist' | 'eyes' | 'mouth' | 'liner' | 'shadow' | 'nails';
+export const ACC_GROUP_NAMES: Record<AccGroup, string> = { head: 'Cheveux & foulards', glasses: 'Lunettes', ears: 'Boucles d\'oreilles', lips: 'Rouge à lèvres', neck: 'Bijoux', wrist: 'Bracelets', eyes: 'Yeux', mouth: 'Bouche', liner: 'Eye-liner', shadow: 'Fards à paupières', nails: 'Vernis à ongles' };
 export const accGroup = (id: string): AccGroup | null => {
   if (id.startsWith('hd-')) return 'head';
   if (id.startsWith('gl-') || id === 'ac-sunglasses') return 'glasses';
@@ -125,9 +126,15 @@ export const accGroup = (id: string): AccGroup | null => {
   if (id.startsWith('mo-')) return 'mouth';
   if (id.startsWith('el-')) return 'liner';
   if (id.startsWith('es-')) return 'shadow';
+  if (id.startsWith('nv-')) return 'nails';
   if (id === 'ac-scarf' || id === 'ac-pearls' || id.startsWith('ac-')) return 'neck';
   return null;
 };
+/**
+ * Objets RETIRÉS du dressing : ils modifiaient la structure du visage (yeux, bouche) ou n'avaient plus d'effet sur la tête peinte (eye-liner
+ * « doux » / « sans » / « ailé » : le tracé de l'illustration est la référence). Ils restent dans l'inventaire (rien n'est perdu) mais ne s'équipent plus.
+ */
+export const isRetiredFaceItem = (id: string): boolean => id.startsWith('ey-') || id.startsWith('mo-') || id === 'el-wing' || id === 'el-soft' || id === 'el-none';
 /** Couleur des yeux (iris). La marque pigmentée dans l'œil de Radia reste toujours là. */
 export const EYE_COLOR: Record<string, string> = {
   'ey-brown': '#5A3520', 'ey-hazel': '#8A6A3A', 'ey-honey': '#C08A38', 'ey-green': '#4E8F6A', 'ey-blue': '#6C8FAF', 'ey-violet': '#8A6CC0', 'ey-black': '#2A1A14',
@@ -138,6 +145,12 @@ export type LinerStyle = 'wing' | 'soft' | 'none' | 'bold';
 export const LINER_STYLE: Record<string, LinerStyle> = { 'el-wing': 'wing', 'el-soft': 'soft', 'el-none': 'none', 'el-bold': 'bold' };
 export const SHADOW_COLOR: Record<string, string> = {
   'es-rose': '#F08FB4', 'es-lavender': '#B9A5E8', 'es-gold': '#E8C168', 'es-bronze': '#B9774A', 'es-smoky': '#5B4A66', 'es-green': '#7FC48A', 'es-blue': '#7FA8E8',
+};
+/** Vernis à ongles (optionnel : sans objet porté, pas de vernis). `french` : base nude + bout des ongles blanc. */
+export interface NailStyle { color: string; tip?: string }
+export const NAIL_STYLE: Record<string, NailStyle> = {
+  'nv-nude': { color: '#E6C3AE' }, 'nv-pink': { color: '#F6BFD0' }, 'nv-red': { color: '#C8202F' }, 'nv-wine': { color: '#6E1530' },
+  'nv-french': { color: '#F1D3C6', tip: '#FFFFFF' },
 };
 /** Couleur de chaque rouge à lèvres (utilisée par l'avatar). */
 export const LIP_COLOR: Record<string, string> = {

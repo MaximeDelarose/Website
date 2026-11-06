@@ -10,8 +10,8 @@ import type { EventsState } from '../events/types';
 import type { OrderState, RunState } from '../game/merge/types';
 import { capLocks, validLock } from '../game/merge/locks';
 import { COLLECTION_IDS, GENERATORS, collMax, type ItemColl, type ItemRef } from '../data/items';
-import { defaultFace, sanitizeFace, upgradeUntouchedFace, type FaceCustom } from '../data/world/face';
-import { DEFAULT_LOOK, STARTER_CLOTHES, KID_IDS, ROOM_IDS, type Look, type KidId, type RoomId } from '../data/world/ids';
+import { defaultFace, sanitizeFace, sanitizeFaceRaw, upgradeUntouchedFace, hasCustomStructure, type FaceCustom } from '../data/world/face';
+import { DEFAULT_LOOK, isRetiredFaceItem, STARTER_CLOTHES, KID_IDS, ROOM_IDS, type Look, type KidId, type RoomId } from '../data/world/ids';
 
 export const SAVE_VERSION = 5;
 
@@ -122,6 +122,8 @@ export interface World {
     hairOwned: string[];
     /** « Personnaliser Radia » : visage actuel (peau, formes, yeux, sourcils, nez, bouche, cheveux, voile, maquillage). */
     face: FaceCustom;
+    /** Copie de l'ancien visage personnalisé (avant le visage canonique unique) : conservée pour pouvoir revenir en arrière, jamais utilisée pour le dessin. */
+    legacyFace?: FaceCustom | null;
     /** Six emplacements de visages enregistrés. */
     faces: ({ name: string; face: FaceCustom } | null)[];
   };
@@ -240,7 +242,7 @@ export function defaultSave(): SaveData {
     economy: defaultEconomy(),
     cosmetics: { tiles: 'classic', fx: 'classic', owned: ['classic'] },
     decor: [],
-    seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'],
+    seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'],
     world: defaultWorld(),
     events: defaultEvents(),
     fun: defaultFun(),
@@ -497,7 +499,7 @@ function sanitizeLook(v: unknown): Look {
   return {
     hair: typeof v.hair === 'string' ? (v.hair as Look['hair']) : d.hair,
     top: sl(v.top), bottom: sl(v.bottom), dress: sl(v.dress), jacket: sl(v.jacket), shoes: sl(v.shoes), bag: sl(v.bag),
-    acc: strArr(v.acc) as Look['acc'], crown: sl(v.crown),
+    acc: (strArr(v.acc) as Look['acc']).filter((a) => !isRetiredFaceItem(a)), crown: sl(v.crown),
   };
 }
 
@@ -537,7 +539,11 @@ export function sanitizeWorld(raw: unknown): World {
       return isObj(l) ? { name: str(l.name, `Look ${i + 1}`).slice(0, 24), look: sanitizeLook(l.look) } : null;
     });
     d.wardrobe.hairOwned = [...new Set(['hair-loose', 'hair-wavy', ...strArr(w.wardrobe.hairOwned)])];
-    d.wardrobe.face = upgradeUntouchedFace(sanitizeFace(w.wardrobe.face));
+    // visage canonique unique : yeux, bouche, forme, peau… ramenés à la base ; l'ancien réglage est gardé en copie (retour en arrière possible)
+    const rawFace = sanitizeFaceRaw(w.wardrobe.face);
+    d.wardrobe.face = sanitizeFace(upgradeUntouchedFace(rawFace));
+    const prevLegacy = w.wardrobe.legacyFace;
+    d.wardrobe.legacyFace = isObj(prevLegacy) ? sanitizeFaceRaw(prevLegacy) : isObj(w.wardrobe.face) && hasCustomStructure(rawFace) ? rawFace : null;
     const fs = Array.isArray(w.wardrobe.faces) ? w.wardrobe.faces : [];
     d.wardrobe.faces = [0, 1, 2, 3, 4, 5].map((i) => { const f = fs[i]; return isObj(f) ? { name: str(f.name, 'Mon visage').slice(0, 24) || 'Mon visage', face: sanitizeFace(f.face) } : null; });
   }

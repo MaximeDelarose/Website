@@ -25,7 +25,8 @@ import { goals, secondaryView, treasureView, pendingChests, genLevel, generatorI
 import { pickReaction } from '../../game/fx/reactions';
 import { pickLine } from '../../data/augusteTone';
 import { augusteSays } from '../components/augusteSays';
-import { notify } from '../notify';
+import { notify, recordNotice } from '../notify';
+import { isBoardBusy, isComboBusy, onComboEnd, onBoardBusyChange } from '../../game/fx/comboState';
 import { openCustomerSheet, showThanks } from './customerSheet';
 import { customerPortraitUrl } from '../../game/art/customers';
 import { customerById } from '../../data/customers';
@@ -126,7 +127,19 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
   let lastFeedAt = 0;
 
   // ---------------------------------------------------------------- bulles d'information
+  // PENDANT UN COMBO : les gains et annonces (« Drop : … », « Nouveau : … ») sont mis de côté puis résumés en UNE seule pastille à la fin de la chaîne ;
+  // rien n'apparaît sur la voie du bas tant que les fusions s'enchaînent. Les petites infos demandées par un toucher (kind « info ») restent immédiates.
+  const held: { text: string; o: FeedOpts }[] = [];
+  const flushHeld = (): void => {
+    if (!alive || !held.length || isBoardBusy()) return;
+    const items = held.splice(0, held.length);
+    if (items.length === 1) { feed(items[0].text, items[0].o); return; }
+    const head = items.slice(0, 2).map((i) => i.text.replace(/^(Drop|Nouveau)\s*:\s*/i, '')).join(' · ');
+    feed(`${items.length} récompenses · ${head}${items.length > 2 ? ' …' : ''}`, { kind: 'good', ms: 3400 });
+  };
   const feed: EndlessEnv['feed'] = (text, o = {}) => {
+    recordNotice(text); // historique des annonces (consultable)
+    if (isComboBusy() && o.kind !== 'info') { if (!held.some((x) => x.text === text)) held.push({ text, o }); return; }
     const now = Date.now();
     if (text === lastFeed && now - lastFeedAt < 900) return;
     lastFeed = text;
@@ -176,6 +189,8 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     if (!wishes.length || wishTimer) return;
     wishTimer = window.setTimeout(() => {
       wishTimer = undefined;
+      // pas de bulle d'Auguste PENDANT un combo ou un glissement : la réaction retenue est dite une fois la chaîne terminée
+      if (isBoardBusy()) return;
       const best = bestReaction(wishes);
       wishes = [];
       if (!alive || !best) return;
@@ -199,6 +214,13 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
       });
     }, 1500);
   }
+
+  const offEnd = onComboEnd(() => { flushHeld(); });
+  const offBusy = onBoardBusyChange(() => {
+    if (!isBoardBusy()) { flushHeld(); if (wishes.length) flushWishes(); return; }
+    // un combo démarre : ce qui s'affichait juste avant (pastille, bulle d'Auguste) s'efface tout de suite, pour ne rien laisser traîner sur la voie du bas
+    if (isComboBusy()) feedEl.parentElement?.querySelectorAll('.en-pill, .en-aug').forEach((e) => { e.classList.add('out'); window.setTimeout(() => e.remove(), 250); });
+  });
 
   // ---------------------------------------------------------------- commandes
   const chip = (kind: RewardKind, n: number) => {
@@ -605,6 +627,7 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     openChest: (force) => openChestFlow(env, force),
     destroy() {
       alive = false;
+      offEnd(); offBusy();
       window.clearTimeout(wishTimer);
       layer.remove();
       selEl.remove();

@@ -20,6 +20,8 @@ const LOADERS: Record<ActivityId, () => Promise<{ default: Activity }>> = {
   photoShoot: () => import('./activities/photoShoot'),
   braceletReveal: () => import('./activities/braceletReveal'),
   necklaceNight: () => import('./necklace/scene'),
+  familyPick: () => import('./activities/familyPick'),
+  arrangeCare: () => import('./activities/arrangeCare'),
 };
 
 export async function loadActivity(id: ActivityId): Promise<Activity> {
