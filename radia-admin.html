@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="theme-color" content="#f6e9f4">
+  <meta name="radia-admin-version" content="2026-11-06-b">
+  <meta http-equiv="Cache-Control" content="no-cache">
   <title>RADIA · Tableau de bord privé</title>
   <style>
     :root { --bg:#f6e9f4; --card:#ffffff; --ink:#3d2b45; --soft:#7c6a86; --rose:#e8558f; --rose2:#ffd6e6; --line:#ecd9ea; --ok:#3fae72; --warn:#c0842b; }
@@ -34,26 +36,67 @@
 <main>
   <h1>RADIA ♡ · Tableau de bord privé</h1>
   <p class="sub" id="sub">Statistiques de jeu partagées avec le consentement de la joueuse.</p>
-  <div id="app"><div class="card">Chargement…</div></div>
+  <div id="app"><div class="card" id="boot"><p id="boot-msg">Chargement…</p><p class="note" id="boot-step">Démarrage de la page</p></div></div>
 </main>
-<script src="js/data.js?v=20261103re4"></script>
-<script src="js/auth.js?v=20261103re4"></script>
+<script src="js/vendor/supabase-2.45.4.min.js"></script>
 <script>
 (function () {
   "use strict";
+  var VERSION = "2026-11-06-b";
+  var CFG = { url: "https://euxlmipqzmvnzzyalyfn.supabase.co", key: "sb_publishable_yryevkEb0hvSSZTdTQN0xA_R1NjJsfd" }; // adresse et clé PUBLIQUES du site (déjà dans js/data.js)
+  var TOKEN_KEY = "sb-euxlmipqzmvnzzyalyfn-auth-token"; // même clé que le reste du site : la session Google déjà ouverte est réutilisée
   var app = document.getElementById("app");
   var TZ = "Europe/Paris";
+  var steps = [], t0 = Date.now();
+  function note(m) { steps.push(((Date.now() - t0) / 1000).toFixed(1) + " s · " + m); var s = document.getElementById("boot-step"); if (s) s.textContent = m; }
   function el(tag, attrs) {
     var e = document.createElement(tag);
     if (attrs) for (var k in attrs) { if (k === "text") e.textContent = attrs[k]; else if (k === "class") e.className = attrs[k]; else e.setAttribute(k, attrs[k]); }
-    for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); }
+    for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; if (Array.isArray(c)) { c.forEach(function (x) { if (x) e.appendChild(x); }); continue; } e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); }
     return e;
+  }
+  function show() { while (app.firstChild) app.removeChild(app.firstChild); for (var i = 0; i < arguments.length; i++) { var c = arguments[i]; if (Array.isArray(c)) c.forEach(function (x) { app.appendChild(x); }); else if (c) app.appendChild(c); } }
+  function withTimeout(p, ms, label) {
+    return new Promise(function (ok, ko) {
+      var done = false; var t = setTimeout(function () { if (!done) { done = true; var e = new Error("timeout:" + label); e.timeout = true; ko(e); } }, ms);
+      Promise.resolve(p).then(function (v) { if (!done) { done = true; clearTimeout(t); ok(v); } }, function (e) { if (!done) { done = true; clearTimeout(t); ko(e); } });
+    });
   }
   function fmtDur(s) { s = Math.max(0, Math.round(s || 0)); if (s < 60) return s + " s"; var m = Math.round(s / 60); if (m < 60) return m + " min"; return Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0"); }
   function fmtDate(iso) { if (!iso) return "—"; var d = new Date(iso); if (isNaN(d)) return "—"; return d.toLocaleString("fr-FR", { timeZone: TZ, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); }
   function ago(iso, now) { if (!iso) return ""; var s = Math.max(0, (new Date(now) - new Date(iso)) / 1000); if (s < 90) return "à l’instant"; var m = Math.round(s / 60); if (m < 60) return "il y a " + m + " min"; var h = Math.round(m / 60); if (h < 36) return "il y a " + h + " h"; return "il y a " + Math.round(h / 24) + " j"; }
   function state(x) { if (x.live) return { t: "en cours", c: "ok" }; if (x.ended_at && (x.end_reason === "closed" || x.end_reason === "background")) return { t: "terminée", c: "" }; return { t: "fin estimée", c: "off" }; }
   var PLAT = { pwa: "Application installée", safari: "Safari (navigateur)", other: "Autre navigateur" };
+
+  // ---------- client Supabase : sans verrou Web Locks (blocages connus sur Safari iOS), sans rafraîchissement en arrière-plan
+  var client = null;
+  function getClient() {
+    if (client) return client;
+    if (!window.supabase || !window.supabase.createClient) throw new Error("lib");
+    client = window.supabase.createClient(CFG.url, CFG.key, { auth: {
+      persistSession: true, autoRefreshToken: false, detectSessionInUrl: false, flowType: "pkce", storageKey: TOKEN_KEY,
+      lock: function (name, timeout, fn) { return fn(); }
+    } });
+    return client;
+  }
+
+  function diag() {
+    var d = el("details", null, el("summary", { text: "Détails techniques" }), el("pre", { style: "white-space:pre-wrap;font-size:12px;color:var(--soft);margin:6px 0 0", text: "Version de la page : " + VERSION + "\nNavigateur : " + navigator.userAgent + "\nStockage local : " + storageState() + "\n\n" + steps.join("\n") }));
+    return d;
+  }
+  function storageState() { try { localStorage.setItem("__t", "1"); localStorage.removeItem("__t"); return "disponible" + (localStorage.getItem(TOKEN_KEY) ? ", session enregistrée" : ", aucune session"); } catch (e) { return "INDISPONIBLE (navigation privée ou stockage bloqué)"; } }
+  function btn(label, fn, sec) { var b = el("button", { class: sec ? "sec small" : "", text: label }); b.onclick = fn; return b; }
+  function problem(title, text, extra) { show(el("div", { class: "card" }, el("p", { class: "err", text: title }), el("p", { text: text }), el("div", { class: "row" }, [btn("Réessayer", boot)].concat(extra || [])), diag())); }
+
+  function signIn() {
+    note("Ouverture de la connexion Google…");
+    var c; try { c = getClient(); } catch (e) { return problem("Impossible de charger la bibliothèque de connexion.", "Vérifie ta connexion internet puis réessaie."); }
+    withTimeout(c.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname } }), 15000, "oauth").catch(function (e) { problem("La connexion Google n’a pas pu démarrer.", e.timeout ? "Le service met trop de temps à répondre. Réessaie dans un instant." : "Erreur : " + (e && e.message || e)); });
+  }
+  function loginCard(msg) {
+    show(el("div", { class: "card" }, el("p", { text: msg || "Espace réservé au créateur du jeu." }), btn("Se connecter avec Google", signIn), diag()));
+  }
+  function signOutBtn() { return btn("Se déconnecter", function () { try { getClient().auth.signOut({ scope: "local" }); } catch (e) { /* ignore */ } try { localStorage.removeItem(TOKEN_KEY); } catch (e) { /* ignore */ } loginCard("Tu es déconnecté."); }, true); }
 
   function kpi(label, value, extra, wide) { return el("div", { class: "kpi" + (wide ? " wide" : "") }, el("b", { text: value }), el("span", { text: label + (extra ? " · " + extra : "") })); }
 
@@ -80,36 +123,83 @@
     var table = el("table", null, el("thead", null, el("tr", null, el("th", { text: "Début" }), el("th", { text: "Actif" }), el("th", { text: "Fin" }))), el("tbody", null, rows.length ? rows : [el("tr", null, el("td", { text: "Aucune session", colspan: "3" }))]));
     var det = el("details", null, el("summary", { text: "Historique des sessions (30 dernières)" }), table);
     var actions = el("div", { class: "row", style: "margin-top:12px" },
-      (function () { var b = el("button", { class: "sec small", text: "Renommer" }); b.onclick = function () { var n = prompt("Nom de cet appareil (ex. « iPhone de Radia »)", d.label || ""); if (n === null) return; SiteAuth.rpc("radia_stats_admin_label", { p_device: d.id, p_label: n }).then(reload, fail); }; return b; })(),
-      (function () { var b = el("button", { class: "sec small", text: "Supprimer ses données" }); b.onclick = function () { if (!confirm("Supprimer définitivement toutes les statistiques de cet appareil ?")) return; SiteAuth.client().then(function (c) { return c.auth.getSession(); }).then(function (r) { var t = r && r.data && r.data.session && r.data.session.access_token; return fetch(window.SITE.supabase.url + "/functions/v1/radia-push", { method: "POST", headers: { "Content-Type": "application/json", apikey: window.SITE.supabase.key, Authorization: "Bearer " + t }, body: JSON.stringify({ action: "stats-admin-delete", device: d.id }) }); }).then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error || "delete"); reload(); }).catch(fail); }; return b; })());
+      (function () { var b = el("button", { class: "sec small", text: "Renommer" }); b.onclick = function () { var n = prompt("Nom de cet appareil (ex. « iPhone de Radia »)", d.label || ""); if (n === null) return; window.__labelDevice(d.id, n, reload); }; return b; })(),
+      (function () { var b = el("button", { class: "sec small", text: "Supprimer ses données" }); b.onclick = function () { if (!confirm("Supprimer définitivement toutes les statistiques de cet appareil ?")) return; window.__deleteDevice(d.id, reload); }; return b; })());
     var meta = el("p", { class: "note", text: PLAT[d.platform] + " · consentement le " + fmtDate(d.consent_at) + (paused ? " · désactivé le " + fmtDate(d.paused_at) : "") + " · fuseau " + d.tz });
     return el("section", { class: "card" }, head, meta, grid, el("b", { text: "14 derniers jours" }), bars, lab, det, actions);
   }
 
-  function fail(e) { app.replaceChildren(el("div", { class: "card" }, el("p", { class: "err", text: (e && e.message === "not_admin") ? "Accès refusé : ce compte n’est pas autorisé à consulter ces statistiques." : "Impossible de charger les données pour l’instant. Réessaie dans un moment." }), signOutBtn())); }
-  function signOutBtn() { var b = el("button", { class: "sec small", text: "Se déconnecter" }); b.onclick = function () { SiteAuth.signOut().then(function () { location.reload(); }); }; return b; }
 
-  var timer = 0;
-  function load() {
-    SiteAuth.rpc("radia_stats_admin").then(function (data) {
-      var now = data.now; var list = data.devices || [];
-      var out = [];
-      if (!list.length) out.push(el("div", { class: "card" }, el("p", { text: "Aucune joueuse n’a encore accepté de partager ses statistiques." }), el("p", { class: "note", text: "Rien n’est enregistré tant que Radia n’a pas accepté dans RADIA → Réglages → Statistiques de jeu (ou via l’invitation affichée une seule fois)." })));
-      list.forEach(function (d) { out.push(deviceCard(d, now, load)); });
-      var bar = el("div", { class: "row" }, (function () { var b = el("button", { class: "small", text: "Actualiser" }); b.onclick = load; return b; })(), signOutBtn());
-      var r = data.retention || {};
-      out.push(bar, el("p", { class: "note", text: "Le temps de jeu est une ESTIMATION de l’activité réelle (jeu ouvert et écran touché dans la dernière minute) ; l’heure d’une session « fin estimée » est la dernière activité connue : sur iPhone, la fermeture brutale d’une application n’est pas détectable. Conservation : détail des sessions " + (r.sessions_days || 90) + " j, totaux par jour " + (r.days_days || 400) + " j, appareil inactif " + (r.idle_device_days || 180) + " j. Heures affichées en Europe/Paris." }));
-      app.replaceChildren.apply(app, out);
-      document.getElementById("sub").textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }) + " — statistiques partagées avec le consentement de la joueuse.";
-      clearTimeout(timer); timer = setTimeout(function () { if (!document.hidden) load(); else timer = setTimeout(load, 60000); }, 60000);
-    }, fail);
+  function load(c) {
+    note("Chargement des statistiques…");
+    return withTimeout(c.rpc("radia_stats_admin"), 15000, "stats").then(function (res) {
+      if (res.error) { var m = res.error.message || ""; if (/not_admin/.test(m) || res.error.code === "P0001" || res.error.code === "42501") { var e = new Error("not_admin"); e.denied = true; throw e; } var e2 = new Error(m || "erreur"); e2.status = res.status; throw e2; }
+      render(res.data, c);
+    });
   }
+  function render(data, c) {
+    var now = data.now; var list = data.devices || [];
+    var out = [];
+    if (!list.length) out.push(el("div", { class: "card" }, el("p", { text: "Aucune donnée disponible : aucune joueuse n’a encore accepté de partager ses statistiques." }), el("p", { class: "note", text: "Rien n’est enregistré tant que Radia n’a pas accepté dans RADIA → Réglages → Statistiques de jeu ♡ (ou via l’invitation affichée une seule fois)." })));
+    list.forEach(function (d) { out.push(deviceCard(d, now, function () { boot(); })); });
+    var r = data.retention || {};
+    out.push(el("div", { class: "row" }, [btn("Actualiser", boot), signOutBtn()]));
+    out.push(el("p", { class: "note", text: "Le temps de jeu est une ESTIMATION de l’activité réelle (jeu ouvert et écran touché dans la dernière minute) ; l’heure d’une session « fin estimée » est la dernière activité connue : sur iPhone, la fermeture brutale d’une application n’est pas détectable. Conservation : détail des sessions " + (r.sessions_days || 90) + " j, totaux par jour " + (r.days_days || 400) + " j, appareil inactif " + (r.idle_device_days || 180) + " j. Heures affichées en Europe/Paris. Page " + VERSION + "." }));
+    show(out);
+    document.getElementById("sub").textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }) + " — statistiques partagées avec le consentement de la joueuse.";
+  }
+  function deleteDevice(id, then) {
+    return getClient().auth.getSession().then(function (r) { var t = r && r.data && r.data.session && r.data.session.access_token; return fetch(CFG.url + "/functions/v1/radia-push", { method: "POST", headers: { "Content-Type": "application/json", apikey: CFG.key, Authorization: "Bearer " + t }, body: JSON.stringify({ action: "stats-admin-delete", device: id }) }); }).then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error || "delete"); then(); }).catch(function (e) { problem("Suppression impossible pour l’instant.", String(e && e.message || e)); });
+  }
+  window.__deleteDevice = deleteDevice;
+  function labelDevice(id, n, then) { return getClient().rpc("radia_stats_admin_label", { p_device: id, p_label: n }).then(then, function (e) { problem("Renommage impossible.", String(e && e.message || e)); }); }
+  window.__labelDevice = labelDevice;
 
-  function showLogin() {
-    var b = el("button", { text: "Se connecter avec Google" }); b.onclick = function () { SiteAuth.signIn(); };
-    app.replaceChildren(el("div", { class: "card" }, el("p", { text: "Espace réservé au créateur du jeu." }), b));
+  var running = 0;
+  function boot() {
+    var my = ++running;
+    show(el("div", { class: "card", id: "boot" }, el("p", { id: "boot-msg", text: "Chargement…" }), el("p", { class: "note", id: "boot-step", text: "Démarrage" })));
+    // filet de sécurité : jamais plus de 20 s sur « Chargement… »
+    var guard = setTimeout(function () { if (my === running) problem("Le chargement prend trop de temps.", "La connexion ou le service ne répond pas. Réessaie, ou reconnecte-toi.", [btn("Se connecter avec Google", signIn, true)]); }, 20000);
+    var done = function () { clearTimeout(guard); };
+    var c;
+    try { c = getClient(); } catch (e) { done(); return problem("La bibliothèque de connexion n’a pas pu se charger.", "Vérifie ta connexion internet (ou désactive un bloqueur de contenu) puis réessaie."); }
+    var q = new URLSearchParams(location.search);
+    var step;
+    if (q.get("error") || q.get("error_description")) {
+      step = Promise.resolve({ oauthError: q.get("error_description") || q.get("error") });
+      try { history.replaceState(null, "", location.pathname); } catch (e) { /* ignore */ }
+    } else if (q.get("code")) {
+      // retour de Google : la bibliothèque échange elle-même le code à son initialisation (un 2e échange manuel le ferait échouer : le code est à usage unique)
+      note("Retour de Google : ouverture de la session…");
+      step = Promise.resolve({ fromCode: true });
+    } else step = Promise.resolve({});
+    step.then(function (o) {
+      if (o.oauthError) { done(); return loginCard("La connexion Google a échoué : " + o.oauthError); }
+      note("Recherche de la session…");
+      var had = false; try { had = !!localStorage.getItem(TOKEN_KEY); } catch (e2) { /* ignore */ }
+      return withTimeout(c.auth.getSession(), 10000, "session").then(function (r) {
+        var s = r && r.data && r.data.session;
+        if (o.fromCode) { try { history.replaceState(null, "", location.pathname); } catch (e3) { /* ignore */ } }
+        if (!s) { done(); return loginCard(o.fromCode ? "La connexion n’a pas pu être terminée" + (r && r.error ? " (" + String(r.error.message || r.error).slice(0, 80) + ")" : "") + ". Reconnecte-toi avec Google." : had ? "Ta session précédente a expiré : reconnecte-toi avec Google." : undefined); }
+        if (s.expires_at && s.expires_at * 1000 < Date.now() + 30000) {
+          note("Session expirée : renouvellement…");
+          return withTimeout(c.auth.refreshSession(), 12000, "refresh").then(function (rr) { if (!rr || rr.error || !rr.data || !rr.data.session) { done(); return loginCard("Ta session a expiré : reconnecte-toi."); } return load(c).then(done); });
+        }
+        return load(c).then(done);
+      });
+    }).catch(function (e) {
+      if (my !== running) return; done();
+      var msg = String(e && e.message || e);
+      if (e && e.denied) return problem("Accès refusé.", "Ce compte Google n’est pas autorisé à consulter ces statistiques (réservé au créateur).", [signOutBtn()]);
+      if (e && e.timeout) return problem("Le service ne répond pas.", "Étape : " + msg.replace("timeout:", "") + ". Vérifie ta connexion puis réessaie.");
+      if (/code verifier|pkce|invalid_grant|Auth session missing|refresh/i.test(msg)) return loginCard("La connexion n’a pas pu être terminée (" + msg.slice(0, 80) + "). Reconnecte-toi.");
+      if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return problem("Pas de connexion au serveur.", "Vérifie ta connexion internet puis réessaie.");
+      problem("Impossible de charger les données.", msg.slice(0, 160));
+    });
   }
-  SiteAuth.ready.then(function (s) { if (s && s.user) load(); else showLogin(); });
+  window.__adminBoot = boot;
+  boot();
 })();
 </script>
 </body>
