@@ -158,29 +158,29 @@
 
     /* ---------- écureuil ---------- */
     var SQ = [
-      "......oooo..........",
-      "....ooLLLOoo........",
-      "...oLLOOOOOOo.......",
-      "..oLOOOOOOOOOo......",
-      "..oOOODDDDOOOo..o...",
-      ".oOOODOOOODOOo.oLo..",
-      ".oOODOLLOOoDOooOOo..",
-      ".oDODOOOOOoOOoOOOOo.",
-      ".oDODDOOOoOOOOOOeOOo",
-      ".oDOODDDoOOOOOOOOOOo",
-      "..oDOOOooOOOOOOOOoo.",
-      "..oDDOOOOOOcccOOOo..",
-      "...oDDOOOOcccccOnno.",
-      "...oDDOOOcccccOOnno.",
-      "....oDDOOcccccOOoo..",
-      "....oDDOOOcccOOo....",
-      ".....ooOOOOOOOOo....",
-      "....oOOooOOOooOOo...",
-      "....oooo.oooo.ooo...",
+      "...ooooo.............",
+      "..oLLLLLoo...........",
+      ".oLLOOOOLLo..........",
+      "oLLOOOOOOLo..........",
+      "oLOOODDOOOo..o..o....",
+      "oOOODddDOOo.oLooLo...",
+      "oOOdo..dOOo.oOOOOo...",
+      ".odo...dOOo.oOOOOOo..",
+      "......oDOOooOOOOeOo..",
+      ".....oDOOOOOOOOOOcco.",
+      "....oDOOOOOOOOOcccco.",
+      "....oDDOOOOOOOcccoo..",
+      "...oDDOOOOOOOccoknno.",
+      "...oDDOOOOOOcccoknnno",
+      "...oDDOOOOOOcccoonno.",
+      "....oDDOOOOOOccoooo..",
+      "....oDDDOOOOOOOo.....",
+      ".....ooDDOOOOoOOo....",
+      "......oooooooooooo...",
     ];
-    var SQPAL = { o: "#4a2616", O: "#e8873a", L: "#f6b768", D: "#b85e2a", e: "#1e120a", n: "#7a4a24", c: "#fadeac" };
+    var SQPAL = { o: "#4a2313", d: "#8a3f20", D: "#bd5c25", O: "#e47f31", L: "#efab5c", c: "#e0c9a3", e: "#1e0e08", n: "#b37744", k: "#632e17" };
     var squirrelSprite = (function () {
-      var w = SQ[0].length, h = SQ.length, a = mk(w, h), b = mk(w, h);
+      var w = Math.max.apply(null, SQ.map(function (r) { return r.length; })), h = SQ.length, a = mk(w, h), b = mk(w, h);
       for (var y = 0; y < h; y++)
         for (var x = 0; x < w; x++) {
           var ch = SQ[y][x];

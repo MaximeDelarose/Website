@@ -191,7 +191,7 @@ canvas { image-rendering: pixelated; }
 }
 .header-inner { display: flex; align-items: center; gap: 16px; min-height: 68px; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: auto; }
-.brand img { width: 40px; height: 38px; }
+.brand img { width: 36px; height: 38px; }
 .brand-name { font-family: "Londrina", "Nunito", sans-serif; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; line-height: 1; }
 .brand-name span { color: var(--orange); }
 
@@ -393,7 +393,7 @@ canvas { image-rendering: pixelated; }
 .bio { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 48px; align-items: start; }
 @media (max-width: 760px) { .bio { grid-template-columns: 1fr; gap: 28px; } }
 .avatar { padding: 20px; text-align: center; }
-.avatar img { width: 160px; height: auto; display: block; margin: 8px auto 12px; }
+.avatar img { width: 144px; height: auto; display: block; margin: 8px auto 12px; }
 .avatar .pixel { font-size: 1.3rem; margin: 0; }
 .avatar p { color: var(--ink-soft); font-size: .95rem; margin: 0; }
 .bio-text { max-width: 66ch; }
@@ -458,7 +458,7 @@ canvas { image-rendering: pixelated; }
 .site-footer .link-dot { box-shadow: 3px 3px 0 rgba(0,0,0,.35); }
 .footer-small { font-size: .9rem; opacity: .8; margin: 0; }
 .footer-brand { display: flex; align-items: center; gap: 12px; }
-.footer-brand img { width: 40px; height: 38px; }
+.footer-brand img { width: 36px; height: 38px; }
 
 /* ---------- divers ---------- */
 .mushroom-divider { display: flex; justify-content: center; gap: 18px; padding: 8px 0; opacity: .9; }
