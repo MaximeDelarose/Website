@@ -1,5 +1,5 @@
 /* =========================================================================
-   Front des Âges — interface, boucle de jeu, caméra, réseau, menus, sauvegarde.
+   Age of Defense — interface, boucle de jeu, caméra, réseau, menus, sauvegarde.
    Moteur : ages-core.js · données : ages-data.js · dessin : ages-art.js · réseau : kingdice-net.js (KD_NET)
    Rôles : "solo" (tout en local), "host" (fait tourner la simulation pour 2), "guest" (affiche les instantanés).
    ========================================================================= */
@@ -477,7 +477,7 @@
   }
   var previews = {};
   function showMenu() {
-    var mode = menuState.mode, h = '<div class="ag-hero"><h2>Front des Âges</h2><p>Défends ta base de la Préhistoire jusqu\'au Futur : fais évoluer ta technologie, pose tes tourelles, tes pièges, tes casernes et tes avions sur des routes larges.</p></div>';
+    var mode = menuState.mode, h = '<div class="ag-hero"><h2>Age of Defense</h2><p>Défends ta base de la Préhistoire jusqu\'au Futur : fais évoluer ta technologie, pose tes tourelles, tes pièges, tes casernes et tes avions sur des routes larges.</p></div>';
     h += '<div class="ag-modes">' + ["solo", "coop", "versus"].map(function (m) { return '<button class="ag-mode' + (m === mode ? " on" : "") + '" data-mode="' + m + '"><b>' + { solo: "🛡 Solo", coop: "🤝 Coop en ligne", versus: "⚔ Versus en ligne" }[m] + "</b><small>" + { solo: "Seul contre les 40 manches", coop: "À deux sur la même carte", versus: "Envoie des troupes à l'autre joueur" }[m] + "</small></button>"; }).join("") + "</div>";
     h += '<div class="ag-maps">' + D.MAPS.map(function (m) { var best = save.best[m.id + (mode === "versus" ? "-vs" : "")]; return '<button class="ag-map' + (m.id === save.mapId ? " on" : "") + '" data-map="' + m.id + '"><img alt="" src="' + (previews[m.id] || (previews[m.id] = mapPreview(m))) + '"><b>' + m.name + "</b><small>" + m.desc + (best ? " · Record : manche " + best : "") + "</small></button>"; }).join("") + "</div>";
     h += '<div class="ag-row ag-diffs">' + D.DIFFS.map(function (d) { return '<button class="chip' + (d.id === save.diff ? " on" : "") + '" data-diff="' + d.id + '" aria-pressed="' + (d.id === save.diff) + '">' + d.name + "</button>"; }).join("") + "</div>";

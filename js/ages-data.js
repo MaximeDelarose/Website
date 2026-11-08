@@ -1,5 +1,5 @@
 /* =========================================================================
-   Front des Âges — données et équilibrage (aucun DOM).
+   Age of Defense — données et équilibrage (aucun DOM).
    Tout ce qui se règle est ici : âges, bâtiments (« lignées » à 5 formes),
    ennemis, vagues, cartes, envois de troupes (versus), améliorations hors partie.
    Chargé par ages-core.js (Node ou navigateur) : window.AGES_DATA / require().

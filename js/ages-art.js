@@ -1,5 +1,5 @@
 /* =========================================================================
-   Front des Âges — dessin : terrain peint (plateaux d'herbe bordés, route en contrebas),
+   Age of Defense — dessin : terrain peint (plateaux d'herbe bordés, route en contrebas),
    bâtiments à 5 formes, troupes, ennemis, projectiles, effets, décalcomanies de sang / brûlures.
    Tout est généré (aucune image). API : window.AGES_ART.
    ========================================================================= */

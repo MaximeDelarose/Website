@@ -50,7 +50,7 @@
     { id: "suika", title: "Suika", ico: "🍉" },
     { id: "dice", title: "Écureuil Dice", ico: "🎲" },
     { id: "king-dice", title: "King Dice", ico: "👑" },
-    { id: "ages", title: "Front des Âges", ico: "🏰" },
+    { id: "ages", title: "Age of Defense", ico: "🏰" },
     { id: "bagbound", title: "BAGBOUND", ico: "🎒" },
     { id: "ultimate", title: "Ultimate Écureuil", ico: "🏁" },
     { id: "arcane", title: "Arcane Tactics", ico: "🪄" },

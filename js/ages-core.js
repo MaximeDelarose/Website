@@ -1,5 +1,5 @@
 /* =========================================================================
-   Front des Âges — moteur de jeu (aucun DOM, testable dans Node).
+   Age of Defense — moteur de jeu (aucun DOM, testable dans Node).
      const C = require("./js/ages-core.js");
      const sim = C.createSim({ mode: "solo", mapId: "vallee" });
      C.command(sim, 0, { c: "build", line: "tour", tx: 8, ty: 7 }); C.step(sim, 1/30);

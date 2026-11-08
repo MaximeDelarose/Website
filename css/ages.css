@@ -1,4 +1,4 @@
-/* Front des Âges — interface (barres, cartes, menus). Palette bois sombre / parchemin. */
+/* Age of Defense — interface (barres, cartes, menus). Palette bois sombre / parchemin. */
 .ag-stage { background: #1c2a1c; --ag-bg: rgba(34, 24, 14, .92); --ag-line: #6e4c2a; --ag-ink: #fdf1d6; --ag-soft: #cdb98f; --ag-acc: #e8a02a; }
 .ag-stage .game-canvas { cursor: default; touch-action: none; }
 .ag-stage [hidden] { display: none !important; }
