@@ -548,14 +548,20 @@
   /* ---------- jeu à la une (borne de l'accueil) ---------- */
   var feat = $("[data-featured]");
   if (feat) {
-    var game = byId((SITE.featured || {}).id) || {};
+    var F = SITE.featured || {};
+    var game = byId(F.id) || F;          // projet de PROJECTS, ou jeu maison décrit dans SITE.featured
+    var onPage = !!game.page && !game.embed;
     $$("[data-featured-title]").forEach(function (el) { el.textContent = game.title || "Mon jeu"; });
     $$("[data-featured-text]").forEach(function (el) { el.textContent = game.short || ""; });
-    $$("[data-featured-link]").forEach(function (el) { if (game.url) el.href = game.url; else el.hidden = true; });
+    $$("[data-featured-link]").forEach(function (el) {
+      if (onPage && game.alt) { el.href = game.alt.href; el.textContent = game.alt.label; el.removeAttribute("target"); }
+      else if (game.url) el.href = game.url; else el.hidden = true;
+    });
+    if (onPage) $$("[data-featured-how]").forEach(function (el) { el.textContent = "Il se joue directement dans ton navigateur, au clavier, à la souris ou au doigt, sans rien installer."; });
 
     var lbEl = $("[data-featured-leaderboard]");
     if (lbEl && game.leaderboard && window.Leaderboard) {
-      lbEl.setAttribute("data-leaderboard", game.id);
+      lbEl.setAttribute("data-leaderboard", typeof game.leaderboard === "string" ? game.leaderboard : game.id);
       lbEl.setAttribute("data-title", "Classement " + game.title);
       window.Leaderboard.render(lbEl);
     }
@@ -565,17 +571,22 @@
     var cover = $(".screen-cover canvas", feat);
     if (cover && game.cover) {
       var img = document.createElement("img");
-      img.src = game.cover; img.alt = ""; img.className = "screen-img";
+      img.src = game.cover; img.alt = ""; img.className = "screen-img" + (onPage ? " is-pixel" : "");
       cover.replaceWith(img);
     } else if (cover && game.id) drawCover(cover, game);
 
     var play = $("[data-play]", feat);
     var note = $("[data-featured-note]", feat);
-    if (!game.embed) {
+    var fsBtn = $("[data-fullscreen]", feat);
+    if (onPage) {
+      play.textContent = "▶ Jouer";
+      if (fsBtn) fsBtn.hidden = true;     // le jeu a son propre plein écran
+    } else if (!game.embed) {
       play.textContent = game.url ? "Jouer sur itch.io ↗" : "Bientôt jouable ici";
       if (note) note.hidden = false;
     }
     play.addEventListener("click", function () {
+      if (onPage) { location.href = game.page; return; }
       if (!game.embed) { if (game.url) window.open(game.url, "_blank", "noopener"); return; }
       var iframe = makeFrame(game);
       var help = $("[data-featured-help]", feat);

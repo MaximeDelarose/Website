@@ -3304,3 +3304,8 @@ html.is-app, html.is-app body { overflow: hidden; overscroll-behavior: none; }
 .ad-link { color: var(--orange-dk); text-decoration: underline; padding: 0; }
 a.account-admin { text-decoration: none; }
 .ad-status:not(:empty) { background: var(--panel); padding: 6px 12px; box-shadow: 0 0 0 3px var(--line); width: max-content; max-width: 100%; }
+
+/* borne : l'image carrée d'un jeu maison reste centrée */
+.screen-img { object-position: 50% 40%; }
+[data-fullscreen][hidden] { display: none; }
+.screen-img.is-pixel { object-fit: contain; image-rendering: pixelated; background: #1f3a2b; filter: none; }
