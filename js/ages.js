@@ -33,7 +33,7 @@
     var top = el("div", "ag-top", "");
     top.innerHTML =
       '<div class="ag-stat ag-lives" title="Vies">❤ <b data-v="lives">20</b></div>' +
-      '<div class="ag-stat ag-gold" title="Or">🪙 <b data-v="gold">0</b></div>' +
+      '<div class="ag-stat ag-gold" title="Noisettes">🌰 <b data-v="gold">0</b></div>' +
       '<div class="ag-stat ag-wave" title="Manche">🌊 <b data-v="wave">0</b><small data-v="timer"></small></div>' +
       '<div class="ag-stat ag-age" data-v="age">Préhistoire</div>' +
       '<div class="ag-opp" data-v="opp" hidden></div>' +
@@ -215,7 +215,7 @@
     var h = G.hover; if (!G.place || !h || h.tx == null) return;
     var err = placementError(G.place, h.tx, h.ty);
     if (err) { toast(err, "bad"); sfx("err"); return; }
-    if (W().gold[G.me] < costOf(G.place)) { toast("Pas assez d'or", "bad"); sfx("err"); return; }
+    if (W().gold[G.me] < costOf(G.place)) { toast("Pas assez de noisettes", "bad"); sfx("err"); return; }
     doCmd({ c: "build", line: G.place, tx: h.tx, ty: h.ty }); sfx("build");
     if (!ptr.shift) cancelPlace();
   }
@@ -270,7 +270,7 @@
     return D.LINE_ORDER.filter(function (id) { return LINES[id].cat === G.tab; }).map(function (id) { return { line: id }; });
   }
   function pickItem(it) {
-    if (it.send) { var s = it.send; if (W().gold[G.me] < s.cost) { toast("Pas assez d'or", "bad"); sfx("err"); return; } doCmd({ c: "send", id: s.id }); sfx("wave"); return; }
+    if (it.send) { var s = it.send; if (W().gold[G.me] < s.cost) { toast("Pas assez de noisettes", "bad"); sfx("err"); return; } doCmd({ c: "send", id: s.id }); sfx("wave"); return; }
     var L = LINES[it.line], w = W();
     if (L.minAge > w.age) { toast("Débloqué à l'âge « " + AGES[L.minAge].name + " »", "bad"); return; }
     G.place = it.line; G.sel = 0; G.sig = "";
@@ -284,9 +284,9 @@
     if (sig === G.sig) return; G.sig = sig;
     ui.v.tabs.innerHTML = tabs.map(function (t) { return '<button class="ag-tab' + (t.id === G.tab ? " on" : "") + '" data-tab="' + t.id + '"><span>' + t.ico + "</span> " + t.name + "</button>"; }).join("");
     ui.v.cards.innerHTML = items.map(function (it, i) {
-      if (it.send) { var s = it.send; return '<button class="ag-card' + (mask[i] === "0" ? " poor" : "") + '" data-i="' + i + '"><i class="ag-ico">' + s.ico + '</i><b>' + s.name + " ×" + s.count + '</b><small>🪙' + s.cost + ' · +' + s.inc + '/manche</small></button>'; }
+      if (it.send) { var s = it.send; return '<button class="ag-card' + (mask[i] === "0" ? " poor" : "") + '" data-i="' + i + '"><i class="ag-ico">' + s.ico + '</i><b>' + s.name + " ×" + s.count + '</b><small>🌰' + s.cost + ' · +' + s.inc + '/manche</small></button>'; }
       var L = LINES[it.line], lock = mask[i] === "L";
-      return '<button class="ag-card' + (lock ? " lock" : mask[i] === "0" ? " poor" : "") + (G.place === it.line ? " on" : "") + '" data-i="' + i + '"><img class="ag-ico" alt="" src="' + ART.icon(it.line, lock ? 0 : w.age, 44) + '"><b>' + esc(L.name) + '</b><small>' + (lock ? "🔒 " + AGES[L.minAge].name : "🪙" + costOf(it.line)) + "</small></button>";
+      return '<button class="ag-card' + (lock ? " lock" : mask[i] === "0" ? " poor" : "") + (G.place === it.line ? " on" : "") + '" data-i="' + i + '"><img class="ag-ico" alt="" src="' + ART.icon(it.line, lock ? 0 : w.age, 44) + '"><b>' + esc(L.name) + '</b><small>' + (lock ? "🔒 " + AGES[L.minAge].name : "🌰" + costOf(it.line)) + "</small></button>";
     }).join("");
   }
   var cdrag = null, suppressClick = false;
@@ -348,7 +348,7 @@
     if (k === "garrison") lines.push("Les tireurs se postent au bord de la route.");
     var canTarget = !!(st && (k === "shoot" || k === "mortar" || k === "pulse" || k === "chain" || k === "garrison" || k === "heli"));
     ui.sel.innerHTML = '<img class="ag-ico" alt="" src="' + ART.icon(b.line, w.age, 44) + '"><div class="ag-sel-body"><b>' + esc(L.forms[w.age]) + ' <em>niv. ' + b.lvl + '</em></b><small>' + lines.join("<br>") + '</small></div><div class="ag-sel-btns">' +
-      (b.fixed ? "" : '<button data-a="up"' + (up && w.gold[G.me] >= up ? "" : " disabled") + ">" + (up ? "⬆ " + up + " 🪙" : "Niveau max") + "</button>") +
+      (b.fixed ? "" : '<button data-a="up"' + (up && w.gold[G.me] >= up ? "" : " disabled") + ">" + (up ? "⬆ " + up + " 🌰" : "Niveau max") + "</button>") +
       (canTarget ? '<button data-a="mode">🎯 ' + TARGET_NAMES[b.mode] + "</button>" : "") +
       '<button data-a="sell">💰 +' + Math.round(b.paid * D.SELL * (b.fixed ? 0.5 : 1)) + '</button><button data-a="close">✕</button></div>';
   }
@@ -374,7 +374,7 @@
     ui.v.age.style.background = AGES[w.age].col;
     var wb = ui.bar.querySelector(".ag-wave-btn"); if (G.mode !== "versus") { wb.querySelector("b").textContent = w.wave + 1; wb.classList.toggle("busy", !!w.active); wb.hidden = w.wave >= D.WIN_WAVE; }
     var ab = ui.bar.querySelector(".ag-age-btn"), next = AGES[w.age + 1];
-    if (next) { var c = C.ageCost(sim, w, me); ab.hidden = false; ab.classList.toggle("poor", w.gold[me] < c); setV("agebtn", next.name + " · " + fmt(c) + " 🪙"); ab.style.setProperty("--age", next.col); } else ab.hidden = true;
+    if (next) { var c = C.ageCost(sim, w, me); ab.hidden = false; ab.classList.toggle("poor", w.gold[me] < c); setV("agebtn", next.name + " · " + fmt(c) + " 🌰"); ab.style.setProperty("--age", next.col); } else ab.hidden = true;
     var au2 = ui.bar.querySelector('[data-act="auto"]'); au2.classList.toggle("on", !!w.auto);
     if (G.mode === "versus") {
       var o = G.role === "guest" ? w.opp : (function () { var ow = G.sim.worlds[1 - me]; return [ow.lives, ow.age, ow.wave, ow.queue.length + ow.enemies.length]; })();
@@ -413,7 +413,7 @@
       case "boom": sfx("boom"); break; case "die": sfx("die", 0.7); break; case "muzzle": sfx("shot"); break; case "level": break;
       case "age": sfx("age"); toast("Nouvel âge : " + AGES[w.age].name + " ! Vos défenses évoluent.", "good"); break;
       case "wave": sfx("wave"); if (G.mode === "versus") toast("Manche " + f[3], "info"); break;
-      case "clear": toast("Manche " + f[3] + " terminée · prime reçue 🪙", "good"); break;
+      case "clear": toast("Manche " + f[3] + " terminée · prime reçue 🌰", "good"); break;
       case "leak": sfx("leak"); break; case "zap": sfx("zap", 0.6); break; case "sent": toast("Troupes envoyées !", "good"); break;
     }
   }
@@ -451,7 +451,9 @@
       c.restore();
       var e = C.pathAt(p, p.len - 26, 0); c.save(); c.translate(e.x, e.y);
       c.fillStyle = "rgba(50,110,230,.22)"; c.beginPath(); c.arc(0, 0, map.hw * 0.95, 0, Math.PI * 2); c.fill(); c.strokeStyle = "rgba(90,150,255,.7)"; c.lineWidth = 2; c.setLineDash([6, 5]); c.stroke(); c.setLineDash([]);
-      c.fillStyle = "#3d7fe0"; c.strokeStyle = "#102a60"; c.lineWidth = 1.6; c.fillRect(-1.5, -22, 3, 24); c.beginPath(); c.moveTo(1.5, -22); c.lineTo(16, -17); c.lineTo(1.5, -12); c.closePath(); c.fill(); c.stroke();
+      c.strokeStyle = "#24160b"; c.lineWidth = 1.6; c.fillStyle = "#6a4a2a"; c.fillRect(-4, -4, 8, 14); c.strokeRect(-4, -4, 8, 14);
+      [[0, -16, 13, "#2f5d25"], [-9, -9, 9, "#3f7a30"], [9, -9, 9, "#468a35"], [0, -20, 7, "#5aa045"]].forEach(function (q) { c.beginPath(); c.arc(q[0], q[1], q[2], 0, Math.PI * 2); c.fillStyle = q[3]; c.fill(); c.stroke(); });
+      c.beginPath(); c.ellipse(11, 9, 3.4, 4.4, 0, 0, Math.PI * 2); c.fillStyle = "#c98a3a"; c.fill(); c.stroke(); c.fillStyle = "#7a4a1a"; c.fillRect(8.4, 4.8, 5.4, 2.6);
       c.restore();
     });
   }
@@ -511,7 +513,7 @@
   }
   var previews = {};
   function showMenu() {
-    var mode = menuState.mode, h = '<div class="ag-hero"><h2>Age of Defense</h2><p>Défends ta base de la Préhistoire jusqu\'au Futur : fais évoluer ta technologie, pose tes tourelles, tes pièges, tes casernes et tes avions sur des routes larges.</p></div>';
+    var mode = menuState.mode, h = '<div class="ag-hero"><h2>Age of Defense</h2><p>Les écureuils défendent le Grand Chêne de la Préhistoire jusqu\'au Futur : fais évoluer leur technologie, pose tourelles, pièges, casernes et avions sur des routes larges.</p></div>';
     h += '<div class="ag-modes">' + ["solo", "coop", "versus"].map(function (m) { return '<button class="ag-mode' + (m === mode ? " on" : "") + '" data-mode="' + m + '"><b>' + { solo: "🛡 Solo", coop: "🤝 Coop en ligne", versus: "⚔ Versus en ligne" }[m] + "</b><small>" + { solo: "Seul contre les 40 manches", coop: "À deux sur la même carte", versus: "Envoie des troupes à l'autre joueur" }[m] + "</small></button>"; }).join("") + "</div>";
     h += '<div class="ag-maps">' + D.MAPS.map(function (m) { var best = save.best[m.id + (mode === "versus" ? "-vs" : "")]; return '<button class="ag-map' + (m.id === save.mapId ? " on" : "") + '" data-map="' + m.id + '"><img alt="" src="' + (previews[m.id] || (previews[m.id] = mapPreview(m))) + '"><b>' + m.name + "</b><small>" + m.desc + (best ? " · Record : manche " + best : "") + "</small></button>"; }).join("") + "</div>";
     h += '<div class="ag-row ag-diffs">' + D.DIFFS.map(function (d) { return '<button class="chip' + (d.id === save.diff ? " on" : "") + '" data-diff="' + d.id + '" aria-pressed="' + (d.id === save.diff) + '">' + d.name + "</button>"; }).join("") + "</div>";
@@ -529,15 +531,15 @@
   }
   function showHelp() {
     openOverlay('<div class="ag-card-in ag-help"><h2>Comment jouer</h2><ul>' +
-      "<li><b>But :</b> empêche les ennemis d'atteindre la sortie bleue. Chaque ennemi qui passe te coûte des vies. 40 manches à tenir.</li>" +
-      "<li><b>Or :</b> gagne de l'or en éliminant des ennemis et à la fin de chaque manche.</li>" +
+      "<li><b>But :</b> empêche les bestioles d'atteindre le Grand Chêne (la sortie bleue). Chacune qui passe te coûte des vies. 40 manches à tenir.</li>" +
+      "<li><b>Noisettes 🌰 :</b> tu en gagnes en repoussant les bestioles et à la fin de chaque manche.</li>" +
       "<li><b>Tourelles :</b> pose-les sur l'herbe, au bord de la route. <b>Pièges</b> (mines, fosses) : sur la route elle-même.</li>" +
-      "<li><b>Troupes :</b> pose une <b>rampe d'accès</b> au bord de la route, puis une <b>caserne</b> ou des <b>lanciers</b> à moins de 7 cases : les soldats descendent par la rampe et bloquent la route. Touche la route pour déplacer leur point de ralliement. La <b>garnison</b> poste des tireurs au bord de la route.</li>" +
+      "<li><b>Troupes :</b> ce sont des écureuils ! Pose une <b>rampe d'accès</b> au bord de la route, puis une <b>caserne</b> ou des <b>lanciers</b> à moins de 7 cases : les soldats descendent par la rampe et bloquent la route. Touche la route pour déplacer leur point de ralliement. La <b>garnison</b> poste des tireurs au bord de la route.</li>" +
       "<li><b>Air :</b> la piste aérienne (avions) et l'héliport patrouillent autour d'un point que tu choisis.</li>" +
       "<li><b>Technologie :</b> le bouton 🔬 te fait passer à l'âge suivant (Préhistoire → Médiéval → Contemporain → Moderne → Futuriste). <b>Tous tes bâtiments évoluent tout seuls</b> et deviennent bien plus puissants.</li>" +
       "<li><b>Niveaux :</b> touche un bâtiment pour l'améliorer (3 niveaux), changer sa cible ou le vendre. La <b>bannière</b> renforce tout ce qui est proche.</li>" +
       "<li><b>Effets :</b> 🔥 brûlure (brûleur) · 🟢 colle (ralentit fort) · ❄ gel (immobilise) · ⚡ paralysie (choc, fosses) · le givre et les fosses ralentissent aussi.</li>" +
-      "<li><b>Coop :</b> deux joueurs sur la même carte, chacun son or. <b>Versus :</b> chacun sa route ; dépense de l'or pour envoyer des troupes chez l'adversaire (ça augmente aussi ton revenu à chaque manche). Le dernier debout gagne.</li>" +
+      "<li><b>Coop :</b> deux joueurs sur la même carte, chacune ses noisettes. <b>Versus :</b> chacun sa route ; dépense des noisettes pour envoyer des bestioles chez l'adversaire (ça augmente aussi ton revenu à chaque manche). Le dernier debout gagne.</li>" +
       "<li><b>Étoiles ⭐ :</b> gagnées à chaque partie, elles achètent des améliorations permanentes.</li>" +
       "<li><b>Commandes :</b> glisser = déplacer la carte, molette / pincement = zoom, <kbd>1</kbd>–<kbd>9</kbd> choisir, <kbd>Espace</kbd> lancer la manche, <kbd>U</kbd> améliorer, <kbd>A</kbd> âge suivant, <kbd>Suppr</kbd> vendre, <kbd>Échap</kbd> annuler.</li>" +
       '</ul><div class="ag-row"><button class="btn" data-go="menu">Retour</button></div></div>');

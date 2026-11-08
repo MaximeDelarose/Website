@@ -300,21 +300,25 @@
     var atk = u.atkT > 0 ? 3 : 0, big = (k === "def" && age >= 3);
     if (k === "def" && u.line === "barracks" && age === 3) { // tank
       rect(c, -9, -7, 18, 14, "#4f5d3f", OUT, 1.5); rect(c, -10, -9, 20, 3, "#2a2f26"); rect(c, -10, 6, 20, 3, "#2a2f26");
-      circ(c, -1, 0, 5, "#66794f", OUT, 1.4); rect(c, 3 - atk, -1.4, 12, 2.8, "#2a2f26", OUT, 1);
+      circ(c, -1, 0, 5, "#66794f", OUT, 1.4); circ(c, -1, 0, 3, "#d2762c", OUT, 1); poly(c, [-3, -2, -2, -5, 0, -2], "#d2762c", OUT, 0.8); poly(c, [-3, 2, -2, 5, 0, 2], "#d2762c", OUT, 0.8); rect(c, 3 - atk, -1.4, 12, 2.8, "#2a2f26", OUT, 1);
     } else if (k === "def" && u.line === "barracks" && age === 4) { // méca
-      rect(c, -7, -8, 14, 16, "#cfd6f2", OUT, 1.5); circ(c, 0, 0, 5, "#7a5cff", OUT, 1.3); circ(c, 1, 0, 2, "#58f0ff");
+      rect(c, -7, -8, 14, 16, "#cfd6f2", OUT, 1.5); circ(c, 0, 0, 5, "#d2762c", OUT, 1.3); poly(c, [-2, -3, -1, -6.5, 1, -3], "#d2762c", OUT, 0.8); poly(c, [-2, 3, -1, 6.5, 1, 3], "#d2762c", OUT, 0.8); circ(c, 1.5, 0, 2.2, "#58f0ff");
       rect(c, 4 - atk, -7, 10, 3, "#5b4fc9", OUT, 1); rect(c, 4 - atk, 4, 10, 3, "#5b4fc9", OUT, 1);
     } else {
-      var body = u.line === "lancers" ? "#2c8f6a" : k === "arch" ? "#3d8f4a" : TEAM;
-      var skin = "#e8bf94";
-      circ(c, 0, 0, 5.8, body, OUT, 1.4);
-      circ(c, 1.5, 0, 3.4, skin, OUT, 1);
+      var fur = u.line === "lancers" ? "#8a8f98" : k === "arch" ? "#b9b2a6" : "#d2762c", belly = "#f2d9b0";
+      // queue en panache derrière le corps
+      c.beginPath(); c.ellipse(-8, 0, 7.5, 4.6, Math.sin(t * 4 + u.id) * 0.25, 0, TAU); c.fillStyle = fur; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.3; c.stroke();
+      c.beginPath(); c.ellipse(-9, 0, 4, 2, 0, 0, TAU); c.fillStyle = belly; c.globalAlpha = 0.55; c.fill(); c.globalAlpha = 1;
+      circ(c, 0, 0, 5.8, fur, OUT, 1.4); circ(c, -0.5, 0, 3, belly);
+      circ(c, 4, 0, 3.8, fur, OUT, 1.2);
+      poly(c, [3, -3.4, 5.5, -7, 6.2, -2.6], fur, OUT, 1); poly(c, [3, 3.4, 5.5, 7, 6.2, 2.6], fur, OUT, 1);
+      circ(c, 5.6, -1.4, 0.9, "#111"); circ(c, 5.6, 1.4, 0.9, "#111"); circ(c, 7.4, 0, 0.8, "#4a2a1a");
       // casque / coiffe selon l'âge
-      if (age === 0) { line(c, -2, -3, -2, 3, "#6a4a2a", 2); }
-      else if (age === 1) { circ(c, 0.5, 0, 3.8, "#aeb2c2", OUT, 1); }
-      else if (age === 2) { circ(c, 0.5, 0, 3.8, "#566a3e", OUT, 1); }
-      else if (age === 3) { circ(c, 0.5, 0, 3.8, "#3a4552", OUT, 1); rect(c, 1.5, -1, 3, 2, "#9bd0ee"); }
-      else { circ(c, 0.5, 0, 3.8, "#d3d8f2", OUT, 1); rect(c, 1.5, -1.2, 3.2, 2.4, "#58f0ff"); }
+      if (age === 0) { line(c, 2, -3.5, 2, 3.5, "#6a4a2a", 2); poly(c, [1, -3, 2, -6, 3, -3], "#e8d8b0", OUT, 0.8); }
+      else if (age === 1) { circ(c, 3.4, 0, 3.2, "#aeb2c2", OUT, 1); line(c, 3.4, -3.2, 3.4, 3.2, "#6a6e7e", 1); }
+      else if (age === 2) { circ(c, 3.4, 0, 3.2, "#566a3e", OUT, 1); }
+      else if (age === 3) { circ(c, 3.4, 0, 3.2, "#3a4552", OUT, 1); rect(c, 4.6, -1.6, 2.4, 3.2, "#9bd0ee"); }
+      else { circ(c, 3.4, 0, 3.2, "#d3d8f2", OUT, 1); rect(c, 4.6, -1.6, 2.6, 3.2, "#58f0ff"); }
       // arme
       if (u.line === "lancers") { line(c, 2, 5, 17 - atk + (age >= 2 ? 3 : 0), 5, age >= 2 ? "#4a4a50" : "#6a4a2a", 1.6); poly(c, [17 - atk, 5, 14 - atk, 3.4, 14 - atk, 6.6], age === 4 ? "#58f0ff" : "#d8dce6", OUT, 0.8); }
       else if (k === "arch") { if (age === 0) { line(c, 3, -2, 8, -2, "#6a4a2a", 1.6); circ(c, 9, -2, 1.6, "#8f8f88"); } else if (age === 1) { c.beginPath(); c.arc(7, 0, 5, -1.2, 1.2); c.strokeStyle = "#6a4a2a"; c.lineWidth = 1.6; c.stroke(); } else { rect(c, 2 - atk, 2, 10, 2.4, age === 4 ? "#58f0ff" : "#2a2f26", OUT, 0.8); } }
@@ -357,15 +361,41 @@
     c.rotate(e.a);
     var fl = e.hit > 0, base = fl ? "#fff" : FOE;
     switch (e.type) {
-      case "grunt": circ(c, 0, walk * 0.4, 6.2, base, OUT, 1.4); circ(c, 1.5, 0, 3.4, "#d8a37a", OUT, 1); rect(c, 3, 2, 8, 2.4, "#5a3a22", OUT, 0.8); circ(c, 11, 3.2, 2.2, "#8f8f88", OUT, 0.8); break;
-      case "runner": circ(c, 0, walk * 0.6, 5, fl ? "#fff" : "#e0642c", OUT, 1.3); circ(c, 1.5, 0, 3, "#d8a37a", OUT, 1); line(c, -4, -3, -9, -4 + walk, "#e0642c", 2); line(c, -4, 3, -9, 4 - walk, "#e0642c", 2); break;
-      case "brute": circ(c, 0, 0, 11, fl ? "#fff" : "#8e2a1c", OUT, 1.6); circ(c, 2, 0, 5.2, "#c88e68", OUT, 1.2); rect(c, 6, 5, 14, 5, "#6a4a2a", OUT, 1.2); circ(c, 19, 7.5, 5, "#7a5a36", OUT, 1.2); break;
-      case "shield": circ(c, 0, 0, 7.5, base, OUT, 1.4); circ(c, 1, 0, 4, "#d8a37a", OUT, 1); circ(c, 7, 0, 9, "#6a7280", OUT, 1.6); circ(c, 7, 0, 5, "#8a94a4"); circ(c, 7, 0, 1.8, "#c9d2dc"); break;
-      case "healer": circ(c, 0, 0, 6.4, fl ? "#fff" : "#e8e4de", OUT, 1.4); circ(c, 1.5, 0, 3.4, "#d8a37a", OUT, 1); rect(c, -1.4, -5, 2.8, 10, "#d0302a"); rect(c, -5, -1.4, 10, 2.8, "#d0302a"); break;
-      case "tank": rect(c, -14, -11, 28, 22, fl ? "#fff" : "#7a2418", OUT, 1.8); rect(c, -15, -13, 30, 4, "#2a1a14", OUT, 1); rect(c, -15, 9, 30, 4, "#2a1a14", OUT, 1); circ(c, -1, 0, 8, fl ? "#fff" : "#a63a28", OUT, 1.6); rect(c, 4, -2.2, 17, 4.4, "#2a1a14", OUT, 1.2); circ(c, -3, -2, 2.4, "#d8503a"); break;
-      case "bird": poly(c, [10, 0, 3, 3, -6, 11, -3, 0, -6, -11, 3, -3], fl ? "#fff" : "#8f2a24", OUT, 1.3); circ(c, 9, 0, 2.2, "#ffcf5a", OUT, 0.8); poly(c, [-3, 0, -10, 2, -10, -2], "#5a1a16", OUT, 0.8); break;
-      case "chopper": rect(c, -17, -1.6, 12, 3.2, "#5a1a16", OUT, 1); circ(c, 0, 0, 9, fl ? "#fff" : "#a63a28", OUT, 1.5); circ(c, 5, 0, 4, "#ffcf5a", OUT, 1); rect(c, 4, -8, 9, 2.4, "#2a1a14", OUT, 0.8); rect(c, 4, 5.6, 9, 2.4, "#2a1a14", OUT, 0.8); c.rotate(-e.a); c.save(); c.rotate(t * 40); c.globalAlpha = 0.55; line(c, -16, 0, 16, 0, "#222", 1.8); line(c, 0, -16, 0, 16, "#222", 1.8); c.restore(); break;
-      case "boss": circ(c, 0, 0, 20, fl ? "#fff" : "#601810", OUT, 2); circ(c, -4, -9, 7, "#8e2a1c", OUT, 1.5); circ(c, -4, 9, 7, "#8e2a1c", OUT, 1.5); circ(c, 8, 0, 9, "#c88e68", OUT, 1.6); circ(c, 11, -3, 2, "#ffe36a"); circ(c, 11, 3, 2, "#ffe36a"); rect(c, 10, 10, 20, 7, "#4a3220", OUT, 1.5); circ(c, 30, 13.5, 8, "#6a4a2a", OUT, 1.5); break;
+      case "grunt": // limace
+        c.beginPath(); c.ellipse(-1, 0, 9, 5.2 + walk * 0.12, 0, 0, TAU); c.fillStyle = fl ? "#fff" : "#9aa84a"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.4; c.stroke();
+        c.beginPath(); c.ellipse(-3, 0, 5, 3, 0, 0, TAU); c.fillStyle = "rgba(255,255,200,.35)"; c.fill();
+        line(c, 7, -2, 11, -4, "#6a7a2a", 1.4); line(c, 7, 2, 11, 4, "#6a7a2a", 1.4); circ(c, 11, -4, 1.3, "#111"); circ(c, 11, 4, 1.3, "#111"); break;
+      case "runner": // lapin
+        c.beginPath(); c.ellipse(-3, 0, 7, 4.6, 0, 0, TAU); c.fillStyle = fl ? "#fff" : "#cfc6b8"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.3; c.stroke();
+        circ(c, 4, 0, 3.8, fl ? "#fff" : "#d8cfc2", OUT, 1.2); circ(c, -9, walk * 0.4, 2.6, "#fff", OUT, 1);
+        poly(c, [2, -2.5, -4, -6, 2, -4.4], "#e8dfd2", OUT, 1); poly(c, [2, 2.5, -4, 6, 2, 4.4], "#e8dfd2", OUT, 1); circ(c, 5.4, -1.4, 0.9, "#c0302a"); circ(c, 5.4, 1.4, 0.9, "#c0302a"); break;
+      case "brute": // blaireau
+        c.beginPath(); c.ellipse(-1, 0, 13, 9.5, 0, 0, TAU); c.fillStyle = fl ? "#fff" : "#6a6d74"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.6; c.stroke();
+        circ(c, 9, 0, 6, fl ? "#fff" : "#8a8d94", OUT, 1.4); rect(c, 4, -1.6, 11, 3.2, "#f2f2f2"); rect(c, 4, -4.4, 11, 1.8, "#1e1e22"); rect(c, 4, 2.6, 11, 1.8, "#1e1e22");
+        circ(c, 13.5, 0, 1.6, "#111"); circ(c, 8, -5.6, 2, "#6a6d74", OUT, 1); circ(c, 8, 5.6, 2, "#6a6d74", OUT, 1); break;
+      case "shield": { // hérisson
+        for (var hi = 0; hi < 14; hi++) { var ha = hi * TAU / 14 + 0.2; poly(c, [Math.cos(ha - 0.2) * 6, Math.sin(ha - 0.2) * 6, Math.cos(ha) * 12, Math.sin(ha) * 12, Math.cos(ha + 0.2) * 6, Math.sin(ha + 0.2) * 6], fl ? "#fff" : "#5a3a22", OUT, 0.8); }
+        circ(c, 0, 0, 7.5, fl ? "#fff" : "#8a5a32", OUT, 1.3); circ(c, 7.5, 0, 3.6, "#d8b48a", OUT, 1.2); circ(c, 10.5, 0, 1.2, "#111"); circ(c, 8.5, -1.6, 0.8, "#111"); break; }
+      case "healer": // grenouille
+        c.beginPath(); c.ellipse(0, 0, 7.5, 6, 0, 0, TAU); c.fillStyle = fl ? "#fff" : "#4fae4a"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.4; c.stroke();
+        circ(c, 5, -3.6, 2.6, "#7fd070", OUT, 1); circ(c, 5, 3.6, 2.6, "#7fd070", OUT, 1); circ(c, 5.6, -3.6, 1, "#111"); circ(c, 5.6, 3.6, 1, "#111");
+        line(c, -4, -5, -9, -8 + walk, "#4fae4a", 2); line(c, -4, 5, -9, 8 - walk, "#4fae4a", 2); rect(c, -1.2, -3.6, 2.4, 7.2, "#fff"); rect(c, -3.6, -1.2, 7.2, 2.4, "#fff"); break;
+      case "tank": // sanglier
+        c.beginPath(); c.ellipse(-1, 0, 16, 11, 0, 0, TAU); c.fillStyle = fl ? "#fff" : "#5a3a28"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.8; c.stroke();
+        for (var bi = -2; bi <= 2; bi++) line(c, -10, bi * 4, -2, bi * 4, "#3a2418", 1.6);
+        circ(c, 12, 0, 7, fl ? "#fff" : "#6e4a34", OUT, 1.5); circ(c, 17, 0, 3.2, "#c89a8a", OUT, 1); poly(c, [14, -4, 20, -6, 16, -2], "#f2ead8", OUT, 1); poly(c, [14, 4, 20, 6, 16, 2], "#f2ead8", OUT, 1); circ(c, 11, -4, 1.1, "#ffe36a"); circ(c, 11, 4, 1.1, "#ffe36a"); break;
+      case "bird": // guêpe
+        c.save(); c.globalAlpha = 0.55; c.beginPath(); c.ellipse(-1, -7, 6, 3, 0.4, 0, TAU); c.fillStyle = "#dff"; c.fill(); c.beginPath(); c.ellipse(-1, 7, 6, 3, -0.4, 0, TAU); c.fill(); c.restore();
+        c.beginPath(); c.ellipse(-3, 0, 6.5, 4, 0, 0, TAU); c.fillStyle = fl ? "#fff" : "#f2c230"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.2; c.stroke();
+        rect(c, -6, -3.4, 2, 6.8, "#222"); rect(c, -2, -3.8, 2, 7.6, "#222"); circ(c, 4, 0, 3, "#2a1c10", OUT, 1); poly(c, [-9, 0, -12, -1, -12, 1], "#222"); break;
+      case "chopper": // corbeau
+        poly(c, [2, 0, -2, -15, -9, -12, -6, -3, -12, 0, -6, 3, -9, 12, -2, 15], fl ? "#fff" : "#26262e", OUT, 1.4);
+        c.beginPath(); c.ellipse(0, 0, 8, 5.6, 0, 0, TAU); c.fillStyle = fl ? "#fff" : "#32323c"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.4; c.stroke();
+        circ(c, 8, 0, 3.6, "#32323c", OUT, 1.2); poly(c, [11, -1.6, 17, 0, 11, 1.6], "#e8a02a", OUT, 0.9); circ(c, 9, -1.6, 0.9, "#fff"); circ(c, 9, 1.6, 0.9, "#fff"); break;
+      case "boss": // golem de racines
+        for (var ri = 0; ri < 8; ri++) { var ra = ri * TAU / 8; line(c, Math.cos(ra) * 12, Math.sin(ra) * 12, Math.cos(ra + 0.3) * 24, Math.sin(ra + 0.3) * 24, "#4a3220", 3.2); }
+        circ(c, 0, 0, 18, fl ? "#fff" : "#5a4026", OUT, 2); circ(c, -3, -6, 7, "#6e5232"); circ(c, -5, 6, 6, "#6e5232"); circ(c, 4, 0, 9, "#4f7a34", OUT, 1.4);
+        circ(c, 10, -3.4, 2.2, "#ffe36a"); circ(c, 10, 3.4, 2.2, "#ffe36a"); circ(c, 10, -3.4, 0.9, "#111"); circ(c, 10, 3.4, 0.9, "#111"); poly(c, [-10, -2, -4, -6, -6, 0], "#7fd070"); break;
     }
     c.rotate(-e.a);
     // statuts
@@ -382,7 +412,7 @@
   function drawProj(c, p, t) {
     c.save(); c.translate(p.x, p.y - (p.z || 0));
     switch (p.kind) {
-      case "stone": circ(c, 0, 0, 2.8, "#9a968a", OUT, 1); break;
+      case "stone": c.rotate(p.a); circ(c, -1, 0, 3, "#b9772e", OUT, 1); rect(c, 1.5, -2.2, 2.4, 4.4, "#6a4a2a", OUT, 0.8); break;
       case "arrow": c.rotate(p.a); line(c, -7, 0, 4, 0, "#6a4a2a", 1.6); poly(c, [6, 0, 2, -2.2, 2, 2.2], "#d0d4de", OUT, 0.8); break;
       case "dart": case "bolt": c.rotate(p.a); line(c, -9, 0, 5, 0, "#4a3220", 1.8); poly(c, [8, 0, 4, -2.4, 4, 2.4], "#e0e4ee", OUT, 0.8); break;
       case "bullet": case "bulletsm": c.rotate(p.a); rect(c, -4, -1, 8, 2, "#ffe6a0"); break;

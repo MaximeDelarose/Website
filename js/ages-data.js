@@ -66,10 +66,10 @@
     ramp: { name: "Rampe d'accès", cat: "troupe", kind: "ramp", size: 1, minAge: 0, cost: 15, info: "Au bord de la route : les troupes descendent par là.",
       forms: ["Rampe de terre", "Rampe en bois", "Rampe en pierre", "Rampe en béton", "Rampe magnétique"] },
     barracks: { name: "Caserne", cat: "troupe", kind: "barracks", size: 2, minAge: 0, cost: 95, units: 3, hp: 90, dmg: 6, rate: 1.2, respawn: 9, speed: 62, reach: 22, rallyRange: 7,
-      forms: ["Hutte de chasseurs", "Caserne de chevaliers", "Caserne de soldats", "Usine de chars", "Hangar de méchas"],
-      unitNames: ["Homme des cavernes", "Chevalier", "Soldat", "Tank", "Méca"], info: "Envoie des soldats bloquer la route (il faut une rampe)." },
+      forms: ["Terrier de chasseurs", "Caserne de chevaliers", "Caserne de soldats", "Usine de chars à glands", "Hangar de méchas"],
+      unitNames: ["Écureuil des cavernes", "Écureuil chevalier", "Écureuil soldat", "Écureuil tankiste", "Écureuil méca"], info: "Envoie des soldats bloquer la route (il faut une rampe)." },
     lancers: { name: "Lanciers", cat: "troupe", kind: "barracks", size: 2, minAge: 0, cost: 105, units: 2, hp: 65, dmg: 11, rate: 0.95, respawn: 9, speed: 66, reach: 34, rallyRange: 7, bonusArmor: 2.2,
-      forms: ["Chasseurs à la lance", "Caserne de lanciers", "Fantassins AT", "Lance-roquettes", "Lance-plasma"],
+      forms: ["Écureuils à la lance", "Caserne de lanciers", "Fantassins AT", "Lance-roquettes", "Lance-plasma"],
       unitNames: ["Chasseur", "Lancier", "Fantassin AT", "Roquettiste", "Plasmatier"], info: "Portée au corps à corps, ×2.2 contre les blindés." },
     garrison: { name: "Garnison", cat: "troupe", kind: "garrison", size: 1, minAge: 0, cost: 72, units: 3, dmg: 7, rate: 1.15, range: 4.3, respawn: 0, speed: 70, dtype: "phys",
       forms: ["Frondeurs", "Archers", "Fusiliers", "Mitrailleurs", "Soldats laser"],
@@ -96,15 +96,15 @@
      hp de base (× hpMul de la vague), speed px/s, armor 0..1, rew or, lives vies perdues,
      r rayon, air volant, res résistance aux contrôles (stun/gel) 0..1. */
   var ENEMIES = {
-    grunt:   { name: "Soldat",   hp: 24,  speed: 38, armor: 0,    rew: 4,  lives: 1, r: 8,  cost: 1 },
-    runner:  { name: "Éclaireur", hp: 18, speed: 72, armor: 0,    rew: 4,  lives: 1, r: 7,  cost: 1 },
-    brute:   { name: "Brute",    hp: 150, speed: 26, armor: 0.15, rew: 12, lives: 2, r: 12, cost: 3, atk: 9 },
-    shield:  { name: "Bouclier", hp: 95,  speed: 32, armor: 0.5,  rew: 10, lives: 2, r: 9,  cost: 2.5 },
-    healer:  { name: "Médic",    hp: 62,  speed: 34, armor: 0,    rew: 10, lives: 1, r: 8,  cost: 3, heal: 0.06 },
-    tank:    { name: "Blindé",   hp: 520, speed: 28, armor: 0.6,  rew: 40, lives: 5, r: 14, cost: 8, atk: 16, res: 0.4 },
-    bird:    { name: "Oiseau de fer", hp: 52, speed: 62, armor: 0, rew: 8,  lives: 1, r: 8,  cost: 1.5, air: true },
-    chopper: { name: "Hélico ennemi", hp: 330, speed: 46, armor: 0.3, rew: 36, lives: 4, r: 12, cost: 7, air: true, res: 0.3 },
-    boss:    { name: "Colosse",  hp: 1500, speed: 20, armor: 0.35, rew: 320, lives: 20, r: 20, cost: 60, atk: 28, res: 0.75 },
+    grunt:   { name: "Limace",   hp: 24,  speed: 38, armor: 0,    rew: 4,  lives: 1, r: 8,  cost: 1 },
+    runner:  { name: "Lapin", hp: 18, speed: 72, armor: 0,    rew: 4,  lives: 1, r: 7,  cost: 1 },
+    brute:   { name: "Blaireau",    hp: 150, speed: 26, armor: 0.15, rew: 12, lives: 2, r: 12, cost: 3, atk: 9 },
+    shield:  { name: "Hérisson", hp: 95,  speed: 32, armor: 0.5,  rew: 10, lives: 2, r: 9,  cost: 2.5 },
+    healer:  { name: "Grenouille",    hp: 62,  speed: 34, armor: 0,    rew: 10, lives: 1, r: 8,  cost: 3, heal: 0.06 },
+    tank:    { name: "Sanglier",   hp: 520, speed: 28, armor: 0.6,  rew: 40, lives: 5, r: 14, cost: 8, atk: 16, res: 0.4 },
+    bird:    { name: "Guêpe", hp: 52, speed: 62, armor: 0, rew: 8,  lives: 1, r: 8,  cost: 1.5, air: true },
+    chopper: { name: "Corbeau", hp: 330, speed: 46, armor: 0.3, rew: 36, lives: 4, r: 12, cost: 7, air: true, res: 0.3 },
+    boss:    { name: "Golem de racines",  hp: 1500, speed: 20, armor: 0.35, rew: 320, lives: 20, r: 20, cost: 60, atk: 28, res: 0.75 },
   };
   var ENEMY_ORDER = ["grunt", "runner", "brute", "shield", "healer", "tank", "bird", "chopper", "boss"];
 
@@ -137,13 +137,13 @@
 
   /* ---------- ENVOIS DE TROUPES (versus) ---------- */
   var SENDS = [
-    { id: "grunt",  name: "Fantassins",   ico: "🪖", type: "grunt",  count: 5, cost: 40,  inc: 2 },
-    { id: "runner", name: "Coureurs",     ico: "💨", type: "runner", count: 5, cost: 55,  inc: 3 },
-    { id: "brute",  name: "Brutes",       ico: "👹", type: "brute",  count: 2, cost: 80,  inc: 5 },
-    { id: "shield", name: "Boucliers",    ico: "🛡️", type: "shield", count: 3, cost: 100, inc: 6 },
-    { id: "bird",   name: "Aériens",      ico: "🕊️", type: "bird",   count: 4, cost: 110, inc: 7 },
-    { id: "tank",   name: "Blindé",       ico: "🚜", type: "tank",   count: 1, cost: 190, inc: 14 },
-    { id: "chopper", name: "Hélico",      ico: "🚁", type: "chopper", count: 1, cost: 260, inc: 20 },
+    { id: "grunt",  name: "Limaces",   ico: "🐌", type: "grunt",  count: 5, cost: 40,  inc: 2 },
+    { id: "runner", name: "Lapins",     ico: "🐇", type: "runner", count: 5, cost: 55,  inc: 3 },
+    { id: "brute",  name: "Blaireaux",       ico: "🦡", type: "brute",  count: 2, cost: 80,  inc: 5 },
+    { id: "shield", name: "Hérissons",    ico: "🦔", type: "shield", count: 3, cost: 100, inc: 6 },
+    { id: "bird",   name: "Guêpes",      ico: "🐝", type: "bird",   count: 4, cost: 110, inc: 7 },
+    { id: "tank",   name: "Sanglier",       ico: "🐗", type: "tank",   count: 1, cost: 190, inc: 14 },
+    { id: "chopper", name: "Corbeau",      ico: "🐦‍⬛", type: "chopper", count: 1, cost: 260, inc: 20 },
   ];
 
   /* ---------- CARTES ----------
@@ -173,7 +173,7 @@
 
   /* ---------- AMÉLIORATIONS HORS PARTIE (acquises avec les étoiles) ---------- */
   var META = [
-    { id: "gold", name: "Caisse de guerre", ico: "💰", desc: "+60 or de départ par niveau", max: 6, cost: [4, 8, 14, 22, 34, 50], fmt: function (l) { return "+" + l * 60 + " or"; } },
+    { id: "gold", name: "Caisse de guerre", ico: "💰", desc: "+60 noisettes de départ par niveau", max: 6, cost: [4, 8, 14, 22, 34, 50], fmt: function (l) { return "+" + l * 60 + " or"; } },
     { id: "income", name: "Économie de guerre", ico: "🏦", desc: "+6 % de revenu (manches et éliminations) par niveau", max: 6, cost: [5, 10, 17, 26, 38, 55], fmt: function (l) { return "+" + l * 6 + " %"; } },
     { id: "lives", name: "Murailles", ico: "🏰", desc: "+2 vies par niveau", max: 5, cost: [4, 9, 16, 26, 40], fmt: function (l) { return "+" + l * 2 + " vies"; } },
     { id: "dmg", name: "Armurerie", ico: "🗡️", desc: "+4 % de dégâts par niveau", max: 8, cost: [5, 9, 14, 20, 28, 38, 50, 66], fmt: function (l) { return "+" + l * 4 + " %"; } },
