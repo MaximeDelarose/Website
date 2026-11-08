@@ -159,7 +159,10 @@
     var tags = (p.tags || []).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("");
     var page = projectUrl(p);
     var actions;
-    if (p.embed) {
+    if (p.steam) {
+      actions = '<div class="card-actions"><a class="btn btn-small btn-steam" href="' + esc(p.steam) + '" target="_blank" rel="noopener">Voir sur Steam ↗</a>' +
+        '<a class="text-link" href="' + page + '">Voir la fiche</a></div>';
+    } else if (p.embed) {
       actions = '<div class="card-actions"><button class="btn btn-small" type="button" data-play-id="' + esc(p.id) + '">▶ Jouer ici</button>' +
         '<a class="text-link" href="' + page + '">Voir la fiche</a></div>';
     } else if (p.url || p.type === "game") {
@@ -201,8 +204,20 @@
     paintCovers(latest);
   }
 
-  // Bibliothèque
+  // Page Jeux : section Steam (tout en haut), visible dès qu'un projet a un lien « steam »
+  var steamGrid = $("[data-steam]");
+  if (steamGrid) {
+    var steamGames = PROJECTS.filter(function (p) { return p.steam; });
+    if (steamGames.length) {
+      steamGrid.innerHTML = steamGames.map(card).join("");
+      paintCovers(steamGrid);
+      $$("[data-steam-only]").forEach(function (el) { el.hidden = false; });
+    }
+  }
+
+  // Bibliothèque Unity / itch.io (les jeux Steam sont déjà affichés au-dessus)
   var lib = $("[data-library]");
+  var CATALOG = PROJECTS.filter(function (p) { return !p.steam; });
   if (lib) {
     var filtersEl = $("[data-filters]");
     var searchEl = $("[data-search]");
@@ -210,7 +225,7 @@
     var state = { type: "all", tag: null, q: "" };
 
     var allTags = [];
-    PROJECTS.forEach(function (p) { (p.tags || []).forEach(function (t) { if (allTags.indexOf(t) < 0) allTags.push(t); }); });
+    CATALOG.forEach(function (p) { (p.tags || []).forEach(function (t) { if (allTags.indexOf(t) < 0) allTags.push(t); }); });
     allTags.sort();
 
     var hash = (location.hash || "").replace("#", "");
@@ -225,10 +240,10 @@
     }
     function renderFilters() {
       var types = [["all", "Tout"], ["game", "Jeux"], ["plugin", "Plugins Unity"]];
-      if (PROJECTS.some(function (p) { return p.embed; })) types.splice(1, 0, ["play", "▶ Jouable ici"]);
+      if (CATALOG.some(function (p) { return p.embed; })) types.splice(1, 0, ["play", "▶ Jouable ici"]);
       var html = '<div class="filter-row" role="group" aria-label="Type">';
       types.forEach(function (t) {
-        var count = PROJECTS.filter(function (p) { return matchType(p, t[0]); }).length;
+        var count = CATALOG.filter(function (p) { return matchType(p, t[0]); }).length;
         html += '<button class="chip" data-type="' + t[0] + '" aria-pressed="' + (state.type === t[0]) + '">' + t[1] + ' <span class="chip-n">' + count + "</span></button>";
       });
       html += '</div><div class="filter-row tags-row" role="group" aria-label="Étiquettes">';
@@ -240,7 +255,7 @@
     }
     function render() {
       var q = state.q.toLowerCase();
-      var list = PROJECTS.filter(function (p) {
+      var list = CATALOG.filter(function (p) {
         if (!matchType(p, state.type)) return false;
         if (state.tag && (p.tags || []).indexOf(state.tag) < 0) return false;
         if (q && (p.title + " " + p.short + " " + (p.tags || []).join(" ")).toLowerCase().indexOf(q) < 0) return false;
