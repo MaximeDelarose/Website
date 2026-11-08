@@ -601,6 +601,21 @@
     else if (ev === "end" && G && G.role === "guest" && !G.over) { G.view.over = p.over; }
   }
 
+  /* ---------- plein écran ---------- */
+  function fsIs() { return !!document.fullscreenElement || stage.classList.contains("is-max"); }
+  function fsToggle() {
+    if (window.GameKit && GameKit.fullscreen) { GameKit.fullscreen.toggle(stage); return; }
+    if (fsIs()) { stage.classList.remove("is-max"); if (document.fullscreenElement) document.exitFullscreen(); }
+    else if (stage.requestFullscreen) stage.requestFullscreen().catch(function () { stage.classList.add("is-max"); });
+    else stage.classList.add("is-max");
+    setTimeout(resize, 100);
+  }
+  var fsBtn = document.querySelector("[data-game-fullscreen]");
+  if (fsBtn) fsBtn.addEventListener("click", fsToggle);
+  var fsIn = el("button", "ag-btn", "⛶"); fsIn.title = "Plein écran"; fsIn.addEventListener("click", fsToggle);
+  ui.top.insertBefore(fsIn, ui.top.querySelector('[data-act="menu"]'));
+  document.addEventListener("fullscreenchange", function () { setTimeout(resize, 80); });
+
   /* ---------- démarrage ---------- */
   window.addEventListener("resize", resize);
   if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
