@@ -343,7 +343,7 @@
     }
     if (k === "banner") lines.push("Aura " + ((L.radius + AGES[w.age].rg)).toFixed(1) + " cases · cadence +" + Math.round(L.buffRate[w.age] * (1 + 0.25 * (b.lvl - 1)) * 100) + " % · dégâts +" + Math.round(L.buffDmg[w.age] * (1 + 0.25 * (b.lvl - 1)) * 100) + " %");
     if (b.flag === 1) lines.push("⚠ Aucune rampe d'accès à moins de 7 cases : pose une rampe 🛤 au bord de la route.");
-    if (k === "barracks") lines.push("Touche la route pour déplacer le point de ralliement.");
+    if (k === "barracks") lines.push("Zone d'action : ils vont partout dans le cercle jaune (les deux bords de la route). Touche la route pour la déplacer.");
     if (k === "airfield" || k === "heli") lines.push("Touche la carte pour déplacer la zone de patrouille.");
     if (k === "garrison") lines.push("Les tireurs se postent au bord de la route.");
     var canTarget = !!(st && (k === "shoot" || k === "mortar" || k === "pulse" || k === "chain" || k === "garrison" || k === "heli"));
@@ -467,7 +467,7 @@
     c.strokeStyle = "#ffe36a"; c.strokeRect(b.x - b.size * T / 2 - 2, b.y - b.size * T / 2 - 2, b.size * T + 4, b.size * T + 4);
     if (b.rally && (k === "barracks" || k === "airfield" || k === "heli")) {
       var r = b.rally; c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(r.x, r.y); c.strokeStyle = "rgba(255,227,106,.55)"; c.setLineDash([4, 5]); c.stroke(); c.setLineDash([]);
-      c.beginPath(); c.arc(r.x, r.y, k === "airfield" ? L.orbit * T : 16, 0, Math.PI * 2); c.strokeStyle = "#ffe36a"; c.stroke();
+      var zr = k === "airfield" ? L.orbit * T : k === "barracks" ? (L.zone + 0.4 * (b.lvl - 1)) * T : 16; c.beginPath(); c.arc(r.x, r.y, zr, 0, Math.PI * 2); if (k === "barracks") { c.fillStyle = "rgba(255,227,106,.10)"; c.fill(); } c.strokeStyle = "#ffe36a"; c.setLineDash([8, 6]); c.stroke(); c.setLineDash([]);
       c.fillStyle = "#ffe36a"; c.strokeStyle = "#3a2a08"; c.lineWidth = 1.4; c.fillRect(r.x - 1, r.y - 18, 2.4, 18); c.beginPath(); c.moveTo(r.x + 1.4, r.y - 18); c.lineTo(r.x + 12, r.y - 14); c.lineTo(r.x + 1.4, r.y - 10); c.fill(); c.stroke();
     }
     c.restore();

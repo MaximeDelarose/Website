@@ -615,18 +615,19 @@
       }
       var rally = b.rally || { x: u.x, y: u.y };
       var sx = rally.x + Math.cos(u.orb) * 15, sy = rally.y + Math.sin(u.orb) * 15;
-      // cible : l'ennemi sol le plus proche dans le rayon d'engagement
+      // zone d'action : autour du point de ralliement, ils vont partout dedans (les deux bords de la route)
+      var zone = (L.zone + 0.4 * (b.lvl - 1)) * T;
       var tg = u.target ? w.emap[u.target] : null;
-      if (tg && (tg.dead || tg.air || dist(tg.x, tg.y, rally.x, rally.y) > 130)) { tg = null; u.target = 0; }
+      if (tg && (tg.dead || tg.air || dist(tg.x, tg.y, rally.x, rally.y) > zone + 10)) { tg = null; u.target = 0; }
       if (!tg) {
-        var bd = 80;
-        for (i = 0; i < w.enemies.length; i++) { var e = w.enemies[i]; if (e.dead || e.air) continue; var dd = dist(e.x, e.y, u.x, u.y); if (dd < bd && dist(e.x, e.y, rally.x, rally.y) < 130) { bd = dd; tg = e; } }
+        var bd = 1e9;
+        for (i = 0; i < w.enemies.length; i++) { var e = w.enemies[i]; if (e.dead || e.air) continue; if (dist(e.x, e.y, rally.x, rally.y) > zone) continue; var dd = dist(e.x, e.y, u.x, u.y) + (e.block && e.block !== u.id ? 40 : 0); if (dd < bd) { bd = dd; tg = e; } }
         u.target = tg ? tg.id : 0;
       }
       if (tg) {
         var dx = tg.x - u.x, dy = tg.y - u.y, dd2 = Math.sqrt(dx * dx + dy * dy), reach = L.reach + tg.r * 0.6;
         u.ang = Math.atan2(dy, dx);
-        if (dd2 > reach - 4) { u.x += dx / dd2 * spd * 1.15 * dt; u.y += dy / dd2 * spd * 1.15 * dt; }
+        if (dd2 > reach - 4) { u.x += dx / dd2 * spd * 1.6 * dt; u.y += dy / dd2 * spd * 1.6 * dt; }
         if (dd2 <= reach && u.cd <= 0) {
           u.cd = 1 / st.rate; u.atkT = 0.18;
           var mul = (L.bonusArmor && tg.armor >= 0.4) ? L.bonusArmor : 1;
