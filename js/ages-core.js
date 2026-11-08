@@ -228,11 +228,8 @@
       case "rally": {
         b = findBuilding(w, cmd.id); if (!b) return "?"; L = LINES[b.line];
         var rx = clamp(cmd.x, 4, map.w - 4), ry = clamp(cmd.y, 4, map.h - 4);
-        if (L.kind === "barracks") {
-          if (tileAt(map, Math.floor(rx / T), Math.floor(ry / T)) !== 1) return "Le point de ralliement doit être sur la route";
-          var rm = findRamp(w, b); if (!rm) return "Il faut une rampe d'accès près de la caserne";
-          if (dist(rx, ry, rm.rpt.x, rm.rpt.y) > 8 * T) return "Trop loin de la rampe (8 cases max)";
-        } else if (L.kind === "airfield" || L.kind === "heli") {
+        if (L.kind === "barracks") return "Les troupes se placent toutes seules (change leur mode)";
+        else if (L.kind === "airfield" || L.kind === "heli") {
           if (dist(rx, ry, b.x, b.y) > 13 * T) return "Trop loin (13 cases max)";
         } else return "";
         b.rally = { x: rx, y: ry }; return "";
@@ -514,7 +511,7 @@
   function manageSlots(sim, w, b, dt) {
     var L = LINES[b.line], st = bstat(sim, w, b), ramp = null;
     b.flag = 0;
-    if (L.kind === "barracks") { ramp = findRamp(w, b); if (!ramp) b.flag = 1; }
+    if (L.kind === "barracks") { ramp = findRamp(w, b); if (!ramp) b.flag = 1; else if (!b.rally || b.rally.x !== ramp.rpt.x || b.rally.y !== ramp.rpt.y) { b.rally = { x: ramp.rpt.x, y: ramp.rpt.y }; b.anchorKey = ""; } }
     for (var i = 0; i < b.slots.length; i++) {
       var sl = b.slots[i], u = sl.u ? unitById(w, sl.u) : null;
       if (u && !u.dead) continue;
@@ -614,16 +611,22 @@
         if (!u.arrived) return;
       }
       var rally = b.rally || { x: u.x, y: u.y };
-      var sx = rally.x + Math.cos(u.orb) * 15, sy = rally.y + Math.sin(u.orb) * 15;
-      // zone d'action : autour du point de ralliement, ils vont partout dedans (les deux bords de la route)
-      var zone = (L.zone + 0.4 * (b.lvl - 1)) * T;
+      // zone d'action automatique centrée sur le pied de la rampe ; le mode du camp décide où ils se postent et qui ils attaquent
+      var zone = (L.zone + 0.4 * (b.lvl - 1)) * T, md = b.mode;
       var tg = u.target ? w.emap[u.target] : null;
       if (tg && (tg.dead || tg.air || dist(tg.x, tg.y, rally.x, rally.y) > zone + 10)) { tg = null; u.target = 0; }
       if (!tg) {
-        var bd = 1e9;
-        for (i = 0; i < w.enemies.length; i++) { var e = w.enemies[i]; if (e.dead || e.air) continue; if (dist(e.x, e.y, rally.x, rally.y) > zone) continue; var dd = dist(e.x, e.y, u.x, u.y) + (e.block && e.block !== u.id ? 40 : 0); if (dd < bd) { bd = dd; tg = e; } }
+        var bv = 1e9;
+        for (i = 0; i < w.enemies.length; i++) {
+          var e = w.enemies[i]; if (e.dead || e.air) continue; if (dist(e.x, e.y, rally.x, rally.y) > zone) continue;
+          var sc = md === 0 ? -e.rem : md === 1 ? e.rem : md === 2 ? -e.hp : dist(e.x, e.y, rally.x, rally.y);
+          sc += (e.block && e.block !== u.id ? 25 : 0);
+          if (sc < bv) { bv = sc; tg = e; }
+        }
         u.target = tg ? tg.id : 0;
       }
+      if (b.anchorKey !== md + "|" + b.lvl) { b.anchorKey = md + "|" + b.lvl; b.anchor = campAnchor(sim, rally, zone, md); }
+      var sx = b.anchor.x + Math.cos(u.orb) * 15, sy = b.anchor.y + Math.sin(u.orb) * 15;
       if (tg) {
         var dx = tg.x - u.x, dy = tg.y - u.y, dd2 = Math.sqrt(dx * dx + dy * dy), reach = L.reach + tg.r * 0.6;
         u.ang = Math.atan2(dy, dx);
@@ -674,6 +677,21 @@
         if (u.rcd <= 0) { u.rcd = L.rocket; shootProj(sim, w, { kind: "rocket", x: u.x, y: u.y, tx: tgh.x, ty: tgh.y, tid: tgh.id, speed: 330, dmg: st.dmg * 5.5, dtype: "blast", splash: L.splash * T, owner: b.owner }); }
       }
     }
+  }
+
+  // point de la route (dans la zone) où les troupes attendent : 0 entrée (amont), 1 sortie (aval), 2/3 centre = pied de la rampe
+  function campAnchor(sim, c, zone, md) {
+    var best = { x: c.x, y: c.y }, bs = null;
+    if (md === 2 || md === 3) return best;
+    for (var k = 0; k < sim.map.paths.length; k++) {
+      var P = sim.map.paths[k];
+      for (var sP = 0; sP <= P.len; sP += 8) {
+        var q = pathAt(P, sP, 0); if (dist(q.x, q.y, c.x, c.y) > zone * 0.85 || q.x < 24 || q.y < 24 || q.x > sim.map.w - 24 || q.y > sim.map.h - 24) continue;
+        var key = md === 0 ? sP : -sP;
+        if (bs === null || key < bs) { bs = key; best = { x: q.x, y: q.y }; }
+      }
+    }
+    return best;
   }
 
   /* ---- projectiles */

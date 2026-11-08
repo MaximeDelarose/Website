@@ -10,7 +10,7 @@
   var canvas = stage.querySelector("canvas"), ctx = canvas.getContext("2d");
   var SAVE_KEY = "ages-save-v1", VERSION = "1.0.0";
   var MODE_NAMES = { solo: "Solo", coop: "Coop en ligne", versus: "Versus en ligne" };
-  var TARGET_NAMES = ["Premier", "Dernier", "Fort", "Proche"];
+  var TARGET_NAMES = ["Premier", "Dernier", "Fort", "Proche"], CAMP_MODES = ["Entrée", "Sortie", "Fort", "Près du camp"];
 
   /* ---------- sauvegarde (étoiles + améliorations hors partie) ---------- */
   var save = (function () {
@@ -246,7 +246,7 @@
       var k = LINES[cur.line].kind;
       if (k === "barracks" || k === "airfield" || k === "heli") {
         var tt = C.tileAt(G.map, Math.floor(w.x / T), Math.floor(w.y / T));
-        if (k === "barracks" && tt !== 1) { G.sel = 0; return; }
+        if (k === "barracks") { G.sel = 0; return; }
         doCmd({ c: "rally", id: cur.id, x: w.x, y: w.y }); sfx("build"); return;
       }
     }
@@ -343,13 +343,13 @@
     }
     if (k === "banner") lines.push("Aura " + ((L.radius + AGES[w.age].rg)).toFixed(1) + " cases · cadence +" + Math.round(L.buffRate[w.age] * (1 + 0.25 * (b.lvl - 1)) * 100) + " % · dégâts +" + Math.round(L.buffDmg[w.age] * (1 + 0.25 * (b.lvl - 1)) * 100) + " %");
     if (b.flag === 1) lines.push("⚠ Aucune rampe d'accès à moins de 7 cases : pose une rampe 🛤 au bord de la route.");
-    if (k === "barracks") lines.push("Zone d'action : ils vont partout dans le cercle jaune (les deux bords de la route). Touche la route pour la déplacer.");
+    if (k === "barracks") lines.push("Les troupes se gèrent seules dans le cercle jaune. Mode 🎯 : Entrée = postés en amont, visent le début du cortège · Sortie = en aval · Fort = les plus costauds · Près du camp.");
     if (k === "airfield" || k === "heli") lines.push("Touche la carte pour déplacer la zone de patrouille.");
     if (k === "garrison") lines.push("Les tireurs se postent au bord de la route.");
-    var canTarget = !!(st && (k === "shoot" || k === "mortar" || k === "pulse" || k === "chain" || k === "garrison" || k === "heli"));
+    var canTarget = k === "barracks" || !!(st && (k === "shoot" || k === "mortar" || k === "pulse" || k === "chain" || k === "garrison" || k === "heli"));
     ui.sel.innerHTML = '<img class="ag-ico" alt="" src="' + ART.icon(b.line, w.age, 44) + '"><div class="ag-sel-body"><b>' + esc(L.forms[w.age]) + ' <em>niv. ' + b.lvl + '</em></b><small>' + lines.join("<br>") + '</small></div><div class="ag-sel-btns">' +
       (b.fixed ? "" : '<button data-a="up"' + (up && w.gold[G.me] >= up ? "" : " disabled") + ">" + (up ? "⬆ " + up + " 🌰" : "Niveau max") + "</button>") +
-      (canTarget ? '<button data-a="mode">🎯 ' + TARGET_NAMES[b.mode] + "</button>" : "") +
+      (canTarget ? '<button data-a="mode">🎯 ' + (k === "barracks" ? CAMP_MODES : TARGET_NAMES)[b.mode] + "</button>" : "") +
       '<button data-a="sell">💰 +' + Math.round(b.paid * D.SELL * (b.fixed ? 0.5 : 1)) + '</button><button data-a="close">✕</button></div>';
   }
   ui.sel.addEventListener("click", function (e) {
@@ -534,7 +534,7 @@
       "<li><b>But :</b> empêche les bestioles d'atteindre le Grand Chêne (la sortie bleue). Chacune qui passe te coûte des vies. 40 manches à tenir.</li>" +
       "<li><b>Noisettes 🌰 :</b> tu en gagnes en repoussant les bestioles et à la fin de chaque manche.</li>" +
       "<li><b>Tourelles :</b> pose-les sur l'herbe, au bord de la route. <b>Pièges</b> (mines, fosses) : sur la route elle-même.</li>" +
-      "<li><b>Troupes :</b> ce sont des écureuils ! Pose une <b>rampe d'accès</b> au bord de la route, puis une <b>caserne</b> ou des <b>lanciers</b> à moins de 7 cases : les soldats descendent par la rampe et bloquent la route. Touche la route pour déplacer leur point de ralliement. La <b>garnison</b> poste des tireurs au bord de la route.</li>" +
+      "<li><b>Troupes :</b> ce sont des écureuils ! Pose une <b>rampe d'accès</b> au bord de la route, puis une <b>caserne</b> ou des <b>lanciers</b> à moins de 7 cases : les soldats descendent par la rampe et bloquent la route. Elles se gèrent seules dans leur zone ; le mode 🎯 du camp (Entrée, Sortie, Fort, Près du camp) décide où elles se postent et qui elles attaquent. La <b>garnison</b> poste des tireurs au bord de la route.</li>" +
       "<li><b>Air :</b> la piste aérienne (avions) et l'héliport patrouillent autour d'un point que tu choisis.</li>" +
       "<li><b>Technologie :</b> le bouton 🔬 te fait passer à l'âge suivant (Préhistoire → Médiéval → Contemporain → Moderne → Futuriste). <b>Tous tes bâtiments évoluent tout seuls</b> et deviennent bien plus puissants.</li>" +
       "<li><b>Niveaux :</b> touche un bâtiment pour l'améliorer (3 niveaux), changer sa cible ou le vendre. La <b>bannière</b> renforce tout ce qui est proche.</li>" +
