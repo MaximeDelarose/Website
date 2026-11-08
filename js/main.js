@@ -149,9 +149,12 @@
   /* ---------- cartes projet ---------- */
   function byId(id) { return PROJECTS.filter(function (x) { return x.id === id; })[0]; }
   function projectUrl(p) { return "projet.html?id=" + encodeURIComponent(p.id); }
+  // Catégorie d'un projet de js/data.js pour les filtres de la page Jeux
+  function catOf(p) { return p.steam ? "steam" : p.type === "plugin" ? "plugin" : p.type === "asset" ? "asset" : p.embed ? "webgl" : "itch"; }
+  var TYPE_LABEL = { game: "Jeu", plugin: "Plugin Unity", asset: "Asset graphique" };
   function card(p) {
-    var typeLabel = p.type === "plugin" ? "Plugin Unity" : "Jeu";
-    var cta = p.type === "plugin" ? "Voir le plugin" : "Voir la fiche";
+    var typeLabel = TYPE_LABEL[p.type] || "Jeu";
+    var cta = p.type === "plugin" ? "Voir le plugin" : p.type === "asset" ? "Voir l'asset" : "Voir la fiche";
     var media = p.cover
       ? '<img src="' + esc(p.cover) + '" alt="" loading="lazy">'
       : '<canvas data-cover="' + esc(p.id) + '" aria-hidden="true"></canvas>';
@@ -165,12 +168,12 @@
     } else if (p.embed) {
       actions = '<div class="card-actions"><button class="btn btn-small" type="button" data-play-id="' + esc(p.id) + '">▶ Jouer ici</button>' +
         '<a class="text-link" href="' + page + '">Voir la fiche</a></div>';
-    } else if (p.url || p.type === "game") {
+    } else if (p.url || p.type === "game" || p.type === "asset") {
       actions = '<a class="btn btn-small" href="' + page + '">' + cta + " →</a>";
     } else {
       actions = '<div class="card-actions"><span class="soon">Bientôt disponible</span><a class="text-link" href="' + page + '">Voir la fiche</a></div>';
     }
-    return '<article class="card" data-type="' + esc(p.type) + '">' +
+    return '<article class="card" data-type="' + esc(p.type) + '" data-cat="' + catOf(p) + '">' +
       '<div class="card-media">' + media +
       '<span class="badge badge-' + esc(p.type) + '">' + typeLabel + "</span>" +
       (p.embed ? '<span class="badge badge-play">Jouable ici</span>' : "") + "</div>" +
@@ -204,7 +207,7 @@
     paintCovers(latest);
   }
 
-  // Page Jeux : section Steam (tout en haut), visible dès qu'un projet a un lien « steam »
+  // Page Jeux : cartes des projets de js/data.js (Steam tout en haut, puis Unity / itch.io)
   var steamGrid = $("[data-steam]");
   if (steamGrid) {
     var steamGames = PROJECTS.filter(function (p) { return p.steam; });
@@ -214,40 +217,62 @@
       $$("[data-steam-only]").forEach(function (el) { el.hidden = false; });
     }
   }
-
-  // Bibliothèque Unity / itch.io (les jeux Steam sont déjà affichés au-dessus)
   var lib = $("[data-library]");
-  var CATALOG = PROJECTS.filter(function (p) { return !p.steam; });
   if (lib) {
-    var filtersEl = $("[data-filters]");
+    lib.innerHTML = PROJECTS.filter(function (p) { return !p.steam; }).map(card).join("");
+    paintCovers(lib);
+  }
+
+  // Page Jeux : une seule barre de filtres pour tout (jeux web, itch WebGL, itch, Steam, plugins)
+  var filtersEl = $("[data-filters]");
+  if (filtersEl) {
     var searchEl = $("[data-search]");
     var tagSel = $("[data-tag-select]");
     var countEl = $("[data-count]");
     var resetEl = $("[data-reset]");
-    var state = { type: "all", tag: null, q: "" };
+    var emptyEl = $("[data-hub-empty]");
+    var CATS = [
+      ["all", "Tout", ""],
+      ["web", "Jeux web", "Mes jeux maison, jouables dans le navigateur"],
+      ["webgl", "itch WebGL", "Jeux itch.io jouables ici (WebGL)"],
+      ["itch", "itch", "Jeux itch.io à télécharger"],
+      ["steam", "Steam", "Jeux sur Steam"],
+      ["plugin", "Plugins", "Plugins Unity"],
+      ["asset", "Assets graphiques", "Packs graphiques : pixel art, sprites, tilesets…"],
+    ];
 
-    // Tags triés du plus courant au moins courant (puis par ordre alphabétique)
+    // Toutes les cartes de la page, qu'elles viennent de data.js ou du HTML (jeux web)
+    var items = [];
+    $$("[data-filter-grid]").forEach(function (grid) {
+      $$(".card", grid).forEach(function (el) {
+        var tags = $$(".tags li", el).map(function (li) { return li.textContent.trim(); }).filter(Boolean);
+        items.push({
+          el: el,
+          grid: grid,
+          cat: el.getAttribute("data-cat") || grid.getAttribute("data-filter-cat") || "itch",
+          tags: tags,
+          q: el.textContent.replace(/\s+/g, " ").toLowerCase(),
+        });
+      });
+    });
     var tagCount = {};
-    CATALOG.forEach(function (p) { (p.tags || []).forEach(function (t) { tagCount[t] = (tagCount[t] || 0) + 1; }); });
+    items.forEach(function (it) { it.tags.forEach(function (t) { tagCount[t] = (tagCount[t] || 0) + 1; }); });
     var allTags = Object.keys(tagCount).sort(function (a, b) { return tagCount[b] - tagCount[a] || a.localeCompare(b, "fr"); });
+    var catCount = { all: items.length };
+    items.forEach(function (it) { catCount[it.cat] = (catCount[it.cat] || 0) + 1; });
 
-    var hash = (location.hash || "").replace("#", "");
-    if (hash === "jeux") state.type = "game";
-    if (hash === "plugins") state.type = "plugin";
-    if (hash === "jouer") state.type = "play";
+    var state = { cat: "all", tag: null, q: "" };
+    var PRESETS = { web: "web", webgl: "webgl", jouer: "webgl", itch: "itch", steam: "steam", plugins: "plugin", jeux: "all" };
+    var preset = PRESETS[(location.hash || "").replace("#", "")];
+    if (preset && (preset === "all" || catCount[preset])) state.cat = preset;
 
-    function matchType(p, t) {
-      if (t === "all") return true;
-      if (t === "play") return !!p.embed;
-      return p.type === t;
-    }
-    function renderFilters() {
-      var types = [["all", "Tout"], ["game", "Jeux"], ["plugin", "Plugins"]];
-      if (CATALOG.some(function (p) { return p.embed; })) types.splice(1, 0, ["play", "▶ Jouable ici"]);
-      filtersEl.innerHTML = types.map(function (t) {
-        var count = CATALOG.filter(function (p) { return matchType(p, t[0]); }).length;
-        return '<button class="seg-btn" type="button" data-type="' + t[0] + '" aria-pressed="' + (state.type === t[0]) + '">' +
-          t[1] + ' <span class="seg-n">' + count + "</span></button>";
+    var renderFilters = function () {
+      filtersEl.innerHTML = CATS.map(function (c) {
+        var n = catCount[c[0]] || 0;
+        var off = c[0] !== "all" && !n;
+        return '<button class="seg-btn" type="button" data-type="' + c[0] + '" aria-pressed="' + (state.cat === c[0]) + '"' +
+          (c[2] ? ' title="' + esc(off ? c[2] + " : bientôt" : c[2]) + '"' : "") + (off ? " disabled" : "") + ">" +
+          esc(c[1]) + ' <span class="seg-n">' + (off ? "bientôt" : n) + "</span></button>";
       }).join("");
       if (tagSel) {
         tagSel.innerHTML = '<option value="">Tous les tags</option>' + allTags.map(function (t) {
@@ -255,37 +280,37 @@
         }).join("");
         tagSel.classList.toggle("is-on", !!state.tag);
       }
-    }
-    function render() {
-      var q = state.q.toLowerCase();
-      var list = CATALOG.filter(function (p) {
-        if (!matchType(p, state.type)) return false;
-        if (state.tag && (p.tags || []).indexOf(state.tag) < 0) return false;
-        if (q && (p.title + " " + p.short + " " + (p.tags || []).join(" ")).toLowerCase().indexOf(q) < 0) return false;
-        return true;
+    };
+    var render = function () {
+      var q = state.q.toLowerCase(), shown = 0, perGrid = [];
+      items.forEach(function (it) {
+        var ok = (state.cat === "all" || it.cat === state.cat) &&
+          (!state.tag || it.tags.indexOf(state.tag) >= 0) &&
+          (!q || it.q.indexOf(q) >= 0);
+        it.el.hidden = !ok;
+        if (ok) { shown++; if (perGrid.indexOf(it.grid) < 0) perGrid.push(it.grid); }
       });
-      if (!list.length) {
-        var msg = state.type === "plugin" && !state.q && !state.tag
-          ? "Mes plugins Unity arrivent bientôt ici. Repasse dans quelques temps 🍄"
-          : "Rien trouvé dans ce coin de la forêt…";
-        lib.innerHTML = '<div class="empty"><img src="assets/squirrel.png" alt="" width="60" height="57"><p>' + msg + "</p></div>";
-      } else {
-        lib.innerHTML = list.map(card).join("");
-        paintCovers(lib);
-      }
-      if (countEl) countEl.textContent = list.length + (list.length > 1 ? " projets" : " projet");
-      if (resetEl) resetEl.hidden = state.type === "all" && !state.tag && !state.q;
-    }
+      // une section sans carte visible disparaît (le Versus, lui, reste toujours en bas)
+      $$("[data-filter-grid]").forEach(function (grid) {
+        var sec = grid.closest(".hub-section");
+        if (!sec) return;
+        if (sec.hasAttribute("data-steam-only") && !catCount.steam) { sec.hidden = true; return; }
+        sec.hidden = perGrid.indexOf(grid) < 0;
+      });
+      if (emptyEl) emptyEl.hidden = shown > 0;
+      if (countEl) countEl.textContent = shown + (shown > 1 ? " projets" : " projet");
+      if (resetEl) resetEl.hidden = state.cat === "all" && !state.tag && !state.q;
+    };
     filtersEl.addEventListener("click", function (e) {
       var b = e.target.closest("[data-type]");
-      if (!b) return;
-      state.type = b.dataset.type;
+      if (!b || b.disabled) return;
+      state.cat = b.dataset.type;
       renderFilters(); render();
     });
     if (tagSel) tagSel.addEventListener("change", function () { state.tag = tagSel.value || null; renderFilters(); render(); });
     if (searchEl) searchEl.addEventListener("input", function () { state.q = searchEl.value.trim(); render(); });
     if (resetEl) resetEl.addEventListener("click", function () {
-      state = { type: "all", tag: null, q: "" };
+      state = { cat: "all", tag: null, q: "" };
       if (searchEl) searchEl.value = "";
       renderFilters(); render();
     });
@@ -395,7 +420,7 @@
           ? '<img src="' + esc(proj.cover) + '" alt="Jaquette de ' + esc(proj.title) + '">'
           : '<canvas data-cover="' + esc(proj.id) + '" aria-hidden="true"></canvas>';
         paintCovers(coverBox);
-        $("[data-project-kicker]").textContent = [proj.type === "plugin" ? "Plugin Unity" : "Jeu", proj.status, proj.year].filter(Boolean).join(" · ");
+        $("[data-project-kicker]").textContent = [TYPE_LABEL[proj.type] || "Jeu", proj.status, proj.year].filter(Boolean).join(" · ");
         $("[data-project-title]").textContent = proj.title;
         $("[data-project-short]").textContent = proj.short || "";
         if (proj.with) { var w = $("[data-project-with]"); w.textContent = "Avec " + proj.with; w.hidden = false; }

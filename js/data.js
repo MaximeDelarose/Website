@@ -45,7 +45,7 @@ window.SITE = {
 /* -------------------------------------------------------------------------
    PROJETS (l'ordre ici = l'ordre d'affichage ; les 3 premiers sont sur
    l'accueil)
-   type    : "game" | "plugin"
+   type    : "game" | "plugin" | "asset" (asset graphique : pixel art, sprites…)
    tags    : ce que tu veux (ils servent aux filtres de la bibliothèque)
    status  : "Sorti" | "En cours" | "Prototype" | "Game jam" | "Bientôt" ...
    with    : co-auteurs (optionnel)

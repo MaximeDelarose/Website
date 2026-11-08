@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261115flt1">
+  <link rel="stylesheet" href="css/style.css?v=20261115flt2">
   <link rel="stylesheet" href="css/party.css?v=20261107vs2">
   <link rel="stylesheet" href="css/versus.css?v=20261107vs2">
   <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
@@ -59,40 +59,39 @@
 
   <main id="main" class="games-hub">
     <div class="wrap">
-      <nav class="hub-nav" aria-label="Sections de la page">
-        <a class="chip" href="#steam" data-steam-only hidden>Steam</a>
-        <a class="chip" href="#unity">Unity · itch.io</a>
-        <a class="chip" href="#navigateur">Navigateur</a>
-        <a class="chip" href="#versus">⚔️ Versus</a>
-      </nav>
+      <!-- Une seule barre de filtres pour toute la page : jeux web, itch WebGL, itch, Steam, plugins -->
+      <div class="lib-toolbar hub-toolbar">
+        <div class="seg" data-filters role="group" aria-label="Catégorie"></div>
+        <div class="lib-row">
+          <label class="lib-field lib-search">
+            <span class="visually-hidden">Rechercher un jeu ou un plugin</span>
+            <input type="search" placeholder="Rechercher…" autocomplete="off" data-search>
+          </label>
+          <label class="lib-field lib-tag">
+            <span class="visually-hidden">Filtrer par tag</span>
+            <select data-tag-select></select>
+          </label>
+        </div>
+        <p class="lib-status"><span data-count aria-live="polite"></span><button type="button" class="lib-reset" data-reset hidden>Effacer les filtres</button><a class="lib-jump" href="#versus">⚔️ Versus entre amis ↓</a></p>
+      </div>
+      <div class="panel empty hub-empty" data-hub-empty hidden>
+        <img src="assets/squirrel.png" alt="" width="60" height="57">
+        <p>Rien trouvé dans ce coin de la forêt…</p>
+      </div>
     </div>
 
     <!-- Steam : s'affiche tout seul dès qu'un projet de js/data.js a un lien « steam » -->
     <section class="hub-section" id="steam" data-steam-only hidden>
       <div class="wrap">
         <div class="section-head"><div><span class="kicker">Sur Steam</span><h2>Mes jeux Steam</h2></div></div>
-        <div class="grid" data-steam></div>
+        <div class="grid" data-steam data-filter-grid></div>
       </div>
     </section>
 
     <section class="hub-section" id="unity">
       <div class="wrap">
-        <div class="section-head"><div><span class="kicker">Unity · itch.io</span><h2>Projets Unity et game jams</h2></div></div>
-        <div class="lib-toolbar">
-          <div class="seg" data-filters role="group" aria-label="Type de projet"></div>
-          <div class="lib-row">
-            <label class="lib-field lib-search">
-              <span class="visually-hidden">Rechercher un projet</span>
-              <input type="search" placeholder="Rechercher…" autocomplete="off" data-search>
-            </label>
-            <label class="lib-field lib-tag">
-              <span class="visually-hidden">Filtrer par tag</span>
-              <select data-tag-select></select>
-            </label>
-          </div>
-          <p class="lib-status"><span data-count aria-live="polite"></span><button type="button" class="lib-reset" data-reset hidden>Effacer les filtres</button></p>
-        </div>
-        <div class="grid" data-library></div>
+        <div class="section-head"><div><span class="kicker">Unity · itch.io</span><h2>Jeux itch.io, plugins et assets</h2></div></div>
+        <div class="grid" data-library data-filter-grid></div>
       </div>
     </section>
 
@@ -101,7 +100,7 @@
         <div class="section-head"><div><span class="kicker">Jouables ici, sans rien installer</span><h2>Jeux navigateur</h2></div></div>
         <p class="lead games-intro">Mes petits jeux maison, faits pour tourner directement dans le navigateur, sur ordinateur comme sur mobile.</p>
         <a class="panel vs-teaser" href="#versus"><span class="vs-teaser-ico" aria-hidden="true">⚔️</span><span><strong>Versus entre amis</strong><br>Crée une party de 2 à 4 joueurs et enchaînez les manches sur tous ces jeux : 1 contre 1, 2 contre 2, chacun pour soi, avec des points et des émotes.</span><span class="btn btn-small">Jouer en versus ↓</span></a>
-      <div class="grid games-grid">
+      <div class="grid games-grid" data-filter-grid data-filter-cat="web">
           <article class="card">
             <div class="card-media"><a href="jeu.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="survivor" data-icon="paw" data-palette="#9cc56b,#5b8a4a,#1f3a2b"></canvas></a></div>
             <div class="card-body">
@@ -300,17 +299,17 @@
   </footer>
 
   <script>
-    // Arrivée par un lien d'invitation (#p=CODE) ou un ancien lien de la bibliothèque :
+    // Arrivée par un lien d'invitation (#p=CODE) :
     // on lit l'adresse avant que le Versus ne l'efface, et on descend à la bonne section une fois tout chargé.
     (function () {
-      var h = location.hash, id = /^#p=/.test(h) ? "versus" : /^#(jeux|plugins|jouer)$/.test(h) ? "unity" : null;
+      var h = location.hash, id = /^#p=/.test(h) ? "versus" : null;
       if (id) window.addEventListener("load", function () { var el = document.getElementById(id); if (el) el.scrollIntoView(); });
     })();
   </script>
   <script src="js/data.js?v=20261103re4"></script>
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/leaderboard.js?v=20261103re4"></script>
-  <script src="js/main.js?v=20261115flt1"></script>
+  <script src="js/main.js?v=20261115flt2"></script>
   <script src="js/gamekit.js?v=20261114gk2"></script>
   <script src="js/party-modes.js?v=20261107vs2"></script>
   <script src="js/party.js?v=20261115hub1"></script>

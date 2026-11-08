@@ -3207,3 +3207,20 @@ html.is-app, html.is-app body { overflow: hidden; overscroll-behavior: none; }
 .hub-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 8px; padding: 4px 3px 8px; margin: 0; }
 .hub-nav::-webkit-scrollbar { display: none; }
 .hub-nav .chip { flex: none; font-size: .88rem; padding: 4px 12px; }
+
+/* barre de filtres unique en haut de la page Jeux */
+.hub-toolbar { margin: 4px 0 8px; }
+.card[hidden], .games-grid .card[hidden] { display: none !important; }
+.seg-btn:disabled { opacity: .5; cursor: not-allowed; background: transparent; }
+.seg-btn:disabled .seg-n { font-style: italic; }
+.lib-jump { margin-left: auto; font-weight: 800; text-decoration: none; }
+.lib-jump:hover { text-decoration: underline; }
+.hub-empty { text-align: center; padding: 28px 16px; margin: 16px 4px 24px; }
+.hub-empty[hidden] { display: none; }
+.badge-asset { background: #f2b05e; color: #2b1709; }
+@media (max-width: 560px) {
+  /* sur téléphone, toutes les catégories visibles d'un coup (pastilles qui passent à la ligne) */
+  .hub-toolbar .seg { display: flex; flex-wrap: wrap; gap: 8px; background: none; box-shadow: none; overflow: visible; margin: 3px; }
+  .hub-toolbar .seg-btn, .hub-toolbar .seg-btn + .seg-btn { flex: 1 1 auto; background: var(--panel); box-shadow: 0 0 0 3px var(--line); padding: 6px 10px; }
+  .hub-toolbar .seg-btn[aria-pressed="true"] { background: var(--orange); }
+}
