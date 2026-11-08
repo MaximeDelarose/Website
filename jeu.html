@@ -30,7 +30,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261116vs3">
+  <link rel="stylesheet" href="css/style.css?v=20261117st1">
   <link rel="stylesheet" href="css/party.css?v=20261107vs2">
   <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
   <script>
@@ -69,6 +69,7 @@
         <ul>
           <li><a href="index.html" data-page="home">Accueil</a></li>
           <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="stats.html" data-page="stats">Stats</a></li>
           <li><a href="bio.html" data-page="bio">Bio</a></li>
           <li><a href="contact.html" data-page="contact">Contact</a></li>
         </ul>
@@ -171,8 +172,8 @@
     (function () {
       var FALLBACK = "v247c";
       function load(b) {
-        var css = document.querySelector('link[href^="css/style.css?v=20261116vs3"]');
-        if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261116vs3" + b);
+        var css = document.querySelector('link[href^="css/style.css?v=20261117st1"]');
+        if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261117st1" + b);
         ["js/v2/game-data.js", "js/v2/game.js"].forEach(function (src) {
           var s = document.createElement("script"); s.src = src + "?v=" + b; s.async = false; document.body.appendChild(s);
         });

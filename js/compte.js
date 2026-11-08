@@ -24,7 +24,7 @@
     }
     var p = A.profile || {}, email = A.user.email || "";
     box.innerHTML =
-      '<div class="account-head"><span class="account-avatar">' + esc((p.pseudo || "?").charAt(0).toUpperCase()) + "</span><div><strong>" + esc(p.pseudo || "Pas encore de pseudo") + (p.admin ? ' <span class="account-admin">ADMIN</span>' : "") + "</strong>" +
+      '<div class="account-head"><span class="account-avatar">' + esc((p.pseudo || "?").charAt(0).toUpperCase()) + "</span><div><strong>" + esc(p.pseudo || "Pas encore de pseudo") + (p.admin ? ' <a class="account-admin" href="admin.html" title="Page admin">ADMIN 🛠</a>' : "") + "</strong>" +
       "<small>Connecté" + (((A.user.app_metadata || {}).provider || "google") === "google" ? " avec Google" : "") + (email ? " · " + esc(email) : "") + "</small></div></div>" +
       '<form class="account-form" data-pseudo><label for="acc-pseudo">Pseudo (visible par les autres joueurs)</label><div class="submit-row">' +
       '<input id="acc-pseudo" type="text" maxlength="20" required value="' + esc(p.pseudo || "") + '"><button class="btn btn-alt btn-small" type="submit">Enregistrer</button></div></form>' +
