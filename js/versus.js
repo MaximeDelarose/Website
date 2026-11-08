@@ -1,5 +1,5 @@
 /* =========================================================================
-   Versus : page salon de la party (versus.html).
+   Versus : salon de la party (section Versus de jeux.html).
    Créer / rejoindre, joueurs et points, règles, format et équipes, choix du
    mode (ou roulette), manche en cours, historique. Toute la logique réseau
    est dans js/party.js ; ici on ne fait que l'interface.
@@ -283,7 +283,7 @@
     if (st.match && st.match.status !== "done") return;
     if (st.match && Date.now() - (st.match.endAt || 0) < 20000) return;
     if (present().length < 2) return;
-    var back = present().filter(function (id) { return !P.isBot(id); }).every(function (id) { return P.roster.some(function (x) { return x.id === id && x.pg === "versus.html"; }); });
+    var back = present().filter(function (id) { return !P.isBot(id); }).every(function (id) { return P.roster.some(function (x) { return x.id === id && x.pg === "jeux.html"; }); });
     if (back) roulette();
   }, 2000);
   render();

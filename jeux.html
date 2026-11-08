@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jeux · AkarisuMD</title>
-  <meta name="description" content="Tous mes jeux jouables directement sur le site : Écureuil Survivor, Merger, Suika, Écureuil Dice, Écureuil Défense, Ultimate Écureuil et Le Grand Chêne. Rien à installer.">
+  <meta name="description" content="Tous mes jeux : projets Unity et itch.io, jeux jouables directement dans le navigateur, et le Versus entre amis de 2 à 4 joueurs.">
   <meta property="og:title" content="Jeux · AkarisuMD">
-  <meta property="og:description" content="Tous mes jeux jouables directement sur le site : Écureuil Survivor, Merger, Suika, Écureuil Dice, Écureuil Défense, Ultimate Écureuil et Le Grand Chêne. Rien à installer.">
+  <meta property="og:description" content="Tous mes jeux : projets Unity et itch.io, jeux jouables directement dans le navigateur, et le Versus entre amis de 2 à 4 joueurs.">
   <meta name="theme-color" content="#3f6b3a">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <script>
@@ -20,7 +20,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261109sk1">
+  <link rel="stylesheet" href="css/style.css?v=20261115hub1">
+  <link rel="stylesheet" href="css/party.css?v=20261107vs2">
+  <link rel="stylesheet" href="css/versus.css?v=20261107vs2">
   <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
 </head>
 <body data-page="games">
@@ -35,9 +37,7 @@
       <nav id="site-nav" aria-label="Navigation principale">
         <ul>
           <li><a href="index.html" data-page="home">Accueil</a></li>
-          <li><a href="bibliotheque.html" data-page="library">Bibliothèque</a></li>
           <li><a href="jeux.html" data-page="games">Jeux</a></li>
-          <li><a href="versus.html" data-page="versus">Versus</a></li>
           <li><a href="bio.html" data-page="bio">Bio</a></li>
           <li><a href="contact.html" data-page="contact">Contact</a></li>
         </ul>
@@ -54,187 +54,230 @@
 
   <section class="page-banner">
     <canvas class="pixel-scene" data-seed="13" data-compact="true" aria-hidden="true"></canvas>
-    <div class="banner-title"><div class="wrap"><div class="panel"><span class="kicker">Jouables ici, sans rien installer</span><h1>Jeux</h1></div></div></div>
+    <div class="banner-title"><div class="wrap"><div class="panel"><span class="kicker">Unity, itch.io, navigateur & versus</span><h1>Jeux</h1></div></div></div>
   </section>
 
-  <main id="main" class="section">
+  <main id="main" class="games-hub">
     <div class="wrap">
-      <p class="lead games-intro">Mes petits jeux maison, faits pour tourner directement dans le navigateur, sur ordinateur comme sur mobile. Mes jeux de game jam sont dans la <a class="text-link" href="bibliotheque.html#jeux">bibliothèque</a>.</p>
-      <a class="panel vs-teaser" href="versus.html"><span class="vs-teaser-ico" aria-hidden="true">⚔️</span><span><strong>Nouveau : Versus entre amis</strong><br>Crée une party de 2 à 4 joueurs et enchaînez les manches sur tous ces jeux : 1 contre 1, 2 contre 2, chacun pour soi, avec des points et des émotes.</span><span class="btn btn-small">Jouer en versus</span></a>
-      <div class="grid games-grid">
-        <article class="card">
-          <div class="card-media"><a href="jeu.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="survivor" data-icon="paw" data-palette="#9cc56b,#5b8a4a,#1f3a2b"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="jeu.html">Écureuil Survivor</a></h2>
-            <p class="card-meta">Action · solo (coop en version 1)</p>
-            <p class="card-text">La 2.0 : 10 écureuils qui changent chacun une règle, le mouvement en 3 états (Ancré, Mouvement, Volte), 6 armes et 20 techniques, attirail, camp, Expédition et méga boss.</p>
-            <ul class="tags"><li>Survivors</li><li>Clavier</li><li>Tactile</li></ul>
-            <a class="btn btn-small" href="jeu.html">▶ Jouer</a>
-            <a class="btn btn-small btn-alt" href="jeu-classique.html">Version 1 (coop)</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="merger.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="merger" data-icon="drop" data-palette="#f2b05e,#e8873a,#3d2a1e"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="merger.html">Merger</a></h2>
-            <p class="card-meta">Réflexion · solo & coop à 2</p>
-            <p class="card-text">Lâche les écureuils deux par deux : 3 de la même couleur qui se touchent disparaissent. Mode Coop à 2 sur le même ordinateur.</p>
-            <ul class="tags"><li>Puzzle</li><li>Coop local</li></ul>
-            <a class="btn btn-small" href="merger.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="suika.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="suika" data-icon="drop" data-palette="#f6c453,#e0544b,#3d1f1a"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="suika.html">Suika</a></h2>
-            <p class="card-meta">Puzzle · solo</p>
-            <p class="card-text">Lâche des écureuils dans le bac : deux identiques qui se touchent fusionnent en un plus gros. Arrive jusqu'au Grand Chêne sans déborder !</p>
-            <ul class="tags"><li>Puzzle</li><li>Fusion</li><li>Tactile</li><li>Nouveau</li></ul>
-            <a class="btn btn-small" href="suika.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="dice.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="dice" data-icon="dice" data-palette="#7fd1c7,#2f7f7a,#173b3a"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="dice.html">Écureuil Dice</a></h2>
-            <p class="card-meta">Défense · solo, coop & versus</p>
-            <p class="card-text">Invoque et fusionne des écureuils-dés pour défendre ta réserve de noisettes, seul, contre l'IA ou à 2 en ligne.</p>
-            <ul class="tags"><li>Fusion de dés</li><li>En ligne</li></ul>
-            <a class="btn btn-small" href="dice.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="king-dice.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="kingdice" data-icon="crown" data-palette="#ffd257,#78aef7,#3a3266"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="king-dice.html">King Dice</a></h2>
-            <p class="card-meta">Défense · coop & versus, en ligne</p>
-            <p class="card-text">Invoquez des pièces d'échecs au hasard, fusionnez-les et protégez votre roi : en coop ou en duel, sur le même écran, en ligne, au clavier ou au doigt.</p>
-            <ul class="tags"><li>Fusion</li><li>Échecs</li><li>Coop & versus</li><li>En ligne</li><li>Tactile</li></ul>
-            <a class="btn btn-small" href="king-dice.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="ages.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="ages" data-icon="acorn" data-palette="#d2762c,#5d8fb8,#2f4a2a"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="ages.html">Age of Defense</a></h2>
-            <p class="card-meta">Tower defense · solo, coop & versus en ligne</p>
-            <p class="card-text">Les écureuils défendent le Grand Chêne contre limaces, blaireaux et sangliers, de la Préhistoire au Futur : routes larges, casernes, rampes, archers, chars, avions, mines, fosses, glace, feu et paralysie. Tout évolue avec ta technologie.</p>
-            <ul class="tags"><li>Technologie</li><li>Troupes</li><li>Coop & versus</li><li>En ligne</li><li>Nouveau</li></ul>
-            <a class="btn btn-small" href="ages.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="bagbound.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="bagbound" data-icon="bag" data-palette="#f2c14e,#8a5a2b,#2b1f18"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="bagbound.html">BAGBOUND</a></h2>
-            <p class="card-meta">Roguelite · auto-battler en sac à dos</p>
-            <p class="card-text">Traverse la forêt de combat en combat : range ton sac, tourne tes objets pour qu'ils se renforcent entre voisins, puis regarde le combat se jouer tout seul. Boutique, événements, boss.</p>
-            <ul class="tags"><li>Sac à dos</li><li>Auto-battler</li><li>Mobile</li><li>Nouveau</li></ul>
-            <a class="btn btn-small" href="bagbound.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="ultimate.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="ultimate" data-icon="flag" data-palette="#8fd0f0,#5aa84a,#2f5a2a"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="ultimate.html">Ultimate Écureuil</a></h2>
-            <p class="card-meta">Party platformer · 1 à 4 joueurs</p>
-            <p class="card-text">Choisis une pièce, construis le parcours, pose tes pièges (piques, scies, canons à glands), puis cours jusqu'au drapeau. Seuls ceux qui arrivent marquent : à toi de doser la cruauté !</p>
-            <ul class="tags"><li>Plateformes</li><li>Même clavier</li><li>Bots</li><li>Mobile</li><li>Nouveau</li></ul>
-            <a class="btn btn-small" href="ultimate.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="arcane.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="arcane" data-icon="wand" data-palette="#c9a6ff,#5b2d8e,#1d1438"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="arcane.html">Arcane Tactics</a></h2>
-            <p class="card-meta">RPG tactique · solo & coop en ligne</p>
-            <p class="card-text">Combats au tour par tour en vue isométrique avec sept héros inspirés des échecs (tank, mage, assassin, invocatrice, soigneuse, cogneuse, zones), six zones fantaisistes, un donjon par zone, et du butin aléatoire après chaque combat qui se voit sur ton héros.</p>
-            <ul class="tags"><li>Tour par tour</li><li>Butin</li><li>Coop en ligne</li><li>Mobile</li></ul>
-            <a class="btn btn-small" href="arcane.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="echecs.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="chess" data-icon="knight" data-palette="#f3e2bf,#7a9a5a,#2b3a24"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="echecs.html">Échecs</a></h2>
-            <p class="card-meta">Stratégie · bots, en ligne & à deux</p>
-            <p class="card-text">Affronte 6 bots de la forêt, du Gland au Grand Chêne, défie un ami en ligne avec un code de salon, ou jouez à deux sur le même écran.</p>
-            <ul class="tags"><li>Échecs</li><li>En ligne</li><li>Bots</li></ul>
-            <a class="btn btn-small" href="echecs.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="billard.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="pool" data-icon="ball" data-palette="#bfe3cf,#2f8a55,#10361f"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="billard.html">Billard</a></h2>
-            <p class="card-meta">Adresse · en ligne & à deux</p>
-            <p class="card-text">Billard américain 2D (8-ball) : 15 billes, pleines contre rayées, blanche en main sur faute. Défie un ami en ligne avec un code de salon, ou jouez à deux sur le même écran.</p>
-            <ul class="tags"><li>Billard</li><li>En ligne</li><li>À deux</li></ul>
-            <a class="btn btn-small" href="billard.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="golfaventure.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="golfaventure" data-icon="golf" data-palette="#c6f55c,#139a56,#0b3a24"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="golfaventure.html">Golfaventure</a></h2>
-            <p class="card-meta">Aventure de golf · solo</p>
-            <p class="card-text">Tu es une petite balle dans un monde en pixel art où tes coups sont ta vie : drapeaux de sauvegarde, souterrain, slimes, oiseaux, chauves-souris et aigles à percuter, donjon à puzzles (interrupteurs, glace, clés, boss) et quatre Morceaux de Tee à rapporter au temple.</p>
-            <ul class="tags"><li>Aventure</li><li>Golf</li><li>Pixel art</li><li>Nouveau</li></ul>
-            <a class="btn btn-small" href="golfaventure.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="golf.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="golf" data-icon="golf" data-palette="#bfe8a8,#4f9d46,#1f3a2b"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="golf.html">Mini-golf</a></h2>
-            <p class="card-meta">Adresse · solo & en ligne</p>
-            <p class="card-text">9 trous dans la forêt : sable, lac, champignons rebondissants et un moulin à timer. Joue seul pour battre ton record, ou défie 1 à 3 amis en ligne avec un code de salon.</p>
-            <ul class="tags"><li>Mini-golf</li><li>En ligne</li><li>Mobile</li><li>Nouveau</li></ul>
-            <a class="btn btn-small" href="golf.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="defense.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="defense" data-icon="tower" data-palette="#c9b6e4,#7a5ea8,#2b1f3d"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="defense.html">Écureuil Défense</a></h2>
-            <p class="card-meta">Tower defense · solo</p>
-            <p class="card-text">Pose des écureuils le long du chemin et améliore-les sur 3 voies de 5 niveaux. 5 cartes, 4 difficultés.</p>
-            <ul class="tags"><li>Tower defense</li><li>Stratégie</li></ul>
-            <a class="btn btn-small" href="defense.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="flippers.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="flippers" data-icon="pinball" data-palette="#7fd1a0,#2f7f55,#12301f"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="flippers.html">Flippers</a></h2>
-            <p class="card-meta">Arcade · solo</p>
-            <p class="card-text">Un flipper dans la forêt : champignons-bumpers, cibles GLAND, terrier et multiplicateur. 3 billes pour battre ton record, au clavier ou au doigt.</p>
-            <ul class="tags"><li>Flipper</li><li>Arcade</li><li>Clavier</li><li>Tactile</li><li>Nouveau</li></ul>
-            <a class="btn btn-small" href="flippers.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="grimpe.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="grimpe" data-icon="tree" data-palette="#9fd8ff,#4f8a5b,#17331f"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="grimpe.html">Grimpe-Chêne</a></h2>
-            <p class="card-meta">Escalade · solo</p>
-            <p class="card-text">Un jeu de grimpe à la Jump King en pixel art 8 bits : arme ton saut, choisis ta direction, relâche. Pas de contrôle en l'air et une chute peut coûter cher. 48 écrans, 7 zones, des tunnels vers un château et des grottes de glace avec clés, portes, ressorts et tapis roulants, jusqu'au gland doré.</p>
-            <ul class="tags"><li>Plateforme</li><li>Difficile</li><li>Clavier</li><li>Tactile</li><li>Nouveau</li></ul>
-            <a class="btn btn-small" href="grimpe.html">▶ Jouer</a>
-          </div>
-        </article>
-        <article class="card">
-          <div class="card-media"><a href="idle.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="idle" data-icon="acorn" data-palette="#f2d48a,#c8873a,#4a2f1e"></canvas></a></div>
-          <div class="card-body">
-            <h2 class="card-title"><a href="idle.html">Le Grand Chêne</a></h2>
-            <p class="card-meta">Idle · incrémental</p>
-            <p class="card-text">Tape sur le chêne pour récolter des glands, fais travailler les animaux, cultive ta ferme et change de saison.</p>
-            <ul class="tags"><li>Idle</li><li>Hors ligne</li></ul>
-            <a class="btn btn-small" href="idle.html">▶ Jouer</a>
-          </div>
-        </article>
-      </div>
+      <nav class="hub-nav" aria-label="Sections de la page">
+        <a class="chip" href="#steam" data-steam-only hidden>Steam</a>
+        <a class="chip" href="#unity">Unity · itch.io</a>
+        <a class="chip" href="#navigateur">Jeux navigateur</a>
+        <a class="chip" href="#versus">⚔️ Versus</a>
+      </nav>
     </div>
+
+    <!-- Steam : s'affiche tout seul dès qu'un projet de js/data.js a un lien « steam » -->
+    <section class="hub-section" id="steam" data-steam-only hidden>
+      <div class="wrap">
+        <div class="section-head"><div><span class="kicker">Sur Steam</span><h2>Mes jeux Steam</h2></div></div>
+        <div class="grid" data-steam></div>
+      </div>
+    </section>
+
+    <section class="hub-section" id="unity">
+      <div class="wrap">
+        <div class="section-head"><div><span class="kicker">Unity · itch.io</span><h2>Projets Unity et game jams</h2></div></div>
+        <div class="library-tools">
+          <div data-filters></div>
+          <div class="search-row">
+            <label class="visually-hidden" for="search">Rechercher un projet</label>
+            <input class="search" id="search" type="search" placeholder="Rechercher un jeu, un plugin, un tag…" data-search>
+            <span class="count" data-count aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="grid" data-library></div>
+      </div>
+    </section>
+
+    <section class="hub-section" id="navigateur">
+      <div class="wrap">
+        <div class="section-head"><div><span class="kicker">Jouables ici, sans rien installer</span><h2>Jeux navigateur</h2></div></div>
+        <p class="lead games-intro">Mes petits jeux maison, faits pour tourner directement dans le navigateur, sur ordinateur comme sur mobile.</p>
+        <a class="panel vs-teaser" href="#versus"><span class="vs-teaser-ico" aria-hidden="true">⚔️</span><span><strong>Versus entre amis</strong><br>Crée une party de 2 à 4 joueurs et enchaînez les manches sur tous ces jeux : 1 contre 1, 2 contre 2, chacun pour soi, avec des points et des émotes.</span><span class="btn btn-small">Jouer en versus ↓</span></a>
+      <div class="grid games-grid">
+          <article class="card">
+            <div class="card-media"><a href="jeu.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="survivor" data-icon="paw" data-palette="#9cc56b,#5b8a4a,#1f3a2b"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="jeu.html">Écureuil Survivor</a></h3>
+              <p class="card-meta">Action · solo (coop en version 1)</p>
+              <p class="card-text">La 2.0 : 10 écureuils qui changent chacun une règle, le mouvement en 3 états (Ancré, Mouvement, Volte), 6 armes et 20 techniques, attirail, camp, Expédition et méga boss.</p>
+              <ul class="tags"><li>Survivors</li><li>Clavier</li><li>Tactile</li></ul>
+              <a class="btn btn-small" href="jeu.html">▶ Jouer</a>
+              <a class="btn btn-small btn-alt" href="jeu-classique.html">Version 1 (coop)</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="merger.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="merger" data-icon="drop" data-palette="#f2b05e,#e8873a,#3d2a1e"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="merger.html">Merger</a></h3>
+              <p class="card-meta">Réflexion · solo & coop à 2</p>
+              <p class="card-text">Lâche les écureuils deux par deux : 3 de la même couleur qui se touchent disparaissent. Mode Coop à 2 sur le même ordinateur.</p>
+              <ul class="tags"><li>Puzzle</li><li>Coop local</li></ul>
+              <a class="btn btn-small" href="merger.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="suika.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="suika" data-icon="drop" data-palette="#f6c453,#e0544b,#3d1f1a"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="suika.html">Suika</a></h3>
+              <p class="card-meta">Puzzle · solo</p>
+              <p class="card-text">Lâche des écureuils dans le bac : deux identiques qui se touchent fusionnent en un plus gros. Arrive jusqu'au Grand Chêne sans déborder !</p>
+              <ul class="tags"><li>Puzzle</li><li>Fusion</li><li>Tactile</li><li>Nouveau</li></ul>
+              <a class="btn btn-small" href="suika.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="dice.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="dice" data-icon="dice" data-palette="#7fd1c7,#2f7f7a,#173b3a"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="dice.html">Écureuil Dice</a></h3>
+              <p class="card-meta">Défense · solo, coop & versus</p>
+              <p class="card-text">Invoque et fusionne des écureuils-dés pour défendre ta réserve de noisettes, seul, contre l'IA ou à 2 en ligne.</p>
+              <ul class="tags"><li>Fusion de dés</li><li>En ligne</li></ul>
+              <a class="btn btn-small" href="dice.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="king-dice.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="kingdice" data-icon="crown" data-palette="#ffd257,#78aef7,#3a3266"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="king-dice.html">King Dice</a></h3>
+              <p class="card-meta">Défense · coop & versus, en ligne</p>
+              <p class="card-text">Invoquez des pièces d'échecs au hasard, fusionnez-les et protégez votre roi : en coop ou en duel, sur le même écran, en ligne, au clavier ou au doigt.</p>
+              <ul class="tags"><li>Fusion</li><li>Échecs</li><li>Coop & versus</li><li>En ligne</li><li>Tactile</li></ul>
+              <a class="btn btn-small" href="king-dice.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="ages.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="ages" data-icon="acorn" data-palette="#d2762c,#5d8fb8,#2f4a2a"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="ages.html">Age of Defense</a></h3>
+              <p class="card-meta">Tower defense · solo, coop & versus en ligne</p>
+              <p class="card-text">Les écureuils défendent le Grand Chêne contre limaces, blaireaux et sangliers, de la Préhistoire au Futur : routes larges, casernes, rampes, archers, chars, avions, mines, fosses, glace, feu et paralysie. Tout évolue avec ta technologie.</p>
+              <ul class="tags"><li>Technologie</li><li>Troupes</li><li>Coop & versus</li><li>En ligne</li><li>Nouveau</li></ul>
+              <a class="btn btn-small" href="ages.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="bagbound.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="bagbound" data-icon="bag" data-palette="#f2c14e,#8a5a2b,#2b1f18"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="bagbound.html">BAGBOUND</a></h3>
+              <p class="card-meta">Roguelite · auto-battler en sac à dos</p>
+              <p class="card-text">Traverse la forêt de combat en combat : range ton sac, tourne tes objets pour qu'ils se renforcent entre voisins, puis regarde le combat se jouer tout seul. Boutique, événements, boss.</p>
+              <ul class="tags"><li>Sac à dos</li><li>Auto-battler</li><li>Mobile</li><li>Nouveau</li></ul>
+              <a class="btn btn-small" href="bagbound.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="ultimate.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="ultimate" data-icon="flag" data-palette="#8fd0f0,#5aa84a,#2f5a2a"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="ultimate.html">Ultimate Écureuil</a></h3>
+              <p class="card-meta">Party platformer · 1 à 4 joueurs</p>
+              <p class="card-text">Choisis une pièce, construis le parcours, pose tes pièges (piques, scies, canons à glands), puis cours jusqu'au drapeau. Seuls ceux qui arrivent marquent : à toi de doser la cruauté !</p>
+              <ul class="tags"><li>Plateformes</li><li>Même clavier</li><li>Bots</li><li>Mobile</li><li>Nouveau</li></ul>
+              <a class="btn btn-small" href="ultimate.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="arcane.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="arcane" data-icon="wand" data-palette="#c9a6ff,#5b2d8e,#1d1438"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="arcane.html">Arcane Tactics</a></h3>
+              <p class="card-meta">RPG tactique · solo & coop en ligne</p>
+              <p class="card-text">Combats au tour par tour en vue isométrique avec sept héros inspirés des échecs (tank, mage, assassin, invocatrice, soigneuse, cogneuse, zones), six zones fantaisistes, un donjon par zone, et du butin aléatoire après chaque combat qui se voit sur ton héros.</p>
+              <ul class="tags"><li>Tour par tour</li><li>Butin</li><li>Coop en ligne</li><li>Mobile</li></ul>
+              <a class="btn btn-small" href="arcane.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="echecs.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="chess" data-icon="knight" data-palette="#f3e2bf,#7a9a5a,#2b3a24"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="echecs.html">Échecs</a></h3>
+              <p class="card-meta">Stratégie · bots, en ligne & à deux</p>
+              <p class="card-text">Affronte 6 bots de la forêt, du Gland au Grand Chêne, défie un ami en ligne avec un code de salon, ou jouez à deux sur le même écran.</p>
+              <ul class="tags"><li>Échecs</li><li>En ligne</li><li>Bots</li></ul>
+              <a class="btn btn-small" href="echecs.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="billard.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="pool" data-icon="ball" data-palette="#bfe3cf,#2f8a55,#10361f"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="billard.html">Billard</a></h3>
+              <p class="card-meta">Adresse · en ligne & à deux</p>
+              <p class="card-text">Billard américain 2D (8-ball) : 15 billes, pleines contre rayées, blanche en main sur faute. Défie un ami en ligne avec un code de salon, ou jouez à deux sur le même écran.</p>
+              <ul class="tags"><li>Billard</li><li>En ligne</li><li>À deux</li></ul>
+              <a class="btn btn-small" href="billard.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="golfaventure.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="golfaventure" data-icon="golf" data-palette="#c6f55c,#139a56,#0b3a24"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="golfaventure.html">Golfaventure</a></h3>
+              <p class="card-meta">Aventure de golf · solo</p>
+              <p class="card-text">Tu es une petite balle dans un monde en pixel art où tes coups sont ta vie : drapeaux de sauvegarde, souterrain, slimes, oiseaux, chauves-souris et aigles à percuter, donjon à puzzles (interrupteurs, glace, clés, boss) et quatre Morceaux de Tee à rapporter au temple.</p>
+              <ul class="tags"><li>Aventure</li><li>Golf</li><li>Pixel art</li><li>Nouveau</li></ul>
+              <a class="btn btn-small" href="golfaventure.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="golf.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="golf" data-icon="golf" data-palette="#bfe8a8,#4f9d46,#1f3a2b"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="golf.html">Mini-golf</a></h3>
+              <p class="card-meta">Adresse · solo & en ligne</p>
+              <p class="card-text">9 trous dans la forêt : sable, lac, champignons rebondissants et un moulin à timer. Joue seul pour battre ton record, ou défie 1 à 3 amis en ligne avec un code de salon.</p>
+              <ul class="tags"><li>Mini-golf</li><li>En ligne</li><li>Mobile</li><li>Nouveau</li></ul>
+              <a class="btn btn-small" href="golf.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="defense.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="defense" data-icon="tower" data-palette="#c9b6e4,#7a5ea8,#2b1f3d"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="defense.html">Écureuil Défense</a></h3>
+              <p class="card-meta">Tower defense · solo</p>
+              <p class="card-text">Pose des écureuils le long du chemin et améliore-les sur 3 voies de 5 niveaux. 5 cartes, 4 difficultés.</p>
+              <ul class="tags"><li>Tower defense</li><li>Stratégie</li></ul>
+              <a class="btn btn-small" href="defense.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="flippers.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="flippers" data-icon="pinball" data-palette="#7fd1a0,#2f7f55,#12301f"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="flippers.html">Flippers</a></h3>
+              <p class="card-meta">Arcade · solo</p>
+              <p class="card-text">Un flipper dans la forêt : champignons-bumpers, cibles GLAND, terrier et multiplicateur. 3 billes pour battre ton record, au clavier ou au doigt.</p>
+              <ul class="tags"><li>Flipper</li><li>Arcade</li><li>Clavier</li><li>Tactile</li><li>Nouveau</li></ul>
+              <a class="btn btn-small" href="flippers.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="grimpe.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="grimpe" data-icon="tree" data-palette="#9fd8ff,#4f8a5b,#17331f"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="grimpe.html">Grimpe-Chêne</a></h3>
+              <p class="card-meta">Escalade · solo</p>
+              <p class="card-text">Un jeu de grimpe à la Jump King en pixel art 8 bits : arme ton saut, choisis ta direction, relâche. Pas de contrôle en l'air et une chute peut coûter cher. 48 écrans, 7 zones, des tunnels vers un château et des grottes de glace avec clés, portes, ressorts et tapis roulants, jusqu'au gland doré.</p>
+              <ul class="tags"><li>Plateforme</li><li>Difficile</li><li>Clavier</li><li>Tactile</li><li>Nouveau</li></ul>
+              <a class="btn btn-small" href="grimpe.html">▶ Jouer</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-media"><a href="idle.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="idle" data-icon="acorn" data-palette="#f2d48a,#c8873a,#4a2f1e"></canvas></a></div>
+            <div class="card-body">
+              <h3 class="card-title"><a href="idle.html">Le Grand Chêne</a></h3>
+              <p class="card-meta">Idle · incrémental</p>
+              <p class="card-text">Tape sur le chêne pour récolter des glands, fais travailler les animaux, cultive ta ferme et change de saison.</p>
+              <ul class="tags"><li>Idle</li><li>Hors ligne</li></ul>
+              <a class="btn btn-small" href="idle.html">▶ Jouer</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="hub-section vs-section" id="versus">
+      <div class="wrap" data-versus>
+        <div class="section-head"><div><span class="kicker">Entre amis, de 2 à 4 joueurs</span><h2>Versus</h2></div></div>
+        <p class="lead">Crée une party, envoie le code à tes amis et enchaînez les manches sur tous les jeux du site : 1 contre 1, 2 contre 2, chacun pour soi… Le meilleur de chaque manche marque un point, le premier au but remporte la party. Les connexions aux jeux se font toutes seules.</p>
+        <div data-vs-app><p>Chargement…</p></div>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -250,11 +293,22 @@
     </div>
   </footer>
 
+  <script>
+    // Arrivée par un lien d'invitation (#p=CODE) ou un ancien lien de la bibliothèque :
+    // on lit l'adresse avant que le Versus ne l'efface, et on descend à la bonne section une fois tout chargé.
+    (function () {
+      var h = location.hash, id = /^#p=/.test(h) ? "versus" : /^#(jeux|plugins|jouer)$/.test(h) ? "unity" : null;
+      if (id) window.addEventListener("load", function () { var el = document.getElementById(id); if (el) el.scrollIntoView(); });
+    })();
+  </script>
   <script src="js/data.js?v=20261103re4"></script>
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/leaderboard.js?v=20261103re4"></script>
-  <script src="js/main.js?v=20261110ga2"></script>
+  <script src="js/main.js?v=20261115hub1"></script>
   <script src="js/gamekit.js?v=20261114gk2"></script>
+  <script src="js/party-modes.js?v=20261107vs2"></script>
+  <script src="js/party.js?v=20261115hub1"></script>
+  <script src="js/versus.js?v=20261115hub1"></script>
   <script src="js/scene.js?v=20261103re4"></script>
 </body>
 </html>

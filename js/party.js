@@ -283,7 +283,7 @@
     ss(SKEY, null); setStatus("off");
     if (!silent) { emit("state", null); emit("roster", []); }
   };
-  P.inviteLink = function () { return location.origin + location.pathname.replace(/[^/]*$/, "") + "versus.html#p=" + P.code; };
+  P.inviteLink = function () { return location.origin + location.pathname.replace(/[^/]*$/, "") + "jeux.html#p=" + P.code; };
 
   /* ---------- équipes et formats ---------- */
   // format : "ffa" (chacun pour soi) ou une liste de tailles d'équipes « 2-2 », « 1-2 », « 1-3 »
@@ -592,7 +592,7 @@
       ui.card = el("div", "pt-card", ui.ov);
       ui.card.addEventListener("click", function (e) {
         var a = e.target.closest("[data-pt]"); if (!a) return;
-        if (a.dataset.pt === "back") location.href = "versus.html";
+        if (a.dataset.pt === "back") location.href = "jeux.html#versus";
         if (a.dataset.pt === "stay") { closeCard(); clearTimeout(ui.autoBack); }
       });
       ui.board.addEventListener("click", function () { ui.board.classList.toggle("is-min"); });
@@ -720,7 +720,7 @@
     card('<p class="pt-kicker">Manche ' + s.round + " · " + esc(mode.name) + '</p><h2>Résultats</h2><ol class="pt-results">' + rows + "</ol>" + champ +
       '<div class="pt-actions"><button class="btn" type="button" data-pt="back">Retour au salon</button><button class="btn btn-ghost" type="button" data-pt="stay">Voir le jeu</button></div><p class="pt-sub">Retour automatique dans 15 s</p>');
     clearTimeout(ui.autoBack);
-    ui.autoBack = setTimeout(function () { location.href = "versus.html"; }, 15000);
+    ui.autoBack = setTimeout(function () { location.href = "jeux.html#versus"; }, 15000);
   }
 
   /* ---------- démarrage ---------- */

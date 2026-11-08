@@ -3156,3 +3156,15 @@ html.is-app, html.is-app body { overflow: hidden; overscroll-behavior: none; }
 .fr-card img { width: 56px; height: 56px; image-rendering: pixelated; background: #1f3a2b; padding: 4px; }
 .fr-emotes { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .fr-toast { display: flex; gap: 8px; align-items: center; }
+
+/* ---------- page Jeux fusionnée : Steam → Unity/itch.io → navigateur → Versus ---------- */
+.games-hub { padding: 28px 0 24px; }
+.hub-nav { display: flex; flex-wrap: wrap; gap: 6px 10px; margin: 0 0 8px; }
+.hub-nav .chip { text-decoration: none; }
+.hub-nav [hidden] { display: none; }
+.hub-section { padding: 40px 0 32px; scroll-margin-top: 80px; }
+.hub-section + .hub-section { border-top: 4px dashed var(--depth); }
+.hub-section[hidden] { display: none; }
+.hub-section .section-head { margin-bottom: 20px; }
+.hub-section.vs-section { padding-top: 40px; }
+.btn-steam { --b: #1b2838; --bd: #0e141c; color: #e8f1fa; }
