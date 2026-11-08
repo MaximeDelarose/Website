@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.47.2";
+  var VERSION = "2.48.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -942,7 +942,7 @@
     if (e.d.boss) {
       r.bosses++; S.stats.bosses++; r.bossT = r.bossT || {}; r.bossT[e.type] = 1;
       if (e.bornT !== undefined && r.time - e.bornT < 60) r.fastBoss = 1; if (e.guardian) r.guardWon = 1; if (e.terrier) r.terrierWon = 1; if (e.dgFinal) { r.finalT = r.finalT || {}; r.finalT[e.type] = 1; }
-      players.forEach(function (o) { if (o.gear && gearHas(o, "u_cycle")) { o.cycleN = (o.cycleN || 0) + 1; bannerAll("L'Œil du cycle : ton arme devient " + D.ELEMENTS[armElem(o)].name); } if (o.ring && o.ring.avare) r.gold += Math.floor(r.gold * (o.ring2x ? 0.2 : 0.1)); });
+      players.forEach(function (o) { if (o.gear && gearHas(o, "u_cycle")) { o.cycleN = (o.cycleN || 0) + 1; bannerAll("L'Œil du cycle : ton arme devient " + D.ELEMENTS[armElem(o)].name); } if (o.ring && o.ring.avare) r.gold += Math.min(150, Math.floor(r.gold * (o.ring2x ? 0.2 : 0.1))); });
       if (e.defiBoss) drop("chest", e.x + 12, e.y, 3);
       drop("chest", e.x, e.y, 2);
       for (var i = 0; i < 6; i++) drop("gold", e.x + Math.random() * 30 - 15, e.y + Math.random() * 30 - 15, 2);
@@ -1008,7 +1008,7 @@
     }
     if (p.char && p.char.id === "ninja" && p.posture === "danseuse" && p.mstate === "mouvement" && Math.random() < 0.15) { p.inv = 0.3; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     if (p.txf && p.txf.sprint && p.mstate === "mouvement" && Math.random() < p.txf.sprint / 100) { p.inv = 0.3; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
-    if ((p.dodge || p.dodgeX) && Math.random() < (p.dodge || 0) + (p.dodgeX || 0)) { p.inv = 0.3; r.dodges = (r.dodges || 0) + 1; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
+    if ((p.dodge || p.dodgeX) && Math.random() < Math.min(0.5, (p.dodge || 0) + (p.dodgeX || 0))) { p.inv = 0.3; r.dodges = (r.dodges || 0) + 1; if (S.opts.numbers) texts.push({ x: p.x, y: p.y - 14, n: "ESQUIVE", life: 0.6 }); return; }
     p.calmT = 0;
     if (r && TIER) dmg *= (1 + tcfg().dmg * tierN()) * rageDmg();
     if (p.oshield > 0) { var ab = Math.min(p.oshield, dmg); p.oshield -= ab; dmg -= ab; p.inv = 0.3; burst(p.x, p.y, "#9cc56b", 4); if (dmg <= 0) return; }
@@ -1016,7 +1016,7 @@
     p.redSt = 0; if (r && p === me) r.vc = 0;
     // 2.41 : l'armure réduit en pourcentage (A / (A + 12), plafonné à 70 %) au lieu de retrancher des points : avec 100+ d'armure plus rien ne passait
     var armA = Math.max(0, p.armor + (p.armX || 0)), armRed = Math.min(0.7, armA / (armA + 12)), lateH = r && !isArena() && !isDungeon() ? Math.max(0, r.time - 600) : 0;
-    if (lateH) dmg *= 1 + lateH / 300;                           // après 10 minutes, les coups montent vite : la partie finit toujours
+    if (r && r.time > 480 && !isArena() && !isDungeon()) dmg *= Math.pow(1.3, (r.time - 480) / 60);   // 2.48 : les coups montent de 30 % par minute après 8 minutes                           // après 10 minutes, les coups montent vite : la partie finit toujours
     var hit = Math.max(1, dmg * (1 - armRed) * (p.taken || 1) * (1 - (p.resist || 0)) * (elem && p.eres && p.eres[elem] ? 1 - Math.min(0.6, p.eres[elem] / 100) : 1) * (isArena() && r.mod && r.mod.taken ? r.mod.taken : 1)) * (nm(9) ? 1.3 : 1);
     if (p.rmRed > 0) { hit *= 1 - p.rmRed; p.rmRed = 0; }
     if (lateH > 120) hit += p.maxHp * Math.min(0.08, 0.006 * (lateH - 120) / 60);   // et passé 12 minutes, une part des PV max s'ajoute, armure ignorée
@@ -3242,7 +3242,8 @@
     if (picking) { picking = false; me.choosing = false; hideCard(); sendInput(); }
     else { state = "play"; hideCard(); last = performance.now(); }
   }
-  function addGold(n) { if (hasMod("pauvrete")) return; r.gold += n * p.goldMul; }
+  function goldEff(m) { return m > 4 ? 4 + (m - 4) * 0.2 : m; }   // 2.48 : au-delà de ×4, chaque point de bonus d'or ne compte que pour 20 %
+  function addGold(n) { if (hasMod("pauvrete")) return; r.gold += n * goldEff(p.goldMul); }
 
   /* =====================================================================
      Succès
@@ -6615,6 +6616,7 @@
     tickFx(dt);
     achTick -= dt;
     if (achTick <= 0) { achTick = 1; checkAchievements(r); }
+    players.forEach(function (o) { healCap(o, dt); });
     if (r.mods && hasMod("noheal")) players.forEach(function (o) { if (o._hpL != null && o.hp > o._hpL) o.hp = o._hpL; o._hpL = o.hp; });
     if (CHAL) chalTick();
     chestCheck();
@@ -8533,7 +8535,7 @@
     if (isArena()) return Math.round(((r.won ? A.rounds : r.round - 1) * 1000 + r.kills + (r.won ? 5000 : 0)) * DIFF.score);
     return Math.round((Math.floor(r.time) * 10 + r.kills + r.bonus) * DIFF.score);
   }
-  function runGold() { return Math.floor((r.kills * 0.1 + r.time / 6 + r.bosses * 30 + r.level) * p.goldMul + r.gold); }
+  function runGold() { return Math.floor((r.kills * 0.1 + r.time / 6 + r.bosses * 30 + r.level) * goldEff(p.goldMul) + Math.min(r.gold, 3000 + r.time * 5)); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function fr(n) { return String(n).replace(".", ","); }
   function showCard(html, name) {
@@ -10163,6 +10165,15 @@
   /* =====================================================================
      Boucle
      ===================================================================== */
+  /* 2.48 : plafond de soin. Les vols de vie, soins par ennemi tué, régénérations, etc. se cumulaient : avec 300 victoires par seconde on se soignait de plusieurs fois ses PV max à la seconde.
+     Au plus 15 % des PV max soignés par seconde (réserve de 2 s). Les montées de PV max et les réanimations ne sont pas bridées. */
+  function healCap(o, dt) {
+    if (o.down || o.choosing || o._hpC === undefined || o._mhC !== o.maxHp || o._wd) { o._wd = !!o.down; o._hpC = o.hp; o._mhC = o.maxHp; if (o._hb === undefined) o._hb = o.maxHp * 0.15; return; }
+    o._hb = Math.min(o.maxHp * 0.3, o._hb + o.maxHp * 0.15 * dt);
+    var gain = o.hp - o._hpC;
+    if (gain > 0) { var ok = Math.min(gain, o._hb); o._hb -= ok; o.hp = o._hpC + ok; }
+    o._hpC = o.hp;
+  }
   var PERF = { acc: 0, n: 0, asked: false };
   function loop(now) {
     requestAnimationFrame(loop);
@@ -10447,6 +10458,7 @@
     rage: function (min) { r.stageT0 = r.time - RAGE.start - min * 60; return { rage: rageMin(), dmg: rageDmg(), spd: rageSpd() }; },
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
+    hpSet: function (v) { me.hp = v / DISP; return me.hp; }, heal: function (n) { me.hp = Math.min(me.maxHp, me.hp + n / DISP); return Math.round(me.hp * DISP); }, hpNow: function () { return [Math.round(me.hp * DISP), Math.round(me.maxHp * DISP)]; }, goldTest: function (mul, n) { me.goldMul = mul; r.gold = 0; addGold(n); return Math.round(r.gold); },
     setRun: function (o) { Object.assign(r, o); return 1; },
     heavy: function (n) { for (var i = 0; i < n; i++) { var e = spawn(["slug", "beetle", "ant", "moth"][i % 4], Math.random() * TAU, 20 + Math.random() * 90); if (e) { e.hp = e.maxHp = 1e12; } } return enemies.length; },
     bench: function (n) { var t0 = performance.now(), i; for (i = 0; i < n; i++) { if (state === "levelup") { pending = 0; picking = false; state = "play"; hideCard(); } if (state !== "play") break; update(1 / 60); } var t1 = performance.now(); for (i = 0; i < 20; i++) draw(); var t2 = performance.now(); return { upd: +((t1 - t0) / Math.max(1, i0(n))).toFixed(2), drw: +((t2 - t1) / 20).toFixed(2), enemies: enemies.length, crew: me.crew ? me.crew.length : 0, projs: projs.length, t: Math.round(r.time), state: state }; function i0(k) { return k; } },
