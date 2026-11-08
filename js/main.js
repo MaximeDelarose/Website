@@ -47,7 +47,7 @@
   }
   var page = document.body.dataset.page;
   // les pages des jeux web sont regroupées sous l'onglet « Jeux »
-  var GAME_PAGES = ["games", "game", "merger", "suika", "dice", "kingdice", "arcane", "chess", "pool", "golf", "golfaventure", "defense", "idle", "bagbound", "flippers", "ultimate", "grimpe"];
+  var GAME_PAGES = ["games", "game", "merger", "suika", "dice", "kingdice", "ages", "arcane", "chess", "pool", "golf", "golfaventure", "defense", "idle", "bagbound", "flippers", "ultimate", "grimpe"];
   var navPage = GAME_PAGES.indexOf(page) >= 0 ? "games" : page;
   $$("#site-nav a").forEach(function (a) {
     if (a.dataset.page === navPage) a.setAttribute("aria-current", "page");
@@ -149,9 +149,12 @@
   /* ---------- cartes projet ---------- */
   function byId(id) { return PROJECTS.filter(function (x) { return x.id === id; })[0]; }
   function projectUrl(p) { return "projet.html?id=" + encodeURIComponent(p.id); }
+  // Catégorie d'un projet de js/data.js pour les filtres de la page Jeux
+  function catOf(p) { return p.steam ? "steam" : p.type === "plugin" ? "plugin" : p.type === "asset" ? "asset" : p.embed ? "webgl" : "itch"; }
+  var TYPE_LABEL = { game: "Jeu", plugin: "Plugin Unity", asset: "Asset graphique" };
   function card(p) {
-    var typeLabel = p.type === "plugin" ? "Plugin Unity" : "Jeu";
-    var cta = p.type === "plugin" ? "Voir le plugin" : "Voir la fiche";
+    var typeLabel = TYPE_LABEL[p.type] || "Jeu";
+    var cta = p.type === "plugin" ? "Voir le plugin" : p.type === "asset" ? "Voir l'asset" : "Voir la fiche";
     var media = p.cover
       ? '<img src="' + esc(p.cover) + '" alt="" loading="lazy">'
       : '<canvas data-cover="' + esc(p.id) + '" aria-hidden="true"></canvas>';
@@ -159,15 +162,18 @@
     var tags = (p.tags || []).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("");
     var page = projectUrl(p);
     var actions;
-    if (p.embed) {
+    if (p.steam) {
+      actions = '<div class="card-actions"><a class="btn btn-small btn-steam" href="' + esc(p.steam) + '" target="_blank" rel="noopener">Voir sur Steam ↗</a>' +
+        '<a class="text-link" href="' + page + '">Voir la fiche</a></div>';
+    } else if (p.embed) {
       actions = '<div class="card-actions"><button class="btn btn-small" type="button" data-play-id="' + esc(p.id) + '">▶ Jouer ici</button>' +
         '<a class="text-link" href="' + page + '">Voir la fiche</a></div>';
-    } else if (p.url || p.type === "game") {
+    } else if (p.url || p.type === "game" || p.type === "asset") {
       actions = '<a class="btn btn-small" href="' + page + '">' + cta + " →</a>";
     } else {
       actions = '<div class="card-actions"><span class="soon">Bientôt disponible</span><a class="text-link" href="' + page + '">Voir la fiche</a></div>';
     }
-    return '<article class="card" data-type="' + esc(p.type) + '">' +
+    return '<article class="card" data-type="' + esc(p.type) + '" data-cat="' + catOf(p) + '">' +
       '<div class="card-media">' + media +
       '<span class="badge badge-' + esc(p.type) + '">' + typeLabel + "</span>" +
       (p.embed ? '<span class="badge badge-play">Jouable ici</span>' : "") + "</div>" +
@@ -201,70 +207,113 @@
     paintCovers(latest);
   }
 
-  // Bibliothèque
+  // Page Jeux : cartes des projets de js/data.js (Steam tout en haut, puis Unity / itch.io)
+  var steamGrid = $("[data-steam]");
+  if (steamGrid) {
+    var steamGames = PROJECTS.filter(function (p) { return p.steam; });
+    if (steamGames.length) {
+      steamGrid.innerHTML = steamGames.map(card).join("");
+      paintCovers(steamGrid);
+      $$("[data-steam-only]").forEach(function (el) { el.hidden = false; });
+    }
+  }
   var lib = $("[data-library]");
   if (lib) {
-    var filtersEl = $("[data-filters]");
+    lib.innerHTML = PROJECTS.filter(function (p) { return !p.steam; }).map(card).join("");
+    paintCovers(lib);
+  }
+
+  // Page Jeux : une seule barre de filtres pour tout (jeux web, itch WebGL, itch, Steam, plugins)
+  var filtersEl = $("[data-filters]");
+  if (filtersEl) {
     var searchEl = $("[data-search]");
+    var tagSel = $("[data-tag-select]");
     var countEl = $("[data-count]");
-    var state = { type: "all", tag: null, q: "" };
+    var resetEl = $("[data-reset]");
+    var emptyEl = $("[data-hub-empty]");
+    var CATS = [
+      ["all", "Tout", ""],
+      ["web", "Jeux web", "Mes jeux maison, jouables dans le navigateur"],
+      ["webgl", "itch WebGL", "Jeux itch.io jouables ici (WebGL)"],
+      ["itch", "itch", "Jeux itch.io à télécharger"],
+      ["steam", "Steam", "Jeux sur Steam"],
+      ["plugin", "Plugins", "Plugins Unity"],
+      ["asset", "Assets graphiques", "Packs graphiques : pixel art, sprites, tilesets…"],
+    ];
 
-    var allTags = [];
-    PROJECTS.forEach(function (p) { (p.tags || []).forEach(function (t) { if (allTags.indexOf(t) < 0) allTags.push(t); }); });
-    allTags.sort();
+    // Toutes les cartes de la page, qu'elles viennent de data.js ou du HTML (jeux web)
+    var items = [];
+    $$("[data-filter-grid]").forEach(function (grid) {
+      $$(".card", grid).forEach(function (el) {
+        var tags = $$(".tags li", el).map(function (li) { return li.textContent.trim(); }).filter(Boolean);
+        items.push({
+          el: el,
+          grid: grid,
+          cat: el.getAttribute("data-cat") || grid.getAttribute("data-filter-cat") || "itch",
+          tags: tags,
+          q: el.textContent.replace(/\s+/g, " ").toLowerCase(),
+        });
+      });
+    });
+    var tagCount = {};
+    items.forEach(function (it) { it.tags.forEach(function (t) { tagCount[t] = (tagCount[t] || 0) + 1; }); });
+    var allTags = Object.keys(tagCount).sort(function (a, b) { return tagCount[b] - tagCount[a] || a.localeCompare(b, "fr"); });
+    var catCount = { all: items.length };
+    items.forEach(function (it) { catCount[it.cat] = (catCount[it.cat] || 0) + 1; });
 
-    var hash = (location.hash || "").replace("#", "");
-    if (hash === "jeux") state.type = "game";
-    if (hash === "plugins") state.type = "plugin";
-    if (hash === "jouer") state.type = "play";
+    var state = { cat: "all", tag: null, q: "" };
+    var PRESETS = { web: "web", webgl: "webgl", jouer: "webgl", itch: "itch", steam: "steam", plugins: "plugin", jeux: "all" };
+    var preset = PRESETS[(location.hash || "").replace("#", "")];
+    if (preset && (preset === "all" || catCount[preset])) state.cat = preset;
 
-    function matchType(p, t) {
-      if (t === "all") return true;
-      if (t === "play") return !!p.embed;
-      return p.type === t;
-    }
-    function renderFilters() {
-      var types = [["all", "Tout"], ["game", "Jeux"], ["plugin", "Plugins Unity"]];
-      if (PROJECTS.some(function (p) { return p.embed; })) types.splice(1, 0, ["play", "▶ Jouable ici"]);
-      var html = '<div class="filter-row" role="group" aria-label="Type">';
-      types.forEach(function (t) {
-        var count = PROJECTS.filter(function (p) { return matchType(p, t[0]); }).length;
-        html += '<button class="chip" data-type="' + t[0] + '" aria-pressed="' + (state.type === t[0]) + '">' + t[1] + ' <span class="chip-n">' + count + "</span></button>";
-      });
-      html += '</div><div class="filter-row tags-row" role="group" aria-label="Étiquettes">';
-      allTags.forEach(function (t) {
-        html += '<button class="chip chip-tag" data-tag="' + esc(t) + '" aria-pressed="' + (state.tag === t) + '">#' + esc(t) + "</button>";
-      });
-      html += "</div>";
-      filtersEl.innerHTML = html;
-    }
-    function render() {
-      var q = state.q.toLowerCase();
-      var list = PROJECTS.filter(function (p) {
-        if (!matchType(p, state.type)) return false;
-        if (state.tag && (p.tags || []).indexOf(state.tag) < 0) return false;
-        if (q && (p.title + " " + p.short + " " + (p.tags || []).join(" ")).toLowerCase().indexOf(q) < 0) return false;
-        return true;
-      });
-      if (!list.length) {
-        var msg = state.type === "plugin" && !state.q && !state.tag
-          ? "Mes plugins Unity arrivent bientôt ici. Repasse dans quelques temps 🍄"
-          : "Rien trouvé dans ce coin de la forêt…";
-        lib.innerHTML = '<div class="empty"><img src="assets/squirrel.png" alt="" width="60" height="57"><p>' + msg + "</p></div>";
-      } else {
-        lib.innerHTML = list.map(card).join("");
-        paintCovers(lib);
+    var renderFilters = function () {
+      filtersEl.innerHTML = CATS.map(function (c) {
+        var n = catCount[c[0]] || 0;
+        var off = c[0] !== "all" && !n;
+        return '<button class="seg-btn" type="button" data-type="' + c[0] + '" aria-pressed="' + (state.cat === c[0]) + '"' +
+          (c[2] ? ' title="' + esc(off ? c[2] + " : bientôt" : c[2]) + '"' : "") + (off ? " disabled" : "") + ">" +
+          esc(c[1]) + ' <span class="seg-n">' + (off ? "bientôt" : n) + "</span></button>";
+      }).join("");
+      if (tagSel) {
+        tagSel.innerHTML = '<option value="">Tous les tags</option>' + allTags.map(function (t) {
+          return '<option value="' + esc(t) + '"' + (state.tag === t ? " selected" : "") + ">" + esc(t) + " (" + tagCount[t] + ")</option>";
+        }).join("");
+        tagSel.classList.toggle("is-on", !!state.tag);
       }
-      if (countEl) countEl.textContent = list.length + (list.length > 1 ? " projets" : " projet");
-    }
+    };
+    var render = function () {
+      var q = state.q.toLowerCase(), shown = 0, perGrid = [];
+      items.forEach(function (it) {
+        var ok = (state.cat === "all" || it.cat === state.cat) &&
+          (!state.tag || it.tags.indexOf(state.tag) >= 0) &&
+          (!q || it.q.indexOf(q) >= 0);
+        it.el.hidden = !ok;
+        if (ok) { shown++; if (perGrid.indexOf(it.grid) < 0) perGrid.push(it.grid); }
+      });
+      // une section sans carte visible disparaît (le Versus, lui, reste toujours en bas)
+      $$("[data-filter-grid]").forEach(function (grid) {
+        var sec = grid.closest(".hub-section");
+        if (!sec) return;
+        if (sec.hasAttribute("data-steam-only") && !catCount.steam) { sec.hidden = true; return; }
+        sec.hidden = perGrid.indexOf(grid) < 0;
+      });
+      if (emptyEl) emptyEl.hidden = shown > 0;
+      if (countEl) countEl.textContent = shown + (shown > 1 ? " projets" : " projet");
+      if (resetEl) resetEl.hidden = state.cat === "all" && !state.tag && !state.q;
+    };
     filtersEl.addEventListener("click", function (e) {
-      var b = e.target.closest("button");
-      if (!b) return;
-      if (b.dataset.type) state.type = b.dataset.type;
-      if (b.dataset.tag) state.tag = state.tag === b.dataset.tag ? null : b.dataset.tag;
+      var b = e.target.closest("[data-type]");
+      if (!b || b.disabled) return;
+      state.cat = b.dataset.type;
       renderFilters(); render();
     });
+    if (tagSel) tagSel.addEventListener("change", function () { state.tag = tagSel.value || null; renderFilters(); render(); });
     if (searchEl) searchEl.addEventListener("input", function () { state.q = searchEl.value.trim(); render(); });
+    if (resetEl) resetEl.addEventListener("click", function () {
+      state = { cat: "all", tag: null, q: "" };
+      if (searchEl) searchEl.value = "";
+      renderFilters(); render();
+    });
     renderFilters(); render();
   }
 
@@ -371,7 +420,7 @@
           ? '<img src="' + esc(proj.cover) + '" alt="Jaquette de ' + esc(proj.title) + '">'
           : '<canvas data-cover="' + esc(proj.id) + '" aria-hidden="true"></canvas>';
         paintCovers(coverBox);
-        $("[data-project-kicker]").textContent = [proj.type === "plugin" ? "Plugin Unity" : "Jeu", proj.status, proj.year].filter(Boolean).join(" · ");
+        $("[data-project-kicker]").textContent = [TYPE_LABEL[proj.type] || "Jeu", proj.status, proj.year].filter(Boolean).join(" · ");
         $("[data-project-title]").textContent = proj.title;
         $("[data-project-short]").textContent = proj.short || "";
         if (proj.with) { var w = $("[data-project-with]"); w.textContent = "Avec " + proj.with; w.hidden = false; }
@@ -499,14 +548,20 @@
   /* ---------- jeu à la une (borne de l'accueil) ---------- */
   var feat = $("[data-featured]");
   if (feat) {
-    var game = byId((SITE.featured || {}).id) || {};
+    var F = SITE.featured || {};
+    var game = byId(F.id) || F;          // projet de PROJECTS, ou jeu maison décrit dans SITE.featured
+    var onPage = !!game.page && !game.embed;
     $$("[data-featured-title]").forEach(function (el) { el.textContent = game.title || "Mon jeu"; });
     $$("[data-featured-text]").forEach(function (el) { el.textContent = game.short || ""; });
-    $$("[data-featured-link]").forEach(function (el) { if (game.url) el.href = game.url; else el.hidden = true; });
+    $$("[data-featured-link]").forEach(function (el) {
+      if (onPage && game.alt) { el.href = game.alt.href; el.textContent = game.alt.label; el.removeAttribute("target"); }
+      else if (game.url) el.href = game.url; else el.hidden = true;
+    });
+    if (onPage) $$("[data-featured-how]").forEach(function (el) { el.textContent = "Il se joue directement dans ton navigateur, au clavier, à la souris ou au doigt, sans rien installer."; });
 
     var lbEl = $("[data-featured-leaderboard]");
     if (lbEl && game.leaderboard && window.Leaderboard) {
-      lbEl.setAttribute("data-leaderboard", game.id);
+      lbEl.setAttribute("data-leaderboard", typeof game.leaderboard === "string" ? game.leaderboard : game.id);
       lbEl.setAttribute("data-title", "Classement " + game.title);
       window.Leaderboard.render(lbEl);
     }
@@ -516,17 +571,22 @@
     var cover = $(".screen-cover canvas", feat);
     if (cover && game.cover) {
       var img = document.createElement("img");
-      img.src = game.cover; img.alt = ""; img.className = "screen-img";
+      img.src = game.cover; img.alt = ""; img.className = "screen-img" + (onPage ? " is-pixel" : "");
       cover.replaceWith(img);
     } else if (cover && game.id) drawCover(cover, game);
 
     var play = $("[data-play]", feat);
     var note = $("[data-featured-note]", feat);
-    if (!game.embed) {
+    var fsBtn = $("[data-fullscreen]", feat);
+    if (onPage) {
+      play.textContent = "▶ Jouer";
+      if (fsBtn) fsBtn.hidden = true;     // le jeu a son propre plein écran
+    } else if (!game.embed) {
       play.textContent = game.url ? "Jouer sur itch.io ↗" : "Bientôt jouable ici";
       if (note) note.hidden = false;
     }
     play.addEventListener("click", function () {
+      if (onPage) { location.href = game.page; return; }
       if (!game.embed) { if (game.url) window.open(game.url, "_blank", "noopener"); return; }
       var iframe = makeFrame(game);
       var help = $("[data-featured-help]", feat);

@@ -157,30 +157,31 @@
     }
 
     /* ---------- écureuil ---------- */
+    // Dessiné à la main par Maxime (même image que assets/squirrel.png)
     var SQ = [
-      "......oooo..........",
-      "....ooLLLOoo........",
-      "...oLLOOOOOOo.......",
-      "..oLOOOOOOOOOo......",
-      "..oOOODDDDOOOo..o...",
-      ".oOOODOOOODOOo.oLo..",
-      ".oOODOLLOOoDOooOOo..",
-      ".oDODOOOOOoOOoOOOOo.",
-      ".oDODDOOOoOOOOOOeOOo",
-      ".oDOODDDoOOOOOOOOOOo",
-      "..oDOOOooOOOOOOOOoo.",
-      "..oDDOOOOOOcccOOOo..",
-      "...oDDOOOOcccccOnno.",
-      "...oDDOOOcccccOOnno.",
-      "....oDDOOcccccOOoo..",
-      "....oDDOOOcccOOo....",
-      ".....ooOOOOOOOOo....",
-      "....oOOooOOOooOOo...",
-      "....oooo.oooo.ooo...",
+      "..edddddc.........",
+      ".ehhgghhgc........",
+      "ehgfffgghhc.......",
+      "egedefffggc..c.c..",
+      "fedbcdeffgc.cgcg..",
+      "ecb.bcdffec.bhbh..",
+      "cb..ceffedb.bdefe.",
+      "...cdffedc.cdffaf.",
+      "..bdffecaabdeffahd",
+      ".aeffecacddffehhgb",
+      ".bfeecacdeffhhg...",
+      "beffcacdefehhe.a..",
+      "aeeecadffbfefeaca.",
+      ".bcecadeffbhbfefd.",
+      ".aeceaefefchgbcdc.",
+      "..becacefechgc.c..",
+      "...abaccecbecc....",
+      "......acaaecaa....",
+      "......abcbabcba...",
     ];
-    var SQPAL = { o: "#4a2616", O: "#e8873a", L: "#f6b768", D: "#b85e2a", e: "#1e120a", n: "#7a4a24", c: "#fadeac" };
+    var SQPAL = { a: "#4a2313", b: "#632e17", c: "#8a3f20", d: "#aa5324", e: "#bd5c25", f: "#e47f31", g: "#f09b40", h: "#efab5c" };
     var squirrelSprite = (function () {
-      var w = SQ[0].length, h = SQ.length, a = mk(w, h), b = mk(w, h);
+      var w = Math.max.apply(null, SQ.map(function (r) { return r.length; })), h = SQ.length, a = mk(w, h), b = mk(w, h);
       for (var y = 0; y < h; y++)
         for (var x = 0; x < w; x++) {
           var ch = SQ[y][x];

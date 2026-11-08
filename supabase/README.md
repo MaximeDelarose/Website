@@ -5,6 +5,7 @@ Tout est déjà appliqué sur le projet `euxlmipqzmvnzzyalyfn`. Ces fichiers ser
 
 1. `../leaderboard/supabase.sql` : classements (`lb_games`, `lb_scores`, `lb_submit`, `lb_top`).
 2. `comptes-et-dice.sql` : comptes du site (`profiles`, connexion Google) et progression d'Écureuil Dice côté serveur.
+3. `glands-clans-stats.sql` : glands globaux, clans, statistiques publiques (`site_stats`) et outils de la page admin (`admin_*`).
 
 ## Principe anti-triche
 
@@ -67,3 +68,29 @@ https, service de push connu (Apple / Google / Mozilla / Microsoft), tailles, 30
 - Test à la demande : `{"action":"test","endpoint":"…"}` (3 par jour et par appareil) — bouton « Tester maintenant » dans RADIA.
 - Voir ce qui partirait sans envoyer : `select net.http_post(url:='…/functions/v1/radia-push', headers:=jsonb_build_object('x-radia-cron',(select cron_secret from radia_push_config)), body:='{"action":"send","dry":true}')`.
 - **Tout arrêter** : `select cron.unschedule('radia-push-horaire');` (les abonnements restent mais plus rien ne part). Supprimer un appareil : `delete from radia_push_subs where endpoint = '…';`.
+
+## Glands globaux, clans, stats et page admin (`glands-clans-stats.sql`)
+
+**Glands globaux** (prêts, **pas encore branchés**) : un porte-monnaie par compte, commun à tous les jeux.
+
+| Élément | Rôle |
+|---|---|
+| `acorn_wallets` | solde, total gagné, total dépensé |
+| `acorn_ledger` | chaque mouvement (+/-), avec le jeu, la raison et l'admin éventuel |
+| `acorn_sources` | jeux autorisés à donner des glands, avec `max_per_call` et `max_per_hour` ; **tous désactivés** |
+| `acorn_earn(jeu, n, raison)` | gain depuis un jeu : refusé (`source_disabled`) tant que la source n'est pas activée, puis plafonné |
+| `acorn_spend(n, jeu, raison)` / `acorn_me()` | dépense (solde vérifié) / mon solde et mes 20 derniers mouvements |
+
+Pour brancher un jeu plus tard : activer sa source dans la page admin (ou `acorn_sources.enabled`), puis appeler
+`SiteAuth.rpc("acorn_earn", { p_game: "merger", p_amount: 25, p_reason: "partie" })` à la fin d'une partie.
+
+**Clans** : `clans` (3 clans : Chêne 🌳, Braise 🔥, Givre ❄️), `clan_members`. `clan_join(id)` (changement possible tous les 7 jours,
+sauf admin), `clan_me()`. Les glands d'un clan = somme des glands gagnés par ses membres.
+
+**Stats publiques** : `site_stats()` (sans compte) → comptes, glands récoltés, parties enregistrées, scores, clans. Page `stats.html`.
+
+**Page admin** (`admin.html`, réservée à `site_admins`, lien depuis le badge ADMIN de Mon compte et depuis la page Stats) :
+vue d'ensemble (`admin_overview`), recherche de joueur (`admin_find_user`), donner / retirer des glands (`admin_acorn_grant`, `admin_acorn_history`),
+changer le clan d'un joueur (`admin_set_clan`), effacer une sauvegarde en ligne bloquée (`admin_save_reset`), classements : créer, modifier,
+activer, vider, supprimer un score (`admin_lb_game`, `admin_lb_reset`, `admin_lb_delete_score`), réglages des sources de glands
+(`admin_acorn_source`), journal des sauvegardes refusées (`admin_clear_rejects`). Chaque fonction revérifie `is_admin()` côté serveur.

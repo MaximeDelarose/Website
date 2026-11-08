@@ -1,5 +1,5 @@
 /* =========================================================================
-   Versus : page salon de la party (versus.html).
+   Versus : salon de la party (section Versus de jeux.html).
    Créer / rejoindre, joueurs et points, règles, format et équipes, choix du
    mode (ou roulette), manche en cours, historique. Toute la logique réseau
    est dans js/party.js ; ici on ne fait que l'interface.
@@ -46,7 +46,7 @@
   function profileHtml() {
     var pr = P.profile();
     return '<div class="vs-profile">' +
-      '<label class="vs-field"><span>Ton pseudo</span><input type="text" maxlength="16" value="' + esc(pr.name) + '" data-vs-name autocomplete="nickname"></label>' +
+      '<label class="vs-field"><span>Ton pseudo</span><input type="text" maxlength="16" value="' + esc(pr.auto ? "" : pr.name) + '" placeholder="' + esc(P.autoName(pr.av, pr.color)) + '" data-vs-name autocomplete="nickname"></label>' +
       '<div class="vs-pick" role="group" aria-label="Avatar">' + P.AVATARS.map(function (a) { return '<button type="button" class="vs-av' + (a === pr.av ? " is-on" : "") + '" data-vs-av="' + a + '" aria-label="Avatar ' + a + '">' + a + "</button>"; }).join("") + "</div>" +
       '<div class="vs-pick" role="group" aria-label="Couleur">' + P.COLORS.map(function (c) { return '<button type="button" class="vs-col' + (c === pr.color ? " is-on" : "") + '" data-vs-col="' + c + '" style="--pc:' + c + '" aria-label="Couleur ' + c + '"></button>'; }).join("") + "</div></div>";
   }
@@ -56,7 +56,7 @@
       '<section class="panel vs-box"><h2>Jouer</h2>' +
       '<p>Crée une party puis partage le code (ou le lien) à tes amis.</p>' +
       '<button class="btn" type="button" data-vs="create">Créer une party</button>' +
-      '<div class="vs-join"><label class="vs-field"><span>Code d\'une party</span><input type="text" maxlength="4" placeholder="ABCD" data-vs-code autocomplete="off" autocapitalize="characters"></label>' +
+      '<div class="vs-join"><label class="vs-field"><span>Code d\'une party</span><input type="text" maxlength="4" size="6" inputmode="text" placeholder="ABCD" data-vs-code autocomplete="off" autocapitalize="characters"></label>' +
       '<button class="btn btn-alt" type="button" data-vs="join">Rejoindre</button></div>' +
       (ui.err ? '<p class="vs-err">' + esc(ui.err) + "</p>" : "") + "</section>" +
       '<section class="panel vs-box vs-how"><h2>Comment ça marche</h2><ol>' +
@@ -106,7 +106,7 @@
       h += '<section class="panel vs-box vs-champ"><p class="vs-trophy">🏆</p><h2>' + st.champ.map(function (id) { return esc((st.members[id] || {}).n || "?"); }).join(" & ") + " remporte la party !</h2>" +
         (lead ? '<button class="btn" type="button" data-vs="reset">Nouvelle party (scores à zéro)</button>' : "<p>Le chef peut relancer une nouvelle party.</p>") + "</section>";
     }
-    if (match && match.status !== "done") {
+    if (match && match.status !== "done" && mm) {
       h += '<section class="panel vs-box vs-live"><p class="vs-kicker">Manche ' + (st.round + 1) + " en cours · " + esc(P.gameById(mm.game).name) + "</p><h2>" + esc(mm.name) + "</h2>" + P.teamsHtml(match) +
         '<p class="vs-status">' + ({ launch: "Les joueurs chargent le jeu…", play: "Ça joue !", stop: "Fin de la manche…" }[match.status] || "") + "</p>" +
         liveHtml(match, mm) +
@@ -142,7 +142,7 @@
         }).join("") + "</div>";
       }).join("") + "</div>";
       if (lead && ui.format !== "ffa") h += '<p class="vs-note">Clique sur un joueur pour l\'échanger avec l\'équipe d\'à côté. <button type="button" class="vs-link" data-vs="shuffle">Mélanger</button></p>';
-      if (lead) h += '<div class="btn-row"><button class="btn btn-alt" type="button" data-vs="roulette"' + (ui.rolling ? " disabled" : "") + ">🎰 Roulette</button></div>";
+      if (lead) h += '<div class="btn-row"><button class="btn btn-alt" type="button" data-vs="roulette"' + (ui.rolling || !MODES.length ? " disabled" : "") + ">🎰 Roulette</button></div>";
       else h += '<p class="vs-note">Le chef 👑 choisit la manche.</p>';
     }
     h += '<div class="vs-roulette" data-vs-roll hidden></div>';
@@ -150,18 +150,28 @@
     h += modesCatalog(false, lead && n >= 2);
     return h;
   }
+  // Liste des modes, compacte : une ligne par mode (nom, une phrase, pastilles), règles repliées.
   function modesCatalog(info, canLaunch) {
-    var h = '<section class="vs-catalog"><h2 class="vs-cat-title">' + (info ? "Les modes" : "Choisir un mode") + "</h2>";
+    var h = '<section class="vs-catalog"><div class="vs-cat-head"><h2 class="vs-cat-title">' + (info ? "Les modes" : "Choisir un mode") + "</h2>" +
+      (MODES.length ? '<span class="vs-cat-n">' + MODES.length + " mode" + (MODES.length > 1 ? "s" : "") + "</span>" : "") + "</div>";
+    if (!MODES.length) {
+      return h + '<p class="panel vs-box vs-empty">🛠️ Les jeux du Versus sont en refonte : ils reviennent un par un, mieux réglés. Tu peux déjà créer une party et inviter tes amis.</p></section>';
+    }
     GAMES.forEach(function (g) {
       var list = MODES.filter(function (m) { return m.game === g.id; }); if (!list.length) return;
-      h += '<div class="vs-game" style="--gc:' + esc(g.color) + '"><h3><span>' + g.icon + "</span> " + esc(g.name) + '</h3><div class="vs-modes">';
+      h += '<details class="vs-game" style="--gc:' + esc(g.color) + '" open><summary><span class="vs-gicon" aria-hidden="true">' + g.icon + "</span>" + esc(g.name) +
+        ' <small>' + list.length + " mode" + (list.length > 1 ? "s" : "") + '</small></summary><ul class="vs-modes">';
       list.forEach(function (m) {
-        var ok = !info && fits(m);
-        h += '<article class="vs-mode' + (ok ? "" : " is-off") + '"><h4>' + esc(m.name) + "</h4><p>" + esc(m.desc) + '</p><p class="vs-meta">' +
-          (m.min === m.max ? m.min + " joueurs" : m.min + " à " + m.max + " joueurs") + " · " + fmtList(m) + " · " + Math.round(m.dur / 60) + " min" + (m.room ? " · en ligne" : "") + "</p>" +
-          (canLaunch ? '<button class="btn btn-small" type="button" data-vs-launch="' + m.id + '"' + (ok ? "" : " disabled") + ">Lancer</button>" : "") + "</article>";
+        var ok = !info && fits(m), short = m.short || m.desc, more = m.short ? m.desc : "";
+        h += '<li class="vs-mode' + (ok || info ? "" : " is-off") + '">' +
+          '<div class="vs-mode-txt"><h4>' + esc(m.name) + "</h4><p>" + esc(short) + "</p>" +
+          '<ul class="vs-badges"><li title="Joueurs">👥 ' + (m.min === m.max ? m.min : m.min + "–" + m.max) + '</li><li title="Durée max">⏱ ' + Math.round(m.dur / 60) + " min</li>" +
+          '<li title="Formats">' + esc(fmtList(m)) + "</li>" + (m.room ? '<li title="Une seule partie en ligne pour tous">🌐 en ligne</li>' : "") + (m.bot ? '<li title="Les bots peuvent jouer ce mode">🤖</li>' : "") + "</ul>" +
+          (more || m.tip ? '<details class="vs-rules"><summary>Règles</summary>' + (more ? "<p>" + esc(more) + "</p>" : "") + (m.tip ? '<p class="vs-tip">💡 ' + esc(m.tip) + "</p>" : "") + "</details>" : "") +
+          "</div>" +
+          (canLaunch ? '<button class="btn btn-small" type="button" data-vs-launch="' + m.id + '"' + (ok ? "" : " disabled") + ">Lancer</button>" : "") + "</li>";
       });
-      h += "</div></div>";
+      h += "</ul></details>";
     });
     return h + "</section>";
   }
@@ -228,7 +238,7 @@
     if (e.key === "Enter" && e.target.hasAttribute("data-vs-code")) { e.preventDefault(); var b = app.querySelector('[data-vs="join"]'); if (b) b.click(); }
     if (e.key === "Enter" && e.target.hasAttribute("data-vs-name")) { e.target.blur(); }
   });
-  function saveName() { var i = app.querySelector("[data-vs-name]"); if (i && i.value.trim()) P.setProfile({ name: i.value }); }
+  function saveName() { var i = app.querySelector("[data-vs-name]"); if (i) P.setProfile({ name: i.value }); }
   function swapTeam(id) {
     var t = ui.teams, ti = t.findIndex(function (x) { return x.indexOf(id) >= 0; }); if (ti < 0 || t.length < 2) return;
     var to = (ti + 1) % t.length, sizes = t.map(function (x) { return x.length; });
@@ -283,7 +293,7 @@
     if (st.match && st.match.status !== "done") return;
     if (st.match && Date.now() - (st.match.endAt || 0) < 20000) return;
     if (present().length < 2) return;
-    var back = present().filter(function (id) { return !P.isBot(id); }).every(function (id) { return P.roster.some(function (x) { return x.id === id && x.pg === "versus.html"; }); });
+    var back = present().filter(function (id) { return !P.isBot(id); }).every(function (id) { return P.roster.some(function (x) { return x.id === id && x.pg === "jeux.html"; }); });
     if (back) roulette();
   }, 2000);
   render();

@@ -39,13 +39,24 @@ window.SITE = {
 
   // Le jeu mis en avant dans la borne de la page d'accueil (son id).
   // Pour qu'il soit jouable, renseigne son champ « embed » plus bas.
-  featured: { id: "chaaat" },
+  // Deux possibilités :
+  //  • un projet de PROJECTS (jeu itch.io jouable dans la borne) : { id: "chaaat" }
+  //  • un jeu maison du site, ouvert sur sa propre page : { page: "jeu.html", title, short, cover… }
+  featured: {
+    id: "survivor",
+    page: "jeu.html",
+    title: "Écureuil Survivor",
+    short: "Survis aux vagues de bestioles de la forêt : 10 écureuils qui changent chacun une règle, 6 armes, 20 techniques, un camp, l'Expédition et un méga boss.",
+    cover: "assets/pwa/icon-512.png",
+    leaderboard: "ecureuil-survivor",
+    alt: { label: "Version 1 (coop)", href: "jeu-classique.html" },
+  },
 };
 
 /* -------------------------------------------------------------------------
    PROJETS (l'ordre ici = l'ordre d'affichage ; les 3 premiers sont sur
    l'accueil)
-   type    : "game" | "plugin"
+   type    : "game" | "plugin" | "asset" (asset graphique : pixel art, sprites…)
    tags    : ce que tu veux (ils servent aux filtres de la bibliothèque)
    status  : "Sorti" | "En cours" | "Prototype" | "Game jam" | "Bientôt" ...
    with    : co-auteurs (optionnel)

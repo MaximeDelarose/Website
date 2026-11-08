@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Age of Defense · AkarisuMD</title>
+  <meta name="description" content="Age of Defense : un tower defense de la Préhistoire au Futur. Routes larges, casernes, rampes, avions, pièges, technologies, coop et versus en ligne.">
+  <meta property="og:title" content="Age of Defense · AkarisuMD">
+  <meta property="og:description" content="Age of Defense : un tower defense de la Préhistoire au Futur, en solo, coop ou versus en ligne.">
+  <meta name="theme-color" content="#3f6b3a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Age of Defense">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=20261118sq3">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261118sq3">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261118ft1">
+  <link rel="stylesheet" href="css/ages.css?v=20261108ag3">
+  <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
+</head>
+<body data-page="ages">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="stats.html" data-page="stats">Stats</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="section game-section">
+    <div class="wrap">
+      <div class="game-head">
+        <div>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Tower defense · solo, coop et versus en ligne</span>
+          <h1>Age of Defense</h1>
+        </div>
+        <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
+      </div>
+
+      <div class="game-stage ag-stage" data-ages>
+        <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Age of Defense"></canvas>
+      </div>
+
+      <div class="game-info">
+        <div class="panel game-help">
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li><strong>Technologie</strong> : fais passer ta civilisation de la <em>Préhistoire</em> au <em>Futur</em> en cours de partie. À chaque âge, <strong>toutes tes tourelles, tes troupes et tes pièges évoluent tout seuls</strong> (lance-pierres → tour d'archers → mitrailleuse → tourelle auto → canon plasma…).</li>
+            <li><strong>Routes larges</strong> : les ennemis marchent en groupe sur toute la largeur de la route. Pose tes tourelles sur l'herbe, tes <strong>mines</strong> et <strong>fosses</strong> sur la route.</li>
+            <li><strong>Casernes et rampes</strong> : la route est en contrebas. Pose une <strong>rampe d'accès</strong> au bord, puis une caserne, des lanciers (chevaliers, tanks, méchas…) : ils descendent et bloquent le passage. Les <strong>garnisons</strong> (archers, fusiliers) se postent au bord de la route, les <strong>avions</strong> et <strong>hélicoptères</strong> patrouillent là où tu veux.</li>
+            <li><strong>Effets</strong> : brûlure, colle, gel, paralysie, ralentissement. <strong>Bannière</strong> : renforce tout ce qui est proche.</li>
+            <li><strong>Noisettes</strong> 🌰 : à chaque bestiole repoussée et à la fin de chaque manche. <strong>Étoiles</strong> gagnées en fin de partie pour des améliorations permanentes (menu principal).</li>
+            <li><strong>Coop</strong> : à deux sur la même carte. <strong>Versus</strong> : chacun sa route, envoie des troupes à l'adversaire pour gagner du revenu et le submerger. Salon à code de 4 lettres.</li>
+            <li><strong>Commandes</strong> : glisser pour déplacer la carte, molette ou pincement pour zoomer, <kbd>1</kbd>…<kbd>9</kbd> pour choisir un bâtiment, <kbd>Espace</kbd> lance la manche, <kbd>U</kbd> améliore, <kbd>A</kbd> âge suivant, <kbd>Échap</kbd> annule. Tout se joue aussi au doigt.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261118ft1"></script>
+  <script src="js/auth.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261118ft1"></script>
+  <script src="js/gamekit.js?v=20261114gk2"></script>
+  <script src="js/vendor/supabase-2.45.4.min.js"></script>
+  <script src="js/ages-data.js?v=20261108ag6"></script>
+  <script src="js/ages-core.js?v=20261108ag7"></script>
+  <script src="js/ages-art.js?v=20261108ag4"></script>
+  <script src="js/kingdice-net.js?v=20261106kd200"></script>
+  <script src="js/ages.js?v=20261108ag7"></script>
+</body>
+</html>
