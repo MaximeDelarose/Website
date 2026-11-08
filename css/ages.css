@@ -116,3 +116,24 @@
   .ag-tip { top: 70px; }
   .ag-toasts { top: 100px; }
 }
+
+/* cartes : on garde le défilement dans un sens, l'autre sert au glisser-déposer */
+.ag-card { touch-action: pan-x; user-select: none; -webkit-user-select: none; }
+.ag-land .ag-card { touch-action: pan-y; }
+
+/* paysage : HUD à gauche et à droite, la carte occupe tout l'écran au milieu */
+.ag-land .ag-top { top: 0; bottom: 0; right: auto; width: 116px; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 5px; padding: 6px; overflow-y: auto; background: linear-gradient(to right, rgba(20,13,7,.94), rgba(20,13,7,.8)); border-right: 2px solid var(--ag-line); pointer-events: auto; }
+.ag-land .ag-top .ag-stat, .ag-land .ag-top .ag-opp { text-align: center; white-space: normal; }
+.ag-land .ag-top .ag-btn { width: 100%; }
+.ag-land .ag-bar { top: 0; left: auto; right: 0; bottom: 0; width: 232px; flex-direction: column; gap: 6px; padding: 6px; border-top: 0; border-left: 2px solid var(--ag-line); background: linear-gradient(to left, rgba(20,13,7,.94), rgba(20,13,7,.8)); }
+.ag-land .ag-actions { flex-direction: row; flex-wrap: wrap; max-width: none; }
+.ag-land .ag-big { flex: 1 1 100%; }
+.ag-land .ag-build { flex: 1; min-height: 0; }
+.ag-land .ag-tabs { flex-wrap: wrap; overflow: visible; }
+.ag-land .ag-tab { border-radius: 7px; padding: 2px 7px; font-size: 11px; }
+.ag-land .ag-cards { flex-wrap: wrap; align-content: flex-start; overflow-x: hidden; overflow-y: auto; }
+.ag-land .ag-card { width: 66px; }
+.ag-land .ag-sel { left: 124px; right: auto; bottom: 8px; width: min(400px, calc(100% - 124px - 244px)); }
+.ag-land .ag-tip { top: 8px; }
+.ag-land .ag-toasts { top: auto; bottom: 10px; }
+.ag-land .ag-tip { font-size: 11.5px; padding: 3px 8px; }

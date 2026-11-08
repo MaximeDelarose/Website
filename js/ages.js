@@ -129,11 +129,17 @@
   function resize() {
     var r = stage.getBoundingClientRect(); dpr = Math.min(2, window.devicePixelRatio || 1);
     cw = Math.max(200, r.width); ch = Math.max(200, r.height);
+    var land = cw > ch * 1.15 && ch < 640, changed = land !== stage.classList.contains("ag-land");
+    stage.classList.toggle("ag-land", land);
     canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr); canvas.style.width = cw + "px"; canvas.style.height = ch + "px";
     stage.style.setProperty("--ag-bar-h", (ui.bar.hidden ? 0 : ui.bar.offsetHeight) + "px");
-    if (G) fitCamera(false);
+    if (G) fitCamera(changed);
   }
   function viewRect() { // zone libre entre la barre du haut et le bas
+    if (stage.classList.contains("ag-land")) {
+      var lw = ui.top.hidden ? 0 : ui.top.offsetWidth, rw = ui.bar.hidden ? 0 : ui.bar.offsetWidth;
+      return { x: lw, y: 0, w: Math.max(100, cw - lw - rw), h: ch };
+    }
     var top = ui.top.hidden ? 0 : ui.top.offsetHeight, bot = ui.bar.hidden ? 0 : ui.bar.offsetHeight;
     return { x: 0, y: top, w: cw, h: Math.max(100, ch - top - bot) };
   }
@@ -183,7 +189,7 @@
     if (!G) return; audio();
     canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
     var r = canvas.getBoundingClientRect(); ptr.map[e.pointerId] = { x: e.clientX - r.left, y: e.clientY - r.top }; ptr.n = Object.keys(ptr.map).length;
-    if (ptr.n === 1) { ptr.drag = false; ptr.sx = e.clientX - r.left; ptr.sy = e.clientY - r.top; ptr.startCam = { x: G.cam.x, y: G.cam.y }; ptr.btn = e.button; ptr.shift = e.shiftKey; }
+    if (ptr.n === 1) { ptr.drag = false; ptr.sx = e.clientX - r.left; ptr.sy = e.clientY - r.top; ptr.startCam = { x: G.cam.x, y: G.cam.y }; ptr.btn = e.button; ptr.shift = e.shiftKey; ptr.type = e.pointerType; }
     if (ptr.n === 2) { ptr.drag = true; ptr.pinch = pinchDist(); }
     updateHover(e);
   });
@@ -194,19 +200,32 @@
       if (ptr.n >= 2) { var d = pinchDist(); if (ptr.pinch > 0 && d > 0) { var k = Object.keys(ptr.map), a = ptr.map[k[0]], b = ptr.map[k[1]]; zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, d / ptr.pinch); } ptr.pinch = d; }
       else if (ptr.n === 1) {
         if (!ptr.drag && Math.hypot(x - ptr.sx, y - ptr.sy) > 10) ptr.drag = true;
-        if (ptr.drag && (!G.place || e.pointerType === "touch" || ptr.btn === 1 || ptr.btn === 2) ) { G.cam.x += x - ox; G.cam.y += y - oy; clampCam(); }
+        if (ptr.drag && (!G.place || ptr.btn === 1 || ptr.btn === 2)) { G.cam.x += x - ox; G.cam.y += y - oy; clampCam(); }
       } }
     updateHover(e);
   });
-  function updateHover(e) {
-    if (!G) return; var r = canvas.getBoundingClientRect(), w = toWorld(e.clientX - r.left, e.clientY - r.top);
+  function updateHover(e) { hoverAt(e.clientX, e.clientY, e.pointerType === "touch"); }
+  // au doigt, le fantôme est décalé au-dessus du doigt pour rester visible
+  function hoverAt(cx, cy, touch) {
+    if (!G) return; var r = canvas.getBoundingClientRect(), w = toWorld(cx - r.left, cy - r.top - (touch && G.place ? 76 : 0));
     if (G.place) { var s = LINES[G.place].size || 1; G.hover = { tx: Math.floor(w.x / T - s / 2 + 0.5), ty: Math.floor(w.y / T - s / 2 + 0.5), wx: w.x, wy: w.y }; }
     else G.hover = { wx: w.x, wy: w.y };
   }
+  function placeAtHover() {
+    var h = G.hover; if (!G.place || !h || h.tx == null) return;
+    var err = placementError(G.place, h.tx, h.ty);
+    if (err) { toast(err, "bad"); sfx("err"); return; }
+    if (W().gold[G.me] < costOf(G.place)) { toast("Pas assez d'or", "bad"); sfx("err"); return; }
+    doCmd({ c: "build", line: G.place, tx: h.tx, ty: h.ty }); sfx("build");
+    if (!ptr.shift) cancelPlace();
+  }
   function pointerEnd(e) {
     if (!G) return; var was = ptr.map[e.pointerId]; delete ptr.map[e.pointerId]; var left = Object.keys(ptr.map).length;
-    if (ptr.n === 1 && was && !ptr.drag && e.type === "pointerup" && (ptr.btn === 0 || ptr.btn === undefined)) tapAt(was.x, was.y);
-    else if (ptr.n === 1 && was && !ptr.drag && e.type === "pointerup" && ptr.btn === 2) { cancelPlace(); }
+    if (ptr.n === 1 && was && e.type === "pointerup") {
+      if (G.place && ptr.type === "touch") placeAtHover();
+      else if (!ptr.drag && ptr.btn === 2) cancelPlace();
+      else if (!ptr.drag && (ptr.btn === 0 || ptr.btn === undefined)) tapAt(was.x, was.y);
+    }
     ptr.n = left; if (left < 2) ptr.pinch = 0; if (left === 0) ptr.drag = false;
   }
   canvas.addEventListener("pointerup", pointerEnd); canvas.addEventListener("pointercancel", pointerEnd);
@@ -217,14 +236,9 @@
   function tapAt(sx, sy) {
     var w = toWorld(sx, sy);
     if (G.place) {
-      var s = LINES[G.place].size || 1, tx = Math.floor(w.x / T - s / 2 + 0.5), ty = Math.floor(w.y / T - s / 2 + 0.5);
-      G.hover = { tx: tx, ty: ty, wx: w.x, wy: w.y };
-      var err = placementError(G.place, tx, ty);
-      if (err) { toast(err, "bad"); sfx("err"); return; }
-      if (W().gold[G.me] < costOf(G.place)) { toast("Pas assez d'or", "bad"); sfx("err"); return; }
-      doCmd({ c: "build", line: G.place, tx: tx, ty: ty }); sfx("build");
-      if (!ptr.shift) cancelPlace();
-      return;
+      var s0 = LINES[G.place].size || 1;
+      G.hover = { tx: Math.floor(w.x / T - s0 / 2 + 0.5), ty: Math.floor(w.y / T - s0 / 2 + 0.5), wx: w.x, wy: w.y };
+      placeAtHover(); return;
     }
     var b = buildingAt(w.x, w.y), cur = selected();
     if (b) { G.sel = b.id; return; }
@@ -275,7 +289,27 @@
       return '<button class="ag-card' + (lock ? " lock" : mask[i] === "0" ? " poor" : "") + (G.place === it.line ? " on" : "") + '" data-i="' + i + '"><img class="ag-ico" alt="" src="' + ART.icon(it.line, lock ? 0 : w.age, 44) + '"><b>' + esc(L.name) + '</b><small>' + (lock ? "🔒 " + AGES[L.minAge].name : "🪙" + costOf(it.line)) + "</small></button>";
     }).join("");
   }
+  var cdrag = null, suppressClick = false;
+  function overHud(x, y) { return [ui.bar, ui.top].some(function (n) { if (n.hidden) return false; var r = n.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }); }
+  ui.bar.addEventListener("pointerdown", function (e) {
+    var c = e.target.closest(".ag-card[data-i]"); if (!c || !G) return;
+    var it = tabItems()[+c.dataset.i]; if (!it || it.send || LINES[it.line].minAge > W().age) return;
+    cdrag = { it: it, x: e.clientX, y: e.clientY, on: false, id: e.pointerId };
+  });
+  document.addEventListener("pointermove", function (e) {
+    if (!cdrag || e.pointerId !== cdrag.id || !G) return;
+    if (!cdrag.on && Math.hypot(e.clientX - cdrag.x, e.clientY - cdrag.y) > 12) { cdrag.on = true; pickItem(cdrag.it); }
+    if (cdrag.on) { hoverAt(e.clientX, e.clientY, e.pointerType === "touch"); e.preventDefault(); }
+  });
+  function cardDragEnd(e) {
+    if (!cdrag || e.pointerId !== cdrag.id) return; var d = cdrag; cdrag = null; if (!d.on || !G) return;
+    suppressClick = true; setTimeout(function () { suppressClick = false; }, 60);
+    if (e.type === "pointercancel" || overHud(e.clientX, e.clientY)) { cancelPlace(); return; }
+    hoverAt(e.clientX, e.clientY, e.pointerType === "touch"); ptr.shift = false; placeAtHover();
+  }
+  document.addEventListener("pointerup", cardDragEnd); document.addEventListener("pointercancel", cardDragEnd);
   ui.bar.addEventListener("click", function (e) {
+    if (suppressClick) return;
     var t = e.target.closest("[data-tab],[data-i],[data-act]"); if (!t || !G) return; audio();
     if (t.dataset.tab) { G.tab = t.dataset.tab; cancelPlace(); G.sig = ""; return; }
     if (t.dataset.i != null) { var it = tabItems()[+t.dataset.i]; if (it) { if (G.place && it.line === G.place) cancelPlace(); else pickItem(it); } return; }
