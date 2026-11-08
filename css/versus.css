@@ -4,7 +4,7 @@
 .vs-section { padding-top: 40px; }
 .vs-box { padding: 18px 20px; }
 .vs-box h2 { font-size: 1.4rem; margin: 0 0 .5em; }
-.vs-home { display: grid; gap: 8px 24px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: start; margin-top: 24px; }
+.vs-home { display: grid; gap: 8px 24px; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); align-items: start; margin-top: 24px; }
 .vs-home .vs-catalog { grid-column: 1 / -1; }
 .vs-grid { display: grid; gap: 8px 24px; grid-template-columns: minmax(260px, 340px) 1fr; align-items: start; margin-top: 24px; }
 @media (max-width: 820px) { .vs-grid { grid-template-columns: 1fr; } }
@@ -68,19 +68,7 @@
 
 .vs-catalog { margin-top: 8px; }
 .vs-cat-title { font-size: 1.5rem; margin: .4em 0 .3em; }
-.vs-game { margin-bottom: 18px; }
-.vs-game h3 { font-size: 1.15rem; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
-.vs-modes { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
-.vs-mode {
-  display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--panel);
-  border: 3px solid var(--line); border-top: 8px solid var(--gc); box-shadow: 0 4px 0 var(--depth);
-}
-.vs-mode h4 { margin: 0; font-size: 1.1rem; }
-.vs-mode p { margin: 0; font-size: .92rem; }
-.vs-mode .vs-meta { color: var(--ink-soft); font-size: .8rem; font-weight: 700; margin-top: auto; padding-top: 6px; }
-.vs-mode .btn { align-self: flex-start; }
-.vs-mode.is-off { opacity: .55; }
-.vs-home .vs-mode.is-off { opacity: 1; }
+/* (anciennes cartes de modes remplacées par la liste compacte plus bas) */
 
 .vs-live h2 { margin-bottom: .2em; }
 .vs-livelist { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 4px; }
@@ -106,4 +94,41 @@
   .vs-grid { display: flex; flex-direction: column; gap: 8px; }
   .vs-side, .vs-main { display: contents; }
   .vs-code { order: 1; } .vs-players-box { order: 2; } .vs-main > * { order: 3; } .vs-side > * { order: 4; }
+}
+
+/* ---------- champs : jamais plus larges que leur cadre ---------- */
+.vs-box, .vs-side, .vs-main, .vs-home > * { min-width: 0; }
+.vs-field input, .vs-field select { width: 100%; max-width: 100%; box-sizing: border-box; }
+.vs-join .vs-field { min-width: 0; flex: 1 1 140px; }
+.vs-join input { letter-spacing: .25em; }
+.vs-field input::placeholder { color: var(--ink-soft); opacity: .8; }
+
+/* ---------- liste des modes, compacte ---------- */
+.vs-cat-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.vs-cat-n { color: var(--ink-soft); font-weight: 800; font-size: .9rem; }
+.vs-empty { margin: 4px 0 16px; }
+.vs-catalog .vs-game { margin: 0 0 14px; }
+.vs-catalog .vs-game > summary { cursor: pointer; font-weight: 900; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; padding: 4px 0; list-style: none; }
+.vs-catalog .vs-game > summary::-webkit-details-marker { display: none; }
+.vs-catalog .vs-game > summary::after { content: "▾"; margin-left: auto; color: var(--ink-soft); }
+.vs-catalog .vs-game:not([open]) > summary::after { content: "▸"; }
+.vs-catalog .vs-game > summary small { color: var(--ink-soft); font-weight: 700; font-size: .8rem; }
+.vs-catalog .vs-modes { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); }
+.vs-catalog .vs-mode {
+  display: flex; flex-direction: row; align-items: center; gap: 8px 12px; padding: 8px 12px; background: var(--panel);
+  border: 2px solid var(--line); border-left: 6px solid var(--gc, var(--line)); border-radius: 8px; margin: 0;
+}
+.vs-mode-txt { flex: 1 1 auto; min-width: 0; }
+.vs-catalog .vs-mode h4 { margin: 0; font-size: 1rem; }
+.vs-catalog .vs-mode p { margin: 2px 0 0; font-size: .9rem; color: var(--ink-soft); }
+.vs-badges { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.vs-badges li { font-size: .78rem; font-weight: 800; padding: 1px 7px; background: var(--panel-2); border-radius: 999px; white-space: nowrap; }
+.vs-rules { margin-top: 4px; font-size: .88rem; }
+.vs-rules > summary { cursor: pointer; font-weight: 800; color: var(--ink-soft); width: max-content; }
+.vs-tip { font-style: italic; }
+.vs-catalog .vs-mode .btn { flex: none; align-self: center; margin: 0; }
+.vs-catalog .vs-mode.is-off { opacity: .55; }
+@media (max-width: 520px) {
+  .vs-catalog .vs-mode { flex-wrap: wrap; }
+  .vs-catalog .vs-mode .btn { width: 100%; justify-content: center; }
 }
