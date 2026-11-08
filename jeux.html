@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261115hub1">
+  <link rel="stylesheet" href="css/style.css?v=20261115flt1">
   <link rel="stylesheet" href="css/party.css?v=20261107vs2">
   <link rel="stylesheet" href="css/versus.css?v=20261107vs2">
   <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
@@ -62,7 +62,7 @@
       <nav class="hub-nav" aria-label="Sections de la page">
         <a class="chip" href="#steam" data-steam-only hidden>Steam</a>
         <a class="chip" href="#unity">Unity · itch.io</a>
-        <a class="chip" href="#navigateur">Jeux navigateur</a>
+        <a class="chip" href="#navigateur">Navigateur</a>
         <a class="chip" href="#versus">⚔️ Versus</a>
       </nav>
     </div>
@@ -78,13 +78,19 @@
     <section class="hub-section" id="unity">
       <div class="wrap">
         <div class="section-head"><div><span class="kicker">Unity · itch.io</span><h2>Projets Unity et game jams</h2></div></div>
-        <div class="library-tools">
-          <div data-filters></div>
-          <div class="search-row">
-            <label class="visually-hidden" for="search">Rechercher un projet</label>
-            <input class="search" id="search" type="search" placeholder="Rechercher un jeu, un plugin, un tag…" data-search>
-            <span class="count" data-count aria-live="polite"></span>
+        <div class="lib-toolbar">
+          <div class="seg" data-filters role="group" aria-label="Type de projet"></div>
+          <div class="lib-row">
+            <label class="lib-field lib-search">
+              <span class="visually-hidden">Rechercher un projet</span>
+              <input type="search" placeholder="Rechercher…" autocomplete="off" data-search>
+            </label>
+            <label class="lib-field lib-tag">
+              <span class="visually-hidden">Filtrer par tag</span>
+              <select data-tag-select></select>
+            </label>
           </div>
+          <p class="lib-status"><span data-count aria-live="polite"></span><button type="button" class="lib-reset" data-reset hidden>Effacer les filtres</button></p>
         </div>
         <div class="grid" data-library></div>
       </div>
@@ -304,7 +310,7 @@
   <script src="js/data.js?v=20261103re4"></script>
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/leaderboard.js?v=20261103re4"></script>
-  <script src="js/main.js?v=20261115hub1"></script>
+  <script src="js/main.js?v=20261115flt1"></script>
   <script src="js/gamekit.js?v=20261114gk2"></script>
   <script src="js/party-modes.js?v=20261107vs2"></script>
   <script src="js/party.js?v=20261115hub1"></script>
