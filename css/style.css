@@ -3168,3 +3168,42 @@ html.is-app, html.is-app body { overflow: hidden; overscroll-behavior: none; }
 .hub-section .section-head { margin-bottom: 20px; }
 .hub-section.vs-section { padding-top: 40px; }
 .btn-steam { --b: #1b2838; --bd: #0e141c; color: #e8f1fa; }
+
+/* ---------- barre de filtres compacte (page Jeux) ---------- */
+.lib-toolbar { display: grid; gap: 12px; margin: 0 0 28px; }
+.seg {
+  display: inline-flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; justify-self: start;
+  background: var(--panel); box-shadow: 0 0 0 3px var(--line), 0 6px 0 0 var(--depth); margin: 3px 3px 6px;
+}
+.seg::-webkit-scrollbar { display: none; }
+.seg-btn {
+  font: inherit; font-weight: 800; font-size: .95rem; white-space: nowrap; cursor: pointer;
+  padding: 8px 14px; border: 0; background: transparent; color: var(--ink);
+}
+.seg-btn + .seg-btn { box-shadow: inset 3px 0 0 0 var(--line); }
+.seg-btn:hover { background: var(--panel-2); }
+.seg-btn[aria-pressed="true"] { background: var(--orange); color: var(--btn-ink); }
+.seg-n { font-size: .8em; opacity: .65; margin-left: 2px; }
+.lib-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 240px); gap: 12px; max-width: 640px; }
+.lib-field input, .lib-field select {
+  width: 100%; font: inherit; font-weight: 700; color: var(--ink); background: var(--panel);
+  border: 0; padding: 9px 12px; box-shadow: 0 0 0 3px var(--line); margin: 3px 0;
+}
+.lib-search input { padding-left: 34px; background: var(--panel) no-repeat 10px 50% / 16px 16px
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%236b4f3a' d='M2 0h3v1H2zM1 1h1v1H1zM5 1h1v1H5zM0 2h1v3H0zM6 2h1v3H6zM1 5h1v1H1zM5 5h1v1H5zM2 6h3v1H2zM6 6h1v1H6zM7 7h1v1H7z'/%3E%3C/svg%3E"); }
+.lib-field select { cursor: pointer; }
+.lib-field select.is-on { background: var(--leaf); color: #15260f; }
+.lib-status { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; color: var(--ink-soft); font-weight: 700; font-size: .95rem; }
+.lib-reset { font: inherit; font-weight: 800; background: none; border: 0; padding: 0; cursor: pointer; color: var(--orange-dk); text-decoration: underline; }
+:root[data-theme="dark"] .lib-reset { color: var(--orange-2); }
+.lib-reset[hidden] { display: none; }
+@media (max-width: 560px) {
+  .seg { justify-self: stretch; }
+  .seg-btn { flex: 1 0 auto; padding: 8px 10px; font-size: .9rem; }
+  .lib-row { grid-template-columns: 1fr 1fr; max-width: none; }
+}
+
+/* raccourcis de section en haut de la page Jeux : une seule ligne, plus discrets */
+.hub-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 8px; padding: 4px 3px 8px; margin: 0; }
+.hub-nav::-webkit-scrollbar { display: none; }
+.hub-nav .chip { flex: none; font-size: .88rem; padding: 4px 12px; }

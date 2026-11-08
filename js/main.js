@@ -221,12 +221,15 @@
   if (lib) {
     var filtersEl = $("[data-filters]");
     var searchEl = $("[data-search]");
+    var tagSel = $("[data-tag-select]");
     var countEl = $("[data-count]");
+    var resetEl = $("[data-reset]");
     var state = { type: "all", tag: null, q: "" };
 
-    var allTags = [];
-    CATALOG.forEach(function (p) { (p.tags || []).forEach(function (t) { if (allTags.indexOf(t) < 0) allTags.push(t); }); });
-    allTags.sort();
+    // Tags triés du plus courant au moins courant (puis par ordre alphabétique)
+    var tagCount = {};
+    CATALOG.forEach(function (p) { (p.tags || []).forEach(function (t) { tagCount[t] = (tagCount[t] || 0) + 1; }); });
+    var allTags = Object.keys(tagCount).sort(function (a, b) { return tagCount[b] - tagCount[a] || a.localeCompare(b, "fr"); });
 
     var hash = (location.hash || "").replace("#", "");
     if (hash === "jeux") state.type = "game";
@@ -239,19 +242,19 @@
       return p.type === t;
     }
     function renderFilters() {
-      var types = [["all", "Tout"], ["game", "Jeux"], ["plugin", "Plugins Unity"]];
+      var types = [["all", "Tout"], ["game", "Jeux"], ["plugin", "Plugins"]];
       if (CATALOG.some(function (p) { return p.embed; })) types.splice(1, 0, ["play", "▶ Jouable ici"]);
-      var html = '<div class="filter-row" role="group" aria-label="Type">';
-      types.forEach(function (t) {
+      filtersEl.innerHTML = types.map(function (t) {
         var count = CATALOG.filter(function (p) { return matchType(p, t[0]); }).length;
-        html += '<button class="chip" data-type="' + t[0] + '" aria-pressed="' + (state.type === t[0]) + '">' + t[1] + ' <span class="chip-n">' + count + "</span></button>";
-      });
-      html += '</div><div class="filter-row tags-row" role="group" aria-label="Étiquettes">';
-      allTags.forEach(function (t) {
-        html += '<button class="chip chip-tag" data-tag="' + esc(t) + '" aria-pressed="' + (state.tag === t) + '">#' + esc(t) + "</button>";
-      });
-      html += "</div>";
-      filtersEl.innerHTML = html;
+        return '<button class="seg-btn" type="button" data-type="' + t[0] + '" aria-pressed="' + (state.type === t[0]) + '">' +
+          t[1] + ' <span class="seg-n">' + count + "</span></button>";
+      }).join("");
+      if (tagSel) {
+        tagSel.innerHTML = '<option value="">Tous les tags</option>' + allTags.map(function (t) {
+          return '<option value="' + esc(t) + '"' + (state.tag === t ? " selected" : "") + ">" + esc(t) + " (" + tagCount[t] + ")</option>";
+        }).join("");
+        tagSel.classList.toggle("is-on", !!state.tag);
+      }
     }
     function render() {
       var q = state.q.toLowerCase();
@@ -271,15 +274,21 @@
         paintCovers(lib);
       }
       if (countEl) countEl.textContent = list.length + (list.length > 1 ? " projets" : " projet");
+      if (resetEl) resetEl.hidden = state.type === "all" && !state.tag && !state.q;
     }
     filtersEl.addEventListener("click", function (e) {
-      var b = e.target.closest("button");
+      var b = e.target.closest("[data-type]");
       if (!b) return;
-      if (b.dataset.type) state.type = b.dataset.type;
-      if (b.dataset.tag) state.tag = state.tag === b.dataset.tag ? null : b.dataset.tag;
+      state.type = b.dataset.type;
       renderFilters(); render();
     });
+    if (tagSel) tagSel.addEventListener("change", function () { state.tag = tagSel.value || null; renderFilters(); render(); });
     if (searchEl) searchEl.addEventListener("input", function () { state.q = searchEl.value.trim(); render(); });
+    if (resetEl) resetEl.addEventListener("click", function () {
+      state = { type: "all", tag: null, q: "" };
+      if (searchEl) searchEl.value = "";
+      renderFilters(); render();
+    });
     renderFilters(); render();
   }
 
