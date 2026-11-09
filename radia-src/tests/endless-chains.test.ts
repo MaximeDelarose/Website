@@ -205,11 +205,11 @@ describe('chaîne « Savons PIMBÊCHE »', () => {
     expect(canMerge({ c: 'soap', l: 8 }, { c: 'soap', l: 8 })).toBe(false);
     expect(canMerge({ c: 'soap', l: 3 }, { c: 'flowers', l: 3 })).toBe(false);
   });
-  it('déblocage progressif : jamais au départ ; par la boutique de fleurs rouverte, ou plus tard par le palier', () => {
+  it('déblocage progressif : jamais au tout départ ; ouvert très tôt (quelques commandes)', () => {
     const f = defaultFun();
     expect(unlockedColls(f)).not.toContain('soap');
-    expect(ENDLESS_CFG.unlock.byPlace.soap).toMatchObject({ place: 'flowers' });
-    f.endless2.counters.orders = 9999;
+    expect(ENDLESS_CFG.unlock.at.soap).toBeLessThanOrEqual(5);
+    f.endless2.counters.orders = ENDLESS_CFG.unlock.at.soap;
     expect(unlockedColls(f)).toContain('soap');
   });
   it('commandes : une fois débloqués, des savons sont demandés ; jamais avant ; le client aime (le plus souvent) les savons', () => {

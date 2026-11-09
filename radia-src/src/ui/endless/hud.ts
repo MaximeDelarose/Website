@@ -4,6 +4,7 @@
  * Aucun bouton d'information ne recouvre un sprite : appui long = fiche, panneau « Infos » sous le plateau.
  * playLevel.ts la crée une fois ; le moteur est câblé là-bas (bindEndless, applyEvents…).
  */
+import { xpView } from '../../game/endless/xp';
 import './endless.css';
 import { h, tap } from '../dom';
 import { icon } from '../icons';
@@ -346,6 +347,12 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
       else openTreasureSheet(env);
     }, { sound: false }));
     tre.addEventListener('contextmenu', (e) => { e.preventDefault(); openTreasureSheet(env); });
+    // niveau de Radia : pastille discrète + jauge d'XP
+    const xv = xpView(f);
+    const lvl = h('button.en-lvl', { 'aria-label': `Niveau ${xv.level} de Radia, ${xv.into} sur ${xv.need} XP`, 'data-level': String(xv.level) },
+      h('b', String(xv.level)), h('i.en-bar.thin', h('b', { style: `width:${Math.round(xv.ratio * 100)}%` })));
+    lvl.addEventListener('click', tap(() => feed(`Niveau ${xv.level} · ${xv.into}/${xv.need} XP${xv.need ? '' : ' (max)'}`, { kind: 'info', ms: 2400 }), { sound: false }));
+    statusEl.append(lvl);
     statusEl.append(tre);
     if (pend > 0) {
       const i = h('button.en-odds-btn', { 'aria-label': 'Probabilités des coffres' }, icon('info', 16));
@@ -474,6 +481,16 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     window.setTimeout(() => el.remove(), 1000);
   }
 
+  /** Niveau gagné : une pastille qui s'illumine + une ligne discrète (jamais de fenêtre qui cache le plateau). */
+  function lvlUp(to: number, unlock?: string): void {
+    window.setTimeout(() => {
+      const b = statusEl.querySelector('.en-lvl');
+      if (b && !reducedFx()) { b.classList.add('up'); window.setTimeout(() => b.classList.remove('up'), 1400); }
+      feed(`Niveau ${to} ♡${unlock ? ` · ${unlock}` : ''}`, { kind: 'good', ms: 3600 });
+      audio.play('reward'); haptic('reward');
+    }, 700);
+  }
+
   function onEvents(ev: BoardEvent[], got: LootResult) {
     const sc = cfg.getScene();
     for (const e of ev) {
@@ -502,6 +519,9 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
           for (const m of ['flowers', 'fabric', 'cocoa'] as const) if (g[m]) parts.push(`+${g[m]} ${RES_NAMES[m].toLowerCase()}`);
           if (e.energy) parts.push(`+${e.energy} ⚡`);
           feed(parts.length ? parts.join(' · ') : 'Commande livrée ♡', { kind: 'good', ms: 2800 });
+          if (e.levelUp) {
+            lvlUp(e.levelUp.to, e.levelUp.unlock);
+          }
           const rr = ordersEl.querySelector(`[data-slot="${e.slot}"]`)?.getBoundingClientRect();
           if (rr) sparkleBurst(rr.left + rr.width / 2, rr.top + rr.height / 2, { rarity: e.tier === 'hard' ? 'epic' : e.tier === 'mid' ? 'rare' : 'uncommon' });
           if (e.tier === 'hard') wish('orderDone'); // seule une commande difficile mérite un mot d'Auguste

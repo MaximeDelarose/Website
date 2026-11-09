@@ -3,6 +3,7 @@
  * Toutes les actions prennent l'état, le modifient et renvoient la liste des
  * événements à animer. Une action invalide ne modifie jamais l'état.
  */
+import { addXp, orderXp } from '../endless/xp';
 import { serve } from '../customers/logic';
 import { SPECIAL, collMax, itemKey, mergePoints, sameItem, GENERATORS, genKindOf, type CollectionId, type ItemRef } from '../../data/items';
 import { Rng, hashString } from '../../utils/rng';
@@ -146,6 +147,17 @@ function completeOrder(s: RunState, def: LevelDef, slot: number, o: OrderState, 
     Object.assign(d, { tier: o.tier, reward: o.reward, gain: orderGain(o.reward), energy: o.reward.energy, forced });
     bump(fun, 'orders');
     bump(fun, `orders:${o.tier ?? 'easy'}`);
+    if (o.items.some((r) => r.c === 'soap')) bump(fun, 'soapOrders');
+    // niveau de Radia : XP de la livraison ; un niveau gagné ajoute ses pièces / son énergie au gain de la commande (crédités une seule fois)
+    const xpGain = orderXp(o.tier ?? 'easy', o.items);
+    const lu = addXp(fun, xpGain);
+    Object.assign(d, { xp: xpGain });
+    if (lu) {
+      const dd = d as { gain?: Record<string, number>; energy?: number };
+      dd.gain = { ...(dd.gain ?? {}), coins: (dd.gain?.coins ?? 0) + lu.coins };
+      dd.energy = (dd.energy ?? 0) + lu.energy;
+      Object.assign(d, { levelUp: lu });
+    }
     if (o.customer) { // le client remercie aussi quand la commande est terminée avec des diamants
       const sv = serve(fun.customers, o.customer, subRng(s.rng, 0x7a1c), Date.now());
       if (sv) Object.assign(d, { customer: o.customer, loyalty: { n: sv.n, from: sv.levelFrom, to: sv.levelTo }, thanks: sv.thanks.text, story: sv.story });
