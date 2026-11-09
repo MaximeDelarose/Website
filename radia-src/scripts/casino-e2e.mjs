@@ -38,7 +38,7 @@ await page.evaluate(() => { window.RADIA.casino.open(); });
 await sleep(1200);
 check('écran casino ouvert', (await page.locator('.cz-root').count()) === 1);
 let s0 = await st();
-check('allocation gratuite 500 versée', s0.chips + s0.bring === 500, JSON.stringify(s0));
+check('allocation gratuite 500 tickets versée (les tickets restent en poche)', s0.chips === 500, JSON.stringify(s0));
 await shot('card');
 check('carte d\'Auguste affichée', (await page.locator('.cz-member').count()) === 1);
 check('carte : pièces (mise) et tickets affichés', (await page.locator('.cz-w').count()) === 2 && /5\s?000/.test((await page.locator('.cz-w').first().textContent()).replace(/\u202f/g, ' ')));

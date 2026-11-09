@@ -108,6 +108,7 @@ async function run(H) {
   check('aucun élément HTML ne recouvre le plateau', blockers.length === 0, blockers.join(' | '));
   // 9. quitter puis revenir : le plateau reste jouable
   await page.locator('.merge-hud .icon-btn, .merge-hud .back, .screen-head .icon-btn').first().click().catch(() => {}); await sleep(900); await closeModals();
+  if (process.env.DBG) { await page.screenshot({ path: 'shots/dbg-bg.png' }); console.log('OVERLAY:', (await page.locator('#reward-overlay').innerText().catch(() => 'aucun')).replace(/\s+/g, ' ').slice(0, 200)); }
   await page.getByText('MODE LIBRE').first().click().catch(() => {}); await sleep(2500);
   const occ3 = (await E('state')).cells.map((c) => c.i);
   if (occ3.length) { await tapCell(occ3[0]); check('retour dans le mode : sélection possible', (await selected()) === occ3[0], JSON.stringify(await ptr())); }
