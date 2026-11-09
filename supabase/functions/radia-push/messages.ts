@@ -37,3 +37,6 @@ export const THOUGHTS: readonly Thought[] = [
 export const ORIGINAL_COUNT = THOUGHTS.length - 6;
 
 export const THOUGHT_COUNT = THOUGHTS.length;
+
+/** Annonce unique : la joueuse peut maintenant partager sa progression (le toucher ouvre l'invitation dans le jeu). */
+export const NEWS_PROGRESS = { title: 'RADIA ♡', body: 'Une nouveauté est disponible ! Tu peux maintenant partager ta progression de jeu si tu le souhaites. Découvre-la dans tes réglages.', url: './?partage=1' } as const;

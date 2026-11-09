@@ -7,8 +7,8 @@
 //   POST { action: 'test', endpoint }    : envoie TOUT DE SUITE une pensée à cet appareil (3 par jour au plus) pour vérifier la réception.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { generateVapid, isPushHost, sendPush, type VapidKeys } from './webpush.ts';
-import { THOUGHTS } from './messages.ts';
-import { isDue, nextThought } from './logic.ts';
+import { THOUGHTS, NEWS_PROGRESS } from './messages.ts';
+import { isDue, isNewsDue, nextThought } from './logic.ts';
 
 const SUBJECT = 'https://mdelarose.fr';
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
@@ -21,7 +21,7 @@ async function config(): Promise<{ vapid: VapidKeys; cron_secret: string } | nul
   return { vapid: { publicKey: data.public_key, privateJwk: JSON.parse(data.private_jwk) }, cron_secret: data.cron_secret };
 }
 
-interface Row { endpoint: string; p256dh: string; auth: string; tz: string; send_hour: number; enabled: boolean; last_sent_day: string | null; last_idx: number; deck: number[]; sends: number; test_day: string | null; test_n: number }
+interface Row { news_sent?: boolean; endpoint: string; p256dh: string; auth: string; tz: string; send_hour: number; enabled: boolean; last_sent_day: string | null; last_idx: number; deck: number[]; sends: number; test_day: string | null; test_n: number }
 
 async function deliver(row: Row, vapid: VapidKeys, nowMs: number, dayIso: string) {
   const n = nextThought(row.deck ?? [], row.last_idx ?? -1, rnd);
@@ -106,11 +106,22 @@ Deno.serve(async (req) => {
     await purgeStats().catch(() => undefined); // conservation limitée des statistiques de jeu (sans effet sur les petites pensées)
     const { data: rows } = await db.from('radia_push_subs').select('*').eq('enabled', true);
     const due = (rows ?? []).filter((r: Row) => isDue(r, now) && isPushHost(r.endpoint));
-    if (body.dry === true) return json({ ok: true, dry: true, subscribers: rows?.length ?? 0, due: due.length });
+    const newsDue = (rows ?? []).filter((r: Row) => isNewsDue(r, now) && isPushHost(r.endpoint));
+    if (body.dry === true) return json({ ok: true, dry: true, subscribers: rows?.length ?? 0, due: due.length, newsDue: newsDue.length });
+    // annonce UNIQUE « nouveauté » : la réservation est atomique (jamais deux fois), rendue si l'envoi échoue sans abonnement expiré
+    let newsSent = 0;
+    for (const r of newsDue) {
+      const claim = await db.from('radia_push_subs').update({ news_sent: true }).eq('endpoint', r.endpoint).eq('news_sent', false).select('endpoint');
+      if (claim.error || !claim.data?.length) continue;
+      const res = await sendPush({ endpoint: r.endpoint, p256dh: r.p256dh, auth: r.auth }, { title: NEWS_PROGRESS.title, body: NEWS_PROGRESS.body, kind: 'news', url: NEWS_PROGRESS.url, at: now }, cfg.vapid, SUBJECT);
+      if (res.ok) newsSent++;
+      else if (res.gone) await db.from('radia_push_subs').delete().eq('endpoint', r.endpoint);
+      else await db.from('radia_push_subs').update({ news_sent: false }).eq('endpoint', r.endpoint);
+    }
     const { localParts } = await import('./logic.ts');
     let sent = 0, failed = 0, removed = 0, skipped = 0;
     for (const r of due) { const res = await deliver(r, cfg.vapid, now, localParts(now, r.tz).day) as { ok: boolean; gone?: boolean; skipped?: boolean }; if (res.ok) sent++; else if (res.skipped) skipped++; else { failed++; if (res.gone) removed++; } }
-    return json({ ok: true, subscribers: rows?.length ?? 0, due: due.length, sent, failed, removed, skipped });
+    return json({ ok: true, subscribers: rows?.length ?? 0, due: due.length, sent, failed, removed, skipped, newsSent });
   }
 
   if (action === 'test') {

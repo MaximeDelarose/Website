@@ -77,6 +77,14 @@ self.addEventListener('push', (e) => {
   const full = String(d.body || 'Une petite pensée pour toi ♡').slice(0, 700);
   const body = previewOf(full);
   const at = Number(d.at) || Date.now();
+  if (d.kind === 'news') {
+    // annonce unique « nouveauté » : notification discrète, JAMAIS rangée dans « Petites pensées ♡ » ; le toucher ouvre l'invitation à partager la progression
+    e.waitUntil(self.registration.showNotification(String(d.title || 'RADIA ♡').slice(0, 60), {
+      body, icon: new URL('assets/icons/icon-192.png', self.registration.scope).href, badge: new URL('assets/icons/icon-192.png', self.registration.scope).href,
+      tag: 'radia-news', data: { url: d.url || './?partage=1', kind: 'news', at },
+    }));
+    return;
+  }
   e.waitUntil(Promise.all([
     self.registration.showNotification(String(d.title || 'RADIA ♡').slice(0, 60), {
       body,
@@ -92,8 +100,9 @@ self.addEventListener('push', (e) => {
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const target = new URL((e.notification.data && e.notification.data.url) || './?pensee=1', self.registration.scope).href;
+  const news = !!(e.notification.data && e.notification.data.kind === 'news');
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-    for (const c of list) { if ('focus' in c) { c.postMessage({ type: 'radia-thought' }); return c.focus(); } }
+    for (const c of list) { if ('focus' in c) { c.postMessage({ type: news ? 'radia-open-share' : 'radia-thought' }); return c.focus(); } }
     return self.clients.openWindow(target);
   }));
 });
