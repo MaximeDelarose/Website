@@ -2104,7 +2104,7 @@
   // cartes de choix des sanctuaires (posture, élément, escouade)
   function shrineCard(kind, pl) {
     var html = '<span class="kicker">Sanctuaire</span>', opts = [];
-    if (kind === "posture") { html += "<h2>Statue de posture</h2>"; opts = posturesOf(pl.char.id).filter(function (ps) { return postureOk(ps) && ps.id !== pl.posture; }).map(function (ps) { return ["posture:" + ps.id, ps.name, "Ancré : " + ps.a + " Mouvement : " + ps.m + " Volte : " + ps.v]; }); }
+    if (kind === "posture") { html += "<h2>Statue de posture</h2>"; opts = posturesOf(pl.char.id).filter(function (ps) { return postureOk(ps) && ps.id !== pl.posture; }).map(function (ps) { return ["posture:" + ps.id, ps.name, "Ancré : " + ps.a + " Mouvement : " + ps.m + " Volte : " + ps.v + (PSTYLE_TXT[PSTYLE_OF[ps.id]] ? " " + PSTYLE_TXT[PSTYLE_OF[ps.id]] : "")]; }); }
     else if (kind === "elem") { html += "<h2>Autel élémentaire</h2>"; var cur = armElem(pl), els = ELEM_K.filter(function (x) { return x !== cur; }).sort(function () { return Math.random() - 0.5; }).slice(0, 2); opts = els.map(function (el) { return ["elem:" + el, D.ELEMENTS[el].name, "Ton arme devient " + D.ELEMENTS[el].name + " jusqu'à la fin de la partie."]; }); }
     else { html += "<h2>Autel des escouades</h2>"; opts = [["squad:nuee", "Nuée", "Une grosse nuée arrive : XP x1,5 pendant 30 s."], ["squad:elites", "Élites", "4 élites arrivent ; chacune lâche un objet."]]; }
     if (!opts.length) { bannerAll("Aucune autre posture débloquée"); return; }
@@ -2826,6 +2826,7 @@
       if (p.crew && e.key === baseId) return;   // Capitaine : l'attaque de base, ce sont les matelots qui la portent
       if (modStop && e.def.type !== "sig" && e.def.type !== "aura" && e.def.type !== "orbit" && e.def.type !== "riposte") { if (p.timers[e.key] > 0) p.timers[e.key] = Math.max(0.05, p.timers[e.key]); return; }
       CUR_FAM = e.def.family || null;
+      var edef = postureAdapt(p, e.def);
       var rmA = e.def.family === "zone" && p.anchored && itn(p, "racine_mere") ? 1.3 : 1; if (rmA !== 1) p.area *= rmA;
       var el = foyer && e.key === baseId ? "feu" : (p.amu && p.amu[e.def.family]) || wel, n0 = projs.length, l0 = lobs.length, z0 = zones.length, hf = e.def.hfx || null;
       var f0 = fx.length;
@@ -2835,14 +2836,14 @@
         var kpw = p, cps = crewProxies(p);
         for (var mi = 0; mi < cps.length; mi++) {
           var px = cps[mi]; if (px.timers[e.key] === undefined) px.timers[e.key] = 0.1 + Math.random() * 1.2;
-          p = px; try { fn(e.key, e.def, e.l, dt); } finally { p = kpw; }
+          p = px; try { fn(e.key, edef, e.l, dt); } finally { p = kpw; }
         }
       } else {
-        fn(e.key, e.def, e.l, dt);
+        fn(e.key, edef, e.l, dt);
         // Fougère : chaque arbre adulte lance aussi la technique, à 10 % des dégâts
         if (p.trees && p.trees.length && p.char && p.char.id === "druide" && e.def.type !== "pet" && e.def.type !== "riposte") {
           var kpt = p, tps = treeProxies(p);
-          for (var ti = 0; ti < tps.length; ti++) { var tpx = tps[ti]; if (tpx.timers[e.key] === undefined) tpx.timers[e.key] = 0.1 + Math.random() * 1.2; p = tpx; try { fn(e.key, e.def, e.l, dt); } finally { p = kpt; } }
+          for (var ti = 0; ti < tps.length; ti++) { var tpx = tps[ti]; if (tpx.timers[e.key] === undefined) tpx.timers[e.key] = 0.1 + Math.random() * 1.2; p = tpx; try { fn(e.key, edef, e.l, dt); } finally { p = kpt; } }
         }
       }
       HIT_ELEM = undefined; HIT_FX = null; CUR_FAM = null;
@@ -3351,6 +3352,52 @@
                  aura: "zone", nova: "zone", orbit: "zone", radial: "zone", thorns: "zone", lob: "zone", meteor: "zone", tether: "zone",
                  boomerang: "retour", pet: "compagnon", turret: "compagnon", drone: "compagnon" };
   function familyOf(w) { return w.family || FAMILY[w.type] || "zone"; }
+  /* =====================================================================
+     2.49 : les techniques et les armes s'adaptent à la posture. Chaque posture a un « style » ; selon l'état (ancré, en mouvement)
+     le style change la cadence, la portée, la zone, le nombre de projectiles ou la précision des techniques de la famille concernée.
+     ===================================================================== */
+  var PSTYLE_OF = { tireuse: "precision", perchoir: "precision", pique: "precision", canalisatrice: "precision", affut: "precision", transmutatrice: "precision", gourmet: "precision",
+    acrobate: "mobile", vagabonde: "mobile", courant: "mobile", lamevent: "mobile", danseuse: "mobile", charognard: "mobile", rouleau: "mobile", belier: "mobile", semeuse: "mobile", convoi: "mobile", chasseur: "mobile",
+    rempart: "rempart", carapace: "rempart", goinfre: "rempart", estomac: "rempart", jardiniere: "rempart", relais: "rempart",
+    bordee: "escouade", abordage: "escouade", formation: "escouade", miroir: "escouade", ronceraie: "escouade",
+    instable: "burst", canon: "burst", catalyseuse: "burst", empoisonneuse: "burst", receleur: "burst", cambrioleur: "burst", toutourien: "burst", flambeuse: "burst", portebonheur: "burst", glaneuse: "burst" };
+  var PSTYLE_TXT = {
+    precision: "Techniques de précision : ancré, tirs plus loin, plus vite et perforants, zones et coups de mêlée plus larges ; en mouvement, tirs en éventail et un peu moins forts.",
+    mobile: "Techniques de mobilité : en mouvement, toutes tes techniques se rechargent 15 % plus vite, tirent en éventail (+1 projectile) et frappent plus large ; ancré, elles sont un peu plus lentes.",
+    rempart: "Techniques de rempart : ancré, zones plus larges et dégâts +15 % en zone et en mêlée ; en mouvement, zones réduites.",
+    escouade: "Techniques d'escouade : tes compagnons, tourelles et drones font +25 % de dégâts et tirent 10 % plus vite (15 % ancré).",
+    burst: "Techniques de rafale : moins de coups mais plus gros : dégâts +25 %, cadence -20 % ; les tirs ancrés ne dispersent plus."
+  };
+  function postureAdapt(pl, d) {
+    var st = pl && PSTYLE_OF[pl.posture]; if (!st || d.type === "sig" || d.type === "combo" || d.type === "riposte") return d;
+    var ps = pl.anchored ? "a" : pl.mstate === "mouvement" ? "m" : "n", key = st + ps, cache = d._pa || (d._pa = {});
+    if (cache[key]) return cache[key];
+    var o = {}; Object.keys(d).forEach(function (k) { if (k !== "_pa") o[k] = d[k]; });
+    var fam = d.family || FAMILY[d.type] || "zone", tir = fam === "tir" || fam === "retour", mel = fam === "melee", zon = fam === "zone", cmp = fam === "compagnon";
+    var mul = function (ks, f) { ks.forEach(function (k) { if (o[k] !== undefined) o[k] = mapv(o[k], function (x) { return x * f; }); }); };
+    var cdk = ["cd", "rate"], areak = ["R", "rad", "reach", "len"];
+    var spread = function (v) { o.spread = Math.max(o.spread || 0, v); };
+    if (st === "precision") {
+      if (ps === "a") {
+        if (tir) { mul(["range"], 1.25); mul(["spd"], 1.2); if (o.pierce !== undefined) o.pierce = mapv(o.pierce, function (x) { return x + 1; }); o.spread = 0; mul(["dmg"], 1.05); }
+        else if (zon) mul(areak, 1.2); else if (mel) { mul(areak, 1.15); mul(["dmg"], 1.1); } else if (cmp) mul(["dmg"], 1.1);
+      } else if (ps === "m") { if (tir) { spread(0.3); mul(["dmg"], 0.9); } else mul(["dmg"], 0.95); }
+    } else if (st === "mobile") {
+      if (ps === "m") {
+        mul(cdk, 0.85);
+        if (tir) { if (d.type === "shooter" && o.count !== undefined) o.count = mapv(o.count, function (x) { return x + 1; }); spread(0.25); mul(["dmg"], 0.9); }
+        else if (zon) mul(areak, 1.1); else if (mel) { mul(["dmg"], 1.1); mul(areak, 1.08); }
+      } else if (ps === "a") mul(cdk, 1.1);
+    } else if (st === "rempart") {
+      if (ps === "a") { if (zon) { mul(areak, 1.2); mul(["dmg"], 1.15); } else if (mel) { mul(areak, 1.1); mul(["dmg"], 1.15); } else if (tir) { mul(["dmg"], 1.1); mul(["range"], 0.9); } else if (cmp) mul(["dmg"], 1.1); }
+      else if (ps === "m" && zon) { mul(areak, 0.9); mul(["dmg"], 0.95); }
+    } else if (st === "escouade") {
+      if (cmp) { mul(["dmg"], 1.25); mul(cdk, ps === "a" ? 0.85 : 0.9); } else if (tir) mul(["dmg"], 1.05);
+    } else if (st === "burst") {
+      mul(["dmg"], 1.25); mul(cdk, 1.25); if (tir && ps === "a") o.spread = 0;
+    }
+    cache[key] = o; return o;
+  }
   function posturesOf(cid) { return D.POSTURES[cid] || []; }
   function postureOk(ps) { return !ps.quest || !!(S.quests && S.quests[ps.quest]); }
   function postureOf(cid, want) {
@@ -8775,7 +8822,7 @@
         html += '<button type="button" class="np-opt' + (cur.id === ps.id ? " is-on" : "") + '" ' + (ok ? 'data-action="tpos" data-arg="' + ps.id + '"' : 'disabled') + ">" + (ok ? "" : "🔒 ") + esc(ps.name) + "</button>";
       });
       html += '</div><div class="v2-states">' +
-        '<p><b>⚓ Ancré</b> ' + esc(cur.a) + "</p><p><b>🏃 Mouvement</b> " + esc(cur.m) + "</p><p><b>⚡ Volte</b> " + esc(cur.v) + "</p></div>";
+        '<p><b>⚓ Ancré</b> ' + esc(cur.a) + "</p><p><b>🏃 Mouvement</b> " + esc(cur.m) + "</p><p><b>⚡ Volte</b> " + esc(cur.v) + "</p>" + (PSTYLE_TXT[PSTYLE_OF[cur.id]] ? "<p><b>🗡️ Techniques</b> " + esc(PSTYLE_TXT[PSTYLE_OF[cur.id]]) + "</p>" : "") + "</div>";
       var locked = posturesOf(S.char).filter(function (ps) { return !postureOk(ps); });
       if (locked.length) html += '<p class="np-hint">' + locked.map(function (ps) { return "🔒 <b>" + esc(ps.name) + "</b> : " + esc(questById(ps.quest).desc); }).join("<br>") + "</p>";
       html += "</section>";
@@ -10459,6 +10506,7 @@
     tier: function () { return { pos: Math.round(tierPos() * 100) / 100, n: tierN(), name: tierName(tierN()), rage: rageMin(), madness: r.madness, devil: r.devil, gold: Math.floor(r.gold), maxHp: Math.round(me.maxHp) }; },
     gold: function (n) { r.gold += n; },
     hpSet: function (v) { me.hp = v / DISP; return me.hp; }, heal: function (n) { me.hp = Math.min(me.maxHp, me.hp + n / DISP); return Math.round(me.hp * DISP); }, hpNow: function () { return [Math.round(me.hp * DISP), Math.round(me.maxHp * DISP)]; }, goldTest: function (mul, n) { me.goldMul = mul; r.gold = 0; addGold(n); return Math.round(r.gold); },
+    padapt: function (id, posture) { var pp = { posture: posture, anchored: false, mstate: "neutre" }, d = techDef(me, id), out = {}; ["a", "m", "n"].forEach(function (k) { pp.anchored = k === "a"; pp.mstate = k === "m" ? "mouvement" : "x"; var q = postureAdapt(pp, d); out[k] = { dmg: q.dmg && q.dmg[0], cd: q.cd && q.cd[0], count: q.count && q.count[0], pierce: q.pierce && q.pierce[0], range: q.range, spread: q.spread, R: q.R && q.R[0] }; }); return out; },
     setRun: function (o) { Object.assign(r, o); return 1; },
     heavy: function (n) { for (var i = 0; i < n; i++) { var e = spawn(["slug", "beetle", "ant", "moth"][i % 4], Math.random() * TAU, 20 + Math.random() * 90); if (e) { e.hp = e.maxHp = 1e12; } } return enemies.length; },
     bench: function (n) { var t0 = performance.now(), i; for (i = 0; i < n; i++) { if (state === "levelup") { pending = 0; picking = false; state = "play"; hideCard(); } if (state !== "play") break; update(1 / 60); } var t1 = performance.now(); for (i = 0; i < 20; i++) draw(); var t2 = performance.now(); return { upd: +((t1 - t0) / Math.max(1, i0(n))).toFixed(2), drw: +((t2 - t1) / 20).toFixed(2), enemies: enemies.length, crew: me.crew ? me.crew.length : 0, projs: projs.length, t: Math.round(r.time), state: state }; function i0(k) { return k; } },
