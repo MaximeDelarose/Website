@@ -21,11 +21,12 @@ export function clothRarity(id: ClothId): Rarity {
   if (!d) return 'common';
   if (d.diamonds) return 'legendary';
   const p = d.coins;
-  return p < 100 ? 'common' : p < 160 ? 'uncommon' : p < 240 ? 'rare' : p < 330 ? 'epic' : 'legendary';
+  // seuils exprimés dans la courbe de prix (data/world/prices.ts : ×1 ≤150, ×2 ≤300, ×3 au-delà) : mêmes catégories qu'avant
+  return p < 100 ? 'common' : p < 320 ? 'uncommon' : p < 480 ? 'rare' : p < 990 ? 'epic' : 'legendary';
 }
 export function furnitureRarity(id: string): Rarity {
   const p = (FURNITURE as Record<string, { price: number }>)[id]?.price ?? 0;
-  return p < 100 ? 'common' : p < 200 ? 'uncommon' : p < 350 ? 'rare' : p < 480 ? 'epic' : 'legendary';
+  return p < 100 ? 'common' : p < 400 ? 'uncommon' : p < 1050 ? 'rare' : p < 1440 ? 'epic' : 'legendary';
 }
 
 const SLOTS_BY_KIND: Record<'cloth' | 'bag' | 'accessory', string[]> = {

@@ -94,7 +94,7 @@ describe('cadeau non achetable', () => {
     expect(W.getLook().acc).not.toContain('br-promise');
   });
   it('les autres pièces restent achetables', () => {
-    w().res.coins = 1000;
+    w().res.coins = 10000;
     expect(W.canBuy('ac-pearls').ok).toBe(true);
   });
 });

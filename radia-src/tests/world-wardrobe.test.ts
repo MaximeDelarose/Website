@@ -36,14 +36,15 @@ describe('achat', () => {
     expect(W.owns('dr-royal-gown')).toBe(false);
   });
   it('débite pièces et tissus, rien de négatif', () => {
-    w().res.coins = 400; w().res.fabric = 5;
-    const r = W.buy('dr-flowy-floral'); // 260 pièces + 4 tissus
+    w().res.coins = 1000; w().res.fabric = 5;
+    const price = W.priceOf('dr-flowy-floral').coins; // courbe de prix : data/world/prices.ts
+    const r = W.buy('dr-flowy-floral'); // + 4 tissus
     expect(r.ok).toBe(true);
-    expect(w().res.coins).toBe(140);
+    expect(w().res.coins).toBe(1000 - price);
     expect(w().res.fabric).toBe(1);
     expect(W.owns('dr-flowy-floral')).toBe(true);
     expect(W.buy('dr-flowy-floral').reason).toBe('owned');
-    expect(w().res.coins).toBe(140);
+    expect(w().res.coins).toBe(1000 - price);
   });
   it('refuse si pièces ou tissus manquent, sans rien débiter', () => {
     w().res.coins = 100; w().res.fabric = 0;
