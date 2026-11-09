@@ -11,7 +11,7 @@ import { ActivityMeter, HEARTBEAT_MS } from './statsLogic';
 const KEY = 'radia-stats-v1';
 export interface StatsLocal { v: 1; state: 'none' | 'on' | 'off'; device: string; secret: string; at: number; asked?: boolean; pendingPause?: boolean;
   /** Partage de PROGRESSION (consentement distinct du temps de jeu) : none = jamais demandé, on = actif, off = arrêté. */
-  prog?: 'none' | 'on' | 'off'; progPause?: boolean }
+  prog?: 'none' | 'on' | 'off'; progPause?: boolean; progAsked?: boolean }
 const EMPTY: StatsLocal = { v: 1, state: 'none', device: '', secret: '', at: 0 };
 
 export function readLocal(): StatsLocal {
@@ -89,6 +89,8 @@ function beginTracking(): void {
 export const statsState = (): StatsLocal['state'] => readLocal().state;
 export const statsAsked = (): boolean => !!readLocal().asked;
 export function markStatsAsked(): void { const s = readLocal(); writeLocal({ ...s, asked: true }); }
+/** Refus explicite de la progression (ou invitation traitée) : plus jamais redemandé, aucune donnée collectée ni aucun appel serveur. */
+export function declineProgress(): void { const s = readLocal(); writeLocal({ ...s, prog: 'off', progAsked: true, progPause: false }); }
 
 /** À appeler au démarrage : reprend le suivi si Radia l'a accepté, et termine une désactivation restée en attente (réseau coupé). */
 export function startStatsTracking(): void {

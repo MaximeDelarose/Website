@@ -24,13 +24,13 @@ const btn = (page, t) => page.locator('.modal-backdrop:not(.leaving) .actions bu
   const { ctx, page, calls } = await newPage('A');
   await page.goto(`http://localhost:${PORT}/?debug&statsDelay=0&inviteDelay=999999999`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.modal-backdrop:not(.leaving) h3, .modal-backdrop:not(.leaving) .modal-title', { timeout: 25000 }).catch(() => {});
-  const shown = await page.locator('.modal-backdrop:not(.leaving)', { hasText: 'Partager mes statistiques de jeu' }).count();
-  check('invitation affichée une fois (texte clair : ce qui est partagé, jamais partagé, pourquoi, qui voit, conservation)', shown === 1 && /Ce qui est partagé/.test(await page.locator('.modal-backdrop').innerText()) && /Jamais partagé/.test(await page.locator('.modal-backdrop').innerText()) && /Conservation/.test(await page.locator('.modal-backdrop').innerText()));
+  const shown = await page.locator('.modal-backdrop:not(.leaving)', { hasText: 'Partager ma progression' }).count();
+  check('invitation unique affichée (texte clair : statistiques, chapitres, niveaux, commandes ; changer d\'avis à tout moment)', shown === 1 && /Souhaites-tu partager tes statistiques de jeu avec le créateur de RADIA/.test(await page.locator('.modal-backdrop').innerText()) && /changer d’avis à tout moment/.test(await page.locator('.modal-backdrop').innerText()));
   await btn(page, 'Non merci').click(); await page.waitForTimeout(800);
   const st = await page.evaluate(() => JSON.parse(localStorage.getItem('radia-stats-v1') || '{}'));
   check('« Non merci » : aucun identifiant créé, état « non demandé à nouveau »', st.state === 'none' && !st.device && st.asked === true);
   await page.waitForTimeout(7000);
-  check('refus respecté : l\'invitation ne revient pas', (await page.locator('.modal-backdrop:not(.leaving)', { hasText: 'Partager mes statistiques' }).count()) === 0);
+  check('refus respecté : l\'invitation ne revient pas', (await page.locator('.modal-backdrop:not(.leaving)', { hasText: 'Partager ma progression' }).count()) === 0);
   check('refus : AUCUN envoi de statistiques (aucun appel radia_stats_join / beat)', !calls.some((c) => /^radia_stats_(join|beat)$/.test(c.fn)), calls.map((c) => c.fn).join(','));
   await ctx.close();
 }

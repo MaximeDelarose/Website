@@ -100,7 +100,7 @@ export async function enableProgress(): Promise<EnableProgress> {
   const device = cur.device || uuid(), secret = cur.secret || `${rnd(16)}${rnd(16)}`;
   const res = await rpc('radia_progress_join', { p_device: device, p_secret: secret, p_platform: platform(), p_tz: tz() });
   if (!res || !res.ok) return 'server';
-  writeLocal({ ...cur, v: 1, device, secret, at: cur.at || Date.now(), prog: 'on', progPause: false });
+  writeLocal({ ...cur, v: 1, device, secret, at: cur.at || Date.now(), prog: 'on', progPause: false, progAsked: true });
   writeP({ snap: null, mem: -1, pho: -1, queue: [] }); // état de départ : rien n'est reconstitué
   stop(); begin();
   return 'ok';
