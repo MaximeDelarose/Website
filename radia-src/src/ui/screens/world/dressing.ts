@@ -1,3 +1,4 @@
+import { missingCoins } from '../../../data/world/prices';
 import '../../styles/world-dressing.css';
 import { hasPhotos } from '../../../core/photos';
 import { paintedImageFor, drawPainted, warmRadia } from '../../../game/art/world/radiaNow';
@@ -341,7 +342,7 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
     const missing = (id: ItemId): string | null => {
       const c = isHairId(id) ? W.canBuyHair(id) : W.canBuy(id, 'coins');
       if (c.ok || c.reason === 'owned') return null;
-      return c.reason === 'fabric' ? `Il te manque ${(isHairId(id) ? 0 : W.priceOf(id).fabric) - res('fabric')} tissus` : `Il te manque ${(isHairId(id) ? W.hairPrice(id) : W.priceOf(id).coins) - res('coins')} pièces`;
+      return c.reason === 'fabric' ? `Il te manque ${(isHairId(id) ? 0 : W.priceOf(id).fabric) - res('fabric')} tissus` : missingCoins((isHairId(id) ? W.hairPrice(id) : W.priceOf(id).coins) - res('coins'));
     };
 
     const allOf = (k: CatKey): ItemId[] => (k === 'hair' ? [...HAIR_IDS] : (Object.keys(CLOTHES) as ClothId[]).filter((id) => visible(id) && catOf(id) === k));

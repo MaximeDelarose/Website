@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
 const PORT = process.env.PORT ?? 4187;
-const URL = `http://localhost:${PORT}/?debug`;
+const URL = `http://localhost:${PORT}/?debug&statsDelay=99999999`;
 mkdirSync('shots', { recursive: true });
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
 const results = [];
@@ -45,8 +45,16 @@ const mk = (page, tag, H) => {
     await closeModals();
     // l'annonce « L'aventure continue » (une fois) ouvre la carte du domaine : on revient au titre
     if (await page.getByText('Carte du domaine').count()) { await page.locator('.screen-head .icon-btn').first().click().catch(() => {}); await sleep(700); await closeModals(); }
+    if (process.env.DBG) await page.screenshot({ path: 'shots/dbg-start.png' });
     if (await page.getByText('MODE LIBRE').count()) {
-      await page.getByText('MODE LIBRE').first().click();
+      // une fenêtre de récompense (cadeau tardif) peut se poser par-dessus : on la ferme puis on réessaie
+      for (let k = 0; k < 6; k++) {
+        const ok = await page.getByText('MODE LIBRE').first().click({ timeout: 5000 }).then(() => true, () => false);
+        if (ok) break;
+        const rb = page.locator('#reward-overlay button'); if (await rb.count()) await rb.last().click({ timeout: 3000 }).catch(() => {});
+        await sleep(600); await closeModals();
+        if (k === 5) await page.getByText('MODE LIBRE').first().click();
+      }
     } else {
       await page.getByText('MODE CHAPITRES').first().click();
       await sleep(900);

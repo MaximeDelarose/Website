@@ -2,6 +2,7 @@
  * Catalogue des meubles du château : nom, catégorie, prix, emprise en cases,
  * pièces autorisées, couleur par défaut. Les 36 identifiants viennent de ids.ts.
  */
+import { tierCoins } from './prices';
 import { FURNITURE_IDS, type ColorId, type FurnitureId, type RoomId } from './ids';
 
 export type FurnitureCat = 'couchage' | 'assises' | 'tables' | 'rangement' | 'eclairage' | 'deco' | 'plantes' | 'jardin' | 'enfants' | 'reception' | 'mode';
@@ -71,7 +72,7 @@ const ALL = [...ALL_IN, 'garden'] as const;
 
 type Base = Pick<FurnitureDef, 'id' | 'name' | 'cat' | 'price' | 'w' | 'h' | 'rooms' | 'color' | 'colorable' | 'gems'>;
 const D = (id: AnyFurnitureId, name: string, cat: FurnitureCat, price: number, w: number, h: number, rooms: readonly RoomId[], color: ColorId, colorable = true, gems?: number): Base =>
-  ({ id, name, cat, price, w, h, rooms, color, colorable, gems });
+  ({ id, name, cat, price: tierCoins(id, price), w, h, rooms, color, colorable, gems });
 
 const BASE: Base[] = [
   D('bed-royal', 'Lit royal', 'couchage', 480, 3, 2, ['bedroom'], 'rose', true, 40),

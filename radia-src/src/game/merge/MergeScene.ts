@@ -498,12 +498,12 @@ export class MergeScene extends BaseScene {
       if (!ok) continue;
       const hi = this.add.image(this.cx(j), this.cy(j), 'cell:ok').setScale(k);
       this.boardLayer.addAt(hi, this.tiles.length);
-      this.tweens.add({ targets: hi, alpha: 0.4, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.easeInOut' });
+      if (!reducedFx()) this.tweens.add({ targets: hi, alpha: 0.4, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.easeInOut' }); // mouvement réduit : surbrillance fixe
       this.matchHi.push(hi);
       const sp = this.sprites[j] ?? this.gifts[j];
       if (sp && !this.locked.has(j)) {
         this.matchCells.push(j);
-        if (this.sprites[j]) this.tweens.add({ targets: sp, scale: this.itemScale(this.sprites[j]) * 1.1, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.easeInOut' });
+        if (this.sprites[j] && !reducedFx()) this.tweens.add({ targets: sp, scale: this.itemScale(this.sprites[j]) * 1.1, yoyo: true, repeat: -1, duration: 480, ease: 'Sine.easeInOut' });
       }
     }
   }
@@ -788,10 +788,10 @@ export class MergeScene extends BaseScene {
     for (const i of [s.from, s.to]) {
       const h = this.add.image(this.cx(i), this.cy(i), 'cell:hint').setScale(1 / texScale());
       this.boardLayer.add(h);
-      this.tweens.add({ targets: h, alpha: 0.3, yoyo: true, repeat: 5, duration: 380, onComplete: () => h.destroy() });
+      if (reducedFx()) this.time.delayedCall(2400, () => h.destroy()); else this.tweens.add({ targets: h, alpha: 0.3, yoyo: true, repeat: 5, duration: 380, onComplete: () => h.destroy() });
       this.hintHi.push(h);
       const sp = this.sprites[i];
-      if (sp) this.tweens.add({ targets: sp, y: this.cy(i) - 5, yoyo: true, repeat: 3, duration: 200, ease: 'Sine.easeInOut' });
+      if (sp && !reducedFx()) this.tweens.add({ targets: sp, y: this.cy(i) - 5, yoyo: true, repeat: 3, duration: 200, ease: 'Sine.easeInOut' });
     }
     return true;
   }

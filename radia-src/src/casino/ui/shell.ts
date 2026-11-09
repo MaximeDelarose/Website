@@ -4,7 +4,9 @@ import { h } from '../../ui/dom';
 import { audio } from '../../core/app';
 import { haptic } from '../../core/haptics';
 import { fmt } from '../../core/wallet';
-import { ticketUrl } from '../../game/art/world/giftArt';
+import { resIconUrl as coinIcon } from '../../game/art/world/resources';
+import { balance } from '../bank';
+const coinUrl = (n: number): string => coinIcon('coins', n);
 import { bounce, rollNumber, shake, flyChips, centerOf, type Pt } from '../fx';
 import { cs, persist, notifyCasino } from '../store';
 import { returnBring } from '../chips';
@@ -42,17 +44,17 @@ export const isOpen = (): boolean => !!current;
 export function createShell(onClose: () => void): Shell {
   let scene: Scene | null = null;
   let dead = false;
-  const balEl = h('b.cz-bal', fmt(cs().bring));
-  const pill = h('div.cz-pill', { 'aria-label': 'Tickets à la table' }, h('img', { src: ticketUrl(36), alt: '', draggable: false }), balEl);
-  attachResourceInfo(pill, 'tickets');
+  const balEl = h('b.cz-bal', fmt(balance()));
+  const pill = h('div.cz-pill', { 'aria-label': 'Pièces' }, h('img', { src: coinUrl(36), alt: '', draggable: false }), balEl);
+  attachResourceInfo(pill, 'coins');
   const title = h('h1.cz-title', '');
   const back = h('button.cz-ibtn.cz-back', { 'aria-label': 'Retour' }, '‹');
   const help = h('button.cz-ibtn.cz-helpbtn', { 'aria-label': 'Aide : règles et probabilités' }, '?');
   const stage = h('div.cz-stage');
   const root = h('div.cz-root', h('div.cz-head', back, title, pill, help), stage);
   const sh: Shell = {
-    root, stage, balEl, pill, shown: cs().bring,
-    table: () => cs().bring,
+    root, stage, balEl, pill, shown: balance(),
+    table: () => balance(),
     show(s) {
       scene?.dispose?.();
       scene = s;
@@ -63,7 +65,7 @@ export function createShell(onClose: () => void): Shell {
     },
     setShown(n) { sh.shown = n; balEl.textContent = fmt(n); },
     async sync(animate = false) {
-      const to = cs().bring;
+      const to = balance();
       if (animate) { const from = sh.shown; sh.shown = to; await rollNumber(balEl, from, to, 700); bounce(pill, 1.1); } else sh.setShown(to);
     },
     fly: (from, n, value) => flyChips('x' in from ? from : centerOf(from), pill, n, value),

@@ -70,7 +70,9 @@ describe('tickets : jamais achetables, ni convertibles', () => {
   it('aucun fichier du casino ou de la roue ne débite pièces, diamants ou énergie', () => {
     for (const f of files) {
       const t = readFileSync(f, 'utf8');
-      expect(t, f).not.toMatch(/spendRes|spendMany|spendDiamonds|spendEnergy|wallet\.(spend|buy)|\.economy\.diamonds\s*-=|res\.coins\s*-=/);
+      expect(t, f).not.toMatch(/spendRes|spendMany|spendDiamonds|spendEnergy|wallet\.(spend|buy)|\.economy\.diamonds\s*-=/);
+      // seule exception voulue (demande de Maxime) : la caisse d'échange de la carte d'Auguste débite des PIÈCES du jeu (jamais diamants / énergie / argent réel), plafonnée par jour
+      if (!f.endsWith('casino/ui/lobby.ts')) expect(t, f).not.toMatch(/res\.coins\s*-=/);
     }
   });
   it('aucune mention d\'argent réel, d\'achat ou de conversion dans les textes', () => {

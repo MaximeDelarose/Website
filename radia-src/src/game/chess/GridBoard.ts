@@ -185,6 +185,7 @@ export class GridBoard {
         const pe = old[i];
         old.splice(i, 1);
         pe.cell = p.cell;
+        pe.el.dataset.kind = p.kind;
         pe.el.style.transition = '';
         this.place(pe.el, p.cell);
         pe.el.classList.add('moving');
@@ -192,6 +193,7 @@ export class GridBoard {
         next.push(pe);
       } else {
         const el = h('div.gb-piece.appear', { html: p.html });
+        el.dataset.kind = p.kind; // repère stable (tests, accessibilité)
         this.place(el, p.cell);
         this.layer.append(el);
         window.setTimeout(() => el.classList.remove('appear'), 300);

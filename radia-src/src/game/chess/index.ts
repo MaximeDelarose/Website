@@ -58,7 +58,8 @@ export function runQueenTutorial(): Promise<'done' | 'quit'> {
   return new Promise((resolve) => {
     let view: View | null = null;
     let finished = false;
-    const end = (v: 'done' | 'quit') => { if (finished) return; finished = true; view?.destroy(); resolve(v); };
+    // Fin du didacticiel : l'écran du Mode Reine DOIT être retiré, sinon il reste sous l'interface du niveau suivant (superposition + gestes bloqués)
+    const end = (v: 'done' | 'quit') => { if (finished) return; finished = true; view?.destroy(); if (ui.screen === screen) ui.closeScreen(); else screen.remove(); resolve(v); };
     const body = h('div.chess-body');
     const screen = h('div.chess-screen.bg-soft', ui.header('Mode Reine', () => end('quit')), body);
     ui.showScreen(screen);

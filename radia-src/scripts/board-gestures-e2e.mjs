@@ -4,7 +4,7 @@
 // appui long suivi d'une fiche, rafales de touchers / glissés / annulations, sélection pendant une animation de combo.
 import { chromium } from 'playwright';
 const PORT = process.env.PORT ?? 4187;
-const URL = `http://localhost:${PORT}/?debug`;
+const URL = `http://localhost:${PORT}/?debug&statsDelay=999999999`;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
 const results = []; const errors = []; let tag = '';
 const check = (name, ok, detail = '') => { const l = `${ok ? 'OK ' : 'KO '} [${tag}] ${name}${detail ? ` — ${detail}` : ''}`; results.push({ ok: !!ok, l }); console.log(l); };
@@ -105,9 +105,11 @@ async function run(H) {
   // 8. rien d'invisible ne capte les touchers au-dessus du plateau
   const blockers = [];
   for (const i of [0, 2, 4, 6, 14, 16, 18, 20, 22, 24, 26]) { const pt = await xy(i); if (!pt) continue; const tag2 = await page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return e && e.tagName !== 'CANVAS' && getComputedStyle(e).pointerEvents !== 'none' ? (e.className || e.tagName) : ''; }, [pt.x, pt.y]); if (tag2) blockers.push(`case ${i}: ${tag2}`); }
+  if (process.env.DBG && blockers.length) { await page.screenshot({ path: 'shots/dbg-block.png' }); console.log('BLOCK:', await page.evaluate(() => { const e = document.elementFromPoint(window.innerWidth / 2, window.innerHeight * 0.5); const chain = []; for (let n = e; n && chain.length < 6; n = n.parentElement) chain.push(n.tagName + '.' + (n.className || '')); return chain.join(' < ') + ' | ' + (e?.closest('[class]')?.innerText || '').slice(0, 120).replace(/\n/g, ' '); })); }
   check('aucun élément HTML ne recouvre le plateau', blockers.length === 0, blockers.join(' | '));
   // 9. quitter puis revenir : le plateau reste jouable
   await page.locator('.merge-hud .icon-btn, .merge-hud .back, .screen-head .icon-btn').first().click().catch(() => {}); await sleep(900); await closeModals();
+  if (process.env.DBG) { await page.screenshot({ path: 'shots/dbg-bg.png' }); console.log('OVERLAY:', (await page.locator('#reward-overlay').innerText().catch(() => 'aucun')).replace(/\s+/g, ' ').slice(0, 200)); }
   await page.getByText('MODE LIBRE').first().click().catch(() => {}); await sleep(2500);
   const occ3 = (await E('state')).cells.map((c) => c.i);
   if (occ3.length) { await tapCell(occ3[0]); check('retour dans le mode : sélection possible', (await selected()) === occ3[0], JSON.stringify(await ptr())); }

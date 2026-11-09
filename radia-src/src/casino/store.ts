@@ -6,6 +6,10 @@ import { claimableCount } from './missions';
 import { claimableTasks, earn, sourceOf, type TicketSource } from './tickets';
 import type { Rng } from './rng';
 
+import { usePurse } from './bank';
+/** Le casino mise les pièces du monde : un seul portefeuille pour tout RADIA. */
+usePurse({ get: () => save.data.world.res.coins, set: (n) => { save.data.world.res.coins = n; } });
+
 export const cs = (): CasinoState => save.data.fun.casino;
 export const persist = (): void => { try { save.save(); } catch { /* jamais bloquant */ } };
 

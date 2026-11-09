@@ -17,7 +17,7 @@ export interface Bet { kind: BetKind; nums?: number[]; amount: number }
 
 /** Tailles de groupes autorisées (paiement entier : 36/k − 1). */
 export const GROUP_SIZES = [2, 3, 4, 6] as const;
-export const CHIP_VALUES = [5, 10, 25, 50, 100] as const;
+export const CHIP_VALUES = [10, 50, 100, 500, 1000, 5000] as const;
 
 export const KIND_NAMES: Record<BetKind, string> = { red: 'Rouge', black: 'Noir', even: 'Pair', odd: 'Impair', num: 'Numéro', nums: 'Groupe' };
 

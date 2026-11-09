@@ -6,13 +6,14 @@ import { fmt } from '../../core/wallet';
 import { cardBackUrl, cardFaceUrl, chipUrl } from '../../game/art/casino';
 import { bounce, celebrate, centerOf, shake, soft, wait } from '../fx';
 import { cs, hooks, notifyCasino, persist } from '../store';
-import { LIMITS, canBet, credit, debit, recordRound } from '../chips';
+import { LIMITS, recordRound } from '../chips';
+import { balance, creditCoins as credit, debitCoins as debit, maxBet } from '../bank';
 import { canDouble, doubleDown, freshShuffledDeck, handValue, hit, returned, stakeOf, stand, startRound, type Card, type Outcome, type Round } from '../blackjack';
 import { defaultRng, seededRng } from '../rng';
 import { lowFunds } from './lobby';
 import type { Scene, Shell } from './shell';
 
-const CHIPS = [10, 20, 50, 100] as const;
+const CHIPS = [50, 100, 500, 1000, 5000] as const;
 
 export function helpBlackjack(): HTMLElement {
   return h('div',
@@ -24,7 +25,7 @@ export function helpBlackjack(): HTMLElement {
       'Si tu dépasses 21, tu perds tout de suite.',
       'Le croupier tire jusqu\'à 17 et reste sur 17 (même avec un As).',
       'Blackjack naturel (As + figure ou 10 en deux cartes) : payé 3 pour 2. Victoire : 1 pour 1 (mise rendue en plus). Égalité : ta mise est rendue. Défaite : la mise est perdue.',
-      `Mises de ${LIMITS.blackjack.min} à ${LIMITS.blackjack.max} tickets, par pas de ${LIMITS.blackjack.step}.`,
+      `Mises de ${LIMITS.blackjack.min} pièces jusqu'à la moitié de ta bourse, par pas de ${LIMITS.blackjack.step}.`,
       'À chaque donne, un paquet de 52 cartes neuf est mélangé honnêtement (Fisher–Yates) : aucune carte n\'est truquée et rien ne dépend de tes parties précédentes.',
     ].map((t) => h('li', t))),
     h('p', 'Pas d\'assurance ni de séparation des paires : c\'est un blackjack simplifié.'));
@@ -34,7 +35,7 @@ const OUT: Record<Outcome, string> = { blackjack: 'BLACKJACK ♛', win: 'Gagné 
 
 export function blackjackScene(sh: Shell, o: { onBack(): void; goCard(): void }): Scene {
   let bet = 0, last = 0, phase: 'bet' | 'dealing' | 'player' | 'end' = 'bet', round: Round | null = null, settled = false, alive = true;
-  const cap = () => Math.min(cs().bring, LIMITS.blackjack.max);
+  const cap = () => maxBet();
 
   const dealerHand = h('div.bj-hand.dealer'), playerHand = h('div.bj-hand.player');
   const dVal = h('span.bj-val', ''), pVal = h('span.bj-val', '');
@@ -94,7 +95,7 @@ export function blackjackScene(sh: Shell, o: { onBack(): void; goCard(): void })
     const stake = round ? stakeOf(round) : bet;
     betTxt.textContent = fmt(stake);
     const chips: number[] = []; let rest = stake;
-    for (const v of [100, 50, 20, 10]) { while (rest >= v && chips.length < 9) { chips.push(v); rest -= v; } }
+    for (const v of [5000, 1000, 500, 100, 50, 10]) { while (rest >= v && chips.length < 9) { chips.push(v); rest -= v; } }
     betPile.replaceChildren(...chips.map((v, i) => h('img', { src: chipUrl(v, 44), alt: '', draggable: false, style: `bottom:${i * 5}px;left:${(i % 2) * 3}px` })));
   }
 
@@ -103,7 +104,7 @@ export function blackjackScene(sh: Shell, o: { onBack(): void; goCard(): void })
     rules.style.display = phase === 'bet' ? '' : 'none';
     if (phase === 'bet') {
       const go = h('button.btn.gold.wide', 'Distribuer') as HTMLButtonElement;
-      go.disabled = bet < LIMITS.blackjack.min || !canBet(cs(), 'blackjack', bet);
+      go.disabled = bet < LIMITS.blackjack.min || bet > cap();
       go.textContent = bet < LIMITS.blackjack.min ? `Mise minimum : ${LIMITS.blackjack.min}` : `Distribuer · ${fmt(bet)} ♡`;
       go.addEventListener('click', () => void deal());
       const row = h('div.bj-chips', ...CHIPS.map((v) => {
@@ -115,9 +116,9 @@ export function blackjackScene(sh: Shell, o: { onBack(): void; goCard(): void })
       }), h('button.cz-mini', { on: { click: () => { bet = 0; audio.play('select'); refresh(); } } }, 'Effacer'),
       last >= LIMITS.blackjack.min && last <= cap() && last !== bet ? h('button.cz-mini', { on: { click: () => { bet = last; audio.play('chip'); haptic('bet'); refresh(); } } }, `⟲ ${fmt(last)}`) : null);
       ctrl.append(row, go);
-      low.replaceChildren(cs().bring < LIMITS.blackjack.min ? lowFunds(LIMITS.blackjack.min, o.goCard) : '');
+      low.replaceChildren(balance() < LIMITS.blackjack.min ? lowFunds(LIMITS.blackjack.min, o.goCard) : '');
     } else if (phase === 'player' && round) {
-      const afford = cs().bring >= round.bet;
+      const afford = balance() >= round.bet;
       const hitB = h('button.btn.wide', { on: { click: () => void act('hit') } }, 'Tirer');
       const standB = h('button.btn.lavande.wide', { on: { click: () => void act('stand') } }, 'Rester');
       const dblB = h('button.btn.secondary.wide', { on: { click: () => void act('double') } }, `Doubler +${fmt(round.bet)}`) as HTMLButtonElement;
@@ -145,8 +146,8 @@ export function blackjackScene(sh: Shell, o: { onBack(): void; goCard(): void })
   // ---------------------------------------------------------------- manche
   async function deal(): Promise<void> {
     if (phase !== 'bet') return;
-    if (bet < LIMITS.blackjack.min || !canBet(cs(), 'blackjack', bet)) { haptic('error'); audio.play('invalid'); return; }
-    if (!debit(cs(), bet)) return; // mise débitée AVANT la donne
+    if (bet < LIMITS.blackjack.min || bet > cap()) { haptic('error'); audio.play('invalid'); return; }
+    if (!debit(bet)) return; // mise débitée AVANT la donne
     last = bet; persist(); void sh.sync(false);
     phase = 'dealing'; settled = false; drawCtrl();
     const rng = hooks.deckSeed !== null ? seededRng(hooks.deckSeed) : (hooks.rng ?? defaultRng);
@@ -182,7 +183,7 @@ export function blackjackScene(sh: Shell, o: { onBack(): void; goCard(): void })
       const drawn = stand(r);
       await dealerTurn(hidden, drawn);
     } else {
-      if (!canDouble(r) || !debit(cs(), r.bet)) { shake(ctrl); haptic('error'); return; }
+      if (!canDouble(r) || !debit(r.bet)) { shake(ctrl); haptic('error'); return; }
       persist(); void sh.sync(false);
       phase = 'dealing'; drawCtrl(); drawPile(); audio.play('chip');
       const d = doubleDown(r)!;
@@ -208,7 +209,7 @@ export function blackjackScene(sh: Shell, o: { onBack(): void; goCard(): void })
     if (hidden && !hidden.classList.contains('up')) await flip(hidden);
     values(false);
     const stake = stakeOf(r), ret = returned(r), net = ret - stake;
-    credit(cs(), ret);
+    credit(ret);
     recordRound(cs(), 'blackjack', stake, ret, Date.now(), r.outcome === 'blackjack' ? ['blackjack.naturels'] : []);
     persist(); notifyCasino();
     phase = 'end';

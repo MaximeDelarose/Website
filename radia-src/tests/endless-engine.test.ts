@@ -43,7 +43,7 @@ describe('combos Endless', () => {
     expect(Math.max(...combos.map((c) => c.mult ?? 0))).toBe(C.multMax);
     const tiers = ev.filter((e) => e.t === 'comboTier') as Extract<BoardEvent, { t: 'comboTier' }>[];
     expect(tiers.map((t) => t.value)).toEqual(C.tiers.filter((t) => t.at <= 14).map((t) => t.at));
-    expect(tiers[0]).toMatchObject({ tier: 0, energy: 1, capped: false });
+    expect(tiers[0]).toMatchObject({ tier: 0, energy: 0, capped: false });
   });
   it('retombée après le plafond de combo', () => {
     const { s } = fresh();

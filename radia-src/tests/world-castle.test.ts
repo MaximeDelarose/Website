@@ -5,7 +5,7 @@ import { FURNITURE, CAT_ORDER, furnitureForRoom } from '../src/data/world/furnit
 import { ROOMS, DECOR_VARIANT_COUNT, roomName } from '../src/data/world/rooms';
 import * as C from '../src/game/world/castle';
 
-function mk(coins = 5000, diamonds = 100): C.CastleCtx & { gems: { n: number } } {
+function mk(coins = 60000, diamonds = 100): C.CastleCtx & { gems: { n: number } } {
   const world = defaultWorld();
   world.res.coins = coins;
   world.res.flowers = 20;
@@ -73,10 +73,10 @@ describe('données', () => {
 
 describe('achat', () => {
   it('débite les pièces et ajoute en réserve', () => {
-    const ctx = mk(500);
+    const ctx = mk(5000);
     const r = C.buyFurniture(ctx, 'sofa');
     expect(r.ok).toBe(true);
-    expect(ctx.world.res.coins).toBe(500 - FURNITURE.sofa.price);
+    expect(ctx.world.res.coins).toBe(5000 - FURNITURE.sofa.price);
     expect(C.ownedCount(ctx.world, 'sofa')).toBe(1);
     expect(C.stockCount(ctx.world, 'sofa')).toBe(1);
   });
@@ -332,7 +332,7 @@ describe('chambres d\'enfants', () => {
 
 describe('sauvegarde', () => {
   it('aller-retour JSON via sanitizeWorld', () => {
-    const ctx = mk(5000);
+    const ctx = mk(60000);
     C.unlockRoom(ctx, 'dressing');
     const a = buyPlace(ctx, 'bedroom', 'bed-royal', 0, 1);
     C.flipItem(ctx, 'bedroom', a);

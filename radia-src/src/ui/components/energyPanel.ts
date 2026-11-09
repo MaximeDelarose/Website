@@ -42,7 +42,7 @@ export async function openEnergyPanel(empty = false, opts: EnergyPanelOpts = {})
   );
   const actions: { label: string; value: string; style?: 'secondary' | 'gold' | 'lavande' }[] = [];
   if (freeIn <= 0) actions.push({ label: `+${FREE_REFILL} ⚡ offertes par Auguste`, value: 'free' });
-  else actions.push({ label: `Recharge offerte dans ${fmtWait(freeIn)}`, value: 'wait', style: 'secondary' });
+  else actions.push({ label: `Prochain cadeau d’Auguste dans ${fmtWait(freeIn)} (1 par jour)`, value: 'wait', style: 'secondary' });
   if (opts.onWorld) actions.push({ label: 'Jouer ailleurs : MON MONDE', value: 'world', style: 'lavande' });
   if (opts.onChess) actions.push({ label: 'Jouer ailleurs : échecs', value: 'chess', style: 'lavande' });
   actions.push({ label: `Facultatif : remplir à 100 ⚡ · ${PRICE} 💎`, value: 'buy', style: 'secondary' });

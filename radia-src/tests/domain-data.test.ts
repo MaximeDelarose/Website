@@ -134,7 +134,7 @@ describe('économie : un chemin faisable avec les gains du moteur', () => {
       expect(s.cost.coins ?? 0, `${id}#${i}`).toBeLessThanOrEqual(2000);
       for (const k of ['flowers', 'fabric', 'cocoa'] as const) expect(s.cost[k] ?? 0, `${id}#${i}`).toBeLessThanOrEqual(40);
     }
-    expect(2000 / coinsPerOrder).toBeLessThan(25);
+    expect(2000 / coinsPerOrder).toBeLessThan(35); // (économie resserrée : pièces plus précieuses)
   });
   it('les premières étapes sont courtes : salon de thé, étape 1 = quelques commandes et peu de ressources', () => {
     const s = PLACES.tea.stages[0];

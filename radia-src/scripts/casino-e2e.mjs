@@ -21,32 +21,32 @@ await page.addInitScript(() => { try { const k = 'radia-save-v1'; const s = loca
 let autoRw = true;
 await page.addLocatorHandler(page.locator('#reward-overlay .rw-root'), async () => { if (!autoRw) return; for (let i = 0; i < 30; i++) { const r = await page.evaluate(() => { const ov = document.querySelector('#reward-overlay'); if (!ov) return 0; for (const sel of ['.rw-primary', '.rw-skip', '.rw-art']) { const e = ov.querySelector(sel); if (e && e.getBoundingClientRect().width && getComputedStyle(e).visibility !== 'hidden') { e.click(); return 1; } } return 1; }).catch(() => 0); if (!r) break; await page.waitForTimeout(500); } }, { noWaitAfter: true }); // ferme un cadeau qui s'ouvre en cours de parcours
 await page.addInitScript(() => { const t = setInterval(() => { try { const w = window.RADIA && window.RADIA.save && window.RADIA.save.data && window.RADIA.save.data.world; if (w) { w.flags = w.flags || {}; w.flags['rw:start-gift-v1'] = true; const fu = window.RADIA.save.data.fun; if (fu) { const d = new Date(), q = (x) => String(x).padStart(2, '0'); fu.daily = { cycle: 0, day: 1, claimed: [0], total: 1, ...(fu.daily || {}), lastKey: `${d.getFullYear()}-${q(d.getMonth() + 1)}-${q(d.getDate())}` }; fu.free = { ...(fu.free || {}), announced: true }; clearInterval(t); } } } catch { /* ignore */ } }, 20); }); // pas de « Bonus de démarrage » dans les parcours de test
-await page.goto(`http://localhost:${PORT}${P}?debug`, { waitUntil: 'networkidle' });
+await page.goto(`http://localhost:${PORT}${P}?debug&statsDelay=999999999`, { waitUntil: 'networkidle' });
 await sleep(P === '/' ? 2500 : 600);
 // le cadeau du jour et la roue sont gérés plus loin : on les marque « déjà pris » pour ne pas gêner le parcours
 await page.evaluate(() => { const k = window.RADIA.daily.state().key; const f = window.RADIA.save.data.fun; f.daily.lastKey = k; f.wheel.lastKey = k; });
 for (let i = 0; i < 6 && P === '/'; i++) { await page.evaluate(() => document.querySelectorAll('.dy-back').forEach((e) => e.remove())); const b = page.locator('.modal-backdrop:not(.leaving) .actions button'); if (await b.count()) { await b.first().click(); await sleep(400); } else await sleep(300); }
 if (process.env.REDUCED) await page.evaluate(() => { window.RADIA.save.data.settings.reducedMotion = true; document.documentElement.classList.add('reduced-motion'); });
-const st = () => page.evaluate(() => { const c = window.RADIA.save.data.fun.casino; return { chips: c.chips, bring: c.bring, stats: { ...c.stats }, hist: c.history.length }; });
+const st = () => page.evaluate(() => { const c = window.RADIA.save.data.fun.casino; return { chips: c.chips, bring: window.RADIA.save.data.world.res.coins, stats: { ...c.stats }, hist: c.history.length }; });
 const hasApi = await page.evaluate(() => !!window.RADIA?.casino && !!window.RADIA?.wheel);
 check('API debug RADIA.casino / RADIA.wheel présente (le hub doit importer src/casino et src/wheel)', hasApi);
 if (!hasApi) { console.log(out.join('\n')); await browser.close(); process.exit(1); }
 
 // ---------- ouverture, allocation, carte d'Auguste
+await page.evaluate(() => { window.RADIA.save.data.world.res.coins = 5000; });
 await page.evaluate(() => { window.RADIA.casino.open(); });
 await sleep(1200);
 check('écran casino ouvert', (await page.locator('.cz-root').count()) === 1);
 let s0 = await st();
-check('allocation gratuite 500 versée', s0.chips + s0.bring === 500, JSON.stringify(s0));
+check('allocation gratuite 500 tickets versée (les tickets restent en poche)', s0.chips === 500, JSON.stringify(s0));
 await shot('card');
 check('carte d\'Auguste affichée', (await page.locator('.cz-member').count()) === 1);
-await page.locator('.cz-quick button', { hasText: 'Tout' }).click(); await sleep(200);
+check('carte : pièces (mise) et tickets affichés', (await page.locator('.cz-w').count()) === 2 && /5\s?000/.test((await page.locator('.cz-w').first().textContent()).replace(/\u202f/g, ' ')));
+check('caisse d\'échange présente', (await page.locator('.cz-exchange button').count()) === 2);
+await page.locator('.cz-exchange button').first().click(); await sleep(300);
 s0 = await st();
-check('bring = tout (500)', s0.bring === 500 && s0.chips === 0, JSON.stringify(s0));
-await page.locator('.cz-quick button', { hasText: 'Moitié' }).click(); await sleep(200);
-s0 = await st();
-check('bring = moitié, reste en poche', s0.bring === 250 && s0.chips === 250, JSON.stringify(s0));
-await page.locator('.cz-quick button', { hasText: 'Tout' }).click(); await sleep(150);
+check('échange : 100 pièces → 10 tickets', s0.bring === 4900 && s0.chips === 510, JSON.stringify(s0));
+await page.evaluate(() => { window.RADIA.save.data.world.res.coins = 100000; });
 await page.locator('.cz-enter').click(); await sleep(900);
 await shot('lobby');
 check('salon : 3 jeux', (await page.locator('.cz-game').count()) === 3);
@@ -120,7 +120,7 @@ await shot('slots-result');
 // série ×5 avec arrêt
 await page.locator('.sl-segb[data-n="5"]').click();
 const tot5 = await page.locator('.sl-totline').textContent();
-check('mise totale ×5 affichée avant', /50/.test(tot5), tot5);
+check('mise totale ×5 affichée avant', /250/.test(tot5), tot5);
 const bb = (await st());
 await page.locator('.sl-go').click();
 await page.waitForSelector('.sl-stop', { state: 'visible' }); await sleep(900);
@@ -149,7 +149,7 @@ await page.locator('.cz-game', { hasText: 'Blackjack' }).click(); await sleep(70
 await shot('blackjack-bet');
 await page.evaluate(() => window.RADIA.casino.blackjack(12345));
 const bj0 = (await st()).bring;
-await page.locator('.bj-chips .rl-chip').nth(2).click(); // +50
+await page.locator('.bj-chips .rl-chip').nth(0).click(); // +50
 check('mise 50 posée', (await page.locator('.bj-bet b').textContent()).replace(/\s/g, '') === '50');
 await page.locator('.bj-ctrl .btn.gold').click(); await sleep(900);
 await shot('blackjack-deal');
@@ -188,20 +188,12 @@ await page.locator('.cz-back').click(); await sleep(400);
 const beforeExit = await st();
 await page.locator('.cz-leave').click(); await sleep(600);
 const after = await st();
-check('sortie : la table est rendue en poche', after.bring === 0 && after.chips === beforeExit.chips + beforeExit.bring, JSON.stringify(after));
+check('sortie : pièces et tickets inchangés', after.bring === beforeExit.bring && after.chips === beforeExit.chips, JSON.stringify(after));
 check('casino fermé', (await page.locator('.cz-root').count()) === 0);
-
-// ---------- mini-recharge gratuite (solde presque vide)
-await page.evaluate(() => { window.RADIA.casino.set(3); window.RADIA.save.data.fun.casino.refillTs = 0; });
 await page.evaluate(() => { window.RADIA.casino.open(); }); await sleep(1000);
-check('mini-recharge proposée quand le solde est presque vide', (await page.locator('.cz-refill .btn').count()) === 1);
-await shot('refill');
-await page.locator('.cz-refill .btn').click(); await sleep(700);
-const rf = await st();
-check('mini-recharge : total remonté à 100', rf.chips + rf.bring === 100, JSON.stringify([rf.chips, rf.bring]));
-await sleep(300);
-check('mini-recharge : plus de bouton une fois le solde de base atteint', (await page.locator('.cz-refill .btn').count()) === 0);
-await page.locator('.cz-back').click(); await sleep(600);
+check('plus de mini-recharge de tickets', (await page.locator('.cz-refill .btn').count()) === 0);
+await page.locator('.cz-enter').click(); await sleep(800);
+await page.locator('.cz-leave').click(); await sleep(500);
 
 // ---------- roue du jour
 await page.evaluate(() => { window.RADIA.wheel.reset(); window.RADIA.wheel.force('chips600'); window.RADIA.wheel.show(); });

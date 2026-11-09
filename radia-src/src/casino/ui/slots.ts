@@ -6,7 +6,8 @@ import { fmt } from '../../core/wallet';
 import { slotSymbolUrl } from '../../game/art/casino';
 import { bigWinBanner, bounce, celebrate, centerOf, levelFor, shake, soft, wait } from '../fx';
 import { cs, hooks, notifyCasino, persist } from '../store';
-import { LIMITS, credit, debit, recordRound } from '../chips';
+import { LIMITS, recordRound } from '../chips';
+import { balance, ledger as bankLedger, maxBet } from '../bank';
 import { SlotsRun, exactRtp, pPair, pTriple, symDef, type SpinResult } from '../slots';
 import { BET_STEPS, DRAW_COUNTS, MAX_MULTI, SYMBOLS, type SymId } from '../slotsTable';
 import { defaultRng } from '../rng';
@@ -26,7 +27,7 @@ export function helpSlots(): HTMLElement {
     h('table.cz-table', h('tbody', ...SYMBOLS.filter((s) => s.pair > 0).map((s) => h('tr', h('td', h('img.cz-tsym', { src: slotSymbolUrl(s.id, 28), alt: '' }), ` Exactement 2 ${s.name}s`), h('td', `× ${s.pair}`), h('td', pct(pPair(s)))))) ),
     h('p', `Le gain est un multiple de ta mise (rendue comprise). Retour théorique : ${pct(r.rtp, 1)} sur le long terme ; chance de gagner à chaque tirage : ${pct(r.hit, 1)}.`),
     h('p', `Multi-tirage (1, 5 ou 10) : exactement les mêmes règles et les mêmes probabilités que le tirage simple. Tu vois la mise totale avant de commencer, chaque tirage débite sa mise, tu peux ARRÊTER entre deux tirages (la suite n'est pas débitée), et la série s'arrête toute seule après ${MAX_MULTI} tirages maximum avec un récapitulatif.`),
-    h('p', `Mise par tirage : de ${LIMITS.slots.min} à ${fmt(LIMITS.slots.max)} tickets (mise totale de la série comprise).`));
+    h('p', `Mise par tirage : de ${LIMITS.slots.min} pièces à la moitié de ta bourse (mise totale de la série comprise ; maximum : la moitié de ta bourse, au moins 10 000 si tu les as).`));
 }
 
 function flashCol(el: HTMLElement): void { if (!soft() && el.isConnected) el.animate([{ opacity: 0.95, transform: 'scale(.7)' }, { opacity: 0, transform: 'scale(1.25)' }], { duration: 460, easing: 'ease-out' }); }
@@ -34,7 +35,7 @@ function flashCol(el: HTMLElement): void { if (!soft() && el.isConnected) el.ani
 export function slotsScene(sh: Shell, o: { onBack(): void; goCard(): void }): Scene {
   const reels = new Reels();
   let bi = 0, count = 1, running = false, run: SlotsRun | null = null;
-  const cap = () => Math.min(cs().bring, LIMITS.slots.max);
+  const cap = () => maxBet();
   const bets = BET_STEPS;
   const betEl = h('b.sl-bet', String(bets[bi]));
   const totEl = h('span.sl-tot');
@@ -63,13 +64,13 @@ export function slotsScene(sh: Shell, o: { onBack(): void; goCard(): void }): Sc
     seg.querySelectorAll<HTMLElement>('.sl-segb').forEach((b) => { const n = Number(b.dataset.n); b.classList.toggle('on', n === count); b.classList.toggle('dim', bet() * n > cap()); });
     minus.disabled = running || bi === 0; plus.disabled = running || bi === bets.length - 1;
     go.disabled = running || !ok;
-    go.textContent = running ? '…' : ok ? (count === 1 ? `Tourner · ${fmt(total())} ♡` : `Lancer la série ×${count} · ${fmt(total())} ♡`) : total() > LIMITS.slots.max ? `Maximum : ${fmt(LIMITS.slots.max)}` : 'Pas assez de tickets';
-    low.replaceChildren(cs().bring < LIMITS.slots.min ? lowFunds(LIMITS.slots.min, o.goCard) : '');
+    go.textContent = running ? '…' : ok ? (count === 1 ? `Tourner · ${fmt(total())} ♡` : `Lancer la série ×${count} · ${fmt(total())} ♡`) : total() > LIMITS.slots.max ? `Maximum : ${fmt(cap())}` : 'Pas assez de pièces';
+    low.replaceChildren(balance() < LIMITS.slots.min ? lowFunds(LIMITS.slots.min, o.goCard) : '');
   }
 
   async function start(): Promise<void> {
     if (running) return;
-    const ledger = { balance: () => cs().bring, debit: (n: number) => debit(cs(), n), credit: (n: number) => credit(cs(), n) };
+    const ledger = bankLedger;
     run = new SlotsRun(ledger, bet(), count);
     if (!run.canStart()) { shake(go); haptic('error'); audio.play('invalid'); return; }
     running = true; refresh();
@@ -83,7 +84,7 @@ export function slotsScene(sh: Shell, o: { onBack(): void; goCard(): void }): Sc
       n++;
       recordRound(cs(), 'slots', r.bet, r.win, Date.now());
       persist(); notifyCasino();
-      sh.setShown(cs().bring - r.win);
+      sh.setShown(balance() - r.win);
       stopBtn.textContent = count > 1 ? `Arrêter après ce tirage (${n}/${count})` : '';
       winEl.textContent = count > 1 ? `Tirage ${n} sur ${count}…` : 'Les rouleaux tournent…';
       winEl.className = 'sl-win';

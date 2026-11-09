@@ -1,4 +1,5 @@
 /** Objectifs court / moyen / long terme (toujours un objectif réalisable à court terme). */
+import { xpView } from './xp';
 import { COLLECTIONS, itemName } from '../../data/items';
 import type { FunState } from '../../save/fun';
 import type { Loot, RunState } from '../merge/types';
@@ -12,7 +13,7 @@ import { nextUnlock } from './unlocks';
 
 export interface Goal {
   id: string;
-  kind: 'order' | 'generator' | 'chest' | 'secondary' | 'unlock' | 'album';
+  kind: 'order' | 'generator' | 'chest' | 'secondary' | 'unlock' | 'album' | 'level';
   label: string;
   progress: number;
   goal: number;
@@ -65,5 +66,8 @@ export function goals(run: RunState, fun: FunState): Goals {
     const ap = albumProgress(fun);
     long = ap.next ? mk('album', 'album', ap.next.label, ap.next.have, ap.next.need, ap.next.reward) : mk('album', 'album', 'Album complet', ap.found, ap.total, 'Bravo ♡');
   }
+  // le niveau de Radia est un objectif long toujours présent : on le montre quand il est plus proche que la prochaine collection
+  const xv = xpView(fun);
+  if (xv.need > 0 && xv.ratio > long.ratio) long = mk('level', 'level', `Atteins le niveau ${xv.level + 1} de Radia`, xv.into, xv.need, 'Pièces, énergie et nouveautés de la boutique PIMBÊCHE');
   return { immediate, mid, long };
 }

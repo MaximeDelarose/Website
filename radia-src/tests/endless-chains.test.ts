@@ -189,24 +189,27 @@ describe('art vectoriel des nouvelles chaînes', () => {
 });
 
 describe('chaîne « Savons PIMBÊCHE »', () => {
-  const SOAPS = ['Base de savon', 'Savon brut', 'Savon moulé', 'Savon parfumé', 'Savon décoré', 'Savon artisanal Pimbêche', 'Coffret de savons', 'Coffret Pimbêche de luxe'];
+  const SOAPS = ['Lait de chèvre PIMBÊCHE', 'Pâte de savon au lait de chèvre', 'Savon moulé au lait de chèvre', 'Savon parfumé au lait de chèvre', 'Savon PIMBÊCHE terminé', 'Savon PIMBÊCHE emballé', 'Coffret de savons PIMBÊCHE', 'Coffret PIMBÊCHE de luxe'];
   it('8 niveaux aux noms demandés, avec un texte chacun et le générateur « Atelier Pimbêche »', () => {
     expect(COLLECTIONS.soap.items).toEqual(SOAPS);
     expect(COLLECTIONS.soap.blurbs.length).toBe(8);
     expect(new Set(COLLECTIONS.soap.blurbs).size).toBe(8);
     expect(GENERATORS[15].coll).toBe('soap');
-    expect(GENERATORS[15].name).toBe('Atelier Pimbêche');
+    expect(GENERATORS[15].name).toBe('Atelier PIMBÊCHE');
+    // règle de marque : toute la chaîne est à base de lait de chèvre
+    expect(COLLECTIONS.soap.items[0]).toMatch(/chèvre/i);
+    expect(COLLECTIONS.soap.blurbs.join(' ')).toMatch(/chèvre/i);
   });
   it('fusion : 7 fusions mènent au niveau 8 (coffret de luxe), pas au-delà', () => {
     for (let l = 1; l < 8; l++) expect(canMerge({ c: 'soap', l }, { c: 'soap', l })).toBe(true);
     expect(canMerge({ c: 'soap', l: 8 }, { c: 'soap', l: 8 })).toBe(false);
     expect(canMerge({ c: 'soap', l: 3 }, { c: 'flowers', l: 3 })).toBe(false);
   });
-  it('déblocage progressif : jamais au départ ; par la boutique de fleurs rouverte, ou plus tard par le palier', () => {
+  it('déblocage progressif : jamais au tout départ ; ouvert très tôt (quelques commandes)', () => {
     const f = defaultFun();
     expect(unlockedColls(f)).not.toContain('soap');
-    expect(ENDLESS_CFG.unlock.byPlace.soap).toMatchObject({ place: 'flowers' });
-    f.endless2.counters.orders = 9999;
+    expect(ENDLESS_CFG.unlock.at.soap).toBeLessThanOrEqual(5);
+    f.endless2.counters.orders = ENDLESS_CFG.unlock.at.soap;
     expect(unlockedColls(f)).toContain('soap');
   });
   it('commandes : une fois débloqués, des savons sont demandés ; jamais avant ; le client aime (le plus souvent) les savons', () => {

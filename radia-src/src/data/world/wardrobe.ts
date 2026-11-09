@@ -4,6 +4,7 @@
  * identifiants (voir ids.ts). `coins` = pièces gagnées en jouant ; `diamonds`
  * = diamants virtuels (facultatifs : les tenues classiques s'achètent en pièces).
  */
+import { tierCoins } from './prices';
 import { CLOTH_SLOTS, type ClothId, type ClothSlot, type HairId, type StyleId } from './ids';
 
 export interface ClothDef {
@@ -25,7 +26,7 @@ export interface ClothDef {
   gift?: boolean;
 }
 
-const C = (id: ClothId, name: string, styles: StyleId[], coins: number, extra: Partial<ClothDef> = {}): ClothDef => ({ id, name, slot: CLOTH_SLOTS[id], styles, coins, ...extra });
+const C = (id: ClothId, name: string, styles: StyleId[], coins: number, extra: Partial<ClothDef> = {}): ClothDef => ({ id, name, slot: CLOTH_SLOTS[id], styles, coins: tierCoins(id, coins), ...extra });
 
 export const CLOTHES: Record<ClothId, ClothDef> = {
   'top-tee-white': C('top-tee-white', 'Tee-shirt blanc', ['casual'], 0, { starter: true }),

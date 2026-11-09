@@ -162,6 +162,8 @@ export type BoardEvent =
     customer?: string; loyalty?: { n: number; from: number; to: number }; thanks?: string; story?: string;
     /** Endless 2.0 : palier, récompense annoncée, gains « monde » (pièces / matériaux) et énergie offerte. */
     tier?: OrderTier; reward?: OrderReward; gain?: Partial<Record<'coins' | 'flowers' | 'fabric' | 'cocoa', number>>; energy?: number; forced?: boolean;
+    /** Niveau de Radia : XP gagnée ; niveau(x) franchi(s) avec récompense (déjà ajoutée à gain / energy). */
+    xp?: number; levelUp?: { from: number; to: number; coins: number; energy: number; unlock?: string };
   }
   | { t: 'orderNew'; slot: number; tier?: OrderTier }
   | { t: 'orderReplace'; slot: number; tier: OrderTier; left: number }
