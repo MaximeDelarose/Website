@@ -4,6 +4,7 @@
  * événements à animer. Une action invalide ne modifie jamais l'état.
  */
 import { addXp, orderXp } from '../endless/xp';
+import { hasSoap, soapBonus, soapCoins } from '../endless/pimbeche';
 import { serve } from '../customers/logic';
 import { SPECIAL, collMax, itemKey, mergePoints, sameItem, GENERATORS, genKindOf, type CollectionId, type ItemRef } from '../../data/items';
 import { Rng, hashString } from '../../utils/rng';
@@ -156,7 +157,13 @@ function completeOrder(s: RunState, def: LevelDef, slot: number, o: OrderState, 
     bump(fun, `orders:${o.tier ?? 'easy'}`);
     if (o.items.some((r) => r.c === 'soap')) bump(fun, 'soapOrders');
     // niveau de Radia : XP de la livraison ; un niveau gagné ajoute ses pièces / son énergie au gain de la commande (crédités une seule fois)
-    const xpGain = orderXp(o.tier ?? 'easy', o.items);
+    // améliorations PIMBÊCHE (achetées avec des pièces) : bonus de pièces et d'XP sur les commandes de savon
+    const sb = hasSoap(o.items) ? soapBonus(fun) : null;
+    if (sb) {
+      const dg = d as { gain?: Record<string, number> };
+      if (dg.gain?.coins) dg.gain = { ...dg.gain, coins: soapCoins(dg.gain.coins, sb) };
+    }
+    const xpGain = orderXp(o.tier ?? 'easy', o.items) + (sb?.xp ?? 0);
     const lu = addXp(fun, xpGain);
     Object.assign(d, { xp: xpGain });
     if (lu) {

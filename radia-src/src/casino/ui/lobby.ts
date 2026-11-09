@@ -286,5 +286,5 @@ export function missionsScene(o: { onBack(): void }): Scene {
 
 /** Message « il te faut au moins X tickets » avec accès à la carte d'Auguste. */
 export function lowFunds(min: number, goCard: () => void): HTMLElement {
-  return h('div.cz-low', h('p', `Il te faut au moins ${fmt(min)} tickets à la table.`), h('button.btn.lavande.small', { on: { click: goCard } }, '💳 La carte d\'Auguste'));
+  return h('div.cz-low', h('p', `Il te faut au moins ${fmt(min)} pièces pour jouer ici. Le casino n’est jamais obligatoire : tes commandes en rapportent ♡`), h('button.btn.lavande.small', { on: { click: goCard } }, 'Retour'));
 }

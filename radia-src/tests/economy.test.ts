@@ -47,7 +47,7 @@ describe('énergie', () => {
     expect(REGEN_MS).toBe(120_000);
     const e = { ...defaultEconomy(), energy: 0, energyTs: T0 };
     syncEnergy(e, T0 + 60 * 60_000);
-    expect(e.energy).toBeGreaterThanOrEqual(30); expect(e.energy).toBeLessThanOrEqual(32); // 3 énergies en 3 min sous le plancher, puis 1 / 2 min
+    expect(e.energy).toBeGreaterThanOrEqual(30); expect(e.energy).toBeLessThanOrEqual(35); // 6 énergies en 3 min sous le plancher, puis 1 / 2 min
   });
   it('attention d\'Auguste : jamais consommée si l\'énergie est déjà pleine', () => {
     const e = { ...defaultEconomy(), energy: 100, energyTs: T0, freeRefillTs: 0 };

@@ -40,7 +40,8 @@ describe('collections Endless 2.0', () => {
     const at = ENDLESS_CFG.unlock.at;
     expect(at.flowers).toBe(0);
     expect(at.love).toBe(0);
-    const v = COLLECTION_IDS.map((c) => at[c]);
+    // PIMBÊCHE (soap) est volontairement ouvert très tôt : il sort de l'ordre des seuils
+    const v = COLLECTION_IDS.filter((c) => c !== 'soap').map((c) => at[c]);
     for (let i = 1; i < v.length; i++) expect(v[i]).toBeGreaterThanOrEqual(v[i - 1]);
   });
   it('matériaux du monde cohérents avec le brief', () => { materialOfCheck(); });

@@ -21,8 +21,8 @@ export const ENDLESS_CFG = {
     freeTapEvery: 20,
     /** « Plancher » : sous ce niveau d'énergie, la recharge est un peu accélérée : jamais de blocage long, mais l'attente se ressent. (Avant : 6, inchangé : les prix des verrous en dépendent.) */
     floorLevel: 6,
-    /** Une énergie par minute sous le plancher (0 → 6 en 6 min). (Avant : 25 s.) */
-    floorRegenMs: 60_000,
+    /** Une énergie toutes les 30 s sous le plancher (0 → 6 en 3 min). (Avant : 25 s.) */
+    floorRegenMs: 30_000,
     /** Énergie offerte par livraison selon le palier de commande. (Avant : 3 / 5 / 8 ; après la refonte : 2 / 3 / 5.) */
     deliverEnergy: { easy: 2, mid: 3, hard: 5 },
     /** Attention d'Auguste : +30 énergie, UNE fois par jour (jamais au-delà de 100). (Avant : toutes les 10 minutes.) */

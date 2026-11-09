@@ -14,7 +14,7 @@ Rapport chiffré : `BALANCE_REPORT=1 npx vitest run tests/balance-sim.test.ts`
 |---|---|---|
 | Coût d'un toucher | 1 | 1 |
 | Recharge naturelle (`energy.regenMs`) | 45 s | **120 s** (≈ 1 ⚡ / 2 min) |
-| Plancher accéléré (< 6 ⚡) | 25 s | **60 s** |
+| Plancher accéléré (< 6 ⚡) | 25 s | **30 s** |
 | Toucher gratuit 1 / N (`freeTapEvery`) | 14 | 20 |
 | Chance de toucher gratuit (niv. générateur) | 0–8 % | 0–4 % |
 | Livraison facile / moyenne / difficile | 3 / 5 / 8 ⚡ | **2 / 3 / 5 ⚡** |
