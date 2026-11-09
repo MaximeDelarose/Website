@@ -53,3 +53,12 @@ Lecture : une séance courte n'est jamais bloquée ; une longue séance finit pa
 - Atelier ouvert dès **3 commandes livrées** (`unlock.at.soap`).
 - La **première commande de savon** est garantie (facile) ; ensuite `orders.pimbecheChance` = 30 % des commandes (premier objet).
 - Tous les savons sont au **lait de chèvre** (règle de marque, vérifiée par test).
+
+## Caisse d'échange du casino (pièces → tickets)
+- Carte d'Auguste : **100 pièces = 10 tickets** (`src/casino/exchange.ts`, `EXCHANGE_COINS` / `EXCHANGE_TICKETS`).
+- Plafond : **100 tickets par jour** (`DAILY_CAPS.exchange` dans `src/casino/tickets.ts`), pour éviter de vider la bourse d'un coup.
+- Strictement virtuel : aucun argent réel, aucun achat, les tickets ne se rechangent jamais en pièces. Seules des PIÈCES sont débitées (jamais diamants ni énergie).
+
+## Plateau plein
+- Conseil discret « Ton plateau commence à être plein ♡ » à 80 % d'occupation (`FULL_HINT_RATIO`), au plus toutes les 3 min, jamais pendant une fusion.
+- « Vendre » (barre de l'objet sélectionné) : confirmation, prix bas (niveau ÷ 2 pièces), générateurs et objets spéciaux jamais vendables, avertissement pour les objets précieux ou utiles à une commande. Le sac (glisser l'objet dessus) reste la solution sans perte.
