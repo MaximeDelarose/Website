@@ -3,6 +3,7 @@
  * vêtements du dressing, meubles du château) et le portefeuille (énergie, diamants, cœurs, bonus).
  * Aucun accès à la sauvegarde globale : tout passe par un `LootHost` fourni par l'interface.
  */
+import { dupCoins } from '../../data/world/prices';
 import { RARITIES, type Rarity } from '../../data/items';
 import type { ClothId, ResKind } from '../../data/world/ids';
 import { CLOTHES } from '../../data/world/wardrobe';
@@ -125,7 +126,7 @@ export function applyLoot(host: LootHost, loots: Loot[] | Loot): LootResult {
         const pick = pickOwnedAware<ClothId>(clothCandidates(l.kind), (id) => w.wardrobe.owned.includes(id), clothRarity, l.rarity ?? 'common', l.seed ?? 0);
         if (!pick) break;
         if (pick.dup) {
-          const back = Math.max(10, Math.floor((CLOTHES[pick.id]?.coins ?? 20) / 2));
+          const back = dupCoins(CLOTHES[pick.id]?.coins ?? 20);
           addRes('coins', back); out.dupCoins += back; out.coins += back;
         } else { w.wardrobe.owned.push(pick.id); out.cloth.push(pick.id); }
         break;

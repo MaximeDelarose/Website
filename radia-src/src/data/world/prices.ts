@@ -29,3 +29,7 @@ export function missingCoins(missing: number): string {
   const n = Math.max(1, Math.ceil(m / AVG_COINS_PER_ORDER));
   return `Il te manque ${m.toLocaleString('fr-FR')} pièces (environ ${n} commande${n > 1 ? 's' : ''} livrée${n > 1 ? 's' : ''})`;
 }
+
+/** Compensation en pièces d'un DOUBLON (moitié du prix, plafonnée : les prix de prestige ne doivent pas devenir une source de pièces). */
+export const DUP_COINS_MAX = 150;
+export const dupCoins = (price: number, min = 10): number => Math.max(min, Math.min(DUP_COINS_MAX, Math.floor(price / 2)));

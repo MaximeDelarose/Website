@@ -4,7 +4,7 @@ import { defaultWorld } from '../src/save/schema';
 import { bump } from '../src/game/endless/ctx';
 import { UPGRADES, buyUpgrade, soapBonus, soapCoins, status, owns } from '../src/game/endless/pimbeche';
 import { addXp } from '../src/game/endless/xp';
-import { tierCoins, PRESTIGE_PRICE, missingCoins } from '../src/data/world/prices';
+import { tierCoins, PRESTIGE_PRICE, missingCoins, dupCoins, DUP_COINS_MAX } from '../src/data/world/prices';
 import { CLOTHES } from '../src/data/world/wardrobe';
 import { FURNITURE } from '../src/data/world/furniture';
 import { PRIVILEGES, buyPrivilege, rewardExists, eventAvailable } from '../src/casino/privileges';
@@ -54,6 +54,13 @@ describe('courbe de prix', () => {
   it('message « il te manque » avec le nombre de commandes', () => {
     expect(missingCoins(900)).toMatch(/900 pièces.*10 commandes/);
     expect(missingCoins(1)).toMatch(/1 commande /);
+  });
+});
+
+describe('doublons : jamais une source de pièces', () => {
+  it('compensation plafonnée même pour les objets de prestige', () => {
+    expect(dupCoins(60)).toBe(30); expect(dupCoins(12000)).toBe(DUP_COINS_MAX); expect(dupCoins(9000, 50)).toBe(DUP_COINS_MAX);
+    for (const p of Object.values(PRESTIGE_PRICE)) expect(dupCoins(p)).toBeLessThanOrEqual(DUP_COINS_MAX);
   });
 });
 
