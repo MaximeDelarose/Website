@@ -15,6 +15,7 @@ import { pickLine } from '../../data/augusteTone';
 import { nextWheelIn, wheelReady } from '../../wheel/store';
 import { canClaimToday } from '../../daily/state';
 import { REFILL_BELOW, REFILL_TO, WELCOME_CHIPS, refill, refillIn, setBring, total } from '../chips';
+import { EXCHANGE_COINS, EXCHANGE_TICKETS, exchange, exchangeView } from '../exchange';
 import { MISSIONS, claimMission, isClaimable, isDone, progressOf, type MissionDef } from '../missions';
 import { WHEEL_ORDER, colorOf } from '../roulette';
 import type { Scene, Shell } from './shell';
@@ -63,6 +64,24 @@ export function cardScene(sh: Shell, o: { welcomed: boolean; onEnter(): void; on
       refillBox.append(p(`Prochaine mini-recharge gratuite dans ${fmtTime(w)}.`, '.cz-small.cd'));
     }
   };
+  // caisse d'échange : pièces du jeu → tickets (virtuel, plafonné par jour, sans retour)
+  const exBox = h('div.cz-exchange');
+  const drawExchange = () => {
+    const coins = save.data.world.res.coins;
+    const v = exchangeView(coins, s);
+    exBox.replaceChildren(
+      h('h3', 'Caisse d\'échange ♡'),
+      p(`${v.rate} · tu as ${fmt(coins)} pièces · encore ${v.ticketsLeftToday} tickets échangeables aujourd'hui.`, '.cz-small'),
+      p('Tout reste virtuel : pas d\'argent réel, et les tickets ne se rechangent pas en pièces.', '.cz-small'),
+      h('div.cz-quick', ...[1, 5].map((n) => {
+        const b = h('button.cz-mini', { disabled: v.maxPacks < n, on: { click: () => {
+          const got = exchange(n, save.data.world.res.coins, s, (c) => { if (save.data.world.res.coins < c) return false; save.data.world.res.coins -= c; return true; });
+          if (got > 0) { audio.play('reward'); haptic('reward'); save.save(); persist(); notifyCasino(); celebrate('small', centerOf(card)); apply(Math.min(pool(), s.bring + got), false); drawExchange(); }
+        } } }, `${n * EXCHANGE_COINS} pièces → ${n * EXCHANGE_TICKETS}`);
+        return b;
+      })));
+  };
+  drawExchange();
   slider.addEventListener('input', () => apply(Number(slider.value), false));
   slider.addEventListener('change', () => apply(Number(slider.value)));
   timer = window.setInterval(() => { if (refillIn(s, Date.now()) !== Infinity) drawRefill(); }, 1000);
@@ -75,7 +94,7 @@ export function cardScene(sh: Shell, o: { welcomed: boolean; onEnter(): void; on
     h('div.cz-amtrow', h('img', { src: ticketUrl(52), alt: '', draggable: false }), amount),
     h('div.cz-sliderrow', btn('−', () => step(-10), '.big'), slider, btn('+', () => step(10), '.big')),
     h('div.cz-quick', btn('Rien', () => apply(0)), btn('−50', () => step(-50)), btn('+50', () => step(50)), btn('Moitié', () => apply(Math.floor(pool() / 2 / 5) * 5)), btn('Tout', () => apply(pool()))),
-    info, refillBox, enter);
+    info, refillBox, exBox, enter);
   apply(Math.min(s.bring || pool(), pool()), false);
   if (s.bring === 0 && pool() > 0) apply(Math.min(pool(), Math.max(100, Math.floor(pool() / 2 / 5) * 5)), false);
   drawRefill();
