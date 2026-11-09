@@ -84,7 +84,7 @@ const progCalls = (calls) => calls.filter((c) => /progress/.test(c.name));
   check('C. accord : progression activée, temps de jeu inchangé, consentements sauvegardés', st.state === 'on' && st.prog === 'on' && st.progAsked === true && st.device === DEV);
   check('C. le serveur n\'a PAS été redemandé pour le temps de jeu (pas de nouvelle inscription)', !calls.some((c) => c.name === 'radia_stats_join'));
   const push = calls.find((c) => c.name === 'radia_progress_push');
-  check('C. l\'état ACTUEL de sa partie est envoyé (5 niveaux terminés, expérience, commandes)', !!push && push.body.p_snap?.story?.levelsDone === 5 && push.body.p_snap?.story?.chapter === 1 && push.body.p_snap?.free?.orders === 12 && push.body.p_snap?.xp?.xp === 150, JSON.stringify(push?.body.p_snap?.story ?? {}).slice(0, 120));
+  check('C. l\'état ACTUEL de sa partie est envoyé (5 niveaux terminés, expérience, commandes)', !!push && push.body.p_snap?.story?.levelsDone === 5 && push.body.p_snap?.story?.chapter === 2 && push.body.p_snap?.free?.orders === 12 && push.body.p_snap?.xp?.xp === 150, JSON.stringify(push?.body.p_snap?.story ?? {}).slice(0, 120));
   check('C. aucun historique passé inventé : aucun jalon, résumé de session démarré à l\'accord', JSON.stringify(push?.body.p_events) === '[]' && push?.body.p_summary?.base?.orders === 12 && push?.body.p_summary?.now?.orders === 12);
   const after = await saveJson(page);
   const a = JSON.parse(before), b = JSON.parse(after);
