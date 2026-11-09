@@ -332,3 +332,13 @@ html.reduced-motion .cz-tw, html.reduced-motion .cz-lights { animation: none !im
 .cz-bw-sub { margin-top: 8px; font-size: 14.5px; font-weight: 600; color: #58433f; }
 @keyframes czBwPop { from { opacity: 0; transform: scale(0.6) translateY(24px); } to { opacity: 1; transform: none; } }
 @keyframes czBwSpin { to { transform: rotate(360deg); } }
+
+/* carte d'Auguste (pièces + tickets) et privilèges */
+.cz-wallet { display: grid; gap: 8px; margin: 8px 0; }
+.cz-w { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 16px; background: rgba(255, 255, 255, 0.1); }
+.cz-w img { width: 34px; height: 34px; }
+.cz-w b { font-size: 20px; display: block; }
+.cz-w small { opacity: 0.85; }
+.cz-priv { display: grid; gap: 8px; margin: 10px 0; }
+.cz-privrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 16px; background: rgba(255, 255, 255, 0.1); }
+.cz-privrow small { display: block; opacity: 0.85; }

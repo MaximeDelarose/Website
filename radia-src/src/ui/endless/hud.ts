@@ -36,6 +36,7 @@ import { sparkleBurst } from '../fx/sparkle';
 import { chestSvg } from './art';
 import { openChestFlow } from './chestFlow';
 import { openInfoFor, openLockSheet } from './itemSheet';
+import { openPimbecheSheet } from './pimbecheSheet';
 import { openGoalsSheet, openSecondarySheet, openTreasureSheet } from './sheets';
 import { clothName, furnitureName, settleLoot } from './host';
 import {
@@ -352,7 +353,7 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     const xv = xpView(f);
     const lvl = h('button.en-lvl', { 'aria-label': `Niveau ${xv.level} de Radia, ${xv.into} sur ${xv.need} XP`, 'data-level': String(xv.level) },
       h('b', String(xv.level)), h('i.en-bar.thin', h('b', { style: `width:${Math.round(xv.ratio * 100)}%` })));
-    lvl.addEventListener('click', tap(() => feed(`Niveau ${xv.level} · ${xv.into}/${xv.need} XP${xv.need ? '' : ' (max)'}`, { kind: 'info', ms: 2400 }), { sound: false }));
+    lvl.addEventListener('click', tap(() => openPimbecheSheet(), { sound: false }));
     statusEl.append(lvl);
     statusEl.append(tre);
     if (pend > 0) {

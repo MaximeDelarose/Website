@@ -20,3 +20,12 @@ export function tierCoins(id: string, base: number): number {
   if (base <= 300) return Math.round((base * 2) / 10) * 10;
   return Math.round((base * 3) / 10) * 10;
 }
+
+/** Gain moyen simulé par commande livrée (docs/BALANCING.md : ≈ 96 et ≈ 92 pièces pour les profils occasionnel et régulier). */
+export const AVG_COINS_PER_ORDER = 90;
+/** « Il te manque 1 200 pièces (environ 13 commandes) » : montre comment les gagner. */
+export function missingCoins(missing: number): string {
+  const m = Math.max(0, Math.ceil(missing));
+  const n = Math.max(1, Math.ceil(m / AVG_COINS_PER_ORDER));
+  return `Il te manque ${m.toLocaleString('fr-FR')} pièces (environ ${n} commande${n > 1 ? 's' : ''} livrée${n > 1 ? 's' : ''})`;
+}

@@ -4,6 +4,7 @@ import { markTask } from '../tickets';
 import { cs, notifyCasino, persist } from '../store';
 import { createShell } from './shell';
 import { cardScene, lobbyScene, missionsScene } from './lobby';
+import { privilegesScene } from './privileges';
 import { rouletteScene } from './roulette';
 import { slotsScene } from './slots';
 import { blackjackScene } from './blackjack';
@@ -33,7 +34,7 @@ export function runCasino(): Promise<void> {
         else card(false);
       },
     }));
-    const card = (first: boolean): void => sh.show(cardScene(sh, { welcomed: first && welcomed, onEnter: lobby, onBack: first ? () => sh.exit() : lobby }));
+    const card = (first: boolean): void => sh.show(cardScene(sh, { welcomed: first && welcomed, onEnter: lobby, onBack: first ? () => sh.exit() : lobby, onPrivileges: () => sh.show(privilegesScene(sh, { onBack: () => card(false) })) }));
     card(true);
   });
 }

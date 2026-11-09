@@ -356,3 +356,14 @@
 
 .en-sel-sell { flex: 0 0 auto; height: 28px; padding: 0 10px; border-radius: 99px; font-size: 12px; font-weight: 700; color: var(--choco); background: rgba(255, 250, 245, 0.95); box-shadow: 0 0 0 2px rgba(88, 67, 63, 0.12); pointer-events: auto; position: relative; }
 .en-sel-sell::after { content: ''; position: absolute; inset: -8px -4px; }
+
+/* boutique PIMBÊCHE */
+.en-pimb { display: grid; gap: 10px; }
+.en-pimb-top { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+.en-pimb-sec h4 { margin: 6px 0 4px; font-size: 13px; opacity: 0.8; }
+.en-pimb-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 14px; background: rgba(88, 67, 63, 0.06); margin-bottom: 6px; }
+.en-pimb-row small { display: block; opacity: 0.8; }
+.en-pimb-row small.eff { color: var(--rose-vif); font-weight: 700; opacity: 1; }
+.en-pimb-row.owned { opacity: 0.7; }
+.en-pimb-row .btn { flex: 0 0 auto; white-space: nowrap; }
+.en-pimb-goal { padding: 8px 10px; border-radius: 14px; background: rgba(243, 200, 107, 0.2); display: grid; gap: 4px; }
