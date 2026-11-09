@@ -9,22 +9,24 @@ import { isStandalone } from './diagnostics';
 import { ActivityMeter, HEARTBEAT_MS } from './statsLogic';
 
 const KEY = 'radia-stats-v1';
-export interface StatsLocal { v: 1; state: 'none' | 'on' | 'off'; device: string; secret: string; at: number; asked?: boolean; pendingPause?: boolean }
+export interface StatsLocal { v: 1; state: 'none' | 'on' | 'off'; device: string; secret: string; at: number; asked?: boolean; pendingPause?: boolean;
+  /** Partage de PROGRESSION (consentement distinct du temps de jeu) : none = jamais demandé, on = actif, off = arrêté. */
+  prog?: 'none' | 'on' | 'off'; progPause?: boolean }
 const EMPTY: StatsLocal = { v: 1, state: 'none', device: '', secret: '', at: 0 };
 
 export function readLocal(): StatsLocal {
   try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && j.v === 1 && ['none', 'on', 'off'].includes(j.state)) return { ...EMPTY, ...j }; } catch { /* absent ou illisible */ }
   return { ...EMPTY };
 }
-function writeLocal(s: StatsLocal): void { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* stockage indisponible : le partage reste désactivé */ } }
+export function writeLocal(s: StatsLocal): void { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* stockage indisponible : le partage reste désactivé */ } }
 
-const rnd = (n: number): string => { const b = new Uint8Array(n); crypto.getRandomValues(b); return [...b].map((x) => x.toString(16).padStart(2, '0')).join(''); };
-const uuid = (): string => (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${rnd(4)}-${rnd(2)}-4${rnd(2).slice(1)}-a${rnd(2).slice(1)}-${rnd(6)}`);
-const platform = (): 'pwa' | 'safari' | 'other' => (isStandalone() ? 'pwa' : /Safari/.test(navigator.userAgent) && !/Chrome|CriOS|FxiOS/.test(navigator.userAgent) ? 'safari' : 'other');
-const tz = (): string => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'; } catch { return 'Europe/Paris'; } };
+export const rnd = (n: number): string => { const b = new Uint8Array(n); crypto.getRandomValues(b); return [...b].map((x) => x.toString(16).padStart(2, '0')).join(''); };
+export const uuid = (): string => (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${rnd(4)}-${rnd(2)}-4${rnd(2).slice(1)}-a${rnd(2).slice(1)}-${rnd(6)}`);
+export const platform = (): 'pwa' | 'safari' | 'other' => (isStandalone() ? 'pwa' : /Safari/.test(navigator.userAgent) && !/Chrome|CriOS|FxiOS/.test(navigator.userAgent) ? 'safari' : 'other');
+export const tz = (): string => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'; } catch { return 'Europe/Paris'; } };
 
 interface RpcOut { ok?: boolean; error?: string; renew?: boolean; [k: string]: unknown }
-async function rpc(fn: string, args: Record<string, unknown>, keepalive = false): Promise<RpcOut | null> {
+export async function rpc(fn: string, args: Record<string, unknown>, keepalive = false): Promise<RpcOut | null> {
   try {
     const r = await fetch(`${PUSH_API.url}/rest/v1/rpc/${fn}`, { method: 'POST', keepalive, headers: { 'Content-Type': 'application/json', apikey: PUSH_API.key, Authorization: `Bearer ${PUSH_API.key}` }, body: JSON.stringify(args) });
     if (!r.ok) return null;
@@ -132,7 +134,7 @@ export async function forgetStats(): Promise<boolean> {
     try { const r = await fetch(`${PUSH_API.url}/functions/v1/radia-push`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: PUSH_API.key, Authorization: `Bearer ${PUSH_API.key}` }, body: JSON.stringify({ action: 'stats-forget', device: s.device, secret: s.secret }) }); ok = r.ok && !!(await r.json()).ok; } catch { ok = false; }
     if (!ok) { writeLocal({ ...s, state: 'off', pendingPause: false }); return false; }
   }
-  writeLocal({ ...EMPTY, asked: true });
+  writeLocal({ ...EMPTY, asked: true, prog: s.prog === 'on' ? 'off' : s.prog });
   return true;
 }
 

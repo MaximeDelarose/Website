@@ -45,9 +45,9 @@ describe('courbe de prix', () => {
     expect(tierCoins('x', 60)).toBe(60); expect(tierCoins('x', 150)).toBe(150);
     expect(tierCoins('x', 200)).toBe(400); expect(tierCoins('x', 400)).toBe(1200);
     for (const id of Object.keys(PRESTIGE_PRICE)) {
-      const c = (CLOTHES as Record<string, { coins: number }>)[id] ?? (FURNITURE as Record<string, { price: number }>)[id];
+      const c = ((CLOTHES as unknown as Record<string, { coins: number }>)[id] ?? (FURNITURE as unknown as Record<string, { price: number }>)[id]) as { coins?: number; price?: number };
       expect(c, id).toBeTruthy();
-      expect((c as { coins?: number; price?: number }).coins ?? (c as { price: number }).price).toBe(PRESTIGE_PRICE[id]);
+      expect(c.coins ?? c.price).toBe(PRESTIGE_PRICE[id]);
     }
     expect(Math.max(...Object.values(PRESTIGE_PRICE))).toBeGreaterThanOrEqual(10000);
   });

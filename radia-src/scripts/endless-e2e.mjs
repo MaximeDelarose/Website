@@ -45,6 +45,7 @@ const mk = (page, tag, H) => {
     await closeModals();
     // l'annonce « L'aventure continue » (une fois) ouvre la carte du domaine : on revient au titre
     if (await page.getByText('Carte du domaine').count()) { await page.locator('.screen-head .icon-btn').first().click().catch(() => {}); await sleep(700); await closeModals(); }
+    if (process.env.DBG) await page.screenshot({ path: 'shots/dbg-start.png' });
     if (await page.getByText('MODE LIBRE').count()) {
       await page.getByText('MODE LIBRE').first().click();
     } else {

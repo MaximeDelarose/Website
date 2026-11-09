@@ -46,6 +46,10 @@ async function purgeStats(): Promise<void> {
   await db.from('radia_stat_sessions').delete().lt('started_at', ago(90));
   await db.from('radia_stat_days').delete().lt('day', ago(400).slice(0, 10));
   await db.from('radia_stat_devices').delete().lt('last_seen', ago(180));
+  // progression partagée : sessions 90 jours, jalons et temps par mode 400 jours
+  await db.from('radia_prog_sessions').delete().lt('started_at', ago(90));
+  await db.from('radia_prog_events').delete().lt('at', ago(400));
+  await db.from('radia_prog_modes').delete().lt('day', ago(400).slice(0, 10));
 }
 
 Deno.serve(async (req) => {
@@ -70,6 +74,18 @@ Deno.serve(async (req) => {
     if (!data) return json({ ok: true }); // déjà supprimé ou secret inconnu : rien à faire
     const { error } = await db.from('radia_stat_devices').delete().eq('id', device); // sessions et jours : suppression en cascade
     return error ? json({ ok: false, error: 'delete' }, 500) : json({ ok: true });
+  }
+  if (action === 'progress-forget') {
+    // supprime TOUTES les données de progression de cet appareil (jalons, sessions, temps par mode, instantané) ; le temps de jeu n'est pas touché
+    const device = String(body.device ?? ''), secret = String(body.secret ?? '');
+    if (!UUID.test(device) || secret.length < 24 || secret.length > 128) return json({ ok: false, error: 'args' }, 400);
+    const { data } = await db.from('radia_stat_devices').select('id').eq('id', device).eq('secret_hash', await sha256hex(secret)).maybeSingle();
+    if (!data) return json({ ok: true });
+    const a = await db.from('radia_prog_events').delete().eq('device_id', device);
+    const b = await db.from('radia_prog_sessions').delete().eq('device_id', device);
+    const c = await db.from('radia_prog_modes').delete().eq('device_id', device);
+    const d = await db.from('radia_stat_devices').update({ snap: null, snap_at: null, progress_consent_at: null, progress_paused_at: null }).eq('id', device);
+    return a.error || b.error || c.error || d.error ? json({ ok: false, error: 'delete' }, 500) : json({ ok: true });
   }
   if (action === 'stats-admin-delete') {
     const device = String(body.device ?? '');

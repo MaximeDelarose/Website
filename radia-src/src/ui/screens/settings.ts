@@ -116,6 +116,7 @@ export function openSettings(): Promise<void> {
       h('div.setting-row.push-row', { style: 'align-items:flex-start;flex-direction:column;gap:6px' }, h('label', 'Petite pensée du jour ♡', pushState), pushBtns),
       h('div.setting-row', h('label', 'Petites pensées ♡', h('small', 'Celles que tu as reçues')), thoughtsBtn),
       h('div.setting-row', h('label', 'Statistiques de jeu ♡', h('small', 'Partage facultatif avec Auguste : voir, arrêter, supprimer')), h('button.btn.small.secondary', { on: { click: tap(() => { void import('./statsConsent').then((m) => m.openStatsPanel()); }, { sound: false }) } }, 'Gérer')),
+      h('div.setting-row', h('label', 'Partager ma progression de jeu ♡', h('small', 'Facultatif, séparé du temps de jeu : voir, arrêter, supprimer')), h('button.btn.small.secondary', { 'data-prog': '1', on: { click: tap(() => { void import('./progressConsent').then((m) => m.openProgressPanel()); }, { sound: false }) } }, 'Gérer')),
       h('div.setting-row', h('label', 'Diagnostic', h('small', 'Build, mode (Safari / application), partie, photos')), diagBtn),
       h('div.setting-row', h('label', 'Diagnostic tactile', h('small', 'État du plateau ; « Débloquer le plateau » sans rien perdre')), touchBtn),
       h('div.setting-row', h('label', 'Copier ma sauvegarde', h('small', 'Pour la mettre dans l\'application de l\'écran d\'accueil (ou l\'inverse)')), copyBtn),

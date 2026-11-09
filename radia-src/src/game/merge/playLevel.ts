@@ -30,6 +30,7 @@ import { openEnergyPanel } from '../../ui/components/energyPanel';
 import { drawRequester } from '../art/generators';
 import { paint } from '../art/kit';
 import { bindEndless, syncLegacyAlbum, tickActive } from '../endless';
+import { bump } from '../endless/ctx';
 import { ENDLESS_CFG } from '../endless/config';
 import { createEndlessHud, type EndlessHud } from '../../ui/endless/hud';
 import { settleEvents } from '../../ui/endless/host';
@@ -452,6 +453,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
       for (const e of ev) {
         if (e.t === 'merge') {
           stat('merges');
+          if (endlessMode && e.result.c === 'soap' && e.result.l >= 5) bump(save.data.fun, 'soapMade'); // savon PIMBÊCHE terminé (niveau 5+)
           invalidStreak = 0;
           gain(mergeReward(e.result, e.combo));
           isNew(e.result);
@@ -471,6 +473,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
           // en Endless : cœurs, pièces, matériaux et énergie sont versés UNE fois par applyEvents (plus bas)
         } else if (e.t === 'combo') {
           statMax('bestCombo', e.value);
+          if (e.value === 3) stat('combos'); // une chaîne qui atteint 3 compte pour UN combo (statistiques de progression)
           if (!endlessMode) {
             // une seule réplique d'Auguste à la fin de la chaîne (jamais à chaque fusion) ; les gains de palier sont résumés, pas annoncés un par un
             // énergie seulement à l'ATTEINTE d'un palier (5 puis 8), jamais à chaque fusion d'une longue chaîne (avant : +5 à chaque fusion dès le combo 5)
