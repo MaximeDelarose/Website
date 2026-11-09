@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
 const PORT = process.env.PORT ?? 4187;
-const URL = `http://localhost:${PORT}/?debug`;
+const URL = `http://localhost:${PORT}/?debug&statsDelay=99999999`;
 mkdirSync('shots', { recursive: true });
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
 const results = [];
