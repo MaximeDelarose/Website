@@ -268,20 +268,22 @@ export const COLLECTIONS: Record<CollectionId, CollectionDef> = {
       'Le cadeau parfait : celui qui dit « je pense à toi ».',
     ],
   },
+  // PIMBÊCHE : TOUS les savons sont au LAIT DE CHÈVRE (identité de la marque). Chaîne : ingrédient → préparation → moulage → parfum → savon terminé → emballage → coffret.
+  // Les variantes (rose, lavande, miel…) sont des recettes fictives du jeu, jamais des formulations officielles de la marque ; elles gardent toujours la base au lait de chèvre.
   soap: {
     id: 'soap',
-    name: 'Savons PIMBÊCHE',
+    name: 'Savons PIMBÊCHE au lait de chèvre',
     color: '#E9A8C6',
-    items: ['Base de savon', 'Savon brut', 'Savon moulé', 'Savon parfumé', 'Savon décoré', 'Savon artisanal Pimbêche', 'Coffret de savons', 'Coffret Pimbêche de luxe'],
+    items: ['Lait de chèvre PIMBÊCHE', 'Pâte de savon au lait de chèvre', 'Savon moulé au lait de chèvre', 'Savon parfumé au lait de chèvre', 'Savon PIMBÊCHE terminé', 'Savon PIMBÊCHE emballé', 'Coffret de savons PIMBÊCHE', 'Coffret PIMBÊCHE de luxe'],
     blurbs: [
-      'Une base translucide, encore tiède. Tout commence ici.',
-      'Un pain rugueux, pas encore parfumé. Il a du caractère.',
-      'Un cœur en relief, sorti du moule sans une bulle.',
-      'Lavande, rose ou fleur d\'oranger : ça sent la maison de Radia.',
-      'Une petite fleur de savon, à peine trop jolie pour servir.',
-      'Fait main, signé du P doré de PIMBÊCHE.',
-      'Trois savons, un ruban : le cadeau qu\'on garde pour soi.',
-      'Le coffret de la maison PIMBÊCHE. Doré, parfumé, inoubliable.',
+      'Le lait de chèvre frais de la maison. Tous les savons PIMBÊCHE commencent ici.',
+      'Le lait de chèvre est mélangé à la base : une pâte douce et crémeuse.',
+      'Le mélange est versé dans le moule : un petit cœur en relief, sans une bulle.',
+      'Rose, lavande ou miel : la recette change, la base au lait de chèvre reste.',
+      'Le savon est terminé : une petite fleur de lait de chèvre, presque trop jolie pour servir.',
+      'Emballé avec soin, signé du P doré de PIMBÊCHE.',
+      'Trois savons au lait de chèvre, un ruban : le cadeau qu\'on garde pour soi.',
+      'Le coffret de la maison PIMBÊCHE. Doré, doux, au lait de chèvre.',
     ],
   },
 };
@@ -322,7 +324,7 @@ export const GENERATORS: Record<number, { coll: CollectionId; name: string; blur
   12: { coll: 'pastry', name: 'Four du pâtissier', blurb: 'Touche-le : il sort des macarons tout chauds (1 ⚡).' },
   13: { coll: 'bag', name: 'Vitrine à sacs', blurb: 'Touche-la : elle présente des sacs de saison (1 ⚡).' },
   14: { coll: 'gift', name: 'Atelier d\'emballage', blurb: 'Touche-le : il noue des rubans et des surprises (1 ⚡).' },
-  15: { coll: 'soap', name: 'Atelier Pimbêche', blurb: 'Touche-le : il coule des bases de savon à parfumer (1 ⚡).' },
+  15: { coll: 'soap', name: 'Atelier PIMBÊCHE', blurb: 'Touche-le : il sort du lait de chèvre et des pâtes de savon à fusionner (1 ⚡).' },
 };
 export const genKindOf = (c: CollectionId): number => COLLECTION_IDS.indexOf(c) + 1;
 export const isGen = (r: ItemRef | null | undefined): boolean => !!r && r.c === 'gen';

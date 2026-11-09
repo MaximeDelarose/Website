@@ -465,7 +465,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
             addHearts(e.hearts);
             gain(deliverReward(e.items ?? [], e.hearts));
             // récompenses de commande : un peu d'énergie, parfois un diamant
-            wallet.giveEnergy(3);
+            wallet.giveEnergy(1); // (refonte de l'économie : avant +3 par commande)
             if ((save.data.stats.ordersDelivered ?? 0) % 3 === 0) { wallet.giveDiamonds(1); ui.toast({ title: '+1 diamant', sub: 'Pour ta commande ♡', img: diamondUrl(64), ms: 1600 }); }
           }
           // en Endless : cœurs, pièces, matériaux et énergie sont versés UNE fois par applyEvents (plus bas)
@@ -473,7 +473,8 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
           statMax('bestCombo', e.value);
           if (!endlessMode) {
             // une seule réplique d'Auguste à la fin de la chaîne (jamais à chaque fusion) ; les gains de palier sont résumés, pas annoncés un par un
-            if (e.value >= 5) { bark('combo5'); wallet.giveEnergy(5); comboNote('+5 ⚡'); } else if (e.value >= 3) bark('combo3');
+            // énergie seulement à l'ATTEINTE d'un palier (5 puis 8), jamais à chaque fusion d'une longue chaîne (avant : +5 à chaque fusion dès le combo 5)
+            if (e.value === 5) { bark('combo5'); wallet.giveEnergy(2); comboNote('+2 ⚡'); } else if (e.value === 8) { wallet.giveEnergy(3); comboNote('+3 ⚡'); } else if (e.value >= 3 && e.value < 5) bark('combo3');
             if (e.reward === 'wand') { save.data.boosters.wand++; refreshBoosters(); comboNote('+1 Baguette magique'); recordNotice('Combo x8 : +1 Baguette magique'); }
             if (e.reward === 'hearts') { const n = e.value >= 12 ? 15 : 5; addHearts(n); comboNote(`+${n} ♡`); }
             if (e.reward === 'star') { comboNote('Étoile filante ✨'); recordNotice(`Combo x${e.value} : une Étoile filante est apparue`); }
@@ -604,7 +605,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
         if (def.reward.wind) save.data.boosters.wind += def.reward.wind;
         wallet.giveDiamonds(gems);
       }
-      wallet.giveEnergy(first ? 15 : 5);
+      wallet.giveEnergy(first ? 8 : 2); // (refonte de l'économie : avant 15 / 5)
       stat('levelsWon');
       if (!opts.replay) save.data.run = null;
       save.save();

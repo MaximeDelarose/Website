@@ -60,7 +60,10 @@ export const GENS3: Record<number, Draw> = {
     rr(c, 60, 14, 26, 24, 7, '#F3C86B', LW);
     c.beginPath(); c.moveTo(68, 33); c.lineTo(68, 19); c.lineTo(75, 19); c.bezierCurveTo(83, 19, 83, 28, 75, 28); c.lineTo(68, 28); c.lineWidth = 3.4; c.strokeStyle = '#7A4528'; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke();
     el(c, 20, 78, 3, 3, PAL.or, LW * 0.5); el(c, 80, 79, 3, 3, PAL.or, LW * 0.5);
-    sparkles(c, [[16, 30, 3.4], [50, 14, 3]]);
+    // bouteille de lait de chèvre (base de TOUS les savons PIMBÊCHE) + goutte
+    rr(c, 14, 30, 16, 20, 5, '#FFFDF8', LW * 0.8); rr(c, 17, 24, 10, 8, 3, '#FFFDF8', LW * 0.7); rr(c, 16, 21, 12, 5, 2, '#E9B7CC', LW * 0.6);
+    c.beginPath(); c.moveTo(44, 8); c.bezierCurveTo(48, 14, 51, 17, 51, 20); c.bezierCurveTo(51, 24, 48, 26, 44, 26); c.bezierCurveTo(40, 26, 37, 24, 37, 20); c.bezierCurveTo(37, 17, 40, 14, 44, 8); c.closePath(); c.fillStyle = '#FFFDF8'; c.fill(); c.lineWidth = 2.2; c.strokeStyle = OUTLINE; c.stroke();
+    sparkles(c, [[10, 40, 3], [56, 30, 2.6]]);
   },
   // 12. Four du pâtissier : four rose, fenêtre chaude, macarons en train de cuire
   12: (c) => {
