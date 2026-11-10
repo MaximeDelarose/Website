@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.54.0";
+  var VERSION = "2.55.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -7669,22 +7669,7 @@
     }
     return false;
   }
-  function drawGround(cx, cy, M) {
-    var T = 16, TT = performance.now() / 1000, TH = M.theme;
-    var tx0 = Math.floor(cx / T) - 1, ty0 = Math.floor(cy / T) - 1, tx1 = tx0 + Math.ceil(W / T) + 2, ty1 = ty0 + Math.ceil(H / T) + 2;
-    for (var ty = ty0; ty <= ty1; ty++) for (var tx = tx0; tx <= tx1; tx++) {
-      var B = M.biomes[biomeAtTile(tx, ty, M)], G = B.ground;
-      var sx = Math.round(tx * T - cx), sy = Math.round(ty * T - cy);
-      ctx.fillStyle = hash(tx >> 2, ty >> 2) % 3 === 0 ? G.patch : G.base; ctx.fillRect(sx, sy, T, T);
-      if (B.floor) drawFloor(B.floor, G, sx, sy, tx, ty, TT);
-    }
-    for (ty = ty0; ty <= ty1; ty++) for (tx = tx0; tx <= tx1; tx++) {
-      B = M.biomes[biomeAtTile(tx, ty, M)]; G = B.ground;
-      sx = Math.round(tx * T - cx); sy = Math.round(ty * T - cy);
-      var h = hash(tx, ty), k = h % 23, ox = (h >>> 8) % 12, oy = (h >>> 12) % 12;
-      if (B.decor && (k === 12 || k === 13 || (B.decor === "pond" && k >= 9 && k <= 11))) { drawDecor(B.decor, G, sx, sy, ox, oy, h); continue; }
-      var X = sx + ox, Y = sy + oy;
-      if (TH && themeDetail(TH, G, X, Y, k, h, TT)) continue;
+  function drawTile(G, k, h, X, Y, qx, qy) {
       if (k < 5) {
         // touffe en 3 tons avec ombre (style A)
         var mid = G._mid || (G._mid = mixHex(G.tuft, G.hi, 0.45));
@@ -7712,9 +7697,51 @@
         ctx.fillStyle = G._shd || (G._shd = mixHex(G.shroom, "#000000", 0.25)); ctx.fillRect(X - 1, Y + 1, 1, 1); ctx.fillRect(X + 3, Y + 1, 1, 1);
         ctx.fillStyle = "#fdf3de"; ctx.fillRect(X + 1, Y, 1, 1);
         ctx.fillStyle = "#f3e1c0"; ctx.fillRect(X + 1, Y + 2, 1, 2);
-      } else if (k < 12) {
-        ctx.fillStyle = G.hi; ctx.fillRect(sx + ox, sy + oy, 1, 1);
       }
+    if (k >= 9 && k < 12) { ctx.fillStyle = G.hi; ctx.fillRect(qx, qy, 1, 1); }
+  }
+  var DECO_C = {};
+  function hrDeco(key, G, X, Y, fn) {
+    var gk = G._k || (G._k = Object.keys(G).filter(function (q) { return q[0] !== "_"; }).map(function (q) { return G[q]; }).join("|")), kk = key + gk, e = DECO_C[kk];
+    if (!e) {
+      var c = document.createElement("canvas"); c.width = 40; c.height = 32;
+      var sv = ctx; ctx = c.getContext("2d"); try { fn(10, 10); } finally { ctx = sv; }
+      e = DECO_C[kk] = ES_ART.bake(c);
+    }
+    ctx.drawImage(e, X - 10, Y - 10);
+  }
+  function drawGround(cx, cy, M) {
+    var T = 16, TT = performance.now() / 1000, TH = M.theme;
+    var tx0 = Math.floor(cx / T) - 1, ty0 = Math.floor(cy / T) - 1, tx1 = tx0 + Math.ceil(W / T) + 2, ty1 = ty0 + Math.ceil(H / T) + 2;
+    var HRG = window.ES_ART && ES_ART.groundChunk, GC = HRG ? (M.__gc || (M.__gc = {})) : null;
+    if (HRG) {
+      if (Object.keys(GC).length > 400) M.__gc = GC = {};
+      for (var gcy = Math.floor(ty0 / 4); gcy <= Math.floor(ty1 / 4); gcy++) for (var gcx = Math.floor(tx0 / 4); gcx <= Math.floor(tx1 / 4); gcx++) {
+        var gk = gcx + "," + gcy, gch = GC[gk] || (GC[gk] = ES_ART.groundChunk(gcx, gcy, function (a, b) { return M.biomes[biomeAtTile(a, b, M)].ground; }));
+        ctx.drawImage(gch, Math.round(gcx * 4 * T - cx), Math.round(gcy * 4 * T - cy));
+      }
+    }
+    for (var ty = ty0; ty <= ty1; ty++) for (var tx = tx0; tx <= tx1; tx++) {
+      var B = M.biomes[biomeAtTile(tx, ty, M)], G = B.ground;
+      var sx = Math.round(tx * T - cx), sy = Math.round(ty * T - cy);
+      if (!HRG) { ctx.fillStyle = hash(tx >> 2, ty >> 2) % 3 === 0 ? G.patch : G.base; ctx.fillRect(sx, sy, T, T); }
+      if (B.floor) drawFloor(B.floor, G, sx, sy, tx, ty, TT);
+    }
+    for (ty = ty0; ty <= ty1; ty++) for (tx = tx0; tx <= tx1; tx++) {
+      B = M.biomes[biomeAtTile(tx, ty, M)]; G = B.ground;
+      sx = Math.round(tx * T - cx); sy = Math.round(ty * T - cy);
+      var h = hash(tx, ty), k = h % 23, ox = (h >>> 8) % 12, oy = (h >>> 12) % 12;
+      if (B.decor && (k === 12 || k === 13 || (B.decor === "pond" && k >= 9 && k <= 11))) {
+        if (HRG) hrDeco("d" + B.decor + ((h >>> 5) % 2), G, sx + ox, sy + oy, function (a, b) { drawDecor(B.decor, G, a, b, 0, 0, h); }); else drawDecor(B.decor, G, sx, sy, ox, oy, h);
+        continue;
+      }
+      var X = sx + ox, Y = sy + oy;
+      if (TH && themeDetail(TH, G, X, Y, k, h, TT)) continue;
+      if (HRG && k < 9 && !(k === 8 && (h >>> 20) % 3 !== 0)) {
+        hrDeco("t" + k + ((h & 64) ? 1 : 0) + (k >= 5 && k < 7 ? (h >>> 16) % 4 : 0), G, X, Y, function (a, b) { drawTile(G, k, h, a, b); });
+        continue;
+      }
+      drawTile(G, k, h, X, Y, sx + ox, sy + oy);
     }
   }
   function blit(s, x, y, flip, white) {

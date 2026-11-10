@@ -134,9 +134,72 @@
     if (arguments.length === 3 && img && img.__hr > 1 && !this.__raw) return od.call(this, img, a, b, img.width / img.__hr, img.height / img.__hr);
     return od.apply(this, arguments);
   };
+
+  /* ---------- décor du monde : sol en dégradés dithered, détails cuits à 2× ---------- */
+  var BY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  function bay(x, y) { return (BY[((y & 3) << 2) | (x & 3)] + 0.5) / 16; }
+  function vh(x, y) { var h = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+  function vn(x, y, s) {
+    var gx = Math.floor(x / s), gy = Math.floor(y / s), fx = x / s - gx, fy = y / s - gy;
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    var a = vh(gx, gy), b = vh(gx + 1, gy), c = vh(gx, gy + 1), d = vh(gx + 1, gy + 1);
+    return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+  }
+  function band(v, b) { var u = (v - 0.3) / 0.4; return u <= 0 ? 0 : u >= 1 ? 1 : (u > b ? 1 : 0); }   // plateaux francs, dithering seulement dans la zone de transition
+  function ramp(G) {
+    if (G._r2) return G._r2;
+    var B = hexRgb(G.base), P = hexRgb(G.patch), K = hexRgb(mix(G.base, "#000000", 0.13)), L = hexRgb(mix(G.patch, "#ffffff", 0.07));
+    return (G._r2 = { B: B, P: P, K: K, L: L });
+  }
+  // un morceau de sol de 4 × 4 tuiles (128 × 128 px écran), seamless : le bruit dépend des coordonnées du monde
+  function groundChunk(ccx, ccy, getG) {
+    var S = 128, cv = document.createElement("canvas"); cv.width = cv.height = S;
+    var g = cv.getContext("2d"), im = g.createImageData(S, S), d = im.data, tx, ty, px, py;
+    for (ty = 0; ty < 4; ty++) for (tx = 0; tx < 4; tx++) {
+      var R = ramp(getG(ccx * 4 + tx, ccy * 4 + ty));
+      for (py = 0; py < 32; py++) for (px = 0; px < 32; px++) {
+        var X = ccx * S + tx * 32 + px, Y = ccy * S + ty * 32 + py, b = bay(X, Y);
+        var f = vn(X, Y, 150) * 0.7 + vn(X + 5000, Y - 3000, 36) * 0.3;
+        var c = band((f - 0.5) * 2.4 + 0.5, b) ? R.P : R.B;
+        var m = vn(X - 2000, Y + 777, 22);
+        if (m > 0.76 && band((m - 0.76) * 4 + 0.3, b)) c = R.K;
+        else if (f > 0.64 && vn(X + 99, Y + 31, 12) > 0.72 && band((vn(X + 99, Y + 31, 12) - 0.72) * 3 + 0.3, b)) c = R.L;
+        var o = ((ty * 32 + py) * S + tx * 32 + px) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+      }
+    }
+    g.putImageData(im, 0, 0); cv.__hr = 2; return cv;
+  }
+  // un petit décor dessiné à 1× : Scale2x, puis dégradé dithered (clair en haut, sombre en bas) sur les tons pleins
+  function bake(cv) {
+    var w = cv.width, h = cv.height, id = cv.getContext("2d").getImageData(0, 0, w, h).data, g = [], x, y;
+    for (y = 0; y < h; y++) { var row = []; for (x = 0; x < w; x++) { var o = (y * w + x) * 4; row.push(id[o + 3] < 8 ? "." : ((id[o] << 24 | id[o + 1] << 16 | id[o + 2] << 8 | id[o + 3]) >>> 0)); } g.push(row); }
+    var s = scale2x(g), W2 = w * 2, H2 = h * 2, out = document.createElement("canvas"); out.width = W2; out.height = H2;
+    var og = out.getContext("2d"), im = og.createImageData(W2, H2), d = im.data, top = H2, bot = -1;
+    for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) { var v = s[y][x]; if (v !== "." && (v & 255) >= 200) { if (y < top) top = y; if (y > bot) bot = y; } }
+    var bh = bot - top + 1;
+    for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) {
+      var v2 = s[y][x]; if (v2 === ".") continue;
+      var r = v2 >>> 24, gg = (v2 >>> 16) & 255, bb = (v2 >>> 8) & 255, a = v2 & 255;
+      if (a >= 200 && bh >= 12) {
+        var tt = (y - top) / bh, k = bay(x, y);
+        if (tt > 0.5 && (tt - 0.5) * 1.5 > k * 0.75) { r *= 0.8; gg *= 0.8; bb *= 0.8; }
+        else if (tt < 0.22 && (0.22 - tt) * 3.5 > k * 0.75) { r = r + (255 - r) * 0.16; gg = gg + (255 - gg) * 0.16; bb = bb + (255 - bb) * 0.16; }
+      }
+      var o2 = (y * W2 + x) * 4; d[o2] = r; d[o2 + 1] = gg; d[o2 + 2] = bb; d[o2 + 3] = a;
+    }
+    og.putImageData(im, 0, 0); out.__hr = 2; return out;
+  }
+  // coffres refaits à la main en 2 × (20 × 14)
+  var CH_PAL = { h: "#c4895a", B: "#a06a3e", b: "#7a4528", d: "#5a3220", M: "#9c6f12", m: "#d9a521", Y: "#f6d36b", k: "#2a1810", y: "#f2c230" };
+  var CHESTS = {
+    chest: ["...hhhhhhhhhhhhhh...", "..hhBBBBBBBBBBBBhh..", ".hBBBBBBBBBBBBBBBBh.", ".BBBBBBBBBBBBBBBBBB.", ".bbbbbbbbbbbbbbbbbb.", ".MmmmmmmmmmmmmmmmmM.", ".bBBBBBBYYYYBBBBBBb.", ".bBBBBBBYkkYBBBBBBb.", ".bBBBBBBBkkBBBBBBBb.", ".bBbBBbBBBBBBbBBbBb.", ".bbbbbbbbbbbbbbbbbb.", ".dbdbdbdbdbdbdbdbdb.", ".dddddddddddddddddd.", "..dddddddddddddddd.."],
+    chestopen: ["..bbbbbbbbbbbbbbbb..", ".bBBBBBBBBBBBBBBBBb.", ".bBhhBBBBBBBBBBBBBb.", ".bbbbbbbbbbbbbbbbbb.", ".kkkkkkkkkkkkkkkkkk.", "..kYYkkYYYkkYYYkk...", ".kYYYyYYYYyYYYyYYYk.", ".bYyYYYyYYYYyYYYyYb.", ".bBBBBBBYkkYBBBBBBb.", ".bBBBBBBBkkBBBBBBBb.", ".bBbBBbBBBBBBbBBbBb.", ".bbbbbbbbbbbbbbbbbb.", ".dbdbdbdbdbdbdbdbdb.", "..dddddddddddddddd.."]
+  };
   window.ES_ART = {
+    groundChunk: groundChunk, bake: bake,
     scale: 1, hr: 2,
     upgrade: function (name, d) {
+      if (CHESTS[name]) return { pal: CH_PAL, frames: [CHESTS[name]], hr: 2 };
       if (!d || !d.frames || !d.frames.length || SKIP[name]) return d;
       try { return /^sq_/.test(name) && name !== "sq_ninja_clone" ? upgradeHero(d) : upgradeSprite(d, !!d.ns); } catch (e) { return d; }
     }
