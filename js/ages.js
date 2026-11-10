@@ -374,7 +374,7 @@
     ui.v.age.style.background = AGES[w.age].col;
     var wb = ui.bar.querySelector(".ag-wave-btn"); if (G.mode !== "versus") { wb.querySelector("b").textContent = w.wave + 1; wb.classList.toggle("busy", !!w.active); wb.hidden = w.wave >= D.WIN_WAVE; }
     var ab = ui.bar.querySelector(".ag-age-btn"), next = AGES[w.age + 1];
-    if (next) { var c = C.ageCost(sim, w, me); ab.hidden = false; ab.classList.toggle("poor", w.gold[me] < c); setV("agebtn", next.name + " · " + fmt(c) + " 🌰"); ab.style.setProperty("--age", next.col); } else ab.hidden = true;
+    if (next) { var c = C.ageCost(sim, w, me); ab.hidden = false; var can = w.gold[me] >= c; ab.classList.toggle("ready", can); ab.classList.toggle("poor", !can); setV("agebtn", can ? "⬆ Passer à " + next.name + " !" : "🔒 " + next.name + " · encore " + fmt(c - w.gold[me]) + " 🌰"); ab.style.setProperty("--age", next.col); } else ab.hidden = true;
     var au2 = ui.bar.querySelector('[data-act="auto"]'); au2.classList.toggle("on", !!w.auto);
     if (G.mode === "versus") {
       var o = G.role === "guest" ? w.opp : (function () { var ow = G.sim.worlds[1 - me]; return [ow.lives, ow.age, ow.wave, ow.queue.length + ow.enemies.length]; })();

@@ -24,8 +24,10 @@
 .ag-wave-btn { background: #ee7b3a; color: #fff; text-shadow: 0 1px 0 #5a2008; }
 .ag-wave-btn.busy { background: #a0603a; }
 .ag-wave-btn b { background: rgba(0, 0, 0, .25); border-radius: 6px; padding: 0 5px; margin-left: 2px; }
-.ag-age-btn { background: var(--age, #9aa0b4); }
-.ag-age-btn.poor { filter: saturate(.45) brightness(.85); }
+.ag-age-btn { background: #4a3a2a; color: #b8a888; border-color: #2a1a0c; text-shadow: none; }
+.ag-age-btn.poor { opacity: .85; }
+.ag-age-btn.ready { background: linear-gradient(#ffb347, #ee7b3a); color: #fff; text-shadow: 0 1px 0 #6a2a08; border-color: #7a3a10; box-shadow: 0 3px 0 #7a3a10, 0 0 0 3px rgba(255, 179, 71, .45); animation: ag-pulse 1.1s ease-in-out infinite; }
+@keyframes ag-pulse { 50% { transform: scale(1.04); box-shadow: 0 3px 0 #7a3a10, 0 0 0 7px rgba(255, 179, 71, .25); } }
 .ag-big:active { transform: translateY(2px); box-shadow: 0 1px 0 #2a1a0c; }
 .ag-mini { background: transparent; color: var(--ag-soft); border: 1px dashed var(--ag-line); border-radius: 7px; font: 800 11px Nunito, sans-serif; padding: 2px 6px; cursor: pointer; }
 .ag-mini.on { background: #3f7a3a; color: #fff; border-style: solid; }
