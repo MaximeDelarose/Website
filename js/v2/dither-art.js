@@ -5,7 +5,8 @@
      à sa taille d'origine pour Noisette, et recoloré aux couleurs des autres personnages. Le logo est
      déjà dithered : on n'ajoute rien dessus, on l'anime (queue qui ondule, pattes qui alternent, respiration).
    - Tous les autres sprites passent à la taille × 2 (algorithme Scale2x, qui lisse les diagonales sans flou) et
-     reçoivent un contour brun très sombre s'il leur manque. Pas de dithering ajouté : ils gardent leur ombrage d'origine.
+     reçoivent un contour brun très sombre s'il leur manque. Le dithering ne sert qu'aux dégradés : à la frontière entre
+     deux tons voisins d'une même couleur, une bande de 2 px en damier remplace le trait net ; les aplats et les silhouettes restent francs.
    ========================================================================= */
 (function () {
   "use strict";
@@ -38,43 +39,53 @@
   function toGrid(rows, w) { return rows.map(function (r) { var o = [], i; for (i = 0; i < w; i++) o.push(i < r.length ? r[i] : "."); return o; }); }
   function fromGrid(g) { return g.map(function (r) { return r.join(""); }); }
 
-  /* ---------- sprites ordinaires : × 2, ombrage en damier, contour ---------- */
-  function upgradeSprite(d) {
-    var pal = d.pal, keys = Object.keys(pal), L = {}, S = {}, pal2 = {}, ci = 0xA0;
-    keys.forEach(function (k) {
-      pal2[k] = pal[k];
-      L[k] = String.fromCharCode(ci++); pal2[L[k]] = mix(pal[k], "#ffffff", 0.24);
-      S[k] = String.fromCharCode(ci++); pal2[S[k]] = mix(pal[k], OUT, 0.3);
-    });
+  /* ---------- sprites ordinaires : × 2, contour, dithering des seuls dégradés de ton ---------- */
+  function hsl(h) {
+    var c = hexRgb(h), r = c[0] / 255, g = c[1] / 255, b = c[2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn, hh = 0, ss = 0;
+    if (d > 0) { ss = d / (1 - Math.abs(2 * l - 1)); hh = mx === r ? ((g - b) / d + (g < b ? 6 : 0)) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60; }
+    return [hh, ss, l];
+  }
+  // deux couleurs forment un « dégradé » si ce sont deux tons de la même teinte (ou deux gris) assez proches en luminosité
+  function related(a, b) {
+    var x = hsl(a), y = hsl(b), dl = Math.abs(x[2] - y[2]);
+    if (dl < 0.04 || dl > 0.38 || x[2] < 0.1 || y[2] < 0.1) return false;
+    if (x[1] < 0.18 && y[1] < 0.18) return true;
+    var dh = Math.abs(x[0] - y[0]); dh = Math.min(dh, 360 - dh);
+    return dh < 32 && Math.abs(x[1] - y[1]) < 0.5;
+  }
+  function upgradeSprite(d, noScale) {
+    var pal = d.pal, keys = Object.keys(pal), pal2 = {}, rel = {};
+    keys.forEach(function (k) { pal2[k] = pal[k]; });
     var OL = "ð"; pal2[OL] = OUT;
+    keys.forEach(function (a) { rel[a] = {}; keys.forEach(function (b) { if (a !== b && related(pal[a], pal[b])) rel[a][b] = 1; }); });
     function dark(ch) { return ch === OL || (pal[ch] && lum(pal[ch]) < 0.2); }
     function conv(rows) {
       if (!rows || !rows.length) return rows;
       var w = 0; rows.forEach(function (r) { w = Math.max(w, r.length); });
-      var g = scale2x(toGrid(rows, w)), H = g.length, W = g[0].length, x, y;
-      // le contour : on l'ajoute (1 px) seulement si le bord n'est pas déjà sombre
+      var g0 = toGrid(rows, w), g = noScale ? g0 : scale2x(g0), H = g.length, W = g[0].length, x, y;
       var bord = 0, bordDark = 0;
       function edge0(xx, yy) { return xx < 0 || yy < 0 || xx >= W || yy >= H || g[yy][xx] === "."; }
       for (y = 0; y < H; y++) for (x = 0; x < W; x++) if (g[y][x] !== "." && (edge0(x - 1, y) || edge0(x + 1, y) || edge0(x, y - 1) || edge0(x, y + 1))) { bord++; if (dark(g[y][x])) bordDark++; }
-      var pad = 1, G = [];
+      var pad = noScale ? 0 : 1, G = [];
       for (y = -pad; y < H + pad; y++) { var row = []; for (x = -pad; x < W + pad; x++) row.push(y >= 0 && y < H && x >= 0 && x < W ? g[y][x] : "."); G.push(row); }
-      var H2 = G.length, W2 = G[0].length, needOut = bord > 0 && bordDark / bord < 0.5;
+      var H2 = G.length, W2 = G[0].length, needOut = !noScale && bord > 0 && bordDark / bord < 0.5;
       function tr(xx, yy) { return xx < 0 || yy < 0 || xx >= W2 || yy >= H2 || G[yy][xx] === "."; }
-      var R = G.map(function (r) { return r.slice(); });
-      if (needOut) for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) if (G[y][x] === "." && (!tr(x - 1, y) || !tr(x + 1, y) || !tr(x, y - 1) || !tr(x, y + 1))) R[y][x] = OL;
-      // ombrage en damier : lumière en haut à gauche, ombre en bas à droite (sur les 2 px du bord)
-      function edge(xx, yy) { return tr(xx, yy) || dark(R[yy][xx]); }
-      if (false) for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) {
-        var c = R[y][x]; if (c === "." || c === OL || !pal[c] || dark(c)) continue;
-        var up1 = edge(x, y - 1) || edge(x - 1, y), dn1 = edge(x, y + 1) || edge(x + 1, y);
-        var up2 = !up1 && (edge(x, y - 2) || edge(x - 2, y)), dn2 = !dn1 && (edge(x, y + 2) || edge(x + 2, y));
-        var chk = ((x + y) & 1) === 0, sparse = (x & 1) === 0 && (y & 1) === 0;
-        if (up1 && !dn1) { if (chk) G[y][x] = L[c]; }
-        else if (dn1 && !up1) { if (chk) G[y][x] = S[c]; }
-        else if (!up1 && !dn1) { if (up2 && sparse) G[y][x] = L[c]; else if (dn2 && sparse) G[y][x] = S[c]; }
+      // dithering des dégradés : à la frontière entre deux tons voisins, on mélange les deux en damier (une bande de 2 px)
+      var R = G.map(function (r) { return r.slice(); }), nb = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      // on ne touche que les vraies plages de couleur (au moins 2 voisins de même ton) : les textures déjà en damier et les silhouettes restent intactes
+      function same(xx, yy) { var cc = G[yy][xx], n = 0, q; for (q = 0; q < 4; q++) { var ax = xx + nb[q][0], ay = yy + nb[q][1]; if (ax >= 0 && ay >= 0 && ax < W2 && ay < H2 && G[ay][ax] === cc) n++; } return n; }
+      var cand = [], opaque = 0;
+      if (W2 * H2 >= 64) for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) {
+        var c = G[y][x]; if (c === ".") continue; opaque++; if (!rel[c] || same(x, y) < 2) continue;
+        for (var k = 0; k < 4; k++) {
+          var nx = x + nb[k][0], ny = y + nb[k][1]; if (nx < 0 || ny < 0 || nx >= W2 || ny >= H2) continue;
+          var c2 = G[ny][nx]; if (c2 === "." || c2 === c || !rel[c][c2] || same(nx, ny) < 2) continue;
+          if ((x + y) % 2 === (c < c2 ? 0 : 1)) { cand.push([x, y, c2]); break; }
+        }
       }
-      for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) if (R[y][x] === OL) G[y][x] = OL;
-      return fromGrid(G);
+      if (cand.length < opaque * 0.22) cand.forEach(function (q) { R[q[1]][q[0]] = q[2]; });       // sprite très texturé : pas de dithering
+      if (needOut) for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) if (G[y][x] === "." && (!tr(x - 1, y) || !tr(x + 1, y) || !tr(x, y - 1) || !tr(x, y + 1))) R[y][x] = OL;
+      return fromGrid(R);
     }
     var o = {}; Object.keys(d).forEach(function (k) { o[k] = d[k]; });
     o.pal = pal2; o.frames = d.frames.map(conv);
@@ -119,8 +130,8 @@
   window.ES_ART = {
     scale: 1,
     upgrade: function (name, d) {
-      if (!d || !d.frames || !d.frames.length || d.ns || SKIP[name]) return d;
-      try { return /^sq_/.test(name) && name !== "sq_ninja_clone" ? upgradeHero(d) : upgradeSprite(d); } catch (e) { return d; }
+      if (!d || !d.frames || !d.frames.length || SKIP[name]) return d;
+      try { return /^sq_/.test(name) && name !== "sq_ninja_clone" ? upgradeHero(d) : upgradeSprite(d, !!d.ns); } catch (e) { return d; }
     }
   };
 })();
