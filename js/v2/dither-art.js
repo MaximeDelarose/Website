@@ -114,7 +114,7 @@
     for (y = H - 2; y < H; y++) for (x = 5; x < 16; x++) { var sx = x - dx; out[y][x] = sx >= 5 && sx < 16 ? g[y][sx] : "."; }
     return fromGrid(out);
   }
-  function dbl(rows) { var o = []; rows.forEach(function (r) { var d = ""; for (var i = 0; i < r.length; i++) d += r[i] + r[i]; o.push(d, d); }); return o; }   // pixels doublés, sans lissage
+  function dbl(rows) { var w = 0; rows.forEach(function (r) { w = Math.max(w, r.length); }); return fromGrid(scale2x(toGrid(rows, w))); }   // Scale2x : mêmes pixels que les autres sprites, diagonales lissées
   function upgradeHero(d) {
     var pal = heroPal(d.pal || {}), F = LOGO.slice(), o = {};
     Object.keys(d).forEach(function (k) { o[k] = d[k]; });
