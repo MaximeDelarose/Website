@@ -226,26 +226,39 @@
     setTimeout(function () {
       if (state !== "over") return;
       var lbOk = window.Leaderboard && Leaderboard.configured() && score > 0;
+      var account = lbOk ? Leaderboard.accountName() : "";
       var name = String(load("suika-name", ""));
       show('<h2>' + (maxLevel >= LEVELS - 1 ? "Grand Chêne atteint !" : "Partie terminée") + '</h2>' +
         '<p class="game-score">Score : <strong>' + score + '</strong>' + (record ? " · 🏆 nouveau record !" : "") + '</p>' +
         '<p>Meilleur écureuil : <strong>' + NAMES[maxLevel] + '</strong> · Record : <strong>' + best + '</strong></p>' +
-        (lbOk ? '<form class="submit-score" data-submit><label for="sk-name">Ton pseudo pour le classement</label><div class="submit-row">' +
+        (lbOk && !account ? '<form class="submit-score" data-submit><label for="sk-name">Ton pseudo pour le classement</label><div class="submit-row">' +
           '<input id="sk-name" type="text" maxlength="20" minlength="2" required autocomplete="nickname" value="' + name.replace(/"/g, "&quot;") + '">' +
           '<button class="btn btn-alt btn-small" type="submit">Envoyer</button></div><p class="game-small" data-submit-msg aria-live="polite"></p></form>' : "") +
         '<div class="btn-row"><button class="btn" type="button" data-again>↻ Rejouer</button></div>');
       var ag = card.querySelector("[data-again]"); if (ag) { ag.addEventListener("click", start); ag.focus(); }
+      function sendScore(n, msg, btn) {
+        if (msg) msg.textContent = "Envoi…";
+        if (btn) btn.disabled = true;
+        Leaderboard.submit("suika", n, score, { level: maxLevel }).then(function (res) {
+          if (msg) msg.textContent = "Envoyé ! " + (res && res.rank ? "Tu es " + res.rank + (res.rank === 1 ? "er" : "e") + "." : "");
+          document.querySelectorAll('[data-leaderboard="suika"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
+        }).catch(function (err) { if (msg) msg.textContent = Leaderboard.message(err); if (btn) btn.disabled = false; });
+      }
+      if (lbOk && account) {
+        // connecté : le score part tout seul, avec le pseudo du compte
+        var note = document.createElement("p");
+        note.className = "game-small"; note.setAttribute("aria-live", "polite");
+        note.textContent = "Classement : " + account + " · envoi…";
+        var ms = card.querySelector(".game-score"); if (ms) ms.insertAdjacentElement("afterend", note);
+        sendScore(account, note, null);
+      }
       var form = card.querySelector("[data-submit]");
       if (form) form.addEventListener("submit", function (e) {
         e.preventDefault();
         var input = form.querySelector("input"), btn = form.querySelector("button"), msg = form.querySelector("[data-submit-msg]");
         var n = input.value.trim();
         store("suika-name", n);
-        btn.disabled = true; msg.textContent = "Envoi…";
-        Leaderboard.submit("suika", n, score, { level: maxLevel }).then(function (res) {
-          msg.textContent = "Envoyé ! " + (res && res.rank ? "Tu es " + res.rank + (res.rank === 1 ? "er" : "e") + "." : "");
-          document.querySelectorAll('[data-leaderboard="suika"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
-        }).catch(function (err) { msg.textContent = Leaderboard.message(err); btn.disabled = false; });
+        sendScore(n, msg, btn);
       });
     }, 900);
   }
