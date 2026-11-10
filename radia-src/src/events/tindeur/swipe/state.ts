@@ -4,6 +4,7 @@
  * Aucun mur de paiement, aucune pénalité : les cœurs se rechargent tout seuls, passer est illimité.
  */
 import { PROFILES, OPENING, nodeOf, profileById } from './data';
+import { relanceTarget } from '../../../apps/brain/tindeurNodes';
 import type { Node, Profile } from './types';
 
 export const SW = {
@@ -369,3 +370,17 @@ export const lastLine = (s: SwipeState, pid: string): string => {
 /** Nombre de fins découvertes / total de fins du catalogue. */
 export const endingsFound = (s: SwipeState): number => Object.values(s.endings).reduce((a, e) => a + e.length, 0);
 export const endingsTotal = (): number => PROFILES.reduce((a, p) => a + p.nodes.filter((n) => n.end).length, 0);
+/** Fins écrites à la main découvertes (les fins dynamiques « ~… » ne comptent pas dans le catalogue). */
+export const authoredFound = (s: SwipeState, pid: string): number => (s.endings[pid] ?? []).filter((x) => !x.startsWith('~')).length;
+
+/** Relance après plusieurs jours (vraies dates) : livre le nœud de relance / d'éloignement. Renvoie vrai si la conversation a changé. */
+export function maybeRelance(s: SwipeState, pid: string, now: number): boolean {
+  const c = s.convos[pid];
+  if (!c || c.status !== 'active' || c.queue || !c.log.length) return false;
+  const last = c.log[c.log.length - 1];
+  if (last.k !== 'in' || !last.t) return false;
+  const to = relanceTarget(last.n, last.t, now, false);
+  if (!to) return false;
+  c.queue = to;
+  return !!deliver(s, pid, now, true);
+}

@@ -82,7 +82,8 @@ describe('Tindeur jouable : conversations', () => {
     while (guard++ < 30) {
       const ch = choicesOf(s, pid);
       if (!ch.length) break;
-      expect(choose(s, pid, pick(ch.length), T0)).toBe(true);
+      const base = ch.map((x, i) => (x.ex ? -1 : i)).filter((i) => i >= 0); // réponses écrites à la main (les « en plus » ont leurs propres tests)
+      expect(choose(s, pid, base[pick(base.length)], T0)).toBe(true);
       expect(deliver(s, pid, T0, false)).toBeTruthy();
     }
   };

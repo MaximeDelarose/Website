@@ -6,7 +6,7 @@
 import type { Look } from '../../../events/tindeur/swipe/types';
 
 export type Style = 'joker' | 'sport' | 'cool' | 'sweet';
-export type SceneId = 'mirror' | 'tractor' | 'abs' | 'pose' | 'bath' | 'oops' | 'haircut' | 'sport' | 'funny' | 'selfie';
+export type SceneId = 'mirror' | 'tractor' | 'abs' | 'pose' | 'bath' | 'oops' | 'haircut' | 'sport' | 'funny' | 'selfie' | 'car' | 'resto' | 'outfit' | 'pet';
 
 export interface ChatContact {
   id: string;
@@ -25,35 +25,35 @@ export interface ChatContact {
 }
 
 export const CONTACTS: ChatContact[] = [
-  { id: 'dylan', name: 'Dylan', style: 'sport', scenes: ['mirror', 'abs', 'selfie', 'sport'],
+  { id: 'dylan', name: 'Dylan', style: 'sport', scenes: ['mirror', 'abs', 'selfie', 'sport', 'car'],
     openers: ['Tu dors ?', 'Alors, ta journée ?', 'Je rentre de la salle, et toi ?', 'Tu fais quoi ce soir ?', 'Attends, je t\'envoie un truc.', 'Dis-moi que t\'es pas encore sur ton téléphone à cette heure.'],
     relances: ['Salut, t\'as disparu ou quoi ?', 'Ça fait un moment… tout va bien ?', 'Je pensais à toi en finissant mon entraînement.', 'Hé, on se reparle ?'],
     captions: { mirror: ['Miroir de la salle, comme d\'hab 💪', 'Séance terminée.', 'Pas mal, non ?'], abs: ['Résultat de 3 mois de sérieux.', 'Dis pas que je n\'ai pas prévenu.'], selfie: ['Petit selfie du matin.', 'Après le sport, tout va mieux.'], sport: ['Course du dimanche.', 'Je t\'emmène la prochaine fois ?'] } },
-  { id: 'maxime', name: 'Maxime', style: 'cool', scenes: ['pose', 'selfie', 'mirror', 'funny'],
+  { id: 'maxime', name: 'Maxime', style: 'cool', scenes: ['pose', 'selfie', 'mirror', 'funny', 'resto', 'outfit'],
     openers: ['T\'es réveillée ?', 'Hello toi.', 'Je pensais à un truc drôle, je te raconte ?', 'Ça va ou ça va pas ?', 'Tu me manques un peu, c\'est con.', 'Une photo pour égayer ta journée ?'],
     relances: ['Coucou, ça fait un moment. Tu deviens quoi ?', 'Tu m\'as oublié ?', 'Je repasse dire bonjour, discrètement.', 'Ça te dit de rattraper le temps perdu ?'],
     captions: { pose: ['Je prends la pose, tu valides ?', 'Photographe officiel : moi-même.'], selfie: ['Un sourire pour toi.', 'Mon meilleur profil (j\'en ai deux).'], mirror: ['Miroir, miroir…', 'Sans commentaire.'], funny: ['Mon visage quand tu me réponds enfin.', 'Humeur du jour.'] } },
-  { id: 'kevin', name: 'Kevin', style: 'joker', scenes: ['tractor', 'funny', 'selfie', 'oops'],
+  { id: 'kevin', name: 'Kevin', style: 'joker', scenes: ['tractor', 'funny', 'selfie', 'oops', 'car', 'pet'],
     openers: ['Wsh t\'es où ?', 'Tu veux voir mon nouveau tracteur ?', 'J\'ai une question très sérieuse : t\'as mangé ?', 'Tu fais quoi là ?', 'Attention, snap exceptionnel en approche.', 'T\'as vu la météo ? Moi oui, j\'ai les récoltes.'],
     relances: ['T\'as disparu, j\'ai failli lancer un avis de recherche.', 'Le tracteur t\'attend toujours.', 'Alors ? On se parle plus ?', 'Coucou, c\'est Kevin, celui du tracteur.'],
     captions: { tractor: ['Mon bébé et moi, torse au soleil.', 'Les récoltes attendent, mais toi aussi.', 'Pose près du tracteur, évidemment.'], funny: ['Ma tête quand je réponds à ton snap.', 'Déjà fatigué à 8 h.'], selfie: ['Selfie dans les champs.', 'Je suis photogénique, non ?'], oops: ['Oups, photo envoyée par erreur. Mais bon.'] } },
-  { id: 'thomas', name: 'Thomas', style: 'joker', scenes: ['oops', 'funny', 'selfie', 'bath'],
+  { id: 'thomas', name: 'Thomas', style: 'joker', scenes: ['oops', 'funny', 'selfie', 'bath', 'pet'],
     openers: ['Tu fais quoi là ?', 'Je sais pas pourquoi, j\'ai repensé à toi aujourd\'hui.', 'Je te dérange ?', 'Question idiote : tu préfères les chats ou les chiens ?', 'T\'as 2 minutes ?', 'Je cherchais mon téléphone… il était dans ma main.'],
     relances: ['Je sais pas pourquoi, j\'ai repensé à toi. Tu deviens quoi ?', 'Salut, ça fait un bail.', 'Je te jure que je pensais t\'écrire plus tôt.', 'T\'es encore là ? Moi oui, malheureusement.'],
     captions: { oops: ['Photo prise « par hasard », promis.', 'Je testais mon appareil. Bon, ça marche.'], funny: ['Mon air sérieux (raté).', 'Je réfléchis à ma vie.'], selfie: ['Selfie sans raison.', 'Je ne sais pas faire de selfie, mais voilà.'], bath: ['Je ne sais pas pourquoi je t\'envoie ça.'] } },
-  { id: 'nicolas', name: 'Nicolas', style: 'sport', scenes: ['abs', 'mirror', 'sport', 'selfie'],
+  { id: 'nicolas', name: 'Nicolas', style: 'sport', scenes: ['abs', 'mirror', 'sport', 'selfie', 'car'],
     openers: ['Bonne nuit ou t\'es encore debout ?', 'Je reviens de la salle, tu fais quoi ?', 'T\'es du matin ou du soir ?', 'Tu te couches tard, toi.', 'Petit message avant de dormir.', 'J\'ai battu mon record aujourd\'hui, je voulais le dire à quelqu\'un.'],
     relances: ['Ça fait longtemps, un petit bonjour ?', 'Je reviens de la salle et je pense à toi.', 'Toujours en vie de ton côté ?', 'On ne s\'est pas parlé depuis… trop longtemps.'],
     captions: { abs: ['Tu voulais voir les résultats ?', 'Mes abdos te saluent.'], mirror: ['Dans le miroir, comme chaque soir.'], sport: ['Footing de la fin de journée.'], selfie: ['Un selfie, un sourire, bonne nuit.'] } },
-  { id: 'jordan', name: 'Jordan', style: 'sport', scenes: ['bath', 'selfie', 'mirror', 'funny'],
+  { id: 'jordan', name: 'Jordan', style: 'sport', scenes: ['bath', 'selfie', 'mirror', 'funny', 'resto'],
     openers: ['T\'as disparu ou quoi ?', 'Je m\'ennuie. Occupe-moi.', 'Pas de nouvelles, bonnes nouvelles ?', 'Tu fais quoi de beau ?', 'J\'ai un truc à te montrer.', 'Allô la Terre ?'],
     relances: ['Alors, t\'as disparu ?', 'Hé, tu m\'as oublié dans tes contacts ?', 'Ça fait des jours… un petit signe ?', 'Je passe voir si tu respires encore.'],
     captions: { bath: ['Salle de bain, lumière parfaite, aucun commentaire.', 'Petit moment de détente.'], selfie: ['Coucou depuis chez moi.'], mirror: ['Reflet du jour.'], funny: ['Moi, quand t\'ouvres mon snap.'] } },
-  { id: 'alexandre', name: 'Alexandre', style: 'cool', scenes: ['selfie', 'pose', 'funny', 'mirror'],
+  { id: 'alexandre', name: 'Alexandre', style: 'cool', scenes: ['selfie', 'pose', 'funny', 'mirror', 'resto'],
     openers: ['T\'es occupée ?', 'Une pause café virtuelle, ça te tente ?', 'Bonsoir, tout va bien ?', 'Je tombe sur une photo de toi dans ma tête, bizarre.', 'T\'as le temps pour une petite discussion ?', 'Dis-moi un truc positif.'],
     relances: ['Tu es devenue très mystérieuse.', 'Je repasse, juste pour te saluer.', 'On pourrait reprendre notre conversation ?', 'Ça fait longtemps. Je suis là si tu veux.'],
     captions: { selfie: ['Un petit coucou.', 'Journée tranquille.'], pose: ['Un peu de style, un peu d\'humour.'], funny: ['Mon humeur du moment.'], mirror: ['Sans filtre.'] } },
-  { id: 'lucas', name: 'Lucas', style: 'sweet', scenes: ['selfie', 'funny', 'pose', 'sport'],
+  { id: 'lucas', name: 'Lucas', style: 'sweet', scenes: ['selfie', 'funny', 'pose', 'sport', 'pet'],
     openers: ['Je peux t\'envoyer un truc ?', 'Coucou, j\'ai pensé à toi.', 'Je voulais juste savoir si tu allais bien.', 'Tu as mangé ? Je m\'inquiète pour rien.', 'Petit mot du soir, je ne te dérange pas ?', 'Tu me racontes ta journée ?'],
     relances: ['Salut, ça faisait longtemps. Tu vas bien ?', 'Je repense à notre dernière discussion.', 'Un petit coucou, sans pression.', 'Tu me manques un peu, je l\'avoue.'],
     captions: { selfie: ['Un petit selfie, juste pour te dire bonjour.', 'Je souris, regarde.'], funny: ['Je te promets que j\'ai essayé d\'être sérieux.'], pose: ['Ma tentative de photo cool.'], sport: ['Balade du jour.'] } },
@@ -62,7 +62,7 @@ export const CONTACTS: ChatContact[] = [
     relances: ['T\'es là ? Je teste ma nouvelle coupe sur les gens.', 'Ça fait longtemps, j\'ai changé de tête depuis.', 'Coucou, c\'est Enzo, celui des coupes.', 'Je reviens avec un nouvel avis à demander.'],
     captions: { haircut: ['Ma nouvelle coupe, avis honnête s\'il te plaît.', 'Coiffeur : 10/10. Moi : 11/10.', 'Oui, je suis torse nu. Non, je ne sais pas pourquoi.'], funny: ['Mon avis sur mon avis.'], selfie: ['Selfie du coiffeur.'], pose: ['Pose de coupe.'] },
     look: { skin: '#E8B48A', hair: 'quiff', hairColor: '#3A2A22', beard: 'stubble', outfit: 'tee', top: '#4C7FD0', glasses: 'none', acc: 'none', mood: 'grin', bg: 'shop', bgc: ['#FFE0C9', '#F1A98A'], prop: 'none', brow: 'up' } },
-  { id: 'hugo', name: 'Hugo', style: 'sweet', scenes: ['selfie', 'funny', 'pose', 'sport'],
+  { id: 'hugo', name: 'Hugo', style: 'sweet', scenes: ['selfie', 'funny', 'pose', 'sport', 'outfit'],
     openers: ['Ça fait longtemps, tu deviens quoi ?', 'Hello, j\'espère que tu passes une belle journée.', 'Je voulais te dire un truc gentil.', 'Je fais une pause, tu fais quoi ?', 'Alors, quoi de neuf ?', 'Un petit coucou avec un sourire.'],
     relances: ['Ça fait longtemps, tu deviens quoi ?', 'Je pensais à toi, ça fait un moment.', 'Un petit signe de vie de ma part.', 'Tu me racontes tes dernières nouvelles ?'],
     captions: { selfie: ['Un sourire du jour.', 'Petit selfie sans prétention.'], funny: ['Moi quand je réfléchis à quoi te dire.'], pose: ['Une pose, une seule.'], sport: ['Petit tour dehors.'] } },
@@ -83,6 +83,13 @@ export const REPLIES: ReplyChoice[] = [
 ];
 /** Scènes « torse nu » (illustrations humoristiques, non explicites). */
 export const BARE_SCENES: SceneId[] = ['mirror', 'tractor', 'abs', 'pose', 'bath', 'oops', 'haircut'];
+/** Légendes des scènes ajoutées (voiture, restaurant, tenue, animal), communes à tous quand le contact n'a pas les siennes. */
+export const GENERIC_CAPTIONS: Partial<Record<SceneId, string[]>> = {
+  car: ['Selfie dans la voiture, à l\'arrêt, promis.', 'Sur la route, je pensais à toi.', 'Feu rouge, selfie. C\'est le deal.'],
+  resto: ['Au restaurant, regarde ce plat.', 'Dîner du soir, tu aurais adoré.', 'Je teste un nouveau resto, avis demandé.'],
+  outfit: ['Ma tenue du jour, tu valides ?', 'Je me suis habillé pour l\'occasion. Verdict ?', 'Cinq minutes pour choisir cette tenue. Dis-moi que ça valait le coup.'],
+  pet: ['Mon petit compagnon, il pose mieux que moi.', 'Présentation officielle de ma mascotte.', 'Lui, c\'est le vrai chef de la maison.'],
+};
 
 /** Réponse du contact à un choix de Radia : 3 variantes par style. */
 export const ANSWERS: Record<Style, Record<string, string[]>> = {

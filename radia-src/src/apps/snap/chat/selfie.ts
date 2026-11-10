@@ -20,6 +20,10 @@ export const SCENE_LOOK: Record<SceneId, Partial<Look>> = {
   sport: { outfit: 'tank', bg: 'lake', bgc: ['#CFEAFB', '#7FB7E8'], prop: 'dumbbell', mood: 'proud' },
   funny: { outfit: 'tee', bg: 'room', bgc: ['#FFE6F0', '#F0A7C4'], prop: 'controller', mood: 'tongue' },
   selfie: { outfit: 'tee', bg: 'city', bgc: ['#DCE8FF', '#9CB4E8'], prop: 'none', mood: 'smile' },
+  car: { outfit: 'tee', bg: 'car', bgc: ['#CDE8FF', '#9ECF7A'], prop: 'none', mood: 'smile' },
+  resto: { outfit: 'shirt', bg: 'resto', bgc: ['#FFE9CF', '#F0A97A'], prop: 'plate', mood: 'grin' },
+  outfit: { outfit: 'blazer', bg: 'room', bgc: ['#F0E6FF', '#B9A2E8'], prop: 'none', mood: 'proud' },
+  pet: { outfit: 'tee', bg: 'room', bgc: ['#FFF0DA', '#F2B98A'], prop: 'dog', mood: 'smile' },
 };
 
 /** Apparence d'un contact : profil Tindeur (même personnage) ou apparence propre (Enzo). */
@@ -32,7 +36,7 @@ export function selfieCanvas(c: ChatContact, scene: SceneId): HTMLCanvasElement 
   const cv = makeCanvas(300 * SCALE, 400 * SCALE);
   const g = cv.getContext('2d')!; g.scale(SCALE, SCALE);
   const base = lookOf(c);
-  const sl = SCENE_LOOK[scene];
+  const sl = { ...SCENE_LOOK[scene], ...(scene === 'pet' ? { prop: ([...c.id].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 2 ? 'cat' : 'dog') as Look['prop'] } : {}) };
   // une tenue de scène « neutre » garde la couleur du haut du contact
   drawPortrait(g, { ...base, ...sl, top: base.top, glasses: scene === 'abs' || scene === 'tractor' ? 'none' : base.glasses, acc: scene === 'haircut' || scene === 'pose' || scene === 'bath' || scene === 'mirror' ? 'none' : base.acc });
   return cv;
@@ -43,12 +47,14 @@ export const selfieUrl = (contactId: string, scene: SceneId): string => {
 };
 
 /** Pastille ronde (visage) du contact. */
-export function faceUrl(contactId: string, size = 96): string {
+export type AvatarMood = Look['mood'];
+/** Avatar dessiné (même personnage que son profil Tindeur) avec une expression : sourire, clin d'œil, surpris, langue tirée… */
+export function faceUrl(contactId: string, size = 96, mood?: AvatarMood): string {
   const c = contactById(contactId); if (!c) return '';
-  return canvasUrl(`snp:face:${contactId}:${size}`, () => {
+  return canvasUrl(`snp:face:${contactId}:${size}${mood ? ':' + mood : ''}`, () => {
     const out = makeCanvas(size, size); const g = out.getContext('2d')!;
     const src = makeCanvas(300 * SCALE, 400 * SCALE); const sg = src.getContext('2d')!; sg.scale(SCALE, SCALE);
-    drawPortrait(sg, { ...lookOf(c), outfit: 'tee' });
+    drawPortrait(sg, { ...lookOf(c), outfit: 'tee', ...(mood ? { mood } : {}) });
     g.beginPath(); g.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); g.clip();
     g.drawImage(src, 52 * SCALE, 26 * SCALE, 196 * SCALE, 196 * SCALE, 0, 0, size, size);
     return out;

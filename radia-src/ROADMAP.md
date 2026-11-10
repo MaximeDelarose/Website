@@ -242,3 +242,10 @@ Contraintes : ne jamais afficher âge / origine ; ne pas associer personnalité 
 `update-e2e` · `transfer-e2e` · `board-gestures-e2e` · `chapters-gestures-e2e` · `stability-e2e` · `board-e2e` · `endless-e2e` · `overlay-check` ·
 `rewards-e2e` · `dressing-e2e` · `decor-e2e` · `casino-e2e` · `necklace-e2e` · `domain-e2e` · `career-e2e` · `tindeur-e2e` · `apps-e2e` · `world-e2e` · `chess-e2e`.
 Tests unitaires : `npx vitest run` (≈ 1240).
+
+## Conversations Tindeur & Snapchien (cerveau partagé) — FAIT
+- `src/apps/brain/` : 25 personnalités écrites à la main (`personas.ts`), banques de répliques (`banks.ts`), mémoire par personnage (`memory.ts`, sauvegardée dans `fun.apps.brain`, jamais mélangée entre personnages), moteur pur testé (`engine.ts`).
+- Prénom « Radia » avec parcimonie (jamais deux tours de suite), réactions à « divorcée, trois enfants » (révélé seulement quand Radia le dit), débats d'amitié, blagues ratées, mémoire/callbacks, relances (≥ 3 jours), éloignement, respect immédiat d'un refus.
+- Snapchien : présence (écrit… / présent / reste là / parti), états Envoyé · Reçu · Ouvert · Capture d'écran (seulement s'ils arrivent dans la simulation), snaps spontanés (selfie, miroir, sport, voiture, resto, tenue, animal), demandes de selfie (jamais intimes, une relance au plus, aucune photo réelle), flammes entretenues.
+- Tindeur : nœuds dynamiques `~…` (`apps/brain/tindeurNodes.ts`) régénérés depuis leur identifiant (anciennes sauvegardes valides), réponses « en plus » (famille, amitié, « Tu as Snapchien ? »), relance après 3 jours, éloignement, bulles « prénom / interjection ».
+- ⬜ Reste : question « célibataire / l'autre (Auguste) » de Hugo côté Tindeur (déjà présente côté Snapchien).

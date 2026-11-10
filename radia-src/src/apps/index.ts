@@ -7,7 +7,7 @@ import { ev } from '../events/api';
 import { save } from '../core/app';
 import { dbg } from '../core/debug';
 import { clipsIcon, snapIcon } from './icons';
-import { clipsState, snapState, persist, worldFans } from './store';
+import { brainState, clipsState, snapState, persist, worldFans } from './store';
 import { clipsBadge, snapBadge, defaultSnap, type SnapState } from './snap/model';
 import { defaultClips, type ClipsState } from './clips/model';
 import { assignInPlace } from './util';
@@ -56,7 +56,7 @@ if (typeof window !== 'undefined') {
   window.setInterval(() => {
     const now = Date.now(); const dt = Math.min(now - lastChatTick, 15_000); lastChatTick = now;
     if (document.hidden || dt <= 0) return;
-    const inc = advance(snapState().chat, dt, now, chatRng);
+    const inc = advance(snapState().chat, dt, now, chatRng, brainState());
     if (inc) { persist(); announceChat(inc); }
   }, 5000);
 }
@@ -78,6 +78,7 @@ dbg('apps', {
   /** Snapchien : état du chat et déclenchement manuel d'une arrivée (tests). */
   chat: {
     state: () => snapState().chat,
+    brain: () => brainState(),
     /** Fait arriver tout de suite un message / snap / vidéo d'un contact. */
     push: (id: string, kind: 'text' | 'snap' | 'video' = 'snap', scene?: string) => {
       const st = snapState().chat; const c = contactById(id); const cs = st.contacts[id]; if (!c || !cs) return null;
@@ -86,8 +87,8 @@ dbg('apps', {
       const msg = { id: `t${st.seq++}`, from: 'in' as const, kind, text: kind === 'text' ? c.openers[0] : cap, ...(kind === 'text' ? {} : { scene: sc, opened: false }), at: Date.now() };
       cs.msgs.push(msg); cs.unread++; cs.lastIn = msg.at; persist(); emitPhone(); return msg;
     },
-    tick: (ms: number) => { const inc = advance(snapState().chat, ms, Date.now(), chatRng); if (inc) { persist(); emitPhone(); } return inc; },
-    produce: () => { const st = snapState().chat; st.clock = Math.max(st.clock, st.nextAt); const inc = produce(st, Date.now(), chatRng); persist(); return inc; },
+    tick: (ms: number) => { const inc = advance(snapState().chat, ms, Date.now(), chatRng, brainState()); if (inc) { persist(); emitPhone(); } return inc; },
+    produce: () => { const st = snapState().chat; st.clock = Math.max(st.clock, st.nextAt); const inc = produce(st, Date.now(), chatRng, brainState()); persist(); return inc; },
   },
   reset: () => {
     assignInPlace(save.data.fun.apps.clips, defaultClips() as unknown as Record<string, unknown>);

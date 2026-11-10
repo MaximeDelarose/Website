@@ -51,7 +51,7 @@ async function openApp() {
 }
 async function closeApp() { await p.locator('.sw-app .sw-head .tdr-x').click(); await wait(500); if (await p.locator('.phh-quit').count()) { await p.locator('.phh-quit').click(); await wait(500); } } // fermer l'application ramène à l'accueil du téléphone ; on le quitte ensuite
 
-await p.goto(`http://localhost:${PORT}/?debug`);
+await p.goto(`http://localhost:${PORT}/?debug&statsDelay=999999999`);
 await wait(5500); await clean(6);
 
 // ------------------------------------------------------------------ 0. scène existante (2 500 matchs) conservée
@@ -127,16 +127,17 @@ check('liste des matchs : lignes + pastille « Nouveau »', (await p.locator('.s
 await sh('6-messages');
 await p.locator('.sw-row', { hasText: 'Hugo' }).click(); await p.waitForSelector('.sw-chat');
 await p.waitForSelector('.sw-ch', { timeout: 6000 }); await wait(400);
-check('chat : premier message de Hugo + choix', (await p.locator('.sw-b:not(.me)').first().textContent()).includes('Ravi du match') && (await p.locator('.sw-ch').count()) === 3);
+check('chat : premier message de Hugo + choix', (await p.locator('.sw-b:not(.me)').first().textContent()).includes('Ravi du match') && (await p.locator('.sw-ch').count()) >= 3);
 await sh('7-chat');
 let turns = 0;
 const picks = [1, 0, 2, 0, 1, 0];
 while (turns < 8) {
   await p.waitForSelector('.sw-ch, .sw-end', { timeout: 9000 });
   if (await p.locator('.sw-end').count()) break;
-  const n = await p.locator('.sw-ch').count();
+  const base = p.locator('.sw-ch').filter({ hasNotText: /^(Je suis divorcée|Je cherche surtout des amis|Tu as Snapchien)/ }); // sans les réponses « en plus »
+  const n = await base.count();
   if (turns === 1) { await p.locator('.sw-b.typing').count(); }
-  await p.locator('.sw-ch').nth(picks[turns] % n).click();
+  await base.nth(picks[turns] % n).click();
   if (turns === 0) { await wait(500); check('indicateur de frappe animé pendant que le match écrit', (await p.locator('.sw-b.typing').count()) === 1); await sh('8-frappe'); }
   turns++;
   await wait(400);
@@ -167,11 +168,12 @@ await p.locator('.sw-menu button', { hasText: 'Arrêter la conversation' }).clic
 check('arrêter la conversation : en pause, sans choix', (await p.locator('.sw-ch').count()) === 0 && (await p.locator('.sw-end').textContent()).includes('pause'));
 await p.locator('.sw-end .btn', { hasText: 'Reprendre' }).click(); await p.waitForSelector('.sw-ch'); await wait(300);
 check('reprendre : les choix reviennent', (await p.locator('.sw-ch').count()) >= 2);
+const matchesBefore = (await sw()).matches.length; const delId = await p.evaluate(() => { const n = document.querySelector('.sw-cname b').textContent; return n; });
 await p.locator('.sw-more').click();
 await p.locator('.sw-menu button.danger').click(); await wait(300);
 await p.locator('.sw-end .btn', { hasText: 'Supprimer' }).click(); await p.waitForSelector('.sw-chat', { state: 'detached', timeout: 5000 }).catch(() => undefined); await wait(300);
 const s4 = await sw();
-check('supprimer le match : conversation retirée', !s4.convos.clement && !s4.matches.includes('clement') && (await p.locator('.sw-chat').count()) === 0, `matchs restants ${s4.matches.length}`);
+check('supprimer le match : conversation retirée', s4.matches.length === matchesBefore - 1 && !JSON.stringify(s4.matches).toLowerCase().includes(delId.split(',')[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')) && (await p.locator('.sw-chat').count()) === 0, `matchs restants ${s4.matches.length}`);
 
 // ------------------------------------------------------------------ 6. notification de message (pendant que Radia joue ailleurs)
 await closeApp();
