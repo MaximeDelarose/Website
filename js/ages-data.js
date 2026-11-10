@@ -164,11 +164,11 @@
 
   /* ---------- THÈMES DE DÉCOR ---------- */
   var THEMES = {
-    prairie: { grass: [74, 118, 52], grass2: [96, 142, 62], rim: [58, 36, 18], road: [196, 146, 84], road2: [214, 166, 100], deco: "tree" },
-    desert:  { grass: [168, 148, 92], grass2: [190, 168, 108], rim: [92, 60, 32], road: [120, 84, 52], road2: [140, 100, 62], deco: "cactus" },
-    neige:   { grass: [208, 222, 232], grass2: [232, 240, 246], rim: [92, 110, 130], road: [140, 160, 176], road2: [160, 180, 196], deco: "pine" },
-    volcan:  { grass: [64, 56, 58], grass2: [86, 76, 76], rim: [24, 16, 16], road: [112, 52, 34], road2: [150, 74, 40], deco: "rock" },
-    canyon:  { grass: [138, 104, 64], grass2: [160, 122, 74], rim: [64, 38, 20], road: [96, 120, 128], road2: [118, 142, 150], deco: "rock" },
+    prairie: { grass: [134, 196, 62], grass2: [155, 216, 71], hi: [201, 240, 106], road: [233, 201, 140], road2: [244, 220, 166], cliff1: [185, 118, 58], cliff2: [138, 82, 38], deco: "tree" },
+    desert:  { grass: [236, 200, 110], grass2: [247, 217, 134], hi: [255, 238, 170], road: [196, 128, 78], road2: [214, 150, 96], cliff1: [176, 92, 52], cliff2: [120, 58, 34], deco: "cactus" },
+    neige:   { grass: [226, 241, 252], grass2: [244, 251, 255], hi: [255, 255, 255], road: [150, 196, 226], road2: [176, 216, 240], cliff1: [120, 168, 208], cliff2: [70, 110, 160], deco: "pine" },
+    volcan:  { grass: [92, 72, 96], grass2: [112, 90, 116], hi: [158, 132, 158], road: [168, 72, 48], road2: [212, 104, 52], cliff1: [64, 40, 56], cliff2: [36, 22, 36], deco: "rock" },
+    canyon:  { grass: [214, 142, 84], grass2: [232, 164, 100], hi: [250, 196, 130], road: [120, 158, 172], road2: [146, 186, 198], cliff1: [170, 84, 50], cliff2: [110, 50, 34], deco: "rock" },
   };
 
   /* ---------- AMÉLIORATIONS HORS PARTIE (acquises avec les étoiles) ---------- */

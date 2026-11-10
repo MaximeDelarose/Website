@@ -34,83 +34,84 @@
   function shadow(c, x, y, rx, ry, a) { c.save(); c.globalAlpha = a || 0.28; c.fillStyle = "#000"; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU); c.fill(); c.restore(); }
   function rgb(a) { return "rgb(" + (a[0] | 0) + "," + (a[1] | 0) + "," + (a[2] | 0) + ")"; }
 
-  /* ---------- terrain ---------- */
+  /* ---------- terrain : pelouse tondue à bandes, plateaux surélevés avec falaise de terre, contours francs ---------- */
+  var INK = [19, 23, 31];
+  function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
   function terrain(map) {
-    var th = D.THEMES[map.theme], W = map.W, H = map.H, w = map.w, h = map.h, S = 2;
-    var cw = w / S, ch = h / S, cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
-    var cx = cv.getContext("2d"), img = cx.createImageData(cw, ch), d = img.data;
-    var tiles = map.tiles;
+    var th = D.THEMES[map.theme], W = map.W, H = map.H, w = map.w, h = map.h;
+    var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    var cx = cv.getContext("2d"), img = cx.createImageData(w, h), d = img.data, tiles = map.tiles, CLIFF = 11;
     function tt(tx, ty) { return (tx < 0 || ty < 0 || tx >= W || ty >= H) ? 1 : (tiles[ty * W + tx] === 1 ? 1 : 0); }
-    for (var py = 0; py < ch; py++) {
-      for (var px = 0; px < cw; px++) {
-        var wx = px * S, wy = py * S, tx = (wx / T) | 0, ty = (wy / T) | 0, road = tt(tx, ty) === 1;
-        var lx = wx - tx * T, ly = wy - ty * T;
-        // distance au bord de la zone (en pixels de monde) vers un voisin de type différent, avec bruit pour un bord irrégulier
-        var dmin = 99, j = vnoise(wx / 9, wy / 9, 3) * 4 - 2;
-        if (tt(tx - 1, ty) !== (road ? 1 : 0)) dmin = Math.min(dmin, lx + j);
-        if (tt(tx + 1, ty) !== (road ? 1 : 0)) dmin = Math.min(dmin, T - 1 - lx + j);
-        if (tt(tx, ty - 1) !== (road ? 1 : 0)) dmin = Math.min(dmin, ly + j);
-        if (tt(tx, ty + 1) !== (road ? 1 : 0)) dmin = Math.min(dmin, T - 1 - ly + j);
-        // coins
-        if (dmin > 90) {
+    for (var py = 0; py < h; py++) {
+      var ty = (py / T) | 0, ly = py - ty * T;
+      for (var px = 0; px < w; px++) {
+        var tx = (px / T) | 0, lx = px - tx * T, road = tt(tx, ty) === 1, me = road ? 1 : 0;
+        var j = vnoise(px / 11, py / 11, 3) * 3 - 1.5;
+        var dW = tt(tx - 1, ty) !== me ? lx + j : 99, dE = tt(tx + 1, ty) !== me ? T - 1 - lx + j : 99, dN = tt(tx, ty - 1) !== me ? ly + j : 99, dS = tt(tx, ty + 1) !== me ? T - 1 - ly + j : 99;
+        var dmin = Math.min(dW, dE, dN, dS);
+        if (dmin > 90) { // coins
           var cs = [[-1, -1, lx, ly], [1, -1, T - 1 - lx, ly], [-1, 1, lx, T - 1 - ly], [1, 1, T - 1 - lx, T - 1 - ly]];
-          for (var k = 0; k < 4; k++) if (tt(tx + cs[k][0], ty + cs[k][1]) !== (road ? 1 : 0)) dmin = Math.min(dmin, Math.sqrt(cs[k][2] * cs[k][2] + cs[k][3] * cs[k][3]) + j);
+          for (var k = 0; k < 4; k++) if (tt(tx + cs[k][0], ty + cs[k][1]) !== me) dmin = Math.min(dmin, Math.sqrt(cs[k][2] * cs[k][2] + cs[k][3] * cs[k][3]) + j);
         }
-        var n1 = vnoise(wx / 14, wy / 14, 1), n2 = vnoise(wx / 4, wy / 4, 2), n3 = hash(px, py, 5);
-        var col;
-        if (road) {
-          var m = n1 * 0.6 + n2 * 0.4;
-          col = [th.road[0] + (th.road2[0] - th.road[0]) * m, th.road[1] + (th.road2[1] - th.road[1]) * m, th.road[2] + (th.road2[2] - th.road[2]) * m];
-          if (n3 > 0.93) { col[0] *= 0.84; col[1] *= 0.84; col[2] *= 0.84; } else if (n3 < 0.04) { col[0] *= 1.12; col[1] *= 1.12; col[2] *= 1.1; }
-          if (dmin < 10) { var sh = 1 - (1 - dmin / 10) * 0.42; col[0] *= sh; col[1] *= sh; col[2] *= sh; }   // ombre de la falaise
+        var n1 = vnoise(px / 40, py / 40, 1), sp = hash(px, py, 5), col;
+        if (!road) {
+          col = mix(th.grass, th.grass2, n1 * 0.5 + 0.25);
+          if (ty & 1) { col = [col[0] * 1.055, col[1] * 1.055, col[2] * 1.05]; }   // bandes de tonte
+          if (sp > 0.985) col = mix(col, th.hi, 0.5); else if (sp < 0.01) col = [col[0] * 0.9, col[1] * 0.92, col[2] * 0.9];
+          if (dmin < 2.2) col = INK; else if (dmin < 5) col = mix(col, th.hi, 0.75 - (dmin - 2.2) * 0.15); else if (dmin < 9) col = mix(col, th.grass, 0.18);
         } else {
-          var g = n1 * 0.55 + n2 * 0.45;
-          col = [th.grass[0] + (th.grass2[0] - th.grass[0]) * g, th.grass[1] + (th.grass2[1] - th.grass[1]) * g, th.grass[2] + (th.grass2[2] - th.grass[2]) * g];
-          if (n3 > 0.9) { col[0] *= 0.82; col[1] *= 0.86; col[2] *= 0.82; } else if (n3 < 0.05) { col[0] *= 1.14; col[1] *= 1.12; col[2] *= 1.1; }
-          if (dmin < 2.6) { col = [th.rim[0], th.rim[1], th.rim[2]]; }
-          else if (dmin < 4.4) { col = [th.rim[0] * 1.45 + 14, th.rim[1] * 1.4 + 10, th.rim[2] * 1.35 + 6]; }
-          else if (dmin < 7) { var q = 0.9 + (dmin - 4.4) * 0.04; col[0] *= q; col[1] *= q; col[2] *= q; }
+          col = mix(th.road, th.road2, n1 * 0.7 + 0.15);
+          if (sp > 0.97) col = mix(col, th.road2, 0.7); else if (sp < 0.03) col = [col[0] * 0.88, col[1] * 0.88, col[2] * 0.88];
+          var north = tt(tx, ty - 1) === 0 ? ly + j : 99; // mur de falaise : l'herbe est au nord, plus haut
+          if (north < CLIFF) {
+            if (north < 2) col = INK;
+            else { var bt = (north - 2) / (CLIFF - 2), cc = mix(th.cliff1, th.cliff2, bt); if (((py + ((px >> 3) % 3) * 2) % 5) === 0) cc = [cc[0] * 0.85, cc[1] * 0.85, cc[2] * 0.85]; if (hash(px >> 1, py, 9) > 0.96) cc = mix(cc, th.cliff1, 0.6); col = cc; }
+          } else {
+            var ds = Math.min(dW, dE, dS);
+            if (ds < 2) col = INK; else if (ds < 11) { var sh = 1 - (1 - ds / 11) * 0.3; col = [col[0] * sh, col[1] * sh, col[2] * sh]; }
+            if (north < CLIFF + 8) { var sh2 = 1 - (1 - (north - CLIFF) / 8) * 0.28; col = [col[0] * sh2, col[1] * sh2, col[2] * sh2]; }
+          }
         }
-        var o = (py * cw + px) * 4; d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255;
+        var o = (py * w + px) * 4; d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255;
       }
     }
     cx.putImageData(img, 0, 0);
-    var out = document.createElement("canvas"); out.width = w; out.height = h;
-    var oc = out.getContext("2d"); oc.imageSmoothingEnabled = false; oc.drawImage(cv, 0, 0, w, h);
-    // décor : touffes, fleurs, cailloux sur l'herbe ; obstacles sur les cases bloquées
-    var rnd = C.rng32(map.W * 31 + map.H * 7 + map.theme.length);
-    var gtufts = { prairie: "#3d6b2a", desert: "#8a7a3a", neige: "#a9bccb", volcan: "#3a2e30", canyon: "#6e5230" }[map.theme];
+    // décor
+    var rnd = C.rng32(map.W * 31 + map.H * 7 + map.theme.length), pal = TUFT[map.theme];
     for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
       var t = tiles[y * W + x];
-      if (t === 1) {
-        for (var r = 0; r < 3; r++) if (rnd() < 0.5) { var rx = x * T + rnd() * T, ry = y * T + rnd() * T; circ(oc, rx, ry, 0.8 + rnd() * 1.4, "rgba(70,40,20,.35)"); }
-        continue;
-      }
-      if (t === 2) { oc.save(); decorBlock(oc, map.theme, x * T + T / 2, y * T + T / 2, rnd); oc.restore(); continue; }
-      var cnt = rnd() < 0.5 ? 2 : 1;
-      for (var q2 = 0; q2 < cnt; q2++) {
-        var ux = x * T + 4 + rnd() * (T - 8), uy = y * T + 5 + rnd() * (T - 8), kind = rnd();
-        if (kind < 0.55) { line(oc, ux, uy, ux - 2, uy - 5, gtufts, 1.6); line(oc, ux, uy, ux + 1, uy - 6, gtufts, 1.6); line(oc, ux, uy, ux + 3, uy - 4, gtufts, 1.6); }
-        else if (kind < 0.8 && map.theme === "prairie") { circ(oc, ux, uy, 1.6, rnd() < 0.5 ? "#f6f1d0" : "#f3d34f"); }
-        else if (kind < 0.9) { circ(oc, ux, uy, 2.4, "rgba(40,30,20,.45)"); circ(oc, ux - 0.5, uy - 1, 2, "#9a968a"); }
+      if (t === 1) continue;
+      if (t === 2) { cx.save(); decorBlock(cx, map.theme, x * T + T / 2, y * T + T / 2, rnd); cx.restore(); continue; }
+      if (rnd() < 0.55) {
+        var ux = x * T + 5 + rnd() * (T - 10), uy = y * T + 7 + rnd() * (T - 12), kind = rnd();
+        if (kind < 0.5) { for (var b2 = -1; b2 <= 1; b2++) { cx.beginPath(); cx.moveTo(ux + b2 * 2, uy); cx.quadraticCurveTo(ux + b2 * 3, uy - 4, ux + b2 * 4.5, uy - 6); cx.strokeStyle = pal[0]; cx.lineWidth = 1.7; cx.lineCap = "round"; cx.stroke(); } }
+        else if (kind < 0.8) { var fc = pal[1 + ((rnd() * 3) | 0)]; for (var q = 0; q < 5; q++) { var qa = q * TAU / 5; circ(cx, ux + Math.cos(qa) * 2.2, uy + Math.sin(qa) * 2.2, 1.6, fc); } circ(cx, ux, uy, 1.5, "#ffe36a"); }
+        else { circ(cx, ux, uy + 1.5, 3.4, "rgba(0,0,0,.18)"); circ(cx, ux, uy, 3.2, pal[4], "#13171f", 1.2); circ(cx, ux - 1, uy - 1, 1.1, "#ffffffaa"); }
       }
     }
-    return out;
+    return cv;
   }
+  var TUFT = { prairie: ["#4f9a2c", "#ffffff", "#ffd23f", "#ff8aa8", "#b9b4a6"], desert: ["#b89a3a", "#ffffff", "#ff8a70", "#ffd23f", "#d2a86a"], neige: ["#8fb8d8", "#ffffff", "#c9ecff", "#ffffff", "#c9d6e4"], volcan: ["#4a3a50", "#ff8a40", "#ffd23f", "#ff6a2a", "#6a5a70"], canyon: ["#b4682a", "#ffe3b0", "#ffd23f", "#ffffff", "#c89a7a"] };
   function decorBlock(c, theme, x, y, rnd) {
-    var a = rnd() * 0.5;
-    shadow(c, x + 3, y + 9, 12, 5, 0.3);
+    var INKC = "#13171f";
+    shadow(c, x + 3, y + 10, 13, 5, 0.28);
     if (theme === "prairie") {
-      circ(c, x, y - 2, 13, "#2f5d25", OUT, 1.5); circ(c, x - 4, y - 6, 8, "#3f7a30"); circ(c, x + 4, y - 3, 6, "#468a35"); circ(c, x - 5, y - 8, 3, "#6bb04a");
-      rect(c, x - 2, y + 8, 4, 5, "#5b3b1f");
+      rect(c, x - 2.5, y + 4, 5, 9, "#8a5226", INKC, 1.4);
+      circ(c, x, y - 1, 13.5, "#3f9a3a", INKC, 1.8); circ(c, x - 6, y + 2, 8.5, "#3f9a3a", INKC, 1.6); circ(c, x + 6, y + 2, 8.5, "#3f9a3a", INKC, 1.6); circ(c, x, y - 1, 12, "#4fb644");
+      circ(c, x - 4, y - 6, 6, "#7fdc5a"); circ(c, x + 4, y - 1, 3.4, "#9be86a"); circ(c, x - 5, y - 8, 2, "#d6ffa8");
+      if (rnd() < 0.5) circ(c, x + 5, y + 3, 2, "#ff5a4a", INKC, 0.8);
     } else if (theme === "desert") {
-      rect(c, x - 3, y - 11, 6, 22, "#4f8a3a", OUT, 1.5); rect(c, x - 10, y - 4, 4, 9, "#4f8a3a", OUT, 1.5); rect(c, x - 10, y + 2, 8, 3, "#4f8a3a", OUT, 1); rect(c, x + 6, y - 7, 4, 9, "#4f8a3a", OUT, 1.5); rect(c, x + 2, y - 1, 8, 3, "#4f8a3a", OUT, 1);
+      rect(c, x - 3.5, y - 12, 7, 24, "#4fae4a", INKC, 1.6); rect(c, x - 11, y - 4, 4.5, 10, "#4fae4a", INKC, 1.6); rect(c, x - 11, y + 2, 9, 4, "#4fae4a", INKC, 1.4); rect(c, x + 6.5, y - 8, 4.5, 10, "#4fae4a", INKC, 1.6); rect(c, x + 2, y - 2, 9, 4, "#4fae4a", INKC, 1.4);
+      rect(c, x - 1.5, y - 10, 2, 18, "#8be07a"); circ(c, x, y - 13, 2.6, "#ff7aa8", INKC, 1);
     } else if (theme === "neige") {
-      poly(c, [x, y - 15, x - 11, y + 4, x + 11, y + 4], "#2d6b4a", OUT, 1.5); poly(c, [x, y - 8, x - 13, y + 11, x + 13, y + 11], "#3a8160", OUT, 1.5); poly(c, [x, y - 15, x - 5, y - 8, x + 5, y - 8], "#f4f8ff");
+      rect(c, x - 2, y + 6, 4, 6, "#8a5226", INKC, 1.2);
+      poly(c, [x, y - 16, x - 11, y - 2, x + 11, y - 2], "#2f9a6a", INKC, 1.6); poly(c, [x, y - 8, x - 14, y + 8, x + 14, y + 8], "#3fb47c", INKC, 1.6);
+      poly(c, [x, y - 16, x - 5, y - 9, x + 5, y - 9], "#ffffff"); poly(c, [x, y - 8, x - 8, y - 1, x + 8, y - 1], "rgba(255,255,255,.9)");
     } else {
-      poly(c, [x - 12, y + 6, x - 9, y - 6, x - 1, y - 11, x + 8, y - 7, x + 12, y + 5, x + 2, y + 10], theme === "volcan" ? "#4a3c3c" : "#8a6a44", OUT, 1.5);
-      poly(c, [x - 8, y - 3, x - 1, y - 9, x + 5, y - 5, x, y], theme === "volcan" ? "#6a5a58" : "#b08a5c");
-      if (theme === "volcan" && a > 0.25) circ(c, x + 4, y + 2, 2.2, "#ff6a2a");
+      var rock = theme === "volcan" ? ["#3a2c3e", "#5a4660", "#8a7090"] : ["#b4682a", "#d88a48", "#f4b878"];
+      poly(c, [x - 13, y + 7, x - 10, y - 6, x - 1, y - 12, x + 9, y - 8, x + 13, y + 5, x + 3, y + 11], rock[0], INKC, 1.8);
+      poly(c, [x - 9, y - 2, x - 1, y - 9, x + 7, y - 5, x, y + 1], rock[1]); poly(c, [x - 6, y - 4, x - 1, y - 8, x + 2, y - 6, x - 3, y - 2], rock[2]);
+      if (theme === "volcan") { line(c, x - 2, y + 2, x + 4, y + 8, "#ff6a2a", 1.8); line(c, x + 4, y + 8, x + 8, y + 5, "#ffb347", 1.4); }
     }
   }
 
