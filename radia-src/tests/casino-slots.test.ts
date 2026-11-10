@@ -83,7 +83,7 @@ describe('multi-tirage = même fonction pure', () => {
     const r = new SlotsRun(L, 10, 10); expect(r.canStart()).toBe(true);
     const poor = new SlotsRun(L, 10, 10); L.b = 99; expect(poor.canStart()).toBe(false);
     expect(poor.next(rng)).toBeNull(); expect(L.b).toBe(99); expect(poor.summary().played).toBe(0);
-    const big = new SlotsRun(ledger(100000), 200, 10); expect(big.canStart()).toBe(false); // 2000 > plafond
+    const big = new SlotsRun(ledger(5e6), 200000, 10); expect(big.canStart()).toBe(false); // 2 000 000 > plafond absolu
     expect(new SlotsRun(ledger(1e6), 10, 99).count).toBe(10);
     expect(new SlotsRun(ledger(1e6), 15, 1).canStart()).toBe(false); // pas multiple du pas
   });

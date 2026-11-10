@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PROFILES, nodeOf, profileById } from '../src/events/tindeur/swipe/data';
+import { PROFILES, authoredNode as nodeOf, profileById } from '../src/events/tindeur/swipe/data';
 import type { Profile } from '../src/events/tindeur/swipe/types';
 
 /** Longueurs (en messages entrants) de tous les chemins ; lève si cycle ou cul-de-sac. */

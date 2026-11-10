@@ -5,6 +5,8 @@ import type { PhotoRec } from '../events/types';
 import { sanitizeInPlace as sanClips, stateBytes, MAX_MINE, type ClipsState } from './clips/model';
 import { sanitizeInPlace as sanSnap, type SnapState } from './snap/model';
 import type { CatOpts } from '../game/art/world/cat';
+import { sanitizeBrain } from './brain/memory';
+import type { BrainState } from './brain/types';
 
 const seen = new WeakSet<object>();
 export function clipsState(): ClipsState {
@@ -16,6 +18,12 @@ export function snapState(): SnapState {
   const raw = save.data.fun.apps.snap;
   if (!seen.has(raw)) { sanSnap(raw); seen.add(raw); }
   return raw as unknown as SnapState;
+}
+/** Mémoire de conversation des personnages (Tindeur ET Snapchien : un seul cerveau, une seule mémoire par personnage). */
+export function brainState(): BrainState {
+  const raw = save.data.fun.apps.brain as Record<string, unknown>;
+  if (!seen.has(raw)) { const clean = sanitizeBrain(raw); for (const k of Object.keys(raw)) delete raw[k]; Object.assign(raw, clean); seen.add(raw); }
+  return raw as unknown as BrainState;
 }
 /** Sauvegarde, en gardant les deux modules très en dessous de 400 Ko. */
 export function persist(): void {

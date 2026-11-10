@@ -512,25 +512,38 @@
     if (rec) { best = score; store("merger-best-" + diff, String(best)); }
     beep(300, 0.3, "sawtooth", 0.05); beep(200, 0.4, "sawtooth", 0.05, 0.2);
     var lbOk = window.Leaderboard && Leaderboard.configured() && score > 0;
+    var account = lbOk ? Leaderboard.accountName() : "";
     var name = String(load("merger-name", ""));
     show('<h2>' + (rec ? "Nouveau record !" : "Le bac déborde !") + '</h2>' +
       '<p>Score : <strong>' + score.toLocaleString("fr-FR") + '</strong> · difficulté ' + diff + '/' + N + '</p>' +
       '<p class="game-small">' + cleared + ' écureuils envoyés gambader</p>' +
-      (lbOk ? '<form class="submit-score" data-submit><label for="mg-name">Ton pseudo pour le classement</label><div class="submit-row">' +
+      (lbOk && !account ? '<form class="submit-score" data-submit><label for="mg-name">Ton pseudo pour le classement</label><div class="submit-row">' +
         '<input id="mg-name" type="text" maxlength="20" minlength="2" required autocomplete="nickname" value="' + esc(name) + '">' +
         '<button class="btn btn-alt btn-small" type="submit">Envoyer</button></div><p class="game-small" data-submit-msg aria-live="polite"></p></form>' : "") +
       '<p><button class="btn" type="button" data-act="start">↻ Rejouer</button> <button class="btn btn-ghost" type="button" data-act="menu">Menu</button></p>');
+    function sendScore(n, msg, btn) {
+      if (msg) msg.textContent = "Envoi…";
+      if (btn) btn.disabled = true;
+      Leaderboard.submit(GAME_ID, n, score, { diff: diff, cleared: cleared }).then(function (res) {
+        if (msg) msg.textContent = "Envoyé ! " + (res && res.rank ? "Tu es " + res.rank + (res.rank === 1 ? "er" : "e") + "." : "");
+        document.querySelectorAll('[data-leaderboard="' + GAME_ID + '"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
+      }).catch(function (err) { if (msg) msg.textContent = Leaderboard.message(err); if (btn) btn.disabled = false; });
+    }
+    if (lbOk && account) {
+      // connecté : le score part tout seul, avec le pseudo du compte
+      var note = document.createElement("p");
+      note.className = "game-small"; note.setAttribute("aria-live", "polite");
+      note.textContent = "Classement : " + account + " · envoi…";
+      var sc = card.querySelector("p strong"); if (sc && sc.parentNode) sc.parentNode.insertAdjacentElement("afterend", note);
+      sendScore(account, note, null);
+    }
     var form = card.querySelector("[data-submit]");
     if (form) form.addEventListener("submit", function (e) {
       e.preventDefault();
       var input = form.querySelector("input"), btn = form.querySelector("button"), msg = form.querySelector("[data-submit-msg]");
       var n = input.value.trim();
       store("merger-name", n);
-      btn.disabled = true; msg.textContent = "Envoi…";
-      Leaderboard.submit(GAME_ID, n, score, { diff: diff, cleared: cleared }).then(function (res) {
-        msg.textContent = "Envoyé ! " + (res && res.rank ? "Tu es " + res.rank + (res.rank === 1 ? "er" : "e") + "." : "");
-        document.querySelectorAll('[data-leaderboard="' + GAME_ID + '"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
-      }).catch(function (err) { msg.textContent = Leaderboard.message(err); btn.disabled = false; });
+      sendScore(n, msg, btn);
     });
   }
 

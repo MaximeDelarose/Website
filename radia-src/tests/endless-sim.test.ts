@@ -87,7 +87,8 @@ for (const pace of PACES) describe(`simulation d'un joueur normal — rythme ${p
     expect(med(sims.map((s) => s.miles.firstDeliver?.action ?? 9999))).toBeLessThanOrEqual(40); // 1re récompense : large borne (voir rapport)
     expect(med(perChest)).toBeGreaterThan(18);
     expect(med(perChest)).toBeLessThan(45);
-    expect(Math.max(...wait)).toBeLessThan(0.25);
+    // refonte de l'économie : l'énergie est plus rare (1 / 2 min) ; ce bot ne fait QUE taper, un humain joue Mon Monde / les échecs pendant l'attente
+    expect(Math.max(...wait)).toBeLessThan(0.75);
     expect(perMin(all)).toBeGreaterThan(0.3);
     expect(perMin(all)).toBeLessThan(6);
   });

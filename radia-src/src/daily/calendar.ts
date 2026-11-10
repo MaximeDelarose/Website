@@ -7,6 +7,7 @@
  * Joueuse au milieu d'un cycle : l'état `fun.daily` (cycle, jour, jours cochés) est inchangé ; elle continue au même jour
  * et reçoit simplement le contenu actualisé des jours restants (`migrateDaily` ne fait que rendre l'état cohérent).
  */
+import { dupCoins } from '../data/world/prices';
 import { CLOTHES } from '../data/world/wardrobe';
 import { FURNITURE } from '../data/world/furniture';
 import { FLOWER_NAMES, RES_NAMES, type ClothId, type FlowerId, type FurnitureId, type ResKind } from '../data/world/ids';
@@ -148,11 +149,11 @@ export function resolveDay(cycle: number, day: number, own: Ownership): Resolved
     if (p.t === 'cloth') {
       const id = p.pick.find((c) => !own.cloth(c) && !taken.has(c));
       if (id) { taken.add(id); return { t: 'cloth', id }; }
-      return { t: 'dup', n: Math.max(50, Math.floor((CLOTHES[p.pick[0]]?.coins ?? 100) / 2)), name: CLOTHES[p.pick[0]]?.name ?? 'Pièce' };
+      return { t: 'dup', n: dupCoins(CLOTHES[p.pick[0]]?.coins ?? 100, 50), name: CLOTHES[p.pick[0]]?.name ?? 'Pièce' };
     }
     const id = p.pick.find((f) => own.furn(f) === 0 && !taken.has(f));
     if (id) { taken.add(id); return { t: 'furn', id }; }
-    return { t: 'dup', n: Math.max(50, Math.floor((FURNITURE[p.pick[0]]?.price ?? 100) / 2)), name: FURNITURE[p.pick[0]]?.name ?? 'Meuble' };
+    return { t: 'dup', n: dupCoins(FURNITURE[p.pick[0]]?.price ?? 100, 50), name: FURNITURE[p.pick[0]]?.name ?? 'Meuble' };
   });
 }
 

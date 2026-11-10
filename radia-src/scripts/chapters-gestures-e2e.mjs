@@ -3,7 +3,7 @@
 // Partie NEUVE → tutoriel du chapitre 1 → touchers de générateur, glissés, fusions, toucher annulé, retour au menu, relances.
 import { chromium } from 'playwright';
 const PORT = process.env.PORT ?? 4190;
-const URL = `http://localhost:${PORT}/?debug`;
+const URL = `http://localhost:${PORT}/?debug&statsDelay=999999999`;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
 const results = []; const errors = []; let tag = '';
 const check = (name, ok, detail = '') => { const l = `${ok ? 'OK ' : 'KO '} [${tag}] ${name}${detail ? ` — ${detail}` : ''}`; results.push({ ok: !!ok, l }); console.log(l); };

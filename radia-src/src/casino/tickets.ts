@@ -14,11 +14,11 @@ export const TICKET = { one: 'ticket', many: 'tickets' } as const;
 export const ticketsLabel = (n: number): string => `${n.toLocaleString('fr-FR')} ${n === 1 ? TICKET.one : TICKET.many}`;
 
 export type TicketSource =
-  | 'welcome' | 'daily' | 'wheel' | 'mission' | 'challenge' | 'endless' | 'achievement' | 'event' | 'progress' | 'refill' | 'debug';
+  | 'welcome' | 'daily' | 'wheel' | 'mission' | 'challenge' | 'endless' | 'achievement' | 'event' | 'progress' | 'refill' | 'exchange' | 'debug';
 
 /** Plafonds journaliers (par jour local) des sources « ouvertes » à d'autres modules, pour garder une économie sage. */
-export const DAILY_CAPS: Partial<Record<TicketSource, number>> = { endless: 400, event: 600, progress: 600, challenge: 200 };
-export const SOURCES: readonly TicketSource[] = ['welcome', 'daily', 'wheel', 'mission', 'challenge', 'endless', 'achievement', 'event', 'progress', 'refill', 'debug'];
+export const DAILY_CAPS: Partial<Record<TicketSource, number>> = { endless: 400, event: 600, progress: 600, challenge: 200, exchange: 100 };
+export const SOURCES: readonly TicketSource[] = ['welcome', 'daily', 'wheel', 'mission', 'challenge', 'endless', 'achievement', 'event', 'progress', 'refill', 'exchange', 'debug'];
 
 /** Raisons libres (ancien `grantChips(n, 'roue du jour')`) → source. Inconnu = « event » (plafonné). */
 export function sourceOf(reason: string): TicketSource {

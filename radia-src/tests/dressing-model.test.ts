@@ -174,13 +174,14 @@ describe('parcours complet sans perte de données', () => {
     expect(JSON.stringify(save.data.world)).toBe(snap);
   });
   it('acheter débite le prix exact, puis équiper : rien de perdu, la pièce est possédée', () => {
-    w().res.coins = 1000; w().res.fabric = 50;
+    w().res.coins = 5000; w().res.fabric = 50;
+    const price = W.priceOf('dr-flowy-floral').coins; // la courbe de prix (data/world/prices.ts) fixe le montant
     const ownedBefore = [...w().wardrobe.owned];
     const t = new TryOn(env());
     t.select('dr-flowy-floral');
     expect(t.action()).toBe('buy');
     expect(W.buy('dr-flowy-floral', 'coins').ok).toBe(true);
-    expect(w().res.coins).toBe(1000 - 260);
+    expect(w().res.coins).toBe(5000 - price);
     expect(w().res.fabric).toBe(50 - 4);
     expect(W.equip('dr-flowy-floral').ok).toBe(true);
     t.committed('dr-flowy-floral');

@@ -27,8 +27,8 @@ describe('jetons : allocation, bring, mises', () => {
   });
   it('mise validée avant la manche, jamais de solde négatif', () => {
     const s = fresh(); grant(s, 100); setBring(s, 100);
-    expect(canBet(s, 'roulette', 5)).toBe(true);
-    expect(canBet(s, 'roulette', 4)).toBe(false);
+    expect(canBet(s, 'roulette', 10)).toBe(true);
+    expect(canBet(s, 'roulette', 9)).toBe(false);
     expect(canBet(s, 'slots', 5)).toBe(false);
     expect(canBet(s, 'blackjack', 200)).toBe(false);
     expect(canBet(s, 'roulette', 2.5)).toBe(false);
@@ -43,7 +43,8 @@ describe('jetons : allocation, bring, mises', () => {
     const s = fresh(); grant(s, 5000); setBring(s, 5000);
     for (const g of ['roulette', 'slots', 'blackjack'] as const) {
       expect(canBet(s, g, LIMITS[g].min)).toBe(true);
-      expect(canBet(s, g, LIMITS[g].max)).toBe(true);
+      expect(LIMITS[g].max).toBeGreaterThan(1000); // plus de plafond fixe à 1 000 : la mise dépend de la richesse (bank.ts)
+      expect(canBet(s, g, 5000)).toBe(true);
       expect(canBet(s, g, LIMITS[g].max + 1)).toBe(false);
     }
   });

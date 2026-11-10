@@ -16,6 +16,7 @@ export const SYMBOLS: readonly SymDef[] = [
   { id: 'diamond', name: 'Diamant', weight: 3, triple: 500, pair: 0 },
 ];
 export const TOTAL_WEIGHT = SYMBOLS.reduce((a, s) => a + s.weight, 0);
-export const BET_STEPS = [10, 20, 50, 100, 200] as const;
+/** Mises par tirage, en PIÈCES. */
+export const BET_STEPS = [50, 100, 250, 500, 1000, 2500, 5000, 10000] as const;
 export const DRAW_COUNTS = [1, 5, 10] as const;
 export const MAX_MULTI = 10;

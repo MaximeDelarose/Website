@@ -37,6 +37,17 @@ Légende : ✅ terminé et testé · 🟡 partiel (précisé) · ⬜ pas commenc
    - Reste : suivi d'activité côté jeu (visibilité, inactivité 60 s, battement ≈ 45 s, `pagehide`), consentement + info claire + désactiver/consulter/supprimer dans Réglages, page admin `radia-admin.html` hors menu, tests (Safari/PWA émulés, changements de réseau, fermeture brutale), présentation « estimé » du temps de jeu.
    - Principes : aucune conversation / message / position collectés ; une session ne prouve pas que c'est Radia → identification explicite et consentie par appareil ; temps de jeu = ESTIMÉ à partir de la dernière activité connue (iPhone ne permet pas de détecter une fermeture brutale).
 
+## SÉRIE « REFONTE DU MODE LIBRE · ÉCONOMIE · CASINO · TABLEAU DE BORD DE PROGRESSION » (voir docs/BALANCING.md)
+- ✅ P0 : fin du didacticiel Mode Reine (blocage + superposition) corrigée, test e2e 43/43.
+- ✅ Économie resserrée (énergie, pièces, combos, cadeau d'Auguste quotidien), migration sans perte.
+- ✅ PIMBÊCHE : tous les savons au lait de chèvre ; atelier dès 3 commandes ; 1re commande de savon garantie ; 13 améliorations achetables en pièces (atelier, recettes, emballages) à effets réels ; objectif d'épargne ; remerciements de clients.
+- ✅ Niveau + XP de Radia (pastille + jauge ; toucher = boutique PIMBÊCHE) ; objectif long « niveau de Radia ».
+- ✅ Casino en PIÈCES (portefeuille unique, mises 100 → 10 000+, maximum = moitié de la bourse), tickets = ressource rare : privilèges (tenues, décors, cadeaux, soirée), caisse d'échange pièces → tickets (100 = 10, 100 tickets/jour).
+- ✅ Courbe de prix (premiers achats inchangés, puis ×2 / ×3, prestige 4 000 → 12 000), « il te manque X pièces (≈ N commandes) ».
+- ✅ Plateau plein : conseil à 80 %, vente avec confirmation, objets précieux / utiles protégés ; indices de fusion fixes en mouvement réduit.
+- ✅ Tableau de bord administrateur v2026-11-09-a : histoire (chapitre, niveau, objectif, % ), XP, résumé de session, mode libre, PIMBÊCHE, Mon Monde, temps actif par mode, évolution 7/30 jours, historique des chapitres et des sessions ; réglage distinct « Partager ma progression de jeu ♡ » ; Supabase : tables verrouillées, RPC à secret d'appareil, administrateurs seulement, suppression par la fonction Edge (progress-forget).
+- ⬜ Reste à faire : récompenses de tickets supplémentaires (collections limitées), liens Mon Monde (niveau → meubles, commande exceptionnelle → cadeau de famille), objectifs hebdomadaires, fidélité du casino, variantes visuelles de savons (illustrations dédiées), vérification sur un vrai iPhone.
+
 ## SÉRIE « COMBOS · PENSÉES · FINITION DE RADIA · STATISTIQUES » (dernières demandes)
 1. ✅ **Combos sans pop-ups** (Chapitres + Endless) : indicateur unique « Combo x3 ! / Super combo x10 ! » dans une bande RÉSERVÉE au-dessus de la grille (la grille rétrécit si la place manque ; jamais sur les cases), points de la chaîne additionnés dedans, plus de « +N » flottants pendant un combo. `game/fx/comboState.ts` : un combo est actif 3 s (= fenêtre du moteur) ; pendant combo OU glissement/animation : aucune notice (`notify` bloqué + `dismissLive` à l'ouverture du combo), pas de bulle d'Auguste (`bark` différé, la plus importante est dite une fois), pas d'invitation surprise (`safeToNotify`), gains/annonces d'Endless regroupés en UNE pastille, récap unique en chapitres (+ historique `noticeHistory`). Toasts : 1 à la fois (les autres attendent). Effets qui montent avec le combo (particules +50 % max, anneau, confettis, haptique 3/5/8/10/15), réduction d'animations respectée. Tests : `combo-state` (9), `scripts/combo-feel-e2e.mjs` 179/179 (séries 3/5/10/15, Endless + Chapitres, 393×852 et 393×660 : indicateur au-dessus de la grille, rien pendant la chaîne, un seul récap, glissé OK après, aucun calque bloquant, fluidité comparée au repos). ⬜ Historique des annonces : conservé en mémoire (`noticeHistory`), pas encore d'écran dédié.
 2. ✅ **6 nouvelles pensées du jour** ajoutées À LA FIN de la banque (indices 0–52 inchangés, empreinte testée) avec titres ; aperçu de notification raccourci par le service worker, texte intégral conservé (700 car.) dans « Petites pensées ♡ » ; paquets en cours enrichis sans doublon ; réservation atomique du jour avant l'envoi (aucun doublon même si le planificateur se déclenche deux fois). ✅ Fonction Edge `radia-push` REDÉPLOYÉE (version 2) : les nouvelles pensées entrent dans la rotation des paquets en cours.
@@ -231,3 +242,17 @@ Contraintes : ne jamais afficher âge / origine ; ne pas associer personnalité 
 `update-e2e` · `transfer-e2e` · `board-gestures-e2e` · `chapters-gestures-e2e` · `stability-e2e` · `board-e2e` · `endless-e2e` · `overlay-check` ·
 `rewards-e2e` · `dressing-e2e` · `decor-e2e` · `casino-e2e` · `necklace-e2e` · `domain-e2e` · `career-e2e` · `tindeur-e2e` · `apps-e2e` · `world-e2e` · `chess-e2e`.
 Tests unitaires : `npx vitest run` (≈ 1240).
+
+## Conversations Tindeur & Snapchien (cerveau partagé) — FAIT
+- `src/apps/brain/` : 25 personnalités écrites à la main (`personas.ts`), banques de répliques (`banks.ts`), mémoire par personnage (`memory.ts`, sauvegardée dans `fun.apps.brain`, jamais mélangée entre personnages), moteur pur testé (`engine.ts`).
+- Prénom « Radia » avec parcimonie (jamais deux tours de suite), réactions à « divorcée, trois enfants » (révélé seulement quand Radia le dit), débats d'amitié, blagues ratées, mémoire/callbacks, relances (≥ 3 jours), éloignement, respect immédiat d'un refus.
+- Snapchien : présence (écrit… / présent / reste là / parti), états Envoyé · Reçu · Ouvert · Capture d'écran (seulement s'ils arrivent dans la simulation), snaps spontanés (selfie, miroir, sport, voiture, resto, tenue, animal), demandes de selfie (jamais intimes, une relance au plus, aucune photo réelle), flammes entretenues.
+- Tindeur : nœuds dynamiques `~…` (`apps/brain/tindeurNodes.ts`) régénérés depuis leur identifiant (anciennes sauvegardes valides), réponses « en plus » (famille, amitié, « Tu as Snapchien ? »), relance après 3 jours, éloignement, bulles « prénom / interjection ».
+- ⬜ Reste : question « célibataire / l'autre (Auguste) » de Hugo côté Tindeur (déjà présente côté Snapchien).
+
+## Messageries LIBRES Tindeur & Snapchien — FAIT (voir docs/CONVERSATIONS.md)
+- Plus aucun choix multiple : champ de saisie natif (clavier iOS), bouton d'envoi, texte exact conservé, clavier suivi par `visualViewport`.
+- Moteur local de compréhension + réponses (65 intentions, argot/fautes, mémoire par personnage partagée entre les deux applications, 25 personnalités).
+- Tindeur : anciennes conversations migrées en vrais messages, relance après 3 jours, supprimer/bloquer définitifs, « Tu as Snapchien ? » → même personnage ajouté.
+- Snapchien : « écrit… », Bitmoji de présence, délais propres à chaque caractère (parfois répond bien plus tard).
+- ⬜ IA conversationnelle serveur : fonction `radia-chat` écrite et testée (logique pure) mais NON déployée et NON branchée au jeu ; test sur vrai iPhone non fait.

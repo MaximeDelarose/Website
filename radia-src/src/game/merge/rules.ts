@@ -3,6 +3,8 @@
  * Toutes les actions prennent l'état, le modifient et renvoient la liste des
  * événements à animer. Une action invalide ne modifie jamais l'état.
  */
+import { addXp, orderXp } from '../endless/xp';
+import { hasSoap, soapBonus, soapCoins } from '../endless/pimbeche';
 import { serve } from '../customers/logic';
 import { SPECIAL, collMax, itemKey, mergePoints, sameItem, GENERATORS, genKindOf, type CollectionId, type ItemRef } from '../../data/items';
 import { Rng, hashString } from '../../utils/rng';
@@ -131,6 +133,13 @@ export function deliver(s: RunState, def: LevelDef, slot: number, now?: number):
   return completeOrder(s, def, slot, o, cells, false, now);
 }
 
+const SOAP_THANKS = [
+  'Merci Radia, ma sœur a adoré le savon que tu m’avais offert ! Je vais lui en commander aussi ♡',
+  'Ton savon au lait de chèvre PIMBÊCHE a rendu ma peau toute douce, merci Radia ♡',
+  'Toute la famille se bat pour le savon PIMBÊCHE… j’en reprends pour la salle de bains ♡',
+  'Mon voisin m’a demandé où j’avais trouvé ce savon au lait de chèvre. Je lui ai dit : chez Radia ♡',
+];
+
 function completeOrder(s: RunState, def: LevelDef, slot: number, o: OrderState, cells: number[], forced: boolean, now?: number): BoardEvent[] {
   const ev: BoardEvent[] = s.mode === 'endless' ? touch(s, now) : [];
   const hearts = orderHearts(o);
@@ -146,9 +155,31 @@ function completeOrder(s: RunState, def: LevelDef, slot: number, o: OrderState, 
     Object.assign(d, { tier: o.tier, reward: o.reward, gain: orderGain(o.reward), energy: o.reward.energy, forced });
     bump(fun, 'orders');
     bump(fun, `orders:${o.tier ?? 'easy'}`);
+    if (o.items.some((r) => r.c === 'soap')) bump(fun, 'soapOrders');
+    // niveau de Radia : XP de la livraison ; un niveau gagné ajoute ses pièces / son énergie au gain de la commande (crédités une seule fois)
+    // améliorations PIMBÊCHE (achetées avec des pièces) : bonus de pièces et d'XP sur les commandes de savon
+    const sb = hasSoap(o.items) ? soapBonus(fun) : null;
+    if (sb) {
+      const dg = d as { gain?: Record<string, number> };
+      if (dg.gain?.coins) dg.gain = { ...dg.gain, coins: soapCoins(dg.gain.coins, sb) };
+    }
+    const xpGain = orderXp(o.tier ?? 'easy', o.items) + (sb?.xp ?? 0);
+    const lu = addXp(fun, xpGain);
+    Object.assign(d, { xp: xpGain });
+    if (lu) {
+      const dd = d as { gain?: Record<string, number>; energy?: number };
+      dd.gain = { ...(dd.gain ?? {}), coins: (dd.gain?.coins ?? 0) + lu.coins };
+      dd.energy = (dd.energy ?? 0) + lu.energy;
+      Object.assign(d, { levelUp: lu });
+    }
     if (o.customer) { // le client remercie aussi quand la commande est terminée avec des diamants
       const sv = serve(fun.customers, o.customer, subRng(s.rng, 0x7a1c), Date.now());
-      if (sv) Object.assign(d, { customer: o.customer, loyalty: { n: sv.n, from: sv.levelFrom, to: sv.levelTo }, thanks: sv.thanks.text, story: sv.story });
+      if (sv) {
+        // continuité PIMBÊCHE : à partir de la 2e commande de savon, le client parle du savon au lait de chèvre offert
+        const soapLine = o.items.some((r) => r.c === 'soap') && counter(fun, 'soapOrders') >= 2
+          ? SOAP_THANKS[(counter(fun, 'soapOrders') + o.id) % SOAP_THANKS.length] : null;
+        Object.assign(d, { customer: o.customer, loyalty: { n: sv.n, from: sv.levelFrom, to: sv.levelTo }, thanks: soapLine ?? sv.thanks.text, story: sv.story });
+      }
     }
     ev.push(...gainTreasure(fun, forced ? 0 : o.reward.treasure, 'order'));
     if (!forced) {

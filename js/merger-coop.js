@@ -1628,12 +1628,16 @@
 
   /* ====================== SOLO / COOP ====================== */
   var soloStage = document.querySelector("[data-merger]");
+  var suikaStage = document.querySelector("[data-suika]");
   var tabs = document.querySelectorAll("[data-mode]");
   function setMode(m) {
     if (soloStage) soloStage.hidden = m !== "solo";
     stage.hidden = m !== "coop";
+    if (suikaStage) suikaStage.hidden = m !== "suika";
+    if (m !== "suika" && window.SuikaMode) window.SuikaMode.leave();
     tabs.forEach(function (t) { var on = t.getAttribute("data-mode") === m; t.setAttribute("aria-selected", on ? "true" : "false"); t.classList.toggle("is-on", on); });
     document.querySelectorAll("[data-help]").forEach(function (h) { h.hidden = h.getAttribute("data-help") !== m; });
+    document.querySelectorAll("[data-lb-for]").forEach(function (p) { p.hidden = p.getAttribute("data-lb-for") !== m; });
     store("merger-mode", m);
     if (m === "coop") { if (history.replaceState && !/#coop/.test(location.hash)) history.replaceState(null, "", "#coop"); resize(); if (state === "menu" && screen === "menu") menu(); }
     else { if (history.replaceState && !/^#party/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search); if ((state === "aim" || state === "flight") && !NET.started) pause(); stopMusic(); }
@@ -1704,7 +1708,8 @@
   };
 
   var hashCode = /#coop=([A-Za-z]{4})/.exec(location.hash || "");
-  var startMode = /#coop/.test(location.hash) ? "coop" : (load("merger-mode", "solo") === "coop" ? "coop" : "solo");
+  var savedMode = load("merger-mode", "solo");
+  var startMode = /#coop/.test(location.hash) ? "coop" : (savedMode === "coop" || savedMode === "suika" ? savedMode : "solo");
   if (/^#party/.test(location.hash)) startMode = "solo";   // manche de party (js/party.js)
   reset();
   setMode(startMode);

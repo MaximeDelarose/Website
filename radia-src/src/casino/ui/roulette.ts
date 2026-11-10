@@ -6,7 +6,8 @@ import { fmt } from '../../core/wallet';
 import { chipUrl } from '../../game/art/casino';
 import { bigWinBanner, bounce, celebrate, centerOf, levelFor, shake, soft } from '../fx';
 import { cs, hooks, notifyCasino, persist } from '../store';
-import { LIMITS, canBet, credit, debit, recordRound } from '../chips';
+import { LIMITS, recordRound } from '../chips';
+import { balance, creditCoins as credit, debitCoins as debit, maxBet } from '../bank';
 import { BetBook, CHIP_VALUES, GROUP_SIZES, colorOf, covered, payoutRatio, settle, spin, type Bet, type Color } from '../roulette';
 import { defaultRng } from '../rng';
 import { RouletteWheel } from './rouletteWheel';
@@ -31,12 +32,12 @@ export function helpRoulette(): HTMLElement {
     h('table.cz-table', h('thead', h('tr', h('th', 'Mise'), h('th', 'Chance'), h('th', 'Gain'))), h('tbody', ...rows.map((r) => h('tr', ...r.map((c) => h('td', c)))))),
     h('p', 'Le 0 fait perdre Rouge, Noir, Pair et Impair. Le gain « 1 pour 1 » rend ta mise en plus : 10 tickets gagnants deviennent 20.'),
     h('p', 'Pour miser sur plusieurs numéros : active « Plusieurs numéros », touche 2, 3, 4 ou 6 cases, puis valide le groupe.'),
-    h('p', `Mises : de ${LIMITS.roulette.min} à ${fmt(LIMITS.roulette.max)} tickets par lancer en tout. Retour théorique : 36/37, soit environ 97,3 %.`));
+    h('p', `Mises : de ${LIMITS.roulette.min}  par lancer en tout (jusqu'à la moitié de ta bourse). Retour théorique : 36/37, soit environ 97,3 %.`));
 }
 
 export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }): Scene {
   const wheel = new RouletteWheel();
-  const cap = () => Math.min(cs().bring, LIMITS.roulette.max);
+  const cap = () => maxBet();
   const book = new BetBook(cap());
   let chip = 10, group = false, spinning = false, last: Bet[] = [];
   const sel = new Set<number>();
@@ -58,7 +59,7 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
   const hint = h('p.rl-hint', '');
   const strip = h('div.rl-strip');
   const chipRow = h('div.rl-chips', ...CHIP_VALUES.map((v) => {
-    const b = h('button.rl-chip', { 'aria-label': `Ticket de ${v}`, 'data-v': String(v) }, h('img', { src: chipUrl(v, 52), alt: '', draggable: false }));
+    const b = h('button.rl-chip', { 'aria-label': `Mise de ${v}`, 'data-v': String(v) }, h('img', { src: chipUrl(v, 52), alt: '', draggable: false }));
     b.addEventListener('click', () => { chip = v; audio.play('select'); haptic('select'); refresh(); });
     return b;
   }));
@@ -92,7 +93,7 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
       if (sel.has(n)) sel.delete(n); else if (sel.size < 6) sel.add(n); else { shake(c); haptic('error'); return; }
       audio.play('select'); haptic('select'); refresh(); return;
     }
-    if (!book.place(spec, chip)) { shake(c); haptic('error'); audio.play('invalid'); hint.textContent = book.total() + chip > cap() ? 'Plus assez de tickets à la table pour ce ticket.' : 'Mise impossible.'; window.setTimeout(() => { if (!group) hint.textContent = ''; }, 2200); return; }
+    if (!book.place(spec, chip)) { shake(c); haptic('error'); audio.play('invalid'); hint.textContent = book.total() + chip > cap() ? 'Plus assez de pièces pour ce ticket.' : 'Mise impossible.'; window.setTimeout(() => { if (!group) hint.textContent = ''; }, 2200); return; }
     audio.play('chip', 0.9 + Math.random() * 0.25); haptic('bet'); bounce(c.querySelector('.rl-mark') ?? c, 1.25);
     refresh();
   }
@@ -119,7 +120,7 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
     grpOk.style.display = group ? '' : 'none';
     grpOk.disabled = !(GROUP_SIZES as readonly number[]).includes(sel.size);
     grpOk.textContent = sel.size ? `Valider le groupe (${sel.size})` : 'Choisis 2, 3, 4 ou 6 numéros';
-    const poor = cs().bring < LIMITS.roulette.min;
+    const poor = balance() < LIMITS.roulette.min;
     low.replaceChildren(poor ? lowFunds(LIMITS.roulette.min, o.goCard) : '');
     go.disabled = total < LIMITS.roulette.min || spinning;
     go.textContent = total < LIMITS.roulette.min ? `Mise minimum : ${LIMITS.roulette.min}` : `Lancer la bille · ${fmt(total)} ♡`;
@@ -136,8 +137,8 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
   async function launch(): Promise<void> {
     if (spinning) return;
     const stake = book.total();
-    if (stake < LIMITS.roulette.min || !canBet(cs(), 'roulette', stake)) { shake(go); haptic('error'); audio.play('invalid'); return; }
-    if (!debit(cs(), stake)) return; // débit validé AVANT la manche
+    if (stake < LIMITS.roulette.min || stake > cap()) { shake(go); haptic('error'); audio.play('invalid'); return; }
+    if (!debit(stake)) return; // débit validé AVANT la manche
     spinning = true; el.classList.add('spinning'); resultBox.replaceChildren(); resultBox.classList.remove('show');
     persist(); void sh.sync(false);
     // le numéro est tiré UNE fois, ici ; l'animation ne fait que s'y conformer
@@ -146,7 +147,7 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
     const bets = book.bets.map((b) => ({ ...b, nums: b.nums ? [...b.nums] : undefined }));
     sum.replaceChildren(...bets.map((b) => h('span', betTextShort(b), ' ', h('b', fmt(b.amount)))));
     const res = settle(bets, n);
-    credit(cs(), res.returned);
+    credit(res.returned);
     recordRound(cs(), 'roulette', stake, res.returned, Date.now());
     pushRecent(n); persist(); notifyCasino();
     last = bets;

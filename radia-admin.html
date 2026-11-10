@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="theme-color" content="#f6e9f4">
-  <meta name="radia-admin-version" content="2026-11-06-b">
+  <meta name="radia-admin-version" content="2026-11-09-a">
   <meta http-equiv="Cache-Control" content="no-cache">
   <title>RADIA · Tableau de bord privé</title>
   <style>
@@ -29,6 +29,13 @@
     button { font:inherit; border:0; border-radius:12px; padding:10px 14px; background:var(--rose); color:#fff; font-weight:700; min-height:44px; cursor:pointer; }
     button.sec { background:var(--rose2); color:var(--rose); } button.small { min-height:36px; padding:6px 12px; font-size:14px; }
     .note { font-size:12.5px; color:var(--soft); margin-top:10px; } .err { color:#c0392b; font-weight:600; }
+    .gauge { height:12px; border-radius:99px; background:var(--line); overflow:hidden; margin:4px 0 10px; } .gauge i { display:block; height:100%; background:linear-gradient(90deg,#f08ab4,var(--rose)); border-radius:99px; transition:width .4s; }
+    .big { font-size:18px; font-weight:800; margin:8px 0 2px; } .mid { font-size:16px; font-weight:700; margin:2px 0 8px; } .soft { color:var(--soft); font-size:13.5px; } p.ok { color:var(--ok); font-weight:600; }
+    .ic { font-size:18px; } section.card > h2 { margin-bottom:6px; } .chart { margin-top:12px; } .chart > b { font-size:13.5px; }
+    .stack { display:flex; height:16px; border-radius:99px; overflow:hidden; margin:10px 0; background:var(--line); } .stack i { display:block; height:100%; } .dot { display:inline-block; width:10px; height:10px; border-radius:99px; }
+    ul.evlist { list-style:none; margin:0; padding:0; } ul.evlist li { display:flex; justify-content:space-between; gap:8px; padding:7px 0; border-bottom:1px solid var(--line); font-size:14px; } ul.evlist small { color:var(--soft); white-space:nowrap; }
+    button.srow { display:flex; width:100%; justify-content:space-between; gap:8px; text-align:left; background:var(--bg); color:var(--ink); margin:6px 0 0; font-weight:600; } button.srow small { color:var(--soft); font-weight:500; }
+    .sdetail { background:var(--bg); border-radius:12px; padding:10px 12px; margin:4px 0 8px; font-size:14px; } .sdetail ul { margin:4px 0 8px; padding-left:20px; }
     details summary { cursor:pointer; color:var(--rose); font-weight:700; padding:6px 0; min-height:36px; }
   </style>
 </head>
@@ -42,7 +49,7 @@
 <script>
 (function () {
   "use strict";
-  var VERSION = "2026-11-06-b";
+  var VERSION = "2026-11-09-a";
   var CFG = { url: "https://euxlmipqzmvnzzyalyfn.supabase.co", key: "sb_publishable_yryevkEb0hvSSZTdTQN0xA_R1NjJsfd" }; // adresse et clé PUBLIQUES du site (déjà dans js/data.js)
   var TOKEN_KEY = "sb-euxlmipqzmvnzzyalyfn-auth-token"; // même clé que le reste du site : la session Google déjà ouverte est réutilisée
   var app = document.getElementById("app");
@@ -99,54 +106,220 @@
   function signOutBtn() { return btn("Se déconnecter", function () { try { getClient().auth.signOut({ scope: "local" }); } catch (e) { /* ignore */ } try { localStorage.removeItem(TOKEN_KEY); } catch (e) { /* ignore */ } loginCard("Tu es déconnecté."); }, true); }
 
   function kpi(label, value, extra, wide) { return el("div", { class: "kpi" + (wide ? " wide" : "") }, el("b", { text: value }), el("span", { text: label + (extra ? " · " + extra : "") })); }
+  function n(x) { return typeof x === "number" && isFinite(x) ? x : 0; }
+  function fmtN(x) { return n(x).toLocaleString("fr-FR"); }
+  function gauge(pct, label) { var g = el("div", { class: "gauge", role: "progressbar", "aria-valuenow": String(Math.round(pct)), "aria-valuemin": "0", "aria-valuemax": "100", "aria-label": label || "Progression" }, el("i")); g.firstChild.style.width = Math.max(0, Math.min(100, pct)) + "%"; return g; }
+  function sect(icon, title, body) { return el("section", { class: "card" }, el("h2", null, el("span", { class: "ic", text: icon }), document.createTextNode(" " + title)), body); }
+  function unavailable(msg) { return el("p", { class: "note", text: msg || "Donnée non disponible : la joueuse n’a pas (encore) partagé sa progression." }); }
+  function dayKey(iso) { try { return new Date(iso).toLocaleDateString("sv-SE", { timeZone: TZ }); } catch (e) { return ""; } }
+  function lastDays(k) { var out = [], now = Date.now(); for (var i = k - 1; i >= 0; i--) out.push(dayKey(new Date(now - i * 86400000).toISOString())); return out; }
+  function miniBars(values, labels, title, fmt) {
+    var max = 1; values.forEach(function (v) { if (v > max) max = v; });
+    var bars = el("div", { class: "bars", role: "img", "aria-label": title }); var lab = el("div", { class: "bars-l" });
+    values.forEach(function (v, i) { var b = el("i", { title: labels[i] + " : " + (fmt ? fmt(v) : fmtN(v)) }); b.style.height = Math.max(v > 0 ? 6 : 2, Math.round(v / max * 100)) + "%"; if (!v) b.style.opacity = ".25"; bars.appendChild(b); lab.appendChild(el("span", { text: values.length > 14 ? (i % 5 === 0 ? labels[i].slice(8) : "") : labels[i].slice(8) })); });
+    return el("div", { class: "chart" }, el("b", { text: title }), bars, lab);
+  }
+  var MODE_NAMES = { chapters: "Chapitres", endless: "Mode libre", world: "Mon Monde", dressing: "Dressing", pimbeche: "PIMBÊCHE", casino: "Casino Royal", chess: "Échecs", events: "Événements", other: "Autres" };
+  var MODE_COL = { chapters: "#e8558f", endless: "#9b6bd6", world: "#3fae72", dressing: "#f0a24a", pimbeche: "#d9739f", casino: "#c0842b", chess: "#5b7fc7", events: "#4fb3bf", other: "#a59aae" };
+  var EVT_ICON = { level_done: "✅", chapter_start: "▶️", chapter_unlocked: "🔓", chapter_done: "🏁", narrative: "📖", xp_level: "⭐", pimb_unlock: "🐐", pimb_upgrade: "🧼" };
 
-  function deviceCard(d, now, reload) {
+  function storyCard(p) {
+    var s = p && p.snap && p.snap.story;
+    if (!s) return sect("📖", "Progression de l’histoire ♡", unavailable());
+    var kids = [];
+    kids.push(el("p", { class: "big", text: s.finished ? "Histoire terminée ♡" : "Chapitre " + s.chapter + " — " + s.chapterTitle }));
+    if (!s.finished && s.current) kids.push(el("p", { class: "mid", text: "Niveau " + s.current.id + " — " + s.current.title }));
+    kids.push(el("p", { text: "Progression du chapitre : " + s.chapterDone + "/" + s.chapterTotal + " — " + s.chapterPct + " %" })); kids.push(gauge(s.chapterPct, "Progression du chapitre"));
+    kids.push(el("p", { text: "Histoire complète : " + s.levelsDone + "/" + s.levelsTotal + " niveaux — " + s.storyPct + " %" })); kids.push(gauge(s.storyPct, "Progression de l’histoire"));
+    if (!s.finished && s.objective) {
+      kids.push(el("p", { text: "Objectif actuel : " + s.objective.label }));
+      kids.push(el("p", { text: s.inRun ? "Progression de l’objectif : " + s.objective.have + "/" + s.objective.goal + " (partie sauvegardée)" : "Progression de l’objectif : aucune partie en cours sauvegardée pour ce niveau (0/" + s.objective.goal + ")", class: s.inRun ? "" : "soft" }));
+    }
+    kids.push(el("p", { text: "Dernier niveau terminé : " + (s.lastDone ? "Niveau " + s.lastDone.id + " — " + s.lastDone.title : "aucun") }));
+    var lastEvt = (p.events || []).filter(function (e) { return e.kind === "level_done"; })[0];
+    kids.push(el("p", { class: "soft", text: lastEvt ? "Terminé le " + fmtDate(lastEvt.at) : "Date du dernier niveau terminé : non enregistrée (suivi démarré après)" }));
+    kids.push(el("p", { class: "note", text: "Niveaux de l’histoire (chapitres) : distincts du niveau d’expérience de Radia. Un niveau quitté en cours n’est jamais compté comme terminé." }));
+    return sect("📖", "Progression de l’histoire ♡", kids);
+  }
+  function xpCard(p) {
+    var x = p && p.snap && p.snap.xp; var f = p && p.snap && p.snap.free;
+    if (!x) return sect("⭐", "Niveau et expérience de Radia", unavailable());
+    var pct = x.need ? Math.round(x.into / x.need * 100) : 100;
+    var lastUp = (p.events || []).filter(function (e) { return e.kind === "xp_level"; })[0];
+    return sect("⭐", "Niveau et expérience de Radia", [
+      el("p", { class: "big", text: "Niveau " + x.level }), gauge(pct, "Expérience"),
+      el("p", { text: fmtN(x.into) + " / " + fmtN(x.need) + " XP vers le niveau " + (x.level + 1) + " — " + fmtN(x.xp) + " XP au total" }),
+      el("p", { class: "soft", text: lastUp ? "Dernier niveau atteint : " + lastUp.label.replace("Niveau de Radia ", "niveau ") + " le " + fmtDate(lastUp.at) : "Dernier niveau atteint le : non enregistré" }),
+      el("div", { class: "grid" }, kpi("Commandes livrées", fmtN(f.orders)), kpi("Objets découverts", fmtN(f.discoveries)), kpi("Fusions", fmtN(f.merges)), kpi("Niveaux d’histoire gagnés", fmtN(f.levelsWon)))]);
+  }
+  function actLines(sum) {
+    if (!sum || !sum.base || !sum.now) return [];
+    var d = function (k) { return Math.max(0, n(sum.now[k]) - n(sum.base[k])); }; var L = [];
+    function add(v, one, many) { if (v > 0) L.push(v + " " + (v > 1 ? many : one) + "."); }
+    add(d("orders"), "commande livrée", "commandes livrées"); add(d("merges"), "fusion réalisée", "fusions réalisées"); add(d("levels"), "nouveau niveau terminé", "nouveaux niveaux terminés");
+    add(d("soap"), "savon PIMBÊCHE fabriqué", "savons PIMBÊCHE fabriqués"); add(d("furniture"), "décoration débloquée", "décorations débloquées"); add(d("clothes"), "tenue obtenue", "tenues obtenues");
+    add(d("discoveries"), "objet découvert", "objets découverts"); add(d("combos"), "combo", "combos"); add(d("upgrades"), "amélioration PIMBÊCHE", "améliorations PIMBÊCHE");
+    return L;
+  }
+  function sessionDetail(s) {
+    var L = actLines(s.summary); var st = s.summary && s.summary.start, en = s.summary && s.summary.end;
+    var box = el("div", { class: "sdetail" }, el("b", { text: "Session du " + fmtDate(s.started_at) }), el("p", { text: "Durée active : " + fmtDur(s.active_s) }));
+    box.appendChild(el("b", { text: "Activités :" }));
+    var ul = el("ul"); (L.length ? L : ["Aucune activité de progression enregistrée."]).forEach(function (t) { ul.appendChild(el("li", { text: t })); }); box.appendChild(ul);
+    if (st && en) { box.appendChild(el("b", { text: "Progression :" })); var u2 = el("ul"); u2.appendChild(el("li", { text: "Début : chapitre " + st.chapter + (st.level ? ", niveau " + st.level : "") + "." })); u2.appendChild(el("li", { text: "Fin : chapitre " + en.chapter + (en.level ? ", niveau " + en.level : "") + "." })); box.appendChild(u2); }
+    if (s.modes && s.modes.length) box.appendChild(el("p", { class: "soft", text: "Modes visités : " + s.modes.map(function (m) { return MODE_NAMES[m] || m; }).join(", ") + "." }));
+    return box;
+  }
+  function lastSessionCard(p) {
+    var ss = p && p.sessions && p.sessions[0];
+    if (!ss) return sect("🕒", "Résumé de la dernière session", unavailable("Aucun résumé de session disponible : seules les sessions jouées après l’activation du partage de la progression sont enregistrées."));
+    return sect("🕒", "Résumé de la dernière session", sessionDetail(ss));
+  }
+  function freeCard(p) {
+    var f = p && p.snap && p.snap.free;
+    if (!f) return sect("🧩", "Mode libre", unavailable());
+    var sessions = (p.sessions || []).slice(0, 10).reverse();
+    var ord = sessions.map(function (s) { return Math.max(0, n(s.summary && s.summary.now && s.summary.now.orders) - n(s.summary && s.summary.base && s.summary.base.orders)); });
+    var avg = ord.length ? (ord.reduce(function (a, b) { return a + b; }, 0) / ord.length) : 0;
+    return sect("🧩", "Mode libre : commandes et fusions", [
+      el("div", { class: "grid" }, kpi("Commandes livrées", fmtN(f.orders)), kpi("Fusions", fmtN(f.merges)), kpi("Faciles", fmtN(f.easy)), kpi("Moyennes", fmtN(f.mid)), kpi("Difficiles", fmtN(f.hard)),
+        kpi("Objets découverts", fmtN(f.discoveries)), kpi("Combos", fmtN(f.combos)), kpi("Plus grand combo", fmtN(f.bestCombo))),
+      ord.length > 1 ? miniBars(ord, sessions.map(function (s) { return dayKey(s.started_at); }), "Commandes livrées par session (10 dernières) · moyenne " + avg.toFixed(1).replace(".", ","), null) : el("p", { class: "soft", text: "Comparaison entre sessions : pas encore assez de sessions enregistrées." }),
+      el("p", { class: "note", text: "Les « combos » comptent les chaînes d’au moins 3 fusions." })]);
+  }
+  var UPG = { atelier2: "Atelier agrandi", moulage: "Machine à mouler", chaudron: "Chaudron en cuivre", "atelier-luxe": "Atelier de luxe", rose: "Savon rose", lavande: "Savon lavande", miel: "Savon miel", exfoliant: "Savon exfoliant", perso: "Savon personnalisé", emballage: "Emballage PIMBÊCHE", presentoir: "Présentoir", vitrine: "Vitrine", "deco-pro": "Décoration pro" };
+  function pimbCard(p) {
+    var q = p && p.snap && p.snap.pimb;
+    if (!q) return sect("🐐", "PIMBÊCHE", unavailable());
+    var ul = el("ul"); (q.upgrades.length ? q.upgrades : []).forEach(function (u) { ul.appendChild(el("li", { text: UPG[u] || u })); });
+    return sect("🐐", "PIMBÊCHE · savons au lait de chèvre", [
+      el("p", { class: "big", text: q.unlocked ? "Atelier débloqué · niveau " + q.workshop : "Atelier pas encore débloqué" }),
+      el("div", { class: "grid" }, kpi("Savons terminés fabriqués", fmtN(q.soapMade)), kpi("Commandes PIMBÊCHE livrées", fmtN(q.soapOrders)), kpi("Recettes découvertes", fmtN(q.recipes.length) + " / 5"), kpi("Clientes fidèles", fmtN(q.loyal)), kpi("Objets de collection", fmtN(q.collection) + " / " + q.collectionTotal), kpi("Améliorations de la boutique", fmtN(q.upgrades.length) + " / 13")),
+      q.upgrades.length ? el("details", null, el("summary", { text: "Améliorations obtenues" }), ul) : el("p", { class: "soft", text: "Aucune amélioration achetée pour l’instant." }),
+      q.unlocked ? el("p", { class: q.soapOrders > 0 ? "ok" : "soft", text: q.soapOrders > 0 ? "Les savons sont bien utilisés dans le jeu : des commandes PIMBÊCHE ont été livrées." : "L’atelier est ouvert mais aucune commande de savon n’a encore été livrée." }) : null]);
+  }
+  function worldCard(p) {
+    var w = p && p.snap && p.snap.world;
+    if (!w) return sect("🌍", "Mon Monde", unavailable());
+    function row(label, v, t) { return el("div", null, el("p", { text: label + " : " + v + (t ? " / " + t : "") }), t ? gauge(Math.round(v / t * 100), label) : null); }
+    return sect("🌍", "Mon Monde", [
+      el("p", { class: "big", text: "Progression générale : " + w.pct + " %" }), gauge(w.pct, "Mon Monde"),
+      el("p", { class: "note", text: "Calculée uniquement sur des objectifs finis : pièces du château, tenues et meubles. Les activités sans objectif final (jardin, chat, famille…) n’ont pas de pourcentage." }),
+      row("Pièces débloquées", w.rooms, w.roomsTotal), row("Meubles et décorations obtenus", w.furniture, w.furnitureTotal), row("Tenues obtenues", w.wardrobe, w.wardrobeTotal),
+      el("div", { class: "grid" }, kpi("Parcelles du jardin", fmtN(w.gardenPlots)), kpi("Recettes de chocolat", fmtN(w.chocRecipes)), kpi("Niveau de la chocolaterie", fmtN(w.chocShop)), kpi("Métiers découverts", fmtN(w.careers)), kpi("Chat adopté", w.cat ? "Oui" : "Non"), kpi("Enfants avec un lien", fmtN(w.family)))]);
+  }
+  function modesCard(p) {
+    var rows = (p && p.modes) || [];
+    if (!rows.length) return sect("⏱️", "Temps actif par mode de jeu", unavailable("Pas encore de temps par mode enregistré."));
+    var tot = {}, ses = {}, all = 0; rows.forEach(function (r) { tot[r.mode] = (tot[r.mode] || 0) + r.active_s; ses[r.mode] = (ses[r.mode] || 0) + r.sessions; all += r.active_s; });
+    var keys = Object.keys(MODE_NAMES).filter(function (k) { return tot[k] || ses[k]; }).sort(function (a, b) { return (tot[b] || 0) - (tot[a] || 0); });
+    var stack = el("div", { class: "stack", role: "img", "aria-label": "Répartition du temps actif par mode" });
+    keys.forEach(function (k) { if (!tot[k]) return; var seg = el("i", { title: MODE_NAMES[k] + " : " + fmtDur(tot[k]) }); seg.style.width = (tot[k] / Math.max(1, all) * 100) + "%"; seg.style.background = MODE_COL[k]; stack.appendChild(seg); });
+    var tb = el("tbody"); keys.forEach(function (k) { var dot = el("span", { class: "dot" }); dot.style.background = MODE_COL[k]; tb.appendChild(el("tr", null, el("td", null, dot, document.createTextNode(" " + MODE_NAMES[k])), el("td", { text: fmtDur(tot[k] || 0) }), el("td", { text: all ? Math.round((tot[k] || 0) / all * 100) + " %" : "—" }), el("td", { text: String(ses[k] || 0) }))); });
+    return sect("⏱️", "Temps actif par mode de jeu", [stack, el("table", null, el("thead", null, el("tr", null, el("th", { text: "Mode" }), el("th", { text: "Temps" }), el("th", { text: "Part" }), el("th", { text: "Sessions" }))), tb),
+      el("p", { class: "note", text: "60 derniers jours · estimation du temps ACTIF (jeu visible et écran touché) ; rien n’est compté en arrière-plan." })]);
+  }
+  function evolutionCard(p, d) {
+    var span = 7; var host = el("div");
+    function draw() {
+      var days = lastDays(span), labels = days;
+      var time = days.map(function (k) { var s = 0; ((p && p.modes) || []).forEach(function (r) { if (r.day === k) s += r.active_s; }); return Math.round(s / 60); });
+      var sess = days.map(function (k) { var c = 0; ((p && p.sessions) || []).forEach(function (s) { if (dayKey(s.started_at) === k) c++; }); return c; });
+      var lvls = days.map(function (k) { var c = 0; ((p && p.events) || []).forEach(function (e) { if (e.kind === "level_done" && dayKey(e.at) === k) c++; }); return c; });
+      var ords = days.map(function (k) { var c = 0; ((p && p.sessions) || []).forEach(function (s) { if (dayKey(s.started_at) === k && s.summary && s.summary.now && s.summary.base) c += Math.max(0, n(s.summary.now.orders) - n(s.summary.base.orders)); }); return c; });
+      function sum(a) { return a.reduce(function (x, y) { return x + y; }, 0); }
+      host.textContent = "";
+      host.appendChild(el("div", { class: "grid" }, kpi("Temps actif (" + span + " j)", fmtDur(sum(time) * 60)), kpi("Sessions", String(sum(sess))), kpi("Niveaux terminés", String(sum(lvls))), kpi("Commandes livrées", String(sum(ords)))));
+      host.appendChild(miniBars(time, labels, "Temps de jeu par jour (min)", function (v) { return v + " min"; }));
+      host.appendChild(miniBars(sess, labels, "Sessions par jour"));
+      host.appendChild(miniBars(lvls, labels, "Niveaux terminés par jour"));
+      host.appendChild(miniBars(ords, labels, "Commandes livrées par jour"));
+    }
+    var b7 = btn("7 jours", function () { span = 7; draw(); }, true), b30 = btn("30 jours", function () { span = 30; draw(); }, true);
+    draw();
+    return sect("📈", "Évolution dans le temps", [el("div", { class: "row", style: "margin-bottom:6px" }, [b7, b30]), host, el("p", { class: "note", text: "Basé uniquement sur les événements réellement enregistrés depuis l’activation du partage de la progression." })]);
+  }
+  function historyCard(p) {
+    var ev = (p && p.events) || [];
+    var ul = el("ul", { class: "evlist" });
+    ev.slice(0, 40).forEach(function (e) { ul.appendChild(el("li", null, el("span", { text: (EVT_ICON[e.kind] || "•") + " " + e.label }), el("small", { text: fmtDate(e.at) }))); });
+    return sect("🗺️", "Historique des chapitres", ev.length ? ul : unavailable("Aucun jalon enregistré pour l’instant : seuls les jalons atteints après l’activation du partage sont conservés (rien n’est reconstitué)."));
+  }
+  function sessionsHistory(p, d) {
+    var list = (p && p.sessions) || [];
+    var wrap = el("div");
+    if (!list.length) {
+      var rows = (d.sessions || []).map(function (s) { var st = state(s); return el("tr", null, el("td", { text: fmtDate(s.started_at) }), el("td", { text: fmtDur(s.active_s) }), el("td", null, el("span", { class: "badge " + st.c, text: st.t }))); });
+      wrap.appendChild(el("p", { class: "note", text: "Pas de résumé d’activité : seul le temps de jeu est disponible pour ces sessions." }));
+      wrap.appendChild(el("table", null, el("thead", null, el("tr", null, el("th", { text: "Début" }), el("th", { text: "Actif" }), el("th", { text: "Fin" }))), el("tbody", null, rows.length ? rows : [el("tr", null, el("td", { text: "Aucune session enregistrée.", colspan: "3" }))])));
+      return sect("🗂️", "Historique des sessions", wrap);
+    }
+    list.slice(0, 30).forEach(function (s) {
+      var det = sessionDetail(s); det.style.display = "none";
+      var L = actLines(s.summary);
+      var head = el("button", { class: "srow", "aria-expanded": "false" }, el("span", { text: fmtDate(s.started_at) }), el("small", { text: fmtDur(s.active_s) + (L.length ? " · " + L[0].replace(/\.$/, "") : "") }));
+      head.onclick = function () { var open = det.style.display === "none"; det.style.display = open ? "" : "none"; head.setAttribute("aria-expanded", open ? "true" : "false"); };
+      wrap.appendChild(head); wrap.appendChild(det);
+    });
+    return sect("🗂️", "Historique des sessions (touche une session)", wrap);
+  }
+
+  function deviceCard(d, p, now) {
     var title = d.label || ("Appareil " + d.short);
     var paused = !!d.paused_at;
+    var timeOk = !paused;
+    var progOk = !!(p && p.ok && p.consent);
+    var out = [];
     var head = el("div", { class: "row" }, el("h2", { text: title }),
-      el("span", { class: "badge " + (paused ? "off" : "ok"), text: paused ? "Partage désactivé" : "Partage actif" }));
+      el("span", null, el("span", { class: "badge " + (timeOk ? "ok" : "off"), text: timeOk ? "Temps partagé" : "Temps non partagé" }), document.createTextNode(" "), el("span", { class: "badge " + (progOk ? "ok" : "off"), text: progOk ? "Progression partagée" : "Progression non partagée" })));
     var ls = d.last_session;
+    // 1 et 2 : dernière connexion / activité, temps de jeu et sessions
     var grid = el("div", { class: "grid" },
-      kpi("Dernière ouverture", fmtDate(d.last_open), ago(d.last_open, now), true),
-      kpi("Dernière activité", fmtDate(d.last_seen), ago(d.last_seen, now), true),
+      kpi("Dernière ouverture", fmtDate(d.last_open), ago(d.last_open, now)),
+      kpi("Dernière activité", fmtDate(d.last_seen), ago(d.last_seen, now)),
       kpi("Durée active · dernière session", ls ? fmtDur(ls.active_s) : "—", ls ? state(ls).t : ""),
       kpi("Sessions aujourd’hui", String(d.sessions_today || 0)),
       kpi("Temps de jeu aujourd’hui", fmtDur(d.today_s)),
       kpi("Temps de jeu cette semaine", fmtDur(d.week_s)),
       kpi("Depuis le premier lancement", fmtDur(d.total_s), (d.sessions_total || 0) + " sessions", true));
-    // 14 derniers jours
-    var days = (d.days || []).slice().reverse(); var max = 1; days.forEach(function (x) { if (x.active_s > max) max = x.active_s; });
-    var bars = el("div", { class: "bars", role: "img", "aria-label": "Temps de jeu des derniers jours" }); var lab = el("div", { class: "bars-l" });
-    days.forEach(function (x) { var i = el("i", { title: x.day + " : " + fmtDur(x.active_s) + " · " + x.sessions + " session(s)" }); i.style.height = Math.max(3, Math.round(x.active_s / max * 100)) + "%"; bars.appendChild(i); lab.appendChild(el("span", { text: x.day.slice(8) })); });
-    // historique
-    var rows = (d.sessions || []).map(function (s) { var st = state(s); return el("tr", null, el("td", { text: fmtDate(s.started_at) }), el("td", { text: fmtDur(s.active_s) }), el("td", null, el("span", { class: "badge " + st.c, text: st.t }))); });
-    var table = el("table", null, el("thead", null, el("tr", null, el("th", { text: "Début" }), el("th", { text: "Actif" }), el("th", { text: "Fin" }))), el("tbody", null, rows.length ? rows : [el("tr", null, el("td", { text: "Aucune session", colspan: "3" }))]));
-    var det = el("details", null, el("summary", { text: "Historique des sessions (30 dernières)" }), table);
-    var actions = el("div", { class: "row", style: "margin-top:12px" },
-      (function () { var b = el("button", { class: "sec small", text: "Renommer" }); b.onclick = function () { var n = prompt("Nom de cet appareil (ex. « iPhone de Radia »)", d.label || ""); if (n === null) return; window.__labelDevice(d.id, n, reload); }; return b; })(),
-      (function () { var b = el("button", { class: "sec small", text: "Supprimer ses données" }); b.onclick = function () { if (!confirm("Supprimer définitivement toutes les statistiques de cet appareil ?")) return; window.__deleteDevice(d.id, reload); }; return b; })());
-    var meta = el("p", { class: "note", text: PLAT[d.platform] + " · consentement le " + fmtDate(d.consent_at) + (paused ? " · désactivé le " + fmtDate(d.paused_at) : "") + " · fuseau " + d.tz });
-    return el("section", { class: "card" }, head, meta, grid, el("b", { text: "14 derniers jours" }), bars, lab, det, actions);
+    var meta = el("p", { class: "note", text: PLAT[d.platform] + " · fuseau " + d.tz + (timeOk ? " · temps partagé depuis le " + fmtDate(d.consent_at) : " · partage du temps désactivé") + (progOk ? " · progression partagée depuis le " + fmtDate(p.consent_at) : p && p.paused_at ? " · progression arrêtée le " + fmtDate(p.paused_at) : " · progression jamais partagée") });
+    out.push(el("section", { class: "card" }, head, meta, grid));
+    if (!progOk) out.push(el("section", { class: "card" }, el("p", { text: "La joueuse n’a pas activé « Partager ma progression de jeu ♡ » : aucune donnée de progression n’est disponible (et aucune n’est collectée)." }), el("p", { class: "note", text: "L’option se trouve dans les Réglages de RADIA, séparément du partage du temps de jeu." })));
+    out.push(storyCard(progOk ? p : null)); out.push(xpCard(progOk ? p : null)); out.push(lastSessionCard(progOk ? p : null)); out.push(freeCard(progOk ? p : null));
+    out.push(pimbCard(progOk ? p : null)); out.push(worldCard(progOk ? p : null)); out.push(modesCard(progOk ? p : null)); out.push(evolutionCard(progOk ? p : null, d)); out.push(historyCard(progOk ? p : null)); out.push(sessionsHistory(progOk ? p : null, d));
+    var actions = el("div", { class: "row", style: "margin:0 0 14px" },
+      (function () { var b = el("button", { class: "sec small", text: "Renommer" }); b.onclick = function () { var nm = prompt("Nom de cet appareil (ex. « iPhone de Radia »)", d.label || ""); if (nm === null) return; window.__labelDevice(d.id, nm, function () { boot(); }); }; return b; })(),
+      (function () { var b = el("button", { class: "sec small", text: "Supprimer ses données" }); b.onclick = function () { if (!confirm("Supprimer définitivement toutes les données de cet appareil (temps de jeu et progression) ?")) return; window.__deleteDevice(d.id, function () { boot(); }); }; return b; })());
+    out.push(actions);
+    return out;
   }
-
 
   function load(c) {
     note("Chargement des statistiques…");
     return withTimeout(c.rpc("radia_stats_admin"), 15000, "stats").then(function (res) {
-      if (res.error) { var m = res.error.message || ""; if (/not_admin/.test(m) || res.error.code === "P0001" || res.error.code === "42501") { var e = new Error("not_admin"); e.denied = true; throw e; } var e2 = new Error(m || "erreur"); e2.status = res.status; throw e2; }
-      render(res.data, c);
+      if (res.error) { var m = res.error.message || ""; if (/not_admin/.test(m) || res.error.code === "P0001" || res.error.code === "42501") { var e = new Error("not_admin"); e.denied = true; throw e; } var e2 = new Error(m || "erreur"); throw e2; }
+      var list = (res.data && res.data.devices) || [];
+      note("Chargement de la progression…");
+      return Promise.all(list.map(function (d) {
+        // une erreur de progression n'empêche jamais d'afficher le temps de jeu : message clair à la place
+        return withTimeout(c.rpc("radia_progress_admin", { p_device: d.id }), 15000, "progress").then(function (r) { return r.error ? { ok: false, error: String(r.error.message || "indisponible") } : r.data; }, function () { return { ok: false, error: "indisponible" }; });
+      })).then(function (progs) { render(res.data, progs, c); });
     });
   }
-  function render(data, c) {
+  function render(data, progs, c) {
     var now = data.now; var list = data.devices || [];
     var out = [];
-    if (!list.length) out.push(el("div", { class: "card" }, el("p", { text: "Aucune donnée disponible : aucune joueuse n’a encore accepté de partager ses statistiques." }), el("p", { class: "note", text: "Rien n’est enregistré tant que Radia n’a pas accepté dans RADIA → Réglages → Statistiques de jeu ♡ (ou via l’invitation affichée une seule fois)." })));
-    list.forEach(function (d) { out.push(deviceCard(d, now, function () { boot(); })); });
+    if (!list.length) out.push(el("div", { class: "card" }, el("p", { text: "Aucune donnée disponible : aucune joueuse n’a encore accepté de partager ses statistiques." }), el("p", { class: "note", text: "Rien n’est enregistré tant que la joueuse n’a pas accepté dans les Réglages de RADIA." })));
+    list.forEach(function (d, i) {
+      var p = progs[i];
+      if (p && p.ok === false && p.error) out.push(el("p", { class: "err", text: "Progression indisponible pour cet appareil (" + p.error.slice(0, 60) + ")." }));
+      deviceCard(d, p, now).forEach(function (x) { out.push(x); });
+    });
     var r = data.retention || {};
     out.push(el("div", { class: "row" }, [btn("Actualiser", boot), signOutBtn()]));
-    out.push(el("p", { class: "note", text: "Le temps de jeu est une ESTIMATION de l’activité réelle (jeu ouvert et écran touché dans la dernière minute) ; l’heure d’une session « fin estimée » est la dernière activité connue : sur iPhone, la fermeture brutale d’une application n’est pas détectable. Conservation : détail des sessions " + (r.sessions_days || 90) + " j, totaux par jour " + (r.days_days || 400) + " j, appareil inactif " + (r.idle_device_days || 180) + " j. Heures affichées en Europe/Paris. Page " + VERSION + "." }));
+    out.push(el("p", { class: "note", text: "Le temps de jeu est une ESTIMATION de l’activité réelle (jeu ouvert et écran touché dans la dernière minute) ; l’heure d’une session « fin estimée » est la dernière activité connue. Conservation : sessions " + (r.sessions_days || 90) + " jours, jalons et temps par mode 400 jours, appareil inactif " + (r.idle_device_days || 180) + " jours. La progression n’est visible que si la joueuse l’a acceptée (option distincte)." }));
     show(out);
-    document.getElementById("sub").textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }) + " — statistiques partagées avec le consentement de la joueuse.";
+    document.getElementById("sub").textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }) + " — données partagées avec le consentement de la joueuse.";
   }
   function deleteDevice(id, then) {
     return getClient().auth.getSession().then(function (r) { var t = r && r.data && r.data.session && r.data.session.access_token; return fetch(CFG.url + "/functions/v1/radia-push", { method: "POST", headers: { "Content-Type": "application/json", apikey: CFG.key, Authorization: "Bearer " + t }, body: JSON.stringify({ action: "stats-admin-delete", device: id }) }); }).then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error || "delete"); then(); }).catch(function (e) { problem("Suppression impossible pour l’instant.", String(e && e.message || e)); });

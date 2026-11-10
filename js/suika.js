@@ -225,11 +225,41 @@
     beep(200, 0.4, "sawtooth", 0.06); beep(140, 0.5, "sawtooth", 0.06, 0.25);
     setTimeout(function () {
       if (state !== "over") return;
+      var lbOk = window.Leaderboard && Leaderboard.configured() && score > 0;
+      var account = lbOk ? Leaderboard.accountName() : "";
+      var name = String(load("suika-name", ""));
       show('<h2>' + (maxLevel >= LEVELS - 1 ? "Grand Chêne atteint !" : "Partie terminée") + '</h2>' +
         '<p class="game-score">Score : <strong>' + score + '</strong>' + (record ? " · 🏆 nouveau record !" : "") + '</p>' +
         '<p>Meilleur écureuil : <strong>' + NAMES[maxLevel] + '</strong> · Record : <strong>' + best + '</strong></p>' +
+        (lbOk && !account ? '<form class="submit-score" data-submit><label for="sk-name">Ton pseudo pour le classement</label><div class="submit-row">' +
+          '<input id="sk-name" type="text" maxlength="20" minlength="2" required autocomplete="nickname" value="' + name.replace(/"/g, "&quot;") + '">' +
+          '<button class="btn btn-alt btn-small" type="submit">Envoyer</button></div><p class="game-small" data-submit-msg aria-live="polite"></p></form>' : "") +
         '<div class="btn-row"><button class="btn" type="button" data-again>↻ Rejouer</button></div>');
       var ag = card.querySelector("[data-again]"); if (ag) { ag.addEventListener("click", start); ag.focus(); }
+      function sendScore(n, msg, btn) {
+        if (msg) msg.textContent = "Envoi…";
+        if (btn) btn.disabled = true;
+        Leaderboard.submit("suika", n, score, { level: maxLevel }).then(function (res) {
+          if (msg) msg.textContent = "Envoyé ! " + (res && res.rank ? "Tu es " + res.rank + (res.rank === 1 ? "er" : "e") + "." : "");
+          document.querySelectorAll('[data-leaderboard="suika"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
+        }).catch(function (err) { if (msg) msg.textContent = Leaderboard.message(err); if (btn) btn.disabled = false; });
+      }
+      if (lbOk && account) {
+        // connecté : le score part tout seul, avec le pseudo du compte
+        var note = document.createElement("p");
+        note.className = "game-small"; note.setAttribute("aria-live", "polite");
+        note.textContent = "Classement : " + account + " · envoi…";
+        var ms = card.querySelector(".game-score"); if (ms) ms.insertAdjacentElement("afterend", note);
+        sendScore(account, note, null);
+      }
+      var form = card.querySelector("[data-submit]");
+      if (form) form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var input = form.querySelector("input"), btn = form.querySelector("button"), msg = form.querySelector("[data-submit-msg]");
+        var n = input.value.trim();
+        store("suika-name", n);
+        sendScore(n, msg, btn);
+      });
     }, 900);
   }
 
@@ -412,7 +442,7 @@
   document.addEventListener("fullscreenchange", syncFull);
   document.addEventListener("webkitfullscreenchange", syncFull);
   var fsBtn = document.querySelector("[data-game-fullscreen]");
-  if (fsBtn) fsBtn.addEventListener("click", function () { if (isFull()) exitFull(); else enterFull(); });
+  if (fsBtn) fsBtn.addEventListener("click", function () { if (stage.hidden) return; if (isFull()) exitFull(); else enterFull(); });
   var fsExit = stage.querySelector("[data-fs-exit]");
   if (fsExit) fsExit.addEventListener("click", exitFull);
 
@@ -423,6 +453,7 @@
   /* ---------- boucle ---------- */
   var last = performance.now(), acc = 0;
   function loop(now) {
+    if (stage.hidden) { last = now; requestAnimationFrame(loop); return; }   // mode Suika non choisi : rien à faire
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (state === "play") {
       if (keys.ArrowLeft) { aimX -= 320 * dt; clampAim(); }
@@ -437,6 +468,9 @@
   menu();
   requestAnimationFrame(loop);
 
+  // utilisé par js/merger-coop.js quand on change de mode (Solo / Coop / Suika)
+  window.SuikaMode = { leave: function () { if (state === "play") pause(); } };
+
   // pour les tests automatisés
-  window.__suika = { balls: function () { return balls; }, state: function () { return state; }, score: function () { return score; }, setAim: function (x) { aimX = x; }, drop: drop };
+  window.__suika = { balls: function () { return balls; }, state: function () { return state; }, score: function () { return score; }, setAim: function (x) { aimX = x; }, drop: drop, gameOver: gameOver, addScore: addScore };
 })();

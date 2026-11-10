@@ -62,3 +62,20 @@ export function sessionState(x: { ended_at: string | null; end_reason: string | 
   if (x.ended_at && (x.end_reason === 'closed' || x.end_reason === 'background')) return 'ended';
   return 'estimated';
 }
+
+/** État local du consentement (voir stats.ts) : suffit pour décider quelle invitation proposer. */
+export interface ShareLocal { state: 'none' | 'on' | 'off'; asked?: boolean; prog?: 'none' | 'on' | 'off'; progAsked?: boolean }
+export type InviteKind = 'full' | 'progress';
+/**
+ * Quelle invitation afficher (au plus UNE, jamais répétée) :
+ *  - « full » : nouvelle joueuse (jamais interrogée) → une seule demande pour le temps de jeu ET la progression ;
+ *  - « progress » : joueuse qui avait déjà accepté le temps de jeu mais pas (encore) la progression → une seule invitation supplémentaire
+ *    (l'ancien consentement n'autorise JAMAIS les nouvelles données) ;
+ *  - null : déjà décidé (accepté ou refusé, y compris un refus ancien du temps de jeu) → on ne redemande pas.
+ */
+export function shareInviteKind(s: ShareLocal): InviteKind | null {
+  if (s.progAsked || s.prog === 'on' || s.prog === 'off') return null;
+  if (s.state === 'none' && !s.asked) return 'full';
+  if (s.state === 'on') return 'progress';
+  return null;
+}

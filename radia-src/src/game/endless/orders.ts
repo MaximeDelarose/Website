@@ -77,7 +77,12 @@ export function makeOrder(fun: FunState, rng: Rng, tier: OrderTier, id: number, 
     const n = maxN === 1 ? 1 : tier === 'mid' ? (rng.next() < 0.4 ? 2 : 1) : (rng.next() < 0.8 ? 2 : 1);
     const items: ItemRef[] = [];
     for (let k = 0; k < n; k++) {
-      const c = shared.length && rng.next() < O.sharedCollChance ? rng.pick(shared) : rng.pick(colls);
+      let c = shared.length && rng.next() < O.sharedCollChance ? rng.pick(shared) : rng.pick(colls);
+      // PIMBÊCHE, pilier du mode libre : première commande de savon garantie (facile), puis une part régulière des commandes
+      if (colls.includes('soap') && k === 0) {
+        const first = counter(fun, 'soapOrders') === 0 && tier === 'easy';
+        if (first || rng.next() < O.pimbecheChance) c = 'soap';
+      }
       const cand = levelsFor(fun, c, bmin / n, bmax / n);
       if (!cand.length) continue;
       items.push({ c, l: rng.pick(cand) });

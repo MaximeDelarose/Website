@@ -1,5 +1,5 @@
 /* =========================================================================
-   Golfaventure (golfaventure.html, js/golfaventure.js) — pixel art 8 bits
+   Golfaventure (golf.html, js/golfaventure.js) — pixel art 8 bits
    ========================================================================= */
 .ga-stage { height: min(74vh, 640px); min-height: 360px; background: #1f8f4e; }
 .ga-canvas { image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; cursor: crosshair; }

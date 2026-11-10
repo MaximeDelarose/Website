@@ -13,8 +13,8 @@ import { LEGACY_COLLECTION_IDS as COLLECTION_IDS, SPECIAL } from '../../data/ite
 import { ENDLESS_CFG } from '../endless/config';
 
 export const ENERGY_MAX = 100;
-/** Une énergie revient toutes les 45 s (plein en ~75 min). */
-export const REGEN_MS = 45_000;
+/** Une énergie revient toutes les 2 min (plein en ~3 h 20) : voir ENDLESS_CFG.energy.regenMs et docs/BALANCING.md. */
+export const REGEN_MS = ENDLESS_CFG.energy.regenMs;
 
 /**
  * Endless 2.0 — l'énergie ne bloque JAMAIS longtemps (aucune frustration pour pousser les diamants) :
@@ -24,7 +24,7 @@ export const REGEN_MS = 45_000;
  *    (voir rules.tapCost) ;
  *  - énergie offerte en jouant : livraisons (selon le palier de la commande), paliers de combo, nouveautés
  *    d'album, drops, coffres (voir src/game/endless/config.ts, section `energy`) ;
- *  - recharge gratuite d'Auguste (FREE_REFILL toutes les 10 min) et coffre gratuit, inchangés.
+ *  - recharge gratuite d'Auguste (FREE_REFILL une fois par jour) et coffre gratuit, inchangés.
  */
 export const FLOOR_LEVEL = ENDLESS_CFG.energy.floorLevel;
 export const FLOOR_REGEN_MS = ENDLESS_CFG.energy.floorRegenMs;
@@ -32,9 +32,11 @@ export const FREE_TAP_EVERY = ENDLESS_CFG.energy.freeTapEvery;
 export const deliveryEnergy = (tier: 'easy' | 'mid' | 'hard'): number => ENDLESS_CFG.energy.deliverEnergy[tier];
 /** Millisecondes pour regagner UNE énergie quand on en a `energy`. */
 export const regenStep = (energy: number): number => (energy < FLOOR_LEVEL ? FLOOR_REGEN_MS : REGEN_MS);
-/** Recharge gratuite d'Auguste : +30, toutes les 10 minutes (jamais au-delà de 100). */
-export const FREE_REFILL = 30;
-export const FREE_REFILL_MS = 10 * 60_000;
+/** Attention d'Auguste : +30 énergie, UNE fois par jour (jamais au-delà de 100). */
+export const FREE_REFILL = ENDLESS_CFG.energy.dailyGift;
+const dayKey = (ts: number): string => { const d = new Date(ts); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+/** Prochain minuit local après `ts`. */
+const nextMidnight = (ts: number): number => { const d = new Date(ts); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime(); };
 /** Coffre gratuit toutes les 4 heures. */
 export const FREE_CHEST_MS = 4 * 3600_000;
 export const BAG_MAX = 18;
@@ -89,7 +91,8 @@ export function nextEnergyIn(e: Eco, now: number): number {
   return Math.max(0, regenStep(e.energy) - (now - e.energyTs));
 }
 
-export const freeRefillIn = (e: Eco, now: number) => Math.max(0, e.freeRefillTs + FREE_REFILL_MS - now);
+/** Millisecondes avant de pouvoir reprendre l'attention d'Auguste (0 = disponible : pas encore reçue aujourd'hui). */
+export const freeRefillIn = (e: Eco, now: number) => (e.freeRefillTs > 0 && dayKey(e.freeRefillTs) === dayKey(now) ? Math.max(0, nextMidnight(now) - now) : 0);
 
 export function takeFreeRefill(e: Eco, now: number): boolean {
   if (freeRefillIn(e, now) > 0) return false;

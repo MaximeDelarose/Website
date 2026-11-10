@@ -51,7 +51,7 @@ async function openApp() {
 }
 async function closeApp() { await p.locator('.sw-app .sw-head .tdr-x').click(); await wait(500); if (await p.locator('.phh-quit').count()) { await p.locator('.phh-quit').click(); await wait(500); } } // fermer l'application ramène à l'accueil du téléphone ; on le quitte ensuite
 
-await p.goto(`http://localhost:${PORT}/?debug`);
+await p.goto(`http://localhost:${PORT}/?debug&statsDelay=999999999`);
 await wait(5500); await clean(6);
 
 // ------------------------------------------------------------------ 0. scène existante (2 500 matchs) conservée
@@ -121,57 +121,72 @@ await swipeCard('left');
 check('passer reste possible sans cœur', (await sw()).stats.passes === 2);
 await p.evaluate(() => { const s = window.RADIA.save.data.fun.apps.swipe; s.bank.n = 12; });
 
-// ------------------------------------------------------------------ 4. messages → conversation complète avec choix
+// ------------------------------------------------------------------ 4. messages → conversation LIBRE (clavier, texte exact, réponses adaptées)
 await p.locator('.sw-tab[data-tab="matches"]').click(); await wait(500);
 check('liste des matchs : lignes + pastille « Nouveau »', (await p.locator('.sw-row').count()) >= 2 && (await p.locator('.sw-chip.new').count()) >= 2);
 await sh('6-messages');
+// faux clavier iPhone : visualViewport contrôlable (Chromium émulé : pas de vrai clavier iOS)
+await p.evaluate((h0) => {
+  const vv = Object.assign(new EventTarget(), { height: h0, width: 393, offsetTop: 0, offsetLeft: 0, scale: 1, pageTop: 0, pageLeft: 0 });
+  Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true }); window.__vv = vv;
+}, H);
 await p.locator('.sw-row', { hasText: 'Hugo' }).click(); await p.waitForSelector('.sw-chat');
-await p.waitForSelector('.sw-ch', { timeout: 6000 }); await wait(400);
-check('chat : premier message de Hugo + choix', (await p.locator('.sw-b:not(.me)').first().textContent()).includes('Ravi du match') && (await p.locator('.sw-ch').count()) === 3);
+await p.waitForSelector('.cmp-in', { timeout: 6000 }); await wait(500);
+check('chat : premier message de Hugo, AUCUN choix multiple, champ de saisie permanent', (await p.locator('.sw-b:not(.me)').first().textContent()).includes('Ravi du match') && (await p.locator('.sw-ch').count()) === 0 && (await p.locator('.cmp-in').count()) === 1);
+check('le champ est un vrai <input> (clavier natif) de 16 px minimum, bouton d’envoi désactivé quand vide', await p.evaluate(() => { const i = document.querySelector('.cmp-in'); return i.tagName === 'INPUT' && parseFloat(getComputedStyle(i).fontSize) >= 16 && document.querySelector('.cmp-send').disabled === true; }));
 await sh('7-chat');
-let turns = 0;
-const picks = [1, 0, 2, 0, 1, 0];
-while (turns < 8) {
-  await p.waitForSelector('.sw-ch, .sw-end', { timeout: 9000 });
-  if (await p.locator('.sw-end').count()) break;
-  const n = await p.locator('.sw-ch').count();
-  if (turns === 1) { await p.locator('.sw-b.typing').count(); }
-  await p.locator('.sw-ch').nth(picks[turns] % n).click();
-  if (turns === 0) { await wait(500); check('indicateur de frappe animé pendant que le match écrit', (await p.locator('.sw-b.typing').count()) === 1); await sh('8-frappe'); }
-  turns++;
-  await wait(400);
+const say = async (t) => { await p.locator('.cmp-in').fill(t); await p.locator('.cmp-send').click(); };
+const lastHis = async () => (await p.locator('.sw-b:not(.me):not(.typing)').allTextContents()).slice(-3).join(' ‖ ');
+await say('Salut Hugo, ça va ?');
+await wait(300);
+check('mon message apparaît à droite avec mon texte exact', (await p.locator('.sw-b.me').last().textContent()) === 'Salut Hugo, ça va ?');
+check('indicateur « écrit… » animé pendant qu’il rédige', (await p.locator('.sw-b.typing').count()) === 1);
+await sh('8-frappe');
+await p.waitForFunction(() => document.querySelectorAll('.sw-b:not(.me):not(.typing)').length >= 3 && !document.querySelector('.sw-b.typing'), null, { timeout: 12000 });
+const r1 = await lastHis();
+check('il répond à « ça va ? » (pas un dialogue récité)', /ça va|bien|merci|toi/i.test(r1), r1);
+check('le champ reste actif après l’envoi (le clavier reste ouvert)', await p.evaluate(() => document.activeElement === document.querySelector('.cmp-in')));
+await say('mdrr et tu fais quoi dans la vie ?');
+await p.waitForFunction(() => !document.querySelector('.sw-b.typing') && document.querySelectorAll('.sw-b.me').length >= 2, null, { timeout: 12000 }); await wait(2500);
+const r2 = await lastHis();
+check('il répond à la question sur son métier', /éducation|boulot|humain|transmett|gens|travail/i.test(r2), r2);
+// fautes, argot, changement de sujet
+let sawAuguste = /l.autre/i.test(await p.locator('.sw-msgs').textContent());
+for (const t of ['jsp trop lol', 'et le foot tu aimes ?', 'pk tu dis ca', 'ptdr nan j\'aime les chats', 'tu es mignon', 'tu as snapchien ?']) {
+  await say(t); await wait(300);
+  await p.waitForFunction(() => !document.querySelector('.sw-b.typing'), null, { timeout: 12000 }); await wait(2200);
+  sawAuguste ||= /l.autre/i.test(await p.locator('.sw-msgs').textContent());
 }
-await p.waitForSelector('.sw-end', { timeout: 9000 }); await wait(600);
+check('Hugo demande si elle est toujours en contact avec « l’autre » (Auguste)', sawAuguste);
+check('au moins 6 échanges, historique visible dans l’ordre', (await p.locator('.sw-b.me').count()) >= 7 && (await p.locator('.sw-time').count()) >= 4);
+// clavier iPhone : le champ et les derniers messages restent visibles
+await p.evaluate((h0) => { window.__vv.height = h0 - 336; window.__vv.dispatchEvent(new Event('resize')); }, H);
+await wait(400);
+const kb = await p.evaluate(() => { const c = document.querySelector('.sw-chat'); const i = document.querySelector('.cmp-in').getBoundingClientRect(); const m = document.querySelector('.sw-msgs'); const last = [...document.querySelectorAll('.sw-b:not(.typing)')].pop().getBoundingClientRect(); return { open: c.classList.contains('kb-open'), bottom: c.style.bottom, inputBottom: i.bottom, vh: window.__vv.height, lastBottom: last.bottom, lastTop: last.top, msgsTop: m.getBoundingClientRect().top, msgsBottom: m.getBoundingClientRect().bottom }; });
+check('clavier ouvert : le champ de saisie est au-dessus du clavier', kb.open && kb.inputBottom <= kb.vh + 1, JSON.stringify(kb));
+check('clavier ouvert : le dernier message reste visible', kb.lastBottom <= kb.msgsBottom + 1 && kb.lastTop >= kb.msgsTop - 1, JSON.stringify(kb));
+await sh('8b-clavier');
+await p.evaluate((h0) => { window.__vv.height = h0; window.__vv.dispatchEvent(new Event('resize')); }, H); await wait(300);
+check('clavier fermé : la mise en page revient', await p.evaluate(() => !document.querySelector('.sw-chat').classList.contains('kb-open') && document.querySelector('.sw-chat').style.bottom === ''));
 const hs = (await sw()).convos.hugo;
-check(`conversation menée jusqu’à une fin (${turns} réponses)`, hs.status === 'ended' && turns >= 3 && (await sw()).stats.ended === 1);
-check('horodatages de jeu affichés', (await p.locator('.sw-time').count()) >= 3);
-check('note de fin discrète, sans jugement', (await p.locator('.sw-end p').textContent()).length > 10);
-await sh('9-fin');
-const eb = await p.locator('.sw-end').boundingBox(); check('carte de fin entièrement visible', eb.y >= 0 && eb.y + eb.height <= H, JSON.stringify(eb));
-await p.locator('.sw-end .btn', { hasText: 'Garder' }).click(); await wait(500);
+check('historique sauvegardé : mes messages et les siens, texte exact', hs.msgs.filter((m) => m.k === 'out').length >= 7 && hs.msgs.some((m) => m.k === 'out' && m.text === 'Salut Hugo, ça va ?'));
+await p.locator('.sw-chead .tdr-x').click(); await wait(500);
 
-// ------------------------------------------------------------------ 5. une autre conversation : poser des questions, arrêter, reprendre, supprimer
-await p.locator('.sw-row').first().click(); await p.waitForSelector('.sw-ch');
-const pid2 = await p.evaluate(() => document.querySelector('.sw-cname b').textContent);
-let askN = await p.locator('.sw-ch.ask').count();
-// certains profils ne proposent une question qu'au 2e ou 3e tour : on avance avec une réponse simple
-for (let k = 0; k < 3 && askN < 1; k++) {
-  const plain = p.locator('.sw-ch:not(.ask)').first();
-  if (!(await plain.count())) break;
-  await plain.click(); await p.waitForSelector('.sw-ch, .sw-end', { timeout: 9000 }); await wait(600);
-  askN = await p.locator('.sw-ch.ask').count();
-}
-check('des choix « poser une question » existent', askN >= 1, `${pid2}: ${askN}`);
+// ------------------------------------------------------------------ 5. une autre conversation : pause, reprise, suppression
+await p.locator('.sw-row').first().click(); await p.waitForSelector('.cmp-in');
+const matchesBefore = (await sw()).matches.length; const delId = await p.evaluate(() => document.querySelector('.sw-cname b').textContent);
+await say('coucou, tu fais quoi de beau ?'); await p.waitForFunction(() => !document.querySelector('.sw-b.typing'), null, { timeout: 12000 }); await wait(2000);
+check('autre match : il répond au contenu du message', (await lastHis()).length > 10, await lastHis());
 await p.locator('.sw-more').click(); await wait(200); await sh('10-menu');
-await p.locator('.sw-menu button', { hasText: 'Arrêter la conversation' }).click(); await wait(400);
-check('arrêter la conversation : en pause, sans choix', (await p.locator('.sw-ch').count()) === 0 && (await p.locator('.sw-end').textContent()).includes('pause'));
-await p.locator('.sw-end .btn', { hasText: 'Reprendre' }).click(); await p.waitForSelector('.sw-ch'); await wait(300);
-check('reprendre : les choix reviennent', (await p.locator('.sw-ch').count()) >= 2);
+await p.locator('.sw-menu button', { hasText: 'Mettre en pause' }).click(); await wait(400);
+check('mettre en pause : champ masqué, carte « pause »', (await p.locator('.sw-compose.hide').count()) === 1 && (await p.locator('.sw-end').textContent()).includes('pause'));
+await p.locator('.sw-end .btn', { hasText: 'Reprendre' }).click(); await wait(500);
+check('reprendre : le champ de saisie revient', (await p.locator('.sw-compose.hide').count()) === 0 && (await p.locator('.cmp-in').count()) === 1);
 await p.locator('.sw-more').click();
-await p.locator('.sw-menu button.danger').click(); await wait(300);
+await p.locator('.sw-menu button.danger', { hasText: 'Supprimer' }).click(); await wait(300);
 await p.locator('.sw-end .btn', { hasText: 'Supprimer' }).click(); await p.waitForSelector('.sw-chat', { state: 'detached', timeout: 5000 }).catch(() => undefined); await wait(300);
 const s4 = await sw();
-check('supprimer le match : conversation retirée', !s4.convos.clement && !s4.matches.includes('clement') && (await p.locator('.sw-chat').count()) === 0, `matchs restants ${s4.matches.length}`);
+check('supprimer le match : conversation retirée et il ne reviendra jamais', s4.matches.length === matchesBefore - 1 && (await p.locator('.sw-chat').count()) === 0 && s4.removed.length === 1, `matchs restants ${s4.matches.length} · supprimés ${s4.removed}`);
 
 // ------------------------------------------------------------------ 6. notification de message (pendant que Radia joue ailleurs)
 await closeApp();
@@ -201,11 +216,11 @@ await p.waitForSelector('.ev-notif.sw-notif', { timeout: 14000 }).catch(() => un
 check('relance après « plus tard » (bien plus tard)', (await p.locator('.ev-notif.sw-notif').count()) === 1);
 await p.locator('.ev-notif.sw-notif .btn', { hasText: 'Ouvrir' }).click();
 await p.waitForSelector('.sw-chat', { timeout: 5000 }); await wait(800); await sh('13-depuis-notif');
-check('« Ouvrir » mène à la conversation', (await p.locator('.sw-chat').count()) === 1 && (await p.locator('.sw-ch').count()) >= 1);
+check('« Ouvrir » mène à la conversation', (await p.locator('.sw-chat').count()) === 1 && (await p.locator('.cmp-in').count()) === 1);
 // quitter pendant qu’il écrit : la réponse arrive plus tard, en jeu actif
-await p.evaluate(() => { document.querySelector('.sw-ch').click(); document.querySelector('.sw-chead .tdr-x').click(); }); // choisit puis quitte aussitôt
+await p.locator('.cmp-in').fill('tu es là ?'); await p.locator('.cmp-send').click(); await wait(200); await p.evaluate(() => { document.querySelector('.sw-chead .tdr-x').click(); }); // écrit puis quitte aussitôt
 await wait(400);
-const q = await p.evaluate(() => Object.values(window.RADIA.save.data.fun.apps.swipe.convos).find((c) => c.queue));
+const q = await p.evaluate(() => Object.values(window.RADIA.save.data.fun.apps.swipe.convos).find((c) => c.pending.length));
 check('réponse en attente quand Radia quitte le chat', !!q && q.due > 0, q ? `due=${q.due}` : '');
 await closeApp();
 

@@ -67,3 +67,10 @@ export function nextThought(deck: number[], lastIdx: number, rnd: () => number):
   const idx = d[pos];
   return { idx, deck: [...d.filter((_, k) => k !== pos), -THOUGHTS.length] };
 }
+
+/** Annonce unique « nouveauté » (partage de la progression) : une seule fois par appareil, dans la plage d'envoi (jamais la nuit). */
+export function isNewsDue(s: SubLike & { news_sent?: boolean }, nowMs: number): boolean {
+  if (!s.enabled || s.news_sent) return false;
+  const { hour } = localParts(nowMs, s.tz);
+  return hour >= SEND_FROM && hour < SEND_UNTIL;
+}

@@ -8,7 +8,7 @@
   <meta property="og:title" content="Jeux · AkarisuMD">
   <meta property="og:description" content="Tous mes jeux : projets Unity et itch.io, jeux jouables directement dans le navigateur, et le Versus entre amis de 2 à 4 joueurs.">
   <meta name="theme-color" content="#3f6b3a">
-  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261118sq3">
   <script>
     (function () {
       var t = null;
@@ -20,10 +20,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261115flt2">
+  <link rel="stylesheet" href="css/style.css?v=20261118ft1">
   <link rel="stylesheet" href="css/party.css?v=20261107vs2">
-  <link rel="stylesheet" href="css/versus.css?v=20261107vs2">
-  <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
+  <link rel="stylesheet" href="css/versus.css?v=20261116vs3">
+  <link rel="stylesheet" href="css/gamekit.css?v=20261118gf4">
 </head>
 <body data-page="games">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -31,13 +31,14 @@
   <header class="site-header">
     <div class="wrap header-inner">
       <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
-        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
         <span class="brand-name">Akarisu<span>MD</span></span>
       </a>
       <nav id="site-nav" aria-label="Navigation principale">
         <ul>
           <li><a href="index.html" data-page="home">Accueil</a></li>
           <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="stats.html" data-page="stats">Stats</a></li>
           <li><a href="bio.html" data-page="bio">Bio</a></li>
           <li><a href="contact.html" data-page="contact">Contact</a></li>
         </ul>
@@ -75,7 +76,7 @@
         <p class="lib-status"><span data-count aria-live="polite"></span><button type="button" class="lib-reset" data-reset hidden>Effacer les filtres</button><a class="lib-jump" href="#versus">⚔️ Versus entre amis ↓</a></p>
       </div>
       <div class="panel empty hub-empty" data-hub-empty hidden>
-        <img src="assets/squirrel.png" alt="" width="60" height="57">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="72" height="76">
         <p>Rien trouvé dans ce coin de la forêt…</p>
       </div>
     </div>
@@ -99,7 +100,7 @@
       <div class="wrap">
         <div class="section-head"><div><span class="kicker">Jouables ici, sans rien installer</span><h2>Jeux navigateur</h2></div></div>
         <p class="lead games-intro">Mes petits jeux maison, faits pour tourner directement dans le navigateur, sur ordinateur comme sur mobile.</p>
-        <a class="panel vs-teaser" href="#versus"><span class="vs-teaser-ico" aria-hidden="true">⚔️</span><span><strong>Versus entre amis</strong><br>Crée une party de 2 à 4 joueurs et enchaînez les manches sur tous ces jeux : 1 contre 1, 2 contre 2, chacun pour soi, avec des points et des émotes.</span><span class="btn btn-small">Jouer en versus ↓</span></a>
+        <a class="panel vs-teaser" href="#versus"><span class="vs-teaser-ico" aria-hidden="true">⚔️</span><span><strong>Versus entre amis</strong><br>Crée une party de 2 à 4 joueurs et enchaînez les manches : 1 contre 1, 2 contre 2, chacun pour soi, avec des points et des émotes.</span><span class="btn btn-small">Jouer en versus ↓</span></a>
       <div class="grid games-grid" data-filter-grid data-filter-cat="web">
           <article class="card">
             <div class="card-media"><a href="jeu.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="survivor" data-icon="paw" data-palette="#9cc56b,#5b8a4a,#1f3a2b"></canvas></a></div>
@@ -115,21 +116,11 @@
           <article class="card">
             <div class="card-media"><a href="merger.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="merger" data-icon="drop" data-palette="#f2b05e,#e8873a,#3d2a1e"></canvas></a></div>
             <div class="card-body">
-              <h3 class="card-title"><a href="merger.html">Merger</a></h3>
+              <h3 class="card-title"><a href="merger.html">Merger &amp; Suika</a></h3>
               <p class="card-meta">Réflexion · solo & coop à 2</p>
-              <p class="card-text">Lâche les écureuils deux par deux : 3 de la même couleur qui se touchent disparaissent. Mode Coop à 2 sur le même ordinateur.</p>
+              <p class="card-text">Lâche les écureuils deux par deux et fais disparaître les groupes de 3 de même couleur. Un mode Coop à 2 et un mode Suika (fusionne les écureuils en plus gros) sont dans la même page.</p>
               <ul class="tags"><li>Puzzle</li><li>Coop local</li></ul>
               <a class="btn btn-small" href="merger.html">▶ Jouer</a>
-            </div>
-          </article>
-          <article class="card">
-            <div class="card-media"><a href="suika.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="suika" data-icon="drop" data-palette="#f6c453,#e0544b,#3d1f1a"></canvas></a></div>
-            <div class="card-body">
-              <h3 class="card-title"><a href="suika.html">Suika</a></h3>
-              <p class="card-meta">Puzzle · solo</p>
-              <p class="card-text">Lâche des écureuils dans le bac : deux identiques qui se touchent fusionnent en un plus gros. Arrive jusqu'au Grand Chêne sans déborder !</p>
-              <ul class="tags"><li>Puzzle</li><li>Fusion</li><li>Tactile</li><li>Nouveau</li></ul>
-              <a class="btn btn-small" href="suika.html">▶ Jouer</a>
             </div>
           </article>
           <article class="card">
@@ -163,26 +154,6 @@
             </div>
           </article>
           <article class="card">
-            <div class="card-media"><a href="bagbound.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="bagbound" data-icon="bag" data-palette="#f2c14e,#8a5a2b,#2b1f18"></canvas></a></div>
-            <div class="card-body">
-              <h3 class="card-title"><a href="bagbound.html">BAGBOUND</a></h3>
-              <p class="card-meta">Roguelite · auto-battler en sac à dos</p>
-              <p class="card-text">Traverse la forêt de combat en combat : range ton sac, tourne tes objets pour qu'ils se renforcent entre voisins, puis regarde le combat se jouer tout seul. Boutique, événements, boss.</p>
-              <ul class="tags"><li>Sac à dos</li><li>Auto-battler</li><li>Mobile</li><li>Nouveau</li></ul>
-              <a class="btn btn-small" href="bagbound.html">▶ Jouer</a>
-            </div>
-          </article>
-          <article class="card">
-            <div class="card-media"><a href="ultimate.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="ultimate" data-icon="flag" data-palette="#8fd0f0,#5aa84a,#2f5a2a"></canvas></a></div>
-            <div class="card-body">
-              <h3 class="card-title"><a href="ultimate.html">Ultimate Écureuil</a></h3>
-              <p class="card-meta">Party platformer · 1 à 4 joueurs</p>
-              <p class="card-text">Choisis une pièce, construis le parcours, pose tes pièges (piques, scies, canons à glands), puis cours jusqu'au drapeau. Seuls ceux qui arrivent marquent : à toi de doser la cruauté !</p>
-              <ul class="tags"><li>Plateformes</li><li>Même clavier</li><li>Bots</li><li>Mobile</li><li>Nouveau</li></ul>
-              <a class="btn btn-small" href="ultimate.html">▶ Jouer</a>
-            </div>
-          </article>
-          <article class="card">
             <div class="card-media"><a href="arcane.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="arcane" data-icon="wand" data-palette="#c9a6ff,#5b2d8e,#1d1438"></canvas></a></div>
             <div class="card-body">
               <h3 class="card-title"><a href="arcane.html">Arcane Tactics</a></h3>
@@ -213,43 +184,13 @@
             </div>
           </article>
           <article class="card">
-            <div class="card-media"><a href="golfaventure.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="golfaventure" data-icon="golf" data-palette="#c6f55c,#139a56,#0b3a24"></canvas></a></div>
-            <div class="card-body">
-              <h3 class="card-title"><a href="golfaventure.html">Golfaventure</a></h3>
-              <p class="card-meta">Aventure de golf · solo</p>
-              <p class="card-text">Tu es une petite balle dans un monde en pixel art où tes coups sont ta vie : drapeaux de sauvegarde, souterrain, slimes, oiseaux, chauves-souris et aigles à percuter, donjon à puzzles (interrupteurs, glace, clés, boss) et quatre Morceaux de Tee à rapporter au temple.</p>
-              <ul class="tags"><li>Aventure</li><li>Golf</li><li>Pixel art</li><li>Nouveau</li></ul>
-              <a class="btn btn-small" href="golfaventure.html">▶ Jouer</a>
-            </div>
-          </article>
-          <article class="card">
             <div class="card-media"><a href="golf.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="golf" data-icon="golf" data-palette="#bfe8a8,#4f9d46,#1f3a2b"></canvas></a></div>
             <div class="card-body">
-              <h3 class="card-title"><a href="golf.html">Mini-golf</a></h3>
+              <h3 class="card-title"><a href="golf.html">Golf</a></h3>
               <p class="card-meta">Adresse · solo & en ligne</p>
-              <p class="card-text">9 trous dans la forêt : sable, lac, champignons rebondissants et un moulin à timer. Joue seul pour battre ton record, ou défie 1 à 3 amis en ligne avec un code de salon.</p>
+              <p class="card-text">Un mini-golf pixel art dans la forêt (9 trous, solo ou en ligne à 4), et Golfaventure : tu es la balle, et tes coups sont ta vie. Les deux modes sont dans la même page.</p>
               <ul class="tags"><li>Mini-golf</li><li>En ligne</li><li>Mobile</li><li>Nouveau</li></ul>
               <a class="btn btn-small" href="golf.html">▶ Jouer</a>
-            </div>
-          </article>
-          <article class="card">
-            <div class="card-media"><a href="defense.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="defense" data-icon="tower" data-palette="#c9b6e4,#7a5ea8,#2b1f3d"></canvas></a></div>
-            <div class="card-body">
-              <h3 class="card-title"><a href="defense.html">Écureuil Défense</a></h3>
-              <p class="card-meta">Tower defense · solo</p>
-              <p class="card-text">Pose des écureuils le long du chemin et améliore-les sur 3 voies de 5 niveaux. 5 cartes, 4 difficultés.</p>
-              <ul class="tags"><li>Tower defense</li><li>Stratégie</li></ul>
-              <a class="btn btn-small" href="defense.html">▶ Jouer</a>
-            </div>
-          </article>
-          <article class="card">
-            <div class="card-media"><a href="flippers.html" tabindex="-1" aria-hidden="true"><canvas data-game-cover="flippers" data-icon="pinball" data-palette="#7fd1a0,#2f7f55,#12301f"></canvas></a></div>
-            <div class="card-body">
-              <h3 class="card-title"><a href="flippers.html">Flippers</a></h3>
-              <p class="card-meta">Arcade · solo</p>
-              <p class="card-text">Un flipper dans la forêt : champignons-bumpers, cibles GLAND, terrier et multiplicateur. 3 billes pour battre ton record, au clavier ou au doigt.</p>
-              <ul class="tags"><li>Flipper</li><li>Arcade</li><li>Clavier</li><li>Tactile</li><li>Nouveau</li></ul>
-              <a class="btn btn-small" href="flippers.html">▶ Jouer</a>
             </div>
           </article>
           <article class="card">
@@ -279,7 +220,7 @@
     <section class="hub-section vs-section" id="versus">
       <div class="wrap" data-versus>
         <div class="section-head"><div><span class="kicker">Entre amis, de 2 à 4 joueurs</span><h2>Versus</h2></div></div>
-        <p class="lead">Crée une party, envoie le code à tes amis et enchaînez les manches sur tous les jeux du site : 1 contre 1, 2 contre 2, chacun pour soi… Le meilleur de chaque manche marque un point, le premier au but remporte la party. Les connexions aux jeux se font toutes seules.</p>
+        <p class="lead">Crée une party, envoie le code à tes amis et enchaînez les manches sur les jeux du site : 1 contre 1, 2 contre 2, chacun pour soi… Le meilleur de chaque manche marque un point, le premier au but remporte la party. Les connexions aux jeux se font toutes seules.</p>
         <div data-vs-app><p>Chargement…</p></div>
       </div>
     </section>
@@ -288,7 +229,7 @@
   <footer class="site-footer">
     <div class="wrap footer-inner">
       <div class="footer-brand">
-        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
         <div>
           <p class="pixel" style="margin:0">AkarisuMD</p>
           <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
@@ -306,14 +247,14 @@
       if (id) window.addEventListener("load", function () { var el = document.getElementById(id); if (el) el.scrollIntoView(); });
     })();
   </script>
-  <script src="js/data.js?v=20261103re4"></script>
+  <script src="js/data.js?v=20261118ft1"></script>
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/leaderboard.js?v=20261103re4"></script>
-  <script src="js/main.js?v=20261115flt2"></script>
-  <script src="js/gamekit.js?v=20261114gk2"></script>
-  <script src="js/party-modes.js?v=20261107vs2"></script>
-  <script src="js/party.js?v=20261115hub1"></script>
-  <script src="js/versus.js?v=20261115hub1"></script>
-  <script src="js/scene.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261118ft1"></script>
+  <script src="js/gamekit.js?v=20261118gf3"></script>
+  <script src="js/party-modes.js?v=20261116vs3"></script>
+  <script src="js/party.js?v=20261116vs3"></script>
+  <script src="js/versus.js?v=20261116vs3"></script>
+  <script src="js/scene.js?v=20261118sq3"></script>
 </body>
 </html>

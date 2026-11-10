@@ -4,7 +4,11 @@
  * Aucun mur de paiement, aucune pénalité : les cœurs se rechargent tout seuls, passer est illimité.
  */
 import { PROFILES, OPENING, nodeOf, profileById } from './data';
-import type { Node, Profile } from './types';
+import { chatReply } from '../../../apps/brain/chat';
+import { start as brainStart } from '../../../apps/brain/engine';
+import { memOf } from '../../../apps/brain/memory';
+import type { BrainState, RngLike } from '../../../apps/brain/types';
+import type { Profile } from './types';
 
 export const SW = {
   /** Cœurs maximum en réserve, et délai de recharge d'un cœur (ms réelles). */
@@ -21,23 +25,25 @@ export const SW = {
   /** Réponse d'un match quand Radia a quitté le chat : entre 3 et 6 min de jeu actif. */
   replyMinMs: 3 * 60_000,
   replySpanMs: 3 * 60_000,
-  logMax: 80,
+  logMax: 60,
 } as const;
 
-export interface Msg { k: 'in' | 'out'; n: string; c?: number; t: number }
+/** Un message de la conversation (messagerie LIBRE : le texte exact écrit par Radia ou par le match). `t` = heure réelle. */
+export interface Msg { k: 'in' | 'out'; text: string; t: number }
 export interface Convo {
   pid: string;
-  log: Msg[];
+  msgs: Msg[];
   status: 'active' | 'ended' | 'stopped';
-  /** Nœud de fin atteint (si status === 'ended'). */
+  /** Ancienne fin d'histoire (conversations créées avant la messagerie libre) : id du nœud de fin. */
   end: string;
-  /** Réponse en attente d'écriture (id de nœud), livrée à `due` (horloge de jeu actif) ; due = 0 : le chat est ouvert. */
-  queue: string;
+  /** Bulles de sa réponse, en attente d'écriture : livrées à `due` (horloge de jeu actif) ; due = 0 : le chat est ouvert. */
+  pending: string[];
   due: number;
   unread: boolean;
   /** Horloge à partir de laquelle une notification est permise ; 0 = aucune. */
   pingAt: number;
   notified: boolean;
+  /** Dernière activité (heure réelle). */
   at: number;
 }
 export interface SwipeState {
@@ -59,12 +65,14 @@ export interface SwipeState {
   lastPing: number;
   pings: number;
   welcomed: boolean;
+  /** Matchs supprimés ou bloqués : ils ne reviennent jamais dans la pile. */
+  removed: string[];
 }
 
 export const defaultSwipe = (): SwipeState => ({
   v: 1, clock: 0, cycle: 0, order: [], pos: 0, seen: [], liked: [], passed: [], matches: [], convos: {},
   bank: { n: SW.bankMax, ts: 0 }, stats: { likes: 0, passes: 0, matches: 0, ended: 0 }, endings: {},
-  missStreak: 0, lastPing: -1e12, pings: 0, welcomed: false,
+  missStreak: 0, lastPing: -1e12, pings: 0, welcomed: false, removed: [],
 });
 
 // ------------------------------------------------------------------ nettoyage
@@ -94,6 +102,7 @@ export function sanitizeSwipe(raw: unknown): SwipeState {
   d.lastPing = num(raw.lastPing, -1e12, -1e12);
   d.pings = Math.floor(num(raw.pings, 0, 0, 1e6));
   d.welcomed = raw.welcomed === true;
+  d.removed = ids(raw.removed);
   if (isObj(raw.convos)) {
     for (const [pid, c] of Object.entries(raw.convos).slice(0, 80)) {
       const p = profileById(pid);
@@ -102,7 +111,8 @@ export function sanitizeSwipe(raw: unknown): SwipeState {
       if (cv) d.convos[pid] = cv;
     }
   }
-  d.matches = ids(raw.matches).filter((id) => !!d.convos[id]);
+  d.matches = ids(raw.matches).filter((id) => !!d.convos[id] && !d.removed.includes(id));
+  for (const id of d.removed) delete d.convos[id];
   for (const pid of Object.keys(d.convos)) if (!d.matches.includes(pid)) d.matches.push(pid);
   if (isObj(raw.endings)) {
     for (const [pid, arr] of Object.entries(raw.endings)) {
@@ -115,35 +125,31 @@ export function sanitizeSwipe(raw: unknown): SwipeState {
 }
 
 function sanitizeConvo(p: Profile, c: Record<string, unknown>, clock: number): Convo | null {
-  const log: Msg[] = [];
-  if (Array.isArray(c.log)) {
-    for (const m of c.log.slice(-SW.logMax)) {
-      if (!isObj(m) || typeof m.n !== 'string' || !nodeOf(p, m.n)) continue;
-      const t = num(m.t, 0);
-      if (m.k === 'in') log.push({ k: 'in', n: m.n, t });
-      else if (m.k === 'out') {
-        const node = nodeOf(p, m.n)!;
-        const ci = Math.floor(num(m.c, -1, -1, 9));
-        if (ci >= 0 && ci < node.ch.length) log.push({ k: 'out', n: m.n, c: ci, t });
-      }
+  const msgs: Msg[] = [];
+  if (Array.isArray(c.msgs)) {
+    for (const m of c.msgs.slice(-SW.logMax)) {
+      if (!isObj(m) || typeof m.text !== 'string' || !m.text.trim() || (m.k !== 'in' && m.k !== 'out')) continue;
+      msgs.push({ k: m.k, text: m.text.slice(0, 600), t: num(m.t, 0) });
     }
+  } else if (Array.isArray(c.log)) {
+    // ancienne conversation à choix multiples : on rejoue le journal de nœuds pour en faire de vrais messages (rien n'est perdu)
+    for (const m of c.log.slice(-SW.logMax)) {
+      if (!isObj(m) || typeof m.n !== 'string') continue;
+      const node = nodeOf(p, m.n); if (!node) continue;
+      const t = num(m.t, 0);
+      if (m.k === 'in') for (const line of node.say) msgs.push({ k: 'in', text: line, t });
+      else if (m.k === 'out') { const ci = Math.floor(num(m.c, -1, -1, 9)); const ch = ci >= 0 ? node.ch[ci] : undefined; if (ch) msgs.push({ k: 'out', text: ch.t, t }); }
+    }
+    // une réponse qui était en attente d'écriture (id de nœud) devient ses bulles en attente
+    if (typeof c.queue === 'string' && c.queue) { const q = nodeOf(p, c.queue); if (q) c.pending = q.say; }
   }
-  // le dernier message doit être entrant, ou sortant avec une réponse en attente
-  if (!log.length || log[0].k !== 'in') { log.length = 0; log.push({ k: 'in', n: p.start, t: num(c.at, 0) }); }
-  const last = log[log.length - 1];
-  let queue = typeof c.queue === 'string' && nodeOf(p, c.queue) ? c.queue : '';
-  if (last.k === 'out') {
-    const to = nodeOf(p, last.n)!.ch[last.c!].to;
-    queue = nodeOf(p, to) ? to : '';
-    if (!queue) log.pop();
-  } else queue = '';
-  const cur = log[log.length - 1];
-  const node = nodeOf(p, cur.n)!;
-  let status: Convo['status'] = c.status === 'stopped' ? 'stopped' : 'active';
-  let end = '';
-  if (node.end && !queue) { status = 'ended'; end = node.id; }
+  if (!msgs.length) { const st = nodeOf(p, p.start); for (const line of st?.say ?? []) msgs.push({ k: 'in', text: line, t: num(c.at, 0) }); }
+  const pending = Array.isArray(c.pending) ? c.pending.filter((x): x is string => typeof x === 'string' && !!x.trim()).slice(0, 5).map((x) => x.slice(0, 400)) : [];
+  let status: Convo['status'] = c.status === 'stopped' ? 'stopped' : c.status === 'ended' ? 'ended' : 'active';
+  const end = typeof c.end === 'string' ? c.end.slice(0, 40) : '';
+  if (status === 'ended' && !end) status = 'active';
   return {
-    pid: p.id, log, status, end, queue, due: queue ? num(c.due, clock + SW.replyMinMs, 0) : 0,
+    pid: p.id, msgs, status, end: status === 'ended' ? end : '', pending, due: pending.length ? num(c.due, clock + SW.replyMinMs, 0) : 0,
     unread: c.unread === true, pingAt: num(c.pingAt, 0), notified: c.notified === true, at: num(c.at, 0),
   };
 }
@@ -175,7 +181,7 @@ function shuffle<T>(a: T[], rng: () => number): T[] {
 /** Remplit la pile quand elle est finie : la pile se renouvelle toujours (profils déjà passés revenus, jamais les matchs en cours). */
 export function ensureDeck(s: SwipeState, rng: () => number = Math.random): void {
   if (s.pos < s.order.length) return;
-  const pool = PROFILES.filter((p) => !s.matches.includes(p.id)).map((p) => p.id);
+  const pool = PROFILES.filter((p) => !s.matches.includes(p.id) && !s.removed.includes(p.id)).map((p) => p.id);
   if (!pool.length) { s.order = []; s.pos = 0; return; }
   const first = s.cycle === 0 && s.seen.length === 0;
   const head = first ? OPENING.filter((id) => pool.includes(id)) : [];
@@ -233,68 +239,81 @@ export function like(s: SwipeState, now: number, rng: () => number = Math.random
 function startMatch(s: SwipeState, p: Profile, now: number): void {
   s.stats.matches++;
   if (!s.matches.includes(p.id)) s.matches.unshift(p.id);
+  const open = nodeOf(p, p.start);
   s.convos[p.id] = {
-    pid: p.id, log: [{ k: 'in', n: p.start, t: now }], status: 'active', end: '', queue: '', due: 0,
+    pid: p.id, msgs: (open?.say ?? ['Salut !']).map((text) => ({ k: 'in' as const, text, t: now })), status: 'active', end: '', pending: [], due: 0,
     unread: true, pingAt: s.clock + SW.firstPingMs, notified: false, at: now,
   };
 }
 
-// ------------------------------------------------------------------ conversations
+// ------------------------------------------------------------------ conversations (messagerie libre)
 
-export function currentNode(s: SwipeState, pid: string): Node | undefined {
-  const p = profileById(pid); const c = s.convos[pid];
-  if (!p || !c) return undefined;
-  for (let i = c.log.length - 1; i >= 0; i--) if (c.log[i].k === 'in') return nodeOf(p, c.log[i].n);
-  return undefined;
+const asRng = (f: () => number): RngLike => ({ next: f, int: (n: number) => Math.floor(f() * n) });
+const hourOf = (t: number): number => new Date(t).getHours();
+
+export interface SendResult { lines: string[]; addSnap: boolean; offersSnap: boolean }
+/**
+ * Radia écrit un message libre. Le message est enregistré, le personnage le lit et prépare sa réponse (bulles en attente, livrées pendant
+ * que le chat est ouvert, ou plus tard pendant le jeu actif si elle quitte la conversation). `null` : envoi impossible (pause, vide, supprimé).
+ */
+export function sendText(s: SwipeState, brain: BrainState, pid: string, text0: string, now: number, rng: () => number = Math.random): SendResult | null {
+  const c = s.convos[pid]; const p = profileById(pid);
+  const text = (text0 ?? '').replace(/\s+/g, ' ').trim().slice(0, 500);
+  if (!c || !p || !text || c.status === 'stopped' || c.pending.length) return null;
+  if (c.status === 'ended') { c.status = 'active'; c.end = ''; } // elle reprend la discussion après une ancienne fin d'histoire
+  c.msgs.push({ k: 'out', text, t: now });
+  const m = memOf(brain, pid); if (!m.talkedAt) m.talkedAt = c.at || now;
+  const beat = chatReply(brain, pid, text, asRng(rng), { now, hour: hourOf(now), channel: 'tindeur', age: p.age, km: p.km, hasSnap: SNAP_IDS.has(pid), inSnap: snapHas?.(pid) ?? false });
+  while (c.msgs.length > SW.logMax) c.msgs.shift();
+  c.pending = beat ? beat.say.slice(0, 4) : [];
+  c.due = 0; c.unread = false; c.pingAt = 0; c.at = now;
+  return { lines: c.pending.slice(), addSnap: !!beat?.addSnap, offersSnap: !!beat?.offersSnap };
 }
-/** Réponses proposées à Radia (vide si elle attend une réponse, ou si l'histoire est finie). */
-export function choicesOf(s: SwipeState, pid: string): Node['ch'] {
+/** Les personnages qui ont aussi un compte Snapchien (même identité dans les deux applications). */
+export const SNAP_IDS = new Set(['dylan', 'maxime', 'kevin', 'thomas', 'nicolas', 'jordan', 'alexandre', 'lucas', 'hugo']);
+/** Branchement léger (évite une dépendance circulaire) : Snapchien dit si un contact est déjà ajouté. */
+let snapHas: ((pid: string) => boolean) | undefined;
+export function setSnapLookup(f: (pid: string) => boolean): void { snapHas = f; }
+
+/** Livre sa réponse en attente. `unread` : Radia n'est pas dans le chat. Renvoie les bulles livrées. */
+export function deliver(s: SwipeState, pid: string, now: number, unread: boolean): string[] | null {
   const c = s.convos[pid];
-  if (!c || c.status !== 'active' || c.queue) return [];
-  return currentNode(s, pid)?.ch ?? [];
-}
-
-/** Radia choisit une réponse : la réplique est mise en file (le match « écrit »…). */
-export function choose(s: SwipeState, pid: string, ci: number, now: number): boolean {
-  const c = s.convos[pid]; const node = currentNode(s, pid);
-  if (!c || !node || c.status !== 'active' || c.queue || ci < 0 || ci >= node.ch.length) return false;
-  c.log.push({ k: 'out', n: node.id, c: ci, t: now });
-  if (c.log.length > SW.logMax) c.log.splice(0, c.log.length - SW.logMax);
-  c.queue = node.ch[ci].to;
-  c.due = 0;
-  c.unread = false;
-  c.pingAt = 0;
-  return true;
-}
-
-/** Livre la réplique en attente. `unread` : Radia n'est pas dans le chat. Renvoie le nœud livré. */
-export function deliver(s: SwipeState, pid: string, now: number, unread: boolean): Node | null {
-  const p = profileById(pid); const c = s.convos[pid];
-  if (!p || !c || !c.queue) return null;
-  const node = nodeOf(p, c.queue);
-  c.queue = ''; c.due = 0;
-  if (!node) return null;
-  c.log.push({ k: 'in', n: node.id, t: now });
-  if (c.log.length > SW.logMax) c.log.splice(0, c.log.length - SW.logMax);
-  if (node.end) {
-    c.status = 'ended'; c.end = node.id; s.stats.ended++;
-    const e = (s.endings[pid] ??= []);
-    if (!e.includes(node.id)) e.push(node.id);
-  }
-  c.unread = unread;
-  c.notified = false;
-  c.pingAt = unread ? s.clock + 60_000 : 0;
-  return node;
+  if (!c || !c.pending.length) return null;
+  const lines = c.pending; c.pending = []; c.due = 0;
+  for (const text of lines) c.msgs.push({ k: 'in', text, t: now });
+  while (c.msgs.length > SW.logMax) c.msgs.shift();
+  c.unread = unread; c.notified = false; c.pingAt = unread ? s.clock + 60_000 : 0; c.at = now;
+  return lines;
 }
 
 /** Radia quitte le chat pendant que le match « écrit » : la réponse arrivera plus tard (jeu actif). */
 export function deferQueue(s: SwipeState, pid: string, rng: () => number = Math.random): void {
   const c = s.convos[pid];
-  if (c?.queue && c.due === 0) c.due = s.clock + SW.replyMinMs + Math.floor(rng() * SW.replySpanMs);
+  if (c?.pending.length && c.due === 0) c.due = s.clock + SW.replyMinMs + Math.floor(rng() * SW.replySpanMs);
 }
 export function markRead(s: SwipeState, pid: string): void {
   const c = s.convos[pid];
   if (c) { c.unread = false; c.pingAt = 0; }
+}
+
+/**
+ * Relance spontanée : après plus de 3 jours sans nouvelles, le personnage écrit (ou s'éloigne poliment après plusieurs relances sans réponse).
+ * Utilise le même cerveau que Snapchien. Renvoie les bulles ajoutées (aucune si ce n'est pas le moment).
+ */
+export function relanceIfDue(s: SwipeState, brain: BrainState, pid: string, now: number, rng: () => number = Math.random): string[] {
+  const c = s.convos[pid]; const p = profileById(pid);
+  if (!c || !p || c.status !== 'active' || c.pending.length || !c.msgs.length) return [];
+  const m = memOf(brain, pid);
+  if (m.blocked || m.faded) return [];
+  const last = c.msgs[c.msgs.length - 1];
+  if (!last.t || now - last.t < 3 * 86_400_000) return [];
+  if (!m.talkedAt) m.talkedAt = last.t;
+  const beat = brainStart(brain, pid, asRng(rng), { now, hour: hourOf(now), channel: 'tindeur', canSnap: false });
+  if (!beat || !beat.say.length) return [];
+  for (const text of beat.say) c.msgs.push({ k: 'in', text, t: now });
+  while (c.msgs.length > SW.logMax) c.msgs.shift();
+  c.unread = true; c.notified = false; c.pingAt = s.clock + 60_000; c.at = now;
+  return beat.say;
 }
 
 /** Fait avancer l'horloge de jeu ACTIF ; renvoie les matchs dont la réponse vient d'arriver. */
@@ -303,7 +322,7 @@ export function tickClock(s: SwipeState, dt: number, active: boolean, now = Date
   s.clock += Math.min(dt, 30_000);
   const out: string[] = [];
   for (const c of Object.values(s.convos)) {
-    if (c.queue && c.due > 0 && s.clock >= c.due && c.status === 'active') { if (deliver(s, c.pid, now, true)) out.push(c.pid); }
+    if (c.pending.length && c.due > 0 && s.clock >= c.due && c.status === 'active') { if (deliver(s, c.pid, now, true)) out.push(c.pid); }
   }
   return out;
 }
@@ -312,19 +331,23 @@ export function tickClock(s: SwipeState, dt: number, active: boolean, now = Date
 
 export function stopConvo(s: SwipeState, pid: string): void {
   const c = s.convos[pid];
-  if (c && c.status === 'active') { c.status = 'stopped'; c.queue = ''; c.due = 0; c.pingAt = 0; c.unread = false; }
+  if (c && c.status === 'active') { c.status = 'stopped'; c.pending = []; c.due = 0; c.pingAt = 0; c.unread = false; }
 }
 export function resumeConvo(s: SwipeState, pid: string): void {
   const c = s.convos[pid];
   if (!c || c.status !== 'stopped') return;
   c.status = 'active';
-  const last = c.log[c.log.length - 1];
-  if (last.k === 'out') c.log.pop();
 }
-/** Supprime le match : la conversation disparaît, le profil pourra revenir plus tard dans la pile. */
+/** Supprime le match : la conversation disparaît et il ne reviendra JAMAIS dans la pile (sa mémoire reste dans la sauvegarde). */
 export function removeMatch(s: SwipeState, pid: string): void {
   delete s.convos[pid];
   s.matches = s.matches.filter((x) => x !== pid);
+  if (!s.removed.includes(pid)) s.removed.push(pid);
+}
+/** Bloque le match : comme supprimer, et il ne peut plus jamais écrire (y compris sur Snapchien). */
+export function blockMatch(s: SwipeState, brain: BrainState, pid: string): void {
+  memOf(brain, pid).blocked = true;
+  removeMatch(s, pid);
 }
 
 // ------------------------------------------------------------------ notifications
@@ -357,14 +380,10 @@ export function ignorePing(s: SwipeState, pid: string): void { const c = s.convo
 
 export const unreadCount = (s: SwipeState): number => Object.values(s.convos).filter((c) => c.unread && c.status !== 'stopped').length;
 export const lastLine = (s: SwipeState, pid: string): string => {
-  const p = profileById(pid); const c = s.convos[pid];
-  if (!p || !c) return '';
-  for (let i = c.log.length - 1; i >= 0; i--) {
-    const m = c.log[i]; const n = nodeOf(p, m.n);
-    if (!n) continue;
-    return m.k === 'in' ? n.say[n.say.length - 1] : `Toi : ${n.ch[m.c ?? 0]?.t ?? ''}`;
-  }
-  return '';
+  const c = s.convos[pid];
+  if (!c || !c.msgs.length) return '';
+  const m = c.msgs[c.msgs.length - 1];
+  return m.k === 'in' ? m.text : `Toi : ${m.text}`;
 };
 /** Nombre de fins découvertes / total de fins du catalogue. */
 export const endingsFound = (s: SwipeState): number => Object.values(s.endings).reduce((a, e) => a + e.length, 0);

@@ -104,8 +104,18 @@
     });
   }
 
+  // Pseudo du compte connecté (pseudo du site, sinon nom Google), ou "" si personne n'est connecté
+  function accountName() {
+    var A = window.SiteAuth;
+    if (!A || !A.user) return "";
+    var raw = (A.profile && A.profile.pseudo) || ((A.user.user_metadata || {}).name) || "";
+    var n = String(raw).replace(/[^\p{L}\p{N} _.-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 20);
+    return n.length >= 2 ? n : "";
+  }
+
   window.Leaderboard = {
     configured: function () { return !!config(); },
+    accountName: accountName,
     top: top,
     submit: submit,
     render: render,

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Merger · AkarisuMD</title>
+  <title>Merger & Suika · AkarisuMD</title>
   <meta name="description" content="Merger : lâche les écureuils deux par deux, 3 de la même couleur qui se touchent disparaissent. Un petit jeu de réflexion en solo ou en coop à 2 sur le même ordinateur.">
   <meta property="og:title" content="Merger · AkarisuMD">
   <meta property="og:description" content="Merger : lâche les écureuils deux par deux, 3 de la même couleur qui se touchent disparaissent. Un petit jeu de réflexion en solo ou en coop à 2 sur le même ordinateur.">
@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Merger">
-  <link rel="apple-touch-icon" href="assets/squirrel.png">
-  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=20261118sq3">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261118sq3">
   <script>
     (function () {
       var t = null;
@@ -25,9 +25,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20261115hub1">
+  <link rel="stylesheet" href="css/style.css?v=20261118ft1">
   <link rel="stylesheet" href="css/party.css?v=20261107vs2">
-  <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
+  <link rel="stylesheet" href="css/gamekit.css?v=20261118gf4">
 </head>
 <body data-page="merger">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -35,13 +35,14 @@
   <header class="site-header">
     <div class="wrap header-inner">
       <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
-        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
         <span class="brand-name">Akarisu<span>MD</span></span>
       </a>
       <nav id="site-nav" aria-label="Navigation principale">
         <ul>
           <li><a href="index.html" data-page="home">Accueil</a></li>
           <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="stats.html" data-page="stats">Stats</a></li>
           <li><a href="bio.html" data-page="bio">Bio</a></li>
           <li><a href="contact.html" data-page="contact">Contact</a></li>
         </ul>
@@ -66,6 +67,7 @@
         <div class="mg-modes" role="tablist" aria-label="Mode de jeu">
           <button type="button" role="tab" data-mode="solo" aria-selected="true">🐿️ Solo</button>
           <button type="button" role="tab" data-mode="coop" aria-selected="false">👥 Coop à 2</button>
+          <button type="button" role="tab" data-mode="suika" aria-selected="false">🍉 Suika</button>
         </div>
         <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
       </div>
@@ -101,6 +103,21 @@
         </div>
       </div>
 
+      <div class="game-stage suika-stage" data-suika hidden>
+        <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Suika"></canvas>
+        <button class="fs-exit" type="button" data-fs-exit aria-label="Quitter le plein écran">✕</button>
+        <div class="game-hud" data-hud hidden>
+          <button class="hud-btn" type="button" data-mute aria-label="Couper le son">🔊</button>
+          <button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button>
+        </div>
+        <div class="game-overlay" data-overlay>
+          <div class="panel game-card" data-card>
+            <p>Chargement du jeu…</p>
+            <noscript><p>Ce jeu a besoin de JavaScript.</p></noscript>
+          </div>
+        </div>
+      </div>
+
       <div class="game-info">
         <div class="panel game-help" data-help="coop" hidden>
           <h2 class="section-title">Mode Coop à 2</h2>
@@ -116,6 +133,15 @@
             <li>La partie s'arrête quand la pile reste au-dessus de la ligne pointillée. <kbd>Échap</kbd> pour la pause et les réglages.</li>
           </ul>
         </div>
+        <div class="panel game-help" data-help="suika" hidden>
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li>Déplace la souris (ou le doigt) pour placer l'écureuil, <strong>clique</strong> (ou relève le doigt) pour le lâcher. Au clavier : <kbd>←</kbd><kbd>→</kbd> puis <kbd>Espace</kbd>.</li>
+            <li>Deux écureuils <strong>identiques</strong> qui se touchent <strong>fusionnent</strong> en un écureuil plus gros. Enchaîne les fusions pour faire un combo.</li>
+            <li>11 écureuils à découvrir, du plus petit jusqu'au <strong>Grand Chêne</strong>. Fusionner deux Grands Chênes les fait disparaître pour un gros bonus.</li>
+            <li>Si la pile reste <strong>au-dessus de la ligne pointillée</strong> trop longtemps, la partie est finie. <kbd>P</kbd> ou <kbd>Échap</kbd> pour la pause.</li>
+          </ul>
+        </div>
         <div class="panel game-help" data-help="solo">
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
@@ -127,8 +153,11 @@
             <li>Si un écureuil reste <strong>au-dessus de la ligne</strong>, la partie est finie. <kbd>P</kbd> ou <kbd>Échap</kbd> pour la pause.</li>
           </ul>
         </div>
-        <div class="panel game-lb">
+        <div class="panel game-lb" data-lb-for="solo">
           <div data-leaderboard="merger" data-limit="10" data-title="Meilleurs écureuils"></div>
+        </div>
+        <div class="panel game-lb" data-lb-for="suika" hidden>
+          <div data-leaderboard="suika" data-limit="10" data-title="Meilleurs écureuils Suika"></div>
         </div>
       </div>
     </div>
@@ -137,7 +166,7 @@
   <footer class="site-footer">
     <div class="wrap footer-inner">
       <div class="footer-brand">
-        <img src="assets/squirrel.png" alt="" width="40" height="38">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
         <div>
           <p class="pixel" style="margin:0">AkarisuMD</p>
           <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
@@ -147,17 +176,18 @@
     </div>
   </footer>
 
-  <script src="js/data.js?v=20261103re4"></script>
+  <script src="js/data.js?v=20261118ft1"></script>
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/cloudsave.js?v=20261107vs2" data-game="merger" data-prefix="merger-best-"></script>
-  <script src="js/leaderboard.js?v=20261103re4"></script>
-  <script src="js/main.js?v=20261115hub1"></script>
-  <script src="js/gamekit.js?v=20261114gk2"></script>
-  <script src="js/party-modes.js?v=20261107vs2"></script>
-  <script src="js/party.js?v=20261115hub1"></script>
+  <script src="js/leaderboard.js?v=20261110sk3"></script>
+  <script src="js/main.js?v=20261118ft1"></script>
+  <script src="js/gamekit.js?v=20261118gf3"></script>
+  <script src="js/party-modes.js?v=20261116vs3"></script>
+  <script src="js/party.js?v=20261116vs3"></script>
   <script src="js/vendor/supabase-2.45.4.min.js"></script>
   <script src="js/merger-art.js?v=20261104mg220"></script>
-  <script src="js/merger.js?v=20261107vs2"></script>
-  <script src="js/merger-coop.js?v=20261107vs2"></script>
+  <script src="js/merger.js?v=20261110sk3"></script>
+  <script src="js/merger-coop.js?v=20261110sk2"></script>
+  <script src="js/suika.js?v=20261110sk3"></script>
 </body>
 </html>

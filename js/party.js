@@ -50,11 +50,25 @@
   function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
 
   /* ---------- profil (pseudo, couleur, avatar) ---------- */
+  // Sans pseudo choisi, le nom suit l'avatar et la couleur : « Écureuil roux », « Grenouille verte »…
+  var AV_NAMES = [["Écureuil", 0], ["Renard", 0], ["Hibou", 0], ["Hérisson", 0], ["Lapin", 0], ["Grenouille", 1], ["Ours", 0], ["Raton laveur", 0], ["Souris", 1], ["Panda", 0]];
+  var COL_NAMES = [["roux", "rousse"], ["vert", "verte"], ["jade", "jade"], ["rouge", "rouge"], ["violet", "violette"], ["doré", "dorée"], ["bleu", "bleue"], ["rose", "rose"]];
+  function autoName(av, color) {
+    var a = AV_NAMES[AVATARS.indexOf(av)] || AV_NAMES[0], c = COL_NAMES[COLORS.indexOf(color)] || COL_NAMES[0];
+    return a[0] + " " + c[a[1]];
+  }
   function profile() {
-    var p = ls(PKEY) || {};
-    if (!p.name) { var n = ""; try { n = (window.SiteAuth && SiteAuth.profile && SiteAuth.profile.pseudo) || localStorage.getItem("merger-name") || ""; } catch (e) {} p.name = (n || "Écureuil " + (1 + Math.floor(Math.random() * 99))).slice(0, 16); }
-    if (!p.color) p.color = COLORS[Math.floor(Math.random() * COLORS.length)];
-    if (!p.av) p.av = AVATARS[Math.floor(Math.random() * AVATARS.length)];
+    var p = ls(PKEY) || {}, changed = false;
+    if (!p.color) { p.color = COLORS[Math.floor(Math.random() * COLORS.length)]; changed = true; }
+    if (!p.av) { p.av = AVATARS[Math.floor(Math.random() * AVATARS.length)]; changed = true; }
+    if (p.name && p.auto === undefined && /^Écureuil( \d{1,2})?$/.test(p.name)) { p.auto = true; changed = true; } // anciens noms automatiques
+    if (!p.name && !p.auto) {
+      var n = ""; try { n = (window.SiteAuth && SiteAuth.profile && SiteAuth.profile.pseudo) || localStorage.getItem("merger-name") || ""; } catch (e) {}
+      if (n) p.name = String(n).slice(0, 16); else p.auto = true;
+      changed = true;
+    }
+    if (p.auto) p.name = autoName(p.av, p.color);
+    if (changed) ls(PKEY, p);
     return p;
   }
 
@@ -74,9 +88,16 @@
   var sess = ss(SKEY);
   function saveSess() { if (P.code) ss(SKEY, { code: P.code, me: P.me, st: P.st }); }
   P.profile = profile;
+  P.autoName = autoName;
   P.setProfile = function (p) {
-    var cur = profile(); ["name", "color", "av"].forEach(function (k) { if (p[k]) cur[k] = p[k]; });
-    cur.name = String(cur.name).replace(/\s+/g, " ").trim().slice(0, 16) || "Écureuil";
+    var cur = profile();
+    if (p.color) cur.color = p.color;
+    if (p.av) cur.av = p.av;
+    if (p.name !== undefined) {   // pseudo vide = nom automatique
+      var nm = String(p.name || "").replace(/\s+/g, " ").trim().slice(0, 16);
+      if (nm) { cur.name = nm; cur.auto = false; } else cur.auto = true;
+    }
+    if (cur.auto) cur.name = autoName(cur.av, cur.color);
     ls(PKEY, cur);
     if (P.me) { P.me.n = cur.name; P.me.c = cur.color; P.me.a = cur.av; saveSess(); track(); }
     emit("profile", cur);
@@ -222,6 +243,8 @@
   function isLeader() { return !!(P.st && P.me && P.st.leader === P.me.id); }
   P.isLeader = isLeader;
   function broadcast() { if (P.st) send("st", P.st); }
+  // Manche lancée avec un mode qui n'existe plus (liste des jeux modifiée) : on l'oublie.
+  function cleanState(st) { if (st && st.match && !modeById(st.match.mode)) st.match = null; return st; }
   function commit() { P.st.v++; saveSess(); broadcast(); emit("state", P.st); afterState(); }
   P.mutate = function (fn) { if (!isLeader()) return false; fn(P.st); commit(); return true; };
 
@@ -229,7 +252,7 @@
     if (ev === "st") {
       var cur = P.st;
       if (!cur || d.v > cur.v || (d.v === cur.v && d.leader !== cur.leader && d.leader < cur.leader)) {
-        P.st = d; saveSess(); emit("state", d); afterState();
+        P.st = cleanState(d); saveSess(); emit("state", d); afterState();
       } else if (isLeader() && d.v < cur.v) broadcast();
     } else if (ev === "hi") {
       if (isLeader()) { clearTimeout(P._hiT); P._hiT = setTimeout(broadcast, 150); }
@@ -725,10 +748,10 @@
 
   /* ---------- démarrage ---------- */
   function boot() {
-    var isHub = document.body && document.body.dataset.page === "versus";
+    var isHub = !!document.querySelector("[data-vs-app]");
     P.inGame = /^#party/.test(location.hash) && !!(sess && sess.code);
     if (sess && sess.code && (isHub || P.inGame)) {
-      P.code = sess.code; P.me = sess.me; P.st = sess.st;
+      P.code = sess.code; P.me = sess.me; P.st = cleanState(sess.st);
       var pr = profile(); P.me.n = pr.name; P.me.c = pr.color; P.me.a = pr.av;
       if (P.inGame) document.documentElement.classList.add("party-game");
       if (document.body) start(); else document.addEventListener("DOMContentLoaded", start);

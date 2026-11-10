@@ -176,7 +176,7 @@ describe('brouillon : catégories', () => {
 
 describe('sauvegarde aller-retour', () => {
   it('la pièce est identique après sanitizeWorld (rechargement)', () => {
-    const { world, ctx } = mk();
+    const { world, ctx } = mk(50000);
     const d = new Draft(ctx, 'bedroom');
     const bed = d.add('bed-royal', { id: 'bed-royal', x: 2.5, y: 1.5, rot: 1 }) as { uid: number };
     d.add('lamp-table', { id: 'lamp-table', x: 6, y: 5, rot: 0 });

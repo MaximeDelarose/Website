@@ -244,9 +244,16 @@ async function setupStats(): Promise<void> {
   try {
     const st = await import('./core/stats');
     st.startStatsTracking();
+    void import('./core/progressSync').then((m) => m.startProgressSync()); // partage de PROGRESSION : seulement si Radia l'a accepté (consentement distinct)
     const [sch, ui2] = await Promise.all([import('./events/scheduler'), import('./ui/screens/statsConsent')]);
     const q = new URLSearchParams(location.search);
-    ui2.scheduleStatsInvite(() => sch.safeToNotify(), q.has('debug') && q.has('statsDelay') ? Math.max(0, Number(q.get('statsDelay')) || 0) : 150_000);
+    const dbg = q.has('debug') && q.has('statsDelay') ? Math.max(0, Number(q.get('statsDelay')) || 0) : null;
+    // « Partager ma progression ♡ » : une seule invitation (nouvelle joueuse : temps de jeu + progression ; joueuse existante : progression seulement)
+    ui2.scheduleShareInvite(() => sch.safeToNotify(), dbg ?? 150_000, dbg ?? 15_000);
+    // ouverture depuis la notification « Une nouveauté est disponible » (?partage=1) ou si l'application était déjà ouverte
+    const openShare = (): void => { void ui2.openFromNotification(); };
+    if (/[?&]partage=1/.test(location.search)) { try { const u = new URLSearchParams(location.search); u.delete('partage'); history.replaceState(null, '', location.pathname + (u.toString() ? `?${u}` : '') + location.hash); } catch { /* ignoré */ } window.setTimeout(openShare, 2500); }
+    navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.type === 'radia-open-share') openShare(); });
   } catch { /* les statistiques ne doivent jamais empêcher le jeu de démarrer */ }
 }
 
@@ -339,5 +346,5 @@ if (new URLSearchParams(location.search).has('planche')) { window.setTimeout(() 
 // Accès debug en développement : window.RADIA
 if (new URLSearchParams(location.search).has('debug')) { void import('./casino'); void import('./wheel'); }
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  (window as unknown as Record<string, unknown>).RADIA = { ...debugApis(), save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), relatives: () => import('./data/family/relatives'), pushMod: () => import('./core/push'), comboBusy: () => isComboBusy(), dressMod: () => import('./ui/screens/world/dressing'), wardrobeData: () => import('./data/world/wardrobe'), artMod: () => import('./game/art/world/radiaNow'), avatarMod: () => import('./game/art/world/avatar'), lookMod: () => import('./game/world/look'), thoughtsMod: () => import('./ui/screens/thoughts'), schedulerMod: () => import('./events/scheduler'), eventsManager: () => import('./events/manager'), eventsData: () => import('./events/data'), gift: () => spawnGiftNow(), secretCall: () => secretNow(), secretAdvance: (m: number) => secretAdvance(m), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
+  (window as unknown as Record<string, unknown>).RADIA = { ...debugApis(), save, audio, game: () => getGame(), activity: async (id: string, params?: Record<string, unknown>, data?: Record<string, unknown>) => (await import('./events/harness')).runActivityStandalone(id as never, params, data), invite: (id?: string) => offerNow(id), relatives: () => import('./data/family/relatives'), pushMod: () => import('./core/push'), comboBusy: () => isComboBusy(), storyMod: () => import('./data/story'), progressMod: () => import('./core/progressSync'), statsMod: () => import('./core/stats'), progressUi: () => import('./ui/screens/progressConsent'), dressMod: () => import('./ui/screens/world/dressing'), wardrobeData: () => import('./data/world/wardrobe'), artMod: () => import('./game/art/world/radiaNow'), avatarMod: () => import('./game/art/world/avatar'), lookMod: () => import('./game/world/look'), thoughtsMod: () => import('./ui/screens/thoughts'), schedulerMod: () => import('./events/scheduler'), eventsManager: () => import('./events/manager'), eventsData: () => import('./events/data'), gift: () => spawnGiftNow(), secretCall: () => secretNow(), secretAdvance: (m: number) => secretAdvance(m), phone: async () => (await import('./events/ui/phone')).openPhone(), kidCall: async (id: string) => { const m = await import('./ui/components/kidCalls'); const c = m.callById(id); if (c) m.showKidCall(c); } };
 }

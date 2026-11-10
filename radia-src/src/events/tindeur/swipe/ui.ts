@@ -16,12 +16,15 @@ import { emitPhone, registerBusy } from '../../bus';
 import { tindeurLogo } from '../icon';
 import { avatarUrl, portraitUrl } from './art';
 import { profileById } from './data';
+import { createComposer, trackKeyboard } from '../../../ui/composer';
+import { brainState, snapState } from '../../../apps/store';
+import { addFriend } from '../../../apps/snap/chat/engine';
 import {
-  choicesOf, choose, deferQueue, deliver, endingsFound, endingsTotal, ensureDeck, like, lastLine, markRead, nextHeartIn, pass,
+  blockMatch, deferQueue, relanceIfDue, sendText, setSnapLookup, deliver, endingsFound, endingsTotal, ensureDeck, like, lastLine, markRead, nextHeartIn, pass,
   peekIds, refillBank, removeMatch, resumeConvo, stopConvo, unreadCount,
 } from './state';
 import { onSwipeEvent, persist, swipe } from './runtime';
-import type { Choice, Profile } from './types';
+import type { Profile } from './types';
 
 
 let layer: HTMLElement | null = null;
@@ -260,7 +263,7 @@ export function openSwipeApp(o: OpenOpts = {}): void {
   function renderMatches(): void {
     const wrap = h('div.sw-list');
     const rows = s.matches.map((pid) => ({ pid, c: s.convos[pid], p: profileById(pid) })).filter((r) => r.c && r.p);
-    rows.sort((a, b) => Number(b.c!.unread) - Number(a.c!.unread) || (b.c!.log[b.c!.log.length - 1]?.t ?? 0) - (a.c!.log[a.c!.log.length - 1]?.t ?? 0));
+    rows.sort((a, b) => Number(b.c!.unread) - Number(a.c!.unread) || (b.c!.msgs[b.c!.msgs.length - 1]?.t ?? 0) - (a.c!.msgs[a.c!.msgs.length - 1]?.t ?? 0));
     if (!rows.length) wrap.append(h('div.sw-empty', h('div.sw-empty-ico', tindeurLogo(64)), h('b', 'Aucun match pour l’instant'), h('p', 'Glisse à droite sur les profils qui te plaisent : quand c’est réciproque, ils t’écrivent ♡'), h('button.btn.small', { on: { click: tap(() => setTab('deck')) } }, 'Découvrir')));
     for (const { pid, c, p } of rows) {
       const chip = c!.unread ? h('i.sw-chip.new', 'Nouveau') : c!.status === 'ended' ? h('i.sw-chip', 'Terminé') : c!.status === 'stopped' ? h('i.sw-chip', 'En pause') : null;
@@ -283,6 +286,10 @@ export function openSwipeApp(o: OpenOpts = {}): void {
   const stamp = (t: number, mine: boolean) => { msgs.append(h(`div.sw-time${mine ? '.me' : ''}`, hhmm(t))); };
   const typing = () => { const t = h('div.sw-b.typing', h('i'), h('i'), h('i')); msgs.append(t); scrollDown(); return t; };
 
+  setSnapLookup((id) => { try { return snapState().chat.contacts[id]?.added === true; } catch { return false; } });
+  let kbOff: (() => void) | null = null;
+  let cmp: ReturnType<typeof createComposer> | null = null;
+
   function openChat(pid: string): void {
     const p = profileById(pid), c = s.convos[pid];
     if (!p || !c) return;
@@ -295,15 +302,18 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     const buildMenu = () => {
       const cc = s.convos[pid]; menu.replaceChildren();
       if (!cc) return;
-      if (cc.status === 'active') menu.append(h('button', { on: { click: () => { menu.classList.add('hide'); doStop(); } } }, 'Arrêter la conversation'));
+      if (cc.status !== 'stopped') menu.append(h('button', { on: { click: () => { menu.classList.add('hide'); doStop(); } } }, 'Mettre en pause'));
       if (cc.status === 'stopped') menu.append(h('button', { on: { click: () => { menu.classList.add('hide'); doResume(); } } }, 'Reprendre la conversation'));
       menu.append(h('button.danger', { on: { click: () => { menu.classList.add('hide'); doDelete(); } } }, 'Supprimer le match'));
+      menu.append(h('button.danger', { on: { click: () => { menu.classList.add('hide'); doBlock(); } } }, 'Bloquer'));
     };
+    cmp = createComposer({ placeholder: `Écris à ${p.name}…`, onSend: (t) => { void send(pid, t); } });
     chatEl = h('div.sw-chat',
       h('div.sw-chead', h('button.icon-btn.tdr-x', { 'aria-label': 'Retour', on: { click: tap(() => { leaveChat(false); }, { sound: false }) } }, '‹'),
         h('img.sw-cav', { src: avatarUrl(pid), alt: '' }), h('div.sw-cname', h('b', `${p.name}, ${p.age}`), h('small', `à ${p.km} km`)), menuBtn, menu),
-      msgs, bar);
+      msgs, bar, h('div.sw-compose', cmp.el));
     root.append(chatEl);
+    kbOff = trackKeyboard(chatEl, () => window.setTimeout(() => { if (msgs.isConnected) msgs.scrollTop = msgs.scrollHeight; }, 30));
     audio.play('pop2');
     void replay(pid);
   }
@@ -312,23 +322,25 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     const pid = chatPid;
     if (!pid) return;
     chatPid = null;
+    kbOff?.(); kbOff = null; cmp = null;
     deferQueue(s, pid); // s'il « écrivait » encore : la réponse arrivera plus tard, pendant que Radia joue
     persist();
     chatEl?.remove(); chatEl = null;
     if (!silent) { audio.play('pop1'); render(); }
   }
 
-  /** Redessine l'historique, puis la suite (réponse en attente, choix, ou fin de l'histoire). */
+  /** Redessine l'historique (avec les heures), puis livre ce qui attend. */
   async function replay(pid: string): Promise<void> {
     const p = profileById(pid)!;
     const c = s.convos[pid];
     msgs.replaceChildren();
     msgs.append(h('div.sw-intro', h('img', { src: avatarUrl(pid, 120), alt: '' }), h('b', `Vous avez matché avec ${p.name}`), h('small', 'Dans Tindeur, appli imaginaire du jeu : tout reste ici.')));
-    for (const m of c.log) {
-      const n = p.nodes.find((x) => x.id === m.n);
-      if (!n) continue;
-      if (m.k === 'in') { n.say.forEach((t) => bubble(t, false)); stamp(m.t, false); } else { bubble(n.ch[m.c ?? 0].t, true); stamp(m.t, true); }
+    let lastT = -1; let lastK = '';
+    for (const m of c.msgs) {
+      if (lastT >= 0 && (m.k !== lastK || m.t - lastT > 120_000)) stamp(lastT, lastK === 'out');
+      bubble(m.text, m.k === 'out'); lastT = m.t; lastK = m.k;
     }
+    if (lastT >= 0) stamp(lastT, lastK === 'out');
     msgs.scrollTop = msgs.scrollHeight;
     await continueChat(pid);
   }
@@ -337,26 +349,50 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     const p = profileById(pid)!;
     const c = s.convos[pid];
     if (!c || chatPid !== pid) return;
-    if (c.queue) { c.due = 0; await theyReply(pid); return; }
+    if (c.pending.length) { c.due = 0; await theyReply(pid); return; }
+    if (c.status === 'active') {
+      const lines = relanceIfDue(s, brainState(), pid, now(), Math.random);
+      if (lines.length) { persist(); await replay(pid); return; }
+    }
     showBar(pid, p);
+  }
+
+  /** Radia envoie son message : bulle immédiate, puis « écrit… » et la réponse, bulle par bulle. */
+  async function send(pid: string, text: string): Promise<void> {
+    if (chatPid !== pid) return;
+    const res = sendText(s, brainState(), pid, text, now(), Math.random);
+    if (!res) return;
+    persist();
+    audio.play('pop3'); haptic('select');
+    bubble(text, true); stamp(now(), true);
+    showBar(pid, profileById(pid)!);
+    if (res.addSnap) { addSnapContact(pid); }
+    await theyReply(pid);
+  }
+  /** Radia a accepté son Snapchien : il rejoint ses contacts (même personnage, même mémoire). */
+  function addSnapContact(pid: string): void {
+    try {
+      const st = snapState();
+      if (addFriend(st.chat, pid, now())) { persist(); toast(`${profileById(pid)!.name} est dans ton Snapchien 👻`, undefined); }
+    } catch { /* Snapchien indisponible : on reste ici */ }
   }
 
   /** « … est en train d'écrire » puis ses bulles, l'une après l'autre. */
   async function theyReply(pid: string): Promise<void> {
     const p = profileById(pid)!;
-    bar.replaceChildren(h('p.sw-wait', `${p.name} écrit…`));
+    const c0 = s.convos[pid]; if (!c0 || !c0.pending.length) { showBar(pid, p); return; }
+    const first = c0.pending[0];
     const t = typing();
-    const nextNode = p.nodes.find((x) => x.id === s.convos[pid].queue);
-    await wait(reducedFx() ? 500 : 900 + Math.min(1200, (nextNode?.say[0].length ?? 20) * 14));
+    await wait(reducedFx() ? 500 : 800 + Math.min(1800, first.length * 28) + Math.floor(Math.random() * 900));
     if (chatPid !== pid || closed) { t.remove(); return; }
     t.remove();
-    const node = deliver(s, pid, now(), false);
-    if (!node) { showBar(pid, p); return; }
+    const lines = deliver(s, pid, now(), false);
+    if (!lines) { showBar(pid, p); return; }
     persist();
     const at = now();
-    for (let i = 0; i < node.say.length; i++) {
-      if (i > 0) { const tt = typing(); await wait(reducedFx() ? 300 : 700); tt.remove(); if (chatPid !== pid || closed) return; }
-      bubble(node.say[i], false); audio.play('pop4', 1.1);
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) { const tt = typing(); await wait(reducedFx() ? 300 : 600 + Math.min(1500, lines[i].length * 25)); tt.remove(); if (chatPid !== pid || closed) return; }
+      bubble(lines[i], false); audio.play('pop4', 1.1);
     }
     stamp(at, false);
     haptic('select');
@@ -372,34 +408,20 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     const c = s.convos[pid];
     bar.replaceChildren();
     if (!c) return;
+    const sw = chatEl?.querySelector('.sw-compose') as HTMLElement | null;
     if (c.status === 'ended') {
-      const node = p.nodes.find((x) => x.id === c.end);
-      const total = p.nodes.filter((x) => x.end).length;
-      const found = (s.endings[pid] ?? []).length;
-      bar.append(h('div.sw-end', h('div.sw-end-h', h('span', '♥'), h('b', node?.end?.title ?? 'Fin de l’histoire')),
-        h('p', node?.end?.note ?? ''), h('small', `Fin ${found} sur ${total} découvertes avec ${p.name}`),
-        h('div.sw-end-a', h('button.btn.small', { on: { click: tap(() => leaveChat(false)) } }, 'Garder ce match'), h('button.btn.small.secondary', { on: { click: () => doDelete() } }, 'Supprimer le match'))));
+      const total = 0; void total;
+      bar.append(h('div.sw-end', h('div.sw-end-h', h('span', '♥'), h('b', 'La discussion s’est arrêtée')), h('p', `${p.name} est passé à autre chose. Tu peux lui écrire pour relancer, ou supprimer ce match.`),
+        h('div.sw-end-a', h('button.btn.small.secondary', { on: { click: () => doDelete() } }, 'Supprimer le match'))));
+      sw?.classList.remove('hide');
       return;
     }
     if (c.status === 'stopped') {
+      sw?.classList.add('hide');
       bar.append(h('div.sw-end', h('p', 'Conversation en pause. Tu peux la reprendre quand tu veux, ou la laisser comme ça ♡'), h('div.sw-end-a', h('button.btn.small', { on: { click: tap(() => doResume()) } }, 'Reprendre'), h('button.btn.small.secondary', { on: { click: () => doDelete() } }, 'Supprimer le match'))));
       return;
     }
-    const chs = choicesOf(s, pid);
-    bar.append(h('p.sw-pick', 'Ta réponse :'), ...chs.map((ch, i) => choiceBtn(pid, ch, i)));
-  }
-  function choiceBtn(pid: string, ch: Choice, i: number): HTMLElement {
-    return h(`button.sw-ch${ch.ask ? '.ask' : ''}`, { on: { click: () => void pick(pid, i) } }, ch.ask ? h('em', '?') : null, h('span', ch.t));
-  }
-  async function pick(pid: string, i: number): Promise<void> {
-    if (chatPid !== pid) return;
-    const ch = choicesOf(s, pid)[i];
-    if (!ch || !choose(s, pid, i, now())) return;
-    persist();
-    audio.play('pop3'); haptic('select');
-    bar.replaceChildren();
-    bubble(ch.t, true); stamp(now(), true);
-    await theyReply(pid);
+    sw?.classList.remove('hide');
   }
 
   function doStop(): void {
@@ -416,18 +438,22 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     void replay(pid);
   }
   /** Confirmation intégrée à l'appli (la fenêtre de confirmation du jeu passerait derrière ce calque). */
-  function doDelete(): void {
+  function doDelete(block = false): void {
     const pid = chatPid; if (!pid) return;
     const p = profileById(pid)!;
-    bar.replaceChildren(h('div.sw-end', h('div.sw-end-h', h('span', '♥'), h('b', 'Supprimer le match ?')),
-      h('p', `${p.name} disparaîtra de tes messages. Il pourra réapparaître plus tard dans les profils.`),
-      h('div.sw-end-a', h('button.btn.small.secondary', { on: { click: tap(() => { void replayBar(pid); }) } }, 'Garder'), h('button.btn.small', { on: { click: tap(() => confirmDelete(pid)) } }, 'Supprimer'))));
+    chatEl?.querySelector('.sw-compose')?.classList.add('hide');
+    bar.replaceChildren(h('div.sw-end', h('div.sw-end-h', h('span', '♥'), h('b', block ? `Bloquer ${p.name} ?` : 'Supprimer le match ?')),
+      h('p', block ? `${p.name} ne pourra plus t’écrire, nulle part, et il ne reviendra pas.` : `${p.name} disparaîtra de tes messages et ne reviendra pas dans les profils.`),
+      h('div.sw-end-a', h('button.btn.small.secondary', { on: { click: tap(() => { void replayBar(pid); }) } }, 'Garder'), h('button.btn.small', { on: { click: tap(() => confirmDelete(pid, block)) } }, block ? 'Bloquer' : 'Supprimer'))));
     bar.scrollTop = 0;
   }
-  const replayBar = async (pid: string) => { if (chatPid === pid) await continueChat(pid); };
-  function confirmDelete(pid: string): void {
+  const doBlock = (): void => doDelete(true);
+  const replayBar = async (pid: string) => { if (chatPid === pid) { showBar(pid, profileById(pid)!); await continueChat(pid); } };
+  function confirmDelete(pid: string, block = false): void {
+    kbOff?.(); kbOff = null; cmp = null;
     chatPid = null; chatEl?.remove(); chatEl = null;
-    removeMatch(s, pid); persist();
+    if (block) blockMatch(s, brainState(), pid); else removeMatch(s, pid);
+    persist();
     audio.play('whoosh');
     render();
   }

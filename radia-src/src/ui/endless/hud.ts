@@ -4,6 +4,8 @@
  * Aucun bouton d'information ne recouvre un sprite : appui long = fiche, panneau « Infos » sous le plateau.
  * playLevel.ts la crée une fois ; le moteur est câblé là-bas (bindEndless, applyEvents…).
  */
+import { xpView } from '../../game/endless/xp';
+import { FULL_HINT_RATIO, isPrecious, occupancy, saleValue, sellable } from '../../game/endless/storage';
 import './endless.css';
 import { h, tap } from '../dom';
 import { icon } from '../icons';
@@ -34,6 +36,7 @@ import { sparkleBurst } from '../fx/sparkle';
 import { chestSvg } from './art';
 import { openChestFlow } from './chestFlow';
 import { openInfoFor, openLockSheet } from './itemSheet';
+import { openPimbecheSheet } from './pimbecheSheet';
 import { openGoalsSheet, openSecondarySheet, openTreasureSheet } from './sheets';
 import { clothName, furnitureName, settleLoot } from './host';
 import {
@@ -346,6 +349,12 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
       else openTreasureSheet(env);
     }, { sound: false }));
     tre.addEventListener('contextmenu', (e) => { e.preventDefault(); openTreasureSheet(env); });
+    // niveau de Radia : pastille discrète + jauge d'XP
+    const xv = xpView(f);
+    const lvl = h('button.en-lvl', { 'aria-label': `Niveau ${xv.level} de Radia, ${xv.into} sur ${xv.need} XP`, 'data-level': String(xv.level) },
+      h('b', String(xv.level)), h('i.en-bar.thin', h('b', { style: `width:${Math.round(xv.ratio * 100)}%` })));
+    lvl.addEventListener('click', tap(() => openPimbecheSheet(), { sound: false }));
+    statusEl.append(lvl);
     statusEl.append(tre);
     if (pend > 0) {
       const i = h('button.en-odds-btn', { 'aria-label': 'Probabilités des coffres' }, icon('info', 16));
@@ -434,6 +443,35 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     selEl.append(imgOf(itemImageUrl(r, 64), '.en-sel-ic'), h('div.en-sel-tx', h('b', name), h('small', sub)));
     if (next) selEl.append(h('div.en-sel-next', { 'aria-label': `Niveau suivant : ${itemName(next)}`, title: itemName(next) }, h('i', '→'), imgOf(itemImageUrl(next, 48)), h('small', itemName(next))));
     selEl.append(info);
+    if (sellable(r)) {
+      const sell = h('button.en-sel-sell', { 'aria-label': 'Vendre cet objet' }, 'Vendre');
+      sell.addEventListener('click', tap(() => { void sellItem(fn); }, { sound: false }));
+      selEl.append(sell);
+    }
+  }
+
+  /** Vente d'un objet avec confirmation ; protège les objets précieux et ceux qui servent à une commande. */
+  async function sellItem(idx: number): Promise<void> {
+    const st = cfg.getState();
+    const r = st.cells[idx]?.item;
+    if (!r || !sellable(r)) return;
+    const used = st.orders.some((o, slot) => o && R.orderCells(st, slot)?.includes(idx));
+    const value = saleValue(r);
+    const warn = used ? 'Cet objet sert à une de tes commandes en cours. ' : isPrecious(r) ? 'C’est un objet précieux. ' : '';
+    const v = await ui.modal({
+      title: `Vendre « ${itemName(r)} » ?`,
+      body: h('p', `${warn}Tu recevras ${value} pièce${value > 1 ? 's' : ''}. Tu peux aussi le mettre dans ton sac (glisse-le dessus) pour le garder ♡`),
+      actions: [{ label: `Vendre (+${value} 🪙)`, value: 'y', style: used || isPrecious(r) ? 'secondary' : undefined }, { label: 'Garder', value: 'n', style: 'secondary' }],
+    });
+    const cur = cfg.getState().cells[idx]?.item; // l'état a pu changer pendant la confirmation
+    if (v !== 'y' || !cur || cur.c !== r.c || cur.l !== r.l) return;
+    const out = R.stashItem(cfg.getState(), cfg.def, idx);
+    if (!out) return;
+    env.push(out.ev);
+    save.data.world.res.coins += value;
+    haptic('reward'); audio.play('reward');
+    feed(`Vendu · +${value} pièce${value > 1 ? 's' : ''}`, { kind: 'good' });
+    wallet.notify(); save.save(); focus = -1; refresh();
   }
 
   function select(cell: number) { focus = cell; renderSel(); }
@@ -448,8 +486,19 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
   }
 
   // ---------------------------------------------------------------- tout rafraîchir
+  let lastFullHint = 0;
+  /** Plateau presque plein : un seul conseil discret toutes les 3 minutes, jamais pendant une fusion. */
+  function fullHint() {
+    const now = Date.now();
+    if (now - lastFullHint < 180_000 || cfg.busy() || isBoardBusy() || isComboBusy()) return;
+    if (occupancy(cfg.getState()).ratio < FULL_HINT_RATIO) return;
+    lastFullHint = now;
+    feed('Ton plateau commence à être plein ♡ Range dans le sac ou vends ce qui ne sert pas.', { kind: 'info', ms: 4200 });
+  }
+
   function refresh() {
     if (!alive) return;
+    fullHint();
     renderOrders();
     renderChoc();
     renderStatus();
@@ -472,6 +521,16 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     el.style.left = `${a.x}px`; el.style.top = `${a.y + 14}px`;
     layer.append(el);
     window.setTimeout(() => el.remove(), 1000);
+  }
+
+  /** Niveau gagné : une pastille qui s'illumine + une ligne discrète (jamais de fenêtre qui cache le plateau). */
+  function lvlUp(to: number, unlock?: string): void {
+    window.setTimeout(() => {
+      const b = statusEl.querySelector('.en-lvl');
+      if (b && !reducedFx()) { b.classList.add('up'); window.setTimeout(() => b.classList.remove('up'), 1400); }
+      feed(`Niveau ${to} ♡${unlock ? ` · ${unlock}` : ''}`, { kind: 'good', ms: 3600 });
+      audio.play('reward'); haptic('reward');
+    }, 700);
   }
 
   function onEvents(ev: BoardEvent[], got: LootResult) {
@@ -502,6 +561,9 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
           for (const m of ['flowers', 'fabric', 'cocoa'] as const) if (g[m]) parts.push(`+${g[m]} ${RES_NAMES[m].toLowerCase()}`);
           if (e.energy) parts.push(`+${e.energy} ⚡`);
           feed(parts.length ? parts.join(' · ') : 'Commande livrée ♡', { kind: 'good', ms: 2800 });
+          if (e.levelUp) {
+            lvlUp(e.levelUp.to, e.levelUp.unlock);
+          }
           const rr = ordersEl.querySelector(`[data-slot="${e.slot}"]`)?.getBoundingClientRect();
           if (rr) sparkleBurst(rr.left + rr.width / 2, rr.top + rr.height / 2, { rarity: e.tier === 'hard' ? 'epic' : e.tier === 'mid' ? 'rare' : 'uncommon' });
           if (e.tier === 'hard') wish('orderDone'); // seule une commande difficile mérite un mot d'Auguste

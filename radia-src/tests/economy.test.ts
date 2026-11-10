@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { defaultEconomy, migrate, sanitize, SAVE_VERSION } from '../src/save/schema';
 import {
-  ENERGY_MAX, REGEN_MS, FREE_REFILL, FREE_REFILL_MS, syncEnergy, spendEnergy, addEnergy, takeFreeRefill, freeRefillIn,
+  ENERGY_MAX, REGEN_MS, FREE_REFILL, syncEnergy, spendEnergy, addEnergy, takeFreeRefill, freeRefillIn,
   spendDiamonds, addDiamonds, bagPut, bagTake, upgradeBag, bagUpgradePrice, rollChest, PACKS, DECOR,
 } from '../src/game/economy/economy';
 
@@ -40,24 +40,39 @@ describe('énergie', () => {
     expect(spendEnergy(e, 3, 1)).toBe(true); expect(e.energy).toBe(0); expect(e.reserve).toBe(1); // 1 d'énergie + 2 de réserve
     expect(spendEnergy(e, 2, 1)).toBe(false); expect(e.reserve).toBe(1); // pas assez : rien n'est consommé
   });
-  it('recharge offerte d\'Auguste : jamais consommée si l\'énergie est déjà pleine', () => {
-    const e = { ...defaultEconomy(), energy: 100, energyTs: 0, freeRefillTs: 0 };
-    expect(takeFreeRefill(e, FREE_REFILL_MS + 1)).toBe(false);
+  // CHANGEMENT DE RÈGLE VOULU (refonte de l'économie) : l'attention d'Auguste (+30) est désormais QUOTIDIENNE (avant : toutes les 10 minutes) ;
+  // la recharge naturelle passe à 1 énergie / 2 min 30 (avant : 45 s). Voir docs/BALANCING.md.
+  const T0 = new Date(2026, 10, 9, 10, 0, 0).getTime(); // 9 novembre 2026, 10 h (heure locale)
+  it('recharge naturelle : 1 énergie toutes les 2 minutes (plein en environ 3 h 20)', () => {
+    expect(REGEN_MS).toBe(120_000);
+    const e = { ...defaultEconomy(), energy: 0, energyTs: T0 };
+    syncEnergy(e, T0 + 60 * 60_000);
+    expect(e.energy).toBeGreaterThanOrEqual(30); expect(e.energy).toBeLessThanOrEqual(35); // 6 énergies en 3 min sous le plancher, puis 1 / 2 min
+  });
+  it('attention d\'Auguste : jamais consommée si l\'énergie est déjà pleine', () => {
+    const e = { ...defaultEconomy(), energy: 100, energyTs: T0, freeRefillTs: 0 };
+    expect(takeFreeRefill(e, T0)).toBe(false);
     expect(e.freeRefillTs).toBe(0);
   });
-  it('recharge offerte : n\'ajoute jamais plus que la place restante', () => {
-    const e = { ...defaultEconomy(), energy: 90, energyTs: FREE_REFILL_MS, freeRefillTs: 0 };
-    expect(takeFreeRefill(e, FREE_REFILL_MS + 1)).toBe(true);
+  it('attention d\'Auguste : n\'ajoute jamais plus que la place restante', () => {
+    const e = { ...defaultEconomy(), energy: 90, energyTs: T0, freeRefillTs: 0 };
+    expect(takeFreeRefill(e, T0)).toBe(true);
     expect(e.energy).toBe(100);
   });
-  it('recharge gratuite : une fois par période', () => {
-    const e = { ...defaultEconomy(), energy: 0, energyTs: 0, freeRefillTs: 0 };
-    const t = FREE_REFILL_MS + 1;
-    expect(takeFreeRefill(e, t)).toBe(true);
+  it('attention d\'Auguste : UNE fois par jour, de nouveau disponible le lendemain, état d\'attente visible', () => {
+    const e = { ...defaultEconomy(), energy: 0, energyTs: T0, freeRefillTs: 0 };
+    expect(freeRefillIn(e, T0)).toBe(0); // disponible
+    expect(takeFreeRefill(e, T0)).toBe(true);
     expect(e.energy).toBeGreaterThanOrEqual(FREE_REFILL);
     expect(e.energy).toBeLessThanOrEqual(ENERGY_MAX);
-    expect(takeFreeRefill(e, t + 1000)).toBe(false);
-    expect(freeRefillIn(e, t + 1000)).toBeGreaterThan(0);
+    e.energy = 0; e.energyTs = T0 + 3 * 3600_000;
+    expect(takeFreeRefill(e, T0 + 3 * 3600_000)).toBe(false); // même jour : refusé
+    const wait = freeRefillIn(e, T0 + 3 * 3600_000);
+    expect(wait).toBeGreaterThan(0); expect(wait).toBeLessThanOrEqual(14 * 3600_000); // jusqu'à minuit
+    const tomorrow = new Date(2026, 10, 10, 8, 0, 0).getTime();
+    expect(freeRefillIn(e, tomorrow)).toBe(0);
+    e.energy = 10; e.energyTs = tomorrow; // (l'énergie ne doit pas être pleine : la recharge offerte n'est jamais consommée pour rien)
+    expect(takeFreeRefill(e, tomorrow)).toBe(true);
   });
 });
 

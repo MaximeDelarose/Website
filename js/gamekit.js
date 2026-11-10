@@ -47,19 +47,13 @@
   var GAMES = [
     { id: "jeu", title: "Écureuil Survivor", ico: "🐿️" },
     { id: "merger", title: "Merger", ico: "🟣" },
-    { id: "suika", title: "Suika", ico: "🍉" },
     { id: "dice", title: "Écureuil Dice", ico: "🎲" },
     { id: "king-dice", title: "King Dice", ico: "👑" },
     { id: "ages", title: "Age of Defense", ico: "🏰" },
-    { id: "bagbound", title: "BAGBOUND", ico: "🎒" },
-    { id: "ultimate", title: "Ultimate Écureuil", ico: "🏁" },
     { id: "arcane", title: "Arcane Tactics", ico: "🪄" },
     { id: "echecs", title: "Échecs", ico: "♞" },
     { id: "billard", title: "Billard", ico: "🎱" },
     { id: "golf", title: "Mini-golf", ico: "⛳" },
-    { id: "golfaventure", title: "Golfaventure", ico: "🏌️" },
-    { id: "defense", title: "Écureuil Défense", ico: "🗼" },
-    { id: "flippers", title: "Flippers", ico: "📍" },
     { id: "grimpe", title: "Grimpe-Chêne", ico: "🌳" },
     { id: "idle", title: "Le Grand Chêne", ico: "🌰" }
   ];
@@ -152,7 +146,7 @@
     if (!prefs.haptics || !navigator.vibrate) return;
     safe(function () { navigator.vibrate(HAPTICS[kind || "tap"] || kind); });
   }
-  // sons + tick sur les boutons de menu (pas sur les commandes de jeu tenues, ex. flippers)
+  // sons + tick sur les boutons de menu (pas sur les commandes de jeu tenues)
   var MENU_BTN = ".game-overlay button, .game-card button, .panel button, .game-head button, .gk-sheet button, .gk-sheet label, .chip, .btn";
   function isMenuControl(el) {
     var b = el && el.closest && el.closest(MENU_BTN);
@@ -193,10 +187,41 @@
     var b = h("button", { class: "gk-fs-exit", type: "button", "aria-label": "Quitter le plein écran", text: "✕", onclick: function () { fullscreen.exit(el); } });
     el.appendChild(b);
   }
+  /* En plein écran, seule la zone de jeu reste affichée : les boutons de l'en-tête (Menu, Son, Pause,
+     Réglages) sont déplacés dans un petit bandeau à l'intérieur de la zone, puis remis à leur place.
+     On déplace les nœuds (pas de copie) : leurs écouteurs de jeu continuent de fonctionner. */
+  var docked = null;
+  function undock() {
+    if (!docked) return;
+    docked.items.slice().reverse().forEach(function (it) {
+      if (it.parent) it.parent.insertBefore(it.node, it.next && it.next.parentNode === it.parent ? it.next : null);
+    });
+    if (docked.bar.parentNode) docked.bar.parentNode.removeChild(docked.bar);
+    docked = null;
+  }
+  function dockHeader(el) {
+    undock();
+    var head = document.querySelector(".game-head");
+    if (!el || !head) return;
+    var nodes = $$("button", head).filter(function (b) {
+      if (b.hidden || b.closest("[hidden]") || b.matches("[data-game-fullscreen], [data-gk-fs], .gk-fsbtn")) return false;
+      return b.classList.contains("btn") || b.classList.contains("gk-gear");
+    });
+    if (!nodes.length) return;
+    var bar = h("div", { class: "gk-dock", role: "toolbar", "aria-label": "Menu du jeu" });
+    docked = { bar: bar, items: [] };
+    nodes.forEach(function (b) {
+      docked.items.push({ node: b, parent: b.parentNode, next: b.nextSibling });
+      bar.appendChild(b);
+    });
+    el.appendChild(bar);
+  }
   function syncFull() {
     var full = anyFull();
     root.classList.toggle("gk-full", full);
     $$(ROOT_SEL).forEach(function (el) { el.classList.toggle("gk-fs", isFull(el)); });
+    var active = $$(ROOT_SEL).filter(function (el) { return isFull(el); })[0] || null;
+    if (full && active) dockHeader(active); else undock();
     emit("fullscreen", { full: full });
     if (full) acquireWake();
   }

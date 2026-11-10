@@ -191,7 +191,7 @@ canvas { image-rendering: pixelated; }
 }
 .header-inner { display: flex; align-items: center; gap: 16px; min-height: 68px; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: auto; }
-.brand img { width: 40px; height: 38px; }
+.brand img { width: 36px; height: 38px; }
 .brand-name { font-family: "Londrina", "Nunito", sans-serif; font-weight: 900; font-size: 1.6rem; letter-spacing: .02em; line-height: 1; }
 .brand-name span { color: var(--orange); }
 
@@ -393,7 +393,7 @@ canvas { image-rendering: pixelated; }
 .bio { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 48px; align-items: start; }
 @media (max-width: 760px) { .bio { grid-template-columns: 1fr; gap: 28px; } }
 .avatar { padding: 20px; text-align: center; }
-.avatar img { width: 160px; height: auto; display: block; margin: 8px auto 12px; }
+.avatar img { width: 144px; height: auto; display: block; margin: 8px auto 12px; }
 .avatar .pixel { font-size: 1.3rem; margin: 0; }
 .avatar p { color: var(--ink-soft); font-size: .95rem; margin: 0; }
 .bio-text { max-width: 66ch; }
@@ -458,7 +458,7 @@ canvas { image-rendering: pixelated; }
 .site-footer .link-dot { box-shadow: 3px 3px 0 rgba(0,0,0,.35); }
 .footer-small { font-size: .9rem; opacity: .8; margin: 0; }
 .footer-brand { display: flex; align-items: center; gap: 12px; }
-.footer-brand img { width: 40px; height: 38px; }
+.footer-brand img { width: 36px; height: 38px; }
 
 /* ---------- divers ---------- */
 .mushroom-divider { display: flex; justify-content: center; gap: 18px; padding: 8px 0; opacity: .9; }
@@ -3224,3 +3224,88 @@ html.is-app, html.is-app body { overflow: hidden; overscroll-behavior: none; }
   .hub-toolbar .seg-btn, .hub-toolbar .seg-btn + .seg-btn { flex: 1 1 auto; background: var(--panel); box-shadow: 0 0 0 3px var(--line); padding: 6px 10px; }
   .hub-toolbar .seg-btn[aria-pressed="true"] { background: var(--orange); }
 }
+
+/* Accueil, « Ce que je fais » : la règle .skill d'un des jeux (arbre de compétences) ne doit pas s'appliquer ici */
+.skills > .skill { display: block; gap: 0; align-items: initial; padding: 26px 24px 18px; background: var(--panel); border: 0; }
+.skills { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); }
+.skills .btn { max-width: 100%; white-space: normal; }
+
+/* titres longs (ex. Golfaventure) dans les petites cartes de jeux sur mobile */
+.games-grid .card-title { overflow-wrap: anywhere; hyphens: auto; }
+
+/* ---------- page Stats ---------- */
+.st-section { margin-bottom: 40px; }
+.st-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 16px; }
+.st-tile { display: grid; gap: 2px; padding: 18px; text-align: center; }
+.st-tile .st-ico { font-size: 2rem; }
+.st-tile strong { font-size: 2rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.st-tile span { font-weight: 700; color: var(--ink-soft); }
+.st-tile small { color: var(--ink-soft); font-size: .8rem; }
+.st-clan-intro { margin-bottom: 14px; }
+.st-clans { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 20px; }
+.st-clan { padding: 20px 18px 16px; text-align: center; border-top: 8px solid var(--cc); display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.st-clan.is-mine { outline: 4px solid var(--cc); outline-offset: 4px; }
+.st-emblem { font-size: 3rem; margin: 0; line-height: 1; }
+.st-clan h3 { margin: 0; }
+.st-motto { margin: 0; color: var(--ink-soft); font-style: italic; }
+.st-clan-stats { display: flex; gap: 24px; margin: 6px 0; }
+.st-clan-stats div { display: grid; }
+.st-clan-stats dt { font-size: .8rem; color: var(--ink-soft); font-weight: 700; }
+.st-clan-stats dd { margin: 0; font-size: 1.3rem; font-weight: 900; }
+.st-bar { width: 100%; height: 10px; background: var(--panel-2); box-shadow: 0 0 0 2px var(--line); margin: 4px 0 8px; }
+.st-bar span { display: block; height: 100%; background: var(--cc); }
+.st-mine { font-weight: 900; color: var(--cc); }
+.st-note { font-weight: 700; color: var(--ink-soft); }
+.st-err { color: var(--berry); }
+.st-updated { color: var(--ink-soft); font-size: .85rem; }
+.st-admin { text-align: right; margin: 0 0 8px; }
+
+/* ---------- page Admin ---------- */
+.admin { display: grid; gap: 22px; }
+.ad-box { padding: 20px 20px 16px; min-width: 0; }
+.ad-box h2 { margin: 0 0 12px; font-size: 1.35rem; }
+.ad-box h3 { font-size: 1.05rem; margin: 10px 0 8px; }
+.ad-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ad-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr)); gap: 10px; }
+.ad-tile { display: grid; gap: 1px; padding: 10px 12px; background: var(--panel-2); border: 3px solid var(--line); }
+.ad-tile strong { font-size: 1.4rem; font-weight: 900; }
+.ad-tile span { font-weight: 700; font-size: .9rem; }
+.ad-tile small { color: var(--ink-soft); font-size: .78rem; }
+.ad-note { color: var(--ink-soft); font-size: .92rem; }
+.ad-status { position: sticky; top: 76px; z-index: 5; margin: 0; min-height: 0; font-weight: 800; }
+.ad-status:empty { display: none; }
+.ad-status[data-kind="ok"] { color: var(--moss); }
+.ad-status[data-kind="err"] { color: var(--berry); }
+.ad-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.ad-row input, .ad-row select, .ad-grid-form input, .ad-grid-form select, .ad-table input {
+  font: inherit; padding: 6px 8px; border: 2px solid var(--line); background: var(--panel-2); color: var(--ink); min-width: 0;
+}
+.ad-row input[type="search"] { flex: 1 1 260px; }
+.ad-row input[name="reason"] { flex: 1 1 160px; }
+.ad-row input[name="amount"] { width: 130px; }
+.ad-table-wrap { overflow-x: auto; }
+.ad-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.ad-table th, .ad-table td { text-align: left; padding: 6px 8px; border-bottom: 2px dashed var(--depth); vertical-align: middle; }
+.ad-table input[type="number"] { width: 90px; }
+.ad-grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 10px; align-items: end; margin-top: 14px; }
+.ad-grid-form h3 { grid-column: 1 / -1; margin: 0; }
+.ad-grid-form label { display: grid; gap: 4px; font-weight: 700; font-size: .9rem; }
+.ad-grid-form .ad-check { display: flex; align-items: center; gap: 8px; }
+.ad-user { border: 3px solid var(--line); background: var(--panel-2); padding: 10px 12px; margin: 10px 0; }
+.ad-user header { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.ad-user code { font-size: .75rem; }
+.ad-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px; }
+.ad-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; font-size: .9rem; }
+.ad-list small { color: var(--ink-soft); }
+.ad-plus { color: var(--moss); }
+.ad-minus { color: var(--berry); }
+.ad-danger { --b: #f3c1b5; --bd: #b3533d; }
+.ad-x, .ad-link { font: inherit; background: none; border: 0; cursor: pointer; color: var(--berry); font-weight: 900; padding: 0 4px; }
+.ad-link { color: var(--orange-dk); text-decoration: underline; padding: 0; }
+a.account-admin { text-decoration: none; }
+.ad-status:not(:empty) { background: var(--panel); padding: 6px 12px; box-shadow: 0 0 0 3px var(--line); width: max-content; max-width: 100%; }
+
+/* borne : l'image carrée d'un jeu maison reste centrée */
+.screen-img { object-position: 50% 40%; }
+[data-fullscreen][hidden] { display: none; }
+.screen-img.is-pixel { object-fit: contain; image-rendering: pixelated; background: #1f3a2b; filter: none; }

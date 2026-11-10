@@ -2,12 +2,30 @@ import type { Node, Profile } from './types';
 import { PROFILES_A } from './profilesA';
 import { PROFILES_B } from './profilesB';
 import { PROFILES_C } from './profilesC';
+import { dynNode, extrasFor } from '../../../apps/brain/tindeurNodes';
 
 /** Tous les profils fictifs (hommes adultes imaginaires). */
 export const PROFILES: Profile[] = [...PROFILES_A, ...PROFILES_B, ...PROFILES_C];
 const byId = new Map(PROFILES.map((p) => [p.id, p]));
 export const profileById = (id: string): Profile | undefined => byId.get(id);
-export const nodeOf = (p: Profile, id: string): Node | undefined => p.nodes.find((n) => n.id === id);
+const authored = (p: Profile, id: string): Node | undefined => p.nodes.find((n) => n.id === id);
+const dynCache = new Map<string, Node | undefined>();
+/**
+ * Un nœud de conversation : écrit à la main (auquel on ajoute les réponses « en plus » : famille, amitié, Snapchien) ou dynamique (« ~… »,
+ * régénéré à l'identique depuis son identifiant : voir src/apps/brain/tindeurNodes.ts).
+ */
+export function nodeOf(p: Profile, id: string): Node | undefined {
+  if (id.charCodeAt(0) === 126) {
+    const k = `${p.id}|${id}`;
+    if (!dynCache.has(k)) dynCache.set(k, dynNode(p, id, (x) => authored(p, x)));
+    return dynCache.get(k);
+  }
+  const n = authored(p, id);
+  if (!n || n.end || !n.ch.length) return n;
+  return { ...n, ch: [...n.ch, ...extrasFor(p, n)] };
+}
+/** Le nœud écrit à la main (sans réponses « en plus »), pour les statistiques et les fins. */
+export const authoredNode = authored;
 /** Ordre des premières cartes : de bonnes accroches, puis le reste est mélangé. */
 export const OPENING = ['kevin', 'hugo', 'maxime'];
 

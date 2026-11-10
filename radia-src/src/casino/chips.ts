@@ -16,9 +16,9 @@ export const CHIP_CAP = 999_999_999;
 
 export type Game = 'roulette' | 'slots' | 'blackjack';
 export const LIMITS: Record<Game, { min: number; max: number; step: number }> = {
-  roulette: { min: 5, max: 1000, step: 5 },
-  slots: { min: 10, max: 1000, step: 10 },
-  blackjack: { min: 10, max: 500, step: 10 },
+  roulette: { min: 10, max: 1_000_000, step: 10 },
+  slots: { min: 10, max: 1_000_000, step: 10 },
+  blackjack: { min: 10, max: 1_000_000, step: 10 },
 };
 export const GAME_NAMES: Record<Game, string> = { roulette: 'Roulette', slots: 'Machine à sous', blackjack: 'Blackjack' };
 

@@ -4,6 +4,7 @@
  * ./castle/view.ts ; le placement (pur, testé) dans ./castle/placement.ts, ./castle/draft.ts, ./castle/migrate.ts.
  * Les règles économiques sont dans src/game/world/castle.ts (pures, testées).
  */
+import { missingCoins } from '../../../data/world/prices';
 import '../../styles/world-castle.css';
 import { h, tap } from '../../dom';
 import { ui } from '../../ui';
@@ -125,7 +126,7 @@ function mapView(scr: HTMLElement, leave: () => void, goRoom: (r: RoomId) => voi
     const body = h('div.cs-unlock',
       h('p', ROOMS[r].blurb),
       h('div.cs-unlock-price', coin(), h('b', `${cost} pièces`)),
-      h('small', have >= cost ? `Il te restera ${fmt(have - cost)} pièces.` : `Il te manque ${fmt(cost - have)} pièces. Les fusions et les commandes en rapportent ♡`));
+      h('small', have >= cost ? `Il te restera ${fmt(have - cost)} pièces.` : `${missingCoins(cost - have)}. Les commandes du mode libre en rapportent ♡`));
     const v = await ui.modal({
       title: roomName(r), body,
       actions: [have >= cost ? { label: 'Débloquer', value: 'y', style: 'gold' } : { label: 'Compris', value: 'n' }, ...(have >= cost ? [{ label: 'Plus tard', value: 'n', style: 'secondary' as const }] : [])],

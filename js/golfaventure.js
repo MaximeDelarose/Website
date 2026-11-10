@@ -1011,6 +1011,7 @@
   var lastT = 0, acc = 0;
   function frame(ts) {
     requestAnimationFrame(frame);
+    if (root.hidden) { lastT = ts; return; }   // l'autre jeu de la page est affiché : on ne calcule rien
     var dt = Math.min(0.05, (ts - lastT) / 1000 || 0); lastT = ts;
     if (S && L && (mode === "play" || mode === "won")) {
       if (overlay.hidden || mode === "won") {

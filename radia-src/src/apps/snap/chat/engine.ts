@@ -6,12 +6,25 @@
  * texte ne comptent pas), pendant des jours consécutifs ; une journée manquée remet la série à zéro. Aucune notification ne pousse
  * à entretenir une série ; rien n'est payant.
  */
-import { CONTACTS, ANSWERS, BARE_SCENES, REPLIES, SNAP_BACK, contactById, type ChatContact, type SceneId } from './data';
+import { CONTACTS, ANSWERS, BARE_SCENES, GENERIC_CAPTIONS, REPLIES, SNAP_BACK, contactById, type ChatContact, type SceneId } from './data';
+import { SNAP_WITH, choiceById } from '../../brain/banks';
+import { canSpeak, noteHisSnap, offer, react, start as brainStart } from '../../brain/engine';
+import { chatReply } from '../../brain/chat';
+import { profileById } from '../../../events/tindeur/swipe/data';
+import { memOf } from '../../brain/memory';
+import { personaById } from '../../brain/personas';
+import type { BrainState } from '../../brain/types';
 
 export interface RngLike { next(): number; int(n: number): number }
 
 export type MsgKind = 'text' | 'snap' | 'video';
-export interface ChatMsg { id: string; from: 'in' | 'out'; kind: MsgKind; text: string; scene?: SceneId; opened?: boolean; at: number }
+export interface ChatMsg {
+  id: string; from: 'in' | 'out'; kind: MsgKind; text: string; scene?: SceneId; opened?: boolean; at: number;
+  /** Message de Radia : reçu / ouvert par le contact (instants SIMULÉS) ; capture d'écran (si le contact en fait une). */
+  recvAt?: number; openAt?: number; shotAt?: number;
+  /** Selfie fictif de Radia (sourire, tenue, grimace) ; message système « capture d'écran » ; demande de photo faite par lui. */
+  pick?: 'ph_smile' | 'ph_outfit' | 'ph_funny'; sys?: 'shot'; ask?: boolean;
+}
 export interface Flame { n: number; /** dernier jour où la série a été validée (AAAA-MM-JJ) */ day: string; mine: string; theirs: string }
 export interface ContactState {
   added: boolean; deleted: boolean; msgs: ChatMsg[]; unread: number; lastIn: number; lastOut: number;
@@ -82,10 +95,10 @@ export const unreadTotal = (s: ChatState): number => Object.values(s.contacts).r
 export const unopenedSnaps = (s: ChatState): number => Object.values(s.contacts).reduce((a, c) => a + (c.added && !c.deleted ? c.msgs.filter((m) => m.from === 'in' && m.kind !== 'text' && !m.opened).length : 0), 0);
 export const activeContacts = (s: ChatState): ChatContact[] => CONTACTS.filter((c) => s.contacts[c.id]?.added && !s.contacts[c.id].deleted);
 
-export interface Incoming { contactId: string; msg: ChatMsg; joined?: boolean }
+export interface Incoming { contactId: string; msg: ChatMsg; joined?: boolean; /** messages suivants du même contact (écrits à la suite, quelques secondes plus tard) */ extra?: ChatMsg[] }
 
 /** Produit un message ou un snap spontané d'un garçon (ou l'arrivée d'un nouveau contact). Renvoie null si rien ne doit arriver. */
-export function produce(s: ChatState, now: number, rng: RngLike): Incoming | null {
+export function produce(s: ChatState, now: number, rng: RngLike, brain?: BrainState): Incoming | null {
   // arrivée d'un nouveau contact (jamais s'il a été supprimé : on ne le rétablit pas tout seul)
   if (s.clock >= s.joinAt && unreadTotal(s) < MAX_UNREAD_TOTAL) {
     s.joinAt = s.clock + JOIN_EVERY_MS;
@@ -99,7 +112,9 @@ export function produce(s: ChatState, now: number, rng: RngLike): Incoming | nul
     }
   }
   if (unreadTotal(s) >= MAX_UNREAD_TOTAL) return null;
-  const pool = activeContacts(s).filter((c) => s.contacts[c.id].unread < MAX_UNREAD_PER_CONTACT);
+  const hour = new Date(now).getHours();
+  // rythme propre à chacun : plage horaire préférée et délai minimal depuis son dernier mot (les contacts ne s'écrivent jamais tous en même temps)
+  const pool = activeContacts(s).filter((c) => s.contacts[c.id].unread < MAX_UNREAD_PER_CONTACT && (!brain || canSpeak(brain, c.id, now, hour, rng)));
   if (!pool.length) return null;
   // ceux qui n'ont pas écrit depuis longtemps reviennent plus souvent
   const weights = pool.map((c) => 1 + Math.min(5, s.contacts[c.id].lastIn ? daysBetween(s.contacts[c.id].lastIn, now) : 3));
@@ -111,11 +126,25 @@ export function produce(s: ChatState, now: number, rng: RngLike): Incoming | nul
   if (wantsSnap) {
     const scene = pickFresh(rng, c.scenes, st.scenes);
     remember(st.scenes, scene, 2);
-    const caps = c.captions[scene] ?? ['Un petit snap.'];
+    const caps = c.captions[scene] ?? GENERIC_CAPTIONS[scene] ?? ['Un petit snap.'];
     const text = pickFresh(rng, caps, st.recent);
     remember(st.recent, text);
     msg = { id: newId(s), from: 'in', kind: rng.next() < 0.2 ? 'video' : 'snap', text, scene, opened: false, at: now };
     st.flame.theirs = dayKey(now); updateFlame(st.flame, st.flame.theirs);
+    if (brain) {
+      noteHisSnap(brain, c.id, scene, now); const bm = memOf(brain, c.id); bm.talkedAt = now; bm.turns++;
+      push(st, msg); st.unread++; st.lastIn = now;
+      const extra: ChatMsg[] = [];
+      if (rng.next() < 0.35) { const w: ChatMsg = { id: newId(s), from: 'in', kind: 'text', text: pickFresh(rng, SNAP_WITH, st.recent), at: now + 2200 }; remember(st.recent, w.text); push(st, w); extra.push(w); }
+      return { contactId: c.id, msg, ...(extra.length ? { extra } : {}) };
+    }
+  } else if (brain) {
+    // texte : le cerveau choisit selon la personnalité, la mémoire de Radia et les règles (jamais d'insistance)
+    const beat = brainStart(brain, c.id, rng, { now, hour, channel: 'snap', canSnap: true, flameAtRisk: flameAtRisk(st, now) });
+    if (!beat || !beat.say.length) return null;
+    const msgs = beat.say.map((text, i): ChatMsg => ({ id: newId(s), from: 'in', kind: 'text', text, at: now + i * 1600, ...(beat.wantsPhoto && i === beat.say.length - 1 ? { ask: true } : {}) }));
+    for (const m of msgs) push(st, m); st.unread++; st.lastIn = now;
+    return { contactId: c.id, msg: msgs[0], ...(msgs.length > 1 ? { extra: msgs.slice(1) } : {}) };
   } else {
     const long = st.lastIn > 0 && daysBetween(st.lastIn, now) >= 3;
     const text = pickFresh(rng, long ? c.relances : c.openers, st.recent);
@@ -127,12 +156,12 @@ export function produce(s: ChatState, now: number, rng: RngLike): Incoming | nul
 }
 
 /** Fait avancer le temps de jeu ACTIF (ms) et renvoie les messages arrivés. Au plus un message par appel. */
-export function advance(s: ChatState, activeMs: number, now: number, rng: RngLike): Incoming | null {
+export function advance(s: ChatState, activeMs: number, now: number, rng: RngLike, brain?: BrainState): Incoming | null {
   s.clock += Math.max(0, Math.min(activeMs, 60_000));
   refreshFlames(s, now);
   if (s.clock < s.nextAt) return null;
   s.nextAt = s.clock + 4 * 60_000 + rng.int(5 * 60_000); // prochaine arrivée dans 4 à 9 minutes de jeu
-  return produce(s, now, rng);
+  return produce(s, now, rng, brain);
 }
 
 /** Ouvre un snap reçu : statut « Ouvert ». */
@@ -184,8 +213,9 @@ export const setMuted = (s: ChatState, muted: boolean): void => { s.muted = mute
 
 /** Ligne de la liste : état du dernier échange. */
 export type RowStatus = 'snap-red' | 'video' | 'text-new' | 'opened' | 'sent' | 'empty';
-export function rowStatus(c: ContactState): { status: RowStatus; at: number } {
-  const last = c.msgs[c.msgs.length - 1];
+export function rowStatus(c: ContactState, now?: number): { status: RowStatus; at: number } {
+  const vis = now === undefined ? c.msgs : visibleMsgs(c, now).filter((m) => m.sys !== 'shot');
+  const last = vis[vis.length - 1];
   if (!last) return { status: 'empty', at: 0 };
   if (last.from === 'in') {
     if (last.kind === 'snap' && !last.opened) return { status: 'snap-red', at: last.at };
@@ -224,6 +254,162 @@ export function addFriend(s: ChatState, cid: string, now: number): boolean {
 }
 export const unopenedSnapCount = (s: ChatState): number => CONTACTS.reduce((n, c) => n + s.contacts[c.id].msgs.filter((m) => m.from === 'in' && m.kind !== 'text' && !m.opened).length, 0);
 
+
+// ------------------------------------------------------------------ flamme en danger, messages visibles, états « Envoyé / Reçu / Ouvert »
+/** Une série d'au moins 2 jours risque de s'arrêter ce soir : Radia n'a pas encore envoyé de snap aujourd'hui. */
+export function flameAtRisk(c: ContactState, now: number): boolean {
+  const today = dayKey(now); const f = c.flame;
+  return f.n >= 2 && f.day === prevDay(today) && f.mine !== today && new Date(now).getHours() >= 16;
+}
+/** Messages déjà « arrivés » (les réponses sont échelonnées de quelques secondes : elles n'apparaissent pas toutes d'un coup). */
+export const visibleMsgs = (c: ContactState, now: number): ChatMsg[] => c.msgs.filter((m) => m.at <= now && (m.sys !== 'shot' || (m.shotAt ?? m.at) <= now)).sort((a, b) => a.at - b.at); // par heure d'arrivée (une réponse en retard passe après ce que Radia a écrit entre-temps)
+export type DeliveryState = 'sent' | 'received' | 'opened';
+/** État d'un message de Radia dans la simulation : envoyé → reçu → ouvert. */
+export function deliveryOf(m: ChatMsg, now: number): DeliveryState {
+  if (m.openAt !== undefined && now >= m.openAt) return 'opened';
+  if (m.recvAt !== undefined && now >= m.recvAt) return 'received';
+  return m.recvAt === undefined && m.openAt === undefined ? 'opened' : 'sent'; // anciens messages (sans horaires) : considérés ouverts
+}
+export const DELIVERY_LABEL: Record<DeliveryState, string> = { sent: 'Envoyé', received: 'Reçu', opened: 'Ouvert' };
+
+// ------------------------------------------------------------------ présence (avatar du contact dans la conversation)
+export type PresenceState = 'away' | 'here' | 'typing' | 'lingering';
+export interface Presence { state: PresenceState; mood: import('../../../events/tindeur/swipe/types').Mood; label: string }
+const h32b = (t: string): number => { let h = 2166136261 >>> 0; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; };
+type MoodT = import('../../../events/tindeur/swipe/types').Mood;
+const MOODS: Record<string, MoodT[]> = { joker: ['grin', 'tongue', 'wink', 'smile'], badjoker: ['grin', 'tongue', 'proud'], flirt: ['wink', 'smirk', 'smile', 'grin'], sporty: ['proud', 'grin', 'smirk', 'smile'],
+  serious: ['calm', 'smile', 'proud'], shy: ['shy', 'smile', 'calm'], gentle: ['smile', 'shy', 'calm'], chill: ['calm', 'smirk', 'smile'], skeptic: ['smirk', 'calm', 'surprised'] };
+/** Expression de l'avatar : propre au caractère, et adaptée à ce dont on vient de parler (surpris par la famille, clin d'œil après un selfie, langue tirée après une blague). */
+export function moodOf(cid: string, lastId: string, brain?: BrainState): MoodT {
+  const p = personaById(cid); const palette = MOODS[p?.arch ?? 'chill'];
+  if (brain) {
+    const m = memOf(brain, cid);
+    if (m.lastTopic === 'kids') return p?.kids === 'surprised' || p?.kids === 'hesitant' ? 'surprised' : p?.kids === 'funny' ? 'grin' : 'smile';
+    if (m.lastTopic === 'photo') return 'wink'; if (m.lastTopic === 'joke') return 'tongue'; if (m.lastTopic === 'friend') return p?.friend === 'cheeky' ? 'smirk' : 'smile';
+  }
+  return palette[h32b(`${cid}|${lastId}`) % palette.length];
+}
+/** Pseudo-hasard stable : est-il « dans l'appli » en ce moment (par tranches de 10 minutes, selon ses heures préférées) ? */
+export function isOnline(cid: string, now: number): boolean {
+  const p = personaById(cid); if (!p) return false;
+  const hour = new Date(now).getHours(); const w = (p.hours === 'night' ? (hour >= 19 || hour < 2) : p.hours === 'morning' ? (hour >= 6 && hour < 11) : (hour >= 10 && hour < 19)) ? 0.55 : 0.12;
+  return (h32b(`${cid}|${Math.floor(now / 600_000)}`) % 1000) / 1000 < w;
+}
+export function presenceOf(s: ChatState, cid: string, now: number, brain?: BrainState): Presence {
+  const c = s.contacts[cid]; const ct = contactById(cid);
+  const last = c?.msgs[c.msgs.length - 1];
+  const mood = moodOf(cid, last?.id ?? 'x', brain);
+  if (!c || !ct) return { state: 'away', mood, label: '' };
+  if (c.msgs.some((m) => m.from === 'in' && m.at > now && m.at - now < 5500 && m.sys !== 'shot')) return { state: 'typing', mood, label: 'écrit…' };
+  const lastOut = [...c.msgs].reverse().find((m) => m.from === 'out');
+  if (lastOut?.openAt !== undefined && now >= lastOut.openAt && now < lastOut.openAt + 7000 && !c.msgs.some((m) => m.from === 'in' && m.at > lastOut.openAt!)) return { state: 'lingering', mood, label: `${ct.name} consulte la conversation` };
+  const lastIn = [...c.msgs].reverse().find((m) => m.from === 'in' && m.sys !== 'shot' && m.at <= now);
+  if (lastIn && now - lastIn.at < 45_000) return { state: 'here', mood, label: `${ct.name} est là` };
+  if (isOnline(cid, now)) return { state: 'here', mood, label: `${ct.name} est en ligne` };
+  return { state: 'away', mood, label: '' };
+}
+
+// ------------------------------------------------------------------ conversation pilotée par le cerveau
+const SHOT_LINES = ['Oups, j\'ai fait une capture d\'écran, pardon 😅 elle était trop belle.', 'Je t\'avoue, j\'ai fait une capture. Je ne la montre à personne, promis.', 'Capture d\'écran faite, je préviens pour être honnête 😇', 'Bon, j\'ai fait une capture d\'écran. Je te dois une explication : j\'adore.'];
+export interface Conversation { mine: ChatMsg; theirs: ChatMsg[]; viewedOnly: boolean; snapBack: boolean; beatTopic: string }
+const LEGACY_IDS = ['dors', 'pourquoi', 'quoi', 'carrement', 'dormir', 'nuit', 'vu', 'tshirt'];
+
+/** Radia choisit une réponse : le contact y répond selon sa personnalité et sa mémoire (plusieurs bulles, parfois un snap en retour). */
+export function converse(s: ChatState, brain: BrainState, contactId: string, choiceId: string, now: number, rng: RngLike): Conversation | null {
+  const ct = contactById(contactId); const c = s.contacts[contactId];
+  if (!ct || !c || !c.added || c.deleted) return null;
+  const def = choiceById(choiceId); const legacy = REPLIES.find((r) => r.id === choiceId);
+  if (!def && !legacy) return null;
+  const isSelfie = choiceId === 'ph_smile' || choiceId === 'ph_outfit' || choiceId === 'ph_funny';
+  const text = def ? def.text : legacy!.text;
+  const style = ct.style;
+  const beat = react(brain, contactId, choiceId, rng, { now, legacy: (id) => (LEGACY_IDS.includes(id) ? (ANSWERS[style][id] ?? ANSWERS[style].vu) : null) });
+  if (!beat) return null;
+  const mine: ChatMsg = { id: newId(s), from: 'out', kind: isSelfie ? 'snap' : 'text', text: isSelfie ? ({ ph_smile: 'Mon sourire du jour', ph_outfit: 'Ma tenue du jour', ph_funny: 'Ma plus belle grimace' } as Record<string, string>)[choiceId] : text, at: now, recvAt: now + 900 + rng.int(900), ...(isSelfie ? { pick: choiceId as ChatMsg['pick'], opened: false } : {}) };
+  // il « consulte sans répondre » parfois quand elle ferme la conversation (bonne nuit, vu) ou fait la mystérieuse : on le voit, sans réponse tout de suite
+  const viewedOnly = (choiceId === 'nuit' || choiceId === 'vu' || choiceId === 'ph_tease') && rng.next() < 0.45;
+  const delay = viewedOnly ? 1200 : 900;
+  mine.openAt = (mine.recvAt as number) + delay - 300 + (isSelfie ? 3000 + rng.int(6000) : 0); // ouvert APRÈS avoir été reçu
+  push(c, mine); c.lastOut = now;
+  const theirs: ChatMsg[] = [];
+  if (!viewedOnly) {
+    const base = mine.openAt + 400;
+    beat.say.forEach((t, i) => theirs.push({ id: newId(s), from: 'in', kind: 'text', text: t, opened: true, at: base + i * 1700, ...(beat.topic === 'photo' && beat.wantsPhoto && i === beat.say.length - 1 && !isSelfie ? { ask: true } : {}) }));
+  }
+  // capture d'écran : seulement quand il a vraiment de quoi en faire (un selfie de Radia), de façon rare ; il en parle franchement
+  if (isSelfie && !viewedOnly && rng.next() < 0.1 && theirs.length) {
+    mine.shotAt = mine.openAt + 2500;
+    const sys: ChatMsg = { id: newId(s), from: 'in', kind: 'text', text: `${ct.name} a fait une capture d'écran`, at: mine.shotAt, shotAt: mine.shotAt, sys: 'shot', opened: true };
+    const say: ChatMsg = { id: newId(s), from: 'in', kind: 'text', text: pickFresh(rng, SHOT_LINES, c.recent), at: mine.shotAt + 1600, opened: true };
+    remember(c.recent, say.text); theirs.push(sys, say);
+  }
+  let snapBack = false;
+  if (beat.wantsPhoto && !viewedOnly) {
+    snapBack = true;
+    const scene = ct.scenes.includes('selfie') ? 'selfie' : ct.scenes[0];
+    const at = (theirs.length ? theirs[theirs.length - 1].at : now) + 1800;
+    const sm: ChatMsg = { id: newId(s), from: 'in', kind: 'snap', text: pickFresh(rng, (ct.captions[scene] ?? GENERIC_CAPTIONS[scene] ?? ['Mon tour : un petit snap.']), c.recent), scene, opened: false, at };
+    theirs.push(sm); noteHisSnap(brain, contactId, scene, at); c.unread++; c.flame.theirs = dayKey(now);
+  }
+  if (isSelfie) { c.flame.mine = dayKey(now); }
+  for (const m of theirs) push(c, m);
+  if (theirs.length) c.lastIn = theirs[theirs.length - 1].at;
+  updateFlame(c.flame, dayKey(now));
+  return { mine, theirs, viewedOnly, snapBack, beatTopic: beat.topic };
+}
+
+/** Vitesse de réponse propre à chaque style : [attente minimale, attente variable] avant de commencer à écrire (ms). */
+const LATENCY: Record<string, [number, number]> = { joker: [1200, 2500], badjoker: [1500, 3000], flirt: [1000, 2200], sporty: [1400, 2800], serious: [2500, 4500], chill: [3000, 6000], gentle: [2000, 4000], shy: [3500, 6000], skeptic: [2800, 5000] };
+/**
+ * Radia ÉCRIT librement : le contact lit, comprend (cerveau commun avec Tindeur) et répond par une ou plusieurs bulles courtes, avec un
+ * délai propre à son caractère ; parfois il ne répond que plus tard (occupé) — la réponse arrive alors même si elle a quitté l'appli.
+ * `text` est limité à 500 caractères ; un message vide ne fait rien.
+ */
+export function converseText(s: ChatState, brain: BrainState, contactId: string, text0: string, now: number, rng: RngLike): Conversation | null {
+  const ct = contactById(contactId); const c = s.contacts[contactId];
+  const text = (text0 ?? '').replace(/\s+/g, ' ').trim().slice(0, 500);
+  if (!ct || !c || !c.added || c.deleted || !text) return null;
+  const pr = profileById(contactId);
+  const beat = chatReply(brain, contactId, text, rng, { now, channel: 'snap', age: pr?.age ?? 30, km: pr?.km ?? 5, hasSnap: true, inSnap: true });
+  const mine: ChatMsg = { id: newId(s), from: 'out', kind: 'text', text, at: now, recvAt: now + 800 + rng.int(900) };
+  const per = personaById(contactId); const lat = LATENCY[per?.arch ?? 'chill'] ?? [2000, 4000];
+  const distant = !!beat && rng.next() < 0.07; // occupé : lit, puis répond bien plus tard
+  mine.openAt = (mine.recvAt as number) + 400 + rng.int(distant ? 2500 : 1200);
+  push(c, mine); c.lastOut = now;
+  const theirs: ChatMsg[] = [];
+  if (beat && beat.say.length) {
+    const queued = c.msgs.reduce((mx, x) => (x.from === 'in' && x.at > now ? Math.max(mx, x.at) : mx), 0); // ses messages encore « en route »
+    let at = Math.max(mine.openAt + lat[0] + rng.int(lat[1]) + (distant ? 60_000 + rng.int(8 * 60_000) : 0), queued ? queued + 900 : 0);
+    beat.say.forEach((t, i) => {
+      at += i === 0 ? 0 : 500 + Math.min(2600, t.length * 30) + rng.int(700);
+      if (i === 0) at += Math.min(3200, t.length * 30);
+      theirs.push({ id: newId(s), from: 'in', kind: 'text', text: t, opened: true, at: Math.round(at), ...(beat.topic === 'photo' && beat.wantsPhoto && i === beat.say.length - 1 ? { ask: true } : {}) });
+    });
+  }
+  let snapBack = false;
+  if (beat?.wantsPhoto) {
+    snapBack = true;
+    const scene = ct.scenes.includes('selfie') ? 'selfie' : ct.scenes[0];
+    const at = (theirs.length ? theirs[theirs.length - 1].at : now) + 2200 + rng.int(2500);
+    theirs.push({ id: newId(s), from: 'in', kind: 'snap', text: pickFresh(rng, (ct.captions[scene] ?? GENERIC_CAPTIONS[scene] ?? ['Mon tour : un petit snap.']), c.recent), scene, opened: false, at });
+    noteHisSnap(brain, contactId, scene, at); c.unread++; c.flame.theirs = dayKey(now);
+  }
+  for (const m of theirs) push(c, m);
+  if (theirs.length) c.lastIn = theirs[theirs.length - 1].at;
+  return { mine, theirs, viewedOnly: !theirs.length, snapBack, beatTopic: beat?.topic ?? 'smalltalk' };
+}
+
+/** Choix proposés à Radia dans la conversation (stables entre deux réponses, mémorisés dans la mémoire du personnage). */
+export function choicesFor(s: ChatState, brain: BrainState, cid: string, rng: RngLike, now: number): { id: string; text: string }[] {
+  const m = memOf(brain, cid);
+  const c = s.contacts[cid];
+  const lastIn = c ? [...c.msgs].reverse().find((x) => x.from === 'in' && x.kind !== 'text' && x.opened && x.sys !== 'shot') : undefined;
+  // la réponse à un snap qu'il vient d'envoyer : les anciens choix (« t-shirt », « tu voulais montrer quoi »…) restent proposés après un snap ouvert
+  const out = (m.offered.length ? m.offered.filter((id) => choiceById(id)).map((id) => ({ id, text: choiceById(id)!.text })) : offer(brain, cid, rng, { channel: 'snap' }));
+  void lastIn; void now;
+  return out;
+}
+
 // ------------------------------------------------------------------ sauvegarde
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v: unknown, d: number, lo = 0, hi = 1e14): number => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
@@ -246,6 +432,8 @@ export function sanitizeChat(raw: unknown): ChatState {
     if (Array.isArray(r.msgs)) st.msgs = r.msgs.filter(isObj).slice(-MAX_MSGS).map((m): ChatMsg => ({
       id: str(m.id, 12).replace(/[^a-z0-9]/g, '') || 'm0', from: m.from === 'out' ? 'out' : 'in', kind: m.kind === 'snap' || m.kind === 'video' ? m.kind : 'text', text: str(m.text),
       ...(typeof m.scene === 'string' && c.scenes.includes(m.scene as SceneId) ? { scene: m.scene as SceneId } : {}), opened: m.opened === true, at: num(m.at, 0),
+      ...(typeof m.recvAt === 'number' ? { recvAt: num(m.recvAt, 0) } : {}), ...(typeof m.openAt === 'number' ? { openAt: num(m.openAt, 0) } : {}), ...(typeof m.shotAt === 'number' ? { shotAt: num(m.shotAt, 0) } : {}),
+      ...(m.pick === 'ph_smile' || m.pick === 'ph_outfit' || m.pick === 'ph_funny' ? { pick: m.pick } : {}), ...(m.sys === 'shot' ? { sys: 'shot' as const } : {}), ...(m.ask === true ? { ask: true } : {}),
     }));
   }
   // Sauvegardes antérieures : les contacts de départ (dont Hugo) sont présents, sauf s'ils ont été supprimés par la joueuse.
