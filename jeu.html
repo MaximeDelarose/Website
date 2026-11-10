@@ -55,6 +55,7 @@
     });
     if ("serviceWorker" in navigator) window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
   </script>
+  <style>/* le jeu a ses propres Options : on masque le bouton ⚙ du kit de jeux, qui recouvrait « Terrier » en plein écran */ .gk-dock { display: none !important; }</style>
 </head>
 <body data-page="game">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -170,7 +171,7 @@
   <!-- Le jeu est chargé d'après js/version.json (jamais mis en cache) : même si cette page est ancienne, on obtient la dernière version -->
   <script>
     (function () {
-      var FALLBACK = "v251a";
+      var FALLBACK = "v251b";
       function load(b) {
         var css = document.querySelector('link[href^="css/style.css?v=20261118ft1"]');
         if (css && css.getAttribute("href").indexOf(b) < 0) css.setAttribute("href", "css/style.css?v=20261118ft1" + b);
