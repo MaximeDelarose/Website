@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.56.2";
+  var VERSION = "2.57.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -179,7 +179,7 @@
     var d = D.SPRITES[k]; if (window.ES_ART) d = ES_ART.upgrade(k, d);      // version dithering : sprites refaits à la taille × 2
     var shr = d.hr || 1;
     SPR[k] = d.frames.map(function (f) { return sprite(f, d.pal, shr); });
-    SPR[k].flying = !!d.flying;
+    SPR[k].flying = !!d.flying; if (d.up) SPR[k].forEach(function (f) { f.up = 1; });
     // style A : images de repos, pose de Volte, rebond de marche
     if (d.idle) SPR[k].idle = d.idle.map(function (f) { return sprite(f, d.pal, shr); });
     if (d.volte) SPR[k].volte = sprite(d.volte, d.pal, shr);
@@ -191,7 +191,9 @@
   var EPX = D.EMOJI_PX || {};
   function pxName(e) { if (!e) return null; var n = EPX[e] || EPX[String(e).replace(/\uFE0F/g, "")]; return n && SPR[n] ? n : null; }
   function ic(e) { var n = pxName(e); return n ? '<img class="px-ic" src="' + spriteUrl(n) + '" alt="">' : (e || ""); }
-  function icDraw(e, x, y) { var n = pxName(e); if (!n) return false; var s = SPR[n][0]; ctx.drawImage(s.c, Math.round(x - s.w / 2), Math.round(y - s.h / 2)); return true; }
+  // icônes d'interface : un sprite refait en × 2 est ramené à sa taille d'origine (on garde un pixel sur deux)
+  function icBlit(s, x, y) { if (s.up) ctx.drawImage(s.c, Math.round(x - s.w / 4), Math.round(y - s.h / 4), Math.round(s.w / 2), Math.round(s.h / 2)); else ctx.drawImage(s.c, Math.round(x - s.w / 2), Math.round(y - s.h / 2)); }
+  function icDraw(e, x, y) { var n = pxName(e); if (!n) return false; icBlit(SPR[n][0], x, y); return true; }
   function spriteUrl(name) { return urlCache[name] || (urlCache[name] = (SPR[name] || SPR.nut)[0].c.toDataURL()); }
   function goldIc() { return '<img class="gold-ic" src="' + spriteUrl("gold") + '" alt="glands d\'or">'; }
 
@@ -1838,7 +1840,7 @@
       else if (th === "cave" && g.v === 1) S.push(P([[22, 9], [24, 0], [26, 9]], "crystal", { line: true }), P([[25, 10], [29, 3], [29, 11]], "crystal"), P([[19, 9], [20, 4], [22, 9]], "crystal"));
       else if (g.v === 0) S.push(E(11, 6.8, 6, 2.2, 0, "moss", { line: true }));
     }
-    var R0 = RG.raster(W, H, S, mats, HR), spr = sprite(R0.rows, R0.pal, HR);
+    var R0 = RG.raster(W, H, S, mats, HR, !!window.ES_ART), spr = sprite(R0.rows, R0.pal, HR);
     spr.ax = ax + 1 / HR; spr.ay = ay + 1 / HR;
     return (GIANT_C[key] = spr);
   }
@@ -6079,7 +6081,7 @@
     if (CAMP_SPR) return CAMP_SPR;
     var E = RG.E, C = RG.C, P = RG.P, L = { line: true }, F = { flat: true };
     function rp(c) { return [RG.mix(c, "#ffffff", 0.28), c, RG.mix(c, "#000000", 0.22), RG.mix(c, "#000000", 0.42)]; }
-    function mk(w, h, ax, ay, shapes, mats) { var R0 = RG.raster(w, h, shapes, mats, HR), s = sprite(R0.rows, R0.pal, HR); s.ax = ax + 1 / HR; s.ay = ay + 1 / HR; return s; }
+    function mk(w, h, ax, ay, shapes, mats) { var R0 = RG.raster(w, h, shapes, mats, HR, !!window.ES_ART), s = sprite(R0.rows, R0.pal, HR); s.ax = ax + 1 / HR; s.ay = ay + 1 / HR; return s; }
     function lineF(x1, y1, x2, y2, m) { return C(x1, y1, x2, y2, 0.35, 0.35, m, F); }
     var M = { grass: rp("#6aa850"), dirt: rp("#8a5a3b"), wood: rp("#a87a48"), plank: rp("#b8844a"), door: rp("#6b4430"), roof: rp("#c8553d"), slate: rp("#4e5466"),
       stone: rp("#8e877c"), dark: ["#2b1709"], glow: ["#ffe08a"], fire: ["#ff8a2a"], gold: rp("#f2c230"), iron: rp("#5a5e66"), red: rp("#d8483a"), cream: rp("#f3e6c8"),
@@ -8498,7 +8500,7 @@
     ctx.fillStyle = line || OUT; ctx.fillRect(x, y, w, h);
     ctx.fillStyle = fill; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
   }
-  function icon(name, cx, cy) { if (SPR[name]) blit(SPR[name][0], cx, cy); }
+  function icon(name, cx, cy) { if (SPR[name]) icBlit(SPR[name][0], cx, cy); }
   function drawSlots(x, y, list, max, sprOf, isFusion, ready) {
     var S2 = 12;
     for (var i = 0; i < max; i++) {

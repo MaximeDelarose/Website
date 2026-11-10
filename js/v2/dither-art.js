@@ -90,7 +90,7 @@
       return fromGrid(R);
     }
     var o = {}; Object.keys(d).forEach(function (k) { o[k] = d[k]; });
-    o.hr = noScale ? 1 : 2;
+    o.hr = 1; o.up = !noScale;
     o.pal = pal2; o.frames = d.frames.map(conv);
     if (d.idle) o.idle = d.idle.map(conv);
     if (d.volte) o.volte = conv(d.volte);
@@ -116,12 +116,12 @@
     for (y = H - 2; y < H; y++) for (x = 5; x < 16; x++) { var sx = x - dx; out[y][x] = sx >= 5 && sx < 16 ? g[y][sx] : "."; }
     return fromGrid(out);
   }
-  function dbl(rows) { var w = 0; rows.forEach(function (r) { w = Math.max(w, r.length); }); return fromGrid(scale2x(toGrid(rows, w))); }   // Scale2x : mêmes pixels que les autres sprites, diagonales lissées
+  function dbl(rows) { return rows; }   // le logo garde ses pixels d'origine (18 × 19)
   function upgradeHero(d) {
     var pal = heroPal(d.pal || {}), F = LOGO.slice(), o = {};
     Object.keys(d).forEach(function (k) { o[k] = d[k]; });
     var up = tail(F, -1), dn = tail(F, 1);
-    o.pal = pal; o.hr = 2;
+    o.pal = pal; o.hr = 1;
     o.frames = [F, feet(up, 1), F, feet(dn, -1)].map(dbl);
     o.bob = [0, 1, 0, 1];
     o.idle = [F, up, F, dn].map(dbl);
@@ -155,46 +155,46 @@
   }
   // un morceau de sol de 4 × 4 tuiles (128 × 128 px écran), seamless : le bruit dépend des coordonnées du monde
   function groundChunk(ccx, ccy, getG) {
-    var S = 128, cv = document.createElement("canvas"); cv.width = cv.height = S;
+    var S = 64, cv = document.createElement("canvas"); cv.width = cv.height = S;
     var g = cv.getContext("2d"), im = g.createImageData(S, S), d = im.data, tx, ty, px, py, GT = {};
     function gat(a, b) { var k = a + "," + b; return GT[k] || (GT[k] = getG(a, b)); }
     for (ty = 0; ty < 4; ty++) for (tx = 0; tx < 4; tx++) {
       var wx = ccx * 4 + tx, wy = ccy * 4 + ty, G0 = gat(wx, wy), R0 = ramp(G0), GE = gat(wx + 1, wy), GW = gat(wx - 1, wy), GS = gat(wx, wy + 1), GN = gat(wx, wy - 1);
-      for (py = 0; py < 32; py++) for (px = 0; px < 32; px++) {
-        var X = ccx * S + tx * 32 + px, Y = ccy * S + ty * 32 + py, b = bay(X, Y), R = R0;
-        // bord de biome : le sol du voisin déborde en dithering sur 6 px
+      for (py = 0; py < 16; py++) for (px = 0; px < 16; px++) {
+        var X = ccx * S + tx * 16 + px, Y = ccy * S + ty * 16 + py, b = bay(X, Y), R = R0;
+        // bord de biome : le sol du voisin déborde en dithering sur 3 px
         var best = 99, nG = null, dd;
-        if (GE !== G0 && (dd = 31 - px) < best) { best = dd; nG = GE; }
+        if (GE !== G0 && (dd = 15 - px) < best) { best = dd; nG = GE; }
         if (GW !== G0 && (dd = px) < best) { best = dd; nG = GW; }
-        if (GS !== G0 && (dd = 31 - py) < best) { best = dd; nG = GS; }
+        if (GS !== G0 && (dd = 15 - py) < best) { best = dd; nG = GS; }
         if (GN !== G0 && (dd = py) < best) { best = dd; nG = GN; }
-        if (nG && best < 6 && (1 - best / 6) * 0.5 > b) R = ramp(nG);
-        var f = vn(X, Y, 190) * 0.85 + vn(X + 5000, Y - 3000, 60) * 0.15;
+        if (nG && best < 3 && (1 - best / 3) * 0.5 > b) R = ramp(nG);
+        var f = vn(X, Y, 95) * 0.85 + vn(X + 5000, Y - 3000, 30) * 0.15;
         var c = band((f - 0.6) * 1.7 + 0.5, b) ? R.P : R.B;
-        var o = ((ty * 32 + py) * S + tx * 32 + px) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+        var o = ((ty * 16 + py) * S + tx * 16 + px) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
       }
     }
-    g.putImageData(im, 0, 0); cv.__hr = 2; return cv;
+    g.putImageData(im, 0, 0); return cv;
   }
   // un petit décor dessiné à 1× : Scale2x, puis dégradé dithered (clair en haut, sombre en bas) sur les tons pleins
   function bake(cv) {
     var w = cv.width, h = cv.height, id = cv.getContext("2d").getImageData(0, 0, w, h).data, g = [], x, y;
     for (y = 0; y < h; y++) { var row = []; for (x = 0; x < w; x++) { var o = (y * w + x) * 4; row.push(id[o + 3] < 8 ? "." : ((id[o] << 24 | id[o + 1] << 16 | id[o + 2] << 8 | id[o + 3]) >>> 0)); } g.push(row); }
-    var s = scale2x(g), W2 = w * 2, H2 = h * 2, out = document.createElement("canvas"); out.width = W2; out.height = H2;
+    var s = g, W2 = w, H2 = h, out = document.createElement("canvas"); out.width = W2; out.height = H2;
     var og = out.getContext("2d"), im = og.createImageData(W2, H2), d = im.data, top = H2, bot = -1;
     for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) { var v = s[y][x]; if (v !== "." && (v & 255) >= 200) { if (y < top) top = y; if (y > bot) bot = y; } }
     var bh = bot - top + 1;
     for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) {
       var v2 = s[y][x]; if (v2 === ".") continue;
       var r = v2 >>> 24, gg = (v2 >>> 16) & 255, bb = (v2 >>> 8) & 255, a = v2 & 255;
-      if (a >= 200 && bh >= 12) {
+      if (a >= 200 && bh >= 6) {
         var tt = (y - top) / bh, k = bay(x, y);
         if (tt > 0.5 && (tt - 0.5) * 1.5 > k * 0.75) { r *= 0.8; gg *= 0.8; bb *= 0.8; }
         else if (tt < 0.22 && (0.22 - tt) * 3.5 > k * 0.75) { r = r + (255 - r) * 0.16; gg = gg + (255 - gg) * 0.16; bb = bb + (255 - bb) * 0.16; }
       }
       var o2 = (y * W2 + x) * 4; d[o2] = r; d[o2 + 1] = gg; d[o2 + 2] = bb; d[o2 + 3] = a;
     }
-    og.putImageData(im, 0, 0); out.__hr = 2; return out;
+    og.putImageData(im, 0, 0); return out;
   }
   // coffres refaits à la main en 2 × (20 × 14)
   var CH_PAL = { h: "#c4895a", B: "#a06a3e", b: "#7a4528", d: "#5a3220", M: "#9c6f12", m: "#d9a521", Y: "#f6d36b", k: "#2a1810", y: "#f2c230" };
@@ -204,9 +204,9 @@
   };
   window.ES_ART = {
     groundChunk: groundChunk, bake: bake,
-    scale: 1, hr: 2,
+    scale: 2, hr: 1,
     upgrade: function (name, d) {
-      if (CHESTS[name]) return { pal: CH_PAL, frames: [CHESTS[name]], hr: 2 };
+      if (CHESTS[name]) return { pal: CH_PAL, frames: [CHESTS[name]], hr: 1 };
       if (!d || !d.frames || !d.frames.length || SKIP[name]) return d;
       try { return /^sq_/.test(name) && name !== "sq_ninja_clone" ? upgradeHero(d) : upgradeSprite(d, !!d.ns); } catch (e) { return d; }
     }
