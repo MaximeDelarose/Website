@@ -1093,12 +1093,25 @@
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
     var want = Math.min(W, H) / (T * 9.5), Sx = Math.max(2, Math.round(want * 3 * dpr));   // pixels écran par pixel d'art : entier, pour des pixels nets
     cam.z = Sx / (3 * dpr);
+    if (F && V) V.c = cellFor(F.w, F.h);                          // l'arène en cours s'agrandit ou rétrécit avec la fenêtre (plein écran)
   }
   if (window.ResizeObserver) new ResizeObserver(resize).observe(stage); else window.addEventListener("resize", resize);
   document.addEventListener("fullscreenchange", function () { setTimeout(resize, 50); });
   window.addEventListener("beforeunload", saveProfile);
   window.addEventListener("beforeunload", function () { if (NET.ch) netSend("bye", { id: NET.id }); });
   document.addEventListener("visibilitychange", function () { if (document.hidden) saveProfile(); });
+
+  // plein écran : bouton « Plein écran » de la page et croix de sortie (GameKit gère l'API Fullscreen et le repli iPhone)
+  function toggleFull() {
+    if (window.GameKit && window.GameKit.fullscreen) { window.GameKit.fullscreen.toggle(stage); return; }
+    if (stage.classList.contains("is-max") || document.fullscreenElement) { stage.classList.remove("is-max"); if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {}); setTimeout(resize, 50); return; }
+    var req = stage.requestFullscreen || stage.webkitRequestFullscreen, fb = function () { stage.classList.add("is-max"); window.scrollTo(0, 0); setTimeout(resize, 50); };
+    if (req) { try { var pr = req.call(stage); if (pr && pr.catch) pr.catch(fb); } catch (er) { fb(); } } else fb();
+  }
+  var fsBtn = document.querySelector("[data-game-fullscreen]");
+  if (fsBtn) fsBtn.addEventListener("click", toggleFull);
+  var fsExit = stage.querySelector("[data-fs-exit]");
+  if (fsExit) fsExit.addEventListener("click", function () { if (window.GameKit && window.GameKit.fullscreen) window.GameKit.fullscreen.exit(stage); else toggleFull(); });
 
   var last = 0;
   function frame(ts) {

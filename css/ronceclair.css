@@ -227,3 +227,7 @@
   .rcu-banner { padding: 6px 14px; top: 26%; } .rcu-banner strong { font-size: 1.1rem; } .rcu-banner span { font-size: .78rem; }
 }
 @media (max-width: 760px) { .rc-stage { height: calc(100svh - 190px); min-height: 460px; } .rc-stage.is-full, .rc-stage.is-max { height: 100%; } }
+
+/* plein écran : la croix de sortie de GameKit est en haut à droite, on décale les menus */
+.rc-stage.gk-fs .rcu-menus { right: 58px; }
+@media (max-width: 860px) { .rc-stage.gk-fs .rcu-menus { right: 8px; top: 58px; } .rc-stage.gk-fs .rcu-hud:not(.fight) .rcu-bar { right: 8px; } }
