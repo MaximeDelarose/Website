@@ -680,11 +680,13 @@
   var PXU = 3;
   function snap(v) { return Math.round(v / PXU) * PXU; }
 
-  function shadow(g, x, y, w) {
-    g.fillStyle = "rgba(0,0,0,.24)";
-    g.fillRect(snap(x - w / 2 + 3), snap(y) - 3, snap(w) - 6, 3);
-    g.fillRect(snap(x - w / 2), snap(y), snap(w), 3);
-    g.fillRect(snap(x - w / 2 + 3), snap(y) + 3, snap(w) - 6, 3);
+  function shadow(g, x, y, w) {                    // ombre au sol : centre plein, bords en damier (comme le dithering des sprites)
+    var hw = [w * 0.3, w * 0.5, w * 0.3], row, i;
+    g.fillStyle = "rgba(0,0,0,.32)";
+    for (row = -1; row <= 1; row++) {
+      var half = hw[row + 1], n = Math.round(half / PXU);
+      for (i = -n; i < n; i++) { if (Math.abs(i) >= n - 1 && ((i + row) & 1)) continue; g.fillRect(snap(x) + i * PXU, snap(y) + row * PXU, PXU, PXU); }
+    }
   }
   // (x, y) = point au sol sous le sprite ; le sprite regarde à droite, flip le retourne
   function drawSpr(g, spr, x, y, flip, o) {
