@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Ronceclair · AkarisuMD</title>
-  <meta name="description" content="Ronceclair : un action-RPG pixel-art en vue de dessus où tu incarnes un écureuil. Solo ou coop en ligne à 2, trois classes, trois zones, des quêtes et un Roi-corbeau à vaincre.">
+  <meta name="description" content="Ronceclair : un action-RPG pixel-art en vue de dessus où tu incarnes un écureuil. Solo ou coop en ligne à 2, 4 classes, personnalisation et équipement visible, trois zones et un Roi-corbeau à vaincre.">
   <meta property="og:title" content="Ronceclair · AkarisuMD">
-  <meta property="og:description" content="Ronceclair : un action-RPG pixel-art en vue de dessus où tu incarnes un écureuil. Solo ou coop en ligne à 2, trois classes, trois zones, des quêtes et un Roi-corbeau à vaincre.">
+  <meta property="og:description" content="Ronceclair : un action-RPG pixel-art en vue de dessus où tu incarnes un écureuil. Solo ou coop en ligne à 2, 4 classes, personnalisation et équipement visible, trois zones et un Roi-corbeau à vaincre.">
   <meta name="theme-color" content="#2f6b3e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="css/style.css?v=20261118ft1">
   <link rel="stylesheet" href="css/party.css?v=20261107vs2">
   <link rel="stylesheet" href="css/gamekit.css?v=20261118gf4">
-  <link rel="stylesheet" href="css/ronceclair.css?v=20261120rc2">
+  <link rel="stylesheet" href="css/ronceclair.css?v=20261121rc4">
 </head>
 <body data-page="ronceclair">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -71,53 +71,21 @@
       <div class="game-stage rc-stage" data-ronceclair>
         <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Ronceclair"></canvas>
         <button class="fs-exit" type="button" data-fs-exit aria-label="Quitter le plein écran">✕</button>
-
-        <div class="rc-hud" data-hud hidden>
-          <div class="rc-top">
-            <div class="rc-bars">
-              <div class="rc-lvl" data-h="lvl">Niv. 1</div>
-              <div class="rc-bar rc-hp"><i data-h="hp"></i><span data-h="hptxt"></span></div>
-              <div class="rc-bar rc-xp"><i data-h="xp"></i></div>
-            </div>
-            <div class="rc-info">
-              <div class="rc-zone" data-h="zone"></div>
-              <div class="rc-pills"><span class="rc-pill">🌰 <b data-h="gold">0</b></span><span class="rc-pill">🍓 <b data-h="potions">0</b></span></div>
-              <div class="rc-quest" data-h="quest"></div>
-            </div>
-          </div>
-          <div class="rc-banner" data-banner hidden></div>
-
-          <button class="rc-menu-btn" type="button" data-b="menu" aria-label="Caractéristiques">☰ <em data-h="pts" hidden>+0</em></button>
-          <div class="rc-joy" data-joy><div class="rc-joy-knob" data-joy-knob></div></div>
-          <div class="rc-btns">
-            <button type="button" class="rc-b rc-b-act" data-b="act" aria-label="Interagir">F</button>
-            <button type="button" class="rc-b rc-b-pot" data-b="pot" aria-label="Manger une baie">🍓</button>
-            <button type="button" class="rc-b rc-b-dash" data-b="dash" data-h="dash" aria-label="Roulade">⤳</button>
-            <button type="button" class="rc-b rc-b-sp" data-b="sp" data-h="sp" aria-label="Attaque spéciale">★</button>
-            <button type="button" class="rc-b rc-b-atk" data-b="atk" aria-label="Attaquer">⚔</button>
-          </div>
-        </div>
-
-        <div class="game-overlay" data-overlay>
-          <div class="panel game-card rc-card" data-card>
-            <p>Chargement du jeu…</p>
-            <noscript><p>Ce jeu a besoin de JavaScript.</p></noscript>
-          </div>
-        </div>
+        <div class="rc-ui" data-ui><noscript><p>Ce jeu a besoin de JavaScript.</p></noscript></div>
       </div>
 
       <div class="game-info">
         <div class="panel game-help">
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
-            <li>Tu es un <strong>écureuil de la guilde de Ronceclair</strong>. Choisis une classe : le <strong>Gardien</strong> (griffes, encaisse), le <strong>Lanceur</strong> (glands à distance) ou le <strong>Mystique</strong> (éclats arcanes qui traversent les ennemis).</li>
-            <li><strong>Se déplacer</strong> : <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou les flèches. <strong>Attaquer</strong> : clic gauche ou <kbd>Espace</kbd> (tu vises avec la souris). <strong>Roulade</strong> : <kbd>Maj</kbd> ou clic droit, tu es invincible un instant. <strong>Spécial</strong> : <kbd>E</kbd>.</li>
-            <li><kbd>F</kbd> pour parler, ouvrir un coffre ou faire des achats · <kbd>R</kbd> mange une baie (+45 PV) · <kbd>C</kbd> ouvre les caractéristiques : 2 points par niveau à répartir en Vitalité, Force ou Agilité.</li>
-            <li><strong>Coop en ligne à 2</strong> : « Créer un salon » donne un code de 4 lettres et un lien à envoyer à ton ami (ou ☰ → « Inviter un ami » en pleine partie). L'hôte décide de la zone ; vous gardez chacun votre progression, votre niveau et vos quêtes. Chacun touche l'XP et les noisettes de chaque monstre vaincu, les monstres sont plus costauds à deux, et si tu tombes ton coéquipier te relève.</li>
-            <li>Sur <strong>mobile</strong> : joystick à gauche, boutons à droite. L'attaque vise toute seule l'ennemi le plus proche.</li>
+            <li><strong>Crée jusqu'à 5 personnages</strong>. Chacun a une classe, un pelage (roux, cendré ou chocolat) et un nom. Ta progression est sauvegardée automatiquement dans ton navigateur.</li>
+            <li><strong>4 classes qui se complètent</strong> : le <strong>Gardien</strong> (tank, corps à corps), le <strong>Lanceur</strong> (dégâts à distance, critiques), le <strong>Mystique</strong> (magie de zone qui traverse les ennemis) et le <strong>Sylvain</strong> (soutien : soigne, ralentit, booste son partenaire). Chaque classe a un passif, une attaque de base et 3 sorts débloqués aux niveaux 1, 4 et 8.</li>
+            <li><strong>Se déplacer</strong> : <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou les flèches. <strong>Attaquer</strong> : clic gauche ou <kbd>Espace</kbd> (tu vises avec la souris). <strong>Sorts</strong> : <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> (ou <kbd>E</kbd> pour le premier). <strong>Roulade</strong> : <kbd>Maj</kbd> ou clic droit (invincible un instant). <kbd>R</kbd> mange une baie, <kbd>F</kbd> parle, ouvre un coffre.</li>
+            <li><strong>Fenêtres</strong> : <kbd>I</kbd> inventaire, <kbd>C</kbd> caractéristiques (2 points par niveau), <kbd>K</kbd> sorts, <kbd>J</kbd> quêtes, <kbd>Échap</kbd> menu.</li>
+            <li><strong>L'équipement se voit sur ton écureuil</strong> : casque, chapeau, cape, ailes, bouclier, bâton, lanterne… Les monstres, les coffres et Dame Glandine donnent des objets de 5 raretés. Compare, équipe, vends depuis l'inventaire. Les statistiques (PV, attaque, vitesse, critique, réduction de dégâts, régénération) s'additionnent.</li>
             <li><strong>Trois zones</strong> : la Clairière (village de Maître Noisetier et Dame Glandine), le Sous-bois moussu et le Marais aux nénuphars, où règne le <strong>Roi-corbeau</strong>. Chaque passage demande un niveau minimum.</li>
-            <li>Les monstres lâchent des <strong>noisettes</strong> (à dépenser chez Dame Glandine : queue de combat, cape, bottes) et parfois des baies. Les élites (★) sont plus costauds mais rapportent plus.</li>
-            <li>Ta progression est <strong>sauvegardée automatiquement</strong> dans ton navigateur.</li>
+            <li><strong>Coop en ligne à 2</strong> : depuis l'écran de sélection ou le menu du jeu, « Créer un salon » donne un code de 4 lettres et un lien à envoyer à ton ami. L'hôte décide de la zone ; chacun garde son personnage, son niveau et ses quêtes, et touche l'XP et les noisettes de chaque monstre vaincu. Les soins, boucliers et bonus de <strong>Sylvain</strong> et du <strong>Gardien</strong> protègent aussi ton allié. Si tu tombes, il te relève.</li>
+            <li>Sur <strong>mobile</strong> : joystick à gauche, boutons de sorts à droite. L'attaque vise toute seule l'ennemi le plus proche.</li>
           </ul>
         </div>
       </div>
@@ -144,7 +112,9 @@
   <script src="js/party-modes.js?v=20261116vs3"></script>
   <script src="js/party.js?v=20261116vs3"></script>
   <script src="js/vendor/supabase-2.45.4.min.js"></script>
-  <script src="js/ronceclair-art.js?v=20261120rc3"></script>
-  <script src="js/ronceclair.js?v=20261120rc3"></script>
+  <script src="js/ronceclair-art.js?v=20261121rc4"></script>
+  <script src="js/ronceclair-data.js?v=20261121rc4"></script>
+  <script src="js/ronceclair.js?v=20261121rc4"></script>
+  <script src="js/ronceclair-ui.js?v=20261121rc4"></script>
 </body>
 </html>

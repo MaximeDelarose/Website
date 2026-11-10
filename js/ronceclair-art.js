@@ -116,9 +116,12 @@
     logo:     ["#bd5c25", "#aa5324", "#8a3f20", "#efab5c", "#f09b40", "#e47f31", "#632e17", "#4a2313"],
     gardien:  ["#c9893a", "#b57a32", "#8f5d26", "#f3d08a", "#f0b04c", "#e29a3a", "#5e3a16", "#3f240d"],
     mystique: ["#8068c8", "#715ab6", "#5a4694", "#e6dcff", "#a58ce6", "#9275d8", "#3d2d6b", "#291c4d"],
+    cendre:   ["#8f96a8", "#7f869a", "#676e84", "#eef1f8", "#cdd3e4", "#aab2c8", "#444a5e", "#2b2f3f"],
+    chocolat: ["#7d4b2b", "#6c4026", "#53311c", "#e8cba6", "#cba27a", "#a98059", "#3a2112", "#26140a"],
     elder:    ["#9d9da6", "#8d8d97", "#6e6e7a", "#f0f0f6", "#d6d6e0", "#b4b4c0", "#47474f", "#2c2c34"],
     glandine: ["#d9809a", "#c56f89", "#a5546e", "#ffe0e8", "#f7adc0", "#ec8ea8", "#6f3248", "#4b1c2e"]
   };
+  PAL.roux = PAL.logo;
   var LOGO_OX = 4, LOGO_OY = 6, SQ_W = 26, SQ_H = 25;     // marge pour chapeau, bouclier, bâton
   function legendOf(p) { var l = {}; for (var i = 0; i < 8; i++) l[String(i)] = p[i]; return l; }
 
@@ -149,22 +152,189 @@
     }
   };
   var sqCache = {};
-  // frame : 0 = repos, 1 = queue levée (alterne pendant la marche)
+  function drawBase(g, pal, frame) {                  // l'écureuil du logo, recoloré ; frame 1 = queue levée d'un pixel
+    var base = cv(18, 19), bg = base.getContext("2d");
+    grid(bg, LOGO, legendOf(pal), 0, 0);
+    if (frame === 1) {
+      var t = cv(10, 19); t.getContext("2d").drawImage(base, 0, 0, 10, 19, 0, 0, 10, 19);
+      g.drawImage(base, 10, 0, 8, 19, LOGO_OX + 10, LOGO_OY, 8, 19);
+      g.drawImage(t, LOGO_OX, LOGO_OY - 1);
+    } else g.drawImage(base, LOGO_OX, LOGO_OY);
+  }
+  // PNJ (Maître Noisetier, Dame Glandine) : même écureuil, autre palette, accessoire fixe
   function squirrel(kind, frame) {
     var key = kind + frame; if (sqCache[key]) return sqCache[key];
-    var pal = PAL[kind === "lanceur" ? "logo" : (PAL[kind] ? kind : "logo")];
-    var c = build(SQ_W, SQ_H, function (g) {
-      var base = cv(18, 19), bg = base.getContext("2d");
-      grid(bg, LOGO, legendOf(pal), 0, 0);
-      if (frame === 1) {            // la queue (colonnes 0-9) monte d'un pixel
-        var t = cv(10, 19); t.getContext("2d").drawImage(base, 0, 0, 10, 19, 0, 0, 10, 19);
-        g.drawImage(base, 10, 0, 8, 19, LOGO_OX + 10, LOGO_OY, 8, 19);
-        g.drawImage(t, LOGO_OX, LOGO_OY - 1);
-      } else g.drawImage(base, LOGO_OX, LOGO_OY);
-      if (ACC[kind]) ACC[kind](g);
-    }, true);
+    var pal = PAL[PAL[kind] ? kind : "logo"];
+    var c = build(SQ_W, SQ_H, function (g) { drawBase(g, pal, frame); if (ACC[kind]) ACC[kind](g); }, true);
     outline(c, OUT);
     return (sqCache[key] = reg(c, 13, SQ_H + 2 - 1));
+  }
+
+  /* ====================== ÉQUIPEMENTS VISIBLES ======================
+     Chaque look est dessiné par-dessus l'écureuil (coordonnées du logo + marge). Les mêmes dessins servent d'icônes d'inventaire. */
+  var OX = LOGO_OX, OY = LOGO_OY;
+  var G_ = ["#1f5c33", "#3d8a4e", "#58b36a", "#9be8a8"];
+  var EQ = { tete: {}, dos: {}, main: {} };
+  EQ.tete.noix = function (g) {
+    grid(g, ["..bb...", ".bhbBb.", "bhbBbBb", "bBbBbBb"], { b: "#9a6a36", B: "#7a5128", h: "#c9985a" }, OX + 11, OY + 0);
+    px(g, OX + 13, OY - 1, "#5a3a18"); px(g, OX + 14, OY - 1, "#5a3a18");
+  };
+  EQ.tete.bandeau = function (g) {
+    grid(g, ["rrRrrRr", "RrrRrrR"], { r: "#d94f4f", R: "#a83030" }, OX + 11, OY + 4);
+    px(g, OX + 10, OY + 4, "#a83030"); px(g, OX + 9, OY + 5, "#d94f4f"); px(g, OX + 10, OY + 6, "#a83030"); px(g, OX + 9, OY + 6, "#d94f4f");
+  };
+  EQ.tete.sorcier = function (g) {
+    grid(g, ["...p...", "...q...", "..pqp..", "..qps..", ".pqpqp.", "bbbbbbb"], { p: "#5a3d99", q: "#6e50b5", s: "#ffd257", b: "#3d2a6e" }, OX + 11, OY - 3);
+  };
+  EQ.tete.feuille = function (g) {
+    grid(g, ["....gg.", "..ggGgg", ".gGgggG", "..gggg."], { g: "#58b36a", G: "#9be8a8" }, OX + 11, OY - 1);
+    px(g, OX + 12, OY + 3, "#3d8a4e"); px(g, OX + 13, OY + 3, "#3d8a4e");
+  };
+  EQ.tete.champi = function (g) {
+    grid(g, ["..rrrr..", ".rWrrWr.", "rrrrWrrr", "RRRRRRRR"], { r: "#e8584a", W: "#fff3dd", R: "#a83a30" }, OX + 10, OY - 1);
+    rect(g, OX + 12, OY + 3, 4, 1, "#fff3dd");
+  };
+  EQ.tete.fleurs = function (g) {
+    grid(g, ["pGyGwGp", ".G.G.G."], { p: "#ff9fb8", G: "#3d8a4e", y: "#ffd257", w: "#fff6d8" }, OX + 11, OY + 2);
+    px(g, OX + 12, OY + 1, "#ffd257"); px(g, OX + 15, OY + 1, "#ff9fb8");
+  };
+  EQ.tete.heaume = function (g) {
+    grid(g, [".hhh.", "hhdhh", "hdhdh", "hddhh"], { h: "#b6bfd2", d: "#7a8398" }, OX + 12, OY + 1);
+    px(g, OX + 14, OY, "#e8eefc"); px(g, OX + 14, OY - 1, "#d94f4f");
+  };
+  EQ.tete.couronne = function (g) {
+    grid(g, ["y.y.y", "yyyyy", "yrybr"], { y: "#ffd257", r: "#e0583a", b: "#5aa8ff" }, OX + 12, OY + 1);
+    checker(g, OX + 12, OY + 2, 5, 1, "#c98a1f");
+  };
+
+  EQ.dos.feuille = function (g) {
+    ellD(g, OX + 8.5, OY + 12.5, 3.2, 4.6, G_); px(g, OX + 8, OY + 9, G_[0]); px(g, OX + 8, OY + 11, G_[0]); px(g, OX + 8, OY + 13, G_[0]); px(g, OX + 9, OY + 15, G_[0]);
+    px(g, OX + 11, OY + 9, "#ffd257");
+  };
+  EQ.dos.rouge = function (g) {
+    var r = ["#6a1a1a", "#a83030", "#d94f4f", "#f08a7a"];
+    rectD(g, OX + 6, OY + 9, 5, 7, r, 0.9, 0.15); rect(g, OX + 11, OY + 9, 1, 1, "#ffd257"); px(g, OX + 6, OY + 16, r[0]); px(g, OX + 10, OY + 16, r[0]);
+  };
+  EQ.dos.nuit = function (g) {
+    var r = ["#14143a", "#26266a", "#3e3e96", "#6a6ac8"];
+    rectD(g, OX + 6, OY + 9, 5, 7, r, 0.85, 0.1); px(g, OX + 7, OY + 11, "#ffd257"); px(g, OX + 9, OY + 13, "#ffd257"); px(g, OX + 8, OY + 15, "#fff0a0"); px(g, OX + 11, OY + 9, "#ffd257");
+  };
+  EQ.dos.mousse = function (g) {
+    var r = ["#2f5a24", "#4a7f34", "#79ad4c", "#b4dc78"];
+    ellD(g, OX + 8.5, OY + 12.5, 3.4, 4.8, r); px(g, OX + 7, OY + 10, "#fff3dd"); px(g, OX + 9, OY + 14, "#e8584a"); px(g, OX + 8, OY + 13, "#e8584a");
+  };
+  EQ.dos.ailes = function (g) {
+    var w = ["#5a9cc0", "#a4dcf0", "#e8fbff"];
+    ellD(g, OX + 6.5, OY + 6, 2.2, 5, w, { bias: 0.2 }); ellD(g, OX + 9.5, OY + 5.5, 1.9, 4.2, w, { bias: 0.25 });
+    px(g, OX + 6, OY + 3, "#ffffff"); px(g, OX + 9, OY + 3, "#ffffff");
+  };
+
+  EQ.main.bouclier = function (g) {
+    grid(g, [".ssss.", "sbBbBs", "sByybs", "sbyyBs", "sBbBbs", ".ssss."], { s: "#6e7488", b: "#9a6a36", B: "#7a5128", y: "#ffd257" }, OX + 14, OY + 8);
+  };
+  EQ.main.baton = function (g) {
+    rect(g, OX + 18, OY + 5, 1, 13, "#7a5230"); checker(g, OX + 18, OY + 6, 1, 11, "#5a3a1c");
+    ellD(g, OX + 18.5, OY + 3.5, 2.4, 2.6, ["#3d2a6e", "#8f78c8", "#c9a6ff", "#f1e6ff"]);
+  };
+  EQ.main.gland = function (g) {
+    ellD(g, OX + 17.5, OY + 14, 3, 3.4, ["#8a5a2b", "#d9a35a", "#f6cf94"]); ellD(g, OX + 17.5, OY + 11, 3.2, 1.8, ["#2e1a0a", "#6a4426", "#9a6a3a"]);
+  };
+  EQ.main.fleur = function (g) {
+    rect(g, OX + 18, OY + 6, 1, 12, "#3d8a4e"); px(g, OX + 19, OY + 11, "#58b36a"); px(g, OX + 17, OY + 13, "#58b36a");
+    [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(function (d) { px(g, OX + 18 + d[0] * 1, OY + 4 + d[1] * 1, "#ff9fb8"); }); px(g, OX + 18, OY + 4, "#ffd257");
+    px(g, OX + 17, OY + 3, "#ffc4d4"); px(g, OX + 19, OY + 5, "#ffc4d4");
+  };
+  EQ.main.epee = function (g) {
+    rect(g, OX + 18, OY + 2, 1, 11, "#d9c9a0"); rect(g, OX + 17, OY + 3, 1, 9, "#a8946a"); px(g, OX + 18, OY + 1, "#fff6d8");
+    rect(g, OX + 16, OY + 13, 5, 1, "#7a5230"); rect(g, OX + 18, OY + 14, 1, 3, "#5a3a1c");
+  };
+  EQ.main.lanterne = function (g) {
+    rect(g, OX + 18, OY + 5, 1, 12, "#7a5230");
+    checker(g, OX + 15, OY + 5, 7, 6, "rgba(255,236,150,.45)");
+    ellD(g, OX + 18.5, OY + 8, 2.6, 2.8, ["#c98a1f", "#ffd257", "#fff6c8"], { bias: 0.3 }); px(g, OX + 17, OY + 7, "#fff"); rect(g, OX + 17, OY + 5, 3, 1, "#5a3a1c");
+  };
+
+  var heroCache = {};
+  // spec = { fur, tete, dos, main } ; frame 0 / 1 (queue)
+  function hero(spec, frame) {
+    var key = [spec.fur, spec.tete, spec.dos, spec.main, frame].join("|");
+    if (heroCache[key]) return heroCache[key];
+    var pal = PAL[spec.fur] || PAL.roux;
+    var c = build(SQ_W, SQ_H, function (g) {
+      drawBase(g, pal, frame);
+      if (spec.dos && EQ.dos[spec.dos]) EQ.dos[spec.dos](g);
+      if (spec.tete && EQ.tete[spec.tete]) EQ.tete[spec.tete](g);
+      if (spec.main && EQ.main[spec.main]) EQ.main[spec.main](g);
+    }, true);
+    outline(c, OUT);
+    return (heroCache[key] = reg(c, 13, SQ_H + 2 - 1));
+  }
+  var urlCache = {};
+  function toURL(c, key) { return urlCache[key] || (urlCache[key] = c.toDataURL()); }
+  function trim(c, pad) {                              // recadre un canvas sur ses pixels visibles
+    var g = c.getContext("2d"), d = g.getImageData(0, 0, c.width, c.height).data, x0 = c.width, y0 = c.height, x1 = -1, y1 = -1, x, y;
+    for (y = 0; y < c.height; y++) for (x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 0) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) return c;
+    var o = cv(x1 - x0 + 1 + pad * 2, y1 - y0 + 1 + pad * 2); o.getContext("2d").drawImage(c, x0, y0, x1 - x0 + 1, y1 - y0 + 1, pad, pad, x1 - x0 + 1, y1 - y0 + 1);
+    return o;
+  }
+  function heroURL(spec, frame) { var sp = hero(spec, frame || 0); return toURL(sp.c, "hero|" + [spec.fur, spec.tete, spec.dos, spec.main, frame || 0].join("|")); }
+  function headURL(spec) {                              // portrait de la barre de vie : la tête de l'écureuil
+    var key = "head|" + [spec.fur, spec.tete].join("|"); if (urlCache[key]) return urlCache[key];
+    var sp = hero({ fur: spec.fur, tete: spec.tete, dos: null, main: null }, 0), o = cv(14, 14);
+    o.getContext("2d").drawImage(sp.c, OX + 8, OY - 4, 14, 14, 0, 0, 14, 14);
+    return (urlCache[key] = o.toDataURL());
+  }
+  // icône d'un équipement : son dessin isolé, recadré
+  function itemIconURL(slot, look) {
+    var key = "item|" + slot + "|" + look; if (urlCache[key]) return urlCache[key];
+    var c = cv(SQ_W + 2, SQ_H + 2), g = c.getContext("2d");
+    if (slot === "amulette") {
+      var gem = { gland: ["#8a4f14", "#e8a838", "#fcd27a"], pierre: ["#4a5a8a", "#9aaee0", "#e8f0ff"], baie: ["#7a1e38", "#d94f6f", "#ffa9bd"] }[look] || ["#555", "#aaa", "#fff"];
+      rect(g, 10, 8, 1, 1, "#7a5230"); rect(g, 9, 7, 1, 1, "#7a5230"); rect(g, 11, 7, 1, 1, "#7a5230");
+      ellD(g, 10.5, 11.5, 3, 3, gem);
+      var out = cv(16, 16); out.getContext("2d").drawImage(trim(c, 1), 0, 0); outline(out, OUT); return (urlCache[key] = out.toDataURL());
+    }
+    g.translate(1, 1);
+    if (EQ[slot] && EQ[slot][look]) EQ[slot][look](g);
+    var t = trim(c, 1); outline(t, OUT);
+    return (urlCache[key] = t.toDataURL());
+  }
+
+  /* ====================== ICÔNES DE SORTS ====================== */
+  function lineP(g, x0, y0, x1, y1, col) {              // trait Bresenham
+    var dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, er = dx + dy, e2;
+    for (;;) { px(g, x0, y0, col); if (x0 === x1 && y0 === y1) break; e2 = 2 * er; if (e2 >= dy) { er += dy; x0 += sx; } if (e2 <= dx) { er += dx; y0 += sy; } }
+  }
+  var ICONS = {
+    atk_melee: function (g) { var c = ["#fff3dd", "#ffd9a0"]; for (var i = 0; i < 3; i++) { lineP(g, 3 + i * 4, 2, 6 + i * 4 - 1, 13, c[0]); lineP(g, 4 + i * 4, 2, 7 + i * 4 - 1, 13, c[1]); } },
+    atk_shoot: function (g) { ellD(g, 8, 9, 3.6, 4.2, ["#8a5a2b", "#d9a35a", "#f6cf94"]); ellD(g, 8, 5.5, 3.8, 2, ["#2e1a0a", "#6a4426", "#9a6a3a"]); px(g, 8, 2, "#4a2d16"); },
+    atk_magic: function (g) { checker(g, 1, 1, 14, 14, "rgba(201,166,255,.35)"); ellD(g, 8, 8, 5.2, 5.2, ["#3d2a6e", "#8f78c8", "#c9a6ff", "#f1e6ff"]); px(g, 6, 6, "#fff"); },
+    atk_vine: function (g) { lineP(g, 3, 13, 12, 3, "#4fae5f"); lineP(g, 4, 13, 13, 3, "#3d8a4e"); [[6, 9], [9, 6], [11, 4]].forEach(function (a) { px(g, a[0] - 2, a[1], "#9be8a8"); px(g, a[0] + 1, a[1] - 2, "#9be8a8"); }); },
+    tourbillon: function (g) { var a, n = 16; for (var i = 0; i < n * 2; i++) { a = i / n * 3.4; var r = 1.5 + i * 0.17; px(g, Math.round(8 + Math.cos(a) * r), Math.round(8 + Math.sin(a) * r), i % 3 ? "#ffe6a8" : "#fff"); } px(g, 8, 8, "#fff"); },
+    rempart: function (g) { ellD(g, 8, 8.5, 5.4, 6, ["#3a4258", "#6e7488", "#aab3cc", "#e0e6f8"]); rect(g, 7, 4, 2, 9, "#ffd257"); rect(g, 4, 7, 8, 2, "#ffd257"); checker(g, 4, 7, 8, 2, "#c98a1f"); },
+    charge: function (g) { rect(g, 2, 7, 9, 2, "#ffd257"); rect(g, 3, 9, 7, 1, "#c98a1f"); for (var i = 0; i < 4; i++) { px(g, 10 + i, 7 - i, "#ffd257"); px(g, 10 + i, 8 + i, "#ffd257"); } rect(g, 2, 4, 3, 1, "#fff3dd"); rect(g, 2, 11, 3, 1, "#fff3dd"); },
+    salve: function (g) { [[-4, 0.5], [0, -1], [4, 0.5]].forEach(function (a) { ellD(g, 8 + a[0], 9 + a[1] * 2, 2.2, 2.8, ["#8a5a2b", "#d9a35a", "#f6cf94"]); }); },
+    pluie: function (g) { ellD(g, 8, 5, 5.6, 3, ["#6a7088", "#aab3cc", "#e0e6f8"]); [[4, 9], [7, 11], [10, 9], [6, 13], [9, 14]].forEach(function (a) { ellD(g, a[0], a[1], 1.2, 1.6, ["#8a5a2b", "#d9a35a", "#f6cf94"]); }); },
+    tir: function (g) { rect(g, 1, 7, 6, 2, "#fff3dd"); ellD(g, 10, 8, 4.5, 3.6, ["#8a5a2b", "#d9a35a", "#f6cf94"]); rect(g, 6, 7, 2, 2, "#6a4426"); px(g, 2, 6, "#fff"); px(g, 2, 9, "#fff"); },
+    nova: function (g) { ellD(g, 8, 8, 6, 6, ["#3d2a6e", "#8f78c8", "#c9a6ff"], { bias: -0.1 }); for (var i = 0; i < 8; i++) { var a = i * 0.785; lineP(g, Math.round(8 + Math.cos(a) * 3), Math.round(8 + Math.sin(a) * 3), Math.round(8 + Math.cos(a) * 7), Math.round(8 + Math.sin(a) * 7), "#f1e6ff"); } },
+    orbes: function (g) { ellD(g, 5.5, 5.5, 3.6, 3.6, ["#3d2a6e", "#8f78c8", "#c9a6ff", "#f1e6ff"]); ellD(g, 10.5, 10.5, 3.6, 3.6, ["#3d2a6e", "#8f78c8", "#c9a6ff", "#f1e6ff"]); },
+    tempete: function (g) { for (var i = 0; i < 30; i++) { var a = i / 5 * 1.6, r = 1 + i * 0.22; px(g, Math.round(8 + Math.cos(a) * r), Math.round(8 + Math.sin(a) * r * 0.8), i % 2 ? "#b49be6" : "#e8dcff"); } lineP(g, 9, 2, 6, 7, "#ffd257"); lineP(g, 6, 7, 10, 7, "#ffd257"); lineP(g, 10, 7, 7, 13, "#ffd257"); },
+    source: function (g) { ellD(g, 8, 9.5, 4.6, 5, ["#1f5c33", "#3d8a4e", "#7df0a0", "#d4f7da"]); px(g, 8, 2, "#7df0a0"); px(g, 8, 3, "#7df0a0"); rect(g, 7, 4, 2, 2, "#7df0a0"); rect(g, 7, 8, 2, 4, "#fff"); rect(g, 5, 9, 6, 2, "#fff"); },
+    ronces: function (g) { lineP(g, 2, 13, 6, 8, "#3d8a4e"); lineP(g, 6, 8, 5, 3, "#3d8a4e"); lineP(g, 6, 8, 12, 6, "#4fae5f"); lineP(g, 12, 6, 13, 12, "#4fae5f"); [[5, 3], [12, 5], [13, 12], [2, 12], [9, 7]].forEach(function (a) { px(g, a[0], a[1], "#e8584a"); px(g, a[0] + 1, a[1] - 1, "#fff"); }); },
+    floraison: function (g) { [[0, -3], [0, 3], [-3, 0], [3, 0], [2, 2], [-2, -2], [-2, 2], [2, -2]].forEach(function (a) { ellD(g, 8 + a[0], 8 + a[1], 1.9, 1.9, ["#d94f8a", "#ff9fd0", "#ffe0ef"]); }); ellD(g, 8, 8, 2.2, 2.2, ["#c98a1f", "#ffd257", "#fff0a0"]); },
+    potion: function (g) { ellD(g, 8, 9, 5, 4.6, ["#7a1e38", "#d94f6f", "#ffa9bd"]); rect(g, 8, 3, 2, 3, "#4fae5f"); rect(g, 10, 3, 3, 2, "#6fd07f"); },
+    dash: function (g) { rect(g, 3, 6, 8, 2, "#9ad7ff"); rect(g, 5, 9, 6, 1, "#5aa8ff"); for (var i = 0; i < 4; i++) { px(g, 10 + i, 6 - i + 1, "#e0f2ff"); px(g, 10 + i, 7 + i - 1, "#e0f2ff"); } },
+    nut: function (g) { ellD(g, 8, 9, 4.2, 4.8, ["#8a4f14", "#e8a838", "#fcd27a"]); ellD(g, 8, 5.5, 4.4, 2.4, ["#2e1a0a", "#6a4426", "#9a6a3a"]); px(g, 8, 2, "#4a2d16"); },
+    scroll: function (g) { rectD(g, 3, 2, 10, 12, ["#b8975a", "#e8d4a0", "#fff3d0"], 0.9, 0.2); for (var i = 0; i < 4; i++) rect(g, 5, 4 + i * 2, 6, 1, "#8a6a3a"); ellD(g, 8, 2, 5.2, 1.4, ["#7a5a2a", "#c9a060", "#f0d898"]); ellD(g, 8, 14, 5.2, 1.4, ["#7a5a2a", "#c9a060", "#f0d898"]); },
+    gear: function (g) { for (var i = 0; i < 8; i++) { var a = i * 0.785; ellD(g, 8 + Math.cos(a) * 5.4, 8 + Math.sin(a) * 5.4, 1.8, 1.8, ["#4a5064", "#8a91a8", "#c8cfe0"]); } ellD(g, 8, 8, 4.8, 4.8, ["#4a5064", "#8a91a8", "#c8cfe0", "#eef0fa"]); ellD(g, 8, 8, 1.8, 1.8, ["#1a1c28", "#3a3e52"]); },
+    bag: function (g) { ellD(g, 8, 10, 5.6, 4.8, ["#4a2d16", "#8a5a2b", "#c98744", "#e8a860"]); rect(g, 5, 3, 6, 3, "#6a4426"); checker(g, 5, 3, 6, 3, "#8a5a2b"); rect(g, 4, 5, 8, 1, "#ffd257"); },
+    star: function (g) { lineP(g, 8, 2, 8, 14, "#ffd257"); lineP(g, 2, 8, 14, 8, "#ffd257"); ellD(g, 8, 8, 3, 3, ["#c98a1f", "#ffd257", "#fff6c8"]); }
+  };
+  function icon(name) {
+    var key = "icon|" + name; if (urlCache[key]) return urlCache[key];
+    var f = ICONS[name] || ICONS.star, c = build(16, 16, f);
+    return (urlCache[key] = c.toDataURL());
   }
 
   /* ====================== MONSTRES ====================== */
@@ -260,6 +430,13 @@
       ellD(g, 4, 4.6, 3.6, 3.3, ["#7a1e38", "#d94f6f", "#ffa9bd"]);
       rect(g, 4, 0, 1, 2, "#4fae5f"); rect(g, 5, 0, 2, 1, "#6fd07f");
     }), 5, 9);
+    else if (kind.indexOf("loot") === 0) {                // sac de butin : le bijou prend la couleur de la rareté
+      var rc = ["#cfd3d8", "#6fd07f", "#5aa8ff", "#b57cff", "#ffb23a"][+kind.slice(4)] || "#cfd3d8";
+      s = reg(build(10, 10, function (g) {
+        ellD(g, 5, 6, 4.4, 3.6, ["#4a2d16", "#8a5a2b", "#c98744"]); rect(g, 3, 1, 4, 2, "#6a4426"); checker(g, 3, 1, 4, 2, "#8a5a2b");
+        ellD(g, 5, 6, 1.8, 1.8, [rc === "#cfd3d8" ? "#8a8f96" : rc, rc, "#ffffff"], { bias: 0.25 });
+      }), 6, 11);
+    }
     else s = reg(build(8, 8, function (g) { ellD(g, 4, 4, 3.6, 3.6, ["#a8801a", "#ffd257", "#fff0a0"]); }), 5, 9);
     return (itCache[key] = s);
   }
@@ -273,6 +450,7 @@
       ellD(g, 6.5, 6.5, 6.2, 6.2, ["rgba(0,0,0,0)", "rgba(143,120,200,.9)"], { bias: 0.2 });
       ellD(g, 6.5, 6.5, 5, 5, ["#5a3d99", "#8f78c8", "#c9a6ff", "#f1e6ff"], { bias: 0.1 }); px(g, 4, 4, "#ffffff");
     }, true), 7, 7);
+    else if (kind === "epine") s = reg(build(9, 5, function (g) { ellD(g, 4, 2.5, 3.8, 1.9, ["#1f5c33", "#4fae5f", "#9be8a8"]); px(g, 8, 2, "#e8584a"); px(g, 1, 1, "#9be8a8"); px(g, 1, 4, "#3d8a4e"); }), 5, 3);
     else s = reg(build(10, 4, function (g) { ellD(g, 5, 2, 4.6, 1.8, ["#15122b", "#3a3850", "#7a76b8"]); rect(g, 0, 1, 3, 2, "#23212f"); checker(g, 0, 1, 3, 2, "#3a3850"); }), 6, 3);
     return (shCache[kind] = s);
   }
@@ -391,5 +569,5 @@
     return c;
   }
 
-  window.RC_ART = { squirrel: squirrel, mob: mob, item: item, shot: shot, chest: chest, stall: stall, terrain: terrain, silhouette: silhouette, TILE: TILE, shade: shade };
+  window.RC_ART = { hero: hero, heroURL: heroURL, headURL: headURL, itemIconURL: itemIconURL, icon: icon, PAL: PAL, squirrel: squirrel, mob: mob, item: item, shot: shot, chest: chest, stall: stall, terrain: terrain, silhouette: silhouette, TILE: TILE, shade: shade };
 })();

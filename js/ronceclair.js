@@ -2,38 +2,29 @@
    Ronceclair — action-RPG 2D vu de dessus, version écureuils.
    Jeu indépendant d'Arcane Tactics (aucune dépendance au moteur isométrique).
 
-   Sections : données (CLASSES, ZONES, MOBS, QUESTS, SHOP) · utilitaires · son ·
-   sauvegarde · génération de carte · entités · combat · dessin · interface ·
-   écrans · entrées · boucle.
-   Tout le contenu modifiable à la main est en haut du fichier.
+   Moteur du jeu. Données de classes / sorts / équipements : js/ronceclair-data.js.
+   Pixel-art : js/ronceclair-art.js. Interface (menus, HUD, fenêtres) : js/ronceclair-ui.js,
+   qui parle au moteur par l'objet window.RC défini en bas de ce fichier.
+   Sections : données (ZONES, MOBS, QUESTS) · utilitaires · son · profil et stats · carte ·
+   entités · combat et sorts · mise à jour · dessin · pont avec l'interface · entrées · en ligne · boucle.
    ========================================================================= */
 (function () {
   "use strict";
 
   var stage = document.querySelector("[data-ronceclair]");
-  var ART = window.RC_ART;
-  if (!stage || !ART) return;
+  var ART = window.RC_ART, DATA = window.RC_DATA;
+  if (!stage || !ART || !DATA) return;
   var canvas = stage.querySelector("canvas");
   var ctx = canvas.getContext("2d");
-  var overlay = stage.querySelector("[data-overlay]");
-  var card = stage.querySelector("[data-card]");
-  var hudEl = stage.querySelector("[data-hud]");
 
-  var VERSION = "0.2.0";
-  var SAVE_KEY = "rc-save-v1";
+  var VERSION = "0.3.0";
+  var BAG_MAX = 40;
   var T = 48;                       // taille d'une case en pixels
   var TAU = Math.PI * 2;
 
   /* ====================== DONNÉES ====================== */
 
-  var CLASSES = {
-    gardien:  { name: "Gardien",  fur: "#c98a3a", tail: "#e0a24c", hp: 64, atk: 7, spd: 150, cd: 0.40, kind: "melee",
-                special: "Tourbillon", desc: "Griffes et casque de noix. Corps à corps, encaisse beaucoup." },
-    lanceur:  { name: "Lanceur",  fur: "#b8662b", tail: "#d98240", hp: 44, atk: 6, spd: 168, cd: 0.42, kind: "shoot",
-                special: "Salve de glands", desc: "Lance des glands à distance. Rapide, mais fragile." },
-    mystique: { name: "Mystique", fur: "#8f78c8", tail: "#b49be6", hp: 38, atk: 8, spd: 158, cd: 0.62, kind: "magic",
-                special: "Nova arcane", desc: "Éclats arcanes qui traversent les ennemis." }
-  };
+  var CLASSES = DATA.CLASSES, xpFor = DATA.xpFor, MAX_LVL = DATA.MAX_LVL;
 
   var ZONES = [
     { id: "clairiere", name: "Clairière de Ronceclair", w: 46, h: 32, seed: 11, lvl: 1, req: 1, village: true,
@@ -61,22 +52,6 @@
     { id: "q3", name: "Rôdeurs du Sous-bois", text: "Écarte 4 renards dans le Sous-bois moussu.", kill: "renard", n: 4, xp: 130, gold: 60 },
     { id: "q4", name: "Le Roi-corbeau",     text: "Vaincs le Roi-corbeau au fond du Marais.", kill: "roi", n: 1, xp: 400, gold: 200 }
   ];
-
-  var SHOP = [
-    { id: "potion", name: "Baie de soin", desc: "Rend 45 PV.", cost: function () { return 6; }, consumable: true },
-    { id: "queue",  name: "Queue de combat", desc: "+2 attaque par niveau d'amélioration.", cost: function (n) { return 25 + n * 30; }, max: 8 },
-    { id: "cape",   name: "Cape de feuilles", desc: "+12 PV max par niveau d'amélioration.", cost: function (n) { return 20 + n * 25; }, max: 8 },
-    { id: "bottes", name: "Bottes de mousse", desc: "+8 vitesse par niveau d'amélioration.", cost: function (n) { return 30 + n * 35; }, max: 5 }
-  ];
-
-  var STATS = {
-    vit: { name: "Vitalité", desc: "+10 PV max" },
-    frc: { name: "Force", desc: "+2 attaque" },
-    agi: { name: "Agilité", desc: "+8 vitesse, +1 % critique" }
-  };
-
-  function xpFor(lvl) { return Math.round(30 * Math.pow(lvl, 1.55)); }
-  var MAX_LVL = 30;
 
   /* ====================== UTILITAIRES ====================== */
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -123,28 +98,21 @@
     portal: function () { blip(300, 0.4, "sine", 0.08, 500); }
   };
 
-  /* ====================== SAUVEGARDE ====================== */
-  var profile = null;
+  /* ====================== PROFIL ET STATS ====================== */
+  var profile = null, slots = DATA.loadSlots(), S = null, statsRev = 0;
 
-  function newProfile(cls) {
-    var C = CLASSES[cls];
-    return { v: 1, cls: cls, lvl: 1, xp: 0, pts: 0, gold: 10, potions: 1, hp: C.hp,
-      stats: { vit: 0, frc: 0, agi: 0 }, gear: { queue: 0, cape: 0, bottes: 0 },
-      quest: 0, qn: 0, zone: 0, bossDead: false, chests: {}, kills: 0, time: 0 };
+  function saveProfile() {
+    if (!profile) return;
+    for (var i = 0; i < slots.length; i++) if (slots[i].id === profile.id) { slots[i] = profile; break; }
+    DATA.saveSlots(slots);
   }
-  function loadProfile() {
-    try {
-      var p = JSON.parse(load(SAVE_KEY, "null"));
-      if (p && p.cls && CLASSES[p.cls] && p.v === 1) return p;
-    } catch (e) {}
-    return null;
-  }
-  function saveProfile() { if (profile) store(SAVE_KEY, JSON.stringify(profile)); }
-
-  function maxHp() { var C = CLASSES[profile.cls]; return C.hp + (profile.lvl - 1) * 8 + profile.stats.vit * 10 + profile.gear.cape * 12; }
-  function atkPower() { var C = CLASSES[profile.cls]; return C.atk + (profile.lvl - 1) * 1.4 + profile.stats.frc * 2 + profile.gear.queue * 2; }
-  function moveSpeed() { return CLASSES[profile.cls].spd + profile.stats.agi * 8 + profile.gear.bottes * 8; }
-  function critChance() { return 0.08 + profile.stats.agi * 0.01; }
+  function dirtyStats() { statsRev++; }
+  function stats() { if (!S || S.rev !== statsRev || S.p !== profile) { S = DATA.computeStats(profile); S.rev = statsRev; S.p = profile; } return S; }
+  function maxHp() { return stats().maxHp; }
+  function atkPower() { var v = stats().atk, b = P && P.buffs && P.buffs.atk; return b && b.t > 0 ? v * (1 + b.v) : v; }
+  function moveSpeed() { return stats().spd; }
+  function critChance() { return stats().crit; }
+  function lookSpec(p) { var e = p.eq || {}; return { fur: p.fur, tete: e.tete && e.tete.look, dos: e.dos && e.dos.look, main: e.main && e.main.look }; }
 
   /* ====================== CARTE ====================== */
   // types de case : 0 herbe, 1 chemin, 2 eau, 3 arbre, 4 rocher
@@ -239,25 +207,25 @@
 
   /* ====================== ÉTAT DU JEU ====================== */
   var P = null;                     // le joueur
-  var mobs = [], shots = [], parts = [], texts = [], drops = [], npcs = [];
+  var mobs = [], shots = [], parts = [], texts = [], drops = [], npcs = [], zones = [];
   var cam = { x: 0, y: 0, z: 1, shake: 0 };
   var W = 800, H = 600, dpr = 1;
-  var mode = "menu";                // menu | play | dialog
+  var mode = "title";               // title | play | dialog
   var tPlay = 0, saveTimer = 0, respawnTimer = 0, flash = 0;
-  var banner = null;
   var keys = {}, mouse = { x: 0, y: 0, down: false, has: false };
   var joy = { id: null, x: 0, y: 0, ax: 0, ay: 0, on: false };
   var touchAtk = false, touchMode = false;
 
   function makePlayer() {
     var C = CLASSES[profile.cls];
-    return { x: 0, y: 0, vx: 0, vy: 0, r: 13, face: 0, cd: 0, dashT: 0, dashCd: 0, spCd: 0, inv: 0, hurt: 0, anim: 0, moving: false, swing: 0, dead: false, spin: 0, C: C };
+    return { x: 0, y: 0, vx: 0, vy: 0, r: 13, face: 0, cd: 0, dashT: 0, dashCd: 0, dashV: 520, skCd: [0, 0, 0], skMax: [1, 1, 1], inv: 0, hurt: 0, anim: 0, moving: false, swing: 0, dead: false, spin: 0, C: C,
+      buffs: { shield: { v: 0, t: 0 }, atk: { v: 0, t: 0 }, regen: { v: 0, t: 0 } }, charge: null };
   }
 
   function enterZone(zi, from, fromHost) {
     profile.zone = zi;
     world = genZone(zi);
-    mobs = []; shots = []; parts = []; texts = []; drops = []; npcs = [];
+    mobs = []; shots = []; parts = []; texts = []; drops = []; npcs = []; zones = [];
     var Z = ZONES[zi];
     // placement : à l'entrée (arrivée par la gauche) ou à la sortie (retour par la droite)
     var spot = from === "back" ? world.exit : world.entry;
@@ -285,7 +253,7 @@
   function makeMob(type, lvl) {
     var D = MOBS[type], mul = (1 + (lvl - 1) * 0.22) * (NET.role === "host" && R ? 1.7 : 1);
     return { id: mobSeq++, type: type, D: D, x: 0, y: 0, r: D.r, hp: Math.round(D.hp * mul), max: Math.round(D.hp * mul), dmg: Math.round(D.dmg * (1 + (lvl - 1) * 0.12)), lvl: lvl,
-      spd: D.spd, fly: !!D.fly, kx: 0, ky: 0, hurt: 0, cd: rnd(0.4, 1.5), state: "idle", t: rnd(0, 2), dir: rnd(0, TAU), anim: rnd(0, 6), home: null, dashT: 0, dx: 0, dy: 0, phase: 0 };
+      spd: D.spd, bspd: D.spd, slow: 0, slowV: 0, fly: !!D.fly, kx: 0, ky: 0, hurt: 0, cd: rnd(0.4, 1.5), state: "idle", t: rnd(0, 2), dir: rnd(0, TAU), anim: rnd(0, 6), home: null, dashT: 0, dx: 0, dy: 0, phase: 0 };
   }
   function spawnMob(type, initial) {
     var Z = world.Z, m = makeMob(type, Z.lvl + (Math.random() < 0.25 ? 1 : 0)), tries = 0, x, y;
@@ -322,15 +290,16 @@
     return best;
   }
 
-  function damageMob(m, dmg, kx, ky, crit) {
+  function damageMob(m, dmg, kx, ky, crit, slow) {
     if (NET.role === "guest") {                       // l'hôte tranche : on envoie le coup et on montre l'effet tout de suite
-      netSend("hit", { id: m.id, d: Math.round(dmg * 10) / 10, kx: Math.round(kx), ky: Math.round(ky), c: crit ? 1 : 0 });
+      netSend("hit", { id: m.id, d: Math.round(dmg * 10) / 10, kx: Math.round(kx), ky: Math.round(ky), c: crit ? 1 : 0, sl: slow || 0 });
       m.hp = Math.max(1, m.hp - dmg); m.hurt = 0.15;
       addText(m.x, m.y - m.r - 8, Math.round(dmg) + (crit ? "!" : ""), crit ? "#ffd257" : "#fff", crit);
       addParts(m.x, m.y, crit ? 10 : 5, ["#fff", m.D.col], { max: 110 }); SFX.hit();
       return;
     }
     m.hp -= dmg; m.hurt = 0.15; m.kx += kx; m.ky += ky;
+    if (slow) { m.slow = slow[1]; m.slowV = slow[0]; }
     if (m.state === "idle") m.state = "chase";
     addText(m.x, m.y - m.r - 8, Math.round(dmg) + (crit ? "!" : ""), crit ? "#ffd257" : "#fff", crit);
     addParts(m.x, m.y, crit ? 10 : 5, ["#fff", m.D.col], { max: 110 });
@@ -355,6 +324,10 @@
     var g = ri(D.gold[0], D.gold[1]) * (elite ? 2 : 1);
     for (var k = 0; k < Math.min(g, 6); k++) drops.push({ x: x + rnd(-14, 14), y: y + rnd(-14, 14), v: Math.ceil(g / Math.min(g, 6)), kind: "gold", t: rnd(0, 6), vx: rnd(-60, 60), vy: rnd(-60, 60) });
     if (Math.random() < 0.12) drops.push({ x: x, y: y, v: 1, kind: "potion", t: 0, vx: 0, vy: 0 });
+    if (Math.random() < (D.boss ? 1 : 0.07 + (elite ? 0.3 : 0))) {              // équipement : visible sur ton écureuil une fois équipé
+      var it = DATA.randomItem(Math.max(1, world.Z.lvl + (elite ? 1 : 0)), Math.random, D.boss ? 2 : elite ? 1 : 0);
+      drops.push({ x: x, y: y, kind: "item", item: it, t: 0, vx: rnd(-40, 40), vy: rnd(-40, 40) });
+    }
     gainXp(Math.round(D.xp * (1 + (lvl - 1) * 0.15) * (elite ? 1.8 : 1)), x, y);
     profile.kills++;
     var q = QUESTS[profile.quest];
@@ -373,10 +346,11 @@
     addText(x, y - 20, "+" + n + " XP", "#9ad7ff");
     while (profile.lvl < MAX_LVL && profile.xp >= xpFor(profile.lvl)) {
       profile.xp -= xpFor(profile.lvl); profile.lvl++; profile.pts += 2;
-      profile.hp = maxHp();
+      dirtyStats(); profile.hp = maxHp();
       SFX.level(); flash = 0.35;
       addParts(P.x, P.y, 30, ["#ffd257", "#fff", "#9fe870"], { max: 200, leaf: true });
-      showBanner("Niveau " + profile.lvl + " !", "+2 points de caractéristique (touche C)");
+      var si = DATA.SKILL_LEVELS.indexOf(profile.lvl);
+      showBanner("Niveau " + profile.lvl + " !", si > 0 ? "Nouveau sort : " + DATA.SKILLS[profile.cls][si].name + " · +2 points (touche C)" : "+2 points de caractéristique (touche C)");
     }
     updateHud();
   }
@@ -390,6 +364,7 @@
 
   function hurtPlayer(dmg, kx, ky) {
     if (P.inv > 0 || P.dead) return;
+    dmg = Math.max(1, dmg * (1 - stats().dr) * (P.buffs.shield.t > 0 ? 1 - P.buffs.shield.v : 1));
     profile.hp -= dmg; P.inv = 0.7; P.hurt = 0.25; P.vx += kx; P.vy += ky;
     addText(P.x, P.y - 24, "-" + Math.round(dmg), "#ff6b6b", true);
     addParts(P.x, P.y, 8, ["#ff6b6b", "#fff"], { max: 120 });
@@ -399,21 +374,20 @@
   }
   function die() {
     P.dead = true; mode = "dialog";
-    var lost = Math.floor(profile.gold * 0.1);
+    var lost = Math.floor(profile.gold * 0.1), coop = NET.on && NET.started;
     profile.gold -= lost;
-    showCard('<h2>Tu t\'évanouis…</h2><p>' + (NET.on && NET.started ? 'Ton coéquipier te relève.' : 'Les écureuils du village te ramènent à la clairière.') + ' Tu perds ' + lost + ' noisette' + (lost > 1 ? "s" : "") + '.</p><button class="btn" data-act="revive" type="button">Se réveiller</button>', function () {
-      hideCard();
+    ui("death", { lost: lost, coop: coop, revive: function () {
       P.dead = false;
-      if (NET.on && NET.started) {                     // coop : on se relève sur place (près du coéquipier) avec la moitié des PV
+      if (coop) {                                      // coop : on se relève sur place (près du coéquipier) avec la moitié des PV
         profile.hp = Math.ceil(maxHp() / 2); P.inv = 1.5;
         if (R && R.x != null) { P.x = R.x + 24; P.y = R.y; } else { P.x = (world.entry.x + 1.5) * T; P.y = world.entry.y * T + T / 2; }
       } else { profile.hp = maxHp(); profile.zone = 0; enterZone(0); }
       mode = "play"; updateHud();
-    });
+    } });
   }
 
   function useAttack() {
-    if (P.cd > 0 || P.dead || P.dashT > 0) return;
+    if (P.cd > 0 || P.dead || P.dashT > 0 || mode !== "play") return;
     var C = P.C, a = aimAngle(), dmg;
     P.face = a; P.cd = C.cd; P.swing = 0.18;
     if (C.kind === "melee") {
@@ -429,9 +403,12 @@
     } else if (C.kind === "shoot") {
       SFX.shoot();
       pshot({ x: P.x + Math.cos(a) * 16, y: P.y + Math.sin(a) * 16, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420, life: 0.8, r: 6, pierce: 0, kind: "gland", mine: true, mult: 1 });
+    } else if (C.kind === "vine") {
+      SFX.shoot();
+      pshot({ x: P.x + Math.cos(a) * 16, y: P.y + Math.sin(a) * 16, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360, life: 0.7, r: 7, pierce: 0, kind: "epine", mine: true, mult: 1, slow: [0.35, 1.5] });
     } else {
       SFX.shoot();
-      pshot({ x: P.x + Math.cos(a) * 16, y: P.y + Math.sin(a) * 16, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320, life: 1.0, r: 9, pierce: 2, kind: "orbe", mine: true, mult: 1.15, hit: [] });
+      pshot({ x: P.x + Math.cos(a) * 16, y: P.y + Math.sin(a) * 16, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320, life: 1.0, r: 9, pierce: 3, kind: "orbe", mine: true, mult: 1.15, hit: [] });
     }
   }
   function fx(o) { if (NET.on && NET.started && R) netSend("fx", o); }
@@ -439,42 +416,130 @@
   function pring(r, col, life) { parts.push({ ring: true, x: P.x, y: P.y, r: r, col: col, life: life, t: 0 }); fx({ k: "ring", x: P.x, y: P.y, r: r, col: col, life: life }); }
   function addSlash(x, y, a, r, col) { parts.push({ slash: true, x: x, y: y, a: a, r: r, col: col, life: 0.18, t: 0 }); }
 
-  function useSpecial() {
-    if (P.spCd > 0 || P.dead) return;
-    var C = P.C, i, dmg;
-    P.spCd = 6; SFX.nova();
-    if (C.kind === "melee") {
-      P.spin = 0.5; shake(4);
-      pring(100, "#ffe6a8", 0.4);
-      for (i = mobs.length - 1; i >= 0; i--) { var m = mobs[i]; if (dist(P.x, P.y, m.x, m.y) < 100 + m.r) { dmg = rollDamage(2); var an = Math.atan2(m.y - P.y, m.x - P.x); damageMob(m, dmg.d, Math.cos(an) * 260, Math.sin(an) * 260, dmg.crit); } }
-    } else if (C.kind === "shoot") {
-      var a = aimAngle();
-      for (i = -2; i <= 2; i++) pshot({ x: P.x, y: P.y, vx: Math.cos(a + i * 0.22) * 420, vy: Math.sin(a + i * 0.22) * 420, life: 0.8, r: 6, pierce: 0, kind: "gland", mine: true, mult: 1.2 });
-    } else {
-      shake(5);
-      pring(140, "#c9a6ff", 0.5);
-      for (i = mobs.length - 1; i >= 0; i--) { var m2 = mobs[i]; if (dist(P.x, P.y, m2.x, m2.y) < 140 + m2.r) { dmg = rollDamage(2.2); var an2 = Math.atan2(m2.y - P.y, m2.x - P.x); damageMob(m2, dmg.d, Math.cos(an2) * 200, Math.sin(an2) * 200, dmg.crit); } }
+  // point visé (zones) : la souris, ou l'ennemi le plus proche au tactile
+  function aimPoint(range) {
+    var tx, ty, a = aimAngle();
+    if (!touchMode && mouse.has) { tx = (mouse.x - W / 2) / cam.z + cam.x; ty = (mouse.y - H / 2) / cam.z + cam.y; }
+    else { var m = nearestMob(P.x, P.y, range); if (m) { tx = m.x; ty = m.y; } else { tx = P.x + Math.cos(a) * range * 0.6; ty = P.y + Math.sin(a) * range * 0.6; } }
+    var d = dist(P.x, P.y, tx, ty);
+    if (d > range) { tx = P.x + (tx - P.x) / d * range; ty = P.y + (ty - P.y) / d * range; }
+    return { x: tx, y: ty };
+  }
+  function skillOf(i) { return DATA.SKILLS[profile.cls][i]; }
+  function skillUnlocked(i) { return profile.lvl >= DATA.SKILL_LEVELS[i]; }
+  function healSelf(pct) {
+    var amt = Math.round(maxHp() * pct);
+    profile.hp = Math.min(maxHp(), profile.hp + amt);
+    addText(P.x, P.y - 24, "+" + amt, "#7df0a0", true); addParts(P.x, P.y, 16, ["#7df0a0", "#fff"], { max: 100, leaf: true }); SFX.coin(); updateHud();
+  }
+  function applyBuff(b) {
+    if (!P || P.dead) return;
+    if (b.sh) P.buffs.shield = { v: b.sh, t: b.t };
+    if (b.atk) P.buffs.atk = { v: b.atk, t: b.t };
+    if (b.rg) P.buffs.regen = { v: b.rg, t: b.t };
+    addParts(P.x, P.y, 14, ["#ffffff", b.sh ? "#9ad7ff" : "#ff9fd0"], { max: 90 }); SFX.level();
+  }
+
+  function useSkill(i) {
+    if (!P || P.dead || mode !== "play" || !profile) return;
+    var sk = skillOf(i); if (!sk || !skillUnlocked(i) || P.skCd[i] > 0) return;
+    var a = aimAngle(), j, m, dmg, an, n, off;
+    P.skCd[i] = P.skMax[i] = sk.cd; P.face = a;
+    switch (sk.type) {
+      case "nova":
+        SFX.nova(); shake(4); if (profile.cls === "gardien") P.spin = 0.4;
+        pring(sk.r, sk.col, 0.45);
+        for (j = mobs.length - 1; j >= 0; j--) { m = mobs[j]; if (dist(P.x, P.y, m.x, m.y) < sk.r + m.r) { dmg = rollDamage(sk.mult); an = Math.atan2(m.y - P.y, m.x - P.x); damageMob(m, dmg.d, Math.cos(an) * sk.knock, Math.sin(an) * sk.knock, dmg.crit); } }
+        break;
+      case "volley":
+        SFX.shoot(); n = sk.n;
+        for (j = 0; j < n; j++) {
+          off = (j - (n - 1) / 2) * sk.spread;
+          pshot({ x: P.x + Math.cos(a) * 14, y: P.y + Math.sin(a) * 14, vx: Math.cos(a + off) * sk.speed, vy: Math.sin(a + off) * sk.speed, life: sk.big ? 1.2 : sk.kind === "orbe" ? 1.0 : 0.8,
+            r: sk.big ? 12 : sk.kind === "orbe" ? 9 : 6, pierce: (sk.pierce || 0) + (profile.cls === "mystique" && sk.kind === "orbe" ? 1 : 0), kind: sk.kind, mine: true, mult: sk.mult, hit: [], big: !!sk.big });
+        }
+        break;
+      case "zone":
+        SFX.nova(); var pt = aimPoint(sk.range);
+        zones.push({ x: pt.x, y: pt.y, r: sk.r, dur: sk.dur, t: 0, tick: sk.tick, tt: 0, mult: sk.mult, slow: sk.slow ? [sk.slow, 1.2] : null, col: sk.col, mine: true });
+        fx({ k: "zone", x: Math.round(pt.x), y: Math.round(pt.y), r: sk.r, dur: sk.dur, col: sk.col });
+        break;
+      case "dashstrike":
+        SFX.dash(); shake(3); P.dashA = a; P.dashT = 0.22; P.dashV = sk.dist / 0.22; P.inv = Math.max(P.inv, 0.35); P.charge = { mult: sk.mult, knock: sk.knock, hit: [] };
+        break;
+      case "heal":
+        healSelf(sk.pct * (profile.cls === "sylvain" ? 1.25 : 1)); pring(sk.r * 0.6, sk.col, 0.5);
+        if (R && R.x != null && !R.dead && dist(P.x, P.y, R.x, R.y) < sk.r) netSend("heal", { pct: sk.pct * (profile.cls === "sylvain" ? 1.25 : 1) });
+        break;
+      case "buff":
+        var b = { t: sk.dur, sh: sk.shield || 0, atk: sk.atk || 0, rg: sk.regen || 0 };
+        applyBuff(b); pring(sk.r * 0.5, sk.col, 0.5);
+        if (R && R.x != null && !R.dead && dist(P.x, P.y, R.x, R.y) < sk.r) netSend("buff", b);
+        break;
     }
+    updateHud();
   }
   function useDash() {
-    if (P.dashCd > 0 || P.dead) return;
+    if (P.dashCd > 0 || P.dead || mode !== "play") return;
     var dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0) + joy.ax, dy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0) + joy.ay;
     var a = (dx || dy) ? Math.atan2(dy, dx) : P.face;
-    P.dashA = a; P.dashT = 0.16; P.dashCd = 0.9; P.inv = Math.max(P.inv, 0.3); SFX.dash();
+    P.dashA = a; P.dashT = 0.16; P.dashV = 520; P.charge = null; P.dashCd = 0.9; P.inv = Math.max(P.inv, 0.3); SFX.dash();
     addParts(P.x, P.y, 6, ["#ffffff", "#e8e0c8"], { max: 60 });
   }
   function usePotion() {
-    if (profile.potions <= 0 || profile.hp >= maxHp() || P.dead) return;
-    profile.potions--; profile.hp = Math.min(maxHp(), profile.hp + 45);
-    addText(P.x, P.y - 24, "+45", "#7df0a0", true); addParts(P.x, P.y, 12, ["#7df0a0", "#fff"], { max: 90, leaf: true }); SFX.coin();
+    if (profile.potions <= 0 || profile.hp >= maxHp() || P.dead || mode !== "play") return;
+    var amt = Math.max(30, Math.round(maxHp() * 0.35));
+    profile.potions--; profile.hp = Math.min(maxHp(), profile.hp + amt);
+    addText(P.x, P.y - 24, "+" + amt, "#7df0a0", true); addParts(P.x, P.y, 12, ["#7df0a0", "#fff"], { max: 90, leaf: true }); SFX.coin();
     updateHud();
   }
+
+  /* ====================== ÉQUIPEMENT, BOUTIQUE ====================== */
+  function findBag(id) { for (var i = 0; i < profile.bag.length; i++) if (profile.bag[i].id === id) return i; return -1; }
+  function equipItem(id) {
+    var i = findBag(id); if (i < 0) return false;
+    var it = profile.bag[i], old = profile.eq[it.slot];
+    profile.bag.splice(i, 1); if (old) profile.bag.push(old);
+    profile.eq[it.slot] = it; dirtyStats(); profile.hp = Math.min(profile.hp, maxHp()); SFX.level(); saveProfile(); updateHud(); return true;
+  }
+  function unequipItem(slot) {
+    var it = profile.eq[slot]; if (!it || profile.bag.length >= BAG_MAX) return false;
+    profile.eq[slot] = null; profile.bag.push(it); dirtyStats(); profile.hp = Math.min(profile.hp, maxHp()); saveProfile(); updateHud(); return true;
+  }
+  function sellItem(id) {
+    var i = findBag(id); if (i < 0) return 0;
+    var g = DATA.sellValue(profile.bag[i]); profile.bag.splice(i, 1); profile.gold += g; SFX.coin(); saveProfile(); updateHud(); return g;
+  }
+  function spendPoint(k) {
+    if (profile.pts <= 0 || !DATA.STATS[k]) return false;
+    profile.stats[k]++; profile.pts--; dirtyStats(); if (k === "vit") profile.hp += 10; SFX.coin(); saveProfile(); updateHud(); return true;
+  }
+  function addToBag(it) {
+    if (profile.bag.length >= BAG_MAX) { var g = DATA.sellValue(it); profile.gold += g; return { sold: g }; }
+    profile.bag.push(it); return { ok: true };
+  }
+  var shopData = { t: -1e9, stock: [] };
+  function shopStock() {
+    if (!shopData.stock.length || tPlay - shopData.t > 600) {
+      shopData.t = tPlay; shopData.stock = [];
+      for (var i = 0; i < 4; i++) shopData.stock.push(DATA.randomItem(Math.max(1, profile.lvl), Math.random, 0, ["tete", "dos", "main", "amulette"][i]));
+    }
+    return shopData.stock;
+  }
+  function buyItem(i) {
+    var it = shopStock()[i]; if (!it) return false;
+    var c = DATA.buyValue(it); if (profile.gold < c || profile.bag.length >= BAG_MAX) return false;
+    profile.gold -= c; profile.bag.push(it); shopData.stock.splice(i, 1, null); shopData.stock = shopData.stock.filter(Boolean); SFX.coin(); saveProfile(); updateHud(); return true;
+  }
+  function buyPotion() { if (profile.gold < 6) return false; profile.gold -= 6; profile.potions++; SFX.coin(); saveProfile(); updateHud(); return true; }
 
   /* ====================== MISE À JOUR ====================== */
   function update(dt, frozen) {
     var C = P.C, i, m, guest = NET.role === "guest";
     tPlay += dt; profile.time += dt;
-    P.cd -= dt; P.dashCd -= dt; P.spCd -= dt; P.inv -= dt; P.hurt -= dt; P.swing -= dt; P.spin -= dt;
+    P.cd -= dt; P.dashCd -= dt; P.inv -= dt; P.hurt -= dt; P.swing -= dt; P.spin -= dt;
+    for (i = 0; i < 3; i++) P.skCd[i] -= dt;
+    P.buffs.shield.t -= dt; P.buffs.atk.t -= dt; P.buffs.regen.t -= dt;
 
     // déplacement
     var ix = frozen || P.dead ? 0 : (keys.right ? 1 : 0) - (keys.left ? 1 : 0) + joy.ax, iy = frozen || P.dead ? 0 : (keys.down ? 1 : 0) - (keys.up ? 1 : 0) + joy.ay;
@@ -483,7 +548,16 @@
     P.moving = il > 0.12;
     if (P.dashT > 0) {
       P.dashT -= dt;
-      moveEnt(P, Math.cos(P.dashA) * 520 * dt, Math.sin(P.dashA) * 520 * dt);
+      moveEnt(P, Math.cos(P.dashA) * P.dashV * dt, Math.sin(P.dashA) * P.dashV * dt);
+      if (P.charge) {                                  // Charge du Chêne : frappe une fois chaque ennemi bousculé
+        mobs.forEach(function (mm) {
+          if (P.charge.hit.indexOf(mm) < 0 && dist(P.x, P.y, mm.x, mm.y) < 44 + mm.r) {
+            P.charge.hit.push(mm); var cd2 = rollDamage(P.charge.mult);
+            damageMob(mm, cd2.d, Math.cos(P.dashA) * P.charge.knock, Math.sin(P.dashA) * P.charge.knock, cd2.crit);
+          }
+        });
+        if (P.dashT <= 0) P.charge = null;
+      }
     } else {
       var sp = moveSpeed();
       P.vx += (ix * sp - P.vx) * Math.min(1, dt * 14);
@@ -496,6 +570,16 @@
     if (P.spin > 0) P.face += dt * 22;
 
     if (!frozen && (mouse.down || touchAtk || keys.attack)) useAttack();
+
+    // zones au sol (Pluie de glands, Ronces, Tempête…)
+    for (i = zones.length - 1; i >= 0; i--) {
+      var z = zones[i]; z.t += dt; z.tt += dt;
+      if (z.mine && z.tt >= z.tick) {
+        z.tt -= z.tick;
+        for (var zj = mobs.length - 1; zj >= 0; zj--) { var zm = mobs[zj]; if (dist(z.x, z.y, zm.x, zm.y) < z.r + zm.r) { var zd = rollDamage(z.mult); damageMob(zm, zd.d, 0, 0, zd.crit, z.slow); } }
+      }
+      if (z.t >= z.dur) zones.splice(i, 1);
+    }
 
     // monstres
     if (guest) {
@@ -520,7 +604,7 @@
           if (s.hit && s.hit.indexOf(mm) >= 0) continue;
           if (dist(s.x, s.y, mm.x, mm.y) < s.r + mm.r) {
             var dmg = rollDamage(s.mult), an = Math.atan2(s.vy, s.vx);
-            damageMob(mm, dmg.d, Math.cos(an) * 120, Math.sin(an) * 120, dmg.crit);
+            damageMob(mm, dmg.d, Math.cos(an) * 120, Math.sin(an) * 120, dmg.crit, s.slow);
             if (s.hit) s.hit.push(mm);
             if (s.pierce > 0) s.pierce--; else gone = true;
           }
@@ -530,7 +614,7 @@
         else if (R && R.x != null && !R.dead && dist(s.x, s.y, R.x, R.y) < s.r + 13) { netSend("hurt", { d: s.dmg, kx: Math.round(s.vx * 0.25), ky: Math.round(s.vy * 0.25) }); gone = true; }
       }
       if (gone) {
-        if (s.mine) addParts(s.x, s.y, 4, [s.kind === "orbe" ? "#c9a6ff" : "#d9a35a"], { max: 70 });
+        if (s.mine) addParts(s.x, s.y, 4, [s.kind === "orbe" ? "#c9a6ff" : s.kind === "epine" ? "#7df0a0" : "#d9a35a"], { max: 70 });
         shots.splice(i, 1);
       }
     }
@@ -543,7 +627,12 @@
       if (dd < 110 && d.t > 0.25) { d.x += (P.x - d.x) * Math.min(1, dt * 8); d.y += (P.y - d.y) * Math.min(1, dt * 8); }
       if (dd < 20 && d.t > 0.2) {
         if (d.kind === "gold") { profile.gold += d.v; addText(P.x, P.y - 22, "+" + d.v, "#ffd257"); SFX.coin(); }
-        else { profile.potions++; addText(P.x, P.y - 22, "+1 baie", "#ff8aa8"); SFX.coin(); }
+        else if (d.kind === "item") {
+          var rr = addToBag(d.item), RAR = DATA.RARITIES[d.item.rar];
+          addText(P.x, P.y - 22, rr.sold ? d.item.name + " (sac plein : vendu " + rr.sold + ")" : d.item.name, RAR.col, true); SFX.level();
+          if (d.item.rar >= 2 && !rr.sold) showBanner(d.item.name, RAR.name + " · ouvre ton sac (I) pour l'équiper");
+          saveProfile();
+        } else { profile.potions++; addText(P.x, P.y - 22, "+1 baie", "#ff8aa8"); SFX.coin(); }
         drops.splice(i, 1); updateHud();
       }
     }
@@ -567,19 +656,21 @@
     cam.y += (P.y - cam.y) * Math.min(1, dt * 7);
     cam.shake = Math.max(0, cam.shake - dt * 30);
     flash = Math.max(0, flash - dt);
-    if (banner) { banner.t += dt; if (banner.t > 2.6) { banner = null; bannerEl.hidden = true; } }
 
     saveTimer += dt; if (saveTimer > 10) { saveTimer = 0; saveProfile(); }
     profile.hp = Math.min(profile.hp, maxHp());
-    // régénération lente hors combat
-    if (profile.hp < maxHp() && !nearestMob(P.x, P.y, 260)) { regen += dt; if (regen > 1) { regen = 0; profile.hp = Math.min(maxHp(), profile.hp + 1 + Math.floor(profile.lvl / 4)); updateHud(); } }
-    updateCooldowns();
+    // régénération : continue (classe, équipement, Floraison) + lente hors combat
+    var rg = stats().regen + (P.buffs.regen.t > 0 ? P.buffs.regen.v : 0);
+    if (rg > 0 && !P.dead && profile.hp < maxHp()) profile.hp = Math.min(maxHp(), profile.hp + rg * dt);
+    if (profile.hp < maxHp() && !P.dead && !nearestMob(P.x, P.y, 260)) { regen += dt; if (regen > 1) { regen = 0; profile.hp = Math.min(maxHp(), profile.hp + 1 + Math.floor(profile.lvl / 4)); updateHud(); } }
   }
   var regen = 0;
 
   function mobAI(m, dt) {
     var tg = pickTarget(m), D = m.D, dp = dist(m.x, m.y, tg.x, tg.y), a = Math.atan2(tg.y - m.y, tg.x - m.x);
     m.face = a;
+    if (m.slow > 0) m.slow -= dt;
+    m.spd = m.bspd * (m.slow > 0 ? 1 - m.slowV : 1);
     m.hurt -= dt; m.anim += dt * 6; m.cd -= dt; m.t -= dt;
     // recul
     if (Math.abs(m.kx) > 1 || Math.abs(m.ky) > 1) { moveEnt(m, m.kx * dt, m.ky * dt); m.kx *= 0.86; m.ky *= 0.86; }
@@ -600,18 +691,18 @@
         if (dp < m.r + tg.r + 4 && m.cd <= 0) { m.cd = 1.1; hurtT(tg, m.dmg, Math.cos(a) * 140, Math.sin(a) * 140); }
         break;
       case "corbeau":
-        if (m.dashT > 0) { m.dashT -= dt; moveEnt(m, m.dx * dt, m.dy * dt); if (dp < m.r + tg.r && m.cd <= 0) { m.cd = 1; hurtT(tg, m.dmg, m.dx * 0.5, m.dy * 0.5); } }
+        if (m.dashT > 0) { m.dashT -= dt; moveEnt(m, m.dx * dt, m.dy * dt); if (dp < m.r + tg.r && !m.dHit) { m.dHit = true; hurtT(tg, m.dmg, m.dx * 0.5, m.dy * 0.5); } }
         else {
           // tourne autour du joueur puis pique
           var oa = a + Math.PI + Math.sin(m.anim * 0.3) * 1.2, tx = tg.x + Math.cos(oa) * 120, ty = tg.y + Math.sin(oa) * 120;
           var ta = Math.atan2(ty - m.y, tx - m.x);
           moveEnt(m, Math.cos(ta) * m.spd * dt, Math.sin(ta) * m.spd * dt);
-          if (m.cd <= 0 && dp < 230) { m.dashT = 0.35; m.dx = Math.cos(a) * 300; m.dy = Math.sin(a) * 300; m.cd = 2.2; }
+          if (m.cd <= 0 && dp < 230) { m.dashT = 0.35; m.dHit = false; m.dx = Math.cos(a) * 300; m.dy = Math.sin(a) * 300; m.cd = 2.2; }
         }
         break;
       case "renard":
-        if (m.dashT > 0) { m.dashT -= dt; moveEnt(m, m.dx * dt, m.dy * dt); if (dp < m.r + tg.r && m.cd <= 0) { m.cd = 0.9; hurtT(tg, m.dmg, m.dx * 0.5, m.dy * 0.5); } }
-        else if (m.phase === 1) { m.phase = 0; m.dashT = 0.4; m.dx = Math.cos(m.aim) * 380; m.dy = Math.sin(m.aim) * 380; }
+        if (m.dashT > 0) { m.dashT -= dt; moveEnt(m, m.dx * dt, m.dy * dt); if (dp < m.r + tg.r && !m.dHit) { m.dHit = true; hurtT(tg, m.dmg, m.dx * 0.5, m.dy * 0.5); } }
+        else if (m.phase === 1) { m.phase = 0; m.dashT = 0.4; m.dHit = false; m.dx = Math.cos(m.aim) * 380; m.dy = Math.sin(m.aim) * 380; }
         else if (m.phase === 2) { m.windup -= dt; m.aim = a; if (m.windup <= 0) m.phase = 1; }
         else {
           moveEnt(m, Math.cos(a) * m.spd * dt, Math.sin(a) * m.spd * dt);
@@ -619,8 +710,8 @@
         }
         break;
       case "grenouille":
-        if (m.dashT > 0) { m.dashT -= dt; moveEnt(m, m.dx * dt, m.dy * dt); if (dp < m.r + tg.r + 4 && m.cd <= 0) { m.cd = 0.8; hurtT(tg, m.dmg, m.dx * 0.5, m.dy * 0.5); } }
-        else if (m.cd <= 0) { m.dashT = 0.35; m.dx = Math.cos(a) * 230; m.dy = Math.sin(a) * 230; m.cd = rnd(1.2, 1.8); }
+        if (m.dashT > 0) { m.dashT -= dt; moveEnt(m, m.dx * dt, m.dy * dt); if (dp < m.r + tg.r + 4 && !m.dHit) { m.dHit = true; hurtT(tg, m.dmg, m.dx * 0.5, m.dy * 0.5); } }
+        else if (m.cd <= 0) { m.dashT = 0.35; m.dHit = false; m.dx = Math.cos(a) * 230; m.dy = Math.sin(a) * 230; m.cd = rnd(1.2, 1.8); }
         break;
     }
   }
@@ -691,7 +782,7 @@
   // (x, y) = point au sol sous le sprite ; le sprite regarde à droite, flip le retourne
   function drawSpr(g, spr, x, y, flip, o) {
     o = o || {};
-    var sw = spr.w * PXU, sh = spr.h * PXU, ax = spr.ax * PXU, ay = spr.ay * PXU;
+    var sc = o.scale || 1, sw = spr.w * PXU * sc, sh = spr.h * PXU * sc, ax = spr.ax * PXU * sc, ay = spr.ay * PXU * sc;
     g.save(); g.translate(snap(x), snap(y) - ay);
     if (flip) g.scale(-1, 1);
     if (o.glow) { var gs = ART.silhouette(spr.c, o.glow); [[-PXU, 0], [PXU, 0], [0, -PXU], [0, PXU]].forEach(function (d) { g.drawImage(gs, -ax + d[0], d[1], sw, sh); }); }
@@ -701,11 +792,11 @@
   }
   function faceFlip(o, face) { var c = Math.cos(face); if (c < -0.15) o.flip = true; else if (c > 0.15) o.flip = false; return !!o.flip; }
 
-  function drawHero(g, o) {               // o : { x, y, face, cls, moving, anim, who, flash }
+  function drawHero(g, o) {               // o : { x, y, face, spec, moving, anim, who, flash }
     var fr = o.moving ? Math.floor(o.anim / 2.2) % 2 : Math.floor(tPlay * 1.6) % 2;
     var bob = o.moving && Math.floor(o.anim / 1.1) % 2 ? -PXU : 0;
     shadow(g, o.x, o.y + 12, 42);
-    drawSpr(g, ART.squirrel(o.cls, fr), o.x, o.y + 14 + bob, faceFlip(o.who, o.face), { flash: o.flash });
+    drawSpr(g, ART.hero(o.spec, fr), o.x, o.y + 14 + bob, faceFlip(o.who, o.face), { flash: o.flash });
   }
 
   function drawMob(g, m) {
@@ -721,7 +812,7 @@
     }
     if (m.type === "roi" && m.phase === 2) { g.save(); g.translate(m.x, m.y); g.rotate(m.aim || face); g.fillStyle = "rgba(255,70,50,.28)"; g.fillRect(0, -26, 260, 52); g.restore(); }
     shadow(g, m.x, ground + 4, m.type === "roi" ? 96 : m.type === "corbeau" ? 36 : 45);
-    drawSpr(g, spr, m.x, y + 6, faceFlip(m, face), { flash: m.hurt > 0 ? "#ffffff" : null, glow: m.elite ? "#ffd257" : null });
+    drawSpr(g, spr, m.x, y + 6, faceFlip(m, face), { flash: m.hurt > 0 ? "#ffffff" : null, glow: m.elite ? "#ffd257" : m.slow > 0 ? "#9be8a8" : null });
     // barre de vie
     if (m.hp < m.max || m.D.boss) {
       var bw = m.D.boss ? 72 : 36, bx = snap(m.x - bw / 2), by = snap(y - spr.ay * PXU - 6);
@@ -771,7 +862,7 @@
   }
 
   function drawMate(g) {
-    drawHero(g, { x: R.x, y: R.y, face: R.face || 0, cls: R.cls || "gardien", moving: !!R.m, anim: R.anim || 0, who: R, flash: null });
+    drawHero(g, { x: R.x, y: R.y, face: R.face || 0, spec: R.lk || { fur: "roux" }, moving: !!R.m, anim: R.anim || 0, who: R, flash: null });
     label(g, (R.name || "Ami") + " · " + (R.lvl || 1), R.x, R.y - 64, "#9ad7ff");
     var bw = 39, bx = snap(R.x - bw / 2), by = R.y - 58;
     g.fillStyle = "#2a1810"; g.fillRect(bx - 3, by - 3, bw + 6, 12); g.fillStyle = "#1c4a2a"; g.fillRect(bx, by, bw, 6); g.fillStyle = "#7df0a0"; g.fillRect(bx, by, snap(bw * clamp((R.hp || 0) / (R.mh || 1), 0, 1)), 6);
@@ -781,8 +872,12 @@
     var g = ctx;
     if (P.inv > 0 && P.dashT <= 0 && Math.floor(tPlay * 20) % 2 === 0 && P.hurt <= 0) g.globalAlpha = 0.6;
     if (P.dashT > 0) g.globalAlpha = 0.55;
-    drawHero(g, { x: P.x, y: P.y, face: P.face, cls: profile.cls, moving: P.moving, anim: P.anim, who: P, flash: P.hurt > 0 ? "#ffffff" : null });
+    drawHero(g, { x: P.x, y: P.y, face: P.face, spec: lookSpec(profile), moving: P.moving, anim: P.anim, who: P, flash: P.hurt > 0 ? "#ffffff" : null });
     g.globalAlpha = 1;
+    // auras des buffs actifs
+    if (P.buffs.shield.t > 0) pixArc(g, P.x, P.y + 4, 30, 0, TAU, 3, "rgba(154,215,255,.9)");
+    if (P.buffs.atk.t > 0) pixArc(g, P.x, P.y + 4, 36, tPlay * 2, tPlay * 2 + 4, 3, "rgba(255,159,208,.9)");
+    if (P.buffs.regen.t > 0 && Math.floor(tPlay * 6) % 2) { g.fillStyle = "#7df0a0"; g.fillRect(snap(P.x) + 18, snap(P.y) - 18 - ((tPlay * 30) % 24 | 0), 3, 3); }
   }
 
   function render() {
@@ -809,6 +904,13 @@
     drawPortal(g, world.exit.x + 1.2, world.exit.y + 0.5, world.zi < ZONES.length - 1 ? "#ffd257" : null);
     if (world.zi > 0) drawPortal(g, world.entry.x - 1.2, world.entry.y + 0.5, "#9ad7ff");
 
+    // zones au sol : pastilles en damier qui pulsent
+    zones.forEach(function (z) {
+      var k = 1 - z.t / z.dur, steps = Math.round(z.r / PXU);
+      g.fillStyle = z.col; g.globalAlpha = 0.18 + 0.12 * Math.sin(tPlay * 6);
+      for (var zy = -steps; zy <= steps; zy++) for (var zx = -steps; zx <= steps; zx++) if (zx * zx + zy * zy <= steps * steps && ((zx + zy) & 1) === 0) g.fillRect(snap(z.x) + zx * PXU, snap(z.y) + zy * PXU, PXU, PXU);
+      g.globalAlpha = 0.9; pixArc(g, z.x, z.y, z.r, 0, TAU, 3, z.col); g.globalAlpha = 1;
+    });
     // entités triées par y
     var ents = [];
     world.chests.forEach(function (c) { ents.push({ y: c.y * T + T / 2, f: function () { drawChest(g, c); } }); });
@@ -820,11 +922,15 @@
     ents.forEach(function (e) { e.f(); });
 
     // butin
-    drops.forEach(function (d) { drawSpr(g, ART.item(d.kind === "gold" ? "gold" : "potion"), d.x, d.y + 8 + Math.round(Math.sin(d.t * 6) * 1.5) * PXU, false); });
+    drops.forEach(function (d) {
+      var by = d.y + 8 + Math.round(Math.sin(d.t * 6) * 1.5) * PXU;
+      if (d.kind === "item") { var rc = DATA.RARITIES[d.item.rar].col; if (Math.floor(tPlay * 4) % 2) { g.fillStyle = rc; g.fillRect(snap(d.x) - 12, snap(by) - 24, 3, 3); g.fillRect(snap(d.x) + 9, snap(by) - 18, 3, 3); } drawSpr(g, ART.item("loot" + d.item.rar), d.x, by, false, { glow: d.item.rar >= 2 ? rc : null }); }
+      else drawSpr(g, ART.item(d.kind === "gold" ? "gold" : "potion"), d.x, by, false);
+    });
     // projectiles
     shots.forEach(function (s) {
-      var sp = ART.shot(s.kind === "gland" ? "gland" : s.kind === "orbe" ? "orbe" : "plume");
-      drawSpr(g, sp, s.x, s.y + 6, s.vx < 0);
+      var sp = ART.shot(s.kind === "gland" ? "gland" : s.kind === "orbe" ? "orbe" : s.kind === "epine" ? "epine" : "plume");
+      drawSpr(g, sp, s.x, s.y + 6, s.vx < 0, { scale: s.big ? 1.7 : 1 });
     });
     // particules (carrés calés sur la grille de pixels)
     parts.forEach(function (p) {
@@ -845,195 +951,29 @@
     if (P && profile.hp < maxHp() * 0.3 && !P.dead) { var v = 0.18 + Math.sin(tPlay * 6) * 0.06; var gr = g.createRadialGradient(canvas.width / 2, canvas.height / 2, canvas.height * 0.3, canvas.width / 2, canvas.height / 2, canvas.height * 0.8); gr.addColorStop(0, "rgba(200,0,0,0)"); gr.addColorStop(1, "rgba(200,0,0," + v + ")"); g.fillStyle = gr; g.fillRect(0, 0, canvas.width, canvas.height); }
   }
 
-  /* ====================== INTERFACE ====================== */
-  var bannerEl = stage.querySelector("[data-banner]");
-  var els = {};
-  function $(s) { return stage.querySelector(s); }
-  function initHud() {
-    ["hp", "hptxt", "xp", "lvl", "gold", "potions", "zone", "quest", "sp", "dash", "pts"].forEach(function (k) { els[k] = $('[data-h="' + k + '"]'); });
-  }
-  function updateHud() {
-    if (!profile || !els.hp) return;
-    var mh = maxHp();
-    els.hp.style.width = (clamp(profile.hp / mh, 0, 1) * 100) + "%";
-    els.hptxt.textContent = Math.ceil(profile.hp) + " / " + mh;
-    els.xp.style.width = (profile.lvl >= MAX_LVL ? 100 : clamp(profile.xp / xpFor(profile.lvl), 0, 1) * 100) + "%";
-    els.lvl.textContent = "Niv. " + profile.lvl;
-    els.gold.textContent = profile.gold;
-    els.potions.textContent = profile.potions;
-    els.zone.textContent = world ? world.Z.name + (R ? " · avec " + (R.name || "un ami") : "") : "";
-    els.pts.hidden = profile.pts <= 0; els.pts.textContent = "+" + profile.pts;
-    var q = QUESTS[profile.quest];
-    els.quest.innerHTML = q ? "<b>" + esc(q.name) + "</b><br>" + (q.kill === "roi" ? (profile.bossDead ? "Fait" : "Vaincre le Roi-corbeau") : esc(MOBS[q.kill].name) + " " + profile.qn + "/" + q.n) : "<b>Toutes les quêtes sont accomplies</b><br>Bravo, héros de Ronceclair !";
-  }
-  function updateCooldowns() {
-    if (!els.sp) return;
-    els.sp.style.setProperty("--cd", clamp(P.spCd / 6, 0, 1));
-    els.dash.style.setProperty("--cd", clamp(P.dashCd / 0.9, 0, 1));
-  }
-  function showBanner(t, sub) {
-    banner = { t: 0 };
-    bannerEl.innerHTML = "<strong>" + esc(t) + "</strong><span>" + esc(sub || "") + "</span>";
-    bannerEl.hidden = false;
-    bannerEl.classList.remove("rc-pop"); void bannerEl.offsetWidth; bannerEl.classList.add("rc-pop");
-  }
-
-  /* ====================== ÉCRANS (cartes) ====================== */
-  var cardHandlers = null;
-  function showCard(html, onAct, wide) {
-    card.className = "panel game-card rc-card" + (wide ? " rc-wide" : "");
-    card.innerHTML = html;
-    overlay.hidden = false;
-    cardHandlers = onAct;
-  }
-  function hideCard() { overlay.hidden = true; cardHandlers = null; card.innerHTML = ""; }
-  card.addEventListener("click", function (e) {
-    var b = e.target.closest("[data-act]"); if (!b || !cardHandlers) return;
-    cardHandlers(b.getAttribute("data-act"), b);
-  });
-
-  function screenMenu() {
-    mode = "menu";
-    hudEl.hidden = true;
-    var saved = loadProfile(), h = "";
-    h += '<h2>Ronceclair</h2><p class="rc-sub">La guilde des écureuils a besoin d\'un héros.</p>';
-    if (menuMsg) { h += '<p class="rc-err">' + esc(menuMsg) + '</p>'; menuMsg = ""; }
-    if (pendingCode) h += '<p class="rc-sub">Invitation au salon <b>' + pendingCode + '</b> : choisis ton héros pour rejoindre ton ami.</p>';
-    if (saved) h += '<button class="btn" data-act="continue" type="button">Continuer · ' + esc(CLASSES[saved.cls].name) + ' niv. ' + saved.lvl + '</button>';
-    h += '<p class="rc-pick-title">' + (saved ? "Ou commencer une nouvelle aventure :" : "Choisis ta classe :") + '</p><div class="rc-classes">';
-    Object.keys(CLASSES).forEach(function (k) {
-      var C = CLASSES[k];
-      h += '<button class="rc-class" data-act="new:' + k + '" type="button"><canvas width="96" height="96" data-cls="' + k + '"></canvas><b>' + C.name + '</b><span>' + esc(C.desc) + '</span><em>Spécial : ' + esc(C.special) + '</em></button>';
-    });
-    h += '</div>';
-    showCard(h, function (act) {
-      if (act === "continue") { profile = saved; pickDone(); }
-      else if (act.indexOf("new:") === 0) {
-        if (saved && !window.confirm("Effacer ta sauvegarde actuelle ?")) return;
-        profile = newProfile(act.slice(4)); saveProfile(); pickDone();
-      }
-    }, true);
-    Array.prototype.forEach.call(card.querySelectorAll("canvas[data-cls]"), function (c) {
-      var g = c.getContext("2d"), cl = c.getAttribute("data-cls"), sp = ART.squirrel(cl, 0);
-      g.imageSmoothingEnabled = false;
-      g.drawImage(sp.c, Math.round((96 - sp.w * 3) / 2), Math.round((96 - sp.h * 3) / 2), sp.w * 3, sp.h * 3);
-    });
-  }
-
-  function pickDone() { if (pendingCode) { var c = pendingCode; pendingCode = null; joinRoom(c); } else screenMode(); }
-
-  function screenMode() {
-    mode = "menu"; hudEl.hidden = true;
-    var C = CLASSES[profile.cls];
-    var h = '<h2>' + esc(C.name) + ' · niveau ' + profile.lvl + '</h2>';
-    if (NET.err) h += '<p class="rc-err">' + esc(NET.err) + '</p>';
-    h += '<label class="rc-field">Ton pseudo <input data-name type="text" maxlength="14" value="' + esc(load("rc-name", "")) + '" placeholder="' + esc(C.name) + '" autocomplete="off"></label>';
-    h += '<button class="btn" data-act="solo" type="button">▶ Jouer seul</button>';
-    h += '<p class="rc-pick-title">Coop en ligne (2 joueurs)</p>';
-    h += '<button class="btn" data-act="host" type="button">Créer un salon</button>';
-    h += '<div class="rc-join"><input data-code type="text" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="btn" data-act="join" type="button">Rejoindre</button></div>';
-    h += '<button class="btn btn-ghost btn-small" data-act="back" type="button">← Changer de héros</button>';
-    showCard(h, function (act) {
-      var nm = card.querySelector("[data-name]"); if (nm) store("rc-name", nm.value.trim().slice(0, 14));
-      if (act === "solo") { NET.err = ""; startGame(); }
-      else if (act === "host") { if (netOpen(newCode(), "host")) { startGame(); screenInvite(); } else screenMode(); }
-      else if (act === "join") {
-        var code = String((card.querySelector("[data-code]") || {}).value || "").toUpperCase().replace(/[^A-Z]/g, "");
-        if (code.length !== 4) { NET.err = "Le code du salon fait 4 lettres."; screenMode(); return; }
-        joinRoom(code);
-      } else if (act === "back") { NET.err = ""; screenMenu(); }
-    });
-  }
-  function joinRoom(code) {
-    mode = "menu";
-    showCard('<h2>Salon ' + esc(code) + '</h2><p>Connexion à ton ami…</p><button class="btn btn-ghost" data-act="cancel" type="button">Annuler</button>', function () { netClose(); NET.err = ""; screenMode(); });
-    if (!netOpen(code, "guest")) screenMode();
-  }
-  function screenInvite() {
-    mode = "dialog";
-    var h = '<h2>Salon ouvert</h2><p>Code : <b class="rc-code">' + NET.code + '</b></p><p class="rc-sub">Envoie ce lien à ton ami, il rejoindra ta partie :</p>';
-    h += '<input class="rc-link" readonly data-link value="' + esc(inviteLink()) + '">';
-    h += '<button class="btn" data-act="copy" type="button">Copier le lien</button> <button class="btn btn-ghost" data-act="close" type="button">Continuer à jouer</button>';
-    h += '<p class="rc-sub">' + (R ? esc(R.name || "Un ami") + ' est connecté.' : "En attente d'un ami… tu peux jouer en l'attendant.") + '</p>';
-    showCard(h, function (act, b) {
-      if (act === "close") { hideCard(); mode = "play"; return; }
-      var inp = card.querySelector("[data-link]");
-      var done = function () { b.textContent = "Lien copié ✔"; };
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inviteLink()).then(done, function () { inp.select(); });
-      else { inp.select(); try { document.execCommand("copy"); done(); } catch (e) {} }
-    });
-  }
+  /* ====================== PONT AVEC L'INTERFACE ====================== */
+  // js/ronceclair-ui.js fournit RC.ui (title, hud, banner, death, dialog, panel, …) ; le moteur l'appelle via ui().
+  var RC = window.RC = { D: DATA, ART: ART, version: VERSION, ui: null };
+  function ui(name, a, b) { var u = RC.ui; if (u && u[name]) { try { return u[name](a, b); } catch (e) { if (window.console) console.error(e); } } }
+  function updateHud() { ui("hud"); }
+  function showBanner(t, sub) { ui("banner", t, sub); }
 
   function startGame(zi) {
-    hideCard();
-    P = makePlayer();
-    mode = "play"; hudEl.hidden = false; tPlay = 0;
+    P = makePlayer(); mode = "play"; tPlay = 0; zones = []; shopData.stock = [];
+    dirtyStats();
     if (NET.role === "guest") NET.savedZone = profile.zone;      // l'invité suit l'hôte, sa propre zone sera restaurée en partant
+    if (!(profile.hp >= 1)) profile.hp = maxHp();
+    profile.hp = Math.min(profile.hp, maxHp());
     enterZone(zi != null ? zi : (profile.zone || 0));
+    ui("gameStarted");
     updateHud();
     if (profile.lvl === 1 && profile.kills === 0) showBanner("Bienvenue à Ronceclair", "Parle à Maître Noisetier (F)");
-  }
-
-  function screenElder() {
-    mode = "dialog";
-    var q = QUESTS[profile.quest], h;
-    if (!q) h = "<h2>Maître Noisetier</h2><p>Tu as tout accompli, jeune écureuil. Ronceclair est en paix… pour l'instant. De nouvelles zones et classes arriveront bientôt !</p>";
-    else h = "<h2>Maître Noisetier</h2><p><b>" + esc(q.name) + "</b></p><p>" + esc(q.text) + "</p><p class=\"rc-sub\">Progression : " + (q.kill === "roi" ? (profile.bossDead ? "1/1" : "0/1") : profile.qn + "/" + q.n) + " · Récompense : " + q.gold + " noisettes, " + q.xp + " XP</p>";
-    h += '<button class="btn" data-act="close" type="button">D\'accord</button>';
-    showCard(h, function () { hideCard(); mode = "play"; });
-  }
-
-  function screenShop() {
-    mode = "dialog";
-    var h = '<h2>Dame Glandine</h2><p class="rc-sub">Tu as <b>' + profile.gold + '</b> noisettes.</p><div class="rc-list">';
-    SHOP.forEach(function (it) {
-      var n = it.consumable ? profile.potions : profile.gear[it.id], cost = it.cost(n || 0), maxed = it.max && n >= it.max;
-      h += '<div class="rc-row"><div><b>' + esc(it.name) + (it.consumable ? " (×" + profile.potions + ")" : " · niv. " + n + "/" + it.max) + '</b><span>' + esc(it.desc) + '</span></div><button class="btn btn-small" data-act="buy:' + it.id + '" type="button"' + (maxed || profile.gold < cost ? " disabled" : "") + '>' + (maxed ? "Max" : cost + " 🌰") + '</button></div>';
-    });
-    h += '</div><button class="btn btn-ghost" data-act="close" type="button">Fermer</button>';
-    showCard(h, function (act) {
-      if (act === "close") { hideCard(); mode = "play"; return; }
-      if (act.indexOf("buy:") === 0) {
-        var it = SHOP.filter(function (s) { return s.id === act.slice(4); })[0], n = it.consumable ? profile.potions : profile.gear[it.id], cost = it.cost(n || 0);
-        if (profile.gold < cost || (it.max && n >= it.max)) return;
-        profile.gold -= cost;
-        if (it.consumable) profile.potions++; else { profile.gear[it.id]++; if (it.id === "cape") profile.hp += 12; }
-        SFX.coin(); saveProfile(); updateHud(); screenShop();
-      }
-    });
-  }
-
-  function screenStats() {
-    mode = "dialog";
-    var C = CLASSES[profile.cls];
-    var h = '<h2>' + esc(C.name) + ' · niveau ' + profile.lvl + '</h2><p class="rc-sub">Points à répartir : <b>' + profile.pts + '</b></p><div class="rc-list">';
-    Object.keys(STATS).forEach(function (k) {
-      h += '<div class="rc-row"><div><b>' + STATS[k].name + ' : ' + profile.stats[k] + '</b><span>' + STATS[k].desc + '</span></div><button class="btn btn-small" data-act="stat:' + k + '" type="button"' + (profile.pts <= 0 ? " disabled" : "") + '>+1</button></div>';
-    });
-    h += '</div><p class="rc-sub">PV max <b>' + maxHp() + '</b> · Attaque <b>' + Math.round(atkPower()) + '</b> · Vitesse <b>' + Math.round(moveSpeed()) + '</b> · Critique <b>' + Math.round(critChance() * 100) + ' %</b><br>XP ' + (profile.lvl >= MAX_LVL ? "max" : profile.xp + " / " + xpFor(profile.lvl)) + ' · ' + profile.kills + ' monstres vaincus</p>';
-    h += '<div class="rc-coopbox">';
-    if (!NET.on) h += '<button class="btn btn-ghost btn-small" data-act="invite" type="button">👥 Inviter un ami (coop en ligne)</button>';
-    else if (NET.role === "host") h += '<button class="btn btn-ghost btn-small" data-act="showcode" type="button">Salon ' + NET.code + (R ? " · avec " + esc(R.name || "un ami") : " · en attente") + '</button> <button class="btn btn-ghost btn-small" data-act="closeroom" type="button">Fermer le salon</button>';
-    else h += '<button class="btn btn-ghost btn-small" data-act="menu" type="button">Quitter le salon</button>';
-    h += '</div><button class="btn" data-act="close" type="button">Fermer</button> <button class="btn btn-ghost btn-small" data-act="menu" type="button">Menu principal</button>';
-    showCard(h, function (act) {
-      if (act === "close") { hideCard(); mode = "play"; return; }
-      if (act === "menu") { if (NET.on) { quitToMenu(); return; } saveProfile(); hideCard(); screenMenu(); return; }
-      if (act === "invite") { if (netOpen(newCode(), "host")) screenInvite(); else { showBanner("Coop indisponible", NET.err); screenStats(); } return; }
-      if (act === "showcode") { screenInvite(); return; }
-      if (act === "closeroom") { netClose(); NET.err = ""; screenStats(); return; }
-      if (act.indexOf("stat:") === 0 && profile.pts > 0) {
-        profile.stats[act.slice(5)]++; profile.pts--;
-        if (act === "stat:vit") profile.hp += 10;
-        SFX.coin(); saveProfile(); updateHud(); screenStats();
-      }
-    });
   }
 
   function interact() {
     if (mode !== "play" || P.dead) return;
     var i;
-    for (i = 0; i < npcs.length; i++) if (dist(npcs[i].x, npcs[i].y, P.x, P.y) < 64) { npcs[i].kind === "elder" ? screenElder() : screenShop(); return; }
+    for (i = 0; i < npcs.length; i++) if (dist(npcs[i].x, npcs[i].y, P.x, P.y) < 64) { mode = "dialog"; ui("dialog", npcs[i].kind); return; }
     for (i = 0; i < world.chests.length; i++) {
       var c = world.chests[i], key = world.zi + ":" + c.i;
       if (!profile.chests[key] && dist(c.x * T + T / 2, c.y * T + T / 2, P.x, P.y) < 56) {
@@ -1042,7 +982,9 @@
         profile.gold += g; SFX.coin();
         addText(P.x, P.y - 28, "+" + g + " noisettes", "#ffd257", true);
         addParts(c.x * T + T / 2, c.y * T + T / 2, 14, ["#ffd257", "#fff"], { max: 130 });
-        if (Math.random() < 0.5) { profile.potions++; addText(P.x, P.y - 48, "+1 baie", "#ff8aa8"); }
+        var it = DATA.randomItem(world.Z.lvl + 1, Math.random, 1), rr = addToBag(it);              // un coffre contient toujours un équipement
+        addText(P.x, P.y - 50, rr.sold ? it.name + " (vendu)" : it.name, DATA.RARITIES[it.rar].col, true);
+        if (Math.random() < 0.5) { profile.potions++; addText(P.x, P.y - 72, "+1 baie", "#ff8aa8"); }
         saveProfile(); updateHud(); return;
       }
     }
@@ -1050,21 +992,27 @@
 
   /* ====================== ENTRÉES ====================== */
   var KEYMAP = { ArrowUp: "up", KeyW: "up", KeyZ: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", KeyQ: "left", ArrowRight: "right", KeyD: "right", Space: "attack" };
+  var SKILL_KEYS = { Digit1: 0, Numpad1: 0, KeyE: 0, Digit2: 1, Numpad2: 1, Digit3: 2, Numpad3: 2 };
   window.addEventListener("keydown", function (e) {
-    if (!profile || !stage.isConnected) return;
+    if (!profile || !stage.isConnected || mode === "title") return;
     var tag = (e.target && e.target.tagName) || "";
     if (tag === "INPUT" || tag === "TEXTAREA") return;
     var k = KEYMAP[e.code];
     if (mode === "play") {
       if (k) { keys[k] = true; e.preventDefault(); return; }
-      if (e.code === "ShiftLeft" || e.code === "ShiftRight") { useDash(); e.preventDefault(); }
-      else if (e.code === "KeyE") useSpecial();
+      if (e.code in SKILL_KEYS) useSkill(SKILL_KEYS[e.code]);
+      else if (e.code === "ShiftLeft" || e.code === "ShiftRight") { useDash(); e.preventDefault(); }
       else if (e.code === "KeyF" || e.code === "Enter") interact();
       else if (e.code === "KeyR" || e.code === "KeyH") usePotion();
-      else if (e.code === "KeyC" || e.code === "KeyI") screenStats();
-    } else if (mode === "dialog" && (e.code === "Escape" || e.code === "KeyC") && !P.dead) { hideCard(); mode = "play"; }
+      else if (e.code === "KeyI") { mode = "dialog"; ui("panel", "inventaire"); }
+      else if (e.code === "KeyC") { mode = "dialog"; ui("panel", "stats"); }
+      else if (e.code === "KeyK") { mode = "dialog"; ui("panel", "sorts"); }
+      else if (e.code === "KeyJ") { mode = "dialog"; ui("panel", "quetes"); }
+      else if (e.code === "Escape") { mode = "dialog"; ui("panel", "menu"); }
+    } else if (mode === "dialog" && e.code === "Escape" && !P.dead) { ui("closeAll"); }
   });
   window.addEventListener("keyup", function (e) { var k = KEYMAP[e.code]; if (k) keys[k] = false; });
+  document.addEventListener("pointerdown", function () { audio(); }, { once: true });
   window.addEventListener("blur", function () { keys = {}; mouse.down = false; touchAtk = false; });
 
   canvas.addEventListener("pointermove", function (e) {
@@ -1081,31 +1029,6 @@
   window.addEventListener("pointerup", function (e) { if (e.pointerType !== "touch") mouse.down = false; });
   canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
-  /* commandes tactiles : joystick à gauche, boutons à droite */
-  var joyEl = $("[data-joy]"), joyKnob = $("[data-joy-knob]");
-  function joyMove(e) {
-    var r = joyEl.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    var dx = e.clientX - cx, dy = e.clientY - cy, m = r.width / 2, l = Math.sqrt(dx * dx + dy * dy) || 1, k = Math.min(1, l / m);
-    joy.ax = dx / l * k; joy.ay = dy / l * k;
-    joyKnob.style.transform = "translate(" + (joy.ax * m * 0.6) + "px," + (joy.ay * m * 0.6) + "px)";
-  }
-  joyEl.addEventListener("pointerdown", function (e) { joy.id = e.pointerId; joyEl.setPointerCapture(e.pointerId); touchMode = true; audio(); joyMove(e); });
-  joyEl.addEventListener("pointermove", function (e) { if (joy.id === e.pointerId) joyMove(e); });
-  function joyEnd(e) { if (joy.id === e.pointerId) { joy.id = null; joy.ax = joy.ay = 0; joyKnob.style.transform = ""; } }
-  joyEl.addEventListener("pointerup", joyEnd); joyEl.addEventListener("pointercancel", joyEnd);
-
-  function holdBtn(sel, down, up) {
-    var b = $(sel); if (!b) return;
-    b.addEventListener("pointerdown", function (e) { e.preventDefault(); touchMode = e.pointerType === "touch" ? true : touchMode; audio(); b.setPointerCapture(e.pointerId); down(); });
-    ["pointerup", "pointercancel"].forEach(function (ev) { b.addEventListener(ev, function () { if (up) up(); }); });
-  }
-  holdBtn("[data-b=atk]", function () { touchAtk = true; if (mode === "play") useAttack(); }, function () { touchAtk = false; });
-  holdBtn("[data-b=dash]", function () { if (mode === "play") useDash(); });
-  holdBtn("[data-b=sp]", function () { if (mode === "play") useSpecial(); });
-  holdBtn("[data-b=pot]", function () { if (mode === "play") usePotion(); });
-  holdBtn("[data-b=act]", function () { interact(); });
-  holdBtn("[data-b=menu]", function () { if (mode === "play") screenStats(); });
-
   /* ====================== EN LIGNE (coop à 2) ====================== */
   // Modèle : l'hôte fait vivre le monde (monstres, projectiles ennemis). Chaque joueur reste maître de son
   // déplacement et de ses attaques ; l'invité envoie ses coups à l'hôte, qui tranche et renvoie les dégâts subis.
@@ -1117,7 +1040,6 @@
   var NET = { on: false, role: null, id: Math.random().toString(36).slice(2, 10), code: null, client: null, ch: null, guestId: null, started: false,
     err: "", pAcc: 0, sAcc: 0, lastRx: 0, savedZone: null, ts: 0, helloTimer: null, joinTimer: null };
   var R = null;                                       // le coéquipier
-  var pendingCode = null, menuMsg = "";
 
   function netSend(ev, payload) { if (NET.ch) { try { NET.ch.send({ type: "broadcast", event: ev, payload: payload }); } catch (e) {} } }
   function sbClient() {
@@ -1128,7 +1050,7 @@
     return NET.client;
   }
   function newCode() { var c = ""; for (var i = 0; i < 4; i++) c += CODE_CH[Math.floor(Math.random() * CODE_CH.length)]; return c; }
-  function myName() { var n = String(load("rc-name", "") || "").trim().slice(0, 14); return n || (profile ? CLASSES[profile.cls].name : "Écureuil"); }
+  function myName() { return (profile && profile.name) || "Écureuil"; }
   function inviteLink() { return location.origin + location.pathname + "#rc=" + NET.code; }
   function trackMe() { if (NET.ch) NET.ch.track({ id: NET.id, name: myName(), host: NET.role === "host", ts: NET.ts, v: VERSION }); }
   function sayHello() { netSend("hello", { id: NET.id, name: myName(), cls: profile.cls, lvl: profile.lvl, v: VERSION }); }
@@ -1140,7 +1062,7 @@
     NET.on = true; NET.role = role; NET.code = code; NET.err = ""; NET.started = role === "host"; NET.guestId = null; NET.ts = Date.now(); NET.lastRx = Date.now(); R = null;
     var ch = cl.channel("rc-room-" + code, { config: { broadcast: { self: false, ack: false }, presence: { key: NET.id } } });
     ch.on("presence", { event: "sync" }, onPresence);
-    ["hello", "welcome", "full", "p", "s", "hit", "hurt", "kill", "zone", "fx", "bye"].forEach(function (ev) {
+    ["hello", "welcome", "full", "p", "s", "hit", "hurt", "kill", "zone", "fx", "heal", "buff", "bye"].forEach(function (ev) {
       ch.on("broadcast", { event: ev }, function (msg) { try { onNet(ev, msg.payload); } catch (err) { if (window.console) console.error(err); } });
     });
     if (window.Party && window.Party.emoteChannel) { try { window.Party.emoteChannel(ch, myName); } catch (e) {} }      // émotes du site (bouton 😀)
@@ -1150,10 +1072,10 @@
         if (role === "guest") {
           sayHello();
           NET.helloTimer = setInterval(function () { if (NET.started || !NET.ch) { clearInterval(NET.helloTimer); return; } sayHello(); }, 1500);
-          NET.joinTimer = setTimeout(function () { if (!NET.started && NET.role === "guest") { netClose(); NET.err = "Salon introuvable ou fermé. Vérifie le code."; screenMode(); } }, 9000);
+          NET.joinTimer = setTimeout(function () { if (!NET.started && NET.role === "guest") { netClose(); NET.err = "Salon introuvable ou fermé. Vérifie le code."; ui("netFail", NET.err); } }, 9000);
         }
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        if (role === "guest" && !NET.started) { netClose(); NET.err = "Connexion impossible au salon. Vérifie ta connexion."; screenMode(); }
+        if (role === "guest" && !NET.started) { netClose(); NET.err = "Connexion impossible au salon. Vérifie ta connexion."; ui("netFail", NET.err); }
       }
     });
     NET.ch = ch;
@@ -1192,8 +1114,7 @@
     var sz = NET.savedZone; NET.savedZone = null;
     netClose();
     if (profile) { if (sz != null) profile.zone = sz; saveProfile(); }
-    mode = "menu"; hudEl.hidden = true; menuMsg = msg || "";
-    screenMenu();
+    mode = "title"; ui("title", msg || "");
   }
 
   function onNet(ev, d) {
@@ -1213,18 +1134,19 @@
       R = { id: d.id, name: d.name, cls: d.cls, lvl: d.lvl, x: null }; NET.started = true; NET.lastRx = Date.now();
       startGame(d.zi);
     } else if (ev === "full") {
-      if (d.to === NET.id && NET.role === "guest" && !NET.started) { netClose(); NET.err = d.why || "Salon plein."; screenMode(); }
+      if (d.to === NET.id && NET.role === "guest" && !NET.started) { netClose(); NET.err = d.why || "Salon plein."; ui("netFail", NET.err); }
     } else if (ev === "p") {
       if (!R || d.id !== R.id) return;
       R.tx = d.x; R.ty = d.y; if (R.x == null) { R.x = d.x; R.y = d.y; }
       R.face = d.f; R.m = !!d.m; R.hp = d.hp; R.mh = d.mh; R.dead = !!d.dd; R.dh = !!d.dh; R.cls = d.c; R.lvl = d.l; R.name = d.n; NET.lastRx = Date.now();
+      if (d.lk) { var lk = d.lk.split("|"); R.lk = { fur: lk[0], tete: lk[1] || null, dos: lk[2] || null, main: lk[3] || null }; }
     } else if (ev === "s") {
       if (NET.role === "guest" && NET.started && world) applySnap(d);
     } else if (ev === "hit") {
       if (NET.role !== "host") return;
-      for (var i = 0; i < mobs.length; i++) if (mobs[i].id === d.id) { damageMob(mobs[i], d.d, d.kx, d.ky, !!d.c); break; }
+      for (var i = 0; i < mobs.length; i++) if (mobs[i].id === d.id) { damageMob(mobs[i], d.d, d.kx, d.ky, !!d.c, d.sl || null); break; }
     } else if (ev === "hurt") {
-      if (NET.role === "guest" && P && !P.dead && mode !== "menu") hurtPlayer(d.d, d.kx, d.ky);
+      if (NET.role === "guest" && P && !P.dead && mode !== "title") hurtPlayer(d.d, d.kx, d.ky);
     } else if (ev === "kill") {
       if (NET.role !== "guest" || !world) return;
       mobs = mobs.filter(function (m) { return m.id !== d.id; });
@@ -1234,7 +1156,12 @@
     } else if (ev === "fx") {
       if (d.k === "slash") addSlash(d.x, d.y, d.a, d.r, d.col);
       else if (d.k === "ring") parts.push({ ring: true, x: d.x, y: d.y, r: d.r, col: d.col, life: d.life, t: 0 });
+      else if (d.k === "zone") zones.push({ x: d.x, y: d.y, r: d.r, dur: d.dur, t: 0, tick: 1e9, tt: 0, col: d.col, mine: false });
       else if (d.k === "shot") shots.push({ x: d.x, y: d.y, vx: d.vx, vy: d.vy, life: d.life, r: 6, kind: d.kind, mine: false, ghost: true, dmg: 0 });
+    } else if (ev === "heal") {
+      if (P && !P.dead && mode !== "title") healSelf(d.pct);
+    } else if (ev === "buff") {
+      applyBuff(d);
     } else if (ev === "bye") {
       if (R && d.id === R.id) partnerLeft();
     }
@@ -1242,7 +1169,7 @@
 
   function sendP() {
     netSend("p", { id: NET.id, x: Math.round(P.x), y: Math.round(P.y), f: Math.round(P.face * 100) / 100, m: P.moving ? 1 : 0, hp: Math.ceil(profile.hp), mh: maxHp(),
-      dd: P.dead ? 1 : 0, dh: P.dashT > 0 ? 1 : 0, c: profile.cls, l: profile.lvl, n: myName() });
+      dd: P.dead ? 1 : 0, dh: P.dashT > 0 ? 1 : 0, c: profile.cls, l: profile.lvl, n: myName(), lk: (function () { var l = lookSpec(profile); return [l.fur, l.tete || "", l.dos || "", l.main || ""].join("|"); })() });
   }
   function sendS() {
     netSend("s", {
@@ -1290,32 +1217,69 @@
   var last = 0;
   function frame(ts) {
     var dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts;
-    if (profile && P && world) {
+    if (profile && P && world && mode !== "title") {
       if (mode === "play") update(dt);
       else if (mode === "dialog" && NET.on && NET.started) update(dt, true);
       else { tPlay += dt; for (var i = parts.length - 1; i >= 0; i--) { parts[i].t += dt; if (parts[i].t >= parts[i].life) parts.splice(i, 1); } }
       render();
     } else {
-      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#2f6b3e"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#1f3a2b"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     requestAnimationFrame(frame);
   }
 
-  // accès console pour tester : RC_DEBUG.level(5), RC_DEBUG.gold(100), RC_DEBUG.zone(2)
+  // accès console pour tester : RC_DEBUG.start("lanceur"), .level(5), .gold(100), .zone(2), .spawn('renard', 2), .item(3)
   window.RC_DEBUG = {
+    start: function (cls, name, fur) { var p = RC.createProfile(cls, name || "Test", fur || "roux"); RC.start(p); },
     level: function (n) { while (profile.lvl < n) gainXp(xpFor(profile.lvl), P.x, P.y); },
     gold: function (n) { profile.gold += n; updateHud(); },
     zone: function (z) { profile.quest = Math.max(profile.quest, 1); enterZone(z); updateHud(); },
     spawn: function (type, n) { for (var i = 0; i < (n || 1); i++) { var m = makeMob(type, world.Z.lvl); m.x = P.x + 90 + i * 30; m.y = P.y; m.home = { x: m.x, y: m.y }; m.state = "chase"; mobs.push(m); } },
-    mobs: function () { return mobs.map(function (m) { return { t: m.type, hp: m.hp }; }); },
+    mobs: function () { return mobs.map(function (m) { return { t: m.type, hp: m.hp, x: Math.round(m.x), y: Math.round(m.y), st: m.state, ph: m.phase, cd: Math.round(m.cd * 10) / 10, sp: Math.round(m.spd) }; }); },
+    item: function (rar, slot) { var it = DATA.genItem(slot || DATA.SLOT_ORDER[Math.floor(Math.random() * 4)], profile.lvl, rar == null ? 2 : rar); profile.bag.push(it); updateHud(); return it; },
+    tpNpc: function (kind) { for (var i = 0; i < npcs.length; i++) if (npcs[i].kind === kind) { P.x = npcs[i].x - 34; P.y = npcs[i].y; return true; } return false; },
     state: function () { return { profile: profile, mobs: mobs.length, mode: mode, player: P && { x: P.x, y: P.y } }; }
   };
 
-  var hm = /#rc=([A-Z]{4})/i.exec(location.hash);
-  if (hm) pendingCode = hm[1].toUpperCase();
+  /* API pour l'interface (js/ronceclair-ui.js) */
+  RC.profile = function () { return profile; };
+  RC.slots = function () { return slots; };
+  RC.createProfile = function (cls, name, fur) {
+    if (slots.length >= DATA.MAX_SLOTS) return null;
+    var p = DATA.newProfile(cls, name, fur); slots.push(p); DATA.saveSlots(slots); return p;
+  };
+  RC.deleteSlot = function (i) { slots.splice(i, 1); DATA.saveSlots(slots); };
+  RC.select = function (p) { profile = p; dirtyStats(); };
+  RC.start = function (p, zi) { profile = p; startGame(zi); };
+  RC.mode = function () { return mode; };
+  RC.setMode = function (m) { mode = m; if (m === "play") { keys = {}; mouse.down = false; } };
+  RC.stats = stats; RC.maxHp = maxHp; RC.lookSpec = lookSpec; RC.save = saveProfile;
+  RC.cooldowns = function () { return P ? { atk: P.cd, atkMax: P.C.cd, sk: P.skCd.slice(), skMax: P.skMax.slice(), dash: P.dashCd, dashMax: 0.9 } : null; };
+  RC.buffs = function () { return P ? P.buffs : null; };
+  RC.useSkill = useSkill; RC.useAttack = useAttack; RC.useDash = useDash; RC.usePotion = usePotion; RC.interact = interact;
+  RC.skillUnlocked = skillUnlocked; RC.skillOf = skillOf;
+  RC.equip = equipItem; RC.unequip = unequipItem; RC.sell = sellItem; RC.spend = spendPoint; RC.BAG_MAX = BAG_MAX;
+  RC.shop = { stock: shopStock, buyItem: buyItem, buyPotion: buyPotion };
+  RC.quests = function () { return { list: QUESTS, cur: profile.quest, n: profile.qn, bossDead: profile.bossDead, mobs: MOBS }; };
+  RC.zoneName = function () { return world ? world.Z.name : ""; };
+  RC.dead = function () { return !!(P && P.dead); };
+  RC.mate = function () { return R; };
+  RC.net = NET;
+  RC.coop = function () { return NET.on && NET.started; };
+  RC.host = function () { var c = newCode(); return netOpen(c, "host") ? c : null; };
+  RC.join = function (code) { return netOpen(code, "guest"); };
+  RC.leave = function () { if (NET.role === "guest" && profile) quitToMenu(); else netClose(); };
+  RC.inviteLink = inviteLink;
+  RC.touch = {
+    move: function (ax, ay) { joy.ax = ax; joy.ay = ay; if (ax || ay) touchMode = true; },
+    attack: function (down) { touchAtk = down; touchMode = true; if (down) useAttack(); }
+  };
+  RC.quitToTitle = function () { saveProfile(); if (NET.on) { var sz = NET.savedZone; NET.savedZone = null; netClose(); if (sz != null) profile.zone = sz; saveProfile(); } mode = "title"; ui("title", ""); };
+  RC.sfx = SFX;
+
   window.addEventListener("beforeunload", function () { if (NET.ch) netSend("bye", { id: NET.id }); });
-  initHud();
   resize();
-  screenMenu();
   requestAnimationFrame(frame);
+  RC.ready = true;
+  if (RC.ui && RC.ui.boot) RC.ui.boot();
 })();
