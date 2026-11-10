@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.50.0";
+  var VERSION = "2.51.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -166,7 +166,7 @@
   }
   var SPR = {};
   Object.keys(D.SPRITES).forEach(function (k) {
-    var d = D.SPRITES[k];
+    var d = D.SPRITES[k]; if (window.ES_ART) d = ES_ART.upgrade(k, d);      // version dithering : sprites refaits à la taille × 2
     SPR[k] = d.frames.map(function (f) { return sprite(f, d.pal); });
     SPR[k].flying = !!d.flying;
     // style A : images de repos, pose de Volte, rebond de marche
@@ -7759,11 +7759,13 @@
     else if (frames.idle) s = frames.idle[((performance.now() / 1000 + (x * 0.013)) * 2.2 | 0) % frames.idle.length];
     else s = frames[0];
     var lift = fly ? 6 + Math.sin(anim * 0.8) * 1.5 : 0;
-    shadow(x, y + 6, fly ? 8 : 10);
+    var A2 = window.ES_ART ? ES_ART.scale : 1;
+    shadow(x, y + 6 * A2, (fly ? 8 : 10) * A2);
     if (inv > 0 && ((inv * 20) | 0) % 2) return;
-    if (gcid) lookDraw(ctx, gcid, x, y - lift - dy, face < 0, true);
+    function look(back) { if (A2 === 1) lookDraw(ctx, gcid, x, y - lift - dy, face < 0, back); else { ctx.save(); ctx.translate(x, y - lift - dy); ctx.scale(A2, A2); lookDraw(ctx, gcid, 0, 0, face < 0, back); ctx.restore(); } }
+    if (gcid) look(true);
     blit(s, x, y - lift - dy, face < 0);
-    if (gcid) lookDraw(ctx, gcid, x, y - lift - dy, face < 0, false);
+    if (gcid) look(false);
   }
   var MATE_COL = ["#f6d36b", "#7fd1c7", "#f29ad8", "#9cc56b", "#f2b05e", "#c9b3ff"];
   function mateColor(pl) { return MATE_COL[Math.max(0, players.indexOf(pl)) % MATE_COL.length]; }
