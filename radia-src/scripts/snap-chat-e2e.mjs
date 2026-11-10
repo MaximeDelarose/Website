@@ -78,9 +78,16 @@ check('« écrit… » et le Bitmoji de Dylan apparaissent pendant qu\'il rédig
 await sleep(6000);
 const thread = await page.locator('.snc-thread .snc-b').allInnerTexts();
 check('Dylan répond au contenu (t-shirt)', thread.length >= 2 && thread.slice(-3).some((t) => /t-shirt|torse|chaud|sport|salle|séance|muscle|pourquoi|mdr/i.test(t)), thread.join(' | '));
-await page.locator('.cmp-in').fill('et sinon tu fe koi dans la vie ?'); await page.locator('.cmp-send').click(); await sleep(7000);
-const t2 = (await page.locator('.snc-thread .snc-b.in').allInnerTexts()).slice(-3).join(' | ');
-check('réponse à une question libre (fautes d\'orthographe comprises)', /entrepren|projet|boîte|boite|startup|sport|vie/i.test(t2), t2);
+await page.locator('.cmp-in').fill('et sinon tu fe koi dans la vie ?'); await page.locator('.cmp-send').click();
+let t2 = ''; let delayed = false;
+for (let i = 0; i < 40; i++) {
+  await sleep(500);
+  t2 = (await page.locator('.snc-thread .snc-b.in').allInnerTexts()).slice(-3).join(' | ');
+  if (/entrepren|projet|boîte|boite|startup|sport|vie/i.test(t2)) break;
+  delayed = await page.evaluate(() => window.RADIA.save.data.fun.apps.snap.chat.contacts.dylan.msgs.some((m) => m.from === 'in' && m.at > Date.now() + 25_000)); // 7 % : « occupé », il répond bien plus tard
+  if (delayed) break;
+}
+check('réponse à une question libre (fautes d\'orthographe comprises), ou réponse différée (occupé)', /entrepren|projet|boîte|boite|startup|sport|vie/i.test(t2) || delayed, t2 + (delayed ? ' [différée]' : ''));
 await shot('conversation');
 // clavier iPhone simulé
 await page.evaluate((h0) => { const vv = Object.assign(new EventTarget(), { height: h0, width: 393, offsetTop: 0, offsetLeft: 0, scale: 1 }); Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true }); window.__vv = vv; }, H);
