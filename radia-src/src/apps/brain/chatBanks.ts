@@ -206,3 +206,5 @@ export const NOTHING_REPLY: VBank = V(
   ['Rien de spécial ? Alors on va rendre ça spécial, là 😄', 'Ah, la routine ! La seule chose qui ne nous trahit jamais.', 'Bon, on va pimenter ça : raconte-moi un truc bizarre qui t\'est arrivé cette semaine.'],
   ['D\'accord. Les jours calmes, ça arrive.', 'Pas grand-chose, donc. Ça va.', 'Compris. Rien d\'urgent.'],
 );
+
+export const NAME_Q_LINES: string[] = ['Radia ? Moi je le trouve rare et joli, il a de l\'éclat.', 'Ton prénom ? Il a quelque chose de lumineux, franchement. Il te va bien.', 'Radia… ça sonne comme une promesse, je trouve. Il y a une histoire derrière ?'];

@@ -173,6 +173,8 @@ export function understand(raw: string): Understood {
   if (intents.includes('kids_some')) { const i = intents.indexOf('q_kids'); if (i >= 0 && !/\?/.test(text)) intents.splice(i, 1); }
   if (intents.includes('ph_no')) { for (const x of ['ask_photo', 'ph_yes', 'ph_later'] as Intent[]) { const i = intents.indexOf(x); if (i >= 0) intents.splice(i, 1); } }
   if (intents.includes('friends_only')) { const i = intents.indexOf('friend_talk'); if (i >= 0) intents.splice(i, 1); }
+  if (['q_music', 'q_movie', 'q_food', 'q_pet'].some((x) => intents.includes(x as Intent))) { const i = intents.indexOf('q_hobby'); if (i >= 0) intents.splice(i, 1); }
+  if (intents.includes('doing')) { const i = intents.indexOf('q_weekend'); if (i >= 0 && !/week|samedi|dimanche|vacances/.test(norm)) intents.splice(i, 1); }
   if (intents.includes('sexual')) return finish(text, norm, words, question, ['sexual']);
   if (intents.includes('stop')) return finish(text, norm, words, question, ['stop']);
   const cleaned = words.filter((w) => w.length >= 3 && !STOP.has(w) && !/^\d+$/.test(w));

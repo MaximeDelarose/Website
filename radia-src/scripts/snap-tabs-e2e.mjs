@@ -35,6 +35,7 @@ async function run(H) {
   await page.locator('.snc-row').first().click(); await sleep(800);
   check('toucher un snap non ouvert l\'ouvre en plein écran', (await page.locator('.snc-viewer').count()) === 1);
   await page.locator('.snc-vclose').click(); await sleep(600);
+  if (await page.locator('.snc-body.conv').count()) { await page.locator('.snc-head.conv .snp-x').first().click(); await sleep(400); } // la conversation n'a plus de barre d'onglets : retour à la liste
   // Amis
   await page.locator('.snc-tab[data-tab="friends"]').click(); await sleep(500);
   const nFriends = await page.locator('.snc-row:not(.sug)').count();

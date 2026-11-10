@@ -114,7 +114,7 @@ export function react(b: BrainState, id: string, choiceId: string, rng: RngLike,
     case 'raconte': {
       say.push(bank(rng, m, p, REACT.raconte));
       const un = p.anecdotes.filter((a) => !m.told.includes(a)); const a = un.length ? fresh(rng, m, un) : fresh(rng, m, p.anecdotes);
-      say.push(a); m.told.push(a); while (m.told.length > 12) m.told.shift(); topic = 'anecdote'; m.aff += 0.5; closeThread(m);
+      say.push(a); m.told.push(a); while (m.told.length > 24) m.told.shift(); topic = 'anecdote'; m.aff += 0.5; closeThread(m);
       break;
     }
     case 'sf_ask': {
@@ -281,7 +281,7 @@ export function start(b: BrainState, id: string, rng: RngLike, ctx: StartCtx): B
     const ji = pickJoke(rng, m, p); say.push(fresh(rng, m, [pickFrom(rng, JOKE_LEAD)]), p.jokes[ji].setup); m.thread = { topic: 'joke', step: 1, data: String(ji) }; topic = 'joke';
   } else {
     const r = rng.next();
-    if (r < 0.5) say.push(fresh(rng, m, noName(m, p.openers))); else if (r < 0.8) say.push(fresh(rng, m, SMALLTALK[voiceOf(p.arch)])); else { const a = p.anecdotes.filter((x) => !m.told.includes(x)); const pick = a.length ? fresh(rng, m, a) : fresh(rng, m, p.anecdotes); say.push(pick); m.told.push(pick); while (m.told.length > 12) m.told.shift(); topic = 'anecdote'; }
+    if (r < 0.5) say.push(fresh(rng, m, noName(m, p.openers))); else if (r < 0.8) say.push(fresh(rng, m, SMALLTALK[voiceOf(p.arch)])); else { const a = p.anecdotes.filter((x) => !m.told.includes(x)); const pick = a.length ? fresh(rng, m, a) : fresh(rng, m, p.anecdotes); say.push(pick); m.told.push(pick); while (m.told.length > 24) m.told.shift(); topic = 'anecdote'; }
     if (m.thread === null && maybeName(rng, m, p, say)) { m.thread = { topic: 'name', step: 1 }; topic = 'name'; }
   }
   trackName(m, say);

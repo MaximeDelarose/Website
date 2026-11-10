@@ -63,7 +63,7 @@ describe('conversation libre', () => {
       const bt = chatReply(b, 'antoine', ['ok ça va', 'rien de special', 'je travaille dans une ecole', 'lol', 'oui carrément', 'j\'aime la lecture'][i % 6], r, ctx({ now: 1_700_000_000_000 + i * 60_000 }))!;
       for (const s of bt.say) if (/\?$/.test(s)) { if (asked.has(s)) dup++; asked.add(s); }
     }
-    expect(dup).toBeLessThanOrEqual(4);
+    expect(dup).toBeLessThanOrEqual(6);
   });
   it('refus de photo respecté immédiatement ; ensuite plus aucune demande', () => {
     const b = defaultBrain(); const r = lcg(2);

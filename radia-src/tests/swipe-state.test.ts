@@ -268,3 +268,12 @@ describe('Tindeur jouable : sauvegarde', () => {
     expect(JSON.stringify(s).length).toBeLessThan(380_000);
   });
 });
+
+describe('Tindeur → Snapchien : même personnage', () => {
+  it('chaque personnage qui propose Snapchien existe vraiment dans les contacts Snapchien', async () => {
+    const { CONTACTS } = await import('../src/apps/snap/chat/data');
+    const { SNAP_IDS } = await import('../src/events/tindeur/swipe/state');
+    for (const id of SNAP_IDS) expect(CONTACTS.some((c) => c.id === id), id).toBe(true);
+    for (const id of SNAP_IDS) expect(profileById(id), id).toBeTruthy(); // un seul personnage dans les deux applications
+  });
+});

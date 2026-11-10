@@ -171,7 +171,7 @@ export const HUGO_AUGUSTE_REACT: Record<string, string[]> = {
   sg_yes: ['Ah, d\'accord. Ça me fait un petit pincement, mais je respecte. Vraiment.', 'Je comprends. Vous avez une histoire, c\'est normal.'],
   sg_complex: ['C\'est compliqué… je vois. Merci de ta franchise. Je reste là, sans rien attendre.', 'D\'accord. Je ne veux pas me mêler de ça.'],
   sg_none: ['Tu as raison. Je n\'aurais pas dû. Je me suis laissé emporter par la curiosité.', 'Pardon. C\'était pas mon rôle de demander.'],
-  sg_single: ['Ah. D\'accord. Alors je reste simplement ton ami, et je te souhaite plein de bonnes choses.', 'Merci de me le dire. Ça me rassure un peu, et ça me fait réfléchir.'] };
+  sg_single: ['Ah, d\'accord. Ça me rassure un peu, et ça me fait réfléchir.', 'Merci de me le dire. Ça me fait plaisir, je ne vais pas te mentir.'] };
 
 // ------------------------------------------------------------------ photos (demandes, réactions)
 /** Demandes de selfie selon l'audace (0 : il n'en demande jamais le premier). Aucune demande intime : sourire, yeux, tenue, selfie. */

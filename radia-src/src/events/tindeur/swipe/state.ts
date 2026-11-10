@@ -270,7 +270,7 @@ export function sendText(s: SwipeState, brain: BrainState, pid: string, text0: s
   return { lines: c.pending.slice(), addSnap: !!beat?.addSnap, offersSnap: !!beat?.offersSnap };
 }
 /** Les personnages qui ont aussi un compte Snapchien (même identité dans les deux applications). */
-export const SNAP_IDS = new Set(['dylan', 'maxime', 'kevin', 'thomas', 'nicolas', 'jordan', 'alexandre', 'lucas', 'enzo', 'hugo', 'karim', 'florian', 'samuel', 'leo']);
+export const SNAP_IDS = new Set(['dylan', 'maxime', 'kevin', 'thomas', 'nicolas', 'jordan', 'alexandre', 'lucas', 'hugo']);
 /** Branchement léger (évite une dépendance circulaire) : Snapchien dit si un contact est déjà ajouté. */
 let snapHas: ((pid: string) => boolean) | undefined;
 export function setSnapLookup(f: (pid: string) => boolean): void { snapHas = f; }

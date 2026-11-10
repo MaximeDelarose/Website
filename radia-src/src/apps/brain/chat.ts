@@ -54,6 +54,11 @@ const ACK: VBank = V3(
   ['Je vois. Merci de me le dire.', 'D\'accord, c\'est noté.', 'Intéressant. Ça me parle.'],
 );
 const TOPIC_BANK: Partial<Record<Intent, VBank>> = { topic_weather: B.Q_WEATHER, topic_sleep: B.Q_SLEEP, topic_sport: B.Q_SPORT, topic_food: B.Q_FOOD, topic_work: B.Q_WORK, topic_family: B.Q_FAMILY };
+const KIDS_DETAIL: VBank = V3(
+  ['Merci de me raconter. Ça doit être une belle énergie à la maison, non ?', 'J\'aime que tu me parles d\'eux avec autant de naturel. Ils ont de la chance.', 'Ça fait une famille bien remplie. Et ils sont plutôt calmes ou bagarreurs ?'],
+  ['Ahah, donc la maison, c\'est un joyeux chantier ! Respect.', 'Avec ces âges-là, tu dois être championne du monde de logistique 😄', 'Ça, c\'est une équipe ! Et le capitaine, c\'est toi.'],
+  ['D\'accord, merci de me le dire.', 'Je vois. Ça fait du monde à organiser.', 'Noté. Ça te laisse peu de temps libre, j\'imagine.'],
+);
 const PH_AGREE: VBank = V3(
   ['Merci, ça me ferait plaisir. J\'attends ça avec curiosité.', 'Avec plaisir, prends ton temps pour l\'envoyer.', 'Oh, c\'est gentil. J\'ai hâte de voir ça.'],
   ['Oh ! Je prépare mes yeux. Envoie, envoie 👀', 'Excellent, j\'attends la photo avec un grand sourire.', 'Génial ! Je ne regarde plus mon téléphone pendant dix minutes, promis.'],
@@ -86,7 +91,7 @@ const rememberKw = (m: CharMem, u: Understood): void => {
   m.said = m.said.filter((x) => x !== w); m.said.push(w); while (m.said.length > 8) m.said.shift();
 };
 const CATS_ASKED = (m: CharMem): string[] => m.told.filter((t) => t.startsWith('q:')).map((t) => t.slice(2));
-function markAsked(m: CharMem, cat: string): void { m.told = m.told.filter((t) => t !== `q:${cat}`); m.told.push(`q:${cat}`); while (m.told.length > 12) m.told.shift(); m.ask = cat; }
+function markAsked(m: CharMem, cat: string): void { m.told = m.told.filter((t) => t !== `q:${cat}`); m.told.push(`q:${cat}`); while (m.told.length > 24) m.told.shift(); m.ask = cat; }
 /** Prochaine question à lui poser, qu'il n'a pas encore posée (ou la plus ancienne si tout a été posé). */
 function nextFollow(m: CharMem): string | null {
   const asked = CATS_ASKED(m);
@@ -119,9 +124,10 @@ function mapChoice(u: Understood, m: CharMem): string | null {
   }
   if (t?.topic === 'friend' && !u.question || (t?.topic === 'friend' && has(u, 'q_you'))) {
     if (has(u, 'q_you')) return 'fr_him';
-    if (has(u, 'laugh')) return 'fr_joke';
+    if (has(u, 'laugh') && u.size !== 'long') return 'fr_joke';
+    if (/\b(oui|bien sur|je crois|carrement|evidemment|tout a fait|absolument|clairement|si\b|je pense que oui|ca existe)\b/.test(norm) && !/pas|jamais/.test(norm)) return 'fr_yes';
+    if (/\b(non|pas vraiment|je ne crois pas|je crois pas|jamais|pas sur|c est difficile|difficile)\b/.test(norm) || has(u, 'disagree')) return 'fr_no';
     if (has(u, 'agree')) return 'fr_yes';
-    if (has(u, 'disagree')) return 'fr_no';
     if (has(u, 'maybe')) return 'fr_open';
     if (has(u, 'why') || has(u, 'sure')) return 'fr_why';
     if (u.size !== 'tiny') return 'fr_open';
@@ -140,7 +146,7 @@ function mapChoice(u: Understood, m: CharMem): string | null {
     if (/(fier|fierte|amour|ma vie|tout pour moi|merveilleux)/.test(norm)) return 'kid_proud';
     if (/(pas de temps|jamais|fatigu|courir|temps pour moi|epuis)/.test(norm)) return 'kid_time';
     if (has(u, 'laugh')) return 'kid_joke';
-    if (has(u, 'sad')) return 'kid_hurt';
+    if (/peine|dommage|blesse|vexe|triste de|ca me fait mal/.test(norm)) return 'kid_hurt';
   }
   return null;
 }
@@ -179,6 +185,7 @@ export function chatReply(b: BrainState, id: string, text: string, rng: RngLike,
   m.turns++; m.talkedAt = ctx.now;
   if (m.faded) { m.faded = false; m.aff = Math.max(m.aff, 0); say.push(fresh(rng, m, ['Tiens, tu es revenue ! Ça me fait plaisir.', 'Ça fait plaisir de te relire.'])); }
   const answered: string[] = [];
+  const threadBefore = m.thread;
   let delicate = false;
   const push = (s: string | null | undefined): void => { if (s) say.push(sub(s, vars)); };
 
@@ -200,6 +207,7 @@ export function chatReply(b: BrainState, id: string, text: string, rng: RngLike,
     ['greet', () => line(rng, m, p, B.GREET)],
     ['how', () => line(rng, m, p, B.HOW_ANSWER)],
     ['doing', () => line(rng, m, p, B.DOING_ANSWER)],
+    ['name_q', () => { m.thread = { topic: 'name', step: 1 }; topic = 'name'; return fresh(rng, m, [p.nameLine, ...B.NAME_Q_LINES]); }],
     ['q_age', () => line(rng, m, p, B.Q_AGE, vars)],
     ['q_name', () => line(rng, m, p, B.Q_NAME, vars)],
     ['q_where', () => line(rng, m, p, B.Q_WHERE, vars)],
@@ -224,7 +232,7 @@ export function chatReply(b: BrainState, id: string, text: string, rng: RngLike,
     ['sad', () => { delicate = true; m.aff += 0.4; return line(rng, m, p, B.SAD_REPLY); }],
     ['busy', () => { delicate = true; return line(rng, m, p, B.BUSY_REPLY); }],
     ['night', () => { delicate = true; m.aff += 0.2; return line(rng, m, p, B.NIGHT_REPLY); }],
-    ['bye', () => { delicate = true; return line(rng, m, p, B.BYE_REPLY); }],
+    ['bye', () => { delicate = true; return answered.includes('night') ? null : line(rng, m, p, B.BYE_REPLY); }],
     ['thanks', () => line(rng, m, p, B.THANKS_REPLY)],
     ['miss', () => { m.aff += 1; return line(rng, m, p, B.MISS_REPLY); }],
     ['flirt', () => { m.aff += 0.7; return line(rng, m, p, B.FLIRT_REPLY); }],
@@ -232,9 +240,9 @@ export function chatReply(b: BrainState, id: string, text: string, rng: RngLike,
     ['ask_photo', () => { wantsPhoto = true; m.aff += 0.2; return line(rng, m, p, B.ASK_PHOTO_REPLY); }],
     ['ph_yes', () => { if (m.photo.pending) { m.photo.pending = false; m.aff += 0.5; return line(rng, m, p, PH_AGREE); } return null; }],
     ['sure', () => line(rng, m, p, B.SURE_REPLY)],
-    ['laugh', () => line(rng, m, p, B.LAUGH_REPLY)],
+    ['laugh', () => (u.question || has(u, 'why') ? null : line(rng, m, p, B.LAUGH_REPLY))],
     ['nothing', () => line(rng, m, p, B.NOTHING_REPLY)],
-    ['maybe', () => line(rng, m, p, B.MAYBE_REPLY)],
+    ['maybe', () => (u.size === 'tiny' || u.size === 'short' ? line(rng, m, p, B.MAYBE_REPLY) : null)],
     ['disagree', () => (u.size === 'tiny' ? line(rng, m, p, B.DISAGREE_REPLY) : null)],
     ['agree', () => (u.size === 'tiny' && !m.ask ? line(rng, m, p, B.AGREE_REPLY) : null)],
   ];
@@ -243,6 +251,8 @@ export function chatReply(b: BrainState, id: string, text: string, rng: RngLike,
   if (facts) for (const [re, lines] of facts.kw) if (new RegExp(re).test(u.norm) && lines.some((l) => !m.recent.includes(l))) { push(fresh(rng, m, lines)); kwHit = true; m.aff += 0.5; break; }
   if (has(u, 'why') && !kwHit && !answered.length) { /* « pourquoi ? » sans sujet précis : réponse générale plus bas */ }
   let given = kwHit ? 1 : 0;
+  // « mdr mais pourquoi … ? » : la question passe avant le rire
+  if (has(u, 'why') && !kwHit && !answered.length) { push(line(rng, m, p, B.WHY_REPLY)); given++; answered.push('why'); }
   for (const [it, f] of handlers) {
     if (given >= 2) break;
     if (!has(u, it) || answered.includes(it)) continue;
@@ -250,9 +260,10 @@ export function chatReply(b: BrainState, id: string, text: string, rng: RngLike,
     // « pourquoi » / question inconnue ne se traitent qu'en dernier
     const s = f(); if (s) { push(s); given++; answered.push(it); }
   }
-  if (has(u, 'why') && !kwHit && given === 0) { push(line(rng, m, p, B.WHY_REPLY)); given++; }
   if (given === 0) for (const it of u.intents) { const bk = TOPIC_BANK[it]; if (bk) { push(line(rng, m, p, bk)); given++; break; } }
 
+  // elle précise (âges, prénoms…) juste après avoir parlé de ses enfants
+  if (given === 0 && m.thread?.topic === 'kids' && !u.question && (/\b\d+\b|\bans\b|\bmois\b|s appell|garcon|fille|ado|bebe|petit/.test(u.norm))) { push(line(rng, m, p, KIDS_DETAIL)); given++; m.aff += 0.5; }
   // 2c. rien de reconnu : il réagit à ce qu'elle a écrit
   if (given === 0 && !say.some(Boolean)) {
     if (m.ask && !u.question) { push(line(rng, m, p, ACK, vars)); m.aff += 0.4; if (m.ask === 'dream' || m.ask === 'job') m.memories.includes('said-' + m.ask) || m.memories.push('said-' + m.ask); }
@@ -281,15 +292,25 @@ export function chatReply(b: BrainState, id: string, text: string, rng: RngLike,
   }
   // sa vie sentimentale : certains hommes la demandent une fois (Hugo pense à Auguste : « t'es toujours en contact avec l'autre ? »)
   if (!sensitive && !quiet && !m.thread && m.facts.single === 0 && (m.topics.single ?? 0) === 0 && say.length <= 2 && !has(u, 'coupled')
-      && ((p.id === 'hugo' && m.turns >= 3) || (m.turns >= 5 && (p.arch === 'flirt' || p.arch === 'serious' || p.arch === 'skeptic') && rng.next() < 0.3))) {
+      && say.length <= 1 && ((p.id === 'hugo' && m.turns >= 3) || (m.turns >= 5 && (p.arch === 'flirt' || p.arch === 'serious' || p.arch === 'skeptic') && rng.next() < 0.3))) {
     if (p.id === 'hugo') { say.push(fresh(rng, m, HUGO_AUGUSTE)); m.thread = { topic: 'single', step: 1, data: 'auguste' }; }
     else { say.push(line(rng, m, p, SINGLE_ASK)); m.thread = { topic: 'single', step: 1 }; }
     topic = 'single'; m.ask = '';
+  }
+  // il prend l'initiative quand l'échange est bien installé : passer sur Snapchien, ou imaginer un rendez-vous (une seule fois chacun)
+  if (!sensitive && !quiet && !m.thread && say.length <= 1) {
+    if (ctx.channel === 'tindeur' && ctx.hasSnap && !ctx.inSnap && m.turns >= 6 && m.aff >= 2 && !m.told.includes('snap-asked') && !m.told.includes('snap-no') && rng.next() < 0.25) {
+      say.push(fresh(rng, m, ['Dis, tu as Snapchien ? Ce serait plus pratique pour s\'envoyer des snaps.', 'Tu es sur Snapchien ? On pourrait continuer là-bas, c\'est plus vivant.'])); m.told.push('snap-asked');
+      m.thread = { topic: 'snapfollow', step: 1, data: 'offer' }; topic = 'snapfollow'; offersSnap = true;
+    } else if (facts && m.turns >= 10 && m.aff >= 4 && !m.told.includes('meet') && rng.next() < 0.25) {
+      say.push(`Au fait… ${one(rng, facts.date)} Ça te dirait un jour ?`); m.told.push('meet');
+    }
   }
   if (!sensitive && m.thread === null && maybeName(rng, m, p, say)) { m.thread = { topic: 'name', step: 1 }; topic = 'name'; }
   if (rng.next() < 0.07 && !sensitive && m.thread === null && (p.arch === 'joker' || p.arch === 'badjoker') && p.jokes.length && m.turns > 4) {
     const j = p.jokes[rng.int(p.jokes.length)]; say.push(fill(j.setup)); m.thread = { topic: 'joke', step: 1, data: String(p.jokes.indexOf(j)) }; topic = 'joke';
   }
+  if (threadBefore && m.thread === threadBefore && threadBefore.topic !== 'snapfollow') closeThread(m); // le fil n'a pas été repris : on passe à autre chose
   trackName(m, say);
   bumpTopic(m, topic);
   if (m.aff > 12) m.aff = 12;

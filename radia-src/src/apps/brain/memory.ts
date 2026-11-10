@@ -27,7 +27,7 @@ export function sanitizeBrain(raw: unknown): BrainState {
     if (isObj(r.topics)) for (const t of TOPICS) if (typeof r.topics[t] === 'number') m.topics[t] = Math.floor(num(r.topics[t], 0, 0, 1e5));
     m.recent = strs(r.recent, 14); m.nameUses = Math.floor(num(r.nameUses, 0, 0, 1e5)); m.lastNameTurn = Math.floor(num(r.lastNameTurn, -99, -99, 1e6)); m.bad = Math.floor(num(r.bad, 0, 0, 1e5));
     if (isObj(r.thread) && TOPICS.includes(r.thread.topic as TopicId)) m.thread = { topic: r.thread.topic as TopicId, step: Math.floor(num(r.thread.step, 0, 0, 20)), ...(typeof r.thread.data === 'string' ? { data: r.thread.data.slice(0, 40) } : {}) } as Thread;
-    m.offered = strs(r.offered, 6, 20); m.told = strs(r.told, 12, 40); m.memories = strs(r.memories, 10, 30);
+    m.offered = strs(r.offered, 6, 20); m.told = strs(r.told, 24, 40); m.memories = strs(r.memories, 10, 30);
     if (isObj(r.photo)) {
       const q = r.photo;
       m.photo = { asks: Math.floor(num(q.asks, 0, 0, 99)), lastAskAt: num(q.lastAskAt, 0, 0, 1e14), noMore: q.noMore === true, holdUntil: num(q.holdUntil, 0, 0, 1e14), hers: strs(q.hers, 12, 20),
