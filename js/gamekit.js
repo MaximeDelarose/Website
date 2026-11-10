@@ -51,15 +51,11 @@
     { id: "dice", title: "Écureuil Dice", ico: "🎲" },
     { id: "king-dice", title: "King Dice", ico: "👑" },
     { id: "ages", title: "Age of Defense", ico: "🏰" },
-    { id: "bagbound", title: "BAGBOUND", ico: "🎒" },
-    { id: "ultimate", title: "Ultimate Écureuil", ico: "🏁" },
     { id: "arcane", title: "Arcane Tactics", ico: "🪄" },
     { id: "echecs", title: "Échecs", ico: "♞" },
     { id: "billard", title: "Billard", ico: "🎱" },
     { id: "golf", title: "Mini-golf", ico: "⛳" },
     { id: "golfaventure", title: "Golfaventure", ico: "🏌️" },
-    { id: "defense", title: "Écureuil Défense", ico: "🗼" },
-    { id: "flippers", title: "Flippers", ico: "📍" },
     { id: "grimpe", title: "Grimpe-Chêne", ico: "🌳" },
     { id: "idle", title: "Le Grand Chêne", ico: "🌰" }
   ];
@@ -152,7 +148,7 @@
     if (!prefs.haptics || !navigator.vibrate) return;
     safe(function () { navigator.vibrate(HAPTICS[kind || "tap"] || kind); });
   }
-  // sons + tick sur les boutons de menu (pas sur les commandes de jeu tenues, ex. flippers)
+  // sons + tick sur les boutons de menu (pas sur les commandes de jeu tenues)
   var MENU_BTN = ".game-overlay button, .game-card button, .panel button, .game-head button, .gk-sheet button, .gk-sheet label, .chip, .btn";
   function isMenuControl(el) {
     var b = el && el.closest && el.closest(MENU_BTN);

@@ -69,7 +69,7 @@ create table if not exists public.acorn_sources (
 insert into public.acorn_sources (game, name) values
   ('survivor', 'Écureuil Survivor'), ('grand-chene', 'Le Grand Chêne'), ('merger', 'Merger'),
   ('suika', 'Suika'), ('dice', 'Écureuil Dice'), ('king-dice', 'King Dice'), ('ages', 'Age of Defense'),
-  ('defense', 'Écureuil Défense'), ('golf', 'Mini-golf'), ('flippers', 'Flippers'), ('grimpe', 'Grimpe-Chêne')
+  ('golf', 'Mini-golf'), ('grimpe', 'Grimpe-Chêne')
 on conflict (game) do nothing;
 
 alter table public.clans         enable row level security;
