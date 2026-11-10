@@ -149,6 +149,13 @@ export function drawBg(c: G, bg: Bg, a: string, b: string, prop?: Prop): void {
       if (prop === 'controller') { rect(c, 180, 36, 106, 74, '#1D1B3A', 3.5, 6); c.fillStyle = '#7FFFD4'; c.font = 'bold 12px monospace'; c.textAlign = 'left'; c.fillText('> JOUEUR 2', 192, 62); c.fillStyle = '#FF8EC1'; c.fillText('  PRÊT ?', 192, 82); }
       else { rect(c, 188, 34, 92, 96, '#CFE6F5', 3.5, 6); c.strokeStyle = OUTLINE; c.lineWidth = 3; c.beginPath(); c.moveTo(234, 34); c.lineTo(234, 130); c.moveTo(188, 82); c.lineTo(280, 82); c.stroke(); circ(c, 258, 56, 9, '#FFF1A8', 0); rect(c, 14, 200, 50, 40, '#8CB6A3', 2.5, 6); c.beginPath(); c.moveTo(39, 200); c.lineTo(39, 170); c.lineWidth = 3; c.strokeStyle = OUTLINE; c.stroke(); circ(c, 39, 166, 12, '#FFE680'); }
       break;
+    case 'car':
+      // habitacle : pare-brise sur la route, tableau de bord et volant (selfie en voiture, à l'arrêt)
+      hill(c, 150, shade(b, -0.1), 8, 2);
+      c.fillStyle = '#4A4F5C'; c.fillRect(0, 170, W, 36); c.strokeStyle = '#F6E27A'; c.lineWidth = 3; c.setLineDash([16, 14]); c.beginPath(); c.moveTo(0, 188); c.lineTo(W, 188); c.stroke(); c.setLineDash([]);
+      c.beginPath(); c.moveTo(0, 262); c.lineTo(W, 236); c.lineTo(W, H); c.lineTo(0, H); c.closePath(); fp(c, '#3B3F4B', 3);
+      circ(c, 232, 300, 46, '#2B2D35', 4); circ(c, 232, 300, 20, '#54586A', 3); rect(c, 14, 214, 70, 22, '#2F323C', 2.5, 5);
+      break;
     case 'shop':
       rect(c, 12, 28, 276, 22, '#E8484F', 3, 4); for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#FFF' : '#E8484F'; c.fillRect(14 + i * 34, 30, 17, 18); }
       rect(c, 14, 100, 90, 70, '#FFF3DC', 2.5, 4); for (let k = 0; k < 3; k++) circ(c, 36 + k * 24, 140, 9, ['#F0B84A', '#E8603A', '#7FC48A'][k]);
@@ -220,6 +227,16 @@ export function drawProp(c: G, prop: Prop): void {
     case 'wine':
       c.beginPath(); c.moveTo(222, 320); c.lineTo(258, 320); c.quadraticCurveTo(258, 352, 240, 352); c.quadraticCurveTo(222, 352, 222, 320); fp(c, 'rgba(255,255,255,.55)', 3);
       c.beginPath(); c.moveTo(224, 334); c.lineTo(256, 334); c.quadraticCurveTo(254, 350, 240, 350); c.quadraticCurveTo(226, 350, 224, 334); c.fillStyle = '#8A1F3A'; c.fill(); rect(c, 237, 352, 6, 26, '#DDE', 2, 2); rect(c, 224, 376, 32, 6, '#DDE', 2, 3);
+      break;
+    case 'dog':
+      // petit chien tenu devant soi (museau, oreilles tombantes, langue)
+      circ(c, 226, 340, 34, '#D9A066', 3); c.beginPath(); c.ellipse(198, 322, 12, 22, 0.4, 0, 7); fp(c, '#9A6A3A', 3); c.beginPath(); c.ellipse(254, 322, 12, 22, -0.4, 0, 7); fp(c, '#9A6A3A', 3);
+      circ(c, 214, 334, 5, '#fff', 2); circ(c, 238, 334, 5, '#fff', 2); circ(c, 215, 335, 2.4, OUTLINE, 0); circ(c, 239, 335, 2.4, OUTLINE, 0); circ(c, 226, 348, 7, '#3B2F2A', 2); rect(c, 222, 354, 8, 14, '#F28FA6', 2, 4);
+      break;
+    case 'cat':
+      circ(c, 226, 342, 32, '#C9CED6', 3); c.beginPath(); c.moveTo(200, 322); c.lineTo(204, 296); c.lineTo(220, 316); c.closePath(); fp(c, '#C9CED6', 3); c.beginPath(); c.moveTo(252, 322); c.lineTo(248, 296); c.lineTo(232, 316); c.closePath(); fp(c, '#C9CED6', 3);
+      circ(c, 214, 338, 5, '#7FD6A0', 2); circ(c, 238, 338, 5, '#7FD6A0', 2); c.beginPath(); c.moveTo(226, 346); c.lineTo(222, 352); c.lineTo(230, 352); c.closePath(); fp(c, '#F28FA6', 1.5);
+      c.strokeStyle = OUTLINE; c.lineWidth = 2; for (const d of [-1, 1]) { c.beginPath(); c.moveTo(226 + d * 14, 350); c.lineTo(226 + d * 34, 346); c.moveTo(226 + d * 14, 354); c.lineTo(226 + d * 34, 358); c.stroke(); }
       break;
     case 'tent': case 'tractor': case 'none': break;
   }

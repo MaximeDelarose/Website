@@ -15,9 +15,11 @@ import { sparkleBurst } from '../../../ui/fx/sparkle';
 import { emitPhone, registerBusy } from '../../bus';
 import { tindeurLogo } from '../icon';
 import { avatarUrl, portraitUrl } from './art';
-import { profileById } from './data';
+import { nodeOf, profileById } from './data';
+import { applyFx, hiddenExtra, prefixesOf } from '../../../apps/brain/tindeurNodes';
+import { brainState } from '../../../apps/store';
 import {
-  choicesOf, choose, deferQueue, deliver, endingsFound, endingsTotal, ensureDeck, like, lastLine, markRead, nextHeartIn, pass,
+  authoredFound, choicesOf, choose, deferQueue, maybeRelance, deliver, endingsFound, endingsTotal, ensureDeck, like, lastLine, markRead, nextHeartIn, pass,
   peekIds, refillBank, removeMatch, resumeConvo, stopConvo, unreadCount,
 } from './state';
 import { onSwipeEvent, persist, swipe } from './runtime';
@@ -324,10 +326,11 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     const c = s.convos[pid];
     msgs.replaceChildren();
     msgs.append(h('div.sw-intro', h('img', { src: avatarUrl(pid, 120), alt: '' }), h('b', `Vous avez matché avec ${p.name}`), h('small', 'Dans Tindeur, appli imaginaire du jeu : tout reste ici.')));
-    for (const m of c.log) {
-      const n = p.nodes.find((x) => x.id === m.n);
+    const pre = prefixesOf(p, c.log);
+    for (const [mi, m] of c.log.entries()) {
+      const n = nodeOf(p, m.n);
       if (!n) continue;
-      if (m.k === 'in') { n.say.forEach((t) => bubble(t, false)); stamp(m.t, false); } else { bubble(n.ch[m.c ?? 0].t, true); stamp(m.t, true); }
+      if (m.k === 'in') { if (pre[mi]) bubble(pre[mi]!, false); n.say.forEach((t) => bubble(t, false)); stamp(m.t, false); } else { bubble(n.ch[m.c ?? 0].t, true); stamp(m.t, true); }
     }
     msgs.scrollTop = msgs.scrollHeight;
     await continueChat(pid);
@@ -338,6 +341,7 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     const c = s.convos[pid];
     if (!c || chatPid !== pid) return;
     if (c.queue) { c.due = 0; await theyReply(pid); return; }
+    if (maybeRelance(s, pid, now())) { persist(); await replay(pid); return; }
     showBar(pid, p);
   }
 
@@ -346,7 +350,7 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     const p = profileById(pid)!;
     bar.replaceChildren(h('p.sw-wait', `${p.name} écrit…`));
     const t = typing();
-    const nextNode = p.nodes.find((x) => x.id === s.convos[pid].queue);
+    const nextNode = nodeOf(p, s.convos[pid].queue);
     await wait(reducedFx() ? 500 : 900 + Math.min(1200, (nextNode?.say[0].length ?? 20) * 14));
     if (chatPid !== pid || closed) { t.remove(); return; }
     t.remove();
@@ -354,6 +358,8 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     if (!node) { showBar(pid, p); return; }
     persist();
     const at = now();
+    const px = prefixesOf(p, s.convos[pid].log).pop();
+    if (px) { bubble(px, false); const tt = typing(); await wait(reducedFx() ? 250 : 600); tt.remove(); if (chatPid !== pid || closed) return; }
     for (let i = 0; i < node.say.length; i++) {
       if (i > 0) { const tt = typing(); await wait(reducedFx() ? 300 : 700); tt.remove(); if (chatPid !== pid || closed) return; }
       bubble(node.say[i], false); audio.play('pop4', 1.1);
@@ -373,9 +379,9 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     bar.replaceChildren();
     if (!c) return;
     if (c.status === 'ended') {
-      const node = p.nodes.find((x) => x.id === c.end);
+      const node = nodeOf(p, c.end);
       const total = p.nodes.filter((x) => x.end).length;
-      const found = (s.endings[pid] ?? []).length;
+      const found = authoredFound(s, pid);
       bar.append(h('div.sw-end', h('div.sw-end-h', h('span', '♥'), h('b', node?.end?.title ?? 'Fin de l’histoire')),
         h('p', node?.end?.note ?? ''), h('small', `Fin ${found} sur ${total} découvertes avec ${p.name}`),
         h('div.sw-end-a', h('button.btn.small', { on: { click: tap(() => leaveChat(false)) } }, 'Garder ce match'), h('button.btn.small.secondary', { on: { click: () => doDelete() } }, 'Supprimer le match'))));
@@ -385,8 +391,8 @@ export function openSwipeApp(o: OpenOpts = {}): void {
       bar.append(h('div.sw-end', h('p', 'Conversation en pause. Tu peux la reprendre quand tu veux, ou la laisser comme ça ♡'), h('div.sw-end-a', h('button.btn.small', { on: { click: tap(() => doResume()) } }, 'Reprendre'), h('button.btn.small.secondary', { on: { click: () => doDelete() } }, 'Supprimer le match'))));
       return;
     }
-    const chs = choicesOf(s, pid);
-    bar.append(h('p.sw-pick', 'Ta réponse :'), ...chs.map((ch, i) => choiceBtn(pid, ch, i)));
+    const chs = choicesOf(s, pid); const br = brainState();
+    bar.append(h('p.sw-pick', 'Ta réponse :'), ...chs.flatMap((ch, i) => (hiddenExtra(br, pid, ch.ex) ? [] : [choiceBtn(pid, ch, i)])));
   }
   function choiceBtn(pid: string, ch: Choice, i: number): HTMLElement {
     return h(`button.sw-ch${ch.ask ? '.ask' : ''}`, { on: { click: () => void pick(pid, i) } }, ch.ask ? h('em', '?') : null, h('span', ch.t));
@@ -395,6 +401,7 @@ export function openSwipeApp(o: OpenOpts = {}): void {
     if (chatPid !== pid) return;
     const ch = choicesOf(s, pid)[i];
     if (!ch || !choose(s, pid, i, now())) return;
+    applyFx(brainState(), pid, ch.fx);
     persist();
     audio.play('pop3'); haptic('select');
     bar.replaceChildren();

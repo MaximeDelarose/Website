@@ -129,6 +129,8 @@ export interface AppsState {
   career: Record<string, number>;
   /** Messages (conversations du téléphone) : sanitisé par src/apps/messages/engine.ts. */
   messages: Record<string, unknown>;
+  /** Cerveau de conversation (Tindeur + Snapchien) : mémoire de chaque personnage, sanitisée par src/apps/brain/memory.ts. */
+  brain: Record<string, unknown>;
 }
 
 /** Clients récurrents : commandes livrées (fidélité), dernière livraison, dernière réplique de remerciement, niveau de fidélité déjà fêté. */
@@ -170,7 +172,7 @@ export const defaultFun = (): FunState => ({
   wheel: { lastKey: '', spins: 0, last: '' },
   places: {},
   free: { unlocked: false, at: 0, announced: false },
-  apps: { swipe: {}, clips: {}, snap: {}, career: {}, messages: {} },
+  apps: { swipe: {}, clips: {}, snap: {}, career: {}, messages: {}, brain: {} },
   customers: {},
   phone: { wallpaper: 'rose' },
   thoughts: [],
@@ -258,7 +260,7 @@ export function sanitizeFun(raw: unknown): FunState {
   d.necklace = sanitizeNecklace(raw.necklace);
   if (isObj(raw.apps)) {
     const o = (v: unknown): Record<string, unknown> => { try { return isObj(v) && JSON.stringify(v).length < 400_000 ? (JSON.parse(JSON.stringify(v)) as Record<string, unknown>) : {}; } catch { return {}; } };
-    d.apps = { swipe: o(raw.apps.swipe), clips: o(raw.apps.clips), snap: o(raw.apps.snap), career: numRec(raw.apps.career), messages: o(raw.apps.messages) };
+    d.apps = { swipe: o(raw.apps.swipe), clips: o(raw.apps.clips), snap: o(raw.apps.snap), career: numRec(raw.apps.career), messages: o(raw.apps.messages), brain: o(raw.apps.brain) };
   }
   if (isObj(raw.phone) && typeof raw.phone.wallpaper === 'string') d.phone = { wallpaper: raw.phone.wallpaper.slice(0, 24) };
   if (Array.isArray(raw.thoughts)) d.thoughts = raw.thoughts.filter(isObj).slice(-60).map((t) => ({ at: num(t.at, 0, 0, 1e15), text: typeof t.text === 'string' ? t.text.slice(0, 700) : '', ...(typeof t.idx === 'number' && Number.isFinite(t.idx) ? { idx: Math.floor(t.idx) } : {}), ...(t.kept === true ? { kept: true } : {}) })).filter((t) => t.text);

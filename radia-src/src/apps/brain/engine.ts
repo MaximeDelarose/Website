@@ -69,9 +69,8 @@ export function offer(b: BrainState, id: string, rng: RngLike, opts: { channel?:
   if (t?.topic === 'joke') ids = ['nul', 'bravo', 'lol'];
   else if (t?.topic === 'name') ids = pickSome(rng, ['nul', 'bravo', 'stopname', 'lol'], 3);
   else if (t?.topic === 'photo') {
-    ids = ['ph_smile', 'ph_outfit', 'ph_funny', 'ph_later', 'ph_no'];
-    if (p && p.bold >= 2) ids.splice(3, 0, 'ph_first');
-    if (ids.length > 5) ids.length = 5;
+    // le refus (« je préfère ne pas envoyer ») et « plus tard » sont TOUJOURS proposés
+    ids = p && p.bold >= 2 ? ['ph_smile', 'ph_outfit', 'ph_first', 'ph_later', 'ph_no'] : ['ph_smile', 'ph_outfit', 'ph_funny', 'ph_later', 'ph_no'];
   } else if (t?.topic === 'kids') {
     const tone = p?.kids;
     ids = tone === 'hesitant' || (t.data === 'hurt') ? ['kid_ok', 'kid_hurt'] : ['kid_time', 'kid_proud', 'kid_joke'];

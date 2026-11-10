@@ -248,3 +248,18 @@
 .snc-viewer.story .snc-storybar b { display: block; height: 100%; width: 100%; background: #fff; transform-origin: left; animation: sncStory 6s linear forwards; }
 @keyframes sncStory { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @media (prefers-reduced-motion: reduce) { .snc-viewer.story .snc-storybar b { animation: none; } }
+
+/* présence : avatar du contact en bas de la conversation, « écrit… », accusés Envoyé / Reçu / Ouvert, capture d'écran */
+.snc-pres { display: none; align-items: center; gap: 8px; padding: 4px 12px; min-height: 40px; color: #d6d7dd; font-size: 13px; }
+.snc-pres.here, .snc-pres.typing, .snc-pres.lingering { display: flex; animation: sncPresIn .25s ease-out; }
+.snc-pres .snc-avatar { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #ffd400; background: #26272b; }
+.snc-pres.typing span { color: #ffd400; font-weight: 700; }
+.snc-pres.lingering .snc-avatar { opacity: .85; }
+@keyframes sncPresIn { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.snc-deliv { align-self: flex-end; font-size: 11.5px; color: #9a9ca6; margin: -2px 4px 2px; }
+.snc-deliv[data-state='opened'] { color: #ffd400; font-weight: 700; }
+.snc-sys { align-self: center; font-size: 12px; color: #c2c4cd; background: rgba(255, 255, 255, 0.07); padding: 4px 10px; border-radius: 99px; margin: 4px 0; }
+.snc-b.ask { box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.35); }
+.snc-chips.wait { opacity: 0.4; pointer-events: none; }
+.snc-snap.out .snc-thumb { width: 44px; height: 58px; border-radius: 10px; object-fit: cover; margin-left: 8px; border: 2px solid #ffd400; }
+@media (prefers-reduced-motion: reduce) { .snc-pres.here, .snc-pres.typing, .snc-pres.lingering { animation: none; } }
