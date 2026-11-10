@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.51.2";
+  var VERSION = "2.52.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -10255,7 +10255,6 @@
       }
       if (state === "menu" && camp.on) { campTick(dt); drawCamp(now); }
       else if (state === "menu" || !p) drawIdle(now); else draw();
-      if (window.ES_DITHER) ES_DITHER.apply(ctx, W, H);            // version « dithering » (jeu-dither.html)
     } catch (err) { showError(err); }
   }
 

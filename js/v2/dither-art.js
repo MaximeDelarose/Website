@@ -2,10 +2,10 @@
    Écureuil Survivor · version « dithering » : sprites refaits (js/v2/dither-art.js)
    Chargé avant le jeu par jeu-dither.html. Le jeu passe chaque sprite par ES_ART.upgrade(nom, définition).
    - Tous les écureuils sont l'écureuil du logo (assets/squirrel.png, 18 × 19, 8 couleurs), repris pixel pour pixel
-     pour Noisette et recoloré aux couleurs de chacun des autres personnages.
-   - Tous les autres sprites passent à la taille × 2 (algorithme Scale2x, qui lisse les diagonales sans flou),
-     puis reçoivent un ombrage en damier (lumière en haut à gauche) et, s'il leur manque, un contour brun très sombre,
-     comme dans le logo et dans Ronceclair.
+     à sa taille d'origine pour Noisette, et recoloré aux couleurs des autres personnages. Le logo est
+     déjà dithered : on n'ajoute rien dessus, on l'anime (queue qui ondule, pattes qui alternent, respiration).
+   - Tous les autres sprites passent à la taille × 2 (algorithme Scale2x, qui lisse les diagonales sans flou) et
+     reçoivent un contour brun très sombre s'il leur manque. Pas de dithering ajouté : ils gardent leur ombrage d'origine.
    ========================================================================= */
 (function () {
   "use strict";
@@ -64,7 +64,7 @@
       if (needOut) for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) if (G[y][x] === "." && (!tr(x - 1, y) || !tr(x + 1, y) || !tr(x, y - 1) || !tr(x, y + 1))) R[y][x] = OL;
       // ombrage en damier : lumière en haut à gauche, ombre en bas à droite (sur les 2 px du bord)
       function edge(xx, yy) { return tr(xx, yy) || dark(R[yy][xx]); }
-      if (W2 * H2 >= 100) for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) {
+      if (false) for (y = 0; y < H2; y++) for (x = 0; x < W2; x++) {
         var c = R[y][x]; if (c === "." || c === OL || !pal[c] || dark(c)) continue;
         var up1 = edge(x, y - 1) || edge(x - 1, y), dn1 = edge(x, y + 1) || edge(x + 1, y);
         var up2 = !up1 && (edge(x, y - 2) || edge(x - 2, y)), dn2 = !dn1 && (edge(x, y + 2) || edge(x + 2, y));
@@ -91,17 +91,33 @@
     return { a: mix(dk, OUT, 0.55), b: mix(dk, OUT, 0.3), c: dk, d: mix(dk, base, 0.5), e: mix(dk, base, 0.8), f: base, g: mix(base, light, 0.55), h: light };
   }
   function shear(rows, k) { var H = rows.length; return rows.map(function (r, i) { var s = Math.round((H - 1 - i) / H * k), w = r.length; return s > 0 ? ".".repeat(s) + r.slice(0, w - s) : r; }); }
+  // animation du logo : la queue (colonnes 0 à 9) monte ou descend d'un pixel, les pattes (2 dernières rangées) glissent d'une colonne
+  function tail(rows, dy) {
+    var H = rows.length, W = rows[0].length, g = toGrid(rows, W), out = g.map(function (r) { return r.slice(); }), x, y;
+    for (x = 0; x <= 9; x++) for (y = 0; y < H - 3; y++) { var sy = y - dy; out[y][x] = sy >= 0 && sy < H - 3 ? g[sy][x] : "."; }
+    return fromGrid(out);
+  }
+  function feet(rows, dx) {
+    var H = rows.length, W = rows[0].length, g = toGrid(rows, W), out = g.map(function (r) { return r.slice(); }), x, y;
+    for (y = H - 2; y < H; y++) for (x = 5; x < 16; x++) { var sx = x - dx; out[y][x] = sx >= 5 && sx < 16 ? g[y][sx] : "."; }
+    return fromGrid(out);
+  }
+  function dbl(rows) { var o = []; rows.forEach(function (r) { var d = ""; for (var i = 0; i < r.length; i++) d += r[i] + r[i]; o.push(d, d); }); return o; }   // pixels doublés, sans lissage
   function upgradeHero(d) {
     var pal = heroPal(d.pal || {}), F = LOGO.slice(), o = {};
     Object.keys(d).forEach(function (k) { o[k] = d[k]; });
-    var wal = scale2x(toGrid(F, 18)), r2 = fromGrid(wal), v2 = shear(r2, 5);
-    o.pal = pal; o.frames = [r2, r2, r2, r2]; o.bob = [0, 2, 0, 2]; o.idle = [r2, r2]; o.volte = v2;
+    var up = tail(F, -1), dn = tail(F, 1);
+    o.pal = pal;
+    o.frames = [F, feet(up, 1), F, feet(dn, -1)];
+    o.bob = [0, 1, 0, 1];
+    o.idle = [F, up, F, dn];
+    o.volte = shear(F, 2);
     return o;
   }
 
   var SKIP = {};
   window.ES_ART = {
-    scale: 2,
+    scale: 1,
     upgrade: function (name, d) {
       if (!d || !d.frames || !d.frames.length || d.ns || SKIP[name]) return d;
       try { return /^sq_/.test(name) && name !== "sq_ninja_clone" ? upgradeHero(d) : upgradeSprite(d); } catch (e) { return d; }
