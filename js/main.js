@@ -47,7 +47,7 @@
   }
   var page = document.body.dataset.page;
   // les pages des jeux web sont regroupées sous l'onglet « Jeux »
-  var GAME_PAGES = ["games", "game", "merger", "dice", "kingdice", "ages", "arcane", "chess", "pool", "golf", "golfaventure", "idle", "grimpe"];
+  var GAME_PAGES = ["games", "game", "merger", "dice", "kingdice", "ages", "arcane", "chess", "pool", "golf", "idle", "grimpe"];
   var navPage = GAME_PAGES.indexOf(page) >= 0 ? "games" : page;
   $$("#site-nav a").forEach(function (a) {
     if (a.dataset.page === navPage) a.setAttribute("aria-current", "page");

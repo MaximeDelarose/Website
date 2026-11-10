@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Mini-golf · AkarisuMD</title>
+  <title>Golf · AkarisuMD</title>
   <meta name="description" content="Mini-golf : 9 trous dans la forêt (sable, eau, champignons, moulin), en solo ou en ligne jusqu'à 4 joueurs avec un code de salon.">
   <meta property="og:title" content="Mini-golf · AkarisuMD">
   <meta property="og:description" content="Mini-golf : 9 trous dans la forêt (sable, eau, champignons, moulin), en solo ou en ligne jusqu'à 4 joueurs avec un code de salon.">
@@ -27,6 +27,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261118ft1">
   <link rel="stylesheet" href="css/golf.css?v=20261109gf4">
+  <link rel="stylesheet" href="css/golfaventure.css?v=20261110ga2">
   <link rel="stylesheet" href="css/gamekit.css?v=20261118sk3">
 </head>
 <body data-page="golf">
@@ -61,10 +62,15 @@
     <div class="wrap">
       <div class="game-head">
         <div>
-          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · solo & en ligne</span>
-          <h1>Mini-golf</h1>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · golf</span>
+          <h1>Golf</h1>
+        </div>
+        <div class="mg-modes" role="tablist" aria-label="Jeu de golf">
+          <button type="button" role="tab" data-gmode="golf" aria-selected="true">⛳ Mini-golf</button>
+          <button type="button" role="tab" data-gmode="ga" aria-selected="false">🏌️ Golfaventure</button>
         </div>
         <button class="btn btn-ghost btn-small" type="button" data-golf-menu>☰ Menu</button>
+        <button class="btn btn-ghost btn-small" type="button" hidden data-ga-menu>☰ Menu</button>
       </div>
 
       <div data-golf>
@@ -95,8 +101,33 @@
         </div>
       </div>
 
+      <div data-ga hidden>
+        <div class="game-stage ga-stage" data-stage>
+          <canvas class="game-canvas ga-canvas" data-canvas aria-label="Monde de Golfaventure"></canvas>
+          <div class="ga-hud" data-hud hidden>
+            <div class="ga-side">
+              <svg class="ga-club" viewBox="0 0 12 12" width="30" height="30" shape-rendering="crispEdges" aria-hidden="true"><rect width="12" height="12" fill="#6fd13f"/><g fill="#14141e"><rect x="8" y="1" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="4" y="5" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="2" y="7" width="3" height="2"/></g><rect x="8" y="8" width="2" height="2" fill="#fff"/></svg>
+              <p class="ga-strokes"><b data-strokes>20</b><span data-max>/20</span></p>
+              <p class="ga-keys" data-keys hidden></p>
+              <div class="ga-items" aria-label="Objets"><i data-item="brake" title="Frein"></i><i data-item="power" title="Club puissant"></i><i data-item="float" title="Bouée"></i></div>
+              <div class="ga-pieces" aria-label="Morceaux de Tee"><i data-piece></i><i data-piece></i><i data-piece></i><i data-piece></i></div>
+              <div class="ga-power" aria-hidden="true"><i data-power></i></div>
+            </div>
+          </div>
+          <button class="ga-brake" type="button" data-brake hidden>FREIN</button>
+          <div class="ga-msg" data-msg hidden></div>
+          <div class="ga-dialog" data-dialog hidden></div>
+          <div class="game-overlay ga-overlay" data-overlay>
+            <div class="panel game-card ga-card" data-card>
+              <p>Chargement du jeu…</p>
+              <noscript><p>Ce jeu a besoin de JavaScript.</p></noscript>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="game-info">
-        <div class="panel game-help">
+        <div class="panel game-help" data-help="golf">
           <h2 class="section-title">Comment ça marche</h2>
           <ul>
             <li><strong>Tirer</strong> : appuie n'importe où sur le terrain et tire en arrière, comme un lance-pierre. Plus tu tires loin, plus la balle part fort ; la flèche te montre la direction et la puissance. Relâche pour frapper.</li>
@@ -104,6 +135,17 @@
             <li><strong>Le terrain</strong> (vu du dessus, en pixel art) : les murs en bois font rebondir la balle, le <em>sable</em> la freine, l'<em>eau</em> la renvoie d'où tu as tiré (+1 coup), les <em>champignons</em> la font rebondir. Les <em>bosses</em> la repoussent et les <em>creux</em> la ramènent vers leur centre. Les <em>tuyaux</em> (ronds verts ou bleus) l'avalent et la recrachent par l'autre bout, les <em>tremplins</em> jaunes l'envoient voler par-dessus l'eau et les obstacles, et il y a des <em>blocs qui coulissent</em> et des <em>pales qui tournent</em> : il faut du timing. Une balle trop rapide passe par-dessus le trou : vise doux.</li>
             <li><strong>Solo</strong> : 9 trous, un record gardé sur ton appareil. Au bout de 8 coups la balle est ramassée. Tu peux aussi t'entraîner sur un seul trou.</li>
             <li><strong>En ligne</strong> : crée un salon, envoie le code de 4 lettres (ou le lien) à 1 à 3 amis, et lancez la partie. Tout le monde joue en même temps, les balles des autres sont des fantômes. Le trou suivant démarre quand tout le monde a fini (ou une minute après le premier arrivé). Le plus petit total gagne.</li>
+          </ul>
+        </div>
+        <div class="panel game-help" data-help="ga" hidden>
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li><strong>Tu es la balle</strong> : tire en arrière n'importe où sur l'écran, comme un lance-pierre, avec la souris ou le doigt ; plus tu tires loin, plus tu pars fort. Au clavier : <kbd>Espace</kbd> pour viser, <kbd>←</kbd> <kbd>→</kbd> la direction, <kbd>↑</kbd> <kbd>↓</kbd> la puissance (<kbd>Maj</kbd> pour affiner), puis <kbd>Espace</kbd> pour tirer.</li>
+            <li><strong>Les coups sont ta vie</strong> : tu en as 20 au début (le compteur <em>17/20</em>), chaque tir en coûte un. À zéro, tu retournes au dernier drapeau.</li>
+            <li><strong>Drapeaux</strong> : roule dessus pour sauvegarder et retrouver tous tes coups. <strong>Trous</strong> : chaque trou gagné ajoute 3 coups au maximum. <strong>Slimes</strong> (+4), <strong>oiseaux</strong> cachés dans les buissons (+5), <strong>chauves-souris</strong> du souterrain (+6) et <strong>aigles</strong> (+10) te rendent des coups si tu les percutes en roulant. À l'arrêt, ils t'en font perdre.</li>
+            <li><strong>Terrain</strong> : le rough et le sable te freinent, l'eau te coûte 1 coup, les flèches au sol t'entraînent, la <strong>glace</strong> te fait glisser très loin, les <strong>bumpers</strong> orange te renvoient, les arbres et les rails te font rebondir, les buissons se cassent. Roule doucement dans un passage sombre (marches de pierre) pour descendre sous terre.</li>
+            <li><strong>Puzzles</strong> : frappe un <strong>interrupteur</strong> coloré avec ta balle pour ouvrir les <strong>portes</strong> de la même couleur ; ramasse une <strong>clé</strong> et roule contre une porte à serrure ; une <strong>roche fissurée</strong> ne se brise qu'avec le club puissant, à pleine puissance. Dans le <strong>donjon des Racines</strong>, un Roi Slime garde le trésor : percute-le trois fois !</li>
+            <li><strong>But</strong> : trouve les 4 trous dorés (Morceaux de Tee), puis rapporte-les au temple, tout au nord. Objets : le <em>frein</em> (touche <kbd>B</kbd>, bouton FREIN ou un tap pendant que tu roules), le <em>club puissant</em> et la <em>bouée</em> (flotter sur l'eau). La partie est sauvegardée sur ton appareil.</li>
           </ul>
         </div>
       </div>
@@ -129,5 +171,7 @@
   <script src="js/gamekit.js?v=20261114gk2"></script>
   <script src="js/vendor/supabase-2.45.4.min.js"></script>
   <script src="js/golf.js?v=20261109gf4"></script>
+  <script src="js/golfaventure.js?v=20261110ga2"></script>
+  <script src="js/golf-modes.js?v=20261118gm1"></script>
 </body>
 </html>

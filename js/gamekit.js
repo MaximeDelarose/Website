@@ -54,7 +54,6 @@
     { id: "echecs", title: "Échecs", ico: "♞" },
     { id: "billard", title: "Billard", ico: "🎱" },
     { id: "golf", title: "Mini-golf", ico: "⛳" },
-    { id: "golfaventure", title: "Golfaventure", ico: "🏌️" },
     { id: "grimpe", title: "Grimpe-Chêne", ico: "🌳" },
     { id: "idle", title: "Le Grand Chêne", ico: "🌰" }
   ];
