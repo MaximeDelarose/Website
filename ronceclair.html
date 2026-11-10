@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Ronceclair · AkarisuMD</title>
-  <meta name="description" content="Ronceclair : un action-RPG en vue de dessus où tu incarnes un écureuil. Trois classes, trois zones, des quêtes, du butin et un Roi-corbeau à vaincre.">
+  <meta name="description" content="Ronceclair : un action-RPG pixel-art en vue de dessus où tu incarnes un écureuil. Solo ou coop en ligne à 2, trois classes, trois zones, des quêtes et un Roi-corbeau à vaincre.">
   <meta property="og:title" content="Ronceclair · AkarisuMD">
-  <meta property="og:description" content="Ronceclair : un action-RPG en vue de dessus où tu incarnes un écureuil. Trois classes, trois zones, des quêtes, du butin et un Roi-corbeau à vaincre.">
+  <meta property="og:description" content="Ronceclair : un action-RPG pixel-art en vue de dessus où tu incarnes un écureuil. Solo ou coop en ligne à 2, trois classes, trois zones, des quêtes et un Roi-corbeau à vaincre.">
   <meta name="theme-color" content="#2f6b3e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="css/style.css?v=20261118ft1">
   <link rel="stylesheet" href="css/party.css?v=20261107vs2">
   <link rel="stylesheet" href="css/gamekit.css?v=20261118gf4">
-  <link rel="stylesheet" href="css/ronceclair.css?v=20261120rc1">
+  <link rel="stylesheet" href="css/ronceclair.css?v=20261120rc2">
 </head>
 <body data-page="ronceclair">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -62,7 +62,7 @@
     <div class="wrap">
       <div class="game-head">
         <div>
-          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · action-RPG solo</span>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · action-RPG solo & coop en ligne</span>
           <h1>Ronceclair</h1>
         </div>
         <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
@@ -113,6 +113,7 @@
             <li>Tu es un <strong>écureuil de la guilde de Ronceclair</strong>. Choisis une classe : le <strong>Gardien</strong> (griffes, encaisse), le <strong>Lanceur</strong> (glands à distance) ou le <strong>Mystique</strong> (éclats arcanes qui traversent les ennemis).</li>
             <li><strong>Se déplacer</strong> : <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou les flèches. <strong>Attaquer</strong> : clic gauche ou <kbd>Espace</kbd> (tu vises avec la souris). <strong>Roulade</strong> : <kbd>Maj</kbd> ou clic droit, tu es invincible un instant. <strong>Spécial</strong> : <kbd>E</kbd>.</li>
             <li><kbd>F</kbd> pour parler, ouvrir un coffre ou faire des achats · <kbd>R</kbd> mange une baie (+45 PV) · <kbd>C</kbd> ouvre les caractéristiques : 2 points par niveau à répartir en Vitalité, Force ou Agilité.</li>
+            <li><strong>Coop en ligne à 2</strong> : « Créer un salon » donne un code de 4 lettres et un lien à envoyer à ton ami (ou ☰ → « Inviter un ami » en pleine partie). L'hôte décide de la zone ; vous gardez chacun votre progression, votre niveau et vos quêtes. Chacun touche l'XP et les noisettes de chaque monstre vaincu, les monstres sont plus costauds à deux, et si tu tombes ton coéquipier te relève.</li>
             <li>Sur <strong>mobile</strong> : joystick à gauche, boutons à droite. L'attaque vise toute seule l'ennemi le plus proche.</li>
             <li><strong>Trois zones</strong> : la Clairière (village de Maître Noisetier et Dame Glandine), le Sous-bois moussu et le Marais aux nénuphars, où règne le <strong>Roi-corbeau</strong>. Chaque passage demande un niveau minimum.</li>
             <li>Les monstres lâchent des <strong>noisettes</strong> (à dépenser chez Dame Glandine : queue de combat, cape, bottes) et parfois des baies. Les élites (★) sont plus costauds mais rapportent plus.</li>
@@ -140,6 +141,10 @@
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/main.js?v=20261118ft1"></script>
   <script src="js/gamekit.js?v=20261118gf3"></script>
-  <script src="js/ronceclair.js?v=20261120rc1"></script>
+  <script src="js/party-modes.js?v=20261116vs3"></script>
+  <script src="js/party.js?v=20261116vs3"></script>
+  <script src="js/vendor/supabase-2.45.4.min.js"></script>
+  <script src="js/ronceclair-art.js?v=20261120rc2"></script>
+  <script src="js/ronceclair.js?v=20261120rc2"></script>
 </body>
 </html>

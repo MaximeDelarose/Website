@@ -81,3 +81,21 @@
   .rc-class em { grid-area: e; }
   .rc-banner strong { font-size: 1.05rem; }
 }
+
+/* coop en ligne et champs */
+.rc-field { display: block; margin: 10px 0; font-weight: 800; text-align: left; }
+.rc-field input, .rc-join input, .rc-link { font: inherit; border: 3px solid #6e4a26; background: #fff9e8; color: #3a2614; padding: 8px 10px; width: 100%; box-sizing: border-box; }
+.rc-join { display: flex; gap: 8px; justify-content: center; margin: 8px 0 12px; }
+.rc-join input { width: 7.5em; text-transform: uppercase; text-align: center; letter-spacing: .25em; font-weight: 900; }
+.rc-err { color: #b3261e !important; font-weight: 800; }
+.rc-code { font-size: 2rem; letter-spacing: .3em; background: #fff0c2; border: 3px solid #c98a3a; padding: 2px 14px; display: inline-block; }
+.rc-link { margin: 4px 0 10px; font-size: .85rem; }
+.rc-coopbox { margin: 8px 0; }
+:root[data-theme="dark"] .rc-field input, :root[data-theme="dark"] .rc-join input, :root[data-theme="dark"] .rc-link { background: #1d170e; color: #fbf3df; }
+:root[data-theme="dark"] .rc-code { background: #3a2f1e; }
+/* habillage pixel : coins carrés et ombres en escalier, comme le reste du site */
+.rc-card { border-radius: 0; border: 0; box-shadow: 0 -4px 0 0 #6e4a26, 0 4px 0 0 #6e4a26, -4px 0 0 0 #6e4a26, 4px 0 0 0 #6e4a26, 0 10px 0 0 rgba(0, 0, 0, .35); }
+.rc-class, .rc-row { border-radius: 0; }
+.rc-menu-btn, .rc-banner, .rc-pill, .rc-quest, .rc-bar { border-radius: 0; }
+.rc-b { border-radius: 0; }
+.rc-class canvas { image-rendering: pixelated; width: 96px; height: 96px; }
