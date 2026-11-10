@@ -1,0 +1,11 @@
+/* Champ de saisie de messagerie (Snapchien sombre par défaut ; Tindeur surcharge les variables dans swipe.css). */
+.cmp { --cmp-bg: #23242a; --cmp-fg: #f4f4f6; --cmp-ph: #8d8f99; --cmp-accent: #ffd400; --cmp-accent-fg: #111; display: flex; align-items: center; gap: 8px; margin: 0; }
+.cmp-in { flex: 1; min-width: 0; height: 44px; border: 0; border-radius: 22px; padding: 0 16px; background: var(--cmp-bg); color: var(--cmp-fg); font: 500 16px/1.2 var(--font, system-ui); outline: none; -webkit-appearance: none; appearance: none; }
+.cmp-in::placeholder { color: var(--cmp-ph); }
+.cmp-in:focus { box-shadow: 0 0 0 2px var(--cmp-accent); }
+.cmp-send { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--cmp-accent); color: var(--cmp-accent-fg); font-size: 18px; font-weight: 800; display: grid; place-items: center; cursor: pointer; transition: transform .12s, opacity .12s; }
+.cmp-send:disabled { opacity: .35; cursor: default; }
+.cmp-send:not(:disabled):active { transform: scale(.92); }
+.cmp-cam { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--cmp-bg); color: var(--cmp-fg); display: grid; place-items: center; cursor: pointer; }
+.cmp-cam:active { transform: scale(.92); }
+@media (prefers-reduced-motion: reduce) { .cmp-send { transition: none; } }
