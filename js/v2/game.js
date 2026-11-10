@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.55.1";
+  var VERSION = "2.56.0";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -1832,8 +1832,8 @@
       else if (th === "cave" && g.v === 1) S.push(P([[22, 9], [24, 0], [26, 9]], "crystal", { line: true }), P([[25, 10], [29, 3], [29, 11]], "crystal"), P([[19, 9], [20, 4], [22, 9]], "crystal"));
       else if (g.v === 0) S.push(E(11, 6.8, 6, 2.2, 0, "moss", { line: true }));
     }
-    var R0 = RG.raster(W, H, S, mats), spr = sprite(R0.rows, R0.pal);
-    spr.ax = ax + 1; spr.ay = ay + 1;
+    var R0 = RG.raster(W, H, S, mats, HR), spr = sprite(R0.rows, R0.pal, HR);
+    spr.ax = ax + 1 / HR; spr.ay = ay + 1 / HR;
     return (GIANT_C[key] = spr);
   }
   function blitAnchor(s, x, y) { ctx.drawImage(s.c, Math.round(x - s.ax), Math.round(y - s.ay)); }
@@ -6073,7 +6073,7 @@
     if (CAMP_SPR) return CAMP_SPR;
     var E = RG.E, C = RG.C, P = RG.P, L = { line: true }, F = { flat: true };
     function rp(c) { return [RG.mix(c, "#ffffff", 0.28), c, RG.mix(c, "#000000", 0.22), RG.mix(c, "#000000", 0.42)]; }
-    function mk(w, h, ax, ay, shapes, mats) { var R0 = RG.raster(w, h, shapes, mats), s = sprite(R0.rows, R0.pal); s.ax = ax + 1; s.ay = ay + 1; return s; }
+    function mk(w, h, ax, ay, shapes, mats) { var R0 = RG.raster(w, h, shapes, mats, HR), s = sprite(R0.rows, R0.pal, HR); s.ax = ax + 1 / HR; s.ay = ay + 1 / HR; return s; }
     function lineF(x1, y1, x2, y2, m) { return C(x1, y1, x2, y2, 0.35, 0.35, m, F); }
     var M = { grass: rp("#6aa850"), dirt: rp("#8a5a3b"), wood: rp("#a87a48"), plank: rp("#b8844a"), door: rp("#6b4430"), roof: rp("#c8553d"), slate: rp("#4e5466"),
       stone: rp("#8e877c"), dark: ["#2b1709"], glow: ["#ffe08a"], fire: ["#ff8a2a"], gold: rp("#f2c230"), iron: rp("#5a5e66"), red: rp("#d8483a"), cream: rp("#f3e6c8"),

@@ -1,6 +1,6 @@
 /* =========================================================================
    Écureuil Survivor · version « dithering » : sprites refaits (js/v2/dither-art.js)
-   Chargé avant le jeu par jeu-dither.html. Le jeu passe chaque sprite par ES_ART.upgrade(nom, définition).
+   Chargé avant le jeu par jeu.html. Le jeu passe chaque sprite par ES_ART.upgrade(nom, définition).
    - Tous les écureuils sont l'écureuil du logo (assets/squirrel.png, 18 × 19, 8 couleurs), repris pixel pour pixel
      à sa taille d'origine pour Noisette, et recoloré aux couleurs des autres personnages. Le logo est
      déjà dithered : on n'ajoute rien dessus, on l'anime (queue qui ondule, pattes qui alternent, respiration).
@@ -154,11 +154,19 @@
   // un morceau de sol de 4 × 4 tuiles (128 × 128 px écran), seamless : le bruit dépend des coordonnées du monde
   function groundChunk(ccx, ccy, getG) {
     var S = 128, cv = document.createElement("canvas"); cv.width = cv.height = S;
-    var g = cv.getContext("2d"), im = g.createImageData(S, S), d = im.data, tx, ty, px, py;
+    var g = cv.getContext("2d"), im = g.createImageData(S, S), d = im.data, tx, ty, px, py, GT = {};
+    function gat(a, b) { var k = a + "," + b; return GT[k] || (GT[k] = getG(a, b)); }
     for (ty = 0; ty < 4; ty++) for (tx = 0; tx < 4; tx++) {
-      var R = ramp(getG(ccx * 4 + tx, ccy * 4 + ty));
+      var wx = ccx * 4 + tx, wy = ccy * 4 + ty, G0 = gat(wx, wy), R0 = ramp(G0), GE = gat(wx + 1, wy), GW = gat(wx - 1, wy), GS = gat(wx, wy + 1), GN = gat(wx, wy - 1);
       for (py = 0; py < 32; py++) for (px = 0; px < 32; px++) {
-        var X = ccx * S + tx * 32 + px, Y = ccy * S + ty * 32 + py, b = bay(X, Y);
+        var X = ccx * S + tx * 32 + px, Y = ccy * S + ty * 32 + py, b = bay(X, Y), R = R0;
+        // bord de biome : le sol du voisin déborde en dithering sur 6 px
+        var best = 99, nG = null, dd;
+        if (GE !== G0 && (dd = 31 - px) < best) { best = dd; nG = GE; }
+        if (GW !== G0 && (dd = px) < best) { best = dd; nG = GW; }
+        if (GS !== G0 && (dd = 31 - py) < best) { best = dd; nG = GS; }
+        if (GN !== G0 && (dd = py) < best) { best = dd; nG = GN; }
+        if (nG && best < 6 && (1 - best / 6) * 0.5 > b) R = ramp(nG);
         var f = vn(X, Y, 190) * 0.85 + vn(X + 5000, Y - 3000, 60) * 0.15;
         var c = band((f - 0.6) * 1.7 + 0.5, b) ? R.P : R.B;
         var o = ((ty * 32 + py) * S + tx * 32 + px) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
