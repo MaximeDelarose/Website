@@ -268,4 +268,4 @@ html.gk-reduce-fx .game-overlay, html.gk-reduce-fx .game-overlay > * { animation
   position: absolute; z-index: 65; left: calc(env(safe-area-inset-left, 0px) + 8px); bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
   display: flex; flex-wrap: wrap; gap: 6px; max-width: calc(100% - 16px); pointer-events: auto;
 }
-.gk-dock .btn, .gk-dock .gk-gear { min-height: 38px; padding: 6px 10px; font-size: .9rem; background: rgba(253, 243, 222, .92); }
+.gk-dock .btn, .gk-dock .gk-gear { min-height: 38px; padding: 6px 10px; font-size: .9rem; background: var(--panel, #fdf3de); color: var(--ink, #3a2618); box-shadow: 0 0 0 3px var(--line, #3d2a1e), 0 4px 0 0 var(--depth, #c9a77a); }
