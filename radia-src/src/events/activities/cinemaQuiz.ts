@@ -5,10 +5,11 @@ import { endCard, injectCss, introCard, pick } from '../games/action/common';
 import { FILMS, MAX_SNACKS, SNACKS, drawQuestions, quizScore, type Film, type Snack } from '../games/action/quiz';
 import type { Activity } from '../types';
 
+import { PARTNER } from '../../config/gift';
 const GOOD = ['Bravo !', 'Exact ♡', 'Bien vu, ma reine !', 'Parfait !', 'Quelle culture !'];
 const OOPS = ['Presque !', 'Pas tout à fait…', 'Oh, c’était piégeux !', 'Une autre fois !'];
-const AUG_GOOD = ['Auguste : « Tu m’impressionnes. »', 'Auguste : « Ma reine sait tout. »', 'Auguste : « Je te donne une bouchée de pop-corn. »'];
-const AUG_OOPS = ['Auguste : « Même moi j’hésitais. »', 'Auguste : « On se rattrape à la prochaine. »', 'Auguste : « Un câlin de consolation ? »'];
+const AUG_GOOD = [`${PARTNER} : « Tu m’impressionnes. »`, `${PARTNER} : « Ma reine sait tout. »`, `${PARTNER} : « Je te donne une bouchée de pop-corn. »`];
+const AUG_OOPS = [`${PARTNER} : « Même moi j’hésitais. »`, `${PARTNER} : « On se rattrape à la prochaine. »`, `${PARTNER} : « Un câlin de consolation ? »`];
 
 const activity: Activity = async (ctx) => {
   injectCss();

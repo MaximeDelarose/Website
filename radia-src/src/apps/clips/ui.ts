@@ -24,6 +24,7 @@ import { hash } from '../util';
 import { flags } from './ui-state';
 import type { Pending } from '../snap/model';
 
+import { PARTNER, PARTNER_DE, PARTNER_DE_TYPO } from '../../config/gift';
 let layer: HTMLElement | null = null;
 registerBusy(() => !!layer);
 
@@ -224,9 +225,9 @@ export function openClips(startTab: Tab = 'foryou', opts: { moment?: string } = 
     const target = h('div.clp-target', { hidden: 'true' });
     const setReply = (m: ThreadMsg | null) => {
       replyTo = m ? { id: m.id, by: m.by } : null;
-      input.placeholder = m ? `Répondre à ${m.by === 'auguste' ? 'Auguste' : '@' + m.by}…` : 'Ajouter un commentaire…';
+      input.placeholder = m ? `Répondre à ${m.by === 'auguste' ? `${PARTNER}` : '@' + m.by}…` : 'Ajouter un commentaire…';
       target.textContent = '';
-      if (m) { target.removeAttribute('hidden'); target.append(h('span', `Réponse à ${m.by === 'auguste' ? 'Auguste' : '@' + m.by}`), h('button.clp-x.dark', { 'aria-label': 'Annuler la réponse', on: { click: tap(() => setReply(null), { sound: false }) } }, ico('close', 14))); input.focus(); } else target.setAttribute('hidden', 'true');
+      if (m) { target.removeAttribute('hidden'); target.append(h('span', `Réponse à ${m.by === 'auguste' ? `${PARTNER}` : '@' + m.by}`), h('button.clp-x.dark', { 'aria-label': 'Annuler la réponse', on: { click: tap(() => setReply(null), { sound: false }) } }, ico('close', 14))); input.focus(); } else target.setAttribute('hidden', 'true');
     };
     const nf = (n: number): string => n.toLocaleString('fr-FR');
     /** Les likes d'Auguste montent progressivement (sauf animations réduites). */
@@ -238,13 +239,13 @@ export function openClips(startTab: Tab = 'foryou', opts: { moment?: string } = 
     };
     const msgEl = (m: ThreadMsg, isReply: boolean, animate: boolean): HTMLElement => {
       const isA = m.by === 'auguste';
-      const av = isA ? h('img.clp-cav.aug', { src: augAv(), alt: 'Auguste' }) : h('span.clp-cav', { style: `--h:${hash(m.by) % 360}` }, m.by.slice(0, 1).toUpperCase());
+      const av = isA ? h('img.clp-cav.aug', { src: augAv(), alt: `${PARTNER}` }) : h('span.clp-cav', { style: `--h:${hash(m.by) % 360}` }, m.by.slice(0, 1).toUpperCase());
       const liked = st.msgLiked.includes(m.id);
       const count = h('b', animate && isA ? '0' : nf(m.likes + (liked ? 1 : 0)));
       const heart = h(`button.clp-mh${liked ? '.on' : ''}`, { 'aria-label': 'Aimer ce commentaire' }, ico('heart', 15), count);
       heart.addEventListener('click', tap(() => { const on = toggleMsgLike(st, m.id); persist(); heart.classList.toggle('on', on); count.textContent = nf(m.likes + (on ? 1 : 0)); if (on) { tick('heart'); const r = heart.getBoundingClientRect(); heartBurst(root, r.left + 8, r.top, 3); } }, { sound: false }));
       if (animate && isA) countUp(count, m.likes + (liked ? 1 : 0));
-      const who = isA ? h('b', 'Auguste', h('i.clp-badge', 'compte d\u2019Auguste')) : h('b', `@${m.by}`);
+      const who = isA ? h('b', `${PARTNER}`, h('i.clp-badge', `compte ${PARTNER_DE}`)) : h('b', `@${m.by}`);
       const body = h('div.clp-cb', who, h('p', m.text), h('div.clp-meta', heart, isA || !isReply ? h('button.clp-rp', { on: { click: tap(() => setReply(m), { sound: false }) } }, 'Répondre') : null));
       const el = h(`div.clp-com${isReply ? '.rep' : ''}${isA ? '.augu' : ''}${m.viral ? '.viral' : ''}`, av, body);
       return el;
@@ -256,7 +257,7 @@ export function openClips(startTab: Tab = 'foryou', opts: { moment?: string } = 
         const box = h('div.clp-th', msgEl(th.root, false, animate));
         for (const r of th.replies) {
           box.append(msgEl(r, true, animate));
-          for (const mine of st.replies[r.id] ?? []) box.append(h('div.clp-com.rep.me', h('span.clp-cav.me', 'R'), h('div', h('b', 'Radia'), h('p', mine), r.by === 'auguste' ? h('small.clp-ah', '♥ Auguste a aimé') : null)));
+          for (const mine of st.replies[r.id] ?? []) box.append(h('div.clp-com.rep.me', h('span.clp-cav.me', 'R'), h('div', h('b', 'Radia'), h('p', mine), r.by === 'auguste' ? h('small.clp-ah', `♥ ${PARTNER} a aimé`) : null)));
         }
         for (const mine of st.replies[th.root.id] ?? []) box.append(h('div.clp-com.rep.me', h('span.clp-cav.me', 'R'), h('div', h('b', 'Radia'), h('p', mine))));
         list.append(box);
@@ -291,7 +292,7 @@ export function openClips(startTab: Tab = 'foryou', opts: { moment?: string } = 
     const r = root.getBoundingClientRect();
     heartBurst(heartHost, r.width / 2, r.height * 0.45, 12);
     toast({ title: 'Publié dans TikTak ♡', sub: fans > 0 ? `+${fans} fans (fictifs)` : 'Tes fans du jour sont déjà au rendez-vous, reviens demain ♡' });
-    if (invited) window.setTimeout(() => toast({ title: 'Message d’Auguste', sub: 'Il a vu ta vidéo… regarde ton téléphone ♡', ms: 3200 }), 1400);
+    if (invited) window.setTimeout(() => toast({ title: `Message ${PARTNER_DE_TYPO}`, sub: 'Il a vu ta vidéo… regarde ton téléphone ♡', ms: 3200 }), 1400);
   }
   function openComposer(): void {
     const snaps = snapState().photos.slice().reverse();

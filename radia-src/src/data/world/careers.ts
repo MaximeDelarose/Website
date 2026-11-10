@@ -6,6 +6,7 @@
 import type { CareerId, ClothId, FurnitureId, MagazineId, StyleId } from './ids';
 import type { Expr } from '../dialogue';
 
+import { PARTNER } from '../../config/gift';
 // ------------------------------------------------------------------ récompenses
 export interface Reward {
   coins?: number;
@@ -112,7 +113,7 @@ export const FAN_TIER_DEFS: FanTierDef[] = [
 
 /** Fiche d'Auguste (fan n° 1) et ses répliques de fiche (en plus de celles d'auguste.ts). */
 export const AUGUSTE_FICHE = {
-  name: 'Auguste ♡',
+  name: `${PARTNER} ♡`,
   title: 'Fan n° 1 depuis le premier jour.',
   text: 'Son plus grand fan, même avant que le monde découvre son talent.',
   lines: [

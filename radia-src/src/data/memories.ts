@@ -5,6 +5,7 @@
 import type { DialogueLine } from './dialogue';
 import { DECLARATION, GIFT_LINES, MEMORY_DESC, MEMORY_ID, MEMORY_TITLE } from '../events/necklace/data';
 
+import { PARTNER } from '../config/gift';
 export interface MemoryDef {
   id: string;
   title: string;
@@ -39,7 +40,7 @@ export const MEMORIES: MemoryDef[] = [
   {
     id: 'cinema',
     title: 'Le cinéma',
-    desc: 'Un film de super-héros dont Auguste ne se souvient pas vraiment. Il regardait ailleurs.',
+    desc: `Un film de super-héros dont ${PARTNER} ne se souvient pas vraiment. Il regardait ailleurs.`,
     how: 'Chapitre 3',
     lines: [{ who: 'auguste', expr: 'tease', text: 'J\'aurais pu regarder le film dix fois… mais je crois que je me serais encore laissé distraire par toi.' }],
   },

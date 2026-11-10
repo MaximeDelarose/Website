@@ -1,3 +1,4 @@
+import { PARTNER_DE } from '../../config/gift';
 /** Répliques contextuelles d'Auguste (données pures, testables). */
 export type AugTopic =
   | 'outfit' | 'outfitElegant' | 'outfitBuy' | 'hair'
@@ -45,7 +46,7 @@ export const AUG_LINES: Record<AugTopic, string[]> = {
     'J\'espère que tu passes un bon moment, ma reine ♡',
     'Si tu as besoin de moi, je suis juste là.',
     'Je pense à toi. Prends ton temps : ici, il n\'y a aucune pression.',
-    'Un petit coucou d\'Auguste : j\'espère que ta journée se passe bien ♡',
+    `Un petit coucou ${PARTNER_DE} : j'espère que ta journée se passe bien ♡`,
     'N\'oublie pas de boire un verre d\'eau et de respirer un peu. Je suis fier de toi.',
     'Quoi qu\'il arrive, je suis là pour toi. Toujours.',
     'Si la journée est lourde, pose le téléphone un instant. Je t\'attends ici, sans souci ♡',

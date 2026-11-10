@@ -23,6 +23,7 @@ import { FAN_TIERS, MAGAZINE_IDS, MAGAZINE_NAMES, type MagazineId } from '../../
 import { claimFanTiers, fansTierOf, magazineUnlocked, syncMagazines, ownedMagazinesOf, type FanTierClaim } from '../../../game/world/careers';
 import { countUp, rewardChips, runQueue, showFanTier, showMagazineReveal } from './careerFx';
 
+import { PARTNER } from '../../../config/gift';
 /** Couvertures possédées (pour le module « château » : meuble « painting »). */
 export function ownedMagazines(): MagazineId[] { return ownedMagazinesOf(world()); }
 
@@ -128,7 +129,7 @@ export function openFans(opts: { album?: boolean } = {}): Promise<void> {
     body.append(h('h3.fn-h', 'Les paliers'), list);
 
     // --- Auguste, fan n° 1
-    const ahead = h('div.fn-aug-head', h('img', { src: augusteHead(), alt: 'Auguste' }), h('span.fn-no1', 'n°1'));
+    const ahead = h('div.fn-aug-head', h('img', { src: augusteHead(), alt: `${PARTNER}` }), h('span.fn-no1', 'n°1'));
     const reactBtn = h('button.btn.lavande.small', 'Voir sa réaction');
     reactBtn.addEventListener('click', tap(() => { augusteReacts(); ahead.classList.remove('hop'); void ahead.offsetWidth; ahead.classList.add('hop'); audio.play('heart'); }));
     body.append(h('h3.fn-h', 'Fan n° 1'), h('section.panel.fn-aug',

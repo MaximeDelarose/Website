@@ -7,15 +7,16 @@ import { ui } from '../ui';
 import * as S from '../../core/stats';
 import { fmtDuration, shareInviteKind } from '../../core/statsLogic';
 
+import { PARTNER } from '../../config/gift';
 const P = (t: string, strong = false): HTMLElement => h('p', { style: 'margin:0 0 8px' }, strong ? h('b', t) : t);
 
 function infoBody(): HTMLElement {
   return h('div', { style: 'text-align:left;font-size:14px;line-height:1.4' },
-    P('Si tu l’acceptes, RADIA partage avec Auguste, le créateur du jeu, quelques statistiques d’utilisation.'),
+    P(`Si tu l’acceptes, RADIA partage avec ${PARTNER}, le créateur du jeu, quelques statistiques d’utilisation.`),
     h('p', { style: 'margin:0 0 8px' }, h('b', 'Ce qui est partagé : '), 'l’heure d’ouverture du jeu, ta dernière activité, ton temps de jeu actif (une estimation), le type d’accès (application installée ou navigateur), ton fuseau horaire et un identifiant aléatoire de cet appareil.'),
     h('p', { style: 'margin:0 0 8px' }, h('b', 'Jamais partagé : '), 'tes messages, tes conversations, ta position, ta partie, tes photos ni aucune autre information.'),
     h('p', { style: 'margin:0 0 8px' }, h('b', 'Pourquoi : '), 'savoir comment le jeu est utilisé et vérifier qu’il fonctionne bien pour toi.'),
-    h('p', { style: 'margin:0 0 8px' }, h('b', 'Qui peut les voir : '), 'seulement Auguste, dans un espace privé protégé.'),
+    h('p', { style: 'margin:0 0 8px' }, h('b', 'Qui peut les voir : '), `seulement ${PARTNER}, dans un espace privé protégé.`),
     h('p', { style: 'margin:0 0 8px' }, h('b', 'Conservation : '), 'le détail des sessions 90 jours, les totaux par jour 13 mois, puis suppression automatique.'),
     h('p', { style: 'margin:0' }, h('b', 'Ton choix : '), 'tu peux dire non, arrêter à tout moment, voir tes données et les supprimer ici. Refuser ne change rien au jeu ♡'));
 }
@@ -50,9 +51,9 @@ export async function openStatsPanel(): Promise<void> {
     });
     if (r === 'on') { const res = await S.enableStats(); ui.toast({ title: res === 'ok' ? 'Partage activé ♡' : 'Activation impossible pour l’instant', sub: res === 'ok' ? 'Tu peux l’arrêter quand tu veux' : 'Réessaie dans un moment — rien n’a été partagé', icon: res === 'ok' ? 'heart' : 'info', ms: 3000 }); continue; }
     if (r === 'off') { S.disable(); ui.toast({ title: 'Partage désactivé', sub: 'Plus rien n’est envoyé', icon: 'info', ms: 2600 }); continue; }
-    if (r === 'view') { await showMine(); if (hasDevice && !on) { const del = await ui.confirm('Supprimer mes données ?', 'Toutes les statistiques déjà reçues par Auguste seront effacées.', 'Supprimer', 'Garder'); if (del) { const ok = await S.forgetStats(); ui.toast({ title: ok ? 'Données supprimées ♡' : 'Suppression impossible pour l’instant', sub: ok ? 'Rien ne reste sur le serveur' : 'Réessaie dans un moment', icon: 'info', ms: 2800 }); } } continue; }
+    if (r === 'view') { await showMine(); if (hasDevice && !on) { const del = await ui.confirm('Supprimer mes données ?', `Toutes les statistiques déjà reçues par ${PARTNER} seront effacées.`, 'Supprimer', 'Garder'); if (del) { const ok = await S.forgetStats(); ui.toast({ title: ok ? 'Données supprimées ♡' : 'Suppression impossible pour l’instant', sub: ok ? 'Rien ne reste sur le serveur' : 'Réessaie dans un moment', icon: 'info', ms: 2800 }); } } continue; }
     if (r === 'forget') {
-      const del = await ui.confirm('Supprimer mes données ?', 'Toutes les statistiques déjà reçues par Auguste seront effacées et le partage sera arrêté.', 'Supprimer', 'Garder');
+      const del = await ui.confirm('Supprimer mes données ?', `Toutes les statistiques déjà reçues par ${PARTNER} seront effacées et le partage sera arrêté.`, 'Supprimer', 'Garder');
       if (del) { const ok = await S.forgetStats(); ui.toast({ title: ok ? 'Données supprimées ♡' : 'Suppression impossible pour l’instant', sub: ok ? 'Le partage est arrêté' : 'Réessaie dans un moment', icon: 'info', ms: 2800 }); }
       continue;
     }

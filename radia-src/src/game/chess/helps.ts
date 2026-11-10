@@ -7,6 +7,7 @@ import type { Chess, Move, PieceSymbol, Square, Color } from 'chess.js';
 import { PIECE_VALUE } from './detente';
 import { PIECE_NAMES, type PieceKind } from './pieces';
 
+import { PARTNER_DE } from '../../config/gift';
 const val = (t: PieceSymbol) => (t === 'k' ? 100 : PIECE_VALUE[t]);
 
 /** Cases des pièces de `side` attaquées et mal protégées (non défendues, ou attaquées par moins chère). */
@@ -139,7 +140,7 @@ function describe(theme: HintTheme, m: Move, level: 1 | 2 | 3): string {
     case 'promotion': return 'Un de tes pions peut devenir une pièce : avance-le jusqu\'au bout.';
     case 'save': return level === 1 ? `${le(piece)[0].toUpperCase() + le(piece).slice(1)} est attaqué${piece === 'q' || piece === 'r' ? 'e' : ''} : mets-${piece === 'q' || piece === 'r' ? 'la' : 'le'} à l'abri.` : `Mets ${le(piece)} à l'abri.`;
     case 'castle': return 'Tu peux roquer : ton roi sera plus en sécurité.';
-    case 'check': return 'Tu peux mettre le roi d\'Auguste en échec.';
+    case 'check': return `Tu peux mettre le roi ${PARTNER_DE} en échec.`;
     case 'develop': return `Sors ${le(piece)} : plus tes pièces sont actives, mieux c'est.`;
     default: return 'Rien d\'urgent : rapproche une pièce du centre.';
   }

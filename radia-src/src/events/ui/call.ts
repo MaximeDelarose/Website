@@ -9,6 +9,7 @@ import { audio, reducedFx } from '../../core/app';
 import { speakerFace } from '../ctx';
 import { loadVoice, playVoice, type VoiceClip, type VoicePlayer } from '../voice';
 
+import { PARTNER } from '../../config/gift';
 export type CallResult = 'start' | 'later';
 
 const fmt = (s: number): string => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -86,7 +87,7 @@ export async function runCall(o: Opts): Promise<CallResult> {
       layer.classList.remove('live');
       st.textContent = 'Appel terminé';
       mid.textContent = '';
-      mid.append(h('div.call-end', h('h3', 'Auguste t’a invitée à une soirée surprise ♡'), h('p', 'Mets-toi sur ton trente et un !')));
+      mid.append(h('div.call-end', h('h3', `${PARTNER} t’a invitée à une soirée surprise ♡`), h('p', 'Mets-toi sur ton trente et un !')));
       bottom.textContent = '';
       const cta = h('div.call-cta');
       if (o.canStart) cta.append(h('button.btn.gold', { on: { click: tap(() => finish('start')) } }, 'Direction le dressing ♡'));

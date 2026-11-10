@@ -1,10 +1,11 @@
-/**
+
+import { lsKey } from '../config/gift';/**
  * Photos privées : stockées chiffrées (AES-GCM) dans assets/p/*.bin.
  * La clé vient du lien envoyé à Radia (…/#k=CLÉ) ; elle est mémorisée dans le
  * navigateur pour les visites suivantes. Sans clé, le jeu fonctionne
  * normalement et affiche les illustrations à la place des photos.
  */
-const LS = 'radia-k';
+const LS = lsKey('radia-k');
 const cache = new Map<string, Promise<string | null>>();
 const ready = new Map<string, string>();
 

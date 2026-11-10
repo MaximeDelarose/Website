@@ -9,6 +9,7 @@
  */
 import type { LevelDef, PlacedItem } from '../game/merge/types';
 
+import { PARTNER_DE } from '../config/gift';
 const P = (x: number, y: number, c: PlacedItem['c'], l: number): PlacedItem => ({ x, y, c, l });
 
 export const LEVELS: LevelDef[] = [
@@ -38,7 +39,7 @@ export const LEVELS: LevelDef[] = [
     par: 10, reward: { hearts: 8 },
   },
   {
-    id: 4, chapter: 1, title: 'Les commandes d\'Auguste', difficulty: 2, dominant: 'flowers',
+    id: 4, chapter: 1, title: `Les commandes ${PARTNER_DE}`, difficulty: 2, dominant: 'flowers',
     hint: 'Les commandes en haut : quand l\'objet demandé est sur le plateau, touche « Donner ».',
     gen: [['flowers', 1, 6], ['flowers', 2, 4]],
     start: [P(0, 0, 'flowers', 2), P(5, 0, 'flowers', 2)],

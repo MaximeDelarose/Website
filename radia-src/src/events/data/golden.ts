@@ -4,9 +4,10 @@
  */
 import type { EventDef } from '../types';
 
+import { PARTNER } from '../../config/gift';
 export const GOLDEN: EventDef[] = [
   {
-    id: 'g-day', title: 'Une journée surprise avec Auguste ♡', sender: 'auguste', category: 'golden', golden: true, big: true, repeatable: false, weight: 3, minPlayMin: 25,
+    id: 'g-day', title: `Une journée surprise avec ${PARTNER} ♡`, sender: 'auguste', category: 'golden', golden: true, big: true, repeatable: false, weight: 3, minPlayMin: 25,
     needs: { doneAll: ['r-restaurant'] },
     teaser: 'Pour une fois, ne prévois rien.',
     invite: 'Galbi, pour une fois, ne prévois rien. J’ai organisé toute une journée pour toi.',

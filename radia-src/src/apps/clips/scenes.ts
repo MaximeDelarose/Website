@@ -20,6 +20,7 @@ import { drawSnap, type SnapMeta } from '../snap/render';
 import { PALETTES, type SceneSpec } from './gen';
 import { hash, rng } from '../util';
 
+import { PARTNER } from '../../config/gift';
 type G = CanvasRenderingContext2D;
 export const SW = 288, SH = 512;
 export interface SceneEnv {
@@ -344,7 +345,7 @@ function sceneFans(s: SceneSpec, env: SceneEnv): SceneDraw {
 }
 
 function sceneMeme(s: SceneSpec, env: SceneEnv): SceneDraw {
-  const lines = (s.line ?? 'Auguste : « Coucou ! »').split('|');
+  const lines = (s.line ?? `${PARTNER} : « Coucou ! »`).split('|');
   const pal = s.pal ?? 0, dur = env.dur;
   return (g, W, H, t) => {
     const p = (t % dur) / dur;

@@ -17,6 +17,7 @@ export const BUILD_TIME: number = typeof __BUILD_TIME__ === 'number' ? __BUILD_T
 
 import { dbg } from './debug';
 
+import { lsKey } from '../config/gift';
 export interface RemoteVersion { version: string; built: number }
 export type UpdateStatus = 'uptodate' | 'available' | 'unreachable';
 
@@ -53,7 +54,7 @@ export async function fetchRemoteVersion(): Promise<RemoteVersion | null> {
 }
 
 // ------------------------------------------------------------------ application de la mise à jour
-const GUARD = 'radia-upd-at';
+const GUARD = lsKey('radia-upd-at');
 
 /** Moment sûr pour recharger tout seul : écran titre, aucune fenêtre, aucun cadeau, rien en cours d'écriture. */
 const OVERLAYS = '.modal-backdrop, #reward-overlay .rw-root, .ev-layer, .inc-layer, .dm-reveal';

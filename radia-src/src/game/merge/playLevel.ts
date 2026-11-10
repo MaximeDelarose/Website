@@ -41,6 +41,7 @@ import { haptic } from '../../core/haptics';
 import { comboNote, onComboEnd } from '../fx/comboState';
 import { recordNotice } from '../../ui/notify';
 
+import { PARTNER, PARTNER_DE } from '../../config/gift';
 /** Personnages qui passent commande. */
 const REQUESTERS = ['auguste', 'cat', 'florist', 'pawn'] as const;
 const requesterUrl = (who: (typeof REQUESTERS)[number]) => who === 'auguste'
@@ -140,7 +141,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     heartsEl.addEventListener('click', tap(() => ui.toast({ title: `${fmt(save.data.hearts)} cœurs`, sub: 'Gagnés en livrant les commandes · pour décorer notre petit monde', icon: 'heart' })));
     coinsEl.addEventListener('click', tap(() => ui.toast({ title: `${fmt(save.data.world.res.coins)} pièces`, sub: 'Pour améliorer les générateurs, le château et le dressing', img: resIconUrl('coins', 64) })));
     const augImg = h('img', { src: canvasUrl('med:auguste', () => medallionCanvas('auguste', { expr: 'smile' }, 120)), alt: '' });
-    const aug = h('button.mh-auguste', { 'aria-label': 'Auguste' }, augImg);
+    const aug = h('button.mh-auguste', { 'aria-label': `${PARTNER}` }, augImg);
     // avec le lien secret : la tête de l'illustration
     if (hasPhotos()) void photoUrl('head-new').then((u) => { if (u) augImg.src = u; });
     const scoreNum = h('span', '0');
@@ -191,7 +192,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
     const renderBag = () => { (bagBtn.querySelector('.count') as HTMLElement).textContent = `${wallet.bag().length}/${wallet.bagSlots()}`; };
     bagBtn.addEventListener('click', tap(() => void openBag()));
     // Boutique : un bouton comme les autres de la barre d'actions (jamais flottant par-dessus les boosters)
-    const shopBtn = h('button.booster.mh-shop.shop-btn', { 'aria-label': 'La carte d\'Auguste : boutique' }, h('span.sb-card', h('span.sb-heart', '♥')), h('small', 'Boutique'));
+    const shopBtn = h('button.booster.mh-shop.shop-btn', { 'aria-label': `La carte ${PARTNER_DE} : boutique` }, h('span.sb-card', h('span.sb-heart', '♥')), h('small', 'Boutique'));
     shopBtn.addEventListener('click', tap(() => void openShop()));
     // Bas d'écran ANCRÉ : un seul conteneur flex ; les notices passagères (infos, bulle d'Auguste, gains, notifications) s'empilent
     // dans `dock`, juste au-dessus de la rangée d'actions, sans position arbitraire ni recouvrement entre elles.
@@ -306,7 +307,7 @@ export function playLevel(def: LevelDef, mode: 'story' | 'endless' = 'story', op
           const price = R.rushPrice(o);
           const ok = await ui.confirm('Accélérer la commande ?', `Terminer la commande tout de suite pour ${price} diamants (tu en as ${fmt(wallet.diamonds())}).`, `Oui · ${price} 💎`, 'Non');
           if (!ok) return;
-          if (!wallet.spendDiamonds(price)) { const g = await ui.confirm('Pas assez de diamants', 'La carte d\'Auguste peut arranger ça… 😌', 'Boutique', 'Plus tard'); if (g) void openShop('diamonds'); return; }
+          if (!wallet.spendDiamonds(price)) { const g = await ui.confirm('Pas assez de diamants', `La carte ${PARTNER_DE} peut arranger ça… 😌`, 'Boutique', 'Plus tard'); if (g) void openShop('diamonds'); return; }
           scene?.rushOrder(slot);
         }));
         const card = h(`div.order.interactive${cells ? '.ready' : ''}`, { 'data-slot': String(slot) },

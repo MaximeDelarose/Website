@@ -7,6 +7,7 @@
 import { tierCoins } from './prices';
 import { CLOTH_SLOTS, type ClothId, type ClothSlot, type HairId, type StyleId } from './ids';
 
+import { PARTNER_DE_TYPO } from '../../config/gift';
 export interface ClothDef {
   id: ClothId;
   name: string;
@@ -153,7 +154,7 @@ export const CLOTHES: Record<ClothId, ClothDef> = {
   'nv-wine': C('nv-wine', 'Vernis bordeaux', ['chic', 'stage'], 0, { free: true }),
   'nv-french': C('nv-french', 'French léger', ['romantic', 'chic'], 0, { free: true }),
   // cadeau d'Auguste : ni achetable ni vendu, il se reçoit pendant « Une soirée avec A ♡ »
-  'br-promise': C('br-promise', 'La promesse d’Auguste ♡', ['romantic', 'royal'], 0, { gift: true }),
+  'br-promise': C('br-promise', `La promesse ${PARTNER_DE_TYPO} ♡`, ['romantic', 'royal'], 0, { gift: true }),
   // cadeau légendaire unique : aucun prix, jamais en vente ni dans un butin (la scène du feu d'artifice l'attribue)
   'ac-eclat': C('ac-eclat', 'L’Éclat Éternel ♡', ['romantic', 'royal'], 0, { gift: true }),
   'jk-blazer-cream': C('jk-blazer-cream', 'Blazer crème', ['chic'], 240, { fabric: 3 }),

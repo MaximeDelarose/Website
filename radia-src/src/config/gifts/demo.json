@@ -1,0 +1,23 @@
+{
+  "id": "demo",
+  "partner": {
+    "name": "Thomas",
+    "fieldLabel": "Prénom de votre partenaire",
+    "fallbackName": "Ta moitié"
+  },
+  "app": {
+    "title": "DÉMO ♡",
+    "shortName": "DÉMO",
+    "subtitle": "Un petit monde rien que pour toi.",
+    "description": "Configuration fictive pour tester la réutilisation du moteur (aucune donnée personnelle).",
+    "lang": "fr",
+    "themeColor": "#2F5D62",
+    "backgroundColor": "#BFE3E0"
+  },
+  "pwa": {
+    "id": "demo-app",
+    "cachePrefix": "demo",
+    "display": "standalone",
+    "orientation": "portrait"
+  }
+}

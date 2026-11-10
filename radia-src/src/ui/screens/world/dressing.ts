@@ -31,6 +31,7 @@ import { gridColumns, panelHeights, gridViewport, visibleRows, nextSnap, sideMod
 import { TryOn, cardState, lockReason, styleCounts, styleFilterUseful, filterByStyle, STYLE_LABEL, type CardState } from './dressing/model';
 import { attachSheetDrag } from './dressing/sheet';
 
+import { PARTNER } from '../../../config/gift';
 type ItemId = ClothId | HairId;
 type CatKey = 'top' | 'bottom' | 'dress' | 'jacket' | 'shoes' | 'bag' | 'hair' | 'crown' | 'makeup' | AccGroup;
 const CATS: { key: CatKey; label: string }[] = [
@@ -221,7 +222,7 @@ export function openDressing(opts: DressingOpts = {}): Promise<void> {
       const r = W.equipIllustrated();
       if (!r.ok) return;
       audio.play('heart'); haptic('select'); twirl('love');
-      ui.toast({ title: 'Tenue illustrée ♡', sub: !hasPhotos() ? 'Avec le lien secret, Radia apparaît en illustration, comme Auguste' : 'Radia apparaît en illustration, comme Auguste', icon: 'heart' });
+      ui.toast({ title: 'Tenue illustrée ♡', sub: !hasPhotos() ? `Avec le lien secret, Radia apparaît en illustration, comme ${PARTNER}` : `Radia apparaît en illustration, comme ${PARTNER}`, icon: 'heart' });
       renderAll();
     }) } }, icon('heart', 18), h('small', 'Tenue illustrée'));
     const left = h('div.dr2-col.left', turnBtn, cmpBtn, illuBtn);

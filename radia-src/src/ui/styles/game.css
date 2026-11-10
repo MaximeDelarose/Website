@@ -384,3 +384,4 @@
   .title-menu .row .btn, .title-menu > .btn.secondary { min-height: 42px; padding-top: 5px; padding-bottom: 5px; }
   .title-menu .row .btn.trophy { flex-basis: 48px; width: 48px; }
 }
+.title-menu .install-btn { min-height: 46px; font-size: 15px; gap: 8px; display: flex; align-items: center; justify-content: center; }

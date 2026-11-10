@@ -29,6 +29,7 @@ import { contactById } from './chat/data';
 import { faceUrl } from './chat/selfie';
 import { dayKey, friendStories, unopenedSnapCount, unseenStories, unreadTotal } from './chat/engine';
 
+import { PARTNER } from '../../config/gift';
 let layer: HTMLElement | null = null;
 registerBusy(() => !!layer);
 
@@ -286,7 +287,7 @@ export function openSnap(view: View = 'chat', opts: { pending?: Pending } = {}):
       else if (tab === 'persos') {
         panel.append(
           chip('Radia', true, () => undefined),
-          chip(cam.aug ? 'Auguste ✓' : 'Avec Auguste', cam.aug, () => { cam.aug = !cam.aug; }),
+          chip(cam.aug ? `${PARTNER} ✓` : `Avec ${PARTNER}`, cam.aug, () => { cam.aug = !cam.aug; }),
           catAdopted() ? chip(cam.cat ? `${catName()} ✓` : 'Avec le chat', cam.cat, () => { cam.cat = !cam.cat; }) : h('small.snp-hint', 'Le chat viendra quand tu l’adopteras au château.'));
       } else {
         panel.classList.add('stk');

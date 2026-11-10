@@ -29,6 +29,8 @@ import { hasPhotos } from '../../core/photos';
 import { dailyBadge } from '../../daily';
 import { modeButtonLabel, syncFreeMode, shouldAnnounceFree, markFreeAnnounced, isFreeModeUnlocked } from '../../core/freeMode';
 import { startDomain } from '../../domain';
+import { installButton } from './installHelp';
+import { GIFT } from '../../config/gift';
 
 const hasProgress = () => save.data.story.step > 0 || Object.keys(save.data.levels).length > 0;
 
@@ -191,6 +193,8 @@ export function showTitle(): void {
   const trophy = btn('', '.secondary.trophy', () => void go(achievements), 340, icon('trophy', 22));
   trophy.setAttribute('aria-label', 'Succès'); trophy.title = 'Succès';
   menu.append(h('div.row', chessBtn, btn('SOUVENIRS', '.secondary', () => void go(() => openAlbum('memories').then(showTitle)), 300, icon('album', 20)), trophy));
+  const installBtn = installButton();
+  if (installBtn) menu.append(installBtn);
   if (lab.free) menu.append(btn('MES CHAPITRES', '.secondary', () => void go(() => openMap()), 380, icon('heart', 20)));
 
   // barre du haut : réglages · énergie / diamants · carte d'Auguste
@@ -207,7 +211,7 @@ export function showTitle(): void {
 
   const scr = h('div.title-screen',
     topBar,
-    h('div', h('div.title-logo', 'RADIA ', h('span.heart', '♡')), h('div.title-sub', 'Un petit monde, rien que pour toi.')),
+    h('div', h('div.title-logo', 'RADIA ', h('span.heart', '♡')), h('div.title-sub', GIFT.app.subtitle)),
     h('div.title-art', art.el),
     menu);
   ui.showScreen(scr);

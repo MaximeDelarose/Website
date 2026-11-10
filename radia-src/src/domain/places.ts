@@ -20,6 +20,7 @@
 import type { CollectionId } from '../data/items';
 import type { ChocId, ClothId, ColorId, FlowerId, FurnitureId, ResKind } from '../data/world/ids';
 
+import { PARTNER } from '../config/gift';
 export const PLACE_IDS = ['tea', 'flowers', 'wing', 'choc', 'boutique', 'hotel', 'restaurant', 'spa', 'terrace', 'casino'] as const;
 export type PlaceId = (typeof PLACE_IDS)[number];
 
@@ -261,7 +262,7 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
 
   restaurant: {
     id: 'restaurant', name: 'Restaurant', short: 'Restaurant', tone: '#FFC0A3', accent: '#E8674F', reqs: [need('tea', 4)],
-    blurb: 'Un restaurant intime : cuisine ouverte, nappes blanches et menu du jour qu\'Auguste choisit pour toi.',
+    blurb: `Un restaurant intime : cuisine ouverte, nappes blanches et menu du jour qu'${PARTNER} choisit pour toi.`,
     openLine: 'Table pour deux. Le menu, je l\'ai déjà choisi : tu me connais.',
     choices: [
       CH('wall', 0, 'Quelle couleur pour la salle ?', 'peach', 'peach', 'cream', 'rose', 'sage'),

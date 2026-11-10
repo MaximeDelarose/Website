@@ -1,3 +1,4 @@
+import { PARTNER } from '../../config/gift';
 /**
  * Messages — textes des conversations du téléphone du jeu (tout est fictif et interne au jeu).
  * Auguste : beaucoup de petits échanges banals, drôles et spontanés ; les grandes déclarations restent rares ; « galbi » presque jamais.
@@ -52,7 +53,7 @@ export const INTENT_RULES: readonly [Intent, RegExp][] = [
 
 /** Maman : messages spontanés + réponses. */
 export const MAMAN_SPONTANEOUS: readonly Line[] = [
-  ...L('maman', 'Coucou ma fille, tu vas bien ?', 'N\'oublie pas de m\'appeler quand tu peux.', 'Tu manges bien ? Tu as l\'air fatiguée sur les photos.', 'J\'ai fait un gâteau. Il en restera pour toi, peut-être.', 'Les petits te font un gros bisou. Ou c\'est moi qui le fais pour eux.', 'Je pense à toi. Voilà. C\'est tout.', 'Tu viens me voir bientôt ? La maison est trop calme.', 'Il fait froid ici, couvre-toi bien là-bas.', 'J\'ai retrouvé une vieille photo de toi. Tu étais adorable.', 'Dis à Auguste de bien s\'occuper de toi.'),
+  ...L('maman', 'Coucou ma fille, tu vas bien ?', 'N\'oublie pas de m\'appeler quand tu peux.', 'Tu manges bien ? Tu as l\'air fatiguée sur les photos.', 'J\'ai fait un gâteau. Il en restera pour toi, peut-être.', 'Les petits te font un gros bisou. Ou c\'est moi qui le fais pour eux.', 'Je pense à toi. Voilà. C\'est tout.', 'Tu viens me voir bientôt ? La maison est trop calme.', 'Il fait froid ici, couvre-toi bien là-bas.', 'J\'ai retrouvé une vieille photo de toi. Tu étais adorable.', `Dis à ${PARTNER} de bien s'occuper de toi.`),
 ];
 export const MAMAN_REPLIES: readonly string[] = ['Ça me fait plaisir de te lire, ma chérie.', 'D\'accord, ma fille. Prends soin de toi.', 'Je t\'embrasse fort.', 'Ah ! Raconte-moi ça au téléphone un de ces jours.', 'Tu me rassures. Merci de m\'écrire.', 'Je suis là, tu sais.'];
 

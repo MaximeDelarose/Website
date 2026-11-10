@@ -6,6 +6,7 @@ import { PAL, canvasUrl, ellipse, fillShaded, glow, gloss, heartPath, paint, rgb
 import { drawRadiaNow, drawAugusteCutout } from './world/radiaNow';
 import { drawAugusteFull } from './characters';
 
+import { PARTNER } from '../../config/gift';
 type C = CanvasRenderingContext2D;
 export const CZ = {
   night: '#1E1238', night2: '#2E1B54', violet: '#4B2C86', violetLight: '#7B5BC4', rose: '#FF75A8', roseDeep: '#C23A73', gold: '#F3C86B', goldDeep: '#C9922B', goldLight: '#FFE9A8', ivory: '#FFF9EE', ink: '#3B2330',
@@ -488,7 +489,7 @@ export function memberCardCanvas(w = 320): HTMLCanvasElement {
     roundRect(ctx, 26, 76, 44, 34, 7); const pg = ctx.createLinearGradient(26, 76, 70, 110); pg.addColorStop(0, '#FFE9A8'); pg.addColorStop(1, '#C9922B'); ctx.fillStyle = pg; ctx.fill();
     ctx.strokeStyle = 'rgba(80,50,10,.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(26, 93); ctx.lineTo(70, 93); ctx.moveTo(48, 76); ctx.lineTo(48, 110); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = font(22); ctx.fillText('♛  Radia  ♡', 26, 152);
-    ctx.font = font(12); ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillText('offerte par Auguste', 26, 172);
+    ctx.font = font(12); ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillText(`offerte par ${PARTNER}`, 26, 172);
     heartPath(ctx, 262, 128, 72); ctx.fillStyle = 'rgba(255,117,168,.9)'; ctx.fill(); ctx.lineWidth = 2.4; ctx.strokeStyle = CZ.goldLight; ctx.stroke();
     starPath(ctx, 262, 122, 18, 8); ctx.fillStyle = CZ.gold; ctx.fill();
     sparkle(ctx, 290, 40, 9, '#fff', 0.95); sparkle(ctx, 230, 70, 6, '#FFE9A8', 0.8);

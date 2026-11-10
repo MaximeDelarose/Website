@@ -1,0 +1,5 @@
+# Cloudflare Pages — projet dédié à ce cadeau (ne touche à aucun autre site).
+#   npm run build && npx wrangler pages deploy dist --project-name=<nom-du-projet>
+name = "radia"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-01-01"

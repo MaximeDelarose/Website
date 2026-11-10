@@ -5,6 +5,7 @@ import { Fx, endCard, fitCanvas, injectCss, introCard, makeClock, startLoop, typ
 import { COLOR_SETS, RISE, burstAt, glow, schedule, shotLabel, shotScore, summarize, type Firework, type ShotResult } from '../games/action/fireworks';
 import type { Activity } from '../types';
 
+import { PARTNER } from '../../config/gift';
 const SHOTS = 5;
 const MAX_T = 58;
 
@@ -176,7 +177,7 @@ const activity: Activity = async (ctx) => {
   await endCard(ctx, {
     title: shots.length ? (sum.score >= 70 ? 'Quels clichés magnifiques !' : 'Jolies photos souvenir ♡') : 'Les étoiles te remercient ♡',
     art: shots.length ? grid : undefined,
-    lines: [shots.length ? `Meilleure prise : ${shots[bestIdx].score} / 100` : 'Tu profites du spectacle, c’est le plus important.', 'Auguste : « On garde celle-là, ma reine. »'],
+    lines: [shots.length ? `Meilleure prise : ${shots[bestIdx].score} / 100` : 'Tu profites du spectacle, c’est le plus important.', `${PARTNER} : « On garde celle-là, ma reine. »`],
   });
   return { score: sum.score, ok: true, data: { shots: shots.map((s) => ({ score: s.score, colors: s.colors })), best: sum.best } };
 };

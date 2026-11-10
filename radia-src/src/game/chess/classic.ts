@@ -27,6 +27,7 @@ import { medallionCanvas } from '../art/characters';
 import { radiaFaceCanvas, lookKey } from '../art/world/radiaNow';
 import { hasPhotos, photoUrl, photoUrlNow } from '../../core/photos';
 
+import { PARTNER } from '../../config/gift';
 /** Temps de réflexion « humain » d'Auguste (ms), selon son humeur. */
 const THINK: Record<ChessDifficulty, [number, number]> = { relax: [800, 2000], easy: [900, 2300], normal: [1300, 3300], hard: [1700, 4200] };
 
@@ -74,7 +75,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
     const desc = h('p.muted.center.setup-desc', AI_LEVELS[diff].desc);
     const w = save.data.chess.wins;
     el.append(h('div.panel.chess-setup',
-      h('h2', 'Une partie contre Auguste'),
+      h('h2', `Une partie contre ${PARTNER}`),
       h('div.setup-row', h('label', 'Son humeur'), seg(DIFFS.map((d) => [d, AI_LEVELS[d].label] as [ChessDifficulty, string]), diff, (v) => { diff = v; }, '.wrap')),
       desc,
       h('div.setup-row', h('label', 'Tes pièces'), seg([['w', 'Blancs'], ['b', 'Noirs'], ['r', 'Hasard']] as ['w' | 'b' | 'r', string][], color, (v) => { color = v; })),
@@ -149,7 +150,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
     const herQueenThreatened = () => chess.board().flat().some((p) => p && p.type === 'q' && p.color === player && chess.isAttacked(p.square, augColor));
 
     const status = h('div.chess-status');
-    const avatar = h('img', { src: hisFace(), alt: 'Auguste' });
+    const avatar = h('img', { src: hisFace(), alt: `${PARTNER}` });
     const aug = h('div.chess-aug');
     const moves = h('div.chess-moves');
     const holder = h('div.board-holder');
@@ -185,7 +186,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
     const undoBtn = h('button.btn.small.secondary', { on: { click: tap(() => undo()) } }, icon('undo', 18), 'Annuler');
     const menuBtn = h('button.btn.small.secondary', { on: { click: tap(() => openMenu()) } }, icon('settings', 18), 'Aides');
     const bar = h('div.chess-actions', hintBtn, undoBtn, menuBtn);
-    const whoEl = h('div.chess-who', `Auguste · ${AI_LEVELS[diff].label}`);
+    const whoEl = h('div.chess-who', `${PARTNER} · ${AI_LEVELS[diff].label}`);
     const tipBox = h('div.chess-tip');
     tipBox.hidden = true;
     const grow = h('div.grow', whoEl, status, tipBox);
@@ -275,7 +276,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
         status.classList.add('hint');
       } else {
         status.classList.remove('hint');
-        status.textContent = thinking ? 'Auguste réfléchit' : chess.turn() === player ? (chess.inCheck() ? 'Échec ! À toi de jouer' : 'À toi de jouer') : '…';
+        status.textContent = thinking ? `${PARTNER} réfléchit` : chess.turn() === player ? (chess.inCheck() ? 'Échec ! À toi de jouer' : 'À toi de jouer') : '…';
       }
       status.classList.toggle('thinking', thinking);
     };
@@ -389,7 +390,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
       render();
       const win = end.kind === 'mate' && end.winner === player;
       const title = end.kind === 'draw' ? 'Partie nulle' : win ? 'Échec et mat !' : resign ? 'Partie abandonnée' : 'Échec et mat…';
-      const text = end.kind === 'draw' ? `Nulle par ${end.reason}. Personne ne perd, tout le monde s'aime.` : win ? `Tu as battu Auguste${diff === 'relax' ? '' : ` (${AI_LEVELS[diff].label.toLowerCase()})`}. Quelle reine !` : resign ? 'Auguste fait semblant de ne pas être fier. Il l\'est.' : 'Auguste a gagné cette fois… Revanche ?';
+      const text = end.kind === 'draw' ? `Nulle par ${end.reason}. Personne ne perd, tout le monde s'aime.` : win ? `Tu as battu ${PARTNER}${diff === 'relax' ? '' : ` (${AI_LEVELS[diff].label.toLowerCase()})`}. Quelle reine !` : resign ? `${PARTNER} fait semblant de ne pas être fier. Il l'est.` : `${PARTNER} a gagné cette fois… Revanche ?`;
       status.textContent = title;
       window.clearTimeout(idleTimer);
       if (win) { audio.play('victory'); say('radiaWin', 1, true); } else if (end.kind === 'mate') say('augWin', 1, true); else say('draw', 1, true);
@@ -422,7 +423,7 @@ export function classicView(onAugusteSpot: (el: HTMLElement) => void): View {
         save.data.chess.game = null; save.save(); showSetup();
       } else if (v === 'resign') {
         if (over) return;
-        if (!(await ui.confirm('Abandonner ?', 'Auguste ne le dira à personne. Enfin… presque.', 'Abandonner', 'Continuer'))) return;
+        if (!(await ui.confirm('Abandonner ?', `${PARTNER} ne le dira à personne. Enfin… presque.`, 'Abandonner', 'Continuer'))) return;
         void finish({ kind: 'mate', winner: augColor }, true);
       }
     };

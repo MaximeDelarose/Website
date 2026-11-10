@@ -6,6 +6,7 @@
  */
 import { hash, rng, pick, pickN, shuffle } from '../util';
 
+import { PARTNER } from '../../config/gift';
 export type SceneKind = 'show' | 'duo' | 'twirl' | 'cat' | 'bloom' | 'choc' | 'decor' | 'fans' | 'meme' | 'dress' | 'still';
 export type Topic = 'carriere' | 'sortie' | 'tenues' | 'chat' | 'fleurs' | 'chocolat' | 'chateau' | 'humour' | 'photo' | 'fans';
 
@@ -82,10 +83,10 @@ export const TEMPLATES: ClipTemplate[] = [
   T('fans-count', 'fans', 'Les fans arrivent', { k: 'fans', line: 'Merci à tous ♡' }, ['merci', 'fans']),
   T('fans-hearts', 'fans', 'Pluie de cœurs', { k: 'fans', line: 'Vous êtes adorables', pal: 1 }, ['cœurs', 'merci']),
   // humour
-  T('meme-cat', 'humour', 'Auguste contre le chat', { k: 'meme', line: 'Le chat a décidé que le fauteuil est à lui.|Auguste : « On négocie ? »|Le chat : « Non. »' }, ['humour', 'chat']),
-  T('meme-ready', 'humour', '5 minutes pour se préparer', { k: 'meme', line: 'Auguste : « Prête dans 5 minutes ? »|Radia : « Bien sûr. »|(Trois tenues plus tard…)', pal: 1 }, ['humour', 'préparatifs']),
-  T('meme-budget', 'humour', 'Le budget dressing', { k: 'meme', line: 'Auguste regarde son budget…|Auguste regarde la robe…|Auguste : « Elle te va trop bien. »', pal: 2 }, ['humour', 'budget']),
-  T('meme-gps', 'humour', 'Le sens de l’orientation', { k: 'meme', line: 'Auguste : « C’est par là. »|Radia : « Tu es sûr ? »|Auguste : « Non. »', pal: 3 }, ['humour', 'balade']),
+  T('meme-cat', 'humour', `${PARTNER} contre le chat`, { k: 'meme', line: `Le chat a décidé que le fauteuil est à lui.|${PARTNER} : « On négocie ? »|Le chat : « Non. »` }, ['humour', 'chat']),
+  T('meme-ready', 'humour', '5 minutes pour se préparer', { k: 'meme', line: `${PARTNER} : « Prête dans 5 minutes ? »|Radia : « Bien sûr. »|(Trois tenues plus tard…)`, pal: 1 }, ['humour', 'préparatifs']),
+  T('meme-budget', 'humour', 'Le budget dressing', { k: 'meme', line: `${PARTNER} regarde son budget…|${PARTNER} regarde la robe…|${PARTNER} : « Elle te va trop bien. »`, pal: 2 }, ['humour', 'budget']),
+  T('meme-gps', 'humour', 'Le sens de l’orientation', { k: 'meme', line: `${PARTNER} : « C’est par là. »|Radia : « Tu es sûr ? »|${PARTNER} : « Non. »`, pal: 3 }, ['humour', 'balade']),
 ];
 
 // ---------------------------------------------------------------- bibliothèques de textes (français, positifs)
@@ -120,7 +121,7 @@ const COMMENTS_BY_TOPIC: Record<Topic, string[]> = {
   fleurs: ['Les couleurs sont magnifiques !', 'Ça donne envie de jardiner.', 'Cette fleur est un petit miracle.', 'Je sens presque le parfum.', 'Quel talent de jardinière.', 'Le bouquet de demain, je le veux.', 'Tellement apaisant.'],
   chocolat: ['J’ai faim maintenant, merci.', 'Dégustation à distance : validée.', 'Le dernier est pour moi ?', 'Ça a l’air fondant à souhait.', 'La boîte est magnifique.', 'Je prends le truffé.', 'Toi, tu sais faire plaisir.'],
   chateau: ['Quelle belle décoration !', 'Ce salon est parfait.', 'Je veux emménager.', 'Les lumières font tout.', 'Un vrai petit palais.', 'Super idée de disposition.', 'Le tapis rond, grand classique.'],
-  humour: ['Je suis morte de rire 😂', 'Auguste, courage.', 'Tellement vrai.', 'Mon couple en une vidéo.', 'La chute est parfaite.', 'Ça m’a fait ma journée.', 'On veut la suite !'],
+  humour: ['Je suis morte de rire 😂', `${PARTNER}, courage.`, 'Tellement vrai.', 'Mon couple en une vidéo.', 'La chute est parfaite.', 'Ça m’a fait ma journée.', 'On veut la suite !'],
   photo: ['Superbe cadrage !', 'La pose du milieu, sans hésiter.', 'Le flash fait tout.', 'Quelle belle lumière.', 'Vous êtes photogéniques tous les deux.', 'Un souvenir qui vaut de l’or.', 'Je mets en fond d’écran.'],
   fans: ['On t’adore !', 'Bravo pour tout ce chemin.', 'Merci à toi pour ces jolies vidéos.', 'Les cœurs arrivent par milliers ♡', 'Tu le mérites tellement.', 'Continue, c’est magnifique.', 'Une pluie d’amour pour toi.'],
 };

@@ -3,6 +3,7 @@
  * pour comparer deux installations. Aucune donnée personnelle : l'adresse est affichée SANS sa partie après « # » (là où voyage la
  * clé des photos), et la clé n'est jamais montrée — seulement sa présence.
  */
+import { GIFT } from '../config/gift';
 import { SAVE_VERSION } from '../save/schema';
 import { BUILD_ID, BUILD_TIME, fetchRemoteVersion, isNewer, versionLabel, type RemoteVersion } from './updates';
 
@@ -81,7 +82,7 @@ export async function gatherDiagnostics(save: { hadSave: boolean; data: { story?
       sw = { supported: true, controlled: !!navigator.serviceWorker.controller, scope: reg?.scope ?? '', script: w?.scriptURL ?? '', state: w?.state ?? '', caches: [] };
     }
   } catch { /* ignore */ }
-  try { sw.caches = (await caches.keys()).filter((k) => k.startsWith('radia-')); } catch { /* ignore */ }
+  try { sw.caches = (await caches.keys()).filter((k) => k.startsWith(GIFT.pwa.cachePrefix + '-')); } catch { /* ignore */ }
   let manifestStart = '';
   try {
     const link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;

@@ -7,9 +7,10 @@
  */
 import { defaultSave, migrate, type SaveData } from './schema';
 
-const KEY = 'radia-save-v1';
-const BACKUP = 'radia-save-v1-backup';
-const BROKEN = 'radia-save-broken';
+import { lsKey } from '../config/gift';
+const KEY = lsKey('radia-save-v1');
+const BACKUP = lsKey('radia-save-v1-backup');
+const BROKEN = lsKey('radia-save-broken');
 
 export type LoadStatus = 'new' | 'ok' | 'backup' | 'corrupt' | 'unavailable' | 'too-new';
 

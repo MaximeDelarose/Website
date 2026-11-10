@@ -1,3 +1,4 @@
+import { PARTNER } from '../../config/gift';
 /**
  * « Famille & proches ♡ » : maman, tante, sœur, amie de confiance — personnages FICTIFS du jeu (aucun vrai contact, rien n'est envoyé nulle part).
  * Données pures (sans DOM), entièrement testables. Aucun prénom d'enfant ni de proche réel : seulement des libellés neutres.
@@ -79,8 +80,8 @@ export function availability(rel: RelId, slot: SlotId, seed: string): Avail {
 
 export type Tone = 'sweet' | 'direct' | 'funny';
 export const TONES: { id: Tone; label: string; text: string }[] = [
-  { id: 'sweet', label: 'Doux', text: 'Coucou ♡ Auguste m’invite à sortir. Est-ce que tu pourrais t’occuper des enfants ? Tu me diras si ça te va.' },
-  { id: 'direct', label: 'Direct', text: 'Salut, Auguste et moi sortons. Peux-tu garder les enfants ? Réponds-moi quand tu peux.' },
+  { id: 'sweet', label: 'Doux', text: `Coucou ♡ ${PARTNER} m’invite à sortir. Est-ce que tu pourrais t’occuper des enfants ? Tu me diras si ça te va.` },
+  { id: 'direct', label: 'Direct', text: `Salut, ${PARTNER} et moi sortons. Peux-tu garder les enfants ? Réponds-moi quand tu peux.` },
   { id: 'funny', label: 'Drôle', text: 'Mission secrète : garder trois petits monstres adorables pendant que je sors. Tu acceptes la mission ?' },
 ];
 

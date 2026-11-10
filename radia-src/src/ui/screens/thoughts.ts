@@ -44,6 +44,7 @@ import './thoughts.css';
 import { enablePush, pushStatus, shouldInvite, type EnableResult } from '../../core/push';
 import { isStandalone } from '../../core/diagnostics';
 
+import { PARTNER } from '../../config/gift';
 let inviteOpen = false;
 const setInvite = (state: 'later' | 'accepted' | 'refused' | 'error'): void => { save.data.fun.pensee = { state, at: Date.now() }; save.save(); };
 
@@ -75,7 +76,7 @@ export async function showThoughtInvite(): Promise<void> {
   });
   later.addEventListener('click', () => { if (busy) return; setInvite('later'); close(); ui.toast({ title: 'Tu les retrouveras dans Réglages ♡', icon: 'heart', ms: 2400 }); });
   card.append(face ? h('img.ti-face', { src: face, alt: '' }) : h('div.ti-heart', '♡'), h('h3', 'Une petite pensée pour toi, chaque jour ♡'),
-    h('p', 'Auguste aimerait t’envoyer une petite pensée quotidienne pour te souhaiter une belle journée.'),
+    h('p', `${PARTNER} aimerait t’envoyer une petite pensée quotidienne pour te souhaiter une belle journée.`),
     h('small.ti-sub', 'Une seule notification par jour, jamais la nuit.'), yes, later);
   ui.root.append(back);
 }

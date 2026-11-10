@@ -1,3 +1,4 @@
+import { PARTNER_DE } from '../config/gift';
 /**
  * Fiches d'information des ressources (appui long sur un compteur). UNE seule source de vérité, tenue à jour avec l'économie réelle :
  * ne lister dans `ways` que des moyens de gagner qui EXISTENT dans le jeu (vérifiés dans le code), jamais une fonction à venir.
@@ -31,7 +32,7 @@ export const RES_INFO: Record<ResInfoId, ResInfo> = {
   energy: {
     id: 'energy', name: 'Énergie',
     use: 'Chaque toucher d\'un générateur en consomme une.',
-    ways: ['Elle revient toute seule avec le temps', 'La recharge gratuite d\'Auguste', 'Livrer des commandes', 'Coffres, trouvailles et cadeaux', 'Une recharge complète contre des diamants'],
+    ways: ['Elle revient toute seule avec le temps', `La recharge gratuite ${PARTNER_DE}`, 'Livrer des commandes', 'Coffres, trouvailles et cadeaux', 'Une recharge complète contre des diamants'],
     note: 'Jamais de longue attente : elle revient vite quand elle est presque vide.',
   },
   hearts: {

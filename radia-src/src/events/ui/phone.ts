@@ -28,6 +28,7 @@ import { rawUnread } from '../tindeur/swipe/badge';
 import { activeIncident, openActiveIncident } from '../incidents/runtime';
 import { incidentById } from '../incidents/data';
 
+import { PARTNER } from '../../config/gift';
 type Tab = 'home' | 'messages' | 'invites' | 'souvenirs' | 'history' | 'settings';
 let open = false;
 
@@ -129,7 +130,7 @@ export function openPhone(tab?: Tab): void {
           if (!m.attemptUninstall()) {
             // refusé (les deux premiers essais) : l'appli reste, Auguste dit un petit mot
             content.querySelector('.ph-aug-say')?.remove();
-            content.append(h('p.ph-aug-say', h('b', 'Auguste : '), '« Pas utile de désinstaller celle d’ici ♡ »'));
+            content.append(h('p.ph-aug-say', h('b', `${PARTNER} : `), '« Pas utile de désinstaller celle d’ici ♡ »'));
             haptic('select');
           } else row.firstElementChild && m.poofIcon(row.firstElementChild as HTMLElement, () => { render(); });
         } else { m.applyInstalled(true); render(); }

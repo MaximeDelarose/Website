@@ -1,3 +1,4 @@
+import { PARTNER } from '../config/gift';
 /**
  * Objets fusionnables — 4 collections de 10 niveaux + 10 collections d'Endless 2.0 (8 niveaux,
  * dont Pâtisseries, Sacs et Cadeaux) + 3 objets spéciaux. Utilise toujours `collMax(c)` (jamais MAX_LEVEL) pour le niveau maximal.
@@ -97,7 +98,7 @@ export const COLLECTIONS: Record<CollectionId, CollectionDef> = {
     items: ['Pion', 'Cavalier', 'Fou', 'Tour', 'Dame', 'Couronne', 'Trône', 'Royaume', 'Château', 'Reine éternelle'],
     blurbs: [
       'Un petit pion qui rêve de grandeur.',
-      'Il saute partout, un peu comme Auguste.',
+      `Il saute partout, un peu comme ${PARTNER}.`,
       'Il avance en diagonale… et en riant.',
       'Solide, fidèle, toujours là.',
       'La pièce la plus puissante de l\'échiquier.',
@@ -132,7 +133,7 @@ export const COLLECTIONS: Record<CollectionId, CollectionDef> = {
     blurbs: [
       'Petite fève, grand destin.',
       'Elle fond dans la bouche… et dans le cœur.',
-      'Croquant dehors, tendre dedans. Comme Auguste.',
+      `Croquant dehors, tendre dedans. Comme ${PARTNER}.`,
       'Un bonbon emballé avec soin (et un peu de gourmandise).',
       'Une boîte qu\'on ouvre en cachette.',
       'Un coffret pour les grandes occasions. Ou les mardis.',
@@ -227,7 +228,7 @@ export const COLLECTIONS: Record<CollectionId, CollectionDef> = {
     items: ['Macaron', 'Éclair', 'Tartelette', 'Cupcake', 'Gâteau', 'Entremets', 'Pièce montée', 'Pâtisserie royale'],
     blurbs: [
       'Un macaron rose : il ne dure jamais plus de dix secondes.',
-      'Long, brillant, glacé. Auguste en a déjà volé un.',
+      `Long, brillant, glacé. ${PARTNER} en a déjà volé un.`,
       'Une tartelette aux fruits rouges, posée avec amour.',
       'Une cerise sur le dessus, comme sur le reste.',
       'Un vrai gâteau, avec des bougies et des vœux.',

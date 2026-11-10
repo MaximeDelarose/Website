@@ -20,6 +20,7 @@ import { runTutorial } from './tutorial';
 import type { LevelDef } from '../merge/types';
 import { icon } from '../../ui/icons';
 
+import { PARTNER } from '../../config/gift';
 type StepResult = 'ok' | 'quit';
 
 /** Tests automatiques de bout en bout uniquement (posé par le script de test). */
@@ -98,7 +99,7 @@ async function runStep(step: StoryStep): Promise<StepResult> {
       audio.play('achievement');
       await ui.modal({
         title: 'Mode Échecs débloqué !',
-        body: h('div', h('p', 'Le royaume t\'appartient : joue contre Auguste (il a trois humeurs), résous des problèmes et les puzzles du Mode Reine.'), h('p.muted', { style: 'font-size:14px' }, 'Accessible à tout moment depuis le menu principal.')),
+        body: h('div', h('p', `Le royaume t'appartient : joue contre ${PARTNER} (il a trois humeurs), résous des problèmes et les puzzles du Mode Reine.`), h('p.muted', { style: 'font-size:14px' }, 'Accessible à tout moment depuis le menu principal.')),
         actions: [{ label: 'Continuer l\'histoire', value: 'ok' }],
         dismissible: false,
       });

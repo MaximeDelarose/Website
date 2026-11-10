@@ -7,6 +7,7 @@ import { reducedFx } from '../../core/app';
 import { verdictFor, VERDICT_NOTE } from '../dressLines';
 import type { Activity } from '../types';
 
+import { PARTNER } from '../../config/gift';
 const CSS = `
 .dv-wrap{position:relative;flex:1;min-height:0;display:flex;align-items:flex-end;justify-content:center;gap:0;padding-bottom:84px}
 .dv-wrap canvas{height:min(50vh,430px);width:auto;display:block;filter:drop-shadow(0 8px 14px rgba(59,49,82,.3))}
@@ -30,14 +31,14 @@ const CSS = `
 
 const activity: Activity = async (ctx) => {
   if (!document.getElementById('dv-css')) { const s = document.createElement('style'); s.id = 'dv-css'; s.textContent = CSS; document.head.append(s); }
-  ctx.header('Je suis prête ♡', 'Auguste te regarde…');
+  ctx.header('Je suis prête ♡', `${PARTNER} te regarde…`);
   const rc = ctx.avatar('radia', 300, 750, { expr: 'smile' });
   const ac = ctx.avatar('auguste', 300, 750, { expr: 'smile' });
   rc.className = 'dv-r';
   ac.className = 'dv-a';
   ac.style.visibility = 'hidden';
   const fx = h('div.dv-fx');
-  const score = h('div.dv-score', h('b', '0 / 10'), h('small', 'Auguste ♡'));
+  const score = h('div.dv-score', h('b', '0 / 10'), h('small', `${PARTNER} ♡`));
   const wrap = h('div.dv-wrap', rc, ac, fx, score);
   ctx.root.append(wrap);
   const v = verdictFor(ctx.look, ctx.rng);

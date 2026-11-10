@@ -6,6 +6,7 @@ import { Fx, endCard, fitCanvas, injectCss, introCard, startLoop, clamp, type Fi
 import { GOOD_WIN, SONGS, applyJudgment, beatLen, finalScore, gaugeAfter, generatePattern, isOk, judge, newTally, type Judgment, type Note, type SongId } from '../games/action/rhythm';
 import type { Activity } from '../types';
 
+import { PARTNER } from '../../config/gift';
 type Arms = 'down' | 'wave' | 'heart' | 'open';
 interface Live { n: Note; state: 'pending' | 'hit' | 'miss'; flash: number }
 
@@ -19,7 +20,7 @@ const activity: Activity = async (ctx) => {
   const tally = newTally();
   let gauge = 0.4;
 
-  ctx.header(S.title, song === 'waltz' ? 'Danse avec Auguste ♡' : 'Ton concert, ma reine ♡');
+  ctx.header(S.title, song === 'waltz' ? `Danse avec ${PARTNER} ♡` : 'Ton concert, ma reine ♡');
   const scoreTag = h('span.ea-tag', '0 pts');
   const comboTag = h('span.ea-tag', 'Combo 0');
   ctx.root.append(h('div.ea-hud', scoreTag, comboTag));
@@ -215,7 +216,7 @@ const activity: Activity = async (ctx) => {
   const title = score >= 85 ? 'Quelle danse de rêve !' : score >= 55 ? 'Magnifique, ma reine !' : 'Quel joli moment ensemble ♡';
   await endCard(ctx, {
     title,
-    lines: [`${tally.perfects} parfaits · ${tally.goods} bien · meilleur combo ${tally.bestCombo}`, song === 'waltz' ? 'Auguste ne veut plus te lâcher la main.' : 'La salle entière t’applaudit !'],
+    lines: [`${tally.perfects} parfaits · ${tally.goods} bien · meilleur combo ${tally.bestCombo}`, song === 'waltz' ? `${PARTNER} ne veut plus te lâcher la main.` : 'La salle entière t’applaudit !'],
     art: h('div', { style: 'display:flex;gap:4px;align-items:flex-end' }, ...['radia', 'auguste'].map((w) => { const c = frame(w as 'radia' | 'auguste', 0, 'heart'); const cc = document.createElement('canvas'); cc.width = c.width; cc.height = c.height; cc.getContext('2d')!.drawImage(c, 0, 0); cc.style.cssText = 'width:50px;height:125px'; return cc; })),
   });
   return { score, ok: isOk(score), data: { perfects: tally.perfects, combo: tally.bestCombo } };

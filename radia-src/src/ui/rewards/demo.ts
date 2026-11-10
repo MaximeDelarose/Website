@@ -1,6 +1,7 @@
 /** Démonstrations (mode ?debug : `RADIA.rewards.demo(kind, rarity)`). Rien n'est attribué : tout est marqué « déjà versé ». */
 import type { GiftKind, GiftRarity, GiftSpec, Reward } from './types';
 
+import { PARTNER_DE } from '../../config/gift';
 const SAMPLE: Record<GiftKind, Reward[]> = {
   start: [{ type: 'energy', qty: 50 }, { type: 'diamonds', qty: 60 }, { type: 'coins', qty: 300 }, { type: 'tickets', qty: 100 }, { type: 'chest', qty: 1, label: 'Coffre surprise' }],
   daily: [{ type: 'coins', qty: 250 }, { type: 'diamonds', qty: 20 }],
@@ -10,7 +11,7 @@ const SAMPLE: Record<GiftKind, Reward[]> = {
   romantic: [{ type: 'hearts', qty: 20 }, { type: 'bouquet', id: 'rose+peony', qty: 1, label: 'Bouquet de roses' }, { type: 'diamonds', qty: 25 }],
 };
 const TITLE: Record<GiftKind, string> = {
-  start: 'Bonus de démarrage !', daily: 'Cadeau du jour !', chest: 'Récompense obtenue !', event: 'Surprise pour toi ♡', premium: 'Un trésor pour toi !', romantic: 'Un cadeau d\'Auguste ♡',
+  start: 'Bonus de démarrage !', daily: 'Cadeau du jour !', chest: 'Récompense obtenue !', event: 'Surprise pour toi ♡', premium: 'Un trésor pour toi !', romantic: `Un cadeau ${PARTNER_DE} ♡`,
 };
 
 export function demoSpec(kind: GiftKind, rarity: GiftRarity, n = 0): GiftSpec {

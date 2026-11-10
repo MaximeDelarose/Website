@@ -1,6 +1,11 @@
 /* Service worker de RADIA — généré à la build (voir vite.config.ts). */
 const VERSION = '__VERSION__';
-const CACHE = 'radia-' + VERSION;
+// Préfixe propre à CE cadeau (configuration) : un autre cadeau ou un autre site sur la même origine ne partage ni n'efface jamais ce cache.
+const PFX = '__CACHE_PREFIX__';
+const PREFIX = PFX + '-';
+// cache des « petites pensées » (jamais effacé par les mises à jour) ; nom historique conservé pour radia
+const THOUGHTS = PFX === 'radia' ? 'rthoughts' : PFX + 'thoughts';
+const CACHE = PREFIX + VERSION;
 const PRECACHE = __PRECACHE__;
 
 self.addEventListener('install', (e) => {
@@ -14,7 +19,11 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('radia-') && k !== CACHE).map((k) => caches.delete(k))))
+      // On garde la version courante ET la précédente : une session restée ouverte sur l'ancienne version peut encore charger ses fichiers tardifs.
+      .then((keys) => {
+        const old = keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE).sort().reverse();
+        return Promise.all(old.slice(1).map((k) => caches.delete(k)));
+      })
       .then(() => self.clients.claim())
   );
 });
@@ -93,7 +102,7 @@ self.addEventListener('push', (e) => {
       tag: 'radia-daily', // une seule notification quotidienne visible à la fois (pas d'empilement)
       data: { url: d.url || './?pensee=1', at },
     }),
-    caches.open('rthoughts').then((c) => c.put('/__thought/' + at, new Response(JSON.stringify({ at, text: full, idx: typeof d.idx === 'number' ? d.idx : -1, test: !!d.test }), { headers: { 'content-type': 'application/json' } }))).catch(() => undefined),
+    caches.open(THOUGHTS).then((c) => c.put('/__thought/' + at, new Response(JSON.stringify({ at, text: full, idx: typeof d.idx === 'number' ? d.idx : -1, test: !!d.test }), { headers: { 'content-type': 'application/json' } }))).catch(() => undefined),
   ]));
 });
 

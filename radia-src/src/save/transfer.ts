@@ -6,11 +6,12 @@
  */
 import { migrate, SAVE_VERSION } from './schema';
 
+import { lsKey } from '../config/gift';
 export const TRANSFER_PREFIX = 'RADIA1:';
 export const KEY_RE = /^[A-Za-z0-9_-]{20,}$/;
-export const PHOTO_KEY_LS = 'radia-k';
-export const SAVE_LS = 'radia-save-v1';
-export const BEFORE_IMPORT_LS = 'radia-save-before-import';
+export const PHOTO_KEY_LS = lsKey('radia-k');
+export const SAVE_LS = lsKey('radia-save-v1');
+export const BEFORE_IMPORT_LS = lsKey('radia-save-before-import');
 
 export interface TransferPayload { v: 1; at: number; save: Record<string, unknown>; key?: string }
 export type Decoded = { ok: true; payload: TransferPayload; summary: string } | { ok: false; reason: string };

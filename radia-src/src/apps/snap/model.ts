@@ -7,6 +7,7 @@ import { defaultChat, sanitizeChat, unreadTotal, type ChatState } from './chat/e
 import { assignInPlace, cleanText, hash, isObj, mentionsChild, num, pick, pickN, rng, str } from '../util';
 import { POSES, FRAMES, FILTERS } from '../../events/photo/data';
 
+import { PARTNER } from '../../config/gift';
 export const MAX_PHOTOS = 40;
 export const MAX_STORIES = 60;
 export const MAX_PENDING = 12;
@@ -148,7 +149,7 @@ export function genReactions(storyId: string, n?: number): Reaction[] {
   const r = rng(hash('re' + storyId));
   const count = n ?? 3 + Math.floor(r() * 4);
   const out: Reaction[] = [];
-  if (r() < 0.8) out.push({ who: 'Auguste', txt: pick(AUGUSTE_REACT, r), after: 1500 });
+  if (r() < 0.8) out.push({ who: `${PARTNER}`, txt: pick(AUGUSTE_REACT, r), after: 1500 });
   const txt = pickN(REACT_TXT, count, r), who = pickN(REACT_WHO, count, r);
   // une story d'UNE image dure 3,2 s : la première réaction doit arriver avant (≤ 2,4 s), sinon elle n'est jamais vue (20 % des stories sans Auguste)
   for (let i = 0; i < count && out.length < 7; i++) out.push({ who: who[i], txt: txt[i], after: i === 0 && out.length === 0 ? 1800 + Math.floor(r() * 600) : 3000 + i * 4000 + Math.floor(r() * 2500) });

@@ -15,6 +15,7 @@ import { noticeIcon, showNotice } from './notice';
 import { applyRareFlower, applyReward, rollParcel, rollRareFlower, shopLot } from './rewards';
 import { augusteSays } from '../../ui/components/augusteSays';
 
+import { PARTNER } from '../../config/gift';
 let panel: HTMLElement | null = null;
 registerBusy(() => !!panel || !!document.querySelector('.inc-layer'));
 
@@ -56,7 +57,7 @@ export async function openPanel(def: IncidentDef): Promise<void> {
   const optsBox = h('div.inc-opts');
   const card = h('div.inc-card',
     h('div.inc-card-h', h('div.inc-ico', noticeIcon(def.icon, 26)), h('div', h('b', def.title), h('small', def.notif))),
-    h('div.inc-aug', h('img', { src: speakerFace('auguste'), alt: 'Auguste' }), h('p', `« ${def.auguste} »`)),
+    h('div.inc-aug', h('img', { src: speakerFace('auguste'), alt: `${PARTNER}` }), h('p', `« ${def.auguste} »`)),
     optsBox, msg);
   const back = h('div.inc-layer.panel', card);
   panel = back;

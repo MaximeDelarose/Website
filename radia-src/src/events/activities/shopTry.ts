@@ -9,6 +9,7 @@ import { BOUTIQUES, assignBoutiques, boutiqueCount, clothName, giftValue, reacti
 import { drawBoutique } from '../games/creative/creativeArt';
 import { endScreen, useStyles } from '../games/creative/creativeUi';
 
+import { PARTNER, PARTNER_DE } from '../../config/gift';
 const CSS = `
 .sh-tabs{display:flex;gap:6px;flex-shrink:0}
 .sh-tab{flex:1;min-height:44px;border:0;border-radius:14px;background:rgba(255,255,255,.7);box-shadow:0 0 0 2px rgba(88,67,63,.14);font:inherit;font-size:11.5px;font-weight:700;color:var(--choco);line-height:1.1;padding:3px 4px;display:flex;align-items:center;justify-content:center;text-align:center}
@@ -65,7 +66,7 @@ const activity: Activity = async (ctx) => {
   const options = sanitizeOptions(ctx.params.options, ctx.rng);
   const nShops = boutiqueCount(ctx.params.boutiques, options.length);
   const shops = assignBoutiques(options, nShops);
-  ctx.header('Shopping de luxe', 'Un cadeau d\'Auguste : un seul article');
+  ctx.header('Shopping de luxe', `Un cadeau ${PARTNER_DE} : un seul article`);
 
   const wrap = h('div.cr-wrap');
   const tabs = h('div.sh-tabs');
@@ -134,7 +135,7 @@ const activity: Activity = async (ctx) => {
   const updateInfo = () => {
     if (!tried) { info.innerHTML = 'Touche un article pour l\'essayer.'; return; }
     const v = giftValue(tried);
-    info.replaceChildren(h('b', clothName(tried)), document.createTextNode(v > 0 ? ` · ${v} pièces, offert par Auguste ♡` : ' · offert par Auguste ♡'));
+    info.replaceChildren(h('b', clothName(tried)), document.createTextNode(v > 0 ? ` · ${v} pièces, offert par ${PARTNER} ♡` : ` · offert par ${PARTNER} ♡`));
   };
 
   const pickBtn = ctx.button('Je choisis celui-ci ♡', () => {
@@ -196,8 +197,8 @@ const activity: Activity = async (ctx) => {
   const v = giftValue(pick);
   await endScreen(ctx, {
     title: clothName(pick), art, stars: 3,
-    line: 'Un cadeau d\'Auguste, rien que pour toi.',
-    sub: v > 0 ? `Valeur ${v} pièces · offert par Auguste ♡` : 'Offert par Auguste ♡',
+    line: `Un cadeau ${PARTNER_DE}, rien que pour toi.`,
+    sub: v > 0 ? `Valeur ${v} pièces · offert par ${PARTNER} ♡` : `Offert par ${PARTNER} ♡`,
     btn: 'Merci mon cœur ♡',
   });
   return { score: 100, ok: true, data: { pick }, tags: ['shop'] };

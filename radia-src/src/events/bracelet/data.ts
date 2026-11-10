@@ -1,5 +1,6 @@
+import { PARTNER_DE_TYPO } from '../../config/gift';
 /** Textes de la cérémonie du bracelet (données pures, sans DOM). */
-export const PROMISE_TITLE = 'La promesse d’Auguste ♡';
+export const PROMISE_TITLE = `La promesse ${PARTNER_DE_TYPO} ♡`;
 export const PROMISE_MEMORY = 'Une promesse au poignet ♡';
 export const PROMISE_DESC = 'Un bracelet délicat offert lors d’une soirée inoubliable. Un petit symbole de sincérité, qui brille doucement au poignet de Radia.';
 export const PROMISE_INTRO = 'Attends, galbi… J’ai encore un petit quelque chose pour toi.';

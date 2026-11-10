@@ -12,6 +12,7 @@ import {
 } from '../restaurant/scene';
 import { dishUrl } from '../restaurant/dishes';
 
+import { PARTNER } from '../../config/gift';
 const pct = (v: number, tot: number): string => `${((v / tot) * 100).toFixed(2)}%`;
 
 /** « Devine ce que je prends » : Radia devine, puis arrivée des deux commandes à la table. */
@@ -42,7 +43,7 @@ const activity: Activity = async (ctx) => {
   const hint = h('div.rs-hint', 'Ce n’est pas un piège, juste de l’amour ♡');
   const top = h('div', { style: 'display:flex;align-items:center;gap:10px;flex-shrink:0' },
     h('div', { style: 'width:62px;height:62px;border-radius:50%;overflow:hidden;flex-shrink:0;background:#efe6fb;box-shadow:0 0 0 2.5px var(--c-line)' }, augFace), ask);
-  wrap.append(h('div.rs-title', h('b', 'Devine ce que je prends'), h('small', 'Auguste attend ta réponse ♡')), top, prog, grid, hint);
+  wrap.append(h('div.rs-title', h('b', 'Devine ce que je prends'), h('small', `${PARTNER} attend ta réponse ♡`)), top, prog, grid, hint);
   {
     const b = bustCanvas(ctx.avatar('auguste', 300, 750, { expr: 'tease' }), 62, 62, 0, 0.26);
     augFace.width = b.width; augFace.height = b.height; augFace.style.cssText = 'width:62px;height:62px;display:block';
@@ -126,7 +127,7 @@ const activity: Activity = async (ctx) => {
   scene.append(h('div.rv-glow'), flame);
 
   const tagL = h('div.rv-tag', 'Radia'); place(tagL, PLATE_L.x, PLATE_L.y + 36);
-  const tagR = h('div.rv-tag.a', 'Auguste'); place(tagR, PLATE_R.x, PLATE_R.y + 36);
+  const tagR = h('div.rv-tag.a', `${PARTNER}`); place(tagR, PLATE_R.x, PLATE_R.y + 36);
   scene.append(tagL, tagR);
 
   // assiettes : celle de Radia et celle d'Auguste = mêmes plats (menu de Radia / copie pour Auguste)

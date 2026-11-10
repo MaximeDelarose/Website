@@ -4,6 +4,7 @@
  */
 import type { Look } from '../data/world/ids';
 
+import { PARTNER } from '../config/gift';
 export const VERDICT_NOTE = 10;
 export const VERDICT_FIRST = 'MachaAllah, galbi… T’es magnifique.';
 export const VERDICT_SECOND = 'Enfin, ça, je le savais déjà. Mais là, franchement… 10 sur 10.';
@@ -31,7 +32,7 @@ export function specificCompliments(look: Look): string[] {
   if (look.acc.some((a) => a.startsWith('hd-'))) out.push('Ce petit détail dans les cheveux… tu l’as fait exprès pour me faire fondre ?');
   if (look.acc.some((a) => a.startsWith('br-'))) out.push('Et ce bracelet qui brille à ton poignet… il te va à ravir.');
   if (look.acc.some((a) => a.startsWith('ea-') || a === 'ac-hoops')) out.push('Les boucles d’oreilles… tu sais que tu fais exprès, hein ?');
-  if (look.acc.some((a) => a.startsWith('lp-'))) out.push('Cette couleur sur tes lèvres… concentre-toi, Auguste, concentre-toi.');
+  if (look.acc.some((a) => a.startsWith('lp-'))) out.push(`Cette couleur sur tes lèvres… concentre-toi, ${PARTNER}, concentre-toi.`);
   if (look.crown) out.push('Une couronne ? Pour une fois, le protocole est respecté.');
   if (look.bag) out.push('Le petit sac est parfait. Tout est parfait, en fait.');
   return out;

@@ -4,6 +4,7 @@
  */
 import type { EventDef, StepCond } from '../types';
 
+import { PARTNER } from '../../config/gift';
 export const FAMILY: EventDef[] = [
   {
     id: 'f-bouquet', title: 'Un bouquet à composer', sender: 'kid1', category: 'family', big: true, repeatable: true, weight: 9, minPlayMin: 5,
@@ -159,7 +160,7 @@ export const FAMILY_RELATIVES: EventDef[] = [
   },
   // C — Auguste invite Radia à sortir (il faut d'abord organiser les enfants ; toutes les issues sont bonnes)
   {
-    id: 'fm-auguste-out', title: 'Auguste t’invite à sortir', sender: 'auguste', category: 'romantic', big: true, repeatable: true, weight: 7, minPlayMin: 10,
+    id: 'fm-auguste-out', title: `${PARTNER} t’invite à sortir`, sender: 'auguste', category: 'romantic', big: true, repeatable: true, weight: 7, minPlayMin: 10,
     teaser: 'Une sortie rien que tous les deux ?',
     invite: 'Et si on sortait tous les deux ? J’ai une idée de soirée. Il faudra voir qui peut s’occuper des enfants, mais on trouvera une solution, promis.',
     steps: [
@@ -167,7 +168,7 @@ export const FAMILY_RELATIVES: EventDef[] = [
         { who: 'auguste', text: 'J’ai envie d’une soirée rien que pour toi. Tu mérites de souffler.' },
         { who: 'auguste', text: 'Regarde qui peut s’occuper des enfants. Et si personne n’est libre, aucun souci : on trouve autre chose.' },
       ] },
-      { t: 'activity', id: 'arrangeCare', params: { occasion: 'Auguste t’invite à sortir' } },
+      { t: 'activity', id: 'arrangeCare', params: { occasion: `${PARTNER} t’invite à sortir` } },
       { t: 'scene', onlyIf: ARRANGED, lines: [
         { who: 'auguste', text: 'Parfait ! Les enfants sont entre de bonnes mains. Va te préparer, je t’attends.' },
       ] },
@@ -190,6 +191,6 @@ export const FAMILY_RELATIVES: EventDef[] = [
       ] },
     ],
     reward: { coins: 100, diamonds: 3, flowers: 3 }, replayReward: { coins: 35, flowers: 1 },
-    memoryTitle: 'Une sortie avec Auguste', achievements: ['ev_family'],
+    memoryTitle: `Une sortie avec ${PARTNER}`, achievements: ['ev_family'],
   },
 ];

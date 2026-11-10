@@ -23,6 +23,7 @@ import { settleLoot } from '../endless/host';
 import { haptic } from '../../core/haptics';
 import '../endless/endless.css';
 
+import { PARTNER } from '../../config/gift';
 export function memoryImageUrl(id: string): string {
   return canvasUrl(`mem:${id}:${lookKey()}:${augusteCutout() ? 1 : 0}`, () => paint(330, 440, 2, (ctx) => drawMemory(ctx, id, 330, 440)));
 }
@@ -79,7 +80,7 @@ export function openAlbum(tab: Tab = 'memories', overlay = false): Promise<void>
       const got = save.data.photos;
       body.append(h('p.center.muted', { style: 'margin:0 0 10px;font-size:14px' }, `${got.length}/${PHOTOS.length} photos de nous`));
       if (!hasPhotos()) {
-        body.append(h('p.center.muted', { style: 'font-size:14px' }, 'Les photos s\'ouvrent avec le lien secret envoyé par Auguste ♡'));
+        body.append(h('p.center.muted', { style: 'font-size:14px' }, `Les photos s'ouvrent avec le lien secret envoyé par ${PARTNER} ♡`));
       }
       const grid = h('div.photo-grid');
       PHOTOS.forEach((p, i) => {
@@ -179,7 +180,7 @@ export function openAlbum(tab: Tab = 'memories', overlay = false): Promise<void>
         const opt = d.choice?.options.find((o) => o.value === choice);
         const all = [...lines, ...(opt ? [...opt.reply, ...(d.choice?.after ?? [])] : [])];
         const item = h('button.history-item', { style: 'display:block;width:100%;text-align:left' }, h('b', d.title),
-          ...all.slice(0, 3).map((l) => h('p', `${l.who === 'auguste' ? 'Auguste' : 'Radia'} : ${l.text}`)));
+          ...all.slice(0, 3).map((l) => h('p', `${l.who === 'auguste' ? `${PARTNER}` : 'Radia'} : ${l.text}`)));
         item.addEventListener('click', tap(() => void playLines(all.length ? all : d.lines, undefined, { skippable: true })));
         body.append(item);
       }
@@ -198,7 +199,7 @@ export async function openMemory(id: string): Promise<void> {
   const m = MEMORIES.find((x) => x.id === id);
   if (!m) return;
   audio.play('page');
-  const actions = [{ label: 'Écouter Auguste', value: 'talk', style: 'secondary' as const }, { label: 'Fermer', value: 'close' }];
+  const actions = [{ label: `Écouter ${PARTNER}`, value: 'talk', style: 'secondary' as const }, { label: 'Fermer', value: 'close' }];
   if (id === 'monde') actions.unshift({ label: 'Revoir la fin ♡', value: 'ending', style: 'secondary' as const });
   const v = await ui.modal({
     title: m.title,

@@ -13,6 +13,7 @@ import { SlotsRun } from './slots';
 import type { Rng } from './rng';
 import { dayNum } from './tickets';
 
+import { PARTNER_DE_TYPO } from '../config/gift';
 export type PrivReward =
   | { t: 'cloth'; id: string } | { t: 'furn'; id: string }
   | { t: 'diamonds'; n: number } | { t: 'mats'; n: number }
@@ -24,7 +25,7 @@ export const EVENT_STAKE = 100;
 
 export const PRIVILEGES: readonly Privilege[] = [
   { id: 'soiree', name: 'Soirée du Casino Royal', desc: `${EVENT_SPINS} tours de machine à sous offerts (mise de ${EVENT_STAKE} pièces offerte). Une fois par jour.`, price: 50, reward: { t: 'event' } },
-  { id: 'gift-diamonds', name: 'Cadeau d’Auguste', desc: '5 diamants dans un petit coffret doré.', price: 60, reward: { t: 'diamonds', n: 5 } },
+  { id: 'gift-diamonds', name: `Cadeau ${PARTNER_DE_TYPO}`, desc: '5 diamants dans un petit coffret doré.', price: 60, reward: { t: 'diamonds', n: 5 } },
   { id: 'gift-mats', name: 'Coffret de l’atelier', desc: '10 fleurs, 10 tissus et 10 cacaos.', price: 40, reward: { t: 'mats', n: 10 } },
   { id: 'cloth-pearls', name: 'Collier de perles', desc: 'Un bijou exclusif pour Radia.', price: 150, reward: { t: 'cloth', id: 'ac-pearls' } },
   { id: 'cloth-tiara', name: 'Diadème de perles', desc: 'Le diadème des soirées de gala.', price: 500, reward: { t: 'cloth', id: 'cr-tiara' } },

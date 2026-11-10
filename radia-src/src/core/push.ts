@@ -5,6 +5,7 @@
  *  - sur iPhone, cela ne fonctionne que pour l'application ajoutée à l'écran d'accueil (iOS ≥ 16.4) : on l'explique clairement.
  * Rien n'est collecté en dehors de l'adresse d'abonnement du navigateur (fournie par Apple/Google/Mozilla), du fuseau horaire et de l'heure choisie.
  */
+import { GIFT } from '../config/gift';
 import { isStandalone } from './diagnostics';
 
 /** Projet Supabase du site (adresse et clé PUBLIQUES, déjà publiées dans js/data.js). */
@@ -129,7 +130,7 @@ export async function sendTestPush(): Promise<'ok' | 'limit' | 'error'> {
 
 // ------------------------------------------------------------------ « Petites pensées ♡ » : historique local
 export interface Thought { at: number; text: string; idx?: number }
-const CACHE = 'rthoughts';
+const CACHE = GIFT.pwa.cachePrefix === 'radia' ? 'rthoughts' : GIFT.pwa.cachePrefix + 'thoughts'; // même règle que le service worker
 /** Ramasse les pensées reçues par le service worker (même si la notification n'a pas été touchée) ; les vide du cache. */
 export async function collectThoughts(): Promise<Thought[]> {
   const out: Thought[] = [];

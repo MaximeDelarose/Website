@@ -5,6 +5,7 @@
  */
 import type { Arch } from './types';
 
+import { PARTNER } from '../../config/gift';
 export type Voice = 'warm' | 'play' | 'cool';
 export const voiceOf = (a: Arch): Voice => (a === 'gentle' || a === 'shy' || a === 'serious' ? 'warm' : a === 'chill' || a === 'skeptic' ? 'cool' : 'play');
 export type VBank = Record<Voice, string[]>;
@@ -166,7 +167,7 @@ export const SINGLE_REACT: Record<'sg_yes' | 'sg_complex' | 'sg_none' | 'sg_sing
                play: ['Ah ! Ça change tout. Enfin non. Mais ça me fait sourire.', 'Note pour moi-même : conserver ce numéro. Enfin, cette conversation.'],
                cool: ['Bien. Je note, sans en faire un drame.', 'D\'accord, merci.'] } };
 /** Hugo (et lui seul) : il pense à Auguste. */
-export const HUGO_AUGUSTE: string[] = ['Ouais t\'es toujours en contact avec l\'autre ?', 'Je te demande ça comme ça, hein : l\'autre, là, Auguste… vous vous parlez encore ?'];
+export const HUGO_AUGUSTE: string[] = ['Ouais t\'es toujours en contact avec l\'autre ?', `Je te demande ça comme ça, hein : l'autre, là, ${PARTNER}… vous vous parlez encore ?`];
 export const HUGO_AUGUSTE_REACT: Record<string, string[]> = {
   sg_yes: ['Ah, d\'accord. Ça me fait un petit pincement, mais je respecte. Vraiment.', 'Je comprends. Vous avez une histoire, c\'est normal.'],
   sg_complex: ['C\'est compliqué… je vois. Merci de ta franchise. Je reste là, sans rien attendre.', 'D\'accord. Je ne veux pas me mêler de ça.'],

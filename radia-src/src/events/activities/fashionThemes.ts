@@ -10,6 +10,7 @@ import { DEFAULT_THEMES, THEME_HINTS, THEME_NAMES, loanersFor, scoreLook, verdic
 import type { ClothId, ClothSlot, Look, StyleId } from '../../data/world/ids';
 import type { Activity } from '../types';
 
+import { PARTNER } from '../../config/gift';
 const SHELVES: Array<{ key: string; label: string; slots: ClothSlot[] }> = [
   { key: 'dress', label: 'Robes', slots: ['dress'] }, { key: 'top', label: 'Hauts', slots: ['top'] }, { key: 'bottom', label: 'Bas', slots: ['bottom'] },
   { key: 'jacket', label: 'Vestes', slots: ['jacket'] }, { key: 'shoes', label: 'Chaussures', slots: ['shoes'] }, { key: 'bag', label: 'Sacs', slots: ['bag'] },
@@ -19,7 +20,7 @@ const VALID: StyleId[] = ['casual', 'chic', 'romantic', 'royal', 'stage'];
 const GOOD_R = ['Radia : « Cette tenue me ressemble ! »', 'Radia : « Je me sens vraiment bien dedans. »', 'Radia : « Oh, j’adore l’ensemble ! »'];
 const MID_R = ['Radia : « Pas mal, avec un accessoire ce serait parfait. »', 'Radia : « Jolie base, j’aime bien. »'];
 const LOW_R = ['Radia : « Original ! J’ai envie d’essayer autre chose un jour. »', 'Radia : « Une audace ! On n’est pas obligée de tout réussir. »'];
-const AUG = ['Auguste : « Ma reine, tout te va. »', 'Auguste : « Je ne suis pas objectif, mais… waouh. »', 'Auguste : « Je te suivrais partout dans cette tenue. »'];
+const AUG = [`${PARTNER} : « Ma reine, tout te va. »`, `${PARTNER} : « Je ne suis pas objectif, mais… waouh. »`, `${PARTNER} : « Je te suivrais partout dans cette tenue. »`];
 
 const activity: Activity = async (ctx) => {
   injectCss();

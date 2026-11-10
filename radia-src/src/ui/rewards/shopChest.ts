@@ -4,6 +4,7 @@
  */
 import type { GiftSpec, Reward } from './types';
 
+import { PARTNER_DE } from '../../config/gift';
 export interface ShopChestLoot { energy: number; hearts: number; diamonds: number; wands: number; winds: number }
 export interface StoredItem { name: string; icon?: string }
 
@@ -20,7 +21,7 @@ export function shopChestSpec(kind: 'free' | 'royal', loot: ShopChestLoot, store
   return {
     kind: royal ? 'premium' : 'chest',
     rarity: royal ? 'epic' : stored.length || loot.diamonds ? 'rare' : 'uncommon',
-    title: royal ? 'Coffre du royaume' : 'Coffre d\'Auguste',
+    title: royal ? 'Coffre du royaume' : `Coffre ${PARTNER_DE}`,
     subtitle: stored.length ? 'Les objets sont rangés dans ton sac.' : undefined,
     rewards,
     message: royal ? 'Rien que pour toi, Radia ♡' : undefined,

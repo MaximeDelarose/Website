@@ -7,12 +7,13 @@ import { Chess } from 'chess.js';
 import type { ChessDifficulty } from '../../save/schema';
 import { detenteUci } from './detente';
 
+import { PARTNER } from '../../config/gift';
 /** Réglages du moteur par difficulté (profondeur, bruit, hasard, temps). */
 export const AI_LEVELS: Record<ChessDifficulty, { label: string; desc: string; engine: Record<string, unknown> }> = {
-  relax: { label: 'Détente ♡', desc: 'Auguste joue tranquille, un coup à la fois, et laisse parfois traîner une pièce. Parfait pour s\'amuser.', engine: {} },
-  easy: { label: 'Détendu', desc: 'Auguste joue d\'une main, l\'autre sur son téléphone.', engine: { id: 2, depth: 2, noise: 130, random: 0.08, q: true } },
-  normal: { label: 'Concentré', desc: 'Auguste se concentre. Il ne laisse plus rien traîner.', engine: { id: 3, depth: 3, noise: 45, random: 0.02, q: true } },
-  hard: { label: 'Sérieux', desc: 'Auguste ne rigole plus. Enfin… presque.', engine: { id: 5, time: 1500, maxDepth: 9, noise: 0, random: 0, q: true, book: true } },
+  relax: { label: 'Détente ♡', desc: `${PARTNER} joue tranquille, un coup à la fois, et laisse parfois traîner une pièce. Parfait pour s'amuser.`, engine: {} },
+  easy: { label: 'Détendu', desc: `${PARTNER} joue d'une main, l'autre sur son téléphone.`, engine: { id: 2, depth: 2, noise: 130, random: 0.08, q: true } },
+  normal: { label: 'Concentré', desc: `${PARTNER} se concentre. Il ne laisse plus rien traîner.`, engine: { id: 3, depth: 3, noise: 45, random: 0.02, q: true } },
+  hard: { label: 'Sérieux', desc: `${PARTNER} ne rigole plus. Enfin… presque.`, engine: { id: 5, time: 1500, maxDepth: 9, noise: 0, random: 0, q: true, book: true } },
 };
 
 let worker: Worker | null = null;

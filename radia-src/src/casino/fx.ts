@@ -6,6 +6,7 @@ import { ticketUrl } from '../game/art/world/giftArt';
 import { fmt } from '../core/wallet';
 import { pickLine } from '../data/augusteTone';
 
+import { PARTNER } from '../config/gift';
 export interface Pt { x: number; y: number }
 export const centerOf = (el: Element): Pt => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
 const wait = (ms: number): Promise<void> => new Promise((r) => window.setTimeout(r, ms));
@@ -115,7 +116,7 @@ export function bigWinBanner(net: number, level: 'big' | 'jackpot'): Promise<voi
   // félicitations + une réplique d'Auguste (rare : seulement pour les grosses victoires)
   const sub = document.createElement('div'); sub.className = 'cz-bw-sub';
   let quip = ''; try { quip = pickLine('reward', Math.random, { noGalbi: true }); } catch { /* sans réplique */ }
-  sub.textContent = (level === 'jackpot' ? 'Incroyable, Radia ! Les lustres en tremblent ♡' : 'Bravo Radia, quelle belle chance ♡') + (quip ? ` — Auguste : « ${quip} »` : '');
+  sub.textContent = (level === 'jackpot' ? 'Incroyable, Radia ! Les lustres en tremblent ♡' : 'Bravo Radia, quelle belle chance ♡') + (quip ? ` — ${PARTNER} : « ${quip} »` : '');
   const unit = document.createElement('small'); unit.textContent = net > 1 ? 'tickets' : 'ticket';
   const rays = document.createElement('i'); rays.className = 'cz-bw-rays';
   card.append(rays, title, num, unit, sub);

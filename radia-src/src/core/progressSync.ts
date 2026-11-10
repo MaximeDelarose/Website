@@ -10,7 +10,8 @@ import { ActivityMeter, HEARTBEAT_MS } from './statsLogic';
 import { platform, readLocal, rnd, rpc, tz, uuid, writeLocal } from './stats';
 import { ModeMeter, buildSnapshot, counters, detectMode, diffEvents, narrativeEvents, sessionSummary, type Counters, type ProgressEvent, type Snap } from './progressShare';
 
-const KEY = 'radia-prog-v1';
+import { lsKey } from '../config/gift';
+const KEY = lsKey('radia-prog-v1');
 interface Persist { snap: Snap | null; mem: number; pho: number; queue: ProgressEvent[] }
 const readP = (): Persist => { try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && Array.isArray(j.queue)) return j as Persist; } catch { /* absent */ } return { snap: null, mem: -1, pho: -1, queue: [] }; };
 const writeP = (p: Persist): void => { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch { /* stockage indisponible : les jalons seront simplement renvoyés plus tard */ } };

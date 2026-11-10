@@ -9,12 +9,13 @@ import { relativeFaceCanvas } from '../../game/art/relatives';
 import { REL_IDS, RELATIVES, SLOTS, TONES, PLAN_B, CARE_OUTCOME_TEXT, askCare, availability, confirmLater, type CareOutcome, type RelId, type SlotId, type Tone } from '../../data/family/relatives';
 import type { Activity } from '../types';
 
+import { PARTNER } from '../../config/gift';
 const AV_TXT = { free: 'Disponible', maybe: 'Peut-être', busy: 'Occupé(e)' } as const;
 const AV_COL = { free: '#8fd19e', maybe: '#ffd36b', busy: '#e0b0b8' } as const;
 
 const activity: Activity = async (ctx) => {
   injectCss();
-  const occasion = String(ctx.params.occasion ?? 'Auguste t’invite à sortir');
+  const occasion = String(ctx.params.occasion ?? `${PARTNER} t’invite à sortir`);
   ctx.header('Organiser la sortie', 'Avec quelqu’un de confiance');
   const body = h('div', { style: 'flex:1;min-height:0;display:flex;flex-direction:column;overflow:auto;padding:4px;gap:8px' });
   ctx.root.append(body);

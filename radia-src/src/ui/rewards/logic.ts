@@ -4,6 +4,7 @@
  */
 import type { GiftKind, GiftRarity, GiftSpec, Reward, RewardType } from './types';
 
+import { PARTNER_DE } from '../../config/gift';
 export const RARITY_ORDER: readonly GiftRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 export const RARITY_COLOR: Record<GiftRarity, string> = { common: '#9FB4C7', uncommon: '#6FCF97', rare: '#5AA9FF', epic: '#B07CFF', legendary: '#FFC857' };
 export const RARITY_NAME: Record<GiftRarity, string> = { common: 'Commun', uncommon: 'Peu commun', rare: 'Rare', epic: 'Épique', legendary: 'Légendaire' };
@@ -109,7 +110,7 @@ export function flattenChain(spec: GiftSpec): GiftSpec[] {
 }
 
 export function defaultTitle(kind: GiftKind): string {
-  return { start: 'Bonus de démarrage !', daily: 'Cadeau du jour !', chest: 'Récompense obtenue !', event: 'Surprise pour toi ♡', premium: 'Un trésor pour toi !', romantic: 'Un cadeau d\'Auguste ♡' }[kind];
+  return { start: 'Bonus de démarrage !', daily: 'Cadeau du jour !', chest: 'Récompense obtenue !', event: 'Surprise pour toi ♡', premium: 'Un trésor pour toi !', romantic: `Un cadeau ${PARTNER_DE} ♡` }[kind];
 }
 
 // ------------------------------------------------------------------ variantes visuelles

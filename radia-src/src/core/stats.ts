@@ -8,7 +8,8 @@ import { PUSH_API } from './push';
 import { isStandalone } from './diagnostics';
 import { ActivityMeter, HEARTBEAT_MS } from './statsLogic';
 
-const KEY = 'radia-stats-v1';
+import { lsKey } from '../config/gift';
+const KEY = lsKey('radia-stats-v1');
 export interface StatsLocal { v: 1; state: 'none' | 'on' | 'off'; device: string; secret: string; at: number; asked?: boolean; pendingPause?: boolean;
   /** Partage de PROGRESSION (consentement distinct du temps de jeu) : none = jamais demandé, on = actif, off = arrêté. */
   prog?: 'none' | 'on' | 'off'; progPause?: boolean; progAsked?: boolean }

@@ -1,6 +1,7 @@
 /** Données pures des photos souvenirs (sans DOM) : poses, cadres, filtres, utilitaires. */
 import type { Expr } from '../../data/dialogue';
 
+import { PARTNER_DE_TYPO } from '../../config/gift';
 export type ArmPose = 'down' | 'wave' | 'heart' | 'open';
 export interface PoseDef {
   id: string; label: string;
@@ -25,7 +26,7 @@ export const POSES: PoseDef[] = [
   { id: 'cote', label: 'Côte à côte', radia: { arms: 'down', step: 0, expr: 'smile' }, auguste: { arms: 'down', step: 0, expr: 'smile' }, gap: 0.135 },
   { id: 'main', label: 'Main dans la main', radia: { arms: 'down', step: 0, expr: 'love' }, auguste: { arms: 'down', step: 0, expr: 'smile' }, gap: 0.125, extra: 'hand' },
   { id: 'bisou', label: 'Un bisou sur la joue', radia: { arms: 'down', step: 0, expr: 'shy' }, auguste: { arms: 'down', step: 0, expr: 'love' }, gap: 0.148, tilt: [0.045, -0.12], extra: 'kiss' },
-  { id: 'bras', label: 'Le bras autour d’Auguste', radia: { arms: 'down', step: 0, expr: 'laugh' }, auguste: { arms: 'down', step: 0, expr: 'smile' }, gap: 0.125, tilt: [0.04, -0.02], extra: 'arm' },
+  { id: 'bras', label: `Le bras autour ${PARTNER_DE_TYPO}`, radia: { arms: 'down', step: 0, expr: 'laugh' }, auguste: { arms: 'down', step: 0, expr: 'smile' }, gap: 0.125, tilt: [0.04, -0.02], extra: 'arm' },
   { id: 'elegante', label: 'Pose élégante', radia: { arms: 'down', step: 0.8, expr: 'tease' }, auguste: { arms: 'down', step: -0.6, expr: 'smile' }, gap: 0.17, scale: [1.04, 0.97], tilt: [0, -0.025], extra: 'chic' },
 ];
 

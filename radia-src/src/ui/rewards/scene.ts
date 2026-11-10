@@ -19,6 +19,7 @@ import {
 } from './logic';
 import type { GiftSpec, RewardHost, Shown } from './types';
 
+import { PARTNER } from '../../config/gift';
 export interface PreparedGift { spec: GiftSpec; shown: Shown[] }
 
 /** Ralenti pour les captures d'écran (outil de test : `RADIA.rewards.slow(8)`) ; 1 en jeu. */
@@ -204,7 +205,7 @@ export function playGifts(gifts: PreparedGift[], host: RewardHost, actions: Gift
       const artBtn = h('button.rw-art', { type: 'button', 'aria-label': look.invite }, h('div.rw-inner', halo, aura, shadow, box));
       const hint = h('p.rw-hint', look.invite);
       const grid = h(`div.rw-rewards${g.shown.length > 6 ? '.dense' : ''}`);
-      const bubble = g.spec.message ? h('div.rw-msg', h('span.rw-msg-av', '♡'), h('div', h('small', 'Auguste'), h('p', g.spec.message))) : null;
+      const bubble = g.spec.message ? h('div.rw-msg', h('span.rw-msg-av', '♡'), h('div', h('small', `${PARTNER}`), h('p', g.spec.message))) : null;
       const main = h('div.rw-main', title, sub, days, steps, h('div.rw-artwrap', artBtn, badge), hint, h('div.rw-scroll', grid, bubble));
       const stage = h('div.rw-stage', main);
       root.insertBefore(stage, foot);

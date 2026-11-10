@@ -3,6 +3,7 @@
  * Chargement : sauvegarde → réglages → Phaser (scène de fond) → polices →
  * écran d'accueil. Service worker pour le hors-ligne (build uniquement).
  */
+import { listenInstallPrompt } from './core/install';
 import { isComboBusy } from './game/fx/comboState';
 import { applySavedFace } from './game/world/look';
 import './ui/styles/base.css';
@@ -29,6 +30,7 @@ import { startInvitations, offerNow, secretNow, secretAdvance } from './events/s
 import { startDaily } from './daily';
 import { warmAuguste } from './game/art/world/radiaNow';
 
+import { PARTNER, PARTNER_DE } from './config/gift';
 const progress = (p: number) => {
   const bar = document.getElementById('splash-progress');
   if (bar) bar.style.width = `${Math.round(p * 100)}%`;
@@ -71,10 +73,10 @@ async function showWhatsNew(): Promise<void> {
     body: h('div', { style: 'text-align:left;font-size:15px' },
       h('ul', { style: 'padding-left:18px;margin:6px 0' },
         li('Les générateurs sont sur le plateau : touche-les pour produire des objets (1 ⚡).'),
-        li('L\'énergie revient toute seule, et Auguste en offre souvent.'),
+        li(`L'énergie revient toute seule, et ${PARTNER} en offre souvent.`),
         li('Des diamants pour des bonus, des coffres, des objets rares et un sac de rangement.'),
         li('« Notre petit monde » à décorer avec tes cœurs.'),
-        li('Et une boutique très spéciale : la carte d\'Auguste…')),
+        li(`Et une boutique très spéciale : la carte ${PARTNER_DE}…`)),
       h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, '50 diamants offerts pour fêter ça 💎')),
     actions: [{ label: 'Trop bien !', value: 'ok' }],
   });
@@ -171,7 +173,7 @@ async function showWhatsNewV9(): Promise<void> {
     title: 'Radia a un nouveau look ♡',
     body: h('div', { style: 'text-align:left;font-size:15px' },
       h('ul', { style: 'padding-left:18px;margin:6px 0' },
-        li('Un nouveau visage et de longs cheveux, dessinés dans le même style qu\'Auguste : les deux personnages vont mieux ensemble.'),
+        li(`Un nouveau visage et de longs cheveux, dessinés dans le même style qu'${PARTNER} : les deux personnages vont mieux ensemble.`),
         li('Sa tête garde la même taille avec toutes les couronnes, coiffures et accessoires.'),
         li('Au dressing, le bouton « Tenue illustrée » remet en un geste la tenue de l\'illustration, avec les pièces que tu possèdes déjà.')),
       h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, 'Tes tenues, tes achats et ta partie sont intacts ♡')),
@@ -322,6 +324,7 @@ async function boot(): Promise<void> {
   await showWhatsNewV9();
   await showWhatsNewV10();
 
+  listenInstallPrompt();
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => undefined);
   }

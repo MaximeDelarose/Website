@@ -8,7 +8,11 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview --outDir dist",
+    "build:demo": "tsc --noEmit && GIFT=demo RADIA_OUT=dist-demo vite build",
+    "build:legacy": "tsc --noEmit && RADIA_OUT=../radia-52c8654e04 vite build",
+    "check:update": "node scripts/update-e2e.mjs",
+    "check:isolation": "node scripts/isolation-e2e.mjs"
   },
   "dependencies": {
     "@fontsource/dancing-script": "^5.2.8",

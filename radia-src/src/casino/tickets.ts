@@ -8,6 +8,7 @@
 import type { CasinoState } from '../save/fun';
 import { grant } from './chips';
 
+import { PARTNER } from '../config/gift';
 export const TICKETS_NAME = 'Tickets du Casino Royal';
 export const TICKET = { one: 'ticket', many: 'tickets' } as const;
 /** « 1 ticket » / « 250 tickets ». */
@@ -109,7 +110,7 @@ export function endlessTicketsFor(sec: SecProgress, goals: readonly number[], in
 export interface DailyTask { id: 'visit' | 'greet' | 'rules' | 'wheel'; name: string; desc: string; tickets: number }
 export const DAILY_TASKS: readonly DailyTask[] = [
   { id: 'visit', name: 'Passer au salon', desc: 'Entre au Casino Royal.', tickets: 30 },
-  { id: 'greet', name: 'Saluer Radia et Auguste', desc: 'Touche les deux personnages dans le salon.', tickets: 30 },
+  { id: 'greet', name: `Saluer Radia et ${PARTNER}`, desc: 'Touche les deux personnages dans le salon.', tickets: 30 },
   { id: 'rules', name: 'Lire une règle', desc: 'Ouvre l\'aide « ? » d\'un jeu.', tickets: 30 },
   { id: 'wheel', name: 'Tourner la roue du jour', desc: 'Un tirage gratuit de la grande roue.', tickets: 40 },
 ];

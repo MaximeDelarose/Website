@@ -8,6 +8,7 @@
  */
 import type { Topic } from './gen';
 
+import { PARTNER } from '../../config/gift';
 export type CommentKind = 'praise' | 'question' | 'fan' | 'funny' | 'critic' | 'rude' | 'jealous';
 export const NEGATIVE: readonly CommentKind[] = ['critic', 'rude', 'jealous'];
 
@@ -55,7 +56,7 @@ export const FOLLOWUPS: readonly { author: string; auguste: string }[] = [
 /** Réactions d'autres personnages sous une réponse d'Auguste. */
 export const REACTIONS: readonly { by: string; text: string }[] = [
   { by: 'lila.petale', text: 'Il a tout dit !' }, { by: 'gaspard.humour', text: 'Mais MDR la réponse !' }, { by: 'maison.nour', text: 'Meilleur commentaire.' },
-  { by: 'rose.atelier', text: 'Heureusement qu\'il est là !' }, { by: 'cacao.lou', text: 'Bien répondu !' }, { by: 'zoe.paillettes', text: 'Auguste, président !' },
+  { by: 'rose.atelier', text: 'Heureusement qu\'il est là !' }, { by: 'cacao.lou', text: 'Bien répondu !' }, { by: 'zoe.paillettes', text: `${PARTNER}, président !` },
   { by: 'theo.coulisses', text: 'Je suis venu pour ce fil.' }, { by: 'nina.scene', text: 'Ce fil est mieux que la vidéo 😂' }, { by: 'jardin.camille', text: 'Notre avocat préféré.' },
   { by: 'hugo.cuisine', text: 'Il défend comme personne.' },
 ];

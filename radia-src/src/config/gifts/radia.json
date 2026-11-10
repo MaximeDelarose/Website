@@ -1,0 +1,23 @@
+{
+  "id": "radia",
+  "partner": {
+    "name": "Auguste",
+    "fieldLabel": "Prénom de votre homme",
+    "fallbackName": "Ta moitié"
+  },
+  "app": {
+    "title": "RADIA ♡",
+    "shortName": "RADIA",
+    "subtitle": "Un petit monde, rien que pour toi.",
+    "description": "Un petit monde, rien que pour toi.",
+    "lang": "fr",
+    "themeColor": "#51446D",
+    "backgroundColor": "#F5B5C8"
+  },
+  "pwa": {
+    "id": "radia-app",
+    "cachePrefix": "radia",
+    "display": "standalone",
+    "orientation": "portrait"
+  }
+}

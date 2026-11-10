@@ -1,6 +1,7 @@
 /** La quête secrète « Une soirée avec A ♡ » : appel vocal, dressing, restaurant de palace, photos, bracelet. */
 import type { EventDef } from '../types';
 
+import { PARTNER, PARTNER_DE_TYPO } from '../../config/gift';
 export const SECRET_ID = 's-evening';
 
 export const SECRET: EventDef = {
@@ -10,10 +11,10 @@ export const SECRET: EventDef = {
   invite: 'Un appel de A : une soirée surprise t’attend. Mets-toi sur ton trente et un !',
   phases: [
     { label: 'Se préparer', goal: 'Choisis ta tenue pour la soirée', from: 0 },
-    { label: 'Rejoindre Auguste', goal: 'Direction le restaurant du palace', from: 2 },
-    { label: 'Dîner', goal: 'Choisis ton menu… et devine celui d’Auguste', from: 4 },
-    { label: 'Séance photo', goal: 'Pose avec Auguste devant l’objectif', from: 6 },
-    { label: 'La surprise', goal: 'Auguste a encore un petit quelque chose pour toi', from: 8 },
+    { label: `Rejoindre ${PARTNER}`, goal: 'Direction le restaurant du palace', from: 2 },
+    { label: 'Dîner', goal: `Choisis ton menu… et devine celui ${PARTNER_DE_TYPO}`, from: 4 },
+    { label: 'Séance photo', goal: `Pose avec ${PARTNER} devant l’objectif`, from: 6 },
+    { label: 'La surprise', goal: `${PARTNER} a encore un petit quelque chose pour toi`, from: 8 },
   ],
   steps: [
     { t: 'dress', hint: 'Mets-toi sur ton trente et un ♡', style: 'chic' },

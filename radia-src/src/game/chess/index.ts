@@ -14,6 +14,7 @@ import { puzzleView } from './puzzleView';
 import { queenPuzzleView, queenRules, queenTabView } from './queenView';
 import type { View } from './common';
 
+import { PARTNER } from '../../config/gift';
 export type ChessTab = 'ai' | 'puzzles' | 'queen';
 
 
@@ -22,7 +23,7 @@ export function openChess(opts: { tab?: ChessTab } = {}): Promise<void> {
     let view: View | null = null;
     let augSpot: HTMLElement | null = null;
     const body = h('div.chess-body');
-    const tabs: [ChessTab, string][] = [['ai', 'Contre Auguste'], ['puzzles', 'Problèmes'], ['queen', 'Mode Reine']];
+    const tabs: [ChessTab, string][] = [['ai', `Contre ${PARTNER}`], ['puzzles', 'Problèmes'], ['queen', 'Mode Reine']];
     const tabBtns = tabs.map(([k, label]) => h('button', { on: { click: tap(() => show(k)) } }, label));
     const seg = h('div.seg.chess-tabs', ...tabBtns);
     const close = () => {

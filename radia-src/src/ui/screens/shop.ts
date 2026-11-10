@@ -20,6 +20,7 @@ import { drawChest, drawDiamond, drawEnergy } from '../../game/art/generators';
 import { itemImageUrl } from '../../game/merge/textures';
 import { itemName, SPECIAL, type ItemRef } from '../../data/items';
 
+import { PARTNER, PARTNER_DE } from '../../config/gift';
 export const diamondUrl = (size = 64) => canvasUrl(`ico:diamond:${size}`, () => paint(size, size, 2, (c) => drawDiamond(c, size)));
 export const energyUrl = (size = 64) => canvasUrl(`ico:energy:${size}`, () => paint(size, size, 2, (c) => drawEnergy(c, size)));
 const chestUrl = (open: boolean, size = 120) => canvasUrl(`ico:chest:${open}:${size}`, () => paint(size, size, 2, (c) => drawChest(c, size, open)));
@@ -50,18 +51,18 @@ function nextLine(): string {
 
 /** La carte cadeau (HTML/CSS : nette sur iPhone). Jamais de numéro, CVV ou date. */
 export function giftCard(small = false): HTMLElement {
-  return h(`div.gift-card${small ? '.small' : ''}`, { 'aria-label': 'Carte cadeau virtuelle d\'Auguste' },
+  return h(`div.gift-card${small ? '.small' : ''}`, { 'aria-label': `Carte cadeau virtuelle ${PARTNER_DE}` },
     h('div.gc-shine'),
-    h('div.gc-top', h('span.gc-brand', 'La carte d\'Auguste'), h('span.gc-heart', '♡')),
+    h('div.gc-top', h('span.gc-brand', `La carte ${PARTNER_DE}`), h('span.gc-heart', '♡')),
     h('div.gc-chip', h('i'), h('i'), h('i')),
     h('div.gc-contactless', { html: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 7a7 7 0 010 10M12 5a10 10 0 010 14M16 3a13 13 0 010 18"/></svg>' }),
-    h('div.gc-bottom', h('div', h('small', 'Carte cadeau virtuelle'), h('b', 'AUGUSTE')), h('span.gc-logo', '♥♥')),
+    h('div.gc-bottom', h('div', h('small', 'Carte cadeau virtuelle'), h('b', PARTNER.toUpperCase())), h('span.gc-logo', '♥♥')),
   );
 }
 
 /** Petit bouton permanent (carte + cœur) qui ouvre la boutique. */
 export function shopButton(): HTMLElement {
-  const b = h('button.shop-btn', { 'aria-label': 'La carte d\'Auguste' },
+  const b = h('button.shop-btn', { 'aria-label': `La carte ${PARTNER_DE}` },
     h('span.sb-card', h('span.sb-heart', '♥')), h('small', 'Boutique'));
   b.addEventListener('click', tap(() => void openShop()));
   return b;
@@ -83,10 +84,10 @@ export function openShop(tab: Tab = 'diamonds'): Promise<void> {
       b.addEventListener('click', tap(() => { seg.querySelectorAll('button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); render(t); }));
       seg.append(b);
     }
-    const sheet = h('div.shop-sheet', { role: 'dialog', 'aria-label': 'La carte d\'Auguste' },
+    const sheet = h('div.shop-sheet', { role: 'dialog', 'aria-label': `La carte ${PARTNER_DE}` },
       h('div.shop-grab'),
       h('div.shop-head',
-        h('div', h('h2', 'La carte d\'Auguste ♡'), h('p', 'Fais-toi plaisir, ma reine.')),
+        h('div', h('h2', `La carte ${PARTNER_DE} ♡`), h('p', 'Fais-toi plaisir, ma reine.')),
         h('button.icon-btn', { 'aria-label': 'Fermer', on: { click: tap(() => close()) } }, icon('close'))),
       h('div.shop-hero', giftCard(), balance),
       seg, body);
@@ -123,11 +124,11 @@ export function openShop(tab: Tab = 'diamonds'): Promise<void> {
           h('b.pack-amount', fmt(p.diamonds)),
           h('span.pack-label', 'diamants'),
           h('span.pack-price', `${p.euros} €`));
-        c.addEventListener('click', tap(() => { selected = p; cards.forEach((x) => x.classList.toggle('on', x === c)); payBtn.textContent = `Payer avec la carte d'Auguste · ${p.euros} €`; audio.play('pickup'); }));
+        c.addEventListener('click', tap(() => { selected = p; cards.forEach((x) => x.classList.toggle('on', x === c)); payBtn.textContent = `Payer avec la carte ${PARTNER_DE} · ${p.euros} €`; audio.play('pickup'); }));
         return c;
       });
       grid.append(...cards);
-      const payBtn = h('button.btn.wide.pay-btn', `Payer avec la carte d'Auguste · ${selected.euros} €`);
+      const payBtn = h('button.btn.wide.pay-btn', `Payer avec la carte ${PARTNER_DE} · ${selected.euros} €`);
       payBtn.addEventListener('click', tap(() => void pay(selected)));
       body.append(
         grid, payBtn);
@@ -157,9 +158,9 @@ export function openShop(tab: Tab = 'diamonds'): Promise<void> {
       const chestIn = Math.max(0, e.freeChestTs + E.FREE_CHEST_MS - now);
       const refillIn = wallet.freeRefillIn();
       const free = h('div.spend-group', h('h3', 'Cadeaux gratuits'),
-        row(chestUrl(false, 80), 'Coffre d\'Auguste', chestIn ? `Revient dans ${fmtTime(chestIn)}` : 'Énergie, cœurs et petites surprises', chestIn ? null : 'Ouvrir', () => void openChest('free')),
+        row(chestUrl(false, 80), `Coffre ${PARTNER_DE}`, chestIn ? `Revient dans ${fmtTime(chestIn)}` : 'Énergie, cœurs et petites surprises', chestIn ? null : 'Ouvrir', () => void openChest('free')),
         row(energyUrl(64), 'Recharge d\'énergie', refillIn ? `Revient dans ${fmtTime(refillIn)}` : `+${E.FREE_REFILL} ⚡ offertes`, refillIn ? null : 'Prendre', () => {
-          if (wallet.takeFreeRefill()) { audio.play('reward'); ui.toast({ title: `+${E.FREE_REFILL} énergie`, sub: 'Offerte par Auguste ♡', img: energyUrl(64) }); render('spend'); }
+          if (wallet.takeFreeRefill()) { audio.play('reward'); ui.toast({ title: `+${E.FREE_REFILL} énergie`, sub: `Offerte par ${PARTNER} ♡`, img: energyUrl(64) }); render('spend'); }
         }));
       const paid = h('div.spend-group', h('h3', 'Avec tes diamants'));
       for (const it of E.DIAMOND_ITEMS) {
@@ -192,7 +193,7 @@ export function openShop(tab: Tab = 'diamonds'): Promise<void> {
         return;
       }
       if (e.diamonds < price) {
-        const v = await ui.modal({ title: 'Pas assez de diamants', body: 'Auguste a une carte cadeau pour ça… 😌', actions: [{ label: 'Voir les diamants', value: 'go' }, { label: 'Plus tard', value: 'no', style: 'secondary' }] });
+        const v = await ui.modal({ title: 'Pas assez de diamants', body: `${PARTNER} a une carte cadeau pour ça… 😌`, actions: [{ label: 'Voir les diamants', value: 'go' }, { label: 'Plus tard', value: 'no', style: 'secondary' }] });
         if (v === 'go') { (seg.children[0] as HTMLElement).click(); }
         return;
       }
@@ -332,7 +333,7 @@ function payAnimation(diamonds: number, euros: number): Promise<void> {
       status.append(
         h('div.pay-check', icon('check', 44)),
         h('p.pay-done', 'Le paiement a été effectué.'),
-        h('p.pay-gift', 'Cadeau offert par Auguste ♡'),
+        h('p.pay-gift', `Cadeau offert par ${PARTNER} ♡`),
         amount, h('span.pay-unit', 'diamants !'));
       const r = amount.getBoundingClientRect();
       window.setTimeout(() => {
@@ -343,7 +344,7 @@ function payAnimation(diamonds: number, euros: number): Promise<void> {
         window.setTimeout(() => { amount.textContent = `+${fmt(diamonds)}`; }, 1150);
         window.setTimeout(() => audio.play('sparkle'), 500);
       }, 350);
-      const btn = h('button.btn.gold.pay-thanks', 'Merci Auguste ♡');
+      const btn = h('button.btn.gold.pay-thanks', `Merci ${PARTNER} ♡`);
       btn.addEventListener('click', tap(() => {
         layer.classList.add('leaving');
         window.setTimeout(() => layer.remove(), 300);

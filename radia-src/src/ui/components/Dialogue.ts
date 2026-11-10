@@ -12,7 +12,8 @@ import { DIALOGUES, type DialogueDef, type DialogueLine, type Expr } from '../..
 import { save, audio } from '../../core/app';
 import { hasPhotos, photoUrlNow } from '../../core/photos';
 
-const NAMES = { auguste: 'Auguste', radia: 'Radia', narrator: '' } as const;
+import { PARTNER } from '../../config/gift';
+const NAMES = { auguste: `${PARTNER}`, radia: 'Radia', narrator: '' } as const;
 
 /**
  * Buste détouré de l'illustration d'Auguste et Radia (disponible avec le lien

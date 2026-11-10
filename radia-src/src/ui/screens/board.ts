@@ -13,6 +13,7 @@ import { RIG } from '../../game/art/world/rig';
 import { warmAuguste, paintedImageFor, drawPainted, radiaBustCanvas, radiaFaceCanvas } from '../../game/art/world/radiaNow';
 import { augusteSprite } from '../../apps/art';
 
+import { PARTNER } from '../../config/gift';
 export interface BoardTile { section: string; label: string; canvas: HTMLCanvasElement; look?: Look }
 declare global { interface Window { __board?: { tiles: BoardTile[]; W: number; H: number; perfMs: number; painted: boolean } } }
 
@@ -71,13 +72,13 @@ export async function openBoard(): Promise<void> {
   const secs: HTMLElement[] = [];
   // référence : Auguste, Radia peinte (tenue illustrée), Radia dessinée avec la même tenue
   const paintedCanvas = (w: number, hh: number): HTMLCanvasElement => { const c = document.createElement('canvas'); c.width = w; c.height = hh; if (painted) drawPainted(c.getContext('2d')!, painted, w, hh); return mk('Référence', 'Radia peinte', c); };
-  secs.push(h('section.bd-sec', h('h2', 'Référence : Auguste · Radia peinte · Radia dessinée (même tenue)'), h('div.bd-row',
-    tile('Auguste', (w, hh) => mk('Référence', 'Auguste', augusteSprite(w, hh)), guides),
+  secs.push(h('section.bd-sec', h('h2', `Référence : ${PARTNER} · Radia peinte · Radia dessinée (même tenue)`), h('div.bd-row',
+    tile(`${PARTNER}`, (w, hh) => mk('Référence', `${PARTNER}`, augusteSprite(w, hh)), guides),
     tile(painted ? 'Radia peinte' : 'Radia peinte (indisponible sans le lien secret)', paintedCanvas, guides),
     tile('Radia dessinée + tête peinte', (w, hh) => mk('Référence', 'Radia dessinée', avatarCanvas(ref, w, hh, { expr: 'smile' }), ref), guides))));
   for (const s of section()) {
     secs.push(h('section.bd-sec', h('h2', s.name), h('div.bd-row',
-      tile('Auguste (réf.)', (w, hh) => mk(s.name, 'Auguste', augusteSprite(w, hh)), guides),
+      tile(`${PARTNER} (réf.)`, (w, hh) => mk(s.name, `${PARTNER}`, augusteSprite(w, hh)), guides),
       ...s.items.map(([label, look]) => tile(label, (w, hh) => mk(s.name, label, avatarCanvas(look, w, hh, { expr: 'smile' }), look), guides)))));
   }
   // bustes (dialogues) et médaillons (cartes, bulles) : autre chemin de dessin, même tête

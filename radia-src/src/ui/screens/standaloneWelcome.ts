@@ -10,7 +10,8 @@ import { isStandalone } from '../../core/diagnostics';
 import { photoKey } from '../../core/photos';
 import { openImportDialog } from './importSave';
 
-const FLAG = 'radia-standalone-welcome';
+import { lsKey } from '../../config/gift';
+const FLAG = lsKey('radia-standalone-welcome');
 
 export async function maybeShowStandaloneWelcome(): Promise<void> {
   if (!isStandalone() || save.hadSave) return;
@@ -26,7 +27,7 @@ export async function maybeShowStandaloneWelcome(): Promise<void> {
   if (r === 'import') await openImportDialog();
 }
 
-const FLAG_PHOTOS = 'radia-photos-hint';
+const FLAG_PHOTOS = lsKey('radia-photos-hint');
 
 /**
  * Application installée qui a DÉJÀ une partie mais pas la clé des photos : les personnages sont alors dessinés (et non les photos).

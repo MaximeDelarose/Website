@@ -12,6 +12,7 @@ import { ENERGY_MAX, FREE_REFILL, FREE_TAP_EVERY } from '../../game/economy/econ
 import { energyAdvice, fmtWait } from '../endless/logic';
 import { energyUrl, diamondUrl, openShop } from '../screens/shop';
 
+import { PARTNER, PARTNER_DE_TYPO } from '../../config/gift';
 const PRICE = 15;
 let opened = false;
 
@@ -41,8 +42,8 @@ export async function openEnergyPanel(empty = false, opts: EnergyPanelOpts = {})
       ...adv.lines.map((l) => h('li', l))),
   );
   const actions: { label: string; value: string; style?: 'secondary' | 'gold' | 'lavande' }[] = [];
-  if (freeIn <= 0) actions.push({ label: `+${FREE_REFILL} ⚡ offertes par Auguste`, value: 'free' });
-  else actions.push({ label: `Prochain cadeau d’Auguste dans ${fmtWait(freeIn)} (1 par jour)`, value: 'wait', style: 'secondary' });
+  if (freeIn <= 0) actions.push({ label: `+${FREE_REFILL} ⚡ offertes par ${PARTNER}`, value: 'free' });
+  else actions.push({ label: `Prochain cadeau ${PARTNER_DE_TYPO} dans ${fmtWait(freeIn)} (1 par jour)`, value: 'wait', style: 'secondary' });
   if (opts.onWorld) actions.push({ label: 'Jouer ailleurs : MON MONDE', value: 'world', style: 'lavande' });
   if (opts.onChess) actions.push({ label: 'Jouer ailleurs : échecs', value: 'chess', style: 'lavande' });
   actions.push({ label: `Facultatif : remplir à 100 ⚡ · ${PRICE} 💎`, value: 'buy', style: 'secondary' });
@@ -51,7 +52,7 @@ export async function openEnergyPanel(empty = false, opts: EnergyPanelOpts = {})
   opened = false;
   if (v === 'free') {
     const before = wallet.energy();
-    if (wallet.takeFreeRefill()) { const gain = Math.max(0, wallet.energy() - before); haptic('reward'); audio.play('reward'); ui.toast({ title: `+${gain} énergie`, sub: 'Offerte par Auguste ♡', img: energyUrl(64) }); }
+    if (wallet.takeFreeRefill()) { const gain = Math.max(0, wallet.energy() - before); haptic('reward'); audio.play('reward'); ui.toast({ title: `+${gain} énergie`, sub: `Offerte par ${PARTNER} ♡`, img: energyUrl(64) }); }
     else if (wallet.energyFull()) ui.toast({ title: 'Énergie déjà pleine ♡', sub: 'La recharge offerte reste pour plus tard', img: energyUrl(64) });
   } else if (v === 'world') opts.onWorld?.();
   else if (v === 'chess') opts.onChess?.();

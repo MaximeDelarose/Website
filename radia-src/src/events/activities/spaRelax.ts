@@ -7,6 +7,7 @@ import { Fx, endCard, fitCanvas, injectCss, introCard, makeClock, startLoop, cla
 import { BUBBLES, CANDLES, DEFAULT_AMBIENCE, EXHALE, INHALE, LIGHTS, OILS, bubbleCount, circleSize, inSync, phaseAt, relaxScore, type Ambience, type Oil } from '../games/action/spa';
 import type { Activity } from '../types';
 
+import { PARTNER } from '../../config/gift';
 const DURATION = 45;
 
 const activity: Activity = async (ctx) => {
@@ -167,7 +168,7 @@ const activity: Activity = async (ctx) => {
   await endCard(ctx, {
     title: score >= 80 ? 'Détente absolue ♡' : 'Quel moment de douceur ♡',
     art: h('img', { src: oilUrl(oil), alt: '', style: 'width:72px;height:72px' }),
-    lines: [`Huile « ${oil.name} », ambiance ${LIGHTS.find((l) => l.id === amb.light)?.name.toLowerCase()}.`, 'Auguste : « Je pourrais rester ici toute la vie. »'],
+    lines: [`Huile « ${oil.name} », ambiance ${LIGHTS.find((l) => l.id === amb.light)?.name.toLowerCase()}.`, `${PARTNER} : « Je pourrais rester ici toute la vie. »`],
   });
   return { score, ok: true, data: { oil: oil.id, ambience: { ...amb } } };
 };

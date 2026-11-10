@@ -8,6 +8,7 @@ import { canvasUrl } from '../../game/art/kit';
 import { medallionCanvas } from '../../game/art/characters';
 import { hasPhotos, photoUrlNow } from '../../core/photos';
 
+import { PARTNER } from '../../config/gift';
 export interface SaysOptions {
   /** Classe ajoutée à la bulle (ex. `en-aug` : pastille compacte du plateau). */
   className?: string;
@@ -22,7 +23,7 @@ export function augusteSays(text: string, ms = 3400, opts: SaysOptions = {}): vo
     key: `aug:${text}`, channel: 'narrative', prio: opts.prio ?? 3, ttl: Math.max(1500, ms), ms,
     show: () => {
       const src = (hasPhotos() && photoUrlNow('head-new')) || canvasUrl('med:auguste:laugh', () => medallionCanvas('auguste', { expr: 'laugh' }, 120));
-      const el = h('div.aug-says', h('img', { src, alt: 'Auguste' }), h('div', h('b', 'Auguste'), h('span', text)));
+      const el = h('div.aug-says', h('img', { src, alt: `${PARTNER}` }), h('div', h('b', `${PARTNER}`), h('span', text)));
       if (opts.className) el.classList.add(...opts.className.split(' '));
       if (opts.mount) { if (!opts.mount(el)) return () => undefined; } else ui.root.append(el);
       return (immediate) => { if (immediate) { el.remove(); return; } el.classList.add('out'); window.setTimeout(() => el.remove(), 300); };

@@ -19,6 +19,7 @@ import { addPhotoRec } from './api';
 import type { ActivityCtx, Speaker, PhotoRec } from './types';
 import type { KidId } from '../data/world/ids';
 
+import { PARTNER } from '../config/gift';
 export interface CtxOpts {
   root: HTMLElement;
   eventId: string;
@@ -85,7 +86,7 @@ export function createCtx(o: CtxOpts): { ctx: ActivityCtx; dispose: () => void }
     isAlive: o.alive,
     say: (who, text, expr) => new Promise<void>((resolve) => {
       const face = speakerFace(who);
-      const name = who === 'radia' ? 'Radia' : who === 'auguste' ? 'Auguste' : who === 'narrator' ? '' : isRelId(who) ? relLabel(who) : kidName(who as KidId);
+      const name = who === 'radia' ? 'Radia' : who === 'auguste' ? `${PARTNER}` : who === 'narrator' ? '' : isRelId(who) ? relLabel(who) : kidName(who as KidId);
       const box = h(`div.ev-say${who === 'narrator' ? '.narr' : ''}`,
         face ? h('img.ev-say-face', { src: face, alt: '' }) : null,
         h('div.ev-say-tx', name ? h('b', name) : null, h('span', text)),

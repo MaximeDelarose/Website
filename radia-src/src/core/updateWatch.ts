@@ -5,9 +5,10 @@
  * vérifie discrètement si une nouvelle version existe ; (3) on garde les dernières erreurs (localStorage) pour le diagnostic.
  * La progression est sauvegardée à chaque action : recharger ne perd rien.
  */
-const ERR_KEY = 'radia-errors';
+const ERR_KEY = lsKey('radia-errors');
 import { applyUpdate, showUpdateAvailable } from './updates';
 
+import { lsKey } from '../config/gift';
 function remember(kind: string, msg: string, stack?: string): void {
   try {
     const raw = localStorage.getItem(ERR_KEY);

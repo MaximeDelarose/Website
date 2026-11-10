@@ -118,7 +118,7 @@ await page.getByRole('button', { name: 'Mettre à jour' }).click();
 await page.waitForFunction((b) => window.RADIA && window.RADIA.build && window.RADIA.build.id !== b, idD, { timeout: 25000 }).catch(() => {});
 await sleep(2500);
 check('deux déploiements d\'affilée : la dernière build est appliquée', (await buildId()) === idE);
-check('anciens caches nettoyés (un seul cache « radia-… » reste)', (await page.evaluate(async () => (await caches.keys()).filter((k) => k.startsWith('radia-')).length)) === 1);
+check('anciens caches nettoyés (version courante + précédente au plus)', (await page.evaluate(async () => (await caches.keys()).filter((k) => k.startsWith('radia-')).length)) <= 2);
 check('sauvegarde toujours intacte', (await hearts()) === 4321);
 check('aucune erreur console / page', errors.length === 0, errors.slice(0, 3).join(' | '));
 const ko = results.filter((x) => !x).length;

@@ -17,6 +17,7 @@ import { augusteSays } from '../components/augusteSays';
 import { diamondUrl, diamondBurst } from './shop';
 import { setBackdrop } from '../../game/scenes/backdrop';
 
+import { PARTNER_DE } from '../../config/gift';
 const iconUrl = (id: DecorId) => canvasUrl(`decor:${id}`, () => paint(72, 72, 2, (c) => drawDecorIcon(c, id, 72)));
 
 export function openDecor(): Promise<void> {
@@ -71,7 +72,7 @@ export function openDecor(): Promise<void> {
       const ok = d.diamonds ? wallet.spendDiamonds(d.diamonds) : spendHearts(d.hearts);
       if (!ok) {
         audio.play('invalid');
-        ui.toast({ title: d.diamonds ? 'Pas assez de diamants' : 'Pas assez de cœurs', sub: d.diamonds ? 'La carte d\'Auguste peut aider 😌' : 'Livre des commandes pour en gagner ♡', icon: 'heart' });
+        ui.toast({ title: d.diamonds ? 'Pas assez de diamants' : 'Pas assez de cœurs', sub: d.diamonds ? `La carte ${PARTNER_DE} peut aider 😌` : 'Livre des commandes pour en gagner ♡', icon: 'heart' });
         return;
       }
       save.data.decor.push(d.id);
