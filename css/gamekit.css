@@ -262,3 +262,10 @@ html.gk-reduce-fx .game-overlay, html.gk-reduce-fx .game-overlay > * { animation
 
 /* Page Golf : les boutons Menu et les aides des deux jeux se cachent vraiment (les classes .btn et .panel les affichaient) */
 [data-golf-menu][hidden], [data-ga-menu][hidden], .game-help[hidden] { display: none !important; }
+
+/* bandeau des boutons du jeu, en plein écran (voir dockHeader dans js/gamekit.js) */
+.gk-dock {
+  position: absolute; z-index: 65; left: calc(env(safe-area-inset-left, 0px) + 8px); bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  display: flex; flex-wrap: wrap; gap: 6px; max-width: calc(100% - 16px); pointer-events: auto;
+}
+.gk-dock .btn, .gk-dock .gk-gear { min-height: 38px; padding: 6px 10px; font-size: .9rem; background: rgba(253, 243, 222, .92); }
