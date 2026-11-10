@@ -326,6 +326,10 @@
     potion: function (g) { ellD(g, 8, 9, 5, 4.6, ["#7a1e38", "#d94f6f", "#ffa9bd"]); rect(g, 8, 3, 2, 3, "#4fae5f"); rect(g, 10, 3, 3, 2, "#6fd07f"); },
     dash: function (g) { rect(g, 3, 6, 8, 2, "#9ad7ff"); rect(g, 5, 9, 6, 1, "#5aa8ff"); for (var i = 0; i < 4; i++) { px(g, 10 + i, 6 - i + 1, "#e0f2ff"); px(g, 10 + i, 7 + i - 1, "#e0f2ff"); } },
     nut: function (g) { ellD(g, 8, 9, 4.2, 4.8, ["#8a4f14", "#e8a838", "#fcd27a"]); ellD(g, 8, 5.5, 4.4, 2.4, ["#2e1a0a", "#6a4426", "#9a6a3a"]); px(g, 8, 2, "#4a2d16"); },
+    el_terre: function (g) { ellD(g, 8, 10, 5.2, 4.4, ["#4a2d16", "#8a5a2b", "#c98a3a", "#e8b866"]); ellD(g, 5.5, 8.5, 2.2, 1.6, ["#6a4426", "#c98a3a", "#f0cf8a"]); lineP(g, 8, 6, 8, 2, "#58b36a"); ellD(g, 10, 3.5, 2.4, 1.6, ["#1f5c33", "#58b36a", "#9be8a8"]); },
+    el_feu: function (g) { ellD(g, 8, 10.5, 4.8, 4.6, ["#8a1e10", "#e8583a", "#ff9a4a"]); ellD(g, 8, 6.8, 3.2, 4.6, ["#c83a1a", "#ff7b4a", "#ffd257"]); lineP(g, 8, 1, 8, 5, "#ffd257"); px(g, 8, 1, "#fff6c8"); ellD(g, 8, 11.5, 2.2, 2.4, ["#ffb23a", "#ffe08a", "#ffffff"]); },
+    el_eau: function (g) { ellD(g, 8, 10, 4.8, 4.8, ["#1a4a7a", "#4fb6dd", "#9ae0ff", "#e0f6ff"]); for (var i = 0; i < 5; i++) rect(g, 8 - (4 - i) * 0.5 | 0, 2 + i, 1 + (i >> 0) * 0 + (i > 1 ? 1 : 0) + (i > 3 ? 1 : 0), 1, i % 2 ? "#4fb6dd" : "#9ae0ff"); px(g, 6, 10, "#ffffff"); px(g, 6, 9, "#ffffff"); },
+    el_air: function (g) { for (var i = 0; i < 26; i++) { var a = i / 4.2, r = 1 + i * 0.26; px(g, Math.round(8 + Math.cos(a) * r), Math.round(8 + Math.sin(a) * r * 0.9), i % 3 ? "#7df0c2" : "#e0fff4"); } px(g, 8, 8, "#ffffff"); lineP(g, 11, 12, 15, 12, "#7df0c2"); lineP(g, 1, 4, 5, 4, "#7df0c2"); },
     scroll: function (g) { rectD(g, 3, 2, 10, 12, ["#b8975a", "#e8d4a0", "#fff3d0"], 0.9, 0.2); for (var i = 0; i < 4; i++) rect(g, 5, 4 + i * 2, 6, 1, "#8a6a3a"); ellD(g, 8, 2, 5.2, 1.4, ["#7a5a2a", "#c9a060", "#f0d898"]); ellD(g, 8, 14, 5.2, 1.4, ["#7a5a2a", "#c9a060", "#f0d898"]); },
     gear: function (g) { for (var i = 0; i < 8; i++) { var a = i * 0.785; ellD(g, 8 + Math.cos(a) * 5.4, 8 + Math.sin(a) * 5.4, 1.8, 1.8, ["#4a5064", "#8a91a8", "#c8cfe0"]); } ellD(g, 8, 8, 4.8, 4.8, ["#4a5064", "#8a91a8", "#c8cfe0", "#eef0fa"]); ellD(g, 8, 8, 1.8, 1.8, ["#1a1c28", "#3a3e52"]); },
     bag: function (g) { ellD(g, 8, 10, 5.6, 4.8, ["#4a2d16", "#8a5a2b", "#c98744", "#e8a860"]); rect(g, 5, 3, 6, 3, "#6a4426"); checker(g, 5, 3, 6, 3, "#8a5a2b"); rect(g, 4, 5, 8, 1, "#ffd257"); },
@@ -569,5 +573,7 @@
     return c;
   }
 
-  window.RC_ART = { hero: hero, heroURL: heroURL, headURL: headURL, itemIconURL: itemIconURL, icon: icon, PAL: PAL, squirrel: squirrel, mob: mob, item: item, shot: shot, chest: chest, stall: stall, terrain: terrain, silhouette: silhouette, TILE: TILE, shade: shade };
+  var mobUrlCache = {};
+  function mobURL(type) { if (mobUrlCache[type]) return mobUrlCache[type]; var sp = mob(type, 0); return (mobUrlCache[type] = sp.c.toDataURL()); }
+  window.RC_ART = { mobURL: mobURL, hero: hero, heroURL: heroURL, headURL: headURL, itemIconURL: itemIconURL, icon: icon, PAL: PAL, squirrel: squirrel, mob: mob, item: item, shot: shot, chest: chest, stall: stall, terrain: terrain, silhouette: silhouette, TILE: TILE, shade: shade };
 })();

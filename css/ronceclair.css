@@ -137,65 +137,75 @@
 .rcu-quest-card.cur { border-color: var(--rc-gold); } .rcu-quest-card.done { opacity: .6; } .rcu-quest-card.todo { opacity: .4; } .rcu-quest-card em { position: absolute; right: 10px; top: 8px; font-style: normal; color: #7df0a0; font-weight: 900; }
 .rcu-menu-pane { display: grid; gap: 10px; justify-items: start; }
 
+/* éléments, caractéristiques, sorts, résultat */
+.rcu-el { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px 1px 2px; background: rgba(0, 0, 0, .35); border: 2px solid var(--c, #888); font-weight: 900; font-size: .8rem; margin: 2px; }
+.rcu-el.res { border-style: dashed; } .rcu-el b { color: #fff; }
+.rcu-elrow { display: flex; flex-wrap: wrap; gap: 2px; margin: 6px 0; } .rcu-elrow.tight { margin: 2px 0; }
+.rcu-eltab { width: 100%; border-collapse: collapse; font-size: .88rem; } .rcu-eltab th { text-align: left; opacity: .75; font-weight: 700; padding: 2px 4px; } .rcu-eltab td { padding: 3px 4px; border-top: 1px dashed rgba(255, 255, 255, .12); font-weight: 800; }
+.rcu-chname { display: flex; align-items: center; gap: 8px; flex: 1; } .rcu-chname small { display: block; opacity: .85; font-size: .75rem; }
+.rcu-statrows li .rcu-btn.small { padding: 3px 9px; margin: 2px; }
+.rcu-fx { color: #ffe9b0; opacity: 1 !important; } .rcu-card h4 small { font-weight: 600; opacity: .8; }
+.rcu-dlg.wide { width: min(520px, 100%); } .rcu-dlg h3.win { color: #7df0a0; font-size: 1.8rem; } .rcu-dlg h3.lose { color: #ff8a7a; }
+.rcu-lvlup { color: var(--rc-gold); font-weight: 900; } .rcu-loot { display: grid; gap: 6px; margin: 8px 0; } .rcu-lootitem { display: flex; align-items: center; gap: 8px; border: 3px solid; background: rgba(0, 0, 0, .35); padding: 4px 8px; font-weight: 800; text-align: left; }
+
 /* ---------- barre de jeu façon Dofus ---------- */
 .rcu-hud { position: absolute; inset: 0; }
 .rcu-topleft { position: absolute; left: 10px; top: 10px; display: grid; gap: 6px; max-width: 240px; }
 .rcu-zone, .rcu-mate, .rcu-quest { background: rgba(26, 16, 8, .82); border: 3px solid var(--rc-w3); padding: 4px 10px; font-weight: 800; font-size: .85rem; text-shadow: 0 1px 0 #000; }
-.rcu-zone { color: var(--rc-gold); }
-.rcu-mate small, .rcu-mate b { color: #9ad7ff; }
-.rcu-quest { position: absolute; right: 10px; top: 10px; max-width: 250px; font-size: .78rem; line-height: 1.3; pointer-events: none; }
-.rcu-bar { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 12px; max-width: calc(100% - 16px); background: var(--rc-w1);
+.rcu-zone { color: var(--rc-gold); } .rcu-mate b { color: #9ad7ff; }
+.rcu-quest { position: absolute; right: 10px; top: 64px; max-width: 250px; font-size: .78rem; line-height: 1.3; pointer-events: none; }
+.rcu-menus { position: absolute; right: 10px; top: 10px; display: flex; gap: 6px; }
+.rcu-menus button { position: relative; width: 42px; height: 42px; padding: 0; cursor: pointer; background: radial-gradient(#5a3d22, #2a1a0c); border: 3px solid var(--rc-edge); display: grid; place-items: center; }
+.rcu-menus button:hover { border-color: var(--rc-gold); } .rcu-menus .rcu-ico { width: 28px; height: 28px; }
+.rcu-menus em { position: absolute; right: -7px; top: -8px; font-style: normal; font-size: .7rem; font-weight: 900; background: var(--rc-gold); color: var(--rc-ink); padding: 0 5px; border: 2px solid var(--rc-ink); }
+.rcu-bar { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 12px; max-width: calc(100% - 12px); background: var(--rc-w1);
   box-shadow: 0 -4px 0 0 var(--rc-gold2), 0 4px 0 0 var(--rc-gold2), -4px 0 0 0 var(--rc-gold2), 4px 0 0 0 var(--rc-gold2), 0 10px 0 0 rgba(0, 0, 0, .45); }
 .rcu-portrait { position: relative; width: 62px; height: 62px; background: radial-gradient(#6e8a4a, #2f4a2a); border: 3px solid var(--rc-ink); flex: none; display: grid; place-items: center; }
 .rcu-portrait img { width: 56px; height: 56px; image-rendering: pixelated; }
 .rcu-portrait b { position: absolute; right: -8px; bottom: -8px; min-width: 24px; text-align: center; background: var(--rc-gold); color: var(--rc-ink); border: 2px solid var(--rc-ink); font-weight: 900; font-size: .85rem; }
 .rcu-vitals { width: 210px; display: grid; gap: 4px; }
 .rcu-hp { position: relative; height: 20px; background: #1a0f08; border: 3px solid var(--rc-ink); overflow: hidden; }
-.rcu-hp i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#ff9a8a, #e8584a 55%, #b83a30); transition: width .12s; } .rcu-hp.sm { height: 10px; border-width: 2px; margin-top: 2px; } .rcu-hp.sm i { background: linear-gradient(#a8f4b8, #58b36a); }
+.rcu-hp i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(#ff9a8a, #e8584a 55%, #b83a30); transition: width .12s; }
+.rcu-hp u { position: absolute; left: 0; bottom: 0; height: 5px; background: #9ad7ff; text-decoration: none; transition: width .12s; }
 .rcu-hp span { position: absolute; inset: 0; display: grid; place-items: center; font-size: .74rem; font-weight: 900; text-shadow: 0 1px 0 #000; color: #fff; }
 .rcu-xp { height: 10px; background: #1a0f08; border: 2px solid var(--rc-ink); overflow: hidden; } .rcu-xp i { display: block; height: 100%; background: linear-gradient(#bfe3ff, #5aa8ff); transition: width .15s; }
 .rcu-res { display: flex; gap: 12px; font-weight: 900; font-size: .85rem; } .rcu-res span { display: flex; align-items: center; gap: 4px; }
-.rcu-spells { display: flex; gap: 6px; }
-.rcu-sp { position: relative; width: 54px; height: 54px; padding: 0; cursor: pointer; font: inherit; background: radial-gradient(#5a3d22, #2a1a0c); border: 3px solid var(--rc-edge); overflow: hidden; color: #fff; }
-.rcu-sp:hover { border-color: var(--rc-gold); }
-.rcu-sp .rcu-ico { width: 38px; height: 38px; position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); }
-.rcu-sp .key { position: absolute; right: 2px; bottom: 1px; font-size: .62rem; font-weight: 900; text-shadow: 0 1px 0 #000, 0 0 3px #000; }
-.rcu-sp .cd { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(0, 0, 0, .65); pointer-events: none; }
-.rcu-sp .cdt { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; font-weight: 900; font-size: 1.2rem; text-shadow: 0 2px 0 #000; pointer-events: none; }
-.rcu-sp .lock { display: none; position: absolute; left: 2px; top: 1px; font-size: .68rem; font-weight: 900; color: var(--rc-gold); background: #000a; padding: 0 3px; }
-.rcu-sp.lock { filter: grayscale(.9) brightness(.7); } .rcu-sp.lock .lock { display: block; }
-.rcu-menus { display: flex; gap: 6px; }
-.rcu-menus button { position: relative; width: 42px; height: 42px; padding: 0; cursor: pointer; background: radial-gradient(#5a3d22, #2a1a0c); border: 3px solid var(--rc-edge); display: grid; place-items: center; }
-.rcu-menus button:hover { border-color: var(--rc-gold); } .rcu-menus .rcu-ico { width: 28px; height: 28px; }
-.rcu-menus em { position: absolute; right: -7px; top: -8px; font-style: normal; font-size: .7rem; font-weight: 900; background: var(--rc-gold); color: var(--rc-ink); padding: 0 5px; border: 2px solid var(--rc-ink); }
 .rcu-banner { position: absolute; left: 50%; top: 20%; transform: translateX(-50%); text-align: center; padding: 10px 26px; background: rgba(26, 16, 8, .92); border: 4px solid var(--rc-gold); max-width: 86%; z-index: 7; pointer-events: none; }
 .rcu-banner strong { display: block; font-size: 1.35rem; color: var(--rc-gold); text-shadow: 0 2px 0 #000; } .rcu-banner span { font-size: .92rem; }
 .rcu-banner.pop { animation: rcu-pop .4s cubic-bezier(.2, 1.5, .4, 1) both; } @keyframes rcu-pop { from { transform: translateX(-50%) scale(.7); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
-.rcu-joy, .rcu-act { display: none; }
 
-/* ---------- tactile et petits écrans ---------- */
-@media (pointer: coarse), (max-width: 760px) {
-  .rcu-bar { display: contents; }                       /* les éléments de la barre se placent directement dans l'écran de jeu */
-  .rcu-portrait { position: absolute; left: 8px; top: 8px; width: 46px; height: 46px; box-shadow: 0 0 0 3px var(--rc-gold2); } .rcu-portrait img { width: 40px; height: 40px; }
-  .rcu-vitals { position: absolute; left: 66px; top: 8px; width: min(170px, 38vw); background: rgba(26, 16, 8, .82); padding: 4px 6px; box-shadow: 0 0 0 3px var(--rc-w3); }
-  .rcu-res { gap: 8px; font-size: .74rem; }
-  .rcu-menus { position: absolute; right: 8px; top: 8px; flex-direction: column; gap: 4px; background: rgba(26, 16, 8, .82); padding: 3px; box-shadow: 0 0 0 3px var(--rc-w3); } .rcu-menus button { width: 36px; height: 36px; } .rcu-menus .rcu-ico { width: 24px; height: 24px; }
-  .rcu-topleft { top: 76px; max-width: 200px; } .rcu-zone { font-size: .74rem; } .rcu-quest { top: auto; right: auto; left: 8px; bottom: 156px; max-width: 150px; font-size: .66rem; }
-  .rcu-spells { position: absolute; right: 10px; bottom: 14px; display: grid; grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(3, 54px); gap: 8px; }
-  .rcu-sp[data-sp="atk"] { grid-column: 2 / 4; grid-row: 2 / 4; width: 100%; height: 100%; } .rcu-sp[data-sp="atk"] .rcu-ico { width: 56px; height: 56px; }
-  .rcu-sp[data-sp="0"] { grid-column: 1; grid-row: 1; } .rcu-sp[data-sp="1"] { grid-column: 2; grid-row: 1; } .rcu-sp[data-sp="2"] { grid-column: 3; grid-row: 1; }
-  .rcu-sp[data-sp="dash"] { grid-column: 1; grid-row: 2; } .rcu-sp[data-sp="pot"] { grid-column: 1; grid-row: 3; }
-  .rcu-sp .key { display: none; } .rcu-sp[data-sp="pot"] .key { display: block; }
-  .rcu-banner { padding: 6px 14px; top: 24%; } .rcu-banner strong { font-size: 1.1rem; } .rcu-banner span { font-size: .78rem; }
-}
-@media (pointer: coarse) {
-  .rcu-joy { display: block; position: absolute; left: 18px; bottom: 22px; width: 124px; height: 124px; border-radius: 50%; background: rgba(255, 255, 255, .14); border: 3px solid rgba(255, 255, 255, .4); touch-action: none; }
-  .rcu-joy-knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(255, 248, 230, .8); border: 3px solid var(--rc-ink); }
-  .rcu-act { display: block; position: absolute; right: 214px; bottom: 22px; width: 52px; height: 52px; font: inherit; font-weight: 900; font-size: 1.2rem; background: #3d8a4e; color: #fff; border: 3px solid var(--rc-ink); touch-action: none; }
-}
+/* combat : frise des tours, orbes PA / PM, sorts, fin de tour (cachés hors combat) */
+.rcu-timeline, .rcu-orbs, .rcu-spells, .rcu-endturn { display: none; }
+.rcu-hud.fight .rcu-quest { display: none; }
+.rcu-hud.fight .rcu-timeline { display: flex; }
+.rcu-hud.fight .rcu-orbs { display: flex; } .rcu-hud.fight .rcu-spells { display: flex; } .rcu-hud.fight .rcu-endturn { display: block; }
+.rcu-hud.fight .rcu-xp, .rcu-hud.fight .rcu-res { display: none; }
+.rcu-timeline { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); align-items: center; gap: 4px; padding: 4px 8px; background: rgba(26, 16, 8, .85); border: 3px solid var(--rc-w3); max-width: calc(100% - 270px); overflow: hidden; pointer-events: none; }
+.rcu-round { font-weight: 900; font-size: .8rem; color: var(--rc-gold); margin-right: 6px; white-space: nowrap; }
+.rcu-tl { position: relative; flex: none; width: 40px; height: 40px; background: rgba(0, 0, 0, .4); border: 3px solid #5aa8ff; } .rcu-tl.side1 { border-color: #e8584a; }
+.rcu-tl img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.rcu-tl i { position: absolute; left: 0; bottom: 0; height: 4px; background: #7df0a0; } .rcu-tl.side1 i { background: #ff7b6a; }
+.rcu-tl.cur { border-color: var(--rc-gold); transform: scale(1.18); box-shadow: 0 0 0 2px var(--rc-ink); z-index: 1; }
+.rcu-orbs { gap: 8px; }
+.rcu-orb { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; align-content: center; border: 3px solid var(--rc-ink); position: relative; box-shadow: inset 0 -6px 0 rgba(0, 0, 0, .25), inset 0 5px 0 rgba(255, 255, 255, .3); }
+.rcu-orb b { font-size: 1.5rem; line-height: 1; text-shadow: 0 2px 0 #000; color: #fff; } .rcu-orb small { position: absolute; bottom: -4px; font-size: .6rem; font-weight: 900; background: var(--rc-ink); padding: 0 4px; }
+.rcu-orb.pa { background: radial-gradient(#6ab6ff, #2a62b8); } .rcu-orb.pm { background: radial-gradient(#8be09a, #2f8a46); }
+.rcu-spells { gap: 6px; }
+.rcu-sp { position: relative; width: 54px; height: 54px; padding: 0; cursor: pointer; font: inherit; background: radial-gradient(#5a3d22, #2a1a0c); border: 3px solid var(--el, var(--rc-edge)); overflow: hidden; color: #fff; }
+.rcu-sp:hover { filter: brightness(1.25); } .rcu-sp .rcu-ico { width: 38px; height: 38px; position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); }
+.rcu-sp .key { position: absolute; right: 2px; top: 0; font-size: .62rem; font-weight: 900; text-shadow: 0 1px 0 #000, 0 0 3px #000; }
+.rcu-sp .pa { position: absolute; left: 1px; bottom: 1px; min-width: 16px; text-align: center; font-size: .7rem; font-weight: 900; background: #2a62b8; border: 2px solid var(--rc-ink); line-height: 1.1; }
+.rcu-sp .cdt { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; font-weight: 900; font-size: 1.3rem; text-shadow: 0 2px 0 #000; background: rgba(0, 0, 0, .55); pointer-events: none; } .rcu-sp .cdt:empty { display: none; }
+.rcu-sp .uses { position: absolute; right: 2px; bottom: 1px; font-size: .62rem; font-weight: 900; text-decoration: none; color: var(--rc-gold); text-shadow: 0 1px 0 #000; }
+.rcu-sp.off { filter: grayscale(.8) brightness(.65); } .rcu-sp.nopa .pa { background: #b83a30; }
+.rcu-sp.sel { box-shadow: 0 0 0 3px var(--rc-gold), 0 0 12px 2px var(--rc-gold); transform: translateY(-4px); }
+.rcu-endturn { font: inherit; font-weight: 900; font-size: 1rem; cursor: pointer; padding: 10px 16px; min-width: 120px; background: #4a3a28; color: #c9b896; border: 0; box-shadow: 0 -3px 0 0 var(--rc-ink), 0 3px 0 0 var(--rc-ink), -3px 0 0 0 var(--rc-ink), 3px 0 0 0 var(--rc-ink), 0 6px 0 0 #2a1a0c; }
+.rcu-endturn.go { background: linear-gradient(#9be8a8, #58b36a 60%, #3d8a4e); color: #10301a; animation: rcu-pulse 1.2s ease-in-out infinite; } .rcu-endturn[disabled] { cursor: default; }
+@keyframes rcu-pulse { 50% { filter: brightness(1.25); } }
+
 @media (max-width: 860px) {
-  .rcu-head { padding: 8px 10px 2px; } .rcu-head h2 { font-size: 1.2rem; }
   .rcu-sel { display: flex; flex-direction: column; overflow-y: auto; gap: 8px; padding: 6px 10px; min-height: 0; }
+  .rcu-head { padding: 8px 10px 2px; } .rcu-head h2 { font-size: 1.2rem; }
   .rcu-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; flex: none; padding-bottom: 4px; } .rcu-slot { min-width: 150px; padding: 5px 8px; } .rcu-slot img { width: 34px; height: 34px; } .rcu-slot .plus { width: 34px; height: 34px; } .rcu-slot small { display: none; }
   .rcu-center { flex: none; } .rcu-pedestal { width: 170px; height: 160px; } .rcu-preview { width: 100%; height: auto; }
   .rcu-name { font-size: 1.3rem; } .rcu-info { overflow: visible; flex: none; }
@@ -203,5 +213,17 @@
   .rcu-body { flex-direction: column; overflow: auto; } .rcu-tabs { flex-direction: row; width: auto; overflow-x: auto; } .rcu-tabs button span { display: none; } .rcu-tabs button { flex: none; }
   .rcu-inv { grid-template-columns: 1fr; } .rcu-doll { height: 260px; } .rcu-pedestal.sm { width: 160px; height: 160px; } .rcu-bag { grid-template-columns: repeat(6, 44px); }
   .rcu-logo-sq { width: 80px; height: 80px; } .rcu-menu .rcu-btn { min-width: 200px; }
+  /* barre de jeu étroite : portrait + PV en haut à gauche, sorts en bas */
+  .rcu-menus { top: 8px; right: 8px; flex-direction: column; gap: 4px; background: rgba(26, 16, 8, .82); padding: 3px; box-shadow: 0 0 0 3px var(--rc-w3); } .rcu-menus button { width: 36px; height: 36px; } .rcu-menus .rcu-ico { width: 24px; height: 24px; }
+  .rcu-topleft { top: 76px; max-width: 200px; } .rcu-zone { font-size: .74rem; } .rcu-quest { top: auto; right: auto; left: 8px; bottom: 74px; max-width: 150px; font-size: .66rem; }
+  .rcu-bar { left: 6px; right: 6px; bottom: 6px; transform: none; max-width: none; flex-wrap: wrap; justify-content: center; gap: 6px 8px; padding: 5px 6px; }
+  .rcu-hud:not(.fight) .rcu-bar { top: 8px; bottom: auto; right: 54px; justify-content: flex-start; flex-wrap: nowrap; }
+  .rcu-portrait { width: 44px; height: 44px; } .rcu-portrait img { width: 40px; height: 40px; } .rcu-vitals { width: 150px; } .rcu-res { gap: 8px; font-size: .74rem; }
+  .rcu-orb { width: 42px; height: 42px; } .rcu-orb b { font-size: 1.15rem; }
+  .rcu-sp { width: 46px; height: 46px; } .rcu-sp .rcu-ico { width: 32px; height: 32px; } .rcu-spells { gap: 4px; flex-wrap: wrap; justify-content: center; }
+  .rcu-endturn { padding: 8px 12px; min-width: 96px; font-size: .9rem; }
+  .rcu-timeline { top: 8px; max-width: calc(100% - 64px); left: 6px; transform: none; } .rcu-tl { width: 32px; height: 32px; }
+  .rcu-hud.fight .rcu-topleft { top: 56px; }
+  .rcu-banner { padding: 6px 14px; top: 26%; } .rcu-banner strong { font-size: 1.1rem; } .rcu-banner span { font-size: .78rem; }
 }
 @media (max-width: 760px) { .rc-stage { height: calc(100svh - 190px); min-height: 460px; } .rc-stage.is-full, .rc-stage.is-max { height: 100%; } }
