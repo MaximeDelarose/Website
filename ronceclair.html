@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ronceclair · AkarisuMD</title>
+  <meta name="description" content="Ronceclair : un action-RPG en vue de dessus où tu incarnes un écureuil. Trois classes, trois zones, des quêtes, du butin et un Roi-corbeau à vaincre.">
+  <meta property="og:title" content="Ronceclair · AkarisuMD">
+  <meta property="og:description" content="Ronceclair : un action-RPG en vue de dessus où tu incarnes un écureuil. Trois classes, trois zones, des quêtes, du butin et un Roi-corbeau à vaincre.">
+  <meta name="theme-color" content="#2f6b3e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ronceclair">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=20261118sq3">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261118sq3">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261118ft1">
+  <link rel="stylesheet" href="css/party.css?v=20261107vs2">
+  <link rel="stylesheet" href="css/gamekit.css?v=20261118gf4">
+  <link rel="stylesheet" href="css/ronceclair.css?v=20261120rc1">
+</head>
+<body data-page="ronceclair">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="stats.html" data-page="stats">Stats</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="section game-section">
+    <div class="wrap">
+      <div class="game-head">
+        <div>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Mini jeu maison · action-RPG solo</span>
+          <h1>Ronceclair</h1>
+        </div>
+        <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
+      </div>
+
+      <div class="game-stage rc-stage" data-ronceclair>
+        <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Ronceclair"></canvas>
+        <button class="fs-exit" type="button" data-fs-exit aria-label="Quitter le plein écran">✕</button>
+
+        <div class="rc-hud" data-hud hidden>
+          <div class="rc-top">
+            <div class="rc-bars">
+              <div class="rc-lvl" data-h="lvl">Niv. 1</div>
+              <div class="rc-bar rc-hp"><i data-h="hp"></i><span data-h="hptxt"></span></div>
+              <div class="rc-bar rc-xp"><i data-h="xp"></i></div>
+            </div>
+            <div class="rc-info">
+              <div class="rc-zone" data-h="zone"></div>
+              <div class="rc-pills"><span class="rc-pill">🌰 <b data-h="gold">0</b></span><span class="rc-pill">🍓 <b data-h="potions">0</b></span></div>
+              <div class="rc-quest" data-h="quest"></div>
+            </div>
+          </div>
+          <div class="rc-banner" data-banner hidden></div>
+
+          <button class="rc-menu-btn" type="button" data-b="menu" aria-label="Caractéristiques">☰ <em data-h="pts" hidden>+0</em></button>
+          <div class="rc-joy" data-joy><div class="rc-joy-knob" data-joy-knob></div></div>
+          <div class="rc-btns">
+            <button type="button" class="rc-b rc-b-act" data-b="act" aria-label="Interagir">F</button>
+            <button type="button" class="rc-b rc-b-pot" data-b="pot" aria-label="Manger une baie">🍓</button>
+            <button type="button" class="rc-b rc-b-dash" data-b="dash" data-h="dash" aria-label="Roulade">⤳</button>
+            <button type="button" class="rc-b rc-b-sp" data-b="sp" data-h="sp" aria-label="Attaque spéciale">★</button>
+            <button type="button" class="rc-b rc-b-atk" data-b="atk" aria-label="Attaquer">⚔</button>
+          </div>
+        </div>
+
+        <div class="game-overlay" data-overlay>
+          <div class="panel game-card rc-card" data-card>
+            <p>Chargement du jeu…</p>
+            <noscript><p>Ce jeu a besoin de JavaScript.</p></noscript>
+          </div>
+        </div>
+      </div>
+
+      <div class="game-info">
+        <div class="panel game-help">
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li>Tu es un <strong>écureuil de la guilde de Ronceclair</strong>. Choisis une classe : le <strong>Gardien</strong> (griffes, encaisse), le <strong>Lanceur</strong> (glands à distance) ou le <strong>Mystique</strong> (éclats arcanes qui traversent les ennemis).</li>
+            <li><strong>Se déplacer</strong> : <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou les flèches. <strong>Attaquer</strong> : clic gauche ou <kbd>Espace</kbd> (tu vises avec la souris). <strong>Roulade</strong> : <kbd>Maj</kbd> ou clic droit, tu es invincible un instant. <strong>Spécial</strong> : <kbd>E</kbd>.</li>
+            <li><kbd>F</kbd> pour parler, ouvrir un coffre ou faire des achats · <kbd>R</kbd> mange une baie (+45 PV) · <kbd>C</kbd> ouvre les caractéristiques : 2 points par niveau à répartir en Vitalité, Force ou Agilité.</li>
+            <li>Sur <strong>mobile</strong> : joystick à gauche, boutons à droite. L'attaque vise toute seule l'ennemi le plus proche.</li>
+            <li><strong>Trois zones</strong> : la Clairière (village de Maître Noisetier et Dame Glandine), le Sous-bois moussu et le Marais aux nénuphars, où règne le <strong>Roi-corbeau</strong>. Chaque passage demande un niveau minimum.</li>
+            <li>Les monstres lâchent des <strong>noisettes</strong> (à dépenser chez Dame Glandine : queue de combat, cape, bottes) et parfois des baies. Les élites (★) sont plus costauds mais rapportent plus.</li>
+            <li>Ta progression est <strong>sauvegardée automatiquement</strong> dans ton navigateur.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261118ft1"></script>
+  <script src="js/auth.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261118ft1"></script>
+  <script src="js/gamekit.js?v=20261118gf3"></script>
+  <script src="js/ronceclair.js?v=20261120rc1"></script>
+</body>
+</html>

@@ -51,6 +51,7 @@
     { id: "king-dice", title: "King Dice", ico: "👑" },
     { id: "ages", title: "Age of Defense", ico: "🏰" },
     { id: "arcane", title: "Arcane Tactics", ico: "🪄" },
+    { id: "ronceclair", title: "Ronceclair", ico: "🐿️" },
     { id: "echecs", title: "Échecs", ico: "♞" },
     { id: "billard", title: "Billard", ico: "🎱" },
     { id: "golf", title: "Mini-golf", ico: "⛳" },
