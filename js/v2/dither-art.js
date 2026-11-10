@@ -10,6 +10,8 @@
    ========================================================================= */
 (function () {
   "use strict";
+  // ?simple=1 : rendu d'origine, sans les sprites haute résolution (au cas où l'appareil ne les supporte pas) ; ?simple=0 : on revient aux nouveaux sprites
+  try { var qs = /[?&]simple=([01])/.exec(location.search); if (qs) localStorage.setItem("es2-simple", qs[1]); if (localStorage.getItem("es2-simple") === "1") return; } catch (e) {}
   var OUT = "#2a1810";
   // l'écureuil du logo, tel quel (a… h = les 8 couleurs du fichier, du plus sombre au plus clair)
   var LOGO = ["..edddddc.........", ".ehhgghhgc........", "ehgfffgghhc.......", "egedefffggc..c.c..", "fedbcdeffgc.cgcg..", "ecb.bcdffec.bhbh..", "cb..ceffedb.bdefe.", "...cdffedc.cdffaf.", "..bdffecaabdeffahd", ".aeffecacddffehhgb", ".bfeecacdeffhhg...", "beffcacdefehhe.a..", "aeeecadffbfefeaca.", ".bcecadeffbhbfefd.", ".aeceaefefchgbcdc.", "..becacefechgc.c..", "...abaccecbecc....", "......acaaecaa....", "......abcbabcba..."];
@@ -131,7 +133,7 @@
   // un sprite à haute résolution (canevas flaggé __hr) est dessiné à sa taille « logique » : on garde la taille à l'écran, on gagne en finesse
   var od = CanvasRenderingContext2D.prototype.drawImage;
   CanvasRenderingContext2D.prototype.drawImage = function (img, a, b, c, d) {
-    if (arguments.length === 3 && img && img.__hr > 1 && !this.__raw) return od.call(this, img, a, b, img.width / img.__hr, img.height / img.__hr);
+    if (arguments.length === 3 && img && img.__hr > 1 && !this.__raw) { var q = img.__hr; return od.call(this, img, Math.round(a * q) / q, Math.round(b * q) / q, img.width / q, img.height / q); }   // collé à la grille fine (1/hr de pixel de jeu)
     return od.apply(this, arguments);
   };
 

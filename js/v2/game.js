@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.56.1";
+  var VERSION = "2.56.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -158,14 +158,20 @@
     }
     function variant(flip, white) {
       var v = document.createElement("canvas"); v.width = W; v.height = H;
-      var vg = v.getContext("2d");
+      var vg = v.getContext("2d"); vg.__raw = true;
       if (flip) { vg.translate(W, 0); vg.scale(-1, 1); }
       vg.drawImage(c, 0, 0);
       if (white) { vg.setTransform(1, 0, 0, 1, 0, 0); vg.globalCompositeOperation = "source-in"; vg.fillStyle = "#fff"; vg.fillRect(0, 0, W, H); }
       return v;
     }
-    var out = { c: c, f: variant(true), wc: variant(false, true), wf: variant(true, true), w: W / hr, h: H / hr };
-    if (hr > 1) { out.c.__hr = out.f.__hr = out.wc.__hr = out.wf.__hr = hr; }
+    // les variantes (miroir, blanc) ne sont fabriquées qu'à la première utilisation : trois fois moins de canevas en mémoire
+    var out = { c: c, w: W / hr, h: H / hr };
+    function lazy(name, flip, white) {
+      var v = null;
+      Object.defineProperty(out, name, { enumerable: true, get: function () { if (!v) { v = variant(flip, white); if (hr > 1) v.__hr = hr; } return v; } });
+    }
+    lazy("f", true, false); lazy("wc", false, true); lazy("wf", true, true);
+    if (hr > 1) c.__hr = hr;
     return out;
   }
   var SPR = {};
@@ -10385,6 +10391,7 @@
     var dpr = window.devicePixelRatio || 1;
     var cw = Math.max(200, stage.clientWidth), ch = Math.max(200, stage.clientHeight);
     var scale = Math.max(2, Math.round(Math.sqrt(cw * ch) * dpr / 250));
+    if (HR > 1) scale = Math.max(HR, Math.round(scale / HR) * HR);     // un pixel du canevas (1/HR de pixel de jeu) doit tomber sur un nombre entier de pixels écran
     W = Math.max(80, Math.ceil(cw * dpr / scale)); H = Math.max(80, Math.ceil(ch * dpr / scale));
     canvas.width = W * HR; canvas.height = H * HR;
     canvas.style.width = (W * scale / dpr) + "px";
