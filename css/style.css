@@ -3309,3 +3309,7 @@ a.account-admin { text-decoration: none; }
 .screen-img { object-position: 50% 40%; }
 [data-fullscreen][hidden] { display: none; }
 .screen-img.is-pixel { object-fit: contain; image-rendering: pixelated; background: #1f3a2b; filter: none; }
+
+/* bouton « Recharger sans cache » de l'en-tête */
+.reload-btn.is-busy svg { animation: reload-spin .7s steps(8) infinite; }
+@keyframes reload-spin { to { transform: rotate(360deg); } }

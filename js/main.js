@@ -36,6 +36,35 @@
     });
   });
 
+  /* ---------- bouton « Recharger » : vide les caches sans te déconnecter ---------- */
+  // Vide les caches (Cache Storage + service workers) et force le re-téléchargement de la page, des scripts et
+  // des styles. Ne touche NI au localStorage NI au sessionStorage NI à IndexedDB : le compte, les sauvegardes des
+  // jeux et les réglages restent en place.
+  (function () {
+    var hdr = $(".header-inner");
+    if (!hdr || $("[data-hard-reload]")) return;
+    try { if (/[?&]_r=/.test(location.search)) { var q = location.search.replace(/([?&])_r=\d*&?/, "$1").replace(/[?&]$/, ""); history.replaceState(null, "", location.pathname + q + location.hash); } } catch (e) {}
+    var b = document.createElement("button");
+    b.className = "icon-btn reload-btn"; b.type = "button"; b.setAttribute("data-hard-reload", "");
+    b.setAttribute("aria-label", "Recharger la page en vidant le cache (reste connecté)");
+    b.setAttribute("title", "Recharger sans cache (tu restes connecté)");
+    b.innerHTML = '<svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="4" y="1" width="4" height="1"/><rect x="2" y="2" width="2" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="9" y="1" width="2" height="1"/><rect x="10" y="2" width="1" height="3"/><rect x="8" y="4" width="3" height="1"/><rect x="1" y="4" width="1" height="3"/><rect x="2" y="7" width="1" height="1"/><rect x="3" y="8" width="1" height="1"/><rect x="4" y="9" width="4" height="1"/><rect x="8" y="8" width="1" height="1"/><rect x="9" y="7" width="1" height="1"/></g></svg>';
+    var theme = $("[data-theme-toggle]");
+    hdr.insertBefore(b, theme || null);
+    b.addEventListener("click", function () {
+      if (b.disabled) return;
+      b.disabled = true; b.classList.add("is-busy");
+      var tasks = [], here = location.href.split("#")[0], urls = [here];
+      try { if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) tasks.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })); } catch (e) {}
+      try { if (window.caches && caches.keys) tasks.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches["delete"](k); })); })); } catch (e) {}
+      $$("script[src], link[rel=stylesheet][href]").forEach(function (el) { urls.push(el.src || el.href); });
+      urls.forEach(function (x) { if (x.indexOf(location.origin) === 0) tasks.push(fetch(x, { cache: "reload", credentials: "same-origin" }).catch(function () {})); });
+      var go = function () { var u = new URL(location.href); u.searchParams.set("_r", Date.now()); location.replace(u.toString()); };
+      Promise.all(tasks).then(go, go);
+      setTimeout(go, 6000);                       // sécurité si un téléchargement traîne
+    });
+  })();
+
   /* ---------- menu mobile + page active ---------- */
   var navBtn = $("[data-nav-toggle]");
   var nav = $("#site-nav");
