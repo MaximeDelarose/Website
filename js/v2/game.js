@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.53.1";
+  var VERSION = "v254a";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -138,7 +138,9 @@
      Sprites
      ===================================================================== */
   var OUT = "#2b1709";
-  function sprite(rows, pal) {
+  var HR = window.ES_ART ? (ES_ART.hr || 1) : 1;      // version dithering : le canevas est rendu à HR fois la résolution, les sprites ont HR fois plus de pixels
+  function sprite(rows, pal, hr) {
+    hr = hr || 1;
     var h = rows.length, w = 0, x, y;
     rows.forEach(function (row) { w = Math.max(w, row.length); });
     var W = w + 2, H = h + 2, filled = new Uint8Array(W * H);
@@ -162,16 +164,19 @@
       if (white) { vg.setTransform(1, 0, 0, 1, 0, 0); vg.globalCompositeOperation = "source-in"; vg.fillStyle = "#fff"; vg.fillRect(0, 0, W, H); }
       return v;
     }
-    return { c: c, f: variant(true), wc: variant(false, true), wf: variant(true, true), w: W, h: H };
+    var out = { c: c, f: variant(true), wc: variant(false, true), wf: variant(true, true), w: W / hr, h: H / hr };
+    if (hr > 1) { out.c.__hr = out.f.__hr = out.wc.__hr = out.wf.__hr = hr; }
+    return out;
   }
   var SPR = {};
   Object.keys(D.SPRITES).forEach(function (k) {
     var d = D.SPRITES[k]; if (window.ES_ART) d = ES_ART.upgrade(k, d);      // version dithering : sprites refaits à la taille × 2
-    SPR[k] = d.frames.map(function (f) { return sprite(f, d.pal); });
+    var shr = d.hr || 1;
+    SPR[k] = d.frames.map(function (f) { return sprite(f, d.pal, shr); });
     SPR[k].flying = !!d.flying;
     // style A : images de repos, pose de Volte, rebond de marche
-    if (d.idle) SPR[k].idle = d.idle.map(function (f) { return sprite(f, d.pal); });
-    if (d.volte) SPR[k].volte = sprite(d.volte, d.pal);
+    if (d.idle) SPR[k].idle = d.idle.map(function (f) { return sprite(f, d.pal, shr); });
+    if (d.volte) SPR[k].volte = sprite(d.volte, d.pal, shr);
     if (d.bob) SPR[k].bob = d.bob;
     if (d.ns) SPR[k].ns = d.ns;  // sprite dessiné pour cette échelle de jeu : pas agrandi à l'écran
   });
@@ -1439,9 +1444,9 @@
   function tinted(s, col, flip) {
     var key = col + (flip ? "f" : ""); s.tints = s.tints || {};
     if (!s.tints[key]) {
-      var c = document.createElement("canvas"); c.width = s.w; c.height = s.h;
-      var g = c.getContext("2d"); g.drawImage(flip ? s.f : s.c, 0, 0);
-      g.globalCompositeOperation = "source-in"; g.fillStyle = col; g.fillRect(0, 0, s.w, s.h);
+      var src = flip ? s.f : s.c, c = document.createElement("canvas"); c.width = src.width; c.height = src.height;
+      var g = c.getContext("2d"); g.__raw = true; g.drawImage(src, 0, 0);
+      g.globalCompositeOperation = "source-in"; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height); if (src.__hr) c.__hr = src.__hr;
       s.tints[key] = c;
     }
     return s.tints[key];
@@ -10237,6 +10242,7 @@
   var PERF = { acc: 0, n: 0, asked: false };
   function loop(now) {
     requestAnimationFrame(loop);
+    if (HR > 1) ctx.setTransform(HR, 0, 0, HR, 0, 0);
     var raw = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
     if (state === "error") return;
     if (state === "play" && r && r.time > 10 && !document.hidden && raw < 1) {        // téléphone dépassé : économie automatique des effets
@@ -10353,7 +10359,7 @@
     var cw = Math.max(200, stage.clientWidth), ch = Math.max(200, stage.clientHeight);
     var scale = Math.max(2, Math.round(Math.sqrt(cw * ch) * dpr / 250));
     W = Math.max(80, Math.ceil(cw * dpr / scale)); H = Math.max(80, Math.ceil(ch * dpr / scale));
-    canvas.width = W; canvas.height = H;
+    canvas.width = W * HR; canvas.height = H * HR;
     canvas.style.width = (W * scale / dpr) + "px";
     canvas.style.height = (H * scale / dpr) + "px";
     stage.style.setProperty("--px-game", (scale / dpr) + "px");

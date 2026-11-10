@@ -88,6 +88,7 @@
       return fromGrid(R);
     }
     var o = {}; Object.keys(d).forEach(function (k) { o[k] = d[k]; });
+    o.hr = noScale ? 1 : 2;
     o.pal = pal2; o.frames = d.frames.map(conv);
     if (d.idle) o.idle = d.idle.map(conv);
     if (d.volte) o.volte = conv(d.volte);
@@ -118,17 +119,23 @@
     var pal = heroPal(d.pal || {}), F = LOGO.slice(), o = {};
     Object.keys(d).forEach(function (k) { o[k] = d[k]; });
     var up = tail(F, -1), dn = tail(F, 1);
-    o.pal = pal;
-    o.frames = [F, feet(up, 1), F, feet(dn, -1)];
+    o.pal = pal; o.hr = 2;
+    o.frames = [F, feet(up, 1), F, feet(dn, -1)].map(dbl);
     o.bob = [0, 1, 0, 1];
-    o.idle = [F, up, F, dn];
-    o.volte = shear(F, 2);
+    o.idle = [F, up, F, dn].map(dbl);
+    o.volte = dbl(shear(F, 2));
     return o;
   }
 
   var SKIP = {};
+  // un sprite à haute résolution (canevas flaggé __hr) est dessiné à sa taille « logique » : on garde la taille à l'écran, on gagne en finesse
+  var od = CanvasRenderingContext2D.prototype.drawImage;
+  CanvasRenderingContext2D.prototype.drawImage = function (img, a, b, c, d) {
+    if (arguments.length === 3 && img && img.__hr > 1 && !this.__raw) return od.call(this, img, a, b, img.width / img.__hr, img.height / img.__hr);
+    return od.apply(this, arguments);
+  };
   window.ES_ART = {
-    scale: 1,
+    scale: 1, hr: 2,
     upgrade: function (name, d) {
       if (!d || !d.frames || !d.frames.length || SKIP[name]) return d;
       try { return /^sq_/.test(name) && name !== "sq_ninja_clone" ? upgradeHero(d) : upgradeSprite(d, !!d.ns); } catch (e) { return d; }
