@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.55.0";
+  var VERSION = "2.55.1";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -7715,7 +7715,7 @@
     var tx0 = Math.floor(cx / T) - 1, ty0 = Math.floor(cy / T) - 1, tx1 = tx0 + Math.ceil(W / T) + 2, ty1 = ty0 + Math.ceil(H / T) + 2;
     var HRG = window.ES_ART && ES_ART.groundChunk, GC = HRG ? (M.__gc || (M.__gc = {})) : null;
     if (HRG) {
-      if (Object.keys(GC).length > 400) M.__gc = GC = {};
+      if (Object.keys(GC).length > 90) M.__gc = GC = {};
       for (var gcy = Math.floor(ty0 / 4); gcy <= Math.floor(ty1 / 4); gcy++) for (var gcx = Math.floor(tx0 / 4); gcx <= Math.floor(tx1 / 4); gcx++) {
         var gk = gcx + "," + gcy, gch = GC[gk] || (GC[gk] = ES_ART.groundChunk(gcx, gcy, function (a, b) { return M.biomes[biomeAtTile(a, b, M)].ground; }));
         ctx.drawImage(gch, Math.round(gcx * 4 * T - cx), Math.round(gcy * 4 * T - cy));

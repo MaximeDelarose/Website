@@ -159,11 +159,8 @@
       var R = ramp(getG(ccx * 4 + tx, ccy * 4 + ty));
       for (py = 0; py < 32; py++) for (px = 0; px < 32; px++) {
         var X = ccx * S + tx * 32 + px, Y = ccy * S + ty * 32 + py, b = bay(X, Y);
-        var f = vn(X, Y, 150) * 0.7 + vn(X + 5000, Y - 3000, 36) * 0.3;
-        var c = band((f - 0.5) * 2.4 + 0.5, b) ? R.P : R.B;
-        var m = vn(X - 2000, Y + 777, 22);
-        if (m > 0.76 && band((m - 0.76) * 4 + 0.3, b)) c = R.K;
-        else if (f > 0.64 && vn(X + 99, Y + 31, 12) > 0.72 && band((vn(X + 99, Y + 31, 12) - 0.72) * 3 + 0.3, b)) c = R.L;
+        var f = vn(X, Y, 190) * 0.85 + vn(X + 5000, Y - 3000, 60) * 0.15;
+        var c = band((f - 0.6) * 1.7 + 0.5, b) ? R.P : R.B;
         var o = ((ty * 32 + py) * S + tx * 32 + px) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
       }
     }
