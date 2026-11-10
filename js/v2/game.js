@@ -17,7 +17,7 @@
   var DG = D.DUNGEON, DGT = D.DUNGEONS[0];
   function dungeonById(id) { return D.DUNGEONS.filter(function (d) { return d.id === id; })[0] || D.DUNGEONS[0]; }
   var A = D.ARENA;
-  var VERSION = "2.51.1";
+  var VERSION = "2.51.2";
   (function () { var tg = document.querySelector(".beta-tag"); if (tg) tg.textContent = VERSION; })();
   var TAU = Math.PI * 2;
   var MAX_W = 6, MAX_P = 6, MAX_LVL = 5;
@@ -9244,7 +9244,7 @@
       return '<div class="screen-head">' + back() + "<h2>Options</h2></div>" +
         '<div class="opt-list">' + tog("sound", "🔊 Son") + volRow() + tog("shake", "📳 Tremblement de l'écran") + tog("hitstop", "⏸️ Arrêts sur image et ralenti") + tog("camlead", "🎥 Caméra qui regarde devant") +
         tog("numbers", "🔢 Chiffres de dégâts") + tog("lowfx", "✨ Particules réduites (téléphone lent)") + tog("frnotif", "🔔 Prévenir quand un ami se connecte") + "</div>" +
-        installHtml() + '<p class="btn-row"><button type="button" class="btn btn-alt" data-action="go" data-arg="changelog">📜 Nouveautés (historique des versions)</button></p><p class="game-small"><button class="link-btn danger" type="button" data-action="wipe">Effacer toute ma progression</button></p>';
+        installHtml() + '<p class="btn-row"><button type="button" class="btn btn-alt" data-action="hardreload">🔄 Mettre à jour le jeu (vider le cache) · v' + VERSION + '</button></p><p class="btn-row"><button type="button" class="btn btn-alt" data-action="go" data-arg="changelog">📜 Nouveautés (historique des versions)</button></p><p class="game-small"><button class="link-btn danger" type="button" data-action="wipe">Effacer toute ma progression</button></p>';
     },
     help: function () {
       return '<div class="screen-head">' + back() + "<h2>Comment jouer</h2></div><ul class=\"help-list\">" +
@@ -9489,6 +9489,7 @@
       Net.joinTs = Date.now(); netJoin(code, false); go("lobby");
     },
     reload: function () { reloadGame(); },
+    hardreload: function () { hardReload(); },
     leave: function () { netLeave(); Net.err = ""; go("menu"); },
     lchar: function (id) { if (!charAvailable(charById(id))) return; S.char = id; save(); trackMe(); SND.click(); go("lobby"); },
     lmap: function (id) { if (Net.role !== "host") return; S.map = id; save(); trackMe(); SND.click(); go("lobby"); },
@@ -10184,6 +10185,16 @@
   function verMsg(other) {
     return verCmp(other, VERSION) > 0 ? "Ta version du jeu (" + VERSION + ") est plus ancienne que celle de l'hôte (" + other + ") : recharge la page pour jouer ensemble."
                                       : "L'hôte a une ancienne version du jeu" + (other ? " (" + other + ")" : "") + " : il doit recharger la page.";
+  }
+  // vide le cache de l'appli (service worker, caches) puis recharge : pour être sûr d'avoir la dernière version
+  function hardReload() {
+    var done = function () { location.replace(location.pathname + "?r=" + Date.now() + location.hash); };
+    try {
+      var jobs = [];
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+      if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+      Promise.all(jobs).then(done, done);
+    } catch (e) { done(); }
   }
   function reloadGame() { location.replace(location.pathname + "?r=" + Date.now() + location.hash); }
   function checkUpdate() {
