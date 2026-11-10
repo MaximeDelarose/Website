@@ -55,13 +55,14 @@
 .rcu-center { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; }
 .rcu-pedestal { position: relative; width: 270px; height: 260px; }
 .rcu-pedestal::after { content: ""; position: absolute; left: 14%; right: 14%; bottom: 2px; height: 30px; background: radial-gradient(ellipse at center, rgba(255, 210, 87, .35), rgba(0, 0, 0, 0) 70%); z-index: 0; }
-.rcu-pedestal.sm { width: 220px; height: 220px; position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); }
+.rcu-pedestal.sm { width: 150px; height: 150px; position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); }
 .rcu-preview { position: relative; z-index: 1; image-rendering: pixelated; max-width: 100%; }
 .rcu-name { margin: 6px 0 0; font-size: 1.7rem; font-weight: 900; color: #fff; text-shadow: 0 3px 0 var(--rc-ink), -2px 0 0 var(--rc-ink), 2px 0 0 var(--rc-ink); }
 .rcu-sub { margin: 4px 0; font-size: .9rem; opacity: .92; }
-.rcu-eqrow { display: flex; gap: 8px; margin-top: 10px; }
-.rcu-eqslot { width: 48px; height: 48px; display: grid; place-items: center; background: rgba(20, 12, 6, .85); border: 3px solid var(--rc-w3); text-align: center; }
-.rcu-eqslot small { font-size: .6rem; opacity: .6; } .rcu-eqslot .rcu-ico { width: 36px; height: 36px; }
+.rcu-eqrow { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 10px; max-width: 330px; }
+.rcu-eqslot.empty { opacity: .45; }
+.rcu-eqslot { width: 40px; height: 40px; display: grid; place-items: center; background: rgba(20, 12, 6, .85); border: 3px solid var(--rc-w3); text-align: center; }
+.rcu-eqslot small { font-size: .6rem; opacity: .6; } .rcu-eqslot .rcu-ico { width: 30px; height: 30px; }
 .rcu-info { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
 .rcu-card { background: rgba(26, 16, 8, .9); border: 3px solid var(--rc-w3); padding: 10px 12px; }
 .rcu-card h4 { margin: 0 0 6px; color: var(--rc-gold); font-size: 1rem; font-weight: 900; }
@@ -112,12 +113,17 @@
 .rcu-shoprow > div { flex: 1; } .rcu-shoprow b { display: block; font-size: .95rem; } .rcu-shoprow small { font-size: .74rem; opacity: .85; }
 
 /* inventaire */
-.rcu-inv { display: grid; grid-template-columns: 240px 1fr; gap: 14px; }
+.rcu-inv { display: grid; grid-template-columns: 290px 1fr; gap: 14px; }
 .rcu-left { display: grid; gap: 8px; align-content: start; }
-.rcu-doll { position: relative; height: 290px; background: rgba(0, 0, 0, .25); border: 3px solid var(--rc-w3); }
-.rcu-dslot { position: absolute; width: 52px; height: 52px; display: grid; place-items: center; font: inherit; cursor: pointer; color: var(--rc-parch); background: rgba(20, 12, 6, .92); border: 3px solid var(--rc-w3); z-index: 2; }
+.rcu-doll { position: relative; height: 380px; background: rgba(0, 0, 0, .25); border: 3px solid var(--rc-w3); }
+.rcu-dslot { position: absolute; width: 48px; height: 48px; display: grid; place-items: center; font: inherit; cursor: pointer; color: var(--rc-parch); background: rgba(20, 12, 6, .92); border: 3px solid var(--rc-w3); z-index: 2; }
 .rcu-dslot small { font-size: .62rem; opacity: .6; } .rcu-dslot:hover { border-color: var(--rc-gold) !important; }
-.rcu-dslot.top { left: 50%; top: 8px; transform: translateX(-50%); } .rcu-dslot.left { left: 8px; top: 40%; } .rcu-dslot.right { right: 8px; top: 40%; } .rcu-dslot.bottom { left: 50%; top: 64%; transform: translateX(-50%); }
+.rcu-dslot.s-tete, .rcu-dslot.s-dos, .rcu-dslot.s-ceinture, .rcu-dslot.s-bottes, .rcu-dslot.s-familier { left: 6px; }
+.rcu-dslot.s-main, .rcu-dslot.s-bouclier, .rcu-dslot.s-amulette, .rcu-dslot.s-anneau1, .rcu-dslot.s-anneau2 { right: 6px; }
+.rcu-dslot.s-tete, .rcu-dslot.s-main { top: 6px; } .rcu-dslot.s-dos, .rcu-dslot.s-bouclier { top: 62px; } .rcu-dslot.s-ceinture, .rcu-dslot.s-amulette { top: 118px; }
+.rcu-dslot.s-bottes, .rcu-dslot.s-anneau1 { top: 174px; } .rcu-dslot.s-familier, .rcu-dslot.s-anneau2 { top: 230px; }
+.rcu-dslot.s-trophee1, .rcu-dslot.s-trophee2, .rcu-dslot.s-trophee3 { bottom: 8px; top: auto; } .rcu-dslot.s-trophee1 { left: calc(50% - 76px); } .rcu-dslot.s-trophee2 { left: calc(50% - 24px); } .rcu-dslot.s-trophee3 { left: calc(50% + 28px); }
+.rcu-pedestal.sm canvas { image-rendering: pixelated; }
 .rcu-bagtop { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .rcu-bag { display: grid; grid-template-columns: repeat(8, 44px); gap: 4px; }
 .rcu-cell { width: 44px; height: 44px; display: grid; place-items: center; background: rgba(0, 0, 0, .38); border: 3px solid var(--rc-w3); padding: 0; cursor: pointer; }
@@ -211,7 +217,7 @@
   .rcu-name { font-size: 1.3rem; } .rcu-info { overflow: visible; flex: none; }
   .rcu-actions { flex-wrap: wrap; padding: 6px 10px 10px; background: rgba(20, 12, 6, .85); gap: 4px; } .rcu-actions .rcu-btn { margin: 2px; padding: 8px 14px; } .rcu-btn.big { min-width: 0; padding: 10px 20px; }
   .rcu-body { flex-direction: column; overflow: auto; } .rcu-tabs { flex-direction: row; width: auto; overflow-x: auto; } .rcu-tabs button span { display: none; } .rcu-tabs button { flex: none; }
-  .rcu-inv { grid-template-columns: 1fr; } .rcu-doll { height: 260px; } .rcu-pedestal.sm { width: 160px; height: 160px; } .rcu-bag { grid-template-columns: repeat(6, 44px); }
+  .rcu-inv { grid-template-columns: 1fr; } .rcu-doll { height: 380px; max-width: 330px; margin: 0 auto; width: 100%; } .rcu-pedestal.sm { width: 140px; height: 140px; } .rcu-bag { grid-template-columns: repeat(6, 44px); }
   .rcu-logo-sq { width: 80px; height: 80px; } .rcu-menu .rcu-btn { min-width: 200px; }
   /* barre de jeu étroite : portrait + PV en haut à gauche, sorts en bas */
   .rcu-menus { top: 8px; right: 8px; flex-direction: column; gap: 4px; background: rgba(26, 16, 8, .82); padding: 3px; box-shadow: 0 0 0 3px var(--rc-w3); } .rcu-menus button { width: 36px; height: 36px; } .rcu-menus .rcu-ico { width: 24px; height: 24px; }

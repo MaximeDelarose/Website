@@ -174,7 +174,7 @@
      Chaque look est dessiné par-dessus l'écureuil (coordonnées du logo + marge). Les mêmes dessins servent d'icônes d'inventaire. */
   var OX = LOGO_OX, OY = LOGO_OY;
   var G_ = ["#1f5c33", "#3d8a4e", "#58b36a", "#9be8a8"];
-  var EQ = { tete: {}, dos: {}, main: {} };
+  var EQ = { tete: {}, dos: {}, main: {}, bouclier: {} };
   EQ.tete.noix = function (g) {
     grid(g, ["..bb...", ".bhbBb.", "bhbBbBb", "bBbBbBb"], { b: "#9a6a36", B: "#7a5128", h: "#c9985a" }, OX + 11, OY + 0);
     px(g, OX + 13, OY - 1, "#5a3a18"); px(g, OX + 14, OY - 1, "#5a3a18");
@@ -229,9 +229,12 @@
     px(g, OX + 6, OY + 3, "#ffffff"); px(g, OX + 9, OY + 3, "#ffffff");
   };
 
-  EQ.main.bouclier = function (g) {
-    grid(g, [".ssss.", "sbBbBs", "sByybs", "sbyyBs", "sBbBbs", ".ssss."], { s: "#6e7488", b: "#9a6a36", B: "#7a5128", y: "#ffd257" }, OX + 14, OY + 8);
-  };
+  var SHIELD = [".ssss.", "sbBbBs", "sByybs", "sbyyBs", "sBbBbs", ".ssss."];
+  EQ.bouclier.bois = function (g) { grid(g, SHIELD, { s: "#6e7488", b: "#9a6a36", B: "#7a5128", y: "#ffd257" }, OX + 14, OY + 8); };
+  EQ.bouclier.ecorce = function (g) { grid(g, SHIELD, { s: "#3a2a1a", b: "#7a5a3a", B: "#54391f", y: "#9be8a8" }, OX + 14, OY + 8); };
+  EQ.bouclier.acier = function (g) { grid(g, SHIELD, { s: "#46506a", b: "#b6bfd2", B: "#8791aa", y: "#e8eefc" }, OX + 14, OY + 8); };
+  EQ.bouclier.or = function (g) { grid(g, SHIELD, { s: "#8a5a14", b: "#ffd257", B: "#c98a1f", y: "#fff6c8" }, OX + 14, OY + 8); };
+  EQ.main.bouclier = EQ.bouclier.bois;                // anciennes sauvegardes
   EQ.main.baton = function (g) {
     rect(g, OX + 18, OY + 5, 1, 13, "#7a5230"); checker(g, OX + 18, OY + 6, 1, 11, "#5a3a1c");
     ellD(g, OX + 18.5, OY + 3.5, 2.4, 2.6, ["#3d2a6e", "#8f78c8", "#c9a6ff", "#f1e6ff"]);
@@ -257,7 +260,7 @@
   var heroCache = {};
   // spec = { fur, tete, dos, main } ; frame 0 / 1 (queue)
   function hero(spec, frame) {
-    var key = [spec.fur, spec.tete, spec.dos, spec.main, frame].join("|");
+    var key = [spec.fur, spec.tete, spec.dos, spec.main, spec.bouc, frame].join("|");
     if (heroCache[key]) return heroCache[key];
     var pal = PAL[spec.fur] || PAL.roux;
     var c = build(SQ_W, SQ_H, function (g) {
@@ -265,6 +268,7 @@
       if (spec.dos && EQ.dos[spec.dos]) EQ.dos[spec.dos](g);
       if (spec.tete && EQ.tete[spec.tete]) EQ.tete[spec.tete](g);
       if (spec.main && EQ.main[spec.main]) EQ.main[spec.main](g);
+      if (spec.bouc && EQ.bouclier[spec.bouc]) EQ.bouclier[spec.bouc](g);
     }, true);
     outline(c, OUT);
     return (heroCache[key] = reg(c, 13, SQ_H + 2 - 1));
@@ -278,7 +282,7 @@
     var o = cv(x1 - x0 + 1 + pad * 2, y1 - y0 + 1 + pad * 2); o.getContext("2d").drawImage(c, x0, y0, x1 - x0 + 1, y1 - y0 + 1, pad, pad, x1 - x0 + 1, y1 - y0 + 1);
     return o;
   }
-  function heroURL(spec, frame) { var sp = hero(spec, frame || 0); return toURL(sp.c, "hero|" + [spec.fur, spec.tete, spec.dos, spec.main, frame || 0].join("|")); }
+  function heroURL(spec, frame) { var sp = hero(spec, frame || 0); return toURL(sp.c, "hero|" + [spec.fur, spec.tete, spec.dos, spec.main, spec.bouc, frame || 0].join("|")); }
   function headURL(spec) {                              // portrait de la barre de vie : la tête de l'écureuil
     var key = "head|" + [spec.fur, spec.tete].join("|"); if (urlCache[key]) return urlCache[key];
     var sp = hero({ fur: spec.fur, tete: spec.tete, dos: null, main: null }, 0), o = cv(14, 14);
@@ -290,10 +294,24 @@
     var key = "item|" + slot + "|" + look; if (urlCache[key]) return urlCache[key];
     var c = cv(SQ_W + 2, SQ_H + 2), g = c.getContext("2d");
     if (slot === "amulette") {
-      var gem = { gland: ["#8a4f14", "#e8a838", "#fcd27a"], pierre: ["#4a5a8a", "#9aaee0", "#e8f0ff"], baie: ["#7a1e38", "#d94f6f", "#ffa9bd"] }[look] || ["#555", "#aaa", "#fff"];
+      var gem = { gland: ["#8a4f14", "#e8a838", "#fcd27a"], pierre: ["#4a5a8a", "#9aaee0", "#e8f0ff"], baie: ["#7a1e38", "#d94f6f", "#ffa9bd"], plume: ["#2a6a8a", "#5ac8e8", "#e0faff"] }[look] || ["#555", "#aaa", "#fff"];
       rect(g, 10, 8, 1, 1, "#7a5230"); rect(g, 9, 7, 1, 1, "#7a5230"); rect(g, 11, 7, 1, 1, "#7a5230");
       ellD(g, 10.5, 11.5, 3, 3, gem);
       var out = cv(16, 16); out.getContext("2d").drawImage(trim(c, 1), 0, 0); outline(out, OUT); return (urlCache[key] = out.toDataURL());
+    }
+    if (slot === "familier") { var mu = new Image(); var mk = "pet|" + look; var mc = mob(look, 0).c, o2 = cv(mc.width, mc.height); o2.getContext("2d").drawImage(mc, 0, 0); var t2 = trim(o2, 1); return (urlCache[key] = t2.toDataURL()); }
+    var P8 = { anneau: { gland: ["#8a4f14", "#e8a838", "#fcd27a"], pierre: ["#4a5a8a", "#9aaee0", "#e8f0ff"], baie: ["#7a1e38", "#d94f6f", "#ffa9bd"], or: ["#8a5a14", "#ffd257", "#fff6c8"] },
+      ceinture: { cuir: ["#3a2412", "#7a5230", "#b78a52"], tresse: ["#7a6a2a", "#d9c46a", "#f6eaa0"], mousse: ["#2f5a24", "#79ad4c", "#b4dc78"], or: ["#8a5a14", "#ffd257", "#fff6c8"] },
+      bottes: { mousse: ["#2f5a24", "#79ad4c", "#b4dc78"], cuir: ["#3a2412", "#7a5230", "#b78a52"], vent: ["#5a9cc0", "#a4dcf0", "#e8fbff"], or: ["#8a5a14", "#ffd257", "#fff6c8"] },
+      trophee: { emeraude: ["#14683a", "#3ecf7a", "#c8ffe0"], turquoise: ["#1a6a7a", "#3ec8d8", "#d0fbff"], pourpre: ["#4a1a7a", "#a45ae0", "#ecd6ff"], ocre: ["#8a5a14", "#e0a030", "#ffe6a8"], ivoire: ["#8a8070", "#e8e0cc", "#fffaf0"] } };
+    var cl = P8[slot] && P8[slot][look];
+    if (cl) {
+      var out2 = cv(16, 16), g2 = out2.getContext("2d");
+      if (slot === "anneau") { ellD(g2, 8, 9, 5, 5, cl); ellD(g2, 8, 9, 2.4, 2.4, ["rgba(0,0,0,0)", "rgba(0,0,0,0)"]); g2.clearRect(6, 7, 4, 4); rect(g2, 7, 3, 2, 2, "#ffffff"); }
+      else if (slot === "ceinture") { rect(g2, 1, 6, 14, 4, cl[1]); checker(g2, 1, 6, 14, 4, cl[0]); rect(g2, 6, 5, 4, 6, cl[2]); rect(g2, 7, 6, 2, 4, cl[0]); }
+      else if (slot === "bottes") { ellD(g2, 6, 6, 3, 4.6, cl); ellD(g2, 8, 11.5, 6, 3, cl); rect(g2, 3, 2, 6, 1, "#fff3dd"); }
+      else { ellD(g2, 8, 8, 6, 6.4, cl, { bias: 0.1 }); px(g2, 5, 5, "#ffffff"); px(g2, 6, 4, "#ffffff"); }       // Dofus : œuf brillant
+      var tt = trim(out2, 1); outline(tt, OUT); return (urlCache[key] = tt.toDataURL());
     }
     g.translate(1, 1);
     if (EQ[slot] && EQ[slot][look]) EQ[slot][look](g);

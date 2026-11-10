@@ -4,8 +4,10 @@
    - une grille de cases, des équipes (héros / monstres), un ordre de jeu par initiative ;
    - à son tour : PA (lancer des sorts) et PM (se déplacer d'une case par PM, sans diagonale) ;
    - portée min–max en distance de Manhattan, ligne droite, ligne de vue ;
-   - dégâts élémentaires : base × (1 + caractéristique de l'élément / 100) + Dommages, critique,
-     puis résistances de la cible en % ; boucliers, soins, poussées, attractions, téléportations, buffs ;
+   - dégâts élémentaires façon Dofus : base × (1 + (caractéristique de l'élément + Puissance) / 100) + Dommages + Dommages de l'élément,
+     × (1 + % Dommages), critique (+ Dommages critiques), puis résistances fixes et en % de la cible ;
+     boucliers, soins, poussées (Dommages / Résistance de poussée), attractions, téléportations, buffs ;
+   - retrait de PA / PM contré par l'Esquive, Tacle et Fuite quand on quitte une case voisine d'un ennemi ;
    - phase de placement avant le combat, IA des monstres, victoire / défaite.
    L'état « f » est un objet JSON : l'hôte l'envoie tel quel à l'invité en coop.
    API : window.RC_TACT (T.create, T.cmd, T.reach, T.castCells, T.area, T.aiStep, T.heroUnit, T.mobUnit …)
@@ -34,11 +36,15 @@
     var st = D.computeStats(p);
     return { id: id, side: 0, kind: "hero", owner: owner, pid: p.id, name: p.name, cls: p.cls, lvl: p.lvl, look: { fur: p.fur, tete: p.eq.tete && p.eq.tete.look, dos: p.eq.dos && p.eq.dos.look, main: p.eq.main && p.eq.main.look },
       x: 0, y: 0, hp: Math.min(p.hp, st.maxHp) > 0 ? Math.min(p.hp, st.maxHp) : st.maxHp, max: st.maxHp, bpa: st.pa, bpm: st.pm, pa: 0, pm: 0, po: st.po, init: st.init, el: st.el, res: st.res, dom: st.dom, crit: st.crit,
+      rf: st.rf, doEl: st.doEl, dopct: st.dopct, doCri: st.doCri, doPush: st.doPush, rcri: st.rcri, rpush: st.rpush, healFlat: st.healFlat,
+      esqPa: st.esqPa, esqPm: st.esqPm, retPa: st.retPa, retPm: st.retPm, tacle: st.tacle, fuite: st.fuite,
       healPct: st.healPct, areaDmg: st.areaDmg, regen: st.regen, shield: 0, buffs: [], cd: {}, cast: {}, castT: {}, spells: D.spellsOf(p), alive: true, potions: p.potions || 0, potUsed: false };
   };
   T.mobUnit = function (type, lvl, id) {
     var m = D.mobStats(type, lvl);
     return { id: id, side: 1, kind: "mob", owner: null, name: m.name, type: type, lvl: lvl, x: 0, y: 0, hp: m.hp, max: m.hp, bpa: m.pa, bpm: m.pm, pa: 0, pm: 0, po: 0, init: m.ini, el: m.el, res: m.res, dom: m.dom, crit: m.crit,
+      rf: { terre: 0, feu: 0, eau: 0, air: 0 }, doEl: { terre: 0, feu: 0, eau: 0, air: 0 }, dopct: 0, doCri: 0, doPush: 0, rcri: 0, rpush: 0, healFlat: 0,
+      esqPa: lvl, esqPm: lvl, retPa: Math.floor(lvl / 2), retPm: Math.floor(lvl / 2), tacle: Math.floor(lvl * 1.5), fuite: Math.floor(lvl * 1.5),
       healPct: 0, areaDmg: 0, regen: 0, shield: 0, buffs: [], cd: {}, cast: {}, castT: {}, spells: m.spells, alive: true, xp: m.xp, gold: m.gold, boss: m.boss };
   };
 
@@ -149,8 +155,10 @@
   function growth(u, sp) { return u.kind === "hero" ? 1 + 0.07 * Math.max(0, u.lvl - (sp.lvl || 1)) : 1; }
   // fourchette de dégâts / soins affichée au joueur (sans critique ni résistance)
   T.preview = function (u, sp, eff) {
-    var g = growth(u, sp), el = (u.el[sp.el] || 0) / 100, extra = sp.area && u.areaDmg ? 1 + u.areaDmg / 100 : 1, dom = eff.t === "dmg" ? u.dom + bonus(u, "dom") : 0, hp = eff.t === "heal" ? 1 + (u.healPct || 0) / 100 : 1;
-    return [Math.round(eff.a * g * (1 + el) * extra * hp + dom), Math.round(eff.b * g * (1 + el) * extra * hp + dom)];
+    var g = growth(u, sp), el = (u.el[sp.el] || 0) / 100, extra = sp.area && u.areaDmg ? 1 + u.areaDmg / 100 : 1;
+    if (eff.t === "heal") { var hh = 1 + (u.healPct || 0) / 100, fl = u.healFlat || 0; return [Math.round((eff.a * g * (1 + el) + fl) * hh), Math.round((eff.b * g * (1 + el) + fl) * hh)]; }
+    var flat = u.dom + bonus(u, "dom") + ((u.doEl && u.doEl[sp.el]) || 0), pc = 1 + (u.dopct || 0) / 100;
+    return [Math.round((eff.a * g * (1 + el) * extra + flat) * pc), Math.round((eff.b * g * (1 + el) * extra + flat) * pc)];
   };
   function dealDamage(f, src, tgt, n, el, crit, kind) {
     var absorbed = 0;
@@ -162,15 +170,17 @@
   }
   function spellDamage(f, src, tgt, sp, eff) {
     var base = rnd(f, eff.a, eff.b) * growth(src, sp), el = (src.el[sp.el] || 0) / 100;
-    var n = base * (1 + el) + src.dom + bonus(src, "dom");
+    var n = base * (1 + el) + src.dom + bonus(src, "dom") + ((src.doEl && src.doEl[sp.el]) || 0);     // + Dommages et Dommages de l'élément
     if (sp.area && src.areaDmg) n *= 1 + src.areaDmg / 100;
-    var crit = (f.rng ? f.rng() : Math.random()) < src.crit; if (crit) n *= 1.3;
-    var res = Math.min(50, (tgt.res[sp.el] || 0) + bonus(tgt, "res")); n *= 1 - res / 100;
-    if (n > 0 && n < 1) n = 1;
+    n *= 1 + (src.dopct || 0) / 100;                                                                    // × % Dommages
+    var crit = (f.rng ? f.rng() : Math.random()) < src.crit; if (crit) n = n * 1.3 + (src.doCri || 0);   // critique : + Dommages critiques
+    n -= ((tgt.rf && tgt.rf[sp.el]) || 0) + (crit ? tgt.rcri || 0 : 0);                                // résistances fixes
+    var res = Math.min(50, (tgt.res[sp.el] || 0) + bonus(tgt, "res")); n *= 1 - res / 100;             // puis résistances en %
+    if (n < 1) n = 1;
     dealDamage(f, src, tgt, n, sp.el, crit, "spell");
   }
   function healUnit(f, src, tgt, sp, eff) {
-    var n = rnd(f, eff.a, eff.b) * growth(src, sp) * (1 + (src.el[sp.el] || 0) / 100) * (1 + (src.healPct || 0) / 100);
+    var n = (rnd(f, eff.a, eff.b) * growth(src, sp) * (1 + (src.el[sp.el] || 0) / 100) + (src.healFlat || 0)) * (1 + (src.healPct || 0) / 100);
     n = Math.round(n); var real = Math.min(n, tgt.max - tgt.hp); tgt.hp += real;
     pushEv(f, { t: "heal", id: tgt.id, n: real });
   }
@@ -180,9 +190,9 @@
     for (i = 0; i < n; i++) {
       var nx = tgt.x + dx, ny = tgt.y + dy, blocker = inb(f, nx, ny) && T.unitAt(f, nx, ny);
       if (!T.walkable(f, nx, ny) || blocker) {
-        var coll = (n - i) * (3 + Math.floor((src.lvl || 1) / 2));
-        dealDamage(f, src, tgt, coll, "terre", false, "coll");
-        if (blocker && blocker.alive) dealDamage(f, src, blocker, coll, "terre", false, "coll");
+        var coll = (n - i) * (3 + Math.floor((src.lvl || 1) / 2)) + (src.doPush || 0);
+        dealDamage(f, src, tgt, Math.max(0, coll - (tgt.rpush || 0)), "terre", false, "coll");
+        if (blocker && blocker.alive) dealDamage(f, src, blocker, Math.max(0, coll - (blocker.rpush || 0)), "terre", false, "coll");
         break;
       }
       tgt.x = nx; tgt.y = ny; moved++;
@@ -208,6 +218,16 @@
           var dx = Math.sign(t.x - u.x), dy = Math.sign(t.y - u.y); if (dx && dy) { if (Math.abs(t.x - u.x) >= Math.abs(t.y - u.y)) dy = 0; else dx = 0; }
           if (eff.t === "pull") { dx = -dx; dy = -dy; }
           forceMove(f, u, t, dx, dy, eff.n);
+        });
+        break;
+      case "rpa": case "rpm":                                                    // retrait de PA / PM : chaque point peut être esquivé
+        targets.filter(function (t) { return t.side !== u.side; }).forEach(function (t) {
+          var pa = eff.t === "rpa", pts = rnd(f, eff.a, eff.b), got = 0, chance = Math.max(0.1, Math.min(0.95, 0.5 + ((pa ? u.retPa : u.retPm) - (pa ? t.esqPa : t.esqPm)) / 100));
+          for (var q = 0; q < pts; q++) if ((f.rng ? f.rng() : Math.random()) < chance) got++;
+          if (!got) { pushEv(f, { t: "dodge", id: t.id, st: pa ? "pa" : "pm" }); return; }
+          var key = pa ? "pa" : "pm"; t.buffs.push({ st: key, v: -got, turns: 1 });
+          if (f.phase === "fight" && f.order[f.turn] === t.id) t[key] = Math.max(0, t[key] - got);
+          pushEv(f, { t: "buff", id: t.id, st: key, v: -got });
         });
         break;
       case "tp": u.x = tx; u.y = ty; pushEv(f, { t: "tp", id: u.id, x: tx, y: ty }); break;
@@ -300,6 +320,12 @@
     if (c.t === "move") {
       var map = T.reach(f, u), path = T.pathTo(map, c.x, c.y);
       if (!path || path.length < 2) return { err: "chemin" };
+      // Tacle : quitter une case voisine d'un ennemi peut coûter 1 PA et 1 PM (chance d'échapper = Fuite contre Tacle)
+      var tacklers = alive(f, 1 - u.side).filter(function (e) { return dist(u.x, u.y, e.x, e.y) === 1; });
+      if (tacklers.length) {
+        var lost = tacklers.some(function (e) { var esc = Math.max(0.25, Math.min(1, 0.75 * (u.fuite + 4) / (e.tacle + 4))); return (f.rng ? f.rng() : Math.random()) > esc; });
+        if (lost) { u.pa = Math.max(0, u.pa - 1); u.pm = Math.max(0, u.pm - 1); pushEv(f, { t: "tackle", id: u.id }); if (path.length - 1 > u.pm) return { err: "tacle" }; }
+      }
       u.pm -= path.length - 1; u.x = c.x; u.y = c.y;
       pushEv(f, { t: "move", id: u.id, path: path });
       return { ok: true };

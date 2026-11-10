@@ -42,6 +42,28 @@ gd.pa = 6; gd.x = 3; gd.y = 3; const mb = T.unit(f, 'm1'); mb.x = 5; mb.y = 3; m
 const hp0 = mb.hp; r = T.cast(f, gd, 'g_bousculade', 5, 3); console.log('bousculade', JSON.stringify(r), 'mob at', mb.x, mb.y, 'dmg', hp0 - mb.hp);
 ok(r.ok, 'bousculade ok'); ok(hp0 - mb.hp > 8, 'collision damage added');
 // full AI simulation: 2 heroes vs 3 mobs
+// --- statistiques façon Dofus : dommages de l'élément, % dommages, résistances fixes, retrait PM, tacle
+{
+  const a = mk(['gardien'], ['limace'], 5); a.units.forEach(u => { u.hp = u.max = 9999; });
+  const hu = T.unit(a, 'h0'), mu = T.unit(a, 'm0');
+  const roll = () => { const e = { a: 10, b: 10 }; return e; };
+  const base = T.preview(hu, T.spell('g_griffes'), T.spell('g_griffes').eff[0])[0];
+  hu.dopct = 50; hu.doEl = { terre: 20, feu: 0, eau: 0, air: 0 };
+  const boosted = T.preview(hu, T.spell('g_griffes'), T.spell('g_griffes').eff[0])[0];
+  ok(boosted > base * 1.5, 'dommages d\'élément et % dommages augmentent les dégâts (' + base + ' -> ' + boosted + ')');
+  const ap = D.newProfile('gardien', 'x', 'roux'); ap.eq.anneau1 = D.genItem('anneau', 3, 2, Math.random, 'frc');
+  const st = D.computeStats(ap); ok(st.esqPa >= 0 && st.tacle >= 0 && st.rf && st.doEl, 'computeStats expose les stats Dofus');
+  ok(D.CATEGORIES.length === 10 && D.EQ_SLOTS.length === 13, '10 types de stuff, 13 emplacements');
+  // retrait de PM : cible sans esquive
+  const b = mk(['sylvain'], ['limace'], 5); const sy = T.unit(b, 'h0'), ml = T.unit(b, 'm0');
+  T.cmd(b, 'h0', { t: 'ready' }); while (T.current(b).id !== 'h0') T.cmd(b, T.current(b).id, { t: 'end' });
+  sy.x = 5; sy.y = 2; ml.x = 7; ml.y = 2; ml.esqPm = 0; sy.retPm = 200; ml.pm = 3; sy.pa = 6;
+  const rr = T.cast(b, sy, 's_ronces', 7, 2); ok(rr.ok, 'ronces lancées'); ok(ml.buffs.some(x => x.st === 'pm' && x.v < 0), 'ronces retirent des PM');
+  // tacle : fuir une case voisine d'un ennemi
+  const c = mk(['gardien'], ['limace'], 5); T.cmd(c, 'h0', { t: 'ready' }); while (T.current(c).id !== 'h0') T.cmd(c, T.current(c).id, { t: 'end' });
+  const gh = T.unit(c, 'h0'), mo = T.unit(c, 'm0'); gh.x = 4; gh.y = 2; mo.x = 5; mo.y = 2; mo.tacle = 500; gh.fuite = 0; gh.pa = 6; gh.pm = 4;
+  const mv = T.cmd(c, 'h0', { t: 'move', x: 2, y: 2 }); ok(gh.pa === 5 || mv.err, 'tacle fait perdre 1 PA');
+}
 let wins = 0, losses = 0, turns = 0;
 for (let n = 0; n < 40; n++) {
   const fx = mk(['gardien', 'lanceur'], ['limace', 'corbeau', 'renard'], 3);

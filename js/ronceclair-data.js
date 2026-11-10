@@ -59,7 +59,7 @@
     m_tempete:    { name: "Tempête arcanique", el: "feu", pa: 6, min: 2, max: 5, los: true, tgt: "cell", area: { shape: "circle", r: 2 }, cd: 4, lvl: 10, icon: "nova", eff: [{ t: "dmg", a: 15, b: 21 }], text: "Une tempête de feu sur un disque de 13 cases." },
     /* ---- Sylvain : Eau et Terre, soin et contrôle ---- */
     s_rosee:      { name: "Rosée", el: "eau", pa: 3, min: 1, max: 4, los: true, tgt: "ally", perTurn: 2, lvl: 1, icon: "source", eff: [{ t: "heal", a: 10, b: 14 }], text: "Soigne un allié (ou toi-même). Les soins profitent de la Chance." },
-    s_ronces:     { name: "Ronces", el: "terre", pa: 3, min: 1, max: 4, los: true, tgt: "enemy", lvl: 1, icon: "ronces", eff: [{ t: "dmg", a: 7, b: 10 }, { t: "buff", st: "pm", v: -1, turns: 1, foe: true }], text: "Des ronces blessent l'ennemi et l'entravent : −1 PM au prochain tour." },
+    s_ronces:     { name: "Ronces", el: "terre", pa: 3, min: 1, max: 4, los: true, tgt: "enemy", lvl: 1, icon: "ronces", eff: [{ t: "dmg", a: 7, b: 10 }, { t: "rpm", a: 1, b: 2 }], text: "Des ronces blessent l'ennemi et lui retirent 1 à 2 PM (l'Esquive PM de la cible peut les annuler)." },
     s_epine:      { name: "Épine acérée", el: "air", pa: 3, min: 2, max: 6, los: true, tgt: "enemy", lvl: 3, icon: "atk_vine", eff: [{ t: "dmg", a: 7, b: 10 }], text: "Une épine lancée de loin." },
     s_source:     { name: "Source vivifiante", el: "eau", pa: 4, min: 1, max: 3, tgt: "cell", area: { shape: "circle", r: 1 }, cd: 2, lvl: 6, icon: "source", eff: [{ t: "heal", a: 8, b: 12 }], text: "Soigne tous les alliés dans un disque de 5 cases." },
     s_floraison:  { name: "Floraison", el: "terre", pa: 5, min: 0, max: 4, los: true, tgt: "ally", cd: 4, lvl: 10, icon: "floraison", eff: [{ t: "buff", st: "pa", v: 1, turns: 2 }, { t: "buff", st: "dom", v: 8, turns: 2 }], text: "Un allié gagne +1 PA et +8 Dommages pendant 2 tours." }
@@ -76,7 +76,7 @@
       desc: "Premier au contact, dernier à tomber. Il encaisse, bouscule les ennemis et protège ses alliés avec la Carapace. Il vit surtout de Force (Terre).",
       passive: { name: "Écorce", text: "+10 % de résistance à tous les éléments et +10 % de PV.", resAll: 10, hpPct: 0.1 },
       spells: ["g_griffes", "g_bousculade", "g_carapace", "g_braise", "g_charge"],
-      starter: { tete: "noix", main: "bouclier" }
+      starter: { tete: "noix", bouclier: "bois" }
     },
     lanceur: {
       name: "Lanceur", title: "Lanceur de Glands", role: "Dégâts à distance · Air", icon: "atk_shoot", el: ["air", "feu"],
@@ -121,7 +121,7 @@
     x_bave:     { name: "Bave collante", el: "terre", pa: 3, min: 1, max: 1, tgt: "enemy", eff: [{ t: "dmg", a: 5, b: 8 }] },
     x_gelee:    { name: "Gelée", el: "eau", pa: 3, min: 1, max: 3, los: true, tgt: "enemy", cd: 1, eff: [{ t: "dmg", a: 4, b: 7 }] },
     x_bec:      { name: "Coup de bec", el: "air", pa: 3, min: 1, max: 1, tgt: "enemy", eff: [{ t: "dmg", a: 6, b: 9 }] },
-    x_pique:    { name: "Piqué", el: "air", pa: 4, min: 2, max: 4, los: true, tgt: "enemy", cd: 1, eff: [{ t: "dmg", a: 7, b: 10 }] },
+    x_pique:    { name: "Piqué", el: "air", pa: 4, min: 2, max: 4, los: true, tgt: "enemy", cd: 1, eff: [{ t: "dmg", a: 7, b: 10 }, { t: "rpa", a: 0, b: 1 }] },
     x_griffure: { name: "Griffure", el: "feu", pa: 3, min: 1, max: 1, tgt: "enemy", eff: [{ t: "dmg", a: 8, b: 11 }] },
     x_bond:     { name: "Bond de feu", el: "feu", pa: 4, min: 2, max: 4, los: true, tgt: "enemy", cd: 1, eff: [{ t: "dmg", a: 9, b: 13 }] },
     x_langue:   { name: "Coup de langue", el: "eau", pa: 3, min: 1, max: 3, line: true, los: true, tgt: "enemy", eff: [{ t: "dmg", a: 6, b: 9 }, { t: "pull", n: 1 }] },
@@ -139,19 +139,40 @@
   };
 
   /* ====================== ÉQUIPEMENT ======================
-     3 emplacements visibles sur l'écureuil (tête, dos, objet tenu) + l'amulette (stats seulement). */
+     Les mêmes types de stuff que dans Dofus : coiffe, cape, arme, bouclier, amulette, 2 anneaux, ceinture, bottes,
+     familier et 3 trophées (les « Dofus »). 13 emplacements en tout. Coiffe, cape, arme et bouclier se voient sur l'écureuil.
+     Un objet appartient à une catégorie (item.slot) ; les anneaux et les trophées peuvent aller dans plusieurs emplacements. */
   D.SLOTS = {
-    tete:     { name: "Tête",       visible: true,  fav: ["vit", "sag", "res"] },
-    dos:      { name: "Dos",        visible: true,  fav: ["res", "vit", "ini"] },
-    main:     { name: "Objet tenu", visible: true,  fav: ["elem", "dom", "cri"] },
-    amulette: { name: "Amulette",   visible: false, fav: ["elem", "sag", "pros"] }
+    tete:     { name: "Coiffe",   visible: true },
+    dos:      { name: "Cape",     visible: true },
+    main:     { name: "Arme",     visible: true },
+    bouclier: { name: "Bouclier", visible: true },
+    amulette: { name: "Amulette", visible: false },
+    anneau:   { name: "Anneau",   visible: false },
+    ceinture: { name: "Ceinture", visible: false },
+    bottes:   { name: "Bottes",   visible: false },
+    familier: { name: "Familier", visible: false },
+    trophee:  { name: "Trophée",  visible: false }
   };
-  D.SLOT_ORDER = ["tete", "dos", "main", "amulette"];
+  D.CATEGORIES = ["tete", "dos", "main", "bouclier", "amulette", "anneau", "ceinture", "bottes", "familier", "trophee"];
+  D.EQ_SLOTS = ["tete", "dos", "main", "bouclier", "amulette", "anneau1", "anneau2", "ceinture", "bottes", "familier", "trophee1", "trophee2", "trophee3"];
+  D.SLOT_ORDER = D.EQ_SLOTS;
+  D.EQ_NAMES = { tete: "Coiffe", dos: "Cape", main: "Arme", bouclier: "Bouclier", amulette: "Amulette", anneau1: "Anneau", anneau2: "Anneau", ceinture: "Ceinture", bottes: "Bottes", familier: "Familier", trophee1: "Trophée", trophee2: "Trophée", trophee3: "Trophée" };
+  D.eqSlotsOf = function (cat) { return cat === "anneau" ? ["anneau1", "anneau2"] : cat === "trophee" ? ["trophee1", "trophee2", "trophee3"] : [cat]; };
+  D.catOfSlot = function (eq) { return eq.replace(/\d$/, ""); };
+  // emplacement où ira l'objet : le premier libre, sinon le premier compatible (échange)
+  D.eqSlotFor = function (p, it) { var l = D.eqSlotsOf(it.slot), i; for (i = 0; i < l.length; i++) if (!p.eq[l[i]]) return l[i]; return l[0]; };
   D.LOOKS = {
     tete: { noix: "Casque de noix", bandeau: "Bandeau rouge", sorcier: "Chapeau étoilé", feuille: "Feuille de chêne", champi: "Chapeau champignon", fleurs: "Couronne de fleurs", heaume: "Heaume d'acier", couronne: "Couronne dorée" },
     dos: { feuille: "Cape de feuilles", rouge: "Cape rouge", nuit: "Cape étoilée", mousse: "Manteau de mousse", ailes: "Ailes de libellule" },
-    main: { bouclier: "Bouclier de bois", baton: "Bâton à gemme", gland: "Gland géant", fleur: "Sceptre fleuri", epee: "Épée de brindille", lanterne: "Lanterne de lucioles" },
-    amulette: { gland: "Gland d'or", pierre: "Pierre de lune", baie: "Collier de baies" }
+    main: { baton: "Bâton à gemme", gland: "Gland géant", fleur: "Sceptre fleuri", epee: "Épée de brindille", lanterne: "Lanterne de lucioles" },
+    bouclier: { bois: "Bouclier de bois", ecorce: "Bouclier d'écorce", acier: "Bouclier d'acier", or: "Bouclier doré" },
+    amulette: { gland: "Gland d'or", pierre: "Pierre de lune", baie: "Collier de baies", plume: "Amulette de plume" },
+    anneau: { gland: "Anneau de gland", pierre: "Anneau de lune", baie: "Anneau de baie", or: "Anneau d'or" },
+    ceinture: { cuir: "Ceinture de cuir", tresse: "Ceinture tressée", mousse: "Ceinture de mousse", or: "Ceinture dorée" },
+    bottes: { mousse: "Bottes de mousse", cuir: "Bottes de cuir", vent: "Bottes du vent", or: "Bottes dorées" },
+    familier: { limace: "Limace apprivoisée", corbeau: "Corbeau apprivoisé", renard: "Renardeau", grenouille: "Grenouille domestique" },
+    trophee: { emeraude: "Dofus Émeraude", turquoise: "Dofus Turquoise", pourpre: "Dofus Pourpre", ocre: "Dofus Ocre", ivoire: "Dofus Ivoire" }
   };
   D.RARITIES = [
     { id: 0, name: "Commun",     col: "#cfd3d8", w: 55 },
@@ -160,14 +181,41 @@
     { id: 3, name: "Épique",     col: "#b57cff", w: 5 },
     { id: 4, name: "Légendaire", col: "#ffb23a", w: 2 }
   ];
-  // noms et unités des caractéristiques d'objets
-  D.STAT_NAMES = { vit: "Vitalité", sag: "Sagesse", frc: "Force", int: "Intelligence", cha: "Chance", agi: "Agilité", dom: "Dommages", ini: "Initiative", pros: "Prospection", cri: "% Critique",
-    res_terre: "% Rés. Terre", res_feu: "% Rés. Feu", res_eau: "% Rés. Eau", res_air: "% Rés. Air", pa: "PA", pm: "PM", po: "Portée" };
-  var UNIT = { vit: 10, sag: 4, frc: 8, int: 8, cha: 8, agi: 8, dom: 2, ini: 14, pros: 6, cri: 1.5, res: 3 };
-  var SPECIAL = { tete: ["po", "pa"], dos: ["pm", "pm"], main: ["pa", "po"], amulette: ["pa", "pm"] };
+  /* Toutes les caractéristiques d'objet (clés de item.st). Les résistances : « res_* » en %, « rf_* » fixes.
+     Les dommages fixes par élément : « do_* ». */
+  D.STAT_NAMES = {
+    vit: "Vitalité", sag: "Sagesse", frc: "Force", int: "Intelligence", cha: "Chance", agi: "Agilité",
+    pa: "PA", pm: "PM", po: "Portée",
+    dom: "Dommages", dopct: "% Dommages", pui: "Puissance", do_terre: "Dommages Terre", do_feu: "Dommages Feu", do_eau: "Dommages Eau", do_air: "Dommages Air",
+    do_cri: "Dommages critiques", do_push: "Dommages de poussée", soin: "Soins", cri: "% Critique", ini: "Initiative", pros: "Prospection",
+    esq_pa: "Esquive PA", esq_pm: "Esquive PM", ret_pa: "Retrait PA", ret_pm: "Retrait PM", tacle: "Tacle", fuite: "Fuite",
+    res_terre: "% Résistance Terre", res_feu: "% Résistance Feu", res_eau: "% Résistance Eau", res_air: "% Résistance Air",
+    rf_terre: "Résistance Terre", rf_feu: "Résistance Feu", rf_eau: "Résistance Eau", rf_air: "Résistance Air",
+    rcri: "Résistance critiques", rpush: "Résistance poussée"
+  };
+  // pools de stats par catégorie (tirage pondéré par répétition) ; « elem » = une caractéristique élémentaire, « res » / « rf » / « do_el » = un élément au choix
+  var POOLS = {
+    tete:     ["vit", "vit", "sag", "res", "rf", "elem", "elem", "ini"],
+    dos:      ["res", "res", "vit", "rf", "elem", "esq", "soin", "ini"],
+    main:     ["elem", "elem", "dom", "dopct", "do_el", "cri", "do_cri", "pui"],
+    bouclier: ["vit", "res", "res", "rf", "rcri", "rpush", "tacle", "fuite"],
+    amulette: ["elem", "elem", "dom", "pui", "cri", "sag", "pros", "res", "vit"],
+    anneau:   ["elem", "dom", "dopct", "do_el", "soin", "cri", "ini", "pui"],
+    ceinture: ["vit", "vit", "res", "rf", "ini", "sag", "esq", "ret"],
+    bottes:   ["ini", "pros", "esq", "ret", "fuite", "vit", "res", "tacle"],
+    familier: ["vit", "elem", "ini", "pros", "sag", "res"],
+    trophee:  ["vit", "elem", "dom", "pui", "cri", "pros", "sag", "res", "do_el"]
+  };
+  var SPECIAL = { tete: ["po", "pa"], dos: ["pm", "pm"], main: ["pa", "po"], bouclier: ["pa", "pm"], amulette: ["pa", "pm"], anneau: ["pa", "pm", "po"], ceinture: ["pa", "pm"], bottes: ["pm", "pm"], familier: ["pm", "po"], trophee: ["pa", "pm", "po"] };
   var EPITHETS = ["du Sous-bois", "de l'Aube", "des Racines", "du Grand Chêne", "de Ronceclair", "des Brumes", "de la Rosée"];
   var uid = 1;
-
+  function unitOf(k) {                                              // valeur de base d'une caractéristique à rareté 0
+    if (k === "vit") return 10; if (k === "sag") return 4; if (k === "frc" || k === "int" || k === "cha" || k === "agi") return 8;
+    if (k === "dom" || k === "dopct") return 2; if (k === "pui") return 5; if (k.indexOf("do_") === 0 && k !== "do_cri" && k !== "do_push") return 2;
+    if (k === "do_cri") return 3; if (k === "do_push") return 4; if (k === "soin") return 2; if (k === "cri") return 1.5; if (k === "ini") return 14; if (k === "pros") return 6;
+    if (k.indexOf("esq_") === 0 || k.indexOf("ret_") === 0 || k === "tacle" || k === "fuite") return 3;
+    if (k.indexOf("res_") === 0) return 3; if (k.indexOf("rf_") === 0) return 2; if (k === "rcri") return 3; if (k === "rpush") return 4; return 2;
+  }
   D.rollRarity = function (rnd, bonus) {
     var tot = 0, i; D.RARITIES.forEach(function (r) { tot += r.w; });
     var x = rnd() * tot;
@@ -177,34 +225,38 @@
   D.makeItem = function (slot, look, rar, lvl, st, name) {
     return { id: Date.now().toString(36) + "-" + (uid++) + Math.floor(Math.random() * 1e4).toString(36), slot: slot, look: look, rar: rar, lvl: lvl, st: st || {}, name: name || D.LOOKS[slot][look] };
   };
-  function pickStat(slot, rnd, el) {
-    var f = D.SLOTS[slot].fav[Math.floor(rnd() * D.SLOTS[slot].fav.length)];
-    if (f === "elem") return el || D.CHAR_ORDER[2 + Math.floor(rnd() * 4)];
-    if (f === "res") return "res_" + D.EL_ORDER[Math.floor(rnd() * 4)];
-    return f;
+  function resolveStat(tok, rnd, elStat, elName) {
+    var els = D.EL_ORDER, e = els[Math.floor(rnd() * 4)];
+    if (tok === "elem") return rnd() < 0.55 && elStat ? elStat : D.CHAR_ORDER[2 + Math.floor(rnd() * 4)];
+    if (tok === "res") return "res_" + e; if (tok === "rf") return "rf_" + e;
+    if (tok === "do_el") return "do_" + (elName && rnd() < 0.6 ? elName : e);
+    if (tok === "esq") return rnd() < 0.5 ? "esq_pa" : "esq_pm"; if (tok === "ret") return rnd() < 0.5 ? "ret_pa" : "ret_pm";
+    return tok;
   }
-  D.genItem = function (slot, lvl, rar, rnd, elStat) {
+  D.genItem = function (cat, lvl, rar, rnd, elStat) {
     rnd = rnd || Math.random;
-    var looks = Object.keys(D.LOOKS[slot]), look = looks[Math.floor(rnd() * looks.length)];
-    var unit = (1 + rar * 0.6) * (1 + lvl * 0.06), count = [2, 3, 3, 4, 5][rar], st = {}, tries = 0;
-    var all = ["vit", "sag", "frc", "int", "cha", "agi", "dom", "ini", "pros", "cri", "res_terre", "res_feu", "res_eau", "res_air"];
-    while (Object.keys(st).length < count && tries++ < 40) {
-      var k = Object.keys(st).length < 2 ? pickStat(slot, rnd, elStat) : all[Math.floor(rnd() * all.length)];
+    if (cat === "trophee") rar = Math.max(rar, 3);                  // les trophées sont toujours épiques ou légendaires
+    var looks = Object.keys(D.LOOKS[cat]), look = looks[Math.floor(rnd() * looks.length)];
+    var unit = (1 + rar * 0.55) * (1 + lvl * 0.06), count = [2, 3, 4, 5, 6][rar] + (cat === "trophee" ? 1 : 0), st = {}, tries = 0, pool = POOLS[cat];
+    var elName = null; if (elStat) D.EL_ORDER.forEach(function (e) { if (D.ELEMENTS[e].stat === elStat) elName = e; });
+    while (Object.keys(st).length < count && tries++ < 80) {
+      var k = resolveStat(pool[Math.floor(rnd() * pool.length)], rnd, elStat, elName);
       if (st[k] != null) continue;
-      var u = UNIT[k.indexOf("res_") === 0 ? "res" : k];
-      st[k] = Math.max(1, Math.round(u * unit * (0.85 + rnd() * 0.3)));
+      st[k] = Math.max(1, Math.round(unitOf(k) * unit * (0.8 + rnd() * 0.4)));
     }
-    if (rar >= 3 && rnd() < (rar === 4 ? 0.7 : 0.3)) { var sp = SPECIAL[slot][Math.floor(rnd() * 2)]; st[sp] = (st[sp] || 0) + 1; }   // PA / PM / portée : seulement sur épique et légendaire
-    var name = D.LOOKS[slot][look] + (rar >= 2 ? " " + EPITHETS[Math.floor(rnd() * EPITHETS.length)] : "");
-    return D.makeItem(slot, look, rar, lvl, st, name);
+    var spChance = cat === "trophee" ? 0.9 : rar === 4 ? 0.7 : rar === 3 ? 0.3 : 0;
+    if (spChance && rnd() < spChance) { var sp = SPECIAL[cat][Math.floor(rnd() * SPECIAL[cat].length)]; st[sp] = (st[sp] || 0) + 1; }   // PA / PM / portée : épique, légendaire et trophées
+    var name = D.LOOKS[cat][look] + (rar >= 2 && cat !== "trophee" ? " " + EPITHETS[Math.floor(rnd() * EPITHETS.length)] : "");
+    return D.makeItem(cat, look, rar, lvl, st, name);
   };
-  D.randomItem = function (lvl, rnd, bonus, slot, elStat) {
+  D.randomItem = function (lvl, rnd, bonus, cat, elStat) {
     rnd = rnd || Math.random;
-    slot = slot || D.SLOT_ORDER[Math.floor(rnd() * D.SLOT_ORDER.length)];
-    return D.genItem(slot, lvl, D.rollRarity(rnd, bonus), rnd, elStat);
+    var rar = D.rollRarity(rnd, bonus);
+    if (!cat) { var w = ["tete", "dos", "main", "bouclier", "amulette", "anneau", "anneau", "ceinture", "bottes", "familier"]; if (rar >= 3 && rnd() < 0.25) cat = "trophee"; else cat = w[Math.floor(rnd() * w.length)]; }
+    return D.genItem(cat, lvl, rar, rnd, elStat);
   };
-  D.starterItem = function (slot, look) { return D.makeItem(slot, look, 0, 1, slot === "main" ? { dom: 1 } : { vit: 5 }, D.LOOKS[slot][look]); };
-  D.sellValue = function (it) { return Math.round(4 * (it.rar + 1) * (1 + it.lvl * 0.4)); };
+  D.starterItem = function (cat, look) { return D.makeItem(cat, look, 0, 1, cat === "main" ? { dom: 1 } : { vit: 5 }, D.LOOKS[cat][look]); };
+  D.sellValue = function (it) { return Math.round(4 * (it.rar + 1) * (1 + it.lvl * 0.4)) * (it.slot === "trophee" ? 3 : 1); };
   D.buyValue = function (it) { return D.sellValue(it) * 4; };
 
   /* ====================== FURS ====================== */
@@ -218,25 +270,30 @@
   /* ====================== STATISTIQUES D'UN PERSONNAGE ====================== */
   D.computeStats = function (p) {
     var C = D.CLASSES[p.cls], ps = C.passive, ch = p.chars, g = {}, k;
-    ["vit", "sag", "frc", "int", "cha", "agi", "dom", "pa", "pm", "po", "ini", "pros", "cri", "res_terre", "res_feu", "res_eau", "res_air"].forEach(function (s) { g[s] = 0; });
-    D.SLOT_ORDER.forEach(function (s) { var it = p.eq && p.eq[s]; if (it) for (k in it.st) g[k] = (g[k] || 0) + it.st[k]; });
-    var tot = {}; D.CHAR_ORDER.forEach(function (c) { tot[c] = (ch[c] || 0) + (g[c] || 0); });
-    var lv = p.lvl - 1, el = {}, res = {};
-    D.EL_ORDER.forEach(function (e) { el[e] = tot[D.ELEMENTS[e].stat]; res[e] = Math.min(50, (g["res_" + e] || 0) + (ps.resAll || 0)); });
+    D.EQ_SLOTS.forEach(function (s) { var it = p.eq && p.eq[s]; if (it) for (k in it.st) g[k] = (g[k] || 0) + it.st[k]; });
+    function G(key) { return g[key] || 0; }
+    var tot = {}; D.CHAR_ORDER.forEach(function (c) { tot[c] = (ch[c] || 0) + G(c); });
+    var lv = p.lvl - 1, el = {}, res = {}, rf = {}, doEl = {}, pui = G("pui");
+    D.EL_ORDER.forEach(function (e) { el[e] = tot[D.ELEMENTS[e].stat] + pui; doEl[e] = G("do_" + e); res[e] = Math.min(50, G("res_" + e) + (ps.resAll || 0)); rf[e] = G("rf_" + e); });
     var hp = Math.round((C.hp + lv * C.hpL + tot.vit * 2) * (1 + (ps.hpPct || 0)));
     return {
-      maxHp: hp, pa: 6 + (g.pa || 0) + (p.lvl >= 20 ? 1 : 0), pm: 3 + (g.pm || 0), po: (ps.po || 0) + (g.po || 0),
-      init: Math.round(C.ini + (tot.frc + tot.int + tot.cha + tot.agi) * 0.5 + g.ini), pros: 100 + (g.pros || 0), dom: (g.dom || 0),
-      crit: Math.min(0.6, C.crit + (ps.crit || 0) + tot.agi * 0.003 + (g.cri || 0) / 100), healPct: ps.healPct || 0, areaDmg: ps.areaDmg || 0, regen: ps.regen || 0,
-      xpPct: tot.sag, el: el, res: res, tot: tot
+      maxHp: hp, pa: 6 + G("pa") + (p.lvl >= 20 ? 1 : 0), pm: 3 + G("pm"), po: (ps.po || 0) + G("po"),
+      init: Math.round(C.ini + (tot.frc + tot.int + tot.cha + tot.agi) * 0.5 + G("ini")), pros: 100 + G("pros"),
+      crit: Math.min(0.6, C.crit + (ps.crit || 0) + tot.agi * 0.003 + G("cri") / 100),
+      dom: G("dom"), dopct: G("dopct"), pui: pui, doEl: doEl, doCri: G("do_cri"), doPush: G("do_push"),
+      healFlat: G("soin"), healPct: ps.healPct || 0, areaDmg: ps.areaDmg || 0, regen: ps.regen || 0, xpPct: tot.sag,
+      esqPa: Math.floor(tot.sag / 4) + G("esq_pa"), esqPm: Math.floor(tot.sag / 4) + G("esq_pm"), retPa: Math.floor(tot.sag / 6) + G("ret_pa"), retPm: Math.floor(tot.sag / 6) + G("ret_pm"),
+      tacle: Math.floor(tot.agi / 10) + G("tacle"), fuite: Math.floor(tot.agi / 10) + G("fuite"),
+      rcri: G("rcri"), rpush: G("rpush"), el: el, res: res, rf: rf, tot: tot, g: g
     };
   };
 
   /* ====================== PROFIL ====================== */
+  function emptyEq() { var eq = {}; D.EQ_SLOTS.forEach(function (s) { eq[s] = null; }); return eq; }
   D.newProfile = function (cls, name, fur) {
-    var C = D.CLASSES[cls], eq = { tete: null, dos: null, main: null, amulette: null };
+    var C = D.CLASSES[cls], eq = emptyEq();
     Object.keys(C.starter).forEach(function (s) { eq[s] = D.starterItem(s, C.starter[s]); });
-    var p = { v: 3, id: Date.now().toString(36) + Math.floor(Math.random() * 1e5).toString(36), name: String(name || C.name).trim().slice(0, 14) || C.name, cls: cls, fur: D.FURS[fur] ? fur : "roux",
+    var p = { v: 4, id: Date.now().toString(36) + Math.floor(Math.random() * 1e5).toString(36), name: String(name || C.name).trim().slice(0, 14) || C.name, cls: cls, fur: D.FURS[fur] ? fur : "roux",
       lvl: 1, xp: 0, pts: 0, gold: 10, potions: 1, hp: 1, chars: { vit: 0, sag: 0, frc: 0, int: 0, cha: 0, agi: 0 }, eq: eq, bag: [],
       quest: 0, qn: 0, zone: 0, bossDead: false, chests: {}, kills: 0, time: 0, created: Date.now() };
     p.hp = D.computeStats(p).maxHp;
@@ -244,27 +301,40 @@
   };
   // sorts débloqués à ce niveau
   D.spellsOf = function (p) { return D.CLASSES[p.cls].spells.filter(function (id) { return p.lvl >= D.SPELLS[id].lvl; }); };
-  // Profil v1 / v2 (ancienne version temps réel) → v3. Les objets sont conservés (même apparence) mais leurs stats sont retirées au hasard.
+  // répare un objet venu d'une ancienne version (le bouclier est devenu un emplacement à part)
+  function fixItem(it) {
+    if (!it || !it.slot || !D.LOOKS[it.slot]) return null;
+    if (it.slot === "main" && it.look === "bouclier") { it.slot = "bouclier"; it.look = "bois"; }
+    if (!D.LOOKS[it.slot][it.look]) it.look = Object.keys(D.LOOKS[it.slot])[0];
+    it.st = it.st || {}; it.name = it.name || D.LOOKS[it.slot][it.look];
+    return it;
+  }
+  // Profils v1 / v2 (temps réel) et v3 (stuff à 4 emplacements) → v4
   D.migrate = function (o) {
     if (!o || !D.CLASSES[o.cls]) return null;
-    if (o.v === 3) return o;
+    if (o.v === 4) return o;
+    if (o.v === 3) {
+      var eq = emptyEq();
+      Object.keys(o.eq || {}).forEach(function (k) { var it = fixItem(o.eq[k]); if (it) { var tgt = D.EQ_SLOTS.indexOf(k) >= 0 && D.catOfSlot(k) === it.slot ? k : D.eqSlotsOf(it.slot)[0]; if (!eq[tgt]) eq[tgt] = it; else o.bag = (o.bag || []).concat([it]); } });
+      o.eq = eq; o.bag = (o.bag || []).map(fixItem).filter(Boolean); o.v = 4; return o;
+    }
     var p = D.newProfile(o.cls, o.name || D.CLASSES[o.cls].name, o.fur || "roux");
     ["lvl", "xp", "gold", "potions", "quest", "qn", "zone", "bossDead", "chests", "kills", "time"].forEach(function (k) { if (o[k] != null) p[k] = o[k]; });
     p.pts = (p.lvl - 1) * D.PTS_PER_LEVEL;
     if (o.v === 2) {
-      D.SLOT_ORDER.forEach(function (s) {
+      ["tete", "dos", "main", "amulette"].forEach(function (s) {
         var it = o.eq && o.eq[s];
-        if (it && it.look && D.LOOKS[s][it.look]) { var n = D.genItem(s, it.lvl || 1, it.rar || 0); n.look = it.look; n.name = it.name || n.name; p.eq[s] = n; }
+        if (it && it.look && D.LOOKS[s] && (D.LOOKS[s][it.look] || it.look === "bouclier")) { var cat = (s === "main" && it.look === "bouclier") ? "bouclier" : s; var n = D.genItem(cat, it.lvl || 1, it.rar || 0); n.look = cat === "bouclier" ? "bois" : it.look; n.name = it.name || n.name; p.eq[cat] = n; }
       });
-      (o.bag || []).forEach(function (it) { if (it && it.slot && D.LOOKS[it.slot] && D.LOOKS[it.slot][it.look]) { var n = D.genItem(it.slot, it.lvl || 1, it.rar || 0); n.look = it.look; n.name = it.name || n.name; p.bag.push(n); } });
+      (o.bag || []).forEach(function (it) { it = fixItem(it); if (it) { var n = D.genItem(it.slot, it.lvl || 1, it.rar || 0); n.look = it.look; n.name = it.name || n.name; p.bag.push(n); } });
     } else { var g = o.gear || {}; p.gold += 30 * ((g.queue || 0) + (g.cape || 0) + (g.bottes || 0)); }
     p.hp = D.computeStats(p).maxHp;
     return p;
   };
   D.fixProfile = function (p) {
     p = D.migrate(p); if (!p) return null;
-    p.eq = p.eq || {}; D.SLOT_ORDER.forEach(function (s) { if (!(s in p.eq)) p.eq[s] = null; });
-    p.bag = p.bag || []; p.chars = p.chars || { vit: 0, sag: 0, frc: 0, int: 0, cha: 0, agi: 0 }; p.chests = p.chests || {};
+    p.eq = p.eq || {}; D.EQ_SLOTS.forEach(function (s) { if (!(s in p.eq)) p.eq[s] = null; });
+    p.bag = (p.bag || []).map(fixItem).filter(Boolean); p.chars = p.chars || { vit: 0, sag: 0, frc: 0, int: 0, cha: 0, agi: 0 }; p.chests = p.chests || {};
     D.CHAR_ORDER.forEach(function (c) { if (p.chars[c] == null) p.chars[c] = 0; });
     if (!D.FURS[p.fur]) p.fur = "roux";
     return p;

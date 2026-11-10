@@ -80,7 +80,7 @@
   }
   function Scene(canvas, withActors) {
     var c2 = canvas.getContext("2d"), map = sceneMap(), pre = ART.terrain(map), t0 = performance.now(), raf = 0, leaves = [], actors = [];
-    var specs = [{ fur: "roux", tete: "noix", main: "bouclier" }, { fur: "cendre", tete: "sorcier", dos: "nuit", main: "baton" }, { fur: "chocolat", tete: "feuille", dos: "mousse", main: "fleur" }, { fur: "roux", tete: "bandeau", main: "gland" }];
+    var specs = [{ fur: "roux", tete: "noix", bouc: "bois" }, { fur: "cendre", tete: "sorcier", dos: "nuit", main: "baton" }, { fur: "chocolat", tete: "feuille", dos: "mousse", main: "fleur" }, { fur: "roux", tete: "bandeau", main: "gland" }];
     if (withActors) actors = [{ spec: specs[0], x: 3.6, flip: false }, { spec: specs[1], x: 6.6, flip: false }, { spec: specs[2], x: 19.4, flip: true }, { spec: specs[3], x: 22.4, flip: true }];
     function size() { var r = canvas.getBoundingClientRect(); canvas.width = Math.max(200, Math.round(r.width)); canvas.height = Math.max(200, Math.round(r.height)); }
     function frame(now) {
@@ -139,7 +139,7 @@
   function screenTitle(msg) {
     closeWin(true);
     showScreen("title",
-      '<div class="rcu-logo"><img class="rcu-logo-sq" src="' + ART.heroURL({ fur: "roux", tete: "noix", main: "bouclier" }, 0) + '" alt=""><h1>Ronceclair</h1><p>RPG tactique · la guilde des écureuils</p></div>' +
+      '<div class="rcu-logo"><img class="rcu-logo-sq" src="' + ART.heroURL({ fur: "roux", tete: "noix", bouc: "bois" }, 0) + '" alt=""><h1>Ronceclair</h1><p>RPG tactique · la guilde des écureuils</p></div>' +
       (msg ? '<p class="rcu-notice">' + esc(msg) + '</p>' : '') +
       (U.pending ? '<p class="rcu-notice ok">Invitation au salon <b>' + U.pending + '</b> : choisis ton personnage pour rejoindre ton ami.</p>' : '') +
       '<nav class="rcu-menu">' +
@@ -167,7 +167,7 @@
     var pv = previewCanvas(260, 250, 8, function () { var q = RC.slots()[U.sel]; return q && RC.lookSpec(q); });
     h += '<section class="rcu-center"><div class="rcu-pedestal">' + pv.html + '</div><h3 class="rcu-name">' + esc(p.name) + '</h3><p class="rcu-sub">' + C.title + ' · niveau ' + p.lvl + '</p>';
     h += '<div class="rcu-eqrow">';
-    D.SLOT_ORDER.forEach(function (s) { var it = p.eq[s]; h += '<div class="rcu-eqslot" title="' + (it ? esc(it.name) : D.SLOTS[s].name) + '"' + (it ? ' style="border-color:' + rar(it).col + '"' : '') + '>' + (it ? itemImg(it) : '<small>' + D.SLOTS[s].name + '</small>') + '</div>'; });
+    D.EQ_SLOTS.forEach(function (s) { var it = p.eq[s]; h += '<div class="rcu-eqslot' + (it ? "" : " empty") + '" title="' + (it ? esc(it.name) : D.EQ_NAMES[s]) + '"' + (it ? ' style="border-color:' + rar(it).col + '"' : '') + '>' + (it ? itemImg(it) : '') + '</div>'; });
     h += '</div></section>';
     h += '<aside class="rcu-info"><div class="rcu-card"><h4>' + C.role + '</h4><p>' + esc(C.desc) + '</p></div>';
     h += '<div class="rcu-card"><h4>Statistiques</h4><ul class="rcu-stats">' +
@@ -283,8 +283,8 @@
     var st = D.computeStats(p), h = '<div class="rcu-inv"><div class="rcu-left"><div class="rcu-doll">';
     var pv = previewCanvas(220, 220, 7, function () { var q = RC.profile(); return q && RC.lookSpec(q); });
     dollBind = pv.bind;
-    function slotBtn(s, cls) { var it = p.eq[s]; return '<button type="button" class="rcu-dslot ' + cls + '" data-act="eqslot" data-s="' + s + '"' + (it ? ' style="border-color:' + rar(it).col + '"' : '') + ' title="' + (it ? esc(it.name) : D.SLOTS[s].name) + '">' + (it ? itemImg(it) : '<small>' + D.SLOTS[s].name + '</small>') + '</button>'; }
-    h += slotBtn("tete", "top") + slotBtn("dos", "left") + slotBtn("main", "right") + slotBtn("amulette", "bottom");
+    function slotBtn(s, cls) { var it = p.eq[s]; return '<button type="button" class="rcu-dslot ' + cls + '" data-act="eqslot" data-s="' + s + '"' + (it ? ' style="border-color:' + rar(it).col + '"' : '') + ' title="' + (it ? esc(it.name) : D.EQ_NAMES[s]) + '">' + (it ? itemImg(it) : '<small>' + D.EQ_NAMES[s] + '</small>') + '</button>'; }
+    D.EQ_SLOTS.forEach(function (s) { h += slotBtn(s, "s-" + s); });
     h += '<div class="rcu-pedestal sm">' + pv.html + '</div></div>';
     h += '<ul class="rcu-stats tight"><li><span>PV max</span><b>' + st.maxHp + '</b></li><li><span>PA / PM / Portée</span><b>' + st.pa + ' / ' + st.pm + ' / +' + st.po + '</b></li><li><span>Initiative</span><b>' + st.init + '</b></li><li><span>Dommages</span><b>+' + st.dom + '</b></li><li><span>Critique</span><b>' + Math.round(st.crit * 100) + ' %</b></li><li><span>Prospection</span><b>' + st.pros + '</b></li></ul>';
     h += '<div class="rcu-elrow tight" title="Bonus de dégâts par élément">' + elChips(st.el, " %") + '</div><div class="rcu-elrow tight" title="Résistances par élément">' + elChips(st.res, " %", "res") + '</div>';
@@ -296,7 +296,7 @@
     h += '</div>';
     var sel = null; p.bag.forEach(function (x) { if (x.id === U.selItem) sel = x; });
     if (sel) {
-      var cur = p.eq[sel.slot];
+      var cur = p.eq[D.eqSlotFor(p, sel)];
       h += '<div class="rcu-detail" style="border-color:' + rar(sel).col + '"><div class="rcu-dhead">' + itemImg(sel, "big") + '<div><b style="color:' + rar(sel).col + '">' + esc(sel.name) + '</b><small>' + rar(sel).name + ' · ' + D.SLOTS[sel.slot].name + ' · niv. ' + sel.lvl + '</small></div></div>' + statLine(sel, cur) +
         (cur ? '<small class="rcu-cmp">Comparé à : ' + esc(cur.name) + '</small>' : '<small class="rcu-cmp">Emplacement libre</small>') +
         '<div class="rcu-dbtn"><button class="rcu-btn" type="button" data-act="equip" data-id="' + sel.id + '">Équiper</button><button class="rcu-btn danger" type="button" data-act="sell" data-id="' + sel.id + '">Vendre · ' + D.sellValue(sel) + '</button></div></div>';
@@ -314,9 +314,12 @@
       h += '<li><div class="rcu-chname">' + (ch.el ? elIco(ch.el) : ico(k === "vit" ? "potion" : "star", "sm")) + '<div><b>' + ch.name + ' · ' + tot + '</b><small>' + ch.desc + (tot !== base ? ' (dont ' + (tot - base) + ' d\'équipement)' : '') + '</small></div></div>' +
         '<button class="rcu-btn small" type="button" data-act="spend" data-k="' + k + '" data-n="1"' + (p.pts <= 0 ? " disabled" : "") + '>+1</button><button class="rcu-btn small" type="button" data-act="spend" data-k="' + k + '" data-n="5"' + (p.pts <= 0 ? " disabled" : "") + '>+5</button></li>';
     });
-    h += '</ul></div><div class="rcu-card"><h4>Éléments</h4><table class="rcu-eltab"><tr><th></th><th>Dégâts et soins</th><th>Résistance</th></tr>';
-    D.EL_ORDER.forEach(function (e) { h += '<tr><td style="color:' + elCol(e) + '">' + elIco(e) + ' ' + D.ELEMENTS[e].name + '</td><td>+' + st.el[e] + ' %</td><td>' + st.res[e] + ' %</td></tr>'; });
-    h += '</table></div><div class="rcu-card"><h4>Combat</h4><ul class="rcu-stats"><li><span>Points de vie</span><b>' + st.maxHp + '</b></li><li><span>PA / PM</span><b>' + st.pa + ' / ' + st.pm + '</b></li><li><span>Portée</span><b>+' + st.po + '</b></li><li><span>Initiative</span><b>' + st.init + '</b></li><li><span>Dommages</span><b>+' + st.dom + '</b></li><li><span>Critique</span><b>' + Math.round(st.crit * 100) + ' %</b></li><li><span>Prospection</span><b>' + st.pros + '</b></li><li><span>Sagesse (XP)</span><b>+' + st.xpPct + ' %</b></li></ul>';
+    function row(n, v) { return '<li><span>' + n + '</span><b>' + v + '</b></li>'; }
+    h += '</ul></div><div class="rcu-card"><h4>Éléments</h4><table class="rcu-eltab"><tr><th></th><th>Bonus</th><th>Dom.</th><th>Rés. %</th><th>Rés.</th></tr>';
+    D.EL_ORDER.forEach(function (e) { h += '<tr><td style="color:' + elCol(e) + '">' + elIco(e) + ' ' + D.ELEMENTS[e].name + '</td><td>+' + st.el[e] + ' %</td><td>+' + (st.doEl[e] || 0) + '</td><td>' + st.res[e] + ' %</td><td>' + (st.rf[e] || 0) + '</td></tr>'; });
+    h += '</table></div><div class="rcu-card"><h4>Caractéristiques</h4><ul class="rcu-stats">' + row("Points de vie", st.maxHp) + row("PA", st.pa) + row("PM", st.pm) + row("Portée", "+" + st.po) + row("Initiative", st.init) + row("Prospection", st.pros) + row("Coups critiques", Math.round(st.crit * 100) + " %") + row("Soins", "+" + st.healFlat + " · +" + st.healPct + " %") + row("Sagesse (XP)", "+" + st.xpPct + " %") + '</ul>' +
+      '<h4>Dommages</h4><ul class="rcu-stats">' + row("Dommages", "+" + st.dom) + row("% Dommages", "+" + st.dopct + " %") + row("Puissance", "+" + st.pui) + row("Dommages critiques", "+" + st.doCri) + row("Dommages de poussée", "+" + st.doPush) + row("Dommages de zone", "+" + st.areaDmg + " %") + '</ul>' +
+      '<h4>Esquive, retrait, tacle</h4><ul class="rcu-stats">' + row("Esquive PA", st.esqPa) + row("Esquive PM", st.esqPm) + row("Retrait PA", st.retPa) + row("Retrait PM", st.retPm) + row("Tacle", st.tacle) + row("Fuite", st.fuite) + row("Résistance critiques", st.rcri) + row("Résistance poussée", st.rpush) + '</ul>';
     h += '<p class="rcu-sub">Passif · <b>' + esc(C.passive.name) + '</b> : ' + esc(C.passive.text) + '</p>';
     h += '<div class="rcu-xpline"><span>Niveau ' + p.lvl + '</span><div class="rcu-xp"><i style="width:' + (p.lvl >= D.MAX_LVL ? 100 : Math.min(100, p.xp / D.xpFor(p.lvl) * 100)) + '%"></i></div><span>' + (p.lvl >= D.MAX_LVL ? "max" : p.xp + " / " + D.xpFor(p.lvl)) + '</span></div>';
     h += '<p class="rcu-sub">' + p.kills + ' monstres vaincus</p></div></div>';
@@ -329,7 +332,7 @@
       var sp = D.SPELLS[sid], ok = p.lvl >= sp.lvl, fx = sp.eff.map(function (e) {
         if (e.t === "dmg" || e.t === "heal") { var pr = TACT.preview(u, sp, e); return (e.t === "dmg" ? "Dégâts " : "Soin ") + D.ELEMENTS[sp.el].name + " : <b style=\"color:" + elCol(sp.el) + "\">" + pr[0] + " à " + pr[1] + "</b>"; }
         if (e.t === "push") return "Repousse de " + e.n; if (e.t === "pull") return "Attire de " + e.n; if (e.t === "shield") return "Bouclier " + e.a + "–" + e.b;
-        if (e.t === "tp") return "Téléportation"; if (e.t === "dash") return "Charge"; if (e.t === "buff") return (e.v > 0 ? "+" : "") + e.v + " " + e.st.toUpperCase() + " (" + e.turns + " tour" + (e.turns > 1 ? "s" : "") + ")"; return "";
+        if (e.t === "rpa") return "Retire " + e.a + "–" + e.b + " PA"; if (e.t === "rpm") return "Retire " + e.a + "–" + e.b + " PM"; if (e.t === "tp") return "Téléportation"; if (e.t === "dash") return "Charge"; if (e.t === "buff") return (e.v > 0 ? "+" : "") + e.v + " " + e.st.toUpperCase() + " (" + e.turns + " tour" + (e.turns > 1 ? "s" : "") + ")"; return "";
       }).filter(Boolean).join(" · ");
       h += '<div class="rcu-spell' + (ok ? "" : " lock") + '" style="border-color:' + (ok ? elCol(sp.el) : "") + '"><div class="rcu-spico">' + ico(sp.icon, "big") + '</div><div><b>' + esc(sp.name) + ' <span class="rcu-el" style="--c:' + elCol(sp.el) + '">' + elIco(sp.el) + '</span></b><small>' + (ok ? spellLine(sp, sp.lvl) : "Se débloque au niveau " + sp.lvl) + '</small><small>' + esc(sp.text) + '</small>' + (ok ? '<small class="rcu-fx">' + fx + '</small>' : '') + '</div></div>';
     });

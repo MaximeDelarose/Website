@@ -99,7 +99,7 @@
   function dirtyStats() { statsRev++; packDirty = true; }
   function stats() { if (!S || S.rev !== statsRev || S.p !== profile) { S = DATA.computeStats(profile); S.rev = statsRev; S.p = profile; } return S; }
   function maxHp() { return stats().maxHp; }
-  function lookSpec(p) { var e = p.eq || {}; return { fur: p.fur, tete: e.tete && e.tete.look, dos: e.dos && e.dos.look, main: e.main && e.main.look }; }
+  function lookSpec(p) { var e = p.eq || {}; return { fur: p.fur, tete: e.tete && e.tete.look, dos: e.dos && e.dos.look, main: e.main && e.main.look, bouc: e.bouclier && e.bouclier.look }; }
 
   /* ====================== CARTE ====================== */
   // types de case : 0 herbe, 1 chemin, 2 eau, 3 arbre, 4 rocher
@@ -324,9 +324,9 @@
   function findBag(id) { for (var i = 0; i < profile.bag.length; i++) if (profile.bag[i].id === id) return i; return -1; }
   function equipItem(id) {
     var i = findBag(id); if (i < 0) return false;
-    var it = profile.bag[i], old = profile.eq[it.slot];
+    var it = profile.bag[i], es = DATA.eqSlotFor(profile, it), old = profile.eq[es];
     profile.bag.splice(i, 1); if (old) profile.bag.push(old);
-    profile.eq[it.slot] = it; dirtyStats(); profile.hp = Math.min(profile.hp, maxHp()); SFX.level(); saveProfile(); ui("hud"); return true;
+    profile.eq[es] = it; dirtyStats(); profile.hp = Math.min(profile.hp, maxHp()); SFX.level(); saveProfile(); ui("hud"); return true;
   }
   function unequipItem(slot) {
     var it = profile.eq[slot]; if (!it || profile.bag.length >= BAG_MAX) return false;
@@ -349,7 +349,8 @@
     if (!shopData.stock.length || tPlay - shopData.t > 600) {
       shopData.t = tPlay; shopData.stock = [];
       var elStat = DATA.ELEMENTS[DATA.CLASSES[profile.cls].el[0]].stat;
-      for (var i = 0; i < 4; i++) shopData.stock.push(DATA.randomItem(Math.max(1, profile.lvl), Math.random, 0, ["tete", "dos", "main", "amulette"][i], elStat));
+      var cats = DATA.CATEGORIES.filter(function (c) { return c !== "trophee"; }).sort(function () { return Math.random() - 0.5; }).slice(0, 5);
+      for (var i = 0; i < cats.length; i++) shopData.stock.push(DATA.randomItem(Math.max(1, profile.lvl), Math.random, 0, cats[i], elStat));
     }
     return shopData.stock;
   }
@@ -858,7 +859,7 @@
     level: function (n) { while (profile.lvl < n) { profile.lvl++; profile.pts += DATA.PTS_PER_LEVEL; } dirtyStats(); profile.hp = maxHp(); ui("hud"); },
     gold: function (n) { profile.gold += n; ui("hud"); },
     zone: function (z) { profile.quest = Math.max(profile.quest, 1); enterZone(z); ui("hud"); },
-    item: function (rar, slot) { var it = DATA.genItem(slot || DATA.SLOT_ORDER[Math.floor(Math.random() * 4)], profile.lvl, rar == null ? 2 : rar, Math.random, DATA.ELEMENTS[DATA.CLASSES[profile.cls].el[0]].stat); profile.bag.push(it); ui("hud"); return it; },
+    item: function (rar, slot) { var it = DATA.genItem(slot || DATA.CATEGORIES[Math.floor(Math.random() * DATA.CATEGORIES.length)], profile.lvl, rar == null ? 2 : rar, Math.random, DATA.ELEMENTS[DATA.CLASSES[profile.cls].el[0]].stat); profile.bag.push(it); ui("hud"); return it; },
     fight: function (types, lvl) { var g = { id: groupSeq++, tx: Math.floor(P.x / T) + 4, ty: Math.floor(P.y / T), mobs: (types || ["limace", "limace"]).map(function (t) { return { type: t, lvl: lvl || world.Z.lvl }; }) }; placeGroup(g); groups.push(g); startFight(g); },
     tpNpc: function (kind) { for (var i = 0; i < npcs.length; i++) if (npcs[i].kind === kind) { P.x = npcs[i].x - 34; P.y = npcs[i].y; P.path = []; return true; } return false; },
     state: function () { return { profile: profile, mode: mode, groups: groups.length, player: P && { x: P.x, y: P.y }, fight: F && { phase: F.phase, round: F.round, units: F.units.map(function (u) { return { id: u.id, side: u.side, x: u.x, y: u.y, hp: u.hp, pa: u.pa, pm: u.pm, alive: u.alive }; }) } }; },
@@ -1043,7 +1044,7 @@
       if (!R || d.id !== R.id) return;
       R.tx = d.x; R.ty = d.y; if (R.x == null) { R.x = d.x; R.y = d.y; }
       R.face = d.f; R.m = !!d.m; R.lvl = d.l; R.name = d.n; NET.lastRx = Date.now();
-      if (d.lk) { var lk = d.lk.split("|"); R.lk = { fur: lk[0], tete: lk[1] || null, dos: lk[2] || null, main: lk[3] || null }; }
+      if (d.lk) { var lk = d.lk.split("|"); R.lk = { fur: lk[0], tete: lk[1] || null, dos: lk[2] || null, main: lk[3] || null, bouc: lk[4] || null }; }
     } else if (ev === "pk") {
       if (NET.role === "host" && R) guestPack = DATA.fixProfile(d.p);
     } else if (ev === "s") {
@@ -1076,7 +1077,7 @@
     NET.pAcc += dt;
     if (NET.pAcc > 0.085 && mode === "explore") {
       NET.pAcc = 0; var l = lookSpec(profile);
-      netSend("p", { id: NET.id, x: Math.round(P.x), y: Math.round(P.y), f: Math.round(P.face * 100) / 100, m: P.moving ? 1 : 0, l: profile.lvl, n: myName(), lk: [l.fur, l.tete || "", l.dos || "", l.main || ""].join("|") });
+      netSend("p", { id: NET.id, x: Math.round(P.x), y: Math.round(P.y), f: Math.round(P.face * 100) / 100, m: P.moving ? 1 : 0, l: profile.lvl, n: myName(), lk: [l.fur, l.tete || "", l.dos || "", l.main || "", l.bouc || ""].join("|") });
     }
     NET.gAcc += dt;
     if (NET.gAcc > 2.5 && NET.role === "host" && mode === "explore") { NET.gAcc = 0; sendGroups(); }
