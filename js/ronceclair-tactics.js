@@ -93,7 +93,7 @@
   };
 
   /* ---------- sorts ---------- */
-  T.rangeOf = function (u, sp) { return { min: sp.min, max: sp.max + (sp.max > 1 && sp.po !== false ? (u.po || 0) : 0) }; };
+  T.rangeOf = function (u, sp) { return { min: sp.min, max: sp.max + (sp.max > 1 && sp.po !== false ? (u.po || 0) + bonus(u, "po") : 0) }; };
   T.canCast = function (f, u, sid) {
     var sp = T.spell(sid); if (!sp) return "inconnu";
     if (u.pa < sp.pa) return "pa";
@@ -173,7 +173,8 @@
     var n = base * (1 + el) + src.dom + bonus(src, "dom") + ((src.doEl && src.doEl[sp.el]) || 0);     // + Dommages et Dommages de l'élément
     if (sp.area && src.areaDmg) n *= 1 + src.areaDmg / 100;
     n *= 1 + (src.dopct || 0) / 100;                                                                    // × % Dommages
-    var crit = (f.rng ? f.rng() : Math.random()) < src.crit; if (crit) n = n * 1.3 + (src.doCri || 0);   // critique : + Dommages critiques
+    if (eff.lowHp && tgt.hp < tgt.max * 0.5) n *= eff.lowHp;                                            // exécution : plus de dégâts sur une cible blessée
+    var crit = (f.rng ? f.rng() : Math.random()) < src.crit + bonus(src, "crit") / 100; if (crit) n = n * 1.3 + (src.doCri || 0);   // critique : + Dommages critiques
     n -= ((tgt.rf && tgt.rf[sp.el]) || 0) + (crit ? tgt.rcri || 0 : 0);                                // résistances fixes
     var res = Math.min(50, (tgt.res[sp.el] || 0) + bonus(tgt, "res")); n *= 1 - res / 100;             // puis résistances en %
     if (n < 1) n = 1;
@@ -203,7 +204,15 @@
     var targets = [], seen = {};
     cells.forEach(function (c) { var t = T.unitAt(f, c.x, c.y); if (t && !seen[t.id]) { seen[t.id] = 1; targets.push(t); } });
     switch (eff.t) {
-      case "dmg": targets.filter(function (t) { return t.side !== u.side; }).forEach(function (t) { spellDamage(f, u, t, sp, eff); }); break;
+      case "dmg": targets.filter(function (t) { return t.side !== u.side; }).forEach(function (t) {
+        var h0 = t.hp; spellDamage(f, u, t, sp, eff);
+        if (eff.vamp && u.alive) { var gain = Math.min(Math.round((h0 - t.hp) * eff.vamp), u.max - u.hp); if (gain > 0) { u.hp += gain; pushEv(f, { t: "heal", id: u.id, n: gain }); } }
+      }); break;
+      case "dot": targets.filter(function (t) { return t.side !== u.side; }).forEach(function (t) {     // poison : dégâts au début de chaque tour de la cible
+        var v = rnd(f, eff.a, eff.b) * growth(u, sp) * (1 + (u.el[sp.el] || 0) / 100) + (u.dom + bonus(u, "dom")) * 0.5 + ((u.doEl && u.doEl[sp.el]) || 0) * 0.5;
+        t.buffs.push({ st: "dot", v: Math.max(1, Math.round(v)), turns: eff.turns, el: sp.el, by: u.id });
+        pushEv(f, { t: "buff", id: t.id, st: "dot", v: Math.round(v) });
+      }); break;
       case "heal": targets.filter(function (t) { return t.side === u.side; }).forEach(function (t) { healUnit(f, u, t, sp, eff); }); break;
       case "shield": targets.filter(function (t) { return t.side === u.side; }).forEach(function (t) { var n = Math.round(rnd(f, eff.a, eff.b) * growth(u, sp) * (1 + (u.el[sp.el] || 0) / 200)); t.shield += n; pushEv(f, { t: "shield", id: t.id, n: n }); }); break;
       case "buff":
@@ -265,6 +274,12 @@
     var u = T.unit(f, f.order[f.turn]);
     u.pa = Math.max(0, u.bpa + bonus(u, "pa")); u.pm = Math.max(0, u.bpm + bonus(u, "pm"));
     u.cast = {}; u.potUsed = false; for (var k in u.cd) { if (u.cd[k] > 0) u.cd[k]--; }
+    u.buffs.forEach(function (b) {                                                                       // poisons
+      if (b.st !== "dot" || !u.alive) return;
+      var n = b.v - ((u.rf && u.rf[b.el]) || 0); n *= 1 - Math.min(50, (u.res[b.el] || 0) + bonus(u, "res")) / 100;
+      dealDamage(f, null, u, Math.max(1, n), b.el, false, "poison");
+    });
+    if (!u.alive) { checkEnd(f); if (f.phase === "fight") T.endTurn(f); return; }
     u.buffs.forEach(function (b) { b.turns--; }); u.buffs = u.buffs.filter(function (b) { return b.turns > 0; });
     if (u.regen && u.hp < u.max) { var n = Math.min(u.regen, u.max - u.hp); u.hp += n; pushEv(f, { t: "heal", id: u.id, n: n }); }
     pushEv(f, { t: "turn", id: u.id, round: f.round });
@@ -344,7 +359,7 @@
   function estimate(f, u, sid, tx, ty) {                             // valeur d'un lancer pour l'IA
     var sp = T.spell(sid), cells = T.area(f, u, sp, tx, ty), score = 0;
     sp.eff.forEach(function (eff) {
-      if (eff.t !== "dmg") { if (eff.t === "push" || eff.t === "pull" || eff.t === "buff") score += 1; return; }
+      if (eff.t !== "dmg") { if (eff.t === "dot") cells.forEach(function (c) { var t = T.unitAt(f, c.x, c.y); if (t && t.side !== u.side) score += (eff.a + eff.b) / 2 * eff.turns * 0.6; }); else if (eff.t === "push" || eff.t === "pull" || eff.t === "buff" || eff.t === "rpa" || eff.t === "rpm") score += 1; return; }
       cells.forEach(function (c) {
         var t = T.unitAt(f, c.x, c.y); if (!t || t.side === u.side) return;
         var n = (eff.a + eff.b) / 2 * (1 + (u.el[sp.el] || 0) / 100) * (1 - Math.min(50, t.res[sp.el] || 0) / 100) + u.dom;

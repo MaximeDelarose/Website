@@ -38,75 +38,97 @@
      area = zone autour de la cible : { shape: "circle" | "cross" | "line", r },
      eff = effets dans l'ordre : dmg · heal · shield · push · pull · buff · tp · dash.
      Les sorts se débloquent au niveau « lvl » de la classe. */
+  // aides : dégâts qui montent avec le niveau de déblocage du sort (≈ 3,7 par PA au niveau 1), poison (dégâts par tour)
+  function dmg(pa, lvl, m, x) { var av = pa * 3.7 * (m || 1) * (1 + 0.06 * (lvl - 1)), o = { t: "dmg", a: Math.round(av * 0.82), b: Math.round(av * 1.18) }; for (var k in (x || {})) o[k] = x[k]; return o; }
+  function dot(pa, lvl, m, turns) { var av = pa * 3.7 * (m || 1) * (1 + 0.06 * (lvl - 1)) / turns * 1.25; return { t: "dot", a: Math.round(av * 0.82), b: Math.round(av * 1.18), turns: turns }; }
   D.SPELLS = {
-    /* ---- Gardien : Terre, corps à corps, protège et bouscule ---- */
-    g_griffes:    { name: "Coup de griffes", el: "terre", pa: 3, min: 1, max: 1, tgt: "enemy", lvl: 1, icon: "tourbillon", eff: [{ t: "dmg", a: 9, b: 13 }], text: "Un coup de griffes en pleine face." },
-    g_bousculade: { name: "Bousculade", el: "terre", pa: 3, min: 1, max: 4, line: true, los: true, tgt: "enemy", perTurn: 2, lvl: 1, icon: "charge", eff: [{ t: "dmg", a: 5, b: 8 }, { t: "push", n: 2 }], text: "Frappe en ligne droite et repousse de 2 cases. Un obstacle derrière inflige des dégâts de collision." },
-    g_carapace:   { name: "Carapace", el: "terre", pa: 2, min: 0, max: 0, tgt: "self", cd: 3, lvl: 3, icon: "rempart", eff: [{ t: "shield", a: 16, b: 22 }, { t: "buff", st: "res", v: 15, turns: 2 }], text: "Un bouclier de noix absorbe les dégâts et réduit de 15 % tous les dégâts subis pendant 2 tours." },
-    g_braise:     { name: "Racines brûlantes", el: "feu", pa: 4, min: 1, max: 4, los: true, tgt: "cell", area: { shape: "cross", r: 1 }, perTurn: 1, lvl: 6, icon: "ronces", eff: [{ t: "dmg", a: 7, b: 10 }], text: "Des racines enflammées jaillissent en croix (zone de 5 cases)." },
-    g_charge:     { name: "Charge du Chêne", el: "terre", pa: 4, min: 2, max: 6, line: true, los: true, tgt: "enemy", cd: 3, lvl: 10, icon: "charge", eff: [{ t: "dash" }, { t: "dmg", a: 15, b: 21 }], text: "Fonce sur l'ennemi en ligne droite et le frappe violemment." },
-    /* ---- Lanceur : Air et Feu, tireur d'élite ---- */
-    l_tir:        { name: "Tir de gland", el: "air", pa: 3, min: 2, max: 6, los: true, tgt: "enemy", lvl: 1, icon: "atk_shoot", eff: [{ t: "dmg", a: 8, b: 12 }], text: "Un gland lancé avec précision." },
-    l_enflamme:   { name: "Gland enflammé", el: "feu", pa: 4, min: 2, max: 6, los: true, tgt: "enemy", perTurn: 2, lvl: 1, icon: "salve", eff: [{ t: "dmg", a: 11, b: 16 }], text: "Un gland en feu : plus de dégâts, mais coûte plus de PA." },
-    l_salve:      { name: "Salve", el: "air", pa: 4, min: 2, max: 5, line: true, los: true, tgt: "cell", area: { shape: "line", r: 3 }, lvl: 3, icon: "pluie", eff: [{ t: "dmg", a: 6, b: 9 }], text: "Une salve en ligne : touche la cible et les 2 cases derrière elle." },
-    l_roulade:    { name: "Roulade", el: "air", pa: 2, min: 1, max: 3, tgt: "free", cd: 2, lvl: 6, icon: "dash", eff: [{ t: "tp" }], text: "Une roulade acrobatique vers une case libre proche." },
-    l_grandchene: { name: "Tir du Grand Chêne", el: "air", pa: 5, min: 3, max: 8, los: true, tgt: "enemy", cd: 3, perTurn: 1, lvl: 10, icon: "tir", eff: [{ t: "dmg", a: 26, b: 34 }], text: "Un énorme gland de longue portée. Dégâts massifs." },
-    /* ---- Mystique : Feu et Eau, magie de zone ---- */
-    m_orbe:       { name: "Orbe ardente", el: "feu", pa: 3, min: 1, max: 5, los: true, tgt: "enemy", lvl: 1, icon: "atk_magic", eff: [{ t: "dmg", a: 9, b: 13 }], text: "Une orbe de feu qui file droit sur sa cible." },
-    m_nova:       { name: "Nova glaciale", el: "eau", pa: 4, min: 1, max: 4, los: true, tgt: "cell", area: { shape: "cross", r: 1 }, perTurn: 2, lvl: 1, icon: "nova", eff: [{ t: "dmg", a: 7, b: 10 }], text: "Une explosion givrée en croix (zone de 5 cases)." },
-    m_maree:      { name: "Marée", el: "eau", pa: 3, min: 1, max: 5, line: true, los: true, tgt: "enemy", lvl: 3, icon: "tempete", eff: [{ t: "dmg", a: 6, b: 9 }, { t: "pull", n: 2 }], text: "Une vague qui attire l'ennemi de 2 cases vers toi." },
-    m_brume:      { name: "Saut de brume", el: "air", pa: 2, min: 2, max: 6, los: true, tgt: "free", cd: 3, lvl: 6, icon: "orbes", eff: [{ t: "tp" }], text: "Disparais dans la brume et réapparais sur une case libre." },
-    m_tempete:    { name: "Tempête arcanique", el: "feu", pa: 6, min: 2, max: 5, los: true, tgt: "cell", area: { shape: "circle", r: 2 }, cd: 4, lvl: 10, icon: "nova", eff: [{ t: "dmg", a: 15, b: 21 }], text: "Une tempête de feu sur un disque de 13 cases." },
-    /* ---- Sylvain : Eau et Terre, soin et contrôle ---- */
-    s_rosee:      { name: "Rosée", el: "eau", pa: 3, min: 1, max: 4, los: true, tgt: "ally", perTurn: 2, lvl: 1, icon: "source", eff: [{ t: "heal", a: 10, b: 14 }], text: "Soigne un allié (ou toi-même). Les soins profitent de la Chance." },
-    s_ronces:     { name: "Ronces", el: "terre", pa: 3, min: 1, max: 4, los: true, tgt: "enemy", lvl: 1, icon: "ronces", eff: [{ t: "dmg", a: 7, b: 10 }, { t: "rpm", a: 1, b: 2 }], text: "Des ronces blessent l'ennemi et lui retirent 1 à 2 PM (l'Esquive PM de la cible peut les annuler)." },
-    s_epine:      { name: "Épine acérée", el: "air", pa: 3, min: 2, max: 6, los: true, tgt: "enemy", lvl: 3, icon: "atk_vine", eff: [{ t: "dmg", a: 7, b: 10 }], text: "Une épine lancée de loin." },
-    s_source:     { name: "Source vivifiante", el: "eau", pa: 4, min: 1, max: 3, tgt: "cell", area: { shape: "circle", r: 1 }, cd: 2, lvl: 6, icon: "source", eff: [{ t: "heal", a: 8, b: 12 }], text: "Soigne tous les alliés dans un disque de 5 cases." },
-    s_floraison:  { name: "Floraison", el: "terre", pa: 5, min: 0, max: 4, los: true, tgt: "ally", cd: 4, lvl: 10, icon: "floraison", eff: [{ t: "buff", st: "pa", v: 1, turns: 2 }, { t: "buff", st: "dom", v: 8, turns: 2 }], text: "Un allié gagne +1 PA et +8 Dommages pendant 2 tours." }
+    /* ---- Chevalier (style Iop) : Terre et Feu, corps à corps, gros dégâts ---- */
+    c_estoc:        { name: "Estoc", el: "terre", pa: 3, min: 1, max: 1, tgt: "enemy", lvl: 1, icon: "epee", eff: [dmg(3, 1)], text: "Un coup d'épée direct." },
+    c_intimidation: { name: "Intimidation", el: "terre", pa: 3, min: 1, max: 3, line: true, los: true, tgt: "enemy", perTurn: 2, lvl: 1, icon: "charge", eff: [dmg(2, 1, 0.9), { t: "push", n: 2 }], text: "Repousse l'ennemi de 2 cases en ligne droite. Un obstacle derrière inflige des dégâts de collision." },
+    c_pression:     { name: "Pression", el: "feu", pa: 3, min: 1, max: 4, los: true, tgt: "enemy", lvl: 2, icon: "tourbillon", eff: [dmg(3, 2)], text: "Une onde de chaleur qui frappe à quelques cases." },
+    c_bond:         { name: "Bond", el: "air", pa: 2, min: 1, max: 4, tgt: "free", cd: 2, lvl: 3, icon: "bond", eff: [{ t: "tp" }], text: "Un bond jusqu'à une case libre." },
+    c_concentration:{ name: "Concentration", el: "terre", pa: 2, min: 0, max: 0, tgt: "self", cd: 3, lvl: 4, icon: "star", eff: [{ t: "buff", st: "dom", v: 8, turns: 3 }], text: "+8 Dommages pendant 3 tours." },
+    c_destin:       { name: "Épée du destin", el: "feu", pa: 4, min: 1, max: 1, tgt: "enemy", perTurn: 2, lvl: 6, icon: "epee", eff: [dmg(4, 6, 1.05)], text: "Une lame enflammée, plus puissante qu'un Estoc." },
+    c_colere:       { name: "Colère", el: "terre", pa: 5, min: 1, max: 1, tgt: "enemy", cd: 2, lvl: 8, icon: "charge", eff: [dmg(5, 8, 1.2)], text: "Tout le poids du chevalier dans un coup." },
+    c_tempete:      { name: "Tempête de puissance", el: "feu", pa: 4, min: 1, max: 4, los: true, tgt: "cell", area: { shape: "cross", r: 1 }, lvl: 10, icon: "nova", eff: [dmg(4, 10, 0.9)], text: "Une tempête de flammes en croix (zone de 5 cases)." },
+    c_ebranler:     { name: "Ébranler", el: "terre", pa: 3, min: 1, max: 3, los: true, tgt: "enemy", cd: 2, lvl: 12, icon: "ronces", eff: [dmg(3, 12, 0.8), { t: "rpm", a: 1, b: 2 }], text: "Un choc qui retire 1 à 2 PM." },
+    c_roknocerok:   { name: "Roknocerok", el: "terre", pa: 5, min: 1, max: 3, los: true, tgt: "cell", area: { shape: "circle", r: 1 }, cd: 2, lvl: 14, icon: "tempete", eff: [dmg(5, 14, 0.9), { t: "push", n: 1 }], text: "Le sol explose : dégâts en disque de 5 cases et léger recul." },
+    c_divine:       { name: "Épée divine", el: "feu", pa: 5, min: 1, max: 1, tgt: "enemy", cd: 2, lvl: 16, icon: "epee", eff: [dmg(5, 16, 1.2)], text: "Une lame de feu pur." },
+    c_rempart:      { name: "Rempart d'acier", el: "terre", pa: 3, min: 0, max: 0, tgt: "self", cd: 4, lvl: 18, icon: "rempart", eff: [{ t: "shield", a: 50, b: 65 }, { t: "buff", st: "res", v: 20, turns: 2 }], text: "Un bouclier d'armure et −20 % de dégâts subis pendant 2 tours." },
+    c_fracture:     { name: "Fracture", el: "air", pa: 4, min: 2, max: 5, line: true, los: true, tgt: "enemy", cd: 2, lvl: 21, icon: "charge", eff: [dmg(4, 21, 0.85), { t: "pull", n: 2 }], text: "Attire l'ennemi de 2 cases vers toi en le frappant." },
+    c_duel:         { name: "Duel", el: "terre", pa: 4, min: 1, max: 1, tgt: "enemy", cd: 3, lvl: 24, icon: "dague", eff: [dmg(4, 24, 0.85), { t: "rpa", a: 1, b: 2 }, { t: "rpm", a: 1, b: 2 }], text: "Cloue l'adversaire : retire 1 à 2 PA et 1 à 2 PM." },
+    c_jugement:     { name: "Jugement", el: "feu", pa: 6, min: 1, max: 4, los: true, tgt: "cell", area: { shape: "circle", r: 2 }, cd: 3, lvl: 27, icon: "nova", eff: [dmg(6, 27, 0.95)], text: "Une colonne de feu sur un disque de 13 cases." },
+    c_chene:        { name: "Épée du Grand Chêne", el: "terre", pa: 7, min: 1, max: 1, tgt: "enemy", cd: 4, lvl: 30, icon: "epee", eff: [dmg(7, 30, 1.3)], text: "Le coup ultime du chevalier." },
+    /* ---- Archer (style Cra) : Air et Eau, tir à longue portée ---- */
+    a_fleche:       { name: "Flèche magique", el: "air", pa: 3, min: 2, max: 6, los: true, tgt: "enemy", lvl: 1, icon: "fleche", eff: [dmg(3, 1)], text: "Une flèche précise." },
+    a_enflammee:    { name: "Flèche enflammée", el: "feu", pa: 4, min: 2, max: 6, los: true, tgt: "enemy", perTurn: 2, lvl: 1, icon: "salve", eff: [dmg(4, 1, 1.05)], text: "Une flèche en feu : plus de dégâts, mais coûte plus de PA." },
+    a_glacee:       { name: "Flèche glacée", el: "eau", pa: 3, min: 2, max: 6, los: true, tgt: "enemy", cd: 1, lvl: 2, icon: "fleche", eff: [dmg(3, 2, 0.8), { t: "rpa", a: 1, b: 1 }], text: "Gèle la cible : retire 1 PA." },
+    a_recul:        { name: "Flèche de recul", el: "air", pa: 3, min: 2, max: 5, line: true, los: true, tgt: "enemy", lvl: 3, icon: "fleche", eff: [dmg(3, 3, 0.8), { t: "push", n: 2 }], text: "Repousse la cible de 2 cases." },
+    a_roulade:      { name: "Roulade", el: "air", pa: 2, min: 1, max: 3, tgt: "free", cd: 2, lvl: 4, icon: "dash", eff: [{ t: "tp" }], text: "Une roulade vers une case libre proche." },
+    a_eloigne:      { name: "Tir éloigné", el: "air", pa: 2, min: 0, max: 0, tgt: "self", cd: 3, lvl: 5, icon: "oeil", eff: [{ t: "buff", st: "po", v: 2, turns: 2 }], text: "+2 de portée pendant 2 tours." },
+    a_immo:         { name: "Flèche d'immobilisation", el: "eau", pa: 3, min: 2, max: 6, los: true, tgt: "enemy", cd: 2, lvl: 7, icon: "fleche", eff: [dmg(3, 7, 0.8), { t: "rpm", a: 1, b: 2 }], text: "Retire 1 à 2 PM à la cible." },
+    a_dispersion:   { name: "Flèche de dispersion", el: "air", pa: 4, min: 2, max: 6, los: true, tgt: "cell", area: { shape: "cross", r: 1 }, lvl: 9, icon: "pluie", eff: [dmg(4, 9, 0.85)], text: "Éclate en croix (zone de 5 cases)." },
+    a_critique:     { name: "Tir critique", el: "air", pa: 2, min: 0, max: 0, tgt: "self", cd: 4, lvl: 11, icon: "oeil", eff: [{ t: "buff", st: "crit", v: 30, turns: 2 }], text: "+30 % de critique pendant 2 tours." },
+    a_expiation:    { name: "Flèche d'expiation", el: "air", pa: 5, min: 2, max: 7, los: true, tgt: "enemy", cd: 2, lvl: 13, icon: "tir", eff: [dmg(5, 13, 1.15)], text: "Une flèche puissante à longue portée." },
+    a_punitive:     { name: "Flèche punitive", el: "feu", pa: 4, min: 2, max: 6, los: true, tgt: "enemy", cd: 1, lvl: 15, icon: "salve", eff: [dmg(4, 15, 1.0, { lowHp: 1.5 })], text: "+50 % de dégâts si la cible a moins de la moitié de ses PV." },
+    a_harcelante:   { name: "Flèche harcelante", el: "eau", pa: 4, min: 2, max: 6, los: true, tgt: "enemy", cd: 2, lvl: 17, icon: "fleche", eff: [dmg(4, 17, 0.9), { t: "rpa", a: 1, b: 2 }], text: "Retire 1 à 2 PA." },
+    a_explosive:    { name: "Flèche explosive", el: "feu", pa: 6, min: 2, max: 6, los: true, tgt: "cell", area: { shape: "circle", r: 2 }, cd: 3, lvl: 20, icon: "nova", eff: [dmg(6, 20, 0.9)], text: "Une explosion sur un disque de 13 cases." },
+    a_pluie:        { name: "Pluie de flèches", el: "air", pa: 5, min: 2, max: 6, line: true, los: true, tgt: "cell", area: { shape: "line", r: 4 }, cd: 2, lvl: 23, icon: "pluie", eff: [dmg(5, 23, 0.85)], text: "Une volée en ligne qui touche 4 cases." },
+    a_foudroyante:  { name: "Flèche foudroyante", el: "air", pa: 7, min: 3, max: 8, los: true, tgt: "enemy", cd: 4, lvl: 26, icon: "tir", eff: [dmg(7, 26, 1.3)], text: "La flèche ultime : dégâts massifs." },
+    a_maitrise:     { name: "Maîtrise de l'arc", el: "air", pa: 2, min: 0, max: 0, tgt: "self", cd: 5, lvl: 29, icon: "star", eff: [{ t: "buff", st: "pa", v: 2, turns: 2 }, { t: "buff", st: "dom", v: 14, turns: 2 }], text: "+2 PA et +14 Dommages pendant 2 tours." },
+    /* ---- Sournois (style Sram x Roublard) : Feu et Air, poisons, bombes, coups dans le dos ---- */
+    s_coup:         { name: "Coup sournois", el: "air", pa: 3, min: 1, max: 1, tgt: "enemy", lvl: 1, icon: "dague", eff: [dmg(3, 1, 1.0, { lowHp: 1.3 })], text: "+30 % de dégâts sur une cible blessée (moins de la moitié des PV)." },
+    s_poison:       { name: "Poison insidieux", el: "air", pa: 3, min: 1, max: 4, los: true, tgt: "enemy", lvl: 1, icon: "poison", eff: [dot(3, 1, 1.05, 3)], text: "Empoisonne : dégâts au début de chacun de ses 3 prochains tours." },
+    s_ombre:        { name: "Pas de l'ombre", el: "air", pa: 2, min: 1, max: 5, tgt: "free", cd: 2, lvl: 2, icon: "ombre", eff: [{ t: "tp" }], text: "Disparais et réapparais sur une case libre." },
+    s_bombe:        { name: "Bombe à retardement", el: "feu", pa: 3, min: 2, max: 5, los: true, tgt: "cell", area: { shape: "cross", r: 1 }, lvl: 3, icon: "bombe", eff: [dmg(3, 3, 0.8)], text: "Une bombe qui explose en croix (zone de 5 cases)." },
+    s_larcin:       { name: "Larcin", el: "air", pa: 3, min: 1, max: 1, tgt: "enemy", perTurn: 2, lvl: 4, icon: "dague", eff: [dmg(3, 4, 0.85, { vamp: 0.5 })], text: "Vole de la vie : tu récupères 50 % des dégâts infligés." },
+    s_peur:         { name: "Peur", el: "terre", pa: 3, min: 1, max: 3, line: true, los: true, tgt: "enemy", cd: 1, lvl: 6, icon: "charge", eff: [dmg(2, 6, 0.7), { t: "push", n: 3 }], text: "Fait fuir l'ennemi de 3 cases." },
+    s_mortelle:     { name: "Attaque mortelle", el: "air", pa: 4, min: 1, max: 1, tgt: "enemy", cd: 1, lvl: 8, icon: "dague", eff: [dmg(4, 8, 1.0, { lowHp: 1.8 })], text: "+80 % de dégâts sur une cible blessée." },
+    s_brume:        { name: "Brume empoisonnée", el: "feu", pa: 4, min: 1, max: 4, los: true, tgt: "cell", area: { shape: "circle", r: 1 }, cd: 2, lvl: 10, icon: "poison", eff: [dot(4, 10, 0.9, 3)], text: "Un nuage toxique : poison en disque de 5 cases." },
+    s_fumigene:     { name: "Fumigène", el: "air", pa: 2, min: 0, max: 0, tgt: "self", cd: 3, lvl: 12, icon: "ombre", eff: [{ t: "shield", a: 30, b: 40 }, { t: "buff", st: "res", v: 20, turns: 2 }], text: "Un écran de fumée : bouclier et −20 % de dégâts subis pendant 2 tours." },
+    s_paralysant:   { name: "Poison paralysant", el: "eau", pa: 4, min: 1, max: 4, los: true, tgt: "enemy", cd: 3, lvl: 14, icon: "poison", eff: [dot(4, 14, 0.6, 2), { t: "rpm", a: 2, b: 3 }, { t: "rpa", a: 1, b: 1 }], text: "Poison qui retire 2 à 3 PM et 1 PA." },
+    s_lame:         { name: "Lame fantôme", el: "air", pa: 4, min: 2, max: 5, line: true, los: true, tgt: "enemy", cd: 2, lvl: 16, icon: "dash", eff: [{ t: "dash" }, dmg(4, 16, 1.0)], text: "Fonce sur l'ennemi et le frappe." },
+    s_chaine:       { name: "Explosion en chaîne", el: "feu", pa: 5, min: 2, max: 5, los: true, tgt: "cell", area: { shape: "circle", r: 2 }, cd: 2, lvl: 18, icon: "bombe", eff: [dmg(5, 18, 0.9)], text: "Des bombes en série sur un disque de 13 cases." },
+    s_frenesie:     { name: "Frénésie", el: "air", pa: 1, min: 0, max: 0, tgt: "self", cd: 4, lvl: 21, icon: "star", eff: [{ t: "buff", st: "pa", v: 2, turns: 2 }, { t: "buff", st: "dom", v: 10, turns: 2 }], text: "+2 PA et +10 Dommages pendant 2 tours." },
+    s_hemorragie:   { name: "Hémorragie", el: "air", pa: 4, min: 1, max: 4, los: true, tgt: "enemy", cd: 2, lvl: 24, icon: "poison", eff: [dot(4, 24, 1.3, 3)], text: "Un poison violent sur 3 tours." },
+    s_danse:        { name: "Danse macabre", el: "feu", pa: 6, min: 1, max: 4, los: true, tgt: "cell", area: { shape: "circle", r: 1 }, cd: 3, lvl: 27, icon: "nova", eff: [dmg(6, 27, 0.95, { vamp: 0.4 })], text: "Explosion en disque de 5 cases : tu récupères 40 % des dégâts." },
+    s_assassinat:   { name: "Assassinat", el: "air", pa: 6, min: 1, max: 1, tgt: "enemy", cd: 4, lvl: 30, icon: "dague", eff: [dmg(6, 30, 1.2, { lowHp: 2 })], text: "Double les dégâts sur une cible blessée." }
   };
 
   /* ====================== CLASSES ======================
      hp = PV au niveau 1, hpL = PV par niveau, ini = initiative de base, crit = critique de base.
      Passif (appliqué dans computeStats) : resAll (% de résistance à tous les éléments), hpPct, po, crit, areaDmg (% dégâts de zone), healPct, regen (PV au début du tour). */
   D.CLASSES = {
-    gardien: {
-      name: "Gardien", title: "Gardien des Racines", role: "Tank · Terre", icon: "atk_melee", el: ["terre", "feu"],
-      hp: 66, hpL: 9, ini: 80, crit: 0.04,
-      stars: { Survie: 5, Dégâts: 3, Mobilité: 2, Soutien: 3 },
-      desc: "Premier au contact, dernier à tomber. Il encaisse, bouscule les ennemis et protège ses alliés avec la Carapace. Il vit surtout de Force (Terre).",
-      passive: { name: "Écorce", text: "+10 % de résistance à tous les éléments et +10 % de PV.", resAll: 10, hpPct: 0.1 },
-      spells: ["g_griffes", "g_bousculade", "g_carapace", "g_braise", "g_charge"],
-      starter: { tete: "noix", bouclier: "bois" }
+    chevalier: {
+      name: "Chevalier", title: "Chevalier du Chêne", role: "Mêlée · Terre/Feu", icon: "epee", el: ["terre", "feu"],
+      hp: 70, hpL: 9.5, ini: 90, crit: 0.05,
+      stars: { Survie: 4, Dégâts: 5, Mobilité: 3, Soutien: 1 },
+      desc: "Le guerrier de la bande (style Iop) : il fonce au corps à corps avec Bond, repousse, frappe fort et se couvre d'armure. Il vit de Force (Terre) et d'Intelligence (Feu).",
+      passive: { name: "Bravoure", text: "+12 % de PV et +6 % de résistance à tous les éléments.", resAll: 6, hpPct: 0.12 },
+      spells: ["c_estoc", "c_intimidation", "c_pression", "c_bond", "c_concentration", "c_destin", "c_colere", "c_tempete", "c_ebranler", "c_roknocerok", "c_divine", "c_rempart", "c_fracture", "c_duel", "c_jugement", "c_chene"],
+      starter: { tete: "heaume", bouclier: "bois", main: "epee" }
     },
-    lanceur: {
-      name: "Lanceur", title: "Lanceur de Glands", role: "Dégâts à distance · Air", icon: "atk_shoot", el: ["air", "feu"],
+    archer: {
+      name: "Archer", title: "Archer des Frondaisons", role: "Distance · Air/Eau", icon: "fleche", el: ["air", "eau"],
       hp: 56, hpL: 7.5, ini: 130, crit: 0.1,
-      stars: { Survie: 2, Dégâts: 5, Mobilité: 4, Soutien: 1 },
-      desc: "Rapide et précis, il frappe de loin et esquive d'une roulade. Fragile en mêlée. Il vit d'Agilité (Air) pour des critiques fréquents.",
+      stars: { Survie: 2, Dégâts: 5, Mobilité: 4, Soutien: 2 },
+      desc: "Le tireur d'élite (style Cra) : il touche de très loin, repousse, gèle et ralentit. Fragile au contact, il garde ses distances avec Roulade. Il vit d'Agilité (Air) et de Chance (Eau).",
       passive: { name: "Œil de lynx", text: "+1 de portée sur tous ses sorts et +8 % de critique.", po: 1, crit: 0.08 },
-      spells: ["l_tir", "l_enflamme", "l_salve", "l_roulade", "l_grandchene"],
-      starter: { tete: "bandeau", main: "gland" }
+      spells: ["a_fleche", "a_enflammee", "a_glacee", "a_recul", "a_roulade", "a_eloigne", "a_immo", "a_dispersion", "a_critique", "a_expiation", "a_punitive", "a_harcelante", "a_explosive", "a_pluie", "a_foudroyante", "a_maitrise"],
+      starter: { tete: "feuille", main: "arc" }
     },
-    mystique: {
-      name: "Mystique", title: "Mystique des Brumes", role: "Magie de zone · Feu/Eau", icon: "atk_magic", el: ["feu", "eau"],
-      hp: 50, hpL: 6.5, ini: 110, crit: 0.06,
-      stars: { Survie: 1, Dégâts: 5, Mobilité: 3, Soutien: 2 },
-      desc: "Maître des zones et des téléportations. Il nettoie les groupes d'un seul sort, repousse et attire. Très peu de PV : à protéger !",
-      passive: { name: "Maîtrise des zones", text: "+15 % de dégâts sur tous les sorts de zone.", areaDmg: 15 },
-      spells: ["m_orbe", "m_nova", "m_maree", "m_brume", "m_tempete"],
-      starter: { tete: "sorcier", main: "baton" }
-    },
-    sylvain: {
-      name: "Sylvain", title: "Sylvain de la Mousse", role: "Soutien · Eau/Terre", icon: "atk_vine", el: ["eau", "terre"],
-      hp: 56, hpL: 7, ini: 100, crit: 0.05,
-      stars: { Survie: 3, Dégâts: 2, Mobilité: 3, Soutien: 5 },
-      desc: "Le druide de la bande : il soigne, entrave les ennemis et booste ses alliés. Indispensable en coop. Il vit de Chance (Eau) pour des soins puissants.",
-      passive: { name: "Photosynthèse", text: "+25 % de soins et récupère 3 PV au début de chaque tour.", healPct: 25, regen: 3 },
-      spells: ["s_rosee", "s_ronces", "s_epine", "s_source", "s_floraison"],
-      starter: { tete: "feuille", main: "fleur" }
+    sournois: {
+      name: "Sournois", title: "Sournois des Sous-bois", role: "Assassin · Feu/Air", icon: "dague", el: ["feu", "air"],
+      hp: 60, hpL: 8, ini: 150, crit: 0.08,
+      stars: { Survie: 2, Dégâts: 5, Mobilité: 5, Soutien: 1 },
+      desc: "L'ombre de la bande (style Sram et Roublard) : poisons, bombes, vol de vie et coups dans le dos sur les cibles blessées. Il se téléporte et s'esquive. Il vit d'Agilité (Air) et d'Intelligence (Feu).",
+      passive: { name: "Furtif", text: "+6 % de critique, +4 Dommages, +5 Fuite et +3 Esquive PA/PM.", crit: 0.06, dom: 4, fuite: 5, esq: 3 },
+      spells: ["s_coup", "s_poison", "s_ombre", "s_bombe", "s_larcin", "s_peur", "s_mortelle", "s_brume", "s_fumigene", "s_paralysant", "s_lame", "s_chaine", "s_frenesie", "s_hemorragie", "s_danse", "s_assassinat"],
+      starter: { tete: "capuche", dos: "nuit", main: "dague" }
     }
   };
-  D.CLASS_ORDER = ["gardien", "lanceur", "mystique", "sylvain"];
+  D.CLASS_ORDER = ["chevalier", "archer", "sournois"];
+  D.OLD_CLASS = { gardien: "chevalier", lanceur: "archer", mystique: "sournois", sylvain: "archer" };
 
   /* ====================== MONSTRES ======================
      hp/xp/gold à lvl 1 (mis à l'échelle du niveau), res = résistances en % (négatif = faiblesse), el = éléments qu'il maîtrise. */
@@ -163,9 +185,9 @@
   // emplacement où ira l'objet : le premier libre, sinon le premier compatible (échange)
   D.eqSlotFor = function (p, it) { var l = D.eqSlotsOf(it.slot), i; for (i = 0; i < l.length; i++) if (!p.eq[l[i]]) return l[i]; return l[0]; };
   D.LOOKS = {
-    tete: { noix: "Casque de noix", bandeau: "Bandeau rouge", sorcier: "Chapeau étoilé", feuille: "Feuille de chêne", champi: "Chapeau champignon", fleurs: "Couronne de fleurs", heaume: "Heaume d'acier", couronne: "Couronne dorée" },
+    tete: { capuche: "Capuche d'ombre", noix: "Casque de noix", bandeau: "Bandeau rouge", sorcier: "Chapeau étoilé", feuille: "Feuille de chêne", champi: "Chapeau champignon", fleurs: "Couronne de fleurs", heaume: "Heaume d'acier", couronne: "Couronne dorée" },
     dos: { feuille: "Cape de feuilles", rouge: "Cape rouge", nuit: "Cape étoilée", mousse: "Manteau de mousse", ailes: "Ailes de libellule" },
-    main: { baton: "Bâton à gemme", gland: "Gland géant", fleur: "Sceptre fleuri", epee: "Épée de brindille", lanterne: "Lanterne de lucioles" },
+    main: { arc: "Arc de brindille", dague: "Dague d'épine", baton: "Bâton à gemme", gland: "Gland géant", fleur: "Sceptre fleuri", epee: "Épée de brindille", lanterne: "Lanterne de lucioles" },
     bouclier: { bois: "Bouclier de bois", ecorce: "Bouclier d'écorce", acier: "Bouclier d'acier", or: "Bouclier doré" },
     amulette: { gland: "Gland d'or", pierre: "Pierre de lune", baie: "Collier de baies", plume: "Amulette de plume" },
     anneau: { gland: "Anneau de gland", pierre: "Anneau de lune", baie: "Anneau de baie", or: "Anneau d'or" },
@@ -280,10 +302,10 @@
       maxHp: hp, pa: 6 + G("pa") + (p.lvl >= 20 ? 1 : 0), pm: 3 + G("pm"), po: (ps.po || 0) + G("po"),
       init: Math.round(C.ini + (tot.frc + tot.int + tot.cha + tot.agi) * 0.5 + G("ini")), pros: 100 + G("pros"),
       crit: Math.min(0.6, C.crit + (ps.crit || 0) + tot.agi * 0.003 + G("cri") / 100),
-      dom: G("dom"), dopct: G("dopct"), pui: pui, doEl: doEl, doCri: G("do_cri"), doPush: G("do_push"),
+      dom: G("dom") + (ps.dom || 0), dopct: G("dopct"), pui: pui, doEl: doEl, doCri: G("do_cri"), doPush: G("do_push"),
       healFlat: G("soin"), healPct: ps.healPct || 0, areaDmg: ps.areaDmg || 0, regen: ps.regen || 0, xpPct: tot.sag,
-      esqPa: Math.floor(tot.sag / 4) + G("esq_pa"), esqPm: Math.floor(tot.sag / 4) + G("esq_pm"), retPa: Math.floor(tot.sag / 6) + G("ret_pa"), retPm: Math.floor(tot.sag / 6) + G("ret_pm"),
-      tacle: Math.floor(tot.agi / 10) + G("tacle"), fuite: Math.floor(tot.agi / 10) + G("fuite"),
+      esqPa: Math.floor(tot.sag / 4) + G("esq_pa") + (ps.esq || 0), esqPm: Math.floor(tot.sag / 4) + G("esq_pm") + (ps.esq || 0), retPa: Math.floor(tot.sag / 6) + G("ret_pa"), retPm: Math.floor(tot.sag / 6) + G("ret_pm"),
+      tacle: Math.floor(tot.agi / 10) + G("tacle"), fuite: Math.floor(tot.agi / 10) + G("fuite") + (ps.fuite || 0),
       rcri: G("rcri"), rpush: G("rpush"), el: el, res: res, rf: rf, tot: tot, g: g
     };
   };
@@ -311,6 +333,7 @@
   }
   // Profils v1 / v2 (temps réel) et v3 (stuff à 4 emplacements) → v4
   D.migrate = function (o) {
+    if (o && D.OLD_CLASS[o.cls]) { o.cls = D.OLD_CLASS[o.cls]; if (o.v === 4) o.v = 4; }
     if (!o || !D.CLASSES[o.cls]) return null;
     if (o.v === 4) return o;
     if (o.v === 3) {

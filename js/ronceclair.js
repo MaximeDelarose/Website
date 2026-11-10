@@ -452,7 +452,9 @@
           cam.shake = Math.max(cam.shake, e.crit ? 5 : 2); break;
         case "heal": if (u) { floatAt(u, "+" + e.n, "#7df0a0", false); burstCell(u.x, u.y, "#7df0a0"); } SFX.heal(); break;
         case "shield": if (u) floatAt(u, "+" + e.n + " bouclier", "#9ad7ff", false); break;
-        case "buff": if (u) floatAt(u, (e.v > 0 ? "+" : "") + e.v + " " + e.st.toUpperCase(), e.v > 0 ? "#ffd257" : "#ff8a7a", false); break;
+        case "buff": if (u) { if (e.st === "dot") floatAt(u, "Poison", "#9be86a", false); else floatAt(u, (e.v > 0 ? "+" : "") + e.v + " " + ({ po: "PO", crit: "% crit", dom: "Dom." }[e.st] || e.st.toUpperCase()), e.v > 0 ? "#ffd257" : "#ff8a7a", false); } break;
+        case "tackle": if (u) floatAt(u, "Tacle ! -1 PA -1 PM", "#ff8a7a", false); break;
+        case "dodge": if (u) floatAt(u, "Esquive " + (e.st === "pa" ? "PA" : "PM"), "#9ad7ff", false); break;
         case "die": if (vu) V.dying[e.id] = 0.7; SFX.die(); break;
         case "cast": {
           var cu = TACT.unit(F, e.id), sp = TACT.spell(e.sid), col = (DATA.ELEMENTS[sp.el] || { col: "#fff" }).col;
@@ -853,7 +855,7 @@
     };
   };
   RC.arena = function () { return F ? { w: F.w, h: F.h } : null; };
-  // accès console pour tester : RC_DEBUG.start("lanceur"), .level(8), .gold(500), .item(3), .fight(["limace","renard"]), .zone(2)
+  // accès console pour tester : RC_DEBUG.start("archer"), .level(8), .gold(500), .item(3), .fight(["limace","renard"]), .zone(2)
   window.RC_DEBUG = {
     start: function (cls, name, fur) { var p = RC.createProfile(cls, name || "Test", fur || "roux"); RC.start(p); },
     level: function (n) { while (profile.lvl < n) { profile.lvl++; profile.pts += DATA.PTS_PER_LEVEL; } dirtyStats(); profile.hp = maxHp(); ui("hud"); },
@@ -883,8 +885,8 @@
       else if (e.code === "KeyR" || e.code === "KeyH") usePotion();
       else if (e.code === "KeyI") ui("panel", "inventaire"); else if (e.code === "KeyC") ui("panel", "stats"); else if (e.code === "KeyK") ui("panel", "sorts"); else if (e.code === "KeyJ") ui("panel", "quetes"); else if (e.code === "Escape") ui("panel", "menu");
     } else if (mode === "fight" && F) {
-      var m = /^(Digit|Numpad)(\d)$/.exec(e.code);
-      if (m) { var me = myUnit(); if (me) { var idx = (+m[2] || 10) - 1; if (me.spells[idx]) selectSpell(me.spells[idx]); } }
+      var m = /^(Digit|Numpad)(\d)$/.exec(e.code), xk = ["KeyQ", "KeyW", "KeyE", "KeyT", "KeyY", "KeyU", "KeyI", "KeyO"].indexOf(e.code);
+      if (m || xk >= 0) { var me = myUnit(); if (me) { var idx = m ? (+m[2] || 10) - 1 : 10 + xk; if (me.spells[idx]) selectSpell(me.spells[idx]); } }
       else if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); if (F.phase === "placement") readyUp(); else endTurn(); }
       else if (e.code === "KeyR" || e.code === "KeyP") usePotionFight();
       else if (e.code === "Escape") { if (V.sel) V.sel = null; else ui("panel", "menu"); }

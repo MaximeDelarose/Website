@@ -202,6 +202,10 @@
     grid(g, [".hhh.", "hhdhh", "hdhdh", "hddhh"], { h: "#b6bfd2", d: "#7a8398" }, OX + 12, OY + 1);
     px(g, OX + 14, OY, "#e8eefc"); px(g, OX + 14, OY - 1, "#d94f4f");
   };
+  EQ.tete.capuche = function (g) {
+    grid(g, ["..ddd..", ".dDDDd.", "dDDDDDd", "dDd.dDd"], { d: "#3a3a52", D: "#262638" }, OX + 10, OY - 1);
+    px(g, OX + 12, OY + 3, "#ffd257");
+  };
   EQ.tete.couronne = function (g) {
     grid(g, ["y.y.y", "yyyyy", "yrybr"], { y: "#ffd257", r: "#e0583a", b: "#5aa8ff" }, OX + 12, OY + 1);
     checker(g, OX + 12, OY + 2, 5, 1, "#c98a1f");
@@ -250,6 +254,14 @@
   EQ.main.epee = function (g) {
     rect(g, OX + 18, OY + 2, 1, 11, "#d9c9a0"); rect(g, OX + 17, OY + 3, 1, 9, "#a8946a"); px(g, OX + 18, OY + 1, "#fff6d8");
     rect(g, OX + 16, OY + 13, 5, 1, "#7a5230"); rect(g, OX + 18, OY + 14, 1, 3, "#5a3a1c");
+  };
+  EQ.main.arc = function (g) {
+    [[19, 3], [20, 4], [20, 5], [21, 6], [21, 7], [21, 8], [21, 9], [20, 10], [20, 11], [19, 12]].forEach(function (a) { px(g, OX + a[0], OY + a[1], "#8a5a2b"); });
+    for (var y = 3; y <= 12; y++) px(g, OX + 18, OY + y, "#f3e4bf");
+    px(g, OX + 19, OY + 7, "#c98a3a");
+  };
+  EQ.main.dague = function (g) {
+    rect(g, OX + 18, OY + 6, 1, 6, "#d6d6e0"); px(g, OX + 18, OY + 5, "#ffffff"); rect(g, OX + 17, OY + 12, 3, 1, "#7a5230"); rect(g, OX + 18, OY + 13, 1, 2, "#3a2412");
   };
   EQ.main.lanterne = function (g) {
     rect(g, OX + 18, OY + 5, 1, 12, "#7a5230");
@@ -341,6 +353,14 @@
     source: function (g) { ellD(g, 8, 9.5, 4.6, 5, ["#1f5c33", "#3d8a4e", "#7df0a0", "#d4f7da"]); px(g, 8, 2, "#7df0a0"); px(g, 8, 3, "#7df0a0"); rect(g, 7, 4, 2, 2, "#7df0a0"); rect(g, 7, 8, 2, 4, "#fff"); rect(g, 5, 9, 6, 2, "#fff"); },
     ronces: function (g) { lineP(g, 2, 13, 6, 8, "#3d8a4e"); lineP(g, 6, 8, 5, 3, "#3d8a4e"); lineP(g, 6, 8, 12, 6, "#4fae5f"); lineP(g, 12, 6, 13, 12, "#4fae5f"); [[5, 3], [12, 5], [13, 12], [2, 12], [9, 7]].forEach(function (a) { px(g, a[0], a[1], "#e8584a"); px(g, a[0] + 1, a[1] - 1, "#fff"); }); },
     floraison: function (g) { [[0, -3], [0, 3], [-3, 0], [3, 0], [2, 2], [-2, -2], [-2, 2], [2, -2]].forEach(function (a) { ellD(g, 8 + a[0], 8 + a[1], 1.9, 1.9, ["#d94f8a", "#ff9fd0", "#ffe0ef"]); }); ellD(g, 8, 8, 2.2, 2.2, ["#c98a1f", "#ffd257", "#fff0a0"]); },
+    epee: function (g) { lineP(g, 3, 12, 12, 3, "#e8eefc"); lineP(g, 4, 12, 12, 4, "#9aa4bc"); lineP(g, 2, 9, 6, 13, "#a8763a"); lineP(g, 1, 14, 3, 12, "#5a3a1c"); px(g, 12, 2, "#ffffff"); },
+    fleche: function (g) { lineP(g, 2, 13, 12, 3, "#f3e4bf"); lineP(g, 12, 3, 13, 6, "#9aa4bc"); lineP(g, 12, 3, 9, 2, "#9aa4bc"); px(g, 13, 2, "#ffffff"); lineP(g, 2, 13, 2, 10, "#e8584a"); lineP(g, 2, 13, 5, 13, "#e8584a"); },
+    dague: function (g) { lineP(g, 4, 11, 12, 3, "#d6d6e0"); lineP(g, 5, 11, 12, 4, "#8791aa"); rect(g, 2, 11, 5, 1, "#7a5230"); lineP(g, 2, 14, 4, 12, "#3a2412"); px(g, 12, 2, "#ffffff"); },
+    poison: function (g) { ellD(g, 8, 9, 4.6, 5, ["#2e5a1a", "#6fbf3a", "#b8f080", "#eaffc8"]); rect(g, 7, 3, 2, 3, "#6fbf3a"); px(g, 6, 8, "#1a2a10"); px(g, 10, 8, "#1a2a10"); rect(g, 7, 11, 3, 1, "#1a2a10"); },
+    bombe: function (g) { ellD(g, 8, 10, 4.6, 4.6, ["#14141c", "#3a3a52", "#8a8aa8"]); rect(g, 8, 4, 1, 2, "#a8763a"); px(g, 9, 3, "#ffd257"); px(g, 10, 2, "#ff7b4a"); px(g, 8, 2, "#ff7b4a"); },
+    bond: function (g) { lineP(g, 2, 13, 6, 6, "#9ad7ff"); lineP(g, 6, 6, 10, 4, "#9ad7ff"); lineP(g, 10, 4, 13, 9, "#9ad7ff"); lineP(g, 13, 9, 13, 13, "#e0f2ff"); lineP(g, 11, 11, 13, 13, "#e0f2ff"); lineP(g, 15, 11, 13, 13, "#e0f2ff"); },
+    oeil: function (g) { ellD(g, 8, 8, 6, 3.6, ["#6a4426", "#f3e4bf", "#ffffff"]); ellD(g, 8, 8, 2.6, 2.6, ["#14532d", "#3ecf7a", "#c8ffe0"]); px(g, 8, 8, "#14141c"); },
+    ombre: function (g) { ellD(g, 8, 9, 5, 5.4, ["#14141c", "#26263a", "#46466a"]); px(g, 6, 8, "#ffd257"); px(g, 10, 8, "#ffd257"); checker(g, 2, 13, 12, 2, "rgba(80,80,120,.6)"); },
     potion: function (g) { ellD(g, 8, 9, 5, 4.6, ["#7a1e38", "#d94f6f", "#ffa9bd"]); rect(g, 8, 3, 2, 3, "#4fae5f"); rect(g, 10, 3, 3, 2, "#6fd07f"); },
     dash: function (g) { rect(g, 3, 6, 8, 2, "#9ad7ff"); rect(g, 5, 9, 6, 1, "#5aa8ff"); for (var i = 0; i < 4; i++) { px(g, 10 + i, 6 - i + 1, "#e0f2ff"); px(g, 10 + i, 7 + i - 1, "#e0f2ff"); } },
     nut: function (g) { ellD(g, 8, 9, 4.2, 4.8, ["#8a4f14", "#e8a838", "#fcd27a"]); ellD(g, 8, 5.5, 4.4, 2.4, ["#2e1a0a", "#6a4426", "#9a6a3a"]); px(g, 8, 2, "#4a2d16"); },

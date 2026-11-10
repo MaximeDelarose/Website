@@ -10,6 +10,7 @@
 .rcu-ico { width: 32px; height: 32px; image-rendering: pixelated; vertical-align: middle; }
 .rcu-ico.sm { width: 18px; height: 18px; } .rcu-ico.big { width: 44px; height: 44px; }
 .grow { flex: 1; }
+.rc-ui kbd { color: var(--rc-ink); background: var(--rc-parch); border: 2px solid var(--rc-w3); padding: 0 5px; font: 800 .75rem "Nunito", system-ui, sans-serif; }
 
 /* ---------- boutons ---------- */
 .rcu-btn { font: inherit; font-weight: 900; cursor: pointer; border: 0; padding: 8px 18px; margin: 4px; background: linear-gradient(#ffd96b, #e0a82a 60%, #c98a1f); color: var(--rc-ink); text-shadow: 0 1px 0 rgba(255, 255, 255, .45);
@@ -70,7 +71,7 @@
 .rcu-stats { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
 .rcu-stats li { display: flex; justify-content: space-between; font-size: .88rem; border-bottom: 1px dashed rgba(255, 255, 255, .12); padding: 2px 0; } .rcu-stats b { color: #fff; }
 .rcu-stats.tight li { font-size: .8rem; }
-.rcu-spellrow { display: flex; gap: 8px; } .rcu-sk { background: rgba(0, 0, 0, .4); border: 3px solid var(--rc-w3); padding: 2px; } .rcu-sk.lock { opacity: .35; filter: grayscale(1); }
+.rcu-spellrow { display: flex; flex-wrap: wrap; gap: 5px; } .rcu-sk { background: rgba(0, 0, 0, .4); border: 3px solid var(--rc-w3); padding: 2px; } .rcu-sk.lock { opacity: .35; filter: grayscale(1); }
 .rcu-actions { display: flex; align-items: center; gap: 8px; padding: 8px 18px 16px; position: relative; }
 .rcu-field { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 800; }
 .rcu-field input, .rcu-join input, .rcu-link { font: inherit; font-weight: 800; background: #fff5dc; color: var(--rc-ink); border: 3px solid var(--rc-w3); padding: 7px 10px; width: 190px; box-sizing: border-box; }
@@ -82,7 +83,7 @@
 .rcu-bars { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; }
 .rcu-bars li { display: flex; align-items: center; justify-content: space-between; font-size: .82rem; font-weight: 800; }
 .rcu-bars i { display: flex; gap: 2px; } .rcu-bars b { width: 14px; height: 10px; background: #1a1008; border: 1px solid #5a4028; } .rcu-bars b.on { background: linear-gradient(#ffe69a, #e0a82a); border-color: #ffd257; }
-.rcu-skills { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rcu-skills { list-style: none; margin: 0; padding: 0 4px 0 0; display: grid; gap: 6px; max-height: 330px; overflow-y: auto; } .rcu-skills em { font-style: normal; color: var(--rc-gold); font-size: .72rem; font-weight: 700; }
 .rcu-skills li { display: flex; gap: 8px; align-items: flex-start; font-size: .8rem; } .rcu-skills li b { display: block; color: #fff; } .rcu-skills small { opacity: .85; line-height: 1.25; display: block; }
 .rcu-skills em { font-style: normal; color: var(--rc-gold); font-size: .72rem; }
 
@@ -136,7 +137,8 @@
 .rcu-statrows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .rcu-statrows li { display: flex; align-items: center; gap: 10px; } .rcu-statrows li > div { flex: 1; } .rcu-statrows small { display: block; opacity: .85; }
 .rcu-pstats { display: grid; gap: 10px; } .gold { color: var(--rc-gold); }
 .rcu-xpline { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: .85rem; } .rcu-xpline .rcu-xp { flex: 1; }
-.rcu-spellbook { display: grid; gap: 8px; } .rcu-spell { display: flex; gap: 12px; align-items: center; background: rgba(0, 0, 0, .3); border: 3px solid var(--rc-w3); padding: 8px 10px; }
+.rcu-spellbook { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; } .rcu-spellhead { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; margin-bottom: 4px; } .rcu-spellhead b { color: var(--rc-gold); font-size: 1.05rem; } .rcu-spico { position: relative; flex: none; } .rcu-spico em { position: absolute; right: -6px; bottom: -6px; font-style: normal; font-size: .68rem; font-weight: 900; background: var(--rc-w0); color: var(--rc-gold); border: 2px solid var(--rc-ink); padding: 0 4px; }
+@media (max-width: 860px) { .rcu-spellbook { grid-template-columns: 1fr; } } .rcu-spell { display: flex; gap: 12px; align-items: center; background: rgba(0, 0, 0, .3); border: 3px solid var(--rc-w3); padding: 8px 10px; }
 .rcu-spell small { display: block; opacity: .88; font-size: .8rem; line-height: 1.3; } .rcu-spell.lock { opacity: .5; }
 .rcu-spico { text-align: center; flex: none; } .rcu-spico small { font-weight: 900; color: var(--rc-gold); }
 .rcu-quests { display: grid; gap: 8px; } .rcu-quest-card { background: rgba(0, 0, 0, .3); border: 3px solid var(--rc-w3); padding: 8px 12px; position: relative; } .rcu-quest-card small { display: block; opacity: .9; margin: 2px 0; }
@@ -237,3 +239,8 @@
 /* plein écran : la croix de sortie de GameKit est en haut à droite, on décale les menus */
 .rc-stage.gk-fs .rcu-menus { right: 58px; }
 @media (max-width: 860px) { .rc-stage.gk-fs .rcu-menus { right: 8px; top: 58px; } .rc-stage.gk-fs .rcu-hud:not(.fight) .rcu-bar { right: 8px; } }
+
+/* plein écran : pas de bouton Réglages du site en bas à gauche, croix de sortie discrète */
+.rc-stage.gk-fs .gk-gear, .rc-stage.gk-fs .gk-fsbtn, .rc-stage.gk-fs .gk-fab { display: none !important; }
+.rc-stage.gk-fs > .gk-fs-exit, .rc-stage.is-full .gk-fs-exit { width: 32px; height: 32px; min-width: 0; min-height: 0; font-size: .9rem; opacity: .55; top: 6px; right: 6px; left: auto; bottom: auto; } .rc-stage.gk-fs > .gk-fs-exit:hover { opacity: 1; }
+.rc-stage.gk-fs .rcu-menus { right: 46px; top: 6px; }
