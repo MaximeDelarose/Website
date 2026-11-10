@@ -225,11 +225,28 @@
     beep(200, 0.4, "sawtooth", 0.06); beep(140, 0.5, "sawtooth", 0.06, 0.25);
     setTimeout(function () {
       if (state !== "over") return;
+      var lbOk = window.Leaderboard && Leaderboard.configured() && score > 0;
+      var name = String(load("suika-name", ""));
       show('<h2>' + (maxLevel >= LEVELS - 1 ? "Grand Chêne atteint !" : "Partie terminée") + '</h2>' +
         '<p class="game-score">Score : <strong>' + score + '</strong>' + (record ? " · 🏆 nouveau record !" : "") + '</p>' +
         '<p>Meilleur écureuil : <strong>' + NAMES[maxLevel] + '</strong> · Record : <strong>' + best + '</strong></p>' +
+        (lbOk ? '<form class="submit-score" data-submit><label for="sk-name">Ton pseudo pour le classement</label><div class="submit-row">' +
+          '<input id="sk-name" type="text" maxlength="20" minlength="2" required autocomplete="nickname" value="' + name.replace(/"/g, "&quot;") + '">' +
+          '<button class="btn btn-alt btn-small" type="submit">Envoyer</button></div><p class="game-small" data-submit-msg aria-live="polite"></p></form>' : "") +
         '<div class="btn-row"><button class="btn" type="button" data-again>↻ Rejouer</button></div>');
       var ag = card.querySelector("[data-again]"); if (ag) { ag.addEventListener("click", start); ag.focus(); }
+      var form = card.querySelector("[data-submit]");
+      if (form) form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var input = form.querySelector("input"), btn = form.querySelector("button"), msg = form.querySelector("[data-submit-msg]");
+        var n = input.value.trim();
+        store("suika-name", n);
+        btn.disabled = true; msg.textContent = "Envoi…";
+        Leaderboard.submit("suika", n, score, { level: maxLevel }).then(function (res) {
+          msg.textContent = "Envoyé ! " + (res && res.rank ? "Tu es " + res.rank + (res.rank === 1 ? "er" : "e") + "." : "");
+          document.querySelectorAll('[data-leaderboard="suika"]').forEach(function (el) { el.removeAttribute("data-lb-rendered"); Leaderboard.render(el); });
+        }).catch(function (err) { msg.textContent = Leaderboard.message(err); btn.disabled = false; });
+      });
     }, 900);
   }
 
@@ -442,5 +459,5 @@
   window.SuikaMode = { leave: function () { if (state === "play") pause(); } };
 
   // pour les tests automatisés
-  window.__suika = { balls: function () { return balls; }, state: function () { return state; }, score: function () { return score; }, setAim: function (x) { aimX = x; }, drop: drop };
+  window.__suika = { balls: function () { return balls; }, state: function () { return state; }, score: function () { return score; }, setAim: function (x) { aimX = x; }, drop: drop, gameOver: gameOver, addScore: addScore };
 })();

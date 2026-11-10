@@ -153,8 +153,11 @@
             <li>Si un écureuil reste <strong>au-dessus de la ligne</strong>, la partie est finie. <kbd>P</kbd> ou <kbd>Échap</kbd> pour la pause.</li>
           </ul>
         </div>
-        <div class="panel game-lb">
+        <div class="panel game-lb" data-lb-for="solo">
           <div data-leaderboard="merger" data-limit="10" data-title="Meilleurs écureuils"></div>
+        </div>
+        <div class="panel game-lb" data-lb-for="suika" hidden>
+          <div data-leaderboard="suika" data-limit="10" data-title="Meilleurs écureuils Suika"></div>
         </div>
       </div>
     </div>
@@ -184,7 +187,7 @@
   <script src="js/vendor/supabase-2.45.4.min.js"></script>
   <script src="js/merger-art.js?v=20261104mg220"></script>
   <script src="js/merger.js?v=20261107vs2"></script>
-  <script src="js/merger-coop.js?v=20261110sk1"></script>
-  <script src="js/suika.js?v=20261118su2"></script>
+  <script src="js/merger-coop.js?v=20261110sk2"></script>
+  <script src="js/suika.js?v=20261110sk2"></script>
 </body>
 </html>
