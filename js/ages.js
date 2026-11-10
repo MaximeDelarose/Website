@@ -343,7 +343,7 @@
     }
     if (k === "banner") lines.push("Aura " + ((L.radius + AGES[w.age].rg)).toFixed(1) + " cases · cadence +" + Math.round(L.buffRate[w.age] * (1 + 0.25 * (b.lvl - 1)) * 100) + " % · dégâts +" + Math.round(L.buffDmg[w.age] * (1 + 0.25 * (b.lvl - 1)) * 100) + " %");
     if (b.flag === 1) lines.push("⚠ Aucune rampe d'accès à moins de 7 cases : pose une rampe 🛤 au bord de la route.");
-    if (k === "barracks") lines.push(b.mode === 4 ? "Mode Libre : touche un point de la route dans le cercle jaune pour y poster les troupes." : "Troupes automatiques dans le cercle jaune. 🎯 Entrée : postées en amont, visent le début du cortège · Sortie : en aval · Fort · Près du camp · Libre : tu choisis le point.");
+    if (k === "barracks") lines.push(b.mode === 4 ? "Mode Libre : touche un point de la route dans le cercle jaune pour y poster les troupes." : "Troupes automatiques dans le cercle jaune (zone centrée sur le camp). 🎯 Entrée : postées en amont, visent le début du cortège · Sortie : en aval · Fort · Près du camp · Libre : tu choisis le point.");
     if (k === "airfield" || k === "heli") lines.push("Touche la carte pour déplacer la zone de patrouille.");
     if (k === "garrison") lines.push("Les tireurs se postent au bord de la route.");
     var canTarget = k === "barracks" || !!(st && (k === "shoot" || k === "mortar" || k === "pulse" || k === "chain" || k === "garrison" || k === "heli"));

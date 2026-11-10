@@ -172,7 +172,7 @@
     if (L.kind === "pit") { b.lifeT = L.life; }
     if (L.kind === "barracks" || L.kind === "airfield" || L.kind === "heli") {
       var rp = nearestRoadPoint(map, b.x, b.y);
-      if (L.kind === "barracks") { var rr = findRamp(w, b); b.rally = rr ? { x: rr.rpt.x, y: rr.rpt.y } : rp; }
+      if (L.kind === "barracks") b.rally = { x: b.x, y: b.y }; // la zone d'action est centrée sur le camp, pas sur la rampe
       else b.rally = rp;
       for (var i = 0; i < (L.units || 1); i++) b.slots.push({ u: 0, t: 0.6 + i * 0.7 });
     }
@@ -517,7 +517,7 @@
   function manageSlots(sim, w, b, dt) {
     var L = LINES[b.line], st = bstat(sim, w, b), ramp = null;
     b.flag = 0;
-    if (L.kind === "barracks") { ramp = findRamp(w, b); if (!ramp) b.flag = 1; else if (!b.rally || b.rally.x !== ramp.rpt.x || b.rally.y !== ramp.rpt.y) { b.rally = { x: ramp.rpt.x, y: ramp.rpt.y }; b.anchorKey = ""; } }
+    if (L.kind === "barracks") { ramp = findRamp(w, b); if (!ramp) b.flag = 1; }
     for (var i = 0; i < b.slots.length; i++) {
       var sl = b.slots[i], u = sl.u ? unitById(w, sl.u) : null;
       if (u && !u.dead) continue;
@@ -527,7 +527,6 @@
       var unit = { id: sim.nextId++, b: b.id, owner: b.owner, line: b.line, slot: i, kind: L.kind === "barracks" ? "def" : L.kind === "garrison" ? "arch" : L.kind === "airfield" ? "plane" : "heli",
         x: b.x, y: b.y, hp: st.hp || 1, hpmax: st.hp || 1, ang: -Math.PI / 2, cd: 0.5, route: [], arrived: false, target: 0, atkT: 0, rcd: 2, spot: null, orb: i * (Math.PI * 2 / Math.max(1, b.slots.length)) + sim.rng() };
       if (unit.kind === "def") {
-        if (!b.rally || dist(b.rally.x, b.rally.y, ramp.rpt.x, ramp.rpt.y) > 8 * T) b.rally = { x: ramp.rpt.x, y: ramp.rpt.y };
         unit.route = [{ x: ramp.x, y: ramp.y }, { x: ramp.rpt.x, y: ramp.rpt.y }];
       } else if (unit.kind === "arch") {
         unit.spot = pickSpot(sim, w, b, i);
@@ -631,7 +630,7 @@
         }
         u.target = tg ? tg.id : 0;
       }
-      var ak = md + "|" + b.lvl + "|" + (b.free ? Math.round(b.free.x) + "," + Math.round(b.free.y) : ""); if (b.anchorKey !== ak) { b.anchorKey = ak; b.anchor = md === 4 ? (b.free || { x: rally.x, y: rally.y }) : campAnchor(sim, rally, zone, md); }
+      var ak = md + "|" + b.lvl + "|" + (b.free ? Math.round(b.free.x) + "," + Math.round(b.free.y) : ""); if (b.anchorKey !== ak) { b.anchorKey = ak; b.anchor = md === 4 ? (b.free || nearestRoadPoint(sim.map, rally.x, rally.y)) : campAnchor(sim, rally, zone, md); }
       var sx = b.anchor.x + Math.cos(u.orb) * 15, sy = b.anchor.y + Math.sin(u.orb) * 15;
       if (tg) {
         var dx = tg.x - u.x, dy = tg.y - u.y, dd2 = Math.sqrt(dx * dx + dy * dy), reach = L.reach + tg.r * 0.6;
@@ -688,7 +687,8 @@
   // point de la route (dans la zone) où les troupes attendent : 0 entrée (amont), 1 sortie (aval), 2/3 centre = pied de la rampe
   function campAnchor(sim, c, zone, md) {
     var best = { x: c.x, y: c.y }, bs = null;
-    if (md === 2 || md === 3) return best;
+    var near = nearestRoadPoint(sim.map, c.x, c.y) || best;
+    if (md === 2 || md === 3) return near;
     for (var k = 0; k < sim.map.paths.length; k++) {
       var P = sim.map.paths[k];
       for (var sP = 0; sP <= P.len; sP += 8) {
@@ -697,7 +697,7 @@
         if (bs === null || key < bs) { bs = key; best = { x: q.x, y: q.y }; }
       }
     }
-    return best;
+    return bs === null ? near : best;
   }
 
   /* ---- projectiles */
