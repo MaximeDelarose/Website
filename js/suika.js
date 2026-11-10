@@ -412,7 +412,7 @@
   document.addEventListener("fullscreenchange", syncFull);
   document.addEventListener("webkitfullscreenchange", syncFull);
   var fsBtn = document.querySelector("[data-game-fullscreen]");
-  if (fsBtn) fsBtn.addEventListener("click", function () { if (isFull()) exitFull(); else enterFull(); });
+  if (fsBtn) fsBtn.addEventListener("click", function () { if (stage.hidden) return; if (isFull()) exitFull(); else enterFull(); });
   var fsExit = stage.querySelector("[data-fs-exit]");
   if (fsExit) fsExit.addEventListener("click", exitFull);
 
@@ -423,6 +423,7 @@
   /* ---------- boucle ---------- */
   var last = performance.now(), acc = 0;
   function loop(now) {
+    if (stage.hidden) { last = now; requestAnimationFrame(loop); return; }   // mode Suika non choisi : rien à faire
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (state === "play") {
       if (keys.ArrowLeft) { aimX -= 320 * dt; clampAim(); }
@@ -436,6 +437,9 @@
   }
   menu();
   requestAnimationFrame(loop);
+
+  // utilisé par js/merger-coop.js quand on change de mode (Solo / Coop / Suika)
+  window.SuikaMode = { leave: function () { if (state === "play") pause(); } };
 
   // pour les tests automatisés
   window.__suika = { balls: function () { return balls; }, state: function () { return state; }, score: function () { return score; }, setAim: function (x) { aimX = x; }, drop: drop };

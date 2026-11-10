@@ -252,3 +252,10 @@ html.gk-reduce-fx .game-overlay, html.gk-reduce-fx .game-overlay > * { animation
 .pool-field { min-width: 0; }
 .pool-field input { width: 100%; min-width: 0; box-sizing: border-box; }
 .pool-card .btn { white-space: normal; }
+
+/* Merger : trois onglets (Solo, Coop, Suika) qui tiennent sur toute la largeur du téléphone */
+@media (max-width: 600px) {
+  .game-head:has(.mg-modes) { flex-wrap: wrap; align-items: center; }
+  .game-head .mg-modes { order: 10; flex: 0 0 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; margin-left: 0; }
+  .game-head .mg-modes button { min-width: 0; padding-inline: 4px; font-size: .95rem; white-space: nowrap; }
+}

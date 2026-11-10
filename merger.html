@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Merger · AkarisuMD</title>
+  <title>Merger & Suika · AkarisuMD</title>
   <meta name="description" content="Merger : lâche les écureuils deux par deux, 3 de la même couleur qui se touchent disparaissent. Un petit jeu de réflexion en solo ou en coop à 2 sur le même ordinateur.">
   <meta property="og:title" content="Merger · AkarisuMD">
   <meta property="og:description" content="Merger : lâche les écureuils deux par deux, 3 de la même couleur qui se touchent disparaissent. Un petit jeu de réflexion en solo ou en coop à 2 sur le même ordinateur.">
@@ -27,7 +27,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261118ft1">
   <link rel="stylesheet" href="css/party.css?v=20261107vs2">
-  <link rel="stylesheet" href="css/gamekit.css?v=20261114gk3">
+  <link rel="stylesheet" href="css/gamekit.css?v=20261118sk3">
 </head>
 <body data-page="merger">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -67,6 +67,7 @@
         <div class="mg-modes" role="tablist" aria-label="Mode de jeu">
           <button type="button" role="tab" data-mode="solo" aria-selected="true">🐿️ Solo</button>
           <button type="button" role="tab" data-mode="coop" aria-selected="false">👥 Coop à 2</button>
+          <button type="button" role="tab" data-mode="suika" aria-selected="false">🍉 Suika</button>
         </div>
         <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
       </div>
@@ -102,6 +103,21 @@
         </div>
       </div>
 
+      <div class="game-stage suika-stage" data-suika hidden>
+        <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Suika"></canvas>
+        <button class="fs-exit" type="button" data-fs-exit aria-label="Quitter le plein écran">✕</button>
+        <div class="game-hud" data-hud hidden>
+          <button class="hud-btn" type="button" data-mute aria-label="Couper le son">🔊</button>
+          <button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button>
+        </div>
+        <div class="game-overlay" data-overlay>
+          <div class="panel game-card" data-card>
+            <p>Chargement du jeu…</p>
+            <noscript><p>Ce jeu a besoin de JavaScript.</p></noscript>
+          </div>
+        </div>
+      </div>
+
       <div class="game-info">
         <div class="panel game-help" data-help="coop" hidden>
           <h2 class="section-title">Mode Coop à 2</h2>
@@ -115,6 +131,15 @@
             <li><strong>3 personnages identiques</strong> (ou plus) qui se touchent éclatent ; ce qui tombe peut en former d'autres : <strong>réaction en chaîne</strong>. Tous les 4 tirs, une <strong>pluie d'écureuils</strong> tombe du ciel.</li>
             <li><strong>Boule multicolore</strong> (10 % de chance) : elle prend la couleur qui complète le meilleur groupe. <strong>Grenade</strong> posée dans le terrain : tire dedans, elle explose et rapporte des points. Les gros combos offrent un <strong>éclair</strong> ou une <strong>bombe à retardement</strong>.</li>
             <li>La partie s'arrête quand la pile reste au-dessus de la ligne pointillée. <kbd>Échap</kbd> pour la pause et les réglages.</li>
+          </ul>
+        </div>
+        <div class="panel game-help" data-help="suika" hidden>
+          <h2 class="section-title">Comment ça marche</h2>
+          <ul>
+            <li>Déplace la souris (ou le doigt) pour placer l'écureuil, <strong>clique</strong> (ou relève le doigt) pour le lâcher. Au clavier : <kbd>←</kbd><kbd>→</kbd> puis <kbd>Espace</kbd>.</li>
+            <li>Deux écureuils <strong>identiques</strong> qui se touchent <strong>fusionnent</strong> en un écureuil plus gros. Enchaîne les fusions pour faire un combo.</li>
+            <li>11 écureuils à découvrir, du plus petit jusqu'au <strong>Grand Chêne</strong>. Fusionner deux Grands Chênes les fait disparaître pour un gros bonus.</li>
+            <li>Si la pile reste <strong>au-dessus de la ligne pointillée</strong> trop longtemps, la partie est finie. <kbd>P</kbd> ou <kbd>Échap</kbd> pour la pause.</li>
           </ul>
         </div>
         <div class="panel game-help" data-help="solo">
@@ -160,5 +185,6 @@
   <script src="js/merger-art.js?v=20261104mg220"></script>
   <script src="js/merger.js?v=20261107vs2"></script>
   <script src="js/merger-coop.js?v=20261107vs2"></script>
+  <script src="js/suika.js?v=20261118su2"></script>
 </body>
 </html>

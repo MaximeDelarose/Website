@@ -47,7 +47,6 @@
   var GAMES = [
     { id: "jeu", title: "Écureuil Survivor", ico: "🐿️" },
     { id: "merger", title: "Merger", ico: "🟣" },
-    { id: "suika", title: "Suika", ico: "🍉" },
     { id: "dice", title: "Écureuil Dice", ico: "🎲" },
     { id: "king-dice", title: "King Dice", ico: "👑" },
     { id: "ages", title: "Age of Defense", ico: "🏰" },
