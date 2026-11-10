@@ -103,3 +103,10 @@
 .reduced-motion .sw-mhearts i, .reduced-motion .sw-mh, .reduced-motion .sw-b.typing i { animation: none; }
 .reduced-motion .sw-b.typing i { opacity: 0.8; }
 @media (prefers-reduced-motion: reduce) { .sw-b { animation: none; } }
+
+/* messagerie libre : champ de saisie (clavier natif) */
+.sw-compose { flex: none; padding: 8px 2px 2px; border-top: 2px solid #ffd9e5; --cmp-bg: #fff; --cmp-fg: #58433f; --cmp-ph: #b7a09b; --cmp-accent: #ff4f87; --cmp-accent-fg: #fff; }
+.sw-compose.hide { display: none; }
+.sw-compose .cmp-in { box-shadow: inset 0 0 0 1.5px #ffd0de; }
+.sw-chat.kb-open { padding-bottom: 8px; }
+.sw-bar:empty { display: none; }

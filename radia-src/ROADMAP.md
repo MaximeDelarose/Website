@@ -249,3 +249,10 @@ Tests unitaires : `npx vitest run` (≈ 1240).
 - Snapchien : présence (écrit… / présent / reste là / parti), états Envoyé · Reçu · Ouvert · Capture d'écran (seulement s'ils arrivent dans la simulation), snaps spontanés (selfie, miroir, sport, voiture, resto, tenue, animal), demandes de selfie (jamais intimes, une relance au plus, aucune photo réelle), flammes entretenues.
 - Tindeur : nœuds dynamiques `~…` (`apps/brain/tindeurNodes.ts`) régénérés depuis leur identifiant (anciennes sauvegardes valides), réponses « en plus » (famille, amitié, « Tu as Snapchien ? »), relance après 3 jours, éloignement, bulles « prénom / interjection ».
 - ⬜ Reste : question « célibataire / l'autre (Auguste) » de Hugo côté Tindeur (déjà présente côté Snapchien).
+
+## Messageries LIBRES Tindeur & Snapchien — FAIT (voir docs/CONVERSATIONS.md)
+- Plus aucun choix multiple : champ de saisie natif (clavier iOS), bouton d'envoi, texte exact conservé, clavier suivi par `visualViewport`.
+- Moteur local de compréhension + réponses (65 intentions, argot/fautes, mémoire par personnage partagée entre les deux applications, 25 personnalités).
+- Tindeur : anciennes conversations migrées en vrais messages, relance après 3 jours, supprimer/bloquer définitifs, « Tu as Snapchien ? » → même personnage ajouté.
+- Snapchien : « écrit… », Bitmoji de présence, délais propres à chaque caractère (parfois répond bien plus tard).
+- ⬜ IA conversationnelle serveur : fonction `radia-chat` écrite et testée (logique pure) mais NON déployée et NON branchée au jeu ; test sur vrai iPhone non fait.

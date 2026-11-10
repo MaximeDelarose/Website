@@ -67,21 +67,44 @@ await shot('snap-ouvert');
 let s1 = await chat();
 check('le statut passe à « Ouvert » (sauvegardé)', s1.contacts.dylan.msgs[0].opened === true);
 await page.locator('.snc-vreply').click(); await sleep(800);
-check('« Répondre » amène à la conversation avec les réponses', (await page.locator('.snc-body.conv').count()) === 1 && (await page.locator('.snc-chip').count()) >= 4);
-const chips = await page.locator('.snc-chip').allInnerTexts();
-check('réponses proposées (dont « Mdr t\'as pas de t-shirt ? » pour un torse nu)', chips.includes('Mdr t\'as pas de t-shirt ?'), chips.join(' | '));
-await page.locator('.snc-chip', { hasText: 'Mdr t\'as pas de t-shirt' }).click(); await sleep(1800);
+check('« Répondre » amène à la conversation : champ de saisie, AUCUN choix multiple', (await page.locator('.snc-body.conv').count()) === 1 && (await page.locator('.snc-chip').count()) === 0 && (await page.locator('.cmp-in').count()) === 1);
+check('le champ est un vrai <input> de 16 px minimum avec bouton d\'envoi et bouton caméra', await page.evaluate(() => { const i = document.querySelector('.cmp-in'); return i.tagName === 'INPUT' && parseFloat(getComputedStyle(i).fontSize) >= 16 && !!document.querySelector('.cmp-send') && !!document.querySelector('.cmp-cam'); }));
+await page.locator('.cmp-in').fill('Mdrrrr mais pourquoi t\'as pas de t-shirt ?'); await page.locator('.cmp-send').click(); await sleep(700);
+check('mon message apparaît (à droite) avec mon texte exact', (await page.locator('.snc-thread .snc-b.out').last().innerText()) === 'Mdrrrr mais pourquoi t\'as pas de t-shirt ?');
+check('états de message lisibles (Envoyé / Reçu / Ouvert)', /Envoy|Re[çc]u|Ouvert/.test(await page.locator('.snc-deliv').first().innerText().catch(() => '')));
+let sawTyping = false, sawAvatar = false;
+for (let i = 0; i < 40 && !(sawTyping && sawAvatar); i++) { await sleep(250); sawTyping ||= (await page.locator('.snc-b.in.typing').count()) > 0; sawAvatar ||= (await page.locator('.snc-pres .snc-avatar').count()) > 0; }
+check('« écrit… » et le Bitmoji de Dylan apparaissent pendant qu\'il rédige', sawTyping && sawAvatar);
+await sleep(6000);
 const thread = await page.locator('.snc-thread .snc-b').allInnerTexts();
-check('Radia répond, Dylan répond selon sa personnalité', thread.length >= 2 && thread.some((t) => /t-shirt/.test(t)) && thread[thread.length - 1] !== thread[thread.length - 2], thread.join(' | '));
+check('Dylan répond au contenu (t-shirt)', thread.length >= 2 && thread.slice(-3).some((t) => /t-shirt|torse|chaud|sport|salle|séance|muscle|pourquoi|mdr/i.test(t)), thread.join(' | '));
+await page.locator('.cmp-in').fill('et sinon tu fe koi dans la vie ?'); await page.locator('.cmp-send').click();
+let t2 = ''; let delayed = false;
+for (let i = 0; i < 40; i++) {
+  await sleep(500);
+  t2 = (await page.locator('.snc-thread .snc-b.in').allInnerTexts()).slice(-3).join(' | ');
+  if (/entrepren|projet|boîte|boite|startup|sport|vie/i.test(t2)) break;
+  delayed = await page.evaluate(() => window.RADIA.save.data.fun.apps.snap.chat.contacts.dylan.msgs.some((m) => m.from === 'in' && m.at > Date.now() + 25_000)); // 7 % : « occupé », il répond bien plus tard
+  if (delayed) break;
+}
+check('réponse à une question libre (fautes d\'orthographe comprises), ou réponse différée (occupé)', /entrepren|projet|boîte|boite|startup|sport|vie/i.test(t2) || delayed, t2 + (delayed ? ' [différée]' : ''));
 await shot('conversation');
+// clavier iPhone simulé
+await page.evaluate((h0) => { const vv = Object.assign(new EventTarget(), { height: h0, width: 393, offsetTop: 0, offsetLeft: 0, scale: 1 }); Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true }); window.__vv = vv; }, H);
+await page.locator('.snc-head.conv .snp-x').first().click(); await sleep(400); await page.locator('.snc-row[data-cid="dylan"]').click(); await sleep(700);
+await page.evaluate((h0) => { window.__vv.height = h0 - 336; window.__vv.dispatchEvent(new Event('resize')); }, H); await sleep(400);
+const kb = await page.evaluate(() => { const b = document.querySelector('.snc-body.conv'); const i = document.querySelector('.cmp-in').getBoundingClientRect(); const th = document.querySelector('.snc-thread').getBoundingClientRect(); return { open: b.classList.contains('kb-open'), inputBottom: i.bottom, vh: window.__vv.height, thBottom: th.bottom, thTop: th.top }; });
+check('clavier ouvert : champ au-dessus du clavier, fil de messages intact', kb.open && kb.inputBottom <= kb.vh + 1 && kb.thBottom <= kb.inputBottom && kb.thTop >= 0, JSON.stringify(kb));
+await shot('clavier');
+await page.evaluate((h0) => { window.__vv.height = h0; window.__vv.dispatchEvent(new Event('resize')); }, H); await sleep(300);
 // snap de Radia : échange réciproque → flamme
-await page.locator('.snc-sendsnap').click(); await sleep(600);
+await page.locator('.cmp-cam').click(); await sleep(600);
 await page.locator('.modal-backdrop .actions button', { hasText: 'Mon sourire' }).click(); await sleep(9000); // réponses échelonnées
 s1 = await chat();
 check('envoyer un snap : Dylan répond par un snap (rouge) ; la flamme démarre à 1 (échange réciproque)', s1.contacts.dylan.flame.n === 1 && s1.contacts.dylan.msgs.some((m) => m.from === 'in' && m.kind === 'snap' && m.opened === false));
 check('flamme affichée à côté du nom (🔥 1)', (await page.locator('.snc-who .snc-fl').innerText()) === '🔥 1');
 // les messages texte seuls ne comptent pas pour les flammes
-await page.locator('.snc-chip').first().click(); await sleep(1400);
+await page.locator('.cmp-in').fill('ok bonne nuit'); await page.locator('.cmp-send').click(); await sleep(1400);
 s1 = await chat();
 check('un message texte ne fait pas progresser la flamme', s1.contacts.dylan.flame.n === 1);
 // supprimer un contact : il ne revient pas

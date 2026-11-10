@@ -64,9 +64,13 @@ export interface CharMem {
   memories: string[];
   /** Il s'est éloigné (intérêt perdu) ; il reste cordial mais n'écrit plus spontanément. */
   faded: boolean; blocked: boolean;
+  /** Dernière question qu'il lui a posée (« job », « hobby », « day »…) : sa réponse libre est lue comme une réponse. */
+  ask: string;
+  /** Mots que Radia a employés récemment (pour y revenir plus tard : « tu parlais de … »). */
+  said: string[];
 }
 export interface BrainState { v: 1; chars: Record<string, CharMem> }
 
 export interface Choice { id: string; text: string }
-export interface Beat { say: string[]; topic: TopicId; choices: Choice[]; /** vrai : il propose une photo / un snap en retour. */ wantsPhoto?: boolean }
+export interface Beat { say: string[]; topic: TopicId; choices: Choice[]; /** vrai : il propose une photo / un snap en retour. */ wantsPhoto?: boolean; /** Radia vient d'accepter son Snapchien : à ajouter à ses contacts. */ addSnap?: boolean; /** Il propose Snapchien. */ offersSnap?: boolean }
 export interface RngLike { next(): number; int(n: number): number }

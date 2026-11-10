@@ -204,7 +204,9 @@
 .snc-snap.seen { background: #26272b; color: #9a9ba3; font-weight: 600; cursor: default; }
 .snc-snap.seen .snc-sq { border: 2px solid #6b6c75; background: transparent; box-shadow: none; animation: none; }
 .snc-snap.out { align-self: flex-end; background: #1c1d21; color: #ffd400; }
-.snc-foot { flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px calc(var(--sar) + 10px) 8px calc(var(--sal) + 10px); border-top: 1px solid #1c1d21; }
+.snc-foot { flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; padding: 8px calc(var(--sar) + 10px) calc(var(--sab, 0px) + 8px) calc(var(--sal) + 10px); border-top: 1px solid #1c1d21; background: #101114; }
+.snc-body.kb-open .snc-foot { padding-bottom: 8px; }
+.snc-body.conv { background: #101114; }
 .snc-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 112px; overflow-y: auto; touch-action: pan-y; }
 .snc-chip { min-height: 38px; padding: 0 12px; border-radius: 19px; border: 1.5px solid #3a3b41; background: #17181b; color: #fff; font: 600 13.5px var(--font); cursor: pointer; }
 .snc-chip:active { background: #2b2c31; }

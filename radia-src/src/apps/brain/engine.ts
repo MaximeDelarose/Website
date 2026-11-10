@@ -12,12 +12,12 @@ import type { Beat, BrainState, CharMem, Choice, Persona, RngLike, TopicId } fro
 
 const DAY = 86_400_000;
 export const RADIA = 'Radia';
-const fill = (s: string): string => s.replace(/\{n\}/g, RADIA);
+export const fill = (s: string): string => s.replace(/\{n\}/g, RADIA);
 
-function pickFrom<T>(rng: RngLike, a: readonly T[]): T { return a[rng.int(a.length)]; }
+export function pickFrom<T>(rng: RngLike, a: readonly T[]): T { return a[rng.int(a.length)]; }
 /** Une réplique qu'il n'a pas dite récemment (14 dernières) ; si tout a servi, la plus ancienne revient. */
 const CONNECT = ['Comme je te disais, ', 'Je te le redis : ', 'Oui, encore une fois : ', 'Je le répète volontiers : '];
-function fresh(rng: RngLike, m: CharMem, pool0: readonly string[]): string {
+export function fresh(rng: RngLike, m: CharMem, pool0: readonly string[]): string {
   const pool = m.turns - m.lastNameTurn < 4 ? (pool0.filter((l) => !/Radia|\{n\}/.test(l)).length ? pool0.filter((l) => !/Radia|\{n\}/.test(l)) : pool0) : pool0; // pause du prénom
   if (pool.length === 1 && m.recent.includes(pool[0])) {
     // une seule formulation déjà dite : on la reprend avec une petite transition, jamais mot pour mot deux fois de suite
@@ -29,9 +29,9 @@ function fresh(rng: RngLike, m: CharMem, pool0: readonly string[]): string {
   m.recent.push(s); while (m.recent.length > 14) m.recent.shift();
   return s;
 }
-const bank = (rng: RngLike, m: CharMem, p: Persona, b: VBank): string => fresh(rng, m, b[voiceOf(p.arch)]);
+export const bank = (rng: RngLike, m: CharMem, p: Persona, b: VBank): string => fresh(rng, m, b[voiceOf(p.arch)]);
 const choice = (id: string): Choice => ({ id, text: choiceById(id)!.text });
-const bumpTopic = (m: CharMem, t: TopicId): void => { m.topics[t] = (m.topics[t] ?? 0) + 1; m.lastTopic = t; };
+export const bumpTopic = (m: CharMem, t: TopicId): void => { m.topics[t] = (m.topics[t] ?? 0) + 1; m.lastTopic = t; };
 
 // ------------------------------------------------------------------ prénom
 /** Le prénom est utilisé avec parcimonie : jamais deux tours de suite, au plus un tour sur quatre en moyenne, jamais juste après « arrête ». */
@@ -51,8 +51,8 @@ function noName(m: CharMem, pool: readonly string[]): readonly string[] {
   const f = pool.filter((l) => !hasName(l)); return f.length ? f : pool;
 }
 /** Toute réplique qui contient le prénom compte dans la parcimonie, qu'elle vienne du modèle commun ou de son propre texte. */
-function trackName(m: CharMem, say: string[]): void { if (say.some(hasName)) { m.nameUses++; m.lastNameTurn = m.turns; } }
-function maybeName(rng: RngLike, m: CharMem, p: Persona, say: string[]): boolean {
+export function trackName(m: CharMem, say: string[]): void { if (say.some(hasName)) { m.nameUses++; m.lastNameTurn = m.turns; } }
+export function maybeName(rng: RngLike, m: CharMem, p: Persona, say: string[]): boolean {
   if (say.some(hasName) || rng.next() >= nameChance(p, m)) return false;
   say.push(nameLine(rng, m, p)); m.nameUses++; m.lastNameTurn = m.turns;
   return true;
@@ -90,7 +90,7 @@ export function offer(b: BrainState, id: string, rng: RngLike, opts: { channel?:
   return ids.filter((x) => choiceById(x)).map(choice);
 }
 
-const closeThread = (m: CharMem): void => { m.thread = null; };
+export const closeThread = (m: CharMem): void => { m.thread = null; };
 
 // ------------------------------------------------------------------ réaction à un choix de Radia
 export interface ReactCtx { now: number; legacy?: (id: string) => string[] | null; sceneLabel?: string }
@@ -114,7 +114,7 @@ export function react(b: BrainState, id: string, choiceId: string, rng: RngLike,
     case 'raconte': {
       say.push(bank(rng, m, p, REACT.raconte));
       const un = p.anecdotes.filter((a) => !m.told.includes(a)); const a = un.length ? fresh(rng, m, un) : fresh(rng, m, p.anecdotes);
-      say.push(a); m.told.push(a); while (m.told.length > 12) m.told.shift(); topic = 'anecdote'; m.aff += 0.5; closeThread(m);
+      say.push(a); m.told.push(a); while (m.told.length > 24) m.told.shift(); topic = 'anecdote'; m.aff += 0.5; closeThread(m);
       break;
     }
     case 'sf_ask': {
@@ -199,7 +199,7 @@ export function react(b: BrainState, id: string, choiceId: string, rng: RngLike,
 }
 
 /** Une blague dont le texte ne contient pas le prénom pendant la pause du prénom (s'il y en a une autre). */
-function pickJoke(rng: RngLike, m: CharMem, p: Persona): number {
+export function pickJoke(rng: RngLike, m: CharMem, p: Persona): number {
   const ok = p.jokes.map((_j, i) => i).filter((i) => !hasName(p.jokes[i].setup) || m.turns - m.lastNameTurn >= 4);
   return ok.length ? pickFrom(rng, ok) : rng.int(p.jokes.length);
 }
@@ -281,7 +281,7 @@ export function start(b: BrainState, id: string, rng: RngLike, ctx: StartCtx): B
     const ji = pickJoke(rng, m, p); say.push(fresh(rng, m, [pickFrom(rng, JOKE_LEAD)]), p.jokes[ji].setup); m.thread = { topic: 'joke', step: 1, data: String(ji) }; topic = 'joke';
   } else {
     const r = rng.next();
-    if (r < 0.5) say.push(fresh(rng, m, noName(m, p.openers))); else if (r < 0.8) say.push(fresh(rng, m, SMALLTALK[voiceOf(p.arch)])); else { const a = p.anecdotes.filter((x) => !m.told.includes(x)); const pick = a.length ? fresh(rng, m, a) : fresh(rng, m, p.anecdotes); say.push(pick); m.told.push(pick); while (m.told.length > 12) m.told.shift(); topic = 'anecdote'; }
+    if (r < 0.5) say.push(fresh(rng, m, noName(m, p.openers))); else if (r < 0.8) say.push(fresh(rng, m, SMALLTALK[voiceOf(p.arch)])); else { const a = p.anecdotes.filter((x) => !m.told.includes(x)); const pick = a.length ? fresh(rng, m, a) : fresh(rng, m, p.anecdotes); say.push(pick); m.told.push(pick); while (m.told.length > 24) m.told.shift(); topic = 'anecdote'; }
     if (m.thread === null && maybeName(rng, m, p, say)) { m.thread = { topic: 'name', step: 1 }; topic = 'name'; }
   }
   trackName(m, say);

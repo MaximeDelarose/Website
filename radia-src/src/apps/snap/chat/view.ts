@@ -3,6 +3,7 @@
  * visionneuse de snap plein écran, réponses de Radia, flammes. Classes préfixées `snc-`. Tout reste dans le jeu (rien n'est envoyé
  * à de vrais téléphones). Icônes et animations originales.
  */
+import { createComposer, trackKeyboard, type Composer } from '../../../ui/composer';
 import { h, tap } from '../../../ui/dom';
 import { ui } from '../../../ui/ui';
 import { haptic } from '../../../core/haptics';
@@ -12,7 +13,7 @@ import { emitPhone } from '../../../events/bus';
 import { Rng } from '../../../utils/rng';
 import { contactById, CONTACTS } from './data';
 import {
-  activeContacts, addFriend, choicesFor, converse, DELIVERY_LABEL, deleteContact, deliveryOf, dayKey, flameCount, markStorySeen, openSnap, presenceOf, readText, replyChoices, rowStatus, setMuted, suggestions, visibleMsgs,
+  activeContacts, addFriend, converse, converseText, DELIVERY_LABEL, deleteContact, deliveryOf, dayKey, flameCount, markStorySeen, openSnap, presenceOf, readText, rowStatus, setMuted, suggestions, visibleMsgs,
   type ChatMsg, type ContactState, type FriendStory,
 } from './engine';
 import { brainState } from '../../store';
@@ -136,7 +137,8 @@ export function chatView(host: ChatHost, container: HTMLElement, mode: 'chat' | 
 
   // ---------------------------------------------------------------- conversation
   let convTimer = 0;
-  const stopConv = (): void => { if (convTimer) { window.clearInterval(convTimer); convTimer = 0; } };
+  let kbOff: (() => void) | null = null;
+  const stopConv = (): void => { if (convTimer) { window.clearInterval(convTimer); convTimer = 0; } kbOff?.(); kbOff = null; };
   function bubble(m: ChatMsg, cid: string): HTMLElement {
     if (m.sys === 'shot') return h('div.snc-sys', `📸 ${m.text}`);
     if (m.kind === 'text') return h(`div.snc-b.${m.from}${m.ask ? '.ask' : ''}`, m.text);
@@ -176,10 +178,12 @@ export function chatView(host: ChatHost, container: HTMLElement, mode: 'chat' | 
       }, { sound: false }) } }, ico('more', 22)));
     const thread = h('div.snc-thread');
     const pres = h('div.snc-pres');
-    const chips = h('div.snc-chips');
-    const send = h('button.snc-sendsnap', { on: { click: tap(() => { sendQuick(cid); }, { sound: false }) } }, ico('camera', 20), h('span', 'Envoyer un snap'));
-    const foot = h('div.snc-foot', chips, send);
-    body.append(head, thread, pres, foot, host.tabs(mode));
+    const cam = h('button.cmp-cam', { type: 'button', 'aria-label': `Envoyer un snap à ${ct.name}`, on: { click: tap(() => { void sendQuick(cid); }, { sound: false }) } }, ico('camera', 22));
+    const composer = createComposer({ placeholder: `Message à ${ct.name}…`, leading: cam, onSend: (t) => { doSend(cid, t); paint(true); window.setTimeout(() => { thread.scrollTop = thread.scrollHeight; }, 30); } });
+    const foot = h('div.snc-foot', composer.el);
+    body.append(head, thread, pres, foot);
+    kbOff = trackKeyboard(body, () => window.setTimeout(() => { thread.scrollTop = thread.scrollHeight; }, 30));
+    composerRef = composer;
     let sig = ''; let first = true;
     const paint = (force = false): void => {
       if (!alive || open !== cid) { stopConv(); return; }
@@ -195,21 +199,16 @@ export function chatView(host: ChatHost, container: HTMLElement, mode: 'chat' | 
       if (pr.state === 'typing') thread.append(h('div.snc-b.in.typing', h('i'), h('i'), h('i')));
       pres.className = `snc-pres ${pr.state}`; pres.dataset.state = pr.state; pres.replaceChildren();
       if (pr.state !== 'away') pres.append(h('img.snc-avatar', { src: faceUrl(cid, 96, pr.mood), alt: '' }), h('span', pr.label));
-      // réponses de Radia : choix du cerveau (mémoire du personnage) ; juste après l'ouverture d'un snap, les réactions classiques
-      const lastInSnap = [...vis].reverse().find((m) => m.from === 'in' && m.kind !== 'text' && m.opened);
-      const afterSnap = !!lastInSnap && !vis.some((m) => m.from === 'out' && m.at > lastInSnap.at);
-      const list = pending ? [] : afterSnap ? [...replyChoices(lastInSnap?.scene).slice(0, 4), ...choicesFor(chat, brain, cid, rng(), now).slice(0, 2)] : choicesFor(chat, brain, cid, rng(), now);
-      chips.className = `snc-chips${pending ? ' wait' : ''}`;
-      chips.replaceChildren(...list.map((r) => h('button.snc-chip', { 'data-r': r.id, on: { click: tap(() => doReply(cid, r.id), { sound: false }) } }, r.text)));
       if (nearBottom) window.setTimeout(() => { thread.scrollTop = thread.scrollHeight; }, 20);
     };
     paint(true);
     convTimer = window.setInterval(() => paint(), 400);
   }
-  function doReply(cid: string, choiceId: string): void {
-    const out = converse(chat, brainState(), cid, choiceId, Date.now(), rng()); if (!out) return;
+  let composerRef: Composer | null = null;
+  function doSend(cid: string, text: string): void {
+    const out = converseText(chat, brainState(), cid, text, Date.now(), rng()); if (!out) return;
     persist(); emitPhone(); tick('pop1'); haptic('select');
-    if (out.snapBack) window.setTimeout(() => { if (alive) { tick('sparkle'); emitPhone(); } }, 2400);
+    if (out.snapBack) window.setTimeout(() => { if (alive) { tick('sparkle'); emitPhone(); } }, 4200);
   }
   /** Radia envoie un snap (selfie fictif de son personnage : sourire, tenue du jour ou grimace) ; la flamme progresse si c'est réciproque ce jour-là. */
   async function sendQuick(cid: string): Promise<void> {
@@ -242,7 +241,7 @@ export function chatView(host: ChatHost, container: HTMLElement, mode: 'chat' | 
     function closeViewer(andReply: boolean): void {
       view.classList.add('out'); window.setTimeout(() => view.remove(), 200);
       open = cid; renderConversation(cid);
-      if (andReply) window.setTimeout(() => body.querySelector('.snc-chips')?.scrollIntoView({ block: 'end' }), 60);
+      if (andReply) window.setTimeout(() => composerRef?.focus(), 80);
     }
   }
 
