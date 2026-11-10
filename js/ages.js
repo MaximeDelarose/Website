@@ -10,7 +10,7 @@
   var canvas = stage.querySelector("canvas"), ctx = canvas.getContext("2d");
   var SAVE_KEY = "ages-save-v1", VERSION = "1.0.0";
   var MODE_NAMES = { solo: "Solo", coop: "Coop en ligne", versus: "Versus en ligne" };
-  var TARGET_NAMES = ["Premier", "Dernier", "Fort", "Proche"], CAMP_MODES = ["Entrée", "Sortie", "Fort", "Près du camp"];
+  var TARGET_NAMES = ["Premier", "Dernier", "Fort", "Proche"], CAMP_MODES = ["Entrée", "Sortie", "Fort", "Près du camp", "Libre"];
 
   /* ---------- sauvegarde (étoiles + améliorations hors partie) ---------- */
   var save = (function () {
@@ -246,7 +246,7 @@
       var k = LINES[cur.line].kind;
       if (k === "barracks" || k === "airfield" || k === "heli") {
         var tt = C.tileAt(G.map, Math.floor(w.x / T), Math.floor(w.y / T));
-        if (k === "barracks") { G.sel = 0; return; }
+        if (k === "barracks" && cur.mode !== 4) { G.sel = 0; return; }
         doCmd({ c: "rally", id: cur.id, x: w.x, y: w.y }); sfx("build"); return;
       }
     }
@@ -343,7 +343,7 @@
     }
     if (k === "banner") lines.push("Aura " + ((L.radius + AGES[w.age].rg)).toFixed(1) + " cases · cadence +" + Math.round(L.buffRate[w.age] * (1 + 0.25 * (b.lvl - 1)) * 100) + " % · dégâts +" + Math.round(L.buffDmg[w.age] * (1 + 0.25 * (b.lvl - 1)) * 100) + " %");
     if (b.flag === 1) lines.push("⚠ Aucune rampe d'accès à moins de 7 cases : pose une rampe 🛤 au bord de la route.");
-    if (k === "barracks") lines.push("Les troupes se gèrent seules dans le cercle jaune. Mode 🎯 : Entrée = postés en amont, visent le début du cortège · Sortie = en aval · Fort = les plus costauds · Près du camp.");
+    if (k === "barracks") lines.push(b.mode === 4 ? "Mode Libre : touche un point de la route dans le cercle jaune pour y poster les troupes." : "Troupes automatiques dans le cercle jaune. 🎯 Entrée : postées en amont, visent le début du cortège · Sortie : en aval · Fort · Près du camp · Libre : tu choisis le point.");
     if (k === "airfield" || k === "heli") lines.push("Touche la carte pour déplacer la zone de patrouille.");
     if (k === "garrison") lines.push("Les tireurs se postent au bord de la route.");
     var canTarget = k === "barracks" || !!(st && (k === "shoot" || k === "mortar" || k === "pulse" || k === "chain" || k === "garrison" || k === "heli"));
@@ -465,7 +465,8 @@
     if (rad) { c.beginPath(); c.arc(b.x, b.y, rad, 0, Math.PI * 2); c.fillStyle = "rgba(255,255,255,.08)"; c.fill(); c.strokeStyle = "rgba(255,255,255,.65)"; c.setLineDash([7, 5]); c.stroke(); c.setLineDash([]); }
     if (L.minRange) { c.beginPath(); c.arc(b.x, b.y, L.minRange * T, 0, Math.PI * 2); c.strokeStyle = "rgba(255,120,100,.6)"; c.stroke(); }
     c.strokeStyle = "#ffe36a"; c.strokeRect(b.x - b.size * T / 2 - 2, b.y - b.size * T / 2 - 2, b.size * T + 4, b.size * T + 4);
-    if (b.rally && (k === "barracks" || k === "airfield" || k === "heli")) {
+    if (k === "barracks" && b.anchor) { var an = b.anchor; c.fillStyle = "#ffe36a"; c.strokeStyle = "#3a2a08"; c.lineWidth = 1.4; c.beginPath(); c.arc(an.x, an.y, 4, 0, Math.PI * 2); c.fill(); c.stroke(); c.fillRect(an.x - 1, an.y - 20, 2.4, 18); c.beginPath(); c.moveTo(an.x + 1.4, an.y - 20); c.lineTo(an.x + 12, an.y - 16); c.lineTo(an.x + 1.4, an.y - 12); c.fill(); c.stroke(); }
+    if (b.rally && (k === "airfield" || k === "heli" || k === "barracks")) {
       var r = b.rally; c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(r.x, r.y); c.strokeStyle = "rgba(255,227,106,.55)"; c.setLineDash([4, 5]); c.stroke(); c.setLineDash([]);
       var zr = k === "airfield" ? L.orbit * T : k === "barracks" ? (L.zone + 0.4 * (b.lvl - 1)) * T : 16; c.beginPath(); c.arc(r.x, r.y, zr, 0, Math.PI * 2); if (k === "barracks") { c.fillStyle = "rgba(255,227,106,.10)"; c.fill(); } c.strokeStyle = "#ffe36a"; c.setLineDash([8, 6]); c.stroke(); c.setLineDash([]);
       c.fillStyle = "#ffe36a"; c.strokeStyle = "#3a2a08"; c.lineWidth = 1.4; c.fillRect(r.x - 1, r.y - 18, 2.4, 18); c.beginPath(); c.moveTo(r.x + 1.4, r.y - 18); c.lineTo(r.x + 12, r.y - 14); c.lineTo(r.x + 1.4, r.y - 10); c.fill(); c.stroke();
@@ -527,7 +528,7 @@
     if (!G) return;
     var online = G.role !== "solo";
     if (!online && G.mode === "solo") G.paused = true;
-    openOverlay('<div class="ag-card-in"><h2>Pause</h2>' + (online ? "<p>La partie continue pendant que tu es dans le menu.</p>" : "") + '<div class="ag-row"><button class="btn" data-go="resume">▶ Reprendre</button><button class="btn btn-ghost" data-go="quit">Quitter la partie</button></div></div>');
+    openOverlay('<div class="ag-card-in"><h2>Pause</h2>' + (online ? "<p>La partie continue pendant que tu es dans le menu.</p>" : "") + '<div class="ag-row"><button class="btn" data-go="resume">▶ Reprendre</button><button class="btn btn-ghost" data-go="settings">⚙ Réglages</button><button class="btn btn-ghost" data-go="quit">Quitter la partie</button></div></div>');
   }
   function showHelp() {
     openOverlay('<div class="ag-card-in ag-help"><h2>Comment jouer</h2><ul>' +
@@ -569,6 +570,7 @@
       else if (go === "meta") { if (G) { G.paused = G.mode === "solo"; } showMeta(); }
       else if (go === "help") showHelp();
       else if (go === "menu") { if (G && !G.over) { showPause(); } else if (G) endToMenu(); else showMenu(); }
+      else if (go === "settings") { if (window.GameKit && GameKit.ui && GameKit.ui.settings) GameKit.ui.settings(); }
       else if (go === "resume") { closeOverlay(); if (G) G.paused = false; }
       else if (go === "quit") { if (G && G.role === "host" && G.mode === "versus") { } endToMenu(); }
       else if (go === "again") { if (G && G.role !== "guest" && G.mode === "solo") startGame({ role: "solo", mode: "solo", mapId: G.mapId, diff: G.diff, metas: [myMeta(), C.defaultMeta()], me: 0 }); else endToMenu(); }

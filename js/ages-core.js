@@ -224,11 +224,17 @@
         b = findBuilding(w, cmd.id); if (!b) return "?";
         w.gold[p] += Math.round(b.paid * D.SELL * (b.fixed ? 0.5 : 1)); removeBuilding(sim, w, b); fx(sim, w, "sell", b.x, b.y); return "";
       }
-      case "mode": { b = findBuilding(w, cmd.id); if (b) b.mode = (b.mode + 1) % 4; return ""; }
+      case "mode": { b = findBuilding(w, cmd.id); if (b) { b.mode = (b.mode + 1) % (LINES[b.line].kind === "barracks" ? 5 : 4); b.anchorKey = ""; } return ""; }
       case "rally": {
         b = findBuilding(w, cmd.id); if (!b) return "?"; L = LINES[b.line];
         var rx = clamp(cmd.x, 4, map.w - 4), ry = clamp(cmd.y, 4, map.h - 4);
-        if (L.kind === "barracks") return "Les troupes se placent toutes seules (change leur mode)";
+        if (L.kind === "barracks") {
+          if (b.mode !== 4) return "Passe le camp en mode Libre pour choisir où se placent les troupes";
+          if (tileAt(map, Math.floor(rx / T), Math.floor(ry / T)) !== 1) return "Choisis un point sur la route";
+          var zc = b.rally || { x: b.x, y: b.y };
+          if (dist(rx, ry, zc.x, zc.y) > (L.zone + 0.4 * (b.lvl - 1)) * T) return "Hors de la zone d'action du camp";
+          b.free = { x: rx, y: ry }; b.anchorKey = ""; return "";
+        }
         else if (L.kind === "airfield" || L.kind === "heli") {
           if (dist(rx, ry, b.x, b.y) > 13 * T) return "Trop loin (13 cases max)";
         } else return "";
@@ -619,13 +625,13 @@
         var bv = 1e9;
         for (i = 0; i < w.enemies.length; i++) {
           var e = w.enemies[i]; if (e.dead || e.air) continue; if (dist(e.x, e.y, rally.x, rally.y) > zone) continue;
-          var sc = md === 0 ? -e.rem : md === 1 ? e.rem : md === 2 ? -e.hp : dist(e.x, e.y, rally.x, rally.y);
+          var sc = md === 0 ? -e.rem : md === 1 ? e.rem : md === 2 ? -e.hp : md === 3 ? dist(e.x, e.y, rally.x, rally.y) : dist(e.x, e.y, (b.anchor || rally).x, (b.anchor || rally).y);
           sc += (e.block && e.block !== u.id ? 25 : 0);
           if (sc < bv) { bv = sc; tg = e; }
         }
         u.target = tg ? tg.id : 0;
       }
-      if (b.anchorKey !== md + "|" + b.lvl) { b.anchorKey = md + "|" + b.lvl; b.anchor = campAnchor(sim, rally, zone, md); }
+      var ak = md + "|" + b.lvl + "|" + (b.free ? Math.round(b.free.x) + "," + Math.round(b.free.y) : ""); if (b.anchorKey !== ak) { b.anchorKey = ak; b.anchor = md === 4 ? (b.free || { x: rally.x, y: rally.y }) : campAnchor(sim, rally, zone, md); }
       var sx = b.anchor.x + Math.cos(u.orb) * 15, sy = b.anchor.y + Math.sin(u.orb) * 15;
       if (tg) {
         var dx = tg.x - u.x, dy = tg.y - u.y, dd2 = Math.sqrt(dx * dx + dy * dy), reach = L.reach + tg.r * 0.6;
@@ -686,7 +692,7 @@
     for (var k = 0; k < sim.map.paths.length; k++) {
       var P = sim.map.paths[k];
       for (var sP = 0; sP <= P.len; sP += 8) {
-        var q = pathAt(P, sP, 0); if (dist(q.x, q.y, c.x, c.y) > zone * 0.85 || q.x < 24 || q.y < 24 || q.x > sim.map.w - 24 || q.y > sim.map.h - 24) continue;
+        var q = pathAt(P, sP, 0); if (dist(q.x, q.y, c.x, c.y) > zone * 0.97 || q.x < 24 || q.y < 24 || q.x > sim.map.w - 24 || q.y > sim.map.h - 24) continue;
         var key = md === 0 ? sP : -sP;
         if (bs === null || key < bs) { bs = key; best = { x: q.x, y: q.y }; }
       }
@@ -734,7 +740,7 @@
     if (sim.over) s.over = sim.over;
     w.fxNet = [];
     w.buildings.forEach(function (b) {
-      s.B.push([b.id, LINE_IDX[b.line], b.tx, b.ty, b.lvl, Math.round(b.ang * 20), b.owner, b.rally ? r1(b.rally.x) : 0, b.rally ? r1(b.rally.y) : 0, b.mode, b.flag, Math.round(b.life * 100), b.firing > 0 ? 1 : 0, r1((b.buff.r + b.buff.d) * 100)]);
+      s.B.push([b.id, LINE_IDX[b.line], b.tx, b.ty, b.lvl, Math.round(b.ang * 20), b.owner, b.rally ? r1(b.rally.x) : 0, b.rally ? r1(b.rally.y) : 0, b.mode, b.flag, Math.round(b.life * 100), b.firing > 0 ? 1 : 0, r1((b.buff.r + b.buff.d) * 100), b.anchor ? r1(b.anchor.x) : 0, b.anchor ? r1(b.anchor.y) : 0]);
     });
     w.units.forEach(function (u) { s.U.push([u.id, KIND_IDX[u.kind], LINE_IDX[u.line], r1(u.x), r1(u.y), Math.round(Math.max(0, u.hp / u.hpmax) * 100), Math.round(u.ang * 20), u.atkT > 0 ? 1 : 0, u.b]); });
     w.enemies.forEach(function (e) { s.E.push([e.id, ENEMY_IDX[e.type], r1(e.x), r1(e.y), Math.round(e.a * 20), Math.round(Math.max(0, e.hp / e.hpmax) * 100), e.fl, e.hit > 0 ? 1 : 0]); });
@@ -754,7 +760,7 @@
     seen = {};
     s.B.forEach(function (r) { o = v._bm[r[0]] || (v._bm[r[0]] = { id: r[0] });
       var line = D.LINE_ORDER[r[1]], L = LINES[line], sz = L.size || 1;
-      o.line = line; o.tx = r[2]; o.ty = r[3]; o.size = sz; o.x = (r[2] + sz / 2) * T; o.y = (r[3] + sz / 2) * T; o.lvl = r[4]; o.ang = r[5] / 20; o.owner = r[6]; o.rally = r[7] ? { x: r[7], y: r[8] } : null; o.mode = r[9]; o.flag = r[10]; o.life = r[11] / 100; o.firing = r[12] ? 0.1 : 0; o.buff = { r: r[13] / 100, d: 0, g: 0 }; o.fixed = L.kind === "mine" || L.kind === "pit"; o.t = (o.t || 0);
+      o.line = line; o.tx = r[2]; o.ty = r[3]; o.size = sz; o.x = (r[2] + sz / 2) * T; o.y = (r[3] + sz / 2) * T; o.lvl = r[4]; o.ang = r[5] / 20; o.owner = r[6]; o.rally = r[7] ? { x: r[7], y: r[8] } : null; o.mode = r[9]; o.flag = r[10]; o.life = r[11] / 100; o.firing = r[12] ? 0.1 : 0; o.buff = { r: r[13] / 100, d: 0, g: 0 }; o.anchor = r[14] ? { x: r[14], y: r[15] } : null; o.fixed = L.kind === "mine" || L.kind === "pit"; o.t = (o.t || 0);
       if (L.kind === "ramp") { var d4 = null; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { if (tileAt(v.map, r[2] + d[0], r[3] + d[1]) === 1) d4 = d; }); o.rdir = d4; if (d4) o.ang = Math.atan2(d4[1], d4[0]); }
       seen[r[0]] = 1; nb.push(o); });
     Object.keys(v._bm).forEach(function (k) { if (!seen[k]) delete v._bm[k]; }); v.buildings = nb;

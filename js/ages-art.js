@@ -138,10 +138,23 @@
     shadow(c, 2, hs - 2, hs, hs * 0.35, 0.3);
     var sock = age === 4 ? P.dark : P.dark;
     if (k === "barracks" || k === "garrison" || k === "airfield" || k === "heli") { /* socle propre */ }
-    else if (age >= 3) { rect(c, -hs, -hs, hs * 2, hs * 2, P.metal, OUT, 1.6); rect(c, -hs + 3, -hs + 3, hs * 2 - 6, hs * 2 - 6, P.base); }
-    else if (age === 2) { rect(c, -hs, -hs, hs * 2, hs * 2, "#8d8d80", OUT, 1.6); rect(c, -hs + 3, -hs + 3, hs * 2 - 6, hs * 2 - 6, "#a5a597"); }
-    else { circ(c, 0, 0, hs, age === 1 ? "#8f8f98" : "#9a7b54", OUT, 1.6); circ(c, 0, 0, hs - 3, age === 1 ? "#b2b2bc" : "#b9966a"); }
+    else if (age === 4) { // plaque holographique hexagonale
+      poly(c, [-hs, 0, -hs / 2, -hs, hs / 2, -hs, hs, 0, hs / 2, hs, -hs / 2, hs], "#3a3290", OUT, 1.6); poly(c, [-hs + 4, 0, -hs / 2 + 2, -hs + 4, hs / 2 - 2, -hs + 4, hs - 4, 0, hs / 2 - 2, hs - 4, -hs / 2 + 2, hs - 4], "#d3d8f2");
+      c.save(); c.globalCompositeOperation = "lighter"; circ(c, 0, 0, hs - 3, "rgba(88,240,255," + (0.12 + 0.06 * Math.sin(t * 4)) + ")"); c.restore();
+    }
+    else if (age === 3) { rect(c, -hs, -hs, hs * 2, hs * 2, "#5d6b78", OUT, 1.6); rect(c, -hs + 3, -hs + 3, hs * 2 - 6, hs * 2 - 6, "#8c9aa8"); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) { circ(c, q[0] * (hs - 5), q[1] * (hs - 5), 1.6, "#d8dee6", OUT, 0.7); }); }
+    else if (age === 2) { rect(c, -hs, -hs, hs * 2, hs * 2, "#6a4a2a", OUT, 1.6); for (var pl = -2; pl <= 2; pl++) rect(c, -hs + 2, pl * 5 - 2.4, hs * 2 - 4, 4.8, pl % 2 ? "#a77c48" : "#b88b52", "#4a3220", 0.8); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) { circ(c, q[0] * (hs - 4), q[1] * (hs - 4), 1.5, "#3a3a3a"); }); }
+    else { // souche d'arbre : cernes + bande de fer au Moyen Âge
+      circ(c, 0, 0, hs, "#6a4a2a", OUT, 1.6); circ(c, 0, 0, hs - 3, "#c79a62");
+      for (var rg = 0; rg < 3; rg++) { c.beginPath(); c.arc(0, 0, hs - 6 - rg * 3.2, 0, TAU); c.strokeStyle = "rgba(110,70,30,.45)"; c.lineWidth = 1; c.stroke(); }
+      if (age === 1) { circ(c, 0, 0, hs - 1.5, null, "#8d93a3", 2); }
+      poly(c, [hs - 6, hs - 3, hs - 1, hs - 7, hs - 1, hs - 1], "#4f8a3a", OUT, 0.8); // petite feuille
+    }
+    if (age >= 2 && (k === "shoot" || k === "mortar" || k === "pulse" || k === "chain")) { // emblème : le gland
+      c.beginPath(); c.ellipse(hs - 5, hs - 5, 2.2, 2.8, 0, 0, TAU); c.fillStyle = "#c98a3a"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 0.9; c.stroke(); rect(c, hs - 7.4, hs - 8.2, 4.8, 2, "#7a4a1a");
+    }
     var a = b.ang, rec = b.firing > 0 ? 2.2 : 0;
+    if (k === "shoot" || k === "mortar" || k === "pulse" || k === "chain") drawGunner(c, b, a, age, t);
     switch (k) {
       case "shoot": case "mortar": drawTurret(c, b.line, P, age, a, rec, t); break;
       case "pulse": drawFire(c, P, age, a, b, t); break;
@@ -155,6 +168,17 @@
     if (b.buff && (b.buff.r || b.buff.d)) { c.globalAlpha = 0.5 + 0.3 * Math.sin(t * 6); circ(c, hs - 4, -hs + 4, 3, "#ffe36a", OUT, 1); c.globalAlpha = 1; }
     if (!o || !o.icon) for (var i = 0; i < (b.lvl || 1) - 1; i++) circ(c, -hs + 5 + i * 7, hs - 3, 2.8, "#ffd447", OUT, 1);
     if (b.flag === 1 && (!o || !o.icon)) { c.font = "bold 11px sans-serif"; c.textAlign = "center"; c.fillStyle = "#ff5a3a"; c.strokeStyle = "#000"; c.lineWidth = 3; c.strokeText("⚠", 0, -hs - 4); c.fillText("⚠", 0, -hs - 4); }
+    c.restore();
+  }
+  // l'écureuil artilleur : dos au canon, queue en panache, casque selon l'âge
+  var FURS = { tour: "#d2762c", sniper: "#8a8f98", mortar: "#7a5a3a", fire: "#c4502a", glue: "#c9b070", freeze: "#e8eef4", shock: "#3a3a46" };
+  function drawGunner(c, b, a, age, t) {
+    var fur = FURS[b.line] || "#d2762c", back = b.line === "mortar" ? 9 : 11, ox = b.line === "mortar" ? -9 : -Math.cos(a) * back, oy = b.line === "mortar" ? 8 : -Math.sin(a) * back, ang = b.line === "mortar" ? -0.6 : a;
+    c.save(); c.translate(ox, oy); c.rotate(ang);
+    c.beginPath(); c.ellipse(-6, 0, 6, 3.6, Math.sin(t * 3 + b.x) * 0.25, 0, TAU); c.fillStyle = fur; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.2; c.stroke();
+    circ(c, 0, 0, 4.4, fur, OUT, 1.2); circ(c, -0.4, 0, 2.4, "#f2d9b0"); circ(c, 3.2, 0, 3, fur, OUT, 1.1);
+    poly(c, [2.4, -2.6, 4.4, -5.6, 5, -2], fur, OUT, 0.9); poly(c, [2.4, 2.6, 4.4, 5.6, 5, 2], fur, OUT, 0.9); circ(c, 4.6, -1.1, 0.7, "#111"); circ(c, 4.6, 1.1, 0.7, "#111");
+    if (age === 0) poly(c, [2, -1.4, 3.4, 0, 2, 1.4], "#e8d8b0"); else if (age === 1) circ(c, 3, 0, 2.6, "#aeb2c2", OUT, 0.8); else if (age === 2) circ(c, 3, 0, 2.6, "#566a3e", OUT, 0.8); else if (age === 3) { circ(c, 3, 0, 2.6, "#3a4552", OUT, 0.8); rect(c, 4, -1.2, 1.6, 2.4, "#9bd0ee"); } else { circ(c, 3, 0, 2.6, "#d3d8f2", OUT, 0.8); rect(c, 4, -1.2, 1.8, 2.4, "#58f0ff"); }
     c.restore();
   }
   function barrel(c, len, w, col, rec) { c.fillStyle = col; c.strokeStyle = OUT; c.lineWidth = 1.4; c.fillRect(2 - rec, -w / 2, len, w); c.strokeRect(2 - rec, -w / 2, len, w); }
@@ -227,7 +251,7 @@
     var col = age === 0 ? "#b6482c" : age === 1 ? "#c9302c" : age === 2 ? "#4f7a3a" : age === 3 ? "#2e5fa8" : "#7a5cff";
     c.beginPath(); c.moveTo(1.6, -16); c.quadraticCurveTo(10, -18 + w, 18, -13 + w); c.lineTo(18, -3 + w); c.quadraticCurveTo(10, -6 + w, 1.6, -4); c.closePath(); c.fillStyle = col; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.3; c.stroke();
     circ(c, 9, -9.5 + w * 0.6, 2.6, "#ffe36a"); if (age >= 3) { line(c, 4, -14, 15, -14 + w, P.glow, 1.2); }
-    circ(c, 0, -17, 2.4, "#ffd447", OUT, 1);
+    c.beginPath(); c.ellipse(0, -18, 2.6, 3.2, 0, 0, TAU); c.fillStyle = "#c98a3a"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1; c.stroke(); rect(c, -2.8, -21.4, 5.6, 2.2, "#7a4a1a", OUT, 0.8);
   }
   function drawRamp(c, P, age, b) {
     var a = b.ang; c.rotate(a);
