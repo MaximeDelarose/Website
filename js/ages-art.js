@@ -282,8 +282,24 @@
     var hs = 27;
     shadow(c, 2, hs - 2, hs, 8, 0.3);
     var lance = b.line === "lancers";
-    if (age === 0) { poly(c, [-24, 20, 0, -22, 24, 20], "#a88255", OUT, 1.8); poly(c, [-8, 20, 0, 0, 8, 20], "#3a2a18"); line(c, 0, -22, 0, -28, "#6a4a2a", 2.4); poly(c, [0, -28, 10, -25, 0, -22], lance ? "#e0a030" : "#b6482c", OUT, 1); for (var i = 0; i < 3; i++) circ(c, -14 + i * 14, 21, 2.2, "#e4d8b8", OUT, 1); }
-    else if (age === 1) { rect(c, -25, -14, 50, 36, "#a2a6b4", OUT, 1.8); poly(c, [-27, -14, 0, -30, 27, -14], "#8a3a2a", OUT, 1.8); rect(c, -6, 4, 12, 18, "#4a3220", OUT, 1.4); for (var j = 0; j < 4; j++) rect(c, -25 + j * 14, -18, 8, 5, "#8a8e9c", OUT, 1); poly(c, [20, -28, 30, -26, 20, -22], lance ? "#e0a030" : "#2e5fa8", OUT, 1); line(c, 20, -30, 20, -14, "#6a4a2a", 1.8); }
+    var pen = lance ? "#e0a030" : "#b6482c";
+    if (age === 0) { // arbre-terrier : un gros tronc creux sous la ramure
+      circ(c, 0, 4, 20, "#6a4a2a", OUT, 1.8); circ(c, 0, 4, 17, "#a9794a");
+      for (var rg = 0; rg < 3; rg++) { c.beginPath(); c.arc(0, 4, 14 - rg * 4, 0, TAU); c.strokeStyle = "rgba(90,55,25,.4)"; c.lineWidth = 1; c.stroke(); }
+      c.beginPath(); c.ellipse(0, 14, 7, 8, 0, 0, TAU); c.fillStyle = "#2a1a0c"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.4; c.stroke();
+      [[-16, -10, 11, "#2f5d25"], [14, -12, 12, "#3f7a30"], [-2, -18, 13, "#468a35"], [-20, 6, 8, "#3a6e2c"], [20, 4, 8, "#3a6e2c"]].forEach(function (q) { circ(c, q[0], q[1], q[2], q[3], OUT, 1.5); });
+      circ(c, -4, -20, 4, "#6bb04a"); circ(c, 12, -14, 3.4, "#6bb04a");
+      c.beginPath(); c.ellipse(-12, 4, 2.4, 3, 0, 0, TAU); c.fillStyle = "#c98a3a"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 0.9; c.stroke();
+      poly(c, [6, -24, 16, -21, 6, -18], pen, OUT, 1); line(c, 6, -26, 6, -16, "#4a3220", 1.6);
+    }
+    else if (age === 1) { // fortin de bois dans les branches
+      [[-18, -14, 11, "#2f5d25"], [18, -14, 11, "#3f7a30"], [0, -20, 12, "#468a35"]].forEach(function (q) { circ(c, q[0], q[1], q[2], q[3], OUT, 1.5); });
+      rect(c, -22, -10, 44, 30, "#7a5230", OUT, 1.8);
+      for (var pk = 0; pk < 6; pk++) line(c, -22 + pk * 8.8 + 4, -10, -22 + pk * 8.8 + 4, 20, "rgba(40,22,8,.45)", 1.1);
+      for (var cr = 0; cr < 4; cr++) rect(c, -22 + cr * 13, -15, 9, 6, "#8e6238", OUT, 1.2);
+      c.beginPath(); c.moveTo(-8, 20); c.lineTo(-8, 8); c.arc(0, 8, 8, Math.PI, 0); c.lineTo(8, 20); c.closePath(); c.fillStyle = "#2a1a0c"; c.fill(); c.strokeStyle = OUT; c.lineWidth = 1.4; c.stroke();
+      line(c, 16, -14, 16, -30, "#4a3220", 1.8); poly(c, [16, -30, 28, -26, 16, -22], lance ? "#e0a030" : "#2e5fa8", OUT, 1);
+    }
     else if (age === 2) { rect(c, -26, -18, 52, 40, "#8a9470", OUT, 1.8); rect(c, -26, -18, 52, 8, "#6a7456"); rect(c, -9, 6, 18, 16, "#3a3f30", OUT, 1.4); for (var j2 = 0; j2 < 3; j2++) rect(c, -20 + j2 * 14, -6, 8, 7, "#c9e3f0", OUT, 1); circ(c, 18, 17, 3.5, "#6a6a5a", OUT, 1); circ(c, -18, 17, 3.5, "#6a6a5a", OUT, 1); }
     else if (age === 3) { rect(c, -27, -20, 54, 42, "#707d8a", OUT, 1.8); rect(c, -27, -20, 54, 9, "#4a5560"); rect(c, -14, 2, 28, 20, "#2f3a46", OUT, 1.4); line(c, -14, 12, 14, 12, "#ffcf5a", 1.4); circ(c, -20, -15, 2, "#ff4a3a"); rect(c, 12, -10, 10, 8, "#c9d2dc", OUT, 1); }
     else { poly(c, [-27, 20, -27, -8, -14, -22, 14, -22, 27, -8, 27, 20], "#cfd6f2", OUT, 1.8); rect(c, -14, 2, 28, 18, "#2b2457", OUT, 1.4); line(c, -12, 11, 12, 11, "#58f0ff", 2); circ(c, 0, -10, 5, "#7a5cff", OUT, 1.4); circ(c, 0, -10, 2.2, "#58f0ff"); }
