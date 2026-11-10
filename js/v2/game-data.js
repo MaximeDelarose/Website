@@ -2807,7 +2807,7 @@ window.ES_DATA = (function () {
   // shapes -> { rows, pal } ; mats : { nom: [clair, base, ombre, sombre] } (1 couleur = plat)
   var RIG_BY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
   // ss > 1 : on échantillonne ss fois plus finement (les formes restent en coordonnées d'origine) et les frontières entre tons sont dithered
-  function rigRaster(W0, H0, shapes, mats, ss) {
+  function rigRaster(W0, H0, shapes, mats, ss, dith) {
     ss = ss || 1; var W = W0 * ss, H = H0 * ss;
     var idx = new Int16Array(W * H).fill(-1), col = new Array(W * H), x, y, i;
     for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
@@ -2816,7 +2816,7 @@ window.ES_DATA = (function () {
         var m = mats[o.m], tone = 0;
         if (m.length > 1 && !o.flat) {
           var nz = Math.sqrt(Math.max(0, 1 - n[2])), d = n[0] * RIG_L[0] + n[1] * RIG_L[1] + nz * RIG_L[2];
-          if (ss > 1) d += ((RIG_BY[((y & 3) << 2) | (x & 3)] + 0.5) / 16 - 0.5) * 0.2;
+          if (ss > 1 || dith) d += ((RIG_BY[((y & 3) << 2) | (x & 3)] + 0.5) / 16 - 0.5) * 0.2;
           tone = d > 0.8 ? 0 : d > 0.34 ? 1 : d > -0.1 || m.length < 4 ? 2 : 3;
         }
         var p = y * W + x; idx[p] = i; col[p] = m[Math.min(tone, m.length - 1)];
