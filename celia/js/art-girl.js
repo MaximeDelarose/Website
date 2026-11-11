@@ -1,4 +1,4 @@
-/* La poupée de Célia : avatar habillable, et visage à maquiller. Tout est dessiné en SVG, pièce par pièce. */
+/* La poupée de Celia : avatar habillable, et visage à maquiller. Tout est dessiné en SVG, pièce par pièce. */
 (function () {
   'use strict';
   var INK = Art.INK, ST = Art.ST, uid = Art.uid;

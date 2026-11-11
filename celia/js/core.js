@@ -1,9 +1,9 @@
-/* Le Monde Magique de Célia — noyau : utilitaires, stockage, sons, voix, particules, navigation.
+/* Le Monde Magique de Celia — noyau : utilitaires, stockage, sons, voix, particules, navigation.
    Aucune donnée n'est envoyée sur Internet. Tout reste sur l'appareil. */
 (function () {
   'use strict';
   var C = window.C = {};
-  var NAME = (window.CELIA_CUSTOM && window.CELIA_CUSTOM.name) || 'Célia';
+  var NAME = (window.CELIA_CUSTOM && window.CELIA_CUSTOM.name) || 'Celia';
   C.NAME = NAME;
 
   /* ---------- utilitaires ---------- */
@@ -269,7 +269,7 @@
         parts.forEach(function (part, i) {
           var u = new SpeechSynthesisUtterance(part);
           u.lang = V.voice.lang; u.voice = V.voice;
-          u.rate = V.premium ? 0.9 : 0.84; u.pitch = V.premium ? 1.04 : 1.1; u.volume = 1;
+          u.rate = V.premium ? 0.9 : 0.84; u.pitch = V.premium ? 1.04 : 1.1; u.volume = 0.7;
           if (i === parts.length - 1) { u.onend = done; u.onerror = done; }
           C._utt.push(u); speechSynthesis.speak(u);
         });
@@ -372,6 +372,15 @@
         ], { duration: dur, delay: dl, easing: 'ease-in', fill: 'backwards' });
         (function (p) { an.onfinish = function () { p.remove(); }; })(p);
       }
+    },
+    /* onde qui s'étend depuis le doigt : confirme visuellement « j'ai touché ici » */
+    ripple: function (x, y, color, size) {
+      var layer = C.$('#fx'); if (!layer) return;
+      var d = document.createElement('div'), s = size || 90;
+      d.className = 'p'; d.style.cssText = 'left:' + (x - s / 2) + 'px;top:' + (y - s / 2) + 'px;width:' + s + 'px;height:' + s + 'px;border-radius:50%;border:6px solid ' + (color || '#fff') + ';box-shadow:0 0 18px ' + (color || '#fff') + ';box-sizing:border-box';
+      layer.appendChild(d);
+      var an = d.animate([{ transform: 'scale(.25)', opacity: .95 }, { transform: 'scale(1.5)', opacity: 0 }], { duration: 650, easing: 'ease-out' });
+      an.onfinish = function () { d.remove(); };
     },
     rise: function (x, y, kind, col) {
       var layer = C.$('#fx'); if (!layer) return;
@@ -505,6 +514,7 @@
     if (C.hud && C.hud.update) C.hud.update();
     if (from) C.fx.burst(from.x, from.y, { n: 14, dist: 120 });
     C.sfx.whoosh();
+    if (name === 'home' && C.pendingReload && C.applyUpdate) setTimeout(function () { if (C.current() === 'home' && C.pendingReload) C.applyUpdate(); }, 900);   /* mise à jour en attente : on l'applique en revenant au château */
     requestAnimationFrame(function () { requestAnimationFrame(function () { sec.classList.remove('enter'); }); });
     setTimeout(function () {
       if (old) { try { oldMod && oldMod.leave && oldMod.leave(old); } catch (e) { console.error(e); } old.remove(); }
@@ -512,8 +522,10 @@
     }, 420);
   };
   C.home = function () { if (curName !== 'home') C.go('home'); };
+  /* sauvegarde la création en cours (dessin, coloriage, gâteau, maquillage) sans quitter l'écran */
+  C.saveCurrent = function () { try { if (cur && cur._autosave) cur._autosave(); } catch (e) { } };
 
-  /* Les erreurs ne doivent jamais bloquer Célia : on les journalise seulement. */
+  /* Les erreurs ne doivent jamais bloquer Celia : on les journalise seulement. */
   window.addEventListener('error', function (e) { try { console.warn('celia:', e.message); } catch (x) { } });
 
   /* ---------- enregistrement d'une image (SVG ou canvas) en miniature ---------- */

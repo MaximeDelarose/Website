@@ -2,7 +2,7 @@
 
 ## Où on en est
 - Le jeu lit aujourd'hui la **voix française du navigateur** (la meilleure voix installée sur l'iPhone, lecture ralentie, phrases découpées). C'est le mieux qu'une synthèse intégrée puisse faire.
-- Le jeu est **prêt** à lire de vrais fichiers audio (`celia/js/voice.js`) : une seule conteuse partout, aucun appel réseau pendant que Célia joue, aucune clé dans le code public. Tant que `celia/voix/` n'existe pas, rien ne change.
+- Le jeu est **prêt** à lire de vrais fichiers audio (`celia/js/voice.js`) : une seule conteuse partout, aucun appel réseau pendant que Celia joue, aucune clé dans le code public. Tant que `celia/voix/` n'existe pas, rien ne change.
 - **Les 3 voix à écouter n'ont pas pu être produites** depuis l'environnement de développement : aucun accès réseau vers ElevenLabs et aucune clé API.
 
 ## Ce qu'il manque (à vous)
@@ -10,7 +10,7 @@
 2. Lancer sur votre ordinateur (Node 18+, ffmpeg) :
    ```bash
    export ELEVENLABS_API_KEY=...            # votre clé
-   node _celia/voix/samples.mjs             # 3 échantillons « Coucou Célia ! Bienvenue dans ton monde magique ! »
+   node _celia/voix/samples.mjs             # 3 échantillons « Coucou Celia ! Bienvenue dans ton monde magique ! »
    ```
    Ils arrivent dans `_celia/voix/echantillons/`. Écoutez-les et notez le `voice_id` de votre préférée.
 3. Générer tout le jeu (152 phrases, une seule fois) :

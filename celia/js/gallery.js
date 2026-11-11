@@ -1,4 +1,4 @@
-/* L'album de Célia : toutes ses créations, sauvegardées sur l'appareil. */
+/* L'album de Celia : toutes ses créations, sauvegardées sur l'appareil. */
 (function () {
   'use strict';
   var KINDS = [

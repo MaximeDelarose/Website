@@ -7,6 +7,7 @@ const sleep = (p, ms) => p.waitForTimeout(ms);
 (async () => {
   const which = process.argv.slice(2).map(Number); const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    await ctx.addInitScript(require('./_session.cjs'));
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   await p.goto(BASE); await sleep(p, 500); await p.evaluate(() => document.querySelector('.startbtn').click()); await sleep(p, 300);
   const n = await p.evaluate(() => (C.go('stories'), C.STORIES.length)); await sleep(p, 900);

@@ -39,7 +39,7 @@ const JS = path.join(__dirname, '..', '..', 'celia', 'js');
   }));
   [...data.said, ...data.fr, ...data.stories].forEach(add);
   /* phrases demandées par les parents (exemples de ton) */
-  ['Coucou Célia ! Bienvenue dans ton monde magique ! Qu’est-ce qu’on fait aujourd’hui ?', 'Oh, quelle jolie couleur !', 'Wouah, ton dessin est magnifique !', 'Miam miam ! On va préparer un délicieux gâteau !', 'Ooooh, regarde ce petit chaton ! Il est trop mignon !', 'Bravo Célia ! Tu veux encore jouer ou retourner au château ?', 'Quand tu as terminé, touche le bouton vert !'].forEach(add);
+  ['Coucou Celia ! Bienvenue dans ton monde magique ! Qu’est-ce qu’on fait aujourd’hui ?', 'Oh, quelle jolie couleur !', 'Wouah, ton dessin est magnifique !', 'Miam miam ! On va préparer un délicieux gâteau !', 'Ooooh, regarde ce petit chaton ! Il est trop mignon !', 'Bravo Celia ! Tu veux encore jouer ou retourner au château ?', 'Quand tu as terminé, touche le bouton vert !'].forEach(add);
   const list = [...set].sort();
   const keyOf = await p.evaluate((l) => l.map((t) => [C.voiceKey(t), t]), list);
   fs.writeFileSync(path.join(__dirname, 'phrases.json'), JSON.stringify(keyOf.map(([key, text]) => ({ key, text })), null, 1) + '\n');
