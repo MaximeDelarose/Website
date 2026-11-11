@@ -44,3 +44,11 @@
 /* barre d'outils plus compacte : tout tient sur une ligne, le bouton vert a sa propre ligne */
 .tools { gap: 6px; flex-wrap: nowrap; } .tools .btn { width: 46px; height: 46px; } .tools .btn.small { width: 42px; height: 42px; } .tools .sep { width: 4px; }
 .tray { gap: 6px; }
+
+/* l'emplacement des couleurs / autocollants garde toujours la même hauteur : la zone de dessin ne saute pas quand on change d'outil */
+.pslot { position: relative; min-height: 118px; }
+.pslot > .palette, .pslot > .stickers { position: absolute; left: 0; right: 0; top: 0; }
+.pslot > [hidden] { display: flex !important; visibility: hidden; pointer-events: none; }
+/* « pas encore » : simple anneau lumineux, sans déplacer ni agrandir la zone (important sur le canevas) */
+.nudge { animation: nudgering 1.7s ease-in-out 1; } @keyframes nudgering { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,93,158,0); } 25%, 75% { box-shadow: 0 0 0 8px rgba(255,93,158,.55); } 50% { box-shadow: 0 0 0 3px rgba(255,93,158,.2); } }
+.cv-wrap.nudge { box-shadow: 0 0 0 4px var(--lav); }

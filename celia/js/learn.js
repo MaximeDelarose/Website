@@ -76,7 +76,7 @@
             var cs = C.shuffle(COLORS).slice(0, 3 + (level > 2 ? 1 : 0)), target = C.rnd(cs);
             C.say(Fr.toucheCouleur(O.papillon, target.n));
             cs.forEach(function (c, i) {
-              var b = C.el('<button class="bf" style="left:' + (18 + (i % 2) * 44 + Math.random() * 6) + '%;top:' + (12 + Math.floor(i / 2) * 38 + Math.random() * 6) + '%;animation-delay:' + (-i * 1.3) + 's">' + butter(c.c) + '</button>'); box.appendChild(b);
+              var b = C.el('<button class="bf" data-color="' + c.n + '" style="left:' + (18 + (i % 2) * 44 + Math.random() * 6) + '%;top:' + (12 + Math.floor(i / 2) * 38 + Math.random() * 6) + '%;animation-delay:' + (-i * 1.3) + 's">' + butter(c.c) + '</button>'); box.appendChild(b);
               b.onclick = function () {
                 if (b.classList.contains('got')) return;
                 if (c === target) { b.classList.add('got'); C.sfx.sparkle(); C.fx.burstEl(b, { n: 16 }); C.$$('.bf', box).forEach(function (o) { if (o !== b) o.classList.add('fade'); }); win(); }
@@ -114,7 +114,7 @@
             box.innerHTML = '<div class="cnum"></div>';
             var pos = [[18, 20], [56, 14], [34, 52]];
             for (var i = 0; i < 3; i++) {
-              var b = C.el('<button class="cit" style="left:' + pos[i][0] + '%;top:' + pos[i][1] + '%">' + Art.item(o.k) + '<span class="cn"></span></button>'); box.appendChild(b);
+              var b = C.el('<button class="cit" data-n="' + N + '" style="left:' + pos[i][0] + '%;top:' + pos[i][1] + '%">' + Art.item(o.k) + '<span class="cn"></span></button>'); box.appendChild(b);
               (function (b) {
                 b.onclick = function () {
                   if (done) return;
@@ -131,7 +131,7 @@
             C.say(Fr.ou(t.o));
             box.innerHTML = '<div class="arow"></div>'; var row = C.$('.arow', box);
             as.forEach(function (a) {
-              var b = C.el('<button class="an">' + P.render(a.type, 0, {}) + '</button>'); row.appendChild(b);
+              var b = C.el('<button class="an" data-id="' + a.id + '">' + P.render(a.type, 0, {}) + '</button>'); row.appendChild(b); b.dataset.target = a === t ? '1' : '';
               b.onclick = function () {
                 if (ok) return; C.sfx.animal(a.snd); C.bounce(b, 1.2); P.setMood(C.$('svg', b), 'open'); later(function () { P.setMood(C.$('svg', b), 'smile'); }, 900);
                 if (a === t) { ok = true; C.say(a.say); C.fx.burstEl(b, { n: 14 }); later(win, 900); }
@@ -145,7 +145,7 @@
             box.innerHTML = '<div class="szrow"></div>'; var row = C.$('.szrow', box);
             var pair = C.shuffle([true, false]);
             pair.forEach(function (isBig) {
-              var b = C.el('<button class="sz ' + (isBig ? 'big' : 'small') + '">' + Art.item(o.k) + '</button>'); row.appendChild(b);
+              var b = C.el('<button class="sz ' + (isBig ? 'big' : 'small') + '" data-ok="' + (isBig === big ? '1' : '') + '">' + Art.item(o.k) + '</button>'); row.appendChild(b);
               b.onclick = function () { if (ok) return; if (isBig === big) { ok = true; C.sfx.sparkle(); C.fx.burstEl(b, { n: 16 }); C.bounce(b, 1.2); later(win, 600); } else { C.sfx.oops(); C.wiggle(b); C.say('Non, essaie l’autre !'); mistakes++; if (mistakes >= 2) C.$$('.sz', row).filter(function (x) { return x.classList.contains(big ? 'big' : 'small'); })[0].classList.add('glow'); } };
             });
           },

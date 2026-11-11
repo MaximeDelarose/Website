@@ -200,13 +200,15 @@
       x.drawImage(cvC, 0, 0, 520, 520); x.drawImage(cvL, 0, 0, 520, 520); x.drawImage(cvS, 0, 0, 520, 520);
       return cv.toDataURL('image/jpeg', 0.88);
     }
+    function blank() { var a = cC.getImageData(0, 0, N, N).data, b = cS.getImageData(0, 0, N, N).data; for (var i = 3; i < a.length; i += 4) if (a[i] || b[i]) return false; return true; }
     function saveNow() { var url = compose(); dirty = false; return C.saveCreation('color', url).then(function () { return url; }); }
     var doneB = C.doneBar(C.$('.tray', host), 'J\u2019ai fini mon dessin !', function () {
+      if (blank()) { C.nudge(C.$('.pslot', host)); C.say('Colorie d\u2019abord !'); return false; }   /* rien n'est colorié : pas de validation */
       saveNow().then(function (url) { C.finish({ kind: 'color', tile: 'draw', img: url, say: 'Wouah, ton dessin est magnifique !', again: function () { goBack(); } }); });
     });
     touched = C.armDoneHint('color', doneB);
     updUndo();
-    return { autosave: function () { if (dirty) saveNow(); } };
+    return { autosave: function () { if (dirty && !blank()) saveNow(); } };
   }
 
   /* ---------- Dessin libre ---------- */
@@ -313,6 +315,7 @@
     C.$('[data-do=restart]', host).addEventListener('click', function () {
       C.confirm(Art.ui.again.replace(/#fff/g, '#c4a8ff')).then(function (yes) { if (!yes) return; snap(); cx.clearRect(0, 0, W, H); C.sfx.whoosh(); });
     });
+    function blank() { var a = cx.getImageData(0, 0, W, H).data; for (var i = 3; i < a.length; i += 4) if (a[i]) return false; return true; }
     function saveNow() {
       var out = document.createElement('canvas'); out.width = 480; out.height = 640;
       var x = out.getContext('2d'); x.fillStyle = paper; x.fillRect(0, 0, 480, 640); x.drawImage(cv, 0, 0, 480, 640);
@@ -320,11 +323,12 @@
       return C.saveCreation('draw', url).then(function () { return url; });
     }
     var doneB = C.doneBar(C.$('.tray', host), 'J\u2019ai fini mon dessin !', function () {
+      if (blank()) { C.nudge(C.$('.cv-wrap', host)); C.say('Dessine d\u2019abord !'); return false; }   /* page vide : pas de validation */
       saveNow().then(function (url) { C.finish({ kind: 'draw', tile: 'draw', img: url, say: 'Wouah, ton dessin est magnifique !', again: function () { cx.clearRect(0, 0, W, H); undoStack = []; upd(); dirty = false; } }); });
     });
     touched = C.armDoneHint('draw', doneB);
     upd();
-    return { autosave: function () { if (dirty) saveNow(); } };
+    return { autosave: function () { if (dirty && !blank()) saveNow(); } };
   }
 
   function toolbar(isFree) {
@@ -362,7 +366,7 @@
       function color(id) {
         C.setBack(pick);
         root.innerHTML = '<div class="act color"><div class="stage"><div class="cv-wrap"><canvas class="cv-color"></canvas><canvas class="cv-line"></canvas><canvas class="cv-stk"></canvas></div></div>' +
-          '<div class="tray">' + toolbar(false) + '<div class="palette"></div><div class="stickers" hidden></div></div></div>';
+          '<div class="tray">' + toolbar(false) + '<div class="pslot"><div class="palette"></div><div class="stickers" hidden></div></div></div></div>';
         C.fit(C.$('.stage', root), C.$('.cv-wrap', root), 1);
         root._cur = Coloring(root, id, pick);
         C.say('Choisis une couleur, puis touche le dessin !');
@@ -370,7 +374,7 @@
       function free() {
         C.setBack(hub);
         root.innerHTML = '<div class="act free"><div class="stage"><div class="cv-wrap"><canvas class="cv-free"></canvas></div></div>' +
-          '<div class="tray">' + toolbar(true) + '<div class="palette"></div><div class="stickers" hidden></div><div class="sizes"></div><div class="papers"></div></div></div>';
+          '<div class="tray">' + toolbar(true) + '<div class="pslot"><div class="palette"></div><div class="stickers" hidden></div></div><div class="sizes"></div><div class="papers"></div></div></div>';
         C.fit(C.$('.stage', root), C.$('.cv-wrap', root), 3 / 4);
         root._cur = FreeDraw(root);
         C.say('Dessine avec ton doigt !');

@@ -152,6 +152,7 @@
         });
       };
       var finishMk = function () {
+        if (!(S.lips || S.blush || S.shadow || S.crown || S.stamps.length || S.extras || S.hairStyle)) { C.nudge(face); C.say('Maquille d\u2019abord !'); return false; }
         var fl = C.$('.flash', el); C.sfx.shutter(); fl.classList.add('go'); setTimeout(function () { fl.classList.remove('go'); }, 700);
         var svg = C.$('svg', face);
         C.rasterSvg(svg, 480, 544, function (cx, w, h) { var g = cx.createRadialGradient(w / 2, h * 0.4, 20, w / 2, h * 0.45, h * 0.8); g.addColorStop(0, '#fff8fc'); g.addColorStop(1, '#d9c5ff'); cx.fillStyle = g; cx.fillRect(0, 0, w, h); })

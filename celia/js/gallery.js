@@ -96,9 +96,12 @@
     var b = C.el('<button class="donebtn" aria-label="' + label + '"><span class="dchk">' + Art.ui.check + '</span><span class="dlab">' + label + '</span></button>');
     var busy = false;
     b.addEventListener('click', function () {
-      if (busy) return; busy = true; setTimeout(function () { busy = false; }, 1600);
+      if (busy) return;
+      busy = true;                                   /* un seul appui pris en compte pendant la fin d'activité (anti double-tap)… */
+      var res = fn && fn();
+      if (res === false) { busy = false; return; }   /* …mais un refus (« pas encore ») ne verrouille JAMAIS le bouton */
       C.sfx.chime(); C.bounce(b, 1.08); if (C.stopHint) C.stopHint();
-      fn && fn();
+      setTimeout(function () { busy = false; }, 1600);
     });
     return b;
   };
@@ -121,6 +124,9 @@
       }, 9000);
     };
   };
+  /* « pas encore » : l'élément remue doucement et brille, aucune validation */
+  /* aucune transformation : une zone de dessin ne doit jamais bouger ni grossir sous le doigt */
+  C.nudge = function (el) { if (!el) return; C.sfx.oops(); el.classList.remove('nudge'); void el.offsetWidth; el.classList.add('nudge'); setTimeout(function () { el.classList.remove('nudge'); }, 1700); };
   /* bouton d'outil rond avec icône */
   C.toolBtn = function (icon, cls, label) {
     return C.el('<button class="btn ' + (cls || 'pink') + '" aria-label="' + (label || '') + '">' + icon + '</button>');

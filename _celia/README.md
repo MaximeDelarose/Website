@@ -31,4 +31,6 @@ Modifier `celia/`, changer `VERSION` dans `celia/sw.js` (et la liste `FILES` si 
 Voir `_celia/voix/README.md` (génération de fichiers vocaux, échantillons, ce qu'il manque).
 
 ## Tests
-`node _celia/tests/french.cjs` (français, sans navigateur), `_celia/tests/smoke.cjs` (parcours), `_celia/tests/ux.cjs` (ergonomie + musique).
+`node _celia/tests/french.cjs` (français, sans navigateur) ; avec `python3 -m http.server 8123` lancé : `smoke.cjs` (parcours), `ux.cjs` (ergonomie + musique), `cuisine.cjs` (partie de cuisine complète), `interactions.cjs` (coloriage, dessin, dressing, maquillage, animaux, jeux, chambre : action → résultat visible), `histoires.cjs [0-3]` (les 4 histoires).
+
+Règle de conception : **toucher → effet visible → vérification → validation**. Un clic n'est jamais une réussite à lui seul ; un refus (« pas encore ») ne bloque jamais le bouton et ne bouge jamais la zone de dessin.
