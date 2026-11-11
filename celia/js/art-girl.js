@@ -305,12 +305,12 @@
       '<linearGradient id="' + u + 'h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + hairc + '"/><stop offset="1" stop-color="' + hd + '"/></linearGradient>' +
       '<radialGradient id="' + u + 'i" cx="50%" cy="40%" r="65%"><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></radialGradient>' +
       '<radialGradient id="' + u + 'b" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="' + (st.blush || '#ff8a8a') + '" stop-opacity="' + (st.blush ? '.85' : '.34') + '"/><stop offset="1" stop-color="' + (st.blush || '#ff8a8a') + '" stop-opacity="0"/></radialGradient>' +
-      '<clipPath id="' + u + 'c"><path d="M78 194Q78 168 102 168Q126 168 126 194Q124 217 102 217Q80 217 78 194Z"/></clipPath></defs>';
+      '<clipPath id="' + u + 'c"><path d="M82 197Q104 160 135 188Q108 217 82 197Z"/></clipPath></defs>';
     var H = 'url(#' + u + 'h)', SK = 'url(#' + u + 's)';
     var strands = function (n) { return '<g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".18">' + n + '</g>'; };
     /* cheveux arrière */
     var hb = '';
-    if (style === 'long') hb = '<path d="M50 160C26 210 28 300 40 340h220c12-40 14-130-10-180C230 50 70 50 50 160z" fill="' + H + '"/>' + strands('<path d="M58 200C52 250 56 300 62 336M242 200C248 250 244 300 238 336M74 230C70 270 74 310 80 336"/>');
+    if (style === 'long') hb = '<path d="M52 150C22 200 38 250 24 292C20 312 30 330 40 340h220c10-10 20-28 16-48-12-42 4-92-26-142C230 46 70 46 52 150z" fill="' + H + '"/>' + strands('<path d="M58 200C52 250 56 300 62 336M242 200C248 250 244 300 238 336M74 230C70 270 74 310 80 336"/>');
     else if (style === 'puffs') hb = '<g fill="' + H + '"><circle cx="58" cy="150" r="48"/><circle cx="242" cy="150" r="48"/><circle cx="92" cy="72" r="46"/><circle cx="208" cy="72" r="46"/><circle cx="150" cy="54" r="52"/></g>';
     else if (style === 'pigtails') hb = mir('<path d="M70 120C16 130-6 210 14 296c40-8 70-70 70-156z" fill="' + H + '"/>' + strands('<path d="M40 160C30 200 30 250 36 284"/>'));
     else hb = '<path d="M48 160C32 210 38 262 68 280h164c30-18 36-70 20-120C230 50 70 50 48 160z" fill="' + H + '"/>';
@@ -321,29 +321,31 @@
     var ear = '';
     if (ch.ears === 'elf') ear = mir('<path d="M58 178L18 146l18 54z" fill="' + SK + '"/>');
     else if (ch.ears === 'cat') ear = mir('<path d="M62 120L44 34l68 50z" fill="' + H + '"/><path d="M64 102L56 56l34 24z" fill="#ff9ac8"/>');
-    else ear = mir('<ellipse cx="49" cy="200" rx="12" ry="17" fill="' + SK + '"/>');
+    else ear = mir('<ellipse cx="62" cy="196" rx="11" ry="17" fill="' + SK + '"/>');
     s += ear;
-    /* visage : rond et doux, proportions « poupée » (yeux écartés et un peu bas, petit nez, petite bouche) */
-    s += '<path d="M46 178C46 100 96 64 150 64s104 36 104 114c0 68-46 114-104 114S46 246 46 178z" fill="' + SK + '"/>';
-    s += '<path d="M64 232Q150 322 236 232Q220 288 150 290Q80 288 64 232z" fill="#000" opacity=".05"/><ellipse cx="150" cy="104" rx="50" ry="14" fill="#fff" opacity=".15"/>';
-    s += '<g id="mk-blush">' + mir('<ellipse cx="82" cy="236" rx="30" ry="19" fill="url(#' + u + 'b)"/>') + '</g>';
+    /* visage : illustration douce semi-réaliste (ovale fin, yeux en amande bien espacés, sourcils fins et arqués, petit nez, lèvres pleines, quelques taches de rousseur) */
+    s += '<path d="M62 166C62 100 100 68 150 68s88 32 88 98c0 50-16 92-44 114-12 10-28 14-44 14s-32-4-44-14C78 258 62 216 62 166z" fill="' + SK + '"/>';
+    s += '<path d="M76 236Q150 318 224 236Q214 286 150 292Q86 286 76 236z" fill="#000" opacity=".05"/><ellipse cx="150" cy="104" rx="46" ry="13" fill="#fff" opacity=".16"/><ellipse cx="106" cy="214" rx="22" ry="12" fill="#fff" opacity=".07"/><ellipse cx="194" cy="214" rx="22" ry="12" fill="#fff" opacity=".07"/>';
+    s += '<g id="mk-blush">' + mir('<ellipse cx="90" cy="232" rx="32" ry="21" fill="url(#' + u + 'b)"/>') + '</g>';
+    /* taches de rousseur */
+    s += '<g fill="' + shade + '" opacity=".38"><circle cx="132" cy="212" r="1.500"/><circle cx="124" cy="220" r="1.400"/><circle cx="138" cy="221" r="1.400"/><circle cx="168" cy="212" r="1.500"/><circle cx="176" cy="220" r="1.400"/><circle cx="162" cy="221" r="1.400"/><circle cx="112" cy="226" r="1.300"/><circle cx="188" cy="226" r="1.300"/><circle cx="118" cy="233" r="1.200"/><circle cx="182" cy="233" r="1.200"/></g>';
     /* fard à paupières */
-    s += '<g id="mk-shadow">' + (st.shadow ? mir('<path d="M78 192Q80 160 102 158Q124 160 126 186Q102 172 78 192z" fill="' + st.shadow + '" opacity=".9"/><ellipse cx="102" cy="174" rx="25" ry="12" fill="' + st.shadow + '" opacity=".5"/>') : '') + '</g>';
-    /* yeux : grands, ronds, bien écartés ; sourcils fins et doux */
-    s += mir('<path d="M78 194Q78 168 102 168Q126 168 126 194Q124 217 102 217Q80 217 78 194Z" fill="#fff"/>' +
-      '<g clip-path="url(#' + u + 'c)"><circle cx="102" cy="196" r="18" fill="' + ch.eye + '"/><circle cx="102" cy="196" r="18" fill="url(#' + u + 'i)"/><circle cx="102" cy="197" r="8.500" fill="#1b1018"/><circle cx="110" cy="188" r="6" fill="#fff"/><circle cx="95" cy="205" r="2.800" fill="#fff" opacity=".9"/></g>' +
-      '<path d="M77 195Q76 167 102 167Q128 167 127 195" fill="none" stroke="#3a2430" stroke-width="3.800" stroke-linecap="round"/><path d="M78 190q-6-1-9-8" fill="none" stroke="#3a2430" stroke-width="3" stroke-linecap="round"/>' +
-      '<path d="M86 158Q102 150 120 158" fill="none" stroke="' + shade + '" stroke-width="2.400" stroke-linecap="round" opacity=".55"/>' +
-      '<path d="M86 214Q102 222 120 214" fill="none" stroke="' + shade + '" stroke-width="2.200" stroke-linecap="round" opacity=".4"/>' +
-      '<path d="M80 150Q100 139 122 148" fill="none" stroke="' + hd + '" stroke-width="4.600" stroke-linecap="round" opacity=".78"/>');
-    /* nez : une petite virgule douce */
-    s += '<ellipse cx="150" cy="222" rx="5" ry="3.500" fill="#fff" opacity=".3"/><path d="M145 228q5 4 10 0" fill="none" stroke="' + shade + '" stroke-width="2.800" stroke-linecap="round" opacity=".8"/>';
-    /* bouche : petite, souriante */
-    s += '<g id="mk-lips"><path d="M127 249Q138 241 150 246Q162 241 173 249Q162 253 150 253Q138 253 127 249z" fill="' + lipc + '"/><path d="M127 249Q138 253 150 253Q162 253 173 249Q164 268 150 268Q136 268 127 249z" fill="' + lipc + '"/><path d="M127 249Q138 253 150 253Q162 253 173 249Q138 241 150 246Q162 241 173 249z" fill="#000" opacity=".08"/><path d="M138 259Q150 264 162 259" fill="none" stroke="#fff" stroke-width="3.500" stroke-linecap="round" opacity="' + (st.lips ? .55 : .38) + '"/></g>';
-    s += '<path d="M126 249q-3-2-4-6M174 249q3-2 4-6" fill="none" stroke="' + shade + '" stroke-width="2.400" stroke-linecap="round" opacity=".55"/>';
+    s += '<g id="mk-shadow">' + (st.shadow ? mir('<path d="M82 195Q104 150 135 182Q106 164 82 195z" fill="' + st.shadow + '" opacity=".9"/><ellipse cx="108" cy="170" rx="26" ry="12" fill="' + st.shadow + '" opacity=".5"/>') : '') + '</g>';
+    /* yeux en amande, ligne de cils avec petit trait, sourcils arqués fins */
+    s += mir('<path d="M82 197Q104 160 135 188Q108 217 82 197Z" fill="#fff"/>' +
+      '<g clip-path="url(#' + u + 'c)"><circle cx="108" cy="190" r="18" fill="' + ch.eye + '"/><circle cx="108" cy="190" r="18" fill="url(#' + u + 'i)"/><circle cx="108" cy="190" r="8.600" fill="#1b1018"/><circle cx="115" cy="183" r="5.600" fill="#fff"/><circle cx="101" cy="198" r="2.600" fill="#fff" opacity=".85"/></g>' +
+      '<path d="M80 199Q104 156 137 188" fill="none" stroke="#2b1a22" stroke-width="4.400" stroke-linecap="round"/><path d="M81 198q-6-1-11-8" fill="none" stroke="#2b1a22" stroke-width="3.200" stroke-linecap="round"/>' +
+      '<path d="M86 172Q108 150 132 170" fill="none" stroke="' + shade + '" stroke-width="2.600" stroke-linecap="round" opacity=".55"/>' +
+      '<path d="M88 205Q108 218 130 197" fill="none" stroke="' + shade + '" stroke-width="2.200" stroke-linecap="round" opacity=".45"/>' +
+      '<path transform="translate(0 -9)" d="M130 159C116 149 94 150 78 169C96 158 114 161 130 168Z" fill="' + hd + '" opacity=".85" stroke="' + hd + '" stroke-width="1.600" stroke-linejoin="round"/>');
+    /* nez */
+    s += '<path d="M147 198Q143 215 140 226" fill="none" stroke="' + shade + '" stroke-width="2.600" stroke-linecap="round" opacity=".4"/><ellipse cx="151" cy="222" rx="8" ry="5.500" fill="#fff" opacity=".17"/><path d="M139 230Q143 236 149 233M161 230Q157 236 151 233" fill="none" stroke="' + shade + '" stroke-width="2.600" stroke-linecap="round" opacity=".7"/>';
+    /* bouche : lèvres pleines et douces */
+    s += '<g id="mk-lips"><path d="M124 252Q137 243 150 248Q163 243 176 252Q163 257 150 257Q137 257 124 252z" fill="' + lipc + '"/><path d="M124 252Q137 257 150 257Q163 257 176 252Q166 274 150 274Q134 274 124 252z" fill="' + lipc + '"/><path d="M124 252Q137 257 150 257Q163 257 176 252Q137 243 150 248Q163 243 176 252z" fill="#000" opacity=".09"/><path d="M138 264Q150 269 162 264" fill="none" stroke="#fff" stroke-width="3.600" stroke-linecap="round" opacity="' + (st.lips ? .55 : .38) + '"/></g>';
+    s += '<path d="M123 252q-3-2-4-6M177 252q3-2 4-6" fill="none" stroke="' + shade + '" stroke-width="2.400" stroke-linecap="round" opacity=".5"/>';
     /* cheveux avant : raie au milieu */
     var hf = '<path d="M52 192C44 92 100 52 150 54s106 38 98 138c-4-40-22-76-58-92-14-6-28-10-40-12-12 2-26 6-40 12-36 16-54 52-58 92z" fill="' + H + '"/><path d="M150 56v34" stroke="#000" stroke-opacity=".18" stroke-width="3" stroke-linecap="round"/>' + strands('<path d="M96 76C80 92 70 116 66 150M204 76C220 92 230 116 234 150M120 62C108 70 100 80 94 92M180 62C192 70 200 80 206 92"/>');
-    if (style === 'long') hf += mir('<path d="M52 180C42 230 50 290 32 340h40c4-50 0-100-6-146z" fill="' + H + '"/>');
+    if (style === 'long') hf += mir('<path d="M58 172C40 226 58 262 38 302C34 318 40 332 44 340h38c-10-42 6-88-8-134-4-14-10-26-16-34z" fill="' + H + '"/><path d="M52 230C46 262 52 296 50 330" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".18"/>');
     else if (style === 'bob') hf += mir('<path d="M52 180C44 220 48 250 64 270c10-20 10-50 4-90z" fill="' + H + '"/>');
     else if (style === 'pigtails') hf += mir('<rect x="40" y="150" width="34" height="18" rx="9" fill="#ff6fa5" transform="rotate(-20 57 159)"/>');
     s += '<g class="mk-hairf">' + hf + '</g>';
