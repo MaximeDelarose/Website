@@ -89,6 +89,9 @@
         tabs.appendChild(b);
       });
       paintBg(); render(); fill();
+      var doneB = C.doneBar(C.$('.tray', el), 'J\u2019ai fini de décorer !', function () { sel = null; mark(); C.endScreen({ tile: 'room', svg: Art.tiles.room, say: 'Bravo ' + C.NAME + ' ! Ta chambre est magnifique !', again: function () { } }); });
+      var touched = C.armDoneHint('room', doneB), origAdd = add;
+      add = function (d) { origAdd(d); touched(); };
       C.say('Décore ta chambre !');
     },
     leave: function () { }

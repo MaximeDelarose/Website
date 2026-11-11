@@ -1,0 +1,54 @@
+/* Navigation unique pour Célia : château = maison, bouton vert « J'ai fini ! », écran de fin à deux grandes cartes. */
+.castlebtn { pointer-events: auto; width: 86px; height: 64px; border-radius: 22px; border: 4px solid #fff; flex: none; padding: 4px 4px 2px;
+  background: linear-gradient(180deg, #fff0f8, #ffc7e2); box-shadow: 0 5px 0 rgba(107,63,114,.32), 0 10px 16px rgba(107,63,114,.22); transition: transform .12s; }
+.castlebtn svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.castlebtn:active { transform: translateY(4px) scale(.96); }
+#btnHome { width: 86px; height: 64px; }
+#hud .castlebtn { pointer-events: auto; }
+#hud .hl { gap: 8px; } #hud .hr { gap: 8px; }
+#btnReplay { width: 46px; height: 46px; }
+
+/* « J'ai fini ! » : vert, large, coche blanche, pulsation. Jamais confondu avec un outil (les outils sont ronds et colorés). */
+.donebar { display: flex; justify-content: center; padding: 2px 0 4px; }
+.donebtn { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 0 24px 0 10px; border-radius: 36px; border: 4px solid #fff;
+  background: radial-gradient(circle at 20% 18%, rgba(255,255,255,.55) 0 12%, rgba(255,255,255,0) 13%), linear-gradient(180deg, #5df0b8, #14b87d);
+  box-shadow: 0 6px 0 rgba(10,110,80,.45), 0 12px 18px rgba(20,140,100,.35); color: #fff; font-weight: 900; font-size: 19px; letter-spacing: .2px;
+  animation: donepulse 2.2s ease-in-out infinite; transition: transform .12s; max-width: 100%; touch-action: manipulation; }
+.donebtn .dchk { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.28); display: grid; place-items: center; flex: none; padding: 7px; }
+.donebtn .dchk svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 0 rgba(0,0,0,.18)); }
+.donebtn .dlab { text-shadow: 0 2px 0 rgba(0,90,60,.45); line-height: 1.1; text-align: left; }
+.donebtn:active { transform: translateY(5px) scale(.97); box-shadow: 0 1px 0 rgba(10,110,80,.45); animation: none; }
+@keyframes donepulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); box-shadow: 0 6px 0 rgba(10,110,80,.45), 0 0 0 9px rgba(93,240,184,.35), 0 12px 18px rgba(20,140,100,.35); } }
+.donefloat { position: absolute; left: 0; right: 0; bottom: calc(var(--sb) + 8px); display: flex; justify-content: center; z-index: 7; pointer-events: none; } .donefloat .donebtn { pointer-events: auto; }
+.lg { bottom: 92px !important; }
+@media (orientation: landscape) { .donebtn { min-height: 54px; font-size: 17px; } .donebtn .dchk { width: 38px; height: 38px; } }
+
+/* écran de fin */
+.celebrate .card { gap: 14px; }
+.polaroid.small { padding: 8px 8px 24px; } .polaroid.small img, .polaroid.small.svg svg { width: min(44vw, 210px); max-height: 26dvh; }
+.polaroid.small.svg svg { height: min(44vw, 210px); }
+.gift { width: 84px; height: 84px; } .gift .giftbadge { width: 36px; height: 36px; padding: 6px; }
+.endcards { display: flex; gap: 14px; justify-content: center; width: 100%; }
+.endcard { position: relative; width: min(42vw, 190px); aspect-ratio: .86; border-radius: 34px; border: 5px solid #fff; padding: 8px 8px 40px; animation: popin2 .6s both cubic-bezier(.2, 1.5, .4, 1); transition: transform .12s;
+  box-shadow: 0 8px 0 rgba(107,63,114,.3), 0 16px 24px rgba(107,63,114,.28); }
+.endcard.green { background: linear-gradient(160deg, #d6ffe9, #7fe8b4); } .endcard.pink { background: linear-gradient(160deg, #ffe6f3, #ffa9d3); }
+.endcard:active { transform: translateY(5px) scale(.97); }
+.ecart { position: absolute; inset: 8px 8px 44px; display: block; } .ecart svg { width: 100%; height: 100%; filter: drop-shadow(0 6px 4px rgba(0,0,0,.15)); animation: tfloat 3s ease-in-out infinite; }
+.endcard.green::after { content: ""; position: absolute; right: -8px; top: -8px; width: 44px; height: 44px; border-radius: 50%; border: 3px solid #fff; background: #14b87d url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><path d='M38 24a14 14 0 1 1-5-10.700' fill='none' stroke='white' stroke-width='7' stroke-linecap='round'/><path d='M37 5v11H26z' fill='white' stroke='white' stroke-width='3' stroke-linejoin='round'/></svg>") center/62% no-repeat; }
+.eclab { position: absolute; left: 6px; right: 6px; bottom: 8px; text-align: center; font-weight: 900; font-size: 17px; text-transform: uppercase; color: var(--ink); background: rgba(255,255,255,.92); border-radius: 16px; padding: 4px 4px; }
+@media (orientation: landscape) { .endcard { width: min(26vw, 150px); } .polaroid.small img, .polaroid.small.svg svg { max-height: 30dvh; } }
+
+/* réglages parents : volume */
+.pvol { display: flex; align-items: center; gap: 10px; width: 100%; } .pvol input { flex: 1; accent-color: #8b60ee; height: 32px; } .pvol b { width: 46px; text-align: right; font-size: 15px; }
+
+/* barre d'outils plus compacte : tout tient sur une ligne, le bouton vert a sa propre ligne */
+.tools { gap: 6px; flex-wrap: nowrap; } .tools .btn { width: 46px; height: 46px; } .tools .btn.small { width: 42px; height: 42px; } .tools .sep { width: 4px; }
+.tray { gap: 6px; }
+
+/* l'emplacement des couleurs / autocollants garde toujours la même hauteur : la zone de dessin ne saute pas quand on change d'outil */
+.pslot { position: relative; min-height: 118px; }
+.pslot > .palette, .pslot > .stickers { position: absolute; left: 0; right: 0; top: 0; }
+.pslot > [hidden] { display: flex !important; visibility: hidden; pointer-events: none; }
+/* « pas encore » : simple anneau lumineux, sans déplacer ni agrandir la zone (important sur le canevas) */
+.nudge { animation: nudgering 1.7s ease-in-out 1; } @keyframes nudgering { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,93,158,0); } 25%, 75% { box-shadow: 0 0 0 8px rgba(255,93,158,.55); } 50% { box-shadow: 0 0 0 3px rgba(255,93,158,.2); } }
+.cv-wrap.nudge { box-shadow: 0 0 0 4px var(--lav); }

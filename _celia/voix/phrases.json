@@ -1,0 +1,610 @@
+[
+ {
+  "key": "92652413",
+  "text": "Bonjour !"
+ },
+ {
+  "key": "2b6b7141",
+  "text": "Bravo Célia ! Tu veux encore jouer ou retourner au château ?"
+ },
+ {
+  "key": "c7942d7c",
+  "text": "Bravo, ça brille !"
+ },
+ {
+  "key": "cac47762",
+  "text": "Ce soir, c’est le grand bal ! Choisis ta robe."
+ },
+ {
+  "key": "87f40a03",
+  "text": "Cherche la licorne !"
+ },
+ {
+  "key": "fb27fe55",
+  "text": "Cherche la petite clé dorée !"
+ },
+ {
+  "key": "7b48e90d",
+  "text": "Cherche le chat !"
+ },
+ {
+  "key": "37d41e66",
+  "text": "Cherche le chien !"
+ },
+ {
+  "key": "1189a9b7",
+  "text": "Cherche le cœur rose !"
+ },
+ {
+  "key": "fb04422c",
+  "text": "Cherche le dragon !"
+ },
+ {
+  "key": "3c59d5cd",
+  "text": "Cherche le lapin !"
+ },
+ {
+  "key": "d6ee097f",
+  "text": "Cherche le panda !"
+ },
+ {
+  "key": "d35c1748",
+  "text": "Cherche le papillon bleu !"
+ },
+ {
+  "key": "0336bf5f",
+  "text": "Cherche le papillon jaune !"
+ },
+ {
+  "key": "3ce64742",
+  "text": "Cherche le papillon orange !"
+ },
+ {
+  "key": "ace79017",
+  "text": "Cherche le papillon rose !"
+ },
+ {
+  "key": "a13ff2ac",
+  "text": "Cherche le papillon rouge !"
+ },
+ {
+  "key": "78323b2f",
+  "text": "Cherche le papillon vert !"
+ },
+ {
+  "key": "00492dc7",
+  "text": "Cherche le papillon violet !"
+ },
+ {
+  "key": "5bb86451",
+  "text": "Cherche l’arc-en-ciel !"
+ },
+ {
+  "key": "27621f99",
+  "text": "Cherche l’œuf !"
+ },
+ {
+  "key": "3755ba73",
+  "text": "Choisis un rouge à lèvres !"
+ },
+ {
+  "key": "c5e3a43d",
+  "text": "Coucou Célia ! Bienvenue dans ton monde magique ! Qu’est-ce qu’on fait aujourd’hui ?"
+ },
+ {
+  "key": "72e1dccd",
+  "text": "Coucou petit dragon !"
+ },
+ {
+  "key": "3b107a88",
+  "text": "Célia prépare un gâteau avec ses amis !"
+ },
+ {
+  "key": "275deab9",
+  "text": "Célia rencontre une licorne. Elle cherche sa maison !"
+ },
+ {
+  "key": "2ff0dc85",
+  "text": "C’est la licorne !"
+ },
+ {
+  "key": "659e2c7f",
+  "text": "C’est le chat !"
+ },
+ {
+  "key": "309a65e0",
+  "text": "C’est le chien !"
+ },
+ {
+  "key": "2d3b9f2a",
+  "text": "C’est le dragon !"
+ },
+ {
+  "key": "4dfdaa83",
+  "text": "C’est le lapin !"
+ },
+ {
+  "key": "ccfde1cd",
+  "text": "C’est le panda !"
+ },
+ {
+  "key": "6c81e727",
+  "text": "C’est magique !"
+ },
+ {
+  "key": "a92c0c46",
+  "text": "Dis bonjour au chaton !"
+ },
+ {
+  "key": "64c33ae7",
+  "text": "Dis bonjour doucement !"
+ },
+ {
+  "key": "e32c6cc4",
+  "text": "Dis bonjour à la licorne !"
+ },
+ {
+  "key": "5b5a2bf9",
+  "text": "Dis-lui des mots doux. Touche trois cœurs !"
+ },
+ {
+  "key": "1e6fd39b",
+  "text": "Décore ta chambre !"
+ },
+ {
+  "key": "9e3a08a0",
+  "text": "Habille la princesse !"
+ },
+ {
+  "key": "3a509b95",
+  "text": "Hourra !"
+ },
+ {
+  "key": "75d13629",
+  "text": "Il est plus confiant !"
+ },
+ {
+  "key": "c0563e73",
+  "text": "Il fait sombre. Touche les trois étoiles !"
+ },
+ {
+  "key": "ada2c6b9",
+  "text": "Il faut un œuf. Touche l’œuf !"
+ },
+ {
+  "key": "7de4e0ba",
+  "text": "Il sourit un peu !"
+ },
+ {
+  "key": "5a8f7ece",
+  "text": "Ils sont tes invités !"
+ },
+ {
+  "key": "1cdb366b",
+  "text": "Joyeux anniversaire !"
+ },
+ {
+  "key": "a396f434",
+  "text": "La licorne est chez elle. Merci Célia ! Fin."
+ },
+ {
+  "key": "5b8d816a",
+  "text": "La musique commence ! Touche une étoile pour danser."
+ },
+ {
+  "key": "21e04910",
+  "text": "La nuit tombe. Attrape les étoiles du dragon !"
+ },
+ {
+  "key": "712d214f",
+  "text": "Le dragon crache des étoiles ! Touche-le."
+ },
+ {
+  "key": "572e9ffc",
+  "text": "Le dragon n’a plus peur. Il a un nouvel ami. Fin !"
+ },
+ {
+  "key": "ec4f5ee6",
+  "text": "Le gâteau est prêt ! Touche-le pour mettre les bougies."
+ },
+ {
+  "key": "68083d7b",
+  "text": "Les papillons arrivent ! Touche-les !"
+ },
+ {
+  "key": "450681a6",
+  "text": "Miam !"
+ },
+ {
+  "key": "d748924a",
+  "text": "Miam miam ! On va préparer un délicieux biscuit !"
+ },
+ {
+  "key": "2c39efc9",
+  "text": "Miam miam ! On va préparer un délicieux cupcake !"
+ },
+ {
+  "key": "621f906d",
+  "text": "Miam miam ! On va préparer un délicieux gâteau !"
+ },
+ {
+  "key": "90e0085d",
+  "text": "Miam miam ! On va préparer un délicieux gâteau licorne !"
+ },
+ {
+  "key": "52a029da",
+  "text": "Miam miam ! On va préparer une délicieuse glace !"
+ },
+ {
+  "key": "edad8cdd",
+  "text": "Miaou !"
+ },
+ {
+  "key": "4cfa4d44",
+  "text": "Offre-lui un câlin. Touche le cœur !"
+ },
+ {
+  "key": "b08563a3",
+  "text": "Oh, quelle jolie couleur !"
+ },
+ {
+  "key": "b239a29c",
+  "text": "On danse !"
+ },
+ {
+  "key": "ba972602",
+  "text": "Ooooh, regarde ce petit chaton ! Il est trop mignon !"
+ },
+ {
+  "key": "2578528a",
+  "text": "Ooooh, regarde ce petit chiot ! Il est trop mignon !"
+ },
+ {
+  "key": "2ddaa9e7",
+  "text": "Ooooh, regarde ce petit lapin ! Il est trop mignon !"
+ },
+ {
+  "key": "40808435",
+  "text": "Ooooh, regarde ce petit panda ! Il est trop mignon !"
+ },
+ {
+  "key": "3e849934",
+  "text": "Oui, deux balles !"
+ },
+ {
+  "key": "b2051f33",
+  "text": "Oui, deux cœurs !"
+ },
+ {
+  "key": "ca2d518e",
+  "text": "Oui, deux fleurs !"
+ },
+ {
+  "key": "ae9561aa",
+  "text": "Oui, deux pommes !"
+ },
+ {
+  "key": "6632d8ba",
+  "text": "Oui, deux étoiles !"
+ },
+ {
+  "key": "634acc0e",
+  "text": "Oui, par là !"
+ },
+ {
+  "key": "7922006b",
+  "text": "Oui, trois balles !"
+ },
+ {
+  "key": "0343e5c6",
+  "text": "Oui, trois cœurs !"
+ },
+ {
+  "key": "ff5036a9",
+  "text": "Oui, trois fleurs !"
+ },
+ {
+  "key": "466ef671",
+  "text": "Oui, trois pommes !"
+ },
+ {
+  "key": "c280497f",
+  "text": "Oui, trois étoiles !"
+ },
+ {
+  "key": "7890c843",
+  "text": "Oui, un cœur !"
+ },
+ {
+  "key": "db58be65",
+  "text": "Oui, une balle !"
+ },
+ {
+  "key": "3ed94c97",
+  "text": "Oui, une fleur !"
+ },
+ {
+  "key": "07c6381b",
+  "text": "Oui, une pomme !"
+ },
+ {
+  "key": "cd407183",
+  "text": "Oui, une étoile !"
+ },
+ {
+  "key": "fbe58ee7",
+  "text": "Où est la clé de la maison ? La clé dorée !"
+ },
+ {
+  "key": "3e320fa9",
+  "text": "Où est la licorne ?"
+ },
+ {
+  "key": "e3e1cf87",
+  "text": "Où est le chat ?"
+ },
+ {
+  "key": "eb2b9e08",
+  "text": "Où est le chien ?"
+ },
+ {
+  "key": "46442b8a",
+  "text": "Où est le dragon ?"
+ },
+ {
+  "key": "a9180f27",
+  "text": "Où est le lapin ?"
+ },
+ {
+  "key": "f59e6135",
+  "text": "Où est le panda ?"
+ },
+ {
+  "key": "ceae5c87",
+  "text": "Quand tu as terminé, touche le bouton vert !"
+ },
+ {
+  "key": "f4dc17e5",
+  "text": "Que c’est joli !"
+ },
+ {
+  "key": "a68e03ef",
+  "text": "Que veux-tu cuisiner ?"
+ },
+ {
+  "key": "09a89752",
+  "text": "Quel beau bal ! Touche le gâteau."
+ },
+ {
+  "key": "3f2f0b0f",
+  "text": "Quel chemin ? Suis l’arc-en-ciel !"
+ },
+ {
+  "key": "b9e83d4a",
+  "text": "Quelle belle robe !"
+ },
+ {
+  "key": "0980f69f",
+  "text": "Quelle histoire veux-tu ?"
+ },
+ {
+  "key": "b9094936",
+  "text": "Qu’est-ce qu’on fait ?"
+ },
+ {
+  "key": "43eb8483",
+  "text": "Touche deux balles !"
+ },
+ {
+  "key": "d47b1b4e",
+  "text": "Touche deux cœurs !"
+ },
+ {
+  "key": "4dad8c31",
+  "text": "Touche deux fleurs !"
+ },
+ {
+  "key": "472141d9",
+  "text": "Touche deux pommes !"
+ },
+ {
+  "key": "4a144147",
+  "text": "Touche deux étoiles !"
+ },
+ {
+  "key": "c7c2e2d6",
+  "text": "Touche la couronne pour la mettre !"
+ },
+ {
+  "key": "851eddee",
+  "text": "Touche la grosse balle !"
+ },
+ {
+  "key": "6f7fbd48",
+  "text": "Touche la grosse fleur !"
+ },
+ {
+  "key": "84687a44",
+  "text": "Touche la grosse pomme !"
+ },
+ {
+  "key": "fa60b59e",
+  "text": "Touche la grosse étoile !"
+ },
+ {
+  "key": "e6a4fa8a",
+  "text": "Touche la petite balle !"
+ },
+ {
+  "key": "cdb0bd0c",
+  "text": "Touche la petite fleur !"
+ },
+ {
+  "key": "4660e0c8",
+  "text": "Touche la petite pomme !"
+ },
+ {
+  "key": "65b2a30a",
+  "text": "Touche la petite étoile !"
+ },
+ {
+  "key": "b8775501",
+  "text": "Touche le gros cœur !"
+ },
+ {
+  "key": "d7a8c2b2",
+  "text": "Touche le papillon bleu !"
+ },
+ {
+  "key": "248c0799",
+  "text": "Touche le papillon jaune !"
+ },
+ {
+  "key": "d96fd660",
+  "text": "Touche le papillon orange !"
+ },
+ {
+  "key": "24963cb9",
+  "text": "Touche le papillon rose !"
+ },
+ {
+  "key": "ab6ddc3a",
+  "text": "Touche le papillon rouge !"
+ },
+ {
+  "key": "b4f24cf5",
+  "text": "Touche le papillon vert !"
+ },
+ {
+  "key": "1418e7c5",
+  "text": "Touche le papillon violet !"
+ },
+ {
+  "key": "2796ab8c",
+  "text": "Touche le petit cœur !"
+ },
+ {
+  "key": "5ad93a94",
+  "text": "Touche les ballons pour faire la fête !"
+ },
+ {
+  "key": "4753f4bc",
+  "text": "Touche les ingrédients !"
+ },
+ {
+  "key": "3b6070b0",
+  "text": "Touche l’œuf magique !"
+ },
+ {
+  "key": "4cef074a",
+  "text": "Touche trois balles !"
+ },
+ {
+  "key": "4c437f65",
+  "text": "Touche trois cœurs !"
+ },
+ {
+  "key": "fe950740",
+  "text": "Touche trois fleurs !"
+ },
+ {
+  "key": "9a408f28",
+  "text": "Touche trois pommes !"
+ },
+ {
+  "key": "1cf726d6",
+  "text": "Touche trois pommes pour la compote !"
+ },
+ {
+  "key": "8ff21e34",
+  "text": "Touche trois étoiles !"
+ },
+ {
+  "key": "6d1ad210",
+  "text": "Touche un cœur !"
+ },
+ {
+  "key": "1dcd8cc2",
+  "text": "Touche une balle !"
+ },
+ {
+  "key": "435cabb4",
+  "text": "Touche une fleur !"
+ },
+ {
+  "key": "1d1a6550",
+  "text": "Touche une pomme !"
+ },
+ {
+  "key": "9e2852b2",
+  "text": "Touche une étoile !"
+ },
+ {
+  "key": "2ee14f74",
+  "text": "Tout le monde est content. Fin !"
+ },
+ {
+  "key": "74c31980",
+  "text": "Tout le monde mange du gâteau. Fin !"
+ },
+ {
+  "key": "92136e6f",
+  "text": "Trouve la fleur bleue !"
+ },
+ {
+  "key": "04e2b0b5",
+  "text": "Trouve la fleur jaune !"
+ },
+ {
+  "key": "eb130cfc",
+  "text": "Trouve la fleur orange !"
+ },
+ {
+  "key": "ab11a865",
+  "text": "Trouve la fleur rose !"
+ },
+ {
+  "key": "2ea455ae",
+  "text": "Trouve la fleur rouge !"
+ },
+ {
+  "key": "7c8ab2de",
+  "text": "Trouve la fleur verte !"
+ },
+ {
+  "key": "322861be",
+  "text": "Trouve la fleur violette !"
+ },
+ {
+  "key": "17798520",
+  "text": "Tu as la clé !"
+ },
+ {
+  "key": "40d36a0d",
+  "text": "Tu es une princesse !"
+ },
+ {
+  "key": "427c4761",
+  "text": "Un petit dragon se cache derrière la montagne. Il est timide."
+ },
+ {
+  "key": "3a256303",
+  "text": "Un œuf !"
+ },
+ {
+  "key": "44eeddba",
+  "text": "Voici la maison de la licorne ! Touche le château !"
+ },
+ {
+  "key": "9228667d",
+  "text": "Wouah, des étoiles !"
+ },
+ {
+  "key": "75cf7171",
+  "text": "Wouah, ton dessin est magnifique !"
+ },
+ {
+  "key": "3374efb3",
+  "text": "À quoi veux-tu jouer ?"
+ }
+]

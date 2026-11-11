@@ -31,11 +31,12 @@
     enter: function (el) {
       var chIdx = C.store.get('mkchar', 0) % F.chars.length;
       var S = { lips: null, blush: null, shadow: null, hairStyle: null, crown: null, stamps: [], extras: '' };
+      var saved = true, touched = function () { };
       var tool = 'lips', cur = { lips: LIPS[0], blush: BLUSH[0], shadow: SHADOW[0], stamp: 'heart' }, busy = false;
       el.innerHTML = '<div class="dbg">' + Art.svg('0 0 390 700', '<defs><radialGradient id="mkg" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="#fff8fc"/><stop offset="1" stop-color="#e5d6ff"/></radialGradient></defs><rect width="390" height="700" fill="url(#mkg)"/><g fill="#fff" opacity=".7">' + [30, 90, 160, 230, 300, 360].map(function (x, i) { return '<path d="' + Art.P.spark + '" transform="translate(' + x + ' ' + (40 + (i * 53) % 300) + ') scale(.9)"/>'; }).join('') + '</g>', null, ' preserveAspectRatio="xMidYMid slice"') + '</div>' +
         '<div class="act mk"><div class="stage"><div class="mkface"></div>' +
         '<div class="actbar left"></div>' +
-        '<div class="actbar"><button class="btn yellow" data-do="dice" aria-label="surprise">' + Art.ui.dice + '</button><button class="btn turq" data-do="photo" aria-label="photo">' + Art.ui.camera + '</button><button class="btn red small" data-do="clear" aria-label="effacer">' + Art.ui.again + '</button></div></div>' +
+        '<div class="actbar"><button class="btn yellow" data-do="dice" aria-label="surprise">' + Art.ui.dice + '</button><button class="btn red small" data-do="clear" aria-label="effacer">' + Art.ui.again + '</button></div></div>' +
         '<div class="tray"><div class="tabs"></div><div class="swrow scrollable"></div></div></div><div class="flash"></div>';
       var face = C.$('.mkface', el), left = C.$('.actbar.left', el), tabs = C.$('.tabs', el), sw = C.$('.swrow', el);
       C.fit(C.$('.stage', el), face, 300 / 340);
@@ -48,6 +49,7 @@
       function stampsSvg() {
         return S.stamps.map(function (p) { return '<g transform="translate(' + p.x.toFixed(1) + ' ' + p.y.toFixed(1) + ') rotate(' + (p.r || 0) + ') scale(' + (p.s || 1) + ')"><g class="' + (p.fresh ? 'drop' : '') + '">' + F.stamps[p.k] + '</g></g>'; }).join('');
       }
+      function mark() { saved = false; touched(); }
       function render() {
         face.innerHTML = Art.svg('0 0 300 340', F.render(ch(), { lips: S.lips, blush: S.blush, shadow: S.shadow, hairStyle: S.hairStyle }) + S.extras + stampsSvg() + crownSvg(), 'mkface-svg');
         S.stamps.forEach(function (p) { p.fresh = false; });
@@ -71,9 +73,9 @@
       face.addEventListener('pointerdown', function (e) {
         if (busy) return;
         var p = pt(e);
-        if (tool === 'lips') { if (inFace(p, 6) && p.y > 218) { S.lips = cur.lips; render(); pop(150, 250, cur.lips); } else wrong(150, 250); }
-        else if (tool === 'blush') { if (inFace(p, 6) && p.y > 170 && p.y < 290) { S.blush = cur.blush; render(); pop(96, 226, cur.blush); pop(204, 226, cur.blush); } else wrong(96, 226); }
-        else if (tool === 'shadow') { if (inFace(p, 6) && p.y > 110 && p.y < 222) { S.shadow = cur.shadow; render(); pop(112, 168, cur.shadow); pop(188, 168, cur.shadow); } else wrong(112, 168); }
+        if (tool === 'lips') { if (inFace(p, 6) && p.y > 218) { mark(); S.lips = cur.lips; render(); pop(150, 250, cur.lips); } else wrong(150, 250); }
+        else if (tool === 'blush') { if (inFace(p, 6) && p.y > 170 && p.y < 290) { mark(); S.blush = cur.blush; render(); pop(96, 226, cur.blush); pop(204, 226, cur.blush); } else wrong(96, 226); }
+        else if (tool === 'shadow') { if (inFace(p, 6) && p.y > 110 && p.y < 222) { mark(); S.shadow = cur.shadow; render(); pop(112, 168, cur.shadow); pop(188, 168, cur.shadow); } else wrong(112, 168); }
         else if (tool === 'stamps') {
           var q = clampFace(p); addStamp(q, e);
           spray = { id: e.pointerId, last: q, d: 0 };
@@ -82,7 +84,7 @@
         face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop');
       });
       function addStamp(q, e) {
-        if (S.stamps.length >= 40) S.stamps.shift();
+        mark(); if (S.stamps.length >= 40) S.stamps.shift();
         S.stamps.push({ k: cur.stamp, x: q.x, y: q.y, s: cur.stamp === 'glitter' ? 1 : (0.9 + Math.random() * 0.4), r: C.rint(-20, 20), fresh: true });
         render(); C.sfx.tap(C.rint(0, 8)); C.fx.burst(e.clientX, e.clientY, { n: 6, dist: 60, size: 16 });
       }
@@ -111,11 +113,11 @@
         else if (tool === 'shadow') SHADOW.forEach(function (c, i) { swatch(c, 'shadow', i); });
         else if (tool === 'stamps') STAMPS.forEach(function (k) { var b = C.el('<button class="it' + (cur.stamp === k ? ' on' : '') + '" aria-label="tampon"><svg viewBox="-24 -24 48 48">' + F.stamps[k] + '</svg></button>'); b.onclick = function () { cur.stamp = k; C.select(sw, '.it', b); C.sfx.pop(); C.bounce(b); }; sw.appendChild(b); });
         else if (tool === 'hair') {
-          ['long', 'puffs', 'pigtails', 'bob'].forEach(function (s) { var b = C.el('<button class="it' + ((S.hairStyle || ch().style) === s ? ' on' : '') + '" aria-label="coiffure">' + Art.svg('0 0 300 340', F.render(ch(), { hairStyle: s }), null) + '</button>'); b.onclick = function () { S.hairStyle = s; render(); C.select(sw, '.it', b); C.sfx.sparkle(); C.sfx.boing(); face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop'); }; sw.appendChild(b); });
+          ['long', 'puffs', 'pigtails', 'bob'].forEach(function (s) { var b = C.el('<button class="it' + ((S.hairStyle || ch().style) === s ? ' on' : '') + '" aria-label="coiffure">' + Art.svg('0 0 300 340', F.render(ch(), { hairStyle: s }), null) + '</button>'); b.onclick = function () { mark(); S.hairStyle = s; render(); C.select(sw, '.it', b); C.sfx.sparkle(); C.sfx.boing(); face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop'); }; sw.appendChild(b); });
         } else if (tool === 'crown') {
           var none = C.el('<button class="it none' + (!S.crown ? ' on' : '') + '" aria-label="aucun"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="16" fill="none" stroke="#c4a8ff" stroke-width="5"/><path d="M13 35L35 13" stroke="#c4a8ff" stroke-width="5" stroke-linecap="round"/></svg></button>');
           none.onclick = function () { S.crown = null; render(); C.select(sw, '.it', none); C.sfx.whoosh(); }; sw.appendChild(none);
-          CROWNS.forEach(function (id) { var b = C.el('<button class="it' + (S.crown === id ? ' on' : '') + '" aria-label="couronne">' + G.preview('crown', id) + '</button>'); b.onclick = function () { S.crown = id; render(); C.select(sw, '.it', b); C.sfx.sparkle(); C.sfx.boing(); pop(150, 60); }; sw.appendChild(b); });
+          CROWNS.forEach(function (id) { var b = C.el('<button class="it' + (S.crown === id ? ' on' : '') + '" aria-label="couronne">' + G.preview('crown', id) + '</button>'); b.onclick = function () { mark(); S.crown = id; render(); C.select(sw, '.it', b); C.sfx.sparkle(); C.sfx.boing(); pop(150, 60); }; sw.appendChild(b); });
         }
       }
       TOOLS.forEach(function (t) {
@@ -149,12 +151,21 @@
           if (!yes) return; S.lips = S.blush = S.shadow = S.crown = S.hairStyle = null; S.stamps = []; S.extras = ''; render(); fill(); C.sfx.whoosh();
         });
       };
-      C.$('[data-do=photo]', el).onclick = function () {
+      var finishMk = function () {
+        if (!(S.lips || S.blush || S.shadow || S.crown || S.stamps.length || S.extras || S.hairStyle)) { C.nudge(face); C.say('Maquille d\u2019abord !'); return false; }
         var fl = C.$('.flash', el); C.sfx.shutter(); fl.classList.add('go'); setTimeout(function () { fl.classList.remove('go'); }, 700);
         var svg = C.$('svg', face);
         C.rasterSvg(svg, 480, 544, function (cx, w, h) { var g = cx.createRadialGradient(w / 2, h * 0.4, 20, w / 2, h * 0.45, h * 0.8); g.addColorStop(0, '#fff8fc'); g.addColorStop(1, '#d9c5ff'); cx.fillStyle = g; cx.fillRect(0, 0, w, h); })
-          .then(function (url) { return C.saveCreation('makeup', url).then(function () { C.finish({ kind: 'makeup', img: url, say: 'Tu es magnifique, ' + C.NAME + ' !' }); }); })
+          .then(function (url) { return C.saveCreation('makeup', url).then(function () { saved = true; C.finish({ kind: 'makeup', tile: 'makeup', img: url, say: 'Bravo ' + C.NAME + ' ! Tu es magnifique !', again: function () { S.lips = S.blush = S.shadow = S.crown = S.hairStyle = null; S.stamps = []; S.extras = ''; render(); fill(); saved = true; } }); }); })
           .catch(function () { C.say('Oups !'); });
+      };
+      var doneB = C.doneBar(C.$('.tray', el), 'C\u2019est terminé !', finishMk);
+      touched = C.armDoneHint('makeup', doneB);
+      /* sauvegarde automatique si elle quitte sans avoir appuyé sur « J'ai fini » */
+      el._autosave = function () {
+        if (saved || !(S.lips || S.blush || S.shadow || S.crown || S.stamps.length || S.extras)) return; saved = true;
+        var svg = C.$('svg', face); if (!svg) return;
+        C.rasterSvg(svg, 480, 544, function (cx, w, h) { cx.fillStyle = '#efe5ff'; cx.fillRect(0, 0, w, h); }).then(function (url) { return C.saveCreation('makeup', url); }).catch(function () { });
       };
       C.say('Choisis un rouge à lèvres !');
     },

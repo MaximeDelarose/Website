@@ -4,6 +4,8 @@
   'use strict';
   var P = Art.pets;
   var FOODS = ['carrot', 'fish', 'cookie', 'apple'];
+  /* [groupe nominal, « il / elle est trop mignon(ne) »] : accords vérifiés par _celia/tests/french.cjs */
+  var GREET = { chat: ['ce petit chaton', 'Il est trop mignon'], lapin: ['ce petit lapin', 'Il est trop mignon'], chiot: ['ce petit chiot', 'Il est trop mignon'], panda: ['ce petit panda', 'Il est trop mignon'], licorne: ['cette petite licorne', 'Elle est trop mignonne'], dragon: ['ce petit dragon', 'Il est trop mignon'], fluff: ['cette petite boule de poils', 'Elle est trop mignonne'] };
 
   function load() {
     var s = C.store.get('pets', null);
@@ -77,7 +79,7 @@
 
       function greet() {
         var f = cur(); hop(); mood('happy', 1500); C.sfx.animal(f.type); hearts(4);
-        C.say('Coucou, ' + f.name + ' !');
+        var g = GREET[f.type]; C.say(g ? 'Ooooh, regarde ' + g[0] + ' ! ' + g[1] + ' !' : 'Coucou, ' + f.name + ' !');
       }
       function petTap() { hop(); mood('open', 700); C.sfx.animal(cur().type); hearts(2); }
 
@@ -174,7 +176,7 @@
 
       /* prénom : appui long (réservé à l'adulte) */
       var nameBtn = C.$('[data-a=name]', el), holdT = null;
-      nameBtn.addEventListener('pointerdown', function () { holdT = setTimeout(askName, 900); C.say('Appuie longtemps (un adulte)'); });
+      nameBtn.addEventListener('pointerdown', function () { holdT = setTimeout(askName, 900); C.say('Appuie longtemps, avec un adulte.'); });
       ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { nameBtn.addEventListener(ev, function () { clearTimeout(holdT); }); });
       function askName() {
         var f = cur();
@@ -240,6 +242,7 @@
       });
 
       draw(); renderTray();
+      C.doneBar(C.$('.tray', el), 'Je retourne au château !', function () { C.say('À bientôt !'); later(function () { C.home(); }, 700); });
       /* promenade tranquille quand rien ne se passe */
       wander = setInterval(function () {
         if (mode || !live) return;

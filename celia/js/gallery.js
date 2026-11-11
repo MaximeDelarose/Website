@@ -73,18 +73,60 @@
     else window.addEventListener('resize', f);
     return f;
   };
-  /* fin d'une création : étoile + éventuel cadeau, puis trois grands boutons */
+  /* Écran de fin, identique partout : deux grandes cartes illustrées.
+     ENCORE ! (l'illustration de l'activité) et MON CHÂTEAU ! (le château de l'accueil). */
+  C.endCards = function (tile, again) {
+    return [
+      { art: (Art.tiles[tile] || Art.tiles.draw), label: 'Encore !', cls: 'green', fn: again || function () { } },
+      { art: Art.castle(), label: 'Mon château !', cls: 'pink', fn: function () { C.home(); } }
+    ];
+  };
+  /* fin d'une création : étoile + éventuel cadeau, puis ENCORE / MON CHÂTEAU */
   C.finish = function (o) {
     var gift = C.rewards.grant();
-    return C.celebrate({
-      img: o.img, svg: o.svg, say: o.say, gift: gift,
-      buttons: [
-        { icon: Art.ui.again, cls: 'green', fn: o.again || function () { }, label: 'encore' },
-        { icon: Art.ui.gallery, cls: 'blue', fn: function () { C.gallery.open(o.kind); }, label: 'album' },
-        { icon: Art.ui.home, cls: 'pink', fn: function () { C.home(); }, label: 'maison' }
-      ]
-    });
+    return C.celebrate({ img: o.img, svg: o.svg, say: o.say || ('Bravo ' + C.NAME + ' ! Tu veux encore jouer ou retourner au château ?'), gift: gift, cards: C.endCards(o.tile || o.kind, o.again) });
   };
+  /* fin sans création ni récompense (animaux, jeux…) */
+  C.endScreen = function (o) {
+    return C.celebrate({ svg: o.svg, say: o.say || ('Bravo ' + C.NAME + ' ! Tu veux encore jouer ou retourner au château ?'), cards: C.endCards(o.tile, o.again) });
+  };
+  /* Le gros bouton « J'ai fini ! » : vert, coche blanche, pulsation. Toujours le même, dans toutes les activités.
+     label = texte pour les adultes. Un seul appui est pris en compte (anti double-tap). */
+  C.doneBtn = function (label, fn) {
+    var b = C.el('<button class="donebtn" aria-label="' + label + '"><span class="dchk">' + Art.ui.check + '</span><span class="dlab">' + label + '</span></button>');
+    var busy = false;
+    b.addEventListener('click', function () {
+      if (busy) return;
+      busy = true;                                   /* un seul appui pris en compte pendant la fin d'activité (anti double-tap)… */
+      var res = fn && fn();
+      if (res === false) { busy = false; return; }   /* …mais un refus (« pas encore ») ne verrouille JAMAIS le bouton */
+      C.sfx.chime(); C.bounce(b, 1.08); if (C.stopHint) C.stopHint();
+      setTimeout(function () { busy = false; }, 1600);
+    });
+    return b;
+  };
+  /* barre « J'ai fini » placée en tête d'un plateau */
+  C.doneBar = function (tray, label, fn) {
+    var bar = C.el('<div class="donebar"></div>'); var b = C.doneBtn(label, fn); bar.appendChild(b); tray.insertBefore(bar, tray.firstChild); return b;
+  };
+  /* Guidage : après qu'elle a commencé à créer, une petite main montre le bouton vert (2 fois au plus par activité, jamais en boucle). */
+  C.armDoneHint = function (key, btn) {
+    var shown = C.store.get('hint.' + key, 0), started = false, timer = null;
+    C.stopHint = function () { clearTimeout(timer); if (C._hintObj) { C._hintObj.stop(); C._hintObj = null; } };
+    return function touched() {
+      if (started || shown >= 2) return; started = true;
+      timer = setTimeout(function () {
+        if (!btn.isConnected) return;
+        C.store.set('hint.' + key, shown + 1);
+        C.say('Quand tu as terminé, touche le bouton vert !');
+        C._hintObj = C.hint(btn, 0, -6);
+        setTimeout(function () { if (C._hintObj) { C._hintObj.stop(); C._hintObj = null; } }, 5000);
+      }, 9000);
+    };
+  };
+  /* « pas encore » : l'élément remue doucement et brille, aucune validation */
+  /* aucune transformation : une zone de dessin ne doit jamais bouger ni grossir sous le doigt */
+  C.nudge = function (el) { if (!el) return; C.sfx.oops(); el.classList.remove('nudge'); void el.offsetWidth; el.classList.add('nudge'); setTimeout(function () { el.classList.remove('nudge'); }, 1700); };
   /* bouton d'outil rond avec icône */
   C.toolBtn = function (icon, cls, label) {
     return C.el('<button class="btn ' + (cls || 'pink') + '" aria-label="' + (label || '') + '">' + icon + '</button>');

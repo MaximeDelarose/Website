@@ -115,7 +115,7 @@
         C.sfx.chime(); C.sfx.sparkle();
         var r = ca.getBoundingClientRect(); C.fx.burst(r.left + r.width / 2, r.top + r.height / 2, { n: 24, dist: 160 });
         lu.classList.add('spin');
-        C.say('Coucou ' + C.NAME + ' ! Bienvenue dans ton monde magique !');
+        C.say('Coucou ' + C.NAME + ' ! Bienvenue dans ton monde magique ! Qu’est-ce qu’on fait aujourd’hui ?');
         C.music.start();
       }
       var sb = C.$('.startbtn', el);

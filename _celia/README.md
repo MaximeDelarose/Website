@@ -23,3 +23,14 @@ Modifier `celia/`, changer `VERSION` dans `celia/sw.js` (et la liste `FILES` si 
 - Safari peut effacer les données du site (créations locales non garanties).
 - Le mode silencieux de l'iPhone peut couper les sons ; la voix utilise la synthèse vocale du navigateur (bulle + petits sons en secours).
 - Non testé sur un vrai iPhone.
+
+## Musique d'ambiance
+4 morceaux (`celia/audio/musique-1..4.mp3`, normalisés à −20 LUFS, crête ≤ −1 dBTP), joués 1→2→3→4→1 avec fondu enchaîné de 4 s, en streaming (jamais les 4 en mémoire). Volume par défaut 20 %, réglable par l'adulte (appui long sur le haut-parleur). Voir `celia/js/music.js`.
+
+## Voix
+Voir `_celia/voix/README.md` (génération de fichiers vocaux, échantillons, ce qu'il manque).
+
+## Tests
+`node _celia/tests/french.cjs` (français, sans navigateur) ; avec `python3 -m http.server 8123` lancé : `smoke.cjs` (parcours), `ux.cjs` (ergonomie + musique), `cuisine.cjs` (partie de cuisine complète), `interactions.cjs` (coloriage, dessin, dressing, maquillage, animaux, jeux, chambre : action → résultat visible), `histoires.cjs [0-3]` (les 4 histoires).
+
+Règle de conception : **toucher → effet visible → vérification → validation**. Un clic n'est jamais une réussite à lui seul ; un refus (« pas encore ») ne bloque jamais le bouton et ne bouge jamais la zone de dessin.

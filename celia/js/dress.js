@@ -30,7 +30,6 @@
       el.innerHTML = '<div class="dbg">' + Art.svg('0 0 390 700', BG, null, ' preserveAspectRatio="xMidYMid slice"') + '</div><div class="act dress"><div class="stage"><div class="doll"><div class="dollwrap"></div></div>' +
         '<div class="actbar">' +
         '<button class="btn yellow" data-do="dice" aria-label="surprise">' + Art.ui.dice + '</button>' +
-        '<button class="btn turq" data-do="photo" aria-label="photo">' + Art.ui.camera + '</button>' +
         '<button class="btn purple" data-do="dance" aria-label="danser">' + Art.ui.music + '</button>' +
         '<button class="btn blue" data-do="turn" aria-label="tourner">' + Art.ui.spin + '</button></div></div>' +
         '<div class="tray"><div class="tabs"></div><div class="items scrollable"></div></div></div><div class="flash"></div>';
@@ -46,7 +45,7 @@
         G.setMood(svg, 'open'); clearTimeout(moodT); moodT = setTimeout(function () { G.setMood(svg, dancing ? 'happy' : 'smile'); }, 1300);
       }
       function apply(slot, id, quiet) {
-        cfg[slot] = id; C.saveProfile(); draw();
+        cfg[slot] = id; C.saveProfile(); draw(); touched();
         if (!quiet) { react(); C.sfx.sparkle(); C.sfx.boing(); }
       }
       function fillItems() {
@@ -111,7 +110,7 @@
           if (n >= 6) { clearInterval(iv); C.saveProfile(); G.setMood(svg, 'open'); C.sfx.yay(); react(); C.say('Une tenue surprise !'); fillItems(); setTimeout(function () { G.setMood(svg, 'smile'); }, 1500); }
         }, 160);
       };
-      C.$('[data-do=photo]', el).onclick = function () {
+      var finishDress = function () {
         var fl = C.$('.flash', el); C.sfx.shutter(); fl.classList.add('go'); setTimeout(function () { fl.classList.remove('go'); }, 700);
         stopDance();
         var clone = svg.cloneNode(true);
@@ -121,9 +120,11 @@
           var g = cx.createRadialGradient(w / 2, h * 0.45, 20, w / 2, h * 0.45, h * 0.8); g.addColorStop(0, '#fff6fb'); g.addColorStop(1, '#ffc7e2'); cx.fillStyle = g; cx.fillRect(0, 0, w, h);
           cx.fillStyle = '#ffd84d'; for (var i = 0; i < 14; i++) { var x = (i * 137) % w, y = (i * 211) % h; cx.beginPath(); cx.arc(x, y, 5, 0, 7); cx.fill(); }
         }).then(function (url) {
-          return C.saveCreation('outfit', url).then(function () { C.finish({ kind: 'outfit', img: url, say: 'Quelle belle tenue, ' + C.NAME + ' !' }); });
+          return C.saveCreation('outfit', url).then(function () { C.finish({ kind: 'outfit', tile: 'dress', img: url, say: 'Bravo ' + C.NAME + ' ! Quelle belle princesse !' }); });
         }).catch(function () { C.say('Oups !'); });
       };
+      var doneB = C.doneBar(C.$('.tray', el), 'Ma princesse est prête !', finishDress);
+      var touched = C.armDoneHint('dress', doneB);
       C.say('Habille la princesse !');
     },
     leave: function () { }

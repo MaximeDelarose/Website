@@ -28,3 +28,5 @@
 .flyer { position: absolute; pointer-events: none; z-index: 65; } .flyer svg { width: 100%; height: 100%; }
 .hinthand { position: absolute; width: 38px; pointer-events: none; z-index: 70; animation: tapme 1s ease-in-out infinite; filter: drop-shadow(0 4px 4px rgba(0,0,0,.25)); } .hinthand svg { width: 100%; }
 @keyframes tapme { 50% { transform: translate(-5px, -16px) rotate(-8deg); } }
+.bpop { animation: bpop .45s cubic-bezier(.2, 1.6, .4, 1) both; transform-box: fill-box; transform-origin: center; } @keyframes bpop { from { transform: scale(0); } to { transform: scale(1); } }
+.blobs { pointer-events: none; }

@@ -15,7 +15,7 @@
     var wall = new Uint8Array(N * N), ready = false;
     var color = '#ff8fd0', tool = 'bucket', sticker = 'etoile';
     var undoStack = [];
-    var busy = false;
+    var busy = false, dirty = false, fills = 0, touched = function () { };
 
     /* la ligne du dessin : SVG -> canvas -> calque transparent + carte des murs */
     C.svgToImage(Art.color.svg(pageId)).then(function (img) {
@@ -35,7 +35,7 @@
     function pos(e) { var r = cvC.getBoundingClientRect(); return { x: (e.clientX - r.left) * N / r.width, y: (e.clientY - r.top) * N / r.height }; }
     function snap() {
       try { undoStack.push([cC.getImageData(0, 0, N, N), cS.getImageData(0, 0, N, N)]); if (undoStack.length > 12) undoStack.shift(); } catch (e) { }
-      updUndo();
+      dirty = true; touched(); updUndo();
     }
     function updUndo() { var u = C.$('[data-do=undo]', host); if (u) u.classList.toggle('dim', !undoStack.length); }
     function undo() {
@@ -119,7 +119,7 @@
         var r = region(p.x, p.y); if (!r) { C.sfx.oops(); return; }
         snap(); fillRegion(r, color);
         C.sfx.tap(C.rint(0, 6)); C.sfx.pop(); C.fx.burst(screenX, screenY, { n: 12, dist: 90 });
-        if (!C._first) { C._first = 1; }
+        fills++; if (fills % 6 === 1) C.say('Oh, quelle jolie couleur !', { keep: false });
       } else if (tool === 'eraser') {
         var r2 = region(p.x, p.y); if (!r2) return; snap(); clearRegion(r2); C.sfx.whoosh(); C.fx.burst(screenX, screenY, { n: 8, shapes: ['dot'], colors: ['#fff', '#e5d6ff'], dist: 60 });
       } else if (tool === 'sticker') {
@@ -194,16 +194,21 @@
         if (!yes) return; snap(); cC.clearRect(0, 0, N, N); cS.clearRect(0, 0, N, N); C.sfx.whoosh();
       });
     });
-    C.$('[data-do=save]', host).addEventListener('click', function () {
+    function compose() {
       var cv = document.createElement('canvas'); cv.width = 520; cv.height = 520;
       var x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 520, 520);
       x.drawImage(cvC, 0, 0, 520, 520); x.drawImage(cvL, 0, 0, 520, 520); x.drawImage(cvS, 0, 0, 520, 520);
-      var url = cv.toDataURL('image/jpeg', 0.88);
-      C.saveCreation('color', url).then(function () {
-        C.finish({ kind: 'color', img: url, say: 'Bravo ' + C.NAME + ' ! Quel beau coloriage !', again: function () { goBack(); } });
-      });
+      return cv.toDataURL('image/jpeg', 0.88);
+    }
+    function blank() { var a = cC.getImageData(0, 0, N, N).data, b = cS.getImageData(0, 0, N, N).data; for (var i = 3; i < a.length; i += 4) if (a[i] || b[i]) return false; return true; }
+    function saveNow() { var url = compose(); dirty = false; return C.saveCreation('color', url).then(function () { return url; }); }
+    var doneB = C.doneBar(C.$('.tray', host), 'J\u2019ai fini mon dessin !', function () {
+      if (blank()) { C.nudge(C.$('.pslot', host)); C.say('Colorie d\u2019abord !'); return false; }   /* rien n'est colorié : pas de validation */
+      saveNow().then(function (url) { C.finish({ kind: 'color', tile: 'draw', img: url, say: 'Wouah, ton dessin est magnifique !', again: function () { goBack(); } }); });
     });
+    touched = C.armDoneHint('color', doneB);
     updUndo();
+    return { autosave: function () { if (dirty && !blank()) saveNow(); } };
   }
 
   /* ---------- Dessin libre ---------- */
@@ -212,8 +217,8 @@
     var wrap = C.$('.cv-wrap', host), cv = C.$('.cv-free', host), cx = cv.getContext('2d', { willReadFrequently: true });
     cv.width = W; cv.height = H;
     var color = '#ff5d9e', size = 14, tool = 'pen', stamp = 'etoile', paper = '#fffdf8', hue = 0;
-    var undoStack = [];
-    function snap() { try { undoStack.push(cx.getImageData(0, 0, W, H)); if (undoStack.length > 10) undoStack.shift(); } catch (e) { } upd(); }
+    var undoStack = [], dirty = false, touched = function () { };
+    function snap() { try { undoStack.push(cx.getImageData(0, 0, W, H)); if (undoStack.length > 10) undoStack.shift(); } catch (e) { } dirty = true; touched(); upd(); }
     function upd() { C.$('[data-do=undo]', host).classList.toggle('dim', !undoStack.length); }
     function pos(e) { var r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
     var last = null, mid = null, down = false, dist = 0, sparkAcc = 0;
@@ -310,13 +315,20 @@
     C.$('[data-do=restart]', host).addEventListener('click', function () {
       C.confirm(Art.ui.again.replace(/#fff/g, '#c4a8ff')).then(function (yes) { if (!yes) return; snap(); cx.clearRect(0, 0, W, H); C.sfx.whoosh(); });
     });
-    C.$('[data-do=save]', host).addEventListener('click', function () {
+    function blank() { var a = cx.getImageData(0, 0, W, H).data; for (var i = 3; i < a.length; i += 4) if (a[i]) return false; return true; }
+    function saveNow() {
       var out = document.createElement('canvas'); out.width = 480; out.height = 640;
       var x = out.getContext('2d'); x.fillStyle = paper; x.fillRect(0, 0, 480, 640); x.drawImage(cv, 0, 0, 480, 640);
-      var url = out.toDataURL('image/jpeg', 0.88);
-      C.saveCreation('draw', url).then(function () { C.finish({ kind: 'draw', img: url, say: 'Quel joli dessin, ' + C.NAME + ' !' }); });
+      var url = out.toDataURL('image/jpeg', 0.88); dirty = false;
+      return C.saveCreation('draw', url).then(function () { return url; });
+    }
+    var doneB = C.doneBar(C.$('.tray', host), 'J\u2019ai fini mon dessin !', function () {
+      if (blank()) { C.nudge(C.$('.cv-wrap', host)); C.say('Dessine d\u2019abord !'); return false; }   /* page vide : pas de validation */
+      saveNow().then(function (url) { C.finish({ kind: 'draw', tile: 'draw', img: url, say: 'Wouah, ton dessin est magnifique !', again: function () { cx.clearRect(0, 0, W, H); undoStack = []; upd(); dirty = false; } }); });
     });
+    touched = C.armDoneHint('draw', doneB);
     upd();
+    return { autosave: function () { if (dirty && !blank()) saveNow(); } };
   }
 
   function toolbar(isFree) {
@@ -324,13 +336,15 @@
       ? [['pen', 'brush', 'pink'], ['rainbow', 'rainbow', 'purple'], ['glitter', 'sparkles', 'yellow'], ['stamp', 'sticker', 'turq'], ['eraser', 'eraser', 'blue']]
       : [['bucket', 'bucket', 'pink'], ['brush', 'brush', 'purple'], ['glitter', 'sparkles', 'yellow'], ['sticker', 'sticker', 'turq'], ['eraser', 'eraser', 'blue']];
     return '<div class="tools">' + t.map(function (x, i) { return '<button class="btn ' + x[2] + (i === 0 ? ' on' : '') + '" data-tool="' + x[0] + '" aria-label="' + x[0] + '">' + Art.ui[x[1]] + '</button>'; }).join('') +
-      '<span class="sep"></span><button class="btn green small" data-do="undo" aria-label="annuler">' + Art.ui.undo + '</button><button class="btn red small" data-do="restart" aria-label="recommencer">' + Art.ui.again + '</button><button class="btn orange" data-do="save" aria-label="enregistrer">' + Art.ui.save + '</button></div>';
+      '<span class="sep"></span><button class="btn green small" data-do="undo" aria-label="annuler">' + Art.ui.undo + '</button><button class="btn red small" data-do="restart" aria-label="recommencer">' + Art.ui.again + '</button></div>';
   }
 
   C.register('draw', {
     enter: function (el) {
       var root = el;
+      root._autosave = function () { if (root._cur && root._cur.autosave) root._cur.autosave(); };
       function hub() {
+        root._cur = null;
         C.setBack(null);
         root.innerHTML = '<div class="act hub"><div class="hubgrid">' +
           hubCard('hc1', ART_COLOR, 'Coloriage') + hubCard('hc2', ART_FREE, 'Dessin libre') + '</div></div>';
@@ -341,6 +355,7 @@
         C.say('Qu’est-ce qu’on fait ?');
       }
       function pick() {
+        root._cur = null;
         C.setBack(hub);
         root.innerHTML = '<div class="act pick"><div class="pickgrid scrollable">' + Art.color.pages.map(function (p) {
           return '<button class="pg" data-id="' + p.id + '" aria-label="' + p.name + '">' + Art.color.thumb(p.id) + '</button>';
@@ -351,17 +366,17 @@
       function color(id) {
         C.setBack(pick);
         root.innerHTML = '<div class="act color"><div class="stage"><div class="cv-wrap"><canvas class="cv-color"></canvas><canvas class="cv-line"></canvas><canvas class="cv-stk"></canvas></div></div>' +
-          '<div class="tray">' + toolbar(false) + '<div class="palette"></div><div class="stickers" hidden></div></div></div>';
+          '<div class="tray">' + toolbar(false) + '<div class="pslot"><div class="palette"></div><div class="stickers" hidden></div></div></div></div>';
         C.fit(C.$('.stage', root), C.$('.cv-wrap', root), 1);
-        Coloring(root, id, pick);
+        root._cur = Coloring(root, id, pick);
         C.say('Choisis une couleur, puis touche le dessin !');
       }
       function free() {
         C.setBack(hub);
         root.innerHTML = '<div class="act free"><div class="stage"><div class="cv-wrap"><canvas class="cv-free"></canvas></div></div>' +
-          '<div class="tray">' + toolbar(true) + '<div class="palette"></div><div class="stickers" hidden></div><div class="sizes"></div><div class="papers"></div></div></div>';
+          '<div class="tray">' + toolbar(true) + '<div class="pslot"><div class="palette"></div><div class="stickers" hidden></div></div><div class="sizes"></div><div class="papers"></div></div></div>';
         C.fit(C.$('.stage', root), C.$('.cv-wrap', root), 3 / 4);
-        FreeDraw(root);
+        root._cur = FreeDraw(root);
         C.say('Dessine avec ton doigt !');
       }
       hub();

@@ -44,3 +44,10 @@
 .ri { position: absolute; translate: -50% -50%; aspect-ratio: 1; touch-action: none; } .ri .rin { width: 100%; height: 100%; } .ri svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 5px 4px rgba(0,0,0,.15)); }
 .ri.sel { outline: 3px dashed var(--hot); outline-offset: 2px; border-radius: 14px; }
 .ractions { position: absolute; left: 10px; top: 8px; display: flex; gap: 8px; z-index: 100; }
+
+/* histoires : effets visibles (cœurs, étoiles, cases de collecte) */
+.sheart, .sstar { position: absolute; width: 34px; height: 34px; pointer-events: none; z-index: 6; margin: -17px 0 0 -17px; } .sheart svg, .sstar svg { width: 100%; height: 100%; }
+.sslots { position: absolute; top: 30px; left: 0; right: 0; display: flex; justify-content: center; gap: 10px; z-index: 5; pointer-events: none; }
+.sslots i { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.55); border: 4px dashed #c4a8ff; padding: 5px; display: block; transition: all .3s; } .sslots i svg { width: 100%; height: 100%; opacity: .25; filter: grayscale(1); transition: all .3s; }
+.sslots i.on { background: #fff; border: 4px solid var(--sun); transform: scale(1.12); } .sslots i.on svg { opacity: 1; filter: none; }
+.scandle { transform-box: fill-box; }
