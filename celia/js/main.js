@@ -24,7 +24,7 @@
 
   bHome.addEventListener('click', function () { C.sfx.pop(); C.go('home'); });
   bBack.addEventListener('click', function () { C.sfx.pop(); C.doBack(); });
-  bReplay.addEventListener('click', function () { C.sfx.pop(); if (C.lastSay) C.say(C.lastSay, { keep: false }); });
+  bReplay.addEventListener('click', function () { C.sfx.pop(); if (C.lastSay) C.say(C.lastSay, { keep: false, must: true }); });
   bAlbum.addEventListener('click', function () { C.sfx.pop(); C.gallery.open('draw'); });
 
   /* bouton son : un toucher = couper / remettre ; appui long = panneau des parents */

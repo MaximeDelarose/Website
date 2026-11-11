@@ -122,10 +122,10 @@ async function ouvrir(p, page) {
     const p = await ctx.newPage(); await p.goto(BASE); await sleep(p, 500); await p.evaluate(() => { localStorage.removeItem('celia.hint.coloring'); document.querySelector('.startbtn').click(); }); await sleep(p, 300);
     await ouvrir(p, 'lapin'); await sleep(p, 2200);
     const h1 = await p.evaluate(() => { const h = document.querySelector('.hinthand'); const s = document.querySelectorAll('.sw')[2].getBoundingClientRect(), r = h && h.getBoundingClientRect(); return { say: C.lastSay, onSwatch: !!r && Math.abs(r.x + r.width / 2 - (s.x + s.width / 2)) < 60 && Math.abs(r.y - (s.y + s.height / 2)) < 70 }; });
-    ok(/couleur/.test(h1.say) && h1.onSwatch, 'aide : la voix dit « ' + h1.say + ' » et une main montre les couleurs');
+    ok(!h1.say && h1.onSwatch, 'aide : la voix reste muette et une main montre les couleurs');
     await p.evaluate(() => document.querySelectorAll('.sw')[0].click()); await sleep(p, 600);
     const h2 = await p.evaluate(() => { const h = document.querySelector('.hinthand'), c = document.querySelector('.cv-wrap').getBoundingClientRect(), r = h && h.getBoundingClientRect(); return { say: C.lastSay, onCanvas: !!r && r.x > c.x && r.x < c.right && r.y > c.y && r.y < c.bottom }; });
-    ok(/Touche le dessin/.test(h2.say) && h2.onCanvas, 'aide : après le choix de la couleur, la voix dit « ' + h2.say + ' » et la main montre le dessin');
+    ok(!h2.say && h2.onCanvas, 'aide : après le choix de la couleur, la main montre le dessin (sans parler)');
     const cvr = await rect(p, '.cv-wrap'); await p.touchscreen.tap(cvr.x + cvr.w * .5, cvr.y + cvr.h * .48); await sleep(p, 600);
     ok(await p.evaluate(() => !document.querySelector('.hinthand')), 'aide : la main disparaît dès que Celia colorie');
     for (let i = 0; i < 2; i++) { await ouvrir(p, 'lapin'); await sleep(p, 2200); }

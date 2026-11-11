@@ -269,7 +269,7 @@
         parts.forEach(function (part, i) {
           var u = new SpeechSynthesisUtterance(part);
           u.lang = V.voice.lang; u.voice = V.voice;
-          u.rate = V.premium ? 0.9 : 0.84; u.pitch = V.premium ? 1.04 : 1.1; u.volume = 0.7;
+          u.rate = V.premium ? 0.9 : 0.84; u.pitch = V.premium ? 1.04 : 1.1; u.volume = 0.45;
           if (i === parts.length - 1) { u.onend = done; u.onerror = done; }
           C._utt.push(u); speechSynthesis.speak(u);
         });
@@ -280,8 +280,11 @@
     babble(text); duckTimer = setTimeout(done, ms);
   };
   /* text = phrase ; o.bubble=false : pas de bulle ; o.keep=false : ne pas mémoriser pour « réécouter » */
+  /* La voix parle très peu : seules les phrases marquées { must: true } (consignes essentielles, histoires, fin de partie) sont dites.
+     Le reste passe par des gestes (main qui montre), des sons et des animations. */
   C.say = function (text, o) {
     o = o || {};
+    if (!o.must) return;
     if (o.keep !== false) C.lastSay = text;
     if (o.bubble !== false) showBubble(text);
     var tok = ++sayTok;
@@ -494,6 +497,21 @@
   C.setBack = function (fn) { backFn = fn; if (C.hud && C.hud.update) C.hud.update(); };
   C.hasBack = function () { return !!backFn; };
   C.doBack = function () { if (backFn) backFn(); };
+  /* Première fois dans une activité : une petite main montre où toucher (2 fois maximum), puis disparaît dès que Celia touche. */
+  var FIRST = { home: ['.startbtn', '.t-draw'], cook: ['.rcard'], dress: ['.items .it'], makeup: ['.swrow .it', '.charb'], pets: ['.petin', '.petcard', '.pickpet'], stories: ['.scard'], learn: ['.lcard'], room: ['.items .it'] };
+  C.firstHint = function (name, sec) {
+    var sels = FIRST[name]; if (!sels || !C.hint) return;
+    var key = 'fh.' + name, n = C.store.get(key, 0); if (n >= 2) return;
+    setTimeout(function () {
+      if (!sec.isConnected || C.current() !== name) return;
+      var t = null; for (var i = 0; i < sels.length && !t; i++) t = sec.querySelector(sels[i]);
+      if (!t) return;
+      var h = C.hint(t, 0, 8), off = function () { h.stop(); document.removeEventListener('pointerdown', off, true); };
+      document.addEventListener('pointerdown', off, true); setTimeout(off, 6000);
+      C.store.set(key, n + 1);
+    }, 1500);
+  };
+
   C.go = function (name, params, from) {
     if (going || !screens[name]) return;
     going = true;
@@ -512,6 +530,7 @@
     C.$$('.hinthand').forEach(function (h) { h.remove(); });
     try { screens[name].enter(sec, params || {}, prev); } catch (e) { console.error(e); }
     if (C.hud && C.hud.update) C.hud.update();
+    try { C.firstHint(name, sec); } catch (e) { }
     if (from) C.fx.burst(from.x, from.y, { n: 14, dist: 120 });
     C.sfx.whoosh();
     if (name === 'home' && C.pendingReload && C.applyUpdate) setTimeout(function () { if (C.current() === 'home' && C.pendingReload) C.applyUpdate(); }, 900);   /* mise à jour en attente : on l'applique en revenant au château */
