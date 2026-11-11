@@ -1,0 +1,32 @@
+/* Jardin des animaux */
+.gbg { position: absolute; inset: 0; } .gbg svg { width: 100%; height: 100%; }
+.garden .stage { display: block; }
+.petw { position: absolute; left: 0; right: 0; bottom: 3%; margin: 0 auto; width: min(74%, 330px); aspect-ratio: 1; touch-action: none; }
+.petmove { position: absolute; inset: 0; transition: transform 2.4s ease-in-out; }
+.petin { position: absolute; inset: 0; transform-origin: 50% 90%; }
+.petin svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 8px 6px rgba(107,63,114,.18)); }
+.petin.hop { animation: hop .7s ease; }
+.petin .pbody { animation: breathe 3s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.petin .phead { animation: headbob 3.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; } @keyframes headbob { 50% { transform: translateY(-3px) rotate(1.5deg); } }
+.petin .ptail { animation: tailwag 1.1s ease-in-out infinite alternate; } @keyframes tailwag { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
+.petin .pear { animation: earw 4.8s ease-in-out infinite; } @keyframes earw { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-6deg); } 96% { transform: rotate(5deg); } }
+.petin .pwing { animation: wingidle 1.6s ease-in-out infinite alternate; transform-box: fill-box; }
+.petin.chew .phead { animation: chew .22s ease-in-out infinite alternate; } @keyframes chew { to { transform: translateY(5px) scale(1.03, .96); } }
+.petin.purr { animation: purr .12s linear infinite alternate; } @keyframes purr { from { transform: translate(-1.5px, 0) rotate(-.5deg); } to { transform: translate(1.5px, 1px) rotate(.5deg); } }
+.petin.shake { animation: shake .7s ease; } @keyframes shake { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(-9deg); } 30% { transform: rotate(8deg); } 45% { transform: rotate(-7deg); } 60% { transform: rotate(6deg); } 75% { transform: rotate(-3deg); } }
+.nametag { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); background: #fff; border: 3px solid var(--lav); border-radius: 14px; padding: 1px 12px; font-weight: 900; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 0 rgba(107,63,114,.18); }
+.nametag:empty { display: none; }
+.foam { position: absolute; inset: 0; pointer-events: none; } .foam i { position: absolute; border-radius: 50%; background: radial-gradient(circle at 30% 28%, #fff 0 22%, #e6f6ff 60%, #bfe6ff); border: 2px solid #fff; box-shadow: 0 0 4px rgba(143,211,255,.9); transform: translate(-50%, -50%); animation: tin .3s both; }
+.props { position: absolute; inset: 0; pointer-events: none; } .props > * { pointer-events: auto; }
+.foods { position: absolute; left: 0; right: 0; bottom: 4px; display: flex; justify-content: center; gap: 12px; z-index: 6; }
+.food { width: 74px; height: 74px; border-radius: 24px; background: #fff; border: 4px solid #fff; box-shadow: 0 5px 0 rgba(107,63,114,.25), 0 0 0 3px var(--peach); padding: 8px; animation: tin .5s both cubic-bezier(.2, 1.4, .4, 1); } .food svg { width: 100%; height: 100%; } .food.gone { opacity: 0; transform: scale(.4); transition: .3s; }
+.sponge { position: absolute; left: 12px; bottom: 12px; width: 70px; height: 70px; background: #fff; border-radius: 50%; padding: 12px; box-shadow: 0 6px 0 rgba(107,63,114,.2); border: 4px solid var(--sky); animation: floaty 2s ease-in-out infinite; } .sponge svg { width: 100%; height: 100%; }
+.ball { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; transition: left .65s cubic-bezier(.3, .8, .4, 1), top .65s cubic-bezier(.3, .8, .4, 1); z-index: 6; filter: drop-shadow(0 6px 4px rgba(0,0,0,.2)); } .ball svg { width: 100%; height: 100%; }
+.it.egg { background: linear-gradient(160deg, #fff, #ffe7f6); box-shadow: 0 5px 0 rgba(107,63,114,.2), 0 0 0 3px var(--sun); animation: wobi 2s ease-in-out infinite; } @keyframes wobi { 50% { transform: rotate(-6deg) scale(1.05); } }
+.eggscene { position: absolute; inset: 0; display: grid; place-items: center; z-index: 8; background: radial-gradient(circle, rgba(255,255,255,.7), rgba(255,255,255,0) 70%); animation: tin .4s both; }
+.eggbtn { width: min(52%, 230px); animation: floaty 2.4s ease-in-out infinite; filter: drop-shadow(0 12px 10px rgba(107,63,114,.25)); } .eggbtn svg { width: 100%; overflow: visible; }
+.eggbtn.wob { animation: eggwob .55s ease; } @keyframes eggwob { 20% { transform: rotate(-14deg) scale(1.05); } 45% { transform: rotate(12deg) scale(1.08); } 70% { transform: rotate(-6deg); } }
+.eggbtn.burst { animation: eggburst .6s ease forwards; } @keyframes eggburst { to { transform: scale(2.2); opacity: 0; } }
+.newpet { width: min(78%, 320px); animation: newp .9s cubic-bezier(.2, 1.5, .4, 1); } .newpet svg { width: 100%; overflow: visible; } @keyframes newp { from { transform: scale(.1) rotate(-30deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.nameinp { font: inherit; font-size: 24px; font-weight: 800; text-align: center; border: 4px solid var(--lav); border-radius: 18px; padding: 10px 14px; width: 240px; color: var(--ink); background: #fff; -webkit-user-select: text; user-select: text; outline: none; }
+.garden .tray .items { min-height: 96px; } .garden .it svg { overflow: visible; }
