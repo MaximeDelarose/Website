@@ -30,7 +30,7 @@
     function go(buf) {
       if (tok !== playTok) return;   /* une phrase plus récente a pris la place */
       C.stopVoiceFile();
-      var s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = buf; g.gain.value = 0.75; s.connect(g); g.connect(ctx.destination);
+      var s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = buf; g.gain.value = 0.5; s.connect(g); g.connect(ctx.destination);
       s.onended = function () { if (cur === s) cur = null; done && done(); };
       cur = s; s.start(0);
     }

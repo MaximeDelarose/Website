@@ -93,8 +93,8 @@
         var st = C.$('.stage', root), hint = null;
         dots.innerHTML = story.scenes.map(function () { return '<i></i>'; }).join('');
         var lastSay = '';
-        narr.onclick = function () { C.say(lastSay); };
-        function say(t) { lastSay = t; C.say(t); }
+        narr.onclick = function () { C.say(lastSay, { must: true }); };
+        function say(t) { lastSay = t; C.say(t, { must: true }); }
         function done() { next.hidden = false; C.bounce(next, 1.2); C.sfx.chime(); if (hint) { hint.stop(); hint = null; } }
         next.onclick = function () { next.hidden = true; C.sfx.page(); idx++; scene(); };
         function scene() {

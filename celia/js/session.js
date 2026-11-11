@@ -55,7 +55,7 @@
   function warn() {
     S.warned = true; save();
     C.saveCurrent();                                              /* si elle dessine ou décore : on sauvegarde */
-    C.say(C.NAME + ', on va bientôt dire au revoir au château !');
+    C.say(C.NAME + ', on va bientôt dire au revoir au château !', { must: true });
     try {
       var el = C.el('<div class="sleepy" aria-hidden="true">' + Art.item('moon') + '<i>' + Art.item('star') + '</i><i>' + Art.item('star') + '</i><i>' + Art.item('star') + '</i></div>');
       C.$('#fx').appendChild(el); warnEl = el; setTimeout(function () { el.remove(); }, 7000);
@@ -179,7 +179,7 @@
         C.$$('.dur', body).forEach(function (b) { b.onclick = function () { chosen = +b.dataset.m; C.$$('.dur', body).forEach(function (x) { x.classList.toggle('on', x === b); }); C.sfx.tap(C.rint(0, 6)); C.bounce(b, 1.1); }; });
         var vt = C.$('[data-voice]', body);
         function paintV() { vt.classList.toggle('off', !C.settings.voice); vt.textContent = C.settings.voice ? '🔊 Voix de la conteuse : activée' : '🔇 Voix de la conteuse : coupée (musique et sons gardés)'; }
-        vt.onclick = function () { C.settings.voice = !C.settings.voice; C.saveSettings(); paintV(); C.sfx.tap(2); if (C.settings.voice) C.say('Coucou !'); };
+        vt.onclick = function () { C.settings.voice = !C.settings.voice; C.saveSettings(); paintV(); C.sfx.tap(2); if (C.settings.voice) C.say('Coucou !', { must: true }); };
         paintV();
         var go = C.$('[data-go]', body), once = false;
         go.onclick = function () { if (once) return; once = true; C.sfx.yay(); C.fx.confetti(24); setTimeout(function () { startSession(chosen); }, 350); };
@@ -202,7 +202,7 @@
       var lk = C.$('.parentlock', el), t = null;
       lk.addEventListener('pointerdown', function () { t = setTimeout(function () { t = null; Ses.openParent(); }, 1400); lk.classList.add('arm'); });
       ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { lk.addEventListener(ev, function () { clearTimeout(t); lk.classList.remove('arm'); }); });
-      if (fresh) setTimeout(function () { C.say('Bravo ' + C.NAME + ' ! Maintenant, le château va se reposer. À bientôt !'); }, 1200);
+      if (fresh) setTimeout(function () { C.say('Bravo ' + C.NAME + ' ! Maintenant, le château va se reposer. À bientôt !', { must: true }); }, 1200);
     },
     leave: function () { }
   });
@@ -237,7 +237,7 @@
     function close() { if (!panelOpen) return; panelOpen = false; m.close(); release(); }
     function paint() { C.$('[data-k=voice] .btn', m).classList.toggle('dim', !C.settings.voice); C.$('[data-k=music] .btn', m).classList.toggle('dim', !C.settings.music); }
     paint();
-    C.$('[data-k=voice]', m).onclick = function () { C.settings.voice = !C.settings.voice; C.saveSettings(); paint(); C.sfx.pop(); if (C.settings.voice) C.say('Coucou !'); };
+    C.$('[data-k=voice]', m).onclick = function () { C.settings.voice = !C.settings.voice; C.saveSettings(); paint(); C.sfx.pop(); if (C.settings.voice) C.say('Coucou !', { must: true }); };
     C.$('[data-k=music]', m).onclick = function () { C.settings.music = !C.settings.music; C.saveSettings(); paint(); C.sfx.pop(); C.music.sync(); };
     var vol = C.$('.pvol input', m);
     vol.addEventListener('input', function () { C.music.setVol(vol.value / 100); C.$('.pvol b', m).textContent = vol.value + '%'; if (!C.settings.music) { C.settings.music = true; C.saveSettings(); paint(); C.music.sync(); } });

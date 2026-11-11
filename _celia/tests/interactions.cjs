@@ -62,7 +62,7 @@ async function coloriage(p) {
   await p.evaluate(() => document.querySelectorAll('.palette .sw')[0].click());
   const r2 = await rect(p, '.cv-wrap'); await p.touchscreen.tap(r2.x + r2.w * .5, r2.y + r2.h * .48); await sleep(p, 600);
   await p.evaluate(() => document.querySelector('.donebtn').click()); await sleep(p, 1500);
-  const dbg = await p.evaluate(() => C.db.all('color').then((l) => ({ n: l.length, card: !!document.querySelector('.endcard.pink'), cel: document.querySelectorAll('.celebrate').length, say: document.querySelector('.btxt').textContent })));
+  const dbg = await p.evaluate(() => C.db.all('color').then((l) => ({ n: l.length, card: !!document.querySelector('.endcard.pink'), cel: document.querySelectorAll('.celebrate').length, say: (document.querySelector('.btxt') || {}).textContent || '' })));
   ok(dbg.card && dbg.n === n0 + 1, 'coloriage : le coloriage terminé est sauvegardé et l’écran de fin apparaît ' + JSON.stringify(dbg) + ' n0=' + n0);
 }
 
@@ -336,7 +336,7 @@ async function histoires(p) {
   await p.evaluate(() => { const h = document.querySelector('.hot'); h.click(); h.click(); h.click(); }); await sleep(p, 1500);
   const cd = await p.evaluate(() => { const s = document.querySelector('.sc svg.cakesvg').getBoundingClientRect(); return [...document.querySelectorAll('.scandle')].map((c) => { const r = c.getBoundingClientRect(); return { inside: r.left >= s.left && r.right <= s.right && r.top >= s.top && r.bottom <= s.bottom, w: r.width, flame: !!c.querySelector('.flame') }; }); });
   ok(cd.length === 3 && cd.every((c) => c.inside && c.w > 8 && c.flame), 'histoires/gâteau : exactement 3 bougies visibles avec flamme, posées sur le gâteau (malgré 3 touchers rapides) ' + JSON.stringify(cd.map((c) => c.inside)));
-  ok(await p.evaluate(() => /joli/.test(document.querySelector('.btxt').textContent)), 'histoires/gâteau : la félicitation ne vient qu’après l’apparition des bougies');
+  ok(await p.evaluate(() => !document.querySelector('.btxt') || !/joli/.test(document.querySelector('.btxt').textContent)), 'histoires/gâteau : pas de bavardage (la voix ne félicite plus, les bougies suffisent)');
 }
 
 (async () => {

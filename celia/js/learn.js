@@ -74,7 +74,7 @@
         var G = {
           colors: function (box, win) {
             var cs = C.shuffle(COLORS).slice(0, 3 + (level > 2 ? 1 : 0)), target = C.rnd(cs);
-            C.say(Fr.toucheCouleur(O.papillon, target.n));
+            C.say(Fr.toucheCouleur(O.papillon, target.n), { must: true });
             cs.forEach(function (c, i) {
               var b = C.el('<button class="bf" data-color="' + c.n + '" style="left:' + (18 + (i % 2) * 44 + Math.random() * 6) + '%;top:' + (12 + Math.floor(i / 2) * 38 + Math.random() * 6) + '%;animation-delay:' + (-i * 1.3) + 's">' + butter(c.c) + '</button>'); box.appendChild(b);
               b.onclick = function () {
@@ -86,7 +86,7 @@
           },
           shapes: function (box, win) {
             var ks = C.shuffle(['rond', 'carre', 'triangle']), ps = C.shuffle(ks), cols = C.shuffle(['#ff8fb8', '#4fd8d0', '#ffd84d', '#a47cff']), placed = 0;
-            C.say('Mets chaque forme dans son trou !');
+            C.say('Mets chaque forme dans son trou !', { must: true });
             box.innerHTML = '<div class="holes"></div><div class="pieces"></div>';
             var holes = C.$('.holes', box), pcs = C.$('.pieces', box), hn = {};
             ks.forEach(function (k) { var h = C.el('<div class="hole" data-k="' + k + '">' + shapeSvg(k, '#d9cdf0') + '</div>'); holes.appendChild(h); hn[k] = h; });
@@ -110,7 +110,7 @@
           },
           count: function (box, win) {
             var o = C.rnd(OBJ), N = C.rint(1, 3), sel = 0, done = false;
-            C.say(Fr.toucheN(N, o.o));
+            C.say(Fr.toucheN(N, o.o), { must: true });
             box.innerHTML = '<div class="cnum"></div>';
             var pos = [[18, 20], [56, 14], [34, 52]];
             for (var i = 0; i < 3; i++) {
@@ -128,7 +128,7 @@
           },
           animals: function (box, win) {
             var as = C.shuffle(ANIMALS).slice(0, 3), t = C.rnd(as), ok = false;
-            C.say(Fr.ou(t.o));
+            C.say(Fr.ou(t.o), { must: true });
             box.innerHTML = '<div class="arow"></div>'; var row = C.$('.arow', box);
             as.forEach(function (a) {
               var b = C.el('<button class="an" data-id="' + a.id + '">' + P.render(a.type, 0, {}) + '</button>'); row.appendChild(b); b.dataset.target = a === t ? '1' : '';
@@ -141,7 +141,7 @@
           },
           size: function (box, win) {
             var o = C.rnd(OBJ), big = Math.random() < 0.5, ok = false;
-            C.say(Fr.toucheTaille(o.o, big ? 'gros' : 'petit'));
+            C.say(Fr.toucheTaille(o.o, big ? 'gros' : 'petit'), { must: true });
             box.innerHTML = '<div class="szrow"></div>'; var row = C.$('.szrow', box);
             var pair = C.shuffle([true, false]);
             pair.forEach(function (isBig) {
@@ -153,7 +153,7 @@
             var grids = [[2, 1], [2, 2], [3, 1], [2, 2]], g = grids[(level - 1) % grids.length], cols = g[0], rows = g[1];
             var pics = [P.render('licorne', 0, {}), P.render('dragon', 1, {}), P.render('chat', 0, {}), P.render('panda', 1, {})], pic = C.rnd(pics);
             var bgc = C.rnd(['#ffe3f1', '#dff4ff', '#e5ffe9', '#fff4c9']);
-            C.say('Remets le puzzle en place !');
+            C.say('Remets le puzzle en place !', { must: true });
             box.innerHTML = '<div class="board"></div><div class="tiles2"></div>';
             var board = C.$('.board', box), tiles = C.$('.tiles2', box);
             board.style.aspectRatio = '1'; board.style.setProperty('--cols', cols); board.style.setProperty('--rows', rows);
