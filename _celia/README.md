@@ -36,3 +36,5 @@ Voir `_celia/voix/README.md` (génération de fichiers vocaux, échantillons, ce
 **Mode parent** : code stocké haché (SHA-256 salé, localStorage `celia.session`) — protection d'interface seulement, ne verrouille pas l'iPhone. Code perdu : effacer les données du site Safari (réglages iPhone › Safari › Avancé › Données de sites web).
 
 Règle de conception : **toucher → effet visible → vérification → validation**. Un clic n'est jamais une réussite à lui seul ; un refus (« pas encore ») ne bloque jamais le bouton et ne bouge jamais la zone de dessin.
+
+**Voix** : très peu de phrases (consignes essentielles, histoires, fin de session) ; le reste passe par une main qui montre où toucher (`C.firstHint`, 2 fois max par activité). Une phrase n'est dite que si `C.say(texte, { must: true })`.
