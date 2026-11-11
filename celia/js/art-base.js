@@ -95,7 +95,7 @@
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"' + (size ? ' width="' + size + '" height="' + size + '"' : '') + '>' + body + '</svg>';
   };
 
-  /* ---------- Lumi, la petite fée-boule qui accompagne Célia ---------- */
+  /* ---------- Lumi, la petite fée-boule qui accompagne Celia ---------- */
   Art.lumi = function (o) {
     o = o || {};
     var g = uid('lu'), c = o.color || '#ffd0e8';

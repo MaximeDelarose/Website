@@ -1,4 +1,4 @@
-/* Mode parent : temps de jeu de Célia.
+/* Mode parent : temps de jeu de Celia.
    - La maman choisit la durée (5, 10, 15 ou 20 min) avant de lui donner le téléphone ; code PIN demandé pour tout réglage.
    - Le minuteur démarre à l'entrée dans le château, continue dans toutes les activités, se met en pause quand l'appli passe en arrière-plan,
      et survit à un rechargement. Il est calculé à partir de l'horloge (Date.now), jamais d'un simple compteur d'intervalle.
@@ -125,7 +125,7 @@
     try {
       var first = null;
       return await pinPad({
-        title: 'Choisissez un code', sub: '4 chiffres, que Célia ne connaît pas',
+        title: 'Choisissez un code', sub: '4 chiffres, que Celia ne connaît pas',
         onSubmit: async function (pin) {
           if (first === null) { first = pin; return { ok: false, soft: true, msg: 'Entrez-le une 2e fois pour confirmer.' }; }
           if (pin !== first) { first = null; return { ok: false, msg: 'Les deux codes sont différents. Recommencez.' }; }
@@ -140,7 +140,7 @@
   function startSession(minutes) {
     S.minutes = minutes; S.remaining = minutes * 60000; S.state = 'playing'; S.warned = false; S.tick = null; S.endedAt = 0; save();
     try { C.music.unsilence(); } catch (e) { }
-    C.go('home'); resume();           /* le minuteur commence quand Célia entre dans son château */
+    C.go('home'); resume();           /* le minuteur commence quand Celia entre dans son château */
   }
   Ses.start = startSession;
   function addMinutes(n) {

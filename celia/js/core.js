@@ -1,9 +1,9 @@
-/* Le Monde Magique de Célia — noyau : utilitaires, stockage, sons, voix, particules, navigation.
+/* Le Monde Magique de Celia — noyau : utilitaires, stockage, sons, voix, particules, navigation.
    Aucune donnée n'est envoyée sur Internet. Tout reste sur l'appareil. */
 (function () {
   'use strict';
   var C = window.C = {};
-  var NAME = (window.CELIA_CUSTOM && window.CELIA_CUSTOM.name) || 'Célia';
+  var NAME = (window.CELIA_CUSTOM && window.CELIA_CUSTOM.name) || 'Celia';
   C.NAME = NAME;
 
   /* ---------- utilitaires ---------- */
@@ -525,7 +525,7 @@
   /* sauvegarde la création en cours (dessin, coloriage, gâteau, maquillage) sans quitter l'écran */
   C.saveCurrent = function () { try { if (cur && cur._autosave) cur._autosave(); } catch (e) { } };
 
-  /* Les erreurs ne doivent jamais bloquer Célia : on les journalise seulement. */
+  /* Les erreurs ne doivent jamais bloquer Celia : on les journalise seulement. */
   window.addEventListener('error', function (e) { try { console.warn('celia:', e.message); } catch (x) { } });
 
   /* ---------- enregistrement d'une image (SVG ou canvas) en miniature ---------- */

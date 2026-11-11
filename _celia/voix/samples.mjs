@@ -11,7 +11,7 @@ import fs from 'node:fs'; import path from 'node:path'; import { execFileSync } 
 const here = path.dirname(fileURLToPath(import.meta.url)), out = path.join(here, 'echantillons');
 const KEY = process.env.ELEVENLABS_API_KEY;
 if (!KEY) { console.error('Définissez ELEVENLABS_API_KEY.'); process.exit(1); }
-const TEXT = 'Coucou Célia ! Bienvenue dans ton monde magique !';
+const TEXT = 'Coucou Celia ! Bienvenue dans ton monde magique !';
 const H = { 'xi-api-key': KEY, 'Content-Type': 'application/json' };
 fs.mkdirSync(out, { recursive: true });
 let voices = [];

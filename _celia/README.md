@@ -1,10 +1,10 @@
-# Le Monde Magique de Célia
+# Le Monde Magique de Celia
 
 Petit jeu mobile 2D pour une enfant de 3 ans (iPhone / Safari, installable sur l'écran d'accueil). Aucune donnée n'est envoyée sur Internet : pas de compte, pas de pub, pas d'achat, pas de lien externe.
 
 ## Publication (même système que RADIA)
 Le dépôt est publié par **GitHub Pages** (`CNAME` = mdelarose.fr, aucun workflow) : tout dossier commité sur `main` est servi.
-RADIA est un build commité dans `radia/`. Célia est du JavaScript/CSS statique sans étape de build : **le dossier `celia/` est lui-même le build publié**.
+RADIA est un build commité dans `radia/`. Celia est du JavaScript/CSS statique sans étape de build : **le dossier `celia/` est lui-même le build publié**.
 - URL attendue : `https://mdelarose.fr/celia/` (à confirmer après la fusion sur `main`).
 - Chemins tous relatifs ; service worker et manifeste avec `scope: ./` (ne touchent pas RADIA / À DEUX) ; caches `celia-*`.
 - `robots.txt` racine non modifié. La page contient `noindex` — ce n'est **pas** une protection d'accès.

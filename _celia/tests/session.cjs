@@ -79,7 +79,7 @@ async function typePin(p, pin) { for (const d of pin) { await p.evaluate((d) => 
   let left = await rem(p); await p.clock.runFor(left - 61500);
   ok(!(await p.evaluate(() => /bientôt dire au revoir/.test(C.lastSay || ''))), 'avant la dernière minute : rien n’est annoncé');
   await p.clock.runFor(3000); await sleep(p, 600);
-  ok(await p.evaluate(() => C.lastSay === 'Célia, on va bientôt dire au revoir au château !'), 'une minute avant : « Célia, on va bientôt dire au revoir au château ! »');
+  ok(await p.evaluate(() => C.lastSay === 'Celia, on va bientôt dire au revoir au château !'), 'une minute avant : « Celia, on va bientôt dire au revoir au château ! »');
   ok(await p.evaluate(() => !!document.querySelector('.sleepy')), 'petite animation douce (lune et étoiles), sans alarme');
   ok(await p.evaluate((n) => C.db.all('draw').then((l) => l.length === n + 1), dbBefore), 'le dessin en cours est sauvegardé automatiquement');
   ok(await state(p) === 'playing' && await p.evaluate(() => C.current() === 'draw'), 'on ne la coupe pas : elle peut finir son dessin');
@@ -89,8 +89,8 @@ async function typePin(p, pin) { for (const d of pin) { await p.evaluate((d) => 
   left = await rem(p); await p.clock.runFor(left + 500); await sleep(p, 300);
   ok(await state(p) === 'ended', 'temps écoulé : la session est terminée (et enregistrée tout de suite)');
   await p.mouse.up(); await p.clock.runFor(4000); await sleep(p, 2000); await p.clock.runFor(2000); await sleep(p, 800);
-  ok(await p.evaluate(() => C.current() === 'sleep' && !!document.querySelector('.ncastle') && /À bientôt Célia/.test(document.body.innerText)), 'le château s’endort : écran « À bientôt Célia ! »');
-  ok(await p.evaluate(() => C.lastSay === 'Bravo Célia ! Maintenant, le château va se reposer. À bientôt !'), 'voix douce : « Bravo Célia ! Maintenant, le château va se reposer. À bientôt ! »');
+  ok(await p.evaluate(() => C.current() === 'sleep' && !!document.querySelector('.ncastle') && /À bientôt Celia/.test(document.body.innerText)), 'le château s’endort : écran « À bientôt Celia ! »');
+  ok(await p.evaluate(() => C.lastSay === 'Bravo Celia ! Maintenant, le château va se reposer. À bientôt !'), 'voix douce : « Bravo Celia ! Maintenant, le château va se reposer. À bientôt ! »');
   ok(await p.evaluate(() => C.db.all('draw').then((l) => l.length >= 1)), 'les créations sont sauvegardées');
   await p.clock.runFor(9000); await sleep(p, 300);
   ok(await p.evaluate(() => C.music.state().started === false), 'la musique s’est éteinte progressivement');
@@ -157,7 +157,7 @@ async function typePin(p, pin) { for (const d of pin) { await p.evaluate((d) => 
     ok(!g.over && g.h >= 56 && g.inView && g.durs, vp.n + ' : écran parent lisible (bouton ' + Math.round(g.h) + ' px, rien ne dépasse)');
     await q.evaluate(() => { localStorage.setItem('celia.session', JSON.stringify(Object.assign(JSON.parse(localStorage.getItem('celia.session')), { state: 'ended' }))); C.go('sleep'); }); await sleep(q, 1200);
     const s = await q.evaluate(() => { const lk = document.querySelector('.parentlock').getBoundingClientRect(), by = document.querySelector('.bye h1').getBoundingClientRect(); return { over: document.documentElement.scrollWidth > innerWidth + 1, lock: lk.right <= innerWidth && lk.top >= 0, bye: by.left >= 0 && by.right <= innerWidth && by.bottom <= innerHeight }; });
-    ok(!s.over && s.lock && s.bye, vp.n + ' : écran « À bientôt Célia ! » entièrement visible');
+    ok(!s.over && s.lock && s.bye, vp.n + ' : écran « À bientôt Celia ! » entièrement visible');
     await c2.close();
   }
   await b.close();

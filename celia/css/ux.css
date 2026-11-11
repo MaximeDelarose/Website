@@ -1,4 +1,4 @@
-/* Navigation unique pour Célia : château = maison, bouton vert « J'ai fini ! », écran de fin à deux grandes cartes. */
+/* Navigation unique pour Celia : château = maison, bouton vert « J'ai fini ! », écran de fin à deux grandes cartes. */
 .castlebtn { pointer-events: auto; width: 86px; height: 64px; border-radius: 22px; border: 4px solid #fff; flex: none; padding: 4px 4px 2px;
   background: linear-gradient(180deg, #fff0f8, #ffc7e2); box-shadow: 0 5px 0 rgba(107,63,114,.32), 0 10px 16px rgba(107,63,114,.22); transition: transform .12s; }
 .castlebtn svg { width: 100%; height: 100%; display: block; overflow: visible; }

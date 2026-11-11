@@ -36,7 +36,7 @@
   var It = function (n, x, y, w) { return { k: 'i:' + n, x: x, y: y, w: w || 16, cls: 'bob' }; };
 
   var STORIES = [
-    { id: 'licorne', title: 'Célia et la licorne perdue', cover: function () { return P.render('licorne', 0, {}); }, col: ['#f1e5ff', '#cdb0ff'], scenes: [
+    { id: 'licorne', title: 'Celia et la licorne perdue', cover: function () { return P.render('licorne', 0, {}); }, col: ['#f1e5ff', '#cdb0ff'], scenes: [
       { bg: 'meadow', say: C.NAME + ' rencontre une licorne. Elle cherche sa maison !', actors: [G(26, 66, 34), Pt('licorne', 72, 70, 44)], act: { t: 'tap', fx: 'hello', target: 1, say: 'Dis bonjour à la licorne !', ok: 'Bonjour !' } },
       { bg: 'meadow', say: 'Quel chemin ? Suis l’arc-en-ciel !', actors: [G(20, 70, 26), Pt('licorne', 42, 72, 28)], act: { t: 'choose', opts: [It('cloud', 66, 48, 22), It('rainbow', 82, 74, 26), It('mushroom', 70, 90, 18)], good: 1, hint: 'Cherche l’arc-en-ciel !', ok: 'Oui, par là !' } },
       { bg: 'forest', say: 'Il fait sombre. Touche les trois étoiles !', actors: [G(22, 72, 28), Pt('licorne', 50, 74, 30)], act: { t: 'collect', items: [It('star', 20, 28, 16), It('star', 62, 20, 16), It('star', 82, 46, 16)], ok: 'Bravo, ça brille !' } },

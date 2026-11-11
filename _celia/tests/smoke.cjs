@@ -1,4 +1,4 @@
-/* Test de fumée du Monde Magique de Célia (émulation Chromium mobile, PAS un vrai iPhone).
+/* Test de fumée du Monde Magique de Celia (émulation Chromium mobile, PAS un vrai iPhone).
    Usage :  cd <dépôt> && python3 -m http.server 8123 &   puis   NODE_PATH=$(npm root -g) node _celia/tests/smoke.cjs
    Vérifie : chemins relatifs sous /celia/, 8 activités sans erreur JS, remplissage du coloriage, dessin au doigt,
    sauvegarde/rechargement (IndexedDB), pas de débordement horizontal, et dimensions portrait + paysage. */

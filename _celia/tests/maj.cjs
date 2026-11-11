@@ -23,13 +23,13 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); 
   fs.writeFileSync(SW, fs.readFileSync(SW, 'utf8').replace(SWORIG.match(/celia-v\d+-[\d-]+/)[0], "celia-v6-test"));
   await p.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r.update())); await p.waitForTimeout(3500);
   ok(await p.evaluate(() => window.__alive === undefined), 'nouvelle version publiée : l’appli se recharge toute seule quand elle est sur l’accueil');
-  /* 3. nouvelle version pendant une activité → on ne coupe pas Célia ; mise à jour au retour au château */
+  /* 3. nouvelle version pendant une activité → on ne coupe pas Celia ; mise à jour au retour au château */
   await p.evaluate(() => { document.querySelector('.startbtn') && document.querySelector('.startbtn').click(); C.go('draw'); window.__alive = 2; }); await p.waitForTimeout(1200);
   try { require('fs').unlinkSync('/tmp/_x'); } catch (e) { }
   await p.evaluate(() => sessionStorage.removeItem('celia.reloaded'));
   fs.writeFileSync(SW, fs.readFileSync(SW, 'utf8').replace("celia-v6-test", "celia-v7-test"));
   await p.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r.update())); await p.waitForTimeout(3500);
-  ok(await p.evaluate(() => window.__alive === 2 && C.current() === 'draw'), 'nouvelle version pendant un dessin : l’appli ne se recharge PAS (Célia n’est pas interrompue)');
+  ok(await p.evaluate(() => window.__alive === 2 && C.current() === 'draw'), 'nouvelle version pendant un dessin : l’appli ne se recharge PAS (Celia n’est pas interrompue)');
   ok(await p.evaluate(() => C.pendingReload === true), 'la mise à jour est mise en attente');
   await p.evaluate(() => document.querySelector('#btnHome').click()); await p.waitForTimeout(3000);
   ok(await p.evaluate(() => window.__alive === undefined), 'au retour au château, la mise à jour s’applique toute seule');

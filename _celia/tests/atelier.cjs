@@ -127,7 +127,7 @@ async function ouvrir(p, page) {
     const h2 = await p.evaluate(() => { const h = document.querySelector('.hinthand'), c = document.querySelector('.cv-wrap').getBoundingClientRect(), r = h && h.getBoundingClientRect(); return { say: C.lastSay, onCanvas: !!r && r.x > c.x && r.x < c.right && r.y > c.y && r.y < c.bottom }; });
     ok(/Touche le dessin/.test(h2.say) && h2.onCanvas, 'aide : après le choix de la couleur, la voix dit « ' + h2.say + ' » et la main montre le dessin');
     const cvr = await rect(p, '.cv-wrap'); await p.touchscreen.tap(cvr.x + cvr.w * .5, cvr.y + cvr.h * .48); await sleep(p, 600);
-    ok(await p.evaluate(() => !document.querySelector('.hinthand')), 'aide : la main disparaît dès que Célia colorie');
+    ok(await p.evaluate(() => !document.querySelector('.hinthand')), 'aide : la main disparaît dès que Celia colorie');
     for (let i = 0; i < 2; i++) { await ouvrir(p, 'lapin'); await sleep(p, 2200); }
     ok(await p.evaluate(() => !document.querySelector('.hinthand') && !/Choisis une couleur/.test(C.lastSay)), 'aide : à partir de la 3e visite, l’aide n’est plus répétée');
     await ctx.close();

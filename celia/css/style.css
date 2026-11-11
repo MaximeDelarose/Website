@@ -1,4 +1,4 @@
-/* Le Monde Magique de Célia — styles de base */
+/* Le Monde Magique de Celia — styles de base */
 :root {
   --ink: #6b3f72; --pink: #ff8fb8; --hot: #ff5d9e; --lav: #c4a8ff; --turq: #4fd8d0; --sun: #ffd84d; --mint: #8de8b5; --peach: #ffb98a; --sky: #8fd3ff;
   --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px); --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px);
