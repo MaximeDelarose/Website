@@ -1,7 +1,7 @@
 /* Service worker du Monde Magique de Célia.
    Périmètre = le dossier où il se trouve (/celia/) : il ne touche jamais RADIA, À DEUX ni le reste du site.
    Cache dédié « celia-* ». Stratégie : on sert le cache tout de suite (hors ligne possible) et on le met à jour en arrière-plan. */
-const VERSION = 'celia-v1-2026-11';
+const VERSION = 'celia-v2-2026-11';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest',
   'css/style.css', 'css/activities.css', 'css/cook.css', 'css/dress.css', 'css/pets.css', 'css/play.css',

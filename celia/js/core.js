@@ -240,9 +240,21 @@
       var vs = speechSynthesis.getVoices() || [];
       var fr = vs.filter(function (v) { return /^fr/i.test(v.lang.replace('_', '-')); });
       if (!fr.length) { V.voice = null; V.ok = false; return; }
-      var pref = /(am[ée]lie|audrey|aur[ée]lie|marie|julie|c[ée]line|virginie|google fran|siri)/i;
-      var best = fr.filter(function (v) { return pref.test(v.name) && /^fr[-_]fr/i.test(v.lang); })[0] || fr.filter(function (v) { return pref.test(v.name); })[0] || fr.filter(function (v) { return /^fr[-_]fr/i.test(v.lang); })[0] || fr[0];
-      V.voice = best; V.ok = true;
+      /* on note chaque voix : qualité (premium / améliorée / neurale) > voix féminine douce > français de France */
+      function score(v) {
+        var n = v.name + ' ' + (v.voiceURI || ''), sc = 0;
+        if (/premium|enhanced|am[ée]lior|neural|natural|online/i.test(n)) sc += 100;
+        if (/siri/i.test(n)) sc += 60;
+        if (/am[ée]lie|audrey|aur[ée]lie|marie|julie|c[ée]line|virginie|chantal|denise|elo[iî]se|google fran/i.test(n)) sc += 40;
+        if (/thomas|daniel|jacques|henri|paul|claude|antoine|mathieu|bruno/i.test(n)) sc -= 40;
+        if (/compact|eloquence|espeak|novelty|whisper|zarvox|bells|trinoids|fred|albert/i.test(n)) sc -= 80;
+        if (/^fr[-_]fr/i.test(v.lang)) sc += 15; else if (/^fr[-_]ca/i.test(v.lang)) sc += 8;
+        if (v.localService) sc += 3;
+        return sc;
+      }
+      fr.sort(function (a, b) { return score(b) - score(a); });
+      V.voice = fr[0]; V.ok = true;
+      V.premium = /premium|enhanced|am[ée]lior|neural|natural|siri/i.test(fr[0].name);
     } catch (e) { V.ok = false; }
   }
   try { if (window.speechSynthesis) { pickVoice(); speechSynthesis.addEventListener ? speechSynthesis.addEventListener('voiceschanged', pickVoice) : (speechSynthesis.onvoiceschanged = pickVoice); } } catch (e) { }
@@ -268,10 +280,16 @@
     try {
       if (window.speechSynthesis && V.ok && window.SpeechSynthesisUtterance) {
         speechSynthesis.cancel();
-        var u = new SpeechSynthesisUtterance(text);
-        u.lang = V.voice.lang; u.voice = V.voice; u.rate = 0.92; u.pitch = 1.25; u.volume = 1;
-        C._utt = u;
-        speechSynthesis.speak(u);
+        /* phrases courtes, lues doucement, avec une petite respiration entre les morceaux */
+        var parts = text.match(/[^.!?…]+[.!?…]*/g) || [text];
+        C._utt = [];
+        parts.forEach(function (part) {
+          part = part.trim(); if (!part) return;
+          var u = new SpeechSynthesisUtterance(part);
+          u.lang = V.voice.lang; u.voice = V.voice;
+          u.rate = V.premium ? 0.9 : 0.84; u.pitch = V.premium ? 1.04 : 1.1; u.volume = 1;
+          C._utt.push(u); speechSynthesis.speak(u);
+        });
         return;
       }
     } catch (e) { }
