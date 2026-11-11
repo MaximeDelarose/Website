@@ -2,7 +2,6 @@ import { expect, type Page } from '@playwright/test'
 
 export const demoStart = async (page: Page) => {
   await page.goto('/')
-  await page.getByTestId('intro-skip').click()
   await page.getByTestId('intro-demo').click()
   await expect(page.getByTestId('home-searching')).toBeVisible()
 }

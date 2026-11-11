@@ -10,7 +10,7 @@ export const DEMO_PARTNERS: DemoPartner[] = [
     interests: ['Cuisine', 'Musique', 'Marchés du dimanche'],
     intriguing: 'Quelle est la dernière chose qui t’a fait rire à voix haute ?',
     portrait: { skin: '#E8B796', hair: '#3A2A4A', hairStyle: 1, accent: '#A88BC7' },
-    voice: ['Salut ! Ravi·e qu’on se découvre doucement 🙂', 'Haha, bonne réponse. Moi c’était un canard en plastique ce matin.', 'Tu écoutes quoi en ce moment ?', 'J’adore cette idée. On pourrait s’en inspirer pour la suite.'],
+    voice: ['Salut ! Ravi·e qu’on se découvre doucement', 'Haha, bonne réponse. Moi c’était un canard en plastique ce matin.', 'Tu écoutes quoi en ce moment ?', 'J’adore cette idée. On pourrait s’en inspirer pour la suite.'],
     answers: {
       intent: a('slow'), place: a(3), pace: a('waves'), projects: a(['travel', 'creative']), kids: a('maybe'),
       differences: a(['rhythm', 'tastes']), affection: a(['words', 'time']), conflict: a('talk'), communication: a(5),
@@ -24,7 +24,7 @@ export const DEMO_PARTNERS: DemoPartner[] = [
     interests: ['Randonnée', 'Lecture', 'Cinéma'],
     intriguing: 'Si on te donnait une journée sans obligations, par quoi commencerais-tu ?',
     portrait: { skin: '#F1CBAA', hair: '#7A4A2A', hairStyle: 2, accent: '#F6B7A0', glasses: true },
-    voice: ['Coucou ! Je suis contente qu’on se rencontre ainsi.', 'Ha ! Je note ça précieusement.', 'Et toi, plutôt montagne ou mer ?', 'Avec plaisir. Une chose à la fois 🙂'],
+    voice: ['Coucou ! Je suis contente qu’on se rencontre ainsi.', 'Ha ! Je note ça précieusement.', 'Et toi, plutôt montagne ou mer ?', 'Avec plaisir. Une chose à la fois'],
     answers: {
       intent: a('serious'), place: a(4), pace: a('slowburn'), projects: a(['home', 'travel', 'family']), kids: a('yes'),
       differences: a(['social', 'tastes']), affection: a(['time', 'acts']), conflict: a('think'), communication: a(4),
@@ -52,7 +52,7 @@ export const DEMO_PARTNERS: DemoPartner[] = [
     interests: ['Danse', 'Art', 'Voyages'],
     intriguing: 'Quelle est la dernière chose qui t’a fait rire à voix haute ?',
     portrait: { skin: '#B98363', hair: '#1E1A2B', hairStyle: 3, accent: '#F3C1CC' },
-    voice: ['Hey ! On y va tranquillement 😊', 'Trop bien.', 'Tu dansais ce matin aussi, avoue.', 'Oui, avec joie.'],
+    voice: ['Hey ! On y va tranquillement', 'Trop bien.', 'Tu dansais ce matin aussi, avoue.', 'Oui, avec joie.'],
     answers: {
       intent: a('discover'), place: a(2), pace: a('waves'), projects: a(['travel', 'creative']), kids: a('maybe'),
       differences: a(['beliefs', 'rhythm', 'tastes']), affection: a(['touch', 'gifts']), conflict: a('think'), communication: a(3),

@@ -42,12 +42,20 @@ export function hardFilter(a: Candidate, b: Candidate): string[] {
   const ia = val(a.answers, 'intent'), ib = val(b.answers, 'intent')
   const mustA = a.answers.intent?.must, mustB = b.answers.intent?.must
   if (ia && ib && ia !== ib) {
-    const far = (ia === 'serious' && ib === 'discover') || (ia === 'discover' && ib === 'serious')
+    const heavy = (v: unknown) => v === 'serious' || v === 'marriage'
+    const far = (heavy(ia) && ib === 'discover') || (ia === 'discover' && heavy(ib))
     if (far && (mustA || mustB)) why.push('intentions')
     else if (far && !(mustA || mustB)) { /* différence : acceptée mais signalée */ }
   }
   const ka = val(a.answers, 'kids'), kb = val(b.answers, 'kids')
   if (ka && kb && ((ka === 'yes' && kb === 'no') || (ka === 'no' && kb === 'yes')) && (a.answers.kids?.must || b.answers.kids?.must)) why.push('enfants')
+  // Convictions : critère strictement optionnel, appliqué UNIQUEMENT si la personne l'a marqué « indispensable ».
+  const fa = val(a.answers, 'faith'), fb = val(b.answers, 'faith')
+  const mustFaith = a.answers.faithpref?.must || b.answers.faithpref?.must
+  if (mustFaith) {
+    const known = (x: unknown) => typeof x === 'string' && x !== 'private'
+    if (!(known(fa) && known(fb) && fa === fb)) why.push('convictions')
+  }
   return why
 }
 

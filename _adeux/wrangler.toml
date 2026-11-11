@@ -1,7 +1,0 @@
-# Déploiement INDÉPENDANT d'À DEUX sur Cloudflare Pages (projet « adeux-app »). Aucun lien avec les autres projets.
-name = "adeux-app"
-compatibility_date = "2025-01-01"
-pages_build_output_dir = "dist"
-# Secrets (jamais dans ce fichier) :
-#   npx wrangler pages secret put ADEUX_ACCESS_CODES --project-name adeux-app    # ex. "code1,code2"
-#   npx wrangler pages secret put ADEUX_COOKIE_SECRET --project-name adeux-app   # longue chaîne aléatoire

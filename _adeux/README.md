@@ -15,7 +15,7 @@ données. Elle ne partage rien avec les autres projets du dépôt (RADIA, jeux, 
 | Tailwind CSS 3, **Motion** (animations), Zustand | Design system léger, animations fluides, état persistant versionné. |
 | **Supabase** (Postgres + RLS + Storage + Auth) | Règles d'accès *dans la base* (pas dans l'interface). |
 | **LiveKit** (WebRTC) via Edge Function | Appel audio réel ; jeton généré côté serveur. |
-| Cloudflare Pages + Functions (recommandé) | Domaine dédié (`adeux.mdelarose.fr`) et **porte d'accès serveur** qui protège aussi les fichiers. |
+| Cloudflare Pages (recommandé) | URL HTTPS dédiée gratuite, déploiement à chaque push, domaine `adeux.mdelarose.fr` possible. |
 
 ## Lancer en local
 
@@ -36,7 +36,6 @@ iPhone exigent HTTPS (voir déploiement) ; en local, utilise la démo dans le na
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | build (publiques) | Active le mode réel. Absentes → démo. **Jamais de clé `service_role` côté navigateur.** |
 | `VITE_LIVEKIT_URL` | build (publique) | URL WebSocket LiveKit pour les vrais appels. |
 | `ADEUX_BUILD_ID` | build (facultatif) | Force l'identifiant de version (sinon : empreinte du code). |
-| `ADEUX_ACCESS_CODES`, `ADEUX_COOKIE_SECRET` | **secrets Cloudflare Pages** | Porte d'accès privée (voir ci-dessous). |
 | `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `ADEUX_ORIGIN` | **secrets Supabase** (Edge Function) | Génération des jetons d'appel. |
 
 ## Base de données
@@ -53,37 +52,50 @@ values (encode(sha256(convert_to('MON-CODE','UTF8')),'hex'), 5);
 Réglages Supabase Auth recommandés : confirmation e-mail activée, inscriptions limitées, mot de passe fort.
 Edge Function d'appel : `supabase functions deploy livekit-token` (+ `supabase secrets set LIVEKIT_API_KEY=… LIVEKIT_API_SECRET=… ADEUX_ORIGIN=https://adeux.mdelarose.fr`).
 
-## Accès privé (important)
+## Accès : démonstration publique, sans compte ni code
 
-Une URL « cachée » ou `noindex` **n'est pas une protection**. À DEUX combine :
+La version déployée est une **démo** : elle s'ouvre directement, sans compte ni code d'invitation, avec des
+personnages et des données **fictifs** (rien d'autre n'est publié : aucune donnée personnelle, aucun secret,
+aucun contenu des autres projets). Elle reste **non indexée** : `<meta robots noindex>`, en-tête `X-Robots-Tag`,
+`robots.txt` (`Disallow: /`), aucun sitemap. Une URL non indexée n'est pas une protection : n'y mets rien de réel.
 
-1. **`noindex` partout** : `<meta robots>`, en-tête `X-Robots-Tag`, `robots.txt` (`Disallow: /`), aucun sitemap.
-2. **Porte d'accès serveur** (`functions/_middleware.ts` + `server/gate.ts`) : sans cookie signé (HMAC, `HttpOnly`,
-   `Secure`, 180 j), **aucun fichier** — ni HTML, ni JS, ni manifest — n'est servi. Ferme par défaut si les
-   secrets ne sont pas définis. Tu partages le lien + un code d'invitation ; chaque testeur le saisit une fois.
-3. **Mode réel** : inscription impossible sans code d'invitation valide (vérifié par la base).
+Désactivé tant que non configuré : mode réel Supabase (aucune variable → aucun appel réseau), appel LiveKit
+(l'appel est une simulation signalée), connexion/inscription (absentes de l'interface).
+Une porte d'accès serveur (`server/gate.ts`, testée) est conservée pour la version privée future, mais n'est
+**pas** branchée au déploiement de la démo.
 
-## Déploiement indépendant (Cloudflare Pages)
+## Déploiement indépendant (Cloudflare Pages) — le plus court chemin
 
-Je **n'ai pas pu déployer** : aucun accès à ton hébergeur ni à tes DNS depuis cet environnement. Tout est prêt :
+Je n'ai pas d'accès à Cloudflare depuis l'environnement de développement : voici les clics à faire (≈ 3 min).
 
+1. https://dash.cloudflare.com → **Workers & Pages** → **Create** → **Pages** → **Connect to Git** → choisis le dépôt
+   `MaximeDelarose/Website` (autorise l'accès à ce seul dépôt).
+2. Réglages de build :
+   - **Project name** : `adeux-app` (URL : `https://adeux-app.pages.dev`, ou avec un suffixe si le nom est pris)
+   - **Production branch** : `claude/a-deux-dating-app-tp21b1` (ou `main` après fusion)
+   - **Root directory** : `_adeux`
+   - **Build command** : `npm ci && npm run build`
+   - **Build output directory** : `dist`
+   - **Environment variable** : `NODE_VERSION` = `22`
+3. **Save and Deploy**. À chaque `git push` sur la branche de production, Cloudflare reconstruit et publie ;
+   les iPhone reçoivent la nouvelle version via la bannière « Une nouvelle version est disponible ».
+
+Ce projet Pages est totalement séparé : il ne publie que `_adeux/dist`, ne touche ni mdelarose.fr (GitHub Pages)
+ni RADIA, et le dossier `_adeux/` n'est de toute façon pas servi par GitHub Pages (préfixe `_`).
+
+Option sans Git (CLI, sur ta machine) :
 ```bash
 cd _adeux && npm ci && npm run build
 npx wrangler login
 npx wrangler pages project create adeux-app --production-branch main
-npx wrangler pages secret put ADEUX_ACCESS_CODES  --project-name adeux-app   # ex. "code-camille,code-lea"
-npx wrangler pages secret put ADEUX_COOKIE_SECRET --project-name adeux-app   # chaîne aléatoire ≥ 32 car.
 npx wrangler pages deploy dist --project-name adeux-app
 ```
-URL fournie par l'hébergeur : `https://adeux-app.pages.dev`. Pour **`adeux.mdelarose.fr`** : dans Cloudflare Pages →
-*Custom domains* → ajouter `adeux.mdelarose.fr`, puis chez ton gestionnaire DNS **ajouter uniquement** un
-enregistrement `CNAME adeux → adeux-app.pages.dev` (n'altère ni l'enregistrement du site principal ni `CNAME`
-du dépôt). Aucune référence à À DEUX n'est ajoutée au site principal.
-(Netlify/Vercel fonctionnent aussi pour les fichiers statiques, mais la porte d'accès serveur fournie est écrite pour Cloudflare.)
+Domaine `adeux.mdelarose.fr` (plus tard) : Pages → *Custom domains* → ajouter, puis **un seul** CNAME
+`adeux → adeux-app.pages.dev` chez ton gestionnaire DNS.
 
 ## Installer sur iPhone
 
-1. Ouvrir l'URL dans **Safari** (HTTPS obligatoire) et saisir le code d'invitation.
+1. Ouvrir l'URL dans **Safari** (HTTPS obligatoire).
 2. Bouton **Partager** → **Sur l'écran d'accueil** → **Ajouter**.
 3. L'icône À DEUX apparaît ; elle s'ouvre en plein écran (mode standalone), avec écran de lancement, zones de
    sécurité et clavier gérés. Les données et la connexion sont conservées entre les ouvertures.

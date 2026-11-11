@@ -1,54 +1,48 @@
-@import '@fontsource-variable/fraunces/index.css';
-@import '@fontsource-variable/plus-jakarta-sans/index.css';
+@import '@fontsource/instrument-serif/latin-400.css';
+@import '@fontsource/instrument-serif/latin-400-italic.css';
+@import '@fontsource-variable/inter/index.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --plum: #231C39; --lavender: #A88BC7; --peach: #F6B7A0; --cream: #FFF7EF; --rose: #F3C1CC; --mint: #CDE8DA;
+  --plum: #3B1F4D; --lavender: #E8DFF7; --peach: #FFC4AB; --cream: #FDF7EF; --mint: #DDEEE4;
   --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px);
   --vh: 100dvh; --vtop: 0px;
+  --ease: cubic-bezier(.22,.8,.24,1);
 }
 * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 html { background: var(--cream); overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
-body {
-  font-family: 'Plus Jakarta Sans Variable', system-ui, -apple-system, sans-serif;
-  color: var(--plum); background: var(--cream); overflow: hidden;
-  -webkit-font-smoothing: antialiased; touch-action: manipulation; user-select: none; -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
+body { font-family: 'Inter Variable', system-ui, -apple-system, sans-serif; color: var(--plum); background: var(--cream); overflow: hidden;
+  -webkit-font-smoothing: antialiased; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; font-feature-settings: 'cv11', 'ss01'; }
 input, textarea { user-select: text; -webkit-user-select: text; }
-/* 16px minimum : évite le zoom automatique d'iOS dans les champs */
 input, textarea, select { font-size: 16px; font-family: inherit; }
 button { font-family: inherit; }
 .app-root { position: fixed; left: 0; right: 0; top: var(--vtop); height: var(--vh); overflow: hidden; }
-.font-display { font-variation-settings: 'opsz' 144, 'SOFT' 100; letter-spacing: -0.01em; }
+.font-display { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.012em; }
 .scroll-y { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .scroll-y::-webkit-scrollbar { display: none; }
-.pt-safe { padding-top: max(var(--sat), 12px); }
-.pb-safe { padding-bottom: max(var(--sab), 12px); }
-.px-safe { padding-left: max(var(--sal), 20px); padding-right: max(var(--sar), 20px); }
+.pt-safe { padding-top: max(var(--sat), 14px); }
+.pb-safe { padding-bottom: max(var(--sab), 16px); }
+.px-safe { padding-left: max(var(--sal), 28px); padding-right: max(var(--sar), 28px); }
+.grain::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5; mix-blend-mode: multiply;
+  background-image: radial-gradient(rgba(59,31,77,.05) 1px, transparent 1px); background-size: 3px 3px; }
 
 @layer components {
-  .btn { @apply relative inline-flex items-center justify-center gap-2 rounded-full px-6 min-h-[52px] font-semibold text-[16px] leading-none select-none transition-colors disabled:opacity-45 disabled:pointer-events-none; }
-  .btn-primary { @apply bg-plum text-cream shadow-soft; }
-  .btn-peach { @apply bg-peach text-plum shadow-soft; }
-  .btn-soft { @apply bg-plum/[.07] text-plum; }
-  .btn-ghost { @apply text-plum/80 underline-offset-4; }
-  .card { @apply rounded-3xl bg-white/80 shadow-soft; }
-  .chip { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold; }
-  .field { @apply w-full rounded-2xl border-2 border-plum/10 bg-white px-4 py-3.5 text-plum outline-none transition focus:border-lavender placeholder:text-plum/40; }
-  .kicker { @apply text-[12px] font-bold uppercase tracking-[.14em] text-plum/60; }
+  .btn { @apply relative inline-flex items-center justify-center gap-2 rounded-full px-7 min-h-[56px] font-medium text-[16px] leading-none tracking-[.01em] select-none transition-colors disabled:opacity-35 disabled:pointer-events-none; }
+  .btn-primary { @apply bg-plum text-cream; }
+  .btn-peach { @apply bg-peach text-plum; }
+  .btn-soft { @apply border border-plum/20 text-plum; }
+  .btn-ghost { @apply min-h-[48px] px-4 text-plum/70 underline underline-offset-[6px] decoration-plum/25; }
+  .card { @apply rounded-[22px] bg-white/60 border border-plum/10; }
+  .chip { @apply inline-flex items-center rounded-full px-3 py-1 text-[12px] font-medium; }
+  .field { @apply w-full rounded-none border-0 border-b border-plum/25 bg-transparent px-0 py-3 text-plum outline-none transition focus:border-plum placeholder:text-plum/35; }
+  .kicker { @apply text-[11px] font-medium uppercase tracking-[.22em] text-plum/55; }
+  .rule { @apply border-t border-plum/12; }
 }
-:focus-visible { outline: 3px solid var(--lavender); outline-offset: 2px; border-radius: 12px; }
-
-@keyframes breathe { 0%,100% { transform: scale(1) } 50% { transform: scale(1.04) } }
-@keyframes floaty { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
-@keyframes shimmer { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }
-.skeleton { background: linear-gradient(90deg, rgba(35,28,57,.06) 25%, rgba(35,28,57,.12) 50%, rgba(35,28,57,.06) 75%); background-size: 200% 100%; animation: shimmer 1.6s infinite linear; border-radius: 16px; }
-
+:focus-visible { outline: 2px solid var(--plum); outline-offset: 3px; border-radius: 10px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }

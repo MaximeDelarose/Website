@@ -2,14 +2,11 @@ import { expect, test } from '@playwright/test'
 import { answerIntro, callAndHangup, demoStart, noHorizontalOverflow, playMirror, startEncounter, toConsent, toProposal } from './helpers'
 
 test.describe('A · découverte', () => {
-  test('introduction : 3 écrans, passer, démo identifiée', async ({ page }) => {
+  test('premier écran : une seule action principale, démo accessible sans compte ni code', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByTestId('intro-title')).toContainText('Et si on arrêtait de chercher la personne parfaite ?')
-    await page.getByTestId('intro-next').click()
-    await expect(page.getByTestId('intro-title')).toContainText('prenait le temps de découvrir quelqu’un')
-    await page.getByTestId('intro-next').click()
-    await expect(page.getByTestId('intro-title')).toContainText('Une histoire commence à deux.')
-    await expect(page.getByTestId('intro-start')).toHaveText('Commencer mon histoire')
+    await expect(page.getByTestId('intro-title')).toContainText('Et si on prenait vraiment le temps ?')
+    await expect(page.getByTestId('intro-start')).toHaveText('Commencer une rencontre')
+    await expect(page.locator('input[type=password]')).toHaveCount(0) // aucun code d'invitation
     await page.getByTestId('intro-demo').click()
     await expect(page.getByTestId('demo-banner')).toContainText('personnages fictifs')
     await noHorizontalOverflow(page)
@@ -19,7 +16,6 @@ test.describe('A · découverte', () => {
 test.describe('B/I · questionnaire, sauvegarde et reprise', () => {
   test('refuse un mineur, enregistre, reprend après rechargement, récapitulatif modifiable', async ({ page }) => {
     await page.goto('/')
-    await page.getByTestId('intro-skip').click()
     await page.getByTestId('intro-start').click()
     await page.getByTestId('adult-check').check(); await page.getByTestId('data-check').check()
     await page.getByTestId('consent-next').click()
@@ -36,8 +32,6 @@ test.describe('B/I · questionnaire, sauvegarde et reprise', () => {
     await page.getByTestId('area-next').click()
     await page.getByTestId('photo-next').click()
     // Partie A : intro de catégorie puis 1re question
-    await expect(page.getByTestId('category-intro')).toBeVisible()
-    await page.getByTestId('category-go').click()
     await page.getByTestId('opt-serious').click(); await page.getByTestId('q-next').click()
     await expect(page.getByTestId('q-title')).toContainText('place')
     await page.getByTestId('scale-4').click(); await page.getByTestId('q-next').click()
@@ -50,7 +44,6 @@ test.describe('B/I · questionnaire, sauvegarde et reprise', () => {
     // On répond à tout le reste en prenant la première option / en passant ce qui est facultatif
     for (let i = 0; i < 40; i++) {
       if (await page.getByTestId('recap-intent').count()) break
-      if (await page.getByTestId('category-go').count()) { await page.getByTestId('category-go').click(); await page.waitForTimeout(900); continue }
       if (await page.getByTestId('open-text').count()) { await page.getByTestId('q-next').click(); await page.waitForTimeout(900); continue }
       if (await page.getByTestId('scale-3').count()) await page.getByTestId('scale-3').click()
       else { const opt = page.locator('[data-testid^="opt-"]').first(); await opt.click() }
@@ -157,14 +150,14 @@ test.describe('F/G · double consentement et révélation', () => {
     await expect(page.getByTestId('reveal')).toBeVisible({ timeout: 8000 })
     await expect(page.getByTestId('reveal-photos')).toBeVisible({ timeout: 12000 })
     await expect(page.getByTestId('reveal-photos').locator('svg[aria-label="Portrait illustré"]')).toHaveCount(1)
-    await page.getByTestId('reveal-skip').click().catch(() => {})
+    await page.getByTestId('reveal-skip').click({ timeout: 1000 }).catch(() => {})
     await page.getByTestId('reveal-enter').click({ timeout: 12000 })
     await expect(page.getByTestId('world')).toBeVisible()
-    await expect(page.getByTestId('world-item-house')).toContainText('✓')
-    await expect(page.getByTestId('world-item-lantern')).toContainText('✓') // le Miroir a été joué
+    await expect(page.getByTestId('world-item-house')).toContainText('construit')
+    await expect(page.getByTestId('world-item-lantern')).toContainText('construit') // le Miroir a été joué
     await page.getByTestId('memory-input').fill('Notre premier appel'); await page.getByTestId('memory-add').click()
     await expect(page.getByTestId('memories')).toContainText('Notre premier appel')
-    await expect(page.getByTestId('world-item-journal')).toContainText('✓')
+    await expect(page.getByTestId('world-item-journal')).toContainText('construit')
     await page.getByTestId('plan-open').click(); await page.getByTestId('plan-idea').fill('Un café au marché'); await page.getByTestId('plan-send').click()
     await expect(page.getByTestId('plans')).toContainText('Un café au marché')
   })

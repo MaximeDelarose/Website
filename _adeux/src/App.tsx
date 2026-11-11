@@ -14,13 +14,14 @@ import { WorldScreen } from './screens/World'
 import { applyUpdate, usePWA } from './lib/pwa'
 import { setSoundEnabled, unlockAudio } from './lib/audio'
 import { cn } from './lib/util'
+import { Ico, Icon } from './ui/Art'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'home', label: 'Accueil', icon: <path d="M4 11l8-7 8 7v8a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z" /> },
-  { id: 'encounter', label: 'Rencontre', icon: <><circle cx="9" cy="9" r="4" /><circle cx="16" cy="12" r="4" /></> },
-  { id: 'activities', label: 'Activités', icon: <path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6L12 16.7 6.7 19.6l1.1-6L3.4 9.4l6-.8z" /> },
-  { id: 'messages', label: 'Messages', icon: <path d="M4 5h16a1 1 0 011 1v10a1 1 0 01-1 1h-8l-5 4v-4H4a1 1 0 01-1-1V6a1 1 0 011-1z" /> },
-  { id: 'profile', label: 'Profil', icon: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" /></> },
+  { id: 'home', label: 'Accueil', icon: Icon.home },
+  { id: 'encounter', label: 'Rencontre', icon: Icon.two },
+  { id: 'activities', label: 'Activités', icon: Icon.spark },
+  { id: 'messages', label: 'Messages', icon: Icon.chat },
+  { id: 'profile', label: 'Profil', icon: Icon.user },
 ]
 
 function TabBar() {
@@ -29,19 +30,21 @@ function TabBar() {
   const enc = useStore((s) => s.encounter)
   const dot = (t: Tab) => (t === 'encounter' && enc && (enc.status === 'proposed' || (enc.stage >= 3 && enc.consent.me === null && enc.status === 'active')))
   return (
-    <nav className="pb-safe px-safe relative z-30 shrink-0 border-t border-plum/10 bg-cream/95 backdrop-blur" aria-label="Navigation principale">
-      <ul className="mx-auto flex max-w-[560px] items-stretch justify-between pt-1.5">
+    <nav className="pb-safe relative z-30 shrink-0 bg-cream/90 backdrop-blur-md" aria-label="Navigation principale">
+      <div className="mx-6 border-t border-plum/10" />
+      <ul className="mx-auto flex max-w-[520px] items-stretch justify-between px-3 pt-1.5">
         {TABS.map((t) => {
           const on = tab === t.id
           return (
             <li key={t.id} className="flex-1">
               <button type="button" data-testid={`tab-${t.id}`} aria-current={on ? 'page' : undefined} onClick={() => { if (!on) { setTab(t.id); unlockAudio() } }}
-                className="relative flex min-h-[54px] w-full flex-col items-center justify-center gap-0.5 rounded-2xl">
-                <motion.span animate={{ scale: on ? 1.12 : 1, y: on ? -1 : 0 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }} className={cn('relative grid h-8 w-12 place-items-center rounded-full transition-colors', on && 'bg-peach')}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={on ? 'text-plum' : 'text-plum/55'}>{t.icon}</svg>
-                  {dot(t.id) && <span className="absolute right-2 top-0.5 h-2.5 w-2.5 rounded-full bg-rose-600 ring-2 ring-cream" aria-label="À faire" />}
-                </motion.span>
-                <span className={cn('text-[11px] font-semibold', on ? 'text-plum' : 'text-plum/55')}>{t.label}</span>
+                className="relative flex min-h-[54px] w-full flex-col items-center justify-center gap-1">
+                <span className={cn('relative transition-colors duration-300', on ? 'text-plum' : 'text-plum/40')}>
+                  <Ico d={t.icon} size={22} w={on ? 1.8 : 1.5} />
+                  {dot(t.id) && <span className="absolute -right-1.5 -top-0.5 h-2 w-2 rounded-full bg-peach-600" aria-label="À faire" />}
+                </span>
+                <span className={cn('text-[10.5px] tracking-wide transition-colors duration-300', on ? 'font-medium text-plum' : 'text-plum/45')}>{t.label}</span>
+                <motion.span className="absolute -top-[1px] h-[2px] rounded-full bg-plum" initial={false} animate={{ width: on ? 22 : 0, opacity: on ? 1 : 0 }} transition={{ type: 'spring', stiffness: 400, damping: 30 }} />
               </button>
             </li>
           )
@@ -75,10 +78,9 @@ function UpdateBanner() {
       {show && (
         <motion.div role="status" data-testid="update-banner" initial={{ y: -80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -80, opacity: 0 }}
           className="absolute inset-x-0 top-0 z-[80] px-3" style={{ paddingTop: 'max(var(--sat), 10px)' }}>
-          <div className="mx-auto flex max-w-[520px] items-center gap-3 rounded-3xl bg-plum px-4 py-3 text-cream shadow-soft">
-            <span aria-hidden className="text-xl">✨</span>
-            <p className="min-w-0 flex-1 text-[14px] font-semibold leading-tight">Une nouvelle version est disponible</p>
-            <Button variant="peach" className="!min-h-[44px] !px-4 !text-[14px]" testId="update-apply" disabled={applying} onClick={() => void applyUpdate(useUI.getState().busy)}>{applying ? 'Mise à jour…' : 'Mettre à jour'}</Button>
+          <div className="mx-auto flex max-w-[520px] items-center gap-3 rounded-full bg-plum py-2 pl-6 pr-2 text-cream shadow-soft">
+            <p className="min-w-0 flex-1 text-[13.5px] leading-tight">Une nouvelle version est disponible</p>
+            <Button variant="peach" className="!min-h-[44px] !px-5 !text-[14px]" testId="update-apply" disabled={applying} onClick={() => void applyUpdate(useUI.getState().busy)}>{applying ? 'Mise à jour…' : 'Mettre à jour'}</Button>
           </div>
         </motion.div>
       )}
@@ -116,7 +118,7 @@ export default function App() {
         )}
         <AnimatePresence>
           {overlays.map((o, i) => (
-            <motion.div key={`${i}-${o.name}`} className="absolute inset-0 z-50" initial={{ y: '8%', opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: '6%', opacity: 0 }} transition={{ duration: 0.26, ease: 'easeOut' }}>
+            <motion.div key={`${i}-${o.name}`} className="absolute inset-0 z-50" initial={{ opacity: 0, scale: 0.985 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.32, ease: [0.22, 0.8, 0.24, 1] }}>
               <OverlayView o={o} />
             </motion.div>
           ))}

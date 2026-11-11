@@ -1,65 +1,42 @@
-import { AnimatePresence, motion } from 'motion/react'
-import { useState } from 'react'
+import { motion } from 'motion/react'
 import { Button } from '../ui/kit'
-import { IntroScene, Logo } from '../ui/Art'
+import { Logo, PathsArt, Wordmark } from '../ui/Art'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
-import { sfx, unlockAudio } from '../lib/audio'
-import { DEMO_PROFILE, DEMO_ANSWERS } from '../lib/demoSeed'
+import { unlockAudio } from '../lib/audio'
+import { DEMO_ANSWERS, DEMO_PROFILE } from '../lib/demoSeed'
 
-const SLIDES = [
-  { t: 'Et si on arrêtait de chercher la personne parfaite ?', s: 'Pas de catalogue. Pas de swipe. Juste une personne à la fois.' },
-  { t: 'Et si on prenait le temps de découvrir quelqu’un ?', s: 'Des jeux, des questions, des voix. Et seulement ensuite, des visages.' },
-  { t: 'Une histoire commence à deux.', s: 'On ne trouve pas l’amour. On le construit.' },
-] as const
-
+/** Premier écran : doit pouvoir servir d'affiche. Une seule action principale. */
 export function Intro() {
-  const [i, setI] = useState(0)
-  const [dir, setDir] = useState(1)
   const finish = useStore((s) => s.finishIntro)
   const set = useStore((s) => s.set)
   const open = useUI((s) => s.open)
-  const last = i === SLIDES.length - 1
-  const go = (n: number) => { setDir(n > i ? 1 : -1); setI(n); sfx.next() }
-
   const start = () => { unlockAudio(); finish(); open({ name: 'onboarding' }) }
-  const demo = () => {
-    unlockAudio()
-    set({ introSeen: true, profile: DEMO_PROFILE, answers: DEMO_ANSWERS, basicsDone: true, onboarded: true, qIndex: 99 })
-  }
+  const demo = () => { unlockAudio(); set({ introSeen: true, profile: DEMO_PROFILE, answers: DEMO_ANSWERS, basicsDone: true, onboarded: true, qIndex: 99 }) }
+  const rise = (d: number) => ({ initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { delay: d, duration: 0.7, ease: [0.22, 0.8, 0.24, 1] as [number, number, number, number] } })
 
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden bg-cream" data-testid="intro">
-      <div className="pt-safe px-safe flex items-center justify-between">
-        <div className="flex items-center gap-2"><Logo size={34} /><span className="font-display text-[20px] font-semibold tracking-wide">À DEUX</span></div>
-        {!last && <button className="min-h-[44px] px-2 text-[15px] font-semibold text-plum/70" onClick={() => go(SLIDES.length - 1)} data-testid="intro-skip">Passer</button>}
+      <motion.header {...rise(0.05)} className="pt-safe px-safe relative z-10 flex items-center justify-center gap-3 pb-2 pt-6">
+        <Logo size={30} /><Wordmark size={14} />
+      </motion.header>
+
+      <div className="px-safe relative z-10 mt-[5vh]">
+        <motion.p {...rise(0.15)} className="kicker">Rencontrer avec intention</motion.p>
+        <motion.h1 {...rise(0.25)} className="font-display mt-4 text-[clamp(42px,12.5vw,58px)] leading-[0.98] text-balance" data-testid="intro-title">
+          Et si on prenait <em className="italic">vraiment</em> le temps&nbsp;?
+        </motion.h1>
+        <motion.p {...rise(0.4)} className="mt-5 max-w-[300px] text-[17px] leading-[1.5] text-plum/70">Une rencontre à la fois.<br />Une histoire à construire.</motion.p>
       </div>
 
-      <div className="px-safe flex min-h-0 flex-1 flex-col justify-center gap-5">
-        <IntroScene step={i as 0 | 1 | 2} />
-        <AnimatePresence mode="wait" custom={dir}>
-          <motion.div key={i} custom={dir} initial={{ opacity: 0, x: 40 * dir }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 * dir }} transition={{ duration: 0.32 }}
-            className="text-center" drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.25}
-            onDragEnd={(_, info) => { if (info.offset.x < -60 && i < SLIDES.length - 1) go(i + 1); if (info.offset.x > 60 && i > 0) go(i - 1) }}>
-            <h1 className="font-display text-[31px] font-semibold leading-[1.1] text-balance" data-testid="intro-title">{SLIDES[i].t}</h1>
-            <p className="mx-auto mt-3 max-w-[310px] text-[16px] leading-relaxed text-plum/75">{SLIDES[i].s}</p>
-          </motion.div>
-        </AnimatePresence>
-        <div className="flex justify-center gap-2" aria-hidden>
-          {SLIDES.map((_, k) => <motion.span key={k} className="h-2.5 rounded-full bg-plum" animate={{ width: k === i ? 28 : 10, opacity: k === i ? 1 : 0.2 }} />)}
-        </div>
+      <div className="relative min-h-0 flex-1 overflow-hidden py-3" aria-hidden>
+        <PathsArt className="mx-auto h-full w-auto max-w-full" />
       </div>
 
-      <div className="px-safe pb-safe flex flex-col items-stretch gap-2 pt-3">
-        {last ? (
-          <>
-            <Button variant="primary" onClick={start} testId="intro-start" full>Commencer mon histoire</Button>
-            <Button variant="soft" onClick={demo} testId="intro-demo" full>Essayer la démo</Button>
-            <p className="px-2 pt-1 text-center text-[12.5px] leading-snug text-plum/60">Réservé aux adultes de 18 ans et plus. La démo est une simulation avec des personnages fictifs.</p>
-          </>
-        ) : (
-          <Button variant="primary" onClick={() => go(i + 1)} testId="intro-next" full>Suivant</Button>
-        )}
+      <div className="px-safe pb-safe relative z-10 flex flex-col items-stretch gap-1 pt-2">
+        <motion.div {...rise(0.7)}><Button variant="primary" onClick={start} testId="intro-start" full>Commencer une rencontre</Button></motion.div>
+        <motion.div {...rise(0.8)} className="flex justify-center"><Button variant="ghost" onClick={demo} testId="intro-demo">Parcourir la démonstration</Button></motion.div>
+        <motion.p {...rise(0.9)} className="pt-1 text-center text-[11.5px] leading-snug tracking-wide text-plum/50">Moins de swipe. Plus de sens. · Version de démonstration, personnages fictifs · 18 ans et plus</motion.p>
       </div>
     </div>
   )

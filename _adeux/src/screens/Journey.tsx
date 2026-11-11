@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { Burst, Button, ErrorState, Screen, Sheet, useBusy } from '../ui/kit'
-import { Buddy, Portrait, Silhouette } from '../ui/Art'
+import { Ico, Icon, Logo, Portrait, Silhouette } from '../ui/Art'
 import { Waveform } from './Tabs'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
@@ -58,86 +58,85 @@ export function CallScreen() {
     engine.current?.disconnect(); engine.current = null
     if (secs >= 5) { completeStep('voice'); sfx.chime(); setPhase('ended'); setShort(false) } else { setShort(secs > 0); setPhase('ended') }
   }
-  const dark = 'bg-plum text-cream'
   return (
     <Screen title="Premier appel" onBack={phase === 'connected' || phase === 'connecting' ? undefined : close} closeIcon dark testId="call">
       <div className="mx-auto flex min-h-full max-w-[480px] flex-col items-center pb-6 pt-2 text-center">
-        {!real && <div className="mb-3 rounded-2xl bg-peach/20 px-4 py-2.5 text-[13px] font-medium text-peach" data-testid="call-sim">⚠️ SIMULATION — ce n’est pas un vrai appel. {partner.pseudo} est un personnage fictif ; ton micro n’est pas transmis.</div>}
+        {!real && <p className="mb-4 text-[12px] leading-snug tracking-wide text-peach" data-testid="call-sim">SIMULATION — ce n’est pas un vrai appel. {partner.pseudo} est un personnage fictif ; ton micro n’est pas transmis.</p>}
 
         {phase === 'pre' && (
           <>
-            <div className="flex items-center justify-center gap-6 py-6"><Silhouette size={110} /><Silhouette size={110} glow="#F6B7A0" /></div>
-            <h2 className="font-display text-[28px] font-semibold leading-tight">Prêts à vous entendre ?</h2>
-            <p className="mt-2 max-w-[310px] text-[15px] leading-relaxed text-cream/75">5 à 10 minutes suffisent, sans coupure forcée. Vos numéros ne sont jamais partagés. Tu peux raccrocher à tout moment.</p>
-            <div className="mt-6 flex w-full flex-col gap-2"><Button variant="peach" onClick={start} testId="call-start" full>{real ? 'Appeler' : 'Lancer la simulation'}</Button><Button variant="ghost" className="!text-cream/80" onClick={() => { close(); setTab('messages') }} testId="call-alt">Plutôt un message vocal</Button></div>
+            <div className="flex items-center justify-center gap-4 py-8"><Silhouette size={96} /><Silhouette size={96} glow="#E8DFF7" /></div>
+            <h2 className="font-display text-[44px] leading-[1.0]">Prêts à vous entendre&nbsp;?</h2>
+            <p className="mt-4 max-w-[300px] text-[15px] leading-relaxed text-cream/65">5 à 10 minutes suffisent, sans coupure forcée. Vos numéros ne sont jamais partagés. Tu peux raccrocher à tout moment.</p>
+            <div className="mt-10 flex w-full flex-col gap-1"><Button variant="peach" onClick={start} testId="call-start" full>{real ? 'Appeler' : 'Lancer la simulation'}</Button><div className="flex justify-center"><Button variant="ghost" className="!text-cream/70" onClick={() => { close(); setTab('messages') }} testId="call-alt">Plutôt un message vocal</Button></div></div>
           </>
         )}
 
         {phase === 'connecting' && (
-          <div className="mt-10 flex flex-col items-center gap-5" role="status" aria-live="polite" data-testid="call-connecting">
-            <div className="relative grid h-40 w-40 place-items-center">{[0, 1, 2].map((i) => <motion.span key={i} className="absolute rounded-full border border-lavender/60" style={{ width: 70, height: 70 }} animate={{ scale: [1, 2.4], opacity: [0.7, 0] }} transition={{ duration: 2, repeat: Infinity, delay: i * 0.6 }} />)}<Silhouette size={90} pulse={false} /></div>
-            <p className="font-display text-[24px]">Connexion…</p>
+          <div className="mt-12 flex flex-col items-center gap-8" role="status" aria-live="polite" data-testid="call-connecting">
+            <div className="relative grid h-40 w-40 place-items-center">{[0, 1, 2].map((i) => <motion.span key={i} className="absolute h-[70px] w-[70px] rounded-full border border-cream/40" animate={{ scale: [1, 2.4], opacity: [0.7, 0] }} transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.8 }} />)}<Logo size={44} color="#FDF7EF" mono /></div>
+            <p className="font-display text-[32px]">Connexion…</p>
           </div>
         )}
 
         {(phase === 'connected' || phase === 'reconnecting') && (
           <>
             <div className="flex w-full items-center justify-around py-4">
-              <Voice who="Toi" level={muted ? 0 : Math.max(lvl, 0.1)} glow="#A88BC7" muted={muted} />
-              <Voice who={partner.pseudo} level={0.5 + 0.3 * Math.sin(secs / 2)} glow="#F6B7A0" />
+              <Voice who="Toi" level={muted ? 0 : Math.max(lvl, 0.1)} glow="#E8DFF7" muted={muted} />
+              <Voice who={partner.pseudo} level={0.5 + 0.3 * Math.sin(secs / 2)} glow="#FFC4AB" />
             </div>
-            <p className="font-display text-[34px] tabular-nums" data-testid="call-timer">{fmtTime(secs)}</p>
-            <p className="text-[12.5px] text-cream/55">{phase === 'reconnecting' ? 'Connexion instable, reconnexion…' : '5 à 10 min conseillées · aucune coupure forcée'}</p>
-            <div className="mt-5 w-full rounded-3xl bg-white/[.07] p-4 text-left">
-              <p className="kicker !text-lavender">Pour briser la glace (facultatif)</p>
-              <AnimatePresence mode="wait"><motion.p key={qi} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="font-display mt-1.5 min-h-[56px] text-[19px] leading-snug" data-testid="icebreaker">{ICEBREAKERS[qi % ICEBREAKERS.length]}</motion.p></AnimatePresence>
-              <button className="mt-1 min-h-[44px] text-[14px] font-semibold text-peach" onClick={() => { setQi(qi + 1); sfx.tap() }}>Une autre question →</button>
+            <p className="font-display mt-2 text-[56px] leading-none tabular-nums" data-testid="call-timer">{fmtTime(secs)}</p>
+            <p className="mt-2 text-[12px] tracking-wide text-cream/45">{phase === 'reconnecting' ? 'Connexion instable, reconnexion…' : '5 à 10 min conseillées · aucune coupure forcée'}</p>
+            <div className="mt-8 w-full border-t border-cream/15 pt-5 text-left">
+              <p className="kicker" style={{ color: 'rgba(253,247,239,.5)' }}>Pour briser la glace · facultatif</p>
+              <AnimatePresence mode="wait"><motion.p key={qi} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="font-display mt-3 min-h-[68px] text-[26px] leading-[1.12]" data-testid="icebreaker">{ICEBREAKERS[qi % ICEBREAKERS.length]}</motion.p></AnimatePresence>
+              <button className="min-h-[44px] text-[14px] text-peach underline underline-offset-4" onClick={() => { setQi(qi + 1); sfx.tap() }}>Une autre question</button>
             </div>
-            <div className="mt-auto flex w-full items-center justify-center gap-6 pt-6">
-              <button type="button" aria-pressed={muted} aria-label={muted ? 'Réactiver le micro' : 'Couper le micro'} data-testid="call-mute" onClick={() => { const m = !muted; setMuted(m); engine.current?.setMuted(m); sfx.tap() }} className={cn('grid h-16 w-16 place-items-center rounded-full text-2xl', muted ? 'bg-peach text-plum' : 'bg-white/15')}>{muted ? '🔇' : '🎙️'}</button>
-              <button type="button" aria-label="Raccrocher" data-testid="call-hangup" onClick={hangup} className="grid h-[72px] w-[72px] place-items-center rounded-full bg-rose-600 text-3xl text-white">📞</button>
+            <div className="mt-auto flex w-full items-center justify-center gap-8 pt-8">
+              <button type="button" aria-pressed={muted} aria-label={muted ? 'Réactiver le micro' : 'Couper le micro'} data-testid="call-mute" onClick={() => { const m = !muted; setMuted(m); engine.current?.setMuted(m); sfx.tap() }} className={cn('grid h-16 w-16 place-items-center rounded-full border transition-colors', muted ? 'border-peach bg-peach text-plum' : 'border-cream/35 text-cream')}><Ico d={muted ? Icon.micOff : Icon.mic} size={24} /></button>
+              <button type="button" aria-label="Raccrocher" data-testid="call-hangup" onClick={hangup} className="grid h-[72px] w-[72px] place-items-center rounded-full bg-rose-600 text-white"><Ico d={Icon.phone} size={26} /></button>
             </div>
           </>
         )}
 
         {phase === 'failed' && (
-          <div className="mt-10"><ErrorState title={detail === 'permission' ? 'Micro non autorisé' : 'Connexion impossible'} text={detail === 'permission' ? 'Autorise le micro dans les réglages de ton appareil, ou envoie plutôt un message vocal.' : detail === 'offline' ? 'Tu es hors ligne. Reconnecte-toi puis réessaie.' : 'L’appel n’a pas pu s’établir. Aucune inquiétude, tu peux réessayer ou passer par un message vocal.'} onRetry={() => void start()} /><div className="mt-2"><Button variant="ghost" className="!text-cream/80" onClick={() => { close(); setTab('messages') }}>Envoyer un message vocal</Button></div></div>
+          <div className="mt-10"><ErrorState title={detail === 'permission' ? 'Micro non autorisé.' : 'Connexion impossible.'} text={detail === 'permission' ? 'Autorise le micro dans les réglages de ton appareil, ou envoie plutôt un message vocal.' : detail === 'offline' ? 'Tu es hors ligne. Reconnecte-toi puis réessaie.' : 'L’appel n’a pas pu s’établir. Tu peux réessayer ou passer par un message vocal.'} onRetry={() => void start()} /><div className="mt-2"><Button variant="ghost" className="!text-cream/70" onClick={() => { close(); setTab('messages') }}>Envoyer un message vocal</Button></div></div>
         )}
 
         {phase === 'ended' && (
-          <div className="mt-8 flex flex-col items-center gap-3" data-testid="call-ended">
-            <Buddy size={90} mood="happy" arms="up" />
-            <h2 className="font-display text-[26px] font-semibold">{secs >= 5 ? 'Merci pour cet échange' : short ? 'Appel très court' : 'Appel terminé'}</h2>
-            <p className="max-w-[300px] text-[15px] text-cream/75">{secs >= 5 ? 'Votre étape « La voix » est franchie. Prenez un instant avant de décider de la suite.' : 'Aucun souci : vous pourrez réessayer quand vous voulez.'}</p>
-            <Button variant="peach" onClick={() => { close(); setTab('encounter') }} testId="call-done" full>Retour à ma rencontre</Button>
+          <div className="mt-10 flex flex-col items-center gap-4" data-testid="call-ended">
+            <Logo size={52} color="#FDF7EF" mono />
+            <h2 className="font-display text-[40px] leading-none">{secs >= 5 ? 'Merci pour cet échange.' : short ? 'Appel très court.' : 'Appel terminé.'}</h2>
+            <p className="max-w-[290px] text-[15px] leading-relaxed text-cream/65">{secs >= 5 ? 'Votre étape « La voix » est franchie. Prenez un instant avant de décider de la suite.' : 'Aucun souci : vous pourrez réessayer quand vous voulez.'}</p>
+            <div className="mt-4 w-full"><Button variant="peach" onClick={() => { close(); setTab('encounter') }} testId="call-done" full>Retour à ma rencontre</Button></div>
           </div>
         )}
       </div>
-      {dark && null}
     </Screen>
   )
 }
 function Voice({ who, level, glow, muted }: { who: string; level: number; glow: string; muted?: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-3">
       <div className="relative grid h-[120px] w-[120px] place-items-center">
-        <motion.span className="absolute inset-0 rounded-full" style={{ background: `radial-gradient(circle, ${glow}99, transparent 70%)` }} animate={{ scale: 1 + level * 0.5, opacity: 0.5 + level * 0.5 }} transition={{ type: 'spring', stiffness: 120, damping: 12 }} />
-        <Silhouette size={84} pulse={false} glow={glow} />
+        <motion.span className="absolute inset-0 rounded-full" style={{ background: `radial-gradient(circle, ${glow}66, transparent 70%)` }} animate={{ scale: 1 + level * 0.4, opacity: 0.4 + level * 0.6 }} transition={{ type: 'spring', stiffness: 100, damping: 14 }} />
+        <Silhouette size={72} pulse={false} glow={glow} />
       </div>
-      <p className="text-[13px] font-semibold">{who}{muted ? ' · micro coupé' : ''}</p>
-      <div className="flex h-5 items-end gap-[3px]" aria-hidden>{[0, 1, 2, 3, 4].map((i) => <motion.span key={i} className="w-[4px] rounded-full bg-cream/70" animate={{ height: 4 + level * 16 * (0.5 + ((i * 3) % 5) / 5) }} />)}</div>
+      <p className="text-[12px] tracking-[.14em] text-cream/70">{who.toUpperCase()}{muted ? ' · MICRO COUPÉ' : ''}</p>
     </div>
   )
 }
 
 // ============== DOUBLE CONSENTEMENT ==============
+const ease = [0.22, 0.8, 0.24, 1] as [number, number, number, number]
+
 export function ConsentScreen() {
   const close = useUI((s) => s.close)
   const replace = useUI((s) => s.replace)
   const { enc, partner, out } = useEnc()
   const consent = useStore((s) => s.consent)
   const [choice, setChoice] = useState<boolean | null>(null)
-  const [phase, setPhase] = useState<'ask' | 'confirm' | 'sending' | 'waiting' | 'kind'>('ask')
+  const [phase, setPhase] = useState<'ask' | 'sending' | 'waiting' | 'kind'>('ask')
   useBusy(true)
   if (!enc || !partner) return <Screen title="Révélation" onBack={close} dark><div className="p-8 text-center text-cream/80">Rien à afficher.</div></Screen>
   const already = enc.consent.me !== null
@@ -147,49 +146,58 @@ export function ConsentScreen() {
     setTimeout(() => {
       consent(choice!)
       const e = useStore.getState().encounter!
-      if (e.status === 'revealed') { replace({ name: 'reveal' }) }
+      if (e.status === 'revealed') replace({ name: 'reveal' })
       else if (e.consent.me !== null && e.consent.partner !== null) setPhase('kind')
       else setPhase('waiting')
-    }, 1600)
+    }, 1800)
   }
   const state = already && phase === 'ask' ? (out === 'revealed' ? 'revealed' : out === 'kind-end' ? 'kind' : 'waiting') : phase
+  const Choice = ({ v, testId, children }: { v: boolean; testId: string; children: React.ReactNode }) => (
+    <button type="button" data-testid={testId} aria-pressed={choice === v} onClick={() => { setChoice(v); sfx.select() }} className={cn('flex min-h-[72px] w-full items-center justify-between border-t border-cream/15 py-4 text-left transition-colors duration-300', choice === v ? 'text-peach' : 'text-cream/80')}>
+      <span className="font-display text-[28px] leading-tight">{children}</span>
+      <span className={cn('h-3 w-3 rounded-full border transition-colors', choice === v ? 'border-peach bg-peach' : 'border-cream/40')} />
+    </button>
+  )
   return (
     <Screen title="Révélation" onBack={phase === 'sending' ? undefined : close} closeIcon dark testId="consent">
-      <div className="mx-auto flex min-h-full max-w-[480px] flex-col items-center justify-center pb-10 text-center">
-        {(state === 'ask' || state === 'confirm') && (
+      <div className="mx-auto flex min-h-full max-w-[480px] flex-col justify-center pb-10">
+        {state === 'ask' && (
           <>
-            <Silhouette size={140} glow="#F6B7A0" />
-            <h2 className="font-display mt-4 text-[31px] font-semibold leading-[1.1] text-balance" data-testid="consent-q">Tu as envie d’en découvrir un peu plus ?</h2>
-            <p className="mt-3 max-w-[320px] text-[15px] leading-relaxed text-cream/75">Ta réponse est <b>privée</b>. {partner.pseudo} ne saura jamais ce que tu as répondu : si les deux réponses sont « oui », vos photos apparaissent. Sinon, rien ne sera dévoilé.</p>
-            <div className="mt-7 flex w-full flex-col gap-3">
-              <button type="button" data-testid="consent-yes" aria-pressed={choice === true} onClick={() => { setChoice(true); setPhase('confirm'); sfx.select() }} className={cn('min-h-[60px] rounded-3xl border-2 px-5 text-[17px] font-semibold', choice === true ? 'border-peach bg-peach text-plum' : 'border-white/20 bg-white/[.07]')}>Oui, j’aimerais continuer</button>
-              <button type="button" data-testid="consent-no" aria-pressed={choice === false} onClick={() => { setChoice(false); setPhase('confirm'); sfx.select() }} className={cn('min-h-[60px] rounded-3xl border-2 px-5 text-[17px] font-semibold', choice === false ? 'border-lavender bg-lavender text-plum' : 'border-white/20 bg-white/[.07]')}>Je préfère en rester là</button>
+            <div className="mb-8 flex justify-center"><Silhouette size={96} /></div>
+            <h2 className="font-display text-center text-[clamp(38px,11vw,50px)] leading-[1.0] text-balance" data-testid="consent-q">Tu as envie d’en découvrir un peu plus&nbsp;?</h2>
+            <p className="mx-auto mt-5 max-w-[310px] text-center text-[14.5px] leading-relaxed text-cream/60">Ta réponse est <b className="font-medium text-cream">privée</b>. {partner.pseudo} ne saura jamais ce que tu as répondu : si les deux réponses sont « oui », vos photos apparaissent ensemble. Sinon, rien ne sera dévoilé.</p>
+            <div className="mt-10 border-b border-cream/15">
+              <Choice v testId="consent-yes">Oui, j’aimerais continuer</Choice>
+              <Choice v={false} testId="consent-no">Je préfère en rester là</Choice>
             </div>
-            {choice !== null && <div className="mt-5 w-full"><p className="mb-2 text-[13px] text-cream/60">Une fois envoyée, ta réponse ne peut plus être modifiée.</p><Button variant="peach" onClick={submit} testId="consent-confirm" full>Confirmer ma réponse</Button></div>}
+            {choice !== null && <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-8"><p className="mb-3 text-center text-[12.5px] text-cream/45">Une fois envoyée, ta réponse ne peut plus être modifiée.</p><Button variant="peach" onClick={submit} testId="consent-confirm" full>Confirmer ma réponse</Button></motion.div>}
           </>
         )}
-        {state === 'sending' && <div role="status" aria-live="polite"><motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 1.6 }}><Silhouette size={140} glow="#F6B7A0" /></motion.div><p className="font-display mt-4 text-[22px]">Ta réponse voyage en toute discrétion…</p></div>}
+        {state === 'sending' && <div role="status" aria-live="polite" className="text-center"><div className="relative mx-auto grid h-40 w-40 place-items-center">{[0, 1, 2].map((i) => <motion.span key={i} className="absolute h-20 w-20 rounded-full border border-peach/60" animate={{ scale: [1, 2.2], opacity: [0.7, 0] }} transition={{ duration: 2, repeat: Infinity, delay: i * 0.6 }} />)}<Logo size={44} color="#FDF7EF" mono /></div><p className="font-display mt-6 text-[30px]">Ta réponse voyage en toute discrétion…</p></div>}
         {state === 'waiting' && (
-          <div data-testid="consent-waiting"><Silhouette size={130} /><h2 className="font-display mt-4 text-[26px] font-semibold">Ta réponse est enregistrée</h2><p className="mx-auto mt-2 max-w-[300px] text-[15px] text-cream/75">Nous te préviendrons dès que {partner.pseudo} aura répondu. Rien ne s’affichera avant.</p><div className="mt-6"><Button variant="peach" onClick={close} full>Retour</Button></div></div>
+          <div className="text-center" data-testid="consent-waiting"><Silhouette size={96} /><h2 className="font-display mt-6 text-[40px] leading-none">Ta réponse est enregistrée.</h2><p className="mx-auto mt-4 max-w-[290px] text-[15px] text-cream/60">Nous te préviendrons dès que {partner.pseudo} aura répondu. Rien ne s’affichera avant.</p><div className="mt-8"><Button variant="peach" onClick={close} full>Retour</Button></div></div>
         )}
         {state === 'kind' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} data-testid="consent-kind"><Buddy size={90} mood="calm" /><h2 className="font-display mt-3 text-[25px] font-semibold leading-snug text-balance">{KIND_END}</h2><p className="mx-auto mt-3 max-w-[300px] text-[14.5px] text-cream/70">Aucune photo n’a été partagée. Prends soin de toi.</p><div className="mt-6"><Button variant="peach" onClick={() => { close(); useStore.getState().set({ encounter: null }); useUI.getState().setTab('home') }} testId="consent-home" full>Retourner à mon espace</Button></div></motion.div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.9 }} className="text-center" data-testid="consent-kind"><div className="flex justify-center"><Logo size={48} color="#FDF7EF" mono /></div><h2 className="font-display mt-8 text-[34px] leading-[1.08] text-balance">{KIND_END}</h2><p className="mx-auto mt-4 max-w-[290px] text-[14.5px] text-cream/55">Aucune photo n’a été partagée. Prends soin de toi.</p><div className="mt-10"><Button variant="peach" onClick={() => { close(); useStore.getState().set({ encounter: null }); useUI.getState().setTab('home') }} testId="consent-home" full>Retourner à mon espace</Button></div></motion.div>
         )}
-        {state === 'revealed' && <div><Button variant="peach" onClick={() => replace({ name: 'reveal' })}>Voir la révélation</Button></div>}
+        {state === 'revealed' && <div className="text-center"><Button variant="peach" onClick={() => replace({ name: 'reveal' })}>Voir la révélation</Button></div>}
       </div>
     </Screen>
   )
 }
 
 // ============== RÉVÉLATION ==============
+const AL = 'M92 372 V196 C92 112 140 62 178 62'
+const AR = 'M268 372 V196 C268 112 220 62 182 62'
+
 export function RevealScreen() {
   const close = useUI((s) => s.close)
   const replace = useUI((s) => s.replace)
   const { enc, partner } = useEnc()
   const reduce = useReducedMotion()
-  const [step, setStep] = useState(reduce ? 4 : 0)
+  const [step, setStep] = useState(reduce ? 3 : 0)
   const [mine, setMine] = useState<string | null>(null)
-  const [burst, setBurst] = useState(0)
+  const [ring, setRing] = useState(0)
   const profile = useStore((s) => s.profile)
   const hasPhoto = useStore((s) => s.hasPhoto)
   const allowed = canSeePhotos(enc)
@@ -198,7 +206,8 @@ export function RevealScreen() {
   useEffect(() => {
     if (!allowed || reduce) return
     sfx.glow()
-    const ts = [setTimeout(() => setStep(1), 1400), setTimeout(() => setStep(2), 3200), setTimeout(() => setStep(3), 5200), setTimeout(() => { setStep(4); sfx.success(); setBurst(Date.now()) }, 7200)]
+    // 0 : obscurité · 1 : deux traits se rejoignent · 2 : l'arche s'allume · 3 : les portraits émergent
+    const ts = [setTimeout(() => setStep((v) => Math.max(v, 1)), 1200), setTimeout(() => setStep((v) => Math.max(v, 2)), 4200), setTimeout(() => { setStep((v) => { if (v < 3) { sfx.success(); setRing(Date.now()) } return 3 }) }, 6200)]
     return () => ts.forEach(clearTimeout)
   }, [allowed, reduce])
 
@@ -207,34 +216,35 @@ export function RevealScreen() {
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-plum-900 text-cream" data-testid="reveal">
-      <motion.div className="absolute inset-0" animate={{ background: step >= 2 ? 'radial-gradient(circle at 50% 45%, rgba(246,183,160,.55), rgba(26,20,41,1) 62%)' : 'radial-gradient(circle at 50% 45%, rgba(168,139,199,.12), rgba(26,20,41,1) 60%)' }} transition={{ duration: 2 }} />
-      <Burst trigger={burst} count={16} colors={['#F6B7A0', '#FFF7EF', '#F3C1CC']} />
-      {step < 4 && <button className="pt-safe px-safe absolute right-0 top-0 z-20 min-h-[44px] text-[14px] font-semibold text-cream/60" onClick={() => setStep(4)} data-testid="reveal-skip">Passer</button>}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+      <motion.div className="absolute inset-0" animate={{ background: step >= 2 ? 'radial-gradient(circle at 50% 42%, rgba(255,196,171,.38), rgba(42,20,56,1) 64%)' : 'radial-gradient(circle at 50% 42%, rgba(255,196,171,.05), rgba(42,20,56,1) 60%)' }} transition={{ duration: 2.4 }} />
+      <Burst trigger={ring} />
+      {step < 3 && <button className="pt-safe px-safe absolute right-0 top-0 z-20 min-h-[44px] text-[13px] text-cream/50" onClick={() => setStep(3)} data-testid="reveal-skip">Passer</button>}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-7 text-center">
         <AnimatePresence mode="wait">
           {step < 3 && (
-            <motion.div key="sil" exit={{ opacity: 0, scale: 0.9 }} className="relative h-[260px] w-full max-w-[360px]">
-              <motion.div className="absolute top-8" initial={{ left: '-30%', opacity: 0 }} animate={{ left: step === 0 ? '8%' : step === 1 ? '14%' : '26%', opacity: 1 }} transition={{ duration: 1.8, ease: 'easeInOut' }}><Silhouette size={130} pulse={false} /></motion.div>
-              <motion.div className="absolute top-8" initial={{ right: '-30%', opacity: 0 }} animate={{ right: step === 0 ? '8%' : step === 1 ? '14%' : '26%', opacity: 1 }} transition={{ duration: 1.8, ease: 'easeInOut' }}><Silhouette size={130} pulse={false} glow="#F6B7A0" /></motion.div>
-              <motion.p className="absolute inset-x-0 bottom-0 font-display text-[22px] text-cream/85" key={step} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{step === 0 ? 'Vous avez tous les deux dit oui…' : step === 1 ? 'Deux voix, deux univers…' : 'Une lumière douce s’allume…'}</motion.p>
+            <motion.div key="arch" exit={{ opacity: 0, scale: 1.04 }} transition={{ duration: 1 }} className="relative w-full max-w-[340px]">
+              <svg viewBox="0 0 360 400" className="w-full" fill="none" aria-hidden>
+                <motion.path d={AL} stroke="#FDF7EF" strokeWidth="14" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: step >= 1 ? 1 : 0.08 }} transition={{ duration: 2.8, ease: [0.45, 0, 0.2, 1] }} />
+                <motion.path d={AR} stroke="#FFC4AB" strokeWidth="14" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: step >= 1 ? 1 : 0.08 }} transition={{ duration: 2.8, ease: [0.45, 0, 0.2, 1] }} />
+                <motion.circle cx="180" cy="248" r="8" fill="#FDF7EF" initial={{ opacity: 0, scale: 0 }} animate={{ opacity: step >= 2 ? 1 : 0, scale: step >= 2 ? 1 : 0 }} style={{ transformOrigin: '180px 248px' }} transition={{ type: 'spring', stiffness: 100, damping: 12 }} />
+              </svg>
+              <motion.p key={step} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.9 }} className="font-display absolute inset-x-0 bottom-0 text-[26px] text-cream/85">{step === 0 ? 'Vous avez tous les deux dit oui.' : step === 1 ? 'Deux voix. Un même chemin.' : 'Voici ceux qui se cachaient derrière.'}</motion.p>
             </motion.div>
           )}
           {step >= 3 && (
             <motion.div key="ph" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.6 }} className="flex flex-col items-center" data-testid="reveal-photos">
-              <div className="flex items-center justify-center gap-4">
-                <motion.div initial={{ x: -20, opacity: 0, filter: 'brightness(.3)' }} animate={{ x: 0, opacity: 1, filter: 'brightness(1)' }} transition={{ duration: 1.8 }} className="overflow-hidden rounded-[40px] shadow-soft">
-                  {mine ? <img src={mine} alt="Ta photo" width={140} height={140} className="h-[140px] w-[140px] object-cover" /> : <div className="grid h-[140px] w-[140px] place-items-center bg-lavender"><Buddy size={90} mood="happy" /></div>}
+              <div className="flex items-end justify-center gap-3">
+                <motion.div initial={{ x: -24, opacity: 0, filter: 'blur(14px)' }} animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }} transition={{ duration: 2.2, ease }} className="overflow-hidden rounded-[28px]">
+                  {mine ? <img src={mine} alt="Ta photo" width={140} height={175} className="h-[175px] w-[140px] object-cover" /> : <div className="grid h-[175px] w-[140px] place-items-center bg-lavender"><Logo size={56} /></div>}
                 </motion.div>
-                <motion.div initial={{ x: 20, opacity: 0, filter: 'brightness(.3)' }} animate={{ x: 0, opacity: 1, filter: 'brightness(1)' }} transition={{ duration: 1.8 }} className="overflow-hidden rounded-[40px] shadow-soft"><Portrait spec={partner.portrait} size={140} radius={0} /></motion.div>
+                <motion.div initial={{ x: 24, opacity: 0, filter: 'blur(14px)' }} animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }} transition={{ duration: 2.2, ease }} className="overflow-hidden rounded-[28px]"><Portrait spec={partner.portrait} size={140} radius={0} /></motion.div>
               </div>
-              {step >= 4 && (
-                <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mt-8">
-                  <p className="kicker !text-peach">La révélation</p>
-                  <h2 className="font-display mt-1 text-[32px] font-semibold leading-tight">{profile?.pseudo} & {partner.pseudo}</h2>
-                  <p className="mx-auto mt-2 max-w-[300px] text-[15px] text-cream/75">Vous avez pris le temps de vous découvrir. Votre espace commun vous attend.</p>
-                  <div className="mt-6 flex flex-col gap-2"><Button variant="peach" onClick={() => replace({ name: 'world' })} testId="reveal-enter" full>Entrer dans Notre monde</Button><Button variant="ghost" className="!text-cream/70" onClick={close}>Plus tard</Button></div>
-                </motion.div>
-              )}
+              <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2, duration: 0.9 }} className="mt-10">
+                <p className="kicker" style={{ color: 'rgba(255,196,171,.85)' }}>La révélation</p>
+                <h2 className="font-display mt-3 text-[44px] leading-none">{profile?.pseudo} & {partner.pseudo}</h2>
+                <p className="mx-auto mt-4 max-w-[290px] text-[15px] leading-relaxed text-cream/65">Vous avez pris le temps de vous découvrir. Votre espace commun vous attend.</p>
+                <div className="mt-8 flex flex-col gap-1"><Button variant="peach" onClick={() => replace({ name: 'world' })} testId="reveal-enter" full>Entrer dans Notre monde</Button><div className="flex justify-center"><Button variant="ghost" className="!text-cream/60" onClick={close}>Plus tard</Button></div></div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -242,4 +252,4 @@ export function RevealScreen() {
     </div>
   )
 }
-export { Sheet, COMPASS }
+export { Sheet }

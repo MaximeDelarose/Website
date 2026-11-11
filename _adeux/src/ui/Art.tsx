@@ -1,158 +1,98 @@
 import { motion } from 'motion/react'
 import type { PortraitSpec } from '../lib/types'
 
-export type Mood = 'happy' | 'shy' | 'wow' | 'calm' | 'think'
+const L = 'M11 58V34C11 21 19 12.5 27 12.5'
+const R = 'M53 58V34C53 21 45 12.5 37 12.5'
 
-/** Petit personnage original d'À DEUX. */
-export function Buddy({ color = '#A88BC7', accent = '#F6B7A0', mood = 'happy', size = 96, flip = false, bob = true, className = '', arms = 'down' }: {
-  color?: string; accent?: string; mood?: Mood; size?: number; flip?: boolean; bob?: boolean; className?: string; arms?: 'down' | 'up' | 'wave'
-}) {
-  const mouth = {
-    happy: 'M40 66 Q50 76 60 66',
-    shy: 'M44 68 Q50 71 56 68',
-    wow: 'M46 68 Q50 76 54 68 Q50 64 46 68Z',
-    calm: 'M42 67 Q50 72 58 67',
-    think: 'M44 69 L57 67',
-  }[mood]
+/** Logo À DEUX : deux silhouettes abstraites qui se rejoignent pour former une arche. */
+export function Logo({ size = 40, mono = false, color = '#3B1F4D', accent = '#FFC4AB' }: { size?: number; mono?: boolean; color?: string; accent?: string }) {
   return (
-    <motion.svg
-      viewBox="0 0 100 120" width={size} height={size * 1.2} className={className} aria-hidden
-      style={{ transform: flip ? 'scaleX(-1)' : undefined, overflow: 'visible' }}
-      animate={bob ? { y: [0, -3, 0] } : undefined}
-      transition={bob ? { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } : undefined}
-    >
-      <ellipse cx="50" cy="112" rx="26" ry="5" fill="#231C39" opacity=".12" />
-      {/* pieds */}
-      <ellipse cx="38" cy="106" rx="9" ry="6" fill={accent} />
-      <ellipse cx="62" cy="106" rx="9" ry="6" fill={accent} />
-      {/* bras */}
-      <motion.path
-        d={arms === 'down' ? 'M24 70 Q14 80 20 90' : 'M24 66 Q10 56 14 44'} stroke={color} strokeWidth="9" strokeLinecap="round" fill="none"
-        animate={arms === 'wave' ? { rotate: [0, -18, 0] } : undefined} style={{ transformOrigin: '24px 66px' }}
-        transition={{ duration: 1.1, repeat: Infinity }}
-      />
-      <path d={arms === 'up' ? 'M76 66 Q90 56 86 44' : 'M76 70 Q86 80 80 90'} stroke={color} strokeWidth="9" strokeLinecap="round" fill="none" />
-      {/* corps */}
-      <path d="M50 20 C78 20 84 48 82 72 C80 98 68 108 50 108 C32 108 20 98 18 72 C16 48 22 20 50 20Z" fill={color} />
-      <path d="M26 74 C26 96 36 104 50 104 C64 104 74 96 74 74 C66 86 34 86 26 74Z" fill="#fff" opacity=".18" />
-      {/* petite touffe */}
-      <path d="M44 22 Q42 10 50 8 Q50 16 56 14 Q58 22 52 22Z" fill={accent} />
-      {/* yeux */}
-      <g className="origin-center" style={{ transformOrigin: '50px 56px', animation: 'blink 5s infinite' }}>
-        <circle cx="39" cy="56" r="4.2" fill="#231C39" />
-        <circle cx="61" cy="56" r="4.2" fill="#231C39" />
-        <circle cx="40.4" cy="54.6" r="1.4" fill="#fff" />
-        <circle cx="62.4" cy="54.6" r="1.4" fill="#fff" />
-      </g>
-      <ellipse cx="31" cy="64" rx="5.5" ry="3.4" fill="#F3C1CC" opacity={mood === 'shy' ? 1 : 0.65} />
-      <ellipse cx="69" cy="64" rx="5.5" ry="3.4" fill="#F3C1CC" opacity={mood === 'shy' ? 1 : 0.65} />
-      <path d={mouth} stroke="#231C39" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" fill={mood === 'wow' ? '#231C39' : 'none'} />
-      <style>{`@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}`}</style>
-    </motion.svg>
+    <svg viewBox="0 0 64 64" width={size} height={size} fill="none" role="img" aria-label="À DEUX">
+      <path d={L} stroke={color} strokeWidth="10" strokeLinecap="round" />
+      <path d={R} stroke={mono ? color : accent} strokeWidth="10" strokeLinecap="round" />
+      <circle cx="32" cy="40" r="3.4" fill={color} />
+    </svg>
+  )
+}
+export function Wordmark({ size = 15, color = '#3B1F4D' }: { size?: number; color?: string }) {
+  return <span className="font-display" style={{ fontSize: size * 1.5, letterSpacing: '.28em', color, lineHeight: 1 }}>À DEUX</span>
+}
+
+/** Illustration d'accueil : deux chemins qui se rejoignent sous une arche (tracé animé). */
+export function PathsArt({ progress = 1, className = '' }: { progress?: number; className?: string }) {
+  return (
+    <svg viewBox="0 0 360 380" className={className} fill="none" aria-hidden>
+      <defs>
+        <radialGradient id="glow" cx="50%" cy="46%" r="52%"><stop offset="0" stopColor="#FFC4AB" stopOpacity=".55" /><stop offset="1" stopColor="#FFC4AB" stopOpacity="0" /></radialGradient>
+        <linearGradient id="gA" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#3B1F4D" stopOpacity="0" /><stop offset=".35" stopColor="#3B1F4D" /></linearGradient>
+        <linearGradient id="gB" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#FFC4AB" stopOpacity="0" /><stop offset=".35" stopColor="#FFC4AB" /></linearGradient>
+      </defs>
+      <circle cx="180" cy="170" r="165" fill="url(#glow)" />
+      {/* l'arche, négatif */}
+      <motion.path d="M92 372 V196 C92 112 140 62 178 62" stroke="url(#gA)" strokeWidth="26" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: progress }} transition={{ duration: 1.9, ease: [0.22, 0.8, 0.24, 1] }} />
+      <motion.path d="M268 372 V196 C268 112 220 62 182 62" stroke="url(#gB)" strokeWidth="26" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: progress }} transition={{ duration: 1.9, delay: 0.25, ease: [0.22, 0.8, 0.24, 1] }} />
+      <motion.circle cx="180" cy="236" r="9" fill="#3B1F4D" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 1.8, type: 'spring', stiffness: 120, damping: 14 }} style={{ transformOrigin: '180px 236px' }} />
+    </svg>
   )
 }
 
-/** Portrait illustré (fictif) — uniquement affiché quand la révélation est validée. */
-export function Portrait({ spec, size = 160, radius = 40 }: { spec: PortraitSpec; size?: number; radius?: number }) {
+/** Silhouette mystérieuse : une forme abstraite (aucune donnée de photo). */
+export function Silhouette({ size = 160, glow = '#FFC4AB', dark = true, pulse = true }: { size?: number; glow?: string; dark?: boolean; pulse?: boolean }) {
+  const fill = dark ? '#52336A' : '#3B1F4D'
+  return (
+    <div style={{ width: size, height: size * 1.1, position: 'relative' }} role="img" aria-label="Silhouette mystérieuse">
+      <motion.div className="absolute inset-[-18%] rounded-full" style={{ background: `radial-gradient(circle, ${glow}55 0%, transparent 62%)` }}
+        animate={pulse ? { scale: [1, 1.07, 1], opacity: [0.65, 1, 0.65] } : undefined} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }} />
+      <svg viewBox="0 0 120 132" width={size} height={size * 1.1} className="relative" fill="none">
+        <defs><linearGradient id={`sil-${dark ? 'd' : 'l'}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={fill} /><stop offset="1" stopColor={fill} stopOpacity=".15" /></linearGradient></defs>
+        <circle cx="60" cy="40" r="22" fill={`url(#sil-${dark ? 'd' : 'l'})`} />
+        <path d="M16 132 C16 92 36 74 60 74 C84 74 104 92 104 132Z" fill={`url(#sil-${dark ? 'd' : 'l'})`} />
+      </svg>
+    </div>
+  )
+}
+
+/** Portrait illustré (fictif) — affiché uniquement quand la révélation est validée. */
+export function Portrait({ spec, size = 160, radius = 28 }: { spec: PortraitSpec; size?: number; radius?: number }) {
   const { skin, hair, hairStyle, accent, glasses } = spec
   return (
-    <svg viewBox="0 0 120 120" width={size} height={size} style={{ borderRadius: radius, display: 'block' }} role="img" aria-label="Portrait illustré">
-      <defs><linearGradient id={`pg-${accent.slice(1)}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={accent} /><stop offset="1" stopColor="#FFF7EF" /></linearGradient></defs>
-      <rect width="120" height="120" fill={`url(#pg-${accent.slice(1)})`} />
-      <circle cx="96" cy="24" r="10" fill="#fff" opacity=".35" />
-      {/* hair back */}
-      {hairStyle === 1 && <path d="M30 60 C26 24 94 24 90 60 L90 92 L30 92Z" fill={hair} />}
-      {hairStyle === 2 && <path d="M28 70 C22 20 98 20 92 70 C92 90 86 96 80 96 L40 96 C34 96 28 90 28 70Z" fill={hair} />}
-      {/* shoulders */}
-      <path d="M12 124 C14 96 36 86 60 86 C84 86 106 96 108 124Z" fill={accent} opacity=".9" />
-      <path d="M12 124 C14 96 36 86 60 86 C84 86 106 96 108 124Z" fill="#231C39" opacity=".18" />
-      <rect x="52" y="76" width="16" height="16" rx="6" fill={skin} />
-      <ellipse cx="60" cy="56" rx="22" ry="26" fill={skin} />
-      {/* hair front */}
-      {hairStyle === 0 && <path d="M38 52 C36 28 84 26 82 52 C74 42 56 40 38 52Z" fill={hair} />}
-      {hairStyle === 1 && <path d="M36 54 C34 26 86 26 84 54 C78 40 50 38 36 54Z" fill={hair} />}
-      {hairStyle === 2 && <path d="M36 50 C38 28 84 28 84 50 C72 38 52 38 36 50Z" fill={hair} />}
-      {hairStyle === 3 && (<g fill={hair}><circle cx="40" cy="38" r="11" /><circle cx="60" cy="31" r="12" /><circle cx="80" cy="38" r="11" /><path d="M38 48 C46 38 74 38 82 48 C80 40 40 40 38 48Z" /></g>)}
-      <circle cx="51" cy="58" r="2.6" fill="#231C39" /><circle cx="69" cy="58" r="2.6" fill="#231C39" />
-      <path d="M52 70 Q60 77 68 70" stroke="#231C39" strokeWidth="2.4" strokeLinecap="round" fill="none" />
-      <ellipse cx="45" cy="66" rx="4" ry="2.4" fill="#F3C1CC" opacity=".7" /><ellipse cx="75" cy="66" rx="4" ry="2.4" fill="#F3C1CC" opacity=".7" />
-      {glasses && (<g stroke="#231C39" strokeWidth="2" fill="none"><circle cx="51" cy="58" r="7.5" /><circle cx="69" cy="58" r="7.5" /><path d="M58.5 58 H61.5" /></g>)}
+    <svg viewBox="0 0 120 150" width={size} height={size * 1.25} style={{ borderRadius: radius, display: 'block' }} role="img" aria-label="Portrait illustré">
+      <rect width="120" height="150" fill={accent} opacity=".55" />
+      <rect width="120" height="150" fill="#FDF7EF" opacity=".35" />
+      {hairStyle === 1 && <path d="M30 70 C26 28 94 28 90 70 L90 110 L30 110Z" fill={hair} />}
+      {hairStyle === 2 && <path d="M28 82 C22 26 98 26 92 82 C92 104 86 110 80 110 L40 110 C34 110 28 104 28 82Z" fill={hair} />}
+      <path d="M8 156 C10 118 34 104 60 104 C86 104 110 118 112 156Z" fill="#3B1F4D" />
+      <rect x="52" y="90" width="16" height="18" rx="6" fill={skin} />
+      <ellipse cx="60" cy="66" rx="22" ry="27" fill={skin} />
+      {hairStyle === 0 && <path d="M38 62 C36 36 84 34 82 62 C74 50 56 48 38 62Z" fill={hair} />}
+      {hairStyle === 1 && <path d="M36 64 C34 36 86 36 84 64 C78 50 50 48 36 64Z" fill={hair} />}
+      {hairStyle === 2 && <path d="M36 60 C38 38 84 38 84 60 C72 48 52 48 36 60Z" fill={hair} />}
+      {hairStyle === 3 && (<g fill={hair}><circle cx="40" cy="46" r="11" /><circle cx="60" cy="39" r="12" /><circle cx="80" cy="46" r="11" /><path d="M38 58 C46 48 74 48 82 58 C80 50 40 50 38 58Z" /></g>)}
+      <circle cx="51" cy="68" r="2.2" fill="#3B1F4D" /><circle cx="69" cy="68" r="2.2" fill="#3B1F4D" />
+      <path d="M53 80 Q60 85 67 80" stroke="#3B1F4D" strokeWidth="2" strokeLinecap="round" fill="none" />
+      {glasses && (<g stroke="#3B1F4D" strokeWidth="1.8" fill="none"><circle cx="51" cy="68" r="7.5" /><circle cx="69" cy="68" r="7.5" /><path d="M58.5 68 H61.5" /></g>)}
     </svg>
   )
 }
 
-/** Silhouette mystérieuse : aucune donnée de photo, uniquement une forme. */
-export function Silhouette({ size = 160, glow = '#A88BC7', pulse = true }: { size?: number; glow?: string; pulse?: boolean }) {
-  return (
-    <div style={{ width: size, height: size, position: 'relative' }} aria-label="Silhouette mystérieuse" role="img">
-      <motion.div
-        className="absolute inset-0 rounded-full"
-        style={{ background: `radial-gradient(circle, ${glow}88 0%, transparent 65%)` }}
-        animate={pulse ? { scale: [1, 1.15, 1], opacity: [0.7, 1, 0.7] } : undefined}
-        transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <svg viewBox="0 0 120 120" width={size} height={size} className="relative">
-        <ellipse cx="60" cy="48" rx="22" ry="26" fill="#352C52" />
-        <path d="M14 124 C16 92 36 84 60 84 C84 84 104 92 106 124Z" fill="#352C52" />
-        <ellipse cx="60" cy="48" rx="22" ry="26" fill="none" stroke={glow} strokeOpacity=".5" strokeWidth="1.5" />
-      </svg>
-    </div>
-  )
-}
+/** Petit repère graphique (point plein) utilisé comme puce. */
+export const Dot = ({ on = true }: { on?: boolean }) => <span className={`inline-block h-[7px] w-[7px] rounded-full ${on ? 'bg-plum' : 'bg-plum/20'}`} />
 
-/** Petit cœur-chemin utilisé comme logo. */
-export function Logo({ size = 40, color = '#231C39' }: { size?: number; color?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden>
-      <circle cx="22" cy="34" r="12" fill="#A88BC7" />
-      <circle cx="42" cy="34" r="12" fill="#F6B7A0" />
-      <path d="M22 34 a12 12 0 0 0 20 0 a12 12 0 0 0 -20 0Z" fill="#F3C1CC" />
-      <path d="M8 52 Q32 44 56 52" stroke={color} strokeWidth="3" strokeLinecap="round" fill="none" strokeDasharray="1 7" />
-    </svg>
-  )
+/** Icônes en trait fin (aucun emoji). */
+export const Icon = {
+  mic: <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4" />,
+  micOff: <path d="M4 4l16 16M9 6a3 3 0 0 1 6 0v6M6 11a6 6 0 0 0 9 5M12 17v4" />,
+  phone: <path d="M5 4l3-1 2 5-2 1a11 11 0 0 0 6 6l1-2 5 2-1 3c-1 1-3 1-5 0A17 17 0 0 1 5 9c-1-2-1-4 0-5z" />,
+  send: <path d="M12 19V5M6 11l6-6 6 6" />,
+  play: <path d="M8 5l11 7-11 7z" />,
+  pause: <path d="M8 5v14M16 5v14" />,
+  home: <path d="M4 11l8-7 8 7M6 10v10h4v-6h4v6h4V10" />,
+  two: <><circle cx="9" cy="12" r="5" /><circle cx="15" cy="12" r="5" /></>,
+  spark: <path d="M12 3l2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z" />,
+  chat: <path d="M4 5h16v11H9l-5 4z" />,
+  user: <><circle cx="12" cy="8" r="4" /><path d="M5 21c0-4 3-6 7-6s7 2 7 6" /></>,
+  lock: <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>,
 }
-
-export function Sparkle({ size = 14, color = '#F6B7A0', className = '' }: { size?: number; color?: string; className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} className={className} aria-hidden>
-      <path d="M12 0 C13 8 16 11 24 12 C16 13 13 16 12 24 C11 16 8 13 0 12 C8 11 11 8 12 0Z" fill={color} />
-    </svg>
-  )
-}
-
-/** Scène de l'introduction : deux personnages qui se rapprochent et construisent un chemin. */
-export function IntroScene({ step }: { step: 0 | 1 | 2 }) {
-  const ax = [-70, -42, -14][step]
-  const bx = [200, 120, 14][step]
-  return (
-    <div className="relative mx-auto w-full max-w-[360px]" style={{ aspectRatio: '360 / 300' }}>
-      <svg viewBox="0 0 360 300" className="absolute inset-0 h-full w-full" aria-hidden>
-        <defs>
-          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#F3C1CC" stopOpacity=".55" /><stop offset="1" stopColor="#FFF7EF" stopOpacity="0" /></linearGradient>
-        </defs>
-        <circle cx="180" cy="120" r="130" fill="url(#sky)" />
-        <motion.path d="M10 250 Q180 218 350 250" stroke="#231C39" strokeOpacity=".5" strokeWidth="4" strokeLinecap="round" fill="none" strokeDasharray="2 12"
-          initial={false} animate={{ pathLength: [0.2, 0.55, 1][step] }} transition={{ duration: 1, ease: 'easeInOut' }} />
-        <motion.path d="M10 250 Q180 218 350 250" stroke="#A88BC7" strokeWidth="10" strokeLinecap="round" fill="none" opacity=".35"
-          initial={false} animate={{ pathLength: [0, 0.4, 1][step] }} transition={{ duration: 1.1, ease: 'easeInOut' }} />
-        {/* profils flottants : le catalogue qu'on laisse partir */}
-        {step === 0 && [0, 1, 2, 3, 4, 5].map((i) => (
-          <motion.rect key={i} x={30 + i * 52} y={30 + (i % 3) * 18} width="34" height="46" rx="8" fill="#231C39" opacity=".07"
-            animate={{ y: [30 + (i % 3) * 18, 18 + (i % 3) * 18, 30 + (i % 3) * 18], opacity: [0.07, 0.14, 0.07] }}
-            transition={{ duration: 3 + i * 0.4, repeat: Infinity }} />
-        ))}
-      </svg>
-      <motion.div className="absolute bottom-[8%]" initial={false} animate={{ left: `calc(50% + ${ax}px - 48px)` }} transition={{ type: 'spring', stiffness: 60, damping: 14 }}>
-        <Buddy color="#A88BC7" accent="#F6B7A0" mood={step === 0 ? 'think' : 'happy'} size={86} arms={step === 2 ? 'up' : 'down'} />
-      </motion.div>
-      <motion.div className="absolute bottom-[8%]" initial={false} animate={{ left: `calc(50% + ${bx}px - 48px)`, opacity: step === 0 ? 0.25 : 1 }} transition={{ type: 'spring', stiffness: 60, damping: 14 }}>
-        <Buddy color="#F6B7A0" accent="#A88BC7" mood={step === 2 ? 'shy' : 'calm'} size={86} flip arms={step === 2 ? 'up' : 'down'} />
-      </motion.div>
-      {step === 2 && (
-        <motion.div className="absolute left-1/2 top-[18%] -translate-x-1/2" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.5, type: 'spring' }}>
-          <Logo size={56} />
-        </motion.div>
-      )}
-    </div>
-  )
-}
+export const Ico = ({ d, size = 22, w = 1.6 }: { d: React.ReactNode; size?: number; w?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" aria-hidden>{d}</svg>
+)

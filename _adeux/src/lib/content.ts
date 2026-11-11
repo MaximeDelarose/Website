@@ -22,6 +22,8 @@ export interface Question {
   optional?: boolean
   /** Peut être marqué « indispensable » par la personne. */
   canBeMust?: boolean
+  /** Donnée sensible : facultative, privée, jamais affichée. */
+  sensitive?: boolean
   /** Phrase utilisée pour les échelles proches. */
   sharedScale?: string
   diff?: string
@@ -39,9 +41,11 @@ export const QUESTIONS: Question[] = [
     id: 'intent', cat: 'A', type: 'cards', canBeMust: true,
     title: 'Qu’est-ce que tu cherches, au fond ?',
     options: [
-      { id: 'serious', label: 'Une relation sérieuse', emoji: '🏡', shared: 'Vous cherchez tous les deux une relation qui compte.' },
-      { id: 'slow', label: 'Prendre mon temps, voir où ça mène', emoji: '🌱', shared: 'Vous préférez tous les deux laisser les choses grandir.' },
-      { id: 'discover', label: 'Rencontrer sans pression', emoji: '🎈', shared: 'Vous voulez tous les deux rencontrer sans pression.' },
+      { id: 'serious', label: 'Une relation sérieuse', emoji: '', shared: 'Vous cherchez tous les deux une relation qui compte.' },
+      { id: 'marriage', label: 'Une relation qui mène au mariage', emoji: '', shared: 'Vous envisagez tous les deux le mariage.' },
+      { id: 'values', label: 'Une rencontre fondée sur des valeurs communes', emoji: '', shared: 'Les valeurs communes comptent pour vous deux.' },
+      { id: 'slow', label: 'Prendre mon temps, voir où ça mène', emoji: '', shared: 'Vous préférez tous les deux laisser les choses grandir.' },
+      { id: 'discover', label: 'Rencontrer sans pression', emoji: '', shared: 'Vous voulez tous les deux rencontrer sans pression.' },
     ],
     diff: 'Vous n’abordez pas la rencontre tout à fait pareil : un beau sujet de départ.',
   },
@@ -57,9 +61,9 @@ export const QUESTIONS: Question[] = [
     id: 'pace', cat: 'A', type: 'cards',
     title: 'À quel rythme aimes-tu découvrir quelqu’un ?',
     options: [
-      { id: 'daily', label: 'On se parle un peu chaque jour', emoji: '☀️', shared: 'Vous aimez tous les deux découvrir quelqu’un régulièrement.' },
-      { id: 'waves', label: 'Par vagues, selon l’envie', emoji: '🌊', shared: 'Vous avancez tous les deux par vagues, sans pression.' },
-      { id: 'slowburn', label: 'Doucement, sans me presser', emoji: '🕯️', shared: 'Vous aimez tous les deux prendre le temps.' },
+      { id: 'daily', label: 'On se parle un peu chaque jour', emoji: '', shared: 'Vous aimez tous les deux découvrir quelqu’un régulièrement.' },
+      { id: 'waves', label: 'Par vagues, selon l’envie', emoji: '', shared: 'Vous avancez tous les deux par vagues, sans pression.' },
+      { id: 'slowburn', label: 'Doucement, sans me presser', emoji: '', shared: 'Vous aimez tous les deux prendre le temps.' },
     ],
     diff: 'Vos rythmes de découverte diffèrent : peut-être un sujet à découvrir ensemble.',
   },
@@ -68,12 +72,12 @@ export const QUESTIONS: Question[] = [
     title: 'Quels projets comptent pour toi ?',
     hint: 'Jusqu’à 3.',
     options: [
-      { id: 'travel', label: 'Voyager', emoji: '🧳', shared: 'Voyager fait partie de vos projets.' },
-      { id: 'home', label: 'Un chez-moi', emoji: '🪴', shared: 'Un chez-soi chaleureux compte pour vous deux.' },
-      { id: 'career', label: 'Ma carrière', emoji: '🚀', shared: 'Vous avez tous les deux des ambitions professionnelles.' },
-      { id: 'creative', label: 'Créer quelque chose', emoji: '🎨', shared: 'Vous avez tous les deux envie de créer.' },
-      { id: 'family', label: 'Fonder une famille', emoji: '🧸', shared: 'Fonder une famille compte pour vous deux.' },
-      { id: 'learn', label: 'Apprendre encore', emoji: '📚', shared: 'Apprendre encore vous anime tous les deux.' },
+      { id: 'travel', label: 'Voyager', emoji: '', shared: 'Voyager fait partie de vos projets.' },
+      { id: 'home', label: 'Un chez-moi', emoji: '', shared: 'Un chez-soi chaleureux compte pour vous deux.' },
+      { id: 'career', label: 'Ma carrière', emoji: '', shared: 'Vous avez tous les deux des ambitions professionnelles.' },
+      { id: 'creative', label: 'Créer quelque chose', emoji: '', shared: 'Vous avez tous les deux envie de créer.' },
+      { id: 'family', label: 'Fonder une famille', emoji: '', shared: 'Fonder une famille compte pour vous deux.' },
+      { id: 'learn', label: 'Apprendre encore', emoji: '', shared: 'Apprendre encore vous anime tous les deux.' },
     ],
     diff: 'Vos projets prennent des chemins différents : il y a de quoi se raconter.',
   },
@@ -81,9 +85,9 @@ export const QUESTIONS: Question[] = [
     id: 'kids', cat: 'A', type: 'cards', canBeMust: true,
     title: 'Souhaites-tu des enfants ?',
     options: [
-      { id: 'yes', label: 'Oui, c’est important', emoji: '🍼', shared: 'Vous partagez le même regard sur les enfants.' },
-      { id: 'maybe', label: 'Peut-être, je ne sais pas', emoji: '🤔', shared: 'Vous êtes tous les deux ouverts sur la question des enfants.' },
-      { id: 'no', label: 'Non', emoji: '🌿', shared: 'Vous partagez le même regard sur les enfants.' },
+      { id: 'yes', label: 'Oui, c’est important', emoji: '', shared: 'Vous partagez le même regard sur les enfants.' },
+      { id: 'maybe', label: 'Peut-être, je ne sais pas', emoji: '', shared: 'Vous êtes tous les deux ouverts sur la question des enfants.' },
+      { id: 'no', label: 'Non', emoji: '', shared: 'Vous partagez le même regard sur les enfants.' },
     ],
     diff: 'Vous n’avez pas la même vision des enfants : un sujet important à aborder avec douceur.',
   },
@@ -92,14 +96,38 @@ export const QUESTIONS: Question[] = [
     title: 'Quelles différences es-tu prêt·e à accepter ?',
     hint: 'Ce qui ne te dérange pas chez quelqu’un. Jusqu’à 3.',
     options: [
-      { id: 'rhythm', label: 'Un autre rythme de vie', emoji: '🌓' },
-      { id: 'tastes', label: 'Des goûts très différents', emoji: '🎧' },
-      { id: 'beliefs', label: 'Des convictions différentes', emoji: '🕊️' },
-      { id: 'social', label: 'Plus ou moins sociable', emoji: '🎭' },
-      { id: 'money', label: 'Un rapport différent à l’argent', emoji: '🪙' },
-      { id: 'distance', label: 'Un peu de distance', emoji: '🚆' },
+      { id: 'rhythm', label: 'Un autre rythme de vie', emoji: '' },
+      { id: 'tastes', label: 'Des goûts très différents', emoji: '' },
+      { id: 'beliefs', label: 'Des convictions différentes', emoji: '' },
+      { id: 'social', label: 'Plus ou moins sociable', emoji: '' },
+      { id: 'money', label: 'Un rapport différent à l’argent', emoji: '' },
+      { id: 'distance', label: 'Un peu de distance', emoji: '' },
     ],
     diff: 'Vous acceptez des différences qui ne sont pas les mêmes.',
+  },
+  {
+    id: 'faithpref', cat: 'A', type: 'cards', optional: true, canBeMust: true, sensitive: true,
+    title: 'Souhaites-tu rencontrer quelqu’un qui partage ta foi ou tes convictions ?',
+    hint: 'Facultatif et privé. Jamais affiché sur ton profil ; ce choix n’est utilisé que pour te proposer des rencontres, avec ton accord.',
+    options: [
+      { id: 'yes', label: 'Oui, c’est important pour moi', emoji: '', shared: 'Vous souhaitez tous les deux partager vos convictions.' },
+      { id: 'open', label: 'Je préfère, sans que ce soit indispensable', emoji: '', shared: 'Vous êtes tous les deux attentifs aux convictions de l’autre.' },
+      { id: 'any', label: 'Peu importe', emoji: '', shared: 'Les convictions ne sont pas un critère pour vous deux.' },
+    ],
+    diff: 'Vous n’abordez pas la question des convictions de la même façon : un sujet à aborder avec respect.',
+  },
+  {
+    id: 'faith', cat: 'A', type: 'cards', optional: true, sensitive: true,
+    title: 'Quelles sont tes convictions ?',
+    hint: 'Facultatif, privé et sans présupposé : nous ne déduisons rien de tes pratiques. Tu peux passer.',
+    options: [
+      { id: 'islam', label: 'Islam', emoji: '', shared: 'Vous partagez la même foi.' },
+      { id: 'christian', label: 'Christianisme', emoji: '', shared: 'Vous partagez la même foi.' },
+      { id: 'jewish', label: 'Judaïsme', emoji: '', shared: 'Vous partagez la même foi.' },
+      { id: 'other', label: 'Une autre foi ou spiritualité', emoji: '', shared: 'Vous partagez une même sensibilité spirituelle.' },
+      { id: 'none', label: 'Aucune religion', emoji: '', shared: 'Vous partagez le même regard sur la religion.' },
+      { id: 'private', label: 'Je préfère ne pas le dire', emoji: '' },
+    ],
   },
   // ---------- B : ma façon d'aimer ----------
   {
@@ -107,11 +135,11 @@ export const QUESTIONS: Question[] = [
     title: 'Comment montres-tu ton affection ?',
     hint: 'Jusqu’à 2.',
     options: [
-      { id: 'words', label: 'Les mots', emoji: '💌', shared: 'Vous montrez tous les deux votre affection avec des mots.' },
-      { id: 'time', label: 'Du temps ensemble', emoji: '⏳', shared: 'Vous donnez tous les deux du temps pour dire « je tiens à toi ».' },
-      { id: 'touch', label: 'Le contact', emoji: '🤝', shared: 'Le contact et la tendresse comptent pour vous deux.' },
-      { id: 'acts', label: 'Des gestes utiles', emoji: '🛠️', shared: 'Vous aimez tous les deux aimer par des gestes concrets.' },
-      { id: 'gifts', label: 'Des petites surprises', emoji: '🎁', shared: 'Vous aimez tous les deux les petites surprises.' },
+      { id: 'words', label: 'Les mots', emoji: '', shared: 'Vous montrez tous les deux votre affection avec des mots.' },
+      { id: 'time', label: 'Du temps ensemble', emoji: '', shared: 'Vous donnez tous les deux du temps pour dire « je tiens à toi ».' },
+      { id: 'touch', label: 'Le contact', emoji: '', shared: 'Le contact et la tendresse comptent pour vous deux.' },
+      { id: 'acts', label: 'Des gestes utiles', emoji: '', shared: 'Vous aimez tous les deux aimer par des gestes concrets.' },
+      { id: 'gifts', label: 'Des petites surprises', emoji: '', shared: 'Vous aimez tous les deux les petites surprises.' },
     ],
     diff: 'Vous montrez votre affection de manières différentes : deux langages à apprendre.',
   },
@@ -119,8 +147,8 @@ export const QUESTIONS: Question[] = [
     id: 'conflict', cat: 'B', type: 'dilemma',
     title: 'Face à un désaccord, tu as plutôt envie de…',
     options: [
-      { id: 'talk', label: 'En parler tout de suite', emoji: '🗣️', shared: 'Face à un désaccord, vous préférez tous les deux en parler vite.' },
-      { id: 'think', label: 'Prendre du recul d’abord', emoji: '🌬️', shared: 'Face à un désaccord, vous aimez tous les deux réfléchir d’abord.' },
+      { id: 'talk', label: 'En parler tout de suite', emoji: '', shared: 'Face à un désaccord, vous préférez tous les deux en parler vite.' },
+      { id: 'think', label: 'Prendre du recul d’abord', emoji: '', shared: 'Face à un désaccord, vous aimez tous les deux réfléchir d’abord.' },
     ],
     diff: 'Vous gérez les désaccords différemment : l’un parle, l’autre respire. À découvrir.',
   },
@@ -135,8 +163,8 @@ export const QUESTIONS: Question[] = [
     id: 'talkorthink', cat: 'B', type: 'dilemma',
     title: 'Quand quelque chose te préoccupe…',
     options: [
-      { id: 'now', label: 'Je parle immédiatement', emoji: '⚡', shared: 'Vous partagez ce qui vous préoccupe sans attendre.' },
-      { id: 'later', label: 'Je réfléchis, puis je parle', emoji: '🫖', shared: 'Vous aimez tous les deux réfléchir avant d’en parler.' },
+      { id: 'now', label: 'Je parle immédiatement', emoji: '', shared: 'Vous partagez ce qui vous préoccupe sans attendre.' },
+      { id: 'later', label: 'Je réfléchis, puis je parle', emoji: '', shared: 'Vous aimez tous les deux réfléchir avant d’en parler.' },
     ],
     diff: 'Vous n’avez pas le même tempo pour confier ce qui vous préoccupe.',
   },
@@ -145,10 +173,10 @@ export const QUESTIONS: Question[] = [
     title: 'Qu’est-ce qui te fait te sentir considéré·e ?',
     hint: 'Jusqu’à 2.',
     options: [
-      { id: 'listen', label: 'Être vraiment écouté·e', emoji: '👂', shared: 'Être écouté·e compte énormément pour vous deux.' },
-      { id: 'remember', label: 'Qu’on se souvienne des détails', emoji: '🧵', shared: 'Les petits détails retenus comptent pour vous deux.' },
-      { id: 'initiative', label: 'Qu’on prenne des initiatives', emoji: '🧭', shared: 'Vous aimez tous les deux que l’autre prenne des initiatives.' },
-      { id: 'space', label: 'Qu’on respecte mon espace', emoji: '🪟', shared: 'Le respect de l’espace de chacun compte pour vous deux.' },
+      { id: 'listen', label: 'Être vraiment écouté·e', emoji: '', shared: 'Être écouté·e compte énormément pour vous deux.' },
+      { id: 'remember', label: 'Qu’on se souvienne des détails', emoji: '', shared: 'Les petits détails retenus comptent pour vous deux.' },
+      { id: 'initiative', label: 'Qu’on prenne des initiatives', emoji: '', shared: 'Vous aimez tous les deux que l’autre prenne des initiatives.' },
+      { id: 'space', label: 'Qu’on respecte mon espace', emoji: '', shared: 'Le respect de l’espace de chacun compte pour vous deux.' },
     ],
     diff: 'Vous ne vous sentez pas considéré·e de la même façon : de quoi apprendre l’un de l’autre.',
   },
@@ -156,10 +184,10 @@ export const QUESTIONS: Question[] = [
     id: 'attentions', optional: true, cat: 'B', type: 'cards',
     title: 'Quelle petite attention te touche le plus ?',
     options: [
-      { id: 'msg', label: 'Un message sans raison', emoji: '💬', shared: 'Un petit message sans raison fait fondre vos deux cœurs.' },
-      { id: 'coffee', label: 'Mon café préparé', emoji: '☕', shared: 'Les attentions du quotidien vous touchent tous les deux.' },
-      { id: 'playlist', label: 'Une chanson partagée', emoji: '🎵', shared: 'Une chanson partagée vous touche tous les deux.' },
-      { id: 'surprise', label: 'Une sortie surprise', emoji: '🎟️', shared: 'Une sortie surprise vous enchante tous les deux.' },
+      { id: 'msg', label: 'Un message sans raison', emoji: '', shared: 'Un petit message sans raison fait fondre vos deux cœurs.' },
+      { id: 'coffee', label: 'Mon café préparé', emoji: '', shared: 'Les attentions du quotidien vous touchent tous les deux.' },
+      { id: 'playlist', label: 'Une chanson partagée', emoji: '', shared: 'Une chanson partagée vous touche tous les deux.' },
+      { id: 'surprise', label: 'Une sortie surprise', emoji: '', shared: 'Une sortie surprise vous enchante tous les deux.' },
     ],
     diff: 'Vos petites attentions favorites ne sont pas les mêmes : deux surprises à inventer.',
   },
@@ -168,10 +196,10 @@ export const QUESTIONS: Question[] = [
     id: 'evening', cat: 'C', type: 'cards',
     title: 'Ta soirée idéale ressemble à…',
     options: [
-      { id: 'cosy', label: 'Plaid, film et plat maison', emoji: '🛋️', shared: 'Votre soirée idéale est cosy et sans chichis.' },
-      { id: 'out', label: 'Une sortie qui bouge', emoji: '🌃', shared: 'Vous aimez tous les deux les soirées qui bougent.' },
-      { id: 'friends', label: 'Une grande table entre ami·es', emoji: '🍷', shared: 'Une grande table entre ami·es vous plaît à tous les deux.' },
-      { id: 'walk', label: 'Une balade au coucher du soleil', emoji: '🌅', shared: 'Une balade au coucher du soleil, ça vous parle à tous les deux.' },
+      { id: 'cosy', label: 'Plaid, film et plat maison', emoji: '', shared: 'Votre soirée idéale est cosy et sans chichis.' },
+      { id: 'out', label: 'Une sortie qui bouge', emoji: '', shared: 'Vous aimez tous les deux les soirées qui bougent.' },
+      { id: 'friends', label: 'Une grande table entre ami·es', emoji: '', shared: 'Une grande table entre ami·es vous plaît à tous les deux.' },
+      { id: 'walk', label: 'Une balade au coucher du soleil', emoji: '', shared: 'Une balade au coucher du soleil, ça vous parle à tous les deux.' },
     ],
     diff: 'Vos soirées idéales ne se ressemblent pas : peut-être un bon prétexte pour en inventer une.',
   },
@@ -187,11 +215,11 @@ export const QUESTIONS: Question[] = [
     title: 'Ton humour, plutôt…',
     hint: 'Jusqu’à 2.',
     options: [
-      { id: 'absurd', label: 'Absurde', emoji: '🦆', shared: 'Vous avez tous les deux un humour absurde.' },
-      { id: 'dry', label: 'Pince-sans-rire', emoji: '🧊', shared: 'Vous partagez un humour pince-sans-rire.' },
-      { id: 'tease', label: 'Taquin', emoji: '😏', shared: 'Vous aimez tous les deux vous taquiner.' },
-      { id: 'tender', label: 'Tendre', emoji: '🧸', shared: 'Vous avez tous les deux un humour tendre.' },
-      { id: 'selfmock', label: 'Autodérision', emoji: '🤡', shared: 'L’autodérision est votre point commun.' },
+      { id: 'absurd', label: 'Absurde', emoji: '', shared: 'Vous avez tous les deux un humour absurde.' },
+      { id: 'dry', label: 'Pince-sans-rire', emoji: '', shared: 'Vous partagez un humour pince-sans-rire.' },
+      { id: 'tease', label: 'Taquin', emoji: '', shared: 'Vous aimez tous les deux vous taquiner.' },
+      { id: 'tender', label: 'Tendre', emoji: '', shared: 'Vous avez tous les deux un humour tendre.' },
+      { id: 'selfmock', label: 'Autodérision', emoji: '', shared: 'L’autodérision est votre point commun.' },
     ],
     diff: 'Vos humours ne sont pas les mêmes : on verra si ça fait des étincelles.',
   },
@@ -200,14 +228,14 @@ export const QUESTIONS: Question[] = [
     title: 'Tes passions',
     hint: 'Jusqu’à 3.',
     options: [
-      { id: 'music', label: 'Musique', emoji: '🎸', shared: 'La musique vous passionne tous les deux.' },
-      { id: 'cook', label: 'Cuisine', emoji: '🍳', shared: 'Vous aimez tous les deux cuisiner.' },
-      { id: 'sport', label: 'Sport', emoji: '🏃', shared: 'Le sport fait partie de vos deux vies.' },
-      { id: 'games', label: 'Jeux', emoji: '🎲', shared: 'Vous aimez tous les deux jouer.' },
-      { id: 'nature', label: 'Nature', emoji: '🌲', shared: 'La nature vous ressource tous les deux.' },
-      { id: 'cinema', label: 'Cinéma & séries', emoji: '🎬', shared: 'Le cinéma vous rassemble.' },
-      { id: 'art', label: 'Arts', emoji: '🖼️', shared: 'L’art vous rassemble.' },
-      { id: 'books', label: 'Lecture', emoji: '📖', shared: 'Vous aimez tous les deux lire.' },
+      { id: 'music', label: 'Musique', emoji: '', shared: 'La musique vous passionne tous les deux.' },
+      { id: 'cook', label: 'Cuisine', emoji: '', shared: 'Vous aimez tous les deux cuisiner.' },
+      { id: 'sport', label: 'Sport', emoji: '', shared: 'Le sport fait partie de vos deux vies.' },
+      { id: 'games', label: 'Jeux', emoji: '', shared: 'Vous aimez tous les deux jouer.' },
+      { id: 'nature', label: 'Nature', emoji: '', shared: 'La nature vous ressource tous les deux.' },
+      { id: 'cinema', label: 'Cinéma & séries', emoji: '', shared: 'Le cinéma vous rassemble.' },
+      { id: 'art', label: 'Arts', emoji: '', shared: 'L’art vous rassemble.' },
+      { id: 'books', label: 'Lecture', emoji: '', shared: 'Vous aimez tous les deux lire.' },
     ],
     diff: 'Vos passions sont différentes : chacun a de quoi faire découvrir quelque chose.',
   },
@@ -215,8 +243,8 @@ export const QUESTIONS: Question[] = [
     id: 'habits', cat: 'C', type: 'dilemma',
     title: 'Tes habitudes, plutôt…',
     options: [
-      { id: 'early', label: 'Matin & lumière', emoji: '🌞', shared: 'Vous êtes tous les deux du matin.' },
-      { id: 'night', label: 'Soir & calme', emoji: '🌙', shared: 'Vous êtes tous les deux du soir.' },
+      { id: 'early', label: 'Matin & lumière', emoji: '', shared: 'Vous êtes tous les deux du matin.' },
+      { id: 'night', label: 'Soir & calme', emoji: '', shared: 'Vous êtes tous les deux du soir.' },
     ],
     diff: 'Vous avez des habitudes différentes : peut-être un sujet à découvrir.',
   },
@@ -231,10 +259,10 @@ export const QUESTIONS: Question[] = [
     id: 'pleasures', optional: true, cat: 'C', type: 'cards',
     title: 'Ton petit plaisir irremplaçable ?',
     options: [
-      { id: 'bakery', label: 'Une viennoiserie chaude', emoji: '🥐', shared: 'Une viennoiserie chaude vous rend heureux tous les deux.' },
-      { id: 'bath', label: 'Un long moment au calme', emoji: '🛁', shared: 'Un long moment au calme est votre plaisir à tous les deux.' },
-      { id: 'vinyl', label: 'Mettre un disque et danser seul·e', emoji: '💃', shared: 'Danser seul·e dans le salon, vous connaissez tous les deux.' },
-      { id: 'market', label: 'Flâner dans un marché', emoji: '🧺', shared: 'Flâner dans un marché, vous adorez tous les deux.' },
+      { id: 'bakery', label: 'Une viennoiserie chaude', emoji: '', shared: 'Une viennoiserie chaude vous rend heureux tous les deux.' },
+      { id: 'bath', label: 'Un long moment au calme', emoji: '', shared: 'Un long moment au calme est votre plaisir à tous les deux.' },
+      { id: 'vinyl', label: 'Mettre un disque et danser seul·e', emoji: '', shared: 'Danser seul·e dans le salon, vous connaissez tous les deux.' },
+      { id: 'market', label: 'Flâner dans un marché', emoji: '', shared: 'Flâner dans un marché, vous adorez tous les deux.' },
     ],
     diff: 'Vos petits plaisirs sont différents : deux manières de se faire du bien.',
   },
@@ -261,25 +289,25 @@ export const GENDERS = [
 export interface MirrorQ { id: string; q: string; options: { id: string; label: string; emoji: string }[]; follow: string }
 export const MIRROR: MirrorQ[] = [
   { id: 'm1', q: 'Qu’est-ce qui te fait te sentir aimé·e ?', follow: 'Quel est le dernier moment où tu t’es senti·e comme ça ?', options: [
-    { id: 'a', label: 'Qu’on me regarde vraiment quand je parle', emoji: '👀' },
-    { id: 'b', label: 'Un geste inattendu', emoji: '🎁' },
-    { id: 'c', label: 'Passer du temps sans rien faire de spécial', emoji: '🛋️' },
-    { id: 'd', label: 'Qu’on me dise les choses', emoji: '💌' } ] },
+    { id: 'a', label: 'Qu’on me regarde vraiment quand je parle', emoji: '' },
+    { id: 'b', label: 'Un geste inattendu', emoji: '' },
+    { id: 'c', label: 'Passer du temps sans rien faire de spécial', emoji: '' },
+    { id: 'd', label: 'Qu’on me dise les choses', emoji: '' } ] },
   { id: 'm2', q: 'Un dimanche parfait, c’est…', follow: 'Et si tu devais l’organiser pour deux, tu changerais quoi ?', options: [
-    { id: 'a', label: 'Une grasse matinée puis un bon repas', emoji: '🥞' },
-    { id: 'b', label: 'Une aventure à l’extérieur', emoji: '🥾' },
-    { id: 'c', label: 'Un projet créatif', emoji: '🎨' },
-    { id: 'd', label: 'Des proches autour d’une table', emoji: '🍲' } ] },
+    { id: 'a', label: 'Une grasse matinée puis un bon repas', emoji: '' },
+    { id: 'b', label: 'Une aventure à l’extérieur', emoji: '' },
+    { id: 'c', label: 'Un projet créatif', emoji: '' },
+    { id: 'd', label: 'Des proches autour d’une table', emoji: '' } ] },
   { id: 'm3', q: 'Ce que j’aimerais qu’on me demande plus souvent…', follow: 'Pourquoi cette question te ferait plaisir ?', options: [
-    { id: 'a', label: 'De quoi j’ai besoin', emoji: '🫶' },
-    { id: 'b', label: 'Ce qui me rend fier·ère', emoji: '🏅' },
-    { id: 'c', label: 'Ce qui me fait rire', emoji: '😂' },
-    { id: 'd', label: 'Ce dont je rêve', emoji: '🌠' } ] },
+    { id: 'a', label: 'De quoi j’ai besoin', emoji: '' },
+    { id: 'b', label: 'Ce qui me rend fier·ère', emoji: '' },
+    { id: 'c', label: 'Ce qui me fait rire', emoji: '' },
+    { id: 'd', label: 'Ce dont je rêve', emoji: '' } ] },
   { id: 'm4', q: 'Dans une relation, la confiance se construit surtout avec…', follow: 'Y a-t-il un petit geste qui, pour toi, compte beaucoup ?', options: [
-    { id: 'a', label: 'La régularité', emoji: '🧱' },
-    { id: 'b', label: 'L’honnêteté, même difficile', emoji: '🔦' },
-    { id: 'c', label: 'Le temps', emoji: '⌛' },
-    { id: 'd', label: 'La liberté laissée', emoji: '🕊️' } ] },
+    { id: 'a', label: 'La régularité', emoji: '' },
+    { id: 'b', label: 'L’honnêteté, même difficile', emoji: '' },
+    { id: 'c', label: 'Le temps', emoji: '' },
+    { id: 'd', label: 'La liberté laissée', emoji: '' } ] },
 ]
 
 // ---------- La Boussole ----------
@@ -352,5 +380,5 @@ export function answerLabel(q: Question, a: { v: string | string[] | number | nu
   if (q.type === 'scale') return `${q.scale!.left} ← ${a.v}/${q.scale!.steps} → ${q.scale!.right}`
   if (q.type === 'open') return String(a.v)
   const ids = Array.isArray(a.v) ? a.v : [String(a.v)]
-  return ids.map((id) => q.options?.find((o) => o.id === id)).filter(Boolean).map((o) => `${o!.emoji} ${o!.label}`).join(' · ') || 'Passée'
+  return ids.map((id) => q.options?.find((o) => o.id === id)).filter(Boolean).map((o) => o!.label).join(' · ') || 'Passée'
 }
