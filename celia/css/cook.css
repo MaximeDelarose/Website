@@ -1,0 +1,30 @@
+/* Cuisine magique */
+.kbg { position: absolute; inset: 0; } .kbg svg { width: 100%; height: 100%; }
+.cook .stage { display: block; }
+.recgrid { position: absolute; inset: 4px 14px 14px; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 12px; }
+.rcard { position: relative; border-radius: 28px; background: linear-gradient(160deg, #fff, #ffeaf6); border: 4px solid #fff; box-shadow: 0 6px 0 rgba(107,63,114,.26), 0 12px 18px rgba(107,63,114,.18); padding: 6px 6px 26px; min-height: 0; animation: tin .5s both cubic-bezier(.2, 1.4, .4, 1); }
+.rcard svg { width: 100%; height: 100%; } .rcard em { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); font-style: normal; font-weight: 900; font-size: 13px; background: #fff; border-radius: 10px; padding: 0 8px; white-space: nowrap; box-shadow: 0 0 0 2px #e5d6ff; }
+.rcard:last-child { grid-column: 1 / -1; } .rcard:active { transform: scale(.96); }
+.bowlw { position: absolute; left: 0; right: 0; margin: 0 auto; top: 12%; width: min(82%, 380px); }
+.bowlw > svg { width: 100%; filter: drop-shadow(0 10px 8px rgba(107,63,114,.2)); }
+.ring { position: absolute; left: -4%; right: -4%; top: -34%; aspect-ratio: 1; pointer-events: none; } .ring:empty { display: none; } .ring svg { width: 100%; height: 100%; }
+.shelf { position: absolute; left: 0; right: 0; bottom: calc(var(--sb) + 16px); display: flex; justify-content: center; gap: 10px; padding: 0 10px; transition: transform .6s; }
+.shelf.away { transform: translateY(180%); }
+.ing { width: clamp(64px, 20vw, 94px); aspect-ratio: 1; border-radius: 26px; background: linear-gradient(160deg, #fff, #fff0f8); border: 4px solid #fff; box-shadow: 0 6px 0 rgba(107,63,114,.28), 0 12px 16px rgba(107,63,114,.18); padding: 6px; position: relative; animation: tin .5s both cubic-bezier(.2, 1.4, .4, 1); transition: opacity .3s, filter .3s; }
+.ing svg { width: 100%; height: 100%; } .ing .chk { display: none; position: absolute; right: -8px; top: -8px; width: 32px; height: 32px; border-radius: 50%; background: #28c47b; border: 3px solid #fff; padding: 5px; }
+.ing .chk svg { filter: none; }
+.ing.used { opacity: .5; filter: saturate(.4); } .ing.used .chk { display: block; }
+.spoonw { position: absolute; width: 15%; transform: translate(-45%, -72%) rotate(24deg); pointer-events: none; filter: drop-shadow(0 6px 4px rgba(0,0,0,.2)); transition: left .05s linear, top .05s linear; } .spoonw svg { width: 100%; }
+.spoonw.spinout { animation: spoonout 1s ease-in forwards; } @keyframes spoonout { to { transform: translate(-45%, -300%) rotate(520deg); opacity: 0; } }
+.ovenw { position: absolute; left: 0; right: 0; margin: 0 auto; top: 1%; width: min(72%, 300px); } .ovenw svg { width: 100%; filter: drop-shadow(0 10px 8px rgba(107,63,114,.2)); }
+.tinw { position: absolute; left: 0; right: 0; margin: 0 auto; bottom: calc(var(--sb) + 5%); width: min(62%, 250px); cursor: grab; z-index: 5; animation: floaty 2.6s ease-in-out infinite; } .tinw svg { width: 100%; filter: drop-shadow(0 8px 6px rgba(0,0,0,.2)); }
+.cook .stage.decor { display: flex; flex-direction: column; }
+.cakeh { flex: 1; min-height: 0; display: grid; place-items: center; padding: 6px 10px; } .cakeh svg { width: 100%; height: 100%; max-width: 560px; overflow: visible; filter: drop-shadow(0 12px 10px rgba(107,63,114,.18)); }
+.stage .actbar { top: 6px; }
+.ctray { width: 100%; }
+@media (orientation: landscape) { .cook .stage.decor { flex-direction: row; } .ctray { width: min(46%, 330px); } }
+.drop { animation: dropin .45s cubic-bezier(.2, 1.6, .4, 1); transform-box: fill-box; transform-origin: 50% 100%; } @keyframes dropin { from { transform: translateY(-50px) scale(1.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.flame { animation: flick .3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; } @keyframes flick { to { transform: scale(.88, 1.1) rotate(4deg); } }
+.flyer { position: absolute; pointer-events: none; z-index: 65; } .flyer svg { width: 100%; height: 100%; }
+.hinthand { position: absolute; width: 38px; pointer-events: none; z-index: 70; animation: tapme 1s ease-in-out infinite; filter: drop-shadow(0 4px 4px rgba(0,0,0,.25)); } .hinthand svg { width: 100%; }
+@keyframes tapme { 50% { transform: translate(-5px, -16px) rotate(-8deg); } }
