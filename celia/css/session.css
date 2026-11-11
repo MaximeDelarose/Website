@@ -64,3 +64,7 @@ body[data-screen="setup"] #hud, body[data-screen="sleep"] #hud { display: none; 
 .parentlock { position: absolute; right: calc(var(--sr) + 10px); top: calc(var(--st) + 10px); width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.3); padding: 10px; opacity: .55; transition: all .2s; }
 .parentlock svg { width: 100%; height: 100%; } .parentlock.arm { opacity: 1; background: rgba(255,255,255,.3); transform: scale(1.15); }
 @media (orientation: landscape) and (max-height: 520px) { .ncastle { width: min(44vw, 300px); bottom: 24%; } .zzz { bottom: calc(24% + 140px); } .setup { align-items: start; } }
+
+/* interrupteur de la voix (écran parent) */
+.voicetog { display: block; width: 100%; min-height: 52px; margin-top: 12px; padding: 8px 14px; border-radius: 26px; border: 3px solid #fff; background: linear-gradient(180deg, #e8fff4, #b8f5d9); box-shadow: 0 4px 0 rgba(20,140,100,.3), 0 0 0 2px #bdeedb; font-weight: 800; font-size: 14px; color: var(--ink); }
+.voicetog.off { background: linear-gradient(180deg, #f4f0fa, #dcd3ea); box-shadow: 0 4px 0 rgba(107,63,114,.25), 0 0 0 2px #e5d6ff; opacity: .9; }

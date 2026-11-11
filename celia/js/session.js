@@ -173,9 +173,14 @@
       function durations() {
         body.innerHTML = '<div class="lumi-s small">' + Art.lumi() + '</div><h1>Combien de temps pour jouer ?</h1>' +
           '<div class="durs">' + DURS.map(function (m) { return '<button class="dur' + (m === chosen ? ' on' : '') + '" data-m="' + m + '"><span class="dhg">' + HOURGLASS + '</span><b>' + m + '</b><em>minutes</em></button>'; }).join('') + '</div>' +
+          '<button class="voicetog" data-voice></button>' +
           '<button class="bigbtn go" data-go><span>' + Art.castle() + '</span>Commencer à jouer !</button>' +
           '<p class="sfine">Le jeu se termine doucement quand le temps est écoulé. Cette protection concerne uniquement l’application : elle ne verrouille pas l’iPhone.</p>';
         C.$$('.dur', body).forEach(function (b) { b.onclick = function () { chosen = +b.dataset.m; C.$$('.dur', body).forEach(function (x) { x.classList.toggle('on', x === b); }); C.sfx.tap(C.rint(0, 6)); C.bounce(b, 1.1); }; });
+        var vt = C.$('[data-voice]', body);
+        function paintV() { vt.classList.toggle('off', !C.settings.voice); vt.textContent = C.settings.voice ? '🔊 Voix de la conteuse : activée' : '🔇 Voix de la conteuse : coupée (musique et sons gardés)'; }
+        vt.onclick = function () { C.settings.voice = !C.settings.voice; C.saveSettings(); paintV(); C.sfx.tap(2); if (C.settings.voice) C.say('Coucou !'); };
+        paintV();
         var go = C.$('[data-go]', body), once = false;
         go.onclick = function () { if (once) return; once = true; C.sfx.yay(); C.fx.confetti(24); setTimeout(function () { startSession(chosen); }, 350); };
       }

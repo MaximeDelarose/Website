@@ -269,7 +269,7 @@
         parts.forEach(function (part, i) {
           var u = new SpeechSynthesisUtterance(part);
           u.lang = V.voice.lang; u.voice = V.voice;
-          u.rate = V.premium ? 0.9 : 0.84; u.pitch = V.premium ? 1.04 : 1.1; u.volume = 1;
+          u.rate = V.premium ? 0.9 : 0.84; u.pitch = V.premium ? 1.04 : 1.1; u.volume = 0.7;
           if (i === parts.length - 1) { u.onend = done; u.onerror = done; }
           C._utt.push(u); speechSynthesis.speak(u);
         });
