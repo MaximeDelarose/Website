@@ -22,7 +22,7 @@ const markReady = (reason: 'sw' | 'version', latest?: string) => usePWA.setState
 /** Compare l'identifiant de build embarqué à celui publié (version.json, jamais mis en cache). */
 export async function fetchLatestBuild(): Promise<{ build: string; version: string } | null> {
   try {
-    const r = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' })
+    const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' })
     if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) return null
     const j = await r.json()
     return j && j.app === 'adeux' ? { build: String(j.build), version: String(j.version) } : null
@@ -51,7 +51,7 @@ function watch(r: ServiceWorkerRegistration) {
 
 export function registerSW() {
   if (!('serviceWorker' in navigator) || import.meta.env.DEV) return
-  navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).then((r) => {
+  navigator.serviceWorker.register('sw.js', { scope: './', updateViaCache: 'none' }).then((r) => {
     reg = r
     watch(r)
     void checkForUpdate()

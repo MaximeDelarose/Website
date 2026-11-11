@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build && node scripts/postbuild.mjs",
+    "build:pages": "tsc --noEmit && vite build --outDir ../adeux-7c1f3a9e52 --emptyOutDir && node scripts/postbuild.mjs ../adeux-7c1f3a9e52 && rm -f ../adeux-7c1f3a9e52/_headers ../adeux-7c1f3a9e52/robots.txt",
     "preview": "vite preview --host --port 4173",
     "icons": "node scripts/gen-icons.mjs",
     "test": "vitest run",

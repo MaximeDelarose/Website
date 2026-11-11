@@ -295,7 +295,7 @@ export const useStore = create<Persisted & Actions>()(
         setTimeout(() => set({ plans: get().plans.map((p) => (p.id === id ? { ...p, state: 'accepted' } : p)) }), 2500)
       },
       setPrivacy: (p) => set({ privacy: { ...get().privacy, ...p } }),
-      deleteAllData: () => { set({ ...initial, introSeen: false }); void import('idb-keyval').then((m) => m.clear()) },
+      deleteAllData: () => { set({ ...initial, introSeen: false }); void Promise.all([import('idb-keyval'), import('./photo')]).then(([m, ph]) => m.clear(ph.adeuxStore)) },
     }),
     {
       name: STORE_KEY,

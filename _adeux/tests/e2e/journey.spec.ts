@@ -3,7 +3,7 @@ import { answerIntro, callAndHangup, demoStart, noHorizontalOverflow, playMirror
 
 test.describe('A · découverte', () => {
   test('premier écran : une seule action principale, démo accessible sans compte ni code', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('./')
     await expect(page.getByTestId('intro-title')).toContainText('Et si on prenait vraiment le temps ?')
     await expect(page.getByTestId('intro-start')).toHaveText('Commencer une rencontre')
     await expect(page.locator('input[type=password]')).toHaveCount(0) // aucun code d'invitation
@@ -15,7 +15,7 @@ test.describe('A · découverte', () => {
 
 test.describe('B/I · questionnaire, sauvegarde et reprise', () => {
   test('refuse un mineur, enregistre, reprend après rechargement, récapitulatif modifiable', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('./')
     await page.getByTestId('intro-start').click()
     await page.getByTestId('adult-check').check(); await page.getByTestId('data-check').check()
     await page.getByTestId('consent-next').click()
@@ -230,7 +230,7 @@ test.describe('J · iPhone', () => {
       const small = await page.evaluate(() => [...document.querySelectorAll('button, a, input, select, textarea')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && (r.height < 40 || r.width < 40) && !(e as HTMLInputElement).type?.match(/checkbox|hidden|file/) }).map((e) => (e.getAttribute('data-testid') || e.textContent || '').slice(0, 30)))
       expect(small, `petites cibles sur ${t}`).toEqual([])
     }
-    const manifest = await page.evaluate(() => fetch('/manifest.webmanifest').then((r) => r.json()))
+    const manifest = await page.evaluate(() => fetch('manifest.webmanifest').then((r) => r.json()))
     expect(manifest.display).toBe('standalone')
     expect(await page.locator('meta[name=viewport]').getAttribute('content')).toContain('viewport-fit=cover')
     expect(await page.locator('meta[name=apple-mobile-web-app-capable]').getAttribute('content')).toBe('yes')

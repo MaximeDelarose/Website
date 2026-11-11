@@ -4,7 +4,7 @@ import { execSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
 import { demoStart, startEncounter } from './helpers'
 
-const deploy = (id: string) => execSync('npm run build', { env: { ...process.env, ADEUX_BUILD_ID: id }, stdio: 'pipe' })
+const deploy = (id: string) => execSync(process.env.DEPLOY_CMD ?? 'npm run build', { env: { ...process.env, ADEUX_BUILD_ID: id }, stdio: 'pipe' })
 test.use({ serviceWorkers: 'allow' })
 test.setTimeout(240_000)
 

@@ -37,7 +37,7 @@ export default defineConfig({
       },
     },
   ],
-  base: process.env.ADEUX_BASE ?? '/',
+  base: process.env.ADEUX_BASE ?? './', // chemins relatifs : fonctionne à la racine d'un domaine comme dans un sous-dossier (GitHub Pages)
   define: { __APP_VERSION__: JSON.stringify(pkg.version), __BUILD_ID__: JSON.stringify(BUILD_ID) },
   build: { outDir: 'dist', sourcemap: false, target: 'es2022', chunkSizeWarningLimit: 800 },
   test: { include: ['tests/unit/**/*.test.ts'], environment: 'node', testTimeout: 30000 },

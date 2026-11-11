@@ -64,34 +64,21 @@ Désactivé tant que non configuré : mode réel Supabase (aucune variable → a
 Une porte d'accès serveur (`server/gate.ts`, testée) est conservée pour la version privée future, mais n'est
 **pas** branchée au déploiement de la démo.
 
-## Déploiement indépendant (Cloudflare Pages) — le plus court chemin
+## Publication : le même système que RADIA (GitHub Pages)
 
-Je n'ai pas d'accès à Cloudflare depuis l'environnement de développement : voici les clics à faire (≈ 3 min).
+Le dépôt est publié par **GitHub Pages** (fichier `CNAME` = mdelarose.fr, aucun workflow). RADIA y est publié en
+**commitant son build dans le dépôt** (`radia/`), puis en fusionnant sur `main`. À DEUX fait pareil, dans son propre
+dossier au nom non devinable :
 
-1. https://dash.cloudflare.com → **Workers & Pages** → **Create** → **Pages** → **Connect to Git** → choisis le dépôt
-   `MaximeDelarose/Website` (autorise l'accès à ce seul dépôt).
-2. Réglages de build :
-   - **Project name** : `adeux-app` (URL : `https://adeux-app.pages.dev`, ou avec un suffixe si le nom est pris)
-   - **Production branch** : `claude/a-deux-dating-app-tp21b1` (ou `main` après fusion)
-   - **Root directory** : `_adeux`
-   - **Build command** : `npm ci && npm run build`
-   - **Build output directory** : `dist`
-   - **Environment variable** : `NODE_VERSION` = `22`
-3. **Save and Deploy**. À chaque `git push` sur la branche de production, Cloudflare reconstruit et publie ;
-   les iPhone reçoivent la nouvelle version via la bannière « Une nouvelle version est disponible ».
+- Build publié : `adeux-7c1f3a9e52/` (généré par `npm run build:pages`, ne pas éditer à la main).
+- URL : **https://mdelarose.fr/adeux-7c1f3a9e52/** (non listée sur le site, `noindex` dans la page).
+- Publier une nouvelle version : `cd _adeux && npm test && npm run build:pages`, commiter `adeux-7c1f3a9e52/`,
+  fusionner sur `main`. Les iPhone reçoivent la mise à jour via la bannière.
+- Séparation : dossier, service worker (scope = ce dossier), caches `adeux-*`, stockage `adeux:*`, base IndexedDB
+  `adeux-db`. Aucun fichier partagé du dépôt n'est modifié (`robots.txt` n'est volontairement pas touché).
+- Limite : GitHub Pages n'applique pas les en-têtes de `public/_headers` ; le `noindex` repose sur la balise meta.
 
-Ce projet Pages est totalement séparé : il ne publie que `_adeux/dist`, ne touche ni mdelarose.fr (GitHub Pages)
-ni RADIA, et le dossier `_adeux/` n'est de toute façon pas servi par GitHub Pages (préfixe `_`).
-
-Option sans Git (CLI, sur ta machine) :
-```bash
-cd _adeux && npm ci && npm run build
-npx wrangler login
-npx wrangler pages project create adeux-app --production-branch main
-npx wrangler pages deploy dist --project-name adeux-app
-```
-Domaine `adeux.mdelarose.fr` (plus tard) : Pages → *Custom domains* → ajouter, puis **un seul** CNAME
-`adeux → adeux-app.pages.dev` chez ton gestionnaire DNS.
+Alternative indépendante (Cloudflare Pages, plus tard) : `npm run build` produit `dist/` (racine d'un domaine).
 
 ## Installer sur iPhone
 

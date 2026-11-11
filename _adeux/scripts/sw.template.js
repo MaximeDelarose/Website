@@ -11,15 +11,16 @@ const BUILD = '__BUILD__'
 const PRECACHE = __PRECACHE__
 const STATIC = 'adeux-static-' + BUILD
 const RUNTIME = 'adeux-runtime-v1'
-const SHELL = '/index.html'
+const BASE = new URL(self.registration.scope).pathname // ex. « / » ou « /adeux-xxxx/ »
+const SHELL = BASE + 'index.html'
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(STATIC)
     await Promise.all(PRECACHE.map(async (url) => {
-      const res = await fetch(url, { cache: 'reload', credentials: 'same-origin' })
+      const res = await fetch(BASE + url, { cache: 'reload', credentials: 'same-origin' })
       if (!res.ok) throw new Error('precache ' + url + ' ' + res.status)
-      await cache.put(url, res)
+      await cache.put(BASE + url, res)
     }))
     // Première installation : rien à protéger, on s'active tout de suite.
     if (!self.registration.active) self.skipWaiting()
@@ -45,7 +46,7 @@ self.addEventListener('fetch', (event) => {
   const req = event.request
   const url = new URL(req.url)
   if (req.method !== 'GET' || url.origin !== self.location.origin) return
-  if (url.pathname === '/version.json' || url.pathname === '/sw.js' || url.pathname.startsWith('/__')) return // toujours le réseau
+  if (url.pathname === BASE + 'version.json' || url.pathname === BASE + 'sw.js' || !url.pathname.startsWith(BASE)) return // toujours le réseau
 
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
@@ -62,7 +63,7 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  if (url.pathname.startsWith('/assets/')) { // fichiers à empreinte : cache d'abord
+  if (url.pathname.startsWith(BASE + 'assets/')) { // fichiers à empreinte : cache d'abord
     event.respondWith((async () => {
       const hit = await caches.match(req)
       if (hit) return hit

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { del, get, set } from 'idb-keyval'
+import { adeuxStore } from './photo'
 
 export type RecState = 'idle' | 'recording' | 'denied' | 'unsupported' | 'error'
 
@@ -48,6 +49,6 @@ export function useRecorder(maxSeconds = 60) {
   return { state, seconds, start, stop, cancel }
 }
 
-export const saveVoice = (key: string, b: Blob) => set(`voice:${key}`, b)
-export const loadVoice = (key: string): Promise<Blob | undefined> => get(`voice:${key}`)
-export const deleteVoice = (key: string) => del(`voice:${key}`)
+export const saveVoice = (key: string, b: Blob) => set(`voice:${key}`, b, adeuxStore)
+export const loadVoice = (key: string): Promise<Blob | undefined> => get(`voice:${key}`, adeuxStore)
+export const deleteVoice = (key: string) => del(`voice:${key}`, adeuxStore)
