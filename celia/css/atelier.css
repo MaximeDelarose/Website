@@ -4,11 +4,11 @@
 .act .cv-wrap { box-shadow: 0 0 0 5px var(--mode), 0 14px 26px rgba(107,63,114,.28); transition: box-shadow .25s; }
 
 .tray.atelier { gap: 8px; padding: 8px 12px calc(var(--sb) + 10px); }
-.atelier .donebar { display: flex; align-items: center; gap: 10px; padding: 0; }
-.atelier .donebar .side { width: clamp(48px, 7.4dvh, 60px); height: clamp(48px, 7.4dvh, 60px); flex: none; }
+.atelier .donebar { display: flex; align-items: center; gap: 10px; padding: 2px 0 0; }   /* tout en bas, sous les couleurs */
+.atelier .donebar .side { width: clamp(42px, 5.8dvh, 50px); height: clamp(42px, 5.8dvh, 50px); flex: none; }
 .atelier .donebar .side svg { width: 62%; height: 62%; }
-.atelier .donebar .donebtn { flex: 1; min-width: 0; justify-content: center; min-height: clamp(56px, 7.6dvh, 64px); font-size: clamp(13px, 1.95dvh, 16px); white-space: nowrap; padding: 0 10px 0 8px; gap: 8px; }
-.atelier .donebar .donebtn .dchk { width: clamp(34px, 5dvh, 44px); height: clamp(34px, 5dvh, 44px); }
+.atelier .donebar .donebtn { flex: 1; min-width: 0; justify-content: center; min-height: clamp(44px, 5.8dvh, 50px); font-size: clamp(13px, 1.8dvh, 15px); white-space: nowrap; padding: 0 10px 0 6px; gap: 6px; border-width: 3px; box-shadow: 0 4px 0 rgba(10,110,80,.4), 0 8px 12px rgba(20,140,100,.28); }
+.atelier .donebar .donebtn .dchk { width: clamp(30px, 4.2dvh, 36px); height: clamp(30px, 4.2dvh, 36px); padding: 5px; }
 
 /* gros outils carrés */
 .tools.big { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 8px 2px 0; }   /* la marge du haut laisse monter l'outil actif sans toucher le bouton vert */
@@ -60,5 +60,5 @@
   .modecap { min-height: 34px; margin-top: 2px; font-size: 13px; padding: 2px 8px; }
   .mcico, .mcm { width: 26px; height: 26px; } .cdot { width: 24px; height: 24px; }
   .atelier .palette { gap: 6px; }
-  .atelier .donebar .side { width: 46px; height: 46px; } .atelier .donebar .donebtn { min-height: 56px; }
+  .atelier .donebar .side { width: 42px; height: 42px; } .atelier .donebar .donebtn { min-height: 44px; }
 }

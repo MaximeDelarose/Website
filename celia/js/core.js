@@ -522,6 +522,8 @@
     }, 420);
   };
   C.home = function () { if (curName !== 'home') C.go('home'); };
+  /* sauvegarde la création en cours (dessin, coloriage, gâteau, maquillage) sans quitter l'écran */
+  C.saveCurrent = function () { try { if (cur && cur._autosave) cur._autosave(); } catch (e) { } };
 
   /* Les erreurs ne doivent jamais bloquer Célia : on les journalise seulement. */
   window.addEventListener('error', function (e) { try { console.warn('celia:', e.message); } catch (x) { } });

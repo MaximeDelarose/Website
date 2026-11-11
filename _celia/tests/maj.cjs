@@ -6,6 +6,7 @@ const SWORIG = fs.readFileSync(SW, 'utf8'), HOMEORIG = fs.readFileSync(HOME, 'ut
 let fails = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fails++; };
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'allow' });
+    await ctx.addInitScript(require('./_session.cjs'));
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('http://127.0.0.1:8123/celia/'); await p.waitForTimeout(500);
   await p.evaluate(() => document.querySelector('.startbtn').click());

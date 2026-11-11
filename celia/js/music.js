@@ -15,7 +15,7 @@
   var S = { idx: (C.store.get('musicIdx', 0) | 0) % FILES.length, cur: 0, els: [], gains: [], ready: false, started: false, xf: false, timer: null, bus: null, duck: null, gen: 0 };
   var M = C.music = {};
 
-  function enabled() { return !!(C.settings.sound && C.settings.music); }
+  function enabled() { return !!(C.settings.sound && C.settings.music && !S.silenced); }
   function build() {
     if (S.ready) return true;
     var ctx = A.init(); if (!ctx) return false;
@@ -89,6 +89,14 @@
   };
   M._dbg = function () { return S.els.map(function (e, k) { return { k: k, src: (e.getAttribute('src') || '').slice(-14), t: +e.currentTime.toFixed(1), d: isFinite(e.duration) ? +e.duration.toFixed(1) : null, paused: e.paused, g: +S.gains[k].gain.value.toFixed(2) }; }); };
   M._seekEnd = function (sec) { var e = S.els[S.cur]; if (isFinite(e.duration)) e.currentTime = Math.max(0, e.duration - sec); };
+  /* fin de session : la musique s'éteint doucement (et ne repart pas toute seule) */
+  M.fadeOut = function (sec) {
+    S.silenced = true;
+    if (!S.ready) return;
+    var t = A.ctx.currentTime; S.bus.gain.cancelScheduledValues(t); S.bus.gain.setValueAtTime(S.bus.gain.value, t); S.bus.gain.linearRampToValueAtTime(0, t + sec);
+    setTimeout(function () { S.els.forEach(function (e) { try { e.pause(); } catch (x) { } }); S.started = false; clearInterval(S.timer); }, sec * 1000 + 200);
+  };
+  M.unsilence = function () { S.silenced = false; M.sync(); };
   M.state = function () { return { started: S.started, idx: S.idx, cur: S.cur, files: FILES.length, vol: C.settings.musicVol }; };
 
   /* démarre au premier vrai geste (Safari iOS exige un geste) ; réessaie tant que ça n'a pas démarré */

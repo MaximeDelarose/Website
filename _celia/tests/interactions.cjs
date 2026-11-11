@@ -343,6 +343,7 @@ async function histoires(p) {
   const b = await chromium.launch();
   for (const vp of [{ w: 390, h: 844, n: 'iPhone 14' }]) {
     const ctx = await b.newContext({ viewport: { width: vp.w, height: vp.h }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+    await ctx.addInitScript(require('./_session.cjs'));
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.goto(BASE); await sleep(p, 500); await p.evaluate(() => document.querySelector('.startbtn').click()); await sleep(p, 300);
     for (const [n, f] of [['coloriage', coloriage], ['dessin libre', dessinLibre], ['dressing', dressing], ['maquillage', maquillage], ['animaux', animaux], ['jeux', jeux], ['chambre', chambre], ['histoires', histoires]]) {

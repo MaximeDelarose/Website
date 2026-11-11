@@ -34,35 +34,9 @@
     if (C.settings.sound) { C.audio.unlock(); C.sfx.chime(); } else { C.say.stop(); }
     C.music.sync();
   }
-  bSound.addEventListener('pointerdown', function () { held = false; holdT = setTimeout(function () { held = true; parentPanel(); }, 1200); });
+  bSound.addEventListener('pointerdown', function () { held = false; holdT = setTimeout(function () { held = true; C.session.openParent(); }, 1200); });
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { bSound.addEventListener(ev, function () { clearTimeout(holdT); }); });
   bSound.addEventListener('click', function () { if (held) { held = false; return; } toggleSound(); });
-
-  function parentPanel() {
-    var m = C.modal('<div class="ptitle">Parents</div><div class="pgrid">' +
-      '<button class="pbtn" data-k="voice"><span class="btn green">' + Art.ui.voice + '</span><em>Voix</em></button>' +
-      '<button class="pbtn" data-k="music"><span class="btn purple">' + Art.ui.music + '</span><em>Musique</em></button>' +
-      '<button class="pbtn" data-k="reset"><span class="btn red">' + Art.ui.trash + '</span><em>Tout effacer</em></button>' +
-      '</div><label class="pvol"><span class="btn purple small">' + Art.ui.music + '</span><input type="range" min="0" max="100" step="5" value="' + Math.round((C.settings.musicVol || 0) * 100) + '" aria-label="volume de la musique"><b>' + Math.round((C.settings.musicVol || 0) * 100) + '%</b></label><p class="pnote">Les créations sont enregistrées uniquement sur cet appareil, sans compte. Safari peut les effacer si l’espace manque. Si tu n’entends rien, vérifie que l’iPhone n’est pas en mode silencieux.</p>' +
-      '<div class="row"><button class="btn big green" data-ok>' + Art.ui.check + '</button></div>', 'parent');
-    function paint() {
-      C.$('[data-k=voice] .btn', m).classList.toggle('dim', !C.settings.voice);
-      C.$('[data-k=music] .btn', m).classList.toggle('dim', !C.settings.music);
-    }
-    paint();
-    C.$('[data-k=voice]', m).onclick = function () { C.settings.voice = !C.settings.voice; C.saveSettings(); paint(); C.sfx.pop(); if (C.settings.voice) C.say('Coucou !'); };
-    C.$('[data-k=music]', m).onclick = function () { C.settings.music = !C.settings.music; C.saveSettings(); paint(); C.sfx.pop(); C.music.sync(); };
-    var vol = C.$('.pvol input', m);
-    vol.addEventListener('input', function () { C.music.setVol(vol.value / 100); C.$('.pvol b', m).textContent = vol.value + '%'; if (!C.settings.music) { C.settings.music = true; C.saveSettings(); paint(); C.music.sync(); } });
-    C.$('[data-k=reset]', m).onclick = function () {
-      C.confirm('<div class="trashicon">' + Art.ui.trash.replace(/#fff/g, '#c4a8ff').replace('#ff8fb8', '#fff') + '</div>').then(function (yes) {
-        if (!yes) return;
-        ['profile', 'rewards', 'pets', 'room', 'hint.draw', 'hint.color'].forEach(function (k) { C.store.del(k); });
-        C.db.clear().then(function () { location.reload(); });
-      });
-    };
-    C.$('[data-ok]', m).onclick = function () { C.sfx.pop(); m.close(); };
-  }
 
   /* hors ligne + mise à jour automatique : le service worker est limité au dossier du jeu.
      Quand une nouvelle version est publiée, l'appli installée la récupère toute seule et se recharge à un moment sans risque
@@ -86,5 +60,5 @@
   }
   C.applyUpdate = function () { try { sessionStorage.setItem('celia.reloaded', String(Date.now())); } catch (e) { } C.pendingReload = false; location.reload(); };
 
-  C.go('home');
+  C.session.boot();   /* écran parent avant de jouer, ou reprise de la session en cours */
 })();

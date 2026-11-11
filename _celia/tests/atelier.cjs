@@ -19,6 +19,7 @@ async function ouvrir(p, page) {
   const b = await chromium.launch();
   for (const vp of [{ w: 390, h: 844, n: 'iPhone 14', sw: 52, tool: 58 }, { w: 375, h: 667, n: 'iPhone SE', sw: 38, tool: 50 }]) {
     const ctx = await b.newContext({ viewport: { width: vp.w, height: vp.h }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+    await ctx.addInitScript(require('./_session.cjs'));
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.goto(BASE); await sleep(p, 500); await p.evaluate(() => document.querySelector('.startbtn').click()); await sleep(p, 300);
     await ouvrir(p, 'fleur');
@@ -42,7 +43,9 @@ async function ouvrir(p, page) {
     let over = 0; for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) { const a = boxes[i], c = boxes[j]; if (a.x < c.r - 1 && c.x < a.r - 1 && a.y < c.b - 1 && c.y < a.b - 1) over++; }
     ok(over === 0, T + ' : aucune cible tactile ne se chevauche (' + over + ')');
     const cv = await rect(p, '.cv-wrap'), db = await rect(p, '.donebtn'), tl = await rect(p, '.tool'), pl = await rect(p, '.sw');
-    ok(cv.b <= db.y + 1 && db.b <= tl.y + 1 && tl.y + tl.h <= pl.y + 1, T + ' : ordre à l’écran : dessin → bouton vert → outils → couleurs');
+    const pal2 = await p.evaluate(() => document.querySelector('.palette').getBoundingClientRect().bottom);
+    ok(cv.b <= tl.y + 1 && tl.y + tl.h <= pl.y + 1 && pal2 <= db.y + 1, T + ' : ordre à l’écran : dessin → outils → couleurs → bouton vert tout en bas');
+    ok(db.h <= 54 && db.h >= 44 && db.b > vp.h - 90, T + ' : le bouton vert est plus petit (' + Math.round(db.h) + ' px) et tout en bas (bas à ' + Math.round(db.b) + ' / ' + vp.h + ')');
     ok((await p.evaluate(() => { const r = document.querySelector('.palette .sw:last-child').getBoundingClientRect(); return r.bottom <= innerHeight; })), T + ' : tout tient dans l’écran (pas masqué par la barre iPhone)');
     ok(cv.w >= (vp.h > 800 ? 360 : 270), T + ' : la zone de coloriage reste grande (' + Math.round(cv.w) + ' px)');
 
@@ -115,6 +118,7 @@ async function ouvrir(p, page) {
   /* ---- aide : la main montre les couleurs puis le dessin, seulement les 2 premières fois ---- */
   {
     const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    await ctx.addInitScript(require('./_session.cjs'));
     const p = await ctx.newPage(); await p.goto(BASE); await sleep(p, 500); await p.evaluate(() => { localStorage.removeItem('celia.hint.coloring'); document.querySelector('.startbtn').click(); }); await sleep(p, 300);
     await ouvrir(p, 'lapin'); await sleep(p, 2200);
     const h1 = await p.evaluate(() => { const h = document.querySelector('.hinthand'); const s = document.querySelectorAll('.sw')[2].getBoundingClientRect(), r = h && h.getBoundingClientRect(); return { say: C.lastSay, onSwatch: !!r && Math.abs(r.x + r.width / 2 - (s.x + s.width / 2)) < 60 && Math.abs(r.y - (s.y + s.height / 2)) < 70 }; });

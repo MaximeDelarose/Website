@@ -7,6 +7,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); 
   const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
   for (const vp of [{ w: 390, h: 844, n: 'iPhone 14' }, { w: 375, h: 667, n: 'iPhone SE' }]) {
     const ctx = await b.newContext({ viewport: { width: vp.w, height: vp.h }, hasTouch: true, isMobile: true });
+    await ctx.addInitScript(require('./_session.cjs'));
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.goto(BASE); await p.waitForTimeout(500);
     await p.evaluate(() => document.querySelector('.startbtn').click()); await p.waitForTimeout(300);
@@ -20,7 +21,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); 
       await p.evaluate((t) => document.querySelector('.t-' + t).click(), t); await p.waitForTimeout(900);
       if (setup) { await setup(); await p.waitForTimeout(800); }
       const g = await geom();
-      ok(g && g.inView && g.hit && g.h >= 56, vp.n + ' : « J’ai fini ! » visible, atteignable et grand dans ' + t + ' ' + JSON.stringify(g));
+      ok(g && g.inView && g.hit && g.h >= 44, vp.n + ' : « J’ai fini ! » visible, atteignable et grand dans ' + t + ' ' + JSON.stringify(g));
       ok(g && g.homeW >= 60 && g.homeH >= 56, vp.n + ' : bouton château grand dans ' + t);
       await p.evaluate(() => document.querySelector('#btnHome').click()); await p.waitForTimeout(800);
       ok(await p.evaluate(() => C.current() === 'home'), vp.n + ' : le château ramène à l’accueil depuis ' + t + ', sans confirmation');
@@ -31,6 +32,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); 
 
   /* sauvegarde automatique en quittant par le château */
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    await ctx.addInitScript(require('./_session.cjs'));
   const p = await ctx.newPage(); await p.goto(BASE); await p.waitForTimeout(500);
   await p.evaluate(() => { document.querySelector('.startbtn').click(); document.querySelector('.t-draw').click(); }); await p.waitForTimeout(800);
   await p.evaluate(() => document.querySelector('.hc2').click()); await p.waitForTimeout(500);
@@ -55,6 +57,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); 
 
   /* musique : démarre après le premier geste, 4 fichiers, enchaînement 1→2→3→4→1, volume bas par défaut */
   const c2 = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    await c2.addInitScript(require('./_session.cjs'));
   const q = await c2.newPage(); const qerr = []; q.on('pageerror', (e) => qerr.push(e.message)); q.on('response', (r) => { if (r.status() >= 400) qerr.push(r.status() + ' ' + r.url()); });
   await q.goto(BASE); await q.waitForTimeout(500);
   ok(await q.evaluate(() => !C.music.state().started), 'musique : rien ne joue avant la première interaction');

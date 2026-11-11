@@ -35,10 +35,10 @@
 
   function trayHtml(modes, withSizes) {
     return '<div class="tray atelier">' +
-      '<div class="donebar"><button class="btn green side" data-do="undo" aria-label="annuler">' + Art.ui.undo + '</button><span class="donehost"></span><button class="btn red side" data-do="restart" aria-label="recommencer">' + Art.ui.again + '</button></div>' +
       '<div class="tools big">' + modes.map(function (m) { return '<button class="tool ' + m.cls + '" style="--hex:' + m.hex + '" data-tool="' + m.id + '" aria-label="' + m.name + '"><span class="tico">' + Art.ui[m.icon] + '</span>' + (m.useColor ? '<i class="tdot"></i>' : '') + '</button>'; }).join('') + '</div>' +
       '<div class="modecap"><span class="mcico"></span><b class="mctxt"></b>' + (withSizes ? '<span class="sizes"></span>' : '') + '</div>' +
-      '<div class="optslot"><div class="palette"></div><div class="stickers" hidden></div><div class="optart" hidden></div></div></div>';
+      '<div class="optslot"><div class="palette"></div><div class="stickers" hidden></div><div class="optart" hidden></div></div>' +
+      '<div class="donebar"><button class="btn green side" data-do="undo" aria-label="annuler">' + Art.ui.undo + '</button><span class="donehost"></span><button class="btn red side" data-do="restart" aria-label="recommencer">' + Art.ui.again + '</button></div>' + '</div>';
   }
 
   /* contrôleur de l'interface : mode actif, couleur active, autocollant actif */

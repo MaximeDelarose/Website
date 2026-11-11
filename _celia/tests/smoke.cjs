@@ -11,6 +11,7 @@ const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fails++
   const b = await chromium.launch();
   for (const vp of [{ w: 390, h: 844, n: 'iPhone 14 portrait' }, { w: 375, h: 667, n: 'iPhone SE portrait' }, { w: 844, h: 390, n: 'iPhone paysage' }]) {
     const ctx = await b.newContext({ viewport: { width: vp.w, height: vp.h }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+    await ctx.addInitScript(require('./_session.cjs'));
     const p = await ctx.newPage();
     const errs = [], bad = [];
     p.on('pageerror', (e) => errs.push(e.message));
@@ -36,6 +37,7 @@ const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fails++
 
   /* coloriage, dessin libre, sauvegarde, rechargement */
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    await ctx.addInitScript(require('./_session.cjs'));
   const p = await ctx.newPage(); await p.goto(BASE); await p.waitForTimeout(500);
   await p.evaluate(() => { document.querySelector('.startbtn').click(); document.querySelector('.t-draw').click(); }); await p.waitForTimeout(900);
   await p.evaluate(() => document.querySelector('.hc1').click()); await p.waitForTimeout(400);
