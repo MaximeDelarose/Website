@@ -74,8 +74,8 @@
         if (busy) return;
         var p = pt(e);
         if (tool === 'lips') { if (inFace(p, 6) && p.y > 218) { mark(); S.lips = cur.lips; render(); pop(150, 250, cur.lips); } else wrong(150, 250); }
-        else if (tool === 'blush') { if (inFace(p, 6) && p.y > 170 && p.y < 290) { mark(); S.blush = cur.blush; render(); pop(90, 232, cur.blush); pop(210, 232, cur.blush); } else wrong(90, 232); }
-        else if (tool === 'shadow') { if (inFace(p, 6) && p.y > 110 && p.y < 222) { mark(); S.shadow = cur.shadow; render(); pop(108, 176, cur.shadow); pop(192, 176, cur.shadow); } else wrong(108, 176); }
+        else if (tool === 'blush') { if (inFace(p, 6) && p.y > 170 && p.y < 290) { mark(); S.blush = cur.blush; render(); pop(84, 238, cur.blush); pop(216, 238, cur.blush); } else wrong(84, 238); }
+        else if (tool === 'shadow') { if (inFace(p, 6) && p.y > 110 && p.y < 222) { mark(); S.shadow = cur.shadow; render(); pop(104, 174, cur.shadow); pop(196, 174, cur.shadow); } else wrong(104, 174); }
         else if (tool === 'stamps') {
           var q = clampFace(p); addStamp(q, e);
           spray = { id: e.pointerId, last: q, d: 0 };
