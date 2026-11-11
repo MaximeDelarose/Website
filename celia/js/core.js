@@ -373,6 +373,15 @@
         (function (p) { an.onfinish = function () { p.remove(); }; })(p);
       }
     },
+    /* onde qui s'étend depuis le doigt : confirme visuellement « j'ai touché ici » */
+    ripple: function (x, y, color, size) {
+      var layer = C.$('#fx'); if (!layer) return;
+      var d = document.createElement('div'), s = size || 90;
+      d.className = 'p'; d.style.cssText = 'left:' + (x - s / 2) + 'px;top:' + (y - s / 2) + 'px;width:' + s + 'px;height:' + s + 'px;border-radius:50%;border:6px solid ' + (color || '#fff') + ';box-shadow:0 0 18px ' + (color || '#fff') + ';box-sizing:border-box';
+      layer.appendChild(d);
+      var an = d.animate([{ transform: 'scale(.25)', opacity: .95 }, { transform: 'scale(1.5)', opacity: 0 }], { duration: 650, easing: 'ease-out' });
+      an.onfinish = function () { d.remove(); };
+    },
     rise: function (x, y, kind, col) {
       var layer = C.$('#fx'); if (!layer) return;
       var p = document.createElement('div'); p.className = 'p';

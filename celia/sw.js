@@ -6,7 +6,7 @@ const AUDIO = 'celia-audio-v1';
 const MUSIC = ['audio/musique-1.mp3', 'audio/musique-2.mp3', 'audio/musique-3.mp3', 'audio/musique-4.mp3'];
 const FILES = [
   './', 'index.html', 'manifest.webmanifest',
-  'css/style.css', 'css/activities.css', 'css/cook.css', 'css/dress.css', 'css/pets.css', 'css/play.css', 'css/ux.css',
+  'css/style.css', 'css/activities.css', 'css/cook.css', 'css/dress.css', 'css/pets.css', 'css/play.css', 'css/ux.css', 'css/atelier.css',
   'custom/custom.js',
   'js/core.js', 'js/fr.js', 'js/music.js', 'js/voice.js', 'js/art-base.js', 'js/art-girl.js', 'js/art-pets.js', 'js/art-food.js', 'js/art-color.js', 'js/art-room.js',
   'js/gallery.js', 'js/home.js', 'js/draw.js', 'js/cook.js', 'js/dress.js', 'js/makeup.js', 'js/pets.js', 'js/stories.js', 'js/learn.js', 'js/room.js', 'js/main.js',

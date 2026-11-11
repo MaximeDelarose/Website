@@ -175,5 +175,6 @@
     });
     ctx.restore();
   };
-  Col.palette = ['#ff4d6d', '#ff9a3c', '#ffd84d', '#8de05a', '#4fd8d0', '#4da6ff', '#a47cff', '#ff8fd0', '#b9784a', '#ffffff', '#6b4a7a', '#ffc9a8'];
+  /* 10 grosses couleurs (5 par ligne) : peu de choix, faciles à toucher */
+  Col.palette = ['#ff4d6d', '#ff9a3c', '#ffd84d', '#8de05a', '#4fd8d0', '#4da6ff', '#a47cff', '#ff8fd0', '#b9784a', '#ffc9a8'];
 })();

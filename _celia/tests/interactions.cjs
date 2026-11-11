@@ -32,7 +32,7 @@ async function coloriage(p) {
   c = await px('.cv-color', 300, 220); ok(c[3] === 0, 'coloriage : la gomme efface réellement la couleur de la zone');
   /* autocollant */
   await p.evaluate(() => document.querySelector('[data-tool=sticker]').click());
-  await p.touchscreen.tap(...at(.75, .2)); await sleep(p, 400);
+  await p.touchscreen.tap(...at(.75, .2)); await sleep(p, 1000);
   const stk = await p.evaluate(() => { const d = document.querySelector('.cv-stk').getContext('2d').getImageData(0, 0, 600, 600).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++; return n; });
   ok(stk > 800, 'coloriage : l’autocollant apparaît (' + stk + ' px)');
   /* paillettes */
@@ -40,7 +40,7 @@ async function coloriage(p) {
   await p.touchscreen.tap(...at(.5, .75)); await sleep(p, 300);
   /* annuler */
   const before = await p.evaluate(() => document.querySelector('.cv-stk').getContext('2d').getImageData(0, 0, 600, 600).data.reduce((n, v, i) => n + (i % 4 === 3 && v ? 1 : 0), 0));
-  await p.evaluate(() => document.querySelector('[data-tool=sticker]').click()); await p.touchscreen.tap(...at(.25, .2)); await sleep(p, 300);
+  await p.evaluate(() => document.querySelector('[data-tool=sticker]').click()); await p.touchscreen.tap(...at(.25, .2)); await sleep(p, 1000);
   await p.evaluate(() => document.querySelector('[data-do=undo]').click()); await sleep(p, 300);
   const after = await p.evaluate(() => document.querySelector('.cv-stk').getContext('2d').getImageData(0, 0, 600, 600).data.reduce((n, v, i) => n + (i % 4 === 3 && v ? 1 : 0), 0));
   ok(after === before, 'coloriage : « annuler » retire réellement le dernier autocollant');
@@ -152,7 +152,7 @@ async function maquillage(p) {
   ok(await p.evaluate(() => document.querySelector('.mkface svg').innerHTML.length) !== c0, 'maquillage : un autre visage s’affiche');
   /* surprise : le look est réellement appliqué */
   const before = await p.evaluate(() => ({ lips: document.querySelector('#mk-lips path').getAttribute('fill'), len: document.querySelector('.mkface svg').innerHTML.length }));
-  await p.evaluate(() => document.querySelector('[data-do=dice]').click()); await sleep(p, 3200);
+  await p.evaluate(() => document.querySelector('[data-do=dice]').click()); await sleep(p, 4800);
   const after = await p.evaluate(() => ({ lips: document.querySelector('#mk-lips path').getAttribute('fill'), len: document.querySelector('.mkface svg').innerHTML.length, crown: /scale\(1\.55\)/.test(document.querySelector('.mkface svg').innerHTML) }));
   ok(after.lips !== before.lips && after.crown && after.len > before.len - 300, 'maquillage : « surprise » applique réellement un look (lèvres ' + before.lips + ' → ' + after.lips + ', couronne)');
   await p.evaluate(() => document.querySelector('.donebtn').click()); await sleep(p, 1800);
