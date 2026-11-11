@@ -4,5 +4,7 @@
    - name     : prénom affiché dans les titres. */
 window.CELIA_CUSTOM = {
   name: "Célia",
-  portrait: null
+  portrait: null,
+  /* true = utiliser les voix préenregistrées de celia/voix/ (voir _celia/voix/README.md) ; false = voix du navigateur */
+  voices: false
 };

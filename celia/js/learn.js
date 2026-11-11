@@ -9,14 +9,13 @@
     carre: function (c) { return '<rect x="14" y="14" width="72" height="72" rx="8" fill="' + c + '" ' + ST(5) + '/>'; },
     triangle: function (c) { return '<path d="M50 10L92 86H8z" fill="' + c + '" ' + ST(5) + ' stroke-linejoin="round"/>'; }
   };
+  var O = Fr.OBJ;
   var ANIMALS = [
-    { id: 'chat', type: 'chat', name: 'le chat', say: 'Miaou !', snd: 'chat' }, { id: 'chiot', type: 'chiot', name: 'le chien', say: 'Ouaf ouaf !', snd: 'chien' },
-    { id: 'lapin', type: 'lapin', name: 'le lapin', say: 'Il fait de petits bonds !', snd: 'lapin' }, { id: 'panda', type: 'panda', name: 'le panda', say: 'Il aime le bambou !', snd: 'panda' },
-    { id: 'licorne', type: 'licorne', name: 'la licorne', say: 'Hiii hiii !', snd: 'licorne' }, { id: 'dragon', type: 'dragon', name: 'le dragon', say: 'Groar !', snd: 'dragon' }
+    { id: 'chat', type: 'chat', o: O.chat, say: 'Miaou !', snd: 'chat' }, { id: 'chiot', type: 'chiot', o: O.chien, say: 'Ouaf ouaf !', snd: 'chien' },
+    { id: 'lapin', type: 'lapin', o: O.lapin, say: 'Il fait de petits bonds !', snd: 'lapin' }, { id: 'panda', type: 'panda', o: O.panda, say: 'Il aime le bambou !', snd: 'panda' },
+    { id: 'licorne', type: 'licorne', o: O.licorne, say: 'Hi hi hi !', snd: 'licorne' }, { id: 'dragon', type: 'dragon', o: O.dragon, say: 'Groar !', snd: 'dragon' }
   ];
-  var OBJ = [{ k: 'apple', n: 'pomme', p: 'pommes', g: 'une' }, { k: 'star', n: 'étoile', p: 'étoiles', g: 'une' }, { k: 'heart', n: 'cœur', p: 'cœurs', g: 'un' }, { k: 'flower', n: 'fleur', p: 'fleurs', g: 'une' }, { k: 'ball', n: 'balle', p: 'balles', g: 'une' }];
-  var NUMS = ['', 'un', 'deux', 'trois'];
-
+  var OBJ = [{ k: 'apple', o: O.pomme }, { k: 'star', o: O.etoile }, { k: 'heart', o: O.coeur }, { k: 'flower', o: O.fleur }, { k: 'ball', o: O.balle }];
   function butter(col) { return Art.svg('0 0 64 64', Art.items.butterfly.replace(/#ff8fb8/g, col).replace(/#ffb98a/g, col)); }
   function shapeSvg(k, c) { return Art.svg('0 0 100 100', SHAPES[k](c)); }
   var CARD = {
@@ -57,6 +56,9 @@
         C.setBack(menu);
         var wins = 0, level = 0, token = 0, mistakes = 0;
         stage.innerHTML = '<div class="pips">' + [0, 1, 2, 3, 4].map(function () { return '<i></i>'; }).join('') + '</div><div class="lg"></div>';
+        var fl = C.el('<div class="donefloat"></div>');
+        fl.appendChild(C.doneBtn('J\u2019ai fini !', function () { C.endScreen({ tile: 'learn', svg: CARD[game], say: 'Bravo ' + C.NAME + ' !', again: function () { run(game); } }); }));
+        stage.appendChild(fl);
         var lg = C.$('.lg', stage), pips = C.$$('.pips i', stage);
         function win() {
           wins++; pips.forEach(function (p, i) { if (i < wins) p.classList.add('on'); });
@@ -66,19 +68,19 @@
         }
         function finish() {
           var gift = C.rewards.grant();
-          C.celebrate({ svg: CARD[game], say: 'Bravo ' + C.NAME + ' ! Tu as tout réussi !', gift: gift, buttons: [{ icon: Art.ui.again, cls: 'green', fn: function () { run(game); } }, { icon: Art.ui.home, cls: 'pink', fn: function () { C.home(); } }] });
+          C.celebrate({ svg: CARD[game], say: 'Bravo ' + C.NAME + ' ! Tu as tout réussi !', gift: gift, cards: C.endCards('learn', function () { run(game); }) });
         }
         function round() { mistakes = 0; token++; level++; lg.innerHTML = ''; G[game](lg, win); }
         var G = {
           colors: function (box, win) {
             var cs = C.shuffle(COLORS).slice(0, 3 + (level > 2 ? 1 : 0)), target = C.rnd(cs);
-            C.say(C.NAME + ', tu peux toucher le papillon ' + target.n + ' ?');
+            C.say(Fr.toucheCouleur(O.papillon, target.n));
             cs.forEach(function (c, i) {
               var b = C.el('<button class="bf" style="left:' + (18 + (i % 2) * 44 + Math.random() * 6) + '%;top:' + (12 + Math.floor(i / 2) * 38 + Math.random() * 6) + '%;animation-delay:' + (-i * 1.3) + 's">' + butter(c.c) + '</button>'); box.appendChild(b);
               b.onclick = function () {
                 if (b.classList.contains('got')) return;
                 if (c === target) { b.classList.add('got'); C.sfx.sparkle(); C.fx.burstEl(b, { n: 16 }); C.$$('.bf', box).forEach(function (o) { if (o !== b) o.classList.add('fade'); }); win(); }
-                else { mistakes++; C.sfx.oops(); C.wiggle(b); C.say('Ça, c’est le ' + c.n + '. Cherche le ' + target.n + ' !'); if (mistakes >= 2) { var t = C.$$('.bf', box)[cs.indexOf(target)]; t.classList.add('glow'); } }
+                else { mistakes++; C.sfx.oops(); C.wiggle(b); C.say('Ça, c’est le papillon ' + c.n + '. ' + Fr.cherche(O.papillon, target.n)); if (mistakes >= 2) { var t = C.$$('.bf', box)[cs.indexOf(target)]; t.classList.add('glow'); } }
               };
             });
           },
@@ -108,7 +110,7 @@
           },
           count: function (box, win) {
             var o = C.rnd(OBJ), N = C.rint(1, 3), sel = 0, done = false;
-            C.say('Touche ' + NUMS[N] + ' ' + (N > 1 ? o.p : o.n) + ' !');
+            C.say(Fr.toucheN(N, o.o));
             box.innerHTML = '<div class="cnum"></div>';
             var pos = [[18, 20], [56, 14], [34, 52]];
             for (var i = 0; i < 3; i++) {
@@ -117,29 +119,29 @@
                 b.onclick = function () {
                   if (done) return;
                   if (b.classList.contains('sel')) { b.classList.remove('sel'); sel--; C.C = 0; C.$('.cn', b).textContent = ''; C.sfx.pop(); return; }
-                  if (sel >= N) { C.sfx.oops(); C.wiggle(b); C.say('Juste ' + NUMS[N] + ' !'); return; }
-                  sel++; b.classList.add('sel'); C.$('.cn', b).textContent = sel; C.say(NUMS[sel] + ' !'); C.sfx.tap(sel); C.bounce(b);
-                  if (sel === N) { done = true; var nn = C.$('.cnum', box); nn.innerHTML = '<b>' + N + '</b><span>' + Array(N + 1).join('●') + '</span>'; nn.classList.add('show'); later(function () { C.say('Oui ! ' + NUMS[N] + ' ' + (N > 1 ? o.p : o.n) + ' !'); win(); }, 500); }
+                  if (sel >= N) { C.sfx.oops(); C.wiggle(b); C.say('Juste ' + Fr.NUM[N] + ' !'); return; }
+                  sel++; b.classList.add('sel'); C.$('.cn', b).textContent = sel; C.say(Fr.NUM[sel] + ' !'); C.sfx.tap(sel); C.bounce(b);
+                  if (sel === N) { done = true; var nn = C.$('.cnum', box); nn.innerHTML = '<b>' + N + '</b><span>' + Array(N + 1).join('●') + '</span>'; nn.classList.add('show'); later(function () { C.say(Fr.oui(N, o.o)); win(); }, 500); }
                 };
               })(b);
             }
           },
           animals: function (box, win) {
             var as = C.shuffle(ANIMALS).slice(0, 3), t = C.rnd(as), ok = false;
-            C.say('Où est ' + t.name + ' ?');
+            C.say(Fr.ou(t.o));
             box.innerHTML = '<div class="arow"></div>'; var row = C.$('.arow', box);
             as.forEach(function (a) {
               var b = C.el('<button class="an">' + P.render(a.type, 0, {}) + '</button>'); row.appendChild(b);
               b.onclick = function () {
                 if (ok) return; C.sfx.animal(a.snd); C.bounce(b, 1.2); P.setMood(C.$('svg', b), 'open'); later(function () { P.setMood(C.$('svg', b), 'smile'); }, 900);
                 if (a === t) { ok = true; C.say(a.say); C.fx.burstEl(b, { n: 14 }); later(win, 900); }
-                else { C.say('C’est ' + a.name + ' ! Cherche ' + t.name + '.'); mistakes++; if (mistakes >= 2) C.$$('.an', row)[as.indexOf(t)].classList.add('glow'); }
+                else { C.say(Fr.cest(a.o) + ' ' + Fr.cherche(t.o)); mistakes++; if (mistakes >= 2) C.$$('.an', row)[as.indexOf(t)].classList.add('glow'); }
               };
             });
           },
           size: function (box, win) {
             var o = C.rnd(OBJ), big = Math.random() < 0.5, ok = false;
-            C.say('Touche ' + (big ? 'le gros' : 'le petit') + ' !');
+            C.say(Fr.toucheTaille(o.o, big ? 'gros' : 'petit'));
             box.innerHTML = '<div class="szrow"></div>'; var row = C.$('.szrow', box);
             var pair = C.shuffle([true, false]);
             pair.forEach(function (isBig) {

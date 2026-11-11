@@ -46,8 +46,10 @@ const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fails++
   const px = await p.evaluate(() => { const c = document.querySelector('.cv-color'), x = c.getContext('2d'); const a = x.getImageData(300, 220, 1, 1).data, o = x.getImageData(20, 20, 1, 1).data; return { inside: Array.from(a), outside: Array.from(o) }; });
   ok(px.inside[3] === 255 && px.inside[0] > 200, 'coloriage : la zone touchée est remplie ' + px.inside);
   ok(px.outside[3] === 0, 'coloriage : le remplissage ne déborde pas (fond intact) ' + px.outside);
-  await p.evaluate(() => document.querySelector('[data-do=save]').click()); await p.waitForTimeout(1200);
-  await p.evaluate(() => document.querySelector('.celebrate .btn.pink').click()); await p.waitForTimeout(800);
+  await p.evaluate(() => document.querySelector('.donebtn').click()); await p.waitForTimeout(1200);
+  ok(await p.evaluate(() => !!document.querySelector('.endcard.green') && !!document.querySelector('.endcard.pink')), 'fin : deux grandes cartes ENCORE / MON CHÂTEAU');
+  await p.evaluate(() => document.querySelector('.endcard.pink').click()); await p.waitForTimeout(900);
+  ok(await p.evaluate(() => C.current() === 'home'), 'fin : « Mon château » ramène à l\u2019accueil');
   await p.evaluate(() => document.querySelector('.t-draw').click()); await p.waitForTimeout(800);
   await p.evaluate(() => document.querySelector('.hc2').click()); await p.waitForTimeout(600);
   const f = await p.evaluate(() => { const r = document.querySelector('.cv-wrap').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
@@ -56,7 +58,7 @@ const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fails++
   await p.mouse.up();
   const drawn = await p.evaluate(() => { const c = document.querySelector('.cv-free'), x = c.getContext('2d'); const d = x.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++; return n; });
   ok(drawn > 500, 'dessin libre : le trait suit le doigt (' + drawn + ' pixels)');
-  await p.evaluate(() => document.querySelector('[data-do=save]').click()); await p.waitForTimeout(1200);
+  await p.evaluate(() => { const b = document.querySelector('.donebtn'); b.click(); b.click(); b.click(); }); await p.waitForTimeout(1500);
   await p.reload(); await p.waitForTimeout(600);
   const saved = await p.evaluate(() => C.db.all().then((l) => l.map((x) => x.kind).sort().join(',')));
   ok(saved === 'color,draw', 'sauvegarde : les 2 créations sont retrouvées après rechargement (' + saved + ')');

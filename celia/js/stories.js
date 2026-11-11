@@ -39,7 +39,7 @@
     { id: 'licorne', title: 'Célia et la licorne perdue', cover: function () { return P.render('licorne', 0, {}); }, col: ['#f1e5ff', '#cdb0ff'], scenes: [
       { bg: 'meadow', say: C.NAME + ' rencontre une licorne. Elle cherche sa maison !', actors: [G(26, 66, 34), Pt('licorne', 72, 70, 44)], act: { t: 'tap', target: 1, say: 'Dis bonjour à la licorne !', ok: 'Bonjour !' } },
       { bg: 'meadow', say: 'Quel chemin ? Suis l’arc-en-ciel !', actors: [G(20, 70, 26), Pt('licorne', 42, 72, 28)], act: { t: 'choose', opts: [It('cloud', 66, 48, 22), It('rainbow', 82, 74, 26), It('mushroom', 70, 90, 18)], good: 1, hint: 'Cherche l’arc-en-ciel !', ok: 'Oui, par là !' } },
-      { bg: 'forest', say: 'Il fait sombre. Trouve trois étoiles pour éclairer !', actors: [G(22, 72, 28), Pt('licorne', 50, 74, 30)], act: { t: 'collect', items: [It('star', 20, 28, 16), It('star', 62, 20, 16), It('star', 82, 46, 16)], ok: 'Bravo, ça brille !' } },
+      { bg: 'forest', say: 'Il fait sombre. Touche les trois étoiles !', actors: [G(22, 72, 28), Pt('licorne', 50, 74, 30)], act: { t: 'collect', items: [It('star', 20, 28, 16), It('star', 62, 20, 16), It('star', 82, 46, 16)], ok: 'Bravo, ça brille !' } },
       { bg: 'night', say: 'Où est la clé de la maison ? La clé dorée !', actors: [G(22, 72, 28), Pt('licorne', 50, 74, 30)], act: { t: 'choose', opts: [It('ball', 20, 44, 18), It('key', 50, 36, 18), It('cookie', 80, 44, 18)], good: 1, hint: 'Cherche la petite clé dorée !', ok: 'Tu as la clé !' } },
       { bg: 'meadow', say: 'Voici la maison de la licorne ! Touche le château !', actors: [{ k: 'castle', x: 52, y: 44, w: 80 }, G(18, 82, 26), Pt('licorne', 80, 84, 26)], act: { t: 'tap', target: 0, ok: 'Hourra !' } },
       { bg: 'meadow', say: 'La licorne est chez elle. Merci ' + C.NAME + ' ! Fin.', actors: [G(30, 70, 34), Pt('licorne', 70, 72, 40)], act: { t: 'end' } }
@@ -70,6 +70,7 @@
     ] }
   ];
 
+  C.STORIES = STORIES;
   C.register('stories', {
     enter: function (el) {
       var root = el, live = true, timers = [];
@@ -154,7 +155,7 @@
         function finish() {
           C.setBack(lib);
           var gift = C.rewards.grant();
-          C.celebrate({ svg: story.cover(), say: 'Bravo ' + C.NAME + ' ! C’est la fin de l’histoire !', gift: gift, buttons: [{ icon: Art.ui.again, cls: 'green', fn: function () { idx = 0; scene(); } }, { icon: Art.ui.gallery.replace(/#fff/g, '#fff'), cls: 'blue', fn: lib }, { icon: Art.ui.home, cls: 'pink', fn: function () { C.home(); } }] });
+          C.celebrate({ svg: story.cover(), say: 'Bravo ' + C.NAME + ' ! C’est la fin de l’histoire !', gift: gift, cards: C.endCards('story', function () { idx = 0; scene(); }) });
         }
         scene();
       }

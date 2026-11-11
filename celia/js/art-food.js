@@ -5,11 +5,11 @@
   var F = Art.food = {};
 
   F.recipes = [
-    { id: 'birthday', name: 'Gâteau d’anniversaire', say: 'Un gâteau d’anniversaire !', batter: '#ffe9b0', ings: ['oeuf', 'farine', 'lait', 'sucre'], oven: 'four' },
-    { id: 'cupcake', name: 'Cupcake', say: 'Un cupcake !', batter: '#fff0c8', ings: ['oeuf', 'farine', 'beurre', 'sucre'], oven: 'four' },
-    { id: 'cookie', name: 'Biscuit', say: 'Un gros biscuit !', batter: '#f0cf9a', ings: ['farine', 'beurre', 'chocolat', 'oeuf'], oven: 'four' },
-    { id: 'glace', name: 'Glace', say: 'Une glace !', batter: '#ffd9ec', ings: ['lait', 'creme', 'fraise', 'sucre'], oven: 'glace' },
-    { id: 'licorne', name: 'Gâteau licorne', say: 'Un gâteau licorne !', batter: '#e8d4ff', ings: ['oeuf', 'farine', 'lait', 'magie'], oven: 'four' }
+    { id: 'birthday', name: 'Gâteau d’anniversaire', say: 'Miam miam ! On va préparer un délicieux gâteau !', batter: '#ffe9b0', ings: ['oeuf', 'farine', 'lait', 'sucre'], oven: 'four' },
+    { id: 'cupcake', name: 'Cupcake', say: 'Miam miam ! On va préparer un délicieux cupcake !', batter: '#fff0c8', ings: ['oeuf', 'farine', 'beurre', 'sucre'], oven: 'four' },
+    { id: 'cookie', name: 'Biscuit', say: 'Miam miam ! On va préparer un délicieux biscuit !', batter: '#f0cf9a', ings: ['farine', 'beurre', 'chocolat', 'oeuf'], oven: 'four' },
+    { id: 'glace', name: 'Glace', say: 'Miam miam ! On va préparer une délicieuse glace !', batter: '#ffd9ec', ings: ['lait', 'creme', 'fraise', 'sucre'], oven: 'glace' },
+    { id: 'licorne', name: 'Gâteau licorne', say: 'Miam miam ! On va préparer un délicieux gâteau licorne !', batter: '#e8d4ff', ings: ['oeuf', 'farine', 'lait', 'magie'], oven: 'four' }
   ];
   F.ingNames = { oeuf: 'un œuf', farine: 'de la farine', lait: 'du lait', sucre: 'du sucre', beurre: 'du beurre', chocolat: 'du chocolat', creme: 'de la crème', fraise: 'des fraises', magie: 'de la poudre magique' };
 

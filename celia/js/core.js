@@ -212,26 +212,6 @@
     }
   };
 
-  /* musique douce (boîte à musique, « Au clair de la lune »), uniquement sur l'accueil */
-  var MELODY = [[261.6, 1], [261.6, 1], [261.6, 1], [293.7, 1], [329.6, 2], [293.7, 2], [261.6, 1], [329.6, 1], [293.7, 1], [293.7, 1], [261.6, 4]];
-  var musicTimer = null, musicOn = false;
-  C.music = {
-    start: function () {
-      if (musicOn) return; musicOn = true;
-      var i = 0;
-      (function step() {
-        if (!musicOn) return;
-        if (C.settings.sound && C.settings.music && A.ctx && A.ctx.state === 'running') {
-          var n = MELODY[i % MELODY.length];
-          tone(n[0], 1.1, { vol: 0.045 }); tone(n[0] * 2, 0.5, { vol: 0.02 }); tone(n[0] * 3, 0.25, { vol: 0.008 });
-          i++;
-          musicTimer = setTimeout(step, n[1] * 640 + (i % MELODY.length === 0 ? 2400 : 0));
-        } else { musicTimer = setTimeout(step, 1200); }
-      })();
-    },
-    stop: function () { musicOn = false; clearTimeout(musicTimer); }
-  };
-
   /* ---------- voix (synthèse du navigateur, avec repli : bulle + petits sons) ---------- */
   var V = C.voice = { voice: null, ok: false };
   function pickVoice() {
@@ -272,30 +252,47 @@
     var n = Math.min(24, Math.max(4, Math.round(text.length / 2.2)));
     for (var i = 0; i < n; i++) tone(480 + Math.random() * 420, 0.07, { type: 'triangle', vol: 0.09, at: i * 0.095 });
   }
-  /* Dire une phrase. Toujours courte. text = phrase ; o.bubble=false pour ne pas afficher la bulle. */
-  C.say = function (text, o) {
-    o = o || {};
-    if (o.bubble !== false) showBubble(text);
-    if (!C.settings.sound || !C.settings.voice) return;
+  /* Parole de la conteuse. Une seule voix à la fois : une nouvelle phrase remplace la précédente (jamais de superposition).
+     Ordre : fichier vocal préenregistré (si installé) → voix française du navigateur → petits sons + bulle.
+     La musique d'ambiance baisse doucement pendant la phrase puis remonte. */
+  var sayTok = 0, duckTimer = null;
+  function duckOn() { try { C.music && C.music.duck(true); } catch (e) { } }
+  function duckOff(tok) { if (tok !== sayTok) return; clearTimeout(duckTimer); try { C.music && C.music.duck(false); } catch (e) { } }
+  /* lecture par le navigateur ; done() est appelé à la fin de la phrase */
+  C._speak = function (text, done) {
+    var ms = Math.max(1800, text.length * 85 + 700);
     try {
       if (window.speechSynthesis && V.ok && window.SpeechSynthesisUtterance) {
         speechSynthesis.cancel();
-        /* phrases courtes, lues doucement, avec une petite respiration entre les morceaux */
-        var parts = text.match(/[^.!?…]+[.!?…]*/g) || [text];
+        var parts = (text.match(/[^.!?…]+[.!?…]*/g) || [text]).map(function (p) { return p.trim(); }).filter(Boolean);
         C._utt = [];
-        parts.forEach(function (part) {
-          part = part.trim(); if (!part) return;
+        parts.forEach(function (part, i) {
           var u = new SpeechSynthesisUtterance(part);
           u.lang = V.voice.lang; u.voice = V.voice;
           u.rate = V.premium ? 0.9 : 0.84; u.pitch = V.premium ? 1.04 : 1.1; u.volume = 1;
+          if (i === parts.length - 1) { u.onend = done; u.onerror = done; }
           C._utt.push(u); speechSynthesis.speak(u);
         });
+        duckTimer = setTimeout(done, ms + 2500);
         return;
       }
     } catch (e) { }
-    babble(text);
+    babble(text); duckTimer = setTimeout(done, ms);
   };
-  C.say.stop = function () { try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } };
+  /* text = phrase ; o.bubble=false : pas de bulle ; o.keep=false : ne pas mémoriser pour « réécouter » */
+  C.say = function (text, o) {
+    o = o || {};
+    if (o.keep !== false) C.lastSay = text;
+    if (o.bubble !== false) showBubble(text);
+    var tok = ++sayTok;
+    try { if (C.stopVoiceFile) C.stopVoiceFile(); } catch (e) { }
+    if (!C.settings.sound || !C.settings.voice) { duckOff(tok); return; }
+    duckOn();
+    var done = function () { duckOff(tok); };
+    if (C.playVoiceFile && C.playVoiceFile(text, done, function () { C._speak(text, done); })) return;
+    C._speak(text, done);
+  };
+  C.say.stop = function () { sayTok++; try { if (window.speechSynthesis) speechSynthesis.cancel(); if (C.stopVoiceFile) C.stopVoiceFile(); C.music && C.music.duck(false); } catch (e) { } };
   C.sayRnd = function (a, o) { C.say(C.rnd(a), o); };
 
   /* déverrouillage du son à la première interaction + pause quand l'appli est cachée */
@@ -428,20 +425,33 @@
       C.$('[data-n]', m).onclick = function () { C.sfx.pop(); m.close(); res(false); };
     });
   };
-  /* célébration d'une création terminée */
+  /* fin d'une création / d'une activité.
+     o.cards = deux grandes cartes illustrées {art, label, cls, fn} (convention unique dans tout le jeu : ENCORE / MON CHÂTEAU).
+     o.buttons = anciens petits boutons ronds (encore utilisés pour l'éclosion d'un œuf). */
   C.celebrate = function (o) {
     var gift = o.gift;
     var html = '<div class="rays"></div>' +
-      (o.img ? '<div class="polaroid"><img alt="" src="' + o.img + '"></div>' : (o.svg ? '<div class="polaroid svg">' + o.svg + '</div>' : '')) +
+      (o.img ? '<div class="polaroid small"><img alt="" src="' + o.img + '"></div>' : (o.svg ? '<div class="polaroid svg small">' + o.svg + '</div>' : '')) +
       (gift ? '<div class="gift"><div class="giftart">' + gift.art + '</div><div class="giftbadge">' + Art.ui.gift + '</div></div>' : '') +
-      '<div class="row"></div>';
+      (o.cards ? '<div class="endcards"></div>' : '<div class="row"></div>');
     var m = C.modal(html, 'celebrate');
-    var row = C.$('.row', m);
-    (o.buttons || []).forEach(function (b) {
-      var bt = C.el('<button class="btn big ' + (b.cls || 'pink') + '" aria-label="' + (b.label || '') + '">' + b.icon + '</button>');
-      bt.onclick = function () { C.sfx.pop(); m.close(); b.fn && b.fn(); };
-      row.appendChild(bt);
-    });
+    var shut = false;
+    function go(fn) { if (shut) return; shut = true; C.sfx.pop(); m.close(); fn && setTimeout(fn, 120); }  /* un seul appui compte, même si elle tape plusieurs fois */
+    if (o.cards) {
+      var box = C.$('.endcards', m);
+      o.cards.forEach(function (c, i) {
+        var b = C.el('<button class="endcard ' + (c.cls || 'pink') + '" style="animation-delay:' + (0.5 + i * 0.15) + 's" aria-label="' + (c.label || '') + '"><span class="ecart">' + c.art + '</span><span class="eclab">' + (c.label || '') + '</span></button>');
+        b.onclick = function () { go(c.fn); };
+        box.appendChild(b);
+      });
+    } else {
+      var row = C.$('.row', m);
+      (o.buttons || []).forEach(function (b) {
+        var bt = C.el('<button class="btn big ' + (b.cls || 'pink') + '" aria-label="' + (b.label || '') + '">' + b.icon + '</button>');
+        bt.onclick = function () { go(b.fn); };
+        row.appendChild(bt);
+      });
+    }
     C.sfx.yay();
     setTimeout(function () { C.fx.confetti(45); }, 150);
     if (o.say) setTimeout(function () { C.say(o.say); }, 500);
@@ -480,6 +490,8 @@
     going = true;
     C.say.stop();
     var host = C.$('#screens'), old = cur, oldMod = screens[curName];
+    /* la création en cours est sauvegardée automatiquement quand on quitte l'activité (aucune confirmation) */
+    try { if (old && old._autosave) old._autosave(); } catch (e) { }
     var sec = document.createElement('section');
     sec.className = 'screen enter ' + name;
     sec.dataset.screen = name;

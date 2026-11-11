@@ -190,10 +190,10 @@
       /* ---------- 5. décoration libre ---------- */
       function decorate() {
         C.setBack(null);
-        var icing = null, placed = [], cur = 'fraise', tab = 'glacage', done = false;
+        var icing = null, placed = [], cur = 'fraise', tab = 'glacage', done = false, saved = false, touched = function () { };
         var plateIcon = { birthday: 'ron', cupcake: 'r', cookie: 'r', glace: 'r', licorne: 'r' };
         stage.innerHTML = '<div class="cakeh"></div><div class="tray ctray"><div class="tabs"></div><div class="items scrollable"></div></div>' +
-          '<div class="actbar"><button class="btn green" data-do="done" aria-label="terminé">' + Art.ui.check + '</button><button class="btn blue small" data-do="undo" aria-label="annuler">' + Art.ui.undo + '</button></div>';
+          '<div class="actbar"><button class="btn blue small" data-do="undo" aria-label="annuler">' + Art.ui.undo + '</button></div>';
         stage.classList.add('decor');
         var host = C.$('.cakeh', stage), tabs = C.$('.tabs', stage), items = C.$('.items', stage);
         function renderCake(pop) {
@@ -223,7 +223,7 @@
           if (id === 'glacage') {
             F.icings.forEach(function (c) {
               var b = C.el('<button class="it round" style="--c:' + c.c + '" aria-label="glaçage"></button>');
-              b.onclick = function () { icing = c.c; renderCake(true); C.sfx.squish(); C.sfx.sparkle(); var r = host.getBoundingClientRect(); C.fx.burst(r.left + r.width / 2, r.top + r.height * 0.45, { n: 16, dist: 120, colors: [c.c, '#fff'] }); C.select(items, '.it', b); };
+              b.onclick = function () { icing = c.c; saved = false; touched(); renderCake(true); C.sfx.squish(); C.sfx.sparkle(); var r = host.getBoundingClientRect(); C.fx.burst(r.left + r.width / 2, r.top + r.height * 0.45, { n: 16, dist: 120, colors: [c.c, '#fff'] }); C.select(items, '.it', b); };
               items.appendChild(b);
             });
             C.say('Choisis un glaçage !');
@@ -250,21 +250,29 @@
           if (p.x < -10 || p.x > 310 || p.y < -10 || p.y > 310) return;
           if (placed.length >= 70) placed.shift();
           placed.push({ n: cur, x: p.x, y: p.y, r: cur === 'bougie' ? 0 : C.rint(-25, 25), s: cur === 'vermicelles' ? 1.4 : 1, fresh: true });
-          renderTops(); C.sfx.pop(); C.sfx.tap(C.rint(0, 8));
+          saved = false; touched(); renderTops(); C.sfx.pop(); C.sfx.tap(C.rint(0, 8));
           C.fx.burst(e.clientX, e.clientY, { n: 7, dist: 60, size: 16 });
         });
         C.$('[data-do=undo]', stage).onclick = function () { if (placed.pop()) { renderTops(); C.sfx.boing(); } else C.sfx.oops(); };
-        C.$('[data-do=done]', stage).onclick = function () {
+        var finishCake = function () {
           if (done) return; done = true;
           var svg = C.$('svg', host);
           C.sfx.chime();
           C.rasterSvg(svg, 560, 560, function (cx, w, h) { var g = cx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#fff0f8'); g.addColorStop(1, '#ffe0f0'); cx.fillStyle = g; cx.fillRect(0, 0, w, h); })
             .then(function (url) {
               return C.saveCreation('cake', url).then(function () {
-                C.finish({ kind: 'cake', img: url, say: 'Miam ! Il est trop beau ton gâteau, ' + C.NAME + ' !', again: chooseRecipe });
+                saved = true; C.finish({ kind: 'cake', tile: 'cook', img: url, say: 'Miam ! Il est trop beau ton gâteau, ' + C.NAME + ' !', again: chooseRecipe });
                 stage.classList.remove('decor'); chooseRecipe();
               });
             }).catch(function () { done = false; C.say('Oups, réessaie !'); });
+        };
+        var doneB = C.doneBar(C.$('.ctray', stage), 'Mon gâteau est prêt !', finishCake);
+        touched = C.armDoneHint('cake', doneB);
+        /* sauvegarde automatique si elle quitte sans avoir appuyé sur « J'ai fini » */
+        root._autosave = function () {
+          if (done || saved || !(icing || placed.length)) return; saved = true;
+          var svg = C.$('svg', host); if (!svg) return;
+          C.rasterSvg(svg, 560, 560, function (cx, w, h) { cx.fillStyle = '#ffe9f4'; cx.fillRect(0, 0, w, h); }).then(function (url) { return C.saveCreation('cake', url); }).catch(function () { });
         };
       }
 
