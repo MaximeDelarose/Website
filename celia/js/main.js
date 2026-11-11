@@ -64,12 +64,27 @@
     C.$('[data-ok]', m).onclick = function () { C.sfx.pop(); m.close(); };
   }
 
-  /* hors ligne : service worker limité au dossier de l'appli */
+  /* hors ligne + mise à jour automatique : le service worker est limité au dossier du jeu.
+     Quand une nouvelle version est publiée, l'appli installée la récupère toute seule et se recharge à un moment sans risque
+     (sur l'accueil, ou au prochain retour à l'accueil) : jamais au milieu d'un dessin. */
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    var hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController) { hadController = true; return; }           /* première installation : rien à recharger */
+      try { var last = +sessionStorage.getItem('celia.reloaded') || 0; if (Date.now() - last < 20000) return; } catch (e) { }   /* jamais de boucle */
+      C.pendingReload = true;
+      if (C.current() === 'home' && !C.$('.modal', C.$('#overlay'))) C.applyUpdate();
+    });
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js', { scope: './' }).catch(function () { });
+      navigator.serviceWorker.register('sw.js', { scope: './', updateViaCache: 'none' }).then(function (reg) {
+        var check = function () { try { reg.update().catch(function () { }); } catch (e) { } };
+        check();
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });   /* à chaque retour dans l'appli */
+        setInterval(check, 30 * 60 * 1000);
+      }).catch(function () { });
     });
   }
+  C.applyUpdate = function () { try { sessionStorage.setItem('celia.reloaded', String(Date.now())); } catch (e) { } C.pendingReload = false; location.reload(); };
 
   C.go('home');
 })();

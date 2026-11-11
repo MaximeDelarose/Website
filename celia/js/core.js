@@ -505,6 +505,7 @@
     if (C.hud && C.hud.update) C.hud.update();
     if (from) C.fx.burst(from.x, from.y, { n: 14, dist: 120 });
     C.sfx.whoosh();
+    if (name === 'home' && C.pendingReload && C.applyUpdate) setTimeout(function () { if (C.current() === 'home' && C.pendingReload) C.applyUpdate(); }, 900);   /* mise à jour en attente : on l'applique en revenant au château */
     requestAnimationFrame(function () { requestAnimationFrame(function () { sec.classList.remove('enter'); }); });
     setTimeout(function () {
       if (old) { try { oldMod && oldMod.leave && oldMod.leave(old); } catch (e) { console.error(e); } old.remove(); }

@@ -1,7 +1,7 @@
 /* Service worker du Monde Magique de Célia.
    Périmètre = le dossier où il se trouve (/celia/) : il ne touche jamais RADIA, À DEUX ni le reste du site.
    Cache dédié « celia-* ». Stratégie : on sert le cache tout de suite (hors ligne possible) et on le met à jour en arrière-plan. */
-const VERSION = 'celia-v4-2026-11';
+const VERSION = 'celia-v5-2026-11';
 const AUDIO = 'celia-audio-v1';
 const MUSIC = ['audio/musique-1.mp3', 'audio/musique-2.mp3', 'audio/musique-3.mp3', 'audio/musique-4.mp3'];
 const FILES = [
@@ -38,8 +38,11 @@ self.addEventListener('fetch', (e) => {
     }));
     return;
   }
-  e.respondWith(caches.open(VERSION).then((cache) => cache.match(req, { ignoreSearch: true }).then((hit) => {
-    const net = fetch(req).then((r) => { if (r && r.ok) cache.put(req, r.clone()); return r; }).catch(() => hit);
-    return hit || net.then((r) => r || (req.mode === 'navigate' ? cache.match('index.html') : Response.error()));
-  })));
+  /* Fichiers du jeu : RÉSEAU D'ABORD (toujours la dernière version quand l'iPhone est en ligne), cache en secours (hors ligne ou réseau lent).
+     C'est ce qui permet la mise à jour automatique de l'appli installée sur l'écran d'accueil, sans rien changer à la main. */
+  e.respondWith(caches.open(VERSION).then((cache) => {
+    const fresh = fetch(req, { cache: 'no-cache' }).then((r) => { if (r && r.ok) cache.put(req, r.clone()); return r; });
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('lent')), 4000));
+    return Promise.race([fresh, timeout]).catch(() => cache.match(req, { ignoreSearch: true }).then((hit) => hit || (req.mode === 'navigate' ? cache.match('index.html') : null) || fresh.catch(() => Response.error())));
+  }));
 });
