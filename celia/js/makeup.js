@@ -20,11 +20,11 @@
   var TOOLS = ['lips', 'blush', 'shadow', 'stamps', 'hair', 'crown'];
   var LOOKS = [
     { name: 'chaton', lips: '#ff6f91', blush: '#ffb3d1', shadow: null, crown: 'c5', extras: '<g stroke="' + INK + '" stroke-width="3.500" stroke-linecap="round" fill="none"><path d="M118 238l-62 6M118 250l-62 18M182 238l62 6M182 250l62 18"/></g><path d="M141 224l9 9 9-9z" fill="#ff4d7d" ' + ST(2.500) + '/>', stamps: [] },
-    { name: 'papillon', lips: '#ff9ac8', blush: '#ffd0f0', shadow: '#c4a8ff', crown: 'c3', stamps: [{ k: 'butterfly', x: 96, y: 158, s: 1.3 }, { k: 'butterfly', x: 204, y: 158, s: 1.3 }, { k: 'glitter', x: 84, y: 230, s: 1 }, { k: 'glitter', x: 216, y: 230, s: 1 }] },
-    { name: 'etoiles', lips: '#e0213f', blush: '#ffc09a', shadow: '#ffd84d', crown: 'c4', stamps: [{ k: 'star', x: 150, y: 118, s: 1.1 }, { k: 'star', x: 78, y: 218, s: 1 }, { k: 'star', x: 222, y: 218, s: 1 }, { k: 'glitter', x: 150, y: 150, s: .9 }] },
-    { name: 'licorne', lips: '#ff9ac8', blush: '#ffb3d1', shadow: '#8fd3ff', crown: 'c6', stamps: [{ k: 'rainbow', x: 82, y: 222, s: 1.2 }, { k: 'rainbow', x: 218, y: 222, s: 1.2 }, { k: 'glitter', x: 150, y: 110, s: 1 }] },
-    { name: 'clown', lips: '#e0213f', blush: '#ff8a8a', shadow: '#6ec6ff', crown: 'c5', extras: '<circle cx="150" cy="224" r="18" fill="#ff3d5d" ' + ST(3) + '/><circle cx="144" cy="218" r="5" fill="#fff" opacity=".7"/>', stamps: [{ k: 'star', x: 82, y: 210, s: .9 }, { k: 'star', x: 218, y: 210, s: .9 }, { k: 'heart', x: 150, y: 120, s: .8 }] },
-    { name: 'fleurs', lips: '#ff9ac8', blush: '#ffc0de', shadow: '#8de8b5', crown: 'c3', stamps: [{ k: 'flower', x: 84, y: 222, s: 1.1 }, { k: 'flower', x: 216, y: 222, s: 1.1 }, { k: 'flower', x: 150, y: 124, s: .9 }] }
+    { name: 'papillon', lips: '#ff9ac8', blush: '#ffd0f0', shadow: '#c4a8ff', crown: 'c3', stamps: [{ k: 'butterfly', x: 100, y: 124, s: 1.1 }, { k: 'butterfly', x: 200, y: 124, s: 1.1 }, { k: 'glitter', x: 84, y: 244, s: 1 }, { k: 'glitter', x: 216, y: 244, s: 1 }] },
+    { name: 'etoiles', lips: '#e0213f', blush: '#ffc09a', shadow: '#ffd84d', crown: 'c4', stamps: [{ k: 'star', x: 150, y: 118, s: 1.1 }, { k: 'star', x: 78, y: 244, s: 1 }, { k: 'star', x: 222, y: 244, s: 1 }, { k: 'glitter', x: 150, y: 150, s: .9 }] },
+    { name: 'licorne', lips: '#ff9ac8', blush: '#ffb3d1', shadow: '#8fd3ff', crown: 'c6', stamps: [{ k: 'rainbow', x: 82, y: 244, s: 1.2 }, { k: 'rainbow', x: 218, y: 244, s: 1.2 }, { k: 'glitter', x: 150, y: 110, s: 1 }] },
+    { name: 'clown', lips: '#e0213f', blush: '#ff8a8a', shadow: '#6ec6ff', crown: 'c5', extras: '<circle cx="150" cy="224" r="18" fill="#ff3d5d" ' + ST(3) + '/><circle cx="144" cy="218" r="5" fill="#fff" opacity=".7"/>', stamps: [{ k: 'star', x: 82, y: 244, s: .9 }, { k: 'star', x: 218, y: 244, s: .9 }, { k: 'heart', x: 150, y: 120, s: .8 }] },
+    { name: 'fleurs', lips: '#ff9ac8', blush: '#ffc0de', shadow: '#8de8b5', crown: 'c3', stamps: [{ k: 'flower', x: 84, y: 244, s: 1.1 }, { k: 'flower', x: 216, y: 244, s: 1.1 }, { k: 'flower', x: 150, y: 124, s: .9 }] }
   ];
 
   C.register('makeup', {
@@ -74,8 +74,8 @@
         if (busy) return;
         var p = pt(e);
         if (tool === 'lips') { if (inFace(p, 6) && p.y > 218) { mark(); S.lips = cur.lips; render(); pop(150, 250, cur.lips); } else wrong(150, 250); }
-        else if (tool === 'blush') { if (inFace(p, 6) && p.y > 170 && p.y < 290) { mark(); S.blush = cur.blush; render(); pop(96, 226, cur.blush); pop(204, 226, cur.blush); } else wrong(96, 226); }
-        else if (tool === 'shadow') { if (inFace(p, 6) && p.y > 110 && p.y < 222) { mark(); S.shadow = cur.shadow; render(); pop(112, 168, cur.shadow); pop(188, 168, cur.shadow); } else wrong(112, 168); }
+        else if (tool === 'blush') { if (inFace(p, 6) && p.y > 170 && p.y < 290) { mark(); S.blush = cur.blush; render(); pop(84, 238, cur.blush); pop(216, 238, cur.blush); } else wrong(84, 238); }
+        else if (tool === 'shadow') { if (inFace(p, 6) && p.y > 110 && p.y < 222) { mark(); S.shadow = cur.shadow; render(); pop(104, 174, cur.shadow); pop(196, 174, cur.shadow); } else wrong(104, 174); }
         else if (tool === 'stamps') {
           var q = clampFace(p); addStamp(q, e);
           spray = { id: e.pointerId, last: q, d: 0 };
