@@ -11,7 +11,7 @@ import { FONT_BODY, PAL, mix } from "../../shared/theme.js";
 import { Counter, MuteButton, Overlay, Particles, TouchPad, drawPanel, isTouch, makeText, onBlur, popText } from "../../shared/kit.js";
 import { Mascot, SpritePool, spriteKey } from "../../shared/art.js";
 import { BALLS_PER_GAME, FlipperRules, MAX_MULT, ROULETTE, type FlipperEvent } from "../core/rules.js";
-import { type TableData, CAT, ballMask, buildFlipper, buildStatics } from "./table.js";
+import { type TableData, CAT, ballMask, buildFlipper, buildStatics, insidePolygon } from "./table.js";
 import { paintTable } from "./paint.js";
 
 const TICK_MS = 1000 / 60;
@@ -24,7 +24,7 @@ const LX = 20;
 const RX = 654;
 const COL_W = 140;
 const BEST_KEY = "arcade.flipper.best";
-const SAVE_MS = 10000;
+const SAVE_MS = 15000;
 const ROULETTE_MS = 2200;
 
 type State = "loading" | "ready" | "playing" | "paused" | "over";
@@ -461,6 +461,7 @@ export class FlipperScene extends Phaser.Scene {
         tr.push({ x: b.position.x, y: b.position.y });
         if (tr.length > 14) tr.shift();
       }
+      if (this.level.get(b) === 2 && !insidePolygon(d.deckZone, b.position.x, b.position.y)) this.setLevel(b, 1);
       const speed = Math.hypot(b.velocity.x, b.velocity.y);
       // Garde-fou : une bille immobile dans le couloir est rendue au plongeur.
       if (!this.readyBall && this.balls.length === 1 && !this.roul && b.position.x > d.launch.x - 16 && b.position.y > d.launch.y - 60 && speed < 1) {
@@ -545,7 +546,7 @@ export class FlipperScene extends Phaser.Scene {
       const id = label.slice(7);
       const bumper = d.bumpers.find((x) => x.id === id);
       this.pending.push(() => {
-        if (bumper) this.kick(ball, bumper.x, bumper.y, 14);
+        if (bumper) this.kick(ball, bumper.x, bumper.y, 12);
         this.rules.bumper(id === "d1" ? 150 : 100);
         this.hitFlash.set(id, 14);
         if (bumper) this.fx.burst(bumper.x, bumper.y, { n: 10, color: [PAL.cream, PAL.orangeLight, PAL.berry], speed: 260, life: 420, size: 7, gravity: 300 });
@@ -556,7 +557,7 @@ export class FlipperScene extends Phaser.Scene {
       });
     } else if (label === "slingshot") {
       this.pending.push(() => {
-        this.kick(ball, other.position.x, other.position.y, 15);
+        this.kick(ball, other.position.x, other.position.y, 12);
         this.rules.slingshot();
         this.hitFlash.set(`s${other.position.x > d.width / 2 ? 1 : 0}`, 12);
         this.fx.burst(ball.position.x, ball.position.y, { n: 6, color: [PAL.leaf, PAL.cream], speed: 200, life: 320, size: 6, gravity: 300 });
@@ -607,7 +608,7 @@ export class FlipperScene extends Phaser.Scene {
         if (g.role === "top") {
           if (ball.velocity.y < 0) this.rampDone(ball);
         } else if (g.set === 2) {
-          if (ball.velocity.y < -1) this.setLevel(ball, 2);
+          if (ball.velocity.y < -1 && ball.position.x > 46 && ball.position.x < 78) this.setLevel(ball, 2);
         } else if (g.id === "ramp_out") {
           if (ball.velocity.y > 0) this.setLevel(ball, 1);
         } else {

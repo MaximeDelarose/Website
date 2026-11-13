@@ -849,6 +849,25 @@ function buildFlipper(data, side) {
   });
   return { body, sign };
 }
+function insidePolygon(poly, x, y, margin = 0) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if (yi > y !== yj > y && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  if (inside) return true;
+  if (margin <= 0) return false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [ax, ay] = poly[j];
+    const [bx, by] = poly[i];
+    const dx = bx - ax;
+    const dy = by - ay;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
+    if (Math.hypot(x - (ax + t * dx), y - (ay + t * dy)) <= margin) return true;
+  }
+  return false;
+}
 
 // src/flipper/render/paint.ts
 function strokeLine(g, pts, width, color, alpha = 1, dx = 0, dy = 0) {
@@ -889,14 +908,14 @@ function paintTable(scene, d, tx, ty) {
   strokeLine(walls, [gf, gt], 14, PAL.ink0);
   strokeLine(walls, [gf, gt], 7, PAL.leaf);
   const upper = scene.add.graphics().setDepth(12).setPosition(tx, ty);
-  const deck = [[44, 160], [200, 160], [200, 392], [80, 330], [80, 490], [44, 490]];
+  const deck = d.deck;
   const poly = (dx, dy) => deck.map(([x, y]) => ({ x: x + dx, y: y + dy }));
   upper.fillStyle(PAL.ink0, 0.3);
   upper.fillPoints(poly(8, 12), true);
   upper.fillStyle(7031344, 0.92);
   upper.fillPoints(poly(0, 0), true);
   upper.fillStyle(8215100, 0.9);
-  upper.fillPoints([{ x: 52, y: 168 }, { x: 192, y: 168 }, { x: 192, y: 372 }, { x: 88, y: 322 }, { x: 88, y: 482 }, { x: 52, y: 482 }], true);
+  upper.fillPoints(deck.map(([x, y]) => ({ x: x + (x < 120 ? 8 : -8), y: y + (y < 300 ? 8 : -8) })), true);
   upper.lineStyle(2, 6242345, 0.6);
   for (let y = 190; y < 340; y += 26) {
     upper.beginPath();
@@ -918,7 +937,7 @@ var LX = 20;
 var RX = 654;
 var COL_W = 140;
 var BEST_KEY = "arcade.flipper.best";
-var SAVE_MS = 1e4;
+var SAVE_MS = 15e3;
 var ROULETTE_MS = 2200;
 var FlipperScene = class extends Phaser.Scene {
   constructor() {
@@ -1297,6 +1316,7 @@ var FlipperScene = class extends Phaser.Scene {
         tr.push({ x: b.position.x, y: b.position.y });
         if (tr.length > 14) tr.shift();
       }
+      if (this.level.get(b) === 2 && !insidePolygon(d.deckZone, b.position.x, b.position.y)) this.setLevel(b, 1);
       const speed = Math.hypot(b.velocity.x, b.velocity.y);
       if (!this.readyBall && this.balls.length === 1 && !this.roul && b.position.x > d.launch.x - 16 && b.position.y > d.launch.y - 60 && speed < 1) {
         Matter.Body.setVelocity(b, { x: 0, y: 0 });
@@ -1374,7 +1394,7 @@ var FlipperScene = class extends Phaser.Scene {
       const id = label.slice(7);
       const bumper = d.bumpers.find((x) => x.id === id);
       this.pending.push(() => {
-        if (bumper) this.kick(ball, bumper.x, bumper.y, 14);
+        if (bumper) this.kick(ball, bumper.x, bumper.y, 12);
         this.rules.bumper(id === "d1" ? 150 : 100);
         this.hitFlash.set(id, 14);
         if (bumper) this.fx.burst(bumper.x, bumper.y, { n: 10, color: [PAL.cream, PAL.orangeLight, PAL.berry], speed: 260, life: 420, size: 7, gravity: 300 });
@@ -1385,7 +1405,7 @@ var FlipperScene = class extends Phaser.Scene {
       });
     } else if (label === "slingshot") {
       this.pending.push(() => {
-        this.kick(ball, other.position.x, other.position.y, 15);
+        this.kick(ball, other.position.x, other.position.y, 12);
         this.rules.slingshot();
         this.hitFlash.set(`s${other.position.x > d.width / 2 ? 1 : 0}`, 12);
         this.fx.burst(ball.position.x, ball.position.y, { n: 6, color: [PAL.leaf, PAL.cream], speed: 200, life: 320, size: 6, gravity: 300 });
@@ -1436,7 +1456,7 @@ var FlipperScene = class extends Phaser.Scene {
         if (g.role === "top") {
           if (ball.velocity.y < 0) this.rampDone(ball);
         } else if (g.set === 2) {
-          if (ball.velocity.y < -1) this.setLevel(ball, 2);
+          if (ball.velocity.y < -1 && ball.position.x > 46 && ball.position.x < 78) this.setLevel(ball, 2);
         } else if (g.id === "ramp_out") {
           if (ball.velocity.y > 0) this.setLevel(ball, 1);
         } else {

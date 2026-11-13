@@ -27,6 +27,10 @@ export interface TableData {
   laneGate: { from: [number, number]; to: [number, number]; openBelowY: number };
   flipper: { length: number; thickness: number; restAngle: number; upAngle: number; speed: number; restitution: number; pivots: { left: [number, number]; right: [number, number] } };
   walls: Array<{ level: Level; pts: Array<[number, number]> }>;
+  /** Contour de l'étage (plateau et rampe) : une bille de niveau 2 qui en sort repasse au niveau 1. */
+  deck: Array<[number, number]>;
+  /** Zone (un peu plus large que le contour, jusqu'à l'entrée de la rampe) où une bille peut rester au niveau 2. */
+  deckZone: Array<[number, number]>;
   bumpers: Array<{ id: string; x: number; y: number; r: number; level: 1 | 2 }>;
   targets: Array<{ id: string; x: number; y: number; w: number; h: number }>;
   rollovers: Array<{ id: string; x: number; y: number; w: number; h: number; kind: "letter" | "inlane" | "outlane" }>;
@@ -131,4 +135,26 @@ export function buildFlipper(data: TableData, side: "left" | "right"): { body: M
     collisionFilter: filter(1),
   });
   return { body, sign };
+}
+
+/** Point dans un polygone (tir de rayon), avec une marge de tolérance en pixels. */
+export function insidePolygon(poly: Array<[number, number]>, x: number, y: number, margin = 0): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  if (inside) return true;
+  if (margin <= 0) return false;
+  // tolérance : distance au bord
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [ax, ay] = poly[j];
+    const [bx, by] = poly[i];
+    const dx = bx - ax;
+    const dy = by - ay;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
+    if (Math.hypot(x - (ax + t * dx), y - (ay + t * dy)) <= margin) return true;
+  }
+  return false;
 }

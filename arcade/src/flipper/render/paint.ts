@@ -61,14 +61,14 @@ export function paintTable(scene: Scene, d: TableData, tx: number, ty: number): 
 
   // étage : plateau supérieur et rampe, au-dessus du plateau
   const upper = scene.add.graphics().setDepth(12).setPosition(tx, ty);
-  const deck: Array<[number, number]> = [[44, 160], [200, 160], [200, 392], [80, 330], [80, 490], [44, 490]];
+  const deck = d.deck;
   const poly = (dx: number, dy: number): Array<{ x: number; y: number }> => deck.map(([x, y]) => ({ x: x + dx, y: y + dy }));
   upper.fillStyle(PAL.ink0, 0.3);
   upper.fillPoints(poly(8, 12), true);
   upper.fillStyle(0x6b4a30, 0.92);
   upper.fillPoints(poly(0, 0), true);
   upper.fillStyle(0x7d5a3c, 0.9);
-  upper.fillPoints([{ x: 52, y: 168 }, { x: 192, y: 168 }, { x: 192, y: 372 }, { x: 88, y: 322 }, { x: 88, y: 482 }, { x: 52, y: 482 }], true);
+  upper.fillPoints(deck.map(([x, y]) => ({ x: x + (x < 120 ? 8 : -8), y: y + (y < 300 ? 8 : -8) })), true);
   // veines du bois
   upper.lineStyle(2, 0x5f4029, 0.6);
   for (let y = 190; y < 340; y += 26) {
