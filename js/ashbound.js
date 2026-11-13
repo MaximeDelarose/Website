@@ -45,6 +45,45 @@
         { name: "Écho", desc: "2 notes par salve.", cost: 110, m: { zaps: 1, dmg: 1.2 } },
         { name: "Concert", desc: "Aura +45 %, dégâts accrus.", cost: 180, m: { aura: .45, dmg: 1.6, range: .5 } }] }
   };
+  // T2 / T3 de chaque famille (valeurs provisoires ; sprites de la tourelle T1 du héros, agrandis + pastilles de rang)
+  TOWERS.arcane = { name: "Pylône d'arcs", cost: 110, col: "#c48bff", spr: "tower_faille_", my: 62, sc: 1.12, tag: "Arcs en chaîne",
+    base: { damage: 16, rate: .9, range: 6.4, jumps: 2, radius: 3, falloff: .8 }, ups: [
+      { name: "Arcs étendus", desc: "Rebonds +2, portée accrue.", cost: 90, m: { jumps: 2, range: .6 } },
+      { name: "Orage", desc: "Dégâts et cadence accrus.", cost: 150, m: { dmg: 1.5, rate: 1.3 } }] };
+  TOWERS.colosse = { name: "Colosse d'ombre", cost: 200, col: "#a070ff", spr: "tower_faille_", my: 70, sc: 1.28, tag: "Frappe de zone",
+    base: { damage: 34, rate: .8, range: 7, zaps: 2, splash: 1.8, splashDmg: .5 }, ups: [
+      { name: "Fracas", desc: "Dégâts et zone d'explosion accrus.", cost: 140, m: { dmg: 1.4, splash: 2.4, splashDmg: .6 } },
+      { name: "Éclipse", desc: "Salve supplémentaire, cadence accrue.", cost: 200, m: { zaps: 1, rate: 1.3 } }] };
+  TOWERS.poupee = { name: "Arbre à poupées", cost: 110, col: "#b6f04a", spr: "tower_ronce_", my: 44, sc: 1.12, tag: "Épines + ralentit",
+    base: { damage: 14, rate: 1.6, range: 5.8, zaps: 2, slowF: .8, slowT: 1.5 }, ups: [
+      { name: "Poupées gardiennes", desc: "Une épine de plus par salve.", cost: 90, m: { zaps: 1 } },
+      { name: "Racines serrées", desc: "Ralentissement 40 %, dégâts accrus.", cost: 150, m: { slowF: .6, dmg: 1.3 } }] };
+  TOWERS.monde = { name: "Arbre Monde", cost: 220, col: "#8dffa8", spr: "tower_ronce_", my: 52, sc: 1.3, tag: "Aura + zone",
+    base: { damage: 16, rate: 1.4, range: 6.6, aura: .2, splash: 1.6, splashDmg: .5, slowF: .7, slowT: 1.5 }, ups: [
+      { name: "Canopée", desc: "Aura +20 %, portée accrue.", cost: 150, m: { aura: .2, range: .6 } },
+      { name: "Sanctuaire", desc: "Aura +25 %, dégâts accrus.", cost: 220, m: { aura: .25, dmg: 1.4 } }] };
+  TOWERS.feedback = { name: "Enceinte à feedback", cost: 110, col: "#ff9bd2", spr: "tower_ampli_", my: 46, sc: 1.12, tag: "Onde de choc",
+    base: { damage: 15, rate: 1.5, range: 5.6, splash: 2.2, splashDmg: .7, aura: .1 }, ups: [
+      { name: "Larsen", desc: "Zone d'onde accrue.", cost: 90, m: { splash: 2.8, dmg: 1.2 } },
+      { name: "Mur de son", desc: "Cadence et dégâts accrus.", cost: 150, m: { rate: 1.3, dmg: 1.3 } }] };
+  TOWERS.scene = { name: "Scène de concert", cost: 220, col: "#ffd0ee", spr: "tower_ampli_", my: 52, sc: 1.3, tag: "Grande aura",
+    base: { damage: 20, rate: 2, range: 6.2, aura: .35, zaps: 2 }, ups: [
+      { name: "Rappel", desc: "Aura +25 %.", cost: 150, m: { aura: .25 } },
+      { name: "Finale", desc: "Dégâts et portée accrus.", cost: 220, m: { dmg: 1.5, range: .6 } }] };
+  TOWERS.tesla = { name: "Bobine Tesla", cost: 110, col: "#7ff0ff", spr: "tower_orb_", my: 54, sc: 1.12, tag: "Chaîne longue",
+    base: { damage: 18, rate: 1.1, range: 5.8, jumps: 3, radius: 2.8, falloff: .85 }, ups: [
+      { name: "Surcharge", desc: "Rebonds +2.", cost: 90, m: { jumps: 2 } },
+      { name: "Haute tension", desc: "Dégâts et cadence accrus.", cost: 150, m: { dmg: 1.4, rate: 1.25 } }] };
+  TOWERS.foudre = { name: "Pylône de foudre", cost: 200, col: "#e6ffff", spr: "tower_orb_", my: 62, sc: 1.28, tag: "Triple décharge",
+    base: { damage: 40, rate: .9, range: 7, zaps: 3, jumps: 2, falloff: .8 }, ups: [
+      { name: "Tempête", desc: "Dégâts accrus, rebonds +1.", cost: 140, m: { dmg: 1.4, jumps: 1 } },
+      { name: "Colère du ciel", desc: "Cadence et portée accrues.", cost: 200, m: { rate: 1.3, range: .8 } }] };
+  // ---- progression des tourelles (PROVISOIRE, configurable) ----
+  // 3 familles par héros, sans mélange. Cibles GDD : ~30 T1, ~10 T2, ~3 T3 — ici plafonnées par les 12 emplacements du terrain actuel.
+  var FAM = { noctis: ["faille", "arcane", "colosse"], eglantyne: ["ronce", "poupee", "monde"], phelto: ["ampli", "feedback", "scene"], epeiste: ["orb", "tesla", "foudre"] };
+  // niveau de déblocage + limite de tourelles construites, par niveau d'équipe (index = niveau - 1)
+  var TIERCFG = [{ unlock: 1, cap: [4, 5, 6, 7, 7, 8, 8, 9, 9, 10] }, { unlock: 3, cap: [0, 0, 1, 1, 2, 2, 3, 3, 4, 4] }, { unlock: 6, cap: [0, 0, 0, 0, 0, 1, 1, 2, 2, 3] }], SELL_RATE = .6;
+  Object.keys(FAM).forEach(function (h) { FAM[h].forEach(function (id, i) { TOWERS[id].fam = h; TOWERS[id].T = i + 1; }); });
   var START_GOLD = 150, HEART_MAX = 100;
   var WAVES = [
     ["Vague 1 — Premiers murmures", [["orb", 5, .5, 0]]],
@@ -60,7 +99,7 @@
   ];
   var TRICKLE = [["orb", 2, 270, 6, 1, 3, .45], ["scout", 60, 270, 11, 1, 2, .35]];
   var HERO_ORDER = ["noctis", "eglantyne", "phelto", "epeiste"], HCOL = { noctis: "#b88cff", eglantyne: "#8dffa8", phelto: "#ff7ac8", epeiste: "#8ff0ff" };
-  var KITS = null, COOP = null, EID = 0, OID = 0, CUR = null, UI = { offer: null, hide: false };
+  var KITS = null, COOP = null, EID = 0, OID = 0, CUR = null, UI = { offer: null, hide: false, seenLvl: 1, newT: {}, bmin: false };
   // vie des héros, niveaux (provisoire) : +12 % PV et +8 % de dégâts par niveau ; les améliorations de tourelle exigent un niveau
   var HEROHP = { noctis: 90, eglantyne: 100, phelto: 95, epeiste: 125 }, UPREQ = [2, 3, 5], MAXLVL = 10;
   // améliorations de héros (choix à chaque niveau, 3 propositions max) — provisoires, configurables ici
@@ -108,7 +147,7 @@
   var imgs = {}, snd = {}, L = null, loaded = false, muted = false;
   var IMGS = ["ground", "fx_shadow", "heart_0", "heart_1", "doll", "gate", "sparkle", "pine_s", "pine_m", "pine_d", "ruin_a", "ruin_b", "rock", "rock_small", "crystal"];
   Object.keys(ENEMY).forEach(function (k) { IMGS.push(ENEMY[k].spr + "_0", ENEMY[k].spr + "_1"); });
-  Object.keys(TOWERS).forEach(function (k) { for (var i = 0; i < 4; i++) IMGS.push(TOWERS[k].spr + i); });
+  Object.keys(TOWERS).forEach(function (k) { for (var i = 0; i < 4; i++) if (IMGS.indexOf(TOWERS[k].spr + i) < 0) IMGS.push(TOWERS[k].spr + i); });
   ["epeiste", "eglantyne", "phelto", "noctis"].forEach(function (h) { ["idle0", "idle1", "move0", "move1", "atk", "cast"].forEach(function (n) { IMGS.push("hero_" + h + "_" + n); }); IMGS.push("icon_" + h, "big_" + h); });
   IMGS.push("fx_phelto_notes", "fx_eglantyne_seed", "skill_epeiste_s1", "skill_epeiste_s2", "skill_epeiste_ult", "skill_epeiste_passive");
   var SNDS = ["zap", "hit", "death", "build", "upgrade", "heart_hit", "win", "lose", "click", "error", "wave", "boss", "ambient"];
@@ -167,7 +206,7 @@
     var hid = keepHero && G && G.hero ? G.hero.id : null;
     G = { state: "select", paused: false, t: 0, events: ev, next: 0, wave: 0, gold: START_GOLD, heart: HEART_MAX, enemies: [], towers: [], parts: [], bolts: [], fx: [], pending: [], projs: [], actors: [], buffs: [], sortedNow: [],
       toast: "", toastT: 0, toastC: "#fff", build: false, sel: null, shake: 0, flashHeart: 0, kills: 0, anim: 0, hero: null, heroes: [], orbs: [], xp: 0, lvl: 1, dmgMul: 1, eprojs: [], floats: [], mirror: false, menu: false, coopMenu: false, rem: 0, tint: 0, tintT: 0 };
-    hover = null; ptrs = {}; joy.on = false; aimSt = null;
+    hover = null; ptrs = {}; joy.on = false; aimSt = null; UI.seenLvl = 1; UI.newT = {}; UI.bmin = false;
     if (hid) { G.hero = newHero(hid, 0); G.heroes = [G.hero]; G.state = "prep"; }
   }
   function lat(r, e) { return ENEMY[e].kind === "std" ? (r() * 2 - 1) * .45 : 0; }
@@ -396,7 +435,7 @@
         dmg *= st.falloff; origin = a; cur = nx;
       }
     }
-    t.punch = .6; play(t.type === "ampli" ? "click" : "zap", .4, t.type === "ampli" ? 1.6 : 1); return true;
+    t.punch = .6; play(def.fam === "phelto" ? "click" : "zap", .4, def.fam === "phelto" ? 1.6 : 1); return true;
   }
 
   // ---------- héros : entrées, visée, attaque, compétences ----------
@@ -506,6 +545,8 @@
     if (G.flashHeart > 0) G.flashHeart -= dt;
     if (G.tintT > 0) G.tintT -= dt;
     if (G.xpFlash > 0) G.xpFlash -= dt; if (G.lvlFlash > 0) G.lvlFlash -= dt;
+    for (var nk in UI.newT) if (UI.newT[nk] > 0) UI.newT[nk] -= dt;
+    noticeUnlocks();
     if (G.paused || G.state === "select") return;
     G.parts = G.parts.filter(function (p) { p.life -= dt; p.vy += 260 * dt; p.x += p.vx * dt; p.y += p.vy * dt; return p.life > 0; });
     G.bolts = G.bolts.filter(function (b) { b.life -= dt; if (!b.flick && b.life < .07) { b.flick = true; b.pts = jag(b.a, b.b, b.big ? 30 : 16); } return b.life > 0; });
@@ -579,7 +620,7 @@
     get G() { return G; }, ENEMY: ENEMY, TOWERS: TOWERS, WAVES: WAVES, HEART_MAX: HEART_MAX, PINKL: PINKL,
     slots: function () { return slots; }, LEN: function () { return LEN; }, newHero: newHero, tstats: tstats, play: play, toast: toast, burst: burst, sx: sx, sy: sy, ep: ep,
     moveVec: moveVec, applyPick: applyPick, recompute: recomputeMod, UPG: UPG, aimAtk: function () { return aimFor("atk", null); }, attackHeld: function () { return !!(keys.Space || attackHeld()); },
-    doCast: doCast, replAttack: replAttack, tryBuild: tryBuild, tryUpgrade: tryUpgrade, startSeq: startSeq, setHeroes: setHeroes, resetCore: resetCore, muzzle: muzzle,
+    doCast: doCast, replAttack: replAttack, tryBuild: tryBuild, tryUpgrade: tryUpgrade, trySell: trySell, startSeq: startSeq, setHeroes: setHeroes, resetCore: resetCore, muzzle: muzzle,
     mkEnemy: function (k, id) { var d = ENEMY[k]; return { id: id, mhp: d.hp, k: k, def: d, d: 0, hp: d.hp, lat: 0, flash: 0, age: 0, dead: false, ph: Math.random() * 4, ox: 0, oz: 0, stun: 0, slowF: 1, slowT: 0, poison: null, barT: 99 }; }
   };
 
@@ -589,13 +630,23 @@
     slots.forEach(function (s) { var d = Math.hypot(s.x - w.x, s.z - w.z); if (d <= bd) { bd = d; best = s; } });
     return best;
   }
-  function heroTowerType() { return G.hero ? G.hero.kit.tower : "orb"; }
+  function famOf(h) { h = h || G.hero; return FAM[h ? h.id : "noctis"] || FAM.noctis; }
+  function tierCfg(type) { return TIERCFG[TOWERS[type].T - 1]; }
+  function unlockedT(type) { return G.lvl >= tierCfg(type).unlock; }
+  function capOf(type) { return tierCfg(type).cap[Math.min(MAXLVL, Math.max(1, G.lvl)) - 1]; }
+  function countT(type) { var n = 0; G.towers.forEach(function (t) { if (t.type === type) n++; }); return n; }
+  function buildType() { var f = famOf(); return G.bt && f.indexOf(G.bt) >= 0 ? G.bt : f[0]; }
+  function heroTowerType() { return buildType(); }
+  function deny(remote, msg) { if (remote) { if (COOP) COOP.msg(msg); } else { play("error", .6); toast(msg, "#ff8a8a"); } }
   function tryBuild(s, type, remote) {
-    if (G.mirror && !remote) { if (COOP) COOP.req({ k: "build", s: slots.indexOf(s), ty: heroTowerType() }); G.build = false; return; }
+    if (G.mirror && !remote) { if (COOP) COOP.req({ k: "build", s: slots.indexOf(s), ty: type || buildType() }); G.build = false; return; }
     if (s.tower) return;
-    type = type || heroTowerType(); var def = TOWERS[type];
-    if (G.gold < def.cost) { if (remote) { if (COOP) COOP.msg("Pas assez de cristaux (" + def.cost + " requis)"); } else { play("error", .6); toast("Pas assez de cristaux (" + def.cost + " requis)", "#ff8a8a"); } return; }
-    G.gold -= def.cost; var t = { s: s, tier: 0, cd: 0, punch: 0, type: type, st: tstats(def, 0), salvo: 0, boost: 1 }; s.tower = t; G.towers.push(t);
+    type = type || buildType(); var def = TOWERS[type]; if (!def) return;
+    if (famOf(remote ? G.heroes[1] : G.hero).indexOf(type) < 0) { deny(remote, "Cette tourelle appartient à un autre héros"); return; }
+    if (!unlockedT(type)) { deny(remote, def.name + " : débloquée au niveau " + tierCfg(type).unlock); return; }
+    if (countT(type) >= capOf(type)) { deny(remote, "Limite atteinte : " + def.name + " " + countT(type) + "/" + capOf(type)); return; }
+    if (G.gold < def.cost) { deny(remote, "Pas assez de cristaux (" + def.cost + " requis)"); return; }
+    G.gold -= def.cost; var t = { s: s, tier: 0, cd: 0, punch: 0, type: type, st: tstats(def, 0), salvo: 0, boost: 1, spent: def.cost }; s.tower = t; G.towers.push(t);
     play("build", .9); burst(sx(s.x), sy(s.z), "#8c85bf", 16, 110, .7, 5); if (!remote) toast(def.name + " construite", "#9bffd0");
     if (!remote) { G.sel = t; G.build = false; }
   }
@@ -603,10 +654,26 @@
     if (!t) return; var def = TOWERS[t.type]; if (t.tier >= def.ups.length) return;
     if (G.mirror && !remote) { if (COOP) COOP.req({ k: "up", s: slots.indexOf(t.s) }); return; }
     var u = def.ups[t.tier];
-    if (G.lvl < UPREQ[t.tier]) { if (remote) { if (COOP) COOP.msg("Niveau " + UPREQ[t.tier] + " requis"); } else { play("error", .6); toast("Niveau " + UPREQ[t.tier] + " requis", "#ff8a8a"); } return; }
-    if (G.gold < u.cost) { if (remote) { if (COOP) COOP.msg("Pas assez de cristaux"); } else { play("error", .6); toast("Pas assez de cristaux", "#ff8a8a"); } return; }
-    G.gold -= u.cost; t.tier++; t.st = tstats(def, t.tier); t.punch = 1; play("upgrade", .9);
+    if (G.lvl < UPREQ[t.tier]) { deny(remote, "Niveau " + UPREQ[t.tier] + " requis"); return; }
+    if (G.gold < u.cost) { deny(remote, "Pas assez de cristaux"); return; }
+    G.gold -= u.cost; t.spent = (t.spent || def.cost) + u.cost; t.tier++; t.st = tstats(def, t.tier); t.punch = 1; play("upgrade", .9);
     var m = muzzle(t); burst(m.x, m.y, def.col, 24, 160, .8, 5); if (!remote) toast(u.name + " !", def.col);
+  }
+  function trySell(t, remote) {
+    if (!t) return;
+    if (G.mirror && !remote) { if (COOP) COOP.req({ k: "sell", s: slots.indexOf(t.s) }); G.sel = null; return; }
+    var back = Math.round((t.spent || TOWERS[t.type].cost) * SELL_RATE); G.gold += back;
+    t.s.tower = null; G.towers = G.towers.filter(function (o) { return o !== t; }); if (G.sel === t) G.sel = null;
+    play("click", .8); burst(sx(t.s.x), sy(t.s.z), "#ffd25e", 14, 110, .6, 4); if (!remote) toast("Vendue : +" + back + " cristaux", "#ffe680");
+  }
+  // annonce légère des tourelles débloquées / capacités gagnées (tous les clients, selon le niveau d'équipe)
+  function noticeUnlocks() {
+    if (!G.hero) return; if (UI.seenLvl == null || G.lvl < UI.seenLvl) { UI.seenLvl = G.lvl; return; }
+    while (UI.seenLvl < G.lvl) {
+      var L = ++UI.seenLvl, msg = null, col = "#ffe680";
+      famOf().forEach(function (id) { var d = TOWERS[id], c = tierCfg(id); if (c.unlock === L) { msg = "Tourelle débloquée : " + d.name; col = d.col; UI.newT[id] = 6; } else if (L > c.unlock && c.cap[L - 1] > c.cap[L - 2] && !msg) msg = "Capacité de " + d.name + " : " + c.cap[L - 1]; });
+      if (msg) { toast("NIVEAU " + L + " — " + msg, col); play("upgrade", .9); }
+    }
   }
   function toggleBuild() { if (G.state === "play" || G.state === "prep") { G.build = !G.build; if (G.build) G.sel = null; } }
   function cancel() { if (G.build) { G.build = false; return true; } if (G.sel) { G.sel = null; return true; } return false; }
@@ -751,9 +818,10 @@
     ctx.drawImage(imgs.ground, OX, TOP, GW * PPU, MAPH);
 
     var sel = G.sel, hv = hover, hero = G.hero, tdef = TOWERS[heroTowerType()];
-    if (G.build) slots.forEach(function (s) { if (!s.tower) slotMark(s, s === hv ? (G.gold >= tdef.cost ? "#8dffb0" : "#ff6a72") : "rgba(255,160,220,.55)"); });
+    var bokT = G.build && unlockedT(buildType()) && countT(buildType()) < capOf(buildType()) && G.gold >= tdef.cost;
+    if (G.build) slots.forEach(function (s) { if (!s.tower) slotMark(s, s === hv ? (bokT ? "#8dffb0" : "#ff6a72") : "rgba(255,160,220,.55)"); });
     else if (hv && hv.tower) slotMark(hv, "#8dffb0");
-    if (G.build && hv && !hv.tower) ring(sx(hv.x), sy(hv.z), tstats(tdef, 0).range, G.gold >= tdef.cost ? "#ffa0dc" : "#ff5a64");
+    if (G.build && hv && !hv.tower) ring(sx(hv.x), sy(hv.z), tstats(tdef, 0).range, bokT ? "#ffa0dc" : "#ff5a64");
     if (sel) ring(sx(sel.s.x), sy(sel.s.z), sel.st.range, "#ffe680");
     G.buffs.forEach(function (b) { if (!b.follow) ring(sx(b.x), sy(b.z), b.r, "#ffc878", .04); });
     G.actors.forEach(function (a) { if (a.ground && a.draw) a.draw(); });
@@ -766,7 +834,7 @@
       var big = n === "gate" ? 0 : n.indexOf("pine") === 0 ? .9 : n.indexOf("ruin") === 0 ? 1.5 : n === "rock" ? 1.6 : 1.0;
       items.push({ z: d.z, f: function () { var x = sx(d.x), y = sy(d.z); if (big) shadow(x, y, big); spr(n, x, y, 1, d.flip); } });
     });
-    slots.forEach(function (s) { if (s.tower) items.push({ z: s.z - .001, f: function () { var t = s.tower, x = sx(s.x), y = sy(s.z); shadow(x, y, 2.2); ctx.save(); if (t.boost > 1.01) { ctx.shadowColor = "#ffe680"; ctx.shadowBlur = 18; } spr(TOWERS[t.type].spr + t.tier, x, y, 1 + .1 * t.punch); ctx.restore(); } }); });
+    slots.forEach(function (s) { if (s.tower) items.push({ z: s.z - .001, f: function () { var t = s.tower, x = sx(s.x), y = sy(s.z); shadow(x, y, 2.2); ctx.save(); if (t.boost > 1.01) { ctx.shadowColor = "#ffe680"; ctx.shadowBlur = 18; } var td0 = TOWERS[t.type]; spr(td0.spr + t.tier, x, y, (td0.sc || 1) * (1 + .1 * t.punch)); ctx.restore(); for (var pi = 0; pi < td0.T; pi++) { ctx.fillStyle = td0.T === 3 ? "#ffd25e" : td0.T === 2 ? "#e0b8ff" : "#9bffd0"; ctx.beginPath(); ctx.arc(x + (pi - (td0.T - 1) / 2) * 9, y + 8, 3, 0, 6.283); ctx.fill(); } } }); });
     items.push({ z: L.heart.z + .5, f: function () { var x = sx(L.heart.x), y = sy(L.heart.z), low = 1 - G.heart / HEART_MAX; ctx.save(); if (G.flashHeart > 0) ctx.globalAlpha = .75 + .25 * Math.sin(G.anim * 60); spr("heart_" + (Math.floor(G.anim * (1.5 + 3 * low)) & 1), x, y, 1); ctx.restore(); } });
     G.enemies.forEach(function (e) {
       var p = ep(e);
@@ -942,15 +1010,30 @@
     drawOffer();
     var xlo = xpCum(G.lvl), xhi = xpCum(G.lvl + 1), xr2 = G.lvl >= MAXLVL ? 1 : (G.xp - xlo) / Math.max(1, xhi - xlo);
     ctx.fillStyle = "rgba(10,6,20,.75)"; ctx.fillRect(0, H - 4, W, 4); ctx.fillStyle = G.lvlFlash > 0 ? "#ffe680" : G.xpFlash > 0 ? "#e0b8ff" : "#b46cff"; ctx.fillRect(0, H - 4, W * Math.max(0, Math.min(1, xr2)), 4);
-    // barre de tourelles (bas centre) : tourelle du héros + verrous
-    var bw = 372, bx0 = W / 2 - bw / 2 - (touchUI ? 0 : 60), by0 = H - 128;
-    panel(bx0, by0, bw, 118); text("TOURELLES", bx0 + 14, by0 + 16, 14, "#cfc6dc");
-    for (var s = 0; s < 3; s++) {
-      var x = bx0 + 12 + s * 118, y = by0 + 28, w = 108, h = 82;
-      if (s === 0) {
-        button(x, y, w, h, "", toggleBuild, G.build); spr(def.spr + "0", x + w / 2, y + 52, .7);
-        gem(x + w / 2 - 22, y + h - 10, 7); text(String(def.cost), x + w / 2 - 10, y + h - 9, 18, G.gold >= def.cost ? "#fff" : "#ff8a96");
-      } else { rr(x, y, w, h, 10, "rgba(10,8,18,.7)", "rgba(255,255,255,.08)", 2); ctx.fillStyle = "#7b7592"; ctx.fillRect(x + w / 2 - 9, y + 28, 18, 14); ctx.strokeStyle = "#7b7592"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x + w / 2, y + 28, 6, Math.PI, 0); ctx.stroke(); text("NIV. " + (s + 1), x + w / 2, y + h - 12, 14, "#7b7592", "center"); }
+    // menu de construction compact et rétractable (bas centre) : 3 familles du héros, verrous, n/limite
+    var fam = famOf(), bw = 372, bx0 = W / 2 - bw / 2 - (touchUI ? 0 : 60), open = !UI.bmin || G.build;
+    if (!open) {
+      var anyNew = false; for (var nk in UI.newT) if (UI.newT[nk] > 0) anyNew = true;
+      button(bx0 + bw / 2 - 70, H - 38, 140, 30, "TOURELLES ▴", function () { UI.bmin = false; }, anyNew, anyNew ? "#ffe680" : "#cfc6dc", 14);
+    } else {
+      var by0 = H - 128; panel(bx0, by0, bw, 118);
+      button(bx0 + 6, by0 + 4, 130, 22, "TOURELLES ▾", function () { UI.bmin = true; G.build = false; }, false, "#cfc6dc", 13);
+      for (var s = 0; s < 3; s++) {
+        var id = fam[s], d = TOWERS[id], x = bx0 + 12 + s * 118, y = by0 + 28, w = 108, h = 82, lock = !unlockedT(id), n = countT(id), cp = capOf(id), full2 = !lock && n >= cp, sel2 = G.build && buildType() === id, glow = UI.newT[id] > 0;
+        (function (id2, lock2) { button(x, y, w, h, "", function () { if (lock2) { play("error", .5); toast(TOWERS[id2].name + " : niveau " + tierCfg(id2).unlock + " requis", "#ffb0b0"); return; } if (G.build && buildType() === id2) { G.build = false; return; } G.bt = id2; G.build = true; G.sel = null; }, sel2, null, null, false); })(id, lock);
+        if (glow) { ctx.save(); ctx.strokeStyle = "#ffe680"; ctx.globalAlpha = .5 + .5 * Math.sin(time * 8); ctx.lineWidth = 3; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); ctx.restore(); }
+        if (lock) {
+          ctx.globalAlpha = .35; spr(d.spr + "0", x + w / 2, y + 50, .6 * (d.sc || 1)); ctx.globalAlpha = 1;
+          ctx.fillStyle = "#cfc6dc"; ctx.fillRect(x + w / 2 - 9, y + 26, 18, 14); ctx.strokeStyle = "#cfc6dc"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x + w / 2, y + 26, 6, Math.PI, 0); ctx.stroke();
+          text("NIV. " + tierCfg(id).unlock, x + w / 2, y + h - 12, 15, "#ffb0b0", "center");
+        } else {
+          spr(d.spr + "0", x + w / 2, y + 50, .6 * (d.sc || 1));
+          gem(x + w / 2 - 22, y + h - 10, 7); text(String(d.cost), x + w / 2 - 10, y + h - 9, 17, G.gold >= d.cost ? "#fff" : "#ff8a96");
+          text(n + "/" + cp, x + w - 8, y + 14, 13, full2 ? "#ff8a96" : "#cfc6dc", "right");
+        }
+        text("T" + d.T, x + 8, y + 14, 13, d.T === 3 ? "#ffd25e" : d.T === 2 ? "#e0b8ff" : "#9bffd0");
+      }
+      if (G.build) text(TOWERS[buildType()].name + " — " + TOWERS[buildType()].tag, bx0 + bw / 2 + 40, by0 - 8, 14, "#f2ecf6", "center", false);
     }
     if (!touchUI && hero) {   // bas gauche : rappel des touches
       panel(0, H - 112, 250, 102);
@@ -958,8 +1041,8 @@
     }
     if (G.sel) {
       var t = G.sel, st = t.st, td = TOWERS[t.type], px = 12, py = 196;
-      panel(px, py, 268, 226);
-      text(td.name + " · niv. " + (t.tier + 1), px + 14, py + 22, 18, "#fff");
+      panel(px, py, 268, 266);
+      text(td.name + " · T" + td.T + " niv. " + (t.tier + 1), px + 14, py + 22, 18, "#fff");
       text("Dégâts " + +st.damage.toFixed(1) + " · " + +st.rate.toFixed(1) + "/s · portée " + +st.range.toFixed(1), px + 14, py + 48, 14, "#cfc6dc", "left", false);
       text(td.tag + (st.zaps > 1 ? " ×" + st.zaps : "") + (st.jumps ? " · chaîne " + st.jumps : ""), px + 14, py + 68, 14, "#cfc6dc", "left", false);
       if (t.tier < td.ups.length) {
@@ -968,6 +1051,7 @@
         text(u.name, px + 134, py + 110, 17, ok ? "#fff" : "#ff8a96", "center"); gem(px + 112, py + 136, 8); text(String(u.cost), px + 126, py + 136, 20, ok ? "#fff" : "#ff8a96");
         wrapText(lockLv ? "Niveau " + UPREQ[t.tier] + " requis (niveau actuel : " + G.lvl + ")" : u.desc, px + 134, py + 164, 220, 14, lockLv ? "#ffb0b0" : "#d8d0ee");
       } else text("NIVEAU MAXIMAL", px + 134, py + 150, 20, PINKL, "center");
+      button(px + 12, py + 222, 244, 34, "Vendre  +" + Math.round((t.spent || td.cost) * SELL_RATE), function () { trySell(t); }, false, "#ffd25e", 16);
     }
     if (G.toastT > 0) { ctx.globalAlpha = Math.min(1, G.toastT / .5); text(G.toast, W / 2, 132, 26, G.toastC, "center"); ctx.globalAlpha = 1; }
     if (G.paused || G.menu) {
@@ -1117,6 +1201,6 @@
   var sb = document.querySelector("[data-ash-sound]"); if (sb) sb.addEventListener("click", toggleSound);
   var fb = document.querySelector("[data-ash-full]"); if (fb) fb.addEventListener("click", function () { setFull(!full); });
 
-  window.__ash = { get G() { return G; }, slots: function () { return slots; }, build: function (i) { tryBuild(slots[i]); }, upgrade: function (i) { tryUpgrade(slots[i].tower); }, start: startSeq, reset: reset, pick: pickHero, setFull: setFull, joy: joy, W: function () { return W; }, cast: castSkill, choose: chooseUpgrade, hero: function () { return G.hero; }, hurt: function (i, d) { hurtHero(G.heroes[i], d); }, xp: function (n) { gainXp(n); }, attack: function () { heroAttack(); }, coop: function () { return COOP; }, ctl: function () { return ctl; }, view: function () { return { CW: CW, SL: SL, SR: SR, H: H, RS: RS, W: W }; }, RS: function () { return RS; }, toggleFull: toggleFull, tstats: tstats, TOWERS: TOWERS };
+  window.__ash = { get G() { return G; }, slots: function () { return slots; }, build: function (i) { tryBuild(slots[i]); }, upgrade: function (i) { tryUpgrade(slots[i].tower); }, sell: function (i) { trySell(slots[i].tower); }, buildType: function (t) { G.bt = t; }, FAM: FAM, TIERCFG: TIERCFG, capOf: capOf, countT: countT, ui: function () { return UI; }, start: startSeq, reset: reset, pick: pickHero, setFull: setFull, joy: joy, W: function () { return W; }, cast: castSkill, choose: chooseUpgrade, hero: function () { return G.hero; }, hurt: function (i, d) { hurtHero(G.heroes[i], d); }, xp: function (n) { gainXp(n); }, attack: function () { heroAttack(); }, coop: function () { return COOP; }, ctl: function () { return ctl; }, view: function () { return { CW: CW, SL: SL, SR: SR, H: H, RS: RS, W: W }; }, RS: function () { return RS; }, toggleFull: toggleFull, tstats: tstats, TOWERS: TOWERS };
   boot();
 })();

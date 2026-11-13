@@ -87,3 +87,12 @@ XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations 
 - Coop : choix de l'invité envoyés via `pick`, appliqués côté hôte et répliqués.
 - Tests : bots complets (t7), positions des boutons (t9), synchro coop (t13), PV/réanimation (t15), choix d'amélioration solo + coop (t16) — sans erreur JS.
 - Pas encore testé : appareils réels, réseau Supabase réel, équilibrage avec de vrais joueurs.
+
+## Mise à jour gameplay — étape B : déblocage progressif des tourelles
+
+- 3 familles par héros, sans mélange (`FAM`) : Noctis Totem d'ombre / Pylône d'arcs / Colosse d'ombre ; Églantyne Piège de ronce / Arbre à poupées / Arbre Monde ; Phelto Totem mélodique / Enceinte à feedback / Scène de concert ; Épéiste Orbe foudroyant / Bobine Tesla / Pylône de foudre.
+- Paliers et limites **provisoires et configurables** dans `TIERCFG` (déblocage T1 niv.1, T2 niv.3, T3 niv.6 ; limite de tourelles par niveau d'équipe). Coûts par tourelle (50 / 110 / 200–220). Revente 60 % (`SELL_RATE`).
+- Écart connu avec le GDD (~30 T1, ~10 T2, ~3 T3) : le terrain actuel n'a que 12 emplacements ; les caps sont donc plafonnés par ces emplacements.
+- Menu de construction compact et rétractable (3 boutons, verrous, `n/limite`), annonce légère au déblocage (bandeau + pulsation du bouton), pastilles de rang sous les tourelles, bouton Vendre.
+- Coop : l'hôte valide famille / niveau / limite / coût ; requêtes `build`, `up`, `sell` ; les tourelles vendues disparaissent aussi chez l'invité.
+- Limites : les T2/T3 réutilisent les sprites T1 du héros (agrandis, sans art dédié) ; l'Arbre à poupées / l'Arbre Monde n'ont pas encore leurs mécaniques propres (étapes suivantes).

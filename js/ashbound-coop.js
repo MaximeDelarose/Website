@@ -107,6 +107,7 @@
           if (p.k === "start") E.startSeq();
           else if (p.k === "build") { var sl = E.slots()[p.s]; if (sl && E.TOWERS[p.ty]) E.tryBuild(sl, p.ty, true); }
           else if (p.k === "pick") E.applyPick(G.heroes[1], p.id, true);
+          else if (p.k === "sell") { var s3 = E.slots()[p.s]; if (s3 && s3.tower) E.trySell(s3.tower, true); }
           else if (p.k === "up") { var s2 = E.slots()[p.s]; if (s2 && s2.tower) E.tryUpgrade(s2.tower, true); }
         } else if (ev === "leave") {
           NET.connected = false; NET.peer = null; NET.peerPick = null;
@@ -183,6 +184,8 @@
         delete NET.emap[e.id]; return false;
       });
       // tourelles
+      var tset = {}; s.T.forEach(function (a) { tset[a[0]] = 1; });
+      slots.forEach(function (sl, i) { if (sl.tower && !tset[i]) { sl.tower = null; G.towers = G.towers.filter(function (o) { return o.s !== sl; }); if (G.sel && G.sel.s === sl) G.sel = null; } });
       s.T.forEach(function (a) {
         var sl = slots[a[0]]; if (!sl) return; var type = TTYPES[a[1]], t = sl.tower;
         if (!t || t.type !== type) {
