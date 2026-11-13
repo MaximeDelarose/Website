@@ -140,3 +140,45 @@ XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations 
 - **Interface** : « XP x / y » et « → NIV. n+1 » dans le cadre du héros, bandeau animé « NIVEAU n ! », « Nouvelle tourelle débloquée ! » + nom, cadenas retiré immédiatement, bouton pulsé.
 - **Mécaniques propres** : Arbre à poupées = invoque des poupées qui courent sur les ennemis et explosent (étourdissement à l'évolution) ; Arbre Monde = soutien pur (aura de cadence, soin, protection des poupées, pièges renforcés), ne tire plus. Pose d'un piège depuis un emplacement : aimantation au chemin.
 - Tests exécutés : t31 (niveaux 1→20 × 4 héros : XP, seuils, choix, déblocages, construction), t32/t33 (orbes, report, arbres), t34 (coop), t35 (parties complètes : niveau par vague), + régressions.
+
+## Stabilisation, optimisation et difficulté adaptative (solo / coop)
+
+### Audit et causes établies (mesurées, pas supposées)
+- **Cause principale des saccades : `ctx.filter`.** Utilisé pour le flash de dégâts, l'étourdissement, le ralentissement, les héros à terre et les ombres de Noctis. Ablation (même scène, 43 tourelles + 90 ennemis) : 8 → 48 images/s en le neutralisant, alors qu'il n'y avait que ~13 usages par image. Remplacé par des sprites teintés pré-calculés (`spriteImg`/`tintPixels`), sans `save/restore`.
+- **`ep()` / `pos()`** : ~4 000 appels (allocation + recherche binaire) par image pour les positions d'ennemis. Mis en cache par ennemi (clé d, lat, ox, oz) : 3 979 → 85 appels de `pos()` par image ; coût des tourelles 0,57 → 0,09 ms.
+- Allocations par image : `Array.filter` sur 11 tableaux d'entités → compaction sur place (`compact`) ; particules poolées et plafonnées (déjà), orbes en sprite pré-rendu (plus d'arcs ni de `shadowBlur`).
+- Décor bas (fougères, buissons, petits rochers, ossements) figé une fois dans le sol (`bakeGround`), hors du tri en profondeur.
+- Sons : un élément `Audio` cloné par son → pool de 4 éléments par son + plafond de 7 voix par fenêtre de 100 ms (4 en mode économe).
+- Qualité : modes **Auto / Haute / Économe** (menu pause, `?q=`), Auto abaisse effets puis résolution interne si l'image reste lente. Hors caméra : le rendu est supprimé, **la simulation est conservée** (un ennemi hors écran avance, attaque et subit des dégâts normalement).
+- Mesurés sans effet notable (non retenus) : coût du texte (`strokeText`), des blends, du cache de rectangles arrondis (retiré : gain nul, casse les clips).
+- Bug trouvé : les projectiles s'appliquaient sans le contexte du héros → synergies (marque, vulnérabilité, conduction) et attribution des dégâts faussées. Corrigé.
+- Fuites : 2 séquences complètes ×20 avec Églantyne et Noctis : tas 4–7 Mo constant, aucune entité qui s'accumule, aucune valeur NaN, aucune erreur JS.
+
+### Mesures avant / après (Chromium sans GPU, 43 tourelles, 90 ennemis maintenus, séquence 2, 915×412)
+| | avant | après |
+|---|---|---|
+| images/s (solo) | 9,6 | 51,4 |
+| p95 / max durée d'image | 214 / 448 ms | 25,6 / 38 ms |
+| JS update + dessin par image | 1,9 + 3,5 ms | 0,8 + 2,5 ms |
+| `ctx.filter` / `save()` / `drawImage` par image | 13 / 551 / 723 | 0 / 247 / 588 |
+| coop à 2 (hôte) | — | 49,2 i/s |
+| mode économe | — | 58,7 i/s |
+| trafic réseau hôte (coop) | 33,1 Ko/s | 18,8 Ko/s |
+Avec ralentissement CPU ×4 (proxy très approximatif d'un téléphone modeste) : JS ≈ 5 ms update + 11,5 ms dessin par image. **Aucun test sur un vrai téléphone n'a été fait** ; le rendu logiciel sans GPU de ces tests n'est pas représentatif du rendu d'un téléphone.
+Réseau : instantanés à cadence adaptative (12/s → ~7/s), tours / pièges envoyés seulement quand ils changent (rappel 1,5 s), ennemis en entiers compacts, orbes 1 instantané sur 3, entrées de l'invité envoyées seulement si elles changent.
+
+### Difficulté selon les joueurs actifs (`DIFF`, `playersN()`)
+- Nombre de joueurs = hôte + invité connecté **ayant agi dans les 45 dernières secondes** (testé : inactif → 1 joueur, une action → 2). Table extensible à 3-4 joueurs.
+- 2 joueurs : PV ennemis ×1,45, +30 % d'effectif (mesuré : +34 %), boss ×1,2 de PV supplémentaires et +2 d'armure, cadences de mécaniques ×0,85, cristaux par kill ×0,8, XP ×0,85, +60 cristaux de départ. Pas de multiplication systématique : les mécaniques des boss se renforcent aussi (zones par héros, invocations ×1,5).
+### Nouveaux comportements
+- **Sprinteur** (Ombre sprinteuse), **blindé** (Garde cuirassé, armure plate 9), **perturbateur** (annonce 1,8 s, désactive une tourelle 4,5 s ; contrable : le tuer, l'étourdir, ou se tenir près de la tourelle), blop diviseur (3 éclats), gelée blindée (armure 5).
+- **Zones annoncées** (rouge : explosion, vert : flaque persistante, violet : brèche) synchronisées en coop ; **boss à phases** : Seigneur de Cendre (piliers sur chaque héros, invocation d'ombres, onde de choc, enrage) et Roi gélatineux (flaques d'acide, explosifs, carapace temporaire) ; Gélatine géante (flaques).
+- **Synergies coop** : Églantyne rend vulnérable (+20 % de dégâts), Noctis marque (+15 % pour les partenaires), l'Épéiste conduit (+25 % sur cibles étourdies / ralenties / vulnérables / empoisonnées), Phelto donne du rythme (+15 % cadence, +20 % de recharge des compétences aux alliés à moins de 8). Brèches (coop) : sprinteurs au milieu du chemin après annonce → un joueur doit aller défendre ailleurs.
+- Séquences en liste (`SEQLIST`) : les vagues 21-30 s'ajoutent sans refonte.
+### Équilibrage (bots, 4 parties par cas ; les bots ne valent pas des joueurs humains)
+- Héros seul : meurt aux vagues 7-10 (toujours). Tourelles seules : meurent au boss de la vague 10 (toujours). Combiné : franchit la séquence 1 dans ~50-75 % des parties puis atteint la vague 20 sans la gagner (0 victoire sur ~16 parties). Coop (2 bots actifs) : même profil que le solo (franchit la séquence 1 3 fois sur 4). Coop sans héros actifs : meurt à la vague 4-5 (économie réduite + effectif accru).
+- Paramètres provisoires et centralisés (`DIFF`, `SEQ2`, `WAVES`, `WAVES2`, `BOSSAI`, `ENEMY`).
+### Limites
+- Pas de pooling d'objets ennemis / projectiles (peu d'allocations restantes, non mesurables) ; pas de test sur appareil réel ni sur le réseau Supabase réel.
+- Les sprites du sprinteur / blindé / perturbateur sont des sprites existants teintés ; aucun son dédié.
+- La difficulté finale (vague 20) n'a pas été franchie par les bots : à valider avec de vrais joueurs.

@@ -8,7 +8,7 @@
   window.AshCoop = function (E) {
     var EVENTS = ["join", "welcome", "full", "pick", "start", "snap", "in", "act", "hev", "req", "msg", "leave"];
     var STATES = ["select", "prep", "play", "win", "lose"];
-    var ETYPES = Object.keys(E.ENEMY), TTYPES = Object.keys(E.TOWERS), SPECS = ["", "solar", "constrictor", "spore"];
+    var ETYPES = Object.keys(E.ENEMY), TTYPES = Object.keys(E.TOWERS), SPECS = ["", "solar", "constrictor", "spore"], WK = ["zone", "pool", "link", "breach"];
     var CODE_CH = "ABCDEFGHJKLMNPQRSTUVWXYZ";
     var NET = fresh();
 
@@ -146,12 +146,13 @@
           var ex = Math.abs(e.ox) + Math.abs(e.oz) > .02, sl = e.slowF < 1, a = [e.id, ETYPES.indexOf(e.k), Math.round(e.d * 10), Math.round(e.lat * 100), Math.round(e.hp), Math.round(e.mhp), (e.stun > 0 ? 1 : 0) | (e.poison ? 2 : 0) | (ex ? 4 : 0) | (sl ? 8 : 0)];
           if (ex) a.push(Math.round(e.ox * 100), Math.round(e.oz * 100)); if (sl) a.push(Math.round(e.slowF * 100)); return a;
         }),
+        Z: G.warns.slice(0, 24).map(function (w) { var sp = w.kind === "link" && w.src && !w.src.dead ? E.ep(w.src) : null; return [w.id, Math.round(w.x * 10), Math.round(w.z * 10), Math.round((w.r || 2) * 10), Math.round(w.t * 10), Math.round(w.dur * 10), WK.indexOf(w.kind), w.done ? 1 : 0, sp ? Math.round(sp.x * 10) : 0, sp ? Math.round(sp.z * 10) : 0, Math.round((w.life || 0) * 10)]; }),
         D: G.tdolls.slice(0, 40).map(function (d) { return [d.id, Math.round(d.x * 10), Math.round(d.z * 10)]; }),
         };
     }
     // listes lentes (tours, pièges) : envoyées seulement si leur signature change, plus un rappel complet toutes les 1,5 s
     function slowLists(snap) {
-      var G = E.G, slots = E.slots(), T = G.towers.map(function (t) { return [slots.indexOf(t.s), TTYPES.indexOf(t.type), t.tier, t.boost > 1.01 ? 1 : 0]; }), R = G.traps.map(function (r) { return [r.id, Math.round(r.d * 10), SPECS.indexOf(r.spec || ""), r.tier, r.wilted ? 1 : 0, r.n, Math.max(0, r.ch)]; });
+      var G = E.G, slots = E.slots(), T = G.towers.map(function (t) { return [slots.indexOf(t.s), TTYPES.indexOf(t.type), t.tier, t.boost > 1.01 ? 1 : 0, t.jam > 0 ? 1 : 0]; }), R = G.traps.map(function (r) { return [r.id, Math.round(r.d * 10), SPECS.indexOf(r.spec || ""), r.tier, r.wilted ? 1 : 0, r.n, Math.max(0, r.ch)]; });
       var sig = JSON.stringify([T, R]), tt = now(); if (sig !== NET.sig || tt - NET.sigAt > 1500) { NET.sig = sig; NET.sigAt = tt; snap.T = T; snap.R = R; } return snap;
     }
     function apply(s) {
@@ -159,7 +160,7 @@
       if (s.n <= NET.seq) return; NET.seq = s.n; NET.lastSnap = now();
       var prev = G.state; G.state = STATES[s.st] || G.state;
       if (G.state !== prev) { if (G.state === "win") E.play("win", 1); else if (G.state === "lose") E.play("lose", 1); else if (G.state === "play" && prev === "prep") E.play("wave", .8); }
-      if (s.sq && s.sq !== G.seq) { G.seq = s.sq; if (G.seq === 2) { G.trans = 6.5; G.tint = .45; G.tintT = 2.5; E.play("boss", .8, .7); E.toast("Séquence 1 terminée — le monde s'éveille", "#d8b4ff"); } }
+      if (s.sq && s.sq !== G.seq) { G.seq = s.sq; if (G.seq >= 2) { G.trans = 6.5; G.tint = .45; G.tintT = 2.5; E.play("boss", .8, .7); E.toast("Séquence 1 terminée — le monde s'éveille", "#d8b4ff"); } }
       G.corrT = (s.ct || 0) / 100;
       G.t = s.t; G.gold = s.g; G.kills = s.k; G.rem = s.rem; G.xp = s.xp || 0;
       if (s.lv > G.lvl) { G.lvl = s.lv; G.lvlFlash = 1; G.dmgMul = 1 + .08 * (G.lvl - 1); E.toast("NIVEAU " + G.lvl + " ! PV et dégâts accrus", "#ffe680"); E.play("upgrade", 1); G.heroes.forEach(function (h) { G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2.6, t: 0, dur: .7, col: "#ffe680" }); }); }
@@ -200,6 +201,7 @@
         delete NET.emap[e.id]; return false;
       });
       // tourelles
+      G.warns = (s.Z || []).map(function (a) { return { id: a[0], x: a[1] / 10, z: a[2] / 10, r: a[3] / 10, t: a[4] / 10, dur: a[5] / 10, kind: WK[a[6]], done: !!a[7], sx: a[8] / 10, sz: a[9] / 10, hasSrc: !!(a[8] || a[9]), life: a[10] / 10 }; });
       var dset = {}; (s.D || []).forEach(function (a) { dset[a[0]] = 1; var o = null; G.tdolls.forEach(function (d) { if (d.id === a[0]) o = d; }); if (!o) { o = { id: a[0], x: a[1] / 10, z: a[2] / 10 }; G.tdolls.push(o); } else { o.x += (a[1] / 10 - o.x) * .6; o.z += (a[2] / 10 - o.z) * .6; } });
       G.tdolls = G.tdolls.filter(function (d) { if (dset[d.id]) return true; G.fx.push({ k: "ring", x: d.x, z: d.z, r: 1.5, t: 0, dur: .35, col: "#8fff9a" }); E.burst(E.sx(d.x), E.sy(d.z) - 14, "#8fff9a", 8, 120, .5, 4); return false; });
       var rset = {}; if (s.R) { s.R.forEach(function (a) {
@@ -216,7 +218,7 @@
           t = { s: sl, tier: a[2], cd: 0, punch: 1, type: type, st: E.tstats(E.TOWERS[type], a[2]), salvo: 0, boost: 1 }; sl.tower = t; G.towers = G.towers.filter(function (o) { return o.s !== sl; }); G.towers.push(t);
           E.play("build", .8); E.burst(E.sx(sl.x), E.sy(sl.z), "#8c85bf", 16, 110, .7, 5);
         } else if (t.tier !== a[2]) { t.tier = a[2]; t.st = E.tstats(E.TOWERS[type], t.tier); t.punch = 1; E.play("upgrade", .8); }
-        t.boost = a[3] ? 1.2 : 1;
+        t.boost = a[3] ? 1.2 : 1; t.jam = a[4] ? 1 : 0;
       }); }
     }
 
