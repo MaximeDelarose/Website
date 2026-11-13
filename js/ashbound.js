@@ -8,7 +8,7 @@
   var ctx = cv.getContext("2d");
   var RS = 1, CW = 1152, SL = 0, SR = 0, W = 1152, H = 720, OX = 0, PPU = 32, SY = Math.sin(55 * Math.PI / 180), TOP = 0, GW = 36, GH = 20, MAPW = 1152, MAPH = GH * PPU * SY;
   // caméra : monde en pixels « sol » (x*PPU, z*PPU*SY) ; zoom de combat / de construction ; Q = qualité des effets (adaptative)
-  var CAM = { x: 0, y: 0, zm: 1.5, init: false }, ZC = 1.5, ZB = .72, VX = 576, VY = 360, VW = { x0: 0, x1: 0, y0: 0, y1: 0 }, LIMX = 17.4, LIMZ = 9.4, Q = 1, qEma = 16, PPOOL = [];
+  var TRAP_W = 40, CAM = { x: 0, y: 0, zm: 1.5, init: false }, ZC = 1.5, ZB = .72, VX = 576, VY = 360, VW = { x0: 0, x1: 0, y0: 0, y1: 0 }, LIMX = 17.4, LIMZ = 9.4, Q = 1, qEma = 16, PPOOL = [];
   var params = new URLSearchParams(location.search);
   var SPEED = Math.min(30, Math.max(1, parseFloat(params.get("speed")) || 1));
   var BASE = "ashbound/";
@@ -86,7 +86,16 @@
   // niveau de déblocage + limite de tourelles construites, par niveau d'équipe (index = niveau - 1)
   var TIERCFG = [{ unlock: 1, cap: [6, 8, 10, 12, 15, 18, 21, 24, 27, 30] }, { unlock: 3, cap: [0, 0, 2, 3, 4, 5, 6, 7, 8, 10] }, { unlock: 6, cap: [0, 0, 0, 0, 0, 1, 1, 2, 3, 3] }], SELL_RATE = .6;
   Object.keys(FAM).forEach(function (h) { FAM[h].forEach(function (id, i) { TOWERS[id].fam = h; TOWERS[id].T = i + 1; }); });
-  var START_GOLD = 150, HEART_MAX = 100;
+  // ---- Piège de ronce d'Églantyne : posé SUR le chemin (hors des 43 emplacements), persistant, recharge, 3 spécialisations (PROVISOIRE, configurable) ----
+  var TRAP = { cost: 40, specCost: 80, specLvl: 2, evoCost: 130, evoLvl: 4, cap: [4, 5, 6, 8, 10, 12, 14, 16, 18, 20], space: 2.4,
+    base: { dmg: 14, r: 1.7, slowF: .55, slowT: 2, rech: 3.5, ch: 6, stun: 0, poison: 0 },
+    specs: {
+      solar: { name: "Floraison solaire", short: "Solaire", tag: "Gros dégâts", desc: "Éclat de lumière : dégâts de zone élevés.", col: "#ffe680", m: { dmg: 1.9, r: .8, rechx: 1.2 } },
+      constrictor: { name: "Constricteur", short: "Constricteur", tag: "Immobilise", desc: "Racines : immobilise 1,4 s puis ralentit fort.", col: "#9a5cff", m: { dmg: .8, stun: 1.4, slowF: -.15, slowT: 1, rechx: 1.3 } },
+      spore: { name: "Éclat de spores", short: "Spores", tag: "Poison", desc: "Nuage toxique : poison et ralentissement de zone.", col: "#d08cff", m: { dmg: .6, poison: 9, r: 1, slowT: 1 } } },
+    evo: { name: "Évolution", desc: "Plus de dégâts, de rayon et de charges.", m: { dmg: 1.5, r: .5, ch: 4, rechx: .8 } } };
+  var START_GOLD = 150, HEART_MAX = 100, TRID = 0;
+  TOWERS.ronce.trap = true; TOWERS.ronce.cost = TRAP.cost; TOWERS.ronce.tag = "Piège sur le chemin";
   var WAVES = [
     ["Vague 1 — Premiers murmures", [["orb", 5, .5, 0]]],
     ["Vague 2 — La corruption s'étend", [["orb", 7, .45, 0]]],
@@ -208,7 +217,7 @@
     slots.forEach(function (s) { s.tower = null; });
     var hid = keepHero && G && G.hero ? G.hero.id : null;
     G = { state: "select", paused: false, t: 0, events: ev, next: 0, wave: 0, gold: START_GOLD, heart: HEART_MAX, enemies: [], towers: [], parts: [], bolts: [], fx: [], pending: [], projs: [], actors: [], buffs: [], sortedNow: [],
-      toast: "", toastT: 0, toastC: "#fff", build: false, sel: null, shake: 0, flashHeart: 0, kills: 0, anim: 0, hero: null, heroes: [], orbs: [], xp: 0, lvl: 1, dmgMul: 1, eprojs: [], floats: [], mirror: false, menu: false, coopMenu: false, rem: 0, tint: 0, tintT: 0 };
+      toast: "", toastT: 0, toastC: "#fff", build: false, sel: null, traps: [], selT: null, pvT: null, shake: 0, flashHeart: 0, kills: 0, anim: 0, hero: null, heroes: [], orbs: [], xp: 0, lvl: 1, dmgMul: 1, eprojs: [], floats: [], mirror: false, menu: false, coopMenu: false, rem: 0, tint: 0, tintT: 0 };
     hover = null; ptrs = {}; joy.on = false; aimSt = null; UI.seenLvl = 1; UI.newT = {}; UI.bmin = false;
     if (hid) { G.hero = newHero(hid, 0); G.heroes = [G.hero]; G.state = "prep"; }
   }
@@ -598,6 +607,7 @@
       G.heroes.forEach(function (h) { if (!h.dead && h.mod.syn && Math.hypot(h.x - t.s.x, h.z - t.s.z) <= 5.5) boost += h.mod.syn; });
       t.boost = boost; t.cd -= dt * boost; if (t.cd <= 0) t.cd = fire(t) ? 1 / t.st.rate : .08;
     });
+    updateTraps(dt);
     G.enemies.forEach(function (e) {
       if (e.dead) return;
       e.age += dt; if (e.flash > 0) e.flash -= dt; if (e.spark > 0) e.spark -= dt; e.barT += dt;
@@ -630,6 +640,7 @@
     pos: function (e) { return ep(e); }, aimPt: aimPt, enemies: function () { return G.enemies.filter(function (e) { return !e.dead; }); },
     nearest: function (x, z, r, ex) { return nearestEnemy(x, z, r, ex); }, inRadius: inRadius,
     dmg: function (e, n) { dmgEnemy(e, n * (G.dmgMul || 1) * (1 + (CUR && CUR.mod ? CUR.mod.dmg || 0 : 0))); }, healHeroes: function (f) { G.heroes.forEach(function (h) { if (!h.dead) h.hp = Math.min(h.mhp, h.hp + h.mhp * f); }); }, stun: function (e, t) { e.stun = Math.max(e.stun, t); },
+    wiltedTrap: wiltedTrapNear, reactivateTrap: reactivateTrap,
     slow: function (e, f, t) { e.slowF = Math.min(e.slowF, f); e.slowT = Math.max(e.slowT, t); },
     poison: function (e, dps, t) { e.poison = { dps: Math.max(dps, e.poison ? e.poison.dps : 0), t: Math.max(t, e.poison ? e.poison.t : 0) }; },
     pull: function (e, dx, dz, k) { k = k == null ? 1 : k; e.ox += dx * k; e.oz += dz * k; }, push: function (e, dx, dz) { e.ox += dx; e.oz += dz; },
@@ -649,7 +660,7 @@
     get G() { return G; }, ENEMY: ENEMY, TOWERS: TOWERS, WAVES: WAVES, HEART_MAX: HEART_MAX, PINKL: PINKL,
     slots: function () { return slots; }, LEN: function () { return LEN; }, newHero: newHero, tstats: tstats, play: play, toast: toast, burst: burst, sx: sx, sy: sy, ep: ep,
     moveVec: moveVec, applyPick: applyPick, recompute: recomputeMod, UPG: UPG, aimAtk: function () { return aimFor("atk", null); }, attackHeld: function () { return !!(keys.Space || attackHeld()); },
-    doCast: doCast, replAttack: replAttack, tryBuild: tryBuild, tryUpgrade: tryUpgrade, trySell: trySell, startSeq: startSeq, setHeroes: setHeroes, resetCore: resetCore, muzzle: muzzle,
+    doCast: doCast, replAttack: replAttack, pos: function (e) { return ep(e); }, tryBuild: tryBuild, tryUpgrade: tryUpgrade, trySell: trySell, trapBuild: function (d) { var q = pos(d); return tryTrapBuild({ d: d, x: q.x, z: q.z, dist: 0 }, true); }, trapUp: function (id, sp) { tryTrapUp(trapById(id), sp, true); }, trapSell: function (id) { tryTrapSell(trapById(id), true); }, trapReseed: function (id) { tryTrapReseed(trapById(id), true); }, trapFx: trapFx, trapStats: trapStats, TRAP: TRAP, startSeq: startSeq, setHeroes: setHeroes, resetCore: resetCore, muzzle: muzzle,
     mkEnemy: function (k, id) { var d = ENEMY[k]; return { id: id, mhp: d.hp, k: k, def: d, d: 0, hp: d.hp, lat: 0, flash: 0, age: 0, dead: false, ph: Math.random() * 4, ox: 0, oz: 0, stun: 0, slowF: 1, slowT: 0, poison: null, barT: 99 }; }
   };
 
@@ -662,15 +673,16 @@
   function famOf(h) { h = h || G.hero; return FAM[h ? h.id : "noctis"] || FAM.noctis; }
   function tierCfg(type) { return TIERCFG[TOWERS[type].T - 1]; }
   function unlockedT(type) { return G.lvl >= tierCfg(type).unlock; }
-  function capOf(type) { return tierCfg(type).cap[Math.min(MAXLVL, Math.max(1, G.lvl)) - 1]; }
-  function countT(type) { var n = 0; G.towers.forEach(function (t) { if (t.type === type) n++; }); return n; }
+  function capOf(type) { return TOWERS[type].trap ? TRAP.cap[Math.min(MAXLVL, Math.max(1, G.lvl)) - 1] : tierCfg(type).cap[Math.min(MAXLVL, Math.max(1, G.lvl)) - 1]; }
+  function countT(type) { if (TOWERS[type].trap) return G.traps.length; var n = 0; G.towers.forEach(function (t) { if (t.type === type) n++; }); return n; }
   function buildType() { var f = famOf(); return G.bt && f.indexOf(G.bt) >= 0 ? G.bt : f[0]; }
   function heroTowerType() { return buildType(); }
   function deny(remote, msg) { if (remote) { if (COOP) COOP.msg(msg); } else { play("error", .6); toast(msg, "#ff8a8a"); } }
   function tryBuild(s, type, remote) {
     if (G.mirror && !remote) { if (COOP) COOP.req({ k: "build", s: slots.indexOf(s), ty: type || buildType() }); G.build = false; return; }
-    if (s.tower) return;
     type = type || buildType(); var def = TOWERS[type]; if (!def) return;
+    if (def.trap) { tryTrapBuild(nearestPath({ x: s.x, z: s.z }), remote); return; }
+    if (s.tower) return;
     if (famOf(remote ? G.heroes[1] : G.hero).indexOf(type) < 0) { deny(remote, "Cette tourelle appartient à un autre héros"); return; }
     if (!unlockedT(type)) { deny(remote, def.name + " : débloquée au niveau " + tierCfg(type).unlock); return; }
     if (countT(type) >= capOf(type)) { deny(remote, "Limite atteinte : " + def.name + " " + countT(type) + "/" + capOf(type)); return; }
@@ -695,6 +707,112 @@
     t.s.tower = null; G.towers = G.towers.filter(function (o) { return o !== t; }); if (G.sel === t) G.sel = null;
     play("click", .8); burst(sx(t.s.x), sy(t.s.z), "#ffd25e", 14, 110, .6, 4); if (!remote) toast("Vendue : +" + back + " cristaux", "#ffe680");
   }
+  // ---------- pièges de ronce ----------
+  function nearestPath(w) {
+    var bi = 0, bd = 1e9; for (var i = 0; i < path.length; i++) { var d = Math.hypot(path[i][0] - w.x, path[i][1] - w.z); if (d < bd) { bd = d; bi = i; } }
+    return { d: cum[bi], x: path[bi][0], z: path[bi][1], dist: bd };
+  }
+  function trapStats(t) {
+    var st = {}, k; for (k in TRAP.base) st[k] = TRAP.base[k];
+    [t.spec ? TRAP.specs[t.spec].m : null, t.tier >= 2 ? TRAP.evo.m : null].forEach(function (m) {
+      if (!m) return; if (m.dmg) st.dmg *= m.dmg; if (m.rechx) st.rech *= m.rechx; ["r", "slowF", "slowT", "stun", "poison", "ch"].forEach(function (f) { if (m[f]) st[f] += m[f]; });
+    });
+    st.slowF = Math.max(.25, st.slowF); return st;
+  }
+  function trapNear(w, r) { var b = null, bd = r || 1.5; G.traps.forEach(function (t) { var d = Math.hypot(t.x - w.x, t.z - w.z); if (d <= bd) { bd = d; b = t; } }); return b; }
+  function trapById(id) { for (var i = 0; i < G.traps.length; i++) if (G.traps[i].id === id) return G.traps[i]; return null; }
+  function trapCheck(np, remote) {
+    if (famOf(remote ? G.heroes[1] : G.hero).indexOf("ronce") < 0) return "Ce piège appartient à Églantyne";
+    if (np.dist > 2.1) return "Place le piège sur le chemin des ennemis";
+    if (np.d < 4 || np.d > LEN - 3.5) return "Trop près de l'entrée ou du Cœur";
+    if (G.traps.some(function (t) { return Math.abs(t.d - np.d) < TRAP.space; })) return "Trop près d'un autre piège";
+    if (G.traps.length >= capOf("ronce")) return "Limite atteinte : pièges " + G.traps.length + "/" + capOf("ronce");
+    if (G.gold < TRAP.cost) return "Pas assez de cristaux (" + TRAP.cost + " requis)";
+    return null;
+  }
+  function tryTrapBuild(np, remote) {
+    var why = trapCheck(np, remote); if (why) { deny(remote, why); return false; }
+    if (G.mirror && !remote) { if (COOP) COOP.req({ k: "trap", d: Math.round(np.d * 10) / 10 }); G.build = false; G.pvT = null; return true; }
+    var q = pos(np.d); G.gold -= TRAP.cost;
+    var t = { id: ++TRID, d: np.d, x: q.x, z: q.z, spec: null, tier: 0, cd: 0, ch: TRAP.base.ch, wilted: false, pop: 1, n: 0, spent: TRAP.cost }; G.traps.push(t);
+    play("build", .8); burst(sx(t.x), sy(t.z), "#6fe08a", 14, 110, .6, 4);
+    if (!remote) { toast("Piège de ronce posé", "#9bffd0"); G.selT = t; G.sel = null; G.build = false; G.pvT = null; }
+    return true;
+  }
+  function tryTrapUp(t, spec, remote) {
+    if (!t) return;
+    if (G.mirror && !remote) { if (COOP) COOP.req({ k: "tup", id: t.id, sp: spec || "" }); return; }
+    if (!t.spec) {
+      if (!TRAP.specs[spec]) return; if (G.lvl < TRAP.specLvl) { deny(remote, "Niveau " + TRAP.specLvl + " requis"); return; }
+      if (G.gold < TRAP.specCost) { deny(remote, "Pas assez de cristaux"); return; }
+      G.gold -= TRAP.specCost; t.spent += TRAP.specCost; t.spec = spec; t.tier = 1;
+    } else if (t.tier < 2) {
+      if (G.lvl < TRAP.evoLvl) { deny(remote, "Niveau " + TRAP.evoLvl + " requis"); return; }
+      if (G.gold < TRAP.evoCost) { deny(remote, "Pas assez de cristaux"); return; }
+      G.gold -= TRAP.evoCost; t.spent += TRAP.evoCost; t.tier = 2;
+    } else return;
+    t.wilted = false; t.ch = trapStats(t).ch; t.cd = 0; t.pop = 1; play("upgrade", .9); burst(sx(t.x), sy(t.z) - 10, t.spec ? TRAP.specs[t.spec].col : "#b6f04a", 22, 150, .8, 5);
+    if (!remote) toast((t.tier === 2 ? TRAP.evo.name : TRAP.specs[t.spec].name) + " !", t.spec ? TRAP.specs[t.spec].col : "#b6f04a");
+  }
+  function tryTrapSell(t, remote) {
+    if (!t) return;
+    if (G.mirror && !remote) { if (COOP) COOP.req({ k: "tsell", id: t.id }); G.selT = null; return; }
+    var back = Math.round(t.spent * SELL_RATE); G.gold += back; G.traps = G.traps.filter(function (o) { return o !== t; }); if (G.selT === t) G.selT = null;
+    play("click", .8); burst(sx(t.x), sy(t.z), "#ffd25e", 12, 100, .6, 4); if (!remote) toast("Vendu : +" + back + " cristaux", "#ffe680");
+  }
+  // réactivation d'un piège desséché : sacrifice d'une poupée d'Églantyne (crochet utilisé par son kit) ou replantage payant
+  function reactivateTrap(t, how) {
+    if (!t || G.mirror) return; t.wilted = false; t.ch = trapStats(t).ch; t.cd = 0; t.pop = 1; t.claim = 0;
+    G.fx.push({ k: "ring", x: t.x, z: t.z, r: 2, t: 0, dur: .6, col: "#9bffd0" }); burst(sx(t.x), sy(t.z) - 8, "#9bffd0", 16, 120, .7, 4); play("upgrade", .6);
+    toast(how === "doll" ? "Poupée sacrifiée : piège réactivé" : "Piège replanté", "#9bffd0");
+  }
+  function tryTrapReseed(t, remote) {
+    if (!t || !t.wilted) return;
+    if (G.mirror && !remote) { if (COOP) COOP.req({ k: "tres", id: t.id }); return; }
+    var c = Math.round(TRAP.cost * .6); if (G.gold < c) { deny(remote, "Pas assez de cristaux"); return; } G.gold -= c; reactivateTrap(t, "gold");
+  }
+  function wiltedTrapNear(x, z, r) { var b = null; G.traps.forEach(function (t) { if (t.wilted && !(t.claim > time) && Math.hypot(t.x - x, t.z - z) <= r) b = b || t; }); if (b) b.claim = time + 3; return b; }
+  function trapFx(t, st) {
+    var col = t.spec ? TRAP.specs[t.spec].col : "#b6f04a";
+    G.fx.push({ k: "ring", x: t.x, z: t.z, r: st.r, t: 0, dur: .45, col: col }); burst(sx(t.x), sy(t.z) - 10, col, 14, 150, .6, 4); play("hit", .5, t.spec === "constrictor" ? .8 : 1.35);
+  }
+  function fireTrap(t) {
+    var st = trapStats(t); t.cd = st.rech; t.pop = 1; t.n = (t.n + 1) & 255; t.ch--;
+    inRadius(t.x, t.z, st.r).forEach(function (e) {
+      dmgEnemy(e, st.dmg * (G.dmgMul || 1), true); if (e.dead) return;
+      e.slowF = Math.min(e.slowF, st.slowF); e.slowT = Math.max(e.slowT, st.slowT);
+      if (st.stun) e.stun = Math.max(e.stun, st.stun * (e.def.kind === "boss" ? .3 : e.def.kind === "mini" ? .5 : 1));
+      if (st.poison) e.poison = { dps: Math.max(st.poison * (G.dmgMul || 1), e.poison ? e.poison.dps : 0), t: 4 };
+    });
+    trapFx(t, st);
+    if (t.ch <= 0) { t.wilted = true; floatText(t.x, t.z, "Desséché", "#d8c8a0"); }
+  }
+  function updateTraps(dt) {
+    G.traps.forEach(function (t) {
+      if (t.pop > 0) t.pop = Math.max(0, t.pop - dt * 1.8);
+      if (G.mirror || G.state !== "play") return;
+      if (t.cd > 0) { t.cd -= dt; return; }
+      if (t.wilted) return;
+      for (var i = 0; i < G.enemies.length; i++) { var e = G.enemies[i]; if (e.dead) continue; var q = ep(e); if (Math.hypot(q.x - t.x, q.z - t.z) < 1.3) { fireTrap(t); break; } }
+    });
+  }
+  function drawTrap(t) {
+    var x = sx(t.x), y = sy(t.z), spec = t.spec ? TRAP.specs[t.spec] : null, col = spec ? spec.col : "#b6f04a", wil = t.wilted, rech = t.cd > 0 && !wil, pop = t.pop;
+    var h = wil ? 6 : rech ? 7 : 12 + Math.sin(time * 3 + t.id) * 1.5; h += 34 * pop * pop;
+    ctx.save();
+    ctx.fillStyle = wil ? "rgba(80,60,36,.5)" : "rgba(14,34,20,.6)"; ctx.beginPath(); ctx.ellipse(x, y, 25, 25 * SY, 0, 0, 6.283); ctx.fill();
+    if (!wil) { ctx.strokeStyle = rech ? "rgba(255,255,255,.14)" : col; ctx.globalAlpha = rech ? 1 : .55; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1; }
+    var n = t.tier >= 2 ? 11 : 8;
+    for (var i = 0; i < n; i++) {
+      var a = i * 2.4 + t.id * 1.3, rr = 5 + (i % 3) * 6, bx = x + Math.cos(a) * rr, by = y + Math.sin(a) * rr * SY, hh = h * (.65 + .5 * (((i * 37) % 10) / 10)), tl = Math.cos(a) * 7;
+      ctx.fillStyle = wil ? "#6a5638" : "#2c5a34"; ctx.beginPath(); ctx.moveTo(bx - 2.5, by); ctx.quadraticCurveTo(bx + tl * .4, by - hh * .55, bx + tl, by - hh); ctx.quadraticCurveTo(bx + tl * .4 + 2, by - hh * .5, bx + 2.5, by); ctx.fill();
+      ctx.fillStyle = wil ? "#a08a5c" : col; ctx.beginPath(); ctx.moveTo(bx + tl - 2, by - hh + 3); ctx.lineTo(bx + tl, by - hh - 5); ctx.lineTo(bx + tl + 2, by - hh + 3); ctx.fill();
+      if (t.tier >= 1 && i % 3 === 0 && !wil) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(bx + tl * .5, by - hh * .5, 2.2, 0, 6.283); ctx.fill(); }
+    }
+    if (pop > .05 && t.spec === "solar") { ctx.globalAlpha = pop; ctx.fillStyle = "#fff3a0"; for (var k = 0; k < 8; k++) { var aa = k * .785; ctx.beginPath(); ctx.ellipse(x + Math.cos(aa) * 14, y - 24 + Math.sin(aa) * 8, 6, 3, aa, 0, 6.283); ctx.fill(); } ctx.fillStyle = "#ffb030"; ctx.beginPath(); ctx.arc(x, y - 24, 5, 0, 6.283); ctx.fill(); }
+    if (pop > .05 && t.spec === "spore") { ctx.globalAlpha = pop * .7; ctx.fillStyle = "#c48bff"; for (var m = 0; m < 6; m++) { ctx.beginPath(); ctx.arc(x + Math.cos(m * 1.05 + time) * 18 * (1.2 - pop), y - 20 - pop * 14 + Math.sin(m * 2 + time * 3) * 4, 4 * pop + 1, 0, 6.283); ctx.fill(); } }
+    ctx.restore();
+  }
   // annonce légère des tourelles débloquées / capacités gagnées (tous les clients, selon le niveau d'équipe)
   function noticeUnlocks() {
     if (!G.hero) return; if (UI.seenLvl == null || G.lvl < UI.seenLvl) { UI.seenLvl = G.lvl; return; }
@@ -704,20 +822,27 @@
       if (msg) { toast("NIVEAU " + L + " — " + msg, col); play("upgrade", .9); }
     }
   }
-  function toggleBuild() { if (G.state === "play" || G.state === "prep") { G.build = !G.build; G.pv = null; if (G.build) G.sel = null; } }
-  function cancel() { if (G.build) { G.build = false; G.pv = null; return true; } if (G.sel) { G.sel = null; return true; } return false; }
+  function toggleBuild() { if (G.state === "play" || G.state === "prep") { G.build = !G.build; G.pv = null; G.pvT = null; if (G.build) { G.sel = null; G.selT = null; } } }
+  function cancel() { if (G.build) { G.build = false; G.pv = null; G.pvT = null; return true; } if (G.sel || G.selT) { G.sel = null; G.selT = null; return true; } return false; }
   function togglePause() { if (G.state === "play" || G.state === "prep") { if (COOP && COOP.active()) G.menu = !G.menu; else G.paused = !G.paused; ptrs = {}; joy.on = false; aimSt = null; } }
   function worldClick(px, py) {
     if (G.paused || G.menu || (G.state !== "play" && G.state !== "prep")) return false;
-    var w = toWorld(px, py), s = slotAt(w);
+    var w = toWorld(px, py), s = slotAt(w), trapMode = G.build && TOWERS[buildType()].trap, tt = trapNear(w, 1.5);
+    if (trapMode) {
+      if (tt) { G.selT = tt; G.sel = null; G.build = false; G.pvT = null; return true; }
+      var np = nearestPath(w);
+      if (touchUI && !(G.pvT && Math.abs(G.pvT.d - np.d) < 1.2)) { G.pvT = np; play("click", .4); return true; }   // 1er toucher : aperçu ; 2e : poser
+      G.pvT = null; tryTrapBuild(np, false); return true;
+    }
+    if (!G.build && tt) { G.selT = tt; G.sel = null; return true; }
     if (G.build) {
       if (!s) { G.pv = null; return true; }
       if (s.tower) { G.sel = s.tower; G.build = false; G.pv = null; return true; }
       if (touchUI && G.pv !== s) { G.pv = s; play("click", .4); return true; }   // 1er toucher : aperçu de la portée ; 2e toucher : construire
       G.pv = null; tryBuild(s); return true;
     }
-    if (s && s.tower) { G.sel = s.tower; return true; }
-    if (G.sel) { G.sel = null; return true; }
+    if (s && s.tower) { G.sel = s.tower; G.selT = null; return true; }
+    if (G.sel || G.selT) { G.sel = null; G.selT = null; return true; }
     return false;
   }
   function pickHero(id) {
@@ -858,20 +983,28 @@
 
     var sel = G.sel, hv = touchUI && G.build ? G.pv : hover, hero = G.hero, tdef = TOWERS[heroTowerType()];
     var bokT = G.build && unlockedT(buildType()) && countT(buildType()) < capOf(buildType()) && G.gold >= tdef.cost;
-    if (G.build) slots.forEach(function (s) {
+    var trapB = G.build && TOWERS[buildType()].trap;
+    if (trapB) {
+      ctx.save(); ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.strokeStyle = "rgba(182,240,74,.3)"; ctx.lineWidth = TRAP_W; ctx.beginPath(); path.forEach(function (q, i) { var X = sx(q[0]), Y = sy(q[1]); if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); }); ctx.stroke(); ctx.restore();
+      var hp0 = touchUI ? G.pvT : (mouseIn ? nearestPath(toWorld(mouse.x, mouse.y)) : null);
+      if (hp0) { var okp = !trapCheck(hp0, false); ring(sx(hp0.x), sy(hp0.z), TRAP.base.r, okp ? "#9bffd0" : "#ff6a72", .1); text(okp ? (touchUI ? "Touche encore pour poser" : "Clic : poser le piège") : trapCheck(hp0, false), sx(hp0.x), sy(hp0.z) - 36, 14, okp ? "#9bffd0" : "#ffb0b0", "center"); }
+    }
+    if (G.build && !trapB) slots.forEach(function (s) {
       var X = sx(s.x), Y = sy(s.z); if (!inView(X, Y, 60)) return;
       if (!s.tower) { slotMark(s, s === hv ? (bokT ? "#8dffb0" : "#ff6a72") : "rgba(255,160,220," + (.55 + .25 * Math.sin(time * 4 + s.x)) + ")", s === hv ? 3.5 : 3); }
       else { ctx.fillStyle = "rgba(141,255,176,.7)"; ctx.beginPath(); ctx.arc(X, Y + 2, 4, 0, 6.283); ctx.fill(); }   // emplacement occupé : point vert
     });
     else if (hv && hv.tower) slotMark(hv, "#8dffb0");
-    if (G.build && hv && !hv.tower) ring(sx(hv.x), sy(hv.z), tstats(tdef, 0).range, bokT ? "#ffa0dc" : "#ff5a64");
+    if (G.build && hv && !hv.tower && !TOWERS[buildType()].trap) ring(sx(hv.x), sy(hv.z), tstats(tdef, 0).range, bokT ? "#ffa0dc" : "#ff5a64");
     if (sel) ring(sx(sel.s.x), sy(sel.s.z), sel.st.range, "#ffe680");
+    if (G.selT) ring(sx(G.selT.x), sy(G.selT.z), trapStats(G.selT).r, "#ffe680");
     G.buffs.forEach(function (b) { if (!b.follow) ring(sx(b.x), sy(b.z), b.r, "#ffc878", .04); });
     G.actors.forEach(function (a) { if (a.ground && a.draw) a.draw(); });
     if (aimSt && aimSt.key && hero) drawIndicator(hero, aimSt.key, aimSt.aim);
 
     G.sortedNow.length = 0;
     var items = [];
+    G.traps.forEach(function (t) { var X = sx(t.x), Y = sy(t.z); if (inView(X, Y, 70, 110)) items.push({ z: t.z + .4, f: function () { drawTrap(t); } }); });
     decor.forEach(function (d) {
       var n = d.kind; if (!inView(sx(d.x), sy(d.z), 70, 150)) return; if (n === "sparkle") { if (Q < .6) return; items.push({ z: d.z + 3, f: function () { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .5 + .4 * Math.sin(time * 2 + d.x * 3); spr("sparkle", sx(d.x), sy(d.z) + 6, 1); ctx.restore(); } }); return; }
       var big = n === "gate" || n === "fern" || n === "bones" ? 0 : n.indexOf("pine") === 0 ? .9 : n === "ruin_arch" ? 2.6 : n.indexOf("ruin") === 0 ? 1.5 : n === "rock" ? 1.6 : n.indexOf("tree") === 0 ? 1.4 : n === "bush" ? .9 : 1.0;
@@ -922,7 +1055,7 @@
     var vwid = VW.x1 - VW.x0, vhei = VW.y1 - VW.y0, nm = Math.round(26 * Q);
     for (var i = 0; i < nm; i++) { var fx = VW.x0 + (i * 197 + Math.sin(time * .3 + i) * 40 + 4000) % vwid, fy = VW.y0 + ((i * 331 + time * 8 * (1 + i % 3)) % vhei); ctx.globalAlpha = .3 + .3 * Math.sin(time * 2 + i); ctx.fillStyle = i % 2 ? "#ffb0e0" : "#c48bff"; ctx.fillRect(fx, fy, 3, 3); }
     ctx.globalAlpha = 1;
-    if (G.build && hv && !hv.tower) {
+    if (G.build && hv && !hv.tower && !trapB) {
       spr(tdef.spr + "0", sx(hv.x), sy(hv.z), tdef.sc || 1, false, bokT ? .6 : .35);
       if (touchUI) text(bokT ? "Touche encore pour construire" : (!unlockedT(buildType()) ? "Verrouillée" : countT(buildType()) >= capOf(buildType()) ? "Limite atteinte" : "Pas assez de cristaux"), sx(hv.x), sy(hv.z) - 96, 15, bokT ? "#9bffd0" : "#ffb0b0", "center");
     }
@@ -1101,6 +1234,7 @@
       } else text("NIVEAU MAXIMAL", px + 134, py + 150, 20, PINKL, "center");
       button(px + 12, py + 222, 244, 34, "Vendre  +" + Math.round((t.spent || td.cost) * SELL_RATE), function () { trySell(t); }, false, "#ffd25e", 16);
     }
+    if (G.selT) drawTrapPanel(G.selT);
     if (G.toastT > 0) { ctx.globalAlpha = Math.min(1, G.toastT / .5); text(G.toast, W / 2, 132, 26, G.toastC, "center"); ctx.globalAlpha = 1; }
     if (G.paused || G.menu) {
       ctx.fillStyle = "rgba(4,2,12,.6)"; ctx.fillRect(0, 0, W, H);
@@ -1117,6 +1251,32 @@
     } else if (G.state === "win") endScreen("VICTOIRE", "Le Cœur tient bon : la séquence est vaincue.", "#ffd25e");
     else if (G.state === "lose") endScreen("DÉFAITE", "Le Cœur s'est effondré sous la corruption.", "#ff6a76");
     if (full && window.innerHeight > window.innerWidth) { ctx.fillStyle = "rgba(4,2,12,.9)"; ctx.fillRect(0, 0, W, H); text("Tourne ton téléphone en paysage", W / 2, H / 2, 34, "#ffd25e", "center"); }
+  }
+  function drawTrapPanel(t) {
+    var px = 12, py = 196, st = trapStats(t), sp = t.spec ? TRAP.specs[t.spec] : null;
+    panel(px, py, 268, 262);
+    text((sp ? sp.name : "Piège de ronce") + (t.tier >= 2 ? " ★" : ""), px + 14, py + 22, 18, sp ? sp.col : "#fff");
+    text("Dégâts " + Math.round(st.dmg) + " · rayon " + st.r.toFixed(1) + " · recharge " + st.rech.toFixed(1) + " s", px + 14, py + 46, 13, "#cfc6dc", "left", false);
+    text("Charges " + Math.max(0, t.ch) + "/" + st.ch + (st.stun ? " · immobilise " + st.stun + " s" : "") + (st.poison ? " · poison" : ""), px + 14, py + 64, 13, "#cfc6dc", "left", false);
+    var y0 = py + 78;
+    if (t.wilted) {
+      wrapText("Desséché : Églantyne peut sacrifier une poupée près de lui, ou tu peux le replanter.", px + 134, y0 + 18, 240, 14, "#ffd9a0");
+      var rc = Math.round(TRAP.cost * .6); button(px + 12, y0 + 54, 244, 42, "Replanter  " + rc, function () { tryTrapReseed(t); }, false, G.gold >= rc ? "#fff" : "#ff8a96", 17);
+    } else if (!t.spec) {
+      text("Spécialisation  (" + TRAP.specCost + ")", px + 14, y0 + 12, 14, G.lvl >= TRAP.specLvl ? "#e8e0f0" : "#ffb0b0", "left", false);
+      Object.keys(TRAP.specs).forEach(function (k, i) {
+        var s2 = TRAP.specs[k], x = px + 12 + i * 82, lock = G.lvl < TRAP.specLvl;
+        button(x, y0 + 24, 78, 74, "", function () { if (lock) { play("error", .5); toast("Niveau " + TRAP.specLvl + " requis", "#ffb0b0"); return; } tryTrapUp(t, k); }, false, null, null, lock);
+        ctx.fillStyle = lock ? "#6c6688" : s2.col; ctx.beginPath(); ctx.arc(x + 39, y0 + 42, 7, 0, 6.283); ctx.fill();
+        text(s2.short, x + 39, y0 + 64, 12, lock ? "#6c6688" : "#fff", "center"); text(lock ? "NIV. " + TRAP.specLvl : s2.tag, x + 39, y0 + 84, 11, lock ? "#ffb0b0" : "#cfc6dc", "center", false);
+      });
+    } else if (t.tier < 2) {
+      var lock2 = G.lvl < TRAP.evoLvl, ok = G.gold >= TRAP.evoCost && !lock2;
+      button(px + 12, y0 + 6, 244, 92, "", function () { tryTrapUp(t); });
+      text(TRAP.evo.name, px + 134, y0 + 30, 17, ok ? "#fff" : "#ff8a96", "center"); gem(px + 112, y0 + 54, 8); text(String(TRAP.evoCost), px + 126, y0 + 54, 20, ok ? "#fff" : "#ff8a96");
+      wrapText(lock2 ? "Niveau " + TRAP.evoLvl + " requis (niveau actuel : " + G.lvl + ")" : TRAP.evo.desc, px + 134, y0 + 78, 220, 14, lock2 ? "#ffb0b0" : "#d8d0ee");
+    } else text("NIVEAU MAXIMAL", px + 134, y0 + 52, 20, PINKL, "center");
+    button(px + 12, py + 222, 244, 34, "Vendre  +" + Math.round(t.spent * SELL_RATE), function () { tryTrapSell(t); }, false, "#ffd25e", 16);
   }
   function endScreen(title, body, col) {
     ctx.fillStyle = "rgba(4,2,12,.55)"; ctx.fillRect(0, 0, W, H);
@@ -1249,6 +1409,6 @@
   var sb = document.querySelector("[data-ash-sound]"); if (sb) sb.addEventListener("click", toggleSound);
   var fb = document.querySelector("[data-ash-full]"); if (fb) fb.addEventListener("click", function () { setFull(!full); });
 
-  window.__ash = { get G() { return G; }, ep: ep, scr: function (x, z) { return { x: (sx(x) - CAM.x) * CAM.zm + VX, y: (sy(z) - CAM.y) * CAM.zm + VY }; }, cam: function () { return { x: Math.round(CAM.x), y: Math.round(CAM.y), zm: +CAM.zm.toFixed(2), vw: { x0: Math.round(VW.x0), x1: Math.round(VW.x1), y0: Math.round(VW.y0), y1: Math.round(VW.y1) }, MAPW: MAPW, MAPH: Math.round(MAPH), Q: Q }; }, inView: inView, toWorld: toWorld, slots: function () { return slots; }, build: function (i) { tryBuild(slots[i]); }, upgrade: function (i) { tryUpgrade(slots[i].tower); }, sell: function (i) { trySell(slots[i].tower); }, buildType: function (t) { G.bt = t; }, FAM: FAM, TIERCFG: TIERCFG, capOf: capOf, countT: countT, ui: function () { return UI; }, start: startSeq, reset: reset, pick: pickHero, setFull: setFull, joy: joy, W: function () { return W; }, cast: castSkill, choose: chooseUpgrade, hero: function () { return G.hero; }, hurt: function (i, d) { hurtHero(G.heroes[i], d); }, xp: function (n) { gainXp(n); }, attack: function () { heroAttack(); }, coop: function () { return COOP; }, ctl: function () { return ctl; }, view: function () { return { CW: CW, SL: SL, SR: SR, H: H, RS: RS, W: W }; }, RS: function () { return RS; }, toggleFull: toggleFull, tstats: tstats, TOWERS: TOWERS };
+  window.__ash = { get G() { return G; }, trapUp: function (i, sp) { tryTrapUp(G.traps[i], sp); }, trapSell: function (i) { tryTrapSell(G.traps[i]); }, trapStats: trapStats, TRAP: TRAP, nearestPath: nearestPath, buildTrap: function (d) { var q = pos(d); tryTrapBuild({ d: d, x: q.x, z: q.z, dist: 0 }); }, reseed: function (i) { tryTrapReseed(G.traps[i]); }, ep: ep, scr: function (x, z) { return { x: (sx(x) - CAM.x) * CAM.zm + VX, y: (sy(z) - CAM.y) * CAM.zm + VY }; }, cam: function () { return { x: Math.round(CAM.x), y: Math.round(CAM.y), zm: +CAM.zm.toFixed(2), vw: { x0: Math.round(VW.x0), x1: Math.round(VW.x1), y0: Math.round(VW.y0), y1: Math.round(VW.y1) }, MAPW: MAPW, MAPH: Math.round(MAPH), Q: Q }; }, inView: inView, toWorld: toWorld, slots: function () { return slots; }, build: function (i) { tryBuild(slots[i]); }, upgrade: function (i) { tryUpgrade(slots[i].tower); }, sell: function (i) { trySell(slots[i].tower); }, buildType: function (t) { G.bt = t; }, FAM: FAM, TIERCFG: TIERCFG, capOf: capOf, countT: countT, ui: function () { return UI; }, start: startSeq, reset: reset, pick: pickHero, setFull: setFull, joy: joy, W: function () { return W; }, cast: castSkill, choose: chooseUpgrade, hero: function () { return G.hero; }, hurt: function (i, d) { hurtHero(G.heroes[i], d); }, xp: function (n) { gainXp(n); }, attack: function () { heroAttack(); }, coop: function () { return COOP; }, ctl: function () { return ctl; }, view: function () { return { CW: CW, SL: SL, SR: SR, H: H, RS: RS, W: W }; }, RS: function () { return RS; }, toggleFull: toggleFull, tstats: tstats, TOWERS: TOWERS };
   boot();
 })();

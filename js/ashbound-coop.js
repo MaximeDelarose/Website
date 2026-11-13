@@ -8,7 +8,7 @@
   window.AshCoop = function (E) {
     var EVENTS = ["join", "welcome", "full", "pick", "start", "snap", "in", "act", "hev", "req", "msg", "leave"];
     var STATES = ["select", "prep", "play", "win", "lose"];
-    var ETYPES = Object.keys(E.ENEMY), TTYPES = Object.keys(E.TOWERS);
+    var ETYPES = Object.keys(E.ENEMY), TTYPES = Object.keys(E.TOWERS), SPECS = ["", "solar", "constrictor", "spore"];
     var CODE_CH = "ABCDEFGHJKLMNPQRSTUVWXYZ";
     var NET = fresh();
 
@@ -108,6 +108,10 @@
           else if (p.k === "build") { var sl = E.slots()[p.s]; if (sl && E.TOWERS[p.ty]) E.tryBuild(sl, p.ty, true); }
           else if (p.k === "pick") E.applyPick(G.heroes[1], p.id, true);
           else if (p.k === "sell") { var s3 = E.slots()[p.s]; if (s3 && s3.tower) E.trySell(s3.tower, true); }
+          else if (p.k === "trap") E.trapBuild(+p.d || 0);
+          else if (p.k === "tup") E.trapUp(+p.id, p.sp || null);
+          else if (p.k === "tsell") E.trapSell(+p.id);
+          else if (p.k === "tres") E.trapReseed(+p.id);
           else if (p.k === "up") { var s2 = E.slots()[p.s]; if (s2 && s2.tower) E.tryUpgrade(s2.tower, true); }
         } else if (ev === "leave") {
           NET.connected = false; NET.peer = null; NET.peerPick = null;
@@ -138,7 +142,8 @@
         O: G.orbs.slice(0, 60).map(function (o) { return [q(o.x), q(o.z), Math.round(o.v * 10) / 10, Math.round(o.t)]; }),
         P: G.eprojs.slice(0, 30).map(function (p) { return [q(p.x), q(p.z), q(p.vx), q(p.vz), q(p.life)]; }),
         E: G.enemies.map(function (e) { return [e.id, ETYPES.indexOf(e.k), q(e.d), q(e.lat), q(e.ox), q(e.oz), Math.round(e.hp), Math.round(e.mhp), e.stun > 0 ? 1 : 0, q(e.slowF), e.poison ? 1 : 0]; }),
-        T: G.towers.map(function (t) { return [slots.indexOf(t.s), TTYPES.indexOf(t.type), t.tier, Math.round(t.boost * 10)]; }) };
+        T: G.towers.map(function (t) { return [slots.indexOf(t.s), TTYPES.indexOf(t.type), t.tier, Math.round(t.boost * 10)]; }),
+        R: G.traps.map(function (r) { return [r.id, Math.round(r.d * 10), SPECS.indexOf(r.spec || ""), r.tier, r.wilted ? 1 : 0, r.n, Math.max(0, r.ch)]; }) };
     }
     function apply(s) {
       var G = E.G, slots = E.slots(), LEN = E.LEN();
@@ -184,6 +189,13 @@
         delete NET.emap[e.id]; return false;
       });
       // tourelles
+      var rset = {}; (s.R || []).forEach(function (a) {
+        rset[a[0]] = 1; var r = null; G.traps.forEach(function (o) { if (o.id === a[0]) r = o; });
+        if (!r) { var q = E.pos({ d: a[1] / 10, lat: 0, ox: 0, oz: 0 }); r = { id: a[0], d: a[1] / 10, x: q.x, z: q.z, spec: null, tier: 0, cd: 0, ch: 6, wilted: false, pop: 1, n: a[5], spent: 0 }; G.traps.push(r); E.play("build", .7); }
+        var sp = SPECS[a[2]] || null; r.spec = sp || null; r.tier = a[3]; r.wilted = !!a[4]; r.ch = a[6];
+        if (r.n !== a[5]) { r.n = a[5]; r.pop = 1; E.trapFx(r, E.trapStats(r)); }
+      });
+      G.traps = G.traps.filter(function (o) { return rset[o.id]; }); if (G.selT && !rset[G.selT.id]) G.selT = null;
       var tset = {}; s.T.forEach(function (a) { tset[a[0]] = 1; });
       slots.forEach(function (sl, i) { if (sl.tower && !tset[i]) { sl.tower = null; G.towers = G.towers.filter(function (o) { return o.s !== sl; }); if (G.sel && G.sel.s === sl) G.sel = null; } });
       s.T.forEach(function (a) {

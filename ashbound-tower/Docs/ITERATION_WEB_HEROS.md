@@ -105,3 +105,13 @@ XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations 
 - Performances : sol dessiné par fenêtre visible, culling hors écran (décor, tours, ennemis, projectiles, orbes, barres), particules poolées et plafonnées, qualité adaptative (Q) selon le temps d'image.
 - Tests : bots complets 4 héros gagnent (t7 adapté), parcours des ennemis jusqu'au Cœur sans défense, 43 constructions toutes à portée, 60 i/s en Chromium headless avec 43 tours, tactile mobile (2 touchers), coop, boutons sur 7 formats.
 - Limites : pas testé sur vrais téléphones (perf réelle inconnue) ; l'équilibrage (chemin 2,5× plus long) reste à régler ; le Cœur peut passer sous les boutons de compétence sur téléphone.
+
+## Mise à jour gameplay — étape 3 : Piège de ronce d'Églantyne (sur le chemin)
+
+- T1 d'Églantyne = **Piège de ronce posé sur le chemin** (hors des emplacements, donc hors des 43 constructions). Mode construction : le chemin est surligné, aperçu du rayon, pose au clic (tactile : 1er toucher aperçu, 2e toucher poser). Règles : sur le chemin, espacement 2,4, pas près de l'entrée/du Cœur, limite par niveau (`TRAP.cap`, 4→20), coût 40.
+- Comportement : persistant ; se déclenche quand un ennemi passe dessus (épines : dégâts de zone + ralentissement), puis recharge (3,5 s) ; 6 charges avant de se dessécher.
+- Spécialisations (choix à 80 cristaux, niveau 2) : **Floraison solaire** (gros dégâts de zone), **Constricteur** (immobilise 1,4 s — réduit sur boss/minibosses — puis ralentit fort), **Éclat de spores** (poison + ralentissement de zone). Évolution courte (130, niveau 4) : dégâts, rayon et charges accrus. Vente 60 %.
+- Réactivation : un piège desséché est rouvert par **sacrifice d'une poupée** d'Églantyne proche (crochet `wiltedTrap`/`reactivateTrap` utilisé par le kit) ou replanté pour 24 cristaux.
+- Coop : requêtes `trap`, `tup`, `tsell`, `tres` validées par l'hôte ; l'instantané transporte les pièges (`R`) et un compteur de déclenchements pour rejouer le visuel chez l'invité.
+- Arbre à poupées / Arbre Monde : toujours T2 / T3 en emplacements, stats génériques (mécaniques propres aux étapes suivantes).
+- Limites : visuel du piège procédural (canvas), sans sprites dédiés ; équilibrage non testé en conditions réelles ; Églantyne n'a plus de tour T1 sur emplacement (conforme à ses 3 familles du GDD, mais à confirmer pour la cible « 30 T1 »).
