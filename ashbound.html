@@ -63,9 +63,9 @@
           <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Prototype · Tower Defense &amp; Action RPG</span>
           <h1>Ashbound Tower</h1>
         </div>
-        <button class="btn btn-ghost btn-small" type="button" data-ash-sound aria-pressed="true">🔊 Son</button>
+        <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-small" type="button" data-ash-full>⛶ Plein écran</button><button class="btn btn-ghost btn-small" type="button" data-ash-sound aria-pressed="true">🔊 Son</button></div>
       </div>
-      <div class="panel" style="padding:8px;background:#09060f">
+      <div class="panel" id="ashwrap" style="padding:8px;background:#09060f">
         <canvas id="ash" width="1152" height="720" aria-label="Ashbound Tower" style="display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none;border-radius:8px"></canvas>
         <noscript><p>Ce jeu a besoin de JavaScript.</p></noscript>
       </div>
@@ -73,11 +73,12 @@
         <div class="panel game-help">
           <h2 class="section-title">Comment jouer</h2>
           <ul>
-            <li><strong>But</strong> : protège le <strong>Cœur</strong> pendant 10 vagues (≈ 5 min). Un miniboss arrive à la vague 5, le boss à la vague 10. Si la stabilité du Cœur tombe à 0, c'est perdu.</li>
-            <li><strong>Construire</strong> : touche <kbd>1</kbd> (ou le bouton en bas), puis clique sur une plaque runique. Le cercle montre la portée.</li>
-            <li><strong>Améliorer</strong> : clique sur une tourelle, puis sur « Améliorer ». Chaque niveau change son apparence : décharges multiples, éclairs en chaîne, surtension.</li>
-            <li><strong>Commandes</strong> : <kbd>Entrée</kbd> lance la séquence, <kbd>Échap</kbd> annule, <kbd>P</kbd> pause, <kbd>R</kbd> recommence. Sur mobile : touche l'écran.</li>
-            <li>Version navigateur du <em>prototype</em> (étape 1) : le héros jouable, l'expérience et les autres tourelles arrivent ensuite dans le jeu Unity.</li>
+            <li><strong>But</strong> : choisis ton héros puis protège le <strong>Cœur</strong> pendant 10 vagues (≈ 5 min). Un miniboss arrive à la vague 5, le boss à la vague 10. Si la stabilité du Cœur tombe à 0, c'est perdu.</li>
+            <li><strong>Ordinateur</strong> : <kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> (ou <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, ou les flèches) pour te déplacer, la souris pour viser. Clic gauche (ou <kbd>Espace</kbd>) : attaque, 3 coups enchaînés. <kbd>E</kbd> Frappe d'Attraction, <kbd>R</kbd> Foudre Ancrée, <kbd>F</kbd> Tempête de Foudre.</li>
+            <li><strong>Téléphone</strong> (comme Mobile Legends) : joystick à gauche (pose le pouce où tu veux), gros bouton d'attaque à droite avec ses compétences au-dessus, et un bouton de construction. L'attaque vise automatiquement l'ennemi le plus proche. Le jeu passe en plein écran : tourne le téléphone en paysage.</li>
+            <li><strong>Charge électrique</strong> : chaque attaque remplit la jauge, qui accélère tes coups ; pleine, ta prochaine attaque déclenche une décharge en zone.</li>
+            <li><strong>Construire</strong> : <kbd>B</kbd> (ou le bouton), puis clique sur une plaque runique. Clique sur une tourelle pour l'améliorer : décharges multiples, éclairs en chaîne, surtension. La Tempête de Foudre booste les tourelles proches.</li>
+            <li><kbd>Entrée</kbd> lance la séquence, <kbd>Échap</kbd> annule, <kbd>P</kbd> pause. Seul l'Épéiste est jouable pour l'instant ; Noctis et Églantyne arrivent ensuite.</li>
           </ul>
         </div>
       </div>
@@ -101,6 +102,6 @@
   <script src="js/auth.js?v=20261103re4"></script>
   <script src="js/main.js?v=20261120rl1"></script>
   <script src="js/gamekit.js?v=20261120rl1"></script>
-  <script src="js/ashbound.js?v=20261125ab1"></script>
+  <script src="js/ashbound.js?v=20261126ab2"></script>
 </body>
 </html>
