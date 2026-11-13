@@ -20,7 +20,7 @@ const LX = 20;
 const RX = 654;
 const COL_W = 140;
 const BEST_KEY = "arcade.flipper.best";
-const SAVE_MS = 7000;
+const SAVE_MS = 10000;
 const ROULETTE_MS = 2200;
 export class FlipperScene extends Phaser.Scene {
     constructor() {
