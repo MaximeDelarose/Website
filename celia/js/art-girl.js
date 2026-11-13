@@ -49,7 +49,7 @@
 
   /* ---------- visage ---------- */
   function bigEye(cx, cy, col) {
-    return '<g><ellipse cx="' + cx + '" cy="' + cy + '" rx="12" ry="13.500" fill="#fff"/><ellipse cx="' + cx + '" cy="' + (cy + 1) + '" rx="11" ry="12.500" fill="' + col + '"/><ellipse cx="' + cx + '" cy="' + (cy + 2) + '" rx="5.800" ry="6.600" fill="#1b1018"/><circle cx="' + (cx + 4.500) + '" cy="' + (cy - 4.500) + '" r="3.800" fill="#fff"/><circle cx="' + (cx - 4) + '" cy="' + (cy + 6) + '" r="1.800" fill="#fff" opacity=".9"/>' +
+    return '<g transform="translate(' + cx + ' ' + cy + ') scale(.86) translate(' + (-cx) + ' ' + (-cy) + ')"><ellipse cx="' + cx + '" cy="' + cy + '" rx="12" ry="13.500" fill="#fff"/><ellipse cx="' + cx + '" cy="' + (cy + 1) + '" rx="11" ry="12.500" fill="' + col + '"/><ellipse cx="' + cx + '" cy="' + (cy + 2) + '" rx="5.800" ry="6.600" fill="#1b1018"/><circle cx="' + (cx + 4.500) + '" cy="' + (cy - 4.500) + '" r="3.800" fill="#fff"/><circle cx="' + (cx - 4) + '" cy="' + (cy + 6) + '" r="1.800" fill="#fff" opacity=".9"/>' +
       '<path d="M' + (cx - 12.500) + ' ' + (cy + 1) + 'C' + (cx - 12.500) + ' ' + (cy - 9) + ' ' + (cx - 7) + ' ' + (cy - 13.500) + ' ' + cx + ' ' + (cy - 13.500) + 'S' + (cx + 12.500) + ' ' + (cy - 9) + ' ' + (cx + 12.500) + ' ' + (cy + 1) + '" fill="none" stroke="#2b1a22" stroke-width="3" stroke-linecap="round"/></g>';
   }
   function face(o, skin, shade) {
@@ -59,9 +59,9 @@
       '<ellipse cx="120" cy="98" rx="60" ry="56" fill="' + skin + '" ' + ST(3.500) + '/>' +
       '<path d="M74 136q46 26 92 0" fill="' + shade + '" opacity=".22"/>' +
       '<ellipse cx="80" cy="120" rx="14" ry="9" fill="#ff7fa5" opacity=".42"/><ellipse cx="160" cy="120" rx="14" ry="9" fill="#ff7fa5" opacity=".42"/>' +
-      '<g data-e="open" class="eyes">' + bigEye(92, 104, ec) + bigEye(148, 104, ec) + '<path d="M80 98q-6-1-9-8M82 92q-5-4-6-11M160 98q6-1 9-8M158 92q5-4 6-11" stroke="#2b1a22" stroke-width="2.400" fill="none" stroke-linecap="round"/></g>' +
-      '<path d="M80 80q12-8 24-2M136 78q12-6 24 2" fill="none" stroke="#6f3b24" stroke-width="2.800" stroke-linecap="round" opacity=".7"/>' +
-      '<g data-e="happy" style="display:none"><path d="M80 108q12-16 24 0M136 108q12-16 24 0" fill="none" stroke="#2b1a22" stroke-width="4.500" stroke-linecap="round"/></g>' +
+      '<g data-e="open" class="eyes">' + bigEye(100, 106, ec) + bigEye(140, 106, ec) + '<path d="M90 102q-5-1-8-7M92 97q-4-3-5-9M150 102q5-1 8-7M148 97q4-3 5-9" stroke="#2b1a22" stroke-width="2.400" fill="none" stroke-linecap="round"/></g>' +
+      '<path d="M90 86q10-7 20-2M150 86q-10-7-20-2" fill="none" stroke="#6f3b24" stroke-width="2.800" stroke-linecap="round" opacity=".7"/>' +
+      '<g data-e="happy" style="display:none"><path d="M90 109q10-13 20 0M130 109q10-13 20 0" fill="none" stroke="#2b1a22" stroke-width="4.500" stroke-linecap="round"/></g>' +
       '<ellipse cx="120" cy="116" rx="3.500" ry="2.600" fill="' + shade + '" opacity=".7"/>' +
       '<g data-m="smile"><path d="M107 127q13 10 26 0" fill="none" stroke="#e0607f" stroke-width="3.600" stroke-linecap="round"/></g>' +
       '<g data-m="open" style="display:none"><path d="M104 124q16 26 32 0z" fill="#c0305a" ' + ST(3) + '/><path d="M111 136q9-7 18 0q-9 6-18 0z" fill="#ff8fb8"/></g>' +
@@ -341,12 +341,12 @@
     s += '<path d="M70 242Q150 312 230 242Q216 284 150 286Q84 284 70 242z" fill="#000" opacity=".05"/><ellipse cx="150" cy="112" rx="44" ry="12" fill="#fff" opacity=".18"/>';
     s += '<g id="mk-blush">' + mir('<ellipse cx="84" cy="240" rx="30" ry="20" fill="url(#' + u + 'b)"/>') + '</g>';
     /* fard à paupières */
-    s += '<g id="mk-shadow">' + (st.shadow ? mir('<path d="M80 190Q82 160 104 158Q128 160 128 188Q104 172 80 190z" fill="' + st.shadow + '" opacity=".9"/><ellipse cx="104" cy="172" rx="26" ry="12" fill="' + st.shadow + '" opacity=".5"/>') : '') + '</g>';
+    s += '<g id="mk-shadow">' + (st.shadow ? mir('<g transform="translate(112 202) scale(.88) translate(-104 -198)"><path d="M80 190Q82 160 104 158Q128 160 128 188Q104 172 80 190z" fill="' + st.shadow + '" opacity=".9"/><ellipse cx="104" cy="172" rx="26" ry="12" fill="' + st.shadow + '" opacity=".5"/></g>') : '') + '</g>';
     /* yeux : grands, ronds, reflets ; petits cils ; sourcils fins et hauts */
-    s += mir('<ellipse cx="104" cy="198" rx="24" ry="26" fill="#fff"/>' +
+    s += mir('<g transform="translate(112 202) scale(.88) translate(-104 -198)"><ellipse cx="104" cy="198" rx="24" ry="26" fill="#fff"/>' +
       '<g clip-path="url(#' + u + 'c)"><circle cx="104" cy="199" r="25" fill="' + eyec + '"/><circle cx="104" cy="206" r="18" fill="#fff" opacity=".10"/><circle cx="104" cy="199" r="25" fill="url(#' + u + 'i)" opacity=".7"/><circle cx="104" cy="200" r="9.500" fill="#1b1018"/><circle cx="114" cy="188" r="7.500" fill="#fff"/><circle cx="94" cy="210" r="3.400" fill="#fff" opacity=".9"/></g>' +
       '<path d="M80 196C80 176 90 170 104 170s24 6 24 26" fill="none" stroke="#2b1a22" stroke-width="4.600" stroke-linecap="round"/><path d="M81 188q-7-2-11-10M84 180q-6-5-7-13" fill="none" stroke="#2b1a22" stroke-width="3.200" stroke-linecap="round"/>' +
-      '<path d="M82 160Q104 146 128 156" fill="none" stroke="' + hd + '" stroke-width="4.200" stroke-linecap="round" opacity=".75"/>');
+      '<path d="M82 160Q104 146 128 156" fill="none" stroke="' + hd + '" stroke-width="4.200" stroke-linecap="round" opacity=".75"/></g>');
     /* nez */
     s += '<ellipse cx="150" cy="228" rx="6.500" ry="4.800" fill="' + shade + '" opacity=".55"/><ellipse cx="148" cy="226" rx="2.600" ry="1.800" fill="#fff" opacity=".45"/>';
     /* bouche : petit sourire (plus pulpeux une fois le rouge à lèvres posé) */
