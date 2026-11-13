@@ -58,3 +58,5 @@ XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations 
 - Le combo enchaîne les poses : estoc puis grand arc.
 - **Conflit à trancher** : cette planche montre aussi une **Phelto « Chevalière de l'Aurore »** (armure, épée, compétences Estoc Foudroyant / Rempart d'Éclat / Lancée de Lame / Orage Céleste) alors que la planche précédente montrait **Phelto « Maîtresse des mélodies »** (guitariste/magicienne rose, notes de musique). Le jeu utilise encore la version mélodies. De même, les compétences d'Églantyne de cette planche (Piège de Ronce, Arbre à Poupées, Étreinte Végétale, Arbre Monde) diffèrent du Google Doc.
 - Tests : Chromium, Épéiste (séquence complète accélérée sans erreur), 7 formats d'écran (boutons) toujours OK.
+
+**Décision (auteur du projet)** : Phelto = version **« Maîtresse des mélodies »** (musique). La version « Chevalière de l'Aurore » de la planche « Lame du Tonnerre » n'est pas utilisée. Églantyne : kit du Google Doc conservé (décision sur les compétences de la planche toujours en attente).
