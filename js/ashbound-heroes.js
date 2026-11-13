@@ -277,7 +277,7 @@
       init: function (h) { h.k = { combo: 0, comboT: 0, charge: 0, storm: 0, tick: 0 }; h.cd.s2 = 8; h.cd.ult = 25; },
       attack: function (h, a) {
         var k = h.k, c = k.comboT > 0 ? k.combo % 3 : 0, st = COMBO[c], spd = 1 + .6 * k.charge / 100;
-        k.combo = c + 1; k.comboT = st.dur + .9; h.lunge = { dx: Math.cos(a) * st.lunge, dz: Math.sin(a) * st.lunge, t: .12 };
+        k.pose = c === 0 ? "atk" : "cast"; k.combo = c + 1; k.comboT = st.dur + .9; h.lunge = { dx: Math.cos(a) * st.lunge, dz: Math.sin(a) * st.lunge, t: .12 };
         var hit = false;
         A.enemies().forEach(function (e) { if (inCone(h.x, h.z, a, st.rng, st.arc * D2R, e)) { hit = true; A.dmg(e, st.dmg); A.push(e, Math.cos(a) * st.kb, Math.sin(a) * st.kb); if (c === 2) A.stun(e, .25); } });
         A.fx({ k: "slash", x: h.x, z: h.z, a: a, rng: st.rng, arc: st.arc * D2R, dur: st.dur + .08, big: c === 2 });
@@ -288,7 +288,7 @@
         h.swing = st.dur; return st.dur / spd;
       },
       cast: function (key, h, a, d) {
-        var k = h.k;
+        var k = h.k; k.pose = "cast";
         if (key === "s1") {
           var dx = Math.cos(a), dz = Math.sin(a), len = 6.5, hw = 1.7;
           A.fx({ k: "pull", x: h.x, z: h.z, a: a, len: len, hw: hw, dur: .6 });
@@ -311,6 +311,7 @@
         if (k.charge > 0 && Math.random() < dt * k.charge / 25) miniArc(h.x + rnd(-.4, .4), h.z, 8 + k.charge / 10, 30);   // étincelles de charge, même à l'arrêt
         if (k.storm > 0) { k.storm -= dt; k.tick -= dt; if (k.tick <= 0) { k.tick = .32; var inR = A.inRadius(h.x, h.z, 6.5); if (inR.length) { var e = inR[Math.floor(Math.random() * inR.length)], p = A.aimPt(e), top = { x: p.x + (Math.random() - .5) * 60, y: p.y - 520 }; A.bolt(top, p, true); A.dmg(e, 24); A.play("zap", .5, 1.3); } } }
       },
+      swingPose: function (h) { return h.k.pose || "atk"; },
       moveFx: function (h, dt) {
         var k = h.k; k.fxT = (k.fxT || 0) - dt; if (k.fxT > 0) return; var c = k.charge / 100; k.fxT = .1 - .06 * c;
         miniArc(h.x + rnd(-.5, .5), h.z + rnd(-.15, .3), 10 + 14 * c, 8);

@@ -20,12 +20,6 @@ cp(f'{A}/Art/Ground/arena01_ground.png', 'ground.png'); cp(f'{A}/Resources/Ashbo
 for f in os.listdir(refs): cp(f'{refs}/{f}', f)
 # Noctis (déjà extrait au premier passage : poses de la planche)
 nox = f'{root}/ashbound'  # (copié ailleurs par extract_refs.py)
-# Épéiste : chevalier procédural (pas de planche fournie)
-ep = f'{A}/Art/Billboards'
-for n, src in {'idle0': 'hero_epeiste_0', 'idle1': 'hero_epeiste_1', 'move0': 'hero_epeiste_0', 'move1': 'hero_epeiste_1', 'atk': 'hero_epeiste_0', 'cast': 'hero_epeiste_0'}.items(): cp(f'{ep}/{src}.png', f'hero_epeiste_{n}.png')
-im = Image.open(f'{ep}/hero_epeiste_0.png'); bb = im.getbbox(); c = im.crop(bb); s = 3.6
-big = c.resize((round(c.width * s), round(c.height * s)), Image.NEAREST); cv = Image.new('RGBA', (300, 300), (0, 0, 0, 0)); big.thumbnail((300, 300), Image.NEAREST); cv.alpha_composite(big, ((300 - big.width) // 2, 300 - big.height)); cv.save(f'{OUT}/big_epeiste.png')
-head = c.crop((int(c.width * .1), 0, int(c.width * .9), int(c.width * .8))).resize((96, 96), Image.NEAREST); bg = Image.new('RGBA', (96, 96), (14, 24, 60, 255)); bg.alpha_composite(head); bg.save(f'{OUT}/icon_epeiste.png')
 # poupée de bois individuelle (la plus grande de la rangée de 3)
 d = Image.open(f'{refs}/fx_eglantyne_dolls.png'); a = np.array(d)[:, :, 3] > 0; lab, n = ndimage.label(a, structure=np.ones((3, 3)))
 if n:

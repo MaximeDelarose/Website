@@ -68,7 +68,7 @@
   Object.keys(ENEMY).forEach(function (k) { IMGS.push(ENEMY[k].spr + "_0", ENEMY[k].spr + "_1"); });
   Object.keys(TOWERS).forEach(function (k) { for (var i = 0; i < 4; i++) IMGS.push(TOWERS[k].spr + i); });
   ["epeiste", "eglantyne", "phelto", "noctis"].forEach(function (h) { ["idle0", "idle1", "move0", "move1", "atk", "cast"].forEach(function (n) { IMGS.push("hero_" + h + "_" + n); }); IMGS.push("icon_" + h, "big_" + h); });
-  IMGS.push("fx_phelto_notes", "fx_eglantyne_seed");
+  IMGS.push("fx_phelto_notes", "fx_eglantyne_seed", "skill_epeiste_s1", "skill_epeiste_s2", "skill_epeiste_ult", "skill_epeiste_passive");
   var SNDS = ["zap", "hit", "death", "build", "upgrade", "heart_hit", "win", "lose", "click", "error", "wave", "boss", "ambient"];
   function boot() {
     var pending = IMGS.length + 1;
@@ -514,12 +514,13 @@
     var x = sx(h.x), y = sy(h.z), k = h.kit, fr = h.moving ? (Math.floor(G.anim * 9) & 1) : (Math.floor(G.anim * 2) & 1);
     shadow(x, y, 1.9);
     ctx.save(); ctx.globalAlpha = .6; ctx.strokeStyle = PINKL; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, 20, 20 * SY, 0, 0, 6.283); ctx.stroke(); ctx.restore();
-    var name = h.swing > 0 ? (h.swing > .18 ? k.spr.cast : k.spr.atk) : (h.moving ? k.spr.move[fr] : k.spr.idle[fr]);
+    var pose = h.swing > 0 ? (k.swingPose ? k.swingPose(h) : (h.swing > .18 ? "cast" : "atk")) : null;
+    var name = pose ? k.spr[pose] : (h.moving ? k.spr.move[fr] : k.spr.idle[fr]);
     var bob = h.moving ? Math.abs(Math.sin(G.anim * 14)) * -2 : Math.sin(G.anim * 3) * -1;
     ctx.save(); if (h.dash) ctx.globalAlpha = .75;
     spr(name, x, y + bob, k.scale, Math.cos(h.face) < -.1); ctx.restore();
     // plaque de nom façon maquette : nom coloré + fine barre de la ressource du héros
-    var top = y - sh(name) * k.scale - 20, col = HCOL[h.id] || PINKL, w = 74;
+    var top = y - sh(k.spr.idle[0]) * k.scale - 20, col = HCOL[h.id] || PINKL, w = 74;
     rr(x - w / 2, top - 11, w, 22, 5, "rgba(10,8,20,.85)", "rgba(255,255,255,.12)", 1);
     text(k.short || k.name, x, top - 3, 12, col, "center");
     var m = k.meter ? k.meter(h) : null, mv = m ? Math.min(1, m.v) : 1;
@@ -627,6 +628,11 @@
     ctx.save();
     if (sq) rr(cx - r, cy - r, r * 2, r * 2, 12, pressed ? "rgba(255,90,190,.55)" : "rgba(14,10,30,.85)", cdLeft > 0 ? "#5a4f86" : PINKL, 3);
     else { ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fillStyle = pressed ? "rgba(255,90,190,.55)" : "rgba(14,10,30,.78)"; ctx.fill(); ctx.lineWidth = big ? 5 : 4; ctx.strokeStyle = cdLeft > 0 ? "#5a4f86" : PINKL; ctx.stroke(); }
+    var skIm = G.hero ? imgs["skill_" + G.hero.id + "_" + id] : null;
+    if (skIm && skIm.naturalWidth) {   // icône officielle de la compétence (planche du héros)
+      ctx.save(); if (sq) rr(cx - r + 3, cy - r + 3, r * 2 - 6, r * 2 - 6, 9, null, null); else { ctx.beginPath(); ctx.arc(cx, cy, r - 3, 0, 6.283); } ctx.clip();
+      ctx.imageSmoothingEnabled = false; ctx.globalAlpha = cdLeft > 0 ? .55 : 1; ctx.drawImage(skIm, cx - r, cy - r, r * 2, r * 2); ctx.restore(); glyph = "";
+    }
     ctx.translate(cx, cy); ctx.strokeStyle = cdLeft > 0 ? "#8d86b4" : "#ffd0ee"; ctx.fillStyle = ctx.strokeStyle; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
     var s = r / 40;
     if (glyph === "atk") { ctx.beginPath(); ctx.moveTo(-14 * s, 16 * s); ctx.lineTo(16 * s, -16 * s); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-18 * s, 8 * s); ctx.lineTo(-8 * s, 18 * s); ctx.stroke(); ctx.beginPath(); ctx.moveTo(8 * s, -22 * s); ctx.lineTo(22 * s, -22 * s); ctx.lineTo(22 * s, -8 * s); ctx.stroke(); }
