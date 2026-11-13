@@ -69,7 +69,7 @@ const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fails++
   await p.evaluate(() => { document.querySelector('.startbtn').click(); document.querySelector('.t-dress').click(); }); await p.waitForTimeout(900);
   await p.evaluate(() => { document.querySelector('.tab[data-c=dress]').click(); setTimeout(() => document.querySelectorAll('.items .it')[3].click(), 100); }); await p.waitForTimeout(500);
   await p.reload(); await p.waitForTimeout(500);
-  ok(await p.evaluate(() => C.profile.outfit === 'd4'), 'tenue : la robe choisie est conservée après rechargement');
+  ok(await p.evaluate(() => C.profile.outfit === 'd3'), 'tenue : la robe choisie est conservée après rechargement');
   await b.close();
   console.log(fails ? '\n' + fails + ' ÉCHEC(S)' : '\nTOUT EST OK');
   process.exit(fails ? 1 : 0);

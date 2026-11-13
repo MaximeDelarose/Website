@@ -34,6 +34,7 @@
         '<button class="btn blue" data-do="turn" aria-label="tourner">' + Art.ui.spin + '</button></div></div>' +
         '<div class="tray"><div class="tabs"></div><div class="items scrollable"></div></div></div><div class="flash"></div>';
       var wrap = C.$('.dollwrap', el), tabs = C.$('.tabs', el), items = C.$('.items', el), doll = C.$('.doll', el);
+      cfg.hairStyle = G.fixStyle(cfg.hairStyle);
       var svg = null;
       function draw() { svg = G.mount(wrap, cfg); return svg; }
       draw();
@@ -53,6 +54,8 @@
         var add = function (html, cls, fn, on) { var b = C.el('<button class="it ' + (cls || '') + (on ? ' on' : '') + '">' + html + '</button>'); b.onclick = function () { C.select(items, '.it', b); C.sfx.pop(); fn(b); }; items.appendChild(b); return b; };
         if (cat === 'me') {
           G.skins.forEach(function (c, i) { var b = add('', 'round', function () { cfg.skin = i; C.saveProfile(); draw(); react(); C.sfx.sparkle(); }, cfg.skin === i); b.style.setProperty('--c', c); });
+          items.appendChild(C.el('<span class="gap"></span>'));
+          G.eyeColors.forEach(function (c, i) { var b = add('', 'round', function () { cfg.eyes = i; C.saveProfile(); draw(); react(); C.sfx.sparkle(); }, (cfg.eyes || 0) === i); b.style.setProperty('--c', c); });
           items.appendChild(C.el('<span class="gap"></span>'));
           G.hairColors.forEach(function (h, i) { var b = add('', 'round', function () { cfg.hairColor = i; C.saveProfile(); draw(); react(); C.sfx.sparkle(); }, cfg.hairColor === i); b.style.setProperty('--c', h.c); });
         } else if (cat === 'hair') {
@@ -99,7 +102,7 @@
         var n = 0; C.sfx.magic();
         var iv = setInterval(function () {
           n++;
-          cfg.outfit = C.rnd(out); cfg.shoes = C.rnd(['s1', 's2', 's3', 's4', 's5', 's6']);
+          cfg.outfit = C.rnd(out); cfg.shoes = C.rnd(['s0', 's1', 's2', 's3', 's4', 's5', 's6']);
           cfg.crown = Math.random() < 0.8 ? C.rnd(['c1', 'c2', 'c3', 'c4', 'c5', 'c6']) : null;
           cfg.jewel = Math.random() < 0.6 ? C.rnd(['j1', 'j2', 'j3', 'j4', 'j5']) : null;
           cfg.bag = Math.random() < 0.5 ? C.rnd(['b1', 'b2', 'b3', 'b4']) : null;
