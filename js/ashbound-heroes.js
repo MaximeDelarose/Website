@@ -177,7 +177,7 @@
           for (var i = 0; i < 5; i++) spots.push({ x: h.x + Math.cos(i * 1.256) * 2.2, z: h.z + Math.sin(i * 1.256) * 2.2 });
           k.dolls = [];
           spots.forEach(function (s, i) { A.after(.05 + (i % 10) * .03, function () { A.fx({ k: "ring", x: s.x, z: s.z, r: 2.6, dur: .5, col: "#fff3a0", flash: true }); A.inRadius(s.x, s.z, 2.6).forEach(function (e) { A.dmg(e, 55); }); }); });
-          A.fx({ k: "beams", x: h.x, z: h.z, dur: 1.1 }); A.healHeart(healed); A.shake(.35); A.play("boss", .9, 1.3); A.toast("Éclat de la Grande Serre ! Cœur +" + Math.round(healed * 100) + " %", "#fff3a0");
+          A.fx({ k: "beams", x: h.x, z: h.z, dur: 1.1 }); A.healHeart(healed); A.healHeroes(.3); A.shake(.35); A.play("boss", .9, 1.3); A.toast("Éclat de la Grande Serre ! Cœur +" + Math.round(healed * 100) + " %", "#fff3a0");
         }
       },
       update: function (h, dt) {

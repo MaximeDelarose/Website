@@ -131,8 +131,9 @@
     // ---------- instantanés ----------
     function encode() {
       var G = E.G, slots = E.slots();
-      return { n: ++NET.seq, st: STATES.indexOf(G.state), t: q(G.t), w: G.wave, g: G.gold, hp: Math.round(G.heart * 10) / 10, k: G.kills, rem: G.enemies.length + (G.events.length - G.next),
-        H: G.heroes.map(function (h) { return [q(h.x), q(h.z), q(h.face), h.moving ? 1 : 0, h.swing > 0 ? 1 : 0, (h.k && h.k.pose) || "", Math.round(h.cd.s1 * 10), Math.round(h.cd.s2 * 10), Math.round(h.cd.ult * 10), h.kit.netOut ? h.kit.netOut(h) : 0]; }),
+      return { n: ++NET.seq, st: STATES.indexOf(G.state), t: q(G.t), w: G.wave, g: G.gold, xp: G.xp, lv: G.lvl, hp: Math.round(G.heart * 10) / 10, k: G.kills, rem: G.enemies.length + (G.events.length - G.next),
+        H: G.heroes.map(function (h) { return [q(h.x), q(h.z), q(h.face), h.moving ? 1 : 0, h.swing > 0 ? 1 : 0, (h.k && h.k.pose) || "", Math.round(h.cd.s1 * 10), Math.round(h.cd.s2 * 10), Math.round(h.cd.ult * 10), h.kit.netOut ? h.kit.netOut(h) : 0, Math.round(h.hp), h.mhp, h.dead ? 1 : 0, Math.round(h.rv * 100)]; }),
+        P: G.eprojs.slice(0, 30).map(function (p) { return [q(p.x), q(p.z), q(p.vx), q(p.vz), q(p.life)]; }),
         E: G.enemies.map(function (e) { return [e.id, ETYPES.indexOf(e.k), q(e.d), q(e.lat), q(e.ox), q(e.oz), Math.round(e.hp), Math.round(e.mhp), e.stun > 0 ? 1 : 0, q(e.slowF), e.poison ? 1 : 0]; }),
         T: G.towers.map(function (t) { return [slots.indexOf(t.s), TTYPES.indexOf(t.type), t.tier, Math.round(t.boost * 10)]; }) };
     }
@@ -141,7 +142,8 @@
       if (s.n <= NET.seq) return; NET.seq = s.n; NET.lastSnap = now();
       var prev = G.state; G.state = STATES[s.st] || G.state;
       if (G.state !== prev) { if (G.state === "win") E.play("win", 1); else if (G.state === "lose") E.play("lose", 1); else if (G.state === "play" && prev === "prep") E.play("wave", .8); }
-      G.t = s.t; G.gold = s.g; G.kills = s.k; G.rem = s.rem;
+      G.t = s.t; G.gold = s.g; G.kills = s.k; G.rem = s.rem; G.xp = s.xp || 0;
+      if (s.lv > G.lvl) { G.lvl = s.lv; G.dmgMul = 1 + .08 * (G.lvl - 1); E.toast("NIVEAU " + G.lvl + " ! PV et dégâts accrus", "#ffe680"); E.play("upgrade", 1); G.heroes.forEach(function (h) { G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2.6, t: 0, dur: .7, col: "#ffe680" }); }); }
       if (s.w !== G.wave) { G.wave = s.w; if (s.w) { E.toast(E.WAVES[s.w - 1][0], E.PINKL); E.play("wave", .7); } }
       if (s.hp < G.heart - 0.01) { G.shake = .3; G.flashHeart = .35; E.play("heart_hit", 1); }
       G.heart = s.hp;
@@ -153,7 +155,14 @@
         if (local) { if (Math.hypot(a[0] - h.x, a[1] - h.z) > 1.8) { h.x = a[0]; h.z = a[1]; } }
         else { h.netT = { x: a[0], z: a[1] }; if (!h.netInit || Math.hypot(a[0] - h.x, a[1] - h.z) > 3) { h.x = a[0]; h.z = a[1]; h.netInit = true; } h.face = a[2]; h.netMoving = !!a[3]; if (a[5]) h.k.pose = a[5]; }
         if (a[9] && h.kit.netIn) h.kit.netIn(h, a[9]);
+        if (a.length > 10) {   // vie, état « à terre », progression de la ranimation
+          if (a[10] < h.hp - .5) { h.hflash = .2; G.floats.push({ x: E.sx(h.x), y: E.sy(h.z) - 70, txt: "-" + Math.round(h.hp - a[10]), col: "#ff6a6a", t: 0 }); E.play("hit", .4); if (local) G.shake = Math.max(G.shake, .12); }
+          h.hp = a[10]; h.mhp = a[11]; h.rv = a[13] / 100;
+          if (a[12] && !h.dead) { h.dead = true; h.dash = null; E.burst(E.sx(h.x), E.sy(h.z) - 30, "#ff6a8a", 18, 150, .8, 5); E.toast((h.kit.short || h.kit.name) + " est à terre !", "#ff8a8a"); }
+          else if (!a[12] && h.dead) { h.dead = false; G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2.6, t: 0, dur: .7, col: "#9bffd0" }); E.toast((h.kit.short || h.kit.name) + " est de retour !", "#9bffd0"); E.play("upgrade", .8); }
+        }
       });
+      G.eprojs = (s.P || []).map(function (a) { return { x: a[0], z: a[1], vx: a[2], vz: a[3], life: a[4], dmg: 0, r: .55 }; });
       // ennemis
       var seen = {};
       s.E.forEach(function (a) {
@@ -196,7 +205,7 @@
           if (t - NET.lastIn > 9000) { G.heroes.splice(1, 1); NET.connected = false; NET.peer = null; E.toast("Ton ami est déconnecté", "#ffb0dc"); }
         }
       } else {
-        if (t - NET.inAt >= 80) { NET.inAt = t; var mv = E.moveVec(), a = E.aimAtk(); send("in", { mx: q(mv.x), mz: q(mv.z), a: q(a.a), d: q(a.d), ah: E.attackHeld() ? 1 : 0 }); }
+        if (t - NET.inAt >= 80) { NET.inAt = t; var dead = G.hero && G.hero.dead, mv = dead ? { x: 0, z: 0 } : E.moveVec(), a = E.aimAtk(); send("in", { mx: q(mv.x), mz: q(mv.z), a: q(a.a), d: q(a.d), ah: !dead && E.attackHeld() ? 1 : 0 }); }
         if (NET.lastSnap && t - NET.lastSnap > 8000) { drop("Connexion perdue avec l'hôte."); return; }
         G.heroes.forEach(function (h) { if (h !== G.hero && h.netT) { var k = Math.min(1, dt * 12); h.x += (h.netT.x - h.x) * k; h.z += (h.netT.z - h.z) * k; } });   // lissage du partenaire
       }
