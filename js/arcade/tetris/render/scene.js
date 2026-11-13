@@ -55,7 +55,6 @@ export class TetrisScene extends Phaser.Scene {
             level: this.add.text(PANEL_X, 220, "", style(16)),
             best: this.add.text(PANEL_X, 250, "", style(14, DIM)),
             over: this.add.text(BOARD_X + 20, BOARD_Y + 200, "", style(22)).setDepth(10),
-            hint: this.add.text(PANEL_X, 430, "←→ bouger  ↑ tourner\n↓ descendre  ESPACE chute\nC garder  P pause", style(11, DIM)),
         };
         this.add.text(PANEL_X, 20, "TETRIS", style(22));
         this.add.text(PANEL_X, 60, "garder", style(12, DIM));
@@ -250,7 +249,6 @@ export class TetrisScene extends Phaser.Scene {
         this.texts.over.setVisible(this.tetris.over || this.paused);
         if (this.paused && !this.tetris.over)
             this.texts.over.setText("PAUSE  (P)");
-        this.texts.hint.setVisible(true);
         this.popups = this.popups.filter((p) => {
             p.life--;
             p.text.y -= 0.4;

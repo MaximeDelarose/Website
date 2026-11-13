@@ -39,7 +39,7 @@ export class TetrisScene extends Phaser.Scene {
   private paused = false;
   private best = 0;
   private gfx!: PhaserType.GameObjects.Graphics;
-  private texts!: Record<"score" | "lines" | "level" | "best" | "over" | "hint", PhaserType.GameObjects.Text>;
+  private texts!: Record<"score" | "lines" | "level" | "best" | "over", PhaserType.GameObjects.Text>;
   private extra!: Record<string, PhaserType.Input.Keyboard.Key>;
   private keys!: Record<"left" | "right" | "down" | "rotCw" | "rotCcw" | "drop" | "hold" | "pause" | "restart", PhaserType.Input.Keyboard.Key>;
   private prevPad: boolean[] = [];
@@ -66,7 +66,6 @@ export class TetrisScene extends Phaser.Scene {
       level: this.add.text(PANEL_X, 220, "", style(16)),
       best: this.add.text(PANEL_X, 250, "", style(14, DIM)),
       over: this.add.text(BOARD_X + 20, BOARD_Y + 200, "", style(22)).setDepth(10),
-      hint: this.add.text(PANEL_X, 430, "←→ bouger  ↑ tourner\n↓ descendre  ESPACE chute\nC garder  P pause", style(11, DIM)),
     };
     this.add.text(PANEL_X, 20, "TETRIS", style(22));
     this.add.text(PANEL_X, 60, "garder", style(12, DIM));
@@ -263,7 +262,6 @@ export class TetrisScene extends Phaser.Scene {
     this.texts.best.setText(`meilleur ${Math.max(this.best, this.tetris.score)}`);
     this.texts.over.setVisible(this.tetris.over || this.paused);
     if (this.paused && !this.tetris.over) this.texts.over.setText("PAUSE  (P)");
-    this.texts.hint.setVisible(true);
 
     this.popups = this.popups.filter((p) => {
       p.life--;
