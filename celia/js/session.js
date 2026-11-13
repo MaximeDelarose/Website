@@ -197,11 +197,10 @@
       el.innerHTML = '<div class="sleep' + (fresh ? ' fresh' : '') + '"><div class="nstars">' + stars + '</div><div class="nmoon">' + Art.item('moon') + '</div>' +
         '<div class="ncastle">' + Art.castle() + '</div><div class="zzz"><i>z</i><i>Z</i><i>z</i></div>' +
         '<div class="bye"><h1>À bientôt ' + C.NAME + ' !</h1><p>Le château se repose.</p></div>' +
-        '<button class="parentlock" aria-label="espace parents">' + LOCK + '</button></div>';
-      /* accès parent : appui long (pas un simple bouton) */
-      var lk = C.$('.parentlock', el), t = null;
-      lk.addEventListener('pointerdown', function () { t = setTimeout(function () { t = null; Ses.openParent(); }, 1400); lk.classList.add('arm'); });
-      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { lk.addEventListener(ev, function () { clearTimeout(t); lk.classList.remove('arm'); }); });
+        '<button class="parentlock" aria-label="espace parents"><span class="pl-ic">' + LOCK + '</span>Espace parents</button></div>';
+      /* accès parent : bouton visible, mais le code est demandé (un enfant ne peut pas aller plus loin) */
+      var lk = C.$('.parentlock', el);
+      lk.addEventListener('click', function () { Ses.openParent(); });
       if (fresh) setTimeout(function () { C.say('Bravo ' + C.NAME + ' ! Maintenant, le château va se reposer. À bientôt !', { must: true }); }, 1200);
     },
     leave: function () { }
