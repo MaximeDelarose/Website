@@ -37,3 +37,9 @@ Sprites Églantyne/Phelto basiques ; animations d'attaque absentes (une pose) ; 
 
 ## 9. Étape suivante proposée
 XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations d'Églantyne/Phelto ; équilibrage après tests sur téléphone.
+
+---
+## Itération suivante — alignement sur les captures + mode grand écran
+- Composition : plaque de nom colorée + mini-barre de ressource au-dessus du héros ; portrait + rangée de 4 compétences en bas à droite (clavier/souris) ; barres de vie encadrées (vert/jaune/rouge) avec étincelle au coup ; « SPAWN » sous la flèche d'entrée ; Cœur avec libellé et barre.
+- **Mode grand écran** (PC et mobile) : bouton dans le HUD, touche `G`, bouton de page, menu pause. API plein écran native si disponible, sinon plein cadre CSS (iOS). Le canvas s'adapte au ratio de l'écran (960 → 1700 de large logique) et la résolution interne suit l'écran (×1 ou ×2) pour des textes et traits nets.
+- Tests : Chromium 1920×1080 (normal → grand écran → retour), mobile paysage 844×390 en grand écran ; aucune erreur JS. **Non testé** : plein écran natif sur vrai appareil, iOS.

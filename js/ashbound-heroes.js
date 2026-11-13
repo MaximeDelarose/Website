@@ -34,7 +34,7 @@
       });
     }
     kits.noctis = {
-      id: "noctis", name: "Noctis", role: "Assassin · Ombre", speed: 7.2, scale: .95, tower: "faille", provisional: false,
+      id: "noctis", name: "Noctis", short: "NOCTIS", role: "Maître des ombres", speed: 7.2, scale: .95, tower: "faille", provisional: false,
       spr: { idle: ["hero_noctis_idle0", "hero_noctis_idle1"], move: ["hero_noctis_move0", "hero_noctis_move1"], atk: "hero_noctis_atk", cast: "hero_noctis_cast" },
       lines: ["Éclats convergents · dash fantôme", "Clones, failles et ombres spectrales"],
       skills: {
@@ -105,7 +105,7 @@
 
     /* ======================================================== ÉGLANTYNE */
     kits.eglantyne = {
-      id: "eglantyne", name: "Églantyne", role: "Invocation · Nature", speed: 5.7, scale: 1, tower: "ronce", provisional: false,
+      id: "eglantyne", name: "Églantyne", short: "ÉGLANTYNE", role: "Invocation · Nature", speed: 5.7, scale: 1, tower: "ronce", provisional: false,
       spr: { idle: ["hero_eglantyne_0", "hero_eglantyne_1"], move: ["hero_eglantyne_0", "hero_eglantyne_1"], atk: "hero_eglantyne_atk", cast: "hero_eglantyne_atk" },
       lines: ["Graines de ronce, poison, poupées", "Calice de l'Effroi · Terrain Sacrificiel"],
       skills: {
@@ -180,7 +180,7 @@
 
     /* ======================================================== PHELTO (kit provisoire) */
     kits.phelto = {
-      id: "phelto", name: "Phelto", role: "Soutien · Musique", speed: 6.2, scale: 1, tower: "ampli", provisional: true,
+      id: "phelto", name: "Phelto", short: "PHELTO", role: "Soutien · Musique", speed: 6.2, scale: 1, tower: "ampli", provisional: true,
       spr: { idle: ["hero_phelto_0", "hero_phelto_1"], move: ["hero_phelto_0", "hero_phelto_1"], atk: "hero_phelto_atk", cast: "hero_phelto_atk" },
       lines: ["Notes perçantes, onde de choc", "Zone qui accélère les tourelles (provisoire)"],
       skills: {
@@ -227,7 +227,7 @@
     /* ======================================================== ÉPÉISTE ÉLECTRIQUE */
     var COMBO = [{ rng: 2.2, arc: 100, dmg: 14, dur: .30, lunge: .55, kb: .25 }, { rng: 2.6, arc: 150, dmg: 20, dur: .34, lunge: .6, kb: .35 }, { rng: 3.5, arc: 215, dmg: 42, dur: .46, lunge: 1.0, kb: .9 }];
     kits.epeiste = {
-      id: "epeiste", name: "L'Épéiste électrique", role: "Mêlée · Foudre", speed: 6.2, scale: 1, tower: "orb", provisional: false, atkRange: 3.6,
+      id: "epeiste", name: "L'Épéiste électrique", short: "ÉPÉISTE", role: "Mêlée · Foudre", speed: 6.2, scale: 1, tower: "orb", provisional: false, atkRange: 3.6,
       spr: { idle: ["hero_epeiste_0", "hero_epeiste_1"], move: ["hero_epeiste_0", "hero_epeiste_1"], atk: "hero_epeiste_0", cast: "hero_epeiste_0" },
       lines: ["Combo en 3 coups, charge électrique", "Attraction · Foudre Ancrée · Tempête"],
       skills: {
