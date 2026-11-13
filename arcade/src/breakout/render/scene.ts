@@ -1,4 +1,5 @@
 import type PhaserType from "phaser";
+import { PAL, FONT } from "../../shared/theme.js";
 import type MatterType from "matter-js";
 import { Phaser, Matter } from "../../shared/engines.js";
 import { readPad } from "../../shared/gamepad.js";
@@ -23,8 +24,8 @@ const CELL_H = 20;
 const BRICK_TOP = 70;
 const FLOOR_Y = 590;
 
-const COLORS = { 1: 0x5fd35f, 2: 0xf2d43a, 3: 0xf0505a, X: 0x5b6478 };
-const POWER_COLORS: Record<PowerUp, number> = { wide: 0x34d8f0, multi: 0xb363e8, laser: 0xf0505a, sticky: 0xf39a3a };
+const COLORS = { 1: PAL.moss2, 2: PAL.orangeLight, 3: PAL.berry, X: PAL.cap };
+const POWER_COLORS: Record<PowerUp, number> = { wide: PAL.leaf, multi: PAL.tan, laser: PAL.berry, sticky: PAL.orange };
 const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
 
 const brickCenter = (r: number, c: number) => ({ x: c * CELL_W + CELL_W / 2, y: BRICK_TOP + r * CELL_H });
@@ -64,13 +65,13 @@ export class BreakoutScene extends Phaser.Scene {
   create(): void {
     this.gfx = this.add.graphics();
     this.gfx.y = TOP;
-    const style = (size: number, color = 0xe8ecf4): PhaserType.Types.GameObjects.Text.TextStyle => ({ fontFamily: "monospace", fontSize: `${size}px`, color: hex(color) });
+    const style = (size: number, color = PAL.cream): PhaserType.Types.GameObjects.Text.TextStyle => ({ fontFamily: FONT, fontSize: `${size}px`, color: hex(color) });
     this.hud = {
       score: this.add.text(10, 12, "", style(16)),
-      best: this.add.text(10, 32, "", style(11, 0x7a8294)),
+      best: this.add.text(10, 32, "", style(11, PAL.dim)),
       lives: this.add.text(230, 12, "", style(16)),
-      level: this.add.text(230, 32, "", style(11, 0x7a8294)),
-      msg: this.add.text(W / 2, TOP + 330, "", style(15, 0x7a8294)).setOrigin(0.5).setDepth(10),
+      level: this.add.text(230, 32, "", style(11, PAL.dim)),
+      msg: this.add.text(W / 2, TOP + 330, "", style(15, PAL.dim)).setOrigin(0.5).setDepth(10),
     };
     this.keys = this.input.keyboard!.addKeys({
       left: "LEFT", left2: "A", right: "RIGHT", right2: "D", fire: "SPACE", fire2: "UP", restart: "R",
@@ -361,7 +362,7 @@ export class BreakoutScene extends Phaser.Scene {
   private onEvent(e: BreakoutEvent): void {
     switch (e.type) {
       case "hit":
-        if (e.points) this.popup(`+${e.points}`, 0xe8ecf4);
+        if (e.points) this.popup(`+${e.points}`, PAL.cream);
         break;
       case "drop": {
         const { x, y } = brickCenter(e.row, e.col);
@@ -374,7 +375,7 @@ export class BreakoutScene extends Phaser.Scene {
         break;
       case "levelClear":
         tone(523, 0.3, { vol: 0.05, freqEnd: 1046, type: "sine" });
-        this.popup(`niveau ${e.level} terminé +${e.bonus}`, 0x5fd35f);
+        this.popup(`niveau ${e.level} terminé +${e.bonus}`, PAL.moss2);
         this.clearPowers();
         this.buildBricks();
         this.balls.forEach((b) => Matter.Composite.remove(this.engine.world, b));
@@ -409,14 +410,14 @@ export class BreakoutScene extends Phaser.Scene {
   }
 
   private popup(message: string, color: number): void {
-    const text = this.add.text(W / 2 + (Math.random() - 0.5) * 120, TOP + 260, message, { fontFamily: "monospace", fontSize: "13px", color: hex(color) }).setOrigin(0.5).setDepth(20);
+    const text = this.add.text(W / 2 + (Math.random() - 0.5) * 120, TOP + 260, message, { fontFamily: FONT, fontSize: "13px", color: hex(color) }).setOrigin(0.5).setDepth(20);
     this.popups.push({ text, life: 36 });
   }
 
   private render(): void {
     const g = this.gfx;
     g.clear();
-    g.fillStyle(0x121723, 1);
+    g.fillStyle(PAL.field, 1);
     g.fillRect(0, 0, W, H);
     for (const b of this.rules.bricks) {
       const { x, y } = brickCenter(b.row, b.col);
@@ -424,22 +425,22 @@ export class BreakoutScene extends Phaser.Scene {
       g.fillStyle(base, b.indestructible ? 1 : 0.45 + 0.55 * (b.hits / b.maxHits));
       g.fillRect(x - BRICK_W / 2, y - BRICK_H / 2, BRICK_W, BRICK_H);
     }
-    g.fillStyle(0xe8ecf4, 1);
+    g.fillStyle(PAL.cream, 1);
     g.fillRect(this.paddleX - this.paddleW / 2, PADDLE_Y - 6, this.paddleW, 12);
     if (this.timers.laser > 0) {
-      g.fillStyle(0xf0505a, 1);
+      g.fillStyle(PAL.berry, 1);
       g.fillRect(this.paddleX - this.paddleW / 2, PADDLE_Y - 12, 4, 6);
       g.fillRect(this.paddleX + this.paddleW / 2 - 4, PADDLE_Y - 12, 4, 6);
     }
-    g.fillStyle(0xe8ecf4, 1);
+    g.fillStyle(PAL.cream, 1);
     for (const b of this.balls) g.fillCircle(b.position.x, b.position.y, 6);
-    g.fillStyle(0xf2d43a, 1);
+    g.fillStyle(PAL.orangeLight, 1);
     for (const l of this.lasers) g.fillRect(l.x - 1, l.y, 2, 10);
     for (const d of this.drops) {
       g.fillStyle(POWER_COLORS[d.power], 1);
       g.fillRect(d.x - 8, d.y - 5, 16, 10);
     }
-    g.lineStyle(2, 0x34d8f0, 0.25);
+    g.lineStyle(2, PAL.leaf, 0.25);
     g.strokeRect(0, 0, W, H);
 
     this.hud.score.setText(`score ${this.rules.score}`);

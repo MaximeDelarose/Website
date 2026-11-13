@@ -1,4 +1,5 @@
 import type PhaserType from "phaser";
+import { PAL, FONT } from "../../shared/theme.js";
 import type MatterType from "matter-js";
 import { Phaser, Matter } from "../../shared/engines.js";
 import { readPad } from "../../shared/gamepad.js";
@@ -11,7 +12,7 @@ const TOP = 60; // bande du haut pour le score ; la table commence à y = TOP
 const BEST_KEY = "arcade.flipper.best";
 const TICK_MS = 1000 / 60;
 
-const C = { bg: 0x0b0d12, wall: 0x5b6478, flipper: 0xf2d43a, ball: 0xe8ecf4, bumper: 0xf0505a, target: 0x34d8f0, roll: 0x3a4256, sling: 0x5fd35f, lane: 0x121723, ink: 0xe8ecf4, dim: 0x7a8294 };
+const C = { bg: PAL.bg, wall: PAL.cap, flipper: PAL.orangeLight, ball: PAL.cream, bumper: PAL.berry, target: PAL.leaf, roll: PAL.cap, sling: PAL.moss2, lane: PAL.field, ink: PAL.cream, dim: PAL.dim };
 const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
 
 interface Flip {
@@ -51,7 +52,7 @@ export class FlipperScene extends Phaser.Scene {
   create(): void {
     this.gfx = this.add.graphics();
     this.gfx.y = TOP;
-    const style = (size: number, color = C.ink): PhaserType.Types.GameObjects.Text.TextStyle => ({ fontFamily: "monospace", fontSize: `${size}px`, color: hex(color) });
+    const style = (size: number, color = C.ink): PhaserType.Types.GameObjects.Text.TextStyle => ({ fontFamily: FONT, fontSize: `${size}px`, color: hex(color) });
     this.hud = {
       score: this.add.text(12, 14, "", style(18)),
       best: this.add.text(12, 38, "", style(12, C.dim)),
@@ -317,7 +318,7 @@ export class FlipperScene extends Phaser.Scene {
 
   private popup(message: string, color: number): void {
     const x = 160 + Math.random() * 60;
-    const text = this.add.text(x, 260 + TOP, message, { fontFamily: "monospace", fontSize: "14px", color: hex(color) }).setOrigin(0.5).setDepth(20);
+    const text = this.add.text(x, 260 + TOP, message, { fontFamily: FONT, fontSize: "14px", color: hex(color) }).setOrigin(0.5).setDepth(20);
     this.popups.push({ text, life: 40 });
   }
 
@@ -346,7 +347,7 @@ export class FlipperScene extends Phaser.Scene {
       const flash = this.hitFlash.get(b.id) ?? 0;
       g.fillStyle(C.bumper, flash > 0 ? 1 : 0.85);
       g.fillCircle(b.x, b.y, b.r);
-      g.lineStyle(3, 0xffffff, 0.3);
+      g.lineStyle(3, PAL.cream, 0.3);
       g.strokeCircle(b.x, b.y, b.r - 4);
     }
     for (const t of d.targets) {

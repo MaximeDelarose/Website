@@ -1,4 +1,5 @@
 import type PhaserType from "phaser";
+import { PAL, FONT } from "../../shared/theme.js";
 import { Phaser } from "../../shared/engines.js";
 import { readPad } from "../../shared/gamepad.js";
 import { loadBest, saveBest } from "../../shared/storage.js";
@@ -17,18 +18,18 @@ const BEST_KEY = "arcade.tetris.best";
 
 /** Palette limitée : une couleur par pièce (index = KINDS). */
 const COLORS: Record<Kind, number> = {
-  I: 0x34d8f0,
-  O: 0xf2d43a,
-  T: 0xb363e8,
-  S: 0x5fd35f,
-  Z: 0xf0505a,
-  J: 0x4b7bec,
-  L: 0xf39a3a,
+  I: PAL.leaf,
+  O: PAL.orangeLight,
+  T: PAL.cream,
+  S: PAL.moss2,
+  Z: PAL.berry,
+  J: PAL.tan,
+  L: PAL.orange,
 };
-const BG = 0x0b0d12;
-const GRID = 0x1a1f2b;
-const INK = 0xe8ecf4;
-const DIM = 0x7a8294;
+const BG = PAL.bg;
+const GRID = PAL.field;
+const INK = PAL.cream;
+const DIM = PAL.dim;
 
 /** Lit clavier et manette et pilote le jeu. Le tactile est géré à part (glisser / toucher). */
 export class TetrisScene extends Phaser.Scene {
@@ -55,7 +56,7 @@ export class TetrisScene extends Phaser.Scene {
     this.best = loadBest(BEST_KEY);
     this.gfx = this.add.graphics();
     const style = (size: number, color = INK): PhaserType.Types.GameObjects.Text.TextStyle => ({
-      fontFamily: "monospace",
+      fontFamily: FONT,
       fontSize: `${size}px`,
       color: `#${color.toString(16).padStart(6, "0")}`,
     });
@@ -171,14 +172,14 @@ export class TetrisScene extends Phaser.Scene {
         case "lines": {
           const notes = e.count >= 4 ? [523, 659, 784, 1047] : [523, 659];
           notes.forEach((f, i) => tone(f, 0.12, { vol: 0.05, delay: i * 0.07 }));
-          this.popup(e.count >= 4 ? "TETRIS !" : e.count === 1 ? "+1 ligne" : `+${e.count} lignes`, e.count >= 4 ? 0xf2d43a : INK);
-          if (this.tetris.combo > 0) this.popup(`combo x${this.tetris.combo + 1}`, 0x34d8f0);
+          this.popup(e.count >= 4 ? "TETRIS !" : e.count === 1 ? "+1 ligne" : `+${e.count} lignes`, e.count >= 4 ? PAL.orangeLight : INK);
+          if (this.tetris.combo > 0) this.popup(`combo x${this.tetris.combo + 1}`, PAL.leaf);
           this.flash = e.count >= 4 ? 10 : 4;
           break;
         }
         case "level":
           tone(660, 0.3, { vol: 0.05, freqEnd: 1320, type: "sine" });
-          this.popup(`niveau ${e.level}`, 0x5fd35f);
+          this.popup(`niveau ${e.level}`, PAL.moss2);
           break;
         case "hold":
           tone(440, 0.05, { vol: 0.03, type: "sine" });
@@ -201,7 +202,7 @@ export class TetrisScene extends Phaser.Scene {
 
   private popup(message: string, color: number): void {
     const text = this.add.text(BOARD_X + (BOARD_W * CELL) / 2, BOARD_Y + 120, message, {
-      fontFamily: "monospace",
+      fontFamily: FONT,
       fontSize: "18px",
       color: `#${color.toString(16).padStart(6, "0")}`,
     }).setOrigin(0.5).setDepth(20);
@@ -224,7 +225,7 @@ export class TetrisScene extends Phaser.Scene {
         const y = BOARD_Y + (r - HIDDEN_ROWS) * CELL;
         if (v) this.block(x, y, KINDS[v - 1], 1);
         else {
-          g.fillStyle(0x121723, 1);
+          g.fillStyle(PAL.field, 1);
           g.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
         }
       }
@@ -252,7 +253,7 @@ export class TetrisScene extends Phaser.Scene {
 
     if (this.flash > 0) {
       this.flash--;
-      g.fillStyle(0xffffff, 0.06 * this.flash);
+      g.fillStyle(PAL.cream, 0.06 * this.flash);
       g.fillRect(BOARD_X, BOARD_Y, BOARD_W * CELL, (BOARD_H - HIDDEN_ROWS) * CELL);
     }
 
@@ -280,7 +281,7 @@ export class TetrisScene extends Phaser.Scene {
     const g = this.gfx;
     g.fillStyle(COLORS[kind], alpha);
     g.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
-    g.fillStyle(0xffffff, 0.25 * alpha);
+    g.fillStyle(PAL.cream, 0.25 * alpha);
     g.fillRect(x + 3, y + 3, CELL - 8, 3);
   }
 
