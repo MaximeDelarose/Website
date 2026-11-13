@@ -69,7 +69,7 @@ export class FlipperScene extends Phaser.Scene {
   }
 
   private async loadTable(): Promise<void> {
-    const res = await fetch("data/table.json");
+    const res = await fetch("data/arcade/table.json");
     this.table = (await res.json()) as TableData;
   }
 

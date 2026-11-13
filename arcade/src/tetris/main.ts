@@ -6,7 +6,7 @@ const scene = new TetrisScene();
 
 const config: PhaserType.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  parent: "game",
+  parent: "game-stage",
   backgroundColor: "#0b0d12",
   width: 440,
   height: 520,

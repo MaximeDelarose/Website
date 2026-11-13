@@ -1,11 +1,11 @@
 {
   "name": "arcade",
   "private": true,
-  "description": "Arcade : Tetris, Flipper, Breakout (TypeScript compilé vers arcade/js/)",
+  "description": "Arcade : Tetris, Flipper, Breakout (TypeScript compil\u00e9 vers arcade/js/)",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "watch": "tsc -p tsconfig.json --watch",
-    "test": "npm run build && node --test \"js/**/*.test.js\""
+    "test": "npm run build && node --test \"../js/arcade/**/*.test.js\""
   },
   "devDependencies": {
     "@types/matter-js": "0.19.7",

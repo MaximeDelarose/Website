@@ -82,7 +82,7 @@ export class BreakoutScene extends Phaser.Scene {
   }
 
   private async loadLevels(): Promise<void> {
-    const res = await fetch("data/levels.json");
+    const res = await fetch("data/arcade/levels.json");
     const json = (await res.json()) as { levels: LevelData[] };
     this.levels = json.levels;
   }

@@ -47,7 +47,7 @@ export class FlipperScene extends Phaser.Scene {
         this.loadTable().then(() => this.reset());
     }
     async loadTable() {
-        const res = await fetch("data/table.json");
+        const res = await fetch("data/arcade/table.json");
         this.table = (await res.json());
     }
     reset() {

@@ -1,12 +1,13 @@
 import { Phaser } from "../shared/engines.js";
-import { FlipperScene } from "./render/scene.js";
+import { TetrisScene } from "./render/scene.js";
+const scene = new TetrisScene();
 const config = {
     type: Phaser.AUTO,
-    parent: "game",
+    parent: "game-stage",
     backgroundColor: "#0b0d12",
-    width: 400,
-    height: 700,
+    width: 440,
+    height: 520,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: new FlipperScene(),
+    scene,
 };
-window.flipperGame = new Phaser.Game(config);
+window.tetrisGame = new Phaser.Game(config);
