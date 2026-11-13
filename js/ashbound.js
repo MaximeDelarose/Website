@@ -60,7 +60,7 @@
   ];
   var TRICKLE = [["orb", 2, 270, 6, 1, 3, .45], ["scout", 60, 270, 11, 1, 2, .35]];
   var HERO_ORDER = ["noctis", "eglantyne", "phelto", "epeiste"], HCOL = { noctis: "#b88cff", eglantyne: "#8dffa8", phelto: "#ff7ac8", epeiste: "#8ff0ff" };
-  var KITS = null;
+  var KITS = null, COOP = null, EID = 0;
 
   // ---------- ressources ----------
   var imgs = {}, snd = {}, L = null, loaded = false, muted = false;
@@ -99,6 +99,8 @@
     slots = L.slots.map(function (s) { return { x: s.x, z: s.z, tower: null }; });
     decor = L.decor;
     KITS = window.AshHeroes(API);
+    COOP = window.AshCoop ? window.AshCoop(BRIDGE) : null;
+    var room = params.get("room"); if (room && COOP) setTimeout(function () { COOP.join(room); }, 50);
     touchUI = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     var app = (window.navigator && window.navigator.standalone === true) || (window.matchMedia && (window.matchMedia("(display-mode: standalone)").matches || window.matchMedia("(display-mode: fullscreen)").matches)) || params.get("app");
     reset(false); resize(); requestAnimationFrame(frame);
@@ -106,11 +108,15 @@
     try { if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function () {}); } catch (e) {}
     var q = params.get("hero"); if (q && KITS[q]) pickHero(q);
   }
-  function newHero(id) {
-    var kit = KITS[id], h = { id: id, kit: kit, x: L.heart.x - 5, z: L.heart.z + 3.5, face: Math.PI, moving: false, atkCd: 0, swing: 0, cd: { s1: 0, s2: 0, ult: 0 }, dash: null, lunge: null, speedMul: 1, k: {} };
+  function newHero(id, slot) {
+    var kit = KITS[id], h = { id: id, kit: kit, slot: slot || 0, ctrl: null, netMoving: false, x: L.heart.x - 5 + (slot || 0) * 1.6, z: L.heart.z + 3.5 - (slot || 0) * 0.8, face: Math.PI, moving: false, atkCd: 0, swing: 0, cd: { s1: 0, s2: 0, ult: 0 }, dash: null, lunge: null, speedMul: 1, k: {} };
     kit.init(h); return h;
   }
   function reset(keepHero) {
+    if (COOP && COOP.active() && !keepHero) COOP.leave();
+    resetCore(keepHero);
+  }
+  function resetCore(keepHero) {
     var ev = [], r = mulberry(1234), t0 = 10, dt = 27;
     WAVES.forEach(function (w, i) { w[1].forEach(function (g) { for (var k = 0; k < g[1]; k++) ev.push({ t: t0 + dt * i + g[3] + k * g[2], e: g[0], lat: lat(r, g[0]) }); }); });
     TRICKLE.forEach(function (tr) { for (var t = tr[1]; t <= tr[2]; t += tr[3]) { var n = tr[4] + Math.floor(r() * (tr[5] - tr[4] + 1)); for (var k = 0; k < n; k++) ev.push({ t: t + k * tr[6], e: tr[0], lat: lat(r, tr[0]) }); } });
@@ -118,9 +124,9 @@
     slots.forEach(function (s) { s.tower = null; });
     var hid = keepHero && G && G.hero ? G.hero.id : null;
     G = { state: "select", paused: false, t: 0, events: ev, next: 0, wave: 0, gold: START_GOLD, heart: HEART_MAX, enemies: [], towers: [], parts: [], bolts: [], fx: [], pending: [], projs: [], actors: [], buffs: [], sortedNow: [],
-      toast: "", toastT: 0, toastC: "#fff", build: false, sel: null, shake: 0, flashHeart: 0, kills: 0, anim: 0, hero: null, tint: 0, tintT: 0 };
+      toast: "", toastT: 0, toastC: "#fff", build: false, sel: null, shake: 0, flashHeart: 0, kills: 0, anim: 0, hero: null, heroes: [], mirror: false, menu: false, coopMenu: false, rem: 0, tint: 0, tintT: 0 };
     hover = null; ptrs = {}; joy.on = false; aimSt = null;
-    if (hid) { G.hero = newHero(hid); G.state = "prep"; }
+    if (hid) { G.hero = newHero(hid, 0); G.heroes = [G.hero]; G.state = "prep"; }
   }
   function lat(r, e) { return ENEMY[e].kind === "std" ? (r() * 2 - 1) * .45 : 0; }
   function pos(d) {
@@ -193,21 +199,22 @@
   function toggleFull() { setFull(!full); }
 
   // ---------- jeu : ennemis, dégâts ----------
-  function startSeq() { if (G.state !== "prep") return; G.state = "play"; G.t = 0; play("wave", .8); startAmbient(); }
-  function endState(s) { if (G.state !== "play") return; G.state = s; play(s === "win" ? "win" : "lose"); }
+  function startSeq() { if (G.state !== "prep") return; if (G.mirror) { if (COOP) COOP.req({ k: "start" }); return; } G.state = "play"; G.t = 0; play("wave", .8); startAmbient(); }
+  function endState(s) { if (G.mirror || G.state !== "play") return; G.state = s; play(s === "win" ? "win" : "lose"); }
   function burst(x, y, col, n, spd, life, size) {
     for (var i = 0; i < n; i++) { var a = Math.random() * 6.283, v = spd * (.3 + Math.random() * .7); G.parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - spd * .4, life: life * (.6 + Math.random() * .6), max: life, s: size * (.6 + Math.random() * .6), c: col }); }
   }
-  function spawn(ev) { var d = ENEMY[ev.e]; G.enemies.push({ k: ev.e, def: d, d: 0, hp: d.hp, lat: ev.lat, flash: 0, age: 0, dead: false, ph: Math.random() * 4, ox: 0, oz: 0, stun: 0, slowF: 1, slowT: 0, poison: null, barT: 99 }); if (ev.e === "boss") play("boss"); }
+  function spawn(ev) { var d = ENEMY[ev.e]; var hs = G.heroes.length > 1 ? 1.5 : 1; G.enemies.push({ id: ++EID, mhp: d.hp * hs, k: ev.e, def: d, d: 0, hp: d.hp * hs, lat: ev.lat, flash: 0, age: 0, dead: false, ph: Math.random() * 4, ox: 0, oz: 0, stun: 0, slowF: 1, slowT: 0, poison: null, barT: 99 }); if (ev.e === "boss") play("boss"); }
   function aimPt(e) { var p = ep(e); return { x: sx(p.x), y: sy(p.z) - sh(e.def.spr + "_0") * e.def.scale * .5 }; }
   function dmgEnemy(e, a, silent) {
     if (e.dead || a <= 0) return;
+    if (G.mirror) { e.flash = .1; e.spark = .16; e.sx = (Math.random() - .5) * 14; e.sy = (Math.random() - .5) * 12; if (!silent) play("hit", .4); var pm = aimPt(e); burst(pm.x, pm.y, PINKL, 2, 80, .25, 3); return; }
     e.hp -= a; e.flash = .1; e.barT = 0; e.spark = .16; e.sx = (Math.random() - .5) * 14; e.sy = (Math.random() - .5) * 12; if (!silent) play("hit", .4);
     var p = aimPt(e); burst(p.x, p.y, PINKL, 2, 80, .25, 3);
     if (e.hp <= 0) {
       e.dead = true; G.gold += e.def.gold; G.kills++; play("death", .6);
       burst(p.x, p.y, "#b278ff", 10 + (e.def.kind === "boss" ? 40 : e.def.kind === "mini" ? 24 : e.def.kind === "elite" ? 12 : 0), 140, .7, 5);
-      if (G.hero && G.hero.kit.onKill) G.hero.kit.onKill(G.hero, e);
+      G.heroes.forEach(function (hh) { if (hh.kit.onKill) hh.kit.onKill(hh, e); });
     }
   }
   function inRadius(x, z, r) { var out = []; G.enemies.forEach(function (e) { if (e.dead) return; var p = ep(e); if (Math.hypot(p.x - x, p.z - z) <= r) out.push(e); }); return out; }
@@ -263,40 +270,47 @@
     return { x: x, z: z };
   }
   function mouseWorld() { return toWorld(mouse.x, mouse.y); }
-  function skillRange(key) { var k = G.hero.kit; if (key === "atk") return k.atkRange || 9; var a = k.skills[key].aim; return a.range || a.len || a.r || 5; }
+  function skillRange(key, h) { var k = (h || G.hero).kit; if (key === "atk") return k.atkRange || 9; var a = k.skills[key].aim; return a.range || a.len || a.r || 5; }
   // retourne {a, d} : angle monde et distance visée (souris, glisser tactile, ou ciblage auto)
-  function aimFor(key, touchAim) {
-    var h = G.hero, range = skillRange(key);
+  function aimFor(key, touchAim, hh) {
+    var h = hh || G.hero, range = skillRange(key, h);
     if (touchAim) { var wx = touchAim.dx / PPU, wz = -touchAim.dy / (PPU * SY); return { a: Math.atan2(wz, wx), d: Math.max(1, Math.min(range, touchAim.len / 100 * range)) }; }
     if (!touchUI && mouseIn) { var m = mouseWorld(); return { a: Math.atan2(m.z - h.z, m.x - h.x), d: Math.min(range, Math.hypot(m.x - h.x, m.z - h.z)) }; }
     var e = nearestEnemy(h.x, h.z, key === "atk" ? Math.max(range, 7) : 9);
     if (e) { var p = ep(e); return { a: Math.atan2(p.z - h.z, p.x - h.x), d: Math.min(range, Math.hypot(p.x - h.x, p.z - h.z)) }; }
     return { a: h.face, d: range * .6 };
   }
-  function heroAttack() {
-    var h = G.hero; if (h.atkCd > 0 || h.dash) return;
-    var aim = aimFor("atk"); h.face = aim.a;
+  function heroAttack(h, ov) {
+    h = h || G.hero; if (!h || h.atkCd > 0 || h.dash) return;
+    var aim = ov || aimFor("atk", null, h); h.face = aim.a;
     h.atkCd = h.kit.attack(h, aim.a, aim.d); h.swing = Math.max(h.swing, .18);
+    if (COOP && !ov && h === G.hero) COOP.onAction(h, "atk", aim);
   }
-  function castWithAim(key, aim) {
-    var h = G.hero; if (!h || G.paused || (G.state !== "play" && G.state !== "prep")) return;
-    if (h.cd[key] > 0 || h.dash) { if (h.cd[key] > 0) play("error", .3); return; }
-    h.face = aim.a; if (h.kit.cast(key, h, aim.a, aim.d) === false) return;
-    h.cd[key] = h.kit.skills[key].cd; h.swing = .3;
+  function replAttack(h, a, d) { if (!h) return; h.face = a; h.atkCd = h.kit.attack(h, a, d); h.swing = Math.max(h.swing, .18); }
+  // lance une compétence ; force = rejeu d'une action déjà validée par l'hôte (aucun contrôle de recharge)
+  function doCast(h, key, aim, force) {
+    if (!h || (!force && (G.paused || (G.state !== "play" && G.state !== "prep")))) return false;
+    if (!force && (h.cd[key] > 0 || h.dash)) { if (h.cd[key] > 0 && h === G.hero) play("error", .3); return false; }
+    h.face = aim.a; if (h.kit.cast(key, h, aim.a, aim.d) === false) return false;
+    h.cd[key] = h.kit.skills[key].cd; h.swing = .3; return true;
   }
+  function castWithAim(key, aim) { var h = G.hero; if (doCast(h, key, aim, false) && COOP) COOP.onAction(h, key, aim); }
   function castSkill(key) { if (G.hero) castWithAim(key, aimFor(key, null)); }
-  function updateHero(dt) {
-    var h = G.hero; if (!h) return;
+  function updateHero(h, dt) {
+    if (!h) return;
+    var local = h === G.hero, mirrorRemote = G.mirror && !local;
     ["s1", "s2", "ult"].forEach(function (k) { if (h.cd[k] > 0) h.cd[k] = Math.max(0, h.cd[k] - dt); });
     if (h.atkCd > 0) h.atkCd -= dt; if (h.swing > 0) h.swing -= dt;
-    var mv = moveVec(), l = Math.hypot(mv.x, mv.z); h.moving = l > .05;
+    var mv = local ? moveVec() : (h.ctrl ? { x: h.ctrl.mx, z: h.ctrl.mz } : { x: 0, z: 0 }), l = Math.hypot(mv.x, mv.z);
+    h.moving = mirrorRemote ? !!h.netMoving : l > .05;
     if (h.dash) { var d = h.dash; h.x = clampX(h.x + d.dx * d.speed * dt); h.z = clampZ(h.z + d.dz * d.speed * dt); d.t -= dt; if (d.tick) d.tick(h, dt); if (d.t <= 0) { if (d.end) d.end(h); h.dash = null; } }
-    else {
+    else if (!mirrorRemote) {
       var sp = h.kit.speed * h.speedMul * (h.swing > 0 ? .7 : 1);
       if (h.moving) { h.x = clampX(h.x + mv.x * sp * dt); h.z = clampZ(h.z + mv.z * sp * dt); if (h.swing <= 0) h.face = Math.atan2(mv.z, mv.x); }
       if (h.lunge && h.lunge.t > 0) { var k = Math.min(dt, h.lunge.t) / .12; h.x = clampX(h.x + h.lunge.dx * k); h.z = clampZ(h.z + h.lunge.dz * k); h.lunge.t -= dt; }
     }
-    if ((keys.Space || attackHeld()) && G.state !== "select") heroAttack();
+    if (local) { if ((keys.Space || attackHeld()) && G.state !== "select") heroAttack(h); }
+    else if (!G.mirror && h.ctrl && h.ctrl.ah && (G.state === "play" || G.state === "prep")) heroAttack(h, { a: h.ctrl.a, d: h.ctrl.d || 6 });
     if ((h.moving || h.swing > 0) && h.kit.moveFx) h.kit.moveFx(h, dt);
     h.kit.update(h, dt);
   }
@@ -355,12 +369,14 @@
     G.fx = G.fx.filter(function (f) { f.t = (f.t || 0) + dt; return f.t < f.dur; });
     G.towers.forEach(function (t) { if (t.punch > 0) t.punch = Math.max(0, t.punch - dt * 6); });
     if (G.state === "win" || G.state === "lose") return;
-    updateHero(dt); updateProjs(dt); updateActors(dt);
+    G.heroes.forEach(function (h) { updateHero(h, dt); }); updateProjs(dt); updateActors(dt);
     if (G.state !== "play") return;
     G.t += dt;
-    while (G.next < G.events.length && G.events[G.next].t <= G.t) spawn(G.events[G.next++]);
-    var w = 0; WAVES.forEach(function (_, i) { if (10 + 27 * i <= G.t) w = i + 1; });
-    if (w !== G.wave) { G.wave = w; if (w) { toast(WAVES[w - 1][0], PINKL); play("wave", .7); } }
+    if (!G.mirror) {
+      while (G.next < G.events.length && G.events[G.next].t <= G.t) spawn(G.events[G.next++]);
+      var w = 0; WAVES.forEach(function (_, i) { if (10 + 27 * i <= G.t) w = i + 1; });
+      if (w !== G.wave) { G.wave = w; if (w) { toast(WAVES[w - 1][0], PINKL); play("wave", .7); } }
+    }
     G.buffs.forEach(function (b) { if (b.follow) { b.x = b.follow.x; b.z = b.follow.z; } });
     G.towers.forEach(function (t) {
       var boost = 1;
@@ -371,17 +387,23 @@
     G.enemies.forEach(function (e) {
       if (e.dead) return;
       e.age += dt; if (e.flash > 0) e.flash -= dt; if (e.spark > 0) e.spark -= dt; e.barT += dt;
+      if (G.mirror) {   // invité : on ne fait qu'avancer les ennemis (prédiction) ; l'hôte corrige à chaque instantané
+        if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowF = 1; }
+        if (e.stun > 0) e.stun -= dt; else { e.d = Math.min(LEN, e.d + e.def.speed * e.slowF * dt); var km = Math.exp(-2.5 * dt); e.ox *= km; e.oz *= km; }
+        return;
+      }
       if (e.poison) { e.poison.t -= dt; dmgEnemy(e, e.poison.dps * dt, true); if (e.poison && e.poison.t <= 0) e.poison = null; if (e.dead) return; }
       if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowF = 1; }
       if (e.stun > 0) e.stun -= dt; else { e.d += e.def.speed * e.slowF * dt; var k = Math.exp(-2.5 * dt); e.ox *= k; e.oz *= k; }
       if (e.age > 4 * LEN / e.def.speed + 12) { e.dead = true; return; }
       if (e.d >= LEN) { e.dead = true; hurtHeart(e.def.dmg); }
     });
+    if (G.mirror) return;
     G.enemies = G.enemies.filter(function (e) { return !e.dead; });
     if (G.heart > 0 && G.next >= G.events.length && !G.enemies.length) endState("win");
   }
   function hurtHeart(a) {
-    if (G.state !== "play" || G.heart <= 0) return;
+    if (G.mirror || G.state !== "play" || G.heart <= 0) return;
     G.heart = Math.max(0, G.heart - a); G.shake = .3; G.flashHeart = .35; play("heart_hit");
     burst(sx(L.heart.x), sy(L.heart.z) - 50, PINK, 14, 150, .6, 5);
     if (G.heart <= 0) endState("lose");
@@ -402,6 +424,20 @@
     spr: function (n, x, y, s, f, a) { spr(n, x, y, s, f, a); }, addSorted: function (z, fn) { G.sortedNow.push({ z: z, f: fn }); }
   };
 
+  // ---------- pont vers le module coop (js/ashbound-coop.js) ----------
+  function setHeroes(ids, mySlot, mirror) {
+    resetCore(false);
+    G.heroes = ids.map(function (id, i) { return newHero(id, i); }); G.hero = G.heroes[mySlot]; G.mirror = !!mirror; G.state = "prep";
+    startAmbient(); if (touchUI) setFull(true);
+  }
+  var BRIDGE = {
+    get G() { return G; }, ENEMY: ENEMY, TOWERS: TOWERS, WAVES: WAVES, HEART_MAX: HEART_MAX, PINKL: PINKL,
+    slots: function () { return slots; }, LEN: function () { return LEN; }, newHero: newHero, tstats: tstats, play: play, toast: toast, burst: burst, sx: sx, sy: sy, ep: ep,
+    moveVec: moveVec, aimAtk: function () { return aimFor("atk", null); }, attackHeld: function () { return !!(keys.Space || attackHeld()); },
+    doCast: doCast, replAttack: replAttack, tryBuild: tryBuild, tryUpgrade: tryUpgrade, startSeq: startSeq, setHeroes: setHeroes, resetCore: resetCore, muzzle: muzzle,
+    mkEnemy: function (k, id) { var d = ENEMY[k]; return { id: id, mhp: d.hp, k: k, def: d, d: 0, hp: d.hp, lat: 0, flash: 0, age: 0, dead: false, ph: Math.random() * 4, ox: 0, oz: 0, stun: 0, slowF: 1, slowT: 0, poison: null, barT: 99 }; }
+  };
+
   // ---------- actions joueur : construction ----------
   function slotAt(w) {
     var best = null, bd = 1.5;
@@ -409,25 +445,28 @@
     return best;
   }
   function heroTowerType() { return G.hero ? G.hero.kit.tower : "orb"; }
-  function tryBuild(s) {
-    var type = heroTowerType(), def = TOWERS[type];
-    if (G.gold < def.cost) { play("error", .6); toast("Pas assez de cristaux (" + def.cost + " requis)", "#ff8a8a"); return; }
+  function tryBuild(s, type, remote) {
+    if (G.mirror && !remote) { if (COOP) COOP.req({ k: "build", s: slots.indexOf(s), ty: heroTowerType() }); G.build = false; return; }
+    if (s.tower) return;
+    type = type || heroTowerType(); var def = TOWERS[type];
+    if (G.gold < def.cost) { if (remote) { if (COOP) COOP.msg("Pas assez de cristaux (" + def.cost + " requis)"); } else { play("error", .6); toast("Pas assez de cristaux (" + def.cost + " requis)", "#ff8a8a"); } return; }
     G.gold -= def.cost; var t = { s: s, tier: 0, cd: 0, punch: 0, type: type, st: tstats(def, 0), salvo: 0, boost: 1 }; s.tower = t; G.towers.push(t);
-    play("build", .9); burst(sx(s.x), sy(s.z), "#8c85bf", 16, 110, .7, 5); toast(def.name + " construite", "#9bffd0");
-    G.sel = t; G.build = false;
+    play("build", .9); burst(sx(s.x), sy(s.z), "#8c85bf", 16, 110, .7, 5); if (!remote) toast(def.name + " construite", "#9bffd0");
+    if (!remote) { G.sel = t; G.build = false; }
   }
-  function tryUpgrade(t) {
+  function tryUpgrade(t, remote) {
     if (!t) return; var def = TOWERS[t.type]; if (t.tier >= def.ups.length) return;
+    if (G.mirror && !remote) { if (COOP) COOP.req({ k: "up", s: slots.indexOf(t.s) }); return; }
     var u = def.ups[t.tier];
-    if (G.gold < u.cost) { play("error", .6); toast("Pas assez de cristaux", "#ff8a8a"); return; }
+    if (G.gold < u.cost) { if (remote) { if (COOP) COOP.msg("Pas assez de cristaux"); } else { play("error", .6); toast("Pas assez de cristaux", "#ff8a8a"); } return; }
     G.gold -= u.cost; t.tier++; t.st = tstats(def, t.tier); t.punch = 1; play("upgrade", .9);
-    var m = muzzle(t); burst(m.x, m.y, def.col, 24, 160, .8, 5); toast(u.name + " !", def.col);
+    var m = muzzle(t); burst(m.x, m.y, def.col, 24, 160, .8, 5); if (!remote) toast(u.name + " !", def.col);
   }
   function toggleBuild() { if (G.state === "play" || G.state === "prep") { G.build = !G.build; if (G.build) G.sel = null; } }
   function cancel() { if (G.build) { G.build = false; return true; } if (G.sel) { G.sel = null; return true; } return false; }
-  function togglePause() { if (G.state === "play" || G.state === "prep") { G.paused = !G.paused; ptrs = {}; joy.on = false; aimSt = null; } }
+  function togglePause() { if (G.state === "play" || G.state === "prep") { if (COOP && COOP.active()) G.menu = !G.menu; else G.paused = !G.paused; ptrs = {}; joy.on = false; aimSt = null; } }
   function worldClick(px, py) {
-    if (G.paused || (G.state !== "play" && G.state !== "prep")) return false;
+    if (G.paused || G.menu || (G.state !== "play" && G.state !== "prep")) return false;
     var w = toWorld(px, py), s = slotAt(w);
     if (G.build) { if (!s) return true; if (s.tower) { G.sel = s.tower; G.build = false; } else tryBuild(s); return true; }
     if (s && s.tower) { G.sel = s.tower; return true; }
@@ -436,7 +475,8 @@
   }
   function pickHero(id) {
     if (!KITS[id]) { play("error", .5); return; }
-    G.hero = newHero(id); G.state = "prep"; play("click", .6); startAmbient();
+    if (COOP && COOP.active()) { COOP.pick(id); play("click", .6); startAmbient(); return; }
+    G.hero = newHero(id, 0); G.heroes = [G.hero]; G.state = "prep"; play("click", .6); startAmbient();
     if (touchUI) setFull(true);
   }
 
@@ -581,9 +621,9 @@
         if (e.poison) { ctx.fillStyle = "rgba(120,255,140,.8)"; ctx.fillRect(x - 3 + Math.sin(G.anim * 8 + e.ph) * 6, y - 26 - ((G.anim * 30 + e.ph * 10) % 20), 3, 3); }
       } });
     });
-    if (hero) items.push({ z: hero.z, f: function () { drawHero(hero); } });
+    G.heroes.forEach(function (hh) { items.push({ z: hh.z, f: function () { drawHero(hh); } }); });
     G.actors.forEach(function (a) { if (a.sorted && a.draw) items.push({ z: a.z, f: function () { a.draw(); } }); });
-    if (hero && hero.kit.drawExtra) hero.kit.drawExtra(hero);
+    G.heroes.forEach(function (hh) { if (hh.kit.drawExtra) hh.kit.drawExtra(hh); });
     G.sortedNow.forEach(function (i) { items.push(i); });
     G.projs.forEach(function (p) { items.push({ z: p.z - 3, f: function () { drawProj(p); } }); });
     items.sort(function (a, b) { return b.z - a.z; }).forEach(function (i) { i.f(); });
@@ -592,7 +632,7 @@
     // barres de vie : élites/boss en permanence ; les autres au hit puis disparition après 2,5 s ; vert / jaune / rouge
     G.enemies.forEach(function (e) {
       if (!(e.def.always || e.barT < 2.5)) return;
-      var p = ep(e), w = e.def.bar * PPU * .75, x = sx(p.x) - w / 2, y = sy(p.z) - sh(e.def.spr + "_0") * e.def.scale - 8, r = Math.max(0, e.hp / e.def.hp);
+      var p = ep(e), w = e.def.bar * PPU * .75, x = sx(p.x) - w / 2, y = sy(p.z) - sh(e.def.spr + "_0") * e.def.scale - 8, r = Math.max(0, e.hp / e.mhp);
       ctx.globalAlpha = e.def.always ? 1 : Math.min(1, (2.5 - e.barT) * 2);
       rr(x - 2, y - 3, w + 4, 9, 3, "rgba(10,6,20,.92)", "rgba(255,255,255,.28)", 1);
       ctx.fillStyle = r > .6 ? "#59e07a" : r > .3 ? "#f2c038" : "#ec3b4a"; ctx.fillRect(x, y - 1, w * r, 5); ctx.fillStyle = "rgba(255,255,255,.3)"; ctx.fillRect(x, y - 1, w * r, 1.5); ctx.globalAlpha = 1;
@@ -680,7 +720,8 @@
   function drawHud() {
     if (G.state === "select") { drawSelect(); return; }
     var hero = G.hero, def = TOWERS[heroTowerType()];
-    var alive = G.enemies.length + (G.events.length - G.next);
+    var alive = G.mirror ? G.rem : G.enemies.length + (G.events.length - G.next);
+    if (COOP && COOP.active()) text("COOP · SALON " + COOP.code() + (COOP.isHost() ? " (hôte)" : ""), 208, 16, 13, "#ffd0ee");
     // haut gauche : vague + ennemis restants
     panel(0, 0, 196, 84);
     text("VAGUE " + Math.max(1, G.wave) + "/10", 18, 28, 26, "#fff");
@@ -725,12 +766,12 @@
       } else text("NIVEAU MAXIMAL", px + 134, py + 150, 20, PINKL, "center");
     }
     if (G.toastT > 0) { ctx.globalAlpha = Math.min(1, G.toastT / .5); text(G.toast, W / 2, 132, 26, G.toastC, "center"); ctx.globalAlpha = 1; }
-    if (G.paused) {
+    if (G.paused || G.menu) {
       ctx.fillStyle = "rgba(4,2,12,.6)"; ctx.fillRect(0, 0, W, H);
       var py2 = 110; panel(W / 2 - 230, py2, 460, 420); text("PAUSE", W / 2, py2 + 48, 44, PINKL, "center");
       button(W / 2 - 160, py2 + 90, 320, 52, "Reprendre", togglePause);
-      button(W / 2 - 160, py2 + 152, 320, 52, "Changer de héros", function () { reset(false); });
-      button(W / 2 - 160, py2 + 214, 320, 52, "Recommencer", function () { reset(true); });
+      button(W / 2 - 160, py2 + 152, 320, 52, COOP && COOP.active() ? "Quitter la coop" : "Changer de héros", function () { reset(false); });
+      button(W / 2 - 160, py2 + 214, 320, 52, "Recommencer", function () { if (COOP && COOP.active()) { if (COOP.isHost()) { COOP.restart(); G.menu = false; } } else reset(true); }, false, null, null, !!(COOP && COOP.active() && !COOP.isHost()));
       button(W / 2 - 160, py2 + 276, 320, 52, full ? "Quitter le grand écran" : "Grand écran", function () { setFull(!full); G.paused = false; });
       button(W / 2 - 160, py2 + 338, 320, 52, muted ? "Son : coupé" : "Son : activé", toggleSound);
     } else if (G.state === "prep") {
@@ -746,8 +787,9 @@
     var w = 640, h = 300, x = (W - w) / 2, y = 150;
     panel(x, y, w, h); text(title, W / 2, y + 52, 52, col, "center");
     text(body, W / 2, y + 108, 19, "#f2ecf6", "center", false); text("Ennemis vaincus : " + G.kills + "  ·  Temps : " + clock(G.t), W / 2, y + 138, 19, "#f2ecf6", "center", false);
-    button(W / 2 - 220, y + h - 124, 440, 50, "REJOUER", function () { reset(true); });
-    button(W / 2 - 220, y + h - 66, 440, 46, "Changer de héros", function () { reset(false); }, false, "#ffd0ee", 18);
+    var co = COOP && COOP.active(), gst = co && !COOP.isHost();
+    button(W / 2 - 220, y + h - 124, 440, 50, gst ? "L'hôte relance la partie…" : "REJOUER", function () { if (co) COOP.restart(); else reset(true); }, false, null, gst ? 18 : null, gst);
+    button(W / 2 - 220, y + h - 66, 440, 46, co ? "Quitter la coop" : "Changer de héros", function () { reset(false); }, false, "#ffd0ee", 18);
   }
   function wrapText(s, x, y, maxw, size, col) {
     ctx.font = "bold " + size + "px Nunito, system-ui, sans-serif"; var words = s.split(" "), line = "", ly = y;
@@ -767,9 +809,32 @@
       text(k.name, x + cw / 2, y0 + sz + 34, 22, HCOL[id] || "#fff", "center"); text(k.role, x + cw / 2, y0 + sz + 60, 15, PINKL, "center", false);
       k.lines.forEach(function (l, j) { text(l, x + cw / 2, y0 + sz + 90 + j * 20, 13, "#cfc6dc", "center", false); });
       if (k.provisional) text("kit provisoire", x + cw / 2, y0 + ch - 82, 12, "#ffb0dc", "center", false);
-      button(x + 16, y0 + ch - 62, cw - 32, 46, "JOUER", function () { pickHero(id); }, false, null, 22);
+      var inCoop = COOP && COOP.active(), mine = inCoop && COOP.myPick() === id;
+      if (inCoop && COOP.peerPick() === id) text("Ami ✓", x + cw / 2, y0 + ch - 78, 14, "#ffd0ee", "center");
+      button(x + 16, y0 + ch - 62, cw - 32, 46, inCoop ? (mine ? "✓ CHOISI" : "CHOISIR") : "JOUER", function () { pickHero(id); }, mine, null, 22);
       buttons.push({ x: x, y: y0, w: cw, h: ch - 66, f: function () { pickHero(id); } });
     });
+    drawCoopLobby();
+  }
+  // lobby coop (écran de sélection) : créer / rejoindre un salon, état de la connexion
+  function drawCoopLobby() {
+    if (!COOP) return;
+    if (!COOP.active()) {
+      button(W / 2 - 190, H - 60, 380, 46, "COOP EN LIGNE · 2 JOUEURS", function () { G.coopMenu = true; }, false, "#ffd0ee", 20);
+      if (G.coopMenu) {
+        ctx.fillStyle = "rgba(4,2,12,.78)"; ctx.fillRect(0, 0, W, H); buttons.push({ x: 0, y: 0, w: W, h: H, f: function () {} });
+        panel(W / 2 - 240, 150, 480, 380); text("COOP EN LIGNE", W / 2, 198, 38, PINKL, "center");
+        text("Joue avec un ami, chacun sur son écran.", W / 2, 240, 17, "#f2ecf6", "center", false); text("Les ennemis ont 50 % de PV en plus.", W / 2, 264, 15, "#cfc6dc", "center", false);
+        button(W / 2 - 180, 300, 360, 56, "Créer un salon", function () { G.coopMenu = false; COOP.host(); });
+        button(W / 2 - 180, 368, 360, 56, "Rejoindre un salon", function () { G.coopMenu = false; var c = window.prompt("Code du salon (4 lettres) :"); if (c) COOP.join(c); });
+        button(W / 2 - 180, 446, 360, 46, "Retour", function () { G.coopMenu = false; }, false, "#cfc6dc", 18);
+      }
+      return;
+    }
+    var I = COOP.info();
+    text(I.line1, W / 2, H - 62, 19, "#fff", "center"); text(I.line2, W / 2, H - 36, 14, "#ffd0ee", "center", false);
+    button(W - 212, H - 62, 192, 42, "Quitter le salon", function () { reset(false); }, false, "#ffd0ee", 16);
+    if (COOP.isHost()) button(20, H - 62, 212, 42, "Copier le lien", function () { COOP.copyLink(); }, false, "#ffd0ee", 16);
   }
 
   // ---------- boucle & entrées ----------
@@ -777,6 +842,7 @@
   function frame(ts) {
     if (!last) last = ts; var dt = Math.min(.1, (ts - last) / 1000); last = ts;
     for (var i = 0; i < SPEED; i++) update(dt);
+    if (COOP) COOP.tick(dt);
     draw(); requestAnimationFrame(frame);
   }
   // position dans le repère logique du jeu : tient compte de la zone réellement affichée (bandes noires du plein écran) et des zones sûres
@@ -803,7 +869,7 @@
     if (e.button === 2) { cancel(); return; }
     try { cv.setPointerCapture(e.pointerId); } catch (x) {}
     var b = hitRect(p); if (b) { play("click", .5); b.f(); return; }
-    if (!G.hero || G.paused || (G.state !== "play" && G.state !== "prep")) return;
+    if (!G.hero || G.paused || G.menu || (G.state !== "play" && G.state !== "prep")) return;
     var c = hitCircle(p);
     if (c) {
       if (c.id === "atk") ptrs[e.pointerId] = { k: "atk" };
@@ -846,6 +912,6 @@
   var sb = document.querySelector("[data-ash-sound]"); if (sb) sb.addEventListener("click", toggleSound);
   var fb = document.querySelector("[data-ash-full]"); if (fb) fb.addEventListener("click", function () { setFull(!full); });
 
-  window.__ash = { get G() { return G; }, slots: function () { return slots; }, build: function (i) { tryBuild(slots[i]); }, upgrade: function (i) { tryUpgrade(slots[i].tower); }, start: startSeq, reset: reset, pick: pickHero, setFull: setFull, joy: joy, W: function () { return W; }, cast: castSkill, attack: heroAttack, ctl: function () { return ctl; }, view: function () { return { CW: CW, SL: SL, SR: SR, H: H, RS: RS, W: W }; }, RS: function () { return RS; }, toggleFull: toggleFull, tstats: tstats, TOWERS: TOWERS };
+  window.__ash = { get G() { return G; }, slots: function () { return slots; }, build: function (i) { tryBuild(slots[i]); }, upgrade: function (i) { tryUpgrade(slots[i].tower); }, start: startSeq, reset: reset, pick: pickHero, setFull: setFull, joy: joy, W: function () { return W; }, cast: castSkill, attack: function () { heroAttack(); }, coop: function () { return COOP; }, ctl: function () { return ctl; }, view: function () { return { CW: CW, SL: SL, SR: SR, H: H, RS: RS, W: W }; }, RS: function () { return RS; }, toggleFull: toggleFull, tstats: tstats, TOWERS: TOWERS };
   boot();
 })();

@@ -60,3 +60,12 @@ XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations 
 - Tests : Chromium, Épéiste (séquence complète accélérée sans erreur), 7 formats d'écran (boutons) toujours OK.
 
 **Décision (auteur du projet)** : Phelto = version **« Maîtresse des mélodies »** (musique). La version « Chevalière de l'Aurore » de la planche « Lame du Tonnerre » n'est pas utilisée. Églantyne : kit du Google Doc conservé (décision sur les compétences de la planche toujours en attente).
+
+---
+## Itération — Coop en ligne à 2 joueurs
+- **Architecture** : l'hôte exécute toute la simulation et envoie des instantanés (~12/s : héros, ennemis, tourelles, or, Cœur, vague). L'invité exécute le même moteur en *mode miroir* : il prédit les déplacements et rejoue les effets visuels (dégâts neutralisés) ; ses entrées (déplacement, visée, attaque maintenue, compétences, constructions, améliorations) partent vers l'hôte, qui les valide. Les actions de l'hôte sont rejouées chez l'invité par événements.
+- **Transport** : Supabase Realtime en diffusion par salon (`ashbound-room-XXXX`), comme le Billard — aucune table, aucune modification serveur. Repli `BroadcastChannel` (même navigateur) avec `?net=bc`, utilisé pour les tests.
+- **Règles de coop** (provisoires) : or et Cœur partagés ; chaque joueur construit la tourelle de son héros ; ennemis +50 % de PV ; l'invité ne peut pas relancer la partie (l'hôte seul) ; pas de pause (le bouton ouvre un menu, la partie continue) ; déconnexion détectée (hôte : 9 s sans entrée ; invité : 8 s sans instantané).
+- **Invitation** : « Créer un salon » → code de 4 lettres ou lien `?room=CODE` (partage natif sur mobile). 
+- **Test réel** (2 pages Chromium, repli local) : connexion, choix des héros, lancement, construction demandée par l'invité et exécutée par l'hôte (apparaît des deux côtés), déplacements et compétences, 9 ennemis / même or des deux côtés, départ de l'invité. **Non testé** : le transport Supabase réel (pas d'accès réseau dans l'environnement de développement), la latence réelle, deux appareils.
+- **Limites** : les ombres spectrales de Noctis ne sont pas visibles chez l'invité (état non diffusé) ; les effets de zone de l'hôte sont rejoués d'après l'événement, donc de légères différences de timing sont possibles ; un seul invité ; pas de reconnexion en cours de partie.

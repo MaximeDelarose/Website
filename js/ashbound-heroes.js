@@ -192,6 +192,8 @@
         if (near && k.rush <= 0) { var free = k.dolls.filter(function (d) { return !d.go; }); if (free.length) { free[0].go = { x: A.pos(near).x, z: A.pos(near).z, dmg: 28 }; k.rush = .22; } }
         k.curses = k.curses.filter(function (c) { return c.t > 0; });
       },
+      netOut: function (h) { return h.k.dolls.slice(0, 30).map(function (d) { return [Math.round(d.x * 10) / 10, Math.round(d.z * 10) / 10]; }); },
+      netIn: function (h, list) { h.k.dolls = list.map(function (p, i) { var o = h.k.dolls[i] || { x: p[0], z: p[1] }; o.x = p[0]; o.z = p[1]; return o; }); },
       moveFx: function (h, dt) {
         var k = h.k; k.vineT = (k.vineT || 0) - dt; if (k.vineT > 0) return; k.vineT = .2;
         var bx = h.x - Math.cos(h.face) * .5, bz = h.z - Math.sin(h.face) * .35;
