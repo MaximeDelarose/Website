@@ -400,8 +400,8 @@ def heart(f):
     p = new(f'heart_{f}', 96, 112)
     pulse = (0, 3)[f]
     cx, cy = 48, 56
-    p.glow(cx, cy, 44 + pulse * 2, CY_M, 0.5, 6)
-    p.glow(cx, cy, 30 + pulse, VIO_L, 0.45, 4)
+    p.glow(cx, cy, 44 + pulse * 2, MAG, 0.5, 6)
+    p.glow(cx, cy, 30 + pulse, H('ff7ac8'), 0.45, 4)
     # forme de cœur
     mask = Px(96, 112)
     r = 21 + pulse // 2
@@ -411,16 +411,16 @@ def heart(f):
     ol = Px(96, 112); ol.im = mask.im.copy(); ol.d = ImageDraw.Draw(ol.im)
     ol.outline(OUT, diag=True)
     p.im = Image.alpha_composite(p.im, ol.im); p.d = ImageDraw.Draw(p.im)
-    grad_fill(p, mask, [CY_H, CY_L, CY_M, VIO_L, VIO_M, VIO_D], 'y')
+    grad_fill(p, mask, [H('fff0f8'), H('ffb0dc'), H('ff5fb4'), H('e0338f'), H('a01a68'), H('5e1048')], 'y')
     # facettes
     for a, b in [((cx - 14, cy - 18), (cx - 4, cy + 4)), ((cx + 8, cy - 22), (cx + 2, cy + 8)), ((cx - 22, cy - 4), (cx, cy + 26)), ((cx + 22, cy - 4), (cx, cy + 26)), ((cx - 4, cy + 4), (cx, cy + 26))]:
-        p.line(a, b, H('2b0f66'))
-    p.poly([(cx - 17, cy - 22), (cx - 8, cy - 24), (cx - 12, cy - 14)], CY_H)
+        p.line(a, b, H('5e1048'))
+    p.poly([(cx - 17, cy - 22), (cx - 8, cy - 24), (cx - 12, cy - 14)], H('ffffff'))
     p.px(cx - 8, cy - 8, H('ffffff'))
     # éclats en orbite
     for k, (dx, dy) in enumerate([(-34, -10 + pulse), (36, -18 - pulse), (-28, 22), (32, 18)]):
-        p.poly([(cx + dx - 3, cy + dy + 5), (cx + dx, cy + dy - 6), (cx + dx + 3, cy + dy + 5)], CY_L)
-        p.px(cx + dx, cy + dy - 3, CY_H)
+        p.poly([(cx + dx - 3, cy + dy + 5), (cx + dx, cy + dy - 6), (cx + dx + 3, cy + dy + 5)], H('ff9bd2'))
+        p.px(cx + dx, cy + dy - 3, H('ffffff'))
     p.outline(); return p
 
 
