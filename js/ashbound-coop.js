@@ -137,7 +137,7 @@
     // ---------- instantanés ----------
     function encode() {
       var G = E.G, slots = E.slots();
-      return { n: ++NET.seq, st: STATES.indexOf(G.state), t: q(G.t), w: G.wave, g: G.gold, xp: G.xp, lv: G.lvl, hp: Math.round(G.heart * 10) / 10, k: G.kills, rem: G.enemies.length + (G.events.length - G.next),
+      return { n: ++NET.seq, st: STATES.indexOf(G.state), t: q(G.t), w: G.wave, g: G.gold, xp: G.xp, lv: G.lvl, hp: Math.round(G.heart * 10) / 10, k: G.kills, rem: G.enemies.length + (G.events.length - G.next), sq: G.seq, ct: Math.round(G.corrT * 100),
         H: G.heroes.map(function (h) { return [q(h.x), q(h.z), q(h.face), h.moving ? 1 : 0, h.swing > 0 ? 1 : 0, (h.k && h.k.pose) || "", Math.round(h.cd.s1 * 10), Math.round(h.cd.s2 * 10), Math.round(h.cd.ult * 10), h.kit.netOut ? h.kit.netOut(h) : 0, Math.round(h.hp), h.mhp, h.dead ? 1 : 0, Math.round(h.rv * 100), h.pend, h.picks]; }),
         O: G.orbs.slice(0, 60).map(function (o) { return [q(o.x), q(o.z), Math.round(o.v * 10) / 10, Math.round(o.t)]; }),
         P: G.eprojs.slice(0, 30).map(function (p) { return [q(p.x), q(p.z), q(p.vx), q(p.vz), q(p.life)]; }),
@@ -150,6 +150,8 @@
       if (s.n <= NET.seq) return; NET.seq = s.n; NET.lastSnap = now();
       var prev = G.state; G.state = STATES[s.st] || G.state;
       if (G.state !== prev) { if (G.state === "win") E.play("win", 1); else if (G.state === "lose") E.play("lose", 1); else if (G.state === "play" && prev === "prep") E.play("wave", .8); }
+      if (s.sq && s.sq !== G.seq) { G.seq = s.sq; if (G.seq === 2) { G.trans = 6.5; G.tint = .45; G.tintT = 2.5; E.play("boss", .8, .7); E.toast("Séquence 1 terminée — le monde s'éveille", "#d8b4ff"); } }
+      G.corrT = (s.ct || 0) / 100;
       G.t = s.t; G.gold = s.g; G.kills = s.k; G.rem = s.rem; G.xp = s.xp || 0;
       if (s.lv > G.lvl) { G.lvl = s.lv; G.lvlFlash = 1; G.dmgMul = 1 + .08 * (G.lvl - 1); E.toast("NIVEAU " + G.lvl + " ! PV et dégâts accrus", "#ffe680"); E.play("upgrade", 1); G.heroes.forEach(function (h) { G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2.6, t: 0, dur: .7, col: "#ffe680" }); }); }
       if (s.w !== G.wave) { G.wave = s.w; if (s.w) { E.toast(E.WAVES[s.w - 1][0], E.PINKL); E.play("wave", .7); } }
@@ -185,7 +187,7 @@
       });
       G.enemies = G.enemies.filter(function (e) {
         if (seen[e.id]) return true;
-        if (e.d < LEN - 1.2) { var p = E.ep(e), X = E.sx(p.x), Y = E.sy(p.z) - 20; E.burst(X, Y, "#b278ff", 10 + (e.def.kind === "boss" ? 40 : e.def.kind === "mini" ? 24 : e.def.kind === "elite" ? 12 : 0), 140, .7, 5); E.play("death", .5); }
+        if (e.d < LEN - 1.2) { var p = E.ep(e), X = E.sx(p.x), Y = E.sy(p.z) - 20; E.burst(X, Y, e.def.col || "#b278ff", 10 + (e.def.kind === "boss" ? 40 : e.def.kind === "mini" ? 24 : e.def.kind === "elite" ? 12 : 0), 140, .7, 5); E.play(e.def.gel ? "splat" : "death", .5); }
         delete NET.emap[e.id]; return false;
       });
       // tourelles
