@@ -4,6 +4,7 @@ import { loadBest, saveBest } from "../../shared/storage.js";
 import { arp, noise, tone } from "../../shared/audio.js";
 import { FONT_BODY, PAL, mix } from "../../shared/theme.js";
 import { Counter, MuteButton, Overlay, Particles, TouchPad, drawPanel, isTouch, makeText, onBlur, popText } from "../../shared/kit.js";
+import { Mascot, SpritePool, spriteKey } from "../../shared/art.js";
 import { BALLS_PER_GAME, FlipperRules } from "../core/rules.js";
 import { buildStatics, buildFlipper } from "./table.js";
 const TICK_MS = 1000 / 60;
@@ -38,6 +39,9 @@ export class FlipperScene extends Phaser.Scene {
         this.pending = [];
         this.hitFlash = new Map();
         this.fx = new Particles();
+        this.mascot = null;
+        this.lastCheer = 0;
+        this.art = { ball: null, mushBig: null, mushSmall: null, firefly: null, leaf: null };
         this.score = new Counter();
         this.pad = null;
         this.prevPad = [];
@@ -47,6 +51,16 @@ export class FlipperScene extends Phaser.Scene {
         this.tg = this.add.graphics().setDepth(10).setPosition(TX, TY);
         this.fxg = this.add.graphics().setDepth(40).setPosition(TX, TY);
         this.ug = this.add.graphics().setDepth(60);
+        this.sprites = new SpritePool(this, 12, TX, TY);
+        this.art = {
+            ball: spriteKey(this, "bignut", 3),
+            mushBig: spriteKey(this, "mushroom", 6),
+            mushSmall: spriteKey(this, "mushroom", 5),
+            firefly: spriteKey(this, "firefly", 3),
+            leaf: spriteKey(this, "leaf", 3),
+        };
+        if (!TOUCH)
+            this.mascot = new Mascot(this, "sq_noisette", LX + COL_W / 2, GAME_H - 14, 5);
         this.overlay = new Overlay(this, GAME_W, GAME_H);
         new MuteButton(this, GAME_W - 68, 8, 48);
         this.keys = this.input.keyboard.addKeys({
@@ -97,6 +111,13 @@ export class FlipperScene extends Phaser.Scene {
             deco.fillCircle(80 + i * 44, 470, 5);
         for (let i = 0; i < 5; i++)
             deco.fillCircle(100 + i * 50, 120 - (i % 2) * 10, 4);
+        // décor : trèfles, mousse et coccinelles du site, à peine visibles sous la table
+        const decor = [["clover", 66, 530], ["clover", 332, 548], ["moss", 210, 520], ["ladybug", 96, 440], ["clover", 318, 120], ["moss", 60, 160], ["ladybug", 300, 360], ["clover", 150, 600]];
+        for (const [name, x, y] of decor) {
+            const key = spriteKey(this, name, 3);
+            if (key)
+                this.add.image(TX + x, TY + y, key).setDepth(1.5).setAlpha(0.5);
+        }
         // rails : contour sombre, corps brun, reflet
         const walls = this.add.graphics().setDepth(2).setPosition(TX, TY);
         for (const line of d.walls) {
@@ -187,6 +208,7 @@ export class FlipperScene extends Phaser.Scene {
         if (this.state === "over" || this.rules.ballsLeft < BALLS_PER_GAME || this.rules.score > 0)
             this.resetGame();
         this.state = "playing";
+        this.mascot?.reset();
         this.plungerIgnore = true;
         arp([392, 523, 659], 0.07, { vol: 0.04 });
     }
@@ -243,6 +265,7 @@ export class FlipperScene extends Phaser.Scene {
             return;
         Matter.Body.setVelocity(ball, { x: 0, y: -power });
         this.readyBall = null;
+        this.mascot?.reset();
         this.rules.launch();
         if (this.saveUntil === 0)
             this.saveUntil = this.time.now + SAVE_MS;
@@ -254,6 +277,7 @@ export class FlipperScene extends Phaser.Scene {
         if (this.state === "loading")
             return;
         this.fx.update(delta);
+        this.mascot?.update(delta);
         this.pad?.poll();
         const j = {};
         for (const name of Object.keys(this.keys))
@@ -405,6 +429,10 @@ export class FlipperScene extends Phaser.Scene {
                 if (bumper)
                     this.fx.burst(bumper.x, bumper.y, { n: 10, color: [PAL.cream, PAL.orangeLight, PAL.berry], speed: 260, life: 420, size: 7, gravity: 300 });
                 this.cameras.main.shake(70, 0.0016);
+                if (this.time.now - this.lastCheer > 1200) {
+                    this.lastCheer = this.time.now;
+                    this.mascot?.cheer();
+                }
                 tone(780 + Math.random() * 260, 0.07, { vol: 0.045, type: "square", freqEnd: 1100 });
                 noise(0.05, { vol: 0.03, freq: 3000 });
             });
@@ -499,6 +527,7 @@ export class FlipperScene extends Phaser.Scene {
             case "score":
                 break;
             case "bank":
+                this.mascot?.cheer();
                 popText(this, cx, TY + 300, `BANQUE +${e.points}`, 40, PAL.leaf, { ms: 1100 });
                 break;
             case "lightAll":
@@ -506,6 +535,7 @@ export class FlipperScene extends Phaser.Scene {
                 arp([659, 784, 988, 1319], 0.06, { vol: 0.05 });
                 break;
             case "ballLost":
+                this.mascot?.sad();
                 tone(180, 0.35, { vol: 0.05, type: "sawtooth", freqEnd: 60 });
                 if (e.bonus > 0)
                     popText(this, cx, TY + 480, `BONUS BILLE +${e.bonus}`, 30, PAL.cream, { ms: 1300 });
@@ -524,6 +554,7 @@ export class FlipperScene extends Phaser.Scene {
         fxg.clear();
         const ug = this.ug;
         ug.clear();
+        this.sprites.begin();
         // élingues
         d.slingshots.forEach((s, i) => {
             const flash = (this.hitFlash.get(`s${i}`) ?? 0) / 12;
@@ -532,6 +563,7 @@ export class FlipperScene extends Phaser.Scene {
             g.fillTriangle(p[0][0] - 3, p[0][1] - 5, p[1][0] + (i ? -6 : 6), p[1][1], p[2][0] - 3, p[2][1] + 5);
             g.fillStyle(mix(PAL.moss2, 0xffffff, flash * 0.7), 1);
             g.fillTriangle(p[0][0], p[0][1], p[1][0], p[1][1], p[2][0], p[2][1]);
+            this.sprites.draw(this.art.leaf, (p[0][0] + p[1][0] + p[2][0]) / 3, (p[0][1] + p[1][1] + p[2][1]) / 3, { scale: 0.9, flip: i === 1 });
         });
         // rollovers (lettres)
         for (const r of d.rollovers) {
@@ -539,12 +571,13 @@ export class FlipperScene extends Phaser.Scene {
             const flash = (this.hitFlash.get(`r:${r.id}`) ?? 0) / 16;
             g.fillStyle(PAL.ink0, 1);
             g.fillCircle(r.x, r.y, 13);
-            g.fillStyle(lit ? PAL.orangeLight : 0x2d4f3a, 1);
-            g.fillCircle(r.x, r.y, 9);
+            g.fillStyle(lit ? 0x6b5a1a : 0x1d3a2a, 1);
+            g.fillCircle(r.x, r.y, 10);
             if (lit || flash > 0) {
-                g.fillStyle(0xffffff, 0.5 + flash * 0.4);
-                g.fillCircle(r.x - 3, r.y - 3, 3);
+                g.fillStyle(PAL.orangeLight, 0.35 + flash * 0.4);
+                g.fillCircle(r.x, r.y, 17);
             }
+            this.sprites.draw(this.art.firefly, r.x, r.y, lit ? { scale: 0.9 + flash * 0.3 } : { alpha: 0.55, tint: 0x4a6a55, scale: 0.85 });
         }
         // cibles
         for (const t of d.targets) {
@@ -556,19 +589,16 @@ export class FlipperScene extends Phaser.Scene {
             g.fillStyle(down ? PAL.moss2 : PAL.leaf, 1);
             g.fillRect(t.x - t.w / 2, y, t.w, h);
         }
-        // bumpers
+        // bumpers : champignons du site sur un socle sombre
         for (const b of d.bumpers) {
             const pulse = (this.hitFlash.get(b.id) ?? 0) / 14;
-            const r = b.r + pulse * 6;
+            const r = b.r + pulse * 4;
             g.fillStyle(PAL.ink0, 1);
             g.fillCircle(b.x, b.y + 4, r + 5);
             g.fillCircle(b.x, b.y, r + 5);
-            g.fillStyle(mix(PAL.berry, PAL.cream, pulse * 0.6), 1);
+            g.fillStyle(mix(0x2c4a34, PAL.orangeLight, pulse * 0.7), 1);
             g.fillCircle(b.x, b.y, r);
-            g.lineStyle(4, PAL.cream, 0.9);
-            g.strokeCircle(b.x, b.y, r - 8);
-            g.fillStyle(PAL.cream, 0.9);
-            g.fillCircle(b.x - r * 0.3, b.y - r * 0.35, r * 0.16);
+            this.sprites.draw(b.r >= 26 ? this.art.mushBig : this.art.mushSmall, b.x, b.y - 2, { scale: 1 + pulse * 0.16 });
         }
         // plongeur : ressort et tête
         const l = d.launch;
@@ -613,12 +643,7 @@ export class FlipperScene extends Phaser.Scene {
                 g.fillStyle(PAL.orangeLight, 0.28 * k);
                 g.fillCircle(p.x, p.y, d.ball.radius * (0.4 + 0.5 * k));
             });
-            g.fillStyle(PAL.ink0, 1);
-            g.fillCircle(b.position.x, b.position.y, d.ball.radius + 2);
-            g.fillStyle(PAL.cream, 1);
-            g.fillCircle(b.position.x, b.position.y, d.ball.radius);
-            g.fillStyle(0xffffff, 0.9);
-            g.fillCircle(b.position.x - 3, b.position.y - 3, 3);
+            this.sprites.draw(this.art.ball, b.position.x, b.position.y, { rotation: b.angle, scale: 1.2 });
         }
         this.fx.draw(fxg);
         // panneaux : billes restantes, missions
@@ -653,6 +678,7 @@ export class FlipperScene extends Phaser.Scene {
             ug.fillCircle(x, y, 11);
         });
         this.pad?.draw(ug);
+        this.sprites.end();
         // valeurs
         const shown = this.score.update(this.rules.score, delta);
         if (this.texts.score.text !== String(shown))

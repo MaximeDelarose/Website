@@ -4,6 +4,7 @@ import { loadBest, saveBest } from "../../shared/storage.js";
 import { arp, noise, tone } from "../../shared/audio.js";
 import { readSeed } from "../../shared/seed.js";
 import { FONT_BODY, PAL, mix } from "../../shared/theme.js";
+import { Mascot, SpritePool, spriteKey, spriteKeys } from "../../shared/art.js";
 import { Counter, MuteButton, Overlay, Particles, drawBevel, drawPanel, makeText, onBlur, popText } from "../../shared/kit.js";
 import { BALL_R, BreakoutWorld, CELL_H, CELL_W, FIELD_H, FIELD_W, PADDLE_H, PADDLE_Y, brickRect } from "../core/world.js";
 const TICK_MS = 1000 / 60;
@@ -27,6 +28,16 @@ export class BreakoutScene extends Phaser.Scene {
         this.best = 0;
         this.newRecord = false;
         this.fx = new Particles();
+        this.mascot = null;
+        this.lastPaddleX = FIELD_W / 2;
+        this.facing = 1;
+        this.art = {
+            ball: null,
+            rock: null,
+            brick: {},
+            squirrel: [],
+            power: {},
+        };
         this.score = new Counter();
         this.wobble = new Map();
         this.trail = new Map();
@@ -37,6 +48,16 @@ export class BreakoutScene extends Phaser.Scene {
         this.gfx = this.add.graphics().setDepth(10).setPosition(FX, FY);
         this.fxg = this.add.graphics().setDepth(40).setPosition(FX, FY);
         this.ug = this.add.graphics().setDepth(60);
+        this.sprites = new SpritePool(this, 12, FX, FY);
+        this.uiSprites = new SpritePool(this, 62);
+        this.art = {
+            ball: spriteKey(this, "goldacorn", 3),
+            rock: spriteKey(this, "stump", 2),
+            brick: { 1: spriteKey(this, "clover", 2), 2: spriteKey(this, "acorn", 2), 3: spriteKey(this, "berry", 2) },
+            squirrel: spriteKeys(this, "sq_noisette", 2),
+            power: { wide: spriteKey(this, "log", 2), multi: spriteKey(this, "swarm", 2), laser: spriteKey(this, "bolt", 2), sticky: spriteKey(this, "drop", 2) },
+        };
+        this.mascot = new Mascot(this, "sq_pip", LX + COL_W / 2, GAME_H - 14, 5);
         this.overlay = new Overlay(this, GAME_W, GAME_H);
         new MuteButton(this, GAME_W - 68, 8, 48);
         makeText(this, 20, 6, "BREAKOUT", 46, PAL.orangeLight, { strokeW: 8 }).setDepth(5);
@@ -129,6 +150,7 @@ export class BreakoutScene extends Phaser.Scene {
         this.overlay.hide();
         if (this.state !== "ready")
             this.resetGame();
+        this.mascot?.reset();
         this.state = "playing";
         arp([392, 523, 659], 0.07, { vol: 0.04 });
     }
@@ -172,6 +194,7 @@ export class BreakoutScene extends Phaser.Scene {
         if (this.state === "loading")
             return;
         this.fx.update(delta);
+        this.mascot?.update(delta);
         const j = {};
         for (const name of Object.keys(this.keys))
             j[name] = Phaser.Input.Keyboard.JustDown(this.keys[name]);
@@ -241,11 +264,13 @@ export class BreakoutScene extends Phaser.Scene {
                 case "lifeLost":
                     tone(220, 0.4, { vol: 0.05, type: "sawtooth", freqEnd: 70 });
                     this.cameras.main.shake(260, 0.01);
+                    this.mascot?.sad();
                     popText(this, FX + FIELD_W / 2, FY + 440, e.lives > 0 ? `PLUS QUE ${e.lives} ${e.lives > 1 ? "VIES" : "VIE"}` : "DERNIÈRE BALLE PERDUE", 38, PAL.red, { ms: 1100 });
                     break;
                 case "levelClear":
                     arp([523, 659, 784, 1047], 0.07, { vol: 0.05 });
                     this.cameras.main.shake(200, 0.006);
+                    this.mascot?.cheer();
                     popText(this, FX + FIELD_W / 2, FY + 330, `NIVEAU ${e.level} TERMINÉ`, 40, PAL.leaf, { ms: 1100 });
                     popText(this, FX + FIELD_W / 2, FY + 380, `BONUS +${e.bonus}`, 28, PAL.orangeLight, { ms: 1100, rise: 30 });
                     break;
@@ -287,6 +312,7 @@ export class BreakoutScene extends Phaser.Scene {
     }
     onPower(power) {
         arp([660, 880, 1100], 0.05, { vol: 0.045, type: "triangle" });
+        this.mascot?.cheer();
         popText(this, FX + this.world.paddleX, FY + PADDLE_Y - 50, POWER_NAMES[power], 26, POWER_COLORS[power], { ms: 1000, rise: 40 });
         this.fx.burst(this.world.paddleX, PADDLE_Y, { n: 14, color: [POWER_COLORS[power], PAL.cream], speed: 260, life: 520, size: 7, gravity: 300 });
     }
@@ -298,6 +324,8 @@ export class BreakoutScene extends Phaser.Scene {
         const ug = this.ug;
         ug.clear();
         const w = this.world;
+        this.sprites.begin();
+        this.uiSprites.begin();
         // briques (chute d'introduction, secousse au coup, fissures)
         const introP = (r, c) => {
             if (w.intro <= 0)
@@ -321,13 +349,8 @@ export class BreakoutScene extends Phaser.Scene {
             const base = b.indestructible ? PAL.cap : BRICK_COLORS[b.maxHits] ?? PAL.leaf;
             const damaged = !b.indestructible && b.hits < b.maxHits;
             drawBevel(g, x, y, bw, bh, wob > 100 ? mix(base, 0xffffff, 0.6) : base, p);
-            if (b.indestructible) {
-                g.fillStyle(PAL.tan, 0.8 * p);
-                g.fillRect(x + 6, y + bh / 2 - 1, bw - 12, 2);
-                g.fillCircle(x + 8, y + 7, 2);
-                g.fillCircle(x + bw - 8, y + bh - 7, 2);
-            }
-            else if (damaged) {
+            this.sprites.draw(b.indestructible ? this.art.rock : this.art.brick[b.maxHits] ?? null, x + bw / 2, y + bh / 2, { alpha: p });
+            if (damaged) {
                 g.lineStyle(2, PAL.ink0, 0.75 * p);
                 g.beginPath();
                 g.moveTo(x + bw * 0.3, y + 3);
@@ -353,7 +376,7 @@ export class BreakoutScene extends Phaser.Scene {
         }
         // bonus tombants : capsules avec icône
         for (const d of w.drops)
-            this.drawCapsule(g, d.power, d.x, d.y);
+            this.drawCapsule(g, this.sprites, d.power, d.x, d.y);
         // raquette
         const pw = w.paddleW;
         const px = w.paddleX - pw / 2;
@@ -374,6 +397,16 @@ export class BreakoutScene extends Phaser.Scene {
             g.fillStyle(PAL.berry, 1);
             g.fillRect(px + 6, py - 8, 6, 8);
             g.fillRect(px + pw - 12, py - 8, 6, 8);
+        }
+        // l'écureuil du site se tient sur la raquette et regarde du côté où elle va
+        const moving = Math.abs(w.paddleX - this.lastPaddleX) > 0.6;
+        if (moving)
+            this.facing = w.paddleX > this.lastPaddleX ? 1 : -1;
+        this.lastPaddleX = w.paddleX;
+        const sq = this.art.squirrel;
+        if (sq.length > 0) {
+            const f = moving ? Math.floor(this.time.now / 110) % sq.length : 0;
+            this.sprites.draw(sq[f], w.paddleX, py - 21, { flip: this.facing < 0, scale: 1.25 });
         }
         // balles : traînée puis balle
         const alive = new Set();
@@ -396,12 +429,7 @@ export class BreakoutScene extends Phaser.Scene {
                 g.fillStyle(PAL.orangeLight, 0.3 * k);
                 g.fillCircle(p.x, p.y, BALL_R * (0.35 + 0.55 * k));
             });
-            g.fillStyle(PAL.ink0, 1);
-            g.fillCircle(b.x, b.y, BALL_R + 2);
-            g.fillStyle(PAL.cream, 1);
-            g.fillCircle(b.x, b.y, BALL_R);
-            g.fillStyle(0xffffff, 0.95);
-            g.fillCircle(b.x - 2.5, b.y - 2.5, 2.8);
+            this.sprites.draw(this.art.ball, b.x, b.y, { rotation: (this.time.now / 150) * (b.vx >= 0 ? 1 : -1), scale: 1.2 });
         });
         for (const k of [...this.trail.keys()])
             if (!alive.has(k))
@@ -430,7 +458,7 @@ export class BreakoutScene extends Phaser.Scene {
         power.forEach(([p, left, max], i) => {
             const y = FY + 56 + i * 58;
             const on = left > 0;
-            this.drawCapsule(ug, p, RX + 34, y + 12, on ? 1 : 0.3);
+            this.drawCapsule(ug, this.uiSprites, p, RX + 34, y + 12, on ? 1 : 0.35);
             ug.fillStyle(PAL.ink0, 1);
             ug.fillRect(RX + 62, y + 6, 66, 14);
             ug.fillStyle(on ? POWER_COLORS[p] : 0x2d4f3a, 1);
@@ -438,7 +466,9 @@ export class BreakoutScene extends Phaser.Scene {
         });
         ug.fillStyle(PAL.dim, 0.7);
         ug.fillRect(RX + 14, FY + 56 + 3 * 58 - 6, COL_W - 28, 2);
-        this.drawCapsule(ug, "multi", RX + 34, FY + 56 + 3 * 58 + 20, 0.9);
+        this.drawCapsule(ug, this.uiSprites, "multi", RX + 34, FY + 56 + 3 * 58 + 20, 0.9);
+        this.sprites.end();
+        this.uiSprites.end();
         // valeurs
         const sc = this.score.update(w.rules.score, delta);
         if (sc !== this.shown.score) {
@@ -457,31 +487,10 @@ export class BreakoutScene extends Phaser.Scene {
             this.shown.best = best;
         }
     }
-    /** Capsule de bonus : fond coloré, contour sombre, icône. */
-    drawCapsule(g, power, x, y, alpha = 1) {
-        const color = POWER_COLORS[power];
-        drawBevel(g, x - 18, y - 11, 36, 22, color, alpha);
-        g.fillStyle(PAL.ink0, alpha);
-        switch (power) {
-            case "wide":
-                g.fillRect(x - 9, y - 1.5, 18, 3);
-                g.fillTriangle(x - 13, y, x - 7, y - 5, x - 7, y + 5);
-                g.fillTriangle(x + 13, y, x + 7, y - 5, x + 7, y + 5);
-                break;
-            case "multi":
-                g.fillCircle(x - 8, y, 3.2);
-                g.fillCircle(x, y, 3.2);
-                g.fillCircle(x + 8, y, 3.2);
-                break;
-            case "laser":
-                g.fillRect(x - 7, y - 6, 3, 12);
-                g.fillRect(x + 4, y - 6, 3, 12);
-                break;
-            case "sticky":
-                g.fillCircle(x, y + 1, 5);
-                g.fillTriangle(x - 4, y - 1, x + 4, y - 1, x, y - 8);
-                break;
-        }
+    /** Capsule de bonus : fond coloré, contour sombre, icône du site. */
+    drawCapsule(g, pool, power, x, y, alpha = 1) {
+        drawBevel(g, x - 18, y - 11, 36, 22, POWER_COLORS[power], alpha);
+        pool.draw(this.art.power[power], x, y, { alpha });
     }
     drawHeart(g, x, y, full) {
         const c = full ? PAL.berry : 0x2d4f3a;

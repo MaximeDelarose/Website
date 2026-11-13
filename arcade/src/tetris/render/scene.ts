@@ -6,6 +6,7 @@ import { arp, noise, tone } from "../../shared/audio.js";
 import { readSeed } from "../../shared/seed.js";
 import { FONT_BODY, PAL, mix } from "../../shared/theme.js";
 import { Counter, MuteButton, Overlay, Particles, TouchPad, drawBlock, drawPanel, isTouch, makeText, onBlur, popText } from "../../shared/kit.js";
+import { Mascot, SQUIRREL_NAMES, SpritePool, spriteKey } from "../../shared/art.js";
 import { TetrisGame, type TetrisEvent } from "../core/game.js";
 import { BOARD_H, BOARD_W, HIDDEN_ROWS } from "../core/board.js";
 import { KINDS, type Kind, cellsOf } from "../core/pieces.js";
@@ -36,6 +37,9 @@ const COLORS: Record<Kind, number> = {
   L: PAL.orange,
 };
 
+/** Une icône du site par pièce, dessinée dans chaque case. */
+const ICONS: Record<Kind, string> = { I: "leaf", O: "acorn", T: "mushroom", S: "clover", Z: "berry", J: "pinecone", L: "nut" };
+
 type State = "ready" | "playing" | "paused" | "over";
 
 interface Trail { x: number; y0: number; y1: number; color: number; life: number }
@@ -51,6 +55,10 @@ export class TetrisScene extends Phaser.Scene {
   private gfx!: PhaserType.GameObjects.Graphics;
   private fxGfx!: PhaserType.GameObjects.Graphics;
   private fx = new Particles();
+  private sprites!: SpritePool;
+  private mascot: Mascot | null = null;
+  private iconBig: Partial<Record<Kind, string | null>> = {};
+  private iconSmall: Partial<Record<Kind, string | null>> = {};
   private overlay!: Overlay;
   private pad: TouchPad | null = null;
   private trails: Trail[] = [];
@@ -72,6 +80,12 @@ export class TetrisScene extends Phaser.Scene {
     this.buildStatic();
     this.gfx = this.add.graphics().setDepth(10);
     this.fxGfx = this.add.graphics().setDepth(40);
+    this.sprites = new SpritePool(this, 11);
+    for (const kind of KINDS) {
+      this.iconBig[kind] = spriteKey(this, ICONS[kind], 3);
+      this.iconSmall[kind] = spriteKey(this, ICONS[kind], 2);
+    }
+    if (!TOUCH) this.mascot = new Mascot(this, SQUIRREL_NAMES[0], LX + COL_W / 2, GAME_H - 14, 5);
     this.overlay = new Overlay(this, GAME_W, GAME_H);
     new MuteButton(this, GAME_W - 68, 8, 48);
     if (TOUCH) {
@@ -176,6 +190,7 @@ export class TetrisScene extends Phaser.Scene {
   private startGame(): void {
     this.overlay.hide();
     this.resetGame();
+    this.mascot?.reset();
     this.state = "playing";
     arp([392, 523, 659], 0.07, { vol: 0.04, type: "square" });
   }
@@ -201,6 +216,7 @@ export class TetrisScene extends Phaser.Scene {
       saveBest(BEST_KEY, this.best);
     }
     this.cameras.main.shake(260, 0.012);
+    this.mascot?.sad();
     [0, 1, 2, 3].forEach((i) => tone(330 - i * 60, 0.22, { vol: 0.05, type: "sawtooth", delay: i * 0.12, freqEnd: 200 - i * 40 }));
     this.time.delayedCall(700, () => {
       if (this.state !== "over") return;
@@ -221,6 +237,7 @@ export class TetrisScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     this.fx.update(delta);
+    this.mascot?.update(delta);
     this.trails = this.trails.filter((t) => (t.life -= delta) > 0);
     this.flashes = this.flashes.filter((f) => (f.life -= delta) > 0);
     if (this.flashWhite > 0) this.flashWhite = Math.max(0, this.flashWhite - delta);
@@ -300,6 +317,8 @@ export class TetrisScene extends Phaser.Scene {
         case "level":
           arp([523, 659, 784, 1047, 1319], 0.06, { vol: 0.05, type: "square" });
           this.flashWhite = 220;
+          this.mascot?.set(SQUIRREL_NAMES[(e.level - 1) % SQUIRREL_NAMES.length]);
+          this.mascot?.cheer();
           popText(this, BX + BW / 2, BY + BH / 2 - 90, `NIVEAU ${e.level}`, 54, PAL.leaf, { ms: 1100 });
           break;
         case "gameover":
@@ -342,6 +361,7 @@ export class TetrisScene extends Phaser.Scene {
     noise(0.18, { vol: 0.06, freq: 3200 });
     this.cameras.main.shake(140 + e.count * 40, 0.003 + e.count * 0.0028);
     this.flashWhite = e.count >= 4 ? 260 : 120;
+    this.mascot?.cheer();
     for (const r of e.rows) {
       for (let c = 0; c < BOARD_W; c++) {
         const v = this.tetris.board.grid[r][c];
@@ -364,6 +384,7 @@ export class TetrisScene extends Phaser.Scene {
     const fxg = this.fxGfx;
     fxg.clear();
     const game = this.tetris;
+    this.sprites.begin();
 
     // pile : cases posées, avec animation d'effacement
     const clearing = new Set(game.clearRows);
@@ -386,6 +407,7 @@ export class TetrisScene extends Phaser.Scene {
           }
         } else {
           drawBlock(g, x, y, C, COLORS[KINDS[v - 1]]);
+          this.sprites.draw(this.iconBig[KINDS[v - 1]] ?? null, x + C / 2, y + C / 2 + 1);
         }
       }
     }
@@ -411,6 +433,7 @@ export class TetrisScene extends Phaser.Scene {
         if (r < HIDDEN_ROWS) continue;
         const { x, y } = this.cellPos(r, active.col + dc);
         drawBlock(g, x, y, C, color);
+        this.sprites.draw(this.iconBig[active.kind] ?? null, x + C / 2, y + C / 2 + 1);
       }
     }
 
@@ -444,6 +467,7 @@ export class TetrisScene extends Phaser.Scene {
       this.drawPreview(g, kind, RX + COL_W / 2, cy, size, i === 0 ? 1 : 0.85);
     });
     this.pad?.draw(g);
+    this.sprites.end();
 
     // valeurs
     const score = this.scoreCounter.update(game.score, delta);
@@ -481,6 +505,11 @@ export class TetrisScene extends Phaser.Scene {
     const minR = Math.min(...rows), maxR = Math.max(...rows), minC = Math.min(...cols), maxC = Math.max(...cols);
     const w = (maxC - minC + 1) * size;
     const h = (maxR - minR + 1) * size;
-    for (const [r, c] of cells) drawBlock(g, cx - w / 2 + (c - minC) * size, cy - h / 2 + (r - minR) * size, size, COLORS[kind], alpha);
+    for (const [r, c] of cells) {
+      const px = cx - w / 2 + (c - minC) * size;
+      const py = cy - h / 2 + (r - minR) * size;
+      drawBlock(g, px, py, size, COLORS[kind], alpha);
+      this.sprites.draw(this.iconSmall[kind] ?? null, px + size / 2, py + size / 2 + 0.5, { scale: size / 26, alpha });
+    }
   }
 }
