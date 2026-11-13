@@ -7,7 +7,7 @@ PPU = 32                      # pixels par unité monde (identique pour tout le 
 ARENA_W, ARENA_H = 36, 20     # unités monde (x: -18..18, z: -10..10)
 PATH_HALF_WIDTH = 1.1
 
-CONTROL = [(-16.2, 6.2), (-12.5, 6.6), (-8.5, 4.2), (-8.2, 0.2), (-10.5, -3.8), (-6.5, -7.0),
+CONTROL = [(-16.0, 6.2), (-12.5, 6.6), (-8.5, 4.2), (-8.2, 0.2), (-10.5, -3.8), (-6.5, -7.0),
            (-1.8, -5.6), (0.2, -1.5), (-0.8, 3.2), (3.2, 6.6), (8.0, 5.2), (9.0, 0.8),
            (7.2, -3.0), (10.5, -6.6), (14.4, -4.6), (15.4, -0.6)]
 SPAWN = CONTROL[0]
@@ -45,7 +45,7 @@ def catmull(pts, step=0.5):
 
 
 # (hauteur, demi-largeur) en unités monde des sprites hauts
-TALL = {'tree_dead': (3.0, 1.0), 'tree_teal': (3.0, 1.0), 'ruin_pillar': (2.6, 0.7), 'ruin_arch': (2.9, 1.6), 'crystal': (1.9, 0.7)}
+TALL = {'pine_m': (1.9, 0.6), 'pine_s': (1.4, 0.5), 'pine_d': (1.6, 0.5), 'ruin_a': (1.6, 0.9), 'ruin_b': (1.2, 0.7), 'crystal': (1.9, 0.7)}
 
 
 def dist_to_path(p, path):
@@ -81,32 +81,27 @@ def build():
         covered |= {i for i, q in enumerate(path) if math.dist(best, q) <= RANGE}
 
     # --- décor ---
-    kinds = [('tree_dead', 16), ('tree_teal', 14), ('rock', 16), ('rock_small', 12), ('crystal', 9),
-             ('mushroom', 12), ('ruin_pillar', 7), ('ruin_arch', 3), ('bones', 7)]
+    kinds = [('pine_s', 44), ('pine_m', 30), ('pine_d', 10), ('ruin_a', 9), ('ruin_b', 11), ('rock', 7), ('rock_small', 12), ('crystal', 7), ('sparkle', 18)]
     pool = [k for k, n in kinds for _ in range(n)]
     decor = []
     tries = 0
-    while len(decor) < 96 and tries < 6000:
+    while len(decor) < 125 and tries < 9000:
         tries += 1
         p = (rng.uniform(-17.4, 17.4), rng.uniform(-9.4, 9.4))
         k = rng.choice(pool)
-        need = {'tree_dead': 2.6, 'tree_teal': 2.6, 'ruin_arch': 3.2, 'ruin_pillar': 2.4, 'crystal': 2.3}.get(k, 2.0)
+        need = {'pine_m': 2.0, 'pine_s': 1.8, 'pine_d': 1.9, 'ruin_a': 2.4, 'ruin_b': 2.2, 'crystal': 2.0, 'sparkle': 1.6}.get(k, 1.8)
         if dist_to_path(p, path) < need: continue
         if any(math.dist(p, s) < 2.0 for s in slots): continue
         h, w = TALL.get(k, (0, 0))
         if h:   # un sprite haut masque ce qui est DERRIÈRE lui (z plus grand) en vue 3/4 : on garde chemin et plaques dégagés
             if any(0.0 < q[1] - p[1] < h and abs(q[0] - p[0]) < w + PATH_HALF_WIDTH for q in path): continue
             if any(-0.5 < s[1] - p[1] < h + 0.6 and abs(s[0] - p[0]) < w + 1.2 for s in slots): continue
-        if math.dist(p, HEART) < 3.4 or math.dist(p, SPAWN) < 3.2: continue
-        if any(math.dist(p, (d['x'], d['z'])) < 1.5 for d in decor): continue
+        if math.dist(p, HEART) < 3.4 or math.dist(p, SPAWN) < 3.0: continue
+        gap = 1.0 if k.startswith('pine') or k == 'sparkle' else 1.7
+        if any(math.dist(p, (d['x'], d['z'])) < gap for d in decor): continue
         decor.append({'kind': k, 'x': round(p[0], 2), 'z': round(p[1], 2), 'flip': rng.random() < 0.5})
-    # torches : le long du chemin, des deux côtés du Cœur et du portail
-    for base in (HEART, SPAWN):
-        for sx in (-1, 1):
-            for sz in (-1, 1):
-                p = (base[0] + sx * 2.6, base[1] + sz * 2.4)
-                if abs(p[0]) < 17.5 and abs(p[1]) < 9.6 and dist_to_path(p, path) > 1.9 and all(math.dist(p, s) >= 2.0 for s in slots):
-                    decor.append({'kind': 'brazier', 'x': round(p[0], 2), 'z': round(p[1], 2), 'flip': False})
+    # portail d'apparition (sprite) juste derrière le point d'entrée
+    decor.append({'kind': 'gate', 'x': round(SPAWN[0] + 0.1, 2), 'z': round(SPAWN[1] + 1.5, 2), 'flip': False})
     return {
         'ppu': PPU, 'width': ARENA_W, 'height': ARENA_H, 'pathHalfWidth': PATH_HALF_WIDTH,
         'spawn': {'x': SPAWN[0], 'z': SPAWN[1]}, 'heart': {'x': HEART[0], 'z': HEART[1]},
