@@ -1,3 +1,4 @@
+import { VERSION_QUERY } from "../../shared/version.js";
 import type PhaserType from "phaser";
 import { Phaser } from "../../shared/engines.js";
 import { readPad } from "../../shared/gamepad.js";
@@ -96,7 +97,7 @@ export class BreakoutScene extends Phaser.Scene {
       if (this.state === "playing") this.pause();
     });
 
-    void fetch("data/arcade/levels.json")
+    void fetch(`data/arcade/levels.json${VERSION_QUERY}`)
       .then((r) => r.json())
       .then((json: { levels: LevelData[] }) => {
         this.levels = json.levels;

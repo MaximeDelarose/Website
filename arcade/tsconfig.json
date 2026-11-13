@@ -11,7 +11,7 @@
     "noUnusedLocals": true,
     "noImplicitReturns": true,
     "rootDir": "src",
-    "outDir": "../js/arcade",
+    "outDir": ".build",
     "sourceMap": false,
     "declaration": false,
     "skipLibCheck": true,

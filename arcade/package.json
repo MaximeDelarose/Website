@@ -3,13 +3,14 @@
   "private": true,
   "description": "Arcade : Tetris, Flipper, Breakout (TypeScript compil\u00e9 vers arcade/js/)",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node build.mjs",
     "watch": "tsc -p tsconfig.json --watch",
-    "test": "npm run build && node --test \"../js/arcade/**/*.test.js\""
+    "test": "npm run build && node --test \".build/**/*.test.js\""
   },
   "devDependencies": {
     "@types/matter-js": "0.19.7",
     "@types/node": "^22.20.5",
+    "esbuild": "^0.24.0",
     "matter-js": "0.19.0",
     "phaser": "3.80.1",
     "typescript": "5.6.3"

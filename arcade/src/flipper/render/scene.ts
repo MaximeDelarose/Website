@@ -1,3 +1,4 @@
+import { VERSION_QUERY } from "../../shared/version.js";
 import type PhaserType from "phaser";
 import type MatterType from "matter-js";
 import { Phaser, Matter } from "../../shared/engines.js";
@@ -126,7 +127,7 @@ export class FlipperScene extends Phaser.Scene {
     makeText(this, 20, 6, "FLIPPER", 46, PAL.orangeLight, { strokeW: 8 }).setDepth(5);
     this.add.text(GAME_W / 2, GAME_H / 2, "chargement…", { fontFamily: FONT_BODY, fontSize: "24px", color: "#fdf3de" }).setOrigin(0.5).setName("loading");
 
-    void fetch("data/arcade/table.json")
+    void fetch(`data/arcade/table.json${VERSION_QUERY}`)
       .then((r) => r.json())
       .then((data: TableData) => {
         this.table = data;
