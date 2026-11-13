@@ -15,9 +15,11 @@
     shadow: Art.svg('0 0 64 64', '<path d="M6 36q26-34 52 0-26 20-52 0z" fill="#fff" ' + ST(3.500) + '/><path d="M8 34q24-26 48 0-24-8-48 0z" fill="#b794ff"/><circle cx="32" cy="38" r="7" fill="#4a2a55"/><circle cx="34" cy="35" r="2.500" fill="#fff"/>'),
     stamps: Art.svg('0 0 64 64', '<path d="' + Art.P.heart + '" transform="translate(2 8) scale(1.800)" fill="#ff4d8d" ' + ST(1.600) + '/><path d="' + Art.P.star + '" transform="translate(28 26) scale(1.500)" fill="#ffd84d" ' + ST(1.600) + '/>'),
     crown: Art.svg('0 0 64 64', Art.items.crown),
-    hair: G.preview('hair', 'long', { hairColor: 0 })
+    hair: G.preview('hair', 'long', { hairColor: 0 }),
+    me: Art.svg('30 40 240 240', F.render(F.base, { collar: false }), null)
   };
-  var TOOLS = ['lips', 'blush', 'shadow', 'stamps', 'hair', 'crown'];
+  var PRESETS = [{ skin: 1, eyes: 0, hairColor: 0, hairStyle: 'long' }, { skin: 4, eyes: 0, hairColor: 1, hairStyle: 'curls' }, { skin: 0, eyes: 2, hairColor: 2, hairStyle: 'braids' }, { skin: 2, eyes: 3, hairColor: 3, hairStyle: 'bun' }];
+  var TOOLS = ['lips', 'blush', 'shadow', 'stamps', 'hair', 'crown', 'me'];
   var LOOKS = [
     { name: 'chaton', lips: '#ff6f91', blush: '#ffb3d1', shadow: null, crown: 'c5', extras: '<g stroke="' + INK + '" stroke-width="3.500" stroke-linecap="round" fill="none"><path d="M118 238l-62 6M118 250l-62 18M182 238l62 6M182 250l62 18"/></g><path d="M141 224l9 9 9-9z" fill="#ff4d7d" ' + ST(2.500) + '/>', stamps: [] },
     { name: 'papillon', lips: '#ff9ac8', blush: '#ffd0f0', shadow: '#c4a8ff', crown: 'c3', stamps: [{ k: 'butterfly', x: 100, y: 124, s: 1.1 }, { k: 'butterfly', x: 200, y: 124, s: 1.1 }, { k: 'glitter', x: 84, y: 244, s: 1 }, { k: 'glitter', x: 216, y: 244, s: 1 }] },
@@ -29,8 +31,8 @@
 
   C.register('makeup', {
     enter: function (el) {
-      var chIdx = C.store.get('mkchar', 0) % F.chars.length;
-      var S = { lips: null, blush: null, shadow: null, hairStyle: null, crown: null, stamps: [], extras: '' };
+      var cfg = C.profile; cfg.hairStyle = G.fixStyle(cfg.hairStyle); if (cfg.eyes == null) cfg.eyes = 0;
+      var S = { lips: null, blush: null, shadow: null, custom: false, crown: null, stamps: [], extras: '' };
       var saved = true, touched = function () { };
       var tool = 'lips', cur = { lips: LIPS[0], blush: BLUSH[0], shadow: SHADOW[0], stamp: 'heart' }, busy = false;
       el.innerHTML = '<div class="dbg">' + Art.svg('0 0 390 700', '<defs><radialGradient id="mkg" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="#fff8fc"/><stop offset="1" stop-color="#e5d6ff"/></radialGradient></defs><rect width="390" height="700" fill="url(#mkg)"/><g fill="#fff" opacity=".7">' + [30, 90, 160, 230, 300, 360].map(function (x, i) { return '<path d="' + Art.P.spark + '" transform="translate(' + x + ' ' + (40 + (i * 53) % 300) + ') scale(.9)"/>'; }).join('') + '</g>', null, ' preserveAspectRatio="xMidYMid slice"') + '</div>' +
@@ -41,7 +43,7 @@
       var face = C.$('.mkface', el), left = C.$('.actbar.left', el), tabs = C.$('.tabs', el), sw = C.$('.swrow', el);
       C.fit(C.$('.stage', el), face, 300 / 340);
 
-      function ch() { return F.chars[chIdx]; }
+      function look(extra) { return Object.assign({ skin: cfg.skin, eyes: cfg.eyes, hairColor: cfg.hairColor, hairStyle: cfg.hairStyle }, G.outfitLook(cfg.outfit), extra || {}); }
       function crownSvg() {
         if (!S.crown) return '';
         return '<g transform="translate(150 70) scale(1.55) translate(-120 -36)">' + G.maps.crown[S.crown].svg() + '</g>';
@@ -51,7 +53,7 @@
       }
       function mark() { saved = false; touched(); }
       function render() {
-        face.innerHTML = Art.svg('0 0 300 340', F.render(ch(), { lips: S.lips, blush: S.blush, shadow: S.shadow, hairStyle: S.hairStyle }) + S.extras + stampsSvg() + crownSvg(), 'mkface-svg');
+        face.innerHTML = Art.svg('0 0 300 340', F.render(F.base, look({ lips: S.lips, blush: S.blush, shadow: S.shadow })) + S.extras + stampsSvg() + crownSvg(), 'mkface-svg');
         S.stamps.forEach(function (p) { p.fresh = false; });
       }
       render();
@@ -75,7 +77,7 @@
         var p = pt(e);
         if (tool === 'lips') { if (inFace(p, 6) && p.y > 218) { mark(); S.lips = cur.lips; render(); pop(150, 250, cur.lips); } else wrong(150, 250); }
         else if (tool === 'blush') { if (inFace(p, 6) && p.y > 170 && p.y < 290) { mark(); S.blush = cur.blush; render(); pop(84, 238, cur.blush); pop(216, 238, cur.blush); } else wrong(84, 238); }
-        else if (tool === 'shadow') { if (inFace(p, 6) && p.y > 110 && p.y < 222) { mark(); S.shadow = cur.shadow; render(); pop(104, 174, cur.shadow); pop(196, 174, cur.shadow); } else wrong(104, 174); }
+        else if (tool === 'shadow') { if (inFace(p, 6) && p.y > 110 && p.y < 222) { mark(); S.shadow = cur.shadow; render(); pop(113, 182, cur.shadow); pop(187, 182, cur.shadow); } else wrong(113, 182); }
         else if (tool === 'stamps') {
           var q = clampFace(p); addStamp(q, e);
           spray = { id: e.pointerId, last: q, d: 0 };
@@ -95,10 +97,10 @@
       });
       ['pointerup', 'pointercancel'].forEach(function (ev) { face.addEventListener(ev, function () { spray = null; }); });
 
-      /* personnages */
-      F.chars.forEach(function (c, i) {
-        var b = C.el('<button class="charb' + (i === chIdx ? ' on' : '') + '" aria-label="visage">' + Art.svg('0 0 300 340', F.render(c, {}), null) + '</button>');
-        b.onclick = function () { chIdx = i; S.hairStyle = null; C.store.set('mkchar', i); C.select(left, '.charb', b); C.sfx.pop(); render(); face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop'); C.say('Un nouveau visage !'); };
+      /* personnages prêts à jouer : même visage, autres couleurs et coiffures (tout reste modifiable dans l'onglet de droite) */
+      PRESETS.forEach(function (pr, i) {
+        var b = C.el('<button class="charb" aria-label="personnage">' + Art.svg('0 0 300 340', F.render(F.base, Object.assign({}, pr, { top: '#8fd0ff' })), null) + '</button>');
+        b.onclick = function () { Object.assign(cfg, pr); C.saveProfile(); mark(); S.custom = true; C.select(left, '.charb', b); C.sfx.pop(); render(); face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop'); fill(); };
         left.appendChild(b);
       });
       C.$$('.charb', left).forEach(function (b) { b.style.width = '50px'; b.style.height = '50px'; });
@@ -113,7 +115,14 @@
         else if (tool === 'shadow') SHADOW.forEach(function (c, i) { swatch(c, 'shadow', i); });
         else if (tool === 'stamps') STAMPS.forEach(function (k) { var b = C.el('<button class="it' + (cur.stamp === k ? ' on' : '') + '" aria-label="tampon"><svg viewBox="-24 -24 48 48">' + F.stamps[k] + '</svg></button>'); b.onclick = function () { cur.stamp = k; C.select(sw, '.it', b); C.sfx.pop(); C.bounce(b); }; sw.appendChild(b); });
         else if (tool === 'hair') {
-          ['long', 'puffs', 'pigtails', 'bob'].forEach(function (s) { var b = C.el('<button class="it' + ((S.hairStyle || ch().style) === s ? ' on' : '') + '" aria-label="coiffure">' + Art.svg('0 0 300 340', F.render(ch(), { hairStyle: s }), null) + '</button>'); b.onclick = function () { mark(); S.hairStyle = s; render(); C.select(sw, '.it', b); C.sfx.sparkle(); C.sfx.boing(); face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop'); }; sw.appendChild(b); });
+          G.hairStyles.forEach(function (s) { var b = C.el('<button class="it' + (cfg.hairStyle === s ? ' on' : '') + '" aria-label="coiffure">' + Art.svg('0 0 300 340', F.render(F.base, look({ hairStyle: s, collar: false })), null) + '</button>'); b.onclick = function () { mark(); S.custom = true; cfg.hairStyle = s; C.saveProfile(); render(); C.select(sw, '.it', b); C.sfx.sparkle(); C.sfx.boing(); face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop'); }; sw.appendChild(b); });
+        } else if (tool === 'me') {
+          var round = function (key, i, col) { var b = C.el('<button class="it round' + (cfg[key] === i ? ' on' : '') + '" style="--c:' + col + '" aria-label="couleur"></button>'); b.onclick = function () { mark(); S.custom = true; cfg[key] = i; C.saveProfile(); render(); C.select(sw, '.it', b); C.sfx.sparkle(); C.bounce(b); face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop'); }; sw.appendChild(b); };
+          G.skins.forEach(function (c, i) { round('skin', i, c); });
+          sw.appendChild(C.el('<span class="gap"></span>'));
+          G.eyeColors.forEach(function (c, i) { round('eyes', i, c); });
+          sw.appendChild(C.el('<span class="gap"></span>'));
+          G.hairColors.forEach(function (h, i) { round('hairColor', i, h.c); });
         } else if (tool === 'crown') {
           var none = C.el('<button class="it none' + (!S.crown ? ' on' : '') + '" aria-label="aucun"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="16" fill="none" stroke="#c4a8ff" stroke-width="5"/><path d="M13 35L35 13" stroke="#c4a8ff" stroke-width="5" stroke-linecap="round"/></svg></button>');
           none.onclick = function () { S.crown = null; render(); C.select(sw, '.it', none); C.sfx.whoosh(); }; sw.appendChild(none);
@@ -148,15 +157,15 @@
       };
       C.$('[data-do=clear]', el).onclick = function () {
         C.confirm(Art.ui.again.replace(/#fff/g, '#c4a8ff')).then(function (yes) {
-          if (!yes) return; S.lips = S.blush = S.shadow = S.crown = S.hairStyle = null; S.stamps = []; S.extras = ''; render(); fill(); C.sfx.whoosh();
+          if (!yes) return; S.lips = S.blush = S.shadow = S.crown = null; S.stamps = []; S.extras = ''; render(); fill(); C.sfx.whoosh();
         });
       };
       var finishMk = function () {
-        if (!(S.lips || S.blush || S.shadow || S.crown || S.stamps.length || S.extras || S.hairStyle)) { C.nudge(face); C.say('Maquille d\u2019abord !'); return false; }
+        if (!(S.lips || S.blush || S.shadow || S.crown || S.stamps.length || S.extras || S.custom)) { C.nudge(face); C.say('Maquille d\u2019abord !'); return false; }
         var fl = C.$('.flash', el); C.sfx.shutter(); fl.classList.add('go'); setTimeout(function () { fl.classList.remove('go'); }, 700);
         var svg = C.$('svg', face);
         C.rasterSvg(svg, 480, 544, function (cx, w, h) { var g = cx.createRadialGradient(w / 2, h * 0.4, 20, w / 2, h * 0.45, h * 0.8); g.addColorStop(0, '#fff8fc'); g.addColorStop(1, '#d9c5ff'); cx.fillStyle = g; cx.fillRect(0, 0, w, h); })
-          .then(function (url) { return C.saveCreation('makeup', url).then(function () { saved = true; C.finish({ kind: 'makeup', tile: 'makeup', img: url, say: 'Bravo ' + C.NAME + ' ! Tu es magnifique !', again: function () { S.lips = S.blush = S.shadow = S.crown = S.hairStyle = null; S.stamps = []; S.extras = ''; render(); fill(); saved = true; } }); }); })
+          .then(function (url) { return C.saveCreation('makeup', url).then(function () { saved = true; C.finish({ kind: 'makeup', tile: 'makeup', img: url, say: 'Bravo ' + C.NAME + ' ! Tu es magnifique !', again: function () { S.lips = S.blush = S.shadow = S.crown = null; S.stamps = []; S.extras = ''; render(); fill(); saved = true; } }); }); })
           .catch(function () { C.say('Oups !'); });
       };
       var doneB = C.doneBar(C.$('.tray', el), 'C\u2019est terminé !', finishMk);

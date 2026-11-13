@@ -7,11 +7,13 @@
   G.skins = ['#ffe3cf', '#f8cba3', '#e4a977', '#b9784a', '#7d4a2e'];
   G.skinShade = ['#ffc9ad', '#eaa77c', '#c98954', '#9a5f36', '#5e3520'];
   G.hairColors = [
-    { id: 0, c: '#8a5a3c', d: '#6a4029' }, { id: 1, c: '#3b2a35', d: '#251a22' }, { id: 2, c: '#f6cf6a', d: '#e0b04a' },
+    { id: 0, c: '#9b5a3a', d: '#6f3b24' }, { id: 1, c: '#3b2a35', d: '#251a22' }, { id: 2, c: '#f6cf6a', d: '#e0b04a' },
     { id: 3, c: '#e0743a', d: '#c15a24' }, { id: 4, c: '#ff8fb8', d: '#ee6a9c' }, { id: 5, c: '#7fb8ff', d: '#5a97ea' }, { id: 6, c: '#b794ff', d: '#9470e8' }
   ];
-  G.hairStyles = ['long', 'pigtails', 'bun', 'bob', 'curls'];
-  G.defaults = function () { return { skin: 1, hairStyle: 'long', hairColor: 0, outfit: 'd1', shoes: 's1', crown: null, jewel: null, bag: null, wings: null, wand: null, mood: 'smile' }; };
+  G.eyeColors = ['#7a4a2e', '#b07a32', '#4b9be8', '#4fae78', '#8a63d8', '#ff7fb0'];
+  G.hairStyles = ['long', 'bun', 'flower', 'braids', 'pigtails', 'curls'];
+  G.fixStyle = function (s) { return G.hairStyles.indexOf(s) >= 0 ? s : 'long'; };
+  G.defaults = function () { return { skin: 1, eyes: 0, hairStyle: 'long', hairColor: 0, outfit: 'd0', shoes: 's0', crown: null, jewel: null, bag: null, wings: null, wand: null, mood: 'smile' }; };
 
   function mirror(inner) { return '<g transform="translate(240 0) scale(-1 1)">' + inner + '</g>'; }
   function both(inner) { return inner + mirror(inner); }
@@ -20,41 +22,49 @@
   function dot(x, y, r, fill) { return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + fill + '"/>'; }
 
   /* ---------- cheveux ---------- */
-  var CAP = 'M54 106C46 48 84 28 120 28c36 0 74 20 66 78-6-22-16-34-32-44-12 16-48 20-64 2-18 8-26 24-36 42z';
+  var CAP = 'M63 109C56 55 87 30 120 30s64 25 57 79C174 92 163 74 143 57C132 54 118 54 108 55C92 62 78 82 63 109z';
+  function bow(x, y, sc, c) { return '<g transform="translate(' + x + ' ' + y + ') scale(' + sc + ')"><path d="M0 0L-16-10c-4 6-4 14 0 20zM0 0l16-10c4 6 4 14 0 20z" fill="' + c + '" ' + ST(2.600) + '/><circle r="4" fill="' + c + '" ' + ST(2.200) + '/></g>'; }
+  function flower(x, y, sc) { return '<g transform="translate(' + x + ' ' + y + ') scale(' + sc + ')"><g fill="#ff9ac8" ' + ST(2.200) + '><circle cx="0" cy="-8" r="6.500"/><circle cx="8" cy="-2" r="6.500"/><circle cx="-8" cy="-2" r="6.500"/><circle cx="5" cy="7" r="6.500"/><circle cx="-5" cy="7" r="6.500"/></g><circle r="5" fill="#ffd84d" ' + ST(2) + '/></g>'; }
   function hairBack(style, h) {
     var f = h.c, s = ST(3.200);
     switch (style) {
-      case 'long': return '<path d="M56 84C34 124 32 190 48 240c20 10 44 6 56-4l32 0c12 10 36 14 56 4 16-50 14-116-8-156z" fill="' + f + '" ' + s + '/><path d="M70 150c-2 30 0 56 6 80M170 150c2 30 0 56-6 80" stroke="' + h.d + '" stroke-width="4" fill="none" stroke-linecap="round"/>';
+      case 'long': case 'flower': return '<path d="M56 84C30 124 28 190 44 244c20 12 46 8 60-4l32 0c14 12 40 16 60 4 16-54 14-120-10-160z" fill="' + f + '" ' + s + '/><path d="M64 150c-4 30 0 56 8 84M176 150c4 30 0 56-8 84M52 130c-6 30-4 60 0 84" stroke="' + h.d + '" stroke-width="4" fill="none" stroke-linecap="round"/>';
       case 'pigtails': return both('<path d="M62 78C26 82 8 132 20 192c26-6 46-44 50-88z" fill="' + f + '" ' + s + '/><path d="M32 130c-2 20 0 34 4 46" stroke="' + h.d + '" stroke-width="4" fill="none" stroke-linecap="round"/>');
-      case 'bob': return '<path d="M54 90C42 130 44 170 62 184c22 8 38 0 58-2 20 2 36 10 58 2 18-14 20-54 8-94z" fill="' + f + '" ' + s + '/>';
-      case 'curls': return '<g fill="' + f + '" ' + s + '><circle cx="46" cy="96" r="28"/><circle cx="194" cy="96" r="28"/><circle cx="38" cy="136" r="22"/><circle cx="202" cy="136" r="22"/><circle cx="66" cy="52" r="28"/><circle cx="174" cy="52" r="28"/><circle cx="120" cy="38" r="32"/></g>';
-      default: return '<path d="M60 84C52 100 54 112 58 124h124c4-12 6-24-2-40z" fill="' + f + '" ' + s + '/>';
+      case 'bun': return '<circle cx="120" cy="28" r="26" fill="' + f + '" ' + s + '/><path d="M106 20q10-8 22-2" stroke="' + h.d + '" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/>' + both('<circle cx="50" cy="132" r="14" fill="' + f + '" ' + s + '/><circle cx="46" cy="156" r="11" fill="' + f + '" ' + s + '/>');
+      case 'braids': return both([0, 1, 2, 3, 4].map(function (i) { return '<ellipse cx="' + (50 + (i % 2 ? 5 : -3)) + '" cy="' + (126 + i * 22) + '" rx="13" ry="14" fill="' + f + '" ' + s + '/>'; }).join(''));
+      default: return '<g fill="' + f + '" ' + s + '><circle cx="46" cy="96" r="28"/><circle cx="194" cy="96" r="28"/><circle cx="38" cy="136" r="22"/><circle cx="202" cy="136" r="22"/><circle cx="66" cy="52" r="28"/><circle cx="174" cy="52" r="28"/><circle cx="120" cy="38" r="32"/></g>';
     }
   }
   function hairFront(style, h) {
-    var f = h.c, s = ST(3.200), cap = '<path d="' + CAP + '" fill="' + f + '" ' + s + '/><path d="M96 46c-10 4-18 10-24 20M150 40c10 4 18 10 24 18" stroke="' + h.d + '" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/><path d="M104 36c12-6 28-6 38 2" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".35"/>';
+    var f = h.c, s = ST(3.200), cap = '<path d="' + CAP + '" fill="' + f + '" ' + s + '/><path d="M108 55v-14" stroke="' + h.d + '" stroke-width="3.500" stroke-linecap="round" opacity=".6"/><path d="M82 50c-10 8-16 20-20 34M156 44c12 6 20 18 22 30" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".3"/>';
     switch (style) {
-      case 'long': return cap + both('<path d="M56 104c-4 20-6 40-4 62 10-8 16-30 14-52z" fill="' + f + '" ' + s + '/>');
+      case 'long': return cap + both('<path d="M58 100c-5 22-8 44-4 70 10-8 18-32 15-62z" fill="' + f + '" ' + s + '/>');
+      case 'flower': return cap + both('<path d="M58 100c-5 22-8 44-4 70 10-8 18-32 15-62z" fill="' + f + '" ' + s + '/>') + '<path d="M60 62Q120 6 180 62" fill="none" stroke="#ffb3d1" stroke-width="6" stroke-linecap="round"/>' + flower(80, 60, 1);
       case 'pigtails': return cap + both('<rect x="40" y="86" width="26" height="14" rx="7" fill="#ff6fa5" ' + s + ' transform="rotate(-18 53 93)"/>');
-      case 'bun': return both('<circle cx="68" cy="30" r="24" fill="' + f + '" ' + s + '/><path d="M56 24q8-10 20-6" stroke="' + h.d + '" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/>') + cap + both('<rect x="48" y="40" width="24" height="12" rx="6" fill="#ff6fa5" ' + s + ' transform="rotate(-38 60 46)"/>');
-      case 'bob': return cap + both('<path d="M54 100c-4 24-4 46 6 62 14-8 18-34 14-58z" fill="' + f + '" ' + s + '/>');
-      case 'curls': return '<g fill="' + f + '" ' + s + '><circle cx="76" cy="58" r="17"/><circle cx="100" cy="48" r="17"/><circle cx="124" cy="46" r="17"/><circle cx="148" cy="50" r="17"/><circle cx="168" cy="62" r="16"/><circle cx="64" cy="78" r="14"/><circle cx="178" cy="80" r="14"/></g><path d="M80 52c8-6 18-6 24-2M130 40c8-2 14 0 18 6" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".35"/>';
-      default: return cap;
+      case 'bun': return cap + bow(120, 46, 1.150, '#b794ff');
+      case 'braids': return cap + both(bow(48, 242, 1, '#b794ff'));
+      default: return '<g fill="' + f + '" ' + s + '><circle cx="76" cy="58" r="17"/><circle cx="100" cy="48" r="17"/><circle cx="124" cy="46" r="17"/><circle cx="148" cy="50" r="17"/><circle cx="168" cy="62" r="16"/><circle cx="64" cy="78" r="14"/><circle cx="178" cy="80" r="14"/></g><path d="M80 52c8-6 18-6 24-2M130 40c8-2 14 0 18 6" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".35"/>';
     }
   }
 
   /* ---------- visage ---------- */
+  function bigEye(cx, cy, col) {
+    return '<g transform="translate(' + cx + ' ' + cy + ') scale(.86) translate(' + (-cx) + ' ' + (-cy) + ')"><ellipse cx="' + cx + '" cy="' + cy + '" rx="12" ry="13.500" fill="#fff"/><ellipse cx="' + cx + '" cy="' + (cy + 1) + '" rx="11" ry="12.500" fill="' + col + '"/><ellipse cx="' + cx + '" cy="' + (cy + 2) + '" rx="5.800" ry="6.600" fill="#1b1018"/><circle cx="' + (cx + 4.500) + '" cy="' + (cy - 4.500) + '" r="3.800" fill="#fff"/><circle cx="' + (cx - 4) + '" cy="' + (cy + 6) + '" r="1.800" fill="#fff" opacity=".9"/>' +
+      '<path d="M' + (cx - 12.500) + ' ' + (cy + 1) + 'C' + (cx - 12.500) + ' ' + (cy - 9) + ' ' + (cx - 7) + ' ' + (cy - 13.500) + ' ' + cx + ' ' + (cy - 13.500) + 'S' + (cx + 12.500) + ' ' + (cy - 9) + ' ' + (cx + 12.500) + ' ' + (cy + 1) + '" fill="none" stroke="#2b1a22" stroke-width="3" stroke-linecap="round"/></g>';
+  }
   function face(o, skin, shade) {
+    var ec = G.eyeColors[o.eyes] || G.eyeColors[0];
     return '<g class="head">' +
-      both('<ellipse cx="62" cy="108" rx="9" ry="12" fill="' + skin + '" ' + ST(3) + '/>') +
+      both('<ellipse cx="62" cy="108" rx="9" ry="12" fill="' + skin + '" ' + ST(3) + '/><ellipse cx="62" cy="109" rx="4" ry="6" fill="' + shade + '" opacity=".35"/>') +
       '<ellipse cx="120" cy="98" rx="60" ry="56" fill="' + skin + '" ' + ST(3.500) + '/>' +
-      '<path d="M72 138q48 28 96 0" fill="' + shade + '" opacity=".25"/>' +
-      '<ellipse cx="82" cy="120" rx="11" ry="7" fill="#ff6fa5" opacity=".38"/><ellipse cx="158" cy="120" rx="11" ry="7" fill="#ff6fa5" opacity=".38"/>' +
-      '<g data-e="open" class="eyes">' + Art.eye(95, 102, 8.500) + Art.eye(145, 102, 8.500) + '<path d="M84 90q-4-2-6-6M87 87q-3-4-3-8M156 90q4-2 6-6M153 87q3-4 3-8" stroke="' + INK + '" stroke-width="2.500" fill="none" stroke-linecap="round"/></g>' +
-      '<g data-e="happy" style="display:none"><path d="M85 106q10-14 20 0M135 106q10-14 20 0" fill="none" stroke="#4a2a55" stroke-width="4.500" stroke-linecap="round"/></g>' +
-      '<path d="M117 116q3 3 6 0" fill="none" stroke="' + shade + '" stroke-width="3" stroke-linecap="round"/>' +
-      '<g data-m="smile"><path d="M105 127q15 13 30 0" fill="none" stroke="#a8325a" stroke-width="4" stroke-linecap="round"/></g>' +
-      '<g data-m="open" style="display:none"><path d="M102 124q18 30 36 0z" fill="#a8325a" ' + ST(3) + '/><path d="M110 138q10-8 20 0q-10 7-20 0z" fill="#ff8fb8"/></g>' +
+      '<path d="M74 136q46 26 92 0" fill="' + shade + '" opacity=".22"/>' +
+      '<ellipse cx="80" cy="120" rx="14" ry="9" fill="#ff7fa5" opacity=".42"/><ellipse cx="160" cy="120" rx="14" ry="9" fill="#ff7fa5" opacity=".42"/>' +
+      '<g data-e="open" class="eyes">' + bigEye(100, 106, ec) + bigEye(140, 106, ec) + '<path d="M90 102q-5-1-8-7M92 97q-4-3-5-9M150 102q5-1 8-7M148 97q4-3 5-9" stroke="#2b1a22" stroke-width="2.400" fill="none" stroke-linecap="round"/></g>' +
+      '<path d="M90 86q10-7 20-2M150 86q-10-7-20-2" fill="none" stroke="#6f3b24" stroke-width="2.800" stroke-linecap="round" opacity=".7"/>' +
+      '<g data-e="happy" style="display:none"><path d="M90 109q10-13 20 0M130 109q10-13 20 0" fill="none" stroke="#2b1a22" stroke-width="4.500" stroke-linecap="round"/></g>' +
+      '<ellipse cx="120" cy="116" rx="3.500" ry="2.600" fill="' + shade + '" opacity=".7"/>' +
+      '<g data-m="smile"><path d="M107 127q13 10 26 0" fill="none" stroke="#e0607f" stroke-width="3.600" stroke-linecap="round"/></g>' +
+      '<g data-m="open" style="display:none"><path d="M104 124q16 26 32 0z" fill="#c0305a" ' + ST(3) + '/><path d="M111 136q9-7 18 0q-9 6-18 0z" fill="#ff8fb8"/></g>' +
       '</g>';
   }
   G.setMood = function (svg, mood) {
@@ -82,7 +92,7 @@
     var rows = [[120, hem - 24], [92, hem - 46], [148, hem - 46], [70, hem - 22], [170, hem - 22], [120, hem - 64], [100, hem - 82]];
     rows.forEach(function (p, i) {
       if (Math.abs(p[0] - 120) > w - 8 || p[1] < 220) return;
-      deco += o.deco === 'stars' ? st(p[0], p[1], 7, c2) : o.deco === 'hearts' ? ht(p[0], p[1], 7, c2) : o.deco === 'dots' ? dot(p[0], p[1], 4.500, c2) : '';
+      deco += o.deco === 'stars' ? st(p[0], p[1], 7, o.dc || c2) : o.deco === 'hearts' ? ht(p[0], p[1], 7, c2) : o.deco === 'dots' ? dot(p[0], p[1], 4.500, c2) : '';
     });
     var inner;
     if (o.deco === 'rainbow') {
@@ -123,23 +133,26 @@
     return { under: pants + deco + top, over: sleeves };
   }
 
+  var COLLAR = function () { return '<path d="M97 160Q120 186 143 160Q151 166 146 173Q120 194 94 173Q89 166 97 160z" fill="#fff" ' + ST(3) + '/>' + ht(120, 182, 6.500, '#7ec8ff'); };
   var OUT = [
-    { id: 'd1', cat: 'dress', fn: function () { return gown('#ff9cc7', '#ffe36e', { w: 86, hem: 322, deco: 'stars', trim: '#fff', bow: true, n: 7 }); } },
-    { id: 'd2', cat: 'dress', fn: function () { return gown('#7fc8ff', '#ffe36e', { w: 90, hem: 330, deco: 'stars', trim: '#fff', n: 7 }); } },
-    { id: 'd3', cat: 'dress', fn: function () { return gown('#c9a8ff', '#ff8fb8', { w: 66, hem: 282, deco: 'hearts', trim: '#fff', n: 6 }); } },
-    { id: 'd4', cat: 'dress', fn: function () { return gown('#ffe066', '#ff9a5c', { w: 62, hem: 276, deco: 'dots', n: 6, strap: true }); } },
-    { id: 'd5', cat: 'dress', fn: function () { return gown('#ff6f91', '#ffe066', { w: 70, hem: 290, deco: 'rainbow', rainbow: true, n: 6 }); } },
-    { id: 'd6', cat: 'dress', fn: function () { return gown('#9ff0c6', '#d9fff0', { w: 74, hem: 268, tulle: true, bod: '#9ff0c6', n: 6 }); } },
-    { id: 'k1', cat: 'skirt', fn: function () { return skirtTop('#fff', '#ff9cc7', '#ff6fa5', 'heart'); } },
-    { id: 'k2', cat: 'skirt', fn: function () { return skirtTop('#4fd8d0', '#ffe066', '#ff9a5c', 'star'); } },
-    { id: 'k3', cat: 'skirt', fn: function () { return skirtTop('#fff', '#8fd3ff', '#4fa8e8', 'rainbow'); } },
-    { id: 'k4', cat: 'skirt', fn: function () { return skirtTop('#ffb3d1', '#8de8b5', '#58c88f', 'dot'); } },
-    { id: 'p1', cat: 'pj', fn: function () { return pyjama('#5b6bd6', '#7f8ff0', 'moon'); } },
-    { id: 'p2', cat: 'pj', fn: function () { return pyjama('#ff9cc7', '#ffd0e6', 'heart'); } },
-    { id: 'p3', cat: 'pj', fn: function () { return pyjama('#c9a8ff', '#e5d6ff', 'star'); } },
-    { id: 'p4', cat: 'pj', fn: function () { return pyjama('#8de8b5', '#c9f6de', 'star'); } }
+    { id: 'd0', cat: 'dress', top: '#8fd0ff', collar: true, fn: function () { var g = gown('#8fd0ff', '#c9a8ff', { w: 86, hem: 322, deco: 'stars', dc: '#ffe36e', trim: '#fff', bow: true, n: 7 }); g.under += COLLAR(); return g; } },
+    { id: 'd1', top: '#ff9cc7', cat: 'dress', fn: function () { return gown('#ff9cc7', '#ffe36e', { w: 86, hem: 322, deco: 'stars', trim: '#fff', bow: true, n: 7 }); } },
+    { id: 'd2', top: '#7fc8ff', cat: 'dress', fn: function () { return gown('#7fc8ff', '#ffe36e', { w: 90, hem: 330, deco: 'stars', trim: '#fff', n: 7 }); } },
+    { id: 'd3', top: '#c9a8ff', cat: 'dress', fn: function () { return gown('#c9a8ff', '#ff8fb8', { w: 66, hem: 282, deco: 'hearts', trim: '#fff', n: 6 }); } },
+    { id: 'd4', top: '#ffe066', cat: 'dress', fn: function () { return gown('#ffe066', '#ff9a5c', { w: 62, hem: 276, deco: 'dots', n: 6, strap: true }); } },
+    { id: 'd5', top: '#ffffff', cat: 'dress', fn: function () { return gown('#ff6f91', '#ffe066', { w: 70, hem: 290, deco: 'rainbow', rainbow: true, n: 6 }); } },
+    { id: 'd6', top: '#9ff0c6', cat: 'dress', fn: function () { return gown('#9ff0c6', '#d9fff0', { w: 74, hem: 268, tulle: true, bod: '#9ff0c6', n: 6 }); } },
+    { id: 'k1', top: '#ffffff', cat: 'skirt', fn: function () { return skirtTop('#fff', '#ff9cc7', '#ff6fa5', 'heart'); } },
+    { id: 'k2', top: '#4fd8d0', cat: 'skirt', fn: function () { return skirtTop('#4fd8d0', '#ffe066', '#ff9a5c', 'star'); } },
+    { id: 'k3', top: '#ffffff', cat: 'skirt', fn: function () { return skirtTop('#fff', '#8fd3ff', '#4fa8e8', 'rainbow'); } },
+    { id: 'k4', top: '#ffb3d1', cat: 'skirt', fn: function () { return skirtTop('#ffb3d1', '#8de8b5', '#58c88f', 'dot'); } },
+    { id: 'p1', top: '#5b6bd6', cat: 'pj', fn: function () { return pyjama('#5b6bd6', '#7f8ff0', 'moon'); } },
+    { id: 'p2', top: '#ff9cc7', cat: 'pj', fn: function () { return pyjama('#ff9cc7', '#ffd0e6', 'heart'); } },
+    { id: 'p3', top: '#c9a8ff', cat: 'pj', fn: function () { return pyjama('#c9a8ff', '#e5d6ff', 'star'); } },
+    { id: 'p4', top: '#8de8b5', cat: 'pj', fn: function () { return pyjama('#8de8b5', '#c9f6de', 'star'); } }
   ];
   var OUTMAP = {}; OUT.forEach(function (o) { OUTMAP[o.id] = o; });
+  G.outfitLook = function (id) { var o = OUTMAP[id] || OUTMAP.d0; return { top: o.top || '#8fd0ff', collar: !!o.collar }; };
 
   /* chaussures : fn(x, dir) ; dir = -1 pied gauche, +1 pied droit */
   function shoeBase(x, d, fill, extra, h) {
@@ -155,6 +168,7 @@
     };
   }
   var SHOES = [
+    { id: 's0', fn: shoeFn('#8fd0ff', function (x, d, y) { return '<path d="M' + (x - 10) + ' ' + (y - 10) + 'q10 6 20 0" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' + '<circle cx="' + x + '" cy="' + (y - 9) + '" r="3.500" fill="#fff"/>'; }) },
     { id: 's1', fn: shoeFn('#ff9cc7', function (x, d, y) { return '<path d="M' + (x - 10) + ' ' + (y - 10) + 'q10 6 20 0" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' + '<circle cx="' + x + '" cy="' + (y - 9) + '" r="3.500" fill="#ff6fa5"/>'; }) },
     { id: 's2', fn: shoeFn('#ffd84d', function (x, d, y) { return '<rect x="' + (x - 11) + '" y="' + (y - 28) + '" width="22" height="6" rx="3" fill="#ff9a5c"/>'; }, true) },
     { id: 's3', fn: shoeFn('#fff', function (x, d, y) { return '<path d="M' + (x - 10) + ' ' + (y - 9) + 'h20" stroke="#ff6fa5" stroke-width="3"/><path d="M' + (x - 8) + ' ' + (y - 3) + 'h16" stroke="#4fd8d0" stroke-width="3"/><path d="M' + (x - 10) + ' ' + (y + 5) + 'h20" stroke="#ffd84d" stroke-width="3"/>'; }) },
@@ -227,11 +241,11 @@
       '<circle cx="' + hx + '" cy="238" r="9.500" fill="' + skin + '" ' + ST(3) + '/></g>';
   };
   G.girl = function (c) {
-    c = Object.assign(G.defaults(), c || {});
+    c = Object.assign(G.defaults(), c || {}); c.hairStyle = G.fixStyle(c.hairStyle);
     var skin = G.skins[c.skin] || G.skins[1], shade = G.skinShade[c.skin] || G.skinShade[1];
     var hair = G.hairColors[c.hairColor] || G.hairColors[0];
-    var out = OUTMAP[c.outfit] || OUTMAP.d1; var o = out.fn();
-    var sh = SHOEMAP[c.shoes] || SHOEMAP.s1;
+    var out = OUTMAP[c.outfit] || OUTMAP.d0; var o = out.fn();
+    var sh = SHOEMAP[c.shoes] || SHOEMAP.s0;
     var leg = function (x) { return '<path d="M' + x + ' 222L' + (x < 120 ? x - 2 : x + 2) + ' 338" fill="none" stroke="' + INK + '" stroke-width="19" stroke-linecap="round"/><path d="M' + x + ' 222L' + (x < 120 ? x - 2 : x + 2) + ' 338" fill="none" stroke="' + skin + '" stroke-width="13" stroke-linecap="round"/>'; };
     var s = '';
     s += '<ellipse cx="120" cy="368" rx="64" ry="9" fill="#000" opacity=".1"/>';
@@ -288,65 +302,65 @@
 
   /* ====== VISAGE À MAQUILLER (viewBox 0 0 300 340) ====== */
   var F = Art.face = {};
-  F.chars = [
-    { id: 'celia', skin: 1, hair: '#9b5a3a', hd: '#6f3b24', style: 'long', ears: 'round', eye: '#7a4a2e', lip: '#e48f8a', top: '#8fd3ff' },
-    { id: 'lila', skin: 4, hair: '#2e1f26', hd: '#1c1217', style: 'puffs', ears: 'round', eye: '#3a2418', lip: '#c46a70', top: '#ffd84d' },
-    { id: 'fee', skin: 0, hair: '#ff9ac8', hd: '#ee6a9c', style: 'pigtails', ears: 'elf', eye: '#7a5ad0', lip: '#f08aa0', top: '#c9a8ff' },
-    { id: 'chaton', skin: 2, hair: '#e0743a', hd: '#c15a24', style: 'bob', ears: 'cat', eye: '#d9902a', lip: '#e07a78', top: '#ffb3d1' }
-  ];
-  /* Visage en style « illustration douce » : peau dégradée, grands yeux en amande, sourcils épais, lèvres pleines. */
+  F.base = { skin: 1, hairColor: 0, hairStyle: 'long', eyes: 0, lip: '#f27f95' };
+  /* Visage « poupée de dessin animé » personnalisable : peau, yeux, cheveux (couleur + coiffure), tenue.
+     st : { skin, eyes, hairColor, hairStyle, top, collar, lips, blush, shadow } */
   F.render = function (ch, st) {
-    st = st || {};
-    var u = uid('fc'), skin = G.skins[ch.skin], shade = G.skinShade[ch.skin];
-    var hairc = st.hairColor || ch.hair, hd = ch.hd, style = st.hairStyle || ch.style, lipc = st.lips || ch.lip;
+    st = Object.assign({}, ch || F.base, st || {});
+    var u = uid('fc'), si = st.skin == null ? 1 : st.skin, skin = G.skins[si], shade = G.skinShade[si];
+    var hc = G.hairColors[st.hairColor] || G.hairColors[0], hairc = hc.c, hd = hc.d, style = G.fixStyle(st.hairStyle), lipc = st.lips || F.base.lip;
+    var eyec = G.eyeColors[st.eyes] || G.eyeColors[0], topc = st.top || '#8fd0ff';
     var mir = function (inner) { return inner + '<g transform="translate(300 0) scale(-1 1)">' + inner + '</g>'; };
     var s = '<defs>' +
       '<radialGradient id="' + u + 's" cx="50%" cy="38%" r="72%"><stop offset="0" stop-color="' + skin + '"/><stop offset="1" stop-color="' + shade + '"/></radialGradient>' +
       '<linearGradient id="' + u + 'h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + hairc + '"/><stop offset="1" stop-color="' + hd + '"/></linearGradient>' +
-      '<radialGradient id="' + u + 'i" cx="50%" cy="40%" r="65%"><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></radialGradient>' +
-      '<radialGradient id="' + u + 'b" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="' + (st.blush || '#ff8a8a') + '" stop-opacity="' + (st.blush ? '.85' : '.55') + '"/><stop offset="1" stop-color="' + (st.blush || '#ff8a8a') + '" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="' + u + 'i" cx="50%" cy="40%" r="65%"><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></radialGradient>' +
+      '<radialGradient id="' + u + 'b" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="' + (st.blush || '#ff7fa5') + '" stop-opacity="' + (st.blush ? '.85' : '.5') + '"/><stop offset="1" stop-color="' + (st.blush || '#ff7fa5') + '" stop-opacity="0"/></radialGradient>' +
       '<clipPath id="' + u + 'c"><ellipse cx="104" cy="198" rx="24" ry="26"/></clipPath></defs>';
     var H = 'url(#' + u + 'h)', SK = 'url(#' + u + 's)';
-    var strands = function (n) { return '<g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".18">' + n + '</g>'; };
+    var strands = function (n) { return '<g fill="none" stroke="#fff" stroke-width="3.200" stroke-linecap="round" opacity=".2">' + n + '</g>'; };
+    var bowS = function (x, y, sc, c) { return '<g transform="translate(' + x + ' ' + y + ') scale(' + sc + ')"><path d="M0 0L-34-20c-8 14-8 30 0 40zM0 0l34-20c8 14 8 30 0 40z" fill="' + c + '" stroke="#6b3f72" stroke-width="3" stroke-linejoin="round"/><circle r="8" fill="' + c + '" stroke="#6b3f72" stroke-width="3"/></g>'; };
     /* cheveux arrière */
     var hb = '';
-    if (style === 'long') hb = '<path d="M44 172C12 222 34 262 18 300C14 320 26 334 38 340h224c12-6 24-20 20-40-16-38 4-80-22-128C240 44 60 44 44 172z" fill="' + H + '"/>' + H + '"/>' + strands('<path d="M58 200C52 250 56 300 62 336M242 200C248 250 244 300 238 336M74 230C70 270 74 310 80 336"/>');
-    else if (style === 'puffs') hb = '<g fill="' + H + '"><circle cx="58" cy="150" r="48"/><circle cx="242" cy="150" r="48"/><circle cx="92" cy="72" r="46"/><circle cx="208" cy="72" r="46"/><circle cx="150" cy="54" r="52"/></g>';
-    else if (style === 'pigtails') hb = mir('<path d="M70 120C16 130-6 210 14 296c40-8 70-70 70-156z" fill="' + H + '"/>' + strands('<path d="M40 160C30 200 30 250 36 284"/>'));
-    else hb = '<path d="M48 160C32 210 38 262 68 280h164c30-18 36-70 20-120C230 50 70 50 48 160z" fill="' + H + '"/>';
+    if (style === 'long') hb = '<path d="M44 172C12 222 34 262 18 300C14 320 26 334 38 340h224c12-6 24-20 20-40-16-38 4-80-22-128C240 44 60 44 44 172z" fill="' + H + '"/>' + strands('<path d="M46 214C40 260 46 300 50 336M254 214C260 260 254 300 250 336"/>');
+    else if (style === 'flower') hb = '<path d="M50 170C26 220 38 262 30 300c-2 16 6 30 14 40h212c8-10 16-24 14-40-8-38 4-80-20-130C238 46 62 46 50 170z" fill="' + H + '"/>' + strands('<path d="M54 214C48 260 52 300 56 336M246 214C252 260 248 300 244 336"/>');
+    else if (style === 'bun') hb = '<circle cx="150" cy="46" r="46" fill="' + H + '"/>' + strands('<path d="M120 30Q150 8 182 30"/>') + mir('<circle cx="52" cy="226" r="17" fill="' + H + '"/><circle cx="44" cy="258" r="14" fill="' + H + '"/>');
+    else if (style === 'braids') hb = mir([0, 1, 2, 3, 4, 5].map(function (i) { return '<ellipse cx="' + (56 + (i % 2 ? 6 : -4)) + '" cy="' + (214 + i * 20) + '" rx="17" ry="15" fill="' + H + '"/>'; }).join('') + '<path d="M50 214q8 40 4 100" fill="none" stroke="' + hd + '" stroke-width="3" opacity=".4"/>');
+    else if (style === 'curls') hb = '<g fill="' + H + '"><circle cx="58" cy="150" r="48"/><circle cx="242" cy="150" r="48"/><circle cx="92" cy="72" r="46"/><circle cx="208" cy="72" r="46"/><circle cx="150" cy="54" r="52"/></g>';
+    else hb = mir('<path d="M70 120C16 130-6 210 14 296c40-8 70-70 70-156z" fill="' + H + '"/>' + strands('<path d="M40 160C30 200 30 250 36 284"/>'));
     s += '<g class="mk-hairb">' + hb + '</g>';
-    /* cou, haut, oreilles */
-    s += '<path d="M118 262v44q32 18 64 0v-44z" fill="' + SK + '"/><path d="M118 262v22q32 16 64 0v-22z" fill="#000" opacity=".07"/>';
-    s += '<path d="M20 340C30 306 80 296 118 296q32 28 64 0c38 0 88 10 98 44z" fill="' + ch.top + '"/><path d="M16 340C14 306 40 292 70 296C92 300 98 318 98 340z" fill="' + ch.top + '"/><path d="M284 340C286 306 260 292 230 296C208 300 202 318 202 340z" fill="' + ch.top + '"/><path d="M16 340C14 306 40 292 70 296C92 300 98 318 98 340zM284 340C286 306 260 292 230 296C208 300 202 318 202 340z" fill="#fff" opacity=".16"/>' +
-      '<path d="M108 292Q116 322 150 330Q184 322 192 292Q150 316 108 292z" fill="#fff"/><path d="M108 292Q116 322 150 330Q184 322 192 292" fill="none" stroke="#000" stroke-opacity=".1" stroke-width="3" stroke-linecap="round"/>' +
-      '<path transform="translate(150 321) scale(.5) translate(-17 -15)" d="M17 30C4 20-2 15-2 8a9 9 0 0 1 19-3 9 9 0 0 1 19 3c0 7-6 12-19 22z" fill="#7ec8ff" stroke="#f5c542" stroke-width="4"/>';
-    var ear = '';
-    if (ch.ears === 'elf') ear = mir('<path d="M58 178L18 146l18 54z" fill="' + SK + '"/>');
-    else if (ch.ears === 'cat') ear = mir('<path d="M62 120L44 34l68 50z" fill="' + H + '"/><path d="M64 102L56 56l34 24z" fill="#ff9ac8"/>');
-    else ear = mir('<ellipse cx="50" cy="206" rx="12" ry="16" fill="' + SK + '"/>');
-    s += ear;
-    /* visage « poupée de dessin animé » : grande tête ronde, gros yeux bruns ronds avec reflets, petit nez, petit sourire, joues roses */
+    /* cou et tenue : haut à manches bouffantes, col blanc et petit cœur */
+    s += '<rect x="118" y="256" width="64" height="50" rx="22" fill="' + SK + '"/><path d="M118 262v22q32 16 64 0v-22z" fill="#000" opacity=".07"/>';
+    s += '<path d="M20 340C30 306 80 296 118 296q32 28 64 0c38 0 88 10 98 44z" fill="' + topc + '"/><path d="M16 340C14 306 40 292 70 296C92 300 98 318 98 340z" fill="' + topc + '"/><path d="M284 340C286 306 260 292 230 296C208 300 202 318 202 340z" fill="' + topc + '"/><path d="M16 340C14 306 40 292 70 296C92 300 98 318 98 340zM284 340C286 306 260 292 230 296C208 300 202 318 202 340z" fill="#fff" opacity=".16"/>';
+    if (st.collar !== false) s += '<path d="M108 292Q116 322 150 330Q184 322 192 292Q150 316 108 292z" fill="#fff"/><path d="M108 292Q116 322 150 330Q184 322 192 292" fill="none" stroke="#000" stroke-opacity=".1" stroke-width="3" stroke-linecap="round"/><path transform="translate(150 321) scale(.5) translate(-17 -15)" d="M17 30C4 20-2 15-2 8a9 9 0 0 1 19-3 9 9 0 0 1 19 3c0 7-6 12-19 22z" fill="#7ec8ff" stroke="#f5c542" stroke-width="4"/>';
+    else s += '<path d="M118 296q32 30 64 0" fill="none" stroke="#000" stroke-opacity=".12" stroke-width="5" stroke-linecap="round"/>';
+    /* oreilles */
+    s += mir('<ellipse cx="50" cy="206" rx="12" ry="16" fill="' + SK + '"/><ellipse cx="51" cy="207" rx="5" ry="8" fill="' + shade + '" opacity=".35"/>');
+    /* visage */
     s += '<path d="M48 182C48 108 94 70 150 70s102 38 102 112c0 64-44 104-102 104S48 246 48 182z" fill="' + SK + '"/>';
     s += '<path d="M70 242Q150 312 230 242Q216 284 150 286Q84 284 70 242z" fill="#000" opacity=".05"/><ellipse cx="150" cy="112" rx="44" ry="12" fill="#fff" opacity=".18"/>';
     s += '<g id="mk-blush">' + mir('<ellipse cx="84" cy="240" rx="30" ry="20" fill="url(#' + u + 'b)"/>') + '</g>';
     /* fard à paupières */
-    s += '<g id="mk-shadow">' + (st.shadow ? mir('<path d="M80 190Q82 160 104 158Q128 160 128 188Q104 172 80 190z" fill="' + st.shadow + '" opacity=".9"/><ellipse cx="104" cy="172" rx="26" ry="12" fill="' + st.shadow + '" opacity=".5"/>') : '') + '</g>';
-    /* yeux : grands, ronds, bruns, reflets ; petits cils ; sourcils fins et hauts */
-    s += mir('<ellipse cx="104" cy="198" rx="24" ry="26" fill="#fff"/>' +
-      '<g clip-path="url(#' + u + 'c)"><circle cx="104" cy="199" r="25" fill="' + ch.eye + '"/><circle cx="104" cy="206" r="18" fill="#fff" opacity=".10"/><circle cx="104" cy="199" r="25" fill="url(#' + u + 'i)" opacity=".7"/><circle cx="104" cy="200" r="9.500" fill="#1b1018"/><circle cx="114" cy="188" r="7.500" fill="#fff"/><circle cx="94" cy="210" r="3.400" fill="#fff" opacity=".9"/></g>' +
+    s += '<g id="mk-shadow">' + (st.shadow ? mir('<g transform="translate(112 202) scale(.88) translate(-104 -198)"><path d="M80 190Q82 160 104 158Q128 160 128 188Q104 172 80 190z" fill="' + st.shadow + '" opacity=".9"/><ellipse cx="104" cy="172" rx="26" ry="12" fill="' + st.shadow + '" opacity=".5"/></g>') : '') + '</g>';
+    /* yeux : grands, ronds, reflets ; petits cils ; sourcils fins et hauts */
+    s += mir('<g transform="translate(112 202) scale(.88) translate(-104 -198)"><ellipse cx="104" cy="198" rx="24" ry="26" fill="#fff"/>' +
+      '<g clip-path="url(#' + u + 'c)"><circle cx="104" cy="199" r="25" fill="' + eyec + '"/><circle cx="104" cy="206" r="18" fill="#fff" opacity=".10"/><circle cx="104" cy="199" r="25" fill="url(#' + u + 'i)" opacity=".7"/><circle cx="104" cy="200" r="9.500" fill="#1b1018"/><circle cx="114" cy="188" r="7.500" fill="#fff"/><circle cx="94" cy="210" r="3.400" fill="#fff" opacity=".9"/></g>' +
       '<path d="M80 196C80 176 90 170 104 170s24 6 24 26" fill="none" stroke="#2b1a22" stroke-width="4.600" stroke-linecap="round"/><path d="M81 188q-7-2-11-10M84 180q-6-5-7-13" fill="none" stroke="#2b1a22" stroke-width="3.200" stroke-linecap="round"/>' +
-      '<path d="M82 160Q104 146 128 156" fill="none" stroke="' + hd + '" stroke-width="4.200" stroke-linecap="round" opacity=".75"/>');
-    /* nez : un petit point doux */
+      '<path d="M82 160Q104 146 128 156" fill="none" stroke="' + hd + '" stroke-width="4.200" stroke-linecap="round" opacity=".75"/></g>');
+    /* nez */
     s += '<ellipse cx="150" cy="228" rx="6.500" ry="4.800" fill="' + shade + '" opacity=".55"/><ellipse cx="148" cy="226" rx="2.600" ry="1.800" fill="#fff" opacity=".45"/>';
-    /* bouche : petit sourire */
-    s += '<g id="mk-lips"><path d="M128 245Q150 270 172 245Q150 256 128 245z" fill="' + lipc + '" stroke="' + lipc + '" stroke-width="3" stroke-linejoin="round"/><path d="M140 253Q150 258 160 253" fill="none" stroke="#fff" stroke-width="2.600" stroke-linecap="round" opacity="' + (st.lips ? .5 : .0) + '"/></g>';
-    /* cheveux avant : raie au milieu */
-    var hf = '<path d="M50 198C36 96 96 52 150 54s114 42 100 144C246 150 226 120 190 104C170 96 146 96 128 100C104 112 76 140 50 198z" fill="' + H + '"/><path d="M128 62v38" stroke="#000" stroke-opacity=".16" stroke-width="3" stroke-linecap="round"/><path d="M96 84C84 104 72 134 62 170M204 80C220 96 236 124 242 160M150 60C176 62 200 76 214 92M150 60C120 62 98 70 86 84" fill="none" stroke="#fff" stroke-width="3.400" stroke-linecap="round" opacity=".2"/>';
-    if (style === 'long') hf += mir('<path d="M58 172C40 226 58 262 38 302C34 318 40 332 44 340h38c-10-42 6-88-8-134-4-14-10-26-16-34z" fill="' + H + '"/><path d="M52 230C46 262 52 296 50 330" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".18"/>');
-    else if (style === 'bob') hf += mir('<path d="M52 180C44 220 48 250 64 270c10-20 10-50 4-90z" fill="' + H + '"/>');
-    else if (style === 'pigtails') hf += mir('<rect x="40" y="150" width="34" height="18" rx="9" fill="#ff6fa5" transform="rotate(-20 57 159)"/>');
+    /* bouche : petit sourire (plus pulpeux une fois le rouge à lèvres posé) */
+    s += '<g id="mk-lips">' + (st.lips ?
+      '<path d="M126 244Q150 274 174 244Q150 256 126 244z" fill="' + lipc + '" stroke="' + lipc + '" stroke-width="4" stroke-linejoin="round"/><path d="M138 254Q150 261 162 254" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".55"/>' :
+      '<path d="M130 246Q150 262 170 246Q150 254 130 246z" fill="' + lipc + '" stroke="' + lipc + '" stroke-width="3" stroke-linejoin="round"/>') + '</g>';
+    /* cheveux avant : raie, frange balayée */
+    var hf = '<path d="M50 198C36 96 96 52 150 54s114 42 100 144C246 150 226 120 190 104C170 96 146 96 128 100C104 112 76 140 50 198z" fill="' + H + '"/><path d="M128 62v38" stroke="#000" stroke-opacity=".16" stroke-width="3" stroke-linecap="round"/>' + strands('<path d="M96 84C84 104 72 134 62 170M204 80C220 96 236 124 242 160M150 60C176 62 200 76 214 92M150 60C120 62 98 70 86 84"/>');
+    if (style === 'long' || style === 'flower') hf += mir('<path d="M58 172C40 226 58 262 38 302C34 318 40 332 44 340h38c-10-42 6-88-8-134-4-14-10-26-16-34z" fill="' + H + '"/><path d="M52 230C46 262 52 296 50 330" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".18"/>');
+    if (style === 'pigtails') hf += mir('<rect x="40" y="150" width="34" height="18" rx="9" fill="#ff6fa5" transform="rotate(-20 57 159)"/>');
+    if (style === 'braids') hf += mir(bowS(58, 322, .55, '#b794ff'));
+    if (style === 'bun') hf += bowS(150, 84, .85, '#b794ff') + mir('<path d="M56 190C46 232 54 258 70 262C60 240 62 214 66 192z" fill="' + H + '"/>');
+    if (style === 'flower') hf += '<path d="M66 132Q150 28 234 132" fill="none" stroke="#ffb3d1" stroke-width="8" stroke-linecap="round"/><g transform="translate(92 100) scale(1.500)"><g fill="#ff9ac8" stroke="#6b3f72" stroke-width="1.800"><circle cx="0" cy="-9" r="7.500"/><circle cx="9" cy="-3" r="7.500"/><circle cx="-9" cy="-3" r="7.500"/><circle cx="6" cy="8" r="7.500"/><circle cx="-6" cy="8" r="7.500"/></g><circle r="6" fill="#ffd84d" stroke="#6b3f72" stroke-width="1.800"/></g>';
     s += '<g class="mk-hairf">' + hf + '</g>';
-    if (ch.id === 'chaton') s += mir('<path d="M124 246l-56 6M124 255l-58 16" stroke="' + INK + '" stroke-width="2.500" fill="none" stroke-linecap="round" opacity=".7"/>') + '<path d="M141 222l9 9 9-9z" fill="#ff6f91"/>';
     return s;
   };
   function both2(inner, w) { w = w || 300; return inner + '<g transform="translate(' + w + ' 0) scale(-1 1)">' + inner + '</g>'; }
