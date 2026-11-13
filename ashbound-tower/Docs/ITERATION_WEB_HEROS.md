@@ -78,3 +78,65 @@ XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations 
 - **XP et niveaux** (partagés par l'équipe, 10 niveaux) : chaque ennemi vaincu donne de l'XP (4 / 25 / 80 / 200). Chaque niveau : PV max accrus + soin complet, +8 % de dégâts des héros ; les améliorations de tourelle exigent les niveaux 2, 3 et 5.
 - **Coop** : PV, état « à terre », progression de ranimation, XP, niveau et projectiles ennemis sont diffusés dans les instantanés ; l'invité les voit en direct.
 - Tests (Chromium) : solo — blessé, mort, réapparition, +400 XP → niveau 5 ; coop (2 pages) — équipier à terre vu des deux côtés, ranimé après 3,7 s, niveaux synchronisés, défaite quand les deux tombent ; séquences complètes accélérées sans erreur. **Non testé** : équilibrage réel de la difficulté (les ennemis blessent désormais les héros), appareils réels, Supabase réel.
+
+## Mise à jour gameplay — étape A : XP, orbes, niveaux, améliorations
+
+- Les ennemis lâchent des **orbes d'XP** (`G.orbs`), ramassées par proximité (aimant léger) ; synchronisées en coop (snapshot `O`).
+- XP d'équipe `G.xp` / niveau `G.lvl` (max 10, seuils `xpCum`). Barre d'XP fine en bas d'écran + indicateur de niveau compact dans le cadre du héros.
+- À chaque niveau : un choix d'amélioration de compétence parmi **3 cartes max** (touche 1–3 ou toucher), « Plus tard » pour différer ; mods par héros (`h.mod`, `h.picks`, `h.pend`) lus par les kits.
+- Coop : choix de l'invité envoyés via `pick`, appliqués côté hôte et répliqués.
+- Tests : bots complets (t7), positions des boutons (t9), synchro coop (t13), PV/réanimation (t15), choix d'amélioration solo + coop (t16) — sans erreur JS.
+- Pas encore testé : appareils réels, réseau Supabase réel, équilibrage avec de vrais joueurs.
+
+## Mise à jour gameplay — étape B : déblocage progressif des tourelles
+
+- 3 familles par héros, sans mélange (`FAM`) : Noctis Totem d'ombre / Pylône d'arcs / Colosse d'ombre ; Églantyne Piège de ronce / Arbre à poupées / Arbre Monde ; Phelto Totem mélodique / Enceinte à feedback / Scène de concert ; Épéiste Orbe foudroyant / Bobine Tesla / Pylône de foudre.
+- Paliers et limites **provisoires et configurables** dans `TIERCFG` (déblocage T1 niv.1, T2 niv.3, T3 niv.6 ; limite de tourelles par niveau d'équipe). Coûts par tourelle (50 / 110 / 200–220). Revente 60 % (`SELL_RATE`).
+- Écart connu avec le GDD (~30 T1, ~10 T2, ~3 T3) : le terrain actuel n'a que 12 emplacements ; les caps sont donc plafonnés par ces emplacements.
+- Menu de construction compact et rétractable (3 boutons, verrous, `n/limite`), annonce légère au déblocage (bandeau + pulsation du bouton), pastilles de rang sous les tourelles, bouton Vendre.
+- Coop : l'hôte valide famille / niveau / limite / coût ; requêtes `build`, `up`, `sell` ; les tourelles vendues disparaissent aussi chez l'invité.
+- Limites : les T2/T3 réutilisent les sprites T1 du héros (agrandis, sans art dédié) ; l'Arbre à poupées / l'Arbre Monde n'ont pas encore leurs mécaniques propres (étapes suivantes).
+
+## Mise à jour gameplay — carte agrandie et caméra
+
+- Arène 60×34 unités (~2,8× la surface), chemin de 159 unités à 24 points de contrôle (virages en S, boucles), 56 emplacements (≥ 43 requis : 30 T1 + 10 T2 + 3 T3), répartis puis regroupés en grappes près des virages ; tous à portée du chemin. Générés par `layout.py` (contrôles : distance mini entre portions du chemin, couverture), sol par `gen_ground2.py` (distance au chemin via EDT), nouveaux décors `gen_decor3.py` (buisson, fougère, tombe) + arbres, piliers, arche, ossements, cristaux.
+- Limites de tourelles `TIERCFG` : 30 / 10 / 3 atteintes au niveau 10.
+- Caméra : zoom de combat 1,5, suivi lissé du héros, bornée à la carte ; mode construction : zoom 0,72, retour automatique au zoom de combat. Emplacements libres (losanges pulsés) / occupés (point vert) ; aperçu de la portée (survol à la souris, 1er toucher au tactile, 2e toucher pour construire).
+- Performances : sol dessiné par fenêtre visible, culling hors écran (décor, tours, ennemis, projectiles, orbes, barres), particules poolées et plafonnées, qualité adaptative (Q) selon le temps d'image.
+- Tests : bots complets 4 héros gagnent (t7 adapté), parcours des ennemis jusqu'au Cœur sans défense, 43 constructions toutes à portée, 60 i/s en Chromium headless avec 43 tours, tactile mobile (2 touchers), coop, boutons sur 7 formats.
+- Limites : pas testé sur vrais téléphones (perf réelle inconnue) ; l'équilibrage (chemin 2,5× plus long) reste à régler ; le Cœur peut passer sous les boutons de compétence sur téléphone.
+
+## Mise à jour gameplay — étape 3 : Piège de ronce d'Églantyne (sur le chemin)
+
+- T1 d'Églantyne = **Piège de ronce posé sur le chemin** (hors des emplacements, donc hors des 43 constructions). Mode construction : le chemin est surligné, aperçu du rayon, pose au clic (tactile : 1er toucher aperçu, 2e toucher poser). Règles : sur le chemin, espacement 2,4, pas près de l'entrée/du Cœur, limite par niveau (`TRAP.cap`, 4→20), coût 40.
+- Comportement : persistant ; se déclenche quand un ennemi passe dessus (épines : dégâts de zone + ralentissement), puis recharge (3,5 s) ; 6 charges avant de se dessécher.
+- Spécialisations (choix à 80 cristaux, niveau 2) : **Floraison solaire** (gros dégâts de zone), **Constricteur** (immobilise 1,4 s — réduit sur boss/minibosses — puis ralentit fort), **Éclat de spores** (poison + ralentissement de zone). Évolution courte (130, niveau 4) : dégâts, rayon et charges accrus. Vente 60 %.
+- Réactivation : un piège desséché est rouvert par **sacrifice d'une poupée** d'Églantyne proche (crochet `wiltedTrap`/`reactivateTrap` utilisé par le kit) ou replanté pour 24 cristaux.
+- Coop : requêtes `trap`, `tup`, `tsell`, `tres` validées par l'hôte ; l'instantané transporte les pièges (`R`) et un compteur de déclenchements pour rejouer le visuel chez l'invité.
+- Arbre à poupées / Arbre Monde : toujours T2 / T3 en emplacements, stats génériques (mécaniques propres aux étapes suivantes).
+- Limites : visuel du piège procédural (canvas), sans sprites dédiés ; équilibrage non testé en conditions réelles ; Églantyne n'a plus de tour T1 sur emplacement (conforme à ses 3 familles du GDD, mais à confirmer pour la cible « 30 T1 »).
+
+## Mise à jour gameplay — étapes 4, 5, 6 : transition de monde, gélatines, difficulté 11–20
+
+- **Transition** : à la fin des 10 vagues, au lieu de la victoire, la partie passe en préparation de la **séquence 2** (bandeau « LE MONDE S'ÉVEILLE », +120 cristaux, héros à terre relevés, Cœur NON soigné, constructions / pièges / niveaux conservés). La victoire n'arrive qu'après la vague 20. Coop synchronisée (`sq`, `ct` dans l'instantané).
+- **Monde qui évolue** (rendu uniquement, arène inchangée) : teinte violette du sol, 170 champignons et cristaux lumineux révélés progressivement avec la vague, yeux qui clignent dans les bois, brume mouvante, vignette plus sombre, ambiance sonore ralentie. La corruption monte de 30 % à 100 % sur les vagues 11–20.
+- **Ennemis gélatineux** (`ENEMY`, art procédural `gen_gel.py`, sons `splat/blop/boing/boom`) : gélatine verte ; blop violet (se divise en 2 petits blops) ; gelée bleue (résistance : coups réduits de 7 points, min. 30 %, tirs qui ralentissent le héros) ; gélatine explosive (explose, AoE sur ennemis et héros, **réaction en chaîne** entre explosifs) ; gélatine géante (miniboss, se divise en 3 blops + 3 gélatines) ; **Roi gélatineux** (boss, se divise en géante + 3 explosives + 3 blops). Squash & stretch au rendu, gouttelettes et flaques au sol (particules poolées, plafonnées, adaptées à la qualité).
+- **Difficulté 11–20** (`WAVES2`, `SEQ2`, configurables) : groupes mixtes, +9 % de PV et +3 % de vitesse par vague, cuirasses, explosions en chaîne, géante en vague 15, doubles géantes en 19, Roi en 20.
+- Tests : transition (état conservé), division / chaîne / résistance / boss (t26), coop sur transition + gélatines (t28), parties complètes 20 vagues avec bots des 4 héros (3 perdent à la vague 19-20, 1 gagne) — les bots n'ont pas la maîtrise d'un joueur.
+- Limites : niveau max toujours 10 (aucune récompense d'XP supplémentaire en séquence 2) ; équilibrage non validé par de vrais joueurs ; art des gélatines procédural ; sons synthétiques.
+
+## Mise à jour gameplay — étape 7 : soin et soutien (Arbre Monde, « Sanctuaire verdoyant »)
+
+- Seule source de soin de zone : l'**Arbre Monde** d'Églantyne (T3, 3 max). Aucune tourelle de soin universelle ; le Cœur n'est **jamais** soigné automatiquement (seule l'ultime d'Églantyne, lancée par le joueur, le soigne).
+- Aura de Sanctuaire (rayon 5 → 7,4, visible au sol) : régénération des héros (1,5 → 4 % PV max/s), protection des poupées (30 → 65 % de chance qu'une poupée lancée ne soit pas consommée), défenses renforcées (aura de cadence existante des tourelles voisines ; pièges de ronce qui rechargent plus vite et ranimés après ~12 s). L'aura grandit avec les 2 évolutions (Canopée, Sanctuaire).
+- Tests : soin dans / hors aura (52 % contre 40 % après 3 s), Cœur inchangé, piège desséché ranimé, stats 1,5 % → 4 %, rayon 5 → 7,4.
+- Limites : protection des poupées vérifiée par le code mais pas mesurée statistiquement ; valeurs provisoires.
+
+## Correctif progression : XP, niveaux, déblocages, mécaniques des arbres
+
+- **Cause du blocage constaté** : le site affichait la version de `main` (PR #183), qui contient des cadenas **décoratifs** codés en dur (`NIV. 2` / `NIV. 3`, aucune condition de niveau) et une seule tourelle. Les systèmes de déblocage réels étaient sur la branche, non fusionnés.
+- **XP** : courbe `40 + 26 × niveau` (niv.3 ≈ 106 XP, niv.6 ≈ 460, niv.10 ≈ 1300, niv.20 ≈ 5200) calibrée sur l'offre réelle (≈ 1360 XP en séquence 1, ≈ 4000 en séquence 2) ; niveau max 20 (il était limité à 10, ce qui gaspillait l'XP de la séquence 2). Les orbes ne sont plus perdues (elles filent vers le héros après 8 s). Gains de PV / dégâts par niveau adoucis après le niveau 10.
+- **Choix d'amélioration** : report (« Plus tard ») conservé, cumul des choix, offre de secours « Surcroît de puissance » quand tout est au maximum.
+- **Interface** : « XP x / y » et « → NIV. n+1 » dans le cadre du héros, bandeau animé « NIVEAU n ! », « Nouvelle tourelle débloquée ! » + nom, cadenas retiré immédiatement, bouton pulsé.
+- **Mécaniques propres** : Arbre à poupées = invoque des poupées qui courent sur les ennemis et explosent (étourdissement à l'évolution) ; Arbre Monde = soutien pur (aura de cadence, soin, protection des poupées, pièges renforcés), ne tire plus. Pose d'un piège depuis un emplacement : aimantation au chemin.
+- Tests exécutés : t31 (niveaux 1→20 × 4 héros : XP, seuils, choix, déblocages, construction), t32/t33 (orbes, report, arbres), t34 (coop), t35 (parties complètes : niveau par vague), + régressions.

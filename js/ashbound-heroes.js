@@ -80,7 +80,7 @@
           }, end: function (hh) { A.addActor(faille(trail, 1.0, 22, 2.4)); } };
         } else if (key === "s2") {
           var pt = targetPoint(h, a, d, this.skills.s2);
-          if (k.clones.length >= 2) k.clones.shift().life = 0;
+          if (k.clones.length >= 2 + (h.mod.clone || 0)) k.clones.shift().life = 0;
           var cl = { x: pt.x, z: pt.z, life: 8, t: 0, cdA: .3, sorted: true, z: pt.z,
             update: function (dt) { this.t += dt; this.cdA -= dt; if (this.cdA <= 0) { var e = A.nearest(this.x, this.z, 8); if (e) { var p = A.pos(e); triple(this.x, this.z, Math.atan2(p.z - this.z, p.x - this.x), .8); this.cdA = .7; } else this.cdA = .15; } },
             draw: function () { var X = sx(this.x), Y = sy(this.z); groundEllipse(this.x, this.z, 1.1, "rgba(80,220,255,.15)", "rgba(120,230,255,.7)", 2);
@@ -107,7 +107,7 @@
       },
       onKill: function (h, e) {
         var k = h.k, p = A.pos(e); if (dist(h.x, h.z, p.x, p.z) > 10 || k.shades >= 15) return;
-        if (Math.random() > (k.ultT > 0 ? .2 : .1)) return;
+        if (Math.random() > (k.ultT > 0 ? .2 : .1) + (h.mod.shade || 0)) return;
         k.shades++;
         A.addActor({ x: p.x, z: p.z, z: p.z, life: 8, t: 0, sorted: true, ac: 0,
           update: function (dt) { this.t += dt; var e2 = A.nearest(this.x, this.z, 8); if (e2) { var q = A.pos(e2), dd = dist(this.x, this.z, q.x, q.z); if (dd > 1) { this.x += (q.x - this.x) / dd * 5.2 * dt; this.z += (q.z - this.z) / dd * 5.2 * dt; } else { this.ac -= dt; if (this.ac <= 0) { A.dmg(e2, 6); this.ac = .5; } } } if (this.life - dt <= 0) k.shades--; },
@@ -144,7 +144,7 @@
       },
       init: function (h) { h.k = { dolls: [], kills: 0, curses: [], rush: 0 }; },
       attack: function (h, a) {
-        var d = dir(a); A.addProj({ x: h.x + d.x * .6, z: h.z + d.z * .6, vx: d.x * 13, vz: d.z * 13, life: .7, r: .5, dmg: 9, col: "#6fe08a", kind: "seed", aoe: .9, aoeDmg: 5, onHit: function (e) { A.poison(e, 2, 3); } });
+        var d = dir(a); A.addProj({ x: h.x + d.x * .6, z: h.z + d.z * .6, vx: d.x * 13, vz: d.z * 13, life: .7, r: .5, dmg: 9, col: "#6fe08a", kind: "seed", aoe: .9, aoeDmg: 5, onHit: function (e) { A.poison(e, 2 * (1 + (h.mod.venom || 0)), 3); } });
         A.play("hit", .4, 1.5); return .38;
       },
       cast: function (key, h, a, d) {
@@ -154,8 +154,8 @@
           A.addActor({ x: pt.x, z: pt.z, life: 1.7, t: 0, closed: false, ground: true,
             update: function (dt) {
               this.t += dt;
-              if (this.t < 1) A.inRadius(this.x, this.z, 3.2).forEach(function (e) { var p = A.pos(e); A.pull(e, (pt.x - p.x) * Math.min(1, dt * 4), (pt.z - p.z) * Math.min(1, dt * 4)); });
-              else if (!this.closed) { this.closed = true; A.inRadius(this.x, this.z, 2.7).forEach(function (e) { A.dmg(e, 25); A.poison(e, 6, 4); A.stun(e, .3); }); A.fx({ k: "ring", x: pt.x, z: pt.z, r: 2.7, dur: .5, col: "#7aff9a" }); A.shake(.15); A.play("hit", .9, .6); }
+              if (this.t < 1) A.inRadius(this.x, this.z, 3.2 * (1 + (h.mod.rngS1 || 0))).forEach(function (e) { var p = A.pos(e); A.pull(e, (pt.x - p.x) * Math.min(1, dt * 4), (pt.z - p.z) * Math.min(1, dt * 4)); });
+              else if (!this.closed) { this.closed = true; A.inRadius(this.x, this.z, 2.7 * (1 + (h.mod.rngS1 || 0))).forEach(function (e) { A.dmg(e, 25); A.poison(e, 6 * (1 + (h.mod.venom || 0)), 4); A.stun(e, .3); }); A.fx({ k: "ring", x: pt.x, z: pt.z, r: 2.7, dur: .5, col: "#7aff9a" }); A.shake(.15); A.play("hit", .9, .6); }
             },
             draw: function () {
               var X = sx(this.x), Y = sy(this.z), open = this.t < 1 ? Math.min(1, this.t * 4) : Math.max(0, 1 - (this.t - 1) * 8);
@@ -184,12 +184,14 @@
         var k = h.k, list = k.dolls, near = A.nearest(h.x, h.z, 3.6);
         k.rush -= dt;
         list.forEach(function (dl, i) {
-          if (dl.go) { var tg = dl.go; var dx = tg.x - dl.x, dz = tg.z - dl.z, l = Math.hypot(dx, dz) || 1; if (l < .6) { dl.boom = true; A.inRadius(dl.x, dl.z, 1.7).forEach(function (e) { A.dmg(e, tg.dmg || 28); }); A.fx({ k: "ring", x: dl.x, z: dl.z, r: 1.7, dur: .35, col: "#8fff9a" }); A.shake(.05); return; } dl.x += dx / l * 9 * dt; dl.z += dz / l * 9 * dt; return; }
+          if (dl.go) { var tg = dl.go; var dx = tg.x - dl.x, dz = tg.z - dl.z, l = Math.hypot(dx, dz) || 1; if (l < .6) { dl.boom = true; if (dl.prot && !tg.trap) { dl.boom = false; dl.go = null; dl.prot = false; } if (tg.trap) { A.reactivateTrap(tg.trap, "doll"); return; } A.inRadius(dl.x, dl.z, 1.7).forEach(function (e) { A.dmg(e, tg.dmg || 28); }); A.fx({ k: "ring", x: dl.x, z: dl.z, r: 1.7, dur: .35, col: "#8fff9a" }); A.shake(.05); return; } dl.x += dx / l * 9 * dt; dl.z += dz / l * 9 * dt; return; }
           var ang = i * 2.399 + A.time() * .6, rr = 1.4 + (i % 7) * .35, tx = h.x + Math.cos(ang) * rr, tz = h.z + Math.sin(ang) * rr, dx2 = tx - dl.x, dz2 = tz - dl.z, l2 = Math.hypot(dx2, dz2);
           if (l2 > .05) { var s = Math.min(l2, (l2 > 3 ? 11 : 5) * dt); dl.x += dx2 / l2 * s; dl.z += dz2 / l2 * s; }
         });
         k.dolls = list.filter(function (dl) { return !dl.boom; });
-        if (near && k.rush <= 0) { var free = k.dolls.filter(function (d) { return !d.go; }); if (free.length) { free[0].go = { x: A.pos(near).x, z: A.pos(near).z, dmg: 28 }; k.rush = .22; } }
+        var wt = A.wiltedTrap ? A.wiltedTrap(h.x, h.z, 3.4) : null;   // sacrifice : une poupée libre rouvre un piège desséché proche
+        if (wt) { var fd = k.dolls.filter(function (d) { return !d.go; }); if (fd.length) fd[0].go = { x: wt.x, z: wt.z, dmg: 0, trap: wt }; else wt.claim = 0; }
+        if (near && k.rush <= 0) { var free = k.dolls.filter(function (d) { return !d.go; }); if (free.length) { free[0].go = { x: A.pos(near).x, z: A.pos(near).z, dmg: 28 }; free[0].prot = A.sanc ? Math.random() < A.sanc(free[0].x, free[0].z) : false; k.rush = .22; } }
         k.curses = k.curses.filter(function (c) { return c.t > 0; });
       },
       netOut: function (h) { return h.k.dolls.slice(0, 30).map(function (d) { return [Math.round(d.x * 10) / 10, Math.round(d.z * 10) / 10]; }); },
@@ -201,7 +203,7 @@
       },
       onKill: function (h, e) {
         var k = h.k, p = A.pos(e);
-        if (e.poison && ++k.kills % 5 === 0 && k.dolls.length < 50) k.dolls.push({ x: p.x, z: p.z });
+        if (e.poison && ++k.kills % Math.max(3, 5 - (h.mod.swarm || 0)) === 0 && k.dolls.length < 50) k.dolls.push({ x: p.x, z: p.z });
         k.curses.forEach(function (c) {
           if (dist(c.x, c.z, p.x, p.z) <= c.r) A.addActor({ x: p.x, z: p.z, life: 2, t: 0, ground: true, done: false,
             update: function (dt) { this.t += dt; if (this.t >= 1.9 && !this.done) { this.done = true; var self = this; for (var i = 0; i < 8; i++) { (function (ang) { A.enemies().forEach(function (e2) { var q = A.pos(e2), dd = dist(self.x, self.z, q.x, q.z); if (dd < 3.4 && dd > .2 && angDiff(Math.atan2(q.z - self.z, q.x - self.x), ang) < .22) A.dmg(e2, 20); }); })(i * .785); } A.fx({ k: "star8", x: self.x, z: self.z, dur: .35 }); A.play("hit", .7, .8); } },
@@ -212,7 +214,7 @@
         h.k.dolls.forEach(function (dl) { A.addSorted(dl.z, function () { A.spr("doll", sx(dl.x), sy(dl.z), 1.2, false); }); });
       }
     };
-    function sendDolls(h, pt, n) { var free = h.k.dolls.filter(function (d) { return !d.go; }); for (var i = 0; i < Math.min(n, free.length); i++) free[i].go = { x: pt.x + (Math.random() - .5) * 1.6, z: pt.z + (Math.random() - .5) * 1.6, dmg: 20 }; }
+    function sendDolls(h, pt, n) { var free = h.k.dolls.filter(function (d) { return !d.go; }); for (var i = 0; i < Math.min(n, free.length); i++) { free[i].go = { x: pt.x + (Math.random() - .5) * 1.6, z: pt.z + (Math.random() - .5) * 1.6, dmg: 20 }; free[i].prot = A.sanc ? Math.random() < A.sanc(free[i].x, free[i].z) : false; } }
 
     /* ======================================================== PHELTO (kit provisoire) */
     kits.phelto = {
@@ -227,7 +229,7 @@
       init: function (h) { h.k = { n: 0, concert: 0 }; },
       attack: function (h, a) {
         var k = h.k; k.n++;
-        function noteShot(aa) { var d = dir(aa); A.addProj({ x: h.x + d.x * .6, z: h.z + d.z * .6, vx: d.x * 14, vz: d.z * 14, life: .65, r: .5, dmg: 9, col: "#ff6ac0", kind: "note" }); }
+        function noteShot(aa) { var d = dir(aa); A.addProj({ x: h.x + d.x * .6, z: h.z + d.z * .6, vx: d.x * 14, vz: d.z * 14, life: .65, r: .5, dmg: 9, col: "#ff6ac0", kind: "note", pierce: (h.mod.pierce || 0) > 0 }); }
         if (k.n % 3 === 0) { noteShot(a - .18); noteShot(a + .18); } else noteShot(a);
         A.play("click", .5, 1.8 + (k.n % 3) * .25); return .36;
       },
@@ -235,14 +237,14 @@
         var k = h.k;
         if (key === "s1") {
           var arc = 80 * D2R;
-          A.enemies().forEach(function (e) { if (inCone(h.x, h.z, a, 5, arc, e)) { A.dmg(e, 24); A.stun(e, .6); var dd = dir(a); A.pull(e, dd.x * .9, dd.z * .9); } });
+          A.enemies().forEach(function (e) { if (inCone(h.x, h.z, a, 5, arc, e)) { A.dmg(e, 24); A.stun(e, .6 + (h.mod.stun || 0)); var dd = dir(a); A.pull(e, dd.x * .9, dd.z * .9); } });
           A.addActor({ life: .5, t: 0, update: function (dt) { this.t += dt; }, draw: function () { var p = this.t / .5; ctx.save(); ctx.globalAlpha = 1 - p; ctx.translate(sx(h.x), sy(h.z) - 26); ctx.scale(1, A.SY); for (var i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(0, 0, (1.4 + i * 1.2 + p * 2) * A.PPU, -a - arc / 2, -a + arc / 2); ctx.strokeStyle = i === 0 ? "#fff" : "rgba(255,90,190,.8)"; ctx.lineWidth = 6 - i; ctx.stroke(); } ctx.restore(); } });
           A.shake(.12); A.play("zap", .8, .8);
         } else if (key === "s2") {
-          var pt = targetPoint(h, a, d, this.skills.s2); A.buff({ x: pt.x, z: pt.z, r: 3.2, rate: .6, t: 6 });
-          A.addActor({ life: 6, t: 0, ground: true, update: function (dt) { this.t += dt; A.inRadius(pt.x, pt.z, 3.2).forEach(function (e) { A.slow(e, .75, .3); }); },
-            draw: function () { var pulse = (this.t * 1.5) % 1; groundEllipse(pt.x, pt.z, 3.2, "rgba(255,70,170,.12)", "rgba(255,120,200,.7)", 3); groundEllipse(pt.x, pt.z, 3.2 * pulse, null, "rgba(255,180,230," + (1 - pulse) + ")", 2); for (var i = 0; i < 4; i++) note(sx(pt.x) + Math.cos(this.t + i * 1.6) * 60, sy(pt.z) - 20 - ((this.t * 30 + i * 18) % 60), "#ff9bd2", 20); } });
-          A.fx({ k: "ring", x: pt.x, z: pt.z, r: 3.2, dur: .4, col: "#ff6ac0" }); A.play("upgrade", .7, 1);
+          var pt = targetPoint(h, a, d, this.skills.s2), zr = 3.2 * (1 + (h.mod.rngS2 || 0)), zt = 6 + (h.mod.rngS2 ? 2 : 0); A.buff({ x: pt.x, z: pt.z, r: zr, rate: .6, t: zt });
+          A.addActor({ life: zt, t: 0, ground: true, update: function (dt) { this.t += dt; A.inRadius(pt.x, pt.z, zr).forEach(function (e) { A.slow(e, .75, .3); }); },
+            draw: function () { var pulse = (this.t * 1.5) % 1; groundEllipse(pt.x, pt.z, zr, "rgba(255,70,170,.12)", "rgba(255,120,200,.7)", 3); groundEllipse(pt.x, pt.z, zr * pulse, null, "rgba(255,180,230," + (1 - pulse) + ")", 2); for (var i = 0; i < 4; i++) note(sx(pt.x) + Math.cos(this.t + i * 1.6) * 60, sy(pt.z) - 20 - ((this.t * 30 + i * 18) % 60), "#ff9bd2", 20); } });
+          A.fx({ k: "ring", x: pt.x, z: pt.z, r: zr, dur: .4, col: "#ff6ac0" }); A.play("upgrade", .7, 1);
         } else {
           k.concert = 7; A.buff({ r: 5.5, rate: .4, t: 7, follow: h }); A.toast("Concert !", "#ff9bd2"); A.play("boss", .8, 1.4); A.shake(.25);
         }
@@ -281,10 +283,10 @@
         var k = h.k, c = k.comboT > 0 ? k.combo % 3 : 0, st = COMBO[c], spd = 1 + .6 * k.charge / 100;
         k.pose = c === 0 ? "atk" : "cast"; k.combo = c + 1; k.comboT = st.dur + .9; h.lunge = { dx: Math.cos(a) * st.lunge, dz: Math.sin(a) * st.lunge, t: .12 };
         var hit = false;
-        A.enemies().forEach(function (e) { if (inCone(h.x, h.z, a, st.rng, st.arc * D2R, e)) { hit = true; A.dmg(e, st.dmg); A.push(e, Math.cos(a) * st.kb, Math.sin(a) * st.kb); if (c === 2) A.stun(e, .25); } });
+        A.enemies().forEach(function (e) { if (inCone(h.x, h.z, a, st.rng * (1 + (h.mod.rngAtk || 0)), st.arc * D2R, e)) { hit = true; A.dmg(e, st.dmg); A.push(e, Math.cos(a) * st.kb, Math.sin(a) * st.kb); if (c === 2) A.stun(e, .25); } });
         A.fx({ k: "slash", x: h.x, z: h.z, a: a, rng: st.rng, arc: st.arc * D2R, dur: st.dur + .08, big: c === 2 });
         A.play(c === 2 ? "zap" : "hit", c === 2 ? .8 : .45, c === 2 ? .8 : 1.15 + c * .1); if (c === 2) A.shake(.12);
-        var was = k.charge >= 100; k.charge = Math.min(100, k.charge + (hit ? 12 : 6));
+        var was = k.charge >= 100; k.charge = Math.min(100, k.charge + (hit ? 12 : 6) * (1 + (h.mod.charge || 0)));
         if (was) { k.charge = 0; A.fx({ k: "ring", x: h.x, z: h.z, r: 3.6, dur: .45, col: "#7ff0ff" }); A.inRadius(h.x, h.z, 3.6).forEach(function (e) { A.dmg(e, 40); A.stun(e, .5); }); A.play("zap", 1, .6); A.shake(.2); A.toast("Décharge !", "#7ff0ff"); }
         for (var q = 0; q < 3 + c * 2; q++) miniArc(h.x + Math.cos(a) * rnd(.8, st.rng * .9), h.z + Math.sin(a) * rnd(.8, st.rng * .9), 16 + c * 6, 26);
         h.swing = st.dur; return st.dur / spd;
@@ -302,7 +304,7 @@
           A.after(.55, function () {
             var top = { x: sx(px) + 14, y: sy(pz) - 560 }, bot = { x: sx(px), y: sy(pz) - 18 }; A.bolt(top, bot, true);
             A.fx({ k: "ring", x: px, z: pz, r: 3.3, dur: .5, col: "#e9ffff", flash: true });
-            A.inRadius(px, pz, 3.3).forEach(function (e) { A.dmg(e, 60); A.stun(e, 1.2); }); A.play("zap", 1, .55); A.shake(.25); k.charge = Math.min(100, k.charge + 20);
+            A.inRadius(px, pz, 3.3).forEach(function (e) { A.dmg(e, 60 * (1 + (h.mod.s2 || 0))); A.stun(e, 1.2 + (h.mod.s2 || 0)); }); A.play("zap", 1, .55); A.shake(.25); k.charge = Math.min(100, k.charge + 20);
           }); A.play("click", .8, .8);
         } else {
           k.storm = 8; k.tick = 0; A.buff({ r: 5.5, rate: .6, t: 8, follow: h }); A.play("boss", .7, 1.2); A.toast("Tempête de Foudre !", "#ffd25e"); A.shake(.3);

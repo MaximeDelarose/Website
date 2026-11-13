@@ -10,6 +10,7 @@ W, Hh = layout.ARENA_W * layout.PPU, layout.ARENA_H * layout.PPU
 def w2p(x, z): return ((x + layout.ARENA_W / 2) * layout.PPU, (layout.ARENA_H / 2 - z) * layout.PPU)
 def pal(hs): return np.array([H(h)[:3] for h in hs], dtype=np.uint8)
 
+SC = (layout.ARENA_W * layout.ARENA_H) / (36 * 20)
 def paint(L, out_path):
     rng = random.Random(9); nr = random.Random(21)
     ys, xs = np.mgrid[0:Hh, 0:W]
@@ -28,8 +29,10 @@ def paint(L, out_path):
 
     # chemin
     pts = np.array([(p['x'], p['z']) for p in L['path']]); px_pts = np.array([w2p(x, z) for x, z in pts])
-    dist = np.full((Hh, W), 1e9, dtype=np.float32)
-    for (cx, cy) in px_pts: np.minimum(dist, np.sqrt((xs - cx) ** 2 + (ys - cy) ** 2), out=dist)
+    from scipy import ndimage
+    mk = Image.new('L', (W, Hh), 0); mdr = ImageDraw.Draw(mk)
+    mdr.line([tuple(p) for p in px_pts], fill=255, width=2)
+    dist = ndimage.distance_transform_edt(np.array(mk) == 0).astype(np.float32)
     du = dist / layout.PPU; hw = layout.PATH_HALF_WIDTH
     wob = (value_noise(W, Hh, 22, nr, 2) - .5) * .5
     inp = du < hw + wob
@@ -48,30 +51,30 @@ def paint(L, out_path):
     def free(x, y, extra=.3):
         xi, yi = int(x), int(y)
         return 0 <= xi < W and 0 <= yi < Hh and du[yi, xi] > hw + .6 + extra
-    for _ in range(3400):     # touffes d'herbe
+    for _ in range(int(3400 * SC)):     # touffes d'herbe
         x, y = rng.randint(0, W - 1), rng.randint(0, Hh - 1)
         if not free(x, y): continue
         c = rng.choice([H('456b3c'), H('527a44'), H('3a5a33')]) if not cor[y, x] else rng.choice([H('5a3a8a'), H('6a46a0')])
         for k in range(rng.randint(2, 4)): g.px(x, y - k, c)
         g.px(x + 1, y - 1, c); g.px(x - 1, y - 1, c)
-    for _ in range(460):      # cailloux sur le chemin
+    for _ in range(int(460 * SC)):      # cailloux sur le chemin
         x, y = rng.randint(0, W - 1), rng.randint(0, Hh - 1)
         if du[y, x] < hw - .3: g.rect(x, y, x + 2, y + 1, rng.choice([H('7a6a5a'), H('85735f'), H('5a4a3c')]))
-    for _ in range(150):      # lueurs roses dans la corruption
+    for _ in range(int(150 * SC)):      # lueurs roses dans la corruption
         x, y = rng.randint(0, W - 1), rng.randint(0, Hh - 1)
         if cor[y, x] and du[y, x] > hw + .8: g.px(x, y, PINKP); g.px(x + 1, y, H('c0408a'))
-    for _ in range(40):       # fleurs
+    for _ in range(int(40 * SC)):       # fleurs
         x, y = rng.randint(0, W - 1), rng.randint(0, Hh - 1)
         if free(x, y) and not cor[y, x]: g.px(x, y, rng.choice([H('ff7ac8'), H('f2e8d0'), H('c48bff')])); g.px(x, y + 1, H('2f6a3a'))
 
-    # emplacements : losange avec « + »
-    for s in L['slots']:
-        cx, cy = w2p(s['x'], s['z']); r = 1.15 * layout.PPU
+    # emplacements : losange discret avec « + » (le mode construction les surligne en jeu)
+    ov = Image.new('RGBA', (W, Hh), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
+    for s_ in L['slots']:
+        cx, cy = w2p(s_['x'], s_['z']); r = 1.15 * layout.PPU
         d = [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)]
-        ov = Image.new('RGBA', (W, Hh), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
-        od.polygon(d, fill=(10, 8, 20, 70)); od.line(d + [d[0]], fill=(214, 230, 200, 150), width=2)
-        od.line([(cx - 9, cy), (cx + 9, cy)], fill=(214, 230, 200, 170), width=3); od.line([(cx, cy - 9), (cx, cy + 9)], fill=(214, 230, 200, 170), width=3)
-        g.im = Image.alpha_composite(g.im, ov); g.d = ImageDraw.Draw(g.im)
+        od.polygon(d, fill=(10, 8, 20, 55)); od.line(d + [d[0]], fill=(214, 230, 200, 105), width=2)
+        od.line([(cx - 8, cy), (cx + 8, cy)], fill=(214, 230, 200, 120), width=2); od.line([(cx, cy - 8), (cx, cy + 8)], fill=(214, 230, 200, 120), width=2)
+    g.im = Image.alpha_composite(g.im, ov); g.d = ImageDraw.Draw(g.im)
 
     # flèche d'entrée rose
     sx, sy = w2p(L['spawn']['x'], L['spawn']['z'])

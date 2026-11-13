@@ -13,7 +13,7 @@ def cp(src, dst): shutil.copy(src, f'{OUT}/{dst}')
 
 # décor, ennemis non fournis, cœur, FX
 for n in ['enemy_scout_0', 'enemy_scout_1', 'enemy_elite_0', 'enemy_elite_1', 'enemy_miniboss_0', 'enemy_miniboss_1', 'enemy_boss_0', 'enemy_boss_1', 'heart_0', 'heart_1',
-          'pine_s', 'pine_m', 'pine_d', 'ruin_a', 'ruin_b', 'rock', 'rock_small', 'crystal', 'sparkle', 'gate', 'tower_orb_0', 'tower_orb_1', 'tower_orb_2', 'tower_orb_3']:
+          'pine_s', 'pine_m', 'pine_d', 'bush', 'fern', 'grave', 'tree_dead', 'tree_teal', 'ruin_pillar', 'ruin_arch', 'bones', 'ruin_a', 'ruin_b', 'rock', 'rock_small', 'crystal', 'sparkle', 'gate', 'tower_orb_0', 'tower_orb_1', 'tower_orb_2', 'tower_orb_3']:
     cp(f'{A}/Art/Billboards/{n}.png', f'{n}.png')
 cp(f'{A}/Art/Ground/arena01_ground.png', 'ground.png'); cp(f'{A}/Resources/Ashbound/Fx/fx_shadow.png', 'fx_shadow.png')
 # sprites extraits des planches (Noctis, Phelto, Églantyne, orbe, tourelles, FX, portraits)
