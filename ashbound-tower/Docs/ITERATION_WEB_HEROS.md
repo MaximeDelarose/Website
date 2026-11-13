@@ -96,3 +96,12 @@ XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations 
 - Menu de construction compact et rétractable (3 boutons, verrous, `n/limite`), annonce légère au déblocage (bandeau + pulsation du bouton), pastilles de rang sous les tourelles, bouton Vendre.
 - Coop : l'hôte valide famille / niveau / limite / coût ; requêtes `build`, `up`, `sell` ; les tourelles vendues disparaissent aussi chez l'invité.
 - Limites : les T2/T3 réutilisent les sprites T1 du héros (agrandis, sans art dédié) ; l'Arbre à poupées / l'Arbre Monde n'ont pas encore leurs mécaniques propres (étapes suivantes).
+
+## Mise à jour gameplay — carte agrandie et caméra
+
+- Arène 60×34 unités (~2,8× la surface), chemin de 159 unités à 24 points de contrôle (virages en S, boucles), 56 emplacements (≥ 43 requis : 30 T1 + 10 T2 + 3 T3), répartis puis regroupés en grappes près des virages ; tous à portée du chemin. Générés par `layout.py` (contrôles : distance mini entre portions du chemin, couverture), sol par `gen_ground2.py` (distance au chemin via EDT), nouveaux décors `gen_decor3.py` (buisson, fougère, tombe) + arbres, piliers, arche, ossements, cristaux.
+- Limites de tourelles `TIERCFG` : 30 / 10 / 3 atteintes au niveau 10.
+- Caméra : zoom de combat 1,5, suivi lissé du héros, bornée à la carte ; mode construction : zoom 0,72, retour automatique au zoom de combat. Emplacements libres (losanges pulsés) / occupés (point vert) ; aperçu de la portée (survol à la souris, 1er toucher au tactile, 2e toucher pour construire).
+- Performances : sol dessiné par fenêtre visible, culling hors écran (décor, tours, ennemis, projectiles, orbes, barres), particules poolées et plafonnées, qualité adaptative (Q) selon le temps d'image.
+- Tests : bots complets 4 héros gagnent (t7 adapté), parcours des ennemis jusqu'au Cœur sans défense, 43 constructions toutes à portée, 60 i/s en Chromium headless avec 43 tours, tactile mobile (2 touchers), coop, boutons sur 7 formats.
+- Limites : pas testé sur vrais téléphones (perf réelle inconnue) ; l'équilibrage (chemin 2,5× plus long) reste à régler ; le Cœur peut passer sous les boutons de compétence sur téléphone.
