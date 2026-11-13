@@ -32,8 +32,9 @@ export class FlipperRules {
     return this.ballsLeft === 0 && !this.ballInPlay;
   }
 
-  /** Une bille est lancée : le décompte de fin de bille repart à zéro. */
+  /** Une bille est lancée : le décompte de fin de bille repart à zéro (sans effet si une bille est déjà en jeu). */
   launch(): void {
+    if (this.ballInPlay) return;
     this.ballInPlay = true;
     this.bumpersThisBall = 0;
   }
@@ -83,6 +84,16 @@ export class FlipperRules {
     this.events.push({ type: "ballLost", ballsLeft: this.ballsLeft, bonus });
     if (this.over) this.events.push({ type: "gameover", score: this.score });
     return bonus;
+  }
+
+  /** Cible déjà touchée dans la banque en cours. */
+  targetDown(id: string): boolean {
+    return this.bankHits.has(id);
+  }
+
+  /** Lettre de rollover allumée. */
+  lit(id: string): boolean {
+    return this.litRollovers.has(id);
   }
 
   /** Événements accumulés depuis le dernier appel. */

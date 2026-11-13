@@ -37,6 +37,24 @@ export class Board {
                 this.grid[r][c] = value;
         }
     }
+    /** Indices des lignes pleines, de haut en bas. */
+    fullRows() {
+        const rows = [];
+        for (let r = 0; r < BOARD_H; r++) {
+            if (this.grid[r].every((cell) => cell !== 0))
+                rows.push(r);
+        }
+        return rows;
+    }
+    /** Supprime les lignes données ; celles du dessus descendent. */
+    removeRows(rows) {
+        if (rows.length === 0)
+            return;
+        const drop = new Set(rows);
+        const kept = this.grid.filter((_, r) => !drop.has(r));
+        const empty = Array.from({ length: rows.length }, () => new Array(BOARD_W).fill(0));
+        this.grid.splice(0, this.grid.length, ...empty, ...kept);
+    }
     /** Supprime les lignes pleines (les lignes au-dessus descendent) et renvoie leur nombre. */
     clearFullRows() {
         const kept = this.grid.filter((row) => !row.every((cell) => cell !== 0));

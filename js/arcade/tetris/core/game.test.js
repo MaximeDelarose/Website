@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { TetrisGame, framesPerRow } from "./game.js";
+import { TetrisGame, framesPerRow, CLEAR_FRAMES } from "./game.js";
 import { BOARD_H, BOARD_W } from "./board.js";
 import { KINDS, cellsOf } from "./pieces.js";
 test("vitesse : niveau 1 = 1 seconde par ligne (60 frames)", () => {
@@ -96,4 +96,36 @@ test("fin de partie quand le spawn est bloqué", () => {
     g.hardDrop();
     assert.equal(g.over, true);
     assert.equal(g.active, null);
+});
+test("effacement : les lignes restent visibles pendant l'animation puis disparaissent", () => {
+    const g = new TetrisGame(3);
+    for (let c = 0; c < BOARD_W - 1; c++)
+        g.board.grid[BOARD_H - 1][c] = 1;
+    g.active = { kind: "I", rot: 1, row: BOARD_H - 4, col: 7 };
+    g.hardDrop();
+    assert.deepEqual(g.clearRows, [BOARD_H - 1]);
+    assert.equal(g.active, null, "pas de pièce pendant l'animation");
+    assert.ok(g.board.grid[BOARD_H - 1].every((c) => c !== 0), "la ligne est encore dessinée");
+    for (let i = 0; i < CLEAR_FRAMES; i++)
+        g.step();
+    assert.equal(g.clearRows.length, 0);
+    assert.notEqual(g.active, null, "la pièce suivante apparaît");
+    assert.equal(g.board.grid[BOARD_H - 1].filter((c) => c !== 0).length, 1, "seule la barre verticale est descendue");
+});
+test("back-to-back : deux tetris de suite rapportent 1,5 fois plus", () => {
+    const g = new TetrisGame(4);
+    const tetris = () => {
+        for (let r = BOARD_H - 4; r < BOARD_H; r++)
+            for (let c = 0; c < BOARD_W - 1; c++)
+                g.board.grid[r][c] = 1;
+        g.active = { kind: "I", rot: 1, row: BOARD_H - 4, col: 7 };
+        const before = g.score;
+        g.hardDrop();
+        for (let i = 0; i < CLEAR_FRAMES; i++)
+            g.step();
+        return g.score - before;
+    };
+    const first = tetris();
+    const second = tetris();
+    assert.ok(second > first, "le second tetris est bonifié");
 });

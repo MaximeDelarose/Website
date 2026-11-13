@@ -1,5 +1,6 @@
+import { loadBest, saveBest } from "./storage.js";
 let ctx = null;
-let muted = false;
+let muted = loadBest("arcade.muted") === 1;
 function context() {
     try {
         if (!ctx) {
@@ -17,10 +18,18 @@ function context() {
         return null;
     }
 }
+export function isMuted() {
+    return muted;
+}
 export function setMuted(value) {
     muted = value;
+    saveBest("arcade.muted", value ? 1 : 0);
 }
-/** Bip court : fréquence (Hz), durée (s), volume, forme d'onde, glissando optionnel vers freqEnd. */
+export function toggleMute() {
+    setMuted(!muted);
+    return muted;
+}
+/** Bip : fréquence (Hz), durée (s), volume, forme d'onde, glissando vers freqEnd, retard (s). */
 export function tone(freq, dur, opts = {}) {
     if (muted)
         return;
@@ -33,10 +42,37 @@ export function tone(freq, dur, opts = {}) {
     osc.type = opts.type ?? "square";
     osc.frequency.setValueAtTime(freq, t0);
     if (opts.freqEnd)
-        osc.frequency.exponentialRampToValueAtTime(opts.freqEnd, t0 + dur);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, opts.freqEnd), t0 + dur);
     gain.gain.setValueAtTime(opts.vol ?? 0.04, t0);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     osc.connect(gain).connect(c.destination);
     osc.start(t0);
     osc.stop(t0 + dur + 0.02);
+}
+/** Souffle filtré : impacts, éclats. */
+export function noise(dur, opts = {}) {
+    if (muted)
+        return;
+    const c = context();
+    if (!c)
+        return;
+    const t0 = c.currentTime + (opts.delay ?? 0);
+    const length = Math.max(1, Math.floor(c.sampleRate * dur));
+    const buffer = c.createBuffer(1, length, c.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++)
+        data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    const filter = c.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = opts.freq ?? 1800;
+    const gain = c.createGain();
+    gain.gain.value = opts.vol ?? 0.05;
+    src.connect(filter).connect(gain).connect(c.destination);
+    src.start(t0);
+}
+/** Suite de notes (arpège) : cadence en secondes entre deux notes. */
+export function arp(freqs, step, opts = {}) {
+    freqs.forEach((f, i) => tone(f, opts.dur ?? step * 1.6, { ...opts, delay: (opts.delay ?? 0) + i * step }));
 }

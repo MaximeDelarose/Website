@@ -2,6 +2,8 @@ import { Board, BOARD_H, HIDDEN_ROWS, cellValue } from "./board.js";
 import { KINDS, boxSize, cellsOf, kicksFor } from "./pieces.js";
 import { Rng } from "../../shared/rng.js";
 export const DEFAULT_CONFIG = { das: 10, arr: 2, lockDelay: 30, lockResets: 15 };
+/** Frames d'animation pendant lesquelles les lignes pleines restent affichées avant de disparaître. */
+export const CLEAR_FRAMES = 24;
 /** Points de base par nombre de lignes (1 à 4), multipliés par le niveau. */
 const LINE_POINTS = [0, 100, 300, 500, 800];
 /** Frames entre deux descentes automatiques au niveau donné (formule de référence, arrondie à la frame). */
@@ -30,10 +32,22 @@ export class TetrisGame {
         this.dasLeft = 0;
         this.dasRight = 0;
         this.events = [];
+        this.clearTimer = 0;
+        this.lastWasTetris = false;
+        /** Lignes pleines en cours d'effacement (indices du plateau), vide hors animation. */
+        this.clearRows = [];
         this.rng = new Rng(seed);
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.fillQueue();
         this.spawn();
+    }
+    /** Vrai si la pièce en cours peut encore être mise en réserve. */
+    get holdAvailable() {
+        return this.canHold;
+    }
+    /** Avancement de l'animation d'effacement, de 0 à 1 (0 si aucune ligne en cours). */
+    get clearProgress() {
+        return this.clearTimer > 0 ? 1 - this.clearTimer / CLEAR_FRAMES : 0;
     }
     /** Les 3 prochaines pièces, pour l'aperçu. */
     get next() {
@@ -101,7 +115,7 @@ export class TetrisGame {
             dropped++;
         }
         this.score += dropped * 2;
-        this.lock(true);
+        this.lock(true, dropped);
     }
     holdPiece() {
         if (!this.active || this.over || !this.canHold)
@@ -121,6 +135,15 @@ export class TetrisGame {
     }
     /** Une tick : DAS/ARR, gravité ou chute rapide, verrouillage. */
     step() {
+        if (this.clearTimer > 0) {
+            this.clearTimer--;
+            if (this.clearTimer === 0) {
+                this.board.removeRows(this.clearRows);
+                this.clearRows = [];
+                this.spawn();
+            }
+            return this.flush();
+        }
         if (this.over || !this.active)
             return this.flush();
         this.autoRepeat();
@@ -182,35 +205,45 @@ export class TetrisGame {
             this.lockResetCount++;
         }
     }
-    lock(hard) {
+    lock(hard, distance = 0) {
         if (!this.active)
             return;
         const { kind, rot, row, col } = this.active;
-        this.board.place(cellsOf(kind, rot), row, col, cellValue(kind));
-        this.events.push({ type: "lock", hard });
-        const cleared = this.board.clearFullRows();
-        if (cleared > 0) {
-            this.combo++;
-            this.lines += cleared;
-            this.score += LINE_POINTS[cleared] * this.level;
-            if (this.combo > 0)
-                this.score += 50 * this.combo * this.level;
-            this.events.push({ type: "lines", count: cleared, combo: this.combo });
-            const newLevel = Math.floor(this.lines / 10) + 1;
-            if (newLevel > this.level) {
-                this.level = newLevel;
-                this.events.push({ type: "level", level: newLevel });
-            }
-        }
-        else {
-            this.combo = -1;
-        }
+        const cells = cellsOf(kind, rot);
+        this.board.place(cells, row, col, cellValue(kind));
+        this.events.push({ type: "lock", hard, distance, kind, cells: cells.map(([dr, dc]) => [row + dr, col + dc]) });
+        const rows = this.board.fullRows();
         this.canHold = true;
-        this.spawn();
+        if (rows.length === 0) {
+            this.combo = -1;
+            this.spawn();
+            return;
+        }
+        const count = rows.length;
+        this.combo++;
+        this.lines += count;
+        let points = LINE_POINTS[count] * this.level;
+        const b2b = count === 4 && this.lastWasTetris;
+        if (b2b)
+            points = Math.floor(points * 1.5);
+        this.lastWasTetris = count === 4;
+        this.score += points;
+        if (this.combo > 0)
+            this.score += 50 * this.combo * this.level;
+        this.events.push({ type: "lines", count, rows: [...rows], combo: this.combo, b2b });
+        const newLevel = Math.floor(this.lines / 10) + 1;
+        if (newLevel > this.level) {
+            this.level = newLevel;
+            this.events.push({ type: "level", level: newLevel });
+        }
+        // Les lignes restent visibles pendant l'animation, puis step() les retire et fait apparaître la pièce suivante.
+        this.clearRows = rows;
+        this.clearTimer = CLEAR_FRAMES;
+        this.active = null;
     }
     spawn(kind) {
         const k = kind ?? this.takeFromQueue();
-        const origin = { kind: k, rot: 0, row: 0, col: Math.floor((10 - boxSize(k)) / 2) };
+        const origin = { kind: k, rot: 0, row: 1, col: Math.floor((10 - boxSize(k)) / 2) };
         this.active = origin;
         this.gravity = 0;
         this.lockTimer = 0;
