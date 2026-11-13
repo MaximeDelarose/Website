@@ -1,0 +1,37 @@
+{
+  "id": "/ashbound.html",
+  "name": "Ashbound Tower",
+  "short_name": "Ashbound",
+  "description": "Tower defense dark fantasy en pixel art : défends le Cœur avec ton héros et tes tourelles.",
+  "lang": "fr",
+  "start_url": "ashbound.html?app=1",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
+  "orientation": "landscape",
+  "background_color": "#09060f",
+  "theme_color": "#1a0f2e",
+  "icons": [
+    {
+      "src": "ashbound/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "ashbound/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "ashbound/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
