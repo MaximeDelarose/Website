@@ -807,7 +807,7 @@ function buildStatics(data) {
     bodies.push(Matter.Bodies.rectangle(s.x, s.y, s.w, 14, { isStatic: true, isSensor: true, angle: s.angle, label: `spinner:${s.id}`, collisionFilter: filter(s.level) }));
   }
   for (const g of data.levelGates) {
-    bodies.push(Matter.Bodies.rectangle(g.x, g.y, g.w, g.h, { isStatic: true, isSensor: true, label: `gate:${g.id}`, collisionFilter: filter(g.level) }));
+    bodies.push(Matter.Bodies.rectangle(g.x, g.y, g.w, g.h, { isStatic: true, isSensor: true, angle: g.angle ?? 0, label: `gate:${g.id}`, collisionFilter: filter(g.level) }));
   }
   for (const s of data.slingshots) {
     const verts = s.points.map(([x, y]) => ({ x, y }));
@@ -877,11 +877,10 @@ function strokeLine(g, pts, width, color, alpha = 1, dx = 0, dy = 0) {
   for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0] + dx, pts[i][1] + dy);
   g.strokePath();
 }
-function rail(g, pts, raised) {
-  if (raised) strokeLine(g, pts, 14, PAL.ink0, 0.35, 7, 10);
+function rail(g, pts) {
   strokeLine(g, pts, 18, PAL.ink0);
-  strokeLine(g, pts, 10, raised ? PAL.orangeLight : PAL.cap);
-  strokeLine(g, pts, 3, raised ? 16777215 : PAL.tan, raised ? 0.5 : 0.7);
+  strokeLine(g, pts, 10, PAL.cap);
+  strokeLine(g, pts, 3, PAL.tan, 0.7);
 }
 function paintTable(scene, d, tx, ty) {
   const frame = scene.add.graphics().setDepth(0);
@@ -903,31 +902,45 @@ function paintTable(scene, d, tx, ty) {
     if (key) scene.add.image(tx + x, ty + y, key).setDepth(1.5).setAlpha(0.45);
   }
   const walls = scene.add.graphics().setDepth(2).setPosition(tx, ty);
-  for (const w of d.walls) if (w.level !== 2) rail(walls, w.pts, false);
+  for (const w of d.walls) if (w.level !== 2) rail(walls, w.pts);
   const [gf, gt] = [d.laneGate.from, d.laneGate.to];
   strokeLine(walls, [gf, gt], 14, PAL.ink0);
   strokeLine(walls, [gf, gt], 7, PAL.leaf);
   const upper = scene.add.graphics().setDepth(12).setPosition(tx, ty);
-  const deck = d.deck;
-  const poly = (dx, dy) => deck.map(([x, y]) => ({ x: x + dx, y: y + dy }));
-  upper.fillStyle(PAL.ink0, 0.3);
-  upper.fillPoints(poly(8, 12), true);
-  upper.fillStyle(7031344, 0.92);
-  upper.fillPoints(poly(0, 0), true);
-  upper.fillStyle(8215100, 0.9);
-  upper.fillPoints(deck.map(([x, y]) => ({ x: x + (x < 120 ? 8 : -8), y: y + (y < 300 ? 8 : -8) })), true);
-  upper.lineStyle(2, 6242345, 0.6);
-  for (let y = 190; y < 340; y += 26) {
-    upper.beginPath();
-    upper.moveTo(58, y);
-    upper.lineTo(188, y + 6);
-    upper.strokePath();
+  for (const o of d.orbits) {
+    upper.fillStyle(PAL.orangeLight, 0.1);
+    upper.fillPoints(o.zone.map(([x, y]) => ({ x, y })), true);
   }
-  for (const w of d.walls) if (w.level === 2) rail(upper, w.pts, true);
+  for (const w of d.walls) if (w.level === 2) tube(upper, w.pts);
+}
+function tube(g, pts) {
+  strokeLine(g, pts, 9, PAL.ink0, 0.28, 6, 9);
+  strokeLine(g, pts, 13, PAL.ink0, 0.9);
+  strokeLine(g, pts, 7, 13621468, 0.95);
+  strokeLine(g, pts, 2, 16777215, 0.85, -1, -1);
 }
 
 // src/flipper/render/scene.ts
 var TICK_MS = 1e3 / 60;
+function pathLength(pts) {
+  let l = 0;
+  for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  return l;
+}
+function pointAlong(pts, dist) {
+  let rest = dist;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i][0] - pts[i - 1][0];
+    const dy = pts[i][1] - pts[i - 1][1];
+    const seg = Math.hypot(dx, dy) || 1;
+    if (rest <= seg || i === pts.length - 1) {
+      const k = Math.min(1, rest / seg);
+      return { x: pts[i - 1][0] + dx * k, y: pts[i - 1][1] + dy * k, a: Math.atan2(dy, dx) };
+    }
+    rest -= seg;
+  }
+  return { x: pts[0][0], y: pts[0][1], a: 0 };
+}
 var TOUCH = isTouch();
 var GAME_W = 800;
 var GAME_H = TOUCH ? 1130 : 960;
@@ -1049,7 +1062,7 @@ var FlipperScene = class extends Phaser.Scene {
     panel(RX, TY, 300, "MISSIONS");
     small(RX + 12, TY + 44, "3 cibles = bille");
     small(RX + 12, TY + 114, "3 lettres = bonus");
-    small(RX + 12, TY + 184, "3 rampes = jackpot");
+    small(RX + 12, TY + 184, "3 orbites = jackpot");
     small(RX + 12, TY + 254, "Roulette :");
     for (let i = 0; i < 5; i++) {
       makeText(this, LX + 70, TY + 330 + (4 - i) * 30, `\xD7${i + 1}`, 18, PAL.panel2, { font: FONT_BODY, origin: [0, 0.5], strokeW: 3, shadow: false }).setDepth(5);
@@ -1316,7 +1329,7 @@ var FlipperScene = class extends Phaser.Scene {
         tr.push({ x: b.position.x, y: b.position.y });
         if (tr.length > 14) tr.shift();
       }
-      if (this.level.get(b) === 2 && !insidePolygon(d.deckZone, b.position.x, b.position.y)) this.setLevel(b, 1);
+      if (this.level.get(b) === 2 && !d.orbits.some((o) => insidePolygon(o.zone, b.position.x, b.position.y))) this.setLevel(b, 1);
       const speed = Math.hypot(b.velocity.x, b.velocity.y);
       if (!this.readyBall && this.balls.length === 1 && !this.roul && b.position.x > d.launch.x - 16 && b.position.y > d.launch.y - 60 && speed < 1) {
         Matter.Body.setVelocity(b, { x: 0, y: 0 });
@@ -1453,13 +1466,12 @@ var FlipperScene = class extends Phaser.Scene {
       const g = d.levelGates.find((x) => x.id === id);
       this.pending.push(() => {
         if (!g || !this.balls.includes(ball)) return;
-        if (g.role === "top") {
-          if (ball.velocity.y < 0) this.rampDone(ball);
+        if (g.role === "orbit") {
+          this.orbitDone(ball, g.id === "orbL_end" ? "L" : "R");
+          this.setLevel(ball, 1);
         } else if (g.set === 2) {
-          if (ball.velocity.y < -1 && ball.position.x > 46 && ball.position.x < 78) this.setLevel(ball, 2);
-        } else if (g.id === "ramp_out") {
-          if (ball.velocity.y > 0) this.setLevel(ball, 1);
-        } else {
+          if (ball.velocity.y < -1) this.setLevel(ball, 2);
+        } else if (ball.velocity.y > 0) {
           this.setLevel(ball, 1);
         }
       });
@@ -1470,10 +1482,19 @@ var FlipperScene = class extends Phaser.Scene {
       if (speed > 6) this.pending.push(() => tone(210, 0.04, { vol: 0.03, type: "triangle" }));
     }
   }
-  rampDone(ball) {
+  /** Bout d'une orbite : points, lettre (gauche) ou multiplicateur (droite), et jackpot au troisième passage. */
+  orbitDone(ball, side) {
     const jackpot = this.rules.ramp();
-    this.fx.burst(ball.position.x, ball.position.y, { n: 12, color: [PAL.orangeLight, PAL.cream], speed: 240, life: 520, size: 7, gravity: 200 });
+    if (side === "L") {
+      const next = this.table.rollovers.find((r) => r.kind === "letter" && !this.rules.lit(r.id));
+      if (next) this.rules.rollover(next.id);
+    } else {
+      this.rules.raiseMult();
+    }
+    this.hitFlash.set(`orb:${side}`, 40);
+    this.fx.burst(ball.position.x, ball.position.y, { n: 14, color: [PAL.orangeLight, PAL.cream, PAL.leaf], speed: 260, life: 560, size: 7, gravity: 200 });
     arp([523, 659, 784], 0.05, { vol: 0.045 });
+    popText(this, TX + ball.position.x, TY + ball.position.y + 40, side === "L" ? "ORBITE : LETTRE" : "ORBITE : BONUS", 24, PAL.orangeLight, { ms: 1e3, rise: 30 });
     if (jackpot) this.spawnExtraBall();
   }
   cheer() {
@@ -1672,11 +1693,33 @@ var FlipperScene = class extends Phaser.Scene {
       ud.fillCircle(b.x, b.y, r);
       this.pU.draw(this.art.mushSmall, b.x, b.y - 2, { scale: 1 + pulse * 0.16 });
     }
-    const chase = Math.floor(now / 140) % 4;
-    for (let i = 0; i < 4; i++) {
-      const y = 470 - i * 34;
-      ud.fillStyle(i === chase ? PAL.orangeLight : 5913380, 1);
-      ud.fillTriangle(62 - 9, y + 6, 62 + 9, y + 6, 62, y - 8);
+    for (const o of d.orbits) {
+      const len = pathLength(o.center);
+      const step = 46;
+      const phase = now / 14 % step;
+      for (let dist = phase; dist < len; dist += step) {
+        const q = pointAlong(o.center, dist);
+        const lit = ((dist - phase) / step + Math.floor(now / 260)) % 3 === 0;
+        ud.fillStyle(lit ? PAL.orangeLight : 8022586, lit ? 0.95 : 0.5);
+        const c = Math.cos(q.a);
+        const sn = Math.sin(q.a);
+        const pt = (fx, fy) => ({ x: q.x + fx * c - fy * sn, y: q.y + fx * sn + fy * c });
+        const t1 = pt(8, 0);
+        const t2 = pt(-6, -7);
+        const t3 = pt(-6, 7);
+        ud.fillTriangle(t1.x, t1.y, t2.x, t2.y, t3.x, t3.y);
+      }
+      const end = pointAlong(o.center, len - 2);
+      const flash = (this.hitFlash.get(`orb:${o.id}`) ?? 0) / 40;
+      ud.fillStyle(PAL.ink0, 1);
+      ud.fillCircle(end.x, end.y, 17);
+      ud.fillStyle(mix(5917210, PAL.orangeLight, 0.4 + flash * 0.6), 1);
+      ud.fillCircle(end.x, end.y, 13);
+      if (flash > 0) {
+        ud.fillStyle(PAL.orangeLight, 0.4 * flash);
+        ud.fillCircle(end.x, end.y, 30 * (1 - flash) + 14);
+      }
+      this.pU.draw(this.art.firefly, end.x, end.y, { scale: 1 + flash * 0.4 });
     }
     for (const b of this.balls) {
       const lv = this.level.get(b) ?? 1;

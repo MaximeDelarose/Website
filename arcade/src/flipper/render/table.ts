@@ -27,16 +27,14 @@ export interface TableData {
   laneGate: { from: [number, number]; to: [number, number]; openBelowY: number };
   flipper: { length: number; thickness: number; restAngle: number; upAngle: number; speed: number; restitution: number; pivots: { left: [number, number]; right: [number, number] } };
   walls: Array<{ level: Level; pts: Array<[number, number]> }>;
-  /** Contour de l'étage (plateau et rampe) : une bille de niveau 2 qui en sort repasse au niveau 1. */
-  deck: Array<[number, number]>;
-  /** Zone (un peu plus large que le contour, jusqu'à l'entrée de la rampe) où une bille peut rester au niveau 2. */
-  deckZone: Array<[number, number]>;
+  /** Orbites : chemins de rails (niveau 2). `zone` délimite où une bille peut rester au niveau 2 ; `center` sert aux flèches lumineuses. */
+  orbits: Array<{ id: "L" | "R"; center: Array<[number, number]>; zone: Array<[number, number]> }>;
   bumpers: Array<{ id: string; x: number; y: number; r: number; level: 1 | 2 }>;
   targets: Array<{ id: string; x: number; y: number; w: number; h: number }>;
   rollovers: Array<{ id: string; x: number; y: number; w: number; h: number; kind: "letter" | "inlane" | "outlane" }>;
   slingshots: Array<{ points: Array<[number, number]> }>;
   spinners: Array<{ id: string; x: number; y: number; w: number; angle: number; level: 1 | 2 }>;
-  levelGates: Array<{ id: string; x: number; y: number; w: number; h: number; set: 1 | 2; level: 1 | 2; role?: "top" }>;
+  levelGates: Array<{ id: string; x: number; y: number; w: number; h: number; angle?: number; set: 1 | 2; level: 1 | 2; role?: "orbit" }>;
   roulette: { x: number; y: number; r: number };
   drain: { y: number; h: number };
 }
@@ -87,7 +85,7 @@ export function buildStatics(data: TableData): Statics {
     bodies.push(Matter.Bodies.rectangle(s.x, s.y, s.w, 14, { isStatic: true, isSensor: true, angle: s.angle, label: `spinner:${s.id}`, collisionFilter: filter(s.level) }));
   }
   for (const g of data.levelGates) {
-    bodies.push(Matter.Bodies.rectangle(g.x, g.y, g.w, g.h, { isStatic: true, isSensor: true, label: `gate:${g.id}`, collisionFilter: filter(g.level) }));
+    bodies.push(Matter.Bodies.rectangle(g.x, g.y, g.w, g.h, { isStatic: true, isSensor: true, angle: g.angle ?? 0, label: `gate:${g.id}`, collisionFilter: filter(g.level) }));
   }
   for (const s of data.slingshots) {
     const verts = s.points.map(([x, y]) => ({ x, y }));

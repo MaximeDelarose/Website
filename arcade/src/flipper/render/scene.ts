@@ -15,6 +15,29 @@ import { type TableData, CAT, ballMask, buildFlipper, buildStatics, insidePolygo
 import { paintTable } from "./paint.js";
 
 const TICK_MS = 1000 / 60;
+
+/** Longueur d'une polyligne. */
+function pathLength(pts: Array<[number, number]>): number {
+  let l = 0;
+  for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  return l;
+}
+
+/** Point et direction à la distance `dist` le long d'une polyligne. */
+function pointAlong(pts: Array<[number, number]>, dist: number): { x: number; y: number; a: number } {
+  let rest = dist;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i][0] - pts[i - 1][0];
+    const dy = pts[i][1] - pts[i - 1][1];
+    const seg = Math.hypot(dx, dy) || 1;
+    if (rest <= seg || i === pts.length - 1) {
+      const k = Math.min(1, rest / seg);
+      return { x: pts[i - 1][0] + dx * k, y: pts[i - 1][1] + dy * k, a: Math.atan2(dy, dx) };
+    }
+    rest -= seg;
+  }
+  return { x: pts[0][0], y: pts[0][1], a: 0 };
+}
 export const TOUCH = isTouch();
 export const GAME_W = 800;
 export const GAME_H = TOUCH ? 1130 : 960;
@@ -169,7 +192,7 @@ export class FlipperScene extends Phaser.Scene {
     panel(RX, TY, 300, "MISSIONS");
     small(RX + 12, TY + 44, "3 cibles = bille");
     small(RX + 12, TY + 114, "3 lettres = bonus");
-    small(RX + 12, TY + 184, "3 rampes = jackpot");
+    small(RX + 12, TY + 184, "3 orbites = jackpot");
     small(RX + 12, TY + 254, "Roulette :");
     for (let i = 0; i < 5; i++) {
       makeText(this, LX + 70, TY + 330 + (4 - i) * 30, `×${i + 1}`, 18, PAL.panel2, { font: FONT_BODY, origin: [0, 0.5], strokeW: 3, shadow: false }).setDepth(5);
@@ -461,7 +484,7 @@ export class FlipperScene extends Phaser.Scene {
         tr.push({ x: b.position.x, y: b.position.y });
         if (tr.length > 14) tr.shift();
       }
-      if (this.level.get(b) === 2 && !insidePolygon(d.deckZone, b.position.x, b.position.y)) this.setLevel(b, 1);
+      if (this.level.get(b) === 2 && !d.orbits.some((o) => insidePolygon(o.zone, b.position.x, b.position.y))) this.setLevel(b, 1);
       const speed = Math.hypot(b.velocity.x, b.velocity.y);
       // Garde-fou : une bille immobile dans le couloir est rendue au plongeur.
       if (!this.readyBall && this.balls.length === 1 && !this.roul && b.position.x > d.launch.x - 16 && b.position.y > d.launch.y - 60 && speed < 1) {
@@ -605,13 +628,12 @@ export class FlipperScene extends Phaser.Scene {
       const g = d.levelGates.find((x) => x.id === id);
       this.pending.push(() => {
         if (!g || !this.balls.includes(ball)) return;
-        if (g.role === "top") {
-          if (ball.velocity.y < 0) this.rampDone(ball);
+        if (g.role === "orbit") {
+          this.orbitDone(ball, g.id === "orbL_end" ? "L" : "R");
+          this.setLevel(ball, 1);
         } else if (g.set === 2) {
-          if (ball.velocity.y < -1 && ball.position.x > 46 && ball.position.x < 78) this.setLevel(ball, 2);
-        } else if (g.id === "ramp_out") {
-          if (ball.velocity.y > 0) this.setLevel(ball, 1);
-        } else {
+          if (ball.velocity.y < -1) this.setLevel(ball, 2);
+        } else if (ball.velocity.y > 0) {
           this.setLevel(ball, 1);
         }
       });
@@ -623,10 +645,19 @@ export class FlipperScene extends Phaser.Scene {
     }
   }
 
-  private rampDone(ball: MatterType.Body): void {
+  /** Bout d'une orbite : points, lettre (gauche) ou multiplicateur (droite), et jackpot au troisième passage. */
+  private orbitDone(ball: MatterType.Body, side: "L" | "R"): void {
     const jackpot = this.rules.ramp();
-    this.fx.burst(ball.position.x, ball.position.y, { n: 12, color: [PAL.orangeLight, PAL.cream], speed: 240, life: 520, size: 7, gravity: 200 });
+    if (side === "L") {
+      const next = this.table.rollovers.find((r) => r.kind === "letter" && !this.rules.lit(r.id));
+      if (next) this.rules.rollover(next.id);
+    } else {
+      this.rules.raiseMult();
+    }
+    this.hitFlash.set(`orb:${side}`, 40);
+    this.fx.burst(ball.position.x, ball.position.y, { n: 14, color: [PAL.orangeLight, PAL.cream, PAL.leaf], speed: 260, life: 560, size: 7, gravity: 200 });
     arp([523, 659, 784], 0.05, { vol: 0.045 });
+    popText(this, TX + ball.position.x, TY + ball.position.y + 40, side === "L" ? "ORBITE : LETTRE" : "ORBITE : BONUS", 24, PAL.orangeLight, { ms: 1000, rise: 30 });
     if (jackpot) this.spawnExtraBall();
   }
 
@@ -850,11 +881,34 @@ export class FlipperScene extends Phaser.Scene {
       ud.fillCircle(b.x, b.y, r);
       this.pU.draw(this.art.mushSmall, b.x, b.y - 2, { scale: 1 + pulse * 0.16 });
     }
-    const chase = Math.floor(now / 140) % 4;
-    for (let i = 0; i < 4; i++) {
-      const y = 470 - i * 34;
-      ud.fillStyle(i === chase ? PAL.orangeLight : 0x5a3b24, 1);
-      ud.fillTriangle(62 - 9, y + 6, 62 + 9, y + 6, 62, y - 8);
+    // orbites : flèches lumineuses qui avancent dans le sens de la marche, voyant de bonus au bout
+    for (const o of d.orbits) {
+      const len = pathLength(o.center);
+      const step = 46;
+      const phase = (now / 14) % step;
+      for (let dist = phase; dist < len; dist += step) {
+        const q = pointAlong(o.center, dist);
+        const lit = ((dist - phase) / step + Math.floor(now / 260)) % 3 === 0;
+        ud.fillStyle(lit ? PAL.orangeLight : 0x7a6a3a, lit ? 0.95 : 0.5);
+        const c = Math.cos(q.a);
+        const sn = Math.sin(q.a);
+        const pt = (fx: number, fy: number): { x: number; y: number } => ({ x: q.x + fx * c - fy * sn, y: q.y + fx * sn + fy * c });
+        const t1 = pt(8, 0);
+        const t2 = pt(-6, -7);
+        const t3 = pt(-6, 7);
+        ud.fillTriangle(t1.x, t1.y, t2.x, t2.y, t3.x, t3.y);
+      }
+      const end = pointAlong(o.center, len - 2);
+      const flash = (this.hitFlash.get(`orb:${o.id}`) ?? 0) / 40;
+      ud.fillStyle(PAL.ink0, 1);
+      ud.fillCircle(end.x, end.y, 17);
+      ud.fillStyle(mix(0x5a4a1a, PAL.orangeLight, 0.4 + flash * 0.6), 1);
+      ud.fillCircle(end.x, end.y, 13);
+      if (flash > 0) {
+        ud.fillStyle(PAL.orangeLight, 0.4 * flash);
+        ud.fillCircle(end.x, end.y, 30 * (1 - flash) + 14);
+      }
+      this.pU.draw(this.art.firefly, end.x, end.y, { scale: 1 + flash * 0.4 });
     }
 
     // billes : traînée, ombre portée à l'étage, sprite

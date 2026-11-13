@@ -16,11 +16,10 @@ function strokeLine(g: G, pts: Array<[number, number]>, width: number, color: nu
 }
 
 /** Rail : ombre portée (étage), contour sombre, corps brun, reflet. */
-function rail(g: G, pts: Array<[number, number]>, raised: boolean): void {
-  if (raised) strokeLine(g, pts, 14, PAL.ink0, 0.35, 7, 10);
+function rail(g: G, pts: Array<[number, number]>): void {
   strokeLine(g, pts, 18, PAL.ink0);
-  strokeLine(g, pts, 10, raised ? PAL.orangeLight : PAL.cap);
-  strokeLine(g, pts, 3, raised ? 0xffffff : PAL.tan, raised ? 0.5 : 0.7);
+  strokeLine(g, pts, 10, PAL.cap);
+  strokeLine(g, pts, 3, PAL.tan, 0.7);
 }
 
 /**
@@ -53,29 +52,25 @@ export function paintTable(scene: Scene, d: TableData, tx: number, ty: number): 
 
   // rails du plateau et de la coque
   const walls = scene.add.graphics().setDepth(2).setPosition(tx, ty);
-  for (const w of d.walls) if (w.level !== 2) rail(walls, w.pts, false);
+  for (const w of d.walls) if (w.level !== 2) rail(walls, w.pts);
   // porte du couloir
   const [gf, gt] = [d.laneGate.from, d.laneGate.to];
   strokeLine(walls, [gf, gt], 14, PAL.ink0);
   strokeLine(walls, [gf, gt], 7, PAL.leaf);
 
-  // étage : plateau supérieur et rampe, au-dessus du plateau
+  // orbites : couloirs teintés (on voit à travers) puis rails en tubes par-dessus
   const upper = scene.add.graphics().setDepth(12).setPosition(tx, ty);
-  const deck = d.deck;
-  const poly = (dx: number, dy: number): Array<{ x: number; y: number }> => deck.map(([x, y]) => ({ x: x + dx, y: y + dy }));
-  upper.fillStyle(PAL.ink0, 0.3);
-  upper.fillPoints(poly(8, 12), true);
-  upper.fillStyle(0x6b4a30, 0.92);
-  upper.fillPoints(poly(0, 0), true);
-  upper.fillStyle(0x7d5a3c, 0.9);
-  upper.fillPoints(deck.map(([x, y]) => ({ x: x + (x < 120 ? 8 : -8), y: y + (y < 300 ? 8 : -8) })), true);
-  // veines du bois
-  upper.lineStyle(2, 0x5f4029, 0.6);
-  for (let y = 190; y < 340; y += 26) {
-    upper.beginPath();
-    upper.moveTo(58, y);
-    upper.lineTo(188, y + 6);
-    upper.strokePath();
+  for (const o of d.orbits) {
+    upper.fillStyle(PAL.orangeLight, 0.1);
+    upper.fillPoints(o.zone.map(([x, y]) => ({ x, y })), true);
   }
-  for (const w of d.walls) if (w.level === 2) rail(upper, w.pts, true);
+  for (const w of d.walls) if (w.level === 2) tube(upper, w.pts);
+}
+
+/** Rail d'orbite : tube de métal translucide avec ombre portée sur la table. */
+function tube(g: G, pts: Array<[number, number]>): void {
+  strokeLine(g, pts, 9, PAL.ink0, 0.28, 6, 9);
+  strokeLine(g, pts, 13, PAL.ink0, 0.9);
+  strokeLine(g, pts, 7, 0xcfd8dc, 0.95);
+  strokeLine(g, pts, 2, 0xffffff, 0.85, -1, -1);
 }
