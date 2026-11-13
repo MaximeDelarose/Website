@@ -22,6 +22,9 @@
   canvas{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   @media (pointer:coarse){.back{display:none}}
   body.pseudo .back{display:none}
+  #nm,#rc{position:fixed;display:none;z-index:5;box-sizing:border-box;background:#141A3A;color:#F3E7C8;border:3px solid #E8C65A;border-radius:12px;font-family:'Fredoka',system-ui,sans-serif;font-weight:600;text-align:center;outline:none;padding:0 8px}
+  #rc{text-transform:uppercase;letter-spacing:.25em}
+  #nm::placeholder,#rc::placeholder{color:#7E85B0;letter-spacing:0}
   #sa{position:fixed;left:-9999px;top:0;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);visibility:hidden}
 </style>
 </head>
@@ -29,6 +32,11 @@
 <canvas id="c" aria-label="CATOWER"></canvas>
 <div id="sa"></div>
 <a class="back" href="jeux.html">← Tous les jeux</a>
+<input id="nm" maxlength="12" placeholder="Ton pseudo" autocomplete="off" spellcheck="false">
+<input id="rc" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false">
+<script src="js/data.js?v=20261118ft1"></script>
+<script src="js/vendor/supabase-2.45.4.min.js"></script>
+<script src="js/kingdice-net.js?v=20261106kd200"></script>
 <script>
 "use strict";
 (() => {
@@ -37,7 +45,7 @@ const C = {ink:'#150F2A', line:'#E8C65A', text:'#F3E7C8', muted:'#A9A3C4', night
   pink:'#FF8FB4', pinkSoft:'#FFD9E6', gold:'#F4C542', goldDark:'#B8860B', violet:'#8E7BFF', coral:'#F0566E', mint:'#1F4B4A', mintDark:'#2FBF85',
   grass:'#16372F', road:'#5B4730', roadEdge:'#8F6F3A', fur:'#FFB86B', furLight:'#FFE6C4', milk:'#E8ECFF', sky:'#09130F', water:'#8FD3FF', lilac:'#A58BFF', goldText:'#F4C542'};
 const cv = document.getElementById('c'), mctx = cv.getContext('2d'); let ctx = mctx;
-const wc = document.createElement('canvas'), wctx = wc.getContext('2d'), pcv = document.createElement('canvas'), pctx = pcv.getContext('2d'); let PX = 3;
+const wc = document.createElement('canvas'), wctx = wc.getContext('2d', {willReadFrequently:true}), pcv = document.createElement('canvas'), pctx = pcv.getContext('2d'); let PX = 3;
 let W = 0, H = 0, DPR = 1, S = 40, K = 1, touch = matchMedia('(pointer:coarse)').matches;
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
@@ -186,7 +194,7 @@ const HEROES = [
       cast:(a, rk) => { const n = rk >= 3 ? 2 : 1; for (let i = 0; i < n; i++) { const an = Math.atan2(a.dz, a.dx) + (n > 1 ? (i ? .25 : -.25) : 0), b = {dx:Math.cos(an), dz:Math.sin(an)}; mkProj({x:hero.x, z:hero.z, dx:b.dx, dz:b.dz, speed:15, life:1.6, damage:24 * rkm(rk) * heroAtk(), splash:1.6 + .3 * (rk - 1), markTime:rk >= 4 ? 7 : 4, size:.55, color:'#8E7BFF', shape:'shadow', target:coneTarget(b, 13)}); } sfx('q', .8); }},
      {key:'w', pc:'R', label:'W', ico:'ghost', name:'Invocation spectrale', cd:11, req:[2, 4, 6, 8], max:4, aim:'self', range:0, radius:3, desc:'Des spectres combattent à tes côtés',
       perks:['3 spectres pendant 9 s', '4 spectres, dégâts +25 %', '5 spectres, dégâts +25 %', 'Spectres plus durables et plus forts'],
-      cast:(a, rk) => { const n = Math.min(5, 2 + rk); for (let i = 0; i < n; i++) { const an = i * TAU / n; mkAlly({kind:'ghost', x:hero.x + Math.cos(an) * 1.3, z:hero.z + Math.sin(an) * 1.3, life:8 + rk * 1.5, dmg:(5 + 1.5 * g.lvl) * (1 + .25 * (rk - 1)), speed:6.6, fromTower:false, leash:11}); } burst(hero.x, hero.z, .8, '#8E7BFF', 14, .15, 5); ring(hero.x, hero.z, 3, '#8E7BFF'); sfx('level', .7); }},
+      cast:(a, rk) => { const n = Math.min(5, 2 + rk); for (let i = 0; i < n; i++) { const an = i * TAU / n; mkAlly({kind:'ghost', home:hero, x:hero.x + Math.cos(an) * 1.3, z:hero.z + Math.sin(an) * 1.3, life:8 + rk * 1.5, dmg:(5 + 1.5 * g.lvl) * (1 + .25 * (rk - 1)), speed:6.6, fromTower:false, leash:11}); } burst(hero.x, hero.z, .8, '#8E7BFF', 14, .15, 5); ring(hero.x, hero.z, 3, '#8E7BFF'); sfx('level', .7); }},
      {key:'e', pc:'F', label:'E', ico:'eclipse', name:'Éclipse', cd:22, req:[4, 7, 10], max:3, aim:'self', range:0, radius:8, desc:'Ténèbres : ralentit, blesse, tourelles plus rapides (ultime)',
       perks:['Ténèbres qui ralentissent et blessent', 'Zone +0.6, dégâts +50 %', 'Étourdit 1 s au lancement, dégâts +50 %'],
       cast:(a, rk) => { const r = 8 + .6 * (rk - 1); zones.push({kind:'eclipse', x:hero.x, z:hero.z, r, t:0, life:5, dps:(10 + 3 * g.lvl) * (1 + .5 * (rk - 1)) * heroAtk()}); if (rk >= 3) for (const e of inRange(hero.x, hero.z, r)) e.stunT = Math.max(e.stunT, 1); sfx('e', .6); shake = Math.max(shake, .2); }},
@@ -212,7 +220,8 @@ const HEROES = [
 let ac = null; const lastSfx = {};
 const SFX = {hit:[500,.05,.22,-250],pick:[900,.1,.3,500],xp:[600,.08,.18,300],shoot:[300,.07,.2,400],build:[300,.2,.3,300],upgrade:[500,.3,.3,600],
   splash:[220,.15,.25,-100],core:[110,.35,.4,-60],level:[660,.4,.3,500],e:[180,.3,.35,200],q:[700,.1,.25,-300],w:[400,.12,.25,500],error:[160,.12,.25,-40]};
-function sfx(k, pitch = 1) {
+function sfx(...a) { qfx('s', a); sfx0(...a); }
+function sfx0(k, pitch = 1) {
   if (!ac) return; const now = ac.currentTime; if (lastSfx[k] && now - lastSfx[k] < .04) return; lastSfx[k] = now;
   const [f, d, v, sl] = SFX[k], o = ac.createOscillator(), g = ac.createGain();
   o.frequency.setValueAtTime(f * pitch, now); o.frequency.linearRampToValueAtTime(Math.max(40, (f + sl) * pitch), now + d);
@@ -222,29 +231,35 @@ function sfx(k, pitch = 1) {
 
 // ---------------- État ----------------
 let g, enemies, towers, projs, picks, parts, rings, floaters, hero, cam, ui = [], mouse = {x:0, y:0, down2:false}, keys = {}, sel, buildIdx, paused = false, shake = 0;
-const joy = {id:null, ox:0, oy:0, x:0, y:0, vx:0, vz:0}, ptrs = new Map(); let atkHeld = false, portrait = false, atkAim = null, zones = [], slashes = [], allies = [], scr = 'menu', selHero = 0, showHelp = false, trayOpen = false, previewPad = null;
+const joy = {id:null, ox:0, oy:0, x:0, y:0, vx:0, vz:0}, ptrs = new Map(); const NET = {on:false, host:false, guest:false, conn:null, code:'', id:'p' + Math.random().toString(36).slice(2, 8), name:'', roster:[], status:'', playing:false, snapT:0, inT:0, lastSnap:0, ts:0, joinAt:0};
+const fxq = []; let party = [], ME = null, pendingSetup = null, netErr = '', myHi = 0, myReady = false, towerSeq = 0, enemySeq = 0, inp = null;
+let atkHeld = false, portrait = false, atkAim = null, zones = [], slashes = [], allies = [], scr = 'menu', selHero = 0, showHelp = false, trayOpen = false, previewPad = null;
 const pads = PADPOS.map(p => ({x:p[0], z:p[1], tower:null}));
 function reset() {
   g = {phase:'prep', seq:0, wave:0, cro:150, coreMax:30, coreHp:30, xp:0, lvl:1, points:0, xpFlash:0, banner:'Bienvenue ! Construis une tourelle, puis lance les vagues.', bannerT:6, nextWave:0, time:0, pending:[], pulse:0};
   enemies = []; towers = []; projs = []; picks = []; parts = []; rings = []; floaters = []; sel = null; buildIdx = -1; shake = 0; zones = []; slashes = []; allies = []; trayOpen = false; previewPad = null; atkHeld = false; atkAim = null;
   pads.forEach(p => p.tower = null);
-  hero = {x:-6, z:2, fx:0, fz:1, mt:null, target:null, atk:0, cd:[0,0,0], dash:0, dvx:0, dvz:0, moving:false, t:0, hit:0, hp:HD.stats.hp, maxHp:HD.stats.hp, rank:[1,0,0], dead:false, deathT:0, resp:0, inv:0, hurt:0, combat:99, lvlFx:0, kx:0, kz:0, blockMax:3, n:0};
-  cam = {x:-6, z:2};
+  const su = pendingSetup || [{id:'solo', name:'Moi', hi:selHero}]; party = su.map((q, i) => mkHero(HEROES[q.hi], q.id, q.name, q.hi, i)); ME = party.find(h => h.pid === (pendingSetup ? NET.id : 'solo')) || party[0]; party.forEach(h => { h.remote = !!pendingSetup && NET.host && h !== ME; }); useHero(ME); TOWERS = ME.hd.towers;
+  cam = {x:ME.x, z:ME.z};
 }
 HD = HEROES[0]; ABIL = HD.abilities; TOWERS = HD.towers; reset();
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const rnd = (a, b) => a + Math.random() * (b - a);
-const banner = (s, t = 3) => { g.banner = s; g.bannerT = t; };
-function burst(x, z, y, color, n = 8, size = .12, speed = 4) {
+const banner0 = (s, t = 3) => { g.banner = s; g.bannerT = t; };
+const banner = (s, t = 3) => { qfx('n', [s, t]); banner0(s, t); };
+function burst(...a) { qfx('b', a); burst0(...a); }
+function burst0(x, z, y, color, n = 8, size = .12, speed = 4) {
   for (let i = 0; i < n; i++) { const a = Math.random() * TAU, sp = rnd(.4, 1) * speed;
     parts.push({x, z, y, vx:Math.cos(a) * sp, vz:Math.sin(a) * sp * .6, vy:rnd(1, 4), life:rnd(.3, .6), max:.6, size, color}); }
 }
-function ring(x, z, r, color, life = .35) { rings.push({x, z, r, color, t:0, life}); }
-function pop(x, z, y, text, color, size = 20) { floaters.push({x:x + rnd(-.3, .3), z, y, text, color, t:0, life:.9, size}); }
+function ring(...a) { qfx('r', a); ring0(...a); }
+function ring0(x, z, r, color, life = .35) { rings.push({x, z, r, color, t:0, life}); }
+function pop(...a) { qfx('p', a); pop0(...a); }
+function pop0(x, z, y, text, color, size = 20) { floaters.push({x:x + rnd(-.3, .3), z, y, text, color, t:0, life:.9, size}); }
 
 // ---------------- Ennemis ----------------
 function spawnEnemy(def, hpScale, dmgScale = 1) {
-  const e = {def, hp:def.hp * hpScale, max:def.hp * hpScale, d:0, lane:rnd(-.8, .8) * (def.boss ? .2 : 1), slowMul:1, slowT:0, stunT:0, markT:0, flash:0, x:0, z:0, dx:1, dz:0, dead:false, t:Math.random() * 6, acd:rnd(.2, def.atk.cd), blockT:0, ignoreT:0, blocked:false, lunge:0, dmgMul:dmgScale, slamT:def.slam ? def.slam.cd * .6 : 0};
+  const e = {def, hp:def.hp * hpScale, max:def.hp * hpScale, d:0, lane:rnd(-.8, .8) * (def.boss ? .2 : 1), slowMul:1, slowT:0, stunT:0, markT:0, flash:0, x:0, z:0, dx:1, dz:0, dead:false, t:Math.random() * 6, id:++enemySeq, barT:0, acd:rnd(.2, def.atk.cd), blockT:0, ignoreT:0, blocked:false, lunge:0, dmgMul:dmgScale, slamT:def.slam ? def.slam.cd * .6 : 0};
   enemies.push(e); placeEnemy(e); return e;
 }
 function placeEnemy(e) { const p = pointAt(e.d); e.dx = p.dx; e.dz = p.dz; e.x = p.x - p.dz * e.lane; e.z = p.z + p.dx * e.lane; }
@@ -252,7 +267,7 @@ function inRange(x, z, r) { return enemies.filter(e => !e.dead && Math.hypot(e.x
 function hitEnemy(e, dmg, fromTower, showNum = true) {
   if (e.dead) return;
   if (fromTower && e.markT > 0) dmg *= 1.25;
-  e.hp -= dmg; e.flash = 1;
+  e.hp -= dmg; e.flash = 1; e.barT = 3.5;
   if (showNum) { pop(e.x, e.z, e.def.r * 2.2, String(Math.round(dmg)), e.markT > 0 ? C.violet : '#fff'); sfx('hit', rnd(.9, 1.15)); }
   if (e.hp <= 0) killEnemy(e);
 }
@@ -275,6 +290,7 @@ function mkPick(kind, value, x, z, scale) {
   picks.push({kind, value, x, z, y:.6, vx:Math.cos(a) * sp, vz:Math.sin(a) * sp, vy:rnd(4, 6), ground:false, t:0, life:12, scale, ph:Math.random() * 6});
 }
 let combo = 0, lastPick = -9;
+function nearestHero(p) { let b = null, bd = 1e9; for (const h of party) { if (h.dead) continue; const d = flat(p, h); if (d < bd) { bd = d; b = h; } } return b; }
 function updatePicks(dt) {
   for (const p of picks) {
     p.t += dt;
@@ -284,19 +300,19 @@ function updatePicks(dt) {
       if (p.y <= 0 && p.vy < 0) { p.y = 0; p.ground = true; }
       continue;
     }
-    const d = flat(p, hero);
+    const hh = nearestHero(p), d = hh ? flat(p, hh) : 1e9;
     if (p.kind === 'x') {
-      if (p.t > .5) {
-        const sp = 8 + (p.t - .5) * 14, dd = Math.max(.001, d); p.x += (hero.x - p.x) / dd * Math.min(dd, sp * dt); p.z += (hero.z - p.z) / dd * Math.min(dd, sp * dt); p.y = .6;
+      if (p.t > .5 && hh) {
+        const sp = 8 + (p.t - .5) * 14, dd = Math.max(.001, d); p.x += (hh.x - p.x) / dd * Math.min(dd, sp * dt); p.z += (hh.z - p.z) / dd * Math.min(dd, sp * dt); p.y = .6;
         if (d < .4) { addXp(p.value); sfx('xp', 1.2); p.dead = true; }
       }
       continue;
     }
     p.life -= dt; if (p.life <= 0) { burst(p.x, p.z, .2, C.gold, 4, .1); p.dead = true; continue; }
     const magnet = 2.6 * p.scale, collect = p.scale + .3;
-    if (d < magnet) { const sp = Math.min(d, 10 * dt) / Math.max(d, .001); p.x += (hero.x - p.x) * sp; p.z += (hero.z - p.z) * sp; p.y = 0; }
+    if (hh && d < magnet) { const sp = Math.min(d, 10 * dt) / Math.max(d, .001); p.x += (hh.x - p.x) * sp; p.z += (hh.z - p.z) * sp; p.y = 0; }
     else p.y = .08 + .08 * Math.sin(p.t * 4 + p.ph);
-    if (d < collect) {
+    if (hh && d < collect) {
       g.cro += p.value; combo = (g.time - lastPick < .6) ? Math.min(combo + 1, 8) : 0; lastPick = g.time;
       pop(p.x, p.z, 1, '+' + p.value, C.gold, p.value >= 20 ? 26 : 20); burst(p.x, p.z, .3, C.gold, 5, .1, 3); sfx('pick', 1 + combo * .06); p.dead = true;
     }
@@ -306,9 +322,9 @@ function updatePicks(dt) {
 function addXp(v) {
   g.xp += v; g.xpFlash = .4;
   while (g.lvl < MAXLVL && g.xp >= XP_T[g.lvl - 1]) {
-    g.lvl++; g.points++; const old = hero.maxHp; hero.maxHp = heroMaxHp(); if (!hero.dead) hero.hp = Math.min(hero.maxHp, hero.hp + (hero.maxHp - old) + hero.maxHp * .25);
-    hero.lvlFx = 1.6; banner('NIVEAU ' + g.lvl + ' !  +1 point de compétence', 3.2);
-    sfx('level'); burst(hero.x, hero.z, 1, C.gold, 20, .16, 7); ring(hero.x, hero.z, 5, C.gold, .6); ring(hero.x, hero.z, 3, '#fff', .4);
+    g.lvl++;
+    for (const h of party) { h.points++; const old = h.maxHp; h.maxHp = maxHpOf(h); if (!h.dead) h.hp = Math.min(h.maxHp, h.hp + (h.maxHp - old) + h.maxHp * .25); h.lvlFx = 1.6; burst(h.x, h.z, 1, C.gold, 20, .16, 7); ring(h.x, h.z, 5, C.gold, .6); ring(h.x, h.z, 3, '#fff', .4); }
+    banner('NIVEAU ' + g.lvl + ' !  +1 point de compétence', 3.2); sfx('level');
   }
 }
 
@@ -335,7 +351,7 @@ function applyProj(p, e) { hitEnemy(e, p.damage, p.tower); if (p.slowTime > 0) s
 
 // ---------------- Tourelles ----------------
 function buildTower(def, pad) {
-  const t = {def, s:Object.assign({}, def.stats), pad, x:pad.x, z:pad.z, tiers:[0, 0], invested:def.cost, boost:0, cd:def.kind === 'spawn' ? 1.5 : 1, ang:0, aura:0, auraCrit:0, auraCoin:false, hc:0, beams:[], ph:Math.random() * 6};
+  const t = {id:++towerSeq, def, s:Object.assign({}, def.stats), pad, x:pad.x, z:pad.z, tiers:[0, 0], invested:def.cost, boost:0, cd:def.kind === 'spawn' ? 1.5 : 1, ang:0, aura:0, auraCrit:0, auraCoin:false, hc:0, beams:[], ph:Math.random() * 6};
   pad.tower = t; towers.push(t); burst(t.x, t.z, .5, def.color, 12, .15, 4); ring(t.x, t.z, 2.2, def.color); sfx('build'); return t;
 }
 function canUpgrade(t, p) {
@@ -344,6 +360,7 @@ function canUpgrade(t, p) {
   return '';
 }
 function upgrade(t, p) {
+  if (NET.guest) { const why0 = canUpgrade(t, p); if (why0) { banner(why0, 2); sfx('error'); } else netReq({op:'up', id:t.id, p}); return; }
   const why = canUpgrade(t, p); if (why) { banner(why, 2); sfx('error'); return; }
   const step = t.def.paths[p][t.tiers[p]];
   if (g.cro < step.cost) { banner('Pas assez de croquettes', 1.5); sfx('error'); return; }
@@ -352,6 +369,7 @@ function upgrade(t, p) {
   if (t.tiers[p] === 5) banner('Amélioration ultime : ' + step.name + ' !');
 }
 function sellTower(t) {
+  if (NET.guest) { netReq({op:'sell', id:t.id}); if (sel === t) sel = null; return; }
   const v = Math.round(t.invested * .7); g.cro += v; pop(t.x, t.z, 2, '+' + v, C.gold); burst(t.x, t.z, 1, t.def.color, 10, .13);
   t.pad.tower = null; towers = towers.filter(o => o !== t); allies = allies.filter(a => a.owner !== t); if (sel === t) sel = null; sfx('build', .7);
 }
@@ -407,7 +425,7 @@ function updateTowers(dt) {
 function updateAllies(dt) {
   for (const a of allies) {
     a.life -= dt; a.cd -= dt; a.ph += dt;
-    const home = a.owner || hero; let tgt = null, bd = 99;
+    const home = a.owner || a.home || hero; let tgt = null, bd = 99;
     for (const e of enemies) { if (e.dead) continue; const d = Math.hypot(e.x - a.x, e.z - a.z); if (d < bd && Math.hypot(e.x - home.x, e.z - home.z) <= a.leash) { bd = d; tgt = e; } }
     let gx, gz;
     if (tgt) { gx = tgt.x; gz = tgt.z; if (bd < tgt.def.r + .7) { slow(tgt, .6, .25); if (a.cd <= 0) { a.cd = .5; hitEnemy(tgt, a.dmg, a.fromTower, false); if (a.curse) tgt.markT = Math.max(tgt.markT, 3); if (a.chill) slow(tgt, .5, 1.2); burst(tgt.x, tgt.z, .6, a.kind === 'ghost' ? '#B9A6FF' : '#D9B88A', 3, .08, 2); } } }
@@ -419,33 +437,35 @@ function updateAllies(dt) {
 }
 
 // ---------------- Héros ----------------
-const inp = {mx:0, mz:0, atk:false, casts:[]};
-const heroMaxHp = () => Math.round(HD.stats.hp * (1 + .12 * (g.lvl - 1)));
-const heroDef = () => HD.stats.def + (g.lvl - 1) * .7;
-const heroAtk = () => 1 + .08 * (g.lvl - 1);
-const heroSpeed = () => HD.moveSpeed + .06 * (g.lvl - 1);
-function canLearn(i) { const a = ABIL[i], r = hero.rank[i]; return !hero.dead && g.points > 0 && r < a.max && g.lvl >= a.req[r]; }
+const heroDefOf = h => h.hd.stats.def + (g.lvl - 1) * .7, maxHpOf = h => Math.round(h.hd.stats.hp * (1 + .12 * (g.lvl - 1)));
+const heroMaxHp = () => maxHpOf(hero), heroDef = () => heroDefOf(hero), heroAtk = () => 1 + .08 * (g.lvl - 1), heroSpeed = () => HD.moveSpeed + .06 * (g.lvl - 1);
+function mkHero(hd, pid, name, hi, i) {
+  return {pid, name, hi, hd, x:-6 + i * 1.8, z:2 + (i % 2) * 1.4, fx:0, fz:1, mt:null, target:null, atk:0, cd:[0, 0, 0], dash:0, dvx:0, dvz:0, moving:false, t:0, hit:0, hp:hd.stats.hp, maxHp:hd.stats.hp, rank:[1, 0, 0], points:0, dead:false, deathT:0, resp:0, inv:0, hurt:0, combat:99, lvlFx:0, kx:0, kz:0, blockMax:3, n:0, inp:{mx:0, mz:0, atk:false, casts:[]}, remote:false, remoteIn:null};
+}
+function useHero(h) { hero = h; HD = h.hd; ABIL = HD.abilities; inp = h.inp; }
+function canLearn(i) { const a = ABIL[i], r = hero.rank[i]; return !hero.dead && hero.points > 0 && r < a.max && g.lvl >= a.req[r]; }
 function learn(i) {
+  if (NET.guest) { if (canLearn(i)) netReq({op:'learn', i}); else sfx('error'); return; }
   if (!canLearn(i)) { sfx('error'); return; }
-  const a = ABIL[i]; g.points--; hero.rank[i]++; const r = hero.rank[i];
+  const a = ABIL[i]; hero.points--; hero.rank[i]++; const r = hero.rank[i];
   banner(a.name + ' · rang ' + r + ' : ' + a.perks[r - 1], 3.2); sfx('upgrade', 1.1 + .1 * r); ring(hero.x, hero.z, 3, C.gold, .5); burst(hero.x, hero.z, 1, C.gold, 14, .14, 5); hero.lvlFx = Math.max(hero.lvlFx, .7);
 }
-function hurtHero(raw, src) {
-  if (hero.dead || hero.inv > 0) return;
-  const df = heroDef(), dmg = Math.max(1, raw * (1 - df / (df + 10)));
-  hero.hp -= dmg; hero.hurt = .35; hero.combat = 0; hero.hit = 1;
-  pop(hero.x, hero.z, 2.5, '-' + Math.round(dmg), '#FF5C6C', 22); burst(hero.x, hero.z, 1, '#FF5C6C', 6, .12, 4); sfx('core', 1.6); shake = Math.max(shake, .06);
-  if (src) { const d = Math.hypot(hero.x - src.x, hero.z - src.z) || 1; hero.kx = (hero.x - src.x) / d * 3; hero.kz = (hero.z - src.z) / d * 3; }
-  if (hero.hp <= 0) killHero();
+function hurtHero(raw, src, h = hero) {
+  if (h.dead || h.inv > 0) return;
+  const df = heroDefOf(h), dmg = Math.max(1, raw * (1 - df / (df + 10)));
+  h.hp -= dmg; h.hurt = .35; h.combat = 0; h.hit = 1;
+  pop(h.x, h.z, 2.5, '-' + Math.round(dmg), '#FF5C6C', 22); burst(h.x, h.z, 1, '#FF5C6C', 6, .12, 4); sfx('core', 1.6); shake = Math.max(shake, .06);
+  if (src) { const d = Math.hypot(h.x - src.x, h.z - src.z) || 1; h.kx = (h.x - src.x) / d * 3; h.kz = (h.z - src.z) / d * 3; }
+  if (h.hp <= 0) killHero(h);
 }
-function knockHero(e, d) { const l = Math.hypot(hero.x - e.x, hero.z - e.z) || 1; hero.kx = (hero.x - e.x) / l * d * 4; hero.kz = (hero.z - e.z) / l * d * 4; hero.hurt = .3; shake = Math.max(shake, .1); }
-function killHero() {
-  hero.dead = true; hero.hp = 0; hero.deathT = 0; hero.resp = Math.min(16, 5 + 1.2 * g.lvl); hero.target = null; hero.mt = null; hero.dash = 0; atkHeld = false; atkAim = null; joy.vx = joy.vz = 0;
-  burst(hero.x, hero.z, 1, '#fff', 14, .14, 5); burst(hero.x, hero.z, 1, HD.look.glow, 10, .14, 4); ring(hero.x, hero.z, 3, HD.look.glow, .6); sfx('core', .6);
+function knockHero(e, d, h = hero) { if (!h) return; const l = Math.hypot(h.x - e.x, h.z - e.z) || 1; h.kx = (h.x - e.x) / l * d * 4; h.kz = (h.z - e.z) / l * d * 4; h.hurt = .3; shake = Math.max(shake, .1); }
+function killHero(h = hero) {
+  h.dead = true; h.hp = 0; h.deathT = 0; h.resp = Math.min(16, 5 + 1.2 * g.lvl); h.target = null; h.mt = null; h.dash = 0; if (h === ME) { atkHeld = false; atkAim = null; joy.vx = joy.vz = 0; }
+  burst(h.x, h.z, 1, '#fff', 14, .14, 5); burst(h.x, h.z, 1, h.hd.look.glow, 10, .14, 4); ring(h.x, h.z, 3, h.hd.look.glow, .6); sfx('core', .6);
 }
-function respawnHero() {
-  hero.dead = false; hero.hp = hero.maxHp; hero.x = 22.5; hero.z = -2.6; hero.inv = 2.5; hero.hurt = 0; hero.kx = hero.kz = 0; hero.combat = 99;
-  burst(hero.x, hero.z, 1, C.gold, 16, .16, 6); ring(hero.x, hero.z, 4, C.gold, .6); sfx('level', 1.3); banner(HD.name + ' est de retour !', 2.2); cam.x = hero.x; cam.z = hero.z;
+function respawnHero(h = hero) {
+  h.dead = false; h.hp = h.maxHp; h.x = 22.5 + (party.indexOf(h) % 2) * 1.2; h.z = -2.6 + (party.indexOf(h) > 1 ? 1.5 : 0); h.inv = 2.5; h.hurt = 0; h.kx = h.kz = 0; h.combat = 99;
+  burst(h.x, h.z, 1, C.gold, 16, .16, 6); ring(h.x, h.z, 4, C.gold, .6); sfx('level', 1.3); banner(h.name + ' est de retour !', 2.2); if (h === ME) { cam.x = h.x; cam.z = h.z; }
 }
 function worldMouse() { return {x:(mouse.x - W / 2) / S + cam.x, z:(mouse.y - H / 2) / (S * TILT) + cam.z}; }
 function overUi() { const x = mouse.x / K, y = mouse.y / K; return ui.some(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); }
@@ -477,13 +497,13 @@ function doAttack(forced) {
       if (d > A.range + e.def.r) continue;
       if (d < .9 || Math.acos(Math.max(-1, Math.min(1, (dx * dir.x + dz * dir.z) / (d || 1)))) <= A.arc) { hitEnemy(e, dmg, false); burst(e.x, e.z, .8, col, 4, .1, 3); }
     }
-    slashes.push({kind:'arc', a:Math.atan2(dir.z, dir.x), r:A.range, arc:A.arc, t:0, life:.18, col});
+    slashes.push({kind:'arc', a:Math.atan2(dir.z, dir.x), r:A.range, arc:A.arc, t:0, life:.18, col, x:hero.x, z:hero.z});
   } else if (A.type === 'whip') {
     for (const e of enemies) {
       if (e.dead) continue; const dx = e.x - hero.x, dz = e.z - hero.z, along = dx * dir.x + dz * dir.z, perp = Math.abs(-dx * dir.z + dz * dir.x);
       if (along > -.3 && along <= A.range + e.def.r && perp <= A.hw * .5 + e.def.r) { hitEnemy(e, dmg, false); slow(e, .7, 1); burst(e.x, e.z, .8, col, 3, .1, 3); }
     }
-    slashes.push({kind:'whip', a:Math.atan2(dir.z, dir.x), r:A.range, t:0, life:.24, col});
+    slashes.push({kind:'whip', a:Math.atan2(dir.z, dir.x), r:A.range, t:0, life:.24, col, x:hero.x, z:hero.z});
   } else {
     const triple = hero.n % 3 === 0, angs = triple ? [-.22, 0, .22] : [0], base = Math.atan2(dir.z, dir.x);
     for (const da of angs) mkProj({x:hero.x + dir.x * .6, z:hero.z + dir.z * .6, y:1, dx:Math.cos(base + da), dz:Math.sin(base + da), speed:21, life:A.range / 21 + .15, damage:dmg * (triple ? .7 : 1), size:.36, shape:'card', color:SUITCOL[SUITS[(Math.random() * 4) | 0]], target:(atkAim && !forced) || triple ? null : tgt});
@@ -491,31 +511,37 @@ function doAttack(forced) {
   }
 }
 function updateHero(dt) {
-  const h = hero, A = HD.attack; h.t += dt; h.hit = Math.max(0, h.hit - dt * 6);
+  const h = hero, A = HD.attack; inp = h.inp; h.t += dt; h.hit = Math.max(0, h.hit - dt * 6);
   for (let i = 0; i < 3; i++) if (h.cd[i] > 0) h.cd[i] -= dt;
   if (h.hurt > 0) h.hurt -= dt; if (h.inv > 0) h.inv -= dt; if (h.lvlFx > 0) h.lvlFx -= dt;
-  if (h.dead) { h.deathT += dt; h.resp -= dt; inp.casts.length = 0; if (h.resp <= 0) respawnHero(); return; }
-  gatherInput();
+  if (h.dead) { h.deathT += dt; h.resp -= dt; inp.casts.length = 0; if (h.resp <= 0) respawnHero(h); return; }
+  const rin = h.remoteIn;
+  if (h.remote) inp.atk = !!(rin && rin.atk && g.time - rin.ts < 1); else gatherInput();
   h.combat += dt; if (h.combat > 4 && h.hp < h.maxHp) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * .015 * dt);
-  while (inp.casts.length) { const c = inp.casts.shift(), ab = ABIL[c.i], rk = h.rank[c.i]; if (rk >= 1 && h.cd[c.i] <= 0) { h.cd[c.i] = ab.cd * (1 - .06 * (rk - 1)); ab.cast(buildAim(ab, c.src), rk); } }
-  if (!touch && mouse.down2 && !h.target && !overUi()) { const m = worldMouse(); h.mt = {x:m.x, z:m.z}; }
-  let mx = 0, mz = 0, forced = null; const spd = heroSpeed();
-  if (h.dash > 0) { h.dash -= dt; mx = h.dvx * dt; mz = h.dvz * dt; }
-  else if (Math.hypot(inp.mx, inp.mz) > .01) { h.mt = null; h.target = null; mx = inp.mx * spd * dt; mz = inp.mz * spd * dt; }
-  else {
-    if (h.target && h.target.dead) h.target = null;
-    if (h.target) { const d = flat(h.target, h); if (d > A.range - .3) { mx = (h.target.x - h.x) / d * spd * dt; mz = (h.target.z - h.z) / d * spd * dt; } else forced = h.target; }
-    else if (h.mt) { const dx = h.mt.x - h.x, dz = h.mt.z - h.z, d = Math.hypot(dx, dz); if (d < .15) h.mt = null; else { const s = Math.min(d, spd * dt) / d; mx = dx * s; mz = dz * s; } }
+  while (inp.casts.length) { const c = inp.casts.shift(), ab = ABIL[c.i], rk = h.rank[c.i]; if (ab && rk >= 1 && h.cd[c.i] <= 0) { h.cd[c.i] = ab.cd * (1 - .06 * (rk - 1)); ab.cast(buildAim(ab, c.src), rk); } }
+  let forced = null;
+  if (h.remote) {
+    if (rin) { const k = Math.min(1, dt * 14); h.x += (rin.x - h.x) * k; h.z += (rin.z - h.z) * k; h.fx = rin.fx; h.fz = rin.fz; h.moving = !!rin.mv; }
+  } else {
+    if (!touch && mouse.down2 && !h.target && !overUi()) { const m = worldMouse(); h.mt = {x:m.x, z:m.z}; }
+    let mx = 0, mz = 0; const spd = heroSpeed();
+    if (h.dash > 0) { h.dash -= dt; mx = h.dvx * dt; mz = h.dvz * dt; }
+    else if (Math.hypot(inp.mx, inp.mz) > .01) { h.mt = null; h.target = null; mx = inp.mx * spd * dt; mz = inp.mz * spd * dt; }
+    else {
+      if (h.target && h.target.dead) h.target = null;
+      if (h.target) { const d = flat(h.target, h); if (d > A.range - .3) { mx = (h.target.x - h.x) / d * spd * dt; mz = (h.target.z - h.z) / d * spd * dt; } else forced = h.target; }
+      else if (h.mt) { const dx = h.mt.x - h.x, dz = h.mt.z - h.z, d = Math.hypot(dx, dz); if (d < .15) h.mt = null; else { const s = Math.min(d, spd * dt) / d; mx = dx * s; mz = dz * s; } }
+    }
+    mx += h.kx * dt; mz += h.kz * dt; h.kx *= Math.max(0, 1 - 7 * dt); h.kz *= Math.max(0, 1 - 7 * dt);
+    h.moving = Math.hypot(mx, mz) > 1e-4;
+    h.x = Math.max(-HALF.x + 1, Math.min(HALF.x - 1, h.x + mx)); h.z = Math.max(-HALF.z + 1, Math.min(HALF.z - 1, h.z + mz));
+    for (const e of enemies) { if (e.dead || e.def.flier) continue; const dx = h.x - e.x, dz = h.z - e.z, d = Math.hypot(dx, dz), min = e.def.r + .5; if (d < min && d > .001) { const push = (min - d) * .7; h.x += dx / d * push; h.z += dz / d * push; } }
+    if (h.moving && Math.hypot(h.kx, h.kz) < .5) { const l = Math.hypot(mx, mz); h.fx = mx / l; h.fz = mz / l; }
   }
-  mx += h.kx * dt; mz += h.kz * dt; h.kx *= Math.max(0, 1 - 7 * dt); h.kz *= Math.max(0, 1 - 7 * dt);
-  h.moving = Math.hypot(mx, mz) > 1e-4;
-  h.x = Math.max(-HALF.x + 1, Math.min(HALF.x - 1, h.x + mx)); h.z = Math.max(-HALF.z + 1, Math.min(HALF.z - 1, h.z + mz));
-  for (const e of enemies) { if (e.dead || e.def.flier) continue; const dx = h.x - e.x, dz = h.z - e.z, d = Math.hypot(dx, dz), min = e.def.r + .5; if (d < min && d > .001) { const push = (min - d) * .7; h.x += dx / d * push; h.z += dz / d * push; } }
-  if (h.moving && Math.hypot(h.kx, h.kz) < .5) { const l = Math.hypot(mx, mz); h.fx = mx / l; h.fz = mz / l; }
   h.atk -= dt;
   if (h.atk <= 0 && h.dash <= 0) {
     if (inp.atk || forced) doAttack(forced);
-    else if (!touch && !h.moving && !h.mt) doAttack(null);
+    else if (!h.remote && !touch && !h.moving && !h.mt) doAttack(null);
   }
 }
 function updateZones(dt) {
@@ -553,7 +579,7 @@ function buildWave() {
   else { add('vacuum', 1, 0, 1); add('turtle', R(4 * sc), 1.5, 4); add('sparrow', R(8 * sc), .5, 3); }
 }
 function nextWave() { g.wave++; g.nextWave = g.time + WAVE_GAP; buildWave(); banner('Vague ' + g.wave + (g.wave === 5 ? '  ·  MINI-BOSS !' : g.wave === WAVES ? '  ·  BOSS !' : ''), 2.5); if (g.wave === 5 || g.wave === WAVES) shake = Math.max(shake, .2); }
-function ready() { if (g.phase === 'prep') { g.phase = 'waves'; g.wave = 0; nextWave(); } else if (g.phase === 'waves' && g.wave < WAVES) nextWave(); }
+function ready() { if (NET.guest) { netReq({op:'ready'}); return; } if (g.phase === 'prep') { g.phase = 'waves'; g.wave = 0; nextWave(); } else if (g.phase === 'waves' && g.wave < WAVES) nextWave(); }
 function damageCore(n) {
   g.coreHp = Math.max(0, g.coreHp - n); g.pulse = 1; shake = Math.max(shake, .3); sfx('core');
   if (g.coreHp <= 0) g.phase = 'defeat';
@@ -561,32 +587,32 @@ function damageCore(n) {
 function updateGame(dt) {
   g.time += dt; if (g.bannerT > 0) g.bannerT -= dt; g.pulse = Math.max(0, g.pulse - dt * 2.5); g.xpFlash = Math.max(0, g.xpFlash - dt); shake = Math.max(0, shake - dt * 1.2);
   if (g.phase !== 'waves' && g.phase !== 'prep') return;
-  updateHero(dt);
+  for (const h of party) { useHero(h); const sv = atkAim; if (h.remote) atkAim = h.remoteIn ? h.remoteIn.aim || null : null; updateHero(dt); atkAim = sv; }
+  useHero(ME);
   if (g.phase === 'waves') {
     for (let i = g.pending.length - 1; i >= 0; i--) if (g.pending[i].at <= g.time) { const sp = g.pending.splice(i, 1)[0]; spawnEnemy(sp.def, sp.hs, sp.ds || 1); }
     if (g.wave < WAVES && g.time >= g.nextWave) nextWave();
     else if (g.wave >= WAVES && !g.pending.length && !enemies.length) {
       g.seq++; if (g.seq >= SEQ_WIN) { g.phase = 'victory'; return; }
-      g.phase = 'prep'; g.wave = 0; g.coreHp = Math.min(g.coreMax, g.coreHp + 6); g.cro += 100; hero.hp = hero.maxHp; if (hero.dead) respawnHero();
+      g.phase = 'prep'; g.wave = 0; g.coreHp = Math.min(g.coreMax, g.coreHp + 6); g.cro += 100; for (const h of party) { h.hp = h.maxHp; if (h.dead) respawnHero(h); }
       banner('Séquence ' + g.seq + ' terminée ! Construis, améliore, puis Entrée.', 5); sfx('level');
     }
   }
-  const order = enemies.filter(e => !e.dead).sort((a, b) => b.d - a.d); let blockers = 0;
+  const order = enemies.filter(e => !e.dead).sort((a, b) => b.d - a.d), alive = party.filter(h => !h.dead), cnt = new Map();
   for (const e of order) {
     const D = e.def; e.t += dt; e.blocked = false;
-    if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowMul = 1; } if (e.stunT > 0) e.stunT -= dt; if (e.markT > 0) e.markT -= dt; if (e.flash > 0) e.flash = Math.max(0, e.flash - dt * 6); if (e.lunge > 0) e.lunge -= dt; if (e.ignoreT > 0) e.ignoreT -= dt;
+    if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowMul = 1; } if (e.stunT > 0) e.stunT -= dt; if (e.markT > 0) e.markT -= dt; if (e.flash > 0) e.flash = Math.max(0, e.flash - dt * 6); if (e.lunge > 0) e.lunge -= dt; if (e.ignoreT > 0) e.ignoreT -= dt; if (e.barT > 0) e.barT -= dt;
     if (e.acd > 0 && e.stunT <= 0) e.acd -= dt;
-    if (!hero.dead && e.stunT <= 0) {
-      const hx = hero.x - e.x, hz = hero.z - e.z, dist = Math.hypot(hx, hz), ahead = hx * e.dx + hz * e.dz > -.15;
-      if (!D.flier && e.ignoreT <= 0 && ahead && dist <= D.r + .55 + .45 && blockers < hero.blockMax) { e.blocked = true; blockers++; }
-      if ((e.blocked || (D.flier && dist <= D.atk.range)) && e.acd <= 0) { e.acd = D.atk.cd; e.lunge = .25; hurtHero(D.atk.dmg * e.dmgMul, e); }
-      if (D.slam) { e.slamT -= dt; if (e.slamT <= 0) { e.slamT = D.slam.cd; ring(e.x, e.z, D.slam.r, '#FF4D6D', .5); shake = Math.max(shake, .15); if (dist <= D.slam.r + .5) hurtHero(D.slam.dmg * e.dmgMul, e); } }
+    let tgt = null;
+    if (e.stunT <= 0 && alive.length) {
+      let bd = 1e9;
+      for (const h of alive) { const hx = h.x - e.x, hz = h.z - e.z, dist = Math.hypot(hx, hz), ahead = hx * e.dx + hz * e.dz > -.15; if (!D.flier && e.ignoreT <= 0 && ahead && dist <= D.r + 1 && (cnt.get(h) || 0) < h.blockMax && dist < bd) { bd = dist; tgt = h; } }
+      if (tgt) { e.blocked = true; cnt.set(tgt, (cnt.get(tgt) || 0) + 1); if (e.acd <= 0) { e.acd = D.atk.cd; e.lunge = .25; hurtHero(D.atk.dmg * e.dmgMul, e, tgt); } }
+      else if (D.flier && e.acd <= 0) { for (const h of alive) if (Math.hypot(h.x - e.x, h.z - e.z) <= D.atk.range) { e.acd = D.atk.cd; e.lunge = .25; hurtHero(D.atk.dmg * e.dmgMul, e, h); break; } }
+      if (D.slam) { e.slamT -= dt; if (e.slamT <= 0) { e.slamT = D.slam.cd; ring(e.x, e.z, D.slam.r, '#FF4D6D', .5); shake = Math.max(shake, .15); for (const h of alive) if (Math.hypot(h.x - e.x, h.z - e.z) <= D.slam.r + .5) hurtHero(D.slam.dmg * e.dmgMul, e, h); } }
     }
     let moving = true;
-    if (e.blocked) {
-      e.blockT += dt; moving = false;
-      if (e.blockT > D.blockMax) { e.ignoreT = 3.5; e.blockT = 0; if (D.shove) knockHero(e, D.shove); }
-    } else e.blockT = Math.max(0, e.blockT - dt * .5);
+    if (e.blocked) { e.blockT += dt; moving = false; if (e.blockT > D.blockMax) { e.ignoreT = 3.5; e.blockT = 0; if (D.shove) knockHero(e, D.shove, tgt); } } else e.blockT = Math.max(0, e.blockT - dt * .5);
     if (moving) e.d += (e.stunT > 0 ? 0 : D.speed * e.slowMul) * dt;
     if (e.d >= PLEN) { damageCore(D.core); burst(e.x, e.z, 1, C.coral, 10, .15); e.dead = true; continue; }
     placeEnemy(e);
@@ -654,7 +680,7 @@ function drawWorld() {
   for (const t of towers) items.push({z:t.z, f:() => drawTower(t)});
   for (const e of enemies) items.push({z:e.z, f:() => drawEnemy(e)}); for (const al of allies) items.push({z:al.z, f:() => drawAlly(al)});
   for (const p of picks) items.push({z:p.z, f:() => drawPick(p)});
-  if (scr === 'play') items.push({z:hero.z, f:drawHero}); const gp = ghostPad(); if (gp) items.push({z:gp.z, f:() => drawGhost(gp)});
+  if (scr === 'play') for (const hh of party) items.push({z:hh.z, f:() => drawHero(hh)}); const gp = ghostPad(); if (gp) items.push({z:gp.z, f:() => drawGhost(gp)});
   items.sort((a, b) => a.z - b.z); items.forEach(i => i.f());
   for (const t of towers) for (const e of t.beams) if (!e.dead) {
     const [ax, ay] = P(t.x, t.z, t.def.kind === 'laser' ? 2.1 : 1), [bx, by] = P(e.x, e.z, .6);
@@ -763,8 +789,8 @@ function drawZone(z) {
 }
 function drawSlash(s) {
   ctx.globalAlpha = 1 - s.t / s.life; ctx.lineCap = 'round';
-  if (s.kind === 'arc') { ctx.strokeStyle = s.col; ctx.lineWidth = .55; ctx.beginPath(); ctx.arc(hero.x, hero.z, s.r * (.55 + .45 * s.t / s.life), s.a - s.arc, s.a + s.arc); ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.lineWidth = .18; ctx.stroke(); }
-  else { const k = s.t / s.life, len = s.r * (.4 + .6 * Math.min(1, k * 2)), ca = Math.cos(s.a), sa = Math.sin(s.a), px = -sa, pz = ca, sw = Math.sin(k * 9) * .5 * (1 - k); ctx.strokeStyle = '#3F8A35'; ctx.lineWidth = .32; ctx.beginPath(); ctx.moveTo(hero.x, hero.z); ctx.quadraticCurveTo(hero.x + ca * len * .5 + px * sw, hero.z + sa * len * .5 + pz * sw, hero.x + ca * len, hero.z + sa * len); ctx.stroke(); ctx.strokeStyle = s.col; ctx.lineWidth = .14; ctx.stroke(); }
+  if (s.kind === 'arc') { ctx.strokeStyle = s.col; ctx.lineWidth = .55; ctx.beginPath(); ctx.arc(s.x, s.z, s.r * (.55 + .45 * s.t / s.life), s.a - s.arc, s.a + s.arc); ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.lineWidth = .18; ctx.stroke(); }
+  else { const k = s.t / s.life, len = s.r * (.4 + .6 * Math.min(1, k * 2)), ca = Math.cos(s.a), sa = Math.sin(s.a), px = -sa, pz = ca, sw = Math.sin(k * 9) * .5 * (1 - k); ctx.strokeStyle = '#3F8A35'; ctx.lineWidth = .32; ctx.beginPath(); ctx.moveTo(s.x, s.z); ctx.quadraticCurveTo(s.x + ca * len * .5 + px * sw, s.z + sa * len * .5 + pz * sw, s.x + ca * len, s.z + sa * len); ctx.stroke(); ctx.strokeStyle = s.col; ctx.lineWidth = .14; ctx.stroke(); }
   ctx.globalAlpha = 1;
 }
 function drawTower(t) {
@@ -812,43 +838,74 @@ function drawTower(t) {
   if (t.tiers[0] === 5 || t.tiers[1] === 5) { const cy = topY - .3 * u + Math.sin(g.time * 4) * 3; ctx.save(); ctx.shadowColor = C.gold; ctx.shadowBlur = 14; ctx.fillStyle = C.gold; ctx.beginPath(); ctx.moveTo(sx - 10, cy); ctx.lineTo(sx - 12, cy - 12); ctx.lineTo(sx - 4, cy - 6); ctx.lineTo(sx, cy - 14); ctx.lineTo(sx + 4, cy - 6); ctx.lineTo(sx + 12, cy - 12); ctx.lineTo(sx + 10, cy); ctx.closePath(); ctx.fill(); ctx.restore(); }
   if (t.boost > 0 || t.aura > 0) { ctx.strokeStyle = t.boost > 0 ? C.pink : C.mintDark; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(sx, sy - .2 * u, 1.05 * u, .5 * u, 0, 0, TAU); ctx.stroke(); }
 }
-function drawEnemy(e) {
-  const d = e.def, u = S * d.scale, [sx, sy0] = P(e.x, e.z), face = e.dx >= 0 ? 1 : -1, tt = e.t, k = d.kind;
-  const lunge = e.lunge > 0 ? Math.sin(e.lunge / .25 * Math.PI) : 0; let ox = 0, oy = 0;
-  if (lunge) { const hx = hero.x - e.x, hz = hero.z - e.z, hl = Math.hypot(hx, hz) || 1; ox = hx / hl * lunge * .45 * u; oy = hz / hl * lunge * .3 * u; }
-  const hov = d.flier ? .45 * u : 0, bob = e.stunT > 0 ? 0 : Math.abs(Math.sin(tt * (3 + d.speed * 2))) * (d.boss ? .04 : .12) * u, cx = sx + ox;
-  const col = {ball:'#2B1B4A', thread:'#17394A', armor:'#33303F', scissors:'#4A1530', mother:'#1A0F2E'}[k], hi = {ball:'#5A3A94', thread:'#2F7A94', armor:'#5F7059', scissors:'#9A2F60', mother:'#4A2A78'}[k];
-  const R = {ball:.55, thread:.38, armor:.8, scissors:.95, mother:1.2}[k] * u, by = sy0 - hov - bob + oy - R * .95, lwp = Math.max(PX, u * .06);
-  shadow(sx, sy0, R * (k === 'mother' ? 1.1 : .9));
-  if (k === 'mother') { ctx.save(); ctx.globalAlpha = .22 + .08 * Math.sin(tt * 3); ctx.fillStyle = '#FF4D6D'; ctx.beginPath(); ctx.arc(cx, by, R * 1.5, 0, TAU); ctx.fill(); ctx.restore(); }
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = hi; ctx.lineWidth = lwp;
-  const tails = k === 'mother' ? 6 : 1;
-  for (let i = 0; i < tails; i++) { const an = k === 'mother' ? Math.PI * (.15 + i * .14) + Math.PI * .85 : 0, sw = Math.sin(tt * 4 + i) * R * .25; ctx.beginPath(); if (k === 'mother') { ctx.moveTo(cx + Math.cos(an) * R * .8, by + Math.sin(an) * R * .5); ctx.quadraticCurveTo(cx + Math.cos(an) * R * 1.5 + sw, by + R * .9 + sw, cx + Math.cos(an) * R * 1.9, by + R * 1.0 + sw * .6); } else { ctx.moveTo(cx - face * R * .6, by + R * .5); ctx.bezierCurveTo(cx - face * R * 1.2, by + R * .9 + Math.sin(tt * 5) * R * .15, cx - face * R * 1.7, by + R * .2, cx - face * R * 2.3, by + R * .7 + Math.sin(tt * 4) * R * .2); } ctx.stroke(); }
-  if (k === 'thread') for (let i = 1; i <= 3; i++) { ctx.globalAlpha = .4 / i; ctx.beginPath(); ctx.moveTo(cx - face * R * (1 + i * .6), by + R * (.2 - i * .12)); ctx.lineTo(cx - face * R * (1.7 + i * .6), by + R * (.2 - i * .12)); ctx.stroke(); } ctx.globalAlpha = 1;
-  ctx.fillStyle = col; ctx.strokeStyle = '#C44569'; ctx.lineWidth = Math.max(PX, u * .05); ctx.beginPath(); ctx.arc(cx, by, R, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.save(); ctx.beginPath(); ctx.arc(cx, by, R * .97, 0, TAU); ctx.clip(); ctx.strokeStyle = hi; ctx.lineWidth = lwp; const rot = e.d * .9 / d.scale * face;
-  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(cx, by, R * (.5 + i * .15), R * (.92 - i * .12), rot + i * .8, 0, TAU * .7); ctx.stroke(); }
-  if (k === 'armor') { ctx.fillStyle = '#4B5563'; for (let i = 0; i < 5; i++) { const an = rot + i * 1.26; ctx.beginPath(); ctx.ellipse(cx + Math.cos(an) * R * .55, by + Math.sin(an) * R * .55, R * .3, R * .22, an, 0, TAU); ctx.fill(); } }
-  ctx.restore();
-  if (k === 'armor') { ctx.strokeStyle = '#D9C27A'; ctx.lineWidth = Math.max(PX, u * .05); for (let i = 0; i < 3; i++) { const an = -Math.PI * .85 + i * .5; ctx.beginPath(); ctx.moveTo(cx + Math.cos(an) * R * .8, by + Math.sin(an) * R * .8); ctx.lineTo(cx + Math.cos(an) * R * 1.45, by + Math.sin(an) * R * 1.45); ctx.stroke(); } }
-  if (k === 'scissors' || k === 'mother') { ctx.fillStyle = '#F4C542'; ctx.strokeStyle = '#8A6B1E'; ctx.lineWidth = Math.max(PX, u * .04); const n = k === 'mother' ? 6 : 4, cy2 = by - R * .95; ctx.beginPath(); ctx.moveTo(cx - R * .6, cy2 + R * .2); for (let i = 0; i < n; i++) { ctx.lineTo(cx - R * .6 + (i + .5) * (R * 1.2 / n), cy2 - R * .35); ctx.lineTo(cx - R * .6 + (i + 1) * (R * 1.2 / n), cy2 + R * .2); } ctx.closePath(); ctx.fill(); ctx.stroke(); }
-  if (k === 'scissors') { ctx.strokeStyle = '#D8DEE9'; ctx.lineWidth = Math.max(PX, u * .07); const op = .5 + .35 * Math.sin(tt * 4); for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + face * R * .5, by + R * .45); ctx.lineTo(cx + face * R * 1.5, by + R * .45 + s * R * op * .5); ctx.stroke(); } }
-  // yeux rouges lumineux
-  ctx.save(); ctx.shadowColor = '#FF3355'; ctx.shadowBlur = 8; ctx.fillStyle = '#FF4D6D';
-  if (k === 'mother') { ctx.beginPath(); ctx.ellipse(cx + face * R * .12, by - R * .05, R * .3, R * .36, 0, 0, TAU); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = '#1A0A12'; ctx.beginPath(); ctx.ellipse(cx + face * R * .18, by - R * .05, R * .1, R * .3, 0, 0, TAU); ctx.fill(); }
-  else for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(cx + face * R * .3 + s * R * .3, by - R * .05, R * .17, R * (k === 'thread' ? .15 : .24), 0, 0, TAU); ctx.fill(); }
-  ctx.restore(); ctx.strokeStyle = '#1A0A12'; ctx.lineWidth = Math.max(PX, u * .04);
-  if (k !== 'mother') for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + face * R * .3 + s * R * .5, by - R * .38); ctx.lineTo(cx + face * R * .3 + s * R * .1, by - R * .22); ctx.stroke(); }
-  if (e.flash > 0) { ctx.globalAlpha = e.flash * .5; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, by, R, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
-  if (e.slowT > 0) { ctx.strokeStyle = '#7FD6FF'; ctx.lineWidth = Math.max(PX, 2); ctx.beginPath(); ctx.ellipse(cx, sy0, R * 1.05, R * .4, 0, 0, TAU); ctx.stroke(); }
-  if (e.stunT > 0) for (let i = 0; i < 3; i++) { const an = tt * 6 + i * 2.1; ico('star', cx + Math.cos(an) * R * .8, by - R * 1.15 + Math.sin(an) * R * .15, u * .13, '#FFE08A'); }
-  if (e.markT > 0) { const my = by - R * 1.5 - Math.sin(g.time * 6) * 4; ctx.fillStyle = C.violet; ctx.strokeStyle = C.line; ctx.lineWidth = Math.max(PX, 1.5); ctx.beginPath(); ctx.moveTo(cx, my - 9); ctx.lineTo(cx + 7, my); ctx.lineTo(cx, my + 9); ctx.lineTo(cx - 7, my); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-  if (e.blocked && e.acd < .35) { ctx.fillStyle = '#FF4D6D'; ctx.fillRect(cx - PX, by - R * 1.5 - 12, PX * 2, 9); ctx.fillRect(cx - PX, by - R * 1.5 + 1, PX * 2, PX * 2); }
-  if (d.boss || e.hp < e.max) {
-    const bw = Math.max(S * .9, u * 1.1), yb = by - R * (k === 'mother' ? 1.75 : 1.6) - (e.blocked ? 10 : 0);
-    ctx.fillStyle = '#1A0A12'; ctx.fillRect(cx - bw / 2 - PX, yb - PX * 2, bw + PX * 2, PX * 4); ctx.fillStyle = '#E23B55'; ctx.fillRect(cx - bw / 2, yb - PX, Math.max(0, bw * e.hp / e.max), PX * 2);
-    if (d.boss) otxt(d.name, cx, yb - 12, 11, '#fff');
+// ---------------- Sprites pixel art ----------------
+const SPRC = {};
+const hex3 = c => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
+const ORB = {
+  ball:     {size:18, tones:['#0B0813', '#1B1330', '#2E2150', '#463272'], eye:'#F1CCFF', glow:'#8E4DFF', yarn:true},
+  thread:   {size:12, tones:['#081418', '#10303A', '#1C5666', '#2F7F94'], eye:'#C9FBFF', glow:'#25C4E0', yarn:false},
+  armor:    {size:26, tones:['#12121A', '#2A2B3A', '#444A5E', '#667088'], eye:'#FFD27A', glow:'#E08A25', yarn:false, plates:true},
+  scissors: {size:36, tones:['#14060F', '#3A0E26', '#661A41', '#9A2D5E'], eye:'#FFC2D6', glow:'#FF3D7F', yarn:true},
+  mother:   {size:54, tones:['#08050F', '#1A1030', '#2D1A52', '#47287F'], eye:'#FFC2C2', glow:'#FF2F4F', yarn:true, big:true},
+};
+function mkOrb(k, face) {
+  const o = ORB[k], size = o.size, cv = document.createElement('canvas'); cv.width = cv.height = size; const c = cv.getContext('2d'), img = c.createImageData(size, size), dd = img.data, r = size / 2;
+  const T = o.tones.map(hex3), E = hex3(o.eye), GL = hex3(o.glow), OL = hex3('#07040D');
+  const put = (x, y, col) => { if (x < 0 || y < 0 || x >= size || y >= size) return; const i = (y * size + x) * 4; dd[i] = col[0]; dd[i + 1] = col[1]; dd[i + 2] = col[2]; dd[i + 3] = 255; };
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const dx = (x + .5 - r) / r, dy = (y + .5 - r) / r, d2 = dx * dx + dy * dy; if (d2 > 1) continue;
+    const nz = Math.sqrt(1 - d2), l = Math.max(0, dx * -.5 + dy * -.6 + nz * .62); let kk = l > .78 ? 3 : l > .55 ? 2 : l > .3 ? 1 : 0;
+    if (o.yarn && (x * 2 + y * 3 + ((x * y) % 3)) % 9 === 0 && kk < 3) kk++;
+    if (o.plates && ((x + y) % 7 === 0 || (x - y + 40) % 7 === 0) && kk > 0) kk--;
+    put(x, y, d2 > Math.pow((r - 1.2) / r, 2) ? OL : T[kk]);
   }
+  const ey = Math.round(r - size * (o.big ? 0 : .04)), ew = o.big ? Math.round(size / 6) : Math.max(1, Math.round(size / 9)), eh = o.big ? Math.round(size / 3.2) : Math.max(2, Math.round(size / 6)), sh = face * Math.round(size * .06);
+  const eyes = o.big ? [0] : [-1, 1], ex = Math.round(size * .17);
+  for (const s of eyes) {
+    const cx = Math.round(r + s * ex + sh - (o.big ? ew / 2 : 0));
+    for (let yy = -1; yy <= eh; yy++) for (let xx = -1; xx <= ew; xx++) {
+      const edge = yy < 0 || yy >= eh || xx < 0 || xx >= ew, corner = (xx < 0 || xx >= ew) && (yy < 0 || yy >= eh);
+      if (corner) continue; put(cx + xx, ey + yy - 1, edge ? GL : E);
+    }
+  }
+  c.putImageData(img, 0, 0); return cv;
+}
+const getSpr = (k, face) => SPRC[k + face] || (SPRC[k + face] = mkOrb(k, face));
+const snap = v => Math.round(v / PX) * PX;
+function pxRect(x, y, w, h, col) { ctx.fillStyle = col; ctx.fillRect(snap(x), snap(y), Math.max(PX, snap(w)), Math.max(PX, snap(h))); }
+function pxLine(x0, y0, x1, y1, col, n = 12) { ctx.fillStyle = col; for (let i = 0; i <= n; i++) { const t = i / n; ctx.fillRect(snap(x0 + (x1 - x0) * t), snap(y0 + (y1 - y0) * t), PX, PX); } }
+function drawEnemy(e) {
+  const d = e.def, k = d.kind, [sx, sy0] = P(e.x, e.z), face = e.dx >= 0 ? 1 : -1, spr = getSpr(k, face), W2 = spr.width * PX, H2 = spr.height * PX, tt = e.t;
+  const lunge = e.lunge > 0 ? Math.sin(e.lunge / .25 * Math.PI) : 0; let ox = 0, oy = 0;
+  if (lunge) { const hx = hero.x - e.x, hz = hero.z - e.z, hl = Math.hypot(hx, hz) || 1; ox = hx / hl * lunge * 6 * PX; oy = hz / hl * lunge * 3 * PX; }
+  const hov = d.flier ? 5 * PX : 0, bob = e.stunT > 0 ? 0 : Math.floor(Math.abs(Math.sin(tt * (3 + d.speed * 2))) * 2.4) * PX;
+  const cx = snap(sx + ox), base = snap(sy0 + oy - hov - bob), lx = snap(cx - W2 / 2), top = base - H2, mx = cx, my = top + H2 / 2, rad = W2 / 2;
+  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(sx, sy0, rad * .85, rad * .32, 0, 0, TAU); ctx.fill();
+  const aura = ORB[k].glow, n = k === 'mother' ? 26 : k === 'scissors' ? 16 : 10;
+  for (let i = 0; i < n; i++) { if (Math.sin(tt * 5 + i * 1.7) < -.25) continue; const an = i * 2.4 + tt * (.5 + (i % 3) * .25), rr = rad * (1.08 + .32 * Math.sin(tt * 1.6 + i)); pxRect(mx + Math.cos(an) * rr, my + Math.sin(an) * rr * .9, PX, PX, i % 4 === 0 ? '#FFFFFF' : aura); }
+  if (k === 'thread') for (let i = 1; i <= 3; i++) pxRect(mx - face * (rad + i * 3 * PX), my + (i - 2) * PX, 2 * PX, PX, 'rgba(47,127,148,' + (.8 - i * .2) + ')');
+  if (k === 'mother') { for (let i = 0; i < 6; i++) { const an = Math.PI * (.12 + i * .15) + Math.PI * .85, w = Math.sin(tt * 3 + i) * rad * .25; pxLine(mx + Math.cos(an) * rad * .7, my + Math.sin(an) * rad * .6, mx + Math.cos(an) * rad * 1.5 + w, my + rad * .9 + w * .5, '#47287F', 14); } }
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(spr, lx, top, W2, H2);
+  if (k === 'armor') for (let i = 0; i < 3; i++) pxLine(mx - face * rad * .3 + i * PX * 2, my - rad * .8, mx - face * rad * (.9 + i * .2), my - rad * (1.4 + i * .1), '#D9C27A', 6);
+  if (k === 'scissors' || k === 'mother') { const cw = Math.round(rad * .9 / PX) * PX, ty = top - 2 * PX; for (let i = -2; i <= 2; i++) { const hgt = (3 - Math.abs(i)) * PX * (k === 'mother' ? 2 : 1.5); pxRect(mx + i * cw / 2.5, ty - hgt, PX * 2, hgt + PX, '#F4C542'); } pxRect(mx - cw, ty, cw * 2, PX * 2, '#C9961E'); }
+  if (k === 'scissors') { const op = Math.floor(2 + Math.sin(tt * 4) * 2) * PX; pxLine(mx + face * rad * .5, my + rad * .5, mx + face * rad * 1.7, my + rad * .5 - op, '#D8DEE9', 10); pxLine(mx + face * rad * .5, my + rad * .5, mx + face * rad * 1.7, my + rad * .5 + op, '#D8DEE9', 10); }
+  if (e.slowT > 0) { ctx.strokeStyle = '#7FD6FF'; ctx.lineWidth = PX; ctx.beginPath(); ctx.ellipse(sx, sy0, rad * .95, rad * .35, 0, 0, TAU); ctx.stroke(); }
+  if (e.stunT > 0) for (let i = 0; i < 3; i++) { const an = tt * 6 + i * 2.1, x = mx + Math.cos(an) * rad * .8, y = top - 3 * PX + Math.sin(an) * PX * 2; pxRect(x - PX, y, 3 * PX, PX, '#FFE08A'); pxRect(x, y - PX, PX, 3 * PX, '#FFE08A'); }
+  if (e.markT > 0) { const y = top - 8 * PX - Math.floor(Math.sin(g.time * 6) * 2) * PX; pxRect(mx - PX, y - 2 * PX, PX * 2, PX, C.violet); pxRect(mx - 2 * PX, y - PX, PX * 4, PX * 2, C.violet); pxRect(mx - PX, y + PX, PX * 2, PX, C.violet); }
+  if (e.blocked && e.acd < .35) { pxRect(mx - PX, top - 12 * PX, PX * 2, PX * 5, '#FF4D6D'); pxRect(mx - PX, top - 6 * PX, PX * 2, PX * 2, '#FF4D6D'); }
+  if (e.flash > .45) { const sx2 = mx + face * rad * .45, sy2 = my - rad * .3, s = 3 * PX; pxRect(sx2 - s, sy2, 2 * s + PX, PX, '#FFFFFF'); pxRect(sx2, sy2 - s, PX, 2 * s + PX, '#FFFFFF'); pxRect(sx2 - 2 * PX, sy2 - 2 * PX, PX, PX, '#E9C8FF'); pxRect(sx2 + 2 * PX, sy2 - 2 * PX, PX, PX, '#E9C8FF'); pxRect(sx2 - 2 * PX, sy2 + 2 * PX, PX, PX, '#E9C8FF'); pxRect(sx2 + 2 * PX, sy2 + 2 * PX, PX, PX, '#E9C8FF'); }
+  if (d.boss || e.barT > 0) {
+    const bw = Math.max(12, Math.round(W2 / PX * .9)), bx = snap(mx - bw * PX / 2), by = top - 6 * PX - (e.blocked ? 7 * PX : 0), f = Math.max(0, e.hp / e.max), col = f > .6 ? '#7AD13B' : f > .3 ? '#F2B632' : '#E23B3B';
+    ctx.globalAlpha = d.boss ? 1 : Math.min(1, (e.barT || 0) / .6);
+    ctx.fillStyle = '#07040D'; ctx.fillRect(bx - PX, by - PX, bw * PX + 2 * PX, 4 * PX); ctx.fillStyle = '#2A2536'; ctx.fillRect(bx, by, bw * PX, 2 * PX); ctx.fillStyle = col; ctx.fillRect(bx, by, Math.max(PX, Math.round(bw * f) * PX), 2 * PX); ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(bx, by, Math.max(PX, Math.round(bw * f) * PX), PX);
+    ctx.globalAlpha = 1; if (d.boss) otxt(d.name, mx, by - 10, 11, '#fff');
+  }
+}
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+function postFX() {
+  const w = wc.width, h = wc.height, img = wctx.getImageData(0, 0, w, h), d = img.data;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 4, t = (BAYER[(y & 3) * 4 + (x & 3)] - 7.5) * 1.1; d[i] = Math.round((d[i] + t) / 24) * 24; d[i + 1] = Math.round((d[i + 1] + t) / 24) * 24; d[i + 2] = Math.round((d[i + 2] + t) / 24) * 24; }
+  wctx.putImageData(img, 0, 0);
 }
 function drawPick(p) {
   const [sx, sy] = P(p.x, p.z, p.y + .35 * p.scale); if (p.kind === 'c' && p.life < 3 && Math.sin(p.t * 28) < -.2) return;
@@ -865,23 +922,24 @@ function drawHeart() {
   ctx.fillStyle = '#FF9CC4'; ctx.beginPath(); ctx.moveTo(0, -1.3 * S); ctx.lineTo(.7 * S, -.45 * S); ctx.lineTo(0, -.1 * S); ctx.lineTo(-.7 * S, -.45 * S); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#FFD0E4'; ctx.beginPath(); ctx.moveTo(-.1 * S, -1.0 * S); ctx.lineTo(.25 * S, -.5 * S); ctx.lineTo(-.15 * S, -.3 * S); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
-function drawHeroBar(sx, sy, u) {
-  const w = 1.7 * u, h = Math.max(PX * 2, u * .13), x = sx - w / 2, y = sy - 2.5 * u, f = Math.max(0, hero.hp / hero.maxHp);
-  ctx.fillStyle = '#0B1417'; ctx.fillRect(x - PX, y - PX, w + PX * 2, h + PX * 2); ctx.fillStyle = f > .35 ? '#58D68D' : '#FF5C6C'; ctx.fillRect(x, y, w * f, h);
-  ctx.fillStyle = C.line; ctx.beginPath(); ctx.arc(x - u * .12, y + h / 2, u * .2, 0, TAU); ctx.fill(); ctx.fillStyle = C.ink; ctx.font = '700 ' + Math.round(u * .27) + 'px "Pixelify Sans", Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(g.lvl), x - u * .12, y + h / 2 + 1);
+function drawHeroBar(h, sx, sy, u) {
+  const w = 1.7 * u, hh = Math.max(PX * 2, u * .13), x = sx - w / 2, y = sy - 2.5 * u, f = Math.max(0, h.hp / h.maxHp);
+  ctx.fillStyle = '#0B1417'; ctx.fillRect(x - PX, y - PX, w + PX * 2, hh + PX * 2); ctx.fillStyle = f > .35 ? '#58D68D' : '#FF5C6C'; ctx.fillRect(x, y, w * f, hh);
+  ctx.fillStyle = C.line; ctx.beginPath(); ctx.arc(x - u * .12, y + hh / 2, u * .2, 0, TAU); ctx.fill(); ctx.fillStyle = C.ink; ctx.font = '700 ' + Math.round(u * .27) + 'px "Pixelify Sans", Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(g.lvl), x - u * .12, y + hh / 2 + 1);
 }
-function drawHero() {
-  const [sx, sy] = P(hero.x, hero.z), u = S * .95;
-  if (hero.dead) {
-    if (hero.deathT < 1.6) { ctx.globalAlpha = 1 - hero.deathT / 1.6; drawCat(sx, sy - hero.deathT * S * 1.1, u, 1, false, hero.t, 0, Object.assign({}, HD.look, {mode:'lose'})); ctx.globalAlpha = 1; }
+function drawHero(h = hero) {
+  const [sx, sy] = P(h.x, h.z), u = S * .95, L = h.hd.look;
+  if (h.dead) {
+    if (h.deathT < 1.6) { ctx.globalAlpha = 1 - h.deathT / 1.6; drawCat(sx, sy - h.deathT * S * 1.1, u, 1, false, h.t, 0, Object.assign({}, L, {mode:'lose'})); ctx.globalAlpha = 1; }
     ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(sx - 2, sy - u * .8, 4, u * .8); ctx.fillRect(sx - u * .25, sy - u * .6, u * .5, 4); return;
   }
-  ctx.save(); ctx.globalAlpha = .6; ctx.strokeStyle = HD.look.glow; ctx.lineWidth = Math.max(PX, S * .07); ctx.beginPath(); ctx.ellipse(sx, sy, S * .8, S * .34, 0, 0, TAU); ctx.stroke(); ctx.restore();
-  if (hero.inv > 0 && Math.sin(g.time * 30) < 0) ctx.globalAlpha = .45;
-  drawCat(sx, sy, u, hero.fx >= 0 ? 1 : -1, hero.moving, hero.t, hero.hit, HD.look); ctx.globalAlpha = 1;
-  if (hero.hurt > 0) { ctx.globalAlpha = Math.min(.55, hero.hurt * 1.6); ctx.fillStyle = '#FF3355'; ctx.beginPath(); ctx.ellipse(sx, sy - u * .8, u * .6, u * .9, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
-  if (hero.lvlFx > 0) { const k = 1 - hero.lvlFx / 1.6; ctx.globalAlpha = Math.max(0, 1 - k); ctx.strokeStyle = C.gold; ctx.lineWidth = Math.max(PX, 3); ctx.beginPath(); ctx.ellipse(sx, sy, u * (.8 + k * 1.6), u * (.34 + k * .6), 0, 0, TAU); ctx.stroke(); for (let i = 0; i < 5; i++) ico('star', sx + Math.cos(i * 1.3 + k * 3) * u * .9, sy - u * (.4 + k * 2.2) + i * 3, u * .14, C.gold); ctx.globalAlpha = 1; }
-  drawHeroBar(sx, sy, u);
+  ctx.save(); ctx.globalAlpha = .6; ctx.strokeStyle = L.glow; ctx.lineWidth = Math.max(PX, S * .07); ctx.beginPath(); ctx.ellipse(sx, sy, S * .8, S * .34, 0, 0, TAU); ctx.stroke(); ctx.restore();
+  if (h.inv > 0 && Math.sin(g.time * 30) < 0) ctx.globalAlpha = .45;
+  drawCat(sx, sy, u, h.fx >= 0 ? 1 : -1, h.moving, h.t, h.hit, L); ctx.globalAlpha = 1;
+  if (h.hurt > 0) { ctx.globalAlpha = Math.min(.55, h.hurt * 1.6); ctx.fillStyle = '#FF3355'; ctx.beginPath(); ctx.ellipse(sx, sy - u * .8, u * .6, u * .9, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
+  if (h.lvlFx > 0) { const k = 1 - h.lvlFx / 1.6; ctx.globalAlpha = Math.max(0, 1 - k); ctx.strokeStyle = C.gold; ctx.lineWidth = Math.max(PX, 3); ctx.beginPath(); ctx.ellipse(sx, sy, u * (.8 + k * 1.6), u * (.34 + k * .6), 0, 0, TAU); ctx.stroke(); for (let i = 0; i < 5; i++) ico('star', sx + Math.cos(i * 1.3 + k * 3) * u * .9, sy - u * (.4 + k * 2.2) + i * 3, u * .14, C.gold); ctx.globalAlpha = 1; }
+  drawHeroBar(h, sx, sy, u);
+  if (party.length > 1) otxt(h.name, sx, sy - 2.95 * u, 10, h === ME ? C.line : '#fff');
 }
 const pixCache = {};
 function pix(x, y, w, h, fn) {
@@ -949,7 +1007,8 @@ function drawMenu(Wv, Hv) {
   const bw = 240, bh = 56, by = Hv * .48;
   btn(Wv / 2 - bw / 2, by, bw, bh, () => { scr = 'select'; }, {label:'play'}); txt('Jouer', Wv / 2, by + bh / 2, 26, C.text);
   btn(Wv - 54, touch ? 10 : 34, 44, 44, toggleFS, {label:'fs'}); fsIcon(Wv - 32, (touch ? 10 : 34) + 22, 10, isFull());
-  btn(Wv / 2 - bw / 2, by + bh + 12, bw, 44, () => { showHelp = true; }, {label:'how'}); txt('Comment jouer', Wv / 2, by + bh + 34, 18, C.text);
+  btn(Wv / 2 - bw / 2, by + bh + 10, bw, 44, () => { scr = 'online'; netErr = ''; }, {label:'online', fill:C.btnSel}); txt('Jouer en ligne', Wv / 2, by + bh + 32, 18, C.text);
+  btn(Wv / 2 - bw / 2, by + bh + 64, bw, 40, () => { showHelp = true; }, {label:'how'}); txt('Comment jouer', Wv / 2, by + bh + 84, 16, C.text);
   const u = Hv * .15;
   pix(0, Hv * .45, Wv, Hv * .55, () => { const y0 = Hv * .48; drawCat(Wv * .12, y0, u, 1, false, T, 0, HEROES[0].look); drawCat(Wv * .25, y0, u, 1, false, T + 1, 0, HEROES[1].look); drawCat(Wv * .88, y0, u, -1, false, T + 2, 0, HEROES[2].look); });
   if (showHelp) {
@@ -1019,12 +1078,12 @@ function drawPlayHud(Wv, Hv) {
   bar(Wv / 2 - cw0 / 2 + 14, 32, cw0 - 28, 22, cf, cf > .3 ? C.pink : C.coral); txt(g.coreHp + ' / ' + g.coreMax, Wv / 2, 43, 14, C.ink);
   txt(g.phase === 'prep' ? 'Séquence ' + (g.seq + 1) + '/' + SEQ_WIN + '  ·  Préparation' : 'Séquence ' + (g.seq + 1) + '/' + SEQ_WIN + '  ·  Vague ' + g.wave + '/' + WAVES, Wv / 2, 68, 15, C.text);
   const prev = g.lvl <= 1 ? 0 : XP_T[g.lvl - 2], next = g.lvl >= MAXLVL ? XP_T[XP_T.length - 1] : XP_T[g.lvl - 1], xf = g.lvl >= MAXLVL ? 1 : (g.xp - prev) / (next - prev), hf = Math.max(0, hero.hp / hero.maxHp), hcol = hf > .35 ? '#58D68D' : '#FF5C6C';
-  if (touch) { panel(12, 8, 190, 68); txt(HD.name, 24, 21, 14, C.text, 'left'); txt('Niv. ' + g.lvl + (g.points > 0 ? '  +' + g.points : ''), 192, 21, 13, g.points > 0 ? C.gold : C.violet, 'right'); bar(20, 32, 174, 15, hf, hcol); txt(Math.ceil(hero.hp), 107, 40, 10, C.ink); bar(20, 51, 174, 11, xf, C.violet); }
+  if (touch) { panel(12, 8, 190, 68); txt(HD.name, 24, 21, 14, C.text, 'left'); txt('Niv. ' + g.lvl + (hero.points > 0 ? '  +' + hero.points : ''), 192, 21, 13, hero.points > 0 ? C.gold : C.violet, 'right'); bar(20, 32, 174, 15, hf, hcol); txt(Math.ceil(hero.hp), 107, 40, 10, C.ink); bar(20, 51, 174, 11, xf, C.violet); }
   else {
     const hx = 12, hy = Hv - 152; panel(hx, hy, 290, 140); txt(HD.name, hx + 12, hy + 15, 17, C.text, 'left'); txt('Niveau ' + g.lvl, hx + 278, hy + 15, 15, C.violet, 'right');
     bar(hx + 10, hy + 28, 270, 16, hf, hcol); txt(Math.ceil(hero.hp) + ' / ' + hero.maxHp, hx + 145, hy + 36, 11, C.ink);
     bar(hx + 10, hy + 48, 270, 12, xf, C.violet); txt(g.lvl >= MAXLVL ? 'XP max' : 'XP ' + g.xp + ' / ' + next, hx + 145, hy + 54, 9, '#fff');
-    if (g.points > 0) txt('+' + g.points + ' point' + (g.points > 1 ? 's' : '') + ' de compétence', hx + 12, hy + 70, 12, C.gold, 'left', 700);
+    if (hero.points > 0) txt('+' + hero.points + ' point' + (hero.points > 1 ? 's' : '') + ' de compétence', hx + 12, hy + 70, 12, C.gold, 'left', 700);
     txt('Déf ' + Math.round(heroDef()) + ' · Atq +' + Math.round((heroAtk() - 1) * 100) + ' %', hx + 278, hy + 70, 10, C.muted, 'right');
     ABIL.forEach((a, i) => {
       const x = hx + 12 + i * 92, y = hy + 80, locked = hero.rank[i] < 1; rr(x, y, 80, 54); ctx.fillStyle = locked ? C.btnOff : C.btn; ctx.fill(); ctx.strokeStyle = locked ? '#4A4F73' : C.text; ctx.lineWidth = 3; ctx.stroke();
@@ -1062,21 +1121,70 @@ function drawPlayHud(Wv, Hv) {
     btn(wx + ww - (touch ? 128 : 160), wy + 4, touch ? 120 : 152, wh - 8, ready, {label:'ready'}); txt(g.phase === 'prep' ? (touch ? 'Prêt !' : 'Prêt ! (Entrée)') : (touch ? 'Appeler' : 'Appeler (Entrée)'), wx + ww - (touch ? 68 : 84), wy + wh / 2, 14, C.text);
   }
   if (sel) drawTowerPanel(Wv, Hv, sel);
+  drawParty(Wv, Hv);
   drawHeroStatus(Wv, Hv);
   if (touch) drawTouch(Wv, Hv);
   if (g.bannerT > 0) otxt(g.banner, Wv / 2, touch ? 108 : 130, touch ? 22 : 34, C.text);
   if (paused && g.phase !== 'victory' && g.phase !== 'defeat') {
     ui = []; btns.length = 0; ctx.fillStyle = 'rgba(5,8,20,.68)'; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b); const x = Wv / 2 - 150, y = Math.max(6, Hv / 2 - 160); panel(x, y, 300, 320); txt('Pause', Wv / 2, y + 28, 28, C.text);
-    const items = [['Reprendre', () => { paused = false; }, 'resume'], [isFull() ? 'Quitter le plein écran' : 'Plein écran', () => { paused = false; toggleFS(); }, 'full'], ['Changer de héros', () => { paused = false; scr = 'select'; }, 'heroes'], ['← Tous les jeux', () => { location.href = 'jeux.html'; }, 'games']];
+    const items = [['Reprendre', () => { paused = false; }, 'resume'], [isFull() ? 'Quitter le plein écran' : 'Plein écran', () => { paused = false; toggleFS(); }, 'full'], [NET.on ? 'Quitter la salle' : 'Changer de héros', () => { paused = false; if (NET.on) leaveRoom(); else scr = 'select'; }, 'heroes'], ['← Tous les jeux', () => { location.href = 'jeux.html'; }, 'games']];
     items.forEach((it, i) => { btn(x + 30, y + 56 + i * 62, 240, 48, it[1], {label:it[2]}); txt(it[0], Wv / 2, y + 80 + i * 62, 17, C.text); });
   }
   if (g.phase === 'victory' || g.phase === 'defeat') {
     ui = []; btns.length = 0; ctx.fillStyle = 'rgba(5,8,20,.68)'; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b); const x = Wv / 2 - 220, y = Math.max(6, Hv / 2 - 130), win = g.phase === 'victory'; panel(x, y, 440, 260);
     pix(x + 14, y + 52, 100, 96, () => { drawCat(50, 84, 40, 1, false, nowT(), 0, Object.assign({}, HD.look, {mode:win ? 'win' : 'lose'})); });
     txt(win ? 'Victoire !' : 'Le Cœur est tombé…', Wv / 2, y + 46, 36, win ? C.violet : C.coral); txt(win ? HD.name + ' a protégé le Cœur pendant ' + SEQ_WIN + ' séquences.' : 'Séquence ' + (g.seq + 1) + ', vague ' + g.wave + '. On retente ?', Wv / 2, y + 100, 16, C.text);
-    btn(x + 110, y + 140, 220, 46, () => startGame(selHero), {label:'again'}); txt('Rejouer', Wv / 2, y + 163, 19, C.text);
-    btn(x + 110, y + 196, 220, 46, () => { scr = 'select'; }, {label:'heroes'}); txt('Changer de héros', Wv / 2, y + 219, 17, C.text);
+    if (!NET.on) { btn(x + 110, y + 140, 220, 46, () => startGame(selHero), {label:'again'}); txt('Rejouer', Wv / 2, y + 163, 19, C.text); btn(x + 110, y + 196, 220, 46, () => { scr = 'select'; }, {label:'heroes'}); txt('Changer de héros', Wv / 2, y + 219, 17, C.text); }
+    else { if (NET.host) { btn(x + 110, y + 140, 220, 46, netStartGame, {label:'again'}); txt('Rejouer ensemble', Wv / 2, y + 163, 17, C.text); } else txt('L’hôte peut relancer la partie…', Wv / 2, y + 163, 13, C.muted); btn(x + 110, y + 196, 220, 46, () => leaveRoom(), {label:'heroes'}); txt('Quitter la salle', Wv / 2, y + 219, 17, C.text); }
   }
+}
+// ---- En ligne : écrans ----
+const EL = {nm:document.getElementById('nm'), rc:document.getElementById('rc')};
+try { EL.nm.value = localStorage.getItem('ct-name') || ''; } catch (_) {}
+function placeInput(el, x, y, w, h) { el.style.display = 'block'; el.style.left = ((SA.l + x) * K) + 'px'; el.style.top = ((SA.t + y) * K) + 'px'; el.style.width = (w * K) + 'px'; el.style.height = (h * K) + 'px'; el.style.fontSize = Math.max(14, 17 * K) + 'px'; }
+function setName() { NET.name = (EL.nm.value || '').trim().slice(0, 12) || 'Chat' + ((Math.random() * 90 + 10) | 0); try { localStorage.setItem('ct-name', NET.name); } catch (_) {} }
+function createRoom() { setName(); netErr = ''; myHi = selHero; myReady = false; if (netOpen(randCode(), true)) scr = 'lobby'; }
+function joinRoom() {
+  setName(); const code = (EL.rc.value || '').toUpperCase().replace(/[^A-Z]/g, ''); if (code.length !== 4) { netErr = 'Entre le code à 4 lettres'; return; }
+  netErr = ''; myHi = selHero; myReady = false; if (netOpen(code, false)) { scr = 'lobby'; NET.joinAt = performance.now(); }
+}
+function drawOnline(Wv, Hv) {
+  ctx.fillStyle = 'rgba(8,12,30,.6)'; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b);
+  btn(12, 10, 100, 34, () => { scr = 'menu'; }, {label:'back'}); txt('← Retour', 62, 27, 15, C.text);
+  otxt('Jouer en ligne', Wv / 2, 30, 28, C.line);
+  const pw = Math.min(480, Wv - 40), px = Wv / 2 - pw / 2, py = 56, ph = Math.min(Hv - 70, 320); panel(px, py, pw, ph);
+  txt('Ton pseudo', px + 20, py + 22, 13, C.muted, 'left'); placeInput(EL.nm, px + 20, py + 34, pw - 40, 36);
+  btn(px + 20, py + 84, pw - 40, 46, createRoom, {label:'create', fill:C.btnSel}); txt('Créer une salle (tu es l’hôte)', Wv / 2, py + 107, 17, C.text);
+  txt('ou rejoins un ami avec son code', Wv / 2, py + 150, 13, C.muted);
+  placeInput(EL.rc, px + 20, py + 162, 150, 40); btn(px + 184, py + 162, pw - 204, 40, joinRoom, {label:'join'}); txt('Rejoindre', px + 184 + (pw - 204) / 2, py + 182, 17, C.text);
+  if (netErr) txt(netErr, Wv / 2, py + 228, 13, C.coral); txt('Jusqu’à 3 joueurs · coopération en temps réel', Wv / 2, py + ph - 20, 12, C.muted);
+}
+function drawLobby(Wv, Hv) {
+  ctx.fillStyle = 'rgba(8,12,30,.6)'; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b);
+  btn(12, 10, 110, 34, () => leaveRoom(), {label:'leave'}); txt('← Quitter', 67, 27, 15, C.text);
+  otxt('Salle ' + NET.code, Wv / 2, 30, 30, C.line);
+  txt(NET.host ? 'Donne ce code à tes amis, puis lance la partie' : 'Choisis ton héros et attends l’hôte', Wv / 2, 58, 13, C.muted);
+  btn(Wv / 2 + 110, 14, 120, 30, () => { try { navigator.clipboard.writeText(NET.code); toast('Code copié', 2); } catch (_) {} }, {label:'copy'}); txt('Copier le code', Wv / 2 + 170, 29, 12, C.text);
+  const pw = Math.min(560, Wv - 30), px = Wv / 2 - pw / 2, rowH = 70; let y = 76;
+  const list = NET.roster.slice(0, 3);
+  list.forEach((r, i) => {
+    const h = HEROES[(r.hi | 0) % HEROES.length], me = r.id === NET.id; panel(px, y, pw, rowH - 6);
+    pix(px + 8, y + 6, 54, 54, () => drawCat(27, 48, 22, 1, false, nowT() + i, 0, h.look));
+    txt(r.name || 'Chat', px + 72, y + 18, 16, me ? C.line : C.text, 'left', 700); txt((r.host ? 'Hôte · ' : '') + h.name + ' · ' + h.style, px + 72, y + 38, 12, C.muted, 'left');
+    if (me) { btn(px + pw - 220, y + 10, 38, 38, () => { myHi = (myHi + HEROES.length - 1) % HEROES.length; netTrack(); }, {label:'hprev'}); txt('◀', px + pw - 201, y + 29, 15, C.text); btn(px + pw - 176, y + 10, 38, 38, () => { myHi = (myHi + 1) % HEROES.length; netTrack(); }, {label:'hnext'}); txt('▶', px + pw - 157, y + 29, 15, C.text); }
+    if (me) { btn(px + pw - 128, y + 10, 112, 38, () => { myReady = !myReady; netTrack(); }, {label:'ready2', fill:myReady ? C.mintDark : C.btn}); txt(myReady ? 'Prêt ✓' : 'Pas prêt', px + pw - 72, y + 29, 14, myReady ? C.ink : C.text); }
+    else txt(r.ready ? 'Prêt ✓' : 'En attente…', px + pw - 20, y + 29, 14, r.ready ? C.mintDark : C.muted, 'right');
+    y += rowH;
+  });
+  if (!list.length) txt('Connexion à la salle…', Wv / 2, 120, 15, C.muted);
+  if (NET.host) { btn(Wv / 2 - 130, Math.min(Hv - 58, y + 8), 260, 46, netStartGame, {label:'startnet', fill:C.btnSel}); txt('Lancer la partie (' + list.length + ' joueur' + (list.length > 1 ? 's' : '') + ')', Wv / 2, Math.min(Hv - 58, y + 8) + 23, 17, C.text); }
+  else txt('En attente du lancement par l’hôte…', Wv / 2, Math.min(Hv - 34, y + 30), 14, C.muted);
+  if (NET.guest && NET.status === 'SUBSCRIBED' && !NET.roster.some(r => r.host) && performance.now() - NET.joinAt > 4000) { netErr = 'Salle introuvable : vérifie le code'; leaveRoom(); scr = 'online'; }
+}
+function drawParty(Wv, Hv) {
+  if (party.length < 2) return; const y0 = touch ? 82 : 86; panel(12, y0, touch ? 190 : 230, 22 + (party.length - 1) * 24 + 8);
+  txt('Salle ' + NET.code, 22, y0 + 13, 11, C.muted, 'left');
+  let i = 0; for (const h of party) { if (h === ME) continue; const yy = y0 + 32 + i * 24; txt(h.name.slice(0, 9), 22, yy, 11, C.text, 'left'); bar(touch ? 84 : 100, yy - 6, touch ? 108 : 122, 12, Math.max(0, h.hp / h.maxHp), h.dead ? '#6A6F95' : (h.hp / h.maxHp > .35 ? '#58D68D' : '#FF5C6C')); i++; }
 }
 function drawHeroStatus(Wv, Hv) {
   const lo = !hero.dead && hero.hp / hero.maxHp < .3;
@@ -1088,7 +1196,8 @@ function drawHeroStatus(Wv, Hv) {
 }
 function drawHud() {
   ui = []; btns.length = 0; const Wv = W / K - SA.l - SA.r, Hv = H / K - SA.t - SA.b; ctx.save(); ctx.scale(K, K); ctx.translate(SA.l, SA.t);
-  if (scr === 'menu') drawMenu(Wv, Hv); else if (scr === 'select') drawSelect(Wv, Hv); else drawPlayHud(Wv, Hv);
+  EL.nm.style.display = EL.rc.style.display = 'none';
+  if (scr === 'menu') drawMenu(Wv, Hv); else if (scr === 'select') drawSelect(Wv, Hv); else if (scr === 'online') drawOnline(Wv, Hv); else if (scr === 'lobby') drawLobby(Wv, Hv); else drawPlayHud(Wv, Hv);
   if (toastT > 0) otxt(toastS, Wv / 2, Hv - 70, 15, C.text);
   if (portrait) { ui = []; btns.length = 0; ctx.fillStyle = C.sky; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b); otxt('Tourne ton téléphone', Wv / 2, Hv / 2 - 20, 26, '#fff'); txt('CATOWER se joue en mode paysage', Wv / 2, Hv / 2 + 20, 16, C.text); }
   ctx.restore();
@@ -1124,6 +1233,7 @@ function wm(x, y) { return {x:(x - W / 2) / S + cam.x, z:(y - H / 2) / (S * TILT
 function padAt(x, y, r) { const m = wm(x, y); let b = r, best = null; for (const p of pads) { const d = Math.hypot(p.x - m.x, p.z - m.z); if (d < b) { b = d; best = p; } } return best; }
 function placeTower(pad, keep) {
   const d = TOWERS[buildIdx]; if (!pad || pad.tower) return; if (g.cro < d.cost) { banner('Pas assez de croquettes', 1.5); sfx('error'); return; }
+  if (NET.guest) { netReq({op:'build', ti:buildIdx, pi:pads.indexOf(pad)}); previewPad = null; if (!keep) { buildIdx = -1; if (touch) trayOpen = false; } return; }
   g.cro -= d.cost; const t = buildTower(d, pad); previewPad = null; if (!keep) { buildIdx = -1; sel = t; if (touch) trayOpen = false; }
 }
 function dragSrc(ab, p) {
@@ -1180,34 +1290,165 @@ function endPtr(e) {
   if (p.kind === 'joy') { joy.id = null; joy.vx = joy.vz = 0; if (e.type === 'pointerup' && !p.moved && performance.now() - p.t0 < 300) worldTap(p.cx, p.cy); }
   else if (p.kind === 'atk') { atkHeld = false; atkAim = null; hero.target = null; }
   else if (p.kind === 'skill' && e.type === 'pointerup') {
-    if (!p.moved) inp.casts.push({i:p.i, src:null});
-    else { const c = layout().sk[p.i]; if (Math.hypot(p.x - c.x, p.y - c.y) > c.r + 6) inp.casts.push({i:p.i, src:dragSrc(ABIL[p.i], p)}); }
+    if (!p.moved) ME.inp.casts.push({i:p.i, src:null});
+    else { const c = layout().sk[p.i]; if (Math.hypot(p.x - c.x, p.y - c.y) > c.r + 6) ME.inp.casts.push({i:p.i, src:dragSrc(ABIL[p.i], p)}); }
   }
 }
 addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
 addEventListener('blur', () => { mouse.down2 = false; atkHeld = false; atkAim = null; joy.id = null; joy.vx = joy.vz = 0; ptrs.clear(); for (const k in keys) keys[k] = false; });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('keydown', e => {
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') { if (e.key === 'Enter') { if (scr === 'online') { (document.activeElement === EL.rc ? joinRoom : createRoom)(); } } return; }
   startAudio(); const k = e.key.toLowerCase(); if ([' ', 'enter', 'tab', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault(); keys[k] = true; if (e.repeat) return;
   if (k === 'g') { toggleFS(); return; }
+  if (scr === 'online') { if (k === 'escape') scr = 'menu'; return; }
+  if (scr === 'lobby') { if (k === 'escape') leaveRoom(); return; }
   if (scr === 'menu') { if (k === 'enter') scr = 'select'; return; }
   if (scr === 'select') { if (k === 'enter') startGame(selHero); else if (k === 'escape') scr = 'menu'; else if (k === 'arrowleft' || k === 'arrowright') selHero = 1 - selHero; return; }
   if (g.phase === 'defeat' || g.phase === 'victory') { if (k === 'enter') startGame(selHero); return; }
   if (k === 'p' || (k === 'escape' && paused)) { paused = !paused; return; } if (paused) return;
   if (k === 'enter') ready(); if (k === 'c') { cam.x = hero.x; cam.z = hero.z; }
-  const ci = {e:0, r:1, f:2}[k]; if (ci !== undefined) { if (e.shiftKey) learn(ci); else inp.casts.push({i:ci, src:{point:worldMouse()}}); }
+  const ci = {e:0, r:1, f:2}[k]; if (ci !== undefined) { if (e.shiftKey) learn(ci); else ME.inp.casts.push({i:ci, src:{point:worldMouse()}}); }
   if (['1', '2', '3'].includes(k)) { const i = +k - 1; buildIdx = buildIdx === i ? -1 : i; sel = null; }
   if (k === 'escape') { buildIdx = -1; sel = null; previewPad = null; }
   if (sel) { if (k === 'j') upgrade(sel, 0); if (k === 'k') upgrade(sel, 1); if (k === 'x') sellTower(sel); }
 });
 
+// ---------------- En ligne (coop) ----------------
+const R2 = v => Math.round(v * 100) / 100;
+const ALLTOWERS = HEROES.reduce((a, h) => a.concat(h.towers), []);
+function qfx(k, a) { if (NET.host && NET.playing && fxq.length < 160) fxq.push([k, a]); }
+function randCode() { const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let s = ''; for (let i = 0; i < 4; i++) s += L[(Math.random() * L.length) | 0]; return s; }
+function myMeta() { return {id:NET.id, name:NET.name, hi:myHi, ready:myReady, host:NET.host, ts:NET.ts}; }
+function netOpen(code, host) {
+  if (!window.KD_NET) { netErr = 'Réseau indisponible sur cette page'; return false; }
+  NET.code = code; NET.host = host; NET.guest = !host; NET.ts = Date.now(); NET.playing = false; NET.status = ''; NET.roster = [];
+  NET.conn = KD_NET.open({code:'ct-' + code, id:NET.id, meta:myMeta, events:['start', 'snap', 'in', 'req'], onEvent:netEvent, onRoster:l => { NET.roster = l; onRoster(); }, onStatus:st => { NET.status = st; }});
+  if (!NET.conn) { netErr = 'Serveur injoignable'; NET.host = NET.guest = false; return false; }
+  NET.on = true; return true;
+}
+function netClose() { if (NET.conn) NET.conn.close(); NET.conn = null; NET.on = false; NET.host = NET.guest = false; NET.playing = false; NET.roster = []; }
+function netTrack() { if (NET.conn) NET.conn.track(myMeta()); }
+function netReq(r) { if (NET.conn) { r.pid = NET.id; NET.conn.send('req', r); } }
+function leaveRoom(msg) { netClose(); scr = 'menu'; paused = false; if (msg) toast(msg, 4); }
+function onRoster() {
+  if (!NET.on) return;
+  const hostThere = NET.roster.some(r => r.host);
+  if (hostThere) NET.noHostT = 0;
+  if (NET.playing && NET.host) party = party.filter(h => h === ME || NET.roster.some(r => r.id === h.pid));
+}
+function netEvent(ev, m) {
+  if (ev === 'start' && NET.guest) startCoop(m.setup);
+  else if (ev === 'snap' && NET.guest && NET.playing) applySnap(m);
+  else if (ev === 'in' && NET.host && NET.playing) hostIn(m);
+  else if (ev === 'req' && NET.host && NET.playing) hostReq(m);
+}
+function netStartGame() {
+  if (!NET.host || !NET.conn) return;
+  const setup = NET.roster.slice(0, 3).map(r => ({id:r.id, name:r.name || 'Chat', hi:(r.hi | 0) % HEROES.length}));
+  NET.conn.send('start', {setup}); startCoop(setup);
+}
+function startCoop(setup) {
+  pendingSetup = setup; const me = setup.find(s => s.id === NET.id); selHero = me ? me.hi : 0; paused = false; joy.id = null; joy.vx = joy.vz = 0; ptrs.clear(); fxq.length = 0;
+  NET.playing = true; NET.snapT = 0; NET.inT = 0; NET.lastSnap = 0; reset(); scr = 'play'; sfx('level', 1.2);
+}
+function hostIn(m) { const h = party.find(x => x.pid === m.id); if (!h || !h.remote) return; h.remoteIn = {x:m.x, z:m.z, fx:m.fx, fz:m.fz, mv:m.mv, atk:m.atk, aim:m.aim, ts:g.time}; for (const c of m.c || []) h.inp.casts.push(c); }
+function hostReq(r) {
+  const h = party.find(x => x.pid === r.pid); if (!h) return;
+  if (r.op === 'ready') { ready(); return; }
+  useHero(h);
+  try {
+    if (r.op === 'build') { const d = h.hd.towers[r.ti], pad = pads[r.pi]; if (d && pad && !pad.tower && g.cro >= d.cost) { g.cro -= d.cost; buildTower(d, pad); } }
+    else if (r.op === 'up') { const t = towers.find(x => x.id === r.id); if (t) upgrade(t, r.p); }
+    else if (r.op === 'sell') { const t = towers.find(x => x.id === r.id); if (t) sellTower(t); }
+    else if (r.op === 'learn') learn(r.i);
+  } finally { useHero(ME); }
+}
+function makeSnap() {
+  return {
+    g:{ph:g.phase, sq:g.seq, wv:g.wave, cro:g.cro, ch:g.coreHp, cm:g.coreMax, xp:g.xp, lv:g.lvl, nw:R2(Math.max(0, g.nextWave - g.time)), ti:R2(g.time), pl:R2(g.pulse), sh:R2(shake)},
+    h:party.map(h => [h.pid, R2(h.x), R2(h.z), R2(h.fx), R2(h.fz), Math.round(h.hp), h.maxHp, h.dead ? 1 : 0, R2(h.resp), R2(h.inv), R2(h.hurt), R2(h.lvlFx), h.rank.join(''), h.points, h.cd.map(R2), h.moving ? 1 : 0, R2(h.hit), R2(h.deathT)]),
+    e:enemies.map(e => [e.id, e.def.id, R2(e.x), R2(e.z), R2(e.dx), R2(e.dz), Math.round(e.hp), Math.round(e.max), e.blocked ? 1 : 0, R2(e.stunT), R2(e.slowT), R2(e.markT), R2(e.flash), R2(e.d), R2(e.lunge), R2(e.acd), R2(e.barT || 0)]),
+    t:towers.map(t => [t.id, t.def.id, pads.indexOf(t.pad), t.tiers[0], t.tiers[1], R2(t.boost), R2(t.ang), R2(t.aura)]),
+    a:allies.map(a => [R2(a.x), R2(a.z), a.kind, R2(a.life), R2(a.ph), R2(a.fx || 1)]),
+    p:projs.map(p => [R2(p.x), R2(p.z), R2(p.y), R2(p.dx), R2(p.dz), R2(p.speed), p.shape, p.color, R2(p.size), R2(p.life)]),
+    k:picks.map(k => [k.kind, k.value, R2(k.x), R2(k.z), R2(k.y), R2(k.life), k.scale, k.ground ? 1 : 0, R2(k.t)]),
+    z:zones.map(z => ({kind:z.kind, x:R2(z.x), z:R2(z.z), r:R2(z.r || 0), t:R2(z.t), life:R2(z.life), delay:z.delay, done:z.done, ang:z.ang, len:z.len, w:z.w, color:z.color})),
+    s:slashes.map(s => ({kind:s.kind, a:R2(s.a), r:s.r, arc:s.arc, t:R2(s.t), life:s.life, col:s.col, x:R2(s.x), z:R2(s.z)})),
+    f:fxq.splice(0),
+  };
+}
+function hostTick(dt) {
+  NET.snapT += dt; if (NET.snapT >= 1 / 12 && NET.conn) { NET.snapT = 0; NET.conn.send('snap', makeSnap()); }
+}
+function tStats(def, tiers) { const s = Object.assign({}, def.stats); for (let p = 0; p < 2; p++) for (let i = 0; i < tiers[p]; i++) def.paths[p][i].fn(s); return s; }
+function applySnap(m) {
+  const G = m.g; g.phase = G.ph; g.seq = G.sq; g.wave = G.wv; g.cro = G.cro; g.coreHp = G.ch; g.coreMax = G.cm; g.xp = G.xp; g.lvl = G.lv; g.time = G.ti; g.nextWave = G.ti + G.nw; if (G.pl > g.pulse) g.pulse = G.pl; if (G.sh > shake) shake = G.sh;
+  for (const a of m.h) {
+    const h = party.find(x => x.pid === a[0]); if (!h) continue;
+    h.tx = a[1]; h.tz = a[2]; if (h === ME) { if (Math.hypot(h.x - a[1], h.z - a[2]) > 5) { h.x = a[1]; h.z = a[2]; } } else { h.fx = a[3]; h.fz = a[4]; h.moving = !!a[15]; }
+    h.hp = a[5]; h.maxHp = a[6]; const wasDead = h.dead; h.dead = !!a[7]; h.resp = a[8]; h.inv = a[9]; if (a[10] > h.hurt) h.hurt = a[10]; if (a[11] > h.lvlFx) h.lvlFx = a[11]; h.rank = a[12].split('').map(Number); h.points = a[13]; h.cd = a[14]; if (a[16] > h.hit) h.hit = a[16]; h.deathT = a[17];
+    if (h === ME && h.dead && !wasDead) { atkHeld = false; atkAim = null; joy.vx = joy.vz = 0; }
+  }
+  const byId = new Map(enemies.map(e => [e.id, e])); const ne = [];
+  for (const a of m.e) {
+    let e = byId.get(a[0]); if (!e) { e = {id:a[0], def:ENEMIES[a[1]], x:a[2], z:a[3], t:Math.random() * 6, slowMul:1}; }
+    e.tx = a[2]; e.tz = a[3]; e.dx = a[4]; e.dz = a[5]; e.hp = a[6]; e.max = a[7]; e.blocked = !!a[8]; e.stunT = a[9]; e.slowT = a[10]; e.markT = a[11]; if (a[12] > e.flash || e.flash === undefined) e.flash = a[12]; e.d = a[13]; if (a[14] > (e.lunge || 0)) e.lunge = a[14]; e.acd = a[15]; e.barT = a[16]; ne.push(e);
+  }
+  enemies = ne;
+  const tById = new Map(towers.map(t => [t.id, t])), nt = []; pads.forEach(p => p.tower = null);
+  for (const a of m.t) {
+    const def = ALLTOWERS.find(d => d.id === a[1]); if (!def || a[2] < 0) continue;
+    let t = tById.get(a[0]); if (!t) t = {id:a[0], def, x:pads[a[2]].x, z:pads[a[2]].z, ph:Math.random() * 6, beams:[]};
+    t.pad = pads[a[2]]; t.pad.tower = t; t.tiers = [a[3], a[4]]; t.s = tStats(def, t.tiers); t.boost = a[5]; t.ang = a[6]; t.aura = a[7]; t.invested = def.cost; nt.push(t);
+  }
+  towers = nt;
+  allies = m.a.map(a => ({x:a[0], z:a[1], kind:a[2], life:a[3], ph:a[4], fx:a[5]}));
+  projs = m.p.map(a => ({x:a[0], z:a[1], y:a[2], dx:a[3], dz:a[4], speed:a[5], shape:a[6], color:a[7], size:a[8], life:a[9]}));
+  picks = m.k.map(a => ({kind:a[0], value:a[1], x:a[2], z:a[3], y:a[4], life:a[5], scale:a[6], ground:!!a[7], t:a[8], ph:a[2]}));
+  zones = m.z; slashes = m.s;
+  for (const f of m.f) { const k = f[0], a = f[1]; if (k === 'b') burst0(...a); else if (k === 'r') ring0(...a); else if (k === 'p') pop0(...a); else if (k === 's') sfx0(...a); else if (k === 'n') banner0(...a); }
+  NET.lastSnap = performance.now();
+}
+function guestStep(dt) {
+  g.time += dt; if (g.bannerT > 0) g.bannerT -= dt; g.pulse = Math.max(0, g.pulse - dt * 2.5); g.xpFlash = Math.max(0, g.xpFlash - dt); shake = Math.max(0, shake - dt * 1.2);
+  const k = 1 - Math.exp(-12 * dt);
+  for (const e of enemies) { e.t += dt; e.x += (e.tx - e.x) * k; e.z += (e.tz - e.z) * k; if (e.flash > 0) e.flash = Math.max(0, e.flash - dt * 6); if (e.lunge > 0) e.lunge -= dt; if (e.barT > 0) e.barT -= dt; }
+  for (const t of towers) t.ph += dt;
+  for (const a of allies) a.ph += dt; for (const p of projs) { p.x += p.dx * p.speed * dt; p.z += p.dz * p.speed * dt; p.life -= dt; } for (const c of picks) c.t += dt;
+  for (const z of zones) z.t += dt; for (const s of slashes) s.t += dt;
+  for (const h of party) {
+    h.t += dt; if (h.hurt > 0) h.hurt -= dt; if (h.inv > 0) h.inv -= dt; if (h.lvlFx > 0) h.lvlFx -= dt; h.hit = Math.max(0, h.hit - dt * 6); if (h.dead) h.deathT += dt;
+    if (h !== ME && h.tx !== undefined) { h.x += (h.tx - h.x) * k; h.z += (h.tz - h.z) * k; }
+    for (let i = 0; i < 3; i++) if (h.cd[i] > 0) h.cd[i] -= dt;
+  }
+  const h = ME; useHero(h); let forcedAtk = false;
+  if (!h.dead) {
+    gatherInput(); const A = HD.attack, spd = heroSpeed(); let mx = 0, mz = 0;
+    if (!touch && mouse.down2 && !h.target && !overUi()) { const m = worldMouse(); h.mt = {x:m.x, z:m.z}; }
+    if (Math.hypot(inp.mx, inp.mz) > .01) { h.mt = null; h.target = null; mx = inp.mx * spd * dt; mz = inp.mz * spd * dt; }
+    else {
+      if (h.target && h.target.dead) h.target = null;
+      if (h.target) { const d = flat(h.target, h); if (d > A.range - .3) { mx = (h.target.x - h.x) / d * spd * dt; mz = (h.target.z - h.z) / d * spd * dt; } else forcedAtk = true; }
+      else if (h.mt) { const dx = h.mt.x - h.x, dz = h.mt.z - h.z, d = Math.hypot(dx, dz); if (d < .15) h.mt = null; else { const s = Math.min(d, spd * dt) / d; mx = dx * s; mz = dz * s; } }
+    }
+    h.moving = Math.hypot(mx, mz) > 1e-4;
+    h.x = Math.max(-HALF.x + 1, Math.min(HALF.x - 1, h.x + mx)); h.z = Math.max(-HALF.z + 1, Math.min(HALF.z - 1, h.z + mz));
+    for (const e of enemies) { if (e.def.flier) continue; const dx = h.x - e.x, dz = h.z - e.z, d = Math.hypot(dx, dz), min = e.def.r + .5; if (d < min && d > .001) { const push = (min - d) * .7; h.x += dx / d * push; h.z += dz / d * push; } }
+    if (h.moving) { const l = Math.hypot(mx, mz); h.fx = mx / l; h.fz = mz / l; }
+  } else { h.moving = false; inp.casts.length = 0; }
+  NET.inT += dt;
+  if (NET.inT >= .05 && NET.conn) { NET.inT = 0; NET.conn.send('in', {id:NET.id, x:R2(h.x), z:R2(h.z), fx:R2(h.fx), fz:R2(h.fz), mv:h.moving ? 1 : 0, atk:(inp.atk || forcedAtk) ? 1 : 0, aim:atkAim, c:h.inp.casts.splice(0)}); }
+  if (NET.lastSnap && performance.now() - NET.lastSnap > 6000) { leaveRoom('Connexion perdue avec l’hôte'); }
+}
+
 // ---------------- Boucle ----------------
-function startGame(i) { selHero = i; HD = HEROES[i]; ABIL = HD.abilities; TOWERS = HD.towers; paused = false; inp.casts.length = 0; joy.id = null; joy.vx = joy.vz = 0; ptrs.clear(); reset(); scr = 'play'; sfx('level', 1.2); }
+function startGame(i) { selHero = i; pendingSetup = null; netClose(); paused = false; joy.id = null; joy.vx = joy.vz = 0; ptrs.clear(); reset(); scr = 'play'; sfx('level', 1.2); }
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now; if (toastT > 0) toastT -= dt; portrait = touch && H > W * 1.05;
-  const playing = scr === 'play', stop = paused || portrait || !playing;
-  if (playing && !stop) { if (g.phase === 'prep' || g.phase === 'waves') updateGame(dt); else if (g.bannerT > 0) g.bannerT -= dt; updateFx(dt); }
+  const playing = scr === 'play', stop = (paused && !NET.on) || portrait || !playing;
+  if (playing && !stop) { if (NET.guest) guestStep(dt); else { if (g.phase === 'prep' || g.phase === 'waves') updateGame(dt); else if (g.bannerT > 0) g.bannerT -= dt; if (NET.host) hostTick(dt); } updateFx(dt); }
   let tx, tz;
   if (playing) {
     const hw = Math.min(HALF.x, W / S / 2), hh = Math.min(HALF.z, H / (S * TILT) / 2);
@@ -1217,12 +1458,12 @@ function frame(now) {
   hoverPad = null; if (playing && !touch && !overUi()) { const m = worldMouse(); let b = 1.9; for (const p of pads) { const d = Math.hypot(p.x - m.x, p.z - m.z); if (d < b) { b = d; hoverPad = p; } } }
   ctx = wctx; wctx.setTransform(1 / PX, 0, 0, 1 / PX, 0, 0); wctx.save();
   if (shake > .001 && playing) wctx.translate(Math.round(rnd(-1, 1) * shake * 12), Math.round(rnd(-1, 1) * shake * 12));
-  drawWorld(); wctx.restore(); ctx = mctx; mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.imageSmoothingEnabled = false; mctx.drawImage(wc, 0, 0, wc.width, wc.height, 0, 0, wc.width * PX * DPR, wc.height * PX * DPR); mctx.setTransform(DPR, 0, 0, DPR, 0, 0); drawHud();
+  wctx.imageSmoothingEnabled = false; drawWorld(); wctx.restore(); postFX(); ctx = mctx; mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.imageSmoothingEnabled = false; mctx.drawImage(wc, 0, 0, wc.width, wc.height, 0, 0, wc.width * PX * DPR, wc.height * PX * DPR); mctx.setTransform(DPR, 0, 0, DPR, 0, 0); drawHud();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 window.__catower = {get g() { return g; }, get hero() { return hero; }, get HD() { return HD; }, get scr() { return scr; }, get K() { return K; }, get S() { return S; }, get zones() { return zones; }, get trayOpen() { return trayOpen; }, get previewPad() { return previewPad; }, get buildIdx() { return buildIdx; }, inp,
-  enemies: () => enemies, towers: () => towers, btns: () => btns.map(b => ({x:b.x, y:b.y, w:b.w, h:b.h, label:b.label})), ready, startGame, buildTower, pads, upgrade, layout, learn, canLearn, addXp, hurtHero, spawn:(id) => spawnEnemy(ENEMIES[id], 1, 1)};
+  enemies: () => enemies, towers: () => towers, btns: () => btns.map(b => ({x:b.x, y:b.y, w:b.w, h:b.h, label:b.label})), ready, startGame, startCoop, NET, party: () => party, ME: () => ME, buildTower, pads, upgrade, layout, learn, canLearn, addXp, hurtHero, spawn:(id) => spawnEnemy(ENEMIES[id], 1, 1)};
 })();
 </script>
 </body>
