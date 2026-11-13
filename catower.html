@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>CATOWER · AkarisuMD</title>
 <meta name="description" content="CATOWER : un tower defense où tu contrôles Mochi, un chat gardien, et construis des tourelles pour protéger le Cœur. Version navigateur du prototype.">
 <meta name="theme-color" content="#FFF3F7">
@@ -14,14 +14,14 @@
   canvas{display:block;cursor:crosshair;touch-action:none}
   .back{position:fixed;right:max(12px,env(safe-area-inset-right,0px));top:max(10px,env(safe-area-inset-top,0px));font-size:12px;color:#7E6A87;text-decoration:none;opacity:.8;z-index:2}
   .back:hover{opacity:1;text-decoration:underline}
-  #small{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;background:#FFF3F7;color:#4A3553;font-size:18px;z-index:3}
-  @media (max-width:700px),(pointer:coarse){#small{display:flex}}
+  html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+  canvas{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+  @media (pointer:coarse){.back{display:none}}
 </style>
 </head>
 <body>
 <canvas id="c" aria-label="CATOWER"></canvas>
 <a class="back" href="jeux.html">← Tous les jeux</a>
-<div id="small"><div><b>CATOWER</b> se joue au clavier et à la souris.<br>Ouvre cette page sur un ordinateur.<br><br><a href="jeux.html" style="color:#FF5C93">← Tous les jeux</a></div></div>
 <script>
 "use strict";
 (() => {
@@ -30,11 +30,11 @@ const C = {ink:'#4A3553',pink:'#FF8FB4',pinkSoft:'#FFD9E6',gold:'#F4A62A',goldDa
   mint:'#CFEFE3',mintDark:'#8FD1B5',grass:'#BDE8D0',road:'#FFE3C7',roadEdge:'#F3C9A0',fur:'#FFB86B',furLight:'#FFE6C4',milk:'#F4F8FF',
   sky:'#FFF3F7',water:'#8FD3FF',lilac:'#C9B8FF',muted:'#7E6A87',goldText:'#C9800A'};
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
-let W = 0, H = 0, DPR = 1, S = 40, K = 1;
+let W = 0, H = 0, DPR = 1, S = 40, K = 1, touch = matchMedia('(pointer:coarse)').matches;
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
   cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px';
-  S = Math.max(W / 30, H / 17.5); K = H / 720;
+  S = Math.max(W / 30, H / 17.5); K = touch ? H / 460 : H / 720;
 }
 addEventListener('resize', resize); resize();
 
@@ -132,6 +132,7 @@ function sfx(k, pitch = 1) {
 
 // ---------------- État ----------------
 let g, enemies, towers, projs, picks, parts, rings, floaters, hero, cam, ui = [], mouse = {x:0, y:0, down2:false}, keys = {}, sel, buildIdx, paused = false, shake = 0;
+const joy = {id:null, ox:0, oy:0, x:0, y:0, vx:0, vz:0}, ptrs = new Map(); let atkHeld = false, portrait = false;
 const pads = PADPOS.map(p => ({x:p[0], z:p[1], tower:null}));
 function reset() {
   g = {phase:'prep', seq:0, wave:0, cro:150, coreMax:30, coreHp:30, xp:0, lvl:1, banner:'Bienvenue ! Construis un canon (touche 1), puis appuie sur Entrée.', bannerT:6, nextWave:0, time:0, pending:[], pulse:0};
@@ -292,8 +293,8 @@ function updateTowers(dt) {
 function worldMouse() { return {x:(mouse.x - W / 2) / S + cam.x, z:(mouse.y - H / 2) / (S * TILT) + cam.z}; }
 function overUi() { const x = mouse.x / K, y = mouse.y / K; return ui.some(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); }
 function aimDir() { const m = worldMouse(), d = Math.hypot(m.x - hero.x, m.z - hero.z); return d > .1 ? {x:(m.x - hero.x) / d, z:(m.z - hero.z) / d} : {x:hero.fx, z:hero.fz}; }
-function cast(i) {
-  const a = ABIL[i]; if (g.lvl < a.lvl || hero.cd[i] > 0) return; hero.cd[i] = a.cd; const d = aimDir(), lv = g.lvl;
+function cast(i, dir) {
+  const a = ABIL[i]; if (g.lvl < a.lvl || hero.cd[i] > 0) return; hero.cd[i] = a.cd; const d = dir || aimDir(), lv = g.lvl;
   if (i === 0) { mkProj({x:hero.x, z:hero.z, dx:d.x, dz:d.z, speed:18, life:.8, pierce:true, damage:20 + 8 * (lv - 1), slowMul:.6, slowTime:3, markTime:5, size:.5}); sfx('q'); }
   else if (i === 1) { hero.dash = .15; hero.dvx = d.x * 7 / .15; hero.dvz = d.z * 7 / .15; hero.mt = null; hero.target = null; burst(hero.x, hero.z, .3, C.furLight, 8); sfx('w'); }
   else {
@@ -304,11 +305,14 @@ function cast(i) {
 }
 function updateHero(dt) {
   const h = hero; h.t += dt; h.hit = Math.max(0, h.hit - dt * 6);
-  const m = worldMouse(); if (mouse.down2 && !h.target && !overUi()) h.mt = {x:m.x, z:m.z};
+  if (!touch && mouse.down2 && !h.target && !overUi()) { const m = worldMouse(); h.mt = {x:m.x, z:m.z}; }
+  const jm = Math.hypot(joy.vx, joy.vz);
   for (let i = 0; i < 3; i++) if (h.cd[i] > 0) h.cd[i] -= dt;
   let mx = 0, mz = 0;
   if (h.dash > 0) { h.dash -= dt; mx = h.dvx * dt; mz = h.dvz * dt; }
+  else if (jm > .01) { h.mt = null; h.target = null; mx = joy.vx * 6.5 * dt; mz = joy.vz * 6.5 * dt; }
   else {
+    if (atkHeld && (!h.target || h.target.dead)) { let b = null, bd = 7; for (const e of enemies) { const d = flat(e, h); if (!e.dead && d < bd) { bd = d; b = e; } } h.target = b; }
     if (h.target && h.target.dead) h.target = null;
     if (h.target) { const d = flat(h.target, h); if (d > 2.3) { mx = (h.target.x - h.x) / d * 6.5 * dt; mz = (h.target.z - h.z) / d * 6.5 * dt; } }
     else if (h.mt) { const dx = h.mt.x - h.x, dz = h.mt.z - h.z, d = Math.hypot(dx, dz); if (d < .15) h.mt = null; else { const s = Math.min(d, 6.5 * dt) / d; mx = dx * s; mz = dz * s; } }
@@ -320,7 +324,7 @@ function updateHero(dt) {
   if (h.atk <= 0 && h.dash <= 0) {
     let tg = null;
     if (h.target && flat(h.target, h) <= 2.3 + h.target.def.r) tg = h.target;
-    else if (!h.target && !h.mt) { let best = 1e9; for (const e of inRange(h.x, h.z, 2.3)) { const d = flat(e, h); if (d < best) { best = d; tg = e; } } }
+    else if (!h.target && !h.mt && !h.moving) { let best = 1e9; for (const e of inRange(h.x, h.z, 2.3)) { const d = flat(e, h); if (d < best) { best = d; tg = e; } } }
     if (tg) { h.atk = .55; hitEnemy(tg, 14 * (1 + .2 * (g.lvl - 1)), false); burst(tg.x, tg.z, .8, C.pink, 5, .12, 3); const d = flat(tg, h) || 1; h.fx = (tg.x - h.x) / d; h.fz = (tg.z - h.z) / d; h.hit = 1; }
   }
 }
@@ -545,44 +549,75 @@ function bar(x, y, w, h, f, color) {
   rr(x, y, w, h, h / 2); ctx.fillStyle = 'rgba(74,53,83,.22)'; ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.stroke();
   if (f > .01) { rr(x + 3, y + 3, Math.max(h - 6, (w - 6) * f), h - 6, (h - 6) / 2); ctx.fillStyle = color; ctx.fill(); }
 }
+function circ(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); }
+function layout() { const Wv = W / K, Hv = H / K, ax = Wv - 74, ay = Hv - 74; return {Wv, Hv, atk:{x:ax, y:ay, r:42}, sk:[{x:ax - 96, y:ay - 8, r:28}, {x:ax - 74, y:ay - 70, r:28}, {x:ax - 8, y:ay - 100, r:28}]}; }
+function drawTouch(Wv, Hv) {
+  const L = layout(), on = joy.id !== null, jx = on ? joy.ox : 92, jy = on ? joy.oy : Hv - 96;
+  ctx.globalAlpha = on ? .9 : .45; ctx.lineWidth = 4; ctx.strokeStyle = C.ink; ctx.fillStyle = 'rgba(255,255,255,.35)'; circ(jx, jy, 50); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = C.pink; circ(on ? joy.x : jx, on ? joy.y : jy, 22); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
+  const a = L.atk; ui.push({x:a.x - a.r, y:a.y - a.r, w:a.r * 2, h:a.r * 2});
+  ctx.fillStyle = atkHeld ? C.pink : C.pinkSoft; circ(a.x, a.y, a.r); ctx.fill(); ctx.lineWidth = 4; ctx.stroke();
+  ctx.lineWidth = 6; ctx.lineCap = 'round'; for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(a.x + i * 13 - 7, a.y - 18); ctx.lineTo(a.x + i * 13 + 5, a.y + 14); ctx.stroke(); }
+  ABIL.forEach((ab, i) => {
+    const c = L.sk[i], locked = g.lvl < ab.lvl, cd = hero.cd[i], held = [...ptrs.values()].some(p => p.kind === 'skill' && p.i === i);
+    ui.push({x:c.x - c.r, y:c.y - c.r, w:c.r * 2, h:c.r * 2});
+    ctx.fillStyle = locked ? '#E0D6E5' : (held ? C.pink : '#fff'); circ(c.x, c.y, c.r); ctx.fill(); ctx.strokeStyle = locked ? '#9C8AA6' : C.ink; ctx.lineWidth = 3.5; ctx.stroke();
+    txt(ab.label, c.x, c.y - (locked ? 6 : 0), 24, locked ? C.muted : C.ink); if (locked) txt('Niv.' + ab.lvl, c.x, c.y + 14, 11, C.muted);
+    if (cd > 0 && !locked) { ctx.fillStyle = 'rgba(74,53,83,.6)'; ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.arc(c.x, c.y, c.r - 2, -Math.PI / 2, -Math.PI / 2 + TAU * (cd / ab.cd)); ctx.closePath(); ctx.fill(); txt(String(Math.ceil(cd)), c.x, c.y, 22, '#fff'); }
+  });
+  for (const p of ptrs.values()) if (p.kind === 'skill') {
+    const dx = p.x - p.sx, dy = p.y - p.sy; if (Math.hypot(dx, dy) <= 14) continue;
+    const l = Math.hypot(dx, dy / TILT), dx2 = dx / l, dz2 = dy / TILT / l, len = p.i === 0 ? 10 : p.i === 1 ? 7 : 5;
+    const [hx, hy] = P(hero.x, hero.z, .5), [ex, ey] = P(hero.x + dx2 * len, hero.z + dz2 * len, .5);
+    ctx.strokeStyle = C.pink; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.globalAlpha = .8; ctx.beginPath(); ctx.moveTo(hx / K, hy / K); ctx.lineTo(ex / K, ey / K); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+}
 function drawHud() {
-  ui = []; btns.length = 0; const Wv = W / K, Hv = 720; ctx.save(); ctx.scale(K, K);
-  // flottants
+  ui = []; btns.length = 0; const Wv = W / K, Hv = H / K; ctx.save(); ctx.scale(K, K);
   for (const f of floaters) { const [sx, sy] = P(f.x, f.z, f.y + f.t * 1.6); ctx.globalAlpha = 1 - Math.max(0, (f.t - f.life * .6) / (f.life * .4)); otxt(f.text, sx / K, sy / K, f.size, f.color); ctx.globalAlpha = 1; }
-  panel(12, 8, 330, 70); txt('Clic droit : bouger / attaquer', 24, 25, 13, C.ink, 'left'); txt('Q W E : capacités   ·   1 2 3 : construire', 24, 44, 13, C.ink, 'left'); txt('Clic gauche : poser / choisir   ·   Espace : recentrer', 24, 63, 12, C.muted, 'left');
-  // haut
+  if (!touch) { panel(12, 8, 330, 70); txt('Clic droit : bouger / attaquer', 24, 25, 13, C.ink, 'left'); txt('Q W E : capacités   ·   1 2 3 : construire', 24, 44, 13, C.ink, 'left'); txt('Clic gauche : poser / choisir   ·   Espace : recentrer', 24, 63, 12, C.muted, 'left'); }
   panel(Wv / 2 - 190, 8, 380, 74); txt('Cœur à protéger', Wv / 2, 22, 14, C.ink); const cf = g.coreHp / g.coreMax;
   bar(Wv / 2 - 176, 32, 352, 22, cf, cf > .3 ? C.pink : C.coral); txt(g.coreHp + ' / ' + g.coreMax, Wv / 2, 43, 14, C.ink);
   txt(g.phase === 'prep' ? 'Séquence ' + (g.seq + 1) + '/' + SEQ_WIN + '  ·  Préparation' : 'Séquence ' + (g.seq + 1) + '/' + SEQ_WIN + '  ·  Vague ' + g.wave + '/' + WAVES, Wv / 2, 68, 15, C.ink);
-  // héros
-  const hx = 12, hy = Hv - 132; panel(hx, hy, 270, 120); txt('Mochi', hx + 12, hy + 15, 17, C.ink, 'left'); txt('Niveau ' + g.lvl, hx + 258, hy + 15, 15, C.violet, 'right');
-  const prev = g.lvl <= 1 ? 0 : XP_T[g.lvl - 2], next = g.lvl >= 5 ? XP_T[3] : XP_T[g.lvl - 1];
-  bar(hx + 10, hy + 28, 250, 18, g.lvl >= 5 ? 1 : (g.xp - prev) / (next - prev), C.violet); txt(g.lvl >= 5 ? 'XP max' : 'XP ' + g.xp + ' / ' + next, hx + 135, hy + 37, 12, '#fff');
-  ABIL.forEach((a, i) => {
-    const x = hx + 14 + i * 84, y = hy + 52, locked = g.lvl < a.lvl; rr(x, y, 72, 62); ctx.fillStyle = locked ? '#E0D6E5' : '#fff'; ctx.fill(); ctx.strokeStyle = locked ? '#9C8AA6' : C.ink; ctx.lineWidth = 3; ctx.stroke();
-    txt(a.label, x + 36, y + 16, 22, locked ? C.muted : C.ink); txt(locked ? 'Niv. ' + a.lvl : a.name, x + 36, y + 46, 11, locked ? C.muted : C.ink);
-    const cd = hero.cd[i]; if (cd > 0 && !locked) { const f = cd / a.cd; ctx.fillStyle = 'rgba(74,53,83,.55)'; ctx.fillRect(x + 3, y + 3 + 56 * (1 - f), 66, 56 * f); txt(String(Math.ceil(cd)), x + 36, y + 31, 24, '#fff'); }
-  });
-  // construction
-  const bw = 150, gap = 8, x0 = Wv / 2 - (3 * bw + 2 * gap) / 2;
+  const prev = g.lvl <= 1 ? 0 : XP_T[g.lvl - 2], next = g.lvl >= 5 ? XP_T[3] : XP_T[g.lvl - 1], xf = g.lvl >= 5 ? 1 : (g.xp - prev) / (next - prev);
+  if (touch) {
+    panel(12, 8, 190, 54); txt('Mochi', 24, 22, 15, C.ink, 'left'); txt('Niv. ' + g.lvl, 192, 22, 14, C.violet, 'right'); bar(20, 36, 174, 18, xf, C.violet);
+  } else {
+    const hx = 12, hy = Hv - 132; panel(hx, hy, 270, 120); txt('Mochi', hx + 12, hy + 15, 17, C.ink, 'left'); txt('Niveau ' + g.lvl, hx + 258, hy + 15, 15, C.violet, 'right');
+    bar(hx + 10, hy + 28, 250, 18, xf, C.violet); txt(g.lvl >= 5 ? 'XP max' : 'XP ' + g.xp + ' / ' + next, hx + 135, hy + 37, 12, '#fff');
+    ABIL.forEach((a, i) => {
+      const x = hx + 14 + i * 84, y = hy + 52, locked = g.lvl < a.lvl; rr(x, y, 72, 62); ctx.fillStyle = locked ? '#E0D6E5' : '#fff'; ctx.fill(); ctx.strokeStyle = locked ? '#9C8AA6' : C.ink; ctx.lineWidth = 3; ctx.stroke();
+      txt(a.label, x + 36, y + 16, 22, locked ? C.muted : C.ink); txt(locked ? 'Niv. ' + a.lvl : a.name, x + 36, y + 46, 11, locked ? C.muted : C.ink);
+      const cd = hero.cd[i]; if (cd > 0 && !locked) { const f = cd / a.cd; ctx.fillStyle = 'rgba(74,53,83,.55)'; ctx.fillRect(x + 3, y + 3 + 56 * (1 - f), 66, 56 * f); txt(String(Math.ceil(cd)), x + 36, y + 31, 24, '#fff'); }
+    });
+  }
+  const bw = touch ? 124 : 150, bh = touch ? 64 : 80, gap = 8, x0 = Wv / 2 - (3 * bw + 2 * gap) / 2, by0 = Hv - bh - 12;
   TOWERS.forEach((d, i) => {
-    const x = x0 + i * (bw + gap), y = Hv - 92, aff = g.cro >= d.cost; btn(x, y, bw, 80, () => { buildIdx = buildIdx === i ? -1 : i; sel = null; }, {sel:buildIdx === i});
-    txt((i + 1) + ' · ' + d.name, x + bw / 2, y + 16, 14, C.ink); txt(d.role, x + bw / 2, y + 36, 12, C.muted); txt(d.cost + ' croquettes', x + bw / 2, y + 61, 16, aff ? C.goldText : C.coral);
+    const x = x0 + i * (bw + gap), aff = g.cro >= d.cost; btn(x, by0, bw, bh, () => { buildIdx = buildIdx === i ? -1 : i; sel = null; }, {sel:buildIdx === i});
+    txt((touch ? '' : (i + 1) + ' · ') + d.name, x + bw / 2, by0 + (touch ? 14 : 16), touch ? 13 : 14, C.ink); txt(d.role, x + bw / 2, by0 + (touch ? 32 : 36), touch ? 11 : 12, C.muted); txt(d.cost + (touch ? '' : ' croquettes'), x + bw / 2, by0 + (touch ? 51 : 61), 16, aff ? C.goldText : C.coral);
   });
-  panel(Wv - 212, Hv - 72, 200, 60); txt('Croquettes', Wv - 112, Hv - 58, 13, C.muted); txt(String(g.cro), Wv - 112, Hv - 33, 30, C.goldText);
+  if (touch) { panel(Wv - 222, 8, 160, 50); txt('Croquettes', Wv - 142, 20, 11, C.muted); txt(String(g.cro), Wv - 142, 41, 24, C.goldText); btn(Wv - 54, 8, 44, 44, () => { paused = true; }); txt('II', Wv - 32, 30, 18, C.ink); }
+  else { panel(Wv - 212, Hv - 72, 200, 60); txt('Croquettes', Wv - 112, Hv - 58, 13, C.muted); txt(String(g.cro), Wv - 112, Hv - 33, 30, C.goldText); }
   if (g.phase === 'prep' || (g.phase === 'waves' && g.wave < WAVES)) {
-    const x = Wv / 2 - 220, y = Hv - 142; panel(x, y, 440, 42);
-    txt(g.phase === 'prep' ? 'Préparation : construis tes défenses' : 'Prochaine vague dans ' + Math.ceil(Math.max(0, g.nextWave - g.time)) + ' s', x + 12, y + 21, 14, C.ink, 'left');
-    btn(x + 280, y + 5, 152, 32, ready); txt(g.phase === 'prep' ? 'Prêt ! (Entrée)' : 'Appeler (Entrée)', x + 356, y + 21, 14, C.ink);
+    const ww = touch ? 360 : 440, wh = touch ? 38 : 42, x = Wv / 2 - ww / 2, y = by0 - 8 - wh; panel(x, y, ww, wh);
+    txt(g.phase === 'prep' ? (touch ? 'Construis, puis lance' : 'Préparation : construis tes défenses') : 'Prochaine vague dans ' + Math.ceil(Math.max(0, g.nextWave - g.time)) + ' s', x + 12, y + wh / 2, touch ? 13 : 14, C.ink, 'left');
+    btn(x + ww - (touch ? 128 : 160), y + 4, touch ? 120 : 152, wh - 8, ready); txt(g.phase === 'prep' ? (touch ? 'Prêt !' : 'Prêt ! (Entrée)') : (touch ? 'Appeler' : 'Appeler (Entrée)'), x + ww - (touch ? 68 : 84), y + wh / 2, 14, C.ink);
   }
   if (sel) drawTowerPanel(Wv, Hv, sel);
-  if (g.bannerT > 0) otxt(g.banner, Wv / 2, 130, 34, '#fff');
-  if (paused) otxt('Pause (P)', Wv / 2, Hv / 2, 44, '#fff');
+  if (touch) drawTouch(Wv, Hv);
+  if (g.bannerT > 0) otxt(g.banner, Wv / 2, touch ? 112 : 130, touch ? 26 : 34, '#fff');
+  if (paused && g.phase !== 'victory' && g.phase !== 'defeat') {
+    ui = []; btns.length = 0; ctx.fillStyle = 'rgba(74,53,83,.55)'; ctx.fillRect(0, 0, Wv, Hv); const x = Wv / 2 - 150, y = Hv / 2 - 125; panel(x, y, 300, 250); txt('Pause', Wv / 2, y + 30, 28, C.ink);
+    btn(x + 30, y + 60, 240, 44, () => { paused = false; }); txt('Reprendre', Wv / 2, y + 82, 17, C.ink);
+    btn(x + 30, y + 114, 240, 44, () => { try { const el = document.documentElement; (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } catch (_) {} }); txt('Plein écran', Wv / 2, y + 136, 17, C.ink);
+    btn(x + 30, y + 168, 240, 44, () => { location.href = 'jeux.html'; }); txt('← Tous les jeux', Wv / 2, y + 190, 17, C.ink);
+  }
   if (g.phase === 'victory' || g.phase === 'defeat') {
-    ctx.fillStyle = 'rgba(74,53,83,.55)'; ctx.fillRect(0, 0, Wv, Hv); const x = Wv / 2 - 220, y = Hv / 2 - 120, win = g.phase === 'victory'; panel(x, y, 440, 240);
+    ui = []; btns.length = 0; ctx.fillStyle = 'rgba(74,53,83,.55)'; ctx.fillRect(0, 0, Wv, Hv); const x = Wv / 2 - 220, y = Hv / 2 - 120, win = g.phase === 'victory'; panel(x, y, 440, 240);
     txt(win ? 'Victoire !' : 'Le Cœur est tombé…', Wv / 2, y + 50, 36, win ? C.violet : C.coral); txt(win ? 'Mochi a protégé le Cœur pendant ' + SEQ_WIN + ' séquences.' : 'Séquence ' + (g.seq + 1) + ', vague ' + g.wave + '. On retente ?', Wv / 2, y + 108, 16, C.ink);
     btn(x + 110, y + 160, 220, 52, reset); txt('Rejouer', Wv / 2, y + 186, 20, C.ink);
   }
+  if (portrait) { ui = []; btns.length = 0; ctx.fillStyle = C.sky; ctx.fillRect(0, 0, Wv, Hv); otxt('Tourne ton téléphone', Wv / 2, Hv / 2 - 20, 26, '#fff'); txt('CATOWER se joue en mode paysage', Wv / 2, Hv / 2 + 20, 16, C.ink); }
   ctx.restore();
 }
 function statLine(t) {
@@ -592,43 +627,88 @@ function statLine(t) {
   return `Dégâts/s ${f(s.dps)}  ·  Portée ${f(s.range, 1)}  ·  ${s.beams} faisceau(x)` + (s.ramp ? '  ·  chauffe' : '');
 }
 function drawTowerPanel(Wv, Hv, t) {
-  const x = Wv - 312, y = Hv - 396; panel(x, y, 300, 312); txt(t.def.name, x + 150, y + 18, 18, C.ink); txt(statLine(t), x + 150, y + 48, 12, C.muted);
+  const ph = touch ? 246 : 312, x = touch ? Wv - 504 : Wv - 312, y = touch ? 88 : Hv - 396, bh = touch ? 68 : 84, off = touch ? 54 : 70, step_ = touch ? 72 : 90;
+  panel(x, y, 300, ph); txt(t.def.name, x + 150, y + (touch ? 14 : 18), touch ? 16 : 18, C.ink); txt(statLine(t), x + 150, y + (touch ? 38 : 48), touch ? 11 : 12, C.muted);
   for (let p = 0; p < 2; p++) {
-    const by = y + 70 + p * 90, why = canUpgrade(t, p), step = why ? null : t.def.paths[p][t.tiers[p]], aff = step && g.cro >= step.cost;
-    btn(x + 10, by, 280, 84, () => upgrade(t, p), {off:!step || !aff});
-    txt((p ? 'B' : 'A') + ' · ' + t.def.pathNames[p] + '   ' + '●'.repeat(t.tiers[p]) + '○'.repeat(5 - t.tiers[p]), x + 20, by + 14, 14, C.ink, 'left');
-    if (!step) txt(why, x + 20, by + 50, 12, C.muted, 'left');
-    else { txt(step.name, x + 20, by + 36, 14, C.ink, 'left'); txt(String(step.cost), x + 280, by + 36, 15, aff ? C.goldText : C.coral, 'right'); txt(step.desc, x + 20, by + 62, 12, C.muted, 'left'); }
+    const by = y + off + p * step_, why = canUpgrade(t, p), step = why ? null : t.def.paths[p][t.tiers[p]], aff = step && g.cro >= step.cost;
+    btn(x + 10, by, 280, bh, () => upgrade(t, p), {off:!step || !aff});
+    txt((p ? 'B' : 'A') + ' · ' + t.def.pathNames[p] + '   ' + '●'.repeat(t.tiers[p]) + '○'.repeat(5 - t.tiers[p]), x + 20, by + (touch ? 12 : 14), 14, C.ink, 'left');
+    if (!step) txt(why, x + 20, by + (touch ? 42 : 50), 12, C.muted, 'left');
+    else { txt(step.name, x + 20, by + (touch ? 31 : 36), 14, C.ink, 'left'); txt(String(step.cost), x + 280, by + (touch ? 31 : 36), 15, aff ? C.goldText : C.coral, 'right'); txt(step.desc, x + 20, by + (touch ? 53 : 62), 12, C.muted, 'left'); }
   }
-  btn(x + 10, y + 256, 280, 42, () => sellTower(t)); txt('Vendre (V)  +' + Math.round(t.invested * .7), x + 150, y + 277, 15, C.ink);
+  const sy = y + ph - (touch ? 40 : 56); btn(x + 10, sy, 280, touch ? 34 : 42, () => sellTower(t)); txt('Vendre' + (touch ? '' : ' (V)') + '  +' + Math.round(t.invested * .7), x + 150, sy + (touch ? 17 : 21), 15, C.ink);
 }
 
 // ---------------- Entrées ----------------
 function startAudio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); }
-cv.addEventListener('contextmenu', e => e.preventDefault());
-addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-addEventListener('mouseup', e => { if (e.button === 2) mouse.down2 = false; });
-cv.addEventListener('mousedown', e => {
-  startAudio(); mouse.x = e.clientX; mouse.y = e.clientY;
-  if (g.phase === 'defeat' || g.phase === 'victory' || paused) { if (e.button === 0) { const x = mouse.x / K, y = mouse.y / K; const b = btns.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h); if (b) b.fn(); } return; }
+function setTouch(v) { if (touch === v) return; touch = v; joy.id = null; joy.vx = joy.vz = 0; ptrs.clear(); atkHeld = false; resize(); }
+function hitBtn(x, y) { const vx = x / K, vy = y / K; return btns.find(b => vx >= b.x && vx <= b.x + b.w && vy >= b.y && vy <= b.y + b.h); }
+function wm(x, y) { return {x:(x - W / 2) / S + cam.x, z:(y - H / 2) / (S * TILT) + cam.z}; }
+function padAt(x, y, r) { const m = wm(x, y); let b = r, best = null; for (const p of pads) { const d = Math.hypot(p.x - m.x, p.z - m.z); if (d < b) { b = d; best = p; } } return best; }
+function placeTower(pad, keep) {
+  const d = TOWERS[buildIdx]; if (g.cro < d.cost) { banner('Pas assez de croquettes', 1.5); sfx('error'); return; }
+  g.cro -= d.cost; const t = buildTower(d, pad); if (!keep) { buildIdx = -1; sel = t; }
+}
+function autoDir() {
+  let best = null, bd = 12; for (const e of enemies) { const d = flat(e, hero); if (!e.dead && d < bd) { bd = d; best = e; } }
+  return best ? {x:(best.x - hero.x) / (bd || 1), z:(best.z - hero.z) / (bd || 1)} : {x:hero.fx, z:hero.fz};
+}
+function worldTap(cx, cy) {
+  const pad = padAt(cx, cy, 2.4);
+  if (pad && pad.tower) { sel = pad.tower; buildIdx = -1; } else if (buildIdx >= 0 && pad) placeTower(pad, false); else if (buildIdx < 0) sel = null;
+}
+function touchDown(e) {
+  const L = layout(), vx = e.clientX / K, vy = e.clientY / K, id = e.pointerId, near = c => Math.hypot(vx - c.x, vy - c.y) <= c.r + 8;
+  if (near(L.atk)) { ptrs.set(id, {kind:'atk'}); atkHeld = true; return; }
+  for (let i = 0; i < 3; i++) if (near(L.sk[i])) { if (g.lvl < ABIL[i].lvl || hero.cd[i] > 0) { sfx('error'); return; } ptrs.set(id, {kind:'skill', i, sx:vx, sy:vy, x:vx, y:vy}); return; }
+  if (ui.some(r => vx >= r.x && vx <= r.x + r.w && vy >= r.y && vy <= r.y + r.h)) return;
+  if (vx < L.Wv * .45 && joy.id === null) { joy.id = id; joy.ox = joy.x = vx; joy.oy = joy.y = vy; joy.vx = joy.vz = 0; ptrs.set(id, {kind:'joy', t0:performance.now(), cx:e.clientX, cy:e.clientY, moved:false}); return; }
+  worldTap(e.clientX, e.clientY);
+}
+function mouseDown(e) {
   if (e.button === 0) {
-    const x = mouse.x / K, y = mouse.y / K, b = btns.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
-    if (b) { b.fn(); return; } if (overUi()) return;
-    if (hoverPad && hoverPad.tower) { sel = hoverPad.tower; buildIdx = -1; }
-    else if (buildIdx >= 0 && hoverPad) {
-      const d = TOWERS[buildIdx]; if (g.cro < d.cost) { banner('Pas assez de croquettes', 1.5); sfx('error'); return; }
-      g.cro -= d.cost; const t = buildTower(d, hoverPad); if (!e.shiftKey) { buildIdx = -1; sel = t; }
-    } else if (buildIdx < 0) sel = null;
+    if (overUi()) return;
+    if (hoverPad && hoverPad.tower) { sel = hoverPad.tower; buildIdx = -1; } else if (buildIdx >= 0 && hoverPad) placeTower(hoverPad, e.shiftKey); else if (buildIdx < 0) sel = null;
   } else if (e.button === 2) {
     mouse.down2 = true; if (overUi()) return; const m = worldMouse();
     let tg = null, best = 1e9; for (const en of enemies) { const d = Math.hypot(en.x - m.x, en.z - m.z); if (d < en.def.r + .5 && d < best) { best = d; tg = en; } }
     if (tg) { hero.target = tg; hero.mt = null; } else { hero.target = null; hero.mt = {x:m.x, z:m.z}; burst(m.x, m.z, .1, C.pink, 4, .08, 2); }
   }
+}
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault(); startAudio(); setTouch(e.pointerType === 'touch');
+  if (e.pointerType === 'mouse') { mouse.x = e.clientX; mouse.y = e.clientY; } else { try { cv.setPointerCapture(e.pointerId); } catch (_) {} }
+  const b = hitBtn(e.clientX, e.clientY); if (b) { b.fn(); return; }
+  if (portrait || paused || g.phase === 'victory' || g.phase === 'defeat') return;
+  if (e.pointerType === 'touch') touchDown(e); else mouseDown(e);
 });
+addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse') { mouse.x = e.clientX; mouse.y = e.clientY; return; }
+  const p = ptrs.get(e.pointerId); if (!p) return; const vx = e.clientX / K, vy = e.clientY / K;
+  if (p.kind === 'joy') {
+    let dx = vx - joy.ox, dy = vy - joy.oy; const len = Math.hypot(dx, dy), R = 50; if (len > 10) p.moved = true;
+    if (len > R) { dx *= R / len; dy *= R / len; } joy.x = joy.ox + dx; joy.y = joy.oy + dy;
+    let m = Math.min(1, len / R); if (m < .12) m = 0; const l = Math.hypot(dx, dy) || 1; joy.vx = dx / l * m; joy.vz = dy / l * m;
+  } else if (p.kind === 'skill') { p.x = vx; p.y = vy; }
+});
+function endPtr(e) {
+  if (e.pointerType === 'mouse') { if (e.button === 2) mouse.down2 = false; return; }
+  const p = ptrs.get(e.pointerId); if (!p) return; ptrs.delete(e.pointerId);
+  if (p.kind === 'joy') { joy.id = null; joy.vx = joy.vz = 0; if (e.type === 'pointerup' && !p.moved && performance.now() - p.t0 < 300) worldTap(p.cx, p.cy); }
+  else if (p.kind === 'atk') { atkHeld = false; hero.target = null; }
+  else if (p.kind === 'skill' && e.type === 'pointerup') {
+    const dx = p.x - p.sx, dy = p.y - p.sy; let dir;
+    if (Math.hypot(dx, dy) > 14) { const l = Math.hypot(dx, dy / TILT); dir = {x:dx / l, z:dy / TILT / l}; } else dir = autoDir();
+    cast(p.i, dir);
+  }
+}
+addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
+addEventListener('blur', () => { mouse.down2 = false; atkHeld = false; joy.id = null; joy.vx = joy.vz = 0; ptrs.clear(); });
 addEventListener('keydown', e => {
-  startAudio(); const k = e.key.toLowerCase(); if ([' ', 'enter', 'tab'].includes(k)) e.preventDefault(); if (e.repeat) return; keys[k] = true;
+  startAudio(); const k = e.key.toLowerCase(); if ([' ', 'enter', 'tab'].includes(k)) e.preventDefault(); if (e.repeat) return;
   if (g.phase === 'defeat' || g.phase === 'victory') { if (k === 'enter') reset(); return; }
-  if (k === 'p') paused = !paused; if (paused) return;
+  if (k === 'p' || (k === 'escape' && paused)) paused = !paused; if (paused) return;
   if (k === 'enter') ready(); if (k === ' ') { cam.x = hero.x; cam.z = hero.z; }
   if (k === 'q') cast(0); if (k === 'w') cast(1); if (k === 'e') cast(2);
   if (['1', '2', '3'].includes(k)) { const i = +k - 1; buildIdx = buildIdx === i ? -1 : i; sel = null; }
@@ -639,12 +719,12 @@ addEventListener('keydown', e => {
 // ---------------- Boucle ----------------
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now;
-  if (!paused && (g.phase === 'prep' || g.phase === 'waves')) updateGame(dt); else if (g.bannerT > 0) g.bannerT -= dt;
-  if (!paused) updateFx(dt);
-  const tx = Math.max(-HALF.x + Math.min(HALF.x, W / S / 2), Math.min(HALF.x - Math.min(HALF.x, W / S / 2), hero.x)), tz = Math.max(-HALF.z + Math.min(HALF.z, H / (S * TILT) / 2), Math.min(HALF.z - Math.min(HALF.z, H / (S * TILT) / 2), hero.z));
+  const dt = Math.min(.05, (now - last) / 1000); last = now; portrait = touch && H > W * 1.05; const stop = paused || portrait;
+  if (!stop && (g.phase === 'prep' || g.phase === 'waves')) updateGame(dt); else if (g.bannerT > 0 && !stop) g.bannerT -= dt;
+  if (!stop) updateFx(dt);
+  const tx = Math.max(-HALF.x + Math.min(HALF.x, W / S / 2), Math.min(HALF.x - Math.min(HALF.x, W / S / 2), hero.x + (touch ? W / S * .08 : 0))), tz = Math.max(-HALF.z + Math.min(HALF.z, H / (S * TILT) / 2), Math.min(HALF.z - Math.min(HALF.z, H / (S * TILT) / 2), hero.z));
   const k = 1 - Math.exp(-8 * dt); cam.x += (tx - cam.x) * k; cam.z += (tz - cam.z) * k;
-  const m = worldMouse(); hoverPad = null; if (!overUi()) { let b = 1.9; for (const p of pads) { const d = Math.hypot(p.x - m.x, p.z - m.z); if (d < b) { b = d; hoverPad = p; } } }
+  hoverPad = null; if (!touch && !overUi()) { const m = worldMouse(); let b = 1.9; for (const p of pads) { const d = Math.hypot(p.x - m.x, p.z - m.z); if (d < b) { b = d; hoverPad = p; } } }
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.save();
   if (shake > .001) ctx.translate(rnd(-1, 1) * shake * 12, rnd(-1, 1) * shake * 12);
   drawWorld(); ctx.restore(); drawHud();
