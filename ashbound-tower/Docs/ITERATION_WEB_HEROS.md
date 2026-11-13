@@ -78,3 +78,12 @@ XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations 
 - **XP et niveaux** (partagés par l'équipe, 10 niveaux) : chaque ennemi vaincu donne de l'XP (4 / 25 / 80 / 200). Chaque niveau : PV max accrus + soin complet, +8 % de dégâts des héros ; les améliorations de tourelle exigent les niveaux 2, 3 et 5.
 - **Coop** : PV, état « à terre », progression de ranimation, XP, niveau et projectiles ennemis sont diffusés dans les instantanés ; l'invité les voit en direct.
 - Tests (Chromium) : solo — blessé, mort, réapparition, +400 XP → niveau 5 ; coop (2 pages) — équipier à terre vu des deux côtés, ranimé après 3,7 s, niveaux synchronisés, défaite quand les deux tombent ; séquences complètes accélérées sans erreur. **Non testé** : équilibrage réel de la difficulté (les ennemis blessent désormais les héros), appareils réels, Supabase réel.
+
+## Mise à jour gameplay — étape A : XP, orbes, niveaux, améliorations
+
+- Les ennemis lâchent des **orbes d'XP** (`G.orbs`), ramassées par proximité (aimant léger) ; synchronisées en coop (snapshot `O`).
+- XP d'équipe `G.xp` / niveau `G.lvl` (max 10, seuils `xpCum`). Barre d'XP fine en bas d'écran + indicateur de niveau compact dans le cadre du héros.
+- À chaque niveau : un choix d'amélioration de compétence parmi **3 cartes max** (touche 1–3 ou toucher), « Plus tard » pour différer ; mods par héros (`h.mod`, `h.picks`, `h.pend`) lus par les kits.
+- Coop : choix de l'invité envoyés via `pick`, appliqués côté hôte et répliqués.
+- Tests : bots complets (t7), positions des boutons (t9), synchro coop (t13), PV/réanimation (t15), choix d'amélioration solo + coop (t16) — sans erreur JS.
+- Pas encore testé : appareils réels, réseau Supabase réel, équilibrage avec de vrais joueurs.

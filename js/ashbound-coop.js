@@ -106,6 +106,7 @@
         else if (ev === "req") {
           if (p.k === "start") E.startSeq();
           else if (p.k === "build") { var sl = E.slots()[p.s]; if (sl && E.TOWERS[p.ty]) E.tryBuild(sl, p.ty, true); }
+          else if (p.k === "pick") E.applyPick(G.heroes[1], p.id, true);
           else if (p.k === "up") { var s2 = E.slots()[p.s]; if (s2 && s2.tower) E.tryUpgrade(s2.tower, true); }
         } else if (ev === "leave") {
           NET.connected = false; NET.peer = null; NET.peerPick = null;
@@ -132,7 +133,8 @@
     function encode() {
       var G = E.G, slots = E.slots();
       return { n: ++NET.seq, st: STATES.indexOf(G.state), t: q(G.t), w: G.wave, g: G.gold, xp: G.xp, lv: G.lvl, hp: Math.round(G.heart * 10) / 10, k: G.kills, rem: G.enemies.length + (G.events.length - G.next),
-        H: G.heroes.map(function (h) { return [q(h.x), q(h.z), q(h.face), h.moving ? 1 : 0, h.swing > 0 ? 1 : 0, (h.k && h.k.pose) || "", Math.round(h.cd.s1 * 10), Math.round(h.cd.s2 * 10), Math.round(h.cd.ult * 10), h.kit.netOut ? h.kit.netOut(h) : 0, Math.round(h.hp), h.mhp, h.dead ? 1 : 0, Math.round(h.rv * 100)]; }),
+        H: G.heroes.map(function (h) { return [q(h.x), q(h.z), q(h.face), h.moving ? 1 : 0, h.swing > 0 ? 1 : 0, (h.k && h.k.pose) || "", Math.round(h.cd.s1 * 10), Math.round(h.cd.s2 * 10), Math.round(h.cd.ult * 10), h.kit.netOut ? h.kit.netOut(h) : 0, Math.round(h.hp), h.mhp, h.dead ? 1 : 0, Math.round(h.rv * 100), h.pend, h.picks]; }),
+        O: G.orbs.slice(0, 60).map(function (o) { return [q(o.x), q(o.z), Math.round(o.v * 10) / 10, Math.round(o.t)]; }),
         P: G.eprojs.slice(0, 30).map(function (p) { return [q(p.x), q(p.z), q(p.vx), q(p.vz), q(p.life)]; }),
         E: G.enemies.map(function (e) { return [e.id, ETYPES.indexOf(e.k), q(e.d), q(e.lat), q(e.ox), q(e.oz), Math.round(e.hp), Math.round(e.mhp), e.stun > 0 ? 1 : 0, q(e.slowF), e.poison ? 1 : 0]; }),
         T: G.towers.map(function (t) { return [slots.indexOf(t.s), TTYPES.indexOf(t.type), t.tier, Math.round(t.boost * 10)]; }) };
@@ -143,7 +145,7 @@
       var prev = G.state; G.state = STATES[s.st] || G.state;
       if (G.state !== prev) { if (G.state === "win") E.play("win", 1); else if (G.state === "lose") E.play("lose", 1); else if (G.state === "play" && prev === "prep") E.play("wave", .8); }
       G.t = s.t; G.gold = s.g; G.kills = s.k; G.rem = s.rem; G.xp = s.xp || 0;
-      if (s.lv > G.lvl) { G.lvl = s.lv; G.dmgMul = 1 + .08 * (G.lvl - 1); E.toast("NIVEAU " + G.lvl + " ! PV et dégâts accrus", "#ffe680"); E.play("upgrade", 1); G.heroes.forEach(function (h) { G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2.6, t: 0, dur: .7, col: "#ffe680" }); }); }
+      if (s.lv > G.lvl) { G.lvl = s.lv; G.lvlFlash = 1; G.dmgMul = 1 + .08 * (G.lvl - 1); E.toast("NIVEAU " + G.lvl + " ! PV et dégâts accrus", "#ffe680"); E.play("upgrade", 1); G.heroes.forEach(function (h) { G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2.6, t: 0, dur: .7, col: "#ffe680" }); }); }
       if (s.w !== G.wave) { G.wave = s.w; if (s.w) { E.toast(E.WAVES[s.w - 1][0], E.PINKL); E.play("wave", .7); } }
       if (s.hp < G.heart - 0.01) { G.shake = .3; G.flashHeart = .35; E.play("heart_hit", 1); }
       G.heart = s.hp;
@@ -158,10 +160,12 @@
         if (a.length > 10) {   // vie, état « à terre », progression de la ranimation
           if (a[10] < h.hp - .5) { h.hflash = .2; G.floats.push({ x: E.sx(h.x), y: E.sy(h.z) - 70, txt: "-" + Math.round(h.hp - a[10]), col: "#ff6a6a", t: 0 }); E.play("hit", .4); if (local) G.shake = Math.max(G.shake, .12); }
           h.hp = a[10]; h.mhp = a[11]; h.rv = a[13] / 100;
+          if (a[15]) { h.pend = a[14]; if (JSON.stringify(a[15]) !== JSON.stringify(h.picks)) { h.picks = a[15]; E.recompute(h); h.mhp = a[11]; } }
           if (a[12] && !h.dead) { h.dead = true; h.dash = null; E.burst(E.sx(h.x), E.sy(h.z) - 30, "#ff6a8a", 18, 150, .8, 5); E.toast((h.kit.short || h.kit.name) + " est à terre !", "#ff8a8a"); }
           else if (!a[12] && h.dead) { h.dead = false; G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2.6, t: 0, dur: .7, col: "#9bffd0" }); E.toast((h.kit.short || h.kit.name) + " est de retour !", "#9bffd0"); E.play("upgrade", .8); }
         }
       });
+      G.orbs = (s.O || []).map(function (a) { return { x: a[0], z: a[1], v: a[2], t: a[3] }; });
       G.eprojs = (s.P || []).map(function (a) { return { x: a[0], z: a[1], vx: a[2], vz: a[3], life: a[4], dmg: 0, r: .55 }; });
       // ennemis
       var seen = {};

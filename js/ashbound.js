@@ -60,9 +60,47 @@
   ];
   var TRICKLE = [["orb", 2, 270, 6, 1, 3, .45], ["scout", 60, 270, 11, 1, 2, .35]];
   var HERO_ORDER = ["noctis", "eglantyne", "phelto", "epeiste"], HCOL = { noctis: "#b88cff", eglantyne: "#8dffa8", phelto: "#ff7ac8", epeiste: "#8ff0ff" };
-  var KITS = null, COOP = null, EID = 0;
+  var KITS = null, COOP = null, EID = 0, OID = 0, CUR = null, UI = { offer: null, hide: false };
   // vie des héros, niveaux (provisoire) : +12 % PV et +8 % de dégâts par niveau ; les améliorations de tourelle exigent un niveau
   var HEROHP = { noctis: 90, eglantyne: 100, phelto: 95, epeiste: 125 }, UPREQ = [2, 3, 5], MAXLVL = 10;
+  // améliorations de héros (choix à chaque niveau, 3 propositions max) — provisoires, configurables ici
+  var UPG = [
+    { id: "pow", n: "Puissance", d: "+12 % de dégâts", max: 5, f: function (m) { m.dmg += .12; } },
+    { id: "cdr", n: "Maîtrise", d: "-8 % de recharge des compétences", max: 5, f: function (m) { m.cdr += .08; } },
+    { id: "asp", n: "Cadence", d: "+10 % de vitesse d'attaque", max: 5, f: function (m) { m.asp += .10; } },
+    { id: "vig", n: "Vigueur", d: "+15 % de PV max", max: 5, f: function (m) { m.hp += .15; } },
+    { id: "spd", n: "Célérité", d: "+8 % de vitesse de déplacement", max: 4, f: function (m) { m.spd += .08; } },
+    { id: "mag", n: "Aimant", d: "+40 % de portée de ramassage d'XP", max: 4, f: function (m) { m.mag += .4; } },
+    { id: "reg", n: "Régénération", d: "+1,5 % de PV par seconde", max: 3, f: function (m) { m.reg += .015; } },
+    { id: "syn", n: "Synergie", d: "Tourelles proches : +10 % de cadence", max: 4, f: function (m) { m.syn += .10; } },
+    { id: "clone", h: "noctis", n: "Double reflet", d: "+1 clone actif en même temps", max: 2, f: function (m) { m.clone += 1; } },
+    { id: "cdS1", h: "noctis", n: "Failles rapides", d: "Traversée Fantôme : -25 % de recharge", max: 2, f: function (m) { m.cdS1 += .25; } },
+    { id: "shade", h: "noctis", n: "Moisson spectrale", d: "+8 % de chance de ressusciter une ombre", max: 3, f: function (m) { m.shade += .08; } },
+    { id: "venom", h: "eglantyne", n: "Venin tenace", d: "Poison +40 % plus puissant", max: 3, f: function (m) { m.venom += .4; } },
+    { id: "swarm", h: "eglantyne", n: "Essaim fertile", d: "Une poupée toutes les 4 puis 3 éliminations", max: 2, f: function (m) { m.swarm += 1; } },
+    { id: "rngS1", h: "eglantyne", n: "Calice profond", d: "Calice de l'Effroi : zone +30 %", max: 2, f: function (m) { m.rngS1 += .3; } },
+    { id: "pierce", h: "phelto", n: "Crescendo", d: "Les notes traversent les ennemis", max: 1, f: function (m) { m.pierce += 1; } },
+    { id: "rngS2", h: "phelto", n: "Riff étendu", d: "Riff d'accélération : zone +30 %, durée +2 s", max: 2, f: function (m) { m.rngS2 += .3; } },
+    { id: "stun", h: "phelto", n: "Voix puissante", d: "Accord de choc : étourdissement +0,4 s", max: 3, f: function (m) { m.stun += .4; } },
+    { id: "charge", h: "epeiste", n: "Charge rapide", d: "La charge électrique se remplit 50 % plus vite", max: 3, f: function (m) { m.charge += .5; } },
+    { id: "rngAtk", h: "epeiste", n: "Lame étendue", d: "Portée du combo +20 %", max: 3, f: function (m) { m.rngAtk += .2; } },
+    { id: "s2", h: "epeiste", n: "Foudre persistante", d: "Foudre Ancrée : dégâts et étourdissement accrus", max: 3, f: function (m) { m.s2 += .3; } }
+  ];
+  function recomputeMod(h) {
+    var m = { dmg: 0, cdr: 0, asp: 0, hp: 0, spd: 0, mag: 0, reg: 0, syn: 0, clone: 0, cdS1: 0, shade: 0, venom: 0, swarm: 0, rngS1: 0, pierce: 0, rngS2: 0, stun: 0, charge: 0, rngAtk: 0, s2: 0 };
+    UPG.forEach(function (u) { for (var i = 0; i < (h.picks[u.id] || 0); i++) u.f(m); });
+    m.cdr = Math.min(.5, m.cdr); m.cdS1 = Math.min(.5, m.cdS1); h.mod = m;
+    var nm = Math.round(hpFor(h.id, G ? G.lvl : 1) * (1 + m.hp)); if (nm !== h.mhp) { var d = nm - h.mhp; h.mhp = nm; if (!h.dead && d > 0) h.hp = Math.min(h.mhp, h.hp + d); }
+  }
+  function upgradeById(id) { for (var i = 0; i < UPG.length; i++) if (UPG[i].id === id) return UPG[i]; return null; }
+  function makeOffer(h) {
+    var avail = UPG.filter(function (u) { return (!u.h || u.h === h.id) && (h.picks[u.id] || 0) < u.max; });
+    avail.sort(function () { return Math.random() - .5; });
+    var spec = avail.filter(function (u) { return u.h; }), out = [];
+    if (spec.length) out.push(spec[0]);
+    avail.forEach(function (u) { if (out.length < 3 && out.indexOf(u) < 0) out.push(u); });
+    return out.map(function (u) { return u.id; });
+  }
   function hpFor(id, lvl) { return Math.round((HEROHP[id] || 100) * (1 + .12 * (lvl - 1))); }
   function xpCum(l) { var t = 0; for (var i = 1; i < l; i++) t += 40 + 35 * (i - 1); return t; }
 
@@ -113,8 +151,8 @@
     var q = params.get("hero"); if (q && KITS[q]) pickHero(q);
   }
   function newHero(id, slot) {
-    var kit = KITS[id], h = { id: id, kit: kit, slot: slot || 0, hp: hpFor(id, G ? G.lvl || 1 : 1), mhp: hpFor(id, G ? G.lvl || 1 : 1), dead: false, down: 0, rv: 0, inv: 0, hurtT: 99, hflash: 0, ctrl: null, netMoving: false, x: L.heart.x - 5 + (slot || 0) * 1.6, z: L.heart.z + 3.5 - (slot || 0) * 0.8, face: Math.PI, moving: false, atkCd: 0, swing: 0, cd: { s1: 0, s2: 0, ult: 0 }, dash: null, lunge: null, speedMul: 1, k: {} };
-    kit.init(h); return h;
+    var kit = KITS[id], h = { id: id, kit: kit, slot: slot || 0, hp: hpFor(id, G ? G.lvl || 1 : 1), mhp: hpFor(id, G ? G.lvl || 1 : 1), picks: {}, mod: {}, pend: 0, dead: false, down: 0, rv: 0, inv: 0, hurtT: 99, hflash: 0, ctrl: null, netMoving: false, x: L.heart.x - 5 + (slot || 0) * 1.6, z: L.heart.z + 3.5 - (slot || 0) * 0.8, face: Math.PI, moving: false, atkCd: 0, swing: 0, cd: { s1: 0, s2: 0, ult: 0 }, dash: null, lunge: null, speedMul: 1, k: {} };
+    kit.init(h); recomputeMod(h); return h;
   }
   function reset(keepHero) {
     if (COOP && COOP.active() && !keepHero) COOP.leave();
@@ -128,7 +166,7 @@
     slots.forEach(function (s) { s.tower = null; });
     var hid = keepHero && G && G.hero ? G.hero.id : null;
     G = { state: "select", paused: false, t: 0, events: ev, next: 0, wave: 0, gold: START_GOLD, heart: HEART_MAX, enemies: [], towers: [], parts: [], bolts: [], fx: [], pending: [], projs: [], actors: [], buffs: [], sortedNow: [],
-      toast: "", toastT: 0, toastC: "#fff", build: false, sel: null, shake: 0, flashHeart: 0, kills: 0, anim: 0, hero: null, heroes: [], xp: 0, lvl: 1, dmgMul: 1, eprojs: [], floats: [], mirror: false, menu: false, coopMenu: false, rem: 0, tint: 0, tintT: 0 };
+      toast: "", toastT: 0, toastC: "#fff", build: false, sel: null, shake: 0, flashHeart: 0, kills: 0, anim: 0, hero: null, heroes: [], orbs: [], xp: 0, lvl: 1, dmgMul: 1, eprojs: [], floats: [], mirror: false, menu: false, coopMenu: false, rem: 0, tint: 0, tintT: 0 };
     hover = null; ptrs = {}; joy.on = false; aimSt = null;
     if (hid) { G.hero = newHero(hid, 0); G.heroes = [G.hero]; G.state = "prep"; }
   }
@@ -216,10 +254,30 @@
     e.hp -= a; e.flash = .1; e.barT = 0; e.spark = .16; e.sx = (Math.random() - .5) * 14; e.sy = (Math.random() - .5) * 12; if (!silent) play("hit", .4);
     var p = aimPt(e); burst(p.x, p.y, PINKL, 2, 80, .25, 3);
     if (e.hp <= 0) {
-      e.dead = true; G.gold += e.def.gold; G.kills++; gainXp(e.def.xp || 1); play("death", .6);
+      e.dead = true; G.gold += e.def.gold; G.kills++; var pw = ep(e); dropOrbs(pw.x, pw.z, e.def.xp || 1); play("death", .6);
       burst(p.x, p.y, "#b278ff", 10 + (e.def.kind === "boss" ? 40 : e.def.kind === "mini" ? 24 : e.def.kind === "elite" ? 12 : 0), 140, .7, 5);
-      G.heroes.forEach(function (hh) { if (hh.kit.onKill) hh.kit.onKill(hh, e); });
+      G.heroes.forEach(function (hh) { if (hh.kit.onKill) { var pc = CUR; CUR = hh; hh.kit.onKill(hh, e); CUR = pc; } });
     }
+  }
+  function dropOrbs(x, z, xp) {
+    var n = xp >= 150 ? 10 : xp >= 60 ? 6 : xp >= 20 ? 3 : 1, v = xp / n;
+    for (var i = 0; i < n; i++) { var a = Math.random() * 6.283, sp = n > 1 ? 1 + Math.random() * 2.5 : .6; G.orbs.push({ x: x, z: z, v: v, t: 0, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp }); }
+    while (G.orbs.length > 60) { var o = G.orbs.shift(); G.orbs[0].v += o.v; }   // plafond d'orbes : on fusionne les plus anciennes (lisibilité, mobile)
+  }
+  function updateOrbs(dt) {
+    if (G.mirror) return;
+    G.orbs = G.orbs.filter(function (o) {
+      o.t += dt; if (o.t > 40) return false;
+      var f = Math.exp(-3 * dt); o.vx *= f; o.vz *= f; o.x = clampX(o.x + o.vx * dt); o.z = clampZ(o.z + o.vz * dt);
+      var best = null, bd = 1e9;
+      G.heroes.forEach(function (h) { if (h.dead) return; var d = Math.hypot(h.x - o.x, h.z - o.z); if (d < bd) { bd = d; best = h; } });
+      if (best) {
+        var mag = 2.6 * (1 + (best.mod.mag || 0));
+        if (bd < mag) { var sp = 8 + (mag - bd) * 3; o.x += (best.x - o.x) / (bd || 1) * sp * dt; o.z += (best.z - o.z) / (bd || 1) * sp * dt; }
+        if (bd < .6) { gainXp(o.v); G.xpFlash = .25; play("click", .25, 1.8 + Math.random() * .4); burst(sx(o.x), sy(o.z) - 12, "#c78bff", 3, 70, .3, 3); return false; }
+      }
+      return true;
+    });
   }
   function gainXp(n) {
     if (G.mirror || n <= 0) return; G.xp += n;
@@ -227,8 +285,8 @@
   }
   function levelUp() {
     G.dmgMul = 1 + .08 * (G.lvl - 1);
-    G.heroes.forEach(function (h) { var nm = hpFor(h.id, G.lvl); h.mhp = nm; if (!h.dead) h.hp = nm; G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2.6, t: 0, dur: .7, col: "#ffe680" }); });
-    toast("NIVEAU " + G.lvl + " ! PV et dégâts accrus", "#ffe680"); play("upgrade", 1);
+    G.heroes.forEach(function (h) { recomputeMod(h); h.mhp = Math.round(hpFor(h.id, G.lvl) * (1 + h.mod.hp)); if (!h.dead) h.hp = h.mhp; if (G.lvl >= 2) h.pend++; G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2.6, t: 0, dur: .7, col: "#ffe680" }); burst(sx(h.x), sy(h.z) - 30, "#ffe680", 14, 130, .7, 4); });
+    G.lvlFlash = 1; toast("NIVEAU " + G.lvl + " !" + (G.lvl >= 2 ? " Choisis une amélioration" : ""), "#ffe680"); play("upgrade", 1);
   }
   function floatText(x, z, txt, col) { G.floats.push({ x: sx(x), y: sy(z) - 70, txt: txt, col: col, t: 0 }); }
   function hurtHero(h, dmg) {
@@ -250,11 +308,23 @@
     toast(atHeart ? "Réapparition" : (h.kit.short || h.kit.name) + " est ranimé !", "#9bffd0"); play("upgrade", .8);
   }
   // minuteries des héros ; côté autorité : régénération, ranimation par l'équipier (3 s à moins de 1,9 u), réapparition automatique
+  function applyPick(h, id, remote) {
+    var u = upgradeById(id); if (!u || !h || h.pend <= 0 || (u.h && u.h !== h.id) || (h.picks[id] || 0) >= u.max) return false;
+    h.picks[id] = (h.picks[id] || 0) + 1; h.pend--; recomputeMod(h);
+    G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2, t: 0, dur: .5, col: "#9bffd0" }); burst(sx(h.x), sy(h.z) - 30, "#9bffd0", 10, 110, .6, 4); play("upgrade", .7, 1.2);
+    if (!remote) toast(u.n + " : " + u.d, "#9bffd0");
+    return true;
+  }
+  function chooseUpgrade(id) {
+    var h = G.hero; if (!h || h.pend <= 0) return;
+    if (G.mirror) { if (COOP) COOP.req({ k: "pick", id: id }); UI.offer = null; return; }
+    if (applyPick(h, id, false)) UI.offer = null;
+  }
   function updateHeroVitals(dt) {
     G.heroes.forEach(function (h) {
       if (h.inv > 0) h.inv -= dt; if (h.hflash > 0) h.hflash -= dt; h.hurtT += dt;
       if (G.mirror || G.state !== "play") return;
-      if (!h.dead) { if (h.hurtT > 5 && h.hp < h.mhp) h.hp = Math.min(h.mhp, h.hp + h.mhp * .02 * dt); return; }
+      if (!h.dead) { var rg = (h.hurtT > 5 ? .02 : 0) + (h.mod.reg || 0); if (rg > 0 && h.hp < h.mhp) h.hp = Math.min(h.mhp, h.hp + h.mhp * rg * dt); return; }
       h.down += dt;
       var mate = null; G.heroes.forEach(function (o) { if (o !== h && !o.dead && Math.hypot(o.x - h.x, o.z - h.z) <= 1.9) mate = o; });
       h.rv = mate ? Math.min(1, h.rv + dt / 3) : Math.max(0, h.rv - dt * .5);
@@ -354,16 +424,16 @@
   function heroAttack(h, ov) {
     h = h || G.hero; if (!h || h.dead || h.atkCd > 0 || h.dash) return;
     var aim = ov || aimFor("atk", null, h); h.face = aim.a;
-    h.atkCd = h.kit.attack(h, aim.a, aim.d); h.swing = Math.max(h.swing, .18);
+    CUR = h; h.atkCd = h.kit.attack(h, aim.a, aim.d) / (1 + (h.mod.asp || 0)); CUR = null; h.swing = Math.max(h.swing, .18);
     if (COOP && !ov && h === G.hero) COOP.onAction(h, "atk", aim);
   }
-  function replAttack(h, a, d) { if (!h) return; h.face = a; h.atkCd = h.kit.attack(h, a, d); h.swing = Math.max(h.swing, .18); }
+  function replAttack(h, a, d) { if (!h) return; h.face = a; CUR = h; h.atkCd = h.kit.attack(h, a, d); CUR = null; h.swing = Math.max(h.swing, .18); }
   // lance une compétence ; force = rejeu d'une action déjà validée par l'hôte (aucun contrôle de recharge)
   function doCast(h, key, aim, force) {
     if (!h || h.dead || (!force && (G.paused || (G.state !== "play" && G.state !== "prep")))) return false;
     if (!force && (h.cd[key] > 0 || h.dash)) { if (h.cd[key] > 0 && h === G.hero) play("error", .3); return false; }
-    h.face = aim.a; if (h.kit.cast(key, h, aim.a, aim.d) === false) return false;
-    h.cd[key] = h.kit.skills[key].cd; h.swing = .3; return true;
+    h.face = aim.a; CUR = h; var ok = h.kit.cast(key, h, aim.a, aim.d); CUR = null; if (ok === false) return false;
+    h.cd[key] = h.kit.skills[key].cd * (1 - (h.mod.cdr || 0)) * (key === "s1" ? 1 - (h.mod.cdS1 || 0) : 1); h.swing = .3; return true;
   }
   function castWithAim(key, aim) { var h = G.hero; if (doCast(h, key, aim, false) && COOP) COOP.onAction(h, key, aim); }
   function castSkill(key) { if (G.hero) castWithAim(key, aimFor(key, null)); }
@@ -377,19 +447,19 @@
     h.moving = mirrorRemote ? !!h.netMoving : l > .05;
     if (h.dash) { var d = h.dash; h.x = clampX(h.x + d.dx * d.speed * dt); h.z = clampZ(h.z + d.dz * d.speed * dt); d.t -= dt; if (d.tick) d.tick(h, dt); if (d.t <= 0) { if (d.end) d.end(h); h.dash = null; } }
     else if (!mirrorRemote) {
-      var sp = h.kit.speed * h.speedMul * (h.swing > 0 ? .7 : 1);
+      var sp = h.kit.speed * h.speedMul * (1 + (h.mod.spd || 0)) * (h.swing > 0 ? .7 : 1);
       if (h.moving) { h.x = clampX(h.x + mv.x * sp * dt); h.z = clampZ(h.z + mv.z * sp * dt); if (h.swing <= 0) h.face = Math.atan2(mv.z, mv.x); }
       if (h.lunge && h.lunge.t > 0) { var k = Math.min(dt, h.lunge.t) / .12; h.x = clampX(h.x + h.lunge.dx * k); h.z = clampZ(h.z + h.lunge.dz * k); h.lunge.t -= dt; }
     }
     if (local) { if ((keys.Space || attackHeld()) && G.state !== "select") heroAttack(h); }
     else if (!G.mirror && h.ctrl && h.ctrl.ah && (G.state === "play" || G.state === "prep")) heroAttack(h, { a: h.ctrl.a, d: h.ctrl.d || 6 });
-    if ((h.moving || h.swing > 0) && h.kit.moveFx) h.kit.moveFx(h, dt);
-    h.kit.update(h, dt);
+    CUR = h; if ((h.moving || h.swing > 0) && h.kit.moveFx) h.kit.moveFx(h, dt);
+    h.kit.update(h, dt); CUR = null;
   }
   function attackHeld() { for (var id in ptrs) if (ptrs[id].k === "atk" || ptrs[id].k === "matk") return true; return false; }
 
   // ---------- projectiles, acteurs, zones ----------
-  function addProj(p) { if (G.dmgMul > 1) { p.dmg *= G.dmgMul; if (p.aoeDmg) p.aoeDmg *= G.dmgMul; } p.alive = true; p.hit = []; p.age = 0; G.projs.push(p); return p; }
+  function addProj(p) { var mul = (G.dmgMul || 1) * (1 + (CUR && CUR.mod ? CUR.mod.dmg || 0 : 0)); if (mul !== 1) { p.dmg *= mul; if (p.aoeDmg) p.aoeDmg *= mul; } p.owner = CUR; p.alive = true; p.hit = []; p.age = 0; G.projs.push(p); return p; }
   function aoeAt(x, z, r, dmg) { inRadius(x, z, r).forEach(function (e) { dmgEnemy(e, dmg, true); }); G.fx.push({ k: "ring", x: x, z: z, r: r, t: 0, dur: .3, col: "#c8a0ff" }); }
   function updateProjs(dt) {
     G.projs = G.projs.filter(function (p) {
@@ -399,7 +469,7 @@
       if (p.life > 0) {
         for (var i = 0; i < G.enemies.length; i++) {
           var e = G.enemies[i]; if (e.dead || p.hit.indexOf(e) >= 0) continue; var q = ep(e);
-          if (Math.hypot(q.x - p.x, q.z - p.z) <= p.r + .55) { p.hit.push(e); dmgEnemy(e, p.dmg); if (p.onHit) p.onHit(e, p); if (p.aoe) aoeAt(p.x, p.z, p.aoe, p.aoeDmg || 0); if (!p.pierce) { dead = true; break; } }
+          if (Math.hypot(q.x - p.x, q.z - p.z) <= p.r + .55) { p.hit.push(e); dmgEnemy(e, p.dmg); if (p.onHit) { var pc2 = CUR; CUR = p.owner || null; p.onHit(e, p); CUR = pc2; } if (p.aoe) aoeAt(p.x, p.z, p.aoe, p.aoeDmg || 0); if (!p.pierce) { dead = true; break; } }
         }
       } else { if (p.aoe) aoeAt(p.x, p.z, p.aoe, p.aoeDmg || 0); dead = true; }
       if (dead) p.alive = false; return !dead;
@@ -421,11 +491,11 @@
     else { ctx.shadowColor = p.col; ctx.shadowBlur = 14; ctx.strokeStyle = p.col; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(X - p.vx * .035 * PPU, Y + p.vz * .035 * PPU * SY); ctx.lineTo(X, Y); ctx.stroke(); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(X, Y, 4, 0, 6.283); ctx.fill(); }
     ctx.restore();
   }
-  function addActor(a) { a.t = a.t || 0; a.life = a.life || 1; G.actors.push(a); return a; }
+  function addActor(a) { a.owner = CUR; a.t = a.t || 0; a.life = a.life || 1; G.actors.push(a); return a; }
   function updateActors(dt) {
-    G.actors = G.actors.filter(function (a) { a.life -= dt; if (a.update) a.update(dt); return a.life > 0; });
+    G.actors = G.actors.filter(function (a) { a.life -= dt; var pc = CUR; CUR = a.owner || null; if (a.update) a.update(dt); CUR = pc; return a.life > 0; });
     G.buffs = G.buffs.filter(function (b) { b.t -= dt; return b.t > 0; });
-    G.pending = G.pending.filter(function (p) { p.t -= dt; if (p.t <= 0) { p.f(); return false; } return true; });
+    G.pending = G.pending.filter(function (p) { p.t -= dt; if (p.t <= 0) { var pc = CUR; CUR = p.owner || null; p.f(); CUR = pc; return false; } return true; });
   }
 
   // ---------- boucle logique ----------
@@ -435,13 +505,14 @@
     if (G.shake > 0) G.shake = Math.max(0, G.shake - dt);
     if (G.flashHeart > 0) G.flashHeart -= dt;
     if (G.tintT > 0) G.tintT -= dt;
+    if (G.xpFlash > 0) G.xpFlash -= dt; if (G.lvlFlash > 0) G.lvlFlash -= dt;
     if (G.paused || G.state === "select") return;
     G.parts = G.parts.filter(function (p) { p.life -= dt; p.vy += 260 * dt; p.x += p.vx * dt; p.y += p.vy * dt; return p.life > 0; });
     G.bolts = G.bolts.filter(function (b) { b.life -= dt; if (!b.flick && b.life < .07) { b.flick = true; b.pts = jag(b.a, b.b, b.big ? 30 : 16); } return b.life > 0; });
     G.fx = G.fx.filter(function (f) { f.t = (f.t || 0) + dt; return f.t < f.dur; });
     G.towers.forEach(function (t) { if (t.punch > 0) t.punch = Math.max(0, t.punch - dt * 6); });
     if (G.state === "win" || G.state === "lose") return;
-    G.heroes.forEach(function (h) { updateHero(h, dt); }); updateHeroVitals(dt); updateProjs(dt); updateEProjs(dt); updateActors(dt);
+    G.heroes.forEach(function (h) { updateHero(h, dt); }); updateHeroVitals(dt); updateOrbs(dt); updateProjs(dt); updateEProjs(dt); updateActors(dt);
     if (G.state !== "play") return;
     G.t += dt;
     if (!G.mirror) {
@@ -454,6 +525,7 @@
       var boost = 1;
       G.towers.forEach(function (u) { if (u !== t && u.st.aura > 0 && Math.hypot(u.s.x - t.s.x, u.s.z - t.s.z) <= 4.5) boost += u.st.aura; });
       G.buffs.forEach(function (b) { if (Math.hypot(b.x - t.s.x, b.z - t.s.z) <= b.r) boost += b.rate; });
+      G.heroes.forEach(function (h) { if (!h.dead && h.mod.syn && Math.hypot(h.x - t.s.x, h.z - t.s.z) <= 5.5) boost += h.mod.syn; });
       t.boost = boost; t.cd -= dt * boost; if (t.cd <= 0) t.cd = fire(t) ? 1 / t.st.rate : .08;
     });
     G.enemies.forEach(function (e) {
@@ -487,11 +559,11 @@
     get ctx() { return ctx; }, PPU: PPU, SY: SY, sx: sx, sy: sy, clampX: clampX, clampZ: clampZ, time: function () { return time; },
     pos: function (e) { return ep(e); }, aimPt: aimPt, enemies: function () { return G.enemies.filter(function (e) { return !e.dead; }); },
     nearest: function (x, z, r, ex) { return nearestEnemy(x, z, r, ex); }, inRadius: inRadius,
-    dmg: function (e, n) { dmgEnemy(e, n * (G.dmgMul || 1)); }, healHeroes: function (f) { G.heroes.forEach(function (h) { if (!h.dead) h.hp = Math.min(h.mhp, h.hp + h.mhp * f); }); }, stun: function (e, t) { e.stun = Math.max(e.stun, t); },
+    dmg: function (e, n) { dmgEnemy(e, n * (G.dmgMul || 1) * (1 + (CUR && CUR.mod ? CUR.mod.dmg || 0 : 0))); }, healHeroes: function (f) { G.heroes.forEach(function (h) { if (!h.dead) h.hp = Math.min(h.mhp, h.hp + h.mhp * f); }); }, stun: function (e, t) { e.stun = Math.max(e.stun, t); },
     slow: function (e, f, t) { e.slowF = Math.min(e.slowF, f); e.slowT = Math.max(e.slowT, t); },
     poison: function (e, dps, t) { e.poison = { dps: Math.max(dps, e.poison ? e.poison.dps : 0), t: Math.max(t, e.poison ? e.poison.t : 0) }; },
     pull: function (e, dx, dz, k) { k = k == null ? 1 : k; e.ox += dx * k; e.oz += dz * k; }, push: function (e, dx, dz) { e.ox += dx; e.oz += dz; },
-    addProj: addProj, addActor: addActor, burstW: function (x, z, col, n, spd, life, size) { burst(sx(x), sy(z) - 6, col, n, spd, life, size); }, after: function (t, f) { G.pending.push({ t: t, f: f }); }, fx: function (f) { f.t = 0; G.fx.push(f); },
+    addProj: addProj, addActor: addActor, burstW: function (x, z, col, n, spd, life, size) { burst(sx(x), sy(z) - 6, col, n, spd, life, size); }, after: function (t, f) { G.pending.push({ t: t, f: f, owner: CUR }); }, fx: function (f) { f.t = 0; G.fx.push(f); },
     bolt: bolt, tint: function (a, t) { G.tint = a; G.tintT = t; }, shake: function (s) { G.shake = Math.max(G.shake, s); }, play: play, toast: toast,
     healHeart: function (frac) { G.heart = Math.min(HEART_MAX, G.heart + HEART_MAX * frac); }, buff: function (b) { G.buffs.push(b); },
     spr: function (n, x, y, s, f, a) { spr(n, x, y, s, f, a); }, addSorted: function (z, fn) { G.sortedNow.push({ z: z, f: fn }); }
@@ -506,7 +578,7 @@
   var BRIDGE = {
     get G() { return G; }, ENEMY: ENEMY, TOWERS: TOWERS, WAVES: WAVES, HEART_MAX: HEART_MAX, PINKL: PINKL,
     slots: function () { return slots; }, LEN: function () { return LEN; }, newHero: newHero, tstats: tstats, play: play, toast: toast, burst: burst, sx: sx, sy: sy, ep: ep,
-    moveVec: moveVec, aimAtk: function () { return aimFor("atk", null); }, attackHeld: function () { return !!(keys.Space || attackHeld()); },
+    moveVec: moveVec, applyPick: applyPick, recompute: recomputeMod, UPG: UPG, aimAtk: function () { return aimFor("atk", null); }, attackHeld: function () { return !!(keys.Space || attackHeld()); },
     doCast: doCast, replAttack: replAttack, tryBuild: tryBuild, tryUpgrade: tryUpgrade, startSeq: startSeq, setHeroes: setHeroes, resetCore: resetCore, muzzle: muzzle,
     mkEnemy: function (k, id) { var d = ENEMY[k]; return { id: id, mhp: d.hp, k: k, def: d, d: 0, hp: d.hp, lat: 0, flash: 0, age: 0, dead: false, ph: Math.random() * 4, ox: 0, oz: 0, stun: 0, slowF: 1, slowT: 0, poison: null, barT: 99 }; }
   };
@@ -715,6 +787,7 @@
     G.sortedNow.forEach(function (i) { items.push(i); });
     G.projs.forEach(function (p) { items.push({ z: p.z - 3, f: function () { drawProj(p); } }); });
     G.eprojs.forEach(function (p) { items.push({ z: p.z - 3, f: function () { drawEProj(p); } }); });
+    G.orbs.forEach(function (o) { items.push({ z: o.z - 2, f: function () { var X = sx(o.x), Y = sy(o.z) - 8 - Math.sin(G.anim * 5 + o.x * 3) * 2, r = 3 + Math.min(4, o.v * .22); if (o.t > 30 && ((G.anim * 8) | 0) % 2) return; ctx.save(); ctx.shadowColor = "#b46cff"; ctx.shadowBlur = 10; ctx.fillStyle = "#b46cff"; ctx.beginPath(); ctx.arc(X, Y, r, 0, 6.283); ctx.fill(); ctx.fillStyle = "#f2e0ff"; ctx.beginPath(); ctx.arc(X - 1, Y - 1, r * .45, 0, 6.283); ctx.fill(); ctx.restore(); } }); });
     items.sort(function (a, b) { return b.z - a.z; }).forEach(function (i) { i.f(); });
     G.fx.forEach(drawFx);
     G.floats.forEach(function (f) { ctx.globalAlpha = Math.max(0, 1 - f.t); text(f.txt, f.x, f.y, 20, f.col, "center"); }); ctx.globalAlpha = 1;
@@ -807,6 +880,23 @@
     }
   }
 
+  // choix d'amélioration : 3 cartes max, tactile (touche = choisir), clavier 1-2-3 ; « Plus tard » réduit en pastille ; la partie continue
+  function drawOffer() {
+    var h = G.hero; if (!h || h.pend <= 0 || h.dead || G.menu || G.paused) { UI.offer = null; return; }
+    if (!UI.offer || !UI.offer.length) UI.offer = makeOffer(h);
+    if (UI.hide) { button(W / 2 - 110, H - 176, 220, 38, "★ " + h.pend + " amélioration" + (h.pend > 1 ? "s" : "") + " à choisir", function () { UI.hide = false; }, true, "#ffe680", 15); return; }
+    var cw = 196, ch = 136, gap = 14, n = UI.offer.length, x0 = W / 2 - (n * cw + (n - 1) * gap) / 2, y0 = H - 140 - ch;
+    text("NIVEAU " + G.lvl + " — choisis une amélioration" + (h.pend > 1 ? " (" + h.pend + ")" : ""), W / 2, y0 - 16, 17, "#ffe680", "center");
+    button(W / 2 + n * cw / 2 - 60, y0 - 34, 120, 24, "Plus tard ▾", function () { UI.hide = true; }, false, "#cfc6dc", 13);
+    UI.offer.forEach(function (id, i) {
+      var u = upgradeById(id), x = x0 + i * (cw + gap), have = h.picks[id] || 0;
+      button(x, y0, cw, ch, "", function () { chooseUpgrade(id); }, false);
+      text(u.n, x + cw / 2, y0 + 22, 17, u.h ? (HCOL[u.h] || "#ffe680") : "#ffe680", "center");
+      text(have + 1 + " / " + u.max, x + cw / 2, y0 + 42, 12, "#cfc6dc", "center", false);
+      wrapText(u.d, x + cw / 2, y0 + 70, cw - 22, 14, "#f2ecf6");
+      if (!touchUI) text("[" + (i + 1) + "]", x + cw - 18, y0 + ch - 14, 12, "#ffd0ee", "center");
+    });
+  }
   function hpBar(x, y, w, h, r, hh) {
     rr(x, y, w, hh || 12, 4, "rgba(10,6,20,.92)", "rgba(255,255,255,.25)", 1); ctx.fillStyle = r > .6 ? "#59e07a" : r > .3 ? "#f2c038" : "#ec3b4a"; ctx.fillRect(x + 2, y + 2, Math.max(0, (w - 4) * Math.max(0, Math.min(1, r))), (hh || 12) - 4);
   }
@@ -849,6 +939,9 @@
     ctx.save(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.lineCap = "round"; var fx0 = W - 98, fy0 = 84, d = 8;
     [[0, 0, 1, 1], [24, 0, -1, 1], [0, 24, 1, -1], [24, 24, -1, -1]].forEach(function (c) { ctx.beginPath(); ctx.moveTo(fx0 + c[0] + c[2] * d, fy0 + c[1]); ctx.lineTo(fx0 + c[0], fy0 + c[1]); ctx.lineTo(fx0 + c[0], fy0 + c[1] + c[3] * d); ctx.stroke(); }); ctx.restore();
     drawControls();
+    drawOffer();
+    var xlo = xpCum(G.lvl), xhi = xpCum(G.lvl + 1), xr2 = G.lvl >= MAXLVL ? 1 : (G.xp - xlo) / Math.max(1, xhi - xlo);
+    ctx.fillStyle = "rgba(10,6,20,.75)"; ctx.fillRect(0, H - 4, W, 4); ctx.fillStyle = G.lvlFlash > 0 ? "#ffe680" : G.xpFlash > 0 ? "#e0b8ff" : "#b46cff"; ctx.fillRect(0, H - 4, W * Math.max(0, Math.min(1, xr2)), 4);
     // barre de tourelles (bas centre) : tourelle du héros + verrous
     var bw = 372, bx0 = W / 2 - bw / 2 - (touchUI ? 0 : 60), by0 = H - 128;
     panel(bx0, by0, bw, 118); text("TOURELLES", bx0 + 14, by0 + 16, 14, "#cfc6dc");
@@ -1008,6 +1101,7 @@
     if (k === "Escape") { if (!cancel()) togglePause(); }
     else if (k === "KeyP") togglePause();
     else if (k === "Enter") { if (G.state === "select") pickHero("noctis"); else if (G.state === "prep" && !G.paused) startSeq(); }
+    else if (/^Digit[1-3]$/.test(k) && G.hero && G.hero.pend > 0 && UI.offer && !UI.hide && UI.offer[+k.slice(5) - 1]) { chooseUpgrade(UI.offer[+k.slice(5) - 1]); }
     else if (k === "KeyB" || k === "Tab" || k === "Digit1") { toggleBuild(); e.preventDefault(); }
     else if (k === "KeyE") castSkill("s1");
     else if (k === "KeyR") castSkill("s2");
@@ -1023,6 +1117,6 @@
   var sb = document.querySelector("[data-ash-sound]"); if (sb) sb.addEventListener("click", toggleSound);
   var fb = document.querySelector("[data-ash-full]"); if (fb) fb.addEventListener("click", function () { setFull(!full); });
 
-  window.__ash = { get G() { return G; }, slots: function () { return slots; }, build: function (i) { tryBuild(slots[i]); }, upgrade: function (i) { tryUpgrade(slots[i].tower); }, start: startSeq, reset: reset, pick: pickHero, setFull: setFull, joy: joy, W: function () { return W; }, cast: castSkill, hurt: function (i, d) { hurtHero(G.heroes[i], d); }, xp: function (n) { gainXp(n); }, attack: function () { heroAttack(); }, coop: function () { return COOP; }, ctl: function () { return ctl; }, view: function () { return { CW: CW, SL: SL, SR: SR, H: H, RS: RS, W: W }; }, RS: function () { return RS; }, toggleFull: toggleFull, tstats: tstats, TOWERS: TOWERS };
+  window.__ash = { get G() { return G; }, slots: function () { return slots; }, build: function (i) { tryBuild(slots[i]); }, upgrade: function (i) { tryUpgrade(slots[i].tower); }, start: startSeq, reset: reset, pick: pickHero, setFull: setFull, joy: joy, W: function () { return W; }, cast: castSkill, choose: chooseUpgrade, hero: function () { return G.hero; }, hurt: function (i, d) { hurtHero(G.heroes[i], d); }, xp: function (n) { gainXp(n); }, attack: function () { heroAttack(); }, coop: function () { return COOP; }, ctl: function () { return ctl; }, view: function () { return { CW: CW, SL: SL, SR: SR, H: H, RS: RS, W: W }; }, RS: function () { return RS; }, toggleFull: toggleFull, tstats: tstats, TOWERS: TOWERS };
   boot();
 })();
