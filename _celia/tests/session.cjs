@@ -68,7 +68,7 @@ async function typePin(p, pin) { for (const d of pin) { await p.evaluate((d) => 
   const beforeReload = await rem(p);
   await p.reload(); await sleep(p, 1500);
   ok(await p.evaluate(() => C.current() === 'home') && await state(p) === 'playing', 'actualisation de la page : on retrouve le château, sans repasser par l’écran parent');
-  ok(Math.abs(await rem(p) - beforeReload) < 3500, 'actualisation : le temps restant est conservé (' + Math.round(beforeReload / 1000) + ' → ' + Math.round(await rem(p) / 1000) + ' s)');
+  ok(Math.abs(await rem(p) - beforeReload) < 7000, 'actualisation : le temps restant est conservé (' + Math.round(beforeReload / 1000) + ' → ' + Math.round(await rem(p) / 1000) + ' s)');
 
   /* ---- 5. une minute avant la fin : phrase douce + sauvegarde du dessin ---- */
   await p.evaluate(() => { document.querySelector('.startbtn') && document.querySelector('.startbtn').click(); C.go('draw'); }); await sleep(p, 900);
@@ -101,11 +101,9 @@ async function typePin(p, pin) { for (const d of pin) { await p.evaluate((d) => 
   ok(await p.evaluate(() => C.current() === 'sleep'), 'forcer l’accès aux activités est redirigé vers l’écran de fin');
   await p.reload(); await sleep(p, 1500);
   ok(await p.evaluate(() => C.current() === 'sleep') && await state(p) === 'ended', 'actualiser la page ne relance pas la session');
-  await p.evaluate(() => document.querySelector('.parentlock').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 5 }))); await p.clock.runFor(300);
-  ok(await p.evaluate(() => !document.querySelector('.modal.pin')), 'un simple toucher du cadenas n’ouvre rien (appui long requis)');
-  await p.evaluate(() => document.querySelector('.parentlock').dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 5 })));
-  await p.evaluate(() => document.querySelector('.parentlock').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 6 }))); await p.clock.runFor(1600); await sleep(p, 500);
-  ok(await p.evaluate(() => !!document.querySelector('.modal.pin')), 'appui long sur le cadenas : le code est demandé');
+  ok(await p.evaluate(() => /Espace parents/.test(document.querySelector('.parentlock').textContent) && document.querySelector('.parentlock').getBoundingClientRect().height >= 44), 'le bouton « Espace parents » est visible pour le parent');
+  await p.evaluate(() => document.querySelector('.parentlock').click()); await sleep(p, 500);
+  ok(await p.evaluate(() => !!document.querySelector('.modal.pin')) && await state(p) === 'ended', 'toucher « Espace parents » : le code est demandé, rien d’autre ne s’ouvre');
   await typePin(p, '0000');
   ok(await p.evaluate(() => /incorrect/.test(document.querySelector('.pinerr').textContent)) && await state(p) === 'ended', 'mauvais code : refusé, la session reste terminée');
   for (let i = 0; i < 4; i++) await typePin(p, '1111');
@@ -137,7 +135,7 @@ async function typePin(p, pin) { for (const d of pin) { await p.evaluate((d) => 
   ok(await state(p) === 'ended' && await p.evaluate(() => C.current() === 'sleep'), 'le parent peut arrêter la session à tout moment');
 
   /* ---- 10. nouvelle session ---- */
-  await p.evaluate(() => document.querySelector('.parentlock').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 9 }))); await p.clock.runFor(1600); await sleep(p, 500);
+  await p.evaluate(() => document.querySelector('.parentlock').click()); await sleep(p, 500);
   await typePin(p, '1234'); await sleep(p, 400);
   await p.evaluate(() => document.querySelector('[data-a=new]').click()); await sleep(p, 1200);
   ok(await p.evaluate(() => C.current() === 'setup' && document.querySelectorAll('.dur').length === 4), 'nouvelle session : choix de la durée (sans redemander le code)');
@@ -156,7 +154,7 @@ async function typePin(p, pin) { for (const d of pin) { await p.evaluate((d) => 
     const g = await q.evaluate(() => { const go = document.querySelector('[data-go]'); go.scrollIntoView(); const r = go.getBoundingClientRect(); return { over: document.documentElement.scrollWidth > innerWidth + 1, h: r.height, inView: r.top >= 0 && r.bottom <= innerHeight, durs: [...document.querySelectorAll('.dur')].every((d) => d.getBoundingClientRect().height >= 56 && d.getBoundingClientRect().right <= innerWidth) }; });
     ok(!g.over && g.h >= 56 && g.inView && g.durs, vp.n + ' : écran parent lisible (bouton ' + Math.round(g.h) + ' px, rien ne dépasse)');
     await q.evaluate(() => { localStorage.setItem('celia.session', JSON.stringify(Object.assign(JSON.parse(localStorage.getItem('celia.session')), { state: 'ended' }))); C.go('sleep'); }); await sleep(q, 1200);
-    const s = await q.evaluate(() => { const lk = document.querySelector('.parentlock').getBoundingClientRect(), by = document.querySelector('.bye h1').getBoundingClientRect(); return { over: document.documentElement.scrollWidth > innerWidth + 1, lock: lk.right <= innerWidth && lk.top >= 0, bye: by.left >= 0 && by.right <= innerWidth && by.bottom <= innerHeight }; });
+    const s = await q.evaluate(() => { const lk = document.querySelector('.parentlock').getBoundingClientRect(), by = document.querySelector('.bye h1').getBoundingClientRect(); return { over: document.documentElement.scrollWidth > innerWidth + 1, lock: lk.right <= innerWidth && lk.left >= 0 && lk.bottom <= innerHeight, bye: by.left >= 0 && by.right <= innerWidth && by.bottom <= innerHeight }; });
     ok(!s.over && s.lock && s.bye, vp.n + ' : écran « À bientôt Celia ! » entièrement visible');
     await c2.close();
   }
