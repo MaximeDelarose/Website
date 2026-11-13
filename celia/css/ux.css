@@ -52,3 +52,7 @@
 /* « pas encore » : simple anneau lumineux, sans déplacer ni agrandir la zone (important sur le canevas) */
 .nudge { animation: nudgering 1.7s ease-in-out 1; } @keyframes nudgering { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,93,158,0); } 25%, 75% { box-shadow: 0 0 0 8px rgba(255,93,158,.55); } 50% { box-shadow: 0 0 0 3px rgba(255,93,158,.2); } }
 .cv-wrap.nudge { box-shadow: 0 0 0 4px var(--lav); }
+
+/* maquillage : 7 onglets visibles sans défiler */
+.mk .tabs { gap: 5px; justify-content: center; }
+.mk .tab { width: calc((100% - 38px) / 7); max-width: 54px; min-width: 40px; height: 52px; padding: 4px; }

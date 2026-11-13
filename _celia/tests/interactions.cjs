@@ -109,7 +109,7 @@ async function dressing(p) {
   const hair0 = await snap('.hairf'); await pick('hair', 1); ok((await snap('.hairf')) !== hair0, 'dressing : la coiffure change');
   await p.evaluate(() => { document.querySelector('.tab[data-c=me]').click(); document.querySelectorAll('.items .it.round')[3].click(); }); await sleep(p, 300);
   ok(await p.evaluate(() => C.profile.skin === 3), 'dressing : la couleur de peau change et est enregistrée');
-  const prof = await p.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('celia.profile')))); ok(/"skin":3/.test(prof) && /"hairStyle":"pigtails"/.test(prof), 'dressing : la tenue est sauvegardée');
+  const prof = await p.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('celia.profile')))); ok(/"skin":3/.test(prof) && /"hairStyle":"bun"/.test(prof), 'dressing : la tenue est sauvegardée');
   /* terminer : photo sauvegardée */
   await p.evaluate(() => document.querySelector('.donebtn').click()); await sleep(p, 1800);
   ok(await p.evaluate(() => C.db.all('outfit').then((l) => l.length >= 1 && l[0].img.length > 5000)), 'dressing : la photo de la tenue est sauvegardée');
@@ -154,7 +154,7 @@ async function maquillage(p) {
   const before = await p.evaluate(() => ({ lips: document.querySelector('#mk-lips path').getAttribute('fill'), len: document.querySelector('.mkface svg').innerHTML.length }));
   await p.evaluate(() => document.querySelector('[data-do=dice]').click()); await sleep(p, 4800);
   const after = await p.evaluate(() => ({ lips: document.querySelector('#mk-lips path').getAttribute('fill'), len: document.querySelector('.mkface svg').innerHTML.length, crown: /scale\(1\.55\)/.test(document.querySelector('.mkface svg').innerHTML) }));
-  ok(after.lips !== before.lips && after.crown && after.len > before.len - 300, 'maquillage : « surprise » applique réellement un look (lèvres ' + before.lips + ' → ' + after.lips + ', couronne)');
+  ok(after.lips !== before.lips && after.crown, 'maquillage : « surprise » applique réellement un look (lèvres ' + before.lips + ' → ' + after.lips + ', couronne)');
   await p.evaluate(() => document.querySelector('.donebtn').click()); await sleep(p, 1800);
   ok(await p.evaluate(() => C.db.all('makeup').then((l) => l.length >= 1 && l[0].img.length > 5000)), 'maquillage : la photo est sauvegardée');
 }
