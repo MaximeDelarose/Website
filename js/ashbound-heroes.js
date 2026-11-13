@@ -15,6 +15,31 @@
     function sx(x) { return A.sx(x); }
     function sy(z) { return A.sy(z); }
     var ctx = A.ctx;
+    function rnd(a, b) { return a + Math.random() * (b - a); }
+    // petit arc de foudre autour d'un point (effets de déplacement / d'attaque de l'Épéiste)
+    function miniArc(x, z, len, up) {
+      A.addActor({ x: x, z: z + .01, sorted: true, life: .13, t: 0, seed: Math.random() * 9,
+        draw: function () {
+          var X = sx(this.x), Y = sy(this.z) - (up || 8), pts = [{ x: X, y: Y }], n = 5, ex = X + rnd(-len, len), ey = Y - rnd(len * .2, len * 1.1);
+          for (var i = 1; i < n; i++) pts.push({ x: X + (ex - X) * i / n + rnd(-5, 5), y: Y + (ey - Y) * i / n + rnd(-5, 5) }); pts.push({ x: ex, y: ey });
+          ctx.save(); ctx.globalAlpha = Math.min(1, this.life * 12); ctx.lineJoin = "round";
+          [["rgba(60,200,255,.45)", 6], ["#eaffff", 2]].forEach(function (o) { ctx.strokeStyle = o[0]; ctx.lineWidth = o[1]; ctx.beginPath(); pts.forEach(function (p, j) { if (j) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); }); ctx.stroke(); }); ctx.restore();
+        } });
+    }
+    // ronce qui jaillit du sol puis se fane (traînée d'Églantyne)
+    function vine(x, z, lean, seed, hgt) {
+      A.addActor({ x: x, z: z + .02, sorted: true, life: 1.5, t: 0,
+        draw: function () {
+          var g = Math.min(1, this.t / .35), fade = Math.min(1, this.life / .5), X = sx(this.x), Y = sy(this.z), N = 14, n = Math.floor(N * g) + 1;
+          function pt(i) { var u = i / N; return { x: X + Math.sin(u * 4 + seed) * 7 * u + lean * u * 14, y: Y - u * hgt + Math.sin(u * 9 + seed) * 2 }; }
+          ctx.save(); ctx.globalAlpha = fade; ctx.lineCap = "round"; ctx.lineJoin = "round";
+          [["#1a2410", 6], ["#4d7a2a", 3]].forEach(function (o) { ctx.strokeStyle = o[0]; ctx.lineWidth = o[1]; ctx.beginPath(); for (var i = 0; i <= n; i++) { var p = pt(i); if (i) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); } ctx.stroke(); });
+          ctx.strokeStyle = "#e0eaa8"; ctx.lineWidth = 2;
+          for (var i = 2; i <= n; i += 3) { var q = pt(i); ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(q.x + (i % 2 ? 5 : -5), q.y - 5); ctx.stroke(); }
+          if (g >= 1) { var t = pt(N); ctx.fillStyle = "#c070ff"; ctx.shadowColor = "#c070ff"; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(t.x, t.y, 3, 0, 6.283); ctx.fill(); }
+          ctx.restore();
+        } });
+    }
     function groundEllipse(x, z, r, fill, stroke, lw) {
       ctx.beginPath(); ctx.ellipse(sx(x), sy(z), r * A.PPU, r * A.PPU * A.SY, 0, 0, 6.283);
       if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2; ctx.stroke(); }
@@ -76,6 +101,10 @@
           }
         }
       },
+      moveFx: function (h, dt) {
+        var k = h.k; k.fxT = (k.fxT || 0) - dt; if (k.fxT > 0) return; k.fxT = .07;
+        A.burstW(h.x + rnd(-.4, .4), h.z + rnd(-.2, .3), Math.random() < .5 ? "#7a3cff" : "#241446", 2, 55, .6, 4);
+      },
       onKill: function (h, e) {
         var k = h.k, p = A.pos(e); if (dist(h.x, h.z, p.x, p.z) > 10 || k.shades >= 15) return;
         if (Math.random() > (k.ultT > 0 ? .2 : .1)) return;
@@ -106,7 +135,7 @@
     /* ======================================================== ÉGLANTYNE */
     kits.eglantyne = {
       id: "eglantyne", name: "Églantyne", short: "ÉGLANTYNE", role: "Invocation · Nature", speed: 5.7, scale: 1, tower: "ronce", provisional: false,
-      spr: { idle: ["hero_eglantyne_0", "hero_eglantyne_1"], move: ["hero_eglantyne_0", "hero_eglantyne_1"], atk: "hero_eglantyne_atk", cast: "hero_eglantyne_atk" },
+      spr: { idle: ["hero_eglantyne_idle0", "hero_eglantyne_idle1"], move: ["hero_eglantyne_move0", "hero_eglantyne_move1"], atk: "hero_eglantyne_atk", cast: "hero_eglantyne_cast" },
       lines: ["Graines de ronce, poison, poupées", "Calice de l'Effroi · Terrain Sacrificiel"],
       skills: {
         s1: { name: "Calice de l'Effroi", cd: 9, aim: { type: "point", range: 7, r: 2.8 } },
@@ -148,7 +177,7 @@
           for (var i = 0; i < 5; i++) spots.push({ x: h.x + Math.cos(i * 1.256) * 2.2, z: h.z + Math.sin(i * 1.256) * 2.2 });
           k.dolls = [];
           spots.forEach(function (s, i) { A.after(.05 + (i % 10) * .03, function () { A.fx({ k: "ring", x: s.x, z: s.z, r: 2.6, dur: .5, col: "#fff3a0", flash: true }); A.inRadius(s.x, s.z, 2.6).forEach(function (e) { A.dmg(e, 55); }); }); });
-          A.fx({ k: "beams", x: h.x, z: h.z, dur: 1.1 }); A.healHeart(healed); A.shake(.35); A.play("boss", .9, 1.3); A.toast("Éclat de la Grande Serre ! Cœur +" + Math.round(healed * 100) + " %", "#fff3a0");
+          A.fx({ k: "beams", x: h.x, z: h.z, dur: 1.1 }); A.healHeart(healed); A.healHeroes(.3); A.shake(.35); A.play("boss", .9, 1.3); A.toast("Éclat de la Grande Serre ! Cœur +" + Math.round(healed * 100) + " %", "#fff3a0");
         }
       },
       update: function (h, dt) {
@@ -162,6 +191,13 @@
         k.dolls = list.filter(function (dl) { return !dl.boom; });
         if (near && k.rush <= 0) { var free = k.dolls.filter(function (d) { return !d.go; }); if (free.length) { free[0].go = { x: A.pos(near).x, z: A.pos(near).z, dmg: 28 }; k.rush = .22; } }
         k.curses = k.curses.filter(function (c) { return c.t > 0; });
+      },
+      netOut: function (h) { return h.k.dolls.slice(0, 30).map(function (d) { return [Math.round(d.x * 10) / 10, Math.round(d.z * 10) / 10]; }); },
+      netIn: function (h, list) { h.k.dolls = list.map(function (p, i) { var o = h.k.dolls[i] || { x: p[0], z: p[1] }; o.x = p[0]; o.z = p[1]; return o; }); },
+      moveFx: function (h, dt) {
+        var k = h.k; k.vineT = (k.vineT || 0) - dt; if (k.vineT > 0) return; k.vineT = .2;
+        var bx = h.x - Math.cos(h.face) * .5, bz = h.z - Math.sin(h.face) * .35;
+        for (var i = 0; i < 2; i++) vine(bx + rnd(-.45, .45), bz + rnd(-.2, .25), rnd(-1, 1), rnd(0, 9), rnd(16, 30));
       },
       onKill: function (h, e) {
         var k = h.k, p = A.pos(e);
@@ -181,7 +217,7 @@
     /* ======================================================== PHELTO (kit provisoire) */
     kits.phelto = {
       id: "phelto", name: "Phelto", short: "PHELTO", role: "Soutien · Musique", speed: 6.2, scale: 1, tower: "ampli", provisional: true,
-      spr: { idle: ["hero_phelto_0", "hero_phelto_1"], move: ["hero_phelto_0", "hero_phelto_1"], atk: "hero_phelto_atk", cast: "hero_phelto_atk" },
+      spr: { idle: ["hero_phelto_idle0", "hero_phelto_idle1"], move: ["hero_phelto_move0", "hero_phelto_move1"], atk: "hero_phelto_atk", cast: "hero_phelto_cast" },
       lines: ["Notes perçantes, onde de choc", "Zone qui accélère les tourelles (provisoire)"],
       skills: {
         s1: { name: "Accord de choc", cd: 7, aim: { type: "cone", len: 5, arc: 80 } },
@@ -215,6 +251,11 @@
         var k = h.k;
         if (k.concert > 0) { k.concert -= dt; k.tick = (k.tick || 0) - dt; A.inRadius(h.x, h.z, 5.5).forEach(function (e) { A.slow(e, .5, .3); }); if (k.tick <= 0) { k.tick = .5; A.inRadius(h.x, h.z, 5.5).forEach(function (e) { A.dmg(e, 7); }); } }
       },
+      moveFx: function (h, dt) {
+        var k = h.k; k.noteT = (k.noteT || 0) - dt; if (k.noteT > 0) return; k.noteT = .22;
+        A.addActor({ x: h.x + rnd(-.5, .5), z: h.z + rnd(-.1, .3) + .01, sorted: true, life: .9, t: 0, dx: rnd(-14, 14), c: Math.random() < .5 ? "#ff9bd2" : "#ffd0ee",
+          draw: function () { var u = this.t / .9; ctx.save(); ctx.globalAlpha = 1 - u; note(sx(this.x) + this.dx * u, sy(this.z) - 24 - u * 44, this.c, 18 + 6 * (1 - u)); ctx.restore(); } });
+      },
       onKill: function () {},
       drawExtra: function (h) {
         var k = h.k; if (k.concert <= 0) return; var t = A.time();
@@ -228,7 +269,7 @@
     var COMBO = [{ rng: 2.2, arc: 100, dmg: 14, dur: .30, lunge: .55, kb: .25 }, { rng: 2.6, arc: 150, dmg: 20, dur: .34, lunge: .6, kb: .35 }, { rng: 3.5, arc: 215, dmg: 42, dur: .46, lunge: 1.0, kb: .9 }];
     kits.epeiste = {
       id: "epeiste", name: "L'Épéiste électrique", short: "ÉPÉISTE", role: "Mêlée · Foudre", speed: 6.2, scale: 1, tower: "orb", provisional: false, atkRange: 3.6,
-      spr: { idle: ["hero_epeiste_0", "hero_epeiste_1"], move: ["hero_epeiste_0", "hero_epeiste_1"], atk: "hero_epeiste_0", cast: "hero_epeiste_0" },
+      spr: { idle: ["hero_epeiste_idle0", "hero_epeiste_idle1"], move: ["hero_epeiste_move0", "hero_epeiste_move1"], atk: "hero_epeiste_atk", cast: "hero_epeiste_cast" },
       lines: ["Combo en 3 coups, charge électrique", "Attraction · Foudre Ancrée · Tempête"],
       skills: {
         s1: { name: "Frappe d'Attraction", cd: 7, aim: { type: "dir", len: 6.5, w: 3.4 } },
@@ -238,17 +279,18 @@
       init: function (h) { h.k = { combo: 0, comboT: 0, charge: 0, storm: 0, tick: 0 }; h.cd.s2 = 8; h.cd.ult = 25; },
       attack: function (h, a) {
         var k = h.k, c = k.comboT > 0 ? k.combo % 3 : 0, st = COMBO[c], spd = 1 + .6 * k.charge / 100;
-        k.combo = c + 1; k.comboT = st.dur + .9; h.lunge = { dx: Math.cos(a) * st.lunge, dz: Math.sin(a) * st.lunge, t: .12 };
+        k.pose = c === 0 ? "atk" : "cast"; k.combo = c + 1; k.comboT = st.dur + .9; h.lunge = { dx: Math.cos(a) * st.lunge, dz: Math.sin(a) * st.lunge, t: .12 };
         var hit = false;
         A.enemies().forEach(function (e) { if (inCone(h.x, h.z, a, st.rng, st.arc * D2R, e)) { hit = true; A.dmg(e, st.dmg); A.push(e, Math.cos(a) * st.kb, Math.sin(a) * st.kb); if (c === 2) A.stun(e, .25); } });
         A.fx({ k: "slash", x: h.x, z: h.z, a: a, rng: st.rng, arc: st.arc * D2R, dur: st.dur + .08, big: c === 2 });
         A.play(c === 2 ? "zap" : "hit", c === 2 ? .8 : .45, c === 2 ? .8 : 1.15 + c * .1); if (c === 2) A.shake(.12);
         var was = k.charge >= 100; k.charge = Math.min(100, k.charge + (hit ? 12 : 6));
         if (was) { k.charge = 0; A.fx({ k: "ring", x: h.x, z: h.z, r: 3.6, dur: .45, col: "#7ff0ff" }); A.inRadius(h.x, h.z, 3.6).forEach(function (e) { A.dmg(e, 40); A.stun(e, .5); }); A.play("zap", 1, .6); A.shake(.2); A.toast("Décharge !", "#7ff0ff"); }
+        for (var q = 0; q < 3 + c * 2; q++) miniArc(h.x + Math.cos(a) * rnd(.8, st.rng * .9), h.z + Math.sin(a) * rnd(.8, st.rng * .9), 16 + c * 6, 26);
         h.swing = st.dur; return st.dur / spd;
       },
       cast: function (key, h, a, d) {
-        var k = h.k;
+        var k = h.k; k.pose = "cast";
         if (key === "s1") {
           var dx = Math.cos(a), dz = Math.sin(a), len = 6.5, hw = 1.7;
           A.fx({ k: "pull", x: h.x, z: h.z, a: a, len: len, hw: hw, dur: .6 });
@@ -268,7 +310,14 @@
       },
       update: function (h, dt) {
         var k = h.k; if (k.comboT > 0) k.comboT -= dt;
+        if (k.charge > 0 && Math.random() < dt * k.charge / 25) miniArc(h.x + rnd(-.4, .4), h.z, 8 + k.charge / 10, 30);   // étincelles de charge, même à l'arrêt
         if (k.storm > 0) { k.storm -= dt; k.tick -= dt; if (k.tick <= 0) { k.tick = .32; var inR = A.inRadius(h.x, h.z, 6.5); if (inR.length) { var e = inR[Math.floor(Math.random() * inR.length)], p = A.aimPt(e), top = { x: p.x + (Math.random() - .5) * 60, y: p.y - 520 }; A.bolt(top, p, true); A.dmg(e, 24); A.play("zap", .5, 1.3); } } }
+      },
+      swingPose: function (h) { return h.k.pose || "atk"; },
+      moveFx: function (h, dt) {
+        var k = h.k; k.fxT = (k.fxT || 0) - dt; if (k.fxT > 0) return; var c = k.charge / 100; k.fxT = .1 - .06 * c;
+        miniArc(h.x + rnd(-.5, .5), h.z + rnd(-.15, .3), 10 + 14 * c, 8);
+        if (c >= .99) miniArc(h.x + rnd(-.3, .3), h.z, 18, 36);
       },
       onKill: function () {},
       drawExtra: function (h) {
