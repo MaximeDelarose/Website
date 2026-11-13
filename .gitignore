@@ -1,2 +1,5 @@
 # captures de test locales (jamais publiées)
 /*.png
+
+# arcade : dépendances de build (les bundles du jeu sont dans arcade/vendor)
+arcade/node_modules/

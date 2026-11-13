@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Flipper · Arcade</title>
+  <meta name="description" content="Flipper classique.">
+  <style>
+    :root { color-scheme: dark; }
+    html, body { margin: 0; height: 100%; background: #0b0d12; color: #e8ecf4; font-family: system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; }
+    header a { color: #7a8294; text-decoration: none; font-size: 14px; }
+    header a:hover { color: #e8ecf4; }
+    header span { font-size: 14px; color: #7a8294; }
+    #game { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+    #game canvas { max-width: 100%; max-height: 100%; }
+  </style>
+</head>
+<body>
+  <header><a href="../">← Arcade</a><span>Flipper classique</span></header>
+  <div id="game"></div>
+  <script src="../vendor/phaser.min.js"></script>
+  <script src="../vendor/matter.min.js"></script>
+  <script type="module" src="../js/flipper/main.js"></script>
+</body>
+</html>
