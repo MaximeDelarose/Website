@@ -31,7 +31,7 @@
   ENEMY.boom = { name: "Gélatine explosive", kind: "std", hp: 110, speed: 1.95, dmg: 12, gold: 12, xp: 10, spr: "enemy_boom", fps: 4, scale: 1, shadow: 1.5, bar: 1, gel: true, col: "#ffb04a", boom: { r: 2.7, dmg: 70, hero: 9 } };
   ENEMY.gslime = { name: "Gélatine géante", kind: "mini", hp: 2600, speed: 1.05, dmg: 40, gold: 110, xp: 100, atk: { k: "slam", range: 3, dmg: 18, cd: 2.4 }, spr: "enemy_gslime", fps: 2, scale: .9, shadow: 3.8, bar: 2.4, always: true, gel: true, col: "#6fe08a", split: [["blop", 3], ["slime", 3]] };
   ENEMY.gking = { name: "Roi gélatineux", kind: "boss", hp: 9500, speed: .85, dmg: 100, gold: 300, xp: 260, atk: { k: "volley", range: 9, dmg: 12, cd: 3, spd: 7, slow: true }, spr: "enemy_gking", fps: 2, scale: .85, shadow: 4.8, bar: 3.4, always: true, gel: true, col: "#ff8ae6", split: [["gslime", 1], ["boom", 3], ["blop", 3]] };
-  var BASE_STATS = { damage: 8, rate: 1.6, range: 5.5, zaps: 1, jumps: 0, radius: 2.8, falloff: .7, splash: 0, splashDmg: 0, slowF: 1, slowT: 0, stunEvery: 0, aura: 0 };
+  var BASE_STATS = { damage: 8, rate: 1.6, range: 5.5, zaps: 1, jumps: 0, radius: 2.8, falloff: .7, splash: 0, splashDmg: 0, slowF: 1, slowT: 0, stunEvery: 0, aura: 0, heal: 0, sr: 0, prot: 0 };
   // 1 famille de tourelles par héros (3 améliorations chacune ; valeurs provisoires)
   var TOWERS = {
     orb: { name: "Orbe foudroyant", cost: 50, col: "#7ff0ff", spr: "tower_orb_", my: 48, tag: "Éclairs précis",
@@ -68,10 +68,10 @@
     base: { damage: 14, rate: 1.6, range: 5.8, zaps: 2, slowF: .8, slowT: 1.5 }, ups: [
       { name: "Poupées gardiennes", desc: "Une épine de plus par salve.", cost: 90, m: { zaps: 1 } },
       { name: "Racines serrées", desc: "Ralentissement 40 %, dégâts accrus.", cost: 150, m: { slowF: .6, dmg: 1.3 } }] };
-  TOWERS.monde = { name: "Arbre Monde", cost: 220, col: "#8dffa8", spr: "tower_ronce_", my: 52, sc: 1.3, tag: "Aura + zone",
-    base: { damage: 16, rate: 1.4, range: 6.6, aura: .2, splash: 1.6, splashDmg: .5, slowF: .7, slowT: 1.5 }, ups: [
-      { name: "Canopée", desc: "Aura +20 %, portée accrue.", cost: 150, m: { aura: .2, range: .6 } },
-      { name: "Sanctuaire", desc: "Aura +25 %, dégâts accrus.", cost: 220, m: { aura: .25, dmg: 1.4 } }] };
+  TOWERS.monde = { name: "Arbre Monde", cost: 220, col: "#8dffa8", spr: "tower_ronce_", my: 52, sc: 1.3, tag: "Sanctuaire verdoyant",
+    base: { damage: 16, rate: 1.4, range: 6.6, aura: .2, splash: 1.6, splashDmg: .5, slowF: .7, slowT: 1.5, heal: .015, sr: 5, prot: .3 }, ups: [
+      { name: "Canopée", desc: "Sanctuaire plus vaste et plus régénérant, aura +20 %.", cost: 150, m: { aura: .2, range: .6, sr: 1.2, heal: .01, prot: .15 } },
+      { name: "Sanctuaire", desc: "Aura +25 %, régénération et protection accrues, dégâts accrus.", cost: 220, m: { aura: .25, dmg: 1.4, sr: 1.2, heal: .015, prot: .2 } }] };
   TOWERS.feedback = { name: "Enceinte à feedback", cost: 110, col: "#ff9bd2", spr: "tower_ampli_", my: 46, sc: 1.12, tag: "Onde de choc",
     base: { damage: 15, rate: 1.5, range: 5.6, splash: 2.2, splashDmg: .7, aura: .1 }, ups: [
       { name: "Larsen", desc: "Zone d'onde accrue.", cost: 90, m: { splash: 2.8, dmg: 1.2 } },
@@ -283,7 +283,7 @@
     var s = {}, k; for (k in BASE_STATS) s[k] = BASE_STATS[k]; for (k in def.base) s[k] = def.base[k];
     for (var i = 0; i < tier; i++) {
       var m = def.ups[i].m; s.damage *= m.dmg || 1; s.rate *= m.rate || 1; s.range += m.range || 0; s.zaps += m.zaps || 0; s.jumps += m.jumps || 0; s.radius += m.radius || 0;
-      if (m.splash != null) { s.splash = m.splash; s.splashDmg = m.splashDmg; } if (m.slowF != null) s.slowF = m.slowF; if (m.stunEvery != null) s.stunEvery = m.stunEvery; if (m.aura != null) s.aura = m.aura;
+      if (m.splash != null) { s.splash = m.splash; s.splashDmg = m.splashDmg; } if (m.slowF != null) s.slowF = m.slowF; if (m.stunEvery != null) s.stunEvery = m.stunEvery; if (m.aura != null) s.aura = m.aura; s.heal += m.heal || 0; s.sr += m.sr || 0; s.prot += m.prot || 0;
     }
     return s;
   }
@@ -676,6 +676,7 @@
       G.heroes.forEach(function (h) { if (!h.dead && h.mod.syn && Math.hypot(h.x - t.s.x, h.z - t.s.z) <= 5.5) boost += h.mod.syn; });
       t.boost = boost; t.cd -= dt * boost; if (t.cd <= 0) t.cd = fire(t) ? 1 / t.st.rate : .08;
     });
+    updateSanctuaries(dt);
     updateTraps(dt);
     G.enemies.forEach(function (e) {
       if (e.dead) return;
@@ -716,7 +717,7 @@
     pos: function (e) { return ep(e); }, aimPt: aimPt, enemies: function () { return G.enemies.filter(function (e) { return !e.dead; }); },
     nearest: function (x, z, r, ex) { return nearestEnemy(x, z, r, ex); }, inRadius: inRadius,
     dmg: function (e, n) { dmgEnemy(e, n * (G.dmgMul || 1) * (1 + (CUR && CUR.mod ? CUR.mod.dmg || 0 : 0))); }, healHeroes: function (f) { G.heroes.forEach(function (h) { if (!h.dead) h.hp = Math.min(h.mhp, h.hp + h.mhp * f); }); }, stun: function (e, t) { e.stun = Math.max(e.stun, t); },
-    wiltedTrap: wiltedTrapNear, reactivateTrap: reactivateTrap,
+    wiltedTrap: wiltedTrapNear, reactivateTrap: reactivateTrap, sanc: function (x, z) { return sancAt(x, z).prot; },
     slow: function (e, f, t) { e.slowF = Math.min(e.slowF, f); e.slowT = Math.max(e.slowT, t); },
     poison: function (e, dps, t) { e.poison = { dps: Math.max(dps, e.poison ? e.poison.dps : 0), t: Math.max(t, e.poison ? e.poison.t : 0) }; },
     pull: function (e, dx, dz, k) { k = k == null ? 1 : k; e.ox += dx * k; e.oz += dz * k; }, push: function (e, dx, dz) { e.ox += dx; e.oz += dz; },
@@ -840,7 +841,7 @@
   function reactivateTrap(t, how) {
     if (!t || G.mirror) return; t.wilted = false; t.ch = trapStats(t).ch; t.cd = 0; t.pop = 1; t.claim = 0;
     G.fx.push({ k: "ring", x: t.x, z: t.z, r: 2, t: 0, dur: .6, col: "#9bffd0" }); burst(sx(t.x), sy(t.z) - 8, "#9bffd0", 16, 120, .7, 4); play("upgrade", .6);
-    toast(how === "doll" ? "Poupée sacrifiée : piège réactivé" : "Piège replanté", "#9bffd0");
+    toast(how === "doll" ? "Poupée sacrifiée : piège réactivé" : how === "sanct" ? "Le Sanctuaire ranime un piège" : "Piège replanté", "#9bffd0");
   }
   function tryTrapReseed(t, remote) {
     if (!t || !t.wilted) return;
@@ -863,12 +864,29 @@
     trapFx(t, st);
     if (t.ch <= 0) { t.wilted = true; floatText(t.x, t.z, "Desséché", "#d8c8a0"); }
   }
+  // ---------- Arbre Monde : Sanctuaire verdoyant (seule source de soin de zone ; le Cœur n'est JAMAIS soigné automatiquement) ----------
+  function sancAt(x, z) {
+    var r = { heal: 0, prot: 0, trap: 0, any: false };
+    G.towers.forEach(function (t) { if (t.st.sr > 0 && Math.hypot(t.s.x - x, t.s.z - z) <= t.st.sr) { r.any = true; r.heal = Math.max(r.heal, t.st.heal); r.prot = Math.max(r.prot, t.st.prot); r.trap = Math.max(r.trap, .3 + t.st.heal * 12); } });
+    return r;
+  }
+  function updateSanctuaries(dt) {
+    if (G.mirror) return;
+    G.towers.forEach(function (t) {
+      if (!(t.st.sr > 0)) return; t.hfx = (t.hfx || 0) - dt;
+      G.heroes.forEach(function (h) {
+        if (h.dead || Math.hypot(t.s.x - h.x, t.s.z - h.z) > t.st.sr) return;
+        if (h.hp < h.mhp) { h.hp = Math.min(h.mhp, h.hp + h.mhp * t.st.heal * dt); if (t.hfx <= 0) { burst(sx(h.x), sy(h.z) - 36, "#8dffa8", 3, 50, .7, 3); t.hfx = .9; } }
+      });
+    });
+  }
   function updateTraps(dt) {
     G.traps.forEach(function (t) {
       if (t.pop > 0) t.pop = Math.max(0, t.pop - dt * 1.8);
       if (G.mirror || G.state !== "play") return;
-      if (t.cd > 0) { t.cd -= dt; return; }
-      if (t.wilted) return;
+      var sa = G.towers.length ? sancAt(t.x, t.z) : null;   // le Sanctuaire renforce les pièges : recharge plus rapide, pièges desséchés ranimés peu à peu
+      if (t.cd > 0) { t.cd -= dt * (1 + (sa ? sa.trap : 0)); return; }
+      if (t.wilted) { if (sa && sa.any) { t.wiltT = (t.wiltT || 0) + dt; if (t.wiltT > 12) { t.wiltT = 0; reactivateTrap(t, "sanct"); } } return; }
       for (var i = 0; i < G.enemies.length; i++) { var e = G.enemies[i]; if (e.dead) continue; var q = ep(e); if (Math.hypot(q.x - t.x, q.z - t.z) < 1.3) { fireTrap(t); break; } }
     });
   }
@@ -1088,6 +1106,11 @@
     if (sel) ring(sx(sel.s.x), sy(sel.s.z), sel.st.range, "#ffe680");
     if (G.selT) ring(sx(G.selT.x), sy(G.selT.z), trapStats(G.selT).r, "#ffe680");
     G.buffs.forEach(function (b) { if (!b.follow) ring(sx(b.x), sy(b.z), b.r, "#ffc878", .04); });
+    G.towers.forEach(function (t) {
+      if (!(t.st.sr > 0)) return; var X = sx(t.s.x), Y = sy(t.s.z); if (!inView(X, Y, t.st.sr * PPU + 20, t.st.sr * PPU * SY + 40)) return;
+      ring(X, Y, t.st.sr, "rgba(141,255,168," + (.35 + .15 * Math.sin(time * 2)).toFixed(2) + ")", .05);
+      if (Q >= .7) { ctx.fillStyle = "rgba(190,255,200,.7)"; for (var mi = 0; mi < 6; mi++) { var ma = mi * 1.047 + time * .4, mr = t.st.sr * PPU * (.3 + .6 * ((mi * .37 + time * .15) % 1)); ctx.fillRect(X + Math.cos(ma) * mr, Y + Math.sin(ma) * mr * SY - ((time * 14 + mi * 9) % 22), 3, 3); } }
+    });
     G.fx.forEach(function (f) { if (f.k === "splat") drawFx(f); });
     G.actors.forEach(function (a) { if (a.ground && a.draw) a.draw(); });
     if (aimSt && aimSt.key && hero) drawIndicator(hero, aimSt.key, aimSt.aim);
@@ -1332,7 +1355,7 @@
       panel(px, py, 268, 266);
       text(td.name + " · T" + td.T + " niv. " + (t.tier + 1), px + 14, py + 22, 18, "#fff");
       text("Dégâts " + +st.damage.toFixed(1) + " · " + +st.rate.toFixed(1) + "/s · portée " + +st.range.toFixed(1), px + 14, py + 48, 14, "#cfc6dc", "left", false);
-      text(td.tag + (st.zaps > 1 ? " ×" + st.zaps : "") + (st.jumps ? " · chaîne " + st.jumps : ""), px + 14, py + 68, 14, "#cfc6dc", "left", false);
+      text(st.sr ? "Soin " + (st.heal * 100).toFixed(1) + " %/s · rayon " + st.sr.toFixed(1) + " · poupées " + Math.round(st.prot * 100) + " %" : td.tag + (st.zaps > 1 ? " ×" + st.zaps : "") + (st.jumps ? " · chaîne " + st.jumps : ""), px + 14, py + 68, 13, st.sr ? "#9bffd0" : "#cfc6dc", "left", false);
       if (t.tier < td.ups.length) {
         var u = td.ups[t.tier], lockLv = G.lvl < UPREQ[t.tier], ok = G.gold >= u.cost && !lockLv;
         button(px + 12, py + 86, 244, 128, "", function () { tryUpgrade(t); });

@@ -184,14 +184,14 @@
         var k = h.k, list = k.dolls, near = A.nearest(h.x, h.z, 3.6);
         k.rush -= dt;
         list.forEach(function (dl, i) {
-          if (dl.go) { var tg = dl.go; var dx = tg.x - dl.x, dz = tg.z - dl.z, l = Math.hypot(dx, dz) || 1; if (l < .6) { dl.boom = true; if (tg.trap) { A.reactivateTrap(tg.trap, "doll"); return; } A.inRadius(dl.x, dl.z, 1.7).forEach(function (e) { A.dmg(e, tg.dmg || 28); }); A.fx({ k: "ring", x: dl.x, z: dl.z, r: 1.7, dur: .35, col: "#8fff9a" }); A.shake(.05); return; } dl.x += dx / l * 9 * dt; dl.z += dz / l * 9 * dt; return; }
+          if (dl.go) { var tg = dl.go; var dx = tg.x - dl.x, dz = tg.z - dl.z, l = Math.hypot(dx, dz) || 1; if (l < .6) { dl.boom = true; if (dl.prot && !tg.trap) { dl.boom = false; dl.go = null; dl.prot = false; } if (tg.trap) { A.reactivateTrap(tg.trap, "doll"); return; } A.inRadius(dl.x, dl.z, 1.7).forEach(function (e) { A.dmg(e, tg.dmg || 28); }); A.fx({ k: "ring", x: dl.x, z: dl.z, r: 1.7, dur: .35, col: "#8fff9a" }); A.shake(.05); return; } dl.x += dx / l * 9 * dt; dl.z += dz / l * 9 * dt; return; }
           var ang = i * 2.399 + A.time() * .6, rr = 1.4 + (i % 7) * .35, tx = h.x + Math.cos(ang) * rr, tz = h.z + Math.sin(ang) * rr, dx2 = tx - dl.x, dz2 = tz - dl.z, l2 = Math.hypot(dx2, dz2);
           if (l2 > .05) { var s = Math.min(l2, (l2 > 3 ? 11 : 5) * dt); dl.x += dx2 / l2 * s; dl.z += dz2 / l2 * s; }
         });
         k.dolls = list.filter(function (dl) { return !dl.boom; });
         var wt = A.wiltedTrap ? A.wiltedTrap(h.x, h.z, 3.4) : null;   // sacrifice : une poupée libre rouvre un piège desséché proche
         if (wt) { var fd = k.dolls.filter(function (d) { return !d.go; }); if (fd.length) fd[0].go = { x: wt.x, z: wt.z, dmg: 0, trap: wt }; else wt.claim = 0; }
-        if (near && k.rush <= 0) { var free = k.dolls.filter(function (d) { return !d.go; }); if (free.length) { free[0].go = { x: A.pos(near).x, z: A.pos(near).z, dmg: 28 }; k.rush = .22; } }
+        if (near && k.rush <= 0) { var free = k.dolls.filter(function (d) { return !d.go; }); if (free.length) { free[0].go = { x: A.pos(near).x, z: A.pos(near).z, dmg: 28 }; free[0].prot = A.sanc ? Math.random() < A.sanc(free[0].x, free[0].z) : false; k.rush = .22; } }
         k.curses = k.curses.filter(function (c) { return c.t > 0; });
       },
       netOut: function (h) { return h.k.dolls.slice(0, 30).map(function (d) { return [Math.round(d.x * 10) / 10, Math.round(d.z * 10) / 10]; }); },
@@ -214,7 +214,7 @@
         h.k.dolls.forEach(function (dl) { A.addSorted(dl.z, function () { A.spr("doll", sx(dl.x), sy(dl.z), 1.2, false); }); });
       }
     };
-    function sendDolls(h, pt, n) { var free = h.k.dolls.filter(function (d) { return !d.go; }); for (var i = 0; i < Math.min(n, free.length); i++) free[i].go = { x: pt.x + (Math.random() - .5) * 1.6, z: pt.z + (Math.random() - .5) * 1.6, dmg: 20 }; }
+    function sendDolls(h, pt, n) { var free = h.k.dolls.filter(function (d) { return !d.go; }); for (var i = 0; i < Math.min(n, free.length); i++) { free[i].go = { x: pt.x + (Math.random() - .5) * 1.6, z: pt.z + (Math.random() - .5) * 1.6, dmg: 20 }; free[i].prot = A.sanc ? Math.random() < A.sanc(free[i].x, free[i].z) : false; } }
 
     /* ======================================================== PHELTO (kit provisoire) */
     kits.phelto = {

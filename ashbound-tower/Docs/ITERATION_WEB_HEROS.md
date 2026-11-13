@@ -124,3 +124,10 @@ XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations 
 - **Difficulté 11–20** (`WAVES2`, `SEQ2`, configurables) : groupes mixtes, +9 % de PV et +3 % de vitesse par vague, cuirasses, explosions en chaîne, géante en vague 15, doubles géantes en 19, Roi en 20.
 - Tests : transition (état conservé), division / chaîne / résistance / boss (t26), coop sur transition + gélatines (t28), parties complètes 20 vagues avec bots des 4 héros (3 perdent à la vague 19-20, 1 gagne) — les bots n'ont pas la maîtrise d'un joueur.
 - Limites : niveau max toujours 10 (aucune récompense d'XP supplémentaire en séquence 2) ; équilibrage non validé par de vrais joueurs ; art des gélatines procédural ; sons synthétiques.
+
+## Mise à jour gameplay — étape 7 : soin et soutien (Arbre Monde, « Sanctuaire verdoyant »)
+
+- Seule source de soin de zone : l'**Arbre Monde** d'Églantyne (T3, 3 max). Aucune tourelle de soin universelle ; le Cœur n'est **jamais** soigné automatiquement (seule l'ultime d'Églantyne, lancée par le joueur, le soigne).
+- Aura de Sanctuaire (rayon 5 → 7,4, visible au sol) : régénération des héros (1,5 → 4 % PV max/s), protection des poupées (30 → 65 % de chance qu'une poupée lancée ne soit pas consommée), défenses renforcées (aura de cadence existante des tourelles voisines ; pièges de ronce qui rechargent plus vite et ranimés après ~12 s). L'aura grandit avec les 2 évolutions (Canopée, Sanctuaire).
+- Tests : soin dans / hors aura (52 % contre 40 % après 3 s), Cœur inchangé, piège desséché ranimé, stats 1,5 % → 4 %, rayon 5 → 7,4.
+- Limites : protection des poupées vérifiée par le code mais pas mesurée statistiquement ; valeurs provisoires.
