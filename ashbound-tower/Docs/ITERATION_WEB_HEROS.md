@@ -131,3 +131,12 @@ XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations 
 - Aura de Sanctuaire (rayon 5 → 7,4, visible au sol) : régénération des héros (1,5 → 4 % PV max/s), protection des poupées (30 → 65 % de chance qu'une poupée lancée ne soit pas consommée), défenses renforcées (aura de cadence existante des tourelles voisines ; pièges de ronce qui rechargent plus vite et ranimés après ~12 s). L'aura grandit avec les 2 évolutions (Canopée, Sanctuaire).
 - Tests : soin dans / hors aura (52 % contre 40 % après 3 s), Cœur inchangé, piège desséché ranimé, stats 1,5 % → 4 %, rayon 5 → 7,4.
 - Limites : protection des poupées vérifiée par le code mais pas mesurée statistiquement ; valeurs provisoires.
+
+## Correctif progression : XP, niveaux, déblocages, mécaniques des arbres
+
+- **Cause du blocage constaté** : le site affichait la version de `main` (PR #183), qui contient des cadenas **décoratifs** codés en dur (`NIV. 2` / `NIV. 3`, aucune condition de niveau) et une seule tourelle. Les systèmes de déblocage réels étaient sur la branche, non fusionnés.
+- **XP** : courbe `40 + 26 × niveau` (niv.3 ≈ 106 XP, niv.6 ≈ 460, niv.10 ≈ 1300, niv.20 ≈ 5200) calibrée sur l'offre réelle (≈ 1360 XP en séquence 1, ≈ 4000 en séquence 2) ; niveau max 20 (il était limité à 10, ce qui gaspillait l'XP de la séquence 2). Les orbes ne sont plus perdues (elles filent vers le héros après 8 s). Gains de PV / dégâts par niveau adoucis après le niveau 10.
+- **Choix d'amélioration** : report (« Plus tard ») conservé, cumul des choix, offre de secours « Surcroît de puissance » quand tout est au maximum.
+- **Interface** : « XP x / y » et « → NIV. n+1 » dans le cadre du héros, bandeau animé « NIVEAU n ! », « Nouvelle tourelle débloquée ! » + nom, cadenas retiré immédiatement, bouton pulsé.
+- **Mécaniques propres** : Arbre à poupées = invoque des poupées qui courent sur les ennemis et explosent (étourdissement à l'évolution) ; Arbre Monde = soutien pur (aura de cadence, soin, protection des poupées, pièges renforcés), ne tire plus. Pose d'un piège depuis un emplacement : aimantation au chemin.
+- Tests exécutés : t31 (niveaux 1→20 × 4 héros : XP, seuils, choix, déblocages, construction), t32/t33 (orbes, report, arbres), t34 (coop), t35 (parties complètes : niveau par vague), + régressions.

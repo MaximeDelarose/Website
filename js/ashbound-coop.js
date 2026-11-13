@@ -143,6 +143,7 @@
         P: G.eprojs.slice(0, 30).map(function (p) { return [q(p.x), q(p.z), q(p.vx), q(p.vz), q(p.life)]; }),
         E: G.enemies.map(function (e) { return [e.id, ETYPES.indexOf(e.k), q(e.d), q(e.lat), q(e.ox), q(e.oz), Math.round(e.hp), Math.round(e.mhp), e.stun > 0 ? 1 : 0, q(e.slowF), e.poison ? 1 : 0]; }),
         T: G.towers.map(function (t) { return [slots.indexOf(t.s), TTYPES.indexOf(t.type), t.tier, Math.round(t.boost * 10)]; }),
+        D: G.tdolls.slice(0, 40).map(function (d) { return [d.id, q(d.x), q(d.z)]; }),
         R: G.traps.map(function (r) { return [r.id, Math.round(r.d * 10), SPECS.indexOf(r.spec || ""), r.tier, r.wilted ? 1 : 0, r.n, Math.max(0, r.ch)]; }) };
     }
     function apply(s) {
@@ -191,6 +192,8 @@
         delete NET.emap[e.id]; return false;
       });
       // tourelles
+      var dset = {}; (s.D || []).forEach(function (a) { dset[a[0]] = 1; var o = null; G.tdolls.forEach(function (d) { if (d.id === a[0]) o = d; }); if (!o) { o = { id: a[0], x: a[1], z: a[2] }; G.tdolls.push(o); } else { o.x += (a[1] - o.x) * .6; o.z += (a[2] - o.z) * .6; } });
+      G.tdolls = G.tdolls.filter(function (d) { if (dset[d.id]) return true; G.fx.push({ k: "ring", x: d.x, z: d.z, r: 1.5, t: 0, dur: .35, col: "#8fff9a" }); E.burst(E.sx(d.x), E.sy(d.z) - 14, "#8fff9a", 8, 120, .5, 4); return false; });
       var rset = {}; (s.R || []).forEach(function (a) {
         rset[a[0]] = 1; var r = null; G.traps.forEach(function (o) { if (o.id === a[0]) r = o; });
         if (!r) { var q = E.pos({ d: a[1] / 10, lat: 0, ox: 0, oz: 0 }); r = { id: a[0], d: a[1] / 10, x: q.x, z: q.z, spec: null, tier: 0, cd: 0, ch: 6, wilted: false, pop: 1, n: a[5], spent: 0 }; G.traps.push(r); E.play("build", .7); }

@@ -31,7 +31,7 @@
   ENEMY.boom = { name: "Gélatine explosive", kind: "std", hp: 110, speed: 1.95, dmg: 12, gold: 12, xp: 10, spr: "enemy_boom", fps: 4, scale: 1, shadow: 1.5, bar: 1, gel: true, col: "#ffb04a", boom: { r: 2.7, dmg: 70, hero: 9 } };
   ENEMY.gslime = { name: "Gélatine géante", kind: "mini", hp: 2600, speed: 1.05, dmg: 40, gold: 110, xp: 100, atk: { k: "slam", range: 3, dmg: 18, cd: 2.4 }, spr: "enemy_gslime", fps: 2, scale: .9, shadow: 3.8, bar: 2.4, always: true, gel: true, col: "#6fe08a", split: [["blop", 3], ["slime", 3]] };
   ENEMY.gking = { name: "Roi gélatineux", kind: "boss", hp: 9500, speed: .85, dmg: 100, gold: 300, xp: 260, atk: { k: "volley", range: 9, dmg: 12, cd: 3, spd: 7, slow: true }, spr: "enemy_gking", fps: 2, scale: .85, shadow: 4.8, bar: 3.4, always: true, gel: true, col: "#ff8ae6", split: [["gslime", 1], ["boom", 3], ["blop", 3]] };
-  var BASE_STATS = { damage: 8, rate: 1.6, range: 5.5, zaps: 1, jumps: 0, radius: 2.8, falloff: .7, splash: 0, splashDmg: 0, slowF: 1, slowT: 0, stunEvery: 0, aura: 0, heal: 0, sr: 0, prot: 0 };
+  var BASE_STATS = { damage: 8, rate: 1.6, range: 5.5, zaps: 1, jumps: 0, radius: 2.8, falloff: .7, splash: 0, splashDmg: 0, slowF: 1, slowT: 0, stunEvery: 0, aura: 0, heal: 0, sr: 0, prot: 0, dolls: 0, dcd: 0, ddmg: 0, drad: 0, dstun: 0 };
   // 1 famille de tourelles par héros (3 améliorations chacune ; valeurs provisoires)
   var TOWERS = {
     orb: { name: "Orbe foudroyant", cost: 50, col: "#7ff0ff", spr: "tower_orb_", my: 48, tag: "Éclairs précis",
@@ -64,14 +64,16 @@
     base: { damage: 34, rate: .8, range: 7, zaps: 2, splash: 1.8, splashDmg: .5 }, ups: [
       { name: "Fracas", desc: "Dégâts et zone d'explosion accrus.", cost: 140, m: { dmg: 1.4, splash: 2.4, splashDmg: .6 } },
       { name: "Éclipse", desc: "Salve supplémentaire, cadence accrue.", cost: 200, m: { zaps: 1, rate: 1.3 } }] };
-  TOWERS.poupee = { name: "Arbre à poupées", cost: 110, col: "#b6f04a", spr: "tower_ronce_", my: 44, sc: 1.12, tag: "Épines + ralentit",
-    base: { damage: 14, rate: 1.6, range: 5.8, zaps: 2, slowF: .8, slowT: 1.5 }, ups: [
-      { name: "Poupées gardiennes", desc: "Une épine de plus par salve.", cost: 90, m: { zaps: 1 } },
-      { name: "Racines serrées", desc: "Ralentissement 40 %, dégâts accrus.", cost: 150, m: { slowF: .6, dmg: 1.3 } }] };
-  TOWERS.monde = { name: "Arbre Monde", cost: 220, col: "#8dffa8", spr: "tower_ronce_", my: 52, sc: 1.3, tag: "Sanctuaire verdoyant",
-    base: { damage: 16, rate: 1.4, range: 6.6, aura: .2, splash: 1.6, splashDmg: .5, slowF: .7, slowT: 1.5, heal: .015, sr: 5, prot: .3 }, ups: [
-      { name: "Canopée", desc: "Sanctuaire plus vaste et plus régénérant, aura +20 %.", cost: 150, m: { aura: .2, range: .6, sr: 1.2, heal: .01, prot: .15 } },
-      { name: "Sanctuaire", desc: "Aura +25 %, régénération et protection accrues, dégâts accrus.", cost: 220, m: { aura: .25, dmg: 1.4, sr: 1.2, heal: .015, prot: .2 } }] };
+  // Arbre à poupées : INVOQUE des poupées de bois qui courent vers les ennemis et explosent (pas de tir)
+  TOWERS.poupee = { name: "Arbre à poupées", cost: 110, col: "#b6f04a", spr: "tower_ronce_", my: 44, sc: 1.12, tag: "Invoque des poupées", summon: true,
+    base: { range: 6.4, dolls: 2, dcd: 2.2, ddmg: 36, drad: 1.7, dstun: 0, slowF: .7, slowT: 1.2 }, ups: [
+      { name: "Poupées gardiennes", desc: "Une poupée de plus, invocation plus rapide.", cost: 90, m: { dolls: 1, dcdx: .75 } },
+      { name: "Racines serrées", desc: "Les poupées étourdissent 0,8 s, frappent plus fort et plus large.", cost: 150, m: { dstun: .8, ddmgx: 1.4, drad: .4, dolls: 1 } }] };
+  // Arbre Monde : SOUTIEN pur (aura de cadence + Sanctuaire verdoyant : soin, protection des poupées, pièges renforcés) ; ne tire pas
+  TOWERS.monde = { name: "Arbre Monde", cost: 220, col: "#8dffa8", spr: "tower_ronce_", my: 52, sc: 1.3, tag: "Sanctuaire verdoyant", support: true,
+    base: { range: 6.6, aura: .2, heal: .015, sr: 5, prot: .3 }, ups: [
+      { name: "Canopée", desc: "Sanctuaire plus vaste, soin accru, aura +20 %.", cost: 150, m: { aura: .2, range: .6, sr: 1.2, heal: .01, prot: .15 } },
+      { name: "Racines de vie", desc: "Soin et protection nettement accrus, aura +25 %.", cost: 220, m: { aura: .25, sr: 1.2, heal: .02, prot: .2 } }] };
   TOWERS.feedback = { name: "Enceinte à feedback", cost: 110, col: "#ff9bd2", spr: "tower_ampli_", my: 46, sc: 1.12, tag: "Onde de choc",
     base: { damage: 15, rate: 1.5, range: 5.6, splash: 2.2, splashDmg: .7, aura: .1 }, ups: [
       { name: "Larsen", desc: "Zone d'onde accrue.", cost: 90, m: { splash: 2.8, dmg: 1.2 } },
@@ -102,7 +104,7 @@
       constrictor: { name: "Constricteur", short: "Constricteur", tag: "Immobilise", desc: "Racines : immobilise 1,4 s puis ralentit fort.", col: "#9a5cff", m: { dmg: .8, stun: 1.4, slowF: -.15, slowT: 1, rechx: 1.3 } },
       spore: { name: "Éclat de spores", short: "Spores", tag: "Poison", desc: "Nuage toxique : poison et ralentissement de zone.", col: "#d08cff", m: { dmg: .6, poison: 9, r: 1, slowT: 1 } } },
     evo: { name: "Évolution", desc: "Plus de dégâts, de rayon et de charges.", m: { dmg: 1.5, r: .5, ch: 4, rechx: .8 } } };
-  var START_GOLD = 150, HEART_MAX = 100, TRID = 0;
+  var START_GOLD = 150, HEART_MAX = 100, TRID = 0, DID = 0;
   TOWERS.ronce.trap = true; TOWERS.ronce.cost = TRAP.cost; TOWERS.ronce.tag = "Piège sur le chemin";
   var WAVES = [
     ["Vague 1 — Premiers murmures", [["orb", 5, .5, 0]]],
@@ -133,11 +135,12 @@
   var SEQ2 = { bonus: 120, hpRamp: .09, spdRamp: .03, corr0: .3 };   // bonus de cristaux à la transition ; montée de PV / vitesse par vague ; part de corruption visuelle au départ
   var TRICKLE = [["orb", 2, 270, 6, 1, 3, .45], ["scout", 60, 270, 11, 1, 2, .35]];
   var HERO_ORDER = ["noctis", "eglantyne", "phelto", "epeiste"], HCOL = { noctis: "#b88cff", eglantyne: "#8dffa8", phelto: "#ff7ac8", epeiste: "#8ff0ff" };
-  var KITS = null, COOP = null, EID = 0, OID = 0, CUR = null, UI = { offer: null, hide: false, seenLvl: 1, newT: {}, bmin: false };
+  var KITS = null, COOP = null, EID = 0, OID = 0, CUR = null, UI = { offer: null, hide: false, seenLvl: 1, newT: {}, bmin: false, banner: null };
   // vie des héros, niveaux (provisoire) : +12 % PV et +8 % de dégâts par niveau ; les améliorations de tourelle exigent un niveau
-  var HEROHP = { noctis: 90, eglantyne: 100, phelto: 95, epeiste: 125 }, UPREQ = [2, 3, 5], MAXLVL = 10;
+  var HEROHP = { noctis: 90, eglantyne: 100, phelto: 95, epeiste: 125 }, UPREQ = [2, 3, 5], MAXLVL = 20;
   // améliorations de héros (choix à chaque niveau, 3 propositions max) — provisoires, configurables ici
   var UPG = [
+    { id: "bonus", n: "Surcroît de puissance", d: "+3 % de dégâts et +3 % de PV max", max: 999, f: function (m) { m.dmg += .03; m.hp += .03; } },
     { id: "pow", n: "Puissance", d: "+12 % de dégâts", max: 5, f: function (m) { m.dmg += .12; } },
     { id: "cdr", n: "Maîtrise", d: "-8 % de recharge des compétences", max: 5, f: function (m) { m.cdr += .08; } },
     { id: "asp", n: "Cadence", d: "+10 % de vitesse d'attaque", max: 5, f: function (m) { m.asp += .10; } },
@@ -167,15 +170,18 @@
   }
   function upgradeById(id) { for (var i = 0; i < UPG.length; i++) if (UPG[i].id === id) return UPG[i]; return null; }
   function makeOffer(h) {
-    var avail = UPG.filter(function (u) { return (!u.h || u.h === h.id) && (h.picks[u.id] || 0) < u.max; });
+    var avail = UPG.filter(function (u) { return u.id !== "bonus" && (!u.h || u.h === h.id) && (h.picks[u.id] || 0) < u.max; });
+    if (!avail.length) return ["bonus"];
     avail.sort(function () { return Math.random() - .5; });
     var spec = avail.filter(function (u) { return u.h; }), out = [];
     if (spec.length) out.push(spec[0]);
     avail.forEach(function (u) { if (out.length < 3 && out.indexOf(u) < 0) out.push(u); });
     return out.map(function (u) { return u.id; });
   }
-  function hpFor(id, lvl) { return Math.round((HEROHP[id] || 100) * (1 + .12 * (lvl - 1))); }
-  function xpCum(l) { var t = 0; for (var i = 1; i < l; i++) t += 40 + 35 * (i - 1); return t; }
+  function hpFor(id, lvl) { return Math.round((HEROHP[id] || 100) * (1 + .12 * Math.min(9, lvl - 1) + .06 * Math.max(0, lvl - 10))); }
+  function dmgMulFor(lvl) { return 1 + .08 * Math.min(9, lvl - 1) + .04 * Math.max(0, lvl - 10); }
+  // XP cumulée pour atteindre le niveau l : 40 + 26 par niveau déjà atteint (niv.3 dès ~106 XP, niv.6 ~460, niv.10 ~1300, niv.20 ~5200 ; l'offre totale est d'environ 1360 XP en séquence 1 et 4000 en séquence 2)
+  function xpCum(l) { var t = 0; for (var i = 1; i < l; i++) t += 40 + 26 * (i - 1); return t; }
 
   // ---------- ressources ----------
   var imgs = {}, snd = {}, L = null, loaded = false, muted = false;
@@ -261,8 +267,8 @@
     slots.forEach(function (s) { s.tower = null; });
     var hid = keepHero && G && G.hero ? G.hero.id : null;
     G = { state: "select", paused: false, t: 0, events: ev, next: 0, wave: 0, gold: START_GOLD, heart: HEART_MAX, enemies: [], towers: [], parts: [], bolts: [], fx: [], pending: [], projs: [], actors: [], buffs: [], sortedNow: [],
-      toast: "", toastT: 0, toastC: "#fff", build: false, sel: null, traps: [], selT: null, pvT: null, shake: 0, flashHeart: 0, kills: 0, anim: 0, hero: null, heroes: [], orbs: [], xp: 0, lvl: 1, dmgMul: 1, eprojs: [], floats: [], mirror: false, menu: false, coopMenu: false, rem: 0, tint: 0, tintT: 0, seq: 1, corr: 0, corrT: 0, trans: 0 };
-    hover = null; ptrs = {}; joy.on = false; aimSt = null; UI.seenLvl = 1; UI.newT = {}; UI.bmin = false;
+      toast: "", toastT: 0, toastC: "#fff", build: false, sel: null, traps: [], tdolls: [], selT: null, pvT: null, shake: 0, flashHeart: 0, kills: 0, anim: 0, hero: null, heroes: [], orbs: [], xp: 0, lvl: 1, dmgMul: 1, eprojs: [], floats: [], mirror: false, menu: false, coopMenu: false, rem: 0, tint: 0, tintT: 0, seq: 1, corr: 0, corrT: 0, trans: 0 };
+    hover = null; ptrs = {}; joy.on = false; aimSt = null; UI.seenLvl = 1; UI.newT = {}; UI.bmin = false; UI.banner = null;
     if (hid) { G.hero = newHero(hid, 0); G.heroes = [G.hero]; G.state = "prep"; }
   }
   function lat(r, e) { return ENEMY[e].kind === "std" ? (r() * 2 - 1) * .45 : 0; }
@@ -283,7 +289,7 @@
     var s = {}, k; for (k in BASE_STATS) s[k] = BASE_STATS[k]; for (k in def.base) s[k] = def.base[k];
     for (var i = 0; i < tier; i++) {
       var m = def.ups[i].m; s.damage *= m.dmg || 1; s.rate *= m.rate || 1; s.range += m.range || 0; s.zaps += m.zaps || 0; s.jumps += m.jumps || 0; s.radius += m.radius || 0;
-      if (m.splash != null) { s.splash = m.splash; s.splashDmg = m.splashDmg; } if (m.slowF != null) s.slowF = m.slowF; if (m.stunEvery != null) s.stunEvery = m.stunEvery; if (m.aura != null) s.aura = m.aura; s.heal += m.heal || 0; s.sr += m.sr || 0; s.prot += m.prot || 0;
+      if (m.splash != null) { s.splash = m.splash; s.splashDmg = m.splashDmg; } if (m.slowF != null) s.slowF = m.slowF; if (m.stunEvery != null) s.stunEvery = m.stunEvery; if (m.aura != null) s.aura = m.aura; s.heal += m.heal || 0; s.sr += m.sr || 0; s.prot += m.prot || 0; s.dolls += m.dolls || 0; s.dcd *= m.dcdx || 1; s.ddmg *= m.ddmgx || 1; s.drad += m.drad || 0; s.dstun += m.dstun || 0;
     }
     return s;
   }
@@ -411,13 +417,13 @@
   function updateOrbs(dt) {
     if (G.mirror) return;
     G.orbs = G.orbs.filter(function (o) {
-      o.t += dt; if (o.t > 40) return false;
+      o.t += dt;
       var f = Math.exp(-3 * dt); o.vx *= f; o.vz *= f; o.x = clampX(o.x + o.vx * dt); o.z = clampZ(o.z + o.vz * dt);
       var best = null, bd = 1e9;
       G.heroes.forEach(function (h) { if (h.dead) return; var d = Math.hypot(h.x - o.x, h.z - o.z); if (d < bd) { bd = d; best = h; } });
       if (best) {
-        var mag = 2.6 * (1 + (best.mod.mag || 0));
-        if (bd < mag) { var sp = 8 + (mag - bd) * 3; o.x += (best.x - o.x) / (bd || 1) * sp * dt; o.z += (best.z - o.z) / (bd || 1) * sp * dt; }
+        var mag = 2.6 * (1 + (best.mod.mag || 0)); if (o.t > 8) mag = 999;   // après 8 s l'orbe file vers le héros : l'XP n'est jamais perdue
+        if (bd < mag) { var sp = o.t > 8 ? 6 + (o.t - 8) * 2.2 : 8 + (mag - bd) * 3; o.x += (best.x - o.x) / (bd || 1) * sp * dt; o.z += (best.z - o.z) / (bd || 1) * sp * dt; }
         if (bd < .6) { gainXp(o.v); G.xpFlash = .25; play("click", .25, 1.8 + Math.random() * .4); burst(sx(o.x), sy(o.z) - 12, "#c78bff", 3, 70, .3, 3); return false; }
       }
       return true;
@@ -428,9 +434,9 @@
     while (G.lvl < MAXLVL && G.xp >= xpCum(G.lvl + 1)) { G.lvl++; levelUp(); }
   }
   function levelUp() {
-    G.dmgMul = 1 + .08 * (G.lvl - 1);
+    G.dmgMul = dmgMulFor(G.lvl);
     G.heroes.forEach(function (h) { recomputeMod(h); h.mhp = Math.round(hpFor(h.id, G.lvl) * (1 + h.mod.hp)); if (!h.dead) h.hp = h.mhp; if (G.lvl >= 2) h.pend++; G.fx.push({ k: "ring", x: h.x, z: h.z, r: 2.6, t: 0, dur: .7, col: "#ffe680" }); burst(sx(h.x), sy(h.z) - 30, "#ffe680", 14, 130, .7, 4); });
-    G.lvlFlash = 1; toast("NIVEAU " + G.lvl + " !" + (G.lvl >= 2 ? " Choisis une amélioration" : ""), "#ffe680"); play("upgrade", 1);
+    G.lvlFlash = 1; play("upgrade", 1);
   }
   function floatText(x, z, txt, col) { G.floats.push({ x: sx(x), y: sy(z) - 70, txt: txt, col: col, t: 0 }); }
   function hurtHero(h, dmg) {
@@ -653,6 +659,7 @@
     if (G.tintT > 0) G.tintT -= dt;
     if (G.xpFlash > 0) G.xpFlash -= dt; if (G.lvlFlash > 0) G.lvlFlash -= dt;
     for (var nk in UI.newT) if (UI.newT[nk] > 0) UI.newT[nk] -= dt;
+    if (UI.banner) { UI.banner.t -= dt; if (UI.banner.t <= 0) UI.banner = null; }
     noticeUnlocks();
     if (G.paused || G.state === "select") return;
     var ps = G.parts, pj = 0; for (var pi = 0; pi < ps.length; pi++) { var pp = ps[pi]; pp.life -= dt; pp.vy += 260 * dt; pp.x += pp.vx * dt; pp.y += pp.vy * dt; if (pp.life > 0) ps[pj++] = pp; else PPOOL.push(pp); } ps.length = pj;
@@ -674,9 +681,11 @@
       G.towers.forEach(function (u) { if (u !== t && u.st.aura > 0 && Math.hypot(u.s.x - t.s.x, u.s.z - t.s.z) <= 4.5) boost += u.st.aura; });
       G.buffs.forEach(function (b) { if (Math.hypot(b.x - t.s.x, b.z - t.s.z) <= b.r) boost += b.rate; });
       G.heroes.forEach(function (h) { if (!h.dead && h.mod.syn && Math.hypot(h.x - t.s.x, h.z - t.s.z) <= 5.5) boost += h.mod.syn; });
-      t.boost = boost; t.cd -= dt * boost; if (t.cd <= 0) t.cd = fire(t) ? 1 / t.st.rate : .08;
+      var tdef = TOWERS[t.type]; t.boost = boost;
+      if (tdef.support) return; if (tdef.summon) { updateTree(t, dt, boost); return; }
+      t.cd -= dt * boost; if (t.cd <= 0) t.cd = fire(t) ? 1 / t.st.rate : .08;
     });
-    updateSanctuaries(dt);
+    updateSanctuaries(dt); updateTDolls(dt);
     updateTraps(dt);
     G.enemies.forEach(function (e) {
       if (e.dead) return;
@@ -750,7 +759,7 @@
   function famOf(h) { h = h || G.hero; return FAM[h ? h.id : "noctis"] || FAM.noctis; }
   function tierCfg(type) { return TIERCFG[TOWERS[type].T - 1]; }
   function unlockedT(type) { return G.lvl >= tierCfg(type).unlock; }
-  function capOf(type) { return TOWERS[type].trap ? TRAP.cap[Math.min(MAXLVL, Math.max(1, G.lvl)) - 1] : tierCfg(type).cap[Math.min(MAXLVL, Math.max(1, G.lvl)) - 1]; }
+  function capOf(type) { var c = TOWERS[type].trap ? TRAP.cap : tierCfg(type).cap; return c[Math.min(c.length, Math.max(1, G.lvl)) - 1]; }
   function countT(type) { if (TOWERS[type].trap) return G.traps.length; var n = 0; G.towers.forEach(function (t) { if (t.type === type) n++; }); return n; }
   function buildType() { var f = famOf(); return G.bt && f.indexOf(G.bt) >= 0 ? G.bt : f[0]; }
   function heroTowerType() { return buildType(); }
@@ -758,7 +767,7 @@
   function tryBuild(s, type, remote) {
     if (G.mirror && !remote) { if (COOP) COOP.req({ k: "build", s: slots.indexOf(s), ty: type || buildType() }); G.build = false; return; }
     type = type || buildType(); var def = TOWERS[type]; if (!def) return;
-    if (def.trap) { tryTrapBuild(nearestPath({ x: s.x, z: s.z }), remote); return; }
+    if (def.trap) { var snap = nearestPath({ x: s.x, z: s.z }); snap.dist = 0; tryTrapBuild(snap, remote); return; }   // depuis un emplacement : le piège est aimanté au chemin
     if (s.tower) return;
     if (famOf(remote ? G.heroes[1] : G.hero).indexOf(type) < 0) { deny(remote, "Cette tourelle appartient à un autre héros"); return; }
     if (!unlockedT(type)) { deny(remote, def.name + " : débloquée au niveau " + tierCfg(type).unlock); return; }
@@ -766,7 +775,7 @@
     if (G.gold < def.cost) { deny(remote, "Pas assez de cristaux (" + def.cost + " requis)"); return; }
     G.gold -= def.cost; var t = { s: s, tier: 0, cd: 0, punch: 0, type: type, st: tstats(def, 0), salvo: 0, boost: 1, spent: def.cost }; s.tower = t; G.towers.push(t);
     play("build", .9); burst(sx(s.x), sy(s.z), "#8c85bf", 16, 110, .7, 5); if (!remote) toast(def.name + " construite", "#9bffd0");
-    if (!remote) { G.sel = t; G.build = false; }
+    if (!remote) { G.sel = t; G.selT = null; G.build = false; }
   }
   function tryUpgrade(t, remote) {
     if (!t) return; var def = TOWERS[t.type]; if (t.tier >= def.ups.length) return;
@@ -870,6 +879,27 @@
     G.towers.forEach(function (t) { if (t.st.sr > 0 && Math.hypot(t.s.x - x, t.s.z - z) <= t.st.sr) { r.any = true; r.heal = Math.max(r.heal, t.st.heal); r.prot = Math.max(r.prot, t.st.prot); r.trap = Math.max(r.trap, .3 + t.st.heal * 12); } });
     return r;
   }
+  function updateTree(t, dt, boost) {
+    var st = t.st; t.dcd = (t.dcd == null ? 1.2 : t.dcd) - dt * boost; if (t.dcd > 0) return;
+    var tg = nearestEnemy(t.s.x, t.s.z, st.range), mine = 0; G.tdolls.forEach(function (d) { if (d.tree === t) mine++; });
+    if (tg && mine < st.dolls && G.tdolls.length < 36) { G.tdolls.push({ id: ++DID, x: t.s.x + (Math.random() - .5) * 1.2, z: t.s.z + .3, tree: t, t: 0 }); t.dcd = st.dcd; t.punch = .6; play("click", .5, 1.3); burst(sx(t.s.x), sy(t.s.z) - 30, "#b6f04a", 5, 70, .4, 3); }
+    else t.dcd = .4;
+  }
+  function updateTDolls(dt) {
+    if (G.mirror) { return; }
+    G.tdolls = G.tdolls.filter(function (d) {
+      var t = d.tree; if (!t || t.s.tower !== t) return false; d.t += dt; if (d.t > 12) return false;
+      var st = t.st, tg = nearestEnemy(d.x, d.z, st.range + 2), tx = t.s.x, tz = t.s.z, hit = false;
+      if (tg) { var q = ep(tg); tx = q.x; tz = q.z; }
+      var dx = tx - d.x, dz = tz - d.z, l = Math.hypot(dx, dz) || 1, sp = tg ? 7.5 : 3;
+      if (tg && l < .9) hit = true; else if (l > .3) { d.x += dx / l * Math.min(l, sp * dt); d.z += dz / l * Math.min(l, sp * dt); }
+      if (hit) {
+        inRadius(d.x, d.z, st.drad).forEach(function (e) { dmgEnemy(e, st.ddmg * (G.dmgMul || 1), true); if (e.dead) return; e.slowF = Math.min(e.slowF, st.slowF); e.slowT = Math.max(e.slowT, st.slowT); if (st.dstun) e.stun = Math.max(e.stun, st.dstun * (e.def.kind === "boss" ? .3 : e.def.kind === "mini" ? .5 : 1)); });
+        G.fx.push({ k: "ring", x: d.x, z: d.z, r: st.drad, t: 0, dur: .35, col: "#8fff9a" }); burst(sx(d.x), sy(d.z) - 14, "#8fff9a", 8, 120, .5, 4); play("hit", .5, 1.5); return false;
+      }
+      return true;
+    });
+  }
   function updateSanctuaries(dt) {
     if (G.mirror) return;
     G.towers.forEach(function (t) {
@@ -910,11 +940,12 @@
   // annonce légère des tourelles débloquées / capacités gagnées (tous les clients, selon le niveau d'équipe)
   function noticeUnlocks() {
     if (!G.hero) return; if (UI.seenLvl == null || G.lvl < UI.seenLvl) { UI.seenLvl = G.lvl; return; }
+    var names = [], cols = [], capMsg = null, L0 = UI.seenLvl;
     while (UI.seenLvl < G.lvl) {
-      var L = ++UI.seenLvl, msg = null, col = "#ffe680";
-      famOf().forEach(function (id) { var d = TOWERS[id], c = tierCfg(id); if (c.unlock === L) { msg = "Tourelle débloquée : " + d.name; col = d.col; UI.newT[id] = 6; } else if (L > c.unlock && c.cap[L - 1] > c.cap[L - 2] && !msg) msg = "Capacité de " + d.name + " : " + c.cap[L - 1]; });
-      if (msg) { toast("NIVEAU " + L + " — " + msg, col); play("upgrade", .9); }
+      var L = ++UI.seenLvl;
+      famOf().forEach(function (id) { var d = TOWERS[id], c = tierCfg(id); if (c.unlock === L) { names.push(d.name); cols.push(d.col); UI.newT[id] = 8; } else if (L > c.unlock && L <= c.cap.length && c.cap[L - 1] > c.cap[L - 2] && !capMsg) capMsg = "Capacité de " + d.name + " : " + c.cap[L - 1]; });
     }
+    if (UI.seenLvl > L0) UI.banner = { t: 3, tot: 3, title: "NIVEAU " + G.lvl + " !", sub: names.length ? "Nouvelle tourelle débloquée !" : (G.hero.pend > 0 ? "Choisis une amélioration" : capMsg || ""), name: names.join(" · "), col: cols[0] || "#ffe680" };
   }
   function toggleBuild() { if (G.state === "play" || G.state === "prep") { G.build = !G.build; G.pv = null; G.pvT = null; if (G.build) { G.sel = null; G.selT = null; } } }
   function cancel() { if (G.build) { G.build = false; G.pv = null; G.pvT = null; return true; } if (G.sel || G.selT) { G.sel = null; G.selT = null; return true; } return false; }
@@ -1121,13 +1152,14 @@
       var al = Math.max(0, Math.min(1, (cr * 1.15 * W2.length - i) / 8)); if (al <= 0) return; var X = sx(o.x), Y = sy(o.z); if (!inView(X, Y, 70, 120)) return;
       items.push({ z: o.z, f: function () { shadow(X, Y, .9 * o.sc); spr(o.k === "mush" ? "mushroom" : "crystal", X, Y, o.sc * (o.k === "mush" ? 1 : .8), (i & 1) === 1, al); } });
     });
+    G.tdolls.forEach(function (d) { var X = sx(d.x), Y = sy(d.z); if (inView(X, Y, 40, 60)) items.push({ z: d.z, f: function () { shadow(X, Y, .8); spr("doll", X, Y - Math.abs(Math.sin(G.anim * 10 + d.id)) * 5, 1.15, Math.cos(d.id) > 0); } }); });
     G.traps.forEach(function (t) { var X = sx(t.x), Y = sy(t.z); if (inView(X, Y, 70, 110)) items.push({ z: t.z + .4, f: function () { drawTrap(t); } }); });
     decor.forEach(function (d) {
       var n = d.kind; if (!inView(sx(d.x), sy(d.z), 70, 150)) return; if (n === "sparkle") { if (Q < .6) return; items.push({ z: d.z + 3, f: function () { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = .5 + .4 * Math.sin(time * 2 + d.x * 3); spr("sparkle", sx(d.x), sy(d.z) + 6, 1); ctx.restore(); } }); return; }
       var big = n === "gate" || n === "fern" || n === "bones" ? 0 : n.indexOf("pine") === 0 ? .9 : n === "ruin_arch" ? 2.6 : n.indexOf("ruin") === 0 ? 1.5 : n === "rock" ? 1.6 : n.indexOf("tree") === 0 ? 1.4 : n === "bush" ? .9 : 1.0;
       items.push({ z: d.z, f: function () { var x = sx(d.x), y = sy(d.z); if (big) shadow(x, y, big); spr(n, x, y, 1, d.flip); } });
     });
-    slots.forEach(function (s) { if (s.tower && inView(sx(s.x), sy(s.z), 90, 160)) items.push({ z: s.z - .001, f: function () { var t = s.tower, x = sx(s.x), y = sy(s.z); shadow(x, y, 2.2); ctx.save(); if (t.boost > 1.01) { ctx.shadowColor = "#ffe680"; ctx.shadowBlur = 18; } var td0 = TOWERS[t.type]; spr(td0.spr + t.tier, x, y, (td0.sc || 1) * (1 + .1 * t.punch)); ctx.restore(); for (var pi = 0; pi < td0.T; pi++) { ctx.fillStyle = td0.T === 3 ? "#ffd25e" : td0.T === 2 ? "#e0b8ff" : "#9bffd0"; ctx.beginPath(); ctx.arc(x + (pi - (td0.T - 1) / 2) * 9, y + 8, 3, 0, 6.283); ctx.fill(); } } }); });
+    slots.forEach(function (s) { if (s.tower && inView(sx(s.x), sy(s.z), 90, 160)) items.push({ z: s.z - .001, f: function () { var t = s.tower, x = sx(s.x), y = sy(s.z); shadow(x, y, 2.2); ctx.save(); if (t.boost > 1.01) { ctx.shadowColor = "#ffe680"; ctx.shadowBlur = 18; } var td0 = TOWERS[t.type]; spr(td0.spr + t.tier, x, y, (td0.sc || 1) * (1 + .1 * t.punch)); ctx.restore(); if (td0.summon) { var idle = Math.max(0, t.st.dolls - G.tdolls.filter(function (dd) { return dd.tree ? dd.tree === t : Math.hypot(dd.x - t.s.x, dd.z - t.s.z) < 6.6; }).length); for (var di = 0; di < idle; di++) spr("doll", x + (di - (t.st.dolls - 1) / 2) * 15, y + 9, .85); } for (var pi = 0; pi < td0.T; pi++) { ctx.fillStyle = td0.T === 3 ? "#ffd25e" : td0.T === 2 ? "#e0b8ff" : "#9bffd0"; ctx.beginPath(); ctx.arc(x + (pi - (td0.T - 1) / 2) * 9, y + 8, 3, 0, 6.283); ctx.fill(); } } }); });
     items.push({ z: L.heart.z + .5, f: function () { var x = sx(L.heart.x), y = sy(L.heart.z), low = 1 - G.heart / HEART_MAX; ctx.save(); if (G.flashHeart > 0) ctx.globalAlpha = .75 + .25 * Math.sin(G.anim * 60); spr("heart_" + (Math.floor(G.anim * (1.5 + 3 * low)) & 1), x, y, 1); ctx.restore(); } });
     G.enemies.forEach(function (e) {
       var p = ep(e); if (!inView(sx(p.x), sy(p.z), 90, 170)) return;
@@ -1282,12 +1314,12 @@
   function drawHeroStatus() {
     var h = G.hero; if (!h) return;
     var lo = xpCum(G.lvl), hi = xpCum(G.lvl + 1), xr = G.lvl >= MAXLVL ? 1 : (G.xp - lo) / Math.max(1, hi - lo);
-    panel(0, 90, 196, 62); text("NIV. " + G.lvl, 14, 108, 17, "#ffe680"); text(h.kit.short || h.kit.name, 182, 108, 13, HCOL[h.id] || PINKL, "right");
+    panel(0, 90, 196, 76); text("NIV. " + G.lvl, 14, 108, 17, "#ffe680"); text(G.lvl >= MAXLVL ? "XP  MAX" : "XP  " + (G.xp - lo) + " / " + (hi - lo), 184, 157, 12, G.xpFlash > 0 ? "#ffffff" : "#c9a0ff", "right", false); if (G.lvl < MAXLVL) text("→ NIV. " + (G.lvl + 1), 12, 157, 12, "#9d86c8", "left", false); text(h.kit.short || h.kit.name, 182, 108, 13, HCOL[h.id] || PINKL, "right");
     hpBar(12, 120, 172, 12, h.hp / h.mhp); text(Math.ceil(h.hp) + " / " + h.mhp, 98, 126, 11, "#fff", "center");
-    rr(12, 138, 172, 7, 3, "rgba(10,6,20,.92)", "rgba(255,255,255,.2)", 1); ctx.fillStyle = "#b46cff"; ctx.fillRect(14, 140, 168 * Math.max(0, Math.min(1, xr)), 3);
+    rr(12, 138, 172, 7, 3, "rgba(10,6,20,.92)", "rgba(255,255,255,.2)", 1); ctx.fillStyle = G.lvlFlash > 0 ? "#ffe680" : "#b46cff"; ctx.fillRect(14, 140, 168 * Math.max(0, Math.min(1, xr)), 3);
     G.heroes.forEach(function (o) {
-      if (o === h) return; panel(0, 156, 196, 38); text(o.kit.short || o.kit.name, 12, 168, 13, HCOL[o.id] || PINKL); hpBar(12, 178, 172, 9, o.dead ? 0 : o.hp / o.mhp, 9);
-      if (o.dead) text("À TERRE", 184, 168, 12, "#ff8a8a", "right");
+      if (o === h) return; panel(0, 170, 196, 38); text(o.kit.short || o.kit.name, 12, 182, 13, HCOL[o.id] || PINKL); hpBar(12, 192, 172, 9, o.dead ? 0 : o.hp / o.mhp, 9);
+      if (o.dead) text("À TERRE", 184, 182, 12, "#ff8a8a", "right");
     });
     if (h.dead) {
       var solo = G.heroes.length < 2, left = Math.max(0, Math.ceil((solo ? 8 : 30) - h.down));
@@ -1351,10 +1383,10 @@
       text("ZQSD / flèches : bouger", 14, H - 92, 13, "#cfc6dc", "left", false); text("Clic : attaquer · E R F : sorts", 14, H - 72, 13, "#cfc6dc", "left", false); text("B / Tab : construire", 14, H - 52, 13, "#cfc6dc", "left", false); text("G : grand écran · Échap : pause", 14, H - 32, 13, "#cfc6dc", "left", false);
     }
     if (G.sel) {
-      var t = G.sel, st = t.st, td = TOWERS[t.type], px = 12, py = 196;
+      var t = G.sel, st = t.st, td = TOWERS[t.type], px = 12, py = 216;
       panel(px, py, 268, 266);
       text(td.name + " · T" + td.T + " niv. " + (t.tier + 1), px + 14, py + 22, 18, "#fff");
-      text("Dégâts " + +st.damage.toFixed(1) + " · " + +st.rate.toFixed(1) + "/s · portée " + +st.range.toFixed(1), px + 14, py + 48, 14, "#cfc6dc", "left", false);
+      text(td.summon ? "Poupées " + st.dolls + " · toutes les " + st.dcd.toFixed(1) + " s · dégâts " + Math.round(st.ddmg) : td.support ? "Aura de cadence +" + Math.round(st.aura * 100) + " % · portée " + st.range.toFixed(1) : "Dégâts " + +st.damage.toFixed(1) + " · " + +st.rate.toFixed(1) + "/s · portée " + +st.range.toFixed(1), px + 14, py + 48, 14, "#cfc6dc", "left", false);
       text(st.sr ? "Soin " + (st.heal * 100).toFixed(1) + " %/s · rayon " + st.sr.toFixed(1) + " · poupées " + Math.round(st.prot * 100) + " %" : td.tag + (st.zaps > 1 ? " ×" + st.zaps : "") + (st.jumps ? " · chaîne " + st.jumps : ""), px + 14, py + 68, 13, st.sr ? "#9bffd0" : "#cfc6dc", "left", false);
       if (t.tier < td.ups.length) {
         var u = td.ups[t.tier], lockLv = G.lvl < UPREQ[t.tier], ok = G.gold >= u.cost && !lockLv;
@@ -1363,6 +1395,15 @@
         wrapText(lockLv ? "Niveau " + UPREQ[t.tier] + " requis (niveau actuel : " + G.lvl + ")" : u.desc, px + 134, py + 164, 220, 14, lockLv ? "#ffb0b0" : "#d8d0ee");
       } else text("NIVEAU MAXIMAL", px + 134, py + 150, 20, PINKL, "center");
       button(px + 12, py + 222, 244, 34, "Vendre  +" + Math.round((t.spent || td.cost) * SELL_RATE), function () { trySell(t); }, false, "#ffd25e", 16);
+    }
+    if (UI.banner) {   // montée de niveau : bandeau animé + « Nouvelle tourelle débloquée ! »
+      var bn = UI.banner, bp = 1 - bn.t / bn.tot, ba = Math.min(1, bn.t / .6, bp / .08), pop = 1 + .45 * Math.max(0, 1 - bp * 7), cx2 = W / 2, cy2 = 262;
+      ctx.save(); ctx.globalAlpha = ba * .55; ctx.fillStyle = "#0a0418"; ctx.fillRect(cx2 - 230, cy2 - 40, 460, bn.name ? 118 : 90); ctx.globalAlpha = ba;
+      ctx.strokeStyle = bn.col; ctx.lineWidth = 3; ctx.lineCap = "round"; for (var ri = 0; ri < 10; ri++) { var ra = ri * .628 + bp * 1.2, r0 = 70 + bp * 40, r1 = r0 + 22 * (1 - bp); ctx.globalAlpha = ba * (1 - bp) * .8; ctx.beginPath(); ctx.moveTo(cx2 + Math.cos(ra) * r0 * 1.7, cy2 + Math.sin(ra) * r0 * .5); ctx.lineTo(cx2 + Math.cos(ra) * (r1 + r0) * 1.7, cy2 + Math.sin(ra) * (r1 + r0) * .5); ctx.stroke(); }
+      ctx.globalAlpha = ba; ctx.translate(cx2, cy2); ctx.scale(pop, pop); ctx.translate(-cx2, -cy2);
+      text(bn.title, cx2, cy2, 40, "#ffe680", "center"); ctx.setTransform(RS, 0, 0, RS, SL * RS, 0); ctx.globalAlpha = ba;
+      if (bn.sub) text(bn.sub, cx2, cy2 + 32, 20, bn.name ? "#9bffd0" : "#f2ecf6", "center"); if (bn.name) text(bn.name, cx2, cy2 + 60, 20, bn.col, "center");
+      ctx.restore();
     }
     if (G.trans > 0) {   // transition : bandeau, sans bloquer le jeu
       var ta = Math.min(1, G.trans / 1.2, (6.5 - G.trans) / .6); ctx.save(); ctx.globalAlpha = ta * .6; ctx.fillStyle = "#0a0418"; ctx.fillRect(0, 250, W, 150); ctx.globalAlpha = ta;
@@ -1387,7 +1428,7 @@
     if (full && window.innerHeight > window.innerWidth) { ctx.fillStyle = "rgba(4,2,12,.9)"; ctx.fillRect(0, 0, W, H); text("Tourne ton téléphone en paysage", W / 2, H / 2, 34, "#ffd25e", "center"); }
   }
   function drawTrapPanel(t) {
-    var px = 12, py = 196, st = trapStats(t), sp = t.spec ? TRAP.specs[t.spec] : null;
+    var px = 12, py = 216, st = trapStats(t), sp = t.spec ? TRAP.specs[t.spec] : null;
     panel(px, py, 268, 262);
     text((sp ? sp.name : "Piège de ronce") + (t.tier >= 2 ? " ★" : ""), px + 14, py + 22, 18, sp ? sp.col : "#fff");
     text("Dégâts " + Math.round(st.dmg) + " · rayon " + st.r.toFixed(1) + " · recharge " + st.rech.toFixed(1) + " s", px + 14, py + 46, 13, "#cfc6dc", "left", false);
@@ -1543,6 +1584,6 @@
   var sb = document.querySelector("[data-ash-sound]"); if (sb) sb.addEventListener("click", toggleSound);
   var fb = document.querySelector("[data-ash-full]"); if (fb) fb.addEventListener("click", function () { setFull(!full); });
 
-  window.__ash = { get G() { return G; }, spawnKind: spawnKind, dmgEnemy: dmgEnemy, beginSeq2: beginSeq2, SEQ2: SEQ2, WAVES2: WAVES2, W2n: function () { return W2.length; }, trapUp: function (i, sp) { tryTrapUp(G.traps[i], sp); }, trapSell: function (i) { tryTrapSell(G.traps[i]); }, trapStats: trapStats, TRAP: TRAP, nearestPath: nearestPath, buildTrap: function (d) { var q = pos(d); tryTrapBuild({ d: d, x: q.x, z: q.z, dist: 0 }); }, reseed: function (i) { tryTrapReseed(G.traps[i]); }, ep: ep, scr: function (x, z) { return { x: (sx(x) - CAM.x) * CAM.zm + VX, y: (sy(z) - CAM.y) * CAM.zm + VY }; }, cam: function () { return { x: Math.round(CAM.x), y: Math.round(CAM.y), zm: +CAM.zm.toFixed(2), vw: { x0: Math.round(VW.x0), x1: Math.round(VW.x1), y0: Math.round(VW.y0), y1: Math.round(VW.y1) }, MAPW: MAPW, MAPH: Math.round(MAPH), Q: Q }; }, inView: inView, toWorld: toWorld, slots: function () { return slots; }, build: function (i) { tryBuild(slots[i]); }, upgrade: function (i) { tryUpgrade(slots[i].tower); }, sell: function (i) { trySell(slots[i].tower); }, buildType: function (t) { G.bt = t; }, FAM: FAM, TIERCFG: TIERCFG, capOf: capOf, countT: countT, ui: function () { return UI; }, start: startSeq, reset: reset, pick: pickHero, setFull: setFull, joy: joy, W: function () { return W; }, cast: castSkill, choose: chooseUpgrade, hero: function () { return G.hero; }, hurt: function (i, d) { hurtHero(G.heroes[i], d); }, xp: function (n) { gainXp(n); }, attack: function () { heroAttack(); }, coop: function () { return COOP; }, ctl: function () { return ctl; }, view: function () { return { CW: CW, SL: SL, SR: SR, H: H, RS: RS, W: W }; }, RS: function () { return RS; }, toggleFull: toggleFull, tstats: tstats, TOWERS: TOWERS };
+  window.__ash = { get G() { return G; }, makeOffer: makeOffer, UPG: UPG, unlocked: unlockedT, MAXLVL: MAXLVL, ENEMY: ENEMY, buildEvents: buildEvents, xpCum: xpCum, spawnKind: spawnKind, dmgEnemy: dmgEnemy, beginSeq2: beginSeq2, SEQ2: SEQ2, WAVES2: WAVES2, W2n: function () { return W2.length; }, trapUp: function (i, sp) { tryTrapUp(G.traps[i], sp); }, trapSell: function (i) { tryTrapSell(G.traps[i]); }, trapStats: trapStats, TRAP: TRAP, nearestPath: nearestPath, buildTrap: function (d) { var q = pos(d); tryTrapBuild({ d: d, x: q.x, z: q.z, dist: 0 }); }, reseed: function (i) { tryTrapReseed(G.traps[i]); }, ep: ep, scr: function (x, z) { return { x: (sx(x) - CAM.x) * CAM.zm + VX, y: (sy(z) - CAM.y) * CAM.zm + VY }; }, cam: function () { return { x: Math.round(CAM.x), y: Math.round(CAM.y), zm: +CAM.zm.toFixed(2), vw: { x0: Math.round(VW.x0), x1: Math.round(VW.x1), y0: Math.round(VW.y0), y1: Math.round(VW.y1) }, MAPW: MAPW, MAPH: Math.round(MAPH), Q: Q }; }, inView: inView, toWorld: toWorld, slots: function () { return slots; }, build: function (i) { tryBuild(slots[i]); }, upgrade: function (i) { tryUpgrade(slots[i].tower); }, sell: function (i) { trySell(slots[i].tower); }, buildType: function (t) { G.bt = t; }, FAM: FAM, TIERCFG: TIERCFG, capOf: capOf, countT: countT, ui: function () { return UI; }, start: startSeq, reset: reset, pick: pickHero, setFull: setFull, joy: joy, W: function () { return W; }, cast: castSkill, choose: chooseUpgrade, hero: function () { return G.hero; }, hurt: function (i, d) { hurtHero(G.heroes[i], d); }, xp: function (n) { gainXp(n); }, attack: function () { heroAttack(); }, coop: function () { return COOP; }, ctl: function () { return ctl; }, view: function () { return { CW: CW, SL: SL, SR: SR, H: H, RS: RS, W: W }; }, RS: function () { return RS; }, toggleFull: toggleFull, tstats: tstats, TOWERS: TOWERS };
   boot();
 })();
