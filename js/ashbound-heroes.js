@@ -84,7 +84,7 @@
           var cl = { x: pt.x, z: pt.z, life: 8, t: 0, cdA: .3, sorted: true, z: pt.z,
             update: function (dt) { this.t += dt; this.cdA -= dt; if (this.cdA <= 0) { var e = A.nearest(this.x, this.z, 8); if (e) { var p = A.pos(e); triple(this.x, this.z, Math.atan2(p.z - this.z, p.x - this.x), .8); this.cdA = .7; } else this.cdA = .15; } },
             draw: function () { var X = sx(this.x), Y = sy(this.z); groundEllipse(this.x, this.z, 1.1, "rgba(80,220,255,.15)", "rgba(120,230,255,.7)", 2);
-              ctx.save(); ctx.globalAlpha = .55 + .1 * Math.sin(this.t * 6); ctx.filter = "hue-rotate(40deg) brightness(1.3)"; A.spr("hero_noctis_idle" + (Math.floor(this.t * 2) & 1), X, Y - 4 * Math.sin(this.t * 3), .95, false); ctx.restore(); } };
+              A.spr("hero_noctis_idle" + (Math.floor(this.t * 2) & 1), X, Y - 4 * Math.sin(this.t * 3), .95, false, .55 + .1 * Math.sin(this.t * 6), "shade"); } };
           k.clones.push(cl); A.addActor(cl); A.fx({ k: "ring", x: pt.x, z: pt.z, r: 1.6, dur: .4, col: "#6af0ff" }); A.play("click", .8, .6);
         } else {
           k.ultT = 8; k.nodes = []; k.nodeT = 0; A.tint(.35, 8); A.fx({ k: "ring", x: h.x, z: h.z, r: 6, dur: .6, col: "#b46cff" }); A.play("boss", .8, 1.1); A.toast("Nuit Fractionnée !", "#c48bff");
@@ -111,7 +111,7 @@
         k.shades++;
         A.addActor({ x: p.x, z: p.z, z: p.z, life: 8, t: 0, sorted: true, ac: 0,
           update: function (dt) { this.t += dt; var e2 = A.nearest(this.x, this.z, 8); if (e2) { var q = A.pos(e2), dd = dist(this.x, this.z, q.x, q.z); if (dd > 1) { this.x += (q.x - this.x) / dd * 5.2 * dt; this.z += (q.z - this.z) / dd * 5.2 * dt; } else { this.ac -= dt; if (this.ac <= 0) { A.dmg(e2, 6); this.ac = .5; } } } if (this.life - dt <= 0) k.shades--; },
-          draw: function () { ctx.save(); ctx.globalAlpha = .6; ctx.filter = "brightness(.35) saturate(1.8)"; A.spr("hero_noctis_idle0", sx(this.x), sy(this.z), .6, false); ctx.restore(); } });
+          draw: function () { A.spr("hero_noctis_idle0", sx(this.x), sy(this.z), .6, false, .6, "dark"); } });
       },
       drawExtra: function (h) {
         var k = h.k; if (k.ultT > 0) k.nodes.forEach(function (n) { ctx.save(); ctx.globalAlpha = .6; groundEllipse(n.x, n.z, .8, "rgba(150,80,255,.35)", "rgba(200,140,255,.8)", 2); ctx.restore(); });
