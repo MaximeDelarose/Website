@@ -6,6 +6,10 @@
 <title>CATOWER · AkarisuMD</title>
 <meta name="description" content="CATOWER : un tower defense où tu contrôles Mochi, un chat gardien, et construis des tourelles pour protéger le Cœur. Version navigateur du prototype.">
 <meta name="theme-color" content="#0B1022">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CATOWER">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
@@ -17,10 +21,13 @@
   html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
   canvas{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   @media (pointer:coarse){.back{display:none}}
+  body.pseudo .back{display:none}
+  #sa{position:fixed;left:-9999px;top:0;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);visibility:hidden}
 </style>
 </head>
 <body>
 <canvas id="c" aria-label="CATOWER"></canvas>
+<div id="sa"></div>
 <a class="back" href="jeux.html">← Tous les jeux</a>
 <script>
 "use strict";
@@ -36,7 +43,24 @@ function resize() {
   cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px';
   S = Math.max(W / 30, H / 17.5); K = touch ? H / 460 : H / 720;
 }
-addEventListener('resize', resize); resize();
+let SA = {l:0, r:0, t:0, b:0};
+function readSafe() { try { const cs = getComputedStyle(document.getElementById('sa')); SA = {l:(parseFloat(cs.paddingLeft) || 0) / K, r:(parseFloat(cs.paddingRight) || 0) / K, t:(parseFloat(cs.paddingTop) || 0) / K, b:(parseFloat(cs.paddingBottom) || 0) / K}; } catch (_) {} }
+addEventListener('resize', () => { resize(); readSafe(); }); resize(); readSafe();
+const FS = {pseudo:false};
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+const isFull = () => !!fsEl() || FS.pseudo;
+let toastS = '', toastT = 0; const toast = (t, sec = 3.5) => { toastS = t; toastT = sec; };
+function toggleFS() {
+  const el = document.documentElement;
+  if (fsEl()) { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (_) {} return; }
+  if (el.requestFullscreen || el.webkitRequestFullscreen) {
+    let r; try { r = (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } catch (_) {}
+    const lock = () => { try { if (touch && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (_) {} };
+    if (r && r.then) r.then(lock).catch(() => toast('Plein écran refusé par le navigateur')); else lock();
+  } else { FS.pseudo = !FS.pseudo; document.body.classList.toggle('pseudo', FS.pseudo); toast(FS.pseudo ? 'iPhone : Partager > Sur l’écran d’accueil pour le vrai plein écran' : 'Mode normal', 5); resize(); readSafe(); }
+}
+['fullscreenchange', 'webkitfullscreenchange'].forEach(ev => document.addEventListener(ev, () => { resize(); readSafe(); }));
+function fsIcon(cx, cy, s, on) { ctx.save(); ctx.strokeStyle = C.line; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const k = on ? .5 : 1, x = cx + sx * s * k, y = cy + sy * s * k, d = on ? -1 : 1, a = s * .55; ctx.beginPath(); ctx.moveTo(x - sx * a * d, y); ctx.lineTo(x, y); ctx.lineTo(x, y - sy * a * d); ctx.stroke(); } ctx.restore(); }
 
 // ---------------- Carte ----------------
 const HALF = {x: 28, z: 17};
@@ -386,7 +410,7 @@ function updateAllies(dt) {
 // ---------------- Héros ----------------
 const inp = {mx:0, mz:0, atk:false, casts:[]};
 function worldMouse() { return {x:(mouse.x - W / 2) / S + cam.x, z:(mouse.y - H / 2) / (S * TILT) + cam.z}; }
-function overUi() { const x = mouse.x / K, y = mouse.y / K; return ui.some(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); }
+function overUi() { const x = mouse.x / K - SA.l, y = mouse.y / K - SA.t; return ui.some(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); }
 function nearestEnemy(r) { let best = null, bd = r; for (const e of enemies) { if (e.dead) continue; const d = flat(e, hero) - e.def.r; if (d < bd) { bd = d; best = e; } } return best; }
 function buildAim(ab, src) {
   let dx, dz, dist;
@@ -796,7 +820,7 @@ function otxt(s, x, y, size, color, outline = C.ink) { ctx.font = '700 ' + size 
 const btns = [];
 function hit(x, y, w, h, fn, label) { ui.push({x, y, w, h}); btns.push({x, y, w, h, fn, label}); }
 function btn(x, y, w, h, fn, o = {}) {
-  const mx = mouse.x / K, my = mouse.y / K, hov = !touch && mx >= x && mx <= x + w && my >= y && my <= y + h && !o.off;
+  const mx = mouse.x / K - SA.l, my = mouse.y / K - SA.t, hov = !touch && mx >= x && mx <= x + w && my >= y && my <= y + h && !o.off;
   ui.push({x, y, w, h}); if (!o.off) btns.push({x, y, w, h, fn, label:o.label});
   rr(x, y, w, h); ctx.fillStyle = o.off ? C.btnOff : (o.sel ? C.btnSel : (hov ? C.btnHi : (o.fill || C.btn))); ctx.fill(); ctx.strokeStyle = o.off ? '#4A4F73' : C.line; ctx.lineWidth = 3; ctx.stroke();
 }
@@ -831,26 +855,27 @@ function ico(kind, x, y, s, col) {
   ctx.restore();
 }
 function layout() {
-  const Wv = W / K, Hv = H / K, ax = Wv - 74, ay = Hv - 74;
+  const Wv = W / K - SA.l - SA.r, Hv = H / K - SA.t - SA.b, ax = Wv - 74, ay = Hv - 74;
   return {Wv, Hv, atk:{x:ax, y:ay, r:42}, sk:[{x:ax - 96, y:ay - 8, r:28}, {x:ax - 74, y:ay - 70, r:28}, {x:ax - 8, y:ay - 100, r:28}], build:{x:ax - 168, y:ay + 24, r:26}};
 }
 const nowT = () => performance.now() / 1000;
 const LOOK = h => Object.assign({fur:h.look.fur, light:h.look.light, accent:h.look.accent}, h.look);
 
 // ---- Menu principal ----
-const HELP_TOUCH = ['Joystick (gauche) : déplace ton héros dans toutes les directions.', 'Gros bouton : attaque. Maintiens-le en marchant pour attaquer en te déplaçant. Glisse pour viser toi-même.', 'Boutons ronds : compétences. Maintiens, glisse pour viser, relâche pour lancer. Reviens sur le bouton pour annuler.', 'Bouton marteau : ouvre la construction. Choisis une tourelle, touche un emplacement vert, puis confirme.', 'Touche une tourelle pour l’améliorer. Ramasse les croquettes en marchant dessus.', 'Le combat continue pendant que tu construis.'];
-const HELP_PC = ['Déplacement : WASD / ZQSD / flèches, ou clic droit sur le sol.', 'Attaque : Espace (maintenu), ou clic droit sur un ennemi.', 'Compétences : E, R, F (visée à la souris).', 'Construire : 1, 2, 3 puis clic gauche sur un emplacement vert. Clic sur une tourelle pour l’améliorer (J / K, vendre X).', 'Entrée : lancer les vagues. C : recentrer. P ou Échap : pause.', 'Le combat continue pendant que tu construis.'];
+const HELP_TOUCH = ['Joystick (gauche) : déplace ton héros dans toutes les directions.', 'Gros bouton : attaque. Maintiens-le en marchant pour attaquer en te déplaçant. Glisse pour viser toi-même.', 'Boutons ronds : compétences. Maintiens, glisse pour viser, relâche pour lancer. Reviens sur le bouton pour annuler.', 'Bouton marteau : ouvre la construction. Choisis une tourelle, touche un emplacement vert, puis confirme.', 'Touche une tourelle pour l’améliorer. Ramasse les croquettes en marchant dessus.', 'Le combat continue pendant que tu construis.', 'Bouton en haut à droite : plein écran (sur iPhone : Partager puis Sur l’écran d’accueil).'];
+const HELP_PC = ['Déplacement : WASD / ZQSD / flèches, ou clic droit sur le sol.', 'Attaque : Espace (maintenu), ou clic droit sur un ennemi.', 'Compétences : E, R, F (visée à la souris).', 'Construire : 1, 2, 3 puis clic gauche sur un emplacement vert. Clic sur une tourelle pour l’améliorer (J / K, vendre X).', 'Entrée : lancer les vagues. C : recentrer. P ou Échap : pause. G : plein écran.', 'Le combat continue pendant que tu construis.'];
 function drawMenu(Wv, Hv) {
   const T = nowT(), big = Hv > 600 ? 92 : 56;
-  ctx.fillStyle = 'rgba(8,12,30,.3)'; ctx.fillRect(0, 0, Wv, Hv);
+  ctx.fillStyle = 'rgba(8,12,30,.3)'; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b);
   otxt('CATOWER', Wv / 2, Hv * .22, big, C.line); txt('Tower defense  ·  Action RPG  ·  Temps réel', Wv / 2, Hv * .22 + big * .72, Hv > 600 ? 22 : 15, C.text);
   const bw = 240, bh = 56, by = Hv * .48;
   btn(Wv / 2 - bw / 2, by, bw, bh, () => { scr = 'select'; }, {label:'play'}); txt('Jouer', Wv / 2, by + bh / 2, 26, C.text);
+  btn(Wv - 54, touch ? 10 : 34, 44, 44, toggleFS, {label:'fs'}); fsIcon(Wv - 32, (touch ? 10 : 34) + 22, 10, isFull());
   btn(Wv / 2 - bw / 2, by + bh + 12, bw, 44, () => { showHelp = true; }, {label:'how'}); txt('Comment jouer', Wv / 2, by + bh + 34, 18, C.text);
   const u = Hv * .15;
   drawCat(Wv * .12, Hv * .93, u, 1, false, T, 0, HEROES[0].look); drawCat(Wv * .25, Hv * .93, u, 1, false, T + 1, 0, HEROES[1].look); drawCat(Wv * .88, Hv * .93, u, -1, false, T + 2, 0, HEROES[2].look);
   if (showHelp) {
-    ui = []; btns.length = 0; ctx.fillStyle = 'rgba(5,8,20,.68)'; ctx.fillRect(0, 0, Wv, Hv);
+    ui = []; btns.length = 0; ctx.fillStyle = 'rgba(5,8,20,.68)'; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b);
     const lines = touch ? HELP_TOUCH : HELP_PC, pw = Math.min(640, Wv - 40), px = Wv / 2 - pw / 2, fs = 14; let rows = []; lines.forEach(l => rows.push(...wrap(l, pw - 40, fs), ''));
     const ph = Math.min(Hv - 20, rows.length * 19 + 100), py = (Hv - ph) / 2; panel(px, py, pw, ph); txt('Comment jouer', Wv / 2, py + 26, 22, C.text);
     rows.forEach((r, i) => txt(r, px + 22, py + 56 + i * 19, fs, C.text, 'left'));
@@ -860,7 +885,7 @@ function drawMenu(Wv, Hv) {
 
 // ---- Sélection du héros ----
 function drawSelect(Wv, Hv) {
-  const T = nowT(); ctx.fillStyle = 'rgba(8,12,30,.6)'; ctx.fillRect(0, 0, Wv, Hv);
+  const T = nowT(); ctx.fillStyle = 'rgba(8,12,30,.6)'; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b);
   btn(12, 10, 100, 34, () => { scr = 'menu'; }, {label:'back'}); txt('← Retour', 62, 27, 15, C.text);
   otxt('Choisis ton héros', Wv / 2, 28, 28, C.line);
   const n = HEROES.length, gap = 10, cw = Math.min(340, (Wv - 24 - gap * (n - 1)) / n), ch = 344, cy = Math.max(46, (Hv - ch - 58) / 2 + 12), cx0 = Wv / 2 - (n * cw + (n - 1) * gap) / 2;
@@ -888,7 +913,7 @@ function drawTouch(Wv, Hv) {
   ctx.globalAlpha = on ? .9 : .45; ctx.lineWidth = 4; ctx.strokeStyle = C.line; ctx.fillStyle = 'rgba(255,255,255,.35)'; circ(jx, jy, 50); ctx.fill(); ctx.stroke();
   ctx.fillStyle = C.pink; circ(on ? joy.x : jx, on ? joy.y : jy, 22); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
   const a = L.atk; ui.push({x:a.x - a.r, y:a.y - a.r, w:a.r * 2, h:a.r * 2});
-  ctx.fillStyle = atkHeld ? C.pink : C.pinkSoft; circ(a.x, a.y, a.r); ctx.fill(); ctx.lineWidth = 4; ctx.stroke(); ico(HD.attack.type === 'melee' ? 'claw' : (HD.attack.type === 'whip' ? 'vines' : 'cards'), a.x, a.y, 24, C.text);
+  ctx.fillStyle = atkHeld ? C.pink : C.btn; circ(a.x, a.y, a.r); ctx.fill(); ctx.lineWidth = 4; ctx.stroke(); ico(HD.attack.type === 'melee' ? 'claw' : (HD.attack.type === 'whip' ? 'vines' : 'cards'), a.x, a.y, 24, C.text);
   const bd = L.build; ui.push({x:bd.x - bd.r, y:bd.y - bd.r, w:bd.r * 2, h:bd.r * 2});
   ctx.fillStyle = trayOpen ? C.pink : C.mint; circ(bd.x, bd.y, bd.r); ctx.fill(); ctx.lineWidth = 3.5; ctx.strokeStyle = C.line; ctx.stroke();
   ctx.save(); ctx.translate(bd.x, bd.y); ctx.rotate(-.6); ctx.fillStyle = C.text; ctx.fillRect(-2.5, -4, 5, 20); ctx.fillStyle = C.gold; ctx.beginPath(); ctx.roundRect(-11, -14, 22, 11, 3); ctx.fill(); ctx.stroke(); ctx.restore();
@@ -905,10 +930,10 @@ function drawTouch(Wv, Hv) {
   if (dragging) txt('Reviens sur le bouton pour annuler', L.atk.x - 60, L.atk.y - 148, 11, C.text);
 }
 function drawPlayHud(Wv, Hv) {
-  for (const f of floaters) { const [sx, sy] = P(f.x, f.z, f.y + f.t * 1.6); ctx.globalAlpha = 1 - Math.max(0, (f.t - f.life * .6) / (f.life * .4)); otxt(f.text, sx / K, sy / K, f.size, f.color); ctx.globalAlpha = 1; }
+  for (const f of floaters) { const [sx, sy] = P(f.x, f.z, f.y + f.t * 1.6); ctx.globalAlpha = 1 - Math.max(0, (f.t - f.life * .6) / (f.life * .4)); otxt(f.text, sx / K - SA.l, sy / K - SA.t, f.size, f.color); ctx.globalAlpha = 1; }
   if (!touch) { panel(12, 8, 340, 70); txt('Bouger : WASD / ZQSD / clic droit', 24, 25, 13, C.text, 'left'); txt('Attaque : Espace   ·   Compétences : E R F', 24, 44, 13, C.text, 'left'); txt('Construire : 1 2 3 puis clic   ·   Entrée : vagues', 24, 63, 12, C.muted, 'left'); }
-  panel(Wv / 2 - 190, 8, 380, 74); txt('Cœur à protéger', Wv / 2, 22, 14, C.text); const cf = g.coreHp / g.coreMax;
-  bar(Wv / 2 - 176, 32, 352, 22, cf, cf > .3 ? C.pink : C.coral); txt(g.coreHp + ' / ' + g.coreMax, Wv / 2, 43, 14, C.ink);
+  const cw0 = touch ? 340 : 380; panel(Wv / 2 - cw0 / 2, 8, cw0, 74); txt('Cœur à protéger', Wv / 2, 22, 14, C.text); const cf = g.coreHp / g.coreMax;
+  bar(Wv / 2 - cw0 / 2 + 14, 32, cw0 - 28, 22, cf, cf > .3 ? C.pink : C.coral); txt(g.coreHp + ' / ' + g.coreMax, Wv / 2, 43, 14, C.ink);
   txt(g.phase === 'prep' ? 'Séquence ' + (g.seq + 1) + '/' + SEQ_WIN + '  ·  Préparation' : 'Séquence ' + (g.seq + 1) + '/' + SEQ_WIN + '  ·  Vague ' + g.wave + '/' + WAVES, Wv / 2, 68, 15, C.text);
   const prev = g.lvl <= 1 ? 0 : XP_T[g.lvl - 2], next = g.lvl >= 5 ? XP_T[3] : XP_T[g.lvl - 1], xf = g.lvl >= 5 ? 1 : (g.xp - prev) / (next - prev);
   if (touch) { panel(12, 8, 190, 54); txt(HD.name, 24, 22, 15, C.text, 'left'); txt('Niv. ' + g.lvl, 192, 22, 14, C.violet, 'right'); bar(20, 36, 174, 18, xf, C.violet); }
@@ -929,7 +954,9 @@ function drawPlayHud(Wv, Hv) {
     if (touch) { rr(x + 6, by0 + 5, 8, 50, 4); ctx.fillStyle = d.color; ctx.fill(); } else { circ(x + 11, by0 + 16, 5); ctx.fillStyle = d.color; ctx.fill(); ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.stroke(); }
     txt((touch ? '' : (i + 1) + ' · ') + d.name, x + bw / 2 + (touch ? 6 : 8), by0 + (touch ? 14 : 16), touch ? (d.name.length > 14 ? 10 : 11) : (d.name.length > 14 ? 12 : 14), C.text); if (!touch) txt(d.role, x + bw / 2, by0 + 36, 12, C.muted); txt(d.cost + (touch ? '' : ' croquettes'), x + bw / 2, by0 + (touch ? 41 : 61), 16, aff ? C.goldText : C.coral);
   });
-  if (touch) { panel(Wv - 222, 8, 160, 50); txt('Croquettes', Wv - 142, 20, 11, C.muted); txt(String(g.cro), Wv - 142, 41, 24, C.goldText); btn(Wv - 54, 8, 44, 44, () => { paused = true; }, {label:'pause'}); txt('II', Wv - 32, 30, 18, C.text); }
+  if (touch) { panel(Wv - 232, 8, 120, 50); txt('Croquettes', Wv - 172, 20, 11, C.muted); txt(String(g.cro), Wv - 172, 41, 24, C.goldText); btn(Wv - 54, 8, 44, 44, () => { paused = true; }, {label:'pause'}); txt('II', Wv - 32, 30, 18, C.text); btn(Wv - 104, 8, 44, 44, toggleFS, {label:'fs'}); fsIcon(Wv - 82, 30, 10, isFull()); }
+  else { btn(Wv - 54, 34, 44, 44, toggleFS, {label:'fs'}); fsIcon(Wv - 32, 56, 10, isFull()); }
+  if (touch) {}
   else { panel(Wv - 212, Hv - 72, 200, 60); txt('Croquettes', Wv - 112, Hv - 58, 13, C.muted); txt(String(g.cro), Wv - 112, Hv - 33, 30, C.goldText); }
   const showWave = g.phase === 'prep' || (g.phase === 'waves' && g.wave < WAVES);
   const ww = touch ? 360 : 440, wh = touch ? 38 : 42, wx = touch ? Math.min(Wv / 2 - ww / 2, L.build.x - L.build.r - ww - 10) : Wv / 2 - ww / 2, wy = touch ? (trayOpen ? by0 - 8 - wh : Hv - 12 - wh) : by0 - 8 - wh;
@@ -950,21 +977,22 @@ function drawPlayHud(Wv, Hv) {
   if (touch) drawTouch(Wv, Hv);
   if (g.bannerT > 0) otxt(g.banner, Wv / 2, touch ? 108 : 130, touch ? 22 : 34, C.text);
   if (paused && g.phase !== 'victory' && g.phase !== 'defeat') {
-    ui = []; btns.length = 0; ctx.fillStyle = 'rgba(5,8,20,.68)'; ctx.fillRect(0, 0, Wv, Hv); const x = Wv / 2 - 150, y = Math.max(6, Hv / 2 - 160); panel(x, y, 300, 320); txt('Pause', Wv / 2, y + 28, 28, C.text);
-    const items = [['Reprendre', () => { paused = false; }, 'resume'], ['Plein écran', () => { try { const el = document.documentElement; (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } catch (_) {} }, 'full'], ['Changer de héros', () => { paused = false; scr = 'select'; }, 'heroes'], ['← Tous les jeux', () => { location.href = 'jeux.html'; }, 'games']];
+    ui = []; btns.length = 0; ctx.fillStyle = 'rgba(5,8,20,.68)'; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b); const x = Wv / 2 - 150, y = Math.max(6, Hv / 2 - 160); panel(x, y, 300, 320); txt('Pause', Wv / 2, y + 28, 28, C.text);
+    const items = [['Reprendre', () => { paused = false; }, 'resume'], [isFull() ? 'Quitter le plein écran' : 'Plein écran', () => { paused = false; toggleFS(); }, 'full'], ['Changer de héros', () => { paused = false; scr = 'select'; }, 'heroes'], ['← Tous les jeux', () => { location.href = 'jeux.html'; }, 'games']];
     items.forEach((it, i) => { btn(x + 30, y + 56 + i * 62, 240, 48, it[1], {label:it[2]}); txt(it[0], Wv / 2, y + 80 + i * 62, 17, C.text); });
   }
   if (g.phase === 'victory' || g.phase === 'defeat') {
-    ui = []; btns.length = 0; ctx.fillStyle = 'rgba(5,8,20,.68)'; ctx.fillRect(0, 0, Wv, Hv); const x = Wv / 2 - 220, y = Math.max(6, Hv / 2 - 130), win = g.phase === 'victory'; panel(x, y, 440, 260);
+    ui = []; btns.length = 0; ctx.fillStyle = 'rgba(5,8,20,.68)'; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b); const x = Wv / 2 - 220, y = Math.max(6, Hv / 2 - 130), win = g.phase === 'victory'; panel(x, y, 440, 260);
     txt(win ? 'Victoire !' : 'Le Cœur est tombé…', Wv / 2, y + 46, 36, win ? C.violet : C.coral); txt(win ? HD.name + ' a protégé le Cœur pendant ' + SEQ_WIN + ' séquences.' : 'Séquence ' + (g.seq + 1) + ', vague ' + g.wave + '. On retente ?', Wv / 2, y + 100, 16, C.text);
     btn(x + 110, y + 140, 220, 46, () => startGame(selHero), {label:'again'}); txt('Rejouer', Wv / 2, y + 163, 19, C.text);
     btn(x + 110, y + 196, 220, 46, () => { scr = 'select'; }, {label:'heroes'}); txt('Changer de héros', Wv / 2, y + 219, 17, C.text);
   }
 }
 function drawHud() {
-  ui = []; btns.length = 0; const Wv = W / K, Hv = H / K; ctx.save(); ctx.scale(K, K);
+  ui = []; btns.length = 0; const Wv = W / K - SA.l - SA.r, Hv = H / K - SA.t - SA.b; ctx.save(); ctx.scale(K, K); ctx.translate(SA.l, SA.t);
   if (scr === 'menu') drawMenu(Wv, Hv); else if (scr === 'select') drawSelect(Wv, Hv); else drawPlayHud(Wv, Hv);
-  if (portrait) { ui = []; btns.length = 0; ctx.fillStyle = C.sky; ctx.fillRect(0, 0, Wv, Hv); otxt('Tourne ton téléphone', Wv / 2, Hv / 2 - 20, 26, '#fff'); txt('CATOWER se joue en mode paysage', Wv / 2, Hv / 2 + 20, 16, C.text); }
+  if (toastT > 0) otxt(toastS, Wv / 2, Hv - 70, 15, C.text);
+  if (portrait) { ui = []; btns.length = 0; ctx.fillStyle = C.sky; ctx.fillRect(-SA.l, -SA.t, Wv + SA.l + SA.r, Hv + SA.t + SA.b); otxt('Tourne ton téléphone', Wv / 2, Hv / 2 - 20, 26, '#fff'); txt('CATOWER se joue en mode paysage', Wv / 2, Hv / 2 + 20, 16, C.text); }
   ctx.restore();
 }
 function statLine(t) {
@@ -993,7 +1021,7 @@ function drawTowerPanel(Wv, Hv, t) {
 // ---------------- Entrées ----------------
 function startAudio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); }
 function setTouch(v) { if (touch === v) return; touch = v; joy.id = null; joy.vx = joy.vz = 0; ptrs.clear(); atkHeld = false; atkAim = null; trayOpen = false; previewPad = null; resize(); }
-function hitBtn(x, y) { const vx = x / K, vy = y / K; return btns.find(b => vx >= b.x && vx <= b.x + b.w && vy >= b.y && vy <= b.y + b.h); }
+function hitBtn(x, y) { const vx = x / K - SA.l, vy = y / K - SA.t; return btns.find(b => vx >= b.x && vx <= b.x + b.w && vy >= b.y && vy <= b.y + b.h); }
 function wm(x, y) { return {x:(x - W / 2) / S + cam.x, z:(y - H / 2) / (S * TILT) + cam.z}; }
 function padAt(x, y, r) { const m = wm(x, y); let b = r, best = null; for (const p of pads) { const d = Math.hypot(p.x - m.x, p.z - m.z); if (d < b) { b = d; best = p; } } return best; }
 function placeTower(pad, keep) {
@@ -1011,7 +1039,7 @@ function worldTap(cx, cy) {
   else if (buildIdx < 0) sel = null;
 }
 function touchDown(e) {
-  const L = layout(), vx = e.clientX / K, vy = e.clientY / K, id = e.pointerId, near = c => Math.hypot(vx - c.x, vy - c.y) <= c.r + 8;
+  const L = layout(), vx = e.clientX / K - SA.l, vy = e.clientY / K - SA.t, id = e.pointerId, near = c => Math.hypot(vx - c.x, vy - c.y) <= c.r + 8;
   if (near(L.atk)) { ptrs.set(id, {kind:'atk', sx:vx, sy:vy, x:vx, y:vy, moved:false}); atkHeld = true; return; }
   if (near(L.build)) { trayOpen = !trayOpen; if (!trayOpen) { buildIdx = -1; previewPad = null; } else sel = null; sfx('build', 1.2); return; }
   for (let i = 0; i < 3; i++) if (near(L.sk[i])) { if (g.lvl < ABIL[i].lvl || hero.cd[i] > 0) { sfx('error'); return; } ptrs.set(id, {kind:'skill', i, sx:vx, sy:vy, x:vx, y:vy, moved:false}); return; }
@@ -1039,7 +1067,7 @@ cv.addEventListener('pointerdown', e => {
 });
 addEventListener('pointermove', e => {
   if (e.pointerType === 'mouse') { mouse.x = e.clientX; mouse.y = e.clientY; return; }
-  const p = ptrs.get(e.pointerId); if (!p) return; const vx = e.clientX / K, vy = e.clientY / K;
+  const p = ptrs.get(e.pointerId); if (!p) return; const vx = e.clientX / K - SA.l, vy = e.clientY / K - SA.t;
   if (p.kind === 'joy') {
     let dx = vx - joy.ox, dy = vy - joy.oy; const len = Math.hypot(dx, dy), R = 50; if (len > 10) p.moved = true;
     if (len > R) { dx *= R / len; dy *= R / len; } joy.x = joy.ox + dx; joy.y = joy.oy + dy;
@@ -1062,6 +1090,7 @@ addEventListener('blur', () => { mouse.down2 = false; atkHeld = false; atkAim = 
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('keydown', e => {
   startAudio(); const k = e.key.toLowerCase(); if ([' ', 'enter', 'tab', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault(); keys[k] = true; if (e.repeat) return;
+  if (k === 'g') { toggleFS(); return; }
   if (scr === 'menu') { if (k === 'enter') scr = 'select'; return; }
   if (scr === 'select') { if (k === 'enter') startGame(selHero); else if (k === 'escape') scr = 'menu'; else if (k === 'arrowleft' || k === 'arrowright') selHero = 1 - selHero; return; }
   if (g.phase === 'defeat' || g.phase === 'victory') { if (k === 'enter') startGame(selHero); return; }
@@ -1077,7 +1106,7 @@ addEventListener('keydown', e => {
 function startGame(i) { selHero = i; HD = HEROES[i]; ABIL = HD.abilities; TOWERS = HD.towers; paused = false; inp.casts.length = 0; joy.id = null; joy.vx = joy.vz = 0; ptrs.clear(); reset(); scr = 'play'; sfx('level', 1.2); }
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now; portrait = touch && H > W * 1.05;
+  const dt = Math.min(.05, (now - last) / 1000); last = now; if (toastT > 0) toastT -= dt; portrait = touch && H > W * 1.05;
   const playing = scr === 'play', stop = paused || portrait || !playing;
   if (playing && !stop) { if (g.phase === 'prep' || g.phase === 'waves') updateGame(dt); else if (g.bannerT > 0) g.bannerT -= dt; updateFx(dt); }
   let tx, tz;
