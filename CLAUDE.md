@@ -23,8 +23,10 @@ Site perso statique (HTML/CSS/JS). Le dossier racine se déploie tel quel, sans 
 **Sorties de build : ne pas modifier ni lire, sauf demande explicite**
 - `adeux-7c1f3a9e52/` (généré par `_adeux`, `npm run build:pages`)
 - `radia/` (généré par `_radia`)
-- `radia-52c8654e04/` (build de `radia-src`, à confirmer)
-- `_adeux/` et `_radia/` contiennent la source, `radia-src/` aussi : ne pas confondre les trois.
+- `radia-52c8654e04/` (généré par `radia-src`, `outDir` dans `radia-src/vite.config.ts`)
+- `js/vendor/` : bibliothèques minifiées tierces, à ne pas lire.
+- Les dossiers `_adeux/`, `_radia/` et `radia-src/` sont les sources : ne pas confondre les trois versions.
+- Lecture bloquée par `.claude/settings.json` : les dossiers ci-dessus et les médias/polices/wasm.
 
 **Autres**
 - `tools/` : scripts de génération et de vérification (ex. `grimpe-gen.js`, `import_itch.py`).
@@ -45,4 +47,11 @@ Site perso statique (HTML/CSS/JS). Le dossier racine se déploie tel quel, sans 
 - Modifier la source, jamais les sorties de build.
 - Un jeu ajouté : sa carte dans `jeux.html`, son `data-page` dans `GAME_PAGES` (`js/main.js`), et son entrée dans `js/data.js` si besoin.
 - Les classements passent par Supabase (clé publique dans `SITE.supabase`).
-- Garder les réponses et les commits concis. Un commit par changement logique.
+- Un commit par changement logique.
+
+## Économie de tokens
+
+- Ne pas lire le `README.md` en entier : chercher la section voulue avec Grep.
+- Lire des fichiers ciblés (chemin précis, plage de lignes) plutôt que des dossiers entiers.
+- Pour une recherche large dans le code, passer par un sous-agent Explore : seul son résumé revient.
+- Ne pas ouvrir les médias, polices et binaires sauf demande explicite.

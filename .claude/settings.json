@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./radia-52c8654e04/**)",
+      "Read(./adeux-7c1f3a9e52/**)",
+      "Read(./radia/**)",
+      "Read(./js/vendor/**)",
+      "Read(./**/*.mp3)",
+      "Read(./**/*.wav)",
+      "Read(./**/*.mp4)",
+      "Read(./**/*.wasm)",
+      "Read(./**/*.bin)",
+      "Read(./**/*.ttf)",
+      "Read(./**/*.otf)",
+      "Read(./**/*.woff)",
+      "Read(./**/*.woff2)"
+    ]
+  }
+}
