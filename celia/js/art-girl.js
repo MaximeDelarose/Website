@@ -302,64 +302,112 @@
 
   /* ====== VISAGE À MAQUILLER (viewBox 0 0 300 340) ====== */
   var F = Art.face = {};
-  F.base = { skin: 1, hairColor: 0, hairStyle: 'long', eyes: 0, lip: '#f27f95' };
-  /* Visage « poupée de dessin animé » personnalisable : peau, yeux, cheveux (couleur + coiffure), tenue.
-     st : { skin, eyes, hairColor, hairStyle, top, collar, lips, blush, shadow } */
+  /* couleur mélangée : t > 0 vers le blanc, t < 0 vers le noir */
+  function mixc(c, t) {
+    var a = [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)], k = t > 0 ? 255 : 0, f = Math.abs(t);
+    return 'rgb(' + a.map(function (v) { return Math.round(v + (k - v) * f); }).join(',') + ')';
+  }
+  F.base = { skin: 1, hairColor: 0, hairStyle: 'long', eyes: 0, lip: '#ee8a9a' };
+  /* Petite héroïne de dessin animé, personnalisable : peau, yeux, cheveux (couleur + coiffure), tenue.
+     st : { skin, eyes, hairColor, hairStyle, top, collar, lips, blush, shadow }
+     Les ids #mk-lips, #mk-blush, #mk-shadow servent au maquillage ; l'iris prend la couleur st.eyes. */
   F.render = function (ch, st) {
     st = Object.assign({}, ch || F.base, st || {});
-    var u = uid('fc'), si = st.skin == null ? 1 : st.skin, skin = G.skins[si], shade = G.skinShade[si];
-    var hc = G.hairColors[st.hairColor] || G.hairColors[0], hairc = hc.c, hd = hc.d, style = G.fixStyle(st.hairStyle), lipc = st.lips || F.base.lip;
-    var eyec = G.eyeColors[st.eyes] || G.eyeColors[0], topc = st.top || '#8fd0ff';
+    var u = uid('fc'), si = st.skin == null ? 1 : st.skin, skin = G.skins[si] || G.skins[1], shade = G.skinShade[si] || G.skinShade[1];
+    var hc = G.hairColors[st.hairColor] || G.hairColors[0], hairc = hc.c, hd = hc.d, style = G.fixStyle(st.hairStyle);
+    var lipc = st.lips || F.base.lip, eyec = G.eyeColors[st.eyes] || G.eyeColors[0], topc = st.top || '#8fd0ff';
     var mir = function (inner) { return inner + '<g transform="translate(300 0) scale(-1 1)">' + inner + '</g>'; };
+    var FACE = 'M52 180C52 114 94 72 150 72s98 42 98 108c0 60-42 108-98 108S52 240 52 180z';
     var s = '<defs>' +
-      '<radialGradient id="' + u + 's" cx="50%" cy="38%" r="72%"><stop offset="0" stop-color="' + skin + '"/><stop offset="1" stop-color="' + shade + '"/></radialGradient>' +
-      '<linearGradient id="' + u + 'h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + hairc + '"/><stop offset="1" stop-color="' + hd + '"/></linearGradient>' +
-      '<radialGradient id="' + u + 'i" cx="50%" cy="40%" r="65%"><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></radialGradient>' +
-      '<radialGradient id="' + u + 'b" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="' + (st.blush || '#ff7fa5') + '" stop-opacity="' + (st.blush ? '.85' : '.5') + '"/><stop offset="1" stop-color="' + (st.blush || '#ff7fa5') + '" stop-opacity="0"/></radialGradient>' +
-      '<clipPath id="' + u + 'c"><ellipse cx="104" cy="198" rx="24" ry="26"/></clipPath></defs>';
+      '<radialGradient id="' + u + 's" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="' + mixc(skin, .12) + '"/><stop offset=".7" stop-color="' + skin + '"/><stop offset="1" stop-color="' + shade + '"/></radialGradient>' +
+      '<linearGradient id="' + u + 'h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + mixc(hairc, .2) + '"/><stop offset=".45" stop-color="' + hairc + '"/><stop offset="1" stop-color="' + hd + '"/></linearGradient>' +
+      '<radialGradient id="' + u + 'i" cx="50%" cy="64%" r="62%"><stop offset="0" stop-color="' + mixc(eyec, .5) + '"/><stop offset=".5" stop-color="' + eyec + '"/><stop offset="1" stop-color="' + mixc(eyec, -.45) + '"/></radialGradient>' +
+      '<linearGradient id="' + u + 'w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9dde0"/><stop offset=".35" stop-color="#fffdfc"/></linearGradient>' +
+      '<radialGradient id="' + u + 'b" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="' + (st.blush || '#ff7fa5') + '" stop-opacity="' + (st.blush ? '.85' : '.55') + '"/><stop offset="1" stop-color="' + (st.blush || '#ff7fa5') + '" stop-opacity="0"/></radialGradient>' +
+      '<filter id="' + u + 'f" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"/></filter><filter id="' + u + 'g" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.200"/></filter>' +
+      '<clipPath id="' + u + 'k"><path d="' + FACE + '"/></clipPath>' +
+      '<clipPath id="' + u + 'c"><path d="M-21 3C-21 -14 -10 -21 0 -21S21 -14 21 3C21 17 11 22 0 22S-21 17 -21 3z"/></clipPath></defs>';
     var H = 'url(#' + u + 'h)', SK = 'url(#' + u + 's)';
-    var strands = function (n) { return '<g fill="none" stroke="#fff" stroke-width="3.200" stroke-linecap="round" opacity=".2">' + n + '</g>'; };
+    var strands = function (n, c, o) { return '<g fill="none" stroke="' + (c || '#fff') + '" stroke-width="2.600" stroke-linecap="round" opacity="' + (o || .22) + '">' + n + '</g>'; };
     var bowS = function (x, y, sc, c) { return '<g transform="translate(' + x + ' ' + y + ') scale(' + sc + ')"><path d="M0 0L-34-20c-8 14-8 30 0 40zM0 0l34-20c8 14 8 30 0 40z" fill="' + c + '" stroke="#6b3f72" stroke-width="3" stroke-linejoin="round"/><circle r="8" fill="' + c + '" stroke="#6b3f72" stroke-width="3"/></g>'; };
-    /* cheveux arrière */
+
+    /* ---- cheveux arrière : mèches ondulées, ombres entre les mèches ---- */
     var hb = '';
-    if (style === 'long') hb = '<path d="M44 172C12 222 34 262 18 300C14 320 26 334 38 340h224c12-6 24-20 20-40-16-38 4-80-22-128C240 44 60 44 44 172z" fill="' + H + '"/>' + strands('<path d="M46 214C40 260 46 300 50 336M254 214C260 260 254 300 250 336"/>');
-    else if (style === 'flower') hb = '<path d="M50 170C26 220 38 262 30 300c-2 16 6 30 14 40h212c8-10 16-24 14-40-8-38 4-80-20-130C238 46 62 46 50 170z" fill="' + H + '"/>' + strands('<path d="M54 214C48 260 52 300 56 336M246 214C252 260 248 300 244 336"/>');
-    else if (style === 'bun') hb = '<circle cx="150" cy="46" r="46" fill="' + H + '"/>' + strands('<path d="M120 30Q150 8 182 30"/>') + mir('<circle cx="52" cy="226" r="17" fill="' + H + '"/><circle cx="44" cy="258" r="14" fill="' + H + '"/>');
-    else if (style === 'braids') hb = mir([0, 1, 2, 3, 4, 5].map(function (i) { return '<ellipse cx="' + (56 + (i % 2 ? 6 : -4)) + '" cy="' + (214 + i * 20) + '" rx="17" ry="15" fill="' + H + '"/>'; }).join('') + '<path d="M50 214q8 40 4 100" fill="none" stroke="' + hd + '" stroke-width="3" opacity=".4"/>');
-    else if (style === 'curls') hb = '<g fill="' + H + '"><circle cx="58" cy="150" r="48"/><circle cx="242" cy="150" r="48"/><circle cx="92" cy="72" r="46"/><circle cx="208" cy="72" r="46"/><circle cx="150" cy="54" r="52"/></g>';
-    else hb = mir('<path d="M70 120C16 130-6 210 14 296c40-8 70-70 70-156z" fill="' + H + '"/>' + strands('<path d="M40 160C30 200 30 250 36 284"/>'));
+    if (style === 'long') hb = '<path d="M60 150C32 196 46 232 32 266C26 286 38 300 34 322C32 332 38 340 46 340H254C262 340 268 332 266 322C262 300 274 286 268 266C254 232 268 196 240 150C226 74 74 74 60 150z" fill="' + H + '"/>' + strands('<path d="M52 200C44 240 52 280 48 330M248 200C256 240 248 280 252 330M78 250C72 284 80 312 76 336M222 250C228 284 220 312 224 336"/>', hd, .4) + strands('<path d="M64 190C58 236 64 276 60 326M236 190C242 236 236 276 240 326"/>', '#fff', .16);
+    else if (style === 'flower') hb = '<path d="M62 150C38 198 50 238 40 270C36 290 42 306 40 326C40 334 44 340 50 340H250C256 340 260 334 260 326C258 306 264 290 260 270C250 238 262 198 238 150C224 78 76 78 62 150z" fill="' + H + '"/>' + strands('<path d="M54 210C48 250 54 290 52 332M246 210C252 250 246 290 248 332"/>', hd, .4) + strands('<path d="M66 196C62 240 66 280 64 326M234 196C238 240 234 280 236 326"/>', '#fff', .16);
+    else if (style === 'bun') hb = '<ellipse cx="150" cy="50" rx="44" ry="40" fill="' + H + '"/>' + strands('<path d="M118 40C132 22 168 22 182 40M128 62C142 48 160 48 174 62"/>') + mir('<path d="M56 200C34 224 36 262 58 270C74 274 82 258 70 248C60 240 64 228 68 218z" fill="' + H + '"/><path d="M52 268C34 282 40 308 60 308C74 306 78 290 66 284C58 280 58 274 60 270z" fill="' + H + '"/>');
+    else if (style === 'braids') hb = mir([0, 1, 2, 3, 4, 5].map(function (i) { return '<path d="M' + (64 + (i % 2 ? 4 : -6)) + ' ' + (206 + i * 21) + 'c-14 0-22 6-20 14c2 9 14 14 26 10c10-4 12-14 4-20z" fill="' + H + '" stroke="' + hd + '" stroke-width="1.800" stroke-opacity=".5"/>'; }).join(''));
+    else if (style === 'curls') hb = '<g fill="' + H + '"><circle cx="58" cy="150" r="48"/><circle cx="242" cy="150" r="48"/><circle cx="92" cy="74" r="46"/><circle cx="208" cy="74" r="46"/><circle cx="150" cy="56" r="52"/><circle cx="46" cy="214" r="30"/><circle cx="254" cy="214" r="30"/></g>';
+    else hb = mir('<path d="M72 120C18 130-4 210 16 296c40-8 70-70 70-156z" fill="' + H + '"/>' + strands('<path d="M42 160C32 200 32 250 38 284"/>', hd, .4));
     s += '<g class="mk-hairb">' + hb + '</g>';
-    /* cou et tenue : haut à manches bouffantes, col blanc et petit cœur */
-    s += '<rect x="118" y="256" width="64" height="50" rx="22" fill="' + SK + '"/><path d="M118 262v22q32 16 64 0v-22z" fill="#000" opacity=".07"/>';
+
+    /* ---- cou et tenue : manches bouffantes, col blanc, petit cœur ---- */
+    s += '<rect x="120" y="254" width="60" height="52" rx="24" fill="' + SK + '"/><ellipse cx="150" cy="286" rx="34" ry="12" fill="#000" opacity=".1" filter="url(#' + u + 'g)"/>';
     s += '<path d="M20 340C30 306 80 296 118 296q32 28 64 0c38 0 88 10 98 44z" fill="' + topc + '"/><path d="M16 340C14 306 40 292 70 296C92 300 98 318 98 340z" fill="' + topc + '"/><path d="M284 340C286 306 260 292 230 296C208 300 202 318 202 340z" fill="' + topc + '"/><path d="M16 340C14 306 40 292 70 296C92 300 98 318 98 340zM284 340C286 306 260 292 230 296C208 300 202 318 202 340z" fill="#fff" opacity=".16"/>';
     if (st.collar !== false) s += '<path d="M108 292Q116 322 150 330Q184 322 192 292Q150 316 108 292z" fill="#fff"/><path d="M108 292Q116 322 150 330Q184 322 192 292" fill="none" stroke="#000" stroke-opacity=".1" stroke-width="3" stroke-linecap="round"/><path transform="translate(150 321) scale(.5) translate(-17 -15)" d="M17 30C4 20-2 15-2 8a9 9 0 0 1 19-3 9 9 0 0 1 19 3c0 7-6 12-19 22z" fill="#7ec8ff" stroke="#f5c542" stroke-width="4"/>';
     else s += '<path d="M118 296q32 30 64 0" fill="none" stroke="#000" stroke-opacity=".12" stroke-width="5" stroke-linecap="round"/>';
-    /* oreilles */
-    s += mir('<ellipse cx="50" cy="206" rx="12" ry="16" fill="' + SK + '"/><ellipse cx="51" cy="207" rx="5" ry="8" fill="' + shade + '" opacity=".35"/>');
-    /* visage */
-    s += '<path d="M48 182C48 108 94 70 150 70s102 38 102 112c0 64-44 104-102 104S48 246 48 182z" fill="' + SK + '"/>';
-    s += '<path d="M70 242Q150 312 230 242Q216 284 150 286Q84 284 70 242z" fill="#000" opacity=".05"/><ellipse cx="150" cy="112" rx="44" ry="12" fill="#fff" opacity=".18"/>';
-    s += '<g id="mk-blush">' + mir('<ellipse cx="84" cy="240" rx="30" ry="20" fill="url(#' + u + 'b)"/>') + '</g>';
-    /* fard à paupières */
-    s += '<g id="mk-shadow">' + (st.shadow ? mir('<g transform="translate(112 202) scale(.88) translate(-104 -198)"><path d="M80 190Q82 160 104 158Q128 160 128 188Q104 172 80 190z" fill="' + st.shadow + '" opacity=".9"/><ellipse cx="104" cy="172" rx="26" ry="12" fill="' + st.shadow + '" opacity=".5"/></g>') : '') + '</g>';
-    /* yeux : grands, ronds, reflets ; petits cils ; sourcils fins et hauts */
-    s += mir('<g transform="translate(112 202) scale(.88) translate(-104 -198)"><ellipse cx="104" cy="198" rx="24" ry="26" fill="#fff"/>' +
-      '<g clip-path="url(#' + u + 'c)"><circle cx="104" cy="199" r="25" fill="' + eyec + '"/><circle cx="104" cy="206" r="18" fill="#fff" opacity=".10"/><circle cx="104" cy="199" r="25" fill="url(#' + u + 'i)" opacity=".7"/><circle cx="104" cy="200" r="9.500" fill="#1b1018"/><circle cx="114" cy="188" r="7.500" fill="#fff"/><circle cx="94" cy="210" r="3.400" fill="#fff" opacity=".9"/></g>' +
-      '<path d="M80 196C80 176 90 170 104 170s24 6 24 26" fill="none" stroke="#2b1a22" stroke-width="4.600" stroke-linecap="round"/><path d="M81 188q-7-2-11-10M84 180q-6-5-7-13" fill="none" stroke="#2b1a22" stroke-width="3.200" stroke-linecap="round"/>' +
-      '<path d="M82 160Q104 146 128 156" fill="none" stroke="' + hd + '" stroke-width="4.200" stroke-linecap="round" opacity=".75"/></g>');
-    /* nez */
-    s += '<ellipse cx="150" cy="228" rx="6.500" ry="4.800" fill="' + shade + '" opacity=".55"/><ellipse cx="148" cy="226" rx="2.600" ry="1.800" fill="#fff" opacity=".45"/>';
-    /* bouche : petit sourire (plus pulpeux une fois le rouge à lèvres posé) */
-    s += '<g id="mk-lips">' + (st.lips ?
-      '<path d="M126 244Q150 274 174 244Q150 256 126 244z" fill="' + lipc + '" stroke="' + lipc + '" stroke-width="4" stroke-linejoin="round"/><path d="M138 254Q150 261 162 254" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".55"/>' :
-      '<path d="M130 246Q150 262 170 246Q150 254 130 246z" fill="' + lipc + '" stroke="' + lipc + '" stroke-width="3" stroke-linejoin="round"/>') + '</g>';
-    /* cheveux avant : raie, frange balayée */
-    var hf = '<path d="M50 198C36 96 96 52 150 54s114 42 100 144C246 150 226 120 190 104C170 96 146 96 128 100C104 112 76 140 50 198z" fill="' + H + '"/><path d="M128 62v38" stroke="#000" stroke-opacity=".16" stroke-width="3" stroke-linecap="round"/>' + strands('<path d="M96 84C84 104 72 134 62 170M204 80C220 96 236 124 242 160M150 60C176 62 200 76 214 92M150 60C120 62 98 70 86 84"/>');
-    if (style === 'long' || style === 'flower') hf += mir('<path d="M58 172C40 226 58 262 38 302C34 318 40 332 44 340h38c-10-42 6-88-8-134-4-14-10-26-16-34z" fill="' + H + '"/><path d="M52 230C46 262 52 296 50 330" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".18"/>');
-    if (style === 'pigtails') hf += mir('<rect x="40" y="150" width="34" height="18" rx="9" fill="#ff6fa5" transform="rotate(-20 57 159)"/>');
-    if (style === 'braids') hf += mir(bowS(58, 322, .55, '#b794ff'));
-    if (style === 'bun') hf += bowS(150, 84, .85, '#b794ff') + mir('<path d="M56 190C46 232 54 258 70 262C60 240 62 214 66 192z" fill="' + H + '"/>');
-    if (style === 'flower') hf += '<path d="M66 132Q150 28 234 132" fill="none" stroke="#ffb3d1" stroke-width="8" stroke-linecap="round"/><g transform="translate(92 100) scale(1.500)"><g fill="#ff9ac8" stroke="#6b3f72" stroke-width="1.800"><circle cx="0" cy="-9" r="7.500"/><circle cx="9" cy="-3" r="7.500"/><circle cx="-9" cy="-3" r="7.500"/><circle cx="6" cy="8" r="7.500"/><circle cx="-6" cy="8" r="7.500"/></g><circle r="6" fill="#ffd84d" stroke="#6b3f72" stroke-width="1.800"/></g>';
+
+    /* ---- oreilles ---- */
+    s += mir('<ellipse cx="52" cy="210" rx="11" ry="16" fill="' + SK + '"/><path d="M50 202q-4 8 1 15" fill="none" stroke="' + shade + '" stroke-width="2.600" stroke-linecap="round" opacity=".6"/>');
+
+    /* ---- visage : modelé doux (ombre sous les cheveux, joues, menton, reflets) ---- */
+    s += '<path d="' + FACE + '" fill="' + SK + '"/>';
+    s += '<g clip-path="url(#' + u + 'k)"><g filter="url(#' + u + 'f)">' +
+      '<ellipse cx="150" cy="68" rx="110" ry="40" fill="' + shade + '" opacity=".34"/>' +
+      '<ellipse cx="46" cy="190" rx="24" ry="80" fill="' + shade + '" opacity=".26"/><ellipse cx="254" cy="190" rx="24" ry="80" fill="' + shade + '" opacity=".26"/>' +
+      '<ellipse cx="150" cy="292" rx="70" ry="26" fill="' + shade + '" opacity=".34"/>' +
+      '<ellipse cx="150" cy="122" rx="38" ry="16" fill="#fff" opacity=".28"/>' +
+      '<ellipse cx="104" cy="238" rx="22" ry="12" fill="#fff" opacity=".14"/><ellipse cx="196" cy="238" rx="22" ry="12" fill="#fff" opacity=".14"/>' +
+      '<ellipse cx="150" cy="226" rx="10" ry="18" fill="#fff" opacity=".16"/></g></g>';
+    s += '<g id="mk-blush">' + mir('<ellipse cx="86" cy="248" rx="30" ry="19" fill="url(#' + u + 'b)"/>') + '</g>';
+
+    /* ---- fard à paupières (au-dessus de l'œil) ---- */
+    s += '<g id="mk-shadow">' + (st.shadow ? mir('<g transform="translate(111 204)"><path d="M-22 -2C-22 -22 -10 -30 0 -30S22 -22 22 -2C10 -14 -10 -14 -22 -2z" fill="' + st.shadow + '" opacity=".92"/><ellipse cx="0" cy="-18" rx="22" ry="9" fill="' + st.shadow + '" opacity=".5"/></g>') : '') + '</g>';
+
+    /* ---- yeux : grands, doux, vivants (iris dégradé, pupille, reflets, cils) ---- */
+    var eye = '<g transform="translate(111 204)">' +
+      '<path d="M-21 3C-21 -14 -10 -21 0 -21S21 -14 21 3C21 17 11 22 0 22S-21 17 -21 3z" fill="url(#' + u + 'w)"/>' +
+      '<g clip-path="url(#' + u + 'c)">' +
+        '<circle cx="0" cy="3" r="17.500" fill="url(#' + u + 'i)"/><circle cx="0" cy="3" r="17.500" fill="none" stroke="' + mixc(eyec, -.5) + '" stroke-width="2.200" opacity=".65"/>' +
+        '<circle cx="0" cy="3.500" r="7.800" fill="#150c12"/>' +
+        '<path d="M-12 12Q0 22 12 12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".32"/>' +
+        '<circle cx="6.500" cy="-5.500" r="5.600" fill="#fff"/><circle cx="-6.500" cy="9" r="2.600" fill="#fff" opacity=".92"/><circle cx="8" cy="9.500" r="1.400" fill="#fff" opacity=".7"/>' +
+        '<ellipse cx="0" cy="-16" rx="24" ry="9" fill="#2a1420" opacity=".28"/>' +
+      '</g>' +
+      '<path d="M-21.500 4C-22 -14 -10 -22 0 -22S22 -14 21.500 4" fill="none" stroke="#2f1a26" stroke-width="3.400" stroke-linecap="round"/>' +
+      '<path d="M-20 -3q-7-1-11-9M-14 -13q-5-5-6-12" fill="none" stroke="#2f1a26" stroke-width="2.600" stroke-linecap="round"/>' +
+      '<path d="M-14 -25C-6 -31 6 -31 14 -25" fill="none" stroke="' + shade + '" stroke-width="2.200" stroke-linecap="round" opacity=".55"/>' +
+      '<path d="M-13 21C-4 25 6 25 14 20" fill="none" stroke="' + shade + '" stroke-width="1.800" stroke-linecap="round" opacity=".4"/>' +
+      '</g>';
+    s += mir(eye);
+    /* sourcils fins, arqués, plus épais près du nez */
+    s += mir('<path d="M84 173C95 159 118 154 136 161L135 164.500C118 161.500 100 165 88 176z" fill="' + hd + '" opacity=".8" stroke="' + hd + '" stroke-width="1" stroke-linejoin="round"/>');
+
+    /* ---- nez : petit et doux ---- */
+    s += '<ellipse cx="150" cy="238" rx="9" ry="3" fill="' + shade + '" opacity=".25" filter="url(#' + u + 'g)"/><path d="M145 236q5 4 10 0" fill="none" stroke="' + shade + '" stroke-width="2.600" stroke-linecap="round" opacity=".85"/><ellipse cx="150" cy="230" rx="4.200" ry="3" fill="#fff" opacity=".38"/>';
+
+    /* ---- bouche : petit sourire doux (rouge à lèvres = couleur pleine + reflet) ---- */
+    var lo = st.lips ? 1 : .72;
+    s += '<g id="mk-lips"><path d="M133 253C139 248 146 249 150 251C154 249 161 248 167 253C160 256 140 256 133 253z" fill="' + lipc + '" opacity="' + lo + '"/>' +
+      '<path d="M135 255C142 259 158 259 165 255C162 267 154 271 150 271C146 271 138 267 135 255z" fill="' + lipc + '" opacity="' + lo + '"/>' +
+      '<path d="M134 254C142 258 158 258 166 254" fill="none" stroke="' + mixc(lipc, -.35) + '" stroke-width="1.800" stroke-linecap="round" opacity=".6"/>' +
+      '<path d="M141 263Q150 268 159 263" fill="none" stroke="#fff" stroke-width="2.800" stroke-linecap="round" opacity="' + (st.lips ? .6 : .38) + '"/></g>';
+    s += '<path d="M131 252q-3-2-4-6M169 252q3-2 4-6" fill="none" stroke="' + shade + '" stroke-width="2.400" stroke-linecap="round" opacity=".55"/>';
+
+    /* ---- cheveux avant : raie, frange en mèches, mèches qui encadrent le visage ---- */
+    var hf = '<path d="M50 200C36 108 96 58 150 58s114 50 100 142C246 152 228 124 202 110C178 100 148 100 126 106C98 116 72 148 50 200z" fill="' + H + '"/>' +
+      '<path d="M126 110C148 104 178 104 204 114C230 128 248 156 250 196C238 174 224 162 206 154C182 142 150 142 126 138z" fill="#000" opacity=".12" filter="url(#' + u + 'g)"/>' +
+      '<path d="M126 106C148 100 178 100 202 110C228 124 246 152 248 192C236 170 222 158 204 150C180 138 150 138 126 134z" fill="' + H + '"/>' +
+      '<path d="M126 106C98 116 72 148 52 198C72 170 94 148 126 138z" fill="' + H + '"/>' +
+      '<path d="M126 60v46" stroke="#000" stroke-opacity=".16" stroke-width="3" stroke-linecap="round"/>' +
+      strands('<path d="M98 84C84 104 72 134 62 172M204 80C220 96 236 124 244 164M150 62C176 64 200 78 216 94M150 62C120 64 96 72 82 88M128 66C118 76 110 88 106 100"/>') +
+      '<path d="M96 80C120 62 180 62 204 80C180 72 120 72 96 80z" fill="#fff" opacity=".22" filter="url(#' + u + 'g)"/>' +
+      '<path d="M118 62C108 50 98 48 92 54M178 62C188 50 200 50 206 56" fill="none" stroke="' + hairc + '" stroke-width="2" stroke-linecap="round" opacity=".7"/>';
+    if (style === 'long' || style === 'flower') hf += mir('<path d="M58 176C40 222 58 258 40 296C36 312 42 326 48 336H84C74 296 90 252 76 206C72 190 68 180 64 172z" fill="' + H + '" stroke="' + hd + '" stroke-width="1.400" stroke-opacity=".4"/>' + strands('<path d="M54 232C48 266 54 300 52 330"/>') + strands('<path d="M66 214C62 250 68 286 66 322"/>', hd, .35));
+    if (style === 'pigtails') hf += mir('<rect x="40" y="152" width="34" height="18" rx="9" fill="#ff6fa5" transform="rotate(-20 57 161)"/>');
+    if (style === 'braids') hf += mir(bowS(58, 332, .55, '#b794ff'));
+    if (style === 'bun') hf += bowS(150, 86, .85, '#b794ff') + mir('<path d="M56 192C46 234 56 260 72 264C62 242 64 216 68 194z" fill="' + H + '"/>');
+    if (style === 'flower') hf += '<path d="M66 134Q150 30 234 134" fill="none" stroke="#ffb3d1" stroke-width="8" stroke-linecap="round"/><g transform="translate(90 102) scale(1.500)"><g fill="#ff9ac8" stroke="#6b3f72" stroke-width="1.800"><circle cx="0" cy="-9" r="7.500"/><circle cx="9" cy="-3" r="7.500"/><circle cx="-9" cy="-3" r="7.500"/><circle cx="6" cy="8" r="7.500"/><circle cx="-6" cy="8" r="7.500"/></g><circle r="6" fill="#ffd84d" stroke="#6b3f72" stroke-width="1.800"/></g>';
     s += '<g class="mk-hairf">' + hf + '</g>';
     return s;
   };

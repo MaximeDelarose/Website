@@ -133,19 +133,19 @@ async function maquillage(p) {
   await p.evaluate(() => document.querySelectorAll('.tab')[1].click()); await p.evaluate(() => document.querySelectorAll('.swrow .it')[1].click());
   await p.touchscreen.tap(...at(.3, .66)); await sleep(p, 400);
   ok(await p.evaluate(() => [...document.querySelectorAll('.mkface svg stop')].some((x) => x.getAttribute('stop-color') === '#ffb3d1' && x.getAttribute('stop-opacity') === '.85')), 'maquillage : le blush applique la couleur choisie sur les joues');
-  await p.evaluate(() => document.querySelectorAll('.tab')[2].click()); await p.evaluate(() => document.querySelectorAll('.swrow .it')[1].click());
+  await p.evaluate(() => document.querySelectorAll('.tab')[3].click()); await p.evaluate(() => document.querySelectorAll('.swrow .it')[1].click());
   await p.touchscreen.tap(...at(.35, .5)); await sleep(p, 400);
   ok(await p.evaluate(() => document.querySelector('#mk-shadow').children.length > 0), 'maquillage : le fard à paupières apparaît sur les paupières');
-  await p.evaluate(() => document.querySelectorAll('.tab')[3].click()); await p.evaluate(() => document.querySelectorAll('.swrow .it')[2].click());
+  await p.evaluate(() => document.querySelectorAll('.tab')[4].click()); await p.evaluate(() => document.querySelectorAll('.swrow .it')[2].click());
   const s0 = await p.evaluate(() => document.querySelectorAll('.mkface svg g[transform*="rotate"]').length);
   await p.touchscreen.tap(...at(.2, .6)); await sleep(p, 500);
   ok(await p.evaluate(() => document.querySelectorAll('.mkface svg g[transform*="rotate"]').length) === s0 + 1, 'maquillage : un tampon (papillon) apparaît sur le visage');
   const pos = await p.evaluate(() => { const s = document.querySelector('.mkface svg').getBoundingClientRect(), g = [...document.querySelectorAll('.mkface svg g[transform*="rotate"]')].pop().getBoundingClientRect(); return g.left >= s.left && g.right <= s.right && g.top >= s.top && g.bottom <= s.bottom; });
   ok(pos, 'maquillage : le tampon est bien placé dans le visage');
-  await p.evaluate(() => document.querySelectorAll('.tab')[5].click()); await p.evaluate(() => document.querySelectorAll('.swrow .it')[1].click()); await sleep(p, 300);
+  await p.evaluate(() => document.querySelectorAll('.tab')[6].click()); await p.evaluate(() => document.querySelectorAll('.swrow .it')[1].click()); await sleep(p, 300);
   ok(await p.evaluate(() => !!document.querySelector('.mkface svg path[fill="#ffd84d"]') && document.querySelector('.mkface svg').innerHTML.includes('translate(150 70) scale(1.55)')), 'maquillage : la couronne apparaît sur la tête');
   /* coiffure */
-  const h0 = await p.evaluate(() => document.querySelector('.mk-hairf').innerHTML); await p.evaluate(() => document.querySelectorAll('.tab')[4].click()); await p.evaluate(() => document.querySelectorAll('.swrow .it')[2].click()); await sleep(p, 300);
+  const h0 = await p.evaluate(() => document.querySelector('.mk-hairf').innerHTML); await p.evaluate(() => document.querySelectorAll('.tab')[5].click()); await p.evaluate(() => document.querySelectorAll('.swrow .it')[2].click()); await sleep(p, 300);
   ok(await p.evaluate(() => document.querySelector('.mk-hairf').innerHTML) !== h0, 'maquillage : la coiffure change');
   /* personnage */
   const c0 = await p.evaluate(() => document.querySelector('.mkface svg').innerHTML.length); await p.evaluate(() => document.querySelectorAll('.charb')[1].click()); await sleep(p, 300);

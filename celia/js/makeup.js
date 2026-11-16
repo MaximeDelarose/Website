@@ -12,14 +12,15 @@
   var ICON = {
     lips: Art.svg('0 0 64 64', '<path d="M6 34q12-18 26-8 14-10 26 8-12 22-26 22T6 34z" fill="#ff4d7d" ' + ST(3.500) + '/><path d="M8 34q24 8 48 0" fill="none" stroke="' + INK + '" stroke-width="3" stroke-linecap="round"/><path d="M16 30q6-6 12-2" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none" opacity=".7"/>'),
     blush: Art.svg('0 0 64 64', '<ellipse cx="32" cy="38" rx="24" ry="16" fill="#ff9ac8" opacity=".8"/><rect x="26" y="6" width="12" height="24" rx="5" fill="#ffd84d" ' + ST(3) + '/><path d="M22 30h20l-3 14a7 7 0 0 1-14 0z" fill="#ff7fb0" ' + ST(3) + '/>'),
-    shadow: Art.svg('0 0 64 64', '<path d="M6 36q26-34 52 0-26 20-52 0z" fill="#fff" ' + ST(3.500) + '/><path d="M8 34q24-26 48 0-24-8-48 0z" fill="#b794ff"/><circle cx="32" cy="38" r="7" fill="#4a2a55"/><circle cx="34" cy="35" r="2.500" fill="#fff"/>'),
+    shadow: Art.svg('0 0 64 64', '<rect x="6" y="20" width="52" height="34" rx="10" fill="#fff" ' + ST(3.500) + '/><circle cx="20" cy="37" r="7.500" fill="#c4a8ff"/><circle cx="37" cy="37" r="7.500" fill="#8fd3ff"/><circle cx="49" cy="37" r="4.500" fill="#ff9ac8"/><g transform="translate(40 6) rotate(28)"><rect x="-3" y="0" width="6" height="22" rx="3" fill="#ffd84d" ' + ST(2.500) + '/><path d="M-4 20h8l-1 8h-6z" fill="#ff8fb8" ' + ST(2) + '/></g>'),
+    eyes: Art.svg('0 0 64 64', '<path d="M4 34C12 14 52 14 60 34 52 54 12 54 4 34z" fill="#fff" ' + ST(3.500) + '/><circle cx="32" cy="34" r="15" fill="#4b9be8" ' + ST(2.500) + '/><circle cx="32" cy="34" r="7" fill="#1b1018"/><circle cx="38" cy="28" r="4.500" fill="#fff"/><circle cx="26" cy="41" r="2.200" fill="#fff"/>'),
     stamps: Art.svg('0 0 64 64', '<path d="' + Art.P.heart + '" transform="translate(2 8) scale(1.800)" fill="#ff4d8d" ' + ST(1.600) + '/><path d="' + Art.P.star + '" transform="translate(28 26) scale(1.500)" fill="#ffd84d" ' + ST(1.600) + '/>'),
     crown: Art.svg('0 0 64 64', Art.items.crown),
     hair: G.preview('hair', 'long', { hairColor: 0 }),
     me: Art.svg('30 40 240 240', F.render(F.base, { collar: false }), null)
   };
   var PRESETS = [{ skin: 1, eyes: 0, hairColor: 0, hairStyle: 'long' }, { skin: 4, eyes: 0, hairColor: 1, hairStyle: 'curls' }, { skin: 0, eyes: 2, hairColor: 2, hairStyle: 'braids' }, { skin: 2, eyes: 3, hairColor: 3, hairStyle: 'bun' }];
-  var TOOLS = ['lips', 'blush', 'shadow', 'stamps', 'hair', 'crown', 'me'];
+  var TOOLS = ['lips', 'blush', 'eyes', 'shadow', 'stamps', 'hair', 'crown', 'me'];
   var LOOKS = [
     { name: 'chaton', lips: '#ff6f91', blush: '#ffb3d1', shadow: null, crown: 'c5', extras: '<g stroke="' + INK + '" stroke-width="3.500" stroke-linecap="round" fill="none"><path d="M118 238l-62 6M118 250l-62 18M182 238l62 6M182 250l62 18"/></g><path d="M141 224l9 9 9-9z" fill="#ff4d7d" ' + ST(2.500) + '/>', stamps: [] },
     { name: 'papillon', lips: '#ff9ac8', blush: '#ffd0f0', shadow: '#c4a8ff', crown: 'c3', stamps: [{ k: 'butterfly', x: 100, y: 124, s: 1.1 }, { k: 'butterfly', x: 200, y: 124, s: 1.1 }, { k: 'glitter', x: 84, y: 244, s: 1 }, { k: 'glitter', x: 216, y: 244, s: 1 }] },
@@ -52,6 +53,8 @@
         return S.stamps.map(function (p) { return '<g transform="translate(' + p.x.toFixed(1) + ' ' + p.y.toFixed(1) + ') rotate(' + (p.r || 0) + ') scale(' + (p.s || 1) + ')"><g class="' + (p.fresh ? 'drop' : '') + '">' + F.stamps[p.k] + '</g></g>'; }).join('');
       }
       function mark() { saved = false; touched(); }
+      /* couleur des yeux : change l'iris tout de suite, bien visible */
+      function setEyes(i) { mark(); S.custom = true; cfg.eyes = i; C.saveProfile(); render(); pop(113, 204, G.eyeColors[i]); pop(187, 204, G.eyeColors[i]); C.sfx.sparkle(); face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop'); }
       function render() {
         face.innerHTML = Art.svg('0 0 300 340', F.render(F.base, look({ lips: S.lips, blush: S.blush, shadow: S.shadow })) + S.extras + stampsSvg() + crownSvg(), 'mkface-svg');
         S.stamps.forEach(function (p) { p.fresh = false; });
@@ -78,6 +81,7 @@
         if (tool === 'lips') { if (inFace(p, 6) && p.y > 218) { mark(); S.lips = cur.lips; render(); pop(150, 250, cur.lips); } else wrong(150, 250); }
         else if (tool === 'blush') { if (inFace(p, 6) && p.y > 170 && p.y < 290) { mark(); S.blush = cur.blush; render(); pop(84, 238, cur.blush); pop(216, 238, cur.blush); } else wrong(84, 238); }
         else if (tool === 'shadow') { if (inFace(p, 6) && p.y > 110 && p.y < 222) { mark(); S.shadow = cur.shadow; render(); pop(113, 182, cur.shadow); pop(187, 182, cur.shadow); } else wrong(113, 182); }
+        else if (tool === 'eyes') { if (Math.abs(p.y - 204) < 34 && (Math.abs(p.x - 112) < 34 || Math.abs(p.x - 188) < 34)) setEyes(cfg.eyes); else wrong(113, 204); }
         else if (tool === 'stamps') {
           var q = clampFace(p); addStamp(q, e);
           spray = { id: e.pointerId, last: q, d: 0 };
@@ -116,11 +120,11 @@
         else if (tool === 'stamps') STAMPS.forEach(function (k) { var b = C.el('<button class="it' + (cur.stamp === k ? ' on' : '') + '" aria-label="tampon"><svg viewBox="-24 -24 48 48">' + F.stamps[k] + '</svg></button>'); b.onclick = function () { cur.stamp = k; C.select(sw, '.it', b); C.sfx.pop(); C.bounce(b); }; sw.appendChild(b); });
         else if (tool === 'hair') {
           G.hairStyles.forEach(function (s) { var b = C.el('<button class="it' + (cfg.hairStyle === s ? ' on' : '') + '" aria-label="coiffure">' + Art.svg('0 0 300 340', F.render(F.base, look({ hairStyle: s, collar: false })), null) + '</button>'); b.onclick = function () { mark(); S.custom = true; cfg.hairStyle = s; C.saveProfile(); render(); C.select(sw, '.it', b); C.sfx.sparkle(); C.sfx.boing(); face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop'); }; sw.appendChild(b); });
+        } else if (tool === 'eyes') {
+          G.eyeColors.forEach(function (c, i) { var b = C.el('<button class="it round eyec' + (cfg.eyes === i ? ' on' : '') + '" style="--c:' + c + '" aria-label="couleur des yeux"></button>'); b.onclick = function () { setEyes(i); C.select(sw, '.it', b); C.bounce(b); }; sw.appendChild(b); });
         } else if (tool === 'me') {
           var round = function (key, i, col) { var b = C.el('<button class="it round' + (cfg[key] === i ? ' on' : '') + '" style="--c:' + col + '" aria-label="couleur"></button>'); b.onclick = function () { mark(); S.custom = true; cfg[key] = i; C.saveProfile(); render(); C.select(sw, '.it', b); C.sfx.sparkle(); C.bounce(b); face.classList.remove('hop'); void face.offsetWidth; face.classList.add('hop'); }; sw.appendChild(b); };
           G.skins.forEach(function (c, i) { round('skin', i, c); });
-          sw.appendChild(C.el('<span class="gap"></span>'));
-          G.eyeColors.forEach(function (c, i) { round('eyes', i, c); });
           sw.appendChild(C.el('<span class="gap"></span>'));
           G.hairColors.forEach(function (h, i) { round('hairColor', i, h.c); });
         } else if (tool === 'crown') {
