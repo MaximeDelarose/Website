@@ -31,7 +31,7 @@
     dropChance: 0.5,           // chance qu'un monstre normal lâche un objet (par joueur)
     eliteChance: 0.12,
     pushDmg: 9,                // dégâts par case de poussée bloquée
-    dungeonHeal: 0.4,          // part des PV rendue entre deux salles du donjon
+    dungeonHeal: 0.55,          // part des PV rendue entre deux salles du donjon
   };
 
   /* ====================== HASARD ====================== */
@@ -810,6 +810,8 @@
     if (w.mode === "loot" && w.players.every(function (p) { return !p || p.ready; })) { var any = w.players.findIndex(function (p) { return p; }); if (any >= 0) { w.players[any].ready = false; lootDone(w, any); } }
     bump(w);
   }
+  // points d'extension : les modules (bestiaire, IA, échanges, duels…) s'y branchent sans toucher au moteur
+  var EXT = { onSpawn: null, onCombat: null, aiStep: null, aiDo: null, cmds: {}, onTurnStart: null, afterDamage: null, composePack: null, onFinish: null, onStepExplore: null, onRemove: null };
   function ev(w, e) { w.events.push(e); }
   function bump(w) { w.rev++; }
   function say(w, text, pi) { ev(w, { k: "msg", text: text, pi: pi == null ? -1 : pi }); }
@@ -851,6 +853,7 @@
       if (Math.abs(x - m.spawn.x) + Math.abs(y - m.spawn.y) < 6) continue;
       if (w.packs.some(function (p) { return Math.abs(p.x - x) + Math.abs(p.y - y) < 4; })) continue;
       if (w.heroes.some(function (h) { return h && Math.abs(h.x - x) + Math.abs(h.y - y) < 5; })) continue;
+      if (EXT.composePack) { var cp = EXT.composePack(w, zid); if (cp) { w.packs.push({ id: w.packId++, x: x, y: y, hx: x, hy: y, mobs: cp.mobs, scale: cp.scale, tag: cp.tag, t: 1 + r() * 4, face: 1 }); return; } }
       var size = ri(r, Z.size[0], Z.size[1]) + (w.players.filter(Boolean).length - 1);
       var mobs = [];
       for (var i = 0; i < size; i++) {
@@ -982,7 +985,7 @@
   function startCombat(w, pk, room) {
     var theme = room ? (DUNGEONS[room.dungeon] && DUNGEONS[room.dungeon].theme) || "donjon" : ZONES[w.zone].theme;
     var A = genArena(theme, Math.floor(R() * 1e9), w.players.length);
-    var c = { arena: A, units: [], uid: 1, turn: -1, order: [], round: 1, phase: "place", objects: [], tele: [], log: [], packId: pk ? pk.id : null, room: room || null, aiT: 0, aiN: 0, stats: {} };
+    var c = { arena: A, units: [], uid: 1, turn: -1, order: [], round: 1, phase: "place", objects: [], tele: [], hazards: [], log: [], packId: pk ? pk.id : null, room: room || null, aiT: 0, aiN: 0, stats: {} };
     w.combat = c; w.mode = "combat";
     // héros
     w.players.forEach(function (pl, i) {
@@ -993,7 +996,7 @@
       c.units.push({ id: c.uid++, side: 0, pi: i, cls: pl.profile.cls, name: pl.name, lvl: pl.profile.level,
         x: cell[0], y: cell[1], hp: keepHp != null ? Math.max(1, Math.min(s.hp, keepHp)) : s.hp, maxHp: s.hp,
         pa: s.pa, pm: s.pm, maxPa: s.pa, maxPm: s.pm, po: s.po, res: s.res, ini: s.ini, crit: s.crit, heal: s.heal, pow: 0, elem: s.elem, dom: s.dom,
-        powers: s.powers, shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: 1, ult: pl.profile.level >= ULT_LEVEL });
+        powers: s.powers, shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: 1, ult: pl.profile.level >= ULT_LEVEL, ai: false });
       c.stats[i] = { dmg: 0, heal: 0, kills: 0 };
     });
     // monstres
@@ -1003,7 +1006,10 @@
       while (unitAt(c, cell[0], cell[1])) cell = A.mobCells[(A.mobCells.indexOf(cell) + 1) % A.mobCells.length];
       var mobU = addMob(c, mb.type, mb.lvl, mb.affix, cell[0], cell[1]);
       if (mb.mirror) { mobU.mirror = mb.mirror; mobU.name = "Dopeul " + CLASSES[mb.mirror].name; }
+      if (pk && pk.scale) { mobU.hp = mobU.maxHp = Math.round(mobU.hp * pk.scale.hp); mobU.pow += pk.scale.pow; mobU.res = Math.min(60, mobU.res + (pk.scale.res || 0)); }
+      if (EXT.onSpawn) EXT.onSpawn(w, mobU, mb, pk);
     });
+    if (EXT.onCombat) EXT.onCombat(w, c, pk, room);
     computeOrder(c);
     ev(w, { k: "combat" });
     bump(w);
@@ -1014,7 +1020,8 @@
     var u = { id: c.uid++, side: 1, type: type, name: M.name, lvl: lvl, affix: affix, x: x, y: y, hp: hp, maxHp: hp,
       pa: M.pa + (A.pa || 0), pm: M.pm + (A.pm || 0), maxPa: M.pa + (A.pa || 0), maxPm: M.pm + (A.pm || 0), po: 0,
       res: (M.res || 0) + (A.res || 0), ini: M.ini + lvl, crit: 5, heal: 0, pow: (lvl - 1) * 7 + (A.pow || 0), vamp: A.vamp || 0,
-      powers: [], shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: -1, boss: !!M.boss, summoned: !!summoned };
+      powers: [], shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: -1, boss: !!M.boss, summoned: !!summoned, ai: true, role: M.role || "brute" };
+    if (A.hpMul || A.pow) u.elite = affix === "elite";
     c.units.push(u);
     return u;
   }
@@ -1033,7 +1040,10 @@
   function active(c) { return c && c.turn >= 0 ? uById(c, c.order[c.turn]) : null; }
   function inArena(c, x, y) { var A = c.arena; return x >= 0 && y >= 0 && x < A.w && y < A.h && A.g[x][y] !== 9; }
   function groundOk(c, x, y) { return inArena(c, x, y) && c.arena.g[x][y] === 0; }
-  function solidObj(c, x, y) { var o = objAt(c, x, y); return o && (o.kind === "wall" || o.kind === "beacon"); }
+  function solidObj(c, x, y) { var o = objAt(c, x, y); return o && (o.kind === "wall" || o.kind === "beacon" || o.kind === "silk"); }
+  function hazardAt(c, x, y) { var hs = c.hazards || []; for (var i = 0; i < hs.length; i++) if (hs[i].x === x && hs[i].y === y) return hs[i]; return null; }
+  // une zone posée par un camp gêne l'autre camp
+  function hazardFor(c, x, y, u) { var h = hazardAt(c, x, y); return h && h.side !== u.side ? h : null; }
   function cellFree(c, x, y, ignore) {
     if (!groundOk(c, x, y) || solidObj(c, x, y)) return false;
     var u = unitAt(c, x, y);
@@ -1200,6 +1210,12 @@
     var el = opt.el || (src && src.curEl) || null;
     var stat = src ? (src.elem ? (el ? src.elem[el] || 0 : Math.max(src.elem.terre, src.elem.feu, src.elem.eau, src.elem.air)) : src.pow || 0) : 0;
     var mul = 1 + stat / 100;
+    // états de la cible : malédiction, vulnérabilité, marque du chasseur (consommée par son auteur)
+    if (!opt.dot) {
+      var vulnS = statusSum(t, "curse") + statusSum(t, "vuln");
+      if (vulnS) mul *= 1 + vulnS / 100;
+      if (src) for (var mi = 0; mi < t.status.length; mi++) { var ms = t.status[mi]; if (ms.k === "mark" && ms.by === src.id) { mul *= 1 + ms.v / 100; t.status.splice(mi, 1); ev(w, { k: "buff", id: t.id, text: "Marque !" }); break; } }
+    }
     if (src && src.powers.indexOf("first") >= 0 && !src.firstHit && !opt.noFirst) { mul *= 1.6; src.firstHit = true; }
     var crit = !opt.noCrit && src && R() * 100 < src.crit;
     if (crit) mul *= src.powers.indexOf("critx2") >= 0 ? 2 : 1.5;
@@ -1214,12 +1230,13 @@
     }
     t.hp -= d;
     ev(w, { k: "dmg", id: t.id, v: d, sh: absorbed, crit: crit, src: src ? src.id : 0, push: !!opt.push });
-    if (src && src.side === 0) c.stats[src.pi] && (c.stats[src.pi].dmg += d + absorbed);
+    if (src && !src.ai && c.stats[src.pi]) c.stats[src.pi].dmg += d + absorbed;
     // vol de vie
     if (src && src.alive && (src.vamp || src.powers.indexOf("vamp") >= 0) && d > 0) heal(w, src, src, Math.round(d * ((src.vamp || 15) / 100)), true);
     // épines
     if (src && !opt.thorn && t.powers.indexOf("thorns") >= 0 && Math.abs(src.x - t.x) + Math.abs(src.y - t.y) <= 1) damage(w, t, src, Math.round((d + absorbed) * 0.3 / (1 + t.pow / 100)), { thorn: true, noCrit: true, noFirst: true });
     if (t.hp <= 0) kill(w, t, src);
+    else if (EXT.afterDamage) EXT.afterDamage(w, t, src, d);
     return d;
   }
   function kill(w, t, src) {
@@ -1241,7 +1258,7 @@
     if (a <= 0 && silent) return 0;
     t.hp += Math.max(0, a);
     ev(w, { k: "heal", id: t.id, v: Math.max(0, a) });
-    if (src && src.side === 0 && w.combat.stats[src.pi] && !silent) w.combat.stats[src.pi].heal += Math.max(0, a);
+    if (src && !src.ai && w.combat.stats[src.pi] && !silent) w.combat.stats[src.pi].heal += Math.max(0, a);
     return a;
   }
   function addShield(w, src, t, v) {
@@ -1251,12 +1268,13 @@
   }
   function statusSum(u, k) { var s = 0; u.status.forEach(function (st) { if (st.k === k) s += st.v; }); return s; }
   // pousse (d > 0) ou attire (d < 0) t par rapport à la case (ox, oy)
-  function knock(w, src, t, ox, oy, dist, pull) {
-    var c = w.combat;
+  function knock(w, src, t, ox, oy, dist, pull, extra) {
+    var c = w.combat; extra = extra || {};
     if (!t.alive || t.boss) { if (t.boss) ev(w, { k: "buff", id: t.id, text: "Inébranlable" }); return; }
     var dx = sgn(t.x - ox), dy = sgn(t.y - oy);
     if (pull) { dx = -dx; dy = -dy; }
     if (dx && dy) { if (Math.abs(t.x - ox) >= Math.abs(t.y - oy)) dy = 0; else dx = 0; }
+    if (!dx && !dy) return 0;
     var moved = 0, path = [];
     for (var i = 0; i < dist; i++) {
       var nx = t.x + dx, ny = t.y + dy;
@@ -1266,17 +1284,41 @@
     }
     if (moved) ev(w, { k: "slide", id: t.id, path: path });
     if (!pull && moved < dist) {
-      var hit = CFG.pushDmg * (dist - moved) * (src && src.powers.indexOf("crush") >= 0 ? 3 : 1);
+      var hit = (extra.slam || CFG.pushDmg) * (dist - moved) * (src && src.powers && src.powers.indexOf("crush") >= 0 ? 3 : 1);
       ev(w, { k: "bump", id: t.id, dx: dx, dy: dy });
       damage(w, src, t, hit, { push: true, noFirst: true });
       var other = unitAt(c, t.x + dx, t.y + dy);
       if (other && other !== src) damage(w, src, other, Math.round(hit / 2), { push: true, noFirst: true });
     }
+    if (t.alive && moved) triggerHazards(w, t, "enter");
+    return moved;
   }
   function teleport(w, u, x, y, fx) {
     var from = [u.x, u.y];
     u.x = x; u.y = y;
     ev(w, { k: "tp", id: u.id, from: from, to: [x, y], fx: fx || "tri" });
+    triggerHazards(w, u, "enter");
+  }
+  // zones dangereuses : toile (arrête et ralentit), nuage venimeux (poison)
+  function triggerHazards(w, u, phase) {
+    var c = w.combat; if (!c || !u.alive) return;
+    var hz = hazardFor(c, u.x, u.y, u);
+    if (!hz) return;
+    if (hz.kind === "glue") {
+      if (phase === "enter") { u.pm = 0; ev(w, { k: "buff", id: u.id, text: "Englué !" }); }
+      else { u.pm = Math.max(0, u.pm - 2); ev(w, { k: "buff", id: u.id, text: "Ralenti −2 PM" }); }
+    } else if (hz.kind === "venom") {
+      if (u.venomRound !== c.round || phase === "start") { u.venomRound = c.round; applyStatus(w, u, { k: "dot", v: hz.dmg || 8, turns: 2, name: "Venin", col: "#7dff6a" }); ev(w, { k: "buff", id: u.id, text: "Empoisonné" }); }
+    }
+  }
+  // statuts négatifs : ils tombent au début du tour de la victime, et sont toujours affichés
+  function applyStatus(w, t, st) {
+    if (!t || !t.alive) return;
+    st.deb = true;
+    // pas d'empilement infini : un statut du même type est rafraîchi
+    for (var i = 0; i < t.status.length; i++) if (t.status[i].deb && t.status[i].k === st.k && t.status[i].name === st.name) { t.status[i].turns = Math.max(t.status[i].turns, st.turns); t.status[i].v = Math.max(t.status[i].v, st.v); ev(w, { k: "status", id: t.id, st: st.k }); return; }
+    t.status.push(st);
+    ev(w, { k: "status", id: t.id, st: st.k, name: st.name });
   }
 
   /* ---------- lancer un sort ---------- */
@@ -1326,7 +1368,7 @@
   function mySummons(c, u) { return c.units.filter(function (x) { return x.alive && x.summon && x.owner === u.id; }); }
   function addSummon(w, u, cls, x, y) {
     var c = w.combat, S = SUMMONS[cls], hp = Math.round((S.hp + S.hpL * u.lvl) * (1 + (u.heal || 0) / 200));
-    var m = { id: c.uid++, side: 0, pi: u.pi, cls: cls, summon: true, owner: u.id, name: S.name, lvl: u.lvl, x: x, y: y, hp: hp, maxHp: hp,
+    var m = { id: c.uid++, side: u.side, ai: true, pi: u.pi, cls: cls, summon: true, owner: u.id, name: S.name, lvl: u.lvl, x: x, y: y, hp: hp, maxHp: hp,
       pa: S.pa, pm: S.pm, maxPa: S.pa, maxPm: S.pm, po: 0, res: 0, ini: S.ini, crit: Math.round(u.crit / 2), heal: Math.round((u.heal || 0) / 2), pow: 0, elem: u.elem ? { terre: Math.round(u.elem.terre * 0.8), feu: Math.round(u.elem.feu * 0.8), eau: Math.round(u.elem.eau * 0.8), air: Math.round(u.elem.air * 0.8) } : null, dom: Math.round((u.dom || 0) / 2),
       powers: [], shield: [], status: [], cds: {}, used: {}, usedT: {}, alive: true, face: u.face, ult: false };
     c.units.push(m);
@@ -1517,7 +1559,10 @@
       for (var d = 0; d < 4; d++) {
         var nx = p[0] + DX[d], ny = p[1] + DY[d], k = key(nx, ny);
         if (out[k] != null || !cellFree(c, nx, ny)) continue;
-        out[k] = p[2] + 1; q.push([nx, ny, p[2] + 1]);
+        out[k] = p[2] + 1;
+        var hz = hazardFor(c, nx, ny, u);
+        if (hz && hz.kind === "glue") continue;       // la toile arrête : on peut y entrer, pas la traverser
+        q.push([nx, ny, p[2] + 1]);
       }
     }
     return out;
@@ -1530,12 +1575,15 @@
     if (!cellFree(c, x, y)) return false;
     var p = combatPath(c, u, x, y, u.pm);
     if (!p || !p.length || p.length > u.pm) return false;
+    var stuck = false;
+    for (var gi = 0; gi < p.length; gi++) { var gz = hazardFor(c, p[gi][0], p[gi][1], u); if (gz && gz.kind === "glue") { p = p.slice(0, gi + 1); stuck = true; break; } }
     u.pm -= p.length;
     var last = p[p.length - 1], prev = p.length > 1 ? p[p.length - 2] : [u.x, u.y];
     u.face = faceOf(last[0] - prev[0], last[1] - prev[1]);
     u.x = last[0]; u.y = last[1];
     ev(w, { k: "move", id: u.id, path: p });
-    // marcher dans un télégraphe ne déclenche rien tout de suite (il explose au tour du boss)
+    if (stuck) u.pm = 0;
+    triggerHazards(w, u, "enter");
     afterAction(w);
     return true;
   }
@@ -1565,11 +1613,30 @@
     // ce que ce lanceur a posé expire à son tour
     c.units.forEach(function (o) {
       o.shield = o.shield.filter(function (s) { return s.by !== u.id; });
-      o.status = o.status.filter(function (s) { if (s.by !== u.id) return true; s.turns--; return s.turns > 0; });
+      o.status = o.status.filter(function (s) { if (s.deb || s.by !== u.id) return true; s.turns--; return s.turns > 0; });
     });
     var before = c.objects.length;
     c.objects = c.objects.filter(function (o) { if (o.by !== u.id) return true; o.turns--; return o.turns > 0; });
+    if (c.hazards) c.hazards = c.hazards.filter(function (h) { if (h.by !== u.id) return true; h.turns--; return h.turns > 0; });
     if (c.objects.length !== before) ev(w, { k: "expire" });
+    // statuts négatifs sur ce tour : poison, ralentissement, racines, drains (jamais plus de −1 PA et −1 PM)
+    var dPa = 0, dPm = 0, dotTotal = 0;
+    u.status = u.status.filter(function (s) {
+      if (!s.deb) return true;
+      if (s.k === "dot") dotTotal += s.v;
+      else if (s.k === "slow") dPm += s.v;
+      else if (s.k === "root") dPm += 99;
+      else if (s.k === "drainpa") dPa = 1;
+      else if (s.k === "drainpm") dPm += 1;
+      if (s.k === "curse" || s.k === "vuln" || s.k === "mark") { s.turns--; return s.turns > 0; }
+      s.turns--; return s.turns > 0;
+    });
+    if (dPa) u.pa = Math.max(0, u.pa - 1);
+    if (dPm) u.pm = Math.max(0, u.pm - Math.min(dPm, 99));
+    if ((dPa || dPm) && u.hp > 0) ev(w, { k: "buff", id: u.id, text: (dPa ? "−1 PA " : "") + (dPm >= 99 ? "Immobilisé" : dPm ? "−" + dPm + " PM" : "") });
+    if (dotTotal) { damage(w, null, u, dotTotal, { dot: true, noCrit: true, noFirst: true }); if (!u.alive) { checkEnd(w); return; } }
+    triggerHazards(w, u, "start");
+    if (EXT.onTurnStart) { EXT.onTurnStart(w, u); if (!u.alive) { checkEnd(w); return; } }
     if (u.powers.indexOf("aegis") >= 0) addShield(w, u, u, Math.round(u.maxHp * 0.12) / (1 + u.heal / 100));
     ev(w, { k: "turn", id: u.id, round: c.round });
     // le boss déclenche ses sentences
@@ -1577,12 +1644,22 @@
     if (mine.length) {
       c.tele = c.tele.filter(function (t) { return t.by !== u.id; });
       mine.forEach(function (tl) {
-        ev(w, { k: "boom", cells: tl.cells });
-        tl.cells.forEach(function (p) { var t = unitAt(c, p[0], p[1]); if (t && t.side !== u.side) damage(w, u, t, tl.dmg, { noFirst: true }); });
+        ev(w, { k: "boom", cells: tl.cells, kind: tl.kind || "slam" });
+        tl.cells.forEach(function (p) {
+          var t = unitAt(c, p[0], p[1]);
+          if (t && t.side !== u.side) {
+            damage(w, u, t, tl.dmg, { noFirst: true });
+            if (t.alive && tl.push) knock(w, u, t, tl.cx != null ? tl.cx : u.x, tl.cy != null ? tl.cy : u.y, tl.push, false, { slam: tl.slam });
+            if (t.alive && tl.fx) tl.fx.forEach(function (f) { applyStatus(w, t, { k: f.k, v: f.v, turns: f.turns, by: u.id, name: f.name || f.k }); });
+          }
+        });
+        if (tl.hazard) tl.cells.forEach(function (q) { if (groundOk(c, q[0], q[1]) && !hazardAt(c, q[0], q[1])) c.hazards.push({ x: q[0], y: q[1], kind: tl.hazard.kind, turns: tl.hazard.turns, by: u.id, side: u.side, dmg: 8 }); });
+        if (tl.after) tl.after.forEach(function (a) { if (a.exhaust) { applyStatus(w, u, { k: "vuln", v: a.exhaust, turns: 1, name: "Épuisé", by: u.id }); ev(w, { k: "buff", id: u.id, text: "Épuisé : +" + a.exhaust + " % dégâts subis" }); } });
       });
       if (checkEnd(w)) return;
     }
-    c.aiT = u.side === 1 || u.summon ? 0.75 : 0;
+    c.aiT = u.ai ? 0.75 : 0;
+    u.mv = 0; u.atk = 0;
     bump(w);
   }
   function endTurn(w) {
@@ -1597,7 +1674,8 @@
     var c = w.combat;
     if (!c || c.phase !== "fight") return false;
     var heroes = c.units.some(function (u) { return u.side === 0 && u.alive && !u.summon; });
-    var mobs = c.units.some(function (u) { return u.side === 1 && u.alive; });
+    var mobs = c.units.some(function (u) { return u.side === 1 && u.alive && !u.illusion; });
+    if (!mobs) c.units.forEach(function (u) { if (u.illusion && u.alive) { u.alive = false; u.hp = 0; ev(w, { k: "die", id: u.id, quiet: true }); } });
     if (!mobs) { finishCombat(w, true); return true; }
     if (!heroes) { finishCombat(w, false); return true; }
     var a = active(c);
@@ -1827,10 +1905,15 @@
   function dungeonRoom(w) {
     var D = DUNGEONS[w.dungeon.id].rooms[w.dungeon.room], n = w.players.filter(Boolean).length;
     var mobs = [];
-    if (D.boss) { mobs.push({ type: D.mobs[0], lvl: D.lvl, affix: null }); for (var b = 0; b < n; b++) mobs.push({ type: D.mobs[1 + (b % 2)], lvl: D.lvl - 1, affix: null }); }
+    if (D.comp) {
+      var list = D.comp.slice(); if (n > 1 && D.duo) list = list.concat(D.duo);
+      mobs = list.map(function (m) { return { type: m[0], lvl: D.lvl + (m[1] || 0), affix: m[2] === "elite" ? "elite" : m[2] || null }; });
+      if (D.boss) mobs.unshift({ type: D.mobs[0], lvl: D.lvl, affix: null });
+    } else if (D.boss) { mobs.push({ type: D.mobs[0], lvl: D.lvl, affix: null }); for (var b = 0; b < n; b++) mobs.push({ type: D.mobs[1 + (b % 2)], lvl: D.lvl - 1, affix: null }); }
     else for (var i = 0; i < 2 + n; i++) mobs.push({ type: D.mobs[i % D.mobs.length], lvl: D.lvl + (i % 2), affix: R() < D.elite ? pick(R, AFFIX_IDS) : null });
-    var hpMul = n === 1 ? 0.8 : 1;
-    startCombat(w, { id: 0, mobs: mobs }, { idx: w.dungeon.room, name: D.name, boss: !!D.boss, dungeon: w.dungeon.id });
+    var scale = EXT.dungeonScale ? EXT.dungeonScale(w, D.lvl, DUNGEONS[w.dungeon.id].mul) : null;
+    var hpMul = n === 1 && !EXT.dungeonScale ? 0.8 : 1;
+    startCombat(w, { id: 0, mobs: mobs, scale: scale }, { idx: w.dungeon.room, name: D.name, boss: !!D.boss, dungeon: w.dungeon.id });
     if (D.boss) w.combat.units.forEach(function (u) { if (u.boss) { u.maxHp = Math.round(u.maxHp * hpMul); u.hp = u.maxHp; } });
   }
 
@@ -2018,13 +2101,14 @@
       }
       case "seen": { var pp = w.players[pi].profile; pp.bag.forEach(function (it) { it.isNew = false; }); pp.rev++; bump(w); return true; }
     }
+    if (EXT.cmds[c.t]) return EXT.cmds[c.t](w, pi, c);
     return false;
   }
   function myTurn(w, pi) {
     var c = w.combat;
     if (!c || c.phase !== "fight" || w.mode !== "combat") return null;
     var u = active(c);
-    return u && u.side === 0 && u.pi === pi && u.alive && !u.summon ? u : null;
+    return u && !u.ai && u.pi === pi && u.alive && !u.summon ? u : null;
   }
 
   /* ====================== AVANCER LE TEMPS (hôte) ====================== */
@@ -2033,11 +2117,11 @@
     if (w.mode === "explore") stepExplore(w, dt);
     else if (w.mode === "combat" && w.combat && w.combat.phase === "fight") {
       var c = w.combat, u = active(c);
-      if (u && (u.side === 1 || u.summon)) {
+      if (u && u.ai) {
         c.aiT -= dt;
         if (c.aiT <= 0) {
-          var a = aiStep(w);
-          c.aiT = aiDo(w, a);
+          var a = (EXT.aiStep || aiStep)(w);
+          c.aiT = (EXT.aiDo || aiDo)(w, a);
           if (++c.aiN > 12 && a) { c.aiN = 0; endTurn(w); }
           if (!a) c.aiN = 0;
         }
@@ -2046,6 +2130,7 @@
   }
 
   var API = {
+    EXT: EXT, I: null,
     CFG: CFG, CLASSES: CLASSES, CLASS_IDS: CLASS_IDS, SPELLS: SPELLS, SUMMONS: SUMMONS, spellsOf: spellsOf, MOBS: MOBS, MOB_SPELLS: MOB_SPELLS, AFFIXES: AFFIXES,
     SLOTS: SLOTS, SLOT_NAME: SLOT_NAME, RARITIES: RARITIES, STATS: STATS, POWERS: POWERS, QUESTS: QUESTS, ZONES: ZONES, ZONE_IDS: ZONE_IDS,
     DUNGEONS: DUNGEONS, NPCS: NPCS, AW: AW, PETS: PETS, MOUNTS: MOUNTS, ELEMENTS: ELEMENTS, MAIN_STATS: MAIN_STATS, ULT_LEVEL: ULT_LEVEL, SPELL_LEVELS: SPELL_LEVELS, spellLevel: spellLevel, unlockedSpells: unlockedSpells, DOPEUL_LEVEL: DOPEUL_LEVEL, SKINS: SKINS, shopStock: shopStock, BAG_MAX: BAG_MAX,
@@ -2055,6 +2140,12 @@
     targets: targets, area: area, canCast: canCast, spellCost: spellCost, reach: reach, combatPath: combatPath, myTurn: myTurn, los: los,
     chestPrice: chestPrice, partyLevel: partyLevel, partyHasDungeon: partyHasDungeon, checkEnd: checkEnd, startDungeon: startDungeon, enterZone: enterZone, statusSum: statusSum, aiStep: aiStep, aiDo: aiDo,
   };
+  API.I = { R: R, rng: rng, ri: ri, pick: pick, clamp: clamp, sgn: sgn, key: key, DX: DX, DY: DY,
+    damage: damage, heal: heal, addShield: addShield, knock: knock, teleport: teleport, kill: kill, applyStatus: applyStatus, triggerHazards: triggerHazards, hazardAt: hazardAt, hazardFor: hazardFor,
+    ev: ev, bump: bump, cellFree: cellFree, groundOk: groundOk, inArena: inArena, blocksLos: blocksLos, shapeOk: shapeOk, plus: plus, ring8: ring8, disc: disc, wallCells: wallCells, lineFrom: lineFrom,
+    findPath: findPath, combatPath: combatPath, moveUnit: moveUnit, endTurn: endTurn, afterAction: afterAction, addMob: addMob, addSummon: addSummon, mySummons: mySummons, computeOrder: computeOrder,
+    unitAt: unitAt, objAt: objAt, faceOf: faceOf, losFrom: losFrom, startCombat: startCombat, finishCombat: finishCombat, giveXp: giveXp, zone: zone, spellCost: spellCost,
+    makeItem: makeItem, rollRarity: rollRarity, questEvent: questEvent, nextTurn: nextTurn, beginFight: beginFight, enterZoneI: enterZone, cast: cast, solidObj: solidObj, statusSum: statusSum, areaCells: areaCells };
   if (typeof module !== "undefined" && module.exports) module.exports = API;
   root.AT_CORE = API;
 })(typeof window !== "undefined" ? window : globalThis);

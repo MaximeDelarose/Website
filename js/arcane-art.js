@@ -627,8 +627,11 @@
     g.translate(0, hop);
     g.scale(s * (o.flip || 1), s);
     if (o.hurt) g.translate(-o.hurt * 4, 0);
-    var f = SHAPES[type] || SHAPES.blob;
-    if (o.elite) { g.shadowColor = "#ffd257"; g.shadowBlur = 10; }
+    var MD = (root.AT_CORE && root.AT_CORE.MOBS && root.AT_CORE.MOBS[type]) || {};
+    var BE = root.AT_BEASTS && (root.AT_BEASTS.draw[type] || root.AT_BEASTS.draw[MD.shape]);
+    var f = BE ? function (gg, c, tt, oo) { BE(gg, tt, oo); } : (SHAPES[type] || SHAPES[MD.shape] || SHAPES.blob);
+    if (BE && o.elite) { g.restore(); g.save(); g.translate(x, y); root.AT_BEASTS.eliteMark(g, t, o); g.translate(0, hop); g.scale(s * (o.flip || 1), s); if (o.hurt) g.translate(-o.hurt * 4, 0); }
+    if (o.elite && !BE) { g.shadowColor = "#ffd257"; g.shadowBlur = 10; }
     if (type === "dopeul" && o.mirror) { g.scale(1 / s, 1 / s); hero(g, o.mirror, 0, 0, { t: t, flip: o.flip, back: o.back, walk: o.walk, cast: o.cast, hurt: 0, scale: 1.35, noShadow: true, gear: { skin: "ombre" } }); }
     else f(g, M, t, o);
     g.shadowBlur = 0;

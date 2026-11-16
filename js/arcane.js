@@ -351,8 +351,13 @@
         break;
       case "wall": e.cells.forEach(function (c) { objBorn[c[0] + "," + c[1]] = clock; var q = iso(c[0], c[1]); addParts(q.x, q.y, 10, ["#c9c3b0", "#8a93b8"], { max: 90, up: 60 }); }); shake(4); SFX.wall(); break;
       case "smoke": { var sm = iso(e.at[0], e.at[1]); addParts(sm.x, sm.y - 10, 22, ["#d8dcef", "#a9aec8", "#fff"], { g: -20, max: 70, r: 30, s0: 5, s1: 10, life: 1.2 }); noise(0.4, 0.15, 900); break; }
-      case "tele": e.cells.forEach(function (c) { objBorn["t" + c[0] + "," + c[1]] = clock; }); SFX.warn(); toast("⚠ L'Archonte prépare une <b>Sentence</b> : quittez les cases rouges !", "warn"); break;
-      case "boom": e.cells.forEach(function (c, i) { var q = iso(c[0], c[1]); after(i * 0.02, function () { addParts(q.x, q.y - 10, 6, ["#ff5a6a", "#ffd257", "#d36cff"], { up: 80, max: 120 }); }); booms.push({ x: q.x, y: q.y, t: 0 }); }); shake(12); SFX.boom(); break;
+      case "tele": e.cells.forEach(function (c) { objBorn["t" + c[0] + "," + c[1]] = clock; }); SFX.warn(); toast("⚠ " + (u ? esc(A.MOBS[u.type] ? A.MOBS[u.type].name : "L'ennemi") : "L'ennemi") + " prépare <b>" + esc(e.name || "Sentence") + "</b> : quittez les cases marquées !", "warn"); break;
+      case "status": if (u) { var sp2 = unitScreen(u), SK = STATUS_FX[e.st] || STATUS_FX.dom; addText(u.x, u.y, SK[0] + " " + (e.name || SK[1]), SK[2], { size: 15, h: 100 }); addRing(sp2.x, sp2.y - 28, SK[2], 8, 38, 0.5); addParts(sp2.x, sp2.y - 30, 8, [SK[2], "#fff"], { g: -30, max: 70 }); } break;
+      case "hazard": (e.cells || []).forEach(function (c, i) { objBorn["h" + c[0] + "," + c[1]] = clock + i * 0.03; var q = iso(c[0], c[1]); addParts(q.x, q.y - 6, 5, ["#7dff6a", "#2a6a3a", "#c9b4ff"], { max: 60, up: 40 }); }); break;
+      case "silk": (e.cells || []).forEach(function (c) { objBorn[c[0] + "," + c[1]] = clock; var q = iso(c[0], c[1]); addParts(q.x, q.y - 14, 8, ["#f4f1ff", "#b8e8ff"], { max: 60, up: 30 }); }); break;
+      case "phase": { banner(e.msg || "Le boss change de forme !", null, "fight"); flash = 0.4; flashCol = "#ff5a6a"; shake(10); SFX.boom(); break; }
+      case "dash": if (v) { var dp = []; var ddx = Math.sign(e.to[0] - e.from[0]), ddy = Math.sign(e.to[1] - e.from[1]), dn = Math.abs(e.to[0] - e.from[0]) + Math.abs(e.to[1] - e.from[1]); if (ddx && ddy) { dp = [[e.to[0], e.to[1]]]; } else for (var di = 1; di <= dn; di++) dp.push([e.from[0] + ddx * di, e.from[1] + ddy * di]); v.q = v.q.concat(dp); v.speed = 16; shake(4); } break;
+      case "boom": { var bcol = e.kind === "trap" ? ["#c77dff", "#7ff6ff", "#fff"] : e.kind === "venom" ? ["#7dff6a", "#2a6a3a", "#fff"] : ["#ff5a6a", "#ffd257", "#d36cff"]; e.cells.forEach(function (c, i) { var q = iso(c[0], c[1]); after(i * 0.02, function () { addParts(q.x, q.y - 10, 6, bcol, { up: 80, max: 120 }); }); booms.push({ x: q.x, y: q.y, t: 0 }); }); shake(e.kind === "trap" ? 5 : 12); SFX.boom(); break; }
       case "summon": if (u) { p = unitScreen(u); addParts(p.x, p.y - 20, 18, e.hero ? ["#17233a", "#7df0c2", "#f4ecd8"] : ["#d36cff", "#fff"], { up: 60, shape: e.hero ? "c" : "c" }); if (e.hero) { uvis(u).tpIn = 0.3; addRing(p.x, p.y, "#7df0c2", 4, 30, 0.4, { flat: true }); } SFX.tp(); } break;
       case "nova": { var nq = iso(e.at[0], e.at[1]); addRing(nq.x, nq.y, e.col, 10, (e.r + 0.4) * TW, e.big ? 0.9 : 0.6, { flat: true, lw: e.big ? 8 : 5 }); addRing(nq.x, nq.y - 30, e.col, 8, 60, 0.5); addParts(nq.x, nq.y - 30, e.big ? 36 : 18, [e.col, "#fff"], { max: 120 + e.r * 40, g: -30 }); if (e.big) { flash = 0.35; flashCol = e.col; shake(5); } SFX.cast(); break; }
       case "splash": {
@@ -381,13 +386,15 @@
       case "fountain": break;
     }
   }
+  var STATUS_FX = { dom: ["✦", "Renforcé", "#ffd257"], res: ["🛡", "Résistant", "#9fd8ff"], dot: ["☠", "Poison", "#7dff6a"], slow: ["❄", "Ralenti", "#7ff6ff"], root: ["⛓", "Immobilisé", "#b8e8ff"], drainpa: ["⚡", "Siphonné −1 PA", "#c77dff"], drainpm: ["⚡", "Aspiré −1 PM", "#c77dff"], curse: ["☾", "Maudit", "#b07dff"], vuln: ["✖", "Vulnérable", "#ff9a3c"], mark: ["◎", "Marqué", "#ff5a6a"] };
   function onCast(e, u, v) {
     if (!u || !v) return;
     v.cast = 0.001;
     var p = unitScreen(u), tg = e.tg || [];
     if (e.mob) {
-      if (tg[0] && !A.MOB_SPELLS[e.s].heal) { v.lunge = { to: tg[0], t: 0 }; }
-      if (A.MOB_SPELLS[e.s].heal && tg[0]) { var hq = iso(tg[0][0], tg[0][1]); addParts(hq.x, hq.y - 30, 10, ["#c7a6ff", "#fff"], { g: -50 }); }
+      if (tg[0] && !(A.MOB_SPELLS[e.s] || {}).heal) { v.lunge = { to: tg[0], t: 0 }; }
+      if (e.col && tg[0] && !(A.MOB_SPELLS[e.s] || {}).heal) { addRing(p.x, p.y - 30, e.col, 6, 36, 0.4); addParts(p.x, p.y - 40, 8, [e.col, "#fff"], { g: -30, max: 60 }); if (e.name) addText(u.x, u.y, e.name, e.col, { size: 13, h: 104 }); }
+      if (A.MOB_SPELLS[e.s] && A.MOB_SPELLS[e.s].heal && tg[0]) { var hq = iso(tg[0][0], tg[0][1]); addParts(hq.x, hq.y - 30, 10, ["#c7a6ff", "#fff"], { g: -50 }); }
       SFX.cast();
       return;
     }
@@ -675,11 +682,29 @@
       Ar.mobCells.forEach(function (h) { fillCell(g, h[0], h[1], "rgba(255,70,90,.25)"); });
     }
     // télégraphes (cases dangereuses)
+    // zones persistantes (toile gluante, brume venimeuse) sous les unités
+    (c.hazards || []).forEach(function (hz) {
+      var p = iso(hz.x, hz.y), k = clamp((clock - (objBorn["h" + hz.x + "," + hz.y] || -9)) / 0.4, 0, 1), glue = hz.kind === "glue";
+      g.save(); g.globalAlpha = 0.85 * k;
+      g.fillStyle = glue ? "rgba(190,230,255,.22)" : "rgba(80,200,90,.28)"; ART.diamond(g, p.x, p.y, HW * 0.92, HH * 0.92); g.fill();
+      g.strokeStyle = glue ? "rgba(235,248,255,.85)" : "rgba(130,255,120,.7)"; g.lineWidth = 1.2;
+      if (glue) { for (var gi = 0; gi < 4; gi++) { var ga = gi * Math.PI / 4; g.beginPath(); g.moveTo(p.x - Math.cos(ga) * HW * 0.8, p.y - Math.sin(ga) * HH * 0.8); g.lineTo(p.x + Math.cos(ga) * HW * 0.8, p.y + Math.sin(ga) * HH * 0.8); g.stroke(); } g.beginPath(); g.ellipse(p.x, p.y, HW * 0.45, HH * 0.45, 0, 0, TAU); g.stroke(); g.beginPath(); g.ellipse(p.x, p.y, HW * 0.75, HH * 0.75, 0, 0, TAU); g.stroke(); }
+      else { for (var vi = 0; vi < 3; vi++) { var va = clock * 0.8 + vi * 2.1 + hz.x; ART.circ(g, p.x + Math.cos(va) * 14, p.y - 4 + Math.sin(va) * 6 - vi * 3, 8, "rgba(110,230,110,.28)"); } }
+      g.restore();
+      if (k >= 1 && hz.turns != null) label(g, p.x, p.y - 4, String(hz.turns), glue ? "#e6f6ff" : "#aaff9a", 10);
+    });
     c.tele.forEach(function (tl) {
+      var trap = tl.kind === "trap", cr = trap ? "190,110,255" : "255,40,70", sc = trap ? "#c77dff" : "#ff5a6a";
       tl.cells.forEach(function (q) {
-        var pulse = 0.35 + Math.sin(clock * 8) * 0.15;
-        fillCell(g, q[0], q[1], "rgba(255,40,70," + pulse + ")", 2); strokeCell(g, q[0], q[1], "#ff5a6a", 2, 2);
+        var pulse = 0.3 + Math.sin(clock * 8) * 0.15;
+        fillCell(g, q[0], q[1], "rgba(" + cr + "," + pulse + ")", 2); strokeCell(g, q[0], q[1], sc, 2, 2);
       });
+      if (tl.push && tl.cx != null) tl.cells.forEach(function (q) {
+        var dx = q[0] - tl.cx, dy = q[1] - tl.cy, n = Math.abs(dx) + Math.abs(dy); if (!n) return;
+        var p = iso(q[0], q[1]), q2 = iso(q[0] + Math.sign(dx) * 0.6, q[1] + Math.sign(dy) * 0.6), ang = Math.atan2(q2.y - p.y, q2.x - p.x);
+        g.save(); g.translate(p.x, p.y); g.rotate(ang); g.fillStyle = "rgba(255,230,150,.9)"; g.beginPath(); g.moveTo(14, 0); g.lineTo(0, -7); g.lineTo(3, 0); g.lineTo(0, 7); g.closePath(); g.fill(); g.restore();
+      });
+      if (tl.name && tl.cells[0]) { var lp = iso(tl.cells[0][0], tl.cells[0][1]); label(g, lp.x, lp.y - 18, tl.name + " · " + tl.dmg, sc, 11); }
     });
     // portée de déplacement d'un ennemi survolé
     var hu = hoverObj && hoverObj.unit ? A.uById(c, hoverObj.unit) : null;
@@ -744,6 +769,9 @@
       var p = iso(v.gx, v.gy), h = u.boss ? 150 : u.summon ? (u.cls === "dame" ? 84 : 66) : u.side === 0 ? 102 + (w.players[u.pi] && w.players[u.pi].profile.riding && w.players[u.pi].profile.mount ? 32 : 0) : 76;
       if (v.jump) h += 40;
       hpBar(g, p.x, p.y - h, u);
+      var shown = {}, ix = 0; u.status.forEach(function (st) { if (!st.deb || shown[st.k]) return; shown[st.k] = 1; ix++; });
+      if (ix) { var n = 0, SX = p.x - (ix * 15) / 2 + 7; Object.keys(shown).forEach(function (k) { var F = STATUS_FX[k] || STATUS_FX.dom; ART.circ(g, SX + n * 15, p.y - h + 18, 7, "rgba(20,14,40,.85)"); g.strokeStyle = F[2]; g.lineWidth = 1.4; g.beginPath(); g.arc(SX + n * 15, p.y - h + 18, 7, 0, TAU); g.stroke(); g.font = "10px sans-serif"; g.textAlign = "center"; g.fillStyle = F[2]; g.fillText(F[0], SX + n * 15, p.y - h + 21.5); n++; }); }
+      if (u.status.some(function (st) { return st.k === "mark"; })) { var my2 = p.y - 38 + Math.sin(clock * 5) * 2; g.save(); g.strokeStyle = "#ff5a6a"; g.lineWidth = 2; g.beginPath(); g.arc(p.x, my2, 16, 0, TAU); g.moveTo(p.x - 22, my2); g.lineTo(p.x - 9, my2); g.moveTo(p.x + 9, my2); g.lineTo(p.x + 22, my2); g.moveTo(p.x, my2 - 22); g.lineTo(p.x, my2 - 9); g.moveTo(p.x, my2 + 9); g.lineTo(p.x, my2 + 22); g.stroke(); g.restore(); }
     });
   }
   function rangeCells(u, s) {
@@ -780,6 +808,13 @@
       ART.poly(g, [0, -16, 10, 0, 0, 16, -10, 0], "#7ff6ff", "#ffffff", 2); ART.poly(g, [0, -16, 10, 0, 0, 0], "#ffffff");
       g.restore();
       label(g, p.x, fy - 26, String(o.turns), "#7ff6ff", 11);
+    } else if (o.kind === "silk") {
+      var sh = 30 * k;
+      g.save(); g.strokeStyle = "rgba(240,245,255,.95)"; g.lineWidth = 1.4;
+      g.fillStyle = "rgba(210,235,255,.28)"; ART.diamond(g, p.x, p.y, HW * 0.85, HH * 0.85); g.fill();
+      g.beginPath(); g.moveTo(p.x - HW * 0.7, p.y); g.lineTo(p.x, p.y - sh); g.lineTo(p.x + HW * 0.7, p.y); g.moveTo(p.x, p.y + HH * 0.7); g.lineTo(p.x, p.y - sh); g.moveTo(p.x - HW * 0.4, p.y - HH * 0.4); g.lineTo(p.x, p.y - sh); g.moveTo(p.x + HW * 0.4, p.y - HH * 0.4); g.lineTo(p.x, p.y - sh); g.stroke();
+      g.beginPath(); g.ellipse(p.x, p.y - sh * 0.3, HW * 0.5, HH * 0.5, 0, 0, TAU); g.stroke(); g.restore();
+      if (k >= 1) label(g, p.x, p.y - sh - 8, String(o.turns), "#e6f6ff", 10);
     } else if (o.kind === "smoke") {
       g.save(); g.globalAlpha = 0.7 * k;
       for (var i = 0; i < 4; i++) { var a = clock * 0.8 + i * 1.6 + o.x; ART.circ(g, p.x + Math.cos(a) * 14, p.y - 14 + Math.sin(a) * 6 - i * 6, 16 + i * 2, i % 2 ? "#d8dcef" : "#b9bed8"); }
@@ -983,7 +1018,15 @@
       '<p class="at-tip-m"><span>❤ ' + u.hp + " / " + u.maxHp + (sh ? " (+" + sh + ")" : "") + "</span><span>" + u.maxPa + " PA</span><span>" + u.maxPm + " PM</span>" + (u.res ? "<span>" + (u.res + A.statusSum(u, "res")) + " % rés.</span>" : "") + "</p>";
     if (u.affix) html += '<p class="at-tip-gold">Élite : ' + esc(A.AFFIXES[u.affix].name) + "</p>";
     if (u.summon) html += "<p>" + esc(A.SUMMONS[u.cls].desc) + "</p>";
-    if (u.side === 1) html += "<p>" + A.MOBS[u.type].spells.map(function (s) { var M = A.MOB_SPELLS[s]; return esc(M.name) + (M.dmg ? " (" + M.dmg + ")" : M.heal ? " (soin)" : ""); }).join(" · ") + "</p>";
+    if (u.side === 1) {
+      var MD = A.MOBS[u.type], RL = { kite: "Tireur : garde ses distances", brute: "Brute : charge et repousse", teleport: "Fantôme : se téléporte", control: "Contrôle : pièges et toiles", disruptor: "Perturbateur : draine PA/PM", support: "Soutien", skirm: "Harceleur", boss: "Boss" };
+      if (MD.role && RL[MD.role]) html += '<p class="at-tip-gold">' + RL[MD.role] + "</p>";
+      var sl = (u.spl || MD.spells).map(function (s) { return typeof s === "string" ? A.MOB_SPELLS[s] : s; });
+      html += sl.map(function (M) { if (!M) return ""; var S = M.S || M, rg = S.range && S.range[1] > 1 ? " · PO " + S.range[0] + "-" + S.range[1] : S.range && S.range[1] === 1 ? " · mêlée" : ""; return '<p class="at-tip-sp"><b style="color:' + (S.col || "#fff") + '">' + esc(S.name) + "</b>" + (S.dmg ? " " + S.dmg + " dég." : S.heal ? " soin" : "") + esc(rg) + (S.cd ? " · rech. " + S.cd : "") + (S.info ? '<br><span class="at-tip-dim">' + esc(S.info) + "</span>" : "") + "</p>"; }).join("");
+      var ss = u.status.filter(function (st) { return st.deb || st.turns > 0; }).map(function (st) { return esc(st.name || st.k) + " (" + st.turns + ")"; });
+      if (ss.length) html += '<p class="at-tip-warn">États : ' + ss.join(", ") + "</p>";
+      if (u.elem) { var rs = Object.keys(u.elem).filter(function (k) { return u.elem[k]; }).map(function (k) { return A.ELEMENTS[k].name + " " + (u.elem[k] > 0 ? "+" : "") + u.elem[k] + " %"; }); if (rs.length) html += '<p class="at-tip-dim">Résistances : ' + rs.join(" · ") + "</p>"; }
+    }
     if (u.side === 1 && w.combat.phase === "fight") html += '<p class="at-tip-dim">En rouge : là où il peut marcher</p>';
     return html;
   }
