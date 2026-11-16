@@ -3345,3 +3345,33 @@ a.account-admin { text-decoration: none; }
 .at-dr.win { border-color: #d9a21f; box-shadow: 0 0 14px rgba(255, 210, 87, .35) inset; }
 .at-prof { display: flex; gap: 12px; align-items: center; }
 @media (max-width: 640px) { .at-trade, .at-arena, .at-duelres { grid-template-columns: 1fr; } }
+
+/* ===== Arcane Tactics : boutiques par zone, familles d'équipement, objets plus compacts ===== */
+.at-it-h img { width: 26px; height: 26px; }
+.at-bagc img { width: 22px; height: 22px; }
+.at-slot img, .at-cs-eq img { width: 28px; height: 28px; }
+.at-it { padding: 8px 10px; border-radius: 12px; }
+.at-it ul { font-size: .8rem; }
+.at-loot-grid { grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 8px; }
+.at-fam { margin: 6px 0 0; padding: 5px 7px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--fc) 70%, transparent); background: color-mix(in srgb, var(--fc) 14%, transparent); font-size: .72rem; display: flex; flex-direction: column; gap: 1px; }
+.at-fam b { color: var(--fc); }
+.at-fam small { opacity: .7; font-weight: 700; }
+.at-fam span { opacity: .55; }
+.at-fam span.on { opacity: 1; color: #5dff9a; font-weight: 800; }
+.at-merch { display: grid; grid-template-columns: 1fr 120px; gap: 10px; align-items: stretch; margin: 6px 0; }
+.at-merch-h { padding: 8px 12px; border-radius: 12px; border: 2px solid var(--fc); background: linear-gradient(160deg, color-mix(in srgb, var(--fc) 22%, #1a1230), #120c26); color: #f4ecd8; display: flex; flex-direction: column; gap: 3px; }
+.at-merch-h b { color: var(--fc); font-size: 1rem; }
+.at-merch-h span { font-style: italic; font-size: .85rem; }
+.at-merch-h small { opacity: .75; font-size: .72rem; }
+.at-prev { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 6px; border-radius: 12px; background: radial-gradient(circle at 50% 40%, rgba(176, 125, 255, .3), rgba(20, 12, 40, .6)); border: 1px solid rgba(201, 138, 58, .45); color: #f4ecd8; }
+.at-prev small { font-size: .65rem; line-height: 1.2; margin-top: 2px; }
+.at-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.at-chips button { padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(201, 138, 58, .6); background: rgba(42, 33, 80, .12); font: 800 .72rem Nunito, sans-serif; cursor: pointer; color: inherit; }
+.at-chips button.on { background: #c98a3a; color: #fff; border-color: #c98a3a; }
+.at-chips.r button { border-color: var(--rc, #c98a3a); }
+.at-chips.r button.on { background: var(--rc, #c98a3a); color: #1a1230; }
+.at-mats { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; }
+.at-loot-i.sel .at-it { outline: 3px solid #ffd257; }
+.at-loot-i.mine { position: relative; }
+.at-mine { position: absolute; top: -7px; right: 8px; z-index: 2; padding: 1px 8px; border-radius: 999px; background: #2f8a57; color: #fff; font: 800 .62rem Nunito, sans-serif; }
+@media (max-width: 640px) { .at-merch { grid-template-columns: 1fr; } .at-prev { flex-direction: row; gap: 8px; } }

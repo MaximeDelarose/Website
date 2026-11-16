@@ -436,14 +436,14 @@
 
   /* ====================== QUÊTES ====================== */
   var QUESTS = [
-    { id: "q1", name: "Premiers pas", desc: "Vaincre 4 Glorbes dans la Prairie des Runes.", kind: "kill", mob: "glorbe", n: 4, xp: 60, gold: 40, item: "magique" },
+    { id: "q1", name: "Premiers pas", desc: "Vaincre 4 Glorbes dans les Prairies Anciennes.", kind: "kill", mob: "glorbe", n: 4, xp: 60, gold: 40, item: "magique" },
     { id: "q2", name: "Nuisibles", desc: "Vaincre 3 Scarabrumes.", kind: "kill", mob: "scarabrume", n: 3, req: "q1", xp: 90, gold: 60, item: "rare" },
     { id: "qi", name: "Le donjon d'Incarnam", desc: "Vaincre la Sentinelle au fond du donjon d'Incarnam (portail au nord de la Prairie).", kind: "kill", mob: "sentinelle", n: 1, req: "q2", xp: 220, gold: 150, item: "epique" },
     { id: "q3", name: "Bois Fractal", desc: "Atteindre le niveau 3, battre Incarnam et entrer dans le Bois Fractal.", kind: "zone", zone: "bois", req: "q2", xp: 120, gold: 80, item: "rare" },
     { id: "qr", name: "L'Ancien Sylvestre", desc: "Vaincre l'Ancien Sylvestre au Cœur du Bois Fractal (portail au nord du Bois). Il garde la route du Marais.", kind: "kill", mob: "sylvestre", n: 1, req: "q3", xp: 300, gold: 180, item: "epique" },
     { id: "q4", name: "Lanternes folles", desc: "Vaincre 5 Lanterneaux.", kind: "kill", mob: "lanterneau", n: 5, req: "q3", xp: 180, gold: 120, item: "rare" },
     { id: "q5", name: "Chasse aux élites", desc: "Vaincre 3 monstres élites (contour doré).", kind: "elite", n: 3, req: "q4", xp: 260, gold: 160, item: "epique" },
-    { id: "q6", name: "Les Falaises", desc: "Atteindre les Falaises de Cristal.", kind: "zone", zone: "falaises", req: "q5", xp: 300, gold: 200, item: "epique" },
+    { id: "q6", name: "Les Falaises", desc: "Atteindre les Ruines Prismatiques.", kind: "zone", zone: "falaises", req: "q5", xp: 300, gold: 200, item: "epique" },
     { id: "q7", name: "Cœur de pierre", desc: "Vaincre 4 Golems de rune.", kind: "kill", mob: "golem", n: 4, req: "q6", xp: 420, gold: 260, item: "epique" },
     { id: "qm1", name: "Ça bulle", desc: "Entrer dans le Marais Bulleux (portail au sud du Bois Fractal).", kind: "zone", zone: "marais", req: "q3", xp: 160, gold: 100, item: "rare" },
     { id: "qm2", name: "Sucre d'orge", desc: "Vaincre 5 Bonbonks.", kind: "kill", mob: "bonbonk", n: 5, req: "qm1", xp: 240, gold: 150, item: "epique" },
@@ -451,30 +451,30 @@
     { id: "q8", name: "L'Archonte", desc: "Vaincre l'Archonte fractal au fond du Sanctuaire brisé.", kind: "kill", mob: "archonte", n: 1, req: "q7", xp: 900, gold: 500, item: "legendaire" },
     { id: "qn1", name: "Tête dans les nuages", desc: "Atteindre les Îles Cotonneuses (à l'est des Falaises).", kind: "zone", zone: "nuages", req: "q8", xp: 500, gold: 300, item: "epique" },
     { id: "qn2", name: "L'heure tourne", desc: "Vaincre 4 Horlogeons.", kind: "kill", mob: "horlogeon", n: 4, req: "qn1", xp: 700, gold: 400, item: "legendaire" },
-    { id: "qd", name: "Le Dopeul", desc: "Niveau 100 : affronter ton propre reflet chez le Maître des Dopeuls, à Lumebourg.", kind: "kill", mob: "dopeul", n: 1, req: "qn3", xp: 5000, gold: 3000, item: "legendaire" },
+    { id: "qd", name: "Le Dopeul", desc: "Niveau 100 : affronter ton propre reflet chez le Maître des Dopeuls, au Village des Éclats.", kind: "kill", mob: "dopeul", n: 1, req: "qn3", xp: 5000, gold: 3000, item: "legendaire" },
     { id: "qn3", name: "Le Grand Tic-Tac", desc: "Vaincre le Grand Tic-Tac au sommet de la Tour des Horloges.", kind: "kill", mob: "tictac", n: 1, req: "qn2", xp: 1500, gold: 900, item: "legendaire" },
   ];
 
   /* ====================== ZONES ====================== */
   var ZONES = {
-    village: { name: "Lumebourg", sub: "Village", w: 20, h: 18, lvl: [1, 1], safe: true, theme: "village", seed: 101,
-      portals: [{ x: 19, y: 9, to: "prairie", label: "Prairie des Runes" }],
+    village: { name: "Village des Éclats", sub: "Village", w: 20, h: 18, lvl: [1, 1], safe: true, theme: "village", seed: 101,
+      portals: [{ x: 19, y: 9, to: "prairie", label: "Prairies Anciennes" }],
       spawn: { x: 9, y: 9 } },
-    prairie: { name: "Prairie des Runes", sub: "Niv. 1 à 3", w: 26, h: 22, lvl: [1, 3], theme: "prairie", seed: 202, packs: 6, size: [1, 3],
+    prairie: { name: "Prairies Anciennes", sub: "Niv. 1 à 3", w: 26, h: 22, lvl: [1, 3], theme: "prairie", seed: 202, packs: 6, size: [1, 3],
       mobs: ["glorbe", "glorbe", "scarabrume", "ronceau"],
-      portals: [{ x: 0, y: 11, to: "village", label: "Lumebourg" }, { x: 25, y: 11, to: "bois", req: 3, dng: "incarnam", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:incarnam", req: 2, label: "Donjon d'Incarnam" }] },
+      portals: [{ x: 0, y: 11, to: "village", label: "Village des Éclats" }, { x: 25, y: 11, to: "bois", req: 3, dng: "incarnam", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:incarnam", req: 2, label: "Donjon d'Incarnam" }] },
     bois: { name: "Bois Fractal", sub: "Niv. 3 à 6", w: 26, h: 24, lvl: [3, 6], theme: "bois", seed: 303, packs: 7, size: [2, 3],
       mobs: ["ronceau", "lanterneau", "sylphe", "scarabrume", "lanterneau"],
-      portals: [{ x: 0, y: 12, to: "prairie", label: "Prairie des Runes" }, { x: 25, y: 12, to: "falaises", req: 5, dng: "confiserie", label: "Falaises de Cristal" }, { x: 13, y: 23, to: "marais", req: 4, dng: "racines", label: "Marais Bulleux" }, { x: 13, y: 0, to: "dungeon:racines", req: 4, label: "Cœur du Bois Fractal (donjon)" }] },
+      portals: [{ x: 0, y: 12, to: "prairie", label: "Prairies Anciennes" }, { x: 25, y: 12, to: "falaises", req: 5, dng: "confiserie", label: "Ruines Prismatiques" }, { x: 13, y: 23, to: "marais", req: 4, dng: "racines", label: "Marais Bulleux" }, { x: 13, y: 0, to: "dungeon:racines", req: 4, label: "Cœur du Bois Fractal (donjon)" }] },
     marais: { name: "Marais Bulleux", sub: "Niv. 4 à 7 · grenouilles et bonbons", w: 26, h: 22, lvl: [4, 7], theme: "marais", seed: 505, packs: 7, size: [2, 3], elite: 0.15,
       mobs: ["grenouillon", "bonbonk", "grenouillon", "lanterneau", "glorbe"],
       portals: [{ x: 13, y: 0, to: "bois", label: "Bois Fractal" }, { x: 25, y: 11, to: "dungeon:confiserie", req: 5, label: "Confiserie de la Reine Guimauve (donjon)" }] },
-    falaises: { name: "Falaises de Cristal", sub: "Niv. 6 à 9", w: 26, h: 24, lvl: [6, 9], theme: "falaises", seed: 404, packs: 7, size: [2, 4], elite: 0.2,
+    falaises: { name: "Ruines Prismatiques", sub: "Niv. 6 à 9", w: 26, h: 24, lvl: [6, 9], theme: "falaises", seed: 404, packs: 7, size: [2, 4], elite: 0.2,
       mobs: ["golem", "cristallin", "sylphe", "lanterneau", "cristallin"],
       portals: [{ x: 0, y: 12, to: "bois", label: "Bois Fractal" }, { x: 13, y: 0, to: "dungeon:sanctuaire", req: 7, label: "Sanctuaire brisé (donjon)" }, { x: 25, y: 12, to: "nuages", req: 9, dng: "sanctuaire", label: "Îles Cotonneuses" }] },
     nuages: { name: "Îles Cotonneuses", sub: "Niv. 9 à 12 · au-dessus des nuages", w: 26, h: 22, lvl: [9, 12], theme: "nuages", seed: 606, packs: 7, size: [2, 4], elite: 0.25,
       mobs: ["nuagelet", "horlogeon", "nuagelet", "cristallin", "sylphe"],
-      portals: [{ x: 0, y: 11, to: "falaises", label: "Falaises de Cristal" }, { x: 13, y: 21, to: "dungeon:horloge", req: 10, label: "Tour des Horloges (donjon)" }] },
+      portals: [{ x: 0, y: 11, to: "falaises", label: "Ruines Prismatiques" }, { x: 13, y: 21, to: "dungeon:horloge", req: 10, label: "Tour des Horloges (donjon)" }] },
   };
   var ZONE_IDS = ["village", "prairie", "bois", "marais", "falaises", "nuages"];
   var DUNGEONS = {
@@ -547,7 +547,7 @@
     Z.portals.forEach(function (p) { g[p.x][p.y] = 2; delete deco[key(p.x, p.y)]; });
     if (Z.theme !== "village") {
       // amas de décor
-      var dens = Z.theme === "bois" ? 0.17 : Z.theme === "falaises" ? 0.15 : Z.theme === "marais" ? 0.16 : Z.theme === "nuages" ? 0.14 : 0.11;
+      var dens = EXT.dens[Z.theme] || (Z.theme === "bois" ? 0.17 : Z.theme === "falaises" ? 0.15 : Z.theme === "marais" ? 0.16 : Z.theme === "nuages" ? 0.14 : 0.11);
       for (x = 1; x < W - 1; x++) for (y = 1; y < H - 1; y++) {
         if (path[key(x, y)]) continue;
         var near = 0;
@@ -587,6 +587,7 @@
     return m;
   }
   function borderDeco(theme, r) {
+    if (EXT.deco[theme]) return EXT.deco[theme]("border", r);
     if (theme === "falaises") return { t: r() < 0.6 ? "cliff" : "crystal", s: 0.9 + r() * 0.4, v: r() };
     if (theme === "village") return { t: r() < 0.5 ? "fence" : "tree", s: 0.9 + r() * 0.3, v: r() };
     if (theme === "marais") return { t: r() < 0.5 ? "bigshroom" : "pine", s: 1 + r() * 0.4, v: r() };
@@ -594,6 +595,7 @@
     return { t: r() < 0.75 ? "tree" : "rock", s: 0.95 + r() * 0.45, v: r() };
   }
   function fieldDeco(theme, r) {
+    if (EXT.deco[theme]) return EXT.deco[theme]("field", r);
     var v = r();
     if (theme === "prairie") return { t: v < 0.45 ? "tree" : v < 0.75 ? "bush" : v < 0.92 ? "rock" : "rune", s: 0.8 + r() * 0.4, v: r() };
     if (theme === "bois") return { t: v < 0.6 ? "pine" : v < 0.8 ? "mushroom" : v < 0.92 ? "rock" : "rune", s: 0.85 + r() * 0.5, v: r() };
@@ -650,6 +652,7 @@
     return { w: AW, h: AH, g: g, deco: deco, tint: tint, heroCells: heroCells, mobCells: mobCells, theme: theme };
   }
   function arenaDeco(theme, r) {
+    if (EXT.deco[theme]) return EXT.deco[theme]("arena", r);
     var v = r();
     if (theme === "arene") return { t: v < 0.4 ? "pillar" : v < 0.75 ? "crystal" : "rune", s: 1.05 + r() * 0.3, v: r() };
     if (theme === "donjon") return { t: v < 0.5 ? "pillar" : "crystal", s: 1 + r() * 0.25, v: r() };
@@ -705,6 +708,7 @@
       for (var k in it.st) s[k] = (s[k] || 0) + it.st[k];
       if (it.power && s.powers.indexOf(it.power) < 0) s.powers.push(it.power);
     });
+    if (EXT.heroStats) EXT.heroStats(p, s);
     s.hp = C.hp + C.hpL * (L - 1) + s.vit;
     s.elem = { terre: s.for, feu: s.int, eau: s.cha, air: s.agi };
     s.heal = s.int;
@@ -776,6 +780,7 @@
     if (rarityIdx < 4) name += " " + ITEM_SUFFIX[main2];
     var it = { uid: p.uid++, slot: slot, r: rarityIdx, lvl: L, name: name, st: st, power: power, look: look, isNew: true };
     it.value = Math.round((6 + L * 3) * rar.sell);
+    if (EXT.onItem) EXT.onItem(it, p, L, rarityIdx);
     return it;
   }
 
@@ -814,7 +819,7 @@
     bump(w);
   }
   // points d'extension : les modules (bestiaire, IA, échanges, duels…) s'y branchent sans toucher au moteur
-  var EXT = { onSpawn: null, onCombat: null, aiStep: null, aiDo: null, cmds: {}, onTurnStart: null, afterDamage: null, composePack: null, onFinish: null, onStepExplore: null, onRemove: null, onLoot: null };
+  var EXT = { onSpawn: null, onCombat: null, aiStep: null, aiDo: null, cmds: {}, onTurnStart: null, afterDamage: null, composePack: null, onFinish: null, onStepExplore: null, onRemove: null, onLoot: null, onItem: null, heroStats: null, shopStock: null, deco: {}, dens: {} };
   function ev(w, e) { w.events.push(e); }
   function bump(w) { w.rev++; }
   function say(w, text, pi) { ev(w, { k: "msg", text: text, pi: pi == null ? -1 : pi }); }
@@ -822,8 +827,9 @@
   function partyLevel(w) { var m = 1; w.players.forEach(function (p) { if (p) m = Math.max(m, p.profile.level); }); return m; }
   function avgLevel(w) { var s = 0, n = 0; w.players.forEach(function (p) { if (p) { s += p.profile.level; n++; } }); return n ? s / n : 1; }
 
+  var curW = null;
   function enterZone(w, id, fromZone) {
-    w.zone = id;
+    curW = w; w.zone = id;
     var m = zoneMap(id), Z = ZONES[id], at = m.spawn;
     if (fromZone) Z.portals.forEach(function (p) { if (p.to === fromZone) at = { x: p.x, y: p.y }; });
     w.heroes.forEach(function (h, i) {
@@ -2001,6 +2007,7 @@
     if (st && w.t - st.t < 600) return st.items;
     var lvl = Z.safe ? Math.max(2, partyLevel(w)) : Z.lvl[1];
     var fake = { cls: CLASS_IDS[Math.floor(R() * CLASS_IDS.length)], uid: 1 }, items = [];
+    if (EXT.shopStock && (items = EXT.shopStock(w, zone, lvl, fake) || [])) { if (items.length) { w.stock[zone] = { t: w.t, items: items }; return items; } }
     for (var i = 0; i < 8; i++) {
       fake.cls = CLASS_IDS[Math.floor(R() * CLASS_IDS.length)];
       var it = makeItem(fake, lvl + ri(R, 0, 2), rollRarity(1, 1)); it.uid = w.packId++;
@@ -2147,7 +2154,7 @@
     chestPrice: chestPrice, partyLevel: partyLevel, partyHasDungeon: partyHasDungeon, checkEnd: checkEnd, startDungeon: startDungeon, enterZone: enterZone, statusSum: statusSum, aiStep: aiStep, aiDo: aiDo,
   };
   API.I = { R: R, rng: rng, ri: ri, pick: pick, clamp: clamp, sgn: sgn, key: key, DX: DX, DY: DY,
-    genArena: genArena, heroStats: heroStats, damage: damage, heal: heal, addShield: addShield, knock: knock, teleport: teleport, kill: kill, applyStatus: applyStatus, triggerHazards: triggerHazards, hazardAt: hazardAt, hazardFor: hazardFor,
+    cur: function () { return curW; }, genArena: genArena, heroStats: heroStats, damage: damage, heal: heal, addShield: addShield, knock: knock, teleport: teleport, kill: kill, applyStatus: applyStatus, triggerHazards: triggerHazards, hazardAt: hazardAt, hazardFor: hazardFor,
     ev: ev, bump: bump, cellFree: cellFree, groundOk: groundOk, inArena: inArena, blocksLos: blocksLos, shapeOk: shapeOk, plus: plus, ring8: ring8, disc: disc, wallCells: wallCells, lineFrom: lineFrom,
     findPath: findPath, combatPath: combatPath, moveUnit: moveUnit, endTurn: endTurn, afterAction: afterAction, addMob: addMob, addSummon: addSummon, mySummons: mySummons, computeOrder: computeOrder,
     unitAt: unitAt, objAt: objAt, faceOf: faceOf, losFrom: losFrom, startCombat: startCombat, finishCombat: finishCombat, giveXp: giveXp, zone: zone, spellCost: spellCost,

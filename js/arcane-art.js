@@ -875,6 +875,8 @@
     if (o.alpha != null) g.globalAlpha = o.alpha;
     g.scale(s, s);
     var sway = Math.sin(t * 1.2 + v * 9) * 1.5;
+    var XD = root.AT_ART && root.AT_ART.decoExt && root.AT_ART.decoExt[d.t];
+    if (XD) { XD(g, d, t); g.restore(); return; }
     switch (d.t) {
       case "tree": {
         shadow(g, 0, 2, 22, 0.25);
