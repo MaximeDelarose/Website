@@ -3313,3 +3313,35 @@ a.account-admin { text-decoration: none; }
 /* bouton « Recharger sans cache » de l'en-tête */
 .reload-btn.is-busy svg { animation: reload-spin .7s steps(8) infinite; }
 @keyframes reload-spin { to { transform: rotate(360deg); } }
+
+/* ===== Arcane Tactics : échanges, défis, arène ===== */
+.at-ctx { position: absolute; z-index: 40; min-width: 168px; padding: 6px; border-radius: 12px; background: linear-gradient(180deg, #2a1f45, #1a1230); border: 2px solid #c98a3a; box-shadow: 0 10px 28px rgba(0, 0, 0, .55); display: flex; flex-direction: column; gap: 4px; }
+.at-ctx[hidden] { display: none; }
+.at-ctx header { padding: 2px 8px 6px; border-bottom: 1px solid rgba(201, 138, 58, .4); color: #f4ecd8; display: flex; flex-direction: column; line-height: 1.2; }
+.at-ctx header small { color: #8fe9ff; font-weight: 700; }
+.at-ctx button { text-align: left; padding: 8px 10px; border-radius: 8px; border: 0; background: rgba(255, 255, 255, .06); color: #f4ecd8; font: 700 .85rem Nunito, sans-serif; cursor: pointer; }
+.at-ctx button:hover:not(:disabled) { background: rgba(201, 138, 58, .35); }
+.at-ctx button:disabled { opacity: .4; cursor: not-allowed; }
+.at-card-trade { width: min(860px, 100%); }
+.at-trade { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.at-trade section, .at-arena section, .at-dr { padding: 10px 12px; border-radius: 12px; background: rgba(42, 33, 80, .12); border: 1px solid rgba(201, 138, 58, .35); }
+.at-trade h3, .at-arena h3, .at-dr h3 { margin: 0 0 6px; font-size: .95rem; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.at-trade h4 { margin: 8px 0 4px; font-size: .75rem; opacity: .7; text-transform: uppercase; letter-spacing: .06em; }
+.at-offer { display: flex; flex-wrap: wrap; gap: 4px; min-height: 36px; padding: 4px; border-radius: 8px; background: rgba(0, 0, 0, .18); border: 1px dashed rgba(201, 138, 58, .5); align-items: center; }
+.at-bag-s { max-height: 150px; overflow: auto; display: flex; flex-wrap: wrap; gap: 4px; }
+.at-bag-s .at-bagc.on { outline: 2px solid #ffd257; box-shadow: 0 0 10px rgba(255, 210, 87, .6); }
+.at-mat { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-weight: 700; font-size: .85rem; }
+.at-mat input[type=number] { width: 72px; padding: 3px 6px; border-radius: 6px; border: 1px solid #c98a3a; background: #1a1230; color: #f4ecd8; }
+.at-mat select { padding: 4px 6px; border-radius: 6px; border: 1px solid #c98a3a; background: #1a1230; color: #f4ecd8; }
+.at-ok { color: #3fa56a; font-size: .75rem; } .at-wait { color: #d98a1f; font-size: .75rem; }
+.at-arena { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0; }
+.at-diffs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+.at-diffs .btn small { display: block; font-size: .65rem; opacity: .8; }
+.at-hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: .85rem; }
+.at-hist li.w { color: #2f8a57; } .at-hist li.l { color: #c0485a; }
+.at-hist small { opacity: .7; }
+.at-tuto { margin: 6px 0; font-size: .85rem; }
+.at-duelres { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0; }
+.at-dr.win { border-color: #d9a21f; box-shadow: 0 0 14px rgba(255, 210, 87, .35) inset; }
+.at-prof { display: flex; gap: 12px; align-items: center; }
+@media (max-width: 640px) { .at-trade, .at-arena, .at-duelres { grid-template-columns: 1fr; } }

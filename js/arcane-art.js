@@ -21,6 +21,7 @@
     prairie: { top: ["#a6e65c", "#98dc4e", "#b4ee6c"], path: ["#f0cf7e", "#e6c26a"], side: "#63a83a", side2: "#4d8c2c", water: "#3fb4f2", line: "rgba(30,70,20,.16)" },
     bois: { top: ["#4fb86a", "#45aa5e", "#5cc676"], path: ["#c9a062", "#bd9255"], side: "#2f7f46", side2: "#236536", water: "#2f9fd0", line: "rgba(10,50,20,.18)" },
     falaises: { top: ["#b8d2f0", "#a9c6ea", "#c6dcf5"], path: ["#eadfc6", "#dfd2b4"], side: "#6f8ab8", side2: "#566e98", water: "#5fe0ff", line: "rgba(30,50,90,.14)" },
+    arene: { top: ["#3b3350", "#352d49", "#42395a"], path: ["#4c4268", "#453b60"], side: "#231d36", side2: "#181326", water: "#7a4cd0", line: "rgba(255,210,120,.10)" },
     donjon: { top: ["#5d527c", "#564b74", "#655a86"], path: ["#6d6290", "#655a86"], side: "#3a3156", side2: "#2a2342", water: "#9f6cff", line: "rgba(255,255,255,.06)" },
     marais: { top: ["#3fa37a", "#36966e", "#4ab086"], path: ["#a08a58", "#927c4e"], side: "#236e4f", side2: "#19533c", water: "#2fd6c0", line: "rgba(10,50,30,.18)" },
     nuages: { top: ["#f3eefc", "#ebe4f8", "#faf6ff"], path: ["#ffd9ec", "#ffcde6"], side: "#c9b8e8", side2: "#b3a0d9", water: "#9fd8ff", line: "rgba(120,90,160,.10)" },

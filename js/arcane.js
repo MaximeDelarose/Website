@@ -22,6 +22,7 @@
   var card = stage.querySelector("[data-card]");
 
   function $(sel, el) { return (el || stage).querySelector(sel); }
+  function $$(sel, el) { return Array.prototype.slice.call((el || stage).querySelectorAll(sel)); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -301,7 +302,7 @@
       case "turn":
         if (u) {
           sel = null; pendingTap = null; cam.free = false;
-          if (u.side === 0 && isLocal(u.pi) && !u.summon) { banner(duo ? "Au tour de " + u.name : "À toi de jouer !", u.pa + " PA · " + u.pm + " PM", "turn"); SFX.turn(); }
+          if (!u.ai && isLocal(u.pi) && !u.summon) { banner(duo ? "Au tour de " + u.name : "À toi de jouer !", u.pa + " PA · " + u.pm + " PM", "turn"); SFX.turn(); }
           if (u.side === 0) focusPi = isLocal(u.pi) ? u.pi : focusPi;
         }
         break;
@@ -606,9 +607,9 @@
         var hv = hoverObj && hoverObj.npc === n.id;
         label(g, p.x, p.y - 78, n.name, hv ? "#ffd257" : "#fff", 13);
         var bob = Math.sin(clock * 3) * 3;
-        ART.circ(g, p.x, p.y - 98 + bob, 10, n.role === "quests" ? "#ffd257" : n.role === "dopeul" ? "#c77dff" : "#ff9a3c");
+        ART.circ(g, p.x, p.y - 98 + bob, 10, n.role === "quests" ? "#ffd257" : n.role === "dopeul" ? "#c77dff" : n.role === "arena" ? "#ff5a6a" : "#ff9a3c");
         g.fillStyle = "#3a2618"; g.font = "900 14px Nunito, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
-        g.fillText(n.role === "quests" ? "!" : n.role === "dopeul" ? "👁" : "$", p.x, p.y - 97 + bob);
+        g.fillText(n.role === "quests" ? "!" : n.role === "dopeul" ? "👁" : n.role === "arena" ? "⚔" : "$", p.x, p.y - 97 + bob);
       } });
     });
     w.packs.forEach(function (pk) {
@@ -675,7 +676,7 @@
       if (k === 4) { drawTile(g, x, y, "#0d0f16", below || right ? 34 : 0, below ? T.side : null, right ? T.side2 : null, "rgba(0,0,0,.5)"); continue; }
       drawTile(g, x, y, ART.shade(top, (tint - 0.5) * 0.06 - (k === 1 ? 0.18 : 0)), below || right ? 34 : 0, below ? T.side : null, right ? T.side2 : null, "rgba(255,255,255,.14)");
     }
-    var a = A.active(c), my = a && a.side === 0 && isLocal(a.pi) && c.phase === "fight" && w.mode === "combat";
+    var a = A.active(c), my = a && !a.ai && isLocal(a.pi) && c.phase === "fight" && w.mode === "combat";
     // placement
     if (c.phase === "place") {
       Ar.heroCells.forEach(function (h) { fillCell(g, h[0], h[1], "rgba(70,150,255,.42)"); strokeCell(g, h[0], h[1], "rgba(150,200,255,.9)", 1.5); });
@@ -766,7 +767,7 @@
     c.units.forEach(function (u) {
       if (!u.alive) return;
       var v = vis["u" + u.id]; if (!v) return;
-      var p = iso(v.gx, v.gy), h = u.boss ? 150 : u.summon ? (u.cls === "dame" ? 84 : 66) : u.side === 0 ? 102 + (w.players[u.pi] && w.players[u.pi].profile.riding && w.players[u.pi].profile.mount ? 32 : 0) : 76;
+      var p = iso(v.gx, v.gy), h = u.boss ? 150 : u.summon ? (u.cls === "dame" ? 84 : 66) : u.side === 0 || u.hero ? 102 + (w.players[u.pi] && w.players[u.pi].profile.riding && w.players[u.pi].profile.mount ? 32 : 0) : 76;
       if (v.jump) h += 40;
       hpBar(g, p.x, p.y - h, u);
       var shown = {}, ix = 0; u.status.forEach(function (st) { if (!st.deb || shown[st.k]) return; shown[st.k] = 1; ix++; });
@@ -847,6 +848,11 @@
       if (opt.gear && opt.gear.pet) ART.pet(g, opt.gear.pet, x - 34, y + 4, { t: clock + u.id, scale: 0.9 });
       ART.hero(g, u.cls, x, y, opt);
     } else {
+      if (u.hero) {
+        opt.gear = u.gear || (w.players[u.pi] ? A.gearOf(w.players[u.pi].profile) : null);
+        if (u.shield.length) { ART.glow(g, x, y - 34, 44, "rgba(159,216,255,.45)", 0.8); }
+        ART.hero(g, u.cls, x, y, opt); g.restore(); return;
+      }
       var M = A.MOBS[u.type];
       opt.col = M.col; opt.elite = !!u.affix; opt.boss = u.boss; opt.mirror = u.mirror;
       if (u.shield.length) ART.glow(g, x, y - 26, 36, "rgba(159,216,255,.45)", 0.8);
@@ -915,7 +921,7 @@
   function activeLocal() {
     if (!w || !w.combat || w.combat.phase !== "fight" || w.mode !== "combat") return null;
     var a = A.active(w.combat);
-    return a && a.side === 0 && !a.summon && isLocal(a.pi) ? a : null;
+    return a && !a.ai && !a.summon && isLocal(a.pi) ? a : null;
   }
   function refreshHud() {
     if (!w) return;
@@ -943,7 +949,7 @@
       var c = w.combat, order = [], n = c.order.length;
       for (var j = 0; j < n; j++) { var uu = A.uById(c, c.order[(c.turn + j) % n]); if (uu && uu.alive) order.push(uu); }
       top.innerHTML = '<div class="at-tl"><span class="at-round">Tour ' + c.round + "</span>" + order.slice(0, 9).map(function (x, k) {
-        var img = x.summon ? ART.summonIcon(x.cls, 40) : x.side === 0 ? ART.heroIcon(x.cls, 40, w.players[x.pi] ? A.gearOf(w.players[x.pi].profile) : null) : x.mirror ? ART.heroIcon(x.mirror, 40, { skin: "ombre" }) : ART.mobIcon(x.type, 40, A.MOBS[x.type].col, !!x.affix);
+        var img = x.summon ? ART.summonIcon(x.cls, 40) : x.side === 0 || x.hero ? ART.heroIcon(x.cls, 40, x.gear || (w.players[x.pi] ? A.gearOf(w.players[x.pi].profile) : null)) : x.mirror ? ART.heroIcon(x.mirror, 40, { skin: "ombre" }) : ART.mobIcon(x.type, 40, A.MOBS[x.type].col, !!x.affix);
         return '<span class="at-tl-u' + (k === 0 ? " now" : "") + (x.side ? " mob" : " ally") + (x.affix ? " elite" : "") + '" data-unit="' + x.id + '"><img src="' + img + '" alt="" width="40" height="40"><i style="width:' + (x.hp / x.maxHp * 100).toFixed(0) + '%"></i></span>';
       }).join("") + "</div>";
     } else if (w.combat) top.innerHTML = '<div class="at-zone"><b>' + (w.combat.phase === "place" ? "Placement" : w.loot && w.loot.won ? "Victoire" : "Fin du combat") + '</b><span>' + (w.combat.room ? esc(w.combat.room.name) : esc(A.ZONES[w.zone].name)) + "</span></div>";
@@ -976,7 +982,7 @@
     }
     if (c.phase !== "fight" || w.mode !== "combat") { bar.innerHTML = ""; return; }
     var a = A.active(c), me = activeLocal();
-    var shown = me || c.units.filter(function (u) { return u.side === 0 && u.pi === focusPi && !u.summon; })[0];
+    var shown = me || c.units.filter(function (u) { return !u.ai && u.pi === focusPi && !u.summon; })[0];
     if (!shown) { bar.innerHTML = ""; return; }
     var spells = A.spellsOf(shown);
     var html = (shown.summon ? '<span class="at-sumtag"><img src="' + ART.summonIcon(shown.cls, 28) + '" alt="" width="28" height="28">' + esc(shown.name) + "</span>" : "") +
@@ -1012,13 +1018,13 @@
       (S.ult && u && !u.ult ? '<p class="at-tip-warn">Débloqué au niveau ' + A.ULT_LEVEL + "</p>" : "") + (u && A.canCast(w, u, sid) && A.canCast(w, u, sid) !== "Pas assez de PA" ? '<p class="at-tip-warn">' + esc(A.canCast(w, u, sid)) + "</p>" : "");
   }
   function unitTip(u) {
-    var name = u.summon ? u.name + " · invocation de " + (A.uById(w.combat, u.owner) || {}).name : u.side === 0 ? u.name + " · " + A.CLASSES[u.cls].name : A.MOBS[u.type].name;
+    var name = u.summon ? u.name + " · invocation de " + (A.uById(w.combat, u.owner) || {}).name : u.side === 0 || u.hero ? u.name + " · " + A.CLASSES[u.cls].name : A.MOBS[u.type].name;
     var sh = u.shield.reduce(function (s, q) { return s + q.v; }, 0);
     var html = "<strong>" + esc(name) + " <em>niv. " + u.lvl + "</em></strong>" +
       '<p class="at-tip-m"><span>❤ ' + u.hp + " / " + u.maxHp + (sh ? " (+" + sh + ")" : "") + "</span><span>" + u.maxPa + " PA</span><span>" + u.maxPm + " PM</span>" + (u.res ? "<span>" + (u.res + A.statusSum(u, "res")) + " % rés.</span>" : "") + "</p>";
     if (u.affix) html += '<p class="at-tip-gold">Élite : ' + esc(A.AFFIXES[u.affix].name) + "</p>";
     if (u.summon) html += "<p>" + esc(A.SUMMONS[u.cls].desc) + "</p>";
-    if (u.side === 1) {
+    if (u.side === 1 && !u.hero) {
       var MD = A.MOBS[u.type], RL = { kite: "Tireur : garde ses distances", brute: "Brute : charge et repousse", teleport: "Fantôme : se téléporte", control: "Contrôle : pièges et toiles", disruptor: "Perturbateur : draine PA/PM", support: "Soutien", skirm: "Harceleur", boss: "Boss" };
       if (MD.role && RL[MD.role]) html += '<p class="at-tip-gold">' + RL[MD.role] + "</p>";
       var sl = (u.spl || MD.spells).map(function (s) { return typeof s === "string" ? A.MOB_SPELLS[s] : s; });
@@ -1027,7 +1033,7 @@
       if (ss.length) html += '<p class="at-tip-warn">États : ' + ss.join(", ") + "</p>";
       if (u.elem) { var rs = Object.keys(u.elem).filter(function (k) { return u.elem[k]; }).map(function (k) { return A.ELEMENTS[k].name + " " + (u.elem[k] > 0 ? "+" : "") + u.elem[k] + " %"; }); if (rs.length) html += '<p class="at-tip-dim">Résistances : ' + rs.join(" · ") + "</p>"; }
     }
-    if (u.side === 1 && w.combat.phase === "fight") html += '<p class="at-tip-dim">En rouge : là où il peut marcher</p>';
+    if (u.side === 1 && !u.hero && w.combat.phase === "fight") html += '<p class="at-tip-dim">En rouge : là où il peut marcher</p>';
     return html;
   }
   function packTip(pk) {
@@ -1051,7 +1057,7 @@
     hideTip();
   }
   function hide() { overlay.hidden = true; panel = null; card.innerHTML = ""; }
-  function closePanel() { if (panel === "loot") return; hide(); }
+  function closePanel() { if (panel === "loot") return; if (panel === "trade") socTradeCancel(); hide(); }
   function statLine(k, v) { var S = A.STATS[k]; return S.fmt.replace("{v}", v); }
   function itemHtml(it, opt) {
     opt = opt || {};
@@ -1244,7 +1250,7 @@
   function showSpells() {
     var pl = myPlayer() || (screen === "menu" ? { profile: SAVE.profiles[menuStep === "duo2" ? menuSel2 : menuSel] } : null); if (!pl) return;
     panel = "help";
-    var u = w && w.combat ? w.combat.units.filter(function (x) { return x.side === 0 && x.pi === focusPi && !x.summon; })[0] : null;
+    var u = w && w.combat ? w.combat.units.filter(function (x) { return !x.ai && x.pi === focusPi && !x.summon; })[0] : null;
     var st = A.heroStats(pl.profile);
     var rows = A.CLASSES[pl.profile.cls].spells.map(function (sid, i) {
       var S = A.SPELLS[sid], step = S.steps[0];
@@ -1331,7 +1337,7 @@
       '<label><input type="checkbox" data-set="grid"' + (SET.grid ? " checked" : "") + "> Quadrillage léger en exploration</label></div>" +
       helpList() +
       '<div class="btn-row center"><button class="btn" type="button" data-act="close">Reprendre</button>' +
-      (w && w.combat && !w.combat.room && (!NET.on || NET.role === "host") ? '<button class="btn btn-ghost" type="button" data-act="flee">Abandonner le combat</button>' : "") +
+      (w && w.combat && w.combat.duel && !w.combat.duel.done ? '<button class="btn btn-ghost" type="button" data-soc="dquit">Abandonner le duel (défaite)</button>' : "") + (w && w.combat && !w.combat.room && (!NET.on || NET.role === "host") ? '<button class="btn btn-ghost" type="button" data-act="flee">Abandonner le combat</button>' : "") +
       '<button class="btn btn-ghost" type="button" data-act="quit">Quitter vers le menu</button></div>', "at-card-pause");
   }
 
@@ -1377,6 +1383,7 @@
         return;
       }
       if (hoverObj && hoverObj.hero != null && isLocal(hoverObj.hero)) { focusPi = hoverObj.hero; hudDirty = true; return; }
+      if (hoverObj && hoverObj.hero != null && !isLocal(hoverObj.hero)) { showCtx(hoverObj.hero); return; }
       pendingNpc = null;
       if (sendCmd({ t: "walk", x: x, y: y })) {
         cam.free = false;
@@ -1386,7 +1393,7 @@
     }
     if (!c || w.mode !== "combat") return;
     if (c.phase === "place") {
-      var me = c.units.filter(function (u) { return u.side === 0 && u.pi === focusPi && !u.summon; })[0];
+      var me = c.units.filter(function (u) { return !u.ai && u.pi === focusPi && !u.summon; })[0];
       var t = A.unitAt(c, x, y);
       if (t && t.side === 0 && isLocal(t.pi) && t !== me) { focusPi = t.pi; hudDirty = true; return; }
       sendCmd({ t: "place", x: x, y: y });
@@ -1429,7 +1436,7 @@
     if (Math.abs(h.x - pendingNpc.x) + Math.abs(h.y - pendingNpc.y) <= 1) {
       var n = pendingNpc; pendingNpc = null;
       SFX.click();
-      if (n.role === "quests") showQuests(); else if (n.role === "shop") { shopReveal = null; shopTab = "items"; showShop(); } else if (n.role === "dopeul") showDopeul(); else showSource();
+      if (n.role === "quests") showQuests(); else if (n.role === "shop") { shopReveal = null; shopTab = "items"; showShop(); } else if (n.role === "dopeul") showDopeul(); else if (n.role === "arena") showArena(); else showSource();
     }
   }
 
@@ -1446,7 +1453,7 @@
     else {
       w.packs.forEach(function (pk) { if (!pk.dead) { var v = vis["p" + pk.id]; if (v) test(v.gx, v.gy, 60, { pack: pk.id, x: pk.x, y: pk.y }); } });
       (A.NPCS[w.zone] || []).forEach(function (n) { if (n.min && A.partyLevel(w) < n.min) return; test(n.x, n.y, n.obj ? 60 : 80, { npc: n.id, x: n.x, y: n.y }); });
-      w.heroes.forEach(function (h, i) { if (h && duo) { var v = vis["h" + i]; if (v) test(v.gx, v.gy, 70, { hero: i, x: h.x, y: h.y }); } });
+      w.heroes.forEach(function (h, i) { if (h && (duo || w.players.filter(Boolean).length > 1)) { var v = vis["h" + i]; if (v) test(v.gx, v.gy, 70, { hero: i, x: h.x, y: h.y }); } });
     }
     return best;
   }
@@ -1501,7 +1508,7 @@
     if (panel) { hideTip(); return; }
     if (hoverObj && hoverObj.unit) { var un = A.uById(w.combat, hoverObj.unit); if (un) showTip(unitTip(un), mouse.x, mouse.y); }
     else if (hoverObj && hoverObj.pack) { var pk = w.packs.filter(function (q) { return q.id === hoverObj.pack; })[0]; if (pk) showTip(packTip(pk), mouse.x, mouse.y); }
-    else if (hoverObj && hoverObj.npc) { var n = A.NPCS[w.zone].filter(function (q) { return q.id === hoverObj.npc; })[0]; showTip("<strong>" + esc(n.name) + "</strong><p>" + (n.role === "quests" ? "Quêtes et récompenses" : n.role === "shop" ? "Objets, coffres, tenues royales · rachète ton butin" : n.role === "dopeul" ? "Affronte ton reflet (niveau 100)" : "Conseils et rappels") + "</p>", mouse.x, mouse.y); }
+    else if (hoverObj && hoverObj.npc) { var n = A.NPCS[w.zone].filter(function (q) { return q.id === hoverObj.npc; })[0]; showTip("<strong>" + esc(n.name) + "</strong><p>" + (n.role === "quests" ? "Quêtes et récompenses" : n.role === "shop" ? "Objets, coffres, tenues royales · rachète ton butin" : n.role === "dopeul" ? "Affronte ton reflet (niveau 100)" : n.role === "arena" ? "Duels contre des bots, entraînement et historique" : "Conseils et rappels") + "</p>", mouse.x, mouse.y); }
     else hideTip();
     canvas.style.cursor = hoverObj && (hoverObj.pack || hoverObj.npc) ? "pointer" : sel ? "crosshair" : "default";
   }
@@ -1516,7 +1523,7 @@
   });
   hud.addEventListener("pointerover", function (e) {
     var b = e.target.closest("[data-spell]");
-    if (b) { var u = activeLocal() || (w && w.combat && w.combat.units.filter(function (x) { return x.side === 0 && x.pi === focusPi && !x.summon; })[0]); var r = b.getBoundingClientRect(), sr = stage.getBoundingClientRect(); showTip(spellTip(b.dataset.spell, u), r.left - sr.left, r.top - sr.top - 150); return; }
+    if (b) { var u = activeLocal() || (w && w.combat && w.combat.units.filter(function (x) { return !x.ai && x.pi === focusPi && !x.summon; })[0]); var r = b.getBoundingClientRect(), sr = stage.getBoundingClientRect(); showTip(spellTip(b.dataset.spell, u), r.left - sr.left, r.top - sr.top - 150); return; }
     var t = e.target.closest("[data-unit]");
     if (t && w && w.combat) { var un = A.uById(w.combat, +t.dataset.unit); var r2 = t.getBoundingClientRect(), sr2 = stage.getBoundingClientRect(); if (un) showTip(unitTip(un), r2.left - sr2.left, r2.bottom - sr2.top); }
   });
@@ -1596,6 +1603,150 @@
     if (!w || !panel) return;
     if (panel === "inv") showInv(); else if (panel === "loot") showLoot(); else if (panel === "shop") showShop(); else if (panel === "quests") showQuests();
   }
+
+
+  /* ====================== SOCIAL : ÉCHANGES, DÉFIS, DUELS, ARÈNE ====================== */
+  var ctxEl = document.createElement("div"); ctxEl.className = "at-ctx"; ctxEl.hidden = true; stage.appendChild(ctxEl);
+  function myPi() { return isLocal(focusPi) ? focusPi : locals[0]; }
+  function otherPi(i) { for (var k = 0; k < w.players.length; k++) if (k !== i && w.players[k]) return k; return -1; }
+  function socBusy() { return !w || w.mode !== "explore" || !!w.combat || !!w.trade || (w.duel && w.duel.st && w.duel.st !== "done"); }
+  function showCtx(i) {
+    var pl = w.players[i]; if (!pl) return;
+    var me = myPi(), n = pl.profile, busy = socBusy();
+    ctxEl.innerHTML = "<header><b>" + esc(pl.name) + "</b><small>" + A.CLASSES[n.cls].name + " · niv. " + n.level + "</small></header>" +
+      '<button type="button" data-soc="profil" data-i="' + i + '">👤 Profil</button>' +
+      '<button type="button" data-soc="trade" data-i="' + i + '"' + (busy ? " disabled" : "") + ">🤝 Échanger</button>" +
+      '<button type="button" data-soc="duel" data-i="' + i + '"' + (busy ? " disabled" : "") + ">⚔ Défier</button>" +
+      '<button type="button" data-soc="invite" data-i="' + i + '">✉ Inviter</button>';
+    var v = vis["h" + i], pp = v ? toScreen(iso(v.gx, v.gy).x, iso(v.gx, v.gy).y) : { x: mouse.x, y: mouse.y };
+    ctxEl.hidden = false;
+    var r = canvas.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    ctxEl.style.left = clamp(pp.x + r.left - sr.left + 18, 6, sr.width - 180) + "px"; ctxEl.style.top = clamp(pp.y + r.top - sr.top - 90, 6, sr.height - 190) + "px";
+    SFX.click();
+  }
+  function hideCtx() { ctxEl.hidden = true; }
+  document.addEventListener("pointerdown", function (e) { if (!ctxEl.hidden && !ctxEl.contains(e.target)) hideCtx(); }, true);
+  function showProfile(i) {
+    var pl = w.players[i]; if (!pl) return; var pr = pl.profile, st = A.heroStats(pr);
+    var eq = A.SLOTS.map(function (sl) { var it = pr.equip[sl]; return '<span class="at-cs-eq' + (it ? " r" + it.r : "") + '" style="' + (it ? "--rc:" + A.RARITIES[it.r].col : "") + '" title="' + (it ? esc(it.name) : A.SLOT_NAME[sl]) + '">' + (it ? '<img src="' + ART.itemIcon(sl, A.RARITIES[it.r].col, 36) + '" alt="" width="36" height="36">' : "<i>" + A.SLOT_NAME[sl].charAt(0) + "</i>") + "</span>"; }).join("");
+    panel = "help";
+    show('<div class="at-inv-h"><h2>' + esc(pl.name) + " <small>" + A.CLASSES[pr.cls].name + " · niv. " + pr.level + '</small></h2><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' +
+      '<div class="at-prof"><img src="' + ART.heroIcon(pr.cls, 96, A.gearOf(pr), true) + '" alt="" width="96" height="96"><div><p class="at-tip-m"><span>❤ ' + st.hp + "</span><span>" + st.pa + " PA</span><span>" + st.pm + " PM</span><span>PO " + st.po + "</span></p>" +
+      "<p>Monstres vaincus : <b>" + fmt(pr.kills || 0) + "</b> · Boss : <b>" + fmt(pr.bossKills || 0) + "</b></p><p>Duels : <b>" + (pr.duelWins || 0) + "</b> victoires · <b>" + (pr.duelLosses || 0) + "</b> défaites</p></div></div><div class=\"at-cs-eqs\">" + eq + '</div><div class="btn-row center"><button class="btn" type="button" data-act="close">Fermer</button></div>', "at-card-q");
+  }
+  // ---- échange
+  var tradeSig = "";
+  function socTradeCancel() { if (w && w.trade) sendCmd({ t: "trade_cancel" }, tradeMe()); }
+  function tradeMe() { var t = w && w.trade; if (!t) return myPi(); return isLocal(focusPi) && (focusPi === t.from || focusPi === t.to) ? focusPi : (isLocal(t.from) ? t.from : t.to); }
+  function showTrade() {
+    var t = w.trade; if (!t) return;
+    var me = tradeMe(), s = me === t.from ? 0 : 1, op = s ? t.from : t.to, P = w.players[me], O = w.players[op]; if (!P || !O) return;
+    var pr = P.profile, mine = t.offer[s], theirs = t.offer[1 - s], M = A.TRADE.MATS;
+    function cells(items, ro, pf) { return items.map(function (uid) { var it = null; pf.bag.forEach(function (b) { if (b.uid === uid) it = b; }); return it ? '<span class="at-bagc r' + it.r + '" style="--rc:' + A.RARITIES[it.r].col + '" title="' + esc(it.name + " (niv. " + it.lvl + ")") + '"><img src="' + ART.itemIcon(it.slot, A.RARITIES[it.r].col, 28) + '" alt="" width="28" height="28"></span>' : ""; }).join(""); }
+    var bag = pr.bag.map(function (it) { var on = mine.items.indexOf(it.uid) >= 0, ok = A.TRADE.tradable(it); return '<button type="button" class="at-bagc r' + it.r + (on ? " on" : "") + '" style="--rc:' + A.RARITIES[it.r].col + '"' + (ok ? ' data-soc="toggle" data-uid="' + it.uid + '"' : " disabled") + ' title="' + esc(it.name + (ok ? "" : it.lock ? " (verrouillé)" : " (lié)")) + '"><img src="' + ART.itemIcon(it.slot, A.RARITIES[it.r].col, 28) + '" alt="" width="28" height="28">' + (it.lock ? "<u>🔒</u>" : it.bound ? "<u>⛓</u>" : "") + "</button>"; }).join("") || '<p class="at-tip-dim">Sac vide</p>';
+    var mats = Object.keys(M).filter(function (k) { return (pr.mats || {})[k]; }).map(function (k) { return '<label class="at-mat" style="--rc:' + M[k].col + '">' + M[k].ico + " " + esc(M[k].name) + ' <input type="number" min="0" max="' + pr.mats[k] + '" value="' + (mine.mats[k] || 0) + '" data-soc="mat" data-k="' + k + '"> / ' + pr.mats[k] + "</label>"; }).join("");
+    function sum(o, pf) { var l = []; if (o.gold) l.push("<b>" + fmt(o.gold) + " or</b>"); Object.keys(o.mats).forEach(function (k) { l.push(M[k].ico + " ×" + o.mats[k]); }); return l.join(" · "); }
+    var st = function (b) { return b ? '<span class="at-ok">✔ Prêt</span>' : '<span class="at-wait">… en attente</span>'; };
+    var both = t.ready[0] && t.ready[1], iok = t.ok[s];
+    panel = "trade";
+    show('<div class="at-inv-h"><h2>🤝 Échange avec ' + esc(O.name) + '</h2><button class="at-x" type="button" data-soc="tcancel" aria-label="Annuler">✕</button></div>' +
+      '<div class="at-trade"><section><h3>Ton offre ' + st(t.ready[s]) + '</h3><div class="at-offer">' + (cells(mine.items, 0, pr) || '<i class="at-tip-dim">Aucun objet</i>') + '</div><p class="at-tip-dim">' + (sum(mine) || "Rien d'autre") + "</p>" +
+      '<h4>Ton sac (clique pour offrir)</h4><div class="at-bag at-bag-s">' + bag + '</div><label class="at-mat">💰 Or <input type="number" min="0" max="' + pr.gold + '" value="' + mine.gold + '" data-soc="gold"> / ' + fmt(pr.gold) + "</label>" + mats + "</section>" +
+      '<section class="at-them"><h3>Offre de ' + esc(O.name) + " " + st(t.ready[1 - s]) + '</h3><div class="at-offer">' + (cells(theirs.items, 1, O.profile) || '<i class="at-tip-dim">Aucun objet</i>') + '</div><p class="at-tip-dim">' + (sum(theirs) || "Rien d'autre") + "</p>" +
+      '<p class="at-tip-dim">Tu reçois ' + theirs.items.length + " objet(s). Place libre dans ton sac : " + (A.BAG_MAX - pr.bag.length + mine.items.length) + ".</p></section></div>" +
+      '<p class="at-tip-dim">Toute modification de l\'offre annule les validations. Le transfert est simultané et revérifié par le moteur.</p>' +
+      '<div class="btn-row center"><button class="btn' + (t.ready[s] ? " btn-ghost" : "") + '" type="button" data-soc="tready">' + (t.ready[s] ? "Je ne suis plus prêt" : "Prêt") + '</button><button class="btn" type="button" data-soc="tconfirm"' + (both && !iok ? "" : " disabled") + ">" + (iok ? "En attente de " + esc(O.name) : "Valider l'échange") + '</button><button class="btn btn-ghost" type="button" data-soc="tcancel">Annuler</button></div>', "at-card-trade");
+    tradeSig = tradeSigOf();
+  }
+  function tradeSigOf() { var t = w.trade; return t ? JSON.stringify([t.st, t.offer, t.ready, t.ok, w.players.map(function (p) { return p ? p.profile.rev : 0; })]) : ""; }
+  function readOffer() {
+    var o = { items: [], gold: 0, mats: {} };
+    $$("[data-soc=toggle].on", card).forEach(function (b) { o.items.push(+b.dataset.uid); });
+    var g = $("[data-soc=gold]", card); if (g) o.gold = Math.max(0, +g.value || 0);
+    $$("[data-soc=mat]", card).forEach(function (i) { var n = Math.max(0, +i.value || 0); if (n) o.mats[i.dataset.k] = n; });
+    return o;
+  }
+  function sendOffer(o) { sendCmd({ t: "trade_offer", items: o.items, gold: o.gold, mats: o.mats }, tradeMe()); }
+  // ---- défi
+  function showDuelReq() {
+    var d = w.duel, me = d.to, F = w.players[d.from]; if (!F) return;
+    panel = "duelreq"; SFX.warn();
+    show('<div class="at-inv-h"><h2>⚔ Défi !</h2></div><p><b>' + esc(F.name) + "</b> (" + A.CLASSES[F.profile.cls].name + " niv. " + F.profile.level + ") te défie en duel dans l'Arène des Ombres.</p>" +
+      '<p class="at-tip-dim">Règles du combat normal, stats et équipement réels. Aucun objet n\'est perdu : XP, or, jeton de défi pour le vainqueur.</p>' +
+      '<div class="btn-row center"><button class="btn" type="button" data-soc="daccept">Accepter</button><button class="btn btn-ghost" type="button" data-soc="drefuse">Refuser</button></div>', "at-card-q");
+  }
+  function showArena() {
+    var pl = myPlayer(); if (!pl) return; var pr = pl.profile, D = A.DUEL.DIFFS, hist = (pr.duels || []).slice(0, 8);
+    var other = otherPi(focusPi);
+    panel = "arena";
+    show('<div class="at-inv-h"><h2>⚔ Maître du Défi</h2><span class="at-gold">🎟 ' + (pr.tokens || 0) + ' jeton(s)</span><button class="at-x" type="button" data-act="close" aria-label="Fermer">✕</button></div>' +
+      "<p>« Bienvenue dans l'Arène des Ombres. Ici, on se bat à armes égales : mêmes règles, mêmes sorts, rien à perdre sauf l'orgueil. »</p>" +
+      '<div class="at-arena"><section><h3>Duel contre un bot</h3><label class="at-mat">Classe adverse <select data-soc="bcls"><option value="">Aléatoire</option>' + Object.keys(A.CLASSES).map(function (k) { return '<option value="' + k + '">' + A.CLASSES[k].name + "</option>"; }).join("") + "</select></label>" +
+      '<div class="at-diffs">' + D.map(function (d, i) { return '<button type="button" class="btn" data-soc="dbot" data-d="' + i + '">' + d.name + "<small>niv. " + Math.max(1, pr.level + d.dl) + " · ×" + d.mul + "</small></button>"; }).join("") + "</div>" +
+      '<p class="at-tip-dim">Le bot a une classe, des stats et un équipement générés à ton niveau, et joue avec la même IA tactique que les monstres.</p>' +
+      (other >= 0 ? '<h3>Défier ' + esc(w.players[other].name) + '</h3><button class="btn" type="button" data-soc="duel" data-i="' + other + '">⚔ Lancer un défi</button>' : '<p class="at-tip-dim">Un second joueur dans ta partie peut aussi être défié (clic sur son héros).</p>') + "</section>" +
+      '<section><h3>Tes duels</h3><p>🏆 <b>' + (pr.duelWins || 0) + "</b> victoires · 💀 <b>" + (pr.duelLosses || 0) + "</b> défaites</p>" +
+      (hist.length ? "<ul class=\"at-hist\">" + hist.map(function (h) { return "<li class=\"" + (h.win ? "w" : "l") + '">' + (h.win ? "✔" : "✘") + " " + esc(h.vs || "?") + (h.bot ? " <small>bot · " + esc(h.diff || "") + "</small>" : " <small>joueur</small>") + " <small>" + h.turns + " tours · " + fmt(h.dmg || 0) + " dég.</small></li>"; }).join("") + "</ul>" : '<p class="at-tip-dim">Aucun duel pour l\'instant.</p>') +
+      '<p class="at-tip-dim">Classement : l\'historique est personnel (sauvegardé avec ton héros). Sans serveur central, il n\'existe pas de classement mondial.</p></section></div>' +
+      '<details class="at-tuto"><summary>Tutoriel du duel</summary><ul><li>Un duel oppose deux héros, un contre un, sur une arène sombre sans placement.</li><li>PA, PM, portée et ligne de vue comme en combat normal ; les invocations combattent pour toi.</li><li>Le premier à tomber à 0 PV perd. Quitter ou se déconnecter = défaite par forfait.</li><li>Récompenses : XP, or, jeton de défi (victoire). Aucun objet n\'est jamais perdu.</li></ul></details>' +
+      '<div class="btn-row center"><button class="btn btn-ghost" type="button" data-act="close">Fermer</button></div>', "at-card-shop");
+  }
+  var shownDuel = 0, lastDiff = 1;
+  function showDuelResult(r) {
+    var rows = r.players.map(function (p, i) {
+      return '<section class="at-dr' + (p.won ? " win" : "") + '"><h3>' + (p.won ? "🏆 " : "") + esc(p.name) + ' <small>' + (p.cls ? A.CLASSES[p.cls].name : "") + " · niv. " + p.lvl + '</small></h3><p class="at-tip-m"><span>⚔ ' + fmt(p.dmg) + " dégâts</span><span>✚ " + fmt(p.heal) + " soins</span><span>❤ " + p.hp + "/" + p.maxHp + "</span></p>" +
+        (p.rewards ? '<p class="at-tip-gold">+' + fmt(p.rewards.xp) + " XP · +" + fmt(p.rewards.gold) + " or" + (p.rewards.token ? " · 🎟 jeton de défi" : "") + "</p>" : "") + "</section>";
+    }).join("");
+    var mineWon = r.players.some(function (p) { return p.human && isLocal(p.pi) && p.won; }), ml = r.players.some(function (p) { return p.human && isLocal(p.pi); });
+    panel = "duelres";
+    show('<div class="at-inv-h"><h2>' + (r.winner === 0 ? esc(r.players[0].name) : esc(r.players[1].name)) + " remporte le duel !</h2></div>" +
+      '<p class="at-tip-dim">' + r.turns + " tours" + (r.why === "forfait" ? " · victoire par forfait" : "") + (r.bot ? " · bot " + esc(r.diff || "") : "") + (ml ? (mineWon ? " · victoire" : " · défaite") : "") + "</p>" +
+      '<div class="at-duelres">' + rows + '</div><div class="btn-row center">' + (r.bot ? '<button class="btn" type="button" data-soc="dbot" data-d="' + lastDiff + '">Revanche</button>' : "") + '<button class="btn btn-ghost" type="button" data-act="close">Retour au village</button></div>', "at-card-q");
+    if (ml) SFX[mineWon ? "win" : "lose"]();
+  }
+  // ---- synchronisation depuis l'état du monde (robuste aux messages manqués côté invité)
+  var socTick = 0;
+  function syncSocial(dt) {
+    socTick -= dt; if (socTick > 0 || !w) return; socTick = 0.2;
+    var t = w.trade, d = w.duel;
+    if (t && t.st === "req" && isLocal(t.to) && !panel) {
+      var F = w.players[t.from]; panel = "treq"; SFX.warn();
+      show('<div class="at-inv-h"><h2>🤝 Demande d\'échange</h2></div><p><b>' + esc(F ? F.name : "?") + "</b> souhaite échanger des objets, de l'or ou des matériaux avec toi.</p>" + '<div class="btn-row center"><button class="btn" type="button" data-soc="taccept">Accepter</button><button class="btn btn-ghost" type="button" data-soc="trefuse">Refuser</button></div>', "at-card-q");
+    } else if (t && t.st === "open" && (isLocal(t.from) || isLocal(t.to))) {
+      if (panel !== "trade" && (!panel || panel === "treq")) showTrade();
+      else if (panel === "trade" && tradeSigOf() !== tradeSig && !(document.activeElement && document.activeElement.tagName === "INPUT")) showTrade();
+    } else if (!t && (panel === "trade" || panel === "treq")) { hide(); }
+    if (d && d.st === "req" && isLocal(d.to) && !panel) showDuelReq();
+    else if ((!d || d.st !== "req") && panel === "duelreq") hide();
+    var R = w.duelResult;
+    if (R && R.id !== shownDuel && R.players.some(function (p) { return p.human && isLocal(p.pi); })) { shownDuel = R.id; if (panel !== "duelres") setTimeout(function () { if (w && w.duelResult === R || (w && w.duelResult && w.duelResult.id === R.id)) showDuelResult(R); }, 1100); }
+  }
+  card.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-soc]"); if (!b || b.disabled) return;
+    var k = b.dataset.soc, t = w && w.trade, me = tradeMe();
+    if (k === "toggle") { b.classList.toggle("on"); sendOffer(readOffer()); return; }
+    if (k === "tready") { sendCmd({ t: "trade_ready", v: !(t && t.ready[me === t.from ? 0 : 1]) }, me); }
+    else if (k === "tconfirm") { sendCmd({ t: "trade_confirm" }, me); }
+    else if (k === "tcancel") { sendCmd({ t: "trade_cancel" }, me); hide(); }
+    else if (k === "taccept") { sendCmd({ t: "trade_accept" }, t.to); }
+    else if (k === "trefuse") { sendCmd({ t: "trade_refuse" }, t.to); hide(); }
+    else if (k === "daccept") { hide(); sendCmd({ t: "duel_accept" }, w.duel.to); }
+    else if (k === "drefuse") { sendCmd({ t: "duel_refuse" }, w.duel.to); hide(); }
+    else if (k === "dquit") { hide(); var cu = w.combat && w.combat.duel; if (cu) sendCmd({ t: "duel_quit" }, isLocal(cu.a) ? cu.a : cu.b); }
+    else if (k === "dbot") { lastDiff = +b.dataset.d; var cs = $("[data-soc=bcls]", card); hide(); sendCmd({ t: "duel_bot", diff: lastDiff, cls: cs ? cs.value : (arenaCls || "") }, focusPi); }
+    else if (k === "duel") { hide(); hideCtx(); sendCmd({ t: "duel_req", to: +b.dataset.i }, myPi()); toast("Défi envoyé…"); }
+    SFX.click();
+  });
+  var arenaCls = "";
+  card.addEventListener("change", function (e) { var b = e.target.closest("[data-soc]"); if (!b) return; if (b.dataset.soc === "bcls") { arenaCls = b.value; return; } if (b.dataset.soc === "gold" || b.dataset.soc === "mat") sendOffer(readOffer()); });
+  ctxEl.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-soc]"); if (!b || b.disabled) return;
+    var i = +b.dataset.i, k = b.dataset.soc; hideCtx();
+    if (k === "profil") showProfile(i);
+    else if (k === "trade") { if (sendCmd({ t: "trade_req", to: i }, myPi())) toast("Demande d'échange envoyée…"); }
+    else if (k === "duel") { if (sendCmd({ t: "duel_req", to: i }, myPi())) toast("Défi envoyé…"); }
+    else if (k === "invite") toast(NET.on && NET.code ? "Code de la salle : <b>" + esc(NET.code) + "</b> — partage-le pour inviter un ami" : duo ? "Vous êtes déjà deux sur cet écran." : "Ouvre une salle en ligne depuis le menu pour inviter un ami.");
+  });
 
   // ---------- clavier ----------
   var keys = {};
@@ -1942,6 +2093,7 @@
         saveLocalProfiles();
       }
       checkNpc();
+      syncSocial(rdt);
       panKeys(rdt);
       updateVis(dt);
       if (hudDirty) refreshHud();
@@ -1959,6 +2111,7 @@
     world: function () { return w; },
     sel: function () { return { sel: sel, pending: pendingTap, hover: hover, hoverObj: hoverObj, touchTap: touchTap }; },
     dungeon: function (id) { A.startDungeon(w, id || "incarnam"); },
+    ui: { showArena: function () { showArena(); }, showCtx: function (i) { showCtx(i); }, showTrade: function () { showTrade(); } },
     pts: function (n) { w.players[0].profile.pts += n || 20; w.players[0].profile.rev++; w.rev++; },
     screenOf: function (x, y) { var p = iso(x, y), q = toScreen(p.x, p.y), r = canvas.getBoundingClientRect(); return { x: q.x + r.left, y: q.y + r.top }; },
     level: function (n, pi) { var p = w.players[pi || 0].profile; p.level = n; p.xp = 0; p.rev++; w.rev++; },

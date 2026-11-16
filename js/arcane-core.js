@@ -510,6 +510,7 @@
       { id: "tobin", name: "Tobin le marchand", x: 12, y: 12, role: "shop", col: "#ff9a3c" },
       { id: "source", name: "Source de mana", x: 9, y: 9, role: "heal", col: "#5fd3c0", obj: true },
       { id: "dopeul", name: "Maître des Dopeuls", x: 16, y: 7, role: "dopeul", col: "#c77dff", min: DOPEUL_LEVEL },
+      { id: "defi", name: "Maître du Défi", x: 5, y: 12, role: "arena", col: "#ff5a6a" },
     ],
     prairie: [{ id: "hv-prairie", name: "Hôtel de vente", x: 11, y: 9, role: "shop", col: "#ff9a3c" }],
     bois: [{ id: "hv-bois", name: "Hôtel de vente", x: 11, y: 10, role: "shop", col: "#ff9a3c" }],
@@ -650,6 +651,7 @@
   }
   function arenaDeco(theme, r) {
     var v = r();
+    if (theme === "arene") return { t: v < 0.4 ? "pillar" : v < 0.75 ? "crystal" : "rune", s: 1.05 + r() * 0.3, v: r() };
     if (theme === "donjon") return { t: v < 0.5 ? "pillar" : "crystal", s: 1 + r() * 0.25, v: r() };
     if (theme === "marais") return { t: v < 0.5 ? "bigshroom" : v < 0.8 ? "lantern" : "reed", s: 1 + r() * 0.3, v: r() };
     if (theme === "nuages") return { t: v < 0.5 ? "cotton" : v < 0.8 ? "cloud" : "star", s: 1 + r() * 0.3, v: r() };
@@ -800,6 +802,7 @@
   // un joueur en ligne s'en va : son héros quitte la partie
   function removePlayer(w, i) {
     if (!w.players[i]) return;
+    if (EXT.onRemove) EXT.onRemove(w, i);
     w.players[i] = null; w.heroes[i] = null;
     var c = w.combat;
     if (c) {
@@ -811,7 +814,7 @@
     bump(w);
   }
   // points d'extension : les modules (bestiaire, IA, échanges, duels…) s'y branchent sans toucher au moteur
-  var EXT = { onSpawn: null, onCombat: null, aiStep: null, aiDo: null, cmds: {}, onTurnStart: null, afterDamage: null, composePack: null, onFinish: null, onStepExplore: null, onRemove: null };
+  var EXT = { onSpawn: null, onCombat: null, aiStep: null, aiDo: null, cmds: {}, onTurnStart: null, afterDamage: null, composePack: null, onFinish: null, onStepExplore: null, onRemove: null, onLoot: null };
   function ev(w, e) { w.events.push(e); }
   function bump(w) { w.rev++; }
   function say(w, text, pi) { ev(w, { k: "msg", text: text, pi: pi == null ? -1 : pi }); }
@@ -1230,7 +1233,7 @@
     }
     t.hp -= d;
     ev(w, { k: "dmg", id: t.id, v: d, sh: absorbed, crit: crit, src: src ? src.id : 0, push: !!opt.push });
-    if (src && !src.ai && c.stats[src.pi]) c.stats[src.pi].dmg += d + absorbed;
+    if (src && (!src.ai || src.bot) && c.stats[src.pi]) c.stats[src.pi].dmg += d + absorbed;
     // vol de vie
     if (src && src.alive && (src.vamp || src.powers.indexOf("vamp") >= 0) && d > 0) heal(w, src, src, Math.round(d * ((src.vamp || 15) / 100)), true);
     // épines
@@ -1258,7 +1261,7 @@
     if (a <= 0 && silent) return 0;
     t.hp += Math.max(0, a);
     ev(w, { k: "heal", id: t.id, v: Math.max(0, a) });
-    if (src && !src.ai && w.combat.stats[src.pi] && !silent) w.combat.stats[src.pi].heal += Math.max(0, a);
+    if (src && (!src.ai || src.bot) && w.combat.stats[src.pi] && !silent) w.combat.stats[src.pi].heal += Math.max(0, a);
     return a;
   }
   function addShield(w, src, t, v) {
@@ -1804,6 +1807,7 @@
   /* ---------- fin de combat et butin ---------- */
   function finishCombat(w, won) {
     var c = w.combat;
+    if (c.room && c.room.duel && EXT.onFinish) { c.phase = "end"; EXT.onFinish(w, won); return; }
     c.phase = "end";
     ev(w, { k: won ? "victory" : "defeat" });
     var loot = { won: won, players: [] };
@@ -1831,6 +1835,7 @@
         res.xp = Math.round(res.xp * (1 + (hs.sag || 0) / 100));
         res.items = res.items.slice(0, 6);
         res.items.sort(function (a, b) { return b.r - a.r; });
+        if (EXT.onLoot) EXT.onLoot(w, i, p, res, defeated);
         giveXp(w, i, res.xp, res);
         p.gold += res.gold;
         res.items.forEach(function (it) { if (p.bag.length < BAG_MAX) p.bag.push(it); else { p.gold += it.value; it.sold = true; } });
@@ -1945,6 +1950,7 @@
     var p = w.players[i].profile;
     p.qdone[q.id] = 1; delete p.quests[q.id];
     var it = makeItem(p, Math.max(p.level, 2), RARITIES.map(function (r) { return r.id; }).indexOf(q.item));
+    it.bound = 1;
     if (p.bag.length < BAG_MAX) p.bag.push(it); else p.gold += it.value;
     p.gold += q.gold;
     ev(w, { k: "quest", pi: i, q: q.id, item: it });
@@ -2141,7 +2147,7 @@
     chestPrice: chestPrice, partyLevel: partyLevel, partyHasDungeon: partyHasDungeon, checkEnd: checkEnd, startDungeon: startDungeon, enterZone: enterZone, statusSum: statusSum, aiStep: aiStep, aiDo: aiDo,
   };
   API.I = { R: R, rng: rng, ri: ri, pick: pick, clamp: clamp, sgn: sgn, key: key, DX: DX, DY: DY,
-    damage: damage, heal: heal, addShield: addShield, knock: knock, teleport: teleport, kill: kill, applyStatus: applyStatus, triggerHazards: triggerHazards, hazardAt: hazardAt, hazardFor: hazardFor,
+    genArena: genArena, heroStats: heroStats, damage: damage, heal: heal, addShield: addShield, knock: knock, teleport: teleport, kill: kill, applyStatus: applyStatus, triggerHazards: triggerHazards, hazardAt: hazardAt, hazardFor: hazardFor,
     ev: ev, bump: bump, cellFree: cellFree, groundOk: groundOk, inArena: inArena, blocksLos: blocksLos, shapeOk: shapeOk, plus: plus, ring8: ring8, disc: disc, wallCells: wallCells, lineFrom: lineFrom,
     findPath: findPath, combatPath: combatPath, moveUnit: moveUnit, endTurn: endTurn, afterAction: afterAction, addMob: addMob, addSummon: addSummon, mySummons: mySummons, computeOrder: computeOrder,
     unitAt: unitAt, objAt: objAt, faceOf: faceOf, losFrom: losFrom, startCombat: startCombat, finishCombat: finishCombat, giveXp: giveXp, zone: zone, spellCost: spellCost,
