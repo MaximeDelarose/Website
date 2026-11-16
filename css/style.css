@@ -3313,3 +3313,108 @@ a.account-admin { text-decoration: none; }
 /* bouton « Recharger sans cache » de l'en-tête */
 .reload-btn.is-busy svg { animation: reload-spin .7s steps(8) infinite; }
 @keyframes reload-spin { to { transform: rotate(360deg); } }
+
+/* ===== Arcane Tactics : échanges, défis, arène ===== */
+.at-ctx { position: absolute; z-index: 40; min-width: 168px; padding: 6px; border-radius: 12px; background: linear-gradient(180deg, #2a1f45, #1a1230); border: 2px solid #c98a3a; box-shadow: 0 10px 28px rgba(0, 0, 0, .55); display: flex; flex-direction: column; gap: 4px; }
+.at-ctx[hidden] { display: none; }
+.at-ctx header { padding: 2px 8px 6px; border-bottom: 1px solid rgba(201, 138, 58, .4); color: #f4ecd8; display: flex; flex-direction: column; line-height: 1.2; }
+.at-ctx header small { color: #8fe9ff; font-weight: 700; }
+.at-ctx button { text-align: left; padding: 8px 10px; border-radius: 8px; border: 0; background: rgba(255, 255, 255, .06); color: #f4ecd8; font: 700 .85rem Nunito, sans-serif; cursor: pointer; }
+.at-ctx button:hover:not(:disabled) { background: rgba(201, 138, 58, .35); }
+.at-ctx button:disabled { opacity: .4; cursor: not-allowed; }
+.at-card-trade { width: min(860px, 100%); }
+.at-trade { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.at-trade section, .at-arena section, .at-dr { padding: 10px 12px; border-radius: 12px; background: rgba(42, 33, 80, .12); border: 1px solid rgba(201, 138, 58, .35); }
+.at-trade h3, .at-arena h3, .at-dr h3 { margin: 0 0 6px; font-size: .95rem; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.at-trade h4 { margin: 8px 0 4px; font-size: .75rem; opacity: .7; text-transform: uppercase; letter-spacing: .06em; }
+.at-offer { display: flex; flex-wrap: wrap; gap: 4px; min-height: 36px; padding: 4px; border-radius: 8px; background: rgba(0, 0, 0, .18); border: 1px dashed rgba(201, 138, 58, .5); align-items: center; }
+.at-bag-s { max-height: 150px; overflow: auto; display: flex; flex-wrap: wrap; gap: 4px; }
+.at-bag-s .at-bagc.on { outline: 2px solid #ffd257; box-shadow: 0 0 10px rgba(255, 210, 87, .6); }
+.at-mat { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-weight: 700; font-size: .85rem; }
+.at-mat input[type=number] { width: 72px; padding: 3px 6px; border-radius: 6px; border: 1px solid #c98a3a; background: #1a1230; color: #f4ecd8; }
+.at-mat select { padding: 4px 6px; border-radius: 6px; border: 1px solid #c98a3a; background: #1a1230; color: #f4ecd8; }
+.at-ok { color: #3fa56a; font-size: .75rem; } .at-wait { color: #d98a1f; font-size: .75rem; }
+.at-arena { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0; }
+.at-diffs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+.at-diffs .btn small { display: block; font-size: .65rem; opacity: .8; }
+.at-hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: .85rem; }
+.at-hist li.w { color: #2f8a57; } .at-hist li.l { color: #c0485a; }
+.at-hist small { opacity: .7; }
+.at-tuto { margin: 6px 0; font-size: .85rem; }
+.at-duelres { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0; }
+.at-dr.win { border-color: #d9a21f; box-shadow: 0 0 14px rgba(255, 210, 87, .35) inset; }
+.at-prof { display: flex; gap: 12px; align-items: center; }
+@media (max-width: 640px) { .at-trade, .at-arena, .at-duelres { grid-template-columns: 1fr; } }
+
+/* ===== Arcane Tactics : boutiques par zone, familles d'équipement, objets plus compacts ===== */
+.at-it-h img { width: 26px; height: 26px; }
+.at-bagc img { width: 22px; height: 22px; }
+.at-slot img, .at-cs-eq img { width: 28px; height: 28px; }
+.at-it { padding: 8px 10px; border-radius: 12px; }
+.at-it ul { font-size: .8rem; }
+.at-loot-grid { grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 8px; }
+.at-fam { margin: 6px 0 0; padding: 5px 7px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--fc) 70%, transparent); background: color-mix(in srgb, var(--fc) 14%, transparent); font-size: .72rem; display: flex; flex-direction: column; gap: 1px; }
+.at-fam b { color: var(--fc); }
+.at-fam small { opacity: .7; font-weight: 700; }
+.at-fam span { opacity: .55; }
+.at-fam span.on { opacity: 1; color: #5dff9a; font-weight: 800; }
+.at-merch { display: grid; grid-template-columns: 1fr 120px; gap: 10px; align-items: stretch; margin: 6px 0; }
+.at-merch-h { padding: 8px 12px; border-radius: 12px; border: 2px solid var(--fc); background: linear-gradient(160deg, color-mix(in srgb, var(--fc) 22%, #1a1230), #120c26); color: #f4ecd8; display: flex; flex-direction: column; gap: 3px; }
+.at-merch-h b { color: var(--fc); font-size: 1rem; }
+.at-merch-h span { font-style: italic; font-size: .85rem; }
+.at-merch-h small { opacity: .75; font-size: .72rem; }
+.at-prev { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 6px; border-radius: 12px; background: radial-gradient(circle at 50% 40%, rgba(176, 125, 255, .3), rgba(20, 12, 40, .6)); border: 1px solid rgba(201, 138, 58, .45); color: #f4ecd8; }
+.at-prev small { font-size: .65rem; line-height: 1.2; margin-top: 2px; }
+.at-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.at-chips button { padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(201, 138, 58, .6); background: rgba(42, 33, 80, .12); font: 800 .72rem Nunito, sans-serif; cursor: pointer; color: inherit; }
+.at-chips button.on { background: #c98a3a; color: #fff; border-color: #c98a3a; }
+.at-chips.r button { border-color: var(--rc, #c98a3a); }
+.at-chips.r button.on { background: var(--rc, #c98a3a); color: #1a1230; }
+.at-mats { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; }
+.at-loot-i.sel .at-it { outline: 3px solid #ffd257; }
+.at-loot-i.mine { position: relative; }
+.at-mine { position: absolute; top: -7px; right: 8px; z-index: 2; padding: 1px 8px; border-radius: 999px; background: #2f8a57; color: #fff; font: 800 .62rem Nunito, sans-serif; }
+@media (max-width: 640px) { .at-merch { grid-template-columns: 1fr; } .at-prev { flex-direction: row; gap: 8px; } }
+
+/* =========================================================================
+   Arcane Tactics 3.0 — DA « fantasy sombre » (référence : image Direction Artistique)
+   Palette : encre #120a1d · aubergine #20142f / #2c1c40 · prune #3b2656 · bronze #8a5f2e · or #e8b857
+             crème #f4ecd8 · sarcelle #6fe0e8 · cramoisi #d3405a · violet #b07dff
+   Panneaux sombres, cadre bronze double filet, titres à losange, barres de HP/PA/PM en pastilles.
+   ========================================================================= */
+.at-card, :root[data-theme="dark"] .at-card {
+  --atbg: #20142f; --atbg2: #2c1c40; --atbg3: #3b2656; --atink: #f4ecd8; --atsoft: #cdbfdc; --atline: #6b4a2a; --atacc: #e8b857; --atcyan: #6fe0e8;
+  background: radial-gradient(ellipse at 50% -10%, #3d2860 0%, #24163a 45%, #160d26 100%);
+  border-radius: 14px;
+  box-shadow: 0 0 0 2px #120a1d, 0 0 0 4px #8a5f2e, 0 0 0 5px #120a1d, 0 20px 56px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(255, 236, 200, .1);
+}
+.at-card::before { background: repeating-linear-gradient(115deg, rgba(255, 220, 160, .02) 0 18px, transparent 18px 70px); }
+.at-card h2, .at-card .at-inv-h h2 { font-family: "Fredoka", "Nunito", sans-serif; color: #f4ecd8; letter-spacing: .01em; text-shadow: 0 2px 0 rgba(0, 0, 0, .45); }
+.at-card h2::before { content: "◆"; color: #e8b857; font-size: .55em; margin-right: 9px; vertical-align: .22em; text-shadow: 0 0 8px rgba(232, 184, 87, .6); }
+.at-card h3::before { content: "◇"; color: #8a5f2e; font-size: .8em; margin-right: 6px; }
+.at-inv-h { border-bottom: 1px solid rgba(138, 95, 46, .55); padding-bottom: 8px; }
+.at-gold, .at-pts { background: linear-gradient(180deg, #4a3414, #2f2009); color: #f6d36b; border: 1px solid #a67a2c; box-shadow: inset 0 1px 0 rgba(255, 230, 160, .25); }
+.at-x { background: #3b2656; border: 1px solid #8a5f2e; }
+.at-x:hover { background: #d3405a; }
+.at-tabs button.on { background: #3b2656; border-color: #e8b857; color: #f4ecd8; box-shadow: 0 0 10px rgba(232, 184, 87, .25); }
+.at-slot, .at-bagc { background: #150d22; border-color: #6b4a2a; }
+.at-bagc.at-bage { background: rgba(21, 13, 34, .55); border-color: #3a2a4e; }
+.at-it { background: linear-gradient(160deg, #2c1c40, #150d22); }
+.at-chips button { border-color: #8a5f2e; }
+.at-chips button.on { background: #e8b857; color: #20142f; border-color: #e8b857; }
+.at-mat input[type=number], .at-mat select { border-color: #8a5f2e; background: #150d22; }
+.at-trade section, .at-arena section, .at-dr { background: rgba(21, 13, 34, .55); border-color: rgba(138, 95, 46, .6); }
+.at-ctx { background: linear-gradient(180deg, #2c1c40, #150d22); border-color: #8a5f2e; }
+.at-ctx button:hover:not(:disabled) { background: rgba(232, 184, 87, .28); }
+/* HUD */
+.at-pf { background: linear-gradient(180deg, rgba(44, 28, 64, .92), rgba(21, 13, 34, .92)); border: 2px solid #8a5f2e; box-shadow: 0 0 0 1px #120a1d, 0 6px 16px rgba(0, 0, 0, .4); }
+.at-pf img { border: 1px solid #e8b857; }
+.at-toast { background: linear-gradient(180deg, rgba(44, 28, 64, .95), rgba(21, 13, 34, .95)); border: 1px solid #8a5f2e; }
+.at-tip { background: linear-gradient(180deg, rgba(44, 28, 64, .98), rgba(18, 10, 29, .98)); border: 2px solid #8a5f2e; box-shadow: 0 8px 22px rgba(0, 0, 0, .5); }
+.at-tip strong { color: #f6d36b; }
+.at-tip-gold { color: #f6d36b; }
+.at-tip-sp b { font-weight: 800; }
+.at-tip-sp { margin: 3px 0; }
+.at-bar { padding: 10px 14px 12px; border-radius: 16px; background: linear-gradient(180deg, rgba(44, 28, 64, .94), rgba(18, 10, 29, .96)); border: 2px solid #8a5f2e; box-shadow: 0 0 0 1px #120a1d, 0 -4px 24px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 236, 200, .12); }
+.at-hbtn { border-color: #8a5f2e; background: linear-gradient(180deg, #3b2656, #20142f); }
+.at-hbtn:hover { border-color: #e8b857; }
