@@ -1,3 +1,0 @@
-# Application privée en phase de test : aucune exploration.
-User-agent: *
-Disallow: /
