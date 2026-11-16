@@ -33,20 +33,36 @@
     { id: 'eraser', icon: 'eraser', cls: 'blue', hex: '#4aa3f5', name: 'Gomme', cap: 'Efface', say: 'Mode gomme !', opts: 'art', art: ERASER_ART }
   ];
 
-  function trayHtml(modes, withSizes) {
+  var EXPAND = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="#6b3f72" stroke-width="3.200" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var SHRINK = '<svg viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="#6b3f72" stroke-width="3.200" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function trayHtml(modes, withSizes, withFull) {
     return '<div class="tray atelier">' +
-      '<div class="tools big">' + modes.map(function (m) { return '<button class="tool ' + m.cls + '" style="--hex:' + m.hex + '" data-tool="' + m.id + '" aria-label="' + m.name + '"><span class="tico">' + Art.ui[m.icon] + '</span>' + (m.useColor ? '<i class="tdot"></i>' : '') + '</button>'; }).join('') + '</div>' +
-      '<div class="modecap"><span class="mcico"></span><b class="mctxt"></b>' + (withSizes ? '<span class="sizes"></span>' : '') + '</div>' +
+      '<div class="tools big">' + modes.map(function (m) { return '<button class="tool ' + m.cls + '" style="--hex:' + m.hex + '" data-tool="' + m.id + '" aria-label="' + m.name + '"><span class="tico">' + Art.ui[m.icon] + '</span>' + (m.useColor ? '<i class="tdot"></i>' : '') + '</button>'; }).join('') +
+      (withFull ? '<button class="expbtn" data-do="expand" aria-label="grande feuille">' + EXPAND + '</button>' : '') + '</div>' +
       '<div class="optslot"><div class="palette"></div><div class="stickers" hidden></div><div class="optart" hidden></div></div>' +
-      '<div class="donebar"><button class="btn green side" data-do="undo" aria-label="annuler">' + Art.ui.undo + '</button><span class="donehost"></span><button class="btn red side" data-do="restart" aria-label="recommencer">' + Art.ui.again + '</button></div>' + '</div>';
+      '<div class="donebar"><button class="btn green side" data-do="undo" aria-label="annuler">' + Art.ui.undo + '</button>' + (withSizes ? '<span class="sizes"></span>' : '') + '<span class="donehost"></span><button class="btn red side" data-do="restart" aria-label="recommencer">' + Art.ui.again + '</button></div>' + '</div>';
+  }
+  /* « Grande feuille » : la feuille prend presque tout l'écran ; une petite palette reste ; un bouton revient à l'interface normale */
+  function wireFull(host) {
+    var b = C.$('.expbtn', host), act = C.$('.act', host);
+    if (!b || !act) return;
+    b.addEventListener('click', function () {
+      var on = !act.classList.contains('full');
+      act.classList.toggle('full', on); document.body.classList.toggle('atl-full', on);
+      b.innerHTML = on ? SHRINK : EXPAND; b.setAttribute('aria-label', on ? 'retour' : 'grande feuille');
+      C.sfx.pop(); C.bounce(b, 1.15);
+      if (host._onFull) host._onFull(on);
+    });
   }
 
   /* contrôleur de l'interface : mode actif, couleur active, autocollant actif */
   function Ui(host, modes, cb) {
     var tools = C.$('.tools', host), pal = C.$('.palette', host), stk = C.$('.stickers', host), art = C.$('.optart', host), cap = C.$('.modecap', host), page = C.$('.act', host) || host;
+    wireFull(host);
     var api = { mode: modes[0].id, color: Art.color.palette[7], sticker: Art.color.stickers[0].id };
     function cur() { return modes.filter(function (m) { return m.id === api.mode; })[0]; }
     function paintCap() {
+      if (!cap) return;
       var m = cur(), ico = C.$('.mcico', cap), txt = C.$('.mctxt', cap);
       txt.textContent = m.cap; cap.style.setProperty('--hex', m.hex);
       if (m.useColor) ico.innerHTML = '<i class="cdot" style="background:' + api.color + '"></i>';
@@ -58,6 +74,7 @@
       host.style.setProperty('--ac', api.color);
       C.$$('.tdot', tools).forEach(function (d) { d.style.background = api.color; });
       C.$$('.sw', pal).forEach(function (s) { s.classList.toggle('on', s.dataset.c === api.color); });
+      var on = C.$('.sw.on', pal); if (on && pal.scrollWidth > pal.clientWidth) { var l = on.offsetLeft - (pal.clientWidth - on.offsetWidth) / 2; pal.scrollLeft = Math.max(0, l); }
     }
     api.setMode = function (id, silent) {
       api.mode = id; var m = cur();
@@ -311,7 +328,7 @@
     }
     function blank() { var a = cC.getImageData(0, 0, N, N).data, b = cS.getImageData(0, 0, N, N).data; for (var i = 3; i < a.length; i += 4) if (a[i] || b[i]) return false; return true; }
     function saveNow() { var url = compose(); dirty = false; return C.saveCreation('color', url).then(function () { return url; }); }
-    var doneB = C.doneBtn('J’ai fini mon dessin !', function () {
+    var doneB = C.doneBtn('J’ai fini !', function () {
       if (blank()) { C.nudge(C.$('.optslot', host)); C.say('Colorie d’abord !'); return false; }   /* rien n'est colorié : pas de validation */
       saveNow().then(function (url) { C.finish({ kind: 'color', tile: 'draw', img: url, say: 'Wouah, ton dessin est magnifique !', again: function () { goBack(); } }); });
     });
@@ -342,6 +359,15 @@
     cv.width = W; cv.height = H;
     var size = 28, paper = '#fffdf8', hue = 0;
     var undoStack = [], dirty = false, touched = function () { };
+    /* la feuille s'allonge en mode « Grande feuille » (même largeur, plus de hauteur) ; le dessin reste exactement à sa place */
+    function setH(nh) {
+      if (nh === H) return;
+      var keep = document.createElement('canvas'); keep.width = W; keep.height = H; keep.getContext('2d').drawImage(cv, 0, 0);
+      H = nh; cv.height = H; cx.drawImage(keep, 0, 0);
+      undoStack = []; upd(); host._ratio = W / H; if (host._refit) host._refit();
+    }
+    function lowerBlank() { if (H <= 960) return true; var d = cx.getImageData(0, 960, W, H - 960).data; for (var i = 3; i < d.length; i += 4) if (d[i]) return false; return true; }
+    host._onFull = function (on) { if (on) setH(1280); else if (lowerBlank()) setH(960); };
     function snap() { try { undoStack.push(cx.getImageData(0, 0, W, H)); if (undoStack.length > 10) undoStack.shift(); } catch (e) { } dirty = true; touched(); upd(); }
     function upd() { C.$('[data-do=undo]', host).classList.toggle('dim', !undoStack.length); }
     function pos(e) { var r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
@@ -401,7 +427,7 @@
 
     var ui = Ui(host, FREE_MODES, {});
     var sizes = C.$('.sizes', host);
-    [[14, 14], [28, 24], [52, 36]].forEach(function (s, i) {
+    [[14, 10], [28, 18], [52, 26]].forEach(function (s, i) {
       var b = C.el('<button class="szb' + (i === 1 ? ' on' : '') + '" aria-label="taille"><i style="width:' + s[1] + 'px;height:' + s[1] + 'px"></i></button>');
       b.addEventListener('click', function () { size = s[0]; C.select(sizes, '.szb', b); C.sfx.pop(); C.bounce(b, 1.2); });
       sizes.appendChild(b);
@@ -413,12 +439,12 @@
     });
     function blank() { var a = cx.getImageData(0, 0, W, H).data; for (var i = 3; i < a.length; i += 4) if (a[i]) return false; return true; }
     function saveNow() {
-      var out = document.createElement('canvas'); out.width = 480; out.height = 640;
-      var x = out.getContext('2d'); x.fillStyle = paper; x.fillRect(0, 0, 480, 640); x.drawImage(cv, 0, 0, 480, 640);
+      var out = document.createElement('canvas'); out.width = 480; out.height = Math.round(480 * H / W);
+      var x = out.getContext('2d'); x.fillStyle = paper; x.fillRect(0, 0, 480, out.height); x.drawImage(cv, 0, 0, 480, out.height);
       var url = out.toDataURL('image/jpeg', 0.88); dirty = false;
       return C.saveCreation('draw', url).then(function () { return url; });
     }
-    var doneB = C.doneBtn('J’ai fini mon dessin !', function () {
+    var doneB = C.doneBtn('J’ai fini !', function () {
       if (blank()) { C.nudge(C.$('.cv-wrap', host)); C.say('Dessine d’abord !'); return false; }   /* page vide : pas de validation */
       saveNow().then(function (url) { C.finish({ kind: 'draw', tile: 'draw', img: url, say: 'Wouah, ton dessin est magnifique !', again: function () { cx.clearRect(0, 0, W, H); undoStack = []; upd(); dirty = false; } }); });
     });
@@ -433,6 +459,7 @@
       var root = el;
       root._autosave = function () { if (root._cur && root._cur.autosave) root._cur.autosave(); };
       function hub() {
+        document.body.classList.remove('atl-full');
         root._cur = null;
         C.setBack(null);
         root.innerHTML = '<div class="act hub"><div class="hubgrid">' +
@@ -444,6 +471,7 @@
         C.say('Qu’est-ce qu’on fait ?');
       }
       function pick() {
+        document.body.classList.remove('atl-full');
         root._cur = null;
         C.setBack(hub);
         root.innerHTML = '<div class="act pick"><div class="pickgrid scrollable">' + Art.color.pages.map(function (p) {
@@ -460,13 +488,13 @@
       }
       function free() {
         C.setBack(hub);
-        root.innerHTML = '<div class="act free"><div class="stage"><div class="cv-wrap"><canvas class="cv-free"></canvas></div></div>' + trayHtml(FREE_MODES, true) + '</div>';
-        C.fit(C.$('.stage', root), C.$('.cv-wrap', root), 3 / 4);
+        root.innerHTML = '<div class="act free"><div class="stage"><div class="cv-wrap"><canvas class="cv-free"></canvas></div></div>' + trayHtml(FREE_MODES, true, true) + '</div>';
+        root._ratio = 3 / 4; root._refit = C.fit(C.$('.stage', root), C.$('.cv-wrap', root), function () { return root._ratio || 3 / 4; });
         root._cur = FreeDraw(root);
         C.say('Dessine avec ton doigt !');
       }
       hub();
     },
-    leave: function () { }
+    leave: function () { document.body.classList.remove('atl-full'); }
   });
 })();
