@@ -79,7 +79,8 @@
     var G = o.gear || {};
     if (G.mount) g.translate(0, -26);
     if (G.cape) gearCape(g, G.cape, t, o);
-    if (cls === "bastion") drawBastion(g, P, t, o, bob);
+    if (root.AT_ART && root.AT_ART.heroExt && root.AT_ART.heroExt[cls]) root.AT_ART.heroExt[cls](g, P, t, o, bob);
+    else if (cls === "bastion") drawBastion(g, P, t, o, bob);
     else if (cls === "prisme") drawPrisme(g, P, t, o, bob);
     else if (cls === "sibylle") drawSibylle(g, P, t, o, bob);
     else if (cls === "clarine") drawClarine(g, P, t, o, bob);
