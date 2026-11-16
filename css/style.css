@@ -3375,3 +3375,46 @@ a.account-admin { text-decoration: none; }
 .at-loot-i.mine { position: relative; }
 .at-mine { position: absolute; top: -7px; right: 8px; z-index: 2; padding: 1px 8px; border-radius: 999px; background: #2f8a57; color: #fff; font: 800 .62rem Nunito, sans-serif; }
 @media (max-width: 640px) { .at-merch { grid-template-columns: 1fr; } .at-prev { flex-direction: row; gap: 8px; } }
+
+/* =========================================================================
+   Arcane Tactics 3.0 — DA « fantasy sombre » (référence : image Direction Artistique)
+   Palette : encre #120a1d · aubergine #20142f / #2c1c40 · prune #3b2656 · bronze #8a5f2e · or #e8b857
+             crème #f4ecd8 · sarcelle #6fe0e8 · cramoisi #d3405a · violet #b07dff
+   Panneaux sombres, cadre bronze double filet, titres à losange, barres de HP/PA/PM en pastilles.
+   ========================================================================= */
+.at-card, :root[data-theme="dark"] .at-card {
+  --atbg: #20142f; --atbg2: #2c1c40; --atbg3: #3b2656; --atink: #f4ecd8; --atsoft: #cdbfdc; --atline: #6b4a2a; --atacc: #e8b857; --atcyan: #6fe0e8;
+  background: radial-gradient(ellipse at 50% -10%, #3d2860 0%, #24163a 45%, #160d26 100%);
+  border-radius: 14px;
+  box-shadow: 0 0 0 2px #120a1d, 0 0 0 4px #8a5f2e, 0 0 0 5px #120a1d, 0 20px 56px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(255, 236, 200, .1);
+}
+.at-card::before { background: repeating-linear-gradient(115deg, rgba(255, 220, 160, .02) 0 18px, transparent 18px 70px); }
+.at-card h2, .at-card .at-inv-h h2 { font-family: "Fredoka", "Nunito", sans-serif; color: #f4ecd8; letter-spacing: .01em; text-shadow: 0 2px 0 rgba(0, 0, 0, .45); }
+.at-card h2::before { content: "◆"; color: #e8b857; font-size: .55em; margin-right: 9px; vertical-align: .22em; text-shadow: 0 0 8px rgba(232, 184, 87, .6); }
+.at-card h3::before { content: "◇"; color: #8a5f2e; font-size: .8em; margin-right: 6px; }
+.at-inv-h { border-bottom: 1px solid rgba(138, 95, 46, .55); padding-bottom: 8px; }
+.at-gold, .at-pts { background: linear-gradient(180deg, #4a3414, #2f2009); color: #f6d36b; border: 1px solid #a67a2c; box-shadow: inset 0 1px 0 rgba(255, 230, 160, .25); }
+.at-x { background: #3b2656; border: 1px solid #8a5f2e; }
+.at-x:hover { background: #d3405a; }
+.at-tabs button.on { background: #3b2656; border-color: #e8b857; color: #f4ecd8; box-shadow: 0 0 10px rgba(232, 184, 87, .25); }
+.at-slot, .at-bagc { background: #150d22; border-color: #6b4a2a; }
+.at-bagc.at-bage { background: rgba(21, 13, 34, .55); border-color: #3a2a4e; }
+.at-it { background: linear-gradient(160deg, #2c1c40, #150d22); }
+.at-chips button { border-color: #8a5f2e; }
+.at-chips button.on { background: #e8b857; color: #20142f; border-color: #e8b857; }
+.at-mat input[type=number], .at-mat select { border-color: #8a5f2e; background: #150d22; }
+.at-trade section, .at-arena section, .at-dr { background: rgba(21, 13, 34, .55); border-color: rgba(138, 95, 46, .6); }
+.at-ctx { background: linear-gradient(180deg, #2c1c40, #150d22); border-color: #8a5f2e; }
+.at-ctx button:hover:not(:disabled) { background: rgba(232, 184, 87, .28); }
+/* HUD */
+.at-pf { background: linear-gradient(180deg, rgba(44, 28, 64, .92), rgba(21, 13, 34, .92)); border: 2px solid #8a5f2e; box-shadow: 0 0 0 1px #120a1d, 0 6px 16px rgba(0, 0, 0, .4); }
+.at-pf img { border: 1px solid #e8b857; }
+.at-toast { background: linear-gradient(180deg, rgba(44, 28, 64, .95), rgba(21, 13, 34, .95)); border: 1px solid #8a5f2e; }
+.at-tip { background: linear-gradient(180deg, rgba(44, 28, 64, .98), rgba(18, 10, 29, .98)); border: 2px solid #8a5f2e; box-shadow: 0 8px 22px rgba(0, 0, 0, .5); }
+.at-tip strong { color: #f6d36b; }
+.at-tip-gold { color: #f6d36b; }
+.at-tip-sp b { font-weight: 800; }
+.at-tip-sp { margin: 3px 0; }
+.at-bar { padding: 10px 14px 12px; border-radius: 16px; background: linear-gradient(180deg, rgba(44, 28, 64, .94), rgba(18, 10, 29, .96)); border: 2px solid #8a5f2e; box-shadow: 0 0 0 1px #120a1d, 0 -4px 24px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 236, 200, .12); }
+.at-hbtn { border-color: #8a5f2e; background: linear-gradient(180deg, #3b2656, #20142f); }
+.at-hbtn:hover { border-color: #e8b857; }
