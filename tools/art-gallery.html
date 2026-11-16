@@ -1,13 +1,14 @@
 <!doctype html><meta charset="utf-8"><title>Galerie bestiaire</title>
 <body style="margin:0;background:#1b1330;color:#eee;font:12px sans-serif"><canvas id="c"></canvas>
-<script src="../js/arcane-core.js"></script><script src="../js/arcane-art.js"></script><script src="../js/arcane-bestiary.js"></script><script src="../js/arcane-gfx.js"></script><script src="../js/arcane-beasts.js"></script><script src="../js/arcane-heroes.js"></script>
+<script src="../js/arcane-core.js"></script><script src="../js/arcane-art.js"></script><script src="../js/arcane-bestiary.js"></script><script src="../js/arcane-gfx.js"></script><script src="../js/arcane-beasts.js"></script><script src="../js/arcane-beasts2.js"></script><script src="../js/arcane-heroes.js"></script>
 <script>
-var ids=["traqueur","colosse","spectre","tisseur","siphonneur","araignee","araignelet","reinetisse","chatmasque"],c=document.getElementById("c"),g=c.getContext("2d"),S=2;
-c.width=ids.length*200*1;c.height=3*260*1;c.style.width=c.width+"px";
+var ids2=["glorbe","scarabrume","ronceau","lanterneau","sylphe","golem","cristallin","bonbonk","grenouillon"],ids3=["nuagelet","horlogeon","sentinelle","sylvestre","guimauve","tictac","archonte"],ids=["traqueur","colosse","spectre","tisseur","siphonneur","araignee","araignelet","reinetisse","chatmasque"],c=document.getElementById("c"),g=c.getContext("2d"),S=2;
+c.width=ids.length*200*1;c.height=5*260*1;c.style.width=c.width+"px";
 function draw(t){g.clearRect(0,0,c.width,c.height);g.fillStyle="#2a2040";g.fillRect(0,0,c.width,c.height);
  [0,1].forEach(function(row){ids.forEach(function(id,i){var x=i*200+100,y=row*260+190;g.fillStyle="#3a2d5a";g.beginPath();g.ellipse(x,y,70,26,0,0,7);g.fill();
   var M=AT_CORE.MOBS[id]||{};AT_ART.mob(g,id,x,y,{t:t,col:M.col,scale:1.5,elite:row==1,cast:row==1?(Math.sin(t*2)*.5+.5):0,walk:row==0?(t*.8)%1:null});
   g.fillStyle="#fff";g.fillText(id+(row?" (élite+cast)":""),x-40,row*260+240);});});
+ [ids2,ids3].forEach(function(L,r){L.forEach(function(id,i){var x=i*200+100,y=(3+r)*260+190;g.fillStyle="#3a2d5a";g.beginPath();g.ellipse(x,y,70,26,0,0,7);g.fill();var M=AT_CORE.MOBS[id]||{};g.save();AT_ART.mob(g,id,x,y,{t:t,col:M.col,scale:1.5,boss:M.boss,cast:(Math.sin(t*2)>.7?.6:0)});g.restore();g.fillStyle="#fff";g.fillText(id,x-20,(3+r)*260+240);});});
  ["voltige","prisme","bastion","sibylle","clarine","orage","ondine"].forEach(function(cl,i){var x=i*200+100,y=2*260+190;g.fillStyle="#3a2d5a";g.beginPath();g.ellipse(x,y,70,26,0,0,7);g.fill();g.save();AT_ART.hero(g,cl,x,y,{t:t,scale:2.2,cast:(Math.sin(t*2)>.7?.6:0),walk:i%2?(t*.8)%1:null});g.restore();g.fillStyle="#fff";g.fillText(cl,x-20,3*260-12);});}
 function loop(t){draw(t/1000);requestAnimationFrame(loop)} loop(0);
 </script></body>
