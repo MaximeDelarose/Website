@@ -4,3 +4,7 @@
 # arcade : dépendances de build (les bundles du jeu sont dans arcade/vendor)
 arcade/node_modules/
 arcade/.build/
+
+# happy daily : dépendances de build
+_happy/node_modules/
+_happy/.build/
