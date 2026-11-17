@@ -307,7 +307,7 @@
     var a = [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)], k = t > 0 ? 255 : 0, f = Math.abs(t);
     return 'rgb(' + a.map(function (v) { return Math.round(v + (k - v) * f); }).join(',') + ')';
   }
-  F.base = { skin: 1, hairColor: 0, hairStyle: 'long', eyes: 0, lip: '#ee8a9a' };
+  F.base = { skin: 1, hairColor: 0, hairStyle: 'long', eyes: 0, lip: '#e9758f' };
   /* Petite héroïne de dessin animé, personnalisable : peau, yeux, cheveux (couleur + coiffure), tenue.
      st : { skin, eyes, hairColor, hairStyle, top, collar, lips, blush, shadow }
      Les ids #mk-lips, #mk-blush, #mk-shadow servent au maquillage ; l'iris prend la couleur st.eyes. */
@@ -317,13 +317,13 @@
     var hc = G.hairColors[st.hairColor] || G.hairColors[0], hairc = hc.c, hd = hc.d, style = G.fixStyle(st.hairStyle);
     var lipc = st.lips || F.base.lip, eyec = G.eyeColors[st.eyes] || G.eyeColors[0], topc = st.top || '#8fd0ff';
     var mir = function (inner) { return inner + '<g transform="translate(300 0) scale(-1 1)">' + inner + '</g>'; };
-    var FACE = 'M52 180C52 114 94 72 150 72s98 42 98 108c0 60-42 108-98 108S52 240 52 180z';
+    var FACE = 'M52 184C52 118 94 76 150 76s98 42 98 108c0 52-40 98-98 98S52 236 52 184z';
     var s = '<defs>' +
       '<radialGradient id="' + u + 's" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="' + mixc(skin, .12) + '"/><stop offset=".7" stop-color="' + skin + '"/><stop offset="1" stop-color="' + shade + '"/></radialGradient>' +
       '<linearGradient id="' + u + 'h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + mixc(hairc, .2) + '"/><stop offset=".45" stop-color="' + hairc + '"/><stop offset="1" stop-color="' + hd + '"/></linearGradient>' +
       '<radialGradient id="' + u + 'i" cx="50%" cy="64%" r="62%"><stop offset="0" stop-color="' + mixc(eyec, .5) + '"/><stop offset=".5" stop-color="' + eyec + '"/><stop offset="1" stop-color="' + mixc(eyec, -.45) + '"/></radialGradient>' +
       '<linearGradient id="' + u + 'w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9dde0"/><stop offset=".35" stop-color="#fffdfc"/></linearGradient>' +
-      '<radialGradient id="' + u + 'b" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="' + (st.blush || '#ff7fa5') + '" stop-opacity="' + (st.blush ? '.85' : '.55') + '"/><stop offset="1" stop-color="' + (st.blush || '#ff7fa5') + '" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="' + u + 'b" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="' + (st.blush || '#ff7fa5') + '" stop-opacity="' + (st.blush ? '.85' : '.62') + '"/><stop offset="1" stop-color="' + (st.blush || '#ff7fa5') + '" stop-opacity="0"/></radialGradient>' +
       '<filter id="' + u + 'f" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"/></filter><filter id="' + u + 'g" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.200"/></filter>' +
       '<clipPath id="' + u + 'k"><path d="' + FACE + '"/></clipPath>' +
       '<clipPath id="' + u + 'c"><path d="M-21 3C-21 -14 -10 -21 0 -21S21 -14 21 3C21 17 11 22 0 22S-21 17 -21 3z"/></clipPath></defs>';
@@ -395,11 +395,12 @@
     s += '<path d="M131 252q-3-2-4-6M169 252q3-2 4-6" fill="none" stroke="' + shade + '" stroke-width="2.400" stroke-linecap="round" opacity=".55"/>';
 
     /* ---- cheveux avant : raie, frange en mèches, mèches qui encadrent le visage ---- */
-    var hf = '<path d="M50 200C36 108 96 58 150 58s114 50 100 142C246 152 228 124 202 110C178 100 148 100 126 106C98 116 72 148 50 200z" fill="' + H + '"/>' +
-      '<path d="M126 110C148 104 178 104 204 114C230 128 248 156 250 196C238 174 224 162 206 154C182 142 150 142 126 138z" fill="#000" opacity=".12" filter="url(#' + u + 'g)"/>' +
-      '<path d="M126 106C148 100 178 100 202 110C228 124 246 152 248 192C236 170 222 158 204 150C180 138 150 138 126 134z" fill="' + H + '"/>' +
-      '<path d="M126 106C98 116 72 148 52 198C72 170 94 148 126 138z" fill="' + H + '"/>' +
-      '<path d="M126 60v46" stroke="#000" stroke-opacity=".16" stroke-width="3" stroke-linecap="round"/>' +
+    var hf = '<path d="M50 204C36 108 96 58 150 58s114 50 100 146C246 156 228 130 202 118C178 108 148 108 126 114C98 124 72 152 50 204z" fill="' + H + '"/>' +
+      '<path d="M126 124C148 118 178 118 204 128C230 140 248 164 250 202C238 182 224 172 206 166C182 156 150 156 126 154z" fill="#000" opacity=".13" filter="url(#' + u + 'g)"/>' +
+      '<path d="M126 116C148 110 178 110 202 120C228 132 246 156 248 196C236 176 222 166 204 160C180 150 150 150 126 148z" fill="' + H + '"/>' +
+      '<path d="M126 116C98 126 72 154 52 204C72 176 94 158 126 150z" fill="' + H + '"/>' +
+      '<path d="M150 112C176 114 200 128 214 150C196 136 174 130 150 130z" fill="' + mixc(hairc, .18) + '" opacity=".7"/>' +
+      '<path d="M126 60v54" stroke="#000" stroke-opacity=".16" stroke-width="3" stroke-linecap="round"/>' +
       strands('<path d="M98 84C84 104 72 134 62 172M204 80C220 96 236 124 244 164M150 62C176 64 200 78 216 94M150 62C120 64 96 72 82 88M128 66C118 76 110 88 106 100"/>') +
       '<path d="M96 80C120 62 180 62 204 80C180 72 120 72 96 80z" fill="#fff" opacity=".22" filter="url(#' + u + 'g)"/>' +
       '<path d="M118 62C108 50 98 48 92 54M178 62C188 50 200 50 206 56" fill="none" stroke="' + hairc + '" stroke-width="2" stroke-linecap="round" opacity=".7"/>';
