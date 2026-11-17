@@ -65,7 +65,7 @@
   C.fit = function (stage, wrap, ratio) {
     function f() {
       var w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return;
-      var ww = Math.min(w - 8, (h - 8) * ratio), hh = ww / ratio;
+      var rt = typeof ratio === 'function' ? ratio() : ratio, ww = Math.min(w - 6, (h - 6) * rt), hh = ww / rt;
       wrap.style.width = ww + 'px'; wrap.style.height = hh + 'px';
     }
     f();
