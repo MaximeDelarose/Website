@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Happy Daily</title>
+<meta name="description" content="Happy Daily : un cozy game sur le quotidien, l'équilibre et les petites choses qui rendent une vie agréable.">
+<meta name="theme-color" content="#FFE8D6">
+<link rel="icon" href="../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+@font-face { font-family: "Londrina"; src: url("../Fonts/Londrina_Solid/LondrinaSolid-Regular.ttf"); font-display: swap; }
+:root { --ink: #5a4a44; --soft: #8c7a72; --cream: #fff8f0; --mustard: #f1c76d; --rose: #e7b4b1; --sage: #a8b89a; --ease: cubic-bezier(.3, 1.4, .5, 1); }
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: linear-gradient(160deg, #fff1df, #f6d9c2); font-family: "Nunito", system-ui, sans-serif; color: var(--ink); -webkit-tap-highlight-color: transparent; user-select: none; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; transition: filter 2.4s ease; }
+
+#hud { position: fixed; inset: 0; pointer-events: none; opacity: 0; transform: translateY(-8px); transition: opacity .9s ease .4s, transform .9s var(--ease) .4s; }
+#hud.on { opacity: 1; transform: none; }
+.chip { position: absolute; top: max(14px, env(safe-area-inset-top)); background: rgba(255, 248, 240, .86); border-radius: 999px; padding: 9px 16px; box-shadow: 0 6px 18px rgba(120, 80, 50, .12); backdrop-filter: blur(6px); }
+#date { left: 14px; line-height: 1.15; border-radius: 18px; }
+#day { font-weight: 800; font-size: 15px; }
+#when { font-size: 12px; color: var(--soft); font-weight: 700; }
+#units { left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 11px 14px; }
+#units i { width: 15px; height: 15px; border-radius: 50%; background: var(--mustard); transition: transform .5s var(--ease), background .5s ease, opacity .5s ease; }
+#units i.heavy { background: #b9b4cf; }
+#units i.used { background: transparent; box-shadow: inset 0 0 0 2px rgba(140, 122, 114, .35); transform: scale(.72); }
+#purse { right: 14px; font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 7px; }
+#purse::before { content: ""; width: 13px; height: 13px; border-radius: 50%; background: var(--mustard); box-shadow: inset -2px -2px 0 rgba(160, 110, 40, .3); }
+
+.bubble { position: fixed; transform: translate(-50%, -100%) translateY(6px) scale(.9); opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .35s var(--ease); z-index: 5; }
+.bubble.open { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+#menu { display: flex; flex-direction: column; gap: 7px; align-items: stretch; padding-bottom: 6px; }
+#menu.open { pointer-events: auto; }
+#menu button { font: inherit; font-weight: 800; font-size: 15px; color: var(--ink); background: var(--cream); border: 0; border-radius: 18px; padding: 10px 16px; display: grid; grid-template-columns: 1fr auto; column-gap: 14px; align-items: center; text-align: left; cursor: pointer; box-shadow: 0 6px 16px rgba(120, 80, 50, .16); opacity: 0; transform: translateY(8px) scale(.94); transition: opacity .3s ease, transform .4s var(--ease), background .2s ease; white-space: nowrap; }
+#menu.open button { opacity: 1; transform: none; }
+#menu button:hover { background: #fff; transform: translateY(-2px) scale(1.03); transition-delay: 0s !important; }
+#menu button:active { transform: scale(.97); }
+#menu button.no { opacity: .62 !important; cursor: default; }
+#menu button em { grid-column: 1 / -1; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--soft); }
+.cost { display: flex; gap: 4px; }
+.cost i { width: 9px; height: 9px; border-radius: 50%; background: var(--mustard); }
+.cost.free { font-size: 11px; color: var(--soft); font-weight: 700; }
+#say { background: var(--cream); border-radius: 18px; padding: 10px 16px; font-weight: 800; font-size: 15px; box-shadow: 0 6px 16px rgba(120, 80, 50, .16); display: flex; align-items: center; gap: 9px; max-width: 250px; text-align: center; }
+#say b { width: 16px; height: 16px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 2px rgba(90, 74, 68, .12); }
+
+#veil { position: fixed; inset: 0; background: #2f3152; opacity: 0; pointer-events: none; transition: opacity 1.7s ease; display: grid; place-content: center; text-align: center; color: #fff1df; z-index: 8; }
+#veil.on { opacity: 1; }
+#veil > * { opacity: 0; transform: translateY(8px); transition: opacity 1s ease, transform 1.2s var(--ease); }
+#veil.text > * { opacity: 1; transform: none; }
+#veil-day { font-family: "Londrina", "Nunito", sans-serif; font-size: 54px; letter-spacing: 1px; }
+#veil-sub { font-weight: 700; opacity: .7; margin-top: 4px; min-height: 1.2em; }
+
+#title { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px; text-align: center; z-index: 10; background: radial-gradient(circle at 50% 45%, rgba(255, 241, 223, .55), rgba(255, 232, 214, .9)); transition: opacity 1.2s ease, visibility 1.2s; padding: 24px; }
+#title.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+#title h1 { font-family: "Londrina", "Nunito", sans-serif; font-weight: 400; font-size: clamp(54px, 13vw, 104px); line-height: .95; color: var(--ink); }
+#title h1 span { color: #e0a93f; }
+#title p { font-weight: 700; color: var(--soft); max-width: 22em; margin-bottom: 10px; }
+#title button { font: inherit; font-weight: 800; border: 0; cursor: pointer; border-radius: 999px; transition: transform .35s var(--ease), box-shadow .3s ease; }
+#go { background: var(--mustard); color: var(--ink); font-size: 18px; padding: 14px 34px; box-shadow: 0 8px 20px rgba(200, 140, 50, .3); }
+#go:hover { transform: translateY(-2px) scale(1.04); }
+#fresh { background: transparent; color: var(--soft); font-size: 14px; padding: 8px 16px; }
+#fresh:hover { transform: scale(1.05); }
+@media (max-width: 520px) { #when { display: none; } #units i { width: 13px; height: 13px; } .chip { padding: 8px 12px; } }
+@media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; } }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="hud">
+  <div class="chip" id="date"><div id="day">Jour 1</div><div id="when">Cycle 1 · matin</div></div>
+  <div class="chip" id="units" aria-label="Unités de temps restantes"></div>
+  <div class="chip" id="purse"><span id="money">0</span></div>
+</div>
+<div class="bubble" id="menu"></div>
+<div class="bubble" id="say"></div>
+<div id="veil"><div id="veil-day"></div><div id="veil-sub"></div></div>
+<div id="title">
+  <h1>Happy <span>Daily</span></h1>
+  <p>Une année, un appartement, et de petites journées à vivre comme on peut.</p>
+  <button id="go">Commencer</button>
+  <button id="fresh" hidden>Recommencer une année</button>
+</div>
+<script type="module" src="game.js?v=20261117a"></script>
+</body>
+</html>
