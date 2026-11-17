@@ -57,6 +57,17 @@ const CLIPS: Record<string, ClipFn> = {
   shift: (t) => ({ hz: s(Math.min(t / 2.5, 1) * Math.PI) * 0.12, twist: s(Math.min(t / 2.5, 1) * Math.PI) * 0.08, aRx: s(Math.min(t / 2.5, 1) * Math.PI) * 0.3 }),
   lookDown: (t) => ({ hx: s(Math.min(t / 3.5, 1) * Math.PI) * 0.3, lean: s(Math.min(t / 3.5, 1) * Math.PI) * 0.06 }),
   sway: (t) => ({ hz: s(t * 2.4) * 0.1, twist: s(t * 2.4) * 0.1, aLx: s(t * 2.4) * 0.2, aRx: -s(t * 2.4) * 0.2, y: Math.abs(s(t * 2.4)) * 0.03 }),
+  phone: (t) => ({ aRx: 1.25, aRz: -0.28, hx: 0.3, hz: s(t * 0.5) * 0.04, aLx: 0.3 + pulse(t, 2.1, 0.5) * 0.5, aLz: -0.2 }),
+  call: (t) => ({ aRx: 2.25, aRz: -0.35, hz: -0.14, hy: s(t * 0.6) * 0.2, aLx: pulse(t, 2.7, 1.2) * 0.6, twist: s(t * 0.5) * 0.06 }),
+  wave: (t) => ({ aRz: 2.3 + s(t * 9) * 0.3, hz: -0.08, y: Math.abs(s(t * 4.5)) * 0.02 }),
+  talk: (t) => ({ aRx: 0.5 + pulse(t, 1.6, 0.9) * 0.5, aLx: 0.3 + pulse(t + 0.8, 1.9, 0.9) * 0.5, aRz: 0.3, aLz: 0.3, hx: s(t * 2.6) * 0.05, hz: s(t * 1.3) * 0.06 }),
+  floorSit: (t, k) => ({ sit: 1, lL: 1.5, lR: 1.5, y: -0.4, lean: -0.08, sq: s(t * k.breath * 0.8) * 0.018, aLz: 0.3, aRz: 0.3 }),
+  floorTalk: (t) => ({ sit: 1, lL: 1.5, lR: 1.5, y: -0.4, aRx: 0.5 + pulse(t, 1.7, 0.9) * 0.5, aRz: 0.3, aLz: 0.3, hx: s(t * 2.4) * 0.05, hz: s(t * 1.2) * 0.07 }),
+  sitTalk: (t) => ({ ...SIT, aRx: 0.55 + pulse(t + 0.9, 1.8, 0.9) * 0.5, aLx: 0.5, aRz: 0.2, aLz: 0.1, hx: s(t * 2.2) * 0.06, hz: s(t * 1.1) * 0.07 }),
+  sitDrink: (t) => { const p = pulse(t, 2.6, 1.3); return { ...SIT, aRx: 0.95 + p * 0.95, aRz: -0.1 - p * 0.25, hx: -p * 0.16 }; },
+  sitNod: (t) => ({ ...SIT, hx: 0.05 + Math.max(0, s(t * 3)) * 0.14, aLx: 0.6, aRx: 0.6, aLz: -0.2, aRz: -0.2 }),
+  sitLaugh: (t) => ({ ...SIT, y: -0.14 + Math.abs(s(t * 7)) * 0.03, hx: -0.12, sq: s(t * 14) * 0.02, aLz: 0.3, aRz: 0.3 }),
+  carry: () => ({ aRx: 0.85, aLx: 0.85, aRz: -0.25, aLz: -0.25, lean: -0.05 }),
   sleep: (t) => ({ lie: 1, sq: s(t * 0.9) * 0.03, aLz: 0.05, aRz: 0.05 }),
   wake: (t) => ({ lie: 1, hy: s(t * 1.2) * 0.2, aRx: pulse(t, 9, 1.6) * 1.6 }),
 };
@@ -86,12 +97,17 @@ export class Character {
   private extra: string | null = null; private extraT = 0; private nextExtra = 4;
   private heading = 0;
   private color = new THREE.Color(TIER_COLORS[2]);
+  private fixedHair: number | null = null;
+  private carrying: string | null = null;
   private blink = 3; private eyes: THREE.Mesh[] = [];
   busy = false; // vrai pendant une action scénarisée (pas de gestes spontanés)
   onStep: (() => void) | null = null;
   private stepPhase = 0;
 
-  constructor(private clock: Clock) {
+  tint: number | null = null; // couleur imposée (pour les proches : leur propre état)
+
+  constructor(private clock: Clock, look: { hair?: number; bun?: boolean } = {}) {
+    this.fixedHair = look.hair ?? null;
     const limb = (x: number, y: number, r: number, len: number) => {
       const g = group(x, y, 0);
       g.add(capsule(r, len, this.bodyMat, 0, -len / 2 - r * 0.4, 0));
@@ -102,6 +118,7 @@ export class Character {
     const hair = new THREE.Mesh(new THREE.SphereGeometry(0.33, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.46), this.hairMat);
     hair.position.set(0, 0.02, -0.03); hair.rotation.x = -0.3; hair.castShadow = true;
     this.head.add(hair, ball(0.09, this.hairMat, 0.2, 0.2, -0.08), ball(0.07, this.hairMat, -0.12, 0.3, 0.05));
+    if (look.bun) this.head.add(ball(0.13, this.hairMat, 0, 0.3, -0.16));
     const eyeMat = mat(0x3d3432, { roughness: 0.5 });
     for (const x of [-0.115, 0.115]) {
       const e = ball(0.038, eyeMat, x, -0.02, 0.285, { cast: false });
@@ -134,16 +151,19 @@ export class Character {
     const dist = Math.hypot(dx, dz);
     if (dist < 0.05) return;
     this.heading = Math.atan2(dx, dz);
+    this.carrying = this.clip === "carry" || this.clip === "hold" ? this.clip : null;
     this.setClip("walk");
     const sx = p.x, sz = p.z;
+    const prev = this.clip;
     await this.clock.tween(dist / this.feel.speed, (k) => { p.x = lerp(sx, x, k); p.z = lerp(sz, z, k); }, (t) => t);
-    this.setClip("idle");
+    this.setClip(prev === "carry" || prev === "hold" ? prev : "idle");
   }
 
   update(dt: number): void {
     const k = this.feel;
     this.clipT += dt;
     let target: Partial<Pose> = CLIPS[this.clip](this.clipT, k);
+    if (this.clip === "walk" && this.carrying) { const c = CLIPS[this.carrying](this.clipT, k); target = { ...target, aRx: c.aRx, aRz: c.aRz, ...(this.carrying === "carry" ? { aLx: c.aLx, aLz: c.aLz } : {}) }; }
 
     // Gestes spontanés : uniquement au repos, debout ou assis, hors action.
     if (!this.busy && (this.clip === "idle")) {
@@ -199,10 +219,10 @@ export class Character {
     // Couleur : glisse en continu entre les cinq teintes émotionnelles.
     const f = Math.max(0, Math.min(3.999, (this.mood - 10) / 20));
     const i = Math.floor(f);
-    const want = new THREE.Color(TIER_COLORS[i]).lerp(new THREE.Color(TIER_COLORS[i + 1]), f - i);
+    const want = this.tint !== null ? new THREE.Color(this.tint) : new THREE.Color(TIER_COLORS[i]).lerp(new THREE.Color(TIER_COLORS[i + 1]), f - i);
     this.color.lerp(want, 1 - Math.exp(-1.6 * dt));
     this.bodyMat.color.copy(this.color);
     this.headMat.color.copy(this.color).lerp(new THREE.Color(0xfff6ec), 0.42);
-    this.hairMat.color.copy(this.color).multiplyScalar(0.62);
+    if (this.fixedHair !== null) this.hairMat.color.setHex(this.fixedHair); else this.hairMat.color.copy(this.color).multiplyScalar(0.62);
   }
 }

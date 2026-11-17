@@ -1,7 +1,7 @@
 // L'appartement-diorama : pièce, meubles, lumière du jour, et tout ce qui le rend habité.
 import * as THREE from "three";
 import { Clock, PAL, ball, capsule, cyl, damp, ease, group, lerp, mat, pop, rbox } from "./kit";
-import { State } from "./sim";
+import { State, Weather } from "./sim";
 
 export interface Interactable {
   id: string;
@@ -9,7 +9,19 @@ export interface Interactable {
   anchor: THREE.Vector3; // où s'ouvre le menu
   spot: THREE.Vector3; // où se place le personnage
   face: number; // vers où il regarde
+  place: string; // "apt", "hall" ou "out"
 }
+
+export const PLACES: Record<string, { origin: [number, number, number]; look: [number, number, number]; zoom: number }> = {
+  apt: { origin: [0, 0, 0], look: [-0.15, 1.15, -0.1], zoom: 1 },
+  hall: { origin: [40, 0, 0], look: [-0.1, 1.2, -0.2], zoom: 1.12 },
+  out: { origin: [-40, 0, 0], look: [0, 0.45, 0], zoom: 1.12 },
+};
+// Ce que chaque météo fait à la lumière : soleil, tache au sol, ambiance, voile gris, pluie, vent.
+const WX: Record<Weather, [number, number, number, number, number, number]> = {
+  sun: [1, 1, 1, 0, 0, 1], warm: [1.08, 1.25, 1.02, 0, 0, 0.7], cloud: [0.7, 0.3, 0.96, 0.5, 0, 1.4],
+  rain: [0.5, 0, 0.9, 0.68, 0.6, 2], storm: [0.36, 0, 0.82, 0.82, 0.85, 3.2],
+};
 
 interface Key { p: number; hemi: number; hemiC: number; sun: number; sunC: number; sky: number; patch: number; patchC: number; bg: [string, string] }
 // Matin → journée → soir → nuit.
@@ -57,12 +69,31 @@ export class World {
   private mug!: THREE.Object3D; private dishes: THREE.Object3D[] = []; private book!: THREE.Object3D; private clothes: THREE.Object3D[] = [];
   private meals: THREE.Object3D[] = [];
   bathDoor = group(); fridgeDoor = group();
+  private spin = 0; spinWant = 0;
   private hovered: Interactable | null = null;
   private steam: { m: THREE.Mesh; t: number }[] = [];
   private sparks: { m: THREE.Mesh; t: number; vx: number; vz: number }[] = [];
   private sparkMat = new THREE.MeshBasicMaterial({ color: 0xffdf9a, transparent: true });
   private steamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
   private camDir = new THREE.Vector3(1, 0.86, 1).normalize();
+  place = "apt";
+  private origin = new THREE.Vector3();
+  private size: [number, number] = [1280, 800];
+  private building = "apt";
+  weather: Weather = "sun";
+  powerOut = false;
+  private wx = [...WX.sun];
+  private flash = 0; private nextFlash = 6;
+  onThunder: (() => void) | null = null;
+  private veilMat = new THREE.MeshBasicMaterial({ color: 0x9aa3b0, transparent: true, opacity: 0 });
+  private rainTex!: THREE.CanvasTexture;
+  private rainMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+  private clouds: THREE.Mesh[] = [];
+  private decor: Record<string, THREE.Object3D> = {};
+  private trashBags: THREE.Object3D[] = [];
+  private doorHint!: THREE.Mesh;
+  private parcelBox!: THREE.Object3D; private newNote!: THREE.Object3D; private mailFlag!: THREE.Object3D;
+  outing = group(); // la petite scène-souvenir du moment
 
   constructor(private clock: Clock) {
     this.scene.add(this.hemi);
@@ -80,6 +111,12 @@ export class World {
     this.buildKitchen();
     this.buildCorner();
     this.buildSmallThings();
+    this.buildDecor();
+    this.building = "hall";
+    this.buildHall();
+    this.building = "apt";
+    this.outing.position.set(...PLACES.out.origin);
+    this.scene.add(this.outing);
     this.applyPhase(0);
   }
 
@@ -87,9 +124,23 @@ export class World {
 
   private add(...o: THREE.Object3D[]): void { o.forEach((x) => this.scene.add(x)); }
 
-  private register(id: string, obj: THREE.Object3D, anchor: [number, number, number], spot: [number, number], face: number): void {
+  register(id: string, obj: THREE.Object3D, anchor: [number, number, number], spot: [number, number], face: number): Interactable {
     obj.traverse((c) => { c.userData.item = id; });
-    this.items.push({ id, obj, anchor: new THREE.Vector3(...anchor), spot: new THREE.Vector3(spot[0], 0, spot[1]), face });
+    const o = PLACES[this.building].origin;
+    const it = { id, obj, anchor: new THREE.Vector3(anchor[0] + o[0], anchor[1], anchor[2] + o[2]), spot: new THREE.Vector3(spot[0] + o[0], 0, spot[1] + o[2]), face, place: this.building };
+    this.items.push(it);
+    return it;
+  }
+  /** Impose un temps sans transition (scènes d'intérieur des sorties). */
+  snapWeather(w: Weather): void { this.weather = w; this.wx = [...WX[w]]; }
+  unregister(id: string): void { this.items = this.items.filter((i) => i.id !== id); }
+  item(id: string): Interactable { return this.items.find((i) => i.id === id)!; }
+
+  /** Change de lieu : la caméra et le soleil suivent. */
+  setPlace(name: string): void {
+    this.place = name;
+    this.origin.set(...PLACES[name].origin);
+    this.resize(this.size[0], this.size[1]);
   }
 
   private buildRoom(): void {
@@ -116,6 +167,11 @@ export class World {
     // Porte d'entrée (le hall arrivera plus tard) et porte de la salle de bain.
     const door = group(3.0, 0, -2.97, rbox(0.86, 2.0, 0.08, 0.05, mat(PAL.caramel), 0, 1.0, 0), ball(0.045, mat(PAL.mustard, { roughness: 0.5 }), -0.3, 1.0, 0.07), rbox(0.9, 0.03, 0.34, 0.01, mat(PAL.sage), 0, 0.016, 0.3, { cast: false }));
     this.add(door);
+    this.register("door", door, [3.0, 2.35, -2.9], [3.0, -2.2], Math.PI);
+    // Un petit point doré danse devant la porte quand quelque chose attend en bas.
+    this.doorHint = ball(0.06, new THREE.MeshBasicMaterial({ color: 0xf1c76d }), 3.0, 2.25, -2.85, { cast: false });
+    this.doorHint.visible = false; this.doorHint.scale.setScalar(0.001);
+    this.add(this.doorHint);
     const frame = rbox(0.1, 2.12, 1.0, 0.03, mat(PAL.white), -3.5, 1.04, -0.2, { cast: false });
     const dark = rbox(0.04, 2.0, 0.84, 0.01, new THREE.MeshBasicMaterial({ color: 0x8a6e62 }), -3.47, 1.0, -0.2, { cast: false });
     this.bathDoor.position.set(-3.44, 0, -0.62);
@@ -143,6 +199,21 @@ export class World {
     starGeo.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
     this.stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xfff6d8, size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0 }));
     const fm = mat(PAL.white);
+    const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+    for (const [x, y, sc] of [[-0.4, 0.42, 1], [0.35, 0.2, 0.8], [0.0, 0.55, 0.65]] as const) {
+      const c = new THREE.Mesh(new THREE.CircleGeometry(0.16, 20), cloudMat);
+      c.position.set(x, y, 0.0135); c.scale.set(1.9 * sc, 0.7 * sc, 1); c.userData.x = x;
+      this.clouds.push(c); g.add(c);
+    }
+    const veil = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), this.veilMat); veil.position.z = 0.0145;
+    this.rainTex = softTexture((c, n) => {
+      c.strokeStyle = "rgba(255,255,255,0.75)"; c.lineWidth = 1.6; c.lineCap = "round";
+      for (let i = 0; i < 46; i++) { const x = (i * 71) % n, y = (i * 137) % n, l = 10 + (i % 5) * 5; c.beginPath(); c.moveTo(x, y); c.lineTo(x - 2, y + l); c.stroke(); }
+    });
+    this.rainTex.wrapS = this.rainTex.wrapT = THREE.RepeatWrapping;
+    this.rainMat.map = this.rainTex;
+    const rain = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), this.rainMat); rain.position.z = 0.016;
+    g.add(veil, rain);
     g.add(sky, this.sunDisc, this.stars,
       rbox(1.7, 0.1, 0.1, 0.03, fm, 0, 0.8, 0.04), rbox(1.7, 0.1, 0.1, 0.03, fm, 0, -0.8, 0.04),
       rbox(0.1, 1.7, 0.1, 0.03, fm, -0.8, 0, 0.04), rbox(0.1, 1.7, 0.1, 0.03, fm, 0.8, 0, 0.04),
@@ -270,6 +341,12 @@ export class World {
 
     // Panier à linge : c'est par lui qu'on range.
     const basket = group(-3.12, 0, 0.5, cyl(0.2, 0.16, 0.36, mat(PAL.caramel), 0, 0.18, 0), cyl(0.21, 0.21, 0.03, mat(PAL.woodDark), 0, 0.37, 0), ball(0.12, mat(PAL.sky), 0.02, 0.37, 0.02));
+    // Le sac-poubelle grossit à côté du frigo.
+    for (const [r, x, z] of [[0.15, -2.56, 2.86], [0.19, -2.3, 2.9]] as const) {
+      const bag = group(x, 0, z, ball(r, mat(0x8d8aa8), 0, r * 0.85, 0), ball(r * 0.3, mat(0x8d8aa8), 0, r * 1.75, 0));
+      bag.children[0].scale.y = 0.9; bag.visible = false; bag.scale.setScalar(0.001);
+      this.trashBags.push(bag); this.add(bag);
+    }
     this.add(basket);
     this.register("basket", basket, [-3.1, 0.95, 0.5], [-2.5, 0.42], -Math.PI / 2);
   }
@@ -325,6 +402,102 @@ export class World {
     }
   }
 
+  /** Objets qu'on installe au fil de l'année : achats, cadeaux, trouvailles. */
+  private buildDecor(): void {
+    const hide = (o: THREE.Object3D) => { o.visible = false; o.scale.setScalar(0.001); this.add(o); return o; };
+    const photo = softTexture((c, n) => {
+      c.fillStyle = "#a7c8e6"; c.fillRect(0, 0, n, n); c.fillStyle = "#a8b89a"; c.fillRect(0, n * 0.62, n, n);
+      c.fillStyle = "#f1c76d"; c.beginPath(); c.arc(n * 0.72, n * 0.28, n * 0.1, 0, 7); c.fill();
+      for (const [x, col] of [[0.36, "#e7b4b1"], [0.56, "#fff8f0"]] as const) { c.fillStyle = col; c.beginPath(); c.arc(n * x, n * 0.52, n * 0.1, 0, 7); c.fill(); c.fillRect(n * (x - 0.09), n * 0.6, n * 0.18, n * 0.3); }
+    }, 128);
+    this.decor.frame = hide(group(-1.42, 0.5, -2.66, rbox(0.24, 0.3, 0.04, 0.015, mat(PAL.caramel), 0, 0.16, 0), rbox(0.18, 0.24, 0.02, 0.005, new THREE.MeshBasicMaterial({ map: photo }), 0, 0.16, 0.02, { cast: false })));
+    this.decor.frame.rotation.y = 0.35;
+    this.decor.cushion = hide(group(0, 0, 0, rbox(0.4, 0.14, 0.4, 0.07, mat(PAL.mustard), 1.62, 0.56, 1.38), rbox(0.42, 0.14, 0.4, 0.07, mat(PAL.rose), -2.28, 0.66, -2.36), rbox(0.36, 0.13, 0.36, 0.06, mat(PAL.sage), -2.86, 0.67, -2.3)));
+    const poster = softTexture((c, n) => {
+      c.fillStyle = "#fff1df"; c.fillRect(0, 0, n, n);
+      c.fillStyle = "#f1c76d"; c.beginPath(); c.arc(n / 2, n * 0.42, n * 0.24, 0, 7); c.fill();
+      c.fillStyle = "#e7b4b1"; c.fillRect(0, n * 0.62, n, n); c.fillStyle = "#a8b89a"; c.fillRect(0, n * 0.78, n, n);
+    }, 128);
+    this.decor.poster = hide(group(1.75, 2.15, -2.97, rbox(0.72, 0.92, 0.04, 0.015, mat(PAL.white), 0, 0, 0), rbox(0.62, 0.82, 0.02, 0.005, new THREE.MeshBasicMaterial({ map: poster }), 0, 0, 0.02, { cast: false })));
+    this.decor.plaid = hide(group(1.75, 0, 1.45, rbox(0.7, 0.12, 0.3, 0.05, mat(PAL.sage), 0, 0.98, -0.34), rbox(0.7, 0.3, 0.06, 0.03, mat(PAL.sage), 0, 0.82, -0.2)));
+    this.decor.plaid.rotation.y = -Math.PI * 0.58;
+    // Guirlande : elle s'allume avec le soir.
+    const gl = group(-0.3, 2.86, -2.94);
+    const bulbMat = mat(0xfff0cf, { emissive: 0xffc070, emissiveIntensity: 0.2 });
+    for (let i = 0; i < 11; i++) { const x = -1.5 + i * 0.3; gl.add(ball(0.045, bulbMat, x, -Math.sin((i / 10) * Math.PI) * 0.16, 0.04, { cast: false })); }
+    gl.userData.bulb = bulbMat;
+    this.decor.lights = hide(gl);
+    // Tourne-disque sur son petit meuble.
+    const disc = cyl(0.16, 0.16, 0.015, mat(PAL.ink), 0, 0.535, 0);
+    const rec = group(-1.75, 0, 2.6, rbox(0.8, 0.44, 0.44, 0.05, mat(PAL.caramel), 0, 0.22, 0), rbox(0.46, 0.07, 0.38, 0.025, mat(PAL.cream), 0, 0.485, 0), disc, cyl(0.045, 0.045, 0.018, mat(PAL.rose), 0, 0.54, 0),
+      rbox(0.3, 0.3, 0.02, 0.008, mat(PAL.mustard), -0.2, 0.2, 0.225), rbox(0.3, 0.3, 0.02, 0.008, mat(PAL.sky), 0.14, 0.2, 0.228));
+    rec.userData.disc = disc;
+    this.decor.record = hide(rec);
+    this.register("record", rec, [-1.75, 1.15, 2.6], [-1.75, 1.95], 0);
+    // Cadeau surprise et trouvaille du vide-grenier.
+    const cactus = group(-0.75, 0.94, -2.78, cyl(0.06, 0.05, 0.08, mat(PAL.rose), 0, 0.04, 0), capsule(0.04, 0.09, mat(0x8fae8a), 0, 0.15, 0), ball(0.028, mat(0x8fae8a), 0.05, 0.16, 0), ball(0.018, mat(PAL.rose), 0, 0.245, 0));
+    this.decor.cactus = hide(cactus);
+    this.decor.globe = hide(group(2.3, 0.84, -2.72, cyl(0.07, 0.08, 0.03, mat(PAL.caramel), 0, 0.015, 0), cyl(0.012, 0.012, 0.08, mat(PAL.caramel), 0, 0.06, 0), ball(0.1, mat(PAL.sky), 0, 0.19, 0), ball(0.05, mat(PAL.sage), 0.05, 0.21, 0.055)));
+  }
+
+  private buildHall(): void {
+    const O = PLACES.hall.origin[0];
+    const g = group(O, 0, 0);
+    const tiles = softTexture((c, n) => {
+      for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { c.fillStyle = (x + y) % 2 ? "#f6e3d2" : "#e9d2c0"; c.fillRect((x * n) / 4, (y * n) / 4, n / 4, n / 4); }
+    }, 128);
+    tiles.wrapS = tiles.wrapT = THREE.RepeatWrapping; tiles.repeat.set(1.6, 1.3);
+    g.add(rbox(6.6, 0.5, 5.6, 0.22, mat(0xe3c8b4), -0.05, -0.5, -0.05, { cast: false }), rbox(6.3, 0.3, 5.3, 0.08, mat(0xffffff, { map: tiles }), 0, -0.15, 0, { cast: false }),
+      rbox(6.55, 3.3, 0.28, 0.1, mat(0xf1f4ea), -0.12, 1.5, -2.64, { cast: false }), rbox(0.28, 3.3, 5.3, 0.1, mat(0xe6ecdf), -3.14, 1.5, 0, { cast: false }),
+      rbox(6.0, 0.9, 0.05, 0.02, mat(PAL.sage), 0, 0.45, -2.48, { cast: false }), rbox(0.05, 0.9, 5.0, 0.02, mat(PAL.sage), -2.98, 0.45, 0, { cast: false }));
+
+    // Boîtes aux lettres : la nôtre est la jaune.
+    const boxes = group(-1.0, 1.35, -2.4);
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {
+      const ours = r === 0 && c === 1;
+      boxes.add(rbox(0.36, 0.26, 0.2, 0.04, mat(ours ? PAL.mustard : (r + c) % 2 ? PAL.caramel : PAL.cream), -0.6 + c * 0.4, 0.16 - r * 0.32, 0),
+        rbox(0.2, 0.02, 0.02, 0.008, mat(PAL.ink), -0.6 + c * 0.4, 0.2 - r * 0.32, 0.105, { cast: false }));
+    }
+    this.mailFlag = rbox(0.14, 0.1, 0.02, 0.008, mat(PAL.white), -0.2, 0.29, 0.1);
+    this.mailFlag.rotation.z = 0.2; this.mailFlag.visible = false; this.mailFlag.scale.setScalar(0.001);
+    this.parcelBox = group(0.1, -1.35, 0.45, rbox(0.5, 0.36, 0.42, 0.03, mat(0xd9b58c), 0, 0.18, 0), rbox(0.1, 0.365, 0.43, 0.01, mat(PAL.cream), 0, 0.18, 0));
+    this.parcelBox.rotation.y = 0.3; this.parcelBox.visible = false; this.parcelBox.scale.setScalar(0.001);
+    boxes.add(this.mailFlag, this.parcelBox);
+    g.add(boxes);
+
+    // Mur des pensées : un panneau de liège et des petits mots.
+    const board = group(1.45, 1.55, -2.44, rbox(1.5, 1.05, 0.06, 0.03, mat(PAL.caramel), 0, 0, 0), rbox(1.36, 0.92, 0.03, 0.01, mat(0xdcb48a), 0, 0, 0.025, { cast: false }));
+    const cols = [PAL.cream, PAL.rose, PAL.sky, PAL.sage, PAL.white, PAL.rose, PAL.cream];
+    cols.forEach((c, i) => { const n = rbox(0.24, 0.2, 0.012, 0.005, mat(c), -0.5 + (i % 4) * 0.33, 0.22 - Math.floor(i / 4) * 0.36, 0.05, { cast: false }); n.rotation.z = ((i * 37) % 10 - 5) * 0.03; board.add(n); });
+    this.newNote = rbox(0.26, 0.22, 0.014, 0.005, mat(PAL.mustard, { emissive: 0xf1c76d, emissiveIntensity: 0.25 }), 0.5, -0.16, 0.055, { cast: false });
+    this.newNote.rotation.z = -0.1;
+    board.add(this.newNote);
+    g.add(board);
+
+    // Porte vitrée vers la rue, local poubelle, escalier, banc et plante.
+    g.add(group(-2.98, 0, -0.9, rbox(0.1, 2.3, 1.3, 0.03, mat(PAL.white), 0, 1.15, 0, { cast: false }), rbox(0.04, 2.1, 1.1, 0.01, this.skyMat, 0.04, 1.1, 0, { cast: false }), rbox(0.05, 2.1, 0.05, 0.02, mat(PAL.white), 0.06, 1.1, 0)));
+    const bins = group(-2.5, 0, 1.5);
+    for (const [z, c] of [[-0.42, PAL.sage], [0.42, PAL.sky]] as const) bins.add(rbox(0.6, 0.86, 0.66, 0.08, mat(c), 0, 0.5, z), rbox(0.66, 0.08, 0.72, 0.03, mat(PAL.ink), 0, 0.97, z), cyl(0.07, 0.07, 0.06, mat(PAL.ink), 0.2, 0.07, z + 0.2), cyl(0.07, 0.07, 0.06, mat(PAL.ink), 0.2, 0.07, z - 0.2));
+    bins.children.forEach((c) => { if ((c as THREE.Mesh).geometry instanceof THREE.CylinderGeometry) c.rotation.x = Math.PI / 2; });
+    g.add(bins);
+    const stairs = group(2.55, 0, -1.9);
+    for (let i = 0; i < 5; i++) stairs.add(rbox(0.36, 0.2 + i * 0.2, 1.1, 0.03, mat(PAL.caramel), -0.72 + i * 0.36, 0.1 + i * 0.1, 0));
+    stairs.add(rbox(1.8, 0.06, 0.06, 0.03, mat(PAL.ink), 0, 1.5, 0.55)); stairs.children[5].rotation.z = 0.5;
+    g.add(stairs);
+    g.add(group(0.9, 0, 1.7, rbox(1.4, 0.08, 0.42, 0.03, mat(PAL.caramel), 0, 0.42, 0), rbox(0.08, 0.4, 0.38, 0.03, mat(PAL.ink), -0.6, 0.2, 0), rbox(0.08, 0.4, 0.38, 0.03, mat(PAL.ink), 0.6, 0.2, 0)));
+    const leafMat = mat(0x9db592);
+    const plant = group(-2.5, 0, -2.0, cyl(0.26, 0.2, 0.44, mat(PAL.rose), 0, 0.22, 0));
+    for (let i = 0; i < 6; i++) { const l = ball(0.2, leafMat, Math.cos(i * 1.1) * 0.16, 0.7 + (i % 3) * 0.22, Math.sin(i * 1.1) * 0.16); l.scale.set(0.8, 1.2, 0.5); l.rotation.y = i; plant.add(l); }
+    g.add(plant);
+    const bulb = this.lamp(O, 2.9, 0, 9);
+    g.add(cyl(0.012, 0.012, 3, mat(PAL.ink), 0.6, 4.6, 0.4, { cast: false }), cyl(0.12, 0.34, 0.22, mat(PAL.mustard), 0.6, 3.05, 0.4, { cast: false }), ball(0.09, bulb, 0.6, 2.95, 0.4, { cast: false }));
+    this.add(g);
+    this.register("mailbox", boxes, [-1.0, 2.1, -2.4], [-1.0, -1.5], Math.PI);
+    this.register("wall", board, [1.45, 2.5, -2.4], [1.45, -1.5], Math.PI);
+    this.register("bins", bins, [-2.5, 1.6, 1.5], [-1.75, 1.5], -Math.PI / 2);
+    this.register("stairs", stairs, [2.5, 1.9, -1.9], [1.5, -1.75], Math.PI / 2);
+  }
+
   // ───────────────────────── vie de l'appartement ─────────────────────────
 
   /** Met le décor en accord avec l'état du jeu (avec douceur). */
@@ -341,6 +514,14 @@ export class World {
     this.plant.userData.grow = 0.62 + g * 0.75;
     this.plant.userData.count = 3 + Math.round(g * 6);
     this.plant.userData.thirst = a.plantWater < 30 ? 1 : a.plantWater < 55 ? 0.4 : 0;
+    for (const id of Object.keys(this.decor)) pop(this.clock, this.decor[id], s.decor.includes(id));
+    this.trashBags.forEach((b, i) => pop(this.clock, b, s.trash >= (i ? 4 : 2)));
+    pop(this.clock, this.doorHint, s.mail.length > 0 || s.parcels.length > 0);
+    pop(this.clock, this.mailFlag, s.mail.length > 0);
+    pop(this.clock, this.parcelBox, s.parcels.length > 0);
+    pop(this.clock, this.newNote, !s.wallSeen);
+    this.weather = s.weather;
+    this.powerOut = s.powerOut;
   }
 
   screen(on: boolean, tint = 0x9cc4f0): void { this.screenWant = on ? 1 : 0; this.screenMat.emissive.setHex(tint); }
@@ -374,15 +555,21 @@ export class World {
     const a = KEYS[i], b = KEYS[i + 1];
     const k = Math.max(0, Math.min(1, (p - a.p) / (b.p - a.p)));
     const col = (x: number, y: number) => new THREE.Color(x).lerp(new THREE.Color(y), k);
-    this.hemi.intensity = lerp(a.hemi, b.hemi, k);
-    this.hemi.color.copy(col(a.hemiC, b.hemiC));
+    const [wSun, wPatch, wHemi, wVeil, wRain] = this.wx;
+    const day = 1 - Math.max(0, (p - 0.75) / 0.25); // la météo pèse moins une fois la nuit tombée
+    this.hemi.intensity = lerp(a.hemi, b.hemi, k) * lerp(1, wHemi, day) + this.flash * 0.9;
+    this.hemi.color.copy(col(a.hemiC, b.hemiC)).lerp(new THREE.Color(0xcdd6e4), wVeil * 0.5 * day);
     this.hemi.groundColor.copy(col(a.hemiC, b.hemiC)).multiplyScalar(0.82);
-    this.sun.intensity = lerp(a.sun, b.sun, k);
+    this.sun.intensity = lerp(a.sun, b.sun, k) * lerp(1, wSun, day);
     this.sun.color.copy(col(a.sunC, b.sunC));
-    this.sun.position.set(lerp(3, 7, p), lerp(11, 7.5, Math.min(1, p * 1.2)), lerp(9, 6, p));
-    this.skyMat.color.copy(col(a.sky, b.sky));
+    this.sun.position.set(lerp(3, 7, p), lerp(11, 7.5, Math.min(1, p * 1.2)), lerp(9, 6, p)).add(this.origin);
+    this.sun.target.position.copy(this.origin);
+    this.skyMat.color.copy(col(a.sky, b.sky)).lerp(new THREE.Color(0xffffff), Math.min(1, this.flash));
+    this.veilMat.opacity = wVeil * 0.85; this.veilMat.color.setHex(0x9aa3b0).lerp(new THREE.Color(0x30344e), 1 - day).lerp(new THREE.Color(0xffffff), Math.min(1, this.flash));
+    this.rainMat.opacity = wRain;
+    this.clouds.forEach((c) => { (c.material as THREE.MeshBasicMaterial).opacity = 0.85 * day * (1 - wVeil); });
     const pm = this.patch.material as THREE.MeshBasicMaterial;
-    pm.opacity = lerp(a.patch, b.patch, k);
+    pm.opacity = lerp(a.patch, b.patch, k) * wPatch;
     pm.color.copy(col(a.patchC, b.patchC));
     this.patch.position.x = lerp(-0.5, 0.75, p);
     this.patch.rotation.z = lerp(0.3, -0.5, p);
@@ -397,12 +584,13 @@ export class World {
   }
 
   resize(w: number, h: number): void {
-    const aspect = w / h;
+    this.size = [w, h];
+    const aspect = w / h, pl = PLACES[this.place];
     // On cadre toujours toute la maison, en paysage comme en portrait.
-    const viewH = Math.max(7.7, 10.4 / aspect);
+    const viewH = Math.max(7.7, 10.4 / aspect) / pl.zoom;
     const c = this.camera;
     c.top = viewH / 2; c.bottom = -viewH / 2; c.left = (-viewH * aspect) / 2; c.right = (viewH * aspect) / 2;
-    const target = new THREE.Vector3(-0.15, 1.15, -0.1);
+    const target = new THREE.Vector3(...pl.look).add(this.origin);
     c.position.copy(target).addScaledVector(this.camDir, 30);
     c.lookAt(target);
     c.updateProjectionMatrix();
@@ -414,10 +602,23 @@ export class World {
     this.applyPhase(this.phase);
 
     // Lampes : elles s'allument d'elles-mêmes quand le soir tombe.
-    const wantOn = this.phase > 0.7;
+    // Météo : la lumière glisse d'un temps à l'autre, l'orage a ses éclairs.
+    const goal = WX[this.weather];
+    for (let i = 0; i < 6; i++) this.wx[i] = damp(this.wx[i], goal[i], 0.8, dt);
+    this.rainTex.offset.y += dt * 1.5; this.rainTex.offset.x -= dt * 0.08;
+    this.clouds.forEach((c, i) => { c.position.x = c.userData.x + Math.sin(t * 0.05 + i * 2) * 0.25; });
+    this.flash = Math.max(0, this.flash - dt * 3.5);
+    if (this.weather === "storm" && (this.nextFlash -= dt) < 0) { this.flash = 1; this.nextFlash = 5 + Math.random() * 9; this.onThunder?.(); }
+    const wind = this.wx[5];
+    const wantOn = this.phase > 0.7 && !this.powerOut;
     if (wantOn !== this.lampsOn) { this.lampsOn = wantOn; this.onLamp?.(); }
+    const gb = this.decor.lights.userData.bulb as THREE.MeshStandardMaterial;
+    gb.emissiveIntensity = damp(gb.emissiveIntensity, wantOn ? 2 : 0.15, 2, dt);
+    const disc = this.decor.record.userData.disc as THREE.Mesh;
+    disc.rotation.y += dt * (this.spin = damp(this.spin, this.spinWant, 2, dt)) * 3.5;
+    this.doorHint.position.y = 2.25 + Math.sin(t * 2.2) * 0.05;
     this.lamps.forEach((l, i) => {
-      l.on = damp(l.on, wantOn ? 1 : 0, 4 - i, dt);
+      l.on = damp(l.on, wantOn ? 1 : 0, Math.max(1.5, 4 - i), dt);
       l.light.intensity = l.on * 3.2;
       l.bulb.emissiveIntensity = l.on * 1.6;
     });
@@ -426,14 +627,14 @@ export class World {
     this.screenMat.emissiveIntensity = this.screenOn * (0.85 + Math.sin(t * 7) * 0.04);
 
     // Rideaux, plante, poussières : la pièce respire.
-    this.curtains.forEach((c, i) => { c.rotation.z = Math.sin(t * 0.7 + i * 2) * 0.022; c.rotation.x = Math.sin(t * 0.5 + i) * 0.035; c.scale.x = 1 + Math.sin(t * 0.6 + i * 1.3) * 0.04; });
+    this.curtains.forEach((c, i) => { c.rotation.z = Math.sin(t * 0.7 * Math.sqrt(wind) + i * 2) * 0.022 * wind; c.rotation.x = Math.sin(t * 0.5 + i) * 0.035 * wind; c.scale.x = 1 + Math.sin(t * 0.6 + i * 1.3) * 0.04; });
     const grow = this.plant.userData.grow ?? 0.8, count = this.plant.userData.count ?? 4, thirst = this.plant.userData.thirst ?? 0;
     this.plant.scale.setScalar(damp(this.plant.scale.x, grow, 1.5, dt));
     this.leaves.forEach((l, i) => {
       const on = i < count ? 1 : 0.001;
       l.scale.setScalar(damp(l.scale.x, on, 2, dt));
       const droop = l.userData.tilt + thirst * 0.55;
-      l.rotation.x = damp(l.rotation.x, droop + Math.sin(t * 0.9 + i * 1.7) * 0.035, 3, dt);
+      l.rotation.x = damp(l.rotation.x, droop + Math.sin(t * 0.9 * Math.sqrt(wind) + i * 1.7) * 0.035 * wind, 3, dt);
     });
     const dp = this.dust.geometry.getAttribute("position") as THREE.BufferAttribute;
     for (let i = 0; i < dp.count; i++) {

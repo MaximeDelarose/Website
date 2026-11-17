@@ -15,5 +15,9 @@ npm run typecheck
 - `src/game.ts` : entrées, menus, scénarios d'action, coucher et réveil.
 - `?fast=6` dans l'URL accélère le temps du jeu (réglage et tests).
 
-Avancement : jalon A fait (boucle de journée, actions, état mental, animations, appartement vivant, cycle du jour).
-À venir : téléphone et relations, visites, hall, événements, météo, sorties, arc de l'année, lettre, mouton et bilans, rêves, sound design, UI finale, polish.
+- `src/people.ts` : les proches (Mamie Lou, Sam, Inès, Noé) : leurs humeurs, leurs messages en pictogrammes, réponses et appels.
+- `src/phone.ts` : interface du téléphone (messages, appels, boutique).
+- `src/places.ts` : décors des sorties (parc, café, restaurant, chez Mamie Lou, rendez-vous, vide-grenier).
+
+Avancement : jalons A et B faits (boucle de journée, actions, état mental, animations, appartement vivant, cycle du jour ; téléphone et relations, visites, hall, événements, météo, sorties).
+À venir : arc de l'année, lettre et introduction, mouton et bilans de cycle, rêves, sound design, UI finale, polish.

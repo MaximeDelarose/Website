@@ -53,5 +53,25 @@ export class Sfx {
   low(): void { this.tone(196, 0.8, 0.05, "sine"); this.tone(185, 0.9, 0.035, "sine", 0.12); }
   night(): void { [330, 262, 196].forEach((f, i) => this.tone(f, 1.4, 0.04, "sine", i * 0.35)); }
   morning(): void { [262, 330, 392, 523].forEach((f, i) => this.tone(f, 1.0, 0.04, "sine", i * 0.16)); }
+  bip(): void { this.tone(988, 0.12, 0.05, "sine"); this.tone(1319, 0.2, 0.045, "sine", 0.11); }
+  knock(): void { [0, 0.16, 0.32].forEach((d) => this.tone(140, 0.09, 0.16, "triangle", d)); }
+  paper(): void { this.noise(0.18, 0.06, 3200); }
+  thunder(): void { this.noise(1.6, 0.22, 120); }
+  tune(): void { [392, 494, 587, 494, 659, 587, 494, 392].forEach((f, i) => this.tone(f, 0.5, 0.035, "triangle", i * 0.42)); }
+  private rainGain: GainNode | null = null;
+  /** Pluie continue derrière la vitre (0 = silence). */
+  rain(level: number): void {
+    if (!this.ctx || !this.master) return;
+    if (!this.rainGain) {
+      const n = this.ctx.sampleRate * 2, buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+      const src = this.ctx.createBufferSource(), f = this.ctx.createBiquadFilter();
+      src.buffer = buf; src.loop = true; f.type = "bandpass"; f.frequency.value = 1400; f.Q.value = 0.4;
+      this.rainGain = this.ctx.createGain(); this.rainGain.gain.value = 0;
+      src.connect(f).connect(this.rainGain).connect(this.master);
+      src.start();
+    }
+    this.rainGain.gain.linearRampToValueAtTime(this.muted ? 0 : level * 0.09, this.ctx.currentTime + 2.5);
+  }
   baa(): void { this.tone(340, 0.25, 0.05, "triangle"); this.tone(300, 0.3, 0.05, "triangle", 0.12); }
 }
