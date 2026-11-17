@@ -73,5 +73,7 @@ export class Sfx {
     }
     this.rainGain.gain.linearRampToValueAtTime(this.muted ? 0 : level * 0.09, this.ctx.currentTime + 2.5);
   }
+  hop(): void { this.tone(520, 0.1, 0.035, "sine"); this.tone(700, 0.1, 0.03, "sine", 0.05); }
+  thud(): void { this.tone(150, 0.25, 0.07, "sine"); }
   baa(): void { this.tone(340, 0.25, 0.05, "triangle"); this.tone(300, 0.3, 0.05, "triangle", 0.12); }
 }

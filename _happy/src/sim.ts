@@ -161,6 +161,8 @@ export const ACTIONS: ActionDef[] = [
     apply: (s) => { if (s.tidy < 40) s.mood += 3; s.tidy = clamp(s.tidy + 40); s.apt.bookOut = false; s.apt.bedMade = true; } },
   { id: "music", at: "record", label: "Écouter un disque", cost: 1, mood: 4, energy: 2, rest: true, when: (s) => s.decor.includes("record") },
 
+  { id: "nuages", at: "phone", label: "Jouer à Nuages", cost: 1, passive: true, mood: 3, energy: -1 },
+
   // La porte : le hall, et dehors.
   { id: "hall", at: "door", label: "Descendre dans le hall", cost: 0, mood: 0, energy: 0 },
   { id: "park", at: "door", group: "out", label: "Balade au parc", cost: 1, mood: 5, energy: -3, outing: "park", when: (s) => s.weather !== "storm" },
@@ -231,7 +233,7 @@ function recentCount(s: State, id: string, days: number): number {
 }
 
 /** Applique une action (hors « dormir », géré par endDay). */
-export function applyAction(s: State, id: string): Outcome {
+export function applyAction(s: State, id: string, bonus = 0): Outcome {
   const a = actionById(id);
   const before = s.mood;
   const prevTier = s.tier;
@@ -264,6 +266,7 @@ export function applyAction(s: State, id: string): Outcome {
   }
   if (a.outing) s.memories.push({ day: s.day, id: a.outing });
 
+  dm += bonus;
   let money = a.money ?? 0;
   if (money > 0 && s.energy < 25) money = Math.round(money * 0.7); // fatigué, on avance moins
 

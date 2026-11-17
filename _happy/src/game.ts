@@ -103,6 +103,17 @@ export class Game {
       onCall: (who) => void this.social(2, () => call(this.state, who)),
       onBuy: (id) => { if (buy(this.state, id)) { this.sfx.warm(); this.syncAll(); save(this.state); this.toast("Commande passée : elle arrivera demain dans le hall."); } },
       tick: () => this.sfx.tick(),
+      sounds: { jump: () => this.sfx.hop(), hit: () => this.sfx.thud(), light: () => this.sfx.unit(), done: () => this.sfx.warm() },
+      onGameStart: () => {
+        this.lock(false);
+        this.ch.setClip("game");
+        this.world.phaseTarget = (UNITS - this.state.units + 1) / UNITS;
+        return Math.max(4, 30 / this.clock.speed);
+      },
+      onGameEnd: (hits) => {
+        void this.spend(1, 0.5);
+        void this.after(applyAction(this.state, "nuages", hits <= 2 ? 1.5 : 0));
+      },
     });
 
     window.addEventListener("resize", () => this.resize());
@@ -162,8 +173,11 @@ export class Game {
     if (s.units <= 0) void this.nightfall();
   }
 
-  private free(): void { this.busy = false; this.ch.busy = false; this.phone.refresh(); }
-  private lock(): void { this.busy = true; this.ch.busy = true; this.closeBubbles(); this.phone.close(); this.world.hover(null); }
+  private free(): void {
+    this.busy = false; this.ch.busy = false; this.phone.refresh();
+    if (this.phone.isOpen) { this.ch.busy = true; this.ch.setClip("phone"); } // il a encore le téléphone en main
+  }
+  private lock(closePhone = true): void { this.busy = true; this.ch.busy = true; this.closeBubbles(); if (closePhone) this.phone.close(); this.world.hover(null); }
 
   // ───────────────────────── affichage ─────────────────────────
 

@@ -1,5 +1,6 @@
 // Le téléphone : toujours là, discret. Messages en pictogrammes, appels, petite boutique.
 import { FEEL_COLOR, FEEL_WORD, PEOPLE, readMsg, unread } from "./people";
+import { playRunner, RunnerSounds } from "./runner";
 import { DECOR, Msg, State } from "./sim";
 
 export interface PhoneHost {
@@ -9,6 +10,9 @@ export interface PhoneHost {
   onReply: (id: number, idx: number) => void;
   onCall: (who: string) => void;
   onBuy: (id: string) => void;
+  onGameStart: () => number; // renvoie la durée de la partie, en secondes
+  onGameEnd: (hits: number) => void;
+  sounds: RunnerSounds;
   tick: () => void;
 }
 
@@ -21,14 +25,17 @@ export class Phone {
   private btn = document.getElementById("phone-btn")!;
   private panel = document.getElementById("phone")!;
   private body = document.getElementById("phone-body")!;
-  private tab: "msg" | "shop" = "msg";
+  private tab: "msg" | "shop" | "game" = "msg";
+  playing = false;
+  private result = -1;
   private thread: string | null = null;
 
   constructor(private host: PhoneHost) {
     this.btn.addEventListener("click", (e) => { e.stopPropagation(); if (this.isOpen) this.close(); else this.open(); });
     this.panel.addEventListener("click", (e) => e.stopPropagation());
     document.getElementById("phone-tabs")!.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
-      this.tab = b.dataset.tab as "msg" | "shop"; this.thread = null; this.host.tick(); this.render();
+      if (this.playing) return;
+      this.tab = b.dataset.tab as "msg" | "shop" | "game"; this.thread = null; this.result = -1; this.host.tick(); this.render();
     }));
   }
 
@@ -43,7 +50,8 @@ export class Phone {
   }
 
   close(): void {
-    if (!this.isOpen) return;
+    if (!this.isOpen || this.playing) return;
+    this.result = -1;
     this.isOpen = false;
     this.panel.classList.remove("on");
     this.btn.classList.remove("active");
@@ -61,7 +69,7 @@ export class Phone {
     const n = unread(this.host.state());
     this.btn.classList.toggle("badge", n > 0);
     this.btn.classList.toggle("off", !this.host.canAct() && !this.isOpen);
-    if (this.isOpen) this.render();
+    if (this.isOpen && !this.playing) this.render();
   }
 
   private render(): void {
@@ -69,6 +77,7 @@ export class Phone {
     document.getElementById("phone-tabs")!.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.tab === this.tab));
     this.body.innerHTML = "";
     if (this.tab === "shop") return this.renderShop(s);
+    if (this.tab === "game") return this.renderGame(s);
     if (this.thread) return this.renderThread(s, this.thread);
     for (const who of ["lou", "sam", "ines"]) {
       const p = s.people[who], last = [...s.inbox].reverse().find((m) => m.from === who);
@@ -124,6 +133,34 @@ export class Phone {
     if (s.units < 2 || p.called === s.day) callBtn.classList.add("no");
     callBtn.addEventListener("click", () => { if (s.units >= 2 && p.called !== s.day && this.host.canAct()) this.host.onCall(who); });
     this.body.appendChild(callBtn);
+  }
+
+  private renderGame(s: State): void {
+    const card = el("div", "game-card");
+    if (this.result >= 0) {
+      // Pas de score : juste comment on en ressort.
+      card.append(el("b", "", this.result <= 2 ? "Tout léger." : this.result <= 5 ? "Quelques nuages. Ça passe." : "Ça pesait, aujourd'hui. Ça passera."));
+    } else card.append(el("b", "", "Nuages"), el("small", "", "Touche pour sauter. Reste appuyé pour sauter plus loin. Chaque nuage touché t'alourdit ; en éviter plusieurs t'allège."));
+    const b = el("button", "call", this.result >= 0 ? "Rejouer" : "Jouer");
+    b.appendChild(dots(1));
+    const ok = s.units >= 1 && this.host.canAct();
+    if (!ok) b.classList.add("no");
+    b.addEventListener("click", () => { if (s.units >= 1 && this.host.canAct()) void this.play(); });
+    this.body.append(card, b);
+  }
+
+  private async play(): Promise<void> {
+    this.playing = true;
+    const seconds = this.host.onGameStart();
+    this.body.innerHTML = "";
+    const cv = document.createElement("canvas");
+    cv.className = "runner";
+    this.body.appendChild(cv);
+    const hits = await playRunner(cv, seconds, this.host.sounds);
+    this.playing = false;
+    this.result = hits;
+    this.render();
+    this.host.onGameEnd(hits);
   }
 
   private renderShop(s: State): void {
