@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Backdrop } from "./components/Backdrop";
 import { Hud } from "./components/Hud";
 import { STAGE_ORDER } from "./engine/state";
@@ -11,6 +11,9 @@ import { StageIntro } from "./screens/StageIntro";
 import { TeamSetup } from "./screens/TeamSetup";
 import { Victory } from "./screens/Victory";
 import { audio } from "./services/audio";
+import { useRoute } from "./route";
+// Le mode coopératif est chargé à la demande : le jeu solo ne télécharge rien de plus.
+const RoomApp = lazy(() => import("./screens/room/RoomApp").then((m) => ({ default: m.RoomApp })));
 import { CipherStage } from "./stages/CipherStage";
 import { DeductionStage } from "./stages/DeductionStage";
 import { FinaleStage } from "./stages/FinaleStage";
@@ -20,6 +23,8 @@ const STAGES = { memory: MemoryStage, deduction: DeductionStage, cipher: CipherS
 
 export function App() {
   const { state, config, resumePending } = useGame();
+  const route = useRoute();
+  const inRoom = route.kind === "room";
   const phase = resumePending && state.phase !== "end" ? "home" : state.phase;
   const stageId = STAGE_ORDER[Math.min(state.stageIndex, STAGE_ORDER.length - 1)];
 
@@ -57,8 +62,8 @@ export function App() {
   else if (phase === "victory") screen = <Victory />;
   else screen = <End />;
 
-  const showHud = phase === "stageIntro" || phase === "stage" || phase === "stageDone";
-  const mood = phase === "victory" || (phase === "end" && state.outcome === "success") ? "stable" : phase === "stage" ? "focus" : "alert";
+  const showHud = !inRoom && (phase === "stageIntro" || phase === "stage" || phase === "stageDone");
+  const mood = inRoom ? "coop" : phase === "victory" || (phase === "end" && state.outcome === "success") ? "stable" : phase === "stage" ? "focus" : "alert";
 
   return (
     <>
@@ -66,7 +71,7 @@ export function App() {
       <div className="rotate" role="alert">Tournez l'appareil à la verticale pour poursuivre la mission</div>
       <div id="app-shell" className={`shell phase-${phase}`} onAnimationEnd={(e) => { if (e.target === e.currentTarget) e.currentTarget.classList.remove("shake-soft", "shake-hard"); }}>
         {showHud && <Hud />}
-        <div className="shell__view" key={key}>{screen}</div>
+        <div className="shell__view" key={inRoom ? "room" : key}>{inRoom ? <Suspense fallback={<div className="screen" />}><RoomApp /></Suspense> : screen}</div>
       </div>
     </>
   );

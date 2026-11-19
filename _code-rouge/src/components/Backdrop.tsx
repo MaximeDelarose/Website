@@ -5,7 +5,7 @@ interface Dot { x: number; y: number; r: number; vy: number; vx: number; a: numb
 interface Spark { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 
 /** Fond vivant : poussière lumineuse qui dérive + étincelles déclenchées par les réussites. */
-export function Backdrop({ mood }: { mood: "alert" | "focus" | "stable" }) {
+export function Backdrop({ mood }: { mood: "alert" | "focus" | "stable" | "coop" }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {

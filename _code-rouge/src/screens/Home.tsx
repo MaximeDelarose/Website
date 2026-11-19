@@ -6,6 +6,7 @@ import { remainingMs } from "../engine/state";
 import { newSeed } from "../engine/rng";
 import { formatClock, useGame, useNow } from "../game";
 import { audio } from "../services/audio";
+import { goRoom } from "../route";
 
 export function Home() {
   const { config, state, dispatch, resumePending, confirmResume } = useGame();
@@ -51,6 +52,7 @@ export function Home() {
           ) : (
             <Button block variant="ghost" onClick={() => setConfirmNew(true)}>Nouvelle partie</Button>
           )}
+          {config.coop.enabled && <button type="button" className="link" onClick={() => goRoom()} data-testid="multi">Jouer à plusieurs · bêta</button>}
         </div>
       ) : (
         <div className="home__panel">
@@ -66,6 +68,11 @@ export function Home() {
           <Button block iconRight="arrow" className="btn--xl" onClick={start} data-testid="start">
             Commencer la mission
           </Button>
+          {config.coop.enabled && (
+            <Button block variant="ghost" icon="users" onClick={() => goRoom()} data-testid="multi">
+              Jouer à plusieurs · bêta
+            </Button>
+          )}
           <button type="button" className="link" onClick={() => setRules(true)}>Comment le score est calculé</button>
         </div>
       )}

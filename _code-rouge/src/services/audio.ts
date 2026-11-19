@@ -108,6 +108,25 @@ class AudioEngine {
     for (let i = 0; i < 3; i++) this.tone(620, 0.2, { type: "sawtooth", gain: 0.1, to: 380, delay: i * 0.24 });
   }
   count(): void { this.tone(1900, 0.02, { type: "sine", gain: 0.022 }); }
+  /* ----- Mode coopératif ----- */
+  /** Un coéquipier s'enclenche dans la constellation : verrou mécanique + carillon. */
+  join(): void {
+    this.noise(0.05, { gain: 0.09, from: 3200, to: 1200, q: 2 });
+    this.tone(196, 0.14, { type: "triangle", gain: 0.12, to: 150 });
+    [659.25, 987.77].forEach((f, i) => this.tone(f, 0.45, { type: "sine", gain: 0.08, delay: 0.07 + i * 0.09 }));
+  }
+  /** Cliquet qui s'accélère pendant la distribution des rôles. */
+  ratchet(): void {
+    for (let i = 0; i < 9; i++) this.tone(900 + i * 70, 0.03, { type: "square", gain: 0.035, delay: i * (0.11 - i * 0.008) });
+    this.tone(120, 0.35, { type: "sine", gain: 0.25, to: 60, delay: 0.85 });
+  }
+  /** Tous prêts : accord large et lumineux. */
+  chord(): void {
+    [261.63, 392, 523.25, 659.25, 783.99].forEach((f, i) => this.tone(f, 1.1, { type: "triangle", gain: 0.09, delay: i * 0.06 }));
+    this.noise(0.9, { gain: 0.05, from: 400, to: 6000, q: 0.7 });
+  }
+  /** Perte d'un coéquipier : note qui retombe. */
+  drop(): void { this.tone(440, 0.4, { type: "sine", gain: 0.09, to: 220 }); }
   win(): void {
     this.tone(55, 1.6, { type: "sine", gain: 0.3, to: 36 });
     this.noise(1.3, { gain: 0.09, from: 200, to: 7000, q: 0.6 });

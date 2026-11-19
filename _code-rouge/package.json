@@ -10,13 +10,16 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "e2e": "node tests/e2e.mjs"
+    "e2e": "node tests/e2e.mjs",
+    "e2e:coop": "node tests/e2e-coop.mjs",
+    "lab:real": "vite-node tests/real-lab.ts"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "5.1.0",
     "@fontsource/caveat": "5.1.0",
     "@fontsource/chakra-petch": "5.1.0",
     "@fontsource/jetbrains-mono": "5.1.0",
+    "@supabase/realtime-js": "2.10.2",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
