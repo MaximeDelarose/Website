@@ -306,7 +306,7 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
       b.addEventListener('click', tap(() => giveChoc(l.l, idx), { sound: false }));
       return b;
     });
-    chocEl.append(h('span.en-choc-t', '🍫 Commande spéciale'), h('div.en-choc-lines', ...lines), h('span.en-choc-rw', `+${o.reward.coins} 🪙 · +${o.reward.diamonds} 💎`));
+    chocEl.append(h('span.en-choc-t', '🍫 Commande spéciale'), h('div.en-choc-lines', ...lines), h('span.en-choc-rw', `+${o.reward.coins} `, h('img', { src: resIconUrl('coins', 36), alt: 'pièces', draggable: false, style: 'width:16px;height:16px;vertical-align:-3px' }), ` · +${o.reward.diamonds} 💎`));
   }
 
   function giveChoc(level: number, idx: number) {
@@ -461,7 +461,7 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
     const v = await ui.modal({
       title: `Vendre « ${itemName(r)} » ?`,
       body: h('p', `${warn}Tu recevras ${value} pièce${value > 1 ? 's' : ''}. Tu peux aussi le mettre dans ton sac (glisse-le dessus) pour le garder ♡`),
-      actions: [{ label: `Vendre (+${value} 🪙)`, value: 'y', style: used || isPrecious(r) ? 'secondary' : undefined }, { label: 'Garder', value: 'n', style: 'secondary' }],
+      actions: [{ label: `Vendre (+${value} pièces)`, value: 'y', style: used || isPrecious(r) ? 'secondary' : undefined }, { label: 'Garder', value: 'n', style: 'secondary' }],
     });
     const cur = cfg.getState().cells[idx]?.item; // l'état a pu changer pendant la confirmation
     if (v !== 'y' || !cur || cur.c !== r.c || cur.l !== r.l) return;
@@ -578,7 +578,7 @@ export function createEndlessHud(cfg: HudCfg): EndlessHud {
         case 'drop': {
           sc?.dropFx(e.at, e.rarity);
           if (e.auto) {
-            const fk = ({ coins: 'coin', diamonds: 'diamond', energy: 'energy', hearts: 'heart', flowers: 'flowers', fabric: 'fabric', cocoa: 'cocoa', ticket: 'ticket', chest: 'chest' } as Record<string, string>)[e.loot.kind];
+            const fk = ({ coins: 'coin', diamonds: 'diamond', energy: 'energy', hearts: 'heart', flowers: 'flowers', fabric: 'fabric', cocoa: 'cocoa', chest: 'chest' } as Record<string, string>)[e.loot.kind];
             if (fk) fly(fk, e.at, e.loot.kind === 'diamonds' ? 'diamonds' : e.loot.kind === 'energy' ? 'energy' : e.loot.kind === 'hearts' ? 'hearts' : e.loot.kind === 'chest' ? 'chest' : 'coins', 0);
           }
           if (e.rarity !== 'common' || e.loot.kind !== 'coins') feed(`Drop : ${lootText(e.loot)}`, { kind: 'gain' });

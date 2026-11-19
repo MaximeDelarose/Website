@@ -1,11 +1,10 @@
 /**
- * Hôte par défaut : relie l'API aux fonctions EXISTANTES du jeu (portefeuille, monde, tickets du casino, coffres Endless,
+ * Hôte par défaut : relie l'API aux fonctions EXISTANTES du jeu (portefeuille, monde, coffres Endless,
  * souvenirs). Les doublons sont compensés en pièces comme ailleurs (moitié du prix).
  */
 import { save, events } from '../../core/app';
 import { wallet } from '../../core/wallet';
 import { addHearts, unlockMemory } from '../../core/progress';
-import { grantChips } from '../../casino/store';
 import { giveChest } from '../../game/endless/treasure';
 import { CLOTHES } from '../../data/world/wardrobe';
 import { FURNITURE } from '../../data/world/furniture';
@@ -28,7 +27,6 @@ export function defaultHost(): RewardHost {
     addRes(kind, n) { if (n > 0) w().res[kind] = Math.min(CAP, w().res[kind] + Math.floor(n)); },
     giveDiamonds: (n) => { if (n > 0) wallet.giveDiamonds(n); },
     giveEnergy: (n) => { if (n > 0) wallet.giveEnergy(n); },
-    giveTickets: (n) => { if (n > 0) grantChips(n, 'mission'); },
     addHearts: (n) => addHearts(n),
     giveBooster: (k, n) => { save.data.boosters[k] += n; },
     addChest: (n) => giveChest(save.data.fun, n),
@@ -51,7 +49,6 @@ export function defaultHost(): RewardHost {
         case 'diamonds': return wallet.diamonds();
         case 'energy': return wallet.energy();
         case 'hearts': return save.data.hearts;
-        case 'tickets': return (save.data.fun.casino.chips ?? 0) + (save.data.fun.casino.bring ?? 0);
         default: return w().res[t];
       }
     },

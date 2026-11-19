@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 const PORT = process.env.PORT ?? 4190, KEY = process.env.PHOTO_KEY ?? '', OUT = process.env.OUT ?? 'shots';
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome' });
 const p = await (await b.newContext({ viewport: { width: 600, height: 900 }, deviceScaleFactor: 1 })).newPage();
-await p.addInitScript(() => localStorage.setItem('radia-save-v1', JSON.stringify({ v: 5, seenUpdates: ['v2','v3','v4','v5','v6','v7','v8','v9','v10'], world: { flags: { 'rw:start-gift-v1': true } } })));
+await p.addInitScript(() => localStorage.setItem('radia-save-v1', JSON.stringify({ v: 5, seenUpdates: ['v2','v3','v4','v5','v6','v7','v8','v9','v10','v11'], world: { flags: { 'rw:start-gift-v1': true } } })));
 await p.goto(`http://localhost:${PORT}/?debug${KEY ? '#k=' + KEY : ''}`, { waitUntil: 'networkidle' }); await p.waitForTimeout(4000);
 const groups = await p.evaluate(async () => {
   const dm = await window.RADIA.dressMod(), wd = await window.RADIA.wardrobeData();

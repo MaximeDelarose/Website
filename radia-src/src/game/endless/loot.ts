@@ -82,7 +82,7 @@ const CAP = 999_999_999;
 
 const KIND_LABEL: Partial<Record<LootKind, string>> = {
   coins: 'pièces', diamonds: 'diamants', energy: '⚡', hearts: 'cœurs', flowers: 'fleurs', fabric: 'tissu', cocoa: 'cacao',
-  ticket: 'ticket', chest: 'coffre', fragment: 'fragment de vêtement', cloth: 'vêtement', bag: 'sac à main', accessory: 'accessoire',
+  chest: 'coffre', fragment: 'fragment de vêtement', cloth: 'vêtement', bag: 'sac à main', accessory: 'accessoire',
   deco: 'décoration', rareItem: 'objet rare', star: 'Étoile filante', wand: 'Baguette', wind: 'Souffle',
 };
 export const lootLabel = (l: Loot): string => `${l.n > 1 || ['coins', 'diamonds', 'energy', 'hearts', 'flowers', 'fabric', 'cocoa'].includes(l.kind) ? `+${l.n} ` : ''}${KIND_LABEL[l.kind] ?? l.kind}`;
@@ -104,7 +104,7 @@ export function describeResult(out: LootResult): string {
 
 /**
  * Verse un butin. Les objets à poser sur le plateau (`rareItem`, `star`) ne sont PAS traités ici
- * (le moteur les place ou les convertit) ; `chest`, `ticket`, `fragment` sont comptés par le moteur
+ * (le moteur les place ou les convertit) ; `chest`, `fragment` sont comptés par le moteur
  * dans fun.endless2 → ici ils ne font rien (pas de double versement).
  */
 export function applyLoot(host: LootHost, loots: Loot[] | Loot): LootResult {
@@ -138,7 +138,7 @@ export function applyLoot(host: LootHost, loots: Loot[] | Loot): LootResult {
         out.furniture.push(pick.id);
         break;
       }
-      default: break; // chest, ticket, fragment, rareItem, star : gérés par le moteur
+      default: break; // chest, fragment, rareItem, star : gérés par le moteur
     }
   }
   out.text = describeResult(out);

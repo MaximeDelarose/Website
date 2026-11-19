@@ -34,7 +34,7 @@ const host: LootHost = {
 `applyEvents` verse : `deliver` (pièces/matériaux `gain`, énergie, cœurs), `drop`, `discover` (récompense de nouveauté / chaîne /
 palier d'album), `maxMerge`, `comboTier` (énergie, cœurs, baguette), `secondary` (récompense de palier). **Ne pas** appeler
 `addHearts(e.hearts)` / `giveEnergy(3)` / `gain(deliverReward…)` soi-même pour `deliver` : ce serait un double versement.
-Tout ce qui est « géré par le moteur » (coffres, tickets, fragments de vêtements, points de jauge) est déjà enregistré dans
+Tout ce qui est « géré par le moteur » (coffres, fragments de vêtements, points de jauge) est déjà enregistré dans
 `fun.endless2` au moment de l'événement ; `applyLoot` l'ignore. Après `applyEvents`, appeler `save.save()` (+ `wallet.notify()`).
 
 Objets à poser sur le plateau (`rareItem`, `star`) : le moteur les place lui-même pour les `drop`/`maxMerge`
@@ -52,7 +52,7 @@ Pour le butin d'un **coffre ouvert** : `const { loot, events } = R.placeLoot(sta
 | `replaceGain` | +1 remplacement gagné | `n`, `total` |
 | `combo` (enrichi) | chaque fusion enchaînée (≥ 2) | `value`, `mult` (≤ 3), `reward?` (hérité : star/wand/hearts), `capped?` |
 | `comboTier` | palier de combo atteint (3, 5, 8, 12, 16) | `tier` (index), `value`, `mult`, `energy`, `hearts`, `reward?`, `capped` (budget/minute épuisé → rien versé) |
-| `drop` | drop à la fusion | `loot` (`kind`, `n`, `rarity`, `item?`), `rarity`, `at` (case d'origine), `auto` (vrai = monnaie/coffre/ticket/fragment) |
+| `drop` | drop à la fusion | `loot` (`kind`, `n`, `rarity`, `item?`), `rarity`, `at` (case d'origine), `auto` (vrai = monnaie/coffre/fragment) |
 | `chest` | un coffre de plus à ouvrir | `pending` (total en attente), `source: 'gauge'\|'drop'\|'max'\|'order'` |
 | `treasure` | jauge de trésor mise à jour | `points`, `goal`, `gained` |
 | `discover` | **nouvel** objet (jamais pour un déjà vu) | `item`, `isNew: true`, `reward: Loot[]`, `completed?` (chaîne complétée), `milestone?` (palier d'album) |
@@ -92,7 +92,7 @@ les plus anciens « se reposent » et leur générateur quitte le plateau, les o
 ### Trésor, coffres, drops (`treasure.ts`, `drops.ts`)
 - `treasureView(fun)` → `{ points, goal, ratio, pending, earned }` · `pendingChests(fun)`
 - `chestOdds()` → `{ rows:[{rarity,name,color,pct}], pity:{rare,epic}, text }` (**probabilités publiées**, à afficher dans le coffre : Commun 55 %, Peu commun 28 %, Rare 12 %, Épique 4,2 %, Légendaire 0,8 % ; garantie : ≤ 7 coffres sans Rare+, ≤ 29 sans Épique+)
-- `openChest(fun, rand = Math.random)` → `null` ou `{ rarity, loot: Loot[], forced }` ; le moteur règle coffres/tickets/fragments. Ensuite côté UI : `const p = R.placeLoot(state, res.loot)` (objets sur le plateau), `applyLoot(host, p.loot)` → `LootResult` (`cloth[]`, `furniture[]`, `dupCoins`, `text`), animer `p.events`.
+- `openChest(fun, rand = Math.random)` → `null` ou `{ rarity, loot: Loot[], forced }` ; le moteur règle coffres/fragments. Ensuite côté UI : `const p = R.placeLoot(state, res.loot)` (objets sur le plateau), `applyLoot(host, p.loot)` → `LootResult` (`cloth[]`, `furniture[]`, `dupCoins`, `text`), animer `p.events`.
 - `rollTreasure(rand)` : tirage pur (tests / aperçu).
 - Drops : `rollDrop`, `AUTO_KINDS`, `isAuto`. Raretés des drops et montants dans `config.drops`. Statistiques : `fun.endless2.drops` (`rarity:*`, `kind:*`, `chest:*`).
 - Espacement : ≥ 2 fusions entre deux drops ; objets sur le plateau seulement s'il reste ≥ 5 cases libres.
@@ -121,7 +121,7 @@ Jauge inchangée (100, 45 s/énergie) **plus** : plancher (sous 6 énergie → 1
 - **Pas de saturation** : drops espacés, objets de drop convertis en pièces si le plateau est chargé.
 
 ## 4. Où lire les données (`save.data.fun.endless2`)
-`gens['gen:<coll>']` `{level,xp}` · `album` (« coll:niveau ») · `albumClaimed` · `treasure` `{points,earned,opened,pity}` · `sec` · `secDone` · `replaces` · `tickets` · `fragments.cloth`
+`gens['gen:<coll>']` `{level,xp}` · `album` (« coll:niveau ») · `albumClaimed` · `treasure` `{points,earned,opened,pity}` · `sec` · `secDone` · `replaces` · `fragments.cloth`
 · `drops` (stats) · `counters` : `orders`, `orders:easy|mid|hard`, `merges`, `taps`, `freeTaps`, `chains`, `chestsEarned`, `chestsOpened`, `maxMerges`, `rescues`, `maxL:<coll>`, `activeMs`, `unlockedSeen`, `replaced`, `comboTiers`.
 `RunState` (partie) reste dans `save.data.endless.run` ; champs facultatifs ajoutés : `clock`, `activeMs`, `comboWin`, `lastDropMerge` ; `OrderState.tier/reward/progress`. `validRun` (schema.ts) les nettoie ; un objet inconnu devient une case vide (la partie n'est jamais perdue).
 

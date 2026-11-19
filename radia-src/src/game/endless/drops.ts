@@ -1,6 +1,6 @@
 /**
  * Drops à la fusion : type, rareté, montant. Les monnaies sont versées automatiquement ; les objets
- * (fragments, sacs, accessoires, décorations, objets rares, tickets) sont décrits par un `Loot`.
+ * (fragments, sacs, accessoires, décorations, objets rares) sont décrits par un `Loot`.
  * Plafond de saturation : écart minimal entre deux drops, objets posés sur le plateau seulement s'il
  * reste de la place. Statistiques dans fun.endless2.drops.
  */
@@ -14,7 +14,7 @@ import { rarityIndex, recordDrop } from './loot';
 import { activeColls } from './unlocks';
 
 const D = C.drops;
-export const AUTO_KINDS: readonly LootKind[] = ['coins', 'diamonds', 'energy', 'hearts', 'flowers', 'fabric', 'cocoa', 'chest', 'ticket', 'fragment'];
+export const AUTO_KINDS: readonly LootKind[] = ['coins', 'diamonds', 'energy', 'hearts', 'flowers', 'fabric', 'cocoa', 'chest', 'fragment'];
 export const isAuto = (k: LootKind): boolean => AUTO_KINDS.includes(k);
 
 /** Rareté d'un drop : poids de base, glissant vers le haut avec le niveau de l'objet fusionné. */
@@ -32,7 +32,6 @@ export function makeLoot(fun: FunState, rng: Rng, kind: LootKind, rarity: Rarity
     case 'coins': return { kind, n: D.coins[rarity], rarity };
     case 'diamonds': return { kind, n: D.diamonds[rarity], rarity };
     case 'energy': return { kind, n: D.energy[rarity], rarity };
-    case 'ticket': return { kind, n: 1 + Math.floor(ri / 2), rarity };
     case 'fragment': return { kind, n: 1 + (ri >= 2 ? 1 : 0), rarity };
     case 'chest': return { kind, n: 1, rarity };
     case 'rareItem': {

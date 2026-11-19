@@ -104,12 +104,12 @@ describe('jauge de trésor', () => {
     const f2 = defaultFun();
     expect(openChest(f2, mulberry(1))).toBeNull();
   });
-  it('règlement des gains du moteur : coffre, ticket, fragments → vêtement entier', () => {
+  it('règlement des gains du moteur : coffre, fragments → vêtement entier', () => {
     const fun = defaultFun();
     const rng = new Rng(3);
-    settleLoot(fun, [{ kind: 'chest', n: 1 }, { kind: 'ticket', n: 2 }], rng);
+    settleLoot(fun, [{ kind: 'chest', n: 1 }], rng);
     expect(pendingChests(fun)).toBe(1);
-    expect(fun.endless2.tickets).toBe(2);
+    expect('tickets' in fun.endless2).toBe(false); // plus de compteur de tickets
     let cloth = 0;
     for (let k = 0; k < ENDLESS_CFG.drops.fragmentsPerCloth * 3; k++) {
       const out = settleLoot(fun, [{ kind: 'fragment', n: 1, rarity: 'rare' } as Loot], rng);

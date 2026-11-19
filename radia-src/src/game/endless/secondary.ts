@@ -54,7 +54,7 @@ export const SEC_DEFS: SecDef[] = [
     stages: [
       { goal: 6, reward: [L('coins', 50), L('energy', 10)] },
       { goal: 14, reward: [L('coins', 110), L('fragment', 2, 'uncommon')] },
-      { goal: 24, reward: [L('coins', 220), L('accessory', 1, 'rare', 33), L('ticket', 2)] },
+      { goal: 24, reward: [L('coins', 220), L('accessory', 1, 'rare', 33), L('energy', 10)] },
     ],
     advance: (e) => (e.t === 'discover' && e.isNew ? 1 : 0),
   },
@@ -126,7 +126,7 @@ export function secondaryView(fun: FunState): SecView[] {
 /**
  * Fait progresser les événements actifs d'après UN événement du moteur. Renvoie les événements
  * `secondary` à émettre (progression, palier atteint avec sa récompense). `settle` règle les récompenses
- * gérées par le moteur (coffres, tickets, fragments).
+ * gérées par le moteur (coffres, fragments).
  */
 export function onEngineEvent(fun: FunState, ev: BoardEvent, settle: (l: Loot[]) => Loot[] = (l) => l): BoardEvent[] {
   const out: BoardEvent[] = [];

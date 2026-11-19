@@ -11,7 +11,7 @@ async function boot(H, step, extra = {}) {
   const ctx = await browser.newContext({ viewport: { width: 393, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
   const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(`[${tag}] ${e.message}`));
   const levels = {}; for (let i = 1; i <= 22; i++) levels[i] = { stars: 3, best: 500, done: true };
-  const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'], hearts: 100, levels, story: { step }, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: today, claimed: [0], total: 1 } }, ...extra };
+  const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11'], hearts: 100, levels, story: { step }, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: today, claimed: [0], total: 1 } }, ...extra };
   await page.addInitScript((s) => { if (!sessionStorage.getItem('qe')) { localStorage.setItem('radia-save-v1', s); sessionStorage.setItem('qe', '1'); } }, JSON.stringify(seed));
   await page.goto(`http://localhost:${PORT}/?debug`, { waitUntil: 'networkidle' }); await page.waitForTimeout(2200);
   return { ctx, page };

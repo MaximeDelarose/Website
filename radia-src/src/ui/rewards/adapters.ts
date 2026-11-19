@@ -54,9 +54,9 @@ export function parcelSpec(o: { title: string; subtitle?: string; rewards: reado
 }
 
 // ---- casino : mission accomplie
-export function casinoMissionSpec(o: { name: string; chips: number; item?: { t: 'cloth' | 'furn'; id: string }; duplicate?: boolean }): GiftSpec {
+export function casinoMissionSpec(o: { name: string; coins: number; item?: { t: 'cloth' | 'furn'; id: string }; duplicate?: boolean }): GiftSpec {
   const r: Reward[] = [];
-  push(r, { type: 'tickets', qty: o.chips });
+  push(r, { type: 'coins', qty: o.coins, granted: true });
   if (o.item && !o.duplicate) r.push({ type: o.item.t === 'cloth' ? 'cloth' : 'furniture', id: o.item.id, qty: 1, granted: true });
-  return { kind: 'event', rarity: o.item && !o.duplicate ? 'epic' : 'rare', title: 'Mission accomplie !', subtitle: o.name + (o.duplicate ? ' · objet déjà possédé : tickets en plus ♡' : ''), rewards: r };
+  return { kind: 'event', rarity: o.item && !o.duplicate ? 'epic' : 'rare', title: 'Mission accomplie !', subtitle: o.name + (o.duplicate ? ' · objet déjà possédé : pièces en plus ♡' : ''), rewards: r };
 }

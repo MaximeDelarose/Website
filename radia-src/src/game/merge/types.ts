@@ -100,7 +100,7 @@ export interface OrderState {
 // ------------------------------------------------------------------ butin
 export type LootKind =
   | 'coins' | 'diamonds' | 'energy' | 'hearts' | 'flowers' | 'fabric' | 'cocoa'
-  | 'ticket' | 'chest' | 'fragment' | 'cloth' | 'bag' | 'accessory' | 'deco'
+  | 'chest' | 'fragment' | 'cloth' | 'bag' | 'accessory' | 'deco'
   | 'rareItem' | 'star' | 'wand' | 'wind';
 
 /** Un gain décrit (affichable) ; `applyLoot` (src/game/endless/loot.ts) le verse dans le monde / le portefeuille. */

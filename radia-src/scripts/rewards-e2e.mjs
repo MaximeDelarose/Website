@@ -13,7 +13,7 @@ const check = (name, ok, extra = '') => { const l = `${ok ? 'OK ' : 'KO '} ${nam
 const errs = [];
 const today = (() => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })();
 const seedOf = (o = {}) => ({
-  v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'], story: { step: 80 }, levels: {}, hearts: 500,
+  v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11'], story: { step: 80 }, levels: {}, hearts: 500,
   fun: { free: { unlocked: true, announced: true, at: 1 }, ...(o.fun ?? {}) }, world: { flags: { ...(o.flags ?? {}) } },
 });
 
@@ -36,7 +36,7 @@ const fullLayers = (page) => page.evaluate(() => [...document.querySelectorAll('
   const big = r.width >= innerWidth * 0.9 && r.height >= innerHeight * 0.9;
   return big && cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.05 && cs.pointerEvents !== 'none';
 }).map((e) => e.className.toString() || e.tagName));
-const snap = (page) => page.evaluate(() => { const s = window.RADIA.save.data; return { coins: s.world.res.coins, diamonds: s.economy.diamonds, hearts: s.hearts, tickets: s.fun.casino.chips + s.fun.casino.bring, chests: s.fun.endless2.treasure.earned, flowers: s.world.res.flowers, fabric: s.world.res.fabric, cocoa: s.world.res.cocoa, wand: s.boosters.wand }; });
+const snap = (page) => page.evaluate(() => { const s = window.RADIA.save.data; return { coins: s.world.res.coins, diamonds: s.economy.diamonds, hearts: s.hearts, chests: s.fun.endless2.treasure.earned, flowers: s.world.res.flowers, fabric: s.world.res.fabric, cocoa: s.world.res.cocoa, wand: s.boosters.wand }; });
 const delta = (a, b) => Object.fromEntries(Object.keys(a).map((k) => [k, b[k] - a[k]]).filter(([, v]) => v !== 0));
 const shot = (page, n) => page.screenshot({ path: `shots/r-${n}-${TAG}.png` });
 const waitGone = async (page, ms = 6000) => { const t = Date.now(); while (Date.now() - t < ms) { if (!(await leftovers(page)).length) return true; await page.waitForTimeout(120); } return false; };
@@ -171,7 +171,7 @@ if (ONLY.includes('3')) {
   await page.waitForTimeout(700);
   const mid = await snap(page);
   const d = delta(before, mid);
-  check('démarrage : tout attribué dès l\'apparition (60 💎, 300 pièces, 100 tickets, 1 coffre)', d.diamonds === 60 && d.coins === 300 && d.tickets === 100 && d.chests === 1, JSON.stringify(d));
+  check('démarrage : tout attribué dès l\'apparition (60 💎, 500 pièces, 1 coffre, plus de tickets)', d.diamonds === 60 && d.coins === 500 && d.chests === 1, JSON.stringify(d));
   check('démarrage : +50 énergie', (await page.evaluate(() => window.RADIA.save.data.economy.energy)) - e0 >= 49);
   // sortie anticipée : on recharge pendant l'animation
   await page.reload({ waitUntil: 'networkidle' });

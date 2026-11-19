@@ -23,7 +23,7 @@ export interface DevCtx {
   restart: () => void;
 }
 
-const AMOUNT: Partial<Record<LootKind, number>> = { coins: 60, diamonds: 2, energy: 5, hearts: 10, flowers: 4, fabric: 4, cocoa: 4, chest: 1, ticket: 1, fragment: 1, cloth: 1, bag: 1, accessory: 1, deco: 1 };
+const AMOUNT: Partial<Record<LootKind, number>> = { coins: 60, diamonds: 2, energy: 5, hearts: 10, flowers: 4, fabric: 4, cocoa: 4, chest: 1, fragment: 1, cloth: 1, bag: 1, accessory: 1, deco: 1 };
 
 export function installEndlessDebug(c: DevCtx): void {
   const fun = () => save.data.fun;
@@ -61,7 +61,7 @@ export function installEndlessDebug(c: DevCtx): void {
         cells: st.cells.map((x, i) => (x.item ? { i, c: x.item.c, l: x.item.l } : null)).filter(Boolean),
         energy: wallet.energy(), diamonds: wallet.diamonds(), hearts: save.data.hearts, world: { ...save.data.world.res },
         treasure: treasureView(f), replaces: R.replacesLeft(), counters: { ...f.endless2.counters },
-        album: albumProgress(f).found, gens: { ...f.endless2.gens }, tickets: f.endless2.tickets, fragments: { ...f.endless2.fragments },
+        album: albumProgress(f).found, gens: { ...f.endless2.gens }, fragments: { ...f.endless2.fragments },
         clothOwned: save.data.world.wardrobe.owned.length, furnitureOwned: Object.keys(save.data.world.castle.owned).length,
         active: activeColls(f), runSaved: !!save.data.endless.run,
         locks: st.cells.map((x, i) => (x.lock ? { i, kind: x.lock.kind, price: x.lock.price, need: x.lock.need, zone: x.lock.zone, item: x.lock.item, reward: x.lock.reward } : null)).filter(Boolean),

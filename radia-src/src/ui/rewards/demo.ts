@@ -2,11 +2,11 @@
 import type { GiftKind, GiftRarity, GiftSpec, Reward } from './types';
 
 const SAMPLE: Record<GiftKind, Reward[]> = {
-  start: [{ type: 'energy', qty: 50 }, { type: 'diamonds', qty: 60 }, { type: 'coins', qty: 300 }, { type: 'tickets', qty: 100 }, { type: 'chest', qty: 1, label: 'Coffre surprise' }],
+  start: [{ type: 'energy', qty: 50 }, { type: 'diamonds', qty: 60 }, { type: 'coins', qty: 300 }, { type: 'chest', qty: 1, label: 'Coffre surprise' }],
   daily: [{ type: 'coins', qty: 250 }, { type: 'diamonds', qty: 20 }],
   chest: [{ type: 'coins', qty: 120 }, { type: 'diamonds', qty: 15 }, { type: 'energy', qty: 8 }, { type: 'res', id: 'flowers', qty: 12 }, { type: 'cloth', id: 'dr-royal-gown', qty: 1 }, { type: 'furniture', id: 'chandelier', qty: 1 }],
   event: [{ type: 'coins', qty: 200 }, { type: 'diamonds', qty: 30 }, { type: 'res', id: 'fabric', qty: 6 }, { type: 'hearts', qty: 5 }],
-  premium: [{ type: 'diamonds', qty: 150 }, { type: 'tickets', qty: 400 }, { type: 'cloth', id: 'cr-tiara', qty: 1 }, { type: 'chest', qty: 1 }, { type: 'coins', qty: 800 }],
+  premium: [{ type: 'diamonds', qty: 150 }, { type: 'coins', qty: 400 }, { type: 'cloth', id: 'cr-tiara', qty: 1 }, { type: 'chest', qty: 1 }, { type: 'coins', qty: 800 }],
   romantic: [{ type: 'hearts', qty: 20 }, { type: 'bouquet', id: 'rose+peony', qty: 1, label: 'Bouquet de roses' }, { type: 'diamonds', qty: 25 }],
 };
 const TITLE: Record<GiftKind, string> = {

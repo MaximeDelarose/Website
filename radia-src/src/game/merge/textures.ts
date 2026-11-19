@@ -238,7 +238,7 @@ export function lockIconUrl(kind: string, size = 64): string {
   }));
 }
 
-/** Icône d'une récompense visible (diamants, énergie, coffre, fragment de tenue, décoration, pièces, ticket). */
+/** Icône d'une récompense visible (diamants, énergie, coffre, fragment de tenue, décoration, pièces). */
 export function ensureLockRewardTexture(scene: Phaser.Scene, kind: string): string {
   const key = `lockrw:${kind}`;
   if (scene.textures.exists(key)) return key;
@@ -266,11 +266,6 @@ export function ensureLockRewardTexture(scene: Phaser.Scene, kind: string): stri
         roundRect(ctx, S * 0.14, S * 0.42, S * 0.72, S * 0.28, S * 0.1); fillShaded(ctx, '#C9A0FF', { x: S * 0.14, y: S * 0.42, w: S * 0.72, h: S * 0.28 }, S * 0.03);
         for (const x of [0.24, 0.72]) { ctx.beginPath(); ctx.rect(S * x, S * 0.68, S * 0.05, S * 0.17); ctx.fillStyle = PAL.or; ctx.fill(); ctx.lineWidth = S * 0.02; ctx.strokeStyle = OUTLINE; ctx.stroke(); }
         starPath(ctx, S * 0.5, S * 0.31, S * 0.09, S * 0.04); ctx.fillStyle = PAL.or; ctx.fill();
-        break;
-      }
-      case 'ticket': {
-        roundRect(ctx, S * 0.12, S * 0.28, S * 0.76, S * 0.44, S * 0.07); fillShaded(ctx, PAL.peche, { x: S * 0.12, y: S * 0.28, w: S * 0.76, h: S * 0.44 }, S * 0.03);
-        starPath(ctx, S * 0.5, S * 0.5, S * 0.13, S * 0.06); ctx.fillStyle = '#FFFFFF'; ctx.fill();
         break;
       }
       default: {
@@ -406,7 +401,7 @@ export function ensureFxTextures(scene: Phaser.Scene): void {
 }
 
 /** Petites icônes pour `flyTo` (objet qui vole vers un compteur). */
-export const FLY_KINDS = ['coin', 'diamond', 'energy', 'heart', 'star', 'flowers', 'fabric', 'cocoa', 'ticket', 'chest'] as const;
+export const FLY_KINDS = ['coin', 'diamond', 'energy', 'heart', 'star', 'flowers', 'fabric', 'cocoa', 'chest'] as const;
 export type FlyKind = (typeof FLY_KINDS)[number] | string;
 
 export function ensureFlyTexture(scene: Phaser.Scene, kind: string): string {
@@ -423,7 +418,6 @@ export function ensureFlyTexture(scene: Phaser.Scene, kind: string): string {
     case 'flowers': draw((c) => { for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 - Math.PI / 2; ellipse(c, 14 + Math.cos(a) * 6, 14 + Math.sin(a) * 6, 5, 3.6, a); c.fillStyle = PAL.roseVif; c.fill(); c.lineWidth = 1.2; c.strokeStyle = OUTLINE; c.stroke(); } ellipse(c, 14, 14, 3.4, 3.4); c.fillStyle = PAL.or; c.fill(); }); break;
     case 'fabric': draw((c) => { roundRect(c, 4, 7, 20, 14, 3); fillShaded(c, PAL.lavande, { x: 4, y: 7, w: 20, h: 14 }, 1.6); c.beginPath(); c.moveTo(7, 12); c.lineTo(21, 12); c.moveTo(7, 16); c.lineTo(21, 16); c.lineWidth = 1; c.strokeStyle = 'rgba(255,255,255,0.7)'; c.stroke(); }); break;
     case 'cocoa': draw((c) => { ellipse(c, 14, 14, 8, 11, 0.5); fillShaded(c, '#8B5A3C', { x: 6, y: 3, w: 16, h: 22 }, 1.6); c.beginPath(); c.moveTo(11, 7); c.quadraticCurveTo(16, 14, 17, 21); c.lineWidth = 1.2; c.strokeStyle = '#4A2A1C'; c.stroke(); }); break;
-    case 'ticket': draw((c) => { roundRect(c, 3, 8, 22, 12, 3); fillShaded(c, PAL.peche, { x: 3, y: 8, w: 22, h: 12 }, 1.6); starPath(c, 14, 14, 4, 1.8); c.fillStyle = '#FFFFFF'; c.fill(); }); break;
     case 'chest': draw((c) => { roundRect(c, 3, 10, 22, 14, 3); fillShaded(c, '#C98B4F', { x: 3, y: 10, w: 22, h: 14 }, 1.6); roundRect(c, 3, 5, 22, 8, 4); fillShaded(c, PAL.or, { x: 3, y: 5, w: 22, h: 8 }, 1.6); }); break;
     default: draw((c) => sparkle(c, 14, 14, 12, '#FFE7A0'));
   }

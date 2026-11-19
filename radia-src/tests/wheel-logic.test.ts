@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LOTS, TOTAL_WEIGHT, probOf, FASHION_POOL, DECO_POOL, DUP_COINS } from '../src/wheel/table';
+import { LOTS, TOTAL_WEIGHT, probOf, FASHION_POOL, DECO_POOL, RARE_POOL, DUP_COINS, DUP_RARE_COINS } from '../src/wheel/table';
 import { applyLot, canSpin, claimSpin, dayKey, msUntilNextDay, rollLot, type WheelCtx } from '../src/wheel/logic';
 import { defaultFun, sanitizeFun } from '../src/save/fun';
 import { seededRng } from '../src/casino/rng';
@@ -10,7 +10,7 @@ function ctx(owned: string[] = []) {
   const log: Record<string, number> = {}; const items: string[] = [...owned];
   const add = (k: string, n: number) => { log[k] = (log[k] ?? 0) + n; };
   const c: WheelCtx = {
-    addCoins: (n) => add('coins', n), giveDiamonds: (n) => add('diamonds', n), giveEnergy: (n) => add('energy', n), grantChips: (n) => add('chips', n),
+    addCoins: (n) => add('coins', n), giveDiamonds: (n) => add('diamonds', n), giveEnergy: (n) => add('energy', n),
     ownsCloth: (id) => items.includes(id), giveCloth: (id) => { items.push(id); add('cloth', 1); },
     ownsDeco: (id) => items.includes(id), giveDeco: (id) => { items.push(id); add('deco', 1); },
     addFragment: (k, n) => add('frag:' + k, n),
@@ -27,8 +27,9 @@ describe('table et probabilités', () => {
   });
   it('tous les types attendus sont présents et les objets sont réels', () => {
     const kinds = new Set(LOTS.map((l) => l.kind));
-    for (const k of ['coins', 'diamonds', 'energy', 'chips', 'fashion', 'deco', 'fragment']) expect(kinds.has(k as never)).toBe(true);
-    for (const id of FASHION_POOL) expect(id in CLOTHES, id).toBe(true);
+    for (const k of ['coins', 'diamonds', 'energy', 'fashion', 'deco', 'rare', 'fragment']) expect(kinds.has(k as never)).toBe(true);
+    expect(JSON.stringify(LOTS)).not.toMatch(/ticket|chips|🪙/); // plus de tickets, plus d'émoji de pièce grise
+    for (const id of [...FASHION_POOL, ...RARE_POOL]) expect(id in CLOTHES, id).toBe(true);
     for (const id of DECO_POOL) expect(id in FURNITURE, id).toBe(true);
   });
   it('simulation de 200 000 tirages ≈ table', () => {
@@ -86,10 +87,22 @@ describe('un tirage par jour', () => {
 
 describe('attribution', () => {
   const lot = (id: string) => LOTS.find((l) => l.id === id)!;
-  it('pièces, diamants, énergie, tickets, fragment', () => {
+  it('pièces, diamants, énergie, fragment', () => {
     const { c, log } = ctx(); const rng = seededRng(1);
-    applyLot(lot('coins300'), c, rng); applyLot(lot('diamonds6'), c, rng); applyLot(lot('energy3'), c, rng); applyLot(lot('chips600'), c, rng); applyLot(lot('fragment'), c, rng);
-    expect(log).toEqual({ coins: 300, diamonds: 6, energy: 3, chips: 600, 'frag:cloth': 1 });
+    applyLot(lot('coins300'), c, rng); applyLot(lot('diamonds6'), c, rng); applyLot(lot('energy3'), c, rng); applyLot(lot('energy8'), c, rng); applyLot(lot('coins600'), c, rng); applyLot(lot('fragment'), c, rng);
+    expect(log).toEqual({ coins: 900, diamonds: 6, energy: 11, 'frag:cloth': 1 });
+  });
+  it('objet rare : tenue précieuse réelle, doublon compensé', () => {
+    const { c, items, log } = ctx(); const rng = seededRng(2);
+    for (let i = 0; i < RARE_POOL.length; i++) applyLot(lot('rare'), c, rng);
+    expect(new Set(items).size).toBe(RARE_POOL.length);
+    const g = applyLot(lot('rare'), c, rng);
+    expect(g.duplicate).toBe(true); expect(log.coins).toBe(DUP_RARE_COINS);
+  });
+  it('équilibre : espérance en pièces par tirage modeste (≈ 90), jamais disproportionnée', () => {
+    const ev = LOTS.filter((l) => l.kind === 'coins').reduce((a, l) => a + probOf(l) * l.n, 0);
+    expect(ev).toBeGreaterThan(70); expect(ev).toBeLessThan(120);
+    expect(Math.max(...LOTS.filter((l) => l.kind === 'coins').map((l) => l.n))).toBeLessThanOrEqual(600);
   });
   it('accessoire / décoration : objet réel donné, jamais deux fois le même tant qu\'il en reste', () => {
     const { c, items } = ctx(); const rng = seededRng(5);

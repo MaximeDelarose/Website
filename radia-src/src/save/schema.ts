@@ -5,7 +5,7 @@
  */
 import { customerById } from '../data/customers';
 import { defaultEvents, sanitizeEvents } from '../events/state';
-import { defaultFun, sanitizeFun, type FunState } from './fun';
+import { defaultFun, mergeTickets, sanitizeFun, type FunState } from './fun';
 import type { EventsState } from '../events/types';
 import type { OrderState, RunState } from '../game/merge/types';
 import { capLocks, validLock } from '../game/merge/locks';
@@ -446,6 +446,7 @@ export function sanitize(raw: unknown): SaveData {
   d.world = sanitizeWorld(s.world);
   d.events = sanitizeEvents(s.events);
   d.fun = sanitizeFun(s.fun);
+  mergeTickets(d.fun, d.world.res); // anciens tickets → pièces, une seule fois (marque durable dans fun.economy)
   void str;
   return d;
 }

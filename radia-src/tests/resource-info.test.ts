@@ -15,8 +15,8 @@ describe('fiches de ressources', () => {
   it('fiches courtes (pas de fenêtre géante)', () => {
     for (const id of RES_ORDER) { const r = RES_INFO[id]; expect(r.ways.length).toBeLessThanOrEqual(6); expect(r.use.length).toBeLessThan(140); }
   });
-  it('aucune promesse d\'argent réel : tickets gratuits, diamants sans vrai paiement', () => {
-    expect(RES_INFO.tickets.note).toMatch(/Gratuits/);
+  it('aucune promesse d\'argent réel : diamants sans vrai paiement', () => {
+    
     expect(RES_INFO.diamonds.note).toMatch(/aucun vrai paiement/);
     for (const id of RES_ORDER) for (const w of RES_INFO[id].ways) expect(w).not.toMatch(/acheter avec de l'argent|euros|€/i);
   });

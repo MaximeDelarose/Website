@@ -80,7 +80,7 @@ export function rollTreasure(rand: () => number, fun?: FunState, pity?: Pity): T
     case 'common': loot.push(L('coins', r(30, 60)), L('energy', r(5, 10))); break;
     case 'uncommon':
       loot.push(L('coins', r(60, 110)), L('energy', r(10, 18)), L(['flowers', 'fabric', 'cocoa'][rng.int(3)] as Loot['kind'], r(3, 6)));
-      if (rng.next() < 0.35) loot.push(L('ticket', 1)); break;
+      if (rng.next() < 0.35) loot.push(L('coins', r(20, 40))); break;
     case 'rare':
       loot.push(L('coins', r(120, 200)), L('energy', r(15, 25)), makeLoot(f, rng, rng.weighted([['accessory', 4], ['bag', 2], ['deco', 3]] as const), 'rare'));
       if (rng.next() < 0.4) loot.push(makeLoot(f, rng, 'rareItem', 'rare')); break;
@@ -113,7 +113,7 @@ export function openChest(fun: FunState, rand: () => number = Math.random): Trea
 }
 
 /**
- * Règle les gains gérés par le moteur lui-même : coffres (+1 à ouvrir), tickets, fragments de vêtement
+ * Règle les gains gérés par le moteur lui-même : coffres (+1 à ouvrir), fragments de vêtement
  * (un vêtement entier tous les N fragments : il est AJOUTÉ à la liste renvoyée). Les autres gains
  * (pièces, énergie, vêtements, décorations…) sont versés par `applyLoot`.
  */
@@ -122,7 +122,6 @@ export function settleLoot(fun: FunState, loots: Loot[], rng: Rng): Loot[] {
   for (const l of loots) {
     out.push(l);
     if (l.kind === 'chest') giveChest(fun, l.n);
-    else if (l.kind === 'ticket') fun.endless2.tickets = Math.min(99999, fun.endless2.tickets + l.n);
     else if (l.kind === 'fragment') {
       const cloth = addFragments(fun, l.n, l.rarity ?? 'common', rng);
       if (cloth) out.push(cloth);
