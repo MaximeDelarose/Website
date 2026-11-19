@@ -112,6 +112,25 @@ export const gameConfig: GameConfig = {
     },
   },
 
+  // Mode coopératif : plusieurs téléphones dans une même équipe, reliés par un code de salon.
+  // Transport : Supabase Realtime (diffusion par salon, sans table ni SQL), comme Billard et Ashbound.
+  // La clé ci-dessous est la clé PUBLIQUE du site (déjà présente dans js/data.js) : jamais de clé secrète ici.
+  coop: {
+    enabled: true,
+    minPlayers: 2,
+    maxPlayers: 3,
+    roles: [
+      { id: "archives", name: "Archiviste", tagline: "Vous détenez la mémoire du bâtiment : les journaux.", color: "#3fe6ff" },
+      { id: "vestiaire", name: "Intendant", tagline: "Vous détenez les clés : les casiers du personnel.", color: "#ff9d2e" },
+      { id: "frontiere", name: "Douanier", tagline: "Vous détenez les frontières : les titres de voyage.", color: "#b79bff" },
+    ],
+    supabase: { url: "https://euxlmipqzmvnzzyalyfn.supabase.co", key: "sb_publishable_yryevkEb0hvSSZTdTQN0xA_R1NjJsfd" },
+    heartbeatMs: 4000,
+    lostAfterMs: 12000,
+    rejoinWindowMs: 30 * 60 * 1000,
+    joinTimeoutMs: 5000,
+  },
+
   texts: {
     tagline: "Escape game coopératif",
     pitch: "Le système central est compromis. Votre équipe a quinze minutes pour faire sauter quatre verrous et rétablir les communications.",

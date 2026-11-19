@@ -8,6 +8,7 @@ import "@fontsource/jetbrains-mono/latin-500.css";
 import "@fontsource/jetbrains-mono/latin-700.css";
 import "@fontsource/caveat/latin-600.css";
 import "./styles/app.css";
+import "./styles/coop.css";
 import { App } from "./App";
 import { GameProvider } from "./game";
 

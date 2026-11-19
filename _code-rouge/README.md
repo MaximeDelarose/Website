@@ -97,3 +97,45 @@ tests/         engine.test.ts (Vitest) · e2e.mjs (Playwright)
   de brancher une implémentation réseau dans `createGateway()` (code de session, classement
   partagé) sans toucher au moteur ni aux écrans. Le moteur étant un réducteur pur piloté par une
   graine, un serveur peut rejouer et vérifier un score.
+
+## Mode coopératif (bêta, phase 0) — plusieurs téléphones, une équipe
+
+Accueil → « Jouer à plusieurs · bêta » (ou directement `https://mdelarose.fr/code-rouge/#salle`). Le mode solo n'est pas
+modifié : le mode coopératif se charge à la demande (bundle séparé) et ne touche jamais à la sauvegarde solo.
+
+**Ce que fait la phase 0**
+- L'hôte crée un salon (code de 4 lettres sans I, L, O) ; les autres le rejoignent avec le code ou le lien `#salle=CODE`.
+- Constellation d'équipe : une perle par téléphone, des fils de lumière dont l'éclat reflète la qualité de la liaison.
+- Distribution des rôles (Archiviste, Intendant, Douanier) avec révélation synchronisée, puis confirmation « prêt » de chacun.
+- Présence en direct : en ligne, arrière-plan (écran verrouillé), connexion perdue, parti. Un téléphone qui revient retrouve
+  sa place, son rôle et son état « prêt ». L'hôte rechargé retrouve la salle (état sauvegardé dans son navigateur).
+- Onglet **Liaison** : test de 25 s entre les vrais téléphones (allers-retours entre chaque paire, rafales à 20 messages/s),
+  verdict, rapport à copier, test de vibration/son, journal des reconnexions.
+
+**Tester sur trois téléphones**
+1. Hôte : « Jouer à plusieurs » → prénom → « Créer un salon ». Les autres : même écran → code (ou lien partagé).
+2. « Distribuer les rôles » → chacun voit un rôle différent → « Je suis prêt » sur les trois.
+3. Onglet **Liaison** → « Lancer le test » (écrans allumés) → « Copier le rapport » et le coller dans la conversation.
+4. Verrouillage : verrouillez un téléphone 15 s, rallumez-le ; les autres voient son état changer, puis il revient.
+5. Dans « Sensations », envoyez une vibration à un coéquipier et répondez à la question (c'est ce qui dira si les retours
+   haptiques synchronisés sont possibles sur iPhone).
+
+**Architecture réseau** (`src/net/`)
+- `transport.ts` : un canal de diffusion Supabase Realtime par salon (`code-rouge-room-XXXX`), un seul type d'évènement.
+  Aucune table, aucun SQL, aucune modification du projet Supabase. Repli `BroadcastChannel` (`?net=bc`) pour les tests.
+- `roster.ts` / `session.ts` : l'**hôte fait foi** (état du salon, rôles, présence). Les autres envoient des intentions,
+  l'hôte rediffuse l'état complet (petit : un instantané de quelques centaines d'octets).
+- `lab.ts` : test de liaison. `labSummary.ts` : verdict et rapport. `haptics.ts` : retour haptique « au mieux ».
+- Le salon est public : le code est la seule barrière (acceptable pour un prototype ; autorisation par salon possible plus tard).
+
+**Ressources Supabase partagées** — le projet « BoxUtils » (forfait gratuit) sert aussi Billard, Ashbound, Échecs, Mini-golf,
+Merger, Écureuil Dice, etc. Les salons de CODE ROUGE n'utilisent que des canaux préfixés `code-rouge-room-` : aucune collision.
+Limites Realtime du forfait gratuit, d'après la documentation Supabase (à confirmer dans le tableau de bord, Settings → Realtime) :
+200 connexions simultanées, 100 messages/s, 2 millions de messages/mois. Débit mesuré : ~3 messages/s par équipe en jeu,
+~34 messages/s par équipe pendant le test de liaison (à ne pas lancer pour plusieurs équipes en même temps).
+
+**Tests**
+- `npm test` : réseau simulé en mémoire (latence, gigue, pertes), présence, rôles, reconnexion, hôte rechargé, débit < quota.
+- `npm run e2e:coop` : salon à trois onglets (latence simulée) : création, adhésion, rôles, prêt, verrouillage, rechargement,
+  salon complet / introuvable, test de liaison, solo intact.
+- `npm run lab:real` : trois téléphones simulés contre le vrai Supabase (plancher de latence, depuis un ordinateur).

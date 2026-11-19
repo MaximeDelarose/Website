@@ -112,6 +112,31 @@ export interface TextsConfig {
   failLine: string;
 }
 
+export interface RoleDef {
+  id: string;
+  name: string;
+  /** Une phrase qui donne envie d'endosser le rôle. */
+  tagline: string;
+  color: string;
+}
+
+/** Mode coopératif multi-téléphones (une équipe = un salon, un hôte). */
+export interface CoopConfig {
+  enabled: boolean;
+  minPlayers: number;
+  maxPlayers: number;
+  /** Rôles distribués entre les téléphones de l'équipe (épreuve « Dossier éclaté »). */
+  roles: RoleDef[];
+  /** Projet Supabase (clé PUBLIQUE uniquement). null = mode coopératif indisponible. */
+  supabase: { url: string; key: string } | null;
+  heartbeatMs: number;
+  /** Silence au-delà duquel un téléphone est signalé « connexion perdue ». */
+  lostAfterMs: number;
+  /** Durée pendant laquelle une place reste réservée à un joueur déconnecté. */
+  rejoinWindowMs: number;
+  joinTimeoutMs: number;
+}
+
 export interface GameConfig {
   brand: BrandConfig;
   theme: ThemeConfig;
@@ -123,4 +148,5 @@ export interface GameConfig {
   cipher: CipherConfig;
   finale: FinaleConfig;
   texts: TextsConfig;
+  coop: CoopConfig;
 }
