@@ -13,6 +13,11 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const now = () => performance.now();
 const TAU = Math.PI * 2;
+// direction artistique : "pixel" (sprites d'Écureuil Survivor) ou "papier" (découpage vectoriel)
+const DA = (() => { const q = /[?&]da=(pixel|papier)/.exec(location.search); let v = q && q[1]; try { if (v) localStorage.setItem("papier-da", v); v = v || localStorage.getItem("papier-da"); } catch (e) {} return v === "papier" ? "papier" : "pixel"; })();
+const PIX = DA === "pixel" && !!(window.ES_DATA && window.ES_ART);
+if (PIX) document.body.classList.add("pixel");
+const LH = 180;   // hauteur de rendu en mode pixel
 
 /* =====================================================================
    Réglages de la salle de test
@@ -23,9 +28,9 @@ const SLOW = () => (OPT.slow ? 2 : 1);
 /* =====================================================================
    Rendu
    ===================================================================== */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
-renderer.shadowMap.enabled = true;
+const renderer = new THREE.WebGLRenderer({ antialias: !PIX });
+renderer.setPixelRatio(PIX ? 1 : Math.min(2, devicePixelRatio || 1));
+renderer.shadowMap.enabled = !PIX;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 $("#app").appendChild(renderer.domElement);
@@ -34,10 +39,12 @@ const camera = new THREE.PerspectiveCamera(30, 16 / 9, 0.1, 200);
 let VW = 1, VH = 1, DPR = 1;
 function resize() {
   VW = innerWidth; VH = innerHeight; DPR = Math.min(2, devicePixelRatio || 1);
-  renderer.setSize(VW, VH); camera.aspect = VW / VH;
-  camera.fov = VW / VH < 1.5 ? 36 : 30;
-  camera.updateProjectionMatrix();
-  ov.width = VW * DPR; ov.height = VH * DPR;
+  camera.aspect = VW / VH; camera.fov = VW / VH < 1.5 ? 36 : 30; camera.updateProjectionMatrix();
+  if (PIX) {   // petite image agrandie sans lissage : de vrais pixels
+    const lw = Math.round((LH * VW) / VH); renderer.setSize(lw, LH, false);
+    renderer.domElement.style.width = "100%"; renderer.domElement.style.height = "100%"; renderer.domElement.style.imageRendering = "pixelated";
+    DPR = lw / VW; ov.width = lw; ov.height = LH; ov.style.imageRendering = "pixelated";
+  } else { renderer.setSize(VW, VH); ov.width = VW * DPR; ov.height = VH * DPR; }
 }
 addEventListener("resize", resize); resize();
 
@@ -224,18 +231,19 @@ const ENEMIES = {
 const TEXCACHE = {};
 function tex(key, fn) { return TEXCACHE[key] || (TEXCACHE[key] = cutout(fn)); }
 class PaperChar {
-  constructor(textures, height, nat = 1) {
+  constructor(textures, height, nat = 1, width = height) {
     this.root = new THREE.Group();          // position au sol
     this.body = new THREE.Group();          // sautillement, écrasement
     this.card = new THREE.Group();          // retournement (axe vertical)
     this.root.add(this.body); this.body.add(this.card);
     this.textures = textures; this.nat = nat; this.h = height;
     this.mat = new THREE.MeshBasicMaterial({ map: textures.front[0], transparent: true, alphaTest: 0.35, side: THREE.DoubleSide });
-    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(height, height), this.mat);
-    this.mesh.position.y = height / 2 - height * 0.03;
+    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), this.mat);
+    this.mesh.position.y = height / 2 - (PIX ? 0 : height * 0.03); this.w = width;
     this.card.add(this.mesh);
     // ombre ronde au sol, comme dans un livre animé
-    this.shadow = new THREE.Mesh(new THREE.CircleGeometry(height * 0.28, 24), new THREE.MeshBasicMaterial({ color: 0x3a2618, transparent: true, opacity: 0.22, depthWrite: false }));
+    this.shadow = PIX ? new THREE.Mesh(new THREE.PlaneGeometry(width * 0.8, width * 0.3), new THREE.MeshBasicMaterial({ map: PXSHADOW, transparent: true, opacity: 0.3, depthWrite: false }))
+      : new THREE.Mesh(new THREE.CircleGeometry(height * 0.28, 24), new THREE.MeshBasicMaterial({ color: 0x3a2618, transparent: true, opacity: 0.22, depthWrite: false }));
     this.shadow.rotation.x = -Math.PI / 2; this.shadow.position.y = 0.012; this.root.add(this.shadow);
     this.face = nat; this.rot = 0; this.rotTo = 0; this.t = Math.random() * 10; this.lift = 0; this.squash = 0; this.view = "front"; this.frame = 0; this.tint = 1;
   }
@@ -249,24 +257,97 @@ class PaperChar {
     this.card.rotation.y = this.rot;
     const edge = Math.abs(Math.cos(this.rot));
     this.mat.color.setScalar((0.72 + 0.28 * edge) * this.tint);
-    const tx = this.view === "back" && this.textures.back ? this.textures.back : this.textures.front;
-    const fr = tx[Math.floor(this.frame) % tx.length]; if (this.mat.map !== fr) { this.mat.map = fr; this.mat.needsUpdate = true; }
+    let tx = this.view === "back" && this.textures.back ? this.textures.back : this.textures.front, fi = this.frame;
+    if (this.textures.walk && moving) { tx = this.textures.walk; fi = this.t * 9 * speed; }
+    else if (this.textures.idle && !moving) { tx = this.textures.idle; fi = this.t * 2.4; }
+    const fr = tx[Math.floor(fi) % tx.length]; if (this.mat.map !== fr) { this.mat.map = fr; this.mat.needsUpdate = true; }
     // marche en papier : petits bonds, balancement
     let bob = 0, sway = 0, sq = 0;
-    if (moving) { const ph = this.t * 11 * speed; bob = Math.abs(Math.sin(ph)) * 0.12; sway = Math.sin(ph) * 0.07; sq = -Math.abs(Math.cos(ph)) * 0.05; }
+    if (moving) { const ph = this.t * 11 * speed; bob = Math.abs(Math.sin(ph)) * 0.12 * (PIX ? this.h : 1); sway = PIX ? 0 : Math.sin(ph) * 0.07; sq = -Math.abs(Math.cos(ph)) * 0.05; }
     else { sq = Math.sin(this.t * 3) * 0.02; }
     this.squash += (sq - this.squash) * Math.min(1, dt * 14);
     this.body.position.y = bob + this.lift;
     this.body.rotation.z = sway * (this.face === this.nat ? 1 : -1);
     this.body.scale.set(1 - this.squash * 0.6, 1 + this.squash, 1);
     const hgt = Math.max(0, this.body.position.y);
-    this.shadow.scale.setScalar(clamp(1 - hgt * 0.25, 0.4, 1)); this.shadow.material.opacity = clamp(0.24 - hgt * 0.05, 0.06, 0.24);
+    this.shadow.scale.setScalar(clamp(1 - hgt * 0.25, 0.4, 1)); this.shadow.material.opacity = clamp((PIX ? 0.34 : 0.24) - hgt * 0.05, 0.06, 0.34);
   }
   pop(amount = 0.25) { this.squash = -amount; }
 }
+/* ---------- mode pixel : sprites d'Écureuil Survivor (même fabrication que dans Survivor, contour d'un pixel) ---------- */
+const OUTC = "#2b1709";
+function pxMk(rows, pal) {
+  let w = 0; rows.forEach((r) => (w = Math.max(w, r.length)));
+  const h = rows.length, Wc = w + 2, Hc = h + 2, filled = new Uint8Array(Wc * Hc), dark = {};
+  Object.keys(pal).forEach((k) => { const c = pal[k]; if (typeof c === "string" && c.length === 7) { const r = parseInt(c.substr(1, 2), 16), g = parseInt(c.substr(3, 2), 16), b = parseInt(c.substr(5, 2), 16); if (0.3 * r + 0.59 * g + 0.11 * b < 34) dark[k] = 1; } });
+  const c = canvas(Wc, Hc), g = c.getContext("2d");
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const ch = rows[y][x]; if (ch && pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x + 1, y + 1, 1, 1); filled[(y + 1) * Wc + x + 1] = dark[ch] ? 2 : 1; } }
+  g.fillStyle = OUTC;
+  for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) {
+    if (filled[y * Wc + x]) continue;
+    if ((x > 0 && filled[y * Wc + x - 1] === 1) || (x < Wc - 1 && filled[y * Wc + x + 1] === 1) || (y > 0 && filled[(y - 1) * Wc + x] === 1) || (y < Hc - 1 && filled[(y + 1) * Wc + x] === 1)) g.fillRect(x, y, 1, 1);
+  }
+  return c;
+}
+function epx(rows) {
+  const H2 = rows.length; let W2 = 0; rows.forEach((r) => (W2 = Math.max(W2, r.length)));
+  const at = (x, y) => (x < 0 || y < 0 || x >= W2 || y >= H2 ? null : rows[y][x] || "."), out = [];
+  for (let y = 0; y < H2; y++) { let r1 = "", r2 = ""; for (let x = 0; x < W2; x++) { const P0 = at(x, y), A = at(x, y - 1), Bq = at(x + 1, y), C = at(x - 1, y), Dq = at(x, y + 1); let e1 = P0, e2 = P0, e3 = P0, e4 = P0;
+    if (A !== null && C !== null && C === A && C !== Dq && A !== Bq) e1 = A; if (A !== null && Bq !== null && A === Bq && A !== C && Bq !== Dq) e2 = Bq;
+    if (Dq !== null && C !== null && Dq === C && Dq !== Bq && C !== A) e3 = C; if (Bq !== null && Dq !== null && Bq === Dq && Bq !== A && Dq !== C) e4 = Dq; r1 += e1 + e2; r2 += e3 + e4; } out.push(r1, r2); }
+  return out;
+}
+const PX_EXTRA = {
+  tree: { pal: { g: "#3f6b3a", G: "#5b8a4a", l: "#9cc56b", b: "#6b4430", B: "#8a5a3b" }, frames: [["......gggg......", "....ggGGGGgg....", "...gGGlGGGGGg...", "..gGGllGGGGGGg..", ".gGGGlGGGGGGGGg.", ".gGGGGGGGGlGGGg.", "gGGlGGGGGllGGGGg", "gGGGGGGGGGGGGGGg", "gGGGGGGlGGGGGGgg", ".gGGGGGGGGGGGgg.", ".ggGGGGGGGGGggg.", "..gggGGGGGgggg..", "....gggbBggg....", "......bBb.......", "......bBb.......", ".....bbBbb......"]] },
+  pine: { pal: { g: "#1f3a2b", G: "#2f5a3a", l: "#4f8a40", b: "#4a3020", B: "#6b4430" }, frames: [[".......g........", "......gGg.......", ".....gGlGg......", "....gGGGGGg.....", ".....gGlGg......", "....gGGGGGGg....", "...gGGlGGGGGg...", "....gGGGGGGg....", "...gGGGGGlGGg...", "..gGGlGGGGGGGg..", ".gGGGGGGGGlGGGg.", "..ggGGGGGGGGgg..", "....ggggbgggg...", ".......bB.......", ".......bB.......", "......bbBb......"]] }
+};
+const PXC = {};
+function pxSprite(name, times = 0) {
+  const key = name + "@" + times; if (PXC[key]) return PXC[key];
+  let def = PX_EXTRA[name] || ES_DATA.SPRITES[name];
+  if (times) def = { pal: def.pal, frames: def.frames.map((f) => { for (let i = 0; i < times; i++) f = epx(f); return f; }) };
+  let d = def; try { d = ES_ART.upgrade(name, def) || def; } catch (e) {}
+  const mkT = (rows) => { const c = pxMk(rows, d.pal), t = new THREE.CanvasTexture(c); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.colorSpace = THREE.SRGBColorSpace; t.pw = c.width; t.ph = c.height; return t; };
+  const o = { frames: d.frames.map(mkT) }; if (d.idle) o.idle = d.idle.map(mkT);
+  o.pw = o.frames[0].pw; o.ph = o.frames[0].ph; return (PXC[key] = o);
+}
+// unités du monde par pixel de sprite : 1 pixel de sprite = 1 pixel de l'image (à la profondeur des personnages)
+const KPX = (dist) => (2 * dist * Math.tan((30 * Math.PI) / 360)) / LH;
+const K_WORLD = KPX(13.98), K_BATTLE = KPX(12.52);
+const PXSHADOW = (() => { const c = canvas(16, 6), g = c.getContext("2d"); g.fillStyle = "#2b1709"; g.fillRect(3, 0, 10, 6); g.fillRect(1, 1, 14, 4); g.fillRect(0, 2, 16, 2); const t = new THREE.CanvasTexture(c); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; })();
+const PX_ENEMY = { boulette: ["beetle", "Scarabée", "Un scarabée bagarreur."], cocotte: ["wasp", "Guêpe", "Vole : le maillet ne l'atteint pas, mais le saut si."], piquant: ["hedgehog", "Hérisson", "Piquants : ne saute pas dessus, utilise le maillet."], carton: ["turtle", "Tortue", "Carapace (défense 1) : le saut fait 0 dégât, le maillet chargé passe."] };
+function makeChar(kind, k) {
+  if (!PIX) return kind === "hero" ? new PaperChar(heroTextures(), 1.55, 1) : new PaperChar(enemyTextures(kind), ENEMIES[kind].h, -1);
+  const sp = pxSprite(kind === "hero" ? "sq_noisette" : PX_ENEMY[kind][0]);
+  const tx = { front: [sp.frames[0]], walk: sp.frames, idle: sp.idle || null };
+  if (kind !== "hero") { tx.walk = null; tx.idle = null; tx.front = sp.frames; }
+  return new PaperChar(tx, sp.ph * k, 1, sp.pw * k);
+}
+if (PIX) Object.keys(PX_ENEMY).forEach((id) => { ENEMIES[id].name = PX_ENEMY[id][1]; ENEMIES[id].desc = PX_ENEMY[id][2]; });
+function pxBillboard(name, k, times = 0) {
+  const sp = pxSprite(name, times), m = new THREE.Mesh(new THREE.PlaneGeometry(sp.pw * k, sp.ph * k), new THREE.MeshBasicMaterial({ map: sp.frames[0], transparent: true, alphaTest: 0.5 }));
+  m.geometry.translate(0, (sp.ph * k) / 2, 0); return m;
+}
+function pxTexture(c) { const t = new THREE.CanvasTexture(c); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.colorSpace = THREE.SRGBColorSpace; return t; }
+const FONT3 = { "0": "111101101101111", "1": "010110010010111", "2": "111001111100111", "3": "111001111001111", "4": "101101111001001", "5": "111100111001111", "6": "111100111101111", "7": "111001001001001", "8": "111101111101111", "9": "111101111001111",
+  A: "010101111101101", B: "110101110101110", C: "011100100100011", D: "110101101101110", E: "111100110100111", F: "111100110100100", G: "011100101101011", H: "101101111101101", I: "111010010010111", J: "001001001101010", K: "101101110101101", L: "100100100100111", M: "101111111101101",
+  N: "110101101101101", O: "010101101101010", P: "110101110100100", Q: "010101101110011", R: "110101110101101", S: "011100010001110", T: "111010010010010", U: "101101101101111", V: "101101101101010", W: "101101111111101", X: "101101010101101", Y: "101101010010010", Z: "111001010100111",
+  ":": "000010000010000", ".": "000000000000010", "-": "000000111000000", "+": "000010111010000", "!": "010010010000010", "?": "111001011000010", "'": "010010000000000", ",": "000000000010100", " ": "000000000000000" };
+// texte pixel (police 3 × 5 de Survivor) avec contour, sur un contexte 2D
+function pxText(g, str, x, y, col, sc = 1, align = "c", outline = OUTC) {
+  str = String(str).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const w = (str.length * 4 - 1) * sc, x0 = Math.round(align === "c" ? x - w / 2 : align === "r" ? x - w : x), y0 = Math.round(y);
+  const pass = (c, ox, oy) => { g.fillStyle = c; for (let i = 0; i < str.length; i++) { const gl = FONT3[str[i]] || FONT3[" "]; for (let j = 0; j < 15; j++) if (gl[j] === "1") g.fillRect(x0 + ox + (i * 4 + (j % 3)) * sc, y0 + oy + Math.floor(j / 3) * sc, sc, sc); } };
+  if (outline) [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [-1, 1], [1, -1], [-1, -1]].forEach((o) => pass(outline, o[0] * sc, o[1] * sc));
+  pass(col, 0, 0);
+}
 function heroTextures() { return { front: [tex("hero", (g) => drawHero(g, "front"))], back: [tex("heroB", (g) => drawHero(g, "back"))] }; }
 function enemyTextures(id) { const E = ENEMIES[id]; const n = E.frames || 1, a = []; for (let i = 0; i < n; i++) a.push(tex(id + i, (g) => E.draw(g, i))); return { front: a }; }
-function makeMallet() {
+function makeMallet(k) {
+  if (PIX) {
+    const sp = pxSprite("hammer"), m = new THREE.Mesh(new THREE.PlaneGeometry(sp.pw * k, sp.ph * k), new THREE.MeshBasicMaterial({ map: sp.frames[0], transparent: true, alphaTest: 0.5, side: THREE.DoubleSide }));
+    const pivot = new THREE.Group(); m.position.set(0, sp.ph * k * 0.4, 0.01); pivot.add(m); pivot.visible = false; return pivot;
+  }
   const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: tex("mallet", drawMallet), transparent: true, alphaTest: 0.35, side: THREE.DoubleSide }));
   const pivot = new THREE.Group(); m.position.set(0, 0.32, 0.01); pivot.add(m); pivot.visible = false; return pivot;
 }
@@ -289,7 +370,46 @@ const world = new THREE.Scene(); world.background = new THREE.Color(0xe9dcc3);
 addLights(world);
 const HEALBLOCK = { mesh: null, bump: 0 };
 const solids = [];   // obstacles ronds : {x, z, r, top (hauteur sur laquelle on peut monter, ou Infinity)}
-(function buildRoom() {
+(PIX ? buildRoomPixel : buildRoom)();
+function buildRoomPixel() {
+  world.background = new THREE.Color(0x9fd8e8);
+  // sol : le sol dithered de Survivor (morceaux de 4 × 4 tuiles), herbe + allée de terre
+  const GRASS = { base: "#7fa95a", patch: "#76a052" }, DIRT = { base: "#c9a070", patch: "#b98f60" }, TW = 52, TH = 14;
+  const getG = (a, b) => (b >= 6 && b <= 8 ? DIRT : GRASS);
+  const gc = canvas(TW * 16, TH * 16), gg = gc.getContext("2d");
+  for (let cy = 0; cy < Math.ceil(TH / 4); cy++) for (let cx = 0; cx < TW / 4; cx++) gg.drawImage(ES_ART.groundChunk(cx, cy, getG), cx * 64, cy * 64);
+  const Rr = seeded(5), FL = ["#fdf3de", "#f2b05e", "#c8553d", "#f6d36b"];
+  for (let i = 0; i < 900; i++) { const x = Math.floor(Rr() * gc.width), y = Math.floor(Rr() * gc.height), ty = Math.floor(y / 16); if (ty >= 6 && ty <= 8) { if (Rr() < 0.3) { gg.fillStyle = "#8a6a48"; gg.fillRect(x, y, 2, 1); } continue; }
+    if (Rr() < 0.18) { gg.fillStyle = OUTC; gg.fillRect(x - 1, y - 1, 3, 3); gg.fillStyle = FL[Math.floor(Rr() * 4)]; gg.fillRect(x, y, 1, 1); } else { gg.fillStyle = "#5b8a4a"; gg.fillRect(x, y, 1, 2); gg.fillRect(x + 1, y + 1, 1, 1); } }
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(34, 9), new THREE.MeshBasicMaterial({ map: pxTexture(gc) })); floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, 0.3); world.add(floor);
+  const lipC = canvas(64, 4), lg = lipC.getContext("2d"); lg.fillStyle = "#6b4430"; lg.fillRect(0, 0, 64, 4); lg.fillStyle = "#8a5a3b"; lg.fillRect(0, 0, 64, 1); lg.fillStyle = OUTC; for (let x = 0; x < 64; x += 8) lg.fillRect(x, 1, 1, 3);
+  const lt = pxTexture(lipC); lt.wrapS = THREE.RepeatWrapping; lt.repeat.set(12, 1);
+  const lip = new THREE.Mesh(new THREE.PlaneGeometry(34, 0.5), new THREE.MeshBasicMaterial({ map: lt })); lip.position.set(0, -0.25, 4.8); world.add(lip);
+  // toile de fond peinte en pixels : ciel, collines, forêt
+  const bw = 768, bh = 160, bc = canvas(bw, bh), bg = bc.getContext("2d");
+  const sky = ["#cfeef2", "#bfe6ee", "#afdeea", "#9fd8e8"]; for (let y = 0; y < bh; y++) { const i = Math.min(3, Math.floor((y / bh) * 5)); bg.fillStyle = sky[3 - i]; bg.fillRect(0, y, bw, 1); if (y % 6 === 0 && i < 3) { bg.fillStyle = sky[2 - i]; for (let x = (y / 6) % 2; x < bw; x += 2) bg.fillRect(x, y, 1, 1); } }
+  bg.fillStyle = "#86b56c"; for (let x = 0; x < bw; x++) { const h = 70 + Math.round(Math.sin(x * 0.012) * 10 + Math.sin(x * 0.041) * 4); bg.fillRect(x, h, 1, bh - h); }
+  bg.fillStyle = "#5b8a4a"; for (let x = 0; x < bw; x++) { const h = 96 + Math.round(Math.sin(x * 0.02 + 2) * 6); bg.fillRect(x, h, 1, bh - h); }
+  for (let x = -10; x < bw + 20; x += 15) { const img = pxSprite((x / 15) % 3 ? "pine" : "tree", 0).frames[0].image; bg.drawImage(img, x + ((x * 7) % 7), bh - img.height + 2 + ((x * 3) % 5)); }
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(40, (40 * bh) / bw), new THREE.MeshBasicMaterial({ map: pxTexture(bc) })); back.position.set(0, (40 * bh) / bw / 2 - 0.4, -4.4); world.add(back);
+  // panneau en bois, texte pixel
+  const sc = canvas(64, 15), sg = sc.getContext("2d"); sg.fillStyle = OUTC; sg.fillRect(0, 0, 64, 13); sg.fillStyle = "#d39a52"; sg.fillRect(1, 1, 62, 11); sg.fillStyle = "#b07a4f"; sg.fillRect(1, 6, 62, 1); sg.fillStyle = OUTC; sg.fillRect(30, 13, 4, 2);
+  pxText(sg, "SALLE DE TEST", 32, 4, "#fdf3de", 1, "c");
+  const k1 = KPX(13.98 + 3.6), sign = new THREE.Mesh(new THREE.PlaneGeometry(64 * k1, 15 * k1), new THREE.MeshBasicMaterial({ map: pxTexture(sc), transparent: true, alphaTest: 0.5 })); sign.geometry.translate(0, (15 * k1) / 2, 0); sign.position.set(1.6, 0, -3.6); world.add(sign);
+  // arbres et rochers : billboards de sprites
+  [[-10.5, -3.2, "tree"], [-7.8, -3.4, "pine"], [7.5, -3.3, "tree"], [10.6, -3.1, "pine"], [-3.2, -3.5, "pine"]].forEach(([x, z, n]) => { const b = pxBillboard(n, KPX(13.98 + 3.3), 1); b.position.set(x, 0, z); world.add(b); solids.push({ x, z, r: 0.8, top: Infinity }); });
+  [[-5.6, -2.9], [5.2, 2.9], [11.2, 2.4]].forEach(([x, z]) => { const b = pxBillboard("boulder", KPX(14), 0); b.position.set(x, 0, z); world.add(b); solids.push({ x, z, r: 0.55, top: Infinity }); });
+  // caisse (plateforme) et bloc de soin en pixels
+  const crate = canvas(32, 32), cg = crate.getContext("2d"); cg.fillStyle = OUTC; cg.fillRect(0, 0, 32, 32); cg.fillStyle = "#a06a3e"; cg.fillRect(2, 2, 28, 28); cg.fillStyle = "#c4895a"; for (let y = 3; y < 30; y += 7) cg.fillRect(3, y, 26, 5); cg.fillStyle = "#7a4528"; cg.fillRect(2, 2, 28, 2); cg.fillRect(2, 28, 28, 2); cg.fillStyle = OUTC; for (let i = 3; i < 29; i++) { cg.fillRect(i, i, 2, 1); }
+  const box = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1, 1.6), new THREE.MeshLambertMaterial({ map: pxTexture(crate) })); box.position.set(4.2, 0.5, -1); world.add(box);
+  solids.push({ x: 4.2, z: -1, r: 0.95, top: 1, box: 0.8 });
+  const hc = canvas(16, 16), hg = hc.getContext("2d"); hg.fillStyle = OUTC; hg.fillRect(0, 0, 16, 16); hg.fillStyle = "#f2c230"; hg.fillRect(1, 1, 14, 14); hg.fillStyle = "#f6d36b"; hg.fillRect(1, 1, 14, 2); hg.fillStyle = "#c8962a"; hg.fillRect(1, 13, 14, 2);
+  ["..rr.rr..", ".rRrrrrr.", ".rrrrrrr.", "..rrrrr..", "...rrr...", "....r...."].forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== ".") { hg.fillStyle = ch === "R" ? "#ff9aa0" : "#e0283a"; hg.fillRect(x + 3, y + 5, 1, 1); } }));
+  const hm = new THREE.MeshLambertMaterial({ map: pxTexture(hc) });
+  HEALBLOCK.mesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), hm); HEALBLOCK.mesh.position.set(-2, 2.65, 0.4); world.add(HEALBLOCK.mesh);
+  const hs = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.3), new THREE.MeshBasicMaterial({ map: PXSHADOW, transparent: true, opacity: 0.25, depthWrite: false })); hs.rotation.x = -Math.PI / 2; hs.position.set(-2, 0.013, 0.4); world.add(hs);
+}
+function buildRoom() {
   const floor = new THREE.Mesh(foldedPlane(34, 9, 34, 9, 0.05, 4), new THREE.MeshLambertMaterial({ map: floorTexture(), flatShading: true }));
   floor.position.set(0, 0, 0.3); floor.receiveShadow = true; world.add(floor);
   // bord avant du sol : une bande de carton
@@ -311,7 +431,7 @@ const solids = [];   // obstacles ronds : {x, z, r, top (hauteur sur laquelle on
   HEALBLOCK.mesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), [paperMat(0xf6c343), paperMat(0xf6c343), paperMat(0xf6c343), paperMat(0xf6c343), new THREE.MeshLambertMaterial({ map: healTex }), paperMat(0xf6c343)]);
   HEALBLOCK.mesh.position.set(-2, 2.65, 0.4); HEALBLOCK.mesh.rotation.y = 0.5; HEALBLOCK.mesh.castShadow = true; world.add(HEALBLOCK.mesh);
   const hs = new THREE.Mesh(new THREE.CircleGeometry(0.45, 20), new THREE.MeshBasicMaterial({ color: 0x3a2618, transparent: true, opacity: 0.12, depthWrite: false })); hs.rotation.x = -Math.PI / 2; hs.position.set(-2, 0.013, 0.4); world.add(hs);
-})();
+}
 
 /* =====================================================================
    État du joueur
@@ -324,8 +444,8 @@ const ITEMS = {
 };
 function heal(hp, fp) { ST.hp = Math.min(ST.hpMax, ST.hp + hp); ST.fp = Math.min(ST.fpMax, ST.fp + fp); hud(); }
 
-const hero = new PaperChar(heroTextures(), 1.55, 1);
-const mallet = makeMallet(); hero.body.add(mallet);
+const hero = makeChar("hero", K_WORLD);
+const mallet = makeMallet(K_WORLD); hero.body.add(mallet);
 world.add(hero.root);
 const P = { x: -8, z: 0.4, y: 0, vy: 0, ground: true, swing: 0, swingHit: false, inv: 0, base: 0 };
 hero.root.position.set(P.x, 0, P.z);
@@ -333,7 +453,7 @@ hero.root.position.set(P.x, 0, P.z);
 /* ---------- ennemis de la salle ---------- */
 const WE = [];
 function spawnEnemy(id, n, x, z) {
-  const c = new PaperChar(enemyTextures(id), ENEMIES[id].h, -1);
+  const c = makeChar(id, K_WORLD);
   const e = { id, group: Array.from({ length: n || 1 }, () => id), c, x: x ?? rnd(-2, 10), z: z ?? rnd(-1.8, 2.6), y: ENEMIES[id].fly ? 1.1 : 0, vx: 0, vz: 0, t: 0, st: "wander", wt: 0, alert: 0, stun: 0 };
   c.root.position.set(e.x, e.y, e.z); world.add(c.root); WE.push(e); return e;
 }
@@ -523,14 +643,14 @@ function updateWorld(dt) {
   if (P.y <= gnd) { if (!P.ground) { SFX.land(); hero.pop(0.22); } P.y = gnd; P.vy = 0; P.ground = true; } else P.ground = false;
   // bloc de soin : on le frappe par en dessous
   const hb = HEALBLOCK.mesh;
-  if (P.vy > 0 && Math.abs(P.x - hb.position.x) < 0.6 && Math.abs(P.z - hb.position.z) < 0.6 && P.y + 1.45 > hb.position.y - 0.45) {
+  if (P.vy > 0 && Math.abs(P.x - hb.position.x) < 0.6 && Math.abs(P.z - hb.position.z) < 0.6 && P.y + hero.h * 0.93 > hb.position.y - 0.45) {
     P.vy = -2; HEALBLOCK.bump = 1; ST.hp = ST.hpMax; ST.fp = ST.fpMax; hud(); SFX.heal(); floatText(hb.position.x, hb.position.y + 0.9, hb.position.z, "PV et PF au max !", "#e0503a");
   }
   HEALBLOCK.bump = Math.max(0, HEALBLOCK.bump - dt * 5); hb.position.y = 2.65 + Math.sin(HEALBLOCK.bump * Math.PI) * 0.25; hb.rotation.y += dt * 0.6;
   // coup de maillet
   if (P.swing > 0) {
     P.swing -= dt; const p = 1 - P.swing / 0.32;
-    mallet.visible = true; mallet.position.set(0.35 * hero.face, 0.7, 0.02); mallet.rotation.z = (hero.face > 0 ? -1 : 1) * lerp(-0.9, 1.9, EASE.out(p));
+    mallet.visible = true; mallet.position.set(0.35 * hero.face * (hero.h / 1.55), 0.7 * (hero.h / 1.55), 0.02); mallet.rotation.z = (hero.face > 0 ? -1 : 1) * lerp(-0.9, 1.9, EASE.out(p));
     if (!P.swingHit && p > 0.45) {
       P.swingHit = true;
       for (const e of WE) if (Math.abs(e.x - (P.x + hero.face * 0.9)) < 0.85 && Math.abs(e.z - P.z) < 0.7 && !ENEMIES[e.id].fly) { startFight(e, "maillet"); break; }
@@ -559,7 +679,7 @@ function updateWorld(dt) {
     e.c.root.visible = !(e.stun > 0 && Math.floor(e.stun * 10) % 2);
     if (busy || mode !== "world" || e.stun > 0) continue;
     // saut sur la tête : premier coup (sauf piquants)
-    const top = ey + E.h * 0.8;
+    const top = ey + e.c.h * 0.8;
     if (P.vy < 0 && d < 0.75 && P.y > top - 0.35 && P.y < top + 0.6) {
       if (E.spiky) { P.vy = 8; P.inv = 1; ST.hp = Math.max(1, ST.hp - 1); hud(); SFX.hurt(); floatText(P.x, P.y + 1.8, P.z, "Aïe ! Piquants", "#e0503a"); startFight(e, null); }
       else { P.vy = 9; startFight(e, "saut"); }
@@ -589,7 +709,28 @@ function damageStar(x, y, z, n) { floats.push({ x, y, z, txt: String(n), star: t
    ===================================================================== */
 const arena = new THREE.Scene(); arena.background = new THREE.Color(0x4a2a24);
 addLights(arena);
-(function buildStage() {
+(PIX ? buildStagePixel : buildStage)();
+function buildStagePixel() {
+  arena.background = new THREE.Color(0x1f3a2b);
+  // plancher de rondins
+  const fc = canvas(480, 160), fg = fc.getContext("2d");
+  for (let r = 0; r < 16; r++) { fg.fillStyle = OUTC; fg.fillRect(0, r * 10, 480, 10); fg.fillStyle = r % 2 ? "#a06a3e" : "#8a5a3b"; fg.fillRect(0, r * 10 + 1, 480, 9); fg.fillStyle = "#c9a070"; fg.fillRect(0, r * 10 + 1, 480, 1); fg.fillStyle = "#6b4430"; for (let x = (r * 37) % 60; x < 480; x += 60) fg.fillRect(x, r * 10 + 1, 2, 9); }
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(18, 6), new THREE.MeshBasicMaterial({ map: pxTexture(fc) })); floor.rotation.x = -Math.PI / 2; floor.position.set(0.6, 0, 0.6); arena.add(floor);
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(18, 0.7), new THREE.MeshBasicMaterial({ color: 0x5a3820 })); front.position.set(0.6, -0.35, 3.6); arena.add(front);
+  // toile de fond peinte : ciel, collines, arbres, rideaux de feuillage
+  const bw = 480, bh = 210, c = canvas(bw, bh), g = c.getContext("2d");
+  const sky = ["#d8f0d0", "#c4ead8", "#b0e0e2", "#9fd8e8"]; for (let y = 0; y < bh; y++) { const i = Math.min(3, Math.floor((y / bh) * 4)); g.fillStyle = sky[3 - i]; g.fillRect(0, y, bw, 1); }
+  g.fillStyle = "#5b8a4a"; for (let x = 0; x < bw; x++) { const h = 130 + Math.round(Math.sin(x * 0.02) * 9 + Math.sin(x * 0.07) * 3); g.fillRect(x, h, 1, bh - h); }
+  for (let x = -6; x < bw + 20; x += 30) { const img = pxSprite((x / 30) % 2 ? "pine" : "tree", 1).frames[0].image; g.drawImage(img, x + ((x * 7) % 11), bh - img.height + 2 + ((x * 3) % 6)); }
+  g.fillStyle = "#7fa95a"; g.fillRect(0, bh - 8, bw, 8);
+  const curtain = (x0, dir) => { for (let k = 0; k < 7; k++) { const cx = x0 + dir * k * 9; g.fillStyle = OUTC; g.fillRect(cx - 1, 0, 11, bh - 30 - k * 16); g.fillStyle = k % 2 ? "#3f6b3a" : "#5b8a4a"; g.fillRect(cx, 0, 9, bh - 32 - k * 16); g.fillStyle = "#9cc56b"; for (let j = 8; j < bh - 40 - k * 16; j += 16) g.fillRect(cx + 2 + (j % 3), j, 4, 3); } };
+  curtain(0, 1); curtain(bw - 10, -1); curtain(72, 1); curtain(bw - 82, -1);
+  const vt = 34; g.fillStyle = OUTC; g.fillRect(0, 0, bw, vt + 2); g.fillStyle = "#3f6b3a"; g.fillRect(0, 0, bw, vt);
+  for (let x = 0; x < bw; x += 16) { g.fillStyle = OUTC; g.beginPath(); g.moveTo(x, vt); g.lineTo(x + 16, vt); g.lineTo(x + 8, vt + 10); g.fill(); g.fillStyle = x % 32 ? "#5b8a4a" : "#9cc56b"; g.beginPath(); g.moveTo(x + 2, vt); g.lineTo(x + 14, vt); g.lineTo(x + 8, vt + 7); g.fill(); }
+  const k = KPX(12.52 + 3.6), back = new THREE.Mesh(new THREE.PlaneGeometry(bw * k, bh * k), new THREE.MeshBasicMaterial({ map: pxTexture(c) }));
+  back.position.set(0.6, (bh * k) / 2 - 0.05, -3.6); arena.add(back);
+}
+function buildStage() {
   // scène de théâtre en papier
   const floor = new THREE.Mesh(foldedPlane(18, 6, 18, 6, 0.04, 7), paperMat(0xc98a52, 3)); floor.position.set(0, 0, 0.6); floor.receiveShadow = true; arena.add(floor);
   for (let i = 0; i < 9; i++) { const plank = new THREE.Mesh(new THREE.BoxGeometry(18, 0.02, 0.04), paperMat(0x9a6038)); plank.position.set(0, 0.03, -2.2 + i * 0.66); arena.add(plank); }
@@ -604,8 +745,8 @@ addLights(arena);
   }
   const top = new THREE.Mesh(accordion(16, 1.2, 26, 0.22), paperMat(0xa8302a, 2)); top.position.set(0, 4.25, 3); arena.add(top);
   const spot = new THREE.SpotLight(0xfff0cc, 30, 30, 0.55, 0.6); spot.position.set(0, 10, 8); spot.target.position.set(0, 0, 0); arena.add(spot, spot.target);
-})();
-const bHero = new PaperChar(heroTextures(), 1.55, 1), bMallet = makeMallet(); bHero.body.add(bMallet); arena.add(bHero.root);
+}
+const bHero = makeChar("hero", K_BATTLE), bMallet = makeMallet(K_BATTLE); bHero.body.add(bMallet); arena.add(bHero.root);
 const HX = -3.2, EX = [0.5, 1.85, 3.2, 4.4];
 let B = null;
 const RATE = ["Bien !", "Super !", "Génial !", "Incroyable !"];
@@ -621,7 +762,7 @@ async function startFight(e, first) {
   await wipe(false); mode = "world"; uiBusy--;
 }
 function mkFoe(id, i) {
-  const E = ENEMIES[id], c = new PaperChar(enemyTextures(id), E.h, -1);
+  const E = ENEMIES[id], c = makeChar(id, K_BATTLE); c.setFace(-1); c.rot = c.rotTo;
   const f = { id, E, c, name: E.name, hp: E.hp, max: E.hp, atk: E.atk, def: E.def, fly: !!E.fly, spiky: !!E.spiky, slot: i, x: EX[i], y: E.fly ? 1.5 : 0, hx: EX[i], hy: E.fly ? 1.5 : 0, z: 0.2, rot: 0, alive: true, flash: 0, stun: 0 };
   c.root.position.set(f.x, 0, f.z); arena.add(c.root); return f;
 }
@@ -713,7 +854,7 @@ function pickTarget(list, note) {
   });
 }
 function rate(i, f) { floatText(f.x, foeTop(f) + 0.6, f.z, RATE[Math.min(i, RATE.length - 1)], "#f6c343"); SFX.nice(); }
-const foeTop = (f) => f.y + f.E.h * 0.85;
+const foeTop = (f) => f.y + f.c.h * 0.85;
 function hitFoe(f, dmg, pierce) {
   const d = pierce ? dmg : Math.max(0, dmg - f.def);
   f.hp = Math.max(0, f.hp - d); f.flash = 0.25; f.c.pop(0.3); damageStar(f.x, foeTop(f) + 0.3, f.z, d);
@@ -754,7 +895,7 @@ async function jumpOn(f, free, power) {
   await arcTo(B.h, HX, 0, 560, 1.6); bHero.pop(0.2);
 }
 async function walkTo(x) { const x0 = B.h.x; bHero.setFace(x > x0 ? 1 : -1); B.walking = true; await run(Math.abs(x - x0) * 170 + 60, (p) => (B.h.x = lerp(x0, x, p))); B.walking = false; bHero.setFace(1); }
-function malletPose(a) { bMallet.visible = true; bMallet.position.set(0.35, 0.7, 0.02); bMallet.rotation.z = -a; }
+function malletPose(a) { bMallet.visible = true; bMallet.position.set(0.35 * (bHero.h / 1.55), 0.7 * (bHero.h / 1.55), 0.02); bMallet.rotation.z = -a; }
 async function malletOn(f, free) {
   await walkTo(f.x - 1.15);
   let ok = false;
@@ -881,7 +1022,7 @@ function drawOverlay(dt) {
   oc.setTransform(DPR, 0, 0, DPR, 0, 0); oc.clearRect(0, 0, VW, VH);
   oc.lineJoin = oc.lineCap = "round";
   if (mode === "world") {
-    for (const e of WE) if (e.alert > 0) { const s = toScreen(e.x, e.c.lift + ENEMIES[e.id].h + 0.4, e.z); bubble(s.x, s.y, "!", "#e0503a"); }
+    for (const e of WE) if (e.alert > 0) { const s = toScreen(e.x, e.c.lift + e.c.h + 0.4, e.z); bubble(s.x, s.y, "!", "#e0503a"); }
   }
   if (B && mode === "battle") {
     // PV des ennemis (option)
@@ -911,6 +1052,13 @@ function drawOverlay(dt) {
     const f = floats[i]; f.t += dt; if (f.t > 1.1) { floats.splice(i, 1); continue; }
     const s = toScreen(f.x, f.y, f.z), rise = Math.min(1, f.t * 4) * 18, pop = f.t < 0.12 ? 1 + (0.12 - f.t) * 4 : 1;
     oc.save(); oc.translate(s.x, s.y - rise); oc.scale(pop, pop); oc.globalAlpha = f.t > 0.85 ? (1.1 - f.t) * 4 : 1;
+    if (PIX) {   // chiffres et mots en police pixel de Survivor, sur l'image basse résolution
+      oc.restore(); oc.save(); oc.setTransform(1, 0, 0, 1, 0, 0); oc.globalAlpha = f.t > 0.85 ? (1.1 - f.t) * 4 : 1;
+      const X = s.x * DPR, Y = (s.y - rise) * DPR;
+      if (f.star) { oc.fillStyle = OUTC; oc.beginPath(); oc.arc(Math.round(X), Math.round(Y), 9, 0, TAU); oc.fill(); oc.fillStyle = f.txt === "0" ? "#8a929a" : "#e8873a"; oc.beginPath(); oc.arc(Math.round(X), Math.round(Y), 8, 0, TAU); oc.fill(); pxText(oc, f.txt, X + 1, Y - 5, "#fdf3de", 2, "c"); }
+      else pxText(oc, f.txt, X, Y - 4, f.col, f.big || pop > 1.05 ? 2 : 1, "c");
+      oc.restore(); continue;
+    }
     if (f.star) {
       oc.fillStyle = "#fff"; star(0, 0, 30, 15); oc.fill(); oc.fillStyle = f.txt === "0" ? "#a8a0a0" : "#f6c343"; star(0, 0, 25, 12.5); oc.fill();
       oc.fillStyle = "#3a2618"; oc.font = "900 24px Nunito, sans-serif"; oc.textAlign = "center"; oc.textBaseline = "middle"; oc.fillText(f.txt, 0, 2);
@@ -923,9 +1071,9 @@ function drawOverlay(dt) {
 }
 function roundRect(x, y, w, h, r) { oc.beginPath(); oc.roundRect(x, y, Math.max(0, w), h, Math.min(r, Math.max(0, w) / 2)); }
 function star(x, y, R, r) { oc.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r : R; oc.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } oc.closePath(); }
-function bubble(x, y, t, col) { oc.fillStyle = "#fff"; oc.beginPath(); oc.arc(x, y, 15, 0, TAU); oc.fill(); oc.fillStyle = col; oc.font = "900 22px Nunito, sans-serif"; oc.textAlign = "center"; oc.textBaseline = "middle"; oc.fillText(t, x, y + 1); }
+function bubble(x, y, t, col) { if (PIX) { oc.save(); oc.setTransform(1, 0, 0, 1, 0, 0); pxText(oc, t, x * DPR, y * DPR - 8, "#f6d36b", 2, "c"); oc.restore(); return; } oc.fillStyle = "#fff"; oc.beginPath(); oc.arc(x, y, 15, 0, TAU); oc.fill(); oc.fillStyle = col; oc.font = "900 22px Nunito, sans-serif"; oc.textAlign = "center"; oc.textBaseline = "middle"; oc.fillText(t, x, y + 1); }
 function paperArrow(x, y) { oc.fillStyle = "#fff"; oc.beginPath(); oc.moveTo(x - 16, y - 18); oc.lineTo(x + 16, y - 18); oc.lineTo(x, y + 4); oc.closePath(); oc.fill(); oc.fillStyle = "#e0503a"; oc.beginPath(); oc.moveTo(x - 11, y - 15); oc.lineTo(x + 11, y - 15); oc.lineTo(x, y - 1); oc.closePath(); oc.fill(); }
-function btnGlyph(x, y, L) { oc.fillStyle = "#fff"; oc.beginPath(); oc.arc(x, y, 17, 0, TAU); oc.fill(); oc.fillStyle = L === "A" ? "#e0503a" : "#5aa05a"; oc.beginPath(); oc.arc(x, y, 13.5, 0, TAU); oc.fill(); oc.fillStyle = "#fff"; oc.font = "900 17px Nunito, sans-serif"; oc.textAlign = "center"; oc.textBaseline = "middle"; oc.fillText(L, x, y + 1); }
+function btnGlyph(x, y, L) { if (PIX) { oc.save(); oc.setTransform(1, 0, 0, 1, 0, 0); const X = Math.round(x * DPR), Y = Math.round(y * DPR); oc.fillStyle = OUTC; oc.beginPath(); oc.arc(X, Y, 7, 0, TAU); oc.fill(); oc.fillStyle = L === "A" ? "#e8873a" : "#9cc56b"; oc.beginPath(); oc.arc(X, Y - (Math.floor(now() / 160) % 2), 6, 0, TAU); oc.fill(); pxText(oc, L, X + 1, Y - 3, OUTC, 1, "c", null); oc.restore(); return; } oc.fillStyle = "#fff"; oc.beginPath(); oc.arc(x, y, 17, 0, TAU); oc.fill(); oc.fillStyle = L === "A" ? "#e0503a" : "#5aa05a"; oc.beginPath(); oc.arc(x, y, 13.5, 0, TAU); oc.fill(); oc.fillStyle = "#fff"; oc.font = "900 17px Nunito, sans-serif"; oc.textAlign = "center"; oc.textBaseline = "middle"; oc.fillText(L, x, y + 1); }
 
 /* =====================================================================
    Salle de test : apparitions, combats directs, réglages
@@ -946,6 +1094,8 @@ async function testPanel() {
       <button class="btn ${OPT.windows ? "on" : ""}" data-act="opt" data-k="windows">Voir les fenêtres de timing</button>
       <button class="btn ${OPT.hpBars ? "on" : ""}" data-act="opt" data-k="hpBars">PV des ennemis</button>
     </div>
+    <h3>Direction artistique</h3>
+    <div class="row"><button class="btn ${PIX ? "on" : ""}" data-act="da" data-v="pixel">Pixel (Survivor)</button><button class="btn ${PIX ? "" : "on"}" data-act="da" data-v="papier">Papier découpé</button></div>
     <h3>Joueur</h3>
     <div class="row"><button class="btn" data-act="heal">Soigner (PV, PF, objets)</button><button class="btn" data-act="reset">Réinitialiser la salle</button></div>
     <p class="keys"><b>Exploration</b> : ${isTouch ? "joystick" : "flèches / ZQSD"} pour marcher, ${KA} sauter (sur la tête d'un ennemi = premier coup), ${KB} maillet (premier coup aussi), saute sous le bloc ♥ pour te soigner.<br>
@@ -959,6 +1109,7 @@ async function testPanel() {
     opt: (b) => { OPT[b.dataset.k] = !OPT[b.dataset.k]; el.refresh(body()); },
     heal: () => { ST.hp = ST.hpMax; ST.fp = ST.fpMax; ST.items = { baie: 3, ether: 2, bombe: 1 }; hud(); SFX.heal(); el.refresh(body()); },
     reset: () => { resetRoom(); return "close"; },
+    da: (b) => { if ((b.dataset.v === "pixel") === PIX) return; try { localStorage.setItem("papier-da", b.dataset.v); } catch (e) {} location.href = location.pathname + "?da=" + b.dataset.v; },
     close: () => "close"
   }, { back: "close" });
   if (r && r.startsWith("fight:")) {
@@ -982,4 +1133,4 @@ function frame() {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__PAP = { get B() { return B; }, get mode() { return mode; }, get DEF() { return DEF; }, ST, P, OPT, WE, spawnEnemy, startFight };
+window.__PAP = { PIX, get B() { return B; }, get mode() { return mode; }, get DEF() { return DEF; }, ST, P, OPT, WE, spawnEnemy, startFight };

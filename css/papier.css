@@ -81,3 +81,28 @@ kbd.k { border-radius: 6px; background: var(--paper-2); color: var(--ink); box-s
   #hud .sheet { font-size: 15px; padding: 4px 10px; }
   #btn-test { font-size: 12px; padding: 6px 10px; }
 }
+
+/* =========================================================================
+   Style pixel : panneaux et boutons d'Écureuil Survivor (crème, bord brun, ombre « relief »)
+   ========================================================================= */
+body.pixel { background: #1f3a2b; }
+body.pixel .sheet { background: #fdf3de; border-radius: 10px; box-shadow: 0 0 0 3px #4a2e1c, 0 6px 0 3px #c99a6a, 0 10px 18px rgba(0,0,0,.25); transform: none; color: #3a2618; }
+body.pixel .sheet::after { display: none; }
+body.pixel #hud .sheet, body.pixel #tip, body.pixel #cmd { transform: translateX(0); }
+body.pixel #tip, body.pixel #cmd { transform: translateX(-50%); }
+body.pixel .card.sel { transform: translateY(-8px); box-shadow: 0 0 0 3px #4a2e1c, 0 6px 0 3px #b85e2a; background: #f2b05e; }
+body.pixel #menu.list .card.sel { transform: translateX(6px); }
+body.pixel .btn { border-radius: 10px; background: #f8e6c2; box-shadow: 0 0 0 3px #2b1709, 0 4px 0 3px #c99a6a; }
+body.pixel .btn.main { background: #e8873a; color: #2b1709; box-shadow: 0 0 0 3px #2b1709, 0 4px 0 3px #b85e2a; }
+body.pixel .btn.on { background: #9cc56b; color: #2b1709; box-shadow: 0 0 0 3px #2b1709, 0 4px 0 3px #3f6b3a; }
+body.pixel #btn-test { border-radius: 10px; background: #fdf3de; box-shadow: 0 0 0 3px #4a2e1c, 0 5px 0 3px #c99a6a; transform: none; }
+body.pixel #panel { background: rgba(15,28,20,.55); }
+body.pixel #panel h3 { color: #b85e2a; }
+body.pixel kbd { background: #e8873a; color: #2b1709; box-shadow: 0 0 0 2px #2b1709; }
+body.pixel kbd.b { background: #9cc56b; box-shadow: 0 0 0 2px #2b1709; }
+body.pixel kbd.k { border-radius: 6px; background: #f8e6c2; box-shadow: 0 0 0 2px #4a2e1c; }
+body.pixel #wipe { background: #1f3a2b repeating-linear-gradient(90deg, #2c4f2e 0 8px, #1f3a2b 8px 16px); box-shadow: 8px 0 0 #2b1709; }
+body.pixel #touch .ta { background: #e8873a; color: #2b1709; box-shadow: 0 0 0 3px #2b1709, 0 5px 0 3px #b85e2a; }
+body.pixel #touch .tb { background: #9cc56b; color: #2b1709; box-shadow: 0 0 0 3px #2b1709, 0 5px 0 3px #3f6b3a; }
+body.pixel #stick .knob { background: #f2b05e; box-shadow: 0 0 0 3px #2b1709; }
+body.pixel #rotate { background: #1f3a2b; color: #f6d36b; }
