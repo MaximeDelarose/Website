@@ -26,17 +26,18 @@
   function mk(rows, pal) {
     var h = rows.length, w = 0, x, y;
     rows.forEach(function (r) { w = Math.max(w, r.length); });
-    var Wc = w + 2, Hc = h + 2, filled = new Uint8Array(Wc * Hc);
+    var Wc = w + 2, Hc = h + 2, filled = new Uint8Array(Wc * Hc), dark = {};
+    Object.keys(pal).forEach(function (k) { var c = pal[k]; if (typeof c === "string" && c[0] === "#" && c.length === 7) { var r = parseInt(c.substr(1, 2), 16), g2 = parseInt(c.substr(3, 2), 16), b = parseInt(c.substr(5, 2), 16); if (0.3 * r + 0.59 * g2 + 0.11 * b < 34) dark[k] = 1; } });
     var c = document.createElement("canvas"); c.width = Wc; c.height = Hc;
     var g = c.getContext("2d");
     for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
       var ch = rows[y][x];
-      if (ch && pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x + 1, y + 1, 1, 1); filled[(y + 1) * Wc + x + 1] = 1; }
+      if (ch && pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x + 1, y + 1, 1, 1); filled[(y + 1) * Wc + x + 1] = dark[ch] ? 2 : 1; }
     }
     g.fillStyle = OUT;
     for (y = 0; y < Hc; y++) for (x = 0; x < Wc; x++) {
-      if (filled[y * Wc + x]) continue;
-      if ((x > 0 && filled[y * Wc + x - 1]) || (x < Wc - 1 && filled[y * Wc + x + 1]) || (y > 0 && filled[(y - 1) * Wc + x]) || (y < Hc - 1 && filled[(y + 1) * Wc + x])) g.fillRect(x, y, 1, 1);
+      if (filled[y * Wc + x]) continue;   // contour d'un seul pixel : seulement à côté d'un pixel coloré (pas d'un contour déjà là)
+      if ((x > 0 && filled[y * Wc + x - 1] === 1) || (x < Wc - 1 && filled[y * Wc + x + 1] === 1) || (y > 0 && filled[(y - 1) * Wc + x] === 1) || (y < Hc - 1 && filled[(y + 1) * Wc + x] === 1)) g.fillRect(x, y, 1, 1);
     }
     var o = { c: c, w: Wc, h: Hc }, fl = null, wh = null;
     Object.defineProperty(o, "f", { get: function () { if (!fl) { fl = document.createElement("canvas"); fl.width = Wc; fl.height = Hc; var q = fl.getContext("2d"); q.translate(Wc, 0); q.scale(-1, 1); q.drawImage(c, 0, 0); } return fl; } });
@@ -130,7 +131,33 @@
   };
 
   var SPR = {};
+  function epx(rows) {
+    var H2 = rows.length, W2 = 0, out = [], x, y; rows.forEach(function (r) { W2 = Math.max(W2, r.length); });
+    function at(xx, yy) { if (xx < 0 || yy < 0 || xx >= W2 || yy >= H2) return null; return rows[yy][xx] || "."; }
+    for (y = 0; y < H2; y++) {
+      var r1 = "", r2 = "";
+      for (x = 0; x < W2; x++) {
+        var P0 = at(x, y), A = at(x, y - 1), B2 = at(x + 1, y), C = at(x - 1, y), D2 = at(x, y + 1), e1 = P0, e2 = P0, e3 = P0, e4 = P0;
+        if (A !== null && C !== null && C === A && C !== D2 && A !== B2) e1 = A;
+        if (A !== null && B2 !== null && A === B2 && A !== C && B2 !== D2) e2 = B2;
+        if (D2 !== null && C !== null && D2 === C && D2 !== B2 && C !== A) e3 = C;
+        if (B2 !== null && D2 !== null && B2 === D2 && B2 !== A && D2 !== C) e4 = D2;
+        r1 += e1 + e2; r2 += e3 + e4;
+      }
+      out.push(r1, r2);
+    }
+    return out;
+  }
+  function baseName(n) { return n.replace(/@\d$/, ""); }
   function buildSpr(name) {
+    var mm = /^(.*)@(\d)$/.exec(name);
+    if (mm) {
+      var b0 = EXTRA[mm[1]] || D.SPRITES[mm[1]]; if (!b0) return null;
+      var times = mm[2] === "4" ? 2 : mm[2] === "8" ? 3 : 1, fr = b0.frames.map(function (f) { for (var i = 0; i < times; i++) f = epx(f); return f; });
+      var d0 = { pal: b0.pal, frames: fr, flying: b0.flying };
+      try { if (ART) d0 = ART.upgrade(mm[1], d0) || d0; } catch (e) {}
+      var a0 = d0.frames.map(function (f) { return mk(f, d0.pal); }); a0.flying = !!b0.flying; return a0;
+    }
     var def = EXTRA[name] || D.SPRITES[name];
     if (name === "sq_gorak") {
       var src = D.SPRITES.sq_pataud; def = {}; Object.keys(src).forEach(function (k) { def[k] = src[k]; });
@@ -147,7 +174,7 @@
     arr.bob = d.bob || null; arr.flying = !!d.flying;
     return arr;
   }
-  function natLeft(name) { return !!EXTRA[name]; }
+  function natLeft(name) { return !!EXTRA[baseName(name)]; }
   function S_(name) { if (!SPR[name]) SPR[name] = buildSpr(name) || buildSpr("nut"); return SPR[name]; }
   var urlC = {};
   function sprUrl(name, fr) { var k = name + (fr || 0); if (!urlC[k]) { var a = S_(name); urlC[k] = ((a.idle || a)[fr || 0] || a[0]).c.toDataURL(); } return urlC[k]; }
@@ -737,7 +764,7 @@
   }
   function mkWE(x, y, group, bg, key) {
     var lead = ENEMIES[group[0]];
-    return { x: x, y: y, hx: x, hy: y, group: group, bg: bg, key: key, spr: lead.spr, fly: !!lead.fly, t: Math.random() * 10, vx: 0, vy: 0, st: "wander", wt: 0, stun: 0, face: -1, sc: lead.sc === 3 ? 2 : 1 };
+    return { x: x, y: y, hx: x, hy: y, group: group, bg: bg, key: key, spr: lead.spr, fly: !!lead.fly, t: Math.random() * 10, vx: 0, vy: 0, st: "wander", wt: 0, stun: 0, face: -1, sc: 2 };
   }
 
   function leadHero() { return S.party.indexOf(S.lead) >= 0 ? S.lead : S.party[0]; }
@@ -930,15 +957,15 @@
       var nx = e.x + e.vx * sp * dt, ny = e.y + e.vy * sp * dt;
       if (e.fly || boxFree(nx, e.y)) e.x = nx; if (e.fly || boxFree(e.x, ny)) e.y = ny;
       if (e.fly) { e.x = clamp(e.x, e.hx - 120, e.hx + 120); e.y = clamp(e.y, e.hy - 120, e.hy + 120); }
-      if (d < 16 && P.inv <= 0 && mode === "world" && !busy) {
+      if (d < 24 && P.inv <= 0 && mode === "world" && !busy) {
         var behind = (P.fx * (e.x - P.x) + P.fy * (e.y - P.y)) < -4 && e.st === "chase";
         engage(e, behind ? "enemy" : null);
       }
     });
     // attaque de terrain : le premier coup
     if (P.act > 0 && P.act < 0.24 && !P.hitDone && mode === "world") {
-      var hx = P.x + P.fx * 18, hy = P.y + P.fy * 14 - 4;
-      WE.forEach(function (e) { if (!P.hitDone && Math.hypot(e.x - hx, e.y - hy) < 22 && (!e.fly || leadHero() !== "gorak")) { P.hitDone = true; engage(e, "hero"); } });
+      var hx = P.x + P.fx * 24, hy = P.y + P.fy * 18 - 6;
+      WE.forEach(function (e) { if (!P.hitDone && Math.hypot(e.x - hx, e.y - hy) < 28 && (!e.fly || leadHero() !== "gorak")) { P.hitDone = true; engage(e, "hero"); } });
     }
     var o = !busy ? nearObj() : null;
     hint(o ? "<b>A</b> · " + objLabel(o) : "");
@@ -1036,7 +1063,7 @@
     // murs en planches
     ctx.fillStyle = OUT; ctx.fillRect(x + 4, y + 22, w - 8, h - 22);
     ctx.fillStyle = "#d39a52"; ctx.fillRect(x + 6, y + 24, w - 12, h - 26);
-    ctx.fillStyle = "#b07a4f"; for (var i = 0; i < (h - 26) / 6; i++) ctx.fillRect(x + 6, y + 28 + i * 6, w - 12, 1);
+    ctx.fillStyle = "#b07a4f"; for (var i = 0; i < (h - 30) / 8; i++) ctx.fillRect(x + 6, y + 30 + i * 8, w - 12, 2);
     // porte, fenêtres
     ctx.fillStyle = OUT; ctx.fillRect(x + w / 2 - 9, y + h - 26, 18, 24); ctx.fillStyle = "#8a5a3b"; ctx.fillRect(x + w / 2 - 7, y + h - 24, 14, 22); ctx.fillStyle = "#f6d36b"; ctx.fillRect(x + w / 2 + 3, y + h - 14, 2, 2);
     [x + 18, x + w - 34].forEach(function (wx) { ctx.fillStyle = OUT; ctx.fillRect(wx - 1, y + h - 40, 18, 16); ctx.fillStyle = "#f6d36b"; ctx.fillRect(wx + 1, y + h - 38, 14, 12); ctx.fillStyle = "#fdf3de"; ctx.fillRect(wx + 2, y + h - 37, 4, 4); ctx.fillStyle = OUT; ctx.fillRect(wx + 7, y + h - 38, 2, 12); });
@@ -1053,7 +1080,7 @@
     ctx.fillStyle = "rgba(20,30,15,.3)"; ctx.fillRect(x + 6, y + h - 4, w, 10);
     ctx.fillStyle = OUT; ctx.fillRect(x, y + 20, w, h - 18);
     ctx.fillStyle = "#8a929a"; ctx.fillRect(x + 2, y + 22, w - 4, h - 22);
-    ctx.fillStyle = "#6a7078"; for (var by = 0; by < (h - 22) / 10; by++) for (var bx = 0; bx < w / 20; bx++) ctx.fillRect(x + 2 + bx * 20 + (by % 2) * 10, y + 22 + by * 10, 1, 10), ctx.fillRect(x + 2, y + 31 + by * 10, w - 4, 1);
+    ctx.fillStyle = "#6a7078"; for (var by = 0; by < (h - 22) / 10; by++) for (var bx = 0; bx < w / 20; bx++) ctx.fillRect(x + 2 + bx * 20 + (by % 2) * 10, y + 22 + by * 10, 2, 10), ctx.fillRect(x + 2, y + 30 + by * 10, w - 4, 2);
     ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(x - 8, y + 28); ctx.lineTo(x + w / 2, y - 28); ctx.lineTo(x + w + 8, y + 28); ctx.fill();
     ctx.fillStyle = "#5a5070"; ctx.beginPath(); ctx.moveTo(x - 3, y + 25); ctx.lineTo(x + w / 2, y - 23); ctx.lineTo(x + w + 3, y + 25); ctx.fill();
     ctx.fillStyle = "#3a3048"; ctx.fillRect(x + w / 2 + 20, y - 4, 26, 14); // trou dans le toit
@@ -1068,38 +1095,38 @@
     switch (o.type) {
       case "house": drawHouse(o); break;
       case "barn": drawBarn(o); break;
-      case "npc": if (o.cond && !o.cond()) return; var f = frameOf(o.spr, t + o.tx, false); shadowAt(o.x, o.y, 12); blit(f.s, o.x, o.y + 2, 1, P.x < o.x); break;
-      case "save": var b = Math.sin(t * 3) * 2; ctx.fillStyle = "rgba(106,216,255," + (0.18 + 0.1 * Math.sin(t * 3)) + ")"; ctx.beginPath(); ctx.ellipse(o.x, o.y, 14, 6, 0, 0, TAU); ctx.fill(); blit(S_("crystal")[0], o.x, o.y - 4 + b, 1.5); break;
+      case "npc": if (o.cond && !o.cond()) return; var f = frameOf(o.spr, t + o.tx, false); shadowAt(o.x, o.y, 24); blit(f.s, o.x, o.y + 4, 2, P.x < o.x); break;
+      case "save": var b = Math.sin(t * 3) * 2; ctx.fillStyle = "rgba(106,216,255," + (0.18 + 0.1 * Math.sin(t * 3)) + ")"; ctx.beginPath(); ctx.ellipse(o.x, o.y, 14, 6, 0, 0, TAU); ctx.fill(); blit(S_("crystal")[0], o.x, o.y - 2 + b, 2); break;
       case "well": shadowAt(o.x, o.y, 22); blit(S_("well")[0], o.x, o.y + 2, 2); break;
       case "fence": blit(S_("fence")[0], o.x, o.y + 2, 2); break;
       case "sign": shadowAt(o.x, o.y, 10); blit(S_("sign")[0], o.x, o.y + 2, 2); break;
-      case "chest": shadowAt(o.x, o.y, 18); blit(S_(S.chests[o.id] ? "chestopen" : "chest")[0], o.x, o.y + 2, 1); break;
+      case "chest": shadowAt(o.x, o.y, 30); blit(S_(S.chests[o.id] ? "chestopen" : "chest")[0], o.x, o.y + 4, 2); break;
       case "oak":
         if (S.flags.bridge) return;
         shadowAt(o.x, o.y, 26); blit(S_("bigoak")[0], o.x, o.y + 4, 2); break;
       case "gate":
-        if (S.flags.gate) { blit(S_("gate")[0], o.x, o.y + 22, 1.5); return; }
+        if (S.flags.gate) { blit(S_("gate")[0], o.x, o.y + 22, 2); return; }
         ctx.fillStyle = "rgba(168,122,232," + (0.25 + 0.15 * Math.sin(t * 4)) + ")"; ctx.fillRect(o.tx * TS + 4, o.ty * TS, TS - 8, TS * 2);
         blit(S_("gate")[0], o.x, o.y + 22, 2); break;
-      case "boulder": if (S.flags.boulder) return; shadowAt(o.x, o.y + 22, 26); blit(S_("boulder")[0], o.x, o.y + 26, 1.4); break;
+      case "boulder": if (S.flags.boulder) return; shadowAt(o.x, o.y + 22, 26); blit(S_("boulder")[0], o.x, o.y + 28, 2); break;
       case "guardian":
         ctx.fillStyle = "rgba(106,216,255," + (S.q >= 4 ? 0.3 : 0.12) + ")"; ctx.beginPath(); ctx.ellipse(o.x, o.y, 30, 12, 0, 0, TAU); ctx.fill();
-        blit(S_("crystal")[0], o.x, o.y - 4 + Math.sin(t * 2) * 3, 4); break;
+        blit(S_("crystal@2")[0], o.x, o.y - 4 + Math.sin(t * 2) * 3, 2); break;
       case "herb": if (S.flags.herb) return; ctx.fillStyle = "rgba(232,251,255," + (0.2 + 0.12 * Math.sin(t * 3)) + ")"; ctx.beginPath(); ctx.arc(o.x, o.y - 8, 16, 0, TAU); ctx.fill(); blit(S_("herb")[0], o.x, o.y, 2); break;
       case "bosspot":
         if (S.flags[o.id]) return; var E = ENEMIES[o.boss], fb = S_(E.spr); shadowAt(o.x, o.y, 30);
-        blit(fb[Math.floor(t * 3) % fb.length], o.x, o.y + 2, o.boss === "grand_belier" ? 1 : 1.5, true); break;
+        blit(fb[Math.floor(t * 3) % fb.length], o.x, o.y + 2, 2, false); break;
       case "updoor": if (!S.flags[o.need]) { ctx.fillStyle = OUT; ctx.fillRect(o.tx * TS - 32, 0, TS * 3, TS); ctx.fillStyle = "#6b4430"; ctx.fillRect(o.tx * TS - 30, 2, TS * 3 - 4, TS - 4); ctx.fillStyle = "#a87ae8"; ctx.fillRect(o.tx * TS - 30, 14, TS * 3 - 4, 3); } break;
     }
   }
   function shadowAt(x, y, w) { ctx.fillStyle = "rgba(20,30,15,.25)"; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y), w / 2, w / 5, 0, 0, TAU); ctx.fill(); }
   function drawHeroW(id, x, y, face, moving, t, act) {
     var f = frameOf(HEROES[id].spr, t, moving);
-    shadowAt(x, y, 14);
-    blit(f.s, x, y + 2 - f.dy, 1, face < 0);
+    shadowAt(x, y, 26);
+    blit(f.s, x, y + 4 - f.dy * 2, 2, face < 0);
     if (act > 0) {   // geste de terrain : hache, orbe ou massue
-      var p = 1 - act / 0.32, w = S_(HEROES[id].weapon)[0], ox = P.fx * (6 + p * 14), oy = P.fy * (4 + p * 10) - 10;
-      ctx.save(); ctx.translate(x + ox, y + oy); ctx.rotate(p * TAU * (id === "augh" ? 1.5 : 0.4) * (face < 0 ? -1 : 1)); ctx.drawImage(w.c, -w.w / 2, -w.h / 2); ctx.restore();
+      var p = 1 - act / 0.32, w = S_(HEROES[id].weapon)[0], ox = P.fx * (10 + p * 20), oy = P.fy * (6 + p * 14) - 18;
+      ctx.save(); ctx.translate(Math.round(x + ox), Math.round(y + oy)); ctx.rotate(p * TAU * (id === "augh" ? 1.5 : 0.4) * (face < 0 ? -1 : 1)); ctx.drawImage(w.c, -w.w, -w.h, w.w * 2, w.h * 2); ctx.restore();
     }
   }
   function drawWorld(t) {
@@ -1124,7 +1151,7 @@
     for (y = ty0 - 1; y <= ty1; y++) for (x = tx0 - 1; x <= tx1; x++) {
       var tl = tileAt(M, x, y);
       if (tl === "t" || tl === "T") dr.push({ y: (y + 1) * TS - 2, f: (function (x2, y2, tl2) { return function () { var hx = ((x2 * 73856093) ^ (y2 * 19349663)) >>> 0, ox = (hx % 9) - 4; shadowAt(x2 * TS + 16 + ox, (y2 + 1) * TS - 4, 26); blit(S_(tl2 === "T" ? "pine" : "tree")[0], x2 * TS + 16 + ox, (y2 + 1) * TS + 2, 2); }; })(x, y, tl) });
-      else if (tl === "S") dr.push({ y: (y + 1) * TS - 2, f: (function (x2, y2) { return function () { shadowAt(x2 * TS + 16, (y2 + 1) * TS - 4, 22); blit(S_("pillar")[0], x2 * TS + 16, (y2 + 1) * TS, 2.4); }; })(x, y) });
+      else if (tl === "S") dr.push({ y: (y + 1) * TS - 2, f: (function (x2, y2) { return function () { shadowAt(x2 * TS + 16, (y2 + 1) * TS - 4, 22); blit(S_("pillar")[0], x2 * TS + 16, (y2 + 1) * TS, 2); }; })(x, y) });
     }
     M.objs.forEach(function (o) {
       var bx = o.type === "house" || o.type === "barn" ? (o.ty + o.h) * TS : o.y;
@@ -1133,8 +1160,8 @@
     });
     WE.forEach(function (e) {
       dr.push({ y: e.y, f: function () {
-        var a = S_(e.spr), fr = a[Math.floor(e.t * (e.st === "chase" ? 8 : 4)) % a.length], lift = e.fly ? 10 + Math.sin(e.t * 4) * 3 : 0;
-        shadowAt(e.x, e.y, 16);
+        var a = S_(e.spr), fr = a[Math.floor(e.t * (e.st === "chase" ? 8 : 4)) % a.length], lift = e.fly ? 16 + Math.round(Math.sin(e.t * 4) * 2) * 2 : 0;
+        shadowAt(e.x, e.y, 30);
         if (e.stun > 0 && Math.floor(e.stun * 10) % 2) return;
         blit(fr, e.x, e.y + 2 - lift, e.sc, natLeft(e.spr) ? e.face > 0 : e.face < 0);
         if (e.seen > 0) ptext("!", e.x, e.y - fr.h * e.sc - lift - 10, "#f6d36b", 2, "c");
@@ -1144,7 +1171,7 @@
     var order = [leadHero()].concat(S.party.filter(function (h) { return h !== leadHero(); }));
     order.forEach(function (id, i) {
       if (i === 0) dr.push({ y: P.y, f: function () { if (P.inv > 0 && Math.floor(P.inv * 12) % 2) return; drawHeroW(id, P.x, P.y, P.face, P.moving, P.t, P.act); } });
-      else { var tp = P.trail[Math.min(P.trail.length - 1, i * 9)] || P; dr.push({ y: tp.y - 0.1, f: function () { drawHeroW(id, tp.x, tp.y, tp.f || P.face, P.moving, P.t + i * 0.3, 0); } }); }
+      else { var tp = P.trail[Math.min(P.trail.length - 1, i * 14)] || P; dr.push({ y: tp.y - 0.1, f: function () { drawHeroW(id, tp.x, tp.y, tp.f || P.face, P.moving, P.t + i * 0.3, 0); } }); }
     });
     dr.sort(function (a, b) { return a.y - b.y; }).forEach(function (d) { d.f(); });
     ctx.restore();
@@ -1182,7 +1209,7 @@
       g.fillStyle = "rgba(246,211,107,.15)"; g.beginPath(); g.moveTo(300, 0); g.lineTo(340, 0); g.lineTo(420, 170); g.lineTo(260, 170); g.fill();
     } else {
       g.fillStyle = P2.hill2; g.beginPath(); g.moveTo(0, 130); for (var x = 0; x <= W; x += 20) g.lineTo(x, 112 + Math.sin(x * 0.02) * 10 + Math.sin(x * 0.07) * 4); g.lineTo(W, 170); g.lineTo(0, 170); g.fill();
-      for (x = -10; x < W + 20; x += 34) blit(S_(P2.tree)[0], x + ((x * 7) % 13), 150 + ((x * 3) % 9), P2.tree === "pillar" ? 2.6 : 2.2);
+      for (x = -10; x < W + 20; x += 34) blit(S_(P2.tree)[0], x + ((x * 7) % 13), 150 + ((x * 3) % 9), 2);
       g.fillStyle = P2.hill; g.fillRect(0, 150, W, 20);
       if (bg === "foret") { g.fillStyle = "rgba(200,220,255,.18)"; g.fillRect(0, 120, W, 30); }
     }
@@ -1238,8 +1265,7 @@
     if (i >= 4) return null;
     var slot = 0; while (B.enemies.some(function (e) { return e.hp > 0 && e.slot === slot; })) slot++;
     var e = { kind: "e", id: id, d: d, name: d.name, spr: d.spr, hp: d.hp, max: d.hp, atk: d.atk, def: d.def, fly: !!d.fly, spiky: !!d.spiky, boss: !!d.boss, slot: slot,
-      x: x || EN_X[slot], y: STAGE_Y, hx: EN_X[slot], hy: STAGE_Y, lift: 0, flash: 0, sc: d.sc === 3 ? 3 : d.sc === 2 ? 2 : BSC, burn: 0, freeze: 0, sleep: 0, flip: 0, weak: 0, rage: 0, alpha: 1, t: Math.random() * 3, rot: 0 };
-    if (e.id === "grand_belier") e.sc = 2.2;
+      x: x || EN_X[slot], y: STAGE_Y, hx: EN_X[slot], hy: STAGE_Y, lift: 0, flash: 0, sc: BSC, burn: 0, freeze: 0, sleep: 0, flip: 0, weak: 0, rage: 0, alpha: 1, t: Math.random() * 3, rot: 0 };
     if (e.fly) e.hy = e.y = STAGE_Y - 46;
     B.enemies.push(e);
     return e;
@@ -1966,19 +1992,18 @@
     if (b.flash > 0) { ctx.fillStyle = (b.flashC || "rgba(255,255,255,") + b.flash + ")"; ctx.fillRect(0, 0, W, H); b.flash = Math.max(0, b.flash - dt * 1.5); }
     b.cheer = Math.max(0, b.cheer - dt);
   }
+  // le public : des écureuils au même grain que la scène (× 2), qui dépassent du bord avant
+  var AUD_SQ = ["sq_noisette", "sq_cendrine", "sq_flocon", "sq_pip", "sq_charbon", "sq_pop", "sq_trefle", "sq_capitaine", "sq_planeur", "sq_druide"];
   function drawAudience(t, dt) {
-    var b = B, n = b.aud, i;
+    var b = B, n = b.aud, shown = Math.min(13, Math.max(4, Math.round(n / 3))), i;
     ctx.fillStyle = OUT; ctx.fillRect(0, 216, W, 54);
     ctx.fillStyle = "#1f3a2b"; ctx.fillRect(0, 218, W, 52);
-    for (i = 0; i < n; i++) {
-      var row = i % 2, col = Math.floor(i / 2), per = Math.ceil(n / 2), x = 20 + (col + (row ? 0.5 : 0)) * ((W - 40) / Math.max(1, per)), y = 252 + row * 14;
-      var name = AUD_SPR[(i * 7 + 3) % AUD_SPR.length], a = S_(name), s = (a.idle || a)[0];
-      var jump = b.cheer > 0 ? Math.abs(Math.sin(t * 10 + i)) * 6 * Math.min(1, b.cheer) : Math.abs(Math.sin(t * 2 + i * 1.7)) * 1;
-      var sc = s.w > 26 ? 0.6 : 1;
-      ctx.globalAlpha = 1;
-      ctx.drawImage(i % 3 === 0 ? s.f : s.c, Math.round(x - s.w * sc / 2), Math.round(y - s.h * sc - jump), Math.round(s.w * sc), Math.round(s.h * sc));
+    for (i = 0; i < shown; i++) {
+      var x = Math.round(W / 2 + (i - (shown - 1) / 2) * 36 + ((i * 13) % 7) - 3), a = S_(AUD_SQ[(i * 7 + 3) % AUD_SQ.length]), s2 = (a.idle || a)[Math.floor(t * 2.2 + i) % (a.idle || a).length];
+      var jump = b.cheer > 0 ? Math.round(Math.abs(Math.sin(t * 10 + i)) * 8 * Math.min(1, b.cheer)) : 0;
+      blit(s2, x, 286 - jump - (i % 2) * 4, 2, i % 2 === 0);
     }
-    var gr = ctx.createLinearGradient(0, 218, 0, 270); gr.addColorStop(0, "rgba(15,28,20,.25)"); gr.addColorStop(1, "rgba(15,28,20,.6)"); ctx.fillStyle = gr; ctx.fillRect(0, 218, W, 52);
+    var gr = ctx.createLinearGradient(0, 218, 0, 270); gr.addColorStop(0, "rgba(15,28,20,.1)"); gr.addColorStop(1, "rgba(15,28,20,.55)"); ctx.fillStyle = gr; ctx.fillRect(0, 218, W, 52);
     ptext("PUBLIC " + n, W - 8, 222, "#c9a070", 1, "r");
   }
 
@@ -2072,7 +2097,7 @@
     hs.forEach(function (n, i) { var f = frameOf(n, t + i * 0.4, false); shadowAt(HERO_X[i], STAGE_Y, 26); blit(f.s, HERO_X[i], STAGE_Y, 2); });
     ["mouton", "belier", "mouton_mystique"].forEach(function (n, i) { var a = S_(n); shadowAt(EN_X[i], STAGE_Y, 40); blit(a[Math.floor(t * 3 + i) % a.length], EN_X[i], STAGE_Y - Math.abs(Math.sin(t * 3 + i)) * 4, 2); });
     if (!B) B = null;
-    var b0 = { aud: 24, cheer: Math.sin(t) > 0.7 ? 1 : 0 }; var keep = B; B = b0; drawAudience(t, 0); B = keep;
+    var b0 = { aud: 30, cheer: Math.sin(t) > 0.7 ? 1 : 0 }; var keep = B; B = b0; drawAudience(t, 0); B = keep;
   }
 
   /* =====================================================================
