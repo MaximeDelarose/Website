@@ -41,6 +41,16 @@
     .pur-opt:hover, .pur-opt:focus-visible { background: #f6d36b; outline: none; }
     .pur-opt span { display: grid; gap: 2px; } .pur-opt small { opacity: .85; } .pur-opt em { font-style: normal; font-size: .75rem; background: #2b1709; color: #f6d36b; padding: 1px 5px; margin-left: 4px; }
     .pur-opt canvas { flex: none; }
+    .pur-opt { position: relative; transition: transform .08s, background .08s; animation: pur-in .22s ease-out backwards; }
+    .pur-opt:nth-child(2) { animation-delay: .06s; } .pur-opt:nth-child(3) { animation-delay: .12s; } .pur-opt:nth-child(4) { animation-delay: .18s; }
+    .pur-opt:hover, .pur-opt:focus-visible { transform: translateX(4px) scale(1.01); }
+    .pur-opt:active { transform: scale(.98); }
+    .pur-opt kbd { margin-left: auto; font: inherit; font-size: .75rem; opacity: .55; border: 2px solid currentColor; padding: 0 5px; }
+    .pur-pips { font-style: normal; font-size: .7rem; letter-spacing: 1px; color: #c8851a; }
+    .pur-card { animation: pur-pop .2s ease-out; }
+    @keyframes pur-in { from { opacity: 0; transform: translateY(10px); } }
+    @keyframes pur-pop { from { opacity: 0; transform: scale(.94); } }
+    @media (prefers-reduced-motion: reduce) { .pur-opt, .pur-card { animation: none; } }
     .pur-stage { height: min(78vh, 720px); }
   </style>
 </head>
@@ -87,7 +97,7 @@
       <div class="game-stage pur-stage" data-pur>
         <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Survivor classique"></canvas>
         <button class="fs-exit fs-exit-txt" type="button" data-fs-exit aria-label="Quitter le plein écran">⛶ Réduire</button>
-        <div class="game-hud" style="inset:auto 8px 8px auto;padding:0"><button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button></div>
+        <div class="game-hud" style="inset:auto 8px 8px auto;padding:0;display:flex;gap:6px"><button class="hud-btn" type="button" data-mute aria-label="Son">🔊</button><button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button></div>
         <div class="pur-ui" data-ui><div class="pur-card"><p>Chargement…</p></div></div>
       </div>
       <div class="game-info"><div class="panel game-help">
