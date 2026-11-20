@@ -7,7 +7,7 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const results = []; const errors = [];
 const check = (name, ok, extra = '') => { results.push(!!ok); console.log(`${ok ? 'OK ' : 'KO '} ${name}${extra ? ' — ' + extra : ''}`); };
 const todayKey = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
-const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'], story: { step: 9999 }, levels: {}, hearts: 2990, world: { flags: { 'rw:start-gift-v1': true }, res: { coins: 5474, flowers: 5, fabric: 5, cocoa: 5 } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } };
+const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11'], story: { step: 9999 }, levels: {}, hearts: 2990, world: { flags: { 'rw:start-gift-v1': true }, res: { coins: 5474, flowers: 5, fabric: 5, cocoa: 5 } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } };
 async function open({ standalone, withSave }) {
   const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, permissions: ['clipboard-read', 'clipboard-write'] });
   const page = await ctx.newPage();
@@ -20,7 +20,7 @@ async function open({ standalone, withSave }) {
 const closeModals = async (page, n = 6) => { for (let i = 0; i < n; i++) { const b = page.locator('.modal-backdrop:not(.leaving) .actions button'); if (await b.count()) { await b.last().click().catch(() => {}); await page.waitForTimeout(400); } else break; } };
 const diag = async (page) => {
   await page.locator('button[aria-label="Paramètres"]').first().click(); await page.waitForSelector('.settings-screen'); await page.waitForTimeout(500);
-  await page.locator('.setting-row', { hasText: 'Diagnostic' }).locator('button').click(); await page.waitForSelector('.modal-backdrop', { timeout: 6000 }); await page.waitForTimeout(800);
+  await page.locator('.setting-row', { hasText: /^Diagnostic(?! tactile)/ }).locator('button').click(); await page.waitForSelector('.modal-backdrop', { timeout: 6000 }); await page.waitForTimeout(800);
   const text = await page.locator('.modal-backdrop').first().innerText();
   await page.locator('.modal-backdrop .actions button', { hasText: 'Fermer' }).click(); await page.waitForTimeout(400);
   return text;

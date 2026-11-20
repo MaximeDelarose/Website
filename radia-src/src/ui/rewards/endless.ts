@@ -39,7 +39,6 @@ export function endlessChestSpec(i: EndlessChestInput): GiftSpec {
       case 'flowers': case 'fabric': case 'cocoa': rewards.push({ type: 'res', id: l.kind, qty, granted: true }); break;
       case 'chest': rewards.push({ type: 'chest', qty, granted: true }); break;
       case 'wand': case 'wind': rewards.push({ type: 'item', id: l.kind, qty, granted: true }); break;
-      case 'ticket': rewards.push({ type: 'item', id: 'ticket', qty, label: 'Ticket d\'événement', granted: true }); break;
       case 'fragment': rewards.push({ type: 'item', id: 'fragment', qty, label: 'Fragment de vêtement', granted: true }); break;
       case 'star': case 'rareItem': rewards.push({ type: 'item', id: l.kind, qty, label: l.kind === 'star' ? 'Étoile filante' : 'Objet rare', icon: i.itemIcon?.(l), granted: true }); break;
       default: break; // cloth / bag / accessory / deco : listés ci-dessous (versés par le butin)

@@ -1,8 +1,8 @@
-/** Effets de jeu partagés du casino : compteur qui défile, tickets qui volent, célébrations (plafonnées, doux en mode réduit). */
+/** Effets de jeu partagés du casino : compteur qui défile, pièces qui volent, célébrations (plafonnées, doux en mode réduit). */
 import { audio, reducedFx } from '../core/app';
 import { haptic } from '../core/haptics';
 import { confetti, sparkleBurst } from '../ui/fx/sparkle';
-import { ticketUrl } from '../game/art/world/giftArt';
+import { resIconUrl } from '../game/art/world/resources';
 import { fmt } from '../core/wallet';
 import { pickLine } from '../data/augusteTone';
 
@@ -33,7 +33,7 @@ export function rollNumber(el: HTMLElement, from: number, to: number, ms = 900):
 let flying = 0;
 const MAX_FLY = 18;
 
-/** Tickets qui volent de `from` vers `target` (le compteur). Au plus ~10 par appel, 18 à l'écran ; en mode réduit : juste une pulsation. */
+/** Pièces qui volent de `from` vers `target` (le compteur). Au plus ~10 par appel, 18 à l'écran ; en mode réduit : juste une pulsation. */
 export async function flyChips(from: Pt, target: Element, count: number, _value = 25): Promise<void> {
   const n = Math.max(0, Math.min(10, Math.ceil(count), MAX_FLY - flying));
   const to = centerOf(target);
@@ -43,7 +43,7 @@ export async function flyChips(from: Pt, target: Element, count: number, _value 
   const jobs: Promise<void>[] = [];
   for (let i = 0; i < n; i++) {
     const img = document.createElement('img');
-    img.src = ticketUrl(44); img.alt = ''; img.draggable = false;
+    img.src = resIconUrl('coins', 44); img.alt = ''; img.draggable = false;
     img.style.cssText = 'position:fixed;left:0;top:0;width:30px;height:30px;pointer-events:none;z-index:400;will-change:transform,opacity;filter:drop-shadow(0 2px 3px rgba(30,18,56,.4))';
     layer.append(img);
     flying++;
@@ -56,7 +56,7 @@ export async function flyChips(from: Pt, target: Element, count: number, _value 
       { transform: `translate(${to.x - 15}px,${to.y - 15}px) scale(.55) rotate(420deg)`, opacity: 0.9 },
     ], { duration: 760 + i * 20, delay: i * 70, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'both' });
     jobs.push(new Promise((res) => {
-      const fin = () => { flying = Math.max(0, flying - 1); img.remove(); audio.play('ticketGet', 1 + i * 0.05); if (i % 3 === 0) pulse(); res(); };
+      const fin = () => { flying = Math.max(0, flying - 1); img.remove(); audio.play('coinGet', 1 + i * 0.05); if (i % 3 === 0) pulse(); res(); };
       a.onfinish = fin; a.oncancel = fin;
     }));
   }
@@ -116,7 +116,7 @@ export function bigWinBanner(net: number, level: 'big' | 'jackpot'): Promise<voi
   const sub = document.createElement('div'); sub.className = 'cz-bw-sub';
   let quip = ''; try { quip = pickLine('reward', Math.random, { noGalbi: true }); } catch { /* sans réplique */ }
   sub.textContent = (level === 'jackpot' ? 'Incroyable, Radia ! Les lustres en tremblent ♡' : 'Bravo Radia, quelle belle chance ♡') + (quip ? ` — Auguste : « ${quip} »` : '');
-  const unit = document.createElement('small'); unit.textContent = net > 1 ? 'tickets' : 'ticket';
+  const unit = document.createElement('small'); unit.textContent = net > 1 ? 'pièces' : 'pièce';
   const rays = document.createElement('i'); rays.className = 'cz-bw-rays';
   card.append(rays, title, num, unit, sub);
   const wrap = document.createElement('div'); wrap.className = `cz-bw${quick ? ' soft' : ''}`; wrap.setAttribute('role', 'status'); wrap.append(card);

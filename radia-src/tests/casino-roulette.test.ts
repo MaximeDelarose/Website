@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { BetBook, WHEEL_ORDER, colorOf, covered, payoutRatio, settle, spin, validBet, betProbability, type Bet } from '../src/casino/roulette';
 import { seededRng } from '../src/casino/rng';
-import { defaultFun } from '../src/save/fun';
-import { canBet, credit, debit, grant, setBring } from '../src/casino/chips';
+import { balance, creditCoins, debitCoins, usePurse } from '../src/casino/bank';
 
 const b = (kind: Bet['kind'], amount: number, nums?: number[]): Bet => ({ kind, amount, nums });
 
@@ -104,28 +103,28 @@ describe('carnet de mises et solde', () => {
     expect(book.load([b('red', 60)])).toBe(false);
   });
   it('débit AVANT la manche, gain crédité après : le solde ne devient jamais négatif', () => {
-    const s = defaultFun().casino; grant(s, 100); setBring(s, 100);
+    let coins = 100; usePurse({ get: () => coins, set: (n) => { coins = n; } });
     const bets = [b('num', 50, [17]), b('red', 50)];
     const stake = 100;
-    expect(canBet(s, 'roulette', stake)).toBe(true);
-    expect(debit(s, stake)).toBe(true);
-    expect(s.bring).toBe(0);
+    expect(debitCoins(stake)).toBe(true);
+    expect(balance()).toBe(0);
+    expect(debitCoins(1)).toBe(false); // jamais de solde négatif
     const r = settle(bets, 17);
-    credit(s, r.returned);
-    expect(s.bring).toBe(50 * 36); // plein gagnant ; 17 est noir, donc la mise rouge est perdue
+    creditCoins(r.returned);
+    expect(balance()).toBe(50 * 36); // plein gagnant ; 17 est noir, donc la mise rouge est perdue
   });
   it('simulation : le solde reste ≥ 0 et la conservation tient', () => {
-    const s = defaultFun().casino; grant(s, 500); setBring(s, 500);
+    let coins = 500; usePurse({ get: () => coins, set: (n) => { coins = n; } });
     const rng = seededRng(11); let staked = 0, back = 0;
-    for (let i = 0; i < 2000 && s.bring >= 5; i++) {
-      const book = new BetBook(Math.min(s.bring, 1000));
+    for (let i = 0; i < 2000 && balance() >= 5; i++) {
+      const book = new BetBook(Math.min(balance(), 1000));
       book.place({ kind: 'red' }, 5); book.place({ kind: 'num', nums: [(i % 36) + 1] }, 5);
       const stake = book.total();
-      expect(debit(s, stake)).toBe(true);
+      expect(debitCoins(stake)).toBe(true);
       const r = settle(book.bets, spin(rng));
-      credit(s, r.returned); staked += stake; back += r.returned;
-      expect(s.bring).toBeGreaterThanOrEqual(0);
+      creditCoins(r.returned); staked += stake; back += r.returned;
+      expect(balance()).toBeGreaterThanOrEqual(0);
     }
-    expect(s.bring).toBe(500 - staked + back);
+    expect(balance()).toBe(500 - staked + back);
   });
 });

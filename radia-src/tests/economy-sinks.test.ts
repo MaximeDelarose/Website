@@ -7,8 +7,7 @@ import { addXp } from '../src/game/endless/xp';
 import { tierCoins, PRESTIGE_PRICE, missingCoins, dupCoins, DUP_COINS_MAX } from '../src/data/world/prices';
 import { CLOTHES } from '../src/data/world/wardrobe';
 import { FURNITURE } from '../src/data/world/furniture';
-import { PRIVILEGES, buyPrivilege, rewardExists, eventAvailable } from '../src/casino/privileges';
-import { seededRng } from '../src/casino/rng';
+import { PRIVILEGES, buyPrivilege, rewardExists } from '../src/casino/privileges';
 
 const lvl = (f: ReturnType<typeof defaultFun>, l: number) => { addXp(f, 1e6); void l; };
 
@@ -64,27 +63,29 @@ describe('doublons : jamais une source de pièces', () => {
   });
 });
 
-describe('privilèges (tickets)', () => {
-  const fx = (log: { d: number; c: number }) => ({ giveDiamonds: (n: number) => { log.d += n; }, giveCoins: (n: number) => { log.c += n; }, rng: seededRng(5) });
+describe('boutique du casino (pièces)', () => {
   it('tous les objets promis existent', () => { for (const p of PRIVILEGES) expect(rewardExists(p.reward), p.id).toBe(true); });
-  it('achat : tickets débités une fois, objet donné, jamais de solde négatif ni de doublon', () => {
-    const f = defaultFun(); const w = defaultWorld(); const log = { d: 0, c: 0 };
-    f.casino.chips = 500;
-    expect(buyPrivilege(f.casino, w, 'cloth-tiara', fx(log))).toMatchObject({ ok: true });
-    expect(f.casino.chips).toBe(0); expect(w.wardrobe.owned).toContain('cr-tiara');
-    expect(buyPrivilege(f.casino, w, 'cloth-tiara', fx(log))).toMatchObject({ ok: false });
-    f.casino.chips = 10;
-    expect(buyPrivilege(f.casino, w, 'gift-diamonds', fx(log))).toMatchObject({ ok: false, reason: 'tickets' });
-    expect(f.casino.chips).toBe(10);
+  it('aucun ticket : tous les prix sont en pièces et sous les prix de prestige des boutiques', () => {
+    for (const p of PRIVILEGES) {
+      expect(p.price).toBeGreaterThan(0);
+      if (p.reward.t === 'cloth' || p.reward.t === 'furn') { const pp = PRESTIGE_PRICE[p.reward.id]; if (pp) expect(p.price, p.id).toBeLessThan(pp); }
+    }
   });
-  it('soirée : 3 tours offerts, une seule fois par jour, gains en pièces', () => {
-    const f = defaultFun(); const w = defaultWorld(); const log = { d: 0, c: 0 }; const t0 = new Date(2026, 5, 1, 12).getTime();
-    f.casino.chips = 500;
-    const r = buyPrivilege(f.casino, w, 'soiree', fx(log), t0);
-    expect(r.ok && r.spins?.length).toBe(3); expect(f.casino.chips).toBe(450);
-    expect(eventAvailable(f.casino, t0)).toBe(false);
-    expect(buyPrivilege(f.casino, w, 'soiree', fx(log), t0)).toMatchObject({ ok: false, reason: 'today' });
-    expect(f.casino.chips).toBe(450);
-    expect(eventAvailable(f.casino, t0 + 86_400_000)).toBe(true);
+  it('achat : pièces débitées une fois, objet donné, jamais de solde négatif ni de doublon', () => {
+    const f = defaultFun(); const w = defaultWorld();
+    w.res.coins = 6000;
+    expect(buyPrivilege(f.casino, w, 'cloth-tiara')).toMatchObject({ ok: true, spent: 5000 });
+    expect(w.res.coins).toBe(1000); expect(w.wardrobe.owned).toContain('cr-tiara');
+    expect(buyPrivilege(f.casino, w, 'cloth-tiara')).toMatchObject({ ok: false, reason: 'owned' });
+    expect(w.res.coins).toBe(1000); // un doublon ne débite rien
+    w.res.coins = 10;
+    expect(buyPrivilege(f.casino, w, 'gift-mats')).toMatchObject({ ok: false, reason: 'coins' });
+    expect(w.res.coins).toBe(10);
+    expect(buyPrivilege(f.casino, w, 'inconnu')).toMatchObject({ ok: false, reason: 'unknown' });
+  });
+  it('coffret d\'atelier : matériaux donnés contre 400 pièces', () => {
+    const f = defaultFun(); const w = defaultWorld(); w.res.coins = 500;
+    expect(buyPrivilege(f.casino, w, 'gift-mats').ok).toBe(true);
+    expect(w.res.coins).toBe(100); expect([w.res.flowers, w.res.fabric, w.res.cocoa]).toEqual([10, 10, 10]);
   });
 });

@@ -8,7 +8,7 @@ export const RARITY_ORDER: readonly GiftRarity[] = ['common', 'uncommon', 'rare'
 export const RARITY_COLOR: Record<GiftRarity, string> = { common: '#9FB4C7', uncommon: '#6FCF97', rare: '#5AA9FF', epic: '#B07CFF', legendary: '#FFC857' };
 export const RARITY_NAME: Record<GiftRarity, string> = { common: 'Commun', uncommon: 'Peu commun', rare: 'Rare', epic: 'Épique', legendary: 'Légendaire' };
 export const GIFT_KINDS: readonly GiftKind[] = ['start', 'daily', 'chest', 'event', 'premium', 'romantic'];
-export const REWARD_TYPES: readonly RewardType[] = ['coins', 'diamonds', 'energy', 'tickets', 'hearts', 'res', 'cloth', 'furniture', 'chest', 'memory', 'bouquet', 'item'];
+export const REWARD_TYPES: readonly RewardType[] = ['coins', 'diamonds', 'energy', 'hearts', 'res', 'cloth', 'furniture', 'chest', 'memory', 'bouquet', 'item'];
 
 /** Limites de sûreté. */
 export const MAX_GIFTS = 3;
@@ -71,7 +71,7 @@ export function mergeRewards(list: readonly Reward[]): Reward[] {
   const out: Reward[] = [];
   const index = new Map<string, Reward>();
   for (const r of list) {
-    const stack = r.type === 'coins' || r.type === 'diamonds' || r.type === 'energy' || r.type === 'tickets' || r.type === 'hearts' || r.type === 'res' || r.type === 'chest' || r.type === 'bouquet' || (r.type === 'item' && !!r.id);
+    const stack = r.type === 'coins' || r.type === 'diamonds' || r.type === 'energy' || r.type === 'hearts' || r.type === 'res' || r.type === 'chest' || r.type === 'bouquet' || (r.type === 'item' && !!r.id);
     if (!stack) { out.push({ ...r }); continue; }
     const k = `${r.type}|${r.id ?? ''}|${r.granted ? 1 : 0}|${r.label ?? ''}`;
     const have = index.get(k);
@@ -234,7 +234,7 @@ export function planBurst(x: number, y: number, o: BurstOpts, live: number, redu
 // ------------------------------------------------------------------ libellés et raretés des récompenses
 
 const RES_LABEL: Record<string, string> = { coins: 'pièces', flowers: 'fleurs', fabric: 'tissu', cocoa: 'cacao' };
-export const BANK_TYPES = ['diamonds', 'energy', 'coins', 'tickets', 'hearts', 'flowers', 'fabric', 'cocoa'] as const;
+export const BANK_TYPES = ['diamonds', 'energy', 'coins', 'hearts', 'flowers', 'fabric', 'cocoa'] as const;
 export type BankType = (typeof BANK_TYPES)[number];
 
 /** Compteur visé par une récompense (null : elle reste dans l'inventaire, rien ne vole). */
@@ -243,14 +243,13 @@ export function bankOf(r: Pick<Reward, 'type' | 'id'>): BankType | null {
     case 'coins': return 'coins';
     case 'diamonds': return 'diamonds';
     case 'energy': return 'energy';
-    case 'tickets': return 'tickets';
     case 'hearts': return 'hearts';
     case 'res': return r.id === 'flowers' || r.id === 'fabric' || r.id === 'cocoa' ? r.id : 'coins';
     default: return null;
   }
 }
 
-export const BANK_LABEL: Record<BankType, string> = { diamonds: 'Diamants', energy: 'Énergie', coins: 'Pièces', tickets: 'Tickets', hearts: 'Cœurs', flowers: 'Fleurs', fabric: 'Tissu', cocoa: 'Cacao' };
+export const BANK_LABEL: Record<BankType, string> = { diamonds: 'Diamants', energy: 'Énergie', coins: 'Pièces', hearts: 'Cœurs', flowers: 'Fleurs', fabric: 'Tissu', cocoa: 'Cacao' };
 
 /** Libellé sans nom propre (le nom de l'objet vient de l'hôte). */
 export function genericLabel(r: Pick<Reward, 'type' | 'id'>): string {
@@ -258,7 +257,6 @@ export function genericLabel(r: Pick<Reward, 'type' | 'id'>): string {
     case 'coins': return 'pièces';
     case 'diamonds': return 'diamants';
     case 'energy': return 'énergie';
-    case 'tickets': return 'tickets du Casino Royal';
     case 'hearts': return 'cœurs';
     case 'res': return RES_LABEL[r.id ?? 'coins'] ?? 'ressource';
     case 'chest': return 'Coffre bonus';
@@ -278,7 +276,6 @@ export function rewardRarity(r: Reward, gift: GiftRarity): GiftRarity {
     case 'res': return 'common';
     case 'diamonds': return r.qty >= 100 ? 'rare' : 'uncommon';
     case 'hearts': return 'uncommon';
-    case 'tickets': return r.qty >= 300 ? 'rare' : 'uncommon';
     case 'chest': return 'rare';
     case 'memory': return 'epic';
     case 'bouquet': return 'rare';

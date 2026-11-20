@@ -21,12 +21,12 @@ await openGift({
 }, { host?: RewardHost, actions?: [{ label: 'Équiper', run }] });
 ```
 
-`Reward` : `{ type, id?, qty, label?, icon?, rarity?, granted? }` avec `type` ∈ `coins | diamonds | energy | tickets | hearts | res
+`Reward` : `{ type, id?, qty, label?, icon?, rarity?, granted? }` avec `type` ∈ `coins | diamonds | energy | hearts | res
 (id = flowers|fabric|cocoa|coins) | cloth | furniture | chest | memory | bouquet (id = « rose+peony ») | item (id = wand|wind,
 sinon affichage seulement)`. La promesse se résout quand le calque a DISPARU (jamais de rejet).
 
 * **Attribution** : faite par `openGift` AVANT la mise en scène (tous les cadeaux de la chaîne d'un coup), via un `RewardHost`
-  (par défaut `host.ts` : wallet, monde, tickets du casino, `giveChest` de l'Endless, `unlockMemory`). Une clé `key` marque
+  (par défaut `host.ts` : wallet, monde, `giveChest` de l'Endless, `unlockMemory`). Une clé `key` marque
   le drapeau `world.flags['rw:<key>']` (écrit tout de suite) avant le versement : pas de doublon au rechargement ni au double clic.
   Doublons d'objets = moitié du prix en pièces (comme ailleurs) ; souvenir déjà là = 50 pièces.
 * **`granted: true`** : récompense DÉJÀ versée par l'appelant (affichage seulement). À utiliser partout où la logique d'attribution
@@ -67,9 +67,9 @@ Pour « Ouvrir le suivant », boucler sur `pendingChests(fun)` avec un `await` p
 
 | Où | Quoi |
 |---|---|
-| `src/core/startGift.ts` (installé par `startDaily()`) | Cadeau de démarrage : 50 ⚡, 60 💎, 300 pièces, 100 tickets, 1 coffre ; une fois par sauvegarde (clé `start-gift-v1`), écran titre + `safeToNotify()` |
+| `src/core/startGift.ts` (installé par `startDaily()`) | Cadeau de démarrage : 50 ⚡, 60 💎, 500 pièces, 1 coffre ; une fois par sauvegarde (clé `start-gift-v1`), écran titre + `safeToNotify()` |
 | `src/daily/ui.ts` | Cadeau du jour (`kind: 'daily'`, compteur de jours, Équiper / Placer / Utiliser au casino) ; calendrier et illustrations gardés |
-| `src/casino/ui/lobby.ts` | Mission accomplie (tickets + objet exclusif) |
+| `src/casino/ui/lobby.ts` | Mission accomplie (pièces + objet exclusif) |
 | `src/ui/screens/world/career/result.ts` | Palier de carrière franchi |
 | `src/events/ui/conclusion.ts` | Récompenses d'un événement, avant le récapitulatif |
 | `src/events/incidents/scenes/reveal.ts` | Colis surprise, sac de boutique |

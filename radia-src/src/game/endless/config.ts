@@ -190,12 +190,12 @@ export const ENDLESS_CFG = {
     minMergesBetween: 2,
     minFreeCellsForItem: 5,
     /** Poids du type de drop. */
-    kindWeights: { coins: 34, diamonds: 4, energy: 8, chest: 4, fragment: 12, bag: 3, accessory: 5, deco: 5, rareItem: 9, ticket: 6 } as Record<string, number>,
+    kindWeights: { coins: 37, diamonds: 4, energy: 8, chest: 4, fragment: 12, bag: 3, accessory: 5, deco: 5, rareItem: 9 } as Record<string, number>,
     /** Raretés d'un drop : poids de base (les hauts niveaux glissent vers le haut). */
     rarityWeights: { common: 60, uncommon: 25, rare: 11, epic: 3.4, legendary: 0.6 } as Record<Rarity, number>,
     /** Décalage de rareté par niveau (poids multipliés par (1 + shift × (niveau-2)) pour rare+ ). */
     levelShift: 0.12,
-    /** Montants par rareté (pièces / énergie / diamants / tickets). */
+    /** Montants par rareté (pièces / énergie / diamants). */
     coins: { common: 4, uncommon: 8, rare: 15, epic: 30, legendary: 70 } as Record<Rarity, number>,
     energy: { common: 1, uncommon: 2, rare: 3, epic: 5, legendary: 10 } as Record<Rarity, number>,
     diamonds: { common: 1, uncommon: 1, rare: 2, epic: 4, legendary: 10 } as Record<Rarity, number>,

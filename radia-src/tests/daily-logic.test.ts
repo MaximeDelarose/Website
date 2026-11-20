@@ -89,17 +89,17 @@ describe('réclamation', () => {
 });
 
 describe('calendrier', () => {
-  it('cycle 1 : J1..J7 exacts (structure variée avec tickets J3 et J6)', () => {
+  it('cycle 1 : J1..J7 exacts (structure variée : bourse en J3 et J6)', () => {
     expect(THEMES[0].name).toBe('Princesse du château');
     const t = (n: number) => dayDef(0, n).parts;
     expect(t(0)).toEqual([{ t: 'coins', n: 250 }]);            // J1 pièces
     expect(t(1)).toEqual([{ t: 'diamonds', n: 100 }]);         // J2 diamants
-    expect(t(2)).toEqual([{ t: 'tickets', n: 250 }]);          // J3 tickets du casino
+    expect(t(2)).toEqual([{ t: 'coins', n: 500 }, { t: 'energy', n: 5 }]); // J3 bourse + énergie
     expect(t(3)).toHaveLength(1);                              // J4 accessoire de mode (sac)
     expect(t(3)[0]).toMatchObject({ t: 'cloth' });
     expect(CLOTHES[picks(t(3)[0])[0]].slot).toBe('bag');
     expect(t(4).filter((p) => p.t === 'furn')).toHaveLength(2); // J5 coffre de décoration
-    expect(t(5)[0]).toEqual({ t: 'tickets', n: 400 });         // J6 tickets + cosmétique
+    expect(t(5)[0]).toEqual({ t: 'coins', n: 800 });           // J6 bourse + cosmétique
     expect(t(5)[1]).toMatchObject({ t: 'cloth' });
     expect(t(6)).toHaveLength(2);                              // J7 tenue exclusive
     const dress = picks(t(6)[0])[0];
@@ -108,10 +108,13 @@ describe('calendrier', () => {
     expect(['crown', 'acc', 'ears']).toContain(CLOTHES[picks(t(6)[1])[0]].slot);
     expect(dayDef(0, 6).rarity).toBe('legendary');
   });
-  it('tous les cycles : tickets en J3 et J6 uniquement, J2 diamants, J5 coffre de 2 décorations ou plus', () => {
+  it('tous les cycles : bourse de pièces + énergie en J3, bourse en J6, J2 diamants, J5 coffre de 2 décorations ou plus, plus aucun ticket', () => {
     for (let c = 0; c < THEMES.length; c++) {
-      const hasTix = (d: number) => dayDef(c, d).parts.some((p) => p.t === 'tickets');
-      expect([0, 1, 2, 3, 4, 5, 6].filter(hasTix), THEMES[c].id).toEqual([2, 5]);
+      const hasEnergy = (d: number) => dayDef(c, d).parts.some((p) => p.t === 'energy');
+      expect([0, 1, 2, 3, 4, 5, 6].filter(hasEnergy), THEMES[c].id).toEqual([2]);
+      const big = (d: number) => dayDef(c, d).parts.some((p) => p.t === 'coins' && p.n >= 500);
+      expect([0, 1, 2, 3, 4, 5, 6].filter(big), THEMES[c].id).toEqual([2, 5]);
+      expect(JSON.stringify(THEMES[c])).not.toMatch(/ticket/i);
       expect(dayDef(c, 1).parts[0].t).toBe('diamonds');
       expect(dayDef(c, 4).parts.filter((p) => p.t === 'furn').length).toBeGreaterThanOrEqual(2);
       expect(['cloth', 'furn']).toContain(dayDef(c, 6).parts[0].t);
@@ -130,15 +133,15 @@ describe('calendrier', () => {
       if (p.t === 'cloth') for (const id of p.pick) { expect(CLOTH_SLOTS[id], id).toBeTruthy(); expect(CLOTHES[id].gift, id).toBeFalsy(); expect(CLOTHES[id].free, id).toBeFalsy(); }
       if (p.t === 'furn') for (const id of p.pick) { expect(isFurnitureId(id), id).toBe(true); expect(FURNITURE[id]).toBeTruthy(); }
       if (p.t === 'bouquet') { expect(p.flowers.length).toBeGreaterThanOrEqual(3); expect(p.flowers.length).toBeLessThanOrEqual(5); for (const f of p.flowers) expect(FLOWERS[f], f).toBeTruthy(); }
-      if (p.t === 'coins' || p.t === 'diamonds' || p.t === 'tickets' || p.t === 'res') expect(p.n).toBeGreaterThan(0);
+      if (p.t === 'coins' || p.t === 'diamonds' || p.t === 'energy' || p.t === 'res') expect(p.n).toBeGreaterThan(0);
     }
   });
   it('cycles suivants : montants plus généreux après un tour complet, thèmes qui bouclent', () => {
     expect(themeOf(6).id).toBe(themeOf(0).id);
     expect(dayDef(6, 0).parts[0]).toEqual({ t: 'coins', n: 290 }); // 250 × 1,15 arrondi à 10
     expect(dayDef(102, 1).parts[0]).toEqual({ t: 'diamonds', n: 200 });
-    expect(dayDef(6, 2).parts[0]).toEqual({ t: 'tickets', n: 290 }); // 250 × 1,15 arrondi à 10
-    expect(dayDef(102, 5).parts[0]).toEqual({ t: 'tickets', n: 800 }); // plafond ×2
+    expect(dayDef(6, 2).parts[0]).toEqual({ t: 'coins', n: 580 }); // 500 × 1,15 arrondi à 10
+    expect(dayDef(102, 5).parts[0]).toEqual({ t: 'coins', n: 1600 }); // plafond ×2
     expect((dayDef(102, 0).parts[0] as { n: number }).n).toBe(500);
   });
 });
@@ -161,15 +164,15 @@ describe('résolution et attribution', () => {
   });
   it('chaque lot arrive dans le bon inventaire (cycle 1 complet)', () => {
     const w = defaultWorld();
-    let dia = 0, tix = 0;
+    let dia = 0, nrg = 0;
     for (let day = 0; day < DAYS; day++) {
       const parts = resolveDay(0, day, ownershipOf(w));
       const r = applyResolved(w, parts);
-      dia += r.diamonds; tix += r.tickets;
+      dia += r.diamonds; nrg += r.energy;
     }
-    expect(w.res.coins).toBe(60 + 250 + 80);
+    expect(w.res.coins).toBe(60 + 250 + 500 + 80 + 800); // J1, J3, J5, J6
     expect(dia).toBe(100);
-    expect(tix).toBe(650); // J3 + J6 : les tickets sortent du World (versés au casino)
+    expect(nrg).toBe(5); // J3 : l'énergie sort du World (versée au portefeuille)
     expect(w.wardrobe.owned.length).toBeGreaterThanOrEqual(4 + 3 + 1); // sac + tenue + robe + accessoire (+ départ)
     expect(Object.values(w.castle.owned).reduce((a, b) => a + b, 0)).toBe(2);
     expect(w.wardrobe.owned).toContain('dr-emerald-evening');
@@ -207,13 +210,13 @@ describe('migration de calendrier (cycle 1 d\'avant les tickets)', () => {
     expect([t.cycle, t.day]).toEqual([2, 4]);
     expect(m.total).toBe(18);
   });
-  it('un cycle complet de 7 réclamations puis le cycle suivant (tickets J3 et J6 à chaque cycle)', () => {
+  it('un cycle complet de 7 réclamations puis le cycle suivant (énergie en J3 à chaque cycle)', () => {
     const st = defaultFun().daily; const seen: number[] = [];
     for (let i = 0; i < 14; i++) {
       const t = claim(st, `2026-11-${String(i + 1).padStart(2, '0')}`)!;
-      if (dayDef(t.cycle, t.day).parts.some((p) => p.t === 'tickets')) seen.push(t.cycle * 10 + t.day);
+      if (dayDef(t.cycle, t.day).parts.some((p) => p.t === 'energy')) seen.push(t.cycle * 10 + t.day);
     }
-    expect(seen).toEqual([2, 5, 12, 15]);
+    expect(seen).toEqual([2, 12]);
     expect(st.cycle).toBe(2); expect(st.day).toBe(0);
   });
 });

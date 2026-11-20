@@ -9,7 +9,7 @@ import type { GiftSpec, RewardHost } from '../src/ui/rewards/types';
 /** Hôte factice : tout est compté, rien ne touche une vraie sauvegarde. */
 function fakeHost(opts: { ownedCloth?: string[]; ownedFurn?: string[]; memories?: string[]; throwOn?: string } = {}) {
   const log: string[] = [];
-  const st = { coins: 0, flowers: 0, fabric: 0, cocoa: 0, diamonds: 0, energy: 0, tickets: 0, hearts: 0, chest: 0, wand: 0, wind: 0, persists: 0 };
+  const st = { coins: 0, flowers: 0, fabric: 0, cocoa: 0, diamonds: 0, energy: 0, hearts: 0, chest: 0, wand: 0, wind: 0, persists: 0 };
   const flags = new Set<string>();
   const cloth = new Set(opts.ownedCloth ?? []);
   const furn = new Set(opts.ownedFurn ?? []);
@@ -19,7 +19,7 @@ function fakeHost(opts: { ownedCloth?: string[]; ownedFurn?: string[]; memories?
   const host: RewardHost = {
     once(k) { log.push(`once:${k}`); if (flags.has(k)) return false; flags.add(k); return true; },
     addRes(k, n) { guard('addRes'); log.push(`res:${k}`); st[k] += n; },
-    giveDiamonds(n) { st.diamonds += n; }, giveEnergy(n) { st.energy += n; }, giveTickets(n) { st.tickets += n; }, addHearts(n) { st.hearts += n; },
+    giveDiamonds(n) { st.diamonds += n; }, giveEnergy(n) { st.energy += n; }, addHearts(n) { st.hearts += n; },
     giveBooster(k, n) { st[k] += n; }, addChest(n) { st.chest += n; },
     ownsCloth: (id) => cloth.has(id), giveCloth(id) { guard('cloth'); cloth.add(id); }, clothBack: (id) => (id.startsWith('x') ? null : 80),
     ownsFurniture: (id) => furn.has(id), giveFurniture(id) { furn.add(id); }, furnitureBack: () => 60,
@@ -39,17 +39,17 @@ describe('attribution', () => {
   it('verse chaque type vers la bonne fonction, une seule fois', () => {
     const f = fakeHost();
     const r = grantGift(spec({ rewards: [
-      { type: 'coins', qty: 100 }, { type: 'diamonds', qty: 20 }, { type: 'energy', qty: 30 }, { type: 'tickets', qty: 50 }, { type: 'hearts', qty: 4 },
+      { type: 'coins', qty: 100 }, { type: 'diamonds', qty: 20 }, { type: 'energy', qty: 30 }, { type: 'hearts', qty: 4 },
       { type: 'res', id: 'flowers', qty: 7 }, { type: 'res', id: 'cocoa', qty: 2 }, { type: 'chest', qty: 1 }, { type: 'item', id: 'wand', qty: 2 },
       { type: 'cloth', id: 'abc', qty: 1 }, { type: 'furniture', id: 'sofa', qty: 1 }, { type: 'memory', id: 'm1', qty: 1 }, { type: 'bouquet', id: 'rose+peony', qty: 1 },
     ] }), f.host);
     expect(r.fresh).toBe(true);
-    expect(f.st).toMatchObject({ coins: 100, diamonds: 20, energy: 30, tickets: 50, hearts: 4, flowers: 7, cocoa: 2, chest: 1, wand: 2, persists: 1 });
+    expect(f.st).toMatchObject({ coins: 100, diamonds: 20, energy: 30, hearts: 4, flowers: 7, cocoa: 2, chest: 1, wand: 2, persists: 1 });
     expect(f.cloth.has('abc')).toBe(true);
     expect(f.furn.has('sofa')).toBe(true);
     expect(f.mem.has('m1')).toBe(true);
     expect(f.bouquets['rose+peony']).toBe(1);
-    expect(r.shown).toHaveLength(13);
+    expect(r.shown).toHaveLength(12);
   });
   it('idempotent : même clé = rien la deuxième fois (même avec un hôte neuf après « rechargement »)', () => {
     const f = fakeHost();
@@ -102,8 +102,8 @@ describe('attribution', () => {
   });
   it('noms : libellé fourni > nom de l\'hôte > libellé générique', () => {
     const f = fakeHost();
-    const r = grantGift(spec({ rewards: [{ type: 'cloth', id: 'abc', qty: 1 }, { type: 'cloth', id: 'def', qty: 1, label: 'Ma robe' }, { type: 'tickets', qty: 5 }] }), f.host);
-    expect(r.shown.map((s) => s.name)).toEqual(['Robe abc', 'Ma robe', 'tickets du Casino Royal']);
+    const r = grantGift(spec({ rewards: [{ type: 'cloth', id: 'abc', qty: 1 }, { type: 'cloth', id: 'def', qty: 1, label: 'Ma robe' }, { type: 'coins', qty: 5 }] }), f.host);
+    expect(r.shown.map((s) => s.name)).toEqual(['Robe abc', 'Ma robe', 'pièces']);
   });
 });
 
@@ -139,7 +139,7 @@ describe('openGift (sans DOM)', () => {
     const f = fakeHost();
     await openGift(demoSpec('premium', 'legendary'), { host: f.host });
     await openGift(demoChain(), { host: f.host });
-    expect(f.st).toMatchObject({ coins: 0, diamonds: 0, energy: 0, tickets: 0, hearts: 0, chest: 0 });
+    expect(f.st).toMatchObject({ coins: 0, diamonds: 0, energy: 0, hearts: 0, chest: 0 });
   });
 });
 
@@ -187,8 +187,8 @@ describe('adaptateurs (résultats déjà versés)', () => {
   it('colis surprise et mission du casino', () => {
     const p = parcelSpec({ title: 'Livraison surprise', rewards: [{ kind: 'coins', coins: 120, label: '120 pièces' }, { kind: 'decor', id: 'sofa', label: 'Canapé' }] });
     expect(p.rewards.map((r) => r.type)).toEqual(['coins', 'furniture']);
-    const m = casinoMissionSpec({ name: 'Fan de roulette', chips: 150, item: { t: 'cloth', id: 'ea-stars' } });
-    expect(m.rewards.map((r) => r.type)).toEqual(['tickets', 'cloth']);
-    expect(casinoMissionSpec({ name: 'x', chips: 350, item: { t: 'cloth', id: 'ea-stars' }, duplicate: true }).rewards).toHaveLength(1);
+    const m = casinoMissionSpec({ name: 'Fan de roulette', coins: 200, item: { t: 'cloth', id: 'ea-stars' } });
+    expect(m.rewards.map((r) => r.type)).toEqual(['coins', 'cloth']);
+    expect(casinoMissionSpec({ name: 'x', coins: 400, item: { t: 'cloth', id: 'ea-stars' }, duplicate: true }).rewards).toHaveLength(1);
   });
 });

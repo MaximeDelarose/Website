@@ -352,7 +352,7 @@ export function playGifts(gifts: PreparedGift[], host: RewardHost, actions: Gift
               countTo(bt, cur + k.r.qty, 420);
               bump(bt);
               k.card.classList.add('flown');
-              audio.play(bt === 'tickets' ? 'ticketGet' : bt === 'diamonds' ? 'chipWin' : 'select', 1 + Math.min(0.6, landed++ * 0.08));
+              audio.play(bt === 'coins' ? 'coinGet' : bt === 'diamonds' ? 'chipWin' : 'select', 1 + Math.min(0.6, landed++ * 0.08));
               res();
             };
             if (reduced || fast) { arrive(); return; }

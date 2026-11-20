@@ -35,7 +35,7 @@ export function startDaily(): void {
   if (started) return;
   started = true;
   try { migrateDaily(dailyState()); } catch (e) { console.error('daily migration', e); }
-  // Crochet « événements secondaires Endless → tickets du casino » (idempotent ; installé ici car startDaily() tourne au lancement)
+  // Crochet « événements secondaires Endless → pièces » (idempotent ; installé ici car startDaily() tourne au lancement)
   try { installCasinoEndlessHook(); } catch (e) { console.error('casino hook', e); }
   startStartGift(); // cadeau de démarrage (une seule fois par sauvegarde) + outils `RADIA.rewards`
   window.setInterval(() => { try { tick(); } catch (e) { console.error('daily', e); } }, 1500);

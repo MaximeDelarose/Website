@@ -351,7 +351,7 @@
 .car-sal-big { width: 100%; min-height: 48px; font-size: 16.5px; margin-top: 2px; }
 .car-sal-next { color: var(--choco-soft); font-size: 12.5px; }
 .car-salary.claimed { animation: carSalPop 0.3s var(--ease-pop); }
-.car-coin { position: fixed; z-index: 700; font-size: 22px; pointer-events: none; transform: translate(-50%, -50%); animation: carCoinFly 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+.car-coin { position: fixed; z-index: 700; width: 26px; height: 26px; pointer-events: none; transform: translate(-50%, -50%); animation: carCoinFly 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
 @keyframes carCoinFly { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } 12% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1); } }
 @keyframes carSalIn { from { opacity: 0; transform: translateY(-8px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes carSalPop { 50% { transform: scale(1.04); } }

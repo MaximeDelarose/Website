@@ -4,7 +4,7 @@ export type GiftKind = 'start' | 'daily' | 'chest' | 'event' | 'premium' | 'roma
 export type GiftRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 export type RewardType =
-  | 'coins' | 'diamonds' | 'energy' | 'tickets' | 'hearts'
+  | 'coins' | 'diamonds' | 'energy' | 'hearts'
   /** Ressource du monde : `id` = flowers | fabric | cocoa | coins. */
   | 'res'
   | 'cloth' | 'furniture'
@@ -69,7 +69,6 @@ export interface RewardHost {
   addRes(kind: 'coins' | 'flowers' | 'fabric' | 'cocoa', n: number): void;
   giveDiamonds(n: number): void;
   giveEnergy(n: number): void;
-  giveTickets(n: number): void;
   addHearts(n: number): void;
   giveBooster(kind: 'wand' | 'wind', n: number): void;
   addChest(n: number): void;
@@ -86,7 +85,7 @@ export interface RewardHost {
   /** Nom lisible d'un objet. */
   nameOf(type: RewardType, id: string): string | null;
   /** Solde actuel (pour les compteurs animés). */
-  balance(type: 'coins' | 'diamonds' | 'energy' | 'tickets' | 'hearts' | 'flowers' | 'fabric' | 'cocoa'): number;
+  balance(type: 'coins' | 'diamonds' | 'energy' | 'hearts' | 'flowers' | 'fabric' | 'cocoa'): number;
   /** Sauvegarde + rafraîchit les compteurs du jeu. */
   persist(): void;
 }
