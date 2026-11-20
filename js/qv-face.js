@@ -77,9 +77,11 @@
       var traits = [], av = A.defaults();
 
       // ---- peau ----
-      var skin = med([50, 280, 205, 425, 151, 9], unit);
-      var skinL = luma(skin);
-      av.skin = A.shade(hex(skin), -0.07); // la photo est souvent plus claire que le rendu à plat
+      var sceneSum = 0, sceneN = 0;
+      for (var si = 0; si < data.length; si += 4 * 37) { sceneSum += 0.299 * data[si] + 0.587 * data[si + 1] + 0.114 * data[si + 2]; sceneN++; }
+      var sk = sampleSkin(L, fw, unit, px, isHair, sceneSum / Math.max(1, sceneN));
+      var skin = sk.raw, skinL = luma(skin);
+      av.skin = hex(sk.final);
 
       // ---- forme du visage ----
       var ratio = fh / fw, jaw = dist(L[172], L[397]) / fw;
@@ -185,8 +187,8 @@
       var sr2 = Math.max(1, Math.round(unit / 2));
       var sclera = L.length >= 478 ? luma(median(patch(lerp(L[468], L[33], 0.55), sr2).concat(patch(lerp(L[473], L[263], 0.55), sr2)))) : 255;
       var lens = luma(median(patch(lerp(L[159], L[145], 0.5), unit).concat(patch(lerp(L[386], L[374], 0.5), unit))));
-      if (sclera < skinL * 0.33 && lens < skinL * 0.33 && sclera < 55) { av.glasses = "sun"; traits.push("Lunettes de soleil"); }
-      else if (bridge > Math.max(40, skinL * 0.35)) { av.glasses = Math.abs(L[33].y - L[159].y) / fh > 0.05 ? "round" : "square"; traits.push("Lunettes"); }
+      // (lunettes de soleil : pas de détection automatique, trop de fausses alertes sur les photos floues)
+      if (bridge > Math.max(40, skinL * 0.35)) { av.glasses = Math.abs(L[33].y - L[159].y) / fh > 0.05 ? "round" : "square"; traits.push("Lunettes"); }
       else av.glasses = "none";
 
       // ---- vêtement (couleur préférée) ----
@@ -219,8 +221,78 @@
         av.trace = buildTrace(L, W, H, isHair, hairMask, px, patch, hairPx.length, fw, fh, brow);
         if (av.trace) { av.face = "photo"; if (av.trace.hb || av.trace.hf) av.hair = "photo"; }
       } catch (e) { if (root.console) console.warn("tracé", e); }
-      return { found: true, avatar: A.sanitize(av), traits: traits.filter(Boolean), quality: quality(L, W, H, skinL), debug: { eyeGapM: eyeGapM, eyeWM: eyeWM, mouthM: mouthM, browGapM: browGapM, ratio: ratio, jaw: jaw, ear: ear, wing: wing, nlen: nlen, fTop: fTop, fSide: fSide, fBelow: fBelow, fLow: fLow, hTop: hTop, wExt: wExt, chinD: chinD, jawD: jawD, mustD: mustD, bridge: bridge, sclera: sclera, browC: browC, browT: browT } };
+      return { found: true, skin: { photo: hex(sk.raw), detected: av.skin, conf: sk.conf, why: sk.why }, avatar: A.sanitize(av), traits: traits.filter(Boolean), quality: quality(L, W, H, skinL), debug: { eyeGapM: eyeGapM, eyeWM: eyeWM, mouthM: mouthM, browGapM: browGapM, ratio: ratio, jaw: jaw, ear: ear, wing: wing, nlen: nlen, fTop: fTop, fSide: fSide, fBelow: fBelow, fLow: fLow, hTop: hTop, wExt: wExt, chinD: chinD, jawD: jawD, mustD: mustD, bridge: bridge, sclera: sclera, browC: browC, browT: browT } };
     });
+  }
+
+  /* ---------------------------------------------------------------------
+     CARNATION — reproduire la couleur réelle visible sur la photo.
+     Aucune supposition : on mesure. Zones fiables (joues, front, menton),
+     sans cheveux, sans ombres ni reflets. Corrections de lumière seulement
+     vers plus clair ou plus neutre, jamais vers plus foncé que la photo.
+     --------------------------------------------------------------------- */
+  function sampleSkin(L, fw, unit, px, isHair, sceneL) {
+    var lerp = function (a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; };
+    var off = function (q, dx) { return { x: q.x + dx * fw, y: q.y }; };
+    var REG = {
+      cheekA: [L[50], L[101], L[118], L[117]],
+      cheekB: [L[280], L[330], L[347], L[346]],
+      forehead: [lerp(L[9], L[10], 0.35), lerp(L[9], L[10], 0.6), off(lerp(L[9], L[10], 0.45), -0.12), off(lerp(L[9], L[10], 0.45), 0.12)],
+      chin: [lerp(L[17], L[152], 0.5), lerp(L[84], L[148], 0.45), lerp(L[314], L[377], 0.45)],
+    };
+    var r = Math.max(2, unit);
+    function region(pts) {
+      var list = [];
+      pts.forEach(function (q) {
+        for (var y = -r; y <= r; y++) for (var x = -r; x <= r; x++) {
+          if (isHair(q.x + x, q.y + y)) continue;
+          list.push(px(q.x + x, q.y + y));
+        }
+      });
+      if (list.length < 8) return null;
+      // on garde la peau éclairée : entre le 40e et le 92e centile de luminosité (ni ombre, ni reflet)
+      list.sort(function (a, b) { return luma(a) - luma(b); });
+      var keep = list.slice(Math.floor(list.length * 0.5), Math.ceil(list.length * 0.95));
+      var m = [0, 0, 0]; keep.forEach(function (c) { m[0] += c[0]; m[1] += c[1]; m[2] += c[2]; });
+      return { c: m.map(function (v) { return v / keep.length; }), n: list.length };
+    }
+    var R = {}; Object.keys(REG).forEach(function (k) { R[k] = region(REG[k]); });
+    var why = [], conf = "ok";
+    var cA = R.cheekA, cB = R.cheekB;
+    // éclairage de côté : on se fie au côté éclairé
+    var cheeks = [cA, cB].filter(Boolean);
+    if (cA && cB && Math.abs(luma(cA.c) - luma(cB.c)) / Math.max(luma(cA.c), luma(cB.c)) > 0.16) {
+      conf = "low"; why.push("éclairage de côté");
+      cheeks = [luma(cA.c) > luma(cB.c) ? cA : cB];
+    }
+    var use = cheeks.concat(R.forehead ? [R.forehead] : []);
+    // menton : seulement s'il ressemble aux joues (sinon barbe ou ombre)
+    if (R.chin && cheeks.length && luma(R.chin.c) > luma(cheeks[0].c) * 0.85) use.push(R.chin);
+    if (!use.length) use = [R.cheekA || R.cheekB || R.forehead || { c: [200, 160, 130] }];
+    var raw = [0, 1, 2].map(function (i) { return use.reduce(function (a, u) { return a + u.c[i]; }, 0) / use.length; });
+    var rawL = luma(raw), fin = raw.slice();
+    // balance des blancs et exposition d'après le blanc des yeux, s'il est fiable
+    var sc = [];
+    if (L.length >= 478) [[468, 33], [468, 133], [473, 263], [473, 362]].forEach(function (pr) {
+      var q = lerp(L[pr[0]], L[pr[1]], 0.6);
+      for (var y = -1; y <= 1; y++) for (var x = -1; x <= 1; x++) sc.push(px(q.x + x, q.y + y));
+    });
+    sc.sort(function (a, b) { return luma(b) - luma(a) + 0; });
+    var white = sc.length ? median(sc.slice(0, Math.ceil(sc.length * 0.4))) : null;
+    var wL = white ? luma(white) : 0, chroma = white ? Math.max.apply(null, white) - Math.min.apply(null, white) : 999;
+    if (white && wL > 110 && chroma < 60) {
+      // dominante de couleur : on la retire à moitié (lumière trop chaude ou trop froide)
+      var avg = (white[0] + white[1] + white[2]) / 3;
+      var gain = white.map(function (v) { return Math.max(0.88, Math.min(1.12, 1 + (avg / Math.max(1, v) - 1) * 0.5)); });
+      fin = fin.map(function (v, i) { return v * gain[i]; });
+    } else if (white) { why.push("couleur de la lumière incertaine"); }
+    // photo sous-exposée dans son ensemble (mesuré sur toute l'image, pas sur la peau) : on éclaircit un peu, jamais l'inverse
+    if (sceneL < 85) { var k = Math.min(1.25, 100 / Math.max(1, sceneL)); fin = fin.map(function (v) { return v * k; }); conf = "low"; why.push("photo sombre, un peu éclaircie"); }
+    if (fw < 90) { conf = "low"; why.push("visage petit sur la photo"); }
+    // sécurité : jamais plus foncé que ce qu'on voit sur la photo
+    if (luma(fin) < rawL) { var up = rawL / Math.max(1, luma(fin)); fin = fin.map(function (v) { return v * up; }); }
+    fin = fin.map(function (v) { return Math.max(0, Math.min(255, v)); });
+    return { raw: raw, final: fin, conf: conf, why: why };
   }
 
   /* ---------------------------------------------------------------------

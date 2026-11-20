@@ -9,7 +9,7 @@
    ========================================================================= */
 (function (root) {
   "use strict";
-  var EVENTS = ["hello", "intent", "state", "priv", "sync", "bye", "kick", "emote"];
+  var EVENTS = ["hello", "intent", "state", "priv", "sync", "bye", "kick", "emote", "ready"];
 
   function localChannel(name, cfg) {
     var bc = new BroadcastChannel("qv-local-" + name), key = cfg.config.presence.key;

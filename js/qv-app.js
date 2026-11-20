@@ -184,10 +184,21 @@
         o += '<h2>Création de ton personnage…</h2><div class="cr-pair"><img class="cr-photo scanning" src="' + photo + '" alt="Ta photo"><div class="cr-spin"></div></div>' +
           '<p class="qv-wait" id="busy">Analyse de ton visage…</p><p class="ed-hint">Tout se passe sur ton appareil.</p>';
       } else if (step === "result") {
-        o += '<h2>Voilà ton portrait !</h2>' +
-          (result.avatar.trace ? '<p class="cr-how">Dessiné à partir des vraies formes de ton visage (contour, yeux, nez, bouche, cheveux) et de tes couleurs, directement sur ton téléphone.</p>' : '<p class="cr-how">Je n\'ai pas pu tracer ton visage en détail : voici une version approchée. Retouche-la si besoin.</p>') +
-          '<div class="cr-pair"><img class="cr-photo" src="' + photo + '" alt="Ta photo"><span class="cr-arrow">→</span><div class="cr-av big">' + A.standalone(result.avatar, { mood: "neutral", pose: "wave" }) + '</div></div>' +
-          '<div class="qv-chips cr-traits">' + result.traits.map(function (t) { return '<span class="st">' + esc(t) + '</span>'; }).join("") + '</div>' +
+        var ra = result.avatar, sw = function (key, list, base) {
+          var all = (base ? [base] : []).concat(list.filter(function (c) { return c !== base; }));
+          return all.map(function (c, i) { return '<button class="sw' + (ra[key] === c ? " on" : "") + (i === 0 && base ? " ph" : "") + '" style="background:' + c + '" data-r="' + key + '" data-v="' + c + '" aria-label="' + (i === 0 && base ? "comme la photo" : c) + '"></button>'; }).join("");
+        };
+        o += '<h2>Est-ce que ton portrait te ressemble ?</h2>' +
+          (ra.trace ? '<p class="cr-how">Dessiné à partir des formes de ton visage et des couleurs mesurées sur ta photo. Corrige ce qui ne va pas.</p>' : '<p class="cr-how">Je n\'ai pas pu tracer ton visage en détail : voici un portrait approximatif. Corrige-le avant de valider.</p>') +
+          '<div class="cr-pair"><img class="cr-photo pick" id="crph" src="' + photo + '" alt="Ta photo (touche ta joue pour prendre la couleur)"><span class="cr-arrow">→</span><div class="cr-av big" id="crav">' + A.standalone(ra, { mood: "neutral", pose: "wave" }) + '</div></div>' +
+          (result.skin && result.skin.conf === "low" ? '<p class="cr-tip warn">La lumière de la photo rend la couleur de peau incertaine (' + esc(result.skin.why.join(", ")) + ') : je l\'ai gardée proche de la photo. Vérifie-la ci-dessous.</p>' : '') +
+          '<div class="cr-fix"><div class="cr-row"><b>Peau</b><span class="cr-sw" id="crskin" style="background:' + ra.skin + '"></span></div>' +
+          '<div class="cr-range"><small>plus claire</small><input type="range" id="skinr" min="-40" max="40" step="1" value="' + (result.adj || 0) + '" aria-label="Carnation : plus claire ou plus foncée"><small>plus foncée</small></div>' +
+          '<div class="cr-3"><button class="chip" data-c="lighter">Plus claire</button><button class="chip" data-c="same">Comme la photo</button><button class="chip" data-c="darker">Plus foncée</button></div>' +
+          '<p class="ed-hint">Astuce : touche ta joue sur la photo pour reprendre exactement sa couleur.</p>' +
+          '<div class="cr-row"><b>Cheveux</b><div class="ed-sw">' + sw("hairColor", A.COLORS.hairColor.slice(0, 8), result.base.hairColor) + '</div></div>' +
+          '<div class="cr-row"><b>Yeux</b><div class="ed-sw">' + sw("eyeColor", A.COLORS.eyeColor, result.base.eyeColor) + '</div></div>' +
+          '<div class="cr-row"><b>Visage</b><div class="ed-chips">' + (ra.trace ? [["photo", "Ma photo"]] : []).concat(A.OPTIONS.face).map(function (f) { return '<button class="chip sm' + (ra.face === f[0] ? " on" : "") + '" data-r="face" data-v="' + f[0] + '">' + esc(f[1]) + '</button>'; }).join("") + '</div></div></div>' +
           (result.quality && !result.quality.ok ? '<p class="cr-tip warn">Pour un personnage plus ressemblant, reprends une photo : ' + esc(result.quality.tips.slice(0, 2).join(", ").toLowerCase()) + '.</p>' : '') +
           '<label class="qv-field"><span>Ton prénom</span><input id="nm" maxlength="16" autocomplete="nickname" placeholder="Ex. : Jean-Mich" value="' + esc(me.name) + '"></label>' +
           '<button class="qv-btn big" data-c="ok">C\'est moi !</button>' +
@@ -206,6 +217,28 @@
         rd.readAsDataURL(file);
       });
       if (step === "cam" && camStream) { $("#vid").srcObject = camStream; startGuide(); }
+      if (step === "result") {
+        var rng = $("#skinr");
+        rng.addEventListener("input", function () { result.adj = +rng.value; liveSkin(); });
+        $("#crph").addEventListener("click", function (e) {
+          var img = e.target, r = img.getBoundingClientRect(), c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+          var g = c.getContext("2d"); g.drawImage(img, 0, 0);
+          // la photo est affichée recadrée (object-fit: cover) : on retrouve le pixel touché
+          var s0 = Math.max(r.width / img.naturalWidth, r.height / img.naturalHeight), ox = (r.width - img.naturalWidth * s0) / 2, oy = (r.height - img.naturalHeight * s0) / 2;
+          var x = Math.round((e.clientX - r.left - ox) / s0), y = Math.round((e.clientY - r.top - oy) / s0);
+          var d = g.getImageData(Math.max(0, x - 3), Math.max(0, y - 3), 7, 7).data, R = 0, G2 = 0, B = 0, n = 0;
+          for (var i = 0; i < d.length; i += 4) { R += d[i]; G2 += d[i + 1]; B += d[i + 2]; n++; }
+          result.base.skin = "#" + [R, G2, B].map(function (v) { return ("0" + Math.round(v / n).toString(16)).slice(-2); }).join("");
+          result.adj = 0; rng.value = 0; liveSkin(); SND.play("pop"); toast("Couleur de peau reprise sur la photo");
+        });
+      }
+    }
+    function liveSkin() {
+      var k = (result.adj || 0) / 100;
+      // k > 0 : plus foncée ; k < 0 : plus claire
+      result.avatar.skin = k ? A.shade(result.base.skin, -k) : result.base.skin;
+      var av = $("#crav"); if (av) av.innerHTML = A.standalone(result.avatar, { mood: "neutral", pose: "wave" });
+      var sw = $("#crskin"); if (sw) sw.style.background = result.avatar.skin;
     }
     function checkConsent() {
       var c = $("#consent"); consent = !!(c && c.checked);
@@ -256,7 +289,8 @@
         setTimeout(function () {
           if (screen !== "creator") return;
           if (!r.found) { failMsg = "Je ne trouve pas de visage sur cette photo. Essaie une photo de face, bien éclairée, avec le visage assez grand."; step = "fail"; draw(); return; }
-          result = r; step = "result"; SND.play("fanfare"); draw();
+          result = r; result.base = JSON.parse(JSON.stringify(r.avatar)); result.adj = 0;
+          step = "result"; SND.play("fanfare"); draw();
         }, Math.max(0, 900 - (Date.now() - t0)));
       }).catch(function (e) {
         if (window.console) console.warn("analyse photo", e);
@@ -271,12 +305,21 @@
       if (opt.then) opt.then(); else if (room && !pub) renderLobby(); else home();
     }
     app.onclick = function (e) {
+      var rr = e.target.closest("[data-r]");
+      if (rr && step === "result") {
+        var nmI = $("#nm"); if (nmI) me.name = nmI.value.trim().slice(0, 16);
+        result.avatar[rr.dataset.r] = rr.dataset.v; SND.play("tap"); draw(); return;
+      }
       var t = e.target.closest("[data-c]"); if (!t) return;
       SND.unlock(); SND.play("tap");
       var c = t.dataset.c;
       if (c === "cam") startCam();
       else if (c === "snap") snap();
       else if (c === "choose" || c === "again") { stopCam(); step = "choose"; draw(); }
+      else if (c === "lighter" || c === "darker" || c === "same") {
+        result.adj = c === "same" ? 0 : Math.max(-40, Math.min(40, (result.adj || 0) + (c === "lighter" ? -8 : 8)));
+        $("#skinr").value = result.adj; liveSkin();
+      }
       else if (c === "ok") { if (!$("#nm").value.trim()) { toast("Écris ton prénom"); $("#nm").focus(); return; } done(result.avatar); }
       else if (c === "tweak") { var nm = $("#nm"); if (nm && nm.value.trim()) { me.name = nm.value.trim().slice(0, 16); saveMe(); } editor(result.avatar, opt); }
       else if (c === "manual" || c === "edit") { stopCam(); editor(null, opt); }
@@ -309,7 +352,7 @@
     }
     function panel() {
       switch (edTab) {
-        case "face": return sw("skin", "Peau") + opts("face", "Forme du visage") + opts("extra", "Détails");
+        case "face": return sw("skin", "Peau") + '<div class="cr-3"><button class="chip sm" data-ed="skinL">Peau plus claire</button><button class="chip sm" data-ed="skinD">Peau plus foncée</button></div>' + opts("face", "Forme du visage") + opts("extra", "Détails");
         case "hair": return opts("hair", "Coiffure") + sw("hairColor", "Couleur");
         case "eyes": return opts("eyes", "Yeux") + sw("eyeColor", "Couleur des yeux") + opts("brows", "Sourcils");
         case "nose": return (draft.face === "photo" ? '<p class="ed-hint">Avec « Mon visage (photo) », les yeux, le nez et la bouche viennent de ta photo. Choisis une autre forme de visage pour les dessiner à la main.</p>' : opts("nose", "Nez")) + '<p class="ed-hint">La bouche change toute seule selon l\'humeur de ton personnage pendant la partie.</p>';
@@ -370,6 +413,7 @@
       if (t.dataset.pick) { pickMode = pickMode === t.dataset.pick ? null : t.dataset.pick; draw(); return; }
       if (t.dataset.photo === "del") { photo = null; photoFull = null; pickMode = null; store("qv-photo-keep", null); try { localStorage.removeItem("qv-photo"); } catch (er) {} toast("Photo supprimée de cet appareil"); draw(); return; }
       var ed = t.dataset.ed;
+      if (ed === "skinL" || ed === "skinD") { draft.skin = A.shade(draft.skin, ed === "skinL" ? 0.08 : -0.08); draw(); return; }
       if (ed === "fromphoto") { app.onchange = null; creator(copt); }
       else if (ed === "random") { var keepSkin = draft.skin; draft = A.random(Math.floor(Math.random() * 1e9)); if (photo) draft.skin = keepSkin; draw(); }
       else if (ed === "cancel") back();
@@ -422,7 +466,7 @@
       });
       if (!room.net) { home("Le jeu en ligne n'est pas joignable. Essaie la partie contre des bots."); return; }
       store("qv-last", { code: code, host: true });
-      if (location.hash !== "#" + code) history.replaceState(null, "", "#" + code);
+      if (location.hash !== "#" + code) window.history.replaceState(null, "", "#" + code);
     }
     room.timer = setInterval(hostTick, 600);
     if (G) { hostBroadcast(); } else renderLobby();
@@ -447,9 +491,9 @@
     });
     if (!room.net) { home("Le jeu en ligne n'est pas joignable pour l'instant."); return; }
     store("qv-last", { code: code, host: false });
-    if (location.hash !== "#" + code) history.replaceState(null, "", "#" + code);
+    if (location.hash !== "#" + code) window.history.replaceState(null, "", "#" + code);
     show("wait", '<div class="qv-page center">' + logo(true) + '<p class="qv-wait">Connexion au salon <b>' + esc(code) + '</b>…</p><p class="qv-note">Si rien ne se passe, vérifie le code ou demande à l\'hôte d\'ouvrir le salon.</p><button class="qv-btn ghost" data-home>Retour</button></div>');
-    app.onclick = function (e) { if (e.target.closest("[data-home]")) { store("qv-last", null); history.replaceState(null, "", location.pathname + location.search); home(); } };
+    app.onclick = function (e) { if (e.target.closest("[data-home]")) { store("qv-last", null); window.history.replaceState(null, "", location.pathname + location.search); home(); } };
     room.timer = setInterval(function () {
       // relance : si on n'a rien reçu depuis un moment, on redemande l'état
       if (!room) return;
@@ -490,6 +534,8 @@
         G.players[pl.id].avatar = A.sanitize(pl.avatar);
       }
       hostBroadcast();
+    } else if (ev === "ready") {
+      hostReady(pl.id, pl.gate);
     } else if (ev === "intent") {
       if (!G || !pl.a || pl.a.pid !== pl.id) return;
       hostApply(pl.a, pl.id);
@@ -497,8 +543,13 @@
       if (!G) { room.lobby = room.lobby.filter(function (p) { return p.id !== pl.id; }); renderLobby(); hostBroadcast(); }
     }
   }
+  var GATE_MAX = 45000;
   function hostApply(a, from) {
+    var before = G.evId;
     var r = E.apply(G, a);
+    if (r.ok && G.phase !== "end" && G.events.some(function (e) { return e.id > before && (e.t === "card" || e.t === "block" || e.t === "season" || (e.t === "status" && (e.scene || (e.changes && e.changes.length)))); })) {
+      G.gate = { id: G.evId, since: Date.now(), ready: {} };
+    }
     if (!r.ok) {
       if (from === me.id) toast(r.err);
       else room.net && room.net.send("priv", { to: from, err: r.err });
@@ -534,8 +585,21 @@
     SND.play("fanfare");
     hostBroadcast();
   }
+  function hostReady(id, gate) {
+    if (!G || !G.gate || G.gate.id !== gate) return;
+    G.gate.ready[id] = true;
+    checkGate();
+  }
+  function checkGate() {
+    if (!G || !G.gate) return;
+    var need = G.order.filter(function (id) { var p = G.players[id]; return !p.bot && (id === me.id || present(id)); });
+    var all = need.every(function (id) { return G.gate.ready[id]; });
+    if (all || Date.now() - G.gate.since > GATE_MAX) { G.gate = null; hostBroadcast(); }
+    else if (G.gate && !G.gate.shown) { G.gate.shown = 1; hostBroadcast(); }
+  }
   function hostTick() {
     if (!room || !room.host || !G || G.phase === "end") return;
+    if (G.gate) { checkGate(); if (G.gate) return; }
     var now = Date.now();
     var who = G.phase === "react" && G.pending ? G.pending.to : G.order[G.turn];
     var p = G.players[who]; if (!p) return;
@@ -597,7 +661,7 @@
       return;
     }
     var first = !pub || pub.gid !== pl.pub.gid;
-    if (first) logLines = [];
+    if (first) { logLines = []; hist = []; readySent = 0; }
     var prevTurn = pub ? pub.order[pub.turn] + ":" + pub.round : "";
     pub = pl.pub;
     if (room.host && prevTurn !== pub.order[pub.turn] + ":" + pub.round) room.turnStart = Date.now();
@@ -608,6 +672,7 @@
       if (!room.host) store("qv-last", { code: room.code, host: false });
     }
     pub.events.forEach(function (ev) { if (ev.id > lastEv) { lastEv = ev.id; onGameEvent(ev); } });
+    if (!queue.length && !playing) sendReady();
     if (screen === "editor" || screen === "rules") return;
     if (pub.phase === "end" && !queue.length && !playing) return renderEnd();
     renderGame();
@@ -625,6 +690,8 @@
   function nameOf(id) { return pub && pub.players[id] ? pub.players[id].name : "?"; }
 
   // conséquences en une ligne (« Alice : −2 ★  +3 € ») pour ne pas multiplier les fenêtres
+  // ---------- conséquences en toutes lettres ----------
+  var RES_WORD = { b: "Bonheur", f: "Fortune", r: "Réputation" };
   function notesLine(notes) {
     if (!notes || !notes.length || !pub) return "";
     var by = {};
@@ -635,7 +702,41 @@
       }).join("") + '</span>';
     }).join("") + '</div>';
   }
+  // bloc par personne touchée : portrait, prénom, ce qui change dans sa vie, ressources en mots
+  function impactHTML(ev) {
+    var by = {}, order = [];
+    var add = function (id) { if (!by[id]) { by[id] = { t: [], n: [] }; order.push(id); } return by[id]; };
+    if (ev.to) add(ev.to);
+    (ev.changes || []).forEach(function (c) { add(c.p).t = add(c.p).t.concat(c.t); });
+    (ev.notes || []).forEach(function (n) { add(n.p).n.push(n); });
+    order = order.filter(function (id) { return by[id].t.length || by[id].n.length; });
+    if (!order.length) return '<p class="rs-none">' + (ev.t === "block" ? "Attaque annulée : aucune conséquence !" : "Pas de changement visible.") + '</p>';
+    return '<div class="rs-people">' + order.map(function (id) {
+      var p = pub.players[id]; if (!p) return "";
+      var bad = by[id].n.some(function (n) { return n.v < 0; }) && !by[id].n.some(function (n) { return n.v > 0; });
+      return '<div class="rs-p">' + A.standalone(p.avatar, { mood: p.mood || (bad ? "sad" : "happy"), outfit: W.outfit(p) }, "rs-av", true) +
+        '<div class="rs-body"><b class="rs-name">' + esc(id === me.id ? "Toi" : p.name) + '</b>' +
+        by[id].t.map(function (t) { return '<span class="rs-life">' + esc(t) + '</span>'; }).join("") +
+        '<span class="rs-res">' + by[id].n.map(function (n) { return '<i class="' + (n.v > 0 ? "up" : "down") + '">' + IC.get(n.k, "qv-ri") + (n.v > 0 ? "+" : "−") + Math.abs(n.v) + " " + RES_WORD[n.k] + '</i>'; }).join("") + '</span></div></div>';
+    }).join("") + '</div>';
+  }
+  function headline(ev) {
+    var c = card(ev.k) || {}, P = function (id) { return id === me.id ? "Tu" : nameOf(id); };
+    if (ev.t === "season") { var e = D.EVENTS.filter(function (x) { return x.key === ev.k; })[0]; return "Événement pour tout le monde : " + (e ? e.name : ""); }
+    if (ev.t === "status") return ev.text;
+    if (ev.t === "block") return (ev.p === me.id ? "Tu contres" : nameOf(ev.p) + " contre") + " avec « " + (c.name || "") + " » !";
+    if (ev.outcome === "soft") return (ev.to === me.id ? "Tu limites" : nameOf(ev.to) + " limite") + " les dégâts de « " + (c.name || "") + " ».";
+    if (ev.to) return nameOf(ev.p) + " utilise « " + (c.name || "") + " » contre " + (ev.to === me.id ? "toi" : nameOf(ev.to)) + (ev.outcome === "reflected" ? " (retour à l'envoyeur)" : "") + " !";
+    return (ev.p === me.id ? "Tu joues" : nameOf(ev.p) + " joue") + " « " + (c.name || "") + " »" + (ev.data && ev.data.lucky === true ? " : coup de chance !" : ev.data && ev.data.lucky === false ? " : raté…" : "");
+  }
+  var hist = [];
+  function addHistory(ev) {
+    if (["card", "block", "season", "status", "attack"].indexOf(ev.t) < 0) return;
+    if (ev.t === "card" && ev.k === "garde") return;
+    hist.unshift(ev); if (hist.length > 200) hist.pop();
+  }
   function onGameEvent(ev) {
+    addHistory(ev);
     if (ev.t === "turn") {
       if (ev.p === me.id) {
         turnPill("À toi de jouer !", (ev.info || []).join(" · ")); SND.play("turn");
@@ -644,36 +745,40 @@
       }
       enqueue({ kind: "notes", notes: ev.notes });
     } else if (ev.t === "stage") {
-      if (pub && pub.discovery && ev.stage > 1) enqueue({ kind: "stage", stage: ev.stage, title: ev.title, text: ev.text, dur: ev.stage === 1 ? 4.5 : 4, sfx: "fanfare" });
+      if (pub && pub.discovery && ev.stage > 1) enqueue({ kind: "stage", stage: ev.stage, title: ev.title, text: ev.text, dur: 6, sfx: "fanfare" });
     } else if (ev.t === "attack") {
-      enqueue({ kind: "reveal", k: ev.k, by: ev.p, to: ev.to, text: nameOf(ev.p) + " vise " + (ev.to === me.id ? "TOI" : nameOf(ev.to)) + " !", dur: 1.8, sfx: ev.to === me.id ? "alarm" : "card" });
-    } else if (ev.t === "card") {
-      var c = card(ev.k) || {};
-      var extra = ev.bounce && ev.to ? (ev.to === me.id ? "Tu rebondis : " : nameOf(ev.to) + " rebondit : ") + ev.bounce.toLowerCase() + ", +1 carte et 2 cartes au prochain tour." : (ev.spite ? "Dossier balancé : " + nameOf(ev.p) + " perd aussi 3 réputation !" : "");
-      if (ev.scene) enqueue({ kind: "scene", ev: ev, extra: extra });
-      else if (ev.outcome === "self") enqueue({ kind: "reveal", k: ev.k, by: ev.p, notes: ev.notes, text: nameOf(ev.p) + (c.target === "all" ? " déclenche un événement !" : " joue :") + (ev.data && ev.data.amount ? " +" + ev.data.amount + " fortune !" : "") + (ev.data && ev.data.lucky === true ? " Coup de chance !" : ev.data && ev.data.lucky === false ? " Raté…" : ""), dur: 2, sfx: "card" });
-      else if (ev.outcome === "soft") enqueue({ kind: "banner", text: "Dégâts limités", sub: ev.text, notes: ev.notes, dur: 2.4, sfx: "shield" });
-      else enqueue({ kind: "banner", text: c.name || "", sub: ev.text + (extra ? " " + extra : ""), notes: ev.notes, dur: 2.6, sfx: "sad" });
-      enqueue({ kind: "notes", notes: ev.notes });
-    } else if (ev.t === "status") {
+      // 1. annonce : qui, quoi, sur qui, ce qui va se passer
+      enqueue({ kind: "announce", ev: ev, sfx: ev.to === me.id ? "alarm" : "card" });
+    } else if (ev.t === "card" || ev.t === "block" || ev.t === "status" || ev.t === "season") {
+      var extra = ev.bounce && ev.to ? (ev.to === me.id ? "Tu rebondis : " : nameOf(ev.to) + " rebondit : ") + ev.bounce.toLowerCase() + ", +1 carte et 2 cartes au prochain tour." : (ev.spite ? "Dossier balancé : " + nameOf(ev.p) + " perd aussi 3 de réputation !" : "");
+      var selfCard = ev.t === "card" && ev.outcome === "self";
+      // grand moment de vie sans scène dédiée (métier, maison, couple, objet…) : scène « vie »
+      if (selfCard && !ev.scene && (ev.changes || []).some(function (c) { return c.p === ev.p; })) ev = Object.assign({}, ev, { scene: "vie" });
+      // carte jouée pour soi avec une scène : on l'annonce d'abord
+      if (selfCard && ev.scene) enqueue({ kind: "announce", ev: ev, sfx: "card" });
+      // 2. la scène avec les personnages
       if (ev.scene) enqueue({ kind: "scene", ev: ev });
-      else enqueue({ kind: "banner", text: (D.STATUSES[ev.s] || {}).label || "", sub: ev.text, notes: ev.notes, dur: 2.2, sfx: "ding" });
-      enqueue({ kind: "notes", notes: ev.notes });
-    } else if (ev.t === "block") {
-      enqueue({ kind: "scene", ev: ev });
-      enqueue({ kind: "notes", notes: ev.notes });
-    } else if (ev.t === "season") {
-      enqueue({ kind: "season", k: ev.k, notes: ev.notes, dur: 4.2, sfx: "ding" });
-      enqueue({ kind: "notes", notes: ev.notes });
-      coachMech("season", "Événements de saison", "Tous les 2 tours de table, un événement touche toute la table. Pas de panique, ça arrive à tout le monde.");
+      // 3. les conséquences, jusqu'à « Continuer »
+      var hasImpact = (ev.changes && ev.changes.length) || (ev.notes && ev.notes.length) || ev.t === "block" || ev.t === "season" || !ev.scene;
+      if (!(ev.k === "garde")) {
+        if (hasImpact) enqueue({ kind: "result", ev: ev, extra: extra, withCard: !ev.scene });
+      }
+      enqueue({ kind: "notes", notes: ev.notes, hit: affected(ev) });
+      if (ev.t === "season") coachMech("season", "Événements de saison", "Tous les 2 tours de table, un événement touche toute la table.");
     } else if (ev.t === "rest") {
       enqueue({ kind: "notes", notes: ev.notes });
       if (ev.p !== me.id && pub.phase !== "end") toast(nameOf(ev.p) + " souffle un coup (+1 bonheur)");
     } else if (ev.t === "end") {
-      enqueue({ kind: "banner", text: "Fin de partie !", sub: "Le moment de faire les comptes…", dur: 1.8, sfx: "win" });
+      enqueue({ kind: "banner", text: "Fin de partie !", sub: "Le moment de faire les comptes…", dur: 2.5, sfx: "win" });
       if (pub && pub.discovery) store("qv-tuto-done", true);
     }
     if (ev.text) addLog(ev);
+  }
+  function affected(ev) {
+    var ids = {}; if (ev.p) ids[ev.p] = 1; if (ev.to) ids[ev.to] = 1;
+    (ev.changes || []).forEach(function (c) { ids[c.p] = 1; });
+    (ev.notes || []).forEach(function (n) { ids[n.p] = 1; });
+    return Object.keys(ids);
   }
 
   // ---------- présentations « Nouveau ! » (mode découverte, non bloquantes, mémorisées) ----------
@@ -716,46 +821,87 @@
   function addLog(ev) { logLines.unshift({ id: ev.id, text: ev.text, t: ev.t }); if (logLines.length > 30) logLines.pop(); }
 
   function enqueue(item) {
-    if (item.kind === "notes" && (!item.notes || !item.notes.length)) return;
+    if (item.kind === "notes" && (!item.notes || !item.notes.length) && !item.hit) return;
     queue.push(item);
     if (!playing) next();
   }
-  var sceneTimers = [];
-  var nextRetry = null;
+  var sceneTimers = [], countT = null;
+  var nextRetry = null, readySent = 0;
+  // fin de la séquence : on signale qu'on est prêt (synchronisation des joueurs)
+  function sendReady() {
+    if (!pub || !pub.gate || readySent === pub.gate.id || queue.length || playing) return;
+    readySent = pub.gate.id;
+    if (room.host) hostReady(me.id, pub.gate.id);
+    else if (room.net) room.net.send("ready", { id: me.id, gate: pub.gate.id });
+  }
   function next() {
-    sceneTimers.forEach(clearTimeout); sceneTimers = [];
+    sceneTimers.forEach(clearTimeout); sceneTimers = []; clearInterval(countT);
     if (introOpen) { playing = null; closeScene(); clearTimeout(nextRetry); nextRetry = setTimeout(next, 500); return; }
     playing = queue.shift() || null;
-    if (!playing) { closeScene(); queueEmptyAt = Date.now(); if (pub) { if (pub.phase === "end") renderEnd(); else renderGame(); } return; }
+    if (!playing) { closeScene(); queueEmptyAt = Date.now(); if (pub) { if (pub.phase === "end") renderEnd(); else renderGame(); } sendReady(); return; }
     var it = playing;
-    if (it.kind === "notes") { floatNotes(it.notes); playing = null; setTimeout(next, 200); return; }
+    if (it.kind === "notes") { floatNotes(it.notes); if (it.hit) flashTiles(it.hit); playing = null; setTimeout(next, 200); return; }
     var ov = $("#ov");
     if (!ov) { ov = document.createElement("div"); ov.id = "ov"; document.body.appendChild(ov); }
     ov.className = "qv-ov k-" + it.kind;
-    var dur = it.dur || 2, html = "";
+    var dur = it.dur || 2, html = "", manual = false, label = "Continuer ›", auto = 0;
+    var ev = it.ev, c = ev ? (card(ev.k) || {}) : {};
     if (it.kind === "banner") {
       html = '<div class="qv-banner"><b>' + esc(it.text) + '</b>' + (it.sub ? '<span>' + esc(it.sub) + '</span>' : '') + notesLine(it.notes) + '</div>';
     } else if (it.kind === "stage") {
       html = '<div class="qv-banner stage"><small>Découverte · étape ' + it.stage + '/5</small><b>' + esc(it.title) + '</b><span>' + esc(it.text) + '</span></div>';
-    } else if (it.kind === "reveal") {
-      html = '<div class="qv-reveal"><p>' + esc(it.text) + '</p>' + cardHTML(it.k, { big: true, mine: it.by === me.id }) + notesLine(it.notes) + '</div>';
-    } else if (it.kind === "season") {
-      var e = D.EVENTS.filter(function (x) { return x.key === it.k; })[0];
-      html = '<div class="qv-reveal season"><p>Événement de saison</p><div class="qv-card big fam-world' + (e.adult ? " adult" : "") + '"><div class="qv-card-top"><span>Pour tout le monde</span></div><div class="qv-card-art">' + IC.get(e.icon) + '</div><div class="qv-card-name">' + esc(e.name) + '</div><p class="qv-card-text">' + esc(e.text) + '</p></div>' + notesLine(it.notes) + '</div>';
+      manual = true; auto = 12;
+    } else if (it.kind === "announce") {
+      // 1. ANNONCE : l'auteur, la carte, la cible, ce qui va se passer
+      var actor = pub.players[ev.p], tgt = ev.to ? pub.players[ev.to] : null;
+      var eff = (window.QV_CARDS.EFF[ev.k] || c.text || "");
+      html = '<div class="an-box"><p class="an-h">' + esc(headline(ev)) + '</p><div class="an-stage">' +
+        '<div class="an-who">' + A.standalone(actor.avatar, { mood: "smug", outfit: W.outfit(actor), pose: tgt ? "hips" : "wave" }) + '<b>' + esc(ev.p === me.id ? "Toi" : actor.name) + '</b></div>' +
+        '<div class="an-card">' + cardHTML(ev.k, { mine: ev.p === me.id }) + '</div>' +
+        (tgt ? '<div class="an-who tgt">' + A.standalone(tgt.avatar, { mood: "worried", outfit: W.outfit(tgt) }) + '<b>' + esc(ev.to === me.id ? "Toi" : tgt.name) + '</b></div>' : '') +
+        '</div><p class="an-what"><b>Ce qui va se passer :</b> ' + esc(eff) + '</p>' +
+        (tgt ? '<p class="an-next">' + (ev.to === me.id ? "À toi de réagir !" : esc(tgt.name) + " peut encore se défendre…") + '</p>' : '') + '</div>';
+      manual = true; auto = 6; label = ev.to === me.id ? "Réagir ›" : "Continuer ›";
+    } else if (it.kind === "result") {
+      // 3. CONSÉQUENCES : restent affichées jusqu'à « Continuer »
+      var head = ev.t === "season" ? (D.EVENTS.filter(function (x) { return x.key === ev.k; })[0] || {}) : null;
+      html = '<div class="rs-box"><p class="rs-h">' + esc(headline(ev)) + '</p>' +
+        (it.withCard && ev.t !== "season" && ev.t !== "status" ? '<div class="rs-card">' + cardHTML(ev.t === "block" ? ev.k : ev.k, { mine: ev.p === me.id }) + '</div>' : '') +
+        (head ? '<div class="rs-season">' + IC.get(head.icon) + '<div><b>' + esc(head.name) + '</b><span>' + esc(head.text) + '</span></div></div>' : '') +
+        '<p class="rs-sub">Ce qui a changé</p>' + impactHTML(ev) +
+        (it.extra ? '<p class="rs-extra">' + esc(it.extra) + '</p>' : '') + '</div>';
+      manual = true; auto = 20;
     } else if (it.kind === "scene") {
-      var sc = W.scene(it.ev, pub);
+      // 2. SCÈNE : les personnages concernés en action (elle a le temps de se jouer)
+      var sc = W.scene(ev, pub);
       if (!sc) { playing = null; next(); return; }
-      dur = sc.dur;
-      var c = card(it.ev.k) || {};
+      dur = sc.dur + 0.8;
       var TITLES = { garde: "Garde alternée", block: "Paré !", renvoi: "Retour à l'envoyeur", startupWin: "Levée de fonds !", startupFail: "Faillite", demasque: "Démasqué·e !", doubleVieBust: "La double vie éclate" };
-      var title = TITLES[it.ev.scene] || (it.ev.t === "status" ? (D.STATUSES[it.ev.s] || {}).label : "") || c.name || "";
-      html = '<div class="qv-scene' + (pub && pub.mode === "adult" ? " adult" : "") + '"><div class="qv-scene-title">' + esc(title) + '</div>' + sc.svg + '<p class="qv-scene-cap">' + sc.caption + (it.extra ? '<em>' + esc(it.extra) + '</em>' : '') + '</p>' + notesLine(it.ev.notes) + '</div>';
+      var title = TITLES[ev.scene] || (ev.t === "status" ? (D.STATUSES[ev.s] || {}).label : "") || c.name || "";
+      html = '<div class="qv-scene' + (pub && pub.mode === "adult" ? " adult" : "") + '"><div class="qv-scene-title">' + esc(title) + '</div>' + sc.svg + '<p class="qv-scene-cap">' + sc.caption + '</p></div>';
       (sc.sfx || []).forEach(function (f) { sceneTimers.push(setTimeout(function () { SND.play(f[1]); }, f[0] * 1000)); });
+      label = it.replay ? "Fermer" : "Voir les conséquences ›";
     }
-    ov.innerHTML = html + '<button class="qv-skip" type="button">' + (it.kind === "scene" ? "Passer ›" : "OK") + '</button><div class="qv-prog"><i style="animation-duration:' + dur + 's"></i></div>';
+    ov.innerHTML = html + '<div class="ov-foot"><button class="qv-skip' + (manual ? " go" : "") + '" type="button" data-ov="next">' + label + '</button>' +
+      (manual ? '<span class="ov-auto" id="ovauto"></span>' : '<div class="qv-prog"><i style="animation-duration:' + dur + 's"></i></div>') + '</div>';
     if (it.sfx) SND.play(it.sfx);
-    ov.onclick = function () { SND.play("tap"); next(); };
-    sceneTimers.push(setTimeout(next, dur * 1000 + 250));
+    if (it.kind === "result") { var good = (ev.notes || []).some(function (n) { return n.p === me.id && n.v > 0; }), badm = (ev.notes || []).some(function (n) { return n.p === me.id && n.v < 0; }); SND.play(badm ? "sad" : good ? "coin" : "ding"); }
+    // un clic sur le fond ne fait plus défiler par erreur : seulement le bouton
+    ov.onclick = function (e) { if (e.target.closest("[data-ov=next]")) { SND.play("tap"); next(); } };
+    if (manual) {
+      var left = auto, el = $("#ovauto");
+      var tick = function () { if (el) el.textContent = "suite automatique dans " + left + " s"; };
+      tick();
+      countT = setInterval(function () { left--; if (left <= 0) { clearInterval(countT); next(); } else tick(); }, 1000);
+    } else sceneTimers.push(setTimeout(next, dur * 1000));
+  }
+  function flashTiles(ids) {
+    setTimeout(function () {
+      ids.forEach(function (id) {
+        var el = id === me.id ? $(".qv-mytile") : $('.qv-opp[data-pid="' + id + '"]');
+        if (el) { el.classList.remove("changed"); void el.offsetWidth; el.classList.add("changed"); }
+      });
+    }, 250);
   }
   function closeScene() { var ov = $("#ov"); if (ov) ov.remove(); }
 
@@ -831,7 +977,7 @@
       else if (l === "disc") { room.opts.discovery = b.dataset.v === "1"; hostBroadcast(); renderLobby(); }
       else if (l === "ok18") { room.adultOk = b.dataset.v === "1"; if (host) { var mine = room.lobby.filter(function (p) { return p.id === me.id; })[0]; if (mine) mine.adultOk = room.adultOk; hostBroadcast(); } else sendHello(); renderLobby(); }
       else if (l === "avatar") { if (me.made) editor(null, {}); else creator(); }
-      else if (l === "leave") { if (!host && room.net) room.net.send("bye", { id: me.id }); store("qv-last", null); history.replaceState(null, "", location.pathname + location.search); home(); }
+      else if (l === "leave") { if (!host && room.net) room.net.send("bye", { id: me.id }); store("qv-last", null); window.history.replaceState(null, "", location.pathname + location.search); home(); }
     };
   }
 
@@ -883,11 +1029,100 @@
     return o.join("");
   }
 
+  // ---------- icônes de vie : la situation d'un joueur en un coup d'œil ----------
+  function lifeIcons(p) {
+    var o = [], mini = function (k, t, n) { return '<span class="li" title="' + esc(t) + '">' + IC.get(k, "li-i") + (n ? '<b>' + n + '</b>' : '') + '</span>'; };
+    if (p.job) o.push(mini("tie", p.title)); else if (p.retired) o.push(mini("hammock", "Retraité·e"));
+    if (p.partner) o.push(mini(p.married ? "rings" : "heart", (p.married ? "Marié·e à " : "En couple avec ") + p.partner.name));
+    if (p.kids.length) o.push(mini("baby", p.kids.length + " enfant(s)", p.kids.length > 1 ? p.kids.length : ""));
+    if (p.housing) o.push(mini(p.housing === 2 ? "house" : "flat", D.HOUSING[p.housing]));
+    (p.items || []).forEach(function (k) { var ic = { car: "car", hamster: "hamster", dog: "dog", toaster: "toaster", tattoo: "heart" }[k]; if (ic && k !== "tattoo") o.push(mini(ic, D.ITEMS[k].name)); });
+    if (p.scandal || Object.keys(p.st || {}).some(function (k) { return D.STATUSES[k] && D.STATUSES[k].bad; })) o.push('<span class="li bad" title="Ennuis en cours">!</span>');
+    return '<span class="lifes">' + o.join("") + '</span>';
+  }
+
+  // ---------- plateau personnel : la vie de chacun, rangée par catégories ----------
+  function boardSheet(id) {
+    var q = pub.players[id]; if (!q) return;
+    var mine = id === me.id, st = q.st || {};
+    var stLabel = function (k) { var d = D.STATUSES[k]; return d ? d.label + (st[k] < 50 ? " (" + st[k] + " tour" + (st[k] > 1 ? "s" : "") + ")" : "") : ""; };
+    var slot = function (icon, title, items, empty) {
+      return '<div class="bd-slot"><div class="bd-h">' + IC.get(icon, "bd-i") + '<b>' + title + '</b></div>' +
+        (items.length ? items.map(function (t) { return '<div class="bd-c">' + t + '</div>'; }).join("") : '<div class="bd-c empty">' + empty + '</div>') + '</div>';
+    };
+    var work = [], rel = [], fam = [], home_ = [], poss = [], trouble = [];
+    if (q.job) work.push('<b>' + esc(q.title) + '</b><small>+' + q.salary + ' € à chaque tour</small>');
+    if (q.retired) work.push('<b>Retraité·e</b>');
+    if (q.diploma) work.push('Diplôme' + (st.fakeDip ? ' <em class="bad">douteux</em>' : ''));
+    if (q.startup) work.push('Start-up : verdict dans ' + q.startup + ' tour(s)');
+    if (st.liar) work.push('<em class="bad">' + esc(stLabel("liar")) + '</em>');
+    if (q.partner) rel.push(A.standalone(A.random(q.partner.seed), { mood: "happy", outfit: q.partner.look || "casual" }, "bd-av", true) + '<b>' + esc(q.partner.name) + '</b><small>' + (q.married ? "Marié·e" : "En couple") + '</small>');
+    ["ex", "doublevie", "sugar"].forEach(function (k) { if (st[k]) rel.push('<em class="bad">' + esc(stLabel(k)) + '</em>'); });
+    q.kids.forEach(function (k) { fam.push(A.standalone(A.random(k.seed, q.avatar), { kid: true, mood: "happy" }, "bd-av", true) + '<b>' + esc(k.name) + '</b>'); });
+    if (q.garde) fam.push('<small>Garde alternée' + (q.kidsAway ? " : chez l'autre parent cette semaine" : "") + '</small>');
+    if (st.babyinf) fam.push('<em>' + esc(stLabel("babyinf")) + '</em>');
+    home_.push('<b>' + esc(D.HOUSING[q.housing]) + '</b>');
+    ["squat", "proces"].forEach(function (k) { if (st[k]) home_.push('<em class="bad">' + esc(stLabel(k)) + '</em>'); });
+    (q.items || []).forEach(function (k) { poss.push(esc(D.ITEMS[k].name) + (D.ITEMS[k].income ? ' <small>+1 € par tour</small>' : '')); });
+    if (q.scandal) trouble.push('<em class="bad">Scandale (' + q.scandal + ' tour' + (q.scandal > 1 ? "s" : "") + ')</em>');
+    if (st.fame) trouble.push('<em>' + esc(stLabel("fame")) + '</em>');
+    if (q.strike) trouble.push('<em class="bad">Pas de salaire au prochain tour</em>');
+    if (q.rebound) trouble.push('<em class="good">Rebond : 2 cartes au prochain tour</em>');
+    var perm = function (k) { var c = card(k); return c && (c.fx || []).some(function (f) { return ["job", "diploma", "partner", "marry", "kid", "housing", "item", "status", "vegas", "startup"].indexOf(f.op) >= 0; }); };
+    var played = (q.log || []).slice().reverse().map(function (l) {
+      var c = card(l.k); if (!c) return "";
+      var tag = l.out === "defend" ? "parade" : l.out === "blocked" ? "contré" : l.to ? "contre " + (l.to === me.id ? "toi" : nameOf(l.to)) : perm(l.k) ? "effet durable" : "effet terminé";
+      return '<span class="bd-pl fam-' + c.fam + '"><i>T' + l.r + '</i>' + esc(c.name) + '<small>' + esc(tag) + '</small></span>';
+    }).join("");
+    var got = (q.got || []).slice().reverse().map(function (l) {
+      var c = card(l.k); if (!c) return "";
+      return '<span class="bd-pl fam-' + c.fam + '"><i>T' + l.r + '</i>' + esc(c.name) + '<small>de ' + esc(l.from === me.id ? "toi" : nameOf(l.from)) + (l.out === "soft" ? " (limité)" : "") + '</small></span>';
+    }).join("");
+    sheet('<div class="qv-board">' +
+      '<div class="bd-top">' + W.tile(q) + '</div>' +
+      '<h3>' + esc(mine ? "Mon plateau" : "Le plateau de " + q.name) + '</h3><div class="qv-res-line">' + resRow(q, true) + '</div>' +
+      '<div class="bd-grid">' + slot("tie", "Travail", work, "Sans emploi") + slot("heart", "Relations", rel, "Célibataire") + slot("baby", "Famille", fam, "Pas d'enfant") + slot("house", "Logement", home_, "") + slot("car", "Possessions", poss, "Rien pour l'instant") + (trouble.length ? slot("lightning", "En cours", trouble, "") : "") + '</div>' +
+      (!mine ? '<p class="bd-hand">' + q.handCount + ' carte(s) en main — secrètes</p>' : '') +
+      '<h4>Cartes jouées (publiques)</h4><div class="bd-played">' + (played || '<small>Aucune pour l\'instant</small>') + '</div>' +
+      (got ? '<h4>Coups reçus</h4><div class="bd-played">' + got + '</div>' : '') +
+      '<details><summary>Sa vie, âge par âge</summary><ol class="qv-life">' + q.life.slice().reverse().map(function (l) { return '<li class="t-' + l.tone + '"><b>' + l.age + ' ans</b> ' + esc(l.text) + '</li>'; }).join("") + '</ol></details>' +
+      '</div><button class="qv-btn ghost sm" data-g="close">Fermer</button>');
+  }
+
+  // ---------- journal des événements ----------
+  function journalLine(ev) {
+    var c = card(ev.k) || {}, who = function (id) { return id === me.id ? "Toi" : nameOf(id); };
+    if (ev.t === "season") { var e = D.EVENTS.filter(function (x) { return x.key === ev.k; })[0]; return "Événement : " + (e ? e.name : ""); }
+    if (ev.t === "status") return ev.text;
+    if (ev.t === "attack") return who(ev.p) + " attaque " + who(ev.to) + " avec « " + c.name + " »";
+    if (ev.t === "block") return who(ev.p) + " contre avec « " + c.name + " »";
+    if (ev.outcome === "soft") return who(ev.to) + " limite les dégâts de « " + c.name + " »";
+    var ch = (ev.changes || []).map(function (x) { return who(x.p) + " : " + x.t.join(", ").toLowerCase(); }).join(" · ");
+    if (ev.to) return who(ev.p) + " → " + who(ev.to) + " : « " + c.name + " »" + (ch ? " — " + ch : "");
+    return who(ev.p) + " joue « " + c.name + " »" + (ch ? " — " + ch : "");
+  }
+  function journalSheet() {
+    var rows = "", lastR = null;
+    hist.filter(function (e) { return e.t !== "attack"; }).forEach(function (ev) {
+      if (ev.round !== lastR) { rows += '<h4 class="jr-r">Tour ' + ev.round + '</h4>'; lastR = ev.round; }
+      var c = card(ev.k);
+      rows += '<button class="jr-e fam-' + (c ? c.fam : "world") + '" data-g="jev" data-id="' + ev.id + '"><span>' + esc(journalLine(ev)) + '</span><i>›</i></button>';
+    });
+    sheet('<h3>Journal de la partie</h3>' + (rows || '<p class="qv-tip">Rien pour l\'instant.</p>') + '<button class="qv-btn ghost sm" data-g="close">Fermer</button>');
+  }
+  function journalDetail(id) {
+    var ev = hist.filter(function (x) { return x.id === id; })[0]; if (!ev) return;
+    sheet('<p class="rs-h">' + esc(headline(ev)) + '</p>' + (card(ev.k) ? cardHTML(ev.k, { big: true, mine: ev.p === me.id }) : '') +
+      '<p class="rs-sub">Ce qui a changé</p>' + impactHTML(ev) +
+      (ev.scene ? '<button class="qv-btn alt" data-g="replay" data-id="' + ev.id + '">Revoir la scène</button>' : '') +
+      '<button class="qv-btn ghost sm" data-g="journal">Retour au journal</button>');
+  }
+
   function renderGame() {
     if (!pub || !room) return;
     if (screen !== "game") {
       show("game", '<div class="qv-game">' +
-        '<header class="qv-top"><div class="qv-top-l">' + logo(true) + '<span id="g-age"></span></div><div class="qv-top-r"><button class="ib" data-g="sound" aria-label="Son"></button><button class="ib" data-g="menu" aria-label="Menu">☰</button></div></header>' +
+        '<header class="qv-top"><div class="qv-top-l">' + logo(true) + '<span id="g-age"></span></div><div class="qv-top-r"><button class="ib jr" data-g="journal" aria-label="Journal de la partie">Journal</button><button class="ib" data-g="sound" aria-label="Son"></button><button class="ib" data-g="menu" aria-label="Menu">☰</button></div></header>' +
         '<section class="qv-opps" id="opps"></section>' +
         '<section class="qv-me" id="mezone"></section>' +
         '<div class="qv-status" id="status"></div>' +
@@ -905,7 +1140,7 @@
       var q = pub.players[id], turn = pub.order[pub.turn] === id, tgt = pub.pending && pub.pending.to === id;
       return '<button class="qv-opp' + (turn ? " turn" : "") + (tgt ? " tgt" : "") + (q.bot || present(id) ? "" : " off") + '" data-pid="' + id + '" data-g="who">' +
         W.tile(q) +
-        '<span class="nm">' + esc(q.name) + (q.bot ? ' <i>bot</i>' : '') + '</span>' +
+        '<span class="nm">' + esc(q.name) + (q.bot ? ' <i>bot</i>' : '') + '</span>' + lifeIcons(q) +
         '<span class="rs">' + resRow(q) + '<span class="hc">' + q.handCount + '</span></span>' +
         '</button>';
     }).join("");
@@ -915,13 +1150,13 @@
         '<div class="qv-mytile' + (isMyTurn() ? " turn" : "") + '" data-pid="' + me.id + '">' + W.tile(p) + '<span class="who">' + esc(p.name) + ' · ' + esc(p.title) + '</span></div>' +
         '<div class="qv-mystats"><div class="qv-myres" id="me-res">' + resRow(p, true) + '</div>' +
         '<div class="qv-chips">' + statusChips(p) + '</div>' +
-        '<div class="qv-row2">' + (!pub.discovery || pub.stage >= 3 ? '<button class="qv-btn ghost sm" data-g="obj">Mes objectifs secrets</button>' : '') + '<button class="qv-btn ghost sm" data-g="life">Ma vie</button></div></div>';
+        '<div class="qv-row2">' + (!pub.discovery || pub.stage >= 3 ? '<button class="qv-btn ghost sm" data-g="obj">Mes objectifs secrets</button>' : '') + '<button class="qv-btn ghost sm" data-g="life">Mon plateau</button></div></div>';
     } else {
       $("#mezone").innerHTML = '<p class="qv-note">Tu regardes la partie en spectateur.</p>';
     }
     renderStatus();
     renderHand();
-    $("#log").innerHTML = '<h3>Journal</h3>' + logLines.slice(0, 12).map(function (l) { return '<p class="lg-' + l.t + '">' + esc(l.text) + '</p>'; }).join("");
+    $("#log").innerHTML = '<h3>Journal</h3>' + hist.filter(function (e) { return e.t !== "attack"; }).slice(0, 14).map(function (ev) { return '<button class="jr-e mini" data-g="jev" data-id="' + ev.id + '"><span><i>T' + ev.round + '</i> ' + esc(journalLine(ev)) + '</span></button>'; }).join("");
     maybeReact();
     coachHand();
     if (pub.discovery && !seen.intro && !introOpen && pub.phase !== "end") intro(false);
@@ -932,7 +1167,7 @@
   // ---------- premier tour guidé ----------
   function guideFirst() { return !!(pub && pub.discovery && pub.round === 1 && isMyTurn() && !seen.guide1 && priv && priv.hand.length && !introOpen); }
   function updateHint() {
-    if (!guideFirst() || ($("#sheet") && !$("#sheet").hidden)) { hideHint(); return; }
+    if (!guideFirst() || ($("#sheet") && !$("#sheet").hidden) || $("#ov") || queue.length || playing) { hideHint(); return; }
     var el = $("#hint");
     if (!el) { el = document.createElement("div"); el.id = "hint"; el.className = "qv-hint"; document.body.appendChild(el); }
     el.innerHTML = '<b>Touche ta carte</b><span>pour voir ce qu\'elle fait</span><i></i>';
@@ -1026,6 +1261,10 @@
     } else if (cur) {
       o = esc(cur.name) + (cur.bot ? " réfléchit…" : " joue…") + (!cur.bot && !present(cur.id) ? " (déconnecté·e : pilote automatique bientôt)" : "");
     }
+    if (pub.gate && !(pub.phase === "react" && pub.pending)) {
+      var waitFor = pub.order.filter(function (id) { var q = pub.players[id]; return !q.bot && !pub.gate.ready[id] && (id === me.id || present(id)); }).map(function (id) { return id === me.id ? "toi" : nameOf(id); });
+      o = waitFor.length ? "On attend que tout le monde ait vu la scène : " + esc(waitFor.join(", ")) + "…" : "Tout le monde a vu, on continue…";
+    }
     if (room && !room.host && room.hostId && !present(room.hostId) && room.roster.length) o = "L'hôte est déconnecté·e. La partie reprendra à son retour.";
     st.innerHTML = o;
     st.className = "qv-status" + (isMyTurn() ? " mine" : "");
@@ -1054,7 +1293,7 @@
   function openCard(u) {
     var c = priv.hand.filter(function (x) { return x.u === u; })[0]; if (!c) return;
     sel = u;
-    var def = card(c.k), mine = isMyTurn(), why = mine ? E.canPlay(pub, me.id, c.k) : "";
+    var def = card(c.k), mine = isMyTurn(), why = mine ? (pub.gate ? "Attends que tout le monde ait vu la scène" : E.canPlay(pub, me.id, c.k)) : "";
     var o = cardHTML(c.k, { big: true, reason: why && !(def.reaction && !def.alsoPlay) ? why : "" });
     if (def.reaction) o += '<p class="qv-tip">' + (def.alsoPlay ? "Joue-la maintenant, ou garde-la pour contrer une attaque." : "Garde-la : quand quelqu\'un t\'attaque avec la bonne carte, un bouton te proposera de l\'utiliser.") + '</p>';
     if (def.target === "opponent") coachMech("target", "Cartes de coup bas", "Elles visent un adversaire : après « Jouer », choisis qui. Il pourra peut-être se défendre.");
@@ -1119,11 +1358,13 @@
         '<button class="qv-btn ghost sm" data-g="close">Fermer</button>');
       return;
     }
-    if (g === "life" || g === "who") {
-      var id = g === "life" ? me.id : b.dataset.pid, q = pub.players[id];
-      sheet('<div class="qv-who">' + W.tile(q) + '<h3>' + esc(q.name) + '</h3><div class="qv-res-line">' + resRow(q, true) + '</div><div class="qv-chips">' + statusChips(q) + '</div>' +
-        '<h4>Sa vie</h4><ol class="qv-life">' + q.life.slice().reverse().map(function (l) { return '<li class="t-' + l.tone + '"><b>' + l.age + ' ans</b> ' + esc(l.text) + '</li>'; }).join("") + '</ol></div>' +
-        '<button class="qv-btn ghost sm" data-g="close">Fermer</button>');
+    if (g === "life" || g === "who") { boardSheet(g === "life" ? me.id : b.dataset.pid); return; }
+    if (g === "journal") { journalSheet(); return; }
+    if (g === "jev") { journalDetail(+b.dataset.id); return; }
+    if (g === "replay") {
+      var rev = hist.filter(function (x) { return x.id === +b.dataset.id; })[0];
+      closeSheet();
+      if (rev && rev.scene) { queue.push({ kind: "scene", ev: rev, replay: true }); if (!playing) next(); }
       return;
     }
     if (g === "menu") {
@@ -1135,7 +1376,7 @@
     }
     if (g === "rules") { closeSheet(); rules(); return; }
     if (g === "invite") { var link = location.origin + location.pathname + "#" + room.code; if (navigator.clipboard) navigator.clipboard.writeText(link).then(function () { toast("Lien copié"); }); closeSheet(); return; }
-    if (g === "quit") { closeSheet(); if (room && room.solo) store("qv-last", null); history.replaceState(null, "", location.pathname + location.search); home(); return; }
+    if (g === "quit") { closeSheet(); if (room && room.solo) store("qv-last", null); window.history.replaceState(null, "", location.pathname + location.search); home(); return; }
   }
 
   // ======================================================================
@@ -1165,7 +1406,7 @@
       var b = e.target.closest("[data-e]"); if (!b) return;
       SND.play("tap");
       if (b.dataset.e === "again") { logLines = []; lastEv = 0; G = null; pub = null; screen = ""; hostStart(); }
-      else { store("qv-last", null); history.replaceState(null, "", location.pathname + location.search); home(); }
+      else { store("qv-last", null); window.history.replaceState(null, "", location.pathname + location.search); home(); }
     };
   }
 

@@ -448,5 +448,40 @@
       return mk(o, 3.6, vs.length ? "Le karma infidèle foudroie " + vs.map(function (id) { return nm(P(st, id)); }).join(", ") + ". Les autres font semblant d'être surpris." : "Le karma infidèle ne trouve personne à punir. Suspect.", [[0.8, "slam"], [1.0, "crowd"]]);
     },
   };
+  // ---------- moments de vie sans scène dédiée : on montre le personnage dans sa nouvelle vie ----------
+  N.vie = function (ev, st) {
+    var T = P(st, ev.p), ch_ = (ev.changes || []).filter(function (c) { return c.p === ev.p; })[0], what = ch_ ? ch_.t[0] : "", o = "";
+    var ITEM_ICON = { "Voiture de sport": "car", "Hamster (Monsieur Croquette)": "hamster", "Chien héritier (Lord Biscotte)": "dog", "Grille-pain": "toaster" };
+    if (/métier|Promotion|Change de métier/.test(what)) {
+      o = BG.office() + '<rect x="230" y="40" width="110" height="34" rx="6" fill="#ffd23f"' + S + '/>' + txt(285, 63, "BIENVENUE !", 14);
+      o += ch(RA(ev.id * 3 + 11), { mood: "happy", outfit: "office", pose: "clap" }, 300, 214, 0.46) + ch(RA(ev.id * 5 + 13), { mood: "neutral", outfit: "office", pose: "clap" }, 250, 214, 0.44);
+      o += '<g' + mv(-220, 0, 0, 0, 1.6, 0.2, "ease-out") + '><g class="qv-walk">' + ch(T.avatar, { mood: "smug", outfit: outfit(T), pose: "wave" }, 140, 214, 0.62) + '</g></g>';
+      o += bubble(140, 40, T.title || "Nouveau job !", 1.8, "#fff");
+      return mk(o, 3.8, nm(T) + " commence son nouveau travail : " + esc(T.title || "") + ". Premier jour, premier café renversé.", [[0.3, "whoosh"], [1.8, "clap"], [2.4, "clap"]]);
+    }
+    if (/Emménage/.test(what)) {
+      o = W.tile(T).replace('<svg class="qv-tile"', '<svg x="0" y="0" width="360" height="240" class="qv-tile"');
+      o += K.confetti(16, 40, 320, 0.6, 2.4, 3) + bubble(180, 30, "Nouvelle adresse !", 0.5, "#ffd23f");
+      return mk(o, 3.6, nm(T) + " emménage : " + esc(what.replace("Emménage : ", "")) + ". Les cartons resteront fermés trois ans.", [[0.4, "fanfare"]]);
+    }
+    if (/couple|Marié/.test(what)) {
+      var Pa = T.partner ? A.random(T.partner.seed) : RA(9);
+      o = BG.street() + '<g' + mv(-160, 0, 0, 0, 1.2, 0.2) + '>' + ch(T.avatar, { mood: "love", outfit: outfit(T) }, 150, 214, 0.6) + '</g>';
+      o += '<g' + mv(160, 0, 0, 0, 1.2, 0.2) + '>' + ch(Pa, { mood: "love", outfit: T.partner && T.partner.look || "casual" }, 215, 214, 0.58) + '</g>';
+      o += rain("heart", 12, 1.3, 100, 280) + bubble(182, 40, T.partner ? T.partner.name + " ♥ " + T.name : "♥", 1.4, "#ffd23f");
+      return mk(o, 3.8, nm(T) + " et " + esc(T.partner ? T.partner.name : "") + " : c'est le début d'une belle histoire. Ou d'une histoire, en tout cas.", [[0.3, "whoosh"], [1.3, "ding"]]);
+    }
+    if (/Gagne/.test(what)) {
+      var k = ITEM_ICON[what.replace("Gagne : ", "")] || "chest";
+      o = BG.street() + ch(T.avatar, { mood: "happy", outfit: outfit(T), pose: "up" }, 140, 214, 0.62) + ico(k, 210, 120, 90, 0.6) + K.confetti(12, 180, 320, 0.8, 2.2, 5);
+      return mk(o, 3.4, nm(T) + " s'offre : " + esc(what.replace("Gagne : ", "")) + ". Tout le quartier est au courant.", [[0.6, "pop"], [0.9, "fanfare"]]);
+    }
+    if (/Diplômé/.test(what)) {
+      o = BG.street() + ch(T.avatar, { mood: "happy", outfit: outfit(T), pose: "up" }, 170, 214, 0.62) + ico("cap", 150, 20, 60, 0.5) + K.confetti(20, 60, 300, 0.8, 2.4, 8);
+      return mk(o, 3.4, nm(T) + " décroche son diplôme. Le jury a ri à la bonne blague.", [[0.5, "fanfare"]]);
+    }
+    o = W.tile(T).replace('<svg class="qv-tile"', '<svg x="0" y="0" width="360" height="240" class="qv-tile"') + K.confetti(10, 40, 320, 0.4, 2.2, 4);
+    return mk(o, 3, nm(T) + " : " + esc(what || "la vie continue") + ".", [[0.3, "ding"]]);
+  };
   Object.keys(N).forEach(function (k) { W.SCENES[k] = N[k]; });
 })(window);
