@@ -846,3 +846,64 @@ body.reduce .qv-hc, body.reduce .qv-hc .qv-card, body.reduce .ctr, body.reduce .
 
 .qv-toast { bottom: auto; top: calc(48px + env(safe-area-inset-top)); transform: translate(-50%, -160%); }
 .qv-toast.on { transform: translate(-50%, 0); }
+
+/* =========================================================================
+   Aucune superposition : chaque élément a sa place
+   ========================================================================= */
+.qv-game { grid-template-rows: auto auto minmax(0, 1fr) auto auto; grid-template-areas: "top" "opps" "me" "mebar" "hand"; }
+/* ligne d'état / messages dans la barre du haut */
+.top-mid { position: relative; min-height: 32px; justify-content: center; }
+.ticker { display: none; font-size: 12.5px; font-weight: 700; line-height: 1.2; overflow: hidden; display: none; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.top-mid.msg #g-age, .top-mid.msg .qv-status { display: none; }
+.top-mid.msg .ticker { display: -webkit-box; }
+.ticker.in { animation: tk-in .3s ease-out; }
+@keyframes tk-in { from { opacity: 0; transform: translateY(6px); } }
+.ticker.turn b { color: var(--coral); font-size: 15px; }
+.ticker.new b, .ticker.pin b { color: var(--coral); }
+.ticker.unlock { color: #127a3f; }
+.tk-ico svg { width: 16px; height: 16px; display: inline-block; vertical-align: -3px; margin-right: 3px; }
+/* barre perso : sous la scène, plus rien ne recouvre le personnage */
+.qv-mebar { grid-area: mebar; display: flex; align-items: center; gap: 6px; padding: 4px 8px; padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); background: #fff; border-top: 2px solid var(--ink); min-height: 46px; }
+.mb-id { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; flex: 0 1 auto; max-width: 96px; border: 0; background: none; padding: 0; text-align: left; }
+.mb-id b { font-family: var(--display); font-size: 15px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mb-id small { font-size: 10.5px; font-weight: 800; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mb-id .my-turn { margin-bottom: 1px; }
+.qv-mebar .stg-ctrs { position: static; flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; min-width: 0; }
+.qv-mebar .ctr { min-height: 36px; padding: 2px 5px 2px 3px; gap: 3px; border-width: 2px; border-radius: 10px; box-shadow: 0 2px 0 var(--ink); min-width: 0; }
+.qv-mebar .ctr-i { width: 18px; height: 18px; }
+.qv-mebar .ctr-v { font-size: 17px; }
+.qv-mebar .ctr-n { font-size: 8.5px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mb-b { flex: none; width: 36px; height: 36px; border: 2px solid var(--ink); border-radius: 10px; background: #fff; display: grid; place-items: center; box-shadow: 0 2px 0 var(--ink); }
+.mb-i { width: 20px; height: 20px; }
+.qv-stage .who, .qv-stage .stg-ctrs, .qv-stage .stg-btns { display: none; }
+/* vignettes adverses : pas de bulle qui déborde sur la scène, juste un éclat */
+.qv-opp.changed .op-spot, .qv-opp.spot .op-spot { display: none; }
+.qv-opp.changed { animation: opp-flash 1s ease-out; }
+@keyframes opp-flash { 30% { box-shadow: 0 0 0 4px var(--sun), 0 2px 0 var(--ink); transform: scale(1.06); } }
+/* carte touchée : elle s'ouvre DANS la zone de la main, la scène se réduit d'autant */
+.qv-hand { height: auto; min-height: calc(104px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+.qv-hand .qv-fan { position: relative; inset: auto; height: 104px !important; flex: none; }
+.qv-hand .pile { top: auto; bottom: calc(52px + env(safe-area-inset-bottom)); transform: translateY(50%); }
+.qv-hand.open .pile { bottom: calc(52px + env(safe-area-inset-bottom)); }
+.qv-focus { position: static; transform: none; left: auto; bottom: auto; width: 100%; flex-direction: row; align-items: stretch; justify-content: center; gap: 8px; padding: 8px 10px 2px; animation: focus-row .2s ease-out; }
+@keyframes focus-row { from { opacity: 0; transform: translateY(20px); } }
+.qv-focus .fc-card .qv-card { width: 128px; height: 192px; }
+.qv-focus .fc-card .qc-name { font-size: 15px; }
+.qv-focus .fc-card .qc-art { height: 44px; } .qv-focus .fc-card .qc-art .qv-ico { width: 42px; height: 42px; }
+.qv-focus .fc-card .qc-txt { font-size: 11px; }
+.qv-focus .act-bar { flex: 1; max-width: 220px; justify-content: center; }
+.qv-focus .act-row { flex-direction: column; }
+.qv-focus .act-row .qv-btn { width: 100%; }
+@media (max-height: 700px) {
+  .qv-hand .qv-fan { height: 92px !important; }
+  .qv-focus .fc-card .qv-card { width: 112px; height: 168px; }
+  .qv-mebar { min-height: 42px; }
+}
+@media (min-width: 980px) {
+  .qv-game { grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-areas: "top top top" "opps me log" "opps mebar log" "opps hand log"; }
+  .qv-hand .qv-fan { height: 150px !important; }
+}
+.qv-mebar .ctr-n { text-transform: none; letter-spacing: 0; font-size: 10px; font-weight: 800; overflow: visible; text-overflow: clip; }
+.qv-mebar .ctr-txt { min-width: 0; }
+.qv-mebar .ctr { padding-right: 4px; }
+@media (max-width: 380px) { .qv-mebar .ctr-n { font-size: 9px; } .qv-mebar .ctr-i { width: 16px; height: 16px; } .mb-id { max-width: 78px; } }

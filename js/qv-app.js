@@ -798,14 +798,32 @@
   }
   function coachMech(key, title, text) { coach("m:" + key, title, text, null); }
   function nextCoach() {
-    var c = coachQ.shift(), el = $("#coach");
-    if (!c) { coachOn = false; if (el) el.remove(); return; }
+    var c = coachQ.shift();
+    if (!c) { coachOn = false; return; }
     coachOn = true; markSeen(c.key);
-    if (!el) { el = document.createElement("div"); el.id = "coach"; el.className = "qv-coach"; document.body.appendChild(el); }
-    el.innerHTML = (c.icon ? '<div class="cc-ico">' + IC.get(c.icon) + '</div>' : '<div class="cc-ico cc-bang">!</div>') + '<div><b>Nouveau : ' + esc(c.title) + '</b><span>' + esc(c.text) + '</span></div>';
-    el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
-    el.onclick = function () { clearTimeout(el._t); nextCoach(); };
-    clearTimeout(el._t); el._t = setTimeout(nextCoach, 6500);
+    notify('<b>Nouveau : ' + esc(c.title) + '</b> ' + esc(c.text), "new", 6500, true);
+    setTimeout(nextCoach, 6600);
+  }
+  // messages : ils remplacent un instant la ligne d'état en haut, sans rien recouvrir
+  var tickQ = [], tickOn = false, tickPin = "";
+  function notify(html, kind, ms, isHtml) {
+    if (screen !== "game" || !$("#ticker")) { var tmp = document.createElement("div"); tmp.innerHTML = html; floatToast(isHtml ? tmp.textContent : html); return; }
+    tickQ.push({ h: isHtml ? html : esc(html), k: kind || "", ms: ms || 2600 });
+    if (!tickOn) nextTick();
+  }
+  function nextTick() {
+    var el = $("#ticker"), top = el && el.parentNode;
+    var m = tickQ.shift();
+    if (!m || !el) { tickOn = false; if (top) { if (tickPin) { el.innerHTML = tickPin; el.className = "ticker pin"; top.classList.add("msg"); } else top.classList.remove("msg"); } return; }
+    tickOn = true;
+    el.innerHTML = m.h; el.className = "ticker " + m.k;
+    top.classList.add("msg"); el.classList.remove("in"); void el.offsetWidth; el.classList.add("in");
+    setTimeout(nextTick, m.ms);
+  }
+  function pinTick(html) {
+    tickPin = html || "";
+    var el = $("#ticker"); if (!el || tickOn) return;
+    if (tickPin) { el.innerHTML = tickPin; el.className = "ticker pin"; el.parentNode.classList.add("msg"); } else el.parentNode.classList.remove("msg");
   }
   function coachHand() {
     if (!priv || !pub || !pub.discovery) return;
@@ -816,13 +834,7 @@
     if (p.rebound) coachMech("rebound", "Rebond", "Après une catastrophe encaissée, tu joues 2 cartes au prochain tour. On se relève toujours !");
   }
   var pillT = null;
-  function turnPill(t, sub) {
-    var el = $("#pill");
-    if (!el) { el = document.createElement("div"); el.id = "pill"; el.className = "qv-pill"; document.body.appendChild(el); }
-    el.innerHTML = '<b>' + esc(t) + '</b>' + (sub ? '<span>' + esc(sub) + '</span>' : '');
-    el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
-    clearTimeout(pillT); pillT = setTimeout(function () { el.classList.remove("on"); }, 2600);
-  }
+  function turnPill(t, sub) { notify('<b>' + esc(t) + '</b>' + (sub ? ' ' + esc(sub) : ''), "turn", 2400, true); }
   var logLines = [];
   function addLog(ev) { logLines.unshift({ id: ev.id, text: ev.text, t: ev.t }); if (logLines.length > 30) logLines.pop(); }
 
@@ -1173,13 +1185,14 @@
     if (!pub || !room) return;
     if (screen !== "game") {
       show("game", '<div class="qv-game">' +
-        '<header class="qv-top"><span class="qv-mini-logo" aria-label="Quelle vie !">QV<b>!</b></span><span class="top-mid"><span id="g-age"></span><span class="qv-status" id="status"></span></span>' +
+        '<header class="qv-top"><span class="qv-mini-logo" aria-label="Quelle vie !">QV<b>!</b></span><span class="top-mid"><span id="g-age"></span><span class="qv-status" id="status"></span><span class="ticker" id="ticker" aria-live="polite"></span></span>' +
         '<button class="ib" data-g="journal" aria-label="Journal de la partie"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3 h10 a2 2 0 0 1 2 2 v12 H6 a2 2 0 0 1 -2 -2z" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M7 7 h6 M7 10 h6 M7 13 h4" stroke="currentColor" stroke-width="1.8"/></svg></button>' +
         '<button class="ib" data-g="menu" aria-label="Menu">☰</button></header>' +
         '<section class="qv-opps" id="opps"></section>' +
         '<section class="qv-stage" id="mezone"></section>' +
+        '<section class="qv-mebar" id="mebar"></section>' +
         '<section class="qv-hand" id="hand"></section>' +
-        '<div id="focus" class="qv-focus" hidden></div>' +
+
         '<aside class="qv-log" id="log"></aside>' +
         '<div id="sheet" class="qv-sheet" hidden></div>' +
         '</div>');
@@ -1197,11 +1210,12 @@
       var react = Date.now() < reactUntil;
       mz.innerHTML =
         '<div class="qv-mytile' + (isMyTurn() ? " turn" : "") + (react ? " react-" + reactMood : "") + '" data-pid="' + me.id + '">' + stageTile(p, react ? { mood: reactMood } : {}) +
+        '</div>';
+      $("#mebar").innerHTML = '<button class="mb-id" data-g="life" aria-label="Ma vie">' + (isMyTurn() ? '<i class="my-turn">À toi</i>' : '') + '<b>' + esc(p.name) + '</b><small>' + esc(p.title) + '</small></button>' +
         ctrHTML() +
-        '<div class="stg-btns"><button class="stg-b" data-g="life">Ma vie</button>' + (!pub.discovery || pub.stage >= 3 ? '<button class="stg-b" data-g="obj">Objectifs</button>' : '') + '</div>' +
-        '<span class="who">' + (isMyTurn() ? '<i class="my-turn">À toi</i>' : '') + '<b>' + esc(p.name) + '</b> · ' + esc(p.title) + '</span></div>';
+        (!pub.discovery || pub.stage >= 3 ? '<button class="mb-b" data-g="obj" aria-label="Mes objectifs secrets">' + IC.get("star", "mb-i") + '</button>' : '');
     } else {
-      mz.innerHTML = '<p class="qv-note">Tu regardes la partie en spectateur.</p>';
+      mz.innerHTML = '<p class="qv-note">Tu regardes la partie en spectateur.</p>'; $("#mebar").innerHTML = "";
     }
     renderStatus();
     renderHand();
@@ -1236,11 +1250,9 @@
   function guideFirst() { return !!(pub && pub.discovery && pub.round === 1 && isMyTurn() && !seen.guide1 && priv && priv.hand.length && !introOpen); }
   function updateHint() {
     if (!guideFirst() || sel || ($("#sheet") && !$("#sheet").hidden) || $("#ov") || queue.length || playing) { hideHint(); return; }
-    var el = $("#hint");
-    if (!el) { el = document.createElement("div"); el.id = "hint"; el.className = "qv-hint"; document.body.appendChild(el); }
-    el.innerHTML = '<b>Touche ta carte</b><span>pour voir ce qu\'elle fait</span><i></i>';
+    pinTick('<b>Touche ta carte</b> en bas pour voir ce qu\'elle fait');
   }
-  function hideHint() { var el = $("#hint"); if (el) el.remove(); }
+  function hideHint() { if (tickPin) pinTick(""); }
   // ---------- le personnage change : on le montre ----------
   var lastLook = null;
   function lookCheck() {
@@ -1510,8 +1522,8 @@
 
   // ---------- main compacte en éventail, carte touchée agrandie au premier plan ----------
   function renderHand(incoming) {
-    var h = $("#hand"), fc = $("#focus"); if (!h || !pub) return;
-    if (!priv || !pub.players[me.id]) { h.innerHTML = ""; if (fc) fc.hidden = true; return; }
+    var h = $("#hand"); if (!h || !pub) return;
+    if (!priv || !pub.players[me.id]) { h.innerHTML = ""; return; }
     var vp = viewPub(), mine = isMyTurn(), desk = innerWidth >= 980;
     var hand = priv.hand.filter(function (c) { return dealt[c.u]; });
     if (sel && !hand.some(function (c) { return c.u === sel; })) sel = null;
@@ -1527,15 +1539,17 @@
       return '<button class="qv-hc' + (sel === c.u ? " sel" : "") + (incoming === c.u ? " incoming" : "") + '" data-g="card" data-u="' + c.u + '" style="left:' + (x0 + i * gap).toFixed(0) + 'px;--rot:' + rot.toFixed(1) + 'deg;--lift:' + lift.toFixed(0) + 'px;--sc:' + sc + ';z-index:' + (i + 1) + '" aria-label="' + esc(def.name) + (why && !react ? " (verrouillée : " + esc(why) + ")" : "") + '">' +
         cardHTML(c.k, { dim: !!why && !react, reason: why && !react ? why : "", pulse: guideFirst() && !sel }) + (!seen[c.k] && pub.discovery ? '<i class="hc-new">Nouveau</i>' : '') + '</button>';
     }).join("");
+    var focusHTML = "";
     h.innerHTML = '<span class="pile" id="deckpile" title="Pioche"><i class="back"></i><b>' + pub.deck + '</b></span>' +
       '<div class="qv-fan">' + cards + '</div>' +
       '<span class="pile disc" title="Défausse">' + (pub.discardTop ? '<i class="face fam-' + card(pub.discardTop).fam + '">' + IC.get(card(pub.discardTop).icon) + '</i>' : '<i class="empty"></i>') + '<b>' + pub.discard + '</b></span>' +
-      (mine && !sel && n && guideFirst() ? '<span class="hand-tip">Touche ta carte !</span>' : '');
+      '';
     // carte agrandie + actions (la main reste compacte, le personnage reste visible au-dessus)
     var s = sel && hand.filter(function (c) { return c.u === sel; })[0];
-    if (fc) {
-      if (!s) { fc.hidden = true; fc.innerHTML = ""; }
-      else {
+    h.classList.toggle("open", !!s);
+    if (s) {
+      var fc = document.createElement("div"); fc.id = "focus"; fc.className = "qv-focus"; h.insertBefore(fc, h.firstChild);
+      {
         var def2 = card(s.k), why2 = mine ? (pub.gate ? "Attends que tout le monde ait vu la scène" : E.canPlay(vp, me.id, s.k)) : "Ce n'est pas ton tour";
         var react2 = def2.reaction && !def2.alsoPlay;
         fc.innerHTML = '<div class="fc-card">' + cardHTML(s.k, { reason: why2 && !react2 && mine ? why2 : "" }) + '</div>' +
@@ -1545,9 +1559,9 @@
           '<div class="act-row"><button class="qv-btn ghost sm" data-g="details" data-u="' + s.u + '">Détails</button>' +
           (mine && !pub.gate ? '<button class="qv-btn ghost sm" data-g="rest" data-u="' + s.u + '" title="Défausser cette carte : +1 Bonheur">Défausser +1' + IC.get("b", "qv-ri") + '</button>' : '') +
           '<button class="qv-btn ghost sm" data-g="unsel" aria-label="Refermer">✕</button></div></div>';
-        fc.hidden = false;
       }
-    }
+      requestAnimationFrame(fitStage);
+    } else requestAnimationFrame(fitStage);
     unlocked.forEach(function (c) {
       var el = $('.qv-hc[data-u="' + c.u + '"]'); if (el) el.classList.add("unlocked");
       unlockToast(c.k);
@@ -1562,13 +1576,12 @@
     else if (r.partner) txt = "Maintenant que tu es en couple, « " + c.name + " » est jouable !";
     else txt = "« " + c.name + " » est maintenant jouable !";
     SND.play("unlock");
-    var el = document.createElement("div"); el.className = "qv-unlock"; el.innerHTML = '<i>' + LOCK_OPEN + '</i><span>' + esc(txt) + '</span>';
-    document.body.appendChild(el); setTimeout(function () { el.classList.add("out"); }, 3200); setTimeout(function () { el.remove(); }, 3700);
+    notify('<i class="tk-ico">' + LOCK_OPEN + '</i>' + esc(txt), "unlock", 3600, true);
   }
   var LOCK_OPEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="11" rx="3" fill="#ffd23f" stroke="#2b2140" stroke-width="2"/><path d="M8 11 V7 a4 4 0 0 1 8 -1" fill="none" stroke="#2b2140" stroke-width="2.4" stroke-linecap="round"/></svg>';
   // la carte jouée quitte la main et file au centre (puis vers sa destination)
   function flyOut(u, toDiscard) {
-    var fc = $("#focus"), el = (fc && !fc.hidden && fc.querySelector(".fc-card")) || $('.qv-hc[data-u="' + u + '"]'); if (!el || reduce) return;
+    var fc = $("#focus"), el = (fc && fc.querySelector(".fc-card")) || $('.qv-hc[data-u="' + u + '"]'); if (!el || reduce) return;
     var r = el.getBoundingClientRect(), ghost = el.cloneNode(true);
     ghost.className = "qv-ghost"; ghost.style.left = r.left + "px"; ghost.style.top = r.top + "px"; ghost.style.width = r.width + "px";
     document.body.appendChild(ghost); el.style.visibility = "hidden";
@@ -1720,7 +1733,8 @@
 
   // ---------------- divers ----------------
   var toastT = null;
-  function toast(t) {
+  function toast(t) { notify(t, "", 2600); }
+  function floatToast(t) {
     var el = $("#toast");
     if (!el) { el = document.createElement("div"); el.id = "toast"; el.className = "qv-toast"; document.body.appendChild(el); }
     el.textContent = t; el.classList.add("on");
