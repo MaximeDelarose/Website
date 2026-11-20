@@ -350,3 +350,23 @@ h3 { font-family: var(--display); margin: 0; }
 @media (prefers-reduced-motion: reduce) {
   .qv-spin, .qv-walk, .qv-dance, .qv-strut, .qv-wiggle, .qv-flash, .qv-beat, .qv-opp.tgt, .qv-logo b, .qv-hero-cast .c0 { animation: none !important; }
 }
+
+/* ---------------- création du personnage (photo d'abord) ---------------- */
+.qv-creator h2 { text-align: center; font-size: 30px; }
+.cr-lead { margin: 0; text-align: center; font-weight: 700; line-height: 1.4; }
+.cr-demo { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.cr-demo > span, .cr-arrow { font-family: var(--display); font-size: 34px; font-weight: 800; }
+.cr-face { width: 96px; height: 120px; border: 3px dashed var(--ink); border-radius: 50% / 45%; display: grid; place-items: center; background: #fff; }
+.cr-ico { width: 52px; height: 52px; }
+.cr-av { width: 100px; }
+.cr-av svg { width: 100%; height: auto; }
+.cr-av.big { width: 140px; }
+.cr-cam { position: relative; border: 3px solid var(--ink); border-radius: 22px; overflow: hidden; background: #000; aspect-ratio: 3 / 4; max-height: 56dvh; margin: 0 auto; width: 100%; }
+.cr-cam video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+.cr-guide { position: absolute; left: 50%; top: 46%; width: 56%; aspect-ratio: 3 / 4; transform: translate(-50%, -50%); border: 4px dashed rgba(255, 255, 255, .85); border-radius: 50%; pointer-events: none; }
+.cr-pair { display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; }
+.cr-photo { width: 140px; height: 140px; object-fit: cover; border: 3px solid var(--ink); border-radius: 22px; box-shadow: var(--shadow); }
+.cr-photo.scanning { width: 200px; height: 200px; }
+.cr-spin { position: absolute; left: 50%; top: 0; width: 200px; height: 200px; transform: translateX(-50%); border-radius: 22px; background: linear-gradient(transparent 40%, rgba(255, 210, 63, .7) 50%, transparent 60%); background-size: 100% 200%; animation: cr-scan 1.4s linear infinite; pointer-events: none; }
+@keyframes cr-scan { from { background-position: 0 100%; } to { background-position: 0 -100%; } }
+.cr-traits { justify-content: center; }

@@ -28,7 +28,7 @@
   me.avatar = A.sanitize(me.avatar);
   if (!me.name) me.name = "";
   var profileId = (store("qv-profile") || {}).id || me.id;
-  function saveMe() { store("qv-profile", { id: NET.isLocal() ? profileId : me.id, name: me.name, avatar: me.avatar }); }
+  function saveMe() { store("qv-profile", { id: NET.isLocal() ? profileId : me.id, name: me.name, avatar: me.avatar, made: !!me.made }); }
   saveMe();
 
   var app = $("#app");
@@ -57,6 +57,7 @@
   // ---------------- accueil ----------------
   function home(msg) {
     leaveRoom();
+    if (!me.made) return creator({ first: true });
     var last = store("qv-last"), hashCode = (location.hash.match(/^#([A-Z0-9]{4})$/i) || [])[1];
     var demo1 = A.random(41), demo2 = A.random(977);
     show("home",
@@ -86,7 +87,7 @@
       var b = e.target.closest("[data-act]"); if (!b) return;
       SND.unlock(); SND.play("tap");
       var act = b.dataset.act;
-      if (act === "avatar") return editor();
+      if (act === "avatar") return creator();
       if (act === "rules") return rules();
       if (!needName()) return;
       if (act === "create") createRoom(false);
@@ -124,8 +125,138 @@
   try { photo = localStorage.getItem("qv-photo") || null; } catch (e) {}
   var edTab = "face", edMood = "happy", edOutfit = "casual", pickMode = null, camStream = null;
 
-  function editor() {
-    var draft = JSON.parse(JSON.stringify(me.avatar));
+  // ---------- création du personnage : la photo d'abord ----------
+  var photoFull = null; // version plus grande, pour l'analyse (mémoire seulement)
+  function creator(opt) {
+    opt = opt || {};
+    var step = "choose", consent = !!store("qv-consent"), result = null, failMsg = "";
+    function stopCam() { if (camStream) { camStream.getTracks().forEach(function (t) { t.stop(); }); camStream = null; } }
+    function draw() {
+      var o = '<div class="qv-page qv-creator">' + logo(true);
+      if (step === "choose") {
+        o += '<h2>' + (opt.first ? "D'abord, toi !" : "Mon personnage") + '</h2>' +
+          '<p class="cr-lead">Prends-toi en photo (ou importe une photo de ton visage) : le jeu crée ton personnage cartoon à partir de tes traits. Tu pourras le retoucher ensuite.</p>' +
+          '<div class="cr-demo"><div class="cr-face"><svg class="cr-ico" viewBox="0 0 48 48" aria-hidden="true"><rect x="5" y="14" width="38" height="26" rx="6" fill="#fff" stroke="#2b2140" stroke-width="3"/><path d="M16 14 l4 -6 h8 l4 6" fill="#fff" stroke="#2b2140" stroke-width="3" stroke-linejoin="round"/><circle cx="24" cy="27" r="8" fill="#9fd6ff" stroke="#2b2140" stroke-width="3"/></svg></div><span>→</span><div class="cr-av">' + A.standalone(me.avatar, { mood: "happy", pose: "wave" }) + '</div></div>' +
+          '<label class="ed-consent"><input type="checkbox" id="consent"' + (consent ? " checked" : "") + '> J\'accepte que ma photo serve à créer mon avatar. L\'analyse se fait sur cet appareil : la photo n\'est envoyée à personne, ni aux autres joueurs, ni au site.</label>' +
+          '<button class="qv-btn big" data-c="cam">Me prendre en photo</button>' +
+          '<label class="qv-btn big alt">Importer une photo<input type="file" accept="image/*" id="file" hidden></label>' +
+          '<div class="qv-row2">' + (opt.first ? '<button class="qv-btn ghost sm" data-c="manual">Créer à la main</button>' : '<button class="qv-btn ghost sm" data-c="edit">Retoucher mon personnage</button>') +
+          (opt.first ? '<button class="qv-btn ghost sm" data-c="skip">Plus tard</button>' : '<button class="qv-btn ghost sm" data-c="back">Retour</button>') + '</div>';
+      } else if (step === "cam") {
+        o += '<h2>Souris !</h2><div class="cr-cam"><video id="vid" playsinline autoplay muted></video><div class="cr-guide"></div></div>' +
+          '<p class="ed-hint">Visage de face, bien éclairé, cheveux visibles.</p>' +
+          '<button class="qv-btn big" data-c="snap">Prendre la photo</button><button class="qv-btn ghost" data-c="choose">Annuler</button>';
+      } else if (step === "busy") {
+        o += '<h2>Création de ton personnage…</h2><div class="cr-pair"><img class="cr-photo scanning" src="' + photo + '" alt="Ta photo"><div class="cr-spin"></div></div>' +
+          '<p class="qv-wait" id="busy">Analyse de ton visage…</p><p class="ed-hint">Tout se passe sur ton appareil.</p>';
+      } else if (step === "result") {
+        o += '<h2>Voilà ton personnage !</h2>' +
+          '<div class="cr-pair"><img class="cr-photo" src="' + photo + '" alt="Ta photo"><span class="cr-arrow">→</span><div class="cr-av big">' + A.standalone(result.avatar, { mood: "neutral", pose: "wave" }) + '</div></div>' +
+          '<div class="qv-chips cr-traits">' + result.traits.map(function (t) { return '<span class="st">' + esc(t) + '</span>'; }).join("") + '</div>' +
+          '<label class="qv-field"><span>Ton prénom</span><input id="nm" maxlength="16" autocomplete="nickname" placeholder="Ex. : Jean-Mich" value="' + esc(me.name) + '"></label>' +
+          '<button class="qv-btn big" data-c="ok">C\'est moi !</button>' +
+          '<div class="qv-row2"><button class="qv-btn ghost sm" data-c="tweak">Retoucher</button><button class="qv-btn ghost sm" data-c="again">Autre photo</button></div>';
+      } else if (step === "fail") {
+        o += '<h2>Oups</h2>' + (photo ? '<div class="cr-pair"><img class="cr-photo" src="' + photo + '" alt="Ta photo"></div>' : '') + '<p class="qv-msg">' + esc(failMsg) + '</p>' +
+          '<button class="qv-btn big" data-c="choose">Réessayer avec une autre photo</button><button class="qv-btn ghost" data-c="manual">Créer à la main</button>';
+      }
+      show("creator", o + '</div>');
+      var f = $("#file");
+      if (f) f.addEventListener("change", function () {
+        if (!checkConsent()) { f.value = ""; return; }
+        var file = f.files && f.files[0]; if (!file) return;
+        var rd = new FileReader();
+        rd.onload = function () { usePhoto(rd.result); };
+        rd.readAsDataURL(file);
+      });
+      if (step === "cam" && camStream) $("#vid").srcObject = camStream;
+    }
+    function checkConsent() {
+      var c = $("#consent"); consent = !!(c && c.checked);
+      if (!consent) { toast("Coche d'abord la case d'accord pour la photo"); return false; }
+      store("qv-consent", true); return true;
+    }
+    function startCam() {
+      if (!checkConsent()) return;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast("Caméra indisponible ici : importe une photo"); return; }
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false }).then(function (st) {
+        camStream = st; step = "cam"; draw();
+      }).catch(function () { toast("Accès à la caméra refusé : tu peux importer une photo"); });
+    }
+    function snap() {
+      var v = $("#vid"); if (!v || !v.videoWidth) return;
+      var c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+      var g = c.getContext("2d"); g.translate(c.width, 0); g.scale(-1, 1); g.drawImage(v, 0, 0);
+      stopCam(); SND.play("ding");
+      usePhoto(c.toDataURL("image/jpeg", 0.9));
+    }
+    function usePhoto(url) {
+      var img = new Image();
+      img.onload = function () {
+        // grande version pour l'analyse, carré pour l'affichage
+        var k = Math.min(1, 1024 / Math.max(img.width, img.height)), big = document.createElement("canvas");
+        big.width = Math.round(img.width * k); big.height = Math.round(img.height * k);
+        big.getContext("2d").drawImage(img, 0, 0, big.width, big.height);
+        photoFull = big;
+        shrink(url, function (sq) { photo = sq; keepPhoto(); step = "busy"; draw(); run(); });
+      };
+      img.onerror = function () { toast("Image illisible"); };
+      img.src = url;
+    }
+    function run() {
+      var label = function (s) { var b = $("#busy"); if (b) b.textContent = s === "load" ? "Préparation de l'analyse (la première fois seulement)…" : "Analyse de ton visage…"; };
+      var local = function () {
+        if (!window.QV_FACE) return Promise.reject(new Error("analyse indisponible"));
+        return window.QV_FACE.analyze(photoFull, label);
+      };
+      var p = CFG.avatarService
+        ? fetch(CFG.avatarService, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photo, style: "cartoon-vector" }) })
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(function (j) { if (!j || !j.avatar) throw new Error("vide"); return { found: true, avatar: A.sanitize(j.avatar), traits: ["Généré par le service d'avatar"] }; })
+            .catch(local)
+        : local();
+      var t0 = Date.now();
+      p.then(function (r) {
+        setTimeout(function () {
+          if (screen !== "creator") return;
+          if (!r.found) { failMsg = "Je ne trouve pas de visage sur cette photo. Essaie une photo de face, bien éclairée, avec le visage assez grand."; step = "fail"; draw(); return; }
+          result = r; step = "result"; SND.play("fanfare"); draw();
+        }, Math.max(0, 900 - (Date.now() - t0)));
+      }).catch(function (e) {
+        if (window.console) console.warn("analyse photo", e);
+        failMsg = "L'analyse de la photo n'a pas pu se lancer sur cet appareil (" + (e && e.message ? e.message : "erreur") + "). Tu peux créer ton personnage à la main.";
+        step = "fail"; draw();
+      });
+    }
+    function done(av) {
+      var nm = $("#nm"); if (nm) me.name = nm.value.trim().slice(0, 16) || me.name;
+      me.avatar = A.sanitize(av); me.made = true; saveMe();
+      if (room && !pub) sendHello();
+      if (opt.then) opt.then(); else if (room && !pub) renderLobby(); else home();
+    }
+    app.onclick = function (e) {
+      var t = e.target.closest("[data-c]"); if (!t) return;
+      SND.unlock(); SND.play("tap");
+      var c = t.dataset.c;
+      if (c === "cam") startCam();
+      else if (c === "snap") snap();
+      else if (c === "choose" || c === "again") { stopCam(); step = "choose"; draw(); }
+      else if (c === "ok") { if (!$("#nm").value.trim()) { toast("Écris ton prénom"); $("#nm").focus(); return; } done(result.avatar); }
+      else if (c === "tweak") { var nm = $("#nm"); if (nm && nm.value.trim()) { me.name = nm.value.trim().slice(0, 16); saveMe(); } editor(result.avatar, opt); }
+      else if (c === "manual" || c === "edit") { stopCam(); editor(null, opt); }
+      else if (c === "skip") { me.made = true; saveMe(); home(); }
+      else if (c === "back") { stopCam(); if (room && !pub) renderLobby(); else home(); }
+    };
+    app.onchange = function (e) { if (e.target.id === "consent") { consent = e.target.checked; if (consent) store("qv-consent", true); } };
+    draw();
+  }
+  function keepPhoto() {
+    var keep = !!store("qv-photo-keep");
+    try { if (keep && photo) localStorage.setItem("qv-photo", photo); else localStorage.removeItem("qv-photo"); } catch (e) {}
+  }
+
+  function editor(start, copt) {
+    var draft = JSON.parse(JSON.stringify(start || me.avatar));
     var tabs = [["face", "Visage"], ["hair", "Cheveux"], ["eyes", "Yeux"], ["nose", "Nez & bouche"], ["beard", "Pilosité"], ["glasses", "Accessoires"], ["body", "Corps"], ["photo", "Photo"]];
     function opts(key, label) {
       return '<div class="ed-group"><span>' + label + '</span><div class="ed-chips">' + A.OPTIONS[key].map(function (o) {
@@ -151,24 +282,18 @@
       return "";
     }
     function photoPanel() {
-      var svc = !!CFG.avatarService;
-      if (!photo) return '<div class="ed-photo">' +
-        '<p>Tu peux partir d\'une photo de ton visage pour t\'en servir de modèle et récupérer tes vraies couleurs de peau et de cheveux avec la pipette.</p>' +
-        '<label class="ed-consent"><input type="checkbox" id="consent"> J\'accepte que ma photo soit utilisée pour créer mon avatar. Elle reste sur cet appareil : elle n\'est jamais envoyée aux autres joueurs ni publiée.</label>' +
-        '<div class="ed-row"><button class="qv-btn alt" data-photo="cam">Prendre une photo</button><label class="qv-btn alt">Importer<input type="file" accept="image/*" id="file" hidden></label></div>' +
-        '<div id="cam"></div></div>';
+      if (!photo) return '<div class="ed-photo"><p>Le plus simple : prends-toi en photo et le jeu crée ton personnage à partir de ton visage.</p><button class="qv-btn alt" data-ed="fromphoto">Créer depuis une photo</button></div>';
       return '<div class="ed-photo">' +
-        '<div class="ed-photo-view"><canvas id="pc" width="240" height="240"></canvas><p class="ed-hint">' + (pickMode ? "Touche la photo pour prendre la couleur " + (pickMode === "skin" ? "de ta peau" : "de tes cheveux") + "." : "Choisis une pipette, puis touche la photo.") + '</p></div>' +
+        '<div class="ed-photo-view"><canvas id="pc" width="240" height="240"></canvas><p class="ed-hint">' + (pickMode ? "Touche la photo pour prendre la couleur " + (pickMode === "skin" ? "de ta peau" : "de tes cheveux") + "." : "Pipette : reprends une couleur précise sur ta photo.") + '</p></div>' +
         '<div class="ed-row"><button class="chip' + (pickMode === "skin" ? " on" : "") + '" data-pick="skin">Pipette : peau</button><button class="chip' + (pickMode === "hairColor" ? " on" : "") + '" data-pick="hairColor">Pipette : cheveux</button></div>' +
-        '<div class="ed-gen"><button class="qv-btn" data-gen ' + (svc ? "" : "disabled") + '>Générer mon avatar avec l\'IA</button>' +
-        (svc ? '<p class="ed-hint">La photo est envoyée au service de génération configuré pour ce jeu, uniquement quand tu appuies sur ce bouton.</p>' : '<p class="ed-hint">Aucun service de génération d\'avatar n\'est branché pour l\'instant : le jeu est prêt à en accueillir un, mais en attendant c\'est l\'éditeur (et la pipette) qui fait le travail.</p>') + '</div>' +
+        '<button class="qv-btn alt" data-ed="fromphoto">Refaire depuis une photo</button>' +
         '<label class="ed-consent"><input type="checkbox" id="keep"' + (store("qv-photo-keep") ? " checked" : "") + '> Garder la photo sur cet appareil</label>' +
         '<button class="qv-btn danger" data-photo="del">Supprimer la photo</button></div>';
     }
     function draw() {
       var preview = A.standalone(draft, { mood: edMood, outfit: edOutfit, pose: edMood === "happy" ? "wave" : edMood === "smug" ? "hips" : "down" }, "ed-av");
       show("editor", '<div class="qv-editor">' +
-        '<div class="ed-top"><button class="qv-btn ghost sm" data-ed="cancel">Annuler</button><h2>Mon personnage</h2><button class="qv-btn sm" data-ed="save">Valider</button></div>' +
+        '<div class="ed-top"><button class="qv-btn ghost sm" data-ed="cancel">Annuler</button><h2>Retouches</h2><button class="qv-btn sm" data-ed="save">Valider</button></div>' +
         '<div class="ed-main"><div class="ed-stage">' + preview +
           '<div class="ed-moods">' + [["happy", "Joie"], ["sad", "Déprime"], ["shocked", "Choc"], ["smug", "Fier"], ["angry", "Colère"], ["love", "Amour"]].map(function (m) { return '<button class="chip' + (edMood === m[0] ? " on" : "") + '" data-mood="' + m[0] + '">' + m[1] + '</button>'; }).join("") + '</div>' +
           '<div class="ed-moods">' + [["casual", "Tenue de base"], ["office", "Bureau"], ["delivery", "Livreur"], ["influencer", "Influence"], ["ceo", "PDG"], ["wedding", "Mariage"], ["unemployed", "Chômage"]].map(function (m) { return '<button class="chip sm' + (edOutfit === m[0] ? " on" : "") + '" data-outfit="' + m[0] + '">' + m[1] + '</button>'; }).join("") + '</div>' +
@@ -177,14 +302,6 @@
         '<div class="ed-side"><div class="ed-tabs">' + tabs.map(function (t) { return '<button class="tab' + (edTab === t[0] ? " on" : "") + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join("") + '</div>' +
         '<div class="ed-panel">' + panel() + '</div></div></div></div>');
       if (edTab === "photo" && photo) paintPhoto();
-      var f = $("#file");
-      if (f) f.addEventListener("change", function () {
-        if (!$("#consent").checked) { toast("Coche d'abord la case de consentement"); f.value = ""; return; }
-        var file = f.files && f.files[0]; if (!file) return;
-        var rd = new FileReader();
-        rd.onload = function () { shrink(rd.result, function (url) { photo = url; keepPhoto(); pickMode = "skin"; draw(); }); };
-        rd.readAsDataURL(file);
-      });
     }
     function paintPhoto() {
       var cv = $("#pc"), img = new Image();
@@ -204,59 +321,29 @@
         pickMode = pickMode === "skin" ? "hairColor" : null; draw();
       });
     }
-    function keepPhoto() {
-      var keep = $("#keep") ? $("#keep").checked : !!store("qv-photo-keep");
-      try { if (keep && photo) localStorage.setItem("qv-photo", photo); else localStorage.removeItem("qv-photo"); } catch (e) {}
-    }
-    function stopCam() { if (camStream) { camStream.getTracks().forEach(function (t) { t.stop(); }); camStream = null; } }
-    function startCam() {
-      if (!$("#consent").checked) { toast("Coche d'abord la case de consentement"); return; }
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast("La caméra n'est pas disponible ici : importe une photo"); return; }
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 640, height: 640 }, audio: false }).then(function (st) {
-        camStream = st;
-        var box = $("#cam");
-        box.innerHTML = '<video id="vid" playsinline autoplay muted></video><div class="ed-row"><button class="qv-btn" data-photo="snap">Capturer</button><button class="qv-btn ghost" data-photo="stop">Fermer la caméra</button></div>';
-        $("#vid").srcObject = st;
-      }).catch(function () { toast("Accès à la caméra refusé : tu peux importer une photo"); });
-    }
-    function snap() {
-      var v = $("#vid"); if (!v) return;
-      var c = document.createElement("canvas"), s = Math.min(v.videoWidth, v.videoHeight) || 480;
-      c.width = c.height = 360;
-      c.getContext("2d").drawImage(v, (v.videoWidth - s) / 2, (v.videoHeight - s) / 2, s, s, 0, 0, 360, 360);
-      photo = c.toDataURL("image/jpeg", 0.85); stopCam(); keepPhoto(); pickMode = "skin"; SND.play("ding"); draw();
-    }
-    function generate() {
-      if (!CFG.avatarService || !photo) return;
-      toast("Génération en cours…");
-      fetch(CFG.avatarService, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photo, style: "cartoon-vector" }) })
-        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-        .then(function (j) { if (!j || !j.avatar) throw new Error("réponse vide"); draft = A.sanitize(j.avatar); toast("Avatar généré ! Ajuste-le si besoin."); edTab = "face"; draw(); })
-        .catch(function () { toast("Le service de génération n'a pas répondu. Utilise l'éditeur."); });
-    }
     app.onclick = function (e) {
       var t = e.target.closest("button"); if (!t) return;
       SND.play("tap");
       if (t.dataset.set) { draft[t.dataset.set] = t.dataset.v; draw(); return; }
-      if (t.dataset.tab) { edTab = t.dataset.tab; stopCam(); draw(); return; }
+      if (t.dataset.tab) { edTab = t.dataset.tab; draw(); return; }
       if (t.dataset.mood) { edMood = t.dataset.mood; draw(); return; }
       if (t.dataset.outfit) { edOutfit = t.dataset.outfit; draw(); return; }
       if (t.dataset.pick) { pickMode = pickMode === t.dataset.pick ? null : t.dataset.pick; draw(); return; }
-      if (t.hasAttribute("data-gen")) return generate();
-      var p = t.dataset.photo;
-      if (p === "cam") return startCam();
-      if (p === "snap") return snap();
-      if (p === "stop") { stopCam(); $("#cam").innerHTML = ""; return; }
-      if (p === "del") { photo = null; pickMode = null; store("qv-photo-keep", null); try { localStorage.removeItem("qv-photo"); } catch (er) {} toast("Photo supprimée de cet appareil"); draw(); return; }
+      if (t.dataset.photo === "del") { photo = null; photoFull = null; pickMode = null; store("qv-photo-keep", null); try { localStorage.removeItem("qv-photo"); } catch (er) {} toast("Photo supprimée de cet appareil"); draw(); return; }
       var ed = t.dataset.ed;
-      if (ed === "random") { var keepSkin = draft.skin; draft = A.random(Math.floor(Math.random() * 1e9)); if (photo) draft.skin = keepSkin; draw(); }
-      else if (ed === "cancel") { stopCam(); back(); }
-      else if (ed === "save") { stopCam(); me.avatar = A.sanitize(draft); saveMe(); SND.play("ding"); if (room && !pub) sendHello(); back(); }
+      if (ed === "fromphoto") { app.onchange = null; creator(copt); }
+      else if (ed === "random") { var keepSkin = draft.skin; draft = A.random(Math.floor(Math.random() * 1e9)); if (photo) draft.skin = keepSkin; draw(); }
+      else if (ed === "cancel") back();
+      else if (ed === "save") { me.avatar = A.sanitize(draft); me.made = true; saveMe(); SND.play("ding"); if (room && !pub) sendHello(); back(true); }
     };
     app.onchange = function (e) {
       if (e.target.id === "keep") { store("qv-photo-keep", e.target.checked ? true : null); keepPhoto(); }
     };
-    function back() { app.onchange = null; if (room && !pub) renderLobby(); else home(); }
+    function back(saved) {
+      app.onchange = null;
+      if (saved && copt && copt.then) return copt.then();
+      if (room && !pub) renderLobby(); else if (me.made) home(); else creator(copt);
+    }
     draw();
   }
   function shrink(url, cb) {
@@ -636,7 +723,7 @@
       } else if (l === "bot") { room.lobby.push(bot(room.lobby.length)); hostBroadcast(); renderLobby(); }
       else if (l === "rm") { room.lobby = room.lobby.filter(function (p) { return p.id !== b.dataset.id; }); hostBroadcast(); renderLobby(); }
       else if (l === "start") hostStart();
-      else if (l === "avatar") editor();
+      else if (l === "avatar") creator();
       else if (l === "leave") { if (!host && room.net) room.net.send("bye", { id: me.id }); store("qv-last", null); history.replaceState(null, "", location.pathname + location.search); home(); }
     };
   }
