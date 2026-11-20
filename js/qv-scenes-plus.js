@@ -448,6 +448,30 @@
       return mk(o, 3.6, vs.length ? "Le karma infidèle foudroie " + vs.map(function (id) { return nm(P(st, id)); }).join(", ") + ". Les autres font semblant d'être surpris." : "Le karma infidèle ne trouve personne à punir. Suspect.", [[0.8, "slam"], [1.0, "crowd"]]);
     },
   };
+  // ---------- carrière ----------
+  N.burnout = function (ev, st) {
+    var T = P(st, ev.to || ev.p), o = BG.office();
+    for (var i = 0; i < 9; i++) o += '<g' + mv(320, -40 + i * 18, 120 + (i % 3) * 30, 70 + (i % 4) * 24, 0.5, 0.2 + i * 0.12, "ease-out") + '><rect width="34" height="22" rx="3" fill="#fff"' + S.replace('3"', '2"') + '/><path d="M2 2 L17 13 L32 2" fill="none" stroke="' + INK + '" stroke-width="2"/></g>';
+    o += ch(T.avatar, { mood: "shocked", outfit: outfit(T), pose: "up" }, 160, 214, 0.62) + bubble(160, 40, "3 214 mails non lus", 1.6, "#fff");
+    return mk(o, 3.6, nm(T) + " croule sous les mails. Le corps dit stop, l'agenda dit « réunion à 18 h ».", [[0.3, "whoosh"], [1.6, "sad"]]);
+  };
+  N.demission = function (ev, st) {
+    var T = P(st, ev.p), o = BG.office() + '<rect x="260" y="60" width="60" height="150" fill="#b56b3a"' + S + '/>';
+    o += '<g' + mv(0, 0, 120, 0, 1.2, 0.4, "ease-in") + '>' + ch(T.avatar, { mood: "smug", outfit: outfit(T), pose: "wave", hold: "box" }, 160, 214, 0.6) + '</g>' + bubble(150, 40, "Je démissionne !", 0.3, "#ffd23f");
+    return mk(o, 3.2, nm(T) + " claque la porte. Deux fois, pour l'effet. Les diplômes, eux, restent.", [[0.3, "slam"], [1.4, "slam"]]);
+  };
+  N.chomage = function (ev, st) {
+    var T = P(st, ev.to || ev.p), o = BG.room();
+    o += ch(T.avatar, { mood: "worried", outfit: "pajama" }, 170, 214, 0.6) + bubble(170, 40, "Pause forcée…", 0.6, "#fff");
+    return mk(o, 3, nm(T) + " passe en chômage partiel. Le pain maison n'a jamais été aussi bon.", [[0.6, "sad"]]);
+  };
+  N.controle = function (ev, st) {
+    var T = P(st, ev.to || ev.p), o = BG.office();
+    o += ch(RA(4711), { mood: "smug", outfit: "office", hold: "magnifier", pose: "phone" }, 90, 214, 0.58) + ch(T.avatar, { mood: "worried", outfit: outfit(T) }, 240, 214, 0.6);
+    o += bubble(90, 40, "Formulaire B-12 bis ?", 0.5, "#fff");
+    return mk(o, 3.2, "Contrôle administratif chez " + nm(T) + ". L'inspecteur a apporté sa propre agrafeuse.", [[0.5, "ding"]]);
+  };
+  N.embauche = function (ev, st) { return N.vie(ev, st); };
   // ---------- moments de vie sans scène dédiée : on montre le personnage dans sa nouvelle vie ----------
   N.vie = function (ev, st) {
     var T = P(st, ev.p), ch_ = (ev.changes || []).filter(function (c) { return c.p === ev.p; })[0], what = ch_ ? ch_.t[0] : "", o = "";
@@ -475,6 +499,13 @@
       var k = ITEM_ICON[what.replace("Gagne : ", "")] || "chest";
       o = BG.street() + ch(T.avatar, { mood: "happy", outfit: outfit(T), pose: "up" }, 140, 214, 0.62) + ico(k, 210, 120, 90, 0.6) + K.confetti(12, 180, 320, 0.8, 2.2, 5);
       return mk(o, 3.4, nm(T) + " s'offre : " + esc(what.replace("Gagne : ", "")) + ". Tout le quartier est au courant.", [[0.6, "pop"], [0.9, "fanfare"]]);
+    }
+    if (/Formation : niveau/.test(what)) {
+      var lvl = (what.match(/niveau (\d)/) || [])[1] || "", unl = (what.split("débloque : ")[1] || "");
+      o = BG.street() + '<rect x="112" y="22" width="136" height="34" rx="8" fill="#16a3a8"' + S + '/>' + txt(180, 45, "FORMATION " + lvl, 16, "#fff");
+      o += ch(T.avatar, { mood: "happy", outfit: outfit(T), pose: "up" }, 180, 214, 0.62) + ico("gradcap", 150, 62, 60, 0.5) + K.confetti(20, 60, 300, 0.8, 2.4, 8);
+      for (var pi = 0; pi < 6; pi++) o += '<circle cx="' + (120 + pi * 24) + '" cy="72" r="7" fill="' + (pi < +lvl ? "#ffd23f" : "#fff") + '"' + S.replace('3"', '2"') + (pi === +lvl - 1 ? ' class="qv-pop" style="animation-delay:.9s;transform-origin:' + (120 + pi * 24) + 'px 72px"' : '') + '/>';
+      return mk(o, 3.4, nm(T) + " passe Formation " + lvl + "." + (unl ? " Nouveaux métiers accessibles : " + esc(unl) + "." : " Le jury a applaudi (poliment)."), [[0.5, "fanfare"], [0.9, "unlock"]]);
     }
     if (/Diplômé/.test(what)) {
       o = BG.street() + ch(T.avatar, { mood: "happy", outfit: outfit(T), pose: "up" }, 170, 214, 0.62) + ico("cap", 150, 20, 60, 0.5) + K.confetti(20, 60, 300, 0.8, 2.4, 8);

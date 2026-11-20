@@ -108,13 +108,14 @@
   function rules() {
     show("rules", '<div class="qv-page">' + logo(true) + '<h2>Comment on joue</h2>' +
       '<div class="qv-rules">' +
-      '<div class="r"><b>1</b><p>Chacun commence à 20 ans sur le canapé de ses parents. Une partie dure de 7 à 12 tours de table (5 ans de vie par tour), environ 20 minutes.</p></div>' +
-      '<div class="r"><b>2</b><p>À ton tour, tu touches ton salaire, tu pioches, puis tu <em>joues une carte</em> ou tu <em>souffles un coup</em> (tu défausses une carte : +1 bonheur).</p></div>' +
-      '<div class="r"><b>3</b><p>Trois ressources : ' + IC.get("b", "qv-ri") + ' bonheur, ' + IC.get("f", "qv-ri") + ' fortune, ' + IC.get("r", "qv-ri") + ' réputation. Ton score final est leur somme, plus tes 2 objectifs secrets et les trophées (le plus heureux, le plus riche, le plus célèbre : +4 chacun).</p></div>' +
-      '<div class="r"><b>4</b><p>Les cartes noires sabotent les autres. Quand on t\'attaque, tu choisis : <em>contrer</em> avec une carte de réaction, <em>limiter les dégâts</em> en payant, ou <em>encaisser</em> (tu pioches 1 carte, tu gagnes un petit bonus et tu joueras 2 cartes au prochain tour : de quoi rebondir).</p></div>' +
-      '<div class="r"><b>5</b><p>Tous les 2 tours de table, un événement de saison frappe tout le monde. Les cartes jaunes touchent aussi toute la table.</p></div>' +
-      '<div class="r"><b>7</b><p>En créant le salon, l\'hôte choisit le mode <em>Classique</em> ou <em>Trash &amp; Adulte 18+</em> (cartes, événements, scènes et répliques exclusives ; chaque joueur doit être majeur et accepter), et <em>Découverte</em> (les cartes arrivent petit à petit) ou <em>Expert</em>.</p></div>' +
-      '<div class="r"><b>6</b><p>Familles de cartes : carrière, amour, famille, logement, loisirs, sabotages, réactions et événements. ' + D.CARDS.length + ' cartes différentes.</p></div>' +
+      '<div class="r"><b>1</b><p>Chacun commence à 18 ans sur le canapé de ses parents. Trois durées : <em>Rapide</em> (12 tours de table), <em>Classique</em> (20 tours) ou <em>Long</em> (26 tours). L\'âge avance avec la partie, jusqu\'à environ 78 ans.</p></div>' +
+      '<div class="r"><b>2</b><p>Tu as <em>3 cartes</em> en main. À ton tour : tu touches ton salaire, tu <em>pioches</em> une carte (4 en main), puis tu en <em>joues</em> une ou tu en <em>défausses</em> une. Tu finis avec 3 cartes. Si un autre joueur vient de défausser une carte que tu peux jouer, tu peux la <em>reprendre dans la défausse</em> à la place de la pioche : elle se joue tout de suite.</p></div>' +
+      '<div class="r"><b>3</b><p><em>Formation</em> (' + IC.get("gradcap", "qv-ri") + ') : les cartes Études (bac, CAP, BTS, licence, master…) font monter ton niveau de 0 à 6 et restent dans ton parcours. Chaque métier demande un niveau : bureau 1, commercial·e ou infirmier·e 2, ingénieur·e ou prof 3, avocat·e 4, chirurgien·ne 5 ; le CAP ouvre la plomberie ; livreur·se et artiste n\'en demandent pas. Un seul métier à la fois. La Formation ne compte pas dans le score, mais elle ouvre les meilleurs salaires. Pas de carte Études depuis longtemps ? Tu peux <em>étudier</em> : sacrifier ton action et une carte pour +1 Formation (jusqu\'au niveau 2).</p></div>' +
+      '<div class="r"><b>4</b><p>Carrière : entretien d\'embauche, promotion, augmentation, reconversion, démission, chômage, burn-out, retraite (pension). Un licenciement fait perdre le métier et son salaire, jamais les diplômes.</p></div>' +
+      '<div class="r"><b>5</b><p>Combinaisons : chômage + formation continue = tu rebondis ; métier + burn-out = arrêt maladie ou démission forcée (le voyage soigne) ; salaire de 4 et plus + maison = villa ; diplôme douteux + contrôle administratif = scandale ; fiançailles + mariage = +2 bonheur.</p></div>' +
+      '<div class="r"><b>6</b><p>Trois ressources comptent pour gagner : ' + IC.get("b", "qv-ri") + ' bonheur, ' + IC.get("f", "qv-ri") + ' fortune, ' + IC.get("r", "qv-ri") + ' réputation. Ton score est leur somme, plus tes 2 objectifs secrets, les trophées (le plus heureux, le plus riche, le plus célèbre : +4 ; premier·e de la classe : +3) et « Une vie bien remplie » (+6 : métier ou retraite, logement et couple ou enfant).</p></div>' +
+      '<div class="r"><b>7</b><p>Les cartes noires sabotent les autres. Quand on t\'attaque : <em>contrer</em> avec une réaction, <em>limiter les dégâts</em> en payant, ou <em>encaisser</em> (petit bonus et 2 cartes à jouer au prochain tour). Régulièrement, un événement de saison frappe toute la table.</p></div>' +
+      '<div class="r"><b>8</b><p>Salon : mode <em>Classique</em> ou <em>Trash &amp; Adulte 18+</em> (chaque joueur doit être majeur et accepter), <em>Découverte</em> ou <em>Expert</em>, et la durée. ' + D.CARDS.length + ' cartes différentes.</p></div>' +
       '</div><button class="qv-btn big" data-back>Retour</button></div>');
     app.onclick = function (e) { if (e.target.closest("[data-back]")) { if (pub && room) renderGame(); else home(); } };
   }
@@ -451,9 +452,9 @@
   function createRoom(solo, resumeCode) {
     leaveRoom();
     var code = resumeCode || code4();
-    room = { code: code, host: true, hostId: me.id, solo: solo, roster: [], lobby: [{ id: me.id, name: me.name, avatar: me.avatar }], seen: {}, net: null, opts: { mode: "classic", discovery: !store("qv-tuto-done") } };
+    room = { code: code, host: true, hostId: me.id, solo: solo, roster: [], lobby: [{ id: me.id, name: me.name, avatar: me.avatar }], seen: {}, net: null, opts: { mode: "classic", discovery: !store("qv-tuto-done"), format: "classique" } };
     var saved = resumeCode ? store("qv-host-" + code) : null;
-    if (saved && saved.lobby) { room.lobby = saved.lobby; G = saved.state || null; if (saved.opts) room.opts = saved.opts; }
+    if (saved && saved.lobby) { room.lobby = saved.lobby; G = saved.state ? E.migrate(saved.state) : null; if (saved.opts) room.opts = saved.opts; }
     if (solo) {
       room.lobby.push(bot(0));
       room.lobby.push(bot(1));
@@ -615,7 +616,7 @@
       else if (room.away) delete room.away[who];
       var awayFor = room.away && room.away[who] ? now - room.away[who] : 0;
       var since = G.phase === "react" && G.pending ? now - G.pending.since : now - (room.turnStart || now);
-      if ((awayFor > 15000) || (G.phase === "react" && since > 45000) || (G.phase === "play" && since > 150000)) {
+      if ((awayFor > 15000) || (G.phase === "react" && since > 45000) || ((G.phase === "play" || G.phase === "draw") && since > 150000)) {
         if (idle && awayFor < 25000 && since < 60000) return;
         toast("Pilote automatique pour " + p.name);
         act(p.id);
@@ -721,9 +722,10 @@
       return '<div class="rs-p">' + A.standalone(p.avatar, { mood: p.mood || (bad ? "sad" : "happy"), outfit: W.outfit(p) }, "rs-av", true) +
         '<div class="rs-body"><b class="rs-name">' + esc(id === me.id ? "Toi" : p.name) + '</b>' +
         by[id].t.map(function (t) { return '<span class="rs-life">' + esc(t) + '</span>'; }).join("") +
-        '<span class="rs-res">' + by[id].n.map(function (n) { return '<i class="' + (n.v > 0 ? "up" : "down") + '">' + IC.get(n.k, "qv-ri") + (n.v > 0 ? "+" : "−") + Math.abs(n.v) + " " + RES_WORD[n.k] + '</i>'; }).join("") + '</span></div></div>';
+        '<span class="rs-res">' + sumNotes(by[id].n).map(function (n) { var from = sv(id, n.k), to = Math.max(0, from + n.v); return '<i class="' + (n.v > 0 ? "up" : "down") + '">' + IC.get(n.k, "qv-ri") + RES_WORD[n.k] + ' <span class="rs-from">' + from + '</span> → <b class="rs-num" data-from="' + from + '" data-to="' + to + '">' + from + '</b> <small>(' + (n.v > 0 ? "+" : "−") + Math.abs(n.v) + ')</small></i>'; }).join("") + '</span></div></div>';
     }).join("") + '</div>';
   }
+  function sumNotes(ns) { var o = {}, order = []; ns.forEach(function (n) { if (!(n.k in o)) { o[n.k] = 0; order.push(n.k); } o[n.k] += n.v; }); return order.filter(function (k) { return o[k]; }).map(function (k) { return { k: k, v: o[k] }; }); }
   function headline(ev) {
     var c = card(ev.k) || {}, P = function (id) { return id === me.id ? "Tu" : nameOf(id); };
     if (ev.t === "season") { var e = D.EVENTS.filter(function (x) { return x.key === ev.k; })[0]; return "Événement pour tout le monde : " + (e ? e.name : ""); }
@@ -742,8 +744,9 @@
   function onGameEvent(ev) {
     addHistory(ev);
     if (ev.t === "turn") {
-      if (ev.p === me.id) {
-        turnPill("À toi de jouer !", (ev.info || []).join(" · ")); SND.play("turn");
+      if (ev.skip) enqueue({ kind: "tick", text: ev.p === me.id ? "Arrêt maladie : tu passes ton tour" : nameOf(ev.p) + " est en arrêt maladie : tour passé" });
+      else if (ev.p === me.id) {
+        enqueue({ kind: "tick", html: '<b>' + esc(ev.phase === "draw" ? "À toi : pioche !" : "À toi de jouer !") + '</b> ' + esc((ev.info || []).join(" · ")), k: "turn", ms: 2400, sfx: "turn" });
         var mp = pub.players[me.id];
         if (mp && mp.job && (ev.notes || []).some(function (n) { return n.p === me.id && n.k === "f" && n.v > 0; })) coachMech("salary", "Salaire", "Ton métier te paie au début de chacun de tes tours. Regarde ta fortune monter !");
       }
@@ -755,25 +758,27 @@
       enqueue({ kind: "announce", ev: ev, sfx: ev.to === me.id ? "alarm" : "card" });
       enqueue({ kind: "notes", notes: ev.notes });
     } else if (ev.t === "card" || ev.t === "block" || ev.t === "status" || ev.t === "season") {
-      var extra = ev.bounce && ev.to ? (ev.to === me.id ? "Tu rebondis : " : nameOf(ev.to) + " rebondit : ") + ev.bounce.toLowerCase() + ", +1 carte et 2 cartes au prochain tour." : (ev.spite ? "Dossier balancé : " + nameOf(ev.p) + " perd aussi 3 de réputation !" : "");
+      var extra = ev.bounce && ev.to ? (ev.to === me.id ? "Tu rebondis : " : nameOf(ev.to) + " rebondit : ") + ev.bounce.toLowerCase() + ", et 2 cartes à jouer au prochain tour." : (ev.spite ? "Dossier balancé : " + nameOf(ev.p) + " perd aussi 3 de réputation !" : "");
       var selfCard = ev.t === "card" && ev.outcome === "self";
-      var mineOnly = selfCard && ev.p === me.id && affected(ev).every(function (id) { return id === me.id; });
-      // grand moment de vie sans scène dédiée (métier, maison, couple, objet…) : scène « vie »
+      // grand moment de vie sans scène dédiée (métier, études, maison, couple, objet…) : scène « vie »
       if (selfCard && !ev.scene && (ev.changes || []).some(function (c) { return c.p === ev.p; })) ev = Object.assign({}, ev, { scene: "vie" });
-      // carte jouée pour soi avec une scène : on l'annonce d'abord
-      if (selfCard && ev.scene && ev.p !== me.id) enqueue({ kind: "announce", ev: ev, sfx: "card" });
+      // 1. présentation de la carte et de sa cible (pour toutes les cartes jouées, y compris les miennes)
+      if (selfCard && ev.k !== "garde" && card(ev.k)) enqueue({ kind: "announce", ev: ev, sfx: "card", short: ev.p === me.id });
       // 2. la scène avec les personnages
       if (ev.scene) enqueue({ kind: "scene", ev: ev });
       // 3. les conséquences, jusqu'à « Continuer »
       var hasImpact = (ev.changes && ev.changes.length) || (ev.notes && ev.notes.length) || ev.t === "block" || ev.t === "season" || !ev.scene;
       if (!(ev.k === "garde")) {
-        if (hasImpact && !mineOnly) enqueue({ kind: "result", ev: ev, extra: extra, withCard: !ev.scene });
+        if (hasImpact) enqueue({ kind: "result", ev: ev, extra: extra, withCard: false });
       }
-      enqueue({ kind: "notes", notes: ev.notes, hit: affected(ev) });
+      // 5. retour au plateau : les compteurs rattrapent la vraie valeur, la carte rejoint sa zone
+      enqueue({ kind: "notes", notes: ev.notes, hit: affected(ev), ev: ev });
       if (ev.t === "season") coachMech("season", "Événements de saison", "Tous les 2 tours de table, un événement touche toute la table.");
     } else if (ev.t === "rest") {
       enqueue({ kind: "notes", notes: ev.notes });
-      if (ev.p !== me.id && pub.phase !== "end") toast(nameOf(ev.p) + " souffle un coup (+1 bonheur)");
+      if (ev.p !== me.id && pub.phase !== "end") enqueue({ kind: "tick", text: nameOf(ev.p) + " défausse « " + (card(ev.k) || {}).name + " »" });
+    } else if (ev.t === "took") {
+      if (ev.p !== me.id) enqueue({ kind: "tick", text: nameOf(ev.p) + " reprend « " + (card(ev.k) || {}).name + " » dans la défausse" });
     } else if (ev.t === "end") {
       enqueue({ kind: "banner", text: "Fin de partie !", sub: "Le moment de faire les comptes…", dur: 2.5, sfx: "win" });
       if (pub && pub.discovery) store("qv-tuto-done", true);
@@ -852,19 +857,79 @@
     if (room.host) hostReady(me.id, pub.gate.id);
     else if (room.net) room.net.send("ready", { id: me.id, gate: pub.gate.id });
   }
+  // ======================================================================
+  //  DIRECTEUR D'AFFICHAGE : machine à états, phases exclusives
+  //  idle → drawing → cardPreview → (targetSelection) → resolving → animation → results → returningToBoard → idle
+  //  Une seule fenêtre importante à la fois ; une fenêtre fermée disparaît vraiment avant la suivante.
+  // ======================================================================
+  var UI = { phase: "idle", since: Date.now() };
+  var PHASE_OF = { tick: "returningToBoard", deal: "drawing", newcard: "drawing", announce: "cardPreview", scene: "animation", result: "results", banner: "results", stage: "results", notes: "returningToBoard" };
+  function setPhase(ph) {
+    if (UI.phase === ph) return;
+    UI.phase = ph; UI.since = Date.now();
+    document.body.setAttribute("data-qv-phase", ph);
+    if (ph !== "idle") hideHint();
+  }
+  function busy() { return UI.phase !== "idle" || queue.length || playing; }
+  // la fenêtre active (une seule) : on la ferme en douceur, puis seulement on continue
+  function closeLayer(cb) {
+    var ov = $("#ov");
+    if (!ov) { cb && cb(); return; }
+    ov.removeAttribute("id"); ov.classList.add("out"); ov.onclick = null;
+    var done = false, fin = function () { if (done) return; done = true; if (ov.parentNode) ov.remove(); cb && cb(); };
+    if (reduce) fin(); else setTimeout(fin, 170);
+  }
+  function openLayer(kind) {
+    var ov = document.createElement("div"); ov.id = "ov"; ov.className = "qv-ov k-" + kind;
+    ov.setAttribute("role", "dialog"); ov.setAttribute("aria-modal", "true");
+    document.body.appendChild(ov);
+    return ov;
+  }
+  // la carte qui vole depuis la main ne doit jamais rester par-dessus une fenêtre
+  function clearGhost() { $$(".qv-ghost").forEach(function (g) { g.remove(); }); }
+  var sheetWait = 0;
   function next() {
     sceneTimers.forEach(clearTimeout); sceneTimers = []; clearInterval(countT);
-    if (introOpen) { playing = null; closeScene(); clearTimeout(nextRetry); nextRetry = setTimeout(next, 500); return; }
-    playing = queue.shift() || null;
+    clearTimeout(nextRetry);
+    if (introOpen) { playing = null; closeLayer(); nextRetry = setTimeout(next, 500); return; }
+    // une fiche ouverte par le joueur (menu, journal, détails) : on attend qu'il la ferme (au plus 6 s)
+    var sh = $("#sheet");
+    if (queue.length && sh && !sh.hidden && PHASE_OF[queue[0].kind] !== "returningToBoard" && queue[0].kind !== "deal") {
+      if (!sheetWait) sheetWait = Date.now();
+      if (Date.now() - sheetWait < 6000) { playing = null; setPhase("idle"); notify("<b>Nouvel événement</b> : ferme la fiche pour le voir", "", 1500, true); nextRetry = setTimeout(next, 600); return; }
+      closeSheet();
+    }
+    sheetWait = 0;
+    var it = queue.shift() || null;
+    // la fenêtre précédente disparaît d'abord, sauf si la suivante n'en utilise pas
+    if ($("#ov")) {
+      playing = it || { kind: "closing" };
+      if (it) queue.unshift(it);
+      closeLayer(function () { playing = null; next(); });
+      return;
+    }
+    playing = it;
     if (!playing) {
       // rattrapage : une carte dont la distribution a été interrompue apparaît quand même
       Object.keys(dealing).forEach(function (u) { dealt[u] = 1; delete dealing[u]; });
       if (priv && pub && !dealFirst) priv.hand.forEach(function (c) { if (!dealt[c.u]) dealt[c.u] = 1; });
-      closeScene(); queueEmptyAt = Date.now(); if (pub) { reconcile(); settle(); if (pub.phase === "end") renderEnd(); else renderGame(); } sendReady(); return; }
-    var it = playing;
+      clearGhost(); setPhase("idle"); queueEmptyAt = Date.now();
+      if (pub) { reconcile(); if (pub.phase === "end") renderEnd(); else renderGame(); }
+      sendReady(); return;
+    }
+    setPhase(PHASE_OF[it.kind] || "results");
+    if (it.kind === "tick") {
+      // message court dans la barre du haut, à son tour dans la séquence (jamais en avance sur l'écran)
+      if (it.html) notify(it.html, it.k || "", it.ms || 2600, true); else notify(it.text, "", 2600);
+      if (it.sfx) SND.play(it.sfx);
+      playing = null; next(); return;
+    }
     if (it.kind === "notes") {
+      clearGhost();
       if (it.hit) flashTiles(it.hit);
-      animateNotes(it.notes, $("#playzone"), function () { if (playing === it) { playing = null; settle(function () { next(); }); } });
+      flyToZone(it.ev);
+      careerFeel(it.ev);
+      animateNotes(it.notes, null, function () { if (playing === it) { playing = null; setTimeout(next, reduce ? 0 : 120); } });
       return;
     }
     if (it.kind === "deal") {
@@ -881,16 +946,15 @@
       })();
       return;
     }
-    var ov = $("#ov");
-    if (!ov) { ov = document.createElement("div"); ov.id = "ov"; document.body.appendChild(ov); }
-    ov.className = "qv-ov k-" + it.kind;
+    clearGhost();
+    var ov = openLayer(it.kind);
+    ov.dataset.kind = it.kind;
     var dur = it.dur || 2, html = "", manual = false, label = "Continuer ›", auto = 0;
     var ev = it.ev, c = ev ? (card(ev.k) || {}) : {};
     if (it.kind === "banner") {
       html = '<div class="qv-banner"><b>' + esc(it.text) + '</b>' + (it.sub ? '<span>' + esc(it.sub) + '</span>' : '') + notesLine(it.notes) + '</div>';
     } else if (it.kind === "newcard") {
       markSeen(it.k);
-      var nc = card(it.k);
       html = '<div class="nc-box"><p class="nc-h">Nouvelle carte !</p><div class="nc-card">' + cardHTML(it.k, { big: true, mine: true }) + '</div></div>';
       manual = true; auto = 25; label = it.more ? "Suivante ›" : "Compris !";
       SND.play("pop");
@@ -898,48 +962,88 @@
       html = '<div class="qv-banner stage"><small>Découverte · étape ' + it.stage + '/5</small><b>' + esc(it.title) + '</b><span>' + esc(it.text) + '</span></div>';
       manual = true; auto = 12;
     } else if (it.kind === "announce") {
-      // 1. ANNONCE : l'auteur, la carte, la cible, ce qui va se passer
+      // 1. PRÉSENTATION : l'auteur, la carte, la cible, ce qui va se passer
       var actor = pub.players[ev.p], tgt = ev.to ? pub.players[ev.to] : null;
       var eff = (window.QV_CARDS.EFF[ev.k] || c.text || "");
+      var tgtAll = c.target === "all";
       html = '<div class="an-box"><p class="an-h">' + esc(headline(ev)) + '</p><div class="an-stage">' +
         '<div class="an-who">' + A.standalone(actor.avatar, { mood: "smug", outfit: W.outfit(actor), pose: tgt ? "hips" : "wave" }) + '<b>' + esc(ev.p === me.id ? "Toi" : actor.name) + '</b></div>' +
         '<div class="an-card">' + cardHTML(ev.k, { mine: ev.p === me.id }) + '</div>' +
         (tgt ? '<div class="an-who tgt">' + A.standalone(tgt.avatar, { mood: "worried", outfit: W.outfit(tgt) }) + '<b>' + esc(ev.to === me.id ? "Toi" : tgt.name) + '</b></div>' : '') +
-        '</div><p class="an-what"><b>Ce qui va se passer :</b> ' + esc(eff) + '</p>' +
+        '</div><p class="an-what"><b>' + (tgtAll ? "Pour toute la table" : tgt ? "Sur " + esc(ev.to === me.id ? "toi" : tgt.name) : "Pour " + esc(ev.p === me.id ? "toi" : actor.name)) + ' :</b> ' + esc(eff) + '</p>' +
         (tgt ? '<p class="an-next">' + (ev.to === me.id ? "À toi de réagir !" : esc(tgt.name) + " peut encore se défendre…") + '</p>' : '') + '</div>';
-      manual = true; auto = 6; label = ev.to === me.id ? "Réagir ›" : "Continuer ›";
+      manual = true; auto = it.short ? 3 : 6; label = ev.to === me.id ? "Réagir ›" : "Continuer ›";
     } else if (it.kind === "result") {
-      // 3. CONSÉQUENCES : restent affichées jusqu'à « Continuer »
+      // 4. CONSÉQUENCES : restent affichées jusqu'à « Continuer »
       var head = ev.t === "season" ? (D.EVENTS.filter(function (x) { return x.key === ev.k; })[0] || {}) : null;
       html = '<div class="rs-box"><p class="rs-h">' + esc(headline(ev)) + '</p>' +
-        (it.withCard && ev.t !== "season" && ev.t !== "status" ? '<div class="rs-card">' + cardHTML(ev.t === "block" ? ev.k : ev.k, { mine: ev.p === me.id }) + '</div>' : '') +
+        (ev.combo ? '<p class="rs-combo"><b>Combo !</b> ' + esc(ev.combo) + '</p>' : '') +
         (head ? '<div class="rs-season">' + IC.get(head.icon) + '<div><b>' + esc(head.name) + '</b><span>' + esc(head.text) + '</span></div></div>' : '') +
         '<p class="rs-sub">Ce qui a changé</p>' + impactHTML(ev) +
         (it.extra ? '<p class="rs-extra">' + esc(it.extra) + '</p>' : '') + '</div>';
-      manual = true; auto = 20;
+      manual = true; auto = ev.p === me.id && !ev.to ? 10 : 20;
     } else if (it.kind === "scene") {
-      // 2. SCÈNE : les personnages concernés en action (elle a le temps de se jouer)
+      // 3. ANIMATION : les personnages concernés en action (elle a le temps de se jouer)
       var sc = W.scene(ev, pub);
-      if (!sc) { playing = null; next(); return; }
+      if (!sc) { ov.remove(); playing = null; next(); return; }
       dur = sc.dur + 0.8;
-      var TITLES = { garde: "Garde alternée", block: "Paré !", renvoi: "Retour à l'envoyeur", startupWin: "Levée de fonds !", startupFail: "Faillite", demasque: "Démasqué·e !", doubleVieBust: "La double vie éclate" };
+      var TITLES = { garde: "Garde alternée", block: "Paré !", renvoi: "Retour à l'envoyeur", startupWin: "Levée de fonds !", startupFail: "Faillite", demasque: "Démasqué·e !", doubleVieBust: "La double vie éclate", burnout: "Burn-out" };
       var title = TITLES[ev.scene] || (ev.t === "status" ? (D.STATUSES[ev.s] || {}).label : "") || c.name || "";
       html = '<div class="qv-scene' + (pub && pub.mode === "adult" ? " adult" : "") + '"><div class="qv-scene-title">' + esc(title) + '</div>' + sc.svg + '<p class="qv-scene-cap">' + sc.caption + '</p></div>';
       (sc.sfx || []).forEach(function (f) { sceneTimers.push(setTimeout(function () { SND.play(f[1]); }, f[0] * 1000)); });
       label = it.replay ? "Fermer" : "Voir les conséquences ›";
     }
-    ov.innerHTML = html + '<div class="ov-foot"><button class="qv-skip' + (manual ? " go" : "") + '" type="button" data-ov="next">' + label + '</button>' +
+    ov.innerHTML = '<div class="ov-body">' + html + '</div><div class="ov-foot"><button class="qv-skip' + (manual ? " go" : "") + '" type="button" data-ov="next">' + label + '</button>' +
       (manual ? '<span class="ov-auto" id="ovauto"></span>' : '<div class="qv-prog"><i style="animation-duration:' + dur + 's"></i></div>') + '</div>';
     if (it.sfx) SND.play(it.sfx);
-    if (it.kind === "result") { var good = (ev.notes || []).some(function (n) { return n.p === me.id && n.v > 0; }), badm = (ev.notes || []).some(function (n) { return n.p === me.id && n.v < 0; }); SND.play(badm ? "sad" : good ? "coin" : "ding"); }
+    if (it.kind === "result") { var good = (ev.notes || []).some(function (n) { return n.p === me.id && n.v > 0; }), badm = (ev.notes || []).some(function (n) { return n.p === me.id && n.v < 0; }); SND.play(badm ? "sad" : good ? "coin" : "ding"); countUp(ov); }
     // un clic sur le fond ne fait plus défiler par erreur : seulement le bouton
-    ov.onclick = function (e) { if (e.target.closest("[data-ov=next]")) { SND.play("tap"); next(); } };
+    var once = false;
+    ov.onclick = function (e) { if (once || !e.target.closest("[data-ov=next]")) return; once = true; SND.play("tap"); if (playing === it) { playing = null; next(); } };
     if (manual) {
       var left = auto, el = $("#ovauto");
       var tick = function () { if (el) el.textContent = "suite automatique dans " + left + " s"; };
       tick();
-      countT = setInterval(function () { left--; if (left <= 0) { clearInterval(countT); next(); } else tick(); }, 1000);
-    } else sceneTimers.push(setTimeout(next, dur * 1000));
+      countT = setInterval(function () { left--; if (left <= 0) { clearInterval(countT); if (playing === it) { playing = null; next(); } } else tick(); }, 1000);
+    } else sceneTimers.push(setTimeout(function () { if (playing === it) { playing = null; next(); } }, dur * 1000));
+  }
+  // progression : la Formation monte, des métiers s'illuminent, le salaire apparaît
+  function careerFeel(ev) {
+    if (!ev || !ev.data || !pub) return;
+    var mine = ev.p === me.id && !ev.to;
+    if (mine && ev.data.edu && ev.data.edu.to > ev.data.edu.from) {
+      var a = ev.data.edu.from, b = ev.data.edu.to, pill = $("#mb-edu");
+      if (pill) { pill.classList.remove("pop"); void pill.offsetWidth; pill.classList.add("pop"); }
+      var unl = Object.keys(D.JOBS).filter(function (k) { var J = D.JOBS[k]; return J.card && !J.study && J.edu > a && J.edu <= b; }).map(function (k) { return D.JOBS[k].titles[0]; });
+      SND.play("unlock");
+      notify('<i class="tk-ico">' + IC.get("gradcap") + '</i><b>Formation ' + b + ' !</b> ' + (unl.length ? "Nouveaux métiers : " + esc(unl.join(", ")) : "Ton parcours avance."), "unlock", 3800, true);
+    }
+    if (mine && ev.data.hired) {
+      var J = D.JOBS[ev.data.hired], p = pub.players[me.id];
+      notify('<i class="tk-ico">' + IC.get("tie") + '</i><b>Embauché·e !</b> ' + esc(p.title) + ' · +' + p.salary + ' € à chaque tour', "unlock", 3400, true);
+    }
+  }
+  // résultats : les variations défilent dans la fenêtre (valeur avant → après)
+  function countUp(ov) {
+    $$(".rs-num", ov).forEach(function (el, i) {
+      var a = +el.dataset.from, b = +el.dataset.to, n = 0, steps = Math.min(8, Math.abs(b - a));
+      if (!steps || reduce) { el.textContent = b; return; }
+      setTimeout(function step() { n++; el.textContent = Math.round(a + (b - a) * n / steps); el.classList.add("tick"); if (n < steps) setTimeout(step, 90); }, 350 + i * 220);
+    });
+  }
+  // la carte jouée rejoint la bonne zone : parcours / vie (carte permanente) ou défausse (usage unique)
+  function flyToZone(ev) {
+    if (!ev || ev.t !== "card" || !card(ev.k) || reduce || ev.k === "garde") return;
+    var mine = ev.p === me.id, dest;
+    if (ev.zone) dest = mine ? $(".mb-id") : $('.qv-opp[data-pid="' + ev.p + '"]');
+    else dest = $(".pile.disc");
+    if (!dest) return;
+    var c = card(ev.k), el = document.createElement("div");
+    el.className = "qv-flymini fam-" + c.fam; el.innerHTML = IC.get(c.icon);
+    document.body.appendChild(el);
+    var b = center(dest), a = { x: innerWidth / 2, y: innerHeight * 0.42 };
+    var an = el.animate([{ transform: "translate(" + (a.x - 22) + "px," + (a.y - 30) + "px) scale(1.4)", opacity: 1 }, { transform: "translate(" + (b.x - 22) + "px," + (b.y - 30) + "px) scale(.5)", opacity: 0.85 }], { duration: 560, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
+    an.onfinish = function () { el.remove(); dest.classList.remove("got"); void dest.offsetWidth; dest.classList.add("got"); };
   }
   function flashTiles(ids) {
     setTimeout(function () {
@@ -949,7 +1053,7 @@
       });
     }, 250);
   }
-  function closeScene() { var ov = $("#ov"); if (ov) ov.remove(); }
+  function closeScene() { closeLayer(); }
 
   function floatNotes(notes) {
     (notes || []).forEach(function (n, i) {
@@ -1019,6 +1123,7 @@
       } else if (l === "bot") { room.lobby.push(bot(room.lobby.length)); hostBroadcast(); renderLobby(); }
       else if (l === "rm") { room.lobby = room.lobby.filter(function (p) { return p.id !== b.dataset.id; }); hostBroadcast(); renderLobby(); }
       else if (l === "start") hostStart();
+      else if (l === "fmt") { room.opts.format = b.dataset.v; hostBroadcast(); renderLobby(); }
       else if (l === "mode") { room.opts.mode = b.dataset.v; if (b.dataset.v === "adult") { room.adultOk = undefined; room.lobby.forEach(function (p) { p.adultOk = null; }); } hostBroadcast(); renderLobby(); }
       else if (l === "disc") { room.opts.discovery = b.dataset.v === "1"; hostBroadcast(); renderLobby(); }
       else if (l === "ok18") { room.adultOk = b.dataset.v === "1"; if (host) { var mine = room.lobby.filter(function (p) { return p.id === me.id; })[0]; if (mine) mine.adultOk = room.adultOk; hostBroadcast(); } else sendHello(); renderLobby(); }
@@ -1037,6 +1142,8 @@
     h += '<div class="qv-opt-row"><span>Règles</span><div class="qv-seg">' +
       '<button class="seg' + (o.discovery ? " on" : "") + '" data-l="disc" data-v="1"' + (host ? "" : " disabled") + '><b>Découverte</b><small>Les cartes arrivent petit à petit</small></button>' +
       '<button class="seg' + (!o.discovery ? " on" : "") + '" data-l="disc" data-v="0"' + (host ? "" : " disabled") + '><b>Expert</b><small>Tout le jeu dès le début</small></button></div></div>';
+    var fm = o.format || "classique";
+    h += '<div class="qv-opt-row"><span>Durée</span><div class="qv-seg three">' + Object.keys(D.FORMATS).map(function (k) { var F = D.FORMATS[k]; return '<button class="seg' + (fm === k ? " on" : "") + '" data-l="fmt" data-v="' + k + '"' + (host ? "" : " disabled") + '><b>' + F.name + '</b><small>' + F.hint + '</small></button>'; }).join("") + '</div></div>';
     if (adultOn) {
       h += '<div class="qv-18"><p><b>Mode réservé aux adultes.</b> Humour osé, noir et irrévérencieux (infidélités, soirées qui tournent mal, scandales), sans contenu sexuel explicite. Chaque joueur doit être majeur et accepter.</p>' +
         (room.adultOk === true ? '<p class="ok">Tu as accepté. <button class="link" data-l="ok18" data-v="0">Retirer mon accord</button></p>'
@@ -1050,6 +1157,7 @@
   //  ÉCRAN DE JEU
   // ======================================================================
   function isMyTurn() { return pub && pub.phase === "play" && pub.order[pub.turn] === me.id; }
+  function myDraw() { return pub && pub.phase === "draw" && pub.order[pub.turn] === me.id && !pub.gate; }
 
   function resRow(p, big) {
     return ["b", "f", "r"].map(function (k) {
@@ -1078,10 +1186,11 @@
   // ---------- icônes de vie : la situation d'un joueur en un coup d'œil ----------
   function lifeIcons(p) {
     var o = [], mini = function (k, t, n) { return '<span class="li" title="' + esc(t) + '">' + IC.get(k, "li-i") + (n ? '<b>' + n + '</b>' : '') + '</span>'; };
+    if (p.edu) o.push(mini("gradcap", "Formation " + p.edu, p.edu));
     if (p.job) o.push(mini("tie", p.title)); else if (p.retired) o.push(mini("hammock", "Retraité·e"));
     if (p.partner) o.push(mini(p.married ? "rings" : "heart", (p.married ? "Marié·e à " : "En couple avec ") + p.partner.name));
     if (p.kids.length) o.push(mini("baby", p.kids.length + " enfant(s)", p.kids.length > 1 ? p.kids.length : ""));
-    if (p.housing) o.push(mini(p.housing === 2 ? "house" : "flat", D.HOUSING[p.housing]));
+    if (p.housing) o.push(mini(p.housing === 3 ? "villa" : p.housing === 2 ? "house" : "flat", D.HOUSING[p.housing]));
     (p.items || []).forEach(function (k) { var ic = { car: "car", hamster: "hamster", dog: "dog", toaster: "toaster", tattoo: "heart" }[k]; if (ic && k !== "tattoo") o.push(mini(ic, D.ITEMS[k].name)); });
     if (p.scandal || Object.keys(p.st || {}).some(function (k) { return D.STATUSES[k] && D.STATUSES[k].bad; })) o.push('<span class="li bad" title="Ennuis en cours">!</span>');
     return '<span class="lifes">' + o.join("") + '</span>';
@@ -1098,8 +1207,9 @@
     };
     var work = [], rel = [], fam = [], home_ = [], poss = [], trouble = [];
     if (q.job) work.push('<b>' + esc(q.title) + '</b><small>+' + q.salary + ' € à chaque tour</small>');
-    if (q.retired) work.push('<b>Retraité·e</b>');
-    if (q.diploma) work.push('Diplôme' + (st.fakeDip ? ' <em class="bad">douteux</em>' : ''));
+    if (q.retired) work.push('<b>Retraité·e</b><small>pension ' + (q.pension || 0) + ' € par tour</small>');
+    if (st.fakeDip) work.push('<em class="bad">Diplôme douteux</em>');
+    ["burnout", "chomage", "chompartiel"].forEach(function (k) { if (st[k]) work.push('<em class="' + (D.STATUSES[k].bad ? "bad" : "") + '">' + esc(stLabel(k)) + '</em>'); });
     if (q.startup) work.push('Start-up : verdict dans ' + q.startup + ' tour(s)');
     if (st.liar) work.push('<em class="bad">' + esc(stLabel("liar")) + '</em>');
     if (q.partner) rel.push(A.standalone(A.random(q.partner.seed), { mood: "happy", outfit: q.partner.look || "casual" }, "bd-av", true) + '<b>' + esc(q.partner.name) + '</b><small>' + (q.married ? "Marié·e" : "En couple") + '</small>');
@@ -1127,6 +1237,7 @@
     sheet('<div class="qv-board">' +
       '<div class="bd-top">' + W.tile(q) + '</div>' +
       '<h3>' + esc(mine ? "Mon plateau" : "Le plateau de " + q.name) + '</h3><div class="qv-res-line">' + resRow(q, true) + '</div>' +
+      careerHTML(q, mine) +
       '<div class="bd-grid">' + slot("tie", "Travail", work, "Sans emploi") + slot("heart", "Relations", rel, "Célibataire") + slot("baby", "Famille", fam, "Pas d'enfant") + slot("house", "Logement", home_, "") + slot("car", "Possessions", poss, "Rien pour l'instant") + (trouble.length ? slot("lightning", "En cours", trouble, "") : "") + '</div>' +
       (!mine ? '<p class="bd-hand">' + q.handCount + ' carte(s) en main — secrètes</p>' : '') +
       '<h4>Cartes jouées (publiques)</h4><div class="bd-played">' + (played || '<small>Aucune pour l\'instant</small>') + '</div>' +
@@ -1135,6 +1246,24 @@
       '</div><button class="qv-btn ghost sm" data-g="close">Fermer</button>');
   }
 
+  // ---------- carrière : Formation, parcours d'études, métiers accessibles ----------
+  function careerHTML(q, mine) {
+    var edu = q.edu || 0, max = D.EDU_MAX, zone = q.zone || [];
+    var studies = zone.filter(function (z) { return z.z === "studies"; }), jobC = zone.filter(function (z) { return z.z === "job"; })[0];
+    var jobs = Object.keys(D.JOBS).filter(function (k) { return D.JOBS[k].card && D.byKey[D.JOBS[k].card] && (!D.byKey[D.JOBS[k].card].adult || pub.mode === "adult"); })
+      .sort(function (a, b) { return (D.JOBS[a].edu || 0) - (D.JOBS[b].edu || 0) || D.JOBS[a].salary - D.JOBS[b].salary; });
+    var nextT = jobs.map(function (k) { return D.JOBS[k]; }).filter(function (J) { return !J.study && (J.edu || 0) > edu; })[0];
+    var o = '<div class="cr-sec"><div class="cr-edu"><b>' + IC.get("gradcap", "qv-ri") + 'Formation ' + edu + '<small>/' + max + '</small></b><span class="cr-pips">';
+    for (var i = 1; i <= max; i++) o += '<i class="' + (i <= edu ? "on" : "") + '">' + i + '</i>';
+    o += '</span>' + (nextT ? '<small class="cr-next">Prochain palier : Formation ' + nextT.edu + ' → ' + esc(nextT.titles[0]) + '</small>' : '<small class="cr-next">Tous les métiers te sont ouverts</small>') + '</div>';
+    o += '<div class="cr-studies"><small>Parcours</small>' + (studies.length ? studies.map(function (z) { var c = card(z.k); return '<span class="cr-st">' + IC.get(c.icon, "qv-ri") + esc(c.name) + '</span>'; }).join("") : '<em>Aucune étude pour l\'instant</em>') + '</div>';
+    o += '<div class="cr-jobs"><small>Métiers</small>' + jobs.map(function (k) {
+      var J = D.JOBS[k], why = E.qualifies(q, k, pub), cur = q.job && q.job.k === k;
+      return '<span class="cr-j' + (cur ? " cur" : why ? " lock" : " ok") + '"><b>' + esc(J.titles[0]) + '</b><small>' + esc(window.QV_CARDS.jobCond(k)) + ' · ' + J.salary + ' €/tour</small>' + (cur ? '<em>Ton métier</em>' : why ? '' : '<em>Accessible</em>') + '</span>';
+    }).join("") + '</div>';
+    if (mine && q.secours) o += '<p class="qv-tip new">Pas de carte Études depuis longtemps ? Touche une carte de ta main puis « Étudier » : tu sacrifies ton action pour +1 Formation (jusqu\'au niveau 2).</p>';
+    return o + '</div>';
+  }
   // ---------- journal des événements ----------
   function journalLine(ev) {
     var c = card(ev.k) || {}, who = function (id) { return id === me.id ? "Toi" : nameOf(id); };
@@ -1211,7 +1340,7 @@
       mz.innerHTML =
         '<div class="qv-mytile' + (isMyTurn() ? " turn" : "") + (react ? " react-" + reactMood : "") + '" data-pid="' + me.id + '">' + stageTile(p, react ? { mood: reactMood } : {}) +
         '</div>';
-      $("#mebar").innerHTML = '<button class="mb-id" data-g="life" aria-label="Ma vie">' + (isMyTurn() ? '<i class="my-turn">À toi</i>' : '') + '<b>' + esc(p.name) + '</b><small>' + esc(p.title) + '</small></button>' +
+      $("#mebar").innerHTML = '<button class="mb-id" data-g="life" aria-label="Ma vie">' + (isMyTurn() ? '<i class="my-turn">À toi</i>' : '') + '<b>' + esc(p.name) + '</b><small><i class="mb-edu" id="mb-edu" title="Formation">' + IC.get("gradcap", "mb-ei") + (p.edu || 0) + '</i>' + esc(p.job ? p.title + " · " + p.salary + " €" : p.retired ? "Retraité·e" : "Sans emploi") + '</small></button>' +
         ctrHTML() +
         (!pub.discovery || pub.stage >= 3 ? '<button class="mb-b" data-g="obj" aria-label="Mes objectifs secrets">' + IC.get("star", "mb-i") + '</button>' : '');
     } else {
@@ -1286,7 +1415,7 @@
     function s1() {
       step = 0;
       var looks = [base, Object.assign({}, base, { job: { k: "livreur", lv: 1 }, housing: 1, mood: "smug" }), Object.assign({}, base, { job: { k: "bureau", lv: 2 }, housing: 2, partner: { name: "Lou", seed: 9 }, married: true, mood: "happy" })];
-      frame('<h2 class="qi-h">Voici ta vie</h2><div class="qi-tile" id="qi-tile">' + W.tile(looks[0]) + '</div>', "Tu commences à 20 ans sur le canapé de tes parents. À toi de construire ta vie : métier, amour, maison…", "Suivant");
+      frame('<h2 class="qi-h">Voici ta vie</h2><div class="qi-tile" id="qi-tile">' + W.tile(looks[0]) + '</div>', "Tu commences à 18 ans sur le canapé de tes parents. Études, métier, amour, maison : à toi de construire ta vie…", "Suivant");
       [1, 2].forEach(function (n) { later(function () { var t = $("#qi-tile"); if (t) { t.innerHTML = W.tile(looks[n]); t.classList.remove("pop"); void t.offsetWidth; t.classList.add("pop"); SND.play("pop"); } }, n * 1500); });
       later(s2, 5200);
     }
@@ -1301,7 +1430,7 @@
       var cardEl = el.querySelector(".qi-card"); if (!cardEl || cardEl.classList.contains("go")) return;
       cardEl.classList.add("go"); SND.play("card");
       later(function () {
-        var m = el.querySelector(".qi-me"); if (m) { m.innerHTML = A.standalone(base.avatar, { mood: "happy", outfit: "delivery", pose: "wave" }) + '<span class="qi-float up">+2 € par tour</span>'; SND.play("coin"); }
+        var m = el.querySelector(".qi-me"); if (m) { m.innerHTML = A.standalone(base.avatar, { mood: "happy", outfit: "delivery", pose: "wave" }) + '<span class="qi-float up">+1 € par tour</span>'; SND.play("coin"); }
       }, 700);
       later(function () {
         var b = el.querySelector(".qi-play"); if (!b) return;
@@ -1338,11 +1467,13 @@
     } else if (pub.gate) {
       var waitFor = pub.order.filter(function (id) { var q = pub.players[id]; return !q.bot && !pub.gate.ready[id] && (id === me.id || present(id)); }).map(function (id) { return id === me.id ? "toi" : nameOf(id); });
       o = waitFor.length ? "On attend " + esc(waitFor.join(", ")) + "…" : "On continue…";
+    } else if (myDraw()) {
+      o = "<b>À toi : pioche !</b>";
     } else if (isMyTurn()) {
       var pl = pub.players[me.id].plays;
       o = "<b>À toi !</b>" + (pl > 1 ? " · " + pl + " cartes" : "");
     } else if (cur) {
-      o = esc(cur.name) + (cur.bot ? " réfléchit…" : " joue…") + (!cur.bot && !present(cur.id) ? " (déconnecté·e)" : "");
+      o = esc(cur.name) + (pub.phase === "draw" ? " pioche…" : cur.bot ? " réfléchit…" : " joue…") + (!cur.bot && !present(cur.id) ? " (déconnecté·e)" : "");
     }
     if (room && !room.host && room.hostId && !present(room.hostId) && room.roster.length) o = "Hôte déconnecté·e…";
     st.innerHTML = o;
@@ -1540,24 +1671,28 @@
         cardHTML(c.k, { dim: !!why && !react, reason: why && !react ? why : "", pulse: guideFirst() && !sel }) + (!seen[c.k] && pub.discovery ? '<i class="hc-new">Nouveau</i>' : '') + '</button>';
     }).join("");
     var focusHTML = "";
-    h.innerHTML = '<span class="pile" id="deckpile" title="Pioche"><i class="back"></i><b>' + pub.deck + '</b></span>' +
+    var drawNow = myDraw() && !busy(), takeNow = drawNow && pub.canTake;
+    h.innerHTML = '<button class="pile' + (drawNow ? " go" : "") + '" id="deckpile" data-g="' + (drawNow ? "draw" : "deckinfo") + '" aria-label="Pioche : ' + pub.deck + ' cartes face cachée' + (drawNow ? ', touche pour piocher' : '') + '"><i class="back"></i><b>' + (drawNow ? "Piocher" : pub.deck) + '</b></button>' +
       '<div class="qv-fan">' + cards + '</div>' +
-      '<span class="pile disc" title="Défausse">' + (pub.discardTop ? '<i class="face fam-' + card(pub.discardTop).fam + '">' + IC.get(card(pub.discardTop).icon) + '</i>' : '<i class="empty"></i>') + '<b>' + pub.discard + '</b></span>' +
-      '';
+      '<button class="pile disc' + (takeNow ? " go" : "") + '" data-g="' + (takeNow ? "take" : "discard") + '" aria-label="Défausse' + (pub.discardTop ? " : « " + esc(card(pub.discardTop).name) + " » visible" : " vide") + (takeNow ? ", touche pour la reprendre et la jouer" : "") + '">' + (pub.discardTop ? '<i class="face fam-' + card(pub.discardTop).fam + '">' + IC.get(card(pub.discardTop).icon) + '</i>' : '<i class="empty"></i>') + '<b>' + (takeNow ? "Reprendre" : pub.discard) + '</b></button>';
+    if (drawNow) pinTick(takeNow ? '<b>Pioche</b> une carte… ou <b>reprends « ' + esc(card(pub.discardTop).name) + ' »</b> (à jouer tout de suite)' : '<b>Touche la pioche</b> pour tirer ta carte du tour');
+    else if (tickPin && /pioche|Pioche/.test(tickPin)) pinTick("");
     // carte agrandie + actions (la main reste compacte, le personnage reste visible au-dessus)
     var s = sel && hand.filter(function (c) { return c.u === sel; })[0];
     h.classList.toggle("open", !!s);
     if (s) {
       var fc = document.createElement("div"); fc.id = "focus"; fc.className = "qv-focus"; h.insertBefore(fc, h.firstChild);
       {
-        var def2 = card(s.k), why2 = mine ? (pub.gate ? "Attends que tout le monde ait vu la scène" : E.canPlay(vp, me.id, s.k)) : "Ce n'est pas ton tour";
+        var def2 = card(s.k), why2 = mine ? (pub.gate ? "Attends que tout le monde ait vu la scène" : E.canPlay(vp, me.id, s.k)) : myDraw() ? "Pioche d'abord ta carte du tour (pile de gauche)" : "Ce n'est pas ton tour";
+        var mp = pub.players[me.id];
         var react2 = def2.reaction && !def2.alsoPlay;
         fc.innerHTML = '<div class="fc-card">' + cardHTML(s.k, { reason: why2 && !react2 && mine ? why2 : "" }) + '</div>' +
           '<div class="act-bar">' +
           (react2 ? '<span class="act-why">Carte de réaction : elle servira quand on t\'attaquera</span>' : why2 ? '<span class="act-why">' + esc(why2) + '</span>' :
             '<button class="qv-btn act-play' + (guideFirst() ? " pulse" : "") + '" data-g="' + (def2.target === "opponent" ? "pick" : "play") + '" data-u="' + s.u + '">' + (def2.target === "opponent" ? "Choisir une cible ›" : "Jouer") + '</button>') +
           '<div class="act-row"><button class="qv-btn ghost sm" data-g="details" data-u="' + s.u + '">Détails</button>' +
-          (mine && !pub.gate ? '<button class="qv-btn ghost sm" data-g="rest" data-u="' + s.u + '" title="Défausser cette carte : +1 Bonheur">Défausser +1' + IC.get("b", "qv-ri") + '</button>' : '') +
+          (mine && !pub.gate ? '<button class="qv-btn ghost sm" data-g="rest" data-u="' + s.u + '" title="Défausser cette carte pour renouveler ta main">Défausser</button>' : '') +
+          (mine && !pub.gate && mp && mp.secours ? '<button class="qv-btn ghost sm edu-b" data-g="study" data-u="' + s.u + '" title="Sacrifier ton action et cette carte : +1 Formation">' + IC.get("gradcap", "qv-ri") + 'Étudier</button>' : '') +
           '<button class="qv-btn ghost sm" data-g="unsel" aria-label="Refermer">✕</button></div></div>';
       }
       requestAnimationFrame(fitStage);
@@ -1572,7 +1707,8 @@
     if (r.minR) txt = "Grâce à tes " + sv(me.id, "r") + " Réputation, « " + c.name + " » est débloquée !";
     else if (r.minB) txt = "Grâce à tes " + sv(me.id, "b") + " Bonheur, « " + c.name + " » est débloquée !";
     else if (c.cost && c.cost.f) txt = "Avec " + sv(me.id, "f") + " Fortune, tu peux t'offrir « " + c.name + " » !";
-    else if (r.diploma) txt = "Grâce à ton diplôme, « " + c.name + " » est débloquée !";
+    else if (r.qualify) txt = "Grâce à ta Formation " + (p.edu || 0) + ", « " + c.name + " » est accessible !";
+    else if (r.minEdu) txt = "Avec ta Formation " + (p.edu || 0) + ", « " + c.name + " » est jouable !";
     else if (r.partner) txt = "Maintenant que tu es en couple, « " + c.name + " » est jouable !";
     else txt = "« " + c.name + " » est maintenant jouable !";
     SND.play("unlock");
@@ -1598,12 +1734,20 @@
     an.onfinish = function () { g.remove(); cb && cb(); };
   }
 
-  function sheet(html) {
+  function sheet(html, phase) {
     var s = $("#sheet"); if (!s) return;
+    if ($("#ov")) return; // jamais une fiche par-dessus une fenêtre d'événement
+    if (phase) setPhase(phase);
     s.innerHTML = '<div class="qv-sheet-bg" data-g="close"></div><div class="qv-sheet-box">' + html + '</div>';
     s.hidden = false; hideHint();
   }
-  function closeSheet() { var s = $("#sheet"); if (s) { s.hidden = true; s.innerHTML = ""; } sel = null; updateHint(); }
+  function closeSheet() { var s = $("#sheet"); if (s) { s.hidden = true; s.innerHTML = ""; } sel = null; if (UI.phase === "targetSelection" && !playing && !queue.length) setPhase("idle"); updateHint(); }
+  // l'intention est partie chez l'hôte : on attend sa réponse (la main est verrouillée)
+  var resolvT = null;
+  function resolving() {
+    setPhase("resolving"); clearTimeout(resolvT);
+    resolvT = setTimeout(function () { if (UI.phase === "resolving" && !queue.length && !playing) { clearGhost(); setPhase("idle"); renderHand(); } }, 4000);
+  }
 
   function openCard(u) {
     var c = priv.hand.filter(function (x) { return x.u === u; })[0]; if (!c) return;
@@ -1624,17 +1768,42 @@
       } else if (!def.reaction) {
         o += '<p class="qv-why">' + esc(why) + '</p>';
       }
-      o += '<button class="qv-btn ghost" data-g="rest" data-u="' + u + '">Souffler un coup : défausser (+1 bonheur)</button>';
+      o += '<button class="qv-btn ghost" data-g="rest" data-u="' + u + '">Défausser cette carte (renouveler ma main)</button>';
+      if (pub.players[me.id].secours) o += '<button class="qv-btn ghost" data-g="study" data-u="' + u + '">Étudier à la place : sacrifier cette carte et ton action, +1 Formation</button>';
     } else {
-      o += '<p class="qv-tip">Ce n\'est pas ton tour.</p>';
+      o += '<p class="qv-tip">' + (myDraw() ? "Pioche d'abord ta carte du tour." : "Ce n'est pas ton tour.") + '</p>';
     }
     o += '<button class="qv-btn ghost sm" data-g="close">Fermer</button>';
-    sheet(o);
+    sheet(o, mine && !why && def.target === "opponent" ? "targetSelection" : null);
     renderHand();
   }
 
+  // reprendre la dernière carte défaussée : elle se joue tout de suite (choix de la cible si besoin)
+  function takeTargets() {
+    var k = pub.discardTop, c = card(k);
+    var o = '<p class="qv-pick">Reprendre « ' + esc(c.name) + ' » et la jouer sur…</p>' + cardHTML(k, { big: true }) + '<div class="qv-targets">' + E.validTargets(pub, me.id, k).map(function (id) {
+      var q = pub.players[id];
+      return '<button class="qv-tg" data-g="target" data-take="1" data-t="' + id + '">' + A.standalone(q.avatar, { mood: "worried" }, "tg-av", true) + '<span>' + esc(q.name) + '</span></button>';
+    }).join("") + '</div><button class="qv-btn ghost sm" data-g="close">Annuler</button>';
+    sheet(o, "targetSelection");
+  }
+  function flyFromDiscard() {
+    var d = $(".pile.disc"); if (!d || reduce) return;
+    var r = d.getBoundingClientRect(), g = document.createElement("div");
+    g.className = "qv-ghost"; g.style.left = r.left + "px"; g.style.top = r.top + "px"; g.style.width = "116px";
+    g.innerHTML = cardHTML(pub.discardTop, {}); document.body.appendChild(g);
+    g.animate([{ transform: "scale(.4)" }, { transform: "translate(" + (innerWidth / 2 - r.left - 58) + "px," + (innerHeight * 0.42 - r.top - 80) + "px) scale(1.2)" }], { duration: 420, easing: "cubic-bezier(.3,.7,.3,1)", fill: "forwards" });
+  }
+  // historique de la défausse (face visible, consultable à tout moment)
+  function discardSheet() {
+    var list = pub.discardList || [];
+    var HOW = { rest: "défaussée par", used: "jouée par", lost: "perdue par" };
+    sheet('<h3>Défausse</h3><p class="qv-tip">Les cartes jouées une fois ou défaussées. Au début de ton tour, tu peux reprendre la dernière <b>si un autre joueur l\'a défaussée</b> et si tu peux la jouer : elle se joue alors tout de suite, à la place de ta pioche.</p>' +
+      (list.length ? '<div class="ds-list">' + list.map(function (d, i) { var c = card(d.k); return '<div class="ds-c' + (i === 0 ? " top" : "") + '"><i class="face fam-' + c.fam + '">' + IC.get(c.icon) + '</i><b>' + esc(c.name) + '</b><small>' + (i === 0 ? "Dessus · " : "") + (HOW[d.how] || "") + " " + esc(d.by ? (d.by === me.id ? "toi" : nameOf(d.by)) : "") + '</small></div>'; }).join("") + '</div>' : '<p>La défausse est vide.</p>') +
+      '<button class="qv-btn ghost sm" data-g="close">Fermer</button>');
+  }
   function maybeReact() {
-    if (!pub || pub.phase !== "react" || !pub.pending || pub.pending.to !== me.id || queue.length || playing || !priv) return;
+    if (!pub || pub.phase !== "react" || !pub.pending || pub.pending.to !== me.id || queue.length || playing || !priv || $("#ov")) return;
     var pd = pub.pending, ac = card(pd.k), p = pub.players[me.id];
     var counters = priv.hand.filter(function (h) { return (ac.counters || []).indexOf(h.k) >= 0; });
     var o = '<div class="qv-react"><p class="qv-react-h">' + esc(nameOf(pd.from)) + ' te joue</p>' + cardHTML(pd.k, { big: true }) +
@@ -1646,12 +1815,12 @@
       var ok = E.affordable(p, ac.soft.cost);
       o += '<button class="qv-btn alt" data-g="react" data-c="soft"' + (ok ? "" : " disabled") + '>' + esc(ac.soft.label) + ' <small>(payer ' + esc(E.costText(ac.soft.cost)) + ')</small></button>';
     }
-    o += '<button class="qv-btn danger" data-g="react" data-c="accept">Encaisser <small>' + esc(ac.bounce ? ac.bounce.label : "") + ' · +1 carte · 2 cartes au prochain tour</small></button>';
+    o += '<button class="qv-btn danger" data-g="react" data-c="accept">Encaisser <small>' + esc(ac.bounce ? ac.bounce.label : "") + ' · 2 cartes à jouer au prochain tour</small></button>';
     if (pub.mode === "adult") o += '<button class="qv-btn dark" data-g="react" data-c="spite">Balancer un dossier <small>Tu encaisses tout, sans rebond… mais ' + esc(nameOf(pd.from)) + ' perd 3 réputation</small></button>';
     if (pub.discovery && !seen["m:react"]) { o += '<p class="qv-tip new">Nouveau : quand on t\'attaque, tu choisis. Contrer annule tout, payer limite les dégâts, encaisser te fait rebondir.</p>'; markSeen("m:react"); }
     if (!counters.length) o += '<p class="qv-tip">Pas de carte pour contrer. ' + esc((ac.counters || []).filter(function (k) { return k !== "renvoi"; }).map(function (k) { return "« " + card(k).name + " »"; }).join(" ou ")) + ' ou « Retour à l\'envoyeur » auraient marché.</p>';
     o += '</div></div>';
-    sheet(o);
+    sheet(o, "targetSelection");
   }
 
   function gameClick(e) {
@@ -1666,11 +1835,16 @@
     if (g === "unsel") { sel = null; renderHand(); return; }
     if (g === "res") { resSheet(b.dataset.k); return; }
     if (g === "reduce") { reduce = !reduce; store("qv-reduce", reduce); document.body.classList.toggle("reduce", reduce); closeSheet(); toast(reduce ? "Animations réduites" : "Animations complètes"); return; }
-    if (g === "play") { if (guideFirst()) { markSeen("guide1"); hideHint(); } closeSheet(); flyOut(+b.dataset.u, false); sel = null; sendIntent({ t: "play", u: +b.dataset.u }); return; }
+    if (g === "play") { if (busy()) return; if (guideFirst()) { markSeen("guide1"); hideHint(); } closeSheet(); flyOut(+b.dataset.u, false); sel = null; resolving(); sendIntent({ t: "play", u: +b.dataset.u }); return; }
     if (g === "intro") { closeSheet(); intro(true); return; }
-    if (g === "target") { closeSheet(); sendIntent({ t: "play", u: +b.dataset.u, target: b.dataset.t }); return; }
-    if (g === "rest") { closeSheet(); flyOut(+b.dataset.u, true); sel = null; sendIntent({ t: "rest", u: +b.dataset.u }); return; }
-    if (g === "react") { closeSheet(); sendIntent({ t: "react", choice: b.dataset.c, u: b.dataset.u ? +b.dataset.u : undefined }); return; }
+    if (g === "target") { closeSheet(); resolving(); sendIntent(b.dataset.take ? { t: "take", target: b.dataset.t } : { t: "play", u: +b.dataset.u, target: b.dataset.t }); return; }
+    if (g === "rest") { if (busy() && UI.phase !== "targetSelection") return; closeSheet(); flyOut(+b.dataset.u, true); sel = null; resolving(); sendIntent({ t: "rest", u: +b.dataset.u }); return; }
+    if (g === "study") { if (busy()) return; closeSheet(); flyOut(+b.dataset.u, true); sel = null; resolving(); sendIntent({ t: "study", u: +b.dataset.u }); return; }
+    if (g === "draw") { if (busy()) return; SND.play("card"); resolving(); sendIntent({ t: "draw" }); return; }
+    if (g === "take") { if (busy()) return; var tk = card(pub.discardTop); if (tk.target === "opponent") return takeTargets(); resolving(); flyFromDiscard(); sendIntent({ t: "take" }); return; }
+    if (g === "discard") { discardSheet(); return; }
+    if (g === "deckinfo") { toast("Pioche : " + pub.deck + " cartes face cachée. Tu pioches une carte au début de ton tour."); return; }
+    if (g === "react") { closeSheet(); resolving(); sendIntent({ t: "react", choice: b.dataset.c, u: b.dataset.u ? +b.dataset.u : undefined }); return; }
     if (g === "sound") { SND.toggle(); b.textContent = SND.muted() ? "🔇" : "🔊"; return; }
     if (g === "obj") {
       sheet('<h3>Objectifs secrets</h3><p class="qv-tip">Personne d\'autre ne les voit. Ils rapportent des points à la fin s\'ils sont remplis.</p>' +

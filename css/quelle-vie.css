@@ -907,3 +907,88 @@ body.reduce .qv-hc, body.reduce .qv-hc .qv-card, body.reduce .ctr, body.reduce .
 .qv-mebar .ctr-txt { min-width: 0; }
 .qv-mebar .ctr { padding-right: 4px; }
 @media (max-width: 380px) { .qv-mebar .ctr-n { font-size: 9px; } .qv-mebar .ctr-i { width: 16px; height: 16px; } .mb-id { max-width: 78px; } }
+
+/* =====================================================================
+   SÉQUENCE D'AFFICHAGE EXCLUSIVE · FORMATION · PIOCHE / DÉFAUSSE
+   ===================================================================== */
+.fam-study { --fc: #16a3a8; }
+/* une seule fenêtre : hauteur maximale, contenu qui défile, bouton toujours accessible */
+.qv-ov { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 0; overflow: hidden;
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); animation: qv-ov-in .18s ease-out both; }
+.qv-ov > :first-child { margin-top: 0; }
+.qv-ov .ov-body { flex: 0 1 auto; min-height: 0; max-height: calc(100dvh - 92px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; align-items: center; padding: 6px 0; }
+.qv-ov .ov-body > * { max-width: 100%; }
+.qv-ov .ov-foot { flex: none; margin: 0; padding: 10px 0 max(12px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.qv-ov.out { animation: qv-ov-out .17s ease-in both; pointer-events: none; }
+@keyframes qv-ov-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes qv-ov-out { to { opacity: 0; transform: scale(.98); } }
+.qv-ov .qv-scene svg { max-height: calc(100dvh - 210px); }
+body.reduce .qv-ov, body.reduce .qv-ov.out { animation: none; }
+/* la carte qui vole ne passe jamais au-dessus d'une fenêtre */
+.qv-ghost { z-index: 50; }
+.qv-flycard { z-index: 55; }
+/* résultats : valeur avant → après */
+.rs-res i { display: inline-flex; align-items: center; gap: 4px; }
+.rs-from { opacity: .6; text-decoration: line-through; }
+.rs-num { font-size: 1.15em; display: inline-block; min-width: 1.2em; text-align: center; }
+.rs-num.tick { animation: qv-num .25s ease-out; }
+@keyframes qv-num { 50% { transform: scale(1.35); } }
+.rs-res small { opacity: .75; font-weight: 800; }
+.rs-combo { background: var(--sun); border: 3px solid var(--ink); border-radius: 12px; padding: 6px 12px; font-weight: 900; margin: 4px 0 8px; box-shadow: 3px 3px 0 var(--ink); animation: qv-pop .4s cubic-bezier(.2,1.6,.4,1) both; }
+.rs-combo b { color: #e5487a; text-transform: uppercase; }
+/* pioche et défausse : vrais boutons, la pioche du tour pulse */
+.qv-hand .pile { background: none; border: 0; padding: 0; color: var(--ink); font: inherit; font-weight: 900; cursor: pointer; }
+.qv-hand .pile b { font-size: 11px; background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 0 6px; line-height: 16px; }
+.qv-hand .pile.go i { animation: qv-pilego 1s ease-in-out infinite; }
+.qv-hand .pile.go b { background: var(--sun); }
+@keyframes qv-pilego { 50% { transform: translateY(-5px) rotate(-3deg); box-shadow: 0 0 0 4px var(--sun), 2px 2px 0 var(--ink); } }
+.qv-flymini { position: fixed; left: 0; top: 0; width: 44px; height: 60px; border: 3px solid var(--ink); border-radius: 8px; background: var(--fc); z-index: 58; pointer-events: none; display: grid; place-items: center; }
+.qv-flymini svg { width: 30px; height: 30px; background: #fff; border-radius: 6px; }
+.got { animation: qv-got .5s ease-out; }
+@keyframes qv-got { 40% { transform: scale(1.12); box-shadow: 0 0 0 4px var(--sun); } }
+.ds-list { display: grid; gap: 6px; margin: 8px 0 12px; }
+.ds-c { display: grid; grid-template-columns: 30px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; border: 2px solid var(--ink); border-radius: 10px; padding: 4px 8px; background: #fff; }
+.ds-c.top { box-shadow: 3px 3px 0 var(--ink); background: #fff8dc; }
+.ds-c .face { grid-row: span 2; width: 28px; height: 38px; border: 2px solid var(--ink); border-radius: 5px; background: var(--fc); display: grid; place-items: center; }
+.ds-c .face svg { width: 20px; height: 20px; background: #fff; border-radius: 4px; }
+.ds-c small { color: var(--muted); font-size: 11px; }
+/* Formation : pastille dans la barre perso */
+.mb-edu { display: inline-flex; align-items: center; gap: 1px; font-style: normal; font-weight: 900; background: #d8f3f3; color: #0c6d70; border-radius: 999px; padding: 0 5px 0 2px; margin-right: 4px; }
+.mb-ei { width: 13px; height: 13px; }
+.mb-edu.pop { animation: qv-edupop .9s cubic-bezier(.2,1.6,.4,1); }
+@keyframes qv-edupop { 30% { transform: scale(1.6); background: var(--sun); } }
+.edu-b .qv-ri { width: 15px; height: 15px; vertical-align: -3px; margin-right: 2px; }
+.qc-d.per small, .qc-d.edu small { font-size: 8px; font-weight: 900; margin-left: 1px; opacity: .8; }
+.qc-d.edu { background: #d8f3f3; color: #0c6d70; }
+.qv-seg.three { grid-template-columns: 1fr 1fr 1fr; }
+.qv-seg.three .seg small { font-size: 10px; }
+/* fiche carrière */
+.cr-sec { border: 3px solid var(--ink); border-radius: 14px; background: #f0fbfb; padding: 8px 10px; margin: 8px 0 10px; display: grid; gap: 8px; }
+.cr-edu b { display: flex; align-items: center; gap: 4px; font-family: var(--display); font-size: 18px; }
+.cr-edu b small { font-size: 12px; color: var(--muted); }
+.cr-edu .qv-ri { width: 22px; height: 22px; }
+.cr-pips { display: flex; gap: 4px; margin: 4px 0; }
+.cr-pips i { flex: 1; height: 18px; border: 2px solid var(--ink); border-radius: 6px; background: #fff; font-style: normal; font-size: 10px; font-weight: 900; display: grid; place-items: center; color: var(--muted); }
+.cr-pips i.on { background: #16a3a8; color: #fff; }
+.cr-next { color: #0c6d70; font-weight: 800; }
+.cr-studies, .cr-jobs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.cr-studies > small, .cr-jobs > small { width: 100%; font-weight: 900; text-transform: uppercase; font-size: 10px; color: var(--muted); }
+.cr-st { display: inline-flex; align-items: center; gap: 3px; background: #16a3a8; color: #fff; border: 2px solid var(--ink); border-radius: 8px; padding: 1px 6px 1px 2px; font-size: 12px; font-weight: 800; }
+.cr-st .qv-ri { width: 16px; height: 16px; background: #fff; border-radius: 4px; }
+.cr-j { display: grid; border: 2px solid var(--ink); border-radius: 8px; padding: 2px 6px; font-size: 11px; background: #fff; min-width: 46%; flex: 1 1 46%; }
+.cr-j b { font-size: 12px; } .cr-j small { color: var(--muted); }
+.cr-j em { font-style: normal; font-size: 10px; font-weight: 900; color: #1c8a5a; }
+.cr-j.lock { opacity: .55; border-style: dashed; }
+.cr-j.cur { background: var(--sun); }
+/* la carte touchée : explication au-dessus, boutons en dessous (jamais rejetés hors de l'écran) */
+.qv-focus .act-bar { flex-wrap: nowrap; min-width: 0; }
+.qv-focus .act-why { flex: none; font-size: 13px; line-height: 1.25; }
+.qv-focus .act-row .qv-btn { min-height: 36px; padding: 6px 8px; font-size: 14px; }
+/* les cartes de l'éventail ne débordent jamais sur la barre des compteurs */
+.qv-hand .qv-fan { clip-path: inset(0 -60px -60px -60px); }
+.mb-id small { display: flex; align-items: center; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* la fenêtre active masque nettement le plateau : rien ne se lit par-dessus */
+.qv-ov.k-result, .qv-ov.k-announce, .qv-ov.k-newcard, .qv-ov.k-stage { background: rgba(43, 33, 64, .82); }
+.qv-ov .ov-auto { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+@media (max-width: 430px) { .mb-id { max-width: 74px; } .qv-mebar .ctr-n { font-size: 9px; letter-spacing: -.1px; } .qv-mebar .ctr { padding-left: 4px; padding-right: 3px; gap: 3px; } }

@@ -20,9 +20,11 @@
       if (p.job.k === "startup") return "hoodie";
       if (p.job.k === "pdg") return "ceo";
       if (p.job.k === "mystique") return "mystic";
+      var OUT = { artiste: "artist", plombier: "plumber", infirmier: "nurse", prof: "teacher", ingenieur: "engineer", avocat: "lawyer", chirurgien: "surgeon", commercial: ["manager", "manager", "director"] };
+      var oj = OUT[p.job.k]; if (oj) return Array.isArray(oj) ? oj[Math.min(2, p.job.lv - 1)] : oj;
     }
     if (p.retired) return "retired";
-    var fired = (p.life || []).some(function (l) { return /Licencié|Faillite/.test(l.text); });
+    var fired = (p.st && (p.st.chomage)) || (p.life || []).some(function (l) { return /Licencié|Faillite/.test(l.text); });
     return fired ? "unemployed" : "casual";
   }
   function partnerAv(p) { return p.partner ? A.random(p.partner.seed) : null; }
@@ -73,7 +75,14 @@
         for (var sx = 10; sx < 320; sx += 26) o += '<rect x="' + sx + '" y="' + (-ext) + '" width="9" height="' + (ext + 1) + '" fill="#efd4a8"/>';
       }
     }
-    if (p.housing >= 2) {
+    if (p.housing >= 3) {
+      // villa d'architecte : grande baie vitrée et piscine
+      o += '<rect width="320" height="200" fill="#a8dcff"/><circle cx="290" cy="34" r="16" fill="#ffd23f"/>';
+      o += '<rect y="168" width="320" height="32" fill="#8fd16a"/><rect y="166" width="320" height="4" fill="#6fb04a"/>';
+      o += '<rect x="6" y="70" width="190" height="98" fill="#fdfdfd"' + S + '/><rect x="60" y="40" width="150" height="32" fill="#fdfdfd"' + S + '/><rect x="18" y="86" width="74" height="60" fill="#9fd6ff"' + S + '/><path d="M55 86 V146" stroke="' + INK + '" stroke-width="3"/><rect x="104" y="96" width="80" height="72" fill="#9fd6ff"' + S + '/><rect x="74" y="48" width="40" height="18" fill="#9fd6ff"' + S.replace('3"', '2"') + '/>';
+      o += '<rect x="198" y="176" width="118" height="20" rx="6" fill="#5ac8fa"' + S + '/><path d="M206 186 q8 -4 16 0 t16 0 t16 0 t16 0 t16 0" fill="none" stroke="#fff" stroke-width="2.4"/>';
+      o += '<path d="M300 168 V110" stroke="#8a5a3b" stroke-width="6"/><path d="M300 110 q-26 -6 -34 10 M300 110 q26 -6 34 10 M300 110 q-14 -20 -30 -18 M300 110 q14 -20 30 -18" fill="none" stroke="#38b58a" stroke-width="6" stroke-linecap="round"/>';
+    } else if (p.housing >= 2) {
       o += '<rect width="320" height="200" fill="#a8dcff"/><circle cx="290" cy="34" r="16" fill="#ffd23f"/>';
       o += '<rect y="168" width="320" height="32" fill="#8fd16a"/><rect y="166" width="320" height="4" fill="#6fb04a"/>';
       o += '<path d="M8 86 L80 30 L152 86 Z" fill="#e5487a"' + S + '/><rect x="20" y="84" width="122" height="84" fill="#fff4dc"' + S + '/><rect x="36" y="100" width="28" height="24" fill="#9fd6ff"' + S + '/><rect x="96" y="112" width="28" height="56" fill="#b56b3a"' + S + '/>';

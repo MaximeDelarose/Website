@@ -351,6 +351,13 @@
     mystic:     function () { return { top: "#7b3fc4", legs: "#7b3fc4", shoes: "#d9a066", pendant: true, robe: true }; },
     retired:    function () { return { top: "#ff7eb6", legs: "#f2e6c9", shoes: "#5b3a29", flowers: true }; },
     pajama:     function () { return { top: "#9fd6ff", legs: "#9fd6ff", shoes: "#ffd23f", dots: true }; },
+    artist:     function () { return { top: "#f4f6fb", legs: "#2b2140", shoes: "#e5487a", stripe: "#2b2140", beret: "#e5487a", scarf: "#ffd23f" }; },
+    plumber:    function () { return { top: "#3d7dd8", legs: "#3d7dd8", shoes: "#2b2140", bib: "#2c5fae", cap: "#ff6b4a" }; },
+    nurse:      function () { return { top: "#7fd1c7", legs: "#7fd1c7", shoes: "#f4f6fb", cross: "#e5487a", collar: true }; },
+    teacher:    function () { return { top: "#c97b4a", legs: "#6b4a3a", shoes: "#2b2140", collar: true, jacket: true, pocket: true }; },
+    engineer:   function () { return { top: "#ff9a3a", legs: "#3e5c8a", shoes: "#2b2140", helmet: "#ffd23f", vest: true }; },
+    lawyer:     function () { return { top: "#15151c", legs: "#15151c", shoes: "#111", robe: true, jabot: true }; },
+    surgeon:    function () { return { top: "#5aa9ff", legs: "#5aa9ff", shoes: "#f4f6fb", cap: "#5aa9ff", cross: "#f4f6fb" }; },
     unemployed: function () { return { top: "#efeee8", legs: "#8a92a6", shoes: "#5b3a29", stain: true, tank: true }; },
   };
 
@@ -380,6 +387,11 @@
     if (o.robe) g += '<path d="M' + (cx - w - 2) + ' 150 L' + (cx - w - 8) + ' 186 H' + (cx + w + 8) + ' L' + (cx + w + 2) + ' 150Z" fill="' + o.top + '"' + ink + '/>';
     if (o.flowers) g += '<g fill="#ffd23f"><circle cx="' + (cx - 10) + '" cy="116" r="4"/><circle cx="' + (cx + 9) + '" cy="132" r="4"/><circle cx="' + (cx - 6) + '" cy="148" r="4"/></g><g fill="#38b58a"><circle cx="' + (cx + 12) + '" cy="112" r="3"/><circle cx="' + (cx - 12) + '" cy="136" r="3"/></g>';
     if (o.dots) g += '<g fill="#fff"><circle cx="' + (cx - 8) + '" cy="118" r="2.5"/><circle cx="' + (cx + 9) + '" cy="128" r="2.5"/><circle cx="' + (cx - 4) + '" cy="144" r="2.5"/><circle cx="' + (cx + 6) + '" cy="152" r="2.5"/></g>';
+    if (o.bib) g += '<path d="M' + (cx - 12) + ' ' + (top + 14) + ' h24 v30 h-24z" fill="' + o.bib + '"' + S.replace('3"', '2.2"') + '/><path d="M' + (cx - 12) + ' ' + (top + 14) + ' L' + (cx - w + 4) + ' ' + top + ' M' + (cx + 12) + ' ' + (top + 14) + ' L' + (cx + w - 4) + ' ' + top + '" stroke="' + o.bib + '" stroke-width="5"/>';
+    if (o.cross) g += '<path d="M' + (cx + 4) + ' 124 h12 M' + (cx + 10) + ' 118 v12" stroke="' + o.cross + '" stroke-width="5"/>';
+    if (o.vest) g += '<path d="M' + (cx - w + 2) + ' 122 H' + (cx + w - 2) + ' M' + (cx - w + 2) + ' 140 H' + (cx + w - 2) + '" stroke="#f4f6fb" stroke-width="5"/>';
+    if (o.jabot) g += '<path d="M' + (cx - 7) + ' ' + top + ' L' + cx + ' ' + (top + 20) + ' L' + (cx + 7) + ' ' + top + 'z" fill="#fff"' + S.replace('3"', '2"') + '/><path d="M' + (cx - 5) + ' ' + (top + 20) + ' h10 v8 h-10z" fill="#fff"' + S.replace('3"', '2"') + '/>';
+    if (o.scarf) g += '<path d="M' + (cx - 14) + ' ' + (top - 2) + ' Q' + cx + ' ' + (top + 8) + ' ' + (cx + 14) + ' ' + (top - 2) + ' L' + (cx + 10) + ' ' + (top + 26) + ' L' + (cx + 4) + ' ' + (top + 6) + 'z" fill="' + o.scarf + '"' + S.replace('3"', '2"') + '/>';
     if (o.flower) g += '<circle cx="' + (cx - w + 9) + '" cy="' + (top + 12) + '" r="5" fill="#e5487a"' + S.replace('3"', '2"') + '/>';
     // bras
     var sk = av.skin, sl = o.tank ? sk : o.top;
@@ -455,6 +467,9 @@
     g += sx(60, 0, fw, 1, hairFront(av));
     }
     if (o.cap) g += '<path d="M28 40 C30 18 90 18 92 40 Z" fill="' + o.cap + '"' + S + '/><path d="M88 38 L110 42 L90 46Z" fill="' + o.cap + '"' + S + '/>';
+    if (o.beret) g += '<ellipse cx="54" cy="26" rx="32" ry="11" fill="' + o.beret + '"' + S + '/><path d="M54 15 v-6" stroke="' + INK + '" stroke-width="3" stroke-linecap="round"/>';
+    if (o.helmet) g += '<path d="M24 40 C24 8 96 8 96 40 Z" fill="' + o.helmet + '"' + S + '/><path d="M18 40 H102" stroke="' + INK + '" stroke-width="5" stroke-linecap="round"/><path d="M60 12 V38" stroke="' + INK + '" stroke-width="2.4"/>';
+    if (o.mask && mood !== "shocked") g += '<path d="M36 76 Q60 70 84 76 L80 94 Q60 102 40 94Z" fill="#dff0ff"' + S.replace('3"', '2.4"') + '/>';
     if (opts.hat === "party") g += '<path d="M44 26 L60 -10 L76 26Z" fill="#ffd23f"' + S + '/><circle cx="60" cy="-10" r="5" fill="#e5487a"' + S.replace('3"', '2"') + '/>';
     if (opts.hat === "crown") g += '<path d="M36 26 L40 2 L52 16 L60 -2 L68 16 L80 2 L84 26Z" fill="#ffd23f"' + S + '/>';
     if (opts.hat === "veil") g += '<path d="M34 30 C40 10 80 10 86 30 L96 110 L24 110Z" fill="rgba(255,255,255,.55)" stroke="#d9d9e6" stroke-width="2"/>';

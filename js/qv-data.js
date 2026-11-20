@@ -214,7 +214,7 @@
   // Durée : nombre de tours de table selon le nombre de joueurs (vise 15-25 min).
   var ROUNDS = { 2: 12, 3: 10, 4: 9, 5: 8, 6: 7 };
   var START_AGE = 20, AGE_STEP = 5;
-  var HAND_SIZE = 5;
+  var HAND_SIZE = 3;
   // Trophées de fin : la personne la plus heureuse, la plus riche et la plus célèbre gagnent chacune ce bonus.
   var TROPHIES = [
     { k: "b", name: "La plus belle vie", pts: 4 },
@@ -463,10 +463,201 @@
   OBJECTIVES.push({ key: "rentier", name: "Rentier", text: "Finir avec un chien héritier ou un bébé influenceur.", pts: 7, check: { anyOf: [{ item: "dog" }, { status: "babyinf" }] } });
   OBJECTIVES.push({ key: "zen2", name: "Âme en paix", text: "Finir sans aucun ennui en cours (scandale, squatteur, procès…).", pts: 6, check: { clean: true } });
 
+  /* =====================================================================
+     EXTENSION 3 : FORMATION, CARRIÈRE, VIE PERSONNELLE, FORMATS DE PARTIE
+     - Formation : niveau indépendant des 3 ressources (ne compte pas pour le score),
+       obtenu en jouant des cartes Études. Les métiers demandent un niveau.
+     - Un seul métier principal. Les cartes permanentes restent sur le plateau.
+     ===================================================================== */
+  FAMILIES.study = { name: "Études", color: "#16a3a8", ink: "#fff" };
+  var EDU_MAX = 6;
+  // métiers : edu = niveau de Formation requis · study = carte précise (formation pro) · minR = réputation
+  // salary = versé au début de chacun de tes tours (+1 par promotion, +1 par augmentation)
+  // perTurn = effet du métier à chaque tour (stress, vacances…) · risky = augmente le risque de burn-out
+  var JOB_TABLE = {
+    livreur:    { titles: ["Livreur·se à vélo", "Chef·fe de meute", "Roi·ne du bitume"], salary: 1, edu: 0, outfit: "delivery", card: "petitboulot" },
+    artiste:    { titles: ["Artiste de rue", "Artiste exposé·e", "Star de la scène"], salary: 1, edu: 0, perRep: 4, outfit: "artist", card: "artiste" },
+    influence:  { titles: ["Influenceur·se", "Créateur·rice star", "Icône du feed"], salary: 0, edu: 0, minR: 3, perRep: 3, outfit: "influencer", card: "influence" },
+    plombier:   { titles: ["Apprenti·e plombier", "Plombier·e", "Patron·ne de la plomberie"], salary: 3, edu: 0, study: "cap", outfit: "plumber", card: "plombier" },
+    bureau:     { titles: ["Employé·e de bureau", "Manager", "Directeur·rice"], salary: 2, edu: 1, outfit: "office", card: "bureau" },
+    commercial: { titles: ["Commercial·e", "Chef·fe des ventes", "Directeur·rice commercial·e"], salary: 3, edu: 2, outfit: "manager", card: "commercial" },
+    infirmier:  { titles: ["Infirmier·e", "Infirmier·e en chef", "Cadre de santé"], salary: 3, edu: 2, perTurn: { r: 1 }, outfit: "nurse", card: "infirmier" },
+    prof:       { titles: ["Professeur·e", "Prof principal·e", "Proviseur·e"], salary: 3, edu: 3, perTurn: { b: 1 }, outfit: "teacher", card: "prof" },
+    ingenieur:  { titles: ["Ingénieur·e", "Ingénieur·e en chef", "Directeur·rice technique"], salary: 4, edu: 3, outfit: "engineer", card: "ingenieur" },
+    avocat:     { titles: ["Avocat·e", "Associé·e du cabinet", "Ténor du barreau"], salary: 5, edu: 4, risky: true, outfit: "lawyer", card: "avocatjob" },
+    chirurgien: { titles: ["Chirurgien·ne", "Chef·fe de service", "Ponte de la médecine"], salary: 6, edu: 5, perTurn: { b: -1 }, risky: true, outfit: "surgeon", card: "chirurgien" },
+  };
+  Object.keys(JOB_TABLE).forEach(function (k) { JOBS[k] = JOB_TABLE[k]; });
+  JOBS.startup.edu = 0; JOBS.pdg.edu = 0; JOBS.pdg.risky = true; JOBS.mystique.edu = 0;
+  HOUSING.push("Villa d'architecte avec piscine");
+
+  /* Formats de partie : nombre de tours de table, âge de départ et d'arrivée,
+     fréquence des événements de saison, aides au démarrage */
+  var FORMATS = {
+    rapide:    { name: "Rapide", rounds: 12, every: 2, dry: 2, hint: "12 tours · 15-20 min" },
+    classique: { name: "Classique", rounds: 20, every: 3, dry: 3, hint: "20 tours · 25-35 min" },
+    long:      { name: "Long", rounds: 26, every: 3, dry: 3, hint: "26 tours · 40 min et plus" },
+  };
+  var AGE_FROM = 18, AGE_TO = 78;
+  HAND_SIZE = 3;
+
+  // ---- cartes existantes adaptées ----
+  patch("petitboulot", function (c) { c.req = { qualify: "livreur" }; c.text = "Tu livres des burgers à vélo. Aucun diplôme demandé. Salaire : 1 par tour."; c.tip = "Sans diplôme"; c.fx = [{ op: "job", job: "livreur" }, { op: "res", b: 1 }]; });
+  patch("diplome", function (c) { c.fam = "study"; c.name = "Licence obtenue de justesse"; c.icon = "scroll"; c.req = { minEdu: 1 }; c.tier = 2; c.copies = 3; c.text = "Trois ans d'amphi, deux de cafétéria. +2 Formation, +1 réputation."; c.tip = "Il faut Formation 1 (le bac)"; c.fx = [{ op: "edu", n: 2 }, { op: "res", r: 1 }]; c.life = "Licence obtenue de justesse (mention « passable, et encore »)."; });
+  patch("bureau", function (c) { c.req = { qualify: "bureau" }; c.text = "Open space, badge et machine à café capricieuse. Salaire : 2 par tour."; c.tip = "Il faut Formation 1"; c.fx = [{ op: "job", job: "bureau" }, { op: "res", r: 1 }]; });
+  patch("influence", function (c) { c.req = { qualify: "influence" }; });
+  patch("fauxdiplome", function (c) { c.fam = "study"; c.text = "Un diplôme imprimé chez soi : +2 Formation tout de suite. Mais à chaque promotion ou contrôle administratif, quelqu'un peut vérifier…"; c.fx = [{ op: "edu", n: 2, fake: true }, { op: "status", s: "fakeDip", n: 99 }]; c.tip = "Combo risqué : Promotion, Contrôle"; });
+  patch("reconversion", function (c) { c.name = "Reconversion mystique"; c.req = { qualify: "mystique" }; });
+  patch("retraite", function (c) { c.req = { hasJob: true, minAge: 50 }; c.tip = "Il faut un métier et 50 ans"; c.text = "Fin du métier, +4 bonheur, +3 fortune, puis une pension (la moitié de ton salaire) à chaque tour."; c.fx = [{ op: "retire" }, { op: "res", b: 4, f: 3 }]; });
+  patch("licenciement", function (c) { c.text = "La cible perd son métier (pas ses diplômes) et 2 réputation. Elle touche le chômage 3 tours."; c.fx = [{ op: "loseJob" }, { op: "res", r: -2 }, { op: "status", s: "chomage", n: 3 }]; });
+  patch("startup", function (c) { c.text = "Coûte 3. Tu quittes ton métier. Dans 2 tours : licorne (PDG, salaire 5)… ou faillite."; });
+  patch("mariage", function (c) { c.text = "Coûte 2. +4 bonheur, +1 réputation. Combo : fiancé·e avant ? +2 bonheur de plus."; c.fx = [{ op: "marry" }, { op: "res", b: 4, r: 1 }, { op: "ifEngaged", fx: [{ op: "res", b: 2 }], combo: "Fiançailles + Mariage : +2 Bonheur" }]; });
+  patch("voyage", function (c) { c.text = "Coûte 2. +4 bonheur. Combo : guérit un burn-out."; c.fx = [{ op: "res", b: 4 }, { op: "ifStatus", s: "burnout", fx: [{ op: "unstatus", s: "burnout" }, { op: "res", b: 1 }], combo: "Burn-out + Voyage : guéri·e !" }]; });
+  patch("maison", function (c) { c.text = "Coûte 6. +5 bonheur, +3 réputation. Combo : avec un salaire de 4 ou plus, la villa devient possible ensuite."; });
+  patch("reunion", function (c) { c.treq = { hasJob: true }; });
+
+  var CAREER_CARDS = [
+    // ---- ÉTUDES (elles restent dans ton parcours) ----
+    { key: "bac", fam: "study", tier: 1, name: "Bac obtenu au rattrapage", icon: "scroll", copies: 4,
+      text: "Oral de rattrapage, chemise empruntée, réponse au hasard : ça passe ! +1 Formation.", tip: "Le point de départ",
+      req: { maxEdu: 0 }, fx: [{ op: "edu", n: 1 }, { op: "res", b: 1 }], life: "Obtient le bac au rattrapage, avec 10,01 de moyenne." },
+    { key: "cap", fam: "study", tier: 1, name: "CAP plomberie", icon: "wrench", copies: 2,
+      text: "Deux ans d'apprentissage et une passion soudaine pour les siphons. +1 Formation, et le métier de plombier·e devient accessible.", tip: "Formation pro",
+      req: { notStudy: "cap" }, fx: [{ op: "edu", n: 1, study: "cap" }], life: "Décroche un CAP plomberie. Ne regardera plus jamais un siphon pareil." },
+    { key: "coursdusoir", fam: "study", tier: 1, name: "Cours du soir", icon: "moon", copies: 3,
+      text: "Après le travail, entre deux bâillements. +1 Formation.", tip: "",
+      req: { maxEdu: 4 }, fx: [{ op: "edu", n: 1 }, { op: "res", b: -1 }], life: "Suit des cours du soir. S'endort sur le chapitre 3, tous les soirs." },
+    { key: "mooc", fam: "study", tier: 1, name: "MOOC à 3 h du matin", icon: "laptop", copies: 2,
+      text: "Une formation en ligne suivie en pyjama, en accéléré x2. +1 Formation.", tip: "",
+      req: { maxEdu: 3 }, fx: [{ op: "edu", n: 1 }], life: "Termine un MOOC « Devenir expert en 6 vidéos ». Certificat imprimé et encadré." },
+    { key: "bts", fam: "study", tier: 2, name: "BTS express", icon: "books", copies: 3,
+      text: "Deux ans condensés en un été et beaucoup de café. +2 Formation.", tip: "Il faut Formation 1 (le bac)",
+      req: { minEdu: 1, maxEdu: 4 }, fx: [{ op: "edu", n: 2 }], life: "Obtient un BTS en un temps record. Personne ne sait comment." },
+    { key: "master", fam: "study", tier: 2, name: "Master en alternance", icon: "gradcap", copies: 3,
+      text: "Une semaine à l'école, une semaine au bureau, zéro week-end. +2 Formation, +1 réputation.", tip: "Il faut Formation 3",
+      req: { minEdu: 3 }, fx: [{ op: "edu", n: 2 }, { op: "res", r: 1 }], life: "Décroche un master en alternance. A appris à dormir debout dans le RER." },
+    { key: "internat", fam: "study", tier: 3, name: "Internat de médecine", icon: "stetho", copies: 2,
+      text: "Gardes de nuit, cafés froids, mais quel prestige. +1 Formation, +2 réputation.", tip: "Il faut Formation 4",
+      req: { minEdu: 4 }, fx: [{ op: "edu", n: 1 }, { op: "res", r: 2, b: -1 }], life: "Termine l'internat. Peut s'endormir n'importe où en 4 secondes." },
+    { key: "formationcontinue", fam: "study", tier: 2, name: "Formation continue", icon: "books", copies: 3,
+      text: "+1 Formation. Combo : au chômage ? +2 Formation au lieu de 1, et un entretien d'embauche t'est proposé (une offre arrive dans ta main).", tip: "Combo avec le chômage",
+      fx: [{ op: "ifStatus", s: "chomage", fx: [{ op: "edu", n: 2 }, { op: "unstatus", s: "chomage" }, { op: "jobOffer" }], else: [{ op: "edu", n: 1 }], combo: "Chômage + Formation continue : tu rebondis !" }], life: "Suit une formation continue « Excel pour les nuls ». Devient la référence du service." },
+    { key: "autoformation", fam: "study", tier: 1, name: "Autoformation à la bibliothèque", icon: "books", copies: 0,
+      text: "Action de secours : tu sacrifies ton action et une carte pour apprendre seul·e. +1 Formation (jusqu'au niveau 2).", tip: "",
+      fx: [{ op: "edu", n: 1 }], life: "Apprend seul·e à la bibliothèque. Le bibliothécaire lui a fait un clin d'œil." },
+
+    // ---- MÉTIERS (un seul à la fois ; la carte reste sur ton plateau) ----
+    { key: "artiste", fam: "career", tier: 1, name: "Artiste de rue", icon: "palette", copies: 2,
+      text: "Aucun diplôme : du talent, un chapeau et un trottoir. Salaire 1 (+1 par tranche de 4 réputation).", tip: "Sans diplôme",
+      req: { qualify: "artiste" }, fx: [{ op: "job", job: "artiste" }, { op: "res", b: 2 }], life: "Devient artiste de rue. Un pigeon a acheté sa première œuvre." },
+    { key: "plombier", fam: "career", tier: 2, name: "Plombier·e", icon: "wrench", copies: 2,
+      text: "Les fuites n'attendent pas. Salaire 3 par tour.", tip: "Il faut le CAP plomberie",
+      req: { qualify: "plombier" }, fx: [{ op: "job", job: "plombier" }, { op: "res", f: 1 }], life: "S'installe comme plombier·e. Facture 80 € le déplacement, 200 € le « ah, je vois »." },
+    { key: "commercial", fam: "career", tier: 2, name: "Commercial·e", icon: "handshake", copies: 2,
+      text: "Tu vendrais un frigo à un pingouin. Salaire 3 par tour.", tip: "Il faut Formation 2",
+      req: { qualify: "commercial" }, fx: [{ op: "job", job: "commercial" }, { op: "res", r: 1 }], life: "Devient commercial·e. Serre 400 mains par jour." },
+    { key: "infirmier", fam: "career", tier: 2, name: "Infirmier·e", icon: "stetho", copies: 2,
+      text: "Salaire 3, et +1 réputation par tour (tout le monde t'adore).", tip: "Il faut Formation 2",
+      req: { qualify: "infirmier" }, fx: [{ op: "job", job: "infirmier" }, { op: "res", b: 1 }], life: "Devient infirmier·e. Héros du quotidien, payé·e en chocolats." },
+    { key: "prof", fam: "career", tier: 2, name: "Professeur·e", icon: "board", copies: 2,
+      text: "Salaire 3, et +1 bonheur par tour (les vacances scolaires).", tip: "Il faut Formation 3",
+      req: { qualify: "prof" }, fx: [{ op: "job", job: "prof" }, { op: "res", r: 1 }], life: "Devient prof. Confisque 14 téléphones dès le premier jour." },
+    { key: "ingenieur", fam: "career", tier: 3, name: "Ingénieur·e", icon: "gear", copies: 2,
+      text: "Tu résous des problèmes que personne ne comprend. Salaire 4 par tour.", tip: "Il faut Formation 3",
+      req: { qualify: "ingenieur" }, fx: [{ op: "job", job: "ingenieur" }, { op: "res", r: 1 }], life: "Devient ingénieur·e. Explique son métier à sa famille depuis 6 ans." },
+    { key: "avocatjob", fam: "career", tier: 3, name: "Avocat·e", icon: "scales", copies: 2,
+      text: "Robe noire et effets de manche. Salaire 5 par tour. Métier stressant (burn-out plus probable).", tip: "Il faut Formation 4",
+      req: { qualify: "avocat" }, fx: [{ op: "job", job: "avocat" }, { op: "res", r: 2 }], life: "Prête serment. Commence chaque phrase par « Objection »." },
+    { key: "chirurgien", fam: "career", tier: 3, name: "Chirurgien·ne", icon: "scalpel", copies: 2,
+      text: "Salaire 6 par tour, mais −1 bonheur par tour (les gardes). Métier stressant.", tip: "Il faut Formation 5",
+      req: { qualify: "chirurgien" }, fx: [{ op: "job", job: "chirurgien" }, { op: "res", r: 3 }], life: "Devient chirurgien·ne. Ne se souvient plus de la couleur du soleil." },
+
+    // ---- CARRIÈRE ----
+    { key: "entretien", fam: "career", tier: 2, name: "Entretien d'embauche", icon: "handshake", copies: 4,
+      text: "« Quel est votre plus grand défaut ? » — « Le perfectionnisme. » Tu es embauché·e dans le meilleur métier que ta Formation permet.", tip: "Il ne faut pas de métier",
+      req: { noJob: true }, fx: [{ op: "hireBest" }, { op: "res", b: 1 }], scene: "embauche", life: "Réussit un entretien d'embauche en citant Napoléon." },
+    { key: "augmentation", fam: "career", tier: 3, name: "Augmentation", icon: "moneyup", copies: 3,
+      text: "Tu as osé demander. Salaire +1 par tour (2 fois maximum), +1 bonheur.", tip: "Il faut un métier",
+      req: { hasJob: true, maxRaise: 2 }, fx: [{ op: "raise" }, { op: "res", b: 1 }], life: "Obtient une augmentation. Le patron a pleuré un peu." },
+    { key: "reconversionpro", fam: "career", tier: 3, name: "Reconversion", icon: "compass", copies: 2,
+      text: "Nouveau départ : tu quittes ton métier pour le meilleur autre métier que ta Formation permet. +2 bonheur, burn-out guéri.", tip: "Il faut un métier (ou le chômage)",
+      req: { reconv: true }, fx: [{ op: "reconvert" }, { op: "res", b: 2 }, { op: "unstatus", s: "burnout" }], scene: "embauche", life: "Se reconvertit. Sa mère dit à tout le monde que c'était son idée." },
+    { key: "demission", fam: "career", tier: 3, name: "Démission fracassante", icon: "doorexit", copies: 2,
+      text: "Tu claques la porte (et tu la fais claquer deux fois pour l'effet). Fin du métier, +3 bonheur, −1 réputation, burn-out guéri. Tes diplômes restent.", tip: "Il faut un métier",
+      req: { hasJob: true }, fx: [{ op: "loseJob" }, { op: "res", b: 3, r: -1 }, { op: "unstatus", s: "burnout" }], scene: "demission", life: "Démissionne en envoyant un mail à toute l'entreprise. Avec un GIF." },
+    { key: "chomagepartiel", fam: "sabotage", tier: 3, name: "Chômage partiel", icon: "couch", copies: 2, target: "opponent",
+      text: "L'entreprise de la cible tourne au ralenti : pas de salaire pendant 2 tours, −1 bonheur.", tip: "Vise quelqu'un qui travaille",
+      treq: { hasJob: true }, fx: [{ op: "status", s: "chompartiel", n: 2 }, { op: "res", b: -1 }], counters: ["syndicat", "renvoi"],
+      soft: { cost: { r: 1 }, label: "Faire des heures sup' : seulement 1 tour sans salaire", fx: [{ op: "status", s: "chompartiel", n: 1 }] },
+      bounce: { label: "Temps libre retrouvé : +2 bonheur", fx: [{ op: "res", b: 2 }] },
+      scene: "chomage", life: "Passe en chômage partiel. Apprend enfin à faire du pain." },
+    { key: "burnout", fam: "sabotage", tier: 3, name: "Burn-out", icon: "battery", copies: 3, target: "opponent", per4: 1,
+      text: "Trop de mails. La cible : −2 bonheur, salaire réduit de moitié pendant 3 tours, et chaque tour un risque d'arrêt maladie (tour perdu) ou de démission forcée. Pire avec un métier stressant.", tip: "Vise quelqu'un qui travaille",
+      treq: { hasJob: true, noStatus: ["burnout"] }, fx: [{ op: "res", b: -2 }, { op: "status", s: "burnout", n: 3 }], counters: ["syndicat", "renvoi"],
+      soft: { cost: { f: 2 }, label: "Prendre un coach bien-être : seulement −1 bonheur", fx: [{ op: "res", b: -1 }] },
+      bounce: { label: "Tu apprends à dire non : +1 bonheur, +1 réputation", fx: [{ op: "res", b: 1, r: 1 }] },
+      scene: "burnout", life: "Burn-out : a répondu « bien reçu » à 3 000 mails." },
+    { key: "controle", fam: "sabotage", tier: 4, name: "Contrôle administratif", icon: "clipboard", copies: 2, target: "opponent",
+      text: "Un inspecteur vérifie tout. Combo : diplôme douteux ou CV bidon ? SCANDALE : métier perdu, Formation −2, −4 réputation. Sinon : −1 fortune, −1 bonheur de paperasse.", tip: "Redoutable contre les tricheurs",
+      fx: [{ op: "audit" }], counters: ["miracle", "renvoi"],
+      soft: { cost: { f: 2 }, label: "Remplir les 14 formulaires : seulement −1 bonheur", fx: [{ op: "res", b: -1 }] },
+      bounce: { label: "Dossier impeccable : +1 réputation", fx: [{ op: "res", r: 1 }] },
+      scene: "controle", life: "Subit un contrôle administratif. L'inspecteur a demandé le formulaire B-12 bis." },
+
+    // ---- VIE PERSONNELLE ----
+    { key: "fiancailles", fam: "love", tier: 2, name: "Fiançailles", icon: "ringbox", copies: 3,
+      text: "Genou à terre au milieu du supermarché. +2 bonheur, +1 réputation. Combo : le mariage rapporte +2 bonheur de plus.", tip: "Il faut un·e partenaire",
+      req: { partner: true, notMarried: true, notEngaged: true }, fx: [{ op: "engage" }, { op: "res", b: 2, r: 1 }], life: "Demande {partner} en mariage au rayon surgelés. Oui !" },
+    { key: "adoption", fam: "family", tier: 3, name: "Adoption", icon: "hands", copies: 2,
+      text: "Coûte 2. Une famille, ça se construit aussi comme ça. +4 bonheur, un enfant. Possible seul·e ou à deux.", tip: "",
+      cost: { f: 2 }, fx: [{ op: "kid", adopted: true }, { op: "res", b: 4 }], scene: "bebe", life: "Adopte {kid}. Le plus beau jour de sa vie." },
+    { key: "celibat", fam: "love", tier: 1, name: "Célibataire épanoui·e", icon: "sunrise", copies: 2,
+      text: "Ton lit en étoile, ta télécommande, ta liberté. +3 bonheur, +1 réputation.", tip: "Il faut être célibataire",
+      req: { single: true }, fx: [{ op: "res", b: 3, r: 1 }], life: "Assume fièrement son célibat. Cuisine des pâtes pour une personne, au parmesan." },
+    { key: "villa", fam: "home", tier: 4, name: "Villa d'architecte", icon: "villa", copies: 2,
+      text: "Coûte 8. Baie vitrée, piscine, voisins verts de jalousie. +4 bonheur, +4 réputation.", tip: "Il faut une maison et un salaire de 4 ou plus",
+      req: { housing: 2, maxHousing: 2, minSalary: 4, noStatus: ["proces"] }, cost: { f: 8 }, fx: [{ op: "housing", level: 3 }, { op: "res", b: 4, r: 4 }], life: "Emménage dans une villa d'architecte. Ne trouve jamais l'interrupteur." },
+  ];
+  CAREER_CARDS.forEach(function (c) { CARDS.push(c); });
+  patch("bureau", function (c) { c.copies = 3; c.tier = 1; });
+  // une vie personnelle qui progresse aussi : plus de rencontres et de logements dans la pioche
+  patch("foudre", function (c) { c.copies = 7; });
+  patch("appart", function (c) { c.copies = 6; c.text = "Coûte 3. Enfin quitter le canapé des parents ! +3 bonheur, +2 réputation."; c.fx = [{ op: "housing", level: 1 }, { op: "res", b: 3, r: 2 }]; });
+  patch("maison", function (c) { c.copies = 5; c.req = { maxHousing: 1, noStatus: ["proces"] }; c.tip = "Coûte 6 (pas besoin d'appartement avant)"; c.text = "Coûte 6. +6 bonheur, +4 réputation. Combo : avec un salaire de 4 ou plus, la villa devient possible ensuite."; c.fx = [{ op: "housing", level: 2 }, { op: "res", b: 6, r: 4 }]; });
+  patch("bebe", function (c) { c.copies = 5; });
+  patch("voiture", function (c) { c.copies = 3; c.text = "Coûte 4. +5 réputation, +2 bonheur. Consommation : déraisonnable."; c.fx = [{ op: "item", item: "car" }, { op: "res", r: 5, b: 2 }]; });
+  patch("villa", function (c) { c.fx = [{ op: "housing", level: 3 }, { op: "res", b: 6, r: 6 }]; c.text = "Coûte 8. Baie vitrée, piscine, voisins verts de jalousie. +6 bonheur, +6 réputation."; });
+  patch("degat", function (c) { c.copies = 2; c.per4 = 0; });
+  var LIFE_BONUS = { pts: 6, name: "Une vie bien remplie", text: "Métier (ou retraite), logement et vie de famille (couple ou enfant) à la fin." };
+  patch("diner", function (c) { c.copies = 2; });
+
+  STATUSES.chomage = { label: "Au chômage (allocations)", tick: [{ op: "res", f: 1 }] };
+  STATUSES.chompartiel = { label: "Chômage partiel : pas de salaire", bad: true };
+  STATUSES.burnout = { label: "Burn-out", bad: true, tick: [{ op: "res", b: -1 }], risk: { p: 0.3, risky: 0.5, fx: [{ op: "burnoutHit" }], scene: "burnout", text: "Le burn-out de {name} s'aggrave.", life: "Le burn-out s'aggrave." } };
+  STATUSES.fakeDip.label = "Diplôme douteux";
+
+  var COMBOS = [
+    { a: "Études", b: "Métier", t: "La Formation ouvre les métiers : Formation 1 pour le bureau, 2 commercial·e, 3 ingénieur·e, 5 chirurgien·ne. Le CAP ouvre la plomberie." },
+    { a: "Métier", b: "Promotion / Augmentation", t: "Salaire +1 par tour à chaque fois." },
+    { a: "Métier", b: "Burn-out", t: "Salaire réduit, risque d'arrêt maladie (tour perdu) ou de démission forcée. Le Voyage, la Démission ou la Reconversion guérissent." },
+    { a: "Chômage", b: "Formation continue", t: "+2 Formation au lieu de 1 et une offre d'emploi arrive dans ta main." },
+    { a: "Salaire 4+", b: "Maison", t: "Ouvre la Villa d'architecte (nouvel environnement)." },
+    { a: "Diplôme douteux / CV bidon", b: "Contrôle administratif ou Promotion", t: "Scandale : métier perdu, Formation retirée, réputation en chute." },
+    { a: "Fiançailles", b: "Mariage", t: "+2 bonheur de plus au mariage." },
+  ];
+  OBJECTIVES.push({ key: "bacplus5", name: "Bac+5", text: "Finir avec Formation 5 ou plus.", pts: 7, check: { minEdu: 5 } });
+  OBJECTIVES.push({ key: "carriere2", name: "Belle carrière", text: "Finir avec un métier qui paie 5 ou plus par tour.", pts: 8, check: { minSalary: 5 } });
+  OBJECTIVES.forEach(function (o) { if (o.key === "carriere") o.text = "Atteindre le niveau 3 d'un métier (2 promotions), ou devenir PDG."; });
+  TROPHIES.push({ k: "edu", name: "Premier·e de la classe", pts: 3 });
+  // étape d'apparition (mode découverte) : les études arrivent dès le premier tour
+  STAGES[1].text = "Une carte à la fois : joue-la ou défausse-la. Commence par tes études : la Formation ouvre les métiers.";
+  STAGES[2].text = "Nouvelles cartes : métiers, rencontres, logement… Un métier demande un niveau de Formation : regarde le cadenas.";
+  STAGES.forEach(function (s, i) { if (s) s.hand = [0, 1, 3, 4, 4, 4][i]; });
+
   root.QV_DATA = {
     FAMILIES: FAMILIES, JOBS: JOBS, ITEMS: ITEMS, HOUSING: HOUSING,
     CARDS: CARDS, EVENTS: EVENTS, OBJECTIVES: OBJECTIVES, NAMES: NAMES,
-    ROUNDS: ROUNDS, START_AGE: START_AGE, AGE_STEP: AGE_STEP, HAND_SIZE: HAND_SIZE, TROPHIES: TROPHIES, STATUSES: STATUSES, STAGES: STAGES, stageForRound: stageForRound,
+    ROUNDS: ROUNDS, START_AGE: AGE_FROM, AGE_FROM: AGE_FROM, AGE_TO: AGE_TO, FORMATS: FORMATS, EDU_MAX: EDU_MAX, COMBOS: COMBOS, LIFE_BONUS: LIFE_BONUS, HAND_SIZE: HAND_SIZE, TROPHIES: TROPHIES, STATUSES: STATUSES, STAGES: STAGES, stageForRound: stageForRound,
     byKey: CARDS.reduce(function (m, c) { m[c.key] = c; return m; }, {}),
   };
   if (typeof module !== "undefined" && module.exports) module.exports = root.QV_DATA;

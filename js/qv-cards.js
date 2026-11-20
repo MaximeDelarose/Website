@@ -9,7 +9,7 @@
   var D = root.QV_DATA, IC = root.QV_ICONS, E = root.QV_ENGINE;
   function esc(t) { return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
-  var FAM_ICON = { career: "tie", love: "heart", family: "baby", home: "house", leisure: "plane", sabotage: "lightning", defense: "shield", world: "chart" };
+  var FAM_ICON = { study: "gradcap", career: "tie", love: "heart", family: "baby", home: "house", leisure: "plane", sabotage: "lightning", defense: "shield", world: "chart" };
   // l'effet principal, en une ligne courte (les gains/pertes chiffrés sont affichés à part)
   var EFF = {
     petitboulot: "Métier : livreur · +2 € par tour", diplome: "Diplôme : ouvre le travail de bureau", bureau: "Métier : bureau · +3 € par tour",
@@ -34,17 +34,40 @@
     groupe: "S'il travaille : rétrogradé·e", doublevie: "+2 ♥ par tour · 3 risques sur 10 que tout explose", sextape: "Scandale 1 tour",
     sugar: "Un·e partenaire · puis −2 € par tour pendant 2 tours", date: "En couple : mariage bloqué 2 tours", fauxcelib: "Rupture", divorcepremium: "Rupture + grille-pain",
     retourex: "4 chances sur 10 que le couple explose", karmainfidele: "Infidèles et saboteurs : −2 ★ −2 ♥",
+    // formation et carrière
+    petitboulot: "Métier sans diplôme · 1 € par tour", bureau: "Métier · 2 € par tour", diplome: "+2 Formation", bac: "+1 Formation", cap: "+1 Formation · ouvre la plomberie",
+    coursdusoir: "+1 Formation", mooc: "+1 Formation", bts: "+2 Formation", master: "+2 Formation", internat: "+1 Formation", fauxdiplome: "+2 Formation… à tes risques",
+    formationcontinue: "+1 Formation · au chômage : +2 et une offre d'emploi", autoformation: "+1 Formation (jusqu'au niveau 2)",
+    artiste: "Métier sans diplôme · 1 € par tour (+1 par 4 ★)", plombier: "Métier · 3 € par tour", commercial: "Métier · 3 € par tour", infirmier: "Métier · 3 € et +1 ★ par tour",
+    prof: "Métier · 3 € et +1 ♥ par tour", ingenieur: "Métier · 4 € par tour", avocatjob: "Métier · 5 € par tour · stressant", chirurgien: "Métier · 6 € par tour, −1 ♥ par tour",
+    influence: "Métier · ★ ÷ 3 en € par tour", entretien: "Embauche dans le meilleur métier possible", augmentation: "Salaire +1 € par tour", reconversionpro: "Change pour le meilleur autre métier possible",
+    demission: "Quitte ton métier · garde tes diplômes", chomagepartiel: "Pas de salaire pendant 2 tours", burnout: "Salaire ÷ 2, risque d'arrêt ou de démission",
+    controle: "Tricheur·se ? Scandale. Sinon : paperasse", fiancailles: "Fiancé·e · le mariage rapportera +2 ♥", adoption: "Un enfant arrive, seul·e ou à deux",
+    celibat: "Le bonheur en solo", villa: "Villa avec piscine", retraite: "Retraite · pension chaque tour", licenciement: "Perd son métier (pas ses diplômes)",
+    mariage: "Vous vous mariez · +2 ♥ si fiancé·e", voyage: "Guérit un burn-out", startup: "Quitte ton métier · 6 chances sur 10 de licorne",
   };
+  // condition d'un métier : niveau de Formation, formation précise ou réputation
+  function jobCond(key) {
+    var J = D.JOBS[key]; if (!J) return "";
+    if (J.study) return "CAP plomberie";
+    if (J.minR) return J.minR + " Réputation";
+    return J.edu ? "Formation " + J.edu : "Sans diplôme";
+  }
   var REQ = {
     noJob: "Ne pas avoir de métier", hasJob: "Avoir un métier", promotable: "Avoir un métier", diploma: "Avoir un diplôme", single: "Être célibataire",
     partner: "Être en couple", notMarried: "Ne pas être marié·e", married: "Être marié·e", housing: "Avoir un logement", kids: "Avoir un enfant",
-    hits: "Avoir encaissé une catastrophe",
+    hits: "Avoir encaissé une catastrophe", notEngaged: "", maxRaise: "",
   };
   var TREQ = { hasJob: "qui travaille", partner: "en couple", housing: "qui a un logement", kids: "qui a un enfant", minF: "qui a de l'argent", minR: "un peu connu·e", minHand: "qui a des cartes" };
 
   function condText(c) {
     var r = c.req || {}, t = [];
     Object.keys(REQ).forEach(function (k) { if (r[k]) t.push(REQ[k]); });
+    if (r.qualify) t.unshift(jobCond(r.qualify));
+    if (r.minEdu) t.push("Formation " + r.minEdu);
+    if (r.maxEdu === 0) t.push("Pas encore le bac");
+    if (r.minSalary) t.push("Salaire " + r.minSalary + "+");
+    if (r.reconv) t.push("Avoir un métier");
     if (r.minAge) t.push("Avoir " + r.minAge + " ans");
     if (r.minR) t.push(r.minR + " Réputation");
     if (r.minB) t.push(r.minB + " Bonheur");
@@ -74,8 +97,9 @@
     return out;
   }
   function chip(d) {
-    return '<span class="qc-d ' + (d.v > 0 ? "up" : "down") + '">' + IC.get(d.k, "qv-ri") + '<b>' + (d.v > 0 ? "+" : "−") + Math.abs(d.v) + '</b></span>';
+    return '<span class="qc-d ' + (d.v > 0 ? "up" : "down") + (d.per ? " per" : "") + '">' + IC.get(d.k, "qv-ri") + '<b>' + (d.v > 0 ? "+" : "−") + Math.abs(d.v) + '</b>' + (d.per ? '<small>/tour</small>' : '') + '</span>';
   }
+  function eduChip(n) { return '<span class="qc-d edu up">' + IC.get("gradcap", "qv-ri") + '<b>+' + n + '</b><small>Form.</small></span>'; }
   function costChip(cost) {
     var o = ""; ["f", "b", "r"].forEach(function (k) { if (cost && cost[k]) o += '<span class="qc-cost">Coûte ' + cost[k] + IC.get(k, "qv-ri") + '</span>'; });
     return o;
@@ -85,11 +109,15 @@
     o = o || {};
     var c = D.byKey[k]; if (!c) return "";
     var fam = D.FAMILIES[c.fam], tg = targetText(c), ds = deltas(c), eff = EFF[k] || "", cond = condText(c);
+    var jk = (c.fx || []).filter(function (f) { return f.op === "job"; })[0];
+    if (jk && D.JOBS[jk.job] && D.JOBS[jk.job].salary) ds.unshift({ k: "f", v: D.JOBS[jk.job].salary, who: "me", per: true });
+    var ed = (c.fx || []).filter(function (f) { return f.op === "edu"; })[0];
     var h = '<div class="qv-card fam-' + c.fam + (c.adult ? " adult" : "") + (o.big ? " big" : "") + (o.dim ? " dim" : "") + (o.on ? " on" : "") + (o.pulse ? " pulse" : "") + '"' + (o.u ? ' data-u="' + o.u + '"' : '') + '>';
     h += '<div class="qc-head"><span class="qc-cat">' + IC.get(FAM_ICON[c.fam], "qc-ci") + esc(fam.name) + '</span><span class="qc-who who-' + tg.cls + '">' + WHO_ICO[tg.cls] + esc(tg.label) + '</span></div>';
     h += '<div class="qc-name">' + esc(c.name) + (c.adult ? ' <i class="c18">18+</i>' : '') + '</div>';
     h += '<div class="qc-art">' + IC.get(c.icon) + '</div>';
-    h += '<div class="qc-eff">' + (ds.length ? '<div class="qc-ds' + (tg.cls === "foe" ? " foe" : "") + '">' + (tg.cls === "foe" ? '<span class="qc-on">Cible</span>' : '') + ds.map(chip).join("") + '</div>' : '') + (eff ? '<div class="qc-txt">' + esc(eff) + '</div>' : '') + '</div>';
+    var dsH = (ed ? eduChip(ed.n || 1) : "") + ds.map(chip).join("");
+    h += '<div class="qc-eff">' + (dsH ? '<div class="qc-ds' + (tg.cls === "foe" ? " foe" : "") + '">' + (tg.cls === "foe" ? '<span class="qc-on">Cible</span>' : '') + dsH + '</div>' : '') + (eff ? '<div class="qc-txt">' + esc(eff) + '</div>' : '') + '</div>';
     var foot = costChip(c.cost) + (cond ? '<span class="qc-cond">' + LOCK + esc(cond) + '</span>' : '');
     if (foot) h += '<div class="qc-foot">' + foot + '</div>';
     if (o.big) {
@@ -104,5 +132,5 @@
   }
   var LOCK = '<svg class="qc-li" viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="5" width="8" height="6" rx="1.5" fill="currentColor"/><path d="M4 5 V3.5 a2 2 0 0 1 4 0 V5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 
-  root.QV_CARDS = { html: html, target: targetText, cond: condText, EFF: EFF };
+  root.QV_CARDS = { html: html, target: targetText, cond: condText, EFF: EFF, jobCond: jobCond };
 })(window);
