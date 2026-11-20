@@ -25,34 +25,45 @@
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
   // ---------- création ----------
-  function create(list, seed) {
+  function stageOf(s) { return s.discovery ? D.stageForRound(s.round) : 5; }
+  function create(list, seed, opts) {
+    opts = opts || {};
     var s = {
       v: 1, gid: (seed >>> 0) || 1, seq: 0, rng: (seed >>> 0) || 1, phase: "play", round: 1, turn: 0,
       order: [], players: {}, deck: [], discard: [], nextU: 1, pending: null,
       events: [], evId: 0, seasonDeck: [], season: null, winner: null,
     };
-    s.maxRounds = D.ROUNDS[Math.max(2, Math.min(6, list.length))];
+    s.mode = opts.mode === "adult" ? "adult" : "classic";
+    s.discovery = !!opts.discovery;
+    var base = D.ROUNDS[Math.max(2, Math.min(6, list.length))];
+    s.maxRounds = s.discovery ? Math.min(12, Math.max(base + 1, 9)) : base;
+    s.stage = stageOf(s);
     list.forEach(function (p) {
       s.order.push(p.id);
       s.players[p.id] = {
         id: p.id, name: String(p.name || "Joueur").slice(0, 16), avatar: p.avatar || null, bot: !!p.bot,
         hand: [], obj: [], b: 3, f: 3, r: 1,
         job: null, diploma: 0, partner: null, married: false, kids: [], garde: false, kidsAway: false,
-        housing: 0, items: [], scandal: 0, startup: 0, strike: 0, rebound: false, plays: 0,
+        housing: 0, items: [], scandal: 0, startup: 0, strike: 0, rebound: false, plays: 0, st: {}, retired: false,
         stats: { sab: 0, hits: 0, played: {} }, life: [], mood: "happy",
       };
     });
     shuffle(s, s.order);
-    D.CARDS.forEach(function (c) { for (var i = 0; i < (c.copies || 1); i++) s.deck.push({ u: s.nextU++, k: c.key }); });
+    D.CARDS.forEach(function (c) {
+      if (c.adult && s.mode !== "adult") return;
+      var n = (c.copies || 1) + (list.length >= 4 ? (c.per4 || 0) : 0);
+      for (var i = 0; i < n; i++) s.deck.push({ u: s.nextU++, k: c.key });
+    });
     shuffle(s, s.deck);
-    s.seasonDeck = shuffle(s, D.EVENTS.map(function (e) { return e.key; }));
+    s.seasonDeck = shuffle(s, D.EVENTS.filter(function (e) { return !e.adult || s.mode === "adult"; }).map(function (e) { return e.key; }));
     var objs = shuffle(s, D.OBJECTIVES.map(function (o) { return o.key; }));
     s.order.forEach(function (id, i) {
       var p = s.players[id];
       p.obj = [objs[(i * 2) % objs.length], objs[(i * 2 + 1) % objs.length]];
-      for (var n = 0; n < D.HAND_SIZE; n++) draw(s, p);
+      if (!s.discovery) for (var n = 0; n < D.HAND_SIZE; n++) draw(s, p);
       life(s, p, "Naît, grandit, et finit par quitter l'école avec 3 euros en poche.", "neutral");
     });
+    if (s.discovery) emit(s, { t: "stage", stage: 1, title: D.STAGES[1].title, text: D.STAGES[1].text });
     beginTurn(s);
     return s;
   }
@@ -68,13 +79,16 @@
       .replace("{amount}", (extra && extra.amount) || "");
   }
 
+  // pioche : seulement les cartes déjà débloquées (découverte progressive, imposée par le moteur)
+  function tierOf(k) { return (CARDS[k] && CARDS[k].tier) || 4; }
   function draw(s, p) {
-    if (!s.deck.length) {
+    var stage = stageOf(s);
+    for (var pass = 0; pass < 2; pass++) {
+      for (var i = s.deck.length - 1; i >= 0; i--) if (tierOf(s.deck[i].k) <= stage) { p.hand.push(s.deck.splice(i, 1)[0]); return true; }
       if (!s.discard.length) return false;
-      s.deck = shuffle(s, s.discard); s.discard = [];
+      s.deck = shuffle(s, s.deck.concat(s.discard)); s.discard = [];
     }
-    p.hand.push(s.deck.pop());
-    return true;
+    return false;
   }
 
   // ---------- conditions ----------
@@ -84,8 +98,13 @@
     return j.salary + (p.job.lv - 1) + (j.perRep ? Math.floor(p.r / j.perRep) : 0);
   }
   function jobTitle(p) { var j = jobDef(p); return j ? j.titles[Math.min(p.job.lv, j.titles.length) - 1] : "Sans emploi"; }
-  function check(p, req) {
+  function check(p, req, s) {
     if (!req) return "";
+    if (req.noStatus) for (var i = 0; i < req.noStatus.length; i++) if (p.st && p.st[req.noStatus[i]]) return "Impossible pour l'instant : " + D.STATUSES[req.noStatus[i]].label.toLowerCase();
+    if (req.status && !(p.st && p.st[req.status])) return "Il faut : " + D.STATUSES[req.status].label.toLowerCase();
+    if (req.minAge && s && age(s) < req.minAge) return "Il faut avoir " + req.minAge + " ans";
+    if (req.hits && p.stats.hits < req.hits) return "Il faut avoir encaissé une catastrophe";
+    if (req.minHand && Math.max(p.hand.length, p.handCount || 0) < req.minHand) return "Sa main est vide";
     if (req.noJob && p.job) return "Tu as déjà un métier";
     if (req.notJob && p.job && p.job.k === req.notJob) return "Tu fais déjà ce métier";
     if (req.hasJob && !p.job) return "Il faut un métier";
@@ -123,11 +142,13 @@
   function canPlay(s, id, k, target) {
     var p = s.players[id], c = CARDS[k];
     if (!p || !c) return "Carte inconnue";
-    if (c.reaction) return "Se joue quand on t'attaque";
-    var why = check(p, c.req); if (why) return why;
+    if (c.reaction && !c.alsoPlay) return "Se joue quand on t'attaque";
+    if ((c.tier || 4) > stageOf(s)) return "Pas encore débloquée";
+    if (c.need === "saboteur" && !s.order.some(function (o) { return o !== id && s.players[o].stats.sab > 0; })) return "Personne n'a encore saboté";
+    var why = check(p, c.req, s); if (why) return why;
     if (!affordable(p, c.cost)) return "Il faut " + costText(c.cost);
     if (c.target === "opponent") {
-      var ts = s.order.filter(function (o) { return o !== id && !check(s.players[o], c.treq); });
+      var ts = s.order.filter(function (o) { return o !== id && !check(s.players[o], c.treq, s); });
       if (!ts.length) return "Aucune cible possible";
       if (target !== undefined && target !== null && ts.indexOf(target) < 0) return "Cible impossible";
     }
@@ -135,7 +156,7 @@
   }
   function validTargets(s, id, k) {
     var c = CARDS[k];
-    return s.order.filter(function (o) { return o !== id && !check(s.players[o], c.treq); });
+    return s.order.filter(function (o) { return o !== id && !check(s.players[o], c.treq, s); });
   }
 
   // ---------- effets ----------
@@ -156,20 +177,94 @@
     switch (o.op) {
       case "res": addRes(s, who, o, n); break;
       case "job":
-        p.job = { k: o.job, lv: 1 }; p.startup = 0; break;
-      case "jobUp": if (p.job) p.job.lv++; break;
+        p.job = { k: o.job, lv: 1 }; p.startup = 0; p.retired = false; break;
+      case "jobUp":
+        if (p.st.fakeDip && rand(s) < 0.5) {
+          // quelqu'un vérifie le diplôme…
+          delete p.st.fakeDip; p.job = null; p.diploma = Math.max(0, p.diploma - 1);
+          addRes(s, p, { r: -3 }, n); ctx.scene = "demasque"; ctx.busted = true;
+          life(s, p, "Promotion annulée : le service RH a vérifié le diplôme. Licencié·e sur-le-champ.", "bad");
+        } else if (p.job) p.job.lv++;
+        break;
       case "jobDown":
         if (p.job && p.job.lv > 1) p.job.lv--; else addRes(s, p, { r: -1 }, n);
         break;
       case "loseJob": p.job = null; p.startup = 0; break;
       case "diploma": p.diploma++; break;
       case "partner":
-        p.partner = { name: pick(s, D.NAMES.partner), seed: seedFor(s) }; ctx.partner = p.partner.name; break;
+        p.partner = { name: pick(s, D.NAMES.partner), seed: seedFor(s) }; if (o.look) p.partner.look = o.look; ctx.partner = p.partner.name; break;
+      case "vegas":
+        if (!p.partner) { p.partner = { name: pick(s, D.NAMES.partner), seed: seedFor(s) }; ctx.stranger = true; }
+        ctx.partner = p.partner.name; p.married = true; break;
+      case "breakup":
+        if (!p.partner) break;
+        ctx.partner = p.partner.name; ctx.exSeed = p.partner.seed;
+        p.partner = null; p.married = false;
+        if (p.st.doublevie) delete p.st.doublevie;
+        if (p.kids.length) { p.garde = true; ctx.garde = true; ctx.kids = p.kids.map(function (k) { return k.seed; }); }
+        break;
+      case "status": p.st[o.s] = Math.max(p.st[o.s] || 0, o.n || 1); break;
+      case "unstatus": delete p.st[o.s]; break;
+      case "chance":
+        if (rand(s) < o.p) { ctx.lucky = true; run(s, p, o.fx, ctx); } else { ctx.lucky = false; run(s, p, o.else, ctx); }
+        break;
+      case "scene": ctx.scene = o.id; break;
+      case "steal":
+        var att = s.players[ctx.attacker], took = Math.min(p.f, o.f);
+        addRes(s, p, { f: -took }, n); if (att && att !== p) addRes(s, att, { f: Math.min(took, o.give) }, n); break;
+      case "give":
+        var att2 = s.players[ctx.attacker], gv = Math.min(p.f, o.f);
+        addRes(s, p, { f: -gv }, n); if (att2 && att2 !== p) addRes(s, att2, { f: gv }, n); break;
+      case "stealCard":
+        var att3 = s.players[ctx.attacker];
+        if (p.hand.length && att3 && att3 !== p) { var ci = Math.floor(rand(s) * p.hand.length); att3.hand.push(p.hand.splice(ci, 1)[0]); ctx.stole = true; }
+        break;
+      case "housingDown": p.housing = Math.max(0, p.housing - 1); break;
+      case "housingMin": p.housing = Math.max(p.housing, o.level); break;
+      case "noSalary": p.strike = 1; break;
+      case "retire": p.retired = true; break;
+      case "rebound": p.rebound = true; break;
+      case "clearBad":
+        p.scandal = 0;
+        Object.keys(p.st).forEach(function (k) { if (D.STATUSES[k] && D.STATUSES[k].bad) delete p.st[k]; });
+        break;
+      case "ifMarried": if (p.married) run(s, p, o.fx, ctx); else if (o.else) run(s, p, o.else, ctx); break;
+      case "ifJob": if (p.job) run(s, p, o.fx, ctx); else if (o.else) run(s, p, o.else, ctx); break;
+      case "duel":
+        var a4 = s.players[ctx.attacker], win = a4.r > p.r ? a4 : p, lose = win === p ? a4 : p;
+        addRes(s, win, { f: 4 }, n); addRes(s, lose, { f: -4, r: -1 }, n);
+        ctx.winner = win.id; mood(win, "smug"); mood(lose, "sad");
+        break;
+      case "karma":
+        var others = s.order.filter(function (id) { return id !== p.id; });
+        var maxS = Math.max.apply(null, others.map(function (id) { return s.players[id].stats.sab; }));
+        ctx.victims = others.filter(function (id) { return maxS > 0 && s.players[id].stats.sab === maxS; });
+        ctx.victims.forEach(function (id) { addRes(s, s.players[id], { r: -3, b: -2 }, n); mood(s.players[id], "shocked"); });
+        break;
+      case "karmaInf":
+        var guilty = s.order.filter(function (id) { var q = s.players[id]; return q.st.doublevie || q.stats.sab >= 2; });
+        guilty.forEach(function (id) { addRes(s, s.players[id], { r: -2, b: -2 }, n); mood(s.players[id], "shocked"); });
+        var rest = s.order.filter(function (id) { return guilty.indexOf(id) < 0; });
+        if (rest.length) {
+          var minS = Math.min.apply(null, rest.map(function (id) { return s.players[id].stats.sab; }));
+          ctx.saints = rest.filter(function (id) { return s.players[id].stats.sab === minS; });
+          ctx.saints.forEach(function (id) { addRes(s, s.players[id], { b: 3 }, n); });
+        }
+        ctx.victims = guilty;
+        break;
+      case "panne":
+        s.order.forEach(function (id) {
+          var q = s.players[id];
+          if (q.hand.length) { s.discard.push(q.hand.splice(Math.floor(rand(s) * q.hand.length), 1)[0]); draw(s, q); }
+          addRes(s, q, { b: 1 }, n);
+          if (q.job && q.job.k === "influence") addRes(s, q, { r: -2 }, n);
+        });
+        break;
       case "marry": p.married = true; break;
       case "divorce":
         ctx.partner = p.partner ? p.partner.name : "l'ex";
         ctx.exSeed = p.partner ? p.partner.seed : 1;
-        p.partner = null; p.married = false;
+        p.partner = null; p.married = false; delete p.st.doublevie;
         if (p.kids.length) { p.garde = true; ctx.garde = true; ctx.kids = p.kids.map(function (k) { return k.seed; }); }
         if (o.soft) { addRes(s, p, { b: -1 }, n); }
         else {
@@ -189,7 +284,7 @@
       case "clearScandal": p.scandal = 0; break;
       case "scandal": p.scandal = Math.max(p.scandal, o.turns); break;
       case "taxThird": addRes(s, p, { f: -Math.min(p.f, Math.max(2, Math.floor(p.f / 3))) }, n); break;
-      case "ifPartner": if (p.partner) run(s, p, o.fx, ctx); break;
+      case "ifPartner": if (p.partner) run(s, p, o.fx, ctx); else if (o.else) run(s, p, o.else, ctx); break;
       case "ifKids": if (p.kids.length) run(s, p, o.fx, ctx); break;
       case "ifHousing": if (p.housing >= o.level) run(s, p, o.fx, ctx); break;
       case "crisis":
@@ -215,7 +310,7 @@
       case "eachIf":
         s.order.forEach(function (id) {
           var q = s.players[id];
-          if (!check(q, o.cond)) run(s, q, o.fx, ctx); else if (o.else) run(s, q, o.else, ctx);
+          if (!check(q, o.cond, s)) run(s, q, o.fx, ctx); else if (o.else) run(s, q, o.else, ctx);
         });
         break;
     }
@@ -239,6 +334,29 @@
       else info.push("Les enfants sont chez l'autre parent");
     }
     if (p.scandal > 0) { p.scandal--; addRes(s, p, { r: -1 }, notes); info.push("Scandale : −1 réputation"); }
+    p.items.forEach(function (k) { var it = D.ITEMS[k]; if (it && it.income) addRes(s, p, it.income, notes); });
+    var stEvents = [];
+    Object.keys(p.st).forEach(function (k) {
+      var def = D.STATUSES[k]; if (!def) { delete p.st[k]; return; }
+      var sctx = { notes: notes, attacker: p.id };
+      if (def.tick) run(s, p, def.tick, sctx);
+      if (def.risk && rand(s) < def.risk.p) {
+        delete p.st[k];
+        var rctx = { notes: [], attacker: p.id };
+        run(s, p, def.risk.fx, rctx); mood(p, "shocked");
+        life(s, p, def.risk.life, "bad");
+        stEvents.push({ t: "status", s: k, p: p.id, scene: def.risk.scene, notes: rctx.notes, data: { exSeed: rctx.exSeed, partner: rctx.partner }, text: def.risk.text.replace("{name}", p.name) });
+        return;
+      }
+      if (def.perm) return;
+      p.st[k]--;
+      if (p.st[k] <= 0) {
+        delete p.st[k];
+        var ectx = { notes: [], attacker: p.id };
+        if (def.onEnd) run(s, p, def.onEnd, ectx);
+        if (def.endText) stEvents.push({ t: "status", s: k, p: p.id, end: true, notes: ectx.notes, text: def.endText.replace("{name}", p.name) });
+      }
+    });
     var startupEv = null;
     if (p.startup > 0) {
       p.startup--;
@@ -254,10 +372,16 @@
         }
       }
     }
-    draw(s, p);
-    while (p.hand.length < 4 && draw(s, p)) {}
+    if (s.discovery && stageOf(s) < 5) {
+      var target = D.STAGES[stageOf(s)].hand, guard = 0;
+      while (p.hand.length < target && guard++ < 10 && draw(s, p)) {}
+    } else {
+      draw(s, p);
+      while (p.hand.length < 4 && draw(s, p)) {}
+    }
     emit(s, { t: "turn", p: p.id, notes: notes, info: info, round: s.round });
     if (startupEv) { startupEv.notes = notes; emit(s, startupEv); }
+    stEvents.forEach(function (e) { emit(s, e); });
   }
 
   function seasonCheck(s) {
@@ -275,6 +399,8 @@
     if (s.turn >= s.order.length) {
       s.turn = 0; s.round++;
       if (s.round > s.maxRounds) return finish(s);
+      var prev = s.stage; s.stage = stageOf(s);
+      if (s.discovery && s.stage > prev) emit(s, { t: "stage", stage: s.stage, title: D.STAGES[s.stage].title, text: D.STAGES[s.stage].text });
       seasonCheck(s);
     }
     beginTurn(s);
@@ -300,6 +426,8 @@
     if (c.married && !p.married) return false;
     if (c.item && p.items.indexOf(c.item) < 0) return false;
     if (c.played) for (var k in c.played) if ((p.stats.played[k] || 0) < c.played[k]) return false;
+    if (c.anyOf && !c.anyOf.some(function (a) { return (a.item && p.items.indexOf(a.item) >= 0) || (a.status && p.st[a.status]); })) return false;
+    if (c.clean && (p.scandal || Object.keys(p.st).some(function (k) { return D.STATUSES[k] && D.STATUSES[k].bad; }))) return false;
     return true;
   }
   function score(s, p) {
@@ -338,13 +466,23 @@
     else if (c.key !== "startup" || true) life(s, p, fill(c.life, p, ctx), "good");
     if (c.fam === "love" || c.fam === "family" || c.fam === "leisure") mood(p, "happy");
     if (c.key === "promotion" || c.key === "voiture") mood(p, "smug");
-    var ev = { t: "card", k: c.key, p: p.id, outcome: "self", scene: c.scene || null, notes: ctx.notes, data: {} };
+    var ev = { t: "card", k: c.key, p: p.id, outcome: "self", scene: ctx.scene || c.scene || null, notes: ctx.notes, data: {} };
+    if (ctx.lucky !== undefined) ev.data.lucky = ctx.lucky;
+    if (ctx.victims) ev.data.victims = ctx.victims;
+    if (ctx.saints) ev.data.saints = ctx.saints;
+    if (ctx.stranger) ev.data.stranger = true;
+    if (ctx.busted) { ev.data.busted = true; mood(p, "shocked"); }
+    if (ctx.garde) ev.data.kids = ctx.kids;
     if (ctx.partner) ev.data.partner = ctx.partner;
     if (ctx.kid) ev.data.kid = ctx.kid;
     if (ctx.amount) ev.data.amount = ctx.amount;
     if (ctx.singer) ev.data.singer = ctx.singer;
     if (ctx.poor) ev.data.poor = ctx.poor;
     ev.text = p.name + " joue « " + c.name + " »" + (ctx.amount ? " et gagne " + ctx.amount + " !" : ".");
+    if (ctx.victims && c.key === "karma") ev.text = p.name + " invoque le karma : " + (ctx.victims.map(function (id) { return s.players[id].name; }).join(", ") || "personne") + " paie ses sabotages.";
+    if (ctx.busted) ev.text = p.name + " voulait une promotion… mais les RH ont vérifié le diplôme.";
+    if (ctx.lucky === true && c.key !== "after") ev.text = p.name + " joue « " + c.name + " » : coup de chance !";
+    if (ctx.lucky === false && c.key !== "after") ev.text = p.name + " joue « " + c.name + " » : raté !";
     if (ctx.singer) ev.text = p.name + " organise un karaoké. " + s.players[ctx.singer].name + " chante « Je te survivrai »… faux.";
     emit(s, ev);
   }
@@ -362,10 +500,12 @@
     mood(att, "smug");
     var ev = {
       t: "card", k: c.key, p: att.id, to: tgt.id, outcome: mode, notes: ctx.notes,
-      scene: mode === "soft" ? null : c.scene, data: { partner: partnerName, exSeed: partnerSeed },
+      scene: mode === "soft" ? null : (ctx.scene || c.scene), data: { partner: partnerName, exSeed: partnerSeed },
     };
-    if (c.key === "divorce" && hadKids && mode !== "soft") ev.data.garde = true;
-    if (c.key === "divorce" && hadKids) ev.data.kids = (ctx.kids || []);
+    if (ctx.garde && hadKids && mode !== "soft") { ev.data.garde = true; ev.data.kids = ctx.kids || []; }
+    if (ctx.winner) ev.data.winner = ctx.winner;
+    if (ctx.lucky !== undefined) ev.data.lucky = ctx.lucky;
+    if (ctx.stole) ev.data.stole = true;
     ev.text = mode === "soft"
       ? tgt.name + " limite les dégâts : " + c.soft.label.toLowerCase() + "."
       : att.name + " joue « " + c.name + " » sur " + tgt.name + (mode === "reflected" ? " (retour à l'envoyeur !)" : "") + ".";
@@ -422,7 +562,7 @@
         p.stats.played[dk] = (p.stats.played[dk] || 0) + 1;
         var ctx = { notes: [], attacker: att.id };
         if (dc.reflect) {
-          if (!check(att, ac.treq)) {
+          if (!check(att, ac.treq, s)) {
             ev = hit(s, p, att, ac, "reflected");
             ev.p = p.id; ev.to = att.id; ev.by = dk;
             ev.text = p.name + " renvoie « " + ac.name + " » à l'envoyeur : " + att.name + " se le prend en pleine figure !";
@@ -437,6 +577,14 @@
           life(s, p, "Évite « " + ac.name + " » grâce à « " + dc.name + " ».", "good");
           emit(s, { t: "block", k: dk, p: p.id, to: att.id, against: ac.key, notes: ctx.notes, scene: "block", text: p.name + " contre « " + ac.name + " » avec « " + dc.name + " » !" });
         }
+      } else if (a.choice === "spite") {
+        if (s.mode !== "adult") return { ok: false, err: "Réservé au mode 18+" };
+        ev = hit(s, att, p, ac, "full");
+        addRes(s, att, { r: -3 }, ev.notes); mood(att, "shocked");
+        ev.spite = true;
+        ev.text += " " + p.name + " balance un dossier sur " + att.name + " : −3 réputation pour lui·elle aussi.";
+        emit(s, ev);
+        if (ev.data.garde) emit(s, { t: "card", k: "garde", p: p.id, outcome: "full", scene: "garde", data: { kids: ev.data.kids, exSeed: ev.data.exSeed, partner: ev.data.partner }, text: "Garde alternée pour " + p.name + "." });
       } else if (a.choice === "soft") {
         if (!ac.soft || !affordable(p, ac.soft.cost)) return { ok: false, err: "Tu ne peux pas payer" };
         pay(p, ac.soft.cost);
@@ -468,6 +616,7 @@
       p.salary = salary(s.players[id]); p.title = jobTitle(s.players[id]);
     });
     o.age = age(s);
+    o.stage = stageOf(s);
     return o;
   }
   function privateFor(s, id) {

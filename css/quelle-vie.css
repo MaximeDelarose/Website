@@ -370,3 +370,70 @@ h3 { font-family: var(--display); margin: 0; }
 .cr-spin { position: absolute; left: 50%; top: 0; width: 200px; height: 200px; transform: translateX(-50%); border-radius: 22px; background: linear-gradient(transparent 40%, rgba(255, 210, 63, .7) 50%, transparent 60%); background-size: 100% 200%; animation: cr-scan 1.4s linear infinite; pointer-events: none; }
 @keyframes cr-scan { from { background-position: 0 100%; } to { background-position: 0 -100%; } }
 .cr-traits { justify-content: center; }
+
+.cr-guide { transition: border-color .2s, box-shadow .2s; }
+.cr-guide.ok { border-color: #38d27a; border-style: solid; box-shadow: 0 0 0 4px rgba(56, 210, 122, .35); }
+.cr-count { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 90px; color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; pointer-events: none; }
+.cr-tip { margin: 0; text-align: center; font-weight: 900; font-size: 17px; min-height: 26px; }
+.cr-tip.warn { font-size: 14px; font-weight: 800; color: var(--pink); }
+
+/* extension 2 : animations des nouvelles scènes */
+.qv-stamp { animation: qv-stamp .35s cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes qv-stamp { from { transform: scale(3) rotate(-12deg); opacity: 0; } to { transform: scale(1) rotate(-8deg); opacity: 1; } }
+.qv-shake2 { animation: qv-shake2 .18s linear 8 both; }
+@keyframes qv-shake2 { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.qv-peek { animation: qv-peek 2.4s ease-in-out infinite; }
+@keyframes qv-peek { 0%, 100% { transform: translateX(40px); } 40%, 60% { transform: translateX(0); } }
+@keyframes qv-darken { from { opacity: 0; } 60% { opacity: .82; } to { opacity: .82; } }
+
+/* ---- options de partie, accord 18+ ---- */
+.qv-opts { display: flex; flex-direction: column; gap: 12px; }
+.qv-opt-row > span { display: block; font-weight: 900; margin-bottom: 6px; }
+.qv-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg { border: 3px solid var(--ink); background: #fff; border-radius: 14px; padding: 8px 10px; text-align: left; display: flex; flex-direction: column; gap: 2px; min-height: 64px; }
+.seg b { font-size: 15px; }
+.seg small { font-size: 12px; font-weight: 700; color: var(--muted); line-height: 1.25; }
+.seg.on { background: var(--sun); box-shadow: 0 3px 0 var(--ink); }
+.seg.adult.on { background: #2b2140; color: #fff; }
+.seg.adult.on small { color: #ffb3cf; }
+.seg:disabled { opacity: 1; cursor: default; }
+.seg:disabled:not(.on) { opacity: .55; }
+.qv-18 { background: #2b2140; color: #fff; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 8px; border: 3px solid var(--ink); }
+.qv-18 p { margin: 0; font-size: 14px; line-height: 1.4; }
+.qv-18 .ok { color: #8ef0b4; font-weight: 800; }
+.qv-18 .qv-note { color: #ffb3cf; text-align: left; }
+.link { background: none; border: 0; color: #ffd23f; text-decoration: underline; font-weight: 800; padding: 0; }
+.qv-lp i.ok { background: #8ef0b4; }
+.qv-lp i.no { background: #ff9db5; }
+.qv-lp i.wait { background: #fff; }
+.qv-note.warn { color: var(--pink); font-weight: 800; }
+.qv-btn.dark { background: #2b2140; }
+.b18 { font-style: normal; background: var(--pink); color: #fff; border-radius: 6px; padding: 0 5px; font-weight: 900; }
+.c18 { font-style: normal; float: right; background: var(--pink); color: #fff; border-radius: 5px; padding: 0 3px; font-size: 9px; }
+.qv-card.adult { background: #fff0f6; }
+.qv-scene.adult .qv-scene-title { background: #e5487a; color: #fff; }
+/* ---- conséquences en une ligne ---- */
+.qv-conseq { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 6px 10px 10px; }
+.qv-reveal .qv-conseq, .qv-banner .qv-conseq { padding: 8px 0 0; }
+.cq { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 2px 8px; font-size: 13px; color: var(--ink); }
+.cq i { font-style: normal; font-weight: 900; display: inline-flex; align-items: center; gap: 1px; }
+.cq i.up { color: #1f9a55; } .cq i.down { color: #d2304f; }
+.cq .qv-ri { width: 14px; height: 14px; }
+.qv-scene-cap em { display: block; font-style: normal; color: #1f9a55; margin-top: 4px; font-size: 14px; }
+/* ---- découverte ---- */
+.qv-banner.stage { background: #fff; max-width: 420px; }
+.qv-banner.stage small { display: block; font-weight: 900; color: var(--coral); text-transform: uppercase; letter-spacing: .5px; }
+.qv-banner.stage b { font-size: clamp(26px, 7vw, 36px); margin: 4px 0; }
+.qv-coach { position: fixed; left: 50%; bottom: 196px; transform: translate(-50%, 30px); opacity: 0; width: min(92vw, 420px); display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: center; background: #fff; border: 3px solid var(--ink); border-radius: 16px; padding: 8px 12px 8px 8px; box-shadow: 0 5px 0 var(--ink); z-index: 35; transition: transform .3s cubic-bezier(.2,1.4,.4,1), opacity .2s; cursor: pointer; }
+.qv-coach.on { transform: translate(-50%, 0); opacity: 1; }
+.qv-coach b { display: block; font-size: 15px; }
+.qv-coach span { display: block; font-size: 13px; font-weight: 700; line-height: 1.3; }
+.cc-ico { width: 52px; height: 52px; border-radius: 12px; background: var(--sun); display: grid; place-items: center; animation: qv-pop .5s cubic-bezier(.2,1.6,.4,1); }
+.cc-ico svg { width: 40px; height: 40px; }
+.cc-bang { font-family: var(--display); font-size: 32px; font-weight: 800; }
+.qv-tip.new { color: var(--coral); }
+.qv-pill { position: fixed; left: 50%; top: 64px; transform: translate(-50%, -20px); opacity: 0; background: var(--sun); border: 3px solid var(--ink); border-radius: 999px; padding: 6px 16px; box-shadow: 0 3px 0 var(--ink); z-index: 36; text-align: center; pointer-events: none; transition: transform .25s cubic-bezier(.2,1.4,.4,1), opacity .2s; }
+.qv-pill.on { transform: translate(-50%, 0); opacity: 1; }
+.qv-pill b { font-family: var(--display); font-size: 20px; }
+.qv-pill span { display: block; font-size: 12px; font-weight: 800; }
+@media (min-width: 980px) { .qv-coach { bottom: 220px; } }

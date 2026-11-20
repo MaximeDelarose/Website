@@ -27,6 +27,8 @@
     extra: [["none", "Rien"], ["freckles", "Taches de rousseur"], ["blush", "Joues roses"], ["earrings", "Boucles d'oreilles"], ["mole", "Grain de beauté"]],
   };
   var COLORS = { skin: SKINS, hairColor: HAIR_COLORS, eyeColor: EYE_COLORS, fav: FAV };
+  // Réglages fins mesurés sur la photo (1 = moyenne) : [min, max, défaut]
+  var MORPHS = { faceW: [0.86, 1.16, 1], eyeGap: [0.8, 1.22, 1], eyeSize: [0.8, 1.28, 1], noseSize: [0.78, 1.4, 1], mouthW: [0.8, 1.3, 1], browY: [-4, 4, 0] };
 
   function defaults() {
     return { skin: SKINS[2], face: "round", hair: "short", hairColor: HAIR_COLORS[1], eyes: "round", eyeColor: EYE_COLORS[0], brows: "thick", nose: "button", beard: "none", glasses: "none", body: "regular", extra: "none", fav: FAV[0] };
@@ -38,6 +40,10 @@
       var v = av[k];
       if (OPTIONS[k]) o[k] = OPTIONS[k].some(function (x) { return x[0] === v; }) ? v : d[k];
       else o[k] = (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)) ? v : d[k];
+    });
+    Object.keys(MORPHS).forEach(function (k) {
+      var m = MORPHS[k], v = +av[k];
+      o[k] = isFinite(v) && av[k] !== undefined && av[k] !== null ? Math.round(Math.max(m[0], Math.min(m[1], v)) * 100) / 100 : m[2];
     });
     return o;
   }
@@ -108,11 +114,12 @@
     }
   }
   function eyes(av, mood) {
-    var L = 47, R = 73, y = 58, c = av.eyeColor, o = "";
+    var gp = av.eyeGap || 1, es = av.eyeSize || 1;
+    var L = 60 - 13 * gp, R = 60 + 13 * gp, y = 58, c = av.eyeColor, o = "";
     var t = av.eyes;
     if (mood === "shocked") t = "wide";
     if (mood === "love") {
-      var h = function (x) { return '<path d="M' + x + ' ' + (y + 5) + ' l-7 -7 a4 4 0 0 1 7 -4 a4 4 0 0 1 7 4 z" fill="#e5487a" stroke="' + INK + '" stroke-width="2"/>'; };
+      var h = function (x) { return '<path d="M' + x.toFixed(1) + ' ' + (y + 5) + ' l-7 -7 a4 4 0 0 1 7 -4 a4 4 0 0 1 7 4 z" fill="#e5487a" stroke="' + INK + '" stroke-width="2"/>'; };
       return h(L) + h(R);
     }
     if (mood === "happy" && t !== "wide") {
@@ -120,8 +127,8 @@
     }
     [L, R].forEach(function (x) {
       if (t === "dots") { o += '<circle cx="' + x + '" cy="' + y + '" r="3.6" fill="' + INK + '"/>'; return; }
-      var rx = t === "wide" ? 8.5 : t === "almond" ? 7.5 : 6.8, ry = t === "wide" ? 9 : t === "almond" ? 4.8 : t === "sleepy" ? 5 : 6.8;
-      var pr = mood === "shocked" ? 2 : 3.3;
+      var rx = (t === "wide" ? 8.5 : t === "almond" ? 7.5 : 6.8) * es, ry = (t === "wide" ? 9 : t === "almond" ? 4.8 : t === "sleepy" ? 5 : 6.8) * es;
+      var pr = (mood === "shocked" ? 2 : 3.3) * Math.sqrt(es);
       o += '<ellipse cx="' + x + '" cy="' + y + '" rx="' + rx + '" ry="' + ry + '" fill="#fff" stroke="' + INK + '" stroke-width="2.4"/>';
       o += '<circle cx="' + (x + (mood === "smug" ? 2 : 0)) + '" cy="' + (y + 0.5) + '" r="' + pr + '" fill="' + c + '"/><circle cx="' + (x + (mood === "smug" ? 2 : 0)) + '" cy="' + (y + 0.5) + '" r="' + (pr * 0.5) + '" fill="' + INK + '"/>';
       o += '<circle cx="' + (x + 1.6) + '" cy="' + (y - 1.6) + '" r="1.2" fill="#fff"/>';
@@ -131,6 +138,7 @@
     return o;
   }
   function brows(av, mood) {
+    var dx = ((av.eyeGap || 1) - 1) * 13, dy = av.browY || 0;
     var c = av.hair === "bald" || av.hair === "buzz" ? shade(av.hairColor, -0.2) : av.hairColor;
     if (av.hairColor === "#f2efe9") c = "#b9b4ae";
     var w = av.brows === "thick" ? 5 : av.brows === "thin" ? 2.6 : 3.6;
@@ -141,8 +149,8 @@
     else if (mood === "smug") { l = "M39 " + (y) + " Q47 " + (y - 3) + " 55 " + (y); r = "M65 " + (y - 4) + " Q73 " + (y - 9) + " 81 " + (y - 3); }
     else if (av.brows === "arched") { l = "M39 " + (y + 1) + " Q47 " + (y - 7) + " 55 " + (y); r = "M65 " + (y) + " Q73 " + (y - 7) + " 81 " + (y + 1); }
     else { l = "M39 " + y + " Q47 " + (y - 4) + " 55 " + y; r = "M65 " + y + " Q73 " + (y - 4) + " 81 " + y; }
-    var o = '<path d="' + l + '" stroke="' + c + '" stroke-width="' + w + '" stroke-linecap="round" fill="none"/><path d="' + r + '" stroke="' + c + '" stroke-width="' + w + '" stroke-linecap="round" fill="none"/>';
-    if (av.brows === "uni" && mood !== "shocked") o += '<path d="M54 ' + (y - 1) + ' L66 ' + (y - 1) + '" stroke="' + c + '" stroke-width="' + w + '" stroke-linecap="round"/>';
+    var o = '<path transform="translate(' + (-dx).toFixed(1) + ' ' + dy + ')" d="' + l + '" stroke="' + c + '" stroke-width="' + w + '" stroke-linecap="round" fill="none"/><path transform="translate(' + dx.toFixed(1) + ' ' + dy + ')" d="' + r + '" stroke="' + c + '" stroke-width="' + w + '" stroke-linecap="round" fill="none"/>';
+    if (av.brows === "uni" && mood !== "shocked") o += '<path d="M' + (54 - dx).toFixed(1) + ' ' + (y - 1 + dy) + ' L' + (66 + dx).toFixed(1) + ' ' + (y - 1 + dy) + '" stroke="' + c + '" stroke-width="' + w + '" stroke-linecap="round"/>';
     return o;
   }
   function nose(av) {
@@ -208,6 +216,9 @@
     hoodie:     function () { return { top: "#8a92a6", legs: "#2b2140", shoes: "#f4f6fb", logo: true, hood: true }; },
     ceo:        function () { return { top: "#15151c", legs: "#3a3a48", shoes: "#f4f6fb", turtle: true, watch: true }; },
     wedding:    function () { return { top: "#ffffff", legs: "#ffffff", shoes: "#c9c9d6", flower: true, jacket: true }; },
+    mystic:     function () { return { top: "#7b3fc4", legs: "#7b3fc4", shoes: "#d9a066", pendant: true, robe: true }; },
+    retired:    function () { return { top: "#ff7eb6", legs: "#f2e6c9", shoes: "#5b3a29", flowers: true }; },
+    pajama:     function () { return { top: "#9fd6ff", legs: "#9fd6ff", shoes: "#ffd23f", dots: true }; },
     unemployed: function () { return { top: "#efeee8", legs: "#8a92a6", shoes: "#5b3a29", stain: true, tank: true }; },
   };
 
@@ -233,6 +244,10 @@
     if (o.turtle) g += '<rect x="' + (cx - 12) + '" y="' + (top - 6) + '" width="24" height="12" rx="5" fill="' + o.top + '"' + ink + '/>';
     if (o.logo) g += '<g transform="translate(' + (cx - 7) + ' 122)"><path d="M7 0 Q13 6 10 16 H4 Q1 6 7 0Z" fill="#ff6b4a" stroke="' + INK + '" stroke-width="2"/></g><path d="M' + (cx - w + 4) + ' 150 H' + (cx + w - 4) + '" stroke="' + INK + '" stroke-width="2.4" opacity=".5"/>';
     if (o.star) g += '<path d="M' + cx + ' 116 l4 8 9 1 -7 6 2 9 -8 -5 -8 5 2 -9 -7 -6 9 -1z" fill="#ffd23f"' + S.replace('3"', '2"') + '/>';
+    if (o.pendant) g += '<path d="M' + (cx - 10) + ' ' + top + ' L' + cx + ' 122 L' + (cx + 10) + ' ' + top + '" fill="none" stroke="#ffd23f" stroke-width="2"/><circle cx="' + cx + '" cy="126" r="6" fill="#c7b3ff"' + S.replace('3"', '2"') + '/>';
+    if (o.robe) g += '<path d="M' + (cx - w - 2) + ' 150 L' + (cx - w - 8) + ' 186 H' + (cx + w + 8) + ' L' + (cx + w + 2) + ' 150Z" fill="' + o.top + '"' + ink + '/>';
+    if (o.flowers) g += '<g fill="#ffd23f"><circle cx="' + (cx - 10) + '" cy="116" r="4"/><circle cx="' + (cx + 9) + '" cy="132" r="4"/><circle cx="' + (cx - 6) + '" cy="148" r="4"/></g><g fill="#38b58a"><circle cx="' + (cx + 12) + '" cy="112" r="3"/><circle cx="' + (cx - 12) + '" cy="136" r="3"/></g>';
+    if (o.dots) g += '<g fill="#fff"><circle cx="' + (cx - 8) + '" cy="118" r="2.5"/><circle cx="' + (cx + 9) + '" cy="128" r="2.5"/><circle cx="' + (cx - 4) + '" cy="144" r="2.5"/><circle cx="' + (cx + 6) + '" cy="152" r="2.5"/></g>';
     if (o.flower) g += '<circle cx="' + (cx - w + 9) + '" cy="' + (top + 12) + '" r="5" fill="#e5487a"' + S.replace('3"', '2"') + '/>';
     // bras
     var sk = av.skin, sl = o.tank ? sk : o.top;
@@ -278,22 +293,28 @@
     var shape = headShape(av.face);
     var g = "";
     g += '<ellipse cx="60" cy="194" rx="34" ry="6" fill="rgba(43,33,64,.18)"/>';
-    g += hairBack(av);
+    var fw = av.faceW || 1, sx = function (cx, cy, kx, ky, inner) { return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + kx + ' ' + ky + ') translate(' + (-cx) + ' ' + (-cy) + ')">' + inner + '</g>'; };
+    g += sx(60, 0, fw, 1, hairBack(av));
     if (o.hood) g += '<path d="M22 70 C18 30 40 10 60 10 C80 10 102 30 98 70 L94 104 H26 Z" fill="' + o.top + '"' + S + '/>';
     g += body(av, o, opts.pose || "down", opts.hold);
     // cou + tête
     g += '<rect x="52" y="90" width="16" height="14" fill="' + shade(av.skin, -0.12) + '"/>';
-    g += '<ellipse cx="' + (60 - shape.w) + '" cy="64" rx="7" ry="9" fill="' + av.skin + '"' + S + '/><ellipse cx="' + (60 + shape.w) + '" cy="64" rx="7" ry="9" fill="' + av.skin + '"' + S + '/>';
-    g += '<path d="' + shape.d + '" fill="' + av.skin + '"' + S + '/>';
-    g += '<path d="M34 84 Q60 104 86 84" fill="none" stroke="' + shade(av.skin, -0.1) + '" stroke-width="6" opacity=".5"/>';
-    g += extra(av, shape);
-    g += beard(av, shape);
-    g += nose(av);
-    g += mouth(av, mood);
+    var head = '<ellipse cx="' + (60 - shape.w) + '" cy="64" rx="7" ry="9" fill="' + av.skin + '"' + S + '/><ellipse cx="' + (60 + shape.w) + '" cy="64" rx="7" ry="9" fill="' + av.skin + '"' + S + '/>';
+    head += '<path d="' + shape.d + '" fill="' + av.skin + '"' + S + '/>';
+    head += '<path d="M34 84 Q60 104 86 84" fill="none" stroke="' + shade(av.skin, -0.1) + '" stroke-width="6" opacity=".5"/>';
+    head += extra(av, shape);
+    head += beard(av, shape);
+    g += sx(60, 0, fw, 1, head);
+    var nz = (av.noseSize || 1) * (opts.liar ? 1 : 1);
+    g += sx(60, 66, nz, nz, nose(opts.liar ? Object.assign({}, av, { nose: "long" }) : av));
+    if (opts.liar) g += '<path d="M64 74 L' + (82 + 6 * (opts.liar - 1)) + ' 72 L64 70Z" fill="' + shade(av.skin, -0.18) + '"' + S.replace('3"', '2.4"') + '/>';
+    g += sx(60, 83, av.mouthW || 1, 1, mouth(av, mood));
     g += eyes(av, mood);
     g += brows(av, mood);
-    g += glasses(av, opts.shades || o.shades && opts.mood !== "sad" ? (o.shades ? "sun" : av.glasses) : null);
-    g += hairFront(av);
+    var gl = opts.shades ? "sun" : (o.shades && mood !== "sad" ? "sun" : null);
+    g += sx(60, 58, av.eyeGap || 1, av.eyeSize || 1, glasses(av, gl));
+    if (opts.disguise) g += '<g><circle cx="47" cy="58" r="9" fill="none" stroke="' + INK + '" stroke-width="3"/><circle cx="73" cy="58" r="9" fill="none" stroke="' + INK + '" stroke-width="3"/><path d="M56 58 H64" stroke="' + INK + '" stroke-width="3"/><path d="M46 78 Q53 70 60 75 Q67 70 74 78 Q60 81 46 78Z" fill="#2a1d1a"/></g>';
+    g += sx(60, 0, fw, 1, hairFront(av));
     if (o.cap) g += '<path d="M28 40 C30 18 90 18 92 40 Z" fill="' + o.cap + '"' + S + '/><path d="M88 38 L110 42 L90 46Z" fill="' + o.cap + '"' + S + '/>';
     if (opts.hat === "party") g += '<path d="M44 26 L60 -10 L76 26Z" fill="#ffd23f"' + S + '/><circle cx="60" cy="-10" r="5" fill="#e5487a"' + S.replace('3"', '2"') + '/>';
     if (opts.hat === "crown") g += '<path d="M36 26 L40 2 L52 16 L60 -2 L68 16 L80 2 L84 26Z" fill="#ffd23f"' + S + '/>';
@@ -306,5 +327,5 @@
     return '<svg class="' + (cls || "") + '" viewBox="' + vb + '" aria-hidden="true">' + svg(av, opts) + '</svg>';
   }
 
-  root.QV_AVATAR = { OPTIONS: OPTIONS, COLORS: COLORS, defaults: defaults, sanitize: sanitize, random: random, svg: svg, standalone: standalone, shade: shade, INK: INK };
+  root.QV_AVATAR = { OPTIONS: OPTIONS, COLORS: COLORS, MORPHS: MORPHS, defaults: defaults, sanitize: sanitize, random: random, svg: svg, standalone: standalone, shade: shade, INK: INK };
 })(window);

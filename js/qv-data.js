@@ -222,10 +222,246 @@
     { k: "r", name: "La célébrité", pts: 4 },
   ];
 
+  /* =====================================================================
+     EXTENSION 2 : découverte progressive, 24 nouvelles cartes, mode 18+
+     ===================================================================== */
+  JOBS.mystique = { titles: ["Chaman·e de quartier", "Guide spirituel·le", "Gourou certifié·e"], salary: 1, outfit: "mystic" };
+  ITEMS.dog = { name: "Chien héritier (Lord Biscotte)", income: { f: 1 } };
+  ITEMS.tattoo = { name: "Tatouage « Kevin » sur la fesse" };
+
+  /* États durables affichés sur le personnage.
+     tick : effets à chacun de ses tours · risk : tirage à chaque tour (fait sauter l'état)
+     onEnd : effets quand l'état expire · perm : ne s'use pas · bad : effacé par les cartes de rebond */
+  var STATUSES = {
+    squat:     { label: "Squatteur à la maison", bad: true, tick: [{ op: "res", b: -1 }] },
+    liar:      { label: "CV bidon", bad: true, perm: true, risk: { p: 0.25, fx: [{ op: "loseJob" }, { op: "res", r: -3 }], scene: "demasque", text: "{name} est démasqué·e : le CV mentionnait un stage à la NASA.", life: "Démasqué·e : le CV était inventé de A à Z." } },
+    proces:    { label: "Procès avec le voisin", bad: true },
+    fame:      { label: "Star d'un jour", onEnd: [{ op: "res", r: -2 }], endText: "Fin du quart d'heure de gloire pour {name} : −2 réputation." },
+    babyinf:   { label: "Bébé influenceur", perm: true, tick: [{ op: "res", f: 2, b: -1 }] },
+    ex:        { label: "Un ex rôde", bad: true },
+    fakeDip:   { label: "Diplôme douteux", bad: true, perm: true },
+    doublevie: { label: "Double vie", perm: true, adult: true, tick: [{ op: "res", b: 2 }], risk: { p: 0.3, fx: [{ op: "breakup" }, { op: "res", r: -3 }, { op: "scandal", turns: 2 }], scene: "doubleVieBust", text: "La double vie de {name} éclate au grand jour : les deux familles se croisent au supermarché.", life: "La double vie explose au rayon surgelés." } },
+    sugar:     { label: "Sugar daddy fauché", bad: true, adult: true, tick: [{ op: "res", f: -2 }] },
+  };
+
+  /* Découverte progressive : étape débloquée selon le tour de table (mode découverte),
+     taille de main visée à chaque étape, et ce qu'on présente au joueur. */
+  var STAGES = [
+    null,
+    { hand: 1, title: "Ta vie commence", text: "Une carte, un choix : joue-la ou souffle un coup. Les cartes te font gagner bonheur, fortune ou réputation." },
+    { hand: 3, title: "Amour, famille et logement", text: "Nouvelles cartes : rencontres, enfants, appartement… Certaines ont des conditions (il faut un·e partenaire, un logement…)." },
+    { hand: 4, title: "Les coups bas arrivent", text: "Les cartes noires visent un adversaire. Quand on t'attaque : contre-la, paie pour limiter les dégâts, ou encaisse pour rebondir." },
+    { hand: 5, title: "Combinaisons", text: "Promotions, mariages, start-up, procès… Les cartes avancées se combinent entre elles. Pense à tes objectifs secrets !" },
+    { hand: 5, title: "Toutes les cartes", text: "Événements pour toute la table et jeu complet. À toi de jouer !" },
+  ];
+  function stageForRound(r) { return r >= 7 ? 5 : r >= 5 ? 4 : r >= 3 ? 3 : r; }
+
+  // Étape d'apparition des cartes déjà existantes
+  var TIERS = {
+    petitboulot: 1, diplome: 1, diner: 1, voyage: 1, grattage: 1, benevolat: 1, hamster: 1,
+    foudre: 2, appart: 2, voiture: 2, heritage: 2, bureau: 2, influence: 2,
+    licenciement: 3, divorce: 3, badbuzz: 3, degat: 3, fisc: 3, avocat: 3, syndicat: 3, community: 3, assurance: 3, renvoi: 3,
+    promotion: 4, mariage: 4, bebe: 4, maison: 4, startup: 4,
+    crise: 5, karaoke: 5, greve: 5,
+  };
+  CARDS.forEach(function (c) { c.tier = TIERS[c.key] || 4; });
+  // ajustements des cartes existantes pour les nouvelles mécaniques
+  function patch(key, f) { CARDS.forEach(function (c) { if (c.key === key) f(c); }); }
+  patch("mariage", function (c) { c.req.noStatus = ["ex"]; });
+  patch("appart", function (c) { c.req.noStatus = ["proces"]; });
+  patch("maison", function (c) { c.req.noStatus = ["proces"]; });
+  patch("fisc", function (c) { c.counters.push("miracle"); });
+  ["licenciement", "divorce", "badbuzz", "degat", "fisc"].forEach(function (k) { patch(k, function (c) { c.per4 = 1; }); });
+
+  var NEW_CARDS = [
+    // ---- Carrière ----
+    { key: "cdimensonge", fam: "career", tier: 4, name: "Le CDI du mensonge", icon: "pinocchio", copies: 2,
+      text: "Un CV 100 % inventé : poste de bureau sans diplôme (salaire 3). Mais chaque tour, 1 risque sur 4 d'être démasqué·e.", tip: "Il ne faut pas de métier",
+      req: { noJob: true }, fx: [{ op: "job", job: "bureau" }, { op: "status", s: "liar", n: 99 }], life: "Embauché·e grâce à un CV qui cite « trois ans chez la NASA »." },
+    { key: "fauxdiplome", fam: "career", tier: 2, name: "Le faux diplôme", icon: "fakediploma", copies: 2,
+      text: "+1 diplôme, +2 réputation. Imprimé chez soi. Lors d'une promotion, 1 chance sur 2 que quelqu'un vérifie…", tip: "Combo risqué avec Promotion",
+      fx: [{ op: "diploma" }, { op: "res", r: 2 }, { op: "status", s: "fakeDip", n: 99 }], life: "Obtient un master en « Management du Futur » sur une imprimante de bureau." },
+    { key: "reconversion", fam: "career", tier: 4, name: "Reconversion mystique", icon: "crystal", copies: 2,
+      text: "Tu plaques tout pour lire l'avenir dans les pâtes. Métier : chaman·e (salaire 1), +4 bonheur, scandale effacé.", tip: "Remplace ton métier",
+      fx: [{ op: "job", job: "mystique" }, { op: "res", b: 4 }, { op: "clearScandal" }], scene: "mystique", life: "Reconversion mystique : lit l'avenir dans les coquillettes." },
+    { key: "retraite", fam: "career", tier: 4, name: "La retraite anticipée", icon: "hammock", copies: 2,
+      text: "Fin du métier, +4 bonheur et +3 fortune d'indemnités. Hamac, chemise à fleurs, sieste.", tip: "Il faut un métier et 40 ans",
+      req: { hasJob: true, minAge: 40 }, fx: [{ op: "loseJob" }, { op: "retire" }, { op: "res", b: 4, f: 3 }], scene: "retraite", life: "Retraite anticipée : apprend le ukulélé, mal." },
+    // ---- Amour ----
+    { key: "mariagesponso", fam: "love", tier: 4, name: "Le mariage sponsorisé", icon: "ringlogo", copies: 2,
+      text: "Mariage gratuit : les sponsors paient tout. +2 bonheur, +3 fortune, −1 réputation (le gâteau a la forme d'une marque de soda).", tip: "Il faut un·e partenaire",
+      req: { partner: true, notMarried: true, noStatus: ["ex"] }, fx: [{ op: "marry" }, { op: "res", b: 2, f: 3, r: -1 }], scene: "mariageSponso", life: "Mariage sponsorisé avec {partner}. Les vœux étaient lus par une pub de 30 secondes." },
+    { key: "mariageraison", fam: "love", tier: 4, name: "Le mariage de raison", icon: "briefcaseheart", copies: 2,
+      text: "Tu épouses un·e riche inconnu·e : +5 fortune, −2 bonheur. C'est l'amour… du portefeuille.", tip: "Il faut être célibataire",
+      req: { single: true }, fx: [{ op: "partner", look: "ceo" }, { op: "marry" }, { op: "res", f: 5, b: -2 }], scene: "mariageRaison", life: "Épouse {partner} pour son yacht. Ils se vouvoient." },
+    { key: "ex", fam: "sabotage", tier: 4, name: "Un ex trop présent", icon: "ghost", copies: 2, target: "opponent", per4: 1,
+      text: "L'ex de la cible commente toutes ses photos : −2 bonheur, et impossible de se marier pendant 2 tours.", tip: "Vise un couple",
+      treq: { partner: true }, fx: [{ op: "res", b: -2 }, { op: "status", s: "ex", n: 2 }, { op: "ifMarried", fx: [{ op: "res", r: -1 }] }], counters: ["avocat", "renvoi"],
+      soft: { cost: { f: 2 }, label: "Bloquer l'ex partout : seulement −1 bonheur", fx: [{ op: "res", b: -1 }] },
+      bounce: { label: "Ton·ta partenaire te rassure : +2 bonheur", fx: [{ op: "res", b: 2 }] },
+      scene: "ex", life: "Son ex « passait dans le quartier ». Trois fois par jour." },
+    // ---- Famille ----
+    { key: "heritagesurprise", fam: "family", tier: 2, name: "L'héritage surprise", icon: "envelope", copies: 2,
+      text: "Un grand-oncle inconnu te lègue… 2 fois sur 3 : +6 fortune. Sinon : ses dettes (−2 fortune).", tip: "Hasard",
+      fx: [{ op: "chance", p: 0.66, fx: [{ op: "res", f: 6 }, { op: "scene", id: "heritageWin" }], else: [{ op: "res", f: -2 }, { op: "scene", id: "heritageFail" }] }], life: "Hérite d'un grand-oncle inconnu. Surprise !" },
+    { key: "chien", fam: "family", tier: 2, name: "Le chien héritier", icon: "dog", copies: 2,
+      text: "Tu adoptes Lord Biscotte, un chien plus riche que toi : +2 bonheur et +1 fortune par tour (sa rente).", tip: "",
+      req: { notItem: "dog" }, fx: [{ op: "item", item: "dog" }, { op: "res", b: 2 }], scene: "chien", life: "Adopte Lord Biscotte, un chien qui a hérité d'un château." },
+    { key: "bebeinflu", fam: "family", tier: 4, name: "Le bébé influenceur", icon: "babyphone", copies: 2,
+      text: "Ton bébé a plus d'abonnés que toi : +2 réputation, puis +2 fortune et −1 bonheur à chacun de tes tours.", tip: "Il faut un enfant",
+      req: { kids: 1, noStatus: ["babyinf"] }, fx: [{ op: "res", r: 2 }, { op: "status", s: "babyinf", n: 99 }], scene: "bebeInflu", life: "Le bébé signe un contrat avec une marque de compotes." },
+    { key: "cousin", fam: "sabotage", tier: 3, name: "Le cousin opportuniste", icon: "grab", copies: 2, target: "opponent", per4: 1,
+      text: "Le cousin « passe dire bonjour » et repart avec une carte au hasard de la main de la cible… pour toi.", tip: "Vole une carte",
+      treq: { minHand: 1 }, fx: [{ op: "stealCard" }], counters: ["renvoi"],
+      soft: { cost: { f: 2 }, label: "Lui prêter 2 (tu ne les reverras jamais)", fx: [{ op: "give", f: 2 }] },
+      bounce: { label: "Enfin parti : +1 bonheur", fx: [{ op: "res", b: 1 }] },
+      scene: "cousin", life: "Le cousin Jordan passe « juste dire bonjour ». Il repart avec le micro-ondes." },
+    // ---- Logement ----
+    { key: "squatteur", fam: "sabotage", tier: 3, name: "Le colocataire squatteur", icon: "mattress", copies: 2, target: "opponent", per4: 1,
+      text: "Un « ami » s'installe chez la cible « pour deux semaines » : −1 bonheur à chacun de ses tours pendant 3 tours.", tip: "",
+      fx: [{ op: "status", s: "squat", n: 3 }], counters: ["avocat", "renvoi"],
+      soft: { cost: { f: 2 }, label: "Lui payer l'hôtel : il part tout de suite", fx: [] },
+      bounce: { label: "Il a fait la vaisselle une fois : +2 bonheur", fx: [{ op: "res", b: 2 }] },
+      scene: "squat", life: "Un colocataire squatteur s'installe sur le canapé. Il mange tous les yaourts." },
+    { key: "voisin", fam: "sabotage", tier: 3, name: "Le voisin procédurier", icon: "letter", copies: 2, target: "opponent",
+      text: "Lettre recommandée pour « bruit de pas » : −2 fortune, −1 bonheur, et impossible de déménager pendant 2 tours.", tip: "",
+      fx: [{ op: "res", f: -2, b: -1 }, { op: "status", s: "proces", n: 2 }], counters: ["avocat", "miracle", "renvoi"],
+      soft: { cost: { r: 1 }, label: "S'excuser avec un gâteau : seulement −1 fortune", fx: [{ op: "res", f: -1 }] },
+      bounce: { label: "Tout l'immeuble te soutient : +1 réputation", fx: [{ op: "res", r: 1 }] },
+      scene: "voisin", life: "Le voisin du dessous porte plainte pour « marche trop bruyante »." },
+    { key: "retourmaman", fam: "sabotage", tier: 4, name: "Retour chez maman", icon: "couch", copies: 2, target: "opponent",
+      text: "La cible perd son logement d'un cran et 1 bonheur. Maman a gardé sa chambre d'ado intacte.", tip: "Vise quelqu'un qui a un logement",
+      treq: { housing: 1 }, fx: [{ op: "housingDown" }, { op: "res", b: -1 }], counters: ["assurance", "renvoi"],
+      soft: { cost: { f: 3 }, label: "Payer les loyers en retard : tu gardes ton logement", fx: [{ op: "res", b: -1 }] },
+      bounce: { label: "Maman cuisine et tu ne paies plus de loyer : +2 bonheur, +2 fortune", fx: [{ op: "res", b: 2, f: 2 }] },
+      scene: "maman", life: "Retour chez maman, dans la chambre aux posters de 2009." },
+    // ---- Loisirs et opportunités ----
+    { key: "loto", fam: "leisure", tier: 1, name: "Le loto du dimanche", icon: "balls", copies: 2,
+      text: "Coûte 1. Une chance sur 8 de gagner 12 ! Sinon, 1 chance sur 3 de gagner 2.", tip: "Hasard",
+      cost: { f: 1 }, fx: [{ op: "chance", p: 0.125, fx: [{ op: "res", f: 12, b: 2 }, { op: "scene", id: "lotoWin" }], else: [{ op: "chance", p: 0.35, fx: [{ op: "res", f: 2 }] }] }], life: "Joue au loto du dimanche, avec les dates d'anniversaire du chat." },
+    { key: "investissement", fam: "leisure", tier: 4, name: "Investissement catastrophique", icon: "crash", copies: 2,
+      text: "Coûte 4. 3 fois sur 10, ça décolle : +11 fortune. Sinon, la crypto-chaussette s'effondre (−1 réputation).", tip: "Hasard",
+      cost: { f: 4 }, fx: [{ op: "chance", p: 0.3, fx: [{ op: "res", f: 11 }, { op: "scene", id: "investWin" }], else: [{ op: "res", r: -1 }, { op: "scene", id: "investFail" }] }], life: "Investit toutes ses économies dans le ChaussetteCoin." },
+    { key: "star", fam: "leisure", tier: 4, name: "La star d'un jour", icon: "spotlight", copies: 2,
+      text: "+5 réputation tout de suite… puis −2 au tour suivant, quand plus personne ne se souvient de toi.", tip: "Effet différé",
+      fx: [{ op: "res", r: 5 }, { op: "status", s: "fame", n: 1 }], scene: "star", life: "Passe au JT régional pour avoir sauvé un chat d'un arbre (c'était une peluche)." },
+    { key: "nouvellevie", fam: "leisure", tier: 4, name: "La nouvelle vie", icon: "sunrise", copies: 2,
+      text: "Tout recommencer ailleurs : tes ennuis disparaissent, +4 bonheur, au moins un appartement, et 2 cartes à jouer au prochain tour.", tip: "Il faut avoir encaissé une catastrophe",
+      req: { hits: 1 }, fx: [{ op: "clearBad" }, { op: "housingMin", level: 1 }, { op: "res", b: 4 }, { op: "rebound" }], scene: "nouvelleVie", life: "Recommence une nouvelle vie à la mer, avec un chapeau de paille." },
+    // ---- Sabotages ----
+    { key: "gourou", fam: "sabotage", tier: 3, name: "Le gourou du business", icon: "pyramid", copies: 2, target: "opponent", per4: 1,
+      text: "Tu inscris la cible à un séminaire « Deviens millionnaire en 3 jours » : elle paie 3, tu touches 2 de commission.", tip: "Vise quelqu'un qui a 3 fortune",
+      treq: { minF: 3 }, fx: [{ op: "steal", f: 3, give: 2 }], counters: ["avocat", "renvoi"],
+      soft: { cost: { b: 1 }, label: "S'enfuir à la pause café : seulement −1 fortune", fx: [{ op: "res", f: -1 }] },
+      bounce: { label: "Tu revends tes notes du séminaire : +1 fortune, +1 réputation", fx: [{ op: "res", f: 1, r: 1 }] },
+      scene: "gourou", life: "Assiste à un séminaire de gourou. Repart avec un mug « Pense riche »." },
+    { key: "proces", fam: "sabotage", tier: 4, name: "Le procès du siècle", icon: "gavel", copies: 2, target: "opponent",
+      text: "Procès retentissant : la personne la plus réputée des deux gagne 4 fortune, l'autre perd 4 fortune et 1 réputation. Risqué !", tip: "Compare ta réputation à la sienne",
+      fx: [{ op: "duel" }], counters: ["avocat", "miracle", "renvoi"],
+      soft: { cost: { f: 2 }, label: "Arrangement : tu donnes 2 fortune à l'attaquant", fx: [{ op: "give", f: 2 }] },
+      scene: "proces", life: "Procès du siècle. Le juge s'est endormi deux fois." },
+    { key: "reunion", fam: "sabotage", tier: 3, name: "La réunion inutile", icon: "clock", copies: 2, target: "opponent",
+      text: "« Cette réunion aurait pu être un mail. » La cible ne touche pas de salaire au prochain tour et perd 1 bonheur.", tip: "Vise quelqu'un qui travaille",
+      treq: { hasJob: true }, fx: [{ op: "noSalary" }, { op: "res", b: -1 }], counters: ["syndicat", "miracle", "renvoi"],
+      soft: { cost: { r: 1 }, label: "Prétexter un autre call : tu gardes ton salaire", fx: [{ op: "res", b: -1 }] },
+      bounce: { label: "Tu as dessiné pendant 3 heures : +1 bonheur", fx: [{ op: "res", b: 1 }] },
+      scene: "reunion", life: "Survit à une réunion de 4 heures sur « la synergie des synergies »." },
+    { key: "karma", fam: "sabotage", tier: 4, name: "Le karma express", icon: "yinyang", copies: 2, target: "auto",
+      text: "Le karma frappe la personne qui a réussi le plus de sabotages : −3 réputation, −2 bonheur. Impossible à contrer.", tip: "Il faut qu'un adversaire ait déjà saboté",
+      need: "saboteur", fx: [{ op: "karma" }], scene: "karma", life: "Invoque le karma. Il est arrivé en express." },
+    // ---- Réactions ----
+    { key: "miracle", fam: "defense", tier: 3, name: "Le miracle administratif", icon: "stamp", copies: 2, reaction: true, alsoPlay: true,
+      text: "Réaction : annule un contrôle fiscal, un voisin procédurier, une réunion inutile ou un procès. Ou à ton tour : efface tes ennuis et +2 fortune.", tip: "Réaction ou carte normale",
+      onDefend: [{ op: "res", f: 1 }], fx: [{ op: "clearBad" }, { op: "res", f: 2 }], life: "Obtient un tampon de la préfecture du premier coup. Un miracle." },
+    // ---- Événements collectifs ----
+    { key: "panne", fam: "world", tier: 5, name: "La panne générale", icon: "plug", copies: 1, target: "all",
+      text: "Plus d'électricité ni d'internet : chacun défausse une carte au hasard et en pioche une autre. Les influenceurs perdent 2 réputation. Tout le monde se parle enfin : +1 bonheur.", tip: "Tout le monde",
+      fx: [{ op: "panne" }], scene: "panne", life: "A débranché la box de tout le quartier « pour voir »." },
+  ];
+
+  /* ---- MODE TRASH & ADULTE (18+) : cartes exclusives ---- */
+  var ADULT_CARDS = [
+    { key: "paternite", fam: "sabotage", tier: 4, name: "Le test de paternité", icon: "dna", copies: 1, target: "opponent", adult: true,
+      text: "En direct sur un plateau télé. Une fois sur deux, « ce n'est pas le tien » : −3 bonheur, −2 réputation. Sinon, c'est l'attaquant qui passe pour un idiot.", tip: "Vise un parent",
+      treq: { kids: 1 }, fx: [{ op: "chance", p: 0.5, fx: [{ op: "res", b: -3, r: -2 }, { op: "scene", id: "paterniteNon" }], else: [{ op: "res", b: 2 }, { op: "res", who: "attacker", r: -2 }, { op: "scene", id: "paterniteOui" }] }], counters: ["avocat", "renvoi"],
+      soft: { cost: { f: 2 }, label: "Refuser le test (et le plateau télé) : −1 réputation", fx: [{ op: "res", r: -1 }] },
+      bounce: { label: "Tournée des plateaux télé : +2 fortune", fx: [{ op: "res", f: 2 }] },
+      scene: "paterniteNon", life: "Test de paternité en direct. Le public a hurlé." },
+    { key: "after", fam: "leisure", tier: 2, name: "L'after catastrophique", icon: "cone", copies: 2, adult: true,
+      text: "+3 bonheur, −2 fortune, −2 réputation. Réveil dans une baignoire avec un cône de chantier. Une fois sur deux : un tatouage « Kevin ».", tip: "",
+      fx: [{ op: "res", b: 3, f: -2, r: -2 }, { op: "chance", p: 0.5, fx: [{ op: "item", item: "tattoo" }] }], scene: "after", life: "Se réveille dans une baignoire d'hôtel avec un cône de chantier et un nouveau tatouage." },
+    { key: "plancoloc", fam: "love", tier: 4, name: "Le plan d'un soir devenu coloc", icon: "toothbrush", copies: 2, adult: true,
+      text: "Il·elle a apporté sa brosse à dents. Puis son chat. Puis sa mère. Nouveau·elle partenaire, +2 bonheur, +2 fortune (loyer partagé).", tip: "Il faut être célibataire",
+      req: { single: true }, fx: [{ op: "partner" }, { op: "res", b: 2, f: 2 }], scene: "planColoc", life: "Le plan d'un soir avec {partner} dure depuis 8 mois. Personne n'a osé en parler." },
+    { key: "vegas", fam: "love", tier: 4, name: "Le mariage à Las Vegas", icon: "chapel", copies: 2, adult: true,
+      text: "Marié·e par un sosie d'Elvis à 4 h du matin, avec un·e inconnu·e si besoin. +4 bonheur, −2 réputation.", tip: "Ne pas être marié·e",
+      req: { notMarried: true, noStatus: ["ex"] }, fx: [{ op: "vegas" }, { op: "res", b: 4, r: -2 }], scene: "vegas", life: "Épouse {partner} à Las Vegas. Aucun des deux ne se souvient du prénom de l'autre." },
+    { key: "groupe", fam: "sabotage", tier: 3, name: "Le message au mauvais groupe", icon: "chat", copies: 2, target: "opponent", adult: true, per4: 1,
+      text: "Un message très, très privé part sur le groupe « Famille ». −3 réputation, −2 bonheur. S'il travaille : aussi rétrogradé·e (le patron est dans le groupe).", tip: "",
+      treq: { minR: 1 }, fx: [{ op: "res", r: -3, b: -2 }, { op: "ifJob", fx: [{ op: "jobDown" }] }], counters: ["community", "renvoi"],
+      soft: { cost: { f: 2 }, label: "« Supprimer pour tout le monde » (trop tard) : −1 réputation", fx: [{ op: "res", r: -1 }] },
+      bounce: { label: "Tante Odile trouve ça « moderne » : +2 bonheur", fx: [{ op: "res", b: 2 }] },
+      scene: "groupe", life: "Envoie un message coquin sur le groupe « Famille ». Tante Odile a répondu par un pouce." },
+    { key: "doublevie", fam: "love", tier: 4, name: "La double vie", icon: "masks2", copies: 2, adult: true,
+      text: "Deux appartements, deux prénoms : +2 bonheur tout de suite et à chaque tour… mais chaque tour, 3 risques sur 10 que tout explose.", tip: "Il faut un·e partenaire",
+      req: { partner: true, noStatus: ["doublevie"] }, fx: [{ op: "status", s: "doublevie", n: 99 }, { op: "res", b: 2 }], life: "Mène une double vie entre Lille et Perpignan. Les TGV, ça creuse." },
+    { key: "sextape", fam: "sabotage", tier: 3, name: "La sextape maladroite", icon: "censored", copies: 2, target: "opponent", adult: true,
+      text: "Une vidéo « compromettante » de la cible fuite… filmée si mal qu'on ne voit qu'un coude. −3 réputation, scandale 1 tour.", tip: "",
+      fx: [{ op: "res", r: -3 }, { op: "scandal", turns: 1 }], counters: ["community", "renvoi"],
+      soft: { cost: { f: 2 }, label: "Avocat express : seulement −1 réputation", fx: [{ op: "res", r: -1 }] },
+      bounce: { label: "Contrat de télé-réalité : +3 fortune", fx: [{ op: "res", f: 3 }] },
+      scene: "sextape", life: "Une vidéo floue fuite. Internet débat : coude ou genou ?" },
+    { key: "sugar", fam: "love", tier: 4, name: "Le sugar daddy fauché", icon: "moth", copies: 2, adult: true,
+      text: "Une Rolex, une décapotable… louées. Nouveau·elle partenaire, +3 bonheur, puis il·elle t'emprunte 2 fortune par tour pendant 2 tours.", tip: "Il faut être célibataire",
+      req: { single: true }, fx: [{ op: "partner", look: "ceo" }, { op: "res", b: 3 }, { op: "status", s: "sugar", n: 2 }], scene: "sugar", life: "Sort avec {partner}, « millionnaire ». La Rolex déteint." },
+    { key: "date", fam: "sabotage", tier: 3, name: "Le date catastrophique", icon: "dinner", copies: 2, target: "opponent", adult: true,
+      text: "Toute la belle-famille débarque au restaurant. −2 bonheur ; en couple non marié, impossible de se marier 2 tours ; sinon −1 réputation.", tip: "",
+      fx: [{ op: "res", b: -2 }, { op: "ifPartner", fx: [{ op: "status", s: "ex", n: 2 }], else: [{ op: "res", r: -1 }] }], counters: ["renvoi"],
+      soft: { cost: { f: 1 }, label: "Fuir par la fenêtre des toilettes : seulement −1 bonheur", fx: [{ op: "res", b: -1 }] },
+      bounce: { label: "La belle-mère t'adore finalement : +2 bonheur", fx: [{ op: "res", b: 2 }] },
+      scene: "date", life: "Premier rendez-vous. La belle-famille au complet s'invite au dessert." },
+    { key: "secretvoisin", fam: "leisure", tier: 2, name: "Le secret du voisin", icon: "keyhole", copies: 2, adult: true,
+      text: "Tu as vu des choses par la fenêtre. Le voisin te paie pour oublier : +4 fortune, −1 bonheur (tu ne dors plus).", tip: "",
+      fx: [{ op: "res", f: 4, b: -1 }], scene: "secret", life: "Découvre que le voisin, très discret, fait des soirées à thème « pirates »." },
+    { key: "fauxcelib", fam: "sabotage", tier: 4, name: "Le faux célibataire", icon: "ringhide", copies: 2, target: "opponent", adult: true,
+      text: "Le·la partenaire de la cible était déjà en couple ailleurs. Rupture, −3 bonheur, mais +1 réputation (tout le monde te plaint).", tip: "Vise un couple",
+      treq: { partner: true }, fx: [{ op: "breakup" }, { op: "res", b: -3, r: 1 }], counters: ["avocat", "renvoi"],
+      soft: { cost: { r: 1 }, label: "Faire semblant de n'avoir rien vu : −1 bonheur", fx: [{ op: "res", b: -1 }] },
+      bounce: { label: "Le groupe de copains te venge : +2 bonheur", fx: [{ op: "res", b: 2 }] },
+      scene: "fauxCelib", life: "Découvre que {partner} avait déjà une famille. Et un chien. Et un autre chien." },
+    { key: "divorcepremium", fam: "love", tier: 4, name: "Le divorce premium", icon: "goldtoaster", copies: 2, adult: true,
+      text: "Ton avocat est un requin à dents d'or : tu divorces et tu repars avec +6 fortune et le grille-pain. −1 bonheur, pour la forme.", tip: "Il faut être marié·e",
+      req: { married: true }, fx: [{ op: "breakup" }, { op: "res", f: 6, b: -1 }, { op: "item", item: "toaster" }], scene: "divorcePremium", life: "Divorce premium : repart avec la maison de vacances, le jet-ski et le grille-pain." },
+    { key: "libertine", fam: "leisure", tier: 4, name: "La soirée libertine ratée", icon: "venetian", copies: 2, adult: true,
+      text: "Masques, bougies, ambiance… tout le monde a fini par jouer au Uno. +3 bonheur, −2 réputation.", tip: "Il faut un·e partenaire",
+      req: { partner: true }, fx: [{ op: "res", b: 3, r: -2 }], scene: "libertine", life: "Soirée libertine ratée : tournoi de Uno jusqu'à 5 h du matin." },
+    { key: "retourex", fam: "sabotage", tier: 4, name: "Le retour de l'ex", icon: "doorex", copies: 2, target: "opponent", adult: true,
+      text: "L'ex débarque en pleine cérémonie : « Objection ! » −2 bonheur, −2 réputation si marié·e, et 4 chances sur 10 que le couple explose.", tip: "Vise un couple",
+      treq: { partner: true }, fx: [{ op: "res", b: -2 }, { op: "ifMarried", fx: [{ op: "res", r: -2 }] }, { op: "chance", p: 0.4, fx: [{ op: "breakup" }] }], counters: ["avocat", "renvoi"],
+      soft: { cost: { f: 2 }, label: "Payer un verre à l'ex pour qu'il·elle s'en aille : −1 bonheur", fx: [{ op: "res", b: -1 }] },
+      bounce: { label: "Le public applaudit ta dignité : +2 bonheur", fx: [{ op: "res", b: 2 }] },
+      scene: "retourEx", life: "L'ex débarque au mariage en criant « Objection ! ». Ce n'était même pas un tribunal." },
+    { key: "karmainfidele", fam: "world", tier: 5, name: "Le karma infidèle", icon: "lightning", copies: 1, target: "all", adult: true,
+      text: "Ceux qui mènent une double vie ou ont saboté 2 fois ou plus : −2 réputation, −2 bonheur. Les plus sages : +3 bonheur.", tip: "Tout le monde",
+      fx: [{ op: "karmaInf" }], scene: "karmaInf", life: "Déclenche le karma infidèle. La foudre a frappé plusieurs fois." },
+  ];
+  NEW_CARDS.concat(ADULT_CARDS).forEach(function (c) { CARDS.push(c); });
+
+  var ADULT_EVENTS = [
+    { key: "valentin", adult: true, name: "La Saint-Valentin", icon: "heart", text: "Les couples se ruinent en roses : +2 bonheur, −1 fortune. Les célibataires organisent une soirée « libres et fiers » : +2 réputation.", fx: [{ op: "eachIf", cond: { partner: true }, fx: [{ op: "res", b: 2, f: -1 }], else: [{ op: "res", r: 2 }] }] },
+    { key: "seminaire", adult: true, name: "Le séminaire d'entreprise arrosé", icon: "mic", text: "Ceux qui travaillent dansent sur les tables : +2 bonheur, −2 réputation (les photos circulent).", fx: [{ op: "eachIf", cond: { hasJob: true }, fx: [{ op: "res", b: 2, r: -2 }] }] },
+    { key: "fuite", adult: true, name: "Fuite d'une appli de rencontre", icon: "chat", text: "Les comptes sont publiés. Les gens en couple doivent s'expliquer : −2 bonheur. Les célibataires assument : −1 réputation.", fx: [{ op: "eachIf", cond: { partner: true }, fx: [{ op: "res", b: -2 }], else: [{ op: "res", r: -1 }] }] },
+    { key: "evg", adult: true, name: "L'enterrement de vie de garçon", icon: "cone", text: "Tout le monde finit à Prague déguisé en banane : −2 fortune, +2 bonheur.", fx: [{ op: "each", fx: [{ op: "res", f: -2, b: 2 }] }] },
+  ];
+  ADULT_EVENTS.forEach(function (e) { EVENTS.push(e); });
+  EVENTS.forEach(function (e) { if (!e.adult) e.adult = false; });
+  OBJECTIVES.push({ key: "rentier", name: "Rentier", text: "Finir avec un chien héritier ou un bébé influenceur.", pts: 7, check: { anyOf: [{ item: "dog" }, { status: "babyinf" }] } });
+  OBJECTIVES.push({ key: "zen2", name: "Âme en paix", text: "Finir sans aucun ennui en cours (scandale, squatteur, procès…).", pts: 6, check: { clean: true } });
+
   root.QV_DATA = {
     FAMILIES: FAMILIES, JOBS: JOBS, ITEMS: ITEMS, HOUSING: HOUSING,
     CARDS: CARDS, EVENTS: EVENTS, OBJECTIVES: OBJECTIVES, NAMES: NAMES,
-    ROUNDS: ROUNDS, START_AGE: START_AGE, AGE_STEP: AGE_STEP, HAND_SIZE: HAND_SIZE, TROPHIES: TROPHIES,
+    ROUNDS: ROUNDS, START_AGE: START_AGE, AGE_STEP: AGE_STEP, HAND_SIZE: HAND_SIZE, TROPHIES: TROPHIES, STATUSES: STATUSES, STAGES: STAGES, stageForRound: stageForRound,
     byKey: CARDS.reduce(function (m, c) { m[c.key] = c; return m; }, {}),
   };
   if (typeof module !== "undefined" && module.exports) module.exports = root.QV_DATA;

@@ -113,6 +113,7 @@
       '<div class="r"><b>3</b><p>Trois ressources : ' + IC.get("b", "qv-ri") + ' bonheur, ' + IC.get("f", "qv-ri") + ' fortune, ' + IC.get("r", "qv-ri") + ' réputation. Ton score final est leur somme, plus tes 2 objectifs secrets et les trophées (le plus heureux, le plus riche, le plus célèbre : +4 chacun).</p></div>' +
       '<div class="r"><b>4</b><p>Les cartes noires sabotent les autres. Quand on t\'attaque, tu choisis : <em>contrer</em> avec une carte de réaction, <em>limiter les dégâts</em> en payant, ou <em>encaisser</em> (tu pioches 1 carte, tu gagnes un petit bonus et tu joueras 2 cartes au prochain tour : de quoi rebondir).</p></div>' +
       '<div class="r"><b>5</b><p>Tous les 2 tours de table, un événement de saison frappe tout le monde. Les cartes jaunes touchent aussi toute la table.</p></div>' +
+      '<div class="r"><b>7</b><p>En créant le salon, l\'hôte choisit le mode <em>Classique</em> ou <em>Trash &amp; Adulte 18+</em> (cartes, événements, scènes et répliques exclusives ; chaque joueur doit être majeur et accepter), et <em>Découverte</em> (les cartes arrivent petit à petit) ou <em>Expert</em>.</p></div>' +
       '<div class="r"><b>6</b><p>Familles de cartes : carrière, amour, famille, logement, loisirs, sabotages, réactions et événements. ' + D.CARDS.length + ' cartes différentes.</p></div>' +
       '</div><button class="qv-btn big" data-back>Retour</button></div>');
     app.onclick = function (e) { if (e.target.closest("[data-back]")) { if (pub && room) renderGame(); else home(); } };
@@ -130,7 +131,40 @@
   function creator(opt) {
     opt = opt || {};
     var step = "choose", consent = !!store("qv-consent"), result = null, failMsg = "";
-    function stopCam() { if (camStream) { camStream.getTracks().forEach(function (t) { t.stop(); }); camStream = null; } }
+    var stopLive = null, goodSince = 0, counting = null;
+    function stopCam() {
+      if (stopLive) { stopLive(); stopLive = null; }
+      if (counting) { clearInterval(counting); counting = null; }
+      if (camStream) { camStream.getTracks().forEach(function (t) { t.stop(); }); camStream = null; }
+    }
+    // guidage en direct : conseils + déclenchement automatique quand la pose est bonne
+    function startGuide() {
+      if (!window.QV_FACE || stopLive) return;
+      goodSince = 0;
+      stopLive = window.QV_FACE.live($("#vid"), function (q) {
+        var tip = $("#tip"), guide = $("#guide"); if (!tip || step !== "cam") return;
+        if (q.off) { tip.textContent = "Place ton visage dans l'ovale, de face, bien éclairé."; return; }
+        if (q.tip) tip.textContent = q.tip;
+        guide.classList.toggle("ok", !!q.ok);
+        if (q.ok) {
+          if (!goodSince) goodSince = Date.now();
+          if (!counting && Date.now() - goodSince > 700) countdown();
+        } else {
+          goodSince = 0;
+          if (counting) { clearInterval(counting); counting = null; $("#count").textContent = ""; }
+        }
+      });
+    }
+    function countdown() {
+      var n = 3, el = $("#count");
+      el.textContent = n; SND.play("tick");
+      counting = setInterval(function () {
+        n--;
+        if (!$("#count")) { clearInterval(counting); counting = null; return; }
+        if (n <= 0) { clearInterval(counting); counting = null; el.textContent = ""; snap(); return; }
+        el.textContent = n; SND.play("tick");
+      }, 550);
+    }
     function draw() {
       var o = '<div class="qv-page qv-creator">' + logo(true);
       if (step === "choose") {
@@ -143,8 +177,8 @@
           '<div class="qv-row2">' + (opt.first ? '<button class="qv-btn ghost sm" data-c="manual">Créer à la main</button>' : '<button class="qv-btn ghost sm" data-c="edit">Retoucher mon personnage</button>') +
           (opt.first ? '<button class="qv-btn ghost sm" data-c="skip">Plus tard</button>' : '<button class="qv-btn ghost sm" data-c="back">Retour</button>') + '</div>';
       } else if (step === "cam") {
-        o += '<h2>Souris !</h2><div class="cr-cam"><video id="vid" playsinline autoplay muted></video><div class="cr-guide"></div></div>' +
-          '<p class="ed-hint">Visage de face, bien éclairé, cheveux visibles.</p>' +
+        o += '<h2>Souris !</h2><div class="cr-cam"><video id="vid" playsinline autoplay muted></video><div class="cr-guide" id="guide"></div><div class="cr-count" id="count"></div></div>' +
+          '<p class="cr-tip" id="tip">Place ton visage dans l\'ovale, de face, bien éclairé.</p>' +
           '<button class="qv-btn big" data-c="snap">Prendre la photo</button><button class="qv-btn ghost" data-c="choose">Annuler</button>';
       } else if (step === "busy") {
         o += '<h2>Création de ton personnage…</h2><div class="cr-pair"><img class="cr-photo scanning" src="' + photo + '" alt="Ta photo"><div class="cr-spin"></div></div>' +
@@ -153,6 +187,7 @@
         o += '<h2>Voilà ton personnage !</h2>' +
           '<div class="cr-pair"><img class="cr-photo" src="' + photo + '" alt="Ta photo"><span class="cr-arrow">→</span><div class="cr-av big">' + A.standalone(result.avatar, { mood: "neutral", pose: "wave" }) + '</div></div>' +
           '<div class="qv-chips cr-traits">' + result.traits.map(function (t) { return '<span class="st">' + esc(t) + '</span>'; }).join("") + '</div>' +
+          (result.quality && !result.quality.ok ? '<p class="cr-tip warn">Pour un personnage plus ressemblant, reprends une photo : ' + esc(result.quality.tips.slice(0, 2).join(", ").toLowerCase()) + '.</p>' : '') +
           '<label class="qv-field"><span>Ton prénom</span><input id="nm" maxlength="16" autocomplete="nickname" placeholder="Ex. : Jean-Mich" value="' + esc(me.name) + '"></label>' +
           '<button class="qv-btn big" data-c="ok">C\'est moi !</button>' +
           '<div class="qv-row2"><button class="qv-btn ghost sm" data-c="tweak">Retoucher</button><button class="qv-btn ghost sm" data-c="again">Autre photo</button></div>';
@@ -169,7 +204,7 @@
         rd.onload = function () { usePhoto(rd.result); };
         rd.readAsDataURL(file);
       });
-      if (step === "cam" && camStream) $("#vid").srcObject = camStream;
+      if (step === "cam" && camStream) { $("#vid").srcObject = camStream; startGuide(); }
     }
     function checkConsent() {
       var c = $("#consent"); consent = !!(c && c.checked);
@@ -368,9 +403,9 @@
   function createRoom(solo, resumeCode) {
     leaveRoom();
     var code = resumeCode || code4();
-    room = { code: code, host: true, hostId: me.id, solo: solo, roster: [], lobby: [{ id: me.id, name: me.name, avatar: me.avatar }], seen: {}, net: null };
+    room = { code: code, host: true, hostId: me.id, solo: solo, roster: [], lobby: [{ id: me.id, name: me.name, avatar: me.avatar }], seen: {}, net: null, opts: { mode: "classic", discovery: !store("qv-tuto-done") } };
     var saved = resumeCode ? store("qv-host-" + code) : null;
-    if (saved && saved.lobby) { room.lobby = saved.lobby; G = saved.state || null; }
+    if (saved && saved.lobby) { room.lobby = saved.lobby; G = saved.state || null; if (saved.opts) room.opts = saved.opts; }
     if (solo) {
       room.lobby.push(bot(0));
       room.lobby.push(bot(1));
@@ -386,7 +421,7 @@
       if (location.hash !== "#" + code) history.replaceState(null, "", "#" + code);
     }
     room.timer = setInterval(hostTick, 600);
-    if (G) { hostBroadcast(); } else if (solo) { hostStart(); } else renderLobby();
+    if (G) { hostBroadcast(); } else renderLobby();
   }
   function bot(i) {
     var used = room.lobby.map(function (p) { return p.name; });
@@ -419,7 +454,7 @@
       renderPresence();
     }, 1000);
   }
-  function sendHello() { if (room && room.net) room.net.send("hello", { id: me.id, name: me.name, avatar: me.avatar }); }
+  function sendHello() { if (room && room.net) room.net.send("hello", { id: me.id, name: me.name, avatar: me.avatar, adultOk: room.adultOk === undefined ? null : room.adultOk }); }
 
   function onRoster(list) {
     if (!room) return;
@@ -442,8 +477,8 @@
       if (!G && ev === "hello") {
         var ex = room.lobby.filter(function (p) { return p.id === pl.id; })[0];
         var av = A.sanitize(pl.avatar), name = String(pl.name || "Joueur").slice(0, 16);
-        if (ex) { ex.name = name; ex.avatar = av; }
-        else if (room.lobby.length < 6) { room.lobby.push({ id: pl.id, name: name, avatar: av }); SND.play("pop"); }
+        if (ex) { ex.name = name; ex.avatar = av; ex.adultOk = pl.adultOk === true ? true : pl.adultOk === false ? false : null; }
+        else if (room.lobby.length < 6) { room.lobby.push({ id: pl.id, name: name, avatar: av, adultOk: pl.adultOk === true ? true : pl.adultOk === false ? false : null }); SND.play("pop"); }
         else { room.net.send("kick", { to: pl.id, msg: "Le salon est complet (6 joueurs)." }); return; }
         if (G) return;
         renderLobby();
@@ -472,10 +507,10 @@
   function hostBroadcast() {
     if (!room || !room.host) return;
     var payload;
-    if (!G) payload = { kind: "lobby", code: room.code, hostId: me.id, lobby: room.lobby, now: Date.now() };
+    if (!G) payload = { kind: "lobby", code: room.code, hostId: me.id, lobby: room.lobby, opts: room.opts, now: Date.now() };
     else payload = { kind: "game", code: room.code, hostId: me.id, pub: E.publicState(G), now: Date.now() };
     if (!room.solo) {
-      store("qv-host-" + room.code, { lobby: room.lobby, state: G, t: Date.now() });
+      store("qv-host-" + room.code, { lobby: room.lobby, state: G, opts: room.opts, t: Date.now() });
       room.net.send("state", payload);
       if (G) G.order.forEach(function (id) { if (!G.players[id].bot && id !== me.id) room.net.send("priv", { to: id, p: E.privateFor(G, id) }); });
     }
@@ -483,9 +518,15 @@
     receiveState(payload);
     if (G) receivePriv(E.privateFor(G, me.id));
   }
+  function adultBlockers() {
+    if (!room || !room.opts || room.opts.mode !== "adult") return [];
+    return room.lobby.filter(function (p) { return !p.bot && (p.id === me.id ? room.adultOk !== true : p.adultOk !== true); });
+  }
   function hostStart() {
     if (room.lobby.length < 2) { toast("Il faut au moins 2 joueurs (ajoute un bot)"); return; }
-    G = E.create(room.lobby, Math.floor(Math.random() * 4294967295));
+    var blk = adultBlockers();
+    if (blk.length) { toast("Mode 18+ : en attente de l'accord de " + blk.map(function (p) { return p.name; }).join(", ")); return; }
+    G = E.create(room.lobby, Math.floor(Math.random() * 4294967295), room.opts);
     SND.play("fanfare");
     hostBroadcast();
   }
@@ -545,6 +586,9 @@
     clockSkew = Date.now() - (pl.now || Date.now());
     if (pl.kind === "lobby") {
       pub = null; room.lobby = pl.lobby;
+      var prevMode = room.opts && room.opts.mode;
+      if (pl.opts) room.opts = pl.opts;
+      if (!room.host && room.opts && room.opts.mode !== prevMode && room.opts.mode === "adult") { room.adultOk = undefined; }
       if (screen !== "editor" && screen !== "rules") renderLobby();
       return;
     }
@@ -567,7 +611,7 @@
   function receivePriv(p) {
     if (!p) return;
     priv = p;
-    if (screen === "game") renderHand();
+    if (screen === "game") { renderHand(); coachHand(); }
   }
 
   // ======================================================================
@@ -576,34 +620,92 @@
   function card(k) { return D.byKey[k]; }
   function nameOf(id) { return pub && pub.players[id] ? pub.players[id].name : "?"; }
 
+  // conséquences en une ligne (« Alice : −2 ★  +3 € ») pour ne pas multiplier les fenêtres
+  function notesLine(notes) {
+    if (!notes || !notes.length || !pub) return "";
+    var by = {};
+    notes.forEach(function (n) { (by[n.p] = by[n.p] || []).push(n); });
+    return '<div class="qv-conseq">' + Object.keys(by).map(function (id) {
+      return '<span class="cq"><b>' + esc(id === me.id ? "Toi" : nameOf(id)) + '</b> ' + by[id].map(function (n) {
+        return '<i class="' + (n.v > 0 ? "up" : "down") + '">' + IC.get(n.k, "qv-ri") + (n.v > 0 ? "+" : "−") + Math.abs(n.v) + '</i>';
+      }).join("") + '</span>';
+    }).join("") + '</div>';
+  }
   function onGameEvent(ev) {
     if (ev.t === "turn") {
-      if (ev.p === me.id) { enqueue({ kind: "banner", text: "À toi de jouer !", sub: (ev.info || []).join(" · "), dur: 1.3, sfx: "turn", notes: ev.notes }); }
-      else enqueue({ kind: "notes", notes: ev.notes });
+      if (ev.p === me.id) { turnPill("À toi de jouer !", (ev.info || []).join(" · ")); SND.play("turn"); }
+      enqueue({ kind: "notes", notes: ev.notes });
+    } else if (ev.t === "stage") {
+      if (pub && pub.discovery) enqueue({ kind: "stage", stage: ev.stage, title: ev.title, text: ev.text, dur: ev.stage === 1 ? 4.5 : 4, sfx: "fanfare" });
     } else if (ev.t === "attack") {
       enqueue({ kind: "reveal", k: ev.k, by: ev.p, to: ev.to, text: nameOf(ev.p) + " vise " + (ev.to === me.id ? "TOI" : nameOf(ev.to)) + " !", dur: 1.8, sfx: ev.to === me.id ? "alarm" : "card" });
     } else if (ev.t === "card") {
-      var c = card(ev.k);
-      if (ev.outcome === "self" || (ev.k === "startup" && ev.outcome !== "self")) {
-        if (ev.outcome === "self") enqueue({ kind: "reveal", k: ev.k, by: ev.p, text: nameOf(ev.p) + (c.target === "all" ? " déclenche un événement !" : " joue :") + (ev.data && ev.data.amount ? " +" + ev.data.amount + " fortune !" : ""), dur: 1.4, sfx: "card" });
-      }
+      var c = card(ev.k) || {};
+      var extra = ev.bounce && ev.to ? (ev.to === me.id ? "Tu rebondis : " : nameOf(ev.to) + " rebondit : ") + ev.bounce.toLowerCase() + ", +1 carte et 2 cartes au prochain tour." : (ev.spite ? "Dossier balancé : " + nameOf(ev.p) + " perd aussi 3 réputation !" : "");
+      if (ev.scene) enqueue({ kind: "scene", ev: ev, extra: extra });
+      else if (ev.outcome === "self") enqueue({ kind: "reveal", k: ev.k, by: ev.p, notes: ev.notes, text: nameOf(ev.p) + (c.target === "all" ? " déclenche un événement !" : " joue :") + (ev.data && ev.data.amount ? " +" + ev.data.amount + " fortune !" : "") + (ev.data && ev.data.lucky === true ? " Coup de chance !" : ev.data && ev.data.lucky === false ? " Raté…" : ""), dur: 2, sfx: "card" });
+      else if (ev.outcome === "soft") enqueue({ kind: "banner", text: "Dégâts limités", sub: ev.text, notes: ev.notes, dur: 2.4, sfx: "shield" });
+      else enqueue({ kind: "banner", text: c.name || "", sub: ev.text + (extra ? " " + extra : ""), notes: ev.notes, dur: 2.6, sfx: "sad" });
+      enqueue({ kind: "notes", notes: ev.notes });
+    } else if (ev.t === "status") {
       if (ev.scene) enqueue({ kind: "scene", ev: ev });
-      else if (ev.outcome === "soft") enqueue({ kind: "banner", text: "Dégâts limités", sub: ev.text, dur: 2.2, sfx: "shield" });
-      if (ev.bounce && ev.to) enqueue({ kind: "banner", text: ev.to === me.id ? "Tu rebondis !" : nameOf(ev.to) + " rebondit", sub: ev.bounce + " · +1 carte · 2 cartes au prochain tour", dur: 2.2, sfx: "boing" });
+      else enqueue({ kind: "banner", text: (D.STATUSES[ev.s] || {}).label || "", sub: ev.text, notes: ev.notes, dur: 2.2, sfx: "ding" });
       enqueue({ kind: "notes", notes: ev.notes });
     } else if (ev.t === "block") {
       enqueue({ kind: "scene", ev: ev });
       enqueue({ kind: "notes", notes: ev.notes });
     } else if (ev.t === "season") {
-      enqueue({ kind: "season", k: ev.k, dur: 4.2, sfx: "ding" });
+      enqueue({ kind: "season", k: ev.k, notes: ev.notes, dur: 4.2, sfx: "ding" });
       enqueue({ kind: "notes", notes: ev.notes });
+      coachMech("season", "Événements de saison", "Tous les 2 tours de table, un événement touche toute la table. Pas de panique, ça arrive à tout le monde.");
     } else if (ev.t === "rest") {
       enqueue({ kind: "notes", notes: ev.notes });
       if (ev.p !== me.id && pub.phase !== "end") toast(nameOf(ev.p) + " souffle un coup (+1 bonheur)");
     } else if (ev.t === "end") {
       enqueue({ kind: "banner", text: "Fin de partie !", sub: "Le moment de faire les comptes…", dur: 1.8, sfx: "win" });
+      if (pub && pub.discovery) store("qv-tuto-done", true);
     }
     if (ev.text) addLog(ev);
+  }
+
+  // ---------- présentations « Nouveau ! » (mode découverte, non bloquantes, mémorisées) ----------
+  var seen = store("qv-seen") || {}, coachQ = [], coachOn = false;
+  function markSeen(k) { seen[k] = 1; store("qv-seen", seen); }
+  function coach(key, title, text, icon) {
+    if (!pub || !pub.discovery || seen[key]) return;
+    if (coachQ.some(function (c) { return c.key === key; })) return;
+    coachQ.push({ key: key, title: title, text: text, icon: icon });
+    if (!coachOn) nextCoach();
+  }
+  function coachMech(key, title, text) { coach("m:" + key, title, text, null); }
+  function nextCoach() {
+    var c = coachQ.shift(), el = $("#coach");
+    if (!c) { coachOn = false; if (el) el.remove(); return; }
+    coachOn = true; markSeen(c.key);
+    if (!el) { el = document.createElement("div"); el.id = "coach"; el.className = "qv-coach"; document.body.appendChild(el); }
+    el.innerHTML = (c.icon ? '<div class="cc-ico">' + IC.get(c.icon) + '</div>' : '<div class="cc-ico cc-bang">!</div>') + '<div><b>Nouveau : ' + esc(c.title) + '</b><span>' + esc(c.text) + '</span></div>';
+    el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+    el.onclick = function () { clearTimeout(el._t); nextCoach(); };
+    clearTimeout(el._t); el._t = setTimeout(nextCoach, 6500);
+  }
+  function coachHand() {
+    if (!priv || !pub || !pub.discovery) return;
+    priv.hand.forEach(function (h) {
+      var c = card(h.k); if (!c || seen[h.k]) return;
+      coach(h.k, c.name, c.text, c.icon);
+    });
+    var p = pub.players[me.id]; if (!p) return;
+    Object.keys(p.st || {}).forEach(function (k) { var d = D.STATUSES[k]; if (d) coachMech("st:" + k, d.label, "Un état durable : il s'affiche sur ton personnage et agit à chacun de tes tours tant qu'il dure."); });
+    if (pub.stage >= 3) coachMech("obj", "Objectifs secrets", "Tu as 2 objectifs secrets (bouton « Mes objectifs »). Remplis-les avant la fin : ils rapportent beaucoup de points.");
+    if (p.rebound) coachMech("rebound", "Rebond", "Après une catastrophe encaissée, tu joues 2 cartes au prochain tour. On se relève toujours !");
+  }
+  var pillT = null;
+  function turnPill(t, sub) {
+    var el = $("#pill");
+    if (!el) { el = document.createElement("div"); el.id = "pill"; el.className = "qv-pill"; document.body.appendChild(el); }
+    el.innerHTML = '<b>' + esc(t) + '</b>' + (sub ? '<span>' + esc(sub) + '</span>' : '');
+    el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+    clearTimeout(pillT); pillT = setTimeout(function () { el.classList.remove("on"); }, 2600);
   }
   var logLines = [];
   function addLog(ev) { logLines.unshift({ id: ev.id, text: ev.text, t: ev.t }); if (logLines.length > 30) logLines.pop(); }
@@ -625,20 +727,22 @@
     ov.className = "qv-ov k-" + it.kind;
     var dur = it.dur || 2, html = "";
     if (it.kind === "banner") {
-      html = '<div class="qv-banner"><b>' + esc(it.text) + '</b>' + (it.sub ? '<span>' + esc(it.sub) + '</span>' : '') + '</div>';
-      if (it.notes) floatNotes(it.notes);
+      html = '<div class="qv-banner"><b>' + esc(it.text) + '</b>' + (it.sub ? '<span>' + esc(it.sub) + '</span>' : '') + notesLine(it.notes) + '</div>';
+    } else if (it.kind === "stage") {
+      html = '<div class="qv-banner stage"><small>Découverte · étape ' + it.stage + '/5</small><b>' + esc(it.title) + '</b><span>' + esc(it.text) + '</span></div>';
     } else if (it.kind === "reveal") {
-      html = '<div class="qv-reveal"><p>' + esc(it.text) + '</p>' + cardHTML(it.k, { big: true }) + '</div>';
+      html = '<div class="qv-reveal"><p>' + esc(it.text) + '</p>' + cardHTML(it.k, { big: true }) + notesLine(it.notes) + '</div>';
     } else if (it.kind === "season") {
       var e = D.EVENTS.filter(function (x) { return x.key === it.k; })[0];
-      html = '<div class="qv-reveal season"><p>Événement de saison</p><div class="qv-card big fam-world"><div class="qv-card-top"><span>Pour tout le monde</span></div><div class="qv-card-art">' + IC.get(e.icon) + '</div><div class="qv-card-name">' + esc(e.name) + '</div><p class="qv-card-text">' + esc(e.text) + '</p></div></div>';
+      html = '<div class="qv-reveal season"><p>Événement de saison</p><div class="qv-card big fam-world' + (e.adult ? " adult" : "") + '"><div class="qv-card-top"><span>Pour tout le monde</span></div><div class="qv-card-art">' + IC.get(e.icon) + '</div><div class="qv-card-name">' + esc(e.name) + '</div><p class="qv-card-text">' + esc(e.text) + '</p></div>' + notesLine(it.notes) + '</div>';
     } else if (it.kind === "scene") {
       var sc = W.scene(it.ev, pub);
       if (!sc) { playing = null; next(); return; }
       dur = sc.dur;
       var c = card(it.ev.k) || {};
-      var title = it.ev.scene === "garde" ? "Garde alternée" : it.ev.scene === "block" ? "Paré !" : it.ev.scene === "renvoi" ? "Retour à l'envoyeur" : it.ev.scene === "startupWin" ? "Levée de fonds !" : it.ev.scene === "startupFail" ? "Faillite" : (c.name || "");
-      html = '<div class="qv-scene"><div class="qv-scene-title">' + esc(title) + '</div>' + sc.svg + '<p class="qv-scene-cap">' + sc.caption + '</p></div>';
+      var TITLES = { garde: "Garde alternée", block: "Paré !", renvoi: "Retour à l'envoyeur", startupWin: "Levée de fonds !", startupFail: "Faillite", demasque: "Démasqué·e !", doubleVieBust: "La double vie éclate" };
+      var title = TITLES[it.ev.scene] || (it.ev.t === "status" ? (D.STATUSES[it.ev.s] || {}).label : "") || c.name || "";
+      html = '<div class="qv-scene' + (pub && pub.mode === "adult" ? " adult" : "") + '"><div class="qv-scene-title">' + esc(title) + '</div>' + sc.svg + '<p class="qv-scene-cap">' + sc.caption + (it.extra ? '<em>' + esc(it.extra) + '</em>' : '') + '</p>' + notesLine(it.ev.notes) + '</div>';
       (sc.sfx || []).forEach(function (f) { sceneTimers.push(setTimeout(function () { SND.play(f[1]); }, f[0] * 1000)); });
     }
     ov.innerHTML = html + '<button class="qv-skip" type="button">' + (it.kind === "scene" ? "Passer ›" : "OK") + '</button><div class="qv-prog"><i style="animation-duration:' + dur + 's"></i></div>';
@@ -680,8 +784,8 @@
   function cardHTML(k, o) {
     o = o || {};
     var c = card(k), f = D.FAMILIES[c.fam];
-    return '<div class="qv-card fam-' + c.fam + (o.big ? " big" : "") + (o.dim ? " dim" : "") + (o.on ? " on" : "") + '"' + (o.u ? ' data-u="' + o.u + '"' : '') + '>' +
-      '<div class="qv-card-top"><span>' + esc(f.name) + '</span></div>' +
+    return '<div class="qv-card fam-' + c.fam + (c.adult ? " adult" : "") + (o.big ? " big" : "") + (o.dim ? " dim" : "") + (o.on ? " on" : "") + '"' + (o.u ? ' data-u="' + o.u + '"' : '') + '>' +
+      '<div class="qv-card-top"><span>' + esc(f.name) + '</span>' + (c.adult ? '<i class="c18">18+</i>' : '') + '</div>' +
       '<div class="qv-card-art">' + IC.get(c.icon) + '</div>' +
       '<div class="qv-card-name">' + esc(c.name) + '</div>' +
       '<div class="qv-card-chips">' + chips(c) + '</div>' +
@@ -698,16 +802,20 @@
     var host = room.host, list = room.lobby || [];
     var link = location.origin + location.pathname + "#" + room.code;
     show("lobby", '<div class="qv-page">' + logo(true) +
-      '<div class="qv-code"><span>Code du salon</span><b>' + esc(room.code) + '</b><button class="qv-btn alt sm" data-l="share">Inviter des amis</button></div>' +
+      (room.solo ? '<h2>Partie d\'essai contre des bots</h2>' : '<div class="qv-code"><span>Code du salon</span><b>' + esc(room.code) + '</b><button class="qv-btn alt sm" data-l="share">Inviter des amis</button></div>') +
       '<h2>Joueurs (' + list.length + '/6)</h2>' +
       '<div class="qv-lobby">' + list.map(function (p) {
         var on = p.bot || p.id === me.id || present(p.id) || (!host && p.id === room.hostId);
-        return '<div class="qv-lp' + (on ? "" : " off") + '">' + A.standalone(p.avatar, { mood: "happy" }, "lp-av", true) + '<span>' + esc(p.name) + (p.id === (room.hostId || me.id) && !p.bot ? ' <i>hôte</i>' : '') + (p.bot ? ' <i>bot</i>' : '') + (p.id === me.id ? ' <i>toi</i>' : '') + '</span>' +
+        var ok18 = room.opts && room.opts.mode === "adult" && !p.bot ? (p.id === me.id ? room.adultOk : p.adultOk) : undefined;
+        return '<div class="qv-lp' + (on ? "" : " off") + '">' + A.standalone(p.avatar, { mood: "happy" }, "lp-av", true) + '<span>' + esc(p.name) + (p.id === (room.hostId || me.id) && !p.bot ? ' <i>hôte</i>' : '') + (p.bot ? ' <i>bot</i>' : '') + (p.id === me.id ? ' <i>toi</i>' : '') +
+          (ok18 === true ? ' <i class="ok">18+ OK</i>' : ok18 === false ? ' <i class="no">refuse le 18+</i>' : ok18 === null || (ok18 === undefined && room.opts && room.opts.mode === "adult" && !p.bot) ? ' <i class="wait">18+ ?</i>' : '') + '</span>' +
           (host && p.bot ? '<button class="x" data-l="rm" data-id="' + p.id + '" aria-label="Retirer">×</button>' : '') + '</div>';
       }).join("") + '</div>' +
+      optsPanel(host) +
       (host ? '<div class="qv-actions">' +
         (list.length < 6 ? '<button class="qv-btn ghost" data-l="bot">+ Ajouter un bot</button>' : '') +
-        '<button class="qv-btn big" data-l="start"' + (list.length < 2 ? " disabled" : "") + '>Lancer la partie</button>' +
+        '<button class="qv-btn big" data-l="start"' + (list.length < 2 || adultBlockers().length ? " disabled" : "") + '>Lancer la partie</button>' +
+        (adultBlockers().length ? '<p class="qv-note warn">Mode 18+ : en attente de l\'accord de ' + esc(adultBlockers().map(function (p) { return p.id === me.id ? "toi" : p.name; }).join(", ")) + '.</p>' : '') +
         '<p class="qv-note">Partage le code ou le lien : tes amis l\'ouvrent sur leur téléphone. 2 à 6 joueurs, les bots complètent la table.</p></div>'
         : '<p class="qv-wait">En attente que l\'hôte lance la partie…</p>') +
       '<div class="qv-row2"><button class="qv-btn ghost" data-l="avatar">Mon personnage</button><button class="qv-btn ghost" data-l="leave">Quitter</button></div>' +
@@ -723,9 +831,31 @@
       } else if (l === "bot") { room.lobby.push(bot(room.lobby.length)); hostBroadcast(); renderLobby(); }
       else if (l === "rm") { room.lobby = room.lobby.filter(function (p) { return p.id !== b.dataset.id; }); hostBroadcast(); renderLobby(); }
       else if (l === "start") hostStart();
+      else if (l === "mode") { room.opts.mode = b.dataset.v; if (b.dataset.v === "adult") { room.adultOk = undefined; room.lobby.forEach(function (p) { p.adultOk = null; }); } hostBroadcast(); renderLobby(); }
+      else if (l === "disc") { room.opts.discovery = b.dataset.v === "1"; hostBroadcast(); renderLobby(); }
+      else if (l === "ok18") { room.adultOk = b.dataset.v === "1"; if (host) { var mine = room.lobby.filter(function (p) { return p.id === me.id; })[0]; if (mine) mine.adultOk = room.adultOk; hostBroadcast(); } else sendHello(); renderLobby(); }
       else if (l === "avatar") creator();
       else if (l === "leave") { if (!host && room.net) room.net.send("bye", { id: me.id }); store("qv-last", null); history.replaceState(null, "", location.pathname + location.search); home(); }
     };
+  }
+
+  // options de partie (l'hôte choisit, tout le monde voit ; accord 18+ individuel)
+  function optsPanel(host) {
+    var o = room.opts || { mode: "classic", discovery: true }, adultOn = o.mode === "adult";
+    var h = '<div class="qv-opts">';
+    h += '<div class="qv-opt-row"><span>Mode de jeu</span><div class="qv-seg">' +
+      '<button class="seg' + (!adultOn ? " on" : "") + '" data-l="mode" data-v="classic"' + (host ? "" : " disabled") + '><b>Classique</b><small>Humour absurde, carrière, famille, coups bas</small></button>' +
+      '<button class="seg adult' + (adultOn ? " on" : "") + '" data-l="mode" data-v="adult"' + (host ? "" : " disabled") + '><b>Trash &amp; Adulte 18+</b><small>Infidélités, afters ratés, vengeances, humour noir</small></button></div></div>';
+    h += '<div class="qv-opt-row"><span>Règles</span><div class="qv-seg">' +
+      '<button class="seg' + (o.discovery ? " on" : "") + '" data-l="disc" data-v="1"' + (host ? "" : " disabled") + '><b>Découverte</b><small>Les cartes arrivent petit à petit</small></button>' +
+      '<button class="seg' + (!o.discovery ? " on" : "") + '" data-l="disc" data-v="0"' + (host ? "" : " disabled") + '><b>Expert</b><small>Tout le jeu dès le début</small></button></div></div>';
+    if (adultOn) {
+      h += '<div class="qv-18"><p><b>Mode réservé aux adultes.</b> Humour osé, noir et irrévérencieux (infidélités, soirées qui tournent mal, scandales), sans contenu sexuel explicite. Chaque joueur doit être majeur et accepter.</p>' +
+        (room.adultOk === true ? '<p class="ok">Tu as accepté. <button class="link" data-l="ok18" data-v="0">Retirer mon accord</button></p>'
+          : '<div class="qv-row2"><button class="qv-btn good sm" data-l="ok18" data-v="1">J\'ai 18 ans ou plus, j\'accepte</button><button class="qv-btn ghost sm" data-l="ok18" data-v="0">Je refuse</button></div>') +
+        (room.adultOk === false && !host ? '<p class="qv-note">Tu as refusé : la partie ne peut pas commencer en 18+. L\'hôte peut repasser en mode classique.</p>' : '') + '</div>';
+    }
+    return h + '</div>';
   }
 
   // ======================================================================
@@ -749,6 +879,11 @@
     if (p.startup) o.push('<span class="st">Start-up : verdict dans ' + p.startup + ' tour' + (p.startup > 1 ? "s" : "") + '</span>');
     if (p.strike) o.push('<span class="st bad">En grève</span>');
     if (p.rebound) o.push('<span class="st good">Rebond : 2 cartes au prochain tour</span>');
+    Object.keys(p.st || {}).forEach(function (k) {
+      var d = D.STATUSES[k]; if (!d) return;
+      o.push('<span class="st ' + (d.bad ? "bad" : "good") + '">' + esc(d.label) + (p.st[k] < 50 ? " (" + p.st[k] + ")" : "") + '</span>');
+    });
+    (p.items || []).forEach(function (k) { if (k === "dog" || k === "tattoo") o.push('<span class="st">' + esc(D.ITEMS[k].name) + '</span>'); });
     return o.join("");
   }
 
@@ -767,7 +902,7 @@
       app.onclick = gameClick;
     }
     var p = pub.players[me.id];
-    $("#g-age").innerHTML = 'Âge <b>' + pub.age + '</b> · tour ' + pub.round + '/' + pub.maxRounds + ' · pioche ' + pub.deck;
+    $("#g-age").innerHTML = (pub.mode === "adult" ? '<i class="b18">18+</i> ' : '') + 'Âge <b>' + pub.age + '</b> · tour ' + pub.round + '/' + pub.maxRounds + (pub.discovery && pub.stage < 5 ? ' · découverte ' + pub.stage + '/5' : ' · pioche ' + pub.deck);
     $("[data-g=sound]").textContent = SND.muted() ? "🔇" : "🔊";
     // adversaires
     $("#opps").innerHTML = pub.order.filter(function (id) { return id !== me.id; }).map(function (id) {
@@ -784,7 +919,7 @@
         '<div class="qv-mytile' + (isMyTurn() ? " turn" : "") + '" data-pid="' + me.id + '">' + W.tile(p) + '<span class="who">' + esc(p.name) + ' · ' + esc(p.title) + '</span></div>' +
         '<div class="qv-mystats"><div class="qv-myres" id="me-res">' + resRow(p, true) + '</div>' +
         '<div class="qv-chips">' + statusChips(p) + '</div>' +
-        '<div class="qv-row2"><button class="qv-btn ghost sm" data-g="obj">Mes objectifs secrets</button><button class="qv-btn ghost sm" data-g="life">Ma vie</button></div></div>';
+        '<div class="qv-row2">' + (!pub.discovery || pub.stage >= 3 ? '<button class="qv-btn ghost sm" data-g="obj">Mes objectifs secrets</button>' : '') + '<button class="qv-btn ghost sm" data-g="life">Ma vie</button></div></div>';
     } else {
       $("#mezone").innerHTML = '<p class="qv-note">Tu regardes la partie en spectateur.</p>';
     }
@@ -792,6 +927,7 @@
     renderHand();
     $("#log").innerHTML = '<h3>Journal</h3>' + logLines.slice(0, 12).map(function (l) { return '<p class="lg-' + l.t + '">' + esc(l.text) + '</p>'; }).join("");
     maybeReact();
+    coachHand();
   }
   function renderStatus() {
     var st = $("#status"); if (!st || !pub) return;
@@ -834,7 +970,7 @@
     sel = u;
     var def = card(c.k), mine = isMyTurn(), why = mine ? E.canPlay(pub, me.id, c.k) : "";
     var o = cardHTML(c.k, { big: true }) + (def.tip && (why || !mine) && !def.reaction ? '<p class="qv-tip">Condition : ' + esc(def.tip) + '</p>' : '');
-    if (def.reaction) o += '<p class="qv-tip">Garde-la : elle se joue quand quelqu\'un t\'attaque.</p>';
+    if (def.reaction) o += '<p class="qv-tip">' + (def.alsoPlay ? "Joue-la maintenant, ou garde-la pour contrer une attaque." : "Garde-la : elle se joue quand quelqu\'un t\'attaque.") + '</p>';
     if (mine) {
       if (!why && def.target === "opponent") {
         o += '<p class="qv-pick">Sur qui ?</p><div class="qv-targets">' + E.validTargets(pub, me.id, c.k).map(function (id) {
@@ -869,6 +1005,8 @@
       o += '<button class="qv-btn alt" data-g="react" data-c="soft"' + (ok ? "" : " disabled") + '>' + esc(ac.soft.label) + ' <small>(payer ' + esc(E.costText(ac.soft.cost)) + ')</small></button>';
     }
     o += '<button class="qv-btn danger" data-g="react" data-c="accept">Encaisser <small>' + esc(ac.bounce ? ac.bounce.label : "") + ' · +1 carte · 2 cartes au prochain tour</small></button>';
+    if (pub.mode === "adult") o += '<button class="qv-btn dark" data-g="react" data-c="spite">Balancer un dossier <small>Tu encaisses tout, sans rebond… mais ' + esc(nameOf(pd.from)) + ' perd 3 réputation</small></button>';
+    if (pub.discovery && !seen["m:react"]) { o += '<p class="qv-tip new">Nouveau : quand on t\'attaque, tu choisis. Contrer annule tout, payer limite les dégâts, encaisser te fait rebondir.</p>'; markSeen("m:react"); }
     if (!counters.length) o += '<p class="qv-tip">Pas de carte pour contrer. ' + esc((ac.counters || []).filter(function (k) { return k !== "renvoi"; }).map(function (k) { return "« " + card(k).name + " »"; }).join(" ou ")) + ' ou « Retour à l\'envoyeur » auraient marché.</p>';
     o += '</div></div>';
     sheet(o);

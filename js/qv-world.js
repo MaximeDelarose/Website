@@ -19,7 +19,9 @@
       if (p.job.k === "influence") return "influencer";
       if (p.job.k === "startup") return "hoodie";
       if (p.job.k === "pdg") return "ceo";
+      if (p.job.k === "mystique") return "mystic";
     }
+    if (p.retired) return "retired";
     var fired = (p.life || []).some(function (l) { return /Licencié|Faillite/.test(l.text); });
     return fired ? "unemployed" : "casual";
   }
@@ -86,19 +88,31 @@
     if (p.strike > 0) {
       o += '<g transform="translate(12 84)"><rect x="0" y="0" width="58" height="30" fill="#fff"' + S + '/><text x="29" y="20" font-size="11" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">GRÈVE</text></g>';
     }
+    // états visibles dans le décor
+    var st = p.st || {};
+    if (st.proces) o += '<g transform="translate(12 ' + (p.strike > 0 ? 46 : 84) + ')"><rect width="64" height="30" fill="#fff"' + S + '/><text x="32" y="20" font-size="11" font-weight="900" text-anchor="middle" fill="#3d7dd8" font-family="Nunito,sans-serif">PROCÈS</text></g>';
+    if (st.fakeDip) o += '<g transform="translate(242 14)"><rect width="50" height="36" fill="#fff4dc"' + S.replace('3"', '2.4"') + '/><path d="M8 12 h34 M8 20 h22" stroke="' + INK + '" stroke-width="2"/><text x="40" y="32" font-size="13" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">?</text></g>';
+    if (st.fame) o += '<path d="M164 0 L120 196 H208Z" fill="#fff59a" opacity=".45" class="qv-glow"/>';
+    if (st.squat) o += '<g opacity=".97">' + ch(A.random(4242), { outfit: "pajama", mood: "smug", pose: "hips" }, 30, 194, 0.48) + '</g><text x="30" y="88" font-size="11" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">zZz</text>';
+    if (st.ex) o += '<g class="qv-peek">' + ch(A.random(777 + (p.partner ? p.partner.seed % 97 : 0)), { mood: "smug", pose: "phone", hold: "phone" }, 300, 194, 0.5) + '</g>';
     // personnages
     var mood = opts.mood || p.mood || "neutral";
     if (p.partner) {
-      o += ch(partnerAv(p), { mood: p.married ? "love" : "happy", outfit: "casual" }, 248, 194, 0.66);
+      o += ch(partnerAv(p), { mood: p.married ? "love" : "happy", outfit: p.partner.look || "casual" }, 248, 194, 0.66);
+      if (st.sugar) o += '<g transform="translate(262 40)"><rect width="40" height="22" rx="6" fill="#fff"' + S.replace('3"', '2"') + '/><text x="20" y="16" font-size="12" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">0 €</text></g>';
     }
     var kids = (p.kids || []);
     if (kids.length && !p.kidsAway) {
-      kids.slice(0, 2).forEach(function (k, i) { o += ch(kidAv(p, k), { kid: true, mood: "happy" }, i ? 96 : 54, 196, 0.4); });
+      if (st.babyinf) o += '<circle cx="54" cy="150" r="30" fill="none" stroke="#ffd23f" stroke-width="5" class="qv-glow"/>';
+      kids.slice(0, 2).forEach(function (k, i) { o += ch(kidAv(p, k), { kid: true, mood: "happy", hold: i === 0 && st.babyinf ? "phone" : null, pose: i === 0 && st.babyinf ? "phone" : "down" }, i ? 96 : 54, 196, 0.4); });
       if (kids.length > 2) o += '<g transform="translate(14 120)"><circle r="14" cx="14" cy="14" fill="#ffd23f"' + S + '/><text x="14" y="19" font-size="13" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">+' + (kids.length - 2) + '</text></g>';
     } else if (kids.length && p.kidsAway) {
       o += '<g transform="translate(18 118)"><rect width="70" height="38" rx="6" fill="#fff"' + S + '/><text x="35" y="16" font-size="9" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">Enfants chez</text><text x="35" y="29" font-size="9" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">l\'autre parent</text></g>';
     }
-    o += ch(p.avatar, { outfit: outfit(p), mood: mood, pose: mood === "happy" ? "wave" : mood === "smug" ? "hips" : "down" }, 164, 196, 0.74);
+    o += ch(p.avatar, { outfit: outfit(p), mood: mood, pose: mood === "happy" ? "wave" : mood === "smug" ? "hips" : "down", liar: st.liar ? 1 : 0, shades: !!st.fame, disguise: !!st.doublevie }, 164, 196, 0.74);
+    if (p.items && p.items.indexOf("dog") >= 0) {
+      o += '<g transform="translate(200 160)"><ellipse cx="18" cy="24" rx="16" ry="10" fill="#d9a066"' + S.replace('3"', '2.4"') + '/><circle cx="32" cy="14" r="9" fill="#d9a066"' + S.replace('3"', '2.4"') + '/><circle cx="35" cy="12" r="1.6" fill="' + INK + '"/><path d="M26 6 l2 -6 3 4 2 -5 2 5 3 -4 1 6z" fill="#ffd23f"' + S.replace('3"', '1.6"') + '/></g>';
+    }
     if (p.married) o += '<path d="M206 38 l-8 -8 a5 5 0 0 1 8 -6 a5 5 0 0 1 8 6z" fill="#e5487a"' + S.replace('3"', '2"') + ' class="qv-beat"/>';
     if (p.items && p.items.indexOf("hamster") >= 0) {
       o += '<g transform="translate(2 160)"><rect width="34" height="32" rx="4" fill="rgba(255,255,255,.6)"' + S.replace('3"', '2"') + '/><path d="M2 8 H32 M2 16 H32 M2 24 H32" stroke="' + INK + '" stroke-width="1" opacity=".4"/><ellipse cx="17" cy="24" rx="10" ry="7" fill="#e3a35e"' + S.replace('3"', '2"') + '/><circle cx="21" cy="22" r="1.6" fill="' + INK + '"/><circle cx="11" cy="17" r="3" fill="#e3a35e"' + S.replace('3"', '1.6"') + '/></g>';
@@ -301,5 +315,6 @@
     try { return SCENES[ev.scene](ev, state); } catch (e) { if (root.console) console.warn("scène", ev.scene, e); return null; }
   }
 
-  root.QV_WORLD = { outfit: outfit, tile: tile, scene: scene, ch: ch, SCENES: SCENES };
+  var kit = { ch: ch, mv: mv, anim: anim, bubble: bubble, txt: txt, confetti: confetti, thrown: thrown, wrap: wrap, P: P, nm: nm, esc: esc, outfit: outfit, row: row, bgStreet: bgStreet, bgOffice: bgOffice, bgRoom: bgRoom, BILL: BILL, TOASTER: TOASTER, S: S };
+  root.QV_WORLD = { outfit: outfit, tile: tile, scene: scene, ch: ch, SCENES: SCENES, kit: kit };
 })(window);

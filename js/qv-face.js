@@ -202,9 +202,85 @@
       // corpulence : largeur de la mâchoire par rapport à la hauteur
       av.body = jaw > 0.9 && ratio < 1.25 ? "round" : ratio > 1.42 ? "slim" : "regular";
 
-      return { found: true, avatar: A.sanitize(av), traits: traits.filter(Boolean), debug: { ratio: ratio, jaw: jaw, ear: ear, wing: wing, nlen: nlen, fTop: fTop, fSide: fSide, fBelow: fBelow, fLow: fLow, hTop: hTop, wExt: wExt, chinD: chinD, jawD: jawD, mustD: mustD, bridge: bridge, sclera: sclera, browC: browC, browT: browT } };
+      // ---- réglages fins (caricature : on amplifie l'écart à la moyenne) ----
+      var amp = function (v, mean, k) { return 1 + (v / mean - 1) * k; };
+      var eyeGapM = dist(L[133], L[362]) / fw, eyeWM = (dist(L[33], L[133]) + dist(L[362], L[263])) / 2 / fw;
+      var mouthM = dist(L[61], L[291]) / fw, smile = dist(L[13], L[14]) / fh;
+      var browGapM = ((L[159].y - L[105].y) + (L[386].y - L[334].y)) / 2 / fh;
+      av.faceW = amp(1.25 / ratio, 1, 1.2);
+      av.eyeGap = amp(eyeGapM, 0.24, 1.6);
+      av.eyeSize = amp(eyeWM, 0.19, 1.6);
+      av.noseSize = amp(wing, 0.26, 1.5);
+      av.mouthW = amp(smile > 0.04 ? mouthM / 1.18 : mouthM, 0.4, 1.3);
+      av.browY = (0.11 - browGapM) * 60;
+
+      return { found: true, avatar: A.sanitize(av), traits: traits.filter(Boolean), quality: quality(L, W, H, skinL), debug: { eyeGapM: eyeGapM, eyeWM: eyeWM, mouthM: mouthM, browGapM: browGapM, ratio: ratio, jaw: jaw, ear: ear, wing: wing, nlen: nlen, fTop: fTop, fSide: fSide, fBelow: fBelow, fLow: fLow, hTop: hTop, wExt: wExt, chinD: chinD, jawD: jawD, mustD: mustD, bridge: bridge, sclera: sclera, browC: browC, browT: browT } };
     });
   }
 
-  root.QV_FACE = { analyze: analyze, preload: function () { return load(); } };
+  /* Qualité d'une prise de vue (sert au guidage en direct et aux conseils après import).
+     Renvoie { ok, tip } : tip = conseil prioritaire à afficher. */
+  function quality(L, W, H, skinL) {
+    var fw = dist(L[234], L[454]) / W, cx = (L[234].x + L[454].x) / 2 / W, cy = (L[10].y + L[152].y) / 2 / H;
+    var yaw = (L[1].x - (L[234].x + L[454].x) / 2) / dist(L[234], L[454]);
+    var roll = Math.atan2(L[263].y - L[33].y, L[263].x - L[33].x) * 180 / Math.PI;
+    var pitch = (L[1].y - (L[10].y + L[152].y) / 2) / dist(L[10], L[152]);
+    var ear = (dist(L[159], L[145]) / dist(L[33], L[133]) + dist(L[386], L[374]) / dist(L[362], L[263])) / 2;
+    var mouth = dist(L[13], L[14]) / dist(L[10], L[152]);
+    var top = L[10].y / H - 0.2 * (L[152].y - L[10].y) / H;
+    var tips = [];
+    if (fw < 0.2) tips.push("Rapproche-toi un peu");
+    else if (fw > 0.62) tips.push("Recule un peu");
+    if (Math.abs(cx - 0.5) > 0.14 || Math.abs(cy - 0.47) > 0.16) tips.push("Centre ton visage dans l'ovale");
+    if (top < 0.02) tips.push("Laisse voir le haut de ta tête (tes cheveux)");
+    if (Math.abs(yaw) > 0.09) tips.push("Regarde bien en face");
+    if (Math.abs(roll) > 9) tips.push("Garde la tête droite");
+    if (pitch > 0.12) tips.push("Relève un peu le menton");
+    else if (pitch < -0.04) tips.push("Baisse un peu le menton");
+    if (skinL !== undefined && skinL < 60) tips.push("Il fait trop sombre : va vers la lumière");
+    else if (skinL !== undefined && skinL > 225) tips.push("Trop de lumière : évite le contre-jour");
+    if (ear < 0.17) tips.push("Ouvre bien les yeux");
+    if (mouth > 0.09) tips.push("Ferme la bouche (un sourire, ça va)");
+    return { ok: !tips.length, tip: tips[0] || "Parfait, ne bouge plus !", tips: tips };
+  }
+
+  // ---- guidage caméra en direct ----
+  var videoLm = null;
+  function live(video, cb) {
+    var stop = false, last = 0, sc = document.createElement("canvas"), sg = sc.getContext("2d", { willReadFrequently: true });
+    load().then(function () {
+      return videoLm || import(abs(VENDOR + "vision_bundle.mjs")).then(function (V) {
+        var fileset = { wasmLoaderPath: abs(VENDOR + "wasm/vision_wasm_internal.js"), wasmBinaryPath: abs(VENDOR + "wasm/vision_wasm_internal.wasm") };
+        return V.FaceLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: abs("assets/models/face_landmarker.task"), delegate: "CPU" }, runningMode: "VIDEO", numFaces: 2 });
+      }).then(function (lm) { videoLm = lm; return lm; });
+    }).then(function (lm) {
+      function tick() {
+        if (stop) return;
+        var now = performance.now();
+        if (video.readyState >= 2 && now - last > 160) {
+          last = now;
+          try {
+            var r = lm.detectForVideo(video, now), W = video.videoWidth, H = video.videoHeight;
+            if (!r.faceLandmarks || !r.faceLandmarks.length) cb({ ok: false, tip: "Je ne vois pas ton visage" });
+            else if (r.faceLandmarks.length > 1) cb({ ok: false, tip: "Une seule personne sur la photo" });
+            else {
+              // miroir : la vidéo est affichée retournée, on raisonne sur l'image réelle
+              var L = r.faceLandmarks[0].map(function (p) { return { x: p.x * W, y: p.y * H }; });
+              sc.width = 24; sc.height = 24;
+              var b = { x: L[234].x, y: L[10].y, w: L[454].x - L[234].x, h: L[152].y - L[10].y };
+              sg.drawImage(video, b.x + b.w * 0.25, b.y + b.h * 0.35, b.w * 0.5, b.h * 0.4, 0, 0, 24, 24);
+              var d = sg.getImageData(0, 0, 24, 24).data, sum = 0;
+              for (var i = 0; i < d.length; i += 4) sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+              cb(quality(L, W, H, sum / (d.length / 4)));
+            }
+          } catch (e) { cb({ ok: false, tip: "" }); }
+        }
+        requestAnimationFrame(tick);
+      }
+      tick();
+    }).catch(function () { cb({ ok: false, tip: "", off: true }); });
+    return function () { stop = true; };
+  }
+
+  root.QV_FACE = { analyze: analyze, live: live, quality: quality, preload: function () { return load(); } };
 })(window);
