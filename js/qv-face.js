@@ -214,8 +214,137 @@
       av.mouthW = amp(smile > 0.04 ? mouthM / 1.18 : mouthM, 0.4, 1.3);
       av.browY = (0.11 - browGapM) * 60;
 
+      // ---- portrait tracé : les vraies formes du visage, en vectoriel ----
+      try {
+        av.trace = buildTrace(L, W, H, isHair, hairMask, px, patch, hairPx.length, fw, fh, brow);
+        if (av.trace) { av.face = "photo"; if (av.trace.hb || av.trace.hf) av.hair = "photo"; }
+      } catch (e) { if (root.console) console.warn("tracé", e); }
       return { found: true, avatar: A.sanitize(av), traits: traits.filter(Boolean), quality: quality(L, W, H, skinL), debug: { eyeGapM: eyeGapM, eyeWM: eyeWM, mouthM: mouthM, browGapM: browGapM, ratio: ratio, jaw: jaw, ear: ear, wing: wing, nlen: nlen, fTop: fTop, fSide: fSide, fBelow: fBelow, fLow: fLow, hTop: hTop, wExt: wExt, chinD: chinD, jawD: jawD, mustD: mustD, bridge: bridge, sclera: sclera, browC: browC, browT: browT } };
     });
+  }
+
+  /* ---------------------------------------------------------------------
+     PORTRAIT TRACÉ
+     On reprend les contours réels (points du visage) et la silhouette réelle
+     des cheveux (masque), ramenés dans le repère de l'avatar (tête ≈ 74 de large,
+     menton en y = 98). Les expressions restent animables : yeux, sourcils et
+     bouche sont redessinés selon l'humeur, à partir des formes mesurées.
+     --------------------------------------------------------------------- */
+  var OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+  var EYE_A = [33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7];
+  var EYE_B = [263, 466, 388, 387, 386, 385, 384, 398, 362, 382, 381, 380, 374, 373, 390, 249];
+  var LIPS = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146];
+  var BROW_A = [70, 63, 105, 66, 107, 55, 65, 52, 53, 46];
+  var BROW_B = [300, 293, 334, 296, 336, 285, 295, 282, 283, 276];
+  function inPoly(x, y, poly) {
+    var c = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      if (((poly[i].y > y) !== (poly[j].y > y)) && (x < (poly[j].x - poly[i].x) * (y - poly[i].y) / (poly[j].y - poly[i].y) + poly[i].x)) c = !c;
+    }
+    return c;
+  }
+  // plus grande composante connexe d'une grille binaire
+  function largest(grid, cols, rows) {
+    var lab = new Int32Array(cols * rows), best = 0, bestN = 0, id = 0;
+    for (var i = 0; i < grid.length; i++) {
+      if (!grid[i] || lab[i]) continue;
+      id++; var n = 0, st = [i]; lab[i] = id;
+      while (st.length) {
+        var k = st.pop(), x = k % cols, y = (k / cols) | 0; n++;
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+          var nx = x + d[0], ny = y + d[1]; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return;
+          var q = ny * cols + nx; if (grid[q] && !lab[q]) { lab[q] = id; st.push(q); }
+        });
+      }
+      if (n > bestN) { bestN = n; best = id; }
+    }
+    var out = new Uint8Array(cols * rows);
+    for (var j = 0; j < out.length; j++) out[j] = lab[j] === best ? 1 : 0;
+    return { grid: out, n: bestN };
+  }
+  // contour extérieur (suivi de Moore) d'une forme binaire
+  function contour(g, cols, rows) {
+    var at = function (x, y) { return x >= 0 && y >= 0 && x < cols && y < rows && g[y * cols + x]; };
+    var sx = -1, sy = -1;
+    for (var y = 0; y < rows && sx < 0; y++) for (var x = 0; x < cols; x++) if (at(x, y)) { sx = x; sy = y; break; }
+    if (sx < 0) return [];
+    var dirs = [[-1, 0], [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1]];
+    var pts = [[sx, sy]], cx = sx, cy = sy, back = 0, guard = 0;
+    do {
+      var found = false;
+      for (var i = 0; i < 8; i++) {
+        var d = (back + 1 + i) % 8, nx = cx + dirs[d][0], ny = cy + dirs[d][1];
+        if (at(nx, ny)) { back = (d + 4) % 8; cx = nx; cy = ny; pts.push([cx, cy]); found = true; break; }
+      }
+      if (!found) break;
+    } while ((cx !== sx || cy !== sy) && guard++ < 6000);
+    return pts;
+  }
+  function rdp(pts, eps) {
+    if (pts.length < 3) return pts;
+    var a = pts[0], b = pts[pts.length - 1], dmax = 0, idx = 0;
+    for (var i = 1; i < pts.length - 1; i++) {
+      var p = pts[i], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+      var d = Math.abs(dy * p[0] - dx * p[1] + b[0] * a[1] - b[1] * a[0]) / len;
+      if (d > dmax) { dmax = d; idx = i; }
+    }
+    if (dmax > eps) { var l = rdp(pts.slice(0, idx + 1), eps), r = rdp(pts.slice(idx), eps); return l.slice(0, -1).concat(r); }
+    return [a, b];
+  }
+  function buildTrace(L, W, H, isHair, hairMask, px, patch, hairN, fw, fh, browRGB) {
+    var cx = (L[234].x + L[454].x) / 2, chin = L[152].y, s = 74 / fw, sy = s * 0.9;
+    var X = function (x) { return Math.round((60 + (x - cx) * s) * 10) / 10; };
+    var Y = function (y) { return Math.round((98 + (y - chin) * sy) * 10) / 10; };
+    var flat = function (ids) { var o = []; ids.forEach(function (i) { o.push(X(L[i].x), Y(L[i].y)); }); return o; };
+    var t = { v: 1 };
+    // le contour du visage s'arrête au milieu du front : on le prolonge jusqu'à la naissance des cheveux
+    var eyeY = (L[159].y + L[386].y) / 2;
+    var ext = OVAL.map(function (i) { var q = L[i]; return q.y < eyeY ? { x: q.x, y: eyeY - (eyeY - q.y) * 1.7 } : q; });
+    t.face = []; ext.forEach(function (q) { t.face.push(X(q.x), Y(q.y)); });
+    t.mo = Math.round(Math.hypot(L[13].x - L[14].x, L[13].y - L[14].y) / Math.max(1, Math.hypot(L[61].x - L[291].x, L[61].y - L[291].y)) * 100) / 100;
+    t.eA = flat(EYE_A); t.eB = flat(EYE_B);
+    t.bA = flat(BROW_A); t.bB = flat(BROW_B);
+    t.lips = flat(LIPS);
+    // nez : arête (un côté) + base des narines
+    t.ns = flat([168, 6, 197, 195, 5, 4]);
+    t.nb = flat([129, 98, 97, 2, 326, 327, 358]);
+    if (L.length >= 478) {
+      var ir = Math.hypot(L[468].x - L[469].x, L[468].y - L[469].y) * s;
+      t.iA = [X(L[468].x), Y(L[468].y), Math.round(ir * 10) / 10];
+      t.iB = [X(L[473].x), Y(L[473].y), Math.round(ir * 10) / 10];
+    }
+    t.ears = [X(L[234].x), Y(L[234].y), X(L[454].x), Y(L[454].y)];
+    // couleur des lèvres et des sourcils
+    var lip = []; [[0, 13], [14, 17]].forEach(function (pr) { var a = L[pr[0]], b = L[pr[1]]; lip = lip.concat(patch({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, 1)); });
+    var lc = median(lip); t.lc = hex([lc[0] * 1.05, lc[1] * 0.85, lc[2] * 0.9]);
+    t.bc = hex(browRGB);
+    // cheveux : silhouette réelle (derrière) + mèches sur le front (devant)
+    if (hairMask && hairN > 30) {
+      var g = fw / 26, x0 = cx - fw * 1.7, y0 = L[10].y - fh * 1.0, cols = Math.round(fw * 3.4 / g), rows = Math.round((chin + fh * 1.5 - y0) / g);
+      var oval = ext;
+      var back = new Uint8Array(cols * rows), front = new Uint8Array(cols * rows);
+      for (var yy = 0; yy < rows; yy++) for (var xx = 0; xx < cols; xx++) {
+        var ix = x0 + (xx + 0.5) * g, iy = y0 + (yy + 0.5) * g;
+        if (ix < 0 || iy < 0 || ix >= W || iy >= H) continue;
+        if (isHair(ix, iy)) { back[yy * cols + xx] = 1; if (inPoly(ix, iy, oval)) front[yy * cols + xx] = 1; }
+      }
+      var toAv = function (pts) {
+        var o = [];
+        // contour fermé : on le coupe au point le plus éloigné du départ, puis on simplifie chaque moitié
+        var far = 0, fd = -1;
+        pts.forEach(function (q, i) { var d = Math.hypot(q[0] - pts[0][0], q[1] - pts[0][1]); if (d > fd) { fd = d; far = i; } });
+        var simp = function (e) { return rdp(pts.slice(0, far + 1), e).slice(0, -1).concat(rdp(pts.slice(far), e).slice(0, -1)); };
+        var eps = 0.9, sim = simp(eps);
+        while (sim.length > 120 && eps < 6) { eps += 0.6; sim = simp(eps); }
+        sim.forEach(function (q) { o.push(X(x0 + (q[0] + 0.5) * g), Math.min(170, Y(y0 + (q[1] + 0.5) * g))); });
+        return o.length >= 6 && o.length <= 300 ? o : null;
+      };
+      var B = largest(back, cols, rows);
+      if (B.n > 25) t.hb = toAv(contour(B.grid, cols, rows));
+      var F = largest(front, cols, rows);
+      if (F.n > 6) t.hf = toAv(contour(F.grid, cols, rows));
+    }
+    return t;
   }
 
   /* Qualité d'une prise de vue (sert au guidage en direct et aux conseils après import).

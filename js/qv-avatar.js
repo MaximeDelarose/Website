@@ -36,8 +36,11 @@
   function sanitize(av) {
     var d = defaults(), o = {};
     av = av || {};
+    var tr = sanitizeTrace(av.trace);
+    if (tr) o.trace = tr;
     Object.keys(d).forEach(function (k) {
       var v = av[k];
+      if ((k === "face" || k === "hair") && v === "photo" && tr && (k === "face" || tr.hb || tr.hf)) { o[k] = "photo"; return; }
       if (OPTIONS[k]) o[k] = OPTIONS[k].some(function (x) { return x[0] === v; }) ? v : d[k];
       else o[k] = (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)) ? v : d[k];
     });
@@ -47,6 +50,135 @@
     });
     return o;
   }
+  // ---------- portrait tracé depuis la photo (voir qv-face.js) ----------
+  var TR_KEYS = { face: [20, 80], eA: [16, 40], eB: [16, 40], bA: [8, 24], bB: [8, 24], lips: [16, 48], ns: [4, 16], nb: [6, 20], hb: [6, 320], hf: [6, 320], iA: [3, 3], iB: [3, 3], ears: [4, 4] };
+  function sanitizeTrace(t) {
+    if (!t || typeof t !== "object" || !Array.isArray(t.face)) return null;
+    var o = { v: 1 };
+    for (var k in TR_KEYS) {
+      var a = t[k]; if (!Array.isArray(a)) continue;
+      if (a.length < TR_KEYS[k][0] || a.length > TR_KEYS[k][1] || a.length % 2 && k !== "iA" && k !== "iB") continue;
+      var ok = a.every(function (v) { return typeof v === "number" && isFinite(v) && v > -220 && v < 320; });
+      if (ok) o[k] = a.map(function (v) { return Math.round(v * 10) / 10; });
+    }
+    if (typeof t.mo === "number" && isFinite(t.mo)) o.mo = Math.max(0, Math.min(1, t.mo));
+    ["lc", "bc"].forEach(function (k) { if (typeof t[k] === "string" && /^#[0-9a-f]{6}$/i.test(t[k])) o[k] = t[k]; });
+    if (!o.face || !o.eA || !o.eB || !o.lips) return null;
+    return o;
+  }
+  function pairs(a) { var o = []; for (var i = 0; i + 1 < a.length; i += 2) o.push([a[i], a[i + 1]]); return o; }
+  // courbe lissée (Catmull-Rom → Bézier)
+  function smooth(pts, closed) {
+    if (pts.length < 3) return "";
+    var n = pts.length, d = "M" + pts[0][0].toFixed(1) + " " + pts[0][1].toFixed(1);
+    var get = function (i) { return closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))]; };
+    for (var i = 0; i < (closed ? n : n - 1); i++) {
+      var p0 = get(i - 1), p1 = get(i), p2 = get(i + 1), p3 = get(i + 2);
+      d += " C" + (p1[0] + (p2[0] - p0[0]) / 6).toFixed(1) + " " + (p1[1] + (p2[1] - p0[1]) / 6).toFixed(1) + " " + (p2[0] - (p3[0] - p1[0]) / 6).toFixed(1) + " " + (p2[1] - (p3[1] - p1[1]) / 6).toFixed(1) + " " + p2[0].toFixed(1) + " " + p2[1].toFixed(1);
+    }
+    return d + (closed ? "Z" : "");
+  }
+  function centroid(pts) { var x = 0, y = 0; pts.forEach(function (p) { x += p[0]; y += p[1]; }); return [x / pts.length, y / pts.length]; }
+  function scaleAround(pts, c, kx, ky) { return pts.map(function (p) { return [c[0] + (p[0] - c[0]) * kx, c[1] + (p[1] - c[1]) * ky]; }); }
+  var clipN = 0;
+  function traceHairBack(av) {
+    var t = av.trace; if (!t || av.hair !== "photo" || !t.hb) return "";
+    return '<path d="' + smooth(pairs(t.hb), true) + '" fill="' + av.hairColor + '"' + S + '/>';
+  }
+  function traceHead(av, mood, opts) {
+    var t = av.trace, o = "", skin = av.skin, sd = shade(skin, -0.18);
+    var face = pairs(t.face);
+    // oreilles
+    if (t.ears) {
+      var e = t.ears, er = Math.max(6, (e[2] - e[0]) * 0.09);
+      o += '<ellipse cx="' + (e[0] + 1) + '" cy="' + (e[1] + 4) + '" rx="' + (er * 0.8).toFixed(1) + '" ry="' + (er * 1.2).toFixed(1) + '" fill="' + skin + '"' + S + '/><ellipse cx="' + (e[2] - 1) + '" cy="' + (e[3] + 4) + '" rx="' + (er * 0.8).toFixed(1) + '" ry="' + (er * 1.2).toFixed(1) + '" fill="' + skin + '"' + S + '/>';
+    }
+    o += '<path d="' + smooth(face, true) + '" fill="' + skin + '"' + S + '/>';
+    // barbe : construite sur la vraie mâchoire
+    var lips = pairs(t.lips), mc = centroid(lips), mw = Math.abs(lips[10][0] - lips[0][0]);
+    var hc = av.hairColor === "#f2efe9" ? "#d9d5cf" : av.hairColor;
+    if (av.beard === "beard" || av.beard === "stubble") {
+      var low = face.filter(function (p) { return p[1] > mc[1] - 10; });
+      low.sort(function (a, b) { return Math.atan2(a[1] - mc[1], a[0] - mc[0]) - Math.atan2(b[1] - mc[1], b[0] - mc[0]); });
+      var top = [[mc[0] + mw * 0.9, mc[1] - 6], [mc[0], mc[1] - 9], [mc[0] - mw * 0.9, mc[1] - 6]];
+      var poly = low.reverse().concat(top);
+      o += '<path d="' + smooth(poly, true) + '" fill="' + hc + '"' + (av.beard === "stubble" ? ' opacity=".35"' : S) + '/>';
+    }
+    // nez
+    if (t.ns) o += '<path d="' + smooth(pairs(t.ns).slice(2), false) + '" fill="none" stroke="' + sd + '" stroke-width="2.6" stroke-linecap="round"/>';
+    if (t.nb) o += '<path d="' + smooth(pairs(t.nb), false) + '" fill="none"' + S.replace('3"', '2.6"') + '/>';
+    if (av.beard === "moustache" || av.beard === "goatee" || av.beard === "beard") {
+      var ny = t.nb ? pairs(t.nb)[3][1] : mc[1] - 10;
+      o += '<path d="M' + (mc[0] - mw * 0.7).toFixed(1) + ' ' + (mc[1] - 1).toFixed(1) + ' Q' + mc[0].toFixed(1) + ' ' + (ny - 1).toFixed(1) + ' ' + (mc[0] + mw * 0.7).toFixed(1) + ' ' + (mc[1] - 1).toFixed(1) + ' Q' + mc[0].toFixed(1) + ' ' + (mc[1] - 3).toFixed(1) + ' ' + (mc[0] - mw * 0.7).toFixed(1) + ' ' + (mc[1] - 1).toFixed(1) + 'Z" fill="' + hc + '"' + S.replace('3"', '2"') + '/>';
+    }
+    if (av.beard === "goatee") o += '<path d="M' + (mc[0] - mw * 0.25).toFixed(1) + ' ' + (mc[1] + 7).toFixed(1) + ' Q' + mc[0].toFixed(1) + ' ' + (mc[1] + 20).toFixed(1) + ' ' + (mc[0] + mw * 0.25).toFixed(1) + ' ' + (mc[1] + 7).toFixed(1) + 'Z" fill="' + hc + '"' + S.replace('3"', '2"') + '/>';
+    // bouche : vraies lèvres au repos, expressions redessinées à la bonne taille
+    var w2 = mw / 2;
+    if (mood === "neutral" || mood === "smug" || mood === "worried") {
+      var lipsRest = (t.mo || 0) > 0.18 ? scaleAround(lips, mc, 0.9, 0.42) : lips; // photo bouche ouverte : on la referme au repos
+      o += '<path d="' + smooth(lipsRest, true) + '" fill="' + (t.lc || "#c96a6a") + '"' + S.replace('3"', '2.2"') + '/>';
+      o += '<path d="M' + (mc[0] - w2 * 0.9).toFixed(1) + ' ' + mc[1].toFixed(1) + ' Q' + mc[0].toFixed(1) + ' ' + (mc[1] + (mood === "worried" ? -2 : 1.5)).toFixed(1) + ' ' + (mc[0] + w2 * 0.9).toFixed(1) + ' ' + (mc[1] - (mood === "smug" ? 3 : 0)).toFixed(1) + '" fill="none" stroke="' + INK + '" stroke-width="1.8"/>';
+    } else if (mood === "happy" || mood === "love") {
+      o += '<path d="M' + (mc[0] - w2 * 1.1).toFixed(1) + ' ' + (mc[1] - 2).toFixed(1) + ' Q' + mc[0].toFixed(1) + ' ' + (mc[1] + w2 * 1.3).toFixed(1) + ' ' + (mc[0] + w2 * 1.1).toFixed(1) + ' ' + (mc[1] - 2).toFixed(1) + 'Z" fill="#8a2a3a"' + S.replace('3"', '2.6"') + '/>';
+      o += '<path d="M' + (mc[0] - w2 * 0.5).toFixed(1) + ' ' + (mc[1] + w2 * 0.45).toFixed(1) + ' Q' + mc[0].toFixed(1) + ' ' + (mc[1] + w2 * 0.85).toFixed(1) + ' ' + (mc[0] + w2 * 0.5).toFixed(1) + ' ' + (mc[1] + w2 * 0.45).toFixed(1) + '" fill="#ff8a9a"/>';
+    } else if (mood === "sad") {
+      o += '<path d="M' + (mc[0] - w2 * 0.9).toFixed(1) + ' ' + (mc[1] + 4).toFixed(1) + ' Q' + mc[0].toFixed(1) + ' ' + (mc[1] - 5).toFixed(1) + ' ' + (mc[0] + w2 * 0.9).toFixed(1) + ' ' + (mc[1] + 4).toFixed(1) + '" fill="none"' + S + '/>';
+    } else if (mood === "shocked") {
+      o += '<ellipse cx="' + mc[0].toFixed(1) + '" cy="' + (mc[1] + 2).toFixed(1) + '" rx="' + (w2 * 0.45).toFixed(1) + '" ry="' + (w2 * 0.65).toFixed(1) + '" fill="#8a2a3a"' + S.replace('3"', '2.6"') + '/>';
+    } else if (mood === "angry") {
+      o += '<rect x="' + (mc[0] - w2 * 0.85).toFixed(1) + '" y="' + (mc[1] - 4).toFixed(1) + '" width="' + (w2 * 1.7).toFixed(1) + '" height="9" rx="3" fill="#fff"' + S.replace('3"', '2.4"') + '/><path d="M' + (mc[0] - w2 * 0.85).toFixed(1) + ' ' + (mc[1] + 0.5).toFixed(1) + ' h' + (w2 * 1.7).toFixed(1) + '" stroke="' + INK + '" stroke-width="1.6"/>';
+    }
+    // yeux : vraie forme, agrandie façon cartoon, animée selon l'humeur
+    var eyeK = 1.55;
+    [[t.eA, t.iA], [t.eB, t.iB]].forEach(function (pair, idx) {
+      var pts = pairs(pair[0]), c = centroid(pts);
+      var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+      var ew = Math.max.apply(null, xs) - Math.min.apply(null, xs), eh = Math.max.apply(null, ys) - Math.min.apply(null, ys);
+      // proportions cartoon : on garde la forme mais on ouvre l'œil (hauteur ≥ 60 % de la largeur)
+      var open = Math.max(1, Math.min(2.8, 0.6 / Math.max(0.15, eh / Math.max(1, ew))));
+      var ir = Math.min(ew * eyeK * 0.3, eh * eyeK * open * 0.45);
+      var ic = pair[1] ? [c[0] + (pair[1][0] - c[0]) * 0.8, c[1] + (pair[1][1] - c[1]) * 0.8] : c;
+      if (mood === "love") { o += '<path d="M' + c[0].toFixed(1) + ' ' + (c[1] + 5).toFixed(1) + ' l-7 -7 a4 4 0 0 1 7 -4 a4 4 0 0 1 7 4 z" fill="#e5487a" stroke="' + INK + '" stroke-width="2"/>'; return; }
+      if (mood === "happy") {
+        var hw = ew / 2 * eyeK;
+        o += '<path d="M' + (c[0] - hw).toFixed(1) + ' ' + (c[1] + 2).toFixed(1) + ' Q' + c[0].toFixed(1) + ' ' + (c[1] - hw * 0.9).toFixed(1) + ' ' + (c[0] + hw).toFixed(1) + ' ' + (c[1] + 2).toFixed(1) + '" fill="none"' + S + '/>';
+        return;
+      }
+      var ky = eyeK * open * (mood === "shocked" ? 1.35 : 1);
+      var shape = scaleAround(pts, c, eyeK * (mood === "shocked" ? 1.1 : 1), ky), id = "qvc" + (++clipN);
+      o += '<clipPath id="' + id + '"><path d="' + smooth(shape, true) + '"/></clipPath>';
+      o += '<path d="' + smooth(shape, true) + '" fill="#fff"/>';
+      o += '<g clip-path="url(#' + id + ')"><circle cx="' + ic[0].toFixed(1) + '" cy="' + ic[1].toFixed(1) + '" r="' + (ir * (mood === "shocked" ? 0.7 : 1)).toFixed(1) + '" fill="' + av.eyeColor + '"/><circle cx="' + ic[0].toFixed(1) + '" cy="' + ic[1].toFixed(1) + '" r="' + (ir * 0.5).toFixed(1) + '" fill="' + INK + '"/><circle cx="' + (ic[0] + ir * 0.35).toFixed(1) + '" cy="' + (ic[1] - ir * 0.35).toFixed(1) + '" r="' + (ir * 0.25).toFixed(1) + '" fill="#fff"/>';
+      if (mood === "smug" || mood === "angry") o += '<rect x="' + (c[0] - 20) + '" y="' + (c[1] - 20) + '" width="40" height="' + (20 - 1) + '" fill="' + skin + '"/>';
+      o += '</g><path d="' + smooth(shape, true) + '" fill="none" stroke="' + INK + '" stroke-width="2.4"/>';
+      if (mood === "sad" && idx === 1) o += '<path d="M' + (c[0] + 4).toFixed(1) + ' ' + (c[1] + 7).toFixed(1) + ' q3 6 0 9 q-3 -3 0 -9z" fill="#7cc4ff" stroke="' + INK + '" stroke-width="1.6"/>';
+    });
+    // sourcils : vraie forme, inclinés selon l'humeur
+    var bc = t.bc || shade(av.hairColor, -0.1);
+    [t.bA, t.bB].forEach(function (b, idx) {
+      if (!b) return;
+      var pts = pairs(b), c = centroid(pts), inner = idx === 0 ? 1 : -1; // côté nez
+      var rot = mood === "sad" || mood === "worried" ? -14 * inner : mood === "angry" ? 16 * inner : 0;
+      var dy = mood === "shocked" ? -5 : mood === "smug" && idx === 1 ? -3 : 0;
+      o += '<path transform="translate(0 ' + dy + ') rotate(' + rot + ' ' + c[0].toFixed(1) + ' ' + c[1].toFixed(1) + ')" d="' + smooth(scaleAround(pts, c, 1.05, 1.5), true) + '" fill="' + bc + '" stroke="' + INK + '" stroke-width="1.4"/>';
+    });
+    // lunettes centrées sur les vrais yeux
+    var gl = opts.shades ? "sun" : (opts.forceShades ? "sun" : av.glasses);
+    if (gl && gl !== "none" && t.iA && t.iB) {
+      var a = pairs(t.eA), b2 = pairs(t.eB), ca = centroid(a), cb = centroid(b2);
+      var rr = Math.max(8, Math.abs(cb[0] - ca[0]) * 0.36), fill = gl === "sun" ? "#1f1b2e" : "rgba(255,255,255,.15)";
+      o += '<g fill="' + fill + '" stroke="' + INK + '" stroke-width="3">' + (gl === "square"
+        ? '<rect x="' + (ca[0] - rr).toFixed(1) + '" y="' + (ca[1] - rr * 0.75).toFixed(1) + '" width="' + (rr * 2).toFixed(1) + '" height="' + (rr * 1.5).toFixed(1) + '" rx="4"/><rect x="' + (cb[0] - rr).toFixed(1) + '" y="' + (cb[1] - rr * 0.75).toFixed(1) + '" width="' + (rr * 2).toFixed(1) + '" height="' + (rr * 1.5).toFixed(1) + '" rx="4"/>'
+        : '<circle cx="' + ca[0].toFixed(1) + '" cy="' + ca[1].toFixed(1) + '" r="' + rr.toFixed(1) + '"/><circle cx="' + cb[0].toFixed(1) + '" cy="' + cb[1].toFixed(1) + '" r="' + rr.toFixed(1) + '"/>') +
+        '<path d="M' + (Math.min(ca[0], cb[0]) + rr).toFixed(1) + ' ' + ((ca[1] + cb[1]) / 2).toFixed(1) + ' H' + (Math.max(ca[0], cb[0]) - rr).toFixed(1) + '"/></g>';
+    }
+    if (opts.disguise) o += '<path d="M' + (mc[0] - mw * 0.7).toFixed(1) + ' ' + (mc[1] - 4).toFixed(1) + ' Q' + mc[0].toFixed(1) + ' ' + (mc[1] - 12).toFixed(1) + ' ' + (mc[0] + mw * 0.7).toFixed(1) + ' ' + (mc[1] - 4).toFixed(1) + ' Q' + mc[0].toFixed(1) + ' ' + (mc[1] - 1).toFixed(1) + ' ' + (mc[0] - mw * 0.7).toFixed(1) + ' ' + (mc[1] - 4).toFixed(1) + 'Z" fill="#2a1d1a"/>';
+    if (opts.liar && t.nb) { var tip = pairs(t.nb)[3]; o += '<path d="M' + tip[0] + ' ' + (tip[1] - 6) + ' L' + (tip[0] + 22) + ' ' + (tip[1] - 3) + ' L' + tip[0] + ' ' + tip[1] + 'Z" fill="' + sd + '"' + S.replace('3"', '2.2"') + '/>'; }
+    // mèches sur le front (devant le visage)
+    if (av.hair === "photo" && t.hf) o += '<path d="' + smooth(pairs(t.hf), true) + '" fill="' + av.hairColor + '"' + S + '/>';
+    return o;
+  }
+
   function rng(seed) {
     var s = (seed >>> 0) || 7;
     return function () { s = (s + 0x6d2b79f5) | 0; var t = Math.imul(s ^ (s >>> 15), s | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -294,11 +426,17 @@
     var g = "";
     g += '<ellipse cx="60" cy="194" rx="34" ry="6" fill="rgba(43,33,64,.18)"/>';
     var fw = av.faceW || 1, sx = function (cx, cy, kx, ky, inner) { return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + kx + ' ' + ky + ') translate(' + (-cx) + ' ' + (-cy) + ')">' + inner + '</g>'; };
-    g += sx(60, 0, fw, 1, hairBack(av));
+    var traced = av.face === "photo" && av.trace;
+    if (!traced && av.hair === "photo") av = Object.assign({}, av, { hair: "short" });
+    g += traced ? (av.hair === "photo" ? traceHairBack(av) : hairBack(av)) : sx(60, 0, fw, 1, hairBack(av));
     if (o.hood) g += '<path d="M22 70 C18 30 40 10 60 10 C80 10 102 30 98 70 L94 104 H26 Z" fill="' + o.top + '"' + S + '/>';
     g += body(av, o, opts.pose || "down", opts.hold);
     // cou + tête
     g += '<rect x="52" y="90" width="16" height="14" fill="' + shade(av.skin, -0.12) + '"/>';
+    if (traced) {
+      g += traceHead(av, mood, { shades: opts.shades || (o.shades && mood !== "sad"), disguise: opts.disguise, liar: opts.liar });
+      if (av.hair !== "photo") g += hairFront(av);
+    } else {
     var head = '<ellipse cx="' + (60 - shape.w) + '" cy="64" rx="7" ry="9" fill="' + av.skin + '"' + S + '/><ellipse cx="' + (60 + shape.w) + '" cy="64" rx="7" ry="9" fill="' + av.skin + '"' + S + '/>';
     head += '<path d="' + shape.d + '" fill="' + av.skin + '"' + S + '/>';
     head += '<path d="M34 84 Q60 104 86 84" fill="none" stroke="' + shade(av.skin, -0.1) + '" stroke-width="6" opacity=".5"/>';
@@ -315,6 +453,7 @@
     g += sx(60, 58, av.eyeGap || 1, av.eyeSize || 1, glasses(av, gl));
     if (opts.disguise) g += '<g><circle cx="47" cy="58" r="9" fill="none" stroke="' + INK + '" stroke-width="3"/><circle cx="73" cy="58" r="9" fill="none" stroke="' + INK + '" stroke-width="3"/><path d="M56 58 H64" stroke="' + INK + '" stroke-width="3"/><path d="M46 78 Q53 70 60 75 Q67 70 74 78 Q60 81 46 78Z" fill="#2a1d1a"/></g>';
     g += sx(60, 0, fw, 1, hairFront(av));
+    }
     if (o.cap) g += '<path d="M28 40 C30 18 90 18 92 40 Z" fill="' + o.cap + '"' + S + '/><path d="M88 38 L110 42 L90 46Z" fill="' + o.cap + '"' + S + '/>';
     if (opts.hat === "party") g += '<path d="M44 26 L60 -10 L76 26Z" fill="#ffd23f"' + S + '/><circle cx="60" cy="-10" r="5" fill="#e5487a"' + S.replace('3"', '2"') + '/>';
     if (opts.hat === "crown") g += '<path d="M36 26 L40 2 L52 16 L60 -2 L68 16 L80 2 L84 26Z" fill="#ffd23f"' + S + '/>';
