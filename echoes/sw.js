@@ -1,5 +1,5 @@
 // Service worker : réseau d'abord (toujours à jour), cache en secours pour jouer hors ligne.
-const CACHE = 'echoes-v41';
+const CACHE = 'echoes-v42';
 self.addEventListener('install', () => { self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
