@@ -44,6 +44,8 @@
   //  ÉCRANS
   // ======================================================================
   function show(name, html) {
+    // rien d'éphémère (étiquettes, particules, cartes volantes) ne survit à un changement d'écran
+    Array.prototype.forEach.call(document.querySelectorAll(".ctr-float, .qv-part, .qv-flymini, .qv-ghost, .qv-flycard"), function (e) { e.parentNode.removeChild(e); });
     screen = name;
     app.className = "qv-app scr-" + name;
     app.innerHTML = html;
@@ -741,44 +743,70 @@
     if (ev.t === "card" && ev.k === "garde") return;
     hist.unshift(ev); if (hist.length > 200) hist.pop();
   }
+  // ----------------------------------------------------------------------
+  //  TROIS NIVEAUX DE PRÉSENTATION
+  //  · mineur : petite notification + compteurs qui bougent (aucune fenêtre)
+  //  · important : une scène animée avec les personnages, puis ses conséquences dans la même vue
+  //  · attaque contre moi : panneau d'interaction prioritaire (réagir)
+  // ----------------------------------------------------------------------
+  var MAJOR_TXT = /Nouveau métier|Perd son métier|Change de métier|Promotion|En couple|Nouveau couple|Marié|Divorcé|Rupture|Bébé|Emménage|Logement perdu|retraite|Fiancé|Gagne :|Garde alternée/;
+  var MAJOR_SCENES = { lotoWin: 1, heritageWin: 1, investWin: 1, investFail: 1, startupWin: 1, startupFail: 1, demasque: 1, doubleVieBust: 1, garde: 1, renvoi: 1 };
+  function importance(ev) {
+    if (ev.t === "season") return "major";
+    if (ev.t === "status") return ev.scene ? "major" : "minor";
+    if (ev.t === "block") return ev.p === me.id || ev.to === me.id || ev.reflect ? "major" : "minor";
+    if (ev.t !== "card") return "minor";
+    var c = card(ev.k) || {};
+    if (ev.k === "garde" || ev.combo || (ev.data && ev.data.busted)) return "major";
+    if (ev.outcome === "soft") return ev.to === me.id ? "minor" : "minor";
+    if (ev.to) return "major";
+    if (c.target === "all") return "major";
+    if (ev.scene && MAJOR_SCENES[ev.scene]) return "major";
+    if ((ev.changes || []).some(function (x) { return x.t.some(function (t) { return MAJOR_TXT.test(t); }); })) return "major";
+    return "minor";
+  }
+  // une ligne courte pour les actions mineures : qui, quoi, ce que ça change
+  function shortLine(ev) {
+    var c = card(ev.k) || {}, who = ev.p === me.id ? "Tu" : nameOf(ev.p);
+    var res = sumNotes((ev.notes || []).filter(function (n) { return n.p === ev.p || (ev.to && n.p === ev.to); })).map(function (n) { return (n.v > 0 ? "+" : "−") + Math.abs(n.v) + " " + RES_WORD[n.k]; }).join(", ");
+    var ch = (ev.changes || []).filter(function (x) { return x.p === ev.p; }).map(function (x) { return x.t[0]; })[0];
+    if (ev.t === "block") return '<b>' + esc(nameOf(ev.p)) + '</b> contre « ' + esc(c.name || "") + ' »';
+    if (ev.t === "status") return esc(ev.text || "");
+    if (ev.outcome === "soft") return '<b>' + esc(ev.to === me.id ? "Tu limites" : nameOf(ev.to) + " limite") + '</b> les dégâts de « ' + esc(c.name || "") + ' »' + (res ? ' · ' + esc(res) : '');
+    return '<i class="tk-card fam-' + c.fam + '">' + IC.get(c.icon) + '</i><span><b>' + esc(who) + '</b> ' + (ev.p === me.id ? "joues" : "joue") + ' « ' + esc(c.name || "") + ' »' + (ch ? ' · ' + esc(ch) : res ? ' · ' + esc(res) : '') + '</span>';
+  }
   function onGameEvent(ev) {
     addHistory(ev);
     if (ev.t === "turn") {
-      if (ev.skip) enqueue({ kind: "tick", text: ev.p === me.id ? "Arrêt maladie : tu passes ton tour" : nameOf(ev.p) + " est en arrêt maladie : tour passé" });
+      if (ev.skip) enqueue({ kind: "tick", text: ev.p === me.id ? "Arrêt maladie : tu passes ton tour" : nameOf(ev.p) + " est en arrêt maladie : tour passé", hold: 1600 });
       else if (ev.p === me.id) {
-        enqueue({ kind: "tick", html: '<b>' + esc(ev.phase === "draw" ? "À toi : pioche !" : "À toi de jouer !") + '</b> ' + esc((ev.info || []).join(" · ")), k: "turn", ms: 2400, sfx: "turn" });
+        enqueue({ kind: "tick", html: '<b>' + esc(ev.phase === "draw" ? "À toi : pioche !" : "À toi de jouer") + '</b>' + ((ev.info || []).length ? ' · ' + esc(ev.info.join(" · ")) : ''), k: "turn", sfx: "turn" });
         var mp = pub.players[me.id];
-        if (mp && mp.job && (ev.notes || []).some(function (n) { return n.p === me.id && n.k === "f" && n.v > 0; })) coachMech("salary", "Salaire", "Ton métier te paie au début de chacun de tes tours. Regarde ta fortune monter !");
+        if (mp && mp.job && (ev.notes || []).some(function (n) { return n.p === me.id && n.k === "f" && n.v > 0; })) coachMech("salary", "Salaire", "Ton métier te paie au début de chacun de tes tours.");
       }
       enqueue({ kind: "notes", notes: ev.notes });
     } else if (ev.t === "stage") {
       if (pub && pub.discovery && ev.stage > 1) enqueue({ kind: "stage", stage: ev.stage, title: ev.title, text: ev.text, dur: 6, sfx: "fanfare" });
     } else if (ev.t === "attack") {
-      // 1. annonce : qui, quoi, sur qui, ce qui va se passer
-      enqueue({ kind: "announce", ev: ev, sfx: ev.to === me.id ? "alarm" : "card" });
+      var ac = card(ev.k) || {};
+      if (ev.to === me.id) enqueue({ kind: "tick", html: '<b>Attaque !</b> ' + esc(nameOf(ev.p)) + ' te joue « ' + esc(ac.name) + ' »', k: "alert", sfx: "alarm" });
+      else if (ev.p !== me.id) enqueue({ kind: "tick", html: '<i class="tk-card fam-' + ac.fam + '">' + IC.get(ac.icon) + '</i><span><b>' + esc(nameOf(ev.p)) + '</b> vise ' + esc(nameOf(ev.to)) + ' avec « ' + esc(ac.name) + ' »…</span>', sfx: "card", hold: 1200 });
       enqueue({ kind: "notes", notes: ev.notes });
     } else if (ev.t === "card" || ev.t === "block" || ev.t === "status" || ev.t === "season") {
-      var extra = ev.bounce && ev.to ? (ev.to === me.id ? "Tu rebondis : " : nameOf(ev.to) + " rebondit : ") + ev.bounce.toLowerCase() + ", et 2 cartes à jouer au prochain tour." : (ev.spite ? "Dossier balancé : " + nameOf(ev.p) + " perd aussi 3 de réputation !" : "");
       var selfCard = ev.t === "card" && ev.outcome === "self";
-      // grand moment de vie sans scène dédiée (métier, études, maison, couple, objet…) : scène « vie »
       if (selfCard && !ev.scene && (ev.changes || []).some(function (c) { return c.p === ev.p; })) ev = Object.assign({}, ev, { scene: "vie" });
-      // 1. présentation de la carte et de sa cible (pour toutes les cartes jouées, y compris les miennes)
-      if (selfCard && ev.k !== "garde" && card(ev.k)) enqueue({ kind: "announce", ev: ev, sfx: "card", short: ev.p === me.id });
-      // 2. la scène avec les personnages
-      if (ev.scene) enqueue({ kind: "scene", ev: ev });
-      // 3. les conséquences, jusqu'à « Continuer »
-      var hasImpact = (ev.changes && ev.changes.length) || (ev.notes && ev.notes.length) || ev.t === "block" || ev.t === "season" || !ev.scene;
-      if (!(ev.k === "garde")) {
-        if (hasImpact) enqueue({ kind: "result", ev: ev, extra: extra, withCard: false });
+      if (importance(ev) === "major") {
+        enqueue({ kind: "scene", ev: ev, extra: ev.bounce && ev.to ? (ev.to === me.id ? "Tu rebondis : " : nameOf(ev.to) + " rebondit : ") + ev.bounce.toLowerCase() + ", et 2 cartes à jouer au prochain tour." : (ev.spite ? "Dossier balancé : " + nameOf(ev.p) + " perd aussi 3 de réputation !" : "") });
+      } else {
+        enqueue({ kind: "tick", html: shortLine(ev), hold: ev.p === me.id ? 600 : 1500, sfx: ev.p === me.id ? null : "pop" });
       }
-      // 5. retour au plateau : les compteurs rattrapent la vraie valeur, la carte rejoint sa zone
       enqueue({ kind: "notes", notes: ev.notes, hit: affected(ev), ev: ev });
-      if (ev.t === "season") coachMech("season", "Événements de saison", "Tous les 2 tours de table, un événement touche toute la table.");
+      if (ev.t === "season") coachMech("season", "Événements de saison", "De temps en temps, un événement touche toute la table.");
     } else if (ev.t === "rest") {
       enqueue({ kind: "notes", notes: ev.notes });
-      if (ev.p !== me.id && pub.phase !== "end") enqueue({ kind: "tick", text: nameOf(ev.p) + " défausse « " + (card(ev.k) || {}).name + " »" });
+      if (ev.p !== me.id && pub.phase !== "end") enqueue({ kind: "tick", text: nameOf(ev.p) + " défausse « " + (card(ev.k) || {}).name + " »", hold: 900 });
     } else if (ev.t === "took") {
-      if (ev.p !== me.id) enqueue({ kind: "tick", text: nameOf(ev.p) + " reprend « " + (card(ev.k) || {}).name + " » dans la défausse" });
+      if (ev.p !== me.id) enqueue({ kind: "tick", text: nameOf(ev.p) + " reprend « " + (card(ev.k) || {}).name + " » dans la défausse", hold: 1200 });
     } else if (ev.t === "end") {
       enqueue({ kind: "banner", text: "Fin de partie !", sub: "Le moment de faire les comptes…", dur: 2.5, sfx: "win" });
       if (pub && pub.discovery) store("qv-tuto-done", true);
@@ -813,22 +841,26 @@
   var tickQ = [], tickOn = false, tickPin = "";
   function notify(html, kind, ms, isHtml) {
     if (screen !== "game" || !$("#ticker")) { var tmp = document.createElement("div"); tmp.innerHTML = html; floatToast(isHtml ? tmp.textContent : html); return; }
-    tickQ.push({ h: isHtml ? html : esc(html), k: kind || "", ms: ms || 2600 });
+    var m = { h: isHtml ? html : esc(html), k: kind || "", ms: ms || 2800 };
+    // un message remplace le précédent (jamais deux messages l'un sur l'autre) ; le journal garde tout
+    if (tickQ.length >= 2) tickQ.splice(0, tickQ.length - 1);
+    tickQ.push(m);
     if (!tickOn) nextTick();
   }
+  var tickT = null;
   function nextTick() {
-    var el = $("#ticker"), top = el && el.parentNode;
+    var el = $("#ticker");
     var m = tickQ.shift();
-    if (!m || !el) { tickOn = false; if (top) { if (tickPin) { el.innerHTML = tickPin; el.className = "ticker pin"; top.classList.add("msg"); } else top.classList.remove("msg"); } return; }
+    clearTimeout(tickT);
+    if (!m || !el) { tickOn = false; if (el) { if (tickPin) { el.innerHTML = tickPin; el.className = "g-toast on pin"; } else el.className = "g-toast"; } return; }
     tickOn = true;
-    el.innerHTML = m.h; el.className = "ticker " + m.k;
-    top.classList.add("msg"); el.classList.remove("in"); void el.offsetWidth; el.classList.add("in");
-    setTimeout(nextTick, m.ms);
+    el.innerHTML = /^<i class="(tk-card|tk-ico)/.test(m.h) ? m.h : '<span class="tk-t">' + m.h + '</span>'; el.className = "g-toast " + m.k; void el.offsetWidth; el.classList.add("on");
+    tickT = setTimeout(nextTick, tickQ.length ? Math.min(m.ms, 1600) : m.ms);
   }
   function pinTick(html) {
     tickPin = html || "";
     var el = $("#ticker"); if (!el || tickOn) return;
-    if (tickPin) { el.innerHTML = tickPin; el.className = "ticker pin"; el.parentNode.classList.add("msg"); } else el.parentNode.classList.remove("msg");
+    if (tickPin) { el.innerHTML = tickPin; el.className = "g-toast on pin"; } else el.className = "g-toast";
   }
   function coachHand() {
     if (!priv || !pub || !pub.discovery) return;
@@ -920,8 +952,10 @@
     setPhase(PHASE_OF[it.kind] || "results");
     if (it.kind === "tick") {
       // message court dans la barre du haut, à son tour dans la séquence (jamais en avance sur l'écran)
-      if (it.html) notify(it.html, it.k || "", it.ms || 2600, true); else notify(it.text, "", 2600);
+      if (it.html) notify(it.html, it.k || "", it.ms || 2800, true); else notify(it.text, "", 2800);
       if (it.sfx) SND.play(it.sfx);
+      // les actions mineures restent lisibles un instant, sans fenêtre ni bouton
+      if (it.hold && !reduce) { sceneTimers.push(setTimeout(function () { if (playing === it) { playing = null; next(); } }, it.hold)); return; }
       playing = null; next(); return;
     }
     if (it.kind === "notes") {
@@ -983,23 +1017,44 @@
         (it.extra ? '<p class="rs-extra">' + esc(it.extra) + '</p>' : '') + '</div>';
       manual = true; auto = ev.p === me.id && !ev.to ? 10 : 20;
     } else if (it.kind === "scene") {
-      // 3. ANIMATION : les personnages concernés en action (elle a le temps de se jouer)
-      var sc = W.scene(ev, pub);
-      if (!sc) { ov.remove(); playing = null; next(); return; }
-      dur = sc.dur + 0.8;
-      var TITLES = { garde: "Garde alternée", block: "Paré !", renvoi: "Retour à l'envoyeur", startupWin: "Levée de fonds !", startupFail: "Faillite", demasque: "Démasqué·e !", doubleVieBust: "La double vie éclate", burnout: "Burn-out" };
-      var title = TITLES[ev.scene] || (ev.t === "status" ? (D.STATUSES[ev.s] || {}).label : "") || c.name || "";
-      html = '<div class="qv-scene' + (pub && pub.mode === "adult" ? " adult" : "") + '"><div class="qv-scene-title">' + esc(title) + '</div>' + sc.svg + '<p class="qv-scene-cap">' + sc.caption + '</p></div>';
-      (sc.sfx || []).forEach(function (f) { sceneTimers.push(setTimeout(function () { SND.play(f[1]); }, f[0] * 1000)); });
-      label = it.replay ? "Fermer" : "Voir les conséquences ›";
+      // SCÈNE : les personnages en action, puis les conséquences dans la même vue (pas de fenêtre en plus)
+      var sc = ev.scene ? W.scene(ev, pub) : null, panel = "";
+      var TITLES = { garde: "Garde alternée", block: "Paré !", renvoi: "Retour à l'envoyeur", startupWin: "Levée de fonds !", startupFail: "Faillite", demasque: "Démasqué·e !", doubleVieBust: "La double vie éclate", burnout: "Burn-out", vie: "" };
+      var title = ev.t === "season" ? "Événement pour tout le monde" : (TITLES[ev.scene] !== undefined && TITLES[ev.scene] !== "" ? TITLES[ev.scene] : (ev.t === "status" ? (D.STATUSES[ev.s] || {}).label : "") || c.name || "");
+      if (!sc) {
+        var head = ev.t === "season" ? (D.EVENTS.filter(function (x) { return x.key === ev.k; })[0] || {}) : null;
+        panel = head ? '<div class="cin-panel">' + IC.get(head.icon) + '<div><b>' + esc(head.name) + '</b><span>' + esc(head.text) + '</span></div></div>'
+          : '<div class="cin-panel">' + (c.icon ? IC.get(c.icon) : "") + '<div><b>' + esc(headline(ev)) + '</b></div></div>';
+      }
+      var times = (seen["sc:" + ev.scene] || 0); if (ev.scene && !it.replay) { seen["sc:" + ev.scene] = times + 1; store("qv-seen", seen); }
+      var animDur = sc ? (times >= 2 ? Math.min(sc.dur, 2.2) : sc.dur) : 0.6;
+      var cons = impactHTML(ev, true);
+      html = '<div class="cin' + (pub && pub.mode === "adult" ? " adult" : "") + '"><div class="cin-top"><b>' + esc(title) + '</b>' + (times >= 1 && sc && !it.replay ? '<button class="cin-skip" type="button" data-ov="skip">Passer ›</button>' : '') + '</div>' +
+        (sc ? '<div class="cin-view">' + sc.svg + '</div><p class="cin-cap">' + sc.caption + '</p>' : panel) +
+        '<div class="cin-cons" id="cincons">' + cons + (it.extra ? '<p class="rs-extra">' + esc(it.extra) + '</p>' : '') + (ev.combo ? '<p class="rs-combo"><b>Combo !</b> ' + esc(ev.combo) + '</p>' : '') + '</div></div>';
+      if (sc) (sc.sfx || []).forEach(function (f) { sceneTimers.push(setTimeout(function () { SND.play(f[1]); }, f[0] * 1000)); });
+      // durée : la scène, puis assez de temps pour lire les conséquences
+      dur = animDur + 0.4 + Math.min(6, 2.6 + (cons.replace(/<[^>]+>/g, "").length + (it.extra || "").length) / 45);
+      it.consAt = animDur;
+      label = it.replay ? "Fermer" : "Continuer ›";
     }
     ov.innerHTML = '<div class="ov-body">' + html + '</div><div class="ov-foot"><button class="qv-skip' + (manual ? " go" : "") + '" type="button" data-ov="next">' + label + '</button>' +
       (manual ? '<span class="ov-auto" id="ovauto"></span>' : '<div class="qv-prog"><i style="animation-duration:' + dur + 's"></i></div>') + '</div>';
     if (it.sfx) SND.play(it.sfx);
+    if (it.kind === "scene") {
+      var cc = $("#cincons", ov);
+      if (cc) { cc.style.animationDelay = it.consAt + "s"; sceneTimers.push(setTimeout(function () { if (playing === it) { countUp(ov); var me_ = (ev.notes || []).filter(function (n) { return n.p === me.id; }); if (me_.length) SND.play(me_.some(function (n) { return n.v < 0; }) ? "sad" : "coin"); } }, it.consAt * 1000)); }
+    }
     if (it.kind === "result") { var good = (ev.notes || []).some(function (n) { return n.p === me.id && n.v > 0; }), badm = (ev.notes || []).some(function (n) { return n.p === me.id && n.v < 0; }); SND.play(badm ? "sad" : good ? "coin" : "ding"); countUp(ov); }
     // un clic sur le fond ne fait plus défiler par erreur : seulement le bouton
     var once = false;
-    ov.onclick = function (e) { if (once || !e.target.closest("[data-ov=next]")) return; once = true; SND.play("tap"); if (playing === it) { playing = null; next(); } };
+    ov.onclick = function (e) {
+      if (once) return;
+      var sk = e.target.closest("[data-ov=skip]");
+      // une scène se passe d'un toucher n'importe où (une fois la scène jouée), ou avec « Passer »
+      if (!sk && !e.target.closest("[data-ov=next]") && !(it.kind === "scene" && Date.now() - UI.since > (it.consAt || 0) * 1000)) return;
+      once = true; SND.play("tap"); if (playing === it) { playing = null; next(); }
+    };
     if (manual) {
       var left = auto, el = $("#ovauto");
       var tick = function () { if (el) el.textContent = "suite automatique dans " + left + " s"; };
@@ -1035,7 +1090,7 @@
   function flyToZone(ev) {
     if (!ev || ev.t !== "card" || !card(ev.k) || reduce || ev.k === "garde") return;
     var mine = ev.p === me.id, dest;
-    if (ev.zone) dest = mine ? $(".mb-id") : $('.qv-opp[data-pid="' + ev.p + '"]');
+    if (ev.zone) dest = mine ? $(".g-id") : $('.g-opp[data-pid="' + ev.p + '"]');
     else dest = $(".pile.disc");
     if (!dest) return;
     var c = card(ev.k), el = document.createElement("div");
@@ -1048,7 +1103,7 @@
   function flashTiles(ids) {
     setTimeout(function () {
       ids.forEach(function (id) {
-        var el = id === me.id ? $(".qv-mytile") : $('.qv-opp[data-pid="' + id + '"]');
+        var el = id === me.id ? $(".qv-mytile") : $('.g-opp[data-pid="' + id + '"]');
         if (el) { el.classList.remove("changed"); void el.offsetWidth; el.classList.add("changed"); }
       });
     }, 250);
@@ -1257,10 +1312,11 @@
     for (var i = 1; i <= max; i++) o += '<i class="' + (i <= edu ? "on" : "") + '">' + i + '</i>';
     o += '</span>' + (nextT ? '<small class="cr-next">Prochain palier : Formation ' + nextT.edu + ' → ' + esc(nextT.titles[0]) + '</small>' : '<small class="cr-next">Tous les métiers te sont ouverts</small>') + '</div>';
     o += '<div class="cr-studies"><small>Parcours</small>' + (studies.length ? studies.map(function (z) { var c = card(z.k); return '<span class="cr-st">' + IC.get(c.icon, "qv-ri") + esc(c.name) + '</span>'; }).join("") : '<em>Aucune étude pour l\'instant</em>') + '</div>';
-    o += '<div class="cr-jobs"><small>Métiers</small>' + jobs.map(function (k) {
+    if (mine) o += '<div class="cr-jobs"><small>Métiers</small>' + jobs.map(function (k) {
       var J = D.JOBS[k], why = E.qualifies(q, k, pub), cur = q.job && q.job.k === k;
       return '<span class="cr-j' + (cur ? " cur" : why ? " lock" : " ok") + '"><b>' + esc(J.titles[0]) + '</b><small>' + esc(window.QV_CARDS.jobCond(k)) + ' · ' + J.salary + ' €/tour</small>' + (cur ? '<em>Ton métier</em>' : why ? '' : '<em>Accessible</em>') + '</span>';
     }).join("") + '</div>';
+    else o += '<p class="cr-next">' + esc(q.job ? q.title + " · " + q.salary + " € par tour" : q.retired ? "Retraité·e" : "Sans emploi") + '</p>';
     if (mine && q.secours) o += '<p class="qv-tip new">Pas de carte Études depuis longtemps ? Touche une carte de ta main puis « Étudier » : tu sacrifies ton action pour +1 Formation (jusqu\'au niveau 2).</p>';
     return o + '</div>';
   }
@@ -1272,18 +1328,26 @@
     if (ev.t === "attack") return who(ev.p) + " attaque " + who(ev.to) + " avec « " + c.name + " »";
     if (ev.t === "block") return who(ev.p) + " contre avec « " + c.name + " »";
     if (ev.outcome === "soft") return who(ev.to) + " limite les dégâts de « " + c.name + " »";
-    var ch = (ev.changes || []).map(function (x) { return who(x.p) + " : " + x.t.join(", ").toLowerCase(); }).join(" · ");
-    if (ev.to) return who(ev.p) + " → " + who(ev.to) + " : « " + c.name + " »" + (ch ? " — " + ch : "");
-    return who(ev.p) + " joue « " + c.name + " »" + (ch ? " — " + ch : "");
+    if (ev.to) return who(ev.p) + " → " + who(ev.to) + " : « " + c.name + " »";
+    return who(ev.p) + " joue « " + c.name + " »";
+  }
+  // détail court d'une entrée : ce qui a changé, ressources comprises
+  function journalSub(ev) {
+    var who = function (id) { return id === me.id ? "Toi" : nameOf(id); }, parts = [];
+    (ev.changes || []).forEach(function (x) { parts.push(who(x.p) + " : " + x.t.join(", ")); });
+    var by = {}; (ev.notes || []).forEach(function (n) { (by[n.p] = by[n.p] || []).push(n); });
+    Object.keys(by).forEach(function (id) { var r = sumNotes(by[id]).map(function (n) { return (n.v > 0 ? "+" : "−") + Math.abs(n.v) + " " + RES_WORD[n.k]; }).join(", "); if (r) parts.push(who(id) + " " + r); });
+    return parts.join(" · ");
   }
   function journalSheet() {
     var rows = "", lastR = null;
     hist.filter(function (e) { return e.t !== "attack"; }).forEach(function (ev) {
       if (ev.round !== lastR) { rows += '<h4 class="jr-r">Tour ' + ev.round + '</h4>'; lastR = ev.round; }
       var c = card(ev.k);
-      rows += '<button class="jr-e fam-' + (c ? c.fam : "world") + '" data-g="jev" data-id="' + ev.id + '"><span>' + esc(journalLine(ev)) + '</span><i>›</i></button>';
+      var sub = journalSub(ev), ic = c ? c.icon : ((D.EVENTS.filter(function (x) { return x.key === ev.k; })[0] || {}).icon || "chart");
+      rows += '<button class="jr-e fam-' + (c ? c.fam : "world") + '" data-g="jev" data-id="' + ev.id + '"><i class="tk-card">' + IC.get(ic) + '</i><span><b>' + esc(journalLine(ev)) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span><i class="jr-go">›</i></button>';
     });
-    sheet('<h3>Journal de la partie</h3>' + (rows || '<p class="qv-tip">Rien pour l\'instant.</p>') + '<button class="qv-btn ghost sm" data-g="close">Fermer</button>');
+    sheet('<h3>Journal de la partie</h3><p class="qv-tip">Tout ce qui s\'est passé, du plus récent au plus ancien. Touche une ligne pour voir la carte et revoir la scène.</p>' + (rows || '<p class="qv-tip">Rien pour l\'instant.</p>') + '<button class="qv-btn ghost sm" data-g="close">Fermer</button>');
   }
   function journalDetail(id) {
     var ev = hist.filter(function (x) { return x.id === id; })[0]; if (!ev) return;
@@ -1295,54 +1359,52 @@
 
   // ---------- plateau mobile : le personnage d'abord ----------
   var stageTall = 200;
-  function stageTile(p, extra) { return W.tile(p, Object.assign({ tall: stageTall, stage: true }, extra || {})); }
+  function stageTile(p, extra) { return W.tile(p, Object.assign({ tall: stageTall, stage: true, world: true }, extra || {})); }
   function ctrHTML() {
     return '<div class="stg-ctrs">' + ["b", "f", "r"].map(function (k) {
-      return '<button class="ctr ctr-' + k + '" data-g="res" data-k="' + k + '" id="ctr-' + k + '" aria-label="' + RES[k].name + ' : ' + sv(me.id, k) + '">' + IC.get(k, "ctr-i") + '<span class="ctr-txt"><b class="ctr-v" id="ctrv-' + k + '">' + sv(me.id, k) + '</b><span class="ctr-n">' + RES[k].name + '</span></span></button>';
+      return '<button class="g-ctr ctr-' + k + '" data-g="res" data-k="' + k + '" id="ctr-' + k + '" aria-label="' + RES[k].name + ' : ' + sv(me.id, k) + '">' + IC.get(k, "ctr-i") + '<span class="ctr-txt"><b class="ctr-v" id="ctrv-' + k + '">' + sv(me.id, k) + '</b><span class="ctr-n">' + RES[k].name + '</span></span></button>';
     }).join("") + '</div>';
   }
+  // adversaire : portrait compact, prénom, trois chiffres. Le détail s'ouvre au toucher.
   function oppChip(id) {
     var q = pub.players[id], turn = pub.order[pub.turn] === id, tgt = pub.pending && pub.pending.to === id;
     var bad = q.scandal || Object.keys(q.st || {}).some(function (k) { return D.STATUSES[k] && D.STATUSES[k].bad; });
-    return '<button class="qv-opp' + (turn ? " turn" : "") + (tgt ? " tgt" : "") + (q.bot || present(id) ? "" : " off") + '" data-pid="' + id + '" data-g="who">' +
-      '<span class="op-face">' + A.standalone(q.avatar, { mood: q.mood || "neutral", outfit: W.outfit(q) }, "op-av", true) + (turn ? '<i class="op-turn">▶</i>' : '') + '</span>' +
-      '<span class="op-txt"><span class="nm">' + esc(q.name) + (q.bot ? ' <i>bot</i>' : '') + '</span>' +
-      '<span class="rs">' + resRow(q) + (bad ? '<span class="li bad" title="Ennuis en cours">!</span>' : '') + '</span>' + lifeIcons(q) + '</span>' +
-      '<span class="op-spot">' + W.tile(q) + '</span></button>';
+    return '<button class="g-opp' + (turn ? " turn" : "") + (tgt ? " tgt" : "") + (q.bot || present(id) ? "" : " off") + '" data-pid="' + id + '" data-g="who" aria-label="Plateau de ' + esc(q.name) + '">' +
+      '<span class="g-opp-face">' + A.standalone(q.avatar, { mood: q.mood || "neutral", outfit: W.outfit(q) }, "g-opp-av", true) + (bad ? '<i class="g-opp-bad" title="Ennuis en cours">!</i>' : '') + '</span>' +
+      '<span class="g-opp-txt"><b class="nm">' + esc(q.name) + '</b><span class="g-opp-res">' + ["b", "f", "r"].map(function (k) { return '<i data-r="' + k + '">' + IC.get(k, "qv-ri") + '<b>' + sv(id, k) + '</b></i>'; }).join("") + '</span></span></button>';
   }
+  // ÉCRAN DE JEU : barre discrète · adversaires · le petit monde du joueur · sa barre · la main
+  // couches : plateau < interface persistante < notifications légères < interaction prioritaire < scènes
   function renderGame() {
     if (!pub || !room) return;
     if (screen !== "game") {
-      show("game", '<div class="qv-game">' +
-        '<header class="qv-top"><span class="qv-mini-logo" aria-label="Quelle vie !">QV<b>!</b></span><span class="top-mid"><span id="g-age"></span><span class="qv-status" id="status"></span><span class="ticker" id="ticker" aria-live="polite"></span></span>' +
-        '<button class="ib" data-g="journal" aria-label="Journal de la partie"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3 h10 a2 2 0 0 1 2 2 v12 H6 a2 2 0 0 1 -2 -2z" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M7 7 h6 M7 10 h6 M7 13 h4" stroke="currentColor" stroke-width="1.8"/></svg></button>' +
-        '<button class="ib" data-g="menu" aria-label="Menu">☰</button></header>' +
-        '<section class="qv-opps" id="opps"></section>' +
-        '<section class="qv-stage" id="mezone"></section>' +
-        '<section class="qv-mebar" id="mebar"></section>' +
-        '<section class="qv-hand" id="hand"></section>' +
-
-        '<aside class="qv-log" id="log"></aside>' +
+      show("game", '<div class="g-app">' +
+        '<header class="g-top"><span class="g-logo" aria-label="Quelle vie !">QV<b>!</b></span><span class="g-age" id="g-age"></span><span class="g-status" id="status"></span>' +
+        '<button class="g-ib" data-g="journal" aria-label="Journal de la partie"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3 h10 a2 2 0 0 1 2 2 v12 H6 a2 2 0 0 1 -2 -2z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 7 h6 M7 10 h6 M7 13 h4" stroke="currentColor" stroke-width="1.8"/></svg></button>' +
+        '<button class="g-ib" data-g="menu" aria-label="Menu"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5 h14 M3 10 h14 M3 15 h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></header>' +
+        '<section class="g-opps" id="opps"></section>' +
+        '<section class="g-stage"><div class="g-world" id="mezone"></div><div class="g-toast" id="ticker" aria-live="polite"></div></section>' +
+        '<section class="g-me" id="mebar"></section>' +
+        '<section class="g-hand" id="hand"></section>' +
+        '<aside class="g-log" id="log"></aside>' +
         '<div id="sheet" class="qv-sheet" hidden></div>' +
         '</div>');
       app.onclick = gameClick;
     }
     var p = pub.players[me.id];
-    $("#g-age").innerHTML = (pub.mode === "adult" ? '<i class="b18">18+</i>' : '') + '<b>' + pub.age + ' ans</b> · tour ' + pub.round + '/' + pub.maxRounds;
+    $("#g-age").innerHTML = (pub.mode === "adult" ? '<i class="b18">18+</i>' : '') + pub.age + ' ans · ' + pub.round + '/' + pub.maxRounds;
     $("#opps").innerHTML = pub.order.filter(function (id) { return id !== me.id; }).map(oppChip).join("");
     var mz = $("#mezone");
     if (p) {
-      // le décor s'étire en hauteur pour remplir la scène : le personnage reste entier et bien visible
       var w = mz.clientWidth || innerWidth, h = mz.clientHeight;
-      if (!h || h < 120) { h = Math.max(240, innerHeight - 290); requestAnimationFrame(function () { if (screen === "game" && $("#mezone") && $("#mezone").clientHeight >= 120) fitStage(); }); }
-      stageTall = Math.round(Math.max(200, Math.min(640, 232 * h / Math.max(1, w))));
+      if (!h || h < 100) { h = Math.max(200, innerHeight - 330); requestAnimationFrame(function () { if (screen === "game" && $("#mezone") && $("#mezone").clientHeight >= 100) fitStage(); }); }
+      stageTall = Math.round(Math.max(200, Math.min(700, 320 * h / Math.max(1, w))));
       var react = Date.now() < reactUntil;
-      mz.innerHTML =
-        '<div class="qv-mytile' + (isMyTurn() ? " turn" : "") + (react ? " react-" + reactMood : "") + '" data-pid="' + me.id + '">' + stageTile(p, react ? { mood: reactMood } : {}) +
-        '</div>';
-      $("#mebar").innerHTML = '<button class="mb-id" data-g="life" aria-label="Ma vie">' + (isMyTurn() ? '<i class="my-turn">À toi</i>' : '') + '<b>' + esc(p.name) + '</b><small><i class="mb-edu" id="mb-edu" title="Formation">' + IC.get("gradcap", "mb-ei") + (p.edu || 0) + '</i>' + esc(p.job ? p.title + " · " + p.salary + " €" : p.retired ? "Retraité·e" : "Sans emploi") + '</small></button>' +
+      mz.innerHTML = '<div class="qv-mytile' + (react ? " react-" + reactMood : "") + '" data-pid="' + me.id + '">' + stageTile(p, react ? { mood: reactMood } : {}) + '</div>';
+      $("#mebar").innerHTML = '<button class="g-id" data-g="life" aria-label="Mon plateau">' + A.standalone(p.avatar, { mood: p.mood || "neutral", outfit: W.outfit(p) }, "g-id-av", true) +
+        '<span class="g-id-txt"><b>' + esc(p.name) + '</b><small><i class="mb-edu" id="mb-edu" title="Formation">' + IC.get("gradcap", "mb-ei") + (p.edu || 0) + '</i>' + esc(p.job ? p.title : p.retired ? "Retraité·e" : "Sans emploi") + '</small></span></button>' +
         ctrHTML() +
-        (!pub.discovery || pub.stage >= 3 ? '<button class="mb-b" data-g="obj" aria-label="Mes objectifs secrets">' + IC.get("star", "mb-i") + '</button>' : '');
+        (!pub.discovery || pub.stage >= 3 ? '<button class="g-ib g-obj" data-g="obj" aria-label="Mes objectifs secrets">' + IC.get("star", "mb-i") + '</button>' : '');
     } else {
       mz.innerHTML = '<p class="qv-note">Tu regardes la partie en spectateur.</p>'; $("#mebar").innerHTML = "";
     }
@@ -1358,7 +1420,7 @@
   // la scène suit la taille réelle de l'écran (barre Safari qui apparaît, rotation…)
   function fitStage() {
     var mz = $("#mezone"), p = pub && pub.players[me.id]; if (!mz || !p) return;
-    var t = Math.round(Math.max(200, Math.min(640, 232 * mz.clientHeight / Math.max(1, mz.clientWidth))));
+    var t = Math.round(Math.max(200, Math.min(700, 320 * mz.clientHeight / Math.max(1, mz.clientWidth))));
     if (Math.abs(t - stageTall) < 4) return;
     stageTall = t;
     var svg = mz.querySelector(".qv-tile"); if (svg) svg.outerHTML = stageTile(p, Date.now() < reactUntil ? { mood: reactMood } : {});
@@ -1377,10 +1439,7 @@
 
   // ---------- premier tour guidé ----------
   function guideFirst() { return !!(pub && pub.discovery && pub.round === 1 && isMyTurn() && !seen.guide1 && priv && priv.hand.length && !introOpen); }
-  function updateHint() {
-    if (!guideFirst() || sel || ($("#sheet") && !$("#sheet").hidden) || $("#ov") || queue.length || playing) { hideHint(); return; }
-    pinTick('<b>Touche ta carte</b> en bas pour voir ce qu\'elle fait');
-  }
+  function updateHint() { hideHint(); }
   function hideHint() { if (tickPin) pinTick(""); }
   // ---------- le personnage change : on le montre ----------
   var lastLook = null;
@@ -1477,9 +1536,9 @@
     }
     if (room && !room.host && room.hostId && !present(room.hostId) && room.roster.length) o = "Hôte déconnecté·e…";
     st.innerHTML = o;
-    st.className = "qv-status" + (isMyTurn() ? " mine" : "");
+    st.className = "g-status" + (isMyTurn() || myDraw() ? " mine" : "");
   }
-  function renderPresence() { if (screen === "game") { renderStatus(); $$(".qv-opp").forEach(function (b) { var id = b.dataset.pid, q = pub && pub.players[id]; if (q) b.classList.toggle("off", !(q.bot || present(id))); }); } else if (screen === "lobby") { /* rafraîchi par onRoster */ } }
+  function renderPresence() { if (screen === "game") { renderStatus(); $$(".g-opp").forEach(function (b) { var id = b.dataset.pid, q = pub && pub.players[id]; if (q) b.classList.toggle("off", !(q.bot || present(id))); }); } else if (screen === "lobby") { /* rafraîchi par onRoster */ } }
   setInterval(function () { if (screen === "game" && pub && pub.phase === "react") renderStatus(); }, 1000);
 
   // ======================================================================
@@ -1515,7 +1574,7 @@
     if (!shown[id]) shown[id] = {};
     shown[id][k] = v;
     if (id === me.id) { var el = $("#ctrv-" + k); if (el) el.textContent = v; }
-    var o = $('.qv-opp[data-pid="' + id + '"] [data-r=' + k + '] b'); if (o) o.textContent = v;
+    var o = $('.g-opp[data-pid="' + id + '"] [data-r=' + k + '] b'); if (o) o.textContent = v;
   }
   function center(el) { var r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
   function pulse(el, cls) { if (!el) return; el.classList.remove("pulse-up", "pulse-down"); void el.offsetWidth; el.classList.add(cls); }
@@ -1550,7 +1609,7 @@
     var mineN = notes.filter(function (n) { return n.p === me.id; }), others = notes.filter(function (n) { return n.p !== me.id; });
     // adversaires : petit compteur qui défile + étiquette
     others.forEach(function (n) {
-      var el = $('.qv-opp[data-pid="' + n.p + '"] [data-r=' + n.k + ']'), from = sv(n.p, n.k), to = from + n.v;
+      var el = $('.g-opp[data-pid="' + n.p + '"] [data-r=' + n.k + ']'), from = sv(n.p, n.k), to = from + n.v;
       if (el) { pulse(el, n.v > 0 ? "pulse-up" : "pulse-down"); label(el, (n.v > 0 ? "+" : "−") + Math.abs(n.v), n.v > 0); }
       setNum(n.p, n.k, Math.max(0, to));
     });
@@ -1632,7 +1691,7 @@
   function dealOne(c, cb) {
     dealt[c.u] = 1; delete dealing[c.u];
     renderHand(c.u);
-    var slot = $('.qv-hc[data-u="' + c.u + '"]'), deck = $("#deckpile");
+    var slot = $('#hand [data-u="' + c.u + '"]'), deck = $("#deckpile");
     if (!slot || !deck || reduce) { if (slot) slot.classList.remove("incoming"); cb(); return; }
     deck.classList.remove("shuffle"); void deck.offsetWidth; deck.classList.add("shuffle");
     var a = center(deck), b = center(slot), el = document.createElement("div");
@@ -1645,62 +1704,93 @@
     ], { duration: 460, easing: "cubic-bezier(.3,.7,.3,1)", fill: "both" });
     an.onfinish = function () {
       el.remove();
-      slot = $('.qv-hc[data-u="' + c.u + '"]');
+      slot = $('#hand [data-u="' + c.u + '"]');
       if (slot) { slot.classList.remove("incoming"); slot.classList.add("flip-in"); }
       setTimeout(cb, 260);
     };
   }
 
-  // ---------- main compacte en éventail, carte touchée agrandie au premier plan ----------
+  // ---------- LA MAIN : compacte au repos, elle se déploie dans sa propre zone ----------
+  // repos : dos colorés (catégories) + nombre de cartes · ouverte : cartes lisibles en rangée défilante
+  // détail : la carte agrandie, son effet, UNE action principale · cible : choix de l'adversaire
+  var handOpen = false, handMode = "row";
+  function setHand(open, mode) {
+    handOpen = !!open; handMode = mode || "row";
+    if (!handOpen || handMode === "row") sel = handOpen ? sel : null;
+    if (handMode === "targets" || handMode === "take") setPhase("targetSelection");
+    else if (UI.phase === "targetSelection" && !playing && !queue.length) setPhase("idle");
+    renderHand();
+  }
   function renderHand(incoming) {
     var h = $("#hand"); if (!h || !pub) return;
     if (!priv || !pub.players[me.id]) { h.innerHTML = ""; return; }
-    var vp = viewPub(), mine = isMyTurn(), desk = innerWidth >= 980;
+    var vp = viewPub(), mine = isMyTurn();
     var hand = priv.hand.filter(function (c) { return dealt[c.u]; });
-    if (sel && !hand.some(function (c) { return c.u === sel; })) sel = null;
-    var sc = desk ? 0.82 : 0.6, cw = 116 * sc, n = hand.length;
-    var W_ = (h.clientWidth || innerWidth) - 2 * (desk ? 70 : 52);
-    var gap = n > 1 ? Math.min(cw * 0.96, (W_ - cw) / (n - 1)) : 0, total = cw + gap * (n - 1), x0 = (desk ? 70 : 52) + (W_ - total) / 2;
+    if (sel && !hand.some(function (c) { return c.u === sel; })) { sel = null; if (handMode === "detail" || handMode === "targets") handMode = "row"; }
+    if (handMode === "take" && !(myDraw() && pub.canTake)) { handMode = "row"; handOpen = false; }
+    if (myDraw() && handMode !== "take") handOpen = false;
     var unlocked = [];
-    var cards = hand.map(function (c, i) {
+    var info = hand.map(function (c) {
       var why = E.canPlay(vp, me.id, c.k), def = card(c.k), react = def.reaction && !def.alsoPlay;
       if (prevReason[c.u] && !why && !react) unlocked.push(c);
       prevReason[c.u] = react ? "" : why;
-      var mid = (n - 1) / 2, fan = n > 1, rot = fan ? (i - mid) * Math.min(4, 16 / n) : 0, lift = fan ? Math.min(10, Math.abs(i - mid) * Math.abs(i - mid) * 1.6) : 0;
-      return '<button class="qv-hc' + (sel === c.u ? " sel" : "") + (incoming === c.u ? " incoming" : "") + '" data-g="card" data-u="' + c.u + '" style="left:' + (x0 + i * gap).toFixed(0) + 'px;--rot:' + rot.toFixed(1) + 'deg;--lift:' + lift.toFixed(0) + 'px;--sc:' + sc + ';z-index:' + (i + 1) + '" aria-label="' + esc(def.name) + (why && !react ? " (verrouillée : " + esc(why) + ")" : "") + '">' +
-        cardHTML(c.k, { dim: !!why && !react, reason: why && !react ? why : "", pulse: guideFirst() && !sel }) + (!seen[c.k] && pub.discovery ? '<i class="hc-new">Nouveau</i>' : '') + '</button>';
-    }).join("");
-    var focusHTML = "";
+      return { c: c, why: why, def: def, react: react };
+    });
+    var n = info.length, idle = !busy() || UI.phase === "targetSelection";
+    var playable = mine && !pub.gate && info.some(function (x) { return !x.why && !x.react; });
     var drawNow = myDraw() && !busy(), takeNow = drawNow && pub.canTake;
-    h.innerHTML = '<button class="pile' + (drawNow ? " go" : "") + '" id="deckpile" data-g="' + (drawNow ? "draw" : "deckinfo") + '" aria-label="Pioche : ' + pub.deck + ' cartes face cachée' + (drawNow ? ', touche pour piocher' : '') + '"><i class="back"></i><b>' + (drawNow ? "Piocher" : pub.deck) + '</b></button>' +
-      '<div class="qv-fan">' + cards + '</div>' +
-      '<button class="pile disc' + (takeNow ? " go" : "") + '" data-g="' + (takeNow ? "take" : "discard") + '" aria-label="Défausse' + (pub.discardTop ? " : « " + esc(card(pub.discardTop).name) + " » visible" : " vide") + (takeNow ? ", touche pour la reprendre et la jouer" : "") + '">' + (pub.discardTop ? '<i class="face fam-' + card(pub.discardTop).fam + '">' + IC.get(card(pub.discardTop).icon) + '</i>' : '<i class="empty"></i>') + '<b>' + (takeNow ? "Reprendre" : pub.discard) + '</b></button>';
-    if (drawNow) pinTick(takeNow ? '<b>Pioche</b> une carte… ou <b>reprends « ' + esc(card(pub.discardTop).name) + ' »</b> (à jouer tout de suite)' : '<b>Touche la pioche</b> pour tirer ta carte du tour');
-    else if (tickPin && /pioche|Pioche/.test(tickPin)) pinTick("");
-    // carte agrandie + actions (la main reste compacte, le personnage reste visible au-dessus)
-    var s = sel && hand.filter(function (c) { return c.u === sel; })[0];
-    h.classList.toggle("open", !!s);
-    if (s) {
-      var fc = document.createElement("div"); fc.id = "focus"; fc.className = "qv-focus"; h.insertBefore(fc, h.firstChild);
-      {
-        var def2 = card(s.k), why2 = mine ? (pub.gate ? "Attends que tout le monde ait vu la scène" : E.canPlay(vp, me.id, s.k)) : myDraw() ? "Pioche d'abord ta carte du tour (pile de gauche)" : "Ce n'est pas ton tour";
-        var mp = pub.players[me.id];
-        var react2 = def2.reaction && !def2.alsoPlay;
-        fc.innerHTML = '<div class="fc-card">' + cardHTML(s.k, { reason: why2 && !react2 && mine ? why2 : "" }) + '</div>' +
-          '<div class="act-bar">' +
-          (react2 ? '<span class="act-why">Carte de réaction : elle servira quand on t\'attaquera</span>' : why2 ? '<span class="act-why">' + esc(why2) + '</span>' :
-            '<button class="qv-btn act-play' + (guideFirst() ? " pulse" : "") + '" data-g="' + (def2.target === "opponent" ? "pick" : "play") + '" data-u="' + s.u + '">' + (def2.target === "opponent" ? "Choisir une cible ›" : "Jouer") + '</button>') +
-          '<div class="act-row"><button class="qv-btn ghost sm" data-g="details" data-u="' + s.u + '">Détails</button>' +
-          (mine && !pub.gate ? '<button class="qv-btn ghost sm" data-g="rest" data-u="' + s.u + '" title="Défausser cette carte pour renouveler ta main">Défausser</button>' : '') +
-          (mine && !pub.gate && mp && mp.secours ? '<button class="qv-btn ghost sm edu-b" data-g="study" data-u="' + s.u + '" title="Sacrifier ton action et cette carte : +1 Formation">' + IC.get("gradcap", "qv-ri") + 'Étudier</button>' : '') +
-          '<button class="qv-btn ghost sm" data-g="unsel" aria-label="Refermer">✕</button></div></div>';
+    var deck = '<button class="g-pile' + (drawNow ? " go" : "") + '" id="deckpile" data-g="' + (drawNow ? "draw" : "deckinfo") + '" aria-label="Pioche : ' + pub.deck + ' cartes face cachée' + (drawNow ? ', touche pour piocher' : '') + '"><i class="back"></i><b>' + (drawNow ? "Piocher" : pub.deck) + '</b></button>';
+    var dtop = pub.discardTop && card(pub.discardTop);
+    var disc = '<button class="g-pile disc' + (takeNow ? " go2" : "") + '" data-g="' + (takeNow ? "take" : "discard") + '" aria-label="Défausse' + (dtop ? " : « " + esc(dtop.name) + " » visible" : " vide") + (takeNow ? ", touche pour la reprendre et la jouer" : "") + '">' + (dtop ? '<i class="face fam-' + dtop.fam + '">' + IC.get(dtop.icon) + '</i>' : '<i class="empty"></i>') + '<b>' + (takeNow ? "Reprendre" : pub.discard) + '</b></button>';
+    h.classList.toggle("open", handOpen);
+    h.dataset.mode = handOpen ? handMode : "rest";
+    if (!handOpen) {
+      var lbl = playable && idle ? "Choisis une carte" : drawNow ? "Pioche d'abord" : "Ma main";
+      h.innerHTML = deck + '<button class="g-handbtn' + (playable && idle ? " go" : "") + '" data-g="hand" aria-label="Ouvrir ma main : ' + n + ' carte' + (n > 1 ? "s" : "") + '"><span class="g-spines">' +
+        info.slice(0, 5).map(function (x) { return '<i class="sp fam-' + x.def.fam + (x.why && !x.react ? " off" : "") + (incoming === x.c.u ? " incoming" : "") + '" data-u="' + x.c.u + '">' + IC.get(x.def.icon) + '</i>'; }).join("") + (n > 5 ? '<i class="sp more">+' + (n - 5) + '</i>' : '') +
+        '</span><span class="g-hand-l"><b>' + lbl + '</b><small>' + n + ' carte' + (n > 1 ? "s" : "") + ' en main</small></span></button>' + disc;
+    } else {
+      var head = '<div class="dr-h"><b>' + (handMode === "targets" || handMode === "take" ? "Sur qui ?" : handMode === "detail" ? "Ta carte" : "Ma main") + '</b><small>' + (handMode === "row" ? n + " carte" + (n > 1 ? "s" : "") + (mine ? " · touche une carte" : "") : "") + '</small>' +
+        '<button class="dr-x" data-g="' + (handMode === "row" ? "hand" : "back") + '">' + (handMode === "row" ? "Fermer" : "‹ Retour") + '</button></div>';
+      var body = "";
+      if (handMode === "row") {
+        body = '<div class="dr-row">' + info.map(function (x) {
+          return '<button class="g-hc' + (incoming === x.c.u ? " incoming" : "") + '" data-g="card" data-u="' + x.c.u + '" aria-label="' + esc(x.def.name) + (x.why && !x.react ? " (verrouillée : " + esc(x.why) + ")" : "") + '">' +
+            cardHTML(x.c.k, { dim: !!x.why && !x.react, reason: x.why && !x.react ? x.why : "", pulse: guideFirst() }) + (!seen[x.c.k] && pub.discovery ? '<i class="hc-new">Nouveau</i>' : '') + '</button>';
+        }).join("") + '</div>';
+      } else if (handMode === "take") {
+        body = '<div class="dr-detail"><div class="dr-card">' + cardHTML(pub.discardTop, {}) + '</div><div class="dr-side"><p class="dr-txt">Reprise dans la défausse : elle se joue tout de suite.</p><div class="dr-tg">' + targetsHTML(pub.discardTop, null, true) + '</div></div></div>';
+      } else {
+        var x = info.filter(function (y) { return y.c.u === sel; })[0];
+        if (!x) { handMode = "row"; return renderHand(incoming); }
+        var why2 = mine ? (pub.gate ? "Attends que tout le monde ait vu la scène" : x.why) : myDraw() ? "Pioche d'abord ta carte du tour" : "Ce n'est pas ton tour";
+        var side = "";
+        if (handMode === "targets" && !why2) side = '<div class="dr-tg">' + targetsHTML(x.c.k, x.c.u) + '</div>';
+        else {
+          side = '<p class="dr-txt">' + esc(x.def.text) + '</p>';
+          if (x.def.target === "opponent" && x.def.counters) side += '<p class="dr-note">Parade possible : ' + esc(x.def.counters.map(function (k) { return card(k).name; }).join(", ")) + '</p>';
+          if (x.react) side += '<p class="dr-note">Carte de réaction : elle servira quand on t\'attaquera.</p>';
+          else if (why2) side += '<p class="dr-why">' + esc(why2) + '</p>';
+          else side += '<button class="qv-btn g-primary" data-g="' + (x.def.target === "opponent" ? "pick" : "play") + '" data-u="' + x.c.u + '">' + (x.def.target === "opponent" ? "Choisir une cible" : "Jouer") + '</button>';
+          if (mine && !pub.gate) side += '<div class="dr-sec"><button class="g-link" data-g="rest" data-u="' + x.c.u + '">Défausser</button>' +
+            (pub.players[me.id].secours ? '<button class="g-link" data-g="study" data-u="' + x.c.u + '">Étudier à la place (+1 Formation)</button>' : '') + '</div>';
+        }
+        body = '<div class="dr-detail"><div class="dr-card">' + cardHTML(x.c.k, { reason: why2 && !x.react && mine ? why2 : "" }) + '</div><div class="dr-side">' + side + '</div></div>';
       }
-      requestAnimationFrame(fitStage);
-    } else requestAnimationFrame(fitStage);
+      h.innerHTML = head + body;
+    }
     unlocked.forEach(function (c) {
-      var el = $('.qv-hc[data-u="' + c.u + '"]'); if (el) el.classList.add("unlocked");
+      var el = $('[data-u="' + c.u + '"]', h); if (el) el.classList.add("unlocked");
       unlockToast(c.k);
     });
+    requestAnimationFrame(fitStage);
+  }
+  function targetsHTML(k, u, take) {
+    var c = card(k), TQ = { hasJob: function (q) { return q.title; }, partner: function (q) { return q.married ? "Marié·e" : "En couple"; }, kids: function (q) { return q.kids.length + " enfant(s)"; }, housing: function (q) { return D.HOUSING[q.housing]; } };
+    return E.validTargets(pub, me.id, k).map(function (id) {
+      var q = pub.players[id], info = Object.keys(c.treq || {}).map(function (t) { return TQ[t] ? TQ[t](q) : ""; }).filter(Boolean)[0] || "";
+      return '<button class="g-tg" data-g="target" ' + (take ? 'data-take="1"' : 'data-u="' + u + '"') + ' data-t="' + id + '">' + A.standalone(q.avatar, { mood: "worried", outfit: W.outfit(q) }, "tg-av", true) + '<span><b>' + esc(q.name) + '</b><small>' + esc(info) + '</small></span></button>';
+    }).join("");
   }
   function unlockToast(k) {
     var c = card(k), r = c.req || {}, p = pub.players[me.id], txt;
@@ -1717,7 +1807,7 @@
   var LOCK_OPEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="11" rx="3" fill="#ffd23f" stroke="#2b2140" stroke-width="2"/><path d="M8 11 V7 a4 4 0 0 1 8 -1" fill="none" stroke="#2b2140" stroke-width="2.4" stroke-linecap="round"/></svg>';
   // la carte jouée quitte la main et file au centre (puis vers sa destination)
   function flyOut(u, toDiscard) {
-    var fc = $("#focus"), el = (fc && fc.querySelector(".fc-card")) || $('.qv-hc[data-u="' + u + '"]'); if (!el || reduce) return;
+    var el = $("#hand .dr-card") || $('#hand [data-u="' + u + '"]'); if (!el || reduce) return;
     var r = el.getBoundingClientRect(), ghost = el.cloneNode(true);
     ghost.className = "qv-ghost"; ghost.style.left = r.left + "px"; ghost.style.top = r.top + "px"; ghost.style.width = r.width + "px";
     document.body.appendChild(ghost); el.style.visibility = "hidden";
@@ -1738,7 +1828,8 @@
     var s = $("#sheet"); if (!s) return;
     if ($("#ov")) return; // jamais une fiche par-dessus une fenêtre d'événement
     if (phase) setPhase(phase);
-    s.innerHTML = '<div class="qv-sheet-bg" data-g="close"></div><div class="qv-sheet-box">' + html + '</div>';
+    s.classList.remove("is-prio");
+    s.innerHTML = '<div class="qv-sheet-bg"' + (phase === "targetSelection" ? '' : ' data-g="close"') + '></div><div class="qv-sheet-box">' + html + '</div>';
     s.hidden = false; hideHint();
   }
   function closeSheet() { var s = $("#sheet"); if (s) { s.hidden = true; s.innerHTML = ""; } sel = null; if (UI.phase === "targetSelection" && !playing && !queue.length) setPhase("idle"); updateHint(); }
@@ -1749,44 +1840,8 @@
     resolvT = setTimeout(function () { if (UI.phase === "resolving" && !queue.length && !playing) { clearGhost(); setPhase("idle"); renderHand(); } }, 4000);
   }
 
-  function openCard(u) {
-    var c = priv.hand.filter(function (x) { return x.u === u; })[0]; if (!c) return;
-    sel = u;
-    var def = card(c.k), mine = isMyTurn(), why = mine ? (pub.gate ? "Attends que tout le monde ait vu la scène" : E.canPlay(pub, me.id, c.k)) : "";
-    var o = cardHTML(c.k, { big: true, reason: why && !(def.reaction && !def.alsoPlay) ? why : "" });
-    if (def.reaction) o += '<p class="qv-tip">' + (def.alsoPlay ? "Joue-la maintenant, ou garde-la pour contrer une attaque." : "Garde-la : quand quelqu\'un t\'attaque avec la bonne carte, un bouton te proposera de l\'utiliser.") + '</p>';
-    if (def.target === "opponent") coachMech("target", "Cartes de coup bas", "Elles visent un adversaire : après « Jouer », choisis qui. Il pourra peut-être se défendre.");
-    if (mine) {
-      if (!why && def.target === "opponent") {
-        o += '<p class="qv-pick">Sur qui ?</p><div class="qv-targets">' + E.validTargets(pub, me.id, c.k).map(function (id) {
-          var q = pub.players[id];
-          return '<button class="qv-tg" data-g="target" data-u="' + u + '" data-t="' + id + '">' + A.standalone(q.avatar, { mood: "worried" }, "tg-av", true) + '<span>' + esc(q.name) + '</span></button>';
-        }).join("") + '</div>';
-      } else if (!why) {
-        if (guideFirst()) o += '<p class="qv-guide">Appuie sur « Jouer » et regarde ton personnage !</p>';
-        o += '<button class="qv-btn big' + (guideFirst() ? " pulse" : "") + '" data-g="play" data-u="' + u + '">Jouer cette carte</button>';
-      } else if (!def.reaction) {
-        o += '<p class="qv-why">' + esc(why) + '</p>';
-      }
-      o += '<button class="qv-btn ghost" data-g="rest" data-u="' + u + '">Défausser cette carte (renouveler ma main)</button>';
-      if (pub.players[me.id].secours) o += '<button class="qv-btn ghost" data-g="study" data-u="' + u + '">Étudier à la place : sacrifier cette carte et ton action, +1 Formation</button>';
-    } else {
-      o += '<p class="qv-tip">' + (myDraw() ? "Pioche d'abord ta carte du tour." : "Ce n'est pas ton tour.") + '</p>';
-    }
-    o += '<button class="qv-btn ghost sm" data-g="close">Fermer</button>';
-    sheet(o, mine && !why && def.target === "opponent" ? "targetSelection" : null);
-    renderHand();
-  }
-
-  // reprendre la dernière carte défaussée : elle se joue tout de suite (choix de la cible si besoin)
-  function takeTargets() {
-    var k = pub.discardTop, c = card(k);
-    var o = '<p class="qv-pick">Reprendre « ' + esc(c.name) + ' » et la jouer sur…</p>' + cardHTML(k, { big: true }) + '<div class="qv-targets">' + E.validTargets(pub, me.id, k).map(function (id) {
-      var q = pub.players[id];
-      return '<button class="qv-tg" data-g="target" data-take="1" data-t="' + id + '">' + A.standalone(q.avatar, { mood: "worried" }, "tg-av", true) + '<span>' + esc(q.name) + '</span></button>';
-    }).join("") + '</div><button class="qv-btn ghost sm" data-g="close">Annuler</button>';
-    sheet(o, "targetSelection");
-  }
+  function openCard(u) { sel = u; setHand(true, "detail"); }
+  function takeTargets() { setHand(true, "take"); }
   function flyFromDiscard() {
     var d = $(".pile.disc"); if (!d || reduce) return;
     var r = d.getBoundingClientRect(), g = document.createElement("div");
@@ -1802,44 +1857,48 @@
       (list.length ? '<div class="ds-list">' + list.map(function (d, i) { var c = card(d.k); return '<div class="ds-c' + (i === 0 ? " top" : "") + '"><i class="face fam-' + c.fam + '">' + IC.get(c.icon) + '</i><b>' + esc(c.name) + '</b><small>' + (i === 0 ? "Dessus · " : "") + (HOW[d.how] || "") + " " + esc(d.by ? (d.by === me.id ? "toi" : nameOf(d.by)) : "") + '</small></div>'; }).join("") + '</div>' : '<p>La défausse est vide.</p>') +
       '<button class="qv-btn ghost sm" data-g="close">Fermer</button>');
   }
+  // ---------- ATTAQUE CONTRE MOI : panneau d'interaction prioritaire ----------
+  // qui m'attaque, avec quoi, ce que ça fait, et mes choix (une seule action mise en avant)
   function maybeReact() {
     if (!pub || pub.phase !== "react" || !pub.pending || pub.pending.to !== me.id || queue.length || playing || !priv || $("#ov")) return;
-    var pd = pub.pending, ac = card(pd.k), p = pub.players[me.id];
+    if ($("#sheet") && !$("#sheet").hidden && $("#sheet .prio")) return;
+    var pd = pub.pending, ac = card(pd.k), p = pub.players[me.id], att = pub.players[pd.from];
     var counters = priv.hand.filter(function (h) { return (ac.counters || []).indexOf(h.k) >= 0; });
-    var o = '<div class="qv-react"><p class="qv-react-h">' + esc(nameOf(pd.from)) + ' te joue</p>' + cardHTML(pd.k, { big: true }) +
-      '<div class="qv-react-opts">';
-    counters.forEach(function (h) {
-      o += '<button class="qv-btn good" data-g="react" data-c="defend" data-u="' + h.u + '">Contrer avec « ' + esc(card(h.k).name) + ' »</button>';
+    var o = '<div class="prio"><div class="prio-h">' + A.standalone(att.avatar, { mood: "smug", outfit: W.outfit(att) }, "prio-av", true) + '<div><b>' + esc(att.name) + ' t\'attaque !</b><span>« ' + esc(ac.name) + ' » : ' + esc(window.QV_CARDS.EFF[pd.k] || ac.text) + '</span></div></div>' +
+      '<div class="prio-card">' + cardHTML(pd.k, {}) + '</div><div class="prio-opts">';
+    counters.forEach(function (h, i) {
+      o += '<button class="qv-btn ' + (i === 0 ? "g-primary" : "g-second") + '" data-g="react" data-c="defend" data-u="' + h.u + '">Contrer avec « ' + esc(card(h.k).name) + ' »</button>';
     });
+    o += '<button class="qv-btn ' + (counters.length ? "g-second" : "g-primary") + '" data-g="react" data-c="accept">Encaisser<small>' + esc(ac.bounce ? ac.bounce.label : "") + ' · 2 cartes au prochain tour</small></button>';
     if (ac.soft) {
       var ok = E.affordable(p, ac.soft.cost);
-      o += '<button class="qv-btn alt" data-g="react" data-c="soft"' + (ok ? "" : " disabled") + '>' + esc(ac.soft.label) + ' <small>(payer ' + esc(E.costText(ac.soft.cost)) + ')</small></button>';
+      o += '<button class="qv-btn g-second" data-g="react" data-c="soft"' + (ok ? "" : " disabled") + '>' + esc(ac.soft.label) + '<small>Coûte ' + esc(E.costText(ac.soft.cost)) + (ok ? "" : " — pas assez") + '</small></button>';
     }
-    o += '<button class="qv-btn danger" data-g="react" data-c="accept">Encaisser <small>' + esc(ac.bounce ? ac.bounce.label : "") + ' · 2 cartes à jouer au prochain tour</small></button>';
-    if (pub.mode === "adult") o += '<button class="qv-btn dark" data-g="react" data-c="spite">Balancer un dossier <small>Tu encaisses tout, sans rebond… mais ' + esc(nameOf(pd.from)) + ' perd 3 réputation</small></button>';
-    if (pub.discovery && !seen["m:react"]) { o += '<p class="qv-tip new">Nouveau : quand on t\'attaque, tu choisis. Contrer annule tout, payer limite les dégâts, encaisser te fait rebondir.</p>'; markSeen("m:react"); }
-    if (!counters.length) o += '<p class="qv-tip">Pas de carte pour contrer. ' + esc((ac.counters || []).filter(function (k) { return k !== "renvoi"; }).map(function (k) { return "« " + card(k).name + " »"; }).join(" ou ")) + ' ou « Retour à l\'envoyeur » auraient marché.</p>';
+    if (pub.mode === "adult") o += '<button class="qv-btn g-second" data-g="react" data-c="spite">Balancer un dossier<small>Tu encaisses sans rebond, ' + esc(att.name) + ' perd 3 réputation</small></button>';
+    if (!counters.length) o += '<p class="prio-tip">Aucune parade en main' + ((ac.counters || []).length ? ' (il aurait fallu ' + esc(ac.counters.map(function (k) { return "« " + card(k).name + " »"; }).join(" ou ")) + ')' : '') + '.</p>';
     o += '</div></div>';
     sheet(o, "targetSelection");
+    var sh = $("#sheet"); if (sh) sh.classList.add("is-prio");
   }
 
   function gameClick(e) {
     var b = e.target.closest("[data-g]");
-    if (!b) { if (sel && !e.target.closest("#focus, #hand")) { sel = null; renderHand(); } return; }
+    if (!b) { if (handOpen && !e.target.closest("#hand, #sheet")) setHand(false); return; }
     SND.unlock();
     var g = b.dataset.g;
     if (g === "close") { closeSheet(); renderHand(); maybeReact(); return; }
     SND.play("tap");
-    if (g === "card") { var cu = +b.dataset.u; if (sel === cu) return openCard(cu); sel = cu; SND.play("card"); renderHand(); updateHint(); return; }
-    if (g === "details" || g === "pick") return openCard(+b.dataset.u);
-    if (g === "unsel") { sel = null; renderHand(); return; }
+    if (g === "card") { SND.play("card"); return openCard(+b.dataset.u); }
+    if (g === "hand") { setHand(!handOpen, "row"); return; }
+    if (g === "back") { if (handMode === "targets") setHand(true, "detail"); else if (handMode === "take") setHand(false); else { sel = null; setHand(true, "row"); } return; }
+    if (g === "pick") { sel = +b.dataset.u; setHand(true, "targets"); return; }
     if (g === "res") { resSheet(b.dataset.k); return; }
     if (g === "reduce") { reduce = !reduce; store("qv-reduce", reduce); document.body.classList.toggle("reduce", reduce); closeSheet(); toast(reduce ? "Animations réduites" : "Animations complètes"); return; }
-    if (g === "play") { if (busy()) return; if (guideFirst()) { markSeen("guide1"); hideHint(); } closeSheet(); flyOut(+b.dataset.u, false); sel = null; resolving(); sendIntent({ t: "play", u: +b.dataset.u }); return; }
+    if (g === "play") { if (busy()) return; if (guideFirst()) { markSeen("guide1"); hideHint(); } flyOut(+b.dataset.u, false); sel = null; handOpen = false; handMode = "row"; resolving(); sendIntent({ t: "play", u: +b.dataset.u }); renderHand(); return; }
     if (g === "intro") { closeSheet(); intro(true); return; }
-    if (g === "target") { closeSheet(); resolving(); sendIntent(b.dataset.take ? { t: "take", target: b.dataset.t } : { t: "play", u: +b.dataset.u, target: b.dataset.t }); return; }
-    if (g === "rest") { if (busy() && UI.phase !== "targetSelection") return; closeSheet(); flyOut(+b.dataset.u, true); sel = null; resolving(); sendIntent({ t: "rest", u: +b.dataset.u }); return; }
-    if (g === "study") { if (busy()) return; closeSheet(); flyOut(+b.dataset.u, true); sel = null; resolving(); sendIntent({ t: "study", u: +b.dataset.u }); return; }
+    if (g === "target") { closeSheet(); if (b.dataset.u) flyOut(+b.dataset.u, false); sel = null; handOpen = false; handMode = "row"; resolving(); renderHand(); sendIntent(b.dataset.take ? { t: "take", target: b.dataset.t } : { t: "play", u: +b.dataset.u, target: b.dataset.t }); return; }
+    if (g === "rest") { if (busy() && UI.phase !== "targetSelection") return; closeSheet(); flyOut(+b.dataset.u, true); sel = null; handOpen = false; handMode = "row"; resolving(); sendIntent({ t: "rest", u: +b.dataset.u }); renderHand(); return; }
+    if (g === "study") { if (busy()) return; closeSheet(); flyOut(+b.dataset.u, true); sel = null; handOpen = false; handMode = "row"; resolving(); sendIntent({ t: "study", u: +b.dataset.u }); renderHand(); return; }
     if (g === "draw") { if (busy()) return; SND.play("card"); resolving(); sendIntent({ t: "draw" }); return; }
     if (g === "take") { if (busy()) return; var tk = card(pub.discardTop); if (tk.target === "opponent") return takeTargets(); resolving(); flyFromDiscard(); sendIntent({ t: "take" }); return; }
     if (g === "discard") { discardSheet(); return; }

@@ -58,11 +58,83 @@
     return '<rect width="' + w + '" height="' + h + '" fill="#9fd6ff"/><circle cx="' + (w - 50) + '" cy="40" r="20" fill="#ffd23f"/><rect y="' + (h - 30) + '" width="' + w + '" height="30" fill="#8fd16a"/><rect y="' + (h - 31) + '" width="' + w + '" height="4" fill="#6fb04a"/>';
   }
 
+  /* ---------- le petit monde : quelques accessoires qui racontent la situation ----------
+     métier (coin droit), études, retraite, chômage, richesse ou galère (au sol, au centre) */
+  var T_ = function (x, y, t, size, fill) { return '<text x="' + x + '" y="' + y + '" font-size="' + (size || 9) + '" font-weight="900" text-anchor="middle" fill="' + (fill || INK) + '" font-family="Nunito,sans-serif">' + t + '</text>'; };
+  var S2 = ' stroke="' + INK + '" stroke-width="2.2" stroke-linejoin="round"';
+  var PROPS = {
+    office: '<rect x="276" y="158" width="40" height="5" fill="#b56b3a"' + S2 + '/><path d="M280 163 V196 M312 163 V196" stroke="' + INK + '" stroke-width="3"/><rect x="282" y="138" width="26" height="18" rx="2" fill="#2b2140"' + S2 + '/><rect x="285" y="141" width="20" height="12" fill="#9fd6ff"/><path d="M290 156 h10" stroke="' + INK + '" stroke-width="3"/>',
+    plumber: '<rect x="280" y="174" width="34" height="20" rx="3" fill="#e5487a"' + S2 + '/><path d="M290 174 v-6 h14 v6" fill="none"' + S2 + '/><path d="M284 168 l10 -18 4 2 -10 18z" fill="#c9ced8"' + S2 + '/>',
+    medical: '<rect x="280" y="170" width="34" height="24" rx="5" fill="#fff"' + S2 + '/><path d="M297 175 v14 M290 182 h14" stroke="#e5487a" stroke-width="4"/><path d="M290 170 q7 -10 14 0" fill="none"' + S2 + '/>',
+    school: '<rect x="276" y="128" width="40" height="30" fill="#2fa37a"' + S2 + '/>' + T_(296, 147, "1+1=3", 8, "#fff") + '<path d="M282 158 l-4 38 M310 158 l4 38" stroke="' + INK + '" stroke-width="3"/>',
+    engineer: '<path d="M278 180 C278 166 312 166 312 180 Z" fill="#ffd23f"' + S2 + '/><path d="M274 180 H316" stroke="' + INK + '" stroke-width="4" stroke-linecap="round"/><rect x="282" y="184" width="30" height="10" rx="5" fill="#9fd6ff"' + S2 + '/>',
+    law: '<rect x="280" y="180" width="32" height="6" fill="#fff4dc"' + S2 + '/><rect x="282" y="174" width="30" height="6" fill="#fff4dc"' + S2 + '/><rect x="279" y="186" width="33" height="8" fill="#fff4dc"' + S2 + '/><path d="M296 150 V172 M286 156 h20" stroke="' + INK + '" stroke-width="2.4"/><path d="M282 166 l4 -10 4 10z M302 166 l4 -10 4 10z" fill="#ffd23f"' + S2 + '/>',
+    bike: '<circle cx="284" cy="186" r="8" fill="none"' + S2 + '/><circle cx="310" cy="186" r="8" fill="none"' + S2 + '/><path d="M284 186 l8 -14 h12 l6 14 M292 172 l6 14" fill="none"' + S2 + '/><rect x="288" y="160" width="14" height="10" rx="2" fill="#3ad1a0"' + S2 + '/>',
+    easel: '<path d="M284 196 L296 140 L308 196 M296 140 V196" fill="none"' + S2 + '/><rect x="280" y="146" width="32" height="26" fill="#fff"' + S2 + '/><circle cx="290" cy="156" r="4" fill="#e5487a"/><circle cx="300" cy="162" r="4" fill="#3d7dd8"/><circle cx="295" cy="152" r="3" fill="#ffd23f"/>',
+    light: '<circle cx="296" cy="146" r="14" fill="none" stroke="#fff59a" stroke-width="5"/><circle cx="296" cy="146" r="14" fill="none"' + S2 + '/><path d="M296 160 V196 M286 196 h20" stroke="' + INK + '" stroke-width="3"/>',
+    startup: '<rect x="280" y="176" width="34" height="18" rx="3" fill="#8a92a6"' + S2 + '/><rect x="284" y="160" width="26" height="16" rx="2" fill="#2b2140"' + S2 + '/><path d="M297 164 l3 6 h-6z" fill="#ff6b4a"/><rect x="306" y="170" width="8" height="8" rx="2" fill="#fff"' + S2 + '/>',
+    crystal: '<circle cx="296" cy="176" r="12" fill="#c7b3ff"' + S2 + '/><path d="M286 188 h20 l-3 7 h-14z" fill="#7b3fc4"' + S2 + '/><circle cx="292" cy="172" r="3" fill="#fff" opacity=".8"/>',
+    books: '<rect x="278" y="184" width="34" height="10" rx="2" fill="#3d7dd8"' + S2 + '/><rect x="281" y="174" width="30" height="10" rx="2" fill="#16a3a8"' + S2 + '/><rect x="279" y="164" width="32" height="10" rx="2" fill="#ffd23f"' + S2 + '/><path d="M300 150 l14 -6 2 18 -14 6z" fill="#ff6b4a"' + S2 + '/>',
+    rocking: '<path d="M276 194 q20 6 40 0" fill="none"' + S2 + '/><path d="M282 192 V160 h26 V192 M282 176 h26" fill="none" stroke="#8a5a3b" stroke-width="5"/><path d="M282 192 V160 h26 V192" fill="none"' + S2 + '/>',
+    jobless: '<path d="M282 196 V150 M310 196 V150" stroke="' + INK + '" stroke-width="3"/><rect x="276" y="144" width="40" height="22" fill="#fff"' + S2 + '/>' + T_(296, 159, "CV ?", 10, "#e5487a"),
+  };
+  var JOB_PROP = { bureau: "office", commercial: "office", plombier: "plumber", infirmier: "medical", chirurgien: "medical", prof: "school", ingenieur: "engineer", avocat: "law", livreur: "bike", artiste: "easel", influence: "light", startup: "startup", pdg: "startup", mystique: "crystal" };
+  function scenery(p) {
+    var o = "", st = p.st || {};
+    var k = p.job ? JOB_PROP[p.job.k] : p.retired ? "rocking" : (p.edu || 0) > 0 ? "books" : (st.chomage || (p.life || []).some(function (l) { return /Licencié|Perd son métier/.test(l.text || ""); })) ? "jobless" : null;
+    if (k && PROPS[k]) o += '<g class="tl-prop">' + PROPS[k] + '</g>';
+    // l'argent se voit : pièces d'or et étincelles, ou factures qui traînent
+    if ((p.f || 0) >= 15) {
+      o += '<g><ellipse cx="214" cy="192" rx="14" ry="4" fill="#e0a800"' + S2 + '/><ellipse cx="214" cy="187" rx="12" ry="4" fill="#ffd23f"' + S2 + '/><ellipse cx="216" cy="182" rx="9" ry="3.5" fill="#ffd23f"' + S2 + '/></g>';
+      o += '<g class="qv-flash"><path d="M40 20 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#ffd23f"/><path d="M270 30 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z" fill="#ffd23f"/></g>';
+    } else if ((p.f || 0) <= 1) {
+      o += '<g><path d="M118 194 l18 -3 3 6 -18 3z" fill="#fff"' + S2 + '/><path d="M130 196 l16 -6 4 5 -16 6z" fill="#fff4dc"' + S2 + '/>' + T_(134, 196, "€€€", 6, "#e5487a") + '</g>';
+    }
+    // les enfants ont un jouet
+    if ((p.kids || []).length && !p.kidsAway) o += '<circle cx="' + 80 + '" cy="190" r="6" fill="#ff6b4a"' + S2 + '/><path d="M74 190 h12" stroke="#fff" stroke-width="2"/>';
+    return o;
+  }
+
+  // le haut du décor raconte aussi la vie : fenêtre sur le lieu de travail ou la fac, étagère des diplômes, ciel
+  var JOB_ICON = { bureau: "tie", commercial: "handshake", plombier: "wrench", infirmier: "stetho", chirurgien: "scalpel", prof: "board", ingenieur: "gear", avocat: "scales", livreur: "bike", artiste: "palette", influence: "phone", startup: "rocket", pdg: "rocket", mystique: "crystal" };
+  function building(x, base, h, icon, color) {
+    var IC = root.QV_ICONS, o = '<rect x="' + x + '" y="' + (base - h) + '" width="54" height="' + h + '" fill="' + (color || "#dfe6f2") + '"' + S2 + '/>';
+    for (var yy = base - h + 30; yy < base - 8; yy += 16) o += '<rect x="' + (x + 8) + '" y="' + yy + '" width="10" height="9" fill="#9fd6ff"/><rect x="' + (x + 36) + '" y="' + yy + '" width="10" height="9" fill="#9fd6ff"/>';
+    if (IC && icon) o += '<circle cx="' + (x + 27) + '" cy="' + (base - h + 14) + '" r="12" fill="#fff"' + S2 + '/><svg x="' + (x + 17) + '" y="' + (base - h + 4) + '" width="20" height="20" viewBox="0 0 48 48">' + IC.inner(icon) + '</svg>';
+    return o;
+  }
+  function upper(p, ext) {
+    if (ext < 40) return "";
+    var o = "", job = p.job ? JOB_ICON[p.job.k] : null, student = !p.job && !p.retired && (p.edu || 0) > 0;
+    var icon = job || (student ? "gradcap" : null);
+    if (p.housing === 0) {
+      // fenêtre : on aperçoit le travail (ou la fac) ; étagère : un diplôme par niveau de Formation
+      var wy = -ext + 14, wh = Math.min(110, ext - 24);
+      o += '<rect x="22" y="' + wy + '" width="96" height="' + wh + '" fill="#a8dcff"' + S2 + '/>';
+      if (icon) o += '<g>' + building(40, wy + wh, Math.min(wh - 6, 76), icon, student ? "#d8f3f3" : null) + '</g>';
+      else o += '<circle cx="92" cy="' + (wy + 24) + '" r="10" fill="#ffd23f"/>';
+      o += '<path d="M70 ' + wy + ' V' + (wy + wh) + ' M22 ' + (wy + wh / 2) + ' H118" stroke="' + INK + '" stroke-width="3"/>';
+      var sy = -Math.round(ext * 0.42);
+      o += '<rect x="186" y="' + sy + '" width="118" height="6" fill="#b56b3a"' + S2 + '/>';
+      for (var i = 0; i < Math.min(5, p.edu || 0); i++) o += '<rect x="' + (192 + i * 22) + '" y="' + (sy - 18) + '" width="18" height="16" fill="#fff4dc"' + S2 + '/><circle cx="' + (203 + i * 22) + '" cy="' + (sy - 7) + '" r="2.4" fill="#e5487a"/>';
+      if (!(p.edu)) o += '<path d="M200 ' + sy + ' v-14 h16 v14" fill="#38b58a"' + S2 + '/><path d="M246 ' + sy + ' l4 -16 h10 l4 16" fill="#ff9a3a"' + S2 + '/>';
+    } else if (p.housing >= 2) {
+      // ciel : le lieu de travail au loin, des oiseaux
+      if (icon) o += building(250, 0, Math.min(ext - 10, 88), icon, student ? "#d8f3f3" : null);
+      o += '<path d="M40 ' + (-ext * 0.7) + ' q6 -6 12 0 q6 -6 12 0 M90 ' + (-ext * 0.55) + ' q5 -5 10 0 q5 -5 10 0" fill="none" stroke="' + INK + '" stroke-width="2"/>';
+    } else if (icon) {
+      // immeuble : une enseigne sur la façade
+      o += '<rect x="120" y="' + (-ext + 10) + '" width="80" height="26" rx="6" fill="#fff"' + S2 + '/>' + '<svg x="126" y="' + (-ext + 13) + '" width="20" height="20" viewBox="0 0 48 48">' + (root.QV_ICONS ? root.QV_ICONS.inner(icon) : "") + '</svg>' + T_(170, -ext + 27, student ? "Étudiant·e" : "Au boulot", 9);
+    }
+    return o;
+  }
+
   function tile(p, opts) {
     opts = opts || {};
     var W = 320, H = 200, o = "";
     // positions : la scène mobile est resserrée autour de la famille
-    var Z = opts.stage ? { sign: 50, pa: 232, k1: 70, k2: 102, ham: 46, toast: 246, ex: 262, squat: 64, sugar: 222, dog: 186, more: 50, away: 52 } : { sign: 12, pa: 248, k1: 54, k2: 96, ham: 2, toast: 286, ex: 300, squat: 30, sugar: 262, dog: 200, more: 14, away: 18 };
+    var world = !!opts.world;
+    var Z = opts.stage && !world ? { sign: 50, pa: 232, k1: 70, k2: 102, ham: 46, toast: 246, ex: 262, squat: 64, sugar: 222, dog: 186, more: 50, away: 52 } : { sign: 12, pa: 248, k1: 54, k2: 96, ham: 2, toast: 286, ex: 300, squat: 30, sugar: 262, dog: 200, more: 14, away: 18 };
     // version « scène » : on prolonge le décor vers le haut pour remplir l'écran sans couper personne
     var tall = Math.max(200, Math.min(640, opts.tall || 200)), ext = tall - 200;
     if (ext > 0) {
@@ -74,6 +146,7 @@
         o += '<rect y="' + (-ext) + '" width="320" height="' + (ext + 1) + '" fill="#f6e3c3"/>';
         for (var sx = 10; sx < 320; sx += 26) o += '<rect x="' + sx + '" y="' + (-ext) + '" width="9" height="' + (ext + 1) + '" fill="#efd4a8"/>';
       }
+      if (opts.world) o += upper(p, ext);
     }
     if (p.housing >= 3) {
       // villa d'architecte : grande baie vitrée et piscine
@@ -96,9 +169,11 @@
       o += '<rect x="236" y="120" width="30" height="48" fill="#3d7dd8"' + S + '/><circle cx="18" cy="150" r="14" fill="#4caf6a"' + S + '/><rect x="10" y="156" width="16" height="12" fill="#b56b3a"' + S + '/>';
     } else {
       o += bgRoom(320, 200);
-      o += '<g transform="translate(' + (opts.stage ? 34 : 0) + ' 0)"><rect x="22" y="26" width="58" height="44" fill="#fff"' + S + '/><text x="51" y="45" font-size="10" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">MAMAN</text><text x="51" y="60" font-size="10" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">PAPA</text></g>';
+      var student = world && !p.job && !p.retired && (p.edu || 0) > 0;
+      if (student) o += '<g transform="translate(18 18)"><path d="M0 0 H70 L0 36Z" fill="#16a3a8"' + S + '/><text x="22" y="16" font-size="11" font-weight="900" fill="#fff" font-family="Nunito,sans-serif">FAC</text></g>';
+      else o += '<g transform="translate(' + (opts.stage && !world ? 34 : 0) + ' 0)"><rect x="22" y="26" width="58" height="44" fill="#fff"' + S + '/><text x="51" y="45" font-size="10" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">MAMAN</text><text x="51" y="60" font-size="10" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">PAPA</text></g>';
       o += '<path d="M92 128 Q92 110 110 110 H230 Q248 110 248 128 V170 H92Z" fill="#e07a3a"' + S + '/><rect x="86" y="136" width="20" height="36" rx="8" fill="#c8612a"' + S + '/><rect x="234" y="136" width="20" height="36" rx="8" fill="#c8612a"' + S + '/>';
-      o += '<g transform="translate(' + (opts.stage ? -30 : 0) + ' 0)"><path d="M282 60 h22 l-6 -22 h-10z" fill="#ffd23f"' + S + '/><path d="M293 60 V166 M282 168 h22" stroke="' + INK + '" stroke-width="3"/></g>';
+      o += '<g transform="translate(' + (opts.stage && !world ? -30 : 0) + ' 0)"><path d="M282 60 h22 l-6 -22 h-10z" fill="#ffd23f"' + S + '/><path d="M293 60 V166 M282 168 h22" stroke="' + INK + '" stroke-width="3"/></g>';
     }
     // objets en fond
     if (p.items && p.items.indexOf("car") >= 0) {
@@ -118,6 +193,7 @@
     if (st.fame) o += '<path d="M164 0 L120 196 H208Z" fill="#fff59a" opacity=".45" class="qv-glow"/>';
     if (st.squat) o += '<g opacity=".97">' + ch(A.random(4242), { outfit: "pajama", mood: "smug", pose: "hips" }, Z.squat, 194, 0.48) + '</g><text x="30" y="88" font-size="11" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">zZz</text>';
     if (st.ex) o += '<g class="qv-peek">' + ch(A.random(777 + (p.partner ? p.partner.seed % 97 : 0)), { mood: "smug", pose: "phone", hold: "phone" }, Z.ex, 194, 0.5) + '</g>';
+    if (world) o += scenery(p);
     // personnages
     var mood = opts.mood || p.mood || "neutral";
     if (p.partner) {
@@ -144,6 +220,7 @@
       o += '<g transform="translate(' + Z.toast + ' 166)"><rect x="0" y="6" width="30" height="22" rx="6" fill="#c9ced8"' + S.replace('3"', '2.4"') + '/><path d="M8 6 v-5 h5 v5 M17 6 v-5 h5 v5" fill="#f2c27a"' + S.replace('3"', '1.6"') + '/></g>';
     }
     // scène : on recadre légèrement les bords (14 → 306) pour grossir les personnages sans couper la famille
+    if (world) return '<svg class="qv-tile stage world" viewBox="0 ' + (-ext) + ' 320 ' + tall + '" preserveAspectRatio="xMidYMax slice" aria-hidden="true">' + o + '</svg>';
     if (ext > 0 || opts.stage) return '<svg class="qv-tile stage" viewBox="44 ' + (-ext) + ' 232 ' + tall + '" preserveAspectRatio="xMidYMax meet" aria-hidden="true">' + o + '</svg>';
     return '<svg class="qv-tile" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid slice" aria-hidden="true">' + o + '</svg>';
   }
@@ -193,15 +270,27 @@
       o += bubble(262, 70, "Mais… et moi ?", 1.0) + bubble(110, 26, "Tiens, garde le grille-pain !", 2.2, "#ffd23f");
       return { svg: wrap(o), dur: 5.2, caption: nm(T) + " se retrouve dehors avec une valise. " + esc(ev.data.partner || "L'ex") + " garde la maison. Il reste le grille-pain.", sfx: [[0.2, "whoosh"], [0.8, "boing"], [2.3, "whoosh"], [3.3, "slam"], [3.5, "ding"], [3.9, "sad"]] };
     },
+    // Licenciement : le carton, la porte qui claque… le manteau oublié, la porte qui reclaque.
     licenciement: function (ev, st) {
       var T = P(st, ev.to), R = A.random((ev.id || 1) * 31 + 7), o = bgOffice(360, 240);
-      o += '<rect x="200" y="150" width="150" height="14" fill="#c98c5a"' + S + '/><rect x="210" y="164" width="10" height="46" fill="#8a5a3b"/><rect x="330" y="164" width="10" height="46" fill="#8a5a3b"/>';
-      o += '<rect x="290" y="112" width="40" height="30" rx="3" fill="#2b2140"' + S + '/><rect x="306" y="142" width="8" height="8" fill="' + INK + '"/>';
-      o += '<g' + mv(160, 0, 0, 0, 1.0, 0.9, "cubic-bezier(.2,1.3,.4,1)") + '><g class="qv-wiggle" style="animation-delay:2.2s;transform-origin:262px 160px">' + '<rect x="240" y="150" width="44" height="12" rx="4" fill="#2b2140"/><path d="M262 162 V196 M246 200 h32" stroke="' + INK + '" stroke-width="5"/>' + ch(R, { mood: "smug", outfit: "office", pose: "hips" }, 262, 186, 0.5) + '</g></g>';
-      o += bubble(262, 30, "Il est où le Wi-Fi ?", 2.4, "#fff");
-      o += '<g' + mv(0, 0, -250, 0, 3.0, 0.3, "linear") + '><g class="qv-walk">' + ch(T.avatar, { mood: "sad", outfit: outfit(T) === "unemployed" ? "office" : outfit(T), hold: "box" }, 250, 214, 0.6) + '</g></g>';
-      o += txt(90, 228, "Sortie →", 11, "#5a6478");
-      return { svg: wrap(o), dur: 4.6, caption: nm(T) + " quitte son bureau avec un carton. Son remplaçant est déjà assis et a renommé le Wi-Fi.", sfx: [[0.2, "sad"], [1.0, "whoosh"], [2.2, "squeak"], [3.2, "squeak"]] };
+      var D = 7;
+      // porte (à gauche) et portemanteau avec le manteau de la victime
+      o += '<rect x="0" y="70" width="58" height="140" fill="#8a5a3b"' + S + '/>';
+      o += '<path d="M96 210 V96 M84 210 h24 M86 104 h20" stroke="' + INK + '" stroke-width="4" stroke-linecap="round"/>';
+      o += '<g style="animation:lic-coat ' + D + 's linear both">' + '<path d="M90 104 l-10 8 v40 h22 v-40z" fill="#3e5c8a"' + S + '/><path d="M91 112 v40" stroke="#fff" stroke-width="2"/></g>';
+      // le patron et le bureau
+      o += '<rect x="230" y="150" width="120" height="14" fill="#c98c5a"' + S + '/><rect x="240" y="164" width="10" height="46" fill="#8a5a3b"/><rect x="330" y="164" width="10" height="46" fill="#8a5a3b"/>';
+      o += ch(R, { mood: "smug", outfit: "director", pose: "hips" }, 300, 214, 0.56);
+      o += bubble(296, 28, "Merci pour tout !", 0.3, "#fff");
+      // la victime : sort avec son carton, revient chercher son manteau, ressort
+      // trajets enchaînés : sortie (1,1 → 2,9 s), retour pour le manteau (3,6 → 4,2 s), nouvelle sortie (4,8 → 5,9 s)
+      o += '<g' + mv(0, 0, -270, 0, 1.8, 1.1, "ease-in") + '><g' + mv(0, 0, 120, 0, 0.6, 3.6, "ease-out") + '><g' + mv(0, 0, -160, 0, 1.1, 4.8, "ease-in") + '><g class="qv-walk">' + ch(T.avatar, { mood: "sad", outfit: outfit(T) === "unemployed" ? "office" : outfit(T), hold: "box" }, 250, 214, 0.58) + '</g></g></g></g>';
+      // la porte se ferme, se rouvre, se referme
+      o += '<rect x="0" y="70" width="58" height="140" fill="#b56b3a"' + S + ' style="animation:lic-door ' + D + 's linear both"/>';
+      o += '<g style="animation:lic-bam ' + D + 's linear both">' + txt(30, 60, "BAM !", 16, "#e5487a") + '</g>';
+      o += bubble(150, 62, "… mon manteau !", 4.0, "#ffd23f");
+      o += bubble(290, 66, "… et le badge ?", 6.3, "#fff");
+      return { svg: wrap(o), dur: D, caption: nm(T) + " sort avec son carton. La porte claque. Elle se rouvre : il manquait le manteau. Elle reclaque.", sfx: [[0.3, "sad"], [3.0, "slam"], [3.9, "squeak"], [6.3, "slam"]] };
     },
     badbuzz: function (ev, st) {
       var T = P(st, ev.to), At = P(st, ev.p), o = '<rect width="360" height="240" fill="#2b2140"/>';
@@ -242,14 +331,20 @@
       o += bubble(96, 60, "Bon… on se fait un film, Croquette ?", 3.0);
       return { svg: wrap(o), dur: 5.2, caption: "Garde alternée : les enfants partent chez " + esc(ev.data.partner || "l'autre parent") + ". " + nm(T) + " reste avec les jouets et le hamster.", sfx: [[0.6, "door"], [2.4, "whistle"]] };
     },
+    // Mariage : la mariée attend, l'autre arrive, la musique démarre… et le DJ lance la Danse des canards.
     mariage: function (ev, st) {
       var T = P(st, ev.p), Pa = T && T.partner ? A.random(T.partner.seed) : A.random(9), o = bgStreet(360, 240);
       o += '<path d="M110 210 V90 Q180 20 250 90 V210" fill="none" stroke="#fff" stroke-width="12"/><path d="M110 210 V90 Q180 20 250 90 V210" fill="none"' + S + '/>';
       [[110, 120], [130, 66], [180, 46], [230, 66], [250, 120]].forEach(function (f) { o += '<circle cx="' + f[0] + '" cy="' + f[1] + '" r="9" fill="#e5487a"' + S.replace('3"', '2"') + '/>'; });
-      o += '<g' + mv(-60, 0, 0, 0, 1, 0.1) + '>' + ch(T.avatar, { mood: "love", outfit: "wedding" }, 152, 214, 0.6) + '</g>';
-      o += '<g' + mv(60, 0, 0, 0, 1, 0.1) + '>' + ch(Pa, { mood: "love", outfit: "wedding", hat: "veil" }, 210, 214, 0.6) + '</g>';
-      o += confetti(28, 60, 300, 1.2, 2.4, 4) + bubble(180, 24, "Oui !", 1.1, "#ffd23f");
-      return { svg: wrap(o), dur: 4.2, caption: "Mariage de " + nm(T) + " et " + esc(T.partner ? T.partner.name : "") + ". Le DJ a passé la Danse des canards trois fois.", sfx: [[0.2, "fanfare"], [1.2, "pop"], [1.5, "pop"]] };
+      o += ch(T.avatar, { mood: "love", outfit: "wedding" }, 152, 214, 0.6);
+      o += '<g' + mv(220, 0, 0, 0, 1.6, 0.4, "ease-out") + '><g class="qv-walk" style="animation-iteration-count:5">' + ch(Pa, { mood: "love", outfit: "wedding", hat: "veil" }, 210, 214, 0.6) + '</g></g>';
+      // notes de musique romantiques
+      for (var i = 0; i < 4; i++) o += '<g' + mv(0, 0, 10 - i * 6, -60, 2.2, 2 + i * 0.35, "ease-out") + '><text x="' + (60 + i * 18) + '" y="120" font-size="20" fill="#9b5de5" font-weight="900">♪</text></g>';
+      o += bubble(180, 24, "Oui !", 2.4, "#ffd23f") + confetti(24, 60, 300, 2.6, 2.2, 4);
+      // le DJ : canard qui danse
+      o += '<g class="qv-pop" style="animation-delay:4.2s;transform-origin:318px 186px"><g class="qv-dance" style="transform-origin:318px 200px"><ellipse cx="318" cy="196" rx="18" ry="12" fill="#ffd23f"' + S + '/><circle cx="332" cy="180" r="9" fill="#ffd23f"' + S + '/><path d="M340 180 l10 3 -10 3z" fill="#ff9a3a"' + S.replace('3"', '2"') + '/><circle cx="334" cy="177" r="1.8" fill="' + INK + '"/></g></g>';
+      o += bubble(290, 150, "Coin coin !", 4.4, "#fff");
+      return { svg: wrap(o), dur: 5.6, caption: nm(T) + " attend à l'autel. " + esc(T.partner ? T.partner.name : "L'amour") + " arrive, la musique monte, « Oui ! »… et le DJ lance la Danse des canards.", sfx: [[0.4, "whoosh"], [2.0, "ding"], [2.4, "fanfare"], [4.2, "pop"]] };
     },
     bebe: function (ev, st) {
       var T = P(st, ev.p), o = bgRoom(360, 240);

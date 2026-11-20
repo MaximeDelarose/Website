@@ -104,7 +104,8 @@
           "{T} apprend le divorce par un post Instagram de {X} : « Nouveau départ #libre #enfin ».",
           "Les affaires de {T} volent par la fenêtre. Les voisins filment. Le grille-pain atterrit en dernier."] },
     licenciement: {
-      c: ["{T} quitte son bureau avec un carton. Son remplaçant a déjà renommé le Wi-Fi.",
+      c: ["{T} sort avec son carton. La porte claque. Elle se rouvre : il manquait le manteau. Elle reclaque.",
+          "{T} quitte son bureau avec un carton. Son remplaçant a déjà renommé le Wi-Fi.",
           "Licenciement de {T} « dans le cadre d'une réorganisation agile ». Son badge ne marche déjà plus.",
           "{T} est remplacé·e par un stagiaire de 19 ans et une plante verte. La plante a été promue."],
       a: ["{T} est viré·e par visio, pendant qu'on entend le DRH commander des sushis.",
