@@ -153,9 +153,9 @@
       if (p.job.lv >= jobDef(p).titles.length) return "Déjà au sommet";
     }
     if (req.diploma && p.diploma < req.diploma) return "Il faut un diplôme";
-    if (req.minR && p.r < req.minR) return "Pas assez de réputation";
-    if (req.minF && p.f < req.minF) return "Pas assez de fortune";
-    if (req.minB && p.b < req.minB) return "Pas assez de bonheur";
+    if (req.minR && p.r < req.minR) return "Nécessite " + req.minR + " Réputation — tu en as " + p.r;
+    if (req.minF && p.f < req.minF) return "Nécessite " + req.minF + " Fortune — tu en as " + p.f;
+    if (req.minB && p.b < req.minB) return "Nécessite " + req.minB + " Bonheur — tu en as " + p.b;
     if (req.single && p.partner) return "Tu es déjà en couple";
     if (req.partner && !p.partner) return "Il faut un·e partenaire";
     if (req.notMarried && p.married) return "Déjà marié·e";
@@ -171,7 +171,11 @@
     if (!cost) return true;
     return (p.b >= (cost.b || 0)) && (p.f >= (cost.f || 0)) && (p.r >= (cost.r || 0));
   }
-  function pay(p, cost) { if (!cost) return; p.b -= cost.b || 0; p.f -= cost.f || 0; p.r -= cost.r || 0; }
+  // un paiement est toujours signalé (notes), pour que l'écran l'anime
+  function pay(p, cost, notes) {
+    if (!cost) return;
+    ["b", "f", "r"].forEach(function (k) { if (cost[k]) { p[k] -= cost[k]; if (notes) notes.push({ p: p.id, k: k, v: -cost[k], cost: true }); } });
+  }
   function costText(cost) {
     var t = []; if (!cost) return "";
     if (cost.f) t.push(cost.f + " fortune"); if (cost.b) t.push(cost.b + " bonheur"); if (cost.r) t.push(cost.r + " réputation");
@@ -185,7 +189,10 @@
     if ((c.tier || 4) > stageOf(s)) return "Pas encore débloquée";
     if (c.need === "saboteur" && !s.order.some(function (o) { return o !== id && s.players[o].stats.sab > 0; })) return "Personne n'a encore saboté";
     var why = check(p, c.req, s); if (why) return why;
-    if (!affordable(p, c.cost)) return "Il faut " + costText(c.cost);
+    if (!affordable(p, c.cost)) {
+      var miss = ["f", "b", "r"].filter(function (k) { return c.cost[k] && p[k] < c.cost[k]; })[0];
+      return "Coûte " + c.cost[miss] + " " + { f: "Fortune", b: "Bonheur", r: "Réputation" }[miss] + " — tu en as " + p[miss];
+    }
     if (c.target === "opponent") {
       var ts = s.order.filter(function (o) { return o !== id && !check(s.players[o], c.treq, s); });
       if (!ts.length) return "Aucune cible possible";
@@ -500,8 +507,8 @@
   }
 
   // ---------- résolution d'une carte ----------
-  function resolveSelf(s, p, c, u) {
-    var ctx = { notes: [], attacker: p.id };
+  function resolveSelf(s, p, c, u, paid) {
+    var ctx = { notes: (paid || []).slice(), attacker: p.id };
     run(s, p, c.fx, ctx);
     p.stats.played[c.key] = (p.stats.played[c.key] || 0) + 1;
     p.log.push({ k: c.key, r: s.round });
@@ -586,15 +593,16 @@
       if (why) return { ok: false, err: why };
       if (c.target === "opponent" && (a.target === undefined || a.target === null)) return { ok: false, err: "Choisis une cible" };
       p.hand.splice(idx, 1); s.discard.push(card); p.plays--;
-      pay(p, c.cost);
+      var paid = [];
+      pay(p, c.cost, paid);
       if (c.target === "opponent") {
         var t = s.players[a.target];
         s.phase = "react";
         s.pending = { k: c.key, from: p.id, to: t.id, since: Date.now() };
-        emit(s, { t: "attack", k: c.key, p: p.id, to: t.id, text: p.name + " joue « " + c.name + " » sur " + t.name + " !" });
+        emit(s, { t: "attack", k: c.key, p: p.id, to: t.id, notes: paid, text: p.name + " joue « " + c.name + " » sur " + t.name + " !" });
         s.seq++; return r;
       }
-      resolveSelf(s, p, c, card.u);
+      resolveSelf(s, p, c, card.u, paid);
       s.seq++; afterAction(s); return r;
     }
     if (a.t === "react") {
@@ -636,8 +644,9 @@
         if (ev.data.garde) emit(s, { t: "card", k: "garde", p: p.id, outcome: "full", scene: "garde", data: { kids: ev.data.kids, exSeed: ev.data.exSeed, partner: ev.data.partner }, text: "Garde alternée pour " + p.name + "." });
       } else if (a.choice === "soft") {
         if (!ac.soft || !affordable(p, ac.soft.cost)) return { ok: false, err: "Tu ne peux pas payer" };
-        pay(p, ac.soft.cost);
-        ev = hit(s, att, p, ac, "soft"); ev.cost = ac.soft.cost; emit(s, ev);
+        var spent = [];
+        pay(p, ac.soft.cost, spent);
+        ev = hit(s, att, p, ac, "soft"); ev.notes = spent.concat(ev.notes || []); ev.cost = ac.soft.cost; emit(s, ev);
       } else {
         ev = hit(s, att, p, ac, "full");
         var bctx = { notes: ev.notes, attacker: att.id };
@@ -657,7 +666,7 @@
   function publicState(s) {
     var o = clone(s);
     delete o.rng; delete o.seasonDeck; delete o._snap; delete o._snapUsed;
-    o.deck = s.deck.length; o.discard = s.discard.length;
+    o.deck = s.deck.length; o.discard = s.discard.length; o.discardTop = s.discard.length ? s.discard[s.discard.length - 1].k : null;
     o.order.forEach(function (id) {
       var p = o.players[id];
       p.handCount = p.hand.length; p.hand = [];

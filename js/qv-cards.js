@@ -46,9 +46,10 @@
     var r = c.req || {}, t = [];
     Object.keys(REQ).forEach(function (k) { if (r[k]) t.push(REQ[k]); });
     if (r.minAge) t.push("Avoir " + r.minAge + " ans");
-    if (r.minR) t.push("Avoir " + r.minR + " ★");
+    if (r.minR) t.push(r.minR + " Réputation");
+    if (r.minB) t.push(r.minB + " Bonheur");
     if (c.need === "saboteur") t.push("Quelqu'un a déjà saboté");
-    return t.slice(0, 2).join(" · ");
+    return t.slice(0, 3).join(" · ");
   }
   function targetText(c) {
     if (c.reaction && !c.alsoPlay) return { cls: "react", label: "Réaction", long: "Se joue quand quelqu'un t'attaque" };

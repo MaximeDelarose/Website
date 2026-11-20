@@ -268,6 +268,11 @@
   // ajustements des cartes existantes pour les nouvelles mécaniques
   function patch(key, f) { CARDS.forEach(function (c) { if (c.key === key) f(c); }); }
   patch("mariage", function (c) { c.req.noStatus = ["ex"]; });
+  // chaque ressource débloque quelque chose (en plus de compter pour la victoire)
+  patch("mariage", function (c) { c.req.minB = 4; c.tip = "En couple et 4 Bonheur"; });
+  patch("bebe", function (c) { c.req.minB = 5; c.tip = "En couple et 5 Bonheur"; });
+  patch("promotion", function (c) { c.req.minR = 2; c.tip = "Un métier et 2 Réputation"; });
+  patch("mariagesponso", function (c) { c.req.minR = 4; c.tip = "En couple et 4 Réputation (les sponsors veulent du beau monde)"; });
   patch("appart", function (c) { c.req.noStatus = ["proces"]; });
   patch("maison", function (c) { c.req.noStatus = ["proces"]; });
   patch("fisc", function (c) { c.counters.push("miracle"); });

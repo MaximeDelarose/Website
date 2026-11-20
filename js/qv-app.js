@@ -671,15 +671,19 @@
       if (pub.phase === "end") lastEv = Math.max(0, lastEv - 1);
       if (!room.host) store("qv-last", { code: room.code, host: false });
     }
+    if (first) { shown = {}; dealt = {}; dealing = {}; prevReason = {}; syncShown(true); dealFirst = true; } else syncShown(false);
     pub.events.forEach(function (ev) { if (ev.id > lastEv) { lastEv = ev.id; onGameEvent(ev); } });
+    if (priv) { handleDeal(dealFirst); dealFirst = false; }
     if (!queue.length && !playing) sendReady();
     if (screen === "editor" || screen === "rules") return;
     if (pub.phase === "end" && !queue.length && !playing) return renderEnd();
     renderGame();
   }
+  var dealFirst = true;
   function receivePriv(p) {
     if (!p) return;
     priv = p;
+    if (pub) { handleDeal(dealFirst); dealFirst = false; }
     if (screen === "game") { renderHand(); coachHand(); }
   }
 
@@ -749,19 +753,21 @@
     } else if (ev.t === "attack") {
       // 1. annonce : qui, quoi, sur qui, ce qui va se passer
       enqueue({ kind: "announce", ev: ev, sfx: ev.to === me.id ? "alarm" : "card" });
+      enqueue({ kind: "notes", notes: ev.notes });
     } else if (ev.t === "card" || ev.t === "block" || ev.t === "status" || ev.t === "season") {
       var extra = ev.bounce && ev.to ? (ev.to === me.id ? "Tu rebondis : " : nameOf(ev.to) + " rebondit : ") + ev.bounce.toLowerCase() + ", +1 carte et 2 cartes au prochain tour." : (ev.spite ? "Dossier balancé : " + nameOf(ev.p) + " perd aussi 3 de réputation !" : "");
       var selfCard = ev.t === "card" && ev.outcome === "self";
+      var mineOnly = selfCard && ev.p === me.id && affected(ev).every(function (id) { return id === me.id; });
       // grand moment de vie sans scène dédiée (métier, maison, couple, objet…) : scène « vie »
       if (selfCard && !ev.scene && (ev.changes || []).some(function (c) { return c.p === ev.p; })) ev = Object.assign({}, ev, { scene: "vie" });
       // carte jouée pour soi avec une scène : on l'annonce d'abord
-      if (selfCard && ev.scene) enqueue({ kind: "announce", ev: ev, sfx: "card" });
+      if (selfCard && ev.scene && ev.p !== me.id) enqueue({ kind: "announce", ev: ev, sfx: "card" });
       // 2. la scène avec les personnages
       if (ev.scene) enqueue({ kind: "scene", ev: ev });
       // 3. les conséquences, jusqu'à « Continuer »
       var hasImpact = (ev.changes && ev.changes.length) || (ev.notes && ev.notes.length) || ev.t === "block" || ev.t === "season" || !ev.scene;
       if (!(ev.k === "garde")) {
-        if (hasImpact) enqueue({ kind: "result", ev: ev, extra: extra, withCard: !ev.scene });
+        if (hasImpact && !mineOnly) enqueue({ kind: "result", ev: ev, extra: extra, withCard: !ev.scene });
       }
       enqueue({ kind: "notes", notes: ev.notes, hit: affected(ev) });
       if (ev.t === "season") coachMech("season", "Événements de saison", "Tous les 2 tours de table, un événement touche toute la table.");
@@ -838,9 +844,31 @@
     sceneTimers.forEach(clearTimeout); sceneTimers = []; clearInterval(countT);
     if (introOpen) { playing = null; closeScene(); clearTimeout(nextRetry); nextRetry = setTimeout(next, 500); return; }
     playing = queue.shift() || null;
-    if (!playing) { closeScene(); queueEmptyAt = Date.now(); if (pub) { if (pub.phase === "end") renderEnd(); else renderGame(); } sendReady(); return; }
+    if (!playing) {
+      // rattrapage : une carte dont la distribution a été interrompue apparaît quand même
+      Object.keys(dealing).forEach(function (u) { dealt[u] = 1; delete dealing[u]; });
+      if (priv && pub && !dealFirst) priv.hand.forEach(function (c) { if (!dealt[c.u]) dealt[c.u] = 1; });
+      closeScene(); queueEmptyAt = Date.now(); if (pub) { reconcile(); settle(); if (pub.phase === "end") renderEnd(); else renderGame(); } sendReady(); return; }
     var it = playing;
-    if (it.kind === "notes") { floatNotes(it.notes); if (it.hit) flashTiles(it.hit); playing = null; setTimeout(next, 200); return; }
+    if (it.kind === "notes") {
+      if (it.hit) flashTiles(it.hit);
+      animateNotes(it.notes, $("#playzone"), function () { if (playing === it) { playing = null; settle(function () { next(); }); } });
+      return;
+    }
+    if (it.kind === "deal") {
+      var cards = it.cards.slice();
+      (function nextCard() {
+        if (playing !== it) return;
+        var c0 = cards.shift(); if (!c0) { playing = null; next(); return; }
+        if (!priv || !priv.hand.some(function (h) { return h.u === c0.u; })) { delete dealing[c0.u]; nextCard(); return; }
+        dealOne(c0, function () {
+          // première découverte : chaque nouvelle carte est présentée, on avance avec « Suivante »
+          if (pub && pub.discovery && pub.stage <= 2 && !seen[c0.k]) { queue.unshift({ kind: "newcard", k: c0.k, more: cards.length }); if (cards.length) queue.splice(1, 0, { kind: "deal", cards: cards }); playing = null; next(); return; }
+          nextCard();
+        });
+      })();
+      return;
+    }
     var ov = $("#ov");
     if (!ov) { ov = document.createElement("div"); ov.id = "ov"; document.body.appendChild(ov); }
     ov.className = "qv-ov k-" + it.kind;
@@ -848,6 +876,12 @@
     var ev = it.ev, c = ev ? (card(ev.k) || {}) : {};
     if (it.kind === "banner") {
       html = '<div class="qv-banner"><b>' + esc(it.text) + '</b>' + (it.sub ? '<span>' + esc(it.sub) + '</span>' : '') + notesLine(it.notes) + '</div>';
+    } else if (it.kind === "newcard") {
+      markSeen(it.k);
+      var nc = card(it.k);
+      html = '<div class="nc-box"><p class="nc-h">Nouvelle carte !</p><div class="nc-card">' + cardHTML(it.k, { big: true, mine: true }) + '</div></div>';
+      manual = true; auto = 25; label = it.more ? "Suivante ›" : "Compris !";
+      SND.play("pop");
     } else if (it.kind === "stage") {
       html = '<div class="qv-banner stage"><small>Découverte · étape ' + it.stage + '/5</small><b>' + esc(it.title) + '</b><span>' + esc(it.text) + '</span></div>';
       manual = true; auto = 12;
@@ -1007,7 +1041,7 @@
 
   function resRow(p, big) {
     return ["b", "f", "r"].map(function (k) {
-      return '<span class="qv-res r-' + k + (big ? " big" : "") + '" data-r="' + k + '">' + IC.get(k, "qv-ri") + '<b>' + p[k] + '</b></span>';
+      return '<span class="qv-res r-' + k + (big ? " big" : "") + '" data-r="' + k + '" title="' + RES[k].name + '">' + IC.get(k, "qv-ri") + '<b>' + (p.id ? sv(p.id, k) : p[k]) + '</b></span>';
     }).join("");
   }
   function statusChips(p) {
@@ -1126,6 +1160,7 @@
         '<section class="qv-opps" id="opps"></section>' +
         '<section class="qv-me" id="mezone"></section>' +
         '<div class="qv-status" id="status"></div>' +
+        '<section class="qv-hud" id="hud"></section>' +
         '<section class="qv-hand" id="hand"></section>' +
         '<aside class="qv-log" id="log"></aside>' +
         '<div id="sheet" class="qv-sheet" hidden></div>' +
@@ -1147,13 +1182,14 @@
     // moi
     if (p) {
       $("#mezone").innerHTML =
-        '<div class="qv-mytile' + (isMyTurn() ? " turn" : "") + '" data-pid="' + me.id + '">' + W.tile(p) + '<span class="who">' + esc(p.name) + ' · ' + esc(p.title) + '</span></div>' +
-        '<div class="qv-mystats"><div class="qv-myres" id="me-res">' + resRow(p, true) + '</div>' +
+        '<div class="qv-mytile' + (isMyTurn() ? " turn" : "") + (Date.now() < reactUntil ? " react-" + reactMood : "") + '" data-pid="' + me.id + '">' + W.tile(p, Date.now() < reactUntil ? { mood: reactMood } : {}) + '<span class="who">' + esc(p.name) + ' · ' + esc(p.title) + '</span></div>' +
+        '<div class="qv-mystats">' +
         '<div class="qv-chips">' + statusChips(p) + '</div>' +
         '<div class="qv-row2">' + (!pub.discovery || pub.stage >= 3 ? '<button class="qv-btn ghost sm" data-g="obj">Mes objectifs secrets</button>' : '') + '<button class="qv-btn ghost sm" data-g="life">Mon plateau</button></div></div>';
     } else {
       $("#mezone").innerHTML = '<p class="qv-note">Tu regardes la partie en spectateur.</p>';
     }
+    if (p) $("#hud").innerHTML = hudHTML(p); else $("#hud").innerHTML = "";
     renderStatus();
     renderHand();
     $("#log").innerHTML = '<h3>Journal</h3>' + hist.filter(function (e) { return e.t !== "attack"; }).slice(0, 14).map(function (ev) { return '<button class="jr-e mini" data-g="jev" data-id="' + ev.id + '"><span><i>T' + ev.round + '</i> ' + esc(journalLine(ev)) + '</span></button>'; }).join("");
@@ -1167,7 +1203,7 @@
   // ---------- premier tour guidé ----------
   function guideFirst() { return !!(pub && pub.discovery && pub.round === 1 && isMyTurn() && !seen.guide1 && priv && priv.hand.length && !introOpen); }
   function updateHint() {
-    if (!guideFirst() || ($("#sheet") && !$("#sheet").hidden) || $("#ov") || queue.length || playing) { hideHint(); return; }
+    if (!guideFirst() || sel || ($("#sheet") && !$("#sheet").hidden) || $("#ov") || queue.length || playing) { hideHint(); return; }
     var el = $("#hint");
     if (!el) { el = document.createElement("div"); el.id = "hint"; el.className = "qv-hint"; document.body.appendChild(el); }
     el.innerHTML = '<b>Touche ta carte</b><span>pour voir ce qu\'elle fait</span><i></i>';
@@ -1272,15 +1308,246 @@
   function renderPresence() { if (screen === "game") { renderStatus(); $$(".qv-opp").forEach(function (b) { var id = b.dataset.pid, q = pub && pub.players[id]; if (q) b.classList.toggle("off", !(q.bot || present(id))); }); } else if (screen === "lobby") { /* rafraîchi par onRoster */ } }
   setInterval(function () { if (screen === "game" && pub && pub.phase === "react") renderStatus(); }, 1000);
 
-  function renderHand() {
+  // ======================================================================
+  //  GAME FEEL : compteurs, gains et pertes, distribution, main en éventail
+  //  Règle d'or : les chiffres affichés suivent la VRAIE valeur du moteur,
+  //  mais ne changent jamais en silence (ils la rattrapent en s'animant).
+  // ======================================================================
+  var RES = {
+    b: { name: "Bonheur", what: "La qualité de vie de ton personnage.", win: "Chaque point compte pour la victoire. La personne la plus heureuse gagne aussi « La plus belle vie » (+4)." },
+    f: { name: "Fortune", what: "Ton argent : il paie les achats (logement, voiture, voyages…) et certains coups durs.", win: "Chaque point compte pour la victoire. La personne la plus riche gagne aussi « Le compte en banque » (+4)." },
+    r: { name: "Réputation", what: "Ta notoriété, ton prestige, la reconnaissance des autres.", win: "Chaque point compte pour la victoire. La personne la plus célèbre gagne aussi « La célébrité » (+4)." },
+  };
+  var reduce = store("qv-reduce");
+  if (reduce === null) reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  document.body.classList.toggle("reduce", !!reduce);
+  var shown = {};          // valeurs affichées par joueur
+  function syncShown(force) { if (!pub) return; pub.order.forEach(function (id) { var p = pub.players[id]; if (!shown[id] || force) shown[id] = { b: p.b, f: p.f, r: p.r }; }); }
+  function sv(id, k) { return shown[id] && shown[id][k] !== undefined ? shown[id][k] : (pub && pub.players[id] ? pub.players[id][k] : 0); }
+  // vue « affichée » de l'état, pour calculer les verrous au même rythme que les compteurs
+  function viewPub() {
+    if (!pub || !pub.players[me.id]) return pub;
+    var v = Object.assign({}, pub), pl = Object.assign({}, pub.players);
+    pl[me.id] = Object.assign({}, pub.players[me.id], { b: sv(me.id, "b"), f: sv(me.id, "f"), r: sv(me.id, "r") });
+    v.players = pl; return v;
+  }
+  function hudHTML(p) {
+    return '<div class="hud-me" data-g="life">' + A.standalone(p.avatar, { mood: p.mood || "neutral", outfit: W.outfit(p) }, "hud-av", true) + '<div class="hud-id"><b>' + esc(p.name) + '</b><small>' + esc(p.title) + '</small></div></div>' +
+      '<div class="hud-ctrs">' + ["b", "f", "r"].map(function (k) {
+        return '<button class="ctr ctr-' + k + '" data-g="res" data-k="' + k + '" id="ctr-' + k + '" aria-label="' + RES[k].name + ' : ' + sv(me.id, k) + '">' + IC.get(k, "ctr-i") + '<span class="ctr-txt"><b class="ctr-v" id="ctrv-' + k + '">' + sv(me.id, k) + '</b><span class="ctr-n">' + RES[k].name + '</span></span></button>';
+      }).join("") + '</div>';
+  }
+  function setNum(id, k, v) {
+    if (!shown[id]) shown[id] = {};
+    shown[id][k] = v;
+    if (id === me.id) { var el = $("#ctrv-" + k); if (el) el.textContent = v; }
+    var o = $('.qv-opp[data-pid="' + id + '"] [data-r=' + k + '] b'); if (o) o.textContent = v;
+  }
+  function center(el) { var r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+  function pulse(el, cls) { if (!el) return; el.classList.remove("pulse-up", "pulse-down"); void el.offsetWidth; el.classList.add(cls); }
+  function label(el, text, up) {
+    if (!el) return;
+    var f = document.createElement("span"); f.className = "ctr-float " + (up ? "up" : "down"); f.textContent = text;
+    var c = center(el); f.style.left = c.x + "px"; f.style.top = (c.y - 24) + "px";
+    document.body.appendChild(f); setTimeout(function () { f.remove(); }, 1500);
+  }
+  // particules (cœurs, pièces, étoiles) qui volent d'un point à un autre
+  function particles(k, from, to, n, onArrive, done) {
+    var left = n, step = reduce ? 0 : 90;
+    if (!n) { done && done(); return; }
+    for (var i = 0; i < n; i++) (function (i) {
+      var el = document.createElement("div"); el.className = "qv-part p-" + k; el.innerHTML = IC.get(k, "qv-ri");
+      document.body.appendChild(el);
+      var dx = (Math.random() - 0.5) * 60, dy = (Math.random() - 0.5) * 30;
+      var mid = { x: (from.x + to.x) / 2 + dx, y: Math.min(from.y, to.y) - 60 + dy };
+      var a = el.animate([
+        { transform: "translate(" + (from.x + dx * 0.4) + "px," + (from.y + dy * 0.4) + "px) scale(.4)", opacity: 0 },
+        { transform: "translate(" + (from.x + dx) + "px," + (from.y + dy - 20) + "px) scale(1.25)", opacity: 1, offset: 0.25 },
+        { transform: "translate(" + mid.x + "px," + mid.y + "px) scale(1)", opacity: 1, offset: 0.6 },
+        { transform: "translate(" + to.x + "px," + to.y + "px) scale(.55)", opacity: 0.9 },
+      ], { duration: reduce ? 10 : 720, delay: i * step, easing: "cubic-bezier(.4,0,.2,1)", fill: "both" });
+      a.onfinish = function () { el.remove(); onArrive && onArrive(i); if (--left === 0) done && done(); };
+    })(i);
+  }
+  var GAIN_SND = { b: "gainB", f: "coin", r: "gainR" };
+  // anime les variations (notes du moteur) : la valeur affichée rejoint exactement la vraie valeur
+  function animateNotes(notes, src, done) {
+    notes = (notes || []).slice();
+    var mineN = notes.filter(function (n) { return n.p === me.id; }), others = notes.filter(function (n) { return n.p !== me.id; });
+    // adversaires : petit compteur qui défile + étiquette
+    others.forEach(function (n) {
+      var el = $('.qv-opp[data-pid="' + n.p + '"] [data-r=' + n.k + ']'), from = sv(n.p, n.k), to = from + n.v;
+      if (el) { pulse(el, n.v > 0 ? "pulse-up" : "pulse-down"); label(el, (n.v > 0 ? "+" : "−") + Math.abs(n.v), n.v > 0); }
+      setNum(n.p, n.k, Math.max(0, to));
+    });
+    if (!mineN.length) { done(); return; }
+    var tile = $(".qv-mytile");
+    var srcPt = src && document.body.contains(src) ? center(src) : (tile ? center(tile) : { x: innerWidth / 2, y: innerHeight / 2 });
+    var gain = mineN.some(function (n) { return n.v > 0; }), loss = mineN.some(function (n) { return n.v < 0; });
+    reactAvatar(gain && !loss ? "happy" : loss && !gain ? "sad" : "shocked");
+    var i = 0;
+    (function one() {
+      if (i >= mineN.length) { setTimeout(done, reduce ? 50 : 250); return; }
+      var n = mineN[i++], ctr = $("#ctr-" + n.k); if (!ctr) { setNum(me.id, n.k, sv(me.id, n.k) + n.v); one(); return; }
+      var start = sv(me.id, n.k), target = Math.max(0, start + n.v), cnt = Math.min(Math.abs(n.v), 6), got = 0;
+      var stepTo = function (j) { return Math.round(start + (target - start) * (j / cnt)); };
+      if (n.v > 0) {
+        particles(n.k, srcPt, center(ctr), cnt, function (j) {
+          got++; setNum(me.id, n.k, stepTo(got)); pulse(ctr, "pulse-up"); SND.play(GAIN_SND[n.k]);
+        }, function () { setNum(me.id, n.k, target); label(ctr, "+" + n.v + " " + RES[n.k].name, true); setTimeout(one, reduce ? 0 : 120); });
+      } else {
+        pulse(ctr, "pulse-down"); SND.play("lose");
+        var down = { x: center(ctr).x + (Math.random() - 0.5) * 40, y: center(ctr).y - 80 };
+        particles(n.k, center(ctr), down, cnt, function () { got++; setNum(me.id, n.k, stepTo(got)); }, function () {
+          setNum(me.id, n.k, target); label(ctr, "−" + Math.abs(n.v) + " " + RES[n.k].name, false); setTimeout(one, reduce ? 0 : 120);
+        });
+      }
+    })();
+  }
+  // le personnage réagit (joie, déception, surprise)
+  var reactT = null, reactMood = null, reactUntil = 0;
+  function reactAvatar(mood) {
+    reactMood = mood; reactUntil = Date.now() + 1600;
+    var t = $(".qv-mytile"), p = pub && pub.players[me.id]; if (!t || !p) return;
+    var svg = t.querySelector(".qv-tile"); if (svg) svg.outerHTML = W.tile(p, { mood: mood });
+    t.classList.remove("react-happy", "react-sad", "react-shocked"); void t.offsetWidth; t.classList.add("react-" + mood);
+    var hav = $(".hud-av"); if (hav) hav.outerHTML = A.standalone(p.avatar, { mood: mood, outfit: W.outfit(p) }, "hud-av", true);
+    clearTimeout(reactT); reactT = setTimeout(function () { t.classList.remove("react-" + mood); }, 1400);
+  }
+  // rattrapage : si une animation a été interrompue ou après une reconnexion, on rejoint la vraie valeur en douceur
+  function reconcile() {
+    if (!pub) return;
+    pub.order.forEach(function (id) {
+      ["b", "f", "r"].forEach(function (k) {
+        var real = pub.players[id][k], cur = sv(id, k);
+        if (real === cur) return;
+        if (id === me.id) { var ctr = $("#ctr-" + k); pulse(ctr, real > cur ? "pulse-up" : "pulse-down"); label(ctr, (real > cur ? "+" : "−") + Math.abs(real - cur) + " " + RES[k].name, real > cur); }
+        setNum(id, k, real);
+      });
+    });
+  }
+
+  // ---------- fiche d'une ressource (on touche un compteur) ----------
+  function resSheet(k) {
+    var R = RES[k], mode = pub ? pub.mode : "classic";
+    var pool = D.CARDS.filter(function (c) { return !c.adult || mode === "adult"; });
+    var gains = pool.map(function (c) { var g = 0; (c.fx || []).forEach(function (f) { if (f.op === "res" && !f.who && c.target !== "opponent" && f[k] > 0) g += f[k]; }); return { c: c, g: g }; })
+      .filter(function (x) { return x.g > 0; }).sort(function (a, b) { return b.g - a.g; }).slice(0, 4);
+    var unlocks = pool.filter(function (c) { return c.req && c.req[{ b: "minB", f: "minF", r: "minR" }[k]]; });
+    var costs = k === "f" ? pool.filter(function (c) { return c.cost && c.cost.f; }).slice(0, 5) : [];
+    var v = sv(me.id, k);
+    var o = '<div class="res-sheet res-' + k + '"><div class="res-top">' + IC.get(k, "res-big") + '<div><b>' + R.name + '</b><span>Tu en as <strong>' + v + '</strong></span></div></div>' +
+      '<p><b>À quoi ça sert :</b> ' + esc(R.what) + '</p>' +
+      '<p><b>Comment en gagner :</b> ' + esc(gains.map(function (x) { return "« " + x.c.name + " » (+" + x.g + ")"; }).join(", ") || "certaines cartes et événements") + (k === "f" ? ", et ton salaire à chaque tour." : ".") + '</p>' +
+      (unlocks.length ? '<p><b>Ce que ça débloque :</b> ' + unlocks.map(function (c) { var need = c.req[{ b: "minB", f: "minF", r: "minR" }[k]]; return '<span class="ul ' + (v >= need ? "ok" : "") + '">« ' + esc(c.name) + ' » dès ' + need + '</span>'; }).join(" ") + '</p>' : '') +
+      (costs.length ? '<p><b>Ce que ça paie :</b> ' + costs.map(function (c) { return '<span class="ul ' + (v >= c.cost.f ? "ok" : "") + '">« ' + esc(c.name) + ' » (' + c.cost.f + ')</span>'; }).join(" ") + '</p>' : '') +
+      '<p><b>Pour gagner :</b> ' + esc(R.win) + '</p></div>';
+    sheet(o + '<button class="qv-btn ghost sm" data-g="close">Fermer</button>');
+  }
+
+  // ---------- distribution des cartes, une par une ----------
+  var dealt = {}, dealing = {}, prevReason = {};
+  function handleDeal(first) {
+    if (!priv || !pub) return;
+    var fresh = priv.hand.filter(function (c) { return !dealt[c.u] && !dealing[c.u]; });
+    if (!fresh.length) return;
+    if (first && !(pub.round === 1)) { fresh.forEach(function (c) { dealt[c.u] = 1; }); return; }
+    fresh.forEach(function (c) { dealing[c.u] = 1; });
+    enqueue({ kind: "deal", cards: fresh });
+  }
+  function dealOne(c, cb) {
+    dealt[c.u] = 1; delete dealing[c.u];
+    renderHand(c.u);
+    var slot = $('.qv-hc[data-u="' + c.u + '"]'), deck = $("#deckpile");
+    if (!slot || !deck || reduce) { if (slot) slot.classList.remove("incoming"); cb(); return; }
+    deck.classList.remove("shuffle"); void deck.offsetWidth; deck.classList.add("shuffle");
+    var a = center(deck), b = center(slot), el = document.createElement("div");
+    el.className = "qv-flycard"; document.body.appendChild(el);
+    SND.play("card");
+    var an = el.animate([
+      { transform: "translate(" + (a.x - 30) + "px," + (a.y - 42) + "px) rotate(-8deg) scale(.6)" },
+      { transform: "translate(" + ((a.x + b.x) / 2 - 30) + "px," + (Math.min(a.y, b.y) - 90) + "px) rotate(6deg) scale(.9)", offset: 0.5 },
+      { transform: "translate(" + (b.x - 30) + "px," + (b.y - 42) + "px) rotate(0deg) scale(1)" },
+    ], { duration: 460, easing: "cubic-bezier(.3,.7,.3,1)", fill: "both" });
+    an.onfinish = function () {
+      el.remove();
+      slot = $('.qv-hc[data-u="' + c.u + '"]');
+      if (slot) { slot.classList.remove("incoming"); slot.classList.add("flip-in"); }
+      setTimeout(cb, 260);
+    };
+  }
+
+  // ---------- main en éventail ----------
+  function renderHand(incoming) {
     var h = $("#hand"); if (!h || !pub) return;
     if (!priv || !pub.players[me.id]) { h.innerHTML = ""; return; }
-    var mine = isMyTurn();
-    h.innerHTML = '<div class="qv-hand-row">' + priv.hand.map(function (c) {
-      var why = mine ? E.canPlay(pub, me.id, c.k) : "";
-      var react = card(c.k).reaction && !card(c.k).alsoPlay;
-      return '<button class="qv-hc" data-g="card" data-u="' + c.u + '">' + cardHTML(c.k, { dim: mine && !!why, on: sel === c.u, reason: mine && why && !react ? why : "", pulse: guideFirst() }) + '</button>';
-    }).join("") + '</div>';
+    var vp = viewPub(), mine = isMyTurn();
+    var hand = priv.hand.filter(function (c) { return dealt[c.u]; });
+    if (sel && !hand.some(function (c) { return c.u === sel; })) sel = null;
+    var W_ = Math.min(h.clientWidth || innerWidth, 900), cw = innerWidth >= 980 ? 128 : 116, n = hand.length;
+    var gap = n > 1 ? Math.min(cw * 0.94, (W_ - 24 - cw) / (n - 1)) : 0, total = cw + gap * (n - 1), x0 = (W_ - total) / 2;
+    var unlocked = [];
+    var cards = hand.map(function (c, i) {
+      var why = E.canPlay(vp, me.id, c.k);
+      if (pub.gate && !why && mine) why = "";
+      var def = card(c.k), react = def.reaction && !def.alsoPlay;
+      if (prevReason[c.u] && !why && !react) unlocked.push(c);
+      prevReason[c.u] = react ? "" : why;
+      var mid = (n - 1) / 2, fan = n > 1 && gap < cw * 0.9, rot = fan ? (i - mid) * Math.min(3, 12 / n) : 0, lift = fan ? Math.min(14, Math.abs(i - mid) * Math.abs(i - mid) * 1.4) : 0;
+      var isSel = sel === c.u;
+      return '<button class="qv-hc' + (isSel ? " sel" : "") + (incoming === c.u ? " incoming" : "") + '" data-g="card" data-u="' + c.u + '" style="left:' + (x0 + i * gap).toFixed(0) + 'px;--rot:' + rot.toFixed(1) + 'deg;--lift:' + lift.toFixed(0) + 'px;z-index:' + (isSel ? 50 : i + 1) + '">' +
+        cardHTML(c.k, { dim: !!why && !react, reason: why && !react ? why : "", pulse: guideFirst() && !sel }) + (!seen[c.k] && pub.discovery ? '<i class="hc-new">Nouveau</i>' : '') + '</button>';
+    }).join("");
+    var s = sel && hand.filter(function (c) { return c.u === sel; })[0], act = "";
+    if (s) {
+      var def2 = card(s.k), why2 = mine ? (pub.gate ? "Attends que tout le monde ait vu la scène" : E.canPlay(vp, me.id, s.k)) : "Ce n'est pas ton tour";
+      var react2 = def2.reaction && !def2.alsoPlay;
+      act = '<div class="act-bar">' +
+        (react2 ? '<span class="act-why">Carte de réaction : elle sert quand on t\'attaque</span>' : why2 ? '<span class="act-why">' + esc(why2) + '</span>' :
+          '<button class="qv-btn act-play' + (guideFirst() ? " pulse" : "") + '" data-g="' + (def2.target === "opponent" ? "pick" : "play") + '" data-u="' + s.u + '">' + (def2.target === "opponent" ? "Choisir une cible ›" : "Jouer « " + esc(def2.name) + " »") + '</button>') +
+        '<button class="qv-btn ghost sm" data-g="details" data-u="' + s.u + '">Détails</button>' +
+        (mine && !pub.gate ? '<button class="qv-btn ghost sm" data-g="rest" data-u="' + s.u + '" title="Défausser cette carte : +1 Bonheur">Défausser +1' + IC.get("b", "qv-ri") + '</button>' : '') + '</div>';
+    } else {
+      act = '<div class="table-row"><span class="pile" id="deckpile"><i class="back"></i><b>' + pub.deck + '</b><small>pioche</small></span>' +
+        '<span class="act-hint">' + (mine ? (guideFirst() ? "Touche ta carte !" : "Touche une carte pour la jouer") : "Tes cartes (secrètes)") + '</span>' +
+        '<span class="pile disc">' + (pub.discardTop ? '<i class="face fam-' + card(pub.discardTop).fam + '">' + IC.get(card(pub.discardTop).icon) + '</i>' : '<i class="empty"></i>') + '<b>' + pub.discard + '</b><small>défausse</small></span></div>';
+    }
+    h.innerHTML = act + '<div class="qv-fan' + (n >= 6 && innerWidth < 980 ? " many" : "") + '" style="height:' + (innerWidth >= 980 ? 214 : n >= 6 ? 182 : 200) + 'px">' + cards + '</div>';
+    unlocked.forEach(function (c) {
+      var el = $('.qv-hc[data-u="' + c.u + '"]'); if (el) el.classList.add("unlocked");
+      unlockToast(c.k);
+    });
+  }
+  function unlockToast(k) {
+    var c = card(k), r = c.req || {}, p = pub.players[me.id], txt;
+    if (r.minR) txt = "Grâce à tes " + sv(me.id, "r") + " Réputation, « " + c.name + " » est débloquée !";
+    else if (r.minB) txt = "Grâce à tes " + sv(me.id, "b") + " Bonheur, « " + c.name + " » est débloquée !";
+    else if (c.cost && c.cost.f) txt = "Avec " + sv(me.id, "f") + " Fortune, tu peux t'offrir « " + c.name + " » !";
+    else if (r.diploma) txt = "Grâce à ton diplôme, « " + c.name + " » est débloquée !";
+    else if (r.partner) txt = "Maintenant que tu es en couple, « " + c.name + " » est jouable !";
+    else txt = "« " + c.name + " » est maintenant jouable !";
+    SND.play("unlock");
+    var el = document.createElement("div"); el.className = "qv-unlock"; el.innerHTML = '<i>' + LOCK_OPEN + '</i><span>' + esc(txt) + '</span>';
+    document.body.appendChild(el); setTimeout(function () { el.classList.add("out"); }, 3200); setTimeout(function () { el.remove(); }, 3700);
+  }
+  var LOCK_OPEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="11" rx="3" fill="#ffd23f" stroke="#2b2140" stroke-width="2"/><path d="M8 11 V7 a4 4 0 0 1 8 -1" fill="none" stroke="#2b2140" stroke-width="2.4" stroke-linecap="round"/></svg>';
+  // la carte jouée quitte la main et file au centre (puis vers sa destination)
+  function flyOut(u, toDiscard) {
+    var el = $('.qv-hc[data-u="' + u + '"]'); if (!el || reduce) return;
+    var r = el.getBoundingClientRect(), ghost = el.cloneNode(true);
+    ghost.className = "qv-ghost"; ghost.style.left = r.left + "px"; ghost.style.top = r.top + "px"; ghost.style.width = r.width + "px";
+    document.body.appendChild(ghost); el.style.visibility = "hidden";
+    var dest = toDiscard ? $(".pile.disc") || $("#hand") : null, c = dest ? center(dest) : { x: innerWidth / 2, y: innerHeight * 0.42 };
+    var an = ghost.animate([{ transform: "translate(0,0) scale(1)" }, { transform: "translate(" + (c.x - r.left - r.width / 2) + "px," + (c.y - r.top - r.height / 2) + "px) scale(" + (toDiscard ? 0.3 : 1.25) + ")" }], { duration: 420, easing: "cubic-bezier(.3,.7,.3,1)", fill: "forwards" });
+    ghost.id = toDiscard ? "" : "playzone";
+    an.onfinish = function () { if (toDiscard) ghost.remove(); else setTimeout(function () { if (ghost.parentNode && !queue.length && !playing) settle(); }, 2500); };
+  }
+  // la carte jouée rejoint ma vie (tuile) ou la défausse
+  function settle(cb) {
+    var g = $("#playzone"); if (!g) { cb && cb(); return; }
+    var t = $(".qv-mytile"), c = t ? center(t) : { x: innerWidth / 2, y: 100 }, r = g.getBoundingClientRect();
+    var an = g.animate([{ transform: getComputedStyle(g).transform === "none" ? "none" : getComputedStyle(g).transform, opacity: 1 }, { transform: "translate(" + (c.x - r.left - r.width / 2) + "px," + (c.y - r.top - r.height / 2) + "px) scale(.15)", opacity: 0.2 }], { duration: 380, easing: "ease-in", fill: "forwards" });
+    an.onfinish = function () { g.remove(); cb && cb(); };
   }
 
   function sheet(html) {
@@ -1345,11 +1612,14 @@
     var g = b.dataset.g;
     if (g === "close") { closeSheet(); renderHand(); maybeReact(); return; }
     SND.play("tap");
-    if (g === "card") return openCard(+b.dataset.u);
-    if (g === "play") { if (guideFirst()) { markSeen("guide1"); hideHint(); } closeSheet(); sendIntent({ t: "play", u: +b.dataset.u }); return; }
+    if (g === "card") { var cu = +b.dataset.u; if (sel === cu) return openCard(cu); sel = cu; SND.play("card"); renderHand(); updateHint(); return; }
+    if (g === "details" || g === "pick") return openCard(+b.dataset.u);
+    if (g === "res") { resSheet(b.dataset.k); return; }
+    if (g === "reduce") { reduce = !reduce; store("qv-reduce", reduce); document.body.classList.toggle("reduce", reduce); closeSheet(); toast(reduce ? "Animations réduites" : "Animations complètes"); return; }
+    if (g === "play") { if (guideFirst()) { markSeen("guide1"); hideHint(); } closeSheet(); flyOut(+b.dataset.u, false); sel = null; sendIntent({ t: "play", u: +b.dataset.u }); return; }
     if (g === "intro") { closeSheet(); intro(true); return; }
     if (g === "target") { closeSheet(); sendIntent({ t: "play", u: +b.dataset.u, target: b.dataset.t }); return; }
-    if (g === "rest") { closeSheet(); sendIntent({ t: "rest", u: +b.dataset.u }); return; }
+    if (g === "rest") { closeSheet(); flyOut(+b.dataset.u, true); sel = null; sendIntent({ t: "rest", u: +b.dataset.u }); return; }
     if (g === "react") { closeSheet(); sendIntent({ t: "react", choice: b.dataset.c, u: b.dataset.u ? +b.dataset.u : undefined }); return; }
     if (g === "sound") { SND.toggle(); b.textContent = SND.muted() ? "🔇" : "🔊"; return; }
     if (g === "obj") {
@@ -1371,6 +1641,7 @@
       sheet('<h3>Menu</h3>' + (room && !room.solo ? '<p class="qv-tip">Salon <b>' + esc(room.code) + '</b>. Si tu quittes, tu peux revenir avec ce code tant que la partie tourne' + (room.host ? " (tu es l'hôte : la partie s'arrête sans toi)." : ".") + '</p>' : '') +
         '<button class="qv-btn ghost" data-g="intro">Revoir l\'introduction</button><button class="qv-btn ghost" data-g="rules">Règles</button>' +
         (room && !room.solo ? '<button class="qv-btn ghost" data-g="invite">Copier le lien d\'invitation</button>' : '') +
+        '<button class="qv-btn ghost" data-g="reduce">' + (reduce ? "Animations réduites : oui" : "Animations réduites : non") + '</button>' +
         '<button class="qv-btn danger" data-g="quit">Quitter la partie</button><button class="qv-btn ghost sm" data-g="close">Fermer</button>');
       return;
     }
@@ -1430,6 +1701,11 @@
   if (last && last.host && hc && hc.toUpperCase() === last.code && store("qv-host-" + last.code)) createRoom(false, last.code);
   else home();
 
+  if (/[?&]debug=1/.test(location.search)) window.QV_DEBUG = {
+    give: function (k, pid) { if (!G) return false; var p = G.players[pid || me.id], i = G.deck.findIndex(function (c) { return c.k === k; }); var c = i >= 0 ? G.deck.splice(i, 1)[0] : { u: G.nextU++, k: k }; p.hand.push(c); hostBroadcast(); return c.u; },
+    act: function (a) { return hostApply(a, a.pid); },
+    state: function () { return G; },
+  };
   // accès pour les tests automatiques
-  window.QV_APP = { me: me, state: function () { return { screen: screen, pub: pub, priv: priv, room: room && { code: room.code, host: room.host }, queue: queue.length + (playing ? 1 : 0) }; }, skip: function () { var io = document.querySelector("#intro [data-i=skip]"); if (io) io.click(); queue = []; next(); } };
+  window.QV_APP = { me: me, deal: function () { return { dealt: Object.keys(dealt), dealing: Object.keys(dealing), hand: priv && priv.hand.map(function (c) { return c.u; }), playing: playing && playing.kind, q: queue.map(function (i) { return i.kind; }) }; }, state: function () { return { screen: screen, pub: pub, priv: priv, room: room && { code: room.code, host: room.host }, queue: queue.length + (playing ? 1 : 0) }; }, skip: function () { var io = document.querySelector("#intro [data-i=skip]"); if (io) io.click(); queue = []; next(); } };
 })();
