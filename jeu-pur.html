@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Survivor classique · AkarisuMD</title>
+  <meta name="description" content="Survivor classique : 10 minutes, un boss, 12 armes, 12 améliorations. Le survivor à l'état pur, en pixel art.">
+  <meta property="og:title" content="Survivor classique · AkarisuMD">
+  <meta property="og:description" content="Survivor classique : 10 minutes, un boss, 12 armes, 12 améliorations. Le survivor à l'état pur, en pixel art.">
+  <meta name="theme-color" content="#3f6b3a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Survivor">
+  <link rel="apple-touch-icon" href="assets/pwa/apple-touch-180.png">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261118sq3">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261118ft1">
+  <link rel="stylesheet" href="css/party.css?v=20261107vs2">
+  <link rel="stylesheet" href="css/gamekit.css?v=20261118gf4">
+  <style>/* le jeu a ses propres Options : on masque le bouton ⚙ du kit de jeux, qui recouvrait « Terrier » en plein écran */ .gk-dock { display: none !important; }</style>
+  <style>
+    .gk-dock { display: none !important; }
+    .pur-ui { position: absolute; inset: 0; display: grid; place-items: center; padding: 10px; background: rgba(20,14,10,.62); overflow: auto; }
+    .pur-ui[hidden] { display: none; }
+    .pur-card { background: var(--panel, #fdf3de); color: var(--ink, #2b1709); border: 3px solid #2b1709; box-shadow: 0 4px 0 #2b1709; padding: 14px 16px; max-width: 520px; width: 100%; text-align: left; }
+    .pur-card h2 { margin: 0 0 6px; font-size: 1.25rem; } .pur-card h3 { margin: 12px 0 6px; font-size: 1rem; }
+    .pur-card p { margin: 0 0 8px; line-height: 1.4; } .pur-small { font-size: .85rem; opacity: .85; }
+    .pur-cards { display: grid; gap: 8px; } .pur-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .pur-opt { display: flex; align-items: center; gap: 10px; text-align: left; font: inherit; color: inherit; background: rgba(43,23,9,.08); border: 2px solid #2b1709; padding: 8px 10px; cursor: pointer; }
+    .pur-opt:hover, .pur-opt:focus-visible { background: #f6d36b; outline: none; }
+    .pur-opt span { display: grid; gap: 2px; } .pur-opt small { opacity: .85; } .pur-opt em { font-style: normal; font-size: .75rem; background: #2b1709; color: #f6d36b; padding: 1px 5px; margin-left: 4px; }
+    .pur-opt canvas { flex: none; }
+    .pur-opt { position: relative; transition: transform .08s, background .08s; animation: pur-in .22s ease-out backwards; }
+    .pur-opt:nth-child(2) { animation-delay: .06s; } .pur-opt:nth-child(3) { animation-delay: .12s; } .pur-opt:nth-child(4) { animation-delay: .18s; }
+    .pur-opt:hover, .pur-opt:focus-visible { transform: translateX(4px) scale(1.01); }
+    .pur-opt:active { transform: scale(.98); }
+    .pur-opt kbd { margin-left: auto; font: inherit; font-size: .75rem; opacity: .55; border: 2px solid currentColor; padding: 0 5px; }
+    .pur-pips { font-style: normal; font-size: .7rem; letter-spacing: 1px; color: #c8851a; }
+    .pur-card { animation: pur-pop .2s ease-out; }
+    @keyframes pur-in { from { opacity: 0; transform: translateY(10px); } }
+    @keyframes pur-pop { from { opacity: 0; transform: scale(.94); } }
+    @media (prefers-reduced-motion: reduce) { .pur-opt, .pur-card { animation: none; } }
+    .pur-stage { height: min(78vh, 720px); }
+  </style>
+</head>
+
+<body data-page="game">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="stats.html" data-page="stats">Stats</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="section game-section">
+    <div class="wrap">
+      <div class="game-head">
+        <div>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · <a href="jeu.html">Écureuil Survivor</a></span>
+          <h1>Survivor classique <small class="beta-tag">1.0</small></h1>
+        </div>
+        <div class="game-head-btns">
+          <button class="btn btn-ghost btn-small" type="button" data-game-fullscreen>⛶ Plein écran</button>
+        </div>
+      </div>
+      <div class="game-stage pur-stage" data-pur>
+        <canvas class="game-canvas" tabindex="-1" aria-label="Zone de jeu Survivor classique"></canvas>
+        <button class="fs-exit fs-exit-txt" type="button" data-fs-exit aria-label="Quitter le plein écran">⛶ Réduire</button>
+        <div class="game-hud" style="inset:auto 8px 8px auto;padding:0;display:flex;gap:6px"><button class="hud-btn" type="button" data-mute aria-label="Son">🔊</button><button class="hud-btn" type="button" data-pause aria-label="Pause">⏸</button></div>
+        <div class="pur-ui" data-ui><div class="pur-card"><p>Chargement…</p></div></div>
+      </div>
+      <div class="game-info"><div class="panel game-help">
+        <h2 class="section-title">Comment ça marche</h2>
+        <ul>
+          <li><strong>Déplace-toi, les armes tirent toutes seules.</strong> Flèches ou ZQSD au clavier, glisse le doigt sur mobile. Échap ou ⏸ pour la pause.</li>
+          <li><strong>12 armes, 12 améliorations, 6 emplacements de chaque.</strong> À chaque niveau, choisis 1 carte sur 3 ; une arme monte jusqu'au niveau 8, une amélioration jusqu'au niveau 5.</li>
+          <li><strong>Sur la carte :</strong> gemmes d'expérience, lanternes à casser (gigot, aimant, pièces) et coffres lâchés par les élites (sanglier, ours), qui font monter jusqu'à 3 de tes objets.</li>
+          <li><strong>10 minutes, 1 boss :</strong> à 10:00 le Vieux Chêne se réveille. Abats-le pour gagner. Rien n'est conservé d'une partie à l'autre.</li>
+        </ul>
+      </div></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261118ft1"></script>
+  <script src="js/main.js?v=20261120rl1"></script>
+  <script src="js/pur/pur.js?v=pur1"></script>
+  <script>
+    (function () {
+      var stage = document.querySelector("[data-pur]"), btn = document.querySelector("[data-game-fullscreen]"), ex = stage.querySelector("[data-fs-exit]");
+      function isMax() { return stage.classList.contains("is-max"); }
+      function set(on) {
+        stage.classList.toggle("is-max", on); stage.classList.toggle("is-full", on);
+        document.documentElement.style.overflow = on ? "hidden" : ""; btn.textContent = on ? "✕ Quitter le plein écran" : "⛶ Plein écran";
+        window.dispatchEvent(new Event("resize"));
+      }
+      btn.addEventListener("click", function () { set(!isMax()); });
+      ex.addEventListener("click", function () { set(false); });
+    })();
+  </script>
+</body>
+</html>
