@@ -14,8 +14,7 @@ export const startGiftSpec = (): GiftSpec => ({
   rewards: [
     { type: 'energy', qty: 50 },
     { type: 'diamonds', qty: 60 },
-    { type: 'coins', qty: 300 },
-    { type: 'tickets', qty: 100 },
+    { type: 'coins', qty: 500 },
     { type: 'chest', qty: 1, label: 'Coffre surprise' },
   ],
   message: 'Un petit coup de pouce de ma part, Radia. Amuse-toi bien ♡',

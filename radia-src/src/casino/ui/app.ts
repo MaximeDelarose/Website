@@ -1,6 +1,7 @@
 /** Orchestre le casino : carte d'Auguste → salon → jeux / missions. Chargé à la demande par `openCasino()`. */
-import { welcome, returnBring } from '../chips';
-import { markTask } from '../tickets';
+import { welcome } from '../chips';
+import { markTask } from '../rewards';
+import { addRes } from '../../core/world';
 import { cs, notifyCasino, persist } from '../store';
 import { createShell } from './shell';
 import { cardScene, lobbyScene, missionsScene } from './lobby';
@@ -13,10 +14,11 @@ import { warmAuguste } from '../../game/art/world/radiaNow';
 export function runCasino(): Promise<void> {
   return new Promise((resolve) => {
     const s = cs();
-    const welcomed = welcome(s) > 0;
+    const gift = welcome(s); // cadeau d'ouverture (première visite) : des pièces, versées une seule fois
+    if (gift > 0) addRes('coins', gift);
+    const welcomed = gift > 0;
     s.stats.visites = (s.stats.visites ?? 0) + 1;
     markTask(s, 'visit'); // mini-défi du jour « passer au salon » (sans hasard)
-    returnBring(s); // d'éventuels tickets restés sur la table (fermeture brutale) reviennent en poche
     persist(); notifyCasino();
     void warmAuguste();
     const sh = createShell(() => resolve());

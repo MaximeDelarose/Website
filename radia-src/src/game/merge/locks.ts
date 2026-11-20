@@ -96,7 +96,7 @@ export function lockPrice(kind: LockKind, deep = false): number {
 
 const KIND_NAME: Record<LockKind, string> = { web: 'Objet sous toile', sand: 'Case ensablée', chest: 'Coffre sous toile', reward: 'Récompense sous toile', energy: 'Cadenas doux' };
 
-const REWARD_NAME: Record<string, string> = { diamonds: 'diamants', energy: 'énergie', coins: 'pièces', chest: 'un coffre', fragment: 'fragments de tenue', deco: 'une décoration exclusive', ticket: 'ticket', cloth: 'un vêtement' };
+const REWARD_NAME: Record<string, string> = { diamonds: 'diamants', energy: 'énergie', coins: 'pièces', chest: 'un coffre', fragment: 'fragments de tenue', deco: 'une décoration exclusive', cloth: 'un vêtement' };
 
 export interface LockView {
   title: string;
@@ -250,7 +250,7 @@ export function sandLock(zone: number, current: number): CellLock {
 export interface UnlockHooks {
   /** Découverte d'album d'un objet révélé (événements `discover`). */
   noteItem(item: ItemRef): BoardEvent[];
-  /** Règle les gains gérés par le moteur (coffres, tickets, fragments) et renvoie le butin final. */
+  /** Règle les gains gérés par le moteur (coffres, fragments) et renvoie le butin final. */
   settle(loots: Loot[]): Loot[];
   chestPending(): number;
 }
@@ -369,7 +369,7 @@ export function addSurprise(cells: Cell[], fun: FunState, active: CollectionId[]
 
 const KINDS: readonly LockKind[] = ['web', 'sand', 'chest', 'reward', 'energy'];
 const RARS: readonly Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-const REWARD_KINDS = ['diamonds', 'energy', 'coins', 'chest', 'fragment', 'deco', 'ticket', 'cloth'];
+const REWARD_KINDS = ['diamonds', 'energy', 'coins', 'chest', 'fragment', 'deco', 'cloth'];
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const clampInt = (v: unknown, lo: number, hi: number, d: number): number => (finite(v) ? Math.max(lo, Math.min(hi, Math.floor(v))) : d);
 
@@ -398,7 +398,9 @@ export function validLock(v: unknown): CellLock | null {
   if (finite(o.zone) && o.zone >= 1) out.zone = clampInt(o.zone, 1, MAX_ZONE, 1);
   const it = validRef(o.item);
   if (it) out.item = it;
-  const r = o.reward as Record<string, unknown> | undefined;
+  let r = o.reward as Record<string, unknown> | undefined;
+  // ancienne récompense visible en TICKETS (sauvegarde d'avant la simplification) : convertie en pièces au même taux (1 ticket = 10 pièces)
+  if (r && r.kind === 'ticket') r = { ...r, kind: 'coins', n: clampInt(r.n, 1, 99, 1) * 10 };
   if (r && typeof r.kind === 'string' && REWARD_KINDS.includes(r.kind)) {
     out.reward = { kind: r.kind as Loot['kind'], n: clampInt(r.n, 1, 999, 1), ...(RARS.includes(r.rarity as Rarity) ? { rarity: r.rarity as Rarity } : {}), ...(finite(r.seed) ? { seed: Math.floor(r.seed) } : {}) };
   }

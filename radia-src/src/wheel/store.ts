@@ -2,8 +2,8 @@
 import { save, events } from '../core/app';
 import { wallet } from '../core/wallet';
 import { addRes } from '../core/world';
-import { cs, grantChips } from '../casino/store';
-import { markTask } from '../casino/tickets';
+import { cs } from '../casino/store';
+import { markTask } from '../casino/rewards';
 import { defaultRng, type Rng } from '../casino/rng';
 import type { WheelState } from '../save/fun';
 import { applyLot, canSpin, claimSpin, dayKey, msUntilNextDay, type Granted, type WheelCtx } from './logic';
@@ -32,7 +32,6 @@ export function realCtx(): WheelCtx {
     addCoins: (n) => addRes('coins', n),
     giveDiamonds: (n) => wallet.giveDiamonds(n),
     giveEnergy: (n) => wallet.giveEnergy(n),
-    grantChips: (n) => { grantChips(n, 'wheel'); },
     ownsCloth: (id) => w().wardrobe.owned.includes(id as never),
     giveCloth: (id) => { if (!w().wardrobe.owned.includes(id as never)) w().wardrobe.owned.push(id as never); },
     ownsDeco: (id) => (w().castle.owned[id] ?? 0) > 0,

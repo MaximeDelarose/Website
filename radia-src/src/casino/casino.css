@@ -280,7 +280,7 @@ html.reduced-motion .cz-root *, html.reduced-motion .cz-root *::before, html.red
 }
 .cz-helpbody > div { display: flex; flex-direction: column; gap: 8px; }
 
-/* ===== salon : illustration vivante, zones tactiles, bulles, prochain gain gratuit, tickets du jour ===== */
+/* ===== salon : illustration vivante, zones tactiles, bulles, prochain gain gratuit, défis du jour ===== */
 .cz-halbox { isolation: isolate; }
 .cz-lights { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; background: radial-gradient(60% 40% at 50% 8%, rgba(255, 226, 140, 0.28), transparent 70%); animation: czGlow 5.5s ease-in-out infinite; }
 @keyframes czGlow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
@@ -303,7 +303,7 @@ html.reduced-motion .cz-root *, html.reduced-motion .cz-root *::before, html.red
 .cz-ftxt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cz-ftxt b { font-size: 15px; color: #fff; line-height: 1.2; }
 .cz-ftxt small { font-size: 12.5px; color: rgba(255, 255, 255, 0.8); line-height: 1.25; }
-/* texte d'appoint des tickets du jour */
+/* texte d'appoint des défis du jour */
 .cz-tsub { text-align: left; font-size: 12.5px; color: rgba(255, 255, 255, 0.78); line-height: 1.3; }
 .cz-fitem .btn, .cz-task .btn { flex: none; min-height: 44px; min-width: 84px; }
 .cz-task { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 4px 4px 4px 2px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
@@ -333,7 +333,7 @@ html.reduced-motion .cz-tw, html.reduced-motion .cz-lights { animation: none !im
 @keyframes czBwPop { from { opacity: 0; transform: scale(0.6) translateY(24px); } to { opacity: 1; transform: none; } }
 @keyframes czBwSpin { to { transform: rotate(360deg); } }
 
-/* carte d'Auguste (pièces + tickets) et privilèges */
+/* carte d'Auguste (pièces) et boutique */
 .cz-wallet { display: grid; gap: 8px; margin: 8px 0; }
 .cz-w { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 16px; background: rgba(255, 255, 255, 0.1); }
 .cz-w img { width: 34px; height: 34px; }

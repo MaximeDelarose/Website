@@ -4,7 +4,7 @@
  */
 import type { SaveData } from '../save/schema';
 import { LEVELS } from './levels';
-import { awardAchievement } from '../casino/tickets';
+import { awardAchievement } from '../casino/rewards';
 
 export interface AchievementDef {
   id: string;
@@ -66,13 +66,13 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'w_covers', name: 'À la une !', desc: 'Collectionner les 5 couvertures de magazine.', icon: 'album', check: (s) => s.world.magazines.length >= 5 },
 ];
 
-// Tickets du Casino Royal offerts (gratuitement) au déblocage d'un succès : on enveloppe `check` sans toucher aux conditions.
+// Pièces offertes (gratuitement) au déblocage d'un succès : on enveloppe `check` sans toucher aux conditions.
 // `awardAchievement` pose une marque durable : jamais deux fois, même si la vérification est rejouée.
 for (const a of ACHIEVEMENTS) {
   const cond = a.check;
   a.check = (s) => {
     const ok = cond(s);
-    if (ok) { try { awardAchievement(s.fun?.casino, a.id); } catch { /* jamais bloquant */ } }
+    if (ok) { try { const g = awardAchievement(s.fun?.casino, a.id); if (g > 0 && s.world?.res) s.world.res.coins = Math.min(999_999_999, s.world.res.coins + g); } catch { /* jamais bloquant */ } }
     return ok;
   };
 }

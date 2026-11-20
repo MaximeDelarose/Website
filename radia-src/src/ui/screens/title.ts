@@ -167,8 +167,8 @@ export function showTitle(): void {
   const bubbleTimer = window.setInterval(refreshBubble, 20_000);
   refreshBubble();
   menu.append(monde);
-  // CASINO : troisième grand accès (rose = histoire, or = Mon monde, violet royal = Casino). Sous-titre et pastille vivants (tickets, cadeau, missions).
-  const casino = mode('.casino', 'casino', 'CASINO', 'Tickets · roulette · surprises', () => void go(async () => { await (await import('../../casino')).openCasino(); showTitle(); }), 220);
+  // CASINO : troisième grand accès (rose = histoire, or = Mon monde, violet royal = Casino). Sous-titre et pastille vivants (pièces, cadeau, missions).
+  const casino = mode('.casino', 'casino', 'CASINO', 'Roulette · machines · surprises', () => void go(async () => { await (await import('../../casino')).openCasino(); showTitle(); }), 220);
   const casinoBubble = h('span.mode-bubble.casino-bubble', icon('sparkle', 14), h('span', ' '));
   casino.append(casinoBubble);
   void import('../../casino/store').then((m) => {
@@ -176,8 +176,8 @@ export function showTitle(): void {
       if (!casino.isConnected) { off(); return; }
       const st = m.casinoStatus();
       const small = casino.querySelector('small');
-      if (small) small.textContent = st.isNew ? 'Un cadeau de bienvenue t’attend ♡' : st.chips > 0 ? `${fmt(st.chips)} tickets · roulette · surprises` : 'Tickets · roulette · surprises';
-      const note = st.isNew ? 'Bienvenue !' : st.claimable > 0 ? `${st.claimable} à récupérer` : st.refillReady ? 'Recharge offerte !' : st.tasks > 0 ? 'Défis du jour' : '';
+      if (small) small.textContent = st.isNew ? 'Un cadeau de bienvenue t’attend ♡' : 'Roulette · machines · surprises';
+      const note = st.isNew ? 'Bienvenue !' : st.claimable > 0 ? `${st.claimable} à récupérer` : st.tasks > 0 ? 'Défis du jour' : '';
       (casinoBubble.lastElementChild as HTMLElement).textContent = ` ${note}`;
       casinoBubble.classList.toggle('on', !!note && st.hasNews);
     };

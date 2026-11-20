@@ -24,7 +24,6 @@ export async function resourceBalance(id: ResInfoId): Promise<number> {
     case 'diamonds': return wallet.diamonds();
     case 'energy': return wallet.energy();
     case 'hearts': return save.data.hearts;
-    case 'tickets': { const m = await import('../../casino/store'); return m.casinoStatus().chips; }
   }
 }
 
@@ -32,7 +31,6 @@ async function iconFor(id: ResInfoId): Promise<HTMLElement> {
   const wrap = h('span.ri-ic');
   try {
     if (id === 'hearts') { wrap.append(icon('heart')); return wrap; }
-    if (id === 'tickets') { wrap.textContent = '🎟️'; return wrap; }
     if (id === 'diamonds' || id === 'energy') { const s = await import('../screens/shop'); wrap.append(h('img', { src: id === 'diamonds' ? s.diamondUrl(64) : s.energyUrl(64), alt: '' })); return wrap; }
     const a = await import('../../game/art/world/resources'); wrap.append(h('img', { src: a.resIconUrl(id, 64), alt: '' }));
   } catch { /* icône facultative */ }

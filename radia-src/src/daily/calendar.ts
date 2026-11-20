@@ -1,7 +1,7 @@
 /**
  * Calendrier des cadeaux quotidiens : 6 thèmes (cycles) de 7 jours, données pures, aucun DOM.
- * Structure commune à chaque cycle : J1 pièces/ressource · J2 diamants · J3 tickets du Casino Royal · J4 accessoire de mode ·
- * J5 coffre de décoration (2 objets) · J6 tickets + objet cosmétique · J7 tenue exclusive ou décoration rare.
+ * Structure commune à chaque cycle : J1 pièces/ressource · J2 diamants · J3 bourse de pièces + énergie · J4 accessoire de mode ·
+ * J5 coffre de décoration (2 objets) · J6 bourse de pièces + objet cosmétique · J7 tenue exclusive ou décoration rare.
  * Les objets viennent des registres du monde (aucun nouvel identifiant). Une liste `pick` = candidats par ordre de
  * préférence : on offre le premier que Radia n'a pas encore ; si elle les a tous, elle reçoit la moitié du prix en pièces.
  * Joueuse au milieu d'un cycle : l'état `fun.daily` (cycle, jour, jours cochés) est inchangé ; elle continue au même jour
@@ -18,8 +18,8 @@ export const DAYS = 7;
 export type Part =
   | { t: 'coins'; n: number }
   | { t: 'diamonds'; n: number }
-  /** Tickets du Casino Royal (gratuits, jamais achetables). */
-  | { t: 'tickets'; n: number }
+  /** Énergie (jamais au-delà du maximum : le surplus est simplement perdu). */
+  | { t: 'energy'; n: number }
   | { t: 'res'; k: Exclude<ResKind, 'coins'>; n: number }
   | { t: 'cloth'; pick: ClothId[] }
   | { t: 'furn'; pick: FurnitureId[] }
@@ -31,7 +31,7 @@ export interface ThemeDef { id: string; name: string; blurb: string; accent: str
 const D = (name: string, rarity: Rarity, ...parts: Part[]): DayDef => ({ name, parts, rarity });
 const coins = (n: number): Part => ({ t: 'coins', n });
 const dia = (n: number): Part => ({ t: 'diamonds', n });
-const tix = (n: number): Part => ({ t: 'tickets', n });
+const nrg = (n: number): Part => ({ t: 'energy', n });
 const res = (k: Exclude<ResKind, 'coins'>, n: number): Part => ({ t: 'res', k, n });
 const cloth = (...pick: ClothId[]): Part => ({ t: 'cloth', pick });
 const furn = (...pick: FurnitureId[]): Part => ({ t: 'furn', pick });
@@ -43,10 +43,10 @@ export const THEMES: ThemeDef[] = [
     days: [
       D('250 pièces', 'common', coins(250)),
       D('100 diamants', 'uncommon', dia(100)),
-      D('Des tickets du Casino Royal', 'rare', tix(250)),
+      D('Une bourse bien remplie', 'rare', coins(500), nrg(5)),
       D('Un sac à main chic', 'rare', cloth('bg-mini-gold', 'bg-silver', 'bg-shoulder-black', 'bg-tote-beige')),
       D('Un coffre de décoration', 'epic', furn('chandelier', 'fireplace', 'bed-royal', 'banquet-table'), furn('candles', 'lamp-table', 'plant-pot'), coins(80)),
-      D('Tickets et accessoire précieux', 'epic', tix(400), cloth('cr-gold', 'ac-pearls', 'hd-pearl-pins')),
+      D('Une bourse et accessoire précieux', 'epic', coins(800), cloth('cr-gold', 'ac-pearls', 'hd-pearl-pins')),
       D('Robe de soirée et diadème', 'legendary', cloth('dr-emerald-evening', 'dr-redcarpet', 'dr-royal-gown', 'dr-white-gown'), cloth('cr-tiara', 'cr-gold', 'ac-pearls')),
     ],
   },
@@ -55,10 +55,10 @@ export const THEMES: ThemeDef[] = [
     days: [
       D('8 tissus', 'common', res('fabric', 8)),
       D('80 diamants', 'uncommon', dia(80)),
-      D('Des tickets du Casino Royal', 'rare', tix(250)),
+      D('Une bourse bien remplie', 'rare', coins(500), nrg(5)),
       D('Un béret chic', 'rare', cloth('hd-beret', 'hd-silk-blue', 'ac-scarf', 'hd-headband-velvet')),
       D('Un coffre de décoration', 'epic', furn('mirror-standing', 'vanity'), furn('accessory-stand', 'clothes-rack'), coins(80)),
-      D('Tickets et talons élégants', 'epic', tix(400), cloth('sh-heels-nude', 'sh-strappy-black', 'sh-heels', 'sh-mules-cream')),
+      D('Une bourse et talons élégants', 'epic', coins(800), cloth('sh-heels-nude', 'sh-strappy-black', 'sh-heels', 'sh-mules-cream')),
       D('Petite robe noire et perles', 'legendary', cloth('dr-little-black', 'dr-mini-black', 'dr-satin-champagne'), cloth('ac-pearls', 'ea-pearl-studs', 'ac-chain-gold')),
     ],
   },
@@ -67,10 +67,10 @@ export const THEMES: ThemeDef[] = [
     days: [
       D('30 fleurs', 'common', res('flowers', 30)),
       D('70 diamants', 'uncommon', dia(70)),
-      D('Des tickets du Casino Royal', 'rare', tix(250)),
+      D('Une bourse bien remplie', 'rare', coins(500), nrg(5)),
       D('Un nœud fleuri', 'rare', cloth('hd-bow-pink', 'hd-pearl-pins', 'cr-flowers')),
       D('Un coffre de décoration', 'epic', furn('flower-vase', 'plant-pot', 'flowerbed'), furn('bench', 'fountain'), bq('rose', 'peony', 'lavender', 'tulip', 'daisy')),
-      D('Tickets et couronne de fleurs', 'epic', tix(400), cloth('cr-flowers', 'hd-bow-pink', 'hd-pearl-pins')),
+      D('Une bourse et couronne de fleurs', 'epic', coins(800), cloth('cr-flowers', 'hd-bow-pink', 'hd-pearl-pins')),
       D('Pergola fleurie et robe d\'été', 'legendary', furn('pergola', 'fountain', 'flowerbed'), cloth('dr-flowy-floral', 'dr-sundress-yellow', 'dr-sage-linen')),
     ],
   },
@@ -79,10 +79,10 @@ export const THEMES: ThemeDef[] = [
     days: [
       D('300 pièces', 'common', coins(300)),
       D('60 diamants', 'uncommon', dia(60)),
-      D('Des tickets du Casino Royal', 'rare', tix(250)),
+      D('Une bourse bien remplie', 'rare', coins(500), nrg(5)),
       D('Un pendentif cœur', 'rare', cloth('ac-pendant', 'ea-hearts', 'gl-heart-pink')),
       D('Un coffre de décoration', 'epic', furn('candles', 'lamp-table', 'lamp-floor'), furn('rug-rect', 'sofa', 'fireplace'), coins(80)),
-      D('Tickets et escarpins roses', 'epic', tix(400), cloth('sh-heels-pink', 'sh-heels-gold', 'ea-hearts')),
+      D('Une bourse et escarpins roses', 'epic', coins(800), cloth('sh-heels-pink', 'sh-heels-gold', 'ea-hearts')),
       D('Cheminée de velours et robe de bal', 'legendary', furn('fireplace', 'sofa', 'rug-rect'), cloth('dr-lavender-tulle', 'dr-white-gown', 'dr-romantic-pink')),
     ],
   },
@@ -91,10 +91,10 @@ export const THEMES: ThemeDef[] = [
     days: [
       D('20 cacao', 'common', res('cocoa', 20)),
       D('60 diamants', 'uncommon', dia(60)),
-      D('Des tickets du Casino Royal', 'rare', tix(250)),
+      D('Une bourse bien remplie', 'rare', coins(500), nrg(5)),
       D('Une pochette de soirée', 'rare', cloth('bg-pearl-clutch', 'bg-tote-beige', 'bg-shoulder-black')),
       D('Un coffre de décoration', 'epic', furn('choco-display', 'coffee-table'), furn('banquet-table', 'bookshelf', 'bench'), res('cocoa', 15)),
-      D('Tickets et blouse de dentelle', 'epic', tix(400), cloth('top-lace-cream', 'top-cardigan-lavender', 'top-satin-pink')),
+      D('Une bourse et blouse de dentelle', 'epic', coins(800), cloth('top-lace-cream', 'top-cardigan-lavender', 'top-satin-pink')),
       D('Robe champagne et couronne', 'legendary', cloth('dr-satin-champagne', 'dr-white-gown', 'dr-redcarpet'), cloth('cr-gold', 'cr-tiara', 'ac-chain-gold')),
     ],
   },
@@ -103,10 +103,10 @@ export const THEMES: ThemeDef[] = [
     days: [
       D('300 pièces', 'common', coins(300)),
       D('80 diamants', 'uncommon', dia(80)),
-      D('Des tickets du Casino Royal', 'rare', tix(250)),
+      D('Une bourse bien remplie', 'rare', coins(500), nrg(5)),
       D('Des lunettes de star', 'rare', cloth('gl-cat-eye', 'gl-aviator', 'ea-big-hoops')),
       D('Un coffre de décoration', 'epic', furn('red-carpet', 'clothes-rack'), furn('mirror-standing', 'chandelier'), coins(80)),
-      D('Tickets et talons dorés', 'epic', tix(400), cloth('sh-heels-gold', 'sh-heels-silver', 'sh-heels-red')),
+      D('Une bourse et talons dorés', 'epic', coins(800), cloth('sh-heels-gold', 'sh-heels-silver', 'sh-heels-red')),
       D('Robe tapis rouge et sac de star', 'legendary', cloth('dr-redcarpet', 'dr-stage-sequin', 'dr-royal-gown'), cloth('bg-silver', 'bg-red-mini', 'bg-pearl-clutch')),
     ],
   },
@@ -122,7 +122,7 @@ export function dayDef(cycle: number, day: number): DayDef {
   const d = themeOf(cycle).days[Math.min(DAYS - 1, Math.max(0, Math.floor(day)))];
   const mult = Math.min(2, 1 + 0.15 * loops(cycle));
   if (mult === 1) return d;
-  return { ...d, parts: d.parts.map((p) => (p.t === 'coins' ? { ...p, n: roundTo(p.n * mult, 10) } : p.t === 'diamonds' ? { ...p, n: roundTo(p.n * mult, 5) } : p.t === 'tickets' ? { ...p, n: roundTo(p.n * mult, 10) } : p.t === 'res' ? { ...p, n: roundTo(p.n * mult, 2) } : p)) };
+  return { ...d, parts: d.parts.map((p) => (p.t === 'coins' ? { ...p, n: roundTo(p.n * mult, 10) } : p.t === 'diamonds' ? { ...p, n: roundTo(p.n * mult, 5) } : p.t === 'res' ? { ...p, n: roundTo(p.n * mult, 2) } : p)) };
 }
 
 // ------------------------------------------------------------------ résolution (ce qui est vraiment offert)
@@ -131,7 +131,7 @@ export interface Ownership { cloth: (id: ClothId) => boolean; furn: (id: Furnitu
 export type Resolved =
   | { t: 'coins'; n: number }
   | { t: 'diamonds'; n: number }
-  | { t: 'tickets'; n: number }
+  | { t: 'energy'; n: number }
   | { t: 'res'; k: Exclude<ResKind, 'coins'>; n: number }
   | { t: 'cloth'; id: ClothId }
   | { t: 'furn'; id: FurnitureId }
@@ -144,7 +144,7 @@ export const bouquetKeyOf = (ids: readonly string[]): string => [...ids].sort().
 export function resolveDay(cycle: number, day: number, own: Ownership): Resolved[] {
   const taken = new Set<string>(); // deux pièces d'une même journée ne se marchent pas dessus
   return dayDef(cycle, day).parts.map((p): Resolved => {
-    if (p.t === 'coins' || p.t === 'diamonds' || p.t === 'tickets' || p.t === 'res') return { ...p };
+    if (p.t === 'coins' || p.t === 'diamonds' || p.t === 'energy' || p.t === 'res') return { ...p };
     if (p.t === 'bouquet') return { t: 'bouquet', ids: [...p.flowers], key: bouquetKeyOf(p.flowers) };
     if (p.t === 'cloth') {
       const id = p.pick.find((c) => !own.cloth(c) && !taken.has(c));
@@ -162,7 +162,7 @@ export function describe(r: Resolved): { title: string; sub?: string } {
   switch (r.t) {
     case 'coins': return { title: `${r.n} pièces` };
     case 'diamonds': return { title: `${r.n} diamants` };
-    case 'tickets': return { title: `${r.n} tickets du Casino Royal`, sub: 'À jouer au casino, gratuit ♡' };
+    case 'energy': return { title: `${r.n} énergies` };
     case 'res': return { title: `${r.n} ${RES_NAMES[r.k].toLowerCase()}` };
     case 'cloth': return { title: CLOTHES[r.id].name };
     case 'furn': return { title: FURNITURE[r.id].name };

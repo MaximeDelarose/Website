@@ -21,6 +21,7 @@
     prairie: { top: ["#a6e65c", "#98dc4e", "#b4ee6c"], path: ["#f0cf7e", "#e6c26a"], side: "#63a83a", side2: "#4d8c2c", water: "#3fb4f2", line: "rgba(30,70,20,.16)" },
     bois: { top: ["#4fb86a", "#45aa5e", "#5cc676"], path: ["#c9a062", "#bd9255"], side: "#2f7f46", side2: "#236536", water: "#2f9fd0", line: "rgba(10,50,20,.18)" },
     falaises: { top: ["#b8d2f0", "#a9c6ea", "#c6dcf5"], path: ["#eadfc6", "#dfd2b4"], side: "#6f8ab8", side2: "#566e98", water: "#5fe0ff", line: "rgba(30,50,90,.14)" },
+    arene: { top: ["#3b3350", "#352d49", "#42395a"], path: ["#4c4268", "#453b60"], side: "#231d36", side2: "#181326", water: "#7a4cd0", line: "rgba(255,210,120,.10)" },
     donjon: { top: ["#5d527c", "#564b74", "#655a86"], path: ["#6d6290", "#655a86"], side: "#3a3156", side2: "#2a2342", water: "#9f6cff", line: "rgba(255,255,255,.06)" },
     marais: { top: ["#3fa37a", "#36966e", "#4ab086"], path: ["#a08a58", "#927c4e"], side: "#236e4f", side2: "#19533c", water: "#2fd6c0", line: "rgba(10,50,30,.18)" },
     nuages: { top: ["#f3eefc", "#ebe4f8", "#faf6ff"], path: ["#ffd9ec", "#ffcde6"], side: "#c9b8e8", side2: "#b3a0d9", water: "#9fd8ff", line: "rgba(120,90,160,.10)" },
@@ -78,7 +79,8 @@
     var G = o.gear || {};
     if (G.mount) g.translate(0, -26);
     if (G.cape) gearCape(g, G.cape, t, o);
-    if (cls === "bastion") drawBastion(g, P, t, o, bob);
+    if (root.AT_ART && root.AT_ART.heroExt && root.AT_ART.heroExt[cls]) root.AT_ART.heroExt[cls](g, P, t, o, bob);
+    else if (cls === "bastion") drawBastion(g, P, t, o, bob);
     else if (cls === "prisme") drawPrisme(g, P, t, o, bob);
     else if (cls === "sibylle") drawSibylle(g, P, t, o, bob);
     else if (cls === "clarine") drawClarine(g, P, t, o, bob);
@@ -627,8 +629,11 @@
     g.translate(0, hop);
     g.scale(s * (o.flip || 1), s);
     if (o.hurt) g.translate(-o.hurt * 4, 0);
-    var f = SHAPES[type] || SHAPES.blob;
-    if (o.elite) { g.shadowColor = "#ffd257"; g.shadowBlur = 10; }
+    var MD = (root.AT_CORE && root.AT_CORE.MOBS && root.AT_CORE.MOBS[type]) || {};
+    var BE = root.AT_BEASTS && (root.AT_BEASTS.draw[type] || root.AT_BEASTS.draw[MD.shape]);
+    var f = BE ? function (gg, c, tt, oo) { BE(gg, tt, oo); } : (SHAPES[type] || SHAPES[MD.shape] || SHAPES.blob);
+    if (BE && o.elite) { g.restore(); g.save(); g.translate(x, y); root.AT_BEASTS.eliteMark(g, t, o); g.translate(0, hop); g.scale(s * (o.flip || 1), s); if (o.hurt) g.translate(-o.hurt * 4, 0); }
+    if (o.elite && !BE) { g.shadowColor = "#ffd257"; g.shadowBlur = 10; }
     if (type === "dopeul" && o.mirror) { g.scale(1 / s, 1 / s); hero(g, o.mirror, 0, 0, { t: t, flip: o.flip, back: o.back, walk: o.walk, cast: o.cast, hurt: 0, scale: 1.35, noShadow: true, gear: { skin: "ombre" } }); }
     else f(g, M, t, o);
     g.shadowBlur = 0;
@@ -871,6 +876,8 @@
     if (o.alpha != null) g.globalAlpha = o.alpha;
     g.scale(s, s);
     var sway = Math.sin(t * 1.2 + v * 9) * 1.5;
+    var XD = root.AT_ART && root.AT_ART.decoExt && root.AT_ART.decoExt[d.t];
+    if (XD) { XD(g, d, t); g.restore(); return; }
     switch (d.t) {
       case "tree": {
         shadow(g, 0, 2, 22, 0.25);

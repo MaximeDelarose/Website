@@ -4,12 +4,15 @@ import { audio, reducedFx } from '../core/app';
 import { haptic } from '../core/haptics';
 import { giftWheelCanvas } from '../game/art/casino';
 import { radiaBustCanvas } from '../game/art/world/radiaNow';
+import { resIconUrl } from '../game/art/world/resources';
 import { RARITY_COLOR, revealItem, sparkleBurst, confetti, type Rarity } from '../ui/fx/sparkle';
 import { LOTS, probOf, lotById, type LotDef } from './table';
 import { nextWheelIn, spinToday, wheelReady, wheelState } from './store';
 import type { Granted } from './logic';
 
-const RARITY: Record<string, Rarity> = { coins100: 'common', coins300: 'uncommon', energy3: 'common', diamonds2: 'uncommon', diamonds6: 'rare', chips200: 'uncommon', chips600: 'rare', fashion: 'epic', deco: 'rare', fragment: 'rare' };
+const RARITY: Record<string, Rarity> = { coins100: 'common', coins300: 'uncommon', coins600: 'rare', energy3: 'common', energy8: 'uncommon', diamonds2: 'uncommon', diamonds6: 'rare', fashion: 'epic', deco: 'rare', rare: 'epic', fragment: 'rare' };
+/** Icône d'un lot : la pièce dorée dessinée pour les pièces, l'émoji pour le reste. */
+const lotIcon = (l: LotDef, size: number): Node => (l.icon === 'coin' ? h('img', { src: resIconUrl('coins', size * 2), alt: '', draggable: false, style: `width:${size}px;height:${size}px;vertical-align:middle` }) : document.createTextNode(l.emoji));
 const pct = (x: number): string => `${(x * 100).toFixed(1).replace('.', ',')} %`;
 const wait = (ms: number): Promise<void> => new Promise((r) => window.setTimeout(r, ms));
 /** « 5 h 12 min » / « 12 min » / « moins d'une minute ». */
@@ -30,7 +33,7 @@ export function showWheel(): Promise<void> {
     const soft = reducedFx();
     const step = 360 / LOTS.length;
     let busy = false, closed = false, ang = 0, timer = 0;
-    const wheelCv = giftWheelCanvas(150, LOTS.map((l) => ({ color: l.color, emoji: l.emoji, short: l.short })));
+    const wheelCv = giftWheelCanvas(150, LOTS.map((l) => ({ color: l.color, emoji: l.emoji, icon: l.icon, short: l.short })));
     wheelCv.className = 'wh-wheel'; wheelCv.setAttribute('role', 'img'); wheelCv.setAttribute('aria-label', 'Roue de cadeaux');
     const pointer = h('div.wh-pointer', h('i'));
     const status = h('p.wh-status');
@@ -49,7 +52,7 @@ export function showWheel(): Promise<void> {
 
     const paintProbs = () => {
       probBox.replaceChildren(h('p.wh-ptitle', 'Chaque tirage offre toujours un cadeau. Voici ta chance pour chaque lot :'),
-        ...LOTS.map((l) => h('div.wh-prow', h('span.wh-pe', l.emoji), h('span.wh-pn', l.name), h('b', pct(probOf(l))))),
+        ...LOTS.map((l) => h('div.wh-prow', h('span.wh-pe', lotIcon(l, 22)), h('span.wh-pn', l.name), h('b', pct(probOf(l))))),
         h('p.wh-psmall', 'Un seul tirage gratuit par jour, sans achat. Un objet déjà possédé est remplacé par des pièces.'));
     };
     paintProbs();
@@ -119,7 +122,7 @@ export function showWheel(): Promise<void> {
 
     async function reveal(g: Granted): Promise<void> {
       const rarity = RARITY[g.lot.id] ?? 'rare';
-      const ico = h('div.wh-gico', { style: `--rc:${RARITY_COLOR[rarity]}` }, g.lot.emoji);
+      const ico = h('div.wh-gico', { style: `--rc:${RARITY_COLOR[rarity]}` }, lotIcon(g.lot, 44));
       gotBox.replaceChildren(h('small', g.duplicate ? 'Déjà dans ta collection !' : 'Ton cadeau du jour'), ico, h('b', g.duplicate ? g.text : `Tu as gagné : ${g.text} ♡`));
       gotBox.classList.add('show');
       audio.play(rarity === 'epic' || rarity === 'rare' ? 'popRare' : 'reward'); audio.play('sparkle');

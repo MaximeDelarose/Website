@@ -28,9 +28,9 @@ export function helpRoulette(): HTMLElement {
   ];
   return h('div',
     h('p', 'La roue européenne a 37 cases : de 1 à 36 (18 rouges, 18 noires) et le 0 vert.'),
-    h('p', 'Pose des tickets sur le tapis : plusieurs mises en même temps sont possibles. Appuie sur « Lancer » quand tu es prête : la case gagnante est tirée au hasard à cet instant, puis la bille ne fait que la rejoindre.'),
+    h('p', 'Pose des jetons sur le tapis (chaque jeton vaut des pièces de ta bourse) : plusieurs mises en même temps sont possibles. Appuie sur « Lancer » quand tu es prête : la case gagnante est tirée au hasard à cet instant, puis la bille ne fait que la rejoindre.'),
     h('table.cz-table', h('thead', h('tr', h('th', 'Mise'), h('th', 'Chance'), h('th', 'Gain'))), h('tbody', ...rows.map((r) => h('tr', ...r.map((c) => h('td', c)))))),
-    h('p', 'Le 0 fait perdre Rouge, Noir, Pair et Impair. Le gain « 1 pour 1 » rend ta mise en plus : 10 tickets gagnants deviennent 20.'),
+    h('p', 'Le 0 fait perdre Rouge, Noir, Pair et Impair. Le gain « 1 pour 1 » rend ta mise en plus : 10 pièces gagnantes deviennent 20.'),
     h('p', 'Pour miser sur plusieurs numéros : active « Plusieurs numéros », touche 2, 3, 4 ou 6 cases, puis valide le groupe.'),
     h('p', `Mises : de ${LIMITS.roulette.min}  par lancer en tout (jusqu'à la moitié de ta bourse). Retour théorique : 36/37, soit environ 97,3 %.`));
 }
@@ -93,7 +93,7 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
       if (sel.has(n)) sel.delete(n); else if (sel.size < 6) sel.add(n); else { shake(c); haptic('error'); return; }
       audio.play('select'); haptic('select'); refresh(); return;
     }
-    if (!book.place(spec, chip)) { shake(c); haptic('error'); audio.play('invalid'); hint.textContent = book.total() + chip > cap() ? 'Plus assez de pièces pour ce ticket.' : 'Mise impossible.'; window.setTimeout(() => { if (!group) hint.textContent = ''; }, 2200); return; }
+    if (!book.place(spec, chip)) { shake(c); haptic('error'); audio.play('invalid'); hint.textContent = book.total() + chip > cap() ? 'Plus assez de pièces pour ce jeton.' : 'Mise impossible.'; window.setTimeout(() => { if (!group) hint.textContent = ''; }, 2200); return; }
     audio.play('chip', 0.9 + Math.random() * 0.25); haptic('bet'); bounce(c.querySelector('.rl-mark') ?? c, 1.25);
     refresh();
   }
@@ -170,7 +170,7 @@ export function rouletteScene(sh: Shell, o: { onBack(): void; goCard(): void }):
     const winners = lines.filter((l) => l.won);
     resultBox.replaceChildren(
       badge, h('div.rl-rtxt', h('b', `${n} · ${parts.join(' · ')}`),
-        h(`div.rl-net.${net > 0 ? 'win' : net === 0 ? 'even' : 'lose'}`, net > 0 ? `+${fmt(net)} tickets !` : net === 0 ? 'Mise rendue' : `−${fmt(-net)} ticket${-net > 1 ? 's' : ''}`),
+        h(`div.rl-net.${net > 0 ? 'win' : net === 0 ? 'even' : 'lose'}`, net > 0 ? `+${fmt(net)} pièces !` : net === 0 ? 'Mise rendue' : `−${fmt(-net)} pièce${-net > 1 ? 's' : ''}`),
         h('small', winners.length ? `Gagné : ${winners.map((l) => betText(l.bet)).join(', ')}` : 'Aucune mise gagnante cette fois, merci d\'avoir joué ♡')),
       h('div.rl-after', h('button.btn.gold', { on: { click: () => newRound(true) } }, 'Même mise'), h('button.btn.secondary', { on: { click: () => newRound(false) } }, 'Nouvelle mise')));
     resultBox.classList.add('show');

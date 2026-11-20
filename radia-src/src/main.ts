@@ -111,7 +111,7 @@ async function showWhatsNewV6(): Promise<void> {
     title: 'Petites améliorations ♡',
     body: h('div', { style: 'text-align:left;font-size:15px' },
       h('ul', { style: 'padding-left:18px;margin:6px 0' },
-        li('Maintiens ton doigt sur un compteur (pièces, diamants, énergie, cœurs, tickets) : une petite fiche explique à quoi il sert et comment en gagner.'),
+        li('Maintiens ton doigt sur un compteur (pièces, diamants, énergie, cœurs) : une petite fiche explique à quoi il sert et comment en gagner.'),
         li('Le plateau est plus fiable : si un geste est interrompu, il se remet tout seul en route.'),
         li('RADIA se met à jour toute seule quand tu reviens dedans, sans toucher à ta partie.'),
         li('Dans Paramètres, « Ressources » te rappelle tout cela.')),
@@ -196,6 +196,28 @@ async function showWhatsNewV10(): Promise<void> {
         li('Messages : ce qui s’affiche dans la liste est toujours dans la conversation, à la bonne heure.'),
         li('Radia a une nouvelle posture plus naturelle.')),
       h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, 'Ta partie est intacte ♡')),
+    actions: [{ label: 'Super !', value: 'ok' }],
+  });
+}
+
+/** Nouveautés v11 : économie simplifiée (plus de tickets de casino ni de pièces grises) — une seule fois, pour les parties existantes. Le message dit combien de pièces ont remplacé les tickets. */
+async function showWhatsNewV11(): Promise<void> {
+  if (save.data.seenUpdates.includes('v11')) return;
+  save.data.seenUpdates.push('v11');
+  const eco = save.data.fun.economy;
+  eco.seen = true;
+  save.save();
+  if (!save.hadSave) return;
+  const li = (t: string) => h('li', { style: 'margin:4px 0' }, t);
+  await ui.modal({
+    title: 'Une économie plus simple ♡',
+    body: h('div', { style: 'text-align:left;font-size:15px' },
+      h('ul', { style: 'padding-left:18px;margin:6px 0' },
+        li('Il n’y a plus qu’une seule pièce, la pièce dorée : on mise avec elle au casino et les gains reviennent dans la même bourse.'),
+        eco.tickets > 0 ? li(`Tes ${eco.tickets.toLocaleString('fr-FR')} tickets du casino sont devenus ${eco.coins.toLocaleString('fr-FR')} pièces (1 ticket = 10 pièces).`) : li('Les tickets du casino n’existent plus.'),
+        li('La roue du jour et les cadeaux quotidiens donnent maintenant des pièces, des diamants, de l’énergie, des tenues et des décorations.'),
+        li('Au casino, les objets exclusifs s’obtiennent avec des pièces ou en relevant les missions.')),
+      h('p', { style: 'margin:8px 0 0;text-align:center;font-weight:600' }, 'Tes diamants, ton énergie, tes objets et ta partie sont intacts ♡')),
     actions: [{ label: 'Super !', value: 'ok' }],
   });
 }
@@ -321,6 +343,7 @@ async function boot(): Promise<void> {
   await showWhatsNewV8();
   await showWhatsNewV9();
   await showWhatsNewV10();
+  await showWhatsNewV11();
 
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => undefined);

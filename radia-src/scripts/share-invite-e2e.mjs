@@ -7,7 +7,7 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const results = []; const errors = [];
 const check = (n, ok, x = '') => { results.push(!!ok); console.log(`${ok ? 'OK ' : 'KO '} ${n}${x ? ' — ' + x : ''}`); };
 const levels = {}; for (let i = 1; i <= 5; i++) levels[i] = { stars: 3, best: 10, done: true };
-const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'], story: { step: 22, choices: {}, endingSeen: false, history: [] }, levels, hearts: 33, world: { flags: { 'rw:start-gift-v1': true } },
+const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11'], story: { step: 22, choices: {}, endingSeen: false, history: [] }, levels, hearts: 33, world: { flags: { 'rw:start-gift-v1': true } },
   fun: { endless2: { counters: { orders: 12, xp: 150 } } } };
 const DEV = '22222222-3333-4444-8555-666666666666', SEC = 'a'.repeat(64);
 const oldStats = { v: 1, state: 'on', device: DEV, secret: SEC, at: Date.now() - 5 * 864e5, asked: true };

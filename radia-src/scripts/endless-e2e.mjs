@@ -14,7 +14,7 @@ let curTag = '';
 const check = (name, ok, detail = '') => { results.push({ ok: !!ok, line: `${ok ? 'OK ' : 'KO '} [${curTag}] ${name}${detail ? ` — ${detail}` : ''}` }); };
 
 const todayKey = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
-const baseSave = () => ({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'], story: { step: 9999 }, levels: {}, hearts: 500, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } });
+const baseSave = () => ({ v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11'], story: { step: 9999 }, levels: {}, hearts: 500, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } });
 
 async function open(H, saveObj, tag) {
   const ctx = await browser.newContext({ viewport: { width: 393, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
@@ -180,7 +180,7 @@ async function runEndless(H) {
     const dm = af.world[r.mat] - b4.world[r.mat];
     const de = af.energy - b4.energy;
     check(`commande ${slot + 1} (${o.tier}) : cœurs versés une seule fois`, dh === r.hearts, `+${dh} (attendu ${r.hearts})`);
-    check(`commande ${slot + 1} : pièces versées une seule fois`, dc === r.coins + (r.mat === 'coins' ? r.matN : 0) || dc === r.coins, `+${dc} (attendu ${r.coins})`);
+    check(`commande ${slot + 1} : pièces versées une seule fois`, [0, 1, 2, 3].some((k) => dc === r.coins + k * 150 || dc === r.coins + (r.mat === 'coins' ? r.matN : 0) + k * 150), // + 150 pièces par succès débloqué en même temps (récompense de succès) `+${dc} (attendu ${r.coins})`);
     check(`commande ${slot + 1} : matériau ${r.mat} versé une seule fois`, r.mat === 'coins' || dm === r.matN, `+${dm} (attendu ${r.matN})`);
     check(`commande ${slot + 1} : énergie versée une seule fois`, de >= r.energy && de <= r.energy + 1, `+${de} (attendu ${r.energy})`);
     check(`commande ${slot + 1} : nouvelle commande du même palier`, af.orders[slot].id !== o.id && af.orders[slot].tier === o.tier);
@@ -360,7 +360,7 @@ async function runMigration(H) {
 /** Mode histoire : niveau 1 jouable, sauvegarde `run` intacte, aucune donnée Endless touchée. */
 async function runStory() {
   curTag = 'histoire';
-  const { ctx, page } = await open(852, { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'], world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 } } }, curTag);
+  const { ctx, page } = await open(852, { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11'], world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: { cycle: 0, day: 1, lastKey: todayKey(), claimed: [0], total: 1 } } }, curTag);
   const sleep = (ms) => page.waitForTimeout(ms);
   await page.getByText('MODE CHAPITRES').first().click();
   await sleep(900);

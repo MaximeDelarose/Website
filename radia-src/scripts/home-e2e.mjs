@@ -11,7 +11,7 @@ async function run(H, claimable) {
   tag = `393×${H}${claimable ? ' cadeau du jour dispo' : ''}`;
   const ctx = await browser.newContext({ viewport: { width: 393, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
   const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(`[${tag}] ${e.message}`));
-  const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'], story: { step: 9999 }, levels: {}, hearts: 5, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: claimable ? { cycle: 0, day: 1, lastKey: '2000-01-01', claimed: [], total: 0 } : { cycle: 0, day: 1, lastKey: today, claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } };
+  const seed = { v: 5, seenUpdates: ['v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11'], story: { step: 9999 }, levels: {}, hearts: 5, world: { flags: { 'rw:start-gift-v1': true } }, fun: { daily: claimable ? { cycle: 0, day: 1, lastKey: '2000-01-01', claimed: [], total: 0 } : { cycle: 0, day: 1, lastKey: today, claimed: [0], total: 1 }, free: { unlocked: true, announced: true, at: 1 } } };
   await page.addInitScript((s) => { if (!localStorage.getItem('radia-save-v1')) localStorage.setItem('radia-save-v1', s); }, JSON.stringify(seed));
   await page.goto(`http://localhost:${PORT}/?debug`, { waitUntil: 'networkidle' }); await page.waitForTimeout(3500);
   const sleep = (ms) => page.waitForTimeout(ms);
@@ -52,13 +52,13 @@ async function run(H, claimable) {
   check('Casino : pastille « Bienvenue ! »', (await page.locator('.casino-bubble.on').count()) === 1);
   await page.locator('.btn.mode.casino').click(); await sleep(2200);
   check('toucher CASINO ouvre le casino', (await page.locator('.cz-root').count()) === 1);
-  const chips = await page.evaluate(() => window.RADIA.casino?.state?.().total ?? -1);
-  check('le cadeau d\'ouverture gratuit est versé (tickets virtuels)', chips > 0, `${chips} tickets`);
+  const coins = await page.evaluate(() => window.RADIA.casino?.state?.().coins ?? -1);
+  check('le cadeau d\'ouverture gratuit est versé en pièces (plus de tickets)', coins >= 300, `${coins} pièces`);
   const exit = page.locator('.cz-root button[aria-label*="Quitter"], .cz-root .cz-back, .cz-root button[aria-label*="Retour"]').first();
   if (await exit.count()) { await exit.click().catch(() => {}); await sleep(1200); }
   for (let i = 0; i < 4 && (await page.locator('.cz-root').count()); i++) { const b = page.locator('.cz-root button', { hasText: /Retour|Quitter|Sortir|Fermer/ }).first(); if (await b.count()) { await b.click().catch(() => {}); await sleep(1000); } }
   check('retour du casino → l\'accueil est réaffiché', (await page.locator('.title-screen').count()) === 1 && (await page.locator('.cz-root').count()) === 0);
-  check('après la première visite : plus de pastille « Bienvenue », le sous-titre indique les tickets', (await page.locator('.btn.mode.casino small').innerText()).includes('tickets'), await page.locator('.btn.mode.casino small').innerText());
+  check('après la première visite : plus de pastille « Bienvenue », le sous-titre ne parle plus de tickets', !/ticket/i.test(await page.locator('.btn.mode.casino small').innerText()), await page.locator('.btn.mode.casino small').innerText());
 
   // ---- Succès : s'ouvre, puis retour
   await page.getByRole('button', { name: 'Succès' }).click(); await sleep(1200);

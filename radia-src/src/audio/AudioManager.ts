@@ -16,7 +16,7 @@ export type Sfx =
   // Game feel 2.0 : variantes de POP, fusion rare / maximale, coffre, sélection douce
   | 'pop4' | 'pop5' | 'popRare' | 'maxMerge' | 'chestOpen' | 'select' | 'windup'
   // Casino Royal et roue du jour
-  | 'chip' | 'chipWin' | 'rouletteTick' | 'ballDrop' | 'reelStop' | 'cardDeal' | 'cardFlip' | 'jackpot' | 'wheelTick' | 'bigWin' | 'ticketGet'
+  | 'chip' | 'chipWin' | 'rouletteTick' | 'ballDrop' | 'reelStop' | 'cardDeal' | 'cardFlip' | 'jackpot' | 'wheelTick' | 'bigWin' | 'coinGet'
   // Scène du feu d'artifice et collier légendaire (synthétisés, doux)
   | 'fwLaunch' | 'fwBurst' | 'fwCrackle' | 'crystal' | 'crystalSoft'
   // Ouverture de cadeaux et de coffres (src/ui/rewards)
@@ -551,7 +551,7 @@ export class AudioManager {
         [784, 988, 1175].forEach((f) => this.tone(f * p, 0.9, { type: 'sine', vol: 0.06, delay: 0.38, attack: 0.02 }));
         [2093, 2637, 3136, 3951, 3136, 4186].forEach((f, i) => this.tone(f * p, 0.18, { type: 'sine', vol: 0.04, delay: 0.5 + i * 0.07 }));
         break;
-      case 'ticketGet': // un ticket arrive au compteur : petit « ding »
+      case 'coinGet': // une pièce arrive au compteur : petit « ding »
         this.tone(1976 * p, 0.09, { type: 'sine', vol: 0.06 });
         this.tone(2637 * p, 0.12, { type: 'sine', vol: 0.045, delay: 0.05 });
         break;

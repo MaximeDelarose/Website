@@ -5,6 +5,7 @@
 import { PAL, canvasUrl, ellipse, fillShaded, glow, gloss, heartPath, paint, rgba, roundRect, seeded, shade, sparkle, starPath, texScale } from './kit';
 import { drawRadiaNow, drawAugusteCutout } from './world/radiaNow';
 import { drawAugusteFull } from './characters';
+import { drawResIcon } from './world/resources';
 
 type C = CanvasRenderingContext2D;
 export const CZ = {
@@ -267,7 +268,7 @@ export function rouletteWheelCanvas(R: number, order: readonly number[], colorOf
 
 // ------------------------------------------------------------------ roue de cadeaux (pastel)
 
-export function giftWheelCanvas(R: number, lots: { color: string; emoji: string; short?: string }[]): HTMLCanvasElement {
+export function giftWheelCanvas(R: number, lots: { color: string; emoji: string; icon?: 'coin'; short?: string }[]): HTMLCanvasElement {
   const S = Math.ceil(R * 2 * texScale());
   const k = S / (R * 2);
   return paint(R * 2, R * 2, k, (ctx) => {
@@ -284,7 +285,8 @@ export function giftWheelCanvas(R: number, lots: { color: string; emoji: string;
       ctx.lineWidth = R * 0.012; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke();
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(i * step);
       ctx.font = `${Math.round(R * 0.19)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(lots[i].emoji, 0, -R * 0.64);
+      if (lots[i].icon === 'coin') { ctx.save(); ctx.translate(-R * 0.1, -R * 0.64 - R * 0.1); drawResIcon(ctx, 'coins', R * 0.2); ctx.restore(); } // la pièce dorée de RADIA, pas l'émoji
+      else ctx.fillText(lots[i].emoji, 0, -R * 0.64);
       if (lots[i].short) { ctx.font = font(R * 0.115); ctx.fillStyle = PAL.choco; ctx.fillText(lots[i].short ?? '', 0, -R * 0.4); }
       ctx.restore();
     }
@@ -360,7 +362,7 @@ function drawBigWheel(ctx: C, cx: number, cy: number, R: number, floorY: number,
   ctx.beginPath(); ctx.moveTo(cx - 7, cy - R - 7); ctx.lineTo(cx + 7, cy - R - 7); ctx.lineTo(cx, cy - R + 9); ctx.closePath(); ctx.fillStyle = '#E8387F'; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = CZ.ink; ctx.stroke();
 }
 
-/** Table de roulette (vue de dessus inclinée) : feutre, bord doré, petite roue, piles de tickets. */
+/** Table de roulette (vue de dessus inclinée) : feutre, bord doré, petite roue, piles de jetons. */
 function drawRouletteTable(ctx: C, cx: number, cy: number): void {
   ctx.save();
   ctx.beginPath(); ctx.ellipse(cx, cy + 6, 62, 24, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(20,10,40,.45)'; ctx.fill();
@@ -374,12 +376,12 @@ function drawRouletteTable(ctx: C, cx: number, cy: number): void {
   ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI * 2); ctx.fillStyle = CZ.goldLight; ctx.fill(); ctx.restore();
   // tapis des mises (cases)
   for (let i = 0; i < 4; i++) { roundRect(ctx, cx + 8 + i * 11, cy - 9, 9, 13, 2); ctx.fillStyle = i % 2 ? '#241636' : '#D6336C'; ctx.fill(); ctx.lineWidth = 0.8; ctx.strokeStyle = CZ.gold; ctx.stroke(); }
-  // piles de tickets
+  // piles de jetons
   for (const [dx, n, col] of [[-44, 4, '#F3C86B'], [-37, 3, '#9A7AE0'], [38, 3, '#4FB98A']] as const) for (let k = 0; k < n; k++) { ctx.beginPath(); ctx.ellipse(cx + dx, cy + 8 - k * 2.6, 6, 2.6, 0, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 0.8; ctx.strokeStyle = CZ.ink; ctx.stroke(); }
   ctx.restore();
 }
 
-/** Table de blackjack : demi-lune de feutre violet, cartes étalées, tickets. */
+/** Table de blackjack : demi-lune de feutre violet, cartes étalées, jetons. */
 function drawBlackjackTable(ctx: C, cx: number, cy: number): void {
   ctx.save();
   ctx.beginPath(); ctx.ellipse(cx, cy + 6, 62, 24, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(20,10,40,.45)'; ctx.fill();

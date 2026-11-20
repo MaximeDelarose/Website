@@ -1,0 +1,78 @@
+/* Atelier coloriage / dessin : une GRANDE feuille, des outils compacts mais faciles à toucher pour une enfant de 3 ans.
+   Mise en page « élastique » : le plateau prend la place dont il a besoin, la feuille prend tout le reste (voir C.fit). */
+:root {
+  --tool: clamp(44px, min(calc((100vw - 24px - 44px - 6 * 6px) / 5), 8.4dvh), 64px);   /* 5 outils + bouton « grande feuille » sur une seule rangée */
+  --sw: clamp(38px, min(calc((100vw - 24px - 6 * 8px) / 7.3), 6.6dvh), 58px);          /* ~7 grosses couleurs visibles, la 8e dépasse : on fait défiler */
+  --bar: clamp(44px, 5.8dvh, 52px);
+}
+.act { --mode: #c4a8ff; --ac: #ff8fd0; }
+.act .cv-wrap { border-width: 3px; box-shadow: 0 0 0 3px var(--mode), 0 8px 16px rgba(107,63,114,.22); transition: box-shadow .25s; border-radius: 18px; }
+.act.color, .act.free { --stagepad: 2px; }
+
+/* plateau compact : outils → options (une seule rangée) → barre du bas */
+.tray.atelier { gap: 6px; padding: 8px 10px 6px; }
+.atelier .tools.big { display: flex; flex-wrap: nowrap; justify-content: space-between; align-items: center; gap: 6px; padding: 8px 6px 0; }   /* le haut laisse monter un peu l'outil actif */
+.tool { --a: #ff9ac8; --b: #ff5d9e; position: relative; flex: none; width: var(--tool); height: var(--tool); border-radius: 18px; border: 3px solid #fff; padding: 0; display: grid; place-items: center;
+  background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.55) 0 12%, rgba(255,255,255,0) 13%), linear-gradient(180deg, var(--a), var(--b));
+  box-shadow: 0 4px 0 rgba(107,63,114,.3), 0 6px 10px rgba(107,63,114,.16); transition: transform .15s, box-shadow .2s, opacity .2s; opacity: .82; }
+.tool.pink { --a: #ff9ac8; --b: #ff5d9e; } .tool.purple { --a: #cfb6ff; --b: #8b60ee; } .tool.yellow { --a: #ffe36e; --b: #ffae22; } .tool.turq { --a: #86efe6; --b: #28c2b8; } .tool.blue { --a: #94d8ff; --b: #4aa3f5; }
+.tool .tico { width: 64%; height: 64%; display: block; pointer-events: none; } .tool .tico svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 0 rgba(0,0,0,.18)); }
+.tool .tdot { position: absolute; right: -6px; bottom: -6px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,.3); background: var(--ac); }
+.tool:active { transform: translateY(2px) scale(.96); }
+.tool.on { opacity: 1; z-index: 2; transform: translateY(-4px) scale(1.1); box-shadow: 0 0 0 3px #fff, 0 0 0 7px var(--hex), 0 0 16px 5px var(--hex); animation: toolon .45s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes toolon { 0% { transform: translateY(0) scale(.9); } 60% { transform: translateY(-6px) scale(1.18); } 100% { transform: translateY(-4px) scale(1.1); } }
+.expbtn { flex: none; width: calc(var(--tool) * .78); height: calc(var(--tool) * .78); min-width: 40px; min-height: 40px; border-radius: 16px; border: 3px solid #fff; background: linear-gradient(180deg, #fff, #efe5ff); box-shadow: 0 3px 0 rgba(107,63,114,.22), 0 0 0 2px #d9c5ff; padding: 8px; display: grid; place-items: center; }
+.expbtn svg { width: 100%; height: 100%; } .expbtn:active { transform: translateY(2px); }
+
+/* options : une rangée qui défile horizontalement ; hauteur fixe pour que la feuille ne bouge jamais quand on change d'outil */
+.optslot { position: relative; height: calc(var(--sw) + 12px); }
+.optslot > * { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+.optslot > [hidden] { display: none !important; }
+.atelier .palette, .atelier .stickers { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 4px 6px; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; touch-action: pan-x; }
+.atelier .palette::-webkit-scrollbar, .atelier .stickers::-webkit-scrollbar { display: none; }
+.atelier .sw { position: relative; flex: none; scroll-snap-align: center; width: var(--sw); height: var(--sw); border-radius: 50%; border: 4px solid #fff; background: var(--c); padding: 0;
+  box-shadow: 0 3px 0 rgba(107,63,114,.28), inset 0 -4px 0 rgba(0,0,0,.1), inset 0 4px 0 rgba(255,255,255,.35); transition: transform .15s, box-shadow .2s; }
+.atelier .sw svg { position: absolute; inset: 20%; width: 60%; height: 60%; opacity: 0; transform: scale(.3); transition: all .2s; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
+.atelier .sw:active { transform: scale(.92); }
+.atelier .sw.on { transform: scale(1.14); box-shadow: 0 0 0 3px var(--ink), 0 0 0 6px #fff, 0 0 16px 6px var(--c); z-index: 2; }
+.atelier .sw.on svg { opacity: 1; transform: scale(1); }
+.atelier .stk { flex: none; scroll-snap-align: center; width: var(--sw); height: var(--sw); border-radius: 16px; background: #fff; border: 3px solid #e5d6ff; padding: 4px; box-shadow: 0 3px 0 rgba(107,63,114,.2); transition: transform .15s; }
+.atelier .stk.on { border-color: var(--hot); transform: scale(1.1); box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--hot), 0 0 12px 4px rgba(255,93,158,.4); }
+.atelier .optart { display: grid; place-items: center; border-radius: 22px; background: linear-gradient(180deg, #f3ecff, #e5f4ff); border: 3px dashed var(--mode); }
+.atelier .optart svg { height: 78%; width: auto; max-width: 70%; filter: drop-shadow(0 3px 3px rgba(0,0,0,.18)); animation: tfloat 3s ease-in-out infinite; }
+
+/* barre du bas : annuler · tailles (dessin libre) · ✓ J'ai fini ! · recommencer */
+.atelier .donebar { display: flex; align-items: center; gap: 6px; padding: 0; }
+.atelier .donebar .side { width: var(--bar); height: var(--bar); flex: none; }
+.atelier .donebar .side svg { width: 62%; height: 62%; }
+.atelier .donebar .donebtn { flex: 1; min-width: 0; justify-content: center; min-height: var(--bar); font-size: clamp(14px, 2dvh, 17px); white-space: nowrap; padding: 0 12px 0 6px; gap: 6px; border-width: 3px; box-shadow: 0 3px 0 rgba(10,110,80,.4), 0 6px 10px rgba(20,140,100,.25); }
+.atelier .donebar .donebtn .dchk { width: calc(var(--bar) - 14px); height: calc(var(--bar) - 14px); padding: 4px; }
+.atelier .sizes { display: flex; gap: 3px; flex: none; }
+.act.free .donebar .side { width: 44px; height: 44px; }
+.atelier .szb { width: 36px; height: 36px; padding: 0; border-radius: 50%; background: #fff; border: 3px solid #e5d6ff; display: grid; place-items: center; box-shadow: 0 3px 0 rgba(107,63,114,.18); }
+.atelier .szb i { display: block; border-radius: 50%; background: var(--ac, var(--ink)); }
+.atelier .szb.on { border-color: var(--hot); box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--hot); background: #fff0f7; }
+
+.stkpop { position: absolute; pointer-events: none; z-index: 66; } .stkpop svg { width: 100%; height: 100%; filter: drop-shadow(0 6px 6px rgba(0,0,0,.25)); }
+
+/* le coloriage a une feuille carrée : il reste de la place en hauteur → outils et couleurs un peu plus gros */
+.act.color { --tool: clamp(46px, min(calc((100vw - 24px - 44px - 6 * 6px) / 5), 9.2dvh), 68px); --sw: clamp(40px, min(calc((100vw - 24px - 6 * 8px) / 7), 7.4dvh), 62px); --bar: clamp(44px, 6.2dvh, 56px); }
+
+/* ---------- « Grande feuille » : la feuille prend presque tout l'écran, seule une petite palette reste ---------- */
+body.atl-full #hud { display: none; }
+.act.full { padding-top: calc(var(--st) + 6px); }
+.act.full .cv-wrap { border-width: 2px; box-shadow: 0 0 0 2px var(--mode), 0 4px 10px rgba(107,63,114,.2); }
+.act.full .tray.atelier { flex-direction: row; align-items: center; gap: 8px; padding: 6px 10px 4px; border-radius: 22px 22px 0 0; }
+.act.full .tools.big { padding: 0; flex: none; }
+.act.full .tool, .act.full .donebar { display: none; }
+.act.full .optslot { flex: 1; min-width: 0; height: calc(var(--sw) + 8px); }
+
+/* paysage : le plateau est sur le côté */
+@media (orientation: landscape) {
+  .tray.atelier { overflow-y: auto; }
+  .atelier .optslot { height: calc(var(--sw) + 12px); }
+  :root { --tool: clamp(40px, 11dvh, 52px); --sw: clamp(36px, 10dvh, 48px); --bar: clamp(40px, 10dvh, 48px); }
+  .act.full .tray.atelier { width: min(46%, 330px); flex-direction: column; border-radius: 22px 0 0 22px; }
+  .act.full { padding-top: calc(var(--st) + 6px); }
+}
+@media (orientation: landscape) { .act .tray.atelier { width: min(54%, 420px); } .atelier .donebar .donebtn { min-width: 118px; } }

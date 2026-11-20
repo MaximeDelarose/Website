@@ -112,7 +112,7 @@ export function slotsScene(sh: Shell, o: { onBack(): void; goCard(): void }): Sc
     const def = r.sym ? symDef(r.sym) : null;
     const cols = r.kind === 'triple' ? [0, 1, 2] : [0, 1, 2].filter((i) => r.reels[i] === r.sym);
     reels.setWin(cols);
-    winEl.textContent = `${r.kind === 'triple' ? `3 × ${def!.name}` : `2 × ${def!.name}`} · +${fmt(r.win)} tickets${r.win > r.bet ? ' !' : ' (mise rendue)'}`;
+    winEl.textContent = `${r.kind === 'triple' ? `3 × ${def!.name}` : `2 × ${def!.name}`} · +${fmt(r.win)} pièces${r.win > r.bet ? ' !' : ' (mise rendue)'}`;
     winEl.className = 'sl-win win';
     const at = centerOf(reels.canvas);
     const lv = levelFor(r.win, r.bet) ?? 'small';
@@ -136,7 +136,7 @@ export function slotsScene(sh: Shell, o: { onBack(): void; goCard(): void }): Sc
         h('h2', sum.stoppedEarly ? `Série arrêtée (${sum.played}/${sum.planned})` : 'Récapitulatif de la série'),
         h('div.sl-rlist', ...rows),
         h('div.sl-rtot', h('div', 'Mises : ', h('b', fmt(sum.staked))), h('div', 'Gains : ', h('b', fmt(sum.won))),
-          h(`div.sl-rnet.${net > 0 ? 'win' : net < 0 ? 'lose' : ''}`, net >= 0 ? `Bilan : +${fmt(net)} tickets` : `Bilan : −${fmt(-net)} tickets`), h('div', 'Solde à la table : ', h('b', fmt(sum.balance)))),
+          h(`div.sl-rnet.${net > 0 ? 'win' : net < 0 ? 'lose' : ''}`, net >= 0 ? `Bilan : +${fmt(net)} pièces` : `Bilan : −${fmt(-net)} pièces`), h('div', 'Ta bourse : ', h('b', fmt(sum.balance)))),
         h('div.actions.row', again, h('button.btn.secondary', { on: { click: close } }, 'Fermer')));
       const bd = h('div.cz-helpback', card);
       sh.root.append(bd);

@@ -1,0 +1,184 @@
+# Itération — Version navigateur : 4 héros, terrain « maquette », UI minimale, commandes Mobile Legends
+
+## 1. Objectif
+Héros jouables façon MOBA mobile (Noctis, Églantyne, Phelto, Épéiste), terrain proche de la maquette fournie, UI légère, contrôle tactile fluide.
+
+## 2. Confirmé par les documents / images
+- Noctis : Éclats convergents, Traversée Fantôme, Reflet Abyssal, Nuit Fractionnée, passif Résurrection spectrale (Google Doc) ; sprites **extraits de la planche fournie** (`Tools/art/extract_refs.py`).
+- Églantyne : Graines de ronce, Calice de l'Effroi, Terrain Sacrificiel, Éclat de la Grande Serre, Essaim de poupées (Google Doc).
+- Épéiste : combo, Frappe d'Attraction, Foudre Ancrée, Tempête de Foudre, charge électrique (Google Doc).
+- UI : disposition de la maquette (vague/ennemis en haut à gauche, progression des 10 vagues au centre, ressources à droite, barre de tourelles avec verrous en bas, héros/compétences en bas à droite). Barres de vie : élites/boss permanentes ; autres au hit puis disparition, vert/jaune/rouge (fiche « États »).
+
+## 3. Hypothèses temporaires
+- **Phelto n'a AUCUN kit dans les documents** (seulement une image dans la maquette : guitariste aux cheveux roses, notes de musique roses). Kit **inventé** : notes perçantes, Accord de choc (cône, étourdit), Riff d'accélération (zone qui accélère les tourelles), Concert (ultime de zone). À remplacer par le vrai kit.
+- Sprites d'Églantyne et de Phelto : dessinés par script (chibi), **pas** issus de vos illustrations (seul Noctis a une planche exploitable). À remplacer.
+- Une famille de tourelles par héros (3 améliorations) : Orbe foudroyant, **Faille instable** (Noctis), **Piège de ronce** (Églantyne, posé sur une plaque, pas sur le chemin), **Amplificateur** (Phelto, aura de cadence). Le Relais électrique, l'Arbre à poupées, l'Arbre Monde, le Totem d'ombres… ne sont pas implémentés (barre : 2 verrous).
+- Ressource unique « cristaux » (le 2ᵉ compteur vert de la maquette, probablement l'XP, n'est pas implémenté).
+- Caméra 3/4 fixe (la maquette est quasi vue du dessus) ; pas de zoom.
+- Héros invulnérables (pas de PV de héros).
+- Ennemis : l'orbe sombre aux yeux violets reprend la fiche « États » ; les autres ennemis restent ceux du prototype.
+
+## 4. Fichiers
+`js/ashbound.js` (moteur, rendu, UI, entrées), `js/ashbound-heroes.js` (kits), `ashbound.html`, `ashbound/` (assets), `Tools/art/{gen_ground2,gen_sprites2,extract_refs,layout}.py`.
+
+## 5. Implémenté
+Sélection de héros ; déplacement temps réel (ZQSD/WASD/flèches + souris, ou joystick flottant) ; attaque auto-ciblée maintenue ; 3 compétences : tap = lancer vers l'ennemi le plus proche, **glisser-relâcher = viser** (indicateur ligne/cône/cercle) ; projectiles, zones, clones, ombres, poupées, effets de statut (étourdissement, ralentissement, poison, attraction) ; construction en un tap ; plein écran adaptatif sur mobile ; terrain, décor, Cœur rose.
+
+## 6. Comment tester
+Ouvrir `ashbound.html` (ou `?hero=noctis&speed=4` pour un héros direct / accéléré).
+
+## 7. Résultats observés (réels)
+- Chromium : sélection, 4 héros × (attaque + 3 compétences) sans erreur JS ; tactile simulé par CDP : joystick, glisser-viser S2 (cooldown déclenché, indicateur visible), tap rapide S1, attaque maintenue (projectiles) ; captures relues.
+- Partie complète accélérée ×20 avec un bot (construit, améliore, patrouille et spamme les compétences) : **victoire pour les 4 héros** (Églantyne et Phelto perdaient avant que j'augmente les dégâts de leurs tourelles). Le bot est trop efficace : l'équilibrage reste à faire avec de vrais joueurs.
+- **Non testé** : vrai téléphone (ressenti du joystick, taille des boutons, plein écran iOS), son sur mobile, performances sur appareil modeste.
+
+## 8. Problèmes restants
+Sprites Églantyne/Phelto basiques ; animations d'attaque absentes (une pose) ; pas de progression en run (XP, niveaux) ; équilibrage ; kit de Phelto ; le projet Unity n'a pas encore ces héros (seule la version navigateur les a).
+
+## 9. Étape suivante proposée
+XP/niveaux en run + 2ᵉ tourelle débloquée par niveau ; vraies illustrations d'Églantyne/Phelto ; équilibrage après tests sur téléphone.
+
+---
+## Itération suivante — alignement sur les captures + mode grand écran
+- Composition : plaque de nom colorée + mini-barre de ressource au-dessus du héros ; portrait + rangée de 4 compétences en bas à droite (clavier/souris) ; barres de vie encadrées (vert/jaune/rouge) avec étincelle au coup ; « SPAWN » sous la flèche d'entrée ; Cœur avec libellé et barre.
+- **Mode grand écran** (PC et mobile) : bouton dans le HUD, touche `G`, bouton de page, menu pause. API plein écran native si disponible, sinon plein cadre CSS (iOS). Le canvas s'adapte au ratio de l'écran (960 → 1700 de large logique) et la résolution interne suit l'écran (×1 ou ×2) pour des textes et traits nets.
+- Tests : Chromium 1920×1080 (normal → grand écran → retour), mobile paysage 844×390 en grand écran ; aucune erreur JS. **Non testé** : plein écran natif sur vrai appareil, iOS.
+
+---
+## Itération — correction des boutons, DA des planches fournies, mode application
+- **Bug des boutons (plein écran)** : le canvas est étiré dans son conteneur (`object-fit: contain`) mais la conversion des touches ne tenait compte ni des bandes noires, ni de la zone réellement affichée, ni de la largeur logique calculée avant le passage en plein écran → décalage vers la droite. Corrigé : conversion basée sur la zone réellement affichée, largeur logique calculée sur le conteneur, `ResizeObserver` + `visualViewport` + `orientationchange`, zones sûres (encoche) retirées de la zone de jeu, zone de toucher élargie, défilement/zoom bloqués pendant le jeu.
+- **Mode application** : `ashbound.webmanifest` (plein écran, paysage, icônes), `?app=1` ou mode `standalone` détecté → plein cadre automatique.
+- **DA** : sprites **extraits des planches fournies** (`Tools/art/extract_refs2.py`) pour Phelto et Églantyne (poses idle/marche/attaque/incantation, portraits, projectiles), tourelles des familles de ces planches (Piège de ronce, Totem mélodique), Totem d'ombre de Noctis, orbe sombre de la fiche d'états. Effets de déplacement : ronces qui jaillissent sous les pas d'Églantyne, arcs de foudre (Épéiste, plus nombreux avec la charge), volutes d'ombre (Noctis), notes (Phelto).
+- **Pas de planche fournie** : Épéiste, Fureteur, Gardien, Broyeur, Seigneur de Cendre, Cœur, décor → toujours procéduraux, donc en dessous du niveau des planches. Une tentative de redessiner l'Épéiste en plus fin a été jugée insuffisante et abandonnée.
+- Tests : 7 formats d'écran (PC 1920×1080, 2560×900, 1366×768, 4:3, mobiles 844×390 / 932×430 / 667×375), clic/toucher sur le **bord droit** de chaque bouton (attaque, 3 compétences) → 28/28 ; 4 héros × séquence complète accélérée sans erreur. **Non testé** : appareil réel, installation PWA, plein écran natif iOS.
+
+---
+## Itération — Épéiste électrique en pixel art simple (planche « Lame du Tonnerre »)
+- Sprites **extraits de la planche fournie** (`Tools/art/extract_epeiste.py`) puis ramenés en pixel art simple : réduction, **palette commune de 30 couleurs**, alpha binaire, contour de 1 px. Poses : repos ×2, course ×2 (avec traînée de foudre), estoc, grand arc ; portraits ; **icônes officielles des compétences** (Frappe d'Attraction, Foudre Ancrée, Tempête de Foudre) sur les boutons.
+- Le combo enchaîne les poses : estoc puis grand arc.
+- **Conflit à trancher** : cette planche montre aussi une **Phelto « Chevalière de l'Aurore »** (armure, épée, compétences Estoc Foudroyant / Rempart d'Éclat / Lancée de Lame / Orage Céleste) alors que la planche précédente montrait **Phelto « Maîtresse des mélodies »** (guitariste/magicienne rose, notes de musique). Le jeu utilise encore la version mélodies. De même, les compétences d'Églantyne de cette planche (Piège de Ronce, Arbre à Poupées, Étreinte Végétale, Arbre Monde) diffèrent du Google Doc.
+- Tests : Chromium, Épéiste (séquence complète accélérée sans erreur), 7 formats d'écran (boutons) toujours OK.
+
+**Décision (auteur du projet)** : Phelto = version **« Maîtresse des mélodies »** (musique). La version « Chevalière de l'Aurore » de la planche « Lame du Tonnerre » n'est pas utilisée. Églantyne : kit du Google Doc conservé (décision sur les compétences de la planche toujours en attente).
+
+---
+## Itération — Coop en ligne à 2 joueurs
+- **Architecture** : l'hôte exécute toute la simulation et envoie des instantanés (~12/s : héros, ennemis, tourelles, or, Cœur, vague). L'invité exécute le même moteur en *mode miroir* : il prédit les déplacements et rejoue les effets visuels (dégâts neutralisés) ; ses entrées (déplacement, visée, attaque maintenue, compétences, constructions, améliorations) partent vers l'hôte, qui les valide. Les actions de l'hôte sont rejouées chez l'invité par événements.
+- **Transport** : Supabase Realtime en diffusion par salon (`ashbound-room-XXXX`), comme le Billard — aucune table, aucune modification serveur. Repli `BroadcastChannel` (même navigateur) avec `?net=bc`, utilisé pour les tests.
+- **Règles de coop** (provisoires) : or et Cœur partagés ; chaque joueur construit la tourelle de son héros ; ennemis +50 % de PV ; l'invité ne peut pas relancer la partie (l'hôte seul) ; pas de pause (le bouton ouvre un menu, la partie continue) ; déconnexion détectée (hôte : 9 s sans entrée ; invité : 8 s sans instantané).
+- **Invitation** : « Créer un salon » → code de 4 lettres ou lien `?room=CODE` (partage natif sur mobile). 
+- **Test réel** (2 pages Chromium, repli local) : connexion, choix des héros, lancement, construction demandée par l'invité et exécutée par l'hôte (apparaît des deux côtés), déplacements et compétences, 9 ennemis / même or des deux côtés, départ de l'invité. **Non testé** : le transport Supabase réel (pas d'accès réseau dans l'environnement de développement), la latence réelle, deux appareils.
+- **Limites** : les ombres spectrales de Noctis ne sont pas visibles chez l'invité (état non diffusé) ; les effets de zone de l'hôte sont rejoués d'après l'événement, donc de légères différences de timing sont possibles ; un seul invité ; pas de reconnexion en cours de partie.
+
+---
+## Itération — Points de vie, attaques ennemies, ranimation, XP et niveaux
+- **PV des héros** (Noctis 90, Églantyne 100, Phelto 95, Épéiste 125, +12 % par niveau) : barre sur la plaque du héros, panneau niveau/PV/XP à gauche, chiffres de dégâts flottants, clignotement et invulnérabilité brève (0,35 s) après un coup, régénération lente hors combat.
+- **Ennemis qui attaquent** (valeurs provisoires) : Spectre et Fureteur au corps à corps (5 et 4 dégâts), Gardien de cendre tire des projectiles (9), Broyeur frappe en zone (16), Seigneur de Cendre tire 3 projectiles en éventail (12). Les projectiles sont visibles et esquivables.
+- **À terre / ranimation** : à 0 PV le héros tombe. **Coop** : son équipier le ranime en restant à moins de 1,9 u pendant 3 s (anneau de progression visible des deux côtés, retour à 50 % PV) ; sans ranimation, retour automatique au Cœur après 30 s (35 % PV) ; si les deux sont à terre, la partie est perdue. **Solo** : réapparition au Cœur après 8 s (60 % PV).
+- **XP et niveaux** (partagés par l'équipe, 10 niveaux) : chaque ennemi vaincu donne de l'XP (4 / 25 / 80 / 200). Chaque niveau : PV max accrus + soin complet, +8 % de dégâts des héros ; les améliorations de tourelle exigent les niveaux 2, 3 et 5.
+- **Coop** : PV, état « à terre », progression de ranimation, XP, niveau et projectiles ennemis sont diffusés dans les instantanés ; l'invité les voit en direct.
+- Tests (Chromium) : solo — blessé, mort, réapparition, +400 XP → niveau 5 ; coop (2 pages) — équipier à terre vu des deux côtés, ranimé après 3,7 s, niveaux synchronisés, défaite quand les deux tombent ; séquences complètes accélérées sans erreur. **Non testé** : équilibrage réel de la difficulté (les ennemis blessent désormais les héros), appareils réels, Supabase réel.
+
+## Mise à jour gameplay — étape A : XP, orbes, niveaux, améliorations
+
+- Les ennemis lâchent des **orbes d'XP** (`G.orbs`), ramassées par proximité (aimant léger) ; synchronisées en coop (snapshot `O`).
+- XP d'équipe `G.xp` / niveau `G.lvl` (max 10, seuils `xpCum`). Barre d'XP fine en bas d'écran + indicateur de niveau compact dans le cadre du héros.
+- À chaque niveau : un choix d'amélioration de compétence parmi **3 cartes max** (touche 1–3 ou toucher), « Plus tard » pour différer ; mods par héros (`h.mod`, `h.picks`, `h.pend`) lus par les kits.
+- Coop : choix de l'invité envoyés via `pick`, appliqués côté hôte et répliqués.
+- Tests : bots complets (t7), positions des boutons (t9), synchro coop (t13), PV/réanimation (t15), choix d'amélioration solo + coop (t16) — sans erreur JS.
+- Pas encore testé : appareils réels, réseau Supabase réel, équilibrage avec de vrais joueurs.
+
+## Mise à jour gameplay — étape B : déblocage progressif des tourelles
+
+- 3 familles par héros, sans mélange (`FAM`) : Noctis Totem d'ombre / Pylône d'arcs / Colosse d'ombre ; Églantyne Piège de ronce / Arbre à poupées / Arbre Monde ; Phelto Totem mélodique / Enceinte à feedback / Scène de concert ; Épéiste Orbe foudroyant / Bobine Tesla / Pylône de foudre.
+- Paliers et limites **provisoires et configurables** dans `TIERCFG` (déblocage T1 niv.1, T2 niv.3, T3 niv.6 ; limite de tourelles par niveau d'équipe). Coûts par tourelle (50 / 110 / 200–220). Revente 60 % (`SELL_RATE`).
+- Écart connu avec le GDD (~30 T1, ~10 T2, ~3 T3) : le terrain actuel n'a que 12 emplacements ; les caps sont donc plafonnés par ces emplacements.
+- Menu de construction compact et rétractable (3 boutons, verrous, `n/limite`), annonce légère au déblocage (bandeau + pulsation du bouton), pastilles de rang sous les tourelles, bouton Vendre.
+- Coop : l'hôte valide famille / niveau / limite / coût ; requêtes `build`, `up`, `sell` ; les tourelles vendues disparaissent aussi chez l'invité.
+- Limites : les T2/T3 réutilisent les sprites T1 du héros (agrandis, sans art dédié) ; l'Arbre à poupées / l'Arbre Monde n'ont pas encore leurs mécaniques propres (étapes suivantes).
+
+## Mise à jour gameplay — carte agrandie et caméra
+
+- Arène 60×34 unités (~2,8× la surface), chemin de 159 unités à 24 points de contrôle (virages en S, boucles), 56 emplacements (≥ 43 requis : 30 T1 + 10 T2 + 3 T3), répartis puis regroupés en grappes près des virages ; tous à portée du chemin. Générés par `layout.py` (contrôles : distance mini entre portions du chemin, couverture), sol par `gen_ground2.py` (distance au chemin via EDT), nouveaux décors `gen_decor3.py` (buisson, fougère, tombe) + arbres, piliers, arche, ossements, cristaux.
+- Limites de tourelles `TIERCFG` : 30 / 10 / 3 atteintes au niveau 10.
+- Caméra : zoom de combat 1,5, suivi lissé du héros, bornée à la carte ; mode construction : zoom 0,72, retour automatique au zoom de combat. Emplacements libres (losanges pulsés) / occupés (point vert) ; aperçu de la portée (survol à la souris, 1er toucher au tactile, 2e toucher pour construire).
+- Performances : sol dessiné par fenêtre visible, culling hors écran (décor, tours, ennemis, projectiles, orbes, barres), particules poolées et plafonnées, qualité adaptative (Q) selon le temps d'image.
+- Tests : bots complets 4 héros gagnent (t7 adapté), parcours des ennemis jusqu'au Cœur sans défense, 43 constructions toutes à portée, 60 i/s en Chromium headless avec 43 tours, tactile mobile (2 touchers), coop, boutons sur 7 formats.
+- Limites : pas testé sur vrais téléphones (perf réelle inconnue) ; l'équilibrage (chemin 2,5× plus long) reste à régler ; le Cœur peut passer sous les boutons de compétence sur téléphone.
+
+## Mise à jour gameplay — étape 3 : Piège de ronce d'Églantyne (sur le chemin)
+
+- T1 d'Églantyne = **Piège de ronce posé sur le chemin** (hors des emplacements, donc hors des 43 constructions). Mode construction : le chemin est surligné, aperçu du rayon, pose au clic (tactile : 1er toucher aperçu, 2e toucher poser). Règles : sur le chemin, espacement 2,4, pas près de l'entrée/du Cœur, limite par niveau (`TRAP.cap`, 4→20), coût 40.
+- Comportement : persistant ; se déclenche quand un ennemi passe dessus (épines : dégâts de zone + ralentissement), puis recharge (3,5 s) ; 6 charges avant de se dessécher.
+- Spécialisations (choix à 80 cristaux, niveau 2) : **Floraison solaire** (gros dégâts de zone), **Constricteur** (immobilise 1,4 s — réduit sur boss/minibosses — puis ralentit fort), **Éclat de spores** (poison + ralentissement de zone). Évolution courte (130, niveau 4) : dégâts, rayon et charges accrus. Vente 60 %.
+- Réactivation : un piège desséché est rouvert par **sacrifice d'une poupée** d'Églantyne proche (crochet `wiltedTrap`/`reactivateTrap` utilisé par le kit) ou replanté pour 24 cristaux.
+- Coop : requêtes `trap`, `tup`, `tsell`, `tres` validées par l'hôte ; l'instantané transporte les pièges (`R`) et un compteur de déclenchements pour rejouer le visuel chez l'invité.
+- Arbre à poupées / Arbre Monde : toujours T2 / T3 en emplacements, stats génériques (mécaniques propres aux étapes suivantes).
+- Limites : visuel du piège procédural (canvas), sans sprites dédiés ; équilibrage non testé en conditions réelles ; Églantyne n'a plus de tour T1 sur emplacement (conforme à ses 3 familles du GDD, mais à confirmer pour la cible « 30 T1 »).
+
+## Mise à jour gameplay — étapes 4, 5, 6 : transition de monde, gélatines, difficulté 11–20
+
+- **Transition** : à la fin des 10 vagues, au lieu de la victoire, la partie passe en préparation de la **séquence 2** (bandeau « LE MONDE S'ÉVEILLE », +120 cristaux, héros à terre relevés, Cœur NON soigné, constructions / pièges / niveaux conservés). La victoire n'arrive qu'après la vague 20. Coop synchronisée (`sq`, `ct` dans l'instantané).
+- **Monde qui évolue** (rendu uniquement, arène inchangée) : teinte violette du sol, 170 champignons et cristaux lumineux révélés progressivement avec la vague, yeux qui clignent dans les bois, brume mouvante, vignette plus sombre, ambiance sonore ralentie. La corruption monte de 30 % à 100 % sur les vagues 11–20.
+- **Ennemis gélatineux** (`ENEMY`, art procédural `gen_gel.py`, sons `splat/blop/boing/boom`) : gélatine verte ; blop violet (se divise en 2 petits blops) ; gelée bleue (résistance : coups réduits de 7 points, min. 30 %, tirs qui ralentissent le héros) ; gélatine explosive (explose, AoE sur ennemis et héros, **réaction en chaîne** entre explosifs) ; gélatine géante (miniboss, se divise en 3 blops + 3 gélatines) ; **Roi gélatineux** (boss, se divise en géante + 3 explosives + 3 blops). Squash & stretch au rendu, gouttelettes et flaques au sol (particules poolées, plafonnées, adaptées à la qualité).
+- **Difficulté 11–20** (`WAVES2`, `SEQ2`, configurables) : groupes mixtes, +9 % de PV et +3 % de vitesse par vague, cuirasses, explosions en chaîne, géante en vague 15, doubles géantes en 19, Roi en 20.
+- Tests : transition (état conservé), division / chaîne / résistance / boss (t26), coop sur transition + gélatines (t28), parties complètes 20 vagues avec bots des 4 héros (3 perdent à la vague 19-20, 1 gagne) — les bots n'ont pas la maîtrise d'un joueur.
+- Limites : niveau max toujours 10 (aucune récompense d'XP supplémentaire en séquence 2) ; équilibrage non validé par de vrais joueurs ; art des gélatines procédural ; sons synthétiques.
+
+## Mise à jour gameplay — étape 7 : soin et soutien (Arbre Monde, « Sanctuaire verdoyant »)
+
+- Seule source de soin de zone : l'**Arbre Monde** d'Églantyne (T3, 3 max). Aucune tourelle de soin universelle ; le Cœur n'est **jamais** soigné automatiquement (seule l'ultime d'Églantyne, lancée par le joueur, le soigne).
+- Aura de Sanctuaire (rayon 5 → 7,4, visible au sol) : régénération des héros (1,5 → 4 % PV max/s), protection des poupées (30 → 65 % de chance qu'une poupée lancée ne soit pas consommée), défenses renforcées (aura de cadence existante des tourelles voisines ; pièges de ronce qui rechargent plus vite et ranimés après ~12 s). L'aura grandit avec les 2 évolutions (Canopée, Sanctuaire).
+- Tests : soin dans / hors aura (52 % contre 40 % après 3 s), Cœur inchangé, piège desséché ranimé, stats 1,5 % → 4 %, rayon 5 → 7,4.
+- Limites : protection des poupées vérifiée par le code mais pas mesurée statistiquement ; valeurs provisoires.
+
+## Correctif progression : XP, niveaux, déblocages, mécaniques des arbres
+
+- **Cause du blocage constaté** : le site affichait la version de `main` (PR #183), qui contient des cadenas **décoratifs** codés en dur (`NIV. 2` / `NIV. 3`, aucune condition de niveau) et une seule tourelle. Les systèmes de déblocage réels étaient sur la branche, non fusionnés.
+- **XP** : courbe `40 + 26 × niveau` (niv.3 ≈ 106 XP, niv.6 ≈ 460, niv.10 ≈ 1300, niv.20 ≈ 5200) calibrée sur l'offre réelle (≈ 1360 XP en séquence 1, ≈ 4000 en séquence 2) ; niveau max 20 (il était limité à 10, ce qui gaspillait l'XP de la séquence 2). Les orbes ne sont plus perdues (elles filent vers le héros après 8 s). Gains de PV / dégâts par niveau adoucis après le niveau 10.
+- **Choix d'amélioration** : report (« Plus tard ») conservé, cumul des choix, offre de secours « Surcroît de puissance » quand tout est au maximum.
+- **Interface** : « XP x / y » et « → NIV. n+1 » dans le cadre du héros, bandeau animé « NIVEAU n ! », « Nouvelle tourelle débloquée ! » + nom, cadenas retiré immédiatement, bouton pulsé.
+- **Mécaniques propres** : Arbre à poupées = invoque des poupées qui courent sur les ennemis et explosent (étourdissement à l'évolution) ; Arbre Monde = soutien pur (aura de cadence, soin, protection des poupées, pièges renforcés), ne tire plus. Pose d'un piège depuis un emplacement : aimantation au chemin.
+- Tests exécutés : t31 (niveaux 1→20 × 4 héros : XP, seuils, choix, déblocages, construction), t32/t33 (orbes, report, arbres), t34 (coop), t35 (parties complètes : niveau par vague), + régressions.
+
+## Stabilisation, optimisation et difficulté adaptative (solo / coop)
+
+### Audit et causes établies (mesurées, pas supposées)
+- **Cause principale des saccades : `ctx.filter`.** Utilisé pour le flash de dégâts, l'étourdissement, le ralentissement, les héros à terre et les ombres de Noctis. Ablation (même scène, 43 tourelles + 90 ennemis) : 8 → 48 images/s en le neutralisant, alors qu'il n'y avait que ~13 usages par image. Remplacé par des sprites teintés pré-calculés (`spriteImg`/`tintPixels`), sans `save/restore`.
+- **`ep()` / `pos()`** : ~4 000 appels (allocation + recherche binaire) par image pour les positions d'ennemis. Mis en cache par ennemi (clé d, lat, ox, oz) : 3 979 → 85 appels de `pos()` par image ; coût des tourelles 0,57 → 0,09 ms.
+- Allocations par image : `Array.filter` sur 11 tableaux d'entités → compaction sur place (`compact`) ; particules poolées et plafonnées (déjà), orbes en sprite pré-rendu (plus d'arcs ni de `shadowBlur`).
+- Décor bas (fougères, buissons, petits rochers, ossements) figé une fois dans le sol (`bakeGround`), hors du tri en profondeur.
+- Sons : un élément `Audio` cloné par son → pool de 4 éléments par son + plafond de 7 voix par fenêtre de 100 ms (4 en mode économe).
+- Qualité : modes **Auto / Haute / Économe** (menu pause, `?q=`), Auto abaisse effets puis résolution interne si l'image reste lente. Hors caméra : le rendu est supprimé, **la simulation est conservée** (un ennemi hors écran avance, attaque et subit des dégâts normalement).
+- Mesurés sans effet notable (non retenus) : coût du texte (`strokeText`), des blends, du cache de rectangles arrondis (retiré : gain nul, casse les clips).
+- Bug trouvé : les projectiles s'appliquaient sans le contexte du héros → synergies (marque, vulnérabilité, conduction) et attribution des dégâts faussées. Corrigé.
+- Fuites : 2 séquences complètes ×20 avec Églantyne et Noctis : tas 4–7 Mo constant, aucune entité qui s'accumule, aucune valeur NaN, aucune erreur JS.
+
+### Mesures avant / après (Chromium sans GPU, 43 tourelles, 90 ennemis maintenus, séquence 2, 915×412)
+| | avant | après |
+|---|---|---|
+| images/s (solo) | 9,6 | 51,4 |
+| p95 / max durée d'image | 214 / 448 ms | 25,6 / 38 ms |
+| JS update + dessin par image | 1,9 + 3,5 ms | 0,8 + 2,5 ms |
+| `ctx.filter` / `save()` / `drawImage` par image | 13 / 551 / 723 | 0 / 247 / 588 |
+| coop à 2 (hôte) | — | 49,2 i/s |
+| mode économe | — | 58,7 i/s |
+| trafic réseau hôte (coop) | 33,1 Ko/s | 18,8 Ko/s |
+Avec ralentissement CPU ×4 (proxy très approximatif d'un téléphone modeste) : JS ≈ 5 ms update + 11,5 ms dessin par image. **Aucun test sur un vrai téléphone n'a été fait** ; le rendu logiciel sans GPU de ces tests n'est pas représentatif du rendu d'un téléphone.
+Réseau : instantanés à cadence adaptative (12/s → ~7/s), tours / pièges envoyés seulement quand ils changent (rappel 1,5 s), ennemis en entiers compacts, orbes 1 instantané sur 3, entrées de l'invité envoyées seulement si elles changent.
+
+### Difficulté selon les joueurs actifs (`DIFF`, `playersN()`)
+- Nombre de joueurs = hôte + invité connecté **ayant agi dans les 45 dernières secondes** (testé : inactif → 1 joueur, une action → 2). Table extensible à 3-4 joueurs.
+- 2 joueurs : PV ennemis ×1,45, +30 % d'effectif (mesuré : +34 %), boss ×1,2 de PV supplémentaires et +2 d'armure, cadences de mécaniques ×0,85, cristaux par kill ×0,8, XP ×0,85, +60 cristaux de départ. Pas de multiplication systématique : les mécaniques des boss se renforcent aussi (zones par héros, invocations ×1,5).
+### Nouveaux comportements
+- **Sprinteur** (Ombre sprinteuse), **blindé** (Garde cuirassé, armure plate 9), **perturbateur** (annonce 1,8 s, désactive une tourelle 4,5 s ; contrable : le tuer, l'étourdir, ou se tenir près de la tourelle), blop diviseur (3 éclats), gelée blindée (armure 5).
+- **Zones annoncées** (rouge : explosion, vert : flaque persistante, violet : brèche) synchronisées en coop ; **boss à phases** : Seigneur de Cendre (piliers sur chaque héros, invocation d'ombres, onde de choc, enrage) et Roi gélatineux (flaques d'acide, explosifs, carapace temporaire) ; Gélatine géante (flaques).
+- **Synergies coop** : Églantyne rend vulnérable (+20 % de dégâts), Noctis marque (+15 % pour les partenaires), l'Épéiste conduit (+25 % sur cibles étourdies / ralenties / vulnérables / empoisonnées), Phelto donne du rythme (+15 % cadence, +20 % de recharge des compétences aux alliés à moins de 8). Brèches (coop) : sprinteurs au milieu du chemin après annonce → un joueur doit aller défendre ailleurs.
+- Séquences en liste (`SEQLIST`) : les vagues 21-30 s'ajoutent sans refonte.
+### Équilibrage (bots, 4 parties par cas ; les bots ne valent pas des joueurs humains)
+- Héros seul : meurt aux vagues 7-10 (toujours). Tourelles seules : meurent au boss de la vague 10 (toujours). Combiné : franchit la séquence 1 dans ~50-75 % des parties puis atteint la vague 20 sans la gagner (0 victoire sur ~16 parties). Coop (2 bots actifs) : même profil que le solo (franchit la séquence 1 3 fois sur 4). Coop sans héros actifs : meurt à la vague 4-5 (économie réduite + effectif accru).
+- Paramètres provisoires et centralisés (`DIFF`, `SEQ2`, `WAVES`, `WAVES2`, `BOSSAI`, `ENEMY`).
+### Limites
+- Pas de pooling d'objets ennemis / projectiles (peu d'allocations restantes, non mesurables) ; pas de test sur appareil réel ni sur le réseau Supabase réel.
+- Les sprites du sprinteur / blindé / perturbateur sont des sprites existants teintés ; aucun son dédié.
+- La difficulté finale (vague 20) n'a pas été franchie par les bots : à valider avec de vrais joueurs.

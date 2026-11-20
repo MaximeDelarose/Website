@@ -3,7 +3,7 @@
  * et petites icônes de récompenses. Style RADIA (contour chocolat, lumière en haut à gauche), mis en cache.
  */
 import { canvasUrl, paint, roundRect, heartPath, starPath, sparkle, PAL, OUTLINE, glow, fillShaded, gloss, ellipse } from '../../game/art/kit';
-import { partUrl, ticketUrl, setClothThumb } from '../../game/art/world/giftArt';
+import { partUrl, setClothThumb } from '../../game/art/world/giftArt';
 import type { Resolved } from '../../daily/calendar';
 import type { ArtStyle, Palette } from './logic';
 import type { Reward } from './types';
@@ -263,7 +263,6 @@ export function rewardIconUrl(r: Pick<Reward, 'type' | 'id' | 'icon'>, size = 64
   switch (r.type) {
     case 'coins': return partUrl({ t: 'coins', n: 1 }, size);
     case 'diamonds': return partUrl({ t: 'diamonds', n: 1 }, size);
-    case 'tickets': return ticketUrl(size);
     case 'res': return partUrl(r.id === 'flowers' || r.id === 'fabric' || r.id === 'cocoa' ? { t: 'res', k: r.id, n: 1 } : { t: 'coins', n: 1 }, size);
     case 'energy': return energyIcon(size);
     case 'hearts': return heartsIcon(size);

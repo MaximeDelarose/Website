@@ -256,3 +256,9 @@ Tests unitaires : `npx vitest run` (≈ 1240).
 - Tindeur : anciennes conversations migrées en vrais messages, relance après 3 jours, supprimer/bloquer définitifs, « Tu as Snapchien ? » → même personnage ajouté.
 - Snapchien : « écrit… », Bitmoji de présence, délais propres à chaque caractère (parfois répond bien plus tard).
 - ⬜ IA conversationnelle serveur : fonction `radia-chat` écrite et testée (logique pure) mais NON déployée et NON branchée au jeu ; test sur vrai iPhone non fait.
+
+## Économie simplifiée (pièces dorées, diamants, énergie) — FAIT (voir docs/BALANCING.md)
+- Plus de tickets (casino et événements) ni de caisse d'échange : anciens tickets convertis UNE fois (1 ticket = 10 pièces, `mergeTickets`), message unique « Une économie plus simple ».
+- Plus de « pièces grises » : l'émoji 🪙 est remplacé partout par la pièce dorée dessinée (un seul portefeuille de pièces).
+- Roue du jour rééquilibrée (pièces, diamants, énergie, mode, déco, objet rare, fragment), calendrier, défis, missions, succès, événements et privilèges recalculés en pièces.
+- ⬜ Test sur un vrai iPhone ; équilibrage à confirmer à l'usage (espérance de la roue ≈ 90 pièces/jour).

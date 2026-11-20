@@ -1,0 +1,3 @@
+longueur du chemin: 70.4 u | ennemis totaux: 235 | PV totaux: 17445
+aucune   {'result': 'DÉFAITE', 't': 75, 'heart': 0, 'towers': 0, 'peak': 28, 'killed': 0}
+greedy   {'result': 'VICTOIRE', 't': 328, 'heart': 68, 'towers': 12, 'tiers': 11, 'gold': 280, 'peak': 21, 'killed': 227}

@@ -1,0 +1,201 @@
+/* ==========================================================================
+   MODE COOPÉRATIF — direction artistique « constellation »
+   Pas de tableau de bord : des perles de verre en orbite autour du noyau,
+   reliées par des fils de lumière. Les rôles ont chacun une couleur et un
+   emblème tracé au trait. Même palette que le jeu solo.
+   ========================================================================== */
+.backdrop--coop { --tint: var(--electric); }
+.backdrop--coop .backdrop__grid { opacity: 0.35; }
+.backdrop--coop .backdrop__glow { top: -10vh; opacity: 0.7; }
+
+.sparks { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+
+/* ---------- Entrée ---------- */
+.entry__head { display: flex; align-items: center; gap: 14px; }
+.entry__core { width: 78px; flex: none; }
+.entry__choices { display: flex; flex-direction: column; gap: 12px; }
+.entry__card { display: flex; flex-direction: column; gap: 12px; }
+.field__input--code { height: 60px; padding: 0; text-align: center; font: 700 30px/1 var(--f-mono); letter-spacing: 0.55em; text-indent: 0.55em; text-transform: uppercase; }
+.entry__error { padding: 12px 14px; font-weight: 700; color: #fff; background: color-mix(in srgb, var(--alert) 80%, #000); border-radius: 10px; animation: pop 0.3s var(--spring); }
+.wait { align-items: center; text-align: center; justify-content: center; }
+.wait .screen__foot { align-self: stretch; }
+.wait__core { width: min(60%, 220px); }
+
+/* ---------- Salle ---------- */
+.lobby { gap: 0; padding: calc(10px + env(safe-area-inset-top) * 0) 0 0; overflow: hidden; }
+.lobby__bar { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--pad) 6px; }
+.lobby__scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 14px; padding: 4px var(--pad) 18px; }
+.lobby__scroll > * { flex-shrink: 0; }
+.lobby__foot { display: flex; flex-direction: column; gap: 8px; padding: 12px var(--pad) calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line-soft); background: linear-gradient(0deg, color-mix(in srgb, var(--night) 96%, transparent), color-mix(in srgb, var(--night) 70%, transparent)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.codebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.codebar .kicker { margin-bottom: 6px; }
+.codetiles--sm { gap: 6px; }
+.codetiles--sm .codetile { width: 40px; height: 52px; border-radius: 8px; }
+.codetiles--sm .codetile__char { font-size: 28px; }
+.lobby__leave { padding: 10px 4px; }
+.lobby__leave.is-confirm { color: var(--alert); text-decoration-color: var(--alert); }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; font: 700 14px/1 var(--f-mono); color: var(--text); border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--deep) 70%, transparent); }
+.pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.pill--good i { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+.pill--ok i { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+.pill--bad i, .pill--down i { background: var(--alert); box-shadow: 0 0 10px var(--alert); animation: blink 1s infinite; }
+.banner { padding: 12px 14px; font-size: 15px; line-height: 1.4; font-weight: 600; border-radius: 10px; border: 1px solid; animation: rise 0.4s var(--ease) both; }
+.banner--bad { color: #fff; background: color-mix(in srgb, var(--alert) 40%, var(--night)); border-color: var(--alert); }
+.banner--warn { color: var(--text); background: color-mix(in srgb, var(--amber) 16%, var(--night)); border-color: color-mix(in srgb, var(--amber) 60%, transparent); }
+
+.lobby__code { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.codetiles { display: flex; gap: 9px; perspective: 700px; }
+.codetile { position: relative; display: grid; place-items: center; width: 62px; height: 80px; border-radius: 10px; background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 70%, var(--electric)) 0 50%, color-mix(in srgb, var(--panel) 92%, #000) 50% 100%); border: 1.5px solid var(--line); box-shadow: 0 8px 22px -10px #000, inset 0 1px 0 rgba(255, 255, 255, 0.12); transform-origin: center; animation: tile-flip 0.7s var(--spring) both; }
+.codetile::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: rgba(0, 0, 0, 0.55); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08); }
+.codetile__char { font: 700 48px/1 var(--f-mono); color: #fff; text-shadow: 0 0 18px color-mix(in srgb, var(--cyan) 70%, transparent); }
+@keyframes tile-flip { from { transform: rotateX(-100deg) translateY(-14px); opacity: 0; } 60% { opacity: 1; } }
+.lobby__share { display: flex; gap: 10px; }
+.chipbtn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; min-height: 44px; font: 600 14.5px/1 var(--f-display); letter-spacing: 0.05em; color: var(--text); border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--deep) 70%, transparent); transition: transform 0.14s var(--spring); }
+.chipbtn:active { transform: scale(0.94); }
+
+.lobby__stage { position: relative; }
+
+/* ---------- Constellation ---------- */
+.const { position: relative; width: 100%; max-width: min(340px, 42dvh); margin: 0 auto; aspect-ratio: 320 / 292; transition: max-width 0.5s var(--ease); }
+.const--compact { max-width: min(230px, 30dvh); }
+.const__core { position: absolute; left: 50%; top: 50%; width: 27%; transform: translate(-50%, -50%); }
+.const__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.const__ticks { fill: none; stroke: var(--line); stroke-width: 1; transform-origin: 160px 146px; animation: spin 120s linear infinite; }
+.const__orbit { fill: none; stroke: var(--line-soft); stroke-width: 1; }
+.const__orbit--dash { stroke-dasharray: 1.5 7; stroke-linecap: round; stroke: var(--line); transform-origin: 160px 146px; animation: spin 90s linear infinite reverse; }
+.fil { fill: none; stroke-linecap: round; stroke-width: 2; transition: stroke 0.6s, opacity 0.6s; }
+.fil--idle { stroke: color-mix(in srgb, var(--cyan) 50%, transparent); stroke-dasharray: 2 7; animation: flow 1.6s linear infinite; }
+.fil--good { stroke: var(--cyan); stroke-width: 2.4; filter: drop-shadow(0 0 5px var(--cyan)); }
+.fil--ok { stroke: var(--amber); stroke-width: 2.2; filter: drop-shadow(0 0 4px var(--amber)); }
+.fil--bad { stroke: var(--alert); stroke-dasharray: 6 5; animation: flow 0.9s linear infinite; }
+.fil--down { stroke: var(--line); stroke-dasharray: 1 8; opacity: 0.55; }
+.slot-free__ring { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 3 6; transform-box: fill-box; transform-origin: center; animation: spin 14s linear infinite; }
+.slot-free__plus { stroke: color-mix(in srgb, var(--cyan) 50%, transparent); stroke-width: 2; stroke-linecap: round; animation: blink 2.4s ease-in-out infinite; }
+
+.bead { --c: var(--cyan); }
+.bead__pop { transform-box: fill-box; transform-origin: center; animation: bead-in 0.9s var(--spring) both; }
+@keyframes bead-in { from { transform: scale(0.2); opacity: 0; } 55% { opacity: 1; } }
+.bead__halo { fill: var(--c); opacity: 0.14; transform-box: fill-box; transform-origin: center; animation: halo 3.2s ease-in-out infinite; }
+@keyframes halo { 0%, 100% { transform: scale(0.92); opacity: 0.1; } 50% { transform: scale(1.08); opacity: 0.24; } }
+@keyframes halo-fast { 0%, 100% { transform: scale(0.95); opacity: 0.25; } 50% { transform: scale(1.12); opacity: 0.55; } }
+.bead__body { fill: color-mix(in srgb, var(--c) 28%, var(--deep)); }
+.bead__ring { fill: none; stroke: var(--c); stroke-width: 2.4; transform-box: fill-box; transform-origin: center; filter: drop-shadow(0 0 6px var(--c)); transition: stroke 0.5s; }
+.bead.is-me .bead__ring { stroke-width: 4; }
+.bead__init { font: 700 25px var(--f-display); fill: #fff; letter-spacing: 0; pointer-events: none; }
+.bead__name { font: 700 14px var(--f-display); letter-spacing: 0.04em; fill: var(--text); }
+.bead__role { font: 700 12px var(--f-display); letter-spacing: 0.1em; text-transform: uppercase; fill: var(--c); }
+.bead__crown { fill: var(--amber); stroke: none; filter: drop-shadow(0 0 4px var(--amber)); }
+.bead__ready { fill: var(--cyan); filter: drop-shadow(0 0 6px var(--cyan)); animation: pop 0.4s var(--spring); }
+.bead__tick { fill: none; stroke: var(--night); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.bead__badge--away { fill: var(--amber); }
+.bead__badge--lost { fill: var(--alert); }
+.bead__moon { fill: var(--night); }
+.bead__bang { fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; }
+.bead--away .bead__pop { opacity: 0.78; }
+.bead--away .bead__ring { stroke: var(--amber); stroke-dasharray: 5 4; animation: spin 10s linear infinite; }
+.bead--lost .bead__pop { opacity: 0.5; filter: saturate(0.3); }
+.bead--lost .bead__ring { stroke: var(--alert); stroke-dasharray: 3 5; animation: spin 4s linear infinite; }
+.bead--lost .bead__halo { fill: var(--alert); animation: blink 1s infinite; opacity: 0.3; }
+.bead.is-sender .bead__halo { animation: halo-fast 0.5s ease-in-out infinite; }
+.pulse { fill: #fff; filter: drop-shadow(0 0 5px var(--cyan)) drop-shadow(0 0 10px var(--cyan)); }
+
+.const__wave { position: absolute; left: 50%; top: 50%; width: 30%; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--cyan); transform: translate(-50%, -50%); pointer-events: none; animation: const-wave 1.8s var(--ease) both; }
+.const__wave--2 { animation-delay: 0.35s; }
+@keyframes const-wave { from { transform: translate(-50%, -50%) scale(0.4); opacity: 0.9; } to { transform: translate(-50%, -50%) scale(3.4); opacity: 0; } }
+.const.is-ready .fil { stroke: var(--cyan); stroke-dasharray: none; stroke-width: 3; opacity: 1; filter: drop-shadow(0 0 8px var(--cyan)); animation: none; }
+
+/* ---------- Liste d'équipe ---------- */
+.roster { display: flex; flex-direction: column; gap: 8px; }
+.member { --c: var(--cyan); position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 10px 12px; min-height: 60px; border: 1px solid var(--line-soft); border-left: 3px solid var(--c); border-radius: 4px 14px 4px 14px; background: var(--glass); animation: rise 0.4s var(--ease) both; }
+.member__dot { display: grid; place-items: center; width: 38px; height: 38px; font: 700 19px/1 var(--f-display); color: #fff; border-radius: 50%; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 26%, var(--deep)); }
+.member__main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.member__name { display: flex; align-items: center; gap: 7px; font: 700 17px/1.15 var(--f-display); letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.member__name em { font: 700 12px/1 var(--f-display); font-style: normal; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 6px; color: var(--night); background: var(--muted); border-radius: 4px; }
+.member__name em:last-child { background: var(--cyan); }
+.member__status { font-size: 13.5px; color: var(--muted); }
+.member--away .member__status { color: var(--amber); }
+.member--lost { opacity: 0.8; border-left-color: var(--alert); }
+.member--lost .member__status { color: var(--alert); font-weight: 700; }
+.member--empty { border-style: dashed; opacity: 0.8; }
+.member--empty .member__dot { border-style: dashed; color: var(--muted); }
+.member__roles { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.rolechip { --c: var(--cyan); display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px 4px 5px; font: 700 12.5px/1 var(--f-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--c) 10%, transparent); }
+.rolechip .emblem { width: 18px; height: 18px; }
+.member__ok { display: grid; place-items: center; width: 28px; height: 28px; color: var(--night); background: var(--cyan); border-radius: 50%; box-shadow: 0 0 14px var(--cyan); animation: pop 0.4s var(--spring); }
+.member__kick { position: absolute; right: -6px; top: -10px; width: 30px; height: 30px; }
+.note--strong { color: var(--text); font-weight: 700; }
+.myrole { --c: var(--cyan); display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 14px; min-height: 52px; font-size: 15.5px; color: var(--text); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); border-radius: 4px 14px 4px 14px; background: color-mix(in srgb, var(--c) 10%, transparent); }
+.myrole b { color: var(--c); text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--f-display); }
+.myrole .emblem { width: 28px; height: 28px; flex: none; }
+.readybanner { padding: 14px; text-align: center; font: 700 17px/1.2 var(--f-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--night); background: linear-gradient(180deg, #b9f7ff, var(--cyan)); clip-path: var(--chamfer); box-shadow: 0 0 30px -6px var(--cyan); animation: pop 0.5s var(--spring); }
+
+/* ---------- Emblèmes ---------- */
+.emblem { --c: currentColor; width: 24px; height: 24px; color: var(--c); stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; fill: color-mix(in srgb, currentColor 14%, transparent); }
+.emblem__thin { fill: none; stroke-width: 1.8; }
+.emblem__solid { fill: currentColor; stroke: none; }
+
+/* ---------- Révélation des rôles ---------- */
+.reveal { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px var(--pad) calc(24px + env(safe-area-inset-bottom)); background: radial-gradient(120% 80% at 50% 30%, color-mix(in srgb, var(--rc) 26%, var(--night)) 0%, var(--night) 70%); animation: fade 0.3s both; overflow: hidden; }
+.reveal__glow { position: absolute; left: 50%; top: 38%; width: 120vmax; height: 120vmax; transform: translate(-50%, -50%); background: conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--rc) 30%, transparent), transparent 30%, color-mix(in srgb, var(--rc) 20%, transparent), transparent 60%); opacity: 0.5; animation: spin 18s linear infinite; pointer-events: none; }
+.reveal__shuffle { position: relative; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.reveal__rings { position: relative; width: 150px; height: 150px; }
+.reveal__rings i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--rc); animation: ring-tick 0.7s steps(8) infinite; }
+.reveal__rings i:nth-child(2) { inset: 18px; border-style: dashed; animation-direction: reverse; animation-duration: 0.5s; }
+.reveal__rings i:nth-child(3) { inset: 40px; border-width: 4px; border-color: #fff; animation-duration: 0.3s; }
+@keyframes ring-tick { to { transform: rotate(360deg); } }
+.reveal__body { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; }
+.reveal__kicker { color: var(--rc); }
+.reveal__cards { display: flex; flex-direction: column; gap: 14px; width: 100%; align-items: center; }
+.rolecard { --c: var(--rc); position: relative; width: min(100%, 330px); padding: 22px 20px 20px; text-align: center; border: 1.5px solid var(--c); border-radius: 6px 26px 6px 26px; background: linear-gradient(170deg, color-mix(in srgb, var(--c) 22%, var(--panel)), var(--deep) 75%); box-shadow: 0 0 50px -10px var(--c), inset 0 1px 0 rgba(255, 255, 255, 0.12); animation: card-flip 0.9s var(--spring) both; }
+@keyframes card-flip { from { transform: perspective(900px) rotateY(-110deg) scale(0.7); opacity: 0; } 40% { opacity: 1; } }
+.rolecard__emblem { width: 92px; height: 92px; margin: 0 auto 6px; filter: drop-shadow(0 0 14px var(--c)); }
+.rolecard__emblem * { stroke-dasharray: 240; stroke-dashoffset: 240; animation: draw 1.2s var(--ease) 0.25s forwards; }
+.rolecard__name { font: 700 clamp(30px, 9vw, 40px)/1 var(--f-display); text-transform: uppercase; letter-spacing: 0.05em; color: #fff; text-shadow: 0 0 26px var(--c); }
+.rolecard__tag { margin-top: 10px; font-size: 16px; line-height: 1.4; color: color-mix(in srgb, var(--text) 85%, var(--muted)); text-wrap: balance; }
+.reveal__hint { font-size: 15px; color: var(--muted); text-align: center; text-wrap: balance; animation: rise 0.6s var(--ease) 1.2s both; }
+.reveal__foot { position: relative; z-index: 2; width: 100%; max-width: 420px; margin-top: 22px; opacity: 0; transform: translateY(16px); transition: all 0.5s var(--ease); pointer-events: none; }
+.reveal__foot.is-on { opacity: 1; transform: none; pointer-events: auto; }
+
+/* ---------- Test de liaison ---------- */
+.lab { display: flex; flex-direction: column; gap: 12px; }
+.lab__text { font-size: 15.5px; line-height: 1.45; color: color-mix(in srgb, var(--text) 85%, var(--muted)); }
+.lab__intro, .lab__run { display: flex; flex-direction: column; gap: 12px; }
+.lab__phase { font: 700 19px/1.25 var(--f-display); }
+.bar__fill--static { animation: none; transition: transform 0.25s linear; transform-origin: left; background: linear-gradient(90deg, var(--electric), var(--cyan)); }
+.verdict { --v: var(--cyan); position: relative; padding: 16px; border-radius: 6px 22px 6px 22px; border: 1.5px solid var(--v); background: linear-gradient(160deg, color-mix(in srgb, var(--v) 20%, var(--panel)), var(--deep)); box-shadow: 0 0 40px -14px var(--v); animation: pop 0.4s var(--spring); }
+.verdict--good { --v: #6fe3a6; }
+.verdict--limit { --v: var(--amber); }
+.verdict--bad { --v: var(--alert); }
+.verdict__tag { display: inline-block; padding: 4px 9px; font: 700 12.5px/1 var(--f-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--night); background: var(--v); border-radius: 3px; }
+.verdict__title { margin-top: 10px; font: 700 24px/1.1 var(--f-display); }
+.verdict__text { margin-top: 6px; font-size: 15px; line-height: 1.4; color: color-mix(in srgb, var(--text) 88%, var(--muted)); }
+.lab__sec { display: flex; flex-direction: column; gap: 8px; padding: 14px; }
+.lab__h { font: 700 13px/1 var(--f-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px dashed var(--line-soft); }
+.row:first-of-type { border-top: 0; }
+.row__main { display: block; font: 700 16px/1.2 var(--f-display); }
+.row__main i { font-style: normal; color: var(--muted); margin: 0 2px; }
+.row__main small, .row__val small { display: block; margin-top: 3px; font: 500 13px/1.25 var(--f-body); color: var(--muted); }
+.row__val { text-align: right; font: 500 15px/1.1 var(--f-mono); }
+.row__val b { font-size: 19px; }
+.led { width: 12px; height: 12px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+.led--good { background: #6fe3a6; box-shadow: 0 0 10px #6fe3a6; }
+.led--limit { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+.led--bad { background: var(--alert); box-shadow: 0 0 10px var(--alert); }
+.lab__btns { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.ask { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--amber); border-radius: 10px; background: color-mix(in srgb, var(--amber) 10%, transparent); animation: pop 0.3s var(--spring); }
+.ask p { font-size: 15.5px; font-weight: 600; }
+.ask__btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lab__notes { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; color: var(--muted); }
+.lab__notes b { color: var(--text); }
+.lab__actions { display: flex; flex-direction: column; gap: 8px; }
+.steps { display: flex; flex-direction: column; gap: 8px; counter-reset: s; font-size: 15px; line-height: 1.4; }
+.steps li { position: relative; padding-left: 34px; }
+.steps li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: -1px; display: grid; place-items: center; width: 24px; height: 24px; font: 700 13px/1 var(--f-mono); color: var(--night); background: var(--cyan); border-radius: 50%; }
+.log { display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.35; }
+.log time { font: 500 12.5px var(--f-mono); color: var(--muted); margin-right: 6px; }
+.log__warn { color: var(--amber); }
+.log__ok { color: #8be9c0; }
+.log__empty { color: var(--muted); }
+
+.entry .link { align-self: center; margin-top: 4px; }

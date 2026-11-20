@@ -24,8 +24,7 @@ export interface Endless2 {
   perks: string[];
   /** Statistiques de drops par rareté et par type (pour tests / équilibrage). */
   drops: Record<string, number>;
-  /** Tickets d'événement et fragments (pièces de puzzle du château, etc.). */
-  tickets: number;
+  /** Fragments (pièces de puzzle du château, etc.). */
   fragments: Record<string, number>;
   /** Compteurs libres (fusions totales, commandes livrées…). */
   counters: Record<string, number>;
@@ -91,15 +90,10 @@ export interface TindeurState {
   uninstallTries?: number;
 }
 
-/** Casino Royal : portefeuille de jetons fictifs et gratuits, séparé des pièces et diamants. */
+/** Casino Royal : les jeux se jouent avec les PIÈCES du jeu (portefeuille unique) ; ici seulement les statistiques et les missions. */
 export interface CasinoState {
-  chips: number;
-  /** Allocation gratuite d'ouverture déjà versée. */
+  /** Cadeau d'ouverture déjà versé (première visite). */
   welcomed: boolean;
-  /** Dernière mini-recharge gratuite (ms) quand le solde est vide. */
-  refillTs: number;
-  /** Jetons apportés à la table (choisis sur la carte d'Auguste) pour la session en cours. */
-  bring: number;
   /** Compteurs par jeu : { parties, gains, pertes, meilleur } (clés « roulette.parties »…). */
   stats: Record<string, number>;
   /** Derniers résultats (plafonné à 60) : jeu, mise, gain, instant. */
@@ -158,17 +152,24 @@ export interface FunState {
   thoughts: { at: number; text: string; idx?: number; kept?: boolean }[];
   /** Invitation « Une petite pensée pour toi, chaque jour » : montrée UNE seule fois (application installée). `later` / `refused` / `error` : on ne redemande jamais automatiquement. */
   pensee: { state: 'none' | 'later' | 'accepted' | 'refused' | 'error'; at: number };
+  /** Simplification de l'économie : les anciens TICKETS (casino + événements) ont été convertis en pièces, UNE seule fois (1 ticket = 10 pièces). */
+  economy: TicketsMerge;
 }
+
+/** `merged` : conversion faite ; `tickets` : tickets trouvés ; `coins` : pièces versées ; `seen` : message d'information déjà montré. */
+export interface TicketsMerge { merged: boolean; tickets: number; coins: number; at: number; seen: boolean }
+/** Taux déjà utilisé par l'ancienne caisse d'échange (100 pièces = 10 tickets) : 1 ticket = 10 pièces. */
+export const COINS_PER_TICKET = 10;
 
 export const defaultFun = (): FunState => ({
   endless2: {
     gens: {}, album: [], albumClaimed: [], treasure: { points: 0, earned: 0, opened: 0, pity: 0 },
-    sec: [], secDone: {}, replaces: 2, replaceTs: 0, perks: [], drops: {}, tickets: 0, fragments: {}, counters: {}, goalsSeen: [],
+    sec: [], secDone: {}, replaces: 2, replaceTs: 0, perks: [], drops: {}, fragments: {}, counters: {}, goalsSeen: [],
   },
   daily: { cycle: 0, day: 0, lastKey: '', claimed: [], total: 0 },
   incidents: { active: null, done: {}, lastAt: 0, activeMs: 0, nextAtActive: 0 },
   tindeur: { shown: false, choice: 'none', installed: true, at: 0, streakMs: 0 },
-  casino: { chips: 0, welcomed: false, refillTs: 0, bring: 0, stats: {}, history: [], missions: [] },
+  casino: { welcomed: false, stats: {}, history: [], missions: [] },
   wheel: { lastKey: '', spins: 0, last: '' },
   places: {},
   free: { unlocked: false, at: 0, announced: false },
@@ -177,6 +178,7 @@ export const defaultFun = (): FunState => ({
   phone: { wallpaper: 'rose' },
   thoughts: [],
   pensee: { state: 'none', at: 0 },
+  economy: { merged: true, tickets: 0, coins: 0, at: 0, seen: true },
   necklace: defaultNecklace(),
   notifs: [],
 });
@@ -207,7 +209,6 @@ export function sanitizeFun(raw: unknown): FunState {
   d.endless2.replaceTs = num(e.replaceTs, 0, 0, 1e14);
   d.endless2.perks = strArr(e.perks, 200);
   d.endless2.drops = numRec(e.drops);
-  d.endless2.tickets = Math.floor(num(e.tickets, 0, 0, 99999));
   d.endless2.fragments = numRec(e.fragments);
   d.endless2.counters = numRec(e.counters);
   d.endless2.goalsSeen = strArr(e.goalsSeen, 200);
@@ -235,11 +236,20 @@ export function sanitizeFun(raw: unknown): FunState {
   }
   if (isObj(raw.casino)) {
     const c = raw.casino;
+    // les compteurs propres aux tickets (totaux par source, privilèges) n'ont plus de raison d'être : on les écarte
+    const st = numRec(c.stats); for (const k of Object.keys(st)) if (/^(src|priv)\./.test(k)) delete st[k];
     d.casino = {
-      chips: Math.floor(num(c.chips, 0, 0, 1e9)), welcomed: c.welcomed === true, refillTs: num(c.refillTs, 0, 0, 1e14), bring: Math.floor(num(c.bring, 0, 0, 1e9)),
-      stats: numRec(c.stats), missions: strArr(c.missions, 200),
+      welcomed: c.welcomed === true,
+      stats: st, missions: strArr(c.missions, 200),
       history: Array.isArray(c.history) ? c.history.filter(isObj).slice(-60).map((h) => ({ g: str(h.g, '', 20), bet: Math.floor(num(h.bet, 0, 0, 1e9)), win: Math.floor(num(h.win, 0, 0, 1e9)), at: num(h.at, 0, 0, 1e14) })) : [],
     };
+  }
+  // anciens tickets (casino : en poche + sur la table ; événements du mode libre) : comptés ici, convertis en pièces par `mergeTickets` (schema.ts)
+  const em = isObj(raw.economy) ? raw.economy : null;
+  if (em && em.merged === true) d.economy = { merged: true, tickets: Math.floor(num(em.tickets, 0, 0, 1e10)), coins: Math.floor(num(em.coins, 0, 0, 1e12)), at: num(em.at, 0, 0, 1e14), seen: em.seen === true };
+  else {
+    const cc = isObj(raw.casino) ? raw.casino : {};
+    d.economy = { merged: false, tickets: Math.floor(num(cc.chips, 0, 0, 1e9)) + Math.floor(num(cc.bring, 0, 0, 1e9)) + Math.floor(num(e.tickets, 0, 0, 99999)), coins: 0, at: 0, seen: false };
   }
   if (isObj(raw.customers)) {
     for (const [k, v] of Object.entries(raw.customers).slice(0, 60)) {
@@ -267,4 +277,20 @@ export function sanitizeFun(raw: unknown): FunState {
   if (isObj(raw.pensee)) { const st = raw.pensee.state; d.pensee = { state: st === 'later' || st === 'accepted' || st === 'refused' || st === 'error' ? st : 'none', at: num(raw.pensee.at, 0, 0, 1e15) }; }
   d.notifs = strArr(raw.notifs, 300);
   return d;
+}
+
+/**
+ * Convertit UNE seule fois les anciens tickets en pièces (1 ticket = 10 pièces, le taux de l'ancienne caisse d'échange) et marque la
+ * conversion : un second chargement, une réimportation de la même sauvegarde ou un rechargement ne peuvent donc rien dupliquer.
+ * Les pièces vont dans l'unique portefeuille (`world.res.coins`, plafonné comme partout à 999 999 999). Renvoie les pièces versées.
+ */
+export function mergeTickets(fun: FunState, res: { coins: number }, now: number = Date.now()): number {
+  const e = fun.economy;
+  if (e.merged) return 0;
+  const want = Math.max(0, e.tickets) * COINS_PER_TICKET;
+  const room = Math.max(0, 999_999_999 - res.coins);
+  const add = Math.min(want, room);
+  res.coins += add;
+  fun.economy = { merged: true, tickets: e.tickets, coins: add, at: now, seen: e.tickets <= 0 };
+  return add;
 }

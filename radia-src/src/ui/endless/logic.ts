@@ -105,7 +105,7 @@ export function missingCostText(lines: CostLine[]): string {
 }
 
 // ------------------------------------------------------------------ butin
-const KEY_ORDER = ['coins', 'flowers', 'fabric', 'cocoa', 'energy', 'diamonds', 'hearts', 'chest', 'ticket', 'fragment', 'cloth', 'bag', 'accessory', 'deco', 'rareItem', 'star', 'wand', 'wind'];
+const KEY_ORDER = ['coins', 'flowers', 'fabric', 'cocoa', 'energy', 'diamonds', 'hearts', 'chest', 'fragment', 'cloth', 'bag', 'accessory', 'deco', 'rareItem', 'star', 'wand', 'wind'];
 /** Regroupe les lignes de même type (somme) et les trie de façon stable. */
 export function groupLoot(loots: Loot[]): Loot[] {
   const m = new Map<string, Loot>();
@@ -119,10 +119,10 @@ export function groupLoot(loots: Loot[]): Loot[] {
 }
 
 export const LOOT_FLY: Partial<Record<Loot['kind'], string>> = {
-  coins: 'coin', diamonds: 'diamond', energy: 'energy', hearts: 'heart', flowers: 'flowers', fabric: 'fabric', cocoa: 'cocoa', ticket: 'ticket', chest: 'chest',
+  coins: 'coin', diamonds: 'diamond', energy: 'energy', hearts: 'heart', flowers: 'flowers', fabric: 'fabric', cocoa: 'cocoa', chest: 'chest',
 };
 export const lootNoun: Record<string, string> = {
-  coins: 'pièces', diamonds: 'diamants', energy: 'énergie', hearts: 'cœurs', flowers: 'fleurs', fabric: 'tissu', cocoa: 'cacao', ticket: 'ticket', chest: 'coffre', fragment: 'fragment de vêtement',
+  coins: 'pièces', diamonds: 'diamants', energy: 'énergie', hearts: 'cœurs', flowers: 'fleurs', fabric: 'tissu', cocoa: 'cacao', chest: 'coffre', fragment: 'fragment de vêtement',
   cloth: 'vêtement', bag: 'sac à main', accessory: 'accessoire', deco: 'décoration', rareItem: 'objet rare', star: 'Étoile filante', wand: 'Baguette', wind: 'Souffle',
 };
 export function lootText(l: Loot): string {
