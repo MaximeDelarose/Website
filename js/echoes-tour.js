@@ -354,6 +354,36 @@
     b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up); b.addEventListener("lostpointercapture", up);
   });
   $("#btn-pause").addEventListener("click", function () { press("menu"); });
+  // joystick analogique : il apparaît sous le pouce, n'importe où dans la moitié gauche de l'écran
+  var STICK = { x: 0, y: 0, on: false };
+  (function () {
+    var el = $("#stick"); if (!el) return;
+    var base = el.querySelector(".base"), knob = el.querySelector(".knob"), id = null, cx = 0, cy = 0, R0 = 52;
+    function setDir(k, v) { if (!!held[k] === v) return; held[k] = v; if (v) press(k); else release(k); }
+    function upd(px, py) {
+      var dx = px - cx, dy = py - cy, d = Math.hypot(dx, dy);
+      if (d > R0) { dx *= R0 / d; dy *= R0 / d; }
+      knob.style.transform = "translate(" + dx + "px," + dy + "px)";
+      STICK.x = dx / R0; STICK.y = dy / R0;
+      var ax = Math.abs(STICK.x), ay = Math.abs(STICK.y);   // directions franches pour les menus et les flèches
+      setDir("left", STICK.x < -0.5 && ax > ay); setDir("right", STICK.x > 0.5 && ax > ay);
+      setDir("up", STICK.y < -0.5 && ay >= ax); setDir("down", STICK.y > 0.5 && ay >= ax);
+    }
+    el.addEventListener("pointerdown", function (e) {
+      e.preventDefault(); au(); if (id !== null) return;
+      id = e.pointerId; try { el.setPointerCapture(id); } catch (er) {}
+      var r = el.getBoundingClientRect(); cx = e.clientX; cy = e.clientY;
+      base.style.left = (cx - r.left) + "px"; base.style.top = (cy - r.top) + "px";
+      el.classList.add("on"); STICK.on = true; upd(cx, cy);
+    });
+    el.addEventListener("pointermove", function (e) { if (e.pointerId === id) upd(e.clientX, e.clientY); });
+    function end(e) {
+      if (e.pointerId !== id) return; id = null; STICK.on = false; STICK.x = STICK.y = 0;
+      knob.style.transform = ""; el.classList.remove("on"); base.style.left = ""; base.style.top = "";
+      ["left", "right", "up", "down"].forEach(function (k) { setDir(k, false); });
+    }
+    el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("lostpointercapture", end);
+  })();
 
   function fit() {
     var s = Math.min(innerWidth / W, innerHeight / H);
@@ -422,21 +452,27 @@
   var KA = isTouch ? "<kbd>A</kbd>" : "<kbd>Espace</kbd>", KB = isTouch ? "<kbd>B</kbd>" : "<kbd>X</kbd>";
 
   var uiBusy = 0;
+  var FACES = { Aelor: "sq_aelor", Aka: "sq_mage", Augh: "sq_bucheron", Gorak: "sq_gorak", Fiole: "sq_alchimiste", Pip: "sq_pip", "Grand Bélier": "grand_belier", Gardien: "crystal", Panneau: "sign" };
   // dialogue : une suite de répliques, A pour avancer
   function say(lines, name) {
     if (typeof lines === "string") lines = [lines];
     uiBusy++;
-    var el = $("#dialog"), tx = el.querySelector(".dlg-text"); el.querySelector(".dlg-name").textContent = name || ""; el.hidden = false;
+    var el = $("#dialog"), tx = el.querySelector(".dlg-text"); el.querySelector(".dlg-name").textContent = name || "";
+    var face = FACES[name]; el.classList.toggle("narr", !face); if (face) el.querySelector(".dlg-face img").src = sprUrl(face);
+    el.querySelector(".dlg-next").textContent = isTouch ? "▼ touche pour continuer" : "▼ Espace pour continuer";
+    el.hidden = false;
     return new Promise(function (res) {
       var i = 0, shown = 0, full = "", tm = 0;
       function show() { full = lines[i]; shown = 0; clearInterval(tm); tm = setInterval(function () { shown += 2; tx.textContent = full.slice(0, shown); if (shown >= full.length) clearInterval(tm); else if (shown % 6 === 0) tone(520 + Math.random() * 80, 0.02, "square", 0.015); }, 18); }
       function next() {
         if (shown < full.length) { shown = full.length; clearInterval(tm); tx.textContent = full; return; }
         i++; SFX.move();
-        if (i >= lines.length) { clearInterval(tm); off(); el.hidden = true; el.onclick = null; uiBusy--; res(); } else show();
+        if (i >= lines.length) { clearInterval(tm); off(); el.hidden = true; $("#stage").removeEventListener("pointerdown", tap); uiBusy--; res(); } else show();
       }
       var off = onKey(function (k) { if (k === "a" || k === "b") { next(); return true; } return true; });
-      el.onclick = next;
+      var t0 = now();
+      function tap(e) { if (e.target.closest("#touch, #btn-pause") || now() - t0 < 200) return; next(); }
+      $("#stage").addEventListener("pointerdown", tap);
       show();
     });
   }
@@ -866,11 +902,15 @@
     P.t += dt; if (P.inv > 0) P.inv -= dt; if (P.act > 0) P.act -= dt;
     var busy = uiBusy > 0;
     var dx = 0, dy = 0;
-    if (!busy) { if (held.left) dx--; if (held.right) dx++; if (held.up) dy--; if (held.down) dy++; }
+    var mag = 1;
+    if (!busy) {
+      if (STICK.on && Math.hypot(STICK.x, STICK.y) > 0.18) { dx = STICK.x; dy = STICK.y; mag = clamp(Math.hypot(dx, dy) * 1.15, 0.4, 1); }
+      else { if (held.left) dx--; if (held.right) dx++; if (held.up) dy--; if (held.down) dy++; }
+    }
     P.moving = !!(dx || dy);
     if (P.moving) {
-      var l = Math.hypot(dx, dy); dx /= l; dy /= l; P.fx = dx; P.fy = dy; if (dx) P.face = dx > 0 ? 1 : -1;
-      var sp = 92 * dt, nx = P.x + dx * sp, ny = P.y + dy * sp;
+      var l = Math.hypot(dx, dy); dx /= l; dy /= l; P.fx = dx; P.fy = dy; if (Math.abs(dx) > 0.2) P.face = dx > 0 ? 1 : -1;
+      var sp = 92 * mag * dt, nx = P.x + dx * sp, ny = P.y + dy * sp;
       if (boxFree(nx, P.y)) P.x = nx; if (boxFree(P.x, ny)) P.y = ny;
       var last = P.trail[0]; if (!last || Math.hypot(last.x - P.x, last.y - P.y) > 2) { P.trail.unshift({ x: P.x, y: P.y, f: P.face }); if (P.trail.length > 60) P.trail.pop(); }
     }
@@ -931,6 +971,61 @@
     if (!M.fixed) return;
     var all = M.fixed.every(function (f, i) { return S.flags[M.id + "_" + i]; });
     if (all && !S.flags["clear" + M.room]) { S.flags["clear" + M.room] = 1; setTimeout(function () { toast("La porte du nord s'ouvre !"); SFX.ok(); }, 600); }
+  }
+
+  /* ---------- objectif courant : une flèche montre où aller ---------- */
+  function objById(id) { for (var i = 0; i < M.objs.length; i++) if (M.objs[i].id === id) return M.objs[i]; return null; }
+  function leadTip(h) { return leadHero() === h ? "" : " (passe " + HEROES[h].name + " en tête avec " + (isTouch ? "B" : "C") + ")"; }
+  function objective() {
+    var o;
+    if (M.room) {
+      if (M.room < 3) {
+        if (S.flags["clear" + M.room]) { o = M.objs.filter(function (x) { return x.type === "updoor"; })[0]; return { x: o.x, y: o.y + 20, label: "Passe la porte du nord" }; }
+        var e = WE.filter(function (w) { return w.key; })[0]; return e ? { x: e.x, y: e.y, label: "Bats les moutons de la salle" } : null;
+      }
+      o = objById("boss"); return S.flags.boss ? null : { x: o.x, y: o.y, label: "Affronte le Grand Bélier" };
+    }
+    if (S.q === 0) { o = objById("aelor"); return { x: o.x, y: o.y, label: "Parle à Aelor (A devant lui)" }; }
+    if (S.q === 1) {
+      if (!S.flags.bridge) { o = objById("oak"); return { x: o.x, y: o.y + 6, label: "Abats le grand chêne (A devant l'arbre)" }; }
+      if (S.kills < 3) return { x: 31.5 * TS, y: 22 * TS, near: true, label: "Fonce sur les Bouftons de la prairie (" + S.kills + "/3)" };
+      o = objById("aelor"); return { x: o.x, y: o.y, label: "Retourne voir Aelor" };
+    }
+    if (S.q === 2) {
+      if (!S.flags.gate) { o = objById("gate"); return { x: o.x + 18, y: o.y + 16, label: "Lie le cristal de la forêt" + leadTip("aka") }; }
+      if (!S.flags.herb) { o = objById("herb"); return { x: o.x, y: o.y, label: "Cueille l'herbe de lune au fond de la forêt" }; }
+      o = objById("aelor"); return { x: o.x, y: o.y, label: "Rapporte l'herbe à Aelor" };
+    }
+    if (S.q === 3) {
+      if (S.party.indexOf("gorak") < 0) { o = objById("gorak"); return { x: o.x, y: o.y, label: "Parle à Gorak, près de la source" }; }
+      if (!S.flags.boulder) { o = objById("boulder"); return { x: o.x - 18, y: o.y + 16, label: "Brise le rocher des ruines" + leadTip("gorak") }; }
+      if (!S.flags.belier) { o = objById("belier"); return { x: o.x, y: o.y, label: "Affronte le Bélier furieux" }; }
+      o = objById("aelor"); return { x: o.x, y: o.y, label: "Retourne voir Aelor" };
+    }
+    if (S.q === 4) { o = objById("guardian"); return { x: o.x, y: o.y, label: "Touche le cristal du Sanctuaire, au nord" }; }
+    if (S.q === 5) { o = objById("bdoor"); return { x: o.x, y: o.y + 10, label: "Entre dans la Bergerie oubliée" }; }
+    return null;
+  }
+  function drawObjective(t) {
+    var ob = objective(); if (!ob || uiBusy) return;
+    var sx = ob.x - cam.x, sy = ob.y - cam.y, d = Math.hypot(ob.x - P.x, ob.y - P.y);
+    if (ob.near && d < 120) return;
+    var inside = sx > 20 && sx < W - 20 && sy > 50 && sy < H - 10;
+    if (inside) {
+      if (d < 40) return;
+      var by = sy - 44 + Math.sin(t * 6) * 4;
+      arrowTri(sx, by, Math.PI / 2, 9);
+    } else {
+      var a = Math.atan2(sy - H / 2, sx - W / 2), ex = clamp(W / 2 + Math.cos(a) * 400, 22, W - 22), ey = clamp(H / 2 + Math.sin(a) * 400, 62, H - 22);
+      var pulse = 1 + Math.sin(t * 7) * 0.12;
+      arrowTri(ex, ey, a, 10 * pulse);
+    }
+  }
+  function arrowTri(x, y, a, s) {
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(a);
+    ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(s + 4, 0); ctx.lineTo(-s - 2, -s - 3); ctx.lineTo(-s * 0.4, 0); ctx.lineTo(-s - 2, s + 3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#f6d36b"; ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(-s + 1, -s); ctx.lineTo(-s * 0.4 + 1, 0); ctx.lineTo(-s + 1, s); ctx.closePath(); ctx.fill();
+    ctx.restore();
   }
 
   /* ---------- dessin de la carte ---------- */
@@ -1058,6 +1153,7 @@
     var reg = regionAt(P.x, P.y);
     if (reg.bg === "foret") { ctx.fillStyle = "rgba(20,30,60,.22)"; ctx.fillRect(0, 0, W, H); }
     if (M.room) { var gr = ctx.createRadialGradient(W / 2, H / 2, 60, W / 2, H / 2, 280); gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(20,10,30,.55)"); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H); }
+    if (mode === "world") drawObjective(t);
   }
 
   /* =====================================================================
@@ -1160,6 +1256,13 @@
     }
     if (o.first === "enemy") { word(W / 2, 70, "Embuscade !", "#e0283a"); SFX.hurt(); await wait(600); await enemyPhase(); if (await checkEnd()) return finish(o); }
     if (o.boss && B.turn === 0) await bossIntro(o);
+    if (!S.flags.tuto) {
+      S.flags.tuto = 1;
+      await say(["Premier combat ! Tes héros sont à gauche, les monstres à droite, et le public de la forêt regarde.",
+        "À ton tour, choisis une action dans le menu (" + (isTouch ? "joystick haut / bas, puis A" : "flèches haut / bas, puis Espace") + "). « Hache rapide » est un bon début.",
+        "Pendant ton attaque, une consigne s'affiche en haut de l'écran : suis-la au bon moment pour frapper plus fort.",
+        "Quand un monstre t'attaque, appuie sur " + (isTouch ? "A" : "Espace") + " juste avant qu'il te touche : tu prends moins de dégâts."]);
+    }
     while (true) {
       B.turn++;
       if (has("regain")) S.pe = Math.min(maxPe(), S.pe + 1);
@@ -1307,10 +1410,14 @@
     if (k === "b" && DEFW.a === null && DEFW.b === null) DEFW.b = t;
     return k === "a" || k === "b";
   });
-  function openDef(tImpact, h) { DEFW = { t: tImpact, a: null, b: null, h: h }; if (has("ecoute")) B.alert = { h: h, t: tImpact }; }
+  function openDef(tImpact, h) {
+    DEFW = { t: tImpact, a: null, b: null, h: h }; if (has("ecoute")) B.alert = { h: h, t: tImpact };
+    if ((S.defTips || 0) < 6) cmdHint("Attaque ennemie : " + KA + " juste avant le choc pour te protéger !");
+  }
   async function closeDef() {
     await wait(45);
     var w = DEFW; DEFW = null; B.alert = null; if (!w) return "";
+    if ((S.defTips || 0) < 6) { S.defTips = (S.defTips || 0) + 1; cmdHint(""); }
     var gw = (easy() ? 260 : 150) + (has("ecoute") ? 70 : 0), cw = easy() ? 140 : 85;
     if (w.b !== null && w.b >= w.t - cw && w.b <= w.t + 45) return "contre";
     if (w.a !== null && w.a >= w.t - gw && w.a <= w.t + 45) return "garde";
@@ -1950,7 +2057,13 @@
     enterMap(S.map || "world", S.x, S.y);
     mode = "world"; $("#hud").hidden = false; $("#btn-pause").hidden = false; hud(true); curRegion = regionAt(P.x, P.y).name;
     if (intro) {
-      await say(["Le village d'Aelor, au bord des prairies. Le vent porte des échos étranges depuis la Bergerie oubliée…", "Augh, le lanceur de haches, arrive au village. Va parler à Aelor, l'ancien, devant sa maison."]);
+      await panel('<span class="kick">Bienvenue</span><h2>Comment ça marche</h2><div class="list">' +
+        '<div class="li">' + iconImg("sq_bucheron") + '<span class="grow">Se déplacer<small>' + (isTouch ? "Pose le pouce n'importe où à gauche de l'écran et glisse : c'est le joystick." : "Flèches ou ZQSD.") + "</small></span></div>" +
+        '<div class="li">' + iconImg("sq_aelor") + '<span class="grow">Agir avec ' + (isTouch ? "le bouton A" : "Espace") + "<small>Parler, ouvrir un coffre, lire un panneau… Une bulle en bas de l'écran dit ce que fera A.</small></span></div>" +
+        '<div class="li">' + iconImg("crystal") + '<span class="grow">Suivre la flèche jaune<small>Elle montre toujours où aller. L\'objectif est écrit en haut à droite.</small></span></div>' +
+        '<div class="li">' + iconImg("mouton") + '<span class="grow">Combattre<small>Touche un monstre pour lancer un combat. Frappe-le avec A avant qu\'il te touche : premier coup gratuit !</small></span></div></div>' +
+        '<div class="row" style="margin-top:12px"><button class="btn" data-act="ok">C\'est parti !</button></div>', null, { back: "ok" });
+      await say(["Le village d'Aelor, au bord des prairies. Le vent porte des échos étranges depuis la Bergerie oubliée…", "Toi, c'est Augh, le lanceur de haches. Aelor, l'ancien du village, t'attend juste au-dessus : suis la flèche jaune."]);
     }
   }
   function drawTitle(t) {
@@ -1980,8 +2093,8 @@
     var F = window.__fade; if (F && F.a > 0) { ctx.fillStyle = "rgba(15,28,20," + F.a + ")"; ctx.fillRect(0, 0, W, H); }
     if (mode === "world" || mode === "battle") {
       hud(); var q = QUESTS[S.q], qe = $("#quest");
-      if (mode === "world" && q && S.q < 6) { var txt = "<b>" + esc(q.title) + "</b>" + esc(S.q === 1 ? q.text + " (" + Math.min(3, S.kills) + "/3)" : q.text); if (qe.innerHTML !== txt) { qe.innerHTML = txt; qe.className = "box"; } qe.hidden = false; }
-      else if (mode === "world" && S.q === 0) { qe.innerHTML = "<b>Bienvenue</b>Va parler à Aelor, devant la maison au toit rouge."; qe.className = "box"; qe.hidden = false; }
+      var ob = mode === "world" && M ? objective() : null, step = ob ? '<span class="step">➜ ' + esc(ob.label) + "</span>" : "";
+      if (mode === "world" && (S.q === 0 || (q && S.q < 6))) { var txt = "<b>" + (S.q === 0 ? "Bienvenue à Aelor" : esc(q.title)) + "</b>" + step; if (qe.innerHTML !== txt) { qe.innerHTML = txt; qe.className = "box"; } qe.hidden = false; }
       else qe.hidden = true;
       $("#hud").hidden = false;
     }

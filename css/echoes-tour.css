@@ -41,12 +41,27 @@ body { font-family: Nunito, system-ui, sans-serif; color: var(--ink); }
 #cmd { left: 50%; top: 58px; transform: translateX(-50%); padding: 5px 14px; font-size: 14px; font-weight: 900; pointer-events: none; text-align: center; white-space: nowrap; background: rgba(43,23,9,.85); color: #fdf3de; border-radius: 999px; border: 2px solid #f6d36b; }
 #cmd kbd { display: inline-block; min-width: 20px; padding: 0 5px; border-radius: 6px; background: var(--orange); color: var(--out); border: 2px solid var(--out); font-family: inherit; font-weight: 900; }
 
-/* Dialogue */
-#dialog { left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(640px, 92vw); min-height: 86px; padding: 12px 16px 14px; cursor: pointer; }
-#dialog .dlg-name { position: absolute; top: -16px; left: 14px; background: var(--orange); color: var(--out); border: 3px solid var(--line); border-radius: 8px; padding: 1px 10px; font-weight: 900; font-size: 14px; }
+/* Dialogue : grand cadre bois, portrait du personnage, texte bien contrasté */
+#dialog { left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(760px, 94vw); min-height: 112px;
+  display: flex; gap: 14px; align-items: stretch; padding: 12px 16px 26px 12px; cursor: pointer; z-index: 5;
+  background: linear-gradient(#fffaf0, #fdf3de); border: 4px solid var(--out); border-radius: 14px;
+  box-shadow: 0 0 0 4px #c9a070, 0 0 0 7px var(--out), 0 10px 30px rgba(0,0,0,.45); animation: dlgIn .2s cubic-bezier(.2,1.25,.4,1); }
+#dialog::before { content: ""; position: fixed; left: -50vw; right: -50vw; bottom: -40px; height: 220px; z-index: -1; pointer-events: none; background: linear-gradient(transparent, rgba(15,28,20,.55)); }
+#dialog.narr .dlg-face { display: none; }
+#dialog.narr .dlg-text { font-style: italic; color: #4a3a2a; }
+.dlg-face { flex: 0 0 auto; width: 86px; height: 86px; align-self: center; border: 3px solid var(--out); border-radius: 10px; background: radial-gradient(circle at 50% 70%, #f6d36b, #e8873a 70%, #b85e2a); display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+.dlg-face img { width: 72px; height: 76px; object-fit: contain; image-rendering: pixelated; margin-bottom: 2px; }
+.dlg-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+#dialog .dlg-name { align-self: flex-start; background: var(--out); color: var(--gold); border-radius: 7px; padding: 2px 12px; font-weight: 900; font-size: 15px; letter-spacing: .02em; }
 #dialog .dlg-name:empty { display: none; }
-#dialog .dlg-text { font-size: 16px; font-weight: 700; line-height: 1.35; min-height: 44px; }
-#dialog .dlg-next { position: absolute; right: 12px; bottom: 4px; font-size: 12px; color: var(--orange-dk); animation: bob .7s ease-in-out infinite alternate; }
+#dialog .dlg-text { font-size: 19px; font-weight: 800; line-height: 1.38; color: #2b1709; min-height: 52px; }
+#dialog .dlg-text b { color: var(--orange-dk); }
+#dialog .dlg-next { position: absolute; right: 14px; bottom: 5px; font-size: 12px; font-weight: 900; color: var(--orange-dk); animation: bob .6s ease-in-out infinite alternate; }
+@keyframes dlgIn { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (max-height: 420px) { #dialog { min-height: 92px; padding: 8px 12px 22px 8px; } .dlg-face { width: 64px; height: 64px; } .dlg-face img { width: 54px; height: 56px; } #dialog .dlg-text { font-size: 16px; min-height: 40px; } }
+
+/* Flèche d'objectif (texte) */
+#quest .step { display: block; margin-top: 3px; color: var(--moss); font-weight: 900; }
 
 /* Menu de combat / listes */
 #menu { min-width: 170px; max-width: 280px; padding: 5px; }
@@ -89,15 +104,20 @@ body { font-family: Nunito, system-ui, sans-serif; color: var(--ink); }
 .title-art { display: block; width: 100%; max-width: 420px; height: auto; margin: 6px auto 4px; image-rendering: pixelated; }
 
 /* Contrôles tactiles */
-#touch { inset: 0; pointer-events: none; }
+#touch { inset: 0; pointer-events: none; z-index: 3; }
+#menu { z-index: 6; } #panel { z-index: 10; } #hud, #quest, #btn-pause, #hint, #toast, #cmd { z-index: 4; }
 #touch button { pointer-events: auto; position: absolute; width: 58px; height: 58px; border-radius: 50%; border: 3px solid rgba(43,23,9,.85); background: rgba(253,243,222,.72); color: var(--out); font-weight: 900; font-size: 20px; touch-action: none; }
 #touch button.on { background: var(--orange-2); }
-#touch .pad { position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); width: 168px; height: 168px; }
-#touch .pad [data-k=up] { left: 55px; top: 0; } #touch .pad [data-k=down] { left: 55px; bottom: 0; }
-#touch .pad [data-k=left] { left: 0; top: 55px; } #touch .pad [data-k=right] { right: 0; top: 55px; }
-#touch .ab { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: 150px; height: 120px; }
-#touch .ta { right: 0; top: 0; width: 70px !important; height: 70px !important; background: rgba(232,135,58,.85) !important; font-size: 24px !important; }
-#touch .tb { left: 0; bottom: 0; background: rgba(156,197,107,.85) !important; }
+/* joystick analogique : il apparaît sous le pouce, n'importe où dans la moitié gauche */
+#stick { position: absolute; left: 0; bottom: 0; width: 46vw; height: 72vh; pointer-events: auto; touch-action: none; }
+#stick .base { position: absolute; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; left: 100px; top: calc(100% - 100px);
+  background: radial-gradient(circle, rgba(253,243,222,.18) 0 45%, rgba(253,243,222,.32) 46% 100%); border: 3px solid rgba(43,23,9,.55); opacity: .55; transition: opacity .15s; }
+#stick.on .base { opacity: 1; transition: none; }
+#stick .knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #fdf3de, #f2b05e 60%, #e8873a); border: 3px solid var(--out); box-shadow: 0 3px 0 rgba(43,23,9,.5); }
+#touch .ab { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); width: 170px; height: 140px; }
+#touch .ta { right: 0; top: 0; width: 84px !important; height: 84px !important; background: rgba(232,135,58,.85) !important; font-size: 24px !important; }
+#touch .tb { left: 0; bottom: 0; width: 64px !important; height: 64px !important; background: rgba(156,197,107,.85) !important; }
 
 #rotate { inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; text-align: center; padding: 24px; background: var(--forest); color: var(--gold); font-weight: 900; font-size: 22px; }
 @media (orientation: portrait) and (max-width: 700px) { #rotate { display: flex; } }

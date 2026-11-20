@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/echoes-tour.css?v=1">
+  <link rel="stylesheet" href="css/echoes-tour.css?v=2">
 </head>
 <body>
   <div id="stage">
@@ -24,16 +24,11 @@
     <div id="toast" hidden></div>
     <div id="cmd" hidden></div>
     <div id="menu" hidden></div>
-    <div id="dialog" hidden><div class="dlg-name"></div><div class="dlg-text"></div><div class="dlg-next">▼</div></div>
+    <div id="dialog" hidden><div class="dlg-face"><img alt=""></div><div class="dlg-body"><div class="dlg-name"></div><div class="dlg-text"></div></div><div class="dlg-next"></div></div>
     <div id="panel" hidden></div>
     <button id="btn-pause" type="button" aria-label="Menu" hidden>☰</button>
     <div id="touch" hidden>
-      <div class="pad">
-        <button type="button" data-k="up" aria-label="Haut">▲</button>
-        <button type="button" data-k="left" aria-label="Gauche">◀</button>
-        <button type="button" data-k="right" aria-label="Droite">▶</button>
-        <button type="button" data-k="down" aria-label="Bas">▼</button>
-      </div>
+      <div id="stick" aria-label="Joystick"><div class="base"><div class="knob"></div></div></div>
       <div class="ab">
         <button type="button" data-k="b" class="tb">B</button>
         <button type="button" data-k="a" class="ta">A</button>
@@ -44,6 +39,6 @@
   <!-- les sprites et la direction artistique viennent d'Écureuil Survivor -->
   <script src="js/v2/dither-art.js?v=1"></script>
   <script src="js/v2/game-data.js?v=1"></script>
-  <script src="js/echoes-tour.js?v=1"></script>
+  <script src="js/echoes-tour.js?v=2"></script>
 </body>
 </html>
