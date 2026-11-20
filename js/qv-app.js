@@ -1152,44 +1152,57 @@
       '<button class="qv-btn ghost sm" data-g="journal">Retour au journal</button>');
   }
 
+  // ---------- plateau mobile : le personnage d'abord ----------
+  var stageTall = 200;
+  function stageTile(p, extra) { return W.tile(p, Object.assign({ tall: stageTall, stage: true }, extra || {})); }
+  function ctrHTML() {
+    return '<div class="stg-ctrs">' + ["b", "f", "r"].map(function (k) {
+      return '<button class="ctr ctr-' + k + '" data-g="res" data-k="' + k + '" id="ctr-' + k + '" aria-label="' + RES[k].name + ' : ' + sv(me.id, k) + '">' + IC.get(k, "ctr-i") + '<span class="ctr-txt"><b class="ctr-v" id="ctrv-' + k + '">' + sv(me.id, k) + '</b><span class="ctr-n">' + RES[k].name + '</span></span></button>';
+    }).join("") + '</div>';
+  }
+  function oppChip(id) {
+    var q = pub.players[id], turn = pub.order[pub.turn] === id, tgt = pub.pending && pub.pending.to === id;
+    var bad = q.scandal || Object.keys(q.st || {}).some(function (k) { return D.STATUSES[k] && D.STATUSES[k].bad; });
+    return '<button class="qv-opp' + (turn ? " turn" : "") + (tgt ? " tgt" : "") + (q.bot || present(id) ? "" : " off") + '" data-pid="' + id + '" data-g="who">' +
+      '<span class="op-face">' + A.standalone(q.avatar, { mood: q.mood || "neutral", outfit: W.outfit(q) }, "op-av", true) + (turn ? '<i class="op-turn">▶</i>' : '') + '</span>' +
+      '<span class="op-txt"><span class="nm">' + esc(q.name) + (q.bot ? ' <i>bot</i>' : '') + '</span>' +
+      '<span class="rs">' + resRow(q) + (bad ? '<span class="li bad" title="Ennuis en cours">!</span>' : '') + '</span>' + lifeIcons(q) + '</span>' +
+      '<span class="op-spot">' + W.tile(q) + '</span></button>';
+  }
   function renderGame() {
     if (!pub || !room) return;
     if (screen !== "game") {
       show("game", '<div class="qv-game">' +
-        '<header class="qv-top"><div class="qv-top-l">' + logo(true) + '<span id="g-age"></span></div><div class="qv-top-r"><button class="ib jr" data-g="journal" aria-label="Journal de la partie">Journal</button><button class="ib" data-g="sound" aria-label="Son"></button><button class="ib" data-g="menu" aria-label="Menu">☰</button></div></header>' +
+        '<header class="qv-top"><span class="qv-mini-logo" aria-label="Quelle vie !">QV<b>!</b></span><span class="top-mid"><span id="g-age"></span><span class="qv-status" id="status"></span></span>' +
+        '<button class="ib" data-g="journal" aria-label="Journal de la partie"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3 h10 a2 2 0 0 1 2 2 v12 H6 a2 2 0 0 1 -2 -2z" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M7 7 h6 M7 10 h6 M7 13 h4" stroke="currentColor" stroke-width="1.8"/></svg></button>' +
+        '<button class="ib" data-g="menu" aria-label="Menu">☰</button></header>' +
         '<section class="qv-opps" id="opps"></section>' +
-        '<section class="qv-me" id="mezone"></section>' +
-        '<div class="qv-status" id="status"></div>' +
-        '<section class="qv-hud" id="hud"></section>' +
+        '<section class="qv-stage" id="mezone"></section>' +
         '<section class="qv-hand" id="hand"></section>' +
+        '<div id="focus" class="qv-focus" hidden></div>' +
         '<aside class="qv-log" id="log"></aside>' +
         '<div id="sheet" class="qv-sheet" hidden></div>' +
         '</div>');
       app.onclick = gameClick;
     }
     var p = pub.players[me.id];
-    $("#g-age").innerHTML = (pub.mode === "adult" ? '<i class="b18">18+</i> ' : '') + 'Âge <b>' + pub.age + '</b> · tour ' + pub.round + '/' + pub.maxRounds + (pub.discovery && pub.stage < 5 ? ' · découverte ' + pub.stage + '/5' : ' · pioche ' + pub.deck);
-    $("[data-g=sound]").textContent = SND.muted() ? "🔇" : "🔊";
-    // adversaires
-    $("#opps").innerHTML = pub.order.filter(function (id) { return id !== me.id; }).map(function (id) {
-      var q = pub.players[id], turn = pub.order[pub.turn] === id, tgt = pub.pending && pub.pending.to === id;
-      return '<button class="qv-opp' + (turn ? " turn" : "") + (tgt ? " tgt" : "") + (q.bot || present(id) ? "" : " off") + '" data-pid="' + id + '" data-g="who">' +
-        W.tile(q) +
-        '<span class="nm">' + esc(q.name) + (q.bot ? ' <i>bot</i>' : '') + '</span>' + lifeIcons(q) +
-        '<span class="rs">' + resRow(q) + '<span class="hc">' + q.handCount + '</span></span>' +
-        '</button>';
-    }).join("");
-    // moi
+    $("#g-age").innerHTML = (pub.mode === "adult" ? '<i class="b18">18+</i>' : '') + '<b>' + pub.age + ' ans</b> · tour ' + pub.round + '/' + pub.maxRounds;
+    $("#opps").innerHTML = pub.order.filter(function (id) { return id !== me.id; }).map(oppChip).join("");
+    var mz = $("#mezone");
     if (p) {
-      $("#mezone").innerHTML =
-        '<div class="qv-mytile' + (isMyTurn() ? " turn" : "") + (Date.now() < reactUntil ? " react-" + reactMood : "") + '" data-pid="' + me.id + '">' + W.tile(p, Date.now() < reactUntil ? { mood: reactMood } : {}) + '<span class="who">' + esc(p.name) + ' · ' + esc(p.title) + '</span></div>' +
-        '<div class="qv-mystats">' +
-        '<div class="qv-chips">' + statusChips(p) + '</div>' +
-        '<div class="qv-row2">' + (!pub.discovery || pub.stage >= 3 ? '<button class="qv-btn ghost sm" data-g="obj">Mes objectifs secrets</button>' : '') + '<button class="qv-btn ghost sm" data-g="life">Mon plateau</button></div></div>';
+      // le décor s'étire en hauteur pour remplir la scène : le personnage reste entier et bien visible
+      var w = mz.clientWidth || innerWidth, h = mz.clientHeight;
+      if (!h || h < 120) { h = Math.max(240, innerHeight - 290); requestAnimationFrame(function () { if (screen === "game" && $("#mezone") && $("#mezone").clientHeight >= 120) fitStage(); }); }
+      stageTall = Math.round(Math.max(200, Math.min(640, 232 * h / Math.max(1, w))));
+      var react = Date.now() < reactUntil;
+      mz.innerHTML =
+        '<div class="qv-mytile' + (isMyTurn() ? " turn" : "") + (react ? " react-" + reactMood : "") + '" data-pid="' + me.id + '">' + stageTile(p, react ? { mood: reactMood } : {}) +
+        ctrHTML() +
+        '<div class="stg-btns"><button class="stg-b" data-g="life">Ma vie</button>' + (!pub.discovery || pub.stage >= 3 ? '<button class="stg-b" data-g="obj">Objectifs</button>' : '') + '</div>' +
+        '<span class="who">' + (isMyTurn() ? '<i class="my-turn">À toi</i>' : '') + '<b>' + esc(p.name) + '</b> · ' + esc(p.title) + '</span></div>';
     } else {
-      $("#mezone").innerHTML = '<p class="qv-note">Tu regardes la partie en spectateur.</p>';
+      mz.innerHTML = '<p class="qv-note">Tu regardes la partie en spectateur.</p>';
     }
-    if (p) $("#hud").innerHTML = hudHTML(p); else $("#hud").innerHTML = "";
     renderStatus();
     renderHand();
     $("#log").innerHTML = '<h3>Journal</h3>' + hist.filter(function (e) { return e.t !== "attack"; }).slice(0, 14).map(function (ev) { return '<button class="jr-e mini" data-g="jev" data-id="' + ev.id + '"><span><i>T' + ev.round + '</i> ' + esc(journalLine(ev)) + '</span></button>'; }).join("");
@@ -1199,6 +1212,25 @@
     updateHint();
     lookCheck();
   }
+  // la scène suit la taille réelle de l'écran (barre Safari qui apparaît, rotation…)
+  function fitStage() {
+    var mz = $("#mezone"), p = pub && pub.players[me.id]; if (!mz || !p) return;
+    var t = Math.round(Math.max(200, Math.min(640, 232 * mz.clientHeight / Math.max(1, mz.clientWidth))));
+    if (Math.abs(t - stageTall) < 4) return;
+    stageTall = t;
+    var svg = mz.querySelector(".qv-tile"); if (svg) svg.outerHTML = stageTile(p, Date.now() < reactUntil ? { mood: reactMood } : {});
+  }
+  var fitT = null;
+  window.addEventListener("resize", function () { clearTimeout(fitT); fitT = setTimeout(function () { if (screen === "game") { fitStage(); renderHand(); } }, 120); });
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", function () { clearTimeout(fitT); fitT = setTimeout(function () { if (screen === "game") fitStage(); }, 120); });
+  // petite vie au repos : de temps en temps, le personnage fait signe ou prend la pose
+  setInterval(function () {
+    if (screen !== "game" || !pub || queue.length || playing || reduce || Date.now() < reactUntil) return;
+    var p = pub.players[me.id], t = $(".qv-mytile .qv-tile"); if (!p || !t) return;
+    var poses = ["wave", "hips", "up"], pose = poses[Math.floor(Math.random() * poses.length)];
+    t.outerHTML = stageTile(p, { pose: pose, mood: pose === "up" ? "happy" : p.mood });
+    setTimeout(function () { var t2 = $(".qv-mytile .qv-tile"); if (t2 && !(Date.now() < reactUntil)) t2.outerHTML = stageTile(p); }, 1600);
+  }, 9000);
 
   // ---------- premier tour guidé ----------
   function guideFirst() { return !!(pub && pub.discovery && pub.round === 1 && isMyTurn() && !seen.guide1 && priv && priv.hand.length && !introOpen); }
@@ -1290,18 +1322,17 @@
     var cur = pub.players[pub.order[pub.turn]], o = "";
     if (pub.phase === "react" && pub.pending) {
       var left = Math.max(0, 45 - Math.floor((Date.now() - clockSkew - pub.pending.since) / 1000));
-      o = pub.pending.to === me.id ? "On t'attaque ! Choisis ta réaction." : esc(nameOf(pub.pending.to)) + " choisit sa réaction… <b>" + left + " s</b>";
+      o = pub.pending.to === me.id ? "On t'attaque !" : esc(nameOf(pub.pending.to)) + " réagit… " + left + " s";
+    } else if (pub.gate) {
+      var waitFor = pub.order.filter(function (id) { var q = pub.players[id]; return !q.bot && !pub.gate.ready[id] && (id === me.id || present(id)); }).map(function (id) { return id === me.id ? "toi" : nameOf(id); });
+      o = waitFor.length ? "On attend " + esc(waitFor.join(", ")) + "…" : "On continue…";
     } else if (isMyTurn()) {
       var pl = pub.players[me.id].plays;
-      o = "<b>À toi !</b> Touche une carte pour la jouer, ou souffle un coup." + (pl > 1 ? " (" + pl + " cartes ce tour-ci)" : "");
+      o = "<b>À toi !</b>" + (pl > 1 ? " · " + pl + " cartes" : "");
     } else if (cur) {
-      o = esc(cur.name) + (cur.bot ? " réfléchit…" : " joue…") + (!cur.bot && !present(cur.id) ? " (déconnecté·e : pilote automatique bientôt)" : "");
+      o = esc(cur.name) + (cur.bot ? " réfléchit…" : " joue…") + (!cur.bot && !present(cur.id) ? " (déconnecté·e)" : "");
     }
-    if (pub.gate && !(pub.phase === "react" && pub.pending)) {
-      var waitFor = pub.order.filter(function (id) { var q = pub.players[id]; return !q.bot && !pub.gate.ready[id] && (id === me.id || present(id)); }).map(function (id) { return id === me.id ? "toi" : nameOf(id); });
-      o = waitFor.length ? "On attend que tout le monde ait vu la scène : " + esc(waitFor.join(", ")) + "…" : "Tout le monde a vu, on continue…";
-    }
-    if (room && !room.host && room.hostId && !present(room.hostId) && room.roster.length) o = "L'hôte est déconnecté·e. La partie reprendra à son retour.";
+    if (room && !room.host && room.hostId && !present(room.hostId) && room.roster.length) o = "Hôte déconnecté·e…";
     st.innerHTML = o;
     st.className = "qv-status" + (isMyTurn() ? " mine" : "");
   }
@@ -1409,7 +1440,7 @@
   function reactAvatar(mood) {
     reactMood = mood; reactUntil = Date.now() + 1600;
     var t = $(".qv-mytile"), p = pub && pub.players[me.id]; if (!t || !p) return;
-    var svg = t.querySelector(".qv-tile"); if (svg) svg.outerHTML = W.tile(p, { mood: mood });
+    var svg = t.querySelector(".qv-tile"); if (svg) svg.outerHTML = stageTile(p, { mood: mood, pose: mood === "happy" ? "up" : mood === "angry" ? "hips" : undefined });
     t.classList.remove("react-happy", "react-sad", "react-shocked"); void t.offsetWidth; t.classList.add("react-" + mood);
     var hav = $(".hud-av"); if (hav) hav.outerHTML = A.standalone(p.avatar, { mood: mood, outfit: W.outfit(p) }, "hud-av", true);
     clearTimeout(reactT); reactT = setTimeout(function () { t.classList.remove("react-" + mood); }, 1400);
@@ -1477,42 +1508,46 @@
     };
   }
 
-  // ---------- main en éventail ----------
+  // ---------- main compacte en éventail, carte touchée agrandie au premier plan ----------
   function renderHand(incoming) {
-    var h = $("#hand"); if (!h || !pub) return;
-    if (!priv || !pub.players[me.id]) { h.innerHTML = ""; return; }
-    var vp = viewPub(), mine = isMyTurn();
+    var h = $("#hand"), fc = $("#focus"); if (!h || !pub) return;
+    if (!priv || !pub.players[me.id]) { h.innerHTML = ""; if (fc) fc.hidden = true; return; }
+    var vp = viewPub(), mine = isMyTurn(), desk = innerWidth >= 980;
     var hand = priv.hand.filter(function (c) { return dealt[c.u]; });
     if (sel && !hand.some(function (c) { return c.u === sel; })) sel = null;
-    var W_ = Math.min(h.clientWidth || innerWidth, 900), cw = innerWidth >= 980 ? 128 : 116, n = hand.length;
-    var gap = n > 1 ? Math.min(cw * 0.94, (W_ - 24 - cw) / (n - 1)) : 0, total = cw + gap * (n - 1), x0 = (W_ - total) / 2;
+    var sc = desk ? 0.82 : 0.6, cw = 116 * sc, n = hand.length;
+    var W_ = (h.clientWidth || innerWidth) - 2 * (desk ? 70 : 52);
+    var gap = n > 1 ? Math.min(cw * 0.96, (W_ - cw) / (n - 1)) : 0, total = cw + gap * (n - 1), x0 = (desk ? 70 : 52) + (W_ - total) / 2;
     var unlocked = [];
     var cards = hand.map(function (c, i) {
-      var why = E.canPlay(vp, me.id, c.k);
-      if (pub.gate && !why && mine) why = "";
-      var def = card(c.k), react = def.reaction && !def.alsoPlay;
+      var why = E.canPlay(vp, me.id, c.k), def = card(c.k), react = def.reaction && !def.alsoPlay;
       if (prevReason[c.u] && !why && !react) unlocked.push(c);
       prevReason[c.u] = react ? "" : why;
-      var mid = (n - 1) / 2, fan = n > 1 && gap < cw * 0.9, rot = fan ? (i - mid) * Math.min(3, 12 / n) : 0, lift = fan ? Math.min(14, Math.abs(i - mid) * Math.abs(i - mid) * 1.4) : 0;
-      var isSel = sel === c.u;
-      return '<button class="qv-hc' + (isSel ? " sel" : "") + (incoming === c.u ? " incoming" : "") + '" data-g="card" data-u="' + c.u + '" style="left:' + (x0 + i * gap).toFixed(0) + 'px;--rot:' + rot.toFixed(1) + 'deg;--lift:' + lift.toFixed(0) + 'px;z-index:' + (isSel ? 50 : i + 1) + '">' +
+      var mid = (n - 1) / 2, fan = n > 1, rot = fan ? (i - mid) * Math.min(4, 16 / n) : 0, lift = fan ? Math.min(10, Math.abs(i - mid) * Math.abs(i - mid) * 1.6) : 0;
+      return '<button class="qv-hc' + (sel === c.u ? " sel" : "") + (incoming === c.u ? " incoming" : "") + '" data-g="card" data-u="' + c.u + '" style="left:' + (x0 + i * gap).toFixed(0) + 'px;--rot:' + rot.toFixed(1) + 'deg;--lift:' + lift.toFixed(0) + 'px;--sc:' + sc + ';z-index:' + (i + 1) + '" aria-label="' + esc(def.name) + (why && !react ? " (verrouillée : " + esc(why) + ")" : "") + '">' +
         cardHTML(c.k, { dim: !!why && !react, reason: why && !react ? why : "", pulse: guideFirst() && !sel }) + (!seen[c.k] && pub.discovery ? '<i class="hc-new">Nouveau</i>' : '') + '</button>';
     }).join("");
-    var s = sel && hand.filter(function (c) { return c.u === sel; })[0], act = "";
-    if (s) {
-      var def2 = card(s.k), why2 = mine ? (pub.gate ? "Attends que tout le monde ait vu la scène" : E.canPlay(vp, me.id, s.k)) : "Ce n'est pas ton tour";
-      var react2 = def2.reaction && !def2.alsoPlay;
-      act = '<div class="act-bar">' +
-        (react2 ? '<span class="act-why">Carte de réaction : elle sert quand on t\'attaque</span>' : why2 ? '<span class="act-why">' + esc(why2) + '</span>' :
-          '<button class="qv-btn act-play' + (guideFirst() ? " pulse" : "") + '" data-g="' + (def2.target === "opponent" ? "pick" : "play") + '" data-u="' + s.u + '">' + (def2.target === "opponent" ? "Choisir une cible ›" : "Jouer « " + esc(def2.name) + " »") + '</button>') +
-        '<button class="qv-btn ghost sm" data-g="details" data-u="' + s.u + '">Détails</button>' +
-        (mine && !pub.gate ? '<button class="qv-btn ghost sm" data-g="rest" data-u="' + s.u + '" title="Défausser cette carte : +1 Bonheur">Défausser +1' + IC.get("b", "qv-ri") + '</button>' : '') + '</div>';
-    } else {
-      act = '<div class="table-row"><span class="pile" id="deckpile"><i class="back"></i><b>' + pub.deck + '</b><small>pioche</small></span>' +
-        '<span class="act-hint">' + (mine ? (guideFirst() ? "Touche ta carte !" : "Touche une carte pour la jouer") : "Tes cartes (secrètes)") + '</span>' +
-        '<span class="pile disc">' + (pub.discardTop ? '<i class="face fam-' + card(pub.discardTop).fam + '">' + IC.get(card(pub.discardTop).icon) + '</i>' : '<i class="empty"></i>') + '<b>' + pub.discard + '</b><small>défausse</small></span></div>';
+    h.innerHTML = '<span class="pile" id="deckpile" title="Pioche"><i class="back"></i><b>' + pub.deck + '</b></span>' +
+      '<div class="qv-fan">' + cards + '</div>' +
+      '<span class="pile disc" title="Défausse">' + (pub.discardTop ? '<i class="face fam-' + card(pub.discardTop).fam + '">' + IC.get(card(pub.discardTop).icon) + '</i>' : '<i class="empty"></i>') + '<b>' + pub.discard + '</b></span>' +
+      (mine && !sel && n && guideFirst() ? '<span class="hand-tip">Touche ta carte !</span>' : '');
+    // carte agrandie + actions (la main reste compacte, le personnage reste visible au-dessus)
+    var s = sel && hand.filter(function (c) { return c.u === sel; })[0];
+    if (fc) {
+      if (!s) { fc.hidden = true; fc.innerHTML = ""; }
+      else {
+        var def2 = card(s.k), why2 = mine ? (pub.gate ? "Attends que tout le monde ait vu la scène" : E.canPlay(vp, me.id, s.k)) : "Ce n'est pas ton tour";
+        var react2 = def2.reaction && !def2.alsoPlay;
+        fc.innerHTML = '<div class="fc-card">' + cardHTML(s.k, { reason: why2 && !react2 && mine ? why2 : "" }) + '</div>' +
+          '<div class="act-bar">' +
+          (react2 ? '<span class="act-why">Carte de réaction : elle servira quand on t\'attaquera</span>' : why2 ? '<span class="act-why">' + esc(why2) + '</span>' :
+            '<button class="qv-btn act-play' + (guideFirst() ? " pulse" : "") + '" data-g="' + (def2.target === "opponent" ? "pick" : "play") + '" data-u="' + s.u + '">' + (def2.target === "opponent" ? "Choisir une cible ›" : "Jouer") + '</button>') +
+          '<div class="act-row"><button class="qv-btn ghost sm" data-g="details" data-u="' + s.u + '">Détails</button>' +
+          (mine && !pub.gate ? '<button class="qv-btn ghost sm" data-g="rest" data-u="' + s.u + '" title="Défausser cette carte : +1 Bonheur">Défausser +1' + IC.get("b", "qv-ri") + '</button>' : '') +
+          '<button class="qv-btn ghost sm" data-g="unsel" aria-label="Refermer">✕</button></div></div>';
+        fc.hidden = false;
+      }
     }
-    h.innerHTML = act + '<div class="qv-fan' + (n >= 6 && innerWidth < 980 ? " many" : "") + '" style="height:' + (innerWidth >= 980 ? 214 : n >= 6 ? 182 : 200) + 'px">' + cards + '</div>';
     unlocked.forEach(function (c) {
       var el = $('.qv-hc[data-u="' + c.u + '"]'); if (el) el.classList.add("unlocked");
       unlockToast(c.k);
@@ -1533,7 +1568,7 @@
   var LOCK_OPEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="11" rx="3" fill="#ffd23f" stroke="#2b2140" stroke-width="2"/><path d="M8 11 V7 a4 4 0 0 1 8 -1" fill="none" stroke="#2b2140" stroke-width="2.4" stroke-linecap="round"/></svg>';
   // la carte jouée quitte la main et file au centre (puis vers sa destination)
   function flyOut(u, toDiscard) {
-    var el = $('.qv-hc[data-u="' + u + '"]'); if (!el || reduce) return;
+    var fc = $("#focus"), el = (fc && !fc.hidden && fc.querySelector(".fc-card")) || $('.qv-hc[data-u="' + u + '"]'); if (!el || reduce) return;
     var r = el.getBoundingClientRect(), ghost = el.cloneNode(true);
     ghost.className = "qv-ghost"; ghost.style.left = r.left + "px"; ghost.style.top = r.top + "px"; ghost.style.width = r.width + "px";
     document.body.appendChild(ghost); el.style.visibility = "hidden";
@@ -1607,13 +1642,15 @@
   }
 
   function gameClick(e) {
-    var b = e.target.closest("[data-g]"); if (!b) return;
+    var b = e.target.closest("[data-g]");
+    if (!b) { if (sel && !e.target.closest("#focus, #hand")) { sel = null; renderHand(); } return; }
     SND.unlock();
     var g = b.dataset.g;
     if (g === "close") { closeSheet(); renderHand(); maybeReact(); return; }
     SND.play("tap");
     if (g === "card") { var cu = +b.dataset.u; if (sel === cu) return openCard(cu); sel = cu; SND.play("card"); renderHand(); updateHint(); return; }
     if (g === "details" || g === "pick") return openCard(+b.dataset.u);
+    if (g === "unsel") { sel = null; renderHand(); return; }
     if (g === "res") { resSheet(b.dataset.k); return; }
     if (g === "reduce") { reduce = !reduce; store("qv-reduce", reduce); document.body.classList.toggle("reduce", reduce); closeSheet(); toast(reduce ? "Animations réduites" : "Animations complètes"); return; }
     if (g === "play") { if (guideFirst()) { markSeen("guide1"); hideHint(); } closeSheet(); flyOut(+b.dataset.u, false); sel = null; sendIntent({ t: "play", u: +b.dataset.u }); return; }

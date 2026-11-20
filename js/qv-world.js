@@ -59,6 +59,20 @@
   function tile(p, opts) {
     opts = opts || {};
     var W = 320, H = 200, o = "";
+    // positions : la scène mobile est resserrée autour de la famille
+    var Z = opts.stage ? { sign: 50, pa: 232, k1: 70, k2: 102, ham: 46, toast: 246, ex: 262, squat: 64, sugar: 222, dog: 186, more: 50, away: 52 } : { sign: 12, pa: 248, k1: 54, k2: 96, ham: 2, toast: 286, ex: 300, squat: 30, sugar: 262, dog: 200, more: 14, away: 18 };
+    // version « scène » : on prolonge le décor vers le haut pour remplir l'écran sans couper personne
+    var tall = Math.max(200, Math.min(640, opts.tall || 200)), ext = tall - 200;
+    if (ext > 0) {
+      if (p.housing >= 2) o += '<rect y="' + (-ext) + '" width="320" height="' + (ext + 1) + '" fill="#a8dcff"/><g fill="#fff" opacity=".9"><ellipse cx="60" cy="' + (-ext * 0.55) + '" rx="26" ry="10"/><ellipse cx="80" cy="' + (-ext * 0.55 - 6) + '" rx="18" ry="9"/><ellipse cx="230" cy="' + (-ext * 0.3) + '" rx="22" ry="8"/></g>';
+      else if (p.housing === 1) {
+        o += '<rect y="' + (-ext) + '" width="320" height="' + (ext + 11) + '" fill="#e8a87c"/>';
+        for (var wy = -44; wy > -ext; wy -= 44) for (var wx = 14; wx < 320; wx += 62) o += '<rect x="' + wx + '" y="' + (wy + 22) + '" width="34" height="28" rx="3" fill="#9fd6ff"' + S.replace('3"', '2.4"') + '/>';
+      } else {
+        o += '<rect y="' + (-ext) + '" width="320" height="' + (ext + 1) + '" fill="#f6e3c3"/>';
+        for (var sx = 10; sx < 320; sx += 26) o += '<rect x="' + sx + '" y="' + (-ext) + '" width="9" height="' + (ext + 1) + '" fill="#efd4a8"/>';
+      }
+    }
     if (p.housing >= 2) {
       o += '<rect width="320" height="200" fill="#a8dcff"/><circle cx="290" cy="34" r="16" fill="#ffd23f"/>';
       o += '<rect y="168" width="320" height="32" fill="#8fd16a"/><rect y="166" width="320" height="4" fill="#6fb04a"/>';
@@ -73,9 +87,9 @@
       o += '<rect x="236" y="120" width="30" height="48" fill="#3d7dd8"' + S + '/><circle cx="18" cy="150" r="14" fill="#4caf6a"' + S + '/><rect x="10" y="156" width="16" height="12" fill="#b56b3a"' + S + '/>';
     } else {
       o += bgRoom(320, 200);
-      o += '<rect x="22" y="26" width="58" height="44" fill="#fff"' + S + '/><text x="51" y="45" font-size="10" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">MAMAN</text><text x="51" y="60" font-size="10" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">PAPA</text>';
+      o += '<g transform="translate(' + (opts.stage ? 34 : 0) + ' 0)"><rect x="22" y="26" width="58" height="44" fill="#fff"' + S + '/><text x="51" y="45" font-size="10" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">MAMAN</text><text x="51" y="60" font-size="10" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">PAPA</text></g>';
       o += '<path d="M92 128 Q92 110 110 110 H230 Q248 110 248 128 V170 H92Z" fill="#e07a3a"' + S + '/><rect x="86" y="136" width="20" height="36" rx="8" fill="#c8612a"' + S + '/><rect x="234" y="136" width="20" height="36" rx="8" fill="#c8612a"' + S + '/>';
-      o += '<path d="M282 60 h22 l-6 -22 h-10z" fill="#ffd23f"' + S + '/><path d="M293 60 V166 M282 168 h22" stroke="' + INK + '" stroke-width="3"/>';
+      o += '<g transform="translate(' + (opts.stage ? -30 : 0) + ' 0)"><path d="M282 60 h22 l-6 -22 h-10z" fill="#ffd23f"' + S + '/><path d="M293 60 V166 M282 168 h22" stroke="' + INK + '" stroke-width="3"/></g>';
     }
     // objets en fond
     if (p.items && p.items.indexOf("car") >= 0) {
@@ -86,40 +100,42 @@
       o += '<rect x="112" y="6" width="96" height="22" rx="11" fill="#e5487a"' + S.replace('3"', '2"') + '/><text x="160" y="22" font-size="12" font-weight="900" text-anchor="middle" fill="#fff" font-family="Nunito,sans-serif">#SCANDALE</text>';
     }
     if (p.strike > 0) {
-      o += '<g transform="translate(12 84)"><rect x="0" y="0" width="58" height="30" fill="#fff"' + S + '/><text x="29" y="20" font-size="11" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">GRÈVE</text></g>';
+      o += '<g transform="translate(' + Z.sign + ' 84)"><rect x="0" y="0" width="58" height="30" fill="#fff"' + S + '/><text x="29" y="20" font-size="11" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">GRÈVE</text></g>';
     }
     // états visibles dans le décor
     var st = p.st || {};
-    if (st.proces) o += '<g transform="translate(12 ' + (p.strike > 0 ? 46 : 84) + ')"><rect width="64" height="30" fill="#fff"' + S + '/><text x="32" y="20" font-size="11" font-weight="900" text-anchor="middle" fill="#3d7dd8" font-family="Nunito,sans-serif">PROCÈS</text></g>';
+    if (st.proces) o += '<g transform="translate(' + Z.sign + ' ' + (p.strike > 0 ? 46 : 84) + ')"><rect width="64" height="30" fill="#fff"' + S + '/><text x="32" y="20" font-size="11" font-weight="900" text-anchor="middle" fill="#3d7dd8" font-family="Nunito,sans-serif">PROCÈS</text></g>';
     if (st.fakeDip) o += '<g transform="translate(242 14)"><rect width="50" height="36" fill="#fff4dc"' + S.replace('3"', '2.4"') + '/><path d="M8 12 h34 M8 20 h22" stroke="' + INK + '" stroke-width="2"/><text x="40" y="32" font-size="13" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">?</text></g>';
     if (st.fame) o += '<path d="M164 0 L120 196 H208Z" fill="#fff59a" opacity=".45" class="qv-glow"/>';
-    if (st.squat) o += '<g opacity=".97">' + ch(A.random(4242), { outfit: "pajama", mood: "smug", pose: "hips" }, 30, 194, 0.48) + '</g><text x="30" y="88" font-size="11" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">zZz</text>';
-    if (st.ex) o += '<g class="qv-peek">' + ch(A.random(777 + (p.partner ? p.partner.seed % 97 : 0)), { mood: "smug", pose: "phone", hold: "phone" }, 300, 194, 0.5) + '</g>';
+    if (st.squat) o += '<g opacity=".97">' + ch(A.random(4242), { outfit: "pajama", mood: "smug", pose: "hips" }, Z.squat, 194, 0.48) + '</g><text x="30" y="88" font-size="11" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">zZz</text>';
+    if (st.ex) o += '<g class="qv-peek">' + ch(A.random(777 + (p.partner ? p.partner.seed % 97 : 0)), { mood: "smug", pose: "phone", hold: "phone" }, Z.ex, 194, 0.5) + '</g>';
     // personnages
     var mood = opts.mood || p.mood || "neutral";
     if (p.partner) {
-      o += ch(partnerAv(p), { mood: p.married ? "love" : "happy", outfit: p.partner.look || "casual" }, 248, 194, 0.66);
-      if (st.sugar) o += '<g transform="translate(262 40)"><rect width="40" height="22" rx="6" fill="#fff"' + S.replace('3"', '2"') + '/><text x="20" y="16" font-size="12" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">0 €</text></g>';
+      o += '<g class="tl-pa"><g>' + ch(partnerAv(p), { mood: p.married ? "love" : "happy", outfit: p.partner.look || "casual" }, Z.pa, 194, 0.66) + '</g></g>';
+      if (st.sugar) o += '<g transform="translate(' + Z.sugar + ' 40)"><rect width="40" height="22" rx="6" fill="#fff"' + S.replace('3"', '2"') + '/><text x="20" y="16" font-size="12" font-weight="900" text-anchor="middle" fill="#e5487a" font-family="Nunito,sans-serif">0 €</text></g>';
     }
     var kids = (p.kids || []);
     if (kids.length && !p.kidsAway) {
-      if (st.babyinf) o += '<circle cx="54" cy="150" r="30" fill="none" stroke="#ffd23f" stroke-width="5" class="qv-glow"/>';
-      kids.slice(0, 2).forEach(function (k, i) { o += ch(kidAv(p, k), { kid: true, mood: "happy", hold: i === 0 && st.babyinf ? "phone" : null, pose: i === 0 && st.babyinf ? "phone" : "down" }, i ? 96 : 54, 196, 0.4); });
-      if (kids.length > 2) o += '<g transform="translate(14 120)"><circle r="14" cx="14" cy="14" fill="#ffd23f"' + S + '/><text x="14" y="19" font-size="13" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">+' + (kids.length - 2) + '</text></g>';
+      if (st.babyinf) o += '<circle cx="' + Z.k1 + '" cy="150" r="30" fill="none" stroke="#ffd23f" stroke-width="5" class="qv-glow"/>';
+      kids.slice(0, 2).forEach(function (k, i) { o += '<g class="tl-kid"><g>' + ch(kidAv(p, k), { kid: true, mood: "happy", hold: i === 0 && st.babyinf ? "phone" : null, pose: i === 0 && st.babyinf ? "phone" : "down" }, i ? Z.k2 : Z.k1, 196, 0.4) + '</g></g>'; });
+      if (kids.length > 2) o += '<g transform="translate(' + Z.more + ' 120)"><circle r="14" cx="14" cy="14" fill="#ffd23f"' + S + '/><text x="14" y="19" font-size="13" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">+' + (kids.length - 2) + '</text></g>';
     } else if (kids.length && p.kidsAway) {
-      o += '<g transform="translate(18 118)"><rect width="70" height="38" rx="6" fill="#fff"' + S + '/><text x="35" y="16" font-size="9" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">Enfants chez</text><text x="35" y="29" font-size="9" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">l\'autre parent</text></g>';
+      o += '<g transform="translate(' + Z.away + ' 118)"><rect width="70" height="38" rx="6" fill="#fff"' + S + '/><text x="35" y="16" font-size="9" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">Enfants chez</text><text x="35" y="29" font-size="9" font-weight="900" text-anchor="middle" fill="' + INK + '" font-family="Nunito,sans-serif">l\'autre parent</text></g>';
     }
-    o += ch(p.avatar, { outfit: outfit(p), mood: mood, pose: mood === "happy" ? "wave" : mood === "smug" ? "hips" : "down", liar: st.liar ? 1 : 0, shades: !!st.fame, disguise: !!st.doublevie }, 164, 196, 0.74);
+    o += '<g class="tl-me"><g>' + ch(p.avatar, { outfit: outfit(p), mood: mood, pose: opts.pose || (mood === "happy" ? "wave" : mood === "smug" ? "hips" : mood === "angry" ? "hips" : "down"), liar: st.liar ? 1 : 0, shades: !!st.fame, disguise: !!st.doublevie }, 164, 196, 0.74) + '</g></g>';
     if (p.items && p.items.indexOf("dog") >= 0) {
-      o += '<g transform="translate(200 160)"><ellipse cx="18" cy="24" rx="16" ry="10" fill="#d9a066"' + S.replace('3"', '2.4"') + '/><circle cx="32" cy="14" r="9" fill="#d9a066"' + S.replace('3"', '2.4"') + '/><circle cx="35" cy="12" r="1.6" fill="' + INK + '"/><path d="M26 6 l2 -6 3 4 2 -5 2 5 3 -4 1 6z" fill="#ffd23f"' + S.replace('3"', '1.6"') + '/></g>';
+      o += '<g transform="translate(' + Z.dog + ' 160)"><ellipse cx="18" cy="24" rx="16" ry="10" fill="#d9a066"' + S.replace('3"', '2.4"') + '/><circle cx="32" cy="14" r="9" fill="#d9a066"' + S.replace('3"', '2.4"') + '/><circle cx="35" cy="12" r="1.6" fill="' + INK + '"/><path d="M26 6 l2 -6 3 4 2 -5 2 5 3 -4 1 6z" fill="#ffd23f"' + S.replace('3"', '1.6"') + '/></g>';
     }
     if (p.married) o += '<path d="M206 38 l-8 -8 a5 5 0 0 1 8 -6 a5 5 0 0 1 8 6z" fill="#e5487a"' + S.replace('3"', '2"') + ' class="qv-beat"/>';
     if (p.items && p.items.indexOf("hamster") >= 0) {
-      o += '<g transform="translate(2 160)"><rect width="34" height="32" rx="4" fill="rgba(255,255,255,.6)"' + S.replace('3"', '2"') + '/><path d="M2 8 H32 M2 16 H32 M2 24 H32" stroke="' + INK + '" stroke-width="1" opacity=".4"/><ellipse cx="17" cy="24" rx="10" ry="7" fill="#e3a35e"' + S.replace('3"', '2"') + '/><circle cx="21" cy="22" r="1.6" fill="' + INK + '"/><circle cx="11" cy="17" r="3" fill="#e3a35e"' + S.replace('3"', '1.6"') + '/></g>';
+      o += '<g transform="translate(' + Z.ham + ' 160)"><rect width="34" height="32" rx="4" fill="rgba(255,255,255,.6)"' + S.replace('3"', '2"') + '/><path d="M2 8 H32 M2 16 H32 M2 24 H32" stroke="' + INK + '" stroke-width="1" opacity=".4"/><ellipse cx="17" cy="24" rx="10" ry="7" fill="#e3a35e"' + S.replace('3"', '2"') + '/><circle cx="21" cy="22" r="1.6" fill="' + INK + '"/><circle cx="11" cy="17" r="3" fill="#e3a35e"' + S.replace('3"', '1.6"') + '/></g>';
     }
     if (p.items && p.items.indexOf("toaster") >= 0) {
-      o += '<g transform="translate(286 166)"><rect x="0" y="6" width="30" height="22" rx="6" fill="#c9ced8"' + S.replace('3"', '2.4"') + '/><path d="M8 6 v-5 h5 v5 M17 6 v-5 h5 v5" fill="#f2c27a"' + S.replace('3"', '1.6"') + '/></g>';
+      o += '<g transform="translate(' + Z.toast + ' 166)"><rect x="0" y="6" width="30" height="22" rx="6" fill="#c9ced8"' + S.replace('3"', '2.4"') + '/><path d="M8 6 v-5 h5 v5 M17 6 v-5 h5 v5" fill="#f2c27a"' + S.replace('3"', '1.6"') + '/></g>';
     }
+    // scène : on recadre légèrement les bords (14 → 306) pour grossir les personnages sans couper la famille
+    if (ext > 0 || opts.stage) return '<svg class="qv-tile stage" viewBox="44 ' + (-ext) + ' 232 ' + tall + '" preserveAspectRatio="xMidYMax meet" aria-hidden="true">' + o + '</svg>';
     return '<svg class="qv-tile" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid slice" aria-hidden="true">' + o + '</svg>';
   }
 
