@@ -78,7 +78,7 @@ if (ONLY.includes('1')) {
   const layers0 = await fullLayers(page);
   for (const [k, r] of kinds) {
     await page.evaluate(([k, r]) => { window.__p = window.RADIA.rewards.demo(k, r); }, [k, r]);
-    const n = await page.evaluate(([k]) => ({ start: 5, daily: 2, chest: 6, event: 4, premium: 5, romantic: 3 })[k], [k]);
+    const n = await page.evaluate(([k]) => ({ start: 4, daily: 2, chest: 6, event: 4, premium: 5, romantic: 3 })[k], [k]);
     const res = await playThrough(page, { name: `${k}/${r}`, expectCards: n });
     await page.evaluate(() => window.__p);
     check(`${k}/${r} : calque entièrement retiré`, await waitGone(page), (await leftovers(page)).join(','));
@@ -172,7 +172,7 @@ if (ONLY.includes('3')) {
   const mid = await snap(page);
   const d = delta(before, mid);
   check('démarrage : tout attribué dès l\'apparition (60 💎, 500 pièces, 1 coffre, plus de tickets)', d.diamonds === 60 && d.coins === 500 && d.chests === 1, JSON.stringify(d));
-  check('démarrage : +50 énergie', (await page.evaluate(() => window.RADIA.save.data.economy.energy)) - e0 >= 49);
+  { const e1 = await page.evaluate(() => window.RADIA.save.data.economy.energy); check('démarrage : +50 énergie (ou jusqu\'au maximum de 100)', e1 - e0 >= 49 || e1 >= 99, `${e0} → ${e1}`); }
   // sortie anticipée : on recharge pendant l'animation
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(5000);

@@ -20,7 +20,7 @@ async function open({ standalone, withSave }) {
 const closeModals = async (page, n = 6) => { for (let i = 0; i < n; i++) { const b = page.locator('.modal-backdrop:not(.leaving) .actions button'); if (await b.count()) { await b.last().click().catch(() => {}); await page.waitForTimeout(400); } else break; } };
 const diag = async (page) => {
   await page.locator('button[aria-label="Paramètres"]').first().click(); await page.waitForSelector('.settings-screen'); await page.waitForTimeout(500);
-  await page.locator('.setting-row', { hasText: 'Diagnostic' }).locator('button').click(); await page.waitForSelector('.modal-backdrop', { timeout: 6000 }); await page.waitForTimeout(800);
+  await page.locator('.setting-row', { hasText: /^Diagnostic(?! tactile)/ }).locator('button').click(); await page.waitForSelector('.modal-backdrop', { timeout: 6000 }); await page.waitForTimeout(800);
   const text = await page.locator('.modal-backdrop').first().innerText();
   await page.locator('.modal-backdrop .actions button', { hasText: 'Fermer' }).click(); await page.waitForTimeout(400);
   return text;
