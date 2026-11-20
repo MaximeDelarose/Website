@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Quelle vie ! · AkarisuMD</title>
+  <meta name="description" content="Quelle vie ! : un jeu de cartes multijoueur et humoristique où l'on construit sa vie en sabotant celle de ses amis. 2 à 6 joueurs, en ligne, sur téléphone et ordinateur.">
+  <meta property="og:title" content="Quelle vie ! · AkarisuMD">
+  <meta property="og:description" content="Construis ta vie. Sabote celle de tes amis. Jeu de cartes en ligne de 2 à 6 joueurs.">
+  <meta name="theme-color" content="#ff6b4a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Quelle vie !">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261118sq3">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/quelle-vie.css?v=1">
+</head>
+<body>
+  <main id="app" class="qv-app" aria-live="polite"></main>
+  <noscript><p style="padding:20px">Quelle vie ! a besoin de JavaScript.</p></noscript>
+  <script>
+    // Génération d'avatar à partir d'une photo : URL d'un service externe (POST { image, style } → { avatar: {...} }).
+    // Laisse vide tant qu'aucun service n'est branché : l'éditeur manuel prend le relais.
+    window.QV_CONFIG = { avatarService: "" };
+  </script>
+  <script src="js/data.js?v=20261118ft1"></script>
+  <script src="js/vendor/supabase-2.45.4.min.js"></script>
+  <script src="js/qv-data.js?v=1"></script>
+  <script src="js/qv-engine.js?v=1"></script>
+  <script src="js/qv-avatar.js?v=1"></script>
+  <script src="js/qv-icons.js?v=1"></script>
+  <script src="js/qv-world.js?v=1"></script>
+  <script src="js/qv-audio.js?v=1"></script>
+  <script src="js/qv-net.js?v=1"></script>
+  <script src="js/qv-app.js?v=1"></script>
+</body>
+</html>
