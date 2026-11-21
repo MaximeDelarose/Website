@@ -996,3 +996,10 @@ body.reduce .cin-cons { animation: none; opacity: 1; transform: none; }
 .rl h3 { margin: 0 0 2px; font-size: var(--fs-m); }
 .rl p { margin: 0; font-size: var(--fs-s); line-height: 1.4; }
 .rl p .qv-ri { width: 14px; height: 14px; vertical-align: -2px; }
+/* salon : l'invité voit tout de suite qu'il attend, et les réglages en résumé */
+.lb-wait { display: flex; align-items: center; gap: var(--s2); margin: var(--s3) 0; padding: var(--s3); background: #fff; border: var(--bw) solid var(--ink); border-radius: var(--r2); font-weight: 700; }
+.lb-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--mint); animation: lb-pulse 1.2s ease-in-out infinite; }
+@keyframes lb-pulse { 50% { transform: scale(1.5); opacity: .5; } }
+.lb-sum { display: flex; flex-wrap: wrap; gap: var(--s2); margin: var(--s3) 0; }
+.lb-chip { padding: 6px 12px; border: var(--bw) solid var(--ink); border-radius: 999px; background: #fff; font-weight: 800; font-size: var(--fs-s); }
+.lb-chip.adult { background: var(--pink); color: #fff; }

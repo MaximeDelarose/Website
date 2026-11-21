@@ -1154,6 +1154,7 @@
     var link = location.origin + location.pathname + "#" + room.code;
     show("lobby", '<div class="qv-page">' + logo(true) +
       (room.solo ? '<h2>Partie d\'essai contre des bots</h2>' : '<div class="qv-code"><span>Code du salon</span><b>' + esc(room.code) + '</b><button class="qv-btn alt sm" data-l="share">Inviter des amis</button></div>') +
+      (!host ? '<div class="lb-wait"><i class="lb-dot"></i><span>En attente que <b>' + esc(((list.filter(function (p) { return p.id === room.hostId; })[0]) || { name: "l'hôte" }).name) + '</b> lance la partie…</span></div>' : '') +
       '<h2>Joueurs (' + list.length + '/6)</h2>' +
       '<div class="qv-lobby">' + list.map(function (p) {
         var on = p.bot || p.id === me.id || present(p.id) || (!host && p.id === room.hostId);
@@ -1162,13 +1163,13 @@
           (ok18 === true ? ' <i class="ok">18+ OK</i>' : ok18 === false ? ' <i class="no">refuse le 18+</i>' : ok18 === null || (ok18 === undefined && room.opts && room.opts.mode === "adult" && !p.bot) ? ' <i class="wait">18+ ?</i>' : '') + '</span>' +
           (host && p.bot ? '<button class="x" data-l="rm" data-id="' + p.id + '" aria-label="Retirer">×</button>' : '') + '</div>';
       }).join("") + '</div>' +
-      optsPanel(host) +
+      (host ? optsPanel(host) : optsSummary()) +
       (host ? '<div class="qv-actions">' +
         (list.length < 6 ? '<button class="qv-btn ghost" data-l="bot">+ Ajouter un bot</button>' : '') +
         '<button class="qv-btn big" data-l="start"' + (list.length < 2 || adultBlockers().length ? " disabled" : "") + '>Lancer la partie</button>' +
         (adultBlockers().length ? '<p class="qv-note warn">Mode 18+ : en attente de l\'accord de ' + esc(adultBlockers().map(function (p) { return p.id === me.id ? "toi" : p.name; }).join(", ")) + '.</p>' : '') +
         '<p class="qv-note">Partage le code ou le lien : tes amis l\'ouvrent sur leur téléphone. 2 à 6 joueurs, les bots complètent la table.</p></div>'
-        : '<p class="qv-wait">En attente que l\'hôte lance la partie…</p>') +
+        : '') +
       '<div class="qv-row2"><button class="qv-btn ghost" data-l="avatar">Modifier mon personnage</button><button class="qv-btn ghost" data-l="leave">Quitter</button></div>' +
       '</div>');
     app.onclick = function (e) {
@@ -1192,6 +1193,13 @@
   }
 
   // options de partie (l'hôte choisit, tout le monde voit ; accord 18+ individuel)
+  // pour les invités : les réglages choisis par l'hôte en un coup d'œil (+ l'accord 18+ si besoin)
+  function optsSummary() {
+    var o = room.opts || {}, F = D.FORMATS[o.format || "classique"] || D.FORMATS.classique;
+    var h = '<div class="lb-sum"><span class="lb-chip' + (o.mode === "adult" ? " adult" : "") + '">' + (o.mode === "adult" ? "Trash &amp; Adulte 18+" : "Classique") + '</span><span class="lb-chip">' + (o.discovery ? "Découverte" : "Expert") + '</span><span class="lb-chip">Durée : ' + F.rounds + ' tours</span></div>';
+    if (o.mode === "adult") { var full = optsPanel(false), i = full.indexOf('<div class="qv-18">'); if (i >= 0) h += full.slice(i, full.lastIndexOf('</div>')); }
+    return h;
+  }
   function optsPanel(host) {
     var o = room.opts || { mode: "classic", discovery: true }, adultOn = o.mode === "adult";
     var h = '<div class="qv-opts">';
