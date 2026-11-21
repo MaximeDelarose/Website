@@ -239,6 +239,9 @@
       cheekB: [L[280], L[330], L[347], L[346]],
       forehead: [lerp(L[9], L[10], 0.35), lerp(L[9], L[10], 0.6), off(lerp(L[9], L[10], 0.45), -0.12), off(lerp(L[9], L[10], 0.45), 0.12)],
       chin: [lerp(L[17], L[152], 0.5), lerp(L[84], L[148], 0.45), lerp(L[314], L[377], 0.45)],
+      // milieu des joues (plus bas que les pommettes, souvent très éclairées)
+      lowA: [L[205], L[187], L[207]],
+      lowB: [L[425], L[411], L[427]],
     };
     var r = Math.max(2, unit);
     function region(pts) {
@@ -250,9 +253,10 @@
         }
       });
       if (list.length < 8) return null;
-      // on garde la peau éclairée : entre le 40e et le 92e centile de luminosité (ni ombre, ni reflet)
+      // ton médian de la peau : on écarte les ombres (quart le plus sombre) et les reflets brillants (quart le plus clair).
+      // Garder seulement la moitié claire faisait pâlir les peaux foncées, dont les reflets sont très lumineux.
       list.sort(function (a, b) { return luma(a) - luma(b); });
-      var keep = list.slice(Math.floor(list.length * 0.5), Math.ceil(list.length * 0.95));
+      var keep = list.slice(Math.floor(list.length * 0.25), Math.ceil(list.length * 0.75));
       var m = [0, 0, 0]; keep.forEach(function (c) { m[0] += c[0]; m[1] += c[1]; m[2] += c[2]; });
       return { c: m.map(function (v) { return v / keep.length; }), n: list.length };
     }
@@ -266,6 +270,9 @@
       cheeks = [luma(cA.c) > luma(cB.c) ? cA : cB];
     }
     var use = cheeks.concat(R.forehead ? [R.forehead] : []);
+    // le bas des joues compte aussi (du côté éclairé si la lumière vient de côté)
+    if (why.indexOf("éclairage de côté") < 0) { if (R.lowA) use.push(R.lowA); if (R.lowB) use.push(R.lowB); }
+    else { var lw = cheeks[0] === cA ? R.lowA : R.lowB; if (lw) use.push(lw); }
     // menton : seulement s'il ressemble aux joues (sinon barbe ou ombre)
     if (R.chin && cheeks.length && luma(R.chin.c) > luma(cheeks[0].c) * 0.85) use.push(R.chin);
     if (!use.length) use = [R.cheekA || R.cheekB || R.forehead || { c: [200, 160, 130] }];
@@ -285,6 +292,8 @@
       var avg = (white[0] + white[1] + white[2]) / 3;
       var gain = white.map(function (v) { return Math.max(0.88, Math.min(1.12, 1 + (avg / Math.max(1, v) - 1) * 0.5)); });
       fin = fin.map(function (v, i) { return v * gain[i]; });
+      // la balance des blancs corrige la teinte, jamais la clarté : on garde la luminosité mesurée
+      var kL = rawL / Math.max(1, luma(fin)); fin = fin.map(function (v) { return v * kL; });
     } else if (white) { why.push("couleur de la lumière incertaine"); }
     // photo sous-exposée dans son ensemble (mesuré sur toute l'image, pas sur la peau) : on éclaircit un peu, jamais l'inverse
     if (sceneL < 85) { var k = Math.min(1.25, 100 / Math.max(1, sceneL)); fin = fin.map(function (v) { return v * k; }); conf = "low"; why.push("photo sombre, un peu éclaircie"); }

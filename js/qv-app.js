@@ -108,17 +108,17 @@
 
   // ---------------- règles ----------------
   function rules() {
-    show("rules", '<div class="qv-page">' + logo(true) + '<h2>Comment on joue</h2>' +
-      '<div class="qv-rules">' +
-      '<div class="r"><b>1</b><p>Chacun commence à 18 ans sur le canapé de ses parents. Trois durées : <em>Rapide</em> (12 tours de table), <em>Classique</em> (20 tours) ou <em>Long</em> (26 tours). L\'âge avance avec la partie, jusqu\'à environ 78 ans.</p></div>' +
-      '<div class="r"><b>2</b><p>Tu as <em>3 cartes</em> en main. À ton tour : tu touches ton salaire, tu <em>pioches</em> une carte (4 en main), puis tu en <em>joues</em> une ou tu en <em>défausses</em> une. Tu finis avec 3 cartes. Si un autre joueur vient de défausser une carte que tu peux jouer, tu peux la <em>reprendre dans la défausse</em> à la place de la pioche : elle se joue tout de suite.</p></div>' +
-      '<div class="r"><b>3</b><p><em>Formation</em> (' + IC.get("gradcap", "qv-ri") + ') : les cartes Études (bac, CAP, BTS, licence, master…) font monter ton niveau de 0 à 6 et restent dans ton parcours. Chaque métier demande un niveau : bureau 1, commercial·e ou infirmier·e 2, ingénieur·e ou prof 3, avocat·e 4, chirurgien·ne 5 ; le CAP ouvre la plomberie ; livreur·se et artiste n\'en demandent pas. Un seul métier à la fois. La Formation ne compte pas dans le score, mais elle ouvre les meilleurs salaires. Pas de carte Études depuis longtemps ? Tu peux <em>étudier</em> : sacrifier ton action et une carte pour +1 Formation (jusqu\'au niveau 2).</p></div>' +
-      '<div class="r"><b>4</b><p>Carrière : entretien d\'embauche, promotion, augmentation, reconversion, démission, chômage, burn-out, retraite (pension). Un licenciement fait perdre le métier et son salaire, jamais les diplômes.</p></div>' +
-      '<div class="r"><b>5</b><p>Combinaisons : chômage + formation continue = tu rebondis ; métier + burn-out = arrêt maladie ou démission forcée (le voyage soigne) ; salaire de 4 et plus + maison = villa ; diplôme douteux + contrôle administratif = scandale ; fiançailles + mariage = +2 bonheur.</p></div>' +
-      '<div class="r"><b>6</b><p>Trois ressources comptent pour gagner : ' + IC.get("b", "qv-ri") + ' bonheur, ' + IC.get("f", "qv-ri") + ' fortune, ' + IC.get("r", "qv-ri") + ' réputation. Ton score est leur somme, plus tes 2 objectifs secrets, les trophées (le plus heureux, le plus riche, le plus célèbre : +4 ; premier·e de la classe : +3) et « Une vie bien remplie » (+6 : métier ou retraite, logement et couple ou enfant).</p></div>' +
-      '<div class="r"><b>7</b><p>Les cartes noires sabotent les autres. Quand on t\'attaque : <em>contrer</em> avec une réaction, <em>limiter les dégâts</em> en payant, ou <em>encaisser</em> (petit bonus et 2 cartes à jouer au prochain tour). Régulièrement, un événement de saison frappe toute la table.</p></div>' +
-      '<div class="r"><b>8</b><p>Salon : mode <em>Classique</em> ou <em>Trash &amp; Adulte 18+</em> (chaque joueur doit être majeur et accepter), <em>Découverte</em> ou <em>Expert</em>, et la durée. ' + D.CARDS.length + ' cartes différentes.</p></div>' +
-      '</div><button class="qv-btn big" data-back>Retour</button></div>');
+    var R = function (ic, t, txt) { return '<section class="rl"><div class="rl-i">' + IC.get(ic) + '</div><div><h3>' + t + '</h3><p>' + txt + '</p></div></section>'; };
+    show("rules", '<div class="qv-page qv-rules2">' + logo(true) + '<h2>Comment on joue</h2>' +
+      R("b", "Le but", "Avoir la plus belle vie à la fin : on additionne " + IC.get("b", "qv-ri") + " bonheur, " + IC.get("f", "qv-ri") + " fortune et " + IC.get("r", "qv-ri") + " réputation, plus tes 2 objectifs secrets et quelques trophées.") +
+      R("ticket", "Ton tour", "Tu touches ton salaire, tu <em>pioches</em> une carte, puis tu en <em>joues</em> une ou tu en <em>défausses</em> une. Tu gardes 3 cartes en main.") +
+      R("gradcap", "Études et métiers", "Les cartes Études font monter ta <em>Formation</em> (0 à 6). Chaque métier demande un niveau : bureau 1, commercial·e 2, ingénieur·e 3, avocat·e 4, chirurgien·ne 5. Un seul métier à la fois.") +
+      R("heart", "Ta vie perso", "Rencontre, fiançailles, mariage, enfants, adoption, ou célibat heureux : à toi de choisir. Le logement va du canapé de tes parents à la villa.") +
+      R("lightning", "Les coups bas", "Les cartes noires visent un adversaire. Quand on t'attaque : contre avec une carte de réaction, paie pour limiter les dégâts, ou encaisse et rebondis (2 cartes au tour suivant).") +
+      R("moneyup", "Les combos", "Chômage + formation continue, burn-out + voyage, gros salaire + maison = villa, faux diplôme + contrôle = scandale, fiançailles + mariage.") +
+      R("chart", "La défausse", "Si un autre joueur vient de défausser une carte que tu peux jouer, tu peux la reprendre au lieu de piocher : elle se joue tout de suite.") +
+      R("star", "Le salon", "Mode Classique ou Trash &amp; Adulte 18+ (tout le monde doit accepter), Découverte ou Expert, et durée : Rapide (12 tours), Classique (20) ou Long (26).") +
+      '<button class="qv-btn big" data-back>Retour</button></div>');
     app.onclick = function (e) { if (e.target.closest("[data-back]")) { if (pub && room) renderGame(); else home(); } };
   }
 
@@ -133,7 +133,7 @@
   var photoFull = null; // version plus grande, pour l'analyse (mémoire seulement)
   function creator(opt) {
     opt = opt || {};
-    var step = "choose", consent = !!store("qv-consent"), result = null, failMsg = "";
+    var step = "choose", consent = !!store("qv-consent"), result = null, failMsg = "", crTab = "skin";
     var stopLive = null, goodSince = 0, counting = null;
     function stopCam() {
       if (stopLive) { stopLive(); stopLive = null; }
@@ -195,17 +195,20 @@
           (ra.trace ? '<p class="cr-how">Dessiné à partir des formes de ton visage et des couleurs mesurées sur ta photo. Corrige ce qui ne va pas.</p>' : '<p class="cr-how">Je n\'ai pas pu tracer ton visage en détail : voici un portrait approximatif. Corrige-le avant de valider.</p>') +
           '<div class="cr-pair"><img class="cr-photo pick" id="crph" src="' + photo + '" alt="Ta photo (touche ta joue pour prendre la couleur)"><span class="cr-arrow">→</span><div class="cr-av big" id="crav">' + A.standalone(ra, { mood: "neutral", pose: "wave" }) + '</div></div>' +
           (result.skin && result.skin.conf === "low" ? '<p class="cr-tip warn">La lumière de la photo rend la couleur de peau incertaine (' + esc(result.skin.why.join(", ")) + ') : je l\'ai gardée proche de la photo. Vérifie-la ci-dessous.</p>' : '') +
-          '<div class="cr-fix"><div class="cr-row"><b>Peau</b><span class="cr-sw" id="crskin" style="background:' + ra.skin + '"></span></div>' +
-          '<div class="cr-range"><small>plus claire</small><input type="range" id="skinr" min="-40" max="40" step="1" value="' + (result.adj || 0) + '" aria-label="Carnation : plus claire ou plus foncée"><small>plus foncée</small></div>' +
-          '<div class="cr-3"><button class="chip" data-c="lighter">Plus claire</button><button class="chip" data-c="same">Comme la photo</button><button class="chip" data-c="darker">Plus foncée</button></div>' +
-          '<p class="ed-hint">Astuce : touche ta joue sur la photo pour reprendre exactement sa couleur.</p>' +
-          '<div class="cr-row"><b>Cheveux</b><div class="ed-sw">' + sw("hairColor", A.COLORS.hairColor.slice(0, 8), result.base.hairColor) + '</div></div>' +
-          '<div class="cr-row"><b>Yeux</b><div class="ed-sw">' + sw("eyeColor", A.COLORS.eyeColor, result.base.eyeColor) + '</div></div>' +
-          '<div class="cr-row"><b>Visage</b><div class="ed-chips">' + (ra.trace ? [["photo", "Ma photo"]] : []).concat(A.OPTIONS.face).map(function (f) { return '<button class="chip sm' + (ra.face === f[0] ? " on" : "") + '" data-r="face" data-v="' + f[0] + '">' + esc(f[1]) + '</button>'; }).join("") + '</div></div></div>' +
+          // une seule catégorie à la fois : peau, cheveux, yeux, visage
+          '<div class="cr-tabs" role="tablist">' + [["skin", "Peau"], ["hair", "Cheveux"], ["eyes", "Yeux"], ["face", "Visage"]].map(function (t) { return '<button class="cr-tab' + (crTab === t[0] ? " on" : "") + '" role="tab" aria-selected="' + (crTab === t[0]) + '" data-c="tab" data-v="' + t[0] + '">' + t[1] + '</button>'; }).join("") + '</div>' +
+          '<div class="cr-fix">' +
+          (crTab === "skin" ? '<div class="cr-row"><span class="cr-sw" id="crskin" style="background:' + ra.skin + '"></span><div class="cr-range"><small>plus claire</small><input type="range" id="skinr" min="-40" max="40" step="1" value="' + (result.adj || 0) + '" aria-label="Carnation : plus claire ou plus foncée"><small>plus foncée</small></div></div>' +
+            '<div class="cr-3"><button class="chip sm" data-c="lighter">Plus claire</button><button class="chip sm" data-c="same">Comme la photo</button><button class="chip sm" data-c="darker">Plus foncée</button></div>' +
+            '<p class="ed-hint">Ou touche ta joue sur la photo pour reprendre sa couleur exacte.</p>' : '') +
+          (crTab === "hair" ? '<div class="ed-sw">' + sw("hairColor", A.COLORS.hairColor.slice(0, 8), result.base.hairColor) + '</div><p class="ed-hint">La première pastille est la couleur mesurée sur ta photo.</p>' : '') +
+          (crTab === "eyes" ? '<div class="ed-sw">' + sw("eyeColor", A.COLORS.eyeColor, result.base.eyeColor) + '</div>' : '') +
+          (crTab === "face" ? '<div class="ed-chips">' + (ra.trace ? [["photo", "Ma photo"]] : []).concat(A.OPTIONS.face).map(function (f) { return '<button class="chip sm' + (ra.face === f[0] ? " on" : "") + '" data-r="face" data-v="' + f[0] + '">' + esc(f[1]) + '</button>'; }).join("") + '</div>' : '') +
+          '</div>' +
           (result.quality && !result.quality.ok ? '<p class="cr-tip warn">Pour un personnage plus ressemblant, reprends une photo : ' + esc(result.quality.tips.slice(0, 2).join(", ").toLowerCase()) + '.</p>' : '') +
-          '<label class="qv-field"><span>Ton prénom</span><input id="nm" maxlength="16" autocomplete="nickname" placeholder="Ex. : Jean-Mich" value="' + esc(me.name) + '"></label>' +
+          '<div class="cr-foot"><label class="qv-field"><span>Ton prénom</span><input id="nm" maxlength="16" autocomplete="nickname" placeholder="Ex. : Jean-Mich" value="' + esc(me.name) + '"></label>' +
           '<button class="qv-btn big" data-c="ok">C\'est moi !</button>' +
-          '<div class="qv-row2"><button class="qv-btn ghost sm" data-c="tweak">Retoucher</button><button class="qv-btn ghost sm" data-c="again">Autre photo</button></div>';
+          '<div class="cr-links"><button class="g-link" data-c="tweak">Tout retoucher</button><button class="g-link" data-c="again">Autre photo</button></div></div>';
       } else if (step === "fail") {
         o += '<h2>Oups</h2>' + (photo ? '<div class="cr-pair"><img class="cr-photo" src="' + photo + '" alt="Ta photo"></div>' : '') + '<p class="qv-msg">' + esc(failMsg) + '</p>' +
           '<button class="qv-btn big" data-c="choose">Réessayer avec une autre photo</button><button class="qv-btn ghost" data-c="manual">Créer à la main</button>';
@@ -221,8 +224,8 @@
       });
       if (step === "cam" && camStream) { $("#vid").srcObject = camStream; startGuide(); }
       if (step === "result") {
-        var rng = $("#skinr");
-        rng.addEventListener("input", function () { result.adj = +rng.value; liveSkin(); });
+        var rng = $("#skinr") || { value: 0 };
+        if (rng.addEventListener) rng.addEventListener("input", function () { result.adj = +rng.value; liveSkin(); });
         $("#crph").addEventListener("click", function (e) {
           var img = e.target, r = img.getBoundingClientRect(), c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
           var g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -321,8 +324,9 @@
       else if (c === "choose" || c === "again") { stopCam(); step = "choose"; draw(); }
       else if (c === "lighter" || c === "darker" || c === "same") {
         result.adj = c === "same" ? 0 : Math.max(-40, Math.min(40, (result.adj || 0) + (c === "lighter" ? -8 : 8)));
-        $("#skinr").value = result.adj; liveSkin();
+        if ($("#skinr")) $("#skinr").value = result.adj; liveSkin();
       }
+      else if (c === "tab") { var nmT = $("#nm"); if (nmT) me.name = nmT.value.trim().slice(0, 16); crTab = t.dataset.v; draw(); }
       else if (c === "ok") { if (!$("#nm").value.trim()) { toast("Écris ton prénom"); $("#nm").focus(); return; } done(result.avatar); }
       else if (c === "tweak") { var nm = $("#nm"); if (nm && nm.value.trim()) { me.name = nm.value.trim().slice(0, 16); saveMe(); } editor(result.avatar, opt); }
       else if (c === "manual" || c === "edit") { stopCam(); editor(null, opt); }
@@ -1801,8 +1805,11 @@
     else if (r.minEdu) txt = "Avec ta Formation " + (p.edu || 0) + ", « " + c.name + " » est jouable !";
     else if (r.partner) txt = "Maintenant que tu es en couple, « " + c.name + " » est jouable !";
     else txt = "« " + c.name + " » est maintenant jouable !";
+    var html = '<i class="tk-ico">' + LOCK_OPEN + '</i><span>' + esc(txt) + '</span>';
+    // pendant une scène, la nouvelle attend son tour dans la file (elle ne s'affiche pas sous la fenêtre)
+    if (busy() && UI.phase !== "targetSelection") { enqueue({ kind: "tick", html: html, k: "unlock", ms: 3200, sfx: "unlock" }); return; }
     SND.play("unlock");
-    notify('<i class="tk-ico">' + LOCK_OPEN + '</i>' + esc(txt), "unlock", 3600, true);
+    notify(html, "unlock", 3600, true);
   }
   var LOCK_OPEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="11" rx="3" fill="#ffd23f" stroke="#2b2140" stroke-width="2"/><path d="M8 11 V7 a4 4 0 0 1 8 -1" fill="none" stroke="#2b2140" stroke-width="2.4" stroke-linecap="round"/></svg>';
   // la carte jouée quitte la main et file au centre (puis vers sa destination)
@@ -1936,26 +1943,36 @@
   // ======================================================================
   //  FIN DE PARTIE
   // ======================================================================
+  // FIN DE PARTIE : un podium, le décompte des points sans calcul mental, la vie de chacun en résumé
   function renderEnd() {
     if (!pub) return;
     var ranked = pub.order.slice().sort(function (a, b) { return pub.players[b].final.total - pub.players[a].final.total; });
-    var w = pub.winners || [pub.winner];
-    show("end", '<div class="qv-page qv-end">' + logo(true) +
-      '<h2>' + (w.indexOf(me.id) >= 0 ? "Tu as eu la plus belle vie !" : esc(w.map(nameOf).join(" et ")) + " " + (w.length > 1 ? "gagnent" : "gagne") + " !") + '</h2>' +
-      '<div class="qv-ranks">' + ranked.map(function (id, i) {
-        var p = pub.players[id], f = p.final, win = w.indexOf(id) >= 0;
-        var mood = win ? "happy" : (i === ranked.length - 1 ? "sad" : "neutral");
-        return '<article class="qv-rank' + (win ? " win" : "") + '">' +
-          '<div class="rk-head"><span class="rk-n">' + (i + 1) + '</span>' + A.standalone(p.avatar, { mood: mood, outfit: W.outfit(p), hat: win ? "crown" : null, pose: win ? "up" : "down" }, "rk-av") +
-          '<div><h3>' + esc(p.name) + '</h3><p class="rk-t">' + esc(p.title) + ' · ' + esc(D.HOUSING[p.housing]) + '</p><p class="rk-score"><b>' + f.total + '</b> points</p></div></div>' +
-          '<div class="rk-break">' + resRow(p, true) +
-          f.obj.map(function (o) { return '<span class="st ' + (o.done ? "good" : "off") + '">' + esc(o.name) + (o.done ? " +" + o.pts : " ✗") + '</span>'; }).join("") +
-          f.trophies.map(function (t) { return '<span class="st gold">' + esc(t.name) + ' +' + t.pts + '</span>'; }).join("") + '</div>' +
-          '<details' + (i === 0 ? " open" : "") + '><summary>Sa vie en ' + p.life.length + ' moments</summary><ol class="qv-life">' + p.life.map(function (l) { return '<li class="t-' + l.tone + '"><b>' + l.age + ' ans</b> ' + esc(l.text) + '</li>'; }).join("") + '<li class="t-neutral"><b>' + (pub.age + 5) + ' ans</b> Prend sa retraite. ' + (win ? "Raconte sa vie à qui veut l'entendre." : "Jure qu'il·elle avait la meilleure stratégie.") + '</li></ol></details>' +
-          '</article>';
-      }).join("") + '</div>' +
-      '<div class="qv-actions">' + (room && room.host ? '<button class="qv-btn big" data-e="again">Revanche !</button>' : '<p class="qv-wait">L\'hôte peut relancer une revanche.</p>') +
-      '<button class="qv-btn ghost" data-e="home">Accueil</button></div></div>');
+    var w = pub.winners || [pub.winner], iWin = w.indexOf(me.id) >= 0;
+    var podium = [ranked[1], ranked[0], ranked[2]].filter(Boolean).map(function (id) {
+      var p = pub.players[id], rank = ranked.indexOf(id), win = w.indexOf(id) >= 0;
+      return '<div class="pd pd-' + (rank + 1) + '">' + A.standalone(p.avatar, { mood: win ? "happy" : rank === ranked.length - 1 ? "sad" : "neutral", outfit: W.outfit(p), hat: win ? "crown" : null, pose: win ? "up" : "down" }, "pd-av") +
+        '<b>' + esc(id === me.id ? "Toi" : p.name) + '</b><span>' + p.final.total + ' pts</span><i>' + (rank + 1) + '</i></div>';
+    }).join("");
+    var line = function (label, v, cls) { return '<div class="sc-l' + (cls ? " " + cls : "") + '"><span>' + label + '</span><b>' + v + '</b></div>'; };
+    var cards = ranked.map(function (id, i) {
+      var p = pub.players[id], f = p.final, win = w.indexOf(id) >= 0;
+      var objPts = f.obj.reduce(function (a, o) { return a + (o.done ? o.pts : 0); }, 0);
+      var summary = [p.title !== "Sans emploi" ? p.title : (p.retired ? "Retraité·e" : "Sans emploi"), "Formation " + (p.edu || 0), (p.housing ? D.HOUSING[p.housing] : "Chez ses parents"), p.married ? "Marié·e" : p.partner ? "En couple" : "Célibataire", p.kids.length ? p.kids.length + " enfant" + (p.kids.length > 1 ? "s" : "") : ""].filter(Boolean);
+      return '<article class="ec' + (win ? " win" : "") + (id === me.id ? " me" : "") + '"><div class="ec-h"><span class="ec-n">' + (i + 1) + '</span><div><h3>' + esc(id === me.id ? p.name + " (toi)" : p.name) + '</h3><p>' + esc(summary.join(" · ")) + '</p></div><b class="ec-t">' + f.total + '<small>pts</small></b></div>' +
+        '<div class="ec-w">' + W.tile(p) + '</div>' +
+        '<div class="sc">' + line(IC.get("b", "qv-ri") + "Bonheur", f.b) + line(IC.get("f", "qv-ri") + "Fortune", f.f) + line(IC.get("r", "qv-ri") + "Réputation", f.r) +
+        f.obj.map(function (o) { return line((o.done ? "✓ " : "✗ ") + "Objectif : " + esc(o.name), o.done ? "+" + o.pts : "0", o.done ? "ok" : "off"); }).join("") +
+        f.trophies.map(function (t) { return line("Trophée : " + esc(t.name), "+" + t.pts, "gold"); }).join("") +
+        line("Total", f.total, "tot") + '</div>' +
+        '<details><summary>Sa vie en ' + p.life.length + ' moments</summary><ol class="qv-life">' + p.life.map(function (l) { return '<li class="t-' + l.tone + '"><b>' + l.age + ' ans</b> ' + esc(l.text) + '</li>'; }).join("") + '</ol></details></article>';
+    }).join("");
+    show("end", '<div class="qv-page qv-end2">' +
+      '<div class="end-hero"><p class="end-k">Fin de partie · ' + pub.age + ' ans</p><h2>' + (iWin ? "Tu as eu la plus belle vie !" : esc(w.map(nameOf).join(" et ")) + (w.length > 1 ? " ont" : " a") + " eu la plus belle vie !") + '</h2>' +
+      '<div class="podium">' + podium + '</div></div>' +
+      '<div class="end-list">' + cards + '</div>' +
+      '<div class="end-act">' + (room && room.host ? '<button class="qv-btn big" data-e="again">Revanche !</button>' : '<p class="qv-wait">L\'hôte peut relancer une revanche.</p>') +
+      '<button class="g-link" data-e="home">Retour à l\'accueil</button></div></div>');
+    if (!reduce) { var cf = document.createElement("div"); cf.className = "end-confetti"; for (var c = 0; c < 26; c++) cf.innerHTML += '<i style="left:' + (c * 3.9 % 100) + '%;animation-delay:' + (c % 9) * 0.18 + 's;background:' + ["#ff6b4a", "#ffd23f", "#3d7dd8", "#38b58a", "#e5487a"][c % 5] + '"></i>'; $(".end-hero").appendChild(cf); }
     app.onclick = function (e) {
       var b = e.target.closest("[data-e]"); if (!b) return;
       SND.play("tap");
