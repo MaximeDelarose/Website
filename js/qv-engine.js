@@ -37,7 +37,7 @@
     s.discovery = !!opts.discovery;
     s.format = D.FORMATS[opts.format] ? opts.format : "classique";
     var F = D.FORMATS[s.format];
-    s.maxRounds = F.rounds; s.every = F.every; s.dry = F.dry;
+    s.maxRounds = D.roundsFor(s.format, list.length); s.every = F.every; s.dry = F.dry;
     s.stage = stageOf(s);
     s.discard = [];
     list.forEach(function (p) {

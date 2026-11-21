@@ -1003,3 +1003,6 @@ body.reduce .cin-cons { animation: none; opacity: 1; transform: none; }
 .lb-sum { display: flex; flex-wrap: wrap; gap: var(--s2); margin: var(--s3) 0; }
 .lb-chip { padding: 6px 12px; border: var(--bw) solid var(--ink); border-radius: 999px; background: #fff; font-weight: 800; font-size: var(--fs-s); }
 .lb-chip.adult { background: var(--pink); color: #fff; }
+/* à 5 joueurs et plus : la rangée d'adversaires défile, bords estompés, elle suit le joueur actif */
+.g-opps.many { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 24px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 24px), transparent 100%); scroll-behavior: smooth; }
+@media (min-width: 980px) { .g-opps.many { -webkit-mask-image: none; mask-image: none; } }

@@ -208,7 +208,7 @@
   var NAMES = {
     partner: ["Jean-Michel", "Samia", "Kevin", "Brigitte", "Lou", "Yanis", "Clémentine", "Bertrand", "Inès", "Gérald", "Maëva", "Dominique", "Rachid", "Solange", "Enzo", "Nadia"],
     kid: ["Kylian", "Jade", "Léo", "Alba", "Timéo", "Rose", "Nino", "Lina", "Gaspard", "Mia", "Sacha", "Zoé"],
-    bot: ["Robert", "Ginette", "Patrick", "Sylvie", "Michel", "Josiane"],
+    bot: ["Robert", "Ginette", "Patrick", "Sylvie", "Michel", "Josiane", "Bernard", "Colette", "Raymond", "Odette"],
   };
 
   // Durée : nombre de tours de table selon le nombre de joueurs (vise 15-25 min).
@@ -498,7 +498,12 @@
     classique: { name: "Classique", rounds: 20, every: 3, dry: 3, hint: "20 tours · 25-35 min" },
     long:      { name: "Long", rounds: 26, every: 3, dry: 3, hint: "26 tours · 40 min et plus" },
   };
-  var AGE_FROM = 18, AGE_TO = 78;
+  var AGE_FROM = 18, AGE_TO = 78, MAX_PLAYERS = 8;
+  // plus on est nombreux, plus un tour de table dure : on raccourcit un peu pour garder une durée raisonnable
+  function roundsFor(format, n) {
+    var F = FORMATS[format] || FORMATS.classique, k = n <= 4 ? 1 : n <= 6 ? 0.85 : 0.7;
+    return Math.max(8, Math.round(F.rounds * k));
+  }
   HAND_SIZE = 3;
 
   // ---- cartes existantes adaptées ----
@@ -657,7 +662,7 @@
   root.QV_DATA = {
     FAMILIES: FAMILIES, JOBS: JOBS, ITEMS: ITEMS, HOUSING: HOUSING,
     CARDS: CARDS, EVENTS: EVENTS, OBJECTIVES: OBJECTIVES, NAMES: NAMES,
-    ROUNDS: ROUNDS, START_AGE: AGE_FROM, AGE_FROM: AGE_FROM, AGE_TO: AGE_TO, FORMATS: FORMATS, EDU_MAX: EDU_MAX, COMBOS: COMBOS, LIFE_BONUS: LIFE_BONUS, HAND_SIZE: HAND_SIZE, TROPHIES: TROPHIES, STATUSES: STATUSES, STAGES: STAGES, stageForRound: stageForRound,
+    ROUNDS: ROUNDS, START_AGE: AGE_FROM, AGE_FROM: AGE_FROM, AGE_TO: AGE_TO, FORMATS: FORMATS, roundsFor: roundsFor, MAX_PLAYERS: MAX_PLAYERS, EDU_MAX: EDU_MAX, COMBOS: COMBOS, LIFE_BONUS: LIFE_BONUS, HAND_SIZE: HAND_SIZE, TROPHIES: TROPHIES, STATUSES: STATUSES, STAGES: STAGES, stageForRound: stageForRound,
     byKey: CARDS.reduce(function (m, c) { m[c.key] = c; return m; }, {}),
   };
   if (typeof module !== "undefined" && module.exports) module.exports = root.QV_DATA;

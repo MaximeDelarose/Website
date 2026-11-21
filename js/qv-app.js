@@ -533,8 +533,8 @@
         var ex = room.lobby.filter(function (p) { return p.id === pl.id; })[0];
         var av = A.sanitize(pl.avatar), name = String(pl.name || "Joueur").slice(0, 16);
         if (ex) { ex.name = name; ex.avatar = av; ex.adultOk = pl.adultOk === true ? true : pl.adultOk === false ? false : null; }
-        else if (room.lobby.length < 6) { room.lobby.push({ id: pl.id, name: name, avatar: av, adultOk: pl.adultOk === true ? true : pl.adultOk === false ? false : null }); SND.play("pop"); }
-        else { room.net.send("kick", { to: pl.id, msg: "Le salon est complet (6 joueurs)." }); return; }
+        else if (room.lobby.length < D.MAX_PLAYERS) { room.lobby.push({ id: pl.id, name: name, avatar: av, adultOk: pl.adultOk === true ? true : pl.adultOk === false ? false : null }); SND.play("pop"); }
+        else { room.net.send("kick", { to: pl.id, msg: "Le salon est complet (" + D.MAX_PLAYERS + " joueurs)." }); return; }
         if (G) return;
         renderLobby();
       } else if (G && ev === "hello" && G.players[pl.id]) {
@@ -1155,7 +1155,7 @@
     show("lobby", '<div class="qv-page">' + logo(true) +
       (room.solo ? '<h2>Partie d\'essai contre des bots</h2>' : '<div class="qv-code"><span>Code du salon</span><b>' + esc(room.code) + '</b><button class="qv-btn alt sm" data-l="share">Inviter des amis</button></div>') +
       (!host ? '<div class="lb-wait"><i class="lb-dot"></i><span>En attente que <b>' + esc(((list.filter(function (p) { return p.id === room.hostId; })[0]) || { name: "l'hôte" }).name) + '</b> lance la partie…</span></div>' : '') +
-      '<h2>Joueurs (' + list.length + '/6)</h2>' +
+      '<h2>Joueurs (' + list.length + '/' + D.MAX_PLAYERS + ')</h2>' +
       '<div class="qv-lobby">' + list.map(function (p) {
         var on = p.bot || p.id === me.id || present(p.id) || (!host && p.id === room.hostId);
         var ok18 = room.opts && room.opts.mode === "adult" && !p.bot ? (p.id === me.id ? room.adultOk : p.adultOk) : undefined;
@@ -1165,10 +1165,10 @@
       }).join("") + '</div>' +
       (host ? optsPanel(host) : optsSummary()) +
       (host ? '<div class="qv-actions">' +
-        (list.length < 6 ? '<button class="qv-btn ghost" data-l="bot">+ Ajouter un bot</button>' : '') +
+        (list.length < D.MAX_PLAYERS ? '<button class="qv-btn ghost" data-l="bot">+ Ajouter un bot</button>' : '') +
         '<button class="qv-btn big" data-l="start"' + (list.length < 2 || adultBlockers().length ? " disabled" : "") + '>Lancer la partie</button>' +
         (adultBlockers().length ? '<p class="qv-note warn">Mode 18+ : en attente de l\'accord de ' + esc(adultBlockers().map(function (p) { return p.id === me.id ? "toi" : p.name; }).join(", ")) + '.</p>' : '') +
-        '<p class="qv-note">Partage le code ou le lien : tes amis l\'ouvrent sur leur téléphone. 2 à 6 joueurs, les bots complètent la table.</p></div>'
+        '<p class="qv-note">Partage le code ou le lien : tes amis l\'ouvrent sur leur téléphone. 2 à 8 joueurs, les bots complètent la table.</p></div>'
         : '') +
       '<div class="qv-row2"><button class="qv-btn ghost" data-l="avatar">Modifier mon personnage</button><button class="qv-btn ghost" data-l="leave">Quitter</button></div>' +
       '</div>');
@@ -1196,11 +1196,12 @@
   // pour les invités : les réglages choisis par l'hôte en un coup d'œil (+ l'accord 18+ si besoin)
   function optsSummary() {
     var o = room.opts || {}, F = D.FORMATS[o.format || "classique"] || D.FORMATS.classique;
-    var h = '<div class="lb-sum"><span class="lb-chip' + (o.mode === "adult" ? " adult" : "") + '">' + (o.mode === "adult" ? "Trash &amp; Adulte 18+" : "Classique") + '</span><span class="lb-chip">' + (o.discovery ? "Découverte" : "Expert") + '</span><span class="lb-chip">Durée : ' + F.rounds + ' tours</span></div>';
+    var h = '<div class="lb-sum"><span class="lb-chip' + (o.mode === "adult" ? " adult" : "") + '">' + (o.mode === "adult" ? "Trash &amp; Adulte 18+" : "Classique") + '</span><span class="lb-chip">' + (o.discovery ? "Découverte" : "Expert") + '</span><span class="lb-chip">Durée : ' + D.roundsFor(o.format || "classique", (room.lobby || []).length) + ' tours</span></div>';
     if (o.mode === "adult") { var full = optsPanel(false), i = full.indexOf('<div class="qv-18">'); if (i >= 0) h += full.slice(i, full.lastIndexOf('</div>')); }
     return h;
   }
   function optsPanel(host) {
+    var list = room.lobby || [];
     var o = room.opts || { mode: "classic", discovery: true }, adultOn = o.mode === "adult";
     var h = '<div class="qv-opts">';
     h += '<div class="qv-opt-row"><span>Mode de jeu</span><div class="qv-seg">' +
@@ -1210,7 +1211,7 @@
       '<button class="seg' + (o.discovery ? " on" : "") + '" data-l="disc" data-v="1"' + (host ? "" : " disabled") + '><b>Découverte</b><small>Les cartes arrivent petit à petit</small></button>' +
       '<button class="seg' + (!o.discovery ? " on" : "") + '" data-l="disc" data-v="0"' + (host ? "" : " disabled") + '><b>Expert</b><small>Tout le jeu dès le début</small></button></div></div>';
     var fm = o.format || "classique";
-    h += '<div class="qv-opt-row"><span>Durée</span><div class="qv-seg three">' + Object.keys(D.FORMATS).map(function (k) { var F = D.FORMATS[k]; return '<button class="seg' + (fm === k ? " on" : "") + '" data-l="fmt" data-v="' + k + '"' + (host ? "" : " disabled") + '><b>' + F.name + '</b><small>' + F.hint + '</small></button>'; }).join("") + '</div></div>';
+    h += '<div class="qv-opt-row"><span>Durée</span><div class="qv-seg three">' + Object.keys(D.FORMATS).map(function (k) { var F = D.FORMATS[k]; return '<button class="seg' + (fm === k ? " on" : "") + '" data-l="fmt" data-v="' + k + '"' + (host ? "" : " disabled") + '><b>' + F.name + '</b><small>' + D.roundsFor(k, list.length) + ' tours · ' + Math.round(D.roundsFor(k, list.length) * Math.max(2, list.length) * 0.17) + ' min environ</small></button>'; }).join("") + '</div></div>';
     if (adultOn) {
       h += '<div class="qv-18"><p><b>Mode réservé aux adultes.</b> Humour osé, noir et irrévérencieux (infidélités, soirées qui tournent mal, scandales), sans contenu sexuel explicite. Chaque joueur doit être majeur et accepter.</p>' +
         (room.adultOk === true ? '<p class="ok">Tu as accepté. <button class="link" data-l="ok18" data-v="0">Retirer mon accord</button></p>'
@@ -1406,6 +1407,10 @@
     var p = pub.players[me.id];
     $("#g-age").innerHTML = (pub.mode === "adult" ? '<i class="b18">18+</i>' : '') + pub.age + ' ans · ' + pub.round + '/' + pub.maxRounds;
     $("#opps").innerHTML = pub.order.filter(function (id) { return id !== me.id; }).map(oppChip).join("");
+    // beaucoup d'adversaires : la rangée défile et suit celui qui joue
+    var oppsEl = $("#opps"), cur_ = oppsEl.querySelector(".g-opp.turn, .g-opp.tgt");
+    oppsEl.classList.toggle("many", oppsEl.children.length >= 4);
+    if (cur_ && oppsEl.scrollWidth > oppsEl.clientWidth) oppsEl.scrollLeft = Math.max(0, cur_.offsetLeft - (oppsEl.clientWidth - cur_.offsetWidth) / 2);
     var mz = $("#mezone");
     if (p) {
       var w = mz.clientWidth || innerWidth, h = mz.clientHeight;

@@ -8,7 +8,7 @@ var played = {}, scenes = {}, statusSeen = {}, progress = {};
 MODES.forEach(function (opt) {
   var totals = [], wins = {}, turns = 0, objHit = {}, objAll = {}, reacts = { defend: 0, soft: 0, accept: 0, spite: 0 };
   for (var g = 0; g < N; g++) {
-    var n = 2 + (g % 5);
+    var n = 2 + (g % 7);
     var players = []; for (var i = 0; i < n; i++) players.push({ id: "p" + i, name: "Bot" + i, bot: true });
     var fmt = ["rapide", "classique", "long"][g % 3];
     var s = E.create(players, 1000 + g, Object.assign({ format: fmt }, opt)), guard = 0;
