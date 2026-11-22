@@ -1942,7 +1942,7 @@
     if (g === "discard") { discardSheet(); return; }
     if (g === "deckinfo") { toast("Pioche : " + pub.deck + " cartes face cachée. Tu pioches une carte au début de ton tour."); return; }
     if (g === "react") { closeSheet(); resolving(); sendIntent({ t: "react", choice: b.dataset.c, u: b.dataset.u ? +b.dataset.u : undefined }); return; }
-    if (g === "sound") { SND.toggle(); b.textContent = SND.muted() ? "🔇" : "🔊"; return; }
+    if (g === "sound") { SND.toggle(); b.textContent = SND.muted() ? "Son : coupé" : "Son : activé"; if (!SND.muted()) SND.play("ding"); return; }
     if (g === "obj") {
       sheet('<h3>Objectifs secrets</h3><p class="qv-tip">Personne d\'autre ne les voit. Ils rapportent des points à la fin s\'ils sont remplis.</p>' +
         (priv && priv.obj ? priv.obj.map(function (o) { return '<div class="qv-obj' + (o.done ? " done" : "") + '"><b>' + esc(o.name) + ' <i>+' + o.pts + '</i></b><span>' + esc(o.text) + '</span><em>' + (o.done ? "Rempli pour l'instant" : "Pas encore") + '</em></div>'; }).join("") : "") +
@@ -1962,6 +1962,7 @@
       sheet('<h3>Menu</h3>' + (room && !room.solo ? '<p class="qv-tip">Salon <b>' + esc(room.code) + '</b>. Si tu quittes, tu peux revenir avec ce code tant que la partie tourne' + (room.host ? " (tu es l'hôte : la partie s'arrête sans toi)." : ".") + '</p>' : '') +
         '<button class="qv-btn ghost" data-g="intro">Revoir l\'introduction</button><button class="qv-btn ghost" data-g="rules">Règles</button>' +
         (room && !room.solo ? '<button class="qv-btn ghost" data-g="invite">Copier le lien d\'invitation</button>' : '') +
+        '<button class="qv-btn ghost" data-g="sound">' + (SND.muted() ? "Son : coupé" : "Son : activé") + '</button>' +
         '<button class="qv-btn ghost" data-g="reduce">' + (reduce ? "Animations réduites : oui" : "Animations réduites : non") + '</button>' +
         '<button class="qv-btn danger" data-g="quit">Quitter la partie</button><button class="qv-btn ghost sm" data-g="close">Fermer</button>');
       return;
