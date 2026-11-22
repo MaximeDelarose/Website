@@ -52,9 +52,22 @@
     window.scrollTo(0, 0);
   }
 
+  // Logo : les lettres sont des tuiles de jeu colorées, comme des cartes posées sur la table.
+  var LG_COL = ["c-coral", "c-sun", "c-sky", "c-pink", "c-mint", "c-violet"];
+  function logoTiles(word, off) { return word.split("").map(function (ch, i) { return '<i class="lg-t ' + LG_COL[(i + off) % 6] + '" style="--i:' + (i + off) + '"><b>' + ch + '</b></i>'; }).join(""); }
   function logo(small) {
-    return '<h1 class="qv-logo' + (small ? " sm" : "") + '"><span>Quelle</span> <span>vie</span><b>!</b></h1>';
+    if (small) return '<h1 class="lg sm" aria-label="Quelle vie !"><span class="lg-row" aria-hidden="true">' + logoTiles("QUELLE", 0) + '<em class="lg-sp"></em>' + logoTiles("VIE", 2) + '<i class="lg-t lg-bang" style="--i:9"><b>!</b></i></span></h1>';
+    return '<h1 class="lg" aria-label="Quelle vie !"><span class="lg-deco" aria-hidden="true"><s class="d1">' + IC.get("b") + '</s><s class="d2">' + IC.get("f") + '</s><s class="d3">' + IC.get("r") + '</s></span>' +
+      '<span class="lg-row lg-a" aria-hidden="true">' + logoTiles("QUELLE", 0) + '</span><span class="lg-row lg-b" aria-hidden="true">' + logoTiles("VIE", 2) + '<i class="lg-t lg-bang" style="--i:9"><b>!</b></i></span></h1>';
   }
+  // portrait d'un personnage entier, avec la place pour les cheveux
+  function heroAv(av, opts) { return '<svg viewBox="-10 -44 140 244" aria-hidden="true">' + A.svg(av, opts) + '</svg>'; }
+  var HM_ICO = {
+    group: '<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="10" cy="11" r="4.5" fill="#fff" stroke="currentColor" stroke-width="2.4"/><circle cx="23" cy="12" r="3.6" fill="#fff" stroke="currentColor" stroke-width="2.4"/><path d="M2 27 q8 -12 16 0 M17 27 q6 -9 12 0" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+    bot: '<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="6" y="10" width="20" height="16" rx="5" fill="#fff" stroke="currentColor" stroke-width="2.4"/><circle cx="12.5" cy="18" r="2.4" fill="currentColor"/><circle cx="19.5" cy="18" r="2.4" fill="currentColor"/><path d="M16 10 V5 M13 5 h6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    book: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 7 q6 -2 11 2 q5 -4 11 -2 v18 q-6 -2 -11 2 q-5 -4 -11 -2z" fill="#fff" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M16 9 V27" stroke="currentColor" stroke-width="2.2"/></svg>',
+    play: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 5 L27 16 L9 27z" fill="currentColor" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>',
+  };
 
   // ---------------- accueil ----------------
   function home(msg) {
@@ -63,21 +76,26 @@
     var last = store("qv-last"), hashCode = (location.hash.match(/^#([A-Z0-9]{4})$/i) || [])[1];
     var demo1 = A.random(41), demo2 = A.random(977);
     show("home",
-      '<div class="qv-home">' +
-      '<div class="qv-hero">' +
-        '<div class="qv-hero-cast"><div class="c c1">' + A.standalone(demo1, { mood: "smug", outfit: "ceo", pose: "hips" }) + '</div>' +
-        '<div class="c c0">' + A.standalone(me.avatar, { mood: "happy", pose: "wave" }) + '</div>' +
-        '<div class="c c2">' + A.standalone(demo2, { mood: "shocked", outfit: "unemployed", hold: "box" }) + '</div></div>' +
-        logo() + '<p class="qv-tag">Construis ta vie. Sabote celle de tes amis.</p>' +
+      '<div class="qv-home hm">' +
+      '<div class="hm-hero">' +
+        '<div class="hm-cast"><div class="c c1">' + heroAv(demo1, { mood: "smug", outfit: "ceo", pose: "hips" }) + '</div>' +
+        '<div class="c c0">' + heroAv(me.avatar, { mood: "happy", pose: "wave" }) + '</div>' +
+        '<div class="c c2">' + heroAv(demo2, { mood: "shocked", outfit: "unemployed", hold: "box" }) + '</div></div>' +
+        '<div class="hm-floor"></div>' +
       '</div>' +
+      logo() + '<p class="hm-tag">Construis ta vie. <b>Sabote celle de tes amis.</b></p>' +
       (msg ? '<p class="qv-msg">' + esc(msg) + '</p>' : '') +
-      '<label class="qv-field"><span>Ton prénom</span><input id="nm" maxlength="16" autocomplete="nickname" placeholder="Ex. : Jean-Mich" value="' + esc(me.name) + '"></label>' +
-      '<div class="qv-actions">' +
-        '<button class="qv-btn big" data-act="create">Créer un salon entre amis</button>' +
-        '<div class="qv-join"><input id="code" maxlength="4" placeholder="CODE" autocapitalize="characters" value="' + esc(hashCode || "") + '"><button class="qv-btn alt" data-act="join">Rejoindre</button></div>' +
-        (last && last.code ? '<button class="qv-btn ghost" data-act="resume">Reprendre la partie ' + esc(last.code) + '</button>' : '') +
-        '<button class="qv-btn ghost" data-act="solo">Partie d\'essai contre des bots</button>' +
-        '<div class="qv-row2"><button class="qv-btn ghost" data-act="avatar">Mon personnage</button><button class="qv-btn ghost" data-act="rules">Règles</button></div>' +
+      '<section class="hm-card hm-profile"><button class="hm-me" data-act="avatar" aria-label="Modifier mon personnage">' + A.standalone(me.avatar, { mood: "happy" }, "hm-me-av", true) + '<i>Modifier</i></button>' +
+        '<label class="hm-name"><span>Ton prénom</span><input id="nm" maxlength="16" autocomplete="nickname" placeholder="Ex. : Jean-Mich" value="' + esc(me.name) + '"></label></section>' +
+      (last && last.code ? '<button class="hm-resume" data-act="resume"><span class="hm-ic">' + HM_ICO.play + '</span><span><b>Reprendre ta partie</b><small>Salon ' + esc(last.code) + '</small></span></button>' : '') +
+      '<section class="hm-play">' +
+        '<button class="hm-primary" data-act="create"><span class="hm-ic">' + HM_ICO.group + '</span><span><b>Créer un salon</b><small>Joue avec tes amis · 2 à 8 joueurs</small></span></button>' +
+        '<div class="hm-join"><input id="code" maxlength="4" placeholder="CODE" inputmode="text" autocapitalize="characters" autocomplete="off" aria-label="Code du salon" value="' + esc(hashCode || "") + '"><button class="hm-joinbtn" data-act="join">Rejoindre</button></div>' +
+      '</section>' +
+      '<div class="hm-or"><span>ou</span></div>' +
+      '<div class="hm-tiles">' +
+        '<button class="hm-tile" data-act="solo"><span class="hm-ic">' + HM_ICO.bot + '</span><b>Partie d\'essai</b><small>Seul·e contre des bots</small></button>' +
+        '<button class="hm-tile" data-act="rules"><span class="hm-ic">' + HM_ICO.book + '</span><b>Règles</b><small>En 1 minute</small></button>' +
       '</div>' +
       (NET.available() ? '' : '<p class="qv-note">Le jeu en ligne n\'est pas joignable pour l\'instant (réseau). La partie contre des bots reste disponible.</p>') +
       '<p class="qv-foot"><a href="jeux.html">← Tous les jeux du site</a></p>' +
