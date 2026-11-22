@@ -3418,3 +3418,23 @@ a.account-admin { text-decoration: none; }
 .at-bar { padding: 10px 14px 12px; border-radius: 16px; background: linear-gradient(180deg, rgba(44, 28, 64, .94), rgba(18, 10, 29, .96)); border: 2px solid #8a5f2e; box-shadow: 0 0 0 1px #120a1d, 0 -4px 24px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 236, 200, .12); }
 .at-hbtn { border-color: #8a5f2e; background: linear-gradient(180deg, #3b2656, #20142f); }
 .at-hbtn:hover { border-color: #e8b857; }
+
+
+/* ---------- bio : bloc CV (aperçu + téléchargement) ---------- */
+.cv { margin-top: clamp(32px, 6vw, 56px); }
+.cv-card { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: clamp(20px, 4vw, 40px); align-items: start; padding: clamp(18px, 3vw, 32px); }
+.cv-preview {
+  display: block; position: relative; background: #fff; line-height: 0;
+  box-shadow: 0 0 0 3px var(--line), 0 8px 0 3px var(--depth); transition: transform .2s steps(3);
+}
+.cv-preview img { width: 100%; height: auto; display: block; image-rendering: auto; }
+.cv-preview:hover { transform: translateY(-3px); }
+.cv-preview:focus-visible { outline: 3px solid var(--orange); outline-offset: 6px; }
+.cv-info h2 { margin: 0 0 .4em; }
+.cv-info .facts { margin: 1em 0 1.2em; }
+.cv-meta { margin: 14px 0 0; font-size: .85rem; color: var(--ink-soft); }
+@media (max-width: 720px) {
+  .cv-card { grid-template-columns: 1fr; }
+  .cv-preview { max-width: 340px; width: 100%; margin: 0 auto 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .cv-preview, .cv-preview:hover { transition: none; transform: none; } }
