@@ -4,7 +4,7 @@
   'use strict';
   var C = window.C = {};
   var NAME = (window.CELIA_CUSTOM && window.CELIA_CUSTOM.name) || 'Celia';
-  C.VERSION = 'celia-v13-2026-11';   /* identique à VERSION dans sw.js (test automatique) */
+  C.VERSION = 'celia-v14-2026-11';   /* identique à VERSION dans sw.js (test automatique) */
   C.NAME = NAME;
 
   /* ---------- utilitaires ---------- */

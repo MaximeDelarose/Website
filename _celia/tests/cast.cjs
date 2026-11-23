@@ -12,6 +12,7 @@ const sleep = (p, ms) => p.waitForTimeout(ms);
     await ctx.addInitScript(require('./_session.cjs'));
     const p = await ctx.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
     await p.goto(BASE); await sleep(p, 500); await p.evaluate(() => document.querySelector('.startbtn').click()); await sleep(p, 300);
+    await p.evaluate(() => { C.cast.noHome = true; });
     const T = vp.n;
     const finishWith = async (kind) => { await p.evaluate((k) => { C.cast.next = k; C.go('home'); }, kind); await sleep(p, 600); await p.evaluate(() => C.endScreen({ tile: 'draw', svg: Art.tiles.draw, again: function () { } })); await sleep(p, 2200); };
     const closeEnd = async () => { await p.evaluate(() => { const c = document.querySelector('.endcard.pink'); c && c.click(); }); await sleep(p, 900); };
@@ -23,7 +24,7 @@ const sleep = (p, ms) => p.waitForTimeout(ms);
     await finishWith('hug-aliya');
     let g = await geo();
     ok(g.n === 2 && await p.evaluate(() => !!document.querySelector('.castrow .sis.aliya') && !!document.querySelector('.castrow .sis.celia')), T + ' : Aliya vient voir Celia (2 personnages à l’écran)');
-    ok(await p.evaluate(() => (C.spokenLog || []).some((x) => x.who === 'aliya' && C.LINES.aliya.praise.indexOf(x.text) >= 0)), T + ' : Aliya la félicite à voix haute (voix d’Aliya)');
+    ok(await p.evaluate(() => (C.spokenLog || []).some((x) => x.who === 'aliya' && (C.LINES.aliya.praise.indexOf(x.text) >= 0 || Object.values(C.LINES.byKind).some((k) => k.aliya.indexOf(x.text) >= 0)))), T + ' : Aliya la félicite à voix haute (voix d’Aliya)');
     ok(g.ov === 0 && g.inV && g.cardsIn && g.cardsClick, T + ' : aucune superposition : les cartes ENCORE / MON CHÂTEAU restent entières et touchables ' + JSON.stringify(g));
     ok(await p.evaluate(() => document.querySelector('.castrow .sis.aliya').classList.contains('open')), T + ' : Aliya ouvre les bras pour le câlin');
     const before = await p.evaluate(() => (C.spokenLog || []).length);
@@ -38,14 +39,14 @@ const sleep = (p, ms) => p.waitForTimeout(ms);
 
     /* ---- Tania, les deux, Lumi ---- */
     await finishWith('hug-tania'); g = await geo();
-    ok(await p.evaluate(() => !!document.querySelector('.castrow .sis.tania') && (C.spokenLog || []).some((x) => x.who === 'tania' && C.LINES.tania.praise.indexOf(x.text) >= 0)), T + ' : Tania vient admirer ce qu’elle a fait (voix de Tania)');
+    ok(await p.evaluate(() => !!document.querySelector('.castrow .sis.tania') && (C.spokenLog || []).some((x) => x.who === 'tania' && (C.LINES.tania.praise.indexOf(x.text) >= 0 || Object.values(C.LINES.byKind).some((k) => k.tania.indexOf(x.text) >= 0)))), T + ' : Tania vient admirer ce qu’elle a fait (voix de Tania)');
     ok(g.ov === 0 && g.inV && g.cardsIn, T + ' : Tania : aucune superposition');
     await closeEnd();
     await finishWith('hug-both'); g = await geo();
     ok(g.n === 3 && await p.evaluate(() => { const o = [...document.querySelectorAll('.castrow .sis')].map((e) => e.className.split(' ')[1]); return o.join() === 'aliya,celia,tania'; }), T + ' : les deux sœurs entourent Celia (Aliya · Celia · Tania)');
     ok(g.ov === 0 && g.inV && g.cardsIn && g.cardsClick, T + ' : trio : aucune superposition ' + JSON.stringify(g));
     await sleep(p, 3500);
-    ok(await p.evaluate(() => { const w = (C.spokenLog || []).filter((x) => x.who === 'aliya' || x.who === 'tania').map((x) => x.who + ':' + x.text); return w.some((x) => /^aliya:CELIAAAAA|^aliya:Hop là/.test(x)) && w.some((x) => /^tania:Câlin collectif/.test(x)); }), T + ' : « CELIAAAA ! » puis « Câlin collectif ! » (deux voix différentes)');
+    ok(await p.evaluate(() => { const w = (C.spokenLog || []).filter((x) => x.who === 'aliya' || x.who === 'tania').map((x) => x.who + ':' + x.text); return w.some((x) => /^aliya:/.test(x)) && w.some((x) => /^tania:/.test(x)) && w.some((x) => /câlin collectif/i.test(x)); }), T + ' : les deux sœurs parlent l’une après l’autre (« Celiaaaa ! » puis « Câlin collectif ! »), avec deux voix différentes');
     await p.evaluate(() => document.querySelector('.castrow .sis.celia').click()); await sleep(p, 900);
     ok(await p.evaluate(() => document.querySelector('.castrow').classList.contains('hugging')), T + ' : câlin collectif animé (on peut aussi toucher Celia)');
     await closeEnd();
@@ -59,6 +60,29 @@ const sleep = (p, ms) => p.waitForTimeout(ms);
     ok(await p.evaluate(() => (C.spokenLog || []).some((x) => x.who === 'narr' && C.LINES.meal.indexOf(x.text) >= 0)), T + ' : phrase sur les repas, positive (jamais « finis ton assiette »)');
     ok(await p.evaluate(() => C.LINES.meal.every((t) => !/finir|finis|tout manger|il faut|obligé|gros|grosse|vilain/i.test(t))), T + ' : aucune phrase ne force à finir ni ne culpabilise');
     await closeEnd();
+    /* ---- selon l'activité : après le rangement ---- */
+    await p.evaluate(() => { window.__r = Math.random; Math.random = () => 0.01; C.cast.next = 'hug-aliya'; C.go('home'); }); await sleep(p, 600);
+    await p.evaluate(() => C.endScreen({ tile: 'tidy', svg: Art.tiles.draw, again: function () { } })); await sleep(p, 2300);
+    ok(await p.evaluate(() => (C.spokenLog || []).some((x) => x.who === 'aliya' && /Ta chambre est trop jolie ! Viens nous faire un gros câlin/.test(x.text))), T + ' : après le rangement : « Bravo Celia ! Ta chambre est trop jolie ! Viens nous faire un gros câlin ! »');
+    /* ---- câlin : cœurs + son doux, puis parfois une invitation pour la vraie vie ---- */
+    await p.evaluate(() => { window.__chime = 0; const c = C.sfx.chime; C.sfx.chime = function () { window.__chime++; return c.apply(this, arguments); }; });
+    await p.evaluate(() => document.querySelector('.castrow .sis.celia').click()); await sleep(p, 3800);
+    ok(await p.evaluate(() => window.__chime >= 1), T + ' : le câlin déclenche un petit son doux');
+    ok(await p.evaluate(() => (C.spokenLog || []).some((x) => /vrai câlin/.test(x.text))), T + ' : après le câlin virtuel : « Et si tu venais nous faire un vrai câlin maintenant ? »');
+    await p.evaluate(() => { Math.random = window.__r; }); await closeEnd();
+
+    /* ---- à l'accueil : visite surprise, sans gêner les tuiles ---- */
+    await p.evaluate(() => { C.go('home'); }); await sleep(p, 900);
+    const hv = await p.evaluate(() => { const el = document.querySelector('.screen.home'); const row = C.cast.homeVisit(el, 'hug-both'); return !!row; }); await sleep(p, 2600);
+    const gh = await p.evaluate(() => { const R = (e) => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; }; const sp = [...document.querySelectorAll('.homerow .sis')].map(R), tl = [...document.querySelectorAll('.tile')].map(R);
+      let ov = 0; sp.forEach((a) => tl.forEach((c) => { if (a.l < c.r - 1 && c.l < a.r - 1 && a.t < c.b - 1 && c.t < a.b - 1) ov++; }));
+      return { n: sp.length, ov, inV: sp.every((a) => a.l >= 0 && a.r <= innerWidth && a.t >= 0), celiaHidden: getComputedStyle(document.querySelector('.celia-av')).visibility === 'hidden', tilesOk: [...document.querySelectorAll('.tile')].every((e) => { const r = e.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return t && (t === e || e.contains(t)); }) }; });
+    ok(hv && gh.n === 3 && gh.ov === 0 && gh.inV && gh.tilesOk, T + ' : visite à l’accueil : Aliya, Celia, Tania au-dessus des tuiles, aucune superposition, tuiles toujours touchables ' + JSON.stringify(gh));
+    ok(await p.evaluate(() => (C.spokenLog || []).filter((x) => x.who === 'aliya' || x.who === 'tania').some((x) => C.LINES.home.both.some((pr) => pr.indexOf(x.text) >= 0))), T + ' : elles parlent à voix haute à l’accueil (voix d’Aliya et de Tania)');
+    await p.evaluate(() => document.querySelector('.homerow .sis.aliya').click()); await sleep(p, 900);
+    ok(await p.evaluate(() => document.querySelector('.homerow').classList.contains('hugging')), T + ' : câlin collectif à l’accueil en touchant Aliya');
+    await p.evaluate(() => { document.querySelector('.t-draw').click(); }); await sleep(p, 1200);
+    ok(await p.evaluate(() => C.current() === 'draw' && !document.querySelector('.castrow') && getComputedStyle(document.querySelector('.hubgrid') || document.body).display !== 'none'), T + ' : Celia peut ignorer la visite et jouer : l’activité démarre normalement, sans personnage par-dessus');
     ok(errs.length === 0, T + ' : aucune erreur JS ' + errs.join('|'));
     await ctx.close();
   }
@@ -77,6 +101,16 @@ const sleep = (p, ms) => p.waitForTimeout(ms);
     ok(rep === 0, 'jamais deux fois la même scène d’affilée');
     const kinds = new Set(shown); ok(['hug-aliya', 'hug-tania', 'hug-both', 'kiss', 'meal'].every((k) => kinds.has(k)), 'variété : ' + [...kinds].join(', '));
     ok(await p.evaluate(() => { const L = C.LINES; return L.aliya.praise.length >= 3 && L.tania.praise.length >= 3 && L.both.praise.length >= 2 && L.kiss.length >= 2 && L.meal.length >= 3; }), 'plusieurs formulations pour chaque situation');
+    /* visite à l'accueil : jamais la première fois, jamais deux fois de suite, occasionnelle */
+    const hv = await p.evaluate(() => {
+      const el = document.querySelector('.screen.home') || document.body, out = { first: null, recent: null, ok: null, short: null }; const rnd = Math.random;
+      C.store.set('cast', { n: 0, hist: [] }); out.first = !C.cast.homeVisit(el);                       /* 1re entrée : jamais */
+      Math.random = () => 0; C.store.set('cast', { n: 0, hist: [], homeSeen: true, homeN: 5, lastAt: Date.now() }); out.recent = !C.cast.homeVisit(el);   /* une apparition tout juste faite : non */
+      C.store.set('cast', { n: 0, hist: [], homeSeen: true, homeN: 1, lastAt: 0 }); out.few = !C.cast.homeVisit(el);       /* trop tôt : non */
+      Math.random = rnd; return out;
+    });
+    ok(hv.first && hv.recent && hv.few, 'visite à l’accueil : jamais à la première ouverture, jamais juste après une autre apparition, jamais trop souvent ' + JSON.stringify(hv));
+    ok(await p.evaluate(() => { const L = C.LINES; return L.byKind.tidy.aliya.length >= 2 && L.real.aliya.length >= 2 && L.home.aliya.length >= 2 && L.home.tania.length >= 2 && L.aliya.praise.indexOf('Cééélia ! Viens nous faire un gros câlin !') >= 0 && L.tania.praise.indexOf('Oh, ma petite Celia ! Viens, je veux un câlin !') >= 0; }), 'les phrases demandées existent, avec plusieurs variantes par situation');
     /* ---- personnalisation des sœurs à partir de références ---- */
     const cust = await p.evaluate(() => {
       const d = Art.sister('aliya'); window.CELIA_CUSTOM.sisters = { aliya: { hairColor: 2, eyes: 2 }, tania: { img: 'custom/tania.png' } };

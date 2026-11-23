@@ -86,21 +86,31 @@
   var N = C.NAME;
   var LINES = {
     aliya: {
-      praise: ['Bravo ma ' + N + ' ! Viens faire un gros câlin !', 'Oh ma ' + N + ', c’est magnifique ! Viens, un gros câlin !', 'Trop bien, ma petite ' + N + ' ! On se fait un câlin ?'],
+      praise: ['Bravo ma ' + N + ' ! Viens faire un gros câlin !', 'Oh ma ' + N + ', c’est magnifique ! Viens, un gros câlin !', 'Trop bien, ma petite ' + N + ' ! On se fait un câlin ?', 'Cééélia ! Viens nous faire un gros câlin !'],
       hug: ['Mmmh… un gros câlin !', 'Je t’aime fort, ma ' + N + ' !', 'Oh, tu es toute douce !']
     },
     tania: {
-      praise: ['Wouaaah, t’as vu comme c’est joli ? Je suis trop fière de toi !', 'Oh là là, quel beau travail ! Je suis trop fière de toi !', 'Waouh ' + N + ', c’est super joli ! Bravo !'],
+      praise: ['Wouaaah, t’as vu comme c’est joli ? Je suis trop fière de toi !', 'Oh là là, quel beau travail ! Je suis trop fière de toi !', 'Waouh ' + N + ', c’est super joli ! Bravo !', 'Oh, ma petite ' + N + ' ! Viens, je veux un câlin !'],
       hug: ['Câlin ! Je t’adore, ' + N + ' !', 'Hihi ! Tu es la meilleure !', 'Mouaaah ! Un gros bisou !']
     },
     both: {
-      praise: [[N.toUpperCase() + 'AAAA !', 'Câlin collectif !'], ['Hop là, ' + N + ' !', 'Câlin collectif !']],
+      praise: [[N + 'aaaa !', 'Câlin collectif !'], ['Hop là, ' + N + ' !', 'Câlin collectif !'], ['Oh, la voilà !', 'Viens, ' + N + ' ! Câlin collectif !']],
       hug: [['Câlin collectif !', 'On t’aime fort !'], ['Hihihi ! Câlin collectif !', 'Mouaaah !']]
     },
     kiss: ['Hé ' + N + ' ! Et si tu allais faire un gros bisou à ta maman ?', 'Va faire un bisou à ta maman si tu en as envie !'],
     meal: ['N’oublie pas de bien manger pour avoir plein de force et des vitamines !', 'Miam miam ! Les fruits et les légumes, ça donne plein de bonnes choses à ton corps !', 'On mange tant qu’on a faim, et on s’arrête quand on n’a plus faim. C’est bien comme ça !'],
     tidy: ['Tu sais quoi, ' + N + ' ? On peut aussi ranger tes vrais jouets avec maman !'],
-    night: ['Bonne nuit, petite princesse ! Fais de beaux rêves !']
+    night: ['Bonne nuit, petite princesse ! Fais de beaux rêves !'],
+    /* selon ce qu'elle vient de faire */
+    byKind: {
+      tidy: { aliya: ['Bravo ' + N + ' ! Ta chambre est trop jolie ! Viens nous faire un gros câlin !', 'Oh, ta chambre est toute rangée ! Bravo ma ' + N + ' ! Un gros câlin ?'], tania: ['Waouh, ta chambre est trop jolie ! Bravo ' + N + ' ! Viens, un câlin !', 'Quel beau rangement, ma petite ' + N + ' ! Je suis fière de toi ! Viens !'], both: [['Bravo ' + N + ' ! Ta chambre est trop jolie !', 'Viens nous faire un gros câlin !']] },
+      cook: { aliya: ['Hmm, ça sent trop bon ! Bravo pour le gâteau, ma ' + N + ' ! Un câlin ?'], tania: ['Oh, quel joli gâteau ! Bravo ' + N + ' ! Viens, un câlin !'], both: [['Miam, quel beau gâteau !', 'Bravo ' + N + ' ! Câlin collectif !']] },
+      draw: { aliya: ['Oh, quel joli dessin, ma ' + N + ' ! Viens faire un gros câlin !'], tania: ['Wouaaah, t’as vu comme c’est joli ? Viens, un gros câlin !'], both: [['Quel beau dessin, ' + N + ' !', 'Câlin collectif !']] }
+    },
+    /* après le câlin : une idée pour la vraie vie (sans obligation) */
+    real: { aliya: ['Et si tu venais nous faire un vrai câlin maintenant ?', 'Tu veux venir nous faire un vrai câlin ?'], tania: ['Et si tu venais nous faire un vrai câlin maintenant ?', 'Viens vite nous retrouver pour un vrai câlin, si tu veux !'] },
+    /* quand elle revient dans son château */
+    home: { aliya: ['Cééélia ! Viens nous faire un gros câlin !', 'Coucou ma ' + N + ' ! Tu viens nous faire un câlin ?'], tania: ['Oh, ma petite ' + N + ' ! Viens, je veux un câlin !', 'Coucou ' + N + ' ! Un petit câlin ?'], both: [[N + 'aaaa !', 'Câlin collectif !'], ['Coucou ' + N + ' !', 'Viens, un câlin collectif !']] }
   };
   C.LINES = LINES;
   function pick(a, key) { var h = (C.cast._last = C.cast._last || {}), i, n = 0; do { i = Math.floor(Math.random() * a.length); n++; } while (a.length > 1 && h[key] === i && n < 6); h[key] = i; return a[i]; }
@@ -121,14 +131,14 @@
   /* choix : jamais à chaque fois (au moins 2 activités entre deux apparitions, 4 au maximum), jamais deux fois la même d'affilée */
   function chooseMoment(kind) {
     st.n = (st.n || 0) + 1;
-    var forced = C.cast.next; if (forced) { C.cast.next = null; st.n = 0; saveSt(); return forced; }
+    var forced = C.cast.next; if (forced) { C.cast.next = null; st.n = 0; st.lastAt = Date.now(); saveSt(); return forced; }
     var p = st.n >= 4 ? 1 : st.n >= 2 ? 0.55 : 0;
     if (Math.random() >= p) { saveSt(); return null; }
     var pool = ['hug-aliya', 'hug-tania', 'hug-both', 'kiss'];
     if (kind === 'cook') pool.push('meal', 'meal'); if (kind === 'tidy') pool = ['hug-aliya', 'hug-tania', 'hug-both'];   /* la phrase « ranger tes vrais jouets » est déjà dite dans le jeu de rangement */
     var recent = (st.hist || []).slice(-2); pool = pool.filter(function (x) { return recent.indexOf(x) < 0; });
     var m = pool[Math.floor(Math.random() * pool.length)] || 'kiss';
-    st.hist = (st.hist || []).concat(m).slice(-6); st.n = 0; saveSt(); return m;
+    st.hist = (st.hist || []).concat(m).slice(-6); st.n = 0; st.lastAt = Date.now(); saveSt(); return m;
   }
 
   var C0 = C.cast = { next: null, choose: chooseMoment, LINES: LINES };
@@ -136,12 +146,22 @@
   /* rangée de personnages insérée dans l'écran de fin d'activité */
   C0.attach = function (modal, kind) {
     var m = chooseMoment(kind); if (!m) return null;
-    return C0.play(modal, m);
+    return C0.play(modal, m, kind);
   };
-  C0.play = function (modal, m) {
+  /* choix de la phrase : parfois propre à l'activité qu'elle vient de finir (rangement, gâteau, dessin), sinon générale */
+  function praiseFor(who, kind) {
+    var k = LINES.byKind[kind];
+    if (k && k[who] && Math.random() < 0.7) return who === 'both' ? pick(k.both, 'k-both-' + kind) : [pick(k[who], 'k-' + who + kind)];
+    return who === 'both' ? pick(LINES.both.praise, 'bothp') : [pick(LINES[who].praise, who + 'p')];
+  }
+  C0.play = function (modal, m, kind) {
     var card = modal.querySelector('.card') || modal, anchor = card.querySelector('.endcards') || card.lastElementChild;
     var row = C.el('<div class="castrow ' + m + '"></div>');
     anchor.parentNode.insertBefore(row, anchor); card.classList.add('withcast');
+    return C0.populate(row, m, kind);
+  };
+  C0.populate = function (row, m, kind, opts) {
+    opts = opts || {};
     var alive = true; row._stop = function () { alive = false; };
     var shut = false; function guard(fn) { return function () { if (alive && row.isConnected) return fn.apply(this, arguments); }; }
     var myTok = tok;
@@ -152,16 +172,21 @@
       var sisters = who === 'both' ? ['aliya', 'tania'] : [who], parts = sisters.map(function (w) { return mount(row, w); });
       if (who === 'both') row.insertBefore(parts[0].el, cel.el);   /* [Aliya] [Celia] [Tania] */
       parts.forEach(function (c) { c.el.classList.add('in'); Art.dress.setMood(c.svg, 'happy'); });
-      var lines = who === 'both' ? pick(LINES.both.praise, 'bothp') : [pick(LINES[who].praise, who + 'p')];
+      var lines = opts.home ? (who === 'both' ? pick(LINES.home.both, 'homeb') : [pick(LINES.home[who], 'home' + who)]) : praiseFor(who, kind);
       C.sfx.chime();
       var hugged = false;
       function hug() {
         if (hugged || !alive) return; hugged = true; if (row._h) { try { row._h.stop(); } catch (e) { } }
-        row.classList.add('hugging'); C.sfx.giggle(); setTimeout(function () { C.sfx.sparkle(); }, 250);
+        row.classList.add('hugging'); C.sfx.giggle(); setTimeout(function () { C.sfx.sparkle(); }, 250); setTimeout(function () { try { C.sfx.chime(); } catch (e) { } }, 500);   /* petits cœurs + son doux */
         var c = center(row); hearts(c.x, c.y, 14); setTimeout(function () { hearts(c.x, c.y - 10, 10); }, 450);
         Art.dress.setMood(cs, 'happy'); parts.forEach(function (p) { Art.dress.setMood(p.svg, 'happy'); });
         var hl = who === 'both' ? pick(LINES.both.hug, 'bothh') : [pick(LINES[who].hug, who + 'h')];
-        (async function () { for (var i = 0; i < hl.length && alive; i++) await C.speak(sisters[i] || sisters[0], hl[i], { mouth: mouthOf(parts[Math.min(i, parts.length - 1)]) }); })();
+        (async function () {
+          for (var i = 0; i < hl.length && alive; i++) await C.speak(sisters[i] || sisters[0], hl[i], { mouth: mouthOf(parts[Math.min(i, parts.length - 1)]) });
+          /* de temps en temps : une invitation pour la vraie vie (sans obligation) */
+          if (alive && Math.random() < 0.4) { var rw = sisters[Math.floor(Math.random() * sisters.length)]; await C.sleep(400); if (alive) { var pi = sisters.indexOf(rw); await C.speak(rw, pick(LINES.real[rw], 'real' + rw), { mouth: mouthOf(parts[pi])  }); } }
+          if (alive && opts.onDone) opts.onDone();
+        })();
         setTimeout(function () { row.classList.remove('hugging'); row.classList.add('after'); }, 2600);
       }
       [cel.el].concat(parts.map(function (p) { return p.el; })).forEach(function (e) { e.addEventListener('click', hug); e.setAttribute('role', 'button'); });
@@ -191,6 +216,31 @@
       }
     }), 800);
     return row;
+  };
+  /* ---------- visite surprise quand elle revient dans son château ---------- */
+  C0.homeVisit = function (home, force) {
+    try {
+      if (C0.noHome && !force) return null;   /* réglage de test */
+      var first = !st.homeSeen; st.homeSeen = true;
+      st.homeN = (st.homeN || 0) + 1;
+      var left = C.session && C.session.remaining ? C.session.remaining() : 1e9;
+      var recent = Date.now() - (st.lastAt || 0) < 3 * 60 * 1000;
+      var go = force || (!first && st.homeN >= 3 && !recent && left > 120000 && Math.random() < 0.4);
+      saveSt(); if (!go) return null;
+      var tiles = C.$('.tiles', home), hero = C.$('.hero', home);
+      if (!tiles) return null;
+      var hr = home.getBoundingClientRect(), tr = tiles.getBoundingClientRect(), top = Math.max(hr.top + 70, hero ? hero.getBoundingClientRect().top + 8 : hr.top + 90), h = tr.top - top - 2;
+      if (h < 105) return null;   /* écran trop petit (paysage…) : on ne gêne pas les boutons */
+      var m = C.rnd(['hug-aliya', 'hug-tania', 'hug-both']); if (typeof force === 'string') m = force;
+      st.homeN = 0; st.lastAt = Date.now(); saveSt();
+      var row = C.el('<div class="castrow homerow ' + m + '" style="top:' + (top - hr.top) + 'px;height:' + Math.min(150, h) + 'px"></div>'); home.appendChild(row);
+      var av = C.$('.celia-av', home); if (av) av.style.visibility = 'hidden';
+      var leave = function () { if (!row.isConnected) return; row._stop && row._stop(); row.classList.add('leaving'); if (av) av.style.visibility = ''; setTimeout(function () { row.remove(); }, 900); };
+      C0.populate(row, m, 'home', { home: true, onDone: function () { setTimeout(leave, 2500); } });
+      row._leaveT = setTimeout(leave, 16000);   /* facultatif : si Celia ne les touche pas, elles repartent gentiment */
+      home._visitStop = function () { clearTimeout(row._leaveT); row._stop && row._stop(); if (av) av.style.visibility = ''; };
+      return row;
+    } catch (e) { console.error(e); return null; }
   };
   C0.stop = function () { if (C0.lastRow && C0.lastRow._stop) C0.lastRow._stop(); };
 
