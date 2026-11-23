@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Echoes of Aether · AkarisuMD</title>
-  <meta name="description" content="Echoes of Aether : Action-RPG fantasy en pixel art, en temps réel. Version originale et ma version en cours de modification.">
+  <meta name="description" content="Echoes of Aether : Action-RPG fantasy en pixel art, en temps réel. Version originale et Max version en cours de modification.">
   <meta property="og:title" content="Echoes of Aether · AkarisuMD">
   <meta property="og:description" content="Echoes of Aether : Action-RPG fantasy en pixel art, en temps réel.">
   <meta name="theme-color" content="#0e1634">
@@ -67,7 +67,7 @@
     <div class="wrap">
       <div class="eoa-modes" role="group" aria-label="Version du jeu">
         <button class="chip" type="button" data-eoa-mode="original" aria-pressed="true">Version originale</button>
-        <button class="chip" type="button" data-eoa-mode="moi" aria-pressed="false">Ma version</button>
+        <button class="chip" type="button" data-eoa-mode="moi" aria-pressed="false">Max version</button>
         <p class="eoa-note" data-eoa-note></p>
       </div>
       <div class="game-head">
@@ -87,7 +87,7 @@
         <div class="panel game-help">
           <h2 class="section-title">Comment jouer</h2>
           <ul>
-            <li><strong>Deux versions</strong> : « Version originale » est le jeu tel qu'il a été créé ; « Ma version » est une copie séparée que je modifie. Chacune a ses propres sauvegardes et ses propres salons en ligne : jouer à l'une n'efface rien dans l'autre.</li>
+            <li><strong>Deux versions</strong> : « Version originale » est le jeu tel qu'il a été créé ; « Max version » est une copie séparée que je modifie. Chacune a ses propres sauvegardes et ses propres salons en ligne : jouer à l'une n'efface rien dans l'autre.</li>
             <li><strong>Téléphone</strong> : mets le téléphone en paysage et touche « Plein écran ». Joystick à gauche, attaque et sorts à droite.</li>
             <li><strong>Ordinateur</strong> : clavier et souris, ou manette.</li>
             <li><strong>Application</strong> : « Ouvrir seul » ouvre la version choisie sans le site autour ; depuis là, « Ajouter à l'écran d'accueil » l'installe en plein écran.</li>
@@ -117,7 +117,7 @@
     (function () {
       var MODES = {
         original: { src: "echoes/", note: "Le jeu tel qu'il a été créé." },
-        moi: { src: "echoes-moi/", note: "Ma copie modifiable, avec ses propres sauvegardes." }
+        moi: { src: "echoes-moi/", note: "Max version : copie modifiable, avec ses propres sauvegardes." }
       };
       var frame = document.getElementById("eoa"), wrap = document.getElementById("eoawrap");
       var note = document.querySelector("[data-eoa-note]"), open = document.querySelector("[data-eoa-open]");
