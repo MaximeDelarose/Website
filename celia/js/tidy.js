@@ -19,7 +19,7 @@
   var NEXT = { plush: 'Maintenant, on range les peluches !', toy: 'Maintenant, on range les jouets !', dress: 'Maintenant, on range les robes !', book: 'Maintenant, on range les livres !', shoe: 'Maintenant, on range les chaussures !', pencil: 'Maintenant, on range les crayons !' };
   var HINT = ['Presque ! Regarde, ça se range ici !', 'Oups ! C’est par là que ça va !', 'Regarde, c’est ici que ça se range !'];
   var FINAL = 'Wouaaah ! Regarde comme ta chambre est jolie maintenant ! Bravo ' + N + ' !';
-  C.TIDY = { MISSIONS: MISSIONS, DONE: DONE, HINT: HINT, FINAL: FINAL };
+  C.TIDY = { MISSIONS: MISSIONS, DONE: DONE, NEXT: NEXT, HINT: HINT, FINAL: FINAL };
 
   var BY = {}; Object.keys(T.objects).forEach(function (id) { var c = T.objects[id].cat; (BY[c] = BY[c] || []).push(id); });
   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -117,9 +117,8 @@
         left--; wrongCount = 0;
         var id = it.dataset.id, nextCat = (C.$$('.tobj:not(.stored)', wrap)[0] || {}).dataset ? C.$$('.tobj:not(.stored)', wrap)[0].dataset.cat : null;
         if (left <= 0) { finishRound(); return; }
-        var line = rnd(DONE[id] || ['Bravo ' + N + ' !']);
-        if (nextCat && Math.random() < 0.5) line += ' ' + NEXT[nextCat];
-        say(line);
+        var line = rnd(DONE[id] || ['Bravo ' + N + ' !']), nxt = (nextCat && Math.random() < 0.5) ? NEXT[nextCat] : null;
+        say(line).then(function () { if (nxt && alive && !locked && !drag) return say(nxt); });   /* deux phrases courtes (faciles à enregistrer) plutôt qu'une longue */
       }
       /* ---- mauvais endroit : l'objet revient doucement, le bon meuble brille ---- */
       function giveBack(it, d) {

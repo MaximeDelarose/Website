@@ -28,11 +28,11 @@
         '<div class="csky"></div><div class="cstars">' + stars + '</div><div class="cmoon">' + Art.item('moon') + '</div>' +
         '<div class="ccastle">' + Art.castle() + '</div>' +
         '<div class="clumi"><div class="clumi-in">' + Art.lumi() + '</div></div>' +
-        '<div class="cwitch"><div class="cw-in">' + Art.witch() + '</div><div class="cexcl"></div></div>' +
+        (mode === 'witch' ? '<div class="cwitch"><div class="cw-in">' + Art.witch() + '</div><div class="cexcl"></div></div>' : '') +
         '<div class="csmoke"></div><div class="ctrail"></div>' +
         '<div class="ccap" aria-live="polite"><span></span></div></div>';
       var scene = C.$('.cine', el), lumi = C.$('.clumi', el), lsvg = C.$('.clumi svg', el), wit = C.$('.cwitch', el), wsvg = C.$('.cwitch svg.witch', el), cap = C.$('.ccap span', el), smoke = C.$('.csmoke', el), excl = C.$('.cexcl', el);
-      Art.witchSet(wsvg, { ex: 'laugh', arm: 'hips' });
+      if (wsvg) Art.witchSet(wsvg, { ex: 'laugh', arm: 'hips' });
       var sleep = C.sleep, ok = function () { return alive && cineTok === myTok && C.current() === 'bedtime'; };
       el._stop = function () { alive = false; };
       function say(step, mouthFn) {

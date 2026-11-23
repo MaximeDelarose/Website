@@ -9,7 +9,7 @@
 .castrow.hug-aliya, .castrow.hug-tania { gap: 4px; } .castrow.hug-both { gap: 0; }
 /* câlin : les personnages se rapprochent, rebondissent, des cœurs s'envolent */
 .castrow.hugging .sis { animation: hughop 0.9s ease-in-out 2; }
-.castrow.hug-aliya.hugging .sis.aliya { transform: translateX(62%) scale(1.06); } .castrow.hug-aliya.hugging .sis.celia { transform: translateX(-6%) scale(1.06); }
+.castrow.hug-aliya.hugging .sis.aliya { transform: translateX(-62%) scale(1.06); } .castrow.hug-aliya.hugging .sis.celia { transform: translateX(6%) scale(1.06); }
 .castrow.hug-tania.hugging .sis.tania { transform: translateX(-62%) scale(1.06); } .castrow.hug-tania.hugging .sis.celia { transform: translateX(6%) scale(1.06); }
 .castrow.hug-both.hugging .sis.aliya { transform: translateX(58%) scale(1.06); } .castrow.hug-both.hugging .sis.tania { transform: translateX(-58%) scale(1.06); } .castrow.hug-both.hugging .sis.celia { transform: scale(1.1); }
 .castrow.hugging .sis .arm.l { transform: rotate(-30deg); } .castrow.hugging .sis .arm.r { transform: rotate(30deg); }

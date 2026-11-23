@@ -116,7 +116,7 @@
   /* Apparences par défaut (modifiables dans custom/custom.js, rubrique « sisters », ou remplaçables par une image). */
   Art.sisterDefaults = {
     aliya: { skin: 1, eyes: 0, hairStyle: 'long', hairColor: 1, outfit: 'd3', shoes: 's4', crown: 'c2', accent: '#c9a8ff' },
-    tania: { skin: 1, eyes: 1, hairStyle: 'braids', hairColor: 0, outfit: 'd1', shoes: 's1', crown: null, accent: '#ff9cc7' }
+    tania: { skin: 1, eyes: 1, hairStyle: 'braids', hairColor: 3, outfit: 'd1', shoes: 's1', crown: null, accent: '#ff9cc7' }
   };
   Art.sisterCfg = function (who) {
     var base = Art.sisterDefaults[who] || Art.sisterDefaults.aliya, over = (window.CELIA_CUSTOM && window.CELIA_CUSTOM.sisters && window.CELIA_CUSTOM.sisters[who]) || {};
