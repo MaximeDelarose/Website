@@ -12,8 +12,8 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8123/celia/';
     ['aliya', 'tania'].forEach((w) => { L[w].praise.forEach((t) => add(w, t)); L[w].hug.forEach((t) => add(w, t)); });
     ['praise', 'hug'].forEach((k) => L.both[k].forEach((pair) => { add('aliya', pair[0]); add('tania', pair[1]); }));
     Object.values(L.byKind).forEach((k) => { k.aliya.forEach((t) => add('aliya', t)); k.tania.forEach((t) => add('tania', t)); k.both.forEach((pr) => { add('aliya', pr[0]); add('tania', pr[1]); }); });
-    ['aliya', 'tania'].forEach((w) => { L.real[w].forEach((t) => add(w, t)); L.home[w].forEach((t) => add(w, t)); }); L.home.both.forEach((pr) => { add('aliya', pr[0]); add('tania', pr[1]); });
-    ['kiss', 'meal', 'tidy', 'night'].forEach((k) => L[k].forEach((t) => add('narr', t)));
+    ['aliya', 'tania'].forEach((w) => { L.real[w].forEach((t) => add(w, t)); L.home[w].forEach((t) => add(w, t)); L.listen[w].forEach((t) => add(w, t)); }); L.home.both.forEach((pr) => { add('aliya', pr[0]); add('tania', pr[1]); });
+    ['kiss', 'meal', 'tidy', 'night', 'mama', 'kind'].forEach((k) => L[k].forEach((t) => add('narr', t)));
     Ci.lumi.forEach((s) => add(s.who, s.say)); Ci.witch.forEach((s) => add(s.who, s.say)); add(Ci.night.who, Ci.night.say);
     Tm.MISSIONS.forEach((m) => add('narr', m.intro)); Object.values(Tm.DONE).forEach((a) => a.forEach((t) => add('narr', t))); Object.values(Tm.NEXT).forEach((t) => add('narr', t)); Tm.HINT.forEach((t) => add('narr', t)); Tm.FINALS.forEach((t) => add('narr', t)); add('narr', Tm.EXTRA);
     const seen = new Set(); return out.filter((x) => { const k = x.who + '|' + x.text; if (seen.has(k)) return false; seen.add(k); return true; })

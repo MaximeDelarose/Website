@@ -121,6 +121,10 @@
       praise: [[N + 'aaaa !', 'Câlin collectif !'], ['Hop là, ' + N + ' !', 'Câlin collectif !'], ['Oh, la voilà !', 'Viens, ' + N + ' ! Câlin collectif !']],
       hug: [['Câlin collectif !', 'On t’aime fort !'], ['Hihihi ! Câlin collectif !', 'Mouaaah !']]
     },
+    /* rappels de Lumi : écouter maman, être gentille avec Aliya et Tania */
+    mama: ['Tu sais, ' + N + ' ? C’est important d’écouter maman. Elle t’aime très fort et elle sait ce qui est bien pour toi !', 'N’oublie pas, ' + N + ' : il faut toujours bien écouter maman. C’est très important !', 'Quand maman parle, on l’écoute avec ses deux oreilles ! Comme ça, tout le monde est content.', 'Les mamans savent plein de choses ! Alors on les écoute bien, et on dit oui avec le sourire !'],
+    kind: ['Sois bien gentille avec Aliya et Tania, ' + N + ' ! Elles t’aiment très fort. Et n’oublie pas d’écouter maman !', 'Aliya et Tania sont tes grandes sœurs. On est gentille avec elles, on partage, et on écoute maman !', 'Un petit câlin et un grand sourire pour Aliya et Tania ! Et on écoute bien maman, d’accord ?', 'Avec Aliya et Tania, on joue gentiment ensemble, et on écoute maman quand elle nous parle !'],
+    listen: { aliya: ['Et tu sais, ma ' + N + ' : il faut toujours bien écouter maman. C’est important !', 'Écoute bien maman, d’accord ? Et sois gentille avec Tania aussi !'], tania: ['Dis, ' + N + ' : il faut écouter maman, c’est très important !', 'Sois gentille avec Aliya, et écoute bien maman, d’accord ?'] },
     kiss: ['Hé ' + N + ' ! Et si tu allais faire un gros bisou à ta maman ?', 'Va faire un bisou à ta maman si tu en as envie !'],
     meal: ['N’oublie pas de bien manger pour avoir plein de force et des vitamines !', 'Miam miam ! Les fruits et les légumes, ça donne plein de bonnes choses à ton corps !', 'On mange tant qu’on a faim, et on s’arrête quand on n’a plus faim. C’est bien comme ça !'],
     tidy: ['Tu sais quoi, ' + N + ' ? On peut aussi ranger tes vrais jouets avec maman !'],
@@ -158,7 +162,7 @@
     var forced = C.cast.next; if (forced) { C.cast.next = null; st.n = 0; st.lastAt = Date.now(); saveSt(); return forced; }
     var p = st.n >= 4 ? 1 : st.n >= 2 ? 0.55 : 0;
     if (Math.random() >= p) { saveSt(); return null; }
-    var pool = ['hug-aliya', 'hug-tania', 'hug-both', 'kiss'];
+    var pool = ['hug-aliya', 'hug-tania', 'hug-both', 'kiss', 'mama', 'kind'];
     if (kind === 'cook') pool.push('meal', 'meal'); if (kind === 'tidy') pool = ['hug-aliya', 'hug-tania', 'hug-both'];   /* la phrase « ranger tes vrais jouets » est déjà dite dans le jeu de rangement */
     var recent = (st.hist || []).slice(-2); pool = pool.filter(function (x) { return recent.indexOf(x) < 0; });
     var m = pool[Math.floor(Math.random() * pool.length)] || 'kiss';
@@ -208,7 +212,8 @@
         (async function () {
           for (var i = 0; i < hl.length && alive; i++) await C.speak(sisters[i] || sisters[0], hl[i], { mouth: mouthOf(parts[Math.min(i, parts.length - 1)]) });
           /* de temps en temps : une invitation pour la vraie vie (sans obligation) */
-          if (alive && Math.random() < 0.4) { var rw = sisters[Math.floor(Math.random() * sisters.length)]; await C.sleep(400); if (alive) { var pi = sisters.indexOf(rw); await C.speak(rw, pick(LINES.real[rw], 'real' + rw), { mouth: mouthOf(parts[pi])  }); } }
+          var rr = Math.random(), rl = rr < 0.3 ? LINES.real : rr < 0.6 ? LINES.listen : null;
+          if (alive && rl) { var rw = sisters[Math.floor(Math.random() * sisters.length)]; await C.sleep(400); if (alive) { var pi = sisters.indexOf(rw); await C.speak(rw, pick(rl[rw], 'real' + rw + (rl === LINES.listen ? 'L' : '')), { mouth: mouthOf(parts[pi])  }); } }
           if (alive && opts.onDone) opts.onDone();
         })();
         setTimeout(function () { row.classList.remove('hugging'); row.classList.add('after'); }, 2600);
@@ -227,12 +232,12 @@
     /* bisou pour maman / phrases du quotidien : Lumi parle et envoie un petit cœur */
     var lumi = C.el('<div class="lumik">' + Art.lumi() + '</div>'); row.appendChild(lumi);
     var svg = lumi.querySelector('svg.lumi'), text;
-    if (m === 'kiss') text = pick(LINES.kiss, 'kiss'); else if (m === 'meal') text = pick(LINES.meal, 'meal'); else text = pick(LINES.tidy, 'tidy');
+    if (m === 'kiss') text = pick(LINES.kiss, 'kiss'); else if (m === 'mama') text = pick(LINES.mama, 'mama'); else if (m === 'kind') text = pick(LINES.kind, 'kind'); else if (m === 'meal') text = pick(LINES.meal, 'meal'); else text = pick(LINES.tidy, 'tidy');
     setTimeout(guard(async function () {
       lumi.classList.add('pop');
       await C.speak('narr', text, { mouth: function (o) { Art.lumiMood(svg, o ? 'open' : 'smile'); } });
       if (!alive) return;
-      if (m === 'kiss') {
+      if (m === 'kiss' || m === 'mama' || m === 'kind') {
         Art.lumiMood(svg, 'o'); lumi.classList.add('blow'); C.sfx.sparkle(); var r = lumi.getBoundingClientRect();
         var h = C.el('<i class="kissheart">' + Art.svg('0 0 24 24', '<path d="' + Art.P.heart + '" fill="#ff4d8d" ' + Art.ST(1.600) + '/>') + '</i>'); row.appendChild(h);
         setTimeout(function () { hearts(r.left + r.width / 2, r.top, 8); C.sfx.giggle(); }, 700);
