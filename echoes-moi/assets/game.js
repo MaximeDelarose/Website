@@ -1,4 +1,5 @@
-var cullTypes = { Image: 1, Sprite: 1, Text: 1 };
+import { installPerf, cullRect, initialResolution, autoResolution } from './perf.js';
+import { preloadBaked } from './baked.js';
 var e = Object.create,
   t = Object.defineProperty,
   n = Object.getOwnPropertyDescriptor,
@@ -2527,21 +2528,8 @@ var u = l(
                       }
                     },
                     getVisibleChildren: function (e, t) {
-                      // Perf : écarte les images/sprites/textes nettement hors de la vue de la caméra
-                      // (Phaser les envoie sinon tous au rendu, même à l'autre bout de la carte).
-                      var n = t.worldView,
-                        r = t.rotation === 0,
-                        i = n.x,
-                        a = n.y,
-                        o = n.right,
-                        s = n.bottom;
                       return e.filter(function (e) {
-                        if (!e.willRender(t)) return !1;
-                        if (r && e.scrollFactorX === 1 && e.scrollFactorY === 1 && cullTypes[e.type]) {
-                          var n = Math.abs(e.displayWidth) + Math.abs(e.displayHeight) + 64;
-                          if (e.x + n < i || e.x - n > o || e.y + n < a || e.y - n > s) return !1;
-                        }
-                        return !0;
+                        return e.willRender(t);
                       });
                     },
                     resetAll: function () {
@@ -65496,30 +65484,9 @@ function Gt() {
   } catch {}
   return Wt(e.some((e) => e.id === t) ? t : e[0].id);
 }
-// Perf : n'envoie un objet au rendu que si son rectangle (coordonnées monde) touche la vue de la caméra.
-// Phaser dessine sinon chaque Graphics en entier à chaque image, même hors écran.
-function cullRect(e, t, n, r, i) {
-  let a = e.willRender;
-  return (
-    (e.willRender = function (e) {
-      if (!a.call(this, e)) return !1;
-      let o = e.worldView;
-      return t < o.right && t + r > o.x && n < o.bottom && n + i > o.y;
-    }),
-    e
-  );
-}
-// Définition du rendu (pixels de canevas par pixel CSS). Plafond = écran de l'appareil (max 2,5) ;
-// abaissée automatiquement si le jeu rame (voir autoRes) et mémorisée pour les parties suivantes.
-var KtMax = Math.min(2.5, Math.max(1, window.devicePixelRatio || 1)),
-  KtKey = `eoam_res`;
-var Kt = (() => {
-    let e = NaN;
-    try {
-      e = parseFloat(localStorage.getItem(KtKey));
-    } catch {}
-    return e >= 1 && e <= KtMax ? e : KtMax;
-  })(),
+// Définition du rendu (pixels de canevas par pixel CSS) : voir perf.js (initialResolution / autoResolution).
+var KtKey = `eoam_res`;
+var Kt = initialResolution(KtKey),
   B = new u.default.Events.EventEmitter(),
   V = new (class {
     constructor() {
@@ -68117,7 +68084,7 @@ function Pn(e, t, n) {
   return { key: r };
 }
 function Fn(e) {
-  for (let t of Object.keys(Tn)) An(e, t);
+  for (let t of Object.keys(Tn)) e.textures.exists(`club_` + t) ? En.add(`club_` + t) : An(e, t);
 }
 var In = [`petit`, `belier`, `mystique`, `grand_belier`, `cimes`, `temple`, `ombres`, `abysses`, `abime`, `celeste`],
   Ln = [`head`, `cape`, `belt`, `boots`],
@@ -79009,6 +78976,8 @@ var vo = [
           (n.destroy(), r.destroy());
         }));
       let i = `assets/`;
+      // Textures pré-rendues en PNG (voir baked.js) : les générateurs ci-dessous les trouveront déjà là.
+      preloadBaked(this, `${i}baked/`);
       for (let e of vo) this.load.spritesheet(e, `${i}heroes/${e}.png`, { frameWidth: 64, frameHeight: 64 });
       for (let e of Object.values(H)) {
         let t = e.base ?? e.sheet;
@@ -94309,43 +94278,6 @@ Pêchez des poissons pour découvrir leurs recettes !`,
     return n;
   };
 }
-// Résolution adaptative : mesure les FPS en jeu (scène World) par fenêtres de 3 s ; sous 45 FPS,
-// baisse la définition du rendu d'un cran (2,5 → 2 → 1,5 → 1) et la garde pour la prochaine fois.
-// Si le jeu tourne à 58+ FPS pendant ~15 s à une définition réduite, la suivante repartira un cran plus haut.
-function autoRes(e, t) {
-  let n = 0,
-    r = 0,
-    i = 0,
-    a = 0,
-    o = 1,
-    s = (e) => {
-      try {
-        localStorage.setItem(KtKey, String(e));
-      } catch {}
-    };
-  e.events.on(`postrender`, () => {
-    let c = performance.now(),
-      l = c - i;
-    i = c;
-    let u = e.scene.getScene(`World`);
-    if (document.hidden || !u || !u.sys.isActive() || l > 250) {
-      ((n = r = 0), (o = Math.max(o, 1)));
-      return;
-    }
-    if (((n += l), r++, n < 3e3)) return;
-    let d = (r * 1e3) / n;
-    if (((n = r = 0), o > 0)) {
-      o--;
-      return;
-    }
-    if (d < 45) {
-      if (((a = 0), Kt <= 1)) return;
-      let n = e.scene.getScene(`UI`);
-      if (n && n.modal) return;
-      ((Kt = Math.max(1, Math.ceil(Kt * 2 - 1) / 2)), s(Kt), (o = 1), t());
-    } else if (d >= 58 && Kt < KtMax && ++a === 5) s(Math.min(KtMax, Kt + 0.5));
-  });
-}
 function pl() {
   return { w: Math.round(window.innerWidth * Kt), h: Math.round(window.innerHeight * Kt) };
 }
@@ -94356,6 +94288,7 @@ async function ml() {
       new Promise((e) => setTimeout(e, 1500)),
     ]);
   } catch {}
+  installPerf(u.default);
   let e = pl(),
     t = new u.default.Game({
       type: u.default.AUTO,
@@ -94365,6 +94298,8 @@ async function ml() {
       backgroundColor: `#0e1228`,
       pixelArt: !0,
       roundPixels: !1,
+      // Demande le GPU rapide sur les appareils qui en ont deux (portables, certains téléphones).
+      powerPreference: `high-performance`,
       scale: { mode: u.default.Scale.NONE },
       input: { activePointers: 5 },
       physics: { default: `arcade`, arcade: { debug: !1 } },
@@ -94377,7 +94312,16 @@ async function ml() {
     };
   (window.addEventListener(`resize`, n),
     window.addEventListener(`orientationchange`, () => setTimeout(n, 200)),
-    autoRes(t, n),
+    autoResolution(t, {
+      key: KtKey,
+      getRes: () => Kt,
+      setRes: (e) => {
+        Kt = e;
+      },
+      apply: n,
+      isActive: () => !!t.scene.getScene(`World`)?.sys.isActive(),
+      canChange: () => !t.scene.getScene(`UI`)?.modal,
+    }),
     gi.init(),
     $o(t));
   let r = () => K.unlock();
