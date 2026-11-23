@@ -47,7 +47,7 @@ async function runToEnd(p, extra) {   /* laisse passer le temps simulé, relève
     await ctx.addInitScript(preset({}));
     await ctx.addInitScript(() => {
       window.__utt = []; const V = [{ name: 'Amélie (Améliorée)', lang: 'fr-FR', voiceURI: 'a', localService: true }, { name: 'Audrey', lang: 'fr-FR', voiceURI: 'b', localService: true }, { name: 'Aurélie', lang: 'fr-FR', voiceURI: 'c', localService: true }, { name: 'Thomas', lang: 'fr-FR', voiceURI: 'd', localService: true }];
-      Object.defineProperty(window, 'speechSynthesis', { value: { getVoices: () => V, speak(u) { window.__utt.push({ t: u.text, v: u.voice && u.voice.name, p: u.pitch, r: u.rate, vol: u.volume }); setTimeout(() => u.onend && u.onend(), 30); }, cancel() { }, addEventListener() { } }, configurable: true });
+      Object.defineProperty(window, 'speechSynthesis', { value: { getVoices: () => V, speak(u) { window.__utt.push({ t: u.text, v: u.voice && u.voice.name, p: u.pitch, r: u.rate, vol: u.volume }); setTimeout(() => u.onstart && u.onstart(), 5); setTimeout(() => u.onend && u.onend(), 30); }, cancel() { }, resume() { }, addEventListener() { } }, configurable: true });
       window.SpeechSynthesisUtterance = function (t) { this.text = t; };
     });
     const p = await ctx.newPage(); await p.goto(BASE); await sleep(p, 800);
