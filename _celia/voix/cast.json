@@ -16,6 +16,11 @@
  },
  {
   "who": "aliya",
+  "text": "Cééélia ! Viens nous faire un gros câlin !",
+  "key": "174f9d54"
+ },
+ {
+  "who": "aliya",
   "text": "Mmmh… un gros câlin !",
   "key": "9d9ffdf7"
  },
@@ -46,6 +51,11 @@
  },
  {
   "who": "tania",
+  "text": "Oh, ma petite Celia ! Viens, je veux un câlin !",
+  "key": "6cdefda1"
+ },
+ {
+  "who": "tania",
   "text": "Câlin ! Je t’adore, Celia !",
   "key": "37085e89"
  },
@@ -61,8 +71,8 @@
  },
  {
   "who": "aliya",
-  "text": "CELIAAAAA !",
-  "key": "d29e9044"
+  "text": "Celiaaaaa !",
+  "key": "5ff5a904"
  },
  {
   "who": "tania",
@@ -73,6 +83,16 @@
   "who": "aliya",
   "text": "Hop là, Celia !",
   "key": "f217bc3b"
+ },
+ {
+  "who": "aliya",
+  "text": "Oh, la voilà !",
+  "key": "0065dfd2"
+ },
+ {
+  "who": "tania",
+  "text": "Viens, Celia ! Câlin collectif !",
+  "key": "f6e8c360"
  },
  {
   "who": "aliya",
@@ -93,6 +113,111 @@
   "who": "tania",
   "text": "Mouaaah !",
   "key": "40add611"
+ },
+ {
+  "who": "aliya",
+  "text": "Bravo Celia ! Ta chambre est trop jolie ! Viens nous faire un gros câlin !",
+  "key": "8252c73a"
+ },
+ {
+  "who": "aliya",
+  "text": "Oh, ta chambre est toute rangée ! Bravo ma Celia ! Un gros câlin ?",
+  "key": "936cdb15"
+ },
+ {
+  "who": "tania",
+  "text": "Waouh, ta chambre est trop jolie ! Bravo Celia ! Viens, un câlin !",
+  "key": "dfaae650"
+ },
+ {
+  "who": "tania",
+  "text": "Quel beau rangement, ma petite Celia ! Je suis fière de toi ! Viens !",
+  "key": "6de5c5e2"
+ },
+ {
+  "who": "aliya",
+  "text": "Bravo Celia ! Ta chambre est trop jolie !",
+  "key": "d972f2c4"
+ },
+ {
+  "who": "tania",
+  "text": "Viens nous faire un gros câlin !",
+  "key": "84cb2c24"
+ },
+ {
+  "who": "aliya",
+  "text": "Hmm, ça sent trop bon ! Bravo pour le gâteau, ma Celia ! Un câlin ?",
+  "key": "4c5cf81e"
+ },
+ {
+  "who": "tania",
+  "text": "Oh, quel joli gâteau ! Bravo Celia ! Viens, un câlin !",
+  "key": "ffa94cab"
+ },
+ {
+  "who": "aliya",
+  "text": "Miam, quel beau gâteau !",
+  "key": "76b53be2"
+ },
+ {
+  "who": "tania",
+  "text": "Bravo Celia ! Câlin collectif !",
+  "key": "fd2ed605"
+ },
+ {
+  "who": "aliya",
+  "text": "Oh, quel joli dessin, ma Celia ! Viens faire un gros câlin !",
+  "key": "db0866f1"
+ },
+ {
+  "who": "tania",
+  "text": "Wouaaah, t’as vu comme c’est joli ? Viens, un gros câlin !",
+  "key": "61034580"
+ },
+ {
+  "who": "aliya",
+  "text": "Quel beau dessin, Celia !",
+  "key": "8199c800"
+ },
+ {
+  "who": "aliya",
+  "text": "Et si tu venais nous faire un vrai câlin maintenant ?",
+  "key": "760e8f74"
+ },
+ {
+  "who": "aliya",
+  "text": "Tu veux venir nous faire un vrai câlin ?",
+  "key": "f9855f5a"
+ },
+ {
+  "who": "aliya",
+  "text": "Coucou ma Celia ! Tu viens nous faire un câlin ?",
+  "key": "6829be88"
+ },
+ {
+  "who": "tania",
+  "text": "Et si tu venais nous faire un vrai câlin maintenant ?",
+  "key": "f2fb3c6f"
+ },
+ {
+  "who": "tania",
+  "text": "Viens vite nous retrouver pour un vrai câlin, si tu veux !",
+  "key": "8e908bef"
+ },
+ {
+  "who": "tania",
+  "text": "Coucou Celia ! Un petit câlin ?",
+  "key": "e0997725"
+ },
+ {
+  "who": "aliya",
+  "text": "Coucou Celia !",
+  "key": "1db0987c"
+ },
+ {
+  "who": "tania",
+  "text": "Viens, un câlin collectif !",
+  "key": "b35b9948"
  },
  {
   "who": "narr",

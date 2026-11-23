@@ -26,3 +26,8 @@
 .withcast .polaroid.small.svg svg { height: min(34vw, 17dvh); }
 .withcast .gift { width: 54px; height: 54px; } .withcast .gift .giftbadge { width: 26px; height: 26px; padding: 4px; }
 @media (orientation: landscape) { .castrow { height: clamp(80px, 24dvh, 120px); } }
+
+/* visite à l'accueil : au-dessus des tuiles, jamais par-dessus elles ; seuls les personnages se touchent */
+.homerow { position: absolute; left: 0; right: 0; z-index: 6; pointer-events: none; padding: 0 8px; }
+.homerow .sis { pointer-events: auto; }
+.homerow.leaving { opacity: 0; transform: translateY(14px); transition: opacity .8s, transform .8s; }

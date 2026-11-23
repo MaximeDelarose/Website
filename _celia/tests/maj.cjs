@@ -19,6 +19,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); 
   await p.evaluate(async () => { C.profile.skin = 3; C.profile.eyes = 4; C.saveProfile(); C.session.setEnd('dodo', false); await C.db.put({ kind: 'draw', img: 'data:image/jpeg;base64,' + 'A'.repeat(4000) }); C.rewards.s.stars = 7; C.rewards.save(); });
   /* 1. réseau d'abord : un fichier modifié est servi tout de suite, pas l'ancienne copie du cache */
   fs.writeFileSync(HOME, fs.readFileSync(HOME, 'utf8') + '\nwindow.__MARK = "nouvelle-version";\n');
+  { const t = new Date(Date.now() + 5000); fs.utimesSync(HOME, t, t); }   /* le serveur de test compare les dates à la seconde : on évite qu'une modification dans la même seconde passe pour inchangée (GitHub Pages utilise des ETag) */
   await p.reload(); await p.waitForTimeout(2000);
   if (!(await p.evaluate(() => window.__MARK === 'nouvelle-version'))) { await p.reload(); await p.waitForTimeout(2000); }
   ok(await p.evaluate(() => window.__MARK === 'nouvelle-version'), 'réseau d’abord : le fichier modifié est servi immédiatement (pas l’ancien cache)');

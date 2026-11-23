@@ -121,8 +121,8 @@
       }
       var sb = C.$('.startbtn', el);
       if (sb) sb.addEventListener('click', begin);
-      else C.music.start();
+      else { C.music.start(); setTimeout(function () { if (C.current() === 'home' && C.cast && C.cast.homeVisit) C.cast.homeVisit(el); }, 1400); }   /* parfois, les grandes sœurs l'attendent au château */
     },
-    leave: function () { C.music.stop(); }
+    leave: function (el) { if (el && el._visitStop) el._visitStop(); C.music.stop(); }
   });
 })();
