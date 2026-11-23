@@ -56,6 +56,13 @@ const sleep = (p, ms) => p.waitForTimeout(ms);
     ok(await p.evaluate(() => !!document.querySelector('.castrow .kissheart')), T + ' : animation du bisou : un cœur s’envole');
     ok(g.ov === 0 && g.cardsIn, T + ' : bisou : aucune superposition');
     await closeEnd();
+    await finishWith('mama'); g = await geo();
+    ok(await p.evaluate(() => (C.spokenLog || []).some((x) => x.who === 'narr' && C.LINES.mama.indexOf(x.text) >= 0 && /maman/.test(x.text))), T + ' : Lumi rappelle qu’il faut écouter maman, à voix haute');
+    ok(g.ov === 0 && g.cardsIn, T + ' : rappel maman : aucune superposition');
+    await closeEnd();
+    await finishWith('kind'); g = await geo();
+    ok(await p.evaluate(() => (C.spokenLog || []).some((x) => x.who === 'narr' && C.LINES.kind.indexOf(x.text) >= 0 && /Aliya|Tania/.test(x.text) && /maman/.test(x.text))), T + ' : Lumi demande d’être gentille avec Aliya et Tania et d’écouter maman');
+    await closeEnd();
     await finishWith('meal'); g = await geo();
     ok(await p.evaluate(() => (C.spokenLog || []).some((x) => x.who === 'narr' && C.LINES.meal.indexOf(x.text) >= 0)), T + ' : phrase sur les repas, positive (jamais « finis ton assiette »)');
     ok(await p.evaluate(() => C.LINES.meal.every((t) => !/finir|finis|tout manger|il faut|obligé|gros|grosse|vilain/i.test(t))), T + ' : aucune phrase ne force à finir ni ne culpabilise');
@@ -99,7 +106,7 @@ const sleep = (p, ms) => p.waitForTimeout(ms);
     ok(rate > 0.25 && rate < 0.6, 'apparitions occasionnelles : ' + Math.round(rate * 100) + ' % des fins d’activité (ni jamais, ni à chaque fois)');
     ok(maxGap <= 3, 'jamais plus de 3 fins d’activité d’affilée sans apparition (max ' + maxGap + ')');
     ok(rep === 0, 'jamais deux fois la même scène d’affilée');
-    const kinds = new Set(shown); ok(['hug-aliya', 'hug-tania', 'hug-both', 'kiss', 'meal'].every((k) => kinds.has(k)), 'variété : ' + [...kinds].join(', '));
+    const kinds = new Set(shown); ok(['hug-aliya', 'hug-tania', 'hug-both', 'kiss', 'meal', 'mama', 'kind'].every((k) => kinds.has(k)), 'variété : ' + [...kinds].join(', '));
     ok(await p.evaluate(() => { const L = C.LINES; return L.aliya.praise.length >= 3 && L.tania.praise.length >= 3 && L.both.praise.length >= 2 && L.kiss.length >= 2 && L.meal.length >= 3; }), 'plusieurs formulations pour chaque situation');
     /* visite à l'accueil : jamais la première fois, jamais deux fois de suite, occasionnelle */
     const hv = await p.evaluate(() => {
