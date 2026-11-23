@@ -50,6 +50,7 @@
     { id: "dice", title: "Écureuil Dice", ico: "🎲" },
     { id: "king-dice", title: "King Dice", ico: "👑" },
     { id: "ages", title: "Age of Defense", ico: "🏰" },
+    { id: "rouages", title: "Rouages", ico: "⚙️" },
     { id: "arcane", title: "Arcane Tactics", ico: "🪄" },
     { id: "ronceclair", title: "Ronceclair", ico: "🐿️" },
     { id: "echecs", title: "Échecs", ico: "♞" },

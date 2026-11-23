@@ -1,0 +1,45 @@
+/* Rouages : HUD par-dessus le canvas */
+.rg-stage { background: #141619; }
+.rg-canvas { touch-action: none; }
+.rg-hud { position: absolute; inset: 0; pointer-events: none; font-family: "Nunito", system-ui, sans-serif; color: #e9ecef; font-size: 14px; }
+.rg-hud button { pointer-events: auto; }
+.rg-top { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: space-between; align-items: flex-start; }
+.rg-res, .rg-wave { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; background: rgba(15,17,20,.82); padding: 5px 8px; border: 2px solid #2c3137; }
+.rg-r, .rg-c { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; min-width: 3.2em; }
+.rg-c { min-width: 0; }
+.rg-c.no { color: #ff6b4a; }
+.rg-r i, .rg-c i { width: 10px; height: 10px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.5); }
+.rg-wave-txt { font-weight: 800; margin-right: 4px; }
+.rg-btn { font: inherit; font-weight: 800; font-size: 13px; color: #e9ecef; background: #2f3a44; border: 0; box-shadow: inset 0 -3px 0 #1c232a; padding: 4px 10px 6px; cursor: pointer; }
+.rg-btn:hover { background: #3c4a57; }
+.rg-sq { min-width: 34px; padding-inline: 6px; }
+.rg-core { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); width: min(260px, 50%); height: 8px; background: #11131a; border: 2px solid #2c3137; }
+.rg-core span { display: block; height: 100%; width: 100%; background: linear-gradient(#8ee6d0, #3fb39c); transition: width .2s; }
+.rg-info { position: absolute; left: 8px; right: 8px; bottom: 66px; text-align: center; }
+.rg-info { background: rgba(15,17,20,.78); padding: 4px 10px; justify-self: center; margin-inline: auto; width: fit-content; max-width: calc(100% - 16px); border: 2px solid #2c3137; }
+.rg-msg { color: #f2c94c; }
+.rg-warn { color: #ff6b4a; font-weight: 800; }
+.rg-bar { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; gap: 4px; background: rgba(15,17,20,.85); padding: 5px; border: 2px solid #2c3137; max-width: calc(100% - 16px); overflow-x: auto; }
+.rg-tool { position: relative; width: 46px; height: 46px; display: grid; place-items: center; background: #252b31; border: 0; box-shadow: inset 0 -3px 0 #161a1e; cursor: pointer; flex: none; }
+.rg-tool:hover { background: #313942; }
+.rg-tool.on { background: #3b4f3a; box-shadow: inset 0 0 0 2px #7fd36a; }
+.rg-tool.poor .rg-ico { opacity: .4; }
+.rg-ico { width: 32px; height: 32px; image-rendering: pixelated; }
+.rg-emo { font-size: 22px; line-height: 32px; text-align: center; }
+.rg-key { position: absolute; right: 2px; top: 0; font-size: 10px; font-weight: 900; color: #9aa4ae; }
+.rg-overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10,12,14,.72); padding: 16px; z-index: 5; }
+.rg-overlay[hidden] { display: none; }
+.rg-panel { max-width: 460px; width: 100%; background: #1d2228; color: #e9ecef; border: 3px solid #3a434c; box-shadow: 0 6px 0 #0c0e10; padding: 18px 20px; max-height: 100%; overflow: auto; }
+.rg-panel h2 { margin: 0 0 8px; color: #8ee6d0; }
+.rg-panel ol { padding-left: 20px; margin: 8px 0; }
+.rg-panel li { margin: 4px 0; }
+.rg-panel .rg-small { font-size: 12px; color: #9aa4ae; }
+.rg-panel .btn { margin-top: 8px; }
+@media (max-width: 640px) {
+  .rg-hud { font-size: 12px; }
+  .rg-tool { width: 38px; height: 38px; }
+  .rg-ico { width: 26px; height: 26px; }
+  .rg-key { display: none; }
+  .rg-info { bottom: 56px; }
+  .rg-core { top: auto; bottom: 104px; }
+}
