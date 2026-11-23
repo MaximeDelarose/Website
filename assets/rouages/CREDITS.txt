@@ -1,0 +1,14 @@
+Rouages — crédits des sprites
+
+belts.png, splitter.png, merger.png
+  « factory assets-conveyer belt » par Blood_seller
+  https://blood-seller.itch.io/factory-assets-conveyer-belt
+  Licence de l'auteur : utilisation libre, modification autorisée, revente interdite, crédit apprécié.
+  (Planches réassemblées à partir des fichiers .aseprite d'origine.)
+
+enemies/1, enemies/2, enemies/3
+  « Free Enemy Pixel Pack for Top-Down Defense » par CraftPix.net
+  https://free-game-assets.itch.io/free-enemy-pixel-pack-for-top-down-defense
+  Licence : https://craftpix.net/file-licenses/ (usage dans des projets autorisé, redistribution des fichiers seuls interdite).
+
+Le reste (terrain, minerais, machines, tourelles, noyau, icônes) est dessiné dans js/rouages-art.js.
