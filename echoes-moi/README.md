@@ -18,7 +18,7 @@ Les deux sont affichées sur la page `echoes.html`, avec le choix « Version ori
 | `assets/baked.js` + `assets/baked/` | Textures que le jeu générait au démarrage, pré-rendues en PNG. |
 | `assets/game.min.js` | **Généré** : le script réellement chargé par `index.html`. |
 | `assets/bundler-yPNtbWdW.js` | PeerJS (coop en ligne), chargé seulement à l'ouverture de la coop. |
-| `assets/heroes`, `monsters`, `fx`, `layers` | Images. |
+| `assets/heroes`, `monsters`, `fx`, `layers` | Images (formats, grilles et animations : voir `SPRITES.md`). |
 
 Après une modification :
 
