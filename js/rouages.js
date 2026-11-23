@@ -215,7 +215,7 @@
         floor: new Uint8Array(W * H), b: new Array(W * H).fill(null), list: [], inPort: new Map(),
         enemies: [], corpses: [], bullets: [], parts: [],
         stock: { cu_o: 0, fe_o: 0, coal: 0, cu: 120, fe: 120, steel: 0, ammo: 60, shell: 0 },
-        wave: 0, timer: 120, spawnQ: [], spawnT: 0, time: 0, kills: 0, over: false,
+        wave: 0, timer: 180, spawnQ: [], spawnT: 0, time: 0, kills: 0, over: false,
         dist: new Float32Array(W * H), dirty: true, topo: true, spawns: [], core: null, uid: 1
       };
       genMap((Math.random() * 1e9) | 0);
@@ -456,7 +456,8 @@
     S.time += dt;
     if (S.topo) updateTopo();
     if (S.dirty) computeField();
-    S.timer -= dt;
+    // le compte à rebours ne tourne qu'une fois la vague précédente entièrement nettoyée
+    if (!S.spawnQ.length && !S.enemies.length) S.timer -= dt;
     if (S.timer <= 0) startWave();
     if (S.spawnQ.length) { S.spawnT -= dt; if (S.spawnT <= 0) { spawn(S.spawnQ.shift()); S.spawnT = 0.45; } }
 
@@ -661,7 +662,7 @@
     for (i = q.length - 1; i > 0; i--) { var j = (Math.random() * (i + 1)) | 0, t = q[i]; q[i] = q[j]; q[j] = t; }
     if (w % 10 === 0) q.push("boss");
     S.spawnQ = S.spawnQ.concat(q);
-    S.timer = 50;
+    S.timer = 90;
     flashMsg("Vague " + w + (w % 10 === 0 ? " · un Champion approche !" : ""));
   }
   function spawn(type) {
@@ -888,7 +889,9 @@
   function flashMsg(m) { msgText = m; msgT = 2.5; }
   function refreshHud(force) {
     ITEM_IDS.forEach(function (k) { var v = String(Math.floor(S.stock[k] || 0)); if (stockCells[k].textContent !== v) stockCells[k].textContent = v; });
-    waveTxt.textContent = S.spawnQ.length ? "Vague " + S.wave + " en cours" : (S.wave ? "Vague " + S.wave + " · " : "") + "prochaine dans " + Math.ceil(S.timer) + " s";
+    var left = S.spawnQ.length + S.enemies.length;
+    waveBtn.disabled = !!left;
+    waveTxt.textContent = left ? "Vague " + S.wave + " · " + left + " ennemi" + (left > 1 ? "s" : "") + " restant" + (left > 1 ? "s" : "") : (S.wave ? "Vague " + S.wave + " tenue · " : "") + "prochaine dans " + Math.ceil(S.timer) + " s";
     coreBar.firstChild.style.width = (100 * Math.max(0, S.core.hp) / S.core.max) + "%";
     coreBar.title = "Noyau : " + Math.ceil(S.core.hp) + " / " + S.core.max;
     var txt, d = DEFS[ui.tool];
@@ -989,7 +992,7 @@
   planOk.addEventListener("click", validatePlan);
   planNo.addEventListener("click", cancelPlan);
   planRot.addEventListener("click", function () { ui.dir = (ui.dir + 1) % 4; });
-  waveBtn.addEventListener("click", function () { if (S && !S.over && !S.spawnQ.length) S.timer = 0; });
+  waveBtn.addEventListener("click", function () { if (S && !S.over && !S.spawnQ.length && !S.enemies.length) S.timer = 0; });
   speedBtn.addEventListener("click", function () { ui.speed = ui.speed === 1 ? 2 : ui.speed === 2 ? 3 : 1; speedBtn.textContent = "×" + ui.speed; });
   pauseBtn.addEventListener("click", togglePause);
   function togglePause() { ui.paused = !ui.paused; pauseBtn.textContent = ui.paused ? "▶" : "❚❚"; if (ui.paused) { flashMsg("Pause"); msgT = 1e9; } else msgT = 0; }
