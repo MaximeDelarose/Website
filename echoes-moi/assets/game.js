@@ -1,3 +1,5 @@
+import { installPerf, cullRect, initialResolution, autoResolution } from './perf.js';
+import { preloadBaked } from './baked.js';
 var e = Object.create,
   t = Object.defineProperty,
   n = Object.getOwnPropertyDescriptor,
@@ -65482,7 +65484,9 @@ function Gt() {
   } catch {}
   return Wt(e.some((e) => e.id === t) ? t : e[0].id);
 }
-var Kt = Math.min(2.5, Math.max(1, window.devicePixelRatio || 1)),
+// Définition du rendu (pixels de canevas par pixel CSS) : voir perf.js (initialResolution / autoResolution).
+var KtKey = `eoam_res`;
+var Kt = initialResolution(KtKey),
   B = new u.default.Events.EventEmitter(),
   V = new (class {
     constructor() {
@@ -68080,7 +68084,7 @@ function Pn(e, t, n) {
   return { key: r };
 }
 function Fn(e) {
-  for (let t of Object.keys(Tn)) An(e, t);
+  for (let t of Object.keys(Tn)) e.textures.exists(`club_` + t) ? En.add(`club_` + t) : An(e, t);
 }
 var In = [`petit`, `belier`, `mystique`, `grand_belier`, `cimes`, `temple`, `ombres`, `abysses`, `abime`, `celeste`],
   Ln = [`head`, `cape`, `belt`, `boots`],
@@ -78972,6 +78976,8 @@ var vo = [
           (n.destroy(), r.destroy());
         }));
       let i = `assets/`;
+      // Textures pré-rendues en PNG (voir baked.js) : les générateurs ci-dessous les trouveront déjà là.
+      preloadBaked(this, `${i}baked/`);
       for (let e of vo) this.load.spritesheet(e, `${i}heroes/${e}.png`, { frameWidth: 64, frameHeight: 64 });
       for (let e of Object.values(H)) {
         let t = e.base ?? e.sheet;
@@ -85859,16 +85865,27 @@ var Sc = class {
         : null;
     }
     draw() {
-      let e = this.w,
-        t = e.add.graphics().setDepth(0.6);
-      t.fillStyle(460042, 1)
+      let e = this.w;
+      e.add
+        .graphics()
+        .setDepth(0.6)
+        .fillStyle(460042, 1)
         .fillRect(0, 2272, 3072, 2240)
         .fillRect(0, 5760, 3072, 576)
         .fillRect(0, 7360, 3072, 1088)
         .fillRect(0, 9472, 3072, 1088);
       for (let n of Gs)
         this.roomsOf(n).forEach((r, i) => {
-          let a = n.themes[i],
+          // Un Graphics par salle, rendu seulement quand la salle est à l'écran (avant : un seul Graphics
+          // de ~210 000 commandes pour tous les donjons, retracé à chaque image même depuis le village).
+          let t = cullRect(
+              e.add.graphics().setDepth(0.6),
+              r.x0 * 32 - 160,
+              r.y0 * 32 - 160,
+              (r.x1 - r.x0 + 1) * 32 + 320,
+              (r.y1 - r.y0 + 1) * 32 + 320,
+            ),
+            a = n.themes[i],
             o = n.style === `givre`,
             s = n.style;
           (t.fillStyle(a.wall, 1).fillRect(r.x0 * 32, r.y0 * 32, (r.x1 - r.x0 + 1) * 32, (r.y1 - r.y0 + 1) * 32),
@@ -94271,6 +94288,7 @@ async function ml() {
       new Promise((e) => setTimeout(e, 1500)),
     ]);
   } catch {}
+  installPerf(u.default);
   let e = pl(),
     t = new u.default.Game({
       type: u.default.AUTO,
@@ -94280,6 +94298,8 @@ async function ml() {
       backgroundColor: `#0e1228`,
       pixelArt: !0,
       roundPixels: !1,
+      // Demande le GPU rapide sur les appareils qui en ont deux (portables, certains téléphones).
+      powerPreference: `high-performance`,
       scale: { mode: u.default.Scale.NONE },
       input: { activePointers: 5 },
       physics: { default: `arcade`, arcade: { debug: !1 } },
@@ -94292,6 +94312,16 @@ async function ml() {
     };
   (window.addEventListener(`resize`, n),
     window.addEventListener(`orientationchange`, () => setTimeout(n, 200)),
+    autoResolution(t, {
+      key: KtKey,
+      getRes: () => Kt,
+      setRes: (e) => {
+        Kt = e;
+      },
+      apply: n,
+      isActive: () => !!t.scene.getScene(`World`)?.sys.isActive(),
+      canChange: () => !t.scene.getScene(`UI`)?.modal,
+    }),
     gi.init(),
     $o(t));
   let r = () => K.unlock();
