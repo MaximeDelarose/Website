@@ -27,3 +27,12 @@
 .tarrow { font-size: 30px; color: #fff; text-shadow: 0 2px 4px rgba(60,30,90,.5); }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @media (orientation: landscape) { .tcard { width: min(26vw, 150px); } }
+
+/* chambre rangée : lumière chaude, scintillements, petite danse de satisfaction */
+.troom.warm::before { content: ""; position: absolute; inset: 0; z-index: 8; pointer-events: none; background: radial-gradient(circle at 50% 38%, rgba(255,214,140,.55), rgba(255,170,120,.18) 60%, rgba(255,150,120,0) 80%); mix-blend-mode: soft-light; animation: twarm 2.4s ease-out both; }
+@keyframes twarm { from { opacity: 0; } to { opacity: 1; } }
+.troom.happy { animation: thappy 1.1s ease-in-out 1; } @keyframes thappy { 25% { transform: scale(1.025) rotate(-.6deg); } 55% { transform: scale(.99) rotate(.5deg); } 80% { transform: scale(1.015); } }
+.tspark { position: absolute; z-index: 9; width: 6%; margin: -3%; pointer-events: none; opacity: 0; animation: tspark 2.2s var(--d, 0s) ease-in-out infinite; } .tspark svg { width: 100%; display: block; filter: drop-shadow(0 0 4px #fff); }
+@keyframes tspark { 0%, 100% { opacity: 0; transform: scale(.2) rotate(0); } 45% { opacity: 1; transform: scale(var(--s, 1)) rotate(40deg); } 70% { opacity: .8; } }
+.tlumi.cheer svg { animation: tcheer .7s ease-in-out infinite; } @keyframes tcheer { 50% { transform: translateY(-14px) scale(1.12) rotate(-6deg); } }
+.tcard .troom.mini .tspark { animation-duration: 2.2s; }

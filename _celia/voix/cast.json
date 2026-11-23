@@ -311,7 +311,32 @@
  },
  {
   "who": "narr",
-  "text": "Wouaaah ! Regarde comme ta chambre est jolie maintenant ! Bravo Celia !",
-  "key": "860576cc"
+  "text": "Wouaaah, bravo Celia ! Regarde comme ta chambre est jolie maintenant ! Tout est bien rangé, on s’y sent trop bien !",
+  "key": "ad9855e0"
+ },
+ {
+  "who": "narr",
+  "text": "Bravo Celia ! Quelle jolie chambre ! Tout est bien rangé, et c’est tellement agréable pour jouer !",
+  "key": "87e2d4c9"
+ },
+ {
+  "who": "narr",
+  "text": "Oh là là, regarde ! Ta chambre brille de partout ! Bravo Celia, on s’y sent vraiment bien !",
+  "key": "acd860d0"
+ },
+ {
+  "who": "narr",
+  "text": "Youpi, tout est bien rangé ! Bravo Celia ! Maintenant, tu as de la place pour jouer tranquillement !",
+  "key": "c8357e88"
+ },
+ {
+  "who": "narr",
+  "text": "Wouaaah, quel beau travail, Celia ! Dans une chambre bien rangée, on se sent tout bien et on joue plus facilement !",
+  "key": "42305174"
+ },
+ {
+  "who": "narr",
+  "text": "Et si on allait ranger quelques jouets dans ta vraie chambre aussi ?",
+  "key": "de176872"
  }
 ]

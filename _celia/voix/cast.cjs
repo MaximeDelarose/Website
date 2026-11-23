@@ -13,7 +13,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8123/celia/';
     ['praise', 'hug'].forEach((k) => L.both[k].forEach((pair) => { add('aliya', pair[0]); add('tania', pair[1]); }));
     ['kiss', 'meal', 'tidy', 'night'].forEach((k) => L[k].forEach((t) => add('narr', t)));
     Ci.lumi.forEach((s) => add(s.who, s.say)); Ci.witch.forEach((s) => add(s.who, s.say)); add(Ci.night.who, Ci.night.say);
-    Tm.MISSIONS.forEach((m) => add('narr', m.intro)); Object.values(Tm.DONE).forEach((a) => a.forEach((t) => add('narr', t))); Object.values(Tm.NEXT).forEach((t) => add('narr', t)); Tm.HINT.forEach((t) => add('narr', t)); add('narr', Tm.FINAL);
+    Tm.MISSIONS.forEach((m) => add('narr', m.intro)); Object.values(Tm.DONE).forEach((a) => a.forEach((t) => add('narr', t))); Object.values(Tm.NEXT).forEach((t) => add('narr', t)); Tm.HINT.forEach((t) => add('narr', t)); Tm.FINALS.forEach((t) => add('narr', t)); add('narr', Tm.EXTRA);
     const seen = new Set(); return out.filter((x) => { const k = x.who + '|' + x.text; if (seen.has(k)) return false; seen.add(k); return true; })
       .map((x) => ({ who: x.who, text: x.text, key: C.voiceKey(x.who === 'narr' ? x.text : x.who + '|' + x.text) }));
   });

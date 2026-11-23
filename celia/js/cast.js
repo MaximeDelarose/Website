@@ -125,7 +125,7 @@
     var p = st.n >= 4 ? 1 : st.n >= 2 ? 0.55 : 0;
     if (Math.random() >= p) { saveSt(); return null; }
     var pool = ['hug-aliya', 'hug-tania', 'hug-both', 'kiss'];
-    if (kind === 'cook') pool.push('meal', 'meal'); if (kind === 'tidy') pool = ['hug-aliya', 'hug-tania', 'hug-both', 'tidy'];
+    if (kind === 'cook') pool.push('meal', 'meal'); if (kind === 'tidy') pool = ['hug-aliya', 'hug-tania', 'hug-both'];   /* la phrase « ranger tes vrais jouets » est déjà dite dans le jeu de rangement */
     var recent = (st.hist || []).slice(-2); pool = pool.filter(function (x) { return recent.indexOf(x) < 0; });
     var m = pool[Math.floor(Math.random() * pool.length)] || 'kiss';
     st.hist = (st.hist || []).concat(m).slice(-6); st.n = 0; saveSt(); return m;
