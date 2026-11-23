@@ -38,7 +38,7 @@
   C.speak = function (who, text, o) {
     o = o || {}; var my = ++tok, p = SPK[who] || SPK.narr;
     if (cancelCur) { try { cancelCur(); } catch (e) { } }
-    try { if (window.speechSynthesis) speechSynthesis.cancel(); if (C.stopVoiceFile) C.stopVoiceFile(); } catch (e) { }
+    try { if (window.speechSynthesis && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel(); if (C.stopVoiceFile) C.stopVoiceFile(); } catch (e) { }   /* pas d'annulation systématique : sur iPhone elle fait perdre la phrase suivante */
     C.lastSpoken = { who: who, text: text, at: Date.now() };
     (C.spokenLog = C.spokenLog || []).push({ who: who, text: text }); if (C.spokenLog.length > 60) C.spokenLog.shift();
     return new Promise(function (resolve) {
@@ -56,19 +56,23 @@
       if (o.mouth) mo = setInterval(function () { open = !open; try { o.mouth(open); } catch (e) { } }, 165);
       var ms = est(text, who);
       if (!audible) { tm = setTimeout(done, ms); return; }
-      var keyText = who === 'narr' ? text : who + '|' + text, gotFile = false;
+      var keyText = who === 'narr' ? text : who + '|' + text, gotFile = false, started = false;
       function browser() {
         try {
           if (window.speechSynthesis && window.SpeechSynthesisUtterance && V.ok) {
+            try { speechSynthesis.resume(); } catch (e2) { }
             var vc = voiceFor(who) || V.voice, parts = (text.match(/[^.!?…]+[.!?…]*/g) || [text]).map(function (x) { return x.trim(); }).filter(Boolean);
             C._utt2 = [];
             parts.forEach(function (part, i) {
               var u = new SpeechSynthesisUtterance(part);
               u.lang = vc ? vc.lang : 'fr-FR'; if (vc) u.voice = vc;
               u.rate = p.rate; u.pitch = p.pitch; u.volume = p.vol;
+              if (i === 0) u.onstart = function () { started = true; };
               if (i === parts.length - 1) { u.onend = done; u.onerror = done; }
               C._utt2.push(u); speechSynthesis.speak(u);
             });
+            /* surveillance : si le navigateur n'a pas commencé à parler au bout de 1,4 s, on relance une fois, puis on joue des petits sons pour qu'on entende quand même quelque chose */
+            setTimeout(function () { if (!started && !finished) { try { speechSynthesis.cancel(); speechSynthesis.resume(); C._utt2.forEach(function (u) { speechSynthesis.speak(u); }); } catch (e3) { } setTimeout(function () { if (!started && !finished) { try { C._babble(text); } catch (e4) { } } }, 1600); } }, 1400);
             tm = setTimeout(done, ms + 3000); return;
           }
         } catch (e) { }
@@ -80,6 +84,26 @@
     });
   };
   C.speak.cancel = function () { tok++; if (cancelCur) { try { cancelCur(); } catch (e) { } } try { if (window.speechSynthesis) speechSynthesis.cancel(); if (C.stopVoiceFile) C.stopVoiceFile(); C.music && C.music.duck(false); } catch (e) { } };
+  /* iPhone : la synthèse vocale doit être « réveillée » par un vrai geste. Sans cela, une phrase lancée toute seule (fin de session, sorcière…) reste muette. */
+  var unlocked = 0;
+  function unlockSpeech() {
+    try {
+      if (!window.speechSynthesis || !window.SpeechSynthesisUtterance || Date.now() - unlocked < 20000) return;
+      if (speechSynthesis.speaking || speechSynthesis.pending) return;
+      var u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.rate = 2; speechSynthesis.speak(u); unlocked = Date.now();
+    } catch (e) { }
+  }
+  ['pointerup', 'touchend', 'click'].forEach(function (ev) { window.addEventListener(ev, unlockSpeech, { capture: true, passive: true }); });
+  C.unlockSpeech = unlockSpeech;
+  /* quelles voix ? (pour l'espace parents : « Écouter les voix ») */
+  C.voiceInfo = function () {
+    var all = frVoices(); return Object.keys(SPK).map(function (w) { var v = voiceFor(w); return { who: w, label: SPK[w].label, voice: v ? v.name : (all.length ? all[0].v.name : 'voix par défaut'), pitch: SPK[w].pitch, rate: SPK[w].rate }; });
+  };
+  C.testVoices = async function () {
+    unlockSpeech();
+    var T = { narr: 'Coucou, je suis Lumi !', witch: 'Eh oh ! Moi, je suis la sorcière !', aliya: 'Coucou, c’est Aliya !', tania: 'Et moi, c’est Tania !' };
+    for (var w in T) await C.speak(w, T[w]);
+  };
   C.sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
 
   /* ---------- phrases (plusieurs variantes pour ne jamais se répéter) ---------- */

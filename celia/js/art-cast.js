@@ -27,7 +27,7 @@
 
   function exprs() {
     var eyeA = function (x, flip) {   /* œil fâché : amande + pupille qui regarde vers la droite */
-      return '<g transform="translate(' + x + ' 114)' + (flip ? ' scale(-1 1)' : '') + '"><path d="M-12 -3L12 -9C14 2 6 10 -2 10 -9 9 -13 3 -12 -3z" fill="#fff" ' + ST(3) + '/><circle cx="3" cy="1" r="6" fill="#4a2a2a"/><circle cx="5" cy="-1" r="2.200" fill="#fff"/></g>';
+      return '<g transform="translate(' + x + ' 114)' + (flip ? ' scale(-1 1)' : '') + '"><path d="M-12 -3L12 -9C14 2 6 10 -2 10 -9 9 -13 3 -12 -3z" fill="#fff" ' + ST(3) + '/><circle cx="3" cy="1" r="6" fill="#4a2a2a"/><circle cx="5" cy="-1" r="2.200" fill="#fff"/><path d="M-12 -4q-5-1-8-8M-12 1q-6 1-9-2" fill="none" stroke="#2a1818" stroke-width="2.600" stroke-linecap="round"/></g>';
     };
     var cheeks = '<ellipse cx="168" cy="134" rx="9" ry="6" fill="#ff6fa5" opacity=".5"/><ellipse cx="232" cy="134" rx="9" ry="6" fill="#ff6fa5" opacity=".5"/>';
     var ex = {};
@@ -37,11 +37,11 @@
       '<g data-mv="a"><path d="M186 140Q200 154 214 140Q200 136 186 140z" fill="#8a2040" ' + ST(3) + '/></g>' +
       '<g data-mv="b" style="display:none"><path d="M182 138Q200 168 218 138Q200 130 182 138z" fill="#8a2040" ' + ST(3) + '/><path d="M187 141Q200 137 213 141" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/><ellipse cx="200" cy="154" rx="8" ry="5" fill="#ff8fa0"/></g>';
     /* rire malicieux : yeux fermés, grande bouche */
-    ex.laugh = '<path d="M168 116q12-14 24 0M208 116q12-14 24 0" fill="none" stroke="' + BR + '" stroke-width="5" stroke-linecap="round"/><path d="M162 98Q176 90 192 100M238 98Q224 90 208 100" stroke="' + BR + '" stroke-width="8" stroke-linecap="round" fill="none"/>' + cheeks +
+    ex.laugh = '<path d="M168 116q12-14 24 0M208 116q12-14 24 0M168 115q-5-2-7-7M232 115q5-2 7-7" fill="none" stroke="' + BR + '" stroke-width="5" stroke-linecap="round"/><path d="M162 98Q176 90 192 100M238 98Q224 90 208 100" stroke="' + BR + '" stroke-width="8" stroke-linecap="round" fill="none"/>' + cheeks +
       '<g data-mv="a"><path d="M182 134Q200 160 218 134Z" fill="#8a2040" ' + ST(3) + '/><path d="M186 136h28" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g>' +
       '<g data-mv="b" style="display:none"><path d="M178 132Q200 172 222 132Z" fill="#8a2040" ' + ST(3) + '/><path d="M184 135h32" stroke="#fff" stroke-width="6" stroke-linecap="round"/><ellipse cx="200" cy="157" rx="11" ry="6" fill="#ff8fa0"/></g>';
     /* boudeuse : regard de côté, joues gonflées */
-    ex.grumpy = '<g transform="translate(180 116)"><path d="M-12 -2Q0 -9 12 -2 10 8 0 9 -10 8 -12 -2z" fill="#fff" ' + ST(3) + '/><circle cx="6" cy="2" r="5.500" fill="#4a2a2a"/><path d="M-13 -3Q0 -12 13 -3" fill="none" stroke="' + BR + '" stroke-width="5" stroke-linecap="round"/></g>' +
+    ex.grumpy = '<g transform="translate(180 116)"><path d="M-12 -2Q0 -9 12 -2 10 8 0 9 -10 8 -12 -2z" fill="#fff" ' + ST(3) + '/><circle cx="6" cy="2" r="5.500" fill="#4a2a2a"/><path d="M-13 -3Q0 -12 13 -3M-13 -3q-5-1-7-7" fill="none" stroke="' + BR + '" stroke-width="5" stroke-linecap="round"/></g>' +
       '<g transform="translate(220 116)"><path d="M-12 -2Q0 -9 12 -2 10 8 0 9 -10 8 -12 -2z" fill="#fff" ' + ST(3) + '/><circle cx="6" cy="2" r="5.500" fill="#4a2a2a"/><path d="M-13 -3Q0 -12 13 -3" fill="none" stroke="' + BR + '" stroke-width="5" stroke-linecap="round"/></g>' +
       '<path d="M162 96L192 104M238 96L208 104" stroke="' + BR + '" stroke-width="10" stroke-linecap="round"/><circle cx="166" cy="134" r="11" fill="#ff8fb0" opacity=".6"/><circle cx="234" cy="134" r="11" fill="#ff8fb0" opacity=".6"/>' +
       '<g data-mv="a"><path d="M190 142q5-7 10 0q5-7 10 0" fill="none" stroke="#8a2040" stroke-width="4" stroke-linecap="round"/></g>' +
@@ -86,7 +86,8 @@
     /* tête agrandie (style chibi) pour que les expressions se lisent bien */
     s += '<g class="w-head" transform="translate(200 160) scale(1.32) translate(-200 -160)">';
     /* cheveux ébouriffés (derrière le visage) */
-    s += '<g class="w-hair"><path d="M138 100C100 112 92 160 112 196c6-10 16-14 26-12-6 18 4 34 18 32-2-14 4-24 14-28z" fill="' + HAIR + '" ' + ST(3.500) + '/><path d="M262 100C300 112 308 160 288 196c-6-10-16-14-26-12 6 18-4 34-18 32 2-14-4-24-14-28z" fill="' + HAIR + '" ' + ST(3.500) + '/><circle cx="116" cy="130" r="17" fill="' + HAIR + '" ' + ST(3.500) + '/><circle cx="104" cy="164" r="15" fill="' + HAIR + '" ' + ST(3.500) + '/><circle cx="284" cy="130" r="17" fill="' + HAIR + '" ' + ST(3.500) + '/><circle cx="296" cy="164" r="15" fill="' + HAIR + '" ' + ST(3.500) + '/><path d="M112 196q-24 14-12 34 10-8 16-14zM288 196q24 14 12 34-10-8-16-14z" fill="' + HAIR + '" ' + ST(3) + '/></g>';
+    var lobe = '<path d="M164 78C122 82 96 120 98 164C100 194 90 220 98 246C106 262 124 254 128 238C132 252 150 256 158 240C154 222 160 196 162 172C164 150 166 110 164 78z" fill="' + HAIR + '" ' + ST(3.500) + '/><path d="M132 112C116 138 118 170 110 202M146 104C134 134 138 168 132 204" fill="none" stroke="#7a4a4a" stroke-width="3" stroke-linecap="round" opacity=".55"/><path d="M122 130C110 156 112 188 104 226" fill="none" stroke="#2a1818" stroke-width="3" stroke-linecap="round" opacity=".45"/><path d="M108 168C104 190 108 214 114 232" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".18"/>';
+    s += '<g class="w-hair">' + lobe + '<g transform="translate(400 0) scale(-1 1)">' + lobe + '</g></g>';
     /* visage */
     s += '<ellipse cx="200" cy="118" rx="50" ry="47" fill="' + SKIN + '" ' + ST(3.500) + '/><ellipse cx="153" cy="120" rx="7" ry="10" fill="' + SKIN + '" ' + ST(3) + '/><ellipse cx="247" cy="120" rx="7" ry="10" fill="' + SKIN + '" ' + ST(3) + '/>';
     s += '<g class="w-face">' + Object.keys(ex).map(function (k, i) { return '<g data-ex="' + k + '"' + (i ? ' style="display:none"' : '') + '>' + ex[k] + '</g>'; }).join('') + '</g>';

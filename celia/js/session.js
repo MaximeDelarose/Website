@@ -252,10 +252,18 @@
       '<div class="pgrid"><button class="pbtn" data-k="voice"><span class="btn green">' + Art.ui.voice + '</span><em>Voix</em></button><button class="pbtn" data-k="music"><span class="btn purple">' + Art.ui.music + '</span><em>Musique</em></button>' +
       '<button class="pbtn" data-a="pin"><span class="btn yellow">' + LOCK + '</span><em>Changer le code</em></button><button class="pbtn" data-k="reset"><span class="btn red">' + Art.ui.trash + '</span><em>Tout effacer</em></button></div>' +
       '<label class="pvol"><span class="btn purple small">' + Art.ui.music + '</span><input type="range" min="0" max="100" step="5" value="' + Math.round((C.settings.musicVol || 0) * 100) + '" aria-label="volume de la musique"><b>' + Math.round((C.settings.musicVol || 0) * 100) + '%</b></label>' +
-      endOptsHtml() +
+      endOptsHtml() + '<button class="eo witchtog" data-testvoices>🔊 Écouter les voix (Lumi, sorcière, Aliya, Tania)</button><p class="pnote voiceinfo"></p>' +
       '<p class="pnote">Protection de l’application uniquement : elle ne verrouille pas l’iPhone et n’est pas une sécurité inviolable. Les créations restent sur cet appareil, sans compte. Version du jeu : ' + C.VERSION + '.</p>' +
       '<div class="row"><button class="btn big green" data-ok aria-label="fermer">' + Art.ui.check + '</button></div>', 'parent psess');
     wireEndOpts(m);
+    (function () {
+      var tv = C.$('[data-testvoices]', m), vi = C.$('.voiceinfo', m);
+      try { vi.textContent = C.voiceInfo().map(function (x) { return x.label + ' : ' + x.voice; }).join(' · '); } catch (e) { }
+      tv.onclick = async function () {
+        var ps = C.settings.sound, pv = C.settings.voice; C.settings.sound = true; C.settings.voice = true;   /* essai seulement : les réglages ne changent pas */
+        tv.disabled = true; C.sfx.pop(); try { await C.testVoices(); } catch (e) { } tv.disabled = false; C.settings.sound = ps; C.settings.voice = pv;
+      };
+    })();
     var stat = C.$('.pstat', m);
     function paintStat() { stat.textContent = S.state === 'playing' ? 'Temps restant : ' + fmt(S.remaining) + ' (en pause pendant ce réglage)' : (S.state === 'ended' ? 'Session terminée' : 'Aucune session en cours'); }
     paintStat();
