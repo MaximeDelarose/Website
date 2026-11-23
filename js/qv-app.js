@@ -130,7 +130,7 @@
     show("rules", '<div class="qv-page qv-rules2">' + logo(true) + '<h2>Comment on joue</h2>' +
       R("b", "Le but", "Avoir la plus belle vie à la fin : on additionne " + IC.get("b", "qv-ri") + " bonheur, " + IC.get("f", "qv-ri") + " fortune et " + IC.get("r", "qv-ri") + " réputation, plus tes 2 objectifs secrets et quelques trophées.") +
       R("ticket", "Ton tour", "Tu touches ton salaire, tu <em>pioches</em> une carte, puis tu en <em>joues</em> une ou tu en <em>défausses</em> une. Tu gardes 3 cartes en main.") +
-      R("gradcap", "Études et métiers", "Les cartes Études font monter ta <em>Formation</em> (0 à 6). Chaque métier demande un niveau : bureau 1, commercial·e 2, ingénieur·e 3, avocat·e 4, chirurgien·ne 5. Un seul métier à la fois.") +
+      R("gradcap", "Études et métiers", "Tes études montent marche par marche : <em>Sans diplôme → Bac → Bac+2 → Licence → Master → Grande école → Doctorat</em>. Chaque marche a sa carte, et chaque métier demande un niveau (touche ton niveau sous ton prénom pour voir l\'échelle). Plus de 35 métiers : serveur·se, boulanger·ère, pompier·ère, développeur·se, architecte, pilote, astronaute… Un CAP ou un concours ouvre un métier précis. Un seul métier à la fois.") +
       R("heart", "Ta vie perso", "Rencontre, fiançailles, mariage, enfants, adoption, ou célibat heureux : à toi de choisir. Le logement va du canapé de tes parents à la villa.") +
       R("lightning", "Les coups bas", "Les cartes noires visent un adversaire. Quand on t'attaque : contre avec une carte de réaction, paie pour limiter les dégâts, ou encaisse et rebondis (2 cartes au tour suivant).") +
       R("moneyup", "Les combos", "Chômage + formation continue, burn-out + voyage, gros salaire + maison = villa, faux diplôme + contrôle = scandale, fiançailles + mariage.") +
@@ -149,6 +149,10 @@
 
   // ---------- création du personnage : la photo d'abord ----------
   var photoFull = null; // version plus grande, pour l'analyse (mémoire seulement)
+var SX_OPTS = [["m", "Un homme"], ["f", "Une femme"], ["x", "Non précisé"]];
+  function sxChips(cur, attr) {
+    return SX_OPTS.map(function (o) { return '<button class="chip sm' + (cur === o[0] ? " on" : "") + '" ' + attr + ' data-v="' + o[0] + '">' + o[1] + '</button>'; }).join("");
+  }
   function creator(opt) {
     opt = opt || {};
     var step = "choose", consent = !!store("qv-consent"), result = null, failMsg = "", crTab = "skin";
@@ -224,6 +228,7 @@
           (crTab === "face" ? '<div class="ed-chips">' + (ra.trace ? [["photo", "Ma photo"]] : []).concat(A.OPTIONS.face).map(function (f) { return '<button class="chip sm' + (ra.face === f[0] ? " on" : "") + '" data-r="face" data-v="' + f[0] + '">' + esc(f[1]) + '</button>'; }).join("") + '</div>' : '') +
           '</div>' +
           (result.quality && !result.quality.ok ? '<p class="cr-tip warn">Pour un personnage plus ressemblant, reprends une photo : ' + esc(result.quality.tips.slice(0, 2).join(", ").toLowerCase()) + '.</p>' : '') +
+          '<div class="cr-sx"><span>Ton personnage est…</span><div class="ed-chips">' + sxChips(ra.sx, 'data-r="sx"') + '</div>' + (ra.sx ? '' : '<small>Choisis : ton·ta partenaire et ta famille seront assortis dans le jeu.</small>') + '</div>' +
           '<div class="cr-foot"><label class="qv-field"><span>Ton prénom</span><input id="nm" maxlength="16" autocomplete="nickname" placeholder="Ex. : Jean-Mich" value="' + esc(me.name) + '"></label>' +
           '<button class="qv-btn big" data-c="ok">C\'est moi !</button>' +
           '<div class="cr-links"><button class="g-link" data-c="tweak">Tout retoucher</button><button class="g-link" data-c="again">Autre photo</button></div></div>';
@@ -313,7 +318,7 @@
         setTimeout(function () {
           if (screen !== "creator") return;
           if (!r.found) { failMsg = "Je ne trouve pas de visage sur cette photo. Essaie une photo de face, bien éclairée, avec le visage assez grand."; step = "fail"; draw(); return; }
-          result = r; result.base = JSON.parse(JSON.stringify(r.avatar)); result.adj = 0;
+          result = r; result.base = JSON.parse(JSON.stringify(r.avatar)); result.adj = 0; var sxd = A.sexOf(r.avatar); result.avatar.sx = sxd === "x" ? "" : sxd; result.base.sx = result.avatar.sx;
           step = "result"; SND.play("fanfare"); draw();
         }, Math.max(0, 900 - (Date.now() - t0)));
       }).catch(function (e) {
@@ -383,7 +388,7 @@
         case "nose": return (draft.face === "photo" ? '<p class="ed-hint">Avec « Mon visage (photo) », les yeux, le nez et la bouche viennent de ta photo. Choisis une autre forme de visage pour les dessiner à la main.</p>' : opts("nose", "Nez")) + '<p class="ed-hint">La bouche change toute seule selon l\'humeur de ton personnage pendant la partie.</p>';
         case "beard": return opts("beard", "Barbe et moustache");
         case "glasses": return opts("glasses", "Lunettes");
-        case "body": return opts("body", "Silhouette") + sw("fav", "Couleur préférée (tenue de base)");
+        case "body": return '<div class="ed-group"><span>Ton personnage est…</span><div class="ed-chips">' + sxChips(draft.sx, 'data-set="sx"') + '</div><p class="ed-hint">Sert à choisir ton·ta partenaire dans le jeu (la plupart du temps un genre différent du tien).</p></div>' + opts("body", "Silhouette") + sw("fav", "Couleur préférée (tenue de base)");
         case "photo": return photoPanel();
       }
       return "";
@@ -499,7 +504,7 @@
   function bot(i) {
     var used = room.lobby.map(function (p) { return p.name; });
     var name = D.NAMES.bot.filter(function (n) { return used.indexOf(n) < 0; })[0] || ("Bot " + (i + 1));
-    return { id: "bot-" + uid(), name: name, avatar: A.random(Math.floor(Math.random() * 1e9)), bot: true };
+    return { id: "bot-" + uid(), name: name, avatar: A.random(Math.floor(Math.random() * 1e9), null, Math.random() < 0.5 ? "m" : "f"), bot: true };
   }
 
   function joinRoom(code) {
@@ -606,6 +611,8 @@
     if (room.lobby.length < 2) { toast("Il faut au moins 2 joueurs (ajoute un bot)"); return; }
     var blk = adultBlockers();
     if (blk.length) { toast("Mode 18+ : en attente de l'accord de " + blk.map(function (p) { return p.name; }).join(", ")); return; }
+    // le genre de chaque personnage (choisi ou déduit de son apparence) sert à assortir partenaires et famille
+    room.lobby.forEach(function (pl) { if (pl.avatar && !pl.avatar.sx) pl.avatar = Object.assign({}, pl.avatar, { sx: A.sexOf(pl.avatar) }); });
     G = E.create(room.lobby, Math.floor(Math.random() * 4294967295), room.opts);
     SND.play("fanfare");
     hostBroadcast();
@@ -1093,7 +1100,7 @@
       if (pill) { pill.classList.remove("pop"); void pill.offsetWidth; pill.classList.add("pop"); }
       var unl = Object.keys(D.JOBS).filter(function (k) { var J = D.JOBS[k]; return J.card && !J.study && J.edu > a && J.edu <= b; }).map(function (k) { return D.JOBS[k].titles[0]; });
       SND.play("unlock");
-      notify('<i class="tk-ico">' + IC.get("gradcap") + '</i><b>Formation ' + b + ' !</b> ' + (unl.length ? "Nouveaux métiers : " + esc(unl.join(", ")) : "Ton parcours avance."), "unlock", 3800, true);
+      notify('<i class="tk-ico">' + IC.get("gradcap") + '</i><b>Niveau ' + b + ' : ' + esc(D.eduName(b)) + ' !</b> ' + (unl.length ? "Nouveaux métiers : " + esc(unl.slice(0, 3).join(", ")) + (unl.length > 3 ? "…" : "") : "Ton parcours avance."), "unlock", 3800, true);
     }
     if (mine && ev.data.hired) {
       var J = D.JOBS[ev.data.hired], p = pub.players[me.id];
@@ -1272,7 +1279,7 @@
   // ---------- icônes de vie : la situation d'un joueur en un coup d'œil ----------
   function lifeIcons(p) {
     var o = [], mini = function (k, t, n) { return '<span class="li" title="' + esc(t) + '">' + IC.get(k, "li-i") + (n ? '<b>' + n + '</b>' : '') + '</span>'; };
-    if (p.edu) o.push(mini("gradcap", "Formation " + p.edu, p.edu));
+    if (p.edu) o.push(mini("gradcap", D.eduName(p.edu) + " (niveau " + p.edu + ")", p.edu));
     if (p.job) o.push(mini("tie", p.title)); else if (p.retired) o.push(mini("hammock", "Retraité·e"));
     if (p.partner) o.push(mini(p.married ? "rings" : "heart", (p.married ? "Marié·e à " : "En couple avec ") + p.partner.name));
     if (p.kids.length) o.push(mini("baby", p.kids.length + " enfant(s)", p.kids.length > 1 ? p.kids.length : ""));
@@ -1298,7 +1305,7 @@
     ["burnout", "chomage", "chompartiel"].forEach(function (k) { if (st[k]) work.push('<em class="' + (D.STATUSES[k].bad ? "bad" : "") + '">' + esc(stLabel(k)) + '</em>'); });
     if (q.startup) work.push('Start-up : verdict dans ' + q.startup + ' tour(s)');
     if (st.liar) work.push('<em class="bad">' + esc(stLabel("liar")) + '</em>');
-    if (q.partner) rel.push(A.standalone(A.random(q.partner.seed), { mood: "happy", outfit: q.partner.look || "casual" }, "bd-av", true) + '<b>' + esc(q.partner.name) + '</b><small>' + (q.married ? "Marié·e" : "En couple") + '</small>');
+    if (q.partner) rel.push(A.standalone(A.random(q.partner.seed, null, q.partner.sx), { mood: "happy", outfit: q.partner.look || "casual" }, "bd-av", true) + '<b>' + esc(q.partner.name) + '</b><small>' + (q.married ? "Marié·e" : "En couple") + '</small>');
     ["ex", "doublevie", "sugar"].forEach(function (k) { if (st[k]) rel.push('<em class="bad">' + esc(stLabel(k)) + '</em>'); });
     q.kids.forEach(function (k) { fam.push(A.standalone(A.random(k.seed, q.avatar), { kid: true, mood: "happy" }, "bd-av", true) + '<b>' + esc(k.name) + '</b>'); });
     if (q.garde) fam.push('<small>Garde alternée' + (q.kidsAway ? " : chez l'autre parent cette semaine" : "") + '</small>');
@@ -1332,6 +1339,28 @@
       '</div><button class="qv-btn ghost sm" data-g="close">Fermer</button>');
   }
 
+  // ---------- l'échelle des études : où j'en suis, ce que chaque niveau ouvre, quelle carte chercher ----------
+  var EDU_CARD = { 1: "bac", 2: "bts", 3: "diplome", 4: "master", 5: "internat", 6: "doctorat" };
+  function eduSheet() {
+    var q = pub.players[me.id], edu = q.edu || 0, max = D.EDU_MAX;
+    var rows = "";
+    for (var n = 0; n <= max; n++) {
+      var jobs = Object.keys(D.JOBS).filter(function (k) { var J = D.JOBS[k]; return J.card && !J.study && !J.minR && (J.edu || 0) === n && D.byKey[J.card]; }).map(function (k) { return D.JOBS[k].titles[0]; });
+      var cardN = EDU_CARD[n] && D.byKey[EDU_CARD[n]];
+      var state = n < edu ? "done" : n === edu ? "cur" : n === edu + 1 ? "next" : "lock";
+      rows += '<div class="el-r ' + state + '"><i class="el-n">' + (n < edu ? "✓" : n) + '</i><div><b>' + esc(D.eduName(n)) + (n === edu ? ' <em>Tu es ici</em>' : '') + '</b>' +
+        (cardN ? '<small>Carte : « ' + esc(cardN.name) + ' »</small>' : '<small>Point de départ</small>') +
+        '<span>' + (jobs.length ? 'Métiers : ' + esc(jobs.slice(0, 6).join(", ")) + (jobs.length > 6 ? " et " + (jobs.length - 6) + (jobs.length - 6 > 1 ? " autres" : " autre") : "") : '') + '</span></div></div>';
+    }
+    var tags = {};
+    Object.keys(D.JOBS).filter(function (k) { return D.JOBS[k].study && D.JOBS[k].card; }).forEach(function (k) { var t = D.JOBS[k].study; (tags[t] = tags[t] || []).push(D.JOBS[k].titles[0]); });
+    var proH = Object.keys(tags).map(function (t) { var c = D.byKey[t]; return '<span class="el-pro' + ((q.studies || []).indexOf(t) >= 0 ? " ok" : "") + '"><b>' + esc(c ? c.name : t) + '</b>' + esc(tags[t].join(", ")) + '</span>'; }).join("");
+    var nextCard = EDU_CARD[edu + 1] && D.byKey[EDU_CARD[edu + 1]];
+    sheet('<h3>Tes études</h3><p class="el-me">Tu as <b>' + esc(D.eduName(edu)) + '</b> (niveau ' + edu + ' sur ' + max + ').' + (nextCard ? ' Prochaine marche : <b>' + esc(D.eduName(edu + 1)) + '</b> — cherche « ' + esc(nextCard.name) + ' » dans ta pioche.' : ' Tu es au sommet.') + '</p>' +
+      '<div class="el">' + rows + '</div><h4>Formations professionnelles</h4><p class="qv-tip">Un CAP ou un concours ouvre un métier précis, sans passer par les grandes études.</p><div class="el-pros">' + proH + '</div>' +
+      '<p class="qv-tip">Raccourcis : cours du soir, MOOC et formation continue donnent +1 niveau. Sans carte d\'études depuis longtemps, « Étudier » (en défaussant une carte) fait gagner un niveau jusqu\'à Bac+2.</p>' +
+      '<button class="qv-btn ghost sm" data-g="close">Fermer</button>');
+  }
   // ---------- carrière : Formation, parcours d'études, métiers accessibles ----------
   function careerHTML(q, mine) {
     var edu = q.edu || 0, max = D.EDU_MAX, zone = q.zone || [];
@@ -1339,9 +1368,9 @@
     var jobs = Object.keys(D.JOBS).filter(function (k) { return D.JOBS[k].card && D.byKey[D.JOBS[k].card] && (!D.byKey[D.JOBS[k].card].adult || pub.mode === "adult"); })
       .sort(function (a, b) { return (D.JOBS[a].edu || 0) - (D.JOBS[b].edu || 0) || D.JOBS[a].salary - D.JOBS[b].salary; });
     var nextT = jobs.map(function (k) { return D.JOBS[k]; }).filter(function (J) { return !J.study && (J.edu || 0) > edu; })[0];
-    var o = '<div class="cr-sec"><div class="cr-edu"><b>' + IC.get("gradcap", "qv-ri") + 'Formation ' + edu + '<small>/' + max + '</small></b><span class="cr-pips">';
+    var o = '<div class="cr-sec"><div class="cr-edu"><b>' + IC.get("gradcap", "qv-ri") + 'Études : ' + esc(D.eduName(edu)) + '<small> niveau ' + edu + '/' + max + '</small></b><span class="cr-pips">';
     for (var i = 1; i <= max; i++) o += '<i class="' + (i <= edu ? "on" : "") + '">' + i + '</i>';
-    o += '</span>' + (nextT ? '<small class="cr-next">Prochain palier : Formation ' + nextT.edu + ' → ' + esc(nextT.titles[0]) + '</small>' : '<small class="cr-next">Tous les métiers te sont ouverts</small>') + '</div>';
+    o += '</span>' + (nextT ? '<small class="cr-next">Prochain palier : ' + esc(D.eduName(nextT.edu)) + ' → ' + esc(nextT.titles[0]) + ', …</small>' : '<small class="cr-next">Tous les métiers te sont ouverts</small>') + '<button class="g-link" data-g="edu">Voir l\'échelle des études</button></div>';
     o += '<div class="cr-studies"><small>Parcours</small>' + (studies.length ? studies.map(function (z) { var c = card(z.k); return '<span class="cr-st">' + IC.get(c.icon, "qv-ri") + esc(c.name) + '</span>'; }).join("") : '<em>Aucune étude pour l\'instant</em>') + '</div>';
     if (mine) o += '<div class="cr-jobs"><small>Métiers</small>' + jobs.map(function (k) {
       var J = D.JOBS[k], why = E.qualifies(q, k, pub), cur = q.job && q.job.k === k;
@@ -1437,7 +1466,7 @@
       var react = Date.now() < reactUntil;
       mz.innerHTML = '<div class="qv-mytile' + (react ? " react-" + reactMood : "") + '" data-pid="' + me.id + '">' + stageTile(p, react ? { mood: reactMood } : {}) + '</div>';
       $("#mebar").innerHTML = '<button class="g-id" data-g="life" aria-label="Mon plateau">' + A.standalone(p.avatar, { mood: p.mood || "neutral", outfit: W.outfit(p) }, "g-id-av", true) +
-        '<span class="g-id-txt"><b>' + esc(p.name) + '</b><small><i class="mb-edu" id="mb-edu" title="Formation">' + IC.get("gradcap", "mb-ei") + (p.edu || 0) + '</i>' + esc(p.job ? p.title : p.retired ? "Retraité·e" : "Sans emploi") + '</small></span></button>' +
+        '<span class="g-id-txt"><b>' + esc(p.name) + '</b><small><i class="mb-edu" id="mb-edu" data-g="edu" title="Niveau d\'études : touche pour voir l\'échelle">' + IC.get("gradcap", "mb-ei") + esc(D.eduName(p.edu || 0)) + '</i>' + esc(p.job ? p.title : p.retired ? "Retraité·e" : "Sans emploi") + '</small></span></button>' +
         ctrHTML() +
         (!pub.discovery || pub.stage >= 3 ? '<button class="g-ib g-obj" data-g="obj" aria-label="Mes objectifs secrets">' + IC.get("star", "mb-i") + '</button>' : '');
     } else {
@@ -1832,8 +1861,8 @@
     if (r.minR) txt = "Grâce à tes " + sv(me.id, "r") + " Réputation, « " + c.name + " » est débloquée !";
     else if (r.minB) txt = "Grâce à tes " + sv(me.id, "b") + " Bonheur, « " + c.name + " » est débloquée !";
     else if (c.cost && c.cost.f) txt = "Avec " + sv(me.id, "f") + " Fortune, tu peux t'offrir « " + c.name + " » !";
-    else if (r.qualify) txt = "Grâce à ta Formation " + (p.edu || 0) + ", « " + c.name + " » est accessible !";
-    else if (r.minEdu) txt = "Avec ta Formation " + (p.edu || 0) + ", « " + c.name + " » est jouable !";
+    else if (r.qualify) txt = "Grâce à ton niveau « " + D.eduName(p.edu || 0) + " », « " + c.name + " » est accessible !";
+    else if (r.minEdu) txt = "Avec ton niveau « " + D.eduName(p.edu || 0) + " », « " + c.name + " » est jouable !";
     else if (r.partner) txt = "Maintenant que tu es en couple, « " + c.name + " » est jouable !";
     else txt = "« " + c.name + " » est maintenant jouable !";
     var html = '<i class="tk-ico">' + LOCK_OPEN + '</i><span>' + esc(txt) + '</span>';
@@ -1931,6 +1960,7 @@
     if (g === "back") { if (handMode === "targets") setHand(true, "detail"); else if (handMode === "take") setHand(false); else { sel = null; setHand(true, "row"); } return; }
     if (g === "pick") { sel = +b.dataset.u; setHand(true, "targets"); return; }
     if (g === "res") { resSheet(b.dataset.k); return; }
+    if (g === "edu") { eduSheet(); return; }
     if (g === "reduce") { reduce = !reduce; store("qv-reduce", reduce); document.body.classList.toggle("reduce", reduce); closeSheet(); toast(reduce ? "Animations réduites" : "Animations complètes"); return; }
     if (g === "play") { if (busy()) return; if (guideFirst()) { markSeen("guide1"); hideHint(); } flyOut(+b.dataset.u, false); sel = null; handOpen = false; handMode = "row"; resolving(); sendIntent({ t: "play", u: +b.dataset.u }); renderHand(); return; }
     if (g === "intro") { closeSheet(); intro(true); return; }
@@ -1989,7 +2019,7 @@
     var cards = ranked.map(function (id, i) {
       var p = pub.players[id], f = p.final, win = w.indexOf(id) >= 0;
       var objPts = f.obj.reduce(function (a, o) { return a + (o.done ? o.pts : 0); }, 0);
-      var summary = [p.title !== "Sans emploi" ? p.title : (p.retired ? "Retraité·e" : "Sans emploi"), "Formation " + (p.edu || 0), (p.housing ? D.HOUSING[p.housing] : "Chez ses parents"), p.married ? "Marié·e" : p.partner ? "En couple" : "Célibataire", p.kids.length ? p.kids.length + " enfant" + (p.kids.length > 1 ? "s" : "") : ""].filter(Boolean);
+      var summary = [p.title !== "Sans emploi" ? p.title : (p.retired ? "Retraité·e" : "Sans emploi"), D.eduName(p.edu || 0), (p.housing ? D.HOUSING[p.housing] : "Chez ses parents"), p.married ? "Marié·e" : p.partner ? "En couple" : "Célibataire", p.kids.length ? p.kids.length + " enfant" + (p.kids.length > 1 ? "s" : "") : ""].filter(Boolean);
       return '<article class="ec' + (win ? " win" : "") + (id === me.id ? " me" : "") + '"><div class="ec-h"><span class="ec-n">' + (i + 1) + '</span><div><h3>' + esc(id === me.id ? p.name + " (toi)" : p.name) + '</h3><p>' + esc(summary.join(" · ")) + '</p></div><b class="ec-t">' + f.total + '<small>pts</small></b></div>' +
         '<div class="ec-w">' + W.tile(p) + '</div>' +
         '<div class="sc">' + line(IC.get("b", "qv-ri") + "Bonheur", f.b) + line(IC.get("f", "qv-ri") + "Fortune", f.f) + line(IC.get("r", "qv-ri") + "Réputation", f.r) +

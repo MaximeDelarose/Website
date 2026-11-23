@@ -46,12 +46,30 @@
     celibat: "Le bonheur en solo", villa: "Villa avec piscine", retraite: "Retraite · pension chaque tour", licenciement: "Perd son métier (pas ses diplômes)",
     mariage: "Vous vous mariez · +2 ♥ si fiancé·e", voyage: "Guérit un burn-out", startup: "Quitte ton métier · 6 chances sur 10 de licorne",
   };
-  // condition d'un métier : niveau de Formation, formation précise ou réputation
+  Object.assign(EFF, {
+    bac: "Sans diplôme → Bac (niveau 1)", bts: "Bac → Bac+2 (niveau 2)", diplome: "Bac+2 → Licence (niveau 3)", master: "Licence → Master (niveau 4)",
+    internat: "Master → Grande école (niveau 5)", doctorat: "Grande école → Doctorat (niveau 6)",
+    coursdusoir: "+1 niveau d'études (jusqu'à Master)", mooc: "+1 niveau d'études (jusqu'à Licence)", formationcontinue: "+1 niveau d'études · au chômage : +2 et une offre d'emploi",
+    fauxdiplome: "+2 niveaux d'études… à tes risques", autoformation: "+1 niveau d'études (jusqu'à Bac+2)",
+    cap: "+1 niveau · ouvre le métier de plombier·ère", cap_cuisine: "+1 niveau · ouvre cuisinier·ère", cap_coiffure: "+1 niveau · ouvre coiffeur·se", cap_elec: "+1 niveau · ouvre électricien·ne",
+    cap_meca: "+1 niveau · ouvre mécanicien·ne", cap_boulange: "+1 niveau · ouvre boulanger·ère", concours: "+1 niveau · ouvre policier·ère et pompier·ère",
+  });
+  // texte d'effet des cartes de métier, générées d'après les données
+  var RESW = { b: "♥", f: "€", r: "★" };
+  function autoEff(c) {
+    var jf = (c.fx || []).filter(function (f) { return f.op === "job"; })[0], J = jf && D.JOBS[jf.job];
+    if (!J) return "";
+    var t = "Métier · " + J.salary + " € par tour";
+    if (J.perRep) t = "Métier · ★ ÷ " + J.perRep + " en € par tour";
+    if (J.perTurn) Object.keys(J.perTurn).forEach(function (k) { t += " · " + (J.perTurn[k] > 0 ? "+" : "−") + Math.abs(J.perTurn[k]) + " " + RESW[k] + "/tour"; });
+    return t;
+  }
+  // condition d'un métier : niveau d'études nommé, formation précise ou réputation
   function jobCond(key) {
     var J = D.JOBS[key]; if (!J) return "";
-    if (J.study) return "CAP plomberie";
+    if (J.study) return D.byKey[J.study] ? D.byKey[J.study].name : "Formation pro";
     if (J.minR) return J.minR + " Réputation";
-    return J.edu ? "Formation " + J.edu : "Sans diplôme";
+    return J.edu ? D.eduName(J.edu) : "Sans diplôme";
   }
   var REQ = {
     noJob: "Ne pas avoir de métier", hasJob: "Avoir un métier", promotable: "Avoir un métier", diploma: "Avoir un diplôme", single: "Être célibataire",
@@ -64,7 +82,7 @@
     var r = c.req || {}, t = [];
     Object.keys(REQ).forEach(function (k) { if (r[k]) t.push(REQ[k]); });
     if (r.qualify) t.unshift(jobCond(r.qualify));
-    if (r.minEdu) t.push("Formation " + r.minEdu);
+    if (r.minEdu) t.push(D.eduName(r.minEdu) + " (niv. " + r.minEdu + ")");
     if (r.maxEdu === 0) t.push("Pas encore le bac");
     if (r.minSalary) t.push("Salaire " + r.minSalary + "+");
     if (r.reconv) t.push("Avoir un métier");
@@ -99,7 +117,7 @@
   function chip(d) {
     return '<span class="qc-d ' + (d.v > 0 ? "up" : "down") + (d.per ? " per" : "") + '">' + IC.get(d.k, "qv-ri") + '<b>' + (d.v > 0 ? "+" : "−") + Math.abs(d.v) + '</b>' + (d.per ? '<small>/tour</small>' : '') + '</span>';
   }
-  function eduChip(n) { return '<span class="qc-d edu up">' + IC.get("gradcap", "qv-ri") + '<b>+' + n + '</b><small>Form.</small></span>'; }
+  function eduChip(n) { return '<span class="qc-d edu up">' + IC.get("gradcap", "qv-ri") + '<b>+' + n + '</b><small>niveau</small></span>'; }
   function costChip(cost) {
     var o = ""; ["f", "b", "r"].forEach(function (k) { if (cost && cost[k]) o += '<span class="qc-cost">Coûte ' + cost[k] + IC.get(k, "qv-ri") + '</span>'; });
     return o;
@@ -108,7 +126,7 @@
   function html(k, o) {
     o = o || {};
     var c = D.byKey[k]; if (!c) return "";
-    var fam = D.FAMILIES[c.fam], tg = targetText(c), ds = deltas(c), eff = EFF[k] || "", cond = condText(c);
+    var fam = D.FAMILIES[c.fam], tg = targetText(c), ds = deltas(c), eff = EFF[k] || autoEff(c), cond = condText(c);
     var jk = (c.fx || []).filter(function (f) { return f.op === "job"; })[0];
     if (jk && D.JOBS[jk.job] && D.JOBS[jk.job].salary) ds.unshift({ k: "f", v: D.JOBS[jk.job].salary, who: "me", per: true });
     var ed = (c.fx || []).filter(function (f) { return f.op === "edu"; })[0];

@@ -14,20 +14,16 @@
   function outfit(p) {
     if (!p) return "casual";
     if (p.job) {
-      if (p.job.k === "livreur") return "delivery";
       if (p.job.k === "bureau") return ["office", "manager", "director"][Math.min(2, p.job.lv - 1)];
-      if (p.job.k === "influence") return "influencer";
-      if (p.job.k === "startup") return "hoodie";
-      if (p.job.k === "pdg") return "ceo";
-      if (p.job.k === "mystique") return "mystic";
-      var OUT = { artiste: "artist", plombier: "plumber", infirmier: "nurse", prof: "teacher", ingenieur: "engineer", avocat: "lawyer", chirurgien: "surgeon", commercial: ["manager", "manager", "director"] };
-      var oj = OUT[p.job.k]; if (oj) return Array.isArray(oj) ? oj[Math.min(2, p.job.lv - 1)] : oj;
+      if (p.job.k === "commercial") return ["manager", "manager", "director"][Math.min(2, p.job.lv - 1)];
+      var JB = root.QV_DATA && root.QV_DATA.JOBS[p.job.k];
+      if (JB && JB.outfit) return JB.outfit;
     }
     if (p.retired) return "retired";
     var fired = (p.st && (p.st.chomage)) || (p.life || []).some(function (l) { return /Licencié|Faillite/.test(l.text); });
     return fired ? "unemployed" : "casual";
   }
-  function partnerAv(p) { return p.partner ? A.random(p.partner.seed) : null; }
+  function partnerAv(p) { return p.partner ? A.random(p.partner.seed, null, p.partner.sx) : null; }
   function kidAv(p, k) { return A.random(k.seed, p.avatar); }
 
   // personnage posé par les pieds en (x, y), échelle s
@@ -78,10 +74,24 @@
     rocking: '<path d="M276 194 q20 6 40 0" fill="none"' + S2 + '/><path d="M282 192 V160 h26 V192 M282 176 h26" fill="none" stroke="#8a5a3b" stroke-width="5"/><path d="M282 192 V160 h26 V192" fill="none"' + S2 + '/>',
     jobless: '<path d="M282 196 V150 M310 196 V150" stroke="' + INK + '" stroke-width="3"/><rect x="276" y="144" width="40" height="22" fill="#fff"' + S2 + '/>' + T_(296, 159, "CV ?", 10, "#e5487a"),
   };
+  Object.assign(PROPS, {
+    shop: '<rect x="276" y="170" width="40" height="24" rx="3" fill="#ff9a3a"' + S2 + '/><rect x="284" y="154" width="22" height="16" rx="2" fill="#c9ced8"' + S2 + '/>' + T_(295, 166, "€", 11) + '<path d="M280 170 V196 M312 170 V196" stroke="' + INK + '" stroke-width="2.4"/>',
+    plant: '<path d="M284 196 L288 176 H304 L308 196Z" fill="#c8612a"' + S2 + '/><path d="M296 176 C286 160 284 150 292 144 M296 176 C304 160 308 152 302 142 M296 176 V150" fill="none" stroke="#38b58a" stroke-width="5" stroke-linecap="round"/><path d="M296 176 C286 160 284 150 292 144 M296 176 C304 160 308 152 302 142" fill="none"' + S2 + ' opacity=".35"/>',
+    kitchen: '<rect x="278" y="168" width="38" height="26" rx="3" fill="#c9ced8"' + S2 + '/><rect x="284" y="152" width="26" height="16" rx="3" fill="#8a92a6"' + S2 + '/><path d="M290 146 q-4 -8 0 -14 M298 146 q4 -8 0 -14 M306 146 q-4 -8 0 -14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".9"/><circle cx="288" cy="181" r="3" fill="#e5487a"/><circle cx="304" cy="181" r="3" fill="#e5487a"/>',
+    salon: '<ellipse cx="296" cy="156" rx="14" ry="20" fill="#e1f3ff"' + S2 + '/><ellipse cx="296" cy="156" rx="14" ry="20" fill="none" stroke="#ffd23f" stroke-width="3"/><path d="M286 150 q4 -6 10 -4" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="282" y="184" width="28" height="10" rx="4" fill="#e5487a"' + S2 + '/>',
+    bolt: '<rect x="280" y="146" width="32" height="46" rx="4" fill="#8a92a6"' + S2 + '/><path d="M298 152 L288 170 H297 L293 186 L306 164 H298Z" fill="#ffd23f"' + S2 + '/>',
+    garage: '<circle cx="296" cy="178" r="16" fill="#2b2140"' + S2 + '/><circle cx="296" cy="178" r="7" fill="#c9ced8"' + S2 + '/><path d="M276 150 l22 16" stroke="#c9ced8" stroke-width="6" stroke-linecap="round"/><path d="M276 150 l22 16" stroke="' + INK + '" stroke-width="2" stroke-linecap="round"/>',
+    siren: '<path d="M286 196 V180 a10 10 0 0 1 20 0 V196Z" fill="#e5282a"' + S2 + '/><rect x="282" y="190" width="28" height="6" rx="2" fill="#3d7dd8"' + S2 + '/><g class="qv-flash"><path d="M296 164 V156 M282 170 l-8 -4 M310 170 l8 -4" stroke="#fff59a" stroke-width="4" stroke-linecap="round"/></g>',
+    press: '<rect x="278" y="150" width="30" height="42" rx="2" fill="#fff"' + S2 + '/><rect x="282" y="156" width="22" height="10" fill="#2b2140"/><path d="M282 172 h22 M282 178 h22 M282 184 h14" stroke="' + INK + '" stroke-width="2"/><rect x="296" y="160" width="24" height="32" rx="2" fill="#fff4dc"' + S2 + '/>',
+    plane: '<path d="M276 170 L314 150 L318 154 L296 172 L306 190 L300 192 L288 176 L278 182Z" fill="#fff"' + S2 + '/><path d="M296 172 L314 150" stroke="#3d7dd8" stroke-width="4" stroke-linecap="round"/>',
+    lab: '<path d="M282 150 V164 L274 188 Q273 194 279 194 H293 Q299 194 298 188 L290 164 V150" fill="#e1f6ee"' + S2 + '/><path d="M276 184 H296" stroke="#38b58a" stroke-width="5"/><path d="M306 168 V186 Q306 194 312 194 Q318 194 318 186 V168Z" fill="#ffe0e8"' + S2 + '/><path d="M306 180 H318" stroke="#e5487a" stroke-width="5"/>',
+    space: '<path d="M296 136 C306 148 306 168 296 184 C286 168 286 148 296 136Z" fill="#fff"' + S2 + '/><circle cx="296" cy="156" r="5" fill="#9fd6ff"' + S2 + '/><path d="M286 176 l-8 12 8 -2 M306 176 l8 12 -8 -2" fill="#e5282a"' + S2 + '/><path d="M296 186 l-4 10 4 -3 4 3z" fill="#ffd23f"/>',
+  });
   var JOB_PROP = { bureau: "office", commercial: "office", plombier: "plumber", infirmier: "medical", chirurgien: "medical", prof: "school", ingenieur: "engineer", avocat: "law", livreur: "bike", artiste: "easel", influence: "light", startup: "startup", pdg: "startup", mystique: "crystal" };
   function scenery(p) {
     var o = "", st = p.st || {};
-    var k = p.job ? JOB_PROP[p.job.k] : p.retired ? "rocking" : (p.edu || 0) > 0 ? "books" : (st.chomage || (p.life || []).some(function (l) { return /Licencié|Perd son métier/.test(l.text || ""); })) ? "jobless" : null;
+    var JD = (p.job && root.QV_DATA && root.QV_DATA.JOBS[p.job.k]) || {};
+    var k = p.job ? (JD.prop || JOB_PROP[p.job.k]) : p.retired ? "rocking" : (p.edu || 0) > 0 ? "books" : (st.chomage || (p.life || []).some(function (l) { return /Licencié|Perd son métier/.test(l.text || ""); })) ? "jobless" : null;
     if (k && PROPS[k]) o += '<g class="tl-prop">' + PROPS[k] + '</g>';
     // l'argent se voit : pièces d'or et étincelles, ou factures qui traînent
     if ((p.f || 0) >= 15) {
@@ -105,7 +115,8 @@
   }
   function upper(p, ext) {
     if (ext < 40) return "";
-    var o = "", job = p.job ? JOB_ICON[p.job.k] : null, student = !p.job && !p.retired && (p.edu || 0) > 0;
+    var QD = root.QV_DATA, jc = p.job && QD && QD.JOBS[p.job.k] && QD.byKey[QD.JOBS[p.job.k].card];
+    var o = "", job = p.job ? (JOB_ICON[p.job.k] || (jc && jc.icon) || "tie") : null, student = !p.job && !p.retired && (p.edu || 0) > 0;
     var icon = job || (student ? "gradcap" : null);
     if (p.housing === 0) {
       // fenêtre : on aperçoit le travail (ou la fac) ; étagère : un diplôme par niveau de Formation
@@ -258,7 +269,7 @@
 
   var SCENES = {
     divorce: function (ev, st) {
-      var T = P(st, ev.to), E = A.random(ev.data.exSeed || 5), o = bgStreet(360, 240);
+      var T = P(st, ev.to), E = A.random(ev.data.exSeed || 5, null, ev.data.exSx), o = bgStreet(360, 240);
       o += '<rect x="10" y="40" width="170" height="170" fill="#fff4dc"' + S + '/><path d="M0 46 L95 0 L190 46Z" fill="#e5487a"' + S + '/>';
       o += '<rect x="28" y="70" width="50" height="40" fill="#9fd6ff"' + S + '/><rect x="110" y="120" width="44" height="90" fill="#4a2c1d"' + S + '/>';
       o += '<g' + anim("qv-fadeout", 0.3, 3.4) + '>' + ch(E, { mood: "smug", pose: "hips" }, 132, 210, 0.52) + '</g>';
@@ -318,7 +329,7 @@
       return { svg: wrap(o), dur: 4.6, caption: nm(T) + " est promu·e " + esc(T.title || "") + ". Les collègues applaudissent. Lentement. Très lentement.", sfx: [[0.2, "fanfare"], [1.6, "clap"], [2.4, "clap"], [3.2, "clap"], [2.6, "boing"]] };
     },
     garde: function (ev, st) {
-      var T = P(st, ev.p), E = A.random(ev.data.exSeed || 5), o = bgRoom(360, 240);
+      var T = P(st, ev.p), E = A.random(ev.data.exSeed || 5, null, ev.data.exSx), o = bgRoom(360, 240);
       o += '<g transform="translate(250 30)"><rect width="76" height="62" fill="#fff"' + S + '/><rect width="76" height="16" fill="#e5487a"' + S + '/>' + txt(38, 34, "1 semaine", 10) + txt(38, 48, "sur 2", 10) + '</g>';
       o += '<path d="M20 150 Q20 132 40 132 H150 Q170 132 170 150 V210 H20Z" fill="#7a8fb8"' + S + '/>';
       o += ch(T.avatar, { mood: "sad", outfit: outfit(T), hold: "toys" }, 96, 216, 0.56);
@@ -333,7 +344,7 @@
     },
     // Mariage : la mariée attend, l'autre arrive, la musique démarre… et le DJ lance la Danse des canards.
     mariage: function (ev, st) {
-      var T = P(st, ev.p), Pa = T && T.partner ? A.random(T.partner.seed) : A.random(9), o = bgStreet(360, 240);
+      var T = P(st, ev.p), Pa = T && T.partner ? A.random(T.partner.seed, null, T.partner.sx) : A.random(9), o = bgStreet(360, 240);
       o += '<path d="M110 210 V90 Q180 20 250 90 V210" fill="none" stroke="#fff" stroke-width="12"/><path d="M110 210 V90 Q180 20 250 90 V210" fill="none"' + S + '/>';
       [[110, 120], [130, 66], [180, 46], [230, 66], [250, 120]].forEach(function (f) { o += '<circle cx="' + f[0] + '" cy="' + f[1] + '" r="9" fill="#e5487a"' + S.replace('3"', '2"') + '/>'; });
       o += ch(T.avatar, { mood: "love", outfit: "wedding" }, 152, 214, 0.6);
