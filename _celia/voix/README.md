@@ -27,3 +27,9 @@ Alternatives sans ElevenLabs : voix « Premium » de macOS (`say -v "Amélie (Am
 - `node _celia/voix/phrases.cjs` (serveur local lancé) met à jour `phrases.json` quand on ajoute des textes ; `generate.mjs` ne régénère que les fichiers manquants.
 - Une phrase sans fichier retombe automatiquement sur la voix du navigateur.
 - Pendant une phrase, la musique baisse (−11 dB environ) puis remonte ; une nouvelle phrase remplace toujours la précédente ; le haut-parleur de la barre du haut réécoute la dernière consigne.
+
+## Les personnages (sorcière, Aliya, Tania, Lumi)
+- Chaque personnage a sa voix : `C.speak('narr' | 'witch' | 'aliya' | 'tania', texte)` (`celia/js/cast.js`). Sans fichiers, le jeu utilise des voix françaises **différentes** du navigateur quand l'iPhone en propose plusieurs, et sinon des hauteurs / débits différents (sorcière grave et lente, Aliya plus aiguë, Tania plus vive). **Ce sont des voix de synthèse, pas des enregistrements.**
+- `node _celia/voix/cast.cjs` (serveur local lancé) liste toutes leurs répliques dans `_celia/voix/cast.json` (63 répliques : Lumi 39, sorcière 5, Aliya 10, Tania 9).
+- `generate.mjs` les produit avec une voix par personnage : `ELEVENLABS_VOICE_ID` (Lumi), `ELEVENLABS_VOICE_WITCH` (grosse voix théâtrale, grondeuse mais drôle — jamais effrayante), `ELEVENLABS_VOICE_ALIYA`, `ELEVENLABS_VOICE_TANIA`. Le fichier d'une réplique de personnage est nommé d'après `empreinte(« personnage|texte »)` ; celui de Lumi, comme avant, d'après le texte seul.
+- **Aucun de ces enregistrements n'a été produit** (pas d'accès réseau ni de clé ElevenLabs dans l'environnement de développement).

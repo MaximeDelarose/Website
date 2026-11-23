@@ -1,0 +1,35 @@
+/* Scène « C'est l'heure du dodo » : Lumi bâille, la sorcière arrive sur son balai (fâchée mais drôle), puis repart. */
+body[data-screen="bedtime"] #hud { display: none; }
+.cine { position: absolute; inset: 0; overflow: hidden; }
+.csky { position: absolute; inset: 0; background: linear-gradient(180deg, #a8defa 0%, #ffe9f6 100%); transition: opacity 3s; }
+.csky::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, #2f2a76 0%, #6a4cae 55%, #b58fe0 100%); opacity: 0; transition: opacity 3.5s; }
+.cine.dusk .csky::after { opacity: 1; }
+.cstars, .cmoon { opacity: 0; transition: opacity 3s 1s; } .cine.dusk .cstars, .cine.dusk .cmoon { opacity: 1; }
+.cstars i { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #fff6b0; box-shadow: 0 0 8px #fff6b0; animation: twinkle 3s ease-in-out infinite; }
+.cmoon { position: absolute; right: 8%; top: calc(var(--st) + 5%); width: clamp(54px, 14vw, 90px); filter: drop-shadow(0 0 18px rgba(255,236,150,.7)); } .cmoon svg { width: 100%; }
+.ccastle { position: absolute; left: 50%; bottom: calc(var(--sb) + 4%); width: min(92vw, 440px); transform: translateX(-50%); transition: filter 2.5s; } .ccastle svg { width: 100%; display: block; }
+.cine.lights-off .ccastle { filter: brightness(.62) saturate(.7) hue-rotate(12deg) drop-shadow(0 0 24px rgba(180,150,255,.3)); }
+/* Lumi */
+.clumi { position: absolute; left: 5%; bottom: 33%; width: clamp(96px, 30vw, 150px); opacity: 0; transform: translateY(30px) scale(.6); transition: opacity .7s, transform .9s cubic-bezier(.2, 1.5, .4, 1); z-index: 3; }
+.clumi.in { opacity: 1; transform: none; } .clumi svg { width: 100%; display: block; overflow: visible; animation: floaty 3s ease-in-out infinite; filter: drop-shadow(0 8px 8px rgba(255,111,165,.4)); }
+.clumi.yawn .clumi-in { animation: yawn 1.1s ease-in-out; } @keyframes yawn { 40% { transform: scale(1.18, 1.1) translateY(-8px); } 100% { transform: none; } }
+.clumi.look .clumi-in { animation: lookaround 1.3s ease-in-out; } @keyframes lookaround { 20% { transform: rotate(-14deg) translateX(-10px); } 60% { transform: rotate(14deg) translateX(10px); } 100% { transform: none; } }
+.clumi.shy { transform: translate(-26%, 14%) scale(.7); } .clumi.shy svg { animation: shiver .5s ease-in-out infinite; } @keyframes shiver { 50% { transform: translateX(3px) rotate(2deg); } }
+.clumi.bye { opacity: 0; transform: translateY(-40px) scale(.8); transition: opacity 1s, transform 1s; }
+/* la sorcière */
+.cwitch { position: absolute; left: 50%; top: calc(var(--st) + 3%); width: min(94vw, 430px); transform: translate(150vw, -10vh) rotate(10deg); transition: transform 1.2s cubic-bezier(.2, 1.1, .3, 1); z-index: 4; pointer-events: none; }
+.cwitch .cw-in svg { width: 100%; display: block; overflow: visible; filter: drop-shadow(0 12px 10px rgba(30,10,60,.35)); animation: wbob 2.4s ease-in-out infinite; }
+@keyframes wbob { 50% { transform: translateY(-9px) rotate(-1.5deg); } }
+.cwitch.in { transform: translate(-50%, 0) rotate(0); }
+.cwitch.talk .cw-in { animation: wtalk .3s ease-in-out infinite; } @keyframes wtalk { 50% { transform: translateY(-4px) scale(1.012); } }
+.cwitch.near { transform: translate(-50%, 4%) scale(1.1); transition: transform 1s cubic-bezier(.3, 1.2, .4, 1); }
+.cwitch.out { transform: translate(140vw, -40vh) rotate(12deg) scale(.7); transition: transform 1.3s cubic-bezier(.5, 0, .9, .6); }
+.cexcl { position: absolute; right: -2%; top: -4%; width: 34%; opacity: 0; } .cexcl svg { width: 100%; } .cexcl.go { animation: excl 1s both; } @keyframes excl { 0% { opacity: 0; transform: scale(.4); } 25% { opacity: 1; transform: scale(1.1); } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1.2); } }
+.cine.shake { animation: cshake .55s; } @keyframes cshake { 15% { transform: translateY(5px); } 35% { transform: translateY(-3px); } 55% { transform: translateY(3px); } 75% { transform: translateY(-1px); } }
+/* fumée violette */
+.csmoke { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.csmoke i { position: absolute; width: 110px; height: 110px; margin: -55px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #e0c8ff 0, #a77be8 45%, rgba(120,70,200,0) 72%); opacity: 0; }
+.csmoke.go i { animation: puff 1.5s var(--d, 0s) ease-out both; } @keyframes puff { 0% { opacity: 0; transform: scale(.2); } 30% { opacity: .95; } 100% { opacity: 0; transform: scale(var(--s, 1.5)) translateY(-24px); } }
+/* légende (pour les adultes) */
+.ccap { position: absolute; left: 0; right: 0; bottom: calc(var(--sb) + 10px); display: flex; justify-content: center; padding: 0 16px; z-index: 6; opacity: 0; transition: opacity .3s; pointer-events: none; } .ccap.on { opacity: 1; }
+.ccap span { max-width: 460px; text-align: center; font-weight: 800; font-size: 15px; line-height: 1.25; color: #fff; background: rgba(60,30,110,.55); border-radius: 18px; padding: 8px 14px; text-shadow: 0 1px 0 rgba(0,0,0,.25); }

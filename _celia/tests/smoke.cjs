@@ -19,8 +19,8 @@ const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fails++
     await p.goto(BASE); await p.waitForTimeout(500);
     await p.evaluate(() => document.querySelector('.startbtn').click());
     await p.waitForTimeout(300);
-    ok(await p.evaluate(() => document.querySelectorAll('.tile').length === 8), vp.n + ' : 8 tuiles à l’accueil');
-    for (const t of ['draw', 'cook', 'dress', 'makeup', 'pets', 'stories', 'learn', 'room']) {
+    ok(await p.evaluate(() => document.querySelectorAll('.tile').length === 9), vp.n + ' : 9 tuiles à l’accueil');
+    for (const t of ['draw', 'cook', 'dress', 'makeup', 'pets', 'stories', 'learn', 'room', 'tidy']) {
       await p.evaluate((t) => document.querySelector('.t-' + t).click(), t); await p.waitForTimeout(900);
       const r = await p.evaluate(() => {
         const s = document.scrollingElement, over = document.documentElement.scrollWidth > innerWidth + 1;
