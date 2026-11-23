@@ -1,0 +1,29 @@
+/* La jolie chambre de Celia : une chambre de princesse en désordre, des objets à glisser vers leur meuble. */
+.tdbg { background: linear-gradient(180deg, #ffe9f6, #e5d6ff); position: absolute; inset: 0; }
+.act.tidy .stage { display: grid; place-items: center; }
+.troom { position: relative; border-radius: 20px; overflow: hidden; border: 3px solid #fff; box-shadow: 0 0 0 3px var(--lav), 0 10px 18px rgba(107,63,114,.25); touch-action: none; background: #fff; user-select: none; -webkit-user-select: none; }
+.troom .tbgsvg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.tdec, .tdest, .tobj { position: absolute; transform: translate(-50%, -50%); }
+.tdec svg, .tdest svg, .tobj svg { width: 100%; height: auto; display: block; pointer-events: none; }
+.tbed { width: 38%; } .twin { width: 22%; } .tdesk { width: 22%; }
+.tdest { transition: transform .2s, filter .2s; pointer-events: none; }
+.tdest.hover { transform: translate(-50%, -50%) scale(1.07); }
+.tdest.glow { animation: tglow 1s ease-in-out infinite; }
+@keyframes tglow { 0%, 100% { filter: drop-shadow(0 0 4px #ffe066) drop-shadow(0 0 2px #fff); transform: translate(-50%, -50%) scale(1); } 50% { filter: drop-shadow(0 0 14px #ffd84d) drop-shadow(0 0 8px #fff); transform: translate(-50%, -50%) scale(1.1); } }
+.tdest.bounce { animation: tbounce .55s; } @keyframes tbounce { 30% { transform: translate(-50%, -50%) scale(1.14, .9); } 60% { transform: translate(-50%, -50%) scale(.95, 1.08); } 100% { transform: translate(-50%, -50%); } }
+.tobj { width: 15%; aspect-ratio: 1; z-index: 5; touch-action: none; cursor: grab; filter: drop-shadow(0 4px 3px rgba(60,30,90,.3)); }
+.tobj svg { height: 100%; }
+.tobj.lift { transform: translate(-50%, -54%) scale(1.28) rotate(0deg) !important; filter: drop-shadow(0 12px 8px rgba(60,30,90,.35)); z-index: 20 !important; }
+.troom.in .tobj { animation: tpop .55s both cubic-bezier(.2, 1.5, .4, 1); } .troom.in .tobj:nth-of-type(2n) { animation-delay: .08s; } @keyframes tpop { from { opacity: 0; scale: .4; } to { opacity: 1; scale: 1; } }
+.troom.shine::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 42%, rgba(255,255,255,.85), rgba(255,255,255,0) 62%); animation: tshine 2.2s ease-out both; }
+@keyframes tshine { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: .15; } }
+.troom.shine .tdest { animation: tglow 1s 2; }
+.tlumi { position: absolute; left: 6px; bottom: 6px; width: clamp(42px, 12vw, 62px); z-index: 30; pointer-events: none; } .tlumi svg { width: 100%; overflow: visible; animation: floaty 3s ease-in-out infinite; filter: drop-shadow(0 4px 4px rgba(255,111,165,.4)); }
+/* avant / après */
+.tba { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; gap: 6px; padding: var(--hud) 10px 20px; background: rgba(120,70,140,.28); backdrop-filter: blur(3px); animation: fadeIn .4s both; }
+.tcard { position: relative; width: min(41vw, 200px); } .tcard .troom.mini { width: 100%; aspect-ratio: 390 / 600; border-radius: 16px; }
+.tcard.before { transform: rotate(-4deg); filter: saturate(.85); } .tcard.after { transform: rotate(3deg) scale(1.06); } .tcard.after .troom { box-shadow: 0 0 0 4px #ffe066, 0 0 26px 8px rgba(255,224,102,.7); }
+.tcard .tag { position: absolute; left: -6px; top: -10px; z-index: 3; width: 42px; height: 42px; display: grid; place-items: center; font-size: 24px; background: #fff; border-radius: 50%; box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+.tarrow { font-size: 30px; color: #fff; text-shadow: 0 2px 4px rgba(60,30,90,.5); }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@media (orientation: landscape) { .tcard { width: min(26vw, 150px); } }

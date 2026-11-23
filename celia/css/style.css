@@ -127,12 +127,12 @@ img { -webkit-user-drag: none; pointer-events: none; }
 .walker.w1 { animation-duration: 34s; animation-delay: -12s; } .walker.w2 { animation-duration: 40s; animation-delay: -24s; animation-direction: reverse; }
 @keyframes walk { from { left: -60px; } to { left: calc(100% + 10px); } } @keyframes bobw { to { transform: translateY(-5px) rotate(3deg); } }
 .walker.hop .wbob { animation: hop .6s ease; }
-.tiles { position: relative; z-index: 4; flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, 1fr); gap: clamp(8px, 1.6dvh, 14px); padding-top: 4px; }
+.tiles { position: relative; z-index: 4; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: clamp(8px, 1.4dvh, 12px); padding-top: 4px; }
 .tile { position: relative; border-radius: 28px; border: 4px solid #fff; background: linear-gradient(160deg, var(--ta), var(--tb)); box-shadow: 0 6px 0 rgba(107,63,114,.28), 0 12px 18px rgba(107,63,114,.18); overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 0; animation: tin .55s both cubic-bezier(.2, 1.4, .4, 1); transition: transform .15s; padding: 0; }
 .tile:active { transform: translateY(4px) scale(.97); }
 .tile .tart { position: absolute; inset: 4px 4px 22px; display: block; } .tile .tart svg { width: 100%; height: 100%; animation: tfloat 4s ease-in-out infinite; }
 .tile:nth-child(2n) .tart svg { animation-delay: -1.5s; } .tile:nth-child(3n) .tart svg { animation-delay: -3s; }
-.tile .tlab { position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); font-size: 13px; font-weight: 900; background: rgba(255,255,255,.9); padding: 1px 10px; border-radius: 10px; letter-spacing: .2px; white-space: nowrap; }
+.tile .tlab { position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); font-size: 12px; max-width: 96%; overflow: hidden; text-overflow: ellipsis; font-weight: 900; background: rgba(255,255,255,.9); padding: 1px 10px; border-radius: 10px; letter-spacing: .2px; white-space: nowrap; }
 .tile.picked { animation: pick .4s ease; }
 @keyframes tin { from { transform: scale(.3) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } } @keyframes tfloat { 50% { transform: translateY(-3px) scale(1.03); } } @keyframes pick { 50% { transform: scale(1.12) rotate(3deg); } }
 .bfly { position: absolute; width: 38px; z-index: 5; animation: fly 14s ease-in-out infinite; } .bfly svg { animation: flutter .3s ease-in-out infinite alternate; }
@@ -147,7 +147,7 @@ img { -webkit-user-drag: none; pointer-events: none; }
 @keyframes pulse { 50% { transform: scale(1.1); box-shadow: 0 0 0 18px rgba(255,255,255,.28), 0 14px 30px rgba(255,93,158,.5); } }
 @media (orientation: landscape) and (max-height: 520px) {
   .hero, .walkers { display: none; }
-  .tiles { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); }
+  .tiles { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(2, 1fr); }
   .home { padding-top: calc(var(--st) + 72px); }
 }
 @media (prefers-reduced-motion: reduce) { .bfly, .clouds .cl, .walker { animation: none; } }
