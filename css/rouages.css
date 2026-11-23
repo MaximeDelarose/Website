@@ -5,10 +5,10 @@
 .rg-hud button, .rg-insp, .rg-menu, .rg-stock, .rg-wave { pointer-events: auto; }
 .rg-hud i[data-it] { display: inline-block; width: 16px; height: 16px; background-size: 100% 100%; image-rendering: pixelated; vertical-align: -3px; }
 .rg-box, .rg-stock, .rg-wave, .rg-info, .rg-menu, .rg-insp { background: #2a2a30; border: 2px solid #000; box-shadow: inset 0 2px 0 #4f4f54, inset 0 -2px 0 #1e2122, 0 3px 0 rgba(0,0,0,.45); }
-.rg-stock { position: absolute; top: 8px; left: 8px; display: grid; grid-template-columns: repeat(4, auto); gap: 2px 8px; padding: 5px 8px; }
+.rg-stock { position: absolute; top: max(8px, env(safe-area-inset-top, 0px)); left: max(8px, env(safe-area-inset-left, 0px)); display: grid; grid-template-columns: repeat(4, auto); gap: 2px 8px; padding: 5px 8px; }
 .rg-st { display: flex; align-items: center; gap: 4px; font-weight: 800; min-width: 52px; }
 .rg-st canvas { width: 16px; height: 16px; image-rendering: pixelated; }
-.rg-wave { position: absolute; top: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 5px 8px; max-width: calc(100% - 16px); justify-content: flex-end; }
+.rg-wave { position: absolute; top: max(8px, env(safe-area-inset-top, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 5px 8px; max-width: calc(100% - 16px); justify-content: flex-end; }
 .rg-wave-txt { font-weight: 800; margin-right: 4px; }
 .rg-core { flex-basis: 100%; height: 7px; background: #000; margin-top: 2px; }
 .rg-core span { display: block; height: 100%; background: linear-gradient(#9cc6ff, #3b5dc9); transition: width .2s; }
@@ -72,10 +72,12 @@
   .rg-hud { font-size: 11px; }
   .rg-stock { grid-template-columns: repeat(4, auto); gap: 1px 5px; padding: 3px 5px; }
   .rg-st { min-width: 40px; }
-  .rg-wave { top: auto; bottom: 150px; right: 8px; }
+  .rg-wave { top: 62px; left: 8px; right: 8px; max-width: none; justify-content: space-between; padding: 3px 6px; }
+  .rg-wave-txt { flex: 1 1 auto; min-width: 0; }
+  .rg-btn { font-size: 11px; padding: 2px 6px 3px; }
   .rg-tool { width: 58px; height: 58px; }
   .rg-tool small { font-size: 9px; }
   .rg-tab-hint { display: none; }
   .rg-info { bottom: 98px; }
-  .rg-insp { top: 64px; width: min(240px, calc(100% - 16px)); }
+  .rg-insp { top: 118px; right: 8px; width: min(240px, calc(100% - 16px)); max-height: calc(100% - 260px); }
 }

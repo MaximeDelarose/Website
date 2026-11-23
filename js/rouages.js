@@ -189,7 +189,7 @@
       if (S.spawns.length >= 10) break;
     }
     renderFloor();
-    cam.x = 15; cam.y = H / 2; fitZoom();
+    cam.y = H / 2; fitZoom(); cam.x = Math.min(15, 2 + (stage.clientWidth || 800) / cam.z / 2);
     ui.sel = null; insp.hidden = true;
     refreshHud(true);
   }
