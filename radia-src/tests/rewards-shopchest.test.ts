@@ -30,7 +30,7 @@ describe('ouvertures simultanées', () => {
   it('même clé lancée deux fois en même temps : attribué une seule fois', async () => {
     let coins = 0; let once = new Set<string>();
     setRewardHost({
-      once: (k) => (once.has(k) ? false : (once.add(k), true)), addRes: (_k, n) => { coins += n; }, giveDiamonds() {}, giveEnergy() {}, giveTickets() {}, addHearts() {},
+      once: (k) => (once.has(k) ? false : (once.add(k), true)), addRes: (_k, n) => { coins += n; }, giveDiamonds() {}, giveEnergy() {}, addHearts() {},
       giveBooster() {}, addChest() {}, ownsCloth: () => false, giveCloth() {}, clothBack: () => 0, ownsFurniture: () => false, giveFurniture() {}, furnitureBack: () => 0,
       unlockMemory: () => false, addBouquet() {}, nameOf: () => null, balance: () => 0, persist() {},
     });

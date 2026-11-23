@@ -22,7 +22,7 @@
  *  - `maxMergeFx(cell)`           : effet spectaculaire du niveau maximal (aussi utilisé par les fusions) ;
  *  - `comboFx(value, mult)`       : compteur de combo animé (+ son et haptique de palier) ;
  *  - `flyTo(kind, fromCell, toXY, cb)` : une icône (coin, diamond, energy, heart, star, flowers, fabric,
- *                                   cocoa, ticket, chest…) vole de la case vers un compteur ; `cb` à l'arrivée ;
+ *                                   cocoa, chest…) vole de la case vers un compteur ; `cb` à l'arrivée ;
  *  - `highlightCells(cells)`      : fait pulser des cases (commande, tutoriel) ;
  *  - `cellCenter(i)`, `cellSize`, `isIdle()`, `celebrate()`, `confetti()` (existants).
  */

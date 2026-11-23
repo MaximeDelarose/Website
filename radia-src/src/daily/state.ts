@@ -4,7 +4,6 @@ import { wallet } from '../core/wallet';
 import { claim, isEligible, peek, todayKey, type Ticket } from './logic';
 import { resolveDay, type Resolved } from './calendar';
 import { applyResolved, ownershipOf } from './grant';
-import { grantChips } from '../casino/store';
 
 /** Décalage de jours (outils de test uniquement : `RADIA.daily.skipDay()`). */
 let offset = 0;
@@ -34,9 +33,9 @@ export function claimToday(): Claimed | null {
   try { save.writeNow(); } catch { /* le jeu tourne même sans stockage */ }
   const w = save.data.world;
   const parts = resolveDay(ticket.cycle, ticket.day, ownershipOf(w));
-  const { diamonds, tickets } = applyResolved(w, parts);
+  const { diamonds, energy } = applyResolved(w, parts);
   if (diamonds > 0) wallet.giveDiamonds(diamonds);
-  if (tickets > 0) grantChips(tickets, 'daily'); // tickets gratuits du Casino Royal (jamais achetables)
+  if (energy > 0) wallet.giveEnergy(energy); // jamais au-delà de 100 : le surplus n'est pas versé
   save.save();
   events.emit('economy', undefined);
   notifyDaily();

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Papier · salle de test · AkarisuMD</title>
+  <meta name="description" content="Prototype de RPG en papier plié : personnage en papier qui se retourne, décor origami en 2.5D, combats au tour par tour avec commandes d'action. Salle de test.">
+  <meta name="theme-color" content="#e9dcc3">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/papier.css?v=2">
+</head>
+<body>
+  <div id="app"></div>
+  <canvas id="ov"></canvas>
+  <div id="hud" hidden></div>
+  <div id="tip" hidden></div>
+  <div id="cmd" hidden></div>
+  <div id="menu" hidden></div>
+  <div id="panel" hidden></div>
+  <div id="wipe"></div>
+  <button id="btn-test" type="button" hidden>🧪 Salle de test</button>
+  <div id="touch" hidden>
+    <div id="stick"><div class="base"><div class="knob"></div></div></div>
+    <div class="ab">
+      <button type="button" data-k="b" class="tb">B</button>
+      <button type="button" data-k="a" class="ta">A</button>
+    </div>
+  </div>
+  <div id="rotate">↻ Tourne ton téléphone en mode paysage</div>
+  <!-- mode pixel : sprites et sol dithered d'Écureuil Survivor -->
+  <script src="js/v2/dither-art.js?v=1"></script>
+  <script src="js/v2/game-data.js?v=1"></script>
+  <script type="module" src="js/papier.js?v=2"></script>
+</body>
+</html>

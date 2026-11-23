@@ -23,7 +23,7 @@ function toRewards(parts: Resolved[]): Reward[] {
     switch (p.t) {
       case 'coins': return { type: 'coins', qty: p.n, granted: true };
       case 'diamonds': return { type: 'diamonds', qty: p.n, granted: true };
-      case 'tickets': return { type: 'tickets', qty: p.n, granted: true };
+      case 'energy': return { type: 'energy', qty: p.n, granted: true };
       case 'res': return { type: 'res', id: p.k, qty: p.n, granted: true };
       case 'cloth': return { type: 'cloth', id: p.id, qty: 1, granted: true };
       case 'furn': return { type: 'furniture', id: p.id, qty: 1, granted: true };
@@ -108,13 +108,12 @@ export function openDaily(_opts: { auto?: boolean } = {}): Promise<void> {
         const theme = themeOf(got.ticket.cycle);
         const def = dayDef(got.ticket.cycle, got.ticket.day);
         const big = got.ticket.day === DAYS - 1;
-        const cl = got.parts.find((p) => p.t === 'cloth'), fu = got.parts.find((p) => p.t === 'furn'), tk = got.parts.find((p) => p.t === 'tickets');
+        const cl = got.parts.find((p) => p.t === 'cloth'), fu = got.parts.find((p) => p.t === 'furn');
         // « Équiper / Placer / Utiliser » seulement quand c'est pertinent ; la fenêtre du calendrier se ferme alors
         const leave = (fn: () => void) => () => { close(); fn(); };
         const actions: { label: string; run: () => void }[] = [];
         if (cl && cl.t === 'cloth') actions.push({ label: 'Équiper', run: leave(() => { void import('../game/world/wardrobe').then((m) => { const r = m.equip(cl.id); if (r.ok) ui.toast({ title: 'Équipé ♡', sub: describe(cl).title, icon: 'star', ms: 2600 }); }); }) });
         if (fu && fu.t === 'furn') actions.push({ label: 'Placer au château', run: leave(() => { void import('../ui/screens/world/castle').then((m) => m.openCastle()); }) });
-        if (tk && actions.length < 2) actions.push({ label: 'Utiliser au casino', run: leave(() => { void import('../casino').then((m) => m.openCasino()); }) });
         const spec: GiftSpec = {
           kind: 'daily', rarity: def.rarity, title: big ? 'Cadeau spécial !' : 'Cadeau du jour !',
           subtitle: big ? `Série terminée ! Prochain thème : ${themeOf(got.ticket.cycle + 1).name} ♡` : `${theme.name} · ${def.name}`,

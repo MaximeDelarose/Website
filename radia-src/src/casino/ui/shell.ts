@@ -9,8 +9,7 @@ import { balance } from '../bank';
 const coinUrl = (n: number): string => coinIcon('coins', n);
 import { bounce, rollNumber, shake, flyChips, centerOf, type Pt } from '../fx';
 import { cs, persist, notifyCasino } from '../store';
-import { returnBring } from '../chips';
-import { markTask } from '../tickets';
+import { markTask } from '../rewards';
 
 export interface Scene {
   el: HTMLElement; title: string;
@@ -74,13 +73,11 @@ export function createShell(onClose: () => void): Shell {
       if (dead) return;
       dead = true;
       scene?.dispose?.();
-      const k = returnBring(cs());
       persist(); notifyCasino();
       root.classList.add('leaving');
       window.setTimeout(() => root.remove(), 220);
       current = null;
       onClose();
-      void k;
     },
     openHelp() {
       if (!scene) return;

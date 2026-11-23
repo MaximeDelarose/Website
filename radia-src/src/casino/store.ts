@@ -1,12 +1,12 @@
-/** Liaison du portefeuille du casino avec la sauvegarde (`save.data.fun.casino`). Pas de DOM. */
+/** Liaison du casino avec la sauvegarde (`save.data.fun.casino`) et avec le portefeuille de PIÈCES unique du jeu. Pas de DOM. */
 import { save } from '../core/app';
+import { addRes } from '../core/world';
 import type { CasinoState } from '../save/fun';
-import * as C from './chips';
 import { claimableCount } from './missions';
-import { claimableTasks, earn, sourceOf, type TicketSource } from './tickets';
+import { allow, claimableTasks, sourceOf, type CoinSource } from './rewards';
 import type { Rng } from './rng';
 
-import { usePurse } from './bank';
+import { balance, usePurse } from './bank';
 /** Le casino mise les pièces du monde : un seul portefeuille pour tout RADIA. */
 usePurse({ get: () => save.data.world.res.coins, set: (n) => { save.data.world.res.coins = n; } });
 
@@ -18,25 +18,23 @@ export const onCasinoChange = (fn: () => void): (() => void) => { listeners.add(
 export function notifyCasino(): void { for (const f of [...listeners]) { try { f(); } catch { /* ignoré */ } } }
 
 /**
- * Donne des TICKETS gratuits (missions, événements, récompenses quotidiennes…). `reason` = source (`TicketSource`) ou
- * libellé libre ; les sources « ouvertes » sont plafonnées par jour (tickets.ts). Renvoie le nombre versé.
+ * Donne des PIÈCES gratuites (mini-défis, événements, récompenses…). `reason` = source (`CoinSource`) ou libellé libre ;
+ * les sources « ouvertes » sont plafonnées par jour (rewards.ts). Renvoie le nombre de pièces versées.
  */
-export function grantChips(n: number, reason: TicketSource | string = ''): number {
-  const g = earn(cs(), sourceOf(reason), n);
-  if (g > 0) { persist(); notifyCasino(); }
+export function grantCoins(n: number, reason: CoinSource | string = ''): number {
+  const g = allow(cs(), sourceOf(reason), n);
+  if (g > 0) { addRes('coins', g); persist(); notifyCasino(); }
   return g;
 }
 
 export interface CasinoStatus {
-  /** Tickets possédés au total (poche + table). */
-  chips: number; pocket: number; table: number;
+  /** Pièces possédées (le portefeuille de tout le jeu). */
+  coins: number;
   /** Missions et mini-défis du jour prêts à être réclamés. */
   tasks: number;
   /** Missions prêtes à être réclamées. */
   claimable: number;
-  /** Mini-recharge gratuite disponible maintenant. */
-  refillReady: boolean;
-  /** Première visite : l'allocation d'ouverture attend. */
+  /** Première visite : le cadeau d'ouverture attend. */
   isNew: boolean;
   /** Il y a quelque chose de nouveau à voir (badge). */
   hasNews: boolean;
@@ -46,8 +44,7 @@ export function casinoStatus(now = Date.now()): CasinoStatus {
   const s = cs();
   const claimable = claimableCount(s);
   const tasks = claimableTasks(s, now);
-  const refillOk = C.refillReady(s, now);
-  return { chips: C.total(s), pocket: s.chips, table: s.bring, claimable, tasks, refillReady: refillOk, isNew: !s.welcomed, hasNews: !s.welcomed || claimable > 0 || tasks > 0 || refillOk };
+  return { coins: balance(), tasks, claimable, isNew: !s.welcomed, hasNews: !s.welcomed || claimable > 0 || tasks > 0 };
 }
 
 /** Outils de test (mode debug uniquement : branchés seulement quand `?debug` est présent). */

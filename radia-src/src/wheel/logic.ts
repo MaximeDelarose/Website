@@ -5,7 +5,7 @@
  */
 import type { WheelState } from '../save/fun';
 import { pickWeighted, randInt, type Rng } from '../casino/rng';
-import { DECO_POOL, DUP_COINS, FASHION_POOL, LOTS, lotById, type LotDef } from './table';
+import { DECO_POOL, DUP_COINS, DUP_RARE_COINS, FASHION_POOL, LOTS, RARE_POOL, lotById, type LotDef } from './table';
 
 export const isDayKey = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
 
@@ -46,7 +46,6 @@ export interface WheelCtx {
   addCoins(n: number): void;
   giveDiamonds(n: number): void;
   giveEnergy(n: number): void;
-  grantChips(n: number): void;
   ownsCloth(id: string): boolean;
   giveCloth(id: string): void;
   ownsDeco(id: string): boolean;
@@ -62,16 +61,17 @@ export function applyLot(lot: LotDef, ctx: WheelCtx, rng: Rng): Granted {
     case 'coins': ctx.addCoins(lot.n); return { lot, text: `${lot.n} pièces`, coins: lot.n };
     case 'diamonds': ctx.giveDiamonds(lot.n); return { lot, text: `${lot.n} diamants` };
     case 'energy': ctx.giveEnergy(lot.n); return { lot, text: `${lot.n} énergies` };
-    case 'chips': ctx.grantChips(lot.n); return { lot, text: `${lot.n} tickets du Casino Royal` };
     case 'fragment': ctx.addFragment('cloth', lot.n); return { lot, text: 'Un fragment de vêtement' };
     case 'fashion':
+    case 'rare':
     case 'deco': {
-      const pool: readonly string[] = lot.kind === 'fashion' ? FASHION_POOL : DECO_POOL;
-      const owns = lot.kind === 'fashion' ? ctx.ownsCloth : ctx.ownsDeco;
+      const pool: readonly string[] = lot.kind === 'fashion' ? FASHION_POOL : lot.kind === 'rare' ? RARE_POOL : DECO_POOL;
+      const owns = lot.kind === 'deco' ? ctx.ownsDeco : ctx.ownsCloth;
+      const back = lot.kind === 'rare' ? DUP_RARE_COINS : DUP_COINS;
       const fresh = pool.filter((id) => !owns(id));
-      if (fresh.length === 0) { ctx.addCoins(DUP_COINS); return { lot, text: `Déjà possédé : ${DUP_COINS} pièces à la place`, duplicate: true, coins: DUP_COINS }; }
+      if (fresh.length === 0) { ctx.addCoins(back); return { lot, text: `Déjà possédé : ${back} pièces à la place`, duplicate: true, coins: back }; }
       const id = fresh[randInt(rng, fresh.length)];
-      if (lot.kind === 'fashion') ctx.giveCloth(id); else ctx.giveDeco(id);
+      if (lot.kind === 'deco') ctx.giveDeco(id); else ctx.giveCloth(id);
       return { lot, text: lot.name, itemId: id };
     }
   }

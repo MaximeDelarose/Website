@@ -37,7 +37,6 @@ export function grantGift(spec: GiftSpec, host: RewardHost): GrantResult {
         case 'res': host.addRes(r.id === 'flowers' || r.id === 'fabric' || r.id === 'cocoa' ? r.id : 'coins', n); break;
         case 'diamonds': host.giveDiamonds(n); break;
         case 'energy': host.giveEnergy(n); break;
-        case 'tickets': host.giveTickets(n); break;
         case 'hearts': host.addHearts(n); break;
         case 'chest': host.addChest(n); break;
         case 'item': if (r.id === 'wand' || r.id === 'wind') host.giveBooster(r.id, n); break;

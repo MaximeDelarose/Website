@@ -184,7 +184,6 @@ describe('libellés et raretés des récompenses', () => {
     expect(bankOf({ type: 'coins' })).toBe('coins');
     expect(bankOf({ type: 'res', id: 'cocoa' })).toBe('cocoa');
     expect(bankOf({ type: 'res' })).toBe('coins');
-    expect(bankOf({ type: 'tickets' })).toBe('tickets');
     expect(bankOf({ type: 'cloth' })).toBeNull();
     expect(bankOf({ type: 'chest' })).toBeNull();
   });

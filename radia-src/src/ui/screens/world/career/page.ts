@@ -11,6 +11,7 @@ import { save, audio, events, reducedFx } from '../../../../core/app';
 import { haptic } from '../../../../core/haptics';
 import { stat } from '../../../../core/progress';
 import { fmt } from '../../../../core/wallet';
+import { resIconUrl } from '../../../../game/art/world/resources';
 import { firstTime, world } from '../../../../core/world';
 import { reactAuguste } from '../../../../game/world/auguste';
 import { currentLook } from '../../../../game/world/look';
@@ -69,7 +70,7 @@ export function openCareer(): Promise<void> {
         if (!reducedFx()) {
           // pièces qui s'envolent vers le haut (là où se trouvent les compteurs), puis petit « pop »
           for (let i = 0; i < 9; i++) {
-            const c = h('span.car-coin', '🪙');
+            const c = h('img.car-coin', { src: resIconUrl('coins', 44), alt: '', draggable: false });
             c.style.cssText = `left:${cx}px;top:${cy}px;--dx:${Math.round((i - 4) * 14)}px;--dy:${-Math.round(180 + (i % 3) * 40)}px;animation-delay:${i * 40}ms`;
             ui.root.append(c);
             window.setTimeout(() => c.remove(), 1100);
@@ -77,7 +78,7 @@ export function openCareer(): Promise<void> {
         }
         salaryBox.classList.add('claimed');
         // une seule notice discrète (celle d'Auguste) : le montant s'affiche en « +N » flottant, pas dans une seconde bulle
-        const plus = h('span.car-plus', `+${fmt(got)} 🪙`);
+        const plus = h('span.car-plus', `+${fmt(got)} `, h('img', { src: resIconUrl('coins', 36), alt: 'pièces', draggable: false, style: 'width:18px;height:18px;vertical-align:-4px' }));
         plus.style.cssText = `left:${cx}px;top:${cy - 28}px`;
         ui.root.append(plus); window.setTimeout(() => plus.remove(), 1300);
         augusteSays('Bsahték, tu l\'as mérité !', 3600);

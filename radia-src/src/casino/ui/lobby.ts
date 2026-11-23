@@ -1,22 +1,21 @@
-/** Carte d'Auguste (tickets apportés à la table), salon d'accueil, missions. */
+/** Carte d'Auguste (ta bourse de pièces), salon d'accueil, missions. */
 import { h } from '../../ui/dom';
-import { audio, save } from '../../core/app';
+import { audio, events, save } from '../../core/app';
 import { haptic } from '../../core/haptics';
-import { fmt, fmtTime } from '../../core/wallet';
+import { fmt } from '../../core/wallet';
 import { HALL_ASPECT, HALL_SPOTS, casinoHallCanvas, cardFaceUrl, memberCardUrl, rouletteWheelCanvas, slotSymbolUrl } from '../../game/art/casino';
 import { CLOTHES } from '../../data/world/wardrobe';
 import { FURNITURE } from '../../data/world/furniture';
-import { ticketUrl } from '../../game/art/world/giftArt';
 import { sparkleBurst } from '../../ui/fx/sparkle';
 import { centerOf, celebrate, soft } from '../fx';
 import { cs, persist, notifyCasino, casinoStatus, onCasinoChange } from '../store';
-import { DAILY_TASKS, TICKETS_NAME, claimTask, markTask, taskClaimed, taskDone, type DailyTask } from '../tickets';
+import { DAILY_TASKS, claimTask, markTask, taskClaimed, taskDone, type DailyTask } from '../rewards';
+import { addRes } from '../../core/world';
 import { pickLine } from '../../data/augusteTone';
 import { nextWheelIn, wheelReady } from '../../wheel/store';
 import { canClaimToday } from '../../daily/state';
-import { REFILL_TO, WELCOME_CHIPS, refill, total } from '../chips';
-import { EXCHANGE_COINS, EXCHANGE_TICKETS, exchange, exchangeView } from '../exchange';
-import { balance, debitCoins } from '../bank';
+import { WELCOME_COINS } from '../chips';
+import { balance } from '../bank';
 import { resIconUrl } from '../../game/art/world/resources';
 import { MISSIONS, claimMission, isClaimable, isDone, progressOf, type MissionDef } from '../missions';
 import { WHEEL_ORDER, colorOf } from '../roulette';
@@ -27,46 +26,29 @@ const p = (t: string, cls = ''): HTMLElement => { const e = h('p', t); for (cons
 // ------------------------------------------------------------------ carte d'Auguste
 
 export function cardScene(sh: Shell, o: { welcomed: boolean; onEnter(): void; onBack(): void; onPrivileges(): void }): Scene {
-  const s = cs();
   const card = h('img.cz-member', { src: memberCardUrl(320), alt: 'Carte de membre offerte par Auguste', draggable: false });
   const wallet = h('div.cz-wallet');
-  const exBox = h('div.cz-exchange');
   const enter = h('button.btn.gold.wide.cz-enter', { on: { click: () => { audio.play('pop2'); const r = card.getBoundingClientRect(); sparkleBurst(r.left + r.width / 2, r.top + r.height / 2, { rarity: 'rare', count: 12 }); o.onEnter(); } } }, 'Entrer au salon ♡') as HTMLButtonElement;
 
   const drawWallet = () => {
     wallet.replaceChildren(
-      h('div.cz-w', h('img', { src: resIconUrl('coins', 40), alt: '', draggable: false }), h('div', h('b', fmt(balance())), h('small', 'pièces — ta mise au casino'))),
-      h('div.cz-w', h('img', { src: ticketUrl(40), alt: '', draggable: false }), h('div', h('b', fmt(total(s))), h('small', 'tickets spéciaux — privilèges & événements'))));
+      h('div.cz-w', h('img', { src: resIconUrl('coins', 40), alt: '', draggable: false }), h('div', h('b', fmt(balance())), h('small', 'pièces — ta mise au casino'))));
   };
-  // caisse d'échange : pièces du jeu → tickets (virtuel, plafonné par jour, sans retour)
-  const drawExchange = () => {
-    const coins = balance();
-    const v = exchangeView(coins, s);
-    exBox.replaceChildren(
-      h('h3', 'Caisse d\'échange ♡'),
-      p(`${v.rate} · encore ${v.ticketsLeftToday} tickets échangeables aujourd'hui.`, '.cz-small'),
-      p('Tout reste virtuel : pas d\'argent réel, et les tickets ne se rechangent pas en pièces.', '.cz-small'),
-      h('div.cz-quick', ...[1, 5].map((n) => h('button.cz-mini', { disabled: v.maxPacks < n, on: { click: () => {
-        const got = exchange(n, balance(), s, (c) => debitCoins(c));
-        if (got > 0) { audio.play('reward'); haptic('reward'); persist(); notifyCasino(); celebrate('small', centerOf(card)); drawWallet(); drawExchange(); sh.setShown(balance()); }
-      } } }, `${n * EXCHANGE_COINS} pièces → ${n * EXCHANGE_TICKETS}`))));
-  };
-  drawWallet(); drawExchange(); sh.setShown(balance());
+  drawWallet(); sh.setShown(balance());
 
   const el = h('div.cz-card',
-    o.welcomed ? h('div.cz-welcome', `Bienvenue ! Auguste t'offre ${WELCOME_CHIPS} tickets spéciaux pour ta première soirée ♡`) : null,
+    o.welcomed ? h('div.cz-welcome', `Bienvenue ! Auguste t'offre ${WELCOME_COINS} pièces pour ta première soirée ♡`) : null,
     card,
     h('h2', 'La carte d\'Auguste'),
     p('Au Casino Royal, tu mises les pièces que tu gagnes dans RADIA. Tout reste virtuel : jamais d\'argent réel, jamais obligatoire. Les règles et les probabilités sont affichées dans l\'aide (?) de chaque jeu.', '.cz-lead'),
     wallet,
     p('Si tu perds tout, rien de grave : tes commandes en rapportent toujours ♡', '.cz-small'),
-    exBox,
-    h('button.btn.lavande.wide', { on: { click: () => { audio.play('select'); o.onPrivileges(); } } }, '🎟️ Privilèges (tickets)'),
+    h('button.btn.lavande.wide', { on: { click: () => { audio.play('select'); o.onPrivileges(); } } }, '✨ Privilèges (pièces)'),
     enter);
   return {
     el, title: 'Carte d\'Auguste', onBack: o.onBack,
     help: () => h('div', p('Les jeux du casino se jouent avec les pièces de RADIA : le même portefeuille que partout ailleurs. Tu peux miser 100, 250, 500, 1 000, 2 500, 5 000, 10 000 pièces ou plus si ta bourse le permet (au maximum la moitié de ta bourse, et au moins 10 000 si tu les as).'),
-      p('Les tickets sont une ressource plus rare : ils ouvrent des privilèges (tenues, décors, cadeaux, événements). Ils ne servent plus à miser.')),
+      p('Les privilèges du casino proposent des objets exclusifs (tenues, décors, coffret d’atelier) contre des pièces ; les missions du casino les offrent aussi, sans rien dépenser.')),
   };
 }
 
@@ -134,17 +116,14 @@ export function lobbyScene(sh: Shell, o: LobbyOpts): Scene {
   const drawFree = () => {
     const now = Date.now();
     const st = casinoStatus(now);
-    const wr = wheelReady(now), dg = canClaimToday(), tk = st.tasks > 0, rf = Infinity; // plus de mini-recharge de tickets : les jeux se jouent avec les pièces, qui reviennent avec les commandes
+    const wr = wheelReady(now), dg = canClaimToday(), tk = st.tasks > 0; // pas de mini-recharge : les jeux se jouent avec les pièces, qui reviennent avec les commandes
     type Row = { ico: string; title: string; sub: string; cd?: boolean; btn?: { label: string; fn: () => void } };
     const rows: Row[] = [];
-    if (rf !== Infinity) rows.push(rf === 0
-      ? { ico: '🎟️', title: 'Mini-recharge gratuite', sub: `Ta bourse est presque vide : Auguste t'offre jusqu'à ${REFILL_TO} tickets.`, btn: { label: 'Recevoir', fn: () => { const g = refill(s, Date.now()); if (g > 0) { audio.play('reward'); haptic('reward'); persist(); notifyCasino(); celebrate('small', centerOf(free)); sh.setShown(s.bring); drawFree(); drawPurse(); } } } }
-      : { ico: '🎟️', title: 'Mini-recharge gratuite', sub: `Prochaine dans ${fmtTime(rf)} : tu ne restes jamais bloquée.`, cd: true });
-    if (wr) rows.push({ ico: '🎡', title: 'La roue du jour t\'attend', sub: 'Un tirage gratuit : tickets, diamants, accessoires…', btn: { label: 'Tourner', fn: () => o.go('wheel') } });
+    if (wr) rows.push({ ico: '🎡', title: 'La roue du jour t\'attend', sub: 'Un tirage gratuit : pièces, diamants, énergie, accessoires…', btn: { label: 'Tourner', fn: () => o.go('wheel') } });
     if (dg) rows.push({ ico: '🎁', title: 'Ton cadeau du jour t\'attend', sub: 'Une surprise de plus dans le calendrier de 7 jours.', btn: { label: 'Ouvrir', fn: () => o.go('daily') } });
-    if (tk) rows.push({ ico: '🎀', title: `${st.tasks} ticket${st.tasks > 1 ? 's' : ''} du jour à récupérer`, sub: 'Les mini-défis sans hasard sont accomplis.' });
+    if (tk) rows.push({ ico: '🎀', title: `${st.tasks} défi${st.tasks > 1 ? 's' : ''} du jour à récupérer`, sub: 'Les mini-défis sans hasard sont accomplis.' });
     if (rows.length === 0) {
-      const next = Math.min(nextWheelIn(now), rf === Infinity ? Infinity : rf);
+      const next = nextWheelIn(now);
       rows.push({ ico: '✨', title: 'Prochain gain gratuit', sub: next === Infinity ? 'Les mini-défis du jour reviennent demain ♡' : `La roue du jour revient dans ${left(next)} ♡`, cd: true });
     }
     const sig = JSON.stringify(rows.map((r) => [r.ico, r.title, r.cd ? '' : r.sub, r.btn?.label ?? '']));
@@ -160,16 +139,17 @@ export function lobbyScene(sh: Shell, o: LobbyOpts): Scene {
   const tasks = h('div.cz-tasks');
   const drawTasks = () => {
     const now = Date.now();
-    tasks.replaceChildren(h('h3', 'Tickets du jour'), p('Des mini-défis sans hasard, sans mise : ils reviennent chaque jour.', '.cz-tsub'),
+    tasks.replaceChildren(h('h3', 'Défis du jour'), p('Des mini-défis sans hasard, sans mise : ils reviennent chaque jour.', '.cz-tsub'),
       ...DAILY_TASKS.map((t) => {
         const done = taskDone(s, t.id, now), got = taskClaimed(s, t.id, now);
         const b = done && !got ? h('button.btn.small.gold', { on: { click: () => claimIt(t.id, b) } }, 'Réclamer') : h(`span.cz-tstate${got ? '.ok' : ''}`, got ? '✓' : 'À faire');
-        return h(`div.cz-task${got ? '.done' : done ? '.ready' : ''}`, h('div.cz-ttxt', h('b', t.name), h('small', t.desc)), h('span.cz-treward', `+${t.tickets}`), b);
+        return h(`div.cz-task${got ? '.done' : done ? '.ready' : ''}`, h('div.cz-ttxt', h('b', t.name), h('small', t.desc)), h('span.cz-treward', h('img', { src: resIconUrl('coins', 18), alt: '', draggable: false, style: 'width:16px;vertical-align:middle;margin-right:2px' }), `+${t.coins}`), b);
       }));
   };
   const claimIt = (id: DailyTask['id'], b: Element) => {
-    const g = claimTask(s, id);
+    const g = claimTask(s, id); // pièces autorisées (plafond du jour) : on les verse dans le portefeuille unique
     if (g <= 0) { drawTasks(); return; }
+    addRes('coins', g);
     persist(); notifyCasino();
     audio.play('reward'); haptic('reward'); celebrate('small', centerOf(b));
     void sh.fly(centerOf(b), 4, 25).then(() => { sh.setShown(balance()); });
@@ -177,7 +157,7 @@ export function lobbyScene(sh: Shell, o: LobbyOpts): Scene {
   };
 
   const purse = h('div.cz-purse');
-  const drawPurse = () => purse.replaceChildren(h('span', 'Pièces : ', h('b', fmt(balance()))), h('span', 'Tickets : ', h('b', fmt(s.chips + s.bring))));
+  const drawPurse = () => purse.replaceChildren(h('img', { src: resIconUrl('coins', 22), alt: '', draggable: false, style: 'width:20px;vertical-align:middle;margin-right:4px' }), h('span', 'Pièces : ', h('b', fmt(balance()))));
   drawPurse(); drawTasks(); drawFree();
   const timer = window.setInterval(() => { drawFree(); }, 1000);
   const sayTimer = window.setInterval(() => { if (document.hidden) return; if (Math.random() < 0.55) say(Math.random() < 0.5 ? 'radia' : 'auguste', Math.random() < 0.5 ? pick(RADIA_LINES) : pickLine('welcomeBack')); }, 11000);
@@ -202,8 +182,8 @@ export function lobbyScene(sh: Shell, o: LobbyOpts): Scene {
     el, title: 'Casino Royal', onBack: o.onBack,
     dispose: () => { window.clearInterval(timer); window.clearInterval(sayTimer); window.clearTimeout(bubbleTimer); offChange(); },
     help: () => h('div', p(`Bienvenue au Casino Royal ! Trois jeux pour s'amuser : la roulette, la machine à sous RADIA et le blackjack. Touche l'illustration ou les boutons pour y aller.`),
-      p(`Tout est facultatif. Les ${TICKETS_NAME} sont gratuits : ils ne s'achètent pas, ne se convertissent pas et ne se donnent pas. Tu en reçois avec l'allocation d'ouverture, le cadeau du jour, la roue du jour, les missions, les mini-défis « Tickets du jour », les événements du mode Libre et les succès.`),
-      p(`Aucun objet important n'est réservé au hasard : les missions sans hasard donnent aussi les objets exclusifs. Si ta bourse est presque vide, une mini-recharge gratuite revient toutes les 3 minutes : tu n'es jamais bloquée.`),
+      p(`Tout est facultatif. Les jeux se jouent avec tes pièces dorées : le même portefeuille que partout dans RADIA. Tu en gagnes avec tes commandes, le cadeau du jour, la roue du jour, les missions, les défis du jour, les événements du mode Libre et les succès.`),
+      p(`Aucun objet important n'est réservé au hasard : les missions sans hasard donnent aussi les objets exclusifs. Si ta bourse est vide, rien de grave : tes commandes en rapportent toujours.`),
       p('Chaque jeu a son bouton « ? » avec les règles et les probabilités exactes. Aucune manche ne se lance toute seule : c\'est toujours toi qui décides.')),
   };
 }
@@ -227,7 +207,7 @@ export function missionsScene(o: { onBack(): void }): Scene {
         h('div.cz-mtop', h('b', m.name), done ? h('span.cz-mok', '✓') : null),
         h('small', m.desc),
         h('div.cz-mbar', h('i', { style: `width:${Math.round((prog / m.goal) * 100)}%` })),
-        h('div.cz-mrow', h('span.cz-mprog', `${prog}/${m.goal}`), h('span.cz-mrew', `+${m.chips} tickets`, nm ? ` · ${nm}` : '')),
+        h('div.cz-mrow', h('span.cz-mprog', `${prog}/${m.goal}`), h('span.cz-mrew', `+${fmt(m.coins)} pièces`, nm ? ` · ${nm}` : '')),
         can ? b : null);
     }));
   };
@@ -235,20 +215,21 @@ export function missionsScene(o: { onBack(): void }): Scene {
     const w = save.data.world;
     const r = claimMission(s, w, m.id);
     if (!r.ok) return;
+    events.emit('economy', undefined); // les pièces gagnées sont dans le portefeuille unique : les compteurs se mettent à jour
     persist(); notifyCasino();
     draw();
     // coffre de mission : ouverture mise en scène (récompenses déjà versées ci-dessus, affichage seulement)
-    void Promise.all([import('../../ui/rewards'), import('../../ui/rewards/adapters')]).then(([rw, ad]) => rw.openGift(ad.casinoMissionSpec({ name: m.name, chips: r.chips, item: r.item, duplicate: r.duplicate })));
+    void Promise.all([import('../../ui/rewards'), import('../../ui/rewards/adapters')]).then(([rw, ad]) => rw.openGift(ad.casinoMissionSpec({ name: m.name, coins: r.coins, item: r.item, duplicate: r.duplicate })));
   };
   draw();
   return {
     el: h('div.cz-missions', h('h2', 'Missions'), p('Aucun hasard : il suffit de jouer ou de revenir. Les récompenses sont garanties.', '.cz-lead'), list),
     title: 'Missions', onBack: o.onBack,
-    help: () => h('div', p('Les missions se remplissent toutes seules quand tu joues ou que tu reviens au casino. Gagner n\'est jamais nécessaire.'), p('Chaque mission donne des tickets et parfois un objet exclusif pour ton monde. Si tu l\'as déjà, tu reçois des tickets à la place.')),
+    help: () => h('div', p('Les missions se remplissent toutes seules quand tu joues ou que tu reviens au casino. Gagner n\'est jamais nécessaire.'), p('Chaque mission donne des pièces et parfois un objet exclusif pour ton monde. Si tu l\'as déjà, tu reçois des pièces à la place.')),
   };
 }
 
-/** Message « il te faut au moins X tickets » avec accès à la carte d'Auguste. */
+/** Message « il te faut au moins X pièces » avec accès à la carte d'Auguste. */
 export function lowFunds(min: number, goCard: () => void): HTMLElement {
   return h('div.cz-low', h('p', `Il te faut au moins ${fmt(min)} pièces pour jouer ici. Le casino n’est jamais obligatoire : tes commandes en rapportent ♡`), h('button.btn.lavande.small', { on: { click: goCard } }, 'Retour'));
 }

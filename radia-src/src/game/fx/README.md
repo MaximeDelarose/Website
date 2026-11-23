@@ -35,7 +35,7 @@ scene.highlightCells(cells: number[]): void
 - `maxMergeFx` : l'effet spectaculaire complet (déjà déclenché automatiquement par une fusion qui crée le niveau max).
 - `comboFx` : compteur discret en haut du plateau (`Combo 4 · ×1.5` si `mult > 1`), son qui monte, `haptic('combo')` aux paliers 3/5/8.
   Les fusions l'appellent déjà elles-mêmes à chaque événement `combo` ; l'appeler en plus n'est utile que pour un combo « hors plateau ».
-- `flyTo` : icônes disponibles `coin, diamond, energy, heart, star, flowers, fabric, cocoa, ticket, chest` (autre nom : étincelle dorée).
+- `flyTo` : icônes disponibles `coin, diamond, energy, heart, star, flowers, fabric, cocoa, chest` (autre nom : étincelle dorée).
   Le callback est **toujours** appelé à l'arrivée (~0,6 s), même si le budget de particules est plein.
 - `highlightCells` : fait pulser les cases (~2 s), remplace la précédente mise en évidence.
 

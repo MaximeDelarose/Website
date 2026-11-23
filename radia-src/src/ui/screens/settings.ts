@@ -112,7 +112,7 @@ export function openSettings(): Promise<void> {
       h('div.setting-row', h('label', 'Animations réduites'), toggle(s.reducedMotion, (v) => { s.reducedMotion = v; commit(); })),
       h('div.setting-row', h('label', 'Vitesse du texte'), seg([['normal', 'Normale'], ['fast', 'Rapide'], ['instant', 'Immédiate']], s.textSpeed, (v) => { s.textSpeed = v; commit(); })),
       h('div.setting-row', h('label', 'Version', h('small', versionLabel())), checkBtn),
-      h('div.setting-row', h('label', 'Ressources', h('small', 'À quoi servent pièces, diamants, énergie, cœurs, tickets')), h('button.btn.small.secondary', { on: { click: tap(async () => { (await import('../components/resourceInfo')).openResourceHelp(); }, { sound: false }) } }, 'Voir')),
+      h('div.setting-row', h('label', 'Ressources', h('small', 'À quoi servent pièces, diamants, énergie, cœurs')), h('button.btn.small.secondary', { on: { click: tap(async () => { (await import('../components/resourceInfo')).openResourceHelp(); }, { sound: false }) } }, 'Voir')),
       h('div.setting-row.push-row', { style: 'align-items:flex-start;flex-direction:column;gap:6px' }, h('label', 'Petite pensée du jour ♡', pushState), pushBtns),
       h('div.setting-row', h('label', 'Petites pensées ♡', h('small', 'Celles que tu as reçues')), thoughtsBtn),
       h('div.setting-row', h('label', 'Statistiques de jeu ♡', h('small', 'Partage facultatif avec Auguste : voir, arrêter, supprimer')), h('button.btn.small.secondary', { on: { click: tap(() => { void import('./statsConsent').then((m) => m.openStatsPanel()); }, { sound: false }) } }, 'Gérer')),

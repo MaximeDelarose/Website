@@ -5,7 +5,7 @@ Rapport chiffré : `BALANCE_REPORT=1 npx vitest run tests/balance-sim.test.ts`
 (profils : occasionnelle 3×4 min/j · régulière 2×20 min/j · longue 1×60 min/j · intensive 4×30 min/j, 14 jours, médiane de 3 parties).
 
 ## Principes
-- L'énergie, les pièces, diamants et tickets doivent compter, **sans frustration** : l'énergie revient toujours (plancher accéléré sous 6 ⚡), Mon Monde / dressing / boutique restent jouables à 0 ⚡.
+- L'énergie, les pièces et les diamants doivent compter, **sans frustration** : l'énergie revient toujours (plancher accéléré sous 6 ⚡), Mon Monde / dressing / boutique restent jouables à 0 ⚡.
 - Aucune ressource n'est retirée des sauvegardes ; seuls les **gains futurs** changent.
 - Plus de bonus répétable à volonté : le « +30 offert par Auguste » est **quotidien** (1 par jour, minuit local).
 
@@ -73,23 +73,39 @@ Effet réel : jusqu’à **+82 % de pièces** (+ pièces fixes + XP) sur les com
 Objectif d'épargne : appuyer sur « épargner » d'une amélioration trop chère la place en objectif, avec jauge et « il te manque X pièces (environ N commandes) ».
 
 ### Casino en pièces (`src/casino/bank.ts`)
-- Les jeux misent directement les pièces de RADIA (`save.data.world.res.coins`) : un seul portefeuille, débit tout-ou-rien avant la manche, jamais de solde négatif, gains crédités une seule fois.
+- Les jeux misent directement les pièces de RADIA (`save.data.world.res.coins`) : un seul portefeuille, débit tout-ou-rien avant la manche, jamais de solde négatif, gains crédités une seule fois dans la même bourse.
 - Mises : 100 / 250 / 500 / 1 000 / 2 500 / 5 000 / 10 000, puis plus si la bourse le permet. Maximum par manche = max(10 000, moitié de la bourse), plafonné à 1 000 000 et jamais supérieur au solde.
 - Pas une source infinie de pièces : retour théorique < 100 % (roulette 97,3 %, machine à sous et blackjack publiés dans l'aide de chaque jeu) ; aucun bonus de série.
 - Jamais obligatoire : les commandes rapportent des pièces même à 0.
-- Les tickets déjà gagnés sont **conservés** (tout ticket resté « à la table » revient en poche à l'ouverture).
 
-### Tickets (ressource rare, plus de mise) — `src/casino/privileges.ts`
-Soirée du Casino Royal (50 tickets : 3 tours offerts à 100 pièces, 1 fois/jour) · cadeau d'Auguste (60 → 5 diamants) · coffret d'atelier (40 → 10 fleurs/tissus/cacaos) · collier de perles 150 · cheminée 250 · pergola 300 · fontaine 350 · robe tapis rouge 450 · diadème 500.
-Les tickets ne se rechangent jamais en pièces.
+## Simplification de l'économie : plus de tickets, plus de pièces grises
+Monnaies : **pièces dorées** (principale), **diamants** (rare), **énergie** (pour jouer). Les fleurs / tissus / cacao restent des matières, les cœurs un compteur d'événements.
 
-### Caisse d'échange pièces → tickets
-- Carte d'Auguste : **100 pièces = 10 tickets** (`src/casino/exchange.ts`, `EXCHANGE_COINS` / `EXCHANGE_TICKETS`).
-- Plafond : **100 tickets par jour** (`DAILY_CAPS.exchange` dans `src/casino/tickets.ts`), pour éviter de vider la bourse d'un coup.
-- Strictement virtuel : aucun argent réel, aucun achat, les tickets ne se rechangent jamais en pièces. Seules des PIÈCES sont débitées (jamais diamants ni énergie).
+### Pièces grises
+Il n'y a jamais eu de seconde monnaie : c'était l'émoji 🪙 (rendu gris/argenté sur iPhone) dans la roue du jour, le bouton « Vendre », le salaire de carrière et le badge « Salaire prêt ». Il est remplacé partout par la pièce dorée dessinée (`resIconUrl('coins')`, `drawResIcon`). Un seul portefeuille : `world.res.coins`. Test : plus aucun 🪙 / 🎟 dans `src/`.
 
-### Interactions de l'économie
-Sources de pièces : livraisons (≈ 85 %), découvertes d'album, fusions maximales, drops, déblocages, niveaux de Radia. Puits : dressing, meubles, jardin, chocolat, générateurs, PIMBÊCHE, caisse d'échange, casino. Le casino ne crée pas de pièces en moyenne (retour théorique < 100 %) ; la soirée offerte (≈ 290 pièces/jour au plus, 50 tickets) reste marginale face à 830–2 800 pièces/jour.
+### Tickets supprimés
+Il existait DEUX compteurs : les tickets du casino (`fun.casino.chips` en poche + `bring` sur la table) et des « tickets d'événement » (`fun.endless2.tickets`, jamais utilisés). Supprimés, ainsi que la caisse d'échange, la mini-recharge, les plafonds et compteurs propres aux tickets (`src.*`, `priv.*`).
+- **Migration** (`mergeTickets` dans `src/save/fun.ts`, appelée par `sanitize` dans `src/save/schema.ts`) : **1 ticket = 10 pièces** (le taux de l'ancienne caisse d'échange : 100 pièces = 10 tickets), **une seule fois** (marque durable `fun.economy.merged`), plafonnée au maximum de pièces du jeu (999 999 999). Rechargement, réimportation ou reprise ne dupliquent rien ; une ancienne sauvegarde réimportée est convertie une fois de plus, séparément. Les récompenses visibles « ticket » restées sur un plateau sont converties au même taux. Un message unique (« Une économie plus simple ») annonce le nombre de pièces reçues.
+- Diamants, énergie, objets achetés et progression ne sont pas touchés. Tests : `tests/tickets-migration.test.ts` (11) et `scripts/tickets-migration-e2e.mjs`.
+
+### Remplacement des gains en tickets (futurs gains, calibrés sur 830–2 800 pièces/jour)
+| Source | Avant | Maintenant |
+|---|---|---|
+| Roue du jour | tickets 200 / 600 (16 %) | pièces 100 (24 %) · 300 (14 %) · **600 (4 %)** ; énergie 3 (14 %) · **8 (4 %)** ; diamants 2 · 6 ; mode 6 % · déco 6 % · **objet rare 4 %** · fragment 6 %. Espérance ≈ **90 pièces**, 0,5 diamant, 0,7 énergie par tirage |
+| Calendrier quotidien | J3 : 250 tickets · J6 : 400 tickets + objet | J3 : **500 pièces + 5 énergie** · J6 : **800 pièces** + objet (×1,15 par tour de thèmes, plafond ×2) |
+| Défis du jour du casino | 30 / 30 / 30 / 40 tickets | **40 / 40 / 40 / 60 pièces** (plafond 400/jour) |
+| Missions du casino | 100 à 500 tickets + objet | **150 à 1 000 pièces** + objet exclusif (doublon : 200 pièces) |
+| Succès | 50 tickets | **150 pièces** (une seule fois par succès) |
+| Événements du mode libre | 20 / 30 / 60 tickets par palier | **60 / 90 / 180 pièces** (plafond 1 200/jour) ; gain « ticket » d'un coffre → petites pièces ; événement « Tenues » → 10 énergie |
+| Cadeau d'ouverture du casino | 500 tickets | **300 pièces** (une fois) |
+| Cadeau de démarrage | 300 pièces + 100 tickets | **500 pièces** |
+
+### Privilèges du casino (pièces, ou gratuits par les missions)
+Coffret d'atelier 400 · collier de perles 1 500 · cheminée 2 500 · pergola 3 000 · fontaine 3 500 · robe tapis rouge 4 500 · diadème 5 000. Valeur de l'ancienne boutique (1 ticket = 10 pièces), toujours sous les prix de prestige des boutiques classiques (`PRESTIGE_PRICE`). Les mêmes objets s'obtiennent gratuitement par les missions. Supprimés : la « Soirée » (3 tours offerts, sans intérêt avec des pièces) et le cadeau de 5 diamants (une conversion pièces → diamants).
+
+### À quoi servent les pièces
+Vêtements, décoration de Mon Monde, PIMBÊCHE (13 améliorations), améliorations de générateurs, objets rares et de prestige, mises du casino, privilèges exclusifs. Prix inchangés (courbe ci-dessus).
 
 ## Plateau plein
 - Conseil discret « Ton plateau commence à être plein ♡ » à 80 % d'occupation (`FULL_HINT_RATIO`), au plus toutes les 3 min, jamais pendant une fusion.
