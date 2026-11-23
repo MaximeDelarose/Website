@@ -96,7 +96,12 @@
     var t = A.ctx.currentTime; S.bus.gain.cancelScheduledValues(t); S.bus.gain.setValueAtTime(S.bus.gain.value, t); S.bus.gain.linearRampToValueAtTime(0, t + sec);
     setTimeout(function () { S.els.forEach(function (e) { try { e.pause(); } catch (x) { } }); S.started = false; clearInterval(S.timer); }, sec * 1000 + 200);
   };
-  M.unsilence = function () { S.silenced = false; M.sync(); };
+  /* la musique ralentit doucement (ambiance « on va dormir ») */
+  M.slow = function (sec) {
+    var t0 = Date.now(); clearInterval(S.slowT);
+    S.slowT = setInterval(function () { var k = Math.min(1, (Date.now() - t0) / (sec * 1000)); S.els.forEach(function (e) { try { e.playbackRate = 1 - 0.26 * k; } catch (x) { } }); if (k >= 1) clearInterval(S.slowT); }, 200);
+  };
+  M.unsilence = function () { S.silenced = false; clearInterval(S.slowT); S.els.forEach(function (e) { try { e.playbackRate = 1; } catch (x) { } }); M.sync(); };
   M.state = function () { return { started: S.started, idx: S.idx, cur: S.cur, files: FILES.length, vol: C.settings.musicVol }; };
 
   /* démarre au premier vrai geste (Safari iOS exige un geste) ; réessaie tant que ça n'a pas démarré */

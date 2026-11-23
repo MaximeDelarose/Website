@@ -84,11 +84,11 @@
   /* fin d'une création : étoile + éventuel cadeau, puis ENCORE / MON CHÂTEAU */
   C.finish = function (o) {
     var gift = C.rewards.grant();
-    return C.celebrate({ img: o.img, svg: o.svg, say: o.say || ('Bravo ' + C.NAME + ' ! Tu veux encore jouer ou retourner au château ?'), gift: gift, cards: C.endCards(o.tile || o.kind, o.again) });
+    return C.celebrate({ kind: o.kind || o.tile, img: o.img, svg: o.svg, say: o.say || ('Bravo ' + C.NAME + ' ! Tu veux encore jouer ou retourner au château ?'), gift: gift, cards: C.endCards(o.tile || o.kind, o.again) });
   };
   /* fin sans création ni récompense (animaux, jeux…) */
   C.endScreen = function (o) {
-    return C.celebrate({ svg: o.svg, say: o.say || ('Bravo ' + C.NAME + ' ! Tu veux encore jouer ou retourner au château ?'), cards: C.endCards(o.tile, o.again) });
+    return C.celebrate({ kind: o.tile, svg: o.svg, say: o.say || ('Bravo ' + C.NAME + ' ! Tu veux encore jouer ou retourner au château ?'), cards: C.endCards(o.tile, o.again) });
   };
   /* Le gros bouton « J'ai fini ! » : vert, coche blanche, pulsation. Toujours le même, dans toutes les activités.
      label = texte pour les adultes. Un seul appui est pris en compte (anti double-tap). */

@@ -106,9 +106,9 @@
       '<g class="lu-body"><path d="M60 14l-4 12M60 14l4 12" stroke="' + INK + '" stroke-width="3" stroke-linecap="round" fill="none"/>' +
       '<path d="M60 0l3 6.500 7 .8-5.200 4.700 1.500 7-6.300-3.700-6.300 3.700 1.500-7L50 7.300l7-.8z" fill="#ffd84d" ' + ST(2.500) + '/>' +
       '<circle cx="60" cy="74" r="38" fill="url(#' + g + ')" ' + ST(3.500) + '/>' +
-      Art.eye(46, 70, 6.500) + Art.eye(74, 70, 6.500) +
+      '<g class="lu-eyes">' + Art.eye(46, 70, 6.500) + Art.eye(74, 70, 6.500) + '</g><g class="lu-shut" style="display:none"><path d="M39 71q7 7 14 0M67 71q7 7 14 0" fill="none" stroke="' + INK + '" stroke-width="3.500" stroke-linecap="round"/></g>' +
       '<ellipse cx="36" cy="86" rx="7" ry="4.500" fill="#ff6fa5" opacity=".45"/><ellipse cx="84" cy="86" rx="7" ry="4.500" fill="#ff6fa5" opacity=".45"/>' +
-      '<path d="M52 84q8 9 16 0" fill="#fff" stroke="' + INK + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path class="lu-mouth" d="M52 84q8 9 16 0" fill="#fff" stroke="' + INK + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' +
       '</g>', 'lumi');
   };
 
