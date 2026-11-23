@@ -18,8 +18,17 @@
   };
   var NEXT = { plush: 'Maintenant, on range les peluches !', toy: 'Maintenant, on range les jouets !', dress: 'Maintenant, on range les robes !', book: 'Maintenant, on range les livres !', shoe: 'Maintenant, on range les chaussures !', pencil: 'Maintenant, on range les crayons !' };
   var HINT = ['Presque ! Regarde, ça se range ici !', 'Oups ! C’est par là que ça va !', 'Regarde, c’est ici que ça se range !'];
-  var FINAL = 'Wouaaah ! Regarde comme ta chambre est jolie maintenant ! Bravo ' + N + ' !';
-  C.TIDY = { MISSIONS: MISSIONS, DONE: DONE, NEXT: NEXT, HINT: HINT, FINAL: FINAL };
+  /* félicitations de fin : chaleureuses, jamais de reproche ; l'idée : une chambre rangée est agréable, on s'y sent bien et on y joue facilement */
+  var FINALS = [
+    'Wouaaah, bravo ' + N + ' ! Regarde comme ta chambre est jolie maintenant ! Tout est bien rangé, on s’y sent trop bien !',
+    'Bravo ' + N + ' ! Quelle jolie chambre ! Tout est bien rangé, et c’est tellement agréable pour jouer !',
+    'Oh là là, regarde ! Ta chambre brille de partout ! Bravo ' + N + ', on s’y sent vraiment bien !',
+    'Youpi, tout est bien rangé ! Bravo ' + N + ' ! Maintenant, tu as de la place pour jouer tranquillement !',
+    'Wouaaah, quel beau travail, ' + N + ' ! Dans une chambre bien rangée, on se sent tout bien et on joue plus facilement !'
+  ];
+  var EXTRA = 'Et si on allait ranger quelques jouets dans ta vraie chambre aussi ?';
+  var FINAL = FINALS[0];
+  C.TIDY = { MISSIONS: MISSIONS, DONE: DONE, NEXT: NEXT, HINT: HINT, FINAL: FINAL, FINALS: FINALS, EXTRA: EXTRA };
 
   var BY = {}; Object.keys(T.objects).forEach(function (id) { var c = T.objects[id].cat; (BY[c] = BY[c] || []).push(id); });
   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -40,7 +49,7 @@
 
       /* ---- une manche : une disposition, quelques objets éparpillés ---- */
       function start() {
-        locked = false; left = 0; items = []; dests = {}; drag = null; wrongCount = 0; wrap.classList.remove('shine');
+        locked = false; celebrated = false; left = 0; items = []; dests = {}; drag = null; wrongCount = 0; wrap.classList.remove('shine', 'warm', 'happy');
         var old = C.$('.tba', el); if (old) old.remove();
         L = T.layouts[prog.layout % T.layouts.length];
         mission = prog.round === 0 ? MISSIONS[0] : MISSIONS[prog.round % MISSIONS.length];
@@ -128,16 +137,23 @@
         wrongCount++; if (wrongCount % 2 === 1) say(rnd(HINT));
       }
 
-      /* ---- fin : avant / après, la chambre brille ---- */
+      /* ---- fin : seulement quand TOUS les objets sont rangés ; chambre qui scintille, avant / après, félicitations à voix haute ---- */
+      var celebrated = false;
       async function finishRound() {
-        locked = true; await C.sleep(700); if (!alive) return;
-        wrap.classList.add('shine'); C.sfx.yay(); try { C.fx.confetti(30); } catch (e) { }
+        if (celebrated || C.$$('.tobj:not(.stored)', wrap).length) return;   /* jamais de félicitation tant qu'il reste un objet dehors */
+        celebrated = true; locked = true; await C.sleep(700); if (!alive) return;
+        wrap.classList.add('shine', 'warm', 'happy'); C.sfx.yay(); setTimeout(function () { C.sfx.sparkle(); }, 300); try { C.fx.confetti(30); } catch (e) { }
+        for (var i = 0; i < 16; i++) { var s = C.el('<i class="tspark" style="left:' + C.rint(6, 94) + '%;top:' + C.rint(8, 92) + '%;--d:' + (Math.random() * 1.8).toFixed(2) + 's;--s:' + (0.6 + Math.random() * 0.9).toFixed(2) + '">' + Art.svg('0 0 24 24', '<path d="' + Art.P.spark + '" fill="#ffe066"/>') + '</i>'); wrap.appendChild(s); }
+        lumiBox.classList.add('cheer');
         var after = wrap.innerHTML;
-        var ba = C.el('<div class="tba"><div class="tcard before"><span class="tag">🌀</span><div class="troom mini">' + beforeHTML + '</div></div><div class="tarrow">➜</div><div class="tcard after"><span class="tag">✨</span><div class="troom mini">' + after + '</div></div></div>');
+        var ba = C.el('<div class="tba"><div class="tcard before"><span class="tag">🌀</span><div class="troom mini">' + beforeHTML + '</div></div><div class="tarrow">➜</div><div class="tcard after"><span class="tag">✨</span><div class="troom mini warm">' + after + '</div></div></div>');
         C.$('.tidy', el).appendChild(ba);
-        await say(FINAL, { keepDuck: false }); if (!alive) return; await C.sleep(900); if (!alive) return;
+        var said = rnd(FINALS);
+        await say(said, { keepDuck: true }); if (!alive) return;
+        if (Math.random() < 0.35) { await C.sleep(500); if (!alive) return; await say(EXTRA); if (!alive) return; }   /* de temps en temps : et dans ta vraie chambre ? */
+        await C.sleep(900); if (!alive) return;
         prog.level = Math.min(3, prog.level + 1); prog.layout = (prog.layout + 1) % T.layouts.length; prog.round++; C.store.set('tidy', prog);
-        C.finish({ kind: 'tidy', tile: 'tidy', svg: T.roomBg(L).replace('<svg ', '<svg class="tbgsvg" '), say: FINAL, again: function () { start(); } });
+        C.finish({ kind: 'tidy', tile: 'tidy', svg: T.roomBg(L).replace('<svg ', '<svg class="tbgsvg" '), say: said, again: function () { lumiBox.classList.remove('cheer'); celebrated = false; start(); } });
       }
       start();
     },

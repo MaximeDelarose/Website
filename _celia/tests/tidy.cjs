@@ -51,6 +51,7 @@ async function drag(p, from, to) { await p.mouse.move(from.x, from.y); await p.m
     const logBefore = await p.evaluate(() => (C.spokenLog || []).length);
     r = await rects(p); const a = r.items[0];
     await drag(p, a, r.dests[a.cat]); await sleep(p, 900);
+    ok(await p.evaluate(() => !(C.spokenLog || []).some((x) => C.TIDY.FINALS.indexOf(x.text) >= 0) && !document.querySelector('.tba')), T + ' : pas de félicitation finale tant qu’il reste des objets');
     ok(await p.evaluate((id) => document.querySelector('.tobj[data-id=' + id + ']').classList.contains('stored'), a.id), T + ' : bon meuble : l’objet se range (animation) et disparaît de la pièce');
     ok(await p.evaluate((n) => (C.spokenLog || []).length > n && /rangé|dans le panier|dans le coffre|dans l’armoire|sur l’étagère|près du lit|dans (son|leur) pot/.test(C.spokenLog[C.spokenLog.length - 1].text), logBefore), T + ' : Lumi félicite à voix haute (« ' + (await p.evaluate(() => C.spokenLog[C.spokenLog.length - 1].text)) + ' »)');
     /* ---- on termine la manche ---- */
@@ -60,8 +61,11 @@ async function drag(p, from, to) { await p.mouse.move(from.x, from.y); await p.m
     const ba = await p.evaluate(() => ({ cards: document.querySelectorAll('.tba .tcard').length, before: document.querySelectorAll('.tba .before .tobj').length, afterVisible: [...document.querySelectorAll('.tba .after .tobj')].filter((e) => e.style.display !== 'none').length }));
     ok(ba.cards === 2 && ba.before === 3 && ba.afterVisible === 0, T + ' : avant / après : 3 objets éparpillés, puis plus aucun (' + JSON.stringify(ba) + ')');
     ok(await p.evaluate(() => document.querySelector('.troom').classList.contains('shine')), T + ' : la chambre brille');
-    await sleep(p, 6500);
-    ok(await p.evaluate(() => (C.spokenLog || []).some((x) => /Regarde comme ta chambre est jolie/.test(x.text))), T + ' : « Wouaaah ! Regarde comme ta chambre est jolie maintenant ! Bravo Celia ! »');
+    await p.waitForSelector('.endcard.green', { timeout: 30000 }).catch(() => { });
+    ok(await p.evaluate(() => (C.spokenLog || []).some((x) => x.who === 'narr' && C.TIDY.FINALS.indexOf(x.text) >= 0)), T + ' : la narratrice félicite à voix haute (« ' + (await p.evaluate(() => (C.spokenLog || []).filter((x) => C.TIDY.FINALS.indexOf(x.text) >= 0).pop().text)) + ' »)');
+    ok(await p.evaluate(() => C.TIDY.FINALS.length === 5 && new Set(C.TIDY.FINALS).size === 5 && C.TIDY.FINALS.every((t) => /Celia/.test(t) && !/pas assez|tu aurais|enfin|encore du désordre|vilain|il faut/i.test(t)) && /vraie chambre/.test(C.TIDY.EXTRA)), T + ' : 5 variantes chaleureuses, sans reproche, + « Et si on allait ranger quelques jouets dans ta vraie chambre aussi ? »');
+    ok(await p.evaluate(() => { const r = document.querySelector('.troom'); return r.classList.contains('warm') && document.querySelectorAll('.tspark').length >= 10; }), T + ' : la chambre devient chaleureuse et scintille');
+    ok(await p.evaluate(() => document.querySelector('.tba .tcard.after .troom.warm') !== null), T + ' : avant / après : l’« après » est chaleureux');
     ok(await p.evaluate(() => !!document.querySelector('.endcard.green') && !!document.querySelector('.endcard.pink')), T + ' : écran de fin : ENCORE / MON CHÂTEAU');
     if (vp.n === 'iPhone 14') {
       /* manches suivantes : 4, 5 puis 6 objets, dispositions différentes */
@@ -70,7 +74,7 @@ async function drag(p, from, to) { await p.mouse.move(from.x, from.y); await p.m
         await p.evaluate(() => document.querySelector('.endcard.green').click()); await sleep(p, 1800);
         r = await rects(p); sizes.push(r.items.length); walls.push(await p.evaluate(() => document.querySelector('.tbgsvg rect').getAttribute('fill')));
         for (let k = 0; k < 7; k++) { r = await rects(p); if (!r.items.length) break; await drag(p, r.items[0], r.dests[r.items[0].cat]); await sleep(p, 800); }
-        await sleep(p, 9500);
+        await p.waitForSelector('.endcard.green', { timeout: 30000 }).catch(() => { });
         if (!(await p.evaluate(() => !!document.querySelector('.endcard.green')))) break;
       }
       ok(sizes.join() === '4,5,6', T + ' : manches suivantes : 4, 5 puis 6 objets (' + sizes.join(',') + ')');
