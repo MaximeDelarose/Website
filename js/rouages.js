@@ -71,6 +71,36 @@
     });
   }
 
+  // virages : le sprite droit de Blood_seller recourbé en quart de cercle (même style, même animation)
+  // CURVE[sens d'arrivée][0 = tourne à droite, 1 = à gauche][image]
+  var CURVE = null;
+  function rotC(src, q) { if (!q) return src; var c = document.createElement("canvas"); c.width = c.height = 32; var g = c.getContext("2d"); g.translate(16, 16); g.rotate(q * Math.PI / 2); g.drawImage(src, -16, -16); return c; }
+  function prepCurves() {
+    var bi = IMG.belts; if (CURVE || !bi.complete || !bi.naturalWidth) return;
+    var src = document.createElement("canvas"); src.width = 256; src.height = 32;
+    var sg = src.getContext("2d"); sg.drawImage(bi, 0, 2 * 32, 256, 32, 0, 0, 256, 32);
+    var sd = sg.getImageData(0, 0, 256, 32).data;
+    var base = [0, 1].map(function (turn) {
+      var fr = [];
+      for (var f = 0; f < 8; f++) {
+        var c = document.createElement("canvas"); c.width = c.height = 32;
+        var g = c.getContext("2d"), im = g.createImageData(32, 32);
+        for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) {
+          var dx = x + 0.5, dy = turn === 0 ? 32 - (y + 0.5) : y + 0.5, r = Math.hypot(dx, dy);
+          if (r > 32) continue;
+          var u = Math.min(31, Math.floor(Math.atan2(dx, dy) / (Math.PI / 2) * 32));
+          var v = Math.min(31, Math.max(0, Math.floor(turn === 0 ? 32 - r : r)));
+          var si = (v * 256 + f * 32 + u) * 4, di = (y * 32 + x) * 4;
+          for (var k = 0; k < 4; k++) im.data[di + k] = sd[si + k];
+        }
+        g.putImageData(im, 0, 0); fr.push(c);
+      }
+      return fr;
+    });
+    CURVE = [0, 1, 2, 3].map(function (q) { return [0, 1].map(function (turn) { return base[turn].map(function (c) { return rotC(c, q); }); }); });
+  }
+  function curveInfo(b) { var et = (b.curve + 2) % 4; return { et: et, turn: b.dir === (et + 1) % 4 ? 0 : 1 }; }
+
   /* ---------- DOM ---------- */
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
   function iconCanvas(src, size) { var c = el("canvas", "rg-ic"); c.width = c.height = size; var g = c.getContext("2d"); g.imageSmoothingEnabled = false; var k = Math.min(size / src.width, size / src.height); g.drawImage(src, (size - src.width * k) / 2, (size - src.height * k) / 2, src.width * k, src.height * k); return c; }
@@ -92,8 +122,14 @@
   var shelf = el("div", "rg-shelf");
   menu.append(tabs, shelf);
   var insp = el("div", "rg-insp"); insp.hidden = true;
+  // barre du plan : on pose des fantômes, puis on valide
+  var planBar = el("div", "rg-planbar");
+  var planRot = el("button", "rg-btn rg-sq", "↻"), planTxt = el("span", "rg-plantxt"), planOk = el("button", "rg-btn rg-ok", "✔ Valider"), planNo = el("button", "rg-btn rg-danger", "✕ Annuler");
+  [planRot, planOk, planNo].forEach(function (b) { b.type = "button"; });
+  planRot.title = "Tourner (R)"; planOk.title = "Construire le plan (Entrée)"; planNo.title = "Effacer le plan (Échap)";
+  planBar.append(planRot, planTxt, planOk, planNo); planBar.hidden = true;
   var overlay = el("div", "rg-overlay");
-  hud.append(stockBox, waveBox, info, menu, insp);
+  hud.append(stockBox, waveBox, info, planBar, menu, insp);
   stage.append(canvas, hud, overlay);
 
   // stock (menu des objets)
@@ -139,7 +175,7 @@
         toolBtns[k] = b;
       }
       b.querySelector(".rg-cost").innerHTML = costHtml(d.cost);
-      b.title = d.n + " (" + n + ")";
+      b.title = d.n + " (" + n + ") : " + d.d;
       b.dataset.key = n;
       shelf.append(b);
     });
@@ -157,13 +193,13 @@
 
   // les icônes du menu ont besoin des images de convoyeurs/splitters : on les redessine une fois chargées
   [IMG.belts, IMG.splitter, IMG.merger].forEach(function (im) {
-    im.addEventListener("load", function () { prepSM(); toolBtns = {}; if (S) renderShelf(); });
+    im.addEventListener("load", function () { prepSM(); prepCurves(); toolBtns = {}; if (S) renderShelf(); });
   });
 
   /* ---------- état ---------- */
   var S = null;
   var cam = { x: 14, y: 15, z: 30 };
-  var ui = { tool: "select", dir: 0, hover: null, speed: 1, paused: false, started: false, sel: null };
+  var ui = { tool: "select", dir: 0, hover: null, speed: 1, paused: false, started: false, sel: null, plan: [] };
   var dpr = 1, floorCv = document.createElement("canvas");
 
   function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -190,7 +226,7 @@
     }
     renderFloor();
     cam.y = H / 2; fitZoom(); cam.x = Math.min(15, 2 + (stage.clientWidth || 800) / cam.z / 2);
-    ui.sel = null; insp.hidden = true;
+    ui.sel = null; insp.hidden = true; ui.plan = [];
     refreshHud(true);
   }
 
@@ -272,7 +308,31 @@
   }
   function canAfford(cost) { for (var k in cost) if ((S.stock[k] || 0) < cost[k]) return false; return true; }
   function pay(cost, sign) { for (var k in cost) S.stock[k] = (S.stock[k] || 0) + cost[k] * sign; }
-  function canPlace(type, x, y) {
+  function planAt(x, y) {
+    for (var i = ui.plan.length - 1; i >= 0; i--) { var e = ui.plan[i], s = DEFS[e.type].s; if (x >= e.x && y >= e.y && x < e.x + s && y < e.y + s) return e; }
+    return null;
+  }
+  function planCost() { var c = {}; ui.plan.forEach(function (e) { if (e.free) return; var k = DEFS[e.type].cost; for (var i in k) c[i] = (c[i] || 0) + k[i]; }); return c; }
+  function addPlan(type, x, y, dir) {
+    var pe = planAt(x, y);
+    if (pe && pe.type === "belt" && type === "belt") { pe.dir = dir; return true; }
+    var d = DEFS[type];
+    for (var yy = y; yy < y + d.s; yy++) for (var xx = x; xx < x + d.s; xx++) if (planAt(xx, yy)) return false;
+    if (!canPlace(type, x, y, true)) return false;
+    var cur = S.b[idx(x, y)];
+    ui.plan.push({ type: type, x: x, y: y, dir: dir, free: !!(cur && cur.type === "belt") });
+    return true;
+  }
+  function validatePlan() {
+    if (!ui.plan.length) return;
+    var ok = 0, bad = 0;
+    ui.plan.forEach(function (e) { if (place(e.type, e.x, e.y, e.dir)) ok++; else bad++; });
+    ui.plan = [];
+    flashMsg(ok + " construit" + (ok > 1 ? "s" : "") + (bad ? " · " + bad + " impossible" + (bad > 1 ? "s" : "") + " (ressources ou place)" : ""));
+    refreshHud(true);
+  }
+  function cancelPlan() { ui.plan = []; refreshHud(true); }
+  function canPlace(type, x, y, free) {
     var d = DEFS[type], s = d.s, ore = false;
     for (var yy = y; yy < y + s; yy++) for (var xx = x; xx < x + s; xx++) {
       if (!inb(xx, yy) || S.floor[idx(xx, yy)] === ROCK) return false;
@@ -284,7 +344,7 @@
     if (type === "unloader" && !touchesCore(x, y)) return false;
     var cur1 = S.b[idx(x, y)];
     if (cur1 && cur1.type === "belt") return true;
-    return canAfford(d.cost);
+    return free || canAfford(d.cost);
   }
   function touchesCore(x, y) { for (var d = 0; d < 4; d++) { var n = bAt(x + DX[d], y + DY[d]); if (n && n.type === "core") return true; } return false; }
   function place(type, x, y, dir) {
@@ -642,7 +702,8 @@
     var f = FR % 8, z = TS * k;
     var row = function (dir, part) { return (dir * 4 + part) * 32; };
     if (b.curve >= 0) {
-      // virage : la moitié d'entrée dans le sens d'arrivée + la moitié de sortie
+      prepCurves();
+      if (CURVE) { var ci = curveInfo(b); g.drawImage(CURVE[ci.et][ci.turn][f], X, Y, z, z); return; }
       half(g, bi, f * 32, row((b.curve + 2) % 4, 2), X, Y, z, b.curve);
       half(g, bi, f * 32, row(b.dir, 2), X, Y, z, b.dir);
     } else g.drawImage(bi, f * 32, row(b.dir, b.part || 0), 32, 32, X, Y, z, z);
@@ -679,8 +740,23 @@
     });
     g.globalAlpha = 1;
   }
+  // forme d'un tapis fantôme : virage si un tapis (réel ou prévu) l'alimente par le côté
+  function ghostShape(gb) {
+    var back = (gb.dir + 2) % 4, l = (gb.dir + 3) % 4, r = (gb.dir + 1) % 4;
+    function f(side) { var nx = gb.x + DX[side], ny = gb.y + DY[side], d = (side + 2) % 4, pe = planAt(nx, ny); if (pe && pe !== gb) return pe.type === "belt" && pe.dir === d; return feeds(bAt(nx, ny), d, gb.x, gb.y); }
+    var fb = f(back), fl = f(l), fr = f(r);
+    gb.curve = !fb && fl !== fr ? (fl ? l : r) : -1;
+    gb.lanes = [[], []];
+  }
   function itemPos(b, it, lane) {
     var cx = b.x + 0.5, cy = b.y + 0.5, d, x, y;
+    if (b.curve >= 0) {
+      // le long de l'arc ; voie extérieure ou intérieure selon le sens du virage
+      var ci = curveInfo(b), ph = it.p * Math.PI / 2, rr = (ci.turn === 0) === (lane === 0) ? 0.7 : 0.3;
+      var lx = rr * Math.sin(ph), ly = ci.turn === 0 ? 1 - rr * Math.cos(ph) : rr * Math.cos(ph), ddx = lx - 0.5, ddy = ly - 0.5;
+      for (var q = 0; q < ci.et; q++) { var tmp = ddx; ddx = -ddy; ddy = tmp; }
+      return [cx + ddx, cy + ddy];
+    }
     if (b.curve >= 0 && it.p < 0.5) { x = cx + DX[b.curve] * (0.5 - it.p); y = cy + DY[b.curve] * (0.5 - it.p); d = (b.curve + 2) % 4; }
     else { x = cx + DX[b.dir] * (it.p - 0.5); y = cy + DY[b.dir] * (it.p - 0.5); d = b.dir; }
     var ln = (d + 3) % 4, off = lane === 0 ? 0.2 : -0.2;
@@ -749,11 +825,21 @@
     for (i = 0; i < S.parts.length; i++) { var pa = S.parts[i]; ctx.globalAlpha = Math.min(1, pa.life * 3); ctx.fillStyle = pa.c; ctx.fillRect(sx(pa.x) - dpr * 1.5, sy(pa.y) - dpr * 1.5, 3 * dpr, 3 * dpr); }
     ctx.globalAlpha = 1;
 
+    // plan en attente de validation
+    ui.plan.forEach(function (e) {
+      var de = DEFS[e.type], gh = { type: e.type, x: e.x, y: e.y, dir: e.dir, s: de.s, ang: e.dir * Math.PI / 2, on: false, curve: -1, part: 2 };
+      gh.ports = absPorts(gh);
+      if (e.type === "belt") ghostShape(gh);
+      ctx.globalAlpha = 0.55; drawBuildingTo(ctx, gh, sx(e.x), sy(e.y), k, t); ctx.globalAlpha = 1;
+      if (de.ports && !de.ammo) drawPorts(ctx, gh, sx(e.x), sy(e.y), s, 0.8);
+      ctx.strokeStyle = "rgba(156,198,255,.9)"; ctx.lineWidth = 2 * dpr; ctx.setLineDash([4 * dpr, 3 * dpr]);
+      ctx.strokeRect(sx(e.x) + 1, sy(e.y) + 1, de.s * s - 2, de.s * s - 2); ctx.setLineDash([]);
+    });
     // fantôme de construction
     var hv = ui.hover;
     if (hv && !S.over && DEFS[ui.tool]) {
       var dd = DEFS[ui.tool], a0 = anchor(hv), gx = a0[0], gy = a0[1];
-      var ok = canPlace(ui.tool, gx, gy);
+      var ok = canPlace(ui.tool, gx, gy, true) && !planAt(gx, gy);
       var ghost = { type: ui.tool, x: gx, y: gy, dir: ui.dir, s: dd.s, ang: ui.dir * Math.PI / 2, on: false, curve: -1, part: 0 };
       ghost.ports = absPorts(ghost);
       ctx.globalAlpha = 0.65; drawBuildingTo(ctx, ghost, sx(gx), sy(gy), k, t); ctx.globalAlpha = 1;
@@ -807,10 +893,20 @@
     coreBar.title = "Noyau : " + Math.ceil(S.core.hp) + " / " + S.core.max;
     var txt, d = DEFS[ui.tool];
     if (msgT > 0) txt = '<b class="rg-msg">' + msgText + "</b>";
-    else if (d) txt = "<b>" + d.n + "</b> " + costHtml(d.cost) + " · " + d.d + " <span class='rg-dim'>R : tourner · clic droit : annuler</span>";
+    else if (d) txt = "<b>" + d.n + "</b> " + costHtml(d.cost) + (ui.plan.length ? "" : " · " + d.d);
     else if (ui.tool === "del") txt = "<b>Démolir</b> · ressources et contenu remboursés.";
     else txt = "<b>Sélection</b> · clique un bâtiment pour ouvrir son menu, glisse pour déplacer la carte.";
     if (force || txt !== lastTxt) { info.innerHTML = txt; lastTxt = txt; }
+    var showPlan = !!(DEFS[ui.tool] || ui.plan.length);
+    planBar.hidden = !showPlan;
+    hud.classList.toggle("rg-planning", showPlan);
+    if (showPlan) {
+      var pc = planCost(), aff = canAfford(pc), n = ui.plan.length;
+      var ph = n ? "<b>Plan : " + n + "</b> " + (Object.keys(pc).length ? '<span class="' + (aff ? "" : "rg-warn") + '">' + costHtml(pc) + "</span>" : "") : "<b>Plan vide</b> <span class='rg-dim'>pose des fantômes, puis valide (Entrée)</span>";
+      if (planTxt.dataset.h !== ph) { planTxt.innerHTML = ph; planTxt.dataset.h = ph; }
+      planOk.disabled = !n; planNo.disabled = !n;
+      planRot.hidden = !DEFS[ui.tool];
+    }
     Object.keys(toolBtns).forEach(function (k) { toolBtns[k].classList.toggle("poor", !canAfford(DEFS[k].cost)); });
     if (ui.sel) refreshInsp();
   }
@@ -890,6 +986,9 @@
     overlay.hidden = false;
   }
   function hideOverlay() { overlay.hidden = true; canvas.focus({ preventScroll: true }); }
+  planOk.addEventListener("click", validatePlan);
+  planNo.addEventListener("click", cancelPlan);
+  planRot.addEventListener("click", function () { ui.dir = (ui.dir + 1) % 4; });
   waveBtn.addEventListener("click", function () { if (S && !S.over && !S.spawnQ.length) S.timer = 0; });
   speedBtn.addEventListener("click", function () { ui.speed = ui.speed === 1 ? 2 : ui.speed === 2 ? 3 : 1; speedBtn.textContent = "×" + ui.speed; });
   pauseBtn.addEventListener("click", togglePause);
@@ -902,7 +1001,7 @@
   function applyTool(t) {
     if (S.over) return;
     if (ui.tool === "del") { removeB(bAt(t[0], t[1]), true); return; }
-    if (DEFS[ui.tool]) { var a = anchor(t); place(ui.tool, a[0], a[1], ui.dir); }
+    if (DEFS[ui.tool]) { var a = anchor(t); addPlan(ui.tool, a[0], a[1], ui.dir); }
   }
   canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   canvas.addEventListener("pointerdown", function (ev) {
@@ -911,10 +1010,16 @@
     ptrs.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     if (ptrs.size === 2) { var a = Array.from(ptrs.values()); pinch = { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), z: cam.z, mx: (a[0].x + a[1].x) / 2, my: (a[0].y + a[1].y) / 2 }; drag = null; return; }
     var t = tileAt(ev);
-    if (ev.button === 2) { if (DEFS[ui.tool]) { setTool("select"); return; } removeB(bAt(t[0], t[1]), true); drag = { mode: "del" }; return; }
+    if (ev.button === 2) {
+      var rp = planAt(t[0], t[1]);
+      if (rp) { ui.plan.splice(ui.plan.indexOf(rp), 1); refreshHud(true); return; }
+      if (DEFS[ui.tool]) { setTool("select"); return; }
+      removeB(bAt(t[0], t[1]), true); drag = { mode: "del" }; return;
+    }
     if (ev.button === 1 || ui.tool === "select" || ev.shiftKey) { drag = { mode: "pan", x: ev.clientX, y: ev.clientY, cx: cam.x, cy: cam.y, moved: false, t: t }; return; }
-    drag = { mode: "build", last: t };
-    applyTool(t);
+    var hitPlan = DEFS[ui.tool] ? planAt(t[0], t[1]) : null;
+    drag = { mode: "build", last: t, hit: hitPlan, moved: false };
+    if (!hitPlan) applyTool(t);
   });
   canvas.addEventListener("pointermove", function (ev) {
     if (ptrs.has(ev.pointerId)) ptrs.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
@@ -935,8 +1040,8 @@
       while (l[0] !== t[0] || l[1] !== t[1]) {
         var ddx = t[0] - l[0], ddy = t[1] - l[1], dd = Math.abs(ddx) >= Math.abs(ddy) ? (ddx > 0 ? 0 : 2) : (ddy > 0 ? 1 : 3);
         var n = [l[0] + DX[dd], l[1] + DY[dd]];
-        if (ui.tool === "belt") { ui.dir = dd; var pb = bAt(l[0], l[1]); if (pb && pb.type === "belt" && pb.dir !== dd) { pb.dir = dd; S.topo = true; } }
-        applyTool(n); l = n;
+        if (ui.tool === "belt") { ui.dir = dd; var pp = planAt(l[0], l[1]); if (pp && pp.type === "belt") pp.dir = dd; }
+        applyTool(n); l = n; drag.moved = true;
       }
       drag.last = l;
     }
@@ -944,6 +1049,7 @@
   function endPtr(ev) {
     ptrs.delete(ev.pointerId);
     if (ptrs.size < 2) pinch = null;
+    if (drag && drag.mode === "build" && drag.hit && !drag.moved) { var hi = ui.plan.indexOf(drag.hit); if (hi >= 0) ui.plan.splice(hi, 1); refreshHud(true); }
     if (drag && drag.mode === "pan" && !drag.moved && ui.tool === "select") { var b = bAt(drag.t[0], drag.t[1]); if (b) openInsp(b); else closeInsp(); }
     if (ptrs.size === 0) { drag = null; canvas.style.cursor = ui.tool === "select" ? "default" : "crosshair"; }
   }
@@ -968,7 +1074,8 @@
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (k === "tab") { if (mine) { curCat = (curCat + (ev.shiftKey ? 2 : 1)) % 3; renderShelf(); } return; }
     if (/^[1-9]$/.test(k)) { var bt = shelf.querySelector('.rg-tool[data-key="' + k + '"]'); if (bt) setTool(bt.dataset.tool); return; }
-    if (k === "escape") { setTool("select"); closeInsp(); }
+    if (k === "enter") { validatePlan(); return; }
+    if (k === "escape") { if (ui.plan.length) cancelPlan(); else { setTool("select"); closeInsp(); } }
     else if (k === "x") setTool("del");
     else if (k === "r") { if (DEFS[ui.tool]) ui.dir = (ui.dir + (ev.shiftKey ? 3 : 1)) % 4; else if (ui.sel) rotateB(ui.sel); }
     else if (k === "p") togglePause();
@@ -1006,7 +1113,7 @@
     "<li>L’<b>atelier</b> transforme les lingots de cuivre en <b>munitions</b>. Envoie-les à une <b>mitrailleuse</b>.</li>" +
     "<li>Tu démarres avec 60 munitions : un <b>déchargeur</b> collé au noyau peut les envoyer sur un tapis.</li>" +
     "<li>Clique un bâtiment pour son menu : recettes, filtre du splitter, objet du déchargeur.</li></ol>" +
-    '<p class="rg-small">Tab catégorie · 1-4 bâtiment · R tourner · X ou clic droit démolir · Échap sélection · molette zoom · ZQSD caméra · P pause' + (best ? "<br>Record : vague " + best : "") + "</p>",
+    '<p class="rg-small">Construire, c’est poser un plan (fantômes bleus) puis le valider avec ✔ ou Entrée. Tab catégorie · 1-4 bâtiment · R ou ↻ tourner · X ou clic droit démolir · Échap sélection · molette zoom · ZQSD caméra · P pause' + (best ? "<br>Record : vague " + best : "") + "</p>",
     "Lancer la partie", function () { ui.started = true; hideOverlay(); }
   );
   if (/[?&]debug\b/.test(location.search)) window.RG = { get S() { return S; }, place: place, ui: ui, insertAt: insertAt, setTool: setTool, openInsp: openInsp, cam: cam };

@@ -18,6 +18,12 @@
 .rg-danger { background: #8a2a30; box-shadow: inset 0 2px 0 #c2424b, inset 0 -2px 0 #5a1a1e; }
 .rg-info { position: absolute; left: 50%; transform: translateX(-50%); bottom: 112px; padding: 4px 10px; max-width: min(760px, calc(100% - 16px)); width: max-content; text-align: center; }
 .rg-msg { color: #fbf236; }
+.rg-planbar { position: absolute; left: 50%; transform: translateX(-50%); bottom: 112px; display: flex; gap: 6px; align-items: center; padding: 4px 6px; background: #2a2a30; border: 2px solid #000; box-shadow: inset 0 2px 0 #4f4f54, 0 3px 0 rgba(0,0,0,.45); pointer-events: auto; max-width: calc(100% - 16px); }
+.rg-planbar[hidden] { display: none; }
+.rg-planning .rg-info { bottom: 156px; }
+.rg-plantxt { padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.rg-ok { background: #3f7a32; box-shadow: inset 0 2px 0 #63c74d, inset 0 -2px 0 #2a5222; }
+.rg-btn:disabled { opacity: .45; cursor: default; }
 .rg-dim { color: #a7a7ad; font-size: 12px; }
 .rg-warn { color: #ff6b6b; font-weight: 800; }
 .rg-menu { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; max-width: calc(100% - 16px); padding: 0 4px 4px; }
@@ -79,5 +85,9 @@
   .rg-tool small { font-size: 9px; }
   .rg-tab-hint { display: none; }
   .rg-info { bottom: 98px; }
+  .rg-planbar { bottom: 98px; }
+  .rg-planning .rg-info { bottom: 146px; }
+  .rg-planbar .rg-btn { font-size: 13px; padding: 5px 10px 6px; }
+  .rg-planbar .rg-sq { font-size: 16px; }
   .rg-insp { top: 118px; right: 8px; width: min(240px, calc(100% - 16px)); max-height: calc(100% - 260px); }
 }
