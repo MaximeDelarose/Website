@@ -78,3 +78,19 @@ Pour modifier la carte : changer les formes dans `buildOverworld()` (rectangles,
 `node -e "import('./echoes-moi/assets/world16.js').then(m => console.log(m.ascii()))"` (copier le fichier en `.mjs` si Node refuse l'import).
 Après un changement des images : `python3 tools/art16/ninja_world.py` (refait aussi le terrain et l'atlas d'objets).
 Une sauvegarde faite sur l'ancienne carte (sans `mapVer: 2`) repart du village d'Aelor, brouillard de la carte remis à zéro.
+
+## Aka, archer invocateur
+
+Aka (l'homme-écureuil) est un **archer qui invoque** : il tire de loin, plante des balises qui tirent pour lui et lâche son loup de chasse.
+Les identifiants internes n'ont pas changé (sauvegardes et équipements restent valides) :
+
+| Compétence (id) | Effet |
+|---|---|
+| Flèche (`orb`) | Tir de base, selon l'arc : Arc court, Arc long (perce), Arc double (2 flèches), Arc runique (chercheuse) |
+| Balise sentinelle (`wall`) | Balise qui tire seule sur l'ennemi le plus proche pendant 8 s (une à la fois) — classe `Xa` en mode `archer` |
+| Flèche de recul (`trap`) | Projette l'ennemi touché, étourdi s'il heurte un obstacle |
+| Loup de chasse (`wolf`) | Invocation qui fonce, retient et attire l'attention |
+| Pluie de flèches (`rain`) | Zone : des flèches tombent pendant quelques secondes |
+| Volée givrante (`frost`), Flèche harpon (`storm`), Leurre du chasseur (`double`), Tir céleste (`comet`), Flèches de dispersion (`nova`), Balises jumelles (`portal`) | Mêmes mécaniques qu'avant, thème archer |
+
+L'arc tenu en main (`showBow`), la balise, les flèches et les icônes viennent du pack Ninja Adventure (CC0) : `python3 tools/art16/aka_archer.py` (part de `tools/art16/orig/ui.png`).

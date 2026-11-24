@@ -26,7 +26,8 @@ const COMMON = {
 };
 const BY_HERO = {
   default: { axe_throw: ['slice', 10.5], axe_fire: ['crush', 9.1], axe_ice: ['pierce', 9.1], axe_catch: ['collect', 11.8] },
-  aka: { orb_attack: ['pierce', 10], summon_wolf: ['collect', 9.1], place_trap: ['crush', 9.5], raise_wall: ['crush', 9.1], area_burst: ['slice', 8.3] },
+  // Aka, archer : tous les tirs en « pierce » (bras tendu, l'arc est dessiné par le jeu), invocations en « collect »
+  aka: { orb_attack: ['pierce', 10], summon_wolf: ['collect', 9.1], place_trap: ['pierce', 9.5], raise_wall: ['pierce', 9.1], area_burst: ['pierce', 8.3] },
 };
 
 export const pcHeroesOn = () => {

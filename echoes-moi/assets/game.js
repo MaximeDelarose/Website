@@ -62661,17 +62661,17 @@ var Se = [`augh`, `aka`, `gorak`, `nyra`, `ralya`],
     aka: {
       id: `aka`,
       name: `Aka`,
-      title: `Le Stratège`,
-      className: `Invocateur · Stratège`,
-      description: `Un tacticien qui contrôle le champ de bataille grâce à ses invocations, ses pièges et ses sorts de zone.`,
-      strengths: [`Dégâts de zone`, `Loup qui retient`, `Pièges & rempart`],
-      weaknesses: [`Plus lent`, `Fragile au contact`, `Anticipation`],
+      title: `L'Archer des Balises`,
+      className: `Archer · Invocateur`,
+      description: `Un archer qui frappe de très loin et ne se bat jamais seul : il plante des balises qui tirent pour lui, lâche son loup de chasse et repousse d'une flèche ceux qui approchent.`,
+      strengths: [`Très longue portée`, `Balises & loup`, `Flèches de contrôle`],
+      weaknesses: [`Fragile au contact`, `Doit garder ses distances`, `Placement des balises`],
       base: {
         hp: 100,
         def: 2,
         defPerLevel: 0.4,
-        speed: 134,
-        stats: { force: 3, intel: 12, chance: 4, agi: 5, sagesse: 2, vita: 0 },
+        speed: 140,
+        stats: { force: 3, intel: 8, chance: 4, agi: 10, sagesse: 2, vita: 0 },
       },
       startWeapon: `grim_c`,
       weaponTypes: [`grimoire`, `staff`, `orb`, `scepter`],
@@ -62689,7 +62689,7 @@ var Se = [`augh`, `aka`, `gorak`, `nyra`, `ralya`],
         { id: `comet`, unlock: 14 },
         { id: `portal`, unlock: 4 },
       ],
-      defaultLoadout: [`wolf`, `trap`, `wall`, `rain`],
+      defaultLoadout: [`wall`, `trap`, `wolf`, `rain`],
       dashCooldown: 1.35,
       dashDistance: 100,
     },
@@ -62881,19 +62881,19 @@ var Se = [`augh`, `aka`, `gorak`, `nyra`, `ralya`],
       slot: !0,
     },
     orb: {
-      name: `Orbe arcanique`,
-      desc: `Projectile magique qui explose en petite zone.`,
-      icon: `i_orbatk`,
-      element: `feu`,
+      name: `Flèche`,
+      desc: `Tir rapide et précis à longue portée (selon l'arc équipé).`,
+      icon: `i_a_fleche`,
+      element: `air`,
       tags: [`magic`],
       cd: 0.7,
-      range: 300,
-      dmg: `Intelligence`,
+      range: 380,
+      dmg: `Agilité`,
       slot: !1,
     },
     wolf: {
-      name: `Loup spectral`,
-      desc: `Invoque un loup qui fonce sur la cible, la retient et attire l'attention.`,
+      name: `Loup de chasse`,
+      desc: `Invoque un loup de chasse qui fonce sur la cible, la retient et attire l'attention.`,
       icon: `i_wolf`,
       element: `neutre`,
       tags: [`magic`],
@@ -62903,42 +62903,42 @@ var Se = [`augh`, `aka`, `gorak`, `nyra`, `ralya`],
       slot: !0,
     },
     trap: {
-      name: `Piège d'impulsion`,
-      desc: `Piège invisible aux monstres. Projette dans la direction choisie.`,
-      icon: `i_trap`,
+      name: `Flèche de recul`,
+      desc: `Une flèche qui projette violemment l'ennemi touché ; s'il heurte un obstacle, il est étourdi.`,
+      icon: `i_a_recul`,
       element: `air`,
       tags: [`magic`],
-      cd: 8,
-      range: 120,
+      cd: 7,
+      range: 330,
       dmg: `Agilité`,
       slot: !0,
     },
     wall: {
-      name: `Rempart arcanique`,
-      desc: `Barrière de cristaux temporaire qui bloque le passage.`,
-      icon: `i_wall`,
-      element: `terre`,
+      name: `Balise sentinelle`,
+      desc: `Plante une balise qui tire seule des flèches sur l'ennemi le plus proche pendant 8 s (une balise à la fois).`,
+      icon: `i_a_balise`,
+      element: `air`,
       tags: [`magic`],
-      cd: 14,
+      cd: 13,
       range: 90,
-      dmg: `—`,
+      dmg: `Agilité`,
       slot: !0,
     },
     rain: {
-      name: `Pluie ardente`,
-      desc: `Zone de feu qui inflige des dégâts pendant plusieurs secondes.`,
-      icon: `i_rain`,
-      element: `feu`,
+      name: `Pluie de flèches`,
+      desc: `Une volée de flèches s'abat sur la zone visée pendant plusieurs secondes.`,
+      icon: `i_a_pluie`,
+      element: `air`,
       tags: [`magic`],
-      cd: 12,
-      range: 280,
-      dmg: `Intelligence`,
+      cd: 11,
+      range: 300,
+      dmg: `Agilité`,
       slot: !0,
     },
     frost: {
-      name: `Piège glacé`,
-      desc: `Zone qui ralentit fortement les ennemis qui y entrent.`,
-      icon: `i_frost`,
+      name: `Volée givrante`,
+      desc: `Des flèches de givre couvrent la zone : les ennemis qui y entrent sont fortement ralentis.`,
+      icon: `i_a_givre`,
       element: `eau`,
       tags: [`magic`],
       cd: 13,
@@ -62947,9 +62947,9 @@ var Se = [`augh`, `aka`, `gorak`, `nyra`, `ralya`],
       slot: !0,
     },
     double: {
-      name: `Double spectral`,
-      desc: `Une copie temporaire détourne l'attention et certaines attaques.`,
-      icon: `i_double`,
+      name: `Leurre du chasseur`,
+      desc: `Un leurre à l'image d'Aka attire l'attention et détourne certaines attaques.`,
+      icon: `i_a_leurre`,
       element: `neutre`,
       tags: [`magic`],
       cd: 18,
@@ -62958,9 +62958,9 @@ var Se = [`augh`, `aka`, `gorak`, `nyra`, `ralya`],
       slot: !0,
     },
     storm: {
-      name: `Tempête arcanique`,
-      desc: `Zone qui attire les ennemis vers son centre avant d'exploser.`,
-      icon: `i_storm`,
+      name: `Flèche harpon`,
+      desc: `Une flèche plantée au sol attire les ennemis vers elle, puis explose.`,
+      icon: `i_a_harpon`,
       element: `air`,
       tags: [`magic`],
       cd: 16,
@@ -62993,9 +62993,9 @@ var Se = [`augh`, `aka`, `gorak`, `nyra`, `ralya`],
       slot: !0,
     },
     comet: {
-      name: `Comète arcanique`,
-      desc: `Appelle une comète sur la cible : impact retardé, énorme zone, ralentit les survivants.`,
-      icon: `i_comet`,
+      name: `Tir céleste`,
+      desc: `Une flèche tirée vers le ciel retombe sur la cible : impact retardé, énorme zone, ralentit les survivants.`,
+      icon: `i_a_celeste`,
       element: `feu`,
       tags: [`magic`],
       cd: 15,
@@ -63004,9 +63004,9 @@ var Se = [`augh`, `aka`, `gorak`, `nyra`, `ralya`],
       slot: !0,
     },
     portal: {
-      name: `Portails liés`,
-      desc: `Pose deux portails (à 4 m max d'Aka, 10 s). Tes projectiles, ton loup et même Aka (recharge 6 s) ressortent par l'autre portail. 1ʳᵉ pression : portail A ; 2ᵉ : portail B.`,
-      icon: `i_portal`,
+      name: `Balises jumelles`,
+      desc: `Plante deux balises liées (à 4 m max d'Aka, 10 s). Tes flèches, ton loup et même Aka (recharge 6 s) passent de l'une à l'autre. 1ʳᵉ pression : balise A ; 2ᵉ : balise B.`,
+      icon: `i_a_balises`,
       element: `air`,
       tags: [`magic`],
       cd: 14,
@@ -63015,9 +63015,9 @@ var Se = [`augh`, `aka`, `gorak`, `nyra`, `ralya`],
       slot: !0,
     },
     nova: {
-      name: `Nova de givre`,
-      desc: `Onde glaciale autour d'Aka : repousse et ralentit tout ce qui est proche.`,
-      icon: `i_nova`,
+      name: `Flèches de dispersion`,
+      desc: `Aka tire en cercle autour de lui : repousse et ralentit tout ce qui est proche.`,
+      icon: `i_a_dispersion`,
       element: `eau`,
       tags: [`magic`],
       cd: 10,
@@ -63762,16 +63762,16 @@ var We = {
     celeste: `Massue du Sanctuaire`,
   },
   Ke = {
-    petit: `Grimoire laineux`,
-    belier: `Sceptre cornu`,
-    mystique: `Grimoire des clochettes`,
-    grand_belier: `Sceptre du Grand Ettin`,
-    cimes: `Sceptre des Cimes`,
-    temple: `Sceptre du Temple`,
-    ombres: `Sceptre de la Reine`,
-    abysses: `Sceptre du Léviathan`,
-    abime: `Grimoire Démoniaque`,
-    celeste: `Orbe des Anges`,
+    petit: `Arc laineux`,
+    belier: `Arc cornu`,
+    mystique: `Arc des clochettes`,
+    grand_belier: `Arc du Grand Ettin`,
+    cimes: `Arc des Cimes`,
+    temple: `Arc du Temple`,
+    ombres: `Arc de la Reine`,
+    abysses: `Arc du Léviathan`,
+    abime: `Arc démoniaque`,
+    celeste: `Arc des Anges`,
   },
   qe = {
     petit: { dmg: 0.95, cd: 0.92, range: 1, speed: 1.05, scale: 0.9, pierce: 0, trail: `wool`, impact: `wool` },
@@ -63866,7 +63866,9 @@ function nt() {
                           : `club`,
                 rarity: n,
                 icon:
-                  i === `gorak`
+                  i === `aka`
+                    ? `i_bow`
+                    : i === `gorak`
                     ? `i_club_${e}`
                     : i === `nyra`
                       ? `i_chk_t${Qe[n]}`
@@ -63933,36 +63935,36 @@ Object.assign(z, {
     1.08,
     `Très puissante, mais ralentit légèrement.`,
   ),
-  grim_c: it(`grim_c`, `Grimoire arcanique`, `grimoire`, `aka`, `common`, `i_grimoire`, 50, {}),
+  grim_c: it(`grim_c`, `Arc court`, `grimoire`, `aka`, `common`, `i_bow`, 50, {}),
   grim_r: it(
     `grim_r`,
-    `Grimoire des marées`,
+    `Arc des marées`,
     `grimoire`,
     `aka`,
     `rare`,
-    `i_grimoire`,
+    `i_bow`,
     170,
     { intel: 4, chance: 2 },
     1.12,
   ),
-  staff_c: it(`staff_c`, `Bâton de saule`, `staff`, `aka`, `common`, `i_staff`, 60, {}),
+  staff_c: it(`staff_c`, `Arc long de saule`, `staff`, `aka`, `common`, `i_bow`, 60, {}),
   staff_e: it(
     `staff_e`,
-    `Bâton du stratège`,
+    `Arc long du stratège`,
     `staff`,
     `aka`,
     `legendary`,
-    `i_staff`,
+    `i_bow`,
     430,
     { intel: 8, vita: 15 },
     1.28,
     1.06,
-    `Explosions plus larges, cadence plus lente.`,
+    `Flèches lourdes et perçantes, cadence plus lente.`,
   ),
-  orb_c: it(`orb_c`, `Orbe flottante`, `orb`, `aka`, `common`, `i_orb`, 60, {}),
-  orb_r: it(`orb_r`, `Orbe jumelle`, `orb`, `aka`, `rare`, `i_orb`, 190, { intel: 4, agi: 2 }, 1.1),
-  scep_c: it(`scep_c`, `Sceptre de cristal`, `scepter`, `aka`, `common`, `i_scepter`, 70, {}),
-  scep_r: it(`scep_r`, `Sceptre du veilleur`, `scepter`, `aka`, `rare`, `i_scepter`, 200, { intel: 4, force: 3 }, 1.12),
+  orb_c: it(`orb_c`, `Arc double`, `orb`, `aka`, `common`, `i_bow`, 60, {}),
+  orb_r: it(`orb_r`, `Arc jumeau`, `orb`, `aka`, `rare`, `i_bow`, 190, { intel: 4, agi: 2 }, 1.1),
+  scep_c: it(`scep_c`, `Arc runique`, `scepter`, `aka`, `common`, `i_bow`, 70, {}),
+  scep_r: it(`scep_r`, `Arc du veilleur`, `scepter`, `aka`, `rare`, `i_bow`, 200, { intel: 4, force: 3 }, 1.12),
   scp_c: at(0, it(`scp_c`, $e[0], `sceptre`, `ralya`, `common`, `i_scp_t0`, 50, {})),
   scp_r: at(
     1,
@@ -64323,36 +64325,36 @@ var ot =
     grimoire: {
       id: `grimoire`,
       hero: `aka`,
-      label: `Grimoire`,
+      label: `Arc court`,
       sheet: `aka_grimoire`,
-      basicName: `Orbe arcanique`,
+      basicName: `Flèche`,
       anim: { basic: `orb_attack` },
-      basic: { proj: `p_orb`, dmg: 12, speed: 310, range: 330, aoe: 40, cooldown: 0.6, stat: `maitrise` },
+      basic: { proj: `p_arrow`, dmg: 12, speed: 600, range: 400, cooldown: 0.55, stat: `maitrise` },
       wolfDuration: 1.5,
     },
     staff: {
       id: `staff`,
       hero: `aka`,
-      label: `Bâton`,
+      label: `Arc long`,
       sheet: `aka_staff`,
-      basicName: `Grand orbe`,
+      basicName: `Flèche lourde`,
       anim: { basic: `area_burst` },
-      basic: { proj: `p_orb_big`, dmg: 19, speed: 240, range: 320, aoe: 58, cooldown: 0.95, stat: `maitrise` },
+      basic: { proj: `p_arrow`, dmg: 19, speed: 680, range: 480, pierce: 1, scale: 1.3, cooldown: 0.9, stat: `maitrise` },
       wallDuration: 1.5,
     },
     orb: {
       id: `orb`,
       hero: `aka`,
-      label: `Orbe`,
+      label: `Arc double`,
       sheet: `aka_orb`,
-      basicName: `Salve arcanique`,
+      basicName: `Double flèche`,
       anim: { basic: `orb_attack` },
       basic: {
-        proj: `p_orb_small`,
+        proj: `p_arrow`,
         dmg: 7,
-        speed: 430,
-        range: 300,
-        aoe: 26,
+        speed: 620,
+        range: 360,
+        scale: 0.85,
         burst: 2,
         cooldown: 0.55,
         stat: `maitrise`,
@@ -64410,16 +64412,15 @@ var ot =
     scepter: {
       id: `scepter`,
       hero: `aka`,
-      label: `Sceptre`,
+      label: `Arc runique`,
       sheet: `aka_scepter`,
-      basicName: `Orbe chercheur`,
+      basicName: `Flèche chercheuse`,
       anim: { basic: `orb_attack` },
       basic: {
-        proj: `p_orb_cyan`,
+        proj: `p_arrow_ice`,
         dmg: 10,
-        speed: 290,
-        range: 360,
-        aoe: 34,
+        speed: 480,
+        range: 420,
         homing: 3.2,
         cooldown: 0.62,
         stat: `maitrise`,
@@ -72894,6 +72895,25 @@ function _i(e) {
   } catch {}
 }
 var vi = class {
+    // une flèche qui tombe du ciel et se plante dans le sol
+    static arrowFall(e, t, n) {
+      let r = e.scene,
+        i = r.add
+          .image(t + 30, n - 150, `ui`, `p_arrow`)
+          .setRotation(Math.atan2(150, -30))
+          .setDepth(n + 1)
+          .setScale(1.1);
+      r.tweens.add({
+        targets: i,
+        x: t,
+        y: n,
+        duration: 170,
+        ease: `Quad.in`,
+        onComplete: () => {
+          (e.dustAt?.(t, n), r.tweens.add({ targets: i, alpha: 0, delay: 260, duration: 200, onComplete: () => i.destroy() }));
+        },
+      });
+    }
     constructor(e, t) {
       ((this.C = e),
         (this.o = t),
@@ -72931,7 +72951,9 @@ var vi = class {
           ? n.emberAt(i, a)
           : t.kind === `ice`
             ? n.sparkAt(i, a, `dot_ice`)
-            : t.kind === `arcane` && n.sparkAt(i, a, `dot_arcane`);
+            : t.kind === `arcane`
+              ? n.sparkAt(i, a, `dot_arcane`)
+              : t.kind === `arrows` && Math.random() < 0.6 && vi.arrowFall(n, i, a);
       }
       let i = [];
       for (let e of n.enemies)
@@ -74915,6 +74937,7 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
               (this.hit.add(e),
               this.nHit++,
               t.heroHit(e, this),
+              this.opts.onHit?.(e, this),
               this.opts.basicReturn && this.nHit >= 4 && !this.returning && ((this.returning = !0), this.hit.clear()),
               this.def.aoe && !this.def.noHitExplode)
             ) {
@@ -75987,6 +76010,23 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
       let t = this.slotSkill(e);
       return !t || !kt(V.state, t) || (e === 0 && this.basicOut) ? !1 : (this.cooldowns[e] ?? 0) <= 0;
     }
+    showBow(e) {
+      if (V.state.hero !== `aka`) return;
+      let t = this.hero;
+      ((this.bowImg ??= this.scene.add.image(0, 0, `ui`, `bow_held`)), (this.bowT = 0.32), (this.bowAng = e));
+      let n = () => {
+        if (!this.bowImg?.active) return;
+        if (((this.bowT -= this.scene.game.loop.delta / 1e3), this.bowT <= 0 || !t.alive))
+          return (this.bowImg.setVisible(!1), this.scene.events.off(`update`, n));
+        let e = this.bowAng;
+        this.bowImg
+          .setVisible(!0)
+          .setPosition(t.x + Math.cos(e) * 12, t.y - 30 + Math.sin(e) * 10)
+          .setRotation(e - Math.PI / 2)
+          .setDepth(t.sprite.depth + (Math.sin(e) < -0.3 ? -1 : 1));
+      };
+      (this.scene.events.off(`update`, this.bowFn), (this.bowFn = n), this.scene.events.on(`update`, n), n());
+    }
     autoAim(e) {
       let t = this.hero,
         n = this.target;
@@ -76135,8 +76175,8 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
           }));
       } else if (r === `orb`) {
         let e = this.tune(a.basic),
-          t = this.mult(`feu`) * o.weaponDmg * c * this.dashStrikeMult();
-        i.playAction(a.anim.basic, 1.9, h);
+          t = this.mult(`air`) * o.weaponDmg * c * this.dashStrikeMult();
+        (i.playAction(a.anim.basic, 1.9, h), this.showBow(m));
         let n = e.burst ?? 1;
         for (let r = 0; r < n; r++)
           this.scene.time.delayedCall(100 + r * 110, () => {
@@ -76151,11 +76191,11 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
                 m + (r ? (Math.random() - 0.5) * 0.12 : 0),
                 e,
                 e.dmg * t,
-                `arcane`,
+                `phys`,
                 { homingTarget: e.homing ? n : null, crit: s },
               ),
             ),
-              K.play(`orb`));
+              K.play(`bow`));
           });
       } else if (r === `wolf`) {
         let e =
@@ -76171,14 +76211,31 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
           this.phase === `fight` && ((this.wolf = new Ra(this, t, n, e)), K.play(`wolf`));
         });
       } else if (r === `trap`) {
-        let e = n ?? { x: i.x + Math.cos(m) * 48, y: i.y + Math.sin(m) * 48, ang: m };
-        if (!this.walkable(e.x, e.y) || !this.inArena(e.x, e.y, 8))
-          return (K.play(`error`), this.popText(i.x, i.y - 50, `Emplacement bloqué`, `#ffb0a0`, 10), !1);
-        i.playAction(`place_trap`, 2, di(e.x - i.x, e.y - i.y, i.facing));
-        let t = this.traps.filter((e) => e.alive);
-        (t.length >= lt.trap.maxActive && t[0].remove(),
-          this.traps.push(new za(this, e.x, e.y, e.ang)),
-          K.play(`trap_set`));
+        // Flèche de recul : projette l'ennemi touché (étourdi s'il heurte un obstacle)
+        let e = this.tune({ proj: `p_arrow`, dmg: 1, speed: 700, range: Te.trap.range, scale: 1.45 }),
+          t = a.basic.dmg * o.weaponDmg * c * 1.15 * this.mult(`air`);
+        (i.playAction(`place_trap`, 2, h), this.showBow(m));
+        this.scene.time.delayedCall(90, () => {
+          if (!i.alive || this.phase !== `fight`) return;
+          (this.projs.push(
+            new La(this, `hero`, i.x + Math.cos(m) * 10, i.y - 20, m, e, t, `phys`, {
+              crit: s,
+              onHit: (e) => {
+                if (!e.alive) return;
+                let t = e.def.resist?.push ?? 0,
+                  n = lt.trap.push * (a.trapPush ?? 1) * (1 - t);
+                (e.cancelAttack(),
+                  (e.status.knockT = lt.trap.pushTime),
+                  (e.status.knockVx = Math.cos(m) * n),
+                  (e.status.knockVy = Math.sin(m) * n),
+                  (e.status.knockPower = t >= 0.6 ? 0.4 : 1),
+                  (e.path = []),
+                  this.popText(e.x, e.headY() - 6, t >= 0.6 ? `RÉSISTE` : `RECUL !`, `#f0dca0`, 11));
+              },
+            }),
+          ),
+            K.play(`bow`));
+        });
       } else if (r === `spin` || r === `rain` || r === `frost` || r === `storm`) {
         let e = Te[r].range * (1 + V.stats.rangePx / 300),
           t = p.tgt,
@@ -76216,12 +76273,11 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
                 y: s,
                 r: 62 + l,
                 dur: 4.2,
-                tick: 0.5,
-                dmg: u * 0.7 * this.mult(`feu`),
-                elem: `fire`,
-                burn: 2,
-                color: 16742960,
-                kind: `fire`,
+                tick: 0.45,
+                dmg: u * 0.75 * this.mult(`air`),
+                elem: `phys`,
+                color: 15255704,
+                kind: `arrows`,
               }),
             ),
           r === `frost` &&
@@ -76255,7 +76311,8 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
                 kind: `arcane`,
               }),
             ),
-          K.play(r === `rain` ? `fire` : r === `frost` ? `ice` : `wall`));
+          V.state.hero === `aka` && this.showBow(-Math.PI / 2),
+          K.play(r === `rain` ? (V.state.hero === `aka` ? `bow` : `fire`) : r === `frost` ? `ice` : `wall`));
       } else if (r === `wind`) {
         let e = this.tune({
           ...a.basic,
@@ -76331,6 +76388,18 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
           t,
         )),
           K.play(`wolf`));
+      } else if (r === `wall` && V.state.hero === `aka`) {
+        // Balise sentinelle : tire seule sur l'ennemi le plus proche
+        let e = n ?? { x: i.x + Math.cos(m) * 56, y: i.y + Math.sin(m) * 56 };
+        if (!this.walkable(e.x, e.y) || !this.inArena(e.x, e.y, 10))
+          return (K.play(`error`), this.popText(i.x, i.y - 50, `Emplacement bloqué`, `#ffb0a0`, 10), !1);
+        i.playAction(`summon_wolf`, 1.8, di(e.x - i.x, e.y - i.y, i.facing));
+        for (let e of this.fx) e instanceof Xa && e.archer && e.end();
+        this.fx.push(
+          new Xa(this, e.x, e.y, 8 + V.stats.stats.sagesse * 0.02, a.basic.dmg * o.weaponDmg * c * 0.6 * this.mult(`air`), {
+            archer: !0,
+          }),
+        );
       } else if (r === `wall`) {
         let e = St(V.state),
           t = i.x + Math.cos(m) * lt.wall.distance,
@@ -77301,20 +77370,21 @@ var Ja = class {
     }
   },
   Xa = class {
-    constructor(e, t, n, r, i) {
+    constructor(e, t, n, r, i, a = {}) {
       ((this.C = e),
         (this.x = t),
         (this.y = n),
         (this.life = r),
         (this.dmg = i),
+        (this.archer = !!a.archer),
+        (this.sc = a.archer ? 1 : 1.25),
         (this.alive = !0),
         (this.t = 0),
         (this.shotT = 0.3),
         (this.shadow = e.scene.add.image(t, n, `obj`, `shadow`).setScale(0.9, 0.8).setAlpha(0.7).setDepth(2)),
-        (this.img = e.scene.add
-          .image(t, n - 80, `totem`)
+        (this.img = (a.archer ? e.scene.add.image(t, n - 80, `ui`, `balise`) : e.scene.add.image(t, n - 80, `totem`))
           .setOrigin(0.5, 1)
-          .setScale(1.25)
+          .setScale(this.sc)
           .setDepth(n)
           .setAlpha(0)),
         e.scene.tweens.add({
@@ -77333,13 +77403,14 @@ var Ja = class {
       if (this.alive) {
         if (((this.t += e), (this.shotT -= e), this.t > this.life)) this.end();
         else {
-          for (let e of this.C.fx) e instanceof Ya && e.alive && Ua(e.x, e.y, this.x, this.y) < 170 && (e.buff = 1);
+          if (!this.archer)
+            for (let e of this.C.fx) e instanceof Ya && e.alive && Ua(e.x, e.y, this.x, this.y) < 170 && (e.buff = 1);
           if (!(this.t < 0.25)) {
             if (this.shotT <= 0) {
               let e = this.C,
-                t = e.nearestEnemy(this.x, this.y, 300);
+                t = e.nearestEnemy(this.x, this.y, this.archer ? 360 : 300);
               if (t) {
-                this.shotT = 0.5;
+                this.shotT = this.archer ? 0.6 : 0.5;
                 let n = Math.atan2(t.y - 14 - (this.y - 40), t.x - this.x);
                 (e.projs.push(
                   new La(
@@ -77348,19 +77419,21 @@ var Ja = class {
                     this.x,
                     this.y - 40,
                     n,
-                    { proj: `p_orb_small`, dmg: 1, speed: 420, range: 320, scale: 1.1 },
+                    this.archer
+                      ? { proj: `p_arrow`, dmg: 1, speed: 640, range: 380, scale: 1 }
+                      : { proj: `p_orb_small`, dmg: 1, speed: 420, range: 320, scale: 1.1 },
                     this.dmg,
-                    `ice`,
+                    this.archer ? `phys` : `ice`,
                     {},
                   ),
                 ),
-                  e.sparkBurst(this.x, this.y - 40, `dot_ice`, 3),
-                  K.play(`orb`),
-                  this.img.setTint(11596031),
+                  e.sparkBurst(this.x, this.y - 40, this.archer ? `dot` : `dot_ice`, 3),
+                  K.play(this.archer ? `bow` : `orb`),
+                  this.img.setTint(this.archer ? 13691135 : 11596031),
                   e.scene.time.delayedCall(80, () => this.img.active && this.img.clearTint()));
               } else this.shotT = 0.15;
             }
-            this.img.setScale(1.25, 1.25 + Math.sin(this.t * 8) * 0.015);
+            this.img.setScale(this.sc, this.sc + Math.sin(this.t * 8) * 0.015);
           }
         }
       }
