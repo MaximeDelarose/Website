@@ -382,7 +382,8 @@ export function buildOverworld() {
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const c = cell[y * W + x];
-      if (c === FOREST || c === ROCK || c === LEDGE || water[y * W + x] || x === 0 || y === 0 || x === W - 1 || y === H - 1)
+      // les rebords ne bloquent pas ici : seul le héros, hors combat, les franchit à sens unique (game.js)
+      if (c === FOREST || c === ROCK || water[y * W + x] || x === 0 || y === 0 || x === W - 1 || y === H - 1)
         blocked[y * W + x] = 1;
     }
   const ledgeM = new Uint8Array(W * H);

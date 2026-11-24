@@ -84677,6 +84677,7 @@ var Sc = class {
     free(e, t) {
       let n = this.w;
       if (e < 2 || t < 2 || e >= 94 || t >= 70 || this.map.town?.[t * 96 + e]) return !1;
+      for (let n = -1; n <= 1; n++) for (let r = -1; r <= 1; r++) if (this.map.ledge?.[(t + n) * 96 + e + r]) return !1;
       for (let r = -1; r <= 1; r++) for (let i = -1; i <= 1; i++) if (n.blockedCell(e + i, t + r)) return !1;
       let r = this.map.verts,
         i = t * 97 + e;
@@ -87438,8 +87439,25 @@ var Sc = class {
           }
       return !1;
     }
+    // Rebords : bloquent seulement le héros, hors combat (en combat, l'arène doit rester d'un seul tenant)
+    ledgeBox(e, t, n, r) {
+      let i = this.map.ledge;
+      ((n -= 0.02), (r -= 0.02));
+      for (let a = Math.floor((t - r) / 32); a <= Math.floor((t + r - 0.001) / 32); a++)
+        for (let o = Math.floor((e - n) / 32); o <= Math.floor((e + n - 0.001) / 32); o++)
+          if (o >= 0 && a >= 0 && o < 96 && a < 71 && i[a * 96 + o]) return !0;
+      return !1;
+    }
     moveBox(e, t, n, r, i, a) {
       if (this.boxHits(e, t, i, a)) return { x: e + n, y: t + r };
+      let L =
+          !!this.map.ledge &&
+          !this.combat &&
+          !this.hero?.hopping &&
+          !this.boating &&
+          !this.riding &&
+          !this.ledgeBox(e, t, i, a),
+        H = (e, t) => this.boxHits(e, t, i, a) || (L && this.ledgeBox(e, t, i, a));
       let o = Math.max(1, Math.ceil(Math.max(Math.abs(n), Math.abs(r)) / 6)),
         s = n / o,
         c = r / o,
@@ -87448,8 +87466,8 @@ var Sc = class {
       for (
         let n = 0;
         n < o &&
-        (!l && s && (this.boxHits(e + s, t, i, a) ? (l = !0) : (e += s)),
-        !u && c && (this.boxHits(e, t + c, i, a) ? (u = !0) : (t += c)),
+        (!l && s && (H(e + s, t) ? (l = !0) : (e += s)),
+        !u && c && (H(e, t + c) ? (u = !0) : (t += c)),
         !(l && u));
         n++
       );
