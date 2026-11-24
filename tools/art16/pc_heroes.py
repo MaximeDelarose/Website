@@ -99,11 +99,21 @@ def stamp(a, tpl, x0, y0, colors):
                     a[y, x] = (*c, 255)
 
 
+CROSS = [[0, 1, 0], [1, 1, 1], [0, 1, 0]]
+
+
 def outline(a):
-    """Contour noir autour de toute la silhouette (là où il manque)."""
+    """Contour noir d'1 px, comme le pack : autour des pixels colorés uniquement (pas autour des
+    contours existants, sinon il double), puis suppression des pixels noirs qui ne touchent
+    plus aucun pixel coloré (restes d'anciens contours devenus extérieurs)."""
     op = a[..., 3] > 0
-    ring = ndimage.binary_dilation(op, structure=[[0, 1, 0], [1, 1, 1], [0, 1, 0]]) & ~op
+    black = op & (a[..., :3] == 0).all(-1)
+    colored = op & ~black
+    ring = ndimage.binary_dilation(colored, structure=CROSS) & ~op
     a[ring] = (0, 0, 0, 255)
+    black |= ring
+    touching = ndimage.binary_dilation(colored, structure=CROSS)
+    a[black & ~touching] = (0, 0, 0, 0)
 
 
 def erase_tool(a):
@@ -209,8 +219,8 @@ def dress_frame(fr, hero, view, keep_tool=False, k=0):
                 rgb[y, x] = hexc(hero.get("eye", "#2a1c14"))
     a[..., :3] = rgb
     # --- queue (derrière le corps, sauf de dos où elle passe devant) ---
-    if hero.get("tail"):
-        tail(a, hero["tail"], view, cx, hb, k, front=(view == "Up"))
+    if hero.get("logo_tail"):
+        paste_tail(a, view, cx, hb, front=(view == "Up"))
     # --- coiffure et accessoires ---
     for layer in hero["head"].get(view, []):
         stamp(a, layer, x0, y0, hero["roles"])
@@ -220,47 +230,49 @@ def dress_frame(fr, hero, view, keep_tool=False, k=0):
     return Image.fromarray(a)
 
 
-def tail(a, colors, view, cx, hb, k, front=False):
-    """Queue d'écureuil en panache : chapelet de disques le long d'une courbe (base au bas du dos,
-    montée derrière le dos, boucle au sommet), ombrée, avec reflet clair et bord dentelé « fourrure »."""
-    sway = [0, 1, 1, 0, -1, -1][k % 6] if view != "Up" else [0, 1, 0, -1][k % 4]
-    if view == "Side":  # regard à droite : queue à gauche
-        pts = [(cx - 4, hb + 8), (cx - 7, hb + 5), (cx - 9, hb + 0), (cx - 9 + sway, hb - 5), (cx - 7 + sway, hb - 9), (cx - 4 + sway, hb - 10)]
-    elif view == "Down":  # de face : dépasse derrière, à droite du corps
-        pts = [(cx + 2, hb + 7), (cx + 6, hb + 5), (cx + 8, hb + 0), (cx + 8 + sway, hb - 5), (cx + 6 + sway, hb - 9), (cx + 3 + sway, hb - 10)]
-    else:  # de dos : sur le dos
-        pts = [(cx + 1, hb + 8), (cx + 3, hb + 4), (cx + 5, hb + 0), (cx + 6 + sway, hb - 4), (cx + 5 + sway, hb - 7)]
-    H, W = a.shape[:2]
-    lay = np.zeros((H, W), np.uint8)  # 0 rien, 1 ombre foncée, 2 ombre, 3 base, 4 reflet
-    radii = [2.2, 3.0, 3.6, 3.8, 3.4, 2.6][: len(pts)]
-    for i in range(len(pts) - 1):
-        (x1, y1), (x2, y2) = pts[i], pts[i + 1]
-        r1, r2 = radii[i], radii[i + 1]
-        for t in np.linspace(0, 1, 8):
-            px, py, r = x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, r1 + (r2 - r1) * t
-            for y in range(int(py - r - 1), int(py + r + 2)):
-                for x in range(int(px - r - 1), int(px + r + 2)):
-                    if not (0 <= x < W and 0 <= y < H):
-                        continue
-                    dx, dy = (x + 0.5 - px) / r, (y + 0.5 - py) / r
-                    d = dx * dx + dy * dy
-                    if d > 1:
-                        continue
-                    # lumière venant d'en haut à gauche ; bord extérieur un peu dentelé
-                    lit = -(dx * 0.6 + dy * 0.8)
-                    v = 4 if lit > 0.7 else 3 if lit > -0.25 else 2 if lit > -0.7 else 1
-                    if d > 0.8 and (x * 7 + y * 3) % 5 == 0:
-                        continue
-                    lay[y, x] = max(lay[y, x], v)
-    ramp_ = {1: colors["U"], 2: colors["T"], 3: colors["t"], 4: colors["v"]}
-    op = a[..., 3] > 0
-    for y, x in zip(*np.where(lay)):
-        if front or not op[y, x]:
-            a[y, x] = (*ramp_[lay[y, x]], 255)
-    if front:  # contour de la queue posée sur le dos
-        ring = ndimage.binary_dilation(lay > 0) & ~(lay > 0)
-        a[ring & (a[..., 3] > 0)] = (0, 0, 0, 255)
+LOGO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "assets", "squirrel.png")
+# Dernière colonne de la queue pour chaque ligne du logo (18×19) : la queue s'arrête à la ligne
+# brun foncé qui la sépare du corps de l'écureuil.
+LOGO_TAIL_LAST_COL = [10, 10, 10, 10, 10, 10, 10, 9, 9, 7, 6, 5, 5, 5, 5, 5, 5]
+LOGO_TAIL_BASE = (5, 15)  # point d'attache (bas de la queue) dans le logo
 
+
+def logo_tail():
+    """La queue de l'écureuil du logo du site, pixel pour pixel."""
+    im = np.array(Image.open(LOGO).convert("RGBA"))
+    t = np.zeros_like(im)
+    for y, last in enumerate(LOGO_TAIL_LAST_COL):
+        t[y, : last + 1] = im[y, : last + 1]
+    t[..., 3] = np.where(t[..., 3] > 127, 255, 0)
+    return t
+
+
+TAIL = None
+
+
+def paste_tail(a, view, cx, hb, front=False):
+    """Pose la queue : son pied au bas du dos ; derrière le corps (face, profil) ou dessus (dos)."""
+    global TAIL
+    if TAIL is None:
+        TAIL = logo_tail()
+    bx, by = LOGO_TAIL_BASE
+    ax, ay = {"Side": (cx - 8, hb + 10), "Down": (cx - 8, hb + 10), "Up": (cx + 1, hb + 10)}[view]
+    H, W = a.shape[:2]
+    for y in range(TAIL.shape[0]):
+        for x in range(TAIL.shape[1]):
+            if not TAIL[y, x, 3]:
+                continue
+            X, Y = ax + x - bx, ay + y - by
+            if 0 <= X < W and 0 <= Y < H and (front or a[Y, X, 3] == 0):
+                a[Y, X] = TAIL[y, x]
+    if front:  # contour entre la queue et le dos
+        m = np.zeros((H, W), bool)
+        for y, x in zip(*np.where(TAIL[..., 3] > 0)):
+            X, Y = ax + x - bx, ay + y - by
+            if 0 <= X < W and 0 <= Y < H:
+                m[Y, X] = True
+        ring = ndimage.binary_dilation(m, structure=CROSS) & ~m & (a[..., 3] > 0)
+        a[ring] = (0, 0, 0, 255)
 
 def skirt(a, hero, cx, top, bottom):
     """Jupe : remplit et évase le bas du corps, sur la hauteur des jambes."""
@@ -361,79 +373,68 @@ AUGH = dict(
 )
 
 AKA = dict(
-    # Homme-écureuil (comme l'écureuil du logo du site) : cheveux roux, oreilles à houppettes,
-    # queue en panache ; garde ses lunettes de mage et sa veste bordeaux.
-    skin=ramp("#ffe0c0", "#f2bd8e", "#d6915e", "#a3603a"),
-    top=ramp("#c0444a", "#83202c", "#5a1420", "#3e1020"),
-    shirt=ramp("#fff0a0", "#f2c43e", "#c4861e", "#6e4410"),
-    sleeve=ramp("#c0444a", "#83202c", "#5a1420", "#3e1020"),
-    belt=ramp("#8a5632", "#553521", "#2e1c14", "#1a100b"),
-    pants=ramp("#7a5a3a", "#553521", "#3a2416", "#1a100b"),
-    shoes=ramp("#8a5632", "#553521", "#2e1c14", "#1a100b"),
+    # Homme-écureuil : la queue est celle de l'écureuil du logo du site, pixel pour pixel ;
+    # cheveux et oreilles dans la même rampe rousse ; manteau de mage bleu nuit à liseré doré.
+    logo_tail=True,
+    skin=ramp("#ffe4c8", "#f6c9a0", "#d99a6a", "#a3603a"),
+    top=ramp("#5a6fc0", "#3a4a94", "#26306a", "#161d3f"),
+    shirt=ramp("#fff4dc", "#f0dcb0", "#c8a878", "#8a6a48"),
+    sleeve=ramp("#5a6fc0", "#3a4a94", "#26306a", "#161d3f"),
+    belt=ramp("#fff0a0", "#f2c43e", "#c4861e", "#6e4410"),
+    pants=ramp("#8a5632", "#5c3a21", "#3e2716", "#1a100b"),
+    shoes=ramp("#5c3a21", "#3e2716", "#24160d", "#120a06"),
     eye="#2e1408",
-    tail={"t": hexc("#e47f31"), "T": hexc("#bd5c25"), "U": hexc("#8a3f20"), "v": hexc("#f0a45a")},
-    roles=hero_roles(h="#bd5c25", H="#8a3f20", l="#e47f31", t="#e47f31", T="#bd5c25", U="#632e17",
-                     v="#f6c9a0", g="#2b2238", o="#000000"),
+    # rampe de l'écureuil du logo
+    roles=hero_roles(f="#e47f31", a="#bd5c25", b="#aa5324", c="#8a3f20", d="#efab5c", e="#f09b40",
+                     g="#632e17", h="#4a2313"),
     head={
         "Down": [[
+            "................",
             "...#.......#....",
-            "..#U#.....#U#...",
-            "..#tU#...#Ut#...",
-            "..#vtt#.#ttv#...",
-            "..#vthhhhhhtv#..",
-            "..#hhhlhhhlhhh#.",
-            "..#hhhhhhhhhhh#.",
-            "..#Hhhhhhhhhhh#.",
-            "..#HhhhhhhhhhH#.",
-            "..#Hh.hhhh.hhH#.",
-            "..#H.........H#.",
-            "................",
-            "....gggg.gggg...",
-            "....g..ggg..g...",
-            "....g..g.g..g...",
-            "....gggg.gggg...",
-            "................",
-            "................",
+            "..#c#.....#c#...",
+            "..#ec#...#ce#...",
+            "..#effffffffe#..",
+            "..#ffdfffdfff#..",
+            "..#ffffffffff#..",
+            "..#ffffffffff#..",
+            "..#affffffffa#..",
+            "..#aa.f..f.aa#..",
+            "..#a........a#..",
         ]],
         "Side": [[
-            ".....#...#......",
-            "....#U#.#U#.....",
-            "....#tU##Ut#....",
-            "....#vt##tv#....",
-            "...#hvthhtvhh#..",
-            "..#hhhlhhhlhhh#.",
-            ".#hhhhhhhhhhhhh#",
-            ".#HHhhhhhhhhhhh#",
-            ".#HHHhhhhhhhhhh#",
-            ".#HHHhhhhhh.hh#.",
-            ".#HHHhh.....h#..",
-            ".#HHH...........",
-            "..#HH.....ggggg.",
-            "...#Hgggggg...g.",
-            "..........g...g.",
-            "..........ggggg.",
             "................",
-            "................",
+            "....#..#........",
+            "...#c##c#.......",
+            "...#ec#ec#......",
+            "...#effeff####..",
+            "..#ffdfffdffff#.",
+            ".#fffffffffffff#",
+            ".#affffffffffff#",
+            ".#aafffffffffff#",
+            ".#aaaffffff.ff#.",
+            ".#aaaff.....f...",
+            ".#aaaaaa#.......",
+            "..#aaaa#........",
+            "...#aa#.........",
+            "....##..........",
         ]],
         "Up": [[
+            "................",
             "...#.......#....",
-            "..#U#.....#U#...",
-            "..#tU#...#Ut#...",
-            "..#Ttt#.#ttT#...",
-            "..#Tthhhhhhtt#..",
-            "..#hhhlhhhlhhh#.",
-            "..#hhhhhhhhhhh#.",
-            "..#hhhhhhhhhhh#.",
-            "..#HhhhhhhhhhH#.",
-            "..#HhhhhhhhhhH#.",
-            "..#HHhhhhhhhHH#.",
-            "..#HHHhhhhhHHH#.",
-            "..#HHHHhhhHHHH#.",
-            "..#HHHHHHHHHHH#.",
-            "...#HHHHHHHHH#..",
-            "....#HHHHHHH#...",
-            "................",
-            "................",
+            "..#c#.....#c#...",
+            "..#ec#...#ce#...",
+            "..#effffffffe#..",
+            "..#ffdfffdfff#..",
+            "..#ffffffffff#..",
+            "..#ffffffffff#..",
+            "..#affffffffa#..",
+            "..#aaffffffaa#..",
+            "..#aaaffffaaa#..",
+            "..#aaaaaaaaaa#..",
+            "..#caaaaaaaac#..",
+            "..#ccaaaaaacc#..",
+            "...#ccaaaacc#...",
+            "....#cccccc#....",
         ]],
     },
 )
