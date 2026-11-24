@@ -346,8 +346,25 @@ def write_override_manifest(textures):
         f.write("export default " + json.dumps({"version": h.hexdigest()[:10], "textures": textures}) + ";\n")
 
 
+def build_zone_decor():
+    """Petit décor posé au sol (zd_*) remplacé par des pièces du pack (×2), même nom de texture."""
+    veg = load("vegetation.png")
+    pick = {
+        "zd_daisy": (69, 389, 8, 8), "zd_tulips": (53, 373, 8, 8), "zd_bloom": (100, 421, 8, 8),
+        "zd_lily": (86, 405, 8, 8), "zd_fern": (21, 164, 7, 10), "zd_shroom": (20, 288, 9, 16),
+        "zd_mound": (36, 149, 10, 9), "zd_thorn": (51, 150, 9, 6), "zd_dead": (5, 165, 7, 9),
+    }
+    out = {}
+    for key, r in pick.items():
+        a = upscale(bbox_crop(veg, *r))
+        Image.fromarray(a).save(os.path.join(OVERRIDE, key + ".png"))
+        out[key] = {"w": a.shape[1], "h": a.shape[0], "frames": []}
+    return out
+
+
 if __name__ == "__main__":
     os.makedirs(OVERRIDE, exist_ok=True)
     zones = build_zone_grounds()
-    write_override_manifest(zones)
-    print("sols de zones :", list(zones))
+    decor = build_zone_decor()
+    write_override_manifest({**zones, **decor})
+    print("sols de zones :", list(zones), "décor :", list(decor))
