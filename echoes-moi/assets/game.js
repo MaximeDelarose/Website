@@ -76017,7 +76017,7 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
       let n = () => {
         if (!this.bowImg?.active) return;
         if (((this.bowT -= this.scene.game.loop.delta / 1e3), this.bowT <= 0 || !t.alive))
-          return (this.bowImg.setVisible(!1), this.scene.events.off(`update`, n));
+          return (this.bowImg.setVisible(!1), this.scene.events.off(`update`, n), this.bowFn === n && (this.bowFn = null));
         let e = this.bowAng;
         this.bowImg
           .setVisible(!0)
@@ -76025,7 +76025,8 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
           .setRotation(e - Math.PI / 2)
           .setDepth(t.sprite.depth + (Math.sin(e) < -0.3 ? -1 : 1));
       };
-      (this.scene.events.off(`update`, this.bowFn), (this.bowFn = n), this.scene.events.on(`update`, n), n());
+      // attention : off(`update`) sans fonction retirerait TOUTES les mises à jour de la scène (physique comprise)
+      (this.bowFn && this.scene.events.off(`update`, this.bowFn), (this.bowFn = n), this.scene.events.on(`update`, n), n());
     }
     autoAim(e) {
       let t = this.hero,
