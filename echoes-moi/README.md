@@ -16,6 +16,9 @@ Les deux sont affichées sur la page `echoes.html`, avec le choix « Version ori
 | `assets/game.js` | Tout le jeu (Phaser compris), reformaté pour être lisible. Les noms des variables locales sont ceux du build minifié, mais les textes, les données (héros, sorts, objets, monstres) et la logique se retrouvent en cherchant un texte affiché en jeu. |
 | `assets/perf.js` | Optimisations de rendu, indépendantes du gameplay (voir plus bas). |
 | `assets/baked.js` + `assets/baked/` | Textures que le jeu générait au démarrage, pré-rendues en PNG. |
+| `assets/title16.js` | Écran titre en 16 px par case : prairie Pixel Crawler, héros 16×32, texte et boutons sur la même grille de pixels (agrandie d'un facteur entier). |
+| `assets/pixelfont.js` | Police bitmap 5×7 dessinée pixel par pixel (accents compris) : texte net sur la grille. |
+| `assets/pc/` | Images Pixel Crawler (Anokolisa, usage commercial et modifications autorisés, voir `Terms-Anokolisa.txt`) et héros 16×32 générés par `tools/art16/pc_heroes.py`. |
 | `assets/game.min.js` | **Généré** : le script réellement chargé par `index.html`. |
 | `assets/bundler-yPNtbWdW.js` | PeerJS (coop en ligne), chargé seulement à l'ouverture de la coop. |
 | `assets/heroes`, `monsters`, `fx`, `layers` | Images (formats, grilles et animations : voir `SPRITES.md`). |

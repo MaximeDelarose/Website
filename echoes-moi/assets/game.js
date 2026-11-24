@@ -1,6 +1,7 @@
 import { installPerf, cullRect, initialResolution, autoResolution } from './perf.js';
 import { preloadBaked } from './baked.js';
 import { VERSION } from './version.js';
+import { preloadTitle16, pixelScale, Meadow, pixelText, setPixelText, pixelButton, heroIdleAnim } from './title16.js';
 const VERSION_LABEL = `Max version · build ${VERSION.build} · ${VERSION.date}`;
 var e = Object.create,
   t = Object.defineProperty,
@@ -78980,6 +78981,8 @@ var vo = [
       let i = `assets/`;
       // Textures pré-rendues en PNG (voir baked.js) : les générateurs ci-dessous les trouveront déjà là.
       preloadBaked(this, `${i}baked/`);
+      // Écran titre en 16 px par case (décor Pixel Crawler, héros 16×32) : voir title16.js
+      preloadTitle16(this, i);
       for (let e of vo) this.load.spritesheet(e, `${i}heroes/${e}.png`, { frameWidth: 64, frameHeight: 64 });
       for (let e of Object.values(H)) {
         let t = e.base ?? e.sheet;
@@ -80117,10 +80120,11 @@ var cs = class extends u.default.Scene {
       this.fx?.tick(Math.min(0.05, t / 1e3));
     }
     bg(e = !1) {
-      let { width: t, height: n } = this.scale,
-        r = qt(this.game);
-      ((this.fx = new ns(this, this.root, t, n, r, !!V.state?.settings?.reducedFx)),
-        e && this.root.add(this.add.rectangle(0, 0, t, n, 1317444, 0.42).setOrigin(0)));
+      // Prairie en 16 px par case (title16.js), assombrie derrière les sous-écrans
+      let { width: t, height: n } = this.scale;
+      let S = pixelScale(this);
+      ((this.fx = new Meadow(this, this.root, S, { menuW: Math.ceil((Yt().l || 0) / S) + 10 + Math.min(136, Math.floor((t / S) * 0.42)) + 8 })),
+        e && this.root.add(this.add.rectangle(0, 0, t, n, 1317444, 0.55).setOrigin(0)));
     }
     build(e) {
       ((this.mode = e),
@@ -80134,84 +80138,65 @@ var cs = class extends u.default.Scene {
         e === `menu` ? this.menu() : e === `select` ? this.select() : e === `slots` ? this.slots() : this.coop());
     }
     menu() {
+      // Menu principal sur une seule grille de pixels : tout est placé en art px dans P (agrandi ×S).
       let { width: e, height: t } = this.scale,
-        n = qt(this.game),
+        S = pixelScale(this),
         r = Yt(),
         i = Vt(),
         a = Gt(),
-        o = (r.t || 0) + 8,
-        s = t - (r.b || 0) - 8,
-        c = s - o - 28 * n,
-        l = Math.min(n, c / 340),
-        u = Math.min(e * 0.4, 330 * l),
-        d = (r.l || 0) + e * 0.035 + u / 2,
-        f = u,
-        p = 34 * l,
-        m = 56 * l,
-        h = 8 * l,
-        g = ss(this, d, 0, u, l),
-        _ = g.h + 14 * l + m + 18 * l + 3 * (p + h),
-        v = o + Math.max(0, (c - _) / 2);
-      (g.c.setY(v), this.root.add(g.c), (v += g.h + 14 * l));
-      let y = a ?? yt(`augh`),
-        b = a ? this.zoneOf(a) : ``,
-        x = Math.floor((a?.playTime || 0) / 60),
-        S = x >= 60 ? `${Math.floor(x / 60)} h ${String(x % 60).padStart(2, `0`)}` : `${x} min`;
-      (i.length
-        ? (this.root.add(
-            os(
-              this,
-              d,
-              v + m / 2,
-              f,
-              m,
-              `Continuer l'aventure`,
-              l,
-              () => {
-                let e = Gt();
-                e ? ((V.state = e), V.invalidate(), this.launch(!0)) : this.build(`select`);
-              },
-              { primary: !0, sub: `${Ce[y.hero].name} · Niv. ${y.level}` },
-            ),
+        W = Math.ceil(e / S),
+        H = Math.ceil(t / S),
+        sl = Math.ceil((r.l || 0) / S),
+        st = Math.ceil((r.t || 0) / S),
+        sr = Math.ceil((r.r || 0) / S),
+        sb = Math.ceil((r.b || 0) / S),
+        P = this.add.container(0, 0).setScale(S);
+      this.root.add(P);
+      let x0 = sl + 10,
+        y = st + 10,
+        y_ = a ?? yt(`augh`);
+      // titre
+      (P.add(pixelText(this, x0, y, `Echoes of`, { color: `#c8e27a` })),
+        (y += 12),
+        P.add(pixelText(this, x0, y, `AETHER`, { scale: 2, color: `#fff0a0` })),
+        (y += 26));
+      // boutons
+      let bw = Math.min(136, Math.floor(W * 0.42)),
+        bh = 18,
+        gap = 5;
+      if (i.length) {
+        (P.add(
+          pixelButton(
+            this,
+            x0,
+            y,
+            bw,
+            28,
+            `Continuer l'aventure`,
+            () => {
+              let e = Gt();
+              e ? ((V.state = e), V.invalidate(), this.launch(!0)) : this.build(`select`);
+            },
+            { primary: !0, sub: `${Ce[y_.hero].name} · Niv. ${y_.level}` },
           ),
-          (v += m + 4 * l),
-          this.root.add(
-            this.add
-              .text(d, v + 6 * l, [b, a ? S : ``].filter(Boolean).join(`  ·  `), {
-                fontFamily: Xt,
-                fontSize: `${Math.round(10.5 * l)}px`,
-                color: `#eef2ff`,
-                stroke: `#1b2060`,
-                strokeThickness: 2,
-              })
-              .setOrigin(0.5),
-          ),
-          (v += 14 * l),
-          this.root.add(
-            os(this, d, v + p / 2, f, p, `Mes héros (${i.length})`, l, () => this.build(`slots`), { icon: `users` }),
-          ),
-          (v += p + h),
-          this.root.add(os(this, d, v + p / 2, f, p, `Nouveau héros`, l, () => this.build(`select`), { icon: `plus` })),
-          (v += p + h))
-        : (this.root.add(
-            os(this, d, v + m / 2, f, m, `Nouvelle partie`, l, () => this.build(`select`), {
-              primary: !0,
-              sub: `Choisis ton héros`,
-            }),
-          ),
-          (v += m + 18 * l)),
-        this.root.add(os(this, d, v + p / 2, f, p, `Coop en ligne`, l, () => this.build(`coop`), { icon: `link` })));
-      let C = this.add
-        .text(d, s, VERSION_LABEL, {
-          fontFamily: Xt,
-          fontSize: `${Math.round(9.5 * l)}px`,
-          color: `#e8f0ff`,
-          stroke: `#1b2060`,
-          strokeThickness: 2,
-        })
-        .setOrigin(0.5, 1)
-        .setAlpha(0.8);
-      this.root.add(C);
+        ),
+          (y += 28 + gap),
+          P.add(pixelButton(this, x0, y, bw, bh, `Mes héros (${i.length})`, () => this.build(`slots`))),
+          (y += bh + gap),
+          P.add(pixelButton(this, x0, y, bw, bh, `Nouveau héros`, () => this.build(`select`))),
+          (y += bh + gap));
+      } else
+        (P.add(
+          pixelButton(this, x0, y, bw, 28, `Nouvelle partie`, () => this.build(`select`), {
+            primary: !0,
+            sub: `Choisis ton héros`,
+          }),
+        ),
+          (y += 28 + gap));
+      P.add(pixelButton(this, x0, y, bw, bh, `Coop en ligne`, () => this.build(`coop`)));
+      // numéro de build (5 appuis rapides : mode diagnostic)
+      let C = pixelText(this, x0, H - sb - 15, VERSION_LABEL, { color: `#e8eaf2` }).setAlpha(0.85);
+      P.add(C);
       let w = 0,
         T = 0;
       C.setInteractive({ useHandCursor: !1 }).on(`pointerup`, () => {
@@ -80220,44 +80205,45 @@ var cs = class extends u.default.Scene {
           w = 0;
           let e = !Yo();
           (Qo(e),
-            C.setText(e ? `Diagnostic activé` : `Diagnostic désactivé`),
-            this.time.delayedCall(1500, () => C.setText(VERSION_LABEL)));
+            setPixelText(C, e ? `Diagnostic activé` : `Diagnostic désactivé`),
+            this.time.delayedCall(1500, () => setPixelText(C, VERSION_LABEL)));
         }
       });
-      let E = Math.min(4, Math.max(2, Math.floor((s - o) / 80))),
-        D = Math.min(e - 48 * E - (r.r || 0), Math.max(e * 0.8, d + u / 2 + 40 * E + 20)),
-        O = o + (s - o) * 0.66;
-      ((this.stage = new as(this, y, D, O, E, !!V.state?.settings?.reducedFx)),
-        this.root.add(this.stage.c),
-        this.heroCard(y, D, O + 17 * E + 4 * l, l, u));
-      let k = Y(this, e - 62 * n - (r.r || 0), 20 * n + (r.t || 0), 104 * n, 26 * n, `Plein écran`, n, async () => {
+      // le héros actif, debout dans la clairière
+      let m = this.fx,
+        an = heroIdleAnim(this, y_.hero),
+        hx = Math.round(m.heroAt.x),
+        hy = Math.round(m.heroAt.y),
+        sh = this.add.graphics();
+      (sh.fillStyle(1057802, 0.45).fillRect(hx - 6, hy - 1, 12, 2).fillRect(hx - 4, hy - 2, 8, 4), P.add(sh));
+      let hs = this.add.sprite(hx, hy, an.texture, 0).setOrigin(0.5, 48 / 64);
+      (hs.play(an.key), P.add(hs));
+      let cl = Ce[y_.hero],
+        el = St(y_).basic.stat === `force` ? `Terre` : `Feu`,
+        n1 = pixelText(this, hx, hy + 3, `${cl.name} · Niv. ${y_.level}`, { color: `#fff6dc`, align: `center` }),
+        n2 = pixelText(this, hx, hy + 15, `${cl.className.split(`·`)[0].trim()} · ${el}`, { color: `#c8e27a`, align: `center` });
+      P.add([n1, n2]);
+      // plein écran et son, en haut à droite
+      let k = pixelButton(this, W - sr - 74, st + 6, 68, 16, `Plein écran`, async () => {
         let r = await gi.toggle();
         if (r) {
-          let i = J(this, e / 2, t * 0.9, r, 12 * n, `#ffe58a`).setOrigin(0.5);
-          (this.root.add(i), this.time.delayedCall(3e3, () => i.destroy()));
+          let i = pixelText(this, W / 2, H * 0.9, r, { color: `#ffe58a`, align: `center`, valign: `middle` });
+          (P.add(i), this.time.delayedCall(3e3, () => i.destroy()));
         }
       });
-      (k.setAlpha(0.8), this.root.add(k));
+      P.add(k);
       let A = a?.settings;
       if ((A && K.setVolumes(A.music, A.sfx), A)) {
         let t = () => A.music === 0 && A.sfx === 0,
-          i = { m: A.music || 0.5, s: A.sfx || 0.8 },
-          o = Y(
-            this,
-            e - 62 * n - (r.r || 0),
-            52 * n + (r.t || 0),
-            104 * n,
-            26 * n,
-            t() ? `Son : non` : `Son : oui`,
-            n,
-            () => {
-              (t() ? ((A.music = i.m), (A.sfx = i.s)) : ((i = { m: A.music, s: A.sfx }), (A.music = 0), (A.sfx = 0)),
-                K.setVolumes(A.music, A.sfx),
-                Bt(a),
-                this.build(this.mode));
-            },
-          );
-        (o.setAlpha(0.7), this.root.add(o));
+          i = { m: A.music || 0.5, s: A.sfx || 0.8 };
+        P.add(
+          pixelButton(this, W - sr - 74, st + 26, 68, 16, t() ? `Son : non` : `Son : oui`, () => {
+            (t() ? ((A.music = i.m), (A.sfx = i.s)) : ((i = { m: A.music, s: A.sfx }), (A.music = 0), (A.sfx = 0)),
+              K.setVolumes(A.music, A.sfx),
+              Bt(a),
+              this.build(this.mode));
+          }),
+        );
       }
     }
     heroCard(e, t, n, r, i) {
