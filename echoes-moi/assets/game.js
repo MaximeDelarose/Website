@@ -62804,7 +62804,7 @@ function se(e, t, n = [], r = []) {
               ? { kind: `shop`, x: t.x, y: t.y, name: `Poissonnier (pêche)`, col: 16754784, glyph: `F` }
               : { kind: `npc`, x: t.x, y: t.y, name: t.name, col: 16777215, glyph: `•` },
       );
-  i.push({ kind: `dungeon`, x: e.gate.x, y: e.gate.y, name: `Bergerie Oubliée (niv. 3+)`, col: 16734810, glyph: `☠` });
+  i.push({ kind: `dungeon`, x: e.gate.x, y: e.gate.y, name: `Antre Oublié (niv. 3+)`, col: 16734810, glyph: `☠` });
   for (let e of r) i.push({ kind: `dungeon`, x: e.x, y: e.y, name: e.name, col: e.col ?? 8041727, glyph: `☠` });
   return (t && i.push({ kind: `quest`, x: t.x, y: t.y, name: t.name, col: 16769088, glyph: `!` }), i);
 }
@@ -62870,15 +62870,15 @@ function fe(e, t) {
   let n = ((t) => e.npcs.find((e) => e.id === t))(`elder`);
   switch (t) {
     case `q1`:
-      return { x: 40, y: 44, name: `Quête : moutons de la prairie` };
+      return { x: 40, y: 44, name: `Quête : chapeaux-rouges de la prairie` };
     case `q2`:
       return { x: e.herb.x, y: e.herb.y, name: `Quête : herbe de lune` };
     case `q3`:
-      return { x: 22, y: 24, name: `Quête : bélier furieux` };
+      return { x: 22, y: 24, name: `Quête : slaad furieux` };
     case `q4`:
       return n ? { x: n.x, y: n.y, name: `Quête : retourner voir Mira` } : null;
     default:
-      return { x: e.gate.x, y: e.gate.y + 2, name: `Quête : Bergerie Oubliée` };
+      return { x: e.gate.x, y: e.gate.y + 2, name: `Quête : Antre Oublié` };
   }
 }
 var pe = (e, t) =>
@@ -63638,8 +63638,8 @@ var De = [1, 1, 1, 10],
   Oe = {
     petit: {
       id: `petit`,
-      name: `Petit Mouton`,
-      family: `mouton`,
+      name: `Chapeau-Rouge`,
+      family: `chapeau-rouge`,
       style: `Vitalité & mobilité légère`,
       bonuses: [
         { pieces: 2, label: `+12 Vitalité, +2 % vitesse`, stats: { vita: 12, speedPct: 0.02 } },
@@ -63650,8 +63650,8 @@ var De = [1, 1, 1, 10],
     },
     belier: {
       id: `belier`,
-      name: `Bélier Furieux`,
-      family: `mouton`,
+      name: `Slaad Furieux`,
+      family: `chapeau-rouge`,
       style: `Force brute`,
       bonuses: [
         { pieces: 2, label: `+10 Force, +10 Vitalité`, stats: { force: 10, vita: 10 } },
@@ -63662,8 +63662,8 @@ var De = [1, 1, 1, 10],
     },
     mystique: {
       id: `mystique`,
-      name: `Mouton Mystique`,
-      family: `mouton`,
+      name: `Œil Mystique`,
+      family: `chapeau-rouge`,
       style: `Magie du Feu`,
       bonuses: [
         { pieces: 2, label: `+12 Intelligence`, stats: { intel: 12 } },
@@ -63679,8 +63679,8 @@ var De = [1, 1, 1, 10],
     },
     grand_belier: {
       id: `grand_belier`,
-      name: `Grand Bélier`,
-      family: `mouton`,
+      name: `Grand Ettin`,
+      family: `chapeau-rouge`,
       style: `Boss : puissance royale`,
       boss: !0,
       bonuses: [
@@ -64002,20 +64002,20 @@ var We = {
     petit: {
       weapon: `Hache laineuse`,
       head: `Coiffe laineuse`,
-      cape: `Cape du Mouton`,
+      cape: `Cape du Chapeau-Rouge`,
       belt: `Ceinture à clochette`,
       boots: `Bottes laineuses`,
       ring: `Anneau de laine`,
-      amulet: `Amulette du Mouton`,
+      amulet: `Amulette du Chapeau-Rouge`,
     },
     belier: {
-      weapon: `Hache du Bélier`,
-      head: `Coiffe du Bélier`,
+      weapon: `Hache du Slaad`,
+      head: `Coiffe du Slaad`,
       cape: `Cape de peau brune`,
-      belt: `Ceinture du Bélier`,
-      boots: `Sabots du Bélier`,
+      belt: `Ceinture du Slaad`,
+      boots: `Sabots du Slaad`,
       ring: `Anneau des cornes`,
-      amulet: `Amulette du Bélier`,
+      amulet: `Amulette du Slaad`,
     },
     mystique: {
       weapon: `Hache cristalline`,
@@ -64027,8 +64027,8 @@ var We = {
       amulet: `Amulette lunaire`,
     },
     grand_belier: {
-      weapon: `Hache du Grand Bélier`,
-      head: `Coiffe du Grand Bélier`,
+      weapon: `Hache du Grand Ettin`,
+      head: `Coiffe du Grand Ettin`,
       cape: `Cape Royale en Laine`,
       belt: `Ceinture du Roi`,
       boots: `Sabots Royaux`,
@@ -64092,9 +64092,9 @@ var We = {
   },
   Ge = {
     petit: `Massue laineuse`,
-    belier: `Massue du Bélier`,
+    belier: `Massue du Slaad`,
     mystique: `Massue des clochettes`,
-    grand_belier: `Massue du Grand Bélier`,
+    grand_belier: `Massue du Grand Ettin`,
     cimes: `Massue des Cimes`,
     temple: `Massue du Colosse`,
     ombres: `Massue d'ombre`,
@@ -64106,7 +64106,7 @@ var We = {
     petit: `Grimoire laineux`,
     belier: `Sceptre cornu`,
     mystique: `Grimoire des clochettes`,
-    grand_belier: `Sceptre du Grand Bélier`,
+    grand_belier: `Sceptre du Grand Ettin`,
     cimes: `Sceptre des Cimes`,
     temple: `Sceptre du Temple`,
     ombres: `Sceptre de la Reine`,
@@ -65533,7 +65533,7 @@ var Xt = `"Pixelify Sans", "Trebuchet MS", sans-serif`,
       id: `p_agneau`,
       kind: `pet`,
       name: `Agneau de laine`,
-      desc: `Un petit mouton qui trottine dans vos pas.`,
+      desc: `Un petit chapeau-rouge qui trottine dans vos pas.`,
       price: { gold: 120 },
       sheet: `mon_petit`,
       tint: 16777215,
@@ -65553,7 +65553,7 @@ var Xt = `"Pixelify Sans", "Trebuchet MS", sans-serif`,
       id: `p_dore`,
       kind: `pet`,
       name: `Agneau doré`,
-      desc: `Récompense de la Bergerie Oubliée.`,
+      desc: `Récompense de l'Antre Oublié.`,
       reward: `bergerie`,
       sheet: `mon_petit`,
       tint: 16769162,
@@ -65602,7 +65602,7 @@ var Xt = `"Pixelify Sans", "Trebuchet MS", sans-serif`,
     {
       id: `m_belier`,
       kind: `mount`,
-      name: `Bélier de selle`,
+      name: `Slaad de selle`,
       desc: `Robuste et têtu. Bonus de vitesse en exploration.`,
       price: { gold: 300 },
       sheet: `mon_belier`,
@@ -65622,7 +65622,7 @@ var Xt = `"Pixelify Sans", "Trebuchet MS", sans-serif`,
     {
       id: `m_gres`,
       kind: `mount`,
-      name: `Sanglier de grès`,
+      name: `Charognard de grès`,
       desc: `Récompense du Temple Fracturé.`,
       reward: `temple`,
       sheet: `mon_boar`,
@@ -65672,8 +65672,8 @@ var Xt = `"Pixelify Sans", "Trebuchet MS", sans-serif`,
     {
       id: `m_braise`,
       kind: `mount`,
-      name: `Sanglier de braise`,
-      desc: `Un sanglier aux flancs incandescents.`,
+      name: `Charognard de braise`,
+      desc: `Un charognard aux flancs incandescents.`,
       price: { gold: 600 },
       sheet: `mon_boar`,
       tint: 16742976,
@@ -65920,7 +65920,7 @@ var H = {
     kind: `petit`,
     ai: `blob`,
     lootId: `petit_mouton`,
-    name: `Petit mouton`,
+    name: `Chapeau-rouge`,
     sheet: `mon_petit`,
     frame: 64,
     hp: 40,
@@ -65939,7 +65939,7 @@ var H = {
     kind: `belier`,
     ai: `boar`,
     lootId: `belier_furieux`,
-    name: `Bélier furieux`,
+    name: `Slaad furieux`,
     sheet: `mon_belier`,
     frame: 64,
     hp: 78,
@@ -65959,7 +65959,7 @@ var H = {
     ai: `archer`,
     lootId: `mouton_mystique`,
     shot: `p_wool_bolt`,
-    name: `Mouton mystique`,
+    name: `Œil mystique`,
     sheet: `mon_mystique`,
     frame: 64,
     hp: 52,
@@ -65978,7 +65978,7 @@ var H = {
     kind: `grand`,
     ai: `ram`,
     lootId: `grand_belier`,
-    name: `Le Grand Bélier`,
+    name: `Le Grand Ettin`,
     sheet: `mon_grand`,
     frame: 128,
     hp: 900,
@@ -66033,7 +66033,7 @@ var H = {
   boar: {
     kind: `boar`,
     ai: `boar`,
-    name: `Sanglier rageur`,
+    name: `Charognard enragé`,
     sheet: `mon_boar`,
     frame: 64,
     hp: 115,
@@ -67385,7 +67385,7 @@ var gn = (e) =>
       glow: [255, 240, 200],
     },
     belier: {
-      name: `Bélier`,
+      name: `Slaad`,
       head: [
         [110, 66, 36],
         [176, 112, 60],
@@ -67413,7 +67413,7 @@ var gn = (e) =>
       glow: [180, 170, 255],
     },
     grand_belier: {
-      name: `Grand Bélier`,
+      name: `Grand Ettin`,
       head: [
         [150, 100, 24],
         [232, 184, 74],
@@ -74653,9 +74653,9 @@ var ia = [
       id: `q1`,
       title: `Les Bouftons envahissants`,
       giver: `elder`,
-      intro: `Bienvenue à Aelor, voyageur. Les petits moutons des prairies piétinent nos récoltes. Élimine-en trois, veux-tu ?`,
+      intro: `Bienvenue à Aelor, voyageur. Les chapeaux-rouges des prairies piétinent nos récoltes. Élimine-en trois, veux-tu ?`,
       done: `Merci ! Tu as la main sûre. Prends ces potions, elles te sauveront la vie.`,
-      hint: `Touchez un mouton dans la prairie pour engager le combat.`,
+      hint: `Touchez un chapeau-rouge dans la prairie pour engager le combat.`,
       goal: { type: `kill`, monster: `petit_mouton`, count: 3 },
       reward: { xp: 30, gold: 40, items: [`potion`, `potion`] },
     },
@@ -74671,11 +74671,11 @@ var ia = [
     },
     {
       id: `q3`,
-      title: `Le bélier furieux`,
+      title: `Le slaad furieux`,
       giver: `elder`,
-      intro: `Un bélier furieux rôde à la lisière de la forêt. Attention : il annonce sa charge. Fais-le percuter un obstacle !`,
+      intro: `Un slaad furieux rôde à la lisière de la forêt. Attention : il annonce sa charge. Fais-le percuter un obstacle !`,
       done: `Incroyable ! Tu es prêt pour la suite : il faudra reconstruire le pont du ravin, à l'est.`,
-      hint: `Les béliers rôdent dans la forêt au nord-ouest. Esquivez leur charge avec le dash.`,
+      hint: `Les slaads rôdent dans la forêt au nord-ouest. Esquivez leur charge avec le dash.`,
       goal: { type: `kill`, monster: `belier_furieux`, count: 1 },
       reward: { xp: 80, gold: 60 },
     },
@@ -74683,8 +74683,8 @@ var ia = [
       id: `q4`,
       title: `Éveil`,
       giver: `elder`,
-      intro: `Ton pouvoir grandit. Atteins le niveau 3 et utilise une compétence en combat. Alors, je te parlerai de la Bergerie.`,
-      done: `Je sens l'Aether vibrer autour de toi. Au nord se dresse la Bergerie oubliée : un grand bélier y règne. Prends cette arme.`,
+      intro: `Ton pouvoir grandit. Atteins le niveau 3 et utilise une compétence en combat. Alors, je te parlerai de l'Antre.`,
+      done: `Je sens l'Aether vibrer autour de toi. Au nord se dresse l'Antre oublié : un grand ettin y règne. Prends cette arme.`,
       hint: `Gagnez de l'expérience, montez au niveau 3 puis utilisez une compétence en combat.`,
       goal: { type: `level`, level: 3, useSkill3: !0 },
       reward: { xp: 60, gold: 100, classItem: { augh: `boo_r`, aka: `scep_r` } },
@@ -74692,11 +74692,11 @@ var ia = [
     },
     {
       id: `q5`,
-      title: `Le Grand Bélier`,
+      title: `Le Grand Ettin`,
       giver: `elder`,
-      intro: `Le Grand Bélier règne sur la Bergerie oubliée, au nord. Traverse ses trois salles et vaincs-le : observe ses charges, esquive, puis contre-attaque.`,
-      done: `Tu as vaincu le Grand Bélier ! Aelor te doit tout. Reviens quand tu voudras tenter d'obtenir ses trésors.`,
-      hint: `Entrez dans la Bergerie oubliée (bâtiment au nord de la prairie).`,
+      intro: `Le Grand Ettin règne sur l'Antre oublié, au nord. Traverse ses trois salles et vaincs-le : observe ses charges, esquive, puis contre-attaque.`,
+      done: `Tu as vaincu le Grand Ettin ! Aelor te doit tout. Reviens quand tu voudras tenter d'obtenir ses trésors.`,
+      hint: `Entrez dans l'Antre oublié (bâtiment au nord de la prairie).`,
       goal: { type: `boss` },
       reward: { xp: 320, gold: 300 },
     },
@@ -83655,19 +83655,19 @@ function Ws() {
 var Gs = [
     {
       id: `bergerie`,
-      name: `La Bergerie Oubliée`,
-      short: `Bergerie Oubliée`,
+      name: `L'Antre Oublié`,
+      short: `Antre Oublié`,
       entrance: { x: 48, y: 5 },
       rooms: [`d1`, `d2`, `d3`],
       persist: !1,
       lvl: `3+`,
-      boss: `Le Grand Bélier`,
+      boss: `Le Grand Ettin`,
       tint: 15128319,
       style: `paille`,
       themes: [
         { floorA: 5982774, floorB: 5522479, wall: 3024947, name: `Étable des agneaux` },
-        { floorA: 5063992, floorB: 4603442, wall: 2762288, name: `Enclos des béliers` },
-        { floorA: 4009782, floorB: 3615538, wall: 2366762, name: `Salle du Grand Bélier` },
+        { floorA: 5063992, floorB: 4603442, wall: 2762288, name: `Enclos des slaads` },
+        { floorA: 4009782, floorB: 3615538, wall: 2366762, name: `Salle du Grand Ettin` },
       ],
     },
     {
@@ -85161,7 +85161,7 @@ var Sc = class {
               name: `Pont effondré`,
               portrait: `guard`,
               lines: [
-                `Le pont est brisé. Des runes anciennes parlent de trois cristaux près du ravin, gardés par des moutons.`,
+                `Le pont est brisé. Des runes anciennes parlent de trois cristaux près du ravin, gardés par des chapeaux-rouges.`,
                 `Cristaux activés : ${e}/3. Activez-les, puis revenez ici : votre Lien spectral fera le reste.`,
               ],
             }),
@@ -85508,7 +85508,7 @@ var Sc = class {
         r = this.w;
       if (!n || V.state.flags[`crystal_${t}`] || (V.state.hero !== `aka` && V.state.hero !== `gorak`)) return;
       if (r.leaders.has(_c[t])) {
-        (B.emit(`toast`, `Des moutons gardent ce cristal : battez-les !`), K.play(`error`));
+        (B.emit(`toast`, `Des chapeaux-rouges gardent ce cristal : battez-les !`), K.play(`error`));
         return;
       }
       let i = r.hero,
@@ -86489,7 +86489,7 @@ var Sc = class {
         this.cur.id === `bergerie`
           ? t === 0
             ? `La porte de l'étable s'ouvre.`
-            : `La porte de l'enclos s'ouvre. Le Grand Bélier vous attend.`
+            : `La porte de l'enclos s'ouvre. Le Grand Ettin vous attend.`
           : i
             ? `La porte du sommet s'ouvre. Le ${this.cur.boss} vous attend.`
             : `La porte s'ouvre (salle ${t + 2} sur ${this.cur.rooms.length}).`,
@@ -86543,7 +86543,7 @@ var Sc = class {
           onComplete: () => n.destroy(),
         });
       }
-      (B.emit(`zone`, r.id === `bergerie` ? `Bergerie purifiée !` : `${r.name} conquis !`),
+      (B.emit(`zone`, r.id === `bergerie` ? `Antre purifié !` : `${r.name} conquis !`),
         i &&
           r.firstClear &&
           B.emit(
@@ -88188,7 +88188,7 @@ var Sc = class {
                           name: e.name,
                           portrait: `villager`,
                           lines: [
-                            `Les petits moutons ont l'air mignons, mais en groupe ils te chargent ! Surveille les cercles rouges au sol.`,
+                            `Les chapeaux-rouges ont l'air mignons, mais en groupe ils te chargent ! Surveille les cercles rouges au sol.`,
                             `Astuce : le dash rend invulnérable un court instant. Parfait pour traverser une attaque.`,
                           ],
                         });
@@ -90375,7 +90375,7 @@ var cl = [
           : e.name,
     short:
       {
-        bergerie: `Bergerie`,
+        bergerie: `Antre`,
         cimes: `Cimes`,
         temple: `Temple`,
         nid: `Nid`,

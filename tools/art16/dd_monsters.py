@@ -25,32 +25,45 @@ MAP = {
     "mon_wolf": ("ToxicHound.png", False),
     "mon_yeti": ("StoneTroll.png", False),
     "mon_guard": ("LizardfolkSpearman.png", False),
+    # option 2 : moutons, béliers, sanglier et boss remplacés par des créatures du pack gratuit
+    "mon_petit": ("RedCap.png", False),
+    "mon_belier": ("CrimsonSlaad.png", False),
+    "mon_mystique": ("OcularWatcher.png", False),
+    "mon_boar": ("CarcassFeeder.png", False),
+    "mon_grand": ("HumongousEttin.png", False, 128),
+    "mon_boss": ("SwampTroll.png", False, 128),
 }
 CELL, FEET, UP = 64, 57, 2
+# Boss : cases de 128 (pieds sur la ligne 114), sprite ×4 = chaque pixel du sprite couvre 2×2
+# pixels de la grille du jeu (toujours aligné sur elle)
 B4 = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]) / 16
 
 
-def frames_of(path, flip):
+def frames_of(path, flip, up=UP):
     im = Image.open(path).convert("RGBA")
     fr = [im.crop((k * 16, 0, k * 16 + 16, 16)) for k in range(im.width // 16)]
     if flip:
         fr = [f.transpose(Image.FLIP_LEFT_RIGHT) for f in fr]
-    return [np.array(f.resize((16 * UP, 16 * UP), Image.NEAREST)) for f in fr]
+    return [np.array(f.resize((16 * up, 16 * up), Image.NEAREST)) for f in fr]
+
+
+G = {"cell": CELL, "feet": FEET}
 
 
 def place(a, dx=0, dy=0):
-    cell = np.zeros((CELL, CELL, 4), np.uint8)
+    C, F = G["cell"], G["feet"]
+    cell = np.zeros((C, C, 4), np.uint8)
     ys = np.where(a[..., 3].any(1))[0]
     bottom = ys.max() if len(ys) else a.shape[0] - 1
-    x0 = (CELL - a.shape[1]) // 2 + dx
-    y0 = FEET - bottom + dy
+    x0 = (C - a.shape[1]) // 2 + dx
+    y0 = F - bottom + dy
     h, w = a.shape[:2]
     for y in range(h):
         Y = y0 + y
-        if 0 <= Y < CELL:
+        if 0 <= Y < C:
             for x in range(w):
                 X = x0 + x
-                if 0 <= X < CELL and a[y, x, 3]:
+                if 0 <= X < C and a[y, x, 3]:
                     cell[Y, X] = a[y, x]
     return cell
 
@@ -88,14 +101,18 @@ def sheet_for(fr):
         [place(flash(f(0))), place(f(0), dx=-2), place(flash(f(1)), dx=-2), place(f(1)), place(f(2)), place(f(3))],  # touché
         [place(dissolve(f(0), k / 5, k)) for k in range(6)],  # mort
     ]
-    out = np.zeros((6 * CELL, 6 * CELL, 4), np.uint8)
+    C = G["cell"]
+    out = np.zeros((6 * C, 6 * C, 4), np.uint8)
     for j, r in enumerate(rows):
         for i, c in enumerate(r):
-            out[j * CELL : (j + 1) * CELL, i * CELL : (i + 1) * CELL] = c
+            out[j * C : (j + 1) * C, i * C : (i + 1) * C] = c
     return out
 
 
 if __name__ == "__main__":
-    for key, (src, flip) in MAP.items():
-        Image.fromarray(sheet_for(frames_of(os.path.join(SRC, src), flip))).save(os.path.join(OUT, key + ".png"))
-        print(key, "<-", src)
+    for key, (src, flip, *size) in MAP.items():
+        big = size and size[0] == 128
+        G["cell"], G["feet"] = (128, 114) if big else (CELL, FEET)
+        fr = frames_of(os.path.join(SRC, src), flip, 4 if big else UP)
+        Image.fromarray(sheet_for(fr)).save(os.path.join(OUT, key + ".png"))
+        print(key, "<-", src, "(boss x4)" if big else "")
