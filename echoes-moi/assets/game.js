@@ -79000,6 +79000,11 @@ var vo = [
         this.load.atlas(`ui`, `${i}ui.png`, `${i}ui.json`));
       for (let [e, [t, n]] of Object.entries(xo))
         this.load.spritesheet(e, `${i}fx/${e}.png`, { frameWidth: t, frameHeight: n });
+      // Adresses suffixées par le numéro de build : après une mise à jour, le téléphone ne réutilise
+      // pas d'anciennes images gardées en cache.
+      this.load.list.each((e) => {
+        typeof e.url == `string` && !e.url.includes(`?`) && !/^(data|blob):/.test(e.url) && (e.url += `?b=${VERSION.build}`);
+      });
     }
     create() {
       (Fn(this), Un(this, Object.values(z)), _o(this));
