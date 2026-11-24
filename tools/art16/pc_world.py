@@ -152,6 +152,59 @@ def bbox_crop(a, x, y, w, h):
     return c[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1]
 
 
+def tile_fill(tex, w, h):
+    """Remplit w×h en répétant la texture `tex`."""
+    th, tw = tex.shape[:2]
+    reps = np.tile(tex, (h // th + 1, w // tw + 1, 1))
+    return reps[:h, :w].copy()
+
+
+def make_house(roof):
+    """Maison de face 56×56 (×2 = 112, taille des maisons du jeu) : toit pointu en planches du pack,
+    mur crème à colombages, porte et fenêtres du pack, contour noir."""
+    W = H = 56
+    walls, roofs, bp = load("walls.png"), load("roofs.png"), load("bld_props.png")
+    img = np.zeros((H, W, 4), np.uint8)
+    # mur
+    plaster = crop(walls, 412, 22, 32, 20)
+    wy0, wx0, wx1 = 25, 5, 51
+    img[wy0:H, wx0:wx1] = tile_fill(plaster, wx1 - wx0, H - wy0)
+    wood, dark = np.array([0x8A, 0x56, 0x32, 255], np.uint8), np.array([0x55, 0x35, 0x21, 255], np.uint8)
+    img[wy0 : wy0 + 2, wx0:wx1] = wood  # poutre haute
+    img[H - 3 : H, wx0:wx1] = dark  # soubassement
+    for x in (wx0, wx0 + 1, wx1 - 2, wx1 - 1, 27, 28):
+        img[wy0:H, x] = wood if x not in (27, 28) else img[wy0:H, x]
+    img[wy0 + 12, wx0:wx1] = wood  # poutre intermédiaire
+    # toit pointu : planches du pack, tuiles répétées dans un triangle
+    rx, ry = (24, 34) if roof == "brown" else (152, 34)
+    rtex = tile_fill(crop(roofs, rx, ry, 24, 24), W, 28)
+    for y in range(28):
+        half = int(round(2 + y * (W / 2 - 1) / 27))
+        x0, x1 = W // 2 - half, W // 2 + half
+        img[y, max(0, x0) : min(W, x1)] = rtex[y, max(0, x0) : min(W, x1)]
+    img[26:28, 0:W][img[26:28, 0:W, 3] > 0] = [40, 24, 16, 255]  # bord du toit
+    # porte (planches de la porte du pack) et fenêtres
+    door = crop(bp, 104, 36, 14, 20)
+    img[H - 3 - 20 : H - 3, 21:35] = door
+    img[H - 24 : H - 23, 20:36] = dark
+    win = bbox_crop(bp, 131, 97, 26, 29)
+    win = win[: min(14, win.shape[0]), : min(12, win.shape[1])]
+    for wx in (9, 37):
+        hh, ww = win.shape[:2]
+        m = win[..., 3] > 0
+        img[30 : 30 + hh, wx : wx + ww][m] = win[m]
+    # contour noir 1 px autour de la silhouette
+    op = img[..., 3] > 0
+    from scipy import ndimage
+
+    ring = ndimage.binary_dilation(op, structure=[[0, 1, 0], [1, 1, 1], [0, 1, 0]]) & ~op
+    out = np.zeros((H + 2, W + 2, 4), np.uint8)
+    out[1:-1, 1:-1] = img
+    ring2 = ndimage.binary_dilation(out[..., 3] > 0, structure=[[0, 1, 0], [1, 1, 1], [0, 1, 0]]) & ~(out[..., 3] > 0)
+    out[ring2] = [0, 0, 0, 255]
+    return out
+
+
 def build_objects():
     atlas = np.array(Image.open(os.path.join(ORIG, "objects.png")).convert("RGBA"))
     meta = json.load(open(os.path.join(ORIG, "objects.json")))
@@ -173,6 +226,18 @@ def build_objects():
         "mushrooms": bbox_crop(veg, 36, 288, 11, 14),
         "tallgrass": bbox_crop(veg, 36, 149, 10, 9),
     }
+    # petits objets du village
+    farm, bp, dun, res = load("farm.png"), load("bld_props.png"), load("dungeon_props.png"), load("resources.png")
+    trees_a = load("trees_a.png")
+    new.update({
+        "crate": bbox_crop(farm, 288, 8, 16, 28),
+        "fence_h": bbox_crop(bp, 22, 176, 16, 16),
+        "banner": bbox_crop(dun, 65, 68, 14, 26),
+        "log": bbox_crop(res, 30, 66, 34, 10),
+        "stump": bbox_crop(trees_a, 192, 9, 16, 24),
+    })
+    new["house_blue"] = make_house("teal")
+    new["house_red"] = make_house("brown")
     out = dict(old)
     for k, v in new.items():
         out[k] = upscale(v)
