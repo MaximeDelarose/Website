@@ -5,7 +5,6 @@
 //
 //   Village d'Aelor ─ Route 1 (Prairies, Bois de la Lisière) ─ Cité d'Orée
 //        │              └ Cercle de l'Antre : l'Antre oublié
-//        └ Rives du lac (on y redescend depuis le bois par un rebord)
 //   Cité d'Orée ─ Route 2 (Forêt mystérieuse) ─ pont du ravin ─ Hameau des Ruines
 //                   └ Pied des Cimes : le Sanctuaire des Cimes
 //   Hameau des Ruines ─ nord : Bosquet corrompu (Nid des Ombres)
@@ -54,7 +53,7 @@ function lineDist(px, py, pts) {
 // ---------------------------------------------------------------- plan
 // Zones nommées (affichées en entrant) : la première qui contient la case l'emporte.
 export const ZONES = [
-  { name: `Village d'Aelor`, x0: 30, y0: 44, x1: 68, y1: 71, kind: 'prairie', tint: 16765040, lvl: `1+` },
+  { name: `Village d'Aelor`, x0: 38, y0: 44, x1: 59, y1: 66, kind: 'prairie', tint: 16765040, lvl: `1+` },
   { name: `Cité d'Orée`, x0: 1, y0: 1, x1: 31, y1: 22, kind: 'cite', tint: 16751312, lvl: `—` },
   { name: `Hameau des Ruines`, x0: 74, y0: 26, x1: 95, y1: 47, kind: 'ruines', tint: 14205088, lvl: `—` },
   { name: `Cercle de l'Antre`, x0: 26, y0: 20, x1: 47, y1: 28, kind: 'ruines', tint: 10465535, lvl: `3+` },
@@ -62,7 +61,6 @@ export const ZONES = [
   { name: `Route 2 · Forêt mystérieuse`, x0: 31, y0: 0, x1: 66, y1: 20, kind: 'foret', tint: 5234848, lvl: `2+` },
   { name: `Route 2 · Forêt mystérieuse`, x0: 55, y0: 20, x1: 67, y1: 40, kind: 'foret', tint: 5234848, lvl: `2+` },
   { name: `Bois de la Lisière`, x0: 1, y0: 22, x1: 19, y1: 47, kind: 'foret', tint: 5234848, lvl: `1+` },
-  { name: `Rives du lac`, x0: 1, y0: 47, x1: 30, y1: 71, kind: 'prairie', tint: 13627072, lvl: `1+` },
   { name: `Bosquet corrompu`, x0: 74, y0: 0, x1: 96, y1: 26, kind: 'ombre', tint: 13660384, lvl: `3+` },
   { name: `Ruines anciennes`, x0: 74, y0: 47, x1: 96, y1: 71, kind: 'ruines', tint: 14205088, lvl: `2+` },
   { name: `Route 1 · Prairies d'Aelor`, x0: 0, y0: 0, x1: 96, y1: 72, kind: 'prairie', tint: 13627072, lvl: `1+` },
@@ -82,7 +80,6 @@ const RIVER = [
   [72, 62],
   [73, 72],
 ];
-const LAKE = { x: 14, y: 57, rx: 6.5, ry: 4.6 };
 
 // Entrées de donjon, portails, rencontres, objectifs : lus par game.js
 export const DUNGEONS = {
@@ -92,7 +89,8 @@ export const DUNGEONS = {
   nid: { x: 88, y: 6 }, // Nid des Ombres, au fond du Bosquet corrompu
 };
 export const PORTALS = {
-  aelor: { x: 48, y: 53, name: `Portail d'Aelor`, region: `Village d'Aelor` },
+  // portail d'Aelor : pas de portail visible au village, mais on peut toujours y revenir par les autres
+  aelor: { x: 48, y: 56, name: `Village d'Aelor`, region: `Village d'Aelor`, hidden: true },
   cite: { x: 16, y: 8, name: `Zaap de la Cité d'Orée`, region: `Cité marchande d'Orée` },
   foret: { x: 41, y: 9, name: `Portail de la Forêt`, region: `Route 2 · Forêt mystérieuse` },
   sanctuaire: { x: 56, y: 8, name: `Portail des Cimes`, region: `Pied des Cimes` },
@@ -103,7 +101,7 @@ export const ENCOUNTERS = {
   // route 1
   m1: [44, 39],
   m2: [52, 41],
-  m3: [24, 61],
+  m3: [9, 44],
   m4: [36, 35],
   m5: [9, 41],
   m6: [26, 35],
@@ -128,7 +126,7 @@ export const CRYSTALS = [
   [57, 31],
 ];
 export const BARRICADES = [
-  [22, 64],
+  [14, 45],
   [8, 31],
   [40, 16],
 ];
@@ -142,7 +140,7 @@ export function buildOverworld() {
   const rect = (x0, y0, x1, y1, v = GRASS) => {
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(x, y, v);
   };
-  const ellipse = (cx, cy, rx, ry, v = GRASS, wob = 0.18) => {
+  const ellipse = (cx, cy, rx, ry, v = GRASS, wob = 0.04) => {
     for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++)
       for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) {
         const k = ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2;
@@ -159,20 +157,13 @@ export function buildOverworld() {
       for (let x = Math.floor(x0 - r - 1); x <= x1 + r + 1; x++)
         if (lineDist(x + 0.5, y + 0.5, pts) < r && (!only || only(at(x, y)))) set(x, y, v);
   };
-  const tallPatch = (cx, cy, rx, ry) => ellipse(cx, cy, rx, ry, TALL, 0.3);
+  // hautes herbes en carrés nets, comme dans les RPG 16 bits
+  const tallPatch = (cx, cy, rx, ry) => rect(Math.round(cx - rx), Math.round(cy - ry), Math.round(cx + rx) - 1, Math.round(cy + ry) - 1, TALL);
   const onlyOpen = (c) => c === GRASS || c === TALL;
 
-  // --- Village d'Aelor (centre-sud) : même plan qu'avant
-  rect(32, 46, 63, 67);
-  rect(45, 44, 51, 45); // sortie nord vers la route 1
-  rect(29, 59, 31, 63); // sortie ouest vers les rives du lac
-  rect(64, 49, 68, 55); // quai du port, à l'est
-  // --- Rives du lac (sud-ouest)
-  ellipse(17, 58, 14, 10.5, GRASS, 0.1);
-  rect(4, 48, 28, 66);
-  rect(1, 67, 31, 69, FOREST);
-  tallPatch(24, 63, 4, 2.2);
-  tallPatch(6, 51, 3, 1.6);
+  // --- Village d'Aelor : quatre maisons et la route 1 au nord, rien d'autre
+  rect(39, 48, 57, 64);
+  rect(46, 44, 50, 47); // sortie nord vers la route 1
   // --- Route 1 : couloir nord, voie basse, voie haute, Bois de la Lisière
   rect(40, 35, 54, 43); // couloir nord (depuis Aelor)
   rect(19, 34, 54, 37); // voie basse
@@ -231,9 +222,10 @@ export function buildOverworld() {
   rect(77, 28, 93, 45); // Hameau des Ruines
   rect(83, 22, 87, 27); // vers le nord
   rect(83, 46, 87, 49); // vers le sud
-  ellipse(84, 14, 9.5, 9.5, GRASS, 0.25); // Bosquet corrompu
-  ellipse(90, 6, 4.5, 4, GRASS, 0.2);
-  ellipse(85, 58, 9.5, 9.5, GRASS, 0.2); // Ruines anciennes
+  rect(71, 38, 76, 42); // quai du port, au bord de la rivière
+  ellipse(84, 14, 9.5, 9.5); // Bosquet corrompu
+  ellipse(90, 6, 4.5, 4);
+  ellipse(85, 58, 9.5, 9.5); // Ruines anciennes
   tallPatch(80, 18, 3, 2);
   tallPatch(89, 61, 3, 2);
 
@@ -243,8 +235,6 @@ export function buildOverworld() {
     for (let x = 0; x < W; x++) {
       const r = 2.1 + (hash(x, y, 9) - 0.5) * 0.35;
       if (lineDist(x + 0.5, y + 0.5, RIVER) < r) water[y * W + x] = 1;
-      if (((x + 0.5 - LAKE.x) / LAKE.rx) ** 2 + ((y + 0.5 - LAKE.y) / LAKE.ry) ** 2 < 1 + (hash(x, y, 4) - 0.5) * 0.25)
-        water[y * W + x] = 1;
     }
   // la rivière déborde un peu sur les abords du pont et le quai : on garde la forêt ailleurs
   for (let i = 0; i < W * H; i++) water[i] && (cell[i] = WATER);
@@ -255,14 +245,12 @@ export function buildOverworld() {
     for (let x = x0; x <= x1; x++) (set(x, y, LEDGE), ledges.push([x, y]));
   };
   ledge(19, 44, 33); // voie haute → voie basse
-  ledge(4, 17, 47); // Bois de la Lisière → rives du lac
-  rect(18, 46, 19, 47, FOREST);
 
   // --- Chemins de terre et places de pierre
   const paths = [
     [
-      [48, 66],
-      [48, 44],
+      [48.5, 64],
+      [48.5, 44],
       [48, 40],
       [47, 36],
       [47, 31],
@@ -275,14 +263,16 @@ export function buildOverworld() {
       [15, 16],
     ],
     [
-      [33, 61],
-      [26, 61],
-      [20, 64.5],
-      [11, 64],
+      [42.5, 53.5],
+      [54.5, 53.5],
     ],
     [
-      [63, 52],
-      [67, 52],
+      [42.5, 61.5],
+      [54.5, 61.5],
+    ],
+    [
+      [78, 40.5],
+      [72, 40.5],
     ],
     [
       [36, 30],
@@ -345,7 +335,6 @@ export function buildOverworld() {
         if (x >= 0 && y >= 0 && x < W && y < H && Math.hypot(x + 0.5 - cx, y + 0.5 - cy) < r + (hash(x, y, 6) - 0.5) * 0.8)
           stoneM[y * W + x] = 1;
   };
-  plaza(48.5, 57, 5.2); // place de la fontaine d'Aelor
   plaza(16.5, 12, 5.6); // grand-place d'Orée
   for (let x = 4; x <= 29; x++) for (const y of [11, 12]) stoneM[y * W + x] = 1; // rue d'Orée
   for (let y = 3; y <= 20; y++) for (const x of [15, 16, 17]) stoneM[y * W + x] = 1;
@@ -382,7 +371,7 @@ export function buildOverworld() {
       const v = vy * VW + vx;
       // eau : sommet couvert si les 4 cases sont de l'eau (bords de la carte : eau prolongée)
       verts.water[v] = cnt((x, y) => (inb(x, y) ? water[y * W + x] : inb(Math.min(W - 1, Math.max(0, x)), Math.min(H - 1, Math.max(0, y))) && water[Math.min(H - 1, Math.max(0, y)) * W + Math.min(W - 1, Math.max(0, x))])) === 4 ? 1 : 0;
-      verts.dark[v] = cnt((x, y) => !inb(x, y) || cell[y * W + x] === FOREST || cell[y * W + x] === ROCK) >= 2 ? 1 : 0;
+      verts.dark[v] = 0; // la forêt est dessinée par le jeu (rangées d'arbres), pas de sol sombre
       verts.path[v] = !verts.water[v] && cnt((x, y) => inb(x, y) && pathM[y * W + x] && !water[y * W + x]) >= 2 ? 1 : 0;
       verts.stone[v] = !verts.water[v] && cnt((x, y) => inb(x, y) && stoneM[y * W + x] && !water[y * W + x]) >= 2 ? 1 : 0;
     }
@@ -414,50 +403,32 @@ export function buildOverworld() {
   };
   const one = [[0, 0, 0, 0]];
 
-  // Aelor (plan d'origine)
-  for (const [k, x, y] of [
-    [`house_blue`, 41, 52],
-    [`house_red`, 55, 52],
-    [`house_blue`, 40, 64],
-    [`house_red`, 57, 64],
-    [`house_red`, 35, 57],
-  ])
-    (put(k, x, y, [[-1, -2, 1, 0]]), keep(x, y - 1, 2));
-  (put(`fountain`, 48, 56, [[-1, -1, 1, 0]]), keep(48, 56, 2));
-  (put(`stall`, 53, 59, [[-1, 0, 1, 0]]), keep(53, 59, 2));
-  (put(`well`, 43, 60, one), keep(43, 60, 1));
-  for (const [x, y] of [
-    [45, 54],
-    [51, 54],
-    [45, 61],
-    [51, 61],
-    [47, 46],
-    [49, 46],
-  ])
-    put(`lantern`, x, y, one);
-  (put(`banner`, 46, 49, one), put(`banner`, 50, 49, one));
-  for (const [x, y] of [
-    [56, 59],
-    [57, 59],
-    [38, 54],
-    [59, 55],
-  ])
-    put(x % 2 ? `barrel` : `crate`, x, y, one);
-  for (let x = 32; x <= 63; x++) Math.abs(x - 48) <= 2 || put(`fence_h`, x, 67);
-  keep(48, 60, 2);
+  // Maisons du pack (4 × 3 cases) : (gauche, bas) de l'emprise, porte sur la 2e case du bas
+  const house = (k, L, B) => {
+    objs.push({ key: k, x: (L + 2) * 32, y: (B + 1) * 32, block: [[0, -2, 3, 0]] });
+    for (let j = B - 2; j <= B; j++) for (let i = L; i <= L + 3; i++) (blocked[j * W + i] = 1), (used[j * W + i] = 1);
+    keep(L + 1, B + 1, 0);
+  };
+  const flowers = (x0, y0, x1, y1, k = `flowers`) => {
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) objs.push({ key: k, x: x * 32 + 16, y: (y + 1) * 32 - 2, flat: true }), keep(x, y);
+  };
+  const sign = (x, y) => put(`n_sign`, x, y, one);
 
-  // Cité d'Orée
-  for (const [k, x, y] of [
-    [`house_blue`, 6, 5],
-    [`house_red`, 10, 5],
-    [`house_red`, 22, 5],
-    [`house_blue`, 26, 5],
-    [`house_red`, 5, 18],
-    [`house_blue`, 9, 18],
-    [`house_blue`, 23, 18],
-    [`house_red`, 27, 18],
-  ])
-    (put(k, x, y, [[-1, -2, 1, 0]]), keep(x, y - 1, 2));
+  // Aelor : quatre maisons, des parterres, un panneau
+  house(`n_house_a`, 41, 52);
+  house(`n_house_c`, 52, 52);
+  house(`n_house_b`, 41, 60);
+  house(`n_house_d`, 52, 60);
+  flowers(39, 50, 39, 52);
+  flowers(57, 50, 57, 52, `n_flower2`);
+  flowers(39, 58, 39, 60, `n_flower2`);
+  flowers(57, 58, 57, 60);
+  sign(51, 46);
+  keep(48, 57, 2);
+
+  // Cité d'Orée : la place du marché
+  for (const L of [4, 9, 20, 25]) house(L % 2 ? `n_house_b` : `n_house_a`, L, 5);
+  for (const L of [4, 9, 20, 25]) house(L % 2 ? `n_house_d` : `n_house_c`, L, 19);
   for (const [x, y] of [
     [11, 9],
     [21, 9],
@@ -465,43 +436,10 @@ export function buildOverworld() {
     [21, 15],
   ])
     (put(`stall`, x, y, [[-1, 0, 1, 0]]), keep(x, y + 1, 1));
-  for (const [x, y] of [
-    [13, 9],
-    [19, 9],
-    [13, 15],
-    [19, 15],
-  ])
-    put(y % 2 ? `crate` : `barrel`, x, y, one);
   (put(`fountain`, 16, 13, [[-1, -1, 1, 0]]), keep(16, 13, 2));
-  put(`well`, 26, 14, one);
-  for (const [x, y] of [
-    [13, 7],
-    [19, 7],
-    [12, 12],
-    [20, 12],
-    [13, 17],
-    [19, 17],
-    [29, 10],
-    [29, 13],
-    [12, 20],
-    [18, 20],
-  ])
-    put(`lantern`, x, y, one);
-  for (const [x, y] of [
-    [14, 3],
-    [18, 3],
-    [30, 9],
-    [30, 14],
-  ])
-    put(`banner`, x, y, one);
-  for (let x = 3; x <= 30; x++) (x < 12 || x > 18) && x % 3 !== 1 && !used[20 * W + x] && put(`bush`, x, 20);
-  for (const [x, y] of [
-    [4, 9],
-    [4, 14],
-    [28, 3],
-    [3, 3],
-  ])
-    put(`tree_blossom`, x, y, one, { fade: true });
+  flowers(3, 9, 3, 10);
+  flowers(3, 13, 3, 14, `n_flower2`);
+  sign(19, 22);
 
   // Cercle de l'Antre : pierres levées autour de l'entrée
   for (const [x, y] of [
@@ -532,14 +470,11 @@ export function buildOverworld() {
     put(k, x, y, one);
   keep(60, 3, 2);
 
-  // Hameau des Ruines : maisons dans les ruines
-  for (const [k, x, y] of [
-    [`house_red`, 80, 31],
-    [`house_blue`, 90, 31],
-    [`house_blue`, 80, 43],
-    [`house_red`, 90, 43],
-  ])
-    (put(k, x, y, [[-1, -2, 1, 0]]), keep(x, y - 1, 2));
+  // Hameau des Ruines : quatre maisons dans les ruines
+  house(`n_house_c`, 78, 31);
+  house(`n_house_a`, 89, 31);
+  house(`n_house_d`, 78, 44);
+  house(`n_house_b`, 89, 44);
   put(`arch`, 76, 35, [
     [-1, 0, -1, 0],
     [1, 0, 1, 0],
@@ -550,14 +485,12 @@ export function buildOverworld() {
     [`pillar`, 89, 35],
     [`pillar`, 82, 39],
     [`pillar`, 89, 39],
-    [`ruin_wall`, 79, 38],
-    [`ruin_wall`, 92, 37],
-    [`crystal_blue`, 78, 29],
-    [`crystal_purple`, 92, 29],
-    [`stall`, 88, 41],
+    [`ruin_wall`, 80, 38],
+    [`ruin_wall`, 93, 38],
   ])
-    put(k, x, y, k === `stall` ? [[-1, 0, 1, 0]] : k === `ruin_wall` ? [[-1, 0, 0, 0]] : one);
-  (put(`well`, 87, 33, one), put(`lantern`, 83, 37, one), put(`lantern`, 88, 37, one));
+    put(k, x, y, k === `ruin_wall` ? [[-1, 0, 0, 0]] : one);
+  sign(88, 27);
+  sign(88, 47);
   keep(85, 36, 2);
 
   // Bosquet corrompu et Ruines anciennes
@@ -595,65 +528,16 @@ export function buildOverworld() {
   for (const [x, y] of CRYSTALS) keep(x, y, 1);
   keep(...BRIDGE_SIGN, 1);
 
-  // Forêt : arbres en quinconce (bosquets denses qui servent de murs), buissons en lisière
-  const R = rng(4321);
-  const zoneTree = (x, y) => {
-    const k = KINDS[kind[y * W + x]];
-    if (k === 'ombre' || k === 'givre') return `tree_pine`;
-    if (k === 'foret') return R() < 0.55 ? `tree_pine` : `tree_oak`;
-    if (k === 'cite') return R() < 0.5 ? `tree_blossom` : `tree_oak`;
-    return R() < 0.25 ? `tree_blossom` : `tree_oak`;
-  };
-  const open = (x, y) => x >= 0 && y >= 0 && x < W && y < H && !blocked[y * W + x] && !water[y * W + x];
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      const c = cell[y * W + x];
-      if (c !== FOREST || water[y * W + x]) continue;
-      const openAbove = open(x, y - 1) || open(x, y - 2) || open(x, y - 3);
-      const edge = open(x - 1, y) || open(x + 1, y) || open(x, y - 1) || open(x, y + 1);
-      const lattice = y % 2 === 0 && (x + (y % 4 === 0 ? 0 : 1)) % 2 === 0;
-      if (openAbove) {
-        // près d'un passage situé au-dessus : des buissons (bas) plutôt que des arbres qui le cacheraient
-        if (open(x, y - 1) ? R() < 0.85 : (x + y) % 2 === 0)
-          objs.push({ key: R() < 0.2 ? `bush_berry` : `bush`, x: x * 32 + 16 + Math.round((hash(x, y, 5) - 0.5) * 8), y: (y + 1) * 32 });
-        continue;
-      }
-      if (lattice || (edge && R() < 0.5)) {
-        let t = zoneTree(x, y);
-        // les pins (très hauts) seulement loin des passages
-        if (t === `tree_pine` && (open(x, y - 4) || open(x, y - 5))) t = `tree_oak`;
-        const jx = Math.round((hash(x, y, 1) - 0.5) * 10),
-          jy = Math.round((hash(x, y, 2) - 0.5) * 6);
-        objs.push({ key: t, x: x * 32 + 16 + jx, y: (y + 1) * 32 + jy, fade: true });
-      }
-    }
+  // Forêt : le jeu la dessine en rangées d'arbres régulières (cases `forest`)
+  const forest = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) forest[i] = cell[i] === FOREST && !water[i] ? 1 : 0;
 
-  // Décor au sol des cases libres
+  // Hautes herbes : une tuile pleine par case
   for (let y = 1; y < H - 1; y++)
     for (let x = 1; x < W - 1; x++) {
-      const i = y * W + x,
-        c = cell[i];
-      if (blocked[i] || used[i] || water[i]) continue;
-      if (c === TALL) {
-        objs.push({ key: `tallgrass_tile`, x: x * 32 + 16, y: (y + 1) * 32 + 4, sway: true });
-        continue;
-      }
-      if (pathM[i] || stoneM[i] || town[i]) {
-        town[i] && !pathM[i] && !stoneM[i] && hash(x, y, 7) < 0.06 && objs.push({ key: `flowers`, x: x * 32 + 16, y: (y + 1) * 32 - 6 });
-        continue;
-      }
-      const h = R(),
-        k = KINDS[kind[i]];
-      if (h < 0.05) objs.push({ key: `tallgrass`, x: x * 32 + 16, y: (y + 1) * 32 - 4, sway: true });
-      else if (h < 0.09) objs.push({ key: `flowers`, x: x * 32 + 16, y: (y + 1) * 32 - 6 });
-      else if (h < 0.1) objs.push({ key: `rock_small`, x: x * 32 + 16, y: (y + 1) * 32 });
-      else if (h < 0.11 && (k === 'foret' || k === 'ombre')) objs.push({ key: `mushrooms`, x: x * 32 + 16, y: (y + 1) * 32 });
-      else if (h < 0.115 && k === 'foret') objs.push({ key: `stump`, x: x * 32 + 16, y: (y + 1) * 32 });
+      const i = y * W + x;
+      if (cell[i] === TALL && !blocked[i] && !used[i]) objs.push({ key: `tallgrass_tile`, x: x * 32 + 16, y: (y + 1) * 32 });
     }
-  // nénuphars / herbes au bord de l'eau
-  for (let y = 1; y < H - 1; y++)
-    for (let x = 1; x < W - 1; x++)
-      vcount(verts.water, x, y) === 1 && !blocked[y * W + x] && hash(x, y, 8) < 0.25 && objs.push({ key: `tallgrass`, x: x * 32 + 16, y: (y + 1) * 32 - 4, sway: true });
 
   // --- Pont du ravin (route 2 → hameau), à reconstruire
   const bridges = [],
@@ -673,7 +557,7 @@ export function buildOverworld() {
     { id: `ch2`, x: 35, y: 9, tier: 2, gold: 60, items: [`@weapon_r`] },
     { id: `ch3`, x: 79, y: 63, tier: 2, gold: 70, items: [`belier_ring_rare`] },
     { id: `ch4`, x: 92, y: 8, tier: 3, gold: 120, items: [`mystique_boots_legendary`, `potion`] },
-    { id: `ch5`, x: 5, y: 64, tier: 1, gold: 25, items: [`potion`, `petit_ring_common`] },
+    { id: `ch5`, x: 5, y: 45, tier: 1, gold: 25, items: [`potion`, `petit_ring_common`] },
     { id: `ch6`, x: 20, y: 36, tier: 1, gold: 40, items: [`petit_cape_common`] },
   ];
   for (const c of chests) blocked[c.y * W + c.x] = 1;
@@ -681,9 +565,10 @@ export function buildOverworld() {
 
   // --- PNJ
   const npcs = [
-    { id: `elder`, kind: `elder`, x: 45, y: 57, name: `Ancienne Mira` },
-    { id: `merchant`, kind: `merchant`, x: 53, y: 60, name: `Bertin le marchand` },
-    { id: `villager`, kind: `villager`, x: 51, y: 63, name: `Lina` },
+    { id: `elder`, kind: `elder`, x: 44, y: 54, name: `Ancienne Mira` },
+    { id: `villager`, kind: `villager`, x: 55, y: 54, name: `Lina` },
+    { id: `tuto_bouger`, kind: `villager`, x: 44, y: 62, name: `Tom` },
+    { id: `tuto_sorts`, kind: `villager`, x: 55, y: 62, name: `Iris` },
     { id: `bazar`, kind: `merchant`, x: 11, y: 10, name: `Zélie du Bazar` },
     { id: `odon`, kind: `merchant`, x: 21, y: 10, name: `Maître Odon, grand marchand` },
     { id: `maelys`, kind: `villager`, x: 11, y: 16, name: `Maëlys la forgeronne` },
@@ -695,51 +580,25 @@ export function buildOverworld() {
     { id: `archeo`, kind: `villager`, x: 91, y: 40, name: `Sélène l'archéologue` },
   ];
 
-  // --- Port de Garance (quai sur la rivière, à l'est d'Aelor)
-  const harbor = { dx: 64, dy: 52, bx: 67, by: 52 };
+  // --- Port de Garance : ponton sur la rivière, à l'ouest du Hameau des Ruines
+  const harbor = { dx: 70, dy: 40, bx: 68, by: 40 };
   {
-    let n = 66;
-    for (let x = 62; x <= 76; x++)
-      if (vcount(verts.water, x, 52) >= 2) {
+    let n = 70;
+    for (let x = 78; x >= 60; x--)
+      if (vcount(verts.water, x, 40) >= 2) {
         n = x;
         break;
       }
-    harbor.bx = n + 1;
-    harbor.dx = n - 2;
-    for (let y = 50; y <= 54; y++) for (let x = harbor.dx - 2; x < n; x++) blocked[y * W + x] = 0;
-    npcs.push({ id: `port`, kind: `merchant`, x: harbor.dx - 1, y: 50, name: `Maître de Port Garance` });
+    // ponton (4 planches) de n-1 à n+2 : deux au-dessus de l'eau, deux sur la rive ; bateau à n-2
+    harbor.dx = n - 1;
+    harbor.bx = n - 2;
+    for (let x = n - 1; x <= n + 2; x++) blocked[40 * W + x] = 0;
+    for (let y = 38; y <= 42; y++) for (let x = n + 1; x <= 76; x++) water[y * W + x] || (blocked[y * W + x] = 0);
+    npcs.push({ id: `port`, kind: `merchant`, x: n + 3, y: 38, name: `Maître de Port Garance` });
   }
   for (const p of npcs) blocked[p.y * W + p.x] = 1;
 
-  // --- Repères (panneaux, moulin, grand arbre)
-  const landmarks = [
-    { kind: `signpost`, x: 51 * 32 + 16, y: 44 * 32, dir: -1, label: `Route 1` },
-    { kind: `signpost`, x: 16 * 32 + 16, y: 25 * 32, dir: -1, label: `Orée` },
-    { kind: `signpost`, x: 34 * 32 + 16, y: 14 * 32, dir: 1, label: `Route 2` },
-    { kind: `signpost`, x: 39 * 32 + 16, y: 30 * 32, dir: -1, label: `Antre` },
-    { kind: `signpost`, x: 87 * 32 + 16, y: 27 * 32, dir: 1, label: `Bosquet` },
-    { kind: `signpost`, x: 87 * 32 + 16, y: 48 * 32, dir: 1, label: `Ruines` },
-  ];
-  for (const L of landmarks) {
-    const cx = Math.floor(L.x / 32),
-      cy = L.y / 32 - 1;
-    const b = L.block || one;
-    for (const [a, bb, c, d] of b) for (let j = cy + bb; j <= cy + d; j++) for (let i = cx + a; i <= cx + c; i++) blocked[j * W + i] = 1;
-    delete L.block;
-  }
-  // pas d'objet de décor sur les repères
-  const lmCells = new Set();
-  for (const L of landmarks) {
-    const cx = Math.floor(L.x / 32),
-      cy = L.y / 32 - 1;
-    for (let j = cy - 3; j <= cy + 1; j++) for (let i = cx - 2; i <= cx + 2; i++) lmCells.add(j * W + i);
-  }
-  for (let i = objs.length - 1; i >= 0; i--) {
-    const o = objs[i];
-    if (o.block || o.ledge) continue;
-    const c = Math.floor((o.y - 1) / 32) * W + Math.floor(o.x / 32);
-    lmCells.has(c) && objs.splice(i, 1);
-  }
+  const landmarks = [];
 
   return {
     cell,
@@ -758,7 +617,8 @@ export function buildOverworld() {
     harbor,
     landmarks,
     decks: [],
-    spawn: { x: 1552, y: 1936 },
+    spawn: { x: 1552, y: 1840 },
+    forest,
     zones: ZONES.map(({ name, x0, y0, x1, y1 }) => ({ name, x0, y0, x1, y1 })),
   };
 }

@@ -64,15 +64,17 @@ Pour comparer, chaque optimisation se coupe depuis la console : `localStorage.se
 
 Carte de surface de 96 × 71 cases (32 unités par case), organisée comme un RPG 16 bits : des villages reliés par des routes bordées de forêt.
 
-- **Village d'Aelor** (départ) → **Route 1 · Prairies d'Aelor** (couloir nord, voie haute / voie basse, Bois de la Lisière) → **Cité d'Orée**.
+- **Village d'Aelor** (départ) : quatre maisons, l'Ancienne Mira (quêtes) et trois habitants qui expliquent le jeu. Pas de boutique ni de portail visible (on peut toujours y revenir par les autres portails).
+- **Route 1 · Prairies d'Aelor** (couloir nord, voie haute / voie basse, Bois de la Lisière) → **Cité d'Orée** (boutiques, bazar, Zaap).
   - Sur la route 1 : le **Cercle de l'Antre** et l'**Antre oublié** (porte ouverte par la quête 4), l'herbe de lune et le slaad furieux (quêtes 2 et 3).
-  - Les **Rives du lac**, à l'ouest d'Aelor : on y redescend depuis le bois par un rebord.
 - **Cité d'Orée** → **Route 2 · Forêt mystérieuse** (Pied des Cimes et **Sanctuaire des Cimes**) → pont du ravin (à reconstruire) → **Hameau des Ruines**.
-- Depuis le hameau : **Bosquet corrompu** au nord (Nid des Ombres), **Ruines anciennes** au sud (Temple Fracturé).
+- Depuis le hameau : **Bosquet corrompu** au nord (Nid des Ombres), **Ruines anciennes** au sud (Temple Fracturé). Le port (bateaux, traversée vers l'archipel) est sur la rivière, à l'ouest du hameau.
+
+**Style** : sol, chemins, eau, arbres, hautes herbes, maisons et panneaux viennent du pack **Ninja Adventure** de Pixel-boy (CC0, domaine public), générés par `python3 tools/art16/ninja_world.py`. La forêt n'est pas faite d'objets : le jeu dessine une fois des rangées d'arbres en quinconce sur les cases `forest` (`buildForest`, une seule texture). Pas de sol ni de décor de zone sur la surface (lucioles, plantes, sol sombre) : l'herbe et les chemins suffisent.
 
 **Rebords** : une rangée de terre qu'on ne franchit qu'en descendant (le héros saute par-dessus, `ledgeHop` dans `game.js`) ; ils servent de raccourcis pour rentrer.
 
 Pour modifier la carte : changer les formes dans `buildOverworld()` (rectangles, ellipses, tracés), puis vérifier en texte avec
 `node -e "import('./echoes-moi/assets/world16.js').then(m => console.log(m.ascii()))"` (copier le fichier en `.mjs` si Node refuse l'import).
-Les sols des zones (forêt, ruines, givre…) suivent `ZONES` : après un changement de zones, refaire `node tools/echoes-bake.js` puis `python3 tools/art16/pc_world.py`.
+Après un changement des images : `python3 tools/art16/ninja_world.py` (refait aussi le terrain et l'atlas d'objets).
 Une sauvegarde faite sur l'ancienne carte (sans `mapVer: 2`) repart du village d'Aelor, brouillard de la carte remis à zéro.

@@ -1,2 +1,2 @@
 // Généré par tools/echoes-build.js — ne pas modifier à la main.
-export const VERSION = {"build":17,"date":"24/11/2026 03h10"};
+export const VERSION = {"build":18,"date":"24/11/2026 13h07"};

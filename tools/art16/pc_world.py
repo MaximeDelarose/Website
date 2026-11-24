@@ -228,7 +228,7 @@ def make_ledge():
     return a
 
 
-def build_objects():
+def build_objects(extra=None):
     atlas = np.array(Image.open(os.path.join(ORIG, "objects.png")).convert("RGBA"))
     meta = json.load(open(os.path.join(ORIG, "objects.json")))
     frames = meta["frames"]
@@ -273,6 +273,7 @@ def build_objects():
     new["tallgrass_tile"] = tile
     new["house_blue"] = make_house("teal")
     new["house_red"] = make_house("brown")
+    new.update(extra or {})  # pièces d'un autre pack (voir ninja_world.py), prioritaires
     out = dict(old)
     for k, v in new.items():
         out[k] = upscale(v)
@@ -304,9 +305,6 @@ def build_objects():
     return {k: out[k].shape[1::-1] for k in new}
 
 
-if __name__ == "__main__":
-    print("terrain :", build_terrain(), "tuiles")
-    print("objets remplacés :", build_objects())
 
 
 # ------------------------------------------------------------------------------------------------
@@ -397,9 +395,16 @@ def build_zone_decor():
     return out
 
 
-if __name__ == "__main__":
+def build_overrides():
     os.makedirs(OVERRIDE, exist_ok=True)
     zones = build_zone_grounds()
     decor = build_zone_decor()
     write_override_manifest({**zones, **decor})
-    print("sols de zones :", list(zones), "décor :", list(decor))
+    return list(zones), list(decor)
+
+
+if __name__ == "__main__":
+    # La surface utilise maintenant le pack Ninja Adventure : tout se refait depuis ninja_world.py
+    import runpy
+
+    runpy.run_path(os.path.join(HERE, "ninja_world.py"), run_name="__main__")

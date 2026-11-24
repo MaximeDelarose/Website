@@ -2,7 +2,7 @@ import { installPerf, cullRect, initialResolution, autoResolution } from './perf
 import { preloadBaked } from './baked.js';
 import { VERSION } from './version.js';
 import { preloadHeroes16, heroSheet, PCH, preloadNpcs16, npcAnim } from './heroes16.js';
-import { world16, ZONES, DEFAULT_ZONE, KINDS as WKINDS, DUNGEONS, PORTALS, ENCOUNTERS, QUESTS, CRYSTALS, BARRICADES, BRIDGE_SIGN } from './world16.js';
+import { world16, ZONES, DEFAULT_ZONE, DUNGEONS, PORTALS, ENCOUNTERS, QUESTS, CRYSTALS, BARRICADES, BRIDGE_SIGN } from './world16.js';
 import { preloadTitle16, pixelScale, Meadow, pixelText, setPixelText, pixelButton, heroIdleAnim } from './title16.js';
 const VERSION_LABEL = `Max version · build ${VERSION.build} · ${VERSION.date}`;
 var e = Object.create,
@@ -62413,6 +62413,7 @@ function ne() {
     sea: ne,
     ledge: WO.ledge,
     town: WO.town,
+    forest: WO.forest,
   };
 }
 var re = 24,
@@ -81056,10 +81057,8 @@ function Es(e, t) {
   if (t >= 142 && t < 180) return `mer`;
   if (t >= 198 && t < 230) return `abime`;
   if (t >= 264 && t < 296) return `celeste`;
-  if (t >= 71) return `none`;
-  let n = Math.floor(e),
-    r = Math.floor(t);
-  return n < 0 || n >= 96 || r < 0 ? `prairie` : WKINDS[world16().kind[r * 96 + n]];
+  // Surface (et salles de donjon) : pas de sol ni de décor de zone, l'herbe et les chemins suffisent
+  return `none`;
 }
 var Ds = class {
     constructor(e) {
@@ -84957,7 +84956,7 @@ var Sc = class {
           for (let r of e.encounterCells ?? []) if (Math.hypot(t - r[0], n - r[1]) < 5) return !1;
           return i.every((e) => Math.hypot(e[0] - t, e[1] - n) >= 6);
         };
-      for (let e = 0; e < 4e3 && i.length < 22; e++) {
+      for (let e = 0; e < 4e3 && i.length < 12; e++) {
         let e = 4 + Math.floor(r() * 58),
           t = 8 + Math.floor(r() * 60);
         a(e, t) && i.push([e, t]);
@@ -85280,7 +85279,7 @@ var Sc = class {
             r.every((e) => Math.hypot(e[0] - t, e[1] - n) >= 7)
           );
         };
-      for (let e = 0; e < 6e3 && r.length < 30; e++) {
+      for (let e = 0; e < 6e3 && r.length < 14; e++) {
         let e = 3 + Math.floor(n() * 90),
           t = 6 + Math.floor(n() * 62);
         i(e, t) && r.push([e, t]);
@@ -86402,6 +86401,16 @@ var Sc = class {
     }
   },
   wc = {
+    tuto_bouger: [
+      `Salut ! Pour te déplacer : le joystick à gauche (ou ZQSD / les flèches au clavier).`,
+      `Le bouton Dash te fait bondir et te rend intouchable un court instant : parfait pour esquiver.`,
+      `Les petits rebords de terre sur la route se sautent vers le bas, jamais vers le haut.`,
+    ],
+    tuto_sorts: [
+      `Les monstres rôdent dans les hautes herbes de la route 1. Touche un groupe pour lancer le combat.`,
+      `À chaque niveau, tu gagnes des points : « Perso » pour tes caractéristiques, « Sorts » pour tes compétences.`,
+      `Quand tu as besoin d'équipement, la Cité d'Orée est au bout de la route 1. Il y a des boutiques là-bas.`,
+    ],
     garde_route1: [
       `Halte ! Ah, un voyageur d'Aelor. Bienvenue à la porte sud de la Cité d'Orée.`,
       `La route 2 part de la porte est et traverse la Forêt mystérieuse jusqu'au pont du ravin.`,
@@ -86533,6 +86542,7 @@ var Sc = class {
         (this.dyn = new Int8Array(31680)),
         (this.solid = new Uint8Array(31680)),
         this.buildTerrain(),
+        this.buildForest(),
         (this.solids = this.physics.add.staticGroup()),
         (this.gateGroup = this.physics.add.staticGroup()),
         (this.bridgeGroup = this.physics.add.staticGroup()),
@@ -86898,6 +86908,53 @@ var Sc = class {
     addObj(e, t, n) {
       return this.add.image(t, n, `obj`, e).setOrigin(0.5, 1).setDepth(n);
     }
+    // Forêt de la surface : rangées régulières d'arbres (une rangée par case, décalées d'une case),
+    // dessinées une fois dans une seule texture en pixels d'art (16 px par case), affichée ×2.
+    buildForest() {
+      let e = this.map.forest;
+      if (!e) return;
+      let t = `forest16`;
+      if (!this.textures.exists(t)) {
+        let n = this.textures.createCanvas(t, 1536, 1136),
+          r = n.getContext(),
+          i = (e) => this.textures.getFrame(`obj`, e),
+          a = (e, t, n) => {
+            let a = i(e);
+            a && r.drawImage(a.source.image, a.cutX, a.cutY, a.cutWidth, a.cutHeight, t, n, a.cutWidth / 2, a.cutHeight / 2);
+          },
+          o = (t, n) => (t < 0 || n < 0 || t >= 96 || n >= 71 ? !0 : !!e[n * 96 + t]),
+          s = new Uint8Array(6816),
+          c = [],
+          l = (e, t) => o(e, t) && o(e + 1, t) && o(e, t + 1) && o(e + 1, t + 1),
+          u = (e, t) => {
+            c.push([e, t]);
+            for (let n = t; n <= t + 1; n++) for (let t = e; t <= e + 1; t++) t >= 0 && n >= 0 && t < 96 && n < 71 && (s[n * 96 + t] = 1);
+          };
+        r.imageSmoothingEnabled = !1;
+        // rangées en quinconce (un arbre de 2 × 2 cases toutes les 2 cases, rangées décalées d'une case)
+        for (let e = -1; e < 71; e++) for (let t = (e & 1) - 2; t < 96; t += 2) l(t, e) && u(t, e);
+        // bords : un arbre de plus là où une case de forêt reste vide et qu'un arbre y tient
+        for (let t = 0; t < 71; t++)
+          for (let n = 0; n < 96; n++)
+            if (e[t * 96 + n] && !s[t * 96 + n])
+              for (let [e, r] of [
+                [n - 1, t - 1],
+                [n, t - 1],
+                [n - 1, t],
+                [n, t],
+              ])
+                if (l(e, r)) {
+                  u(e, r);
+                  break;
+                }
+        c.sort((e, t) => e[1] - t[1] || e[0] - t[0]);
+        for (let [e, t] of c) a((e * 7 + t * 3) % 5 ? `tree_oak` : `tree_oak2`, e * 16, t * 16);
+        for (let t = 0; t < 71; t++)
+          for (let n = 0; n < 96; n++) e[t * 96 + n] && !s[t * 96 + n] && a(`n_bush`, n * 16, t * 16 + 1);
+        n.refresh();
+      }
+      this.add.image(0, 0, t).setOrigin(0).setScale(2).setDepth(0.6);
+    }
     buildObjects() {
       let e = this.map;
       ((this.fire = new Cs(this)), (this.amb = new Ds(this)), (this.fw = new Qs(this)));
@@ -86908,7 +86965,7 @@ var Sc = class {
           t.key === `fence_h` && e.setDepth(t.y - 8),
           t.fade && this.trees.push(e),
           t.sway && (this.sway.push(e), (e.ph = Math.random() * 6)),
-          (t.key === `flowers` || t.key === `mushrooms` || t.key === `ledge`) && e.setDepth(5),
+          (t.key === `flowers` || t.key === `mushrooms` || t.key === `ledge` || t.flat) && e.setDepth(5),
           t.key === `lantern` &&
             this.tweens.add({ targets: e, alpha: 0.85, yoyo: !0, repeat: -1, duration: 900 + Math.random() * 600 }));
       }
@@ -86991,8 +87048,9 @@ var Sc = class {
           n = t.x * 32 + 16,
           r = t.y * 32 + 16,
           i = this.add.graphics().setDepth(r - 8);
-        (this.portalSpots.push({ id: e.id, name: e.name, x: n, y: r, hue: e.hue, g: i }),
-          this.inter.push({ kind: `portal`, id: e.id, x: n, y: r, label: `Portail`, name: e.name }));
+        // portail caché (village d'Aelor) : destination de voyage seulement, rien d'affiché
+        (this.portalSpots.push({ id: e.id, name: e.name, x: n, y: r, hue: e.hue, g: i, hidden: !!e.hidden }),
+          e.hidden || this.inter.push({ kind: `portal`, id: e.id, x: n, y: r, label: `Portail`, name: e.name }));
       }
     }
     portalDiscovered(e) {
@@ -87043,7 +87101,7 @@ var Sc = class {
       for (let n of this.portalSpots) {
         let r = this.portalDiscovered(n.id),
           i = n.g;
-        if ((i.clear(), n.x < t.x - 120 || n.x > t.right + 120 || n.y < t.y - 20 || n.y > t.bottom + 300)) continue;
+        if ((i.clear(), n.hidden || n.x < t.x - 120 || n.x > t.right + 120 || n.y < t.y - 20 || n.y > t.bottom + 300)) continue;
         let a = n.actT == null ? -1 : e - n.actT;
         (a > 3.6 && (n.actT = void 0), _s(i, n.x, n.y, ds(n.id), e, r, a));
       }
