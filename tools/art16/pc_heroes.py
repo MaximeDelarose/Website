@@ -712,6 +712,45 @@ def load_frames(base, anim, view):
     return []
 
 
+# --- planche « jeu » : 4 directions (ouest = miroir de l'est), images ×2 dans des cases de 80×96 ---
+GAME_ANIMS = ["idle", "walk", "run", "hit", "slice", "pierce", "crush", "collect", "death"]
+GAME_DIRS = [("south", "Down", False), ("east", "Side", False), ("north", "Up", False), ("west", "Side", True)]
+CELL_W, CELL_H = 80, 96
+CROP = (12, 0, 52, 48)  # zone utile d'une image 64×64 du pack (art px), agrandie ×2
+
+
+def dissolve(img, t, seed):
+    a = np.array(img).copy()
+    rnd = np.random.RandomState(seed)
+    b4 = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]) / 16
+    H, W = a.shape[:2]
+    thr = np.tile(b4, (H // 4 + 1, W // 4 + 1))[:H, :W] * 0.7 + rnd.rand(H, W) * 0.3
+    a[(a[..., 3] > 0) & (thr < t)] = 0
+    return Image.fromarray(a)
+
+
+def export_game_sheet(dressed, out_path):
+    rows = []
+    for anim in GAME_ANIMS:
+        for _, view, flip in GAME_DIRS:
+            if anim == "death":
+                base = dressed.get(("idle", view), [None])[0]
+                frames = [dissolve(base, k / 6, k) for k in range(7)] if base is not None else []
+            else:
+                frames = dressed.get((anim, view), [])
+            cells = []
+            for f in frames:
+                c = f.crop(CROP).resize((CELL_W, CELL_H), Image.NEAREST)
+                cells.append(c.transpose(Image.FLIP_LEFT_RIGHT) if flip else c)
+            rows.append(cells)
+    sheet = Image.new("RGBA", (8 * CELL_W, len(rows) * CELL_H))
+    for j, r in enumerate(rows):
+        for i, c in enumerate(r[:8]):
+            sheet.alpha_composite(c, (i * CELL_W, j * CELL_H))
+    sheet.save(out_path)
+    return [len(r) for r in rows]
+
+
 def build(base, out_dir, names=None):
     os.makedirs(out_dir, exist_ok=True)
     report = {}
@@ -719,7 +758,7 @@ def build(base, out_dir, names=None):
         hero = dict(HEROES[name])
         if hero.get("sleeve") is None:
             hero["sleeve"] = hero["skin"]
-        rows, labels = [], []
+        rows, labels, all_dressed = [], [], {}
         for anim, src in ANIMS.items():
             for view in VIEWS:
                 frames = load_frames(base, src, view)
@@ -728,6 +767,7 @@ def build(base, out_dir, names=None):
                 keep = anim in hero.get("keep_tool", ())
                 dressed = [dress_frame(f, hero, view, keep, k) for k, f in enumerate(frames)]
                 ok = [d for d in dressed if d is not None]
+                all_dressed[(anim, view)] = ok
                 report.setdefault(name, []).append(f"{anim}_{view.lower()}:{len(ok)}/{len(frames)}")
                 if ok:
                     rows.append(ok)
@@ -738,6 +778,8 @@ def build(base, out_dir, names=None):
             for i, f in enumerate(r):
                 sheet.alpha_composite(f, (i * 64, j * 64))
         sheet.save(os.path.join(out_dir, f"{name}.png"))
+        counts = export_game_sheet(all_dressed, os.path.join(out_dir, f"{name}_game.png"))
+        report.setdefault(name, []).append("jeu:" + ",".join(map(str, counts)))
         with open(os.path.join(out_dir, f"{name}.txt"), "w") as fh:
             fh.write("\n".join(f"{j}: {l} ({len(r)} images)" for j, (l, r) in enumerate(zip(labels, rows))))
     return report

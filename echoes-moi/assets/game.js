@@ -1,6 +1,7 @@
 import { installPerf, cullRect, initialResolution, autoResolution } from './perf.js';
 import { preloadBaked } from './baked.js';
 import { VERSION } from './version.js';
+import { preloadHeroes16, heroSheet, PCH } from './heroes16.js';
 import { preloadTitle16, pixelScale, Meadow, pixelText, setPixelText, pixelButton, heroIdleAnim } from './title16.js';
 const VERSION_LABEL = `Max version · build ${VERSION.build} · ${VERSION.date}`;
 var e = Object.create,
@@ -78983,6 +78984,8 @@ var vo = [
       preloadBaked(this, `${i}baked/`);
       // Écran titre en 16 px par case (décor Pixel Crawler, héros 16×32) : voir title16.js
       preloadTitle16(this, i);
+      // Héros 16×32 en jeu : voir heroes16.js
+      preloadHeroes16(this, i);
       for (let e of vo) this.load.spritesheet(e, `${i}heroes/${e}.png`, { frameWidth: 64, frameHeight: 64 });
       for (let e of Object.values(H)) {
         let t = e.base ?? e.sheet;
@@ -84604,8 +84607,12 @@ var uc = (e, t, n = 0) => {
         (this.shadow = e.add.image(t, n, `obj`, `shadow`).setScale(0.8, 0.9).setAlpha(0.9)),
         (this.ring = e.add.ellipse(t, n, 30, 12).setStrokeStyle(2, 5898160, 0.9).setVisible(!1)),
         (this.sprite = e.physics.add.sprite(t, n, this.sheetKey())),
-        this.sprite.setOrigin(0.5, 57 / 64),
-        this.sprite.body.setCircle(this.radius, 32 - this.radius, 52 - this.radius),
+        (this.pc = !!heroSheet(e, V.state.hero)),
+        this.pc
+          ? (this.sprite.setOrigin(0.5, PCH.feet / PCH.h),
+            this.sprite.body.setCircle(this.radius, PCH.cx - this.radius, PCH.feet - 5 - this.radius))
+          : (this.sprite.setOrigin(0.5, 57 / 64),
+            this.sprite.body.setCircle(this.radius, 32 - this.radius, 52 - this.radius)),
         this.refreshSheet(),
         this.refreshLayers(),
         e.physics.world.on(`worldstep`, this.step),
@@ -84616,7 +84623,7 @@ var uc = (e, t, n = 0) => {
         e.events.on(`layers-ready`, this.onLayers),
         V.state.hero === `gorak` &&
           ((this.club = e.add.image(t, n, On(this.weaponSet())).setOrigin(0.5, 0.94).setScale(0.8)),
-          this.sprite.setScale(1.22)));
+          this.pc || this.sprite.setScale(1.22)));
     }
     setRide(e, t, n) {
       let r = this.sprite,
@@ -84625,16 +84632,19 @@ var uc = (e, t, n = 0) => {
         ((this.rideLift = e),
         (this.rideCrop = t),
         (this.rideDir = n),
-        r.setOrigin(0.5, (57 + i) / 64),
-        this.body.setOffset(32 - this.radius, 52 - this.radius + i),
+        this.pc
+          ? (r.setOrigin(0.5, (PCH.feet + i) / PCH.h), this.body.setOffset(PCH.cx - this.radius, PCH.feet - 5 - this.radius + i))
+          : (r.setOrigin(0.5, (57 + i) / 64), this.body.setOffset(32 - this.radius, 52 - this.radius + i)),
         t !== this.cropOn)
       ) {
-        ((this.cropOn = t), t ? r.setCrop(0, 0, 64, 48) : r.setCrop());
+        ((this.cropOn = t), t ? r.setCrop(0, 0, this.pc ? PCH.w : 64, this.pc ? PCH.h * 0.72 : 48) : r.setCrop());
         for (let e of Object.values(this.layers)) t ? e.setCrop(0, 0, 64, 48) : e.setCrop();
       }
       this.shadow.setVisible(e <= 0.5);
     }
     refreshLayers() {
+      // héros 16×32 : pas de calques d'équipement (dessinés pour les anciens sprites)
+      if (this.pc) return;
       [`boots`, `belt`, `cape`, `head`].forEach((e, t) => {
         let n = xt(V.state, V.state.equip[e]),
           r = n?.set ? Bn(this.scene, Wn(V.state.hero), n.set, e) : ``;
@@ -84769,7 +84779,7 @@ var uc = (e, t, n = 0) => {
       return V.state.hero;
     }
     sheetKey() {
-      return ar(this.scene, this.baseSheetKey(), V.state.hero, V.state.collection.skin);
+      return heroSheet(this.scene, V.state.hero) ?? ar(this.scene, this.baseSheetKey(), V.state.hero, V.state.collection.skin);
     }
     baseSheetKey() {
       let e = St(V.state);
