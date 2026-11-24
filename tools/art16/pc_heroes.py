@@ -231,14 +231,15 @@ def dress_frame(fr, hero, view, keep_tool=False, k=0):
             elif view == "Down":
                 tail_args = dict(hip=(int(xs_.min()) + 2, legs_top + 1), front=False, flip=False)
             else:
-                tail_args = dict(hip=(int(xs_.max()) - 2, legs_top + 1), front=True, flip=True)
+                # de dos : part du milieu du dos (colonne vertébrale)
+                tail_args = dict(hip=(int(round(xs_.mean())), legs_top + 1), front=True, flip=True)
     if tail_args and not tail_args["front"]:
         paste_tail(a, view, shear=hero.get("tail_shear", 0), **tail_args)
     # --- coiffure et accessoires ---
     for layer in hero["head"].get(view, []):
         stamp(a, layer, x0, y0, hero["roles"])
     if tail_args and tail_args["front"]:
-        paste_tail(a, view, shear=hero.get("tail_shear", 0), **tail_args)
+        paste_tail(a, view, shear=0, **tail_args)  # devant la tête : pas besoin de l'incliner
     if hero.get("skirt"):
         skirt(a, hero, cx, legs_top, bottom)
     outline(a)
