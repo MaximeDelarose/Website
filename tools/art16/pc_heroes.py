@@ -129,7 +129,7 @@ def erase_tool(a):
     a[ink & ~ring] = (0, 0, 0, 0)
 
 
-def dress_frame(fr, hero, view, keep_tool=False):
+def dress_frame(fr, hero, view, keep_tool=False, k=0):
     a = np.array(fr.convert("RGBA")).copy()
     if not keep_tool:
         erase_tool(a)
@@ -208,6 +208,9 @@ def dress_frame(fr, hero, view, keep_tool=False):
             elif tuple(rgb[y, x]) == EYE:
                 rgb[y, x] = hexc(hero.get("eye", "#2a1c14"))
     a[..., :3] = rgb
+    # --- queue (derrière le corps, sauf de dos où elle passe devant) ---
+    if hero.get("tail"):
+        tail(a, hero["tail"], view, cx, hb, k, front=(view == "Up"))
     # --- coiffure et accessoires ---
     for layer in hero["head"].get(view, []):
         stamp(a, layer, x0, y0, hero["roles"])
@@ -215,6 +218,48 @@ def dress_frame(fr, hero, view, keep_tool=False):
         skirt(a, hero, cx, legs_top, bottom)
     outline(a)
     return Image.fromarray(a)
+
+
+def tail(a, colors, view, cx, hb, k, front=False):
+    """Queue d'écureuil en panache : chapelet de disques le long d'une courbe (base au bas du dos,
+    montée derrière le dos, boucle au sommet), ombrée, avec reflet clair et bord dentelé « fourrure »."""
+    sway = [0, 1, 1, 0, -1, -1][k % 6] if view != "Up" else [0, 1, 0, -1][k % 4]
+    if view == "Side":  # regard à droite : queue à gauche
+        pts = [(cx - 4, hb + 8), (cx - 7, hb + 5), (cx - 9, hb + 0), (cx - 9 + sway, hb - 5), (cx - 7 + sway, hb - 9), (cx - 4 + sway, hb - 10)]
+    elif view == "Down":  # de face : dépasse derrière, à droite du corps
+        pts = [(cx + 2, hb + 7), (cx + 6, hb + 5), (cx + 8, hb + 0), (cx + 8 + sway, hb - 5), (cx + 6 + sway, hb - 9), (cx + 3 + sway, hb - 10)]
+    else:  # de dos : sur le dos
+        pts = [(cx + 1, hb + 8), (cx + 3, hb + 4), (cx + 5, hb + 0), (cx + 6 + sway, hb - 4), (cx + 5 + sway, hb - 7)]
+    H, W = a.shape[:2]
+    lay = np.zeros((H, W), np.uint8)  # 0 rien, 1 ombre foncée, 2 ombre, 3 base, 4 reflet
+    radii = [2.2, 3.0, 3.6, 3.8, 3.4, 2.6][: len(pts)]
+    for i in range(len(pts) - 1):
+        (x1, y1), (x2, y2) = pts[i], pts[i + 1]
+        r1, r2 = radii[i], radii[i + 1]
+        for t in np.linspace(0, 1, 8):
+            px, py, r = x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, r1 + (r2 - r1) * t
+            for y in range(int(py - r - 1), int(py + r + 2)):
+                for x in range(int(px - r - 1), int(px + r + 2)):
+                    if not (0 <= x < W and 0 <= y < H):
+                        continue
+                    dx, dy = (x + 0.5 - px) / r, (y + 0.5 - py) / r
+                    d = dx * dx + dy * dy
+                    if d > 1:
+                        continue
+                    # lumière venant d'en haut à gauche ; bord extérieur un peu dentelé
+                    lit = -(dx * 0.6 + dy * 0.8)
+                    v = 4 if lit > 0.7 else 3 if lit > -0.25 else 2 if lit > -0.7 else 1
+                    if d > 0.8 and (x * 7 + y * 3) % 5 == 0:
+                        continue
+                    lay[y, x] = max(lay[y, x], v)
+    ramp_ = {1: colors["U"], 2: colors["T"], 3: colors["t"], 4: colors["v"]}
+    op = a[..., 3] > 0
+    for y, x in zip(*np.where(lay)):
+        if front or not op[y, x]:
+            a[y, x] = (*ramp_[lay[y, x]], 255)
+    if front:  # contour de la queue posée sur le dos
+        ring = ndimage.binary_dilation(lay > 0) & ~(lay > 0)
+        a[ring & (a[..., 3] > 0)] = (0, 0, 0, 255)
 
 
 def skirt(a, hero, cx, top, bottom):
@@ -316,73 +361,77 @@ AUGH = dict(
 )
 
 AKA = dict(
-    skin=ramp("#c97a52", "#9c5a3a", "#6b3a2a", "#3e2016"),
+    # Homme-écureuil (comme l'écureuil du logo du site) : cheveux roux, oreilles à houppettes,
+    # queue en panache ; garde ses lunettes de mage et sa veste bordeaux.
+    skin=ramp("#ffe0c0", "#f2bd8e", "#d6915e", "#a3603a"),
     top=ramp("#c0444a", "#83202c", "#5a1420", "#3e1020"),
     shirt=ramp("#fff0a0", "#f2c43e", "#c4861e", "#6e4410"),
     sleeve=ramp("#c0444a", "#83202c", "#5a1420", "#3e1020"),
     belt=ramp("#8a5632", "#553521", "#2e1c14", "#1a100b"),
-    pants=ramp("#7fb0e8", "#4f78c4", "#2f4f94", "#233673"),
+    pants=ramp("#7a5a3a", "#553521", "#3a2416", "#1a100b"),
     shoes=ramp("#8a5632", "#553521", "#2e1c14", "#1a100b"),
-    eye="#1a1424",
-    roles=hero_roles(h="#2b2238", H="#1a1424", l="#4a4462", o="#000000", b="#1a1424", g="#e8eaf2", w="#a8def2"),
+    eye="#2e1408",
+    tail={"t": hexc("#e47f31"), "T": hexc("#bd5c25"), "U": hexc("#8a3f20"), "v": hexc("#f0a45a")},
+    roles=hero_roles(h="#bd5c25", H="#8a3f20", l="#e47f31", t="#e47f31", T="#bd5c25", U="#632e17",
+                     v="#f6c9a0", g="#2b2238", o="#000000"),
     head={
         "Down": [[
-            "....########....",
-            "...#hhlhhhlh#...",
-            "..#hhhhhlhhhh#..",
-            ".#hhlhhhhhhhhh#.",
-            "#hhhhhhhhlhhhhh#",
-            "#hHhhhhhhhhhhHh#",
-            "#HHhhhhhhhhhhHH#",
-            "#HHhhhhhhhhhhHH#",
-            "#HH#hhhhhhhh#HH#",
-            "#HH#........#HH#",
-            "#HH#........#HH#",
-            ".#H#........#H#.",
-            "..#Hgggggggggh#.",
-            "..#gw#gg#gw#g#..",
-            "..#bgggbbgggb#..",
-            "...#bbbbbbbb#...",
-            "....#bbbbbb#....",
-            ".....######.....",
+            "...#.......#....",
+            "..#U#.....#U#...",
+            "..#tU#...#Ut#...",
+            "..#vtt#.#ttv#...",
+            "..#vthhhhhhtv#..",
+            "..#hhhlhhhlhhh#.",
+            "..#hhhhhhhhhhh#.",
+            "..#Hhhhhhhhhhh#.",
+            "..#HhhhhhhhhhH#.",
+            "..#Hh.hhhh.hhH#.",
+            "..#H.........H#.",
+            "................",
+            "....gggg.gggg...",
+            "....g..ggg..g...",
+            "....g..g.g..g...",
+            "....gggg.gggg...",
+            "................",
+            "................",
         ]],
         "Side": [[
-            "...#########....",
-            "..#hhlhhhlhh#...",
-            ".#hhhhhhlhhhh#..",
-            "#hhlhhhhhhhhhh#.",
-            "#hhhhhhhhhlhhhh#",
-            "#HhhhhhhhhhhhhH#",
-            "#HHhhhhhhhhhhhh#",
-            "#HHhhhhhhhhhhh#.",
-            "#HHHhhhhhhhhh#..",
-            "#HHHH#hhh.....#.",
-            "#HHHH#.........#",
-            ".#HHH#..........",
-            "..#HH#...ggggg#.",
-            "...#H#...gw#gw#.",
-            "....#b...bbbbbb#",
-            ".....#bbbbbbbb#.",
-            "......#bbbbbb#..",
-            ".......######...",
+            ".....#...#......",
+            "....#U#.#U#.....",
+            "....#tU##Ut#....",
+            "....#vt##tv#....",
+            "...#hvthhtvhh#..",
+            "..#hhhlhhhlhhh#.",
+            ".#hhhhhhhhhhhhh#",
+            ".#HHhhhhhhhhhhh#",
+            ".#HHHhhhhhhhhhh#",
+            ".#HHHhhhhhh.hh#.",
+            ".#HHHhh.....h#..",
+            ".#HHH...........",
+            "..#HH.....ggggg.",
+            "...#Hgggggg...g.",
+            "..........g...g.",
+            "..........ggggg.",
+            "................",
+            "................",
         ]],
         "Up": [[
-            "....########....",
-            "...#hhlhhhlh#...",
-            "..#hhhhhlhhhh#..",
-            ".#hhlhhhhhhhhh#.",
-            "#hhhhhhhhlhhhhh#",
-            "#hhhhhhhhhhhhhh#",
-            "#hHhhhhhhhhhhHh#",
-            "#HHhhhhhhhhhhHH#",
-            "#HHHhhhhhhhhHHH#",
-            "#HHHHhhhhhhHHHH#",
-            "#HHHHHHHHHHHHHH#",
-            ".#HHHHHHHHHHHH#.",
-            "..#HHHHHHHHHH#..",
-            "...#HHHHHHHH#...",
-            "....########....",
-            "................",
+            "...#.......#....",
+            "..#U#.....#U#...",
+            "..#tU#...#Ut#...",
+            "..#Ttt#.#ttT#...",
+            "..#Tthhhhhhtt#..",
+            "..#hhhlhhhlhhh#.",
+            "..#hhhhhhhhhhh#.",
+            "..#hhhhhhhhhhh#.",
+            "..#HhhhhhhhhhH#.",
+            "..#HhhhhhhhhhH#.",
+            "..#HHhhhhhhhHH#.",
+            "..#HHHhhhhhHHH#.",
+            "..#HHHHhhhHHHH#.",
+            "..#HHHHHHHHHHH#.",
+            "...#HHHHHHHHH#..",
+            "....#HHHHHHH#...",
             "................",
             "................",
         ]],
@@ -653,7 +702,7 @@ def build(base, out_dir, names=None):
                 if not frames:
                     continue
                 keep = anim in hero.get("keep_tool", ())
-                dressed = [dress_frame(f, hero, view, keep) for f in frames]
+                dressed = [dress_frame(f, hero, view, keep, k) for k, f in enumerate(frames)]
                 ok = [d for d in dressed if d is not None]
                 report.setdefault(name, []).append(f"{anim}_{view.lower()}:{len(ok)}/{len(frames)}")
                 if ok:
