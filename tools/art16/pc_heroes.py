@@ -218,9 +218,19 @@ def dress_frame(fr, hero, view, keep_tool=False, k=0):
             elif tuple(rgb[y, x]) == EYE:
                 rgb[y, x] = hexc(hero.get("eye", "#2a1c14"))
     a[..., :3] = rgb
-    # --- queue (derrière le corps, sauf de dos où elle passe devant) ---
-    if hero.get("logo_tail"):
-        paste_tail(a, view, cx, hb, front=(view == "Up"))
+    # --- queue (derrière le corps, sauf de dos où elle passe devant), accrochée aux hanches ---
+    if hero.get("logo_tail") and seed:
+        zone = np.zeros_like(body)
+        zone[legs_top - 3 : legs_top + 1] = True
+        ys_, xs_ = np.where((lab == seed) & zone)
+        if len(xs_):
+            if view == "Side":
+                hip = (int(xs_.min()), legs_top + 1)  # bord arrière du bassin
+            elif view == "Down":
+                hip = (int(xs_.min()) + 2, legs_top + 1)  # caché derrière le bassin
+            else:
+                hip = (int(round(xs_.mean())), legs_top + 1)  # milieu du dos
+            paste_tail(a, view, hip, front=(view == "Up"), shear=hero.get("tail_shear", 0))
     # --- coiffure et accessoires ---
     for layer in hero["head"].get(view, []):
         stamp(a, layer, x0, y0, hero["roles"])
@@ -250,25 +260,27 @@ def logo_tail():
 TAIL = None
 
 
-def paste_tail(a, view, cx, hb, front=False):
-    """Pose la queue : son pied au bas du dos ; derrière le corps (face, profil) ou dessus (dos)."""
+def paste_tail(a, view, hip, front=False, shear=0):
+    """Pose la queue : son pied (bas de la queue) contre les hanches ; derrière le corps (face,
+    profil) ou dessus (dos). `shear` : inclinaison vers l'arrière (px de décalage au sommet)."""
     global TAIL
     if TAIL is None:
         TAIL = logo_tail()
     bx, by = LOGO_TAIL_BASE
-    ax, ay = {"Side": (cx - 8, hb + 10), "Down": (cx - 8, hb + 10), "Up": (cx + 1, hb + 10)}[view]
+    ax, ay = hip
     H, W = a.shape[:2]
+    lean = lambda y: -int(round(shear * (by - y) / by)) if y < by else 0
     for y in range(TAIL.shape[0]):
         for x in range(TAIL.shape[1]):
             if not TAIL[y, x, 3]:
                 continue
-            X, Y = ax + x - bx, ay + y - by
+            X, Y = ax + x - bx + lean(y), ay + y - by
             if 0 <= X < W and 0 <= Y < H and (front or a[Y, X, 3] == 0):
                 a[Y, X] = TAIL[y, x]
     if front:  # contour entre la queue et le dos
         m = np.zeros((H, W), bool)
         for y, x in zip(*np.where(TAIL[..., 3] > 0)):
-            X, Y = ax + x - bx, ay + y - by
+            X, Y = ax + x - bx + lean(y), ay + y - by
             if 0 <= X < W and 0 <= Y < H:
                 m[Y, X] = True
         ring = ndimage.binary_dilation(m, structure=CROSS) & ~m & (a[..., 3] > 0)
@@ -376,6 +388,7 @@ AKA = dict(
     # Homme-écureuil : la queue est celle de l'écureuil du logo du site, pixel pour pixel ;
     # cheveux et oreilles dans la même rampe rousse ; manteau de mage bleu nuit à liseré doré.
     logo_tail=True,
+    tail_shear=5,  # queue inclinée vers l'arrière : la boucle se voit à côté de la grosse tête
     skin=ramp("#ffe4c8", "#f6c9a0", "#d99a6a", "#a3603a"),
     top=ramp("#5a6fc0", "#3a4a94", "#26306a", "#161d3f"),
     shirt=ramp("#fff4dc", "#f0dcb0", "#c8a878", "#8a6a48"),
