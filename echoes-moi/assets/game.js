@@ -1,5 +1,7 @@
 import { installPerf, cullRect, initialResolution, autoResolution } from './perf.js';
 import { preloadBaked } from './baked.js';
+import { VERSION } from './version.js';
+const VERSION_LABEL = `Max version · build ${VERSION.build} · ${VERSION.date}`;
 var e = Object.create,
   t = Object.defineProperty,
   n = Object.getOwnPropertyDescriptor,
@@ -80200,7 +80202,7 @@ var cs = class extends u.default.Scene {
           (v += m + 18 * l)),
         this.root.add(os(this, d, v + p / 2, f, p, `Coop en ligne`, l, () => this.build(`coop`), { icon: `link` })));
       let C = this.add
-        .text(d, s, `v0.5 · Coop en ligne · 5 héros`, {
+        .text(d, s, VERSION_LABEL, {
           fontFamily: Xt,
           fontSize: `${Math.round(9.5 * l)}px`,
           color: `#e8f0ff`,
@@ -80219,7 +80221,7 @@ var cs = class extends u.default.Scene {
           let e = !Yo();
           (Qo(e),
             C.setText(e ? `Diagnostic activé` : `Diagnostic désactivé`),
-            this.time.delayedCall(1500, () => C.setText(`v0.5 · Coop en ligne · 5 héros`)));
+            this.time.delayedCall(1500, () => C.setText(VERSION_LABEL)));
         }
       });
       let E = Math.min(4, Math.max(2, Math.floor((s - o) / 80))),

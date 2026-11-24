@@ -117,15 +117,21 @@
     (function () {
       var MODES = {
         original: { src: "echoes/", note: "Le jeu tel qu'il a été créé." },
-        moi: { src: "echoes-moi/", note: "Max version : copie modifiable, avec ses propres sauvegardes." }
+        moi: { src: "echoes-moi/", note: "Max version : copie modifiable, avec ses propres sauvegardes" }
       };
       var frame = document.getElementById("eoa"), wrap = document.getElementById("eoawrap");
       var note = document.querySelector("[data-eoa-note]"), open = document.querySelector("[data-eoa-open]");
       var btns = document.querySelectorAll("[data-eoa-mode]");
+      // Numéro de build de la Max version (echoes-moi/version.json, incrémenté à chaque construction)
+      var build = "";
+      fetch("echoes-moi/version.json", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (v) {
+        build = " — build " + v.build + " du " + v.date + ".";
+        if (frame.getAttribute("src") === MODES.moi.src) note.textContent = MODES.moi.note + build;
+      }).catch(function () {});
       function pick(m, push) {
         if (!MODES[m]) m = "original";
         btns.forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.eoaMode === m ? "true" : "false"); });
-        note.textContent = MODES[m].note;
+        note.textContent = MODES[m].note + (m === "moi" ? build : "");
         open.href = MODES[m].src;
         if (frame.getAttribute("src") !== MODES[m].src) frame.setAttribute("src", MODES[m].src);
         try { localStorage.setItem("eoa_page_mode", m); } catch (e) {}

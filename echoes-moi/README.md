@@ -7,7 +7,7 @@ Les deux sont affichées sur la page `echoes.html`, avec le choix « Version ori
 
 - Sauvegardes à part : clés `echoes_of_aether_moi_save`, `eoam_slot_*`, `eoam_index`, `eoam_last`, `eoam_fullscreen`, `eoam_diag`, `eoam_res` (définition du rendu choisie automatiquement) (l'original utilise `eoa_*`).
 - Salons en ligne à part : préfixe PeerJS `eoam-v03-` et canal local `eoam-local-` ; on ne peut pas rejoindre un salon de la version originale depuis celle-ci.
-- Service worker à part : cache `echoes-moi-v3` dans `sw.js`. **Incrémente-le à chaque modification** pour que les téléphones récupèrent la nouvelle version.
+- Service worker à part : cache `echoes-moi-b<build>` dans `sw.js`, renouvelé automatiquement à chaque build.
 
 ## Où modifier
 
@@ -22,9 +22,8 @@ Les deux sont affichées sur la page `echoes.html`, avec le choix « Version ori
 
 Après une modification :
 
-1. `node tools/echoes-build.js` — reconstruit `assets/game.min.js` depuis `game.js` (esbuild via npx).
-2. Si un générateur de texture a changé (sols, monstres, icônes, décor…) : `node tools/echoes-bake.js` refait les PNG de `assets/baked/` (Playwright).
-3. Incrémenter le cache dans `sw.js`.
+1. Si un générateur de texture a changé (sols, monstres, icônes, décor…) : `node tools/echoes-bake.js` refait les PNG de `assets/baked/` (Playwright).
+2. `node tools/echoes-build.js` — reconstruit `assets/game.min.js` depuis `game.js` (esbuild via npx) et **incrémente le numéro de build** (`version.json`, `assets/version.js`). Ce numéro et sa date s'affichent en bas de l'écran titre (« Max version · build N · date ») et sur la page `echoes.html` : si le numéro affiché est le dernier, on est à jour. Le build renouvelle aussi le cache du service worker et l'adresse du script (`?b=N`).
 
 Si le code source TypeScript d'origine (projet Vite) est récupéré, mieux vaut le mettre dans un dossier source et reconstruire cette copie depuis lui.
 
