@@ -218,22 +218,27 @@ def dress_frame(fr, hero, view, keep_tool=False, k=0):
             elif tuple(rgb[y, x]) == EYE:
                 rgb[y, x] = hexc(hero.get("eye", "#2a1c14"))
     a[..., :3] = rgb
-    # --- queue (derrière le corps, sauf de dos où elle passe devant), accrochée aux hanches ---
+    # --- queue accrochée aux hanches : derrière le corps (face, profil) ; de dos, devant le corps
+    # et par-dessus les cheveux, retournée en miroir de la vue de face (elle sort de l'autre côté) ---
+    tail_args = None
     if hero.get("logo_tail") and seed:
         zone = np.zeros_like(body)
         zone[legs_top - 3 : legs_top + 1] = True
         ys_, xs_ = np.where((lab == seed) & zone)
         if len(xs_):
             if view == "Side":
-                hip = (int(xs_.min()), legs_top + 1)  # bord arrière du bassin
+                tail_args = dict(hip=(int(xs_.min()), legs_top + 1), front=False, flip=False)
             elif view == "Down":
-                hip = (int(xs_.min()) + 2, legs_top + 1)  # caché derrière le bassin
+                tail_args = dict(hip=(int(xs_.min()) + 2, legs_top + 1), front=False, flip=False)
             else:
-                hip = (int(round(xs_.mean())), legs_top + 1)  # milieu du dos
-            paste_tail(a, view, hip, front=(view == "Up"), shear=hero.get("tail_shear", 0))
+                tail_args = dict(hip=(int(xs_.max()) - 2, legs_top + 1), front=True, flip=True)
+    if tail_args and not tail_args["front"]:
+        paste_tail(a, view, shear=hero.get("tail_shear", 0), **tail_args)
     # --- coiffure et accessoires ---
     for layer in hero["head"].get(view, []):
         stamp(a, layer, x0, y0, hero["roles"])
+    if tail_args and tail_args["front"]:
+        paste_tail(a, view, shear=hero.get("tail_shear", 0), **tail_args)
     if hero.get("skirt"):
         skirt(a, hero, cx, legs_top, bottom)
     outline(a)
@@ -260,26 +265,30 @@ def logo_tail():
 TAIL = None
 
 
-def paste_tail(a, view, hip, front=False, shear=0):
+def paste_tail(a, view, hip, front=False, shear=0, flip=False):
     """Pose la queue : son pied (bas de la queue) contre les hanches ; derrière le corps (face,
     profil) ou dessus (dos). `shear` : inclinaison vers l'arrière (px de décalage au sommet)."""
     global TAIL
     if TAIL is None:
         TAIL = logo_tail()
+    tail_img = TAIL[:, ::-1] if flip else TAIL
     bx, by = LOGO_TAIL_BASE
+    if flip:
+        bx = TAIL.shape[1] - 1 - bx
+        shear = -shear
     ax, ay = hip
     H, W = a.shape[:2]
     lean = lambda y: -int(round(shear * (by - y) / by)) if y < by else 0
-    for y in range(TAIL.shape[0]):
-        for x in range(TAIL.shape[1]):
-            if not TAIL[y, x, 3]:
+    for y in range(tail_img.shape[0]):
+        for x in range(tail_img.shape[1]):
+            if not tail_img[y, x, 3]:
                 continue
             X, Y = ax + x - bx + lean(y), ay + y - by
             if 0 <= X < W and 0 <= Y < H and (front or a[Y, X, 3] == 0):
-                a[Y, X] = TAIL[y, x]
+                a[Y, X] = tail_img[y, x]
     if front:  # contour entre la queue et le dos
         m = np.zeros((H, W), bool)
-        for y, x in zip(*np.where(TAIL[..., 3] > 0)):
+        for y, x in zip(*np.where(tail_img[..., 3] > 0)):
             X, Y = ax + x - bx + lean(y), ay + y - by
             if 0 <= X < W and 0 <= Y < H:
                 m[Y, X] = True
