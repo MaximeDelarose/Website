@@ -207,3 +207,82 @@ def build_objects():
 if __name__ == "__main__":
     print("terrain :", build_terrain(), "tuiles")
     print("objets remplacés :", build_objects())
+
+
+# ------------------------------------------------------------------------------------------------
+# Sols des zones (forêt, ruines, bosquet corrompu, givre, plage) : mêmes contours que le calque du
+# jeu (lus case par case dans le pré-rendu), redessinés avec les textures du pack et les mêmes
+# transitions par coins que le terrain. Écrits dans assets/pc/override/ (prioritaires).
+# ------------------------------------------------------------------------------------------------
+OVERRIDE = os.path.join(PC, "override")
+
+
+def zone_materials():
+    floors = load("floors.png")
+    grass = [crop(floors, x, 160, T, T) for x in (16, 32, 48)]
+    sand = [crop(floors, x, y, T, T) for x, y in ((80, 352), (96, 352), (112, 352), (128, 352))]
+    snow = [crop(floors, x, y, T, T) for x, y in ((0, 352), (16, 352), (32, 352), (48, 352))]
+    dark = [np.dstack([shade(g[..., :3], 0.62), g[..., 3:]]) for g in grass]
+    purple = [np.dstack([np.clip(g[..., :3].astype(float) * [0.62, 0.48, 0.78], 0, 255).astype(np.uint8), g[..., 3:]]) for g in grass]
+    return {
+        "foret": (dark, shade(dark[0][8, 8, :3], 0.8)),
+        "ruines": (sand, shade(sand[0][8, 8, :3], 0.8)),
+        "ombre": (purple, shade(purple[0][8, 8, :3], 0.75)),
+        "givre": (snow, shade(snow[0][8, 8, :3], 0.85)),
+        "plage": (sand, shade(sand[0][8, 8, :3], 0.8)),
+    }
+
+
+def build_zone_grounds():
+    baked = os.path.join(ASSETS, "baked")
+    mats = zone_materials()
+    out = {}
+    for zone, (tex, rim) in mats.items():
+        src = os.path.join(baked, f"zg_{zone}.png")
+        if not os.path.exists(src):
+            continue
+        a = np.array(Image.open(src).convert("RGBA"))
+        H, W = a.shape[:2]
+        cw, ch = W // T, H // T
+        cell = np.zeros((ch + 2, cw + 2), float)  # bordure vide autour
+        for j in range(ch):
+            for i in range(cw):
+                cell[j + 1, i + 1] = 1.0 if a[j * T + T // 2, i * T + T // 2, 3] > 0 else 0.0
+        img = np.zeros((H, W, 4), np.uint8)
+        for j in range(ch):
+            for i in range(cw):
+                c = lambda dj, di: cell[j + 1 + dj, i + 1 + di]
+                # sommet couvert si la majorité des 4 cases qui le touchent l'est
+                v = lambda a_, b_, c_, d_: 1 if (a_ + b_ + c_ + d_) >= 3 or (c(0, 0) and (a_ + b_ + c_ + d_) >= 2) else 0
+                tl = v(c(-1, -1), c(-1, 0), c(0, -1), c(0, 0))
+                tr = v(c(-1, 0), c(-1, 1), c(0, 0), c(0, 1))
+                bl = v(c(0, -1), c(0, 0), c(1, -1), c(1, 0))
+                br = v(c(0, 0), c(0, 1), c(1, 0), c(1, 1))
+                m = tl | tr << 1 | bl << 2 | br << 3
+                if not m:
+                    continue
+                fill = tex[(i * 7 + j * 3) % len(tex)]
+                t = fill.copy() if m == 15 else transition(m, fill, rim, 61)
+                img[j * T : (j + 1) * T, i * T : (i + 1) * T] = t
+        Image.fromarray(img).save(os.path.join(OVERRIDE, f"zg_{zone}.png"))
+        out[f"zg_{zone}"] = {"w": W, "h": H, "frames": []}
+    return out
+
+
+def write_override_manifest(textures):
+    import hashlib
+
+    h = hashlib.sha1()
+    for k in sorted(textures):
+        h.update(k.encode())
+        h.update(open(os.path.join(OVERRIDE, k + ".png"), "rb").read())
+    with open(os.path.join(OVERRIDE, "manifest.js"), "w") as f:
+        f.write("// Généré par tools/art16/pc_world.py — ne pas modifier à la main.\n")
+        f.write("export default " + json.dumps({"version": h.hexdigest()[:10], "textures": textures}) + ";\n")
+
+
+if __name__ == "__main__":
+    os.makedirs(OVERRIDE, exist_ok=True)
+    zones = build_zone_grounds()
+    write_override_manifest(zones)
+    print("sols de zones :", list(zones))

@@ -11,6 +11,8 @@
 // Pour désactiver (comparaison, débogage) : localStorage.setItem('eoam_perf_off', 'baked')
 
 import manifest from './baked/manifest.js';
+// Images faites à la main / par tools/art16 (style 16 px) : prioritaires sur le pré-rendu
+import overrides from './pc/override/manifest.js';
 
 const off = () => {
   try {
@@ -23,14 +25,16 @@ const off = () => {
 // À appeler dans le preload de la scène de démarrage, avant que les générateurs ne tournent.
 export function preloadBaked(scene, base = `assets/baked/`) {
   if (off()) return;
-  const keys = Object.keys(manifest.textures || {}).filter((k) => !scene.textures.exists(k));
+  const over = overrides.textures || {};
+  const keys = [...new Set([...Object.keys(manifest.textures || {}), ...Object.keys(over)])].filter((k) => !scene.textures.exists(k));
   if (!keys.length) return;
-  for (const k of keys) scene.load.image(`__baked_` + k, `${base}${k}.png?v=${manifest.version}`);
+  for (const k of keys)
+    scene.load.image(`__baked_` + k, over[k] ? `${base}../pc/override/${k}.png?v=${overrides.version}` : `${base}${k}.png?v=${manifest.version}`);
   scene.load.once(`complete`, () => {
     for (const k of keys) {
       const tmp = `__baked_` + k;
       if (!scene.textures.exists(tmp) || scene.textures.exists(k)) continue;
-      const info = manifest.textures[k];
+      const info = over[k] || manifest.textures[k];
       const img = scene.textures.get(tmp).getSourceImage();
       // On recrée une texture canevas : le jeu peut la traiter exactement comme celle qu'il aurait générée.
       const tex = scene.textures.createCanvas(k, info.w, info.h);
