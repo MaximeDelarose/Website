@@ -195,6 +195,16 @@
   "key": "6829be88"
  },
  {
+  "who": "aliya",
+  "text": "Et tu sais, ma Celia : il faut toujours bien écouter maman. C’est important !",
+  "key": "ecf61649"
+ },
+ {
+  "who": "aliya",
+  "text": "Écoute bien maman, d’accord ? Et sois gentille avec Tania aussi !",
+  "key": "31d230ad"
+ },
+ {
   "who": "tania",
   "text": "Et si tu venais nous faire un vrai câlin maintenant ?",
   "key": "f2fb3c6f"
@@ -208,6 +218,16 @@
   "who": "tania",
   "text": "Coucou Celia ! Un petit câlin ?",
   "key": "e0997725"
+ },
+ {
+  "who": "tania",
+  "text": "Dis, Celia : il faut écouter maman, c’est très important !",
+  "key": "51f84366"
+ },
+ {
+  "who": "tania",
+  "text": "Sois gentille avec Aliya, et écoute bien maman, d’accord ?",
+  "key": "a1587acf"
  },
  {
   "who": "aliya",
@@ -253,6 +273,46 @@
   "who": "narr",
   "text": "Bonne nuit, petite princesse ! Fais de beaux rêves !",
   "key": "8cda9be9"
+ },
+ {
+  "who": "narr",
+  "text": "Tu sais, Celia ? C’est important d’écouter maman. Elle t’aime très fort et elle sait ce qui est bien pour toi !",
+  "key": "b5ca9a2a"
+ },
+ {
+  "who": "narr",
+  "text": "N’oublie pas, Celia : il faut toujours bien écouter maman. C’est très important !",
+  "key": "5eb4e533"
+ },
+ {
+  "who": "narr",
+  "text": "Quand maman parle, on l’écoute avec ses deux oreilles ! Comme ça, tout le monde est content.",
+  "key": "49dae56f"
+ },
+ {
+  "who": "narr",
+  "text": "Les mamans savent plein de choses ! Alors on les écoute bien, et on dit oui avec le sourire !",
+  "key": "8c9f7805"
+ },
+ {
+  "who": "narr",
+  "text": "Sois bien gentille avec Aliya et Tania, Celia ! Elles t’aiment très fort. Et n’oublie pas d’écouter maman !",
+  "key": "7726c550"
+ },
+ {
+  "who": "narr",
+  "text": "Aliya et Tania sont tes grandes sœurs. On est gentille avec elles, on partage, et on écoute maman !",
+  "key": "7c40d123"
+ },
+ {
+  "who": "narr",
+  "text": "Un petit câlin et un grand sourire pour Aliya et Tania ! Et on écoute bien maman, d’accord ?",
+  "key": "3da3651f"
+ },
+ {
+  "who": "narr",
+  "text": "Avec Aliya et Tania, on joue gentiment ensemble, et on écoute maman quand elle nous parle !",
+  "key": "6db89dc4"
  },
  {
   "who": "narr",
