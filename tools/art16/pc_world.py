@@ -205,6 +205,29 @@ def make_house(roof):
     return out
 
 
+def make_ledge():
+    """Rebord de terre (16×16) : frange d'herbe, petite falaise brune, ombre portée. Posé au sol,
+    il se raccorde à ses voisins de gauche et de droite (motif répété par case)."""
+    floors = load("floors.png")
+    dirt = crop(floors, 176, 176, T, T)[..., :3].astype(int)
+    g_dark, g_mid, g_light = (36, 92, 16), (51, 121, 3), (92, 160, 40)
+    a = np.zeros((T, T, 4), np.uint8)
+    for x in range(T):
+        lip = 6 + (1 if (x * 7) % 5 == 0 else 0)
+        a[lip - 1, x] = (*g_light, 255)  # arête éclairée
+        a[lip, x] = (*g_mid, 255)
+        a[lip + 1, x] = (*g_dark, 255)  # herbe qui retombe
+        if (x * 3) % 4 == 0:
+            a[lip + 2, x] = (*g_dark, 255)
+        for y in range(lip + 2 + ((x * 3) % 4 == 0), 14):
+            c = dirt[y % T, x]
+            k = 0.86 if y >= 12 else 1.0
+            a[y, x] = (*(int(v * k) for v in c), 255)
+        a[14, x] = (74, 46, 26, 255)  # pied de la falaise
+        a[15, x] = (0, 0, 0, 70)  # ombre
+    return a
+
+
 def build_objects():
     atlas = np.array(Image.open(os.path.join(ORIG, "objects.png")).convert("RGBA"))
     meta = json.load(open(os.path.join(ORIG, "objects.json")))
@@ -215,8 +238,8 @@ def build_objects():
     round_t, pine, oak = load("trees_round.png"), load("trees_pine.png"), load("trees_oak.png")
     veg, rocks = load("vegetation.png"), load("rocks.png")
     new = {
-        "tree_oak": bbox_crop(round_t, 3, 1, 45, 47),
-        "tree_blossom": bbox_crop(round_t, 67, 49, 45, 47),
+        "tree_oak": bbox_crop(oak, 30, 0, 37, 64),
+        "tree_blossom": bbox_crop(oak, 94, 0, 37, 64),
         "tree_pine": bbox_crop(pine, 0, 5, 30, 75),
         "bush": bbox_crop(veg, 2, 5, 29, 27),
         "bush_berry": bbox_crop(veg, 50, 5, 29, 27),
@@ -236,6 +259,18 @@ def build_objects():
         "log": bbox_crop(res, 30, 66, 34, 10),
         "stump": bbox_crop(trees_a, 192, 9, 16, 24),
     })
+    new["ledge"] = make_ledge()
+    # hautes herbes qui remplissent la case (là où rôdent les monstres)
+    tuft = bbox_crop(veg, 36, 149, 10, 9)
+    th, tw = tuft.shape[:2]
+    tile = np.zeros((T + 4, T, 4), np.uint8)
+    for ox, oy in ((-2, 0), (7, 1), (2, 6), (9, 8), (-3, 10)):
+        for j in range(th):
+            for i in range(tw):
+                y_, x_ = oy + j, ox + i
+                if 0 <= x_ < T and 0 <= y_ < T + 4 and tuft[j, i, 3]:
+                    tile[y_, x_] = tuft[j, i]
+    new["tallgrass_tile"] = tile
     new["house_blue"] = make_house("teal")
     new["house_red"] = make_house("brown")
     out = dict(old)

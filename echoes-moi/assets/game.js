@@ -2,6 +2,7 @@ import { installPerf, cullRect, initialResolution, autoResolution } from './perf
 import { preloadBaked } from './baked.js';
 import { VERSION } from './version.js';
 import { preloadHeroes16, heroSheet, PCH, preloadNpcs16, npcAnim } from './heroes16.js';
+import { world16, ZONES, DEFAULT_ZONE, KINDS as WKINDS, DUNGEONS, PORTALS, ENCOUNTERS, QUESTS, CRYSTALS, BARRICADES, BRIDGE_SIGN } from './world16.js';
 import { preloadTitle16, pixelScale, Meadow, pixelText, setPixelText, pixelButton, heroIdleAnim } from './title16.js';
 const VERSION_LABEL = `Max version · build ${VERSION.build} · ${VERSION.date}`;
 var e = Object.create,
@@ -62117,13 +62118,7 @@ var M = [
     { name: `Terres de l'Abîme`, x0: 0, y0: 198, x1: 96, y1: 230 },
     { name: `Jardins d'Éther`, x0: 0, y0: 264, x1: 96, y1: 296 },
     { name: `Archipel de Nacre`, x0: 0, y0: 142, x1: 96, y1: 180 },
-    { name: `Village d'Aelor`, x0: 36, y0: 46, x1: 62, y1: 72 },
-    { name: `Sanctuaire du Gardien`, x0: 38, y0: 0, x1: 58, y1: 16 },
-    { name: `Forêt mystérieuse`, x0: 0, y0: 0, x1: 38, y1: 32 },
-    { name: `Ruines anciennes`, x0: 71, y0: 22, x1: 96, y1: 48 },
-    { name: `Bosquet corrompu`, x0: 71, y0: 0, x1: 96, y1: 22 },
-    { name: `Cité d'Orée`, x0: 77, y0: 50, x1: 96, y1: 71 },
-    { name: `Prairies d'Aelor`, x0: 0, y0: 0, x1: 96, y1: 72 },
+    ...ZONES.map(({ name: e, x0: t, y0: n, x1: r, y1: i }) => ({ name: e, x0: t, y0: n, x1: r, y1: i })),
   ];
 function L(e, t) {
   if (t >= 71) return !1;
@@ -62156,12 +62151,11 @@ function ne() {
   };
   for (let t = 0; t < 331; t++)
     for (let n = 0; n < 97; n++) {
-      let r = t * 97 + n,
-        i = L(n, t);
-      ((e.water[r] = i ? 1 : +(t >= 142 && t < 180 && !m(n, t))),
-        (e.dark[r] = t < 72 && te(n, t) ? 1 : 0),
-        (e.path[r] = !i && R(n, t) ? 1 : 0),
-        (e.stone[r] = !i && ee(n, t) ? 1 : 0));
+      let r = t * 97 + n;
+      if (t < 72) {
+        let i = world16().verts;
+        ((e.water[r] = i.water[r]), (e.dark[r] = i.dark[r]), (e.path[r] = i.path[r]), (e.stone[r] = i.stone[r]));
+      } else e.water[r] = +(t >= 142 && t < 180 && !m(n, t));
     }
   let t = new Uint8Array(31680),
     n = new Uint8Array(31680),
@@ -62172,7 +62166,7 @@ function ne() {
     for (let a = 0; a < 96; a++) {
       let o = e * 96 + a;
       ((n[o] = Math.floor(r() * 5) + (r() < 0.18 ? 5 : 0)),
-        (i(`water`, a, e) >= 3 || (i(`water`, a, e) >= 2 && L(a + 0.5, e + 0.5))) && (t[o] = 1),
+        e < 71 && (t[o] = world16().blocked[o]),
         (a === 0 || e === 0 || a === 95 || e === 329 || e >= 71) && (t[o] = 1));
     }
   for (let e of E) for (let n = e.y0 + 1; n < e.y1; n++) for (let r = e.x0 + 1; r < e.x1; r++) t[n * 96 + r] = 0;
@@ -62188,12 +62182,11 @@ function ne() {
     let n = Math.floor((e.y0 + e.y1) / 2);
     ((t[(n - 1) * 96 + e.x1] = 0), (t[n * 96 + e.x1] = 0));
   }
-  let a = [],
-    o = [];
-  for (let [e] of [[34], [35]])
-    for (let n = 64; n < 76; n++)
-      i(`water`, n, e) > 0 && (a.push({ x: n, y: e, horiz: !0 }), (t[e * 96 + n] = 0), o.push([n, e]));
-  let s = [],
+  // --- Surface : carte dessinée à la main (world16.js) ---
+  let WO = world16(),
+    a = WO.bridges.map((e) => ({ ...e })),
+    S = { ...WO.bridgeBlock, cells: WO.bridgeBlock.cells.map((e) => [...e]) },
+    s = WO.objs.map((e) => ({ ...e })),
     c = new Uint8Array(31680),
     l = (e, t, n) => {
       for (let r = t - n; r <= t + n; r++)
@@ -62206,345 +62199,15 @@ function ne() {
     d = (e, t, n, r, i = {}) => {
       if ((s.push({ key: e, x: t * 32 + 16, y: (n + 1) * 32, block: r, ...i }), r))
         for (let e of r) u(t + e[0], n + e[1], t + e[2], n + e[3]);
-    };
-  for (let [e, t, n] of [
-    [`house_blue`, 41, 52],
-    [`house_red`, 55, 52],
-    [`house_blue`, 40, 64],
-    [`house_red`, 57, 64],
-    [`house_red`, 35, 58],
-  ])
-    (d(e, t, n, [[-1, -2, 1, 0]]), l(t, n - 1, 2));
-  (d(`fountain`, 48, 56, [[-1, -1, 1, 0]]),
-    l(48, 56, 2),
-    d(`stall`, 53, 59, [[-1, 0, 1, 0]]),
-    l(53, 59, 2),
-    d(`well`, 43, 60, [[0, 0, 0, 0]]),
-    l(43, 60, 1));
-  for (let [e, t] of [
-    [45, 54],
-    [51, 54],
-    [45, 61],
-    [51, 61],
-    [48, 47],
-  ])
-    (d(`lantern`, e, t, [[0, 0, 0, 0]]), l(e, t, 0));
-  (d(`banner`, 46, 49, [[0, 0, 0, 0]]), d(`banner`, 50, 49, [[0, 0, 0, 0]]));
-  for (let [e, t] of [
-    [56, 59],
-    [57, 59],
-    [38, 54],
-    [59, 55],
-  ])
-    (d(e % 2 ? `barrel` : `crate`, e, t, [[0, 0, 0, 0]]), l(e, t, 0));
-  (d(`sign`, 50, 46, [[0, 0, 0, 0]]), l(50, 46, 0));
-  for (let e = 33; e <= 63; e++) Math.abs(e - 48) <= 2 || (e % 1 == 0 && (e < 37 || e > 59) && d(`fence_h`, e, 68));
-  for (let e = 0; e < 14; e++) {
-    let t = (e / 14) * Math.PI * 2;
-    if (Math.abs(t - Math.PI / 2) < 0.45) continue;
-    let n = Math.round(48 + Math.cos(t) * 9),
-      r = Math.round(7 + Math.sin(t) * 7.2);
-    (d(`standing_stone`, n, r, [[0, 0, 0, 0]]), l(n, r, 1));
-  }
-  let b = { x: 48, y: 16, cells: [] };
-  for (let e = 46; e <= 50; e++) b.cells.push([e, 16]);
-  l(48, 16, 3);
-  let S = { x: 64, y: 34, cells: o };
-  for (let e = 0; e <= 17; e++)
-    for (let n = 30; n <= 66; n++) {
-      let r = Math.hypot(n - 48, (e - 7) * 1.2);
-      r >= 10.5 &&
-        r <= 12.4 &&
-        !(n >= 46 && n <= 50 && e >= 15) &&
-        ((t[e * 96 + n] = 1),
-        !c[e * 96 + n] && (n + e) % 2 == 0
-          ? d((n * 7 + e) % 3 ? `tree_pine` : `tree_oak`, n, e, void 0, { fade: !0 })
-          : c[e * 96 + n] || d(`bush`, n, e),
-        (c[e * 96 + n] = 1));
-    }
-  for (let [e, t, n] of [
-    [`arch`, 80, 34],
-    [`pillar`, 76, 38],
-    [`pillar`, 84, 41],
-    [`pillar`, 77, 42],
-    [`ruin_wall`, 85, 33],
-    [`pillar`, 88, 26],
-    [`ruin_wall`, 83, 24],
-    [`crystal_blue`, 74, 40],
-    [`crystal_blue`, 87, 43],
-    [`crystal_purple`, 90, 30],
-    [`pillar`, 91, 36],
-    [`crystal_blue`, 78, 30],
-  ])
-    (d(
-      e,
-      t,
-      n,
-      e === `arch`
-        ? [
-            [-1, 0, -1, 0],
-            [1, 0, 1, 0],
-          ]
-        : e === `ruin_wall`
-          ? [[-1, 0, 0, 0]]
-          : [[0, 0, 0, 0]],
-    ),
-      l(t, n, 1));
-  for (let [e, t] of [
-    [76, 8],
-    [84, 6],
-    [92, 14],
-    [78, 18],
-    [88, 18],
-    [94, 4],
-  ])
-    (d(`crystal_purple`, e, t, [[0, 0, 0, 0]]), l(e, t, 1));
-  let k = { x: 8, y: 23 };
-  l(k.x, k.y, 2);
-  let A = [
-    { id: `ch1`, x: 10, y: 30, tier: 2, gold: 35, items: [`potion`, `petit_boots_common`] },
-    { id: `ch2`, x: 26, y: 7, tier: 2, gold: 60, items: [`@weapon_r`] },
-    { id: `ch3`, x: 90, y: 42, tier: 2, gold: 70, items: [`belier_ring_rare`] },
-    { id: `ch4`, x: 93, y: 9, tier: 3, gold: 120, items: [`mystique_boots_legendary`, `potion`] },
-    { id: `ch5`, x: 9, y: 60, tier: 1, gold: 25, items: [`potion`, `petit_ring_common`] },
-    { id: `ch6`, x: 61, y: 15, tier: 1, gold: 40, items: [`petit_cape_common`] },
-  ];
-  for (let e of A) (l(e.x, e.y, 1), (t[e.y * 96 + e.x] = 1));
-  let j = [
-    { id: `elder`, kind: `elder`, x: 45, y: 57, name: `Ancienne Mira` },
-    { id: `merchant`, kind: `merchant`, x: 53, y: 60, name: `Bertin le marchand` },
-    { id: `villager`, kind: `villager`, x: 51, y: 63, name: `Lina` },
-    { id: `bazar`, kind: `merchant`, x: 42, y: 61, name: `Zélie du Bazar` },
-  ];
-  for (let e of j) l(e.x, e.y, 1);
-  let M = { x: 1552, y: 1936 };
-  l(48, 60, 2);
-  for (let [e, t] of [
-    [36, 44],
-    [60, 45],
-    [28, 56],
-    [44, 36],
-    [18, 40],
-    [56, 32],
-    [22, 24],
-    [12, 16],
-    [30, 12],
-    [34, 24],
-    [80, 40],
-    [86, 30],
-    [80, 14],
-    [89, 9],
-  ])
-    l(e, t, 3);
-  for (let e = 1; e < 71; e++)
-    for (let n = 1; n < 95; n++) {
-      let a = e * 96 + n;
-      if (t[a] || c[a] || i(`path`, n, e) || i(`stone`, n, e) || i(`water`, n, e) || (e > 0 && i(`path`, n, e + 1) > 1))
-        continue;
-      let o = (t, r) => {
-          for (let a = e - r; a <= e + r; a++)
-            for (let e = n - r; e <= n + r; e++) if (e >= 0 && a >= 0 && e < 96 && a < 330 && i(t, e, a)) return !0;
-          return !1;
-        },
-        s = i(`dark`, n, e) >= 3,
-        u = n < 3 || e < 3 || n > 92 || e > 68,
-        f = Math.hypot(n - 48, (e - 7) * 1.2) > 10 && Math.hypot(n - 48, (e - 7) * 1.2) < 14 && e < 17,
-        p = n > 72 && e < 21,
-        m = s ? 0.2 : 0.025;
-      if (
-        (u && (m = 0.75),
-        f && (m = 0.85),
-        o(`path`, 1) && (m *= 0.2),
-        o(`water`, 0) && (m *= 0.3),
-        r() < m && !(f && Math.abs(n - 48) <= 2))
-      ) {
-        (d(
-          p ? `tree_pine` : s ? (r() < 0.5 ? `tree_pine` : `tree_oak`) : r() < 0.3 ? `tree_blossom` : `tree_oak`,
-          n,
-          e,
-          [[0, 0, 0, 0]],
-          { fade: !0 },
-        ),
-          l(n, e, 1));
-        continue;
-      }
-      let h = r();
-      h < 0.025
-        ? d(`bush`, n, e, void 0, {})
-        : h < 0.035
-          ? d(`bush_berry`, n, e)
-          : h < 0.045 && !s
-            ? (d(`rock_big`, n, e, [[0, 0, 0, 0]]), l(n, e, 1))
-            : h < 0.06
-              ? d(`rock_small`, n, e)
-              : h < (s ? 0.12 : 0.1)
-                ? d(`tallgrass`, n, e, void 0, { sway: !0 })
-                : h < 0.13 && !s
-                  ? d(`flowers`, n, e)
-                  : h < 0.137 && s
-                    ? d(`mushrooms`, n, e)
-                    : h < 0.14 && s
-                      ? d(`stump`, n, e)
-                      : h < 0.143 && d(`log`, n, e, [[0, 0, 0, 0]]);
-    }
-  for (let e = 1; e < 71; e++)
-    for (let n = 1; n < 95; n++)
-      i(`water`, n, e) === 1 && !t[e * 96 + n] && r() < 0.18 && d(`tallgrass`, n, e, void 0, { sway: !0 });
-  let N = [];
-  {
-    let n = (e, t) => e >= 77 && e <= 94 && t >= 49 && t <= 70,
-      r = (e, t) => e >= 59 && e <= 77 && t >= 60 && t <= 63;
-    for (let e = s.length - 1; e >= 0; e--) {
-      let t = s[e],
-        i = Math.floor(t.x / 32),
-        a = Math.floor(t.y / 32) - 1;
-      (n(i, a) || r(i, a)) && s.splice(e, 1);
-    }
-    let a = (e, t) => i(`water`, e, t) >= 3 || (i(`water`, e, t) >= 2 && L(e + 0.5, t + 0.5));
-    for (let e = 49; e <= 70; e++) for (let n = 77; n <= 94; n++) t[e * 96 + n] = +!!a(n, e);
-    for (let e = 60; e <= 63; e++) for (let n = 59; n <= 76; n++) t[e * 96 + n] = +!!a(n, e);
-    for (let e of [61, 62])
-      for (let n = 59; n <= 78; n++) (i(`water`, n, e) > 0 && N.push({ x: n, y: e }), (t[e * 96 + n] = 0));
-    for (let e = 66; e <= 77; e++) ((t[5760 + e] = 1), (t[6048 + e] = 1));
-    for (let e = 49; e <= 59; e++) t[e * 96 + 77] = 1;
-    for (let e = 64; e <= 70; e++) t[e * 96 + 77] = 1;
-    for (let e = 77; e <= 94; e++) ((t[4704 + e] = 1), (t[6624 + e] = 1), (t[6720 + e] = 1));
-    for (let e = 49; e <= 70; e++) t[e * 96 + 94] = 1;
-    for (let t = 49; t <= 71; t++)
-      for (let n = 59; n <= 95; n++) {
-        let r = t * 97 + n;
-        if (e.water[r]) continue;
-        let i = Math.hypot(n - 86, t - 60),
-          a = 5.6 + (O(n, t) - 0.5) * 0.7;
-        ((n >= 77 && i < a) ||
-          (n >= 85 && n <= 88 && t >= 50 && t <= 69) ||
-          (t >= 61 && t <= 63 && n >= 59 && n <= 86)) &&
-          (e.stone[r] = 1);
-      }
-    let o = new Set(),
-      c = (e, t, n, r, i = {}) => {
-        if ((d(e, t, n, r, i), o.add(n * 96 + t), r))
-          for (let e of r)
-            for (let r = n + e[1]; r <= n + e[3]; r++) for (let n = t + e[0]; n <= t + e[2]; n++) o.add(r * 96 + n);
-      };
-    for (let [e, t] of [
-      [`house_blue`, 80],
-      [`house_red`, 83],
-      [`house_red`, 89],
-      [`house_blue`, 92],
-    ])
-      c(e, t, 52, [[-1, -2, 1, 0]]);
-    for (let [e, t] of [
-      [`house_red`, 80],
-      [`house_blue`, 83],
-      [`house_blue`, 89],
-      [`house_red`, 92],
-    ])
-      c(e, t, 68, [[-1, -2, 1, 0]]);
-    for (let e = 77; e <= 94; e++) (e < 79 || e > 93 || (e > 84 && e < 88)) && c(`fence_h`, e, 69);
-    for (let e = 77; e <= 94; e++) c(e % 2 ? `tree_blossom` : `bush`, e, 49, [[0, 0, 0, 0]], e % 2 ? { fade: !0 } : {});
-    for (let e = 53; e <= 66; e += 3) c(`tree_blossom`, 94, e, [[0, 0, 0, 0]], { fade: !0 });
-    for (let e of [54, 57, 66, 68]) c(`bush_berry`, 77, e);
-    for (let [e, t] of [
-      [78, 60],
-      [78, 63],
-    ])
-      c(`pillar`, e, t, [[0, 0, 0, 0]]);
-    for (let [e, t] of [
-      [60, 60],
-      [63, 60],
-      [60, 63],
-      [63, 63],
-      [80, 61],
-      [80, 62],
-    ])
-      e !== 80 && c(`lantern`, e, t, [[0, 0, 0, 0]]);
-    (c(`banner`, 78, 59, [[0, 0, 0, 0]]), c(`banner`, 78, 64, [[0, 0, 0, 0]]));
-    for (let [e, t] of [
-      [80, 56],
-      [92, 56],
-      [80, 65],
-      [92, 65],
-    ])
-      c(`stall`, e, t, [[-1, 0, 1, 0]]);
-    for (let [e, t] of [
-      [82, 56],
-      [90, 56],
-      [82, 65],
-      [90, 65],
-    ])
-      c(t % 2 ? `crate` : `barrel`, e, t, [[0, 0, 0, 0]]);
-    c(`fountain`, 86, 67, [[-1, -1, 1, 0]]);
-    for (let [e, t] of [
-      [84, 54],
-      [88, 54],
-      [84, 66],
-      [88, 66],
-      [82, 60],
-      [90, 60],
-      [83, 63],
-      [89, 63],
-      [83, 57],
-      [89, 57],
-    ])
-      c(`lantern`, e, t, [[0, 0, 0, 0]]);
-    (c(`banner`, 85, 51, [[0, 0, 0, 0]]), c(`banner`, 87, 51, [[0, 0, 0, 0]]), c(`well`, 90, 61, [[0, 0, 0, 0]]));
-    for (let e = 53; e <= 67; e++)
-      for (let n = 78; n <= 93; n++) {
-        if (o.has(e * 96 + n) || t[e * 96 + n] || i(`stone`, n, e) > 0) continue;
-        let r = O(n * 3.1, e * 1.7);
-        r < 0.22 ? c(`flowers`, n, e) : r < 0.27 && c(`tallgrass`, n, e, void 0, { sway: !0 });
-      }
-    let l = j.find((e) => e.id === `bazar`);
-    ((l.x = 83),
-      (l.y = 58),
-      j.push(
-        { id: `odon`, kind: `merchant`, x: 89, y: 58, name: `Maître Odon, grand marchand` },
-        { id: `maelys`, kind: `villager`, x: 80, y: 57, name: `Maëlys la forgeronne` },
-        { id: `gedeon`, kind: `villager`, x: 92, y: 57, name: `Gédéon l'herboriste` },
-        { id: `heraut`, kind: `villager`, x: 86, y: 54, name: `Héraut de la Cité` },
-        { id: `poisson`, kind: `merchant`, x: 87, y: 64, name: `Ondin le poissonnier` },
-      ));
-    for (let e of j) e.x >= 77 && (t[e.y * 96 + e.x] = 1);
-  }
-  let P = [];
-  {
-    let e = (e, t, n, r, i, a = {}) => {
-      for (let e = s.length - 1; e >= 0; e--) {
-        let r = s[e],
-          a = Math.floor(r.x / 32),
-          o = Math.floor(r.y / 32) - 1;
-        Math.abs(a - t) <= i && o >= n - i - 1 && o <= n + 1 && s.splice(e, 1);
-      }
-      for (let e of r) u(t + e[0], n + e[1], t + e[2], n + e[3]);
-      P.push({ kind: e, x: t * 32 + 16, y: (n + 1) * 32, ...a });
-    };
-    (e(`mill`, 57, 39, [[-1, -1, 1, 0]], 3),
-      e(`greattree`, 42, 23, [[-1, -1, 1, 0]], 4),
-      e(`signpost`, 46, 41, [[0, 0, 0, 0]], 1, { dir: -1, label: `Forêt` }),
-      e(`signpost`, 50, 36, [[0, 0, 0, 0]], 1, { dir: 1, label: `Ruines` }),
-      e(`signpost`, 50, 27, [[0, 0, 0, 0]], 1, { dir: 1, label: `Cimes` }));
-  }
-  let F = { dx: 0, dy: 48, bx: 0, by: 48 };
-  {
-    let e = (e, t) => i(`water`, e, t) >= 3 || (i(`water`, e, t) >= 2 && L(e + 0.5, t + 0.5)),
-      n = 66;
-    for (let t = 58; t <= 76; t++)
-      if (e(t, 48)) {
-        n = t;
-        break;
-      }
-    ((F.bx = n + 1), (F.dx = n - 2), (F.by = F.dy = 48));
-    for (let e = s.length - 1; e >= 0; e--) {
-      let t = s[e],
-        n = Math.floor(t.x / 32),
-        r = Math.floor(t.y / 32) - 1;
-      n >= F.dx - 4 && n <= F.dx + 1 && r >= 44 && r <= 51 && s.splice(e, 1);
-    }
-    for (let n = 44; n <= 51; n++) for (let r = F.dx - 4; r <= F.dx + 1; r++) e(r, n) || (t[n * 96 + r] = 0);
-    (j.push({ id: `port`, kind: `merchant`, x: F.dx - 1, y: 46, name: `Maître de Port Garance` }),
-      (t[4416 + F.dx - 1] = 1));
-  }
+    },
+    b = { ...WO.gate, cells: WO.gate.cells.map((e) => [...e]) },
+    k = { ...WO.herb },
+    A = WO.chests.map((e) => ({ ...e, items: [...e.items] })),
+    j = WO.npcs.map((e) => ({ ...e })),
+    M = { ...WO.spawn },
+    N = WO.decks.map((e) => ({ ...e })),
+    P = WO.landmarks.map((e) => ({ ...e })),
+    F = { ...WO.harbor };
   let ne = { start: { ...f }, dock: { ...p }, templeEntrance: { x: 48, y: 152 } };
   {
     let e = (e, t) => i(`water`, e, t) >= 3 || (i(`water`, e, t) >= 2 && !m(e + 0.5, t + 0.5));
@@ -62748,19 +62411,14 @@ function ne() {
     landmarks: P,
     harbor: F,
     sea: ne,
+    ledge: WO.ledge,
+    town: WO.town,
   };
 }
 var re = 24,
   ie = 18;
 re * ie;
-var ae = [
-  { name: `Village d'Aelor`, x0: 36, y0: 46, x1: 62, y1: 72, tint: 16765040, lvl: `1+` },
-  { name: `Sanctuaire du Gardien`, x0: 38, y0: 0, x1: 58, y1: 16, tint: 10465535, lvl: `3+` },
-  { name: `Forêt mystérieuse`, x0: 0, y0: 0, x1: 38, y1: 32, tint: 5234848, lvl: `2+` },
-  { name: `Ruines anciennes`, x0: 71, y0: 22, x1: 96, y1: 48, tint: 14205088, lvl: `2+` },
-  { name: `Cité d'Orée`, x0: 77, y0: 50, x1: 96, y1: 71, tint: 16751312, lvl: `—` },
-  { name: `Bosquet corrompu`, x0: 71, y0: 0, x1: 96, y1: 22, tint: 13660384, lvl: `3+` },
-];
+var ae = ZONES.filter((e) => e.name !== DEFAULT_ZONE);
 function oe(e, t, n) {
   let r = `worldmap`;
   if (e.textures.exists(r)) return r;
@@ -62870,11 +62528,11 @@ function fe(e, t) {
   let n = ((t) => e.npcs.find((e) => e.id === t))(`elder`);
   switch (t) {
     case `q1`:
-      return { x: 40, y: 44, name: `Quête : chapeaux-rouges de la prairie` };
+      return { x: QUESTS.q1[0], y: QUESTS.q1[1], name: `Quête : chapeaux-rouges de la route 1` };
     case `q2`:
       return { x: e.herb.x, y: e.herb.y, name: `Quête : herbe de lune` };
     case `q3`:
-      return { x: 22, y: 24, name: `Quête : slaad furieux` };
+      return { x: QUESTS.q3[0], y: QUESTS.q3[1], name: `Quête : slaad furieux` };
     case `q4`:
       return n ? { x: n.x, y: n.y, name: `Quête : retourner voir Mira` } : null;
     default:
@@ -65044,6 +64702,7 @@ function yt(e) {
       defeated: {},
       chests: {},
       pos: { x: -1, y: -1 },
+      mapVer: 2,
       loadout: [null, null, null, null],
       spells: {},
       spellPts: 0,
@@ -65455,6 +65114,9 @@ function Ut(e) {
     n.portals.includes(`aelor`) || n.portals.unshift(`aelor`),
     (n.explored = Array.isArray(e.explored) ? e.explored.slice(0, 1e3) : []),
     !n.explored.length && e.pos && e.pos.x > 0 && me(n.explored, e.pos.x, e.pos.y, 14),
+    // Nouvelle carte (world16.js) : une sauvegarde de l'ancienne carte repart du village d'Aelor
+    (e.mapVer ?? 1) < 2 &&
+      ((n.explored = []), n.pos && n.pos.y < 2272 && (n.pos = { x: -1, y: -1 }), (n.mapVer = 2)),
     (n.spells = { ...(e.spells ?? {}) }),
     (n.spellPts = Math.max(0, e.spellPts ?? 0)),
     (n.settings = { ...t.settings, ...(e.settings ?? {}) }),
@@ -74663,9 +74325,9 @@ var ia = [
       id: `q2`,
       title: `L'herbe de lune`,
       giver: `elder`,
-      intro: `Une herbe de lune pousse dans la forêt, à l'ouest. Rapporte-la-moi : j'en ferai un remède.`,
+      intro: `Une herbe de lune pousse au Bois de la Lisière, sur la route 1, à l'ouest. Rapporte-la-moi : j'en ferai un remède.`,
       done: `Parfaite ! Voici une cape que mon fils portait. Elle te protégera mieux.`,
-      hint: `Cherchez la lueur turquoise dans une clairière de la forêt (ouest).`,
+      hint: `Cherchez la lueur turquoise au nord du Bois de la Lisière (route 1, ouest).`,
       goal: { type: `item`, item: `moonherb`, count: 1 },
       reward: { xp: 55, gold: 30, items: [`belier_cape_rare`] },
     },
@@ -74674,8 +74336,8 @@ var ia = [
       title: `Le slaad furieux`,
       giver: `elder`,
       intro: `Un slaad furieux rôde à la lisière de la forêt. Attention : il annonce sa charge. Fais-le percuter un obstacle !`,
-      done: `Incroyable ! Tu es prêt pour la suite : il faudra reconstruire le pont du ravin, à l'est.`,
-      hint: `Les slaads rôdent dans la forêt au nord-ouest. Esquivez leur charge avec le dash.`,
+      done: `Incroyable ! Tu es prêt pour la suite. Plus loin, après la Cité d'Orée, il faudra reconstruire le pont du ravin.`,
+      hint: `Le slaad furieux rôde au Bois de la Lisière (route 1, ouest). Esquivez sa charge avec le dash.`,
       goal: { type: `kill`, monster: `belier_furieux`, count: 1 },
       reward: { xp: 80, gold: 60 },
     },
@@ -74696,7 +74358,7 @@ var ia = [
       giver: `elder`,
       intro: `Le Grand Ettin règne sur l'Antre oublié, au nord. Traverse ses trois salles et vaincs-le : observe ses charges, esquive, puis contre-attaque.`,
       done: `Tu as vaincu le Grand Ettin ! Aelor te doit tout. Reviens quand tu voudras tenter d'obtenir ses trésors.`,
-      hint: `Entrez dans l'Antre oublié (bâtiment au nord de la prairie).`,
+      hint: `Entrez dans l'Antre oublié (Cercle de l'Antre, au nord de la route 1).`,
       goal: { type: `boss` },
       reward: { xp: 320, gold: 300 },
     },
@@ -81395,21 +81057,9 @@ function Es(e, t) {
   if (t >= 198 && t < 230) return `abime`;
   if (t >= 264 && t < 296) return `celeste`;
   if (t >= 71) return `none`;
-  let n = (n) => {
-    let r = I.find((e) => e.name === n);
-    return e >= r.x0 && e < r.x1 && t >= r.y0 && t < r.y1;
-  };
-  return n(`Sanctuaire du Gardien`)
-    ? `givre`
-    : n(`Bosquet corrompu`)
-      ? `ombre`
-      : n(`Forêt mystérieuse`)
-        ? `foret`
-        : n(`Ruines anciennes`)
-          ? `ruines`
-          : n(`Cité d'Orée`)
-            ? `cite`
-            : `prairie`;
+  let n = Math.floor(e),
+    r = Math.floor(t);
+  return n < 0 || n >= 96 || r < 0 ? `prairie` : WKINDS[world16().kind[r * 96 + n]];
 }
 var Ds = class {
     constructor(e) {
@@ -84956,6 +84606,11 @@ var uc = (e, t, n = 0) => {
     { id: `medium`, scale: 1, hits: 3, wood: 3 },
     { id: `large`, scale: 1.22, hits: 4, wood: 5 },
   ];
+// Carte dessinée (world16.js) : entrées, portails, groupes de monstres et cristaux à leur nouvelle place
+for (let e of Gs) DUNGEONS[e.id] && (e.entrance = { ...DUNGEONS[e.id] });
+for (let e of Js) PORTALS[e.id] && Object.assign(e, PORTALS[e.id]);
+for (let e of on) ENCOUNTERS[e.id] && (e.at = [...ENCOUNTERS[e.id]]);
+CRYSTALS.forEach((e, t) => (vc[t] = [...e]));
 function bc() {
   return !!V.state.flags.east_bridge;
 }
@@ -85022,7 +84677,7 @@ var Sc = class {
     }
     free(e, t) {
       let n = this.w;
-      if (e < 2 || t < 2 || e >= 94 || t >= 70) return !1;
+      if (e < 2 || t < 2 || e >= 94 || t >= 70 || this.map.town?.[t * 96 + e]) return !1;
       for (let r = -1; r <= 1; r++) for (let i = -1; i <= 1; i++) if (n.blockedCell(e + i, t + r)) return !1;
       let r = this.map.verts,
         i = t * 97 + e;
@@ -85105,7 +84760,7 @@ var Sc = class {
     }
     buildSign() {
       let e = this.w,
-        [t, n] = [62, 33],
+        [t, n] = BRIDGE_SIGN,
         r = t * 32 + 16,
         i = (n + 1) * 32;
       (e.add.image(r, i, `obj`, `sign`).setOrigin(0.5, 1).setDepth(i),
@@ -85206,8 +84861,9 @@ var Sc = class {
         this.em.dust.explode(this.fx(10), e.midPoint.x, e.midPoint.y));
     }
     bridgeCenter() {
-      let e = this.map.bridges.map((e) => e.x);
-      return { x: ((Math.min(...e) + Math.max(...e)) / 2) * 32 + 16, y: 1120 };
+      let e = this.map.bridges.map((e) => e.x),
+        t = this.map.bridges.map((e) => e.y);
+      return { x: ((Math.min(...e) + Math.max(...e)) / 2) * 32 + 16, y: (Math.min(...t) + 1) * 32 };
     }
     buildWoodBridge() {
       let e = this.w,
@@ -85558,11 +85214,7 @@ var Sc = class {
     }
     buildBarricades() {
       let e = this.w;
-      [
-        [24, 50],
-        [14, 26],
-        [50, 22],
-      ].forEach(([t, n], r) => {
+      BARRICADES.forEach(([t, n], r) => {
         let [i, a] = this.nearestFree(t, n),
           o = `bar${r}`,
           s = i * 32 + 16,
@@ -86750,6 +86402,19 @@ var Sc = class {
     }
   },
   wc = {
+    garde_route1: [
+      `Halte ! Ah, un voyageur d'Aelor. Bienvenue à la porte sud de la Cité d'Orée.`,
+      `La route 2 part de la porte est et traverse la Forêt mystérieuse jusqu'au pont du ravin.`,
+      `Les rebords de terre ? On saute vers le bas, jamais vers le haut : pratique pour rentrer vite au village.`,
+    ],
+    hameau: [
+      `Bienvenue au Hameau des Ruines. Nos maisons sont bâties sur les pierres d'une cité oubliée.`,
+      `Au nord, le Bosquet corrompu et son Nid des Ombres. Au sud, les Ruines anciennes gardent le Temple Fracturé.`,
+    ],
+    archeo: [
+      `Ces piliers ont plus de mille ans. Les gargouilles des ruines les gardent encore...`,
+      `Si vous trouvez des cristaux, prudence : certains réveillent les gardiens.`,
+    ],
     heraut: [
       `Bienvenue dans la Cité d'Orée, voyageur ! Cœur du commerce d'Aether.`,
       `Le Zaap, au centre de la place, vous mène à tous les Portails que vous avez découverts. Approchez-vous des autres pour les débloquer.`,
@@ -87243,7 +86908,7 @@ var Sc = class {
           t.key === `fence_h` && e.setDepth(t.y - 8),
           t.fade && this.trees.push(e),
           t.sway && (this.sway.push(e), (e.ph = Math.random() * 6)),
-          (t.key === `flowers` || t.key === `mushrooms`) && e.setDepth(5),
+          (t.key === `flowers` || t.key === `mushrooms` || t.key === `ledge`) && e.setDepth(5),
           t.key === `lantern` &&
             this.tweens.add({ targets: e, alpha: 0.85, yoyo: !0, repeat: -1, duration: 900 + Math.random() * 600 }));
       }
@@ -87470,7 +87135,7 @@ var Sc = class {
           r = pa
             ? this.add.sprite(t, n, `pcx_npcs`).setOrigin(0.5, PCH.feet / PCH.h).play(pa).setDepth(n)
             : this.add.sprite(t, n, `npcs`).setOrigin(0.5, 57 / 64).play(`npc_${e.kind}`).setDepth(n);
-        (r.anims.setProgress(Math.random()), e.kind === `guard` && (this.guard = r));
+        (r.anims.setProgress(Math.random()), e.id === `guard` && (this.guard = r));
         let i = this.add
           .text(
             t,
@@ -87624,12 +87289,10 @@ var Sc = class {
           "Village d'Aelor": 13627072,
           "Prairies d'Aelor": 13627072,
         },
-        t = (t, n) => {
-          let r = this.map.zones.find(
-            (e) => e.name !== `Prairies d'Aelor` && t >= e.x0 && t < e.x1 && n >= e.y0 && n < e.y1,
-          );
-          return e[r?.name ?? `Prairies d'Aelor`];
-        },
+        t = (t, n) =>
+          ({ prairie: 13627072, foret: 928284, givre: 12577023, ruines: 14203e3, ombre: 2756672, cite: 15784096 })[
+            Es(t + 0.5, Math.min(n, 70) + 0.5)
+          ] ?? 13627072,
         n = this.add.graphics().setDepth(8500);
       for (let e = 0; e < 96; e += 4) {
         let r = t(e, 0),
@@ -88233,7 +87896,7 @@ var Sc = class {
       if (e === `boss_gate`) {
         (this.gateImg.setFrame(`gate_open`), this.gateGroup.clear(!0, !0));
         for (let [e, t] of this.map.gate.cells) this.blocked[t * 96 + e] = 0;
-        t || B.emit(`toast`, `La porte du sanctuaire, au nord, est ouverte.`);
+        t || B.emit(`toast`, `La porte du Cercle de l'Antre, sur la route 1, est ouverte.`);
       }
       if (e === `east_bridge`) {
         this.bridgeGroup.clear(!0, !0);
@@ -88411,10 +88074,45 @@ var Sc = class {
     hitstop(e) {
       V.state.settings.reducedFx || (this.hitstopUntil = performance.now() + e);
     }
+    // Rebords : en descendant vers un rebord, le héros saute par-dessus (on ne peut pas le remonter).
+    ledgeHop() {
+      let e = this.hero,
+        t = this.map.ledge;
+      if (!t || !e?.alive || e.hopping || e.frozenCtl || e.dashT > 0 || this.combat || this.boating || this.riding || this.modal)
+        return;
+      let n = e.body.velocity;
+      if (n.y < 25 || Math.abs(n.x) > n.y * 1.6) return;
+      let r = Math.floor(e.x / 32),
+        i = Math.floor((e.y + 12) / 32);
+      if (i < 1 || i >= 70 || !t[i * 96 + r]) return;
+      let a = i + 1;
+      for (; a < 70 && t[a * 96 + r]; ) a++;
+      if (this.blockedCell(r, a)) return;
+      let o = e.x,
+        c = e.y,
+        l = a * 32 + 18,
+        u = e.sprite,
+        d = u.originY,
+        f = u.height * (u.scaleY || 1);
+      ((e.hopping = !0), (e.frozenCtl = !0), e.body.setVelocity(0, 0), K.play(`dash`));
+      this.tweens.addCounter({
+        from: 0,
+        to: 1,
+        duration: 260 + (a - i) * 90,
+        onUpdate: (t) => {
+          let n = t.getValue();
+          (e.body.reset(o, c + (l - c) * n), u.setOrigin(0.5, d + (Math.sin(n * Math.PI) * 22) / f));
+        },
+        onComplete: () => {
+          (u.setOrigin(0.5, d), e.body.reset(o, l), (e.frozenCtl = !1), (e.hopping = !1));
+        },
+      });
+    }
     update(e, t) {
       if (
         (sn.update(t / 1e3),
         this.syncCamBounds(),
+        this.ledgeHop(),
         this.updateGps(t / 1e3),
         (this.revealT -= t),
         this.revealT <= 0 &&
@@ -92130,7 +91828,7 @@ Astuce : observez les zones rouges et utilisez le dash au bon moment.`,
               A + Math.sin(j - 2.5) * 3.6 * r,
             ));
           let M = ae.find((e) => u >= e.x0 && u < e.x1 && d >= e.y0 && d < e.y1);
-          e.lbl.setText(o ? a.name : s ? `Archipel de Nacre` : M ? M.name : `Prairies d'Aelor`);
+          e.lbl.setText(o ? a.name : s ? `Archipel de Nacre` : M ? M.name : DEFAULT_ZONE);
         }
         if (this.waypoint && !this.modal) {
           let i = this.waypoint.x,
