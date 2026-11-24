@@ -785,7 +785,65 @@ def build(base, out_dir, names=None):
     return report
 
 
+
+
+
+# ------------------------------------------------------------------------------------------------
+# PNJ du village (mêmes gabarits de coiffure que les héros, recolorés)
+# ------------------------------------------------------------------------------------------------
+def _with(base, **kw):
+    d = dict(base)
+    d.update(kw)
+    return d
+
+
+NPCS = {
+    # Ancienne Mira : longs cheveux blancs, robe verte
+    "elder": _with(RALYA, head={v: [[r.replace("y", "h").replace("Y", "h").replace("r", "h") for r in RALYA["head"][v][0]]] for v in RALYA["head"]},
+                   skin=ramp("#fff0e0", "#f6c9a0", "#e09a6a", "#b0663f"),
+                   top=ramp("#86c24c", "#4f8f3a", "#2f6131", "#1d3d27"), sleeve=ramp("#86c24c", "#4f8f3a", "#2f6131", "#1d3d27"),
+                   skirt=ramp("#86c24c", "#4f8f3a", "#2f6131", "#1d3d27"), pants=ramp("#86c24c", "#4f8f3a", "#2f6131", "#1d3d27"),
+                   belt=ramp("#e0bd80", "#c08a52", "#8a5632", "#553521"),
+                   roles=hero_roles(h="#e8eaf2", H="#a7acc0", l="#ffffff", o="#000000")),
+    # Marchand : cheveux bruns, gilet doré, chemise crème
+    "merchant": _with(AUGH, keep_tool=(), top=ramp("#f2c43e", "#c4861e", "#8a5a14", "#5a3a0a"), shirt=ramp("#fff4dc", "#f0dcb0", "#c8a878", "#8a6a48"),
+                      sleeve=ramp("#fff4dc", "#f0dcb0", "#c8a878", "#8a6a48"), pants=ramp("#8a5632", "#5c3a21", "#3e2716", "#1a100b"),
+                      shoes=ramp("#5c3a21", "#3e2716", "#24160d", "#120a06"),
+                      roles=hero_roles(h="#553521", H="#2e1c14", l="#8a5632", o="#000000", b="#2e1c14")),
+    # Villageois : tunique bleue
+    "villager": _with(AUGH, keep_tool=(), head={v: [[r.replace("b", ".") for r in AUGH["head"][v][0]]] for v in AUGH["head"]},
+                      top=ramp("#7fb0e8", "#4f78c4", "#2f4f94", "#233673"), shirt=None, sleeve=ramp("#7fb0e8", "#4f78c4", "#2f4f94", "#233673"),
+                      pants=ramp("#8a5632", "#5c3a21", "#3e2716", "#1a100b"), shoes=ramp("#5c3a21", "#3e2716", "#24160d", "#120a06"),
+                      skin=ramp("#e0a070", "#c07a4a", "#8a4e2e", "#5a2e1a"),
+                      roles=hero_roles(h="#2e1c14", H="#1a100b", l="#553521", o="#000000", b="#2e1c14")),
+    # Garde : casque d'acier, tunique grise
+    "guard": _with(GORAK, top=ramp("#bfc2d4", "#8487a0", "#57586f", "#3a3850"), sleeve=ramp("#bfc2d4", "#8487a0", "#57586f", "#3a3850"),
+                   pants=ramp("#57586f", "#3a3850", "#26243a", "#14121f"), skin=ramp("#f6c9a0", "#e09a6a", "#b0663f", "#6b3a2a"),
+                   roles=hero_roles(h="#bfc2d4", H="#8487a0", l="#ffffff", o="#000000", b="#553521", r="#d03c3a", R="#83202c")),
+}
+
+
+def build_npcs(base, out_path):
+    """Planche des PNJ : une ligne par PNJ (repos de face, 4 images), cases 80×96 (×2)."""
+    rows = []
+    for name, d in NPCS.items():
+        hero = dict(d)
+        if hero.get("sleeve") is None:
+            hero["sleeve"] = hero["skin"]
+        frames = load_frames(base, ANIMS["idle"], "Down")
+        dressed = [dress_frame(f, hero, "Down", False, k) for k, f in enumerate(frames)]
+        rows.append([f.crop(CROP).resize((CELL_W, CELL_H), Image.NEAREST) for f in dressed if f is not None])
+    sheet = Image.new("RGBA", (4 * CELL_W, len(rows) * CELL_H))
+    for j, r in enumerate(rows):
+        for i, c in enumerate(r[:4]):
+            sheet.alpha_composite(c, (i * CELL_W, j * CELL_H))
+    sheet.save(out_path)
+    return list(NPCS)
+
+
 if __name__ == "__main__":
     rep = build(sys.argv[1], sys.argv[2], sys.argv[3:] or None)
     for k, v in rep.items():
         print(k, " ".join(v))
+    if not sys.argv[3:]:
+        print("PNJ :", build_npcs(sys.argv[1], os.path.join(sys.argv[2], "npcs_game.png")))

@@ -91,3 +91,21 @@ export function heroSheet(scene, hero) {
     });
   return key;
 }
+
+// --- PNJ du village (pc/heroes/npcs_game.png : une ligne par PNJ, repos de face, 4 images) ---
+const NPC_ROWS = ['elder', 'merchant', 'villager', 'guard'];
+
+export function preloadNpcs16(scene, base = 'assets/') {
+  if (!pcHeroesOn() || scene.textures.exists('pcx_npcs')) return;
+  scene.load.spritesheet('pcx_npcs', `${base}pc/heroes/npcs_game.png`, { frameWidth: PCH.w, frameHeight: PCH.h });
+}
+
+/** Clé de l'animation de repos du PNJ dans le nouveau style, ou null (garder l'ancien sprite). */
+export function npcAnim(scene, kind) {
+  const row = NPC_ROWS.indexOf(kind);
+  if (!pcHeroesOn() || row < 0 || !scene.textures.exists('pcx_npcs')) return null;
+  const key = `pcx_npc_${kind}`;
+  if (!scene.anims.exists(key))
+    scene.anims.create({ key, frames: scene.anims.generateFrameNumbers('pcx_npcs', { start: row * 4, end: row * 4 + 3 }), frameRate: 4, repeat: -1 });
+  return key;
+}

@@ -1,7 +1,7 @@
 import { installPerf, cullRect, initialResolution, autoResolution } from './perf.js';
 import { preloadBaked } from './baked.js';
 import { VERSION } from './version.js';
-import { preloadHeroes16, heroSheet, PCH } from './heroes16.js';
+import { preloadHeroes16, heroSheet, PCH, preloadNpcs16, npcAnim } from './heroes16.js';
 import { preloadTitle16, pixelScale, Meadow, pixelText, setPixelText, pixelButton, heroIdleAnim } from './title16.js';
 const VERSION_LABEL = `Max version · build ${VERSION.build} · ${VERSION.date}`;
 var e = Object.create,
@@ -78986,6 +78986,7 @@ var vo = [
       preloadTitle16(this, i);
       // Héros 16×32 en jeu : voir heroes16.js
       preloadHeroes16(this, i);
+      preloadNpcs16(this, i);
       for (let e of vo) this.load.spritesheet(e, `${i}heroes/${e}.png`, { frameWidth: 64, frameHeight: 64 });
       for (let e of Object.values(H)) {
         let t = e.base ?? e.sheet;
@@ -87465,16 +87466,15 @@ var Sc = class {
           .image(t, n + 1, `obj`, `shadow`)
           .setDepth(2)
           .setScale(0.8);
-        let r = this.add
-          .sprite(t, n, `npcs`)
-          .setOrigin(0.5, 57 / 64)
-          .play(`npc_${e.kind}`)
-          .setDepth(n);
+        let pa = npcAnim(this, e.kind),
+          r = pa
+            ? this.add.sprite(t, n, `pcx_npcs`).setOrigin(0.5, PCH.feet / PCH.h).play(pa).setDepth(n)
+            : this.add.sprite(t, n, `npcs`).setOrigin(0.5, 57 / 64).play(`npc_${e.kind}`).setDepth(n);
         (r.anims.setProgress(Math.random()), e.kind === `guard` && (this.guard = r));
         let i = this.add
           .text(
             t,
-            n - 52,
+            n - (pa ? 78 : 52),
             e.id === `elder`
               ? `!`
               : e.id === `merchant` || e.id === `odon` || e.id.startsWith(`marchand_`)
