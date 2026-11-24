@@ -3,6 +3,7 @@ import { preloadBaked } from './baked.js';
 import { VERSION } from './version.js';
 import { preloadHeroes16, heroSheet, PCH, preloadNpcs16, npcAnim } from './heroes16.js';
 import { world16, ZONES, DEFAULT_ZONE, DUNGEONS, PORTALS, ENCOUNTERS, QUESTS, CRYSTALS, BARRICADES, BRIDGE_SIGN } from './world16.js';
+import { gridOn, gridMotor, cellOf as gCell, mid as gMid, snapPt, snap8, snap4, cellRadius, onCell, cellsCircle, cellsSquare, cellsSegment, cellsRect, drawCells } from './grid16.js';
 import { preloadTitle16, pixelScale, Meadow, pixelText, setPixelText, pixelButton, heroIdleAnim } from './title16.js';
 const VERSION_LABEL = `Max version · build ${VERSION.build} · ${VERSION.date}`;
 var e = Object.create,
@@ -71713,6 +71714,12 @@ var fi = class {
         (this.flashUntil = this.scene.time.now + (this.isBoss ? 50 : 70)));
     }
     updateExplore(e, t) {
+      if ((this.updateExploreAI(e, t), gridOn() && t)) {
+        let n = gridMotor((this.__g ??= {}), this.x, this.y, this.body.velocity.x, this.body.velocity.y, e, (e, n) => !t(gMid(e), gMid(n)));
+        (n.snapX != null && this.body.reset(n.snapX, n.snapY), this.body.setVelocity(n.vx, n.vy));
+      }
+    }
+    updateExploreAI(e, t) {
       this.wanderT -= e;
       let n = this.body;
       if (this.wanderR <= 0) (n.setVelocity(0, 0), this.anim(`idle`));
@@ -71751,6 +71758,20 @@ var fi = class {
       return this.alive && e.freeze <= 0 && e.stun <= 0 && e.knockT <= 0;
     }
     update(e, t) {
+      (this.updateAI(e, t), this.alive && gridOn() && this.gridStep(e, t));
+    }
+    gridStep(e, t) {
+      let n = (this.__g ??= {}),
+        r = (e, n) => {
+          if (!t.inArena(gMid(e), gMid(n), 4) || t.world.solidAt(gMid(e), gMid(n))) return !1;
+          for (let r of t.enemies) if (r !== this && r.alive && onCell(r, e, n)) return !1;
+          let r = t.hero;
+          return !(r.alive && onCell(r, e, n));
+        },
+        i = gridMotor(n, this.x, this.y, this.body.velocity.x, this.body.velocity.y, e, r);
+      (i.snapX != null && this.body.reset(i.snapX, i.snapY), this.body.setVelocity(i.vx, i.vy), (this.gridBlocked = !!i.blocked));
+    }
+    updateAI(e, t) {
       if (!this.alive) return;
       let n = this.status;
       if (n.burn > 0) {
@@ -71901,7 +71922,7 @@ var fi = class {
           i = n.y - this.y,
           a = Math.hypot(r, i) || 1,
           o = Math.min(a, this.def.range);
-        ((this.jumpTo = { x: this.x + (r / a) * o, y: this.y + (i / a) * o }),
+        ((this.jumpTo = gridOn() ? snapPt(this.x + (r / a) * o, this.y + (i / a) * o) : { x: this.x + (r / a) * o, y: this.y + (i / a) * o }),
           this.face(r),
           (this.atkCd = this.def.attackCd + Math.random() * 0.6),
           (this.tele = t.teleCircle(
@@ -71942,7 +71963,7 @@ var fi = class {
             this,
             e,
             n,
-            Math.atan2(this.aim.y - (n + 18), this.aim.x - e),
+            gridOn() ? snap8(Math.atan2(this.aim.y - this.y, this.aim.x - this.x)) : Math.atan2(this.aim.y - (n + 18), this.aim.x - e),
             290,
             this.dmg,
             this.def.shot ?? `p_enemy_arrow`,
@@ -72895,6 +72916,17 @@ function _i(e) {
   } catch {}
 }
 var vi = class {
+    // grille : cases couvertes par la zone
+    cellsIn() {
+      let e = this.o,
+        t = cellRadius(e.r);
+      return (this._cells ??= cellsSquare(e.x, e.y, t));
+    }
+    inZone(e) {
+      let t = this.o,
+        n = cellRadius(t.r);
+      return Math.abs(gCell(e.x) - gCell(t.x)) <= n && Math.abs(gCell(e.y) - gCell(t.y)) <= n;
+    }
     // une flèche qui tombe du ciel et se plante dans le sol
     static arrowFall(e, t, n) {
       let r = e.scene,
@@ -72915,7 +72947,8 @@ var vi = class {
       });
     }
     constructor(e, t) {
-      ((this.C = e),
+      (gridOn() && Object.assign(t, snapPt(t.x, t.y)),
+        (this.C = e),
         (this.o = t),
         (this.t = 0),
         (this.tickT = 0),
@@ -72935,11 +72968,13 @@ var vi = class {
       let r = Math.min(1, this.t / 0.25) * (this.t > t.dur - 0.4 ? Math.max(0, (t.dur - this.t) / 0.4) : 1);
       if (
         (this.g.clear(),
-        this.g.fillStyle(t.color, 0.16 * r).fillEllipse(t.x, t.y, t.r * 2, t.r * 1.5),
-        this.g.lineStyle(2, t.color, 0.7 * r).strokeEllipse(t.x, t.y, t.r * 2, t.r * 1.5),
-        this.g
-          .lineStyle(1, 16777215, 0.35 * r)
-          .strokeEllipse(t.x, t.y, t.r * 1.3 * (1 + Math.sin(this.t * 6) * 0.05), t.r),
+        gridOn()
+          ? drawCells(this.g, this.cellsIn(), t.color, (0.16 + 0.06 * Math.sin(this.t * 6)) * r, 0.7 * r)
+          : (this.g.fillStyle(t.color, 0.16 * r).fillEllipse(t.x, t.y, t.r * 2, t.r * 1.5),
+            this.g.lineStyle(2, t.color, 0.7 * r).strokeEllipse(t.x, t.y, t.r * 2, t.r * 1.5),
+            this.g
+              .lineStyle(1, 16777215, 0.35 * r)
+              .strokeEllipse(t.x, t.y, t.r * 1.3 * (1 + Math.sin(this.t * 6) * 0.05), t.r)),
         this.img && (this.img.rotation += e * 16),
         Math.random() < e * 22)
       ) {
@@ -72947,6 +72982,10 @@ var vi = class {
           r = Math.random() * t.r,
           i = t.x + Math.cos(e) * r,
           a = t.y + Math.sin(e) * r * 0.75;
+        if (gridOn()) {
+          let e = this.cellsIn()[Math.floor(Math.random() * this.cellsIn().length)];
+          ((i = gMid(e[0]) + (Math.random() - 0.5) * 20), (a = gMid(e[1]) + (Math.random() - 0.5) * 16));
+        }
         t.kind === `fire`
           ? n.emberAt(i, a)
           : t.kind === `ice`
@@ -72957,7 +72996,7 @@ var vi = class {
       }
       let i = [];
       for (let e of n.enemies)
-        e.alive && u.default.Math.Distance.Between(e.x, e.y, t.x, t.y) < t.r + e.radius * 0.5 && i.push(e);
+        e.alive && (gridOn() ? this.inZone(e) : u.default.Math.Distance.Between(e.x, e.y, t.x, t.y) < t.r + e.radius * 0.5) && i.push(e);
       for (let e of i)
         if ((t.slow && ((e.slowBy = Math.min(e.slowBy, t.slow)), (e.slowT = 0.25)), t.pull && !e.isBoss)) {
           let n = t.x - e.x,
@@ -72987,7 +73026,7 @@ var vi = class {
         (t.fxAt(`fx_arcane`, e.x, e.y + 4, e.r / 30, e.color), t.shake(0.18, 0.008), K.play(`explode`));
         for (let n of t.enemies)
           n.alive &&
-            u.default.Math.Distance.Between(n.x, n.y, e.x, e.y) < e.r + n.radius * 0.5 &&
+            (gridOn() ? this.inZone(n) : u.default.Math.Distance.Between(n.x, n.y, e.x, e.y) < e.r + n.radius * 0.5) &&
             t.damageEnemy(n, e.endDmg, { elem: e.elem });
       }
       (this.g.destroy(), this.img?.destroy());
@@ -74683,6 +74722,7 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
         (this.t = 0),
         (this.dead = !1),
         (this.g = e.scene.add.graphics().setDepth(4)),
+        gridOn() && this.snapShape(),
         e.net === `host` && !a._net)
       )
         try {
@@ -74690,7 +74730,28 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
         } catch {}
     }
     setLine(e, t, n, r) {
-      Object.assign(this.a, { x0: e, y0: t, x1: n, y1: r });
+      (Object.assign(this.a, { x0: e, y0: t, x1: n, y1: r }), gridOn() && this.snapShape());
+    }
+    // grille : formes alignées sur les cases (cercle centré sur une case, lignes en 8 directions,
+    // charges en 4 directions) et liste des cases à colorier
+    snapShape() {
+      let e = this.a;
+      if (this.kind === `circle`) (Object.assign(e, snapPt(e.x, e.y)), (this.cells = cellsCircle(e.x, e.y, e.r)));
+      else if (this.kind === `rect`)
+        (Object.assign(e, snapPt(e.x, e.y)), (e.ang = snap4(e.ang)), (this.cells = cellsRect(e.x, e.y, e.ang, e.len, e.w)));
+      else if (this.kind === `line`) {
+        let t = snapPt(e.x0, e.y0),
+          n = Math.hypot(e.x1 - e.x0, e.y1 - e.y0),
+          r = snap8(Math.atan2(e.y1 - e.y0, e.x1 - e.x0));
+        (Object.assign(e, { x0: t.x, y0: t.y, x1: t.x + Math.cos(r) * n, y1: t.y + Math.sin(r) * n }),
+          (this.cells = cellsSegment(e.x0, e.y0, e.x1, e.y1)));
+      } else if (this.kind === `fan`) {
+        (Object.assign(e, snapPt(e.x, e.y)), (e.ang = snap8(e.ang)), (this.cells = []));
+        for (let t = 0; t < e.n; t++) {
+          let n = e.ang + (t - (e.n - 1) / 2) * e.spread;
+          this.cells.push(...cellsSegment(e.x, e.y, e.x + Math.cos(n) * e.len, e.y + Math.sin(n) * e.len));
+        }
+      }
     }
     cancel() {
       ((this.dead = !0), this.g.destroy());
@@ -74718,7 +74779,9 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
       let r = 0.75 + 0.25 * Math.sin(this.t * 18),
         i = t > 0.78 ? 0.18 + 0.18 * Math.sin(this.t * 40) : 0,
         a = this.a;
-      if (this.kind === `circle`) {
+      if (this.cells)
+        (drawCells(n, this.cells, 16722474, 0.12 + 0.28 * t, 0.55 * r), i && drawCells(n, this.cells, 16777215, i, 0));
+      else if (this.kind === `circle`) {
         (n.fillStyle(16722474, 0.16).fillEllipse(a.x, a.y, a.r * 2, a.r * 1.4),
           n.fillStyle(16726586, 0.28).fillEllipse(a.x, a.y, a.r * 2 * t, a.r * 1.4 * t),
           n.lineStyle(2.5, 16730698, 0.95 * r).strokeEllipse(a.x, a.y, a.r * 2, a.r * 1.4),
@@ -75240,20 +75303,23 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
       let a = this.enemies.map((e) => e.sprite);
       (this.colliders.push(e.physics.add.collider(a, e.solids)),
         this.colliders.push(e.physics.add.collider(a, this.wallGroup)),
-        this.colliders.push(e.physics.add.collider(a, a)),
+        // grille : chacun garde sa case (grid16.js), pas de poussées physiques entre acteurs
+        gridOn() || this.colliders.push(e.physics.add.collider(a, a)),
         this.colliders.push(e.physics.add.collider(this.hero.sprite, this.wallGroup)),
-        this.colliders.push(
-          e.physics.add.collider(
-            this.hero.sprite,
-            a.filter((e) => !e.enemy.isBoss),
+        gridOn() ||
+          this.colliders.push(
+            e.physics.add.collider(
+              this.hero.sprite,
+              a.filter((e) => !e.enemy.isBoss),
+            ),
           ),
-        ),
-        this.colliders.push(
-          e.physics.add.collider(
-            this.hero.sprite,
-            a.filter((e) => e.enemy.isBoss),
+        gridOn() ||
+          this.colliders.push(
+            e.physics.add.collider(
+              this.hero.sprite,
+              a.filter((e) => e.enemy.isBoss),
+            ),
           ),
-        ),
         e.physics.world.setBounds(i.x, i.y, i.width, i.height),
         this.hero.sprite.body.setCollideWorldBounds(!0),
         (this.grid = e.add.graphics().setDepth(1.5)),
@@ -75464,6 +75530,7 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
       this.projs.push(new La(this, `enemy`, t, n, r, { proj: o, dmg: a, speed: i, range: c }, a, s, { owner: e }));
     }
     enemyAreaHit(e, t, n, r, i, a) {
+      gridOn() && ({ x: t, y: n } = snapPt(t, n));
       a === `fire` && this.world.fire?.igniteAt(t, n, r);
       let o = this.hero;
       o.alive && u.default.Math.Distance.Between(t, n * 1, o.x, o.y) < r + 8 && this.hitHero(i, a, t, n);
@@ -75495,6 +75562,7 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
       );
     }
     rootLine(e, t, n, r, i, a, o) {
+      gridOn() && ((r = snap4(r)), ({ x: t, y: n } = snapPt(t, n)));
       let s = Math.cos(r),
         c = Math.sin(r);
       for (let e = 20; e < i; e += 26) this.rootBurst(t + s * e, n + c * e, 0.7);
@@ -75965,7 +76033,7 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
             (t.knockPower = 0),
             (t.knockT = Math.min(t.knockT, 0.05)));
         };
-      if (!n.blocked.none) {
+      if (!n.blocked.none || e.gridBlocked) {
         r(`IMPACT !`);
         return;
       }
@@ -76086,6 +76154,7 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
         f = this.autoAim(d ?? 300),
         p = t && Math.hypot(t.x, t.y) > 0.2 ? { x: t.x, y: t.y, tgt: null } : f,
         m = Math.atan2(p.y, p.x);
+      (gridOn() && (m = snap8(m)), n && gridOn() && (n = { ...n, ...snapPt(n.x, n.y) }));
       r === `ice` && V.state.hero === `augh` && (m = this.healAssist(m));
       let h = di(p.x, p.y, i.facing);
       if ((i.x, i.y - 18, this.noteLink(r), Fi.has(r))) {
@@ -76245,6 +76314,7 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
         (t && r !== `spin` && ((n = t.x), (s = t.y)),
           (this.walkable(n, s) && this.inArena(n, s, 8)) ||
             ((n = i.x + Math.cos(m) * 50), (s = i.y + Math.sin(m) * 50)));
+        gridOn() && ({ x: n, y: s } = snapPt(n, s));
         let l = V.stats.rangePx * 0.25;
         i.playAction(
           this.hero.sheet.includes(`grimoire`) || V.state.hero === `aka` ? `raise_wall` : `axe_fire`,
@@ -76329,14 +76399,15 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
         let t = this.mult(`air`) * o.weaponDmg * c * this.dashStrikeMult();
         this.scene.time.delayedCall(90, () => {
           if (i.alive && this.phase === `fight`) {
-            for (let n = 0; n < 5; n++)
+            let r = gridOn() ? 3 : 5;
+            for (let n = 0; n < r; n++)
               this.projs.push(
                 new La(
                   this,
                   `hero`,
                   i.x,
                   i.y - 18,
-                  m + ((n - 2) * u.default.Math.DegToRad(46)) / 4,
+                  gridOn() ? m + (n - 1) * (Math.PI / 4) : m + ((n - 2) * u.default.Math.DegToRad(46)) / 4,
                   { ...e, dmg: e.dmg },
                   a.basic.dmg * 0.5 * t,
                   `phys`,
@@ -76392,6 +76463,7 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
       } else if (r === `wall` && V.state.hero === `aka`) {
         // Balise sentinelle : tire seule sur l'ennemi le plus proche
         let e = n ?? { x: i.x + Math.cos(m) * 56, y: i.y + Math.sin(m) * 56 };
+        gridOn() && (e = snapPt(e.x, e.y));
         if (!this.walkable(e.x, e.y) || !this.inArena(e.x, e.y, 10))
           return (K.play(`error`), this.popText(i.x, i.y - 50, `Emplacement bloqué`, `#ffb0a0`, 10), !1);
         i.playAction(`summon_wolf`, 1.8, di(e.x - i.x, e.y - i.y, i.facing));
@@ -76448,11 +76520,12 @@ var Pa = { phys: `#fff4d0`, fire: `#ffa040`, ice: `#8ae8ff`, arcane: `#e0a0ff`, 
       this.usedSkill3 || ((this.usedSkill3 = !0), Ma());
     }
     steerAngle(e, t) {
-      let n = this.attackAim;
-      if (n && Math.hypot(n.x, n.y) > 0.25) return Math.atan2(n.y, n.x);
+      let n = this.attackAim,
+        i = (e) => (e == null || !gridOn() ? e : snap8(e));
+      if (n && Math.hypot(n.x, n.y) > 0.25) return i(Math.atan2(n.y, n.x));
       let r = this.world;
       return r.mouseWorld && this.scene.time.now - r.mouseWorld.t < 250
-        ? Math.atan2(r.mouseWorld.y - t, r.mouseWorld.x - e)
+        ? i(Math.atan2(r.mouseWorld.y - t, r.mouseWorld.x - e))
         : null;
     }
     recallAxe() {
@@ -77895,6 +77968,7 @@ function eo(e, t) {
         r = f ? f.y : n.y + Math.sin(i) * 190,
         c = u.default.Math.Clamp(t, e.arena.x + 30, e.arena.right - 30),
         l = u.default.Math.Clamp(r, e.arena.y + 30, e.arena.bottom - 30);
+      gridOn() && ({ x: c, y: l } = snapPt(c, l));
       return (
         n.playAction(s.anim.basic === `area_burst` ? `area_burst` : `raise_wall`, 1.5, a),
         e.fx.push(new Qa(e, c, l, 82 + V.stats.rangePx * 0.3, s.basic.dmg * V.stats.weaponDmg * o * 3.1 * d(`feu`))),
@@ -84622,6 +84696,7 @@ var uc = (e, t, n = 0) => {
         } else this.body.setVelocity(0, 0);
         this.inertiaT > 0 && (this.inertiaT = Math.max(0, this.inertiaT - e));
       }
+      this.gridStep(e);
       if ((this.action && t >= this.actionUntil && (this.action = null), !this.action)) {
         let e = this.body.velocity,
           t = e.length();
@@ -84634,6 +84709,26 @@ var uc = (e, t, n = 0) => {
       (this.sprite.setAlpha(this.hurtInv > 0 && Math.floor(this.hurtInv * 20) % 2 == 0 ? 0.55 : 1),
         this.syncDecor(),
         this.weaponFx(e));
+    }
+    // Déplacement case par case (grid16.js) : la vitesse voulue devient un pas d'une case
+    gridStep(e) {
+      let t = this.scene;
+      if (!gridOn() || this.hopping || t.boating || t.riding || !t.blockedCell || !this.body) return;
+      let n = t.combat,
+        r = (this.__g ??= {}),
+        i = (e, r, i, a) => {
+          if (!n && r < 71 && t.map?.ledge?.[r * 96 + e]) return (a === 1 && i === 0 && t.hopFrom?.(e, r), !1);
+          if (t.blockedCell(e, r)) return !1;
+          if (n) {
+            if (!n.inArena(gMid(e), gMid(r), 4)) return !1;
+            for (let t of n.enemies) if (t.alive && onCell(t, e, r)) return !1;
+          }
+          return !0;
+        },
+        a = gridMotor(r, this.x, this.y, this.body.velocity.x, this.body.velocity.y, e, i);
+      (a.snapX != null && this.body.reset(a.snapX, a.snapY),
+        this.body.setVelocity(a.vx, a.vy),
+        a.blocked && this.moveVec.length() > 0.12 && !this.action && (this.facing = di(this.moveVec.x, this.moveVec.y, this.facing)));
     }
     syncDecor() {
       (this.sprite.setDepth(this.sprite.y),
@@ -88235,12 +88330,18 @@ var Sc = class {
       let r = Math.floor(e.x / 32),
         i = Math.floor((e.y + 12) / 32);
       if (i < 1 || i >= 70 || !t[i * 96 + r]) return;
+      this.hopFrom(r, i);
+    }
+    hopFrom(r, i) {
+      let e = this.hero,
+        t = this.map.ledge;
+      if (!t || e.hopping || this.combat) return;
       let a = i + 1;
       for (; a < 70 && t[a * 96 + r]; ) a++;
       if (this.blockedCell(r, a)) return;
-      let o = e.x,
+      let o = gridOn() ? r * 32 + 16 : e.x,
         c = e.y,
-        l = a * 32 + 18,
+        l = a * 32 + (gridOn() ? 16 : 18),
         u = e.sprite,
         d = u.originY,
         f = u.height * (u.scaleY || 1);
@@ -88254,7 +88355,7 @@ var Sc = class {
           (e.body.reset(o, c + (l - c) * n), u.setOrigin(0.5, d + (Math.sin(n * Math.PI) * 22) / f));
         },
         onComplete: () => {
-          (u.setOrigin(0.5, d), e.body.reset(o, l), (e.frozenCtl = !1), (e.hopping = !1));
+          (u.setOrigin(0.5, d), e.body.reset(o, l), (e.frozenCtl = !1), (e.hopping = !1), e.__g && (e.__g.tx = e.__g.ty = null));
         },
       });
     }
