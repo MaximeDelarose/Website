@@ -94,14 +94,3 @@ Les identifiants internes n'ont pas changé (sauvegardes et équipements restent
 | Volée givrante (`frost`), Flèche harpon (`storm`), Leurre du chasseur (`double`), Tir céleste (`comet`), Flèches de dispersion (`nova`), Balises jumelles (`portal`) | Mêmes mécaniques qu'avant, thème archer |
 
 L'arc tenu en main (`showBow`), la balise, les flèches et les icônes viennent du pack Ninja Adventure (CC0) : `python3 tools/art16/aka_archer.py` (part de `tools/art16/orig/ui.png`).
-
-## Tout sur la grille (grid16.js)
-
-Le jeu reste en temps réel mais se joue **case par case** (cases de 32 unités, celles de la carte) :
-
-- **Déplacements** : héros (hors combat et en combat), monstres, groupes qui errent, avancent d'une case à la fois en 4 directions, façon RPG 16 bits. Le moteur `gridMotor` transforme la vitesse voulue (manette, IA, recul, dash) en pas d'une case ; chacun réserve sa case, on ne se chevauche plus (les poussées physiques entre acteurs sont coupées en combat). Contre un obstacle, le héros se tourne sur place. Le dash et les reculs font avancer de plusieurs cases d'un coup ; un recul contre une case occupée ou un mur = impact.
-- **Attaques** : les tirs du héros partent dans l'une des 8 directions (lignes, colonnes, diagonales) : il faut s'aligner. Les zones (Pluie de flèches, tourbillon, givre, harpon…) couvrent un carré de cases et touchent les monstres dont la case est dedans. Augh « Lames du vent » : 3 haches (−45°, 0°, +45°).
-- **Ennemis** : les alertes (cercle, ligne, charge, éventail) sont dessinées en cases rouges ; les charges suivent les 4 directions, les archers tirent en 8 directions ; les dégâts de zone utilisent les mêmes cases que l'alerte.
-- Rebords : le saut part de la case au-dessus du rebord.
-
-Pour comparer avec le déplacement libre : `localStorage.setItem('eoam_perf_off', 'grid')` puis recharger.
