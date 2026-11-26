@@ -9,7 +9,7 @@
 (function () {
   'use strict';
   var KEY = 'session', DURS = [5, 10, 15, 20], WARN_MS = 60000, GAP_MS = 5000;
-  var S = Object.assign({ v: 1, minutes: 10, state: 'none', remaining: 0, tick: null, warned: false, pin: null, fails: 0, lockUntil: 0, endedAt: 0 }, C.store.get(KEY, {}));
+  var S = Object.assign({ v: 1, minutes: 10, state: 'none', remaining: 0, tick: null, warned: false, pin: null, fails: 0, lockUntil: 0, endedAt: 0, end: 'classic', witch: true }, C.store.get(KEY, {}));
   function save() { C.store.set(KEY, S); }
   var holds = 0, touching = {}, ending = false, warnEl = null;
   function hidden() { return document.hidden || document.visibilityState === 'hidden'; }
@@ -18,6 +18,8 @@
   Ses.remaining = function () { return S.remaining; };
   Ses.minutes = function () { return S.minutes; };
   Ses.pinSet = function () { return !!(S.pin && S.pin.hash); };
+  Ses.setEnd = function (end, witch) { if (end) S.end = end; if (witch != null) S.witch = !!witch; save(); };
+  Ses.endMode = function () { return S.end === 'dodo' ? (S.witch ? 'witch' : 'calm') : 'classic'; };
 
   /* ---------- doigts posés : on ne coupe jamais un geste en cours ---------- */
   window.addEventListener('pointerdown', function (e) { touching[e.pointerId] = 1; }, true);
@@ -66,11 +68,13 @@
   async function endSession() {
     if (ending || S.state === 'ended') return; ending = true;
     var blocker = C.el('<div class="blocker"></div>'); C.$('#overlay').appendChild(blocker);   /* plus d'interaction pendant la fin */
+    var mode = Ses.endMode();                                                                       /* 'classic' | 'calm' (dodo sans sorcière) | 'witch' */
     S.state = 'ended'; S.remaining = 0; S.tick = null; S.endedAt = Date.now(); save();                /* enregistré tout de suite : un rechargement ne contourne rien */
-    try { C.music.fadeOut(7); } catch (e) { }
+    try { if (mode === 'classic') C.music.fadeOut(7); } catch (e) { }
     for (var i = 0; i < 30 && isTouching(); i++) await sleep(100);                                   /* on laisse finir le geste en cours (3 s max) */
     C.saveCurrent(); await sleep(700);
-    for (var k = 0; k < 8 && C.current() !== 'sleep'; k++) { C.go('sleep', { fresh: true }); await sleep(450); }
+    var target = mode === 'classic' ? 'sleep' : 'bedtime';
+    for (var k = 0; k < 8 && C.current() !== target && C.current() !== 'sleep'; k++) { C.go(target, mode === 'classic' ? { fresh: true } : { mode: mode }); await sleep(450); }
     blocker.remove(); ending = false;
   }
   Ses.end = endSession;
@@ -159,6 +163,25 @@
   var HOURGLASS = Art.svg('0 0 48 48', '<path d="M12 6h24M12 42h24" stroke="#6b3f72" stroke-width="5" stroke-linecap="round"/><path d="M15 6c0 12 9 14 9 18s-9 6-9 18h18c0-12-9-14-9-18s9-6 9-18z" fill="#fff" stroke="#6b3f72" stroke-width="3.500" stroke-linejoin="round"/><path d="M19 38h10c-1-5-5-6-5-8 0 2-4 3-5 8z" fill="#ffd84d"/><path d="M18 11h12c-1 4-4 5-6 8-2-3-5-4-6-8z" fill="#ffd84d" opacity=".5"/>');
   var LOCK = Art.svg('0 0 48 48', '<rect x="9" y="21" width="30" height="22" rx="6" fill="#fff"/><path d="M15 21v-6a9 9 0 0 1 18 0v6" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><circle cx="24" cy="31" r="3.500" fill="#8b60ee"/><path d="M24 33v5" stroke="#8b60ee" stroke-width="3" stroke-linecap="round"/>');
 
+  /* ---------- choix de la fin de session (réglage parent) ---------- */
+  function endOptsHtml() {
+    return '<div class="endopts"><p class="eolabel">À la fin du temps de jeu :</p><div class="eorow">' +
+      '<button class="eo" data-end="classic"><span>🏰</span>Fin douce</button><button class="eo" data-end="dodo"><span>😴</span>C’est l’heure du dodo</button></div>' +
+      '<button class="eo witchtog" data-witch></button></div>';
+  }
+  function wireEndOpts(root) {
+    var btns = C.$$('[data-end]', root), wt = C.$('[data-witch]', root);
+    function paint() {
+      btns.forEach(function (b) { b.classList.toggle('on', b.dataset.end === S.end); });
+      wt.style.display = S.end === 'dodo' ? '' : 'none';
+      wt.classList.toggle('off', !S.witch);
+      wt.textContent = S.witch ? '🧙 Sorcière rigolote : oui (touchez pour la désactiver)' : '🧙 Sorcière : non — Lumi dit seulement bonne nuit';
+    }
+    btns.forEach(function (b) { b.onclick = function () { S.end = b.dataset.end; save(); paint(); C.sfx.tap(3); C.bounce(b, 1.08); }; });
+    wt.onclick = function () { S.witch = !S.witch; save(); paint(); C.sfx.tap(5); };
+    paint();
+  }
+
   /* ---------- écran parent avant de jouer ---------- */
   C.register('setup', {
     enter: function (el, params) {
@@ -173,14 +196,14 @@
       function durations() {
         body.innerHTML = '<div class="lumi-s small">' + Art.lumi() + '</div><h1>Combien de temps pour jouer ?</h1>' +
           '<div class="durs">' + DURS.map(function (m) { return '<button class="dur' + (m === chosen ? ' on' : '') + '" data-m="' + m + '"><span class="dhg">' + HOURGLASS + '</span><b>' + m + '</b><em>minutes</em></button>'; }).join('') + '</div>' +
-          '<button class="voicetog" data-voice></button>' +
+          '<button class="voicetog" data-voice></button>' + endOptsHtml() +
           '<button class="bigbtn go" data-go><span>' + Art.castle() + '</span>Commencer à jouer !</button>' +
           '<p class="sfine">Le jeu se termine doucement quand le temps est écoulé. Cette protection concerne uniquement l’application : elle ne verrouille pas l’iPhone.</p>';
         C.$$('.dur', body).forEach(function (b) { b.onclick = function () { chosen = +b.dataset.m; C.$$('.dur', body).forEach(function (x) { x.classList.toggle('on', x === b); }); C.sfx.tap(C.rint(0, 6)); C.bounce(b, 1.1); }; });
         var vt = C.$('[data-voice]', body);
         function paintV() { vt.classList.toggle('off', !C.settings.voice); vt.textContent = C.settings.voice ? '🔊 Voix de la conteuse : activée' : '🔇 Voix de la conteuse : coupée (musique et sons gardés)'; }
         vt.onclick = function () { C.settings.voice = !C.settings.voice; C.saveSettings(); paintV(); C.sfx.tap(2); if (C.settings.voice) C.say('Coucou !', { must: true }); };
-        paintV();
+        paintV(); wireEndOpts(body);
         var go = C.$('[data-go]', body), once = false;
         go.onclick = function () { if (once) return; once = true; C.sfx.yay(); C.fx.confetti(24); setTimeout(function () { startSession(chosen); }, 350); };
       }
@@ -201,7 +224,8 @@
       /* accès parent : bouton visible, mais le code est demandé (un enfant ne peut pas aller plus loin) */
       var lk = C.$('.parentlock', el);
       lk.addEventListener('click', function () { Ses.openParent(); });
-      if (fresh) setTimeout(function () { C.say('Bravo ' + C.NAME + ' ! Maintenant, le château va se reposer. À bientôt !', { must: true }); }, 1200);
+      if (fresh && params.cine) setTimeout(function () { C.speak('narr', C.CINE.night.say); }, 1500);
+      else if (fresh) setTimeout(function () { C.say('Bravo ' + C.NAME + ' ! Maintenant, le château va se reposer. À bientôt !', { must: true }); }, 1200);
     },
     leave: function () { }
   });
@@ -228,8 +252,18 @@
       '<div class="pgrid"><button class="pbtn" data-k="voice"><span class="btn green">' + Art.ui.voice + '</span><em>Voix</em></button><button class="pbtn" data-k="music"><span class="btn purple">' + Art.ui.music + '</span><em>Musique</em></button>' +
       '<button class="pbtn" data-a="pin"><span class="btn yellow">' + LOCK + '</span><em>Changer le code</em></button><button class="pbtn" data-k="reset"><span class="btn red">' + Art.ui.trash + '</span><em>Tout effacer</em></button></div>' +
       '<label class="pvol"><span class="btn purple small">' + Art.ui.music + '</span><input type="range" min="0" max="100" step="5" value="' + Math.round((C.settings.musicVol || 0) * 100) + '" aria-label="volume de la musique"><b>' + Math.round((C.settings.musicVol || 0) * 100) + '%</b></label>' +
-      '<p class="pnote">Protection de l’application uniquement : elle ne verrouille pas l’iPhone et n’est pas une sécurité inviolable. Les créations restent sur cet appareil, sans compte.</p>' +
+      endOptsHtml() + '<button class="eo witchtog" data-testvoices>🔊 Écouter les voix (Lumi, sorcière, Aliya, Tania)</button><p class="pnote voiceinfo"></p>' +
+      '<p class="pnote">Protection de l’application uniquement : elle ne verrouille pas l’iPhone et n’est pas une sécurité inviolable. Les créations restent sur cet appareil, sans compte. Version du jeu : ' + C.VERSION + '.</p>' +
       '<div class="row"><button class="btn big green" data-ok aria-label="fermer">' + Art.ui.check + '</button></div>', 'parent psess');
+    wireEndOpts(m);
+    (function () {
+      var tv = C.$('[data-testvoices]', m), vi = C.$('.voiceinfo', m);
+      try { vi.textContent = C.voiceInfo().map(function (x) { return x.label + ' : ' + x.voice; }).join(' · '); } catch (e) { }
+      tv.onclick = async function () {
+        var ps = C.settings.sound, pv = C.settings.voice; C.settings.sound = true; C.settings.voice = true;   /* essai seulement : les réglages ne changent pas */
+        tv.disabled = true; C.sfx.pop(); try { await C.testVoices(); } catch (e) { } tv.disabled = false; C.settings.sound = ps; C.settings.voice = pv;
+      };
+    })();
     var stat = C.$('.pstat', m);
     function paintStat() { stat.textContent = S.state === 'playing' ? 'Temps restant : ' + fmt(S.remaining) + ' (en pause pendant ce réglage)' : (S.state === 'ended' ? 'Session terminée' : 'Aucune session en cours'); }
     paintStat();
@@ -275,7 +309,7 @@
   /* plus aucune activité tant que la session est terminée : tout est redirigé vers l'écran de fin */
   var go0 = C.go;
   C.go = function (name, params, from) {
-    if (S.state === 'ended' && name !== 'sleep' && name !== 'setup') name = 'sleep';
+    if (S.state === 'ended' && name !== 'sleep' && name !== 'setup' && name !== 'bedtime') name = 'sleep';
     if (S.state === 'none' && name !== 'setup' && name !== 'sleep') name = 'setup';
     return go0.call(C, name, params, from);
   };

@@ -4,6 +4,7 @@
   'use strict';
   var C = window.C = {};
   var NAME = (window.CELIA_CUSTOM && window.CELIA_CUSTOM.name) || 'Celia';
+  C.VERSION = 'celia-v16-2026-11';   /* identique à VERSION dans sw.js (test automatique) */
   C.NAME = NAME;
 
   /* ---------- utilitaires ---------- */
@@ -255,6 +256,7 @@
   /* Parole de la conteuse. Une seule voix à la fois : une nouvelle phrase remplace la précédente (jamais de superposition).
      Ordre : fichier vocal préenregistré (si installé) → voix française du navigateur → petits sons + bulle.
      La musique d'ambiance baisse doucement pendant la phrase puis remonte. */
+  C._babble = babble;
   var sayTok = 0, duckTimer = null;
   function duckOn() { try { C.music && C.music.duck(true); } catch (e) { } }
   function duckOff(tok) { if (tok !== sayTok) return; clearTimeout(duckTimer); try { C.music && C.music.duck(false); } catch (e) { } }
@@ -448,7 +450,8 @@
       (o.cards ? '<div class="endcards"></div>' : '<div class="row"></div>');
     var m = C.modal(html, 'celebrate');
     var shut = false;
-    function go(fn) { if (shut) return; shut = true; C.sfx.pop(); m.close(); fn && setTimeout(fn, 120); }  /* un seul appui compte, même si elle tape plusieurs fois */
+    if (C.cast && o.cast !== false) { try { C.cast.attach(m, o.kind); } catch (e) { console.error(e); } }   /* parfois, une grande sœur vient la féliciter */
+    function go(fn) { if (shut) return; shut = true; C.sfx.pop(); try { if (C.cast) C.cast.stop(); if (C.speak && C.speak.cancel) C.speak.cancel(); } catch (e) { } m.close(); fn && setTimeout(fn, 120); }  /* un seul appui compte, même si elle tape plusieurs fois */
     if (o.cards) {
       var box = C.$('.endcards', m);
       o.cards.forEach(function (c, i) {
@@ -515,7 +518,7 @@
   C.go = function (name, params, from) {
     if (going || !screens[name]) return;
     going = true;
-    C.say.stop();
+    C.say.stop(); if (C.speak && C.speak.cancel) C.speak.cancel();
     var host = C.$('#screens'), old = cur, oldMod = screens[curName];
     /* la création en cours est sauvegardée automatiquement quand on quitte l'activité (aucune confirmation) */
     try { if (old && old._autosave) old._autosave(); } catch (e) { }

@@ -659,10 +659,119 @@
   STAGES[2].text = "Nouvelles cartes : métiers, rencontres, logement… Un métier demande un niveau de Formation : regarde le cadenas.";
   STAGES.forEach(function (s, i) { if (s) s.hand = [0, 1, 3, 4, 4, 4][i]; });
 
+  /* =====================================================================
+     EXTENSION 4 : niveaux d'études nommés, beaucoup plus de métiers, couples plus naturels
+     ===================================================================== */
+  var EDU_NAMES = ["Sans diplôme", "Bac", "Bac+2", "Licence", "Master", "Grande école", "Doctorat"];
+  function eduName(n) { return EDU_NAMES[Math.max(0, Math.min(EDU_NAMES.length - 1, n | 0))]; }
+
+  // ---- parcours d'études : une marche à la fois, avec son nom ----
+  patch("bac", function (c) { c.name = "Bac obtenu au rattrapage"; c.copies = 5; c.req = { maxEdu: 0 }; c.text = "Oral de rattrapage, chemise empruntée, réponse au hasard : ça passe ! Tu passes de Sans diplôme à Bac (niveau 1)."; c.tip = "Première marche : le bac"; });
+  patch("bts", function (c) { c.name = "BTS en alternance"; c.copies = 4; c.tier = 2; c.req = { minEdu: 1, maxEdu: 1 }; c.fx = [{ op: "edu", n: 1 }, { op: "res", b: 1 }]; c.text = "Deux ans, un patron, des cours le vendredi. Tu passes de Bac à Bac+2 (niveau 2)."; c.tip = "Il faut le Bac (niveau 1)"; });
+  patch("diplome", function (c) { c.name = "Licence obtenue de justesse"; c.copies = 4; c.tier = 2; c.req = { minEdu: 2, maxEdu: 2 }; c.fx = [{ op: "edu", n: 1 }, { op: "res", r: 1 }]; c.text = "Trois ans d'amphi, deux de cafétéria. Tu passes de Bac+2 à Licence (niveau 3)."; c.tip = "Il faut Bac+2 (niveau 2)"; });
+  patch("master", function (c) { c.copies = 3; c.tier = 3; c.req = { minEdu: 3, maxEdu: 3 }; c.fx = [{ op: "edu", n: 1 }, { op: "res", r: 1 }]; c.text = "Une semaine à l'école, une semaine au bureau, zéro week-end. Tu passes de Licence à Master (niveau 4)."; c.tip = "Il faut la Licence (niveau 3)"; });
+  patch("internat", function (c) { c.name = "Concours de la grande école"; c.icon = "gradcap"; c.copies = 2; c.tier = 3; c.req = { minEdu: 4, maxEdu: 4 }; c.fx = [{ op: "edu", n: 1 }, { op: "res", r: 2 }]; c.text = "Deux ans de prépa, un concours, et une casquette de l'école. Tu passes de Master à Grande école (niveau 5)."; c.tip = "Il faut le Master (niveau 4)"; c.life = "Intègre une grande école. Se met à dire « chez nous » en parlant de promo."; });
+  patch("coursdusoir", function (c) { c.text = "Après le travail, entre deux bâillements. +1 niveau d'études (jusqu'à Master)."; c.req = { maxEdu: 3 }; });
+  patch("mooc", function (c) { c.text = "Une formation en ligne suivie en pyjama, en accéléré x2. +1 niveau d'études (jusqu'à Licence)."; c.req = { maxEdu: 2 }; });
+  patch("formationcontinue", function (c) { c.req = { maxEdu: 4 }; });
+  patch("fauxdiplome", function (c) { c.req = { maxEdu: 3 }; });
+  patch("cap", function (c) { c.name = "CAP plomberie"; c.req = { notStudy: "cap", maxEdu: 2 }; c.text = "Deux ans d'apprentissage et une passion soudaine pour les siphons. +1 niveau d'études, et le métier de plombier·e devient accessible."; c.copies = 2; });
+
+  patch("bts", function (c) { c.copies = 5; }); patch("diplome", function (c) { c.copies = 5; }); patch("master", function (c) { c.copies = 4; }); patch("internat", function (c) { c.copies = 3; });
+  var STUDY_CARDS = [
+    { key: "doctorat", fam: "study", tier: 4, name: "Thèse de doctorat", icon: "books", copies: 3,
+      text: "Trois ans, un directeur de thèse invisible, une soutenance de 4 heures. Tu passes de Grande école à Doctorat (niveau 6).", tip: "Il faut la Grande école (niveau 5)",
+      req: { minEdu: 5 }, fx: [{ op: "edu", n: 1 }, { op: "res", r: 2, b: -1 }], life: "Soutient sa thèse devant trois personnes dont deux sont là pour le buffet." },
+    { key: "cap_cuisine", fam: "study", tier: 1, name: "CAP cuisine", icon: "toque", copies: 2,
+      text: "Des oignons, des coups de chaud, un chef qui crie. +1 niveau d'études, et le métier de cuisinier·ère devient accessible.", tip: "Formation pro",
+      req: { notStudy: "cap_cuisine", maxEdu: 2 }, fx: [{ op: "edu", n: 1, study: "cap_cuisine" }], life: "Décroche un CAP cuisine. Ne dit plus jamais « c'est cuit »." },
+    { key: "cap_coiffure", fam: "study", tier: 1, name: "CAP coiffure", icon: "scissors", copies: 2,
+      text: "Mille shampoings sur une tête en plastique. +1 niveau d'études, et le métier de coiffeur·se devient accessible.", tip: "Formation pro",
+      req: { notStudy: "cap_coiffure", maxEdu: 2 }, fx: [{ op: "edu", n: 1, study: "cap_coiffure" }], life: "Décroche un CAP coiffure. Juge déjà toutes les coupes de la famille." },
+    { key: "cap_elec", fam: "study", tier: 1, name: "CAP électricien", icon: "bolt", copies: 2,
+      text: "Quand ça saute, c'est toi. +1 niveau d'études, et le métier d'électricien·ne devient accessible.", tip: "Formation pro",
+      req: { notStudy: "cap_elec", maxEdu: 2 }, fx: [{ op: "edu", n: 1, study: "cap_elec" }], life: "Décroche un CAP électricien. A touché un fil. Une seule fois." },
+    { key: "cap_meca", fam: "study", tier: 1, name: "CAP mécanique", icon: "gear", copies: 2,
+      text: "Des mains pleines de cambouis et un avis sur le bruit de ton moteur. +1 niveau d'études, et le métier de mécanicien·ne devient accessible.", tip: "Formation pro",
+      req: { notStudy: "cap_meca", maxEdu: 2 }, fx: [{ op: "edu", n: 1, study: "cap_meca" }], life: "Décroche un CAP mécanique. Dit « ça va te coûter cher » avant même d'ouvrir le capot." },
+    { key: "cap_boulange", fam: "study", tier: 1, name: "CAP boulangerie", icon: "bread", copies: 2,
+      text: "Réveil à 3 h du matin, farine partout. +1 niveau d'études, et le métier de boulanger·ère devient accessible.", tip: "Formation pro",
+      req: { notStudy: "cap_boulange", maxEdu: 2 }, fx: [{ op: "edu", n: 1, study: "cap_boulange" }], life: "Décroche un CAP boulangerie. Ne regarde plus un croissant du même œil." },
+    { key: "concours", fam: "study", tier: 2, name: "Concours de la fonction publique", icon: "stamp", copies: 2,
+      text: "Trois épreuves, 8 000 candidats, un tampon. +1 niveau d'études, et les métiers de policier·ère et de pompier·ère deviennent accessibles.", tip: "Il faut le Bac (niveau 1)",
+      req: { minEdu: 1, maxEdu: 3, notStudy: "concours" }, fx: [{ op: "edu", n: 1, study: "concours" }, { op: "res", r: 1 }], life: "Réussit un concours de la fonction publique. 8 000 candidats, 40 places, il était 39e." },
+  ];
+  STUDY_CARDS.forEach(function (c) { CARDS.push(c); });
+
+  // ---- les métiers : beaucoup plus de variété, du petit boulot à l'astronaute ----
+  // req : edu (niveau d'études) · study (formation pro) · minR · salary par tour · perTurn · perRep
+  var J = [
+    // sans diplôme
+    { k: "serveur", t: ["Serveur·se", "Chef·fe de rang", "Maître·sse d'hôtel"], sal: 1, perRep: 5, o: "waiter", ic: "tray", prop: "shop", name: "Serveur·se", tier: 1, copies: 2, text: "Plateau, sourire, pourboires (selon ta réputation). Salaire 1 par tour.", life: "Devient serveur·se. Porte six assiettes. En a déjà lâché cinq." },
+    { k: "vendeur", t: ["Vendeur·se", "Responsable de rayon", "Directeur·rice de magasin"], sal: 2, o: "shopkeeper", ic: "bag", prop: "shop", name: "Vendeur·se", tier: 1, copies: 2, text: "« Je peux vous renseigner ? » Salaire 2 par tour.", life: "Devient vendeur·se. Plie 400 pulls par jour, en a vendu 3." },
+    { k: "jardinier", t: ["Jardinier·ère", "Paysagiste", "Maître·sse des jardins"], sal: 1, perTurn: { b: 1 }, o: "gardener", ic: "leaf", prop: "plant", name: "Jardinier·ère", tier: 1, copies: 2, text: "Du grand air, des tulipes, +1 bonheur par tour. Salaire 1 par tour.", life: "Devient jardinier·ère. Parle à ses tomates. Elles ne répondent pas." },
+    // formations professionnelles
+    { k: "cuisinier", study: "cap_cuisine", t: ["Commis de cuisine", "Chef·fe de partie", "Chef·fe étoilé·e"], sal: 3, o: "chef", ic: "toque", prop: "kitchen", name: "Cuisinier·ère", tier: 2, copies: 2, text: "Coup de feu, coups de gueule. Salaire 3 par tour.", life: "Devient cuisinier·ère. Sait enfin pourquoi le chef hurlait." },
+    { k: "coiffeur", study: "cap_coiffure", t: ["Coiffeur·se", "Coloriste", "Directeur·rice de salon"], sal: 3, perTurn: { b: 1 }, o: "hairdresser", ic: "scissors", prop: "salon", name: "Coiffeur·se", tier: 2, copies: 2, text: "« Juste les pointes ». +1 bonheur par tour. Salaire 3 par tour.", life: "Devient coiffeur·se. Connaît toutes les histoires du quartier. Toutes." },
+    { k: "electricien", study: "cap_elec", t: ["Électricien·ne", "Chef·fe d'équipe", "Patron·ne de l'entreprise d'électricité"], sal: 3, o: "electrician", ic: "bolt", prop: "bolt", name: "Électricien·ne", tier: 2, copies: 2, text: "Tu rallumes la lumière (et les nerfs). Salaire 3 par tour.", life: "Devient électricien·ne. Aime l'ambiance des tableaux électriques." },
+    { k: "mecanicien", study: "cap_meca", t: ["Mécanicien·ne", "Chef·fe d'atelier", "Patron·ne du garage"], sal: 3, o: "mechanic", ic: "gear", prop: "garage", name: "Mécanicien·ne", tier: 2, copies: 2, text: "« Faut changer la pièce. » Salaire 3 par tour.", life: "Devient mécanicien·ne. A ouvert son premier capot et dit « hum »." },
+    { k: "boulanger", study: "cap_boulange", t: ["Boulanger·ère", "Artisan·e boulanger·ère", "Meilleur·e baguette du quartier"], sal: 3, perTurn: { b: 1 }, o: "baker", ic: "bread", prop: "kitchen", name: "Boulanger·ère", tier: 2, copies: 2, text: "Réveil à 3 h, odeur de pain chaud. +1 bonheur par tour. Salaire 3 par tour.", life: "Devient boulanger·ère. Sent la brioche en permanence." },
+    { k: "policier", study: "concours", t: ["Gardien·ne de la paix", "Brigadier·ère", "Commissaire"], sal: 3, perTurn: { r: 1 }, o: "police", ic: "siren", prop: "siren", name: "Policier·ère", tier: 2, copies: 2, text: "Tu fais respecter l'ordre (et les amendes). +1 réputation par tour. Salaire 3 par tour.", life: "Devient policier·ère. A verbalisé sa propre voiture, une fois." },
+    { k: "pompier", study: "concours", t: ["Sapeur-pompier·ère", "Sergent·e", "Capitaine"], sal: 3, perTurn: { r: 1 }, o: "firefighter", ic: "firehat", prop: "siren", name: "Pompier·ère", tier: 2, copies: 2, text: "Tu sauves les chats (et les gens). +1 réputation par tour. Salaire 3 par tour.", life: "Devient pompier·ère. Descend la barre en rougissant." },
+    // Bac
+    { k: "immo", edu: 1, t: ["Agent·e immobilier·ère", "Négociateur·rice", "Directeur·rice d'agence"], sal: 3, o: "realtor", ic: "house", prop: "office", name: "Agent·e immobilier·ère", tier: 2, copies: 2, text: "« Charmant, avec du potentiel. » Salaire 3 par tour.", life: "Devient agent·e immobilier·ère. Dit « lumineux » pour une cave." },
+    // Bac+2
+    { k: "dev", edu: 2, t: ["Développeur·se junior", "Développeur·se", "Lead dev"], sal: 4, o: "developer", ic: "laptop", prop: "startup", name: "Développeur·se", tier: 2, copies: 2, text: "Tu écris du code qui marche (sur ton ordi). Salaire 4 par tour.", life: "Devient développeur·se. Répond « ça marche chez moi » à tout." },
+    { k: "graphiste", edu: 2, t: ["Graphiste", "Directeur·rice artistique", "Directeur·rice de création"], sal: 3, perTurn: { b: 1 }, o: "designer", ic: "palette", prop: "easel", name: "Graphiste", tier: 2, copies: 2, text: "« Peux-tu rendre le logo plus grand ? » +1 bonheur par tour. Salaire 3 par tour.", life: "Devient graphiste. A rendu le logo plus grand. Quarante fois." },
+    { k: "comptable", edu: 2, t: ["Comptable", "Chef·fe comptable", "Directeur·rice financier·ère"], sal: 3, o: "accountant", ic: "calc", prop: "office", name: "Comptable", tier: 2, copies: 2, text: "Chaque centime a sa place. Salaire 3 par tour.", life: "Devient comptable. Vérifie l'addition du restaurant. Deux fois." },
+    // Licence
+    { k: "journaliste", edu: 3, t: ["Journaliste", "Grand·e reporter", "Rédacteur·rice en chef"], sal: 3, perTurn: { r: 1 }, o: "reporter", ic: "newspaper", prop: "press", name: "Journaliste", tier: 3, copies: 2, text: "Tu cherches la vérité (et le scoop). +1 réputation par tour. Salaire 3 par tour.", life: "Devient journaliste. A enquêté sur la machine à café. Révélations à venir." },
+    { k: "architecte", edu: 3, t: ["Architecte", "Architecte associé·e", "Architecte star"], sal: 4, perTurn: { r: 1 }, o: "architect", ic: "ruler", prop: "engineer", name: "Architecte", tier: 3, copies: 2, text: "Tu dessines des maisons que personne n'ose habiter. +1 réputation par tour. Salaire 4 par tour.", life: "Devient architecte. Tout dessiner en noir et blanc, par principe." },
+    // Master
+    { k: "pharmacien", edu: 4, t: ["Pharmacien·ne", "Pharmacien·ne titulaire", "Propriétaire de la pharmacie"], sal: 5, o: "pharmacist", ic: "pill", prop: "medical", name: "Pharmacien·ne", tier: 3, copies: 2, text: "Tu déchiffres les ordonnances. Salaire 5 par tour.", life: "Devient pharmacien·ne. Est la seule personne à lire l'écriture du médecin." },
+    { k: "psychologue", edu: 4, t: ["Psychologue", "Psychologue clinicien·ne", "Psychologue de renom"], sal: 4, perTurn: { b: 1 }, o: "psychologist", ic: "brain", prop: "books", name: "Psychologue", tier: 3, copies: 2, text: "« Et ça vous fait quoi ? » +1 bonheur par tour. Salaire 4 par tour.", life: "Devient psychologue. Dit « hmm » avec une intensité professionnelle." },
+    { k: "veterinaire", edu: 4, t: ["Vétérinaire", "Vétérinaire associé·e", "Directeur·rice de clinique"], sal: 4, perTurn: { b: 1 }, o: "vet", ic: "paw", prop: "medical", name: "Vétérinaire", tier: 3, copies: 2, text: "Tu soignes tout ce qui a des poils (et le propriétaire). +1 bonheur par tour. Salaire 4 par tour.", life: "Devient vétérinaire. A été mordu·e par un hamster, de façon documentée." },
+    { k: "datascientist", edu: 4, t: ["Data scientist", "Lead data", "Directeur·rice des données"], sal: 5, o: "data", ic: "chart", prop: "startup", name: "Data scientist", tier: 3, copies: 2, text: "Tu fais parler les tableaux Excel. Salaire 5 par tour.", life: "Devient data scientist. Fait des courbes de tout, y compris de sa vie." },
+    // Grande école
+    { k: "pilote", edu: 5, t: ["Copilote", "Commandant de bord", "Commandant instructeur"], sal: 6, perTurn: { r: 1 }, o: "pilot", ic: "plane", prop: "plane", name: "Pilote de ligne", tier: 3, copies: 2, text: "« Mesdames et messieurs, ici votre commandant de bord. » +1 réputation par tour. Salaire 6 par tour.", life: "Devient pilote de ligne. Annonce la météo à des gens qui s'en fichent." },
+    { k: "magistrat", edu: 5, t: ["Juge", "Président·e de chambre", "Haut·e magistrat·e"], sal: 5, perTurn: { r: 1 }, o: "judge", ic: "gavel", prop: "law", name: "Magistrat·e", tier: 3, copies: 2, text: "« L'audience est suspendue. » +1 réputation par tour. Salaire 5 par tour.", life: "Devient magistrat·e. A déjà prononcé une peine pour un gobelet." },
+    // Doctorat
+    { k: "chercheur", edu: 6, t: ["Chercheur·se", "Directeur·rice de recherche", "Prix Nobel (en attendant)"], sal: 5, perTurn: { r: 1, b: 1 }, o: "scientist", ic: "flask", prop: "lab", name: "Chercheur·se", tier: 4, copies: 2, text: "Tu publies (dans des revues que personne ne lit). +1 réputation et +1 bonheur par tour. Salaire 5 par tour.", life: "Devient chercheur·se. A trouvé quelque chose. Il faut maintenant le publier." },
+    { k: "astronaute", edu: 6, t: ["Astronaute en formation", "Astronaute", "Commandant de mission"], sal: 6, perTurn: { r: 1 }, o: "astronaut", ic: "rocket", prop: "space", name: "Astronaute", tier: 4, copies: 1, text: "« Houston, on a un souci. » +1 réputation par tour. Salaire 6 par tour.", life: "Devient astronaute. Voit la Terre de haut. Ses problèmes semblent petits." },
+  ];
+  J.forEach(function (j) {
+    var o = { titles: j.t, salary: j.sal, outfit: j.o, card: j.k, prop: j.prop };
+    if (j.edu !== undefined) o.edu = j.edu; else if (!j.study) o.edu = 0;
+    if (j.study) o.study = j.study;
+    if (j.perTurn) o.perTurn = j.perTurn;
+    if (j.perRep) o.perRep = j.perRep;
+    JOBS[j.k] = o;
+    var bonus = { b: 1 }; if (j.edu >= 4) bonus = { r: 2 }; else if (j.edu >= 2) bonus = { r: 1 };
+    var fx = [{ op: "job", job: j.k }, { op: "res" }]; Object.keys(bonus).forEach(function (k) { fx[1][k] = bonus[k]; });
+    CARDS.push({ key: j.k, fam: "career", tier: j.tier, name: j.name, icon: j.ic, copies: j.copies, text: j.text, tip: "", req: { qualify: j.k }, fx: fx, life: j.life });
+  });
+  // les métiers déjà présents : même fiche de condition (niveau d'études nommé)
+  ["bureau", "commercial", "infirmier", "prof", "ingenieur", "avocat", "chirurgien"].forEach(function (k) { JOBS[k].prop = JOBS[k].prop || ({ bureau: "office", commercial: "office", infirmier: "medical", prof: "school", ingenieur: "engineer", avocat: "law", chirurgien: "medical" })[k]; });
+  patch("bureau", function (c) { c.tip = "Il faut le Bac"; });
+  patch("commercial", function (c) { c.tip = "Il faut Bac+2"; });
+  patch("infirmier", function (c) { c.tip = "Il faut Bac+2"; });
+  patch("prof", function (c) { c.tip = "Il faut une Licence"; });
+  patch("ingenieur", function (c) { c.tip = "Il faut une Licence"; });
+  patch("avocatjob", function (c) { c.tip = "Il faut un Master"; });
+  patch("chirurgien", function (c) { c.tip = "Il faut une Grande école"; });
+  JOBS.avocat.edu = 4; JOBS.chirurgien.edu = 5;
+
+  // ---- couples : prénoms par genre (le genre du partenaire dépend de celui du personnage) ----
+  NAMES.partnerM = ["Jean-Michel", "Kevin", "Yanis", "Bertrand", "Gérald", "Rachid", "Enzo", "Karim", "Antoine", "Mehdi", "Thomas", "Dimitri", "Mamadou", "Paulo", "Hugo", "Samir", "Lucas", "Olivier"];
+  NAMES.partnerF = ["Samia", "Brigitte", "Clémentine", "Inès", "Maëva", "Solange", "Nadia", "Aïcha", "Léa", "Chloé", "Fatou", "Sofia", "Yasmine", "Camille", "Manon", "Priya", "Élise", "Marion"];
+  NAMES.partnerX = ["Lou", "Dominique", "Camille", "Alex", "Sacha", "Charlie"];
+  // part des couples de même genre (le reste : couples différents) : rare mais présent
+  var SAME_SEX_RATE = 0.1;
+
   root.QV_DATA = {
     FAMILIES: FAMILIES, JOBS: JOBS, ITEMS: ITEMS, HOUSING: HOUSING,
     CARDS: CARDS, EVENTS: EVENTS, OBJECTIVES: OBJECTIVES, NAMES: NAMES,
-    ROUNDS: ROUNDS, START_AGE: AGE_FROM, AGE_FROM: AGE_FROM, AGE_TO: AGE_TO, FORMATS: FORMATS, roundsFor: roundsFor, MAX_PLAYERS: MAX_PLAYERS, EDU_MAX: EDU_MAX, COMBOS: COMBOS, LIFE_BONUS: LIFE_BONUS, HAND_SIZE: HAND_SIZE, TROPHIES: TROPHIES, STATUSES: STATUSES, STAGES: STAGES, stageForRound: stageForRound,
+    ROUNDS: ROUNDS, START_AGE: AGE_FROM, AGE_FROM: AGE_FROM, AGE_TO: AGE_TO, FORMATS: FORMATS, roundsFor: roundsFor, EDU_NAMES: EDU_NAMES, eduName: eduName, SAME_SEX_RATE: SAME_SEX_RATE, MAX_PLAYERS: MAX_PLAYERS, EDU_MAX: EDU_MAX, COMBOS: COMBOS, LIFE_BONUS: LIFE_BONUS, HAND_SIZE: HAND_SIZE, TROPHIES: TROPHIES, STATUSES: STATUSES, STAGES: STAGES, stageForRound: stageForRound,
     byKey: CARDS.reduce(function (m, c) { m[c.key] = c; return m; }, {}),
   };
   if (typeof module !== "undefined" && module.exports) module.exports = root.QV_DATA;

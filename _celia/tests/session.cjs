@@ -113,7 +113,7 @@ async function typePin(p, pin) { for (const d of pin) { await p.evaluate((d) => 
   await p.clock.runFor(31000); await typePin(p, '1234'); await sleep(p, 500);
   ok(await p.evaluate(() => !!document.querySelector('.psess [data-a=add]') && !!document.querySelector('[data-a=new]') && !!document.querySelector('[data-a=back]')), 'bon code : espace parents (nouvelle session, +5 min, écran de fin)');
   ok(await p.evaluate(() => /Session terminée/.test(document.querySelector('.pstat').textContent)), 'l’espace parents indique « Session terminée »');
-  ok(await p.evaluate(() => /ne verrouille pas l’iPhone/.test(document.querySelector('.psess .pnote').textContent)), 'mention claire : ce n’est pas un verrouillage de l’iPhone');
+  ok(await p.evaluate(() => /ne verrouille pas l’iPhone/.test([...document.querySelectorAll('.psess .pnote')].map(n => n.textContent).join(' '))), 'mention claire : ce n’est pas un verrouillage de l’iPhone');
 
   /* ---- 8. ajouter 5 minutes ---- */
   await p.evaluate(() => document.querySelector('[data-a=add]').click()); await sleep(p, 1500);

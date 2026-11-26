@@ -75,6 +75,16 @@
     return s;
   }
 
+  // le partenaire : genre différent la plupart du temps (D.SAME_SEX_RATE de couples de même genre), prénom et apparence assortis
+  function newPartner(s, p, look) {
+    var mine = (p.avatar && p.avatar.sx) || "x", sx;
+    if (mine === "m" || mine === "f") sx = rand(s) < D.SAME_SEX_RATE ? mine : (mine === "m" ? "f" : "m");
+    else sx = rand(s) < 0.5 ? "m" : "f";
+    var list = sx === "m" ? D.NAMES.partnerM : D.NAMES.partnerF;
+    var o = { name: pick(s, list), seed: seedFor(s), sx: sx };
+    if (look) o.look = look;
+    return o;
+  }
   function age(s) { var n = Math.max(2, s.maxRounds || 12); return Math.round(D.AGE_FROM + (Math.min(s.round, n) - 1) * (D.AGE_TO - D.AGE_FROM) / (n - 1)); }
   function cur(s) { return s.players[s.order[s.turn]]; }
   function emit(s, ev) {
@@ -85,7 +95,7 @@
   }
   // ---------- conséquences en toutes lettres ----------
   function snap(p) {
-    return { job: p.job ? { k: p.job.k, lv: p.job.lv } : null, title: jobTitle(p), pay: baseSalary(p), retired: p.retired, edu: p.edu, engaged: p.engaged, partner: p.partner ? p.partner.name : null, married: p.married,
+    return { job: p.job ? { k: p.job.k, lv: p.job.lv } : null, title: jobTitle(p), pay: baseSalary(p), studies: (p.studies || []).slice(), retired: p.retired, edu: p.edu, engaged: p.engaged, partner: p.partner ? p.partner.name : null, married: p.married,
       kids: p.kids.map(function (k) { return k.name; }), garde: p.garde, housing: p.housing, items: p.items.slice(), st: Object.keys(p.st || {}), scandal: p.scandal };
   }
   function snapAll(s) { var o = {}; s.order.forEach(function (id) { o[id] = snap(s.players[id]); }); return o; }
@@ -101,7 +111,8 @@
       else if (b.job && a.job && a.job.lv > b.job.lv) t.push("Promotion : " + a.title + payTxt(a.pay));
       else if (b.job && a.job && a.job.lv < b.job.lv) t.push("Rétrogradé·e : " + a.title + payTxt(a.pay));
       else if (b.job && a.job && a.pay > b.pay) t.push("Salaire : " + b.pay + " → " + a.pay + " € par tour");
-      if (a.edu > b.edu) t.push("Formation : niveau " + a.edu + unlockedJobs(b.edu, a.edu)); else if (a.edu < b.edu) t.push("Formation retirée : niveau " + a.edu);
+      if (a.edu > b.edu) t.push("Formation : niveau " + a.edu + " — " + D.eduName(a.edu) + unlockedJobs(b.edu, a.edu)); else if (a.edu < b.edu) t.push("Formation retirée : niveau " + a.edu + " — " + D.eduName(a.edu));
+      (a.studies || []).forEach(function (k) { if ((b.studies || []).indexOf(k) < 0) { var tj = Object.keys(D.JOBS).filter(function (j) { return D.JOBS[j].study === k; }).map(function (j) { return D.JOBS[j].titles[0]; }); if (tj.length) t.push("Formation pro : " + CARDS[k].name + " · débloque : " + tj.join(", ")); } });
       if (!b.engaged && a.engaged && !a.married) t.push("Fiancé·e à " + a.partner);
       if (!b.partner && a.partner) t.push("En couple avec " + a.partner);
       else if (b.partner && !a.partner) t.push(b.married ? "Divorcé·e de " + b.partner : "Rupture avec " + b.partner);
@@ -178,8 +189,8 @@
   // un métier est-il accessible avec cette formation ? "" si oui, sinon la raison
   function qualifies(p, key, s) {
     var J = D.JOBS[key]; if (!J) return "Métier inconnu";
-    if (J.study && (p.studies || []).indexOf(J.study) < 0) return "Nécessite le " + (CARDS[J.study] ? CARDS[J.study].name : J.study);
-    if (J.edu && (p.edu || 0) < J.edu) return "Nécessite Formation " + J.edu + " — tu as " + (p.edu || 0);
+    if (J.study && (p.studies || []).indexOf(J.study) < 0) return "Nécessite : " + (CARDS[J.study] ? CARDS[J.study].name : J.study);
+    if (J.edu && (p.edu || 0) < J.edu) return "Nécessite " + D.eduName(J.edu) + " (niveau " + J.edu + ") — tu as " + D.eduName(p.edu || 0) + " (niveau " + (p.edu || 0) + ")";
     if (J.minR && p.r < J.minR) return "Nécessite " + J.minR + " Réputation — tu en as " + p.r;
     return "";
   }
@@ -188,7 +199,9 @@
     var keys = Object.keys(D.JOBS).filter(function (k) { var J = D.JOBS[k]; return J.card && CARDS[J.card] && !qualifies(p, k, s) && !(other && p.job && p.job.k === k) && k !== "influence"; });
     if (!keys.length) return null;
     keys.sort(function (a, b) { return jobPay(D.JOBS[b]) - jobPay(D.JOBS[a]); });
-    var key = keys[0], card = null;
+    // on ne propose pas toujours le mieux payé : un métier au hasard parmi ceux qui paient presque autant (de la variété !)
+    var top = jobPay(D.JOBS[keys[0]]), pool = keys.filter(function (k) { return jobPay(D.JOBS[k]) >= top - 2; });
+    var key = take ? pool[Math.floor(rand(s) * pool.length)] : keys[0], card = null;
     if (take) {
       var ck = D.JOBS[key].card;
       for (var i = s.deck.length - 1; i >= 0; i--) if (s.deck[i].k === ck) { card = s.deck.splice(i, 1)[0]; break; }
@@ -204,7 +217,7 @@
   function jobPay(J, lv) { return J ? J.salary + (lv || 1) - 1 : 0; }
   function unlockedJobs(a, b) {
     var t = Object.keys(D.JOBS).filter(function (k) { var J = D.JOBS[k]; return J.card && !J.study && J.edu > a && J.edu <= b; }).map(function (k) { return D.JOBS[k].titles[0]; });
-    return t.length ? " · débloque : " + t.join(", ") : "";
+    return t.length ? " · débloque : " + t.slice(0, 4).join(", ") + (t.length > 4 ? " et " + (t.length - 4) + (t.length - 4 > 1 ? " autres" : " autre") : "") : "";
   }
 
   // ---------- conditions ----------
@@ -230,8 +243,8 @@
       var qw = qualifies(p, req.qualify, s); if (qw) return qw;
       if (p.job && jobPay(D.JOBS[req.qualify], 1) <= baseSalary(p)) return "Ton métier paie déjà autant (Reconversion ou Démission pour changer)";
     }
-    if (req.minEdu && (p.edu || 0) < req.minEdu) return "Nécessite Formation " + req.minEdu + " — tu as " + (p.edu || 0);
-    if (req.maxEdu !== undefined && (p.edu || 0) > req.maxEdu) return req.maxEdu === 0 ? "Tu as déjà le bac" : "Trop facile pour ta Formation (" + p.edu + ")";
+    if (req.minEdu && (p.edu || 0) < req.minEdu) return "Nécessite " + D.eduName(req.minEdu) + " (niveau " + req.minEdu + ") — tu as " + D.eduName(p.edu || 0) + " (niveau " + (p.edu || 0) + ")";
+    if (req.maxEdu !== undefined && (p.edu || 0) > req.maxEdu) return req.maxEdu === 0 ? "Tu as déjà le bac" : "Déjà fait : tu es " + D.eduName(p.edu || 0) + " (niveau " + (p.edu || 0) + ")";
     if (req.notStudy && (p.studies || []).indexOf(req.notStudy) >= 0) return "Déjà obtenu";
     if (req.maxRaise && p.job && (p.job.raise || 0) >= req.maxRaise) return "Déjà augmenté·e 2 fois";
     if (req.minSalary && baseSalary(p) < req.minSalary) return "Nécessite un salaire de " + req.minSalary + " — tu gagnes " + baseSalary(p);
@@ -379,13 +392,13 @@
       case "loseJob": if (p.job) dropZone(s, p, "job"); p.job = null; p.startup = 0; break;
       case "diploma": p.edu = Math.min(D.EDU_MAX, (p.edu || 0) + 1); break;
       case "partner":
-        p.partner = { name: pick(s, D.NAMES.partner), seed: seedFor(s) }; if (o.look) p.partner.look = o.look; ctx.partner = p.partner.name; break;
+        p.partner = newPartner(s, p, o.look); ctx.partner = p.partner.name; break;
       case "vegas":
-        if (!p.partner) { p.partner = { name: pick(s, D.NAMES.partner), seed: seedFor(s) }; ctx.stranger = true; }
+        if (!p.partner) { p.partner = newPartner(s, p); ctx.stranger = true; }
         ctx.partner = p.partner.name; p.married = true; break;
       case "breakup":
         if (!p.partner) break;
-        ctx.partner = p.partner.name; ctx.exSeed = p.partner.seed;
+        ctx.partner = p.partner.name; ctx.exSeed = p.partner.seed; ctx.exSx = p.partner.sx;
         p.partner = null; p.married = false; p.engaged = false; dropZone(s, p, "love");
         if (p.st.doublevie) delete p.st.doublevie;
         if (p.kids.length) { p.garde = true; ctx.garde = true; ctx.kids = p.kids.map(function (k) { return k.seed; }); }
@@ -450,7 +463,7 @@
       case "marry": p.married = true; break;
       case "divorce":
         ctx.partner = p.partner ? p.partner.name : "l'ex";
-        ctx.exSeed = p.partner ? p.partner.seed : 1;
+        ctx.exSeed = p.partner ? p.partner.seed : 1; ctx.exSx = p.partner ? p.partner.sx : "";
         p.partner = null; p.married = false; p.engaged = false; delete p.st.doublevie; dropZone(s, p, "love");
         if (p.kids.length) { p.garde = true; ctx.garde = true; ctx.kids = p.kids.map(function (k) { return k.seed; }); }
         if (o.soft) { addRes(s, p, { b: -1 }, n); }
@@ -541,7 +554,7 @@
         run(s, p, def.risk.fx, rctx); mood(p, "shocked");
         rctx.changes = diffAll(s, before);
         life(s, p, rctx.text ? rctx.text.replace("{name} ", "") : def.risk.life, "bad");
-        stEvents.push({ t: "status", s: k, p: p.id, scene: def.risk.scene, notes: rctx.notes, changes: rctx.changes, data: { exSeed: rctx.exSeed, partner: rctx.partner }, text: (rctx.text || def.risk.text).replace("{name}", p.name) });
+        stEvents.push({ t: "status", s: k, p: p.id, scene: def.risk.scene, notes: rctx.notes, changes: rctx.changes, data: { exSeed: rctx.exSeed, exSx: rctx.exSx, partner: rctx.partner }, text: (rctx.text || def.risk.text).replace("{name}", p.name) });
         return;
       }
       if (def.perm) return;
@@ -721,6 +734,7 @@
     if (ctx.busted) { ev.data.busted = true; mood(p, "shocked"); }
     if (ctx.garde) ev.data.kids = ctx.kids;
     if (ctx.partner) ev.data.partner = ctx.partner;
+    if (ctx.exSeed) { ev.data.exSeed = ctx.exSeed; ev.data.exSx = ctx.exSx; }
     if (ctx.kid) ev.data.kid = ctx.kid;
     if (ctx.amount) ev.data.amount = ctx.amount;
     if (ctx.singer) ev.data.singer = ctx.singer;
@@ -737,7 +751,7 @@
   function hit(s, att, tgt, c, mode) {
     // mode : "full" | "soft" | "reflected"
     var ctx = { notes: [], attacker: att.id };
-    var hadKids = tgt.kids.length > 0, partnerSeed = tgt.partner ? tgt.partner.seed : 0, partnerName = tgt.partner ? tgt.partner.name : "";
+    var hadKids = tgt.kids.length > 0, partnerSeed = tgt.partner ? tgt.partner.seed : 0, partnerSx = tgt.partner ? tgt.partner.sx : "", partnerName = tgt.partner ? tgt.partner.name : "";
     if (mode === "soft") run(s, tgt, c.soft.fx, ctx);
     else run(s, tgt, c.fx, ctx);
     tgt.stats.hits += mode === "soft" ? 0 : 1;
@@ -750,7 +764,7 @@
     if (ctx.combo) ctx.notes.combo = ctx.combo;
     var ev = {
       t: "card", k: c.key, p: att.id, to: tgt.id, outcome: mode, notes: ctx.notes, combo: ctx.combo || undefined,
-      scene: mode === "soft" ? null : (ctx.scene || c.scene), data: { partner: partnerName, exSeed: partnerSeed },
+      scene: mode === "soft" ? null : (ctx.scene || c.scene), data: { partner: partnerName, exSeed: partnerSeed, exSx: partnerSx },
     };
     if (ctx.garde && hadKids && mode !== "soft") { ev.data.garde = true; ev.data.kids = ctx.kids || []; }
     if (ctx.winner) ev.data.winner = ctx.winner;
@@ -857,7 +871,7 @@
         ev.spite = true;
         ev.text += " " + p.name + " balance un dossier sur " + att.name + " : −3 réputation pour lui·elle aussi.";
         emit(s, ev);
-        if (ev.data.garde) emit(s, { t: "card", k: "garde", p: p.id, outcome: "full", scene: "garde", data: { kids: ev.data.kids, exSeed: ev.data.exSeed, partner: ev.data.partner }, text: "Garde alternée pour " + p.name + "." });
+        if (ev.data.garde) emit(s, { t: "card", k: "garde", p: p.id, outcome: "full", scene: "garde", data: { kids: ev.data.kids, exSeed: ev.data.exSeed, exSx: ev.data.exSx, partner: ev.data.partner }, text: "Garde alternée pour " + p.name + "." });
       } else if (a.choice === "soft") {
         if (!ac.soft || !affordable(p, ac.soft.cost)) return { ok: false, err: "Tu ne peux pas payer" };
         var spent = [];
@@ -870,7 +884,7 @@
         p.rebound = true;
         ev.bounce = ac.bounce ? ac.bounce.label : "";
         emit(s, ev);
-        if (ev.data.garde) emit(s, { t: "card", k: "garde", p: p.id, outcome: "full", scene: "garde", data: { kids: ev.data.kids, exSeed: ev.data.exSeed, partner: ev.data.partner }, text: "Garde alternée : une semaine sur deux, " + p.name + " vit seul·e avec le hamster." });
+        if (ev.data.garde) emit(s, { t: "card", k: "garde", p: p.id, outcome: "full", scene: "garde", data: { kids: ev.data.kids, exSeed: ev.data.exSeed, exSx: ev.data.exSx, partner: ev.data.partner }, text: "Garde alternée : une semaine sur deux, " + p.name + " vit seul·e avec le hamster." });
       }
       toDiscard(s, atkCard, "used", att.id);
       s.pending = null; s.phase = "play";

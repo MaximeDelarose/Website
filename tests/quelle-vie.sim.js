@@ -4,12 +4,12 @@
 var D = require("../js/qv-data.js"), E = require("../js/qv-engine.js");
 var N = +process.argv[2] || 300, fails = 0, bad = 0;
 var MODES = [{ mode: "classic", discovery: false }, { mode: "classic", discovery: true }, { mode: "adult", discovery: false }, { mode: "adult", discovery: true }];
-var played = {}, scenes = {}, statusSeen = {}, progress = {};
+var couples = { n: 0, same: 0 }, jobsSeen = {}, played = {}, scenes = {}, statusSeen = {}, progress = {};
 MODES.forEach(function (opt) {
   var totals = [], wins = {}, turns = 0, objHit = {}, objAll = {}, reacts = { defend: 0, soft: 0, accept: 0, spite: 0 };
   for (var g = 0; g < N; g++) {
     var n = 2 + (g % 7);
-    var players = []; for (var i = 0; i < n; i++) players.push({ id: "p" + i, name: "Bot" + i, bot: true });
+    var players = []; for (var i = 0; i < n; i++) players.push({ id: "p" + i, name: "Bot" + i, bot: true, avatar: { sx: i % 2 ? "f" : "m" } });
     var fmt = ["rapide", "classique", "long"][g % 3];
     var s = E.create(players, 1000 + g, Object.assign({ format: fmt }, opt)), guard = 0;
     if (!opt.discovery) s.order.forEach(function (id) { var h = s.players[id].hand.map(function (x) { return D.byKey[x.k]; }); if (h.length !== 4 && id === s.order[0] || (id !== s.order[0] && h.length !== 3)) { bad++; console.log("ERREUR : main de départ", h.length); } if (!h.some(function (c) { return c.fam === "study"; })) { bad++; console.log("ERREUR : pas de carte Études au départ"); } });
@@ -34,6 +34,7 @@ MODES.forEach(function (opt) {
       turns++;
     }
     if (guard >= 6000) { console.log("BLOQUÉ", g); bad++; continue; }
+    s.order.forEach(function (id) { var q = s.players[id]; if (q.partner && q.partner.sx) { couples.n++; if (q.partner.sx === q.avatar.sx) couples.same++; } if (q.job) jobsSeen[q.job.k] = (jobsSeen[q.job.k] || 0) + 1; });
     progress[fmt] = progress[fmt] || { n: 0, job: 0, edu: 0, home: 0, love: 0, kids: 0, nojob: 0, edu0: 0, full: 0 };
     s.order.forEach(function (id) { var q = s.players[id], P = progress[fmt]; P.n++; if (q.job || q.retired) P.job++; else P.nojob++; P.edu += q.edu; if (!q.edu) P.edu0++; if (q.housing) P.home++; if (q.partner || q.married) P.love++; if (q.kids.length) P.kids++; if ((q.job || q.retired) && q.housing && (q.partner || q.kids.length)) P.full++; });
     s.order.forEach(function (id) {
@@ -54,6 +55,8 @@ MODES.forEach(function (opt) {
 });
 console.log("\nProgression en fin de partie (part des joueurs) :");
 Object.keys(progress).forEach(function (f) { var P = progress[f], pc = function (v) { return Math.round(100 * v / P.n) + " %"; }; console.log(" ", f, ": métier", pc(P.job), "· sans métier", pc(P.nojob), "· Formation moyenne", (P.edu / P.n).toFixed(1), "· sans formation", pc(P.edu0), "· logement", pc(P.home), "· couple", pc(P.love), "· enfants", pc(P.kids), "· vie complète (métier+logement+famille)", pc(P.full)); });
+console.log("\nCouples : " + couples.n + " · de même genre : " + Math.round(100 * couples.same / Math.max(1, couples.n)) + " %");
+console.log("Métiers différents exercés en fin de partie : " + Object.keys(jobsSeen).length + " / " + Object.keys(D.JOBS).length);
 var never = D.CARDS.filter(function (c) { return c.copies !== 0 && !played[c.key]; }).map(function (c) { return c.key; });
 console.log("\ncartes jamais jouées :", never.join(", ") || "aucune");
 console.log("scènes déclenchées :", Object.keys(scenes).length, "· états qui ont éclaté/expiré :", Object.keys(statusSeen).join(", "));

@@ -1,4 +1,4 @@
-/* L'accueil : le château, le jardin, et huit grandes tuiles illustrées. */
+/* L'accueil : le château, le jardin, et neuf grandes tuiles illustrées. */
 (function () {
   'use strict';
   C.profile = Object.assign(Art.dress.defaults(), C.store.get('profile', {}));
@@ -13,7 +13,8 @@
     { id: 'pets', label: 'Animaux', art: Art.tiles.pets, a: '#dcfbe8', b: '#9fe8bf', say: 'Le jardin des animaux !' },
     { id: 'stories', label: 'Histoires', art: Art.tiles.story, a: '#dcf2ff', b: '#a2d8ff', say: 'Les histoires !' },
     { id: 'learn', label: 'Jeux', art: Art.tiles.learn, a: '#ffeedb', b: '#ffc79a', say: 'Les petits jeux !' },
-    { id: 'room', label: 'Ma chambre', art: Art.tiles.room, a: '#eadfff', b: '#bda0ff', say: 'Ta chambre magique !' }
+    { id: 'room', label: 'Ma chambre', art: Art.tiles.room, a: '#eadfff', b: '#bda0ff', say: 'Ta chambre magique !' },
+    { id: 'tidy', label: 'Rangement', art: Art.tiles.tidy, a: '#ffe9f1', b: '#ffb8d0', say: 'La jolie chambre !' }
   ];
   C.TILES = TILES;
 
@@ -120,8 +121,8 @@
       }
       var sb = C.$('.startbtn', el);
       if (sb) sb.addEventListener('click', begin);
-      else C.music.start();
+      else { C.music.start(); setTimeout(function () { if (C.current() === 'home' && C.cast && C.cast.homeVisit) C.cast.homeVisit(el); }, 1400); }   /* parfois, les grandes sœurs l'attendent au château */
     },
-    leave: function () { C.music.stop(); }
+    leave: function (el) { if (el && el._visitStop) el._visitStop(); C.music.stop(); }
   });
 })();

@@ -42,7 +42,7 @@
   function mk(o, dur, caption, sfx) { return { svg: K.wrap(o), dur: dur, caption: caption, sfx: sfx || [] }; }
   function RA(seed) { return A.random(seed); }
   function older(seed) { var a = A.random(seed); a.hairColor = "#b9b4ae"; return a; }
-  function partnerOf(p, fallback) { return p && p.partner ? A.random(p.partner.seed) : A.random(fallback || 9); }
+  function partnerOf(p, fallback) { return p && p.partner ? A.random(p.partner.seed, null, p.partner.sx) : A.random(fallback || 9); }
 
   // ---------- décors supplémentaires ----------
   var BG = {
@@ -376,7 +376,7 @@
     },
     doubleVieBust: function (ev, st) {
       var T = P(st, ev.p), o = BG.shop();
-      o += ch(A.random(ev.data && ev.data.exSeed || 5), { mood: "angry", pose: "hips" }, 60, 214, 0.55) + ch(RA(ev.id * 31 + 2), { mood: "angry", pose: "hips" }, 300, 214, 0.55);
+      o += ch(A.random(ev.data && ev.data.exSeed || 5, null, ev.data && ev.data.exSx), { mood: "angry", pose: "hips" }, 60, 214, 0.55) + ch(RA(ev.id * 31 + 2), { mood: "angry", pose: "hips" }, 300, 214, 0.55);
       o += '<g class="qv-shake2">' + ch(T.avatar, { mood: "shocked", outfit: outfit(T), disguise: true }, 180, 214, 0.6) + '</g>';
       o += bubble(60, 50, "Chéri·e ?!", 0.5) + bubble(300, 80, "Chéri·e ?!", 0.9) + bubble(180, 30, "C'est… mon jumeau !", 1.6, "#ffd23f");
       return mk(o, 4, "La double vie de " + nm(T) + " éclate au rayon surgelés : ses deux familles font les courses à la même heure.", [[0.5, "alarm"], [1.6, "boing"], [2.4, "sad"]]);
@@ -413,7 +413,7 @@
       return mk(o, 3.8, say(st, ev, ["{T} a vu le voisin, très discret, organiser des soirées à thème « pirates ». Le voisin paie pour qu'on n'en parle pas."], [], { T: nm(T) }), [[0.4, "ping"], [1.8, "coin"], [2.2, "coin"]]);
     },
     fauxCelib: function (ev, st) {
-      var T = P(st, ev.to), o = BG.room(), ex = A.random(ev.data && ev.data.exSeed || 5);
+      var T = P(st, ev.to), o = BG.room(), ex = A.random(ev.data && ev.data.exSeed || 5, null, ev.data && ev.data.exSx);
       o += ch(T.avatar, { mood: "shocked", outfit: outfit(T) }, 80, 214, 0.58) + ch(ex, { mood: "worried" }, 170, 214, 0.56);
       o += '<g' + mv(200, 0, 0, 0, 0.8, 1.2) + '>' + ch(RA(ev.id * 43), { mood: "angry", pose: "hips" }, 260, 214, 0.55) + ch(RA(ev.id * 47 + 2), { kid: true, mood: "happy", pose: "wave" }, 320, 214, 0.36) + '</g>';
       o += bubble(260, 40, "C'est qui, elle/lui ?", 1.8) + bubble(170, 80, "Je peux expliquer…", 2.4);
@@ -490,7 +490,7 @@
       return mk(o, 3.6, nm(T) + " emménage : " + esc(what.replace("Emménage : ", "")) + ". Les cartons resteront fermés trois ans.", [[0.4, "fanfare"]]);
     }
     if (/couple|Marié/.test(what)) {
-      var Pa = T.partner ? A.random(T.partner.seed) : RA(9);
+      var Pa = T.partner ? A.random(T.partner.seed, null, T.partner.sx) : RA(9);
       o = BG.street() + '<g' + mv(-160, 0, 0, 0, 1.2, 0.2) + '>' + ch(T.avatar, { mood: "love", outfit: outfit(T) }, 150, 214, 0.6) + '</g>';
       o += '<g' + mv(160, 0, 0, 0, 1.2, 0.2) + '>' + ch(Pa, { mood: "love", outfit: T.partner && T.partner.look || "casual" }, 215, 214, 0.58) + '</g>';
       o += rain("heart", 12, 1.3, 100, 280) + bubble(182, 40, T.partner ? T.partner.name + " ♥ " + T.name : "♥", 1.4, "#ffd23f");

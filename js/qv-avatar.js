@@ -31,7 +31,7 @@
   var MORPHS = { faceW: [0.86, 1.16, 1], eyeGap: [0.8, 1.22, 1], eyeSize: [0.8, 1.28, 1], noseSize: [0.78, 1.4, 1], mouthW: [0.8, 1.3, 1], browY: [-4, 4, 0] };
 
   function defaults() {
-    return { skin: SKINS[2], face: "round", hair: "short", hairColor: HAIR_COLORS[1], eyes: "round", eyeColor: EYE_COLORS[0], brows: "thick", nose: "button", beard: "none", glasses: "none", body: "regular", extra: "none", fav: FAV[0] };
+    return { sx: "", skin: SKINS[2], face: "round", hair: "short", hairColor: HAIR_COLORS[1], eyes: "round", eyeColor: EYE_COLORS[0], brows: "thick", nose: "button", beard: "none", glasses: "none", body: "regular", extra: "none", fav: FAV[0] };
   }
   function sanitize(av) {
     var d = defaults(), o = {};
@@ -40,6 +40,7 @@
     if (tr) o.trace = tr;
     Object.keys(d).forEach(function (k) {
       var v = av[k];
+      if (k === "sx") { o.sx = v === "m" || v === "f" || v === "x" ? v : ""; return; }
       if ((k === "face" || k === "hair") && v === "photo" && tr && (k === "face" || tr.hb || tr.hf)) { o[k] = "photo"; return; }
       if (OPTIONS[k]) o[k] = OPTIONS[k].some(function (x) { return x[0] === v; }) ? v : d[k];
       else o[k] = (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v)) ? v : d[k];
@@ -183,13 +184,27 @@
     var s = (seed >>> 0) || 7;
     return function () { s = (s + 0x6d2b79f5) | 0; var t = Math.imul(s ^ (s >>> 15), s | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   }
-  function random(seed, base) {
+  // genre de présentation d'un personnage : choix du joueur, sinon déduit de l'apparence (barbe, coiffure, boucles d'oreilles)
+  function sexOf(av) {
+    av = av || {};
+    if (av.sx === "m" || av.sx === "f" || av.sx === "x") return av.sx;
+    if (av.beard && av.beard !== "none") return "m";
+    if (["long", "bun", "bob", "ponytail"].indexOf(av.hair) >= 0 || av.extra === "earrings") return "f";
+    return "x";
+  }
+  var HAIR_BY_SEX = {
+    m: ["short", "short", "short", "buzz", "buzz", "curly", "side", "side", "afro", "spiky", "bald", "mohawk"],
+    f: ["long", "long", "long", "bob", "bob", "bun", "ponytail", "ponytail", "curly", "afro", "side", "short"],
+  };
+  function random(seed, base, sx) {
     var r = rng(seed), pick = function (a) { return a[Math.floor(r() * a.length)]; };
+    if (sx !== "m" && sx !== "f") sx = "";
     var av = {
-      skin: pick(SKINS), face: pick(OPTIONS.face)[0], hair: pick(OPTIONS.hair)[0], hairColor: pick(HAIR_COLORS.slice(0, 7)),
+      sx: sx, skin: pick(SKINS), face: pick(OPTIONS.face)[0], hair: sx ? pick(HAIR_BY_SEX[sx]) : pick(OPTIONS.hair)[0], hairColor: pick(HAIR_COLORS.slice(0, 7)),
       eyes: pick(OPTIONS.eyes)[0], eyeColor: pick(EYE_COLORS), brows: pick(OPTIONS.brows)[0], nose: pick(OPTIONS.nose)[0],
-      beard: r() < 0.3 ? pick(OPTIONS.beard)[0] : "none", glasses: r() < 0.25 ? pick(["round", "square"]) : "none",
-      body: pick(OPTIONS.body)[0], extra: r() < 0.4 ? pick(OPTIONS.extra)[0] : "none", fav: pick(FAV),
+      beard: sx === "f" ? "none" : r() < (sx === "m" ? 0.4 : 0.3) ? pick(OPTIONS.beard)[0] : "none", glasses: r() < 0.25 ? pick(["round", "square"]) : "none",
+      body: sx === "f" ? pick(["slim", "regular", "regular", "round"]) : pick(OPTIONS.body)[0],
+      extra: sx === "m" ? (r() < 0.3 ? pick(["freckles", "mole"]) : "none") : sx === "f" ? (r() < 0.5 ? pick(["freckles", "blush", "earrings", "earrings", "mole"]) : "none") : (r() < 0.4 ? pick(OPTIONS.extra)[0] : "none"), fav: pick(FAV),
     };
     if (base) { // enfant : hérite de la peau et parfois des cheveux d'un parent
       av.skin = r() < 0.5 ? base.skin : av.skin;
@@ -358,6 +373,30 @@
     engineer:   function () { return { top: "#ff9a3a", legs: "#3e5c8a", shoes: "#2b2140", helmet: "#ffd23f", vest: true }; },
     lawyer:     function () { return { top: "#15151c", legs: "#15151c", shoes: "#111", robe: true, jabot: true }; },
     surgeon:    function () { return { top: "#5aa9ff", legs: "#5aa9ff", shoes: "#f4f6fb", cap: "#5aa9ff", cross: "#f4f6fb" }; },
+    waiter:     function () { return { top: "#f4f6fb", legs: "#1b1b1b", shoes: "#111", collar: true, tie: "#2b2140", apron: "#2b2140" }; },
+    shopkeeper: function () { return { top: "#e5487a", legs: "#2c3e66", shoes: "#fff", collar: true, pendant: true }; },
+    gardener:   function () { return { top: "#38b58a", legs: "#8a5a3b", shoes: "#5b3a29", bib: "#2fa37a", cap: "#e3bc5e" }; },
+    chef:       function () { return { top: "#ffffff", legs: "#3a3a48", shoes: "#111", collar: true, toque: "#ffffff", apron: "#f4f6fb" }; },
+    hairdresser: function () { return { top: "#2b2140", legs: "#2b2140", shoes: "#e5487a", apron: "#ff7eb6", scarf: "#ff7eb6" }; },
+    electrician: function () { return { top: "#3d7dd8", legs: "#3d7dd8", shoes: "#2b2140", bib: "#2c5fae", helmet: "#ffffff" }; },
+    mechanic:   function () { return { top: "#8a92a6", legs: "#3e5c8a", shoes: "#2b2140", bib: "#3e5c8a", cap: "#e5487a", stain: true }; },
+    baker:      function () { return { top: "#fff4dc", legs: "#c9a066", shoes: "#5b3a29", collar: true, toque: "#ffffff", apron: "#fff4dc" }; },
+    police:     function () { return { top: "#2c3e66", legs: "#1b1f2e", shoes: "#111", collar: true, tie: "#111", cap: "#2c3e66", star: true }; },
+    firefighter: function () { return { top: "#2b2140", legs: "#2b2140", shoes: "#ff6b4a", vest: true, helmet: "#e5282a" }; },
+    realtor:    function () { return { top: "#f4f6fb", legs: "#6b7488", shoes: "#2b2140", collar: true, tie: "#ffd23f", jacket: true, pocket: true }; },
+    developer:  function () { return { top: "#2b2140", legs: "#3a3a48", shoes: "#f4f6fb", hood: true, logo: true }; },
+    designer:   function () { return { top: "#ff7eb6", legs: "#2b2140", shoes: "#ffd23f", beret: "#9b5de5", scarf: "#3ad1a0" }; },
+    accountant: function () { return { top: "#c9ced8", legs: "#3a3a48", shoes: "#1b1b1b", collar: true, tie: "#3d7dd8", pocket: true }; },
+    reporter:   function () { return { top: "#d9a066", legs: "#3a3a48", shoes: "#5b3a29", vest: true, scarf: "#e5487a" }; },
+    architect:  function () { return { top: "#f4f6fb", legs: "#3a3a48", shoes: "#111", collar: true, tie: "#2b2140", helmet: "#ffd23f" }; },
+    pharmacist: function () { return { top: "#ffffff", legs: "#3a3a48", shoes: "#fff", collar: true, cross: "#38b58a" }; },
+    psychologist: function () { return { top: "#7a9e9f", legs: "#6b4a3a", shoes: "#2b2140", collar: true, jacket: true }; },
+    vet:        function () { return { top: "#38b58a", legs: "#38b58a", shoes: "#fff", cross: "#ffffff", cap: "#38b58a" }; },
+    data:       function () { return { top: "#4f7cff", legs: "#2b2140", shoes: "#fff", hood: true }; },
+    pilot:      function () { return { top: "#1f2a44", legs: "#1f2a44", shoes: "#111", collar: true, tie: "#ffd23f", jacket: true, cap: "#1f2a44", star: true }; },
+    judge:      function () { return { top: "#7a1f2e", legs: "#7a1f2e", shoes: "#111", robe: true, jabot: true }; },
+    scientist:  function () { return { top: "#ffffff", legs: "#6b7488", shoes: "#fff", collar: true, pocket: true }; },
+    astronaut:  function () { return { top: "#f4f6fb", legs: "#f4f6fb", shoes: "#c9ced8", helmet: "#c9ced8", star: true }; },
     unemployed: function () { return { top: "#efeee8", legs: "#8a92a6", shoes: "#5b3a29", stain: true, tank: true }; },
   };
 
@@ -387,6 +426,7 @@
     if (o.robe) g += '<path d="M' + (cx - w - 2) + ' 150 L' + (cx - w - 8) + ' 186 H' + (cx + w + 8) + ' L' + (cx + w + 2) + ' 150Z" fill="' + o.top + '"' + ink + '/>';
     if (o.flowers) g += '<g fill="#ffd23f"><circle cx="' + (cx - 10) + '" cy="116" r="4"/><circle cx="' + (cx + 9) + '" cy="132" r="4"/><circle cx="' + (cx - 6) + '" cy="148" r="4"/></g><g fill="#38b58a"><circle cx="' + (cx + 12) + '" cy="112" r="3"/><circle cx="' + (cx - 12) + '" cy="136" r="3"/></g>';
     if (o.dots) g += '<g fill="#fff"><circle cx="' + (cx - 8) + '" cy="118" r="2.5"/><circle cx="' + (cx + 9) + '" cy="128" r="2.5"/><circle cx="' + (cx - 4) + '" cy="144" r="2.5"/><circle cx="' + (cx + 6) + '" cy="152" r="2.5"/></g>';
+    if (o.apron) g += '<path d="M' + (cx - w + 3) + ' 120 H' + (cx + w - 3) + ' L' + (cx + w - 1) + ' 160 Q' + cx + ' 166 ' + (cx - w + 1) + ' 160 Z" fill="' + o.apron + '"' + S.replace('3"', '2.2"') + '/><path d="M' + (cx - 10) + ' ' + top + ' L' + (cx - 6) + ' 120 M' + (cx + 10) + ' ' + top + ' L' + (cx + 6) + ' 120" stroke="' + o.apron + '" stroke-width="4"/>';
     if (o.bib) g += '<path d="M' + (cx - 12) + ' ' + (top + 14) + ' h24 v30 h-24z" fill="' + o.bib + '"' + S.replace('3"', '2.2"') + '/><path d="M' + (cx - 12) + ' ' + (top + 14) + ' L' + (cx - w + 4) + ' ' + top + ' M' + (cx + 12) + ' ' + (top + 14) + ' L' + (cx + w - 4) + ' ' + top + '" stroke="' + o.bib + '" stroke-width="5"/>';
     if (o.cross) g += '<path d="M' + (cx + 4) + ' 124 h12 M' + (cx + 10) + ' 118 v12" stroke="' + o.cross + '" stroke-width="5"/>';
     if (o.vest) g += '<path d="M' + (cx - w + 2) + ' 122 H' + (cx + w - 2) + ' M' + (cx - w + 2) + ' 140 H' + (cx + w - 2) + '" stroke="#f4f6fb" stroke-width="5"/>';
@@ -467,6 +507,7 @@
     g += sx(60, 0, fw, 1, hairFront(av));
     }
     if (o.cap) g += '<path d="M28 40 C30 18 90 18 92 40 Z" fill="' + o.cap + '"' + S + '/><path d="M88 38 L110 42 L90 46Z" fill="' + o.cap + '"' + S + '/>';
+    if (o.toque) g += '<path d="M33 36 C24 14 44 4 60 12 C76 4 96 14 87 36 Z" fill="' + o.toque + '"' + S + '/><rect x="33" y="32" width="54" height="9" rx="3" fill="' + o.toque + '"' + S.replace('3"', '2.4"') + '/>';
     if (o.beret) g += '<ellipse cx="54" cy="26" rx="32" ry="11" fill="' + o.beret + '"' + S + '/><path d="M54 15 v-6" stroke="' + INK + '" stroke-width="3" stroke-linecap="round"/>';
     if (o.helmet) g += '<path d="M24 40 C24 8 96 8 96 40 Z" fill="' + o.helmet + '"' + S + '/><path d="M18 40 H102" stroke="' + INK + '" stroke-width="5" stroke-linecap="round"/><path d="M60 12 V38" stroke="' + INK + '" stroke-width="2.4"/>';
     if (o.mask && mood !== "shocked") g += '<path d="M36 76 Q60 70 84 76 L80 94 Q60 102 40 94Z" fill="#dff0ff"' + S.replace('3"', '2.4"') + '/>';
@@ -481,5 +522,5 @@
     return '<svg class="' + (cls || "") + '" viewBox="' + vb + '" aria-hidden="true">' + svg(av, opts) + '</svg>';
   }
 
-  root.QV_AVATAR = { OPTIONS: OPTIONS, COLORS: COLORS, MORPHS: MORPHS, defaults: defaults, sanitize: sanitize, random: random, svg: svg, standalone: standalone, shade: shade, INK: INK };
+  root.QV_AVATAR = { OPTIONS: OPTIONS, COLORS: COLORS, MORPHS: MORPHS, defaults: defaults, sanitize: sanitize, random: random, sexOf: sexOf, svg: svg, standalone: standalone, shade: shade, INK: INK };
 })(window);

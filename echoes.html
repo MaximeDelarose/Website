@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Echoes of Aether · AkarisuMD</title>
+  <meta name="description" content="Echoes of Aether : Action-RPG fantasy en pixel art, en temps réel. Version originale et Max version en cours de modification.">
+  <meta property="og:title" content="Echoes of Aether · AkarisuMD">
+  <meta property="og:description" content="Echoes of Aether : Action-RPG fantasy en pixel art, en temps réel.">
+  <meta name="theme-color" content="#0e1634">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Echoes">
+    <link rel="apple-touch-icon" href="echoes/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=20261118sq3">
+  <script>
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20261121cv1">
+  <style>
+    .eoa-modes { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .eoa-modes .chip { font-size: 1rem; padding: 8px 16px; }
+    .eoa-note { margin: 0; font-size: .9rem; opacity: .8; }
+    .eoa-frame { padding: 8px; background: #0e1228; }
+    .eoa-frame iframe { display: block; width: 100%; aspect-ratio: 16 / 9; max-height: calc(100vh - 160px); border: 0; border-radius: 8px; background: #0e1228; }
+    @media (max-width: 720px) { .eoa-modes .chip { flex: 1 1 0; text-align: center; padding: 8px 10px; } .eoa-note { width: 100%; } }
+  </style>
+</head>
+<body data-page="games">
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Accueil AkarisuMD">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
+        <span class="brand-name">Akarisu<span>MD</span></span>
+      </a>
+      <nav id="site-nav" aria-label="Navigation principale">
+        <ul>
+          <li><a href="index.html" data-page="home">Accueil</a></li>
+          <li><a href="jeux.html" data-page="games">Jeux</a></li>
+          <li><a href="stats.html" data-page="stats">Stats</a></li>
+          <li><a href="bio.html" data-page="bio">Bio</a></li>
+          <li><a href="contact.html" data-page="contact">Contact</a></li>
+        </ul>
+      </nav>
+      <button class="icon-btn" type="button" data-theme-toggle>
+        <svg class="sun" viewBox="0 0 12 12" aria-hidden="true"><g fill="#e8873a"><rect x="4" y="3" width="4" height="6"/><rect x="3" y="4" width="6" height="4"/><rect x="5" y="0" width="2" height="2"/><rect x="5" y="10" width="2" height="2"/><rect x="0" y="5" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="1" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="1" y="9" width="2" height="2"/><rect x="9" y="9" width="2" height="2"/></g></svg>
+        <svg class="moon" viewBox="0 0 12 12" aria-hidden="true"><g fill="#f2d48a"><rect x="3" y="1" width="4" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="1" y="3" width="3" height="5"/><rect x="2" y="8" width="3" height="1"/><rect x="2" y="9" width="7" height="1"/><rect x="4" y="10" width="5" height="1"/><rect x="5" y="8" width="5" height="1"/><rect x="9" y="7" width="2" height="1"/></g></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><rect x="1" y="2" width="10" height="2"/><rect x="1" y="5" width="10" height="2"/><rect x="1" y="8" width="10" height="2"/></g></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="section game-section">
+    <div class="wrap">
+      <div class="eoa-modes" role="group" aria-label="Version du jeu">
+        <button class="chip" type="button" data-eoa-mode="original" aria-pressed="true">Version originale</button>
+        <button class="chip" type="button" data-eoa-mode="moi" aria-pressed="false">Max version</button>
+        <p class="eoa-note" data-eoa-note></p>
+      </div>
+      <div class="game-head">
+        <div>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Action-RPG · temps réel</span>
+          <h1>Echoes of Aether</h1>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-small" type="button" data-eoa-full>⛶ Plein écran</button>
+          <a class="btn btn-ghost btn-small" href="echoes/" data-eoa-open>↗ Ouvrir seul</a>
+        </div>
+      </div>
+      <div class="panel eoa-frame" id="eoawrap">
+        <iframe id="eoa" src="echoes/" title="Echoes of Aether" allow="fullscreen; autoplay; gamepad" allowfullscreen></iframe>
+      </div>
+      <div class="game-info">
+        <div class="panel game-help">
+          <h2 class="section-title">Comment jouer</h2>
+          <ul>
+            <li><strong>Deux versions</strong> : « Version originale » est le jeu tel qu'il a été créé ; « Max version » est une copie séparée que je modifie. Chacune a ses propres sauvegardes et ses propres salons en ligne : jouer à l'une n'efface rien dans l'autre.</li>
+            <li><strong>Téléphone</strong> : mets le téléphone en paysage et touche « Plein écran ». Joystick à gauche, attaque et sorts à droite.</li>
+            <li><strong>Ordinateur</strong> : clavier et souris, ou manette.</li>
+            <li><strong>Application</strong> : « Ouvrir seul » ouvre la version choisie sans le site autour ; depuis là, « Ajouter à l'écran d'accueil » l'installe en plein écran.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/squirrel.png?v=20261118sq3" alt="" width="36" height="38">
+        <div>
+          <p class="pixel" style="margin:0">AkarisuMD</p>
+          <p class="footer-small">© <span data-year></span> <span data-site="fullName">Maxime Delarose</span> · fait main, pixel par pixel</p>
+        </div>
+      </div>
+      <ul class="links" data-links></ul>
+    </div>
+  </footer>
+
+  <script src="js/data.js?v=20261118ft1"></script>
+  <script src="js/auth.js?v=20261103re4"></script>
+  <script src="js/main.js?v=20261120rl1"></script>
+  <script>
+    (function () {
+      var MODES = {
+        original: { src: "echoes/", note: "Le jeu tel qu'il a été créé." },
+        moi: { src: "echoes-moi/", note: "Max version : copie modifiable, avec ses propres sauvegardes" }
+      };
+      var frame = document.getElementById("eoa"), wrap = document.getElementById("eoawrap");
+      var note = document.querySelector("[data-eoa-note]"), open = document.querySelector("[data-eoa-open]");
+      var btns = document.querySelectorAll("[data-eoa-mode]");
+      // Numéro de build de la Max version (echoes-moi/version.json, incrémenté à chaque construction)
+      var build = "";
+      fetch("echoes-moi/version.json", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (v) {
+        build = " — build " + v.build + " du " + v.date + ".";
+        if (frame.getAttribute("src") === MODES.moi.src) note.textContent = MODES.moi.note + build;
+      }).catch(function () {});
+      function pick(m, push) {
+        if (!MODES[m]) m = "original";
+        btns.forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.eoaMode === m ? "true" : "false"); });
+        note.textContent = MODES[m].note + (m === "moi" ? build : "");
+        open.href = MODES[m].src;
+        if (frame.getAttribute("src") !== MODES[m].src) frame.setAttribute("src", MODES[m].src);
+        try { localStorage.setItem("eoa_page_mode", m); } catch (e) {}
+        if (push) history.replaceState(null, "", m === "moi" ? "#moi" : "#original");
+      }
+      var start = location.hash.slice(1);
+      if (!MODES[start]) { try { start = localStorage.getItem("eoa_page_mode"); } catch (e) {} }
+      pick(start, false);
+      btns.forEach(function (b) { b.addEventListener("click", function () { pick(b.dataset.eoaMode, true); frame.focus(); }); });
+      window.addEventListener("hashchange", function () { pick(location.hash.slice(1), false); });
+      document.querySelector("[data-eoa-full]").addEventListener("click", function () {
+        var el = frame, rq = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (rq) { var p = rq.call(el); if (p && p.catch) p.catch(function () { location.href = open.href; }); }
+        else location.href = open.href;
+        try { screen.orientation.lock("landscape").catch(function () {}); } catch (e) {}
+      });
+    })();
+  </script>
+</body>
+</html>

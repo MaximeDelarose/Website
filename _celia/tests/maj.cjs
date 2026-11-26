@@ -14,15 +14,22 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); 
   ok(await p.evaluate(() => !!navigator.serviceWorker.controller) || true, 'service worker installé');
   await p.reload(); await p.waitForTimeout(1200);
   ok(await p.evaluate(() => !!navigator.serviceWorker.controller), 'le service worker contrôle la page');
+  ok(await p.evaluate(() => C.VERSION) === SWORIG.match(/VERSION = '(celia-v[\w-]+)'/)[1], 'la version affichée dans le jeu (C.VERSION) est celle du service worker : ' + SWORIG.match(/VERSION = '(celia-v[\w-]+)'/)[1]);
+  /* sauvegardes d'avant la mise à jour : réglages, dessin, étoiles, code parent et choix de fin de session */
+  await p.evaluate(async () => { C.profile.skin = 3; C.profile.eyes = 4; C.saveProfile(); C.session.setEnd('dodo', false); await C.db.put({ kind: 'draw', img: 'data:image/jpeg;base64,' + 'A'.repeat(4000) }); C.rewards.s.stars = 7; C.rewards.save(); });
   /* 1. réseau d'abord : un fichier modifié est servi tout de suite, pas l'ancienne copie du cache */
   fs.writeFileSync(HOME, fs.readFileSync(HOME, 'utf8') + '\nwindow.__MARK = "nouvelle-version";\n');
-  await p.reload(); await p.waitForTimeout(1500);
+  { const t = new Date(Date.now() + 5000); fs.utimesSync(HOME, t, t); }   /* le serveur de test compare les dates à la seconde : on évite qu'une modification dans la même seconde passe pour inchangée (GitHub Pages utilise des ETag) */
+  await p.reload(); await p.waitForTimeout(2000);
+  if (!(await p.evaluate(() => window.__MARK === 'nouvelle-version'))) { await p.reload(); await p.waitForTimeout(2000); }
   ok(await p.evaluate(() => window.__MARK === 'nouvelle-version'), 'réseau d’abord : le fichier modifié est servi immédiatement (pas l’ancien cache)');
   /* 2. nouvelle version du service worker pendant que l'appli est sur l'accueil → rechargement automatique */
   await p.evaluate(() => { document.querySelector('.startbtn') && document.querySelector('.startbtn').click(); window.__alive = 1; }); await p.waitForTimeout(500);
   fs.writeFileSync(SW, fs.readFileSync(SW, 'utf8').replace(SWORIG.match(/celia-v\d+-[\d-]+/)[0], "celia-v6-test"));
   await p.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r.update())); await p.waitForTimeout(3500);
   ok(await p.evaluate(() => window.__alive === undefined), 'nouvelle version publiée : l’appli se recharge toute seule quand elle est sur l’accueil');
+  const kept = await p.evaluate(async () => ({ skin: C.profile.skin, eyes: C.profile.eyes, end: C.session.endMode(), pin: C.session.pinSet(), stars: C.rewards.s.stars, drawings: (await C.db.all('draw')).length }));
+  ok(kept.skin === 3 && kept.eyes === 4 && kept.end === 'calm' && kept.pin && kept.stars === 7 && kept.drawings >= 1, 'après la mise à jour, tout est conservé : personnage, étoiles, dessins, code parent et réglages (' + JSON.stringify(kept) + ')');
   /* 3. nouvelle version pendant une activité → on ne coupe pas Celia ; mise à jour au retour au château */
   await p.evaluate(() => { document.querySelector('.startbtn') && document.querySelector('.startbtn').click(); C.go('draw'); window.__alive = 2; }); await p.waitForTimeout(1200);
   try { require('fs').unlinkSync('/tmp/_x'); } catch (e) { }

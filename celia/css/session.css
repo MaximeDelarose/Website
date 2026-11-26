@@ -68,3 +68,11 @@ body[data-screen="setup"] #hud, body[data-screen="sleep"] #hud { display: none; 
 /* interrupteur de la voix (écran parent) */
 .voicetog { display: block; width: 100%; min-height: 52px; margin-top: 12px; padding: 8px 14px; border-radius: 26px; border: 3px solid #fff; background: linear-gradient(180deg, #e8fff4, #b8f5d9); box-shadow: 0 4px 0 rgba(20,140,100,.3), 0 0 0 2px #bdeedb; font-weight: 800; font-size: 14px; color: var(--ink); }
 .voicetog.off { background: linear-gradient(180deg, #f4f0fa, #dcd3ea); box-shadow: 0 4px 0 rgba(107,63,114,.25), 0 0 0 2px #e5d6ff; opacity: .9; }
+
+/* fin de session : choix parent */
+.endopts { margin-top: 10px; text-align: left; } .eolabel { margin: 0 4px 4px; font-size: 13px; font-weight: 800; opacity: .8; }
+.eorow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.eo { min-height: 46px; padding: 6px 8px; border-radius: 22px; border: 3px solid #fff; background: linear-gradient(180deg, #fff, #f1e8ff); box-shadow: 0 3px 0 rgba(107,63,114,.22), 0 0 0 2px #e5d6ff; font-weight: 800; font-size: 13px; color: var(--ink); line-height: 1.1; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.eo span { font-size: 18px; } .eo.on { background: linear-gradient(180deg, #e8fff4, #b8f5d9); box-shadow: 0 0 0 3px #14b87d, 0 3px 0 rgba(20,140,100,.3); }
+.eo.witchtog { width: 100%; margin-top: 8px; min-height: 42px; font-size: 13px; } .eo.witchtog.off { background: linear-gradient(180deg, #f4f0fa, #dcd3ea); opacity: .9; }
+@media (max-height: 700px) { .dur { min-height: 70px; } .setcard h1 { font-size: 19px; } .setcard { padding-top: 12px; } .bigbtn.go { min-height: 62px; } .sfine { font-size: 12px; margin-top: 6px; } .eo { min-height: 40px; } }
