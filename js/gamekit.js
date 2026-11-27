@@ -53,6 +53,7 @@
     { id: "arcane", title: "Arcane Tactics", ico: "🪄" },
     { id: "ronceclair", title: "Ronceclair", ico: "🐿️" },
     { id: "echecs", title: "Échecs", ico: "♞" },
+    { id: "bataille", title: "Bataille navale", ico: "⚓" },
     { id: "billard", title: "Billard", ico: "🎱" },
     { id: "golf", title: "Mini-golf", ico: "⛳" },
     { id: "grimpe", title: "Grimpe-Chêne", ico: "🌳" },

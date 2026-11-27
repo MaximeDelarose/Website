@@ -1,0 +1,157 @@
+/* Bataille navale (js/bataille.js) : grilles en cases calculées (--c), pensé portrait d'abord. */
+.bn-stage { background: #173041; }
+.bn {
+  --sea: #1f5a72; --sea-2: #24677f; --sea-line: rgba(255, 255, 255, .09);
+  --hull: #c9c3b3; --hull-dk: #6f6a5c; --hit: #f0743a; --sunk: #5b2a22; --cream: #fdf3de;
+  position: absolute; inset: 0; display: flex; flex-direction: column; color: var(--cream);
+  font-family: "Nunito", system-ui, sans-serif;
+}
+.bn-bar { flex: none; height: 42px; display: flex; align-items: center; gap: 8px; padding: 6px 8px 0 10px; }
+.bn-status {
+  flex: 1; min-width: 0; margin: 0; padding: 5px 12px; font-weight: 800; font-size: .95rem; line-height: 1.2;
+  background: rgba(10, 20, 28, .55); border: 2px solid rgba(0, 0, 0, .35);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background .2s;
+}
+.bn-status[data-tone="me"] { background: rgba(63, 107, 58, .8); }
+.bn-status[data-tone="foe"] { background: rgba(122, 58, 22, .8); }
+.bn-status[data-tone="good"] { background: #3f6b3a; }
+.bn-status[data-tone="bad"] { background: #8c3a2a; }
+.bn-iconbtn {
+  flex: none; width: 38px; height: 34px; display: grid; place-items: center; font-size: 1.2rem; line-height: 1;
+  color: var(--cream); background: rgba(10, 20, 28, .55); border: 2px solid rgba(0, 0, 0, .35); cursor: pointer;
+}
+.bn-iconbtn:hover { background: rgba(10, 20, 28, .8); }
+/* en plein écran, le bouton ⚙ du GameKit est en bas à gauche : on garde de la place */
+.game-stage.gk-fs .bn-body { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 58px); }
+/* le GameKit garde le bouton de sortie du plein écran en haut à droite : on laisse la place */
+.game-stage.gk-fs .bn-bar { padding-right: 56px; padding-top: calc(env(safe-area-inset-top, 0px) + 6px); }
+
+.bn-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 10px; padding: 6px 10px 10px; }
+.bn-aside { display: flex; gap: 12px; align-items: flex-start; justify-content: center; }
+.bn-zone { min-width: 0; }
+.bn-title { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 4px; font: 800 .8rem/1.2 "Nunito", sans-serif; text-transform: uppercase; letter-spacing: .06em; color: #cfe3e9; }
+.bn-count { color: var(--cream); font-variant-numeric: tabular-nums; }
+
+/* --- grille --- */
+.bn-board {
+  --c: 32px;
+  display: grid; grid-template-columns: calc(var(--c) * .7) repeat(10, var(--c)); grid-template-rows: calc(var(--c) * .7) repeat(10, var(--c));
+  width: max-content; user-select: none; -webkit-user-select: none; touch-action: manipulation;
+}
+.bn-lab, .bn-corner { display: grid; place-items: center; font: 800 max(9px, calc(var(--c) * .38))/1 "Nunito", sans-serif; color: #a9c9d4; }
+.bn-cell {
+  position: relative; width: var(--c); height: var(--c); padding: 0; margin: 0; border: 0; border-radius: 0;
+  background: var(--sea); box-shadow: inset -1px -1px 0 var(--sea-line); cursor: pointer; color: inherit;
+}
+.bn-cell:nth-child(odd) { background: var(--sea-2); }
+.bn-cell:focus-visible { outline: 3px solid #ffd257; outline-offset: -3px; z-index: 2; }
+.bn-cell::before, .bn-cell::after { content: ""; position: absolute; pointer-events: none; }
+
+/* coque des navires */
+.bn-cell.ship::before { inset: 12%; background: var(--hull); box-shadow: inset 0 -3px 0 var(--hull-dk); }
+.bn-cell.ship.h::before { left: 0; right: 0; }
+.bn-cell.ship.v::before { top: 0; bottom: 0; }
+.bn-cell.ship.h.s0::before { left: 12%; border-radius: 40% 0 0 40%; }
+.bn-cell.ship.h.s1::before { right: 12%; border-radius: 0 50% 50% 0; }
+.bn-cell.ship.v.s0::before { top: 12%; border-radius: 40% 40% 0 0; }
+.bn-cell.ship.v.s1::before { bottom: 12%; border-radius: 0 0 50% 50%; }
+.bn-cell.ship.sunk::before { background: var(--sunk); box-shadow: inset 0 -3px 0 #2e1410; }
+
+/* tirs */
+.bn-cell.miss::after { width: 26%; height: 26%; left: 37%; top: 37%; border-radius: 50%; background: #e6f3f7; box-shadow: 0 0 0 3px rgba(230, 243, 247, .25); }
+.bn-cell.water::after { width: 14%; height: 14%; left: 43%; top: 43%; border-radius: 50%; background: rgba(230, 243, 247, .35); }
+.bn-cell.hit::after {
+  inset: 22%; background: var(--hit);
+  clip-path: polygon(50% 0, 62% 32%, 100% 22%, 72% 52%, 96% 84%, 58% 70%, 50% 100%, 40% 70%, 4% 84%, 28% 52%, 0 22%, 38% 32%);
+  filter: drop-shadow(0 0 3px rgba(255, 170, 60, .8));
+}
+.bn-cell.hit.sunk::after { background: #ff9f5a; filter: none; opacity: .9; }
+.bn-cell.last { box-shadow: inset 0 0 0 3px #ffd257; }
+
+/* grille ennemie : viseur au survol, cases déjà jouées non cliquables */
+.bn-foe .bn-cell.done { cursor: default; }
+@media (hover: hover) {
+  .bn[data-turn="me"][data-phase="battle"] .bn-foe .bn-cell:not(.done):hover { background: #2f7f9a; box-shadow: inset 0 0 0 2px #ffd257; }
+}
+.bn[data-phase="battle"][data-turn="foe"] .bn-zone-foe { opacity: .72; }
+.bn[data-phase="battle"][data-turn="foe"] .bn-zone-me .bn-board { outline: 2px solid #f09347; outline-offset: 3px; }
+.bn-me .bn-cell { cursor: default; }
+.bn[data-phase="place"] .bn-me .bn-cell { cursor: pointer; }
+.bn-me .bn-cell.picked::before { background: #ffd257; }
+.bn-me .bn-cell.pv { background: #3f8a5a; }
+.bn-me .bn-cell.pv-bad { background: #9a3a2c; }
+
+/* petite grille perso en portrait pendant le combat */
+.bn-mini .bn-me .bn-lab { font-size: max(7px, calc(var(--c) * .5)); }
+.bn-mini .bn-me .bn-cell.miss::after { box-shadow: none; }
+
+/* --- liste des navires --- */
+.bn-fleet, .bn-tray { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.bn-fleet li { display: flex; flex-direction: column; gap: 2px; font-size: .82rem; font-weight: 700; line-height: 1.15; }
+.bn-fleet li.sunk .bn-sname { text-decoration: line-through; opacity: .55; }
+.bn-pips { display: inline-flex; gap: 2px; }
+.bn-pips i { width: 11px; height: 9px; background: var(--hull); box-shadow: inset 0 -2px 0 var(--hull-dk); }
+.bn-fleet li.sunk .bn-pips i { background: var(--hit); box-shadow: inset 0 -2px 0 #9a3a2c; }
+
+/* --- outils de placement --- */
+.bn-tools { display: none; width: min(100%, 420px); text-align: center; }
+.bn-hint { margin: 0 0 8px; font-size: .82rem; color: #cfe3e9; line-height: 1.3; }
+.bn-tray { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 8px; gap: 4px; }
+.bn-ship {
+  width: 100%; height: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 4px 6px;
+  font: 700 .74rem/1.1 "Nunito", sans-serif; text-align: left; color: var(--cream);
+  background: rgba(10, 20, 28, .5); border: 2px solid rgba(0, 0, 0, .35); cursor: pointer;
+}
+.bn-ship.on { border-color: #ffd257; background: rgba(255, 210, 87, .16); }
+.bn-ship.placed:not(.on) { opacity: .6; }
+.bn-tool-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 10px; }
+.bn-tool-row .btn { min-width: 0; }
+.bn-go { width: 100%; }
+.bn-go:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(.5); }
+
+/* --- phases --- */
+.bn[data-phase="place"] .bn-zone-foe, .bn[data-phase="place"] .bn-zone-fleet { display: none; }
+.bn[data-phase="place"] .bn-tools { display: block; }
+.bn[data-phase="menu"] .bn-zone-fleet { visibility: hidden; }
+
+/* écran large : grilles côte à côte, outils à droite */
+.bn-wide .bn-body { flex-direction: row; align-items: flex-start; gap: 20px; }
+.bn-wide .bn-aside { flex-direction: column; align-items: flex-start; }
+.bn-wide[data-phase="place"] .bn-tools { width: 230px; text-align: left; }
+.bn-wide[data-phase="place"] .bn-tray { grid-template-columns: 1fr; }
+.bn-wide .bn-ship { font-size: .8rem; padding: 5px 8px; }
+.bn-wide .bn-tool-row { justify-content: flex-start; }
+.bn-wide .bn-zone-fleet { width: 100%; }
+.bn-wide .bn-fleet { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; }
+
+/* --- effets --- */
+.bn-cell.fx-splash, .bn-cell.fx-boom { z-index: 3; }
+.bn-cell.fx-splash { background-image: radial-gradient(circle, transparent 45%, rgba(230, 243, 247, .9) 48%, transparent 60%); background-size: 100% 100%; animation: bn-splash-bg .6s ease-out; }
+.bn-cell.fx-boom { background-image: radial-gradient(circle, #ffe08a 0 20%, #f0743a 35%, transparent 62%); animation: bn-boom-bg .6s ease-out; }
+@keyframes bn-splash-bg { from { background-size: 20% 20%; background-position: center; } to { background-size: 180% 180%; background-position: center; } }
+@keyframes bn-boom-bg { 0% { background-size: 30% 30%; background-position: center; } 100% { background-size: 220% 220%; background-position: center; } }
+.bn-cell.fx-splash, .bn-cell.fx-boom { background-repeat: no-repeat; background-position: center; }
+
+/* --- cartes de menu --- */
+.bn-overlay { background: rgba(8, 18, 26, .62); }
+.bn-card { text-align: center; color: var(--ink); }
+.bn-sub { margin: 14px 0 6px; font-weight: 800; color: var(--ink); }
+.bn-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.bn-seg button { min-width: 0; font: 800 .92rem/1.2 "Nunito", sans-serif; padding: 9px 6px; background: var(--panel-2); color: var(--ink); border: 3px solid var(--line); cursor: pointer; }
+.bn-seg button.on { background: var(--leaf); color: #1f3a2b; box-shadow: inset 0 -3px 0 var(--moss); }
+.bn-check { display: inline-flex; align-items: center; gap: 8px; margin: 12px 0 4px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.bn-check input { width: 20px; height: 20px; accent-color: var(--orange); }
+.bn-statsline { margin: 4px 0 12px; font-size: .88rem; }
+.bn-start { width: 100%; }
+.bn-rules { margin-top: 12px; text-align: left; color: var(--ink); font-size: .9rem; }
+.bn-rules summary { cursor: pointer; font-weight: 800; }
+.bn-rules ul { margin: 8px 0 0; padding-left: 1.2em; color: var(--ink-soft); }
+.bn-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.bn-stats div { background: var(--panel-2); border: 3px solid var(--line); padding: 6px 4px; }
+.bn-stats dt { font-size: .75rem; font-weight: 800; text-transform: uppercase; color: var(--ink-soft); }
+.bn-stats dd { margin: 0; font-size: 1.35rem; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bn-record { font-weight: 800; color: var(--ink) !important; }
+.bn-card-btns { display: grid; gap: 8px; }
+.bn-card-btns .btn { width: 100%; min-width: 0; white-space: normal; }
+
+html.gk-reduce-fx .bn-cell.fx-splash, html.gk-reduce-fx .bn-cell.fx-boom { animation: none; background-image: none; }

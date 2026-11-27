@@ -135,6 +135,7 @@
     tree: ["....xx....", "...xxxx...", "..xxxxxx..", ".xxxxxxxx.", "..xxxxxx..", ".xxxxxxxx.", "xxxxxxxxxx", "....ee....", "....ee....", "...eeee..."],
     pinball: ["...xxx...", "..xwxxx..", "..xxxxx..", "...xxx...", ".........", "xx.....xx", ".xxx.xxx.", "..xxxxx.."],
     golf: ["...xxx...", "...xxxx..", "...xxx...", "...x.....", "...x.....", "...x.....", "...x..w..", "eeeeeeeee"],
+    anchor: ["....x....", "...xwx...", "....x....", "..xxxxx..", "....x....", "x...x...x", "xx..x..xx", ".xx.x.xx.", "..xxxxx.."],
     box: ["..xxxxxx..", ".xwwwwwwx.", "xwwwwwwwwx", "xxxxeexxxx", "xxxxeexxxx", "xxxxxxxxxx", "xxxxxxxxxx", "eeeeeeeeee"],
   };
   function hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
