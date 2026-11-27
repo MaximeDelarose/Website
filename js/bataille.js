@@ -1,5 +1,6 @@
 /* Bataille navale : version de base (solo contre l'ordinateur).
-   Grille 10×10, 5 navires qui ne se touchent pas (même en diagonale).
+   Grille 10×10, 5 navires. Par défaut ils ne se touchent pas (même en diagonale) ;
+   l'option « Navires collés autorisés » lève cette règle.
    Trois niveaux d'IA : Facile (au hasard), Normal (chasse + cible), Difficile (carte de probabilités).
    Pensé pour mobile en portrait : un doigt suffit. Pas de dépendance. */
 (function () {
@@ -42,6 +43,7 @@
   var store = load();
   store.diff = store.diff || "normal";
   store.again = !!store.again;
+  store.touch = !!store.touch;
   store.stats = store.stats || {};
 
   /* ---------- sons (synthé WebAudio, suit le volume global du GameKit) ---------- */
@@ -96,12 +98,14 @@
     }
     return out;
   }
-  // un navire ne doit ni chevaucher ni toucher (même en diagonale) un autre navire
+  // un navire ne doit jamais en chevaucher un autre ; sans l'option « collés », il ne doit pas non plus
+  // en toucher un (même en diagonale)
   function canPlace(b, cells, ignore) {
     if (!cells) return false;
+    var reach = G.touch ? 0 : 1;
     for (var k = 0; k < cells.length; k++) {
       var p = rc(cells[k]);
-      for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) {
+      for (var dr = -reach; dr <= reach; dr++) for (var dc = -reach; dc <= reach; dc++) {
         var r = p[0] + dr, c = p[1] + dc;
         if (!inb(r, c)) continue;
         var s = b.cells[idx(r, c)].ship;
@@ -138,6 +142,10 @@
     }
     return null;
   }
+  function fleetValid(b) {
+    for (var si = 0; si < FLEET.length; si++) if (!b.ships[si] || !canPlace(b, b.ships[si].cells, si)) return false;
+    return true;
+  }
   function allPlaced(b) { for (var i = 0; i < FLEET.length; i++) if (!b.ships[i]) return false; return true; }
   function aliveCount(b) { return b.ships.filter(function (s) { return s && !s.sunk; }).length; }
 
@@ -151,8 +159,8 @@
     sh.hits++;
     if (sh.hits >= sh.len) {
       sh.sunk = true;
-      // les cases autour d'un navire coulé sont forcément de l'eau
-      sh.cells.forEach(function (j) {
+      // les cases autour d'un navire coulé sont forcément de l'eau (seulement si les navires ne se touchent pas)
+      if (!G.touch) sh.cells.forEach(function (j) {
         var p = rc(j);
         for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) {
           var r = p[0] + dr, c = p[1] + dc;
@@ -263,7 +271,8 @@
     turn: "me", busy: false,
     shots: 0, hits: 0, foeShots: 0, t0: 0,
     lastMe: -1, lastFoe: -1,
-    paused: false
+    paused: false,
+    touch: store.touch
   };
 
   /* ---------- interface ---------- */
@@ -479,7 +488,7 @@
     var cells = previewCells(i);
     if (!canPlace(G.me, cells, G.sel)) {
       sfx.bad(); haptic("fail"); shakeEl(meEl);
-      toast("Les navires ne doivent pas se toucher, même en diagonale.", "⚠️");
+      toast(G.touch ? "Ce navire chevauche un autre navire." : "Les navires ne doivent pas se toucher, même en diagonale.", "⚠️");
       return;
     }
     putShip(G.me, G.sel, cells, G.vert);
@@ -507,7 +516,9 @@
 
   /* ---------- combat ---------- */
   function startPlacement(keep) {
-    if (!keep || !G.me || !allPlaced(G.me)) G.me = emptyBoard();
+    G.touch = store.touch;
+    // une flotte collée n'est plus valable si on réactive la règle « ne se touchent pas »
+    if (!keep || !G.me || !allPlaced(G.me) || !fleetValid(G.me)) G.me = emptyBoard();
     else G.me.ships.forEach(function (s, si) { G.me.ships[si].hits = 0; G.me.ships[si].sunk = false; });
     G.me.cells.forEach(function (c) { c.shot = false; c.water = false; });
     G.foe = null; G.sel = nextUnplaced(0); G.lastMe = G.lastFoe = -1;
@@ -637,13 +648,17 @@
       '<div class="bn-seg" role="group" aria-label="Niveau">' +
         DIFFS.map(function (d) { return '<button type="button" data-diff="' + d.id + '" aria-pressed="' + (store.diff === d.id) + '" class="' + (store.diff === d.id ? "on" : "") + '">' + d.label + "</button>"; }).join("") +
       "</div>" +
-      '<label class="bn-check"><input type="checkbox" data-opt="again"' + (store.again ? " checked" : "") + "> Touché = on rejoue</label>" +
+      '<div class="bn-opts">' +
+        '<label class="bn-check"><input type="checkbox" data-opt="again"' + (store.again ? " checked" : "") + "> Touché = on rejoue</label>" +
+        '<label class="bn-check"><input type="checkbox" data-opt="touch"' + (store.touch ? " checked" : "") + "> Navires collés autorisés</label>" +
+      "</div>" +
       '<p class="bn-statsline">' + statsLine() + "</p>" +
       '<button class="btn bn-start" type="button" data-act="place">⚓ Placer ma flotte</button>' +
       '<details class="bn-rules"><summary>Règles</summary>' +
         "<ul><li>Chaque camp a 5 navires : porte-avions (5 cases), croiseur (4), contre-torpilleur (3), sous-marin (3) et torpilleur (2).</li>" +
-        "<li>Les navires sont droits et ne se touchent jamais, même en diagonale.</li>" +
-        "<li>Chacun tire à son tour. Quand un navire est coulé, les cases autour sont marquées comme de l'eau.</li>" +
+        "<li>Les navires sont droits. Par défaut, ils ne se touchent jamais, même en diagonale : quand un navire est coulé, les cases autour sont marquées comme de l'eau.</li>" +
+        "<li>Avec l'option « Navires collés autorisés », ils peuvent se toucher : deux touchés voisins peuvent alors appartenir à deux navires différents, et rien n'est marqué autour d'un navire coulé.</li>" +
+        "<li>Chacun tire à son tour.</li>" +
         "<li>Avec l'option « Touché = on rejoue », un tir réussi donne un tir de plus.</li></ul>" +
       "</details>"
     );
@@ -673,6 +688,7 @@
       return;
     }
     if (t.dataset.opt === "again") { store.again = t.checked; save(); return; }
+    if (t.dataset.opt === "touch") { store.touch = t.checked; save(); return; }
     if (t.dataset.ship != null) { var si = +t.dataset.ship; if (G.me.ships[si]) { G.vert = G.me.ships[si].vert; liftShip(G.me, si); } G.sel = si; render(); return; }
     if (t.classList.contains("bn-cell")) {
       var i = +t.dataset.i;
