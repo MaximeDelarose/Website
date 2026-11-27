@@ -27,7 +27,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20261121cv1">
   <link rel="stylesheet" href="css/gamekit.css?v=20261118gf4">
-  <link rel="stylesheet" href="css/bataille.css?v=20261127bn2">
+  <link rel="stylesheet" href="css/bataille.css?v=20261127bn4">
 </head>
 <body data-page="bataille">
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -61,11 +61,16 @@
     <div class="wrap">
       <div class="game-head">
         <div>
-          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Stratégie · solo contre l'ordinateur</span>
+          <span class="kicker"><a href="jeux.html">← Tous les jeux</a> · Stratégie · solo · classique &amp; roguelite</span>
           <h1>Bataille navale</h1>
         </div>
+        <div class="mg-modes bn-modes" role="tablist" aria-label="Version du jeu">
+          <button type="button" role="tab" data-bnmode="classic" aria-selected="true">🎯 Classique</button>
+          <button type="button" role="tab" data-bnmode="rogue" aria-selected="false">🦑 Roguelite</button>
+        </div>
       </div>
-      <p class="card-text">Place tes 5 navires, puis tire sur la grille ennemie : le premier qui coule toute la flotte adverse gagne. Par défaut, les navires ne se touchent pas, même en diagonale ; une option du menu permet de les coller.</p>
+      <p class="card-text" data-bnhelp="classic">Place tes 5 navires, puis tire sur la grille ennemie : le premier qui coule toute la flotte adverse gagne. Par défaut, les navires ne se touchent pas, même en diagonale ; une option du menu permet de les coller.</p>
+      <p class="card-text" data-bnhelp="rogue" hidden>Une traversée de 7 étapes jusqu'au Kraken (environ 15 min) : ta flotte garde ses dégâts, chaque navire a un pouvoir, et tu ramasses munitions spéciales et reliques en chemin.</p>
 
       <div class="game-stage bn-stage" id="game-stage" aria-label="Zone de jeu Bataille navale"></div>
     </div>
@@ -87,6 +92,6 @@
   <script src="js/data.js?v=20261120ar1"></script>
   <script src="js/main.js?v=20261127bn1"></script>
   <script src="js/gamekit.js?v=20261127bn1"></script>
-  <script src="js/bataille.js?v=20261127bn2"></script>
+  <script src="js/bataille.js?v=20261127bn4"></script>
 </body>
 </html>

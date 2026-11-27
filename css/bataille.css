@@ -156,3 +156,86 @@
 .bn-card-btns .btn { width: 100%; min-width: 0; white-space: normal; }
 
 html.gk-reduce-fx .bn-cell.fx-splash, html.gk-reduce-fx .bn-cell.fx-boom { animation: none; background-image: none; }
+
+/* ======================= Roguelite ======================= */
+@media (max-width: 600px) { .game-head .mg-modes.bn-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bn[data-phase="camp"] .bn-zone-fleet, .bn[data-phase="camp"] .bn-tools { visibility: hidden; }
+
+/* munitions sous la grille ennemie */
+.bn-ammo { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 6px; }
+.bn-ammo:empty { display: none; }
+.bn-ammo-btn {
+  display: inline-flex; align-items: center; gap: 4px; min-width: 50px; height: 36px; padding: 0 8px;
+  font: 800 .9rem/1 "Nunito", sans-serif; color: var(--cream); background: rgba(10, 20, 28, .55);
+  border: 2px solid rgba(0, 0, 0, .35); cursor: pointer;
+}
+.bn-ammo-btn span[aria-hidden] { font-size: 1.1rem; }
+.bn-ammo-btn b { font-variant-numeric: tabular-nums; }
+.bn-ammo-btn.on { border-color: #ffd257; background: rgba(255, 210, 87, .2); box-shadow: 0 0 0 2px rgba(255, 210, 87, .35); }
+.bn-ammo-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* cases spéciales */
+.bn-cell.num, .bn-cell.sonar, .bn-cell.fog { font: 900 calc(var(--c) * .5)/1 "Nunito", sans-serif; display: grid; place-items: center; }
+.bn-cell.num { color: #ffd257; }
+.bn-cell.num::after { display: none; }
+.bn-cell.sonar { color: #9ff0c8; box-shadow: inset 0 0 0 2px rgba(159, 240, 200, .55); }
+.bn-cell.fog { color: #e9f2f5; background: #6d8793 !important; }
+.bn-cell.spot::after { inset: 26%; border: 3px solid #ffd257; border-radius: 50%; }
+.bn-cell.dent::before { inset: 20%; background: #8d96a0; box-shadow: inset 0 -3px 0 #4c535b; }
+.bn-cell.mine::after, .bn-cell.mymine::after { width: 44%; height: 44%; left: 28%; top: 28%; border-radius: 50%; background: #23262b; box-shadow: 0 0 0 2px #e9f2f5; }
+.bn-cell.mine.boom::after { background: #f0743a; }
+.bn-cell.ship.dmg::before { background: repeating-linear-gradient(135deg, var(--hull) 0 4px, #8c3a2a 4px 7px); }
+.bn-cell.ship.krk::before { inset: 0; border-radius: 0; background: #6e4a86; box-shadow: inset 0 -3px 0 #3d2650; }
+.bn-cell.ship.krk.sunk::before { background: var(--sunk); }
+
+/* écrans de la traversée */
+.bn-kick { margin: 0 0 6px; font-weight: 800; font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; }
+.bn-glands { color: var(--orange-dk); }
+.bn-track { display: flex; justify-content: center; gap: 6px; margin: 0 0 10px; }
+.bn-track i { width: 22px; height: 10px; background: var(--panel-2); border: 2px solid var(--line); }
+.bn-track i.done { background: var(--leaf); }
+.bn-track i.now { background: var(--orange); }
+.bn-track i.boss { width: 30px; }
+.bn-routes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+.bn-routes.one { grid-template-columns: minmax(0, 1fr); }
+.bn-routes:has(> :nth-child(3)) { grid-template-columns: minmax(0, 1fr); }
+.bn-route {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 12px 8px;
+  font: 700 .95rem/1.2 "Nunito", sans-serif; color: var(--ink); text-align: center;
+  background: var(--panel-2); border: 3px solid var(--line); box-shadow: 0 4px 0 var(--depth); cursor: pointer;
+}
+.bn-route:hover { transform: translateY(-2px); }
+.bn-route:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--depth); }
+.bn-route-ico { font-size: 1.8rem; line-height: 1; }
+.bn-route small { font-weight: 600; color: var(--ink-soft); font-size: .8rem; }
+.bn-routes:has(> :nth-child(3)) .bn-route { flex-direction: row; flex-wrap: wrap; text-align: left; justify-content: flex-start; column-gap: 10px; }
+.bn-routes:has(> :nth-child(3)) .bn-route small { flex-basis: 100%; }
+.bn-route-elite { background: #f3d4c8; }
+.bn-route-port { background: #d6ecef; }
+.bn-route-boss { background: #e3d3ef; }
+:root[data-theme="dark"] .bn-route-elite, :root[data-theme="dark"] .bn-route-port, :root[data-theme="dark"] .bn-route-boss { background: var(--panel-2); }
+.bn-run { margin-top: 12px; text-align: left; font-size: .88rem; }
+.bn-run summary { cursor: pointer; font-weight: 800; }
+.bn-run-h { margin: 10px 0 4px; font-weight: 800; color: var(--ink) !important; }
+.bn-fs, .bn-relics { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.bn-fs li { display: flex; gap: 8px; align-items: flex-start; }
+.bn-fs-ico { font-size: 1.3rem; line-height: 1.2; }
+.bn-fs-txt small, .bn-relics small { display: block; color: var(--ink-soft); }
+.bn-card .bn-pips i { background: #b9b2a0; box-shadow: inset 0 -2px 0 #6f6a5c; }
+.bn-pips i.d { background: #c8553d !important; box-shadow: inset 0 -2px 0 #7a2b1d !important; }
+.bn-relics li { font-weight: 700; }
+.bn-none { color: var(--ink-soft); font-weight: 600; }
+.bn-ammo-list { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; font-weight: 700; color: var(--ink) !important; }
+.bn-shop-btn {
+  display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 6px; padding: 8px 10px;
+  font: 700 .9rem/1.2 "Nunito", sans-serif; color: var(--ink); text-align: left; background: var(--panel-2); border: 3px solid var(--line); cursor: pointer;
+}
+.bn-shop-btn small { display: block; font-weight: 600; color: var(--ink-soft); font-size: .78rem; }
+.bn-shop-btn b { flex: none; white-space: nowrap; }
+.bn-shop-btn:disabled { opacity: .5; cursor: not-allowed; }
+.bn-card .bn-sub { text-align: left; }
+.bn-card-small { margin-top: 10px; }
+.bn-card .bn-start + .bn-start { margin-top: 8px; }
+
+.game-stage.gk-fs .bn-overlay { padding-top: calc(env(safe-area-inset-top, 0px) + 54px); }
+[data-bnhelp][hidden] { display: none !important; }
